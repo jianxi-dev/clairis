@@ -1,12 +1,12 @@
 [package]
-name = "mdwrt"
+name = "folio"
 version = "0.1.0"
-description = "Markdown Editor with WYSIWYG and Source Mode"
+description = "Folio — Lightweight Markdown Reader/Editor"
 authors = ["you"]
 edition = "2021"
 
 [lib]
-name = "mdwrt_lib"
+name = "folio_lib"
 crate-type = ["lib", "cdylib", "staticlib"]
 
 [build-dependencies]

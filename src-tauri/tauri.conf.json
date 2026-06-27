@@ -1,8 +1,8 @@
 {
   "$schema": "https://raw.githubusercontent.com/nicedoc/tauri/main/packages/api/schema.json",
-  "productName": "mdwrt",
+  "productName": "Folio",
   "version": "0.1.0",
-  "identifier": "com.mdwrt.app",
+  "identifier": "com.folio.app",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:1420",
