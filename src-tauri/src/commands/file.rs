@@ -30,8 +30,7 @@ pub async fn open_file(app: AppHandle) -> Result<FileResult, AppError> {
     let file = app
         .dialog()
         .file()
-        .add_filter("Markdown", &["md", "markdown", "mdown", "mdwn"])
-        .add_filter("Text", &["txt"])
+        .add_filter("文档", &["md", "markdown", "mdown", "mdwn", "html", "htm", "txt"])
         .blocking_pick_file();
 
     let path = match file {
@@ -96,7 +95,7 @@ pub async fn save_as_file(app: AppHandle, content: String) -> Result<SaveResult,
     let file = app
         .dialog()
         .file()
-        .add_filter("Markdown", &["md", "markdown"])
+        .add_filter("文档", &["md", "markdown", "html", "htm", "txt"])
         .blocking_save_file();
 
     let path = match file {
