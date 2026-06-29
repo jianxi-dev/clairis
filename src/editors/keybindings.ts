@@ -16,12 +16,12 @@ export function formattingKeymap() {
   ]);
 }
 
-function toggleBold(view: EditorView): boolean {
+export function toggleBold(view: EditorView): boolean {
   toggleFormatting(view, "**");
   return true;
 }
 
-function toggleItalic(view: EditorView): boolean {
+export function toggleItalic(view: EditorView): boolean {
   toggleFormatting(view, "*");
   return true;
 }

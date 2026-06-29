@@ -7,6 +7,7 @@ import { basicSetup } from "codemirror";
 import { useStore } from "../../stores/index";
 import { decorCompartment, fullDecorations } from "../../editors/setup";
 import { formattingKeymap } from "../../editors/keybindings";
+import { setActiveEditorView } from "../../editors/editorRef";
 import PreviewView from "./PreviewView";
 import type { FileKind } from "../../types";
 
@@ -59,8 +60,10 @@ export default function ContentArea() {
       state,
       parent: editorRef.current,
     });
+    setActiveEditorView(viewRef.current);
 
     return () => {
+      setActiveEditorView(null);
       viewRef.current?.destroy();
       viewRef.current = null;
     };

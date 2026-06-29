@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useStore } from "./stores/index";
 import ContentArea from "./components/Content/ContentArea";
+import { getActiveEditorView } from "./editors/editorRef";
+import { toggleBold, toggleItalic } from "./editors/keybindings";
 
 // Detect Tauri environment
 const isTauri =
@@ -93,9 +95,16 @@ function App() {
         useStore.getState().setEditorMode(next);
       }
 
-      // Cmd+B: Bold / Cmd+I: Italic — prevent browser defaults, CM6 handles them
+      // Cmd+B: Bold / Cmd+I: Italic
       if (meta && (e.key === "b" || e.key === "i")) {
         e.preventDefault();
+        // macOS WKWebView may intercept Cmd+I before CM6 gets the event.
+        // Dispatch directly to the editor view as a fallback.
+        const view = getActiveEditorView();
+        if (view && activeTab?.editorMode !== "preview") {
+          if (e.key === "b") toggleBold(view);
+          else toggleItalic(view);
+        }
       }
 
       // Escape: Exit reading mode
