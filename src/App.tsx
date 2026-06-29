@@ -95,16 +95,18 @@ function App() {
         useStore.getState().setEditorMode(next);
       }
 
-      // Cmd+B: Bold / Cmd+I: Italic
-      if (meta && (e.key === "b" || e.key === "i")) {
+      // Cmd+B: Bold
+      if (meta && e.key === "b") {
         e.preventDefault();
-        // macOS WKWebView may intercept Cmd+I before CM6 gets the event.
-        // Dispatch directly to the editor view as a fallback.
         const view = getActiveEditorView();
         if (view && activeTab?.editorMode !== "preview") {
-          if (e.key === "b") toggleBold(view);
-          else toggleItalic(view);
+          toggleBold(view);
         }
+      }
+
+      // Cmd+I: Italic — handled in capture-phase listener (macOS workaround)
+      if (meta && e.key === "i") {
+        // Capture-phase listener below handles this
       }
 
       // Escape: Exit reading mode
@@ -114,7 +116,22 @@ function App() {
     };
 
     window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
+
+    // Capture-phase listener for Cmd+I (macOS WKWebView intercepts it otherwise)
+    const captureHandler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "i") {
+        e.preventDefault();
+        e.stopPropagation();
+        const view = getActiveEditorView();
+        if (view) toggleItalic(view);
+      }
+    };
+    document.addEventListener("keydown", captureHandler, { capture: true });
+
+    return () => {
+      window.removeEventListener("keydown", handler);
+      document.removeEventListener("keydown", captureHandler, { capture: true });
+    };
   }, [handleOpenFile, handleSaveFile, activeTab?.editorMode, readingMode]);
 
   // ── Drag-and-drop (Tauri v2 native event) ────────────────────
