@@ -109,62 +109,36 @@ function App() {
     return () => window.removeEventListener("keydown", handler);
   }, [handleOpenFile, handleSaveFile, activeTab?.editorMode, readingMode]);
 
-  // ── Drag-and-drop ────────────────────────────────────────────
-
-  const dragCounterRef = useRef(0);
+  // ── Drag-and-drop (Tauri v2 native event) ────────────────────
 
   useEffect(() => {
     if (!isTauri) return;
 
-    const handleDragOver = (e: DragEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-    };
+    let unlisten: (() => void) | null = null;
 
-    const handleDragEnter = (e: DragEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      dragCounterRef.current++;
-    };
+    (async () => {
+      const { listen } = await import("@tauri-apps/api/event");
 
-    const handleDragLeave = (e: DragEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      dragCounterRef.current--;
-    };
+      unlisten = await listen<{ paths: string[]; position: { x: number; y: number }; type: string }>(
+        "drag-drop",
+        (event) => {
+          if (event.payload.type !== "drop") return;
+          const path = event.payload.paths[0];
+          if (!path) return;
 
-    const handleDrop = async (e: DragEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      dragCounterRef.current = 0;
-
-      const files = e.dataTransfer?.files;
-      if (!files || files.length === 0) return;
-
-      const file = files[0];
-      const path = (file as unknown as { path?: string }).path;
-      if (!path) return;
-
-      try {
-        const result = await invoke<{ content: string; path: string; file_size: number }>("open_file_direct", {
-          path,
-        });
-        useStore.getState().openFile(result.path, result.content);
-      } catch (err) {
-        console.error("Failed to open dropped file:", err);
-      }
-    };
-
-    window.addEventListener("dragover", handleDragOver);
-    window.addEventListener("dragenter", handleDragEnter);
-    window.addEventListener("dragleave", handleDragLeave);
-    window.addEventListener("drop", handleDrop);
+          invoke<{ content: string; path: string; file_size: number }>("open_file_direct", { path })
+            .then((result) => {
+              useStore.getState().openFile(result.path, result.content);
+            })
+            .catch((err: unknown) => {
+              console.error("Failed to open dropped file:", err);
+            });
+        },
+      );
+    })();
 
     return () => {
-      window.removeEventListener("dragover", handleDragOver);
-      window.removeEventListener("dragenter", handleDragEnter);
-      window.removeEventListener("dragleave", handleDragLeave);
-      window.removeEventListener("drop", handleDrop);
+      unlisten?.();
     };
   }, []);
 
