@@ -53,6 +53,25 @@ pub async fn open_file(app: AppHandle) -> Result<FileResult, AppError> {
     })
 }
 
+/// Open a file by direct path (used for drag-and-drop).
+#[tauri::command]
+pub async fn open_file_direct(path: String) -> Result<FileResult, AppError> {
+    let path_buf = PathBuf::from(&path);
+    let content = fs::read_to_string(&path_buf).map_err(|e| AppError::Io {
+        context: "read file".into(),
+        source: e,
+    })?;
+
+    let file_size = content.len() as u64;
+    info!(path = %path, size = file_size, "File opened via direct path");
+
+    Ok(FileResult {
+        content,
+        path,
+        file_size,
+    })
+}
+
 /// Save file to the given path atomically.
 #[tauri::command]
 pub async fn save_file(path: String, content: String) -> Result<SaveResult, AppError> {

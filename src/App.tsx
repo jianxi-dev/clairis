@@ -1,29 +1,259 @@
-import { useEffect, useCallback, useState } from "react";
-import { useEditorStore } from "./stores/editorStore";
-import { useFile } from "./hooks/useFile";
+import { useCallback, useEffect, useRef } from "react";
+import { invoke } from "@tauri-apps/api/core";
+import { useStore } from "./stores/index";
+import ContentArea from "./components/Content/ContentArea";
+
+// Detect Tauri environment
+const isTauri =
+  typeof window !== "undefined" &&
+  (window as unknown as Record<string, unknown>).__TAURI_INTERNALS__ !== undefined;
 
 function App() {
-  const content = useEditorStore((s) => s.content);
-  const setContent = useEditorStore((s) => s.setContent);
-  const fileName = useEditorStore((s) => s.fileName);
-  const { openFile, saveFile, saveAsFile } = useFile();
+  const activeTabId = useStore((s) => s.activeTabId);
+  const tabs = useStore((s) => s.tabs);
+  const activeTab = activeTabId ? tabs[activeTabId] : null;
+
+  // ── File operations ──────────────────────────────────────────
+
+  const handleOpenFile = useCallback(async () => {
+    if (!isTauri) return;
+    try {
+      const result = await invoke<{ content: string; path: string; file_size: number }>("open_file");
+      useStore.getState().openFile(result.path, result.content);
+    } catch (e) {
+      if (String(e) !== "Operation cancelled") {
+        console.error("Failed to open file:", e);
+      }
+    }
+  }, []);
+
+  const handleSaveFile = useCallback(async () => {
+    if (!isTauri || !activeTab) return;
+    if (!activeTab.path) return; // Can't save without a path
+    try {
+      await invoke("save_file", { path: activeTab.path, content: activeTab.content });
+      useStore.getState().markClean();
+    } catch (e) {
+      console.error("Failed to save file:", e);
+    }
+  }, [activeTab?.path, activeTab?.content]);
+
+  // ── Auto-save (2s debounce after last change) ────────────────
+
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (!activeTab?.dirty || !activeTab?.path) return;
+
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+
+    autoSaveTimerRef.current = setTimeout(() => {
+      if (!isTauri || !activeTab?.path) return;
+      invoke("save_file", { path: activeTab.path, content: activeTab.content })
+        .then(() => {
+          useStore.getState().markClean();
+        })
+        .catch((e: unknown) => {
+          console.error("Auto-save failed:", e);
+        });
+    }, 2000);
+
+    return () => {
+      if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    };
+  }, [activeTab?.dirty, activeTab?.content, activeTab?.path]);
+
+  // ── Reading mode state ───────────────────────────────────────
+
+  const readingMode = useStore((s) => s.readingMode);
+
+  // ── Keyboard shortcuts ───────────────────────────────────────
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const meta = e.metaKey || e.ctrlKey;
+
+      // Cmd+O: Open file
+      if (meta && e.key === "o") {
+        e.preventDefault();
+        handleOpenFile();
+      }
+
+      // Cmd+S: Save (manual trigger, auto-save also runs)
+      if (meta && e.key === "s") {
+        e.preventDefault();
+        handleSaveFile();
+      }
+
+      // Cmd+Shift+M: Toggle editor mode (preview ↔ edit ↔ source)
+      if (meta && e.shiftKey && e.key.toLowerCase() === "m") {
+        e.preventDefault();
+        const current = activeTab?.editorMode || "preview";
+        const next = current === "preview" ? "edit" : current === "edit" ? "source" : "preview";
+        useStore.getState().setEditorMode(next);
+      }
+
+      // Cmd+B: Bold / Cmd+I: Italic (handled by CM6 internally,
+      // but prevent browser defaults)
+      if (meta && (e.key === "b" || e.key === "i")) {
+        // Let CM6 handle these — don't preventDefault so CM6 catches them
+      }
+
+      // Escape: Exit reading mode
+      if (e.key === "Escape" && readingMode) {
+        useStore.getState().setReadingMode(false);
+      }
+    };
+
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [handleOpenFile, handleSaveFile, activeTab?.editorMode, readingMode]);
+
+  // ── Drag-and-drop ────────────────────────────────────────────
+
+  const dragCounterRef = useRef(0);
+
+  useEffect(() => {
+    if (!isTauri) return;
+
+    const handleDragOver = (e: DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+    };
+
+    const handleDragEnter = (e: DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dragCounterRef.current++;
+    };
+
+    const handleDragLeave = (e: DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dragCounterRef.current--;
+    };
+
+    const handleDrop = async (e: DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dragCounterRef.current = 0;
+
+      const files = e.dataTransfer?.files;
+      if (!files || files.length === 0) return;
+
+      const file = files[0];
+      const path = (file as unknown as { path?: string }).path;
+      if (!path) return;
+
+      try {
+        const result = await invoke<{ content: string; path: string; file_size: number }>("open_file_direct", {
+          path,
+        });
+        useStore.getState().openFile(result.path, result.content);
+      } catch (err) {
+        console.error("Failed to open dropped file:", err);
+      }
+    };
+
+    window.addEventListener("dragover", handleDragOver);
+    window.addEventListener("dragenter", handleDragEnter);
+    window.addEventListener("dragleave", handleDragLeave);
+    window.addEventListener("drop", handleDrop);
+
+    return () => {
+      window.removeEventListener("dragover", handleDragOver);
+      window.removeEventListener("dragenter", handleDragEnter);
+      window.removeEventListener("dragleave", handleDragLeave);
+      window.removeEventListener("drop", handleDrop);
+    };
+  }, []);
+
+  // ── Render ───────────────────────────────────────────────────
 
   return (
     <div className="h-screen w-screen flex flex-col bg-white text-gray-900">
-      <header className="flex items-center gap-2 px-3 py-1.5 border-b border-gray-200 bg-gray-50 text-sm select-none">
-        <button onClick={openFile} className="px-2 py-0.5 rounded hover:bg-gray-200 text-xs">打开</button>
-        <button onClick={saveFile} className="px-2 py-0.5 rounded hover:bg-gray-200 text-xs">保存</button>
-        <span className="text-gray-500 text-xs flex-1 truncate">{fileName || "未打开文件"}</span>
-      </header>
-      <main className="flex-1 overflow-auto p-4">
-        <textarea
-          className="w-full h-full border-0 resize-none focus:outline-none font-mono text-sm"
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          placeholder="按 Cmd/Ctrl+O 打开 Markdown 文件"
-        />
-      </main>
+      {/* Header — hidden in reading mode */}
+      {!readingMode && (
+        <header className="flex items-center gap-2 px-3 py-1.5 border-b border-gray-200 bg-gray-50 text-sm select-none">
+          {isTauri && (
+            <>
+              <button
+                onClick={handleOpenFile}
+                className="px-2 py-0.5 rounded hover:bg-gray-200 text-xs"
+              >
+                打开
+              </button>
+              <button
+                onClick={handleSaveFile}
+                className="px-2 py-0.5 rounded hover:bg-gray-200 text-xs"
+              >
+                保存
+              </button>
+            </>
+          )}
+          <span className="text-gray-500 text-xs flex-1 truncate">
+            {activeTab?.title || (isTauri ? "Cmd+O 打开文件" : "Web 模式 — 仅展示 UI")}
+          </span>
+
+          {/* Mode buttons */}
+          {activeTab && (
+            <div className="flex gap-1 items-center">
+              <ModeButton
+                label="预览"
+                active={activeTab.editorMode === "preview"}
+                onClick={() => useStore.getState().setEditorMode("preview")}
+              />
+              <ModeButton
+                label="编辑"
+                active={activeTab.editorMode === "edit"}
+                onClick={() => useStore.getState().setEditorMode("edit")}
+              />
+              <ModeButton
+                label="源码"
+                active={activeTab.editorMode === "source"}
+                onClick={() => useStore.getState().setEditorMode("source")}
+              />
+              <div className="w-px h-4 bg-gray-300 mx-1" />
+              <button
+                onClick={() => useStore.getState().setReadingMode(true)}
+                className="px-2 py-0.5 rounded hover:bg-gray-200 text-xs"
+                title="进入阅读模式 (沉浸全屏)"
+              >
+                阅读
+              </button>
+            </div>
+          )}
+        </header>
+      )}
+
+      {/* Main area */}
+      <div className="flex-1 flex overflow-hidden">
+        <div className="flex-1">
+          <ContentArea />
+        </div>
+      </div>
     </div>
+  );
+}
+
+function ModeButton({
+  label,
+  active,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`px-2 py-0.5 rounded text-xs ${
+        active ? "bg-blue-100 text-blue-700 font-medium" : "hover:bg-gray-200"
+      }`}
+    >
+      {label}
+    </button>
   );
 }
 
