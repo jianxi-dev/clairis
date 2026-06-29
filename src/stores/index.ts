@@ -21,6 +21,7 @@ interface AppStore {
   activeTabId: string | null;
   tabs: Record<string, Tab>;
   sidebarOpen: boolean;
+  readingMode: boolean;
 
   reset: () => void;
   openFile: (path: string, content: string) => void;
@@ -28,12 +29,15 @@ interface AppStore {
   closeTab: (id: string) => void;
   updateContent: (content: string) => void;
   setEditorMode: (mode: EditorMode) => void;
+  setReadingMode: (on: boolean) => void;
+  markClean: () => void;
 }
 
 const initialState = {
   activeTabId: null as string | null,
   tabs: {} as Record<string, Tab>,
   sidebarOpen: true,
+  readingMode: false,
 };
 
 export const useStore = create<AppStore>((set, get) => ({
@@ -127,6 +131,24 @@ export const useStore = create<AppStore>((set, get) => ({
       tabs: {
         ...tabs,
         [activeTabId]: { ...tab, editorMode: mode },
+      },
+    });
+  },
+
+  setReadingMode: (on: boolean) => {
+    set({ readingMode: on });
+  },
+
+  markClean: () => {
+    const state = get();
+    const { activeTabId, tabs } = state;
+    if (!activeTabId) return;
+    const tab = tabs[activeTabId];
+    if (!tab) return;
+    set({
+      tabs: {
+        ...tabs,
+        [activeTabId]: { ...tab, dirty: false },
       },
     });
   },
