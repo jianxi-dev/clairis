@@ -93,10 +93,9 @@ function App() {
         useStore.getState().setEditorMode(next);
       }
 
-      // Cmd+B: Bold / Cmd+I: Italic (handled by CM6 internally,
-      // but prevent browser defaults)
+      // Cmd+B: Bold / Cmd+I: Italic — prevent browser defaults, CM6 handles them
       if (meta && (e.key === "b" || e.key === "i")) {
-        // Let CM6 handle these — don't preventDefault so CM6 catches them
+        e.preventDefault();
       }
 
       // Escape: Exit reading mode
@@ -117,24 +116,21 @@ function App() {
     let unlisten: (() => void) | null = null;
 
     (async () => {
-      const { listen } = await import("@tauri-apps/api/event");
+      const { getCurrentWebview } = await import("@tauri-apps/api/webview");
 
-      unlisten = await listen<{ paths: string[]; position: { x: number; y: number }; type: string }>(
-        "drag-drop",
-        (event) => {
-          if (event.payload.type !== "drop") return;
-          const path = event.payload.paths[0];
-          if (!path) return;
+      unlisten = await getCurrentWebview().onDragDropEvent((event) => {
+        if (event.payload.type !== "drop") return;
+        const path = event.payload.paths[0];
+        if (!path) return;
 
-          invoke<{ content: string; path: string; file_size: number }>("open_file_direct", { path })
-            .then((result) => {
-              useStore.getState().openFile(result.path, result.content);
-            })
-            .catch((err: unknown) => {
-              console.error("Failed to open dropped file:", err);
-            });
-        },
-      );
+        invoke<{ content: string; path: string; file_size: number }>("open_file_direct", { path })
+          .then((result) => {
+            useStore.getState().openFile(result.path, result.content);
+          })
+          .catch((err: unknown) => {
+            console.error("Failed to open dropped file:", err);
+          });
+      });
     })();
 
     return () => {

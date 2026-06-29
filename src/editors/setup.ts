@@ -4,6 +4,7 @@ import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
 import { html } from "@codemirror/lang-html";
 import { Decoration, EditorView, type DecorationSet } from "@codemirror/view";
 import type { FileKind } from "../types";
+import { formattingKeymap } from "./keybindings";
 import { createHeadingDecorations } from "./decorations/heading";
 import { createBoldItalicDecorations } from "./decorations/boldItalic";
 import { createListDecorations } from "./decorations/list";
@@ -66,6 +67,7 @@ export function createExtensions(fileKind: FileKind): Extension[] {
         ...base,
         markdown({ base: markdownLanguage }),
         decorCompartment.of(fullDecorations()),
+        formattingKeymap(),
       ];
     case "html":
       return [
