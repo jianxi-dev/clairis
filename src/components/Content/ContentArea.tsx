@@ -6,7 +6,6 @@ import { html } from "@codemirror/lang-html";
 import { basicSetup } from "codemirror";
 import { useStore } from "../../stores/index";
 import { decorCompartment, fullDecorations } from "../../editors/setup";
-import { formattingKeymap } from "../../editors/keybindings";
 import { setActiveEditorView } from "../../editors/editorRef";
 import PreviewView from "./PreviewView";
 import type { FileKind } from "../../types";
@@ -20,7 +19,6 @@ function createLanguageExtension(kind: FileKind) {
       return [
         markdown({ base: markdownLanguage }),
         decorCompartment.of(fullDecorations()),
-        formattingKeymap(),
       ];
     case "html":
       return [html()];
