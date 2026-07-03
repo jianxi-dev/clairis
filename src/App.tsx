@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useStore } from "./stores/index";
 import ContentArea from "./components/Content/ContentArea";
+import { getActiveEditorView } from "./editors/editorRef";
+import { toggleBold, toggleItalic } from "./editors/keybindings";
 
 // Detect Tauri environment
 const isTauri =
@@ -93,10 +95,18 @@ function App() {
         useStore.getState().setEditorMode(next);
       }
 
-      // Cmd+B: Bold / Cmd+I: Italic (handled by CM6 internally,
-      // but prevent browser defaults)
-      if (meta && (e.key === "b" || e.key === "i")) {
-        // Let CM6 handle these — don't preventDefault so CM6 catches them
+      // Cmd+B: Bold
+      if (meta && e.key === "b") {
+        e.preventDefault();
+        const view = getActiveEditorView();
+        if (view && activeTab?.editorMode !== "preview") {
+          toggleBold(view);
+        }
+      }
+
+      // Cmd+I: Italic — handled in capture-phase listener (macOS workaround)
+      if (meta && e.key === "i") {
+        // Capture-phase listener below handles this
       }
 
       // Escape: Exit reading mode
@@ -106,65 +116,51 @@ function App() {
     };
 
     window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
+
+    // Capture-phase listener for Cmd+I (macOS WKWebView intercepts it otherwise)
+    const captureHandler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "i") {
+        e.preventDefault();
+        e.stopPropagation();
+        const view = getActiveEditorView();
+        if (view) toggleItalic(view);
+      }
+    };
+    document.addEventListener("keydown", captureHandler, { capture: true });
+
+    return () => {
+      window.removeEventListener("keydown", handler);
+      document.removeEventListener("keydown", captureHandler, { capture: true });
+    };
   }, [handleOpenFile, handleSaveFile, activeTab?.editorMode, readingMode]);
 
-  // ── Drag-and-drop ────────────────────────────────────────────
-
-  const dragCounterRef = useRef(0);
+  // ── Drag-and-drop (Tauri v2 native event) ────────────────────
 
   useEffect(() => {
     if (!isTauri) return;
 
-    const handleDragOver = (e: DragEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-    };
+    let unlisten: (() => void) | null = null;
 
-    const handleDragEnter = (e: DragEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      dragCounterRef.current++;
-    };
+    (async () => {
+      const { getCurrentWebview } = await import("@tauri-apps/api/webview");
 
-    const handleDragLeave = (e: DragEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      dragCounterRef.current--;
-    };
+      unlisten = await getCurrentWebview().onDragDropEvent((event) => {
+        if (event.payload.type !== "drop") return;
+        const path = event.payload.paths[0];
+        if (!path) return;
 
-    const handleDrop = async (e: DragEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      dragCounterRef.current = 0;
-
-      const files = e.dataTransfer?.files;
-      if (!files || files.length === 0) return;
-
-      const file = files[0];
-      const path = (file as unknown as { path?: string }).path;
-      if (!path) return;
-
-      try {
-        const result = await invoke<{ content: string; path: string; file_size: number }>("open_file_direct", {
-          path,
-        });
-        useStore.getState().openFile(result.path, result.content);
-      } catch (err) {
-        console.error("Failed to open dropped file:", err);
-      }
-    };
-
-    window.addEventListener("dragover", handleDragOver);
-    window.addEventListener("dragenter", handleDragEnter);
-    window.addEventListener("dragleave", handleDragLeave);
-    window.addEventListener("drop", handleDrop);
+        invoke<{ content: string; path: string; file_size: number }>("open_file_direct", { path })
+          .then((result) => {
+            useStore.getState().openFile(result.path, result.content);
+          })
+          .catch((err: unknown) => {
+            console.error("Failed to open dropped file:", err);
+          });
+      });
+    })();
 
     return () => {
-      window.removeEventListener("dragover", handleDragOver);
-      window.removeEventListener("dragenter", handleDragEnter);
-      window.removeEventListener("dragleave", handleDragLeave);
-      window.removeEventListener("drop", handleDrop);
+      unlisten?.();
     };
   }, []);
 

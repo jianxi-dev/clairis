@@ -6,6 +6,7 @@ import { html } from "@codemirror/lang-html";
 import { basicSetup } from "codemirror";
 import { useStore } from "../../stores/index";
 import { decorCompartment, fullDecorations } from "../../editors/setup";
+import { setActiveEditorView } from "../../editors/editorRef";
 import PreviewView from "./PreviewView";
 import type { FileKind } from "../../types";
 
@@ -15,7 +16,10 @@ const langCompartment = new Compartment();
 function createLanguageExtension(kind: FileKind) {
   switch (kind) {
     case "markdown":
-      return [markdown({ base: markdownLanguage }), decorCompartment.of(fullDecorations())];
+      return [
+        markdown({ base: markdownLanguage }),
+        decorCompartment.of(fullDecorations()),
+      ];
     case "html":
       return [html()];
     case "text":
@@ -30,7 +34,7 @@ export default function ContentArea() {
 
   const editorRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
-  const currentKindRef = useRef<FileKind>("markdown");
+  const currentKindRef = useRef<FileKind | null>(null);
 
   // Create EditorView once with a placeholder language compartment
   useEffect(() => {
@@ -54,8 +58,10 @@ export default function ContentArea() {
       state,
       parent: editorRef.current,
     });
+    setActiveEditorView(viewRef.current);
 
     return () => {
+      setActiveEditorView(null);
       viewRef.current?.destroy();
       viewRef.current = null;
     };
@@ -72,7 +78,7 @@ export default function ContentArea() {
       });
     }
 
-    // Reconfigure language extension if fileKind changed
+    // Reconfigure language extension if fileKind changed or first load
     if (activeTab.fileKind !== currentKindRef.current) {
       currentKindRef.current = activeTab.fileKind;
       const langExtensions = createLanguageExtension(activeTab.fileKind);
@@ -80,7 +86,7 @@ export default function ContentArea() {
         effects: langCompartment.reconfigure(langExtensions),
       });
     }
-  }, [activeTab?.id, activeTab?.fileKind]);
+  }, [activeTab?.id, activeTab?.fileKind, activeTab?.editorMode]);
 
   // Toggle decorations compartment on mode change (markdown only)
   useEffect(() => {
