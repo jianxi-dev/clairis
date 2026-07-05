@@ -1,0 +1,1391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kaleidoscope A — Writing Fragments</title>
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0d0d0f;
+  --bg2:#16161a;
+  --bg3:#1e1e24;
+  --fg:#e8e4de;
+  --fg-muted:#6b6560;
+  --gold:#c8a052;
+  --gold-dim:#8a6e30;
+  --gold-bright:#e8c878;
+  --glow:rgba(200,160,82,0.3);
+  --shard-bg:rgba(28,28,34,0.85);
+  --shard-border:rgba(200,160,82,0.15);
+  --shard-border-active:rgba(200,160,82,0.6);
+}
+html,body{
+  width:100%;height:100%;overflow:hidden;
+  background:var(--bg);
+  color:var(--fg);
+  font-family:'Georgia','Iowan Old Style','Apple Garamond',serif;
+  cursor:default;
+}
+
+/* ── Canvas ── */
+#stage{
+  position:fixed;inset:0;
+  display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(ellipse 70% 60% at 50% 50%,var(--bg3),var(--bg) 70%);
+  transition:background .8s;
+}
+#stage.glowing{
+  background:radial-gradient(ellipse 70% 60% at 50% 50%,#1a1814,var(--bg) 75%);
+}
+
+/* ── Golden lines SVG overlay ── */
+#lines-svg{
+  position:absolute;inset:0;
+  width:100%;height:100%;
+  pointer-events:none;
+  z-index:1;
+}
+.golden-line{
+  stroke:var(--gold);
+  stroke-width:1.5;
+  opacity:0;
+  transition:opacity .4s ease;
+  stroke-dasharray:4 4;
+}
+.golden-line.visible{
+  opacity:.7;
+  animation:dashFlow 1.5s linear infinite;
+}
+@keyframes dashFlow{
+  to{stroke-dashoffset:-16;}
+}
+.glow-line{
+  stroke:none;
+  filter:blur(4px);
+  opacity:0;
+  transition:opacity .4s;
+}
+.glow-line.visible{
+  opacity:.5;
+}
+
+/* ── Kaleidoscope ring ── */
+#scope{
+  position:relative;
+  width:min(85vmin,700px);height:min(85vmin,700px);
+  border-radius:50%;
+  border:1px solid var(--shard-border-active);
+  background:radial-gradient(circle,rgba(200,160,82,0.03),transparent 70%);
+  display:flex;align-items:center;justify-content:center;
+  transform-origin:center center;
+  transition:transform 1.2s cubic-bezier(.23,1,.32,1);
+}
+#scope::before{
+  content:'';position:absolute;inset:-3px;
+  border-radius:50%;
+  border:1px solid rgba(200,160,82,0.08);
+  pointer-events:none;
+}
+#scope::after{
+  content:'';position:absolute;inset:-12px;
+  border-radius:50%;
+  border:1px solid rgba(200,160,82,0.04);
+  pointer-events:none;
+}
+
+/* ── Shards ── */
+.shard{
+  position:absolute;
+  width:180px;min-height:100px;max-width:220px;
+  padding:18px 20px;
+  background:var(--shard-bg);
+  backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px);
+  border:1px solid var(--shard-border);
+  border-radius:4px;
+  display:flex;align-items:center;justify-content:center;
+  text-align:center;
+  font-size:.92rem;line-height:1.55;
+  color:var(--fg);
+  word-break:break-word;
+  cursor:grab;
+  transition:border-color .4s,box-shadow .4s,opacity .6s;
+  user-select:none;
+  z-index:2;
+}
+.shard.dragging{cursor:grabbing;z-index:100;opacity:.85}
+.shard{touch-action:none}
+.shard.related-active{
+  border-color:var(--shard-border-active);
+  box-shadow:0 0 24px var(--glow),0 0 48px var(--glow);
+}
+.shard.new-adjacent{
+  border-color:rgba(232,200,120,0.8);
+  box-shadow:0 0 20px rgba(232,200,120,0.4),0 0 40px rgba(232,200,120,0.2);
+  z-index:5;
+}
+.shard-text{
+  position:relative;z-index:2;
+  max-height:90px;overflow:hidden;
+  font-style:italic;
+}
+.shard-label{
+  display:block;
+  font-size:.65rem;text-transform:uppercase;letter-spacing:.12em;
+  color:var(--gold-dim);
+  margin-bottom:6px;
+  font-family:'SF Mono','Monaco','Consolas',monospace;
+}
+.shard-number{
+  position:absolute;top:6px;right:10px;
+  font-size:.55rem;
+  color:var(--fg-muted);
+  font-family:'SF Mono','Monaco','Consolas',monospace;
+  pointer-events:none;
+}
+
+/* ── Center marker ── */
+#center-dot{
+  position:absolute;width:6px;height:6px;
+  border-radius:50%;
+  background:var(--gold);
+  opacity:.5;
+  pointer-events:none;
+  z-index:0;
+  transition:opacity .3s,transform .3s;
+}
+#center-dot.pulse{
+  opacity:1;
+  transform:scale(1.8);
+  box-shadow:0 0 12px var(--gold);
+}
+
+/* ── UI Bar ── */
+#ui-bar{
+  position:fixed;bottom:0;left:0;right:0;
+  height:64px;
+  display:flex;align-items:center;justify-content:center;gap:14px;
+  background:linear-gradient(transparent,rgba(13,13,15,0.9) 40%);
+  z-index:20;
+}
+.btn{
+  padding:10px 22px;
+  background:var(--bg3);
+  color:var(--fg);
+  border:1px solid var(--shard-border);
+  border-radius:6px;
+  font-size:.82rem;font-family:'SF Mono','Monaco','Consolas',monospace;
+  letter-spacing:.06em;
+  cursor:pointer;
+  transition:all .25s;
+  backdrop-filter:blur(8px);
+}
+.btn:hover{
+  border-color:var(--gold-dim);
+  background:var(--bg2);
+  box-shadow:0 0 12px rgba(200,160,82,0.08);
+}
+.btn.active{
+  border-color:var(--gold);
+  color:var(--gold);
+  box-shadow:0 0 16px var(--glow);
+}
+.btn-lock.locked{
+  border-color:var(--gold);
+  background:rgba(200,160,82,0.12);
+  color:var(--gold);
+}
+.btn .key-hint{
+  font-size:.65rem;
+  color:var(--fg-muted);
+  margin-left:4px;
+  opacity:.6;
+}
+
+/* ── Header ── */
+#header{
+  position:fixed;top:0;left:0;right:0;
+  height:60px;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 32px;
+  background:linear-gradient(rgba(13,13,15,0.9) 60%,transparent);
+  z-index:20;
+}
+#logo{
+  font-size:1.1rem;
+  font-weight:300;
+  letter-spacing:.2em;
+  color:var(--gold);
+  text-transform:uppercase;
+}
+#logo span{color:var(--fg-muted);font-weight:300}
+#info{
+  font-size:.72rem;color:var(--fg-muted);
+  font-family:'SF Mono','Monaco','Consolas',monospace;
+  letter-spacing:.05em;
+}
+
+/* ── Snapshots panel ── */
+#snapshots{
+  position:fixed;top:60px;right:16px;
+  display:flex;flex-direction:column;gap:8px;
+  z-index:15;
+  opacity:0;transform:translateX(20px);
+  pointer-events:none;
+  transition:all .35s;
+}
+#snapshots.visible{
+  opacity:1;transform:translateX(0);
+  pointer-events:auto;
+}
+.snap-thumb{
+  width:54px;height:54px;
+  border-radius:8px;
+  background:var(--bg3);
+  border:1px solid var(--shard-border);
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;
+  transition:all .2s;
+  font-size:.6rem;color:var(--gold-dim);
+  font-family:monospace;
+  position:relative;
+}
+.snap-thumb:hover{
+  border-color:var(--gold-dim);
+  background:var(--bg2);
+}
+.snap-thumb.active{
+  border-color:var(--gold);
+  color:var(--gold);
+  box-shadow:0 0 8px var(--glow);
+}
+.snap-badge{
+  position:absolute;top:-4px;right:-4px;
+  width:16px;height:16px;
+  border-radius:50%;
+  background:var(--gold);
+  color:var(--bg);
+  font-size:.55rem;
+  font-weight:bold;
+  display:flex;align-items:center;justify-content:center;
+  font-family:monospace;
+}
+
+/* ── Adjacency toast ── */
+#adjacency-toast{
+  position:fixed;top:80px;left:50%;transform:translateX(-50%) translateY(-20px);
+  padding:8px 20px;
+  background:rgba(200,160,82,0.08);
+  border:1px solid rgba(200,160,82,0.25);
+  border-radius:20px;
+  font-size:.75rem;color:var(--gold);
+  font-family:monospace;
+  letter-spacing:.08em;
+  opacity:0;
+  pointer-events:none;
+  transition:all .35s;
+  z-index:25;
+  white-space:nowrap;
+}
+#adjacency-toast.show{
+  opacity:1;transform:translateX(-50%) translateY(0);
+}
+
+/* ── Connection popup (tooltip near shards) ── */
+#conn-popup{
+  position:fixed;
+  padding:10px 16px;
+  background:var(--bg2);
+  border:1px solid var(--gold);
+  border-radius:8px;
+  font-size:.78rem;
+  color:var(--fg);
+  max-width:240px;
+  line-height:1.5;
+  z-index:30;
+  opacity:0;
+  pointer-events:none;
+  transition:opacity .25s;
+  box-shadow:0 4px 24px rgba(0,0,0,0.6),0 0 12px var(--glow);
+}
+#conn-popup.show{
+  opacity:1;
+}
+#conn-popup .cp-title{
+  color:var(--gold);
+  font-size:.65rem;
+  text-transform:uppercase;
+  letter-spacing:.1em;
+  margin-bottom:4px;
+  font-family:monospace;
+}
+#conn-popup .cp-body{
+  color:var(--fg-muted);
+  font-style:italic;
+}
+
+/* ── Insight Modal (shown on Lock) ── */
+#insight-modal{
+  position:fixed;inset:0;
+  z-index:100;
+  background:rgba(0,0,0,0.85);
+  display:none;
+  align-items:center;
+  justify-content:center;
+  backdrop-filter:blur(4px);
+  -webkit-backdrop-filter:blur(4px);
+}
+#insight-modal.show{
+  display:flex;
+}
+.insight-panel{
+  background:var(--bg2);
+  border:1px solid var(--shard-border-active);
+  border-radius:16px;
+  padding:40px;
+  max-width:560px;
+  width:90%;
+  max-height:80vh;
+  overflow-y:auto;
+  box-shadow:0 0 60px rgba(200,160,82,0.1);
+}
+.insight-header{
+  text-align:center;
+  margin-bottom:28px;
+}
+.insight-header h2{
+  color:var(--gold);
+  font-weight:300;
+  font-size:1.2rem;
+  letter-spacing:.15em;
+  margin-bottom:6px;
+}
+.insight-header p{
+  color:var(--fg-muted);
+  font-size:.78rem;
+  font-family:monospace;
+}
+.insight-badge-row{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  justify-content:center;
+  margin-bottom:24px;
+}
+.insight-badge{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  padding:8px 14px;
+  background:rgba(200,160,82,0.08);
+  border:1px solid rgba(200,160,82,0.3);
+  border-radius:20px;
+  font-size:.75rem;
+  font-family:monospace;
+  color:var(--fg);
+  transition:all .25s;
+  cursor:default;
+}
+.insight-badge:hover{
+  background:rgba(200,160,82,0.15);
+  border-color:var(--gold);
+  transform:translateY(-1px);
+}
+.insight-badge .badge-ico{
+  color:var(--gold);
+  font-size:.85rem;
+}
+.insight-badge .badge-label{
+  color:var(--gold-dim);
+  text-transform:uppercase;
+  letter-spacing:.05em;
+  font-size:.65rem;
+}
+.insight-badge .badge-plus{
+  color:var(--fg-muted);
+  margin:0 2px;
+}
+.insight-summary{
+  text-align:center;
+  padding:16px;
+  background:rgba(0,0,0,0.3);
+  border-radius:8px;
+  margin-bottom:20px;
+}
+.insight-summary .summary-count{
+  font-size:2rem;
+  color:var(--gold);
+  font-weight:300;
+  letter-spacing:.05em;
+}
+.insight-summary .summary-label{
+  font-size:.7rem;
+  color:var(--fg-muted);
+  text-transform:uppercase;
+  letter-spacing:.1em;
+  margin-top:4px;
+  font-family:monospace;
+}
+.insight-subtitle{
+  font-size:.72rem;
+  color:var(--fg-muted);
+  text-align:center;
+  margin-bottom:12px;
+  font-family:monospace;
+}
+.insight-empty{
+  text-align:center;
+  color:var(--fg-muted);
+  font-style:italic;
+  padding:20px;
+  font-size:.85rem;
+}
+.insight-close{
+  display:block;
+  margin:0 auto;
+}
+
+/* ── Context menu ── */
+#ctx-menu{
+  position:fixed;
+  min-width:140px;
+  background:var(--bg2);
+  border:1px solid var(--shard-border-active);
+  border-radius:6px;
+  padding:4px 0;
+  z-index:50;
+  display:none;
+  box-shadow:0 8px 32px rgba(0,0,0,0.6);
+}
+#ctx-menu.show{display:block}
+.ctx-item{
+  padding:8px 16px;
+  font-size:.78rem;color:var(--fg);
+  cursor:pointer;
+  font-family:monospace;
+  transition:background .15s;
+}
+.ctx-item:hover{background:var(--bg3);color:var(--gold)}
+
+/* ── Adjacency counter (top-left indicator) ── */
+#adj-counter{
+  position:fixed;
+  top:70px;left:20px;
+  padding:6px 14px;
+  background:var(--bg3);
+  border:1px solid var(--shard-border);
+  border-radius:16px;
+  font-size:.68rem;
+  color:var(--gold-dim);
+  font-family:monospace;
+  letter-spacing:.08em;
+  z-index:15;
+  opacity:0;
+  transform:translateY(-8px);
+  transition:all .35s;
+}
+#adj-counter.show{
+  opacity:1;
+  transform:translateY(0);
+}
+#adj-counter .count{
+  color:var(--gold);
+  font-weight:bold;
+  margin:0 2px;
+}
+
+/* ── Responsive ── */
+@media(max-width:640px){
+  #header{padding:0 16px}
+  #logo{font-size:.85rem;letter-spacing:.12em}
+  .shard{width:140px;min-height:70px;padding:12px;font-size:.78rem}
+  .shard-text{max-height:60px}
+  #ui-bar{height:54px;gap:8px}
+  .btn{padding:7px 12px;font-size:.7rem}
+  #adj-counter{top:62px;left:12px;font-size:.62rem}
+  .insight-panel{padding:24px;max-width:95vw}
+}
+</style>
+</head>
+<body>
+
+<div id="stage">
+  <div id="scope">
+    <div id="center-dot"></div>
+  </div>
+  <svg id="lines-svg"></svg>
+  <div id="adj-counter">connections <span class="count" id="adj-count-val">0</span></div>
+</div>
+
+<div id="header">
+  <div id="logo">Kaleidoscope A <span>// fragments</span></div>
+  <div id="info">rotation <span id="rotation-label">0°</span> · snapshots <span id="snap-count">0</span></div>
+</div>
+
+<div id="adjacency-toast"></div>
+<div id="conn-popup">
+  <div class="cp-title"></div>
+  <div class="cp-body"></div>
+</div>
+
+<div id="ui-bar">
+  <button class="btn" id="btn-rotate">Rotate <span class="key-hint">[R]</span></button>
+  <button class="btn" id="btn-random">Scatter <span class="key-hint">[S]</span></button>
+  <button class="btn btn-lock" id="btn-lock">Lock <span class="key-hint">[L]</span></button>
+  <button class="btn" id="btn-snapshots">Snapshots <span class="key-hint">[Tab]</span></button>
+  <button class="btn" id="btn-help">? <span class="key-hint">[H]</span></button>
+</div>
+
+<div id="snapshots"></div>
+<div id="ctx-menu">
+  <div class="ctx-item" data-action="copy">Copy text</div>
+  <div class="ctx-item" data-action="highlight">Highlight</div>
+  <div class="ctx-item" data-action="connections">Find connections</div>
+</div>
+
+<!-- Help modal -->
+<div id="help-modal" style="position:fixed;inset:0;z-index:100;background:rgba(0,0,0,0.8);display:none;align-items:center;justify-content:center">
+  <div style="background:var(--bg2);border:1px solid var(--shard-border);border-radius:12px;padding:36px;max-width:440px;">
+    <h2 style="color:var(--gold);font-weight:300;margin-bottom:16px;font-size:1.1rem;letter-spacing:.1em">CONTROLS</h2>
+    <div style="line-height:2;font-size:.82rem;color:var(--fg-muted);font-family:monospace">
+      <div><span style="color:var(--gold)">R</span> — Rotate scope 72°</div>
+      <div><span style="color:var(--gold)">S</span> — Scatter shards randomly</div>
+      <div><span style="color:var(--gold)">L</span> — Lock snapshot (shows insights)</div>
+      <div><span style="color:var(--gold)">Tab</span> — Toggle snapshots panel</div>
+      <div><span style="color:var(--gold)">Wheel</span> — Fine rotation</div>
+      <div><span style="color:var(--gold)">Click shard</span> — Drag to reposition</div>
+      <div><span style="color:var(--gold)">Right-click</span> — Context menu</div>
+      <div><span style="color:var(--gold)">H</span> — Toggle this help</div>
+    </div>
+    <button class="btn" id="help-close" style="margin-top:20px">Close</button>
+  </div>
+</div>
+
+<!-- Insight modal (shown on Lock) -->
+<div id="insight-modal">
+  <div class="insight-panel">
+    <div class="insight-header">
+      <h2>✦ DISCOVERED CONNECTIONS ✦</h2>
+      <p>Patterns revealed during this exploration</p>
+    </div>
+    <div id="insight-summary" class="insight-summary" style="display:none">
+      <div class="summary-count" id="insight-total">0</div>
+      <div class="summary-label">new adjacencies found</div>
+    </div>
+    <div class="insight-subtitle">connections discovered</div>
+    <div class="insight-badge-row" id="insight-badges"></div>
+    <button class="btn insight-close" id="insight-close">Continue</button>
+  </div>
+</div>
+
+<script>
+// ── Fragment content (real writing samples) ──
+const FRAGMENTS = [
+  {id:1, label:"architecture", text:"The doorway is not the threshold. The pause before crossing is where meaning accumulates."},
+  {id:2, label:"sidebar", text:"Symmetry is a form of memory. The building remembers what it wanted to be."},
+  {id:3, label:"design", text:"Negative space is not absence — it is the room an idea needs to breathe."},
+  {id:4, label:"architecture", text:"Light enters the room like a question. The walls answer slowly."},
+  {id:5, label:"sidebar", text:"A column holds up nothing but the idea of holding."},
+  {id:6, label:"design", text:"The margin is where the reader lives. Too narrow and they suffocate."},
+  {id:7, label:"architecture", text:"Every staircase is a sentence — each step a word, each landing a period."},
+  {id:8, label:"sidebar", text:"Glass does not divide; it reveals the division already present."},
+  {id:9, label:"design", text:"Whitespace is not the absence of content. It is content's breathing room."},
+  {id:10, label:"architecture", text:"The arch is a conversation between weight and the refusal to fall."},
+  {id:11, label:"sidebar", text:"Corridors connect not rooms but states of mind."},
+  {id:12, label:"design", text:"Typography is architecture for the eye — rhythm, proportion, silence."},
+];
+
+// ── Relationships ("what connects them" for insight display) ──
+const RELATIONSHIPS = {
+  // Within-label connections (same category)
+  "architecture-architecture": "Same discipline — different scales of inhabitation",
+  "design-design": "Visual grammar — the tension between filling and leaving blank",
+  "sidebar-sidebar": "Lateral thinking — the tangential becomes essential",
+  
+  // Cross-label connections (the interesting ones!)
+  "architecture-design": "Form follows attention — both shape how we perceive space and sequence",
+  "architecture-sidebar": "The structural aside — architecture's hidden commentary",
+  "design-sidebar": "Marginalia of vision — where design leaves room for interpretation",
+  
+  // Thematic bridges
+  "threshold-space": "Thresholds define experience — the doorway and the margin are cousins",
+  "light-rhythm": "Light pacing through rooms // letters pacing through lines",
+  "weight-breath": "Holding up and letting out — the arch and the margin",
+  "question-silence": "Architecture asks, design pauses — both require the listener",
+  "memory-movement": "Buildings remember, corridors transition — structure as narrative",
+  "symmetry-whitespace": "Balance and breathing — the same rhythm, different media",
+};
+
+// Predefined related pairs (by id) for visual glow
+const RELATED = [
+  [1,4], [1,7], [1,10],
+  [2,5], [2,8], [2,11],
+  [3,6], [3,9], [3,12],
+  [4,7], [4,10],
+  [5,8], [5,11],
+  [6,9], [6,12],
+  [7,10],
+  [8,11],
+  [9,12],
+];
+
+// ── State ──
+let currentRotation = 0;
+let snapshots = [];
+let shardPositions = [];
+let selectedShard = null;
+let dragOffset = {x:0, y:0};
+let isDragging = false;
+let dragEl = null;
+let highlightShardId = null;
+
+// Adjacency tracking
+let currentAdjacencies = new Set(); // pairs currently within threshold (as "id1-id2" sorted)
+let discoveredAdjacencies = new Set(); // cumulative pairs ever adjacent during rotation
+let currentCycleDiscovered = new Set(); // discovered this rotation cycle (for insight modal)
+let adjCheckThrottle = 0;
+
+const scope = document.getElementById('scope');
+const stage = document.getElementById('stage');
+const centerDot = document.getElementById('center-dot');
+const infoEl = document.getElementById('info');
+const rotationLabel = document.getElementById('rotation-label');
+const snapCountEl = document.getElementById('snap-count');
+const adjacencyToast = document.getElementById('adjacency-toast');
+const connPopup = document.getElementById('conn-popup');
+const ctxMenu = document.getElementById('ctx-menu');
+const linesSvg = document.getElementById('lines-svg');
+const adjCounter = document.getElementById('adj-counter');
+const adjCountVal = document.getElementById('adj-count-val');
+
+// ── Generate shard polygons ──
+function generatePolygonPath(id) {
+  const seeds = [
+    [[0,12],[15,0],[90,5],[100,40],[80,100],[20,90],[0,50]],
+    [[5,0],[50,8],[100,0],[95,60],[100,100],[40,95],[0,40]],
+    [[0,30],[30,0],[80,5],[100,25],[90,80],[60,100],[0,70]],
+    [[10,0],[60,0],[100,20],[100,70],[70,100],[20,90],[0,40]],
+    [[0,20],[20,0],[70,0],[100,30],[95,80],[50,100],[5,75]],
+    [[0,10],[40,0],[90,10],[100,50],[80,100],[30,95],[0,60]],
+    [[5,5],[55,0],[100,15],[95,55],[90,100],[40,95],[0,45]],
+    [[0,15],[25,5],[80,0],[100,40],[85,90],[40,100],[10,80]],
+    [[0,25],[35,0],[75,5],[100,45],[90,85],[45,100],[5,70]],
+    [[10,10],[50,0],[95,20],[100,65],[75,100],[20,90],[0,55]],
+    [[0,5],[30,0],[80,5],[100,35],[95,75],[55,100],[5,85]],
+    [[5,10],[40,5],[90,0],[100,30],[95,70],[60,100],[0,50]],
+  ];
+  const pts = seeds[(id-1) % seeds.length];
+  return pts.map(p => p[0] + '% ' + p[1] + '%').join(',');
+}
+
+// ── Calculate initial positions (ring layout) ──
+function calcInitialPositions() {
+  const count = FRAGMENTS.length;
+  const radius = 280;
+  shardPositions = FRAGMENTS.map((f, i) => {
+    const angle = (i / count) * Math.PI * 2 - Math.PI / 2;
+    const x = Math.cos(angle) * radius;
+    const y = Math.sin(angle) * radius;
+    const rot = (angle * 180 / Math.PI) + 90;
+    return {x, y, rot};
+  });
+}
+
+// ── Place shards ──
+function renderShards() {
+  scope.querySelectorAll('.shard').forEach(el => el.remove());
+  
+  FRAGMENTS.forEach((frag, i) => {
+    const shard = document.createElement('div');
+    shard.className = 'shard';
+    shard.dataset.id = frag.id;
+
+    const num = document.createElement('div');
+    num.className = 'shard-number';
+    num.textContent = String(frag.id).padStart(2,'0');
+    shard.appendChild(num);
+
+    const label = document.createElement('div');
+    label.className = 'shard-label';
+    label.textContent = frag.label;
+    shard.appendChild(label);
+
+    const text = document.createElement('div');
+    text.className = 'shard-text';
+    text.textContent = frag.text;
+    shard.appendChild(text);
+
+    scope.appendChild(shard);
+
+    shard.addEventListener('mousedown', onDragStart);
+    shard.addEventListener('touchstart', onDragStart, {passive:false});
+    shard.addEventListener('contextmenu', onContextMenu);
+    shard.addEventListener('click', onShardClick);
+    shard.addEventListener('mouseenter', onShardHover);
+    shard.addEventListener('mouseleave', onShardLeave);
+    
+    shard.style.clipPath = `polygon(${generatePolygonPath(frag.id)})`;
+    
+    const pos = shardPositions[i];
+    shard.style.left = `calc(50% + ${pos.x}px - 90px)`;
+    shard.style.top = `calc(50% + ${pos.y}px - 50px)`;
+    shard.style.transform = `rotate(${pos.rot - currentRotation}deg)`;
+  });
+}
+
+// ── Update shard positions without rebuild ──
+function updateShardPositions() {
+  FRAGMENTS.forEach((frag, i) => {
+    const shard = document.querySelector(`.shard[data-id="${frag.id}"]`);
+    if (!shard) return;
+    const pos = shardPositions[i];
+    shard.style.left = `calc(50% + ${pos.x}px - 90px)`;
+    shard.style.top = `calc(50% + ${pos.y}px - 50px)`;
+  });
+  updateShardTransforms();
+}
+
+// ── Shard transforms (counter rotation) ──
+function updateShardTransforms() {
+  FRAGMENTS.forEach((frag, i) => {
+    const shard = document.querySelector(`.shard[data-id="${frag.id}"]`);
+    if (!shard) return;
+    const pos = shardPositions[i];
+    shard.style.transform = `rotate(${pos.rot - currentRotation}deg)`;
+  });
+}
+
+// ── Get shard centroid in viewport coords ──
+function getShardCentroid(id) {
+  const el = document.querySelector(`.shard[data-id="${id}"]`);
+  if (!el) return null;
+  const r = el.getBoundingClientRect();
+  return {x: r.left + r.width/2, y: r.top + r.height/2};
+}
+
+// ── Create or get SVG line element for a pair ──
+function getLineEl(id1, id2) {
+  const key = `line-${Math.min(id1,id2)}-${Math.max(id1,id2)}`;
+  let line = document.querySelector(`[data-pair="${key}"]`);
+  if (!line) {
+    // Glow line (wider, blurred)
+    const glowLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    glowLine.setAttribute('data-pair', key + '-glow');
+    glowLine.classList.add('glow-line');
+    linesSvg.appendChild(glowLine);
+    
+    // Main line
+    line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('data-pair', key);
+    line.classList.add('golden-line');
+    linesSvg.appendChild(line);
+  }
+  return line;
+}
+
+function getGlowLineEl(id1, id2) {
+  const key = `line-${Math.min(id1,id2)}-${Math.max(id1,id2)}-glow`;
+  return document.querySelector(`[data-pair="${key}"]`);
+}
+
+// ── Draw line between two shards ──
+function drawGoldenLine(id1, id2) {
+  const c1 = getShardCentroid(id1);
+  const c2 = getShardCentroid(id2);
+  if (!c1 || !c2) return;
+  
+  const line = getLineEl(id1, id2);
+  const glow = getGlowLineEl(id1, id2);
+  
+  line.setAttribute('x1', c1.x);
+  line.setAttribute('y1', c1.y);
+  line.setAttribute('x2', c2.x);
+  line.setAttribute('y2', c2.y);
+  
+  // Wider glow line
+  glow.setAttribute('x1', c1.x);
+  glow.setAttribute('y1', c1.y);
+  glow.setAttribute('x2', c2.x);
+  glow.setAttribute('y2', c2.y);
+  glow.setAttribute('stroke', 'var(--gold)');
+  glow.setAttribute('stroke-width', '6');
+}
+
+// ── Show/hide lines ──
+function updateLinesVisibility() {
+  // Hide all first
+  document.querySelectorAll('.golden-line').forEach(l => l.classList.remove('visible'));
+  document.querySelectorAll('.glow-line').forEach(l => l.classList.remove('visible'));
+  
+  // Draw visible ones
+  currentAdjacencies.forEach(pairKey => {
+    const [id1, id2] = pairKey.split('-').map(Number);
+    drawGoldenLine(id1, id2);
+    const line = document.querySelector(`.golden-line[data-pair="line-${Math.min(id1,id2)}-${Math.max(id1,id2)}"]`);
+    const glow = document.querySelector(`.glow-line[data-pair="line-${Math.min(id1,id2)}-${Math.max(id1,id2)}-glow"]`);
+    if (line) line.classList.add('visible');
+    if (glow) glow.classList.add('visible');
+  });
+}
+
+// ── Get relationship description for a pair ──
+function getRelationshipDescription(id1, id2) {
+  const f1 = FRAGMENTS.find(f => f.id === id1);
+  const f2 = FRAGMENTS.find(f => f.id === id2);
+  if (!f1 || !f2) return null;
+  
+  // Determine relationship type
+  const sameLabel = f1.label === f2.label;
+  const labelKey = sameLabel ? `${f1.label}-${f1.label}` : `${f1.label}-${f2.label}`;
+  const reverseKey = sameLabel ? labelKey : `${f2.label}-${f1.label}`;
+  
+  let desc = RELATIONSHIPS[labelKey] || RELATIONSHIPS[reverseKey];
+  
+  // Generate thematic descriptions based on text content crossover
+  if (!desc) {
+    const texts = (f1.text + ' ' + f2.text).toLowerCase();
+    if (texts.includes('threshold') && texts.includes('margin')) desc = RELATIONSHIPS['threshold-space'];
+    else if (texts.includes('light') && texts.includes('rhythm')) desc = RELATIONSHIPS['light-rhythm'];
+    else if (texts.includes('weight') && texts.includes('breath')) desc = RELATIONSHIPS['weight-breath'];
+    else if (texts.includes('question') && texts.includes('silence')) desc = RELATIONSHIPS['question-silence'];
+    else if (texts.includes('memory') && texts.includes('corridor')) desc = RELATIONSHIPS['memory-movement'];
+    else if (texts.includes('symmetry') && texts.includes('whitespace')) desc = RELATIONSHIPS['symmetry-whitespace'];
+    else if (sameLabel) desc = `Parallel thinking — two shards of ${f1.label} in conversation`;
+    else desc = `${f1.label} meets ${f2.label} — an unexpected resonance`;
+  }
+  
+  return {
+    title: sameLabel ? f1.label.toUpperCase() : `${f1.label} × ${f2.label}`,
+    body: desc
+  };
+}
+
+// ── Show connection popup ──
+function showConnPopup(id1, id2) {
+  const desc = getRelationshipDescription(id1, id2);
+  const c1 = getShardCentroid(id1);
+  if (!desc || !c1) return;
+  
+  const popup = connPopup;
+  popup.querySelector('.cp-title').textContent = desc.title;
+  popup.querySelector('.cp-body').textContent = desc.body;
+  popup.style.left = c1.x + 'px';
+  popup.style.top = (c1.y - 80) + 'px';
+  popup.style.transform = 'translate(-50%, -100%)';
+  popup.classList.add('show');
+}
+
+function hideConnPopup() {
+  connPopup.classList.remove('show');
+}
+
+// ── Shard hover handlers ──
+function onShardHover(e) {
+  if (isDragging) return;
+  const id = parseInt(e.currentTarget.dataset.id);
+  // Check if this shard is part of any current adjacency
+  let partnerId = null;
+  currentAdjacencies.forEach(pairKey => {
+    const [a, b] = pairKey.split('-').map(Number);
+    if (a === id) partnerId = b;
+    if (b === id) partnerId = a;
+  });
+  if (partnerId) {
+    showConnPopup(id, partnerId);
+  }
+}
+
+function onShardLeave() {
+  hideConnPopup();
+}
+
+// ── Adjacency Detection (real-time) ──
+function checkAdjacencies() {
+  linesSvg.innerHTML = ''; // Clear SVG for clean redraw
+  
+  const newAdjacencies = new Set();
+  const allPairs = [];
+  const count = FRAGMENTS.length;
+  
+  // Check every pair
+  for (let i = 0; i < count; i++) {
+    for (let j = i + 1; j < count; j++) {
+      const id1 = FRAGMENTS[i].id;
+      const id2 = FRAGMENTS[j].id;
+      const c1 = getShardCentroid(id1);
+      const c2 = getShardCentroid(id2);
+      if (!c1 || !c2) continue;
+      
+      const dist = Math.hypot(c2.x - c1.x, c2.y - c1.y);
+      if (dist < 150) {
+        const pairKey = `${Math.min(id1,id2)}-${Math.max(id1,id2)}`;
+        newAdjacencies.add(pairKey);
+        allPairs.push({id1, id2, dist});
+      }
+    }
+  }
+  
+  // Track newly discovered (for insight modal)
+  newAdjacencies.forEach(pairKey => {
+    if (!discoveredAdjacencies.has(pairKey)) {
+      currentCycleDiscovered.add(pairKey);
+    }
+  });
+  
+  // Merge into total discovered
+  newAdjacencies.forEach(pairKey => discoveredAdjacencies.add(pairKey));
+  
+  currentAdjacencies = newAdjacencies;
+  
+  // Update visual state
+  updateAdjacencyVisuals(allPairs);
+  
+  // Update counter
+  if (currentAdjacencies.size > 0) {
+    adjCounter.classList.add('show');
+    adjCountVal.textContent = currentAdjacencies.size;
+    stage.classList.add('glowing');
+  } else {
+    adjCounter.classList.remove('show');
+    stage.classList.remove('glowing');
+  }
+  
+  // Draw golden lines
+  updateLinesVisibility();
+}
+
+function updateAdjacencyVisuals(activePairs) {
+  // Clear all shard states
+  document.querySelectorAll('.shard').forEach(el => {
+    el.classList.remove('related-active', 'new-adjacent');
+  });
+  
+  // Apply states
+  const glowedIds = new Set();
+  activePairs.forEach(({id1, id2}) => {
+    if (!glowedIds.has(id1)) {
+      const el = document.querySelector(`.shard[data-id="${id1}"]`);
+      if (el) el.classList.add('related-active', 'new-adjacent');
+      glowedIds.add(id1);
+    }
+    if (!glowedIds.has(id2)) {
+      const el = document.querySelector(`.shard[data-id="${id2}"]`);
+      if (el) el.classList.add('related-active', 'new-adjacent');
+      glowedIds.add(id2);
+    }
+  });
+  
+  // Toast for first adjacency
+  if (activePairs.length > 0) {
+    const first = activePairs[0];
+    const f1 = FRAGMENTS.find(f => f.id === first.id1);
+    const f2 = FRAGMENTS.find(f => f.id === first.id2);
+    const label1 = f1 ? f1.label : '?';
+    const label2 = f2 ? f2.label : '?';
+    const sameLabel = label1 === label2;
+    const label = sameLabel ? `${label1}` : `${label1}×${label2}`;
+    showToast(`⚡ ${activePairs.length} connection${activePairs.length > 1 ? 's' : ''} — ${label}`);
+  } else {
+    hideToast();
+  }
+}
+
+// ── Rotation ──
+function rotateScope(degrees) {
+  currentRotation += degrees;
+  currentRotation = ((currentRotation % 360) + 360) % 360;
+  scope.style.transform = `rotate(${currentRotation}deg)`;
+  updateShardTransforms();
+  rotationLabel.textContent = Math.round(currentRotation) + '°';
+  
+  // Reset cycle discovered on each manual rotate (fresh "exploration")
+  currentCycleDiscovered = new Set();
+  
+  requestAnimationFrame(() => {
+    checkAdjacencies();
+    updateLinesVisibility();
+  });
+}
+
+function doRandomScatter() {
+  const r = 260;
+  shardPositions = shardPositions.map((p, i) => {
+    const count = FRAGMENTS.length;
+    const angle = (i / count) * Math.PI * 2 - Math.PI / 2 + (Math.random() - 0.5) * 0.8;
+    const radius = r + (Math.random() - 0.5) * 100;
+    const x = Math.cos(angle) * radius;
+    const y = Math.sin(angle) * radius;
+    const rot = (angle * 180 / Math.PI) + 90 + (Math.random() - 0.5) * 30;
+    return {x, y, rot};
+  });
+  updateShardPositions();
+  scope.style.transform = `rotate(${currentRotation}deg)`;
+  
+  // Reset cycle discovered
+  currentCycleDiscovered = new Set();
+  
+  requestAnimationFrame(() => {
+    checkAdjacencies();
+    updateLinesVisibility();
+  });
+}
+
+function showToast(msg) {
+  adjacencyToast.textContent = msg;
+  adjacencyToast.classList.add('show');
+}
+function hideToast() {
+  adjacencyToast.classList.remove('show');
+}
+
+// ── Snapshots with cycle tracking ──
+function lockSnapshot() {
+  const snap = {
+    id: Date.now(),
+    rotation: currentRotation,
+    positions: shardPositions.map(p => ({...p})),
+    timestamp: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}),
+    cycleDiscovered: new Set(currentCycleDiscovered), // store this cycle's discoveries
+  };
+  snapshots.push(snap);
+  updateSnapshotsPanel();
+  snapCountEl.textContent = snapshots.length;
+
+  // Show insight modal
+  showInsightModal(snap);
+
+  // Visual feedback
+  centerDot.classList.add('pulse');
+  document.getElementById('btn-lock').classList.add('locked');
+  setTimeout(() => {
+    centerDot.classList.remove('pulse');
+    document.getElementById('btn-lock').classList.remove('locked');
+  }, 800);
+}
+
+function loadSnapshot(snap) {
+  currentRotation = snap.rotation;
+  shardPositions = snap.positions.map(p => ({...p}));
+  scope.style.transform = `rotate(${currentRotation}deg)`;
+  updateShardPositions();
+  rotationLabel.textContent = Math.round(currentRotation) + '°';
+  
+  // Reset cycle
+  currentCycleDiscovered = new Set();
+  
+  requestAnimationFrame(() => checkAdjacencies());
+
+  document.querySelectorAll('.snap-thumb').forEach(t => t.classList.remove('active'));
+  const thumb = document.querySelector(`.snap-thumb[data-snap="${snap.id}"]`);
+  if (thumb) thumb.classList.add('active');
+}
+
+function updateSnapshotsPanel() {
+  const panel = document.getElementById('snapshots');
+  panel.innerHTML = '';
+  snapshots.forEach((snap, i) => {
+    const thumb = document.createElement('div');
+    thumb.className = 'snap-thumb';
+    thumb.dataset.snap = snap.id;
+    thumb.textContent = String(i+1).padStart(2,'0');
+    thumb.title = `${snap.timestamp} — ${snap.cycleDiscovered.size} discoveries`;
+    
+    // Add badge count
+    if (snap.cycleDiscovered.size > 0) {
+      const badge = document.createElement('div');
+      badge.className = 'snap-badge';
+      badge.textContent = snap.cycleDiscovered.size;
+      thumb.appendChild(badge);
+    }
+    
+    thumb.addEventListener('click', () => loadSnapshot(snap));
+    panel.appendChild(thumb);
+  });
+}
+
+// ── Insight Modal ──
+function showInsightModal(snap) {
+  const modal = document.getElementById('insight-modal');
+  const badgesContainer = document.getElementById('insight-badges');
+  const summary = document.getElementById('insight-summary');
+  const total = document.getElementById('insight-total');
+  
+  badgesContainer.innerHTML = '';
+  
+  const cycle = snap.cycleDiscovered;
+  
+  if (cycle.size === 0) {
+    summary.style.display = 'none';
+    const empty = document.createElement('div');
+    empty.className = 'insight-empty';
+    empty.innerHTML = 'No new connections discovered this time.<br>Try rotating more or dragging shards closer together.';
+    badgesContainer.appendChild(empty);
+  } else {
+    summary.style.display = 'block';
+    total.textContent = cycle.size;
+    
+    // Create badges for each discovered pair
+    cycle.forEach(pairKey => {
+      const [id1, id2] = pairKey.split('-').map(Number);
+      const f1 = FRAGMENTS.find(f => f.id === id1);
+      const f2 = FRAGMENTS.find(f => f.id === id2);
+      if (!f1 || !f2) return;
+      
+      const badge = document.createElement('div');
+      badge.className = 'insight-badge';
+      
+      const ico = document.createElement('span');
+      ico.className = 'badge-ico';
+      ico.textContent = '✦';
+      
+      const label1 = document.createElement('span');
+      label1.className = 'badge-label';
+      label1.textContent = f1.label;
+      
+      const plus = document.createElement('span');
+      plus.className = 'badge-plus';
+      plus.textContent = '+';
+      
+      const label2 = document.createElement('span');
+      label2.className = 'badge-label';
+      label2.textContent = f2.label;
+      
+      badge.appendChild(ico);
+      badge.appendChild(label1);
+      badge.appendChild(plus);
+      badge.appendChild(label2);
+      
+      badgesContainer.appendChild(badge);
+    });
+  }
+  
+  modal.classList.add('show');
+}
+
+function hideInsightModal() {
+  document.getElementById('insight-modal').classList.remove('show');
+}
+
+// ── Drag ──
+function onDragStart(e) {
+  if (e.button === 2) return;
+  const shard = e.currentTarget;
+  const rect = shard.getBoundingClientRect();
+
+  isDragging = true;
+  dragEl = shard;
+  shard.classList.add('dragging');
+
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+  dragOffset.x = clientX - rect.left;
+  dragOffset.y = clientY - rect.top;
+
+  e.preventDefault();
+}
+
+document.addEventListener('mousemove', e => {
+  if (!isDragging || !dragEl) return;
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+  const scopeRect = scope.getBoundingClientRect();
+  const x = clientX - scopeRect.left - dragOffset.x - 90;
+  const y = clientY - scopeRect.top - dragOffset.y - 50;
+
+  dragEl.style.left = `calc(50% + ${x}px - 90px)`;
+  dragEl.style.top = `calc(50% + ${y}px - 50px)`;
+  
+  // Real-time adjacency check during drag (throttled)
+  const now = Date.now();
+  if (now - adjCheckThrottle > 60) {
+    adjCheckThrottle = now;
+    requestAnimationFrame(() => {
+      checkAdjacencies();
+      updateLinesVisibility();
+    });
+  }
+});
+
+document.addEventListener('touchmove', e => {
+  if (!isDragging || !dragEl) return;
+  e.preventDefault();
+  const t = e.touches[0];
+  const scopeRect = scope.getBoundingClientRect();
+  const x = t.clientX - scopeRect.left - dragOffset.x - 90;
+  const y = t.clientY - scopeRect.top - dragOffset.y - 50;
+  dragEl.style.left = `calc(50% + ${x}px - 90px)`;
+  dragEl.style.top = `calc(50% + ${y}px - 50px)`;
+  
+  const now = Date.now();
+  if (now - adjCheckThrottle > 60) {
+    adjCheckThrottle = now;
+    requestAnimationFrame(() => {
+      checkAdjacencies();
+      updateLinesVisibility();
+    });
+  }
+}, {passive:false});
+
+document.addEventListener('mouseup', () => {
+  if (dragEl) {
+    dragEl.classList.remove('dragging');
+    const id = parseInt(dragEl.dataset.id);
+    const idx = FRAGMENTS.findIndex(f => f.id === id);
+    if (idx >= 0) {
+      const rect = dragEl.getBoundingClientRect();
+      const scopeRect = scope.getBoundingClientRect();
+      const cx = rect.left + rect.width/2;
+      const cy = rect.top + rect.height/2;
+      shardPositions[idx].x = cx - scopeRect.left - scopeRect.width/2;
+      shardPositions[idx].y = cy - scopeRect.top - scopeRect.height/2;
+      checkAdjacencies();
+      updateLinesVisibility();
+    }
+  }
+  isDragging = false;
+  dragEl = null;
+});
+
+document.addEventListener('touchend', () => {
+  if (dragEl) {
+    dragEl.classList.remove('dragging');
+    const id = parseInt(dragEl.dataset.id);
+    const idx = FRAGMENTS.findIndex(f => f.id === id);
+    if (idx >= 0) {
+      const rect = dragEl.getBoundingClientRect();
+      const scopeRect = scope.getBoundingClientRect();
+      const cx = rect.left + rect.width/2;
+      const cy = rect.top + rect.height/2;
+      shardPositions[idx].x = cx - scopeRect.left - scopeRect.width/2;
+      shardPositions[idx].y = cy - scopeRect.top - scopeRect.height/2;
+      checkAdjacencies();
+      updateLinesVisibility();
+    }
+  }
+  isDragging = false;
+  dragEl = null;
+});
+
+// ── Context menu ──
+function onContextMenu(e) {
+  e.preventDefault();
+  selectedShard = parseInt(e.currentTarget.dataset.id);
+  ctxMenu.style.left = e.clientX + 'px';
+  ctxMenu.style.top = e.clientY + 'px';
+  ctxMenu.classList.add('show');
+}
+
+document.getElementById('ctx-menu').addEventListener('click', e => {
+  const action = e.target.dataset.action;
+  if (action === 'copy') {
+    const frag = FRAGMENTS.find(f => f.id === selectedShard);
+    if (frag) navigator.clipboard.writeText(frag.text);
+  } else if (action === 'highlight') {
+    document.querySelectorAll('.shard').forEach(s => s.style.outline = '');
+    const el = document.querySelector(`.shard[data-id="${selectedShard}"]`);
+    if (el) {
+      el.style.outline = '2px solid var(--gold)';
+      el.style.outlineOffset = '4px';
+    }
+  } else if (action === 'connections') {
+    const conn = RELATED.find(p => p.includes(selectedShard));
+    if (conn) {
+      const otherId = conn.find(id => id !== selectedShard);
+      const other = FRAGMENTS.find(f => f.id === otherId);
+      showToast(`↔ connected to #${otherId} [${other.label}]`);
+    }
+  }
+  ctxMenu.classList.remove('show');
+});
+
+// ── Shard click (selection) ──
+function onShardClick(e) {
+  if (isDragging) return;
+  const id = parseInt(e.currentTarget.dataset.id);
+  e.currentTarget.style.transition = 'border-color .2s, box-shadow .2s';
+  e.currentTarget.style.borderColor = 'var(--gold)';
+  setTimeout(() => {
+    e.currentTarget.style.borderColor = '';
+  }, 400);
+}
+
+// ── Keyboard ──
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT') return;
+  switch(e.key.toLowerCase()) {
+    case 'r': rotateScope(72); break;
+    case 's': doRandomScatter(); break;
+    case 'l': lockSnapshot(); break;
+    case 'tab':
+      e.preventDefault();
+      document.getElementById('snapshots').classList.toggle('visible');
+      break;
+    case 'h': toggleHelp(); break;
+    case 'escape':
+      document.getElementById('help-modal').style.display = 'none';
+      document.getElementById('snapshots').classList.remove('visible');
+      ctxMenu.classList.remove('show');
+      hideInsightModal();
+      break;
+  }
+});
+
+// ── Wheel (fine rotation with real-time detection) ──
+scope.addEventListener('wheel', e => {
+  e.preventDefault();
+  const delta = e.deltaY > 0 ? 3 : -3;
+  currentRotation += delta;
+  currentRotation = ((currentRotation % 360) + 360) % 360;
+  scope.style.transform = `rotate(${currentRotation}deg)`;
+  updateShardTransforms();
+  rotationLabel.textContent = Math.round(currentRotation) + '°';
+  
+  // Reset cycle discovered
+  currentCycleDiscovered = new Set();
+  
+  // Throttled check during wheel
+  const now = Date.now();
+  if (now - adjCheckThrottle > 50) {
+    adjCheckThrottle = now;
+    requestAnimationFrame(() => {
+      checkAdjacencies();
+      updateLinesVisibility();
+    });
+  }
+}, {passive:false});
+
+// ── Buttons ──
+document.getElementById('btn-rotate').addEventListener('click', () => rotateScope(72));
+document.getElementById('btn-random').addEventListener('click', doRandomScatter);
+document.getElementById('btn-lock').addEventListener('click', lockSnapshot);
+document.getElementById('btn-snapshots').addEventListener('click', () => {
+  document.getElementById('snapshots').classList.toggle('visible');
+});
+document.getElementById('btn-help').addEventListener('click', toggleHelp);
+document.getElementById('help-close').addEventListener('click', toggleHelp);
+document.getElementById('insight-close').addEventListener('click', hideInsightModal);
+
+function toggleHelp() {
+  const modal = document.getElementById('help-modal');
+  modal.style.display = (modal.style.display === 'flex') ? 'none' : 'flex';
+}
+
+// ── Click outside to hide context menu ──
+scope.addEventListener('click', e => {
+  if (!e.target.closest('.shard')) {
+    ctxMenu.classList.remove('show');
+  }
+});
+
+// ── Init ──
+calcInitialPositions();
+renderShards();
+updateShardPositions();
+requestAnimationFrame(() => checkAdjacencies());
+
+</script>
+</body>
+</html>

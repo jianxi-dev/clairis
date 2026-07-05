@@ -1,0 +1,5 @@
+# Folio pre-commit validation
+# 1. Format + lint staged files
+npx lint-staged
+# 2. CSS manifest check (fast)
+bash scripts/css-manifest-check.sh

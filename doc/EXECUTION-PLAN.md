@@ -1,196 +1,318 @@
-# MDWRT — Phase 0 执行计划 (Hermes 分派)
+# Folio — 执行计划
 
-> 管理人员: Claude (主管理 + 代码审查)
-> 执行引擎: Hermes Agent (通过 MCP)
-> 质量机制: TDD (RED→GREEN→IMPROVE) + 逐批审查
-
----
-
-## 一、工作流
-
-```
-┌──────────────────────────────────────────────────────────────┐
-│  每批流程:                                                    │
-│                                                               │
-│  1. Claude 创建任务规格 (含 TDD 要求和验收标准)                 │
-│  2. Hermes run_task (async, 后台执行)                         │
-│  3. Claude 轮询 get_session_info 直至完成                     │
-│  4. Claude 质量审查 (代码 + 测试 + 覆盖率)                    │
-│  5. 通过 → 放行下一批 | 不通过 → Hermes continue_task 修复   │
-│                                                               │
-│  审查清单 (每批):                                              │
-│  [ ] 测试写了? (RED→GREEN 是否完整)                           │
-│  [ ] 测试通过了?                                              │
-│  [ ] 代码符合架构设计?                                         │
-│  [ ] 错误处理完备?                                             │
-│  [ ] 不可变模式?                                              │
-│  [ ] 不引入新依赖 (除非书面批准)?                              │
-└──────────────────────────────────────────────────────────────┘
-```
+> 最后更新: 2026-07-01
+> 本文档是 CORE-REQUIREMENTS.md 的执行视角视图——按交付批次组织，链接到具体需求。
+> 每次完成一个任务后更新状态。
 
 ---
 
-## 二、批次定义
+## 铁律：编码完成后必须实操验证
 
-### Batch 0: 项目基线清理
+> 任何代码变更完成后，**必须**通过 `/browse` 在 Tauri 窗口中实操验证。
+> 不只是截图——要点、输入、切换模式、模拟真实用户操作。
+> 不准凭"看上去应该行"就提交。跑一遍，截证据链。
 
-| 项目 | 值 |
+### 验证流程
+
+```
+代码实现完成
+    ↓
+npx tauri build (或 npx tauri dev)
+    ↓
+/browse 打开 Tauri 窗口                    ← 用 gstack 浏览器控制真实窗口
+    ↓
+逐条实操核对验收标准                         ← 点按钮/按快捷键/切换模式/输入内容
+/browse screenshot 证据链                  ← 每个步骤截图留存
+    ↓
+发现问题 → 修复 → 重新走验证流程
+    ↓
+确认通过 → 进入下一任务 / 提交 PR
+```
+
+### 实操检查清单（逐条执行，非脑补）
+
+```
+[ ] 功能入口可达？（按钮/快捷键/菜单）
+[ ] 功能表现符合预期？（输入 A → 输出 B）
+[ ] 边界状态处理了？（无数据/错误/极限输入）
+[ ] 模式切换流畅？（预览→编辑→源码→阅读）
+[ ] 快捷键可盲操？（不碰鼠标完成主流程）
+[ ] 和现有功能不冲突？（回归：.md 还能正常读写？）
+```
+
+### 验证工具
+
+所有网页浏览/测试使用 gstack 的 `/browse` skill。通过 gstack 浏览器控制 Tauri 窗口进行交互测试。
+
+> **违规后果：** 缺少实操验证的代码变更视为未完成，不准提交。
+
+## Phase 准入规则
+
+```
+进入每个 Phase 之前，必须先完成功能确认：
+  Step 1 ─ 列出本 Phase 要交付的所有功能清单
+  Step 2 ─ 对每个功能进行设计确认（交互/UI/边界状态）
+  Step 3 ─ /office-hours 或直接讨论，通过后进入编码
+  Step 4 ─ 实现 + 审查 + 合并
+  Step 5 ─ 验证并更新文档状态
+            ↓
+        进入下一 Phase（回到 Step 1）
+```
+
+> 不在确认清单上的功能，不可以在实现中途临时添加。
+> 如果实现过程中发现"这个功能需要拆/改/加"，返回 Step 1 重新确认后再继续。
+
+---
+
+## 图例
+
+| 标记 | 含义 |
 |------|------|
-| **目标** | 清理 v1 残留依赖, 设置 vitest 配置, 建立测试基础设施 |
-| **内容** | 1. 移除未使用的 TipTap/ProseMirror/turndown 依赖<br>2. 添加 dompurify @types/dompurify<br>3. 验证 vitest 配置可用<br>4. 建立 src/\_\_tests\_\_/ 目录 + 基础测试骨架 |
-| **TDD** | 验证测试: `npm test` 应报告 0 失败 |
-| **范围** | package.json 修改, 不触及 src/ 逻辑代码 |
-| **Hermes** | 1 次调用 |
-
-### Batch 1: Store 重构 — 多页签
-
-| 项目 | 值 |
-|------|------|
-| **目标** | 单文件 store → 多页签 Tab store (并行兼容旧 store) |
-| **内容** | 1. 新建 `src/stores/index.ts` 多页签版 (Tab, AppStore, actions)<br>2. 包含 `openFile`, `saveFile`, `switchTab`, `closeTab`, `setEditorMode`, `updateContent`<br>3. 旧 `editorStore.ts` 保留 (v1 组件仍读旧 store)<br>4. 类型定义更新: 增加 FileKind, EditorMode ('preview'|'edit'|'source'), AppConfig version |
-| **TDD** | 测试: 创建/关闭 tab, 切换 tab, 更新内容, dirty 标记, 文件类型分支 |
-| **范围** | stores/index.ts (新), types/index.ts (更新), 不触及旧组件 |
-| **Hermes** | 1 次调用 |
-
-### Batch 2: CM6 编辑器管线
-
-| 项目 | 值 |
-|------|------|
-| **目标** | CM6 基础装配 + 5 个核心 decorations |
-| **内容** | 1. `editors/setup.ts`: CM6 EditorState 装配 (basicSetup + markdown language + decorations)<br>2. 5 个 decoration 模块: heading, boldItalic, list, quote, code<br>3. Compartment 控制 (用于大文件守卫和模式切换)<br>4. debounce 同步 (300ms, CM6→store) |
-| **TDD** | 测试: 每个 decoration 正则匹配逻辑, Compartment 开关, debounce 时序 |
-| **范围** | src/editors/* (新), 不触及旧组件 |
-| **Hermes** | 1 次调用 (可并行写 decoration 模块) |
-
-### Batch 3: EditView + SourceView + 模式切换
-
-| 目标** | WYSIWYG 和源码编辑器组件, CSS display 模式切换 |
-| **内容** | 1. EditView.tsx: CM6 L2 视图 (启用 decorations)<br>2. SourceView.tsx: CM6 raw 视图 (无 decorations)<br>3. 模式切换: CSS display n/b + Compartment reconfigure + 保留 EditorView 实例<br>4. 工具栏 (轻量: H/B/I/列表/代码/引用) |
-| **TDD** | 测试: 模式切换不重建 EditorView, 切换后内容一致 |
-| **范围** | components/Content/* (新), 旧 WysiwygEditor/SourceEditor 保留 |
-| **Hermes** | 1 次调用 |
-
-### Batch 4: PreviewView 阅读渲染
-
-| **目标** | 阅读模式: marked + DOMPurify + 基础 CSS 主题 |
-| **内容** | 1. PreviewView.tsx: marked.parse → DOMPurify → dangerouslySetInnerHTML<br>2. 基础 CSS 主题 (theme-light.css + theme-dark.css)<br>3. 阅读/编辑/源码 三模式切换集成<br>4. 大文件守卫 (>500KB 提示) |
-| **TDD** | 测试: DOMPurify 过滤结果, marked 输入输出, CSS 变量切换 |
-| **范围** | components/Content/* + styles/* |
-| **Hermes** | 1 次调用 |
-
-### Batch 5: Rust 后端补全
-
-| **目标** | 新增 Rust 命令 (directory/config/security) |
-| **内容** | 1. `read_directory()` — 递归读目录 (lstat, symlink 排除, max_depth)<br>2. `load_config()` / `save_config()` — 配置持久化 (含 schema version)<br>3. `get_api_key()` / `set_api_key()` / `delete_api_key()` — keyring 注册为命令<br>4. 翻译端点验证 (DNS 解析 + 全局单播检查 + redirect 禁用)<br>5. `stop_translation()` — 取消翻译请求<br>6. 所有新命令注册到 lib.rs |
-| **TDD** | 测试: Rust 单元测试 (目录读取, 配置读写, 端点验证) |
-| **范围** | src-tauri/src/* (新增命令, 修改 lib.rs) |
-| **Hermes** | 1 次调用 |
-
-### Batch 6: 翻译适配新 Store
-
-| **目标** | 翻译面板适配多页签 store, 端点安全接入 |
-| **内容** | 1. useTranslation hook 适配新 store<br>2. TranslatePanel 适配多页签 (当前 tab 内容)<br>3. 选中段落翻译<br>4. 端点安全验证接入 (调用 Rust 命令) |
-| **TDD** | 测试: translation state 管理, 段落选择逻辑 |
-| **范围** | components/Translation/*, hooks/useTranslation.ts |
-| **Hermes** | 1 次调用 |
-
-### Batch 7: 集成 + 测试
-
-| **目标** | 所有新组件集成到 App.tsx, 全流程测试 |
-| **内容** | 1. App.tsx 集成新组件, 移除 v1 组件引用<br>2. 功能验证: 打开→编辑→切换模式→保存→重开<br>3. 删除 v1 文件 (WysiwygEditor, SourceEditor, HeadingColor, MarkdownSync)<br>4. 移除 TipTap/turndown/marked 依赖 (marked 保留, 用于阅读管线) |
-| **TDD** | 集成测试: 全流程用例 |
-| **范围** | App.tsx (重写), 删除旧文件, package.json (清理) |
-| **Hermes** | 1 次调用 |
+| ✅ | 已完成并合并 |
+| 🚧 | 开发中 |
+| ⏳ | 待开始 |
+| ❌ | 废弃/不再计划 |
 
 ---
 
-## 三、质量门禁
+## Phase 0 — MVP 基础 (阅读 + 基础编辑)
 
-### 门禁 1: 测试通过率 100%
+### 0.1 项目基础设施 ✅
+
+| # | 任务 | 需求来源 | 状态 | PR/提交 |
+|---|------|----------|------|---------|
+| 0.1.1 | 移除 TipTap/ProseMirror/turndown 依赖 | §五 | ✅ | Initial commit |
+| 0.1.2 | 建立 vitest 测试框架 + __tests__ 目录 | — | ✅ | Initial commit |
+| 0.1.3 | 添加 dompurify + @types/dompurify | §五 | ✅ | Initial commit |
+
+### 0.2 编辑器管线 ✅
+
+| # | 任务 | 需求来源 | 状态 | 详情 |
+|---|------|----------|------|------|
+| 0.2.1 | CM6 基础装配 (editors/setup.ts) | §五 | ✅ | 含 basicSetup + markdown language + Compartment |
+| 0.2.2 | decoration 模块 (heading/boldItalic/list/quote/code) | §2.2 | ✅ | editors/decorations/ 5 个模块 |
+| 0.2.3 | 模式切换 (preview/edit/source) + CSS display 切换 | §2.2 | ✅ | ContentArea 统一管理 |
+
+### 0.3 Store + 文件系统 ✅
+
+| # | 任务 | 需求来源 | 状态 | 详情 |
+|---|------|----------|------|------|
+| 0.3.1 | 多页签 Tab store (stores/index.ts) | §2.3 | ✅ | openFile/switchTab/closeTab/updateContent |
+| 0.3.2 | FileKind + EditorMode 类型定义 | §七 | ✅ | markdown/html/text + preview/edit/source |
+| 0.3.3 | Rust 文件 I/O (open/save/save_as) | §2.3 | ✅ | 原子写入 tempfile::persist |
+
+### 0.4 阅读管线 ✅
+
+| # | 任务 | 需求来源 | 状态 | 详情 |
+|---|------|----------|------|------|
+| 0.4.1 | PreviewView: marked + DOMPurify | §2.1 | ✅ | GFM 渲染 + 消毒 |
+| 0.4.2 | 纯阅读模式 (隐藏工具栏) | §2.1 | ✅ | 阅读按钮 / Esc 退出 |
+| 0.4.3 | 大文件守卫 (>500KB 自动关闭 decoration) | §四 | ✅ | editors/setup.ts 内置 |
+
+### 0.5 Rust 后端 ✅
+
+| # | 任务 | 需求来源 | 状态 | 详情 |
+|---|------|----------|------|------|
+| 0.5.1 | 目录读取 (read_directory) | §2.3 | ✅ | src-tauri/src/commands/directory.rs |
+| 0.5.2 | 配置持久化 (load_config/save_config) | — | ✅ | src-tauri/src/commands/config_cmd.rs |
+| 0.5.3 | API Key 管理 (keyring CRUD) | §五 | ✅ | get/set/delete_api_key |
+| 0.5.4 | 翻译端点安全验证 | §六 | ✅ | DNS 解析 + 私网 IP 检查 |
+| 0.5.5 | 错误类型定义 + 统一处理 | §六 | ✅ | src-tauri/src/errors.rs |
+
+### 0.6 HTML 文件支持 ✅
+
+| # | 任务 | 需求来源 | 状态 | PR/提交 |
+|---|------|----------|------|---------|
+| 0.6.1 | renderers/ 目录 (markdown/html/text dispatch) | §2.4 | ✅ | PR #1 |
+| 0.6.2 | HtmlPreview: iframe srcdoc + CSP + sandbox | §2.4 | ✅ | PR #1 |
+| 0.6.3 | 路径重写: img src, link href, CSS url() → asset:// | §2.4 | ✅ | PR #1 |
+| 0.6.4 | CM6 html() 语言扩展 (编辑模式) | §2.4 | ✅ | PR #1 |
+| 0.6.5 | 统一文件对话框 (md/html/txt 过滤器) | §2.4 | ✅ | PR #1 |
+| 0.6.6 | .html/.htm 文件关联注册 | §2.4 | ✅ | PR #1 |
+| 0.6.7 | asset protocol scope 配置 | §2.4 | ✅ | PR #1 |
+
+### 0.7 P0 实用功能 🚧 (feat/p0-improvements)
+
+| # | 任务 | 需求来源 | 状态 | PR |
+|---|------|----------|------|----|
+| 0.7.1 | 自动保存 (2s debounce → Rust save) | §2.3 | ✅ | PR #3 |
+| 0.7.2 | 快捷键: Cmd+Shift+M 模式循环, Escape 退出阅读 | §2.2 | 🚧 | PR #3 |
+| 0.7.3 | Cmd+B (加粗) / Cmd+I (斜体) 格式化 | §2.2 | 🚧 | PR #3 |
+| 0.7.4 | 拖拽打开 .md/.html/.txt | §2.3 | 🚧 | PR #3 |
+| 0.7.5 | 阅读模式 (toggle/Esc) | §2.1 | ✅ | PR #3 |
+| 0.7.6 | 新建 .md 文件 (Cmd+N + 工具栏按钮) | §2.3 | — | ⏳ | — |
+| 0.7.7 | 字号缩放 (Cmd+=/Cmd+- + 工具栏滑块) | §2.1 | — | ⏳ | — |
+
+> **PR #3 状态:** Cmd+B 已修复, Cmd+I 待修复。测试后合并。
+
+### 0.8 翻译功能 ✅
+
+| # | 任务 | 需求来源 |
+|---|------|----------|
+| 0.8.1 | Rust 翻译代理 (Ollama + OpenAI 流式) | §2.5 |
+| 0.8.2 | 翻译前端面板 + hook | §2.5 |
+| 0.8.3 | 端点安全验证 | §六 |
+
+---
+
+## Phase 0.9 — 主题系统 + 设计骨架
+
+> 在开始 Phase 1 新功能之前，先建立主题系统。之后每个功能自带设计，不复存在"以后美化"问题。
+
+### 原则
 
 ```
-Hermes 交付后 → Claude 运行 npm test
-  ├── PASS → 进入代码审查
-  └── FAIL → Hermes continue_task("修复失败的测试")
+1. 定一套默认风格（参考 Medium/微信读书/你喜欢的 app 截图确定）
+2. 搭 CSS 变量骨架（字体栈 / 颜色 / 间距 / 圆角 / 阴影）
+3. 按组件层级逐层套用（App → Layout → Content → 每个小组件）
+4. 验证通过后再进入 Phase 1 功能开发
 ```
 
-### 门禁 2: 代码审查清单
+| # | 任务 | 需求来源 | 依赖 | 优先级 | 状态 |
+|---|------|----------|------|--------|------|
+| 0.9.1 | 确定默认设计风格（选一个参考目标：Medium / 微信读书 / 其他） | §2.1 | 无 | P0 | ⏳ |
+| 0.9.2 | 搭建 CSS 变量系统（`theme-light.css` + `theme-dark.css`） | §二 | 0.9.1 | P0 | ⏳ |
+| 0.9.3 | 定义字体栈 / 颜色 / 间距 / 圆角 / 阴影规范 | §二 | 0.9.1 | P0 | ⏳ |
+| 0.9.4 | App.tsx 布局 + 工具栏套用主题 | §二 | 0.9.2 | P0 | ⏳ |
+| 0.9.5 | ContentArea + 页签栏套用主题 | §二 | 0.9.2 | P0 | ⏳ |
+| 0.9.6 | PreviewView 阅读区套用主题（窄栏宽/字体/行距/留白） | §二 | 0.9.2 | P0 | ⏳ |
+| 0.9.7 | CM6 编辑器区套用主题 | §二 | 0.9.2 | P0 | ⏳ |
+| 0.9.8 | HtmlPreview iframe 套用主题 | §二 | 0.9.2 | P0 | ⏳ |
+| 0.9.9 | 阅读模式（全屏隐藏）套用主题 | §二 | 0.9.2 | P0 | ⏳ |
+| 0.9.10 | Dark/Light 切换 + 自动跟随系统 | §2.1 | 0.9.2 | P1 | ⏳ |
+
+> **质量门禁：** 截一张 Folio 打开文档的全屏截图，对照参考目标打分（1-10）。低于 7 分不进入 Phase 1。
+
+---
+
+## Phase 1 — 功能完整
+
+### 1.0 设置面板
+
+| # | 任务 | 需求来源 | 依赖 | 优先级 | 状态 |
+|---|------|----------|------|--------|------|
+| 1.0.1 | SettingsModal 面板 UI (字号/主题/翻译/启动行为等) | §2.6 | 0.5.2 | P1 | ⏳ |
+| 1.0.2 | 配置持久化 + 读取校验 (已有 load_config/save_config) | §2.6 | 0.5.2 | P1 | ⏳ |
+| 1.0.3 | 配置变更时实时生效 (字号 CSS 变量、主题切换) | §2.6 | 1.0.1 | P1 | ⏳ |
+
+### 1.1 三栏布局 + 侧边栏
+
+| # | 任务 | 需求来源 | 依赖 | 优先级 | 状态 |
+|---|------|----------|------|--------|------|
+| 1.1.1 | 三栏布局框架 (LeftSidebar + Content + RightSidebar) | §2.5 | — | P0 | ⏳ |
+| 1.1.2 | 左侧边栏: 最近文件列表 | §2.5 | 1.1.1 | P1 | ⏳ |
+| 1.1.3 | 左侧边栏: 文件树 + 目录浏览 | §2.5 | 1.1.1 | P1 | ⏳ |
+| 1.1.4 | 左侧边栏: 目录大纲 (H1-H6) | §2.5 | 1.1.1 | P1 | ⏳ |
+| 1.1.5 | Content 横向双栏 (左右分栏) | §2.5 | 1.1.1 | P1 | ⏳ |
+| 1.1.6 | Content 纵向双栏 (上下分栏) | §2.5 | 1.1.1 | P1 | ⏳ |
+| 1.1.7 | 面板独立模式切换 (预览/编辑/大纲/空) | §2.5 | 1.1.5 | P2 | ⏳ |
+| 1.1.8 | 布局状态持久化 (侧边栏宽度/分栏模式/方向) | §2.5 | 1.1.1 | P2 | ⏳ |
+
+### 1.2 阅读体验增强
+
+| # | 任务 | 需求来源 | 依赖 | 优先级 | 状态 |
+|---|------|----------|------|--------|------|
+| 1.2.1 | 高质量默认主题 CSS (Medium/微信读书风格) | §3.1 | 0.4 | P1 | ⏳ |
+| 1.2.2 | 3-5 套精选主题（暖色/冷色/高对比/护眼） | §3.1 | 1.2.1 | P2 | ⏳ |
+| 1.2.3 | Dark/Light 主题 + 自动跟随系统 | §2.1 | 1.2.1 | P1 | ⏳ |
+| 1.2.4 | 代码高亮 30+ 语言 (Shiki/Prism) | §3.1 | 0.4 | P1 | ⏳ |
+| 1.2.5 | 焦点模式 (当前段落不透明，其余淡出) | §3.1 | — | P2 | ⏳ |
+| 1.2.6 | 打字机模式 (编辑行居中) | §3.1 | — | P3 | ⏳ |
+
+### 1.3 编辑器增强
+
+| # | 任务 | 需求来源 | 依赖 | 优先级 | 状态 |
+|---|------|----------|------|--------|------|
+| 1.3.1 | 工具栏 (H1-H6 / B / I / 列表/引用/代码/表格/链接/图片) | §2.2 | — | P0 | ⏳ |
+| 1.3.2 | 标题标签可视化 (### → [H3 ▼] 可下拉) | §2.2 | 0.2.2 | P1 | ⏳ |
+| 1.3.3 | 表格编辑 (插入/删除行和列，单元格内编辑) | §2.2 | — | P1 | ⏳ |
+| 1.3.4 | 图片插入 (文件对话框 → 自动转相对路径) | §2.2 | — | P1 | ⏳ |
+| 1.3.5 | 任务列表 click 切换 [ ] ↔ [x] | §2.2 | 0.2.2 | P1 | ⏳ |
+| 1.3.6 | IME 输入法组合降级处理 | §六 | — | P1 | ⏳ |
+| 1.3.7 | HTML 预览"启用脚本"按钮 | §2.4 | 0.6 | P2 | ⏳ |
+| 1.3.8 | HTML 编辑 L2 美化 (标签折叠/属性面板） | §2.4 | — | P3 | ⏳ |
+
+### 1.4 高级渲染
+
+| # | 任务 | 需求来源 | 依赖 | 优先级 | 状态 |
+|---|------|----------|------|--------|------|
+| 1.4.1 | LaTeX 公式 ($...$ / $$...$$) | §3.2 | — | P1 | ⏳ |
+| 1.4.2 | Mermaid 图表 (```mermaid) | §3.2 | — | P1 | ⏳ |
+| 1.4.3 | Obsidian Callouts (> [!note]) | §3.2 | — | P1 | ⏳ |
+| 1.4.4 | CSS 文件内 @import / @font-face 路径解析 | §2.4 | 0.6 | P2 | ⏳ |
+
+### 1.5 效率工具
+
+| # | 任务 | 需求来源 | 依赖 | 优先级 | 状态 |
+|---|------|----------|------|--------|------|
+| 1.5.1 | 快速打开 (Cmd+P 搜索文件名) | §3.4 | — | P2 | ⏳ |
+| 1.5.2 | 字数/阅读时间统计 | §3.3 | — | P2 | ⏳ |
+| 1.5.3 | 快捷模板 (表格/代码块/公式/callout) | §3.4 | — | P2 | ⏳ |
+| 1.5.4 | 阅读笔记/高亮 | §3.3 | — | P3 | ⏳ |
+| 1.5.5 | 批量图片转存 (粘贴 → assets/) | §3.4 | 1.3.4 | P3 | ⏳ |
+
+---
+
+## Phase 2 — 差异化
+
+| # | 任务 | 需求来源 | 依赖 | 优先级 | 状态 |
+|---|------|----------|------|--------|------|
+| 2.1 | 草稿恢复 (崩溃后恢复未保存内容) | §3.3 | 0.7.1 | P1 | ⏳ |
+| 2.2 | 导出一键分享 (截图/分享链接) | §3.3 | — | P2 | ⏳ |
+| 2.3 | 导出 PDF/HTML | §3.3 | — | P2 | ⏳ |
+| 2.4 | 导出 .docx (Markdown → docx) | §2.6 | — | P2 | ⏳ |
+| 2.5 | 阅读进度指示 (滚动进度条) | §2.1 | — | P2 | ⏳ |
+| 2.6 | TeX 级断行 (两端对齐、断字优化) | §3.2 | — | P3 | ⏳ |
+| 2.7 | 多页签拖拽排序 | §2.3 | 0.3.1 | P2 | ⏳ |
+
+---
+
+## Phase 3 — AI Chat + 翻译 + 平台扩展
+
+| # | 任务 | 需求来源 | 依赖 | 优先级 | 状态 |
+|---|------|----------|------|--------|------|
+| 3.1 | 右侧边栏: AI Chat 面板骨架 | §2.7 | 1.1.1 | P1 | ⏳ |
+| 3.2 | AI Chat: 文档上下文注入 + 流式回复 | §2.7 | 3.1 | P1 | ⏳ |
+| 3.3 | AI Chat: 多轮对话 + 清除 + 模型配置 | §2.7 | 3.1 | P2 | ⏳ |
+| 3.4 | 全文翻译 (复用 AI Chat 流式后端) | §2.7 | 3.2 | P2 | ⏳ |
+| 3.5 | 选中段落翻译 | §2.7 | 3.4 | P2 | ⏳ |
+| 3.6 | 翻译语言配置 + 面板 UI | §2.7 | 3.4 | P2 | ⏳ |
+| 3.7 | Windows 10+ 支持 | §四 | 所有 Phase 0-2 | P3 | ⏳ |
+| 3.8 | 移动端适配 (iOS/Android) | §四 | — | P3 | ⏳ |
+
+---
+
+## 关键交付顺序
+
+当前推荐顺序（基于 impact/effort，执行时以本文档最新状态为准）：
 
 ```
-[ ] 测试覆盖率 ≥ 80% (新增代码)
-[ ] 无 console.log (调试输出)
-[ ] 不可变模式 (无直接 mutation)
-[ ] 错误处理完备 (不吞异常)
-[ ] 符合架构设计 (不偏离 doc/ARCHITECTURE.md)
-[ ] 无未声明的依赖变更
-```
-
-### 门禁 3: 架构一致性
-
-```
-每次 Hermes 交付验证:
-  新增文件是否在 ARCHITECTURE.md 的目录结构中?
-  数据类型是否与 store 定义一致?
-  Rust 命令签名是否与设计一致?
-```
-
-### 门禁 4: 安全敏感代码特殊审查
-
-```
-翻译端点验证 → 必须过安全审查
-HTML iframe 渲染 → 必须过安全审查  
-文件路径操作 → 必须检查路径展平
+Phase 0.x   新建 .md + 字号缩放 + 快捷键修复 (残余 P0)
+     ↓
+Phase 0.9.x 主题系统 (CSS 变量 → 逐层套用 → 截屏打分)
+     ↓
+Phase 1.0.x 设置面板 (配置持久化 + UI)
+     ↓
+Phase 1.1.x 三栏布局 + 分栏 (最大架构变化)
+     ↓
+Phase 1.2.x 阅读体验增强 (焦点模式/打字机)
+     ↓
+Phase 1.3.x 工具栏 + 编辑器增强 (表格/图片/IME)
+     ↓
+Phase 1.0.x 设置面板 (配置持久化 + UI)
+     └── 之后每个功能自带设计，不复存在"以后美化"
+-----------------------------------------------------
+Phase 1.4.x LaTeX + Mermaid + Callouts
+Phase 2.x   导出 docx + 差异化
+Phase 3.x   AI Chat + 翻译 + 平台
 ```
 
 ---
 
-## 四、Hermes 调用规范
+## PR / 分支记录
 
-### 任务模板
-
-```markdown
-## Task: <批次名称>
-### Goal
-<one paragraph>
-
-### Files to create/modify
-<file list>
-
-### TDD requirements
-- Write tests FIRST (RED)
-- Implement (GREEN)  
-- Verify tests pass
-- Coverage ≥ 80%
-
-### Acceptance criteria
-<list>
-
-### Constraints
-- Follow doc/ARCHITECTURE.md
-- No console.log in production code
-- Immutable patterns (never mutate, always copy)
-- Error handling at every level
-```
-
-### 质量审查回复模板
-
-```markdown
-## 审查: <批次名称>
-### 结果: PASS | FAIL | CONDITIONAL
-
-### 检查项
-[✅/❌] 测试通过: npm test
-[✅/❌] 测试覆盖率 ≥ 80%
-[✅/❌] 代码符合架构
-[✅/❌] 错误处理完备
-[✅/❌] 不可变模式
-[✅/❌] 无 console.log
-
-### 发现
-<具体问题列表>
-
-### 决定
-PASS → 放行下一批
-FAIL → Hermes continue_task 修复
-CONDITIONAL → 修复后直接进入下一批, 无需再次审查
-```
+| PR | 分支 | 内容 | 状态 |
+|----|------|------|------|
+| #1 | feat/html-support | HTML 文件支持（渲染/编辑/路径/配置） | ✅ 已合并 |
+| #2 | feat/p0-improvements | P0 功能（自动保存/快捷键/阅读模式） | ✅ 已合并 |
+| #3 | feat/p0-improvements | P0 修复（拖拽/Cmd+B/I 格式键） | 🚧 待合并 |

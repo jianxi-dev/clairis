@@ -1,79 +1,203 @@
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useEditorStore } from "../stores/editorStore";
-import type { HeadingColors } from "../types";
+import { useStore } from "../stores/index";
+import { log } from "../utils/log";
+import type { AppConfig, Theme } from "../types";
 
-interface AppConfig {
-  font_size: number | null;
-  heading_colors: Record<string, string> | null;
-  ollama_endpoint: string | null;
-  openai_endpoint: string | null;
-  openai_model: string | null;
-  translation_provider: string | null;
-  source_lang: string | null;
-  target_lang: string | null;
+/** Snake-case config from Rust, mapped to camelCase in the store. */
+interface RustAppConfig {
+  fontSize: number | null;
+  headingColors: Record<string, string> | null;
+  ollamaEndpoint: string | null;
+  openaiEndpoint: string | null;
+  openaiModel: string | null;
+  translationProvider: string | null;
+  sourceLang: string | null;
+  targetLang: string | null;
+  theme: string | null;
+  sidebarLeftVisible: boolean | null;
+  sidebarRightVisible: boolean | null;
+  sidebarLeftWidth: number | null;
+  sidebarRightWidth: number | null;
+  horizontalSplitRatio: number | null;
+  verticalSplitRatio: number | null;
+  recentFiles: Array<{ path: string; title: string; openedAt: string }> | null;
+}
+
+const DEBOUNCE_MS = 500;
+
+/** Apply theme to <html> element. */
+export function applyTheme(theme: string): void {
+  const root = document.documentElement;
+  if (!root) return;
+  const isDark =
+    theme === "dark" ||
+    (theme === "system" &&
+      window.matchMedia("(prefers-color-scheme: dark)").matches);
+
+  if (isDark) {
+    root.classList.add("dark");
+  } else {
+    root.classList.remove("dark");
+  }
 }
 
 export function useConfig() {
-  const store = useEditorStore();
+  const configLoaded = useEditorStore((s) => s.configLoaded);
+  const configLoading = useEditorStore((s) => s.configLoading);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const loadedRef = useRef(false);
 
-  const loadConfig = useCallback(async () => {
-    store.setConfigLoading(true);
-    try {
-      // Use generic invoke - Rust backend handles
-      // This is a placeholder for the actual Rust command
-      // const config = await invoke<AppConfig>("load_config");
-      // store.setConfig(config);
-      // store.setFontSize(config.font_size ?? 16);
-      store.setConfigLoaded(true);
-    } catch (e) {
-      console.error("Failed to load config:", e);
-    } finally {
-      store.setConfigLoading(false);
-    }
-  }, [store]);
+  // Load config once on mount
+  useEffect(() => {
+    if (loadedRef.current) return;
+    loadedRef.current = true;
+
+    const editorStore = useEditorStore.getState();
+    editorStore.setConfigLoading(true);
+
+    invoke<RustAppConfig>("load_config")
+      .then((raw) => {
+        const config: Partial<AppConfig> = {
+          fontSize: raw.fontSize ?? 16,
+          headingColors: raw.headingColors
+            ? (raw.headingColors as unknown as AppConfig["headingColors"])
+            : undefined,
+          ollamaEndpoint: raw.ollamaEndpoint ?? "http://localhost:11434",
+          openaiEndpoint: raw.openaiEndpoint ?? "https://api.openai.com",
+          openaiModel: raw.openaiModel ?? "gpt-4o-mini",
+          translationProvider:
+            (raw.translationProvider as AppConfig["translationProvider"]) ?? "ollama",
+          langPair: {
+            source: raw.sourceLang ?? "en",
+            target: raw.targetLang ?? "zh-CN",
+          },
+          theme: (raw.theme as Theme) ?? "system",
+          sidebarLeftVisible: raw.sidebarLeftVisible ?? true,
+          sidebarRightVisible: raw.sidebarRightVisible ?? false,
+          sidebarLeftWidth: raw.sidebarLeftWidth ?? 220,
+          sidebarRightWidth: raw.sidebarRightWidth ?? 320,
+          horizontalSplitRatio: raw.horizontalSplitRatio ?? 0.5,
+          verticalSplitRatio: raw.verticalSplitRatio ?? 0.5,
+          recentFiles: raw.recentFiles ?? [],
+        };
+
+        const es = useEditorStore.getState();
+        es.setConfig(config);
+        es.setFontSize(config.fontSize ?? 16);
+        es.setConfigLoaded(true);
+
+        // Restore sidebar state
+        if (config.sidebarLeftVisible !== undefined) {
+          useStore.getState().setSidebarLeftVisible(config.sidebarLeftVisible);
+        }
+        if (config.sidebarRightVisible !== undefined) {
+          useStore.getState().setSidebarRightVisible(config.sidebarRightVisible);
+        }
+
+        // Restore split ratios
+        const splitRatios = { horizontal: config.horizontalSplitRatio, vertical: config.verticalSplitRatio };
+        useStore.getState().setSplitRatios(splitRatios);
+
+        // Sync recent files
+        if (config.recentFiles && config.recentFiles.length > 0) {
+          const { recentFiles } = useStore.getState();
+          if (recentFiles.length === 0) {
+            config.recentFiles.forEach((f) =>
+              useStore.getState().addRecentFile(f.path, f.title),
+            );
+          }
+        }
+
+        applyTheme(config.theme ?? "system");
+      })
+      .catch((e) => {
+        log.error("Config", "Failed to load config", e);
+      })
+      .finally(() => {
+        useEditorStore.getState().setConfigLoading(false);
+      });
+  }, []); // Only run once on mount
 
   const saveConfig = useCallback(async () => {
+    const es = useEditorStore.getState();
+    const config: RustAppConfig = {
+      fontSize: es.fontSize,
+      headingColors: es.headingColors
+        ? ({ ...es.headingColors } as unknown as Record<string, string>)
+        : null,
+      ollamaEndpoint: es.config.ollamaEndpoint ?? null,
+      openaiEndpoint: es.config.openaiEndpoint ?? null,
+      openaiModel: es.config.openaiModel ?? null,
+      translationProvider: es.config.translationProvider ?? null,
+      sourceLang: es.config.langPair?.source ?? null,
+      targetLang: es.config.langPair?.target ?? null,
+      theme: es.config.theme ?? null,
+      sidebarLeftVisible: es.config.sidebarLeftVisible ?? null,
+      sidebarRightVisible: es.config.sidebarRightVisible ?? null,
+      sidebarLeftWidth: es.config.sidebarLeftWidth ?? null,
+      sidebarRightWidth: es.config.sidebarRightWidth ?? null,
+      horizontalSplitRatio: es.config.horizontalSplitRatio ?? null,
+      verticalSplitRatio: es.config.verticalSplitRatio ?? null,
+      recentFiles: es.config.recentFiles ?? null,
+    };
     try {
-      // const config = {
-      //   font_size: store.fontSize,
-      //   heading_colors: store.headingColors,
-      //   ...
-      // };
-      // await invoke("save_config", { config });
+      await invoke("save_config", { config });
     } catch (e) {
-      console.error("Failed to save config:", e);
+      log.error("Config", "Failed to save config", e);
     }
-  }, [store]);
+  }, []);
+
+  const scheduleSave = useCallback(() => {
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      saveConfig();
+    }, DEBOUNCE_MS);
+  }, [saveConfig]);
+
+  const setTheme = useCallback(
+    (theme: Theme) => {
+      useEditorStore.getState().setConfig({ theme });
+      applyTheme(theme);
+      scheduleSave();
+    },
+    [scheduleSave],
+  );
 
   const setFontSize = useCallback(
     (size: number) => {
-      store.setFontSize(size);
-      document.documentElement.style.setProperty(
-        "--editor-font-size",
-        `${size}px`,
-      );
+      useEditorStore.getState().setFontSize(size);
+      document.documentElement.style.setProperty("--editor-font-size", `${size}px`);
+      scheduleSave();
     },
-    [store],
+    [scheduleSave],
   );
 
-  const setHeadingColors = useCallback(
-    (colors: HeadingColors) => {
-      store.setHeadingColors(colors);
-    },
-    [store],
-  );
-
+  // Listen for system theme changes when theme is "system"
   useEffect(() => {
-    loadConfig();
-  }, [loadConfig]);
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const handler = () => {
+      const theme = useEditorStore.getState().config.theme;
+      if (theme === "system") {
+        applyTheme("system");
+      }
+    };
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
 
   return {
-    loadConfig,
+    loadConfig: () => {}, // No-op: config loads on mount
     saveConfig,
+    scheduleSave,
     setFontSize,
-    setHeadingColors,
-    configLoaded: store.configLoaded,
-    configLoading: store.configLoading,
+    setHeadingColors: (colors: AppConfig["headingColors"]) => {
+      useEditorStore.getState().setHeadingColors(colors);
+      scheduleSave();
+    },
+    setTheme,
+    configLoaded,
+    configLoading,
   };
 }

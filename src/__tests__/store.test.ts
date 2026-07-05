@@ -11,7 +11,8 @@ describe("multi-tab store", () => {
       const state = useStore.getState();
       expect(state.tabs).toEqual({});
       expect(state.activeTabId).toBeNull();
-      expect(state.sidebarOpen).toBe(true);
+      expect(state.sidebarLeftVisible).toBe(true);
+      expect(state.sidebarRightVisible).toBe(false);
     });
   });
 
@@ -114,6 +115,168 @@ describe("multi-tab store", () => {
 
       useStore.getState().setEditorMode("source");
       expect(Object.values(useStore.getState().tabs)[0].editorMode).toBe("source");
+    });
+  });
+
+  describe("split panel", () => {
+    beforeEach(() => {
+      useStore.getState().reset();
+    });
+
+    describe("splitTab", () => {
+      it("splits a tab into horizontal split panel", () => {
+        useStore.getState().openFile("/path/a.md", "a");
+        useStore.getState().openFile("/path/b.md", "b");
+        const ids = Object.keys(useStore.getState().tabs);
+        const targetId = ids[0];
+
+        useStore.getState().splitTab(targetId, "horizontal");
+
+        const state = useStore.getState();
+        expect(state.splitDirection).toBe("horizontal");
+        expect(state.splitTabIds).toContain(targetId);
+        expect(state.splitActiveTabId).toBe(targetId);
+        // Active tab should switch to remaining tab
+        expect(state.activeTabId).not.toBe(targetId);
+        expect(state.activeTabId).toBe(ids[1]);
+      });
+
+      it("splits the only tab sets activeTabId to null", () => {
+        useStore.getState().openFile("/path/a.md", "a");
+        const id = Object.keys(useStore.getState().tabs)[0];
+
+        useStore.getState().splitTab(id, "vertical");
+
+        const state = useStore.getState();
+        expect(state.splitDirection).toBe("vertical");
+        expect(state.splitActiveTabId).toBe(id);
+        expect(state.activeTabId).toBeNull();
+      });
+
+      it("splitting a tab already in split panel keeps it in split", () => {
+        useStore.getState().openFile("/path/a.md", "a");
+        useStore.getState().openFile("/path/b.md", "b");
+        const ids = Object.keys(useStore.getState().tabs);
+        useStore.getState().splitTab(ids[0], "horizontal");
+
+        // Split the same tab again — should stay in split, change direction
+        useStore.getState().splitTab(ids[0], "vertical");
+        const state = useStore.getState();
+        expect(state.splitDirection).toBe("vertical");
+        expect(state.splitTabIds).toContain(ids[0]);
+      });
+    });
+
+    describe("unsplit", () => {
+      it("clears split state", () => {
+        useStore.getState().openFile("/path/a.md", "a");
+        useStore.getState().openFile("/path/b.md", "b");
+        const ids = Object.keys(useStore.getState().tabs);
+        useStore.getState().splitTab(ids[0], "horizontal");
+
+        useStore.getState().unsplit();
+
+        const state = useStore.getState();
+        expect(state.splitDirection).toBeNull();
+        expect(state.splitTabIds).toEqual([]);
+        expect(state.splitActiveTabId).toBeNull();
+      });
+
+      it("preserves horizontalSplitRatio after unsplit", () => {
+        useStore.getState().openFile("/path/a.md", "a");
+        useStore.getState().openFile("/path/b.md", "b");
+        const ids = Object.keys(useStore.getState().tabs);
+        useStore.getState().splitTab(ids[0], "horizontal");
+        useStore.getState().setSplitRatio("horizontal", 0.7);
+
+        useStore.getState().unsplit();
+
+        // Ratio should persist for next horizontal split
+        expect(useStore.getState().horizontalSplitRatio).toBe(0.7);
+      });
+    });
+
+    describe("closeTab with split", () => {
+      it("closing a tab in split panel removes it from splitTabIds", () => {
+        useStore.getState().openFile("/path/a.md", "a");
+        useStore.getState().openFile("/path/b.md", "b");
+        const ids = Object.keys(useStore.getState().tabs);
+        useStore.getState().splitTab(ids[0], "horizontal");
+
+        // Close the split tab
+        useStore.getState().closeTab(ids[0]);
+
+        const state = useStore.getState();
+        expect(state.tabs[ids[0]]).toBeUndefined();
+        // splitTabIds still has the dead reference (cleaned up by ContentSplitView)
+        expect(state.splitTabIds).toContain(ids[0]);
+      });
+    });
+
+    describe("moveTabToSplit / moveTabToMain", () => {
+      it("moves a tab to split panel", () => {
+        useStore.getState().openFile("/path/a.md", "a");
+        useStore.getState().openFile("/path/b.md", "b");
+        const ids = Object.keys(useStore.getState().tabs);
+        useStore.getState().splitTab(ids[0], "horizontal");
+
+        useStore.getState().moveTabToSplit(ids[1]);
+
+        const state = useStore.getState();
+        expect(state.splitTabIds).toContain(ids[1]);
+        expect(state.splitActiveTabId).toBe(ids[1]);
+      });
+
+      it("moves a tab from split back to main", () => {
+        useStore.getState().openFile("/path/a.md", "a");
+        useStore.getState().openFile("/path/b.md", "b");
+        const ids = Object.keys(useStore.getState().tabs);
+        useStore.getState().splitTab(ids[0], "horizontal");
+
+        useStore.getState().moveTabToMain(ids[0]);
+
+        const state = useStore.getState();
+        expect(state.splitTabIds).not.toContain(ids[0]);
+        expect(state.activeTabId).toBe(ids[0]);
+      });
+    });
+  });
+
+  describe("split ratios", () => {
+    beforeEach(() => {
+      useStore.getState().reset();
+    });
+
+    it("defaults to 0.5 for both directions", () => {
+      const state = useStore.getState();
+      expect(state.horizontalSplitRatio).toBe(0.5);
+      expect(state.verticalSplitRatio).toBe(0.5);
+    });
+
+    it("setSplitRatio clamps to [0.1, 0.9]", () => {
+      useStore.getState().setSplitRatio("horizontal", 0.05);
+      expect(useStore.getState().horizontalSplitRatio).toBe(0.1);
+
+      useStore.getState().setSplitRatio("horizontal", 0.95);
+      expect(useStore.getState().horizontalSplitRatio).toBe(0.9);
+
+      useStore.getState().setSplitRatio("vertical", 0.3);
+      expect(useStore.getState().verticalSplitRatio).toBe(0.3);
+    });
+
+    it("setSplitRatios updates multiple directions at once", () => {
+      useStore.getState().setSplitRatios({ horizontal: 0.7, vertical: 0.3 });
+      const state = useStore.getState();
+      expect(state.horizontalSplitRatio).toBe(0.7);
+      expect(state.verticalSplitRatio).toBe(0.3);
+    });
+
+    it("setSplitRatios ignores undefined values", () => {
+      useStore.getState().setSplitRatio("horizontal", 0.7);
+      useStore.getState().setSplitRatios({ vertical: 0.3 });
+      const state = useStore.getState();
+      expect(state.horizontalSplitRatio).toBe(0.7); // unchanged
+      expect(state.verticalSplitRatio).toBe(0.3);
     });
   });
 });

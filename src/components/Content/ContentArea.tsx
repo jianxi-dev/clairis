@@ -1,42 +1,58 @@
 import { useEffect, useRef } from "react";
-import { EditorState, StateEffect, Compartment } from "@codemirror/state";
+import { EditorState, Compartment } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
 import { html } from "@codemirror/lang-html";
 import { basicSetup } from "codemirror";
 import { useStore } from "../../stores/index";
 import { decorCompartment, fullDecorations } from "../../editors/setup";
-import { setActiveEditorView } from "../../editors/editorRef";
+import { setEditorView, setActivePanel } from "../../editors/editorRef";
 import PreviewView from "./PreviewView";
-import type { FileKind } from "../../types";
+import type { EditorMode, FileKind, Tab } from "../../types";
 
-/** Compartment for language extensions that change per file kind */
 const langCompartment = new Compartment();
 
 function createLanguageExtension(kind: FileKind) {
   switch (kind) {
     case "markdown":
-      return [
-        markdown({ base: markdownLanguage }),
-        decorCompartment.of(fullDecorations()),
-      ];
+      return [markdown({ base: markdownLanguage }), decorCompartment.of(fullDecorations())];
     case "html":
       return [html()];
     case "text":
-      return []; // Plain text, no language extension
+      return [];
   }
 }
 
-export default function ContentArea() {
-  const tabs = useStore((s) => s.tabs);
+interface ContentAreaProps {
+  panelId?: string;
+  /** Override which tab to show (for split panels) */
+  tabOverride?: Tab | null;
+  /** Override editor mode (for split panels) */
+  modeOverride?: EditorMode;
+}
+
+export default function ContentArea({
+  panelId = "main",
+  tabOverride,
+  modeOverride,
+}: ContentAreaProps) {
   const activeTabId = useStore((s) => s.activeTabId);
+  const tabs = useStore((s) => s.tabs);
   const activeTab = activeTabId ? tabs[activeTabId] : null;
+
+  // tabOverride for split panels, otherwise use activeTab
+  const tab = tabOverride !== undefined ? tabOverride : activeTab;
+  const editorMode = modeOverride || (activeTab?.editorMode ?? "preview");
 
   const editorRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const currentKindRef = useRef<FileKind | null>(null);
+  const currentTabIdRef = useRef<string | null>(null);
 
-  // Create EditorView once with a placeholder language compartment
+  // Keep tab ID ref current so the updateListener closure can read it
+  currentTabIdRef.current = tab?.id || null;
+
+  // Create EditorView once per panelId
   useEffect(() => {
     if (viewRef.current || !editorRef.current) return;
 
@@ -44,114 +60,78 @@ export default function ContentArea() {
       doc: "",
       extensions: [
         basicSetup,
-        langCompartment.of([]), // Will be reconfigured when a tab is active
+        langCompartment.of([]),
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {
             const content = update.state.doc.toString();
-            useStore.getState().updateContent(content);
+            const tabId = currentTabIdRef.current;
+            if (tabId) {
+              useStore.getState().updateTabContent(tabId, content);
+            } else {
+              useStore.getState().updateContent(content);
+            }
           }
+        }),
+        EditorView.domEventHandlers({
+          focus: () => setActivePanel(panelId),
         }),
       ],
     });
 
-    viewRef.current = new EditorView({
-      state,
-      parent: editorRef.current,
-    });
-    setActiveEditorView(viewRef.current);
+    viewRef.current = new EditorView({ state, parent: editorRef.current });
+    setEditorView(panelId, viewRef.current);
 
     return () => {
-      setActiveEditorView(null);
+      setEditorView(panelId, null);
       viewRef.current?.destroy();
       viewRef.current = null;
     };
-  }, []);
+  }, [panelId]);
 
-  // Sync store → CM6 when tab switches, and reconfigure language if fileKind changed
+  // Sync tab content → editor
   useEffect(() => {
-    if (!viewRef.current || !activeTab) return;
+    if (!viewRef.current || !tab) return;
 
     const current = viewRef.current.state.doc.toString();
-    if (current !== activeTab.content) {
+    if (current !== tab.content) {
       viewRef.current.dispatch({
-        changes: { from: 0, to: current.length, insert: activeTab.content },
+        changes: { from: 0, to: current.length, insert: tab.content },
       });
     }
 
-    // Reconfigure language extension if fileKind changed or first load
-    if (activeTab.fileKind !== currentKindRef.current) {
-      currentKindRef.current = activeTab.fileKind;
-      const langExtensions = createLanguageExtension(activeTab.fileKind);
+    if (tab.fileKind !== currentKindRef.current) {
+      currentKindRef.current = tab.fileKind;
       viewRef.current.dispatch({
-        effects: langCompartment.reconfigure(langExtensions),
+        effects: langCompartment.reconfigure(createLanguageExtension(tab.fileKind)),
       });
     }
-  }, [activeTab?.id, activeTab?.fileKind, activeTab?.editorMode]);
+  }, [tab?.id, tab?.fileKind]);
 
-  // Toggle decorations compartment on mode change (markdown only)
+  // Toggle decorations on mode change
   useEffect(() => {
-    if (!viewRef.current || !activeTab) return;
+    if (!viewRef.current || !tab) return;
+    if (tab.fileKind !== "markdown") return;
 
-    // Only apply decorations in markdown edit mode
-    if (activeTab.fileKind !== "markdown") return;
-
-    if (activeTab.editorMode === "source") {
-      viewRef.current.dispatch({
-        effects: decorCompartment.reconfigure([]),
-      });
-    } else if (activeTab.editorMode === "edit") {
-      viewRef.current.dispatch({
-        effects: decorCompartment.reconfigure(fullDecorations()),
-      });
+    if (editorMode === "source") {
+      viewRef.current.dispatch({ effects: decorCompartment.reconfigure([]) });
+    } else if (editorMode === "edit") {
+      viewRef.current.dispatch({ effects: decorCompartment.reconfigure(fullDecorations()) });
     }
-  }, [activeTab?.editorMode, activeTab?.fileKind]);
-
-  const tabIds = Object.keys(tabs);
+  }, [editorMode, tab?.fileKind]);
 
   return (
-    <div className="content-area" style={{ height: "100%", display: "flex", flexDirection: "column" }}>
-      {/* Tab bar */}
-      {tabIds.length > 0 && (
-        <div className="tab-bar" style={{ display: "flex", borderBottom: "1px solid #ccc" }}>
-          {tabIds.map((id) => {
-            const tab = tabs[id];
-            return (
-              <div
-                key={id}
-                className={`tab ${id === activeTabId ? "active" : ""}`}
-                style={{
-                  padding: "4px 12px",
-                  cursor: "pointer",
-                  background: id === activeTabId ? "#e0e0e0" : "transparent",
-                }}
-                onClick={() => useStore.getState().switchTab(id)}
-              >
-                {tab.title}
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Viewport */}
+    <div style={{ height: "100%", display: "flex", flexDirection: "column" }} className="dark:bg-gray-800">
       <div style={{ flex: 1, position: "relative", overflow: "auto" }}>
-        {/* CM6 editor — visible in edit/source mode, hidden in preview */}
         <div
           ref={editorRef}
           className="cm-editor-container"
           style={{
             height: "100%",
-            display: activeTab?.editorMode === "preview" || !activeTab ? "none" : "block",
+            display: editorMode === "preview" || !tab ? "none" : "block",
           }}
         />
-
-        {/* Preview mode */}
-        {activeTab?.editorMode === "preview" && activeTab && (
-          <PreviewView
-            content={activeTab.content}
-            fileKind={activeTab.fileKind}
-            filePath={activeTab.path}
-          />
+        {editorMode === "preview" && tab && (
+          <PreviewView content={tab.content} fileKind={tab.fileKind} filePath={tab.path} />
         )}
       </div>
     </div>

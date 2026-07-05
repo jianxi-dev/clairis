@@ -6,6 +6,7 @@ use tracing::{info, warn};
 use crate::errors::AppError;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct AppConfig {
     pub font_size: Option<f64>,
     pub heading_colors: Option<HeadingColors>,
@@ -17,6 +18,21 @@ pub struct AppConfig {
     pub translation_provider: Option<String>,
     pub source_lang: Option<String>,
     pub target_lang: Option<String>,
+    pub theme: Option<String>,
+    pub sidebar_left_visible: Option<bool>,
+    pub sidebar_right_visible: Option<bool>,
+    pub sidebar_left_width: Option<f64>,
+    pub sidebar_right_width: Option<f64>,
+    pub horizontal_split_ratio: Option<f64>,
+    pub vertical_split_ratio: Option<f64>,
+    pub recent_files: Option<Vec<RecentFile>>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct RecentFile {
+    pub path: String,
+    pub title: String,
+    pub opened_at: String,
 }
 
 impl Default for AppConfig {
@@ -31,6 +47,14 @@ impl Default for AppConfig {
             translation_provider: Some("ollama".into()),
             source_lang: Some("en".into()),
             target_lang: Some("zh-CN".into()),
+            theme: Some("system".into()),
+            sidebar_left_visible: Some(true),
+            sidebar_right_visible: Some(false),
+            sidebar_left_width: Some(220.0),
+            sidebar_right_width: Some(320.0),
+            horizontal_split_ratio: Some(0.5),
+            vertical_split_ratio: Some(0.5),
+            recent_files: Some(Vec::new()),
         }
     }
 }

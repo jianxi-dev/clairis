@@ -23,7 +23,7 @@ export default function HtmlPreview({ content, filePath }: HtmlPreviewProps) {
       content="default-src 'self' 'unsafe-inline'; img-src 'self' data: asset:; style-src 'self' 'unsafe-inline' asset:; script-src 'none';">
 </head>
 <body>
-<!-- Preview rendered by Folio — paths rewritten for local asset loading -->
+<!-- Preview rendered by JianXi — paths rewritten for local asset loading -->
 ${processed}
 </body></html>`;
   }, [content, filePath]);

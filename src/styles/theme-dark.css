@@ -1,0 +1,88 @@
+/* Reader (preview) dark theme */
+.dark {
+  --reader-font-size: 16px;
+  --reader-line-height: 1.8;
+  --reader-max-width: 680px;
+  --reader-bg: #0d1117;
+  --reader-text: #c9d1d9;
+  --reader-link: #58a6ff;
+  --reader-code-bg: rgba(240, 246, 252, 0.15);
+  --reader-code-text: #c9d1d9;
+  --reader-blockquote-border: #30363d;
+  --reader-blockquote-text: #8b949e;
+  --reader-hr: #21262d;
+  --reader-table-border: #30363d;
+  --reader-table-header-bg: #161b22;
+}
+
+/* PreviewView dark mode */
+.dark .preview-view {
+  font-size: var(--reader-font-size);
+  line-height: var(--reader-line-height);
+  color: var(--reader-text);
+  background: var(--reader-bg);
+  word-wrap: break-word;
+}
+
+.dark .preview-view a {
+  color: var(--reader-link);
+}
+
+.dark .preview-view code {
+  background: var(--reader-code-bg);
+  color: var(--reader-code-text);
+  border-radius: 3px;
+  padding: 0.15em 0.35em;
+  font-size: 0.9em;
+  font-family: "SF Mono", "Fira Code", "Fira Mono", "Menlo", Consolas, monospace;
+}
+
+.dark .preview-view pre {
+  background: #161b22;
+  border-radius: 4px;
+  padding: 0.75rem 1rem;
+  overflow-x: auto;
+}
+
+.dark .preview-view pre code {
+  background: none;
+  padding: 0;
+  border-radius: 0;
+}
+
+.dark .preview-view blockquote {
+  border-left: 3px solid var(--reader-blockquote-border);
+  padding-left: 1em;
+  margin: 0.5em 0;
+  color: var(--reader-blockquote-text);
+}
+
+.dark .preview-view hr {
+  border: none;
+  border-top: 1px solid var(--reader-hr);
+  margin: 1em 0;
+}
+
+.dark .preview-view table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.5em 0;
+}
+
+.dark .preview-view th,
+.dark .preview-view td {
+  border: 1px solid var(--reader-table-border);
+  padding: 0.4em 0.6em;
+  text-align: left;
+  vertical-align: top;
+}
+
+.dark .preview-view th {
+  background: var(--reader-table-header-bg);
+  font-weight: 600;
+}
+
+.dark .preview-view img {
+  max-width: 100%;
+  height: auto;
+}

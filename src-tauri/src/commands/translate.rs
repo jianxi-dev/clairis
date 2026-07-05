@@ -206,6 +206,13 @@ pub async fn translate_text(
     }
 }
 
+/// Cancel the current translation request.
+#[tauri::command]
+pub async fn stop_translation() -> Result<(), AppError> {
+    CANCELLED.store(true, std::sync::atomic::Ordering::SeqCst);
+    Ok(())
+}
+
 fn uuid_v4() -> String {
     use std::time::{SystemTime, UNIX_EPOCH};
     let nanos = SystemTime::now()

@@ -3,7 +3,7 @@ import type { EditorMode, HeadingColors, AppConfig, TranslationState } from "../
 
 describe("types", () => {
   it("EditorMode accepts valid values", () => {
-    const modes: EditorMode[] = ["wysiwyg", "source", "sourceReadOnly"];
+    const modes: EditorMode[] = ["preview", "edit", "source"];
     expect(modes).toHaveLength(3);
   });
 
@@ -28,6 +28,14 @@ describe("types", () => {
       openaiModel: "",
       translationProvider: "ollama",
       langPair: { source: "en", target: "zh-CN" },
+      theme: "system",
+      sidebarLeftVisible: true,
+      sidebarRightVisible: false,
+      sidebarLeftWidth: 220,
+      sidebarRightWidth: 320,
+      horizontalSplitRatio: 0.5,
+      verticalSplitRatio: 0.5,
+      recentFiles: [],
     };
     expect(config.translationProvider).toBe("ollama");
     expect(config.fontSize).toBe(16);

@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>墨页 · Ink Desk</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,400;7..72,500;7..72,700&family=Caveat:wght@400;600&display=swap');
+
+:root {
+  --desk-1: #2a1f14;
+  --desk-2: #1a120a;
+  --paper: #faf6f0;
+  --paper-dim: #c4b8a4;
+  --ink: rgba(28, 22, 14, 0.88);
+  --ink-soft: rgba(28, 22, 14, 0.55);
+  --ink-faint: rgba(28, 22, 14, 0.18);
+  --warm: #d4a574;
+  --gold: #e8c88a;
+  --accent: #8b7355;
+  --shadow: 0 4px 24px rgba(0,0,0,0.4), 0 1px 4px rgba(0,0,0,0.2);
+  --t-slow: 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+  --t-med: 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+*,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; font-family: 'Literata', 'PingFang SC', serif; color: var(--ink); background: var(--desk-2); -webkit-font-smoothing: antialiased; cursor: default; }
+
+/* === THE DESK === */
+#desk {
+  position: fixed; inset: 0;
+  background:
+    radial-gradient(ellipse at 50% 60%, rgba(60, 40, 20, 0.3) 0%, transparent 70%),
+    repeating-linear-gradient(87deg, var(--desk-1) 0px, var(--desk-2) 120px, var(--desk-1) 240px),
+    var(--desk-2);
+  background-blend-mode: overlay, normal, normal;
+}
+
+/* wood grain texture */
+#desk::before {
+  content: '';
+  position: absolute; inset: 0;
+  background-image:
+    radial-gradient(ellipse 300px 80px at 20% 30%, rgba(255,220,180,0.02), transparent),
+    radial-gradient(ellipse 200px 60px at 80% 70%, rgba(255,200,150,0.015), transparent),
+    repeating-linear-gradient(87deg, transparent 0px, rgba(0,0,0,0.03) 2px, transparent 4px);
+  pointer-events: none;
+}
+
+/* === LAMP === */
+#lamp {
+  position: fixed; top: 0; left: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+  background: radial-gradient(
+    300px circle at var(--lamp-x, 50%) var(--lamp-y, 45%),
+    rgba(255, 230, 180, 0.14) 0%,
+    rgba(255, 210, 150, 0.06) 40%,
+    transparent 70%
+  );
+  transition: background var(--t-slow);
+  z-index: 0;
+}
+
+/* === DOCUMENTS === */
+.doc {
+  position: absolute;
+  width: 240px;
+  transition: all var(--t-slow), opacity var(--t-med);
+  transform-origin: center center;
+  transform: translate(-50%, -50%) rotate(var(--rot, 0deg)) scale(var(--scale, 1));
+  left: var(--x, 50%);
+  top: var(--y, 50%);
+  z-index: 1;
+  cursor: pointer;
+}
+
+.doc.in-light {
+  z-index: 10;
+  --scale: 1;
+  filter: brightness(1.05) contrast(1.02);
+  box-shadow: 0 12px 48px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.3);
+}
+
+/* Paper sheet look */
+.paper {
+  background: linear-gradient(135deg, #faf7f2, #f2ece1, #f7f3ec);
+  border-radius: 2px;
+  padding: 20px 22px;
+  position: relative;
+  min-height: 300px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1), 0 4px 12px rgba(0,0,0,0.15);
+  transition: all var(--t-slow);
+}
+
+.doc.in-light .paper {
+  background: #fffef9;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.doc.far .paper {
+  filter: brightness(0.7) sepia(0.1) saturate(0.7);
+}
+
+/* Fold corner */
+.fold {
+  position: absolute;
+  top: 0; right: 0;
+  width: 0; height: 0;
+  border-style: solid;
+  border-width: 0 28px 28px 0;
+  border-color: transparent rgba(200, 180, 150, 0.55) transparent transparent;
+  transition: all var(--t-med);
+  display: none;
+}
+.doc.has-fold .fold { display: block; }
+
+/* Dust layer */
+.dust {
+  position: absolute; inset: 0;
+  background: linear-gradient(135deg, transparent 30%, rgba(160, 140, 110, 0.15) 100%);
+  mix-blend-mode: multiply;
+  opacity: var(--dust-level, 0);
+  transition: opacity 1s;
+  border-radius: 3px;
+  pointer-events: none;
+}
+
+/* Doc header */
+.doc-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 12px;
+  font-family: 'Inter', sans-serif;
+  letter-spacing: 0.01em;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.doc-title::before {
+  content: '';
+  display: inline-block;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  opacity: 0.6;
+}
+.doc.far .doc-title {
+  color: rgba(0,0,0,0.5);
+}
+.doc.in-light .doc-title {
+  color: var(--ink);
+  opacity: 1;
+}
+
+/* Text content */
+.doc-text {
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--ink);
+  outline: none;
+  border: none;
+  background: transparent;
+  width: 100%;
+  min-height: 240px;
+  font-family: 'Literata', serif;
+}
+.doc.far .doc-text {
+  color: transparent;
+  user-select: none;
+  text-shadow: 0 0 12px rgba(0,0,0,0.7);
+}
+.doc.in-light .doc-text {
+  color: var(--ink);
+}
+
+/* Status in footer */
+.doc-footer {
+  position: absolute;
+  bottom: 10px; left: 18px; right: 18px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  font-family: 'Inter', sans-serif;
+  color: var(--ink);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.doc.in-light .doc-footer { opacity: 0.5; }
+
+/* === NEW DOC BUTTON === */
+#new-doc {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 52px; height: 52px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  border: 2px dashed rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 24px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--t-med);
+  z-index: 200;
+}
+#new-doc:hover {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: var(--warm);
+  color: var(--warm);
+  transform: translateX(-50%) scale(1.1);
+}
+
+/* bottom UI strip */
+#bottom-strip {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 24px;
+  padding: 10px 18px;
+  z-index: 9999;
+}
+.strip-btn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.7);
+  padding: 7px 14px;
+  border-radius: 14px;
+  font-size: 12px;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.strip-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--warm);
+  color: var(--gold);
+}
+.strip-btn.primary {
+  background: var(--warm);
+  color: #1a120a;
+  border-color: var(--warm);
+  font-weight: 500;
+}
+.strip-btn.primary:hover {
+  background: var(--gold);
+  border-color: var(--gold);
+}
+.sep {
+  width: 1px; height: 18px;
+  background: rgba(255, 255, 255, 0.1);
+  margin: 0 4px;
+}
+
+/* gallery mode indicator */
+.gallery-indicator {
+  position: fixed;
+  top: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(8px);
+  border-radius: 12px;
+  padding: 8px 18px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+  z-index: 200;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.4s;
+}
+.gallery-indicator.show { opacity: 1; }
+
+/* === TIME BANDS === */
+#time-overlay {
+  position: fixed; inset: 0;
+  background: var(--desk-2);
+  z-index: 500;
+  opacity: 0;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  padding: 60px 40px;
+  align-items: center;
+  transition: opacity 0.4s;
+}
+#time-overlay.show { opacity: 1; pointer-events: auto; }
+
+.tb-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 640px;
+  margin-bottom: 28px;
+}
+.tb-head h2 { font-family: 'Literata', serif; font-size: 22px; font-weight: 400; color: #faf6f0; }
+.tb-close {
+  font-size: 12px;
+  color: rgba(250, 246, 240, 0.6);
+  cursor: pointer;
+  padding: 5px 12px;
+  border-radius: 6px;
+  border: 1px solid rgba(250, 246, 240, 0.15);
+  transition: all 0.2s;
+}
+.tb-close:hover { background: rgba(250, 246, 240, 0.05); color: #faf6f0; }
+
+.tb-list { display: flex; flex-direction: column; gap: 0; width: 100%; max-width: 640px; }
+.tb-row {
+  display: flex; align-items: center; gap: 18px; padding: 14px 0;
+  border-bottom: 1px solid rgba(250, 246, 240, 0.06);
+  cursor: pointer; transition: background 0.3s;
+}
+.tb-row:hover { background: rgba(250, 246, 240, 0.02); }
+.tb-time { width: 76px; font-size: 11px; color: rgba(250, 246, 240, 0.4); font-variant-numeric: tabular-nums; font-family: 'Inter', sans-serif; }
+.tb-bar { width: 4px; height: 32px; border-radius: 2px; }
+.tb-text { font-size: 14px; line-height: 1.65; color: rgba(250, 246, 240, 0.75); flex: 1; font-family: 'Literata', serif; }
+
+/* === RESONANCE INDICATOR (subtle glow on near docs) */
+.resonance-glow {
+  position: absolute;
+  inset: -4px;
+  border-radius: 4px;
+  border: 2px solid var(--warm);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.6s;
+}
+.doc.resonating .resonance-glow { opacity: 0.4; }
+
+/* === INK RELICS === */
+#relics-overlay {
+  position: fixed; inset: 0;
+  background: rgba(20, 14, 8, 0.95);
+  z-index: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  backdrop-filter: blur(8px);
+  transition: opacity 0.4s;
+}
+#relics-overlay.show { opacity: 1; pointer-events: auto; }
+
+.relic-close {
+  position: absolute; top: 24px; right: 28px;
+  font-size: 12px; color: rgba(250,246,240,0.5); cursor: pointer;
+  padding: 5px 12px; border-radius: 6px; border: 1px solid rgba(250,246,240,0.15);
+}
+.relic-close:hover { color: #faf6f0; border-color: rgba(250,246,240,0.3); }
+
+.relic-phrase {
+  position: absolute; top: 24px; left: 28px;
+  font-family: 'Caveat', cursive; font-size: 32px; color: var(--warm);
+  font-weight: 600;
+}
+
+.relic-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  max-width: 90vw;
+}
+
+.relic-card {
+  background: rgba(250, 246, 240, 0.04);
+  border: 1px solid rgba(250, 246, 240, 0.08);
+  border-radius: 10px;
+  padding: 20px 22px;
+  transition: all 0.3s;
+  cursor: pointer;
+  animation: relicFade 0.5s calc(var(--i) * 80ms) both;
+}
+.relic-card:hover {
+  background: rgba(250, 246, 240, 0.09);
+  border-color: var(--warm);
+  transform: translateY(-3px);
+}
+@keyframes relicFade { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
+.relic-card .rtitle { font-size: 14px; font-weight: 500; font-family: 'Inter', sans-serif; color: rgba(250,246,240,0.9); margin-bottom: 14px; letter-spacing: 0.01em; }
+.relic-card .rbody { font-family: 'Literata', serif; font-size: 13px; line-height: 1.7; color: rgba(250,246,240,0.55); white-space: pre-wrap; }
+.relic-card .rbody mark { background: rgba(200,150,90,0.18); color: #f5e8d0; border-radius: 2px; padding: 0 3px; }
+
+/* toast */
+.toast {
+  position: fixed;
+  top: 80px; left: 50%; transform: translateX(-50%);
+  background: rgba(60, 40, 20, 0.95);
+  color: #f5e8d0;
+  font-size: 13px;
+  padding: 12px 24px;
+  border-radius: 10px;
+  z-index: 9999;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s;
+  max-width: 380px;
+  line-height: 1.6;
+  text-align: center;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(200, 150, 90, 0.2);
+}
+.toast.show { opacity: 1; }
+
+/* responsive */
+@media (max-width: 800px) {
+  .doc { width: 180px; }
+  .relic-grid { grid-template-columns: repeat(2,1fr); }
+  #bottom-strip { gap: 4px; padding: 8px 12px; }
+  .strip-btn { padding: 6px 10px; font-size: 11px; }
+}
+
+/* breathing animation */
+@keyframes breathe {
+  0%,100% { box-shadow: 0 4px 24px rgba(0,0,0,0.3); }
+  50% { box-shadow: 0 8px 36px rgba(255, 220, 160, 0.08), 0 4px 24px rgba(0,0,0,0.3); }
+}
+.doc.in-light .paper { animation: breathe 4s infinite ease-in-out; transition: all var(--t-slow); }
+
+/* reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.02s !important; }
+}
+</style>
+</head>
+<body>
+
+<div id="desk">
+  <!-- Lamp pool -->
+  <div id="lamp"></div>
+  
+  <!-- Documents scattered on desk -->
+  <!-- 7 documents with different positions, rotations, ages -->
+</div>
+
+<!-- Toast for hints -->
+<div class="toast" id="toast"></div>
+
+<!-- Gallery mode indicator -->
+<div class="gallery-indicator" id="gallery">💡 全部浏览模式 — 点击文档·或<button onclick="returnToCurrent()" style="background:none;border:1px solid rgba(255,255,255,0.2);color:#fff;border-radius:8px;padding:2px 8px;cursor:pointer;margin-left:6px;font-size:11px">回到最近</button></div>
+
+<!-- New document floating button -->
+<button id="new-doc" onclick="newDoc()">+</button>
+
+<!-- Action strip (always visible, always clickable) -->
+<div id="bottom-strip">
+  <button class="strip-btn primary" onclick="toggleGallery()">👁 浏览</button>
+  <span class="sep"></span>
+  <button class="strip-btn" onclick="openTimeBands()">⏰ 时间带</button>
+  <span class="sep"></span>
+  <button class="strip-btn" onclick="openResonance()">✨ 共鸣</button>
+  <span class="sep"></span>
+  <button class="strip-btn" onclick="openRelics()">🔥 Ink Relics</button>
+  <span class="sep"></span>
+  <button class="strip-btn" onclick="resetDesk()">🔄 整理</button>
+</div>
+
+<!-- Time bands overlay -->
+<div id="time-overlay">
+  <div class="tb-head">
+    <h2>Time Bands — 你今天写了什么</h2>
+    <div class="tb-close" onclick="closeOverlay('time-overlay')">关闭 (Esc)</div>
+  </div>
+  <div class="tb-list" id="tb-list"></div>
+</div>
+
+<!-- Ink Relics overlay -->
+<div id="relics-overlay">
+  <div class="relic-close" onclick="closeOverlay('relics-overlay')">关闭 (Esc)</div>
+  <div class="relic-phrase" id="relic-phrase-text"></div>
+  <div class="relic-grid" id="relics-grid"></div>
+</div>
+
+<script>
+// === DATA: DOCUMENTS ===
+const DOCS = [
+  { id: 1, x: 20, y: 38, rot: -3, title: '设计哲学.md', text: '设计的本质不是解决问题，而是发现真正的命题。每次我坐在桌前，最先做的不是画草图，而是问自己：我真正要回答的问题是什么？\n\n人们常常把手段误认做目的，把装饰当作设计。一个按钮看起来漂亮，不等于它解决了问题；一份排版整齐、毫无立场的设计稿，只是精致的沉默。', hoursAgo: 2 },
+  { id: 2, x: 45, y: 30, rot: 2, title: '数字极简.md', text: '注意力经济的核心悖论：我们以为是"工具使用我们"，实际是"我们喂养了注意力经济"。设计的责任不是让用户上瘾，是帮助他们建立清晰的注意力边界。\n\n当你设计一个阅读工具，你也在设计一种注意力生态。让工具先安静下来。', hoursAgo: 12 },
+  { id: 3, x: 70, y: 28, rot: -2, title: '周会记录-0703.md', text: '讨论了 Q3 架构方向。PM提出一个需求：操作面板看完列表应回到之前滚动位置。\n\n深层问题是"操作"与"阅读"不只是模式切换。它们是一个人身上两种不同的存在方式，我们用同一个界面在模拟两种。如果切得太用力，用户在中间迷路。', hoursAgo: 6 },
+  { id: 4, x: 55, y: 60, rot: 4, title: '设计咨询备忘.md', text: '注意：区分"可诉说的需求"和"沉默需求"。两段。Linear + Notion 混合路线。注意保留温暖感。\n\n安全感来自确定感：我知道东西没丢。去掉侧栏等于去掉安全毯，需要等价物。', hoursAgo: 28 },
+  { id: 5, x: 30, y: 58, rot: -4, title: 'Resonance 算法笔记.md', text: 'BM25 实现细节 + 反向链接检测。时效衰减公式：w = (recentness + 0.1) / 2。阈值 0.42 以下不展示。\n\n置信度不够时缩小字号，而不是藏起来。文档之间的连接是活的。', hoursAgo: 40 },
+  { id: 6, x: 78, y: 56, rot: 3, title: 'attention.md', text: '注意力是唯一的货币。注意力的设计影响决策质量。注意力的经济学公式：Attention = f(irrelevance)\n\n当你的产品不能赢得注意力时，不是因为对手更强，是因为你没有回答"为什么现在要关心"。', hoursAgo: 72 },
+  { id: 7, x: 50, y: 48, rot: -1, title: 'the-desk-concept.md', text: 'The Desk 书桌层 — 空间记忆模型。位置 = 意义。\n\n最近活跃 = 伸手可及。稍远记忆 = 半透明在远角。最多 7±2 个。同一文档每次回到桌面时在同一个位置。不能手动整理。', hoursAgo: 96 },
+];
+
+// === TIME BANDS (today) ===
+const TIME_BANDS = [
+  { t: '6:42 AM',  c: 'rgba(230,180,120,0.20)', x: '写了 4 段 · 设计哲学.md' },
+  { t: '7:12 AM',  c: 'rgba(230,180,120,0.26)', x: '密集写 Resonance 段落 · +220 words' },
+  { t: '7:44 AM',  c: 'rgba(230,180,120,0.07)', x: '切 Desk · 重排了 3 篇文档' },
+  { t: '8:02 AM',  c: 'rgba(230,180,120,0.18)', x: '回 Surface · 激烈改前 2 段' },
+  { t: '9:15 AM',  c: 'rgba(230,180,120,0.04)', x: '暂停 · 思考"安全感"一段' },
+  { t: '9:20 AM',  c: 'rgba(230,180,120,0.30)', x: '冲刺写完 · +400 words · 反复打磨末段' },
+  { t: '10:00 AM', c: 'rgba(230,180,120,0.12)', x: 'Cmd+↑ 书桌 · 发现了一篇被遗忘的旧笔记' },
+  { t: '10:30 AM', c: 'rgba(230,180,120,0.16)', x: '回到 Surface · 开始写无侧栏方案引言' },
+  { t: '现在',     c: 'transparent',            x: '你在看这段文字' },
+];
+
+// === INK RELICS ===
+const RELICS = [
+  {
+    phrase: '注意力',
+    docs: [
+      { name: '数字极简.md', text: '注意力经济的核心悖论:\n我们以为是"工具使用我们"\n实际是我们喂养了注意力经济。\n设计不是让用户上瘾，\n是帮助他们建立清晰的注意力边界。' },
+      { name: 'attention.md', text: '注意力是唯一的货币。\n注意力的设计影响决策质量。\n\n当一个产品不能赢得注意力时，\n不是因为对手更强，\n是因为你没有回答\n\"为什么现在要关心\"。' },
+    ]
+  },
+  {
+    phrase: '设计',
+    docs: [
+      { name: '设计哲学.md', text: '设计的本质不是解决问题\n而是发现真正的命题。\n\n诚实的设计从承认\n\"我不知道它应该是什么样子\"开始。' },
+      { name: '设计咨询备忘.md', text: '"区分可诉说的需要和沉默需要。"\n\n安全感来自确定感:\n我知道东西没丢。' },
+    ]
+  },
+];
+
+// === STATE ===
+let lampX = 50;  // percent
+let lampY = 45;
+let focusedDoc = null;
+let galleryMode = false;
+let nextDocId = 8;
+
+// === INIT ===
+function renderDesk() {
+  const desk = document.getElementById('desk');
+  // remove old docs (keep lamp)
+  desk.querySelectorAll('.doc').forEach(d => d.remove());
+  
+  DOCS.forEach(doc => {
+    const dustLevel = Math.min(0.5, doc.hoursAgo / 168);
+    const docEl = document.createElement('div');
+    docEl.className = 'doc';
+    docEl.id = `doc-${doc.id}`;
+    docEl.style.setProperty('--x', doc.x + '%');
+    docEl.style.setProperty('--y', doc.y + '%');
+    docEl.style.setProperty('--rot', doc.rot + 'deg');
+    docEl.style.setProperty('--dust-level', dustLevel);
+    docEl.innerHTML = `
+      <div class="resonance-glow"></div>
+      <div class="paper">
+        <div class="dust"></div>
+        <div class="fold"></div>
+        <div class="doc-title">${doc.title}</div>
+        <div class="doc-text" contenteditable="true" spellcheck="false">${doc.text.split('\n').map(l => '<p>' + (l || '&nbsp;') + '</p>').join('')}</div>
+        <div class="doc-footer">
+          <span class="wcount">≈${doc.text.replace(/\s/g,'').length}字</span>
+          <span class="timer">${fmtTime(doc.hoursAgo)}</span>
+        </div>
+      </div>
+    `;
+    desk.appendChild(docEl);
+    
+    // click = focus, double-click = edit, but drag should be manageable
+    docEl.addEventListener('click', (e) => {
+      e.stopPropagation();
+      focusDoc(doc.id);
+    });
+  });
+  
+  // start focused on most recent document
+  const mostRecent = DOCS.reduce((a, b) => a.hoursAgo < b.hoursAgo ? a : b);
+  focusDoc(mostRecent.id);
+}
+
+function focusDoc(id) {
+  const doc = DOCS.find(d => d.id === id);
+  if (!doc) return;
+  focusedDoc = id;
+  galleryMode = false;
+  
+  // move lamp pool to doc position
+  lampX = doc.x;
+  lampY = doc.y;
+  updateLamp();
+  
+  // gallery mode indicator off
+  document.getElementById('gallery').classList.remove('show');
+  
+  // style docs
+  document.querySelectorAll('.doc').forEach(d => {
+    if (d.id === `doc-${id}`) {
+      d.classList.add('in-light');
+      d.classList.remove('far');
+    } else {
+      d.classList.remove('in-light');
+      d.classList.add('far');
+    }
+  });
+  
+  // special case: new scratch docs that are "unfolded" need fold
+  const el = document.getElementById(`doc-${id}`);
+  if (el && doc.folded) {
+    el.classList.add('has-fold');
+  }
+  
+  // show hint to user
+  showToast(`📍 ${doc.title} · ${fmtTime(doc.hoursAgo)}`);
+}
+
+function updateLamp() {
+  const lamp = document.getElementById('lamp');
+  lamp.style.setProperty('--lamp-x', lampX + '%');
+  lamp.style.setProperty('--lamp-y', lampY + '%');
+}
+
+function toggleGallery() {
+  if (galleryMode) {
+    if (focusedDoc) focusDoc(focusedDoc);
+    return;
+  }
+  galleryMode = true;
+  document.getElementById('gallery').classList.add('show');
+  // center lamp
+  lampX = 50;
+  lampY = 50;
+  updateLamp();
+  // all docs: not in-light, not far, mid-brightness
+  document.querySelectorAll('.doc').forEach(d => {
+    d.classList.remove('in-light', 'far');
+    // Scale down slightly in gallery but brighter than far
+  });
+}
+
+function returnToCurrent() {
+  if (focusedDoc) focusDoc(focusedDoc);
+}
+
+function fmtTime(h) {
+  if (h < 1) return '刚刚';
+  if (h < 24) return h + '小时前';
+  return Math.floor(h / 24) + '天前';
+}
+
+// === TIME BANDS ===
+function openTimeBands() {
+  const list = document.getElementById('tb-list');
+  list.innerHTML = TIME_BANDS.map(b => `
+    <div class="tb-row">
+      <div class="tb-time">${b.t}</div>
+      <div class="tb-bar" style="background:${b.c}"></div>
+      <div class="tb-text">${b.x}</div>
+    </div>
+  `).join('');
+  document.getElementById('time-overlay').classList.add('show');
+}
+
+// === RESONANCE ===
+function openResonance() {
+  if (!focusedDoc) { showToast('先聚焦一篇文档，才能看到共鸣'); return; }
+  const doc = DOCS.find(d => d.id === focusedDoc);
+  if (!doc) return;
+  
+  // Find related docs (simple text overlap matching for prototype)
+  const docWords = new Set(doc.text.toLowerCase().split(/[\s，。、；："'（）\n]+/).filter(w => w.length > 1));
+  const matches = DOCS.filter(d => d.id !== focusedDoc).map(d => {
+    const dWords = new Set(d.text.toLowerCase().split(/[\s，。、；："'（）\n]+/).filter(w => w.length > 1));
+    let overlap = 0;
+    docWords.forEach(w => { if (dWords.has(w)) overlap++; });
+    return { doc: d, overlap };
+  }).filter(m => m.overlap > 2).sort((a, b) => b.overlap - a.overlap);
+  
+  // Visually show resonance: highlight matched docs briefly
+  matches.forEach(m => {
+    const el = document.getElementById(`doc-${m.doc.id}`);
+    if (el) el.classList.add('resonating');
+  });
+  
+  showToast(`发现 ${matches.length} 篇共鸣文档：${matches.slice(0,3).map(m => m.doc.title.replace('.md','')).join('、')}`);
+  
+  setTimeout(() => {
+    document.querySelectorAll('.resonating').forEach(el => el.classList.remove('resonating'));
+  }, 2500);
+}
+
+// === INK RELICS ===
+function openRelics() {
+  const overlay = document.getElementById('relics-overlay');
+  const phraseText = document.getElementById('relic-phrase-text');
+  const grid = document.getElementById('relics-grid');
+  
+  const first = RELICS[0];
+  phraseText.textContent = first.phrase;
+  grid.innerHTML = first.docs.map((d, i) => {
+    const text = d.text.replace(new RegExp(first.phrase, 'g'), '<mark>$&</mark>');
+    return `<div class="relic-card" style="--i:${i}">
+      <div class="rtitle">${d.name}</div>
+      <div class="rbody">${text}</div>
+    </div>`;
+  }).join('');
+  
+  overlay.classList.add('show');
+}
+
+// === NEW DOC ===
+function newDoc() {
+  const newDocData = {
+    id: nextDocId++,
+    x: 50 + (Math.random() - 0.5) * 20,
+    y: 45 + (Math.random() - 0.5) * 16,
+    rot: (Math.random() - 0.5) * 6,
+    title: `新笔记 ${nextDocId - 7}.md`,
+    text: '新写的文档从这里开始。墨页会记住你在哪里停下了笔，下次你回到这篇，它在你离开的位置等你。',
+    hoursAgo: 0
+  };
+  DOCS.unshift(newDocData);
+  
+  // render just the new one
+  const desk = document.getElementById('desk');
+  const dustLevel = 0;
+  const el = document.createElement('div');
+  el.className = 'doc';
+  el.id = `doc-${newDocData.id}`;
+  el.style.setProperty('--x', newDocData.x + '%');
+  el.style.setProperty('--y', newDocData.y + '%');
+  el.style.setProperty('--rot', newDocData.rot + 'deg');
+  el.style.setProperty('--dust-level', 0);
+  el.innerHTML = `
+    <div class="resonance-glow"></div>
+    <div class="paper">
+      <div class="dust"></div>
+      <div class="fold"></div>
+      <div class="doc-title">${newDocData.title}</div>
+      <div class="doc-text" contenteditable="true" spellcheck="false"><p>新写的文档从这里开始。墨页会记住你在哪里停下了笔，下次你回到这篇，它在你离开的位置等你。</p></div>
+      <div class="doc-footer">
+        <span class="wcount">≈30字</span>
+        <span class="timer">刚刚</span>
+      </div>
+    </div>
+  `;
+  el.addEventListener('click', (e) => {
+    e.stopPropagation();
+    focusDoc(newDocData.id);
+  });
+  desk.appendChild(el);
+  
+  // briefly animate scroll-in
+  el.style.opacity = '0';
+  el.style.transform = `translate(-50%, -50%) rotate(${newDocData.rot}deg) scale(1.15)`;
+  setTimeout(() => {
+    el.style.opacity = '';
+    el.style.transform = '';
+  }, 50);
+  
+  focusDoc(newDocData.id);
+  showToast('✨ 新笔记出现在灯下');
+}
+
+// === RESET ===
+function resetDesk() {
+  renderDesk();
+  showToast('🪄 整理完毕 · 文档回到原位');
+}
+
+// === OVERLAY CLOSER ===
+function closeOverlay(id) {
+  document.getElementById(id).classList.remove('show');
+  if (focusedDoc) focusDoc(focusedDoc);
+}
+
+// === TOAST ===
+let toastTimer;
+function showToast(msg, sticky) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  if (toastTimer) clearTimeout(toastTimer);
+  if (!sticky) toastTimer = setTimeout(() => t.classList.remove('show'), 2400);
+}
+
+// === BACKGROUND CLICK (gallery) ===
+document.getElementById('desk').addEventListener('click', (e) => {
+  if (e.target.id === 'desk') {
+    toggleGallery();
+  }
+});
+
+// === KEYBOARD ===
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    closeOverlay('time-overlay');
+    closeOverlay('relics-overlay');
+  }
+  if ((e.key === 't' || e.key === 'T') && !e.metaKey && !e.ctrlKey) {
+    e.preventDefault();
+    const isShown = document.getElementById('time-overlay').classList.contains('show');
+    if (isShown) closeOverlay('time-overlay');
+    else openTimeBands();
+  }
+});
+
+// === INIT ===
+renderDesk();
+</script>
+</body>
+</html>

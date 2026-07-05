@@ -1,4 +1,6 @@
-export type EditorMode = "wysiwyg" | "source" | "sourceReadOnly";
+export type EditorMode = "preview" | "edit" | "source";
+
+export type FileKind = "markdown" | "html" | "text";
 
 export type TranslationProvider = "ollama" | "openai";
 
@@ -24,6 +26,33 @@ export interface AppConfig {
   openaiModel: string;
   translationProvider: TranslationProvider;
   langPair: LangPair;
+  theme: Theme;
+  sidebarLeftVisible: boolean;
+  sidebarRightVisible: boolean;
+  sidebarLeftWidth: number;
+  sidebarRightWidth: number;
+  horizontalSplitRatio: number;
+  verticalSplitRatio: number;
+  recentFiles: RecentFile[];
+}
+
+export type Theme = "system" | "light" | "dark";
+
+export interface RecentFile {
+  path: string;
+  title: string;
+  openedAt: string;
+}
+
+export interface Tab {
+  id: string;
+  title: string;
+  path: string | null;
+  fileKind: FileKind;
+  content: string;
+  dirty: boolean;
+  editorMode: EditorMode;
+  scrollPos: number;
 }
 
 export type RawMarkdown = string;

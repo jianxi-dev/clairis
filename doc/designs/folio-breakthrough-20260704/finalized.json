@@ -1,0 +1,10 @@
+{
+  "concepts": {
+    "A": {"name":"灵境-空间门户","file":"finalized.html","status":"completed"},
+    "B": {"name":"心流桌面-零文件","file":"B-flow-desktop.html","status":"completed"},
+    "C": {"name":"星丛-关联网络+","file":"C-constellation.html","status":"completed"}
+  },
+  "selected_concept": "all",
+  "date": "2026-07-04T01:00:00+08:00",
+  "source_plan": "design-concept.md"
+}

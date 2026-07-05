@@ -128,6 +128,16 @@ pub async fn save_as_file(app: AppHandle, content: String) -> Result<SaveResult,
     Ok(SaveResult { path: path_str })
 }
 
+/// Open a folder picker dialog and return the selected path.
+#[tauri::command]
+pub async fn pick_folder(app: AppHandle) -> Result<String, AppError> {
+    let folder = app.dialog().file().blocking_pick_folder();
+    match folder {
+        Some(p) => Ok(p.into_path().unwrap().to_string_lossy().into_owned()),
+        None => Err(AppError::Cancelled),
+    }
+}
+
 /// Return the size thresholds so the frontend can decide editor mode.
 #[tauri::command]
 pub fn get_size_limits() -> (u64, u64) {

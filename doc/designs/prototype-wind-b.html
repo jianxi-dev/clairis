@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wind Writing B · Scatter Mode</title>
+<style>
+  :root {
+    --fg: #d5cfc0;
+    --fg-dim: rgba(213, 207, 192, 0.4);
+    --bg-void: #05050c;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+    background: var(--bg-void);
+    color: var(--fg);
+    font-family: 'Georgia', 'Noto Serif SC', 'Source Han Serif', serif;
+  }
+
+  /* ── Ambient dust ── */
+  #dust {
+    position: fixed; inset: 0; z-index: 1;
+    background:
+      radial-gradient(1px 1px at 12% 18%, rgba(213,207,192,0.25), transparent 50%),
+      radial-gradient(1px 1px at 73% 25%, rgba(213,207,192,0.2), transparent 50%),
+      radial-gradient(1px 1px at 35% 70%, rgba(213,207,192,0.18), transparent 50%),
+      radial-gradient(1px 1px at 88% 65%, rgba(213,207,192,0.22), transparent 50%),
+      radial-gradient(1px 1px at 50% 40%, rgba(213,207,192,0.12), transparent 50%),
+      radial-gradient(1px 1px at 20% 85%, rgba(213,207,192,0.15), transparent 50%),
+      radial-gradient(1px 1px at 65% 90%, rgba(213,207,192,0.2), transparent 50%),
+      radial-gradient(1px 1px at 5% 50%, rgba(213,207,192,0.14), transparent 50%);
+    animation: dust-drift 60s linear infinite;
+  }
+  @keyframes dust-drift {
+    0%   { transform: translate(0, 0); }
+    100% { transform: translate(-30px, -15px); }
+  }
+
+  /* ── Deep void gradient ── */
+  #void {
+    position: fixed; inset: 0; z-index: 0;
+    background: radial-gradient(ellipse at 50% 45%, #10101f 0%, #05050c 70%);
+  }
+
+  /* ── Streak layer ── */
+  #streaks {
+    position: fixed; inset: 0; z-index: 4;
+    pointer-events: none;
+  }
+  .streak {
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 2px;
+    height: 100px;
+    background: linear-gradient(to top, transparent, rgba(213,207,192,0.35), transparent);
+    transform-origin: bottom center;
+    animation: streak-gust var(--dur, 0.5s) cubic-bezier(0.15, 0.6, 0.3, 1) forwards;
+  }
+  @keyframes streak-gust {
+    0%   { opacity: 0.9; transform: rotate(var(--angle)) translateY(-20%) scaleY(0.3); }
+    100% { opacity: 0;   transform: rotate(var(--angle)) translateY(-220px) scaleY(2.4); }
+  }
+
+  /* ── Fragment layer ── */
+  #fragments {
+    position: fixed; inset: 0; z-index: 5;
+    pointer-events: none;
+  }
+  .fragment {
+    position: absolute;
+    top: 50%; left: 50%;
+    white-space: nowrap;
+    text-shadow: 0 0 10px currentColor;
+    animation: frag-life var(--life, 30s) cubic-bezier(0.4, 0, 0.2, 1) var(--delay, 0s) forwards;
+    will-change: transform, opacity;
+  }
+  @keyframes frag-life {
+    0%   { opacity: 0;
+            transform: translate(-50%, -50%) scale(0.2)
+                       rotate(var(--r0)); }
+    3%   { opacity: 0; }
+    14%  { opacity: var(--max-o, 0.9);
+            transform: translate(calc(-50% + var(--x)), calc(-50% + var(--y)))
+                       scale(1) rotate(var(--r1)); }
+    100% { opacity: var(--final-o, 0.12);
+            transform: translate(calc(-50% + var(--x) + var(--dx)), calc(-50% + var(--y) + var(--dy)))
+                       scale(1) rotate(calc(var(--r1) + var(--dr))); }
+  }
+
+  /* ── Write zone ── */
+  #write-zone {
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transition: opacity 0.5s ease;
+  }
+
+  #write-zone textarea {
+    width: clamp(280px, 50vw, 460px);
+    height: clamp(140px, 30vh, 240px);
+    background: rgba(10, 10, 20, 0.7);
+    border: 1px solid rgba(213, 207, 192, 0.12);
+    color: #e8e4d8;
+    padding: 28px;
+    font-family: inherit;
+    font-size: 18px;
+    line-height: 1.85;
+    letter-spacing: 0.02em;
+    resize: none;
+    outline: none;
+    border-radius: 3px;
+    transition: border-color 0.4s ease, box-shadow 0.4s ease, background 0.4s ease;
+  }
+  #write-zone textarea::placeholder {
+    color: rgba(213, 207, 192, 0.2);
+    font-style: italic;
+  }
+  #write-zone textarea:focus {
+    border-color: rgba(213, 207, 192, 0.3);
+    box-shadow: 0 0 40px rgba(160, 155, 140, 0.04), inset 0 0 20px rgba(160,155,140,0.02);
+    background: rgba(12, 12, 22, 0.85);
+  }
+
+  /* ── Wind button ── */
+  #wind-btn {
+    margin-top: 22px;
+    background: transparent;
+    border: 1px solid rgba(213, 207, 192, 0.2);
+    color: rgba(213, 207, 192, 0.6);
+    font-family: inherit;
+    font-size: 24px;
+    padding: 10px 40px;
+    cursor: pointer;
+    border-radius: 2px;
+    letter-spacing: 6px;
+    transition: all 0.35s ease;
+    position: relative;
+    overflow: hidden;
+  }
+  #wind-btn::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(213,207,192,0.06), transparent);
+    transform: translateX(-100%);
+    transition: transform 0.6s ease;
+  }
+  #wind-btn:hover {
+    color: #e8e4d8;
+    border-color: rgba(213, 207, 192, 0.45);
+    letter-spacing: 8px;
+  }
+  #wind-btn:hover::before { transform: translateX(100%); }
+  #wind-btn:active { transform: scale(0.97); }
+  #wind-btn.scattering {
+    opacity: 0.25;
+    pointer-events: none;
+  }
+
+  /* ── Hint ── */
+  .hint {
+    color: rgba(213, 207, 192, 0.15);
+    font-size: 12px;
+    margin-top: 14px;
+    font-style: italic;
+    letter-spacing: 0.05em;
+  }
+
+  /* ── Fragment counter ── */
+  #counter {
+    position: fixed;
+    bottom: 20px; right: 24px;
+    z-index: 10;
+    color: rgba(213, 207, 192, 0.12);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    font-style: italic;
+  }
+</style>
+</head>
+<body>
+
+<div id="void"></div>
+<div id="dust"></div>
+<div id="streaks"></div>
+<div id="fragments"></div>
+
+<div id="write-zone">
+  <textarea id="text-input" placeholder="Write what weighs on you.&#10;Then let the wind carry it away."></textarea>
+  <button id="wind-btn" onclick="scatter()">风 · 随风而散</button>
+  <div class="hint">— the wind remembers what you release —</div>
+</div>
+
+<div id="counter"></div>
+
+<script>
+  const fragmentsEl = document.getElementById('fragments');
+  const streaksEl   = document.getElementById('streaks');
+  const input       = document.getElementById('text-input');
+  const btn         = document.getElementById('wind-btn');
+  const counterEl   = document.getElementById('counter');
+
+  let totalFragments = 0;
+
+  function updateCounter() {
+    const count = fragmentsEl.querySelectorAll('.fragment').length;
+    counterEl.textContent = count > 0 ? `${count} fragments adrift` : '';
+  }
+
+  function scatter() {
+    const text = input.value.trim();
+    if (!text) return;
+
+    // Lock button
+    btn.classList.add('scattering');
+    setTimeout(() => btn.classList.remove('scattering'), 600);
+
+    // Split into 2-3 word chunks
+    const words = text.split(/\s+/).filter(w => w.length > 0);
+    const chunks = [];
+    let i = 0;
+    while (i < words.length) {
+      const size = 2 + Math.floor(Math.random() * 2); // 2 or 3
+      chunks.push(words.slice(i, i + size).join(' '));
+      i += size;
+    }
+
+    // Viewport-relative max distance
+    const maxDist = Math.min(window.innerWidth, window.innerHeight) * 0.42;
+
+    // ── Wind streaks ──
+    const streakCount = 18 + Math.floor(Math.random() * 8);
+    for (let s = 0; s < streakCount; s++) {
+      const streak = document.createElement('div');
+      streak.className = 'streak';
+      const angle = (Math.random() - 0.5) * 130; // -65° to 65°
+      streak.style.setProperty('--angle', angle + 'deg');
+      streak.style.setProperty('--dur', (0.4 + Math.random() * 0.4) + 's');
+      streak.style.animationDelay = (Math.random() * 0.12) + 's';
+      streaksEl.appendChild(streak);
+      setTimeout(() => streak.remove(), 900);
+    }
+
+    // ── Fragments ──
+    chunks.forEach((chunk, idx) => {
+      const frag = document.createElement('div');
+      frag.className = 'fragment';
+      frag.textContent = chunk;
+
+      // Scatter position: random angle, random distance
+      const angle = Math.random() * Math.PI * 2;
+      const dist  = 80 + Math.random() * (maxDist - 80);
+      const x = Math.cos(angle) * dist;
+      const y = Math.sin(angle) * dist;
+
+      // Rotations
+      const r0 = (Math.random() - 0.5) * 20;
+      const r1 = (Math.random() - 0.5) * 50;
+      const dr = (Math.random() - 0.5) * 25;
+
+      // Drift (gentle upward + sideways)
+      const dx = (Math.random() - 0.5) * 100;
+      const dy = -30 - Math.random() * 80;
+
+      // Opacity
+      const maxO   = 0.75 + Math.random() * 0.25;
+      const finalO = 0.06 + Math.random() * 0.16;
+
+      // Color variation
+      const roll = Math.random();
+      let color;
+      if (roll < 0.45) {
+        // Warm white / parchment
+        color = `hsl(38, ${6 + Math.random()*12}%, ${76 + Math.random()*14}%)`;
+      } else if (roll < 0.75) {
+        // Pale blue
+        color = `hsl(215, ${12 + Math.random()*18}%, ${72 + Math.random()*14}%)`;
+      } else {
+        // Cool grey
+        const lum = 68 + Math.random() * 22;
+        color = `hsl(220, 4%, ${lum}%)`;
+      }
+
+      // Font size
+      const fontSize = 13 + Math.random() * 7;
+
+      // Animation timing
+      const life  = 22 + Math.random() * 28; // 22–50s
+      const delay = idx * (0.04 + Math.random() * 0.08); // staggered
+
+      // Apply
+      frag.style.color      = color;
+      frag.style.fontSize   = fontSize + 'px';
+      frag.style.setProperty('--x',   x + 'px');
+      frag.style.setProperty('--y',   y + 'px');
+      frag.style.setProperty('--dx',  dx + 'px');
+      frag.style.setProperty('--dy',  dy + 'px');
+      frag.style.setProperty('--r0',  r0 + 'deg');
+      frag.style.setProperty('--r1',  r1 + 'deg');
+      frag.style.setProperty('--dr',  dr + 'deg');
+      frag.style.setProperty('--max-o',   maxO);
+      frag.style.setProperty('--final-o', finalO);
+      frag.style.setProperty('--life', life + 's');
+      frag.style.setProperty('--delay', delay + 's');
+
+      fragmentsEl.appendChild(frag);
+      totalFragments++;
+    });
+
+    // Clear textarea
+    input.value = '';
+
+    // Update counter
+    updateCounter();
+
+    // Clean up fully-faded fragments after their animation ends
+    // (they remain visually but we can remove DOM nodes after ~life+delay)
+    const maxLife = 50 + chunks.length * 0.12;
+    setTimeout(updateCounter, maxLife * 1000);
+  }
+
+  // Keyboard: Ctrl+Enter to scatter
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      scatter();
+    }
+  });
+
+  // Initial counter
+  updateCounter();
+</script>
+</body>
+</html>

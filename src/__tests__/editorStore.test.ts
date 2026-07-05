@@ -12,7 +12,7 @@ describe("editorStore", () => {
       const state = useEditorStore.getState();
       expect(state.content).toBe("");
       expect(state.dirty).toBe(false);
-      expect(state.editorMode).toBe("wysiwyg");
+      expect(state.editorMode).toBe("preview");
       expect(state.fontSize).toBe(16);
       expect(state.filePath).toBeNull();
       expect(state.fileName).toBeNull();
@@ -42,11 +42,11 @@ describe("editorStore", () => {
       useEditorStore.getState().setEditorMode("source");
       expect(useEditorStore.getState().editorMode).toBe("source");
 
-      useEditorStore.getState().setEditorMode("sourceReadOnly");
-      expect(useEditorStore.getState().editorMode).toBe("sourceReadOnly");
+      useEditorStore.getState().setEditorMode("source");
+      expect(useEditorStore.getState().editorMode).toBe("source");
 
-      useEditorStore.getState().setEditorMode("wysiwyg");
-      expect(useEditorStore.getState().editorMode).toBe("wysiwyg");
+      useEditorStore.getState().setEditorMode("preview");
+      expect(useEditorStore.getState().editorMode).toBe("preview");
     });
   });
 

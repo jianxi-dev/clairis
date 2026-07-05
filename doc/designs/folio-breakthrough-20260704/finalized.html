@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>墨页 · 灵境 — 空间文档门户</title>
+</head>
+<body>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Literata:opsz,wght@7..72,300;7..72,400;7..72,500;7..72,600;7..72,700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0c0c0e;--bg2:#141416;--surface:#1c1c20;--text:#e2dfd8;--text2:#8a867e;--text3:#535156;--primary:#7c6df0;--primary2:#6a5bd8;--warm:#d4a574;--amber:#b8864e;--radius:12px;--radius-sm:8px;--shadow:0 2px 8px rgba(0,0,0,0.3);--shadow-lg:0 20px 60px rgba(0,0,0,0.5);--font-sans:Inter,-apple-system,BlinkMacSystemFont,sans-serif;--font-serif:Literata,Georgia,serif;--ease:cubic-bezier(0.22,1,0.36,1);--slide-duration:0.6s}
+[data-theme=light]{--bg:#f5f0eb;--bg2:#ede8e2;--surface:#fcf9f6;--text:#1a1a18;--text2:#6b6558;--text3:#9c9586;--shadow:0 2px 12px rgba(0,0,0,0.06);--shadow-lg:0 20px 60px rgba(0,0,0,0.08)}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;overflow:hidden;font-family:var(--font-sans);background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased}
+
+/* === Base layers === */
+#particle-canvas{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:0.4}
+
+/* === Document view === */
+.doc-view{position:fixed;inset:0;z-index:10;display:flex;flex-direction:column;transition:transform var(--slide-duration) var(--ease);will-change:transform;background:var(--bg)}
+.doc-view.portal-open{transform:translateX(35%) scale(0.85) perspective(1200px) rotateY(3deg);border-radius:16px;box-shadow:-10px 0 40px rgba(0,0,0,0.4)}
+.doc-header{display:flex;align-items:center;padding:20px 32px 0;gap:12px;opacity:0;transform:translateY(-8px);animation:docIn 0.5s var(--ease) 0.3s forwards}
+.doc-header .back-hint{font-size:12px;color:var(--text3);display:flex;align-items:center;gap:6px;padding:4px 10px;border-radius:6px;background:var(--bg2);cursor:pointer;transition:all 0.2s}
+.doc-header .back-hint:hover{color:var(--text);background:var(--surface)}
+.doc-header .doc-title{font-size:13px;font-weight:500;color:var(--text2)}
+.doc-header .doc-meta{margin-left:auto;font-size:11px;color:var(--text3)}
+.doc-body{flex:1;padding:40px 48px;overflow-y:auto;opacity:0;animation:docIn 0.5s var(--ease) 0.4s forwards;max-width:720px;margin:0 auto;width:100%}
+.doc-body h1{font-size:32px;font-weight:600;margin-bottom:24px;letter-spacing:-0.03em;line-height:1.3}
+.doc-body p{font-size:16px;line-height:1.8;margin-bottom:16px;color:var(--text)}
+.doc-body .meta-line{font-size:12px;color:var(--text3);margin-bottom:32px;display:flex;gap:16px}
+@keyframes docIn{to{opacity:1;transform:translateY(0)}}
+
+/* === Edge trigger === */
+.edge-trigger{position:fixed;left:0;top:0;width:12px;height:100%;z-index:20;cursor:pointer;transition:all 0.3s}
+.edge-trigger:hover{width:24px}
+.edge-trigger::after{content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);width:3px;height:40px;border-radius:3px;background:var(--primary);opacity:0;transition:all 0.3s var(--ease)}
+.edge-trigger:hover::after{opacity:0.5;height:60px}
+.edge-indicator{position:fixed;left:12px;top:50%;transform:translateY(-50%);z-index:15;font-size:10px;color:var(--text3);writing-mode:vertical-rl;letter-spacing:2px;opacity:0;transition:opacity 0.5s;pointer-events:none}
+.edge-trigger:hover~.edge-indicator,.portal-open~.edge-indicator{opacity:0.6}
+
+/* === Portal === */
+.portal{position:fixed;inset:0;z-index:5;display:flex;align-items:center;justify-content:center;pointer-events:none;transition:all var(--slide-duration) var(--ease)}
+.portal.active{pointer-events:auto}
+.portal-bg{position:absolute;inset:0;background:var(--bg);opacity:0;transition:opacity 0.8s var(--ease)}
+.portal.active .portal-bg{opacity:1}
+.portal-inner{position:relative;width:100%;height:100%;display:flex;flex-direction:column;justify-content:center;padding:80px 60px;max-width:1000px;margin:0 auto;opacity:0;transform:translateX(-40px);transition:all 0.6s var(--ease) 0.1s}
+.portal.active .portal-inner{opacity:1;transform:translateX(0)}
+
+/* Search bar */
+.portal-search{position:relative;margin-bottom:40px;max-width:480px}
+.portal-search input{width:100%;padding:14px 20px 14px 48px;border-radius:12px;border:1px solid rgba(255,255,255,0.06);background:var(--surface);color:var(--text);font-size:16px;outline:none;font-family:var(--font-sans);transition:all 0.3s}
+.portal-search input:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(124,109,240,0.15)}
+.portal-search input::placeholder{color:var(--text3)}
+.portal-search .icon{position:absolute;left:16px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:18px}
+.portal-search .hotkey{position:absolute;right:14px;top:50%;transform:translateY(-50%);padding:3px 8px;border-radius:4px;background:var(--bg2);font-size:10px;color:var(--text3);letter-spacing:0.5px}
+
+/* Document cards grid */
+.portal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:20px;perspective:800px;overflow-y:auto;flex:1;padding:4px;margin:-4px}
+.portal-card{position:relative;background:var(--surface);border-radius:var(--radius);padding:24px;cursor:pointer;transition:all 0.4s var(--ease);border:1px solid rgba(255,255,255,0.04);transform:translateY(20px);opacity:0;animation:cardIn 0.5s var(--ease) forwards;will-change:transform}
+.portal-card:nth-child(1){animation-delay:0.15s}
+.portal-card:nth-child(2){animation-delay:0.22s}
+.portal-card:nth-child(3){animation-delay:0.29s}
+.portal-card:nth-child(4){animation-delay:0.36s}
+.portal-card:nth-child(5){animation-delay:0.43s}
+.portal-card:nth-child(6){animation-delay:0.50s}
+.portal-card:nth-child(7){animation-delay:0.57s}
+.portal-card:nth-child(8){animation-delay:0.64s}
+@keyframes cardIn{to{opacity:1;transform:translateY(0)}}
+.portal-card:hover{transform:translateY(-4px);border-color:rgba(124,109,240,0.2);box-shadow:0 12px 40px rgba(0,0,0,0.3)}
+.portal-card .card-icon{font-size:24px;margin-bottom:12px;display:block}
+.portal-card .card-title{font-size:15px;font-weight:600;margin-bottom:6px;line-height:1.3}
+.portal-card .card-preview{font-size:13px;color:var(--text2);line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.portal-card .card-time{font-size:11px;color:var(--text3);margin-top:12px;display:flex;align-items:center;gap:6px}
+.portal-card .card-badge{font-size:10px;padding:2px 8px;border-radius:4px;margin-left:auto}
+.portal-card .card-badge.hot{background:rgba(212,165,116,0.12);color:var(--warm)}
+.portal-card .card-badge.new{background:rgba(124,109,240,0.12);color:var(--primary)}
+.portal-card .card-float{position:absolute;inset:0;pointer-events:none;border-radius:var(--radius);background:linear-gradient(135deg,rgba(124,109,240,0.03),transparent 50%)}
+.portal-card.search-hidden{opacity:0;transform:scale(0.9) translateY(10px);pointer-events:none;animation:none}
+
+/* Cards section label */
+.portal-section{margin-bottom:8px;font-size:11px;font-weight:600;color:var(--text3);letter-spacing:1px;text-transform:uppercase;grid-column:1/-1;padding-top:24px;border-top:1px solid rgba(255,255,255,0.04)}
+.portal-section:first-of-type{border-top:none;padding-top:0}
+
+/* === Portal header with close === */
+.portal-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:28px}
+.portal-top h2{font-size:20px;font-weight:600;letter-spacing:-0.02em}
+.portal-top .close-btn{width:36px;height:36px;border-radius:50%;border:none;background:var(--surface);color:var(--text2);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.2s}
+.portal-top .close-btn:hover{background:var(--primary);color:white}
+.portal-top .hint{font-size:12px;color:var(--text3);display:flex;align-items:center;gap:8px}
+.portal-top .hint kbd{padding:2px 6px;border-radius:3px;background:var(--bg2);font-size:10px;font-family:var(--font-sans)}
+
+/* === Keyboard shortcut hint === */
+.kb-hint{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:30;padding:8px 20px;border-radius:10px;background:var(--surface);border:1px solid rgba(255,255,255,0.06);font-size:12px;color:var(--text3);display:flex;align-items:center;gap:8px;opacity:0;transition:opacity 0.5s;backdrop-filter:blur(12px)}
+.kb-hint.visible{opacity:0.8}
+.kb-hint kbd{padding:2px 5px;border-radius:3px;background:var(--bg2);font-size:10px;font-family:var(--font-sans);color:var(--text2)}
+
+/* === Theme toggle === */
+.theme-btn{position:fixed;top:20px;right:24px;z-index:25;width:36px;height:36px;border-radius:50%;border:1px solid rgba(255,255,255,0.06);background:var(--surface);color:var(--text2);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.3s;opacity:0.4}
+.theme-btn:hover{opacity:1;border-color:var(--primary)}
+
+/* === Ambient floating particles for cards === */
+.particle-orb{position:absolute;border-radius:50%;pointer-events:none;background:radial-gradient(circle,rgba(124,109,240,0.08),transparent 70%);animation:orbFloat 8s ease-in-out infinite}
+
+/* === Empty state === */
+.portal-empty{text-align:center;padding:60px;color:var(--text3);font-size:14px;opacity:0.5}
+
+/* === Floating animation for portal cards === */
+@keyframes float1{0%,100%{transform:translateY(0px)}50%{transform:translateY(-6px)}}
+@keyframes float2{0%,100%{transform:translateY(0px)}50%{transform:translateY(4px)}}
+@keyframes float3{0%,100%{transform:translateY(0px)}50%{transform:translateY(-3px)}}
+
+/* === Responsive === */
+@media(max-width:768px){
+.doc-body{padding:24px 20px}
+.doc-body h1{font-size:26px}
+.portal-inner{padding:60px 24px}
+.portal-grid{grid-template-columns:repeat(auto-fill,minmax(180px,1fr))}
+.doc-view.portal-open{transform:translateX(20%) scale(0.9)}
+}
+
+/* === Scrollbar === */
+.doc-body::-webkit-scrollbar,.portal-grid::-webkit-scrollbar{width:4px}
+.doc-body::-webkit-scrollbar-track,.portal-grid::-webkit-scrollbar-track{background:transparent}
+.doc-body::-webkit-scrollbar-thumb,.portal-grid::-webkit-scrollbar-thumb{background:var(--text3);border-radius:2px}
+
+.doc{position:absolute;inset:0;z-index:2;display:flex;flex-direction:column;transition:transform 0.6s cubic-bezier(0.22,1,0.36,1),border-radius 0.6s,box-shadow 0.6s;will-change:transform;background:var(--bg);overflow:hidden}
+.doc.portal-open{transform:translateX(38%) scale(0.82);border-radius:16px;box-shadow:-8px 0 40px rgba(0,0,0,0.5),0 20px 60px rgba(0,0,0,0.3)}
+.doc-hdr{display:flex;align-items:center;padding:18px 32px 0;gap:12px;flex-shrink:0;opacity:0;animation:fadeIn 0.4s ease 0.2s forwards}
+.doc-hdr .back{font-size:12px;color:var(--text3);cursor:pointer;padding:4px 10px;border-radius:6px;background:var(--bg2);transition:all 0.2s}
+.doc-hdr .back:hover{color:var(--text);background:var(--surface)}
+.portal{position:fixed;inset:0;z-index:1;pointer-events:none;transition:all 0.6s cubic-bezier(0.22,1,0.36,1)}
+.portal.active{pointer-events:auto}
+.portal-bg{position:absolute;inset:0;background:var(--bg);opacity:0;transition:opacity 0.8s ease}
+.portal.active .portal-bg{opacity:1}
+.portal-in{position:relative;width:100%;height:100%;display:flex;flex-direction:column;justify-content:center;padding:60px 56px;max-width:960px;margin:0 auto;opacity:0;transform:translateX(-30px);transition:all 0.5s ease 0.1s}
+.portal.active .portal-in{opacity:1;transform:translateX(0)}
+.p-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px}
+.p-top h3{font-size:18px;font-weight:600}
+.p-top .p-hint{font-size:11px;color:var(--text3)}
+.p-close{width:32px;height:32px;border-radius:50%;border:none;background:var(--surface);color:var(--text2);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.2s}
+.p-close:hover{background:var(--primary);color:white}
+.p-srch{margin-bottom:32px;max-width:420px}
+.p-srch input{width:100%;padding:12px 18px;border-radius:10px;border:1px solid rgba(255,255,255,0.06);background:var(--surface);color:var(--text);font-size:15px;outline:none;font-family:var(--font-sans);transition:all 0.3s}
+.p-srch input:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(124,109,240,0.12)}
+.p-srch input::placeholder{color:var(--text3)}
+.p-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;overflow-y:auto;flex:1;padding:4px;margin:-4px}
+.p-grid .card{position:relative;background:var(--surface);border-radius:var(--radius);padding:20px;cursor:pointer;transition:all 0.35s cubic-bezier(0.22,1,0.36,1);border:1px solid rgba(255,255,255,0.04);transform:translateY(16px);opacity:0;animation:cardIn 0.5s ease forwards}
+.p-grid .card:nth-child(1){animation-delay:0.12s}
+.p-grid .card:nth-child(2){animation-delay:0.19s}
+.p-grid .card:nth-child(3){animation-delay:0.26s}
+.p-grid .card:nth-child(4){animation-delay:0.33s}
+.p-grid .card:nth-child(5){animation-delay:0.40s}
+.p-grid .card:nth-child(6){animation-delay:0.47s}
+.p-grid .card:nth-child(7){animation-delay:0.54s}
+.p-grid .card:nth-child(8){animation-delay:0.61s}
+@keyframes cardIn{to{opacity:1;transform:translateY(0)}}
+.p-grid .card:hover{transform:translateY(-5px)!important;border-color:rgba(124,109,240,0.2);box-shadow:0 12px 40px rgba(0,0,0,0.3)}
+.p-grid .card.hidden{opacity:0;transform:scale(0.92) translateY(8px);pointer-events:none;animation:none;transition:all 0.3s ease}
+.card .ci{font-size:22px;margin-bottom:10px;display:block}
+.card .ct{font-size:14px;font-weight:600;margin-bottom:4px;line-height:1.3}
+.card .cp{font-size:12px;color:var(--text2);line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.card .ctm{font-size:10px;color:var(--text3);margin-top:10px;display:flex;align-items:center;gap:6px}
+.card .cb{font-size:9px;padding:2px 6px;border-radius:3px;margin-left:auto}
+.card .cb.hot{background:rgba(212,165,116,0.12);color:var(--warm)}
+.card .cb.new{background:rgba(124,109,240,0.12);color:var(--primary)}
+.edge{position:fixed;left:0;top:0;width:10px;height:100%;z-index:20;cursor:pointer;transition:all 0.3s}
+.edge:hover{width:20px}
+.edge::after{content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);width:3px;height:32px;border-radius:3px;background:var(--primary);opacity:0;transition:all 0.3s}
+.edge:hover::after{opacity:0.4;height:48px}
+.theme{position:fixed;top:16px;right:20px;z-index:25;width:34px;height:34px;border-radius:50%;border:1px solid rgba(255,255,255,0.06);background:var(--surface);color:var(--text2);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.3s;opacity:0.35}
+.theme:hover{opacity:1;border-color:var(--primary)}
+.kb-hint{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:30;padding:6px 16px;border-radius:8px;background:var(--surface);border:1px solid rgba(255,255,255,0.05);font-size:11px;color:var(--text3);display:flex;align-items:center;gap:6px;opacity:0;transition:opacity 0.5s;pointer-events:none}
+.kb-hint.visible{opacity:0.6}
+@media(max-width:768px){
+.doc-body{padding:24px 20px}.doc-body h1{font-size:24px}
+.portal-in{padding:48px 20px}.p-grid{grid-template-columns:repeat(auto-fill,minmax(160px,1fr))}
+.doc.portal-open{transform:translateX(15%) scale(0.92)}
+}
+.doc-hdr .meta{margin-left:auto;font-size:11px;color:var(--text3)}
+.doc-body h1{font-size:30px;font-weight:600;margin-bottom:20px;letter-spacing:-0.03em;line-height:1.3}
+.doc-body p{font-size:16px;line-height:1.8;margin-bottom:16px;color:var(--text)}
+.doc-body .mline{font-size:12px;color:var(--text3);margin-bottom:28px;display:flex;gap:16px}
+@keyframes fadeIn{to{opacity:1}}
+</style>
+</head>
+<body>
+<canvas id="particle-canvas"></canvas>
+<div class="view" id="view">
+  <div class="doc" id="doc">
+    <div class="doc-hdr">
+      <span class="back" onclick="openPortal()">◁ 所有文档</span>
+      <span id="docTitle">设计哲学.md</span>
+      <span class="meta" id="docMeta">8 段</span>
+    </div>
+    <div class="doc-body" id="docBody"></div>
+  </div>
+  <div class="portal" id="portal">
+    <div class="portal-bg"></div>
+    <div class="portal-in">
+      <div class="p-top">
+        <h3>文档空间</h3>
+        <span class="p-hint">⌘K 搜索 · Esc 关闭</span>
+        <button class="p-close" onclick="closePortal()">✕</button>
+      </div>
+      <div class="p-srch">
+        <input type="text" placeholder="搜索…" id="srch" oninput="filterDocs(this.value)">
+      </div>
+      <div class="p-grid" id="grid"></div>
+    </div>
+  </div>
+  <div class="edge" onclick="openPortal()"></div>
+</div>
+<button class="theme" onclick="toggleTheme()">☀️</button>
+<script>
+const docs = [
+  {id:'哲学',icon:'✧',title:'设计哲学',preview:'设计的本质不是解决问题，是创造值得拥有的体验。',body:['设计的本质不是解决问题，是创造值得拥有的体验。','每次我坐在空白的编辑器前，都会想起一个简单的问题：为什么大多数写作工具让人不想写作？','答案也许不在功能上，而在感觉上。工具越像工具，越难让人待在里面。','编辑器不应该是一个你用完就走的应用程序——它应该是一个你愿意待着的地方。','这指向一个悖论：最好的写作工具，是那些让你忘记自己在使用工具的。','留白的核心理念是：当不确定是否要加一个东西时，不加。','设计师不应该管理文件。编辑器应该管理文件。用户应该管理想法。','真正的复杂度不在功能数量，而在功能之间的相互作用。少即是多。'],time:'20分钟前',badge:'hot',color:'#7c6df0'},
+  {id:'架构',icon:'◈',title:'技术架构',preview:'Rust 前端选型决策：为什么选 Tauri + React 而不是 Electron。',body:['Rust 前端选型决策。','选择 Tauri + React 而不是 Electron 有三个理由：','1. 包体积：Electron 最小 120MB，Tauri 最小 3MB。','2. 内存：Electron 空闲 200MB+，Tauri 空闲 30MB。','3. 启动速度：Tauri < 1s，Electron 2-3s。','代价是 Rust 生态比 Node.js 生态小，但核心功能够了。'],time:'2小时前',badge:'',color:'#d4a574'},
+  {id:'规范',icon:'▣',title:'排版规范',preview:'正文 16px/1.7，H1 28px/1.3，段落间距 0.8em。',body:['排版规范：正文 16px/1.7，H1 28px/1.3，段落间距 0.8em。','字体系列：中文 PingFang SC，英文 Inter, system-ui。','标题前距 1.5em，后距 0.5em。','代码块/引用/表格的细节美化放在 P1。','不做语义中间层 token，只用两层架构。'],time:'4小时前',badge:'',color:'#6b9e8a'},
+  {id:'咨询',icon:'✦',title:'设计咨询备忘',preview:'Notion + Linear 中间路线。表面层 Linear 风格，内容层 Notion 风格。',body:['Notion + Linear 中间路线。','表面层：Linear 风格——低饱和度、高效率、不抢戏。','内容层：Notion 风格——柔和、纸张感、让注意力在内容上。','D2: CSS Token 两层架构，不做语义中间层。','D3: 使用 Lucide React，strokeWidth 1.5, size 14。'],time:'昨天',badge:'new',color:'#a88dc8'},
+  {id:'要求',icon:'◎',title:'CORE-REQUIREMENTS',preview:'轻量秒开的 Markdown 阅读编辑器。核心价值：美观 > 功能 > 性能 > 扩展。',body:['轻量秒开的 Markdown 阅读编辑器。','核心价值：美观 > 功能 > 性能 > 扩展。','目标用户：70% 普通阅读者，20% 轻度编辑者，10% 技术用户。','四原则：快⚡方便🖐️舒服😌喜欢❤️','减法原则：当不确定是否要加一个功能时，不加。'],time:'昨天',badge:'',color:'#e8a87c'},
+  {id:'周会',icon:'○',title:'周会记录',preview:'讨论了 Q3 架构方向。主要决定：后端迁移到 Rust。',body:['周会记录 — 2026-07-02','讨论了 Q3 架构方向。','主要决定：后端迁移到 Rust。','讨论了设计系统的 Token 方案。','下周目标：完成 P0 改进分支。'],time:'3天前',badge:'',color:'#7ca8c8'},
+  {id:'API',icon:'◇',title:'API 设计',preview:'文件系统 API 设计。Rust 命令层 + TypeScript 调用层。',body:['文件系统 API 设计。','采用 Rust 命令层 + TypeScript 调用层。','所有命令通过 Tauri invoke 调用。','返回值使用 Result<T, String> 模式。'],time:'5天前',badge:'',color:'#c89a7c'},
+  {id:'组件',icon:'□',title:'组件树',preview:'App → Toolbar + Layout → Sidebar + ContentSplitView。',body:['组件树结构：App → Toolbar + Layout。','Layout 三栏容器：LeftSidebar + Center + RightSidebar。','Center 包含 ContentSplitView → TabBar + ContentArea。','ErrorBoundary 包裹每个面板保证隔离。'],time:'1周前',badge:'',color:'#8ab8a0'}
+];
+
+let currentDoc = 0;
+let portalOpen = false;
+
+function renderGrid() {
+  const grid = document.getElementById('grid');
+  grid.innerHTML = docs.map((d, i) =>
+    `<div class="card" data-idx="${i}" onclick="openDoc(${i})">
+      <span class="ci" style="color:${d.color}">${d.icon}</span>
+      <div class="ct">${d.title}</div>
+      <div class="cp">${d.preview}</div>
+      <div class="ctm"><span>${d.time}</span>${d.badge ? `<span class="cb ${d.badge}">${d.badge === 'hot' ? '🔥 活跃' : '✨ 新增'}</span>` : ''}</div>
+    </div>`
+  ).join('');
+}
+
+function renderDoc(idx) {
+  const d = docs[idx];
+  currentDoc = idx;
+  document.getElementById('docTitle').textContent = d.title + '.md';
+  const docBody = document.getElementById('docBody');
+  docBody.innerHTML = `
+    <div class="mline"><span>2026 年 7 月 3 日</span><span>·</span><span>${d.body.length} 段</span></div>
+    <h1>${d.title}</h1>
+    ${d.body.map(p => `<p>${p}</p>`).join('')}
+  `;
+  docBody.scrollTop = 0;
+  document.getElementById('docMeta').textContent = d.body.length + ' 段 · ' + d.body.join('').length + ' 字';
+  // Highlight active card
+  document.querySelectorAll('.card').forEach(c => c.classList.toggle('active', parseInt(c.dataset.idx) === idx));
+}
+
+function openPortal() {
+  portalOpen = true;
+  document.getElementById('doc').classList.add('portal-open');
+  document.getElementById('portal').classList.add('active');
+  document.getElementById('kbHint').classList.remove('visible');
+  renderGrid();
+  setTimeout(() => document.getElementById('srch')?.focus(), 300);
+}
+
+function closePortal() {
+  portalOpen = false;
+  document.getElementById('doc').classList.remove('portal-open');
+  document.getElementById('portal').classList.remove('active');
+  setTimeout(() => document.getElementById('kbHint').classList.add('visible'), 500);
+}
+
+function openDoc(idx) {
+  renderDoc(idx);
+  closePortal();
+}
+
+function filterDocs(q) {
+  document.querySelectorAll('.card').forEach(c => {
+    const match = c.textContent.toLowerCase().includes(q.toLowerCase());
+    c.classList.toggle('hidden', !match);
+  });
+}
+
+function toggleTheme() {
+  const t = document.documentElement;
+  const is = t.getAttribute('data-theme') === 'dark';
+  t.setAttribute('data-theme', is ? 'light' : 'dark');
+}
+
+// Keyboard shortcuts
+document.addEventListener('keydown', e => {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+    e.preventDefault();
+    portalOpen ? closePortal() : openPortal();
+  }
+  if (e.key === 'Escape' && portalOpen) closePortal();
+});
+
+// Particle canvas
+(function() {
+  const c = document.getElementById('particle-canvas');
+  const ctx = c.getContext('2d');
+  let particles = [];
+
+  function resize() {
+    c.width = window.innerWidth * devicePixelRatio;
+    c.height = window.innerHeight * devicePixelRatio;
+    ctx.scale(devicePixelRatio, devicePixelRatio);
+  }
+  resize();
+
+  for (let i = 0; i < 40; i++) {
+    particles.push({
+      x: Math.random() * window.innerWidth,
+      y: Math.random() * window.innerHeight,
+      r: Math.random() * 2 + 0.5,
+      dx: (Math.random() - 0.5) * 0.3,
+      dy: (Math.random() - 0.5) * 0.3,
+      o: Math.random() * 0.3 + 0.05
+    });
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+    const w = window.innerWidth, h = window.innerHeight;
+
+    particles.forEach(p => {
+      p.x += p.dx;
+      p.y += p.dy;
+      if (p.x < 0) p.x = w;
+      if (p.x > w) p.x = 0;
+      if (p.y < 0) p.y = h;
+      if (p.y > h) p.y = 0;
+
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(124, 109, 240, ${p.o * 0.3})`;
+      ctx.fill();
+    });
+
+    // Draw connections
+    for (let i = 0; i < particles.length; i++) {
+      for (let j = i + 1; j < particles.length; j++) {
+        const dx = particles[i].x - particles[j].x;
+        const dy = particles[i].y - particles[j].y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < 120) {
+          ctx.beginPath();
+          ctx.moveTo(particles[i].x, particles[i].y);
+          ctx.lineTo(particles[j].x, particles[j].y);
+          ctx.strokeStyle = `rgba(124, 109, 240, ${(1 - dist / 120) * 0.06})`;
+          ctx.stroke();
+        }
+      }
+    }
+
+    requestAnimationFrame(draw);
+  }
+
+  window.addEventListener('resize', resize);
+  draw();
+})();
+
+// Show keyboard hint
+setTimeout(() => document.getElementById('kbHint').classList.add('visible'), 1500);
+
+// Init
+renderDoc(0);
+</script>
+</body>
+</html>

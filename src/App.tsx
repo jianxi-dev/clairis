@@ -1,11 +1,19 @@
 import { useCallback, useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useStore } from "./stores/index";
-import ContentArea from "./components/Content/ContentArea";
+import { useEditorStore } from "./stores/editorStore";
+import Layout from "./components/Layout";
+import Toolbar from "./components/Toolbar";
+import SidebarPanel from "./components/SidebarPanel";
+import RecentFiles from "./components/Sidebar/RecentFiles";
+import FileTree from "./components/Sidebar/FileTree";
+import Outline from "./components/Sidebar/Outline";
+import ContentSplitView from "./components/Content/ContentSplitView";
 import { getActiveEditorView } from "./editors/editorRef";
 import { toggleBold, toggleItalic } from "./editors/keybindings";
+import { useConfig } from "./hooks/useConfig";
+import { log } from "./utils/log";
 
-// Detect Tauri environment
 const isTauri =
   typeof window !== "undefined" &&
   (window as unknown as Record<string, unknown>).__TAURI_INTERNALS__ !== undefined;
@@ -14,6 +22,11 @@ function App() {
   const activeTabId = useStore((s) => s.activeTabId);
   const tabs = useStore((s) => s.tabs);
   const activeTab = activeTabId ? tabs[activeTabId] : null;
+  const readingMode = useStore((s) => s.readingMode);
+
+  // Init config loading + theme on mount
+  const { setTheme, scheduleSave } = useConfig();
+  const theme = useEditorStore((s) => s.config.theme ?? "system");
 
   // ── File operations ──────────────────────────────────────────
 
@@ -21,43 +34,44 @@ function App() {
     if (!isTauri) return;
     try {
       const result = await invoke<{ content: string; path: string; file_size: number }>("open_file");
-      useStore.getState().openFile(result.path, result.content);
+      const store = useStore.getState();
+      store.openFile(result.path, result.content);
+      store.addRecentFile(result.path, result.path.split("/").pop() || result.path);
+      scheduleSave();
     } catch (e) {
       if (String(e) !== "Operation cancelled") {
-        console.error("Failed to open file:", e);
+        log.error("App", "Failed to open file", e);
       }
     }
-  }, []);
+  }, [scheduleSave]);
 
   const handleSaveFile = useCallback(async () => {
-    if (!isTauri || !activeTab) return;
-    if (!activeTab.path) return; // Can't save without a path
+    if (!isTauri || !activeTab?.path) return;
     try {
       await invoke("save_file", { path: activeTab.path, content: activeTab.content });
       useStore.getState().markClean();
     } catch (e) {
-      console.error("Failed to save file:", e);
+      log.error("App", "Failed to save file", e);
     }
   }, [activeTab?.path, activeTab?.content]);
 
-  // ── Auto-save (2s debounce after last change) ────────────────
+  const handleNewFile = useCallback(() => {
+    useStore.getState().newTab();
+  }, []);
+
+  // ── Auto-save (2s debounce) ──────────────────────────────────
 
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!activeTab?.dirty || !activeTab?.path) return;
-
     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
 
     autoSaveTimerRef.current = setTimeout(() => {
       if (!isTauri || !activeTab?.path) return;
       invoke("save_file", { path: activeTab.path, content: activeTab.content })
-        .then(() => {
-          useStore.getState().markClean();
-        })
-        .catch((e: unknown) => {
-          console.error("Auto-save failed:", e);
-        });
+        .then(() => useStore.getState().markClean())
+        .catch((e: unknown) => log.error("App", "Auto-save failed", e));
     }, 2000);
 
     return () => {
@@ -65,15 +79,12 @@ function App() {
     };
   }, [activeTab?.dirty, activeTab?.content, activeTab?.path]);
 
-  // ── Reading mode state ───────────────────────────────────────
-
-  const readingMode = useStore((s) => s.readingMode);
-
   // ── Keyboard shortcuts ───────────────────────────────────────
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const meta = e.metaKey || e.ctrlKey;
+      const store = useStore.getState();
 
       // Cmd+O: Open file
       if (meta && e.key === "o") {
@@ -81,18 +92,69 @@ function App() {
         handleOpenFile();
       }
 
-      // Cmd+S: Save (manual trigger, auto-save also runs)
+      // Cmd+S: Save
       if (meta && e.key === "s") {
         e.preventDefault();
         handleSaveFile();
       }
 
-      // Cmd+Shift+M: Toggle editor mode (preview ↔ edit ↔ source)
+      // Cmd+N: New file
+      if (meta && e.key === "n") {
+        e.preventDefault();
+        store.newTab();
+      }
+
+      // Cmd+W: Close active tab
+      if (meta && e.key === "w" && activeTabId) {
+        e.preventDefault();
+        store.closeTab(activeTabId);
+      }
+
+      // Cmd+\ : Toggle left sidebar
+      if (meta && e.key === "\\") {
+        e.preventDefault();
+        store.toggleLeftSidebar();
+        scheduleSave();
+      }
+
+      // Cmd+Shift+\ : Toggle right sidebar
+      if (meta && e.shiftKey && e.key === "\\") {
+        e.preventDefault();
+        store.toggleRightSidebar();
+        scheduleSave();
+      }
+
+      // Cmd+Shift+S: Stop split (unsplit)
+      if (meta && e.shiftKey && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        store.unsplit();
+      }
+
+      // Cmd+Shift+H: Horizontal split (active tab to the right)
+      if (meta && e.shiftKey && e.key.toLowerCase() === "h" && activeTabId) {
+        e.preventDefault();
+        if (store.splitDirection) {
+          store.unsplit();
+        }
+        store.splitTab(activeTabId, "horizontal");
+      }
+
+      // Cmd+Shift+V: Vertical split (active tab to the bottom)
+      if (meta && e.shiftKey && e.key.toLowerCase() === "v" && activeTabId) {
+        e.preventDefault();
+        if (store.splitDirection) {
+          store.unsplit();
+        }
+        store.splitTab(activeTabId, "vertical");
+      }
+
+      // Cmd+Shift+M: Toggle editor mode
       if (meta && e.shiftKey && e.key.toLowerCase() === "m") {
         e.preventDefault();
         const current = activeTab?.editorMode || "preview";
-        const next = current === "preview" ? "edit" : current === "edit" ? "source" : "preview";
-        useStore.getState().setEditorMode(next);
+        const next =
+          current === "preview" ? "edit" : current === "edit" ? "source" : "preview";
+        store.setEditorMode(next);
       }
 
       // Cmd+B: Bold
@@ -104,20 +166,26 @@ function App() {
         }
       }
 
-      // Cmd+I: Italic — handled in capture-phase listener (macOS workaround)
-      if (meta && e.key === "i") {
-        // Capture-phase listener below handles this
+      // Cmd+= and Cmd+-: Font size
+      if (meta && (e.key === "=" || e.key === "-")) {
+        e.preventDefault();
+        const editorStore = useEditorStore.getState();
+        const delta = e.key === "=" ? 1 : -1;
+        const next = Math.max(12, Math.min(32, editorStore.fontSize + delta));
+        editorStore.setFontSize(next);
+        document.documentElement.style.setProperty("--editor-font-size", `${next}px`);
+        scheduleSave();
       }
 
       // Escape: Exit reading mode
       if (e.key === "Escape" && readingMode) {
-        useStore.getState().setReadingMode(false);
+        store.setReadingMode(false);
       }
     };
 
     window.addEventListener("keydown", handler);
 
-    // Capture-phase listener for Cmd+I (macOS WKWebView intercepts it otherwise)
+    // Capture-phase listener for Cmd+I (macOS WKWebView intercepts it)
     const captureHandler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "i") {
         e.preventDefault();
@@ -132,7 +200,7 @@ function App() {
       window.removeEventListener("keydown", handler);
       document.removeEventListener("keydown", captureHandler, { capture: true });
     };
-  }, [handleOpenFile, handleSaveFile, activeTab?.editorMode, readingMode]);
+  }, [handleOpenFile, handleSaveFile, activeTab?.editorMode, readingMode, activeTabId, scheduleSave]);
 
   // ── Drag-and-drop (Tauri v2 native event) ────────────────────
 
@@ -143,7 +211,6 @@ function App() {
 
     (async () => {
       const { getCurrentWebview } = await import("@tauri-apps/api/webview");
-
       unlisten = await getCurrentWebview().onDragDropEvent((event) => {
         if (event.payload.type !== "drop") return;
         const path = event.payload.paths[0];
@@ -151,105 +218,121 @@ function App() {
 
         invoke<{ content: string; path: string; file_size: number }>("open_file_direct", { path })
           .then((result) => {
-            useStore.getState().openFile(result.path, result.content);
+            const store = useStore.getState();
+            store.openFile(result.path, result.content);
+            store.addRecentFile(result.path, result.path.split("/").pop() || result.path);
+            scheduleSave();
           })
-          .catch((err: unknown) => {
-            console.error("Failed to open dropped file:", err);
-          });
+          .catch((err: unknown) => log.error("App", "Failed to open dropped file", err));
       });
     })();
 
     return () => {
       unlisten?.();
     };
-  }, []);
+  }, [scheduleSave]);
+
+  // ── Panel width persistence ──────────────────────────────────
+
+  const sidebarLeftWidth = useEditorStore((s) => s.config.sidebarLeftWidth);
+  const sidebarRightWidth = useEditorStore((s) => s.config.sidebarRightWidth);
+
+  const handleLeftWidthChange = useCallback(
+    (width: number) => {
+      const w = Math.round(width);
+      useEditorStore.getState().setConfig({ sidebarLeftWidth: w });
+      scheduleSave();
+    },
+    [scheduleSave],
+  );
+
+  const handleRightWidthChange = useCallback(
+    (width: number) => {
+      const w = Math.round(width);
+      useEditorStore.getState().setConfig({ sidebarRightWidth: w });
+      scheduleSave();
+    },
+    [scheduleSave],
+  );
+
+  // ── Split ratio persistence ──────────────────────────────────
+
+  const horizontalSplitRatio = useStore((s) => s.horizontalSplitRatio);
+  const verticalSplitRatio = useStore((s) => s.verticalSplitRatio);
+
+  // Sync split ratios to editorStore.config for persistence (debounced)
+  useEffect(() => {
+    const es = useEditorStore.getState();
+    es.setConfig({ horizontalSplitRatio, verticalSplitRatio });
+    scheduleSave();
+  }, [horizontalSplitRatio, verticalSplitRatio, scheduleSave]);
 
   // ── Render ───────────────────────────────────────────────────
 
-  return (
-    <div className="h-screen w-screen flex flex-col bg-white text-gray-900">
-      {/* Header — hidden in reading mode */}
-      {!readingMode && (
-        <header className="flex items-center gap-2 px-3 py-1.5 border-b border-gray-200 bg-gray-50 text-sm select-none">
-          {isTauri && (
-            <>
-              <button
-                onClick={handleOpenFile}
-                className="px-2 py-0.5 rounded hover:bg-gray-200 text-xs"
-              >
-                打开
-              </button>
-              <button
-                onClick={handleSaveFile}
-                className="px-2 py-0.5 rounded hover:bg-gray-200 text-xs"
-              >
-                保存
-              </button>
-            </>
-          )}
-          <span className="text-gray-500 text-xs flex-1 truncate">
-            {activeTab?.title || (isTauri ? "Cmd+O 打开文件" : "Web 模式 — 仅展示 UI")}
-          </span>
+  console.info("[JianXi] App render", { readingMode, activeTabId, hasTabs: Object.keys(tabs).length });
 
-          {/* Mode buttons */}
-          {activeTab && (
-            <div className="flex gap-1 items-center">
-              <ModeButton
-                label="预览"
-                active={activeTab.editorMode === "preview"}
-                onClick={() => useStore.getState().setEditorMode("preview")}
-              />
-              <ModeButton
-                label="编辑"
-                active={activeTab.editorMode === "edit"}
-                onClick={() => useStore.getState().setEditorMode("edit")}
-              />
-              <ModeButton
-                label="源码"
-                active={activeTab.editorMode === "source"}
-                onClick={() => useStore.getState().setEditorMode("source")}
-              />
-              <div className="w-px h-4 bg-gray-300 mx-1" />
-              <button
-                onClick={() => useStore.getState().setReadingMode(true)}
-                className="px-2 py-0.5 rounded hover:bg-gray-200 text-xs"
-                title="进入阅读模式 (沉浸全屏)"
-              >
-                阅读
-              </button>
-            </div>
-          )}
-        </header>
+  return (
+    <div className="h-screen w-screen flex flex-col bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+      {!readingMode && (
+        <Toolbar
+          isTauri={isTauri}
+          title={activeTab?.title || ""}
+          activeTabExists={!!activeTab}
+          editorMode={activeTab?.editorMode || "preview"}
+          theme={theme}
+          onOpenFile={handleOpenFile}
+          onSaveFile={handleSaveFile}
+          onNewFile={handleNewFile}
+          onToggleLeftSidebar={() => {
+            useStore.getState().toggleLeftSidebar();
+            scheduleSave();
+          }}
+          onToggleRightSidebar={() => {
+            useStore.getState().toggleRightSidebar();
+            scheduleSave();
+          }}
+          onSetMode={(mode) => useStore.getState().setEditorMode(mode)}
+          onSetReadingMode={(on) => useStore.getState().setReadingMode(on)}
+          onSetTheme={setTheme}
+        />
       )}
 
-      {/* Main area */}
-      <div className="flex-1 flex overflow-hidden">
-        <div className="flex-1">
-          <ContentArea />
-        </div>
-      </div>
+      <Layout
+        initialLeftWidth={sidebarLeftWidth ?? 280}
+        initialRightWidth={sidebarRightWidth ?? 320}
+        leftSidebar={
+          <SidebarPanel
+            side="left"
+            tabs={[
+              { key: "files", label: "文件", content: <FileTree /> },
+              { key: "recent", label: "最近", content: <RecentFiles /> },
+              { key: "outline", label: "目录", content: <Outline /> },
+            ]}
+            defaultTab="files"
+          />
+        }
+        center={<ContentSplitView />}
+        rightSidebar={
+          <SidebarPanel
+            side="right"
+            tabs={[
+              {
+                key: "translate",
+                label: "翻译",
+                content: (
+                  <div className="p-3 text-xs text-gray-400 dark:text-gray-500">
+                    选中文本后翻译
+                  </div>
+                ),
+              },
+            ]}
+            defaultTab="translate"
+          />
+        }
+        onLeftWidthChange={handleLeftWidthChange}
+        onRightWidthChange={handleRightWidthChange}
+      />
     </div>
-  );
-}
-
-function ModeButton({
-  label,
-  active,
-  onClick,
-}: {
-  label: string;
-  active: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={`px-2 py-0.5 rounded text-xs ${
-        active ? "bg-blue-100 text-blue-700 font-medium" : "hover:bg-gray-200"
-      }`}
-    >
-      {label}
-    </button>
   );
 }
 

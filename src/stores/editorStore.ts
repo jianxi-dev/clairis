@@ -1,3 +1,6 @@
+// @deprecated — 考虑合并到 useStore (src/stores/index.ts)。当前两个 store 分离
+// 导致跨 store 操作复杂（config 在 editorStore，tabs 在 useStore）。
+// Phase 1a 后评估合并。
 import { create } from "zustand";
 import type {
   AppConfig,
@@ -70,7 +73,7 @@ const initialState = {
   fileName: null as string | null,
   fileSize: null as number | null,
   content: "",
-  editorMode: "wysiwyg" as EditorMode,
+  editorMode: "preview" as EditorMode,
   fontSize: 16,
   headingColors: DEFAULT_HEADING_COLORS,
   translation: {

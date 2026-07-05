@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>墨页 · 无侧栏交互原型</title>
+<style>
+:root{--paper:#fcf9f6;--ink:#1a1a2e;--ink2:#6b7280;--ink3:#9ca3af;--brand:#6366f1;--brand-h:#4f46e5;--desk:#f5f0eb;--sans:"Inter",-apple-system,"PingFang SC","Microsoft YaHei",system-ui}
+@media(prefers-color-scheme:dark){:root{--paper:#1a1a2e;--ink:#e2e0e7;--ink2:#9ca3af;--ink3:#6b7280;--desk:#0f0f1e;--brand:#818cf8}
+body{background:#0f0f1e}.card{background:#1e1e32}.bar{background:rgba(26,26,46,.88)}.R{background:#1e1e32;border-color:rgba(129,140,248,.3)}}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:var(--sans);background:var(--desk);color:var(--ink);overflow:hidden;height:100vh;-webkit-font-smoothing:antialiased}
+.S{position:absolute;inset:0;background:var(--paper);z-index:10;overflow-y:auto;transition:transform .4s cubic-bezier(.16,1,.3,1),border-radius .4s,box-shadow .4s;scroll-behavior:smooth}
+.S.l{transform:scale(.72) translateY(-40px);border-radius:10px;box-shadow:0 20px 60px rgba(0,0,0,.12);overflow:hidden;pointer-events:none}
+.P{max-width:640px;margin:0 auto;padding:48px 40px}.P .d{font-size:12px;color:var(--ink3);letter-spacing:.5px;margin-bottom:32px;font-weight:400}
+.P h1{font-size:28px;font-weight:700;line-height:1.3;margin:1.4em 0 .3em;letter-spacing:-.3px}
+.P h1.ft{margin-top:0}.P h2{font-size:22px;font-weight:600;line-height:1.35;margin:1.4em 0 .3em}
+.P p{font-size:16px;line-height:1.75;margin-bottom:.8em;color:var(--ink)}
+.P .bq{border-left:3px solid var(--brand);padding-left:20px;margin:1em 0;color:var(--ink2);font-style:italic}
+.R{position:fixed;top:120px;right:24px;width:260px;z-index:60;background:#fff;border-radius:10px;box-shadow:0 8px 32px rgba(99,102,241,.15),0 0 0 1px rgba(99,102,241,.08);padding:16px 18px;opacity:0;transform:translateX(30px) scale(.95);transition:opacity .4s,transform .4s cubic-bezier(.16,1,.3,1);pointer-events:none;border-left:3px solid var(--brand)}
+.R.v{opacity:1;transform:translateX(0) scale(1);pointer-events:auto}
+.R .tag{font-size:9px;color:var(--brand);font-weight:600;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px}
+.R .t{font-size:13px;line-height:1.6;color:var(--ink);margin-bottom:8px}
+.R .s{font-size:10px;color:var(--ink3);display:flex;align-items:center;gap:6px}
+.R .s .dot{width:4px;height:4px;border-radius:50%;background:var(--brand);display:inline-block}
+.R .go{display:inline-block;margin-top:10px;font-size:11px;color:var(--brand);cursor:pointer;padding:4px 10px;border-radius:4px;transition:background .15s;font-weight:500}
+.R .go:hover{background:rgba(99,102,241,.1)}
+.R .close{position:absolute;top:10px;right:12px;font-size:14px;color:var(--ink3);cursor:pointer;line-height:1;padding:2px;transition:color .15s}
+.R .close:hover{color:var(--ink)}
+.D{position:absolute;inset:0;background:var(--desk);z-index:1;display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:0;transition:opacity .3s}
+.D.v{opacity:1}
+.D .grid{display:flex;gap:20px;flex-wrap:wrap;justify-content:center;max-width:620px;padding:40px}
+.card{width:170px;background:#fff;border-radius:8px;padding:16px 18px;box-shadow:0 2px 12px rgba(0,0,0,.04);cursor:pointer;transition:all .2s;position:relative}
+.card:hover{transform:translateY(-3px);box-shadow:0 8px 24px rgba(0,0,0,.08)}
+.card .title{font-size:13px;font-weight:600;margin-bottom:6px}
+.card .pre{font-size:11px;color:var(--ink3);line-height:1.4;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.card .time{font-size:10px;color:#d1d5db;margin-top:8px}
+.card.cur{border-left:3px solid var(--brand)}
+.card.old{opacity:.25;transform:scale(.88)}
+.card.old:hover{opacity:.5;transform:scale(.88) translateY(-2px)}
+.D .hint{font-size:11px;color:var(--ink3);padding:14px;text-align:center;border-top:1px solid rgba(0,0,0,.04);width:100%;margin-top:auto}
+.D .hint span{margin:0 8px;padding:5px 12px;border-radius:5px;cursor:pointer;transition:background .15s}
+.D .hint span:hover{background:rgba(99,102,241,.08);color:var(--brand)}
+.E{position:fixed;top:0;left:0;right:0;height:2px;z-index:100;transition:height .2s}
+.E:hover{height:36px}.E:hover .B{opacity:1}
+.B{height:36px;background:rgba(255,255,255,.88);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid rgba(0,0,0,.06);display:flex;align-items:center;padding:0 20px;gap:16px;opacity:0;transition:opacity .2s;font-size:12px;color:var(--ink2)}
+.B .date{margin-right:auto;color:var(--ink3)}
+.B .act{cursor:pointer;padding:4px 10px;border-radius:4px;transition:background .15s}
+.B .act:hover{background:rgba(0,0,0,.04)}
+.B .act.dk{color:var(--brand);font-weight:500}
+.ID{position:fixed;right:0;top:0;bottom:0;width:3px;z-index:50;pointer-events:none}
+.ID .f{position:absolute;bottom:0;width:100%;height:0;background:linear-gradient(to top,rgba(99,102,241,.1),transparent);transition:height .1s}
+.F{position:absolute;bottom:0;right:0;width:80px;height:80px;overflow:hidden;pointer-events:none;z-index:25;opacity:0;transition:opacity .3s}
+.F.a{opacity:1}
+.F .c{position:absolute;bottom:0;right:0;width:60px;height:60px;background:linear-gradient(135deg,transparent 49.5%,rgba(0,0,0,.04) 50.5%);border-radius:0 0 0 3px}
+.F .pg{position:absolute;bottom:0;right:0;width:0;height:0;border-style:solid;border-width:0 0 60px 60px;border-color:transparent transparent #fff transparent;transform-origin:bottom right}
+.F.a .pg{animation:flipF .6s cubic-bezier(.16,1,.3,1) forwards}
+@keyframes flipF{0%{transform:rotate(0)}100%{transform:rotate(-90deg) translateY(2px)}}
+.C{position:absolute;inset:0;background:var(--paper);z-index:30;display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .5s}
+.C.a{opacity:1;pointer-events:auto}
+.C .l{width:40px;height:1px;background:rgba(0,0,0,.08);margin-bottom:16px}
+.C .m{font-size:13px;color:var(--ink3);margin-bottom:24px}
+.C .g{display:flex;gap:16px}
+.C .g button{background:none;border:none;font-size:13px;color:var(--ink2);cursor:pointer;padding:8px 16px;border-radius:6px;transition:all .15s;font-family:inherit}
+.C .g button:hover{background:rgba(99,102,241,.08);color:var(--brand)}
+.SB{position:fixed;bottom:0;left:0;right:0;padding:0 20px;display:flex;align-items:center;justify-content:space-between;font-size:10px;color:rgba(0,0,0,.1);z-index:40;pointer-events:none}
+.CTL{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);display:flex;gap:4px;z-index:999;background:rgba(255,255,255,.92);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);padding:5px 12px;border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,.06);border:1px solid rgba(0,0,0,.06);font-size:11px;align-items:center}
+.CTL .s{color:#e5e7eb;margin:0 2px}
+.CTL button{padding:4px 9px;border:none;border-radius:5px;background:transparent;color:var(--ink2);cursor:pointer;font-size:11px;font-family:inherit;transition:all .15s;white-space:nowrap}
+.CTL button:hover{background:#f3f4f6}
+.CTL button.p{background:var(--brand);color:#fff}
+.CTL button.p:hover{background:var(--brand-h)}
+@media(max-width:900px){.R{display:none}.P{padding:40px 28px}.card{width:150px}}
+@media(max-width:600px){.P{padding:32px 20px}.P h1{font-size:24px}.card{width:130px}.CTL{bottom:14px;padding:4px 8px;font-size:10px}.CTL button{padding:3px 6px;font-size:10px}}
+</style>
+</head>
+<body>
+<div class="S" id="S">
+  <div class="P" id="P"></div>
+  <div class="R" id="R">
+    <div class="close" onclick="closeRes()">×</div>
+    <div class="tag">✦ 共鸣</div>
+    <div class="t" id="Rtext">片段内容</div>
+    <div class="s"><span class="dot"></span><span id="Rsrc">来源</span></div>
+    <div class="go" id="Rgo" onclick="followResonance()">→ 跳转到此文档</div>
+  </div>
+  <div class="F" id="F"><div class="c"></div><div class="pg"></div></div>
+  <div class="C" id="C">
+    <div class="l"></div>
+    <div class="m" id="Cmeta">文档 · 阅读约 4 分钟</div>
+    <div class="g">
+      <button onclick="reopenDoc()">重新阅读</button>
+      <button onclick="markRead()">标记已读</button>
+      <button onclick="showDeskFromRead()">打开另一篇</button>
+    </div>
+  </div>
+  <div class="ID"><div class="f" id="ink"></div></div>
+</div>
+<div class="D" id="D">
+  <div class="grid" id="grid"></div>
+  <div class="hint"><span>🔍 搜索</span><span>✏️ 新建</span></div>
+</div>
+<div class="E"><div class="B">
+  <span class="date">2026.07.03</span>
+  <span class="act" onclick="alert('文件对话框')">打开</span>
+  <span class="act dk" onclick="toggleDesk()">↑ 书桌</span>
+</div></div>
+<div class="SB"><span id="docName"></span><span id="stats"></span></div>
+<div class="CTL">
+  <span style="color:#9ca3af;font-weight:500">墨页</span>
+  <span class="s">|</span>
+  <button class="p" id="deskBtn" onclick="toggleDesk()">↑ 书桌</button>
+  <button onclick="triggerResonance()">✦ 共鸣</button>
+  <button onclick="simReopen()">📖 重开</button>
+  <button onclick="finishRead()">✓ 读完</button>
+</div>
+<script>
+const docs=[
+  {name:"设计哲学.md",lines:[
+    "设计的本质不是解决问题，是创造值得拥有的体验。",
+    "每次我坐在空白的编辑器前，都会想起一个简单的问题：为什么大多数写作工具让人不想写作？",
+    "答案也许不在功能上，而在感觉上。工具越像工具，越难让人待在里面。",
+    "编辑器不应该是一个你用完就走的应用程序——它应该是一个你愿意待着的地方。",
+    "这指向一个悖论：最好的写作工具，是那些让你忘记自己在使用工具的。",
+    "留白的核心理念是：当不确定是否要加一个东西时，不加。每加一个功能，必须至少移除一个冗余项。",
+    "设计师不应该管理文件。编辑器应该管理文件。用户应该管理想法。",
+    "真正的复杂度不在功能数量，而在功能之间的相互作用。少即是多。"
+  ],resonance:[
+    {trigger:3,text:"工具越像工具，越难让人待在里面。最好的工具是让你忘记工具存在的那些。",src:"设计咨询备忘 · 3天前",follow:1},
+    {trigger:6,text:"当不确定是否要加一个东西时，不加。每加一个功能，必须至少移除一个冗余项。",src:"CORE-REQUIREMENTS · 昨天",follow:2}
+  ]},
+  {name:"设计咨询备忘",lines:[
+    "D1: 设计叙事方向 — Notion + Linear 中间路线。",
+    "表面层（chrome）→ Linear 风格：低饱和度、高效率、不抢戏。",
+    "内容层（阅读区/编辑区）→ 偏 Notion 风格：柔和、纸张感。",
+    "D2: CSS Token 架构 — 两层架构，不做语义中间层。",
+    "D3: Icon 方案 — 使用 Lucide React，strokeWidth={1.5}, size={14}。",
+    "D4: 侧边栏目录移出 — 将 Outline 从左侧 SidebarPanel 的 Tab 中移除。",
+    "D5: 排版优先级调整 — 先做字号阶梯，后做阅读氛围。",
+    "整体方向：克制的设计系统，让内容成为主角。"
+  ],resonance:[
+    {trigger:1,text:"Notion + Linear 中间路线。表面层高效克制，内容层温暖柔和。",src:"设计哲学.md · 3天前",follow:0},
+    {trigger:5,text:"侧边栏目录应该移出，因为目录是当前文档的结构地图，不是跨文档导航。",src:"设计哲学.md · 3天前",follow:0}
+  ]},
+  {name:"CORE-REQUIREMENTS",lines:[
+    "轻量秒开的 Markdown 阅读编辑器。",
+    "让不懂 Markdown 的普通用户也能优雅地查看和编辑文档。",
+    "核心价值：美观 > 功能 > 性能 > 扩展。",
+    "目标用户：70% 普通阅读者，20% 轻度编辑者，10% 技术用户。",
+    "四原则：快⚡方便🖐️舒服😌喜欢❤️。每条功能评审必须逐条对照。",
+    "减法原则：当不确定是否要加一个功能时，不加。",
+    "每加一个东西必须至少移除一个浮夸/低频/冗余的东西。",
+    "启动 <1s，文件打开 <300ms，编辑响应 <16ms。"
+  ],resonance:[
+    {trigger:3,text:"70% 用户是普通阅读者，他们只需要打开 .md 文件就能优雅阅读。",src:"设计哲学.md · 3天前",follow:0},
+    {trigger:5,text:"减法原则：当不确定是否要加一个功能时，不加。",src:"设计哲学.md · 3天前",follow:0}
+  ]}
+];
+let curDoc=0,deskOpen=false,resonanceTimer=null,resonanceIdx=-1;
+function renderDoc(n){
+  curDoc=n;const d=docs[n];
+  const P=document.getElementById('P');
+  P.innerHTML=`<div class="d">2026 年 7 月 3 日</div>
+    <h1 class="ft">${d.name}</h1>
+    ${d.lines.map((l,i)=>`<p data-idx="${i}">${l}</p>`).join('')}
+    <p style="margin-top:2em;color:var(--ink3);font-size:13px">— 已到底 —</p>`;
+  document.getElementById('docName').textContent=d.name;
+  document.getElementById('stats').textContent=`${d.lines.length} 段`;
+  document.getElementById('S').scrollTop=0;
+  document.getElementById('C').classList.remove('a');
+  document.getElementById('R').classList.remove('v');
+  document.getElementById('ink').style.height='0';
+  updateDeskCards();
+  clearResTimer();
+}
+function updateDeskCards(){
+  const grid=document.getElementById('grid');
+  grid.innerHTML=docs.map((d,i)=>{
+    let extra='';let time='';
+    if(i===0)time='正在编辑';
+    else if(i===1)time='3 小时前';
+    else if(i===2)time='昨天';
+    if(i===curDoc)extra=' cur';
+    else if(i>curDoc+1||i<curDoc-1)extra=' old';
+    return `<div class="card${extra}" onclick="openDoc(${i})">
+      <div class="title">${d.name}</div>
+      <div class="pre">${d.lines[0].slice(0,40)}…</div>
+      <div class="time">${time||'2 天前'}</div>
+    </div>`;
+  }).join('');
+}
+function openDoc(n){
+  renderDoc(n);
+  if(deskOpen)toggleDesk();
+}
+function toggleDesk(){
+  deskOpen=!deskOpen;
+  document.getElementById('S').classList.toggle('l',deskOpen);
+  document.getElementById('D').classList.toggle('v',deskOpen);
+  document.getElementById('deskBtn').textContent=deskOpen?'↓ 收起':'↑ 书桌';
+}
+function triggerResonance(){
+  const d=docs[curDoc];
+  if(!d.resonance||d.resonance.length===0){alert('当前文档无共鸣片段');return}
+  clearResTimer();
+  let idx=resonanceIdx+1;
+  if(idx>=d.resonance.length)idx=0;
+  resonanceIdx=idx;
+  const r=d.resonance[idx];
+  showResonance(r.text,r.src,r.follow);
+}
+function showResonance(text,src,followIdx){
+  const R=document.getElementById('R');
+  document.getElementById('Rtext').textContent=text;
+  document.getElementById('Rsrc').textContent=src;
+  document.getElementById('Rgo').dataset.follow=followIdx;
+  R.classList.remove('v');void R.offsetWidth;
+  R.classList.add('v');
+  setTimeout(()=>{if(R.classList.contains('v'))R.classList.remove('v')},8000);
+}
+function closeRes(){document.getElementById('R').classList.remove('v')}
+function followResonance(){
+  const follow=parseInt(document.getElementById('Rgo').dataset.follow);
+  if(!isNaN(follow)&&follow<docs.length)openDoc(follow);
+  else document.getElementById('R').classList.remove('v');
+}
+function clearResTimer(){if(resonanceTimer){clearTimeout(resonanceTimer);resonanceTimer=null}}
+function simReopen(){
+  const F=document.getElementById('F');
+  F.classList.remove('a');void F.offsetWidth;
+  F.classList.add('a');
+  setTimeout(()=>{
+    F.classList.remove('a');
+    document.getElementById('S').scrollTo({top:0,behavior:'smooth'});
+  },2000);
+}
+function finishRead(){
+  if(deskOpen)toggleDesk();
+  const d=docs[curDoc];
+  document.getElementById('Cmeta').textContent=`${d.name} · ${d.lines.length} 段`;
+  document.getElementById('S').scrollTo({top:document.getElementById('S').scrollHeight,behavior:'smooth'});
+  setTimeout(()=>{
+    document.getElementById('C').classList.add('a');
+    simReopen();
+  },600);
+}
+function reopenDoc(){document.getElementById('C').classList.remove('a');document.getElementById('S').scrollTop=0}
+function markRead(){document.getElementById('C').classList.remove('a');simReopen();setTimeout(()=>document.getElementById('F').classList.remove('a'),2200)}
+function showDeskFromRead(){document.getElementById('C').classList.remove('a');toggleDesk()}
+document.getElementById('S').addEventListener('scroll',function(){
+  const p=this.scrollHeight>this.clientHeight?this.scrollTop/(this.scrollHeight-this.clientHeight):0;
+  document.getElementById('ink').style.height=(p*100)+'%';
+  const d=docs[curDoc];
+  if(d.resonance&&p>0.3&&p<0.9&&!document.getElementById('R').classList.contains('v')&&!resonanceTimer){
+    resonanceTimer=setTimeout(()=>{
+      const idx=Math.floor(Math.random()*d.resonance.length);
+      if(p>0.3&&p<0.9&&!document.getElementById('R').classList.contains('v')){
+        const r=d.resonance[idx];
+        showResonance(r.text,r.src,r.follow);
+      }
+      resonanceTimer=null;
+    },2000);
+  }
+});
+document.addEventListener('keydown',function(e){
+  if((e.metaKey||e.ctrlKey)&&e.key==='ArrowUp'){e.preventDefault();toggleDesk()}
+  if(e.key==='Escape'){document.getElementById('R').classList.remove('v');if(deskOpen)toggleDesk();const C=document.getElementById('C');if(C.classList.contains('a'))C.classList.remove('a')}
+});
+document.getElementById('R').addEventListener('mouseenter',function(){clearResTimer()});
+renderDoc(0);
+</script>
+</body>
+</html>

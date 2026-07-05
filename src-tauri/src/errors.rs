@@ -22,6 +22,14 @@ pub enum AppError {
         context: String,
         source: String,
     },
+    InvalidEndpoint {
+        url: String,
+        reason: String,
+    },
+    EndpointBlocked {
+        host: String,
+        ip: String,
+    },
 }
 
 impl std::fmt::Display for AppError {
@@ -39,6 +47,12 @@ impl std::fmt::Display for AppError {
             }
             AppError::Translation { context, source } => {
                 write!(f, "Translation error ({context}): {source}")
+            }
+            AppError::InvalidEndpoint { url, reason } => {
+                write!(f, "Invalid endpoint ({url}): {reason}")
+            }
+            AppError::EndpointBlocked { host, ip } => {
+                write!(f, "Endpoint blocked: {host} resolves to {ip} (not allowed)")
             }
         }
     }
