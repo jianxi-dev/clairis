@@ -1,0 +1,133 @@
+{
+  "meta": {
+    "purpose": "软著测试截图场景清单（任务 3 产物）。capture-screens.mjs 逐场景驱动真实浏览器渲染并截图存档。",
+    "actionContract": {
+      "type": "openFile 表示调用 mock 桥 __clairis_openFile__(path, content, title) 打开示例文档（内容全部为测试示例，不含用户真实数据）；type 为 none 表示无文件动作，仅执行 steps。",
+      "steps": "可选 UI 驱动步骤数组，支持 op：click（role+name 或 text 或 selector，scope 限定容器）、press（keyboard.press）、fill（selector+value）、wait（ms）、expectText（等待文本可见）、expectSelector（等待元素可见）。",
+      "status": "ready 表示可真实截图；pending 表示功能未实现/环境不可达，不尝试截图。"
+    },
+    "scenesNote": "6 功能域各 ≥1 场景：reading/editing/file-management/navigation/capture/application-shell。",
+    "domains": ["reading", "editing", "file-management", "navigation", "capture", "application-shell"]
+  },
+  "scenes": [
+    {
+      "id": "reading-preview",
+      "name": "阅读域·GFM Markdown 预览渲染",
+      "domain": "reading",
+      "status": "ready",
+      "action": {
+        "type": "openFile",
+        "path": "/Users/test/示例文档.md",
+        "content": "# 示例文档\n\n## 章节标题\n\n这是一段**粗体**与*斜体*正文，含 `行内代码`。\n\n> 引用块示例\n\n- 无序列表项一\n- 无序列表项二\n\n1. 有序列表项一\n2. 有序列表项二\n\n```js\nconsole.log('Clairis 示例');\n```\n\n---\n\n| 列一 | 列二 |\n| --- | --- |\n| A | 1 |\n| B | 2 |\n\n- [ ] 待办事项\n- [x] 已完成事项\n\n[链接文本](https://example.com)",
+        "title": "示例文档.md"
+      },
+      "steps": [
+        { "op": "expectText", "value": "章节标题" }
+      ]
+    },
+    {
+      "id": "editing-source",
+      "name": "编辑域·源码编辑模式（CodeMirror）",
+      "domain": "editing",
+      "status": "ready",
+      "action": {
+        "type": "openFile",
+        "path": "/Users/test/示例文档.md",
+        "content": "# 示例文档\n\n## 章节标题\n\n这是一段**粗体**与*斜体*正文，含 `行内代码`。\n\n> 引用块示例\n\n- 列表项一\n- 列表项二\n\n```js\nconsole.log('Clairis 示例');\n```",
+        "title": "示例文档.md"
+      },
+      "steps": [
+        { "op": "click", "scope": "header", "role": "button", "name": "编辑" },
+        { "op": "expectSelector", "selector": ".cm-editor" }
+      ]
+    },
+    {
+      "id": "file-management-tree",
+      "name": "文件管理域·目录树与文件浏览",
+      "domain": "file-management",
+      "status": "ready",
+      "action": {
+        "type": "none"
+      },
+      "steps": [
+        { "op": "click", "role": "button", "name": "文件", "exact": true },
+        { "op": "click", "role": "button", "name": "选择文件夹" },
+        { "op": "expectText", "value": "测试文档.md" }
+      ]
+    },
+    {
+      "id": "navigation-tree-open",
+      "name": "导航域·文件树点击打开文档",
+      "domain": "navigation",
+      "status": "ready",
+      "action": {
+        "type": "none"
+      },
+      "steps": [
+        { "op": "click", "role": "button", "name": "文件", "exact": true },
+        { "op": "click", "role": "button", "name": "选择文件夹" },
+        { "op": "click", "text": "测试文档.md" },
+        { "op": "expectText", "value": "测试文档.md" }
+      ]
+    },
+    {
+      "id": "navigation-file-panel",
+      "name": "导航域·统一文件面板（Cmd+P）",
+      "domain": "navigation",
+      "status": "pending",
+      "action": {
+        "type": "none",
+        "note": "B-3 统一文件面板（Cmd+P 上下文浏览器）尚未实现：当前代码无 KeyP 快捷键处理与面板组件，标 pending 不尝试截图。"
+      },
+      "steps": []
+    },
+    {
+      "id": "capture-outline",
+      "name": "捕获域·大纲侧栏（目录）",
+      "domain": "capture",
+      "status": "ready",
+      "action": {
+        "type": "openFile",
+        "path": "/Users/test/大纲示例.md",
+        "content": "# 大纲示例\n\n## 第一节\n\n第一节内容。\n\n## 第二节\n\n第二节内容。\n\n### 子节\n\n子节内容。",
+        "title": "大纲示例.md"
+      },
+      "steps": [
+        { "op": "click", "role": "button", "name": "目录", "exact": true },
+        { "op": "expectText", "value": "第一节" }
+      ]
+    },
+    {
+      "id": "capture-overlay",
+      "name": "捕获域·Quick Capture 录入浮窗",
+      "domain": "capture",
+      "status": "ready",
+      "action": {
+        "type": "openFile",
+        "path": "/Users/test/示例文档.md",
+        "content": "# 示例文档\n\n正文内容。",
+        "title": "示例文档.md"
+      },
+      "steps": [
+        { "op": "press", "key": "Meta+Shift+." },
+        { "op": "wait", "ms": 600 },
+        { "op": "expectSelector", "selector": "[data-capture-input]" }
+      ]
+    },
+    {
+      "id": "application-shell-main",
+      "name": "界面外壳域·Chrome Bar 与正文布局",
+      "domain": "application-shell",
+      "status": "ready",
+      "action": {
+        "type": "openFile",
+        "path": "/Users/test/示例文档.md",
+        "content": "# 示例文档\n\n## 章节标题\n\n正文内容段落。",
+        "title": "示例文档.md"
+      },
+      "steps": [
+        { "op": "expectText", "value": "章节标题" }
+      ]
+    }
+  ]
+}
