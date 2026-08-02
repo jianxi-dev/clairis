@@ -1,0 +1,17 @@
+{
+  "softwareName": "Clairis 渐晰阅读编辑软件",
+  "softwareShortName": "Clairis 渐晰",
+  "version": "V1.0",
+  "ownerName": "",
+  "sourceRoots": ["src", "src-tauri/src"],
+  "includeExts": [".ts", ".tsx", ".rs", ".mjs", ".mts", ".css"],
+  "excludeGlobs": ["**/__tests__/**", "**/*.test.ts", "**/*.test.tsx", "**/*.test.mjs"],
+  "entryFiles": ["src/main.tsx", "src-tauri/src/main.rs", "src-tauri/src/lib.rs"],
+  "coreFiles": [],
+  "linesPerPage": 50,
+  "minLinesForPartial": 3000,
+  "frontPages": 30,
+  "backPages": 30,
+  "screenshotsDir": "docs/delivery/softcopyright/screenshots",
+  "scenesFile": "scripts/softcopyright/screens-config.json"
+}

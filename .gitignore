@@ -5,3 +5,4 @@ target/
 *.log
 .claude/settings.local.json
 memoryos_data/
+scripts/softcopyright/out/
