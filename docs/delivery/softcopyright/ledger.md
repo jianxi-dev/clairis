@@ -11,7 +11,7 @@ Clairis（渐晰）软件著作权登记申请的材料清单与追踪台账。*
 
 - 阶段参照：Phase M = 软著 MVP（占位与最小可用），Phase R = Release 1.0（正式发布），见 [`roadmap.md`](../roadmap.md)。
 - 规划与决策来源：[`.omo/drafts/clairis-software-copyright-prep.md`](../../../.omo/drafts/clairis-software-copyright-prep.md)。
-- 工具配置：`scripts/softcopyright/config.json`；说明书骨架、操作手册、模板小节见 `docs/delivery/softcopyright/application.md`（后续任务建立）。
+- 工具配置：`scripts/softcopyright/config.json`；说明书骨架见 [`manual-skeleton.md`](./manual-skeleton.md)，申请操作手册见 [`application.md`](./application.md)，流程规范见 [`process.md`](./process.md)。
 
 ## 一、材料清单
 
@@ -20,10 +20,10 @@ Clairis（渐晰）软件著作权登记申请的材料清单与追踪台账。*
 
 | 材料项 | 2026 规范要求 | 来源/产出 | 采集时机（M 级期/R 级期/申请前） | 状态（未开始\|积累中\|已具备） | 证据位置 | 缺口处理 |
 |---|---|---|---|---|---|---|
-| 源代码文档 | 仅自有代码；前 30 后 30 页、每页 ≥50 行（去空行）；<3000 行全量；页眉标注软件名+版本号 | `build-source-doc.mjs` 生成 PDF（任务 5） | 申请前 | 未开始 | `scripts/softcopyright/out/`（不入库） | 依赖行数统计与配置定稿 |
-| 有效行数报告 | 报告需标注统计口径（扩展名/排除规则/去空行） | `count-lines.mjs`（任务 3）+ 台账记录 | M 级期（首次）+ R 级期（终版） | 未开始 | 本台账「有效行数」记录区（下方） | 工具待建（任务 3） |
-| 说明书 | ≥10~15 页图文并茂，真实截图 | `manual-skeleton.md` + 手册正文（后续任务） | R 级期 + 申请前 | 未开始 | `docs/delivery/softcopyright/manual-skeleton.md` | 骨架待建（任务 5） |
-| 测试截图（每功能域） | 截图须含软件名称与版本号；真实渲染，禁止虚构/PS；不截用户真实数据 | `capture-screens.mjs` + `screens-config.json`（任务 2），复用 e2e tauri-mock 桥 | **M 级期**（随功能域开发采集）+ R 级期复采 | 未开始 | `docs/delivery/softcopyright/screenshots/` | 采集脚本与场景配置待建（任务 2） |
+| 源代码文档 | 仅自有代码；前 30 后 30 页、每页 ≥50 行（去空行）；<3000 行全量；页眉标注软件名+版本号 | `build-source-doc.mjs` 生成 PDF（任务 5） | 申请前 | 已具备（M 级试跑） | `scripts/softcopyright/out/source-doc.pdf`（不入库） | M 级试跑通过：partial 60 页（前 30+后 30），页眉含「Clairis 渐晰阅读编辑软件 V1.0」；**申请前（R 级）以终版代码重生成** |
+| 有效行数报告 | 报告需标注统计口径（扩展名/排除规则/去空行） | `count-lines.mjs`（任务 3）+ 台账记录 | M 级期（首次）+ R 级期（终版） | 已具备（M 级首次） | 本台账「有效行数」记录区（下方） | M 级首次运行完成（2026-08-02）；R 级期以终版代码重跑 |
+| 说明书 | ≥10~15 页图文并茂，真实截图 | `manual-skeleton.md` + 手册正文（后续任务） | R 级期 + 申请前 | 积累中 | `docs/delivery/softcopyright/manual-skeleton.md`（骨架）+ `manual-skeleton-copy.md`（试跑副本） | 骨架已建（任务 5）且试跑副本就绪；**正文待 R 级期撰写** |
+| 测试截图（每功能域） | 截图须含软件名称与版本号；真实渲染，禁止虚构/PS；不截用户真实数据 | `capture-screens.mjs` + `screens-config.json`（任务 2），复用 e2e tauri-mock 桥 | **M 级期**（随功能域开发采集）+ R 级期复采 | 已具备（M 级期） | `docs/delivery/softcopyright/screenshots/`（7 张 PNG，命名含场景 id+日期） | 6 功能域 7 个 ready 场景已采集（覆盖层含软件名称与版本号，DOM 断言通过）；`navigation-file-panel` 场景 pending，待对应功能实现后补采 |
 | 功能与技术特点概述 | 概述核心功能与技术特点，与说明书/截图一致 | 按 openspec 6 功能域规格撰写 | R 级期 + 申请前 | 未开始 | `docs/delivery/softcopyright/application.md`（操作手册内模板） | 依赖操作手册（后续任务） |
 | 开源组件与许可清单 | 如实列出第三方依赖及许可证 | 由 `package.json` / `Cargo.toml` 依赖核对整理 | M 级期（首次核对）+ R 级期复核 | 未开始 | 待定（建议 `docs/delivery/softcopyright/third-party-licenses.md`） | 首次核对清单待建 |
 | 申请表字段 | 按版权中心 2026 登记申请表逐字段核对 | 操作手册字段映射表 | 申请前 | 未开始 | `docs/delivery/softcopyright/application.md` | 依赖操作手册（后续任务） |
@@ -31,26 +31,30 @@ Clairis（渐晰）软件著作权登记申请的材料清单与追踪台账。*
 | 主体身份材料 | 个人名义申请：身份证件等；申请前向版权中心核实主体要求 | 申请人自备 | 申请前 | 未开始 | 不入库（含个人信息） | 申请前核实（规划 Open assumption） |
 | 开发完成日期锚点 | 开发完成 ≤ 首次发表 ≤ 申请日；开发完成晚于主体成立时间 | git 历史 + 里程碑 tag（`v1.0.0`）锚定 | R 级期 | 未开始 | git tag + `CHANGELOG.md` | 依赖 R 级发布（规划 Decision 4） |
 | 首次发表日期锚点 | 同上日期链；无公开则填「未发表」 | GitHub Release | R 级期 | 未开始 | GitHub Release 页 | 依赖 R 级发布（规划 Decision 4） |
-| AI 生成代码声明 | 如实声明 AI 辅助生成代码的工具、范围与修改记录 | `.omo/evidence/` 记录 + git 历史 | M 级期（持续积累）+ R 级期汇总 | 未开始 | `.omo/evidence/`、git 历史 | 按 [application.md「AI 生成代码声明」模板](./application.md) 填写（模板后续任务建立） |
-| git 开发记录 | 官方建议保留 git 开发记录作为原创性证据 | 仓库 git 历史（中文提交） | M 级期（持续积累） | 未开始 | git 历史（本仓库） | 无缺口，随开发自然积累 |
-| 查重预案 | 官方查重 >30% 需独创性说明；避免与公开代码撞库 | 查重报告 + 独创性说明 | 申请前 | 未开始 | 待定（建议 `scripts/softcopyright/out/`） | 按 [application.md「查重预案」模板](./application.md) 演练（模板后续任务建立） |
+| AI 生成代码声明 | 如实声明 AI 辅助生成代码的工具、范围与修改记录 | `.omo/evidence/` 记录 + git 历史 | M 级期（持续积累）+ R 级期汇总 | 积累中 | `.omo/evidence/`、git 历史 | 按 [application.md「AI 生成代码声明」模板](./application.md) 填写，模板已建立 |
+| git 开发记录 | 官方建议保留 git 开发记录作为原创性证据 | 仓库 git 历史（中文提交） | M 级期（持续积累） | 积累中 | git 历史（本仓库） | 无缺口，随开发自然积累 |
+| 查重预案 | 官方查重 >30% 需独创性说明；避免与公开代码撞库 | 查重报告 + 独创性说明 | 申请前 | 未开始 | 待定（建议 `scripts/softcopyright/out/`） | 按 [application.md「查重预案」模板](./application.md) 演练，模板已建立 |
 | 受理/补正记录 | 补正 ≤2 次否则驳回；记录受理与补正往来 | 版权中心系统记录 | 申请前（申请后） | 未开始 | 不入库（含个人信息） | 申请后如实登记 |
-| 软件名称与版本号定稿 | 命名规范：品牌号+核心功能+后缀；与商标权人一致 | `config.json` 定稿 + 申请核对 | R 级期 + 申请前 | 未开始 | `scripts/softcopyright/config.json` | 当前为占位值，申请前定稿 |
-| 文件头注释 | 自有源文件头部含软件全称与版本号（与申请材料页眉一致） | 源文件头部注释，既有文件不强制回填 | M 级期（新文件随写） | 未开始 | `src/`、`src-tauri/src/` | 规划 Decision 5，随开发执行 |
+| 软件名称与版本号定稿 | 命名规范：品牌号+核心功能+后缀；与商标权人一致 | `config.json` 定稿 + 申请核对 | R 级期 + 申请前 | 积累中 | `scripts/softcopyright/config.json` | 当前为占位值（「Clairis 渐晰阅读编辑软件 V1.0」），申请前定稿 |
+| 文件头注释 | 自有源文件头部含软件全称与版本号（与申请材料页眉一致） | 源文件头部注释，既有文件不强制回填 | M 级期（新文件随写） | 积累中 | `src/`、`src-tauri/src/` | 规划 Decision 5，随开发执行 |
 
 ## 二、有效行数记录区
 
-> 每次运行 `count-lines.mjs` 后在此登记：日期、有效行数、统计口径（扩展名/排除规则）。当前尚未首次运行，留空待填。
+> 每次运行 `count-lines.mjs` 后在此登记：日期、有效行数、统计口径（扩展名/排除规则）。统计口径与 config.json 一致。
 
 | 日期 | 有效行数 | 统计口径说明 |
 |---|---|---|
-| （待填） | | |
+| 2026-08-02 | 6316 | 源根 `src` + `src-tauri/src`；扩展名 `.ts/.tsx/.rs/.mjs/.mts/.css`；排除 `**/__tests__/**`、`**/*.test.ts/.tsx/.mjs`；去空行；注释行按前缀判定（ts/tsx/rs `//` `/*` `*`，mjs/mts 加 `#`，css `/*` `*`）。56 文件 / 7100 总行 / 340 注释行（5.4%），`decision=partial`（≥3000），源代码文档输出前 30+后 30 页 |
 
 ## 三、M 级盘点 checklist（Phase M 完成时执行）
 
-- [ ] 已运行行数统计并登记有效行数（本台账记录区）
-- [ ] 六个功能域（reading/editing/file-management/navigation/capture/application-shell）测试截图已采集，且截图含软件名称与版本号
-- [ ] 台账各材料项状态已如实更新（无「积累中」项停留在旧状态）
+> 盘点日期：2026-08-02（任务 8 端到端试跑后）。只勾选真实完成的项。
+
+- [x] 已运行行数统计并登记有效行数（本台账记录区）：6316 行，decision=partial
+- [x] 六个功能域（reading/editing/file-management/navigation/capture/application-shell）测试截图已采集，且截图含软件名称与版本号：7 个 ready 场景截图 + 覆盖层 DOM 断言通过
+- [x] 台账各材料项状态已如实更新（无「积累中」项停留在旧状态）
+- [x] 源代码文档试跑已生成：`build-source-doc.mjs` → `out/source-doc.pdf`（partial 60 页，页眉含软件名+版本号，HTML 中间产物 14 项断言全过）
+- [x] 说明书骨架已就绪：`manual-skeleton.md` + 试跑副本 `manual-skeleton-copy.md`
 - [ ] 开源组件与许可清单完成首次核对
 - [ ] AI 生成代码声明完成初稿（按 application.md 模板）
 

@@ -1,0 +1,435 @@
+{
+  "totalFiles": 56,
+  "totalLines": 7100,
+  "totalNonEmptyLines": 6316,
+  "totalCommentLines": 340,
+  "commentRatio": 0.0538,
+  "decision": "partial",
+  "topCommentFiles": [
+    {
+      "path": "src/vite-env.d.ts",
+      "totalLines": 1,
+      "nonEmptyLines": 1,
+      "commentLines": 1,
+      "commentRatio": 1
+    },
+    {
+      "path": "src/editors/decorations/composition.ts",
+      "totalLines": 8,
+      "nonEmptyLines": 7,
+      "commentLines": 3,
+      "commentRatio": 0.4286
+    },
+    {
+      "path": "src/renderers/html.ts",
+      "totalLines": 125,
+      "nonEmptyLines": 110,
+      "commentLines": 32,
+      "commentRatio": 0.2909
+    }
+  ],
+  "pages": {
+    "mode": "partial",
+    "linesPerPage": 50,
+    "pages": 127,
+    "frontPages": 30,
+    "backPages": 30,
+    "frontLines": 1500,
+    "backLines": 1500,
+    "note": "有效行数 6316 ≥ 3000，输出前 30 页（1500 行）+ 后 30 页（1500 行）"
+  },
+  "files": [
+    {
+      "path": "src/main.tsx",
+      "totalLines": 90,
+      "nonEmptyLines": 83,
+      "commentLines": 8,
+      "commentRatio": 0.0964
+    },
+    {
+      "path": "src-tauri/src/main.rs",
+      "totalLines": 6,
+      "nonEmptyLines": 5,
+      "commentLines": 1,
+      "commentRatio": 0.2
+    },
+    {
+      "path": "src-tauri/src/lib.rs",
+      "totalLines": 135,
+      "nonEmptyLines": 129,
+      "commentLines": 9,
+      "commentRatio": 0.0698
+    },
+    {
+      "path": "src-tauri/src/commands/capture.rs",
+      "totalLines": 553,
+      "nonEmptyLines": 502,
+      "commentLines": 1,
+      "commentRatio": 0.002
+    },
+    {
+      "path": "src-tauri/src/commands/config_cmd.rs",
+      "totalLines": 54,
+      "nonEmptyLines": 46,
+      "commentLines": 5,
+      "commentRatio": 0.1087
+    },
+    {
+      "path": "src-tauri/src/commands/directory.rs",
+      "totalLines": 361,
+      "nonEmptyLines": 312,
+      "commentLines": 13,
+      "commentRatio": 0.0417
+    },
+    {
+      "path": "src-tauri/src/commands/file.rs",
+      "totalLines": 155,
+      "nonEmptyLines": 130,
+      "commentLines": 9,
+      "commentRatio": 0.0692
+    },
+    {
+      "path": "src-tauri/src/commands/mod.rs",
+      "totalLines": 5,
+      "nonEmptyLines": 5,
+      "commentLines": 0,
+      "commentRatio": 0
+    },
+    {
+      "path": "src-tauri/src/commands/translate.rs",
+      "totalLines": 249,
+      "nonEmptyLines": 227,
+      "commentLines": 2,
+      "commentRatio": 0.0088
+    },
+    {
+      "path": "src-tauri/src/config.rs",
+      "totalLines": 165,
+      "nonEmptyLines": 153,
+      "commentLines": 5,
+      "commentRatio": 0.0327
+    },
+    {
+      "path": "src-tauri/src/errors.rs",
+      "totalLines": 75,
+      "nonEmptyLines": 71,
+      "commentLines": 0,
+      "commentRatio": 0
+    },
+    {
+      "path": "src-tauri/src/types.rs",
+      "totalLines": 9,
+      "nonEmptyLines": 8,
+      "commentLines": 0,
+      "commentRatio": 0
+    },
+    {
+      "path": "src-tauri/src/validation.rs",
+      "totalLines": 101,
+      "nonEmptyLines": 86,
+      "commentLines": 7,
+      "commentRatio": 0.0814
+    },
+    {
+      "path": "src/App.tsx",
+      "totalLines": 367,
+      "nonEmptyLines": 313,
+      "commentLines": 24,
+      "commentRatio": 0.0767
+    },
+    {
+      "path": "src/components/CaptureOverlay.tsx",
+      "totalLines": 597,
+      "nonEmptyLines": 554,
+      "commentLines": 28,
+      "commentRatio": 0.0505
+    },
+    {
+      "path": "src/components/ClairisIcon.tsx",
+      "totalLines": 23,
+      "nonEmptyLines": 21,
+      "commentLines": 0,
+      "commentRatio": 0
+    },
+    {
+      "path": "src/components/Content/ContentArea.tsx",
+      "totalLines": 139,
+      "nonEmptyLines": 122,
+      "commentLines": 7,
+      "commentRatio": 0.0574
+    },
+    {
+      "path": "src/components/Content/ContentSplitView.tsx",
+      "totalLines": 174,
+      "nonEmptyLines": 156,
+      "commentLines": 5,
+      "commentRatio": 0.0321
+    },
+    {
+      "path": "src/components/Content/HtmlPreview.tsx",
+      "totalLines": 59,
+      "nonEmptyLines": 51,
+      "commentLines": 2,
+      "commentRatio": 0.0392
+    },
+    {
+      "path": "src/components/Content/PreviewView.tsx",
+      "totalLines": 47,
+      "nonEmptyLines": 42,
+      "commentLines": 0,
+      "commentRatio": 0
+    },
+    {
+      "path": "src/components/Content/SplitResizeHandle.tsx",
+      "totalLines": 87,
+      "nonEmptyLines": 80,
+      "commentLines": 12,
+      "commentRatio": 0.15
+    },
+    {
+      "path": "src/components/ErrorBoundary.tsx",
+      "totalLines": 44,
+      "nonEmptyLines": 38,
+      "commentLines": 0,
+      "commentRatio": 0
+    },
+    {
+      "path": "src/components/Layout.tsx",
+      "totalLines": 169,
+      "nonEmptyLines": 149,
+      "commentLines": 9,
+      "commentRatio": 0.0604
+    },
+    {
+      "path": "src/components/Sidebar/FileTree.tsx",
+      "totalLines": 231,
+      "nonEmptyLines": 214,
+      "commentLines": 3,
+      "commentRatio": 0.014
+    },
+    {
+      "path": "src/components/Sidebar/Outline.tsx",
+      "totalLines": 119,
+      "nonEmptyLines": 105,
+      "commentLines": 5,
+      "commentRatio": 0.0476
+    },
+    {
+      "path": "src/components/Sidebar/RecentFiles.tsx",
+      "totalLines": 78,
+      "nonEmptyLines": 72,
+      "commentLines": 0,
+      "commentRatio": 0
+    },
+    {
+      "path": "src/components/SidebarPanel.tsx",
+      "totalLines": 53,
+      "nonEmptyLines": 47,
+      "commentLines": 0,
+      "commentRatio": 0
+    },
+    {
+      "path": "src/components/TabBar.tsx",
+      "totalLines": 152,
+      "nonEmptyLines": 143,
+      "commentLines": 3,
+      "commentRatio": 0.021
+    },
+    {
+      "path": "src/components/Toolbar.tsx",
+      "totalLines": 159,
+      "nonEmptyLines": 152,
+      "commentLines": 0,
+      "commentRatio": 0
+    },
+    {
+      "path": "src/components/Translation/TranslatePanel.tsx",
+      "totalLines": 45,
+      "nonEmptyLines": 41,
+      "commentLines": 0,
+      "commentRatio": 0
+    },
+    {
+      "path": "src/editors/decorations/boldItalic.ts",
+      "totalLines": 61,
+      "nonEmptyLines": 51,
+      "commentLines": 7,
+      "commentRatio": 0.1373
+    },
+    {
+      "path": "src/editors/decorations/code.ts",
+      "totalLines": 36,
+      "nonEmptyLines": 30,
+      "commentLines": 3,
+      "commentRatio": 0.1
+    },
+    {
+      "path": "src/editors/decorations/composition.ts",
+      "totalLines": 8,
+      "nonEmptyLines": 7,
+      "commentLines": 3,
+      "commentRatio": 0.4286
+    },
+    {
+      "path": "src/editors/decorations/heading.ts",
+      "totalLines": 56,
+      "nonEmptyLines": 45,
+      "commentLines": 2,
+      "commentRatio": 0.0444
+    },
+    {
+      "path": "src/editors/decorations/list.ts",
+      "totalLines": 51,
+      "nonEmptyLines": 43,
+      "commentLines": 1,
+      "commentRatio": 0.0233
+    },
+    {
+      "path": "src/editors/decorations/quote.ts",
+      "totalLines": 26,
+      "nonEmptyLines": 21,
+      "commentLines": 2,
+      "commentRatio": 0.0952
+    },
+    {
+      "path": "src/editors/editorRef.ts",
+      "totalLines": 43,
+      "nonEmptyLines": 37,
+      "commentLines": 7,
+      "commentRatio": 0.1892
+    },
+    {
+      "path": "src/editors/keybindings.ts",
+      "totalLines": 58,
+      "nonEmptyLines": 51,
+      "commentLines": 5,
+      "commentRatio": 0.098
+    },
+    {
+      "path": "src/editors/setup.ts",
+      "totalLines": 83,
+      "nonEmptyLines": 74,
+      "commentLines": 6,
+      "commentRatio": 0.0811
+    },
+    {
+      "path": "src/hooks/useConfig.ts",
+      "totalLines": 203,
+      "nonEmptyLines": 184,
+      "commentLines": 7,
+      "commentRatio": 0.038
+    },
+    {
+      "path": "src/hooks/useDragResize.ts",
+      "totalLines": 70,
+      "nonEmptyLines": 61,
+      "commentLines": 14,
+      "commentRatio": 0.2295
+    },
+    {
+      "path": "src/hooks/useFile.ts",
+      "totalLines": 84,
+      "nonEmptyLines": 73,
+      "commentLines": 1,
+      "commentRatio": 0.0137
+    },
+    {
+      "path": "src/hooks/useTranslation.ts",
+      "totalLines": 93,
+      "nonEmptyLines": 82,
+      "commentLines": 2,
+      "commentRatio": 0.0244
+    },
+    {
+      "path": "src/renderers/html.ts",
+      "totalLines": 125,
+      "nonEmptyLines": 110,
+      "commentLines": 32,
+      "commentRatio": 0.2909
+    },
+    {
+      "path": "src/renderers/index.ts",
+      "totalLines": 23,
+      "nonEmptyLines": 21,
+      "commentLines": 5,
+      "commentRatio": 0.2381
+    },
+    {
+      "path": "src/renderers/markdown.ts",
+      "totalLines": 31,
+      "nonEmptyLines": 28,
+      "commentLines": 1,
+      "commentRatio": 0.0357
+    },
+    {
+      "path": "src/renderers/text.ts",
+      "totalLines": 11,
+      "nonEmptyLines": 11,
+      "commentLines": 3,
+      "commentRatio": 0.2727
+    },
+    {
+      "path": "src/stores/captureOverlay.ts",
+      "totalLines": 405,
+      "nonEmptyLines": 370,
+      "commentLines": 15,
+      "commentRatio": 0.0405
+    },
+    {
+      "path": "src/stores/editorStore.ts",
+      "totalLines": 137,
+      "nonEmptyLines": 111,
+      "commentLines": 14,
+      "commentRatio": 0.1261
+    },
+    {
+      "path": "src/stores/index.ts",
+      "totalLines": 322,
+      "nonEmptyLines": 280,
+      "commentLines": 9,
+      "commentRatio": 0.0321
+    },
+    {
+      "path": "src/styles/editor.css",
+      "totalLines": 297,
+      "nonEmptyLines": 244,
+      "commentLines": 23,
+      "commentRatio": 0.0943
+    },
+    {
+      "path": "src/styles/theme-dark.css",
+      "totalLines": 88,
+      "nonEmptyLines": 77,
+      "commentLines": 2,
+      "commentRatio": 0.026
+    },
+    {
+      "path": "src/styles/theme-light.css",
+      "totalLines": 88,
+      "nonEmptyLines": 77,
+      "commentLines": 2,
+      "commentRatio": 0.026
+    },
+    {
+      "path": "src/types/index.ts",
+      "totalLines": 98,
+      "nonEmptyLines": 82,
+      "commentLines": 0,
+      "commentRatio": 0
+    },
+    {
+      "path": "src/utils/log.ts",
+      "totalLines": 101,
+      "nonEmptyLines": 88,
+      "commentLines": 15,
+      "commentRatio": 0.1705
+    },
+    {
+      "path": "src/vite-env.d.ts",
+      "totalLines": 1,
+      "nonEmptyLines": 1,
+      "commentLines": 1,
+      "commentRatio": 1
+    }
+  ]
+}

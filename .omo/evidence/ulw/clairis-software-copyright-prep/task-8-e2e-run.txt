@@ -1,0 +1,50 @@
+# Task 8 端到端试跑验证记录
+
+- 日期：2026-08-02
+- 计划：`.omo/plans/clairis-software-copyright-prep.md`（任务 8，141-147 行）
+- Node：v24.14.0（需 `export PATH="$HOME/.nvm/versions/node/v24.14.0/bin:$PATH"`）
+
+## 一、脚本运行结果（全部 exit 0）
+
+| 脚本 | 结果 | 关键数值 |
+|---|---|---|
+| `count-lines.mjs` | 成功 | 56 文件 / 7100 总行 / 6316 非空行 / 340 注释行（5.4%）/ `decision=partial`（≥3000） |
+| `capture-screens.mjs` | 成功 | 8 场景：7 success + 1 pending（navigation-file-panel），0 failed |
+| `build-source-doc.mjs` | 成功 | partial 60 页（前 30 + 后 30），247,809 字节，入口 src/main.tsx，末文件 src/vite-env.d.ts |
+
+## 二、验证项逐项结果
+
+| 验证项 | 结果 | 证据 |
+|---|---|---|
+| count-report JSON 合法且 decision 与阈值匹配 | PASS | 6316 ≥ 3000 → partial，decision 与 totalNonEmptyLines 一致 |
+| 截图覆盖层 DOM 断言含软件名称+版本号 | PASS | 7/7 overlay.asserted=true 且 expected 含「Clairis 渐晰阅读编辑软件」 |
+| 至少 1 个 ready 场景成功截图 | PASS | 7 个（含截图 PNG 落盘，命名含场景 id+日期） |
+| PDF 页眉含软件全称+版本号 | PASS | HTML 中间产物断言 |
+| 页码格式「第 N / 60 页」且连续 | PASS | 60/60 |
+| 每页非空行 ≥50（末页豁免） | PASS | 59 页各 50 行 + 末页 22 行；无空行页、无中间页 <50 |
+| 首页从入口文件开始 | PASS | 首页首行 `===== src/main.tsx（83 行 / 8 空行） =====` |
+| 末页为代码结尾 | PASS | 末行 = src/vite-env.d.ts 最后非空行（HTML 转义后比较） |
+| meta 一致性（pdfPages/firstFile/mode） | PASS | 60 / src/main.tsx / partial |
+| 失败路径：49 行页必须断言失败 | PASS | 临时副本第 3 页改 49 行 → 被断言捕获（`{"c":49,"i":2}`） |
+| gitignore：out/ 产物不入 git | PASS | `git status --short scripts/softcopyright/out/` 无输出 |
+| docs:check（文档治理门禁） | PASS | exit 0，违例 0，openspec validate 6/6 |
+| 脚本回归测试 | PASS | 31/31（`node --test "scripts/softcopyright/*.test.mjs"`） |
+| 台账 M 级盘点勾选 ≥4 项 | PASS | 勾选 5 项（行数统计/截图/台账更新/源代码文档试跑/说明书骨架） |
+
+## 三、台账更新内容（ledger.md）
+
+- 材料清单状态如实更新：源代码文档（已具备·M 级试跑）、有效行数报告（已具备·M 级首次）、说明书（积累中·骨架就绪）、测试截图（已具备·M 级期 7 场景）、AI 声明/git 记录/名称定稿/文件头注释（积累中），其余保持未开始。
+- 有效行数记录区填入实测：2026-08-02，6316 行，完整统计口径（扩展名/排除规则/去空行/注释判定）。
+- M 级盘点 checklist 勾选 5 项（补充了源代码文档试跑、说明书骨架两项）。
+
+## 四、发现的问题与说明
+
+1. **`node --test scripts/softcopyright/`（目录形式）在 node 24 下失败**（MODULE_NOT_FOUND，把目录当模块加载）。改用 `node --test "scripts/softcopyright/*.test.mjs"` 或显式文件列表 → 31/31 通过。属 node 版本行为差异，非脚本缺陷，未改脚本。
+2. **HTML 中间产物末行断言需先做 HTML 转义**：末行 `<reference types="vite/client"/>` 在 HTML 中为 `&lt;reference ...`。修正断言为转义后比较后 PASS。属断言写法问题，非产物缺陷。
+3. `navigation-file-panel` 场景 pending（对应功能未实现），已在台账缺口处理注明，R 级期复采。
+
+## 五、产物清单（已归档）
+
+见 `task-8-artifacts/`：source-doc.pdf、source-doc-meta.json、count-report.json、manual-skeleton-copy.md、ledger-copy.md、screenshots/（7 张 PNG）。
+
+工作副本：`scripts/softcopyright/out/`（不入库）、`docs/delivery/softcopyright/screenshots/`（入库，证据链）、`docs/delivery/softcopyright/manual-skeleton-copy.md`（试跑副本，入库）。
