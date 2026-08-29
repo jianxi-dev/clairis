@@ -5,4 +5,24 @@ target/
 *.log
 .claude/settings.local.json
 memoryos_data/
+.gbrain-source
 scripts/softcopyright/out/
+test-results/
+playwright-report/
+coverage/
+# Agent 缓存与临时产物（不提交）
+.omo/
+.codex/
+.gemini/
+.codebuddy/
+.od-skills/
+.opencode/
+.pi/
+.pi-subagents/
+.pi-glla/
+.sbx/
+.gstack/
+.scannerwork/
+gbrain-sync-*.md
+_cap_check*.md
+index.html.artifact.json

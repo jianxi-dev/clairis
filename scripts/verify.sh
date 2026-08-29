@@ -49,6 +49,16 @@ else
   FAIL=1
 fi
 
+# 3b. Docs Governance Gate
+echo ""
+echo "── 3b. Docs Governance Gate ──"
+if npm run docs:check; then
+  echo "  ✅ Docs governance gate"
+else
+  echo "  ❌ Docs governance gate failures"
+  FAIL=1
+fi
+
 # 4. Rust
 echo ""
 echo "── 4. Rust ──"

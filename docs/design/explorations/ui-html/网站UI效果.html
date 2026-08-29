@@ -1,0 +1,1273 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>渐晰 Clairis — 渐入澄明，呼吸成章</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Iowan+Old+Style:ital@0;1&family=DM+Serif+Display:ital@0;1&family=Inter:wght@300;400;500&family=Noto+Serif+SC:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: oklch(14% 0.012 70);
+  --surface: oklch(18% 0.015 70);
+  --surface-2: oklch(22% 0.018 70);
+  --fg: oklch(92% 0.004 70);
+  --fg-dim: oklch(72% 0.008 70);
+  --muted: oklch(52% 0.012 70);
+  --border: oklch(26% 0.015 70);
+  --aurora-green: oklch(76% 0.11 228);
+  --aurora-cyan: oklch(72% 0.09 195);
+  --aurora-purple: oklch(74% 0.08 280);
+  --aurora-glow: oklch(68% 0.13 220);
+  --font-display: 'Iowan Old Style', 'DM Serif Display', Georgia, serif;
+  --font-body: 'Inter', -apple-system, 'Noto Sans SC', 'PingFang SC', sans-serif;
+  --font-cn: 'Noto Serif SC', 'Songti SC', Georgia, serif;
+  --max-w: 1200px;
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-body);
+  font-weight: 400;
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+/* Aurora Background */
+.aurora-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.aurora-layer {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(120px);
+  opacity: 0.5;
+  will-change: transform;
+}
+
+.aurora-1 {
+  width: 800px; height: 800px;
+  background: radial-gradient(circle, var(--aurora-green) 0%, transparent 70%);
+  top: -20%; left: -10%;
+  animation: drift1 28s var(--ease) infinite alternate;
+}
+
+.aurora-2 {
+  width: 600px; height: 600px;
+  background: radial-gradient(circle, var(--aurora-cyan) 0%, transparent 70%);
+  bottom: -10%; right: -5%;
+  animation: drift2 35s var(--ease) infinite alternate;
+}
+
+.aurora-3 {
+  width: 500px; height: 500px;
+  background: radial-gradient(circle, var(--aurora-purple) 0%, transparent 70%);
+  top: 40%; left: 50%;
+  animation: drift3 40s var(--ease) infinite alternate;
+}
+
+@keyframes drift1 {
+  0% { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(80px, 60px) scale(1.1); }
+}
+
+@keyframes drift2 {
+  0% { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(-60px, -40px) scale(0.9); }
+}
+
+@keyframes drift3 {
+  0% { transform: translate(0, 0) scale(1); opacity: 0.5; }
+  100% { transform: translate(-100px, 50px) scale(1.2); opacity: 0.3; }
+}
+
+/* Container */
+.container {
+  position: relative;
+  z-index: 1;
+  max-width: var(--max-w);
+  margin: 0 auto;
+  padding: 0 48px;
+}
+
+/* Navigation */
+nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  padding: 20px 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: background 0.3s var(--ease), backdrop-filter 0.3s var(--ease), border-color 0.3s var(--ease);
+  border-bottom: 1px solid transparent;
+}
+
+nav.scrolled {
+  background: rgba(14, 14, 16, 0.85);
+  backdrop-filter: blur(20px) saturate(1.5);
+  -webkit-backdrop-filter: blur(20px) saturate(1.5);
+  border-bottom-color: var(--border);
+}
+
+.nav-logo {
+  font-family: var(--font-display);
+  font-size: 20px;
+  letter-spacing: 0.04em;
+  color: var(--fg);
+  text-decoration: none;
+}
+
+.nav-logo span {
+  color: var(--aurora-green);
+}
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+}
+
+.nav-links a {
+  color: var(--fg-dim);
+  text-decoration: none;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  transition: color 0.2s;
+}
+
+.nav-links a:hover {
+  color: var(--fg);
+}
+
+.nav-cta {
+  padding: 8px 20px !important;
+  border: 1px solid var(--aurora-green) !important;
+  color: var(--aurora-green) !important;
+  border-radius: 8px;
+  transition: all 0.2s var(--ease) !important;
+}
+
+.nav-cta:hover {
+  background: var(--aurora-green) !important;
+  color: var(--bg) !important;
+}
+
+/* Hero Section */
+.hero {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 120px 24px 80px;
+  position: relative;
+}
+
+.hero-kicker {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--aurora-green);
+  margin-bottom: 36px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.hero-kicker::before,
+.hero-kicker::after {
+  content: '';
+  width: 32px;
+  height: 1px;
+  background: var(--aurora-green);
+  opacity: 0.5;
+}
+
+.hero-title {
+  font-family: var(--font-display);
+  font-size: clamp(56px, 10vw, 128px);
+  font-weight: 400;
+  letter-spacing: -0.03em;
+  line-height: 1.0;
+  color: var(--fg);
+  margin-bottom: 24px;
+}
+
+.hero-title-accent {
+  font-style: italic;
+  color: var(--aurora-green);
+}
+
+.hero-tagline {
+  font-family: var(--font-cn);
+  font-size: clamp(18px, 2.5vw, 26px);
+  font-weight: 400;
+  color: var(--fg-dim);
+  letter-spacing: 0.04em;
+  margin-bottom: 16px;
+  max-width: 600px;
+}
+
+.hero-sub {
+  font-size: 14px;
+  color: var(--muted);
+  letter-spacing: 0.08em;
+  margin-bottom: 56px;
+}
+
+.hero-actions {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 36px;
+  background: var(--aurora-green);
+  color: var(--bg);
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.3s var(--ease);
+  box-shadow: 0 0 30px rgba(0, 200, 160, 0.15);
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 50px rgba(0, 200, 160, 0.25);
+}
+
+.btn-primary svg {
+  width: 16px;
+  height: 16px;
+}
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 28px;
+  background: transparent;
+  color: var(--fg-dim);
+  font-size: 14px;
+  letter-spacing: 0.04em;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.3s var(--ease);
+}
+
+.btn-secondary:hover {
+  border-color: var(--fg-dim);
+  color: var(--fg);
+}
+
+.hero-platforms {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 40px;
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 0.08em;
+}
+
+.hero-platforms svg {
+  width: 14px;
+  height: 14px;
+  opacity: 0.6;
+}
+
+.hero-scroll-hint {
+  position: absolute;
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  animation: scrollPulse 3s ease-in-out infinite;
+}
+
+.hero-scroll-hint::after {
+  content: '';
+  width: 1px;
+  height: 32px;
+  background: linear-gradient(to bottom, var(--muted), transparent);
+}
+
+@keyframes scrollPulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+/* Philosophy Section */
+.section-philosophy {
+  padding: 160px 0;
+  text-align: center;
+}
+
+.philosophy-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 0;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.philosophy-word {
+  font-family: var(--font-cn);
+  font-size: clamp(22px, 3vw, 36px);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--fg);
+  padding: 16px 8px;
+  position: relative;
+}
+
+.philosophy-word::after {
+  content: '·';
+  position: absolute;
+  right: -4px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted);
+  opacity: 0.3;
+}
+
+.philosophy-word:last-child::after {
+  content: none;
+}
+
+.philosophy-intro {
+  font-size: 14px;
+  color: var(--muted);
+  letter-spacing: 0.08em;
+  margin-bottom: 48px;
+}
+
+/* Section Styles */
+.section-label {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--aurora-green);
+  margin-bottom: 24px;
+}
+
+.section-title {
+  font-family: var(--font-display);
+  font-size: clamp(36px, 5vw, 56px);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  color: var(--fg);
+  margin-bottom: 20px;
+}
+
+.section-desc {
+  font-size: 17px;
+  color: var(--fg-dim);
+  max-width: 560px;
+  line-height: 1.7;
+}
+
+/* Pain Points Section */
+.section-pain {
+  padding: 120px 0;
+}
+
+.pain-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+  margin-top: 64px;
+}
+
+.pain-card {
+  padding: 48px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  transition: all 0.4s var(--ease);
+}
+
+.pain-card:hover {
+  border-color: oklch(35% 0.02 70);
+}
+
+.pain-card-before {
+  background: var(--surface);
+}
+
+.pain-card-after {
+  background: linear-gradient(135deg, var(--surface) 0%, oklch(18% 0.03 228) 100%);
+  border-color: oklch(35% 0.04 228);
+}
+
+.pain-label {
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pain-card-before .pain-label {
+  color: var(--muted);
+}
+
+.pain-card-after .pain-label {
+  color: var(--aurora-green);
+}
+
+.pain-card-after .pain-label::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  background: var(--aurora-green);
+  border-radius: 50%;
+  box-shadow: 0 0 8px var(--aurora-green);
+}
+
+.pain-headline {
+  font-family: var(--font-cn);
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--fg);
+  margin-bottom: 24px;
+}
+
+.pain-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.pain-list li {
+  font-size: 15px;
+  color: var(--fg-dim);
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  line-height: 1.6;
+}
+
+.pain-list li::before {
+  content: '';
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  margin-top: 10px;
+  flex-shrink: 0;
+}
+
+.pain-card-before .pain-list li::before {
+  background: var(--muted);
+}
+
+.pain-card-after .pain-list li::before {
+  background: var(--aurora-green);
+}
+
+/* Effects Section */
+.section-effects {
+  padding: 120px 0;
+}
+
+.effects-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  margin-top: 64px;
+}
+
+.effect-card {
+  padding: 40px 36px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  transition: all 0.4s var(--ease);
+  position: relative;
+  overflow: hidden;
+}
+
+.effect-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--aurora-green), transparent);
+  opacity: 0;
+  transition: opacity 0.4s var(--ease);
+}
+
+.effect-card:hover {
+  transform: translateY(-4px);
+  border-color: oklch(35% 0.03 228);
+}
+
+.effect-card:hover::before {
+  opacity: 0.6;
+}
+
+.effect-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: oklch(22% 0.02 228);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 24px;
+  color: var(--aurora-green);
+}
+
+.effect-icon svg {
+  width: 22px;
+  height: 22px;
+}
+
+.effect-title {
+  font-family: var(--font-cn);
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--fg);
+  margin-bottom: 12px;
+}
+
+.effect-desc {
+  font-size: 14px;
+  color: var(--fg-dim);
+  line-height: 1.7;
+}
+
+/* Journey Section */
+.section-journey {
+  padding: 120px 0;
+  text-align: center;
+}
+
+.journey-timeline {
+  max-width: 600px;
+  margin: 64px auto 0;
+  position: relative;
+}
+
+.journey-timeline::before {
+  content: '';
+  position: absolute;
+  left: 23px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: linear-gradient(to bottom, var(--border), var(--aurora-green), var(--border));
+}
+
+.journey-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 32px;
+  padding-bottom: 48px;
+  text-align: left;
+}
+
+.journey-item:last-child {
+  padding-bottom: 0;
+}
+
+.journey-dot {
+  width: 47px;
+  height: 47px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.journey-dot-inner {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--bg);
+  border: 2px solid var(--border);
+  transition: all 0.3s var(--ease);
+}
+
+.journey-item:hover .journey-dot-inner {
+  border-color: var(--aurora-green);
+  box-shadow: 0 0 12px rgba(0, 200, 160, 0.3);
+}
+
+.journey-content {
+  padding-top: 8px;
+}
+
+.journey-phase {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: var(--aurora-green);
+  margin-bottom: 6px;
+}
+
+.journey-title {
+  font-family: var(--font-cn);
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--fg);
+  margin-bottom: 8px;
+}
+
+.journey-desc {
+  font-size: 14px;
+  color: var(--fg-dim);
+  line-height: 1.6;
+}
+
+.journey-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.journey-tag {
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--fg-dim);
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+/* Pillars Section */
+.section-pillars {
+  padding: 120px 0;
+}
+
+.pillars-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0;
+  margin-top: 64px;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.pillar-card {
+  padding: 48px 40px;
+  text-align: center;
+  border-right: 1px solid var(--border);
+  transition: background 0.3s var(--ease);
+}
+
+.pillar-card:last-child {
+  border-right: none;
+}
+
+.pillar-card:hover {
+  background: var(--surface);
+}
+
+.pillar-char {
+  font-family: var(--font-display);
+  font-size: 64px;
+  font-style: italic;
+  color: var(--aurora-green);
+  line-height: 1.0;
+  margin-bottom: 16px;
+  opacity: 0.8;
+}
+
+.pillar-title {
+  font-family: var(--font-cn);
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--fg);
+  margin-bottom: 12px;
+}
+
+.pillar-desc {
+  font-size: 14px;
+  color: var(--fg-dim);
+  line-height: 1.7;
+}
+
+/* CTA Section */
+.section-cta {
+  padding: 160px 0;
+  text-align: center;
+}
+
+.cta-inner {
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.cta-title {
+  font-family: var(--font-display);
+  font-size: clamp(36px, 5vw, 52px);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  color: var(--fg);
+  margin-bottom: 20px;
+}
+
+.cta-desc {
+  font-size: 16px;
+  color: var(--fg-dim);
+  line-height: 1.7;
+  margin-bottom: 48px;
+}
+
+.cta-buttons {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-bottom: 32px;
+}
+
+.cta-note {
+  font-size: 12px;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+}
+
+/* Footer */
+footer {
+  padding: 48px 0;
+  border-top: 1px solid var(--border);
+}
+
+.footer-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.footer-left {
+  font-family: var(--font-display);
+  font-size: 16px;
+  color: var(--fg-dim);
+}
+
+.footer-left span {
+  color: var(--aurora-green);
+}
+
+.footer-right {
+  display: flex;
+  gap: 24px;
+}
+
+.footer-right a {
+  font-size: 12px;
+  color: var(--muted);
+  text-decoration: none;
+  letter-spacing: 0.04em;
+  transition: color 0.2s;
+}
+
+.footer-right a:hover {
+  color: var(--fg);
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .effects-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  
+  .philosophy-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding: 0 24px;
+  }
+  
+  nav {
+    padding: 20px 24px;
+  }
+  
+  .nav-links {
+    display: none;
+  }
+  
+  .hero-title {
+    font-size: 48px;
+  }
+  
+  .pain-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .effects-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .philosophy-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .pillars-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .pillar-card {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+  
+  .pillar-card:last-child {
+    border-bottom: none;
+  }
+  
+  .section-pillars,
+  .section-effects,
+  .section-pain,
+  .section-journey,
+  .section-philosophy,
+  .section-cta {
+    padding: 80px 0;
+  }
+  
+  .footer-inner {
+    flex-direction: column;
+    gap: 16px;
+  }
+  
+  .hero-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+  
+  .btn-primary,
+  .btn-secondary {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  .aurora-layer {
+    animation: none;
+  }
+  
+  .hero-scroll-hint {
+    animation: none;
+  }
+  
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
+
+/* Animations on scroll */
+.fade-up {
+  opacity: 0;
+  transform: translateY(32px);
+  transition: opacity 0.8s var(--ease), transform 0.8s var(--ease);
+}
+
+.fade-up.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.fade-in {
+  opacity: 0;
+  transition: opacity 1s var(--ease);
+}
+
+.fade-in.visible {
+  opacity: 1;
+}
+</style>
+</head>
+<body>
+
+<!-- Aurora Background -->
+<div class="aurora-bg" aria-hidden="true">
+  <div class="aurora-layer aurora-1"></div>
+  <div class="aurora-layer aurora-2"></div>
+  <div class="aurora-layer aurora-3"></div>
+</div>
+
+<!-- Navigation -->
+<nav>
+  <a href="#" class="nav-logo">Clairis<span>.</span></a>
+  <div class="nav-links">
+    <a href="#philosophy">理念</a>
+    <a href="#effects">体验</a>
+    <a href="#journey">旅程</a>
+    <a href="#cta" class="nav-cta">下载</a>
+  </div>
+</nav>
+
+<!-- Hero Section -->
+<section class="hero" id="hero">
+  <div class="hero-kicker fade-in">Clairis · 渐晰</div>
+  
+  <h1 class="hero-title fade-up">
+    渐入<span class="hero-title-accent">澄明</span>
+  </h1>
+  
+  <p class="hero-tagline fade-up">
+    让每一次落笔，都成为一场呼吸
+  </p>
+  
+  <p class="hero-sub fade-up">
+    一款陪伴学习成长的写作伙伴
+  </p>
+  
+  <div class="hero-actions fade-up">
+    <a href="#cta" class="btn-primary">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="7 10 12 15 17 10"/>
+        <line x1="12" y1="15" x2="12" y2="3"/>
+      </svg>
+      下载渐晰
+    </a>
+    <a href="#philosophy" class="btn-secondary">
+      了解更多
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="6 9 12 15 18 9"/>
+      </svg>
+    </a>
+  </div>
+  
+  <div class="hero-platforms fade-up">
+    <svg viewBox="0 0 24 24" fill="currentColor">
+      <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
+    </svg>
+    macOS · 免费使用
+  </div>
+  
+  <div class="hero-scroll-hint">
+    <span>向下滚动</span>
+  </div>
+</section>
+
+<!-- Philosophy Section -->
+<section class="section-philosophy container" id="philosophy">
+  <div class="fade-up">
+    <div class="section-label" style="text-align:center; justify-content:center;">产品哲学</div>
+    <p class="philosophy-intro">六字红线，贯穿始终</p>
+    <div class="philosophy-grid">
+      <div class="philosophy-word">快</div>
+      <div class="philosophy-word">方便</div>
+      <div class="philosophy-word">舒服</div>
+      <div class="philosophy-word">喜欢</div>
+      <div class="philosophy-word">沉浸</div>
+      <div class="philosophy-word">仪式</div>
+    </div>
+  </div>
+</section>
+
+<!-- Pain Points Section -->
+<section class="section-pain container" id="pain">
+  <div class="fade-up">
+    <div class="section-label">从混沌到澄明</div>
+    <h2 class="section-title">那些写作时<br>被反复打断的瞬间</h2>
+    <p class="section-desc">工具本该服务于灵感，而非成为障碍。</p>
+  </div>
+  
+  <div class="pain-grid">
+    <div class="pain-card pain-card-before fade-up">
+      <div class="pain-label">常见的编辑器</div>
+      <h3 class="pain-headline">注意力不断被切割</h3>
+      <ul class="pain-list">
+        <li>打开界面就被按钮和面板淹没</li>
+        <li>找文件像翻抽屉，打断思路连续性</li>
+        <li>格式调整耗费心力而非写作本身</li>
+        <li>暗夜里眼睛被强光烧得酸涩</li>
+        <li>灵感闪现，找记录工具却花了三分钟</li>
+      </ul>
+    </div>
+    
+    <div class="pain-card pain-card-after fade-up">
+      <div class="pain-label">渐晰 Clairis</div>
+      <h3 class="pain-headline">只剩下你与文字</h3>
+      <ul class="pain-list">
+        <li>打开即写，没有任何多余的打扰</li>
+        <li>想找的内容，一个手势便浮现眼前</li>
+        <li>排版自动优雅，你只需关注表达</li>
+        <li>屏幕像深夜书房，温柔包裹目光</li>
+        <li>任何瞬间，灵感落键即被接住</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- Effects Section (M/R级效果，不讲具体功能) -->
+<section class="section-effects container" id="effects">
+  <div class="fade-up">
+    <div class="section-label">你将感受到的</div>
+    <h2 class="section-title">不是功能，<br>是被温柔托住的感觉</h2>
+    <p class="section-desc">以下体验随产品上线逐步呈现。</p>
+  </div>
+  
+  <div class="effects-grid">
+    <div class="effect-card fade-up">
+      <div class="effect-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+          <path d="M2 17l10 5 10-5"/>
+          <path d="M2 12l10 5 10-5"/>
+        </svg>
+      </div>
+      <h3 class="effect-title">打开即是序章</h3>
+      <p class="effect-desc">打开应用的那一刻，像铺开一张素净宣纸——界面适得其所地安静，你与世界之间，只剩下一行光标。</p>
+    </div>
+    
+    <div class="effect-card fade-up">
+      <div class="effect-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"/>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+      </div>
+      <h3 class="effect-title">瞬息而至</h3>
+      <p class="effect-desc">想搜什么，打字即来。文件、命令、段落——它们比你记忆中藏得更近。</p>
+    </div>
+    
+    <div class="effect-card fade-up">
+      <div class="effect-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="2"/>
+          <line x1="3" y1="9" x2="21" y2="9"/>
+          <line x1="9" y1="21" x2="9" y2="9"/>
+        </svg>
+      </div>
+      <h3 class="effect-title">画布随心</h3>
+      <p class="effect-desc">同一片空间，忽而是严谨文档，忽而是散落灵呼，忽而是沉思书桌——形随心动。</p>
+    </div>
+    
+    <div class="effect-card fade-up">
+      <div class="effect-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+        </svg>
+      </div>
+      <h3 class="effect-title">久看不倦</h3>
+      <p class="effect-desc">暗色主题贴合深夜书写场景，光影柔和、对比舒适——连续数小时不觉疲劳。</p>
+    </div>
+    
+    <div class="effect-card fade-up">
+      <div class="effect-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        </svg>
+      </div>
+      <h3 class="effect-title">私密如囊</h3>
+      <p class="effect-desc">你的每一句话都只留在自己手中。不上传、不追踪、不分享——连开发者也不行。</p>
+    </div>
+    
+    <div class="effect-card fade-up">
+      <div class="effect-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
+      </div>
+      <h3 class="effect-title">成长可见</h3>
+      <p class="effect-desc">积累不会白费。每一次梳理思路，都让思想更清晰一分。</p>
+    </div>
+  </div>
+</section>
+
+<!-- Journey Section (只展示M/R级) -->
+<section class="section-journey container" id="journey">
+  <div class="fade-up">
+    <div class="section-label" style="text-align:center;">产品路线</div>
+    <h2 class="section-title">步步精心</h2>
+    <p class="section-desc" style="margin: 0 auto;">从第一行代码到完整陪伴。</p>
+  </div>
+  
+  <div class="journey-timeline">
+    <div class="journey-item fade-up">
+      <div class="journey-dot">
+        <div class="journey-dot-inner"></div>
+      </div>
+      <div class="journey-content">
+        <div class="journey-phase">Phase M · 即刻可用</div>
+        <h3 class="journey-title">落笔成篇</h3>
+        <p class="journey-desc">干净的编辑体验，所见即所得。打开、书写、保存——回归写作本身。</p>
+        <div class="journey-tags">
+          <span class="journey-tag">GFM 渲染</span>
+          <span class="journey-tag">字号缩放</span>
+          <span class="journey-tag">未保存守卫</span>
+          <span class="journey-tag">语法高亮</span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="journey-item fade-up">
+      <div class="journey-dot">
+        <div class="journey-dot-inner"></div>
+      </div>
+      <div class="journey-content">
+        <div class="journey-phase">Phase R · 正式亮相</div>
+        <h3 class="journey-title">沉浸其中</h3>
+        <p class="journey-desc">多页签管理、全文搜索、沉浸阅读。你的书房终于装得下整片思绪。</p>
+        <div class="journey-tags">
+          <span class="journey-tag">多页签</span>
+          <span class="journey-tag">双层搜索</span>
+          <span class="journey-tag">沉浸阅读</span>
+          <span class="journey-tag">导出 PDF</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Pillars Section -->
+<section class="section-pillars container" id="pillars">
+  <div class="fade-up">
+    <div class="section-label" style="text-align:center;">三字原则</div>
+    <h2 class="section-title" style="text-align:center;">支撑一切的底层信念</h2>
+  </div>
+  
+  <div class="pillars-grid fade-up">
+    <div class="pillar-card">
+      <div class="pillar-char">快</div>
+      <h3 class="pillar-title">快</h3>
+      <p class="pillar-desc">从想到写，零等待。灵感落键即被接住，思维不因工具而减速。</p>
+    </div>
+    <div class="pillar-card">
+      <div class="pillar-char">懂</div>
+      <h3 class="pillar-title">懂你</h3>
+      <p class="pillar-desc">它知道你下一步想找什么。快捷入口、命令搜索——工具主动迎向你。</p>
+    </div>
+    <div class="pillar-card">
+      <div class="pillar-char">静</div>
+      <h3 class="pillar-title">留白仪式</h3>
+      <p class="pillar-desc">留白不是空旷，是呼吸的空间。元素的克制，让你专注于真正重要的事。</p>
+    </div>
+  </div>
+</section>
+
+<!-- CTA Section -->
+<section class="section-cta" id="cta">
+  <div class="cta-inner fade-up">
+    <div class="section-label" style="text-align:center; justify-content:center;">开始体验</div>
+    <h2 class="cta-title">准备好<br>让写作回归呼吸</h2>
+    <p class="cta-desc">
+      渐晰 Clairis 适用于 macOS。<br>
+      免费下载，本地优先，你的数据只属于你。
+    </p>
+    <div class="cta-buttons">
+      <a href="javascript:void(0)" class="btn-primary" onclick="alert('即将开放下载，敬请期待')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        下载渐晰 (macOS)
+      </a>
+    </div>
+    <p class="cta-note">v0.1.0 M 阶段 · 免费 · macOS 14+</p>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer>
+  <div class="container">
+    <div class="footer-inner">
+      <div class="footer-left">Clairis<span>.</span> / 渐晰</div>
+      <div class="footer-right">
+        <a href="#">GitHub</a>
+        <a href="#">隐私政策</a>
+        <a href="mailto:hello@clairis.dev">联系</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script>
+// Scroll reveal
+const revealObserver = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+    }
+  });
+}, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
+
+document.querySelectorAll('.fade-up, .fade-in').forEach(el => {
+  revealObserver.observe(el);
+});
+
+// Nav scroll effect
+const nav = document.querySelector('nav');
+let lastScroll = 0;
+
+window.addEventListener('scroll', () => {
+  const currentScroll = window.pageYOffset;
+  if (currentScroll > 80) {
+    nav.classList.add('scrolled');
+  } else {
+    nav.classList.remove('scrolled');
+  }
+  lastScroll = currentScroll;
+}, { passive: true });
+</script>
+
+</body>
+</html>

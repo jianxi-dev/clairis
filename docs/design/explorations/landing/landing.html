@@ -1,0 +1,614 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>渐晰 Clairis — 沉浸读写，仪式渐晰</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #ffffff;
+      --surface: #f7f7f7;
+      --surface-warm: #eeeeee;
+      --fg: #111111;
+      --fg-2: #3a3a3a;
+      --muted: #707070;
+      --meta: #111111;
+      --border: #d9d9d9;
+      --border-soft: #eeeeee;
+      --accent: #37F712;
+      --accent-on: #111111;
+      --accent-hover: color-mix(in oklab, var(--accent), black 8%);
+      --accent-active: color-mix(in oklab, var(--accent), black 14%);
+      --accent-soft: color-mix(in oklch, var(--accent) 12%, transparent);
+      --fg-soft:     color-mix(in oklch, var(--fg) 6%, transparent);
+      --success: #168a46;
+      --warn: #b7791f;
+      --danger: #c53030;
+      --font-display: "IBM Plex Mono", ui-monospace, monospace;
+      --font-body: "IBM Plex Mono", ui-monospace, monospace;
+      --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+      --text-xs: 11px;
+      --text-sm: 12px;
+      --text-base: 14px;
+      --text-lg: 16px;
+      --text-xl: 20px;
+      --text-2xl: 28px;
+      --text-3xl: 40px;
+      --text-4xl: 56px;
+      --leading-body: 1.55;
+      --leading-tight: 1.06;
+      --tracking-display: -0.025em;
+      --space-1: 4px;
+      --space-2: 8px;
+      --space-3: 12px;
+      --space-4: 16px;
+      --space-5: 20px;
+      --space-6: 24px;
+      --space-8: 32px;
+      --space-12: 48px;
+      --section-y-desktop: 96px;
+      --section-y-tablet: 64px;
+      --section-y-phone: 42px;
+      --radius-sm: 4px;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+      --radius-pill: 9999px;
+      --elev-flat: none;
+      --elev-ring: 0 0 0 1px var(--border);
+      --elev-raised: 0 16px 40px rgba(0, 0, 0, 0.10);
+      --focus-ring: 0 0 0 3px rgba(55, 247, 18, 0.18);
+      --motion-fast: 100ms;
+      --motion-base: 200ms;
+      --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+      --container-max: 1280px;
+      --container-gutter-desktop: 36px;
+      --container-gutter-tablet: 24px;
+      --container-gutter-phone: 16px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: var(--font-body);
+      font-size: var(--text-base);
+      line-height: var(--leading-body);
+      text-rendering: optimizeLegibility;
+      -webkit-font-smoothing: antialiased;
+    }
+    img, svg { display: block; max-width: 100%; }
+    a { color: inherit; text-decoration: none; }
+    button { font: inherit; cursor: pointer; }
+    p { text-wrap: pretty; }
+    h1, h2, h3, h4 { text-wrap: balance; }
+
+    /* ─── layout primitives ─────────────────────────────────────────── */
+    .container {
+      max-width: var(--container-max);
+      margin-inline: auto;
+      padding-inline: var(--container-gutter-desktop);
+    }
+    .section {
+      padding-block: clamp(48px, 8vw, var(--section-y-desktop));
+    }
+    .section + .section { border-top: 1px solid var(--border); }
+    .stack { display: flex; flex-direction: column; }
+    .stack > * + * { margin-top: var(--space-4); }
+    .row { display: flex; align-items: center; gap: var(--space-4); }
+    .row-between { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); }
+    .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-8); }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-8); }
+    .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-4); }
+    .grid-2-1 { display: grid; grid-template-columns: 2fr 1fr; gap: var(--space-8); align-items: start; }
+    .grid-1-2 { display: grid; grid-template-columns: 1fr 2fr; gap: var(--space-8); align-items: start; }
+    @media (max-width: 920px) {
+      .grid-2, .grid-3, .grid-4, .grid-2-1, .grid-1-2 { grid-template-columns: 1fr; }
+    }
+
+    /* ─── type ──────────────────────────────────────────────────────── */
+    .h1, h1 { font-family: var(--font-display); font-size: clamp(44px, 6vw, 72px); line-height: var(--leading-tight); letter-spacing: var(--tracking-display); margin: 0; }
+    .h2, h2 { font-family: var(--font-display); font-size: clamp(32px, 4vw, 44px); line-height: 1.1; letter-spacing: var(--tracking-display); margin: 0; }
+    .h3, h3 { font-family: var(--font-display); font-size: var(--text-xl); font-weight: 600; line-height: 1.3; letter-spacing: -0.005em; margin: 0; }
+    .lead   { font-size: var(--text-lg); line-height: var(--leading-body); color: var(--muted); max-width: 56ch; margin: 0; }
+    .eyebrow {
+      font-family: var(--font-mono);
+      font-size: var(--text-sm);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin: 0 0 var(--space-4);
+      font-weight: 500;
+    }
+    .meta { font-family: var(--font-mono); font-size: var(--text-sm); color: var(--muted); }
+    .num  { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+    /* ─── chrome: nav + footer ──────────────────────────────────────── */
+    .topnav {
+      position: sticky; top: 0; z-index: 10;
+      background: color-mix(in oklch, var(--bg) 92%, transparent);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+    .topnav-inner { display: flex; align-items: center; justify-content: space-between; padding-block: 14px; }
+    .topnav .logo { font-family: var(--font-display); font-size: var(--text-lg); font-weight: 700; letter-spacing: var(--tracking-display); }
+    .topnav .logo-mark { color: var(--accent); margin-right: 2px; }
+    .topnav nav { display: flex; gap: var(--space-8); }
+    .topnav nav a { font-size: var(--text-sm); color: var(--muted); transition: color var(--motion-fast) var(--ease-standard); }
+    .topnav nav a:hover { color: var(--fg); }
+    .topnav .nav-cta { display: flex; gap: var(--space-3); align-items: center; }
+    .pagefoot { padding-block: var(--section-y-desktop); color: var(--muted); font-size: var(--text-sm); border-top: 1px solid var(--border); }
+    .pagefoot .row-between { flex-wrap: wrap; gap: var(--space-4); }
+
+    /* ─── buttons ───────────────────────────────────────────────────── */
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 10px 18px;
+      border-radius: var(--radius-md);
+      border: 1px solid transparent;
+      font-size: var(--text-sm);
+      font-weight: 500;
+      letter-spacing: -0.005em;
+      transition: transform 0.05s ease, background var(--motion-fast) ease, border-color var(--motion-fast) ease;
+    }
+    .btn:active { transform: translateY(1px); }
+    .btn-primary { background: var(--accent); color: var(--accent-on); border-color: var(--accent); }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-secondary { background: transparent; color: var(--fg); border-color: var(--border); }
+    .btn-secondary:hover { border-color: var(--fg); }
+    .btn-ghost { background: transparent; color: var(--fg); border-color: transparent; padding-inline: 8px; }
+    .btn-ghost:hover { color: var(--accent); }
+    .btn-arrow::after { content: '→'; transition: transform var(--motion-fast) ease; }
+    .btn-arrow:hover::after { transform: translateX(2px); }
+    .kbd {
+      display: inline-block;
+      padding: 1px 5px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--muted);
+      background: var(--surface);
+    }
+
+    /* ─── card / surface ────────────────────────────────────────────── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: var(--space-6);
+    }
+    .card-flat { background: transparent; border: 0; padding: 0; }
+    .card-rule { background: transparent; border: 0; border-top: 1px solid var(--fg); padding: 24px 0 0; border-radius: 0; }
+
+    /* ─── feature cell ──────────────────────────────────────────────── */
+    .feature .feature-mark {
+      width: 36px; height: 36px;
+      display: grid; place-items: center;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      color: var(--accent);
+      margin-bottom: var(--space-4);
+      background: var(--accent-soft);
+    }
+    .feature .feature-mark svg { width: 18px; height: 18px; }
+    .feature h3 { margin-bottom: 6px; }
+    .feature p  { margin: 0; color: var(--muted); font-size: var(--text-base); }
+
+    /* ─── stat ──────────────────────────────────────────────────────── */
+    .stat .stat-num {
+      font-family: var(--font-display);
+      font-size: clamp(48px, 6vw, 72px);
+      line-height: 0.95;
+      letter-spacing: var(--tracking-display);
+      color: var(--fg);
+      font-weight: 600;
+    }
+    .stat .stat-label { color: var(--muted); font-size: var(--text-base); margin-top: 8px; max-width: 24ch; }
+    .stat .stat-unit  { font-size: 0.5em; opacity: 0.7; margin-left: 2px; }
+
+    /* ─── pill / badge / tag ────────────────────────────────────────── */
+    .pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 10px;
+      background: var(--accent-soft);
+      color: var(--accent-on);
+      border-radius: var(--radius-pill);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .tag {
+      display: inline-flex; align-items: center;
+      padding: 3px 9px;
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-pill);
+      font-size: var(--text-sm);
+    }
+
+    /* ─── form field ────────────────────────────────────────────────── */
+    .field { display: flex; flex-direction: column; gap: 6px; }
+    .field label { font-size: var(--text-sm); color: var(--muted); }
+    .input, .textarea {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--bg);
+      color: var(--fg);
+      font: inherit;
+      font-size: var(--text-base);
+    }
+    .input:focus, .textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: var(--focus-ring);
+    }
+    .textarea { min-height: 96px; resize: vertical; line-height: var(--leading-body); }
+
+    /* ─── image placeholder ─────────────────────────────────────────── */
+    .ph-img {
+      background: linear-gradient(135deg, var(--accent-soft), var(--fg-soft));
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      aspect-ratio: 16 / 10;
+      display: grid; place-items: center;
+      color: var(--muted);
+      font-family: var(--font-mono);
+      font-size: var(--text-sm);
+      letter-spacing: 0.04em;
+    }
+
+    /* ─── hero variants ─────────────────────────────────────────────── */
+    .hero          { padding-block: clamp(80px, 12vw, 160px); }
+    .hero-center   { text-align: center; max-width: 36ch; margin-inline: auto; }
+    .hero h1       { margin-bottom: var(--space-4); letter-spacing: -0.03em; }
+    .hero .lead    { margin-bottom: var(--space-8); }
+    .hero-cta      { display: inline-flex; gap: var(--space-3); flex-wrap: wrap; }
+    .hero-center .hero-cta { justify-content: center; }
+
+    /* ─── log row ───────────────────────────────────────────────────── */
+    .log-row { display: grid; grid-template-columns: 120px 1fr 100px; gap: var(--space-8); padding: 22px 0; border-top: 1px solid var(--border); align-items: baseline; }
+    .log-row .meta { color: var(--muted); }
+    .log-row h3 { font-size: var(--text-lg); font-weight: 500; }
+    .log-row .pull { text-align: right; }
+
+    /* ─── divider ───────────────────────────────────────────────────── */
+    .rule  { border: 0; border-top: 1px solid var(--border); margin: 0; }
+    .rule-strong { border: 0; border-top: 1px solid var(--fg); margin: 0; }
+
+    /* ─── desktop-screen cards ──────────────────────────────────────── */
+    .screen-card {
+      display: flex;
+      flex-direction: column;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      text-decoration: none;
+      color: var(--fg);
+      transition: border-color var(--motion-fast) var(--ease-standard), transform var(--motion-fast) var(--ease-standard);
+      background: var(--surface);
+    }
+    .screen-card:hover {
+      border-color: var(--accent);
+      transform: translateY(-2px);
+    }
+    .screen-card-thumb {
+      aspect-ratio: 16 / 10;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      display: grid;
+      place-items: center;
+      font-family: var(--font-mono);
+      font-size: var(--text-sm);
+      color: var(--muted);
+      position: relative;
+      overflow: hidden;
+    }
+    .screen-card-thumb::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(circle at 20% 20%, var(--accent-soft), transparent 60%),
+        radial-gradient(circle at 80% 80%, var(--fg-soft), transparent 50%);
+      opacity: 0.5;
+    }
+    .screen-card-thumb svg { position: relative; z-index: 1; }
+    .screen-card-body { padding: var(--space-5); }
+    .screen-card-body h3 { margin-bottom: 4px; font-weight: 600; font-size: var(--text-base); }
+    .screen-card-body p { margin: 0; color: var(--muted); font-size: var(--text-sm); line-height: 1.5; }
+    .screen-card-tag {
+      display: inline-block;
+      margin-top: var(--space-3);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--accent);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    /* ─── mini terminal decoration ──────────────────────────────────── */
+    .term {
+      font-family: var(--font-mono);
+      font-size: var(--text-sm);
+      line-height: 1.7;
+      color: var(--muted);
+    }
+    .term .t-dim { color: var(--muted); opacity: 0.5; }
+    .term .t-grn { color: var(--accent); }
+    .term .t-wht { color: var(--fg); }
+
+    @media (max-width: 920px) {
+      .container { padding-inline: var(--container-gutter-phone); }
+      .hero-center { max-width: none; }
+      .log-row { grid-template-columns: 1fr; gap: 4px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topnav" data-od-id="topnav">
+    <div class="container topnav-inner">
+      <span class="logo"><span class="logo-mark">渐</span>晰 Clairis</span>
+      <nav>
+        <a href="#features">特性</a>
+        <a href="#screens">原型</a>
+        <a href="#roadmap">路线图</a>
+      </nav>
+      <div class="nav-cta">
+        <span class="tag">v2.4 · Beta</span>
+        <a class="btn btn-primary" href="#screens">体验原型</a>
+      </div>
+    </div>
+  </header>
+
+  <main id="content">
+    <!-- ─── Hero ─────────────────────────────────────────────────── -->
+    <section class="section hero" data-od-id="hero">
+      <div class="container hero-center">
+        <p class="eyebrow">JIANXI · CLAIRIS · 渐晰</p>
+        <h1>沉浸读写，仪式渐晰</h1>
+        <p class="lead">一款陪伴学习成长的精神伙伴。从 markdown 编辑到灵感捕捉，从空间导航到 AI 对话——懂你、减负、惊喜、正向陪伴。</p>
+        <div class="hero-cta">
+          <a class="btn btn-primary" href="#screens">体验产品原型</a>
+          <a class="btn btn-secondary" href="#features">了解特性</a>
+        </div>
+        <div style="margin-top: var(--space-12);">
+          <div class="term">
+            <span class="t-dim">$</span> <span class="t-grn">clairis</span> <span class="t-wht">open</span> ~/文章/晨间笔记.md<br>
+            <span class="t-dim">[core] loaded 12ms · editor 8ms · tti &lt; 1.0s ✓</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── Features ────────────────────────────────────────────── -->
+    <section class="section" data-od-id="features" id="features">
+      <div class="container stack" style="gap: 56px;">
+        <div style="max-width: 40ch;">
+          <p class="eyebrow">产品特性</p>
+          <h2>为你而生的读写伴侣，五大核心能力</h2>
+        </div>
+        <div class="grid-3">
+          <div class="feature card-flat">
+            <div class="feature-mark">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 6h16M4 12h10M4 18h16"/></svg>
+            </div>
+            <h3>四模式画布</h3>
+            <p>文档 / 灵感 / 磁场 / 空间导航。Cmd+1/2/3/4 切换内容形态，让每个思维场景都有匹配的界面。</p>
+          </div>
+          <div class="feature card-flat">
+            <div class="feature-mark">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7l9-4 9 4v10l-9 4-9-4V7z"/><path d="M3 7l9 4 9-4M12 11v10"/></svg>
+            </div>
+            <h3>展卷仪式</h3>
+            <p>非阻塞开卷动画，可跳过。收卷微型总结，每次阅读都有开幕与落幕。TTI 硬保证 &lt; 1.0s。</p>
+          </div>
+          <div class="feature card-flat">
+            <div class="feature-mark">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
+            </div>
+            <h3>统一文件面板</h3>
+            <p>Cmd+P，三视图智能切换：空查询 = 当前上下文，输入 = 全局搜索，选中文本 = 局部相关。不管理文件，软件帮你找。</p>
+          </div>
+          <div class="feature card-flat">
+            <div class="feature-mark">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </div>
+            <h3>AI 对话 · 本地优先</h3>
+            <p>Cmd+SideA 唤起，默认本地 Ollama，可选云端。右侧悬浮/嵌入双形态，不影响专注。</p>
+          </div>
+          <div class="feature card-flat">
+            <div class="feature-mark">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            </div>
+            <h3>隐私至上</h3>
+            <p>100% 本地读写，不上传任何文档内容。统计权限 600，不可被第三方 App 读取。</p>
+          </div>
+          <div class="feature card-flat">
+            <div class="feature-mark">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+            </div>
+            <h3>悬浮面板 · 嵌入停靠</h3>
+            <p>可拖拽、最小化、悬停收起、图钉吸附。四种场景组合 —— 专注 / 研究 / 检阅 / 灵感。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── Stats row ───────────────────────────────────────────── -->
+    <section class="section" data-od-id="stats">
+      <div class="container">
+        <p class="eyebrow" style="margin-bottom: 40px;">PERFORMANCE · BY DESIGN</p>
+        <div class="grid-3">
+          <div class="stat">
+            <div class="stat-num num">&lt;1.0<span class="stat-unit">s</span></div>
+            <p class="stat-label">TTI 冷启动红线。M1 &lt; 700ms，M3 &lt; 600ms。</p>
+          </div>
+          <div class="stat">
+            <div class="stat-num num">100<span class="stat-unit">%</span></div>
+            <p class="stat-label">本地至上。文档内容零上传，离线可用。</p>
+          </div>
+          <div class="stat">
+            <div class="stat-num num">16<span class="stat-unit">+</span></div>
+            <p class="stat-label">基础快捷键。编辑 / 导航 / 面板 / 模式全覆盖。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── Screen cards (prototype links) ──────────────────────── -->
+    <section class="section" data-od-id="screens" id="screens">
+      <div class="container stack" style="gap: 48px;">
+        <div style="max-width: 40ch;">
+          <p class="eyebrow">INTERACTIVE PROTOTYPES</p>
+          <h2>产品原型 · 点击体验</h2>
+          <p class="lead" style="margin-top: var(--space-3);">从核心编辑到统一文件面板，从沉浸阅读到空间导航。每个界面都可在浏览器中交互。</p>
+        </div>
+        <div class="grid-3">
+          <a class="screen-card" href="document-mode.html">
+            <div class="screen-card-thumb">
+              <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#37F712" stroke-width="1.4"><path d="M4 6h16M4 12h10M4 18h16"/></svg>
+            </div>
+            <div class="screen-card-body">
+              <h3>文档编辑</h3>
+              <p>多页签 · 双栏分栏 · 源码模式 · 工具栏</p>
+              <span class="screen-card-tag">主界面 · Phase R</span>
+            </div>
+          </a>
+          <a class="screen-card" href="file-panel.html">
+            <div class="screen-card-thumb">
+              <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#37F712" stroke-width="1.4"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
+            </div>
+            <div class="screen-card-body">
+              <h3>统一文件面板</h3>
+              <p>Cmd+P · 三视图切换 · 上下文感知 · 全局搜索</p>
+              <span class="screen-card-tag">Phase R</span>
+            </div>
+          </a>
+          <a class="screen-card" href="immersive-reading.html">
+            <div class="screen-card-thumb">
+              <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#37F712" stroke-width="1.4"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2zM22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+            </div>
+            <div class="screen-card-body">
+              <h3>沉浸阅读</h3>
+              <p>Esc 全屏 · 隐藏 chrome · 阅读主题 · 双页模式</p>
+              <span class="screen-card-tag">Phase R</span>
+            </div>
+          </a>
+          <a class="screen-card" href="kaleidoscope.html">
+            <div class="screen-card-thumb">
+              <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#37F712" stroke-width="1.4"><path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/><path d="M13 13l6 6"/></svg>
+            </div>
+            <div class="screen-card-body">
+              <h3>灵感万花筒</h3>
+              <p>Kaleidoscope · 万花筒界面 · 灵感快速录入 · 卡片流</p>
+              <span class="screen-card-tag">主画布 · Phase P1</span>
+            </div>
+          </a>
+          <a class="screen-card" href="ai-chat.html">
+            <div class="screen-card-thumb">
+              <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#37F712" stroke-width="1.4"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </div>
+            <div class="screen-card-body">
+              <h3>AI 对话</h3>
+              <p>Cmd+Shift+A · 本地优先 · 悬浮 / 嵌入 · 选中翻译</p>
+              <span class="screen-card-tag">Phase P1</span>
+            </div>
+          </a>
+          <div class="screen-card" style="opacity: 0.6; pointer-events: none;">
+            <div class="screen-card-thumb" style="background: var(--surface-warm);">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#707070" stroke-width="1.2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+            </div>
+            <div class="screen-card-body">
+              <h3>空间导航</h3>
+              <p>语义图谱 · 知识网络 · 渐进积累</p>
+              <span class="screen-card-tag">Phase P2 · 敬请期待</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── Roadmap ─────────────────────────────────────────────── -->
+    <section class="section" data-od-id="roadmap" id="roadmap">
+      <div class="container">
+        <div class="row-between" style="margin-bottom: 40px;">
+          <div>
+            <p class="eyebrow">PRODUCT ROADMAP</p>
+            <h2 style="margin-top: 0;">四阶段路线图</h2>
+          </div>
+        </div>
+        <div>
+          <article class="log-row">
+            <span class="meta">Phase M</span>
+            <div>
+              <h3>软著 MVP</h3>
+              <p style="margin: 4px 0 0; color: var(--muted); font-size: 14px;">单栏阅读 · 基础编辑 · GFM 渲染 · 打开保存 · 未保存守卫</p>
+            </div>
+            <span class="pull meta pill">现在</span>
+          </article>
+          <article class="log-row">
+            <span class="meta">Phase R</span>
+            <div>
+              <h3>Release 1.0</h3>
+              <p style="margin: 4px 0 0; color: var(--muted); font-size: 14px;">多页签 · 双栏分栏 · 统一文件面板 · 沉浸阅读 · PDF 导出</p>
+            </div>
+            <span class="pull meta">M 上架后</span>
+          </article>
+          <article class="log-row">
+            <span class="meta">Phase P1</span>
+            <div>
+              <h3>差异化版本</h3>
+              <p style="margin: 4px 0 0; color: var(--muted); font-size: 14px;">展卷仪式 · 悬浮面板 · AI 对话 · 灵感万花筒 · 视觉引擎</p>
+            </div>
+            <span class="pull meta">R 上架后</span>
+          </article>
+          <article class="log-row">
+            <span class="meta">Phase P2</span>
+            <div>
+              <h3>完整版</h3>
+              <p style="margin: 4px 0 0; color: var(--muted); font-size: 14px;">空间导航 · 知识网络 · 成长系统 · 移动端同步 · 灵感采集</p>
+            </div>
+            <span class="pull meta">P1 稳定后</span>
+          </article>
+          <article class="log-row">
+            <span class="meta">远期</span>
+            <div>
+              <h3>多平台 · 多语种</h3>
+              <p style="margin: 4px 0 0; color: var(--muted); font-size: 14px;">Windows / Linux · 团队协作 · 第三方集成</p>
+            </div>
+            <span class="pull meta">P2 稳定后</span>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── CTA strip ───────────────────────────────────────────── -->
+    <section class="section" data-od-id="cta-strip" style="text-align: center;">
+      <div class="container" style="max-width: 600px;">
+        <h2>快、方便、舒服、喜欢</h2>
+        <p class="lead" style="margin: 16px auto 32px;">渐晰从红线出发，让每一次读写都有仪式感。点击上方任一原型卡片开始体验。</p>
+        <div class="hero-cta" style="justify-content: center;">
+          <a class="btn btn-primary" href="document-mode.html">打开文档编辑器</a>
+          <a class="btn btn-secondary btn-arrow" href="#features">回到顶部</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="pagefoot" data-od-id="footer">
+    <div class="container row-between">
+      <span>© 2026 渐晰 Clairis · Clairis</span>
+      <span class="meta">沉浸读写，仪式渐晰</span>
+    </div>
+  </footer>
+</body>
+</html>

@@ -1,1 +1,146 @@
+# AGENTS.md
+
+## 项目
+
+Clairis（渐晰）— Tauri 2 + React 18 + TypeScript 桌面 Markdown 阅读/编辑器。前端 Vite + CodeMirror 6 + Zustand，Rust 后端在 `src-tauri/`。文档入口见 `docs/README.md`，架构现状见 `docs/architecture/overview.md`（中文）。旧名 Folio/MDWRT 仍出现在脚本注释和文档中，是同一项目。
+
+## 语言约定（中文优先）
+
+Clairis 面向中文用户，维护者母语为中文。以下为**硬约定**，不是建议：
+
+- **反馈与协作**：用户反馈、issue、PR 描述、commit message、评审意见默认中文。
+- **文档**：设计文档、需求文档、架构文档、CHANGELOG 用中文 + 保留 markdown 格式。
+- **用户可见文案**：UI 文案、提示、错误信息默认中文。
+- **Agent 回复**：与用户对话用中文。
+- **OpenSpec 产物**：proposal / spec / tasks 一律中文。
+- **英文仅限**：代码标识符、变量名、API/字段名、i18n key、命令、日志输出、引用外部英文资料。
+
+## 项目上下文路由
+
+> 本文件是"地图"。各工具内容在各自的文件里，此处只标位置。
+
+- **规范与变更（OpenSpec）**：功能规格真相源 `openspec/specs/`，进行中变更 `openspec/changes/`；配置 `openspec/config.yaml`；`openspec list` 查看状态
+- **共享词汇与架构决策（Real Engineers）**：词汇表 `CONTEXT.md`；架构现状 `docs/architecture/overview.md`，架构决策 `docs/architecture/decisions/`
+- **项目结构与模块地图（OmO init-deep）**：`.opencode/project-tree.md`；OmO 命令与技能在 `.opencode/`
+- **架构/产品/设计文档**：`docs/`（索引 `docs/README.md`）：产品 `docs/product/`、批准设计 `docs/design/approved/`、探索 `docs/design/explorations/`、研究 `docs/research/`、交付 `docs/delivery/`、历史 `docs/archive/`；总纲由 `docs/README.md` + `docs/architecture/overview.md` 承担
+- **知识检索（GBrain）**：`gbrain search "<语义问题>"` / `gbrain query`；代码符号查 `gbrain code-def/code-refs`；配置 `~/.gbrain/config.json`（pglite，本仓库由 `gbrain autopilot --repo` 自动增量索引；当前无常驻 daemon，手动 `gbrain dream` 触发）
+- **需求基线与跟踪**：产品愿景/原则/范围 `docs/product/`，交付路线图 `docs/delivery/roadmap.md`，功能规格 `openspec/specs/`（旧 `CORE-REQUIREMENTS-clairis.md`/`PLAN.md` 等已 superseded/归档，不作活入口）
 - **软著资料准备**：`docs/delivery/softcopyright/`（台账/开发流程证据链规范/申请操作手册）
+
+## Skill 路由（gstack）
+
+请求命中以下场景时调用对应 skill：
+
+- 产品想法/头脑风暴 → /office-hours；战略/范围 → /plan-ceo-review
+- 架构评审 → /plan-eng-review；设计系统 → /design-consultation 或 /plan-design-review
+- Bug/报错 → /investigate；站点行为 QA → /qa 或 /qa-only
+- 代码评审/diff → /review；视觉打磨 → /design-review
+- 发布/部署/PR → /ship 或 /land-and-deploy
+- 保存/恢复上下文 → /context-save / /context-restore
+- 写 backlog-ready spec → /spec
+
+## 命令
+
+- `npm run dev` — Vite dev server，端口固定 1420（strictPort）。
+- `npm run tauri dev` — 完整桌面应用（真实 Rust 后端）。UI 验收必须用它。
+- `npm test` — vitest run（jsdom）。**只收集 `src/__tests__/**/*.test.{ts,tsx}`**——测试写在源码旁不会被执行。
+- 单个测试：`npx vitest run src/__tests__/editorStore.test.ts`。
+- `npx tsc --noEmit` — 类型检查（CI 跑这条）。没有 `npm run lint`，ESLint 用 `npx eslint src/`。
+- `bash scripts/verify.sh` — 交付前完整验证：tsc → eslint → vitest → CSS manifest → cargo check → 两套 Playwright。全绿才交付。
+- `cargo test --manifest-path src-tauri/Cargo.toml` — Rust 单测。
+
+## E2E（Playwright）
+
+- 用**系统 Chrome**（`channel: "chrome"`），无需 `playwright install`；webServer 自动起 dev server 并复用已运行的实例。
+- 两套配置：
+  - `npx playwright test` — `e2e/*.spec.ts`，浏览器层 UI 测试。
+  - `npx playwright test --config=playwright.tauri.config.ts` — `e2e/tauri/`，通过 `addInitScript` 注入 `e2e/mocks/tauri-mock.js` 模拟 Tauri IPC。
+- mock 桥：app 暴露 `window.__clairis_store__`（Zustand store），mock 提供 `__clairis_openFile__(path, content, title)`。新 e2e 用这两个桥驱动，不依赖真实文件系统。
+- CI 不跑 E2E（只跑 tsc + `vitest --coverage` + css-manifest-check，macos-latest）。coverage 有阈值（lines/statements 30、branches/functions 20），删测试或不覆盖新代码会挂 CI。
+
+## 仓库特有约束
+
+- **CSS manifest 检查**：`src/editors/decorations/` 中声明的每个 `cm-*` class 必须在 `src/styles/` 有对应 CSS 规则，否则 pre-commit / CI / verify.sh 失败。新增 decoration 类名 = 同时新增 CSS 定义。
+- **pre-commit**（husky + lint-staged）：ts/tsx 走 prettier + `eslint --fix --quiet`，css 走 prettier，rs 走 rustfmt，外加 CSS manifest 检查。
+- **模式切换不 remount**：preview/edit/source 用 CSS display 切换，保留 CM6 的 undo/选区/编辑状态。不要改成条件渲染重建 EditorView。
+- **两个 Zustand store**：`stores/index.ts`（`useStore`，tabs/文件）和 `stores/editorStore.ts`（config/editorMode，注释标记 @deprecated 待合并）。EditorView 实例存在 `src/editors/editorRef.ts` 的模块级 Map（按 panelId），不进 store；store 只存纯文本。
+- 文件 >500KB 自动关闭 decorations（large file guard），不要绕过。
+- API key 只存 OS keyring（`get/set/delete_api_key` 命令），不要写进 config 文件。
+
+## UI 测试
+
+- 涉及交互、布局、溢出的 UI 修复/功能，交付前必须用 headless 浏览器跑真实 UI。
+- 推荐：Playwright（`npx playwright test`），不用 `browser_press` 模拟。
+- 测试范围：hover、overflow、click outside、拖拽、focus、Alt-Tab 等真实浏览器事件。
+- 只验证 build + test 通过不等于功能可用——视觉层 bug 只在真实渲染时显现。
+- **每次修复后，真实跑一次 `npm run tauri dev` + 手动点一遍关键路径。** `npm run test` 和 `npm run build` 不验收 UI 行为。
+- **测试结果用功能说明性语言汇报**：描述"能做什么/不能做什么"，不出现变量名、状态码、JSON。例：✓ 输入"-test"自动识别为待办 → 错误：禁止写 `prefix='-', content='test'`。
+
+## 实现
+
+- 先读代码再改，grep 全部调用方再动手。
+- 最小 diff 优先。删除 > 新增。
+- 实根因修复，不在每个调用点打补丁。
+- 业务边界输入必须校验。
+
+## UI 修复后必做检查清单
+
+每次 UI 修复完成后，逐项确认（不跳过）：
+
+1. **编译 ≠ 可用** — `cargo build` / `npx tsc` / `npm run build` 只验证编译，不验证行为。必须跑 `npm run tauri dev` + 手动点关键路径。
+2. **数据流走查** — 修改后追踪完整路径：用户动作 → 事件处理 → state 变化 → 序列化/存储 → 渲染。每一步都验证。
+3. **serde 兼容性** — 涉及 Rust ↔ TypeScript 数据传递时，对比 Rust `struct` 字段名与 TypeScript `interface` 字段名，确认序列化格式一致（`snake_case` vs `camelCase`）。
+4. **CSS 层叠上下文** — `backdrop-blur`、`transform`、`z-index`、`opacity < 1` 会创建新层叠上下文，导致 `position: fixed/absolute` 的子元素被裁剪。`createPortal` 可逃逸。
+5. **边界值走查** — 检查 0、空字符串、null、undefined 等 falsy 值在条件判断中的表现。特别是 `=== 0` 与 `> 0` 的区别。
+6. **事件冒泡/默认行为** — 修改键盘快捷键时，确认是否覆盖了元素默认行为（如 textarea Enter 换行）。避免把不该拦截的键拦截了。
+7. **拖拽阈值** — 拖拽和点击共用 mousedown/mouseup 时，必须设 3-5px 阈值区分意图，防止微小移动误触发拖拽。
+8. **修复后自测** — 修完一个 bug 后，手动测试**该 bug 的完整复现路径**，而不是只看编译通过。
+
+## 设计
+
+- 不与用户确认不动文件、不动跟踪表。
+- 设计文档中文 + 保留 markdown 格式。
+- 评审先 /codex N 轮碰撞。
+
+## GBrain Configuration（由 /setup-gbrain 配置）
+
+- Mode: local-stdio
+- Engine: pglite
+- Config file: ~/.gbrain/config.json（mode 0600）
+- Setup date: 2026-08-02
+- MCP registered: no（本机无 `claude` CLI，OpenCode 主机适配跳过；如需可自行 `gbrain serve` + 在 agent 的 MCP 配置里注册）
+- Artifacts sync: off（Step 7 选择"不需要"；GitHub 当前不可达）
+- Current repo policy: read-write（github.com/lqtdys/clairis）
+- transcript_ingest_mode: incremental
+- Last cycle: 2026-08-02 手动 `gbrain dream` 跑通（`doctor` cycle_freshness OK；sync 4 页、embed 11 页、edges_resolved 16；`propose_takes` 因无 LLM provider 跳过）。当前无常驻 `autopilot` daemon，需手动 `gbrain dream` 触发；可选 `gbrain autopilot --install` 或 cron `0 2 * * * gbrain dream --json` 常驻
+
+## GBrain Search Guidance（configured by /sync-gbrain）
+<!-- gstack-gbrain-search-guidance:start -->
+
+GBrain 已在本机配置并同步。当问题偏语义、或尚不确定确切标识符时，agent 应优先用 `gbrain` 而非 Grep。两个可检索语料库：
+- 本仓库代码（注册为 `gstack-code-<repo>` 源）。
+- `~/.gstack/` 精选记忆（经现有 federation 管线注册为 `gstack-brain-<user>` 源）。
+
+优先用 gbrain 的场景：
+- "X 在哪里处理？" / 语义意图、尚无确切字符串：`gbrain search "<词>"` 或 `gbrain query "<问题>"`
+- "符号 Y 定义在哪？" / 符号级代码问题：`gbrain code-def <符号>` 或 `gbrain code-refs <符号>`
+- "什么调用了 Y？" / "Y 依赖什么？"：`gbrain code-callers <符号>` / `gbrain code-callees <符号>`
+- "上次我们决定了什么？" / 过往计划、retro、learnings：`gbrain search "<词>" --source gstack-brain-<user>`
+
+已知确切字符串、正则、多行、glob 时仍用 Grep。brain 在每个 gstack skill 启动时增量自动同步。跑 `/sync-gbrain` 强制刷新，`/sync-gbrain --full` 全量重建索引。
+
+<!-- gstack-gbrain-search-guid:end -->
+
+## Agent skills
+
+### Issue tracker
+
+本仓库的 issue 与 PRD 存放于 GitHub Issues，用 `gh` CLI 操作。详见 `docs/agents/issue-tracker.md`。
+
+### Triage labels
+
+使用默认标签词汇：`needs-triage` / `needs-info` / `ready-for-agent` / `ready-for-human` / `wontfix`。详见 `docs/agents/triage-labels.md`。
+
+### Domain docs
+
+单上下文（single-context）——词汇表 `CONTEXT.md` 在仓库根，架构决策 ADR 在 `docs/architecture/decisions/`。详见 `docs/agents/domain.md`。

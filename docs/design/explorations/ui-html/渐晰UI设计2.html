@@ -1,0 +1,1784 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>渐晰 · 视觉方向提案</title>
+  <style>
+    :root {
+      --bg: oklch(16% 0.011 70);
+      --surface: oklch(21% 0.012 70);
+      --surface-2: oklch(27% 0.014 70);
+      --fg: oklch(96% 0.004 95);
+      --muted: oklch(62% 0.012 70);
+      --border: oklch(32% 0.014 70);
+      --line: oklch(35% 0.014 70);
+      --accent: oklch(75% 0.10 230);
+
+      --font-display: 'Iowan Old Style', 'Charter', Georgia, 'Source Han Serif SC', serif;
+      --font-body: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'PingFang SC', 'Source Han Sans SC','Segoe UI', sans-serif;
+      --font-mono: 'JetBrains Mono', 'IBM Plex Mono', ui-monospace, Menlo, monospace;
+      --font-cn-disp: 'Source Han Serif SC', 'Noto Serif SC', 'Iowan Old Style', Georgia, serif;
+      --font-cn-body: 'Source Han Sans SC','PingFang SC','Hiragino Sans GB', -apple-system, 'Segoe UI', sans-serif;
+
+      --ok-shadow-1: 0 1px 0 oklch(100% 0 0 / 0.02);
+      --ok-shadow-2: 0 4px 24px oklch(0% 0 0 / 0.35);
+      --ok-shadow-3: 0 12px 60px oklch(0% 0 0 / 0.55);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      background: var(--bg);
+      color: var(--fg);
+      font: 16px/1.6 var(--font-cn-body);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      letter-spacing: 0.005em;
+    }
+    body { background: var(--bg); }
+
+    /* ---------- Hero ---------- */
+    .hero {
+      position: relative;
+      padding: 180px 0 140px;
+      text-align: center;
+      overflow: hidden;
+      background:
+        radial-gradient(900px 500px at 50% 120%, oklch(30% 0.06 40) 0%, transparent 60%),
+        radial-gradient(600px 400px at 20% 0%, oklch(24% 0.04 230) 0%, transparent 55%),
+        var(--bg);
+    }
+    .hero::before {
+      content: "";
+      position: absolute; inset: 0;
+      background-image:
+        linear-gradient(oklch(100% 0 0 / 0.018) 1px, transparent 1px),
+        linear-gradient(90deg, oklch(100% 0 0 / 0.018) 1px, transparent 1px);
+      background-size: 56px 56px;
+      mask-image: radial-gradient(ellipse 70% 70% at 50% 50%, #000 60%, transparent 100%);
+    }
+    .hero-inner {
+      position: relative;
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 0 36px;
+    }
+    .hero-kicker {
+      display: inline-block;
+      font: 0.72rem/1.4 var(--font-mono);
+      letter-spacing: 0.34em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 22px;
+    }
+    .hero-title {
+      font: 500 clamp(72px, 9vw, 148px)/0.9 var(--font-cn-disp);
+      letter-spacing: -0.02em;
+      margin-bottom: 16px;
+      color: var(--fg);
+      text-shadow: 0 2px 60px oklch(0% 0 0 / 0.35);
+    }
+    .hero-subtitle {
+      font: 400 clamp(17px, 1.5vw, 21px)/1.5 var(--font-cn-body);
+      color: var(--muted);
+      max-width: 620px;
+      margin: 0 auto;
+    }
+    .hero-meta {
+      margin-top: 36px;
+      font: 0.78rem/1.4 var(--font-mono);
+      letter-spacing: 0.26em;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+
+    /* ---------- Intro strip ---------- */
+    .intro {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 56px 36px 40px;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 28px;
+    }
+    .intro-card {
+      padding: 24px 26px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: var(--surface);
+      box-shadow: var(--ok-shadow-1);
+    }
+    .intro-card .ic-title {
+      font: 600 0.95rem/1.3 var(--font-cn-disp);
+      margin-bottom: 6px;
+      color: var(--fg);
+    }
+    .intro-card .ic-desc {
+      font: 0.88rem/1.55 var(--font-cn-body);
+      color: var(--muted);
+      letter-spacing: 0.01em;
+    }
+
+    .section {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 48px 36px 80px;
+    }
+    .section-head {
+      display: flex;
+      align-items: baseline;
+      gap: 18px;
+      margin-bottom: 40px;
+    }
+    .section-head h2 {
+      font: 500 clamp(28px, 2.4vw, 36px)/1.1 var(--font-cn-disp);
+      color: var(--fg);
+      letter-spacing: -0.01em;
+    }
+    .section-head .tag {
+      font: 0.7rem/1 var(--font-mono);
+      letter-spacing: 0.24em;
+      text-transform: uppercase;
+      color: var(--muted);
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    /* ---------- Themes Grid ---------- */
+    .themes {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 24px;
+    }
+    .theme {
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      background: var(--surface);
+      overflow: hidden;
+      position: relative;
+      box-shadow: var(--ok-shadow-2);
+      transition: transform 0.25s ease, border-color 0.3s;
+    }
+    .theme:hover { transform: translateY(-3px); border-color: oklch(50% 0.04 70); }
+
+    .theme-cover { height: 210px; position: relative; overflow: hidden; }
+    .theme-cover canvas { width: 100%; height: 100%; display: block; }
+
+    .theme-body { padding: 26px 28px 30px; }
+    .theme-label {
+      font: 0.7rem/1 var(--font-mono);
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    .theme-title {
+      font: 500 1.7rem/1.1 var(--font-cn-disp);
+      margin-bottom: 4px;
+      color: var(--fg);
+      letter-spacing: -0.01em;
+    }
+    .theme-eng {
+      font: 0.78rem/1.4 var(--font-mono);
+      letter-spacing: 0.16em;
+      color: var(--muted);
+      margin-bottom: 16px;
+      text-transform: uppercase;
+    }
+    .theme-desc {
+      font: 0.95rem/1.6 var(--font-cn-body);
+      color: var(--fg);
+      letter-spacing: 0.01em;
+      margin-bottom: 24px;
+    }
+    .theme-divider {
+      height: 1px;
+      background: var(--border);
+      margin: 0 -28px 22px;
+    }
+
+    /* palette */
+    .palette { margin-bottom: 22px; }
+    .palette .pl-title {
+      font: 0.68rem/1 var(--font-mono);
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+    .swatch-row { display: flex; gap: 6px; }
+    .sw {
+      flex: 1;
+      height: 56px;
+      border-radius: 10px;
+      position: relative;
+      overflow: hidden;
+      cursor: default;
+      border: 1px solid oklch(100% 0 0 / 0.04);
+    }
+    .sw .sw-name {
+      position: absolute;
+      top: 6px; left: 8px;
+      font: 0.62rem/1 var(--font-mono);
+      letter-spacing: 0.06em;
+      color: oklch(100% 0 0 / 0.65);
+      text-transform: uppercase;
+    }
+    .sw .sw-val {
+      position: absolute;
+      bottom: 5px; left: 8px;
+      font: 0.58rem/1 var(--font-mono);
+      letter-spacing: 0.04em;
+      color: oklch(100% 0 0 / 0.5);
+    }
+    /* typography */
+    .type {
+      margin-bottom: 22px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .type-card {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 16px;
+    }
+    .type-card .tc-label {
+      font: 0.62rem/1 var(--font-mono);
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    .type-card .tc-display {
+      font-size: 1.5rem;
+      line-height: 1.2;
+      margin-bottom: 4px;
+      color: var(--fg);
+    }
+    .type-card .tc-body {
+      font-size: 0.85rem;
+      line-height: 1.5;
+      color: var(--muted);
+      max-width: 28ch;
+    }
+    .type-card .tc-mono {
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      line-height: 1.5;
+      color: var(--muted);
+    }
+
+    /* app icon */
+    .theme-icon {
+      display: flex;
+      align-items: center;
+      margin-bottom: 22px;
+    }
+    .icon-sheet {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 14px;
+      flex: 1;
+    }
+    .icon-card {
+      aspect-ratio: 1;
+      border-radius: 22%;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      display: grid;
+      place-items: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .icon-card svg { width: 60%; height: 60%; }
+
+    .theme-logos {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 14px;
+      margin-bottom: 24px;
+    }
+    .logo-sheet {
+      padding: 32px 24px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      display: grid;
+      place-items: center;
+      min-height: 130px;
+      position: relative;
+    }
+    .logo-marks { display: flex; gap: 40px; align-items: center; }
+    .logo-group { display: flex; align-items: center; gap: 14px; }
+    .logo-text-cn { font-size: 2.4rem; line-height: 1; color: var(--fg); letter-spacing: -0.01em; }
+    .logo-text-en { font-size: 0.95rem; line-height: 1; color: var(--muted); letter-spacing: 0.16em; text-transform: uppercase; font-family: var(--font-mono); }
+
+    /* Mockup card */
+    .mockup {
+      margin-top: 24px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      overflow: hidden;
+      background: var(--surface-2);
+    }
+    .mockup-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .mh-left {
+      font: 0.68rem/1 var(--font-mono);
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .mh-right { display: flex; gap: 5px; }
+    .mh-dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: oklch(100% 0 0 / 0.06);
+      border: 1px solid oklch(100% 0 0 / 0.1);
+    }
+    .mockup-body { position: relative; height: 230px; overflow: hidden; }
+    .mockup-frame {
+      position: absolute;
+      inset: 16px 16px 16px 16px;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid oklch(100% 0 0 / 0.06);
+    }
+    .mf-nav {
+      height: 28px;
+      border-bottom: 1px solid;
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      gap: 6px;
+    }
+    .mf-nav .dot { width: 6px; height: 6px; border-radius: 50%; }
+    .mf-canvas {
+      height: calc(100% - 28px);
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .mf-line { height: 6px; border-radius: 3px; }
+
+    /* Tag pill qualities */
+    .qualities {
+      display: flex; flex-wrap: wrap; gap: 8px;
+      margin-top: 20px;
+    }
+    .q {
+      font: 0.72rem/1.4 var(--font-mono);
+      letter-spacing: 0.04em;
+      padding: 6px 10px;
+      border-radius: 99px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+    .q strong { color: var(--fg); font-weight: 600; }
+
+    /* Voting row */
+    .vote-row {
+      margin-top: 28px;
+      padding: 24px 0 0;
+      border-top: 1px solid var(--border);
+    }
+    .vote-label {
+      font: 0.68rem/1 var(--font-mono);
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+    .vote-text {
+      font: 0.95rem/1.6 var(--font-cn-disp);
+      color: var(--fg);
+      max-width: 48ch;
+      letter-spacing: 0.005em;
+    }
+
+    /* Footer */
+    footer {
+      text-align: center;
+      padding: 80px 32px 100px;
+      border-top: 1px solid var(--border);
+      margin-top: 0;
+      color: var(--muted);
+      font: 0.82rem/1.6 var(--font-mono);
+      letter-spacing: 0.06em;
+    }
+    footer strong { font-weight: 500; color: var(--fg); }
+
+    /* Section narrow: principles */
+    .principles {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 100px 36px 60px;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 32px;
+    }
+    .prin-block {
+      padding: 32px 28px 30px;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: linear-gradient(180deg, oklch(22% 0.012 70) 0%, oklch(18% 0.011 70) 100%);
+      position: relative;
+      overflow: hidden;
+      box-shadow: var(--ok-shadow-1);
+    }
+    .prin-block::before {
+      content: "";
+      position: absolute; top: 0; left: 0; right: 0; height: 1px;
+      background: linear-gradient(90deg, transparent, oklch(100% 0 0 / 0.1), transparent);
+    }
+    .prin-num {
+      font: 500 0.82rem/1 var(--font-mono);
+      letter-spacing: 0.3em;
+      color: var(--accent);
+      margin-bottom: 14px;
+    }
+    .prin-title {
+      font: 500 1.25rem/1.2 var(--font-cn-disp);
+      margin-bottom: 10px;
+      color: var(--fg);
+      letter-spacing: -0.005em;
+    }
+    .prin-desc {
+      font: 0.92rem/1.6 var(--font-cn-body);
+      color: var(--muted);
+      letter-spacing: 0.01em;
+    }
+
+    /* Direction comparison table */
+    .comp-table-wrap {
+      max-width: 1180px;
+      margin: 60px auto 0;
+      padding: 0 36px 32px;
+    }
+    .comp-title {
+      text-align: center;
+      font: 500 1.1rem/1.2 var(--font-cn-disp);
+      color: var(--fg);
+      margin-bottom: 24px;
+      letter-spacing: 0.04em;
+    }
+    .ct {
+      width: 100%;
+      border-collapse: collapse;
+      font: 0.88rem/1.5 var(--font-cn-body);
+    }
+    .ct th {
+      font: 0.66rem/1 var(--font-mono);
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: oklch(70% 0.012 70);
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+      font-weight: 400;
+    }
+    .ct td {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border);
+      color: var(--muted);
+      vertical-align: top;
+    }
+    .ct td:first-child {
+      color: oklch(88% 0.006 70);
+      font-weight: 500;
+      width: 130px;
+    }
+    .ct tr:hover td { background: oklch(100% 0 0 / 0.015); }
+
+    /* Responsive */
+    @media (max-width: 1100px) {
+      .themes { grid-template-columns: 1fr; }
+      .intro { grid-template-columns: 1fr; }
+      .principles { grid-template-columns: 1fr; }
+    }
+
+    /* Subtle entry animation */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .theme { animation: fadeUp 0.8s backwards; }
+    .theme:nth-child(1) { animation-delay: 0.05s; }
+    .theme:nth-child(2) { animation-delay: 0.18s; }
+    .theme:nth-child(3) { animation-delay: 0.3s; }
+
+  </style>
+</head>
+<body>
+
+  <div class="hero">
+    <div class="hero-inner">
+      <span class="hero-kicker">VISUAL IDENTITY · 视觉方向提案 · 2026</span>
+      <h1 class="hero-title">渐晰</h1>
+      <p class="hero-subtitle">六套视觉方向提案 · 色系 / Logo · App 图标 / 网站风格<br>Clearer thinking, step by step.</p>
+      <div class="hero-meta">Ink · Dawn · Sky — Bronze · Aurora · Spring</div>
+    </div>
+  </div>
+
+  <div class="intro">
+    <div class="intro-card">
+      <div class="ic-title">方向立意</div>
+      <div class="ic-desc">每套方向从「渐晰」产品内核的一个侧面出发，对应不同的用户感知期待——水墨留白对应沉浸仪式，深林晨光对应成长陪伴，澄空万里对应清新舒适。</div>
+    </div>
+    <div class="intro-card">
+      <div class="ic-title">色系设计</div>
+      <div class="ic-desc">所有色彩均使用 OKLch 函数定义，确保跨设备亮度与色相一致性。主色克制（单品一色），辅色低饱，留白即主角。</div>
+    </div>
+    <div class="intro-card">
+      <div class="ic-title">使用场景</div>
+      <div class="ic-desc">每套方向覆盖：桌面 App（三套皮肤）、App 图标（圆角多尺寸）、Logo 组合（中英文锁链）、网站首屏风格（暗色/浅色自适应）。</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-head">
+      <span class="tag">01&nbsp;&nbsp;Three Directions</span>
+      <h2>三套视觉方向</h2>
+    </div>
+
+    <!-- ============================================ -->
+    <!--  DIRECTION 1: 水墨留白 -->
+    <!-- ============================================ -->
+    <div class="themes">
+      <article class="theme">
+        <div class="theme-cover" id="cover-ink" style="background: linear-gradient(135deg, oklch(18% 0.012 70) 0%, oklch(24% 0.018 40) 100%);"></div>
+        <div class="theme-body">
+          <div class="theme-label">Direction A / 方向甲</div>
+          <div class="theme-title" style="font-family: 'Iowan Old Style', Georgia, 'Source Han Serif SC', serif;">水墨留白</div>
+          <div class="theme-eng">INK · NEGATIVE SPACE</div>
+          <p class="theme-desc">
+            大面积墨黑与宣纸留白，以丹青点翠为唯一高光。呼应「展卷仪式」的产品灵魂 —
+            黑为纸、白为光、青为字。呼吸感强，节奏如书。适合沉稳、
+            有阅读深度、追求仪式感的创作者与学习者。
+          </p>
+
+          <div class="theme-divider"></div>
+
+          <!-- Palette -->
+          <div class="palette">
+            <div class="pl-title">Palette · 色系</div>
+            <div class="swatch-row" id="palette-ink"></div>
+          </div>
+
+          <!-- Typography -->
+          <div class="type">
+            <div class="type-card" style="background: oklch(96% 0.004 95); border-color: oklch(88% 0.006 95);">
+              <div class="tc-label" style="color: oklch(48% 0.012 70);">Display · 标题</div>
+              <div class="tc-display" style="font-family: 'Iowan Old Style', Georgia, 'Source Han Serif SC', serif; color: oklch(20% 0.018 70);">渐晰</div>
+              <div class="tc-body" style="color: oklch(48% 0.012 70); font-family: 'Iowan Old Style', Georgia, serif;">Aa Bb Cc Dd Ee</div>
+              <div class="tc-body" style="font-family: 'Source Han Serif SC','Noto Serif SC', Georgia, serif; color: oklch(48% 0.012 70); margin-top: 3px;">冰泉冷涩弦凝绝</div>
+            </div>
+            <div class="type-card" style="background: oklch(14% 0.014 70); border-color: oklch(25% 0.016 70);">
+              <div class="tc-label" style="color: oklch(54% 0.012 250);">Body / Mono · 正文与代码</div>
+              <div class="tc-body" style="color: oklch(96% 0.004 95); font-family: -apple-system, 'Source Han Sans SC', sans-serif;">阅读，思考，成长。陪伴你成为更清晰的人。</div>
+              <div class="tc-mono" style="color: oklch(88% 0.006 95); margin-top: 4px;">> save —atomic ✓</div>
+            </div>
+          </div>
+
+          <!-- App icon -->
+          <div class="palette">
+            <div class="pl-title">App Icon · 应用图标</div>
+            <div class="icon-sheet" id="icons-ink"></div>
+          </div>
+
+          <!-- Logo treatment -->
+          <div class="palette">
+            <div class="pl-title">Logo Treatment · Logo 组合</div>
+            <div class="theme-logos">
+              <div class="logo-sheet" style="background: oklch(18% 0.012 70);">
+                <div class="logo-marks" id="logo-ink-dark"></div>
+              </div>
+              <div class="logo-sheet" style="background: oklch(97% 0.004 95);">
+                <div class="logo-marks" id="logo-ink-light"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Website direction -->
+          <div class="mockup">
+            <div class="mockup-head">
+              <span class="mh-left">clairis.dev — 暗色首屏</span>
+              <div class="mh-right"><span class="mh-dot"></span><span class="mh-dot"></span><span class="mh-dot"></span></div>
+            </div>
+            <div class="mockup-body">
+              <div class="mockup-frame" style="background: oklch(15% 0.012 70); border-color: oklch(30% 0.014 70);">
+                <div class="mf-nav" style="border-color: oklch(30% 0.014 70); background: oklch(15% 0.012 70);">
+                  <span class="dot" style="background: oklch(50% 0.1 20);"></span>
+                  <span class="dot" style="background: oklch(55% 0.1 50);"></span>
+                  <span class="dot" style="background: oklch(50% 0.1 140);"></span>
+                </div>
+                <div class="mf-canvas" style="background: oklch(15% 0.012 70);">
+                  <div class="mf-line" style="width: 38%; background: oklch(94% 0.004 95); height: 16px;"></div>
+                  <div class="mf-line" style="width: 28%; background: oklch(58% 0.12 230); height: 10px; margin-top: 16px;"></div>
+                  <div class="mf-line" style="width: 72%; background: oklch(54% 0.018 70); height: 6px; margin-top: 22px;"></div>
+                  <div class="mf-line" style="width: 65%; background: oklch(54% 0.018 70); height: 6px;"></div>
+                  <div class="mf-line" style="width: 55%; background: oklch(54% 0.018 70); height: 6px;"></div>
+                  <div class="mf-line" style="width: 20%; background: oklch(60% 0.10 230); height: 8px; margin-top: 18px;"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="qualities">
+            <span class="q"><strong>墨黑</strong> oklch(18% 0.012 70)</span>
+            <span class="q"><strong>宣白</strong> oklch(98% 0.004 95)</span>
+            <span class="q"><strong>点翠</strong> oklch(58% 0.12 230)</span>
+            <span class="q">Literata serif · SC</span>
+          </div>
+
+          <div class="vote-row">
+            <div class="vote-label">推荐 · Recommendation</div>
+            <p class="vote-text">
+              「读」是渐晰最核心的动作，<strong>水墨留白</strong>把「阅读即仪式」做到了极致。
+              墨黑底降低眼部疲劳、宣纸白提供纸张级对比、一点翠青牵引视觉动线 —
+              与「展卷仪式」的产品灵魂同名同源，是最贴近品牌哲学的一套。
+            </p>
+          </div>
+
+        </div>
+      </article>
+
+      <!-- ============================================ -->
+      <!--  DIRECTION 2: 深林晨光 -->
+      <!-- ============================================ -->
+      <article class="theme">
+        <div class="theme-cover" style="background: linear-gradient(135deg, oklch(16% 0.018 140) 0%, oklch(22% 0.024 120) 100%);"></div>
+        <div class="theme-body">
+          <div class="theme-label">Direction B / 方向乙</div>
+          <div class="theme-title" style="font-family: 'FRAVAR', 'Fraunces', 'Source Han Serif SC', Georgia, serif;">深林晨光</div>
+          <div class="theme-eng">DAWN · FOREST</div>
+          <p class="theme-desc">
+            森林深处的晨光透过叶片，空气中含有苔藓与暖光。
+            橄榄绿为大地、米白为晨雾、暖金为第一缕阳光。
+            温柔但不甜腻，有机自带生长感。适合正向陪伴、
+            长期主义、关注自我的成长用户。
+          </p>
+
+          <div class="theme-divider"></div>
+
+          <div class="palette">
+            <div class="pl-title">Palette · 色系</div>
+            <div class="swatch-row" id="palette-forest"></div>
+          </div>
+
+          <div class="type">
+            <div class="type-card" style="background: oklch(97% 0.005 90); border-color: oklch(90% 0.008 90);">
+              <div class="tc-label" style="color: oklch(44% 0.02 120);">Display · 标题</div>
+              <div class="tc-display" style="font-family: 'Fraunces', 'Source Han Serif SC', Georgia, serif; color: oklch(22% 0.02 120);">渐晰</div>
+              <div class="tc-body" style="color: oklch(44% 0.02 120); font-family: -apple-system, 'Source Han Sans SC', sans-serif;">Aa Bb Cc Dd Ee</div>
+              <div class="tc-body" style="font-family: 'Source Han Serif SC','Noto Serif SC', Georgia, serif; color: oklch(44% 0.02 120); margin-top: 3px;">此身虽在，此行未极</div>
+            </div>
+            <div class="type-card" style="background: oklch(18% 0.020 130); border-color: oklch(26% 0.022 130);">
+              <div class="tc-label" style="color: oklch(54% 0.018 130);">Body / Mono · 正文与代码</div>
+              <div class="tc-body" style="color: oklch(96% 0.005 90); font-family: -apple-system, 'Source Han Sans SC', sans-serif;">陪你每天进步一点点。写下来，慢慢看清。</div>
+              <div class="tc-mono" style="color: oklch(70% 0.12 80); margin-top: 4px;">> morning.complete ✓</div>
+            </div>
+          </div>
+
+          <div class="palette">
+            <div class="pl-title">App Icon · 应用图标</div>
+            <div class="icon-sheet" id="icons-forest"></div>
+          </div>
+
+          <div class="palette">
+            <div class="pl-title">Logo Treatment · Logo 组合</div>
+            <div class="theme-logos">
+              <div class="logo-sheet" style="background: oklch(17% 0.018 135);">
+                <div class="logo-marks" id="logo-forest-dark"></div>
+              </div>
+              <div class="logo-sheet" style="background: oklch(97% 0.006 90);">
+                <div class="logo-marks" id="logo-forest-light"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mockup">
+            <div class="mockup-head">
+              <span class="mh-left">clairis.dev — 暖光首屏</span>
+              <div class="mh-right"><span class="mh-dot"></span><span class="mh-dot"></span><span class="mh-dot"></span></div>
+            </div>
+            <div class="mockup-body">
+              <div class="mockup-frame" style="background: oklch(97% 0.006 90); border-color: oklch(88% 0.01 90);">
+                <div class="mf-nav" style="border-color: oklch(90% 0.008 90); background: oklch(97% 0.006 90);">
+                  <span class="dot" style="background: oklch(44% 0.03 130);"></span>
+                  <span class="dot" style="background: oklch(50% 0.06 80);"></span>
+                  <span class="dot" style="background: oklch(50% 0.03 165);"></span>
+                  <div style="flex:1"></div>
+                  <div style="font: 0.64rem/1 var(--font-mono); color:oklch(36% 0.02 120); letter-spacing:0.1em;">Clairis</div>
+                </div>
+                <div class="mf-canvas" style="background: oklch(97% 0.006 90);">
+                  <div class="mf-line" style="width: 42%; background: oklch(18% 0.02 130); height: 14px;"></div>
+                  <div class="mf-line" style="width: 22%; background: oklch(60% 0.12 80); height: 8px; margin-top: 16px;"></div>
+                  <div class="mf-line" style="width: 70%; background: oklch(36% 0.02 120); height: 6px; margin-top: 20px;"></div>
+                  <div class="mf-line" style="width: 62%; background: oklch(36% 0.02 120); height: 6px;"></div>
+                  <div class="mf-line" style="width: 50%; background: oklch(36% 0.02 120); height: 6px;"></div>
+                  <div class="mf-line" style="width: 18%; background: oklch(56% 0.10 170); height: 7px; margin-top: 16px;"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="qualities">
+            <span class="q"><strong>苔绿</strong> oklch(26% 0.03 135)</span>
+            <span class="q"><strong>雾白</strong> oklch(97% 0.006 90)</span>
+            <span class="q"><strong>晨金</strong> oklch(60% 0.12 80)</span>
+            <span class="q">Fraunces + Source Han Sans</span>
+          </div>
+
+          <div class="vote-row">
+            <div class="vote-label">推荐 · Recommendation</div>
+            <p class="vote-text">
+              如果目标是<strong>最大范围的用户</strong>，深林晨光是最安全、最具亲和力的一套。
+              绿-金组合让产品看起来既有机又不老气，暖白基底支撑长时间阅读，
+              尤其适合有「学习 + 习惯养成」诉求的学生与职场新用户。
+            </p>
+          </div>
+        </div>
+      </article>
+
+      <!-- ============================================ -->
+      <!--  DIRECTION 3: 澄空万里 -->
+      <!-- ============================================ -->
+      <article class="theme">
+        <div class="theme-cover" style="background: linear-gradient(135deg, oklch(22% 0.012 240) 0%, oklch(28% 0.018 210) 100%);"></div>
+        <div class="theme-body">
+          <div class="theme-label">Direction C / 方向丙</div>
+          <div class="theme-title" style="font-family: 'DM Serif Display', 'Source Han Serif SC', Georgia, serif;">澄空万里</div>
+          <div class="theme-eng">CLEAR · SKY</div>
+          <p class="theme-desc">
+            澄明如洗的天空，地平线处透出暖光。
+            冷灰蓝为天空、近奶油白为沙地为墙、暖橘为一颗新生的太阳。
+            克制、明亮、现代极简 — 对应「快、方便、舒服、喜欢」红线。
+            适合注重效率、喜欢简洁工具、以写作为核心的用户。
+          </p>
+
+          <div class="theme-divider"></div>
+
+          <div class="palette">
+            <div class="pl-title">Palette · 色系</div>
+            <div class="swatch-row" id="palette-sky"></div>
+          </div>
+
+          <div class="type">
+            <div class="type-card" style="background: oklch(98% 0.005 210); border-color: oklch(90% 0.008 210);">
+              <div class="tc-label" style="color: oklch(46% 0.012 240);">Display · 标题</div>
+              <div class="tc-display" style="font-family: 'DM Serif Display', 'Source Han Serif SC', Georgia, serif; color: oklch(20% 0.014 250);">渐晰</div>
+              <div class="tc-body" style="color: oklch(46% 0.012 240); font-family: -apple-system, 'Source Han Sans SC', sans-serif;">Aa Bb Cc Dd Ee</div>
+              <div class="tc-body" style="font-family: 'Source Han Serif SC', Georgia, serif; color: oklch(46% 0.012 240); margin-top: 3px;">今日轻装上路</div>
+            </div>
+            <div class="type-card" style="background: oklch(16% 0.014 240); border-color: oklch(24% 0.016 240);">
+              <div class="tc-label" style="color: oklch(56% 0.012 240);">Body / Mono · 正文与代码</div>
+              <div class="tc-body" style="color: oklch(96% 0.005 210); font-family: -apple-system, 'Source Han Sans SC', sans-serif;">直击你的模糊之处，把混乱一点点理清。</div>
+              <div class="tc-mono" style="color: oklch(72% 0.10 30); margin-top: 4px;">> write --focus</div>
+            </div>
+          </div>
+
+          <div class="palette">
+            <div class="pl-title">App Icon · 应用图标</div>
+            <div class="icon-sheet" id="icons-sky"></div>
+          </div>
+
+          <div class="palette">
+            <div class="pl-title">Logo Treatment · Logo 组合</div>
+            <div class="theme-logos">
+              <div class="logo-sheet" style="background: oklch(18% 0.014 240);">
+                <div class="logo-marks" id="logo-sky-dark"></div>
+              </div>
+              <div class="logo-sheet" style="background: oklch(98% 0.005 210);">
+                <div class="logo-marks" id="logo-sky-light"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mockup">
+            <div class="mockup-head">
+              <span class="mh-left">clairis.dev — 灰蓝清爽首屏</span>
+              <div class="mh-right"><span class="mh-dot"></span><span class="mh-dot"></span><span class="mh-dot"></span></div>
+            </div>
+            <div class="mockup-body">
+              <div class="mockup-frame" style="background: oklch(98% 0.005 210); border-color: oklch(90% 0.008 210);">
+                <div class="mf-nav" style="border-color: oklch(90% 0.008 210); background: oklch(98% 0.005 210);">
+                  <span class="dot" style="background: oklch(46% 0.04 250);"></span>
+                  <span class="dot" style="background: oklch(55% 0.02 210);"></span>
+                  <span class="dot" style="background: oklch(55% 0.10 30);"></span>
+                  <div style="flex:1"></div>
+                  <div style="font: 0.64rem/1 var(--font-mono); color:oklch(46% 0.012 240); letter-spacing:0.1em;">Clairis</div>
+                </div>
+                <div class="mf-canvas" style="background: oklch(98% 0.005 210);">
+                  <div class="mf-line" style="width: 40%; background: oklch(18% 0.014 250); height: 14px;"></div>
+                  <div class="mf-line" style="width: 24%; background: oklch(58% 0.12 30); height: 8px; margin-top: 16px;"></div>
+                  <div class="mf-line" style="width: 74%; background: oklch(46% 0.012 250); height: 6px; margin-top: 20px;"></div>
+                  <div class="mf-line" style="width: 66%; background: oklch(46% 0.012 250); height: 6px;"></div>
+                  <div class="mf-line" style="width: 58%; background: oklch(46% 0.012 250); height: 6px;"></div>
+                  <div class="mf-line" style="width: 16%; background: oklch(56% 0.10 240); height: 7px; margin-top: 16px;"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="qualities">
+            <span class="q"><strong>冷灰蓝</strong> oklch(22% 0.012 240)</span>
+            <span class="q"><strong>暖沙白</strong> oklch(98% 0.005 210)</span>
+            <span class="q"><strong>珊瑚橘</strong> oklch(58% 0.12 30)</span>
+            <span class="q">DM Serif Display + Source Han Sans</span>
+          </div>
+
+          <div class="vote-row">
+            <div class="vote-label">推荐 · Recommendation</div>
+            <p class="vote-text">
+              如果冲刺出海（clairis.dev）或以 Mac 原生开发者工具质感为目标，
+              <strong>澄空万里</strong>最像 Linear / Notion 级别的现代产品。
+              灰蓝底色不挑内容，珊瑚橘作为全站唯一的暖色按钮极具辨识度。
+              <strong>Clairis</strong> 与「澄空」是同一语义场（clear + is）。
+            </p>
+          </div>
+        </div>
+      </article>
+
+    </div><!-- /themes -->
+  </div><!-- /section -->
+
+  <!-- ============================================ -->
+  <!--  SECOND ROW: 3 MORE DIRECTIONS              -->
+  <!-- ============================================ -->
+  <div class="section">
+    <div class="section-head">
+      <span class="tag">02&nbsp;&nbsp;扩展方向</span>
+      <h2>再三套 · 更多可能</h2>
+    </div>
+    <div class="themes">
+
+      <!-- ======== 古铜岁月 ======== -->
+      <article class="theme">
+        <div class="theme-cover" style="background: linear-gradient(135deg, oklch(20% 0.025 60) 0%, oklch(28% 0.035 45) 100%);"></div>
+        <div class="theme-body">
+          <div class="theme-label">Direction D / 方向丁</div>
+          <div class="theme-title" style="font-family: 'Cormorant Garamond', 'Source Han Serif SC', Georgia, serif;">古铜岁月</div>
+          <div class="theme-eng">BRONZE · PATINA</div>
+          <p class="theme-desc">
+            古青铜器上的铜绿与磨砂质感，沉稳有时间感。
+            暗青铜为底、奶灰绿为面、赤铜氧化为唯一高光。
+            自带「传世物」气质 — 不急不躁，历久弥新。
+            适合关注长期价值、有收藏癖与深度沉淀的用户。
+          </p>
+          <div class="theme-divider"></div>
+          <div class="palette">
+            <div class="pl-title">Palette · 色系</div>
+            <div class="swatch-row" id="palette-bronze"></div>
+          </div>
+          <div class="type">
+            <div class="type-card" style="background: oklch(96% 0.006 80); border-color: oklch(88% 0.010 80);">
+              <div class="tc-label" style="color: oklch(42% 0.025 60);">Display · 标题</div>
+              <div class="tc-display" style="font-family: 'Cormorant Garamond', Georgia, serif; color: oklch(22% 0.03 60);">渐晰</div>
+              <div class="tc-body" style="color: oklch(42% 0.025 60); font-family: 'Cormorant Garamond', Georgia, serif;">Aa Bb Cc Dd</div>
+            </div>
+            <div class="type-card" style="background: oklch(18% 0.022 55); border-color: oklch(26% 0.028 55);">
+              <div class="tc-label" style="color: oklch(58% 0.025 55);">Body · 正文</div>
+              <div class="tc-body" style="color: oklch(94% 0.006 80); font-family: -apple-system, 'Source Han Sans SC', sans-serif;">让思考沉淀成铜绿，时间越久越有味道。</div>
+            </div>
+          </div>
+          <div class="palette">
+            <div class="pl-title">App Icon · 应用图标</div>
+            <div class="icon-sheet" id="icons-bronze"></div>
+          </div>
+          <div class="palette">
+            <div class="pl-title">Logo Treatment · Logo 组合</div>
+            <div class="theme-logos">
+              <div class="logo-sheet" style="background: oklch(18% 0.022 55);">
+                <div class="logo-marks" id="logo-bronze-dark"></div>
+              </div>
+              <div class="logo-sheet" style="background: oklch(96% 0.006 80);">
+                <div class="logo-marks" id="logo-bronze-light"></div>
+              </div>
+            </div>
+          </div>
+          <div class="mockup">
+            <div class="mockup-head">
+              <span class="mh-left">clairis.dev — 古铜博物馆</span>
+              <div class="mh-right"><span class="mh-dot"></span><span class="mh-dot"></span><span class="mh-dot"></span></div>
+            </div>
+            <div class="mockup-body">
+              <div class="mockup-frame" style="background: oklch(18% 0.022 55); border-color: oklch(30% 0.028 55);">
+                <div class="mf-nav" style="border-color: oklch(30% 0.028 55); background: oklch(18% 0.022 55);">
+                  <span class="dot" style="background: oklch(52% 0.04 55);"></span>
+                  <span class="dot" style="background: oklch(55% 0.06 35);"></span>
+                  <span class="dot" style="background: oklch(50% 0.10 25);"></span>
+                </div>
+                <div class="mf-canvas" style="background: oklch(18% 0.022 55);">
+                  <div class="mf-line" style="width: 38%; background: oklch(92% 0.006 80); height: 16px;"></div>
+                  <div class="mf-line" style="width: 22%; background: oklch(62% 0.10 25); height: 10px; margin-top: 14px;"></div>
+                  <div class="mf-line" style="width: 68%; background: oklch(48% 0.03 55); height: 6px; margin-top: 18px;"></div>
+                  <div class="mf-line" style="width: 60%; background: oklch(48% 0.03 55); height: 6px;"></div>
+                  <div class="mf-line" style="width: 18%; background: oklch(62% 0.10 25); height: 7px; margin-top: 16px;"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="qualities">
+            <span class="q"><strong>暗铜</strong> oklch(20% 0.025 60)</span>
+            <span class="q"><strong>奶灰绿</strong> oklch(96% 0.006 80)</span>
+            <span class="q"><strong>赤铜</strong> oklch(62% 0.10 25)</span>
+            <span class="q">Cormorant Garamond</span>
+          </div>
+          <div class="vote-row">
+            <div class="vote-label">推荐 · Recommendation</div>
+            <p class="vote-text">
+              <strong>古铜岁月</strong>是把「时间」做进产品质感的一套。
+              青铜底自带文物级别的庄重，赤铜氧化斑是唯一的暖色高光 —
+              不追赶潮流、不讨好眼球，最适合做<strong>「长期陪伴型」笔记工具</strong>。
+            </p>
+          </div>
+        </div>
+      </article>
+
+      <!-- ======== 极光幻夜 ======== -->
+      <article class="theme">
+        <div class="theme-cover" style="background: linear-gradient(135deg, oklch(16% 0.025 280) 0%, oklch(22% 0.035 320) 100%);"></div>
+        <div class="theme-body">
+          <div class="theme-label">Direction E / 方向戊</div>
+          <div class="theme-title" style="font-family: 'Playfair Display', 'Source Han Serif SC', Georgia, serif;">极光幻夜</div>
+          <div class="theme-eng">AURORA · NIGHT</div>
+          <p class="theme-desc">
+            夜空深处的极光在暗紫与墨蓝之间流动。
+            深空紫蓝为底、冷烟灰为面、幻彩极光绿为动态高光。
+            自带「未知感」与「灵感乍现」的瞬间 —
+            适合创意工作者、夜间写作、灵感收集场景。
+          </p>
+          <div class="theme-divider"></div>
+          <div class="palette">
+            <div class="pl-title">Palette · 色系</div>
+            <div class="swatch-row" id="palette-aurora"></div>
+          </div>
+          <div class="type">
+            <div class="type-card" style="background: oklch(96% 0.006 290); border-color: oklch(88% 0.010 290);">
+              <div class="tc-label" style="color: oklch(42% 0.025 280);">Display · 标题</div>
+              <div class="tc-display" style="font-family: 'Playfair Display', Georgia, serif; color: oklch(22% 0.03 280);">渐晰</div>
+              <div class="tc-body" style="color: oklch(42% 0.025 280); font-family: 'Playfair Display', Georgia, serif;">Aa Bb Cc Dd</div>
+            </div>
+            <div class="type-card" style="background: oklch(16% 0.022 280); border-color: oklch(24% 0.030 280);">
+              <div class="tc-label" style="color: oklch(58% 0.025 280);">Body · 正文</div>
+              <div class="tc-body" style="color: oklch(92% 0.006 290); font-family: -apple-system, 'Source Han Sans SC', sans-serif;">灵感来了，亮一下。</div>
+            </div>
+          </div>
+          <div class="palette">
+            <div class="pl-title">App Icon · 应用图标</div>
+            <div class="icon-sheet" id="icons-aurora"></div>
+          </div>
+          <div class="palette">
+            <div class="pl-title">Logo Treatment · Logo 组合</div>
+            <div class="theme-logos">
+              <div class="logo-sheet" style="background: oklch(16% 0.022 280);">
+                <div class="logo-marks" id="logo-aurora-dark"></div>
+              </div>
+              <div class="logo-sheet" style="background: oklch(96% 0.006 290);">
+                <div class="logo-marks" id="logo-aurora-light"></div>
+              </div>
+            </div>
+          </div>
+          <div class="mockup">
+            <div class="mockup-head">
+              <span class="mh-left">clairis.dev — 极光之夜</span>
+              <div class="mh-right"><span class="mh-dot"></span><span class="mh-dot"></span><span class="mh-dot"></span></div>
+            </div>
+            <div class="mockup-body">
+              <div class="mockup-frame" style="background: oklch(16% 0.022 280); border-color: oklch(28% 0.030 280);">
+                <div class="mf-nav" style="border-color: oklch(28% 0.030 280); background: oklch(16% 0.022 280);">
+                  <span class="dot" style="background: oklch(52% 0.10 280);"></span>
+                  <span class="dot" style="background: oklch(58% 0.13 310);"></span>
+                  <span class="dot" style="background: oklch(56% 0.14 165);"></span>
+                </div>
+                <div class="mf-canvas" style="background: oklch(16% 0.022 280);">
+                  <div class="mf-line" style="width: 40%; background: oklch(90% 0.008 290); height: 16px;"></div>
+                  <div class="mf-line" style="width: 24%; background: oklch(62% 0.14 165); height: 10px; margin-top: 14px;"></div>
+                  <div class="mf-line" style="width: 72%; background: oklch(50% 0.03 280); height: 6px; margin-top: 18px;"></div>
+                  <div class="mf-line" style="width: 64%; background: oklch(50% 0.03 280); height: 6px;"></div>
+                  <div class="mf-line" style="width: 20%; background: oklch(62% 0.14 165); height: 7px; margin-top: 16px;"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="qualities">
+            <span class="q"><strong>深空紫</strong> oklch(16% 0.022 280)</span>
+            <span class="q"><strong>冷烟灰</strong> oklch(96% 0.006 290)</span>
+            <span class="q"><strong>极光绿</strong> oklch(62% 0.14 165)</span>
+            <span class="q">Playfair Display</span>
+          </div>
+          <div class="vote-row">
+            <div class="vote-label">推荐 · Recommendation</div>
+            <p class="vote-text">
+              <strong>极光幻夜</strong>是渐晰最「反常规」的一套 —
+              极光绿是唯一打破暗色的流动光带，
+              让产品在暗色为主流的笔记 App 中<strong>一眼可辨</strong>。
+              最适合做创意人群的「灵感暗房」。
+            </p>
+          </div>
+        </div>
+      </article>
+
+      <!-- ======== 春风桃林 ======== -->
+      <article class="theme">
+        <div class="theme-cover" style="background: linear-gradient(135deg, oklch(94% 0.012 30) 0%, oklch(90% 0.020 15) 100%);"></div>
+        <div class="theme-body">
+          <div class="theme-label">Direction F / 方向己</div>
+          <div class="theme-title" style="font-family: 'Source Han Serif SC', Georgia, serif;">春风桃林</div>
+          <div class="theme-eng">PEACH · SPRING</div>
+          <p class="theme-desc">
+            三月桃花瓣飘落在米白色宣纸上。
+            暖米白为底、浅樱粉为点缀、墨灰为文字。
+            克制到只有一丝若有若无的粉嫩 —
+            不甜、不腻、不俗，只留春日呼吸感。
+            适合对生活有感知的女性用户、轻文青、手帐爱好者。
+          </p>
+          <div class="theme-divider"></div>
+          <div class="palette">
+            <div class="pl-title">Palette · 色系</div>
+            <div class="swatch-row" id="palette-spring"></div>
+          </div>
+          <div class="type">
+            <div class="type-card" style="background: oklch(97% 0.006 25); border-color: oklch(92% 0.008 25);">
+              <div class="tc-label" style="color: oklch(48% 0.016 30);">Display · 标题</div>
+              <div class="tc-display" style="font-family: 'Source Han Serif SC', Georgia, serif; color: oklch(22% 0.02 30);">渐晰</div>
+              <div class="tc-body" style="color: oklch(48% 0.016 30); font-family: 'Source Han Serif SC', Georgia, serif;">桃之夭夭，灼灼其华</div>
+            </div>
+            <div class="type-card" style="background: oklch(96% 0.006 20); border-color: oklch(90% 0.008 20);">
+              <div class="tc-label" style="color: oklch(50% 0.02 30);">Body · 正文</div>
+              <div class="tc-body" style="color: oklch(30% 0.018 30); font-family: -apple-system, 'Source Han Sans SC', sans-serif;">在你的花园里，种下今天的思考。</div>
+            </div>
+          </div>
+          <div class="palette">
+            <div class="pl-title">App Icon · 应用图标</div>
+            <div class="icon-sheet" id="icons-spring"></div>
+          </div>
+          <div class="palette">
+            <div class="pl-title">Logo Treatment · Logo 组合</div>
+            <div class="theme-logos">
+              <div class="logo-sheet" style="background: oklch(97% 0.006 25);">
+                <div class="logo-marks" id="logo-spring-light"></div>
+              </div>
+              <div class="logo-sheet" style="background: oklch(20% 0.016 30);">
+                <div class="logo-marks" id="logo-spring-dark"></div>
+              </div>
+            </div>
+          </div>
+          <div class="mockup">
+            <div class="mockup-head">
+              <span class="mh-left">clairis.dev — 春日手帐</span>
+              <div class="mh-right"><span class="mh-dot"></span><span class="mh-dot"></span><span class="mh-dot"></span></div>
+            </div>
+            <div class="mockup-body">
+              <div class="mockup-frame" style="background: oklch(97% 0.006 25); border-color: oklch(90% 0.008 25);">
+                <div class="mf-nav" style="border-color: oklch(90% 0.008 25); background: oklch(97% 0.006 25);">
+                  <span class="dot" style="background: oklch(50% 0.06 15);"></span>
+                  <span class="dot" style="background: oklch(55% 0.04 35);"></span>
+                  <span class="dot" style="background: oklch(50% 0.02 60);"></span>
+                  <div style="flex:1"></div>
+                  <div style="font: 0.64rem/1 var(--font-mono); color:oklch(42% 0.018 30); letter-spacing:0.1em;">Clairis</div>
+                </div>
+                <div class="mf-canvas" style="background: oklch(97% 0.006 25);">
+                  <div class="mf-line" style="width: 40%; background: oklch(22% 0.018 30); height: 14px;"></div>
+                  <div class="mf-line" style="width: 20%; background: oklch(68% 0.08 10); height: 8px; margin-top: 16px;"></div>
+                  <div class="mf-line" style="width: 72%; background: oklch(42% 0.018 30); height: 6px; margin-top: 20px;"></div>
+                  <div class="mf-line" style="width: 64%; background: oklch(42% 0.018 30); height: 6px;"></div>
+                  <div class="mf-line" style="width: 18%; background: oklch(68% 0.08 10); height: 7px; margin-top: 16px;"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="qualities">
+            <span class="q"><strong>米白</strong> oklch(97% 0.006 25)</span>
+            <span class="q"><strong>樱粉</strong> oklch(68% 0.08 10)</span>
+            <span class="q"><strong>墨灰</strong> oklch(22% 0.018 30)</span>
+            <span class="q">Source Han Serif SC</span>
+          </div>
+          <div class="vote-row">
+            <div class="vote-label">推荐 · Recommendation</div>
+            <p class="vote-text">
+              <strong>春风桃林</strong>是六套中唯一克制地使用暖色的一套。
+              不是少女粉的甜腻，而是<strong>三月初春的微粉</strong>。
+              让渐晰有了一种「温柔但有态度」的面向，
+              能打中追求<strong>轻质感手帐体验</strong>的细分人群。
+            </p>
+          </div>
+        </div>
+      </article>
+
+    </div><!-- /themes -->
+  </div><!-- /section -->
+
+  <!-- Comparison table -->
+  <div class="comp-table-wrap">
+    <div class="comp-title">横向比 · Contrast</div>
+    <table class="ct">
+      <thead>
+        <tr>
+          <th>维度</th>
+          <th>水墨留白</th>
+          <th>深林晨光</th>
+          <th>澄空万里</th>
+          <th>古铜岁月</th>
+          <th>极光幻夜</th>
+          <th>春风桃林</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>主色相</td>
+          <td>中性暖黑</td>
+          <td>苔原绿</td>
+          <td>通透天蓝</td>
+          <td>古铜紫棕</td>
+          <td>深空紫蓝</td>
+          <td>暖米白</td>
+        </tr>
+        <tr>
+          <td>情绪感受</td>
+          <td>沉浸 · 仪式 · 肃穆</td>
+          <td>生长 · 温暖 · 安心</td>
+          <td>清晰 · 轻快 · 现代</td>
+          <td>沉稳 · 时间 · 历久</td>
+          <td>灵感 · 未知 · 流动</td>
+          <td>春日 · 温柔 · 呼吸</td>
+        </tr>
+        <tr>
+          <td>标题字体</td>
+          <td>Iowan Old Style / 思源宋</td>
+          <td>Fraunces / 思源宋</td>
+          <td>DM Serif Display / 思源宋</td>
+          <td>Cormorant Garamond</td>
+          <td>Playfair Display</td>
+          <td>思源宋 SC</td>
+        </tr>
+        <tr>
+          <td>App 图标</td>
+          <td>毛笔笔触 + 水晕</td>
+          <td>叶芽破土剪影</td>
+          <td>地平线 + 日弧</td>
+          <td>铜镜 / 氧化斑驳</td>
+          <td>极光弧带</td>
+          <td>飘落花瓣</td>
+        </tr>
+        <tr>
+          <td>网站首屏</td>
+          <td>纯黑 + 翠青口令</td>
+          <td>米色 + 暖金高亮</td>
+          <td>灰蓝 + 珊瑚橘主按钮</td>
+          <td>青铜 + 赤铜高光</td>
+          <td>深紫 + 极光绿</td>
+          <td>暖白 + 樱粉按钮</td>
+        </tr>
+        <tr>
+          <td>适配场景</td>
+          <td>深度阅读 · 写作 · 深夜</td>
+          <td>习惯 · 成长 · 日常陪伴</td>
+          <td>效率 · 随手记 · 快速检索</td>
+          <td>长期沉淀 · 收藏</td>
+          <td>创意 · 夜间 · 灵感</td>
+          <td>手帐 · 轻文青 · 生活感知</td>
+        </tr>
+        <tr>
+          <td>最打动谁</td>
+          <td>内容创作者 / 学者</td>
+          <td>学习型用户 / 自我关怀者</td>
+          <td>效率型用户 / 极客 / 出海受众</td>
+          <td>长期主义者 / 收藏癖</td>
+          <td>创意人群 / 夜间工作者</td>
+          <td>女性用户 / 手帐爱好者</td>
+        </tr>
+        <tr>
+          <td>品牌联想</td>
+          <td>笔墨 · 纸砚 · 书斋</td>
+          <td>晨光 · 苔原 · 早茶</td>
+          <td>清晨 · 海面 · 玻璃房</td>
+          <td>青铜 · 文物 · 传世</td>
+          <td>极光 · 夜空 · 灵光</td>
+          <td>桃花 · 春风 · 宣纸</td>
+        </tr>
+        <tr>
+          <td>开发成本</td>
+          <td>中（需设计毛笔 SVG）</td>
+          <td>中（需纹理图案）</td>
+          <td>低（几何图形为主）</td>
+          <td>高（质感纹理）</td>
+          <td>高（流动渐变）</td>
+          <td>低（极简）</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Principles row -->
+  <div class="principles">
+    <div class="prin-block">
+      <div class="prin-num">— 01 —</div>
+      <div class="prin-title">色系 · COLOR</div>
+      <div class="prin-desc">六套均使用 OKLch 定义 — 同一颜色在不同屏幕保持一致的视觉亮度。主色只取一色（翠青 / 晨金 / 珊瑚橘），通过调节背景让主色成为视觉主角。</div>
+    </div>
+    <div class="prin-block">
+      <div class="prin-num">— 02 —</div>
+      <div class="prin-title">字体 · TYPE</div>
+      <div class="prin-desc">中文显示一律使用思源宋（Source Han Serif SC），与正文 Source Han Sans 形成字面重量对比 — 每一套方向都使用同一套中文字体，保证品牌一致性。</div>
+    </div>
+    <div class="prin-block">
+      <div class="prin-num">— 03 —</div>
+      <div class="prin-title">图形 · FORM</div>
+      <div class="prin-desc">Logo 趋势基于「清晰」的意象：水墨（水散而字显）、叶芽（生长而自见）、日弧（光来而境明）。六者都取自然物的第一笔而非抽象几何。</div>
+    </div>
+  </div>
+
+  <footer>
+    渐晰 · Clairis — 三套视觉方向提案<br>
+    <strong>每套方向都已完成色系、字体、App 图标、Logo 组合、网站首屏共五个维度的设计锁定。</strong><br>
+    请审阅后反馈偏好，选中方向将进入 DESIGN.md 规范化与组件落地阶段。
+  </footer>
+
+  <script>
+    /* ==================================================
+       Palette swatches render
+       ================================================== */
+    function swatchRow(host, items) {
+      if (!host) return;
+      host.innerHTML = items.map(c => {
+        const isLight = c.l > 0.62;
+        const nmCol = isLight ? 'oklch(18% 0.014 70)' : 'oklch(96% 0.004 95)';
+        const valCol = isLight ? 'oklch(48% 0.012 70)' : 'oklch(62% 0.012 70)';
+        return `
+          <div class="sw" style="background: ${c.css};" title="${c.css}">
+            <span class="sw-name" style="color: ${nmCol}">${c.name}</span>
+            <span class="sw-val" style="color: ${valCol}">${Math.round(c.l*100)}% · c${c.chroma.toFixed(2)}</span>
+          </div>`;
+      }).join('');
+    }
+
+    function okl(c,h){ return { l:c, chroma:parseFloat(h), css:`oklch(${c*100}% ${(h*100).toFixed(0)} 30)` }; }
+    // I'll use plain css strings instead.
+
+    /* ---- Ink Palette ---- */
+    swatchRow(document.getElementById('palette-ink'), [
+      { name:'墨黑', l:0.18, chroma:0.012, css:'oklch(18% 0.012 70)' },
+      { name:'宣白', l:0.97, chroma:0.004, css:'oklch(97% 0.004 95)' },
+      { name:'一滴水', l:0.92, chroma:0.006, css:'oklch(92% 0.006 95)' },
+      { name:'点翠', l:0.58, chroma:0.12,  css:'oklch(58% 0.12 230)' },
+      { name:'朱批', l:0.50, chroma:0.12,  css:'oklch(50% 0.12 28)' },
+    ]);
+
+    /* ---- Forest Palette ---- */
+    swatchRow(document.getElementById('palette-forest'), [
+      { name:'苔黑', l:0.16, chroma:0.018, css:'oklch(16% 0.018 140)' },
+      { name:'雾白', l:0.97, chroma:0.006, css:'oklch(97% 0.006 90)' },
+      { name:'苔绿', l:0.26, chroma:0.030, css:'oklch(26% 0.030 135)' },
+      { name:'晨金', l:0.60, chroma:0.12,  css:'oklch(60% 0.12 80)' },
+      { name:'春叶', l:0.56, chroma:0.10,  css:'oklch(56% 0.10 170)' },
+    ]);
+
+    /* ---- Sky Palette ---- */
+    swatchRow(document.getElementById('palette-sky'), [
+      { name:'灰蓝', l:0.20, chroma:0.012, css:'oklch(20% 0.012 240)' },
+      { name:'沙白', l:0.98, chroma:0.005, css:'oklch(98% 0.005 210)' },
+      { name:'浅蓝', l:0.92, chroma:0.008, css:'oklch(92% 0.008 210)' },
+      { name:'珊瑚', l:0.58, chroma:0.12,  css:'oklch(58% 0.12 30)' },
+      { name:'海蓝', l:0.56, chroma:0.10,  css:'oklch(56% 0.10 240)' },
+    ]);
+
+
+    /* ==================================================
+       App Icons render
+       ================================================== */
+    function iconSheet(hostId, mark) {
+      const host = document.getElementById(hostId);
+      if (!host) return;
+      // 3 variants: light, dark, and grayscale fallback
+      host.innerHTML = `
+        <div class="icon-card" style="background: oklch(18% 0.014 70);">
+          ${mark('oklch(96% 0.004 95)', 'oklch(58% 0.12 230)')}
+          <span class="sw-name" style="color: oklch(100% 0 0 / 0.6); font-size: 0.58rem; letter-spacing: 0.1em;">暗底</span>
+        </div>
+        <div class="icon-card" style="background: oklch(95% 0.006 90);">
+          ${mark('oklch(22% 0.016 250)', 'oklch(56% 0.14 230)')}
+          <span class="sw-name" style="color: oklch(22% 0.016 250); font-size: 0.58rem; letter-spacing: 0.1em;">亮底</span>
+        </div>
+        <div class="icon-card" style="background: oklch(50% 0.012 70);">
+          ${mark('oklch(96% 0.004 95)', 'oklch(58% 0.12 230)')}
+          <span class="sw-name" style="color: oklch(100% 0 0 / 0.6); font-size: 0.58rem; letter-spacing: 0.1em;">中灰</span>
+        </div>
+      `;
+    }
+
+    /* Ink mark: calligraphic 渐 splash with a clean sans 晰 */
+    iconSheet('icons-ink', (fg, accent) => `
+      <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="width:60%;height:60%;">
+        <defs>
+          <radialGradient id="ink-glow" cx="36%" cy="32%" r="55%">
+            <stop offset="0%" stop-color="${accent}" stop-opacity="0.9"/>
+            <stop offset="55%" stop-color="${accent}" stop-opacity="0.5"/>
+            <stop offset="100%" stop-color="${fg}" stop-opacity="0"/>
+          </radialGradient>
+        </defs>
+        <rect width="100" height="100" fill="none"/>
+        <circle cx="50" cy="50" r="46" fill="url(#ink-glow)"/>
+        <text x="50" y="63" text-anchor="middle"
+          font-family="Iowan Old Style, Georgia, serif" font-weight="500"
+          font-size="38" fill="${fg}">渐</text>
+        <circle cx="69" cy="42" r="3.5" fill="${accent}" opacity="0.85"/>
+      </svg>`);
+
+    /* Forest mark: sprout */
+    iconSheet('icons-forest', (fg, accent) => `
+      <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="width:60%;height:60%;">
+        <rect width="100" height="100" fill="none"/>
+        <ellipse cx="50" cy="78" rx="22" ry="4" fill="${fg}" opacity="0.08"/>
+        <!-- stem -->
+        <path d="M50 78 Q50 52 50 42" stroke="${fg}" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <!-- leaf left -->
+        <path d="M50 55 Q30 42 26 28 Q40 32 50 55 Z" fill="${accent}"/>
+        <!-- leaf right -->
+        <path d="M50 55 Q70 42 76 30 Q64 34 50 55 Z" fill="${accent}" opacity="0.75"/>
+        <!-- sun spark -->
+        <circle cx="70" cy="22" r="5" fill="oklch(60% 0.12 80)" opacity="0.85"/>
+      </svg>`);
+
+    /* Sky mark: horizon + sun arc */
+    iconSheet('icons-sky', (fg, accent) => `
+      <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="width:60%;height:60%;">
+        <defs>
+          <linearGradient id="sky-fill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="oklch(30% 0.03 240)"/>
+            <stop offset="100%" stop-color="oklch(40% 0.04 210)"/>
+          </linearGradient>
+        </defs>
+        <rect width="100" height="100" fill="none"/>
+        <circle cx="50" cy="44" r="34" fill="url(#sky-fill)"/>
+        <path d="M16 70 Q50 62 84 70 L84 78 Q50 70 16 78 Z" fill="oklch(94% 0.006 210)" opacity="0.85"/>
+        <circle cx="66" cy="30" r="9" fill="${accent}"/>
+        <text x="50" y="48" text-anchor="middle"
+          font-family="Iowan Old Style, Georgia, serif"
+          font-size="20" font-weight="500" fill="oklch(92% 0.008 210)">Cl</text>
+      </svg>`);
+
+    /* ==================================================
+       Logo treatments (light + dark variants)
+       ================================================== */
+    function logoRow(hostId, opts) {
+      const host = document.getElementById(hostId);
+      if (!host) return;
+      const { markFn, cn, en, accent, color } = opts;
+      const dark = color === 'dark';
+      const textCn = dark ? 'oklch(94% 0.005 95)' : okl(22,0.016);
+      const textEn = dark ? 'oklch(58% 0.012 250)' : 'oklch(44% 0.012 250)';
+      host.innerHTML = `
+        <div class="logo-group" style="flex-wrap:nowrap;">
+          ${markFn(dark ? 'oklch(94% 0.005 95)' : okl(22,0.016), accent)}
+          <div style="display:flex; flex-direction:column;">
+            <span class="logo-text-cn" style="color:${textCn};">${cn}</span>
+            <span class="logo-text-en" style="color:${textEn};">${en}</span>
+          </div>
+        </div>`;
+    }
+
+    function okl(l,c){ return `oklch(${l*100}% ${c*100} 20)`; }
+
+    // Ink logos
+    logoRow('logo-ink-dark', {
+      cn:'渐晰', en:'CLAIRIS', accent:'oklch(58% 0.12 230)', color:'dark',
+      markFn: (fg,a) => `
+        <svg width="44" height="44" viewBox="0 0 100 100">
+          <circle cx="50" cy="50" r="46" fill="oklch(100% 0 0 / 0.04)" stroke="${fg}" stroke-width="1.5"/>
+          <circle cx="35" cy="25" r="4" fill="${a}" opacity="0.9"/>
+          <text x="50" y="70" text-anchor="middle" font-family="Georgia, serif" font-size="44" font-weight="500" fill="${fg}">渐</text>
+        </svg>`});
+    logoRow('logo-ink-light', {
+      cn:'渐晰', en:'CLAIRIS', accent:'oklch(56% 0.14 230)', color:'light',
+      markFn: (fg,a) => `
+        <svg width="44" height="44" viewBox="0 0 100 100">
+          <circle cx="50" cy="50" r="46" fill="oklch(16% 0.014 70 / 0.06)" stroke="${fg}" stroke-width="1.5"/>
+          <circle cx="35" cy="25" r="4" fill="${a}" opacity="0.9"/>
+          <text x="50" y="70" text-anchor="middle" font-family="Georgia, serif" font-size="44" font-weight="500" fill="${fg}">渐</text>
+        </svg>`});
+
+    // Forest logos
+    logoRow('logo-forest-dark', {
+      cn:'渐晰', en:'CLAIRIS', accent:'oklch(56% 0.12 165)', color:'dark',
+      markFn: (fg,a) => `
+        <svg width="44" height="44" viewBox="0 0 100 100">
+          <path d="M50 80 Q50 50 50 38" stroke="${fg}" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+          <path d="M50 52 Q28 40 24 24 Q38 30 50 52 Z" fill="${a}"/>
+          <path d="M50 52 Q72 40 78 26 Q64 32 50 52 Z" fill="${a}" opacity="0.75"/>
+          <circle cx="30" cy="20" r="3.5" fill="oklch(60% 0.12 80)" opacity="0.9"/>
+        </svg>`});
+    logoRow('logo-forest-light', {
+      cn:'渐晰', en:'CLAIRIS', accent:'oklch(50% 0.14 165)', color:'light',
+      markFn: (fg,a) => `
+        <svg width="44" height="44" viewBox="0 0 100 100">
+          <path d="M50 80 Q50 50 50 38" stroke="${fg}" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+          <path d="M50 52 Q28 40 24 24 Q38 30 50 52 Z" fill="${a}"/>
+          <path d="M50 52 Q72 40 78 26 Q64 32 50 52 Z" fill="${a}" opacity="0.75"/>
+          <circle cx="30" cy="20" r="3.5" fill="oklch(60% 0.12 80)" opacity="0.9"/>
+        </svg>`});
+
+    // Sky logos
+    logoRow('logo-sky-dark', {
+      cn:'渐晰', en:'CLAIRIS', accent:'oklch(58% 0.12 30)', color:'dark',
+      markFn: (fg,a) => `
+        <svg width="44" height="44" viewBox="0 0 100 100">
+          <defs>
+            <linearGradient id="sg-d" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="oklch(36% 0.04 240)"/>
+              <stop offset="100%" stop-color="oklch(44% 0.05 210)"/>
+            </linearGradient>
+          </defs>
+          <circle cx="50" cy="44" r="46" fill="url(#sg-d)"/>
+          <path d="M10 74 Q50 64 90 74 L90 82 Q50 72 10 82 Z" fill="${fg}" opacity="0.8"/>
+          <circle cx="68" cy="30" r="9" fill="${a}"/>
+        </svg>`});
+    logoRow('logo-sky-light', {
+      cn:'渐晰', en:'CLAIRIS', accent:'oklch(56% 0.14 30)', color:'light',
+      markFn: (fg,a) => `
+        <svg width="44" height="44" viewBox="0 0 100 100">
+          <defs>
+            <linearGradient id="sg-l" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="oklch(90% 0.012 240)"/>
+              <stop offset="100%" stop-color="oklch(86% 0.014 210)"/>
+            </linearGradient>
+          </defs>
+          <circle cx="50" cy="44" r="46" fill="url(#sg-l)"/>
+          <path d="M10 74 Q50 64 90 74 L90 82 Q50 72 10 82 Z" fill="${fg}" opacity="0.5"/>
+          <circle cx="68" cy="30" r="9" fill="${a}"/>
+        </svg>`});
+  
+    /* ---- Bronze Palette ---- */
+    swatchRow(document.getElementById('palette-bronze'), [
+      { name:'暗铜', l:0.20, chroma:0.025, css:'oklch(20% 0.025 60)' },
+      { name:'奶灰绿', l:0.96, chroma:0.006, css:'oklch(96% 0.006 80)' },
+      { name:'雾铜', l:0.88, chroma:0.010, css:'oklch(88% 0.010 80)' },
+      { name:'赤铜', l:0.62, chroma:0.10,  css:'oklch(62% 0.10 25)' },
+      { name:'铜绿', l:0.48, chroma:0.04,  css:'oklch(48% 0.03 55)' },
+    ]);
+
+    /* ---- Aurora Palette ---- */
+    swatchRow(document.getElementById('palette-aurora'), [
+      { name:'深空紫', l:0.16, chroma:0.022, css:'oklch(16% 0.022 280)' },
+      { name:'冷烟灰', l:0.96, chroma:0.006, css:'oklch(96% 0.006 290)' },
+      { name:'雾紫', l:0.90, chroma:0.010, css:'oklch(90% 0.010 290)' },
+      { name:'极光绿', l:0.62, chroma:0.14,  css:'oklch(62% 0.14 165)' },
+      { name:'幻紫', l:0.58, chroma:0.10,  css:'oklch(58% 0.10 300)' },
+    ]);
+
+    /* ---- Spring Palette ---- */
+    swatchRow(document.getElementById('palette-spring'), [
+      { name:'米白', l:0.97, chroma:0.006, css:'oklch(97% 0.006 25)' },
+      { name:'墨灰', l:0.22, chroma:0.018, css:'oklch(22% 0.018 30)' },
+      { name:'樱粉', l:0.68, chroma:0.08,  css:'oklch(68% 0.08 10)' },
+      { name:'春泥', l:0.88, chroma:0.012, css:'oklch(88% 0.012 25)' },
+      { name:'枝绿', l:0.56, chroma:0.07,  css:'oklch(56% 0.07 130)' },
+    ]);
+
+    /* ---- Bronze Icons ---- */
+    iconSheet('icons-bronze', (fg, accent) => `
+      <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="width:60%;height:60%;">
+        <defs>
+          <radialGradient id="bronze-glow" cx="40%" cy="35%" r="50%">
+            <stop offset="0%" stop-color="${accent}" stop-opacity="0.85"/>
+            <stop offset="60%" stop-color="${accent}" stop-opacity="0.3"/>
+            <stop offset="100%" stop-color="${fg}" stop-opacity="0"/>
+          </radialGradient>
+        </defs>
+        <rect width="100" height="100" fill="none"/>
+        <circle cx="50" cy="50" r="40" fill="url(#bronze-glow)"/>
+        <path d="M30 70 Q35 40 50 30 Q65 40 70 70 Q50 68 30 70 Z" fill="${fg}" opacity="0.9"/>
+        <path d="M38 55 Q50 50 62 55 Q50 58 38 55 Z" fill="${accent}" opacity="0.9"/>
+        <circle cx="42" cy="42" r="2.5" fill="${accent}" opacity="0.7"/>
+        <circle cx="56" cy="52" r="2" fill="${accent}" opacity="0.55"/>
+      </svg>`);
+
+    /* ---- Aurora Icons ---- */
+    iconSheet('icons-aurora', (fg, accent) => `
+      <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="width:60%;height:60%;">
+        <defs>
+          <linearGradient id="aurora-sky" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="oklch(20% 0.04 280)"/>
+            <stop offset="100%" stop-color="oklch(28% 0.05 320)"/>
+          </linearGradient>
+        </defs>
+        <rect width="100" height="100" fill="none"/>
+        <circle cx="50" cy="50" r="46" fill="url(#aurora-sky)"/>
+        <path d="M16 62 Q30 42 44 50 Q58 58 72 42 Q86 34 88 38" stroke="${accent}" stroke-width="3" fill="none" stroke-linecap="round" opacity="0.85"/>
+        <path d="M18 70 Q32 52 46 60 Q60 68 74 52 Q88 44 90 48" stroke="${fg}" stroke-width="2" fill="none" stroke-linecap="round" opacity="0.4"/>
+        <circle cx="72" cy="34" r="5" fill="${accent}" opacity="0.9"/>
+      </svg>`);
+
+    /* ---- Spring Icons ---- */
+    iconSheet('icons-spring', (fg, accent) => `
+      <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="width:60%;height:60%;">
+        <rect width="100" height="100" fill="none"/>
+        <!-- falling petals -->
+        <ellipse cx="32" cy="36" rx="6" ry="4" fill="${accent}" opacity="0.75" transform="rotate(-15 32 36)"/>
+        <ellipse cx="58" cy="26" rx="5" ry="3.5" fill="${fg}" opacity="0.55" transform="rotate(20 58 26)"/>
+        <ellipse cx="70" cy="44" rx="5.5" ry="3.8" fill="${accent}" opacity="0.5" transform="rotate(5 70 44)"/>
+        <ellipse cx="42" cy="60" rx="4.5" ry="3" fill="${fg}" opacity="0.4" transform="rotate(-25 42 60)"/>
+        <!-- bud/stem -->
+        <path d="M50 80 Q50 60 50 50" stroke="oklch(56% 0.07 130)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+        <circle cx="50" cy="46" r="7" fill="${accent}" opacity="0.9"/>
+        <circle cx="50" cy="46" r="3" fill="${fg}" opacity="0.6"/>
+      </svg>`);
+
+    /* ---- Bronze Logos ---- */
+    logoRow('logo-bronze-dark', {
+      cn:'渐晰', en:'CLAIRIS', accent:'oklch(62% 0.10 25)', color:'dark',
+      markFn: (fg,a) => `
+        <svg width="44" height="44" viewBox="0 0 100 100">
+          <defs>
+            <radialGradient id="lg-bd" cx="40%" cy="35%" r="50%">
+              <stop offset="0%" stop-color="${a}" stop-opacity="0.8"/>
+              <stop offset="100%" stop-color="${a}" stop-opacity="0"/>
+            </radialGradient>
+          </defs>
+          <circle cx="50" cy="50" r="46" fill="url(#lg-bd)"/>
+          <path d="M30 70 Q35 40 50 30 Q65 40 70 70 Q50 68 30 70 Z" fill="${fg}" opacity="0.9"/>
+          <path d="M38 55 Q50 50 62 55 Q50 58 38 55 Z" fill="${a}" opacity="0.9"/>
+        </svg>`});
+    logoRow('logo-bronze-light', {
+      cn:'渐晰', en:'CLAIRIS', accent:'oklch(62% 0.10 25)', color:'light',
+      markFn: (fg,a) => `
+        <svg width="44" height="44" viewBox="0 0 100 100">
+          <defs>
+            <radialGradient id="lg-bl" cx="40%" cy="35%" r="50%">
+              <stop offset="0%" stop-color="${a}" stop-opacity="0.6"/>
+              <stop offset="100%" stop-color="${a}" stop-opacity="0"/>
+            </radialGradient>
+          </defs>
+          <circle cx="50" cy="50" r="46" fill="url(#lg-bl)"/>
+          <path d="M30 70 Q35 40 50 30 Q65 40 70 70 Q50 68 30 70 Z" fill="${fg}" opacity="0.9"/>
+          <path d="M38 55 Q50 50 62 55 Q50 58 38 55 Z" fill="${a}" opacity="0.9"/>
+        </svg>`});
+
+    /* ---- Aurora Logos ---- */
+    logoRow('logo-aurora-dark', {
+      cn:'渐晰', en:'CLAIRIS', accent:'oklch(62% 0.14 165)', color:'dark',
+      markFn: (fg,a) => `
+        <svg width="44" height="44" viewBox="0 0 100 100">
+          <defs>
+            <linearGradient id="lg-ad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="oklch(24% 0.04 280)"/>
+              <stop offset="100%" stop-color="oklch(32% 0.05 320)"/>
+            </linearGradient>
+          </defs>
+          <circle cx="50" cy="50" r="46" fill="url(#lg-ad)"/>
+          <path d="M16 66 Q30 48 44 56 Q58 64 72 48 Q86 40 88 44" stroke="${a}" stroke-width="3" fill="none" stroke-linecap="round" opacity="0.9"/>
+          <circle cx="72" cy="40" r="5" fill="${a}" opacity="0.9"/>
+        </svg>`});
+    logoRow('logo-aurora-light', {
+      cn:'渐晰', en:'CLAIRIS', accent:'oklch(62% 0.14 165)', color:'light',
+      markFn: (fg,a) => `
+        <svg width="44" height="44" viewBox="0 0 100 100">
+          <defs>
+            <linearGradient id="lg-al" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="oklch(90% 0.012 290)"/>
+              <stop offset="100%" stop-color="oklch(86% 0.016 300)"/>
+            </linearGradient>
+          </defs>
+          <circle cx="50" cy="50" r="46" fill="url(#lg-al)"/>
+          <path d="M16 66 Q30 48 44 56 Q58 64 72 48 Q86 40 88 44" stroke="${a}" stroke-width="3" fill="none" stroke-linecap="round" opacity="0.7"/>
+          <circle cx="72" cy="40" r="5" fill="${a}" opacity="0.85"/>
+        </svg>`});
+
+    /* ---- Spring Logos ---- */
+    logoRow('logo-spring-light', {
+      cn:'渐晰', en:'CLAIRIS', accent:'oklch(68% 0.08 10)', color:'light',
+      markFn: (fg,a) => `
+        <svg width="44" height="44" viewBox="0 0 100 100">
+          <rect width="100" height="100" fill="none"/>
+          <ellipse cx="30" cy="30" rx="8" ry="5.5" fill="${a}" opacity="0.85" transform="rotate(-15 30 30)"/>
+          <ellipse cx="52" cy="22" rx="7" ry="4.8" fill="${fg}" opacity="0.55" transform="rotate(20 52 22)"/>
+          <ellipse cx="68" cy="36" rx="7.5" ry="5" fill="${a}" opacity="0.55" transform="rotate(5 68 36)"/>
+          <path d="M50 80 Q50 60 50 50" stroke="oklch(56% 0.07 130)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+          <circle cx="50" cy="46" r="8" fill="${a}" opacity="0.95"/>
+          <circle cx="50" cy="46" r="3.5" fill="${fg}" opacity="0.5"/>
+        </svg>`});
+    logoRow('logo-spring-dark', {
+      cn:'渐晰', en:'CLAIRIS', accent:'oklch(68% 0.08 10)', color:'dark',
+      markFn: (fg,a) => `
+        <svg width="44" height="44" viewBox="0 0 100 100">
+          <rect width="100" height="100" fill="none"/>
+          <ellipse cx="30" cy="30" rx="8" ry="5.5" fill="${a}" opacity="0.9" transform="rotate(-15 30 30)"/>
+          <ellipse cx="52" cy="22" rx="7" ry="4.8" fill="${fg}" opacity="0.6" transform="rotate(20 52 22)"/>
+          <ellipse cx="68" cy="36" rx="7.5" ry="5" fill="${a}" opacity="0.6" transform="rotate(5 68 36)"/>
+          <path d="M50 80 Q50 60 50 50" stroke="oklch(56% 0.07 130)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+          <circle cx="50" cy="46" r="8" fill="${a}" opacity="0.95"/>
+          <circle cx="50" cy="46" r="3.5" fill="${fg}" opacity="0.7"/>
+        </svg>`});
+
+
+    /* ---- Bronze Palette ---- */
+    swatchRow(document.getElementById('palette-bronze'), [
+      { name:'暗铜', l:0.20, chroma:0.025, css:'oklch(20% 0.025 60)' },
+      { name:'奶灰绿', l:0.96, chroma:0.006, css:'oklch(96% 0.006 80)' },
+      { name:'雾铜', l:0.88, chroma:0.010, css:'oklch(88% 0.010 80)' },
+      { name:'赤铜', l:0.62, chroma:0.10,  css:'oklch(62% 0.10 25)' },
+      { name:'铜绿', l:0.48, chroma:0.04,  css:'oklch(48% 0.03 55)' },
+    ]);
+
+    /* ---- Aurora Palette ---- */
+    swatchRow(document.getElementById('palette-aurora'), [
+      { name:'深空紫', l:0.16, chroma:0.022, css:'oklch(16% 0.022 280)' },
+      { name:'冷烟灰', l:0.96, chroma:0.006, css:'oklch(96% 0.006 290)' },
+      { name:'雾紫', l:0.90, chroma:0.010, css:'oklch(90% 0.010 290)' },
+      { name:'极光绿', l:0.62, chroma:0.14,  css:'oklch(62% 0.14 165)' },
+      { name:'幻紫', l:0.58, chroma:0.10,  css:'oklch(58% 0.10 300)' },
+    ]);
+
+    /* ---- Spring Palette ---- */
+    swatchRow(document.getElementById('palette-spring'), [
+      { name:'米白', l:0.97, chroma:0.006, css:'oklch(97% 0.006 25)' },
+      { name:'墨灰', l:0.22, chroma:0.018, css:'oklch(22% 0.018 30)' },
+      { name:'樱粉', l:0.68, chroma:0.08,  css:'oklch(68% 0.08 10)' },
+      { name:'春泥', l:0.88, chroma:0.012, css:'oklch(88% 0.012 25)' },
+      { name:'枝绿', l:0.56, chroma:0.07,  css:'oklch(56% 0.07 130)' },
+    ]);
+
+    /* ---- Bronze Icons ---- */
+    iconSheet('icons-bronze', (fg, accent) => `
+      <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="width:60%;height:60%;">
+        <defs>
+          <radialGradient id="bronze-glow" cx="40%" cy="35%" r="50%">
+            <stop offset="0%" stop-color="${accent}" stop-opacity="0.85"/>
+            <stop offset="60%" stop-color="${accent}" stop-opacity="0.3"/>
+            <stop offset="100%" stop-color="${fg}" stop-opacity="0"/>
+          </radialGradient>
+        </defs>
+        <rect width="100" height="100" fill="none"/>
+        <circle cx="50" cy="50" r="40" fill="url(#bronze-glow)"/>
+        <path d="M30 70 Q35 40 50 30 Q65 40 70 70 Q50 68 30 70 Z" fill="${fg}" opacity="0.9"/>
+        <path d="M38 55 Q50 50 62 55 Q50 58 38 55 Z" fill="${accent}" opacity="0.9"/>
+        <circle cx="42" cy="42" r="2.5" fill="${accent}" opacity="0.7"/>
+        <circle cx="56" cy="52" r="2" fill="${accent}" opacity="0.55"/>
+      </svg>`);
+
+    /* ---- Aurora Icons ---- */
+    iconSheet('icons-aurora', (fg, accent) => `
+      <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="width:60%;height:60%;">
+        <defs>
+          <linearGradient id="aurora-sky" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="oklch(20% 0.04 280)"/>
+            <stop offset="100%" stop-color="oklch(28% 0.05 320)"/>
+          </linearGradient>
+        </defs>
+        <rect width="100" height="100" fill="none"/>
+        <circle cx="50" cy="50" r="46" fill="url(#aurora-sky)"/>
+        <path d="M16 62 Q30 42 44 50 Q58 58 72 42 Q86 34 88 38" stroke="${accent}" stroke-width="3" fill="none" stroke-linecap="round" opacity="0.85"/>
+        <path d="M18 70 Q32 52 46 60 Q60 68 74 52 Q88 44 90 48" stroke="${fg}" stroke-width="2" fill="none" stroke-linecap="round" opacity="0.4"/>
+        <circle cx="72" cy="34" r="5" fill="${accent}" opacity="0.9"/>
+      </svg>`);
+
+    /* ---- Spring Icons ---- */
+    iconSheet('icons-spring', (fg, accent) => `
+      <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="width:60%;height:60%;">
+        <rect width="100" height="100" fill="none"/>
+        <ellipse cx="32" cy="36" rx="6" ry="4" fill="${accent}" opacity="0.75" transform="rotate(-15 32 36)"/>
+        <ellipse cx="58" cy="26" rx="5" ry="3.5" fill="${fg}" opacity="0.55" transform="rotate(20 58 26)"/>
+        <ellipse cx="70" cy="44" rx="5.5" ry="3.8" fill="${accent}" opacity="0.5" transform="rotate(5 70 44)"/>
+        <ellipse cx="42" cy="60" rx="4.5" ry="3" fill="${fg}" opacity="0.4" transform="rotate(-25 42 60)"/>
+        <path d="M50 80 Q50 60 50 50" stroke="oklch(56% 0.07 130)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+        <circle cx="50" cy="46" r="7" fill="${accent}" opacity="0.9"/>
+        <circle cx="50" cy="46" r="3" fill="${fg}" opacity="0.6"/>
+      </svg>`);
+
+    /* ---- Bronze Logos ---- */
+    logoRow('logo-bronze-dark', {
+      cn:'渐晰', en:'CLAIRIS', accent:'oklch(62% 0.10 25)', color:'dark',
+      markFn: (fg,a) => `
+        <svg width="44" height="44" viewBox="0 0 100 100">
+          <defs>
+            <radialGradient id="lg-bd" cx="40%" cy="35%" r="50%">
+              <stop offset="0%" stop-color="${a}" stop-opacity="0.8"/>
+              <stop offset="100%" stop-color="${a}" stop-opacity="0"/>
+            </radialGradient>
+          </defs>
+          <circle cx="50" cy="50" r="46" fill="url(#lg-bd)"/>
+          <path d="M30 70 Q35 40 50 30 Q65 40 70 70 Q50 68 30 70 Z" fill="${fg}" opacity="0.9"/>
+          <path d="M38 55 Q50 50 62 55 Q50 58 38 55 Z" fill="${a}" opacity="0.9"/>
+        </svg>`});
+    logoRow('logo-bronze-light', {
+      cn:'渐晰', en:'CLAIRIS', accent:'oklch(62% 0.10 25)', color:'light',
+      markFn: (fg,a) => `
+        <svg width="44" height="44" viewBox="0 0 100 100">
+          <defs>
+            <radialGradient id="lg-bl" cx="40%" cy="35%" r="50%">
+              <stop offset="0%" stop-color="${a}" stop-opacity="0.6"/>
+              <stop offset="100%" stop-color="${a}" stop-opacity="0"/>
+            </radialGradient>
+          </defs>
+          <circle cx="50" cy="50" r="46" fill="url(#lg-bl)"/>
+          <path d="M30 70 Q35 40 50 30 Q65 40 70 70 Q50 68 30 70 Z" fill="${fg}" opacity="0.9"/>
+          <path d="M38 55 Q50 50 62 55 Q50 58 38 55 Z" fill="${a}" opacity="0.9"/>
+        </svg>`});
+
+    /* ---- Aurora Logos ---- */
+    logoRow('logo-aurora-dark', {
+      cn:'渐晰', en:'CLAIRIS', accent:'oklch(62% 0.14 165)', color:'dark',
+      markFn: (fg,a) => `
+        <svg width="44" height="44" viewBox="0 0 100 100">
+          <defs>
+            <linearGradient id="lg-ad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="oklch(24% 0.04 280)"/>
+              <stop offset="100%" stop-color="oklch(32% 0.05 320)"/>
+            </linearGradient>
+          </defs>
+          <circle cx="50" cy="50" r="46" fill="url(#lg-ad)"/>
+          <path d="M16 66 Q30 48 44 56 Q58 64 72 48 Q86 40 88 44" stroke="${a}" stroke-width="3" fill="none" stroke-linecap="round" opacity="0.9"/>
+          <circle cx="72" cy="40" r="5" fill="${a}" opacity="0.9"/>
+        </svg>`});
+    logoRow('logo-aurora-light', {
+      cn:'渐晰', en:'CLAIRIS', accent:'oklch(62% 0.14 165)', color:'light',
+      markFn: (fg,a) => `
+        <svg width="44" height="44" viewBox="0 0 100 100">
+          <defs>
+            <linearGradient id="lg-al" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="oklch(90% 0.012 290)"/>
+              <stop offset="100%" stop-color="oklch(86% 0.016 300)"/>
+            </linearGradient>
+          </defs>
+          <circle cx="50" cy="50" r="46" fill="url(#lg-al)"/>
+          <path d="M16 66 Q30 48 44 56 Q58 64 72 48 Q86 40 88 44" stroke="${a}" stroke-width="3" fill="none" stroke-linecap="round" opacity="0.7"/>
+          <circle cx="72" cy="40" r="5" fill="${a}" opacity="0.85"/>
+        </svg>`});
+
+    /* ---- Spring Logos ---- */
+    logoRow('logo-spring-light', {
+      cn:'渐晰', en:'CLAIRIS', accent:'oklch(68% 0.08 10)', color:'light',
+      markFn: (fg,a) => `
+        <svg width="44" height="44" viewBox="0 0 100 100">
+          <rect width="100" height="100" fill="none"/>
+          <ellipse cx="30" cy="30" rx="8" ry="5.5" fill="${a}" opacity="0.85" transform="rotate(-15 30 30)"/>
+          <ellipse cx="52" cy="22" rx="7" ry="4.8" fill="${fg}" opacity="0.55" transform="rotate(20 52 22)"/>
+          <ellipse cx="68" cy="36" rx="7.5" ry="5" fill="${a}" opacity="0.55" transform="rotate(5 68 36)"/>
+          <path d="M50 80 Q50 60 50 50" stroke="oklch(56% 0.07 130)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+          <circle cx="50" cy="46" r="8" fill="${a}" opacity="0.95"/>
+          <circle cx="50" cy="46" r="3.5" fill="${fg}" opacity="0.5"/>
+        </svg>`});
+    logoRow('logo-spring-dark', {
+      cn:'渐晰', en:'CLAIRIS', accent:'oklch(68% 0.08 10)', color:'dark',
+      markFn: (fg,a) => `
+        <svg width="44" height="44" viewBox="0 0 100 100">
+          <rect width="100" height="100" fill="none"/>
+          <ellipse cx="30" cy="30" rx="8" ry="5.5" fill="${a}" opacity="0.9" transform="rotate(-15 30 30)"/>
+          <ellipse cx="52" cy="22" rx="7" ry="4.8" fill="${fg}" opacity="0.6" transform="rotate(20 52 22)"/>
+          <ellipse cx="68" cy="36" rx="7.5" ry="5" fill="${a}" opacity="0.6" transform="rotate(5 68 36)"/>
+          <path d="M50 80 Q50 60 50 50" stroke="oklch(56% 0.07 130)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+          <circle cx="50" cy="46" r="8" fill="${a}" opacity="0.95"/>
+          <circle cx="50" cy="46" r="3.5" fill="${fg}" opacity="0.7"/>
+        </svg>`});
+
+</script>
+</body>
+</html>

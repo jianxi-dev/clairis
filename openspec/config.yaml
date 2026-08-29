@@ -1,0 +1,24 @@
+schema: spec-driven
+
+# Project context — shown to AI when creating artifacts.
+context: |
+  Clairis（渐晰）— Tauri 2 + React 18 + TypeScript 桌面 Markdown 阅读/编辑器。
+  前端: Vite + CodeMirror 6 + Zustand（src/）。后端: Rust Tauri commands（src-tauri/）。
+  测试: vitest 只收集 src/__tests__/**；E2E 两套 Playwright（e2e/ + e2e/tauri/ mock 桥）。
+  约定:
+    - 中文优先：所有 OpenSpec 产物（proposal/spec/tasks）默认中文。英文仅用于代码标识符、i18n key、API/字段名、命令、引用外部英文资料。
+    - 模式切换 preview/edit/source 用 CSS display，不 remount EditorView。
+    - 新增 cm-* decoration 类名必须同步 src/styles/ CSS（manifest 校验）。
+    - API key 只存 OS keyring，不进配置文件。
+    - 交付前 bash scripts/verify.sh 全绿。
+  架构现状: docs/architecture/overview.md（决策: docs/architecture/decisions/）；文档索引: docs/README.md；共享词汇: CONTEXT.md；结构地图: .opencode/project-tree.md
+
+# Per-artifact rules (optional)
+# Add custom rules for specific artifacts.
+# Example:
+#   rules:
+#     proposal:
+#       - Keep proposals under 500 words
+#       - Always include a "Non-goals" section
+#     tasks:
+#       - Break tasks into chunks of max 2 hours
