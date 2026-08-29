@@ -6,8 +6,8 @@ application-shell 域定义渐晰桌面端的整体界面布局决策与空状�
 
 ## 设计来源与参考
 
-- G-1 至 G-5 批准设计：`docs/designs/module-g-shell-ui.md`（无侧栏外壳与 Chrome Bar 决策）
-- B-2 / B-4 / B-5 批准设计：`docs/designs/spec-B1-B2-B4-B5-empty-state.md`（空状态分块、示例文件释放与标记机制）；示例文件内容见 `src-tauri/samples/`
+- G-1 至 G-5 批准设计：`docs/design/approved/shell-ui/spec.md`（无侧栏外壳与 Chrome Bar 决策）
+- B-2 / B-4 / B-5 批准设计：`docs/design/approved/empty-state/spec.md`（空状态分块、示例文件释放与标记机制）；示例文件内容见 `src-tauri/samples/`
 - 需求基线：`docs/CORE-REQUIREMENTS-clairis.md` §四 UI 架构 4.1（空状态与导航入口、内置示例文件）、4.5（文档模式分栏规则）；`docs/MVP-需求跟踪表.md` 模块 G / B（均标 ✅）
 - 启动面板/欢迎页（B-1）与统一文件面板（B-3）归属 navigation 域
 
@@ -105,5 +105,5 @@ application-shell 域定义渐晰桌面端的整体界面布局决策与空状�
 
 以下为来源层面的已登记冲突，仅如实记录，不在本规格内裁定（裁定由后续 change/治理任务处理）：
 
-- **Cmd+\ 键位冲突**：G-1 要求移除旧的"切换左侧栏"快捷键 `Cmd+\`；reading 域 A-5 将 `Cmd+\` 指定为沉浸阅读开关（来源：`docs/designs/spec-A5-immersive-reading.md` v2）。两文件对同一键位的处置需在实现层统一（移除旧语义后即可由 A-5 占用），此处保留两边原意。
+- **Cmd+\ 键位冲突**：G-1 要求移除旧的"切换左侧栏"快捷键 `Cmd+\`；reading 域 A-5 将 `Cmd+\` 指定为沉浸阅读开关（来源：`docs/design/approved/immersive-reading/spec.md` v2）。两文件对同一键位的处置需在实现层统一（移除旧语义后即可由 A-5 占用），此处保留两边原意。
 - **G-4 缺失**：`docs/MVP-需求跟踪表.md` 模块 G 仅登记 G-1 / G-2 / G-3 / G-5，无 G-4 行；G-4 的状态待跟踪表补齐后裁定。

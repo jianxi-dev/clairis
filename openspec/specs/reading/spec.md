@@ -6,9 +6,9 @@ reading 域定义渐晰桌面端的核心阅读体验：文件打开后的可读
 
 ## 设计来源与参考
 
-- A-5 批准设计：`docs/designs/spec-A5-immersive-reading.md`（v2，2026-07-12 定稿，Codex R1 对抗复审）
-- A-6 批准设计：`docs/designs/spec-A6-font-size-scaling.md`（v3，2026-07-12 定稿，Codex 两轮对抗）
-- A-9 批准设计：`docs/designs/spec-A9-reading-progress.md`（v2，2026-07-12 定稿）
+- A-5 批准设计：`docs/design/approved/immersive-reading/spec.md`（v2，2026-07-12 定稿，Codex R1 对抗复审）
+- A-6 批准设计：`docs/design/approved/font-size-scaling/spec.md`（v3，2026-07-12 定稿，Codex 两轮对抗）
+- A-9 批准设计：`docs/design/approved/reading-progress/spec.md`（v2，2026-07-12 定稿）
 - 需求基线：`docs/CORE-REQUIREMENTS-clairis.md` §二 阶段矩阵（Phase M / Phase R）、§三 快捷键体系；`docs/MVP-需求跟踪表.md` 模块 A（A-1 至 A-9 均标 ✅）
 
 ## Requirements

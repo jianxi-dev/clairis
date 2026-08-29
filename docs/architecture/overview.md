@@ -2,7 +2,7 @@
 title: 架构现状总览
 type: architecture
 status: accepted
-last_updated: 2026-08-01
+last_updated: 2026-08-30
 source_of_truth: canonical
 ---
 
@@ -23,8 +23,8 @@ Clairis 是 Tauri 2 桌面应用：Rust 后端（`src-tauri/`）提供文件系�
 
 两条渲染管线相互独立（决策依据见 [ADR 0001](./decisions/0001-separate-rendering-pipelines.md)）：
 
-- **阅读管线**：`src/renderers/`。Markdown 经 `marked` 解析后用 `DOMPurify` 白名单清洗，再由 `src/components/Content/PreviewView.tsx` 通过 `dangerouslySetInnerHTML` 渲染（见 `src/renderers/markdown.ts`）。HTML 文件走 `src/components/Content/HtmlPreview.tsx`，相对路径由 `src/renderers/html.ts` 改写为 Tauri asset URL。纯文本由 `src/renderers/text.ts` 转义后渲染。
-- **编辑管线**：CodeMirror 6 编辑器，装配在 `src/editors/setup.ts`，按文件类型（markdown / html / text）组合语言扩展与装饰（decorations）。
+- **阅读管线**：`src/renderers/`。Markdown 经 `marked` 解析后用 `DOMPurify` 白名单清洗，数学公式（KaTeX，`src/renderers/math.ts`）与 Mermaid 图表（`src/renderers/mermaid.ts`）分别预处理后渲染，再由 `src/components/Content/PreviewView.tsx` 通过 `dangerouslySetInnerHTML` 渲染（见 `src/renderers/markdown.ts`）。HTML 文件走 `src/components/Content/HtmlPreview.tsx`，相对路径由 `src/renderers/html.ts` 改写为 Tauri asset URL。纯文本由 `src/renderers/text.ts` 转义后渲染。
+- **编辑管线**：CodeMirror 6 编辑器，基础扩展装配在 `src/editors/setup.ts`，按文件类型组合语言扩展与装饰（decorations）：markdown / html / text 语言与 5 个 decoration 插件在 `setup.ts` 组装；css / python / json / javascript / yaml 代码语言高亮由 `src/components/Content/ContentArea.tsx` 的 `langCompartment` 装配。
 
 模式（preview / edit / source）切换通过 CSS `display` 显隐，**不重建 EditorView**，从而保留 undo、选区与编辑状态（决策依据见 [ADR 0002](./decisions/0002-mode-switch-css-display-no-remount.md)）。实现见 `src/components/Content/ContentArea.tsx`：编辑器容器在 preview 时为 `display:none`，preview 由 `PreviewView` 呈现。
 
@@ -55,11 +55,11 @@ EditorView 实例不进 React 状态树，而存在模块级 Map 中，按 panel
 
 | 模块 | 命令 |
 |------|------|
-| `file.rs` | `open_file`、`open_file_direct`、`pick_folder`、`save_file`、`save_as_file` |
+| `file.rs` | `open_file`、`open_file_direct`、`pick_folder`、`read_file_base64`、`register_media_path`、`save_file`、`save_as_file` |
 | `directory.rs` | `read_directory`、`get_file_info`、`flatten_files` |
 | `config_cmd.rs` | `load_config`、`save_config`、`get_api_key`、`set_api_key`、`delete_api_key` |
 | `translate.rs` | `translate_text`、`stop_translation` |
-| `capture.rs` | `append_inbox`、`load_today_inbox`、`load_inbox_by_date`、`edit_inbox_entry`、`delete_inbox_entry`、`archive_entry`、`save_config_capture`、`load_config_capture`、`set_overlay_pinned`、`show_overlay_window`、`hide_overlay_window` |
+| `capture.rs` | `append_inbox`、`append_inbox_batch`、`load_today_inbox`、`load_inbox_by_date`、`edit_inbox_entry`、`delete_inbox_entry`、`archive_entry`、`save_config_capture`、`load_config_capture`、`set_overlay_pinned`、`show_overlay_window`、`hide_overlay_window` |
 
 文件写入采用原子写（tempfile persist）。
 

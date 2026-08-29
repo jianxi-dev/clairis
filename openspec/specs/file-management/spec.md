@@ -7,7 +7,7 @@ file-management 域定义渐晰桌面端的文件管理基础能力：按格式�
 ## 设计来源与参考
 
 - 需求基线：`docs/CORE-REQUIREMENTS-clairis.md` §二 阶段矩阵（Phase M：打开文件、拖拽打开、新建文档、自动保存 2s debounce；Phase R：全部文件视图）、§三 快捷键体系（Cmd+O / Cmd+N）；`docs/MVP-需求跟踪表.md` 模块 C（C-1 至 C-5 均标 ✅）
-- C-5 批准设计（全部文件视图）：`docs/designs/no-sidebar-nav-final.md` §3.2（经由统一文件面板呈现，面板整体规格见 navigation 域 B-3）
+- C-5 批准设计（全部文件视图）：`docs/design/approved/navigation/spec.md` §3.2（经由统一文件面板呈现，面板整体规格见 navigation 域 B-3）
 
 ## Requirements
 

@@ -6,8 +6,8 @@ navigation 域定义渐晰桌面端"无侧栏"方向下的导航体系：启动�
 
 ## 设计来源与参考
 
-- B-1 批准设计：`docs/designs/spec-B1-B2-B4-B5-empty-state.md`（启动面板/欢迎页部分）
-- B-3 / B-6 / B-7 / B-8 批准设计：`docs/designs/no-sidebar-nav-final.md`（经由跟踪表 B-3/B+ 行登记）
+- B-1 批准设计：`docs/design/approved/empty-state/spec.md`（启动面板/欢迎页部分）
+- B-3 / B-6 / B-7 / B-8 批准设计：`docs/design/approved/navigation/spec.md`（经由跟踪表 B-3/B+ 行登记）
 - 需求基线：`docs/CORE-REQUIREMENTS-clairis.md` §四 UI 架构 4.1（空状态与导航入口表）、4.2（统一文件面板规则）、§三 快捷键体系（Cmd+P、Ctrl+1~9、Cmd+[/Cmd+]）；`docs/MVP-需求跟踪表.md` 模块 B 与 B+（均标 ✅）
 - 空状态的"继续上次/最近保存"分块（B-2）、示例文件释放（B-4）与空状态设计规则（B-5）归属 application-shell 域
 

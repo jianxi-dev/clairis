@@ -21,7 +21,7 @@
 | 查某功能批准设计 | `docs/design/approved/<feature>/` |
 | 查迁移去向 | [docs/MIGRATION-REPORT.md](./MIGRATION-REPORT.md) |
 | 了解治理规则 | [docs/GOVERNANCE.md](./GOVERNANCE.md) |
-| 查进行中变更 | `openspec/changes/`（当前无活跃变更） |
+| 查进行中变更 | `openspec/changes/`（5 个变更：4 项已完成待归档、1 项进行中） |
 
 ---
 
@@ -73,6 +73,6 @@
 | 治理规范 | [docs/GOVERNANCE.md](./GOVERNANCE.md) | 域、生命周期、元数据契约 |
 | 迁移账本 | [docs/MIGRATION-MAP.md](./MIGRATION-MAP.md) | 逐文件迁移去向与状态 |
 | OpenSpec 规格 | `openspec/specs/` | 功能行为真相源（6 个功能域规格已建立） |
-| OpenSpec 变更 | `openspec/changes/` | 进行中的变更（当前无活跃变更） |
+| OpenSpec 变更 | `openspec/changes/` | 进行中的变更（5 个：4 项已完成待归档、1 项进行中） |
 
 调研子域进一步划分：[竞品分析](./research/competitors/README.md)、[交互研究](./research/interaction/README.md)、[技术调研](./research/technical/README.md)。
