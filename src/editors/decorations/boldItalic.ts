@@ -19,17 +19,16 @@ export function createBoldItalicDecorations(text: string): Range<Decoration>[] {
     const delimLen = 2;
 
     // Hide opening **
-    decorations.push(
-      Decoration.replace({}).range(from, from + delimLen),
-    );
+    decorations.push(Decoration.replace({}).range(from, from + delimLen));
     // Style content
     decorations.push(
-      Decoration.mark({ class: BOLD_CLASS }).range(from + delimLen, to - delimLen),
+      Decoration.mark({ class: BOLD_CLASS }).range(
+        from + delimLen,
+        to - delimLen,
+      ),
     );
     // Hide closing **
-    decorations.push(
-      Decoration.replace({}).range(to - delimLen, to),
-    );
+    decorations.push(Decoration.replace({}).range(to - delimLen, to));
   }
 
   // Italic: *text* or _text_ → hide delimiter, style text
@@ -39,22 +38,14 @@ export function createBoldItalicDecorations(text: string): Range<Decoration>[] {
     const to = from + match[0].length;
     const delimLen = 1;
 
-    // Determine which delimiter was matched
-    const full = match[0];
-    const isUnderscore = full.startsWith("_");
-
+    decorations.push(Decoration.replace({}).range(from, from + delimLen));
     decorations.push(
-      Decoration.replace({}).range(from, from + delimLen),
+      Decoration.mark({ class: ITALIC_CLASS }).range(
+        from + delimLen,
+        to - delimLen,
+      ),
     );
-    decorations.push(
-      Decoration.mark({ class: ITALIC_CLASS }).range(from + delimLen, to - delimLen),
-    );
-    decorations.push(
-      Decoration.replace({}).range(to - delimLen, to),
-    );
-
-    // Suppress unused variable warning
-    void isUnderscore;
+    decorations.push(Decoration.replace({}).range(to - delimLen, to));
   }
 
   return decorations;

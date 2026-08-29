@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { useStore } from "./stores/index";
+import { isMediaKind } from "./stores/index";
 import { useEditorStore } from "./stores/editorStore";
+import { useCaptureOverlayStore } from "./stores/captureOverlay";
 import Layout from "./components/Layout";
 import Toolbar from "./components/Toolbar";
 import SidebarPanel from "./components/SidebarPanel";
@@ -9,20 +12,24 @@ import RecentFiles from "./components/Sidebar/RecentFiles";
 import FileTree from "./components/Sidebar/FileTree";
 import Outline from "./components/Sidebar/Outline";
 import ContentSplitView from "./components/Content/ContentSplitView";
-import { getActiveEditorView } from "./editors/editorRef";
+import CaptureOverlay from "./components/CaptureOverlay";
+import { getActiveEditorView, getPanelScrollEl } from "./editors/editorRef";
 import { toggleBold, toggleItalic } from "./editors/keybindings";
-import { useConfig } from "./hooks/useConfig";
+import { saveAppConfig, useConfig } from "./hooks/useConfig";
 import { log } from "./utils/log";
 
 const isTauri =
   typeof window !== "undefined" &&
-  (window as unknown as Record<string, unknown>).__TAURI_INTERNALS__ !== undefined;
+  (window as unknown as Record<string, unknown>).__TAURI_INTERNALS__ !==
+    undefined;
 
 function App() {
   const activeTabId = useStore((s) => s.activeTabId);
   const tabs = useStore((s) => s.tabs);
   const activeTab = activeTabId ? tabs[activeTabId] : null;
   const readingMode = useStore((s) => s.readingMode);
+  const immersiveChromeVisible = useStore((s) => s.immersiveChromeVisible);
+  const peekTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Init config loading + theme on mount
   const { setTheme, scheduleSave } = useConfig();
@@ -33,10 +40,17 @@ function App() {
   const handleOpenFile = useCallback(async () => {
     if (!isTauri) return;
     try {
-      const result = await invoke<{ content: string; path: string; file_size: number }>("open_file");
+      const result = await invoke<{
+        content: string;
+        path: string;
+        file_size: number;
+      }>("open_file");
       const store = useStore.getState();
       store.openFile(result.path, result.content);
-      store.addRecentFile(result.path, result.path.split("/").pop() || result.path);
+      store.addRecentFile(
+        result.path,
+        result.path.split("/").pop() || result.path,
+      );
       scheduleSave();
     } catch (e) {
       if (String(e) !== "Operation cancelled") {
@@ -47,16 +61,51 @@ function App() {
 
   const handleSaveFile = useCallback(async () => {
     if (!isTauri || !activeTab?.path) return;
+    if (isMediaKind(activeTab.fileKind)) return;
     try {
-      await invoke("save_file", { path: activeTab.path, content: activeTab.content });
+      await invoke("save_file", {
+        path: activeTab.path,
+        content: activeTab.content,
+      });
       useStore.getState().markClean();
     } catch (e) {
       log.error("App", "Failed to save file", e);
     }
-  }, [activeTab?.path, activeTab?.content]);
+  }, [activeTab?.path, activeTab?.content, activeTab?.fileKind]);
 
   const handleNewFile = useCallback(() => {
     useStore.getState().newTab();
+  }, []);
+
+  // ── Capture Overlay — Cmd+Shift+. global shortcut ─────────────────
+
+  useEffect(() => {
+    const captureOverlayStore = useCaptureOverlayStore.getState();
+
+    (window as unknown as Record<string, unknown>).__clairis_toggle_capture__ =
+      () => {
+        captureOverlayStore.toggle();
+      };
+
+    const capturePeriodHandler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === ".") {
+        e.preventDefault();
+        e.stopPropagation();
+        captureOverlayStore.toggle();
+      }
+    };
+
+    document.addEventListener("keydown", capturePeriodHandler, {
+      capture: true,
+    });
+
+    return () => {
+      document.removeEventListener("keydown", capturePeriodHandler, {
+        capture: true,
+      });
+      delete (window as unknown as Record<string, unknown>)
+        .__clairis_toggle_capture__;
+    };
   }, []);
 
   // ── Auto-save (2s debounce) ──────────────────────────────────
@@ -65,6 +114,7 @@ function App() {
 
   useEffect(() => {
     if (!activeTab?.dirty || !activeTab?.path) return;
+    if (isMediaKind(activeTab.fileKind)) return;
     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
 
     autoSaveTimerRef.current = setTimeout(() => {
@@ -77,9 +127,66 @@ function App() {
     return () => {
       if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
     };
-  }, [activeTab?.dirty, activeTab?.content, activeTab?.path]);
+  }, [
+    activeTab?.dirty,
+    activeTab?.content,
+    activeTab?.path,
+    activeTab?.fileKind,
+  ]);
 
   // ── Keyboard shortcuts ───────────────────────────────────────
+
+  // 缩放统一入口：Cmd/Ctrl+=/-/0 由键盘（Ctrl）或原生菜单（Cmd，macOS 菜单拦截）驱动，
+  // 分流到字号（markdown/文本/编辑态）或预览帧缩放（图片/HTML/PDF）。
+  const handleScaleDelta = useCallback(
+    (delta: number) => {
+      const tab = useStore.getState().activeTabId
+        ? useStore.getState().tabs[useStore.getState().activeTabId!]
+        : null;
+      const viewportPreview =
+        tab?.editorMode === "preview" &&
+        (tab.fileKind === "image" ||
+          tab.fileKind === "html" ||
+          tab.fileKind === "pdf");
+      if (viewportPreview) {
+        window.dispatchEvent(
+          new CustomEvent("preview-scale", { detail: delta }),
+        );
+        return;
+      }
+      const editorStore = useEditorStore.getState();
+      if (delta === 0) {
+        editorStore.setFontSize(17);
+        document.documentElement.style.setProperty(
+          "--editor-font-size",
+          "17px",
+        );
+      } else {
+        const next = Math.max(12, Math.min(32, editorStore.fontSize + delta));
+        editorStore.setFontSize(next);
+        document.documentElement.style.setProperty(
+          "--editor-font-size",
+          `${next}px`,
+        );
+      }
+      scheduleSave();
+    },
+    [scheduleSave],
+  );
+
+  // macOS 原生菜单（Cmd+=/-/0）拦截键盘，由 Rust 侧菜单项转发为 preview-scale 事件
+  useEffect(() => {
+    if (!isTauri) return;
+    let unlisten: (() => void) | undefined;
+    listen<number>("preview-scale", (e) => handleScaleDelta(e.payload))
+      .then((un) => {
+        unlisten = un;
+      })
+      .catch(() => {});
+    return () => {
+      unlisten?.();
+    };
+  }, [handleScaleDelta]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -110,11 +217,10 @@ function App() {
         store.closeTab(activeTabId);
       }
 
-      // Cmd+\ : Toggle left sidebar
+      // Cmd+\ : Toggle reading mode (immersive) — A-5
       if (meta && e.key === "\\") {
         e.preventDefault();
-        store.toggleLeftSidebar();
-        scheduleSave();
+        store.setReadingMode(!store.readingMode);
       }
 
       // Cmd+Shift+\ : Toggle right sidebar
@@ -122,6 +228,17 @@ function App() {
         e.preventDefault();
         store.toggleRightSidebar();
         scheduleSave();
+      }
+
+      // Cmd+Shift+T : Toggle chrome visibility inside immersive mode — A-5
+      if (
+        meta &&
+        e.shiftKey &&
+        e.key.toLowerCase() === "t" &&
+        store.readingMode
+      ) {
+        e.preventDefault();
+        store.setImmersiveChromeVisible(!store.immersiveChromeVisible);
       }
 
       // Cmd+Shift+S: Stop split (unsplit)
@@ -153,7 +270,11 @@ function App() {
         e.preventDefault();
         const current = activeTab?.editorMode || "preview";
         const next =
-          current === "preview" ? "edit" : current === "edit" ? "source" : "preview";
+          current === "preview"
+            ? "edit"
+            : current === "edit"
+              ? "source"
+              : "preview";
         store.setEditorMode(next);
       }
 
@@ -166,15 +287,11 @@ function App() {
         }
       }
 
-      // Cmd+= and Cmd+-: Font size
-      if (meta && (e.key === "=" || e.key === "-")) {
+      // Cmd/Ctrl+= / - / 0：markdown/文本/编辑态走字号，图片/HTML/PDF 预览走帧缩放
+      if (meta && (e.key === "=" || e.key === "-" || e.key === "0")) {
         e.preventDefault();
-        const editorStore = useEditorStore.getState();
-        const delta = e.key === "=" ? 1 : -1;
-        const next = Math.max(12, Math.min(32, editorStore.fontSize + delta));
-        editorStore.setFontSize(next);
-        document.documentElement.style.setProperty("--editor-font-size", `${next}px`);
-        scheduleSave();
+        const delta = e.key === "0" ? 0 : e.key === "=" ? 1 : -1;
+        handleScaleDelta(delta);
       }
 
       // Escape: Exit reading mode
@@ -198,9 +315,18 @@ function App() {
 
     return () => {
       window.removeEventListener("keydown", handler);
-      document.removeEventListener("keydown", captureHandler, { capture: true });
+      document.removeEventListener("keydown", captureHandler, {
+        capture: true,
+      });
     };
-  }, [handleOpenFile, handleSaveFile, activeTab?.editorMode, readingMode, activeTabId, scheduleSave]);
+  }, [
+    handleOpenFile,
+    handleSaveFile,
+    activeTab?.editorMode,
+    readingMode,
+    activeTabId,
+    handleScaleDelta,
+  ]);
 
   // ── Drag-and-drop (Tauri v2 native event) ────────────────────
 
@@ -210,21 +336,33 @@ function App() {
     let unlisten: (() => void) | null = null;
 
     (async () => {
-      const { getCurrentWebview } = await import("@tauri-apps/api/webview");
-      unlisten = await getCurrentWebview().onDragDropEvent((event) => {
-        if (event.payload.type !== "drop") return;
-        const path = event.payload.paths[0];
-        if (!path) return;
+      try {
+        const { getCurrentWebview } = await import("@tauri-apps/api/webview");
+        unlisten = await getCurrentWebview().onDragDropEvent((event) => {
+          if (event.payload.type !== "drop") return;
+          const path = event.payload.paths[0];
+          if (!path) return;
 
-        invoke<{ content: string; path: string; file_size: number }>("open_file_direct", { path })
-          .then((result) => {
-            const store = useStore.getState();
-            store.openFile(result.path, result.content);
-            store.addRecentFile(result.path, result.path.split("/").pop() || result.path);
-            scheduleSave();
-          })
-          .catch((err: unknown) => log.error("App", "Failed to open dropped file", err));
-      });
+          invoke<{ content: string; path: string; file_size: number }>(
+            "open_file_direct",
+            { path },
+          )
+            .then((result) => {
+              const store = useStore.getState();
+              store.openFile(result.path, result.content);
+              store.addRecentFile(
+                result.path,
+                result.path.split("/").pop() || result.path,
+              );
+              scheduleSave();
+            })
+            .catch((err: unknown) =>
+              log.error("App", "Failed to open dropped file", err),
+            );
+        });
+      } catch (e) {
+        log.warn("App", "Drag-drop listener unavailable", e);
+      }
     })();
 
     return () => {
@@ -267,35 +405,78 @@ function App() {
     scheduleSave();
   }, [horizontalSplitRatio, verticalSplitRatio, scheduleSave]);
 
+  // Persist scroll positions after each update (A-9; switch/close flushes via saveAppConfig)
+  const scrollPositions = useStore((s) => s.scrollPositions);
+  useEffect(() => {
+    scheduleSave();
+  }, [scrollPositions, scheduleSave]);
+
+  // ── Window close: capture scroll positions and flush config before close (A-9) ──
+
+  useEffect(() => {
+    if (!isTauri) return;
+    let unlisten: (() => void) | null = null;
+    (async () => {
+      try {
+        const { getCurrentWindow } = await import("@tauri-apps/api/window");
+        const win = getCurrentWindow();
+        unlisten = await win.onCloseRequested(async (event) => {
+          event.preventDefault();
+          const store = useStore.getState();
+          const capture = (panelId: string, tabId: string | null) => {
+            if (!tabId) return;
+            const el = getPanelScrollEl(panelId);
+            if (!el) return;
+            store.updateScrollPos(tabId, el.scrollTop, el.scrollHeight);
+          };
+          capture("main", store.activeTabId);
+          capture("split", store.splitActiveTabId);
+          await saveAppConfig();
+          await win.destroy();
+        });
+      } catch (e) {
+        log.warn("App", "Window close listener unavailable", e);
+      }
+    })();
+    return () => {
+      unlisten?.();
+    };
+  }, []);
+
   // ── Render ───────────────────────────────────────────────────
 
-  console.info("[JianXi] App render", { readingMode, activeTabId, hasTabs: Object.keys(tabs).length });
+  const rootClass = [
+    "h-screen w-screen flex flex-col bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100",
+    readingMode ? "immersive" : "",
+    readingMode && immersiveChromeVisible ? "immersive-peek" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return (
-    <div className="h-screen w-screen flex flex-col bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
-      {!readingMode && (
-        <Toolbar
-          isTauri={isTauri}
-          title={activeTab?.title || ""}
-          activeTabExists={!!activeTab}
-          editorMode={activeTab?.editorMode || "preview"}
-          theme={theme}
-          onOpenFile={handleOpenFile}
-          onSaveFile={handleSaveFile}
-          onNewFile={handleNewFile}
-          onToggleLeftSidebar={() => {
-            useStore.getState().toggleLeftSidebar();
-            scheduleSave();
-          }}
-          onToggleRightSidebar={() => {
-            useStore.getState().toggleRightSidebar();
-            scheduleSave();
-          }}
-          onSetMode={(mode) => useStore.getState().setEditorMode(mode)}
-          onSetReadingMode={(on) => useStore.getState().setReadingMode(on)}
-          onSetTheme={setTheme}
-        />
-      )}
+    <div className={rootClass}>
+      <Toolbar
+        isTauri={isTauri}
+        title={activeTab?.title || ""}
+        activeTabExists={!!activeTab}
+        isMedia={activeTab ? isMediaKind(activeTab.fileKind) : false}
+        editorMode={activeTab?.editorMode || "preview"}
+        theme={theme}
+        onOpenFile={handleOpenFile}
+        onSaveFile={handleSaveFile}
+        onNewFile={handleNewFile}
+        onToggleLeftSidebar={() => {
+          useStore.getState().toggleLeftSidebar();
+          scheduleSave();
+        }}
+        onToggleRightSidebar={() => {
+          useStore.getState().toggleRightSidebar();
+          scheduleSave();
+        }}
+        onSetMode={(mode) => useStore.getState().setEditorMode(mode)}
+        onSetReadingMode={(on) => useStore.getState().setReadingMode(on)}
+        onSetTheme={setTheme}
+      />
 
       <Layout
         initialLeftWidth={sidebarLeftWidth ?? 280}
@@ -332,6 +513,24 @@ function App() {
         onLeftWidthChange={handleLeftWidthChange}
         onRightWidthChange={handleRightWidthChange}
       />
+      <CaptureOverlay />
+      {readingMode && (
+        <div
+          className="immersive-peek-zone"
+          onMouseEnter={() => {
+            if (peekTimerRef.current) clearTimeout(peekTimerRef.current);
+            peekTimerRef.current = setTimeout(() => {
+              useStore.getState().setImmersiveChromeVisible(true);
+            }, 400);
+          }}
+          onMouseLeave={() => {
+            if (peekTimerRef.current) clearTimeout(peekTimerRef.current);
+            peekTimerRef.current = setTimeout(() => {
+              useStore.getState().setImmersiveChromeVisible(false);
+            }, 2000);
+          }}
+        />
+      )}
     </div>
   );
 }

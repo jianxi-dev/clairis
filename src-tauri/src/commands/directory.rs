@@ -49,13 +49,19 @@ pub async fn read_directory(path: String) -> Result<DirectoryResult, AppError> {
         });
     }
 
-    let mut entries = Vec::new();
-    collect_entries(&root, &root, 0, 3, &mut entries)?;
-
-    Ok(DirectoryResult {
-        entries,
-        path,
+    let root2 = root.clone();
+    let entries = tokio::task::spawn_blocking(move || {
+        let mut entries = Vec::new();
+        collect_entries(&root2, &root2, 0, 3, &mut entries)?;
+        Ok::<Vec<DirEntry>, AppError>(entries)
     })
+    .await
+    .map_err(|e| AppError::Io {
+        context: "read directory task join".into(),
+        source: std::io::Error::other(e.to_string()),
+    })??;
+
+    Ok(DirectoryResult { entries, path })
 }
 
 fn collect_entries(
@@ -150,14 +156,7 @@ pub async fn get_file_info(path: String) -> Result<FileInfo, AppError> {
 fn is_heavy_dir(name: &str) -> bool {
     matches!(
         name,
-        "node_modules"
-            | ".git"
-            | "target"
-            | "dist"
-            | ".next"
-            | "__pycache__"
-            | "vendor"
-            | ".cache"
+        "node_modules" | ".git" | "target" | "dist" | ".next" | "__pycache__" | "vendor" | ".cache"
     )
 }
 
@@ -185,17 +184,11 @@ pub async fn flatten_files(path: String) -> Result<FlattenResult, AppError> {
 
         let mut entries: Vec<FlatEntry> = Vec::new();
         let mut truncated = false;
-        collect_flat(
-            &base, &base, 0, 5, &supported, &mut entries,
-            &mut truncated,
-        );
+        collect_flat(&base, &base, 0, 5, &supported, &mut entries, &mut truncated);
 
         entries.sort_by(|a, b| a.relative_path.cmp(&b.relative_path));
 
-        Ok(FlattenResult {
-            entries,
-            truncated,
-        })
+        Ok(FlattenResult { entries, truncated })
     })
     .await
     .map_err(|e| AppError::Io {
@@ -269,8 +262,13 @@ fn collect_flat(
                 size: 0,
             });
             collect_flat(
-                base, &path, depth + 1, max_depth,
-                supported, entries, truncated,
+                base,
+                &path,
+                depth + 1,
+                max_depth,
+                supported,
+                entries,
+                truncated,
             );
         } else if supported(&name) {
             if entries.len() >= MAX_FILES {
@@ -294,7 +292,8 @@ mod tests {
     use std::fs;
 
     fn setup_test_dir(label: &str) -> PathBuf {
-        let dir = std::env::temp_dir().join(format!("jianxi_test_{}_{}", label, std::process::id()));
+        let dir =
+            std::env::temp_dir().join(format!("clairis_test_{}_{}", label, std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(dir.join("subdir")).unwrap();
         fs::write(dir.join("file1.md"), "# Hello").unwrap();
@@ -312,9 +311,21 @@ mod tests {
         assert!(result.is_ok());
 
         let names: Vec<&str> = entries.iter().map(|e| e.name.as_str()).collect();
-        assert!(names.contains(&"file1.md"), "should contain file1.md: {:?}", names);
-        assert!(names.contains(&"subdir"), "should contain subdir: {:?}", names);
-        assert!(!names.contains(&".hidden"), "should not contain hidden files: {:?}", names);
+        assert!(
+            names.contains(&"file1.md"),
+            "should contain file1.md: {:?}",
+            names
+        );
+        assert!(
+            names.contains(&"subdir"),
+            "should contain subdir: {:?}",
+            names
+        );
+        assert!(
+            !names.contains(&".hidden"),
+            "should not contain hidden files: {:?}",
+            names
+        );
 
         let _ = fs::remove_dir_all(&dir);
     }
@@ -327,10 +338,16 @@ mod tests {
         assert!(result.is_ok());
 
         let names: Vec<&str> = entries.iter().map(|e| e.name.as_str()).collect();
-        assert!(names.contains(&"file1.md"), "should contain file1.md at depth 0");
+        assert!(
+            names.contains(&"file1.md"),
+            "should contain file1.md at depth 0"
+        );
         // subdir should appear but its children should not
         assert!(names.contains(&"subdir"), "should contain subdir");
-        assert!(!names.contains(&"file2.md"), "should NOT contain file2.md beyond max_depth");
+        assert!(
+            !names.contains(&"file2.md"),
+            "should NOT contain file2.md beyond max_depth"
+        );
 
         let _ = fs::remove_dir_all(&dir);
     }

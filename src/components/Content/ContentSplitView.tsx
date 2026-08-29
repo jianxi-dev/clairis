@@ -1,12 +1,22 @@
-import { useCallback, useRef, useEffect } from "react";
-import { useStore } from "../../stores";
+import { useCallback, useRef } from "react";
+import { useStore, isMediaKind } from "../../stores";
+import { getPanelScrollEl } from "../../editors/editorRef";
+import { saveAppConfig } from "../../hooks/useConfig";
 import TabBar from "../TabBar";
 import ContentArea from "./ContentArea";
 import SplitResizeHandle from "./SplitResizeHandle";
 import ErrorBoundary from "../ErrorBoundary";
 import type { EditorMode, Tab } from "../../types";
 
-function ModeButton({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+function ModeButton({
+  label,
+  active,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
   return (
     <button
       onClick={onClick}
@@ -50,39 +60,57 @@ export default function ContentSplitView() {
   }
   const splitTab = splitActiveTabId ? tabs[splitActiveTabId] : null;
 
-  const handleMainSwitch = useCallback((id: string) => {
-    useStore.getState().switchTab(id);
-  }, []);
-
-  const handleMainClose = useCallback((id: string) => {
-    useStore.getState().closeTab(id);
-  }, []);
-
-  const handleSplitSwitch = useCallback((id: string) => {
-    useStore.getState().setSplitActiveTab(id);
-  }, []);
-
-  const handleSplitClose = useCallback((id: string) => {
+  const captureScrollNow = useCallback((panelId: string) => {
     const store = useStore.getState();
-    store.closeTab(id);
-    // If that was the last split tab, unsplit
-    const remaining = store.splitTabIds.filter((tid) => tid !== id && store.tabs[tid]);
-    if (remaining.length === 0) {
-      store.unsplit();
-    }
+    const tabId =
+      panelId === "split" ? store.splitActiveTabId : store.activeTabId;
+    if (!tabId) return;
+    const el = getPanelScrollEl(panelId);
+    if (!el) return;
+    store.updateScrollPos(tabId, el.scrollTop, el.scrollHeight);
+    void saveAppConfig();
   }, []);
 
-  // ── Single panel (no split) ──
-  if (!splitDirection || splitTabIds.length === 0) {
-    return (
-      <div className="h-full flex flex-col overflow-hidden">
-        <TabBar tabs={tabs} activeTabId={activeTabId} onSwitchTab={handleMainSwitch} onCloseTab={handleMainClose} />
-        <ContentArea panelId="main" />
-      </div>
-    );
-  }
+  const handleMainSwitch = useCallback(
+    (id: string) => {
+      captureScrollNow("main");
+      useStore.getState().switchTab(id);
+    },
+    [captureScrollNow],
+  );
 
-  // ── Split mode ──
+  const handleMainClose = useCallback(
+    (id: string) => {
+      captureScrollNow("main");
+      useStore.getState().closeTab(id);
+    },
+    [captureScrollNow],
+  );
+
+  const handleSplitSwitch = useCallback(
+    (id: string) => {
+      captureScrollNow("split");
+      useStore.getState().setSplitActiveTab(id);
+    },
+    [captureScrollNow],
+  );
+
+  const handleSplitClose = useCallback(
+    (id: string) => {
+      captureScrollNow("split");
+      const store = useStore.getState();
+      store.closeTab(id);
+      // If that was the last split tab, unsplit
+      const remaining = store.splitTabIds.filter(
+        (tid) => tid !== id && store.tabs[tid],
+      );
+      if (remaining.length === 0) {
+        store.unsplit();
+      }
+    },
+    [captureScrollNow],
+  );
+
   const isHorizontal = splitDirection === "horizontal";
   const currentRatio = isHorizontal ? horizontalSplitRatio : verticalSplitRatio;
 
@@ -101,6 +129,22 @@ export default function ContentSplitView() {
     }
   }, [splitDirection]);
 
+  // ── Single panel (no split) ──
+  if (!splitDirection || splitTabIds.length === 0) {
+    return (
+      <div className="h-full flex flex-col overflow-hidden">
+        <TabBar
+          tabs={tabs}
+          activeTabId={activeTabId}
+          onSwitchTab={handleMainSwitch}
+          onCloseTab={handleMainClose}
+        />
+        <ContentArea panelId="main" />
+      </div>
+    );
+  }
+
+  // ── Split mode ──
   return (
     <div
       ref={splitContainerRef}
@@ -111,14 +155,18 @@ export default function ContentSplitView() {
         className="flex flex-col overflow-hidden min-w-0"
         style={{ flex: `${currentRatio} 1 0%` }}
       >
-        <div className="flex items-center shrink-0 border-b border-gray-100 dark:border-gray-700">
+        <div className="app-chrome flex items-center shrink-0 border-b border-gray-100 dark:border-gray-700">
           <TabBar
             tabs={mainTabs}
             activeTabId={activeTabId}
             onSwitchTab={handleMainSwitch}
             onCloseTab={handleMainClose}
           />
-          <ModeButtons editorMode={activeTab?.editorMode || "preview"} onChange={(m) => useStore.getState().setEditorMode(m)} />
+          <ModeButtons
+            editorMode={activeTab?.editorMode || "preview"}
+            isMedia={activeTab ? isMediaKind(activeTab.fileKind) : false}
+            onChange={(m) => useStore.getState().setEditorMode(m)}
+          />
         </div>
         <ErrorBoundary panelId="main">
           <ContentArea
@@ -142,14 +190,18 @@ export default function ContentSplitView() {
         className="flex flex-col overflow-hidden min-w-0"
         style={{ flex: `${1 - currentRatio} 1 0%` }}
       >
-        <div className="flex items-center shrink-0 border-b border-gray-100 dark:border-gray-700">
+        <div className="app-chrome flex items-center shrink-0 border-b border-gray-100 dark:border-gray-700">
           <TabBar
             tabs={splitTabs}
             activeTabId={splitActiveTabId}
             onSwitchTab={handleSplitSwitch}
             onCloseTab={handleSplitClose}
           />
-          <ModeButtons editorMode={splitEditorMode} onChange={(m) => useStore.getState().setSplitEditorMode(m)} />
+          <ModeButtons
+            editorMode={splitEditorMode}
+            isMedia={splitTab ? isMediaKind(splitTab.fileKind) : false}
+            onChange={(m) => useStore.getState().setSplitEditorMode(m)}
+          />
         </div>
         <ErrorBoundary panelId="split">
           <ContentArea
@@ -163,12 +215,33 @@ export default function ContentSplitView() {
   );
 }
 
-function ModeButtons({ editorMode, onChange }: { editorMode: EditorMode; onChange: (m: EditorMode) => void }) {
+function ModeButtons({
+  editorMode,
+  isMedia = false,
+  onChange,
+}: {
+  editorMode: EditorMode;
+  isMedia?: boolean;
+  onChange: (m: EditorMode) => void;
+}) {
+  if (isMedia) return null;
   return (
     <div className="flex gap-0.5 px-2 shrink-0">
-      <ModeButton label="预览" active={editorMode === "preview"} onClick={() => onChange("preview")} />
-      <ModeButton label="编辑" active={editorMode === "edit"} onClick={() => onChange("edit")} />
-      <ModeButton label="源码" active={editorMode === "source"} onClick={() => onChange("source")} />
+      <ModeButton
+        label="预览"
+        active={editorMode === "preview"}
+        onClick={() => onChange("preview")}
+      />
+      <ModeButton
+        label="编辑"
+        active={editorMode === "edit"}
+        onClick={() => onChange("edit")}
+      />
+      <ModeButton
+        label="源码"
+        active={editorMode === "source"}
+        onClick={() => onChange("source")}
+      />
     </div>
   );
 }

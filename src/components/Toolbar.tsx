@@ -6,6 +6,8 @@ interface ToolbarProps {
   activeTabExists: boolean;
   editorMode: "preview" | "edit" | "source";
   theme: Theme;
+  /** 媒体类文件（图片/视频/PDF）：隐藏保存与模式切换 */
+  isMedia?: boolean;
   onOpenFile: () => void;
   onSaveFile: () => void;
   onNewFile: () => void;
@@ -22,6 +24,7 @@ export default function Toolbar({
   activeTabExists,
   editorMode,
   theme,
+  isMedia = false,
   onOpenFile,
   onSaveFile,
   onNewFile,
@@ -32,7 +35,7 @@ export default function Toolbar({
   onSetTheme,
 }: ToolbarProps) {
   return (
-    <header className="flex items-center gap-2 px-3 py-1.5 border-b border-gray-200 bg-gray-50 dark:bg-gray-800 dark:border-gray-700 text-sm select-none shrink-0">
+    <header className="app-chrome flex items-center gap-2 px-3 py-1.5 border-b border-gray-200 bg-gray-50 dark:bg-gray-800 dark:border-gray-700 text-sm select-none shrink-0">
       {/* File operations */}
       {isTauri && (
         <>
@@ -43,13 +46,15 @@ export default function Toolbar({
           >
             打开
           </button>
-          <button
-            onClick={onSaveFile}
-            className="px-2 py-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-xs"
-            title="保存文件 (Cmd+S)"
-          >
-            保存
-          </button>
+          {!isMedia && (
+            <button
+              onClick={onSaveFile}
+              className="px-2 py-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-xs"
+              title="保存文件 (Cmd+S)"
+            >
+              保存
+            </button>
+          )}
           <button
             onClick={onNewFile}
             className="px-2 py-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-xs"
@@ -101,7 +106,7 @@ export default function Toolbar({
       </button>
 
       {/* Mode buttons */}
-      {activeTabExists && (
+      {activeTabExists && !isMedia && (
         <>
           <div className="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-1" />
           <div className="flex gap-1 items-center">

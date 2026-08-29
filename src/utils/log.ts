@@ -1,5 +1,5 @@
 /**
- * Unified logger for JianXi.
+ * Unified logger for Clairis.
  * In Tauri: logs to Rust tracing backend (via invoke or console).
  * In browser: logs to console with timestamp and level prefix.
  *
@@ -48,7 +48,12 @@ function format(entry: LogEntry): string {
   return base;
 }
 
-function emit(level: LogLevel, module: string, message: string, data?: unknown) {
+function emit(
+  level: LogLevel,
+  module: string,
+  message: string,
+  data?: unknown,
+) {
   if (!shouldLog(level)) return;
 
   const entry: LogEntry = {
@@ -92,10 +97,10 @@ export const log = {
   /** Get recent log entries for debugging */
   recent: (count = 50) => buffer.slice(-count),
   /** Clear buffer */
-  clear: () => buffer.length = 0,
+  clear: () => (buffer.length = 0),
 };
 
 // Expose for console debugging
 if (typeof window !== "undefined") {
-  (window as unknown as Record<string, unknown>).__jianxi_log__ = log;
+  (window as unknown as Record<string, unknown>).__clairis_log__ = log;
 }

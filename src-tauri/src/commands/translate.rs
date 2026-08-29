@@ -59,22 +59,26 @@ async fn translate_ollama(
             }
             if let Ok(ollama_resp) = serde_json::from_str::<OllamaChunk>(line) {
                 if let Some(content) = ollama_resp.message.and_then(|m| Some(m.content)) {
-                    let _ =
-                        app.emit("translation-chunk", TranslationChunk {
+                    let _ = app.emit(
+                        "translation-chunk",
+                        TranslationChunk {
                             request_id: request_id.to_string(),
                             text: content,
                             done: false,
                             error: None,
-                        });
+                        },
+                    );
                 }
                 if ollama_resp.done {
-                    let _ =
-                        app.emit("translation-chunk", TranslationChunk {
+                    let _ = app.emit(
+                        "translation-chunk",
+                        TranslationChunk {
                             request_id: request_id.to_string(),
                             text: String::new(),
                             done: true,
                             error: None,
-                        });
+                        },
+                    );
                 }
             }
         }
@@ -129,24 +133,30 @@ async fn translate_openai(
                 continue;
             }
             if line == "data: [DONE]" {
-                let _ = app.emit("translation-chunk", TranslationChunk {
-                    request_id: request_id.to_string(),
-                    text: String::new(),
-                    done: true,
-                    error: None,
-                });
+                let _ = app.emit(
+                    "translation-chunk",
+                    TranslationChunk {
+                        request_id: request_id.to_string(),
+                        text: String::new(),
+                        done: true,
+                        error: None,
+                    },
+                );
                 return Ok(());
             }
             if let Some(data) = line.strip_prefix("data: ") {
                 if let Ok(openai_chunk) = serde_json::from_str::<OpenAIChunk>(data) {
                     if let Some(delta) = openai_chunk.choices.first() {
                         if let Some(content) = &delta.delta.content {
-                            let _ = app.emit("translation-chunk", TranslationChunk {
-                                request_id: request_id.to_string(),
-                                text: content.clone(),
-                                done: false,
-                                error: None,
-                            });
+                            let _ = app.emit(
+                                "translation-chunk",
+                                TranslationChunk {
+                                    request_id: request_id.to_string(),
+                                    text: content.clone(),
+                                    done: false,
+                                    error: None,
+                                },
+                            );
                         }
                     }
                 }
@@ -157,10 +167,7 @@ async fn translate_openai(
 }
 
 #[tauri::command]
-pub async fn translate_text(
-    app: AppHandle,
-    request: TranslateRequest,
-) -> Result<(), AppError> {
+pub async fn translate_text(app: AppHandle, request: TranslateRequest) -> Result<(), AppError> {
     let request_id = uuid_v4();
     info!(%request_id, provider = %request.provider, "Translation started");
 

@@ -10,22 +10,34 @@ async function setup(page: Parameters<Parameters<typeof test>[1]>[0]["page"]) {
 }
 
 /** Open a file via store bridge exposed on window */
-async function openMockFile(page: Parameters<Parameters<typeof test>[1]>[0]["page"]) {
+async function openMockFile(
+  page: Parameters<Parameters<typeof test>[1]>[0]["page"],
+) {
   await page.evaluate(() => {
     const win = window as unknown as Record<string, unknown>;
-    (win as any).__jianxi_openFile__("/Users/test/测试文档.md", `# 测试文档\n\n## 第一节\n\n测试内容。\n\n## 第二节\n\n更多。\n\n### 子节\n\n嵌套。\n\n- 列表1\n- 列表2\n\n> 引用\n\n**粗体** *斜体*\n\n- [ ] 待办\n- [x] 完成`, "测试文档.md");
+    (win as any).__clairis_openFile__(
+      "/Users/test/测试文档.md",
+      `# 测试文档\n\n## 第一节\n\n测试内容。\n\n## 第二节\n\n更多。\n\n### 子节\n\n嵌套。\n\n- 列表1\n- 列表2\n\n> 引用\n\n**粗体** *斜体*\n\n- [ ] 待办\n- [x] 完成`,
+      "测试文档.md",
+    );
   });
   await page.waitForTimeout(500);
 }
 
-async function openFileB(page: Parameters<Parameters<typeof test>[1]>[0]["page"]) {
+async function openFileB(
+  page: Parameters<Parameters<typeof test>[1]>[0]["page"],
+) {
   await page.evaluate(() => {
-    (window as unknown as Record<string, any>).__jianxi_openFile__("/Users/test/文件B.md", "# 文件B\n\n这是第二个文件的内容，完全不同。\n\n## B的第二节\n\n文件B特有内容。", "文件B.md");
+    (window as unknown as Record<string, any>).__clairis_openFile__(
+      "/Users/test/文件B.md",
+      "# 文件B\n\n这是第二个文件的内容，完全不同。\n\n## B的第二节\n\n文件B特有内容。",
+      "文件B.md",
+    );
   });
   await page.waitForTimeout(300);
 }
 
-test.describe("JianXi — Tauri Mocked", () => {
+test.describe("Clairis — Tauri Mocked", () => {
   test.beforeEach(async ({ page }) => {
     await setup(page);
   });
@@ -34,17 +46,27 @@ test.describe("JianXi — Tauri Mocked", () => {
     await openMockFile(page);
 
     // Tab bar AND toolbar both show the file name — verify both
-    await expect(page.getByText("测试文档.md").first()).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText("测试文档.md").first()).toBeVisible({
+      timeout: 5000,
+    });
     // Content visible
-    await expect(page.getByRole("heading", { name: "第一节" })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole("heading", { name: "第一节" })).toBeVisible({
+      timeout: 5000,
+    });
     console.log("✅ File open → tab + content");
   });
 
-  test("2. open 2 files → right-click tab → context menu → split", async ({ page }) => {
+  test("2. open 2 files → right-click tab → context menu → split", async ({
+    page,
+  }) => {
     await openMockFile(page);
     // Open second file
     await page.evaluate(() => {
-      (window as unknown as Record<string, any>).__jianxi_openFile__("/Users/test/另一个.md", "# 另一个文件\n\n不同内容。", "另一个.md");
+      (window as unknown as Record<string, any>).__clairis_openFile__(
+        "/Users/test/另一个.md",
+        "# 另一个文件\n\n不同内容。",
+        "另一个.md",
+      );
     });
     await page.waitForTimeout(300);
 
@@ -71,7 +93,10 @@ test.describe("JianXi — Tauri Mocked", () => {
     await page.waitForTimeout(300);
 
     // Switch to edit mode from toolbar
-    const editBtn = page.locator("header button").filter({ hasText: "编辑" }).first();
+    const editBtn = page
+      .locator("header button")
+      .filter({ hasText: "编辑" })
+      .first();
     if (await editBtn.isVisible()) {
       await editBtn.click();
       await page.waitForTimeout(300);
@@ -82,7 +107,9 @@ test.describe("JianXi — Tauri Mocked", () => {
     await page.waitForTimeout(300);
 
     // Headings from mock content
-    await expect(page.getByRole("button", { name: /第一节/ })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole("button", { name: /第一节/ })).toBeVisible({
+      timeout: 5000,
+    });
     await expect(page.getByRole("button", { name: /第二节/ })).toBeVisible();
     await expect(page.getByRole("button", { name: /子节/ })).toBeVisible();
 
@@ -97,11 +124,15 @@ test.describe("JianXi — Tauri Mocked", () => {
 
   test("4. Cmd+N new tab, visible in TabBar", async ({ page }) => {
     await page.evaluate(() => {
-      (window as unknown as Record<string, any>).__jianxi_store__.getState().newTab();
+      (window as unknown as Record<string, any>).__clairis_store__
+        .getState()
+        .newTab();
     });
     await page.waitForTimeout(500);
 
-    await expect(page.getByText("未命名").first()).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText("未命名").first()).toBeVisible({
+      timeout: 5000,
+    });
     console.log("✅ New tab visible");
   });
 
@@ -116,9 +147,10 @@ test.describe("JianXi — Tauri Mocked", () => {
     }
     await expect(page.locator("html")).toHaveClass(/dark/);
 
-    const bg = await page.locator(".cm-editor").first().evaluate((el) =>
-      window.getComputedStyle(el).backgroundColor,
-    );
+    const bg = await page
+      .locator(".cm-editor")
+      .first()
+      .evaluate((el) => window.getComputedStyle(el).backgroundColor);
     expect(bg).not.toBe("rgb(255, 255, 255)");
     console.log(`✅ Dark mode: bg=${bg}`);
   });
@@ -169,19 +201,30 @@ test.describe("JianXi — Tauri Mocked", () => {
     // Open two files
     await page.evaluate(() => {
       const w = window as unknown as Record<string, any>;
-      w.__jianxi_openFile__("/Users/test/文件A.md", "# 文件A\n\n这是第一个文件的内容。\n\n## A的第二节\n\n文件A特有内容。", "文件A.md");
+      w.__clairis_openFile__(
+        "/Users/test/文件A.md",
+        "# 文件A\n\n这是第一个文件的内容。\n\n## A的第二节\n\n文件A特有内容。",
+        "文件A.md",
+      );
     });
     await page.waitForTimeout(200);
     await page.evaluate(() => {
-      (window as unknown as Record<string, any>).__jianxi_openFile__("/Users/test/文件B.md", "# 文件B\n\n这是第二个文件的内容，完全不同。\n\n## B的第二节\n\n文件B特有内容。", "文件B.md");
+      (window as unknown as Record<string, any>).__clairis_openFile__(
+        "/Users/test/文件B.md",
+        "# 文件B\n\n这是第二个文件的内容，完全不同。\n\n## B的第二节\n\n文件B特有内容。",
+        "文件B.md",
+      );
     });
     await page.waitForTimeout(300);
 
     // Split 文件B to right panel via store API (bypasses context menu)
     await page.evaluate(() => {
-      const store = (window as unknown as Record<string, any>).__jianxi_store__;
+      const store = (window as unknown as Record<string, any>)
+        .__clairis_store__;
       const tabs = store.getState().tabs;
-      const tabB = Object.values(tabs).find((t: any) => t.title === "文件B.md") as any;
+      const tabB = Object.values(tabs).find(
+        (t: any) => t.title === "文件B.md",
+      ) as any;
       if (tabB) store.getState().splitTab(tabB.id, "horizontal");
     });
     await page.waitForTimeout(500);
@@ -202,7 +245,9 @@ test.describe("JianXi — Tauri Mocked", () => {
     });
     await openMockFile(page);
     await page.evaluate(() => {
-      (window as unknown as Record<string, any>).__jianxi_store__.getState().newTab();
+      (window as unknown as Record<string, any>).__clairis_store__
+        .getState()
+        .newTab();
     });
     await page.waitForTimeout(200);
 

@@ -41,14 +41,11 @@ mod tests {
     #[test]
     fn test_config_default() {
         let config = AppConfig::default();
-        assert_eq!(config.font_size, Some(16.0));
+        assert_eq!(config.font_size, Some(17.0));
         assert_eq!(
             config.ollama_endpoint,
             Some("http://localhost:11434".into())
         );
-        assert_eq!(
-            config.translation_provider,
-            Some("ollama".into())
-        );
+        assert_eq!(config.translation_provider, Some("ollama".into()));
     }
 }

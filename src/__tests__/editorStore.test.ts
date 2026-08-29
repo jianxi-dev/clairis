@@ -13,7 +13,7 @@ describe("editorStore", () => {
       expect(state.content).toBe("");
       expect(state.dirty).toBe(false);
       expect(state.editorMode).toBe("preview");
-      expect(state.fontSize).toBe(16);
+      expect(state.fontSize).toBe(17);
       expect(state.filePath).toBeNull();
       expect(state.fileName).toBeNull();
       expect(state.contentVersion).toBe(0);
@@ -88,7 +88,14 @@ describe("editorStore", () => {
 
   describe("setHeadingColors", () => {
     it("updates heading colors", () => {
-      const colors = { h1: "#ff0000", h2: "#00ff00", h3: "#0000ff", h4: "#fff", h5: "#000", h6: "#ccc" };
+      const colors = {
+        h1: "#ff0000",
+        h2: "#00ff00",
+        h3: "#0000ff",
+        h4: "#fff",
+        h5: "#000",
+        h6: "#ccc",
+      };
       useEditorStore.getState().setHeadingColors(colors);
       expect(useEditorStore.getState().headingColors).toEqual(colors);
     });

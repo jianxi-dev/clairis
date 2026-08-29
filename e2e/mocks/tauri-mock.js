@@ -1,11 +1,17 @@
 // Tauri API Mock + Store bridge — injected before app loads
-window.__TAURI_INTERNALS__ = { metadata: {}, invoke: mockInvoke };
+window.__TAURI_INTERNALS__ = {
+  metadata: {},
+  invoke: mockInvoke,
+  convertFileSrc: function (path) {
+    return "asset://localhost" + path;
+  },
+};
 
 // Expose store access for E2E tests
-window.__jianming_store__ = null;
-window.__jianming_openFile__ = function(path, content, title) {
-  if (!window.__jianming_store__) return false;
-  var store = window.__jianming_store__.getState();
+window.__clairis_store__ = null;
+window.__clairis_openFile__ = function(path, content, title) {
+  if (!window.__clairis_store__) return false;
+  var store = window.__clairis_store__.getState();
   store.openFile(path, content);
   store.addRecentFile(path, title || path.split('/').pop());
   return true;
@@ -31,6 +37,9 @@ function mockInvoke(cmd, args) {
     ], path:"/Users/test" },
     get_file_info: { path:"/Users/test/测试文档.md", size:350, is_dir:false, modified:1719000000 },
   };
+  if (cmd === "read_file_base64" && args && args.path) {
+    return "AAECAwQ=";
+  }
   if (cmd === "open_file_direct" && args && args.path) {
     return { content:"# "+args.path.split("/").pop()+"\n\n文件内容。", path:args.path, file_size:100 };
   }

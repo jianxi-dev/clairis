@@ -1,0 +1,46 @@
+/* 全局语义色层（Layer 1）
+ *
+ * 强调色沿用 design-codex D7 定案：light #6366f1 / dark #818cf8（indigo），
+ * 服务 focus ring、选中态、活跃指示器——交互信号，需要醒目且与软件整体一致。
+ *
+ * 预览（阅读区）默认继承本层，但链接/引用/Callout 用的 --reader-accent 独立取
+ * 低饱和靛青（见 reader.css）：长文阅读里链接每分钟要看几十次，标准是沉稳耐看
+ * 而非抢眼。想统一时把 --reader-accent 指回 var(--app-accent) 即可。
+ */
+:root {
+  --app-accent: #6366f1;
+  --app-accent-soft: rgba(99, 102, 241, 0.1);
+
+  --app-bg: #f7f7f6;
+  --app-surface: #fbfaf8;
+  --app-sunken: #f4f2ec;
+
+  --app-text: #24262b;
+  --app-text-strong: #16181c;
+  --app-text-2: #55595f;
+  --app-text-3: #8b8f96;
+
+  --app-border: #e7e3db;
+  --app-border-strong: #d8d3c8;
+
+  --app-radius: 6px;
+  --app-shadow:
+    0 1px 2px rgba(31, 26, 20, 0.05), 0 8px 24px rgba(31, 26, 20, 0.05);
+}
+
+.dark {
+  --app-accent: #818cf8;
+  --app-accent-soft: rgba(129, 140, 248, 0.14);
+
+  --app-bg: #131316;
+  --app-surface: #1a1b1e;
+  --app-sunken: #22242a;
+
+  --app-text: #d8dade;
+  --app-text-strong: #eceef1;
+  --app-text-2: #a7abb3;
+  --app-text-3: #75797f;
+
+  --app-border: #2e3138;
+  --app-border-strong: #3d4149;
+}

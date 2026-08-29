@@ -1,4 +1,10 @@
-import { useCallback, useRef, useEffect, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useRef,
+  useEffect,
+  useState,
+  type ReactNode,
+} from "react";
 import { useStore } from "../stores";
 import { useDragResize } from "../hooks/useDragResize";
 
@@ -87,7 +93,8 @@ export default function Layout({
   const rightDrag = useDragResize({
     onDrag: (e) => {
       const containerRight =
-        containerRef.current?.getBoundingClientRect().right || window.innerWidth;
+        containerRef.current?.getBoundingClientRect().right ||
+        window.innerWidth;
       applyRightWidth(containerRight - e.clientX);
     },
     onEnd: () => setDraggingRight(false),
@@ -120,13 +127,16 @@ export default function Layout({
   const isDragging = draggingLeft || draggingRight;
 
   return (
-    <div ref={containerRef} className="flex-1 flex overflow-hidden layout-container">
+    <div
+      ref={containerRef}
+      className="flex-1 flex overflow-hidden layout-container"
+    >
       {/* Left sidebar */}
       {sidebarLeftVisible && (
         <>
           <div
             ref={leftRef}
-            className="shrink-0 overflow-hidden border-r border-gray-200 dark:border-gray-700"
+            className="app-chrome shrink-0 overflow-hidden border-r border-gray-200 dark:border-gray-700"
             style={{
               width: leftWidth.current,
               transition: isDragging ? "none" : "width 0.2s ease",
@@ -137,7 +147,7 @@ export default function Layout({
           {/* Resize handle */}
           <div
             onMouseDown={startLeftDrag}
-            className="w-1 hover:w-1.5 bg-transparent hover:bg-blue-300 dark:hover:bg-blue-700 cursor-col-resize transition-all shrink-0"
+            className="app-chrome w-1 hover:w-1.5 bg-transparent hover:bg-blue-300 dark:hover:bg-blue-700 cursor-col-resize transition-all shrink-0"
           />
         </>
       )}
@@ -150,11 +160,11 @@ export default function Layout({
         <>
           <div
             onMouseDown={startRightDrag}
-            className="w-1 hover:w-1.5 bg-transparent hover:bg-blue-300 dark:hover:bg-blue-700 cursor-col-resize transition-all shrink-0"
+            className="app-chrome w-1 hover:w-1.5 bg-transparent hover:bg-blue-300 dark:hover:bg-blue-700 cursor-col-resize transition-all shrink-0"
           />
           <div
             ref={rightRef}
-            className="shrink-0 overflow-hidden border-l border-gray-200 dark:border-gray-700"
+            className="app-chrome shrink-0 overflow-hidden border-l border-gray-200 dark:border-gray-700"
             style={{
               width: rightWidth.current,
               transition: isDragging ? "none" : "width 0.2s ease",

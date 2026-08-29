@@ -3,12 +3,15 @@ import { invoke } from "@tauri-apps/api/core";
 import { useEditorStore } from "../stores/editorStore";
 import { useStore } from "../stores/index";
 import { log } from "../utils/log";
-import type { AppConfig, Theme } from "../types";
+import type { AppConfig, ScrollPosition, Theme } from "../types";
 
 /** Snake-case config from Rust, mapped to camelCase in the store. */
 interface RustAppConfig {
   fontSize: number | null;
   headingColors: Record<string, string> | null;
+  readerFontSize: number | null;
+  readerWidth: number | null;
+  readerSkin: string | null;
   ollamaEndpoint: string | null;
   openaiEndpoint: string | null;
   openaiModel: string | null;
@@ -23,6 +26,7 @@ interface RustAppConfig {
   horizontalSplitRatio: number | null;
   verticalSplitRatio: number | null;
   recentFiles: Array<{ path: string; title: string; openedAt: string }> | null;
+  scrollPositions: Record<string, ScrollPosition> | null;
 }
 
 const DEBOUNCE_MS = 500;
@@ -43,6 +47,45 @@ export function applyTheme(theme: string): void {
   }
 }
 
+/** Apply theme to <html> element. */
+export function applyReaderSkin(skin: string): void {
+  document.documentElement.dataset.skin = skin || "paper";
+}
+
+/** Persist the current editor + app config (module-level, callable outside hooks). */
+export async function saveAppConfig(): Promise<void> {
+  const es = useEditorStore.getState();
+  const config: RustAppConfig = {
+    fontSize: es.fontSize,
+    headingColors: es.headingColors
+      ? ({ ...es.headingColors } as unknown as Record<string, string>)
+      : null,
+    readerFontSize: es.config.readerFontSize ?? null,
+    readerWidth: es.config.readerWidth ?? null,
+    readerSkin: es.config.readerSkin ?? null,
+    ollamaEndpoint: es.config.ollamaEndpoint ?? null,
+    openaiEndpoint: es.config.openaiEndpoint ?? null,
+    openaiModel: es.config.openaiModel ?? null,
+    translationProvider: es.config.translationProvider ?? null,
+    sourceLang: es.config.langPair?.source ?? null,
+    targetLang: es.config.langPair?.target ?? null,
+    theme: es.config.theme ?? null,
+    sidebarLeftVisible: es.config.sidebarLeftVisible ?? null,
+    sidebarRightVisible: es.config.sidebarRightVisible ?? null,
+    sidebarLeftWidth: es.config.sidebarLeftWidth ?? null,
+    sidebarRightWidth: es.config.sidebarRightWidth ?? null,
+    horizontalSplitRatio: es.config.horizontalSplitRatio ?? null,
+    verticalSplitRatio: es.config.verticalSplitRatio ?? null,
+    recentFiles: es.config.recentFiles ?? null,
+    scrollPositions: useStore.getState().scrollPositions ?? null,
+  };
+  try {
+    await invoke("save_config", { config });
+  } catch (e) {
+    log.error("Config", "Failed to save config", e);
+  }
+}
+
 export function useConfig() {
   const configLoaded = useEditorStore((s) => s.configLoaded);
   const configLoading = useEditorStore((s) => s.configLoading);
@@ -60,15 +103,19 @@ export function useConfig() {
     invoke<RustAppConfig>("load_config")
       .then((raw) => {
         const config: Partial<AppConfig> = {
-          fontSize: raw.fontSize ?? 16,
+          fontSize: raw.fontSize ?? 17,
           headingColors: raw.headingColors
             ? (raw.headingColors as unknown as AppConfig["headingColors"])
             : undefined,
+          readerFontSize: raw.readerFontSize ?? 17,
+          readerWidth: raw.readerWidth ?? 1080,
+          readerSkin: raw.readerSkin ?? "paper",
           ollamaEndpoint: raw.ollamaEndpoint ?? "http://localhost:11434",
           openaiEndpoint: raw.openaiEndpoint ?? "https://api.openai.com",
           openaiModel: raw.openaiModel ?? "gpt-4o-mini",
           translationProvider:
-            (raw.translationProvider as AppConfig["translationProvider"]) ?? "ollama",
+            (raw.translationProvider as AppConfig["translationProvider"]) ??
+            "ollama",
           langPair: {
             source: raw.sourceLang ?? "en",
             target: raw.targetLang ?? "zh-CN",
@@ -85,19 +132,27 @@ export function useConfig() {
 
         const es = useEditorStore.getState();
         es.setConfig(config);
-        es.setFontSize(config.fontSize ?? 16);
+        es.setFontSize(config.fontSize ?? 17);
         es.setConfigLoaded(true);
+
+        // Restore scroll positions (A-9)
+        useStore.getState().setScrollPositions(raw.scrollPositions ?? {});
 
         // Restore sidebar state
         if (config.sidebarLeftVisible !== undefined) {
           useStore.getState().setSidebarLeftVisible(config.sidebarLeftVisible);
         }
         if (config.sidebarRightVisible !== undefined) {
-          useStore.getState().setSidebarRightVisible(config.sidebarRightVisible);
+          useStore
+            .getState()
+            .setSidebarRightVisible(config.sidebarRightVisible);
         }
 
         // Restore split ratios
-        const splitRatios = { horizontal: config.horizontalSplitRatio, vertical: config.verticalSplitRatio };
+        const splitRatios = {
+          horizontal: config.horizontalSplitRatio,
+          vertical: config.verticalSplitRatio,
+        };
         useStore.getState().setSplitRatios(splitRatios);
 
         // Sync recent files
@@ -111,6 +166,7 @@ export function useConfig() {
         }
 
         applyTheme(config.theme ?? "system");
+        applyReaderSkin(config.readerSkin ?? "paper");
       })
       .catch((e) => {
         log.error("Config", "Failed to load config", e);
@@ -120,33 +176,8 @@ export function useConfig() {
       });
   }, []); // Only run once on mount
 
-  const saveConfig = useCallback(async () => {
-    const es = useEditorStore.getState();
-    const config: RustAppConfig = {
-      fontSize: es.fontSize,
-      headingColors: es.headingColors
-        ? ({ ...es.headingColors } as unknown as Record<string, string>)
-        : null,
-      ollamaEndpoint: es.config.ollamaEndpoint ?? null,
-      openaiEndpoint: es.config.openaiEndpoint ?? null,
-      openaiModel: es.config.openaiModel ?? null,
-      translationProvider: es.config.translationProvider ?? null,
-      sourceLang: es.config.langPair?.source ?? null,
-      targetLang: es.config.langPair?.target ?? null,
-      theme: es.config.theme ?? null,
-      sidebarLeftVisible: es.config.sidebarLeftVisible ?? null,
-      sidebarRightVisible: es.config.sidebarRightVisible ?? null,
-      sidebarLeftWidth: es.config.sidebarLeftWidth ?? null,
-      sidebarRightWidth: es.config.sidebarRightWidth ?? null,
-      horizontalSplitRatio: es.config.horizontalSplitRatio ?? null,
-      verticalSplitRatio: es.config.verticalSplitRatio ?? null,
-      recentFiles: es.config.recentFiles ?? null,
-    };
-    try {
-      await invoke("save_config", { config });
-    } catch (e) {
-      log.error("Config", "Failed to save config", e);
-    }
+  const saveConfig = useCallback(() => {
+    void saveAppConfig();
   }, []);
 
   const scheduleSave = useCallback(() => {
@@ -168,7 +199,10 @@ export function useConfig() {
   const setFontSize = useCallback(
     (size: number) => {
       useEditorStore.getState().setFontSize(size);
-      document.documentElement.style.setProperty("--editor-font-size", `${size}px`);
+      document.documentElement.style.setProperty(
+        "--editor-font-size",
+        `${size}px`,
+      );
       scheduleSave();
     },
     [scheduleSave],

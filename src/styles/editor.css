@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 :root {
-  --editor-font-size: 16px;
+  --editor-font-size: 17px;
 }
 
 * {
@@ -21,7 +21,8 @@ body,
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
     "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial,
     sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -43,7 +44,8 @@ body {
 }
 
 .cm-editor .cm-scroller {
-  font-family: "SF Mono", "Fira Code", "Fira Mono", "Menlo", Consolas, monospace;
+  font-family:
+    "SF Mono", "Fira Code", "Fira Mono", "Menlo", Consolas, monospace;
 }
 
 .cm-editor .cm-content {
@@ -115,7 +117,8 @@ body {
 
 /* Inline code (`code`) — backticks hidden, monospace + gray bg */
 .cm-inline-code {
-  font-family: "SF Mono", "Fira Code", "Fira Mono", "Menlo", Consolas, monospace;
+  font-family:
+    "SF Mono", "Fira Code", "Fira Mono", "Menlo", Consolas, monospace;
   font-size: 0.9em;
   background: rgba(0, 0, 0, 0.06);
   border-radius: 3px;
@@ -251,9 +254,113 @@ body {
   background: #3b82f6;
 }
 
+.split-resize-handle:focus-visible {
+  background: #3b82f6;
+  outline: 2px solid #3b82f6;
+  outline-offset: 1px;
+}
+
 /* Respect reduced-motion preference */
 @media (prefers-reduced-motion: reduce) {
   .split-resize-handle {
     transition: none;
+  }
+}
+
+/* ── Immersive reading (A-5): chrome fade in/out, main area untouched ── */
+
+.app-chrome {
+  transition:
+    opacity 0.3s ease,
+    visibility 0.3s ease;
+}
+
+.immersive .app-chrome {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.immersive.immersive-peek .app-chrome {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.immersive-peek-zone {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  z-index: 60;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-chrome {
+    transition: none;
+  }
+}
+
+/* ── Capture Overlay ────────────────────────────────────────── */
+
+@keyframes overlayIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.overlay-enter {
+  animation: overlayIn 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes capsuleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.capsule-enter {
+  animation: capsuleIn 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes archiveSlideOut {
+  0% {
+    transform: translateX(0);
+    opacity: 1;
+    background: rgba(254, 243, 199, 0.4);
+  }
+  100% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+@keyframes fadeInSlide {
+  0% {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .overlay-enter,
+  .capsule-enter {
+    animation: none;
+  }
+  [style*="fadeInSlide"] {
+    animation: none !important;
   }
 }

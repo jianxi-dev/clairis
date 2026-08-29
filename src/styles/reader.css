@@ -332,6 +332,12 @@
   color: var(--reader-accent);
 }
 
+.preview-content .code-block .code-copy:focus-visible {
+  opacity: 1;
+  outline: 2px solid var(--reader-accent);
+  outline-offset: 1px;
+}
+
 .preview-content pre {
   margin: 0;
   padding: 1.1em 1.15em;

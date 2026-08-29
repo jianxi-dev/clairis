@@ -44,7 +44,25 @@ pub struct InboxEntryArchive {
     pub entry_id: String,
 }
 
+#[cfg(test)]
+static TEST_INBOX_BASE: std::sync::Mutex<Option<std::path::PathBuf>> = std::sync::Mutex::new(None);
+
+#[cfg(test)]
+fn set_test_inbox_base(dir: std::path::PathBuf) {
+    *TEST_INBOX_BASE.lock().unwrap() = Some(dir);
+}
+
 fn inbox_base_dir() -> Result<std::path::PathBuf, AppError> {
+    #[cfg(test)]
+    {
+        if let Some(dir) = TEST_INBOX_BASE.lock().unwrap().clone() {
+            fs::create_dir_all(&dir).map_err(|e| AppError::Io {
+                context: "create test inbox dir".into(),
+                source: e,
+            })?;
+            return Ok(dir);
+        }
+    }
     let home = dirs::home_dir().ok_or(AppError::Io {
         context: "Cannot determine home dir".into(),
         source: std::io::Error::new(std::io::ErrorKind::Other, "no home"),
@@ -77,6 +95,53 @@ fn format_entry(entry: &InboxEntryInput) -> String {
         "---\ntime: {}\nprefix: {}\n---\n\n{}\n",
         entry.captured_at, prefix_char, entry.content
     )
+}
+
+/// time → id 嵌入编码（冒号/点 → 下划线），load 生成 id 与 CRUD 反解必须共用同一函数。
+fn encode_time_key(time: &str) -> String {
+    time.replace(':', "_").replace('.', "_")
+}
+
+/// 从 entry_id 提取 time_key（去掉 "cap-" 前缀与 "-{长度}" 后缀，保留编码）。
+fn time_key_from_entry_id(entry_id: &str) -> String {
+    entry_id
+        .rsplit_once('-')
+        .map(|(before, _)| before.strip_prefix("cap-").unwrap_or(before).to_string())
+        .unwrap_or_else(|| entry_id.to_string())
+}
+
+/// 块是否属于给定 time_key 的条目：行级解析 frontmatter 的 time 行并编码比较。
+fn block_matches_time_key(block: &str, time_key: &str) -> bool {
+    block.lines().any(|line| {
+        line.strip_prefix("time: ")
+            .map(|t| encode_time_key(t) == time_key)
+            .unwrap_or(false)
+    })
+}
+
+/// 归一化切块：按 "\n---\ntime: " 切分后，块 0 保留 "---\n" 前缀、其余块以裸时间值开头。
+/// 统一为 "time: {t}\nprefix: {p}\n---\n\n{content}" 的规范形态；空块返回 None。
+fn normalize_block(raw: &str) -> Option<String> {
+    let t = raw.trim_start_matches('\n').trim_end();
+    if t.is_empty() {
+        return None;
+    }
+    let bare = t.strip_prefix("---\n").unwrap_or(t);
+    if bare.starts_with("time: ") {
+        Some(bare.to_string())
+    } else {
+        Some(format!("time: {bare}"))
+    }
+}
+
+/// 把裸块（time: ... 开头）重组成与 append 写入一致的条目文件格式。
+fn join_blocks(blocks: &[String]) -> String {
+    if blocks.is_empty() {
+        return String::new();
+    }
+    let mut out = String::from("---\n");
+    out.push_str(&blocks.join("\n---\n"));
+    out
 }
 
 #[tauri::command]
@@ -175,35 +240,32 @@ pub fn load_inbox_by_date(date: String) -> Result<Vec<InboxEntry>, AppError> {
     let content = fs::read_to_string(&path)?;
 
     let mut entries = Vec::new();
-    let blocks: Vec<&str> = content.split("\n---\n").collect();
-    for block in &blocks {
-        let block = block.trim_start_matches('\n').trim_end();
+    // 不能按 "\n---\n" 切分：块内收尾的 "---\n\n" 也含该子串，会误切。
+    for block in content.split("---\ntime: ").skip(1) {
+        let block = block.trim_end();
         if block.is_empty() {
             continue;
         }
-        if let Some(end) = block.find("\n\n") {
-            let frontmatter = &block[..end];
-            let body = &block[end + 2..];
-            let mut time = String::new();
-            let mut prefix = String::new();
-            for line in frontmatter.lines() {
-                if let Some(t) = line.strip_prefix("time: ") {
-                    time = t.to_string();
-                } else if let Some(p) = line.strip_prefix("prefix: ") {
-                    prefix = p.to_string();
-                }
+        let mut parts = block.splitn(2, "\n---\n\n");
+        let frontmatter = parts.next().unwrap_or("");
+        let body = parts.next().unwrap_or("").trim();
+        // split("---\ntime: ") 已吞掉 "time: " 前缀：frontmatter 第一行即为 time 值；
+        // 若未来格式改回带前缀，也兼容剥除。
+        let mut lines = frontmatter.lines();
+        let first = lines.next().unwrap_or("");
+        let time = first.strip_prefix("time: ").unwrap_or(first).to_string();
+        let mut prefix = String::new();
+        for line in lines {
+            if let Some(p) = line.strip_prefix("prefix: ") {
+                prefix = p.to_string();
             }
-            entries.push(InboxEntry {
-                id: format!(
-                    "cap-{}-{}",
-                    time.replace(':', "_").replace('.', "_"),
-                    body.len()
-                ),
-                prefix,
-                content: body.trim().to_string(),
-                captured_at: time,
-            });
         }
+        entries.push(InboxEntry {
+            id: format!("cap-{}-{}", encode_time_key(&time), body.len()),
+            prefix,
+            content: body.to_string(),
+            captured_at: time,
+        });
     }
     Ok(entries.into_iter().rev().collect())
 }
@@ -219,62 +281,46 @@ pub fn edit_inbox_entry(req: InboxEntryEdit) -> Result<(), AppError> {
     }
 
     let content = fs::read_to_string(&path)?;
-    let time_hint = req
-        .entry_id
-        .rsplit_once('-')
-        .map(|(before, _)| {
-            before
-                .strip_prefix("cap-")
-                .unwrap_or(before)
-                .replace('_', "-")
-        })
-        .unwrap_or_else(|| req.entry_id.clone());
+    let time_key = time_key_from_entry_id(&req.entry_id);
 
-    let blocks: Vec<&str> = content.split("\n---\n").collect();
-    let mut new_content = String::new();
+    let mut rebuilt: Vec<String> = Vec::new();
     let mut found = false;
 
-    for (i, block) in blocks.iter().enumerate() {
-        let block = block.trim_start_matches('\n').trim_end();
-        if block.is_empty() {
+    for raw_block in content.split("\n---\ntime: ") {
+        let Some(bare) = normalize_block(raw_block) else {
             continue;
-        }
-        if block.contains(&time_hint) && !found {
-            // Preserve original prefix
+        };
+        if !found && block_matches_time_key(&bare, &time_key) {
+            let orig_time = bare
+                .lines()
+                .find_map(|l| l.strip_prefix("time: "))
+                .unwrap_or(&time_key)
+                .to_string();
             let mut orig_prefix = String::new();
-            if let Some(end) = block.find("\n\n") {
-                for line in block[..end].lines() {
-                    if let Some(p) = line.strip_prefix("prefix: ") {
-                        orig_prefix = p.to_string();
-                    }
+            for line in bare.lines().take_while(|l| !l.starts_with("---")) {
+                if let Some(p) = line.strip_prefix("prefix: ") {
+                    orig_prefix = p.to_string();
                 }
             }
-            if i > 0 && !new_content.is_empty() {
-                new_content.push_str("\n---\n");
-            }
-            new_content.push_str(&format!(
-                "---\ntime: {}\nprefix: {}\n---\n\n{}",
-                time_hint, orig_prefix, req.new_content
+            rebuilt.push(format!(
+                "time: {}\nprefix: {}\n---\n\n{}",
+                orig_time, orig_prefix, req.new_content
             ));
             found = true;
-            continue;
+        } else {
+            rebuilt.push(bare);
         }
-        if i > 0 && !new_content.is_empty() {
-            new_content.push_str("\n---\n");
-        }
-        new_content.push_str(block);
     }
 
     if !found {
-        if !new_content.is_empty() {
-            new_content.push_str("\n---\n");
-        }
-        new_content.push_str(&format!(
-            "---\ntime: edit-{}\nprefix: \n---\n\n{}",
+        rebuilt.push(format!(
+            "time: edit-{}\nprefix: \n---\n\n{}",
             chrono::Local::now().to_rfc3339(),
             req.new_content
         ));
     }
+
+    let new_content = join_blocks(&rebuilt);
 
     let dir = path.parent().unwrap_or_else(|| std::path::Path::new("."));
     let tmp = tempfile::NamedTempFile::new_in(dir).map_err(|e| AppError::Io {
@@ -292,7 +338,6 @@ pub fn edit_inbox_entry(req: InboxEntryEdit) -> Result<(), AppError> {
 
     Ok(())
 }
-
 #[tauri::command]
 pub fn delete_inbox_entry(req: InboxEntryDelete) -> Result<(), AppError> {
     let path = day_file_path(&req.date, true)?;
@@ -300,35 +345,21 @@ pub fn delete_inbox_entry(req: InboxEntryDelete) -> Result<(), AppError> {
         return Ok(());
     }
     let content = fs::read_to_string(&path)?;
-    let time_hint = req
-        .entry_id
-        .rsplit_once('-')
-        .map(|(before, _)| {
-            before
-                .strip_prefix("cap-")
-                .unwrap_or(before)
-                .replace('_', "-")
-        })
-        .unwrap_or_else(|| req.entry_id.clone());
+    let time_key = time_key_from_entry_id(&req.entry_id);
 
-    let blocks: Vec<&str> = content.split("\n---\n").collect();
-    let mut new_content = String::new();
+    let mut rebuilt: Vec<String> = Vec::new();
     let mut found = false;
-
-    for (i, block) in blocks.iter().enumerate() {
-        let block = block.trim_start_matches('\n').trim_end();
-        if block.is_empty() {
+    for raw_block in content.split("\n---\ntime: ") {
+        let Some(bare) = normalize_block(raw_block) else {
             continue;
-        }
-        if block.contains(&time_hint) && !found {
+        };
+        if !found && block_matches_time_key(&bare, &time_key) {
             found = true;
-            continue;
+        } else {
+            rebuilt.push(bare);
         }
-        if i > 0 && !new_content.is_empty() {
-            new_content.push_str("\n---\n");
-        }
-        new_content.push_str(block);
     }
+    let new_content = join_blocks(&rebuilt);
 
     let dir = path.parent().unwrap_or_else(|| std::path::Path::new("."));
     let tmp = tempfile::NamedTempFile::new_in(dir).map_err(|e| AppError::Io {
@@ -346,7 +377,6 @@ pub fn delete_inbox_entry(req: InboxEntryDelete) -> Result<(), AppError> {
 
     Ok(())
 }
-
 #[tauri::command]
 pub fn archive_entry(req: InboxEntryArchive) -> Result<(), AppError> {
     let active_path = day_file_path(&req.date, true)?;
@@ -355,34 +385,19 @@ pub fn archive_entry(req: InboxEntryArchive) -> Result<(), AppError> {
         return Ok(());
     }
     let content = fs::read_to_string(&active_path)?;
-    let time_hint = req
-        .entry_id
-        .rsplit_once('-')
-        .map(|(before, _)| {
-            before
-                .strip_prefix("cap-")
-                .unwrap_or(before)
-                .replace('_', "-")
-        })
-        .unwrap_or_else(|| req.entry_id.clone());
+    let time_key = time_key_from_entry_id(&req.entry_id);
 
-    let blocks: Vec<&str> = content.split("\n---\n").collect();
-    let mut new_active = String::new();
-    let mut archived_text: Option<String> = None;
-
-    for (i, block) in blocks.iter().enumerate() {
-        let block = block.trim_start_matches('\n').trim_end();
-        if block.is_empty() {
+    let mut rebuilt: Vec<String> = Vec::new();
+    let mut archived: Option<String> = None;
+    for raw_block in content.split("\n---\ntime: ") {
+        let Some(bare) = normalize_block(raw_block) else {
             continue;
+        };
+        if archived.is_none() && block_matches_time_key(&bare, &time_key) {
+            archived = Some(bare);
+        } else {
+            rebuilt.push(bare);
         }
-        if block.contains(&time_hint) && archived_text.is_none() {
-            archived_text = Some(block.to_string());
-            continue;
-        }
-        if i > 0 && !new_active.is_empty() {
-            new_active.push_str("\n---\n");
-        }
-        new_active.push_str(block);
     }
 
     let dir = active_path
@@ -392,7 +407,7 @@ pub fn archive_entry(req: InboxEntryArchive) -> Result<(), AppError> {
         context: "create temp file".into(),
         source: e,
     })?;
-    fs::write(&tmp, &new_active).map_err(|e| AppError::Io {
+    fs::write(&tmp, join_blocks(&rebuilt)).map_err(|e| AppError::Io {
         context: "write active after archive".into(),
         source: e,
     })?;
@@ -401,16 +416,17 @@ pub fn archive_entry(req: InboxEntryArchive) -> Result<(), AppError> {
         source: e.error,
     })?;
 
-    if let Some(entry_text) = archived_text {
+    if let Some(bare) = archived {
         let mut archive_content = if archive_path.exists() {
             fs::read_to_string(&archive_path).unwrap_or_default()
         } else {
             String::new()
         };
-        if !archive_content.is_empty() {
-            archive_content.push_str("\n---\n");
+        if archive_content.trim_end().is_empty() {
+            archive_content = format!("---\n{}", bare);
+        } else {
+            archive_content.push_str(&format!("\n---\n{}", bare));
         }
-        archive_content.push_str(&entry_text);
 
         let archive_dir = archive_path
             .parent()
@@ -433,6 +449,7 @@ pub fn archive_entry(req: InboxEntryArchive) -> Result<(), AppError> {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CaptureConfig {
     pub font_size: Option<u32>,
     pub position_x: Option<i32>,
@@ -649,4 +666,333 @@ pub fn load_config_capture() -> Result<CaptureConfig, AppError> {
         overlay_height,
         panel_ratio,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+
+    // 测试共享 TEST_INBOX_BASE 静态，串行化避免并行测试互相覆盖
+    static TEST_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+    fn setup_inbox_dir(label: &str) -> std::path::PathBuf {
+        let dir = std::env::temp_dir().join(format!(
+            "clairis_test_inbox_{}_{}",
+            label,
+            std::process::id()
+        ));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        set_test_inbox_base(dir.clone());
+        dir
+    }
+
+    fn entry(id: &str, date: &str, prefix: &str, content: &str) -> InboxEntryInput {
+        InboxEntryInput {
+            id: id.to_string(),
+            content: content.to_string(),
+            prefix: prefix.to_string(),
+            captured_at: format!("{}T10:00:00.000Z", date),
+        }
+    }
+
+    #[test]
+    fn append_inbox_batch_same_date_writes_three_blocks() {
+        let _guard = TEST_LOCK.lock().unwrap();
+        let dir = setup_inbox_dir("same_date");
+        let entries = vec![
+            entry("a", "2026-08-01", "-", "first"),
+            entry("b", "2026-08-01", ">", "second"),
+            entry("c", "2026-08-01", "*", "third"),
+        ];
+        let result = append_inbox_batch(entries);
+        assert!(result.is_ok());
+
+        let path = dir.join("inbox-2026-08-01.md");
+        assert!(path.exists(), "file should exist");
+        let content = fs::read_to_string(&path).unwrap();
+        let block_count = content.matches("---\ntime: ").count();
+        assert_eq!(block_count, 3, "expected 3 blocks: {:?}", content);
+
+        // 块序与输入一致，content/prefix 正确
+        assert!(content.contains("time: 2026-08-01T10:00:00.000Z\nprefix: -\n---\n\nfirst"));
+        assert!(content.contains("time: 2026-08-01T10:00:00.000Z\nprefix: >\n---\n\nsecond"));
+        assert!(content.contains("time: 2026-08-01T10:00:00.000Z\nprefix: *\n---\n\nthird"));
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn append_inbox_batch_different_dates_write_two_files() {
+        let _guard = TEST_LOCK.lock().unwrap();
+        let dir = setup_inbox_dir("two_dates");
+        let entries = vec![
+            entry("a", "2026-08-01", "-", "first day"),
+            entry("b", "2026-08-02", ">", "second day"),
+        ];
+        let result = append_inbox_batch(entries);
+        assert!(result.is_ok());
+
+        assert!(dir.join("inbox-2026-08-01.md").exists());
+        assert!(dir.join("inbox-2026-08-02.md").exists());
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn append_inbox_batch_read_back_via_load_inbox_by_date() {
+        let _guard = TEST_LOCK.lock().unwrap();
+        let dir = setup_inbox_dir("read_back");
+        let entries = vec![
+            entry("a", "2026-08-01", "-", "first"),
+            entry("b", "2026-08-01", ">", "second"),
+            entry("c", "2026-08-01", "*", "third"),
+        ];
+        append_inbox_batch(entries).unwrap();
+
+        let loaded = load_inbox_by_date("2026-08-01".to_string()).unwrap();
+        // load_inbox_by_date 返回倒序（最新在前）
+        assert_eq!(loaded.len(), 3);
+        assert_eq!(loaded[0].content, "third");
+        assert_eq!(loaded[0].prefix, "*");
+        assert_eq!(loaded[1].content, "second");
+        assert_eq!(loaded[1].prefix, ">");
+        assert_eq!(loaded[2].content, "first");
+        assert_eq!(loaded[2].prefix, "-");
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn append_inbox_batch_empty_entries_writes_nothing() {
+        let _guard = TEST_LOCK.lock().unwrap();
+        let dir = setup_inbox_dir("empty");
+        let result = append_inbox_batch(vec![]);
+        assert!(result.is_ok());
+
+        let entries: Vec<_> = fs::read_dir(&dir).unwrap().collect();
+        assert!(entries.is_empty(), "dir should be empty: {:?}", entries);
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn edit_inbox_entry_replaces_matching_block() {
+        let _guard = TEST_LOCK.lock().unwrap();
+        let dir = setup_inbox_dir("edit_found");
+        append_inbox_batch(vec![
+            InboxEntryInput {
+                id: "a".into(),
+                content: "original".into(),
+                prefix: "-".into(),
+                captured_at: "2026-08-02T10:00:00.000Z".into(),
+            },
+            InboxEntryInput {
+                id: "b".into(),
+                content: "keep-me".into(),
+                prefix: ">".into(),
+                captured_at: "2026-08-02T10:00:01.000Z".into(),
+            },
+        ])
+        .unwrap();
+
+        let loaded = load_inbox_by_date("2026-08-02".into()).unwrap();
+        let target = loaded
+            .iter()
+            .find(|e| e.content == "original")
+            .expect("original entry");
+        let result = edit_inbox_entry(InboxEntryEdit {
+            date: "2026-08-02".into(),
+            entry_id: target.id.clone(),
+            new_content: "edited".into(),
+        });
+        assert!(result.is_ok());
+
+        let after = load_inbox_by_date("2026-08-02".into()).unwrap();
+        let edited = after
+            .iter()
+            .find(|e| e.content == "edited")
+            .expect("edited");
+        assert_eq!(edited.prefix, "-", "prefix must be preserved");
+        assert!(after.iter().all(|e| e.content != "original"));
+        assert!(
+            after.iter().any(|e| e.content == "keep-me"),
+            "other blocks untouched"
+        );
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn edit_inbox_entry_missing_entry_appends_edit_block() {
+        let _guard = TEST_LOCK.lock().unwrap();
+        let dir = setup_inbox_dir("edit_miss");
+        append_inbox_batch(vec![entry("a", "2026-08-02", "-", "original")]).unwrap();
+
+        let result = edit_inbox_entry(InboxEntryEdit {
+            date: "2026-08-02".into(),
+            entry_id: "cap-1990_01_01T00_00_00_000Z-99".into(),
+            new_content: "fallback".into(),
+        });
+        assert!(result.is_ok());
+
+        let after = load_inbox_by_date("2026-08-02".into()).unwrap();
+        assert_eq!(after.len(), 2, "fallback append adds a new block");
+        assert!(after.iter().any(|e| e.content == "original"));
+        assert!(after.iter().any(|e| e.content == "fallback"));
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn edit_inbox_entry_missing_file_errors() {
+        let _guard = TEST_LOCK.lock().unwrap();
+        let dir = setup_inbox_dir("edit_absent_file");
+        let result = edit_inbox_entry(InboxEntryEdit {
+            date: "2026-08-02".into(),
+            entry_id: "cap-x-1".into(),
+            new_content: "nope".into(),
+        });
+        assert!(result.is_err());
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn delete_inbox_entry_removes_matching_block_only() {
+        let _guard = TEST_LOCK.lock().unwrap();
+        let dir = setup_inbox_dir("delete_found");
+        append_inbox_batch(vec![
+            InboxEntryInput {
+                id: "a".into(),
+                content: "first".into(),
+                prefix: "-".into(),
+                captured_at: "2026-08-02T10:00:00.000Z".into(),
+            },
+            InboxEntryInput {
+                id: "b".into(),
+                content: "second".into(),
+                prefix: ">".into(),
+                captured_at: "2026-08-02T10:00:01.000Z".into(),
+            },
+            InboxEntryInput {
+                id: "c".into(),
+                content: "third".into(),
+                prefix: "*".into(),
+                captured_at: "2026-08-02T10:00:02.000Z".into(),
+            },
+        ])
+        .unwrap();
+
+        let loaded = load_inbox_by_date("2026-08-02".into()).unwrap();
+        let target = loaded
+            .iter()
+            .find(|e| e.content == "second")
+            .expect("second entry");
+        let result = delete_inbox_entry(InboxEntryDelete {
+            date: "2026-08-02".into(),
+            entry_id: target.id.clone(),
+        });
+        assert!(result.is_ok());
+
+        let after = load_inbox_by_date("2026-08-02".into()).unwrap();
+        assert_eq!(after.len(), 2);
+        assert!(after.iter().all(|e| e.content != "second"));
+        assert!(after.iter().any(|e| e.content == "first"));
+        assert!(after.iter().any(|e| e.content == "third"));
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn delete_inbox_entry_missing_file_is_noop() {
+        let _guard = TEST_LOCK.lock().unwrap();
+        let dir = setup_inbox_dir("delete_absent_file");
+        let result = delete_inbox_entry(InboxEntryDelete {
+            date: "2026-08-02".into(),
+            entry_id: "cap-x-1".into(),
+        });
+        assert!(
+            result.is_ok(),
+            "delete of absent file must be a silent no-op"
+        );
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn archive_entry_moves_block_to_archive_file() {
+        let _guard = TEST_LOCK.lock().unwrap();
+        let dir = setup_inbox_dir("archive_move");
+        append_inbox_batch(vec![
+            InboxEntryInput {
+                id: "a".into(),
+                content: "first".into(),
+                prefix: "-".into(),
+                captured_at: "2026-08-02T10:00:00.000Z".into(),
+            },
+            InboxEntryInput {
+                id: "b".into(),
+                content: "doomed".into(),
+                prefix: ">".into(),
+                captured_at: "2026-08-02T10:00:01.000Z".into(),
+            },
+        ])
+        .unwrap();
+
+        let loaded = load_inbox_by_date("2026-08-02".into()).unwrap();
+        let doomed = loaded
+            .iter()
+            .find(|e| e.content == "doomed")
+            .expect("doomed entry");
+        let result = archive_entry(InboxEntryArchive {
+            date: "2026-08-02".into(),
+            entry_id: doomed.id.clone(),
+        });
+        assert!(result.is_ok());
+
+        let active = load_inbox_by_date("2026-08-02".into()).unwrap();
+        assert_eq!(active.len(), 1);
+        assert_eq!(active[0].content, "first");
+
+        let archive_path = dir.join("archive").join("inbox-2026-08-02.md");
+        assert!(archive_path.exists(), "archive file created");
+        let archive_text = fs::read_to_string(&archive_path).unwrap();
+        assert!(archive_text.contains("doomed"));
+        assert!(!archive_text.contains("first"));
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn archive_entry_missing_active_file_is_noop() {
+        let _guard = TEST_LOCK.lock().unwrap();
+        let dir = setup_inbox_dir("archive_absent");
+        let result = archive_entry(InboxEntryArchive {
+            date: "2026-08-02".into(),
+            entry_id: "cap-x-1".into(),
+        });
+        assert!(
+            result.is_ok(),
+            "archive of absent file must be a silent no-op"
+        );
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn append_inbox_single_roundtrips() {
+        let _guard = TEST_LOCK.lock().unwrap();
+        let dir = setup_inbox_dir("append_single");
+        let result = append_inbox(entry("solo", "2026-08-02", "?", "solo-entry"));
+        assert!(result.is_ok());
+
+        let loaded = load_inbox_by_date("2026-08-02".into()).unwrap();
+        assert_eq!(loaded.len(), 1);
+        assert_eq!(loaded[0].content, "solo-entry");
+        assert_eq!(loaded[0].prefix, "?");
+
+        let _ = fs::remove_dir_all(&dir);
+    }
 }

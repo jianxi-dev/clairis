@@ -19,7 +19,8 @@ interface FlattenResult {
 
 const isTauri =
   typeof window !== "undefined" &&
-  (window as unknown as Record<string, unknown>).__TAURI_INTERNALS__ !== undefined;
+  (window as unknown as Record<string, unknown>).__TAURI_INTERNALS__ !==
+    undefined;
 
 export default function FileTree() {
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
@@ -34,14 +35,21 @@ export default function FileTree() {
     setLoading(true);
     log.info("FileTree", "Loading folder", { path: folderPath });
     try {
-      const result = await invoke<FlattenResult>("flatten_files", { path: folderPath });
+      const result = await invoke<FlattenResult>("flatten_files", {
+        path: folderPath,
+      });
       setEntries(result.entries);
       setTruncated(result.truncated);
       setSelectedFolder(folderPath);
       if (result.truncated) {
-        log.warn("FileTree", "Folder scan truncated at 2000 files", { path: folderPath });
+        log.warn("FileTree", "Folder scan truncated at 2000 files", {
+          path: folderPath,
+        });
       }
-      log.info("FileTree", "Folder loaded", { count: result.entries.length, truncated: result.truncated });
+      log.info("FileTree", "Folder loaded", {
+        count: result.entries.length,
+        truncated: result.truncated,
+      });
     } catch (e) {
       log.error("FileTree", "Failed to list files", e);
     } finally {
@@ -65,13 +73,17 @@ export default function FileTree() {
     async (filePath: string) => {
       if (!isTauri) return;
       try {
-        const result = await invoke<{ content: string; path: string; file_size: number }>(
-          "open_file_direct",
-          { path: filePath },
-        );
+        const result = await invoke<{
+          content: string;
+          path: string;
+          file_size: number;
+        }>("open_file_direct", { path: filePath });
         const store = useStore.getState();
         store.openFile(result.path, result.content);
-        store.addRecentFile(result.path, result.path.split("/").pop() || result.path);
+        store.addRecentFile(
+          result.path,
+          result.path.split("/").pop() || result.path,
+        );
         scheduleSave();
       } catch (e) {
         log.error("FileTree", "Failed to open file", e);
@@ -211,7 +223,7 @@ export default function FileTree() {
           <button
             key={f.path}
             onClick={() => handleOpenFile(f.path)}
-            className="w-full text-left px-3 py-1.5 text-xs hover:bg-gray-100 dark:hover:bg-gray-800 border-b border-gray-50 dark:border-gray-850 flex items-center gap-1.5"
+            className="w-full text-left px-3 py-1.5 text-xs hover:bg-gray-100 dark:hover:bg-gray-800 border-b border-gray-50 dark:border-gray-700 flex items-center gap-1.5"
             title={f.path}
           >
             <span className="text-blue-500 shrink-0">📄</span>

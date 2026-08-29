@@ -60,7 +60,7 @@ export default function SplitResizeHandle({
       ref={handleRef}
       onMouseDown={startDrag}
       onDoubleClick={handleDoubleClick}
-      className={`split-resize-handle shrink-0 ${
+      className={`app-chrome split-resize-handle shrink-0 ${
         isHorizontal ? "split-handle-h" : "split-handle-v"
       } ${dragging ? "dragging" : ""}`}
       role="separator"

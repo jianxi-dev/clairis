@@ -7,6 +7,21 @@ import type { EditorView } from "@codemirror/view";
 const editorViews = new Map<string, EditorView>();
 let lastActivePanel: string | null = null;
 
+/** Map of panel ID → preview scroll container (used for scroll position capture) */
+const panelScrollEls = new Map<string, HTMLElement>();
+
+export function setPanelScrollEl(panelId: string, el: HTMLElement | null) {
+  if (el) {
+    panelScrollEls.set(panelId, el);
+  } else {
+    panelScrollEls.delete(panelId);
+  }
+}
+
+export function getPanelScrollEl(panelId: string): HTMLElement | null {
+  return panelScrollEls.get(panelId) || null;
+}
+
 export function setEditorView(panelId: string, view: EditorView | null) {
   if (view) {
     editorViews.set(panelId, view);

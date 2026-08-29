@@ -29,9 +29,12 @@ if (typeof globalThis.matchMedia === "undefined") {
 // Mock Tauri invoke for jsdom
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: async (cmd: string) => {
+    if (cmd === "read_file_base64") {
+      return "AAECAwQ=";
+    }
     if (cmd === "load_config") {
       return {
-        fontSize: 16,
+        fontSize: 17,
         headingColors: null,
         ollamaEndpoint: "http://localhost:11434",
         openaiEndpoint: "https://api.openai.com",
@@ -49,6 +52,7 @@ vi.mock("@tauri-apps/api/core", () => ({
     }
     return null;
   },
+  convertFileSrc: (path: string) => `asset://localhost${path}`,
 }));
 
 // Mock Tauri webview API

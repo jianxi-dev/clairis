@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import type { EditorMode, HeadingColors, AppConfig, TranslationState } from "../types";
+import type {
+  EditorMode,
+  HeadingColors,
+  AppConfig,
+  TranslationState,
+} from "../types";
 
 describe("types", () => {
   it("EditorMode accepts valid values", () => {
@@ -21,8 +26,11 @@ describe("types", () => {
 
   it("AppConfig has required fields", () => {
     const config: AppConfig = {
-      fontSize: 16,
+      fontSize: 17,
       headingColors: { h1: "", h2: "", h3: "", h4: "", h5: "", h6: "" },
+      readerFontSize: 17,
+      readerWidth: 1080,
+      readerSkin: "paper",
       ollamaEndpoint: "",
       openaiEndpoint: "",
       openaiModel: "",
@@ -36,9 +44,10 @@ describe("types", () => {
       horizontalSplitRatio: 0.5,
       verticalSplitRatio: 0.5,
       recentFiles: [],
+      scrollPositions: {},
     };
     expect(config.translationProvider).toBe("ollama");
-    expect(config.fontSize).toBe(16);
+    expect(config.fontSize).toBe(17);
   });
 
   it("TranslationState has correct structure", () => {
