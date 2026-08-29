@@ -11,7 +11,7 @@ redirect: docs/design/explorations/theme/README.md
 # 渐晰 Clairis 主题色系统 v6 归档
 
 归档日期: 2026-07-12  
-对应原型: `docs/designs/clairis-themes.html`  
+对应原型: `./clairis-themes.html`  
 主题范围: 6 套核心主旋律主题，另附 1 套实验纸质主题
 
 ## 设计目标

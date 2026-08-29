@@ -272,7 +272,7 @@ Pin = 系统级 always-on-top（覆盖全屏应用）:
 
 ### Phase 1: 方案设计
 
-**输出**: `docs/designs/<功能名>-v<N>.md`
+**输出**: `docs/design/explorations/<功能名>/`（探索稿）或 `docs/design/approved/<功能名>/spec.md`（批准稿）
 
 按模板写:
 - ASCII 终态（最少 2 态）

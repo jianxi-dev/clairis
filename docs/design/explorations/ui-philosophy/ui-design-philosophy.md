@@ -252,9 +252,9 @@ Cmd+N → 立即在 ~/Documents/Jianxi/ 创建 Unnamed-2026-07-13-1030.md
 
 | 文件 | 用途 |
 |------|------|
-| `docs/designs/module-g-shell-ui.md` | 主界面 Shell 设计（最终决策版本） |
-| `docs/designs/no-sidebar-nav-final.md` | 无侧栏导航方案（Cmd+P 统一入口） |
-| `docs/designs/spec-B1-B2-B4-B5-empty-state.md` | 空状态设计（欢迎页 + 继续上次 + chips） |
+| `docs/design/approved/shell-ui/spec.md` | 主界面 Shell 设计（最终决策版本） |
+| `docs/design/approved/navigation/spec.md` | 无侧栏导航方案（Cmd+P 统一入口） |
+| `docs/design/approved/empty-state/spec.md` | 空状态设计（欢迎页 + 继续上次 + chips） |
 | `docs/CORE-REQUIREMENTS-clairis.md` | 全量需求文档 |
 | `docs/MVP-需求跟踪表.md` | 需求状态跟踪 |
 

@@ -2,7 +2,7 @@
 
 ## 项目
 
-Clairis（渐晰）— Tauri 2 + React 18 + TypeScript 桌面 Markdown 阅读/编辑器。前端 Vite + CodeMirror 6 + Zustand，Rust 后端在 `src-tauri/`。文档入口见 `docs/README.md`，架构现状见 `docs/architecture/overview.md`（中文）。旧名 Folio/MDWRT 仍出现在脚本注释和文档中，是同一项目。
+Clairis（渐晰）— Tauri 2 + React 18 + TypeScript 桌面 Markdown 阅读/编辑器。前端 Vite + CodeMirror 6 + Zustand，Rust 后端在 `src-tauri/`。文档入口见 `docs/README.md`，架构现状见 `docs/architecture/overview.md`（中文）。旧名 Folio/MDWRT/Jianming（渐明）仍出现在脚本注释和文档中，是同一项目。
 
 ## 语言约定（中文优先）
 
@@ -63,8 +63,8 @@ Clairis 面向中文用户，维护者母语为中文。以下为**硬约定**�
 - **CSS manifest 检查**：`src/editors/decorations/` 中声明的每个 `cm-*` class 必须在 `src/styles/` 有对应 CSS 规则，否则 pre-commit / CI / verify.sh 失败。新增 decoration 类名 = 同时新增 CSS 定义。
 - **pre-commit**（husky + lint-staged）：ts/tsx 走 prettier + `eslint --fix --quiet`，css 走 prettier，rs 走 rustfmt，外加 CSS manifest 检查。
 - **模式切换不 remount**：preview/edit/source 用 CSS display 切换，保留 CM6 的 undo/选区/编辑状态。不要改成条件渲染重建 EditorView。
-- **两个 Zustand store**：`stores/index.ts`（`useStore`，tabs/文件）和 `stores/editorStore.ts`（config/editorMode，注释标记 @deprecated 待合并）。EditorView 实例存在 `src/editors/editorRef.ts` 的模块级 Map（按 panelId），不进 store；store 只存纯文本。
-- 文件 >500KB 自动关闭 decorations（large file guard），不要绕过。
+- **三个 Zustand store**：`stores/index.ts`（`useStore`，tabs/文件）、`stores/editorStore.ts`（config/editorMode，注释标记 @deprecated 待合并）与 `stores/captureOverlay.ts`（快速捕获浮层状态，由 `stores/index.ts` 再导出）。EditorView 实例存在 `src/editors/editorRef.ts` 的模块级 Map（按 panelId），不进 store；store 只存纯文本。
+- 大文件守卫（large file guard）：500KB 强制 source 的守卫仅存在于旧 `useFile` 流程，当前页签打开流程未接入，实际不生效。
 - API key 只存 OS keyring（`get/set/delete_api_key` 命令），不要写进 config 文件。
 
 ## UI 测试

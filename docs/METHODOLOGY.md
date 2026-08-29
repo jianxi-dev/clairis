@@ -1,4 +1,4 @@
-# Jianxi 设计工作方法论 — 从 Capture Overlay 复盘
+# Clairis 设计工作方法论 — 从 Capture Overlay 复盘
 
 > **版本**: v1.0
 > **来源**: Capture Overlay v3.1 → v5.3 全复盘
@@ -194,8 +194,9 @@ docs/requirements/REQ-<功能名>-v1.md
 ### 文件命名
 
 ```
-docs/designs/<功能名>-v<N>.md
-例: capture-overlay-v5.3.md
+docs/design/explorations/<功能名>/   ← 探索稿
+docs/design/approved/<功能名>/spec.md ← 批准稿
+例: docs/design/explorations/capture-overlay/
 ```
 
 ### 模板结构
