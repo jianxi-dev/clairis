@@ -364,8 +364,13 @@ function hexOf(value: string): string | null {
   const short = /^#([0-9a-f])([0-9a-f])([0-9a-f])$/.exec(v);
   if (short)
     return `#${short[1]}${short[1]}${short[2]}${short[2]}${short[3]}${short[3]}`;
-  const rgb = /^rgba?\(\s*([\d.]+)[\s,]+([\d.]+)[\s,]+([\d.]+)/.exec(v);
+  const rgb =
+    /^rgba?\(\s*([\d.]+)[\s,]+([\d.]+)[\s,]+([\d.]+)(?:[\s,]+([\d.]+))?/.exec(
+      v,
+    );
   if (!rgb) return null;
+  // 半透明色保持原样：它的叠加效果依赖底下背景，转成实心深色会破坏设计
+  if (rgb[4] !== undefined && Number(rgb[4]) < 1) return null;
   return (
     "#" +
     [1, 2, 3]

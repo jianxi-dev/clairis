@@ -83,7 +83,10 @@
 /* 正文走窄通道，表格/代码/图片走宽通道 */
 .preview-content > * {
   max-width: var(--type-measure);
-  margin-inline: auto;
+  /* !important：用户内嵌 HTML 常写 margin: 20px 0（inline 优先级更高），
+     简写会把 margin-inline 覆盖成 0，卡片便靠左；阅读器强制居中，
+     上下留白仍尊重作者 inline margin */
+  margin-inline: auto !important;
   margin-block: 0 1.15em;
 }
 

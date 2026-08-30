@@ -231,6 +231,22 @@ describe("renderMarkdown 内嵌 HTML 深色适配", () => {
     expect(Object.keys(takeDarkVars())).toHaveLength(0);
     expect(light).toBeTruthy();
   });
+
+  it("半透明内联底色不转换（叠加效果依赖底下背景）", () => {
+    renderMarkdown(
+      '<div style="background-color:rgba(255,255,255,0.15)">块</div>',
+    );
+    expect(Object.keys(takeDarkVars())).toHaveLength(0);
+  });
+
+  it("alpha=1 的 rgba 视为实心色，仍正常转换", () => {
+    renderMarkdown(
+      '<div style="background-color:rgba(255,255,255,1)">块</div>',
+    );
+    const vars = takeDarkVars();
+    expect(Object.keys(vars)).toHaveLength(1);
+    expect(vars["dc-1"]).not.toBe("#ffffff");
+  });
 });
 
 describe("renderMarkdown YAML frontmatter", () => {
