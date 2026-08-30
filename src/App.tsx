@@ -143,11 +143,14 @@ function App() {
       const tab = useStore.getState().activeTabId
         ? useStore.getState().tabs[useStore.getState().activeTabId!]
         : null;
+
+      // PDF 缩放由查看器自带控件/缩放菜单处理（T5 实测可用）；App 层不干预，
+      // 避免 preview-scale 事件无人消费、或误落字号分支改动全局字号。
+      if (tab?.fileKind === "pdf") return;
+
       const viewportPreview =
         tab?.editorMode === "preview" &&
-        (tab.fileKind === "image" ||
-          tab.fileKind === "html" ||
-          tab.fileKind === "pdf");
+        (tab.fileKind === "image" || tab.fileKind === "html");
       if (viewportPreview) {
         window.dispatchEvent(
           new CustomEvent("preview-scale", { detail: delta }),
