@@ -6,6 +6,7 @@ import VideoPlayer from "./VideoPlayer";
 import ReaderSettingsPopover from "./ReaderSettingsPopover";
 import { useEditorStore } from "../../stores/editorStore";
 import { applyReaderSkin } from "../../hooks/useConfig";
+import { isTauriEnv } from "../../utils/tauri";
 import type { FileKind } from "../../types";
 
 interface PreviewViewProps {
@@ -255,12 +256,16 @@ function FramePreview({
     >
       {fileKind === "html" ? (
         <HtmlPreview content={content} filePath={filePath} zoom={scale} />
-      ) : (
+      ) : isTauriEnv() ? (
         <iframe
           src={convertFileSrc(filePath)}
           title="PDF 预览"
           style={{ zoom: scale, width: "100%", height: "100%", border: "none" }}
         />
+      ) : (
+        <div style={{ padding: 24, textAlign: "center", color: "#666" }}>
+          无法预览 PDF：需在 Tauri 桌面环境中运行
+        </div>
       )}
       <div
         style={{
@@ -401,6 +406,14 @@ function ImagePreview({ filePath }: { filePath: string }) {
       el.removeEventListener("gesturechange", onChange);
     };
   }, []);
+
+  if (!isTauriEnv()) {
+    return (
+      <div style={{ padding: 24, textAlign: "center", color: "#666" }}>
+        无法预览图片：需在 Tauri 桌面环境中运行
+      </div>
+    );
+  }
 
   return (
     <div

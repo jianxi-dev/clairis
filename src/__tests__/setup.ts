@@ -61,3 +61,15 @@ vi.mock("@tauri-apps/api/webview", () => ({
     onDragDropEvent: () => Promise.resolve(() => {}),
   }),
 }));
+
+// 声明模拟的 Tauri 环境标志：上述 mock 模拟完整 Tauri core API，
+// 守卫函数 isTauriEnv()（检查 window.__TAURI_INTERNALS__）据此返回 true，
+// 与真实桌面环境一致。非 Tauri 路径的回归测试在各自用例中清除该标志。
+// 仅 jsdom 环境有 window（docsGovernanceGate 等 node 环境用例跳过）。
+if (typeof window !== "undefined") {
+  Object.defineProperty(window, "__TAURI_INTERNALS__", {
+    writable: true,
+    configurable: true,
+    value: {},
+  });
+}
