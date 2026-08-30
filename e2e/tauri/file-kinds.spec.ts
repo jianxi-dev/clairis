@@ -100,7 +100,7 @@ test("媒体文件不可切换到编辑模式（按钮隐藏 + store 拦截）",
   await expect(editBtn).toHaveCount(0);
 });
 
-test("PDF 文件预览渲染 iframe", async ({ page }) => {
+test("PDF 文件预览渲染查看器（无 iframe，位图渲染）", async ({ page }) => {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto(APP_URL, { waitUntil: "networkidle" });
   await page.waitForSelector("header", { timeout: 10000 });
@@ -108,12 +108,25 @@ test("PDF 文件预览渲染 iframe", async ({ page }) => {
   await openFile(page, "/Users/test/doc.pdf", "");
   await page.waitForTimeout(300);
 
-  const frame = page.locator(
-    "iframe[src*='asset://localhost/%2FUsers%2Ftest%2Fdoc.pdf']",
+  // 查看器挂载：embedpdf-container 自定义元素（渲染在 shadow DOM 内）
+  const viewer = page.locator("embedpdf-container");
+  await expect(viewer).toHaveCount(1);
+
+  // 无 iframe（旧 FramePreview 已由 PdfViewer 取代；查看器内部 shadow DOM 的
+  // about:blank 隐藏 iframe 属实现细节，不计入）
+  const lightIframes = await page.evaluate(
+    () => document.querySelectorAll("iframe").length,
   );
-  await expect(frame).toHaveCount(1);
+  expect(lightIframes).toBe(0);
+  await expect(page.locator("iframe[src*='asset://']")).toHaveCount(0);
+
+  // 页面位图渲染：shadow DOM 内 blob 位图 ≥ 1（2 页 PDF，含 buffer 预渲染共 4 张）
+  await expect
+    .poll(() => viewer.locator("img[src^='blob:']").count())
+    .toBeGreaterThanOrEqual(1);
 });
-test("PDF 预览点击 iframe 后 Ctrl+= 缩放（焦点拉回父文档）", async ({
+
+test("PDF 下 Cmd/Ctrl+= 不触发全局字号变化，查看器放大按钮生效", async ({
   page,
 }) => {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
@@ -121,39 +134,70 @@ test("PDF 预览点击 iframe 后 Ctrl+= 缩放（焦点拉回父文档）", asy
   await page.waitForSelector("header", { timeout: 10000 });
 
   await openFile(page, "/Users/test/doc.pdf", "");
-  await page.waitForTimeout(300);
+  const viewer = page.locator("embedpdf-container");
+  await expect(viewer).toHaveCount(1);
 
-  const frame = page.locator(
-    "iframe[src*='asset://localhost/%2FUsers%2Ftest%2Fdoc.pdf']",
-  );
-  await expect(frame).toHaveCount(1);
+  const readFontSize = () =>
+    page.evaluate(() =>
+      document.documentElement.style.getPropertyValue("--editor-font-size"),
+    );
 
-  const readZoom = () =>
-    frame.evaluate((el) => {
-      const z = (el as HTMLElement).style.zoom || "1";
-      return parseFloat(z) || 1;
-    });
-
-  // 点击 iframe 内部（焦点进入 iframe 文档）。FramePreview 会留 2.5s 交互窗口
-  // 让 iframe 内原生控件（select 下拉 / color 取色器）可用，窗口结束后才抢回焦点，
-  // 因此等待抢回后再按键验证 Cmd/Ctrl+= 缩放仍生效。
-  await frame.click({ force: true, position: { x: 10, y: 10 } });
-  await page.waitForTimeout(3000);
-
-  const before = await readZoom();
-  await page.keyboard.press("Meta+=");
-  await page.waitForTimeout(300);
-  const afterMeta = await readZoom();
-
-  await page.keyboard.press("Control+0");
-  await page.waitForTimeout(200);
-  const resetZoom = await readZoom();
+  // PDF 时 App 层 early return：Ctrl+= 不落字号分支，inline 变量保持未设置
+  const before = await readFontSize();
   await page.keyboard.press("Control+=");
   await page.waitForTimeout(300);
-  const afterCtrl = await readZoom();
+  expect(await readFontSize()).toBe(before);
 
-  expect(afterMeta).toBeGreaterThan(before);
-  expect(afterCtrl).toBeGreaterThan(resetZoom);
+  // 查看器自带放大按钮生效（缩放输入 84% → 94%）
+  const zoomInput = viewer.locator("input[aria-label='Set zoom']");
+  const zoomBefore = parseFloat(await zoomInput.inputValue());
+  await viewer.locator("button[aria-label='放大']").click();
+  await expect
+    .poll(async () => parseFloat(await zoomInput.inputValue()))
+    .toBeGreaterThan(zoomBefore);
+
+  // markdown 下 Ctrl+= 仍走字号分支（回归固化：非 PDF 语义不变）。
+  // mock load_config fontSize=16，故首次按 16→17，二次 17→18，断言递增即可
+  await openFile(page, "/Users/test/note.md", "# 标题\n\n正文\n");
+  await page.waitForTimeout(300);
+  await page.keyboard.press("Control+=");
+  await page.waitForTimeout(300);
+  const mdAfter1 = parseFloat(await readFontSize());
+  await page.keyboard.press("Control+=");
+  await page.waitForTimeout(300);
+  const mdAfter2 = parseFloat(await readFontSize());
+  expect(mdAfter2).toBeGreaterThan(mdAfter1);
+});
+
+test("PDF 查看器翻页与搜索", async ({ page }) => {
+  await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
+  await page.goto(APP_URL, { waitUntil: "networkidle" });
+  await page.waitForSelector("header", { timeout: 10000 });
+
+  await openFile(page, "/Users/test/doc.pdf", "");
+  const viewer = page.locator("embedpdf-container");
+  await expect(viewer).toHaveCount(1);
+
+  // 翻页：当前页 input 1 → 2（总页数 span 为 2）
+  const pageInput = viewer.locator("input[type='text']:not([aria-label])");
+  await expect(pageInput).toHaveValue("1");
+  await viewer.locator("button[aria-label='下一页']").click();
+  await expect(pageInput).toHaveValue("2");
+
+  // 搜索：唤起搜索框 → 输入 mini.pdf 内嵌词 → 结果面板命中 ≥ 1
+  await viewer.locator("button[aria-label='搜索']").click();
+  const searchInput = viewer.locator("input[placeholder='搜索']");
+  await expect(searchInput).toHaveCount(1);
+  await searchInput.fill("ClairisPDFTest");
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          document.querySelector("embedpdf-container")?.shadowRoot
+            ?.textContent ?? "",
+      ),
+    )
+    .toContain("1 个结果");
 });
 
 test("编辑态长行自动换行（无水平滚动）", async ({ page }) => {
