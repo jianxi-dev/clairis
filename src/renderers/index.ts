@@ -3,7 +3,7 @@ import { renderMarkdown } from "./markdown";
 import { renderText } from "./text";
 
 export { renderMarkdown, takeDarkVars } from "./markdown";
-export { rewriteHtmlPaths } from "./html";
+export { rewriteHtmlPaths, buildAssetUrl } from "./html";
 export { renderText } from "./text";
 export { renderMermaid } from "./mermaid";
 

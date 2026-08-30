@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { convertFileSrc } from "@tauri-apps/api/core";
+import { buildAssetUrl } from "../../renderers";
 import { rewriteHtmlPaths } from "../../renderers";
 import { useEditorStore } from "../../stores/editorStore";
 import { isTauriEnv } from "../../utils/tauri";
@@ -20,9 +20,10 @@ export default function HtmlPreview({
   const fontSize = useEditorStore((s) => s.fontSize);
 
   // Asset 直载：iframe 通过 asset 协议加载真实本地文件——脚本可执行但与主窗口跨源隔离，
-  // 相对资源按文件路径天然解析，锚点导航正常。无路径或非 Tauri 环境时回退 srcdoc
+  // 相对资源按文件路径天然解析（buildAssetUrl 保留目录结构，convertFileSrc 会塌缩路径
+  // 导致文档内相对引用 404），锚点导航正常。无路径或非 Tauri 环境时回退 srcdoc
   // （convertFileSrc 在浏览器环境无 __TAURI_INTERNALS__ 会同步抛错击穿渲染树）。
-  const assetSrc = filePath && isTauriEnv() ? convertFileSrc(filePath) : null;
+  const assetSrc = filePath && isTauriEnv() ? buildAssetUrl(filePath) : null;
 
   const sandboxed = useMemo(() => {
     if (!content) {

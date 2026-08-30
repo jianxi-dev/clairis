@@ -171,6 +171,10 @@ function mockInvoke(cmd: string, args?: Record<string, unknown>): unknown {
     currentWebview: { label: "main" },
   },
   invoke: mockInvoke,
+  // 与真实 Tauri convertFileSrc 一致：整个路径 encodeURIComponent
+  // （buildAssetUrl 依赖前缀提取，不编码会取错 lastIndexOf("/") 导致路径重复）
+  convertFileSrc: (path: string) =>
+    `asset://localhost/${encodeURIComponent(path)}`,
 };
 
 // Also mock the @tauri-apps/api/core module

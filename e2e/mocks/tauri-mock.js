@@ -2,8 +2,10 @@
 window.__TAURI_INTERNALS__ = {
   metadata: {},
   invoke: mockInvoke,
+  // 与真实 Tauri convertFileSrc 一致：整个路径 encodeURIComponent
+  // （buildAssetUrl 依赖前缀提取，不编码会取错 lastIndexOf("/") 导致路径重复）
   convertFileSrc: function (path) {
-    return "asset://localhost" + path;
+    return "asset://localhost/" + encodeURIComponent(path);
   },
 };
 

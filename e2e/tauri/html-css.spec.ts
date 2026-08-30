@@ -37,7 +37,8 @@ test("HTML 预览：asset:// 直载（iframe src 指向本地文件）", async (
   const iframe = page.locator('iframe[title="HTML 预览"]');
   await expect(iframe).toHaveCount(1);
   const src = await iframe.getAttribute("src");
-  expect(src).toBe("asset://localhost/Users/test/complex.html");
+  // buildAssetUrl 保留目录结构：前导 %2F 保留绝对路径语义，段间斜杠字面保留
+  expect(src).toBe("asset://localhost/%2FUsers/test/complex.html");
   // 脚本默认允许：sandbox 含 allow-scripts
   const sandbox = await iframe.getAttribute("sandbox");
   expect(sandbox).toContain("allow-scripts");
@@ -65,7 +66,7 @@ test("HTML 预览：无路径回退 srcdoc 且脚本仍禁", async ({ page }) =>
   const iframe = page.locator('iframe[title="HTML 预览"]');
   await expect(iframe).toHaveCount(1);
   const src = await iframe.getAttribute("src");
-  expect(src).toBe("asset://localhost/Users/test/untitled.html");
+  expect(src).toBe("asset://localhost/%2FUsers/test/untitled.html");
 });
 
 test("HTML 预览：锚点点击不崩溃（iframe 保持存在）", async ({ page }) => {

@@ -62,7 +62,9 @@ test("图片文件预览渲染 img 且资源为 asset URL", async ({ page }) => 
   await openFile(page, "/Users/test/pic.png", "");
   await page.waitForTimeout(300);
 
-  const img = page.locator("img[src*='asset://localhost/Users/test/pic.png']");
+  const img = page.locator(
+    "img[src*='asset://localhost/%2FUsers%2Ftest%2Fpic.png']",
+  );
   await expect(img).toHaveCount(1);
 });
 
@@ -107,7 +109,7 @@ test("PDF 文件预览渲染 iframe", async ({ page }) => {
   await page.waitForTimeout(300);
 
   const frame = page.locator(
-    "iframe[src*='asset://localhost/Users/test/doc.pdf']",
+    "iframe[src*='asset://localhost/%2FUsers%2Ftest%2Fdoc.pdf']",
   );
   await expect(frame).toHaveCount(1);
 });
@@ -122,7 +124,7 @@ test("PDF 预览点击 iframe 后 Ctrl+= 缩放（焦点拉回父文档）", asy
   await page.waitForTimeout(300);
 
   const frame = page.locator(
-    "iframe[src*='asset://localhost/Users/test/doc.pdf']",
+    "iframe[src*='asset://localhost/%2FUsers%2Ftest%2Fdoc.pdf']",
   );
   await expect(frame).toHaveCount(1);
 
@@ -206,7 +208,9 @@ test("图片预览默认宽度 1180 且支持滚轮缩放", async ({ page }) => 
   await page.waitForSelector("header", { timeout: 10000 });
 
   await openFile(page, "/Users/test/pic.png", "");
-  const img = page.locator("img[src*='asset://localhost/Users/test/pic.png']");
+  const img = page.locator(
+    "img[src*='asset://localhost/%2FUsers%2Ftest%2Fpic.png']",
+  );
   await expect(img).toHaveCount(1);
 
   // 默认宽度 1180

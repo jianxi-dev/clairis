@@ -1,6 +1,38 @@
 import { convertFileSrc } from "@tauri-apps/api/core";
 
 /**
+ * Build an asset-protocol URL that PRESERVES directory structure, unlike
+ * `convertFileSrc` which percent-encodes the whole path into a single
+ * segment (`asset://localhost/%2FUsers%2F...`). With a collapsed base URL,
+ * relative references inside the loaded document (e.g. `<script src="a.js">`)
+ * resolve against the asset root and 404 — breaking script/css/image loading
+ * for any HTML page that uses relative resources.
+ *
+ * Format: `{convertFileSrc prefix}/%2F<seg1>/<seg2>/...` — the leading `%2F`
+ * keeps absolute-path semantics (survives the handler's leading-`/` strip and
+ * decodes back to `/`), while inner segments stay percent-encoded per segment
+ * with literal `/` separators, so the document's base URL keeps its directory
+ * shape and relative references resolve to their sibling files.
+ */
+export function buildAssetUrl(filePath: string): string {
+  if (!filePath) return "";
+  // Reuse convertFileSrc for the platform scheme prefix (asset://localhost on
+  // macOS/Linux, http://asset.localhost on Windows), discard its collapsed path.
+  const prefixed = convertFileSrc(filePath);
+  const prefix = prefixed.slice(0, prefixed.lastIndexOf("/") + 1);
+  if (!prefix) return prefixed;
+
+  const normalized = filePath.replace(/\\/g, "/");
+  const segments = normalized
+    .split("/")
+    .filter(Boolean)
+    .map((seg) => encodeURIComponent(seg));
+  if (segments.length === 0) return prefixed;
+
+  return `${prefix}%2F${segments.join("/")}`;
+}
+
+/**
  * Rewrite relative paths in HTML content to asset://localhost URLs
  * so local resources (images, CSS) load correctly inside srcdoc iframes.
  *
