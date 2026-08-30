@@ -134,9 +134,11 @@ test("PDF 预览点击 iframe 后 Ctrl+= 缩放（焦点拉回父文档）", asy
       return parseFloat(z) || 1;
     });
 
-  // 点击 iframe 内部（焦点进入 iframe 文档），随后 Cmd/Ctrl+= 应仍缩放
+  // 点击 iframe 内部（焦点进入 iframe 文档）。FramePreview 会留 2.5s 交互窗口
+  // 让 iframe 内原生控件（select 下拉 / color 取色器）可用，窗口结束后才抢回焦点，
+  // 因此等待抢回后再按键验证 Cmd/Ctrl+= 缩放仍生效。
   await frame.click({ force: true, position: { x: 10, y: 10 } });
-  await page.waitForTimeout(500);
+  await page.waitForTimeout(3000);
 
   const before = await readZoom();
   await page.keyboard.press("Meta+=");

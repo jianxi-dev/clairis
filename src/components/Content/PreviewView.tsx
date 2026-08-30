@@ -257,13 +257,27 @@ function FramePreview({
 
   // 跨源 iframe（asset://）聚焦后，父文档收不到任何输入事件（focusin/pointerdown 均不跨文档传播），
   // 键盘焦点留在 iframe 文档内导致 Cmd+±/0 失效。唯一可靠手段是轮询 activeElement 抢回焦点。
+  // 但立即抢焦点会让 iframe 内原生控件（<select> 下拉 / <input type="color"> 取色器）
+  // 失焦即关闭（"点击闪一下就消失"）。故进入 iframe 或抢回后各留一个交互窗口，窗口内不抢。
   useEffect(() => {
+    const GRACE_MS = 2500;
+    let graceUntil = 0;
+    let lastInIframe = false;
     const id = setInterval(() => {
       const el = containerRef.current;
       if (!el) return;
       const active = document.activeElement;
-      if (active instanceof HTMLIFrameElement && el.contains(active)) {
+      const inIframe =
+        active instanceof HTMLIFrameElement && el.contains(active);
+      if (!inIframe) {
+        lastInIframe = false;
+        return;
+      }
+      if (!lastInIframe) graceUntil = Date.now() + GRACE_MS;
+      lastInIframe = true;
+      if (Date.now() >= graceUntil) {
         el.focus({ preventScroll: true });
+        graceUntil = Date.now() + GRACE_MS;
       }
     }, 200);
     return () => clearInterval(id);
