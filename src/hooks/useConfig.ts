@@ -2,6 +2,7 @@ import { useEffect, useCallback, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useEditorStore } from "../stores/editorStore";
 import { useStore } from "../stores/index";
+import { isTauriEnv } from "../utils/tauri";
 import { log } from "../utils/log";
 import type { AppConfig, ScrollPosition, Theme } from "../types";
 
@@ -54,6 +55,7 @@ export function applyReaderSkin(skin: string): void {
 
 /** Persist the current editor + app config (module-level, callable outside hooks). */
 export async function saveAppConfig(): Promise<void> {
+  if (!isTauriEnv()) return;
   const es = useEditorStore.getState();
   const config: RustAppConfig = {
     fontSize: es.fontSize,
@@ -99,6 +101,36 @@ export function useConfig() {
 
     const editorStore = useEditorStore.getState();
     editorStore.setConfigLoading(true);
+
+    // 浏览器环境（dev server / 无 Tauri mock 的 e2e）无 invoke：直接落默认配置。
+    if (!isTauriEnv()) {
+      const es = useEditorStore.getState();
+      es.setConfig({
+        fontSize: 17,
+        headingColors: undefined,
+        readerFontSize: 17,
+        readerWidth: 1080,
+        readerSkin: "paper",
+        ollamaEndpoint: "http://localhost:11434",
+        openaiEndpoint: "https://api.openai.com",
+        openaiModel: "gpt-4o-mini",
+        translationProvider: "ollama",
+        langPair: { source: "en", target: "zh-CN" },
+        theme: "system",
+        sidebarLeftVisible: true,
+        sidebarRightVisible: false,
+        sidebarLeftWidth: 220,
+        sidebarRightWidth: 320,
+        horizontalSplitRatio: 0.5,
+        verticalSplitRatio: 0.5,
+        recentFiles: [],
+      });
+      es.setConfigLoaded(true);
+      es.setConfigLoading(false);
+      applyTheme("system");
+      applyReaderSkin("paper");
+      return;
+    }
 
     invoke<RustAppConfig>("load_config")
       .then((raw) => {
