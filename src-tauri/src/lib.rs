@@ -6,7 +6,7 @@ mod types;
 mod validation;
 
 use commands::config_cmd::{delete_api_key, get_api_key, load_config, save_config, set_api_key};
-use commands::directory::{flatten_files, get_file_info, read_directory};
+use commands::directory::{flatten_files, get_file_info, list_media_in_dir, read_directory};
 use commands::file::{
     open_file, open_file_direct, pick_folder, read_file_base64, save_as_file, save_file,
 };
@@ -184,6 +184,7 @@ pub fn run() {
             read_directory,
             get_file_info,
             flatten_files,
+            list_media_in_dir,
             load_config,
             save_config,
             get_api_key,

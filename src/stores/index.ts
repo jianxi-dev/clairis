@@ -52,6 +52,11 @@ const MEDIA_EXTENSIONS: Record<string, FileKind> = {
   m4v: "video",
   mkv: "video",
   avi: "video",
+  mp3: "audio",
+  m4a: "audio",
+  wav: "audio",
+  flac: "audio",
+  ogg: "audio",
   pdf: "pdf",
 };
 
@@ -72,7 +77,9 @@ function detectFileKind(path: string): FileKind {
 }
 
 export function isMediaKind(kind: FileKind): boolean {
-  return kind === "image" || kind === "video" || kind === "pdf";
+  return (
+    kind === "image" || kind === "video" || kind === "audio" || kind === "pdf"
+  );
 }
 
 function extractFileName(path: string): string {

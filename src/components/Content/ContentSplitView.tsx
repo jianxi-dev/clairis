@@ -4,6 +4,7 @@ import { getPanelScrollEl } from "../../editors/editorRef";
 import { saveAppConfig } from "../../hooks/useConfig";
 import TabBar from "../TabBar";
 import ContentArea from "./ContentArea";
+import MediaPlayerHost from "./MediaPlayerHost";
 import SplitResizeHandle from "./SplitResizeHandle";
 import ErrorBoundary from "../ErrorBoundary";
 import type { EditorMode, Tab } from "../../types";
@@ -139,7 +140,10 @@ export default function ContentSplitView() {
           onSwitchTab={handleMainSwitch}
           onCloseTab={handleMainClose}
         />
-        <ContentArea panelId="main" />
+        <div className="relative flex-1 overflow-hidden">
+          <ContentArea panelId="main" />
+          <MediaPlayerHost />
+        </div>
       </div>
     );
   }
@@ -169,11 +173,14 @@ export default function ContentSplitView() {
           />
         </div>
         <ErrorBoundary panelId="main">
-          <ContentArea
-            panelId="main"
-            tabOverride={activeTab}
-            modeOverride={activeTab?.editorMode}
-          />
+          <div className="relative flex-1 overflow-hidden">
+            <ContentArea
+              panelId="main"
+              tabOverride={activeTab}
+              modeOverride={activeTab?.editorMode}
+            />
+            <MediaPlayerHost />
+          </div>
         </ErrorBoundary>
       </div>
 

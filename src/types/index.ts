@@ -12,6 +12,7 @@ export type FileKind =
   | "csv"
   | "image"
   | "video"
+  | "audio"
   | "pdf";
 
 export type TranslationProvider = "ollama" | "openai";

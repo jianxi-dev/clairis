@@ -181,20 +181,23 @@ test("编辑态长行自动换行（无水平滚动）", async ({ page }) => {
   expect(noHScroll).toBe(true);
 });
 
-test("视频文件预览：media:// 协议直连（Range 流式）", async ({ page }) => {
+test("视频文件预览：media:// 协议直连（ArtPlayer 常驻播放器）", async ({
+  page,
+}) => {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto(APP_URL, { waitUntil: "networkidle" });
   await page.waitForSelector("header", { timeout: 10000 });
 
   await openFile(page, "/Users/test/clip.mp4", "");
-  const video = page.locator("video");
-  await expect(video).toHaveCount(1);
+  const art = page.locator(".art-video-player");
+  await expect(art).toHaveCount(1);
+  // 全尺寸播放器挂载，video 直连 media://（斜杠保留，Range 流式）
+  const video = art.locator("video");
   await expect(video).toHaveAttribute(
     "src",
-    "media://localhost/%2FUsers%2Ftest%2Fclip.mp4",
+    "media://localhost/Users/test/clip.mp4",
   );
-  await expect(video).toHaveAttribute("controls", "");
-  await expect(video).toHaveAttribute("autoPlay", "");
+  await expect(video).toHaveAttribute("autoplay", "");
 });
 
 test("图片预览默认宽度 1180 且支持滚轮缩放", async ({ page }) => {

@@ -2,8 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { renderMarkdown, renderMermaid, takeDarkVars } from "../../renderers";
 import HtmlPreview from "./HtmlPreview";
-import VideoPlayer from "./VideoPlayer";
 import ReaderSettingsPopover from "./ReaderSettingsPopover";
+import { mediaPlayer } from "./mediaPlayerState";
 import { useEditorStore } from "../../stores/editorStore";
 import { applyReaderSkin } from "../../hooks/useConfig";
 import { isTauriEnv } from "../../utils/tauri";
@@ -76,6 +76,31 @@ function usePreviewZoom() {
   return { zoom, onWheel, onDoubleClick: resetZoom, bindGesture };
 }
 
+/** 视频/音频预览：注册到常驻播放器，由 MediaPlayerHost 全尺寸覆盖；卸载时保持播放移出视口（无迷你条） */
+function MediaPreviewRegistrar({
+  filePath,
+  fileKind,
+}: {
+  filePath: string;
+  fileKind: "video" | "audio";
+}) {
+  useEffect(() => {
+    mediaPlayer.show({
+      filePath,
+      url: mediaUrlForPath(filePath),
+      fileKind,
+    });
+    return () => mediaPlayer.minimize();
+  }, [filePath, fileKind]);
+
+  return (
+    <div
+      data-media-preview
+      style={{ width: "100%", height: "100%", minHeight: 200 }}
+    />
+  );
+}
+
 export default function PreviewView({
   content = "",
   fileKind = "markdown",
@@ -125,13 +150,13 @@ export default function PreviewView({
     }
   }, [content, fileKind]);
 
-  // 图片/视频/HTML/PDF 保持各自渲染（HTML/PDF 用整体缩放，避免重排偏移）
+  // 图片/视频/音频/HTML/PDF 保持各自渲染（HTML/PDF 用整体缩放，避免重排偏移）
   if (fileKind === "html" || fileKind === "pdf") {
     return (
       <FramePreview content={content} fileKind={fileKind} filePath={filePath} />
     );
   }
-  if (fileKind === "image" || fileKind === "video") {
+  if (fileKind === "image" || fileKind === "video" || fileKind === "audio") {
     if (!filePath) {
       return (
         <div style={{ padding: "24px", textAlign: "center", color: "#666" }}>
@@ -139,10 +164,15 @@ export default function PreviewView({
         </div>
       );
     }
-    return fileKind === "image" ? (
-      <ImagePreview filePath={filePath} />
-    ) : (
-      <VideoPlayer filePath={filePath} url={mediaUrlForPath(filePath)} />
+    if (fileKind === "image") {
+      return <ImagePreview filePath={filePath} />;
+    }
+    // 视频/音频：由常驻播放器（MediaPlayerHost）全尺寸覆盖本区域
+    return (
+      <MediaPreviewRegistrar
+        filePath={filePath}
+        fileKind={fileKind === "audio" ? "audio" : "video"}
+      />
     );
   }
 
@@ -353,7 +383,13 @@ function ZoomablePreview({
 
 /** 本地文件 → media:// URL（自定义协议，支持 Range 流式播放） */
 function mediaUrlForPath(path: string): string {
-  return "media://localhost/" + encodeURIComponent(path);
+  // 只编码路径中除 / 以外的字符：Rust decode_uri_path 期望斜杠未编码，
+  // 否则 encodeURIComponent 的 %2F 会被解码成双斜杠 //，WKWebView 对
+  // 含全角字符的长路径解析出错（视频轨加载失败、仅音频正常）。
+  // host 后不追加斜杠（path 以 / 开头），避免 media://localhost// 双斜杠
+  const encoded = encodeURIComponent(path).replace(/%2F/g, "/");
+  const withSlash = encoded.startsWith("/") ? encoded : "/" + encoded;
+  return "media://localhost" + withSlash;
 }
 
 const IMAGE_BASE_WIDTH = 1180;

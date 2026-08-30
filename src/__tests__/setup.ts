@@ -52,7 +52,8 @@ vi.mock("@tauri-apps/api/core", () => ({
     }
     return null;
   },
-  convertFileSrc: (path: string) => `asset://localhost${path}`,
+  convertFileSrc: (path: string) =>
+    `asset://localhost/${encodeURIComponent(path)}`,
 }));
 
 // Mock Tauri webview API

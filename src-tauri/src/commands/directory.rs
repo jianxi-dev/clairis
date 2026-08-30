@@ -1,10 +1,11 @@
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use serde::Serialize;
 use tracing::warn;
 
 use crate::errors::AppError;
+use crate::media_protocol::register_media_path;
 
 #[derive(Debug, Serialize)]
 pub struct DirEntry {
@@ -286,6 +287,143 @@ fn collect_flat(
     }
 }
 
+#[derive(Debug, Serialize)]
+pub struct MediaEntry {
+    pub path: String,
+    pub name: String,
+    pub kind: String,
+    /// For subtitle entries: the media file (without extension) this subtitle belongs to.
+    /// Empty for video/audio entries.
+    pub target: String,
+}
+
+const VIDEO_EXTS: &[&str] = &["mp4", "mov", "webm", "m4v", "mkv", "avi"];
+const AUDIO_EXTS: &[&str] = &["mp3", "m4a", "wav", "flac", "ogg"];
+const SUBTITLE_EXTS: &[&str] = &["srt", "ass", "vtt"];
+
+fn kind_for_name(name: &str) -> Option<&'static str> {
+    let ext = Path::new(name)
+        .extension()
+        .and_then(|e| e.to_str())
+        .map(|e| e.to_ascii_lowercase())
+        .unwrap_or_default();
+    if VIDEO_EXTS.contains(&ext.as_str()) {
+        Some("video")
+    } else if AUDIO_EXTS.contains(&ext.as_str()) {
+        Some("audio")
+    } else {
+        None
+    }
+}
+
+fn collect_media_entries(parent: &Path) -> Vec<MediaEntry> {
+    let mut media: Vec<MediaEntry> = Vec::new();
+    let mut subtitles: Vec<MediaEntry> = Vec::new();
+    let mut media_stems: std::collections::HashSet<String> = std::collections::HashSet::new();
+
+    let entries: Vec<PathBuf> = match fs::read_dir(parent) {
+        Ok(d) => d.flatten().map(|e| e.path()).collect(),
+        Err(e) => {
+            warn!(path = %parent.display(), error = %e, "list_media_in_dir: unreadable directory");
+            return Vec::new();
+        }
+    };
+
+    for p in &entries {
+        if !p.is_file() {
+            continue;
+        }
+        let name = p
+            .file_name()
+            .map(|n| n.to_string_lossy().into_owned())
+            .unwrap_or_default();
+        if name.starts_with('.') {
+            continue;
+        }
+
+        let abs = p.to_string_lossy().into_owned();
+        if let Some(kind) = kind_for_name(&name) {
+            media.push(MediaEntry {
+                path: abs,
+                name: name.clone(),
+                kind: kind.to_string(),
+                target: String::new(),
+            });
+            if let Some(stem) = p.file_stem().and_then(|s| s.to_str()) {
+                media_stems.insert(stem.to_string());
+            }
+        }
+    }
+
+    for p in &entries {
+        if !p.is_file() {
+            continue;
+        }
+        let name = p
+            .file_name()
+            .map(|n| n.to_string_lossy().into_owned())
+            .unwrap_or_default();
+        if name.starts_with('.') {
+            continue;
+        }
+        let ext = p
+            .extension()
+            .and_then(|e| e.to_str())
+            .map(|e| e.to_ascii_lowercase())
+            .unwrap_or_default();
+        if SUBTITLE_EXTS.contains(&ext.as_str()) {
+            let target_stem = p
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .map(|stem| stem.to_string())
+                .unwrap_or_default();
+            if media_stems.contains(&target_stem) {
+                let abs = p.to_string_lossy().into_owned();
+                subtitles.push(MediaEntry {
+                    path: abs,
+                    name: name.clone(),
+                    kind: "subtitle".to_string(),
+                    target: target_stem,
+                });
+            }
+        }
+    }
+
+    media.sort_by(|a, b| a.name.cmp(&b.name));
+    subtitles.sort_by(|a, b| a.name.cmp(&b.name));
+    media.extend(subtitles);
+    media
+}
+
+/// List media files (video/audio) in the same directory as the given file,
+/// plus same-basename subtitle files (.srt/.ass/.vtt).
+/// Registers every listed file into the media:// allowlist so the media
+/// protocol can serve them for preview/playlist.
+#[tauri::command]
+pub async fn list_media_in_dir(path: String) -> Result<Vec<MediaEntry>, AppError> {
+    let target = PathBuf::from(&path);
+    let parent = target.parent().unwrap_or(&target).to_path_buf();
+    if !parent.is_dir() {
+        return Err(AppError::Io {
+            context: format!("not a directory: {}", parent.display()),
+            source: std::io::Error::new(std::io::ErrorKind::NotADirectory, path),
+        });
+    }
+
+    let entries: Vec<MediaEntry> =
+        tokio::task::spawn_blocking(move || collect_media_entries(&parent))
+            .await
+            .map_err(|e| AppError::Io {
+                context: "list_media_in_dir join error".into(),
+                source: std::io::Error::new(std::io::ErrorKind::Other, e.to_string()),
+            })?;
+
+    for e in &entries {
+        register_media_path(e.path.clone());
+    }
+    Ok(entries)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -374,5 +512,41 @@ mod tests {
         assert!(metadata.len() > 0);
 
         let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn test_list_media_in_dir_filters_and_registers() {
+        let dir = std::env::temp_dir().join(format!("clairis_test_media_{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(dir.join("clip.mp4"), "v").unwrap();
+        fs::write(dir.join("song.mp3"), "a").unwrap();
+        fs::write(dir.join("clip.srt"), "s").unwrap();
+        fs::write(dir.join("notes.md"), "n").unwrap();
+        fs::write(dir.join(".hidden.mp4"), "h").unwrap();
+
+        let entries = collect_media_entries(&dir);
+
+        let names: Vec<(&str, &str)> = entries
+            .iter()
+            .map(|e| (e.name.as_str(), e.kind.as_str()))
+            .collect();
+        assert!(names.contains(&("clip.mp4", "video")));
+        assert!(names.contains(&("song.mp3", "audio")));
+        assert!(names.contains(&("clip.srt", "subtitle")));
+        assert!(!names.iter().any(|(n, _)| *n == "notes.md"));
+        assert!(!names.iter().any(|(n, _)| *n == ".hidden.mp4"));
+        let clip_sub = entries.iter().find(|e| e.name == "clip.srt").unwrap();
+        assert_eq!(clip_sub.target, "clip");
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn test_kind_for_name() {
+        assert_eq!(kind_for_name("a.MP4"), Some("video"));
+        assert_eq!(kind_for_name("a.mkv"), Some("video"));
+        assert_eq!(kind_for_name("a.flac"), Some("audio"));
+        assert_eq!(kind_for_name("a.txt"), None);
     }
 }

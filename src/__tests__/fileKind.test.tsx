@@ -1,7 +1,8 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { render, waitFor } from "@testing-library/react";
 import { useStore, isMediaKind } from "../stores/index";
 import PreviewView from "../components/Content/PreviewView";
+import { mediaPlayer } from "../components/Content/mediaPlayerState";
 
 describe("detectFileKind（经 openFile 验证）", () => {
   beforeEach(() => {
@@ -40,6 +41,9 @@ describe("detectFileKind（经 openFile 验证）", () => {
     expect(kindOf("/a.gif")).toBe("image");
     expect(kindOf("/a.mp4")).toBe("video");
     expect(kindOf("/a.MOV")).toBe("video");
+    expect(kindOf("/a.mp3")).toBe("audio");
+    expect(kindOf("/a.flac")).toBe("audio");
+    expect(kindOf("/a.wav")).toBe("audio");
     expect(kindOf("/a.pdf")).toBe("pdf");
   });
 
@@ -92,6 +96,7 @@ describe("isMediaKind", () => {
   it("媒体类型为 true", () => {
     expect(isMediaKind("image")).toBe(true);
     expect(isMediaKind("video")).toBe(true);
+    expect(isMediaKind("audio")).toBe(true);
     expect(isMediaKind("pdf")).toBe(true);
   });
 
@@ -132,26 +137,40 @@ describe("PreviewView 媒体渲染", () => {
     );
     const img = container.querySelector("img");
     expect(img).not.toBeNull();
-    expect(img?.getAttribute("src")).toBe("asset://localhost/tmp/pic.png");
+    expect(img?.getAttribute("src")).toBe("asset://localhost/%2Ftmp%2Fpic.png");
   });
 
-  it("video 用 media:// 协议直连（Range 流式），渲染 ArtPlayer 播放器（自定义控制条+记忆播放）", () => {
-    const { container } = render(
+  it("video 预览注册到常驻播放器（media:// URL），渲染占位区域", () => {
+    const { container, unmount } = render(
       <PreviewView content="" fileKind="video" filePath="/tmp/clip.mp4" />,
     );
-    // ArtPlayer 挂载容器（自带控制条 / 全屏按钮 / 快捷键）
-    const player = container.querySelector(".art-video-player");
-    expect(player).not.toBeNull();
-    const video = player?.querySelector("video");
-    expect(video).not.toBeNull();
-    expect(video?.getAttribute("src")).toBe(
-      "media://localhost/%2Ftmp%2Fclip.mp4",
+    // 视频/音频预览由 MediaPlayerHost 全尺寸覆盖：PreviewView 只渲染占位
+    expect(container.querySelector("[data-media-preview]")).not.toBeNull();
+    // 常驻播放器状态已注册当前媒体源
+    const state = mediaPlayer.getState();
+    expect(state.source?.filePath).toBe("/tmp/clip.mp4");
+    expect(state.source?.fileKind).toBe("video");
+    expect(state.source?.url).toBe("media://localhost/tmp/clip.mp4");
+    expect(state.visible).toBe(true);
+    // 卸载（切走 tab）→ minimize：播放器保留，移出视口（无迷你条）
+    unmount();
+    expect(mediaPlayer.getState().visible).toBe(false);
+    expect(mediaPlayer.getState().source?.filePath).toBe("/tmp/clip.mp4");
+    // 清理状态，避免影响其他测试
+    mediaPlayer.stop();
+  });
+
+  it("audio 预览注册到常驻播放器（media:// URL + audio 类型）", () => {
+    const { container, unmount } = render(
+      <PreviewView content="" fileKind="audio" filePath="/tmp/song.mp3" />,
     );
-    // ArtPlayer 用自定义控制条，不依赖原生 controls 属性
-    expect(video?.hasAttribute("controls")).toBe(false);
-    // 快捷键提示条（空格/方向键/F/M）常驻显示在播放器外部
-    expect(container.textContent).toContain("播放 / 暂停");
-    expect(container.textContent).toContain("全屏");
+    expect(container.querySelector("[data-media-preview]")).not.toBeNull();
+    const state = mediaPlayer.getState();
+    expect(state.source?.filePath).toBe("/tmp/song.mp3");
+    expect(state.source?.fileKind).toBe("audio");
+    expect(state.source?.url).toBe("media://localhost/tmp/song.mp3");
+    unmount();
+    mediaPlayer.stop();
   });
 
   it("pdf 渲染 iframe", () => {
@@ -160,7 +179,9 @@ describe("PreviewView 媒体渲染", () => {
     );
     const iframe = container.querySelector("iframe");
     expect(iframe).not.toBeNull();
-    expect(iframe?.getAttribute("src")).toBe("asset://localhost/tmp/doc.pdf");
+    expect(iframe?.getAttribute("src")).toBe(
+      "asset://localhost/%2Ftmp%2Fdoc.pdf",
+    );
   });
 
   it("媒体无路径显示占位", () => {
@@ -403,4 +424,9 @@ describe("图片键盘缩放（Cmd+=）", () => {
       expect(parseFloat(img.style.width)).toBeGreaterThan(before);
     });
   });
+});
+
+// 清理常驻播放器状态，避免媒体预览测试间泄漏
+afterEach(() => {
+  mediaPlayer.stop();
 });

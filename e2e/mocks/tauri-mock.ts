@@ -35,25 +35,85 @@ const mockResponses: Record<string, unknown> = {
   save_as_file: { path: "/Users/test/documents/新文件.md" },
   flatten_files: {
     entries: [
-      { name: "测试文档.md", path: "/Users/test/测试文档.md", relative_path: "测试文档.md", is_dir: false, size: 350 },
-      { name: "另一个.md", path: "/Users/test/另一个.md", relative_path: "另一个.md", is_dir: false, size: 40 },
-      { name: "笔记", path: "/Users/test/笔记", relative_path: "笔记", is_dir: true, size: 0 },
-      { name: "周报.md", path: "/Users/test/笔记/周报.md", relative_path: "笔记/周报.md", is_dir: false, size: 120 },
-      { name: "会议.md", path: "/Users/test/笔记/会议.md", relative_path: "笔记/会议.md", is_dir: false, size: 200 },
+      {
+        name: "测试文档.md",
+        path: "/Users/test/测试文档.md",
+        relative_path: "测试文档.md",
+        is_dir: false,
+        size: 350,
+      },
+      {
+        name: "另一个.md",
+        path: "/Users/test/另一个.md",
+        relative_path: "另一个.md",
+        is_dir: false,
+        size: 40,
+      },
+      {
+        name: "笔记",
+        path: "/Users/test/笔记",
+        relative_path: "笔记",
+        is_dir: true,
+        size: 0,
+      },
+      {
+        name: "周报.md",
+        path: "/Users/test/笔记/周报.md",
+        relative_path: "笔记/周报.md",
+        is_dir: false,
+        size: 120,
+      },
+      {
+        name: "会议.md",
+        path: "/Users/test/笔记/会议.md",
+        relative_path: "笔记/会议.md",
+        is_dir: false,
+        size: 200,
+      },
     ],
     truncated: false,
   },
   pick_folder: "/Users/test/documents",
   read_directory: {
     entries: [
-      { name: "测试文档.md", path: "/Users/test/测试文档.md", is_dir: false, size: 350 },
-      { name: "另一个.md", path: "/Users/test/另一个.md", is_dir: false, size: 40 },
+      {
+        name: "测试文档.md",
+        path: "/Users/test/测试文档.md",
+        is_dir: false,
+        size: 350,
+      },
+      {
+        name: "另一个.md",
+        path: "/Users/test/另一个.md",
+        is_dir: false,
+        size: 40,
+      },
       { name: "笔记", path: "/Users/test/笔记", is_dir: true, size: 0 },
     ],
     path: "/Users/test",
   },
-  get_file_info: { path: "/Users/test/测试文档.md", size: 350, is_dir: false, modified: 1719000000 },
+  get_file_info: {
+    path: "/Users/test/测试文档.md",
+    size: 350,
+    is_dir: false,
+    modified: 1719000000,
+  },
   get_size_limits: [500000, 2000000],
+  register_media_path: null,
+  list_media_in_dir: [
+    {
+      path: "/Users/test/clip.mp4",
+      name: "clip.mp4",
+      kind: "video",
+      target: "",
+    },
+    {
+      path: "/Users/test/song.mp3",
+      name: "song.mp3",
+      kind: "audio",
+      target: "",
+    },
+  ],
 };
 
 // Mock invoke function
@@ -77,6 +137,25 @@ function mockInvoke(cmd: string, args?: Record<string, unknown>): unknown {
   if (cmd === "pick_folder") {
     return mockResponses.pick_folder;
   }
+  if (cmd === "register_media_path") {
+    return null;
+  }
+  if (cmd === "list_media_in_dir") {
+    return [
+      {
+        path: "/Users/test/clip.mp4",
+        name: "clip.mp4",
+        kind: "video",
+        target: "",
+      },
+      {
+        path: "/Users/test/song.mp3",
+        name: "song.mp3",
+        kind: "audio",
+        target: "",
+      },
+    ];
+  }
   // Default: return stored mock response
   if (cmd in mockResponses) {
     return mockResponses[cmd];
@@ -87,7 +166,10 @@ function mockInvoke(cmd: string, args?: Record<string, unknown>): unknown {
 
 // Set up the mock before any module loads
 (window as unknown as Record<string, unknown>).__TAURI_INTERNALS__ = {
-  metadata: { currentWindow: { label: "main" }, currentWebview: { label: "main" } },
+  metadata: {
+    currentWindow: { label: "main" },
+    currentWebview: { label: "main" },
+  },
   invoke: mockInvoke,
 };
 
