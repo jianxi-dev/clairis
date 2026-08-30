@@ -24,17 +24,39 @@
 - **WHEN** 预览 HTML 引用同目录或上级目录（`..`）的图片、CSS、字体
 - **THEN** 资源 SHALL 按相对路径经 asset 协议加载成功
 
+#### Scenario: HTML 文件沙箱预览
+
+- **WHEN** 用户打开一个 `.html` 文件
+- **THEN** iframe SHALL 经 asset 协议直载真实文件；脚本 SHALL 默认允许执行但与主窗口跨源隔离（旧 srcdoc + `script-src 'none'` 禁脚本方案已不再用于 asset 直载分支，无路径时 srcdoc 回退分支仍维持禁脚本）
+
+#### Scenario: 相对资源加载
+
+- **WHEN** 预览 HTML 引用同目录或上级目录（`..`）的图片、CSS、字体
+- **THEN** 资源 SHALL 按相对路径经 asset 协议加载成功
+
+#### Scenario: 本地媒体不受拦截
+
+- **WHEN** 预览 HTML 含 `<video>` / `<audio>` 本地媒体或 `@font-face` 本地字体
+- **THEN** 媒体与字体 SHALL 不受 CSP 拦截正常加载（`font-src` / `media-src` 放行 `asset:` / `media:`）
+
+#### Scenario: 内嵌页面延续禁脚本
+
+- **WHEN** 预览 HTML 通过 iframe 内嵌同目录子文档
+- **THEN** 内嵌子文档 SHALL 可加载，且与主窗口保持跨源隔离（脚本无法访问父页面 DOM、状态或 Tauri 命令）
+
 #### Scenario: 目录锚点导航
 
 - **WHEN** 用户点击预览内目录链接（`<a href="#id">`）
 - **THEN** iframe SHALL 滚动到对应锚点，不崩溃不白屏
 
-#### Scenario: 复杂 CSS 渲染
+#### Scenario: 复杂 CSS 样式渲染
 
 - **WHEN** 预览 HTML 含复杂 CSS（布局/动画/变量/`@font-face`/媒体查询/运行时生成样式）
 - **THEN** 样式 SHALL 完整呈现
 
-### Requirement: A-6 全局字号缩放（部分）
+## ADDED Requirements
+
+### Requirement: A-10 阅读宽度与标题配色
 
 预览阅读宽度 SHALL 默认为 880px（`min(880px, 可用宽度 - 48px)`），标题 SHALL 应用用户配置的标题配色（`headingColors`，经 CSS 变量注入，明暗主题均生效）。
 

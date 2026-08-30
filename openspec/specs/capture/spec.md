@@ -9,9 +9,7 @@
 - D-3 至 D-15 实施规格书：`docs/capture-overlay-SPEC.md`（Capture Overlay v5.5，P0 逐项覆盖；对应设计 capture-overlay-v5.3 + v5.4 + v5.5 增补）
 - D-1 至 D-2 与 D-6 至 D-9 登记来源：跟踪表标注的 `outline-quick-capture-final.md`
 - 需求基线：`docs/CORE-REQUIREMENTS-clairis.md` §三 快捷键体系（Cmd+Shift+. 系统级全局，热启动 < 50ms / 冷启动 < 200ms；Cmd+Shift+, Inspector；Cmd+Shift+E 大纲侧栏；Cmd+R Headings Palette）、§二 阶段矩阵；`docs/MVP-需求跟踪表.md` 模块 D（D-1 至 D-15 均标 ✅）
-
 ## Requirements
-
 ### Requirement: D-1 大纲侧栏
 
 应用 SHALL 提供 `Cmd+Shift+E` 打开的大纲侧栏：hover 时展开、可用图钉（Pin）固定展开，不占用标签页。
@@ -236,3 +234,4 @@ Inspector SHALL 支持 filter tabs 过滤、批量归档（batch archive）与�
 
 - **WHEN** 草稿内容全为空或全为空行时用户提交
 - **THEN** 应用 SHALL 不触发任何写入，不产生任何条目
+

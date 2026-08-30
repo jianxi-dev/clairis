@@ -8,22 +8,35 @@ file-management 域定义渐晰桌面端的文件管理基础能力：按格式�
 
 - 需求基线：`docs/CORE-REQUIREMENTS-clairis.md` §二 阶段矩阵（Phase M：打开文件、拖拽打开、新建文档、自动保存 2s debounce；Phase R：全部文件视图）、§三 快捷键体系（Cmd+O / Cmd+N）；`docs/MVP-需求跟踪表.md` 模块 C（C-1 至 C-5 均标 ✅）
 - C-5 批准设计（全部文件视图）：`docs/design/approved/navigation/spec.md` §3.2（经由统一文件面板呈现，面板整体规格见 navigation 域 B-3）
-
 ## Requirements
-
 ### Requirement: C-1 打开文件
 
-应用 SHALL 支持 `Cmd+O` 经由文件选择对话框打开文件，并按格式分流：文本类文件（`.md` / `.html` / `.txt` / `.py` / `.yaml` / `.json` / `.js` / `.ts` / `.css` / `.csv` 等）SHALL 以源码模式打开；媒体类文件（`.pdf` / `.jpg` / `.png` / `.gif` / `.mp4` / `.mov`）SHALL 以预览模式打开。
+应用 SHALL 支持 `Cmd+O` 经由文件选择对话框打开文件，并按格式分流：文本类文件（`.md` / `.html` / `.txt` / `.py` / `.yaml` / `.json` / `.js` / `.ts` / `.css` / `.csv` 等）SHALL 以源码模式打开；媒体类文件（`.pdf` / `.jpg` / `.png` / `.gif` / `.mp4` / `.mov`）SHALL 以预览模式打开。代码类文件（`.css` / `.py` / `.json` / `.js` / `.ts` / `.yaml` 等）SHALL 以编辑模式打开并呈现对应语法高亮；媒体类文件 SHALL 在预览模式渲染对应内容（图片显示、视频播放、PDF 内嵌查看），SHALL 禁止切换到编辑/源码模式，且 SHALL 禁止保存或自动保存回写（防止空内容破坏二进制文件）。
 
 #### Scenario: 文本类文件源码打开
 
 - **WHEN** 用户按 `Cmd+O` 选择一个 `.md`（或 `.py` / `.json` 等文本类）文件
 - **THEN** 该文件 SHALL 以源码/编辑模式打开
 
+#### Scenario: 代码类文件语法高亮
+
+- **WHEN** 用户按 `Cmd+O` 选择一个 `.py` / `.json` / `.js` / `.ts` / `.yaml` / `.css` 文件并进入编辑/源码模式
+- **THEN** 代码 SHALL 呈现对应语言的 CM6 语法高亮
+
 #### Scenario: 媒体类文件预览打开
 
 - **WHEN** 用户按 `Cmd+O` 选择一个 `.pdf`（或 `.png` / `.mp4` 等媒体类）文件
-- **THEN** 该文件 SHALL 以预览模式打开
+- **THEN** 该文件 SHALL 以预览模式打开：图片显示、视频可播放、PDF 内嵌可见
+
+#### Scenario: 媒体文件不可编辑
+
+- **WHEN** 用户打开媒体文件后尝试切换到编辑/源码模式（按钮或快捷键）
+- **THEN** 模式 SHALL 保持不变（仍为预览），编辑界面 SHALL 不出现
+
+#### Scenario: 媒体文件不写回
+
+- **WHEN** 用户打开媒体文件并触发保存或自动保存路径
+- **THEN** 该文件 SHALL 不被写入（内容保持原字节不变）
 
 ### Requirement: C-2 拖拽打开
 
@@ -75,3 +88,33 @@ file-management 域定义渐晰桌面端的文件管理基础能力：按格式�
 
 - **WHEN** 工作目录文件数超过 20
 - **THEN** 列表 SHALL 截断为 20 条并显示"显示全部 →"；点击后 SHALL 展开全部文件
+
+### Requirement: C-6 视频预览播放器
+
+应用 SHALL 以 `media://` 协议 Range 流式播放本地视频，播放器 SHALL 提供：自定义控制条、快捷键（空格 播放/暂停、`←`/`→` 快退/快进、`↑`/`↓` 音量、`F` 全屏、`M` 静音，仅播放器聚焦时生效）、记忆播放位置（再次打开提示并可跳转）、网页全屏。非 Tauri 环境（浏览器 dev / 无 mock e2e）打开视频 SHALL 优雅降级显示提示而非抛错白屏，与图片/PDF 占位行为一致。
+
+#### Scenario: 打开视频文件即播放
+
+- **WHEN** 用户打开 `.mp4` / `.mov` / `.webm` / `.m4v` / `.mkv` / `.avi` 视频文件
+- **THEN** 预览区 SHALL 渲染播放器并自动播放，视频经 `media://` 协议 Range 流式加载（大文件可 seek，不整文件读入前端内存）
+
+#### Scenario: 快捷键控制播放
+
+- **WHEN** 播放器聚焦时按下 空格 / `←`/`→` / `↑`/`↓` / `F` / `M`
+- **THEN** SHALL 执行对应 播放暂停 / 快退快进 / 音量 / 网页全屏 / 静音 操作，且不干扰编辑器快捷键
+
+#### Scenario: 记忆播放位置
+
+- **WHEN** 用户再次打开同一视频文件
+- **THEN** SHALL 提示上次播放位置并支持跳转继续播放
+
+#### Scenario: 网页全屏
+
+- **WHEN** 用户双击视频或按 `F` 键
+- **THEN** SHALL 切换网页全屏（铺满应用窗口，规避 WKWebView 原生全屏不可靠问题）
+
+#### Scenario: Web 模式优雅降级
+
+- **WHEN** 在无 Tauri 环境（浏览器 dev server / 无 mock e2e）打开视频文件
+- **THEN** SHALL 显示「无法预览」类提示而非抛出异常导致整页白屏，行为与图片/PDF 降级一致
+
