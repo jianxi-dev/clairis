@@ -200,6 +200,175 @@ test("PDF 查看器翻页与搜索", async ({ page }) => {
     .toContain("1 个结果");
 });
 
+test("PDF 查看器隐藏未启用功能（无批注/导出/全屏等，打印弹窗无包含批注）", async ({
+  page,
+}) => {
+  await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
+  await page.goto(APP_URL, { waitUntil: "networkidle" });
+  await page.waitForSelector("header", { timeout: 10000 });
+
+  await openFile(page, "/Users/test/doc.pdf", "");
+  const viewer = page.locator("embedpdf-container");
+  await expect(viewer).toHaveCount(1);
+  await expect
+    .poll(() => viewer.locator("img[src^='blob:']").count())
+    .toBeGreaterThanOrEqual(1);
+
+  // shadow root 内按 data-epdf-i 判断 item 是否可见（display:none / 0 尺寸视为隐藏）
+  const isItemHidden = (itemId: string) =>
+    page.evaluate((id) => {
+      const sr = document.querySelector("embedpdf-container")?.shadowRoot;
+      const el = sr?.querySelector<HTMLElement>(`[data-epdf-i="${id}"]`);
+      if (!el) return true;
+      const r = el.getBoundingClientRect();
+      return (
+        r.width === 0 ||
+        r.height === 0 ||
+        getComputedStyle(el).display === "none"
+      );
+    }, itemId);
+
+  const visibleShadowText = () =>
+    page.evaluate(() => {
+      const sr = document.querySelector("embedpdf-container")?.shadowRoot;
+      if (!sr) return "";
+      const parts: string[] = [];
+      const walk = (root: Element) => {
+        for (const el of Array.from(root.querySelectorAll("*"))) {
+          const r = (el as HTMLElement).getBoundingClientRect();
+          if (r.width > 0 && r.height > 0 && (el as HTMLElement).innerText) {
+            parts.push((el as HTMLElement).innerText);
+          }
+        }
+      };
+      walk(sr);
+      return parts.join("\n");
+    });
+
+  // 范围外功能全部不可见：批注/形状/插入/表单/遮蔽模式标签、「评论」按钮
+  for (const id of [
+    "annotate-mode",
+    "shapes-mode",
+    "insert-mode",
+    "form-mode",
+    "redact-mode",
+    "comment-button",
+  ]) {
+    expect(await isItemHidden(id), `应隐藏 ${id}`).toBe(true);
+  }
+
+  // 文件选项菜单：保留 打印，无 导出/全屏/安全/截图
+  await viewer.locator("button[aria-label='文件选项']").click();
+  await page.waitForTimeout(400);
+  const docMenuVisible = await visibleShadowText();
+  expect(docMenuVisible).toContain("打印");
+  for (const forbidden of ["导出", "全屏", "安全", "截图"]) {
+    expect(docMenuVisible, `文件菜单不应含「${forbidden}」`).not.toContain(
+      forbidden,
+    );
+  }
+  await page.screenshot({ path: "./test-results/f4-doc-menu.png" });
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(300);
+
+  // 页面设置菜单：保留 旋转/滚动，无 全屏/双页
+  await viewer.locator("button[aria-label='页面设置']").click();
+  await page.waitForTimeout(400);
+  const pageMenuVisible = await visibleShadowText();
+  expect(pageMenuVisible).toContain("顺时针旋转");
+  expect(pageMenuVisible).toContain("垂直滚动");
+  for (const forbidden of ["全屏", "双页"]) {
+    expect(pageMenuVisible, `页面设置不应含「${forbidden}」`).not.toContain(
+      forbidden,
+    );
+  }
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(300);
+
+  // 打印设置弹窗：无「包含批注」复选框（F4 指名证据），其余控件仍在
+  await page.keyboard.press("Control+p");
+  await page.waitForTimeout(1500);
+  const printVisible = await visibleShadowText();
+  expect(printVisible).toContain("打印设置");
+  expect(printVisible).toContain("所有页");
+  expect(printVisible).toContain("打印");
+  expect(printVisible).not.toContain("包含批注");
+  // 打印弹窗内不应存在可见的 checkbox input
+  const visibleCheckbox = await page.evaluate(() => {
+    const sr = document.querySelector("embedpdf-container")?.shadowRoot;
+    if (!sr) return 0;
+    return Array.from(
+      sr.querySelectorAll<HTMLInputElement>("input[type='checkbox']"),
+    ).filter((i) => {
+      const r = i.getBoundingClientRect();
+      return r.width > 0 && r.height > 0;
+    }).length;
+  });
+  expect(visibleCheckbox).toBe(0);
+  await page.screenshot({ path: "./test-results/f4-print-modal.png" });
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(400);
+
+  // 保留功能仍可用：搜索、旋转、缩略图侧栏
+  await viewer.locator("button[aria-label='搜索']").click();
+  const searchInput = viewer.locator("input[placeholder='搜索']");
+  await expect(searchInput).toHaveCount(1);
+  await searchInput.fill("ClairisPDFTest");
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          document.querySelector("embedpdf-container")?.shadowRoot
+            ?.textContent ?? "",
+      ),
+    )
+    .toContain("1 个结果");
+  await page.screenshot({ path: "./test-results/f4-search.png" });
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(300);
+
+  // 旋转：顺时针旋转后页面容器由纵向变为横向（w>h），T10 断言法
+  const pageOrient = () =>
+    page.evaluate(() => {
+      const sr = document.querySelector("embedpdf-container")?.shadowRoot;
+      if (!sr) return null;
+      const imgs = Array.from(sr.querySelectorAll("img")).filter((i) =>
+        i.src.startsWith("blob:"),
+      );
+      if (!imgs.length) return null;
+      const img = imgs.reduce((a, b) =>
+        (a as HTMLElement).getBoundingClientRect().width >
+        (b as HTMLElement).getBoundingClientRect().width
+          ? a
+          : b,
+      );
+      const r = (img as HTMLElement).getBoundingClientRect();
+      return { w: Math.round(r.width), h: Math.round(r.height) };
+    });
+  expect(await pageOrient()).toMatchObject({ w: expect.any(Number) });
+  const portrait = (await pageOrient())!;
+  expect(portrait.w).toBeLessThan(portrait.h);
+  await viewer.locator("button[aria-label='页面设置']").click();
+  await page.waitForTimeout(300);
+  await viewer.getByText("顺时针旋转", { exact: true }).click();
+  await page.waitForTimeout(900);
+  const landscape = (await pageOrient())!;
+  expect(landscape.w).toBeGreaterThan(landscape.h);
+
+  // 缩略图侧栏：大纲与书签 → sidebar-panel 渲染 blob 缩略图
+  await viewer.locator("button[aria-label='大纲与书签']").click();
+  await page.waitForTimeout(600);
+  const thumbImgs = await page.evaluate(() => {
+    const sr = document.querySelector("embedpdf-container")?.shadowRoot;
+    if (!sr) return 0;
+    return Array.from(sr.querySelectorAll("img")).filter(
+      (i) => (i as HTMLElement).getBoundingClientRect().width > 20,
+    ).length;
+  });
+  expect(thumbImgs).toBeGreaterThanOrEqual(1);
+  await page.screenshot({ path: "./test-results/f4-thumbnails.png" });
+});
+
 test("编辑态长行自动换行（无水平滚动）", async ({ page }) => {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto(APP_URL, { waitUntil: "networkidle" });

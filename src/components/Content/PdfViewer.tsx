@@ -1,10 +1,65 @@
 import { useEffect, useState } from "react";
 import { PDFViewer } from "@embedpdf/react-pdf-viewer";
+import type { EmbedPdfContainer } from "@embedpdf/snippet";
 import { loadPdfBytes } from "../../utils/pdfSource";
 import { isTauriEnv } from "../../utils/tauri";
 
 interface PdfViewerProps {
   filePath: string;
+}
+
+/**
+ * 裁剪未启用功能（范围外 UI）：snippet 默认装配全部 28 插件，
+ * 不显式禁用则批注/导出/全屏/签名/表单/图章/附件/截图等 UI 全部暴露。
+ * 类别名经源码实证（各 schema item 的 categories 数组），见
+ * .omo/evidence/pdf-viewer-upgrade/f4-fix-evidence/01-categories-inventory.txt。
+ *
+ * 禁用：
+ * - annotation      全部批注层级（批注/形状模式、批注工具栏、评论、批注图章/签名等）
+ * - panel-comment   工具栏「评论」按钮
+ * - redaction       遮蔽模式与遮蔽面板
+ * - form            表单模式与表单工具
+ * - insert          插入模式（签名/图章/图片/附件插入，无顶层 signature/stamp/attachment 类别）
+ * - document-export 文件菜单「导出」
+ * - document-fullscreen 页面设置/文件菜单「全屏」
+ * - document-capture 文件菜单「截图」
+ * - capture         截图工具
+ * - document-protect 文件菜单「安全/保护」
+ * - spread          双页/跨页视图
+ *
+ * 保留：search / thumbnail / outline / zoom / pan / scroll / rotate /
+ * print / selection / bookmark / history（均不在禁用列表内）。
+ */
+const DISABLED_CATEGORIES = [
+  "annotation",
+  "panel-comment",
+  "redaction",
+  "form",
+  "insert",
+  "document-export",
+  "document-fullscreen",
+  "document-capture",
+  "capture",
+  "document-protect",
+  "spread",
+];
+
+/**
+ * 最小补充（disabledCategories 无法覆盖）：打印弹窗的「包含批注」复选框是
+ * snippet 打印组件内硬编码 JSX（非 schema item，不受类别裁剪影响）。
+ * 用一条仅命中该复选框的 CSS（其 span 类名 `text-fg-secondary text-sm font-medium`
+ * 在整份 bundle 中唯一）注入 shadow root 隐藏。来源实证见
+ * .omo/evidence/pdf-viewer-upgrade/f4-fix-evidence/03-print-modal-css.txt。
+ */
+function hidePrintAnnotationOption(container: EmbedPdfContainer): void {
+  const shadow = container.shadowRoot;
+  if (!shadow) return;
+  if (shadow.querySelector("style[data-clairis-pdf-print]")) return;
+  const style = document.createElement("style");
+  style.setAttribute("data-clairis-pdf-print", "");
+  style.textContent =
+    "label:has(> span.text-fg-secondary.text-sm.font-medium){display:none !important}";
+  shadow.appendChild(style);
 }
 
 type PdfLoadState =
@@ -90,12 +145,14 @@ export default function PdfViewer({ filePath }: PdfViewerProps) {
         fonts: { ui: null, signature: null },
         stamp: { defaultLibrary: false, manifests: [] },
         i18n: { defaultLocale: "zh-CN" },
+        disabledCategories: DISABLED_CATEGORIES,
         documentManager: {
           initialDocuments: [
             { buffer: state.buffer, name: fileNameFromPath(filePath) },
           ],
         },
       }}
+      onInit={hidePrintAnnotationOption}
       style={{ width: "100%", height: "100%" }}
     />
   );
