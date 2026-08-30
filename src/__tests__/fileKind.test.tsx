@@ -135,17 +135,23 @@ describe("PreviewView 媒体渲染", () => {
     expect(img?.getAttribute("src")).toBe("asset://localhost/tmp/pic.png");
   });
 
-  it("video 用 media:// 协议直连（Range 流式），带 controls 与 autoPlay", () => {
+  it("video 用 media:// 协议直连（Range 流式），渲染 ArtPlayer 播放器（自定义控制条+记忆播放）", () => {
     const { container } = render(
       <PreviewView content="" fileKind="video" filePath="/tmp/clip.mp4" />,
     );
-    const video = container.querySelector("video");
+    // ArtPlayer 挂载容器（自带控制条 / 全屏按钮 / 快捷键）
+    const player = container.querySelector(".art-video-player");
+    expect(player).not.toBeNull();
+    const video = player?.querySelector("video");
     expect(video).not.toBeNull();
     expect(video?.getAttribute("src")).toBe(
       "media://localhost/%2Ftmp%2Fclip.mp4",
     );
-    expect(video?.hasAttribute("controls")).toBe(true);
-    expect(video?.hasAttribute("autoPlay")).toBe(true);
+    // ArtPlayer 用自定义控制条，不依赖原生 controls 属性
+    expect(video?.hasAttribute("controls")).toBe(false);
+    // 快捷键提示条（空格/方向键/F/M）常驻显示在播放器外部
+    expect(container.textContent).toContain("播放 / 暂停");
+    expect(container.textContent).toContain("全屏");
   });
 
   it("pdf 渲染 iframe", () => {

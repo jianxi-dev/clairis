@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { convertFileSrc, invoke } from "@tauri-apps/api/core";
+import { convertFileSrc } from "@tauri-apps/api/core";
 import { renderMarkdown, renderMermaid, takeDarkVars } from "../../renderers";
 import HtmlPreview from "./HtmlPreview";
+import VideoPlayer from "./VideoPlayer";
 import ReaderSettingsPopover from "./ReaderSettingsPopover";
 import { useEditorStore } from "../../stores/editorStore";
 import { applyReaderSkin } from "../../hooks/useConfig";
@@ -140,7 +141,7 @@ export default function PreviewView({
     return fileKind === "image" ? (
       <ImagePreview filePath={filePath} />
     ) : (
-      <VideoPreview filePath={filePath} />
+      <VideoPlayer filePath={filePath} url={mediaUrlForPath(filePath)} />
     );
   }
 
@@ -447,121 +448,6 @@ function ImagePreview({ filePath }: { filePath: string }) {
       >
         滚轮/双指捏合缩放 · 双击复位
       </div>
-    </div>
-  );
-}
-
-function VideoPreview({ filePath }: { filePath: string }) {
-  const [error, setError] = useState<string | null>(null);
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const winFullscreenRef = useRef(false);
-
-  // 打开预览时把路径注册到 media 协议白名单
-  useEffect(() => {
-    void invoke("register_media_path", { path: filePath }).catch(() => {});
-  }, [filePath]);
-
-  const setWindowFullscreen = useCallback(async (on: boolean) => {
-    const { getCurrentWindow } = await import("@tauri-apps/api/window");
-    await getCurrentWindow().setFullscreen(on);
-    winFullscreenRef.current = on;
-  }, []);
-
-  // Esc 退出（Tauri 窗口全屏时浏览器 fullscreenchange 不触发）
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && winFullscreenRef.current) {
-        void setWindowFullscreen(false);
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [setWindowFullscreen]);
-
-  const toggleFullscreen = useCallback(async () => {
-    const v = videoRef.current;
-    if (!v) return;
-    const wkv = v as HTMLVideoElement & {
-      webkitEnterFullscreen?: () => void;
-      webkitExitFullscreen?: () => void;
-      webkitDisplayingFullscreen?: boolean;
-    };
-
-    // 退出路径
-    if (document.fullscreenElement) {
-      await document.exitFullscreen().catch(() => {});
-      return;
-    }
-    if (winFullscreenRef.current) {
-      await setWindowFullscreen(false);
-      return;
-    }
-    if (wkv.webkitDisplayingFullscreen) {
-      wkv.webkitExitFullscreen?.();
-      return;
-    }
-
-    // 进入路径：HTML5 Fullscreen → WebKit → Tauri 窗口全屏
-    if (v.requestFullscreen) {
-      const p = v.requestFullscreen() as unknown;
-      if (p && typeof (p as { catch?: unknown }).catch === "function") {
-        await (p as Promise<void>).catch(() => {});
-      }
-      await new Promise((r) => setTimeout(r, 120));
-      if (document.fullscreenElement) return;
-    }
-    if (wkv.webkitEnterFullscreen) {
-      wkv.webkitEnterFullscreen();
-      await new Promise((r) => setTimeout(r, 120));
-      if (wkv.webkitDisplayingFullscreen) return;
-    }
-    await setWindowFullscreen(true);
-  }, [setWindowFullscreen]);
-
-  return (
-    <div
-      style={{
-        position: "relative",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        height: "100%",
-        padding: 16,
-      }}
-    >
-      <video
-        ref={videoRef}
-        src={mediaUrlForPath(filePath)}
-        controls
-        autoPlay
-        playsInline
-        preload="auto"
-        onError={() => {
-          setError("视频加载失败（可能编码不受支持或文件不可访问）");
-        }}
-        onLoadedMetadata={(e) => {
-          const v = e.currentTarget;
-          v.play().catch(() => {
-            // 自动播放被拦（无用户手势）→ 用户点击播放
-            void v.play().catch(() => {});
-          });
-        }}
-        onDoubleClick={() => void toggleFullscreen()}
-        style={{ maxWidth: "100%", maxHeight: "100%", cursor: "pointer" }}
-      />
-      {error && (
-        <div
-          style={{
-            position: "absolute",
-            padding: "24px",
-            textAlign: "center",
-            color: "#666",
-            background: "rgba(255,255,255,0.9)",
-          }}
-        >
-          {error}
-        </div>
-      )}
     </div>
   );
 }
