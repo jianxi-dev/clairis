@@ -51,7 +51,7 @@ Clairis 面向中文用户，维护者母语为中文。以下为**硬约定**�
 
 ## E2E（Playwright）
 
-- 用**系统 Chrome**（`channel: "chrome"`），无需 `playwright install`；webServer 自动起 dev server 并复用已运行的实例。
+- 用 **Playwright 自带 Chromium**（首次运行需 `npx playwright install chromium`；不用 `channel: "chrome"`——系统 Chrome 会 spawn GoogleUpdater 孤儿进程导致 worker teardown 偶发 300s 强杀）；webServer 自动起 dev server 并复用已运行的实例。
 - 两套配置：
   - `npx playwright test` — `e2e/*.spec.ts`，浏览器层 UI 测试。
   - `npx playwright test --config=playwright.tauri.config.ts` — `e2e/tauri/`，通过 `addInitScript` 注入 `e2e/mocks/tauri-mock.js` 模拟 Tauri IPC。
