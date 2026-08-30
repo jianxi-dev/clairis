@@ -8,7 +8,6 @@ export default defineConfig({
     baseURL: "http://localhost:1420",
     headless: true,
     viewport: { width: 1200, height: 800 },
-    channel: "chrome", // Use system Chrome, skip Playwright browser download
   },
   webServer: {
     command: "npm run dev",
