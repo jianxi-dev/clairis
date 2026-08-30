@@ -48,6 +48,27 @@ describe("renderMarkdown Callout", () => {
     expect(html).not.toContain("<blockquote");
   });
 
+  it("自定义类型名（含符号）识别为 callout", () => {
+    const html = renderMarkdown("> [!TL;DR] 太长不看\n> 内容");
+    expect(html).toContain('data-callout="tl;dr"');
+    expect(html).toContain("太长不看");
+    expect(html).not.toContain("<blockquote");
+  });
+
+  it("[! 后带空格的类型名识别为 callout", () => {
+    const html = renderMarkdown("> [! TL] 要点\n> 内容");
+    expect(html).toContain('data-callout="tl"');
+    expect(html).toContain("要点");
+    expect(html).not.toContain("<blockquote");
+  });
+
+  it("] 前带尾部空格的类型名识别为 callout", () => {
+    const html = renderMarkdown("> [!NOTE ] 尾部空格\n> 内容");
+    expect(html).toContain('data-callout="note"');
+    expect(html).toContain("尾部空格");
+    expect(html).not.toContain("<blockquote");
+  });
+
   it("未写标题时用类型默认名", () => {
     const html = renderMarkdown("> [!TIP]\n> 正文内容");
     expect(html).toContain('data-callout="tip"');
@@ -209,5 +230,72 @@ describe("renderMarkdown 内嵌 HTML 深色适配", () => {
     renderMarkdown('<div style="background-color:#1a1a1a">深底</div>');
     expect(Object.keys(takeDarkVars())).toHaveLength(0);
     expect(light).toBeTruthy();
+  });
+});
+
+describe("renderMarkdown YAML frontmatter", () => {
+  it("文档开头的 frontmatter 不参与渲染（Obsidian 阅读视图默认隐藏）", () => {
+    const html = renderMarkdown("---\ntags:\n  - 笔记\n---\n# 标题\n\n正文");
+    expect(html).not.toContain("tags:");
+    expect(html).not.toContain("笔记");
+    expect(html).toContain("<h1>标题</h1>");
+    expect(html).toContain("正文");
+  });
+
+  it("带 BOM 前缀的 frontmatter 同样剥离", () => {
+    const html = renderMarkdown("\uFEFF---\ntags:\n  - 笔记\n---\n# 标题");
+    expect(html).not.toContain("tags:");
+    expect(html).toContain("<h1>标题</h1>");
+  });
+
+  it("非 frontmatter 的 --- 水平线仍正常渲染", () => {
+    const html = renderMarkdown("# 标题\n\n---\n\n正文");
+    expect(html).toContain("<hr");
+    expect(html).toContain("<h1>标题</h1>");
+  });
+});
+
+describe("renderMarkdown 块级 HTML 闭合", () => {
+  it("</div> 闭合后紧跟的 markdown 不被吞进 HTML 块", () => {
+    const html = renderMarkdown(
+      '<div style="color:red">\n  <div>卡片</div>\n</div>\n\n### 后续标题',
+    );
+    expect(html).toContain("<h3>后续标题</h3>");
+    expect(html).toContain("卡片");
+  });
+
+  it("嵌套 div 深度匹配，HTML 卡片与其后 markdown 互不干扰", () => {
+    const md =
+      '<div style="margin:20px 0;">\n' +
+      '  <div style="padding:20px;">\n' +
+      "    <div>❓ 问题一</div>\n" +
+      "    <div>✅ 回答一</div>\n" +
+      "  </div>\n" +
+      "</div>\n\n" +
+      "## 📞 Q&A\n\n" +
+      "正文段落";
+    const html = renderMarkdown(md);
+    expect(html).toContain("❓ 问题一");
+    expect(html).toContain("<h2>📞 Q&amp;A</h2>");
+    expect(html).toContain("<p>正文段落</p>");
+    expect(html).not.toContain("&lt;div");
+  });
+
+  it("块内自闭合标签不影响深度计数", () => {
+    const md =
+      '<div style="margin:20px 0;">\n' +
+      '  <div class="a"/>\n' +
+      "  <div>内容</div>\n" +
+      "</div>\n\n" +
+      "## 后续标题";
+    const html = renderMarkdown(md);
+    expect(html).toContain("<h2>后续标题</h2>");
+    expect(html).toContain("内容");
+  });
+
+  it("未闭合的 HTML 块按空行兜底结束（保持原有行为）", () => {
+    const html = renderMarkdown("<div>\n内容\n\n## 标题");
+    expect(html).toContain("<div>");
+    expect(html).toContain("<h2>标题</h2>");
   });
 });

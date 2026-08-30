@@ -8,6 +8,22 @@ import {
   takeMathHtml,
 } from "./math";
 
+// ── 块级 HTML 深度闭合（对齐 Obsidian 的 HTML 块行为）────────
+// marked 的 html 正则把块级标签一律吞到下一个空行，用户写
+// `<div>…</div>` 卡片后再接 markdown 时，后续内容会整段被吞。
+const BLOCK_HTML_TAGS =
+  "address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer|form|frame|frameset|h[1-6]|head|header|hr|html|iframe|legend|li|link|main|menu|menuitem|meta|nav|noframes|ol|optgroup|option|p|param|search|section|summary|table|tbody|td|tfoot|th|thead|title|tr|track|ul";
+
+const OPEN_BLOCK_HTML_RE = new RegExp(
+  `^ {0,3}<(${BLOCK_HTML_TAGS})(?:\\s[^>]*)?>(?=[ \\t]*(?:\\n|$))`,
+  "i",
+);
+
+// 匹配 <tag …> / </tag> / <tag …/> 完整标签，用于嵌套深度计数。
+// 自闭合（<tag/>）与闭标签都让深度减一或归零，开标签深度加一。
+const CLOSE_TAG_RE = (tag: string) =>
+  new RegExp(`<\\/?${tag}(?:\\s[^>]*?)?\\/?>`, "gi");
+
 /**
  * 允许的标签：markdown 基本集 + 富文本安全子集（支持 md 内嵌 HTML/CSS）。
  * 不放开 script / iframe / form / style 标签与事件属性（DOMPurify 默认拒绝）。
@@ -108,6 +124,53 @@ function escapeHtml(s: string): string {
 
 marked.use({
   extensions: [mathBlockExtension, mathInlineExtension],
+  tokenizer: {
+    html(src: string) {
+      // 块级 HTML：独立开标签行 → 深度匹配闭合标签处结束（空行兜底）。
+      // marked 默认把块级 HTML 吞到下一个空行（CommonMark），导致
+      // `</div>` 后紧跟的 markdown 语法被吞、孤立的 ``` 变成未闭合围栏
+      //（Obsidian 用户的 HTML 卡片 + markdown 混排会因此整个错乱）。
+      const open = OPEN_BLOCK_HTML_RE.exec(src);
+      if (open) {
+        const tag = open[1].toLowerCase();
+        const re = CLOSE_TAG_RE(tag);
+        let depth = 1;
+        const i = open[0].length;
+        const parts: string[] = [];
+        for (const line of src.slice(i).split("\n")) {
+          if (parts.length > 0 && /^\s*$/.test(line)) break;
+          parts.push(line);
+          re.lastIndex = 0;
+          let mm: RegExpExecArray | null;
+          while ((mm = re.exec(line))) {
+            const t = mm[0];
+            if (t.startsWith("</")) depth -= 1;
+            else if (!t.endsWith("/>")) depth += 1;
+          }
+          if (depth <= 0) break;
+        }
+        const raw = src.slice(0, i) + parts.join("\n");
+        return { type: "html", block: true, raw, pre: false, text: raw };
+      }
+      // 其余 HTML（注释 / script/pre/style / 行内标签）走 marked 默认
+      const rules = (
+        this as unknown as {
+          rules: { block: { html: RegExp } };
+        }
+      ).rules;
+      const cap = rules.block.html.exec(src);
+      if (cap) {
+        return {
+          type: "html",
+          block: true,
+          raw: cap[0],
+          pre: cap[1] === "pre" || cap[1] === "script" || cap[1] === "style",
+          text: cap[0],
+        };
+      }
+      return undefined;
+    },
+  },
   renderer: {
     code(code: string, language?: string) {
       const lang = (language ?? "").trim().split(/\s+/)[0] || "";
@@ -153,13 +216,19 @@ function registerCheckboxGuard(): void {
   });
 }
 
+// 文档开头的 YAML frontmatter：Obsidian 阅读视图默认隐藏，不参与渲染。
+// 剥离后 `---` 不会再被 marked 解析成 hr、`tags:` 解析成标题。
+// \uFEFF? 容忍 BOM 前缀（Obsidian 文件常带）。
+const FRONTMATTER_RE = /^\uFEFF?---\s*\n[\s\S]*?\n---\s*(?:\n|$)/;
+
 export function renderMarkdown(content: string): string {
   if (!content) return "";
 
   registerCheckboxGuard();
   resetMathStore();
 
-  const raw = marked.parse(content, { async: false }) as string;
+  const body = content.replace(FRONTMATTER_RE, "");
+  const raw = marked.parse(body, { async: false }) as string;
   const clean = DOMPurify.sanitize(raw, SANITIZE_CONFIG);
   return postProcess(clean);
 }
@@ -181,6 +250,10 @@ function postProcess(html: string): string {
 }
 
 // ── Callout ────────────────────────────────────────────
+// 类型名对齐 Obsidian：允许字母数字与 -_/.; 等符号，且 [! 后、
+// ] 前可带空白（如 [!TL;DR]、[! TL]、[!NOTE ]），大小写不敏感。
+const CALLOUT_HEAD = /^\[!\s*([^\]\r\n]+?)\s*\]([+-]?)/;
+
 const CALLOUT_LABELS: Record<string, string> = {
   note: "注释",
   info: "信息",
@@ -205,8 +278,6 @@ const CALLOUT_LABELS: Record<string, string> = {
   quote: "引用",
   cite: "引述",
 };
-
-const CALLOUT_HEAD = /^\[!([A-Za-z]+)\]([+-]?)/;
 
 function convertCallouts(doc: Document): void {
   doc.querySelectorAll("blockquote").forEach((bq) => {
