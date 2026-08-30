@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { PDFViewer } from "@embedpdf/react-pdf-viewer";
 import { loadPdfBytes } from "../../utils/pdfSource";
+import { isTauriEnv } from "../../utils/tauri";
 
 interface PdfViewerProps {
   filePath: string;
@@ -17,9 +18,17 @@ type PdfLoadState =
  * 配置为离线自托管（wasm 本地、禁用 CDN 图章/字体、主线程模式）。
  */
 export default function PdfViewer({ filePath }: PdfViewerProps) {
-  const [state, setState] = useState<PdfLoadState>({ status: "loading" });
+  // 非 Tauri 环境同步短路为错误态：loadPdfBytes 的降级是异步的，
+  // 浏览器 dev / jsdom 下首帧会闪「正在加载 PDF…」再变错误态。
+  // 文案与 loadPdfBytes 的降级文案保持一致。
+  const [state, setState] = useState<PdfLoadState>(() =>
+    isTauriEnv()
+      ? { status: "loading" }
+      : { status: "error", error: "无法预览 PDF：需在 Tauri 桌面环境中运行" },
+  );
 
   useEffect(() => {
+    if (!isTauriEnv()) return; // 非 Tauri 已在初始 state 短路为错误态
     let cancelled = false;
 
     loadPdfBytes(filePath).then((result) => {

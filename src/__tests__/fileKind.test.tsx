@@ -173,15 +173,14 @@ describe("PreviewView 媒体渲染", () => {
     mediaPlayer.stop();
   });
 
-  it("pdf 渲染 iframe", () => {
+  it("pdf 渲染 PdfViewer（加载态，非 iframe）", () => {
     const { container } = render(
       <PreviewView content="" fileKind="pdf" filePath="/tmp/doc.pdf" />,
     );
-    const iframe = container.querySelector("iframe");
-    expect(iframe).not.toBeNull();
-    expect(iframe?.getAttribute("src")).toBe(
-      "asset://localhost/%2Ftmp%2Fdoc.pdf",
-    );
+    // T4 起 pdf 分支走 PdfViewer（EmbedPDF 查看器），不再渲染 iframe；
+    // 同步断言时字节读取未完成，处于加载态
+    expect(container.querySelector("iframe")).toBeNull();
+    expect(container.textContent).toContain("正在加载 PDF…");
   });
 
   it("媒体无路径显示占位", () => {
@@ -381,7 +380,9 @@ describe("HTML/PDF 视口缩放（Cmd+=/-/0）", () => {
     rerender(
       <PreviewView content="%PDF-1.4" fileKind="pdf" filePath="/tmp/a.pdf" />,
     );
-    expect(container.querySelector("iframe")).not.toBeNull();
+    // T4 起 pdf 分支走 PdfViewer（无 iframe），同步断言时处于加载态
+    expect(container.querySelector("iframe")).toBeNull();
+    expect(container.textContent).toContain("正在加载 PDF…");
     rerender(
       <PreviewView content="# back" fileKind="markdown" filePath="/tmp/a.md" />,
     );

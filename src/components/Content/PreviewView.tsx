@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { renderMarkdown, renderMermaid, takeDarkVars } from "../../renderers";
 import HtmlPreview from "./HtmlPreview";
+import PdfViewer from "./PdfViewer";
 import ReaderSettingsPopover from "./ReaderSettingsPopover";
 import { mediaPlayer } from "./mediaPlayerState";
 import { useEditorStore } from "../../stores/editorStore";
@@ -150,11 +151,21 @@ export default function PreviewView({
     }
   }, [content, fileKind]);
 
-  // 图片/视频/音频/HTML/PDF 保持各自渲染（HTML/PDF 用整体缩放，避免重排偏移）
-  if (fileKind === "html" || fileKind === "pdf") {
+  // 图片/视频/音频/HTML/PDF 保持各自渲染（HTML 用整体缩放，避免重排偏移）
+  if (fileKind === "html") {
     return (
       <FramePreview content={content} fileKind={fileKind} filePath={filePath} />
     );
+  }
+  if (fileKind === "pdf") {
+    if (!filePath) {
+      return (
+        <div style={{ padding: "24px", textAlign: "center", color: "#666" }}>
+          无法预览：文件路径缺失
+        </div>
+      );
+    }
+    return <PdfViewer filePath={filePath} />;
   }
   if (fileKind === "image" || fileKind === "video" || fileKind === "audio") {
     if (!filePath) {
@@ -242,7 +253,7 @@ function useFrameScale() {
   return { scale, onWheel, onDoubleClick: reset };
 }
 
-/** HTML/PDF 预览帧：iframe 元素 zoom 整体缩放（不重排，避免视口变宽导致内容偏移） */
+/** HTML 预览帧：iframe 元素 zoom 整体缩放（不重排，避免视口变宽导致内容偏移） */
 function FramePreview({
   content,
   fileKind,
@@ -300,17 +311,7 @@ function FramePreview({
     >
       {fileKind === "html" ? (
         <HtmlPreview content={content} filePath={filePath} zoom={scale} />
-      ) : isTauriEnv() ? (
-        <iframe
-          src={convertFileSrc(filePath)}
-          title="PDF 预览"
-          style={{ zoom: scale, width: "100%", height: "100%", border: "none" }}
-        />
-      ) : (
-        <div style={{ padding: 24, textAlign: "center", color: "#666" }}>
-          无法预览 PDF：需在 Tauri 桌面环境中运行
-        </div>
-      )}
+      ) : null}
       <div
         style={{
           textAlign: "center",
