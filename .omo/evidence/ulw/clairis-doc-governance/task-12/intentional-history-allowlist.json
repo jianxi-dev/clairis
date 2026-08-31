@@ -1,0 +1,22 @@
+{
+  "_meta": {
+    "task": "clairis-doc-governance task-12",
+    "purpose": "活文档中保留的 intentional-history 裸路径提及登记表。每条均为『来源出处/历史存根说明』语境，目标文件 frontmatter status=superseded/archived、source_of_truth=historical（存根 redirect→docs/product/README.md），不作活入口裁定。任务 12 已把活目标 Markdown 链接统一改指新位置，仅保留这些具名历史引用以保证迁移可追踪性。",
+    "gate_semantics": "scan-links.mjs gate 对 (file, token) 命中本表者降级为 allowlisted-historical，不计为 legacy-live 违例"
+  },
+  "entries": [
+    { "file": "docs/product/vision.md", "token": "docs/CORE-REQUIREMENTS-clairis.md", "reason": "来源出处注：提炼自全量需求（历史原稿，已被 docs/product/ 取代；存根 redirect→docs/product/README.md）" },
+    { "file": "docs/product/principles.md", "token": "docs/CORE-REQUIREMENTS-clairis.md", "reason": "同上（§1.3 产品哲学来源）" },
+    { "file": "docs/product/users.md", "token": "docs/CORE-REQUIREMENTS-clairis.md", "reason": "同上（§1.4 目标用户来源）" },
+    { "file": "docs/product/scope.md", "token": "docs/CORE-REQUIREMENTS-clairis.md", "reason": "同上（§0.2/§0.3/§1.2/§1.5/§十一 来源）" },
+    { "file": "docs/delivery/roadmap.md", "token": "docs/CORE-REQUIREMENTS-clairis.md", "reason": "同上（§0.2/§1.5 阶段摘要来源）" },
+    { "file": "docs/DESIGN-PHILOSOPHY.md", "token": "docs/CORE-REQUIREMENTS-clairis.md", "reason": "文件引用体系表：标注原全量需求文档已被 docs/product/ + openspec/specs/ 取代，存根仅供追溯" },
+    { "file": "docs/MVP-需求跟踪表.md", "token": "docs/CORE-REQUIREMENTS-clairis.md", "reason": "对照/同步说明：标注原全量需求（docs/ 存根）已被取代、不再维护，变更改同步 openspec/specs/ 与 roadmap；仓库根目录同源副本已于方案 A（2026-08）删除" },
+    { "file": "docs/designs/three-column-layout.md", "token": "docs/CORE-REQUIREMENTS-clairis.md", "reason": "历史探索稿关联注：原断链 ../CORE-REQUIREMENTS.md 改标为已被取代的历史存根，现行范围见 docs/product/scope.md" },
+    { "file": "docs/MIGRATION-MAP.md", "token": "*", "reason": "迁移账本本体：按职责逐行记录每个源文档的旧 current_path、归档目标与 needs-review 裁定，旧路径是账本内容而非活入口引用（任务 12 仅更新其中『已迁移行』的 target_path 单元格到新位置）" },
+    { "file": "docs/research/competitors/README.md", "token": "docs/fanbox-analysis.md", "reason": "墓碑注：明确记录原 docs/ 根位置已不存在、旧链接应改指本目录，属迁移可追踪性说明而非活引用" },
+    { "file": "docs/research/competitors/README.md", "token": "docs/渐晰-vs-Obsidian-竞品深度分析.md", "reason": "墓碑注：同上（原 docs/ 根位置已不存在）" },
+    { "file": "docs/research/competitors/README.md", "token": "docs/渐晰-vs-Typora-Bear-Ulysses-四象限对比.md", "reason": "墓碑注：同上（原 docs/ 根位置已不存在）" },
+    { "file": "docs/research/interaction/README.md", "token": "docs/单页vs双页阅读效果深层对比研究.md", "reason": "墓碑注：明确记录原 docs/ 根位置已不存在、旧链接应改指本目录" }
+  ]
+}
