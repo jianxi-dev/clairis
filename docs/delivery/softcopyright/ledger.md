@@ -10,7 +10,7 @@ last_updated: 2026-08-02
 Clairis（渐晰）软件著作权登记申请的材料清单与追踪台账。**台账为核心**（规划 Decision 1）：从现在（Phase M 开发期）开始积累，申请时机在 Phase R（Release 1.0 稳定版发布）之后。
 
 - 阶段参照：Phase M = 软著 MVP（占位与最小可用），Phase R = Release 1.0（正式发布），见 [`roadmap.md`](../roadmap.md)。
-- 规划与决策来源：[`.omo/drafts/clairis-software-copyright-prep.md`](../../../.omo/drafts/clairis-software-copyright-prep.md)。
+- 规划与决策来源：`../../../.omo/drafts/clairis-software-copyright-prep.md`。
 - 工具配置：`scripts/softcopyright/config.json`；说明书骨架见 [`manual-skeleton.md`](./manual-skeleton.md)，申请操作手册见 [`application.md`](./application.md)，流程规范见 [`process.md`](./process.md)。
 
 ## 一、材料清单
