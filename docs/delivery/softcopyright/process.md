@@ -11,7 +11,7 @@ Clairis（渐晰）软件著作权登记申请的**开发过程证据链规范**
 
 - 阶段参照：Phase M = 软著 MVP（占位与最小可用），Phase R = Release 1.0（正式发布），见 [`roadmap.md`](../roadmap.md)。
 - 材料追踪：本规范执行结果（日期锚点、盘点记录）登记在[资料台账 `ledger.md`](./ledger.md)。
-- 规划与决策来源：[`.omo/drafts/clairis-software-copyright-prep.md`](../../../.omo/drafts/clairis-software-copyright-prep.md) Decision 4/5/6/7。
+- 规划与决策来源：`../../../.omo/drafts/clairis-software-copyright-prep.md` Decision 4/5/6/7。
 - 工具：行数统计 [`count-lines.mjs`](../../../scripts/softcopyright/count-lines.mjs)、截图采集 [`capture-screens.mjs`](../../../scripts/softcopyright/capture-screens.mjs)。
 
 ## 一、git 提交规范

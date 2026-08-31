@@ -10,7 +10,7 @@ last_updated: 2026-08-02
 Clairis（渐晰）软件著作权登记申请的**资料积累与准备域**。定位：从 Phase M 开发期开始的持续积累体系，申请时机在 Phase R（Release 1.0 稳定版发布）之后，保证申请时资料自然齐全。
 
 - 阶段参照：Phase M = 软著 MVP（占位与最小可用），Phase R = Release 1.0（正式发布），见 [`roadmap.md`](../roadmap.md)。
-- 规划与决策来源：[`.omo/drafts/clairis-software-copyright-prep.md`](../../../.omo/drafts/clairis-software-copyright-prep.md)。
+- 规划与决策来源：`../../../.omo/drafts/clairis-software-copyright-prep.md`。
 - 工具与配置：`scripts/softcopyright/`（行数统计、截图采集、源代码文档生成）。
 
 ## 本域文档
