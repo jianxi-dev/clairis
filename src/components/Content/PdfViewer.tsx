@@ -86,21 +86,27 @@ export default function PdfViewer({ filePath }: PdfViewerProps) {
     if (!isTauriEnv()) return; // 非 Tauri 已在初始 state 短路为错误态
     let cancelled = false;
 
-    loadPdfBytes(filePath).then((result) => {
-      if (cancelled) return;
-      if (result.ok) {
-        const { bytes } = result;
-        // 安全提取：bytes 可能是共享底层 ArrayBuffer 的视图，
-        // 用 slice 截取自身区间，避免越界引用（atob 产物必为普通 ArrayBuffer）
-        const buffer = bytes.buffer.slice(
-          bytes.byteOffset,
-          bytes.byteOffset + bytes.byteLength,
-        ) as ArrayBuffer;
-        setState({ status: "ready", buffer });
-      } else {
-        setState({ status: "error", error: result.error });
-      }
-    });
+    loadPdfBytes(filePath)
+      .then((result) => {
+        if (cancelled) return;
+        if (result.ok) {
+          const { bytes } = result;
+          // 安全提取：bytes 可能是共享底层 ArrayBuffer 的视图，
+          // 用 slice 截取自身区间，避免越界引用（atob 产物必为普通 ArrayBuffer）
+          const buffer = bytes.buffer.slice(
+            bytes.byteOffset,
+            bytes.byteOffset + bytes.byteLength,
+          ) as ArrayBuffer;
+          setState({ status: "ready", buffer });
+        } else {
+          setState({ status: "error", error: result.error });
+        }
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        const msg = err instanceof Error ? err.message : String(err);
+        setState({ status: "error", error: msg });
+      });
 
     return () => {
       cancelled = true;
