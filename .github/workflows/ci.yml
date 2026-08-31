@@ -1,0 +1,39 @@
+name: CI
+on:
+  push:
+    branches: [main, feat/**]
+  pull_request:
+    branches: [main]
+
+jobs:
+  verify:
+    runs-on: macos-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: "npm"
+
+      - name: Setup Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: TypeScript check
+        run: npx tsc --noEmit
+
+      - name: Unit tests + coverage
+        run: npm test -- --coverage
+
+      - name: CSS manifest check
+        run: bash scripts/css-manifest-check.sh
+
+      # E2E requires system Chrome — skip in CI for now
+      # (requires npx playwright install chromium with system deps)

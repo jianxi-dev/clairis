@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::path::PathBuf;
 use tauri::{AppHandle, Manager};
 use tracing::{info, warn};
@@ -6,9 +7,14 @@ use tracing::{info, warn};
 use crate::errors::AppError;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct AppConfig {
     pub font_size: Option<f64>,
     pub heading_colors: Option<HeadingColors>,
+    // 阅读区设置（预览专用，与编辑器字号解耦）
+    pub reader_font_size: Option<f64>,
+    pub reader_width: Option<f64>,
+    pub reader_skin: Option<String>,
     pub ollama_endpoint: Option<String>,
     pub openai_endpoint: Option<String>,
     pub openai_model: Option<String>,
@@ -17,13 +23,39 @@ pub struct AppConfig {
     pub translation_provider: Option<String>,
     pub source_lang: Option<String>,
     pub target_lang: Option<String>,
+    pub theme: Option<String>,
+    pub sidebar_left_visible: Option<bool>,
+    pub sidebar_right_visible: Option<bool>,
+    pub sidebar_left_width: Option<f64>,
+    pub sidebar_right_width: Option<f64>,
+    pub horizontal_split_ratio: Option<f64>,
+    pub vertical_split_ratio: Option<f64>,
+    pub recent_files: Option<Vec<RecentFile>>,
+    pub scroll_positions: Option<HashMap<String, ScrollPosition>>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct RecentFile {
+    pub path: String,
+    pub title: String,
+    pub opened_at: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ScrollPosition {
+    pub scroll_pos: f64,
+    pub content_height: f64,
 }
 
 impl Default for AppConfig {
     fn default() -> Self {
         Self {
-            font_size: Some(16.0),
+            font_size: Some(17.0),
             heading_colors: None,
+            reader_font_size: Some(17.0),
+            reader_width: Some(1080.0),
+            reader_skin: Some("paper".into()),
             ollama_endpoint: Some("http://localhost:11434".into()),
             openai_endpoint: Some("https://api.openai.com".into()),
             openai_model: Some("gpt-4o-mini".into()),
@@ -31,6 +63,15 @@ impl Default for AppConfig {
             translation_provider: Some("ollama".into()),
             source_lang: Some("en".into()),
             target_lang: Some("zh-CN".into()),
+            theme: Some("system".into()),
+            sidebar_left_visible: Some(true),
+            sidebar_right_visible: Some(false),
+            sidebar_left_width: Some(220.0),
+            sidebar_right_width: Some(320.0),
+            horizontal_split_ratio: Some(0.5),
+            vertical_split_ratio: Some(0.5),
+            recent_files: Some(Vec::new()),
+            scroll_positions: Some(HashMap::new()),
         }
     }
 }
@@ -79,21 +120,23 @@ pub async fn load_config(app: &AppHandle) -> Result<AppConfig, AppError> {
 pub async fn save_config(app: &AppHandle, config: &AppConfig) -> Result<(), AppError> {
     let path = config_path(app);
     if let Some(parent) = path.parent() {
-        tokio::fs::create_dir_all(parent).await.map_err(|e| {
-            AppError::Io {
+        tokio::fs::create_dir_all(parent)
+            .await
+            .map_err(|e| AppError::Io {
                 context: "create config dir".into(),
                 source: e,
-            }
-        })?;
+            })?;
     }
     let data = serde_json::to_string_pretty(config).map_err(|e| AppError::Serialization {
         context: "config".into(),
         source: e,
     })?;
-    tokio::fs::write(&path, &data).await.map_err(|e| AppError::Io {
-        context: "write config".into(),
-        source: e,
-    })?;
+    tokio::fs::write(&path, &data)
+        .await
+        .map_err(|e| AppError::Io {
+            context: "write config".into(),
+            source: e,
+        })?;
     info!("Config saved to {:?}", path);
     Ok(())
 }

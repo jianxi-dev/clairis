@@ -1,0 +1,318 @@
+<!--
+title: "no sidebar prototype v3"
+type: design
+status: superseded
+last_updated: 2026-08-01
+source_of_truth: historical
+superseded_by: ../../approved/navigation/spec.md
+-->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>渐晰 · 无侧栏导航 v4</title>
+<style>
+:root{--paper:#fcfaf7;--warm:#f3ede4;--desk:#e8e2d8;--ink:rgba(0,0,0,.85);--so:rgba(0,0,0,.5);--fa:rgba(0,0,0,.14);--a:#8b7355;--ac:#c8965a;--r:8px;--sm:0 1px 3px rgba(0,0,0,.04);--md:0 4px 16px rgba(0,0,0,.07);--lg:0 12px 40px rgba(0,0,0,.12)}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:'Inter','PingFang SC',sans-serif;color:var(--ink);background:var(--paper);overflow:hidden;font-size:14px}
+#boot{position:fixed;inset:0;z-index:999;background:var(--paper);display:flex;align-items:center;justify-content:center;cursor:pointer}
+#boot.x{opacity:0;pointer-events:none;transition:opacity .5s}
+.bl{display:block;font-family:'Literata',serif;font-size:15px;color:var(--so);opacity:0;transform:translateY(10px);animation:f .5s forwards}
+.bl:nth-child(2){animation-delay:.3s}.bl:nth-child(3){animation-delay:.6s;font-size:12px;color:var(--fa);margin-top:6px}
+@keyframes f{to{opacity:1;transform:none}}
+kbd{background:rgba(0,0,0,.04);border:1px solid rgba(0,0,0,.07);border-radius:3px;padding:1px 5px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--so)}
+#surface{position:fixed;inset:0;display:flex;flex-direction:column;background:var(--paper);transition:padding-left .3s}
+#surface.fp{padding-left:300px}
+#eW{flex:1;display:flex;flex-direction:column;padding:40px 50px 30px;position:relative;max-width:680px;margin:0 auto;width:100%}
+#meta{font-size:11px;color:var(--fa);margin-bottom:14px}
+#editor{flex:1;overflow-y:auto;resize:none;border:none;outline:none;background:transparent;width:100%;font-family:'Literata',serif;font-size:16px;line-height:1.85;color:var(--ink);caret-color:var(--a)}
+#editor p{margin-bottom:12px}
+#st{position:absolute;bottom:8px;left:50px;right:50px;display:flex;justify-content:space-between;font-size:10px;color:var(--fa)}
+#resDot{position:fixed;right:28px;top:50%;transform:translateY(-50%);width:8px;height:8px;border-radius:50%;background:var(--fa);opacity:0;pointer-events:none;transition:opacity .4s}
+#resDot.on{opacity:1;pointer-events:auto}
+#resDot .rp{position:absolute;right:20px;top:50%;transform:translateY(-50%);width:220px;background:rgba(255,255,255,.96);border:1px solid var(--fa);border-radius:8px;padding:12px 14px;opacity:0;pointer-events:none;transition:opacity .25s}#resDot:hover .rp{opacity:1;pointer-events:auto}
+#resDot .rq{font-family:'Literata',serif;font-size:11.5px;line-height:1.55;color:var(--so);font-style:italic}
+#resDot .rs{font-size:9.5px;color:var(--fa);margin-top:6px}
+#tabbar{position:fixed;bottom:0;left:0;right:0;height:36px;background:rgba(252,250,247,.92);backdrop-filter:blur(10px);border-top:1px solid var(--fa);display:flex;align-items:center;padding:0 12px;gap:3px;z-index:50;transition:left .3s}
+#tabbar.fp{left:300px}
+#tabbar:hover .tab{opacity:1}
+.tab{height:28px;padding:0 12px;border-radius:5px;font-size:12px;color:var(--so);cursor:pointer;display:flex;align-items:center;gap:6px;background:0 0;border:none;transition:all .15s;opacity:.5}
+.tab:hover{background:var(--warm);opacity:1}
+.tab.on{background:rgba(139,115,85,.1);color:var(--ink);font-weight:500;opacity:1}
+.tab .tc{font-size:13px;opacity:0;transition:opacity .15s;width:14px;height:14px;display:flex;align-items:center;justify-content:center;border-radius:3px}
+.tab:hover .tc{opacity:.5}
+.tab .tc:hover{background:rgba(0,0,0,.05);opacity:1}
+#plus{width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;border-radius:4px;color:var(--fa);font-size:16px;border:none;background:0 0;transition:all .15s;margin-left:4px}
+#plus:hover{background:var(--warm);color:var(--so)}
+#fp{position:fixed;top:0;left:0;bottom:0;width:300px;background:#f7f3ee;border-right:1px solid var(--fa);z-index:200;display:none;flex-direction:column;box-shadow:var(--md);animation:fps .25s ease-out}
+#fp.on{display:flex}
+@keyframes fps{from{opacity:0;transform:translateX(-20px)}to{opacity:1;transform:none}}
+#fp .fph{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid rgba(0,0,0,.05)}
+#fp .fph h3{font-size:12px;font-weight:500;color:var(--ink)}
+#fp .fph button{background:none;border:none;cursor:pointer;color:var(--fa);font-size:16px;width:24px;height:24px;border-radius:4px;display:flex;align-items:center;justify-content:center}
+#fp .fph button:hover{background:rgba(0,0,0,.03);color:var(--so)}
+#fp .fpb{flex:1;overflow-y:auto;padding:12px}
+#fp .sec{margin-bottom:16px}
+#fp .secT{font-size:10px;font-weight:600;color:var(--fa);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px}
+#fp .fi{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:6px;cursor:pointer;transition:all .12s;font-size:12.5px;color:var(--so)}
+#fp .fi:hover{background:rgba(0,0,0,.04);color:var(--ink)}
+#fp .fi.on{background:rgba(139,115,85,.08);color:var(--ink);font-weight:500}
+#fp .fi .fii{width:22px;height:22px;border-radius:5px;background:rgba(0,0,0,.03);display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0}
+#fp .fi .fn{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#fp .fi .fm{font-size:10px;color:var(--fa);flex-shrink:0}
+#fp .fol{cursor:pointer;padding:7px 10px;font-size:12px;font-weight:500;color:var(--ink);display:flex;align-items:center;gap:6px;border-radius:4px;transition:background .1s}
+#fp .fol:hover{background:rgba(0,0,0,.03)}
+#fp .fol .chv{display:inline-block;font-size:10px;transition:transform .15s}
+#fp .fol.open .chv{transform:rotate(90deg)}
+#fp .ch{padding-left:12px;display:none}
+#fp .ch.open{display:block}
+#fp .search{padding:10px 12px;border-bottom:1px solid rgba(0,0,0,.04)}
+#fp .search input{width:100%;border:1px solid var(--fa);border-radius:6px;padding:6px 10px;font-size:12px;background:rgba(255,255,255,.7);outline:none;color:var(--ink)}
+#fp .search input:focus{border-color:var(--a);background:#fff}
+#qs{position:fixed;bottom:44px;left:50%;transform:translateX(-50%);width:min(90vw,620px);background:rgba(255,255,255,.98);border:1px solid var(--fa);border-radius:14px;padding:18px 20px 20px;box-shadow:var(--lg);z-index:200;display:none;backdrop-filter:blur(16px)}
+#qs.on{display:block}
+#qs h4{font-size:10px;font-weight:600;color:var(--fa);margin-bottom:12px;text-transform:uppercase;letter-spacing:.04em;display:flex;justify-content:space-between}
+#qc{display:flex;gap:12px}
+.qc{flex:1;background:var(--warm);border-radius:8px;padding:12px;cursor:pointer;transition:all .2s;border:1px solid transparent}
+.qc:hover{transform:translateY(-3px);box-shadow:var(--md);border-color:var(--fa)}
+.qc.on{border-color:var(--ac)}
+.qc .qn{font-size:12px;font-weight:500;color:var(--ink);margin-bottom:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qc .qp{font-family:'Literata',serif;font-size:10px;color:var(--so);overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical}
+.qc .qm{font-size:9px;color:var(--fa);margin-top:6px;display:flex;justify-content:space-between}
+#omni{position:fixed;top:14vh;left:50%;transform:translateX(-50%);width:560px;background:var(--paper);border-radius:14px;box-shadow:var(--lg);border:1px solid var(--fa);overflow:hidden;z-index:500;display:none;flex-direction:column;animation:omn .2s ease-out}
+#omni.on{display:flex}
+@keyframes omn{from{opacity:0;transform:translateX(-50%) translateY(-8px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+#omni.wide{width:780px}
+.omt{display:flex;border-bottom:1px solid rgba(0,0,0,.05)}
+.omt div{padding:10px 16px;font-size:11px;font-weight:500;color:var(--so);cursor:pointer;transition:all .15s}
+.omt div:hover{background:var(--warm)}
+.omt div.on{color:var(--a);box-shadow:inset 0 -2px 0 var(--a)}
+.omm{flex:1;display:flex;min-width:0}
+.oml{flex:1;display:flex;flex-direction:column;min-width:0}
+.omr{width:220px;border-left:1px solid rgba(0,0,0,.05);padding:14px;display:none;flex-direction:column}
+.omr.on{display:flex}
+.omr .pt{font-size:12px;font-weight:500;color:var(--ink);margin-bottom:8px}
+.omr .pp{font-family:'Literata',serif;font-size:11px;line-height:1.65;color:var(--so);flex:1;overflow:hidden}
+.omr .pm{font-size:10px;color:var(--fa);margin-top:8px;display:flex;justify-content:space-between}
+.omi{display:flex;align-items:center;padding:12px 16px;gap:10px;border-bottom:1px solid rgba(0,0,0,.04)}
+.omi input{flex:1;border:none;outline:0;background:0 0;font-size:14px;color:var(--ink)}
+.omr2{max-height:260px;overflow-y:auto}
+.dr{display:flex;align-items:center;gap:10px;padding:9px 16px;cursor:pointer;transition:background .1s}
+.dr:hover,.dr.on{background:rgba(139,115,85,.06)}
+.dr .di{width:24px;height:24px;border-radius:5px;background:rgba(0,0,0,.03);display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0}
+.dr .dt{flex:1;min-width:0}
+.dr .dn{font-size:13px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dr .ds{font-size:10.5px;color:var(--so);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:'Literata',serif}
+.dr .dd{font-size:10px;color:var(--fa);text-align:right;flex-shrink:0}
+.drr{padding:18px;text-align:center;color:var(--fa);font-size:12px}
+.omh{padding:8px 16px;border-top:1px solid rgba(0,0,0,.04);display:flex;gap:14px;font-size:10px;color:var(--fa)}
+#desk{position:fixed;inset:0;z-index:100;background:var(--desk);opacity:0;pointer-events:none;transition:opacity .4s;display:flex;align-items:center;justify-content:center;padding:40px}
+#desk.on{opacity:1;pointer-events:auto}
+#desk.dim{opacity:.55;transition:opacity 1s}
+#dI{width:100%;max-width:800px;display:flex;flex-direction:column;align-items:center;position:relative}
+#dH{position:absolute;top:-32px;left:0;right:0;text-align:center;font-size:10px;color:var(--fa);letter-spacing:.04em}
+#dG{display:grid;grid-template-columns:repeat(3,1fr);gap:20px 24px;width:100%;max-width:620px}
+.ds{aspect-ratio:4/5;background:#fff;border-radius:10px;padding:12px;cursor:pointer;display:flex;flex-direction:column;box-shadow:var(--sm);transition:all .35s;border:1px solid transparent}
+.ds:hover{transform:translateY(-6px) scale(1.02);box-shadow:var(--lg)}
+.ds .t{font-size:11px;font-weight:500;color:var(--ink);margin-bottom:5px;line-height:1.35}
+.ds .x{flex:1;font-size:9px;line-height:1.5;color:var(--fa);opacity:.7;font-family:'Literata',serif;overflow:hidden;display:-webkit-box;-webkit-line-clamp:9;-webkit-box-orient:vertical}
+.ds .m{font-size:8.5px;color:var(--fa);opacity:.5;margin-top:5px;display:flex;justify-content:space-between}
+.ds.empty{background:rgba(255,255,255,.3);pointer-events:none;box-shadow:none}
+.ds.on{border-color:var(--ac)}
+#rc{position:fixed;bottom:36px;left:0;right:0;padding:16px 20px 14px;display:flex;gap:14px;justify-content:center;background:linear-gradient(to top,var(--paper) 60%,transparent);z-index:80;opacity:0;transform:translateY(20px);pointer-events:none;transition:all .5s cubic-bezier(.22,1,.36,1)}
+#rc.on{opacity:1;transform:none;pointer-events:auto}
+.rc{width:200px;background:rgba(255,255,259,.94);border:1px solid var(--fa);border-radius:10px;padding:13px 15px;cursor:pointer;transition:all .25s;backdrop-filter:blur(8px)}
+.rc:hover{transform:translateY(-4px);box-shadow:var(--md)}
+.rc .rt{font-size:9px;text-transform:uppercase;letter-spacing:.05em;color:var(--ac);margin-bottom:7px}
+.rc .rx{font-family:'Literata',serif;font-size:12px;line-height:1.6;color:var(--so);font-style:italic}
+#fold{position:fixed;bottom:0;right:0;width:80px;height:80px;pointer-events:none;z-index:60}
+#fold .c{position:absolute;bottom:0;right:0;width:60px;height:60px;background:linear-gradient(135deg,transparent 50%,var(--fa) 50%);opacity:0;transform-origin:bottom right;transition:opacity .3s,transform .6s ease-out}
+#fold.on .c{opacity:1}
+#fold.op .c{transform:scale(0)}
+#toast{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,.88);color:#fff;font-size:12px;padding:12px 24px;border-radius:10px;z-index:800;opacity:0;pointer-events:none;transition:opacity .3s;max-width:340px;text-align:center;line-height:1.5}
+#toast.on{opacity:1;cursor:pointer}
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-thumb{background:var(--fa);border-radius:2px}
+</style>
+</head>
+<body>
+<div id="boot" onclick="boot()"><div style="max-width:440px">
+<span class="bl">你打开渐晰。没有侧栏,纸铺满了屏幕。</span>
+<span class="bl">三层导航,零学习成本。</span>
+<span class="bl">点击任意处开始 · <kbd>Cmd+K</kbd> 搜索 · <kbd>Cmd+E</kbd> 切换 · <kbd>Cmd+↑</kbd> 全景</span></div></div>
+<div id="surface">
+<div id="eW">
+<div id="meta"><span id="dN"></span></div>
+<div id="editor" contenteditable=true spellcheck=false></div>
+<div id="st"><span id="wc">0字</span><span>Flow:off</span></div>
+<div id="resDot"><div class="rp"><div class="rq"></div><div class="rs"></div></div></div>
+</div></div>
+<div id="tabbar"><div style="display:flex;gap:3px;flex:1" id="tb"></div><button id="plus" onclick="cmdNew()">+</button></div>
+<!-- FILE PANEL -->
+<div id="fp">
+<div class="fph"><h3>📋 文件列表</h3><button onclick="fpClose()">×</button></div>
+<div class="search"><input id="fpSearch" placeholder="搜索文件..." oninput="fpRender()"></div>
+<div class="fpb">
+<div class="sec">
+<div class="secT">最近活跃</div>
+<div id="fpRecent"></div>
+</div>
+<div class="sec">
+<div class="secT">所有文件</div>
+<div id="fpTree"></div>
+</div>
+</div></div>
+<!-- QUICK SWITCH -->
+<div id="qs"><h4><span>Quick Switch · 1-5瞬切</span><span style="font-size:10px;letter-spacing:0">Esc关闭</span></h4><div id="qc"></div></div>
+<!-- OMNI -->
+<div id="omni">
+<div class="omt">
+<div class="on" data-m="file" onclick="oM('file')">文件</div>
+<div data-m="tree" onclick="oM('tree')">文件树</div>
+<div data-m="cmd" onclick="oM('cmd')">命令</div>
+<div data-m="panel" onclick="oM('panel')">面板</div>
+</div>
+<div class="omm">
+<div class="oml">
+<div class="omi"><input id="omi" placeholder="搜索文件名或标题..." oninput="dS(this.value)"></div>
+<div class="omr2" id="omr"></div>
+</div>
+<div class="omr" id="omp"><div class="pt" id="prT"></div><div class="pp" id="prP"></div><div class="pm" id="prM"></div></div>
+</div>
+<div class="omh"><span>↑↓选择</span><span>Enter打开</span><span>Space预览</span><span>Esc关闭</span></div>
+</div>
+<div id="desk"><div id="dI"><div id="dH">Desk · Esc回到 Surface</div><div id="dG"></div></div></div>
+<div id="rc"></div>
+<div id="fold"><div class="c"></div></div>
+<div id="toast"></div>
+<script>
+const D=[
+{id:1,n:'无侧栏设计方案.md',age:2,t:'侧栏的真正功能不是文件管理,是安全感。去掉侧栏不能只做减法,必须提供等价的安心感。'},
+{id:2,n:'数字极简.md',age:12,t:'注意力经济的核心悖论:我们以为是工具使用我们,实际是我们喂养了注意力经济。'},
+{id:3,n:'周会记录-0703.md',age:6,t:'讨论了Q3架构方向。PM提出深层问题是操作与阅读不只是模式切换。'},
+{id:4,n:'设计咨询备忘.md',age:28,t:'区分可诉说的需求和沉默需求。Linear+Notion混合路线,保留温暖感。'},
+{id:5,n:'Resonance算法.md',age:40,t:'BM25实现细节+反向链接检测。时效衰减阈值0.42以下不展示。'},
+{id:6,n:'attention.md',age:72,t:'注意力是唯一的货币。注意力的设计影响决策质量。Attention=f(irrelevance)。'},
+{id:7,n:'the-desk-concept.md',age:96,t:'The Desk书桌层—空间记忆模型。位置=意义。最近活跃=伸手可及。'},
+{id:8,n:'产品哲学.md',age:150,t:'好的产品设计不是堆功能,是在合适的时候出现合适的工具。核心是节制的艺术。'},
+{id:9,n:'2026年规划.md',age:200,t:'聚焦三件事:核心写作体验、智能共鸣系统、跨平台同步。其余全部搁置。'},
+{id:10,n:'用户反馈整理.md',age:45,t:'用户最想要的三个特性:更快的启动、更好的搜索、更优雅的文档切换。'},
+];
+const RES={'侧栏':['"侧栏的真正功能是安心的符号" — 设计咨询备忘.md'],"注意力":['"注意力经济的核心悖论" — 数字极简.md'],"设计":['"设计不是解决问题,是发现命题" — 周会记录-0703.md']};
+const TREE=[
+{n:'工作',open:true,ch:[
+{n:'设计',ch:[{f:'无侧栏设计方案.md',id:1},{f:'设计咨询备忘.md',id:4},{f:'产品哲学.md',id:8}]},
+{n:'会议',ch:[{f:'周会记录-0703.md',id:3},{f:'用户反馈整理.md',id:10}]},
+{n:'规划',ch:[{f:'2026年规划.md',id:9},{f:'Resonance算法.md',id:5}]}
+]},
+{n:'思考',ch:[
+{n:'认知',ch:[{f:'数字极简.md',id:2},{f:'attention.md',id:6},{f:'the-desk-concept.md',id:7}]}
+]}
+];
+const CMDS=['📄 新建文档','📂 打开文件...','💾 保存','📖 切换预览','🎯 专注模式','⏱ 时间带','🗂 打开书桌'];
+const PANELS=['📋 文件列表','🤖 AI对话','📑 大纲面板','📝 灵感记录'];
+let S={booted:false,doc:D[0],tabs:[{id:1,cid:1}],atb:0,omniOpen:false,omniMode:'file',omniQ:'',omniRes:[],omniIdx:0,fpOpen:false,deskOpen:false,deskTimer:null,rcOpen:false,resTimer:null};
+function boot(){document.getElementById('boot').classList.add('x');S.booted=true;setTimeout(()=>document.getElementById('boot').style.display='none',600);let f=document.getElementById('fold');f.classList.add('on');setTimeout(()=>f.classList.add('op'),500);setTimeout(()=>f.classList.remove('on','op'),1500);rT();sT(0)}
+function rT(){document.getElementById('tb').innerHTML=S.tabs.map((t,i)=>{const d=D.find(x=>x.id===t.cid);return`<div class="tab ${i===S.atb?'on':''}" onclick="sT(${i})">${d.n}<span class="tc" onclick="event.stopPropagation();cT(${i})">×</span></div>`}).join('')}
+function sT(i){S.atb=i;const t=S.tabs[i];S.doc=D.find(d=>d.id===t.cid);document.getElementById('dN').textContent=S.doc.n;document.getElementById('editor').innerHTML=`<p>${S.doc.t}</p>`;document.getElementById('wc').textContent=S.doc.t.length*2+'字';rT();hideRes()}
+function cT(i){if(S.tabs.length===1)return;S.tabs.splice(i,1);if(S.atb>=S.tabs.length)S.atb=S.tabs.length-1;sT(S.atb)}
+function cmdNew(){if(!S.booted)return;const id=Date.now()%10000,n=`未命名-${id}.md`,d={id,n,age:0,t:'开始写作...'};D.push(d);S.tabs.push({id,cid:id});sT(S.tabs.length-1)}
+function opD(id){const ex=S.tabs.findIndex(t=>t.cid===id);if(ex>=0)sT(ex);else{S.tabs.push({id,cid:id});sT(S.tabs.length-1)}}
+/* ══ RESONANCE ══ */
+const ed=document.getElementById('editor');
+ed.addEventListener('input',()=>{if(!S.booted)return;clearTimeout(S.resTimer);S.resTimer=setTimeout(checkRes,2500)});
+ed.addEventListener('blur',()=>{clearTimeout(S.resTimer);hideRes()});
+function checkRes(){const t=ed.innerText;for(const[k,it]of Object.entries(RES)){if(t.includes(k)){showRes(it[0],'Resonance');return}}}
+function showRes(tx,label){const d=document.getElementById('resDot');const i=tx.lastIndexOf(' — ');d.querySelector('.rq').textContent=i>0?tx.slice(0,i):tx;d.querySelector('.rs').textContent=i>0?label+' · '+tx.slice(i+3):label;d.classList.add('on')}
+function hideRes(){document.getElementById('resDot').classList.remove('on')}
+/* ══ QUICK SWITCH ══ */
+function toggleQS(){if(!S.booted)return;const p=document.getElementById('qs');if(p.classList.contains('on')){p.classList.remove('on');return;}
+const sorted=[...D].sort((a,b)=>a.age-b.age).slice(0,5);
+document.getElementById('qc').innerHTML=sorted.map((d,i)=>`<div class="qc ${d.id===S.doc.id?'on':''}" onclick="qsPick(${i})"><div class="qn">${d.n}</div><div class="qp">${d.t}</div><div class="qm"><span>${d.t.length*2}字</span><span>${fA(d.age)}</span></div></div>`).join('');p.classList.add('on')}
+function qsPick(i){const sr=[...D].sort((a,b)=>a.age-b.age).slice(0,5);const d=sr[i];opD(d.id);document.getElementById('qs').classList.remove('on')}
+/* ══ OMNI ══ */
+function openOmni(){if(!S.booted)return;S.omniOpen=true;S.omniMode='file';S.omniQ='';S.omniIdx=0;document.getElementById('omni').classList.add('on');document.getElementById('omni').classList.remove('wide');document.getElementById('omp').classList.remove('on');document.getElementById('omi').value='';document.getElementById('omi').focus();oM('file');dS('')}
+function closeOmni(){S.omniOpen=false;document.getElementById('omni').classList.remove('on')}
+function oM(m){S.omniMode=m;S.omniIdx=0;document.querySelectorAll('.omt div').forEach(d=>d.classList.toggle('on',d.dataset.m===m));
+const ph={file:'搜索文件名或标题...',tree:'点击文件夹展开,或搜索...',cmd:'输入命令...',panel:'点击面板名称唤起'};
+document.getElementById('omi').placeholder=ph[m];
+if(m==='tree'||m==='file')document.getElementById('omni').classList.add('wide');else document.getElementById('omni').classList.remove('wide');dS('')}
+function dS(q){S.omniQ=q.trim().toLowerCase();S.omniIdx=0;const r=document.getElementById('omr');
+if(S.omniMode==='cmd'){const f=CMDS.filter(c=>!q||c.toLowerCase().includes(q.toLowerCase()));
+r.innerHTML=f.length?f.map((c,i)=>`<div class="dr ${i===0?'on':''}" onclick="exC(${i})"><div class="di">${c[0]}</div><div class="dt"><div class="dn">${c.slice(2)}</div></div></div>`).join(''):'<div class="drr">无命令</div>';S.omniRes=f.map(c=>c.slice(2));return}
+if(S.omniMode==='panel'){const f=PANELS.filter(c=>!q||c.toLowerCase().includes(q.toLowerCase()));
+if(!q){r.innerHTML=f.map((c,i)=>`<div class="dr ${i===0?'on':''}" onclick="exP(${i})"><div class="di">${c[0]}</div><div class="dt"><div class="dn">${c.slice(2)}</div></div></div>`).join('')}
+else{r.innerHTML=f.map((c,i)=>`<div class="dr ${i===0?'on':''}" onclick="exP(${i})"><div class="di">${c[0]}</div><div class="dt"><div class="dn">${c.slice(2)}</div></div></div>`).join('')||'<div class="drr">无匹配</div>'}S.omniRes=f.map(c=>c.slice(2));return}
+if(S.omniMode==='tree'){r.innerHTML=' ';renderOmniTree();return}
+if(!S.omniQ){const rc=[...D].sort((a,b)=>a.age-b.age).slice(0,5);
+r.innerHTML=rc.map((d,i)=>`<div class="dr ${i===0?'on':''}" onmouseenter="prV(${d.id})" onclick="oR(${i})"><div class="di">◴</div><div class="dt"><div class="dn">${d.n}</div><div class="ds">${d.t.slice(0,40)}…</div></div><div class="dd">${fA(d.age)}</div></div>`).join('');S.omniRes=rc;return}
+const sc=D.map(d=>{let s=0;const n=d.n.toLowerCase(),t=d.t.toLowerCase();if(n.includes(S.omniQ))s+=10;if(t.includes(S.omniQ))s+=5;if(d.age<24)s+=3;else if(d.age<72)s+=1;return{...d,s}}).filter(d=>d.s>0).sort((a,b)=>b.s-a.s);
+S.omniRes=sc.slice(0,8);
+r.innerHTML=sc.length?sc.map((d,i)=>`<div class="dr ${i===0?'on':''}" onmouseenter="prV(${d.id})" onclick="oR(${i})"><div class="di">◆</div><div class="dt"><div class="dn">${d.n}</div><div class="ds">${d.t.slice(0,40)}…</div></div><div class="dd">${fA(d.age)}</div></div>`).join(''):'<div class="drr">无匹配</div>'}
+function oMv(d){if(!S.omniRes.length)return;S.omniIdx=(S.omniIdx+d+S.omniRes.length)%S.omniRes.length;document.querySelectorAll('#omr .dr').forEach((e,i)=>e.classList.toggle('on',i===S.omniIdx));const sel=S.omniRes[S.omniIdx];if(!S.omniMode&&sel)prV(sel.id)}
+function oEnt(){if(S.omniMode==='file')oR(S.omniIdx);else if(S.omniMode==='cmd')exC(S.omniIdx);else if(S.omniMode==='panel')exP(S.omniIdx)}
+function oR(i){const d=S.omniRes[i];if(!d)return;opD(d.id);closeOmni()}
+function exC(i){const c=CMDS[i];if(i===0)cmdNew();else if(i===6)openDesk();else toast(c.slice(2));closeOmni()}
+function exP(i){if(i===0){closeOmni();fpOpen();return}toast('面板: '+PANELS[i].slice(2)+' (P1)');closeOmni()}
+function prV(id){const d=D.find(x=>x.id===id);if(!d)return;
+document.getElementById('omp').classList.add('on');document.getElementById('omni').classList.add('wide');
+document.getElementById('prT').textContent=d.n;document.getElementById('prP').textContent=d.t;document.getElementById('prM').innerHTML=`<span>${d.t.length*2}字</span><span>${fA(d.age)}</span>`}
+function renderOmniTree(){const r=document.getElementById('omr');r.innerHTML=TREE.map(g=>renderOmniFolder(g,0)).join('')}
+function renderOmniFolder(node,depth){
+if(node.ch&&node.ch[0]&&node.ch[0].f){return node.ch.map(f=>{const d=D.find(x=>x.id===f.id);return `<div class="dr" style="padding-left:${14+depth*14}px" onmouseenter="prV(${d.id})" onclick="if(event.target.classList.contains('dr')||event.target.closest('.dr')){opD(${d.id});closeOmni()}"><div class="di">◆</div><div class="dt"><div class="dn">${f.f}</div><div class="ds">${d.t.slice(0,30)}…</div></div><div class="dd">${fA(d.age)}</div></div>`}).join('')}
+return`<div><div class="dr fol ${node.open?'open':''}" style="padding-left:${14+depth*14}px" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')"><span class="chv">▶</span>${node.n}</div><div class="ch ${node.open?'open':''}">${node.ch.map(c=>renderOmniFolder(c,depth+1)).join('')}</div></div>`}
+/* ══ FILE PANEL ══ */
+function fpOpen(){if(!S.booted)return;S.fpOpen=true;
+document.getElementById('fp').classList.add('on');
+document.getElementById('surface').classList.add('fp');
+document.getElementById('tabbar').classList.add('fp');
+document.getElementById('fpSearch').value='';fpRender();document.getElementById('fpSearch').focus()}
+function fpClose(){S.fpOpen=false;document.getElementById('fp').classList.remove('on');document.getElementById('surface').classList.remove('fp');document.getElementById('tabbar').classList.remove('fp')}
+function fpRender(){const q=document.getElementById('fpSearch').value.toLowerCase();
+// Recent
+const recent=[...D].sort((a,b)=>a.age-b.age).slice(0,4);
+document.getElementById('fpRecent').innerHTML=recent.map(d=>`<div class="fi ${d.id===S.doc.id?'on':''}" onclick="fpOpenDoc(${d.id})"><div class="fii">◆</div><div class="fn">${d.n}</div><div class="fm">${fA(d.age)}</div></div>`).join('');
+// Tree
+const filtered=q?D.filter(d=>d.n.toLowerCase().includes(q)||d.t.toLowerCase().includes(q)):[];
+if(q){document.getElementById('fpTree').innerHTML=filtered.length?filtered.map(d=>`<div class="fi ${d.id===S.doc.id?'on':''}" onclick="fpOpenDoc(${d.id})"><div class="fii">◆</div><div class="fn">${d.n}</div><div class="fm">${fA(d.age)}</div></div>`).join(''):'<div style="padding:12px;font-size:11px;color:var(--fa);text-align:center">无匹配</div>';return}
+document.getElementById('fpTree').innerHTML=TREE.map(g=>fpFolder(g,0)).join('')}
+function fpFolder(node,depth){
+if(node.ch&&node.ch[0]&&node.ch[0].f){return node.ch.map(f=>{const d=D.find(x=>x.id===f.id);return `<div class="fi ${d.id===S.doc.id?'on':''}" style="padding-left:${8+depth*12}px" onclick="fpOpenDoc(${d.id})"><div class="fii">◆</div><div class="fn">${f.f}</div><div class="fm">${fA(d.age)}</div></div>`}).join('')}
+return`<div><div class="fol ${node.open?'open':''}" style="padding-left:${8+depth*12}px" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')"><span class="chv">▶</span>${node.n}</div><div class="ch ${node.open?'open':''}">${node.ch.map(c=>fpFolder(c,depth+1)).join('')}</div></div>`}
+function fpOpenDoc(id){opD(id);fpClose();ed.focus()}
+/* ══ DESK ══ */
+function openDesk(){if(!S.booted)return;S.deskOpen=true;document.getElementById('desk').classList.add('on');rD();hideRes();S.deskTimer=setTimeout(()=>{if(S.deskOpen)document.getElementById('desk').classList.add('dim')},15000)}
+function closeDesk(){S.deskOpen=false;document.getElementById('desk').classList.remove('on','dim');clearTimeout(S.deskTimer)}
+function rD(){const g=document.getElementById('dG');const sl=Array(9).fill(null);const sr=[...D].sort((a,b)=>a.age-b.age);for(const d of sr){const idx=d.id%9;if(!sl[idx])sl[idx]=d}
+g.innerHTML=sl.map((d,i)=>{if(!d)return`<div class="ds empty"></div>`;const rk=sr.findIndex(x=>x.id===d.id);const op=rk<3?1:rk<6?.65:.4;return`<div class="ds ${d.id===S.doc.id?'on':''}" style="opacity:${op}" onclick="dO(${d.id})"><div class="t">${d.n}</div><div class="x">${d.t}</div><div class="m"><span>${d.t.length*2}w</span><span>${fA(d.age)}</span></div></div>`}).join('')}
+function dO(id){closeDesk();opD(id);let f=document.getElementById('fold');f.classList.add('on');setTimeout(()=>f.classList.add('op'),500);setTimeout(()=>f.classList.remove('on','op'),1500)}
+/* ══ READING COMPLETION ══ */
+function trigRead(){if(!S.booted)return;if(S.rcOpen){hideRead();return;}S.rcOpen=true;const cur=S.doc;const ot=D.filter(d=>d.id!==cur.id);
+const path=ot.sort((a,b)=>a.age-b.age)[0];const sm=Object.entries(RES).find(([k])=>cur.t.includes(k));const sem=sm?D.find(d=>sm[1][0].includes(d.n))||ot[1]:ot[1];const ink=ot[2];
+document.getElementById('rc').innerHTML=`<div class="rc" onclick="hideRead();opD(${path.id})"><div class="rt">路径亲近</div><div class="rx">${path.t.slice(0,50)}…</div></div>
+<div class="rc" onclick="hideRead();opD(${sem.id})"><div class="rt">语义亲近</div><div class="rx">${sem.t.slice(0,50)}…</div></div>
+<div class="rc" onclick="hideRead();opD(${ink.id})"><div class="rt">记忆亲近</div><div class="rx">${ink.t.slice(0,50)}…</div></div>`;document.getElementById('rc').classList.add('on')}
+function hideRead(){S.rcOpen=false;document.getElementById('rc').classList.remove('on')}
+/* ══ HELPERS ══ */
+function fA(h){if(h<1)return'刚刚';if(h<24)return h+'小时前';return Math.floor(h/24)+'天前'}
+let tt=null;function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('on'),2200)}
+/* ══ KEYBOARD ══ */
+document.addEventListener('keydown',e=>{
+const ed=document.activeElement===document.getElementById('editor');const inOmni=document.activeElement===document.getElementById('omi');const inFp=document.activeElement===document.getElementById('fpSearch');
+if(e.key==='Escape'){if(S.omniOpen){e.preventDefault();closeOmni();return}if(S.deskOpen){e.preventDefault();closeDesk();return}if(S.rcOpen){e.preventDefault();hideRead();return}if(S.fpOpen){e.preventDefault();fpClose();return}if(document.getElementById('qs').classList.contains('on')){e.preventDefault();document.getElementById('qs').classList.remove('on');return}return}
+if(S.omniOpen){if(inOmni){if(e.key==='ArrowDown'){e.preventDefault();oMv(1);return}if(e.key==='ArrowUp'){e.preventDefault();oMv(-1);return}if(e.key==='Enter'){e.preventDefault();oEnt();return}if(e.key===' '){e.preventDefault();const d=S.omniRes[S.omniIdx];if(d&&d.id)prV(d.id);return}}return}
+if((ed||inFp)&&!e.metaKey&&!e.ctrlKey)return;
+if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){e.preventDefault();openOmni();return}
+if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='e'){e.preventDefault();toggleQS();return}
+if((e.metaKey||e.ctrlKey)&&e.key==='['){e.preventDefault();sT((S.atb-1+S.tabs.length)%S.tabs.length);return}
+if((e.metaKey||e.ctrlKey)&&e.key===']'){e.preventDefault();sT((S.atb+1)%S.tabs.length);return}
+if((e.metaKey||e.ctrlKey)&&e.key==='ArrowUp'){e.preventDefault();openDesk();return}
+if((e.metaKey||e.ctrlKey)&&e.key==='ArrowDown'){e.preventDefault();if(S.deskOpen)closeDesk();return}
+if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='j'){e.preventDefault();cmdNew();return}
+if((e.metaKey||e.ctrlKey)&&e.key==='.'){e.preventDefault();trigRead();return}
+if((e.metaKey||e.ctrlKey)&&e.key>='1'&&e.key<='5'){e.preventDefault();const i=parseInt(e.key)-1;if(i<S.tabs.length)sT(i);return}
+});
+ed.innerHTML=`<p>${D[0].t}</p>`;document.getElementById('dN').textContent=D[0].n;document.getElementById('wc').textContent=D[0].t.length*2+'字';
+</script>
+</body>
+</html>

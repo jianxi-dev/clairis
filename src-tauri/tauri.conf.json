@@ -1,8 +1,8 @@
 {
   "$schema": "https://raw.githubusercontent.com/nicedoc/tauri/main/packages/api/schema.json",
-  "productName": "Folio",
-  "version": "0.1.0",
-  "identifier": "com.folio.app",
+  "productName": "Clairis",
+  "version": "0.4.0",
+  "identifier": "com.clairis.app",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:1420",
@@ -12,13 +12,14 @@
   "app": {
     "windows": [
       {
-        "title": "Markdown 编辑器",
+        "title": "渐晰",
         "width": 1200,
         "height": 800,
         "resizable": true,
         "fullscreen": false,
         "minWidth": 600,
-        "minHeight": 400
+        "minHeight": 400,
+        "dragDropEnabled": true
       }
     ],
     "security": {

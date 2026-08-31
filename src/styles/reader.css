@@ -1,0 +1,1113 @@
+/* Markdown 预览：阅读排版系统
+ *
+ * Layer 2  --reader-*   阅读外观，默认全部映射到 --app-*（tokens.css），换风格只盖这一层
+ * Layer 3  --type-*     排版尺度，全局唯一，皮肤不覆盖
+ *
+ * 设计依据：docs/design/explorations/reader-typography/README.md
+ */
+
+/* ── 外壳：窗口底（滚动交给外层容器，这里只负责定位设置入口）─── */
+/* min-height 而非 height：内容超过一屏时外壳跟着长，背景不再只铺第一屏 */
+.preview-shell {
+  position: relative;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--app-bg);
+}
+
+/* ── 纸：内容区 ──────────────────────────────────────── */
+.preview-content {
+  /* Layer 2：阅读外观（默认跟随全局语义色） */
+  --reader-paper: var(--app-surface);
+  --reader-sunken: var(--app-sunken);
+  --reader-ink: var(--app-text);
+  --reader-ink-strong: var(--app-text-strong);
+  --reader-ink-2: var(--app-text-2);
+  --reader-ink-3: var(--app-text-3);
+  --reader-line: var(--app-border);
+  --reader-line-2: var(--app-border-strong);
+  /* 阅读强调色：不沿用 UI 的 indigo，取低饱和靛青（对纸白 ≈ 6.3:1）。
+     想与软件统一时改为 var(--app-accent) 即可。 */
+  --reader-accent: var(--tone-accent, #3d5a8a);
+  --reader-accent-soft: rgba(61, 90, 138, 0.1);
+  --reader-radius: 6px;
+  --reader-radius-lg: 12px;
+  --reader-shadow: var(--app-shadow);
+
+  /* Layer 3：排版尺度 */
+  --type-font-sans:
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "PingFang SC",
+    "Hiragino Sans GB", "Source Han Sans SC", "Noto Sans CJK SC",
+    "Microsoft YaHei", sans-serif;
+  --type-font-mono:
+    "SF Mono", "JetBrains Mono", "Fira Code", Menlo, Consolas, "PingFang SC",
+    monospace;
+  --type-font-size: 17px;
+  --type-line: 1.78;
+  --type-measure: 1080px;
+  --type-measure-wide: 1200px;
+
+  min-height: 100%;
+  flex: 1;
+  /* width 必须显式 100%：本元素是列向 flex 项，仅靠 align-self: stretch 会被
+     下面的 margin-inline: auto 关掉（有 auto 交叉轴边距的 flex 项不拉伸），
+     退化成 fit-content —— 纸宽随内容漂移，行宽设置也跟着失效。 */
+  width: 100%;
+  max-width: var(--type-measure-wide);
+  margin-inline: auto;
+  padding: 2.5rem 2rem 6rem;
+  background: var(--reader-paper);
+  box-shadow: var(--reader-shadow);
+  color: var(--reader-ink);
+  font-family: var(--type-font-sans);
+  font-size: var(--type-font-size);
+  line-height: var(--type-line);
+
+  /* 内嵌 HTML 里的 position: fixed 不外逃到全屏，同时提升长文档渲染性能 */
+  contain: layout paint style;
+
+  text-wrap: pretty;
+  line-break: strict;
+  overflow-wrap: break-word;
+  hanging-punctuation: allow-end;
+  text-spacing-trim: space-first;
+  -webkit-font-smoothing: antialiased;
+}
+
+.dark .preview-content {
+  --reader-accent: var(--tone-accent, #8ab4e8);
+  --reader-accent-soft: rgba(138, 180, 232, 0.14);
+}
+
+/* 正文走窄通道，表格/代码/图片走宽通道 */
+.preview-content > * {
+  max-width: var(--type-measure);
+  /* !important：用户内嵌 HTML 常写 margin: 20px 0（inline 优先级更高），
+     简写会把 margin-inline 覆盖成 0，卡片便靠左；阅读器强制居中，
+     上下留白仍尊重作者 inline margin */
+  margin-inline: auto !important;
+  margin-block: 0 1.15em;
+}
+
+.preview-content > .wide {
+  max-width: var(--type-measure-wide);
+}
+
+.preview-content > :first-child {
+  margin-top: 0;
+}
+
+.preview-content > :last-child {
+  margin-bottom: 0;
+}
+
+/* ── 标题 ────────────────────────────────────────────── */
+.preview-content h1,
+.preview-content h2,
+.preview-content h3,
+.preview-content h4,
+.preview-content h5,
+.preview-content h6 {
+  color: var(--reader-ink-strong);
+  font-weight: 650;
+  line-height: 1.3;
+  text-wrap: balance;
+}
+
+.preview-content h1 {
+  font-size: 1.75em;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--tone-1, var(--heading-h1, var(--reader-ink-strong)));
+  margin-block: 0 0.9em;
+}
+
+.preview-content h2 {
+  font-size: 1.4em;
+  font-weight: 700;
+  letter-spacing: 0.005em;
+  color: var(--tone-1, var(--heading-h2, var(--reader-ink-strong)));
+  margin-block: 1.9em 0.75em;
+}
+
+.preview-content h3 {
+  font-size: 1.2em;
+  color: var(--tone-2, var(--heading-h3, var(--reader-ink-strong)));
+  line-height: 1.4;
+  margin-block: 1.6em 0.6em;
+}
+
+.preview-content h4 {
+  font-size: 1.05em;
+  color: var(--tone-2, var(--heading-h4, var(--reader-ink-strong)));
+  line-height: 1.4;
+  margin-block: 1.4em 0.5em;
+}
+
+.preview-content h5 {
+  font-size: 0.95em;
+  color: var(--tone-3, var(--heading-h5, var(--reader-ink-2)));
+  line-height: 1.4;
+  margin-block: 1.4em 0.5em;
+}
+
+.preview-content h6 {
+  font-size: 0.875em;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--tone-3, var(--heading-h6, var(--reader-ink-3)));
+  line-height: 1.4;
+  margin-block: 1.4em 0.5em;
+}
+
+/* 标题连排时收紧上间距 */
+.preview-content h1 + h2,
+.preview-content h2 + h3,
+.preview-content h3 + h4 {
+  margin-top: 1.2em;
+}
+
+/* ── 段落与行内文本 ──────────────────────────────────── */
+.preview-content p {
+  text-wrap: pretty;
+}
+
+.preview-content strong {
+  font-weight: 650;
+  color: var(--tone-ink, var(--reader-ink-strong));
+}
+
+.preview-content em {
+  font-style: italic;
+}
+
+.preview-content del {
+  color: var(--reader-ink-3);
+}
+
+.preview-content kbd {
+  font-family: var(--type-font-mono);
+  font-size: 0.82em;
+  padding: 0.15em 0.4em;
+  border: 1px solid var(--reader-line-2);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: var(--reader-sunken);
+}
+
+/* 中英混排间距（渲染时插入的空 span，不含真实空格，复制文本不受影响） */
+.cjk-pad {
+  display: inline-block;
+  width: 0.12em;
+}
+
+/* ── 列表 ────────────────────────────────────────────── */
+.preview-content ul,
+.preview-content ol {
+  padding-inline-start: 1.5em;
+}
+
+.preview-content li {
+  margin-block: 0.4em;
+}
+
+.preview-content li::marker {
+  color: var(--reader-ink-3);
+}
+
+.preview-content li > ul,
+.preview-content li > ol {
+  margin-block: 0.4em;
+}
+
+/* 任务列表：自绘 checkbox，完成项只变灰、不加删除线 */
+.preview-content li:has(> input[type="checkbox"]) {
+  list-style: none;
+  margin-inline-start: -1.5em;
+}
+
+.preview-content li > input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 1em;
+  height: 1em;
+  margin-inline-end: 0.6em;
+  vertical-align: -2px;
+  border: 1.5px solid var(--reader-line-2);
+  border-radius: 50%;
+  display: inline-block;
+  position: relative;
+  cursor: default;
+}
+
+.preview-content li > input[type="checkbox"]:checked {
+  background: var(--reader-accent);
+  border-color: var(--reader-accent);
+}
+
+.preview-content li > input[type="checkbox"]:checked::after {
+  content: "";
+  position: absolute;
+  inset-inline-start: 0.24em;
+  inset-block-start: 0.11em;
+  width: 0.28em;
+  height: 0.52em;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(42deg);
+}
+
+.preview-content li:has(> input[type="checkbox"]:checked) {
+  color: var(--reader-ink-3);
+}
+
+/* ── 引用 ────────────────────────────────────────────── */
+.preview-content blockquote {
+  border-inline-start: 2px solid var(--reader-accent);
+  background: var(--reader-accent-soft);
+  padding: 0.7em 1em;
+  border-radius: 0 var(--reader-radius) var(--reader-radius) 0;
+  color: var(--reader-ink-2);
+}
+
+.preview-content blockquote > :last-child {
+  margin-bottom: 0;
+}
+
+/* ── 行内代码 ────────────────────────────────────────── */
+.preview-content code {
+  font-family: var(--type-font-mono);
+  font-size: 0.88em;
+  background: var(--reader-sunken);
+  border: 1px solid var(--reader-line);
+  border-radius: 4px;
+  padding: 0.12em 0.35em;
+  color: var(--tone-code, #a03a63);
+}
+
+.dark .preview-content code {
+  color: var(--tone-code, #e59ac0);
+}
+
+/* ── 代码块 ──────────────────────────────────────────── */
+.preview-content .code-block {
+  position: relative;
+  background: var(--reader-sunken);
+  border: 1px solid var(--reader-line);
+  border-radius: var(--reader-radius);
+  overflow: hidden;
+}
+
+.preview-content .code-lang,
+.preview-content .code-copy {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-end: 0;
+  font-size: 0.7em;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--reader-ink-3);
+  padding: 0.45em 0.7em;
+  user-select: none;
+  transition: opacity 0.15s ease;
+}
+
+.preview-content .code-copy {
+  font-family: var(--type-font-sans);
+  letter-spacing: 0.02em;
+  text-transform: none;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  opacity: 0;
+}
+
+.preview-content .code-block:hover .code-lang {
+  opacity: 0;
+}
+
+.preview-content .code-block:hover .code-copy {
+  opacity: 1;
+}
+
+.preview-content .code-copy:hover {
+  color: var(--reader-accent);
+}
+
+.preview-content .code-block .code-copy:focus-visible {
+  opacity: 1;
+  outline: 2px solid var(--reader-accent);
+  outline-offset: 1px;
+}
+
+.preview-content pre {
+  margin: 0;
+  padding: 1.1em 1.15em;
+  overflow-x: auto;
+  font-family: var(--type-font-mono);
+  font-size: 0.88em;
+  line-height: 1.65;
+  tab-size: 2;
+  color: var(--reader-ink);
+}
+
+.preview-content pre code {
+  background: none;
+  border: 0;
+  padding: 0;
+  font-size: 1em;
+  color: inherit;
+}
+
+/* ── 语法高亮：低饱和矿物色族（独立于品牌色，只随明暗切换） ── */
+.tok-keyword,
+.tok-controlKeyword,
+.tok-moduleKeyword,
+.tok-definitionKeyword,
+.tok-operatorKeyword,
+.tok-tagName {
+  color: #9d3a7d;
+}
+
+.tok-string,
+.tok-string2,
+.tok-docString,
+.tok-regexp,
+.tok-character,
+.tok-attributeValue {
+  color: #2f7a4f;
+}
+
+.tok-number,
+.tok-integer,
+.tok-float,
+.tok-bool,
+.tok-null,
+.tok-atom,
+.tok-unit {
+  color: #b1551e;
+}
+
+.tok-comment,
+.tok-meta,
+.tok-documentMeta,
+.tok-processingInstruction {
+  color: #8b8f96;
+  font-style: italic;
+}
+
+.tok-variableName.tok-definition,
+.tok-function,
+.tok-labelName {
+  color: #2b5f8f;
+}
+
+.tok-typeName,
+.tok-className,
+.tok-namespace,
+.tok-standard {
+  color: #a8631a;
+}
+
+.tok-propertyName,
+.tok-attributeName {
+  color: #3a6b6b;
+}
+
+.tok-operator,
+.tok-punctuation,
+.tok-separator,
+.tok-bracket,
+.tok-paren,
+.tok-brace,
+.tok-angleBracket,
+.tok-squareBracket {
+  color: #7a7f86;
+}
+
+.tok-invalid {
+  color: #a8402f;
+}
+
+.dark .tok-keyword,
+.dark .tok-controlKeyword,
+.dark .tok-moduleKeyword,
+.dark .tok-definitionKeyword,
+.dark .tok-operatorKeyword,
+.dark .tok-tagName {
+  color: #c9a0e0;
+}
+
+.dark .tok-string,
+.dark .tok-string2,
+.dark .tok-docString,
+.dark .tok-regexp,
+.dark .tok-character,
+.dark .tok-attributeValue {
+  color: #93cf9f;
+}
+
+.dark .tok-number,
+.dark .tok-integer,
+.dark .tok-float,
+.dark .tok-bool,
+.dark .tok-null,
+.dark .tok-atom,
+.dark .tok-unit {
+  color: #dfae72;
+}
+
+.dark .tok-comment,
+.dark .tok-meta,
+.dark .tok-documentMeta,
+.dark .tok-processingInstruction {
+  color: #6f7784;
+}
+
+.dark .tok-variableName.tok-definition,
+.dark .tok-function,
+.dark .tok-labelName {
+  color: #8ab4e8;
+}
+
+.dark .tok-typeName,
+.dark .tok-className,
+.dark .tok-namespace,
+.dark .tok-standard {
+  color: #e0b779;
+}
+
+.dark .tok-propertyName,
+.dark .tok-attributeName {
+  color: #7fc4c4;
+}
+
+.dark .tok-operator,
+.dark .tok-punctuation,
+.dark .tok-separator,
+.dark .tok-bracket,
+.dark .tok-paren,
+.dark .tok-brace,
+.dark .tok-angleBracket,
+.dark .tok-squareBracket {
+  color: #8b9099;
+}
+
+.dark .tok-invalid {
+  color: #e08b7a;
+}
+
+/* ── 表格 ────────────────────────────────────────────── */
+.preview-content .table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--reader-line);
+  border-radius: var(--reader-radius-lg);
+}
+
+.preview-content table {
+  border-collapse: separate;
+  border-spacing: 0;
+  /* 按内容自然展开，宁可横向滚动也不把列压成竖条 */
+  width: max-content;
+  min-width: 100%;
+  font-size: 0.95em;
+}
+
+.preview-content th,
+.preview-content td {
+  padding: 0.55em 0.8em;
+  border-bottom: 1px solid var(--reader-line);
+  text-align: start;
+  vertical-align: top;
+}
+
+.preview-content thead th {
+  background: var(--reader-sunken);
+  font-weight: 600;
+  color: var(--reader-ink-2);
+  border-top: 0;
+}
+
+.preview-content tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.preview-content tbody tr:hover {
+  background: var(--reader-accent-soft);
+}
+
+/* ── 图片 ────────────────────────────────────────────── */
+.preview-content figure {
+  text-align: center;
+}
+
+.preview-content img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin-inline: auto;
+  border-radius: var(--reader-radius);
+  box-shadow: 0 1px 3px rgba(31, 26, 20, 0.08);
+}
+
+.preview-content figcaption {
+  padding-block-start: 0.8em;
+  font-size: 0.82em;
+  color: var(--reader-ink-3);
+}
+
+/* ── 链接 ────────────────────────────────────────────── */
+.preview-content a {
+  color: var(--reader-accent);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+}
+
+.preview-content a:hover {
+  text-decoration-thickness: 2px;
+  background: var(--reader-accent-soft);
+  border-radius: 2px;
+}
+
+/* ── 分隔线：居中三点 ────────────────────────────────── */
+.preview-content hr {
+  border: 0;
+  height: 26px;
+  margin-block: 1.6em;
+  background: radial-gradient(
+      circle at center,
+      var(--reader-line-2) 1.5px,
+      transparent 1.7px
+    )
+    center / 20px 100% repeat-x;
+}
+
+/* ── Callout（> [!NOTE]）────────────────────────────── */
+.preview-content .callout {
+  --callout-color: var(--reader-accent);
+  --callout-soft: var(--reader-accent-soft);
+  border-inline-start: 3px solid var(--callout-color);
+  background: var(--callout-soft);
+  border-radius: var(--reader-radius);
+  padding: 0.75em 1em;
+  color: var(--reader-ink);
+}
+
+.preview-content .callout-title {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5em;
+  font-weight: 650;
+  color: var(--callout-color);
+  font-size: 0.95em;
+  margin-block-end: 0.35em;
+}
+
+.preview-content .callout-title::before {
+  font-size: 1em;
+  line-height: 1;
+}
+
+.preview-content .callout > :last-child {
+  margin-bottom: 0;
+}
+
+details.callout > summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: baseline;
+  gap: 0.5em;
+  font-weight: 650;
+  color: var(--callout-color);
+  font-size: 0.95em;
+}
+
+details.callout > summary::-webkit-details-marker {
+  display: none;
+}
+
+details.callout > summary::after {
+  content: "▸";
+  margin-inline-start: auto;
+  opacity: 0.6;
+}
+
+details.callout[open] > summary::after {
+  content: "▾";
+}
+
+details.callout[open] > summary {
+  margin-block-end: 0.35em;
+}
+
+.preview-content .callout[data-callout="note"],
+.preview-content .callout[data-callout="info"],
+.preview-content .callout[data-callout="abstract"],
+.preview-content .callout[data-callout="summary"] {
+  --callout-color: #3d5a8a;
+  --callout-soft: rgba(61, 90, 138, 0.08);
+}
+
+.preview-content .callout[data-callout="tip"],
+.preview-content .callout[data-callout="hint"],
+.preview-content .callout[data-callout="success"],
+.preview-content .callout[data-callout="check"] {
+  --callout-color: #2f7a4f;
+  --callout-soft: rgba(47, 122, 79, 0.08);
+}
+
+.preview-content .callout[data-callout="important"] {
+  --callout-color: #7a4f9d;
+  --callout-soft: rgba(122, 79, 157, 0.08);
+}
+
+.preview-content .callout[data-callout="warning"],
+.preview-content .callout[data-callout="caution"],
+.preview-content .callout[data-callout="attention"] {
+  --callout-color: #b1551e;
+  --callout-soft: rgba(177, 85, 30, 0.08);
+}
+
+.preview-content .callout[data-callout="danger"],
+.preview-content .callout[data-callout="error"],
+.preview-content .callout[data-callout="failure"],
+.preview-content .callout[data-callout="bug"] {
+  --callout-color: #a8402f;
+  --callout-soft: rgba(168, 64, 47, 0.08);
+}
+
+.preview-content .callout[data-callout="question"],
+.preview-content .callout[data-callout="help"],
+.preview-content .callout[data-callout="faq"] {
+  --callout-color: #3a6b6b;
+  --callout-soft: rgba(58, 107, 107, 0.08);
+}
+
+.preview-content .callout[data-callout="example"] {
+  --callout-color: #55595f;
+  --callout-soft: rgba(85, 89, 95, 0.08);
+}
+
+.preview-content .callout[data-callout="quote"],
+.preview-content .callout[data-callout="cite"] {
+  --callout-color: #8b8f96;
+  --callout-soft: rgba(139, 143, 150, 0.08);
+}
+
+.dark .preview-content .callout[data-callout="note"],
+.dark .preview-content .callout[data-callout="info"],
+.dark .preview-content .callout[data-callout="abstract"],
+.dark .preview-content .callout[data-callout="summary"] {
+  --callout-color: #8ab4e8;
+  --callout-soft: rgba(138, 180, 232, 0.1);
+}
+
+.dark .preview-content .callout[data-callout="tip"],
+.dark .preview-content .callout[data-callout="hint"],
+.dark .preview-content .callout[data-callout="success"],
+.dark .preview-content .callout[data-callout="check"] {
+  --callout-color: #7fbf92;
+  --callout-soft: rgba(127, 191, 146, 0.1);
+}
+
+.dark .preview-content .callout[data-callout="important"] {
+  --callout-color: #b79ae0;
+  --callout-soft: rgba(183, 154, 224, 0.1);
+}
+
+.dark .preview-content .callout[data-callout="warning"],
+.dark .preview-content .callout[data-callout="caution"],
+.dark .preview-content .callout[data-callout="attention"] {
+  --callout-color: #dfa76a;
+  --callout-soft: rgba(223, 167, 106, 0.1);
+}
+
+.dark .preview-content .callout[data-callout="danger"],
+.dark .preview-content .callout[data-callout="error"],
+.dark .preview-content .callout[data-callout="failure"],
+.dark .preview-content .callout[data-callout="bug"] {
+  --callout-color: #e08b7a;
+  --callout-soft: rgba(224, 139, 122, 0.1);
+}
+
+.dark .preview-content .callout[data-callout="question"],
+.dark .preview-content .callout[data-callout="help"],
+.dark .preview-content .callout[data-callout="faq"] {
+  --callout-color: #7fc4c4;
+  --callout-soft: rgba(127, 196, 196, 0.1);
+}
+
+.dark .preview-content .callout[data-callout="example"] {
+  --callout-color: #a7abb3;
+  --callout-soft: rgba(167, 171, 179, 0.1);
+}
+
+.dark .preview-content .callout[data-callout="quote"],
+.dark .preview-content .callout[data-callout="cite"] {
+  --callout-color: #8b9099;
+  --callout-soft: rgba(139, 144, 153, 0.1);
+}
+
+/* Callout 图标：Unicode 字符（项目约定：不用 emoji） */
+.callout-title::before,
+details.callout > summary::before {
+  font-family: var(--type-font-sans);
+}
+
+.callout[data-callout="note"] .callout-title::before,
+.callout[data-callout="info"] .callout-title::before,
+.callout[data-callout="note"] > summary::before,
+.callout[data-callout="info"] > summary::before {
+  content: "ⓘ";
+}
+
+.callout[data-callout="abstract"] .callout-title::before,
+.callout[data-callout="summary"] .callout-title::before,
+.callout[data-callout="abstract"] > summary::before,
+.callout[data-callout="summary"] > summary::before {
+  content: "§";
+}
+
+.callout[data-callout="tip"] .callout-title::before,
+.callout[data-callout="hint"] .callout-title::before,
+.callout[data-callout="tip"] > summary::before,
+.callout[data-callout="hint"] > summary::before {
+  content: "✓";
+}
+
+.callout[data-callout="success"] .callout-title::before,
+.callout[data-callout="check"] .callout-title::before,
+.callout[data-callout="success"] > summary::before,
+.callout[data-callout="check"] > summary::before {
+  content: "✓";
+}
+
+.callout[data-callout="important"] .callout-title::before,
+.callout[data-callout="important"] > summary::before {
+  content: "◆";
+}
+
+.callout[data-callout="warning"] .callout-title::before,
+.callout[data-callout="caution"] .callout-title::before,
+.callout[data-callout="attention"] .callout-title::before,
+.callout[data-callout="warning"] > summary::before,
+.callout[data-callout="caution"] > summary::before,
+.callout[data-callout="attention"] > summary::before {
+  content: "▲";
+}
+
+.callout[data-callout="danger"] .callout-title::before,
+.callout[data-callout="error"] .callout-title::before,
+.callout[data-callout="failure"] .callout-title::before,
+.callout[data-callout="bug"] .callout-title::before,
+.callout[data-callout="danger"] > summary::before,
+.callout[data-callout="error"] > summary::before,
+.callout[data-callout="failure"] > summary::before,
+.callout[data-callout="bug"] > summary::before {
+  content: "✕";
+}
+
+.callout[data-callout="question"] .callout-title::before,
+.callout[data-callout="help"] .callout-title::before,
+.callout[data-callout="faq"] .callout-title::before,
+.callout[data-callout="question"] > summary::before,
+.callout[data-callout="help"] > summary::before,
+.callout[data-callout="faq"] > summary::before {
+  content: "?";
+}
+
+.callout[data-callout="example"] .callout-title::before,
+.callout[data-callout="example"] > summary::before {
+  content: "▪";
+}
+
+.callout[data-callout="quote"] .callout-title::before,
+.callout[data-callout="cite"] .callout-title::before,
+.callout[data-callout="quote"] > summary::before,
+.callout[data-callout="cite"] > summary::before {
+  content: "❞";
+}
+
+/* ── 公式（KaTeX）─────────────────────────────────── */
+.preview-content .katex-block {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-block: 0.2em;
+  text-align: center;
+}
+
+.preview-content .katex {
+  font-size: 1.05em;
+}
+
+.preview-content .katex-error {
+  color: #a8402f;
+  font-family: var(--type-font-mono);
+  font-size: 0.9em;
+}
+
+/* ── 阅读进度墨线（ReadingProgressInk）───────────────── */
+.reading-ink {
+  --ink-rail-read: rgba(0, 0, 0, 0.14);
+  --ink-rail-unread: rgba(0, 0, 0, 0.04);
+  position: absolute;
+  inset-inline-end: 3px;
+  inset-block: 0;
+  width: 2px;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.dark .reading-ink {
+  --ink-rail-read: rgba(255, 255, 255, 0.2);
+  --ink-rail-unread: rgba(255, 255, 255, 0.06);
+}
+
+.reading-ink-read {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline: 0;
+  background: var(--ink-rail-read);
+  z-index: 1;
+}
+
+.reading-ink-unread {
+  position: absolute;
+  inset-block-end: 0;
+  inset-inline: 0;
+  background: var(--ink-rail-unread);
+}
+
+/* ── 滚动条（代码块 / 宽表格）────────────────────────── */
+.preview-content pre,
+.preview-content .table-wrap,
+.preview-content .katex-block {
+  scrollbar-width: thin;
+  scrollbar-color: var(--reader-line-2) transparent;
+}
+
+.preview-content pre::-webkit-scrollbar,
+.preview-content .table-wrap::-webkit-scrollbar,
+.preview-content .katex-block::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+
+.preview-content pre::-webkit-scrollbar-thumb,
+.preview-content .table-wrap::-webkit-scrollbar-thumb,
+.preview-content .katex-block::-webkit-scrollbar-thumb {
+  background: var(--reader-line-2);
+  border-radius: 999px;
+}
+
+.preview-content pre::-webkit-scrollbar-track,
+.preview-content .table-wrap::-webkit-scrollbar-track,
+.preview-content .katex-block::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* ── 阅读设置入口 ────────────────────────────────────── */
+.reader-settings {
+  position: absolute;
+  inset-block-start: 14px;
+  inset-inline-end: 18px;
+  z-index: 6;
+}
+
+.reader-settings-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--app-border);
+  border-radius: 999px;
+  background: var(--app-surface);
+  color: var(--app-text-2);
+  cursor: pointer;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.reader-settings-toggle:hover {
+  color: var(--app-accent);
+  border-color: var(--app-accent);
+}
+
+.reader-settings-panel {
+  position: absolute;
+  inset-block-start: 34px;
+  inset-inline-end: 0;
+  width: 248px;
+  padding: 12px 14px;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  box-shadow: var(--app-shadow);
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--app-text-2);
+  user-select: none;
+}
+
+.reader-settings-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-block-end: 10px;
+}
+
+.reader-settings-row:last-child {
+  margin-block-end: 0;
+}
+
+.reader-settings-label {
+  flex: none;
+  color: var(--app-text-3);
+}
+
+.reader-settings-pills {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.reader-pill {
+  font: inherit;
+  font-size: 12px;
+  padding: 2px 8px;
+  border: 1px solid var(--app-border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--app-text-2);
+  cursor: pointer;
+}
+
+.reader-pill:hover {
+  border-color: var(--app-border-strong);
+}
+
+.reader-pill.on {
+  background: var(--app-accent);
+  border-color: var(--app-accent);
+  color: #fff;
+}
+
+.reader-range {
+  flex: 1;
+  accent-color: var(--app-accent);
+}
+
+.reader-settings-value {
+  width: 48px;
+  text-align: end;
+  color: var(--app-text-3);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .preview-content .code-lang,
+  .preview-content .code-copy,
+  .reader-settings-toggle {
+    transition: none;
+  }
+}
+
+/* ── Mermaid 图 ───────────────────────────────────────── */
+.preview-content .mermaid-block {
+  background: var(--reader-sunken);
+  border: 1px solid var(--reader-line);
+  border-radius: var(--reader-radius);
+  padding: 1em 1.1em;
+  overflow-x: auto;
+}
+
+.preview-content .mermaid-block pre.mermaid {
+  margin: 0;
+  padding: 0;
+  color: var(--reader-ink-2);
+  font-size: 0.85em;
+  white-space: pre-wrap;
+}
+
+.preview-content .mermaid-view svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin-inline: auto;
+}
+
+/* 主题色卡：让用户看到组合效果，而不是读一个名字 */
+.reader-pill .reader-swatch {
+  display: inline-block;
+  width: 0.7em;
+  height: 0.7em;
+  margin-inline-end: 0.4em;
+  vertical-align: -0.05em;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+}
+
+/* ── 阅读主题 ─────────────────────────────────────────────
+ * 一套 --tone-* 同时决定标题层级 / 加粗 / 强调与链接 / 行内代码，
+ * 切一次换整套。优先级：主题 > 编辑器标题色 > 默认墨色。
+ * 「纸墨」为默认，故意不定义 --tone-*，行为与主题功能上线前一致。
+ * 新增主题：这里加一个块 + ReaderSettingsPopover 的 TONES 加一项。
+ */
+html[data-skin="indigo"] .preview-content {
+  --tone-1: #26456f;
+  --tone-2: #3a5f96;
+  --tone-3: #5b7ba6;
+  --tone-ink: #1b2a44;
+  --tone-accent: #345c96;
+  --tone-code: #7d3f8a;
+}
+
+html.dark[data-skin="indigo"] .preview-content {
+  --tone-1: #a9c8f0;
+  --tone-2: #93b6e0;
+  --tone-3: #7f97c0;
+  --tone-ink: #e6ecf7;
+  --tone-accent: #8ab4e8;
+  --tone-code: #d69ad0;
+}
+
+html[data-skin="moss"] .preview-content {
+  --tone-1: #2c5540;
+  --tone-2: #3c7154;
+  --tone-3: #5d8a70;
+  --tone-ink: #1e3428;
+  --tone-accent: #3a7a58;
+  --tone-code: #8a5a2a;
+}
+
+html.dark[data-skin="moss"] .preview-content {
+  --tone-1: #a8d8bb;
+  --tone-2: #8fc7a8;
+  --tone-3: #7fae95;
+  --tone-ink: #e4f0e9;
+  --tone-accent: #7fc89b;
+  --tone-code: #d9b878;
+}
+
+html[data-skin="clay"] .preview-content {
+  --tone-1: #7f4222;
+  --tone-2: #96603a;
+  --tone-3: #8a7565;
+  --tone-ink: #3a2418;
+  --tone-accent: #a05a2c;
+  --tone-code: #9d3a4f;
+}
+
+html.dark[data-skin="clay"] .preview-content {
+  --tone-1: #e8b491;
+  --tone-2: #d9a184;
+  --tone-3: #bfa08f;
+  --tone-ink: #f2e4da;
+  --tone-accent: #d99a6c;
+  --tone-code: #e59a9f;
+}

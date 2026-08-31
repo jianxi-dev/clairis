@@ -1,4 +1,19 @@
-export type EditorMode = "wysiwyg" | "source" | "sourceReadOnly";
+export type EditorMode = "preview" | "edit" | "source";
+
+export type FileKind =
+  | "markdown"
+  | "html"
+  | "text"
+  | "css"
+  | "python"
+  | "json"
+  | "javascript"
+  | "yaml"
+  | "csv"
+  | "image"
+  | "video"
+  | "audio"
+  | "pdf";
 
 export type TranslationProvider = "ollama" | "openai";
 
@@ -19,11 +34,76 @@ export interface HeadingColors {
 export interface AppConfig {
   fontSize: number;
   headingColors: HeadingColors;
+  /** 阅读区字号，与编辑器字号解耦 */
+  readerFontSize: number;
+  /** 阅读区正文行宽（px） */
+  readerWidth: number;
+  /** 阅读皮肤：paper / modern … */
+  readerSkin: string;
   ollamaEndpoint: string;
   openaiEndpoint: string;
   openaiModel: string;
   translationProvider: TranslationProvider;
   langPair: LangPair;
+  theme: Theme;
+  sidebarLeftVisible: boolean;
+  sidebarRightVisible: boolean;
+  sidebarLeftWidth: number;
+  sidebarRightWidth: number;
+  horizontalSplitRatio: number;
+  verticalSplitRatio: number;
+  recentFiles: RecentFile[];
+  scrollPositions: Record<string, ScrollPosition>;
+}
+
+export type Theme = "system" | "light" | "dark";
+
+export type CaptureStatus = "closed" | "normal" | "pinned" | "capsule";
+export type CapturePrefix = "" | "." | "-" | "!" | "?";
+
+export type EntryType = "problem" | "todo" | "idea" | "wonder" | "note";
+
+export interface InboxEntry {
+  id: string;
+  type?: EntryType;
+  prefix: CapturePrefix;
+  content: string;
+  capturedAt: string;
+  archivedAt?: string;
+}
+
+export interface UndoState {
+  entryId: string;
+  deadline: number;
+  timer?: number;
+}
+
+export interface CapturePosition {
+  x: number;
+  y: number;
+}
+
+export interface RecentFile {
+  path: string;
+  title: string;
+  openedAt: string;
+}
+
+export interface ScrollPosition {
+  scrollPos: number;
+  contentHeight: number;
+}
+
+export interface Tab {
+  id: string;
+  title: string;
+  path: string | null;
+  fileKind: FileKind;
+  content: string;
+  dirty: boolean;
+  editorMode: EditorMode;
+  scrollPos: number;
+  contentHeight: number;
 }
 
 export type RawMarkdown = string;

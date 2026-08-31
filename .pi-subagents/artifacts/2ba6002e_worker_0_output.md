@@ -1,0 +1,1 @@
+Let me also check the editor.css and see if anything else imports or references these theme files.

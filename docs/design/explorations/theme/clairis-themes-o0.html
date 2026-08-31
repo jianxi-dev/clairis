@@ -1,0 +1,704 @@
+<!--
+title: "clairis themes o0"
+type: design
+status: superseded
+last_updated: 2026-08-01
+source_of_truth: historical
+-->
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>渐晰 Clairis · 主题色系统 v2</title>
+<style>
+/* ═══════════════════════════════════════════════════════════════
+   渐晰 Clairis · 主题色设计令牌系统 v2.0
+   6 色相 × 明/暗 = 12 套 · 每套经长时间观看舒适调校
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ───────────────────────────────────────────────────────────────
+   12 主题色系 — 全部基于 OKLch 色值
+   深色：低亮度(12-18%) + 微色相(chroma .008-.03) + 柔白文字(85-90%)
+   浅色：高亮度(95-97%) + 微色相(chroma .006-.015) + 柔黑文字(17-23%)
+   长时间观看舒适关键：
+   - 文字不取 100% 纯白/纯黑（减少对比疲劳）
+   - 强调色 chroma 控制在 .08-.14（不刺眼）
+   - 每层 surface 仅 +3-4% 亮度差（层次柔和过渡）
+   ─────────────────────────────────────────────────────────────── */
+
+/* ink 水墨留白 — 纯黑白，墨分五色，无任何色相 */
+[data-theme="ink"]{
+  --bg:oklch(15% .008 90);
+  --surface:oklch(19% .010 90);
+  --s2:oklch(23% .012 90);
+  --s3:oklch(27% .014 90);
+  --fg:oklch(86% .006 90);
+  --fg-dim:oklch(64% .008 90);
+  --muted:oklch(44% .010 90);
+  --border:oklch(24% .010 90);
+  --accent:oklch(92% .015 90);
+  --soft:oklch(20% .013 90);
+  --glow:oklch(82% .007 90);
+  --sel:oklch(22% .014 90);
+  --fd:'Iowan Old Style', Georgia, serif;
+  --fb:system-ui,-apple-system,'PingFang SC',sans-serif;
+  --fc:'Noto Serif SC', serif;
+}
+[data-theme="ink-light"]{
+  --bg:oklch(97% .005 90);
+  --surface:oklch(94% .007 90);
+  --s2:oklch(91% .009 90);
+  --s3:oklch(88% .011 90);
+  --fg:oklch(17% .009 90);
+  --fg-dim:oklch(38% .007 90);
+  --muted:oklch(56% .006 90);
+  --border:oklch(90% .007 90);
+  --accent:oklch(14% .02 90);
+  --soft:oklch(92% .007 90);
+  --glow:oklch(24% .009 90);
+  --sel:oklch(88% .014 90);
+  --fd:'Iowan Old Style', Georgia, serif;
+  --fb:system-ui,-apple-system,'PingFang SC',sans-serif;
+  --fc:'Noto Serif SC', serif;
+}
+
+/* forest 深林晨光 — 青瓷绿，干净通透（改掉了原来的脏橄榄） */
+[data-theme="forest"]{
+  --bg:oklch(14% .028 158);
+  --surface:oklch(18% .034 158);
+  --s2:oklch(22% .036 158);
+  --s3:oklch(26% .038 158);
+  --fg:oklch(89% .008 158);
+  --fg-dim:oklch(68% .012 158);
+  --muted:oklch(48% .014 158);
+  --border:oklch(26% .022 158);
+  --accent:oklch(71% .085 155);
+  --soft:oklch(24% .028 155);
+  --glow:oklch(62% .11 155);
+  --sel:oklch(22% .032 155);
+  --fd:'Fraunces', Georgia, serif;
+  --fb:system-ui,-apple-system,'PingFang SC',sans-serif;
+  --fc:'Noto Sans SC', sans-serif;
+}
+[data-theme="forest-light"]{
+  --bg:oklch(96% .007 158);
+  --surface:oklch(93% .009 158);
+  --s2:oklch(90% .011 158);
+  --s3:oklch(87% .013 158);
+  --fg:oklch(19% .032 158);
+  --fg-dim:oklch(42% .024 158);
+  --muted:oklch(60% .016 158);
+  --border:oklch(89% .009 158);
+  --accent:oklch(52% .10 155);
+  --soft:oklch(88% .04 155);
+  --glow:oklch(68% .10 155);
+  --sel:oklch(86% .03 155);
+  --fd:'Fraunces', Georgia, serif;
+  --fb:system-ui,-apple-system,'PingFang SC',sans-serif;
+  --fc:'Noto Sans SC', sans-serif;
+}
+
+/* sky 澄空万里 — 蓝橙撞色，清透辽阔（用户认可，保留基调柔化） */
+[data-theme="sky"]{
+  --bg:oklch(13% .030 238);
+  --surface:oklch(17% .036 238);
+  --s2:oklch(21% .038 238);
+  --s3:oklch(25% .040 238);
+  --fg:oklch(90% .010 238);
+  --fg-dim:oklch(70% .016 238);
+  --muted:oklch(50% .018 238);
+  --border:oklch(25% .024 238);
+  --accent:oklch(65% .135 38);
+  --soft:oklch(22% .030 38);
+  --glow:oklch(56% .16 38);
+  --sel:oklch(20% .034 38);
+  --fd:'DM Serif Display', Georgia, serif;
+  --fb:system-ui,-apple-system,'PingFang SC',sans-serif;
+  --fc:'Noto Sans SC', sans-serif;
+}
+[data-theme="sky-light"]{
+  --bg:oklch(97% .007 238);
+  --surface:oklch(94% .009 238);
+  --s2:oklch(91% .011 238);
+  --s3:oklch(88% .013 238);
+  --fg:oklch(17% .032 238);
+  --fg-dim:oklch(38% .026 238);
+  --muted:oklch(60% .020 238);
+  --border:oklch(89% .012 238);
+  --accent:oklch(56% .14 38);
+  --soft:oklch(86% .06 38);
+  --glow:oklch(66% .14 38);
+  --sel:oklch(88% .04 38);
+  --fd:'DM Serif Display', Georgia, serif;
+  --fb:system-ui,-apple-system,'PingFang SC',sans-serif;
+  --fc:'Noto Sans SC', sans-serif;
+}
+
+/* peach 春风桃林 — 暖樱柔粉，克制高级（用户认可，保留基调柔化） */
+[data-theme="peach"]{
+  --bg:oklch(15% .030 22);
+  --surface:oklch(19% .036 22);
+  --s2:oklch(23% .038 22);
+  --s3:oklch(27% .040 22);
+  --fg:oklch(90% .012 22);
+  --fg-dim:oklch(70% .016 22);
+  --muted:oklch(50% .018 22);
+  --border:oklch(26% .024 22);
+  --accent:oklch(68% .115 22);
+  --soft:oklch(22% .028 22);
+  --glow:oklch(58% .14 22);
+  --sel:oklch(20% .034 22);
+  --fd:'DM Serif Display', Georgia, serif;
+  --fb:system-ui,-apple-system,'PingFang SC',sans-serif;
+  --fc:'Noto Serif SC', serif;
+}
+[data-theme="peach-light"]{
+  --bg:oklch(96% .010 58);
+  --surface:oklch(93% .013 58);
+  --s2:oklch(90% .015 58);
+  --s3:oklch(87% .017 58);
+  --fg:oklch(21% .035 22);
+  --fg-dim:oklch(44% .026 22);
+  --muted:oklch(62% .017 22);
+  --border:oklch(88% .012 58);
+  --accent:oklch(56% .125 22);
+  --soft:oklch(86% .065 22);
+  --glow:oklch(70% .12 22);
+  --sel:oklch(90% .03 22);
+  --fd:'DM Serif Display', Georgia, serif;
+  --fb:system-ui,-apple-system,'PingFang SC',sans-serif;
+  --fc:'Noto Serif SC', serif;
+}
+
+/* bronze 古铜岁月 — 青铜古褐，沉稳历久（跟桃林的暖粉拉开 → 冷褐+古铜金） */
+[data-theme="bronze"]{
+  --bg:oklch(13% .024 68);
+  --surface:oklch(17% .030 68);
+  --s2:oklch(21% .034 68);
+  --s3:oklch(25% .036 68);
+  --fg:oklch(90% .010 68);
+  --fg-dim:oklch(70% .014 68);
+  --muted:oklch(48% .016 68);
+  --border:oklch(26% .022 68);
+  --accent:oklch(65% .105 55);
+  --soft:oklch(22% .026 55);
+  --glow:oklch(56% .13 55);
+  --sel:oklch(20% .030 55);
+  --fd:'Fraunces', Georgia, serif;
+  --fb:system-ui,-apple-system,'PingFang SC',sans-serif;
+  --fc:'Noto Serif SC', serif;
+}
+[data-theme="bronze-light"]{
+  --bg:oklch(94% .014 72);
+  --surface:oklch(90% .018 72);
+  --s2:oklch(86% .020 72);
+  --s3:oklch(82% .022 72);
+  --fg:oklch(19% .040 35);
+  --fg-dim:oklch(41% .030 35);
+  --muted:oklch(59% .018 35);
+  --border:oklch(84% .014 72);
+  --accent:oklch(46% .095 55);
+  --soft:oklch(86% .045 55);
+  --glow:oklch(68% .10 55);
+  --sel:oklch(84% .03 55);
+  --fd:'Fraunces', Georgia, serif;
+  --fb:system-ui,-apple-system,'PingFang SC',sans-serif;
+  --fc:'Noto Serif SC', serif;
+}
+
+/* aurora 极光幻夜 — 深空紫蓝 + 极光青绿（网站主色 + APP图标 + 默认） */
+[data-theme="aurora"]{
+  --bg:oklch(12% .032 258);
+  --surface:oklch(16% .040 258);
+  --s2:oklch(20% .042 258);
+  --s3:oklch(24% .044 258);
+  --fg:oklch(90% .010 258);
+  --fg-dim:oklch(70% .016 258);
+  --muted:oklch(50% .018 258);
+  --border:oklch(26% .026 258);
+  --accent:oklch(72% .105 200);
+  --soft:oklch(22% .030 200);
+  --glow:oklch(64% .13 200);
+  --sel:oklch(19% .036 200);
+  --fd:'Iowan Old Style', Georgia, serif;
+  --fb:system-ui,-apple-system,'PingFang SC',sans-serif;
+  --fc:'Noto Serif SC', serif;
+}
+[data-theme="aurora-light"]{
+  --bg:oklch(95% .008 258);
+  --surface:oklch(91% .011 258);
+  --s2:oklch(87% .013 258);
+  --s3:oklch(83% .014 258);
+  --fg:oklch(17% .040 258);
+  --fg-dim:oklch(40% .028 258);
+  --muted:oklch(58% .020 258);
+  --border:oklch(88% .012 258);
+  --accent:oklch(54% .135 200);
+  --soft:oklch(86% .07 200);
+  --glow:oklch(70% .13 200);
+  --sel:oklch(85% .04 200);
+  --fd:'Iowan Old Style', Georgia, serif;
+  --fb:system-ui,-apple-system,'PingFang SC',sans-serif;
+  --fc:'Noto Serif SC', serif;
+}
+
+
+/* ───────────────────────────────────────────────────────────────
+   页面外壳 — 恒定中性暗底，不随主题变化
+   ─────────────────────────────────────────────────────────────── */
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  font:14px/1.55 system-ui,-apple-system,'PingFang SC',sans-serif;
+  color:oklch(82% .005 90);
+  background:oklch(8% .005 90);
+  min-height:100vh;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+}
+
+.page{display:grid;grid-template-rows:auto auto 1fr auto;min-height:100vh}
+
+/* ─── Header ─── */
+.page-header{padding:32px 48px 8px}
+.page-header h1{
+  font-family:'Iowan Old Style',Georgia,serif;
+  font-size:17px;font-weight:400;letter-spacing:.04em;
+  color:oklch(90% .005 90);
+}
+.page-header p{
+  color:oklch(52% .006 90);
+  font-size:12px;margin-top:6px;letter-spacing:.06em;
+  font-weight:400;
+}
+
+/* ─── Theme selector ─── */
+.ts-bar{
+  display:flex;
+  gap:6px;
+  padding:14px 48px 20px;
+  overflow-x:auto;
+  border-bottom:1px solid oklch(16% .005 90);
+}
+.ts-group{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:10px;
+  padding:10px 14px;
+  border-radius:14px;
+  cursor:pointer;
+  transition:background .15s;
+  min-width:88px;
+}
+.ts-group:hover{background:oklch(14% .005 90)}
+.ts-group.active{background:oklch(16% .006 90);outline:1px solid oklch(22% .008 90)}
+.ts-modes{display:flex;gap:6px}
+.ts-dot{
+  width:34px;height:34px;
+  border-radius:9px;
+  border:2px solid transparent;
+  cursor:pointer;
+  transition:all .15s;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 2px 8px rgba(0,0,0,.3), inset 0 1px 0 rgba(255,255,255,.04);
+}
+.ts-dot:hover{transform:scale(1.08);border-color:rgba(255,255,255,.25)}
+.ts-dot.active{border-color:#fff;box-shadow:0 0 16px -2px var(--dot-c), 0 2px 8px rgba(0,0,0,.3);transform:scale(1.05)}
+.ts-dot::after{
+  content:'';display:block;
+  width:14px;height:14px;border-radius:50%;
+}
+.ts-dot.dark::after{background:#0a0a0c;box-shadow:0 0 0 1px rgba(255,255,255,.2)}
+.ts-dot.light::after{background:#fafafa;box-shadow:0 0 0 1px rgba(0,0,0,.12)}
+.ts-name{font-size:10px;color:oklch(50% .006 90);letter-spacing:.05em;white-space:nowrap;font-weight:500;text-transform:uppercase}
+.ts-group.active .ts-name{color:oklch(85% .005 90)}
+
+
+/* ───────────────────────────────────────────────────────────────
+   MAIN LAYOUT — preview + details
+   ─────────────────────────────────────────────────────────────── */
+.page-main{
+  display:grid;
+  grid-template-columns:1fr 330px;
+  gap:28px;
+  padding:8px 48px 32px;
+}
+
+/* ─── Editor mockup shell ─── */
+.preview-col{
+  background:oklch(10% .006 90);
+  border-radius:18px;
+  border:1px solid oklch(17% .008 90);
+  padding:28px;
+  min-height:480px;
+}
+.editor-window{
+  background:var(--bg);
+  border-radius:14px;
+  overflow:hidden;
+  border:1px solid var(--border);
+  box-shadow:0 28px 80px rgba(0,0,0,.5), 0 2px 0 rgba(255,255,255,.02) inset;
+  transition:background .35s,border-color .35s,box-shadow .35s;
+}
+.window-chrome{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:11px 16px;
+  background:var(--surface);
+  border-bottom:1px solid var(--border);
+  transition:background .35s;
+}
+.wc-dots{display:flex;gap:7px}
+.wc-dot{width:10px;height:10px;border-radius:50%;opacity:.6}
+.wc-dot.r{background:oklch(63% .19 25)}
+.wc-dot.y{background:oklch(73% .16 80)}
+.wc-dot.g{background:oklch(63% .16 140)}
+.wc-title{
+  font-size:10px;color:var(--fg-dim);
+  font-family:var(--fc);letter-spacing:.05em;
+  transition:color .35s;
+  font-weight:500;
+}
+
+.editor-grid{display:grid;grid-template-columns:180px 1fr;height:420px}
+
+/* Sidebar */
+.sidebar{
+  background:var(--surface);
+  border-right:1px solid var(--border);
+  padding:10px 0;
+  transition:background .35s;
+}
+.sb-section{padding:0}
+.sb-heading{
+  font-size:9px;font-weight:600;color:var(--muted);
+  padding:10px 15px 5px;
+  text-transform:uppercase;letter-spacing:.07em;
+  transition:color .35s;
+}
+.sb-item{
+  display:flex;align-items:center;gap:9px;
+  padding:6px 15px;
+  font-size:11.5px;color:var(--fg-dim);
+  cursor:pointer;
+  transition:all .15s;
+  font-weight:450;
+}
+.sb-item:hover{background:var(--sel)}
+.sb-item.active{color:var(--accent);background:var(--soft)}
+.sb-icon{width:11px;height:11px;flex-shrink:0;border-radius:2px;opacity:.7}
+.sb-icon.folder{background:var(--accent-soft,#555)}
+.sb-icon.file{background:transparent;border:1px solid var(--muted)}
+
+/* Editor content */
+.editor-content{display:flex;flex-direction:column}
+.tabs{display:flex;background:var(--s2);border-bottom:1px solid var(--border);gap:0}
+.tab{
+  padding:9px 16px;font-size:10.5px;
+  color:var(--fg-dim);border-bottom:2px solid transparent;
+  cursor:pointer;transition:all .15s;font-weight:450;
+}
+.tab.active{color:var(--accent);border-color:var(--accent)}
+
+.code-area{flex:1;display:flex;overflow:hidden}
+.line-numbers{
+  padding:13px 9px 13px 13px;
+  font:11.5px/1.65 'SF Mono',ui-monospace,monospace;
+  color:var(--muted);
+  text-align:right;
+  background:var(--s2);
+  border-right:1px solid var(--border);
+  user-select:none;
+}
+.code-content{
+  flex:1;padding:13px 18px;
+  font:11.5px/1.65 'SF Mono',ui-monospace,monospace;
+  overflow-y:auto;
+  white-space:pre;
+}
+.cc-line{display:block}
+.cc-line .kw{color:var(--accent);font-weight:600}
+.cc-line .h1{color:var(--fg);font-weight:600;font-size:12.5px}
+.cc-line .md{color:var(--muted)}
+.cc-line .txt{color:var(--fg);opacity:.92}
+
+/* Status bar */
+.status-bar{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:6px 16px;background:var(--surface);
+  border-top:1px solid var(--border);
+  font-size:9.5px;color:var(--muted);
+  font-family:var(--fc);
+  letter-spacing:.03em;
+}
+
+
+/* ───────────────────────────────────────────────────────────────
+   DETAILS PANEL
+   ─────────────────────────────────────────────────────────────── */
+.detail-col{position:sticky;top:20px;align-self:start}
+.td-card{
+  background:oklch(11% .006 90);
+  border-radius:16px;
+  border:1px solid oklch(18% .008 90);
+  overflow:hidden;
+}
+.td-head{padding:22px 22px 16px;border-bottom:1px solid oklch(17% .008 90)}
+.td-head h3{
+  font-family:var(--fd);
+  font-size:15px;font-weight:400;letter-spacing:.04em;
+  color:var(--fg);
+  transition:color .35s;
+}
+.td-mode-tag{
+  display:inline-block;margin-top:7px;padding:2px 9px;border-radius:5px;
+  font-size:9.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;
+  background:var(--soft);color:var(--accent);
+  transition:background .35s,color .35s;
+}
+.td-mood{margin-top:11px;font-size:11.5px;color:oklch(50% .006 90);letter-spacing:.06em}
+
+.td-palette{display:grid;grid-template-columns:repeat(2,1fr);gap:7px;padding:18px 22px}
+.td-chip{
+  aspect-ratio:2/1;
+  border-radius:9px;
+  display:flex;align-items:flex-end;justify-content:flex-start;
+  padding:7px 9px;
+  position:relative;
+  box-shadow:0 2px 8px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.04);
+  transition:transform .2s;
+}
+.td-chip:hover{transform:translateY(-1px)}
+.td-chip span{
+  font-size:9px;font-weight:600;
+  color:#fff;letter-spacing:.04em;
+  text-shadow:0 1px 4px rgba(0,0,0,.8);
+  background:rgba(0,0,0,.4);
+  padding:2px 6px;border-radius:3px;
+  backdrop-filter:blur(3px);
+  font-family:'SF Mono',ui-monospace,monospace;
+}
+
+.td-meta{padding:14px 22px 22px;display:flex;flex-direction:column;gap:11px}
+.td-meta>div{display:flex;justify-content:space-between;align-items:center}
+.td-meta span{font-size:10.5px;color:oklch(44% .006 90);letter-spacing:.03em}
+.td-meta b{font-size:11.5px;color:oklch(78% .005 90);font-weight:450;font-family:var(--fc);transition:color .35s}
+
+.td-code{
+  padding:16px 22px;border-top:1px solid oklch(17% .008 90);
+  font:10.5px/1.5 'SF Mono',ui-monospace,monospace;color:oklch(50% .006 90);
+}
+.td-code label{display:block;font-size:9.5px;color:oklch(40% .006 90);text-transform:uppercase;letter-spacing:.06em;margin-bottom:7px}
+
+
+/* ─── Footer ─── */
+.page-footer{
+  padding:20px 48px;border-top:1px solid oklch(16% .005 90);
+  font-size:10.5px;color:oklch(44% .006 90);
+  display:flex;justify-content:space-between;align-items:center;
+  letter-spacing:.02em;
+}
+.page-footer code{
+  background:oklch(15% .006 90);padding:2px 7px;border-radius:4px;
+  color:oklch(60% .006 90);font-family:'SF Mono',ui-monospace,monospace;
+  font-size:10px;
+}
+
+/* ─── Responsive ─── */
+@media(max-width:900px){
+  .page-main{grid-template-columns:1fr}
+  .detail-col{position:static}
+  .editor-grid{height:320px}
+  .page-header,.ts-bar,.page-main,.page-footer{padding-left:20px;padding-right:20px}
+}
+</style>
+</head>
+<body>
+
+<div class="page">
+
+<header class="page-header">
+  <h1>渐晰 Clairis · 主题色系统</h1>
+  <p>6 色相 × 明/暗 = 12 套 · 长时间观看舒适级调校</p>
+</header>
+
+<nav class="ts-bar" id="selector"></nav>
+
+<main class="page-main">
+
+  <!-- EDITOR MOCKUP -->
+  <section class="preview-col">
+    <div class="editor-window">
+      <div class="window-chrome">
+        <div class="wc-dots">
+          <span class="wc-dot r"></span>
+          <span class="wc-dot y"></span>
+          <span class="wc-dot g"></span>
+        </div>
+        <span class="wc-title">无标题 · 渐晰</span>
+        <span></span>
+      </div>
+      <div class="editor-grid">
+        <aside class="sidebar">
+          <div class="sb-section">
+            <div class="sb-heading">文件夹</div>
+            <div class="sb-item active"><span class="sb-icon folder"></span><span>工作笔记</span></div>
+            <div class="sb-item"><span class="sb-icon file"></span><span>今日.md</span></div>
+            <div class="sb-item"><span class="sb-icon file"></span><span>日记.md</span></div>
+            <div class="sb-item"><span class="sb-icon file"></span><span>随手记.md</span></div>
+          </div>
+          <div class="sb-section">
+            <div class="sb-heading">标签</div>
+            <div class="sb-item"><span class="sb-icon file"></span><span>#思考</span></div>
+            <div class="sb-item"><span class="sb-icon file"></span><span>#项目</span></div>
+          </div>
+        </aside>
+        <div class="editor-content">
+          <div class="tabs">
+            <div class="tab active">今日.md</div>
+            <div class="tab">日记.md</div>
+          </div>
+          <div class="code-area">
+            <div class="line-numbers">1<br>2<br>3<br>4<br>5<br>6<br>7<br>8</div>
+            <div class="code-content">
+              <span class="cc-line"><span class="kw">#</span> <span class="h1">今日笔记</span></span>
+              <span class="cc-line"></span>
+              <span class="cc-line"><span class="txt">清晨六点醒来，窗外有薄雾。</span></span>
+              <span class="cc-line"><span class="txt">昨晚没写完的段落，今天续上—</span></span>
+              <span class="cc-line"></span>
+              <span class="cc-line"><span class="txt"></span><span class="md">**</span><span class="txt">重要</span><span class="md">**</span><span class="txt"> 完成新版设计稿。</span></span>
+              <span class="cc-line"><span class="txt">窗外有光，安静的咖啡馆。</span></span>
+              <span class="cc-line"><span class="txt">思想变得更清晰一些。</span></span>
+            </div>
+          </div>
+          <div class="status-bar">
+            <span>Markdown · 简明</span>
+            <span>UTF-8 · LF</span>
+            <span>Ln 8, Col 15</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- DETAILS SIDEBAR -->
+  <aside class="detail-col">
+    <div class="td-card">
+      <div class="td-head">
+        <h3 id="td-name">水墨·墨色</h3>
+        <span class="td-mode-tag" id="td-mode">暗</span>
+        <p class="td-mood" id="td-mood">沉浸·仪式·肃穆</p>
+      </div>
+      <div class="td-palette" id="td-palette"></div>
+      <div class="td-meta">
+        <div><span>优先级</span><b id="td-priority">1 / 6</b></div>
+        <div><span>适用</span><b id="td-usage">深夜陪伴</b></div>
+        <div><span>字体</span><b id="td-font">思源宋 + 系统黑</b></div>
+      </div>
+      <div class="td-code">
+        <label>CSS 应用</label>
+        <span id="td-code">data-theme="ink"</span>
+      </div>
+    </div>
+  </aside>
+
+</main>
+
+<footer class="page-footer">
+  <span>渐晰 Clairis · 设计令牌系统 v2.0</span>
+  <span>根挂 <code>data-theme</code> · 12 套 · 全语义变量 --bg/--surface/--fg/--accent</span>
+</footer>
+</div>
+
+<script>
+/* ─── Theme Data ─── */
+const T = {
+  ink:           {f:'水墨', n:'墨色', m:'暗', p:1, u:'深夜陪伴',     mo:'沉浸·仪式·肃穆',     fo:'思源宋 + 系统黑',   dot:'#3a3a3a'},
+  'ink-light':   {f:'水墨', n:'留白', m:'明', p:1, u:'冬日清晨',     mo:'清凛·生机',          fo:'思源宋 + 系统黑',   dot:'#e8e8e6'},
+  forest:        {f:'深林', n:'青瓷', m:'暗', p:2, u:'习惯养成',     mo:'自然·生长·安心',     fo:'思源宋 + 思源黑',   dot:'#4a7a5a'},
+  'forest-light':{f:'深林', n:'瓷明', m:'明', p:2, u:'初春暖阳',     mo:'清新·温润',          fo:'思源宋 + 思源黑',   dot:'#a8c8b0'},
+  sky:           {f:'澄空', n:'湛暗', m:'暗', p:3, u:'效率随手',     mo:'清晰·轻快·现代',     fo:'思源黑 + DM Serif', dot:'#3a6090'},
+  'sky-light':   {f:'澄空', n:'湛明', m:'明', p:3, u:'轻办公',       mo:'透光·写意',          fo:'思源黑 + DM Serif', dot:'#8ab0d8'},
+  peach:         {f:'春风', n:'桃暗', m:'暗', p:4, u:'自由书写',     mo:'春日·温柔·呼吸',     fo:'思源宋 + DM Serif', dot:'#a86a5e'},
+  'peach-light': {f:'春风', n:'桃明', m:'明', p:4, u:'手帐·日记',     mo:'柔悦·轻盈',          fo:'思源宋 + DM Serif', dot:'#e0b8a8'},
+  bronze:        {f:'古铜', n:'铜暗', m:'暗', p:5, u:'资料归档',     mo:'沉稳·时间·历久',     fo:'思源宋 + Fraunces', dot:'#7a6a4a'},
+  'bronze-light':{f:'古铜', n:'铜明', m:'明', p:5, u:'书香笔记',     mo:'古雅·留白',          fo:'思源宋 + Fraunces', dot:'#c8b898'},
+  aurora:        {f:'极光', n:'幻暗', m:'暗', p:6, u:'默认·网站',     mo:'灵感·未知·流动',     fo:'思源宋 + Iowan',    dot:'#4a6090'},
+  'aurora-light':{f:'极光', n:'幻明', m:'明', p:6, u:'默认·白天',     mo:'微凉·晨醒',          fo:'思源宋 + Iowan',    dot:'#7a98c8'},
+};
+
+const ORDER = ['ink','ink-light','forest','forest-light','sky','sky-light','peach','peach-light','bronze','bronze-light','aurora','aurora-light'];
+
+/* ─── Build selector ─── */
+function buildSelector(){
+  const sel = document.getElementById('selector');
+  sel.innerHTML = '';
+  ORDER.forEach(key=>{
+    const d = T[key];
+    const isLight = key.endsWith('-light');
+    const baseKey = isLight ? key.replace('-light','') : key;
+    const baseDot = T[baseKey].dot;
+    const lightDot = T[baseKey+'-light'].dot;
+    const g = document.createElement('div');
+    g.className = 'ts-group' + (key === 'ink' ? ' active' : '');
+    g.innerHTML = `
+      <div class="ts-modes">
+        <div class="ts-dot dark" data-target="${baseKey}" style="--dot-c:${baseDot}" title="${d.f}·暗"></div>
+        <div class="ts-dot light" data-target="${baseKey}-light" style="--dot-c:${lightDot}" title="${d.f}·明"></div>
+      </div>
+      <div class="ts-name">${d.f}</div>
+    `;
+    sel.appendChild(g);
+  });
+  const initDot = document.querySelector('.ts-dot[data-target="ink"]');
+  if(initDot) initDot.classList.add('active');
+}
+
+/* ─── Switch theme ─── */
+function switchTheme(key){
+  document.documentElement.setAttribute('data-theme', key);
+  const d = T[key];
+  document.querySelectorAll('.ts-dot').forEach(e=>{
+    e.classList.toggle('active', e.dataset.target === key);
+  });
+  document.querySelectorAll('.ts-group').forEach(e=>{
+    const btns = e.querySelectorAll('.ts-dot');
+    const match = Array.from(btns).some(b => b.dataset.target === key);
+    e.classList.toggle('active', match);
+  });
+  document.getElementById('td-name').textContent = `${d.f}·${d.n}`;
+  const modeEl = document.getElementById('td-mode');
+  modeEl.textContent = d.m;
+  document.getElementById('td-mood').textContent = d.mo;
+  document.getElementById('td-priority').textContent = `${d.p} / 6`;
+  document.getElementById('td-usage').textContent = d.u;
+  document.getElementById('td-font').textContent = d.fo;
+  document.getElementById('td-code').textContent = `data-theme="${key}"`;
+  renderPalette();
+}
+
+/* ─── Render palette from live CSS vars ─── */
+function renderPalette(){
+  const chips = [
+    {css:'--bg',       label:'背景'},
+    {css:'--surface',  label:'面层'},
+    {css:'--fg',       label:'文字'},
+    {css:'--accent',   label:'强调'},
+  ];
+  const host = document.getElementById('td-palette');
+  host.innerHTML = chips.map(c=>{
+    return `<div class="td-chip" style="background:var(${c.css})"><span>${c.label}</span></div>`;
+  }).join('');
+}
+
+/* ─── Init ─── */
+buildSelector();
+document.querySelectorAll('.ts-dot').forEach(dot=>{
+  dot.addEventListener('click', e=>switchTheme(e.target.dataset.target));
+});
+renderPalette();
+</script>
+
+</body>
+</html>

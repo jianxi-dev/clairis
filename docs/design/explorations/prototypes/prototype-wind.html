@@ -1,0 +1,599 @@
+<!--
+title: "prototype wind"
+type: design
+status: superseded
+last_updated: 2026-08-01
+source_of_truth: historical
+-->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wind</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,400;7..72,500&family=Caveat:wght@400;600&display=swap');
+*,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg-1: #1c1917;
+  --bg-2: #292524;
+  --text-warm: #fef3c7;
+  --text-cool: #cbd5e1;
+  --text-faint: #78716c;
+  --accent: #fbbf24;
+  --accent-2: #f97316;
+  --wind-color: rgba(147, 197, 253, 0.06);
+}
+
+html, body {
+  height: 100%; overflow: hidden;
+  background: var(--bg-1);
+  color: var(--text-warm);
+  font-family: 'Literata', serif;
+}
+
+/* The field container */
+#field {
+  position: fixed; inset: 0;
+  background:
+    radial-gradient(circle at 30% 40%, rgba(251, 191, 36, 0.04) 0%, transparent 50%),
+    linear-gradient(180deg, var(--bg-2) 0%, var(--bg-1) 100%);
+  overflow: hidden;
+  cursor: crosshair;
+}
+
+/* Background texture - grass/grit */
+#field::before {
+  content: '';
+  position: absolute; inset: 0;
+  background-image:
+    radial-gradient(1px 1px at 20px 20px, rgba(255,255,255,0.06), transparent),
+    radial-gradient(1px 1px at 60px 60px, rgba(255,255,255,0.04), transparent),
+    radial-gradient(1px 1px at 100px 30px, rgba(255,255,255,0.03), transparent);
+  background-size: 120px 120px, 80px 80px, 140px 140px;
+  pointer-events: none;
+}
+
+/* Cursor spotlight */
+#cursor-spot {
+  position: fixed;
+  width: 360px; height: 360px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(251, 191, 36, 0.12) 0%, transparent 65%);
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  transition: left 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+              top 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+  z-index: 1;
+  mix-blend-mode: screen;
+}
+
+/* Text clusters - the "grass" */
+.cluster {
+  position: absolute;
+  max-width: 280px;
+  padding: 12px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+  transform-origin: center;
+}
+
+.cluster p {
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--text-cool);
+  transition: all 0.6s;
+}
+
+.cluster .meta {
+  font-family: 'Inter', sans-serif;
+  font-size: 10px;
+  color: var(--text-faint);
+  margin-top: 6px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+/* Newer clusters - sharper, lighter */
+.cluster.fresh {
+  background: rgba(251, 191, 36, 0.04);
+  border: 1px solid rgba(251, 191, 36, 0.12);
+}
+.cluster.fresh p { color: var(--text-warm); }
+
+/* Aged clusters - blending in */
+.cluster.aged {
+  background: transparent;
+  border: 1px solid transparent;
+  opacity: 0.6;
+}
+.cluster.aged p { color: var(--text-faint); }
+
+/* Very old - barely visible */
+.cluster.ancient {
+  background: transparent;
+  border: 1px solid transparent;
+  opacity: 0.25;
+}
+.cluster.ancient p {
+  color: #44403c;
+  font-size: 12px;
+}
+
+/* When active/moused over */
+.cluster.active {
+  transform: scale(1.2) translateX(0) translateY(0) !important;
+  z-index: 1000;
+  background: rgba(251, 191, 36, 0.1);
+  border-color: rgba(251, 191, 36, 0.3);
+  opacity: 1;
+}
+.cluster.active p { color: var(--text-warm); font-size: 15px; }
+
+/* Wind visualization lines */
+.wind-line {
+  position: absolute;
+  height: 2px;
+  background: repeating-linear-gradient(90deg, transparent 0px, var(--accent) 12px, transparent 24px);
+  opacity: 0;
+  width: 60px;
+  transform-origin: left;
+  transition: opacity 0.5s;
+}
+.wind-line.blowing {
+  opacity: 0.5;
+  animation: windFlow 2s linear infinite;
+}
+@keyframes windFlow {
+  0% { background-position: 0px 0; }
+  100% { background-position: 120px 0; }
+}
+
+/* === CONTROLS === */
+#controls {
+  position: fixed;
+  bottom: 30px; left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+  padding: 12px 24px;
+  background: rgba(28, 25, 23, 0.95);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.05);
+  border-radius: 24px;
+  z-index: 200;
+}
+
+.ctrl-btn {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.08);
+  color: var(--text-cool);
+  padding: 8px 16px;
+  border-radius: 14px;
+  font-size: 12px;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.ctrl-btn:hover {
+  background: rgba(255,255,255,0.06);
+  color: var(--text-warm);
+  border-color: var(--accent);
+}
+.ctrl-btn.primary {
+  background: var(--accent);
+  color: #000;
+  border-color: var(--accent);
+}
+.ctrl-btn.primary:hover { background: var(--accent-2); border-color: var(--accent-2); }
+
+/* === WRITING ZONE (only visible when focused) === */
+#write-zone {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.9);
+  width: 560px;
+  max-width: 90vw;
+  background: #fffef9;
+  border-radius: 12px;
+  padding: 32px 36px;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.6);
+  z-index: 500;
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.4s;
+}
+#write-zone.show {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translate(-50%, -50%) scale(1);
+}
+#write-zone textarea {
+  width: 100%;
+  min-height: 200px;
+  border: none;
+  outline: none;
+  font-family: 'Literata', serif;
+  font-size: 16px;
+  line-height: 1.8;
+  color: #1a1a0f;
+  resize: none;
+  background: transparent;
+}
+#write-zone textarea::placeholder { color: #92896f; font-style: italic; }
+.write-hint {
+  position: absolute;
+  bottom: -30px; left: 0; right: 0;
+  text-align: center;
+  font-size: 11px;
+  color: #92896f;
+  font-family: 'Inter', sans-serif;
+}
+
+/* hint at top */
+#hint {
+  position: fixed;
+  top: 18px; left: 50%;
+  transform: translateX(-50%);
+  font-size: 12px;
+  color: var(--text-faint);
+  font-family: 'Inter', sans-serif;
+  letter-spacing: 0.03em;
+  z-index: 100;
+}
+
+/* Overlay panels */
+.overlay {
+  position: fixed; inset: 0;
+  background: rgba(20, 16, 12, 0.96);
+  z-index: 400;
+  display: flex;
+  flex-direction: column;
+  padding: 60px 40px;
+  align-items: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s;
+}
+.overlay.show { opacity: 1; pointer-events: auto; }
+.overlay-close {
+  position: absolute;
+  top: 22px; right: 28px;
+  font-size: 12px; color: var(--text-cool);
+  cursor: pointer;
+  padding: 6px 14px;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 6px;
+  font-family: 'Inter', sans-serif;
+}
+.overlay-close:hover { color: var(--text-warm); border-color: rgba(255,255,255,0.2); }
+
+.bands-head {
+  display: flex;
+  width: 100%;
+  max-width: 600px;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+.bands-head h2 {
+  font-family: 'Caveat', cursive;
+  font-size: 28px;
+  color: var(--text-warm);
+  font-weight: 400;
+}
+.band-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  width: 100%;
+  max-width: 600px;
+}
+.band-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  cursor: pointer;
+  transition: background 0.3s;
+}
+.band-row:hover { background: rgba(255,255,255,0.02); }
+.band-time {
+  width: 76px;
+  font-size: 11px;
+  color: var(--text-faint);
+  font-family: 'Inter', sans-serif;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+.band-bar {
+  width: 4px;
+  height: 28px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.band-text {
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--text-cool);
+  font-family: 'Literata', serif;
+}
+
+.relic-phrase {
+  font-family: 'Caveat', cursive;
+  font-size: 36px;
+  color: var(--accent);
+  margin-bottom: 32px;
+}
+.relic-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  width: 100%;
+  max-width: 90vw;
+}
+.relic-card {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 8px;
+  padding: 18px 20px;
+  transition: all 0.3s;
+  cursor: pointer;
+  animation: fadeUp 0.4s calc(var(--i) * 80ms) both;
+}
+@keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+.relic-card:hover { background: rgba(255,255,255,0.08); border-color: var(--accent); }
+.relic-card .rname { font-size: 13px; font-weight: 500; color: var(--text-warm); margin-bottom: 10px; font-family: 'Inter', sans-serif; }
+.relic-card .rbody { font-size: 12.5px; line-height: 1.7; color: var(--text-cool); white-space: pre-wrap; }
+.relic-card .rbody mark { background: rgba(251,191,36,0.2); color: #fff; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.02s !important; }
+}
+</style>
+</head>
+<body>
+
+<div id="field">
+  <div id="cursor-spot"></div>
+</div>
+
+<div id="hint">在场地移动你 · 文字会随你的注意力浮动 · 点击聚拢阅读 · 双击写新字</div>
+
+<!-- Writing zone (appears on focus) -->
+<div id="write-zone">
+  <textarea id="editor" placeholder="在风里写下一个念头…"></textarea>
+  <div class="write-hint">点击场外 → 投入风中 · Esc → 放弃</div>
+</div>
+
+<!-- Controls -->
+<div id="controls">
+  <button class="ctrl-btn primary" onclick="openWrite()">✎ 提笔</button>
+  <button class="ctrl-btn" onclick="openBands()">⏰ 时代</button>
+  <button class="ctrl-btn" onclick="openRelics()">🔮 墨迹</button>
+  <button class="ctrl-btn" onclick="gust()">🍃 一阵风</button>
+</div>
+
+<!-- Time bands overlay -->
+<div id="bands-overlay" class="overlay">
+  <div class="overlay-close" onclick="closeOverlay('bands-overlay')">关闭 (Esc)</div>
+  <div class="bands-head">
+    <h2>Time Bands</h2>
+  </div>
+  <div class="band-list" id="band-list"></div>
+</div>
+
+<!-- Ink Relics overlay -->
+<div id="relics-overlay" class="overlay">
+  <div class="overlay-close" onclick="closeOverlay('relics-overlay')">关闭 (Esc)</div>
+  <div class="relic-phrase" id="relic-ph"></div>
+  <div class="relic-grid" id="relic-grid"></div>
+</div>
+
+<script>
+// Document content
+const TEXTS = [
+  { id: 1, title: '设计哲学.md', content: '设计的本质不是解决问题，而是发现真正的命题。每次坐在桌前，最先做的不是画草图，而是问自己：我真正要回答的问题是什么？', hoursAgo: 2 },
+  { id: 2, title: '数字极简.md', content: '注意力经济的核心悖论：我们以为是"工具使用我们"，实际是我们喂养了注意力经济。设计的责任是帮用户建立清晰边界。', hoursAgo: 12 },
+  { id: 3, title: '周会记录.md', content: '讨论了 Q3 架构方向。PM提出新需求：操作面板回到之前滚动位置。深层问题是"操作"与"阅读"不只是模式切换。', hoursAgo: 6 },
+  { id: 4, title: '设计咨询备忘.md', content: '安全感来自确定感：我知道东西没丢。去掉侧栏等于去掉安全毯，需要等价物。保留温暖感。', hoursAgo: 28 },
+  { id: 5, title: 'Resonance笔记.md', content: 'BM25 实现 + 反向链接检测。时效衰减公式 w=(recent+0.1)/2。阈值0.42以下不展示。置信度不够时缩小字号。', hoursAgo: 40 },
+  { id: 6, title: 'attention.md', content: '注意力是唯一的货币。注意力的设计影响决策质量。Attention=f(irrelevance)', hoursAgo: 72 },
+  { id: 7, title: 'desk-concept.md', text: 'The Desk 空间记忆模型。位置=意义。最多7±2个。同一文档每次在固定位置。', hoursAgo: 96 },
+];
+
+const TIME_BANDS = [
+  { t: '6:42 AM',  c: 'rgba(251,191,36,0.22)', x: '开始写"设计哲学" · 4 段' },
+  { t: '6:58 AM',  c: 'rgba(251,191,36,0.06)', x: '暂停 · 喝咖啡休息' },
+  { t: '7:12 AM',  c: 'rgba(251,191,36,0.28)', x: '密集写 Resonance · +220字' },
+  { t: '7:44 AM',  c: 'rgba(251,191,36,0.05)', x: '切桌面 · 整理了 3 篇文档' },
+  { t: '8:02 AM',  c: 'rgba(251,191,36,0.16)', x: '回来继续写 · 改前 2 段' },
+  { t: '9:20 AM',  c: 'rgba(251,191,36,0.34)', x: '冲刺写完 · 反复打磨最后一段' },
+  { t: '现在',     c: 'transparent',            x: '你在场地里' },
+];
+
+const RELICS = [
+  {
+    phrase: '注意力',
+    docs: [
+      { name: '数字极简.md', text: '注意力经济的核心悖论，我们以为是工具使用我们，实际是我们喂养了它。' },
+      { name: 'attention.md', text: '注意力是唯一的货币。它的设计影响决策质量。' },
+    ]
+  },
+  {
+    phrase: '设计',
+    docs: [
+      { name: '设计哲学.md', text: '设计的本质不是解决问题，而是发现真正的命题。' },
+      { name: '咨询备忘.md', text: '"建立清晰边界"是设计的责任。' },
+    ]
+  },
+];
+
+function ageClass(hoursAgo) {
+  if (hoursAgo < 6) return 'fresh';
+  if (hoursAgo < 48) return 'aged';
+  return 'ancient';
+}
+
+function fmtTime(h) {
+  if (h < 1) return '刚刚';
+  if (h < 24) return h + '小时前';
+  return Math.floor(h / 24) + '天前';
+}
+
+// Field dimensions
+let fieldRect = { w: 0, h: 0 };
+function updateRect() {
+  fieldRect.w = window.innerWidth;
+  fieldRect.h = window.innerHeight;
+}
+updateRect();
+window.addEventListener('resize', updateRect);
+
+// Cluster positions (initialize)
+const clusters = TEXTS.map((t, i) => ({
+  ...t,
+  x: 120 + (i % 3) * 280 + (Math.random() - 0.5) * 80,
+  y: 150 + Math.floor(i / 3) * 200 + (Math.random() - 0.5) * 50,
+  element: null,
+}));
+
+function renderField() {
+  const field = document.getElementById('field');
+  clusters.forEach(c => {
+    const el = document.createElement('div');
+    el.className = 'cluster ' + ageClass(c.hoursAgo);
+    el.style.left = c.x + 'px';
+    el.style.top = c.y + 'px';
+    el.innerHTML = `
+      <p>${c.content}</p>
+      <div class="meta"><span>${fmtTime(c.hoursAgo)}</span></div>
+    `;
+    field.appendChild(el);
+    c.element = el;
+    
+    el.addEventListener('click', e => {
+      e.stopPropagation();
+      el.classList.toggle('active');
+      if (el.classList.contains('active')) {
+        showHint(`📖 ${c.title} · 点击场外放手`);
+      }
+    });
+  });
+}
+
+// Cursor spotlight follows mouse
+document.addEventListener('mousemove', e => {
+  const spot = document.getElementById('cursor-spot');
+  spot.style.left = e.clientX + 'px';
+  spot.style.top = e.clientY + 'px';
+  
+  // clusters near cursor get pushed slightly (wind effect)
+  const fx = e.clientX;
+  const fy = e.clientY;
+  clusters.forEach(c => {
+    const cx = c.x + 100;
+    const cy = c.y + 50;
+    const dx = cx - fx;
+    const dy = cy - fy;
+    const dist = Math.sqrt(dx*dx + dy*dy);
+    if (dist < 200) {
+      const force = (200 - dist) / 200;
+      const moveX = (dx / dist) * force * 8;
+      const moveY = (dy / dist) * force * 8;
+      c.element.style.transform = `translate(${moveX}px, ${moveY}px)`;
+      c.element.style.opacity = Math.min(1, 0.5 + force);
+    } else {
+      c.element.style.transform = '';
+      c.element.style.opacity = '';
+    }
+  });
+});
+
+// Click on background opens writing zone
+document.getElementById('field').addEventListener('dblclick', e => {
+  if (e.target.id === 'field') openWrite();
+});
+
+function openWrite() {
+  const wz = document.getElementById('write-zone');
+  wz.classList.add('show');
+  document.getElementById('editor').focus();
+}
+
+// Gust of wind: shuffles clusters
+function gust() {
+  clusters.forEach(c => {
+    c.x += (Math.random() - 0.5) * 200;
+    c.y += (Math.random() - 0.5) * 100;
+    c.x = Math.max(50, Math.min(window.innerWidth - 350, c.x));
+    c.y = Math.max(80, Math.min(window.innerHeight - 200, c.y));
+    c.element.style.left = c.x + 'px';
+    c.element.style.top = c.y + 'px';
+  });
+}
+
+// Open Time Bands
+function openBands() {
+  const list = document.getElementById('band-list');
+  list.innerHTML = TIME_BANDS.map(b => `
+    <div class="band-row">
+      <div class="band-time">${b.t}</div>
+      <div class="band-bar" style="background:${b.c}"></div>
+      <div class="band-text">${b.x}</div>
+    </div>
+  `).join('');
+  document.getElementById('bands-overlay').classList.add('show');
+}
+
+// Open Ink Relics
+function openRelics() {
+  const r = RELICS[0];
+  document.getElementById('relic-ph').textContent = r.phrase;
+  const grid = document.getElementById('relic-grid');
+  grid.innerHTML = r.docs.map((d, i) => {
+    const text = d.text.replace(new RegExp(r.phrase, 'g'), '<mark>$&</mark>');
+    return `<div class="relic-card" style="--i:${i}"><div class="rname">${d.name}</div><div class="rbody">${text}</div></div>`;
+  }).join('');
+  document.getElementById('relics-overlay').classList.add('show');
+}
+
+// Close overlays
+function closeOverlay(id) {
+  document.getElementById(id).classList.remove('show');
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    closeOverlay('bands-overlay');
+    closeOverlay('relics-overlay');
+    document.getElementById('write-zone').classList.remove('show');
+  }
+  if (e.key === 'w' && !e.metaKey && !e.ctrlKey) {
+    e.preventDefault();
+    document.getElementById('write-zone').classList.contains('show')
+      ? document.getElementById('write-zone').classList.remove('show')
+      : openWrite();
+  }
+});
+
+function showHint(msg) {
+  const h = document.getElementById('hint');
+  h.textContent = msg;
+  h.style.color = '#fbbf24';
+  setTimeout(() => {
+    h.style.color = '';
+    h.textContent = '在场地移动你 · 文字会随你的注意力浮动 · 点击聚拢阅读 · 双击写新字';
+  }, 3000);
+}
+
+renderField();
+</script>
+</body>
+</html>

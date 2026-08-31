@@ -1,0 +1,276 @@
+<!--
+title: "prototype dna"
+type: design
+status: superseded
+last_updated: 2026-08-01
+source_of_truth: historical
+-->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DNA · The Living Text</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,400;7..72,500&family=Caveat:wght@400;600&display=swap');
+:root {
+  --bg: #080c14;
+  --helix-1: #60a5fa;
+  --helix-2: #a78bfa;
+  --a: #f87171;
+  --t: #34d399;
+  --c: #fbbf24;
+  --g: #f472b6;
+  --link: rgba(255,255,255,0.1);
+}
+*,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; font-family: 'Literata', serif; background: var(--bg); color: rgba(255,255,255,0.9); cursor: grab; }
+body:active { cursor: grabbing; }
+
+#scene {
+  width: 100%; height: 100%;
+  perspective: 1200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+#dna {
+  width: 200px; height: 80vh;
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 0.1s;
+}
+
+.base-pair {
+  position: absolute;
+  left: 50%;
+  width: 100%;
+  height: 4px;
+  transform-style: preserve-3d;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  pointer-events: none;
+}
+.base-pair .node {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Inter', sans-serif;
+  font-size: 9px;
+  font-weight: 600;
+  color: #fff;
+  pointer-events: auto;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+.base-pair .node:hover {
+  transform: scale(1.4);
+  box-shadow: 0 0 20px currentColor;
+}
+.base-pair .link {
+  flex: 1;
+  height: 2px;
+  margin: 0 8px;
+  opacity: 0.25;
+}
+.base-pair .text-content {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-family: 'Literata', serif;
+  font-size: 13px;
+  white-space: nowrap;
+  opacity: 0;
+  color: #fff;
+  transition: opacity 0.3s;
+  pointer-events: none;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.9);
+  max-width: 300px;
+  white-space: normal;
+  text-align: center;
+  line-height: 1.5;
+}
+.base-pair:hover .text-content { opacity: 1; }
+
+.node-a { background: var(--a); }
+.node-t { background: var(--t); }
+.node-c { background: var(--c); color: #1a1a1a; }
+.node-g { background: var(--g); }
+
+.controls {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 6px;
+  z-index: 100;
+}
+.btn {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.12);
+  color: rgba(255,255,255,0.7);
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn:hover {
+  background: rgba(255,255,255,0.12);
+  border-color: rgba(255,255,255,0.2);
+  color: #fff;
+}
+.btn.primary {
+  background: var(--a);
+  border-color: var(--a);
+  color: #fff;
+  font-weight: 500;
+}
+.btn.primary:hover { background: #e55; border-color: #e55; }
+
+.hint {
+  position: fixed;
+  top: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 12px;
+  color: rgba(255,255,255,0.4);
+  font-family: 'Inter', sans-serif;
+  letter-spacing: 0.03em;
+}
+
+textarea { display: none; }
+</style>
+</head>
+<body>
+
+<div class="hint">拖拽旋转 · 点击节点阅读 · 长按转录 · Esc 新建碱基对</div>
+
+<div id="scene">
+  <div id="dna"></div>
+</div>
+
+<div class="controls">
+  <button class="btn primary" onclick="addBasePair()">+ 转录（新文字）</button>
+  <button class="btn" onclick="mutate()">突变（AI重写）</button>
+  <button class="btn" onclick="toggleReading()">👁 阅读模式</button>
+</div>
+
+<script>
+const BASES = [
+  { a: 'A', t: 'T', textA: '设计的本质不是解决问题，', textB: '而是发现真正的命题。' },
+  { a: 'C', t: 'G', textA: '注意力经济的核心悖论：', textB: '我们以为是工具使用我们。' },
+  { a: 'A', t: 'T', textA: '"操作"与"阅读"', textB: '不只是模式切换。' },
+  { a: 'G', t: 'C', textA: '安全感来自确定感：', textB: '我知道东西没丢。' },
+  { a: 'T', t: 'A', textA: 'BM25 实现细节 + 反向链接。', textB: '阈值 0.42 以下不展示。' },
+  { a: 'C', t: 'G', textA: '注意力是唯一的货币。', textB: '设计的责任是建立清晰边界。' },
+  { a: 'A', t: 'T', textA: 'The Desk 书桌层 — 空间记忆模型。', textB: '最多 7±2 个。' },
+];
+
+const dna = document.getElementById('dna');
+let isDragging = false;
+let startY = 0;
+let rotationY = 0;
+let rotationX = -15;
+let autoRotate = true;
+
+function renderDNA() {
+  dna.innerHTML = '';
+  BASES.forEach((pair, i) => {
+    const row = document.createElement('div');
+    row.className = 'base-pair';
+    row.style.top = (i * 12 + 4) + '%';
+    row.innerHTML = `
+      <div class="node node-${pair.a.toLowerCase()}">${pair.a}</div>
+      <div class="link" style="background: linear-gradient(90deg, var(--${pair.a.toLowerCase()}), var(--${pair.t.toLowerCase()}));"></div>
+      <div class="node node-${pair.t.toLowerCase()}">${pair.t}</div>
+      <div class="text-content">${pair.textA} ${pair.textB}</div>
+    `;
+    row.querySelector('.node-' + pair.a.toLowerCase()).onclick = () => activatePair(row);
+    row.querySelector('.node-' + pair.t.toLowerCase()).onclick = () => activatePair(row);
+    dna.appendChild(row);
+  });
+}
+
+function activatePair(el) {
+  el.classList.toggle('zoomed');
+}
+
+document.addEventListener('mousedown', e => {
+  isDragging = true;
+  startY = e.clientY;
+  autoRotate = false;
+});
+document.addEventListener('mousemove', e => {
+  if (!isDragging) return;
+  rotationY += e.movementX * 0.5;
+  updateTransform();
+});
+document.addEventListener('mouseup', () => { isDragging = false; });
+
+function updateTransform() {
+  dna.style.transform = `rotateX(${rotationX}deg) rotateY(${rotationY}deg)`;
+}
+
+function addBasePair() {
+  const a = ['A','C','G','T'][Math.floor(Math.random()*4)];
+  const pairs = { A:'T', T:'A', C:'G', G:'C' };
+  BASES.push({
+    a, t: pairs[a],
+    textA: '新写入的文字片段...',
+    textB: '按住 Esc 添加配对。'
+  });
+  renderDNA();
+  updateTransform();
+}
+
+function mutate() {
+  const idx = Math.floor(Math.random() * BASES.length);
+  BASES[idx].textA = "突变后的文字（AI生成）...";
+  renderDNA();
+  const pairs = document.querySelectorAll('.base-pair');
+  if (pairs[idx]) {
+    pairs[idx].style.animation = 'pulse 0.5s';
+    setTimeout(() => pairs[idx].style.animation = '', 500);
+  }
+}
+
+function toggleReading() {
+  document.querySelectorAll('.base-pair').forEach(p => p.classList.toggle('zoomed'));
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') addBasePair();
+  if (e.key === 'ArrowUp') { rotationX -= 5; autoRotate = false; }
+  if (e.key === 'ArrowDown') { rotationX += 5; autoRotate = false; }
+  if (e.key === 'ArrowLeft') { rotationY -= 10; autoRotate = false; }
+  if (e.key === 'ArrowRight') { rotationY += 10; autoRotate = false; }
+  updateTransform();
+});
+
+(function tick() {
+  if (autoRotate) {
+    rotationY += 0.3;
+    updateTransform();
+  }
+  requestAnimationFrame(tick);
+})();
+
+renderDNA();
+updateTransform();
+
+const pulse = `@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }`;
+const s = document.createElement('style');
+s.textContent = pulse;
+document.head.appendChild(s);
+</script>
+</body>
+</html>

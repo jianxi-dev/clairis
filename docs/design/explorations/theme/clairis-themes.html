@@ -1,0 +1,887 @@
+<!--
+title: "clairis themes"
+type: design
+status: superseded
+last_updated: 2026-08-01
+source_of_truth: historical
+-->
+<!doctype html>
+<html lang="zh-CN" data-theme="clairis-night">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>渐晰 Clairis · 主题色系统</title>
+<style>
+/* ═══════════════════════════════════════════════════════════════════
+   渐晰 Clairis · 主题色设计令牌系统 v6
+   7 套主推主题 · 场景化命名 · 页面外壳随主题同步
+   ═══════════════════════════════════════════════════════════════════ */
+
+[data-theme="clairis-light"]{
+  --bg:oklch(96% .006 230);
+  --surface:oklch(99% .003 230);
+  --s2:oklch(92% .010 230);
+  --s3:oklch(87% .014 230);
+  --fg:oklch(24% .010 235);
+  --fg-dim:oklch(45% .012 235);
+  --muted:oklch(61% .010 235);
+  --border:oklch(88% .012 230);
+  --accent:oklch(50% .085 210);
+  --soft:oklch(91% .035 210);
+  --glow:oklch(64% .090 205);
+  --sel:oklch(90% .018 230);
+  --paper:oklch(100% 0 0);
+  --shadow:0 24px 80px rgb(58 68 86 / .14);
+  --frost:color-mix(in oklch,var(--surface),transparent 5%);
+  --frost-strong:var(--surface);
+  --frost-border:var(--border);
+  --frost-blur:0px;
+  --frost-chrome-blur:0px;
+  --frost-saturate:1;
+  --grain-opacity:.08;
+  --fd:"Iowan Old Style","Songti SC",Georgia,serif;
+  --fb:"PingFang SC","Source Han Sans SC",system-ui,sans-serif;
+  --fc:"Noto Serif SC","Songti SC",serif;
+}
+
+[data-theme="clairis-night"]{
+  --bg:oklch(15% .024 250);
+  --surface:oklch(19% .026 250);
+  --s2:oklch(23% .028 250);
+  --s3:oklch(28% .030 250);
+  --fg:oklch(88% .006 245);
+  --fg-dim:oklch(68% .010 245);
+  --muted:oklch(50% .012 245);
+  --border:oklch(27% .018 250);
+  --accent:oklch(73% .090 205);
+  --soft:oklch(24% .040 205);
+  --glow:oklch(78% .100 205);
+  --sel:oklch(25% .030 250);
+  --paper:oklch(17% .026 250);
+  --shadow:0 32px 110px rgb(2 6 18 / .46);
+  --frost:color-mix(in oklch,var(--surface),transparent 24%);
+  --frost-strong:color-mix(in oklch,var(--surface),transparent 12%);
+  --frost-border:color-mix(in oklch,var(--border),white 9%);
+  --frost-blur:18px;
+  --frost-chrome-blur:13px;
+  --frost-saturate:1.08;
+  --grain-opacity:.18;
+  --fd:"Iowan Old Style","Songti SC",Georgia,serif;
+  --fb:"PingFang SC","Source Han Sans SC",system-ui,sans-serif;
+  --fc:"Noto Serif SC","Songti SC",serif;
+}
+
+[data-theme="linen-paper"]{
+  --bg:oklch(94% .010 82);
+  --surface:oklch(98% .006 82);
+  --s2:oklch(90% .014 82);
+  --s3:oklch(85% .020 82);
+  --fg:oklch(27% .016 78);
+  --fg-dim:oklch(46% .014 78);
+  --muted:oklch(61% .010 78);
+  --border:oklch(86% .014 82);
+  --accent:oklch(38% .064 145);
+  --soft:oklch(88% .036 145);
+  --glow:oklch(53% .076 145);
+  --sel:oklch(88% .018 82);
+  --paper:oklch(99% .004 82);
+  --shadow:0 24px 72px rgb(88 72 46 / .14);
+  --frost:color-mix(in oklch,var(--surface),transparent 7%);
+  --frost-strong:var(--surface);
+  --frost-border:var(--border);
+  --frost-blur:0px;
+  --frost-chrome-blur:0px;
+  --frost-saturate:1;
+  --grain-opacity:.10;
+  --fd:"Goudy Old Style","Iowan Old Style","Songti SC",Georgia,serif;
+  --fb:"PingFang SC",system-ui,sans-serif;
+  --fc:"Noto Serif SC","Songti SC",serif;
+}
+
+[data-theme="xuan-paper"]{
+  --bg:oklch(95% .012 96);
+  --surface:oklch(98% .006 96);
+  --s2:oklch(91% .016 96);
+  --s3:oklch(85% .020 96);
+  --fg:oklch(25% .018 95);
+  --fg-dim:oklch(44% .014 95);
+  --muted:oklch(60% .012 95);
+  --border:oklch(84% .018 96);
+  --accent:oklch(48% .095 32);
+  --soft:oklch(89% .038 32);
+  --glow:oklch(60% .085 32);
+  --sel:oklch(89% .018 96);
+  --paper:oklch(98% .010 96);
+  --shadow:0 26px 78px rgb(89 70 44 / .15);
+  --frost:color-mix(in oklch,var(--surface),transparent 8%);
+  --frost-strong:color-mix(in oklch,var(--surface),transparent 3%);
+  --frost-border:color-mix(in oklch,var(--border),white 8%);
+  --frost-blur:0px;
+  --frost-chrome-blur:0px;
+  --frost-saturate:1;
+  --grain-opacity:.16;
+  --fiber-opacity:.13;
+  --fd:"Songti SC","Noto Serif SC","Iowan Old Style",Georgia,serif;
+  --fb:"PingFang SC",system-ui,sans-serif;
+  --fc:"Songti SC","Noto Serif SC",serif;
+}
+
+[data-theme="amber-study"]{
+  --bg:oklch(16% .020 55);
+  --surface:oklch(20% .024 55);
+  --s2:oklch(25% .026 55);
+  --s3:oklch(31% .030 55);
+  --fg:oklch(88% .010 70);
+  --fg-dim:oklch(69% .014 70);
+  --muted:oklch(52% .016 70);
+  --border:oklch(29% .022 55);
+  --accent:oklch(72% .080 75);
+  --soft:oklch(26% .034 75);
+  --glow:oklch(76% .090 78);
+  --sel:oklch(27% .030 55);
+  --paper:oklch(18% .022 55);
+  --shadow:0 34px 115px rgb(20 10 2 / .44);
+  --frost:color-mix(in oklch,var(--surface),transparent 20%);
+  --frost-strong:color-mix(in oklch,var(--surface),transparent 10%);
+  --frost-border:color-mix(in oklch,var(--border),white 7%);
+  --frost-blur:14px;
+  --frost-chrome-blur:10px;
+  --frost-saturate:1.03;
+  --grain-opacity:.16;
+  --fd:"Fraunces","Iowan Old Style","Songti SC",Georgia,serif;
+  --fb:"PingFang SC",system-ui,sans-serif;
+  --fc:"Noto Serif SC","Songti SC",serif;
+}
+
+[data-theme="ink-jade"]{
+  --bg:oklch(14% .014 210);
+  --surface:oklch(18% .016 210);
+  --s2:oklch(23% .018 210);
+  --s3:oklch(29% .020 210);
+  --fg:oklch(87% .005 200);
+  --fg-dim:oklch(67% .010 200);
+  --muted:oklch(49% .012 200);
+  --border:oklch(26% .014 210);
+  --accent:oklch(70% .075 165);
+  --soft:oklch(24% .032 165);
+  --glow:oklch(75% .084 165);
+  --sel:oklch(24% .024 210);
+  --paper:oklch(16% .015 210);
+  --shadow:0 34px 110px rgb(0 10 12 / .46);
+  --frost:color-mix(in oklch,var(--surface),transparent 16%);
+  --frost-strong:color-mix(in oklch,var(--surface),transparent 8%);
+  --frost-border:color-mix(in oklch,var(--border),white 6%);
+  --frost-blur:12px;
+  --frost-chrome-blur:8px;
+  --frost-saturate:1.02;
+  --grain-opacity:.14;
+  --fd:"Iowan Old Style","Songti SC",Georgia,serif;
+  --fb:"PingFang SC","Source Han Sans SC",system-ui,sans-serif;
+  --fc:"Noto Serif SC","Songti SC",serif;
+}
+
+[data-theme="aurora-field"]{
+  --bg:oklch(15% .040 270);
+  --surface:oklch(20% .044 270);
+  --s2:oklch(25% .048 270);
+  --s3:oklch(31% .052 270);
+  --fg:oklch(90% .008 265);
+  --fg-dim:oklch(70% .012 265);
+  --muted:oklch(53% .016 265);
+  --border:oklch(28% .038 270);
+  --accent:oklch(76% .110 195);
+  --soft:oklch(25% .050 195);
+  --glow:oklch(80% .115 195);
+  --sel:oklch(26% .050 270);
+  --paper:oklch(17% .042 270);
+  --shadow:0 34px 120px rgb(8 3 26 / .48);
+  --frost:color-mix(in oklch,var(--surface),transparent 26%);
+  --frost-strong:color-mix(in oklch,var(--surface),transparent 14%);
+  --frost-border:color-mix(in oklch,var(--border),white 10%);
+  --frost-blur:20px;
+  --frost-chrome-blur:14px;
+  --frost-saturate:1.12;
+  --grain-opacity:.20;
+  --fd:"Iowan Old Style","Songti SC",Georgia,serif;
+  --fb:"PingFang SC",system-ui,sans-serif;
+  --fc:"Noto Serif SC","Songti SC",serif;
+}
+
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  position:relative;
+  min-height:100vh;
+  color:var(--fg);
+  background:
+    linear-gradient(145deg,color-mix(in oklch,var(--soft),transparent 80%) 0%,transparent 46%),
+    linear-gradient(24deg,transparent 0%,color-mix(in oklch,var(--accent),transparent 92%) 58%,transparent 100%),
+    linear-gradient(180deg, color-mix(in oklch, var(--s2), var(--bg) 62%), var(--bg) 42%);
+  font:14px/1.55 var(--fb);
+  -webkit-font-smoothing:antialiased;
+  transition:background .28s ease,color .28s ease;
+}
+body::before{
+  content:"";
+  position:fixed;
+  inset:0;
+  z-index:0;
+  pointer-events:none;
+  opacity:var(--grain-opacity);
+  background-image:
+    repeating-linear-gradient(0deg,rgb(255 255 255 / .035) 0 1px,transparent 1px 4px),
+    repeating-linear-gradient(90deg,rgb(0 0 0 / .035) 0 1px,transparent 1px 5px);
+  mix-blend-mode:soft-light;
+}
+
+.page{
+  position:relative;
+  z-index:1;
+  display:grid;
+  grid-template-rows:auto auto 1fr auto;
+  min-height:100vh;
+}
+
+.page-header{
+  display:flex;
+  justify-content:space-between;
+  gap:24px;
+  padding:32px 52px 14px;
+}
+.brand h1{
+  font-family:var(--fd);
+  font-size:20px;
+  font-weight:400;
+  letter-spacing:0;
+  color:var(--fg);
+}
+.brand p{
+  color:var(--fg-dim);
+  font-size:12px;
+  letter-spacing:0;
+  margin-top:6px;
+}
+.theme-role{
+  align-self:flex-start;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:8px 12px;
+  border:1px solid var(--frost-border);
+  border-radius:999px;
+  background:var(--frost);
+  backdrop-filter:blur(var(--frost-blur)) saturate(var(--frost-saturate));
+  -webkit-backdrop-filter:blur(var(--frost-blur)) saturate(var(--frost-saturate));
+  color:var(--fg-dim);
+  font-size:12px;
+  box-shadow:0 10px 28px rgb(0 0 0 / .12), inset 0 1px 0 rgb(255 255 255 / .06);
+}
+.theme-role::before{
+  content:"";
+  width:8px;
+  height:8px;
+  border-radius:50%;
+  background:var(--accent);
+  box-shadow:0 0 18px var(--glow);
+}
+
+.ts-bar{
+  display:flex;
+  gap:10px;
+  padding:12px 52px 24px;
+  border-bottom:1px solid var(--border);
+  overflow-x:auto;
+}
+.ts-button{
+  min-width:132px;
+  border:1px solid var(--frost-border);
+  border-radius:8px;
+  background:var(--frost);
+  backdrop-filter:blur(var(--frost-blur)) saturate(var(--frost-saturate));
+  -webkit-backdrop-filter:blur(var(--frost-blur)) saturate(var(--frost-saturate));
+  color:var(--fg-dim);
+  padding:10px;
+  cursor:pointer;
+  transition:transform .16s ease,border-color .16s ease,background .16s ease,color .16s ease;
+  box-shadow:0 10px 26px rgb(0 0 0 / .10), inset 0 1px 0 rgb(255 255 255 / .05);
+}
+.ts-button:hover{
+  transform:translateY(-1px);
+  color:var(--fg);
+  border-color:color-mix(in oklch, var(--accent), var(--border) 50%);
+}
+.ts-button.active{
+  color:var(--fg);
+  background:color-mix(in oklch,var(--soft),var(--frost-strong) 64%);
+  border-color:color-mix(in oklch, var(--accent), var(--border) 35%);
+}
+.ts-swatch{
+  height:34px;
+  border-radius:6px;
+  border:1px solid color-mix(in oklch, var(--border), white 10%);
+  box-shadow:inset 0 1px 0 rgb(255 255 255 / .10);
+  margin-bottom:8px;
+}
+.ts-name{
+  display:block;
+  font-size:12px;
+  font-weight:600;
+}
+.ts-use{
+  display:block;
+  margin-top:2px;
+  color:var(--muted);
+  font-size:11px;
+}
+
+.page-main{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 340px;
+  gap:28px;
+  padding:28px 52px 38px;
+}
+
+.preview-col{
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+  min-width:0;
+}
+.preview-label{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  color:var(--fg-dim);
+  font-size:12px;
+}
+.preview-label::before{
+  content:"";
+  width:6px;
+  height:6px;
+  border-radius:50%;
+  background:var(--accent);
+}
+
+.editor-window{
+  position:relative;
+  background:var(--paper);
+  border:1px solid var(--border);
+  border-radius:14px;
+  overflow:hidden;
+  box-shadow:var(--shadow), inset 0 1px 0 rgb(255 255 255 / .06);
+  transition:background .28s ease,border-color .28s ease,box-shadow .28s ease;
+}
+.window-chrome{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:12px 18px;
+  background:var(--frost-strong);
+  backdrop-filter:blur(var(--frost-chrome-blur)) saturate(var(--frost-saturate));
+  -webkit-backdrop-filter:blur(var(--frost-chrome-blur)) saturate(var(--frost-saturate));
+  border-bottom:1px solid var(--border);
+}
+.wc-dots{display:flex;gap:8px}
+.wc-dot{width:11px;height:11px;border-radius:50%;opacity:.72}
+.wc-dot.r{background:oklch(64% .16 24)}
+.wc-dot.y{background:oklch(76% .14 82)}
+.wc-dot.g{background:oklch(67% .13 148)}
+.wc-title{
+  color:var(--fg-dim);
+  font-family:var(--fc);
+  font-size:11px;
+}
+.wc-mark{
+  color:var(--muted);
+  font-size:11px;
+}
+
+.editor-grid{
+  display:grid;
+  grid-template-columns:188px minmax(0,1fr);
+  min-height:448px;
+}
+.sidebar{
+  background:var(--frost-strong);
+  backdrop-filter:blur(var(--frost-chrome-blur)) saturate(var(--frost-saturate));
+  -webkit-backdrop-filter:blur(var(--frost-chrome-blur)) saturate(var(--frost-saturate));
+  border-right:1px solid var(--border);
+  padding:14px 0;
+}
+.sb-heading{
+  color:var(--muted);
+  font-size:10px;
+  font-weight:600;
+  padding:12px 18px 7px;
+}
+.sb-item{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  color:var(--fg-dim);
+  font-size:12px;
+  padding:8px 18px;
+  cursor:pointer;
+  transition:background .16s ease,color .16s ease;
+}
+.sb-item:hover{background:var(--sel);color:var(--fg)}
+.sb-item.active{
+  color:var(--accent);
+  background:var(--soft);
+}
+.sb-icon{
+  width:11px;
+  height:11px;
+  flex-shrink:0;
+  border-radius:3px;
+  opacity:.78;
+}
+.sb-icon.folder{background:var(--accent)}
+.sb-icon.file{border:1.5px solid var(--muted)}
+
+.editor-content{
+  display:flex;
+  min-width:0;
+  flex-direction:column;
+}
+.tabs{
+  display:flex;
+  background:var(--s2);
+  border-bottom:1px solid var(--border);
+}
+.tab{
+  min-width:92px;
+  padding:10px 18px;
+  color:var(--fg-dim);
+  border-bottom:2px solid transparent;
+  font-size:11px;
+}
+.tab.active{
+  color:var(--accent);
+  border-color:var(--accent);
+  background:color-mix(in oklch, var(--surface), transparent 24%);
+}
+.code-area{
+  position:relative;
+  display:flex;
+  flex:1;
+  min-height:0;
+  overflow:hidden;
+}
+.code-area::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  z-index:1;
+  pointer-events:none;
+  opacity:var(--fiber-opacity,0);
+  background-image:
+    repeating-linear-gradient(98deg,rgb(104 91 62 / .11) 0 1px,transparent 1px 24px),
+    repeating-linear-gradient(4deg,rgb(255 255 255 / .30) 0 1px,transparent 1px 18px),
+    radial-gradient(ellipse at 22% 18%,rgb(105 86 52 / .06),transparent 36%),
+    radial-gradient(ellipse at 78% 74%,rgb(255 255 255 / .18),transparent 32%);
+}
+.line-numbers{
+  position:relative;
+  z-index:2;
+  width:44px;
+  padding:16px 10px;
+  background:var(--s2);
+  border-right:1px solid var(--border);
+  color:var(--muted);
+  font:12px/1.72 "SF Mono",ui-monospace,monospace;
+  text-align:right;
+  user-select:none;
+}
+.code-content{
+  position:relative;
+  z-index:2;
+  flex:1;
+  overflow:auto;
+  padding:16px 22px;
+  color:var(--fg);
+  font:12px/1.72 "SF Mono",ui-monospace,monospace;
+  white-space:pre;
+}
+.cc-line{display:block}
+.cc-line .kw{color:var(--accent);font-weight:700}
+.cc-line .h1{
+  color:var(--fg);
+  font-size:13px;
+  font-weight:700;
+}
+.cc-line .md{color:var(--muted)}
+.cc-line .txt{color:var(--fg);opacity:.92}
+.status-bar{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  padding:8px 18px;
+  background:var(--frost-strong);
+  backdrop-filter:blur(var(--frost-chrome-blur)) saturate(var(--frost-saturate));
+  -webkit-backdrop-filter:blur(var(--frost-chrome-blur)) saturate(var(--frost-saturate));
+  border-top:1px solid var(--border);
+  color:var(--muted);
+  font-family:var(--fc);
+  font-size:10.5px;
+}
+
+.detail-col{
+  position:sticky;
+  top:24px;
+  align-self:start;
+}
+.td-card{
+  overflow:hidden;
+  border:1px solid var(--frost-border);
+  border-radius:12px;
+  background:var(--frost);
+  backdrop-filter:blur(var(--frost-blur)) saturate(var(--frost-saturate));
+  -webkit-backdrop-filter:blur(var(--frost-blur)) saturate(var(--frost-saturate));
+  box-shadow:0 22px 70px rgb(0 0 0 / .18), inset 0 1px 0 rgb(255 255 255 / .05);
+}
+.td-head{
+  padding:24px 24px 18px;
+  border-bottom:1px solid var(--border);
+}
+.td-head h3{
+  color:var(--fg);
+  font-family:var(--fd);
+  font-size:18px;
+  font-weight:400;
+  letter-spacing:0;
+}
+.td-mode-tag{
+  display:inline-block;
+  margin-top:10px;
+  padding:4px 9px;
+  border-radius:999px;
+  background:var(--soft);
+  color:var(--accent);
+  font-size:11px;
+  font-weight:600;
+}
+.td-mood{
+  margin-top:14px;
+  color:var(--fg-dim);
+  font-size:12px;
+}
+.td-palette{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:8px;
+  padding:20px 24px;
+}
+.td-chip{
+  display:flex;
+  align-items:flex-end;
+  min-height:58px;
+  border:1px solid color-mix(in oklch, var(--border), white 6%);
+  border-radius:8px;
+  padding:9px;
+  box-shadow:inset 0 1px 0 rgb(255 255 255 / .08);
+}
+.td-chip span{
+  border-radius:5px;
+  padding:2px 7px;
+  background:rgb(0 0 0 / .42);
+  color:white;
+  font:10px/1.4 "SF Mono",ui-monospace,monospace;
+  text-shadow:0 1px 5px rgb(0 0 0 / .85);
+}
+.td-meta{
+  display:flex;
+  flex-direction:column;
+  gap:13px;
+  padding:16px 24px 24px;
+}
+.td-meta>div{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:18px;
+}
+.td-meta span{
+  color:var(--muted);
+  font-size:11px;
+}
+.td-meta b{
+  color:var(--fg);
+  font-family:var(--fc);
+  font-size:12px;
+  font-weight:500;
+  text-align:right;
+}
+.td-code{
+  padding:18px 24px;
+  border-top:1px solid var(--border);
+  color:var(--fg-dim);
+  font:11px/1.5 "SF Mono",ui-monospace,monospace;
+}
+.td-code label{
+  display:block;
+  margin-bottom:8px;
+  color:var(--muted);
+  font:10px/1.4 var(--fb);
+}
+
+.page-footer{
+  display:flex;
+  justify-content:space-between;
+  gap:16px;
+  padding:22px 52px;
+  border-top:1px solid var(--border);
+  color:var(--muted);
+  font-size:11px;
+}
+.page-footer code{
+  border:1px solid var(--border);
+  border-radius:5px;
+  background:var(--surface);
+  color:var(--fg-dim);
+  padding:3px 8px;
+  font-family:"SF Mono",ui-monospace,monospace;
+}
+
+@media(max-width:960px){
+  .page-header{flex-direction:column}
+  .page-main{grid-template-columns:1fr}
+  .detail-col{position:static}
+  .editor-grid{grid-template-columns:1fr}
+  .sidebar{display:none}
+  .page-header,.ts-bar,.page-main,.page-footer{padding-left:22px;padding-right:22px}
+  .page-footer{flex-direction:column}
+}
+
+@media(max-width:620px){
+  .page-header{padding-top:24px}
+  .ts-button{min-width:122px}
+  .editor-grid{min-height:390px}
+  .status-bar span:nth-child(2){display:none}
+}
+</style>
+</head>
+<body>
+
+<div class="page">
+  <header class="page-header">
+    <div class="brand">
+      <h1>渐晰 Clairis · 主题色系统</h1>
+      <p>7 套主推主题 · 阅读、写作、灵感与长期陪伴</p>
+    </div>
+    <div class="theme-role" id="theme-role">默认 · 全天候</div>
+  </header>
+
+  <nav class="ts-bar" id="selector" aria-label="主题选择"></nav>
+
+  <main class="page-main">
+    <section class="preview-col">
+      <div class="preview-label">文稿预览</div>
+      <div class="editor-window">
+        <div class="window-chrome">
+          <div class="wc-dots">
+            <span class="wc-dot r"></span>
+            <span class="wc-dot y"></span>
+            <span class="wc-dot g"></span>
+          </div>
+          <span class="wc-title">今日笔记 · 渐晰</span>
+          <span class="wc-mark">Clairis</span>
+        </div>
+        <div class="editor-grid">
+          <aside class="sidebar">
+            <div class="sb-heading">文稿</div>
+            <div class="sb-item active"><span class="sb-icon folder"></span><span>工作笔记</span></div>
+            <div class="sb-item"><span class="sb-icon file"></span><span>今日.md</span></div>
+            <div class="sb-item"><span class="sb-icon file"></span><span>日记.md</span></div>
+            <div class="sb-item"><span class="sb-icon file"></span><span>摘录.md</span></div>
+            <div class="sb-heading" style="margin-top:10px">标签</div>
+            <div class="sb-item"><span class="sb-icon file"></span><span>#思考</span></div>
+            <div class="sb-item"><span class="sb-icon file"></span><span>#项目</span></div>
+          </aside>
+          <div class="editor-content">
+            <div class="tabs">
+              <div class="tab active">今日.md</div>
+              <div class="tab">日记.md</div>
+            </div>
+            <div class="code-area">
+              <div class="line-numbers">1<br>2<br>3<br>4<br>5<br>6<br>7<br>8</div>
+              <div class="code-content">
+                <span class="cc-line"><span class="kw">#</span> <span class="h1">今日笔记</span></span>
+                <span class="cc-line"></span>
+                <span class="cc-line"><span class="txt">清晨六点醒来,窗外有薄雾。</span></span>
+                <span class="cc-line"><span class="txt">昨晚没写完的段落,今天续上。</span></span>
+                <span class="cc-line"></span>
+                <span class="cc-line"><span class="txt"></span><span class="md">**</span><span class="txt">重要</span><span class="md">**</span><span class="txt"> 完成新版设计稿。</span></span>
+                <span class="cc-line"><span class="txt">窗外有光,安静的咖啡馆。</span></span>
+                <span class="cc-line"><span class="txt">思想变得更清晰一些。</span></span>
+              </div>
+            </div>
+            <div class="status-bar">
+              <span>Markdown · 简明</span>
+              <span>UTF-8 · LF</span>
+              <span>Ln 8, Col 15</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <aside class="detail-col">
+      <div class="td-card">
+        <div class="td-head">
+          <h3 id="td-name">清曜 · Night</h3>
+          <span class="td-mode-tag" id="td-mode">默认</span>
+          <p class="td-mood" id="td-mood">夜间清醒,墨蓝纸面,温柔聚焦</p>
+        </div>
+        <div class="td-palette" id="td-palette"></div>
+        <div class="td-meta">
+          <div><span>角色</span><b id="td-role">·</b></div>
+          <div><span>最佳场景</span><b id="td-usage">·</b></div>
+          <div><span>字体搭配</span><b id="td-font">·</b></div>
+          <div><span>强调色</span><b id="td-chroma">·</b></div>
+        </div>
+        <div class="td-code">
+          <label>CSS 接入</label>
+          <span id="td-code">data-theme="clairis-night"</span>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <footer class="page-footer">
+    <span>渐晰 Clairis · 设计令牌系统 v6.0</span>
+    <span>根挂 <code>data-theme</code> · 7 套主旋律主题 · shell 与文稿同步换肤</span>
+  </footer>
+</div>
+
+<script>
+const THEMES = {
+  "clairis-light": {
+    name:"清曜 · Light",
+    mode:"明",
+    role:"默认 · 白天工作",
+    usage:"全天候写作",
+    mood:"清晨纸面,冷青微光,清晰而不刺眼",
+    font:"Iowan + 思源宋",
+    chroma:"冷青 C .085",
+    swatch:["oklch(96% .006 230)","oklch(99% .003 230)","oklch(50% .085 210)"],
+  },
+  "clairis-night": {
+    name:"清曜 · Night",
+    mode:"默认",
+    role:"默认 · 全天候",
+    usage:"夜间写作",
+    mood:"夜间清醒,墨蓝纸面,温柔聚焦",
+    font:"Iowan + 思源宋",
+    chroma:"冷青 C .090",
+    swatch:["oklch(15% .024 250)","oklch(23% .028 250)","oklch(73% .090 205)"],
+  },
+  "linen-paper": {
+    name:"亚麻 · Paper",
+    mode:"阅读",
+    role:"长读 · 资料",
+    usage:"长文阅读",
+    mood:"未漂白亚麻纸,自然暖光,久读不疲",
+    font:"Goudy + 思源宋",
+    chroma:"青玉 C .064",
+    swatch:["oklch(94% .010 82)","oklch(98% .006 82)","oklch(38% .064 145)"],
+  },
+  "xuan-paper": {
+    name:"澄宣 · Xuan",
+    mode:"阅读",
+    role:"宣纸 · 手稿",
+    usage:"中文长写作",
+    mood:"青灰生宣,细密纸纤维,像墨迹刚落定",
+    font:"宋体 + 思源宋",
+    chroma:"朱印 C .095",
+    swatch:["oklch(95% .012 96)","oklch(98% .010 96)","oklch(48% .095 32)"],
+  },
+  "amber-study": {
+    name:"暖烛 · Study",
+    mode:"暗",
+    role:"研究 · 深读",
+    usage:"夜读研究",
+    mood:"暗褐书房,蜂蜜金灯,文字有温度",
+    font:"Fraunces + 思源宋",
+    chroma:"蜂蜜金 C .080",
+    swatch:["oklch(16% .020 55)","oklch(25% .026 55)","oklch(72% .080 75)"],
+  },
+  "ink-jade": {
+    name:"松烟 · Ink Jade",
+    mode:"暗",
+    role:"写作 · 专注",
+    usage:"深夜长写作",
+    mood:"冷灰松烟,青玉微光,安静克制",
+    font:"Iowan + 思源黑",
+    chroma:"青玉 C .075",
+    swatch:["oklch(14% .014 210)","oklch(23% .018 210)","oklch(70% .075 165)"],
+  },
+  "aurora-field": {
+    name:"极光 · Field",
+    mode:"灵感",
+    role:"灵感 · AI",
+    usage:"灵感整理",
+    mood:"靛紫磁场,极光青边,有轻微未来感",
+    font:"Iowan + 思源宋",
+    chroma:"极光青 C .110",
+    swatch:["oklch(15% .040 270)","oklch(25% .048 270)","oklch(76% .110 195)"],
+  },
+};
+
+const ORDER = ["clairis-light","clairis-night","linen-paper","xuan-paper","amber-study","ink-jade","aurora-field"];
+
+function buildSelector(){
+  const selector = document.getElementById("selector");
+  selector.innerHTML = "";
+  ORDER.forEach(key => {
+    const d = THEMES[key];
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "ts-button";
+    button.dataset.target = key;
+    button.innerHTML = `
+      <span class="ts-swatch" style="display:block;background:linear-gradient(135deg,${d.swatch[0]} 0 42%,${d.swatch[1]} 42% 68%,${d.swatch[2]} 68% 100%)"></span>
+      <span class="ts-name">${d.name}</span>
+      <span class="ts-use">${d.role}</span>
+    `;
+    button.addEventListener("click", () => switchTheme(key));
+    selector.appendChild(button);
+  });
+}
+
+function switchTheme(key){
+  const d = THEMES[key];
+  document.documentElement.setAttribute("data-theme", key);
+  document.querySelectorAll(".ts-button").forEach(button => {
+    button.classList.toggle("active", button.dataset.target === key);
+  });
+  document.getElementById("theme-role").textContent = d.role;
+  document.getElementById("td-name").textContent = d.name;
+  document.getElementById("td-mode").textContent = d.mode;
+  document.getElementById("td-mood").textContent = d.mood;
+  document.getElementById("td-role").textContent = d.role;
+  document.getElementById("td-usage").textContent = d.usage;
+  document.getElementById("td-font").textContent = d.font;
+  document.getElementById("td-chroma").textContent = d.chroma;
+  document.getElementById("td-code").textContent = `data-theme="${key}"`;
+  renderPalette();
+}
+
+function renderPalette(){
+  const chips = [
+    {css:"--bg", label:"背景"},
+    {css:"--surface", label:"面层"},
+    {css:"--fg", label:"文字"},
+    {css:"--accent", label:"强调"},
+  ];
+  document.getElementById("td-palette").innerHTML = chips.map(chip => {
+    return `<div class="td-chip" style="background:var(${chip.css})"><span>${chip.label}</span></div>`;
+  }).join("");
+}
+
+buildSelector();
+switchTheme("clairis-night");
+</script>
+
+</body>
+</html>

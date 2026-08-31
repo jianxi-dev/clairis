@@ -1,0 +1,1216 @@
+<!--
+title: "no sidebar prototype"
+type: design
+status: superseded
+last_updated: 2026-08-01
+source_of_truth: historical
+superseded_by: ../../approved/navigation/spec.md
+-->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>无侧栏导航原型 v2</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Literata:opsz,wght@7..72,400;7..72,500;7..72,700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  --paper: #fcfaf6;
+  --paper-warm: #f7f3ee;
+  --desk: #ede8e2;
+  --dock: #e8e2d8;
+  --ink: rgba(0,0,0,0.82);
+  --ink-soft: rgba(0,0,0,0.55);
+  --ink-faint: rgba(0,0,0,0.16);
+  --ink-resonance: rgba(0,0,0,0.32);
+  --accent: #8b7355;
+  --warm: #c8965a;
+  --amber: #d4a574;
+  --lime: #8ba871;
+  --radius: 10px;
+  --shadow-sm: 0 1px 4px rgba(0,0,0,0.03);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.06);
+  --shadow-lg: 0 12px 48px rgba(0,0,0,0.10);
+  --transition: 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  height: 100%; font-family: 'Inter', 'PingFang SC', sans-serif;
+  color: var(--ink); background: var(--paper); overflow: hidden;
+  -webkit-font-smoothing: antialiased; font-size: 14px; cursor: default;
+}
+
+/* ─── STAGE ─── */
+.stage {
+  position: fixed; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  transition: opacity var(--transition), transform var(--transition);
+}
+
+/* ─── BOOT ─── */
+#boot {
+  z-index: 1000; cursor: pointer;
+  background: var(--paper);
+  pointer-events: all;
+}
+#boot.gone { opacity: 0; pointer-events: none !important; }
+
+.boot-inner {
+  max-width: 420px; text-align: left; padding: 30px;
+}
+.boot-line {
+  display: block; font-family: 'Literata', serif; font-size: 15px;
+  color: var(--ink-soft); line-height: 1.9; opacity: 0; transform: translateY(12px);
+  animation: bootIn 0.6s ease-out forwards;
+}
+.boot-line:nth-child(2) { animation-delay: 0.4s; }
+.boot-line:nth-child(3) { animation-delay: 0.8s; font-size: 12px; color: var(--ink-faint); margin-top: 8px; }
+.boot-line kbd {
+  display: inline-block; background: rgba(0,0,0,0.04); border: 1px solid rgba(0,0,0,0.06);
+  border-radius: 4px; padding: 1px 6px; font-size: 10px; font-family: 'JetBrains Mono', monospace;
+  font-weight: 500; letter-spacing: 0; color: var(--ink-soft); margin: 0 2px;
+}
+@keyframes bootIn { to { opacity: 1; transform: translateY(0); } }
+
+/* ─── SURFACE ─── */
+#surface {
+  flex-direction: column; padding: 0; background: var(--paper);
+  background-image:
+    radial-gradient(ellipse at 20% 10%, rgba(180,160,130,0.03) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 90%, rgba(160,140,120,0.02) 0%, transparent 50%);
+  transition: padding-left var(--transition), transform var(--transition), opacity var(--transition);
+}
+#surface.dimed { opacity: 0.25; transform: scale(0.88); pointer-events: none; }
+#surface.dock-open { padding-left: 280px; }
+
+/* edge hover */
+#edge-top {
+  position: absolute; top: 0; left: 0; right: 0; height: 8px; z-index: 200;
+}
+#edge-top:hover ~ #toolbar { opacity: 1; transform: translateY(0); }
+
+/* toolbar */
+#toolbar {
+  position: absolute; top: 0; left: 0; right: 0;
+  display: flex; align-items: center; justify-content: center;
+  gap: 18px; height: 36px;
+  background: rgba(252,250,246,0.95);
+  border-bottom: 1px solid var(--ink-faint);
+  font-size: 12px; color: var(--ink-soft);
+  opacity: 0; transform: translateY(-8px);
+  transition: opacity 0.25s, transform 0.25s;
+  z-index: 199;
+}
+#toolbar:hover { opacity: 1; transform: translateY(0); }
+#toolbar span {
+  cursor: pointer; padding: 3px 10px; border-radius: 4px;
+  transition: background 0.2s, color 0.2s;
+}
+#toolbar span:hover { background: var(--paper-warm); color: var(--ink); }
+
+/* writer */
+#writer {
+  width: 100%; max-width: 600px; height: 100%;
+  display: flex; flex-direction: column;
+  padding: 60px 40px 50px;
+  position: relative;
+}
+.doc-meta {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 11px; color: var(--ink-faint); letter-spacing: 0.02em;
+  margin-bottom: 24px;
+}
+.doc-meta .doc-name { font-weight: 500; color: var(--ink-soft); }
+
+#editor {
+  flex: 1; overflow-y: auto; resize: none; border: none; outline: none;
+  background: transparent; width: 100%; min-height: 380px;
+  font-family: 'Literata', 'PingFang SC', serif; font-size: 16px;
+  line-height: 1.85; color: var(--ink); caret-color: var(--accent);
+  cursor: text;
+}
+#editor p { margin-bottom: 14px; }
+#editor .breathe {
+  display: inline-block; width: 2px; height: 1.2em;
+  background: var(--accent); vertical-align: text-bottom;
+  animation: breathe 3s infinite ease-in-out;
+}
+@keyframes breathe { 0%,100% { opacity: 0.2; } 50% { opacity: 1; } }
+
+.status {
+  position: absolute; bottom: 12px; left: 40px; right: 40px;
+  display: flex; justify-content: space-between;
+  font-size: 10px; color: var(--ink-faint); letter-spacing: 0.04em;
+}
+
+/* resonance fragments */
+#resonance {
+  position: absolute; right: -240px; top: 50%; transform: translateY(-50%);
+  width: 220px; opacity: 0; transition: opacity 0.5s ease 0.1s;
+  pointer-events: none; z-index: 10;
+}
+#resonance.show { opacity: 1; pointer-events: auto; }
+
+.res-item {
+  border-left: 2px solid var(--ink-faint); padding: 6px 12px;
+  margin-bottom: 14px; cursor: pointer; transition: border-color 0.25s;
+}
+.res-item:hover { border-left-color: var(--warm); }
+.res-item .quote {
+  font-family: 'Literata', serif; font-size: 11.5px; line-height: 1.55;
+  color: var(--ink-resonance); font-style: italic; margin-bottom: 2px;
+}
+.res-item .src { font-size: 10px; color: var(--ink-faint); }
+
+/* ─── BOTTOM STRIP ─── */
+.strip {
+  position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 8px;
+  background: rgba(255,255,255,0.96); border: 1px solid rgba(0,0,0,0.1);
+  border-radius: 20px; padding: 8px 22px;
+  font-size: 11.5px; color: var(--ink-soft); letter-spacing: 0.01em;
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.04);
+  z-index: 999; pointer-events: all;
+  max-width: 94vw; flex-wrap: wrap; justify-content: center;
+  transition: all 0.25s;
+}
+.strip .sep { width: 1px; height: 10px; background: var(--ink-faint); opacity: 0.3; }
+
+.strip-btn {
+  background: none; border: none; font: inherit; color: inherit;
+  cursor: pointer; padding: 3px 8px; border-radius: 4px;
+  transition: background 0.15s, color 0.15s;
+}
+.strip-btn:hover { background: var(--paper-warm); color: var(--ink); }
+
+/* patch: strip kbd style scoped */
+.strip kbd {
+  display: inline-flex; align-items: center; gap: 3px;
+  background: rgba(0,0,0,0.03); border: 1px solid rgba(0,0,0,0.05);
+  border-radius: 4px; padding: 1px 5px; font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; color: var(--ink-soft);
+}
+
+/* ─── DOCK PANEL (Path B) ─── */
+#dock {
+  position: fixed; top: 0; left: 0; bottom: 0;
+  width: 280px; background: var(--dock);
+  border-right: 1px solid rgba(0,0,0,0.06);
+  display: flex; flex-direction: column;
+  z-index: 150;
+  transform: translateX(-100%);
+  transition: transform var(--transition);
+}
+#dock.open { transform: translateX(0); }
+
+.dock-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 14px; border-bottom: 1px solid rgba(0,0,0,0.05);
+}
+.dock-title {
+  font-size: 11px; font-weight: 500; color: var(--ink-soft);
+  text-transform: uppercase; letter-spacing: 0.04em;
+}
+.dock-actions { display: flex; gap: 4px; }
+
+.dock-btn {
+  background: none; border: none; cursor: pointer;
+  width: 24px; height: 24px; border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--ink-faint); font-size: 12px;
+  transition: background 0.15s, color 0.15s;
+}
+.dock-btn:hover { background: rgba(0,0,0,0.04); color: var(--ink-soft); }
+
+.dock-list {
+  flex: 1; overflow-y: auto;
+  padding: 8px 8px;
+}
+
+.dock-item {
+  display: block; width: 100%;
+  text-align: left; background: none; border: none;
+  padding: 10px 12px; border-radius: 6px; cursor: pointer;
+  transition: background 0.15s;
+}
+.dock-item:hover { background: rgba(0,0,0,0.03); }
+.dock-item.current { background: rgba(139,115,85,0.08); }
+
+.dock-item-name {
+  font-size: 12.5px; font-weight: 500; color: var(--ink);
+  margin-bottom: 4px; display: flex; align-items: center; gap: 6px;
+}
+.dock-item-name .file-icon { font-size: 10px; opacity: 0.4; }
+.dock-item-preview {
+  font-family: 'Literata', serif; font-size: 11px;
+  color: var(--ink-soft); line-height: 1.5; opacity: 0.7;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  margin-bottom: 4px;
+}
+.dock-item-meta {
+  font-size: 9.5px; color: var(--ink-faint); letter-spacing: 0.02em;
+  display: flex; justify-content: space-between;
+}
+
+/* ─── OMNI-SEARCH (Path D) ─── */
+#omni-overlay {
+  position: fixed; inset: 0; z-index: 500;
+  background: rgba(0,0,0,0.2);
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.25s;
+  display: flex; align-items: flex-start; justify-content: center;
+  padding-top: 18vh;
+}
+#omni-overlay.show { opacity: 1; pointer-events: auto; }
+
+#omni {
+  width: 100%; max-width: 600px;
+  background: var(--paper);
+  border-radius: 14px;
+  box-shadow: var(--shadow-lg), 0 2px 8px rgba(0,0,0,0.06);
+  border: 1px solid rgba(0,0,0,0.08);
+  overflow: hidden;
+  transform: translateY(-8px);
+  transition: transform 0.25s;
+}
+#omni-overlay.show #omni { transform: translateY(0); }
+
+.omni-input-wrap {
+  display: flex; align-items: center;
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(0,0,0,0.05);
+  gap: 10px;
+}
+.omni-input-wrap .prompt {
+  font-family: 'JetBrains Mono', monospace; font-size: 13px;
+  color: var(--accent); font-weight: 500;
+}
+.omni-input {
+  flex: 1; border: none; outline: none; background: transparent;
+  font-size: 14px; color: var(--ink);
+  font-family: 'Inter', 'PingFang SC', sans-serif;
+}
+.omni-input::placeholder { color: var(--ink-faint); }
+
+.omni-results {
+  max-height: 320px; overflow-y: auto;
+}
+
+.omni-result {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 16px; cursor: pointer;
+  transition: background 0.1s;
+}
+.omni-result:hover, .omni-result.active { background: var(--paper-warm); }
+.omni-result.active { background: rgba(139,115,85,0.07); }
+
+.omni-result-icon {
+  width: 28px; height: 28px; border-radius: 6px;
+  background: rgba(0,0,0,0.03); display: flex;
+  align-items: center; justify-content: center;
+  font-size: 12px; flex-shrink: 0;
+}
+
+.omni-result-text { flex: 1; min-width: 0; }
+.omni-result-title {
+  font-size: 13px; color: var(--ink); font-weight: 450;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.omni-result-snippet {
+  font-size: 11px; color: var(--ink-soft);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  margin-top: 1px;
+  font-family: 'Literata', serif;
+}
+
+.omni-result-meta {
+  font-size: 10px; color: var(--ink-faint);
+  flex-shrink: 0; text-align: right;
+}
+
+.omni-preview {
+  display: none;
+  padding: 14px 18px;
+  border-top: 1px solid rgba(0,0,0,0.04);
+  background: rgba(0,0,0,0.01);
+  font-family: 'Literata', serif; font-size: 12px;
+  line-height: 1.7; color: var(--ink-soft);
+  max-height: 100px; overflow: hidden;
+}
+.omni-preview.show { display: block; }
+
+.omni-hint {
+  padding: 10px 16px;
+  border-top: 1px solid rgba(0,0,0,0.04);
+  display: flex; gap: 16px; font-size: 10px;
+  color: var(--ink-faint);
+}
+.omni-hint kbd {
+  display: inline-block; background: rgba(0,0,0,0.03);
+  border: 1px solid rgba(0,0,0,0.05); border-radius: 3px;
+  padding: 1px 5px; font-family: 'JetBrains Mono', monospace;
+  font-size: 9px; color: var(--ink-soft);
+}
+
+/* ─── READING COMPLETION ─── */
+#reading {
+  background: var(--paper);
+  opacity: 0; pointer-events: none;
+}
+#reading.show { opacity: 1; pointer-events: auto; }
+
+.rc-box { text-align: center; margin-bottom: 48px; }
+.rc-box .rc-title {
+  font-family: 'Literata', serif; font-size: 24px; font-weight: 400;
+  color: var(--ink); margin-bottom: 6px;
+}
+.rc-box .rc-time { font-size: 12px; color: var(--ink-faint); letter-spacing: 0.04em; }
+
+.rc-cards { display: flex; gap: 24px; justify-content: center; flex-wrap: wrap; }
+.rc-card {
+  width: 210px; background: #fff; border: 1px solid var(--ink-faint);
+  border-radius: 10px; padding: 16px 18px; text-align: left;
+  cursor: pointer; transition: transform 0.3s, box-shadow 0.3s;
+  animation: rcSlide 0.6s calc(var(--i) * 0.1s) both;
+}
+@keyframes rcSlide { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
+.rc-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-md); }
+.rc-card .rc-type {
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--ink-faint); margin-bottom: 8px;
+}
+.rc-card .rc-quote {
+  font-family: 'Literata', serif; font-size: 12.5px;
+  line-height: 1.65; color: var(--ink-soft); font-style: italic;
+}
+
+.rc-end {
+  margin-top: 36px; font-size: 11px; color: var(--ink-faint); cursor: pointer;
+  padding: 8px 20px; border-radius: 20px; border: 1px solid var(--ink-faint);
+  transition: all 0.3s; display: inline-block;
+}
+.rc-end:hover { color: var(--ink-soft); border-color: var(--ink-soft); }
+
+.rc-time { display: inline-block; font-size: 11px; color: var(--ink-faint); letter-spacing: 0.04em; margin-top: 4px; }
+
+/* ─── DESK ─── */
+#desk {
+  background: var(--desk);
+  background-image: radial-gradient(ellipse at 50% 50%, rgba(139,119,90,0.04) 0%, transparent 70%);
+  opacity: 0; pointer-events: none; transform: scale(1.05);
+}
+#desk.show { opacity: 1; pointer-events: auto; transform: scale(1); }
+
+.desk-inner { width: 100%; max-width: 800px; height: 85%; display: flex;
+  flex-direction: column; align-items: center; position: relative; }
+
+.desk-hint {
+  position: absolute; top: -36px; left: 0; right: 0; text-align: center;
+  font-size: 10px; color: var(--ink-faint); letter-spacing: 0.06em; text-transform: uppercase;
+}
+
+.papers { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 28px 28px; max-width: 680px; width: 100%; }
+
+.paper {
+  width: 100%; aspect-ratio: 4/5; background: #fff; border-radius: 8px;
+  padding: 14px 14px; cursor: pointer; transition: all var(--transition);
+  position: relative; display: flex; flex-direction: column;
+  box-shadow: var(--shadow-sm);
+}
+.paper:hover {
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: var(--shadow-lg);
+}
+.paper.current { box-shadow: 0 0 0 2px var(--ink-faint), var(--shadow-md); transform: translateY(-4px) scale(1); }
+.paper .p-title { font-size: 11.5px; font-weight: 500; color: var(--ink); margin-bottom: 6px; line-height: 1.4; }
+.paper .p-text {
+  flex: 1; font-size: 9.5px; line-height: 1.55; color: var(--ink-faint);
+  opacity: 0.7; font-family: 'Literata', serif; overflow: hidden;
+  display: -webkit-box; -webkit-line-clamp: 8; -webkit-box-orient: vertical;
+}
+.paper .p-meta {
+  font-size: 9px; color: var(--ink-faint); opacity: 0.6;
+  margin-top: 8px; display: flex; justify-content: space-between;
+}
+
+.paper-add {
+  width: 100%; aspect-ratio: 4/5; border: 1.5px dashed var(--ink-faint);
+  border-radius: 8px; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: all 0.3s; color: var(--ink-faint); font-size: 28px;
+  align-self: center; min-height: 180px;
+}
+.paper-add:hover { border-color: var(--ink-soft); color: var(--ink-soft); background: rgba(0,0,0,0.01); }
+
+.paper { animation: paperPop 0.5s calc(var(--i) * 70ms) both; }
+@keyframes paperPop { from { opacity: 0; transform: translateY(28px) scale(0.92); } to { opacity: 1; } }
+
+/* ─── INK RELICS ─── */
+#relics {
+  background: rgba(0,0,0,0.92); backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  opacity: 0; pointer-events: none;
+}
+#relics.show { opacity: 1; pointer-events: auto; }
+
+.relic-close {
+  position: absolute; top: 22px; right: 28px; font-size: 11px;
+  color: rgba(255,255,255,0.45); cursor: pointer; z-index: 5;
+}
+.relic-close:hover { color: #fff; }
+
+.relic-phrase {
+  position: absolute; top: 22px; left: 28px;
+  font-family: 'Literata', serif; font-size: 20px; color: var(--warm);
+  font-style: italic; z-index: 5;
+}
+
+.relic-stack {
+  display: flex; gap: 16px; flex-wrap: wrap; justify-content: center;
+  max-width: 90%; align-items: flex-start;
+}
+
+.relic-doc {
+  width: 190px; min-height: 220px; background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.08); border-radius: 8px;
+  padding: 16px 18px; cursor: pointer; transition: all 0.35s;
+  animation: relicIn 0.5s calc(var(--i) * 80ms) both;
+}
+.relic-doc:hover { background: rgba(255,255,255,0.1); border-color: rgba(200,150,90,0.2); transform: translateY(-3px); }
+@keyframes relicIn { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
+.relic-doc .rd-title { font-size: 12.5px; font-weight: 500; color: rgba(255,255,255,0.85); margin-bottom: 10px; }
+.relic-doc .rd-text {
+  font-family: 'Literata', serif; font-size: 11.5px; line-height: 1.65;
+  color: rgba(255,255,255,0.5); white-space: pre-wrap;
+}
+.relic-doc .rd-text mark { background: rgba(200,150,90,0.18); color: rgba(255,255,255,0.92); border-radius: 2px; padding: 0 2px; }
+
+/* ─── TIME BANDS ─── */
+#bands {
+  background: var(--paper); opacity: 0; pointer-events: none;
+  flex-direction: column; padding: 60px 40px; align-items: flex-start;
+  overflow-y: auto;
+}
+#bands.show { opacity: 1; pointer-events: auto; }
+
+.bands-header {
+  display: flex; align-items: center; justify-content: space-between;
+  width: 100%; max-width: 640px; margin-bottom: 28px;
+}
+.bands-header h2 { font-family: 'Literata', serif; font-size: 20px; font-weight: 400; color: var(--ink); }
+.bands-close {
+  font-size: 11px; color: var(--ink-soft); cursor: pointer; padding: 4px 10px;
+  border-radius: 6px; border: 1px solid var(--ink-faint); transition: all 0.2s;
+}
+.bands-close:hover { background: rgba(0,0,0,0.02); }
+
+.band-list { display: flex; flex-direction: column; gap: 0; width: 100%; max-width: 640px; }
+.band-row {
+  display: flex; align-items: center; gap: 18px; padding: 12px 0;
+  border-bottom: 1px solid rgba(0,0,0,0.03); cursor: pointer;
+  transition: background 0.3s;
+}
+.band-row:hover { background: rgba(0,0,0,0.015); }
+.band-time { width: 76px; font-size: 11px; color: var(--ink-faint); flex-shrink: 0; font-variant-numeric: tabular-nums; }
+.band-bar { width: 4px; height: 32px; border-radius: 2px; flex-shrink: 0; }
+.band-text { font-size: 13px; line-height: 1.65; color: var(--ink-soft); font-family: 'Literata', serif; cursor: pointer; }
+.band-text:hover { color: var(--ink); }
+
+/* ─── BOOKMARK FOLD ─── */
+#fold {
+  position: fixed; bottom: 0; right: 0; width: 80px; height: 80px;
+  pointer-events: none; z-index: 160;
+}
+#fold .corner {
+  position: absolute; bottom: 0; right: 0; width: 60px; height: 60px;
+  background: linear-gradient(135deg, transparent 50%, var(--ink-faint) 50%);
+  opacity: 0; transform-origin: bottom right;
+  transition: opacity 0.3s, transform 0.6s ease-out;
+}
+#fold.show .corner { opacity: 1; }
+#fold.open .corner { transform: scale(0); }
+
+/* ─── DIM LAYER ─── */
+.dim-layer {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.3);
+  z-index: 40; opacity: 0; pointer-events: none;
+  transition: opacity 0.3s;
+}
+.dim-layer.show { opacity: 1; pointer-events: auto; }
+
+/* ─── TOAST ─── */
+.toast {
+  position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  background: rgba(0,0,0,0.88); color: #fff; font-size: 12px;
+  padding: 14px 28px; border-radius: 10px; z-index: 200;
+  opacity: 0; pointer-events: none; transition: opacity 0.3s;
+  max-width: 340px; line-height: 1.6; text-align: center;
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+}
+.toast.show { opacity: 1; pointer-events: auto; cursor: pointer; }
+
+/* scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-thumb { background: var(--ink-faint); border-radius: 2px; }
+::-webkit-scrollbar-track { background: transparent; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.02s !important; }
+}
+</style>
+</head>
+<body>
+
+<!-- BOOT -->
+<div id="boot" class="stage" onclick="dismissBoot()" style="pointer-events: all">
+  <div class="boot-inner">
+    <span class="boot-line">你打开墨页，没有侧栏。纸铺满了屏幕。</span>
+    <span class="boot-line">五条路径，让你不靠侧栏也能找到任何文档。</span>
+    <span class="boot-line">点击任意处开始</span>
+    <span class="boot-line" style="margin-top:14px;font-size:11px;">
+      <kbd>Cmd+E</kbd> 停靠面板 &nbsp;&nbsp; <kbd>Cmd+P</kbd> 搜索 &nbsp;&nbsp; <kbd>Cmd+↑</kbd> 书桌 &nbsp;&nbsp; <kbd>T</kbd> 时间带
+    </span>
+  </div>
+</div>
+
+<!-- SURFACE -->
+<div id="surface" class="stage">
+  <div id="edge-top"></div>
+  <div id="toolbar">
+    <span>加粗</span><span>斜体</span><span>标题</span><span>H2</span><span>代码</span><span>链接</span>
+    <span style="width:1px;height:12px;background:var(--ink-faint);opacity:.3"></span>
+    <span>排版 16px</span><span>分享</span>
+  </div>
+
+  <div id="writer">
+    <div class="doc-meta">
+      <span class="doc-name" id="docName">无侧栏设计方案.md</span>
+      <span>·</span>
+      <span id="docTime">今天 · 2小时前</span>
+    </div>
+    <div id="editor" contenteditable="true" spellcheck="false"><p><b>侧栏的真正功能不是文件管理 — 是安全感。</b></p><p>"你的文件还在，你没丢东西。"</p><p>去掉侧栏不能只做减法。必须提供等价的安心感，用全新的方式。</p><p>&nbsp;</p><p><i>五条路径覆盖所有意图：</i></p><p>&nbsp; · A. 共鸣 — 被动浮现，无需操作</p><p>&nbsp; · B. 停靠面板 — 嵌入左侧，按需召唤 <kbd style="font-size:9px;background:rgba(0,0,0,0.04);padding:1px 4px;border-radius:3px">Cmd+E</kbd></p><p>&nbsp; · C. 书桌 — 空间记忆，全景导航 <kbd style="font-size:9px;background:rgba(0,0,0,0.04);padding:1px 4px;border-radius:3px">Cmd+↑</kbd></p><p>&nbsp; · D. Omni-Search — 文字召回 <kbd style="font-size:9px;background:rgba(0,0,0,0.04);padding:1px 4px;border-radius:3px">Cmd+P</kbd></p><p>&nbsp; · E. 时间带 — 一天写作的纹理 <kbd style="font-size:9px;background:rgba(0,0,0,0.04);padding:1px 4px;border-radius:3px">T</kbd></p><p>&nbsp;</p><p><i>试试：按 Cmd+P 打开搜索，输入"设计"或"注意力"。</i></p></div>
+    <div class="status">
+      <span id="wordCount">688 字</span>
+      <span>Flow: <span style="color:var(--ink-faint)">off</span></span>
+    </div>
+  </div>
+
+  <div id="resonance"></div>
+</div>
+
+<!-- DOCK PANEL -->
+<div id="dock">
+  <div class="dock-header">
+    <div class="dock-title">文件列表</div>
+    <div class="dock-actions">
+      <button class="dock-btn" onclick="toggleDockPin()" id="dockPinBtn" title="固定/取消固定">📌</button>
+      <button class="dock-btn" onclick="toggleDock()" title="关闭 (Esc)">×</button>
+    </div>
+  </div>
+  <div class="dock-list" id="dockList"></div>
+</div>
+
+<!-- OMNI-SEARCH -->
+<div id="omni-overlay" onclick="if(event.target===this)closeOmni()">
+  <div id="omni">
+    <div class="omni-input-wrap">
+      <span class="prompt">&gt;</span>
+      <input id="omniInput" class="omni-input" placeholder="搜索文件、标题或正文内容..." oninput="doSearch(this.value)" autofocus>
+    </div>
+    <div class="omni-results" id="omniResults"></div>
+    <div class="omni-preview" id="omniPreview"></div>
+    <div class="omni-hint">
+      <span><kbd>↑</kbd><kbd>↓</kbd> 选择</span>
+      <span><kbd>Enter</kbd> 打开</span>
+      <span><kbd>Cmd</kbd>+<kbd>Enter</kbd> 新标签</span>
+      <span><kbd>Esc</kbd> 关闭</span>
+    </div>
+  </div>
+</div>
+
+<!-- READING COMPLETION -->
+<div id="reading" class="stage">
+  <div>
+    <div class="rc-box">
+      <div class="rc-title" id="rcTitle">无侧栏设计方案.md</div>
+      <div class="rc-time">阅读用时 4:12</div>
+    </div>
+    <div class="rc-cards" id="rcCards"></div>
+    <div class="rc-end" onclick="hideReading()">Close / 合上这一页</div>
+  </div>
+</div>
+
+<!-- DESK -->
+<div id="desk" class="stage">
+  <div class="desk-inner">
+    <div class="desk-hint">The Desk · 拖到另一个上建立关联 · <kbd style="font-size:9px;background:rgba(0,0,0,0.04);padding:1px 4px;border-radius:3px">Esc</kbd> 回到 Surface</div>
+    <div class="papers" id="papers"></div>
+  </div>
+</div>
+
+<!-- INK RELICS -->
+<div id="relics" class="stage">
+  <div class="relic-close" onclick="hideRelics()">关闭 (Esc)</div>
+  <div class="relic-phrase" id="relicPhrase"></div>
+  <div class="relic-stack" id="relicStack"></div>
+</div>
+
+<!-- TIME BANDS -->
+<div id="bands" class="stage">
+  <div class="bands-header">
+    <h2>Time Bands — 一天的纹理</h2>
+    <div class="bands-close" onclick="hideTimeBands()">关闭 (Esc)</div>
+  </div>
+  <div class="band-list" id="bandList"></div>
+</div>
+
+<!-- BOOKMARK FOLD -->
+<div id="fold"><div class="corner"></div></div>
+
+<!-- DIM LAYER -->
+<div class="dim-layer" id="dim"></div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- BOTTOM STRIP -->
+<div class="strip" id="strip" style="z-index: 2000">
+  <button class="strip-btn" onclick="toggleDock()">📁 停靠面板 <kbd>⌘E</kbd></button>
+  <span class="sep"></span>
+  <button class="strip-btn" onclick="openDesk()">🗂 书桌 <kbd>⌘↑</kbd></button>
+  <span class="sep"></span>
+  <button class="strip-btn" onclick="openOmni()">🔍 Omni-Search <kbd>⌘P</kbd></button>
+  <span class="sep"></span>
+  <button class="strip-btn" onclick="showTimeBands()">◴ 时间带 <kbd>T</kbd></button>
+</div>
+
+<script>
+// ════ DATA ════
+const DOCS = [
+  { id: 1, name: '无侧栏设计方案.md', today: true,  hoursAgo: 2,   read: 0.43, words: 448,  text: '侧栏的真正功能不是文件管理 — 是安全感。去掉侧栏不能只做减法。必须提供等价的安心感，用全新的方式。' },
+  { id: 2, name: '数字极简.md',        today: false, hoursAgo: 12,  read: 1.00, words: 877,  text: '注意力经济的核心悖论：我们以为是"工具使用我们"，实际是"我们喂养了注意力经济"。设计的责任不是让用户上瘾，是帮助他们建立清晰的注意力边界。' },
+  { id: 3, name: '周会记录-0703.md',  today: true,  hoursAgo: 6,   read: 1.00, words: 561,  text: '讨论了 Q3 架构方向。PM提出一个需求：操作面板看完列表应回到之前滚动位置。深层问题是"操作"与"阅读"不只是模式切换。' },
+  { id: 4, name: '设计咨询备忘.md',    today: false, hoursAgo: 28,  read: 1.00, words: 634,  text: '注意：区分"可诉说的需求"和"沉默需求"。两段。Linear + Notion 混合路线。注意保留温暖感。' },
+  { id: 5, name: 'Resonance 算法笔记.md', today: false, hoursAgo: 40, read: 0.82, words: 1240, text: 'BM25 实现细节 + 反向链接检测。时效衰减公式：w = (recentness + 0.1) / 2。阈值 0.42 以下不展示。' },
+  { id: 6, name: 'attention.md',        today: false, hoursAgo: 72,  read: 1.00, words: 345,  text: '注意力是唯一的货币。注意力的设计影响决策质量。注意力的经济学公式：Attention = f(irrelevance)。' },
+  { id: 7, name: 'the-desk-concept.md', today: false, hoursAgo: 96,  read: 1.00, words: 1422, text: 'The Desk 书桌层 — 空间记忆模型。位置 = 意义。最近活跃 = 伸手可及。稍远记忆 = 半透明在远角。最多 7±2 个。' },
+];
+
+const RESONANCE_DB = {
+  '侧栏':   ['"侧栏真正的功能是安心的符号。去掉侧栏等于去掉用户的安全毯。" — 设计咨询备忘.md', '"侧栏的消亡需要等价物的出现。不能只做减法。" — Resonance 算法笔记.md'],
+  '文件':   ['"文件管理不应该由用户承担 — 编辑器应该替用户管理。" — the-desk-concept.md'],
+  '注意力': ['"注意力经济的核心悖论：我们以为是工具使用我们，实际是我们喂养了注意力经济。" — 数字极简.md', '"注意力是唯一的货币。注意力的设计影响决策质量。" — attention.md'],
+  '设计':   ['"设计不是解决问题，是发现命题。每次坐在桌前，先问：真正要回答的问题是什么？" — 周会记录-0703.md', '"区分可诉说的需求和沉默需求。" — 设计咨询备忘.md'],
+  '安全感': ['"安全感来自确定感：我知道东西没丢。" — 设计咨询备忘.md'],
+  '减法':   ['"减法设计不是移除，是把繁冗变成 invisible。" — 数字极简.md'],
+  '管理':   ['"好的工具管理不是分类，是减少决策点。" — 数字极简.md'],
+  '舒适':   ['"舒适不来自选项多，而是来自选择少。" — the-desk-concept.md'],
+};
+
+const INK_RELICS = [
+  {
+    phrase: '注意力',
+    docs: [
+      { name: '数字极简.md', quote: '注意力经济的核心悖论', text: '注意力经济的核心悖论:\n我们以为是"工具使用我们"\n实际是我们喂养了注意力经济' },
+      { name: 'attention.md', quote: '注意力是唯一的货币', text: '注意力是唯一的货币。\n注意力的设计影响决策质量' },
+    ]
+  },
+  {
+    phrase: '设计',
+    docs: [
+      { name: '无侧栏设计方案.md', quote: '设计不是解决问题', text: '设计的本质不是解决问题\n而是发现真正的命题' },
+      { name: '周会记录-0703.md', quote: '操作 vs 阅读', text: '深层问题是\n操作 vs 阅读 = 模式切换' },
+      { name: '设计咨询备忘.md', quote: '混合路线', text: '"Linear + Notion 混合路线"\n保留温暖感' },
+    ]
+  },
+  {
+    phrase: '侧栏',
+    docs: [
+      { name: '无侧栏设计方案.md', quote: '去掉侧栏', text: '去掉侧栏\n不能只做减法' },
+      { name: 'Resonance 算法笔记.md', quote: '"等价物的出现"', text: '"侧栏的消亡\n需要等价物的出现"' },
+    ]
+  },
+];
+
+const TIME_BANDS = [
+  { time: '6:42 AM',  bandColor: 'rgba(0,0,0,0.20)', text: '写了 4 段 on Surface' },
+  { time: '6:58 AM',  bandColor: 'rgba(0,0,0,0.07)', text: 'coffee · cursor stopped 4min' },
+  { time: '7:12 AM',  bandColor: 'rgba(0,0,0,0.24)', text: '密集写 Resonance 段落 · +220 words' },
+  { time: '7:44 AM',  bandColor: 'rgba(0,0,0,0.05)', text: '切 Desk · 重排了 3 篇文档' },
+  { time: '8:02 AM',  bandColor: 'rgba(0,0,0,0.17)', text: '回 Surface · 激烈改前 2 段' },
+  { time: '9:15 AM',  bandColor: 'rgba(0,0,0,0.04)', text: '暂停 · 想"安全感"怎么展开' },
+  { time: '9:20 AM',  bandColor: 'rgba(0,0,0,0.26)', text: '冲刺写完 · +400 words · 反复打磨末段' },
+  { time: '10:00 AM', bandColor: 'rgba(0,0,0,0.10)', text: 'Cmd+↑ 书桌 · 发现了一篇被遗忘的旧笔记' },
+  { time: '10:05 AM', bandColor: 'rgba(0,0,0,0.08)', text: '归档了 2 篇到废纸篓微痕' },
+  { time: '10:30 AM', bandColor: 'rgba(0,0,0,0.14)', text: '回 Surface' },
+  { time: '现在',     bandColor: 'transparent', text: '你在看这段文字' },
+];
+
+// ════ STATE ════
+let currentDocId = 1;
+let resonanceTimer = null;
+let bootDismissed = false;
+let dockOpen = false;
+let dockPinned = false;
+let omniOpen = false;
+let omniSelectedIdx = 0;
+let omniResults = [];
+
+// ════ BOOT ════
+function dismissBoot() {
+  const boot = document.getElementById('boot');
+  boot.classList.add('gone');
+  bootDismissed = true;
+  setTimeout(() => { boot.style.display = 'none'; }, 900);
+  showFold();
+}
+
+// ════ BOOKMARK FOLD ════
+function showFold() {
+  const fold = document.getElementById('fold');
+  fold.classList.add('show');
+  setTimeout(() => fold.classList.add('open'), 600);
+  setTimeout(() => fold.classList.remove('show', 'open'), 1800);
+}
+
+// ════ SURFACE ════
+const surface = document.getElementById('surface');
+
+function dimSurface() { surface.classList.add('dimed'); }
+function undimSurface() { surface.classList.remove('dimed'); }
+
+// ════ DOCK PANEL (Path B) ════
+function toggleDock() {
+  if (!bootDismissed) return;
+  dockOpen = !dockOpen;
+  const dock = document.getElementById('dock');
+  if (dockOpen) {
+    dock.classList.add('open');
+    document.getElementById('surface').classList.add('dock-open');
+    renderDock();
+  } else {
+    dock.classList.remove('open');
+    document.getElementById('surface').classList.remove('dock-open');
+  }
+}
+
+function toggleDockPin() {
+  dockPinned = !dockPinned;
+  const btn = document.getElementById('dockPinBtn');
+  btn.style.color = dockPinned ? 'var(--accent)' : 'var(--ink-faint)';
+}
+
+function renderDock() {
+  const list = document.getElementById('dockList');
+  const sorted = [...DOCS].sort((a, b) => a.hoursAgo - b.hoursAgo);
+  list.innerHTML = sorted.map((d, i) => `
+    <button class="dock-item ${d.id === currentDocId ? 'current' : ''}" onclick="openDockDoc(${d.id})">
+      <div class="dock-item-name"><span class="file-icon">◆</span>${d.name}</div>
+      <div class="dock-item-preview">${d.text.substring(0, 40)}…</div>
+      <div class="dock-item-meta"><span>${d.words}字</span><span>${fmtTime(d.hoursAgo)}</span></div>
+    </button>
+  `).join('');
+}
+
+function openDockDoc(id) {
+  currentDocId = id;
+  const doc = DOCS.find(d => d.id === id);
+  document.getElementById('docName').textContent = doc.name;
+  document.getElementById('docTime').textContent = (doc.today ? '今天 · ' : '') + fmtTime(doc.hoursAgo);
+  if (!dockPinned) {
+    dockOpen = false;
+    document.getElementById('dock').classList.remove('open');
+    document.getElementById('surface').classList.remove('dock-open');
+  }
+  renderDock();
+}
+
+// ════ OMNI-SEARCH (Path D) ════
+function openOmni() {
+  if (!bootDismissed) return;
+  omniOpen = true;
+  document.getElementById('omni-overlay').classList.add('show');
+  document.getElementById('omni-input').value = '';
+  document.getElementById('omni-input').focus();
+  doSearch('');
+}
+
+function closeOmni() {
+  omniOpen = false;
+  document.getElementById('omni-overlay').classList.remove('show');
+  document.getElementById('omniPreview').classList.remove('show');
+}
+
+function doSearch(q) {
+  const resultsEl = document.getElementById('omniResults');
+  const preview = document.getElementById('omniPreview');
+  const query = q.trim().toLowerCase();
+
+  if (!query) {
+    // Show recent files
+    omniResults = [...DOCS].sort((a, b) => a.hoursAgo - b.hoursAgo).slice(0, 6);
+    resultsEl.innerHTML = omniResults.map((d, i) => renderOmniResult(d, i, 'recent')).join('');
+    preview.classList.remove('show');
+    omniSelectedIdx = 0;
+    return;
+  }
+
+  // Fuzzy match against name and text
+  const scored = DOCS.map(d => {
+    let score = 0;
+    const nameLc = d.name.toLowerCase();
+    const textLc = d.text.toLowerCase();
+
+    if (nameLc.includes(query)) score += 10;
+    if (textLc.includes(query)) score += 5;
+    if (d.today) score += 2;
+    score += Math.max(0, 3 - d.hoursAgo / 24); // recency boost
+
+    // fuzzy subsequence
+    let qi = 0;
+    for (let ci = 0; ci < nameLc.length && qi < query.length; ci++) {
+      if (nameLc[ci] === query[qi]) { qi++; }
+    }
+    if (qi === query.length) score += 3;
+
+    return { ...d, score };
+  }).filter(d => d.score > 0).sort((a, b) => b.score - a.score);
+
+  omniResults = scored.slice(0, 8);
+  omniSelectedIdx = 0;
+
+  if (omniResults.length === 0) {
+    resultsEl.innerHTML = '<div style="padding:20px;text-align:center;color:var(--ink-faint);font-size:12px">无匹配结果</div>';
+    preview.classList.remove('show');
+  } else {
+    resultsEl.innerHTML = omniResults.map((d, i) => renderOmniResult(d, i, 'match')).join('');
+    // Show preview for first result
+    showPreview(omniResults[0]);
+  }
+}
+
+function renderOmniResult(d, i, type) {
+  const isActive = i === omniSelectedIdx ? ' active' : '';
+  const snippet = d.text.substring(0, 50) + '…';
+  const timeStr = fmtTime(d.hoursAgo);
+  return `<div class="omni-result${isActive}" onclick="openOmniResult(${i})" onmouseenter="omniHover(${i})">
+    <div class="omni-result-icon">${type === 'recent' ? '◴' : '◆'}</div>
+    <div class="omni-result-text">
+      <div class="omni-result-title">${d.name}</div>
+      <div class="omni-result-snippet">${snippet}</div>
+    </div>
+    <div class="omni-result-meta">${timeStr}<br>${d.words}字</div>
+  </div>`;
+}
+
+function omniHover(i) {
+  omniSelectedIdx = i;
+  updateOmniSelection();
+}
+
+function updateOmniSelection() {
+  const items = document.querySelectorAll('.omni-result');
+  items.forEach((el, i) => {
+    el.classList.toggle('active', i === omniSelectedIdx);
+  });
+  if (omniResults[omniSelectedIdx]) {
+    showPreview(omniResults[omniSelectedIdx]);
+    // scroll into view
+    items[omniSelectedIdx]?.scrollIntoView({ block: 'nearest' });
+  }
+}
+
+function showPreview(d) {
+  const preview = document.getElementById('omniPreview');
+  if (!d) { preview.classList.remove('show'); return; }
+  preview.textContent = d.text.substring(0, 120);
+  preview.classList.add('show');
+}
+
+function openOmniResult(i) {
+  const doc = omniResults[i];
+  if (!doc) return;
+  currentDocId = doc.id;
+  document.getElementById('docName').textContent = doc.name;
+  document.getElementById('docTime').textContent = (doc.today ? '今天 · ' : '') + fmtTime(doc.hoursAgo);
+  closeOmni();
+}
+
+function omniMove(d) {
+  if (!omniResults.length) return;
+  omniSelectedIdx = (omniSelectedIdx + d + omniResults.length) % omniResults.length;
+  updateOmniSelection();
+}
+
+function omniEnter(metaKey) {
+  const doc = omniResults[omniSelectedIdx];
+  if (!doc) return;
+  if (metaKey) {
+    closeOmni();
+    showToast('新标签打开: ' + doc.name);
+  } else {
+    currentDocId = doc.id;
+    document.getElementById('docName').textContent = doc.name;
+    document.getElementById('docTime').textContent = (doc.today ? '今天 · ' : '') + fmtTime(doc.hoursAgo);
+    closeOmni();
+  }
+}
+
+// ════ RESONANCE ════
+const editor = document.getElementById('editor');
+
+editor.addEventListener('input', () => {
+  rescheduleResonance();
+});
+editor.addEventListener('blur', () => {
+  const lr = document.getElementById('resonance');
+  if (!lr.dataset.pinned) lr.classList.remove('show');
+  if (resonanceTimer) { clearTimeout(resonanceTimer); resonanceTimer = null; }
+});
+
+function rescheduleResonance() {
+  if (resonanceTimer) clearTimeout(resonanceTimer);
+  resonanceTimer = setTimeout(triggerResonance, 2500);
+}
+
+function showResTest() {
+  const layer = document.getElementById('resonance');
+  layer.innerHTML = `
+    <div class="res-item">
+      <div class="quote">"侧栏真正的功能是安心的符号。去掉侧栏等于去掉用户的安全毯。"</div>
+      <div class="src">设计咨询备忘.md · 28小时前</div>
+    </div>
+    <div class="res-item">
+      <div class="quote">"侧栏的消亡需要等价物的出现。不能只做减法。"</div>
+      <div class="src">Resonance 算法笔记.md · 40小时前</div>
+    </div>`;
+  layer.classList.add('show');
+  setTimeout(() => layer.classList.remove('show'), 6000);
+}
+
+function triggerResonance() {
+  const lines = (editor.innerText || '').split('\n').filter(l => l.trim());
+  const text = lines.slice(-5).join(' ');
+  if (!text.trim()) return;
+  for (const key in RESONANCE_DB) {
+    if (text.includes(key)) {
+      const items = RESONANCE_DB[key];
+      const layer = document.getElementById('resonance');
+      layer.innerHTML = items.map(t => {
+        const idx = t.lastIndexOf(' — ');
+        const quote = idx > 0 ? t.slice(0, idx) : t;
+        const src   = idx > 0 ? t.slice(idx + 3) : '';
+        return `<div class="res-item">
+          <div class="quote">${quote}</div>
+          <div class="src">${src}</div>
+        </div>`;
+      }).join('');
+      layer.classList.add('show');
+      setTimeout(() => layer.classList.remove('show'), 6000);
+      return;
+    }
+  }
+}
+
+// ════ EDITOR WORD COUNT ════
+editor.addEventListener('input', () => {
+  const c = editor.innerText.length;
+  document.getElementById('wordCount').textContent = c + ' 字';
+});
+
+// ════ READING COMPLETION ════
+const reading = document.getElementById('reading');
+
+function showReading() {
+  const doc = DOCS.find(d => d.id === currentDocId);
+  document.getElementById('rcTitle').textContent = doc.name;
+  const cards = DOCS.filter(d => d.id !== currentDocId).slice(0, 3);
+  document.getElementById('rcCards').innerHTML = cards.map((d, i) => `
+    <div class="rc-card" style="--i:${i}" onclick="openDoc(${d.id})">
+      <div class="rc-type">${i === 0 ? '继续阅读' : '最近打开'}</div>
+      <div class="rc-quote">${d.text.substring(0, 52)}…</div>
+    </div>
+  `).join('');
+  reading.classList.add('show');
+}
+function hideReading() { reading.classList.remove('show'); }
+
+// ════ INK RELICS ════
+const relicsEl = document.getElementById('relics');
+const relicsPhrase = document.getElementById('relicPhrase');
+const relicsStack = document.getElementById('relicStack');
+
+function showRelics(phrase) {
+  const relic = INK_RELICS.find(r => phrase.includes(r.phrase));
+  if (!relic) { showToast('No Ink Relic for "' + phrase + '"'); return; }
+  relicsPhrase.textContent = relic.phrase;
+  relicsStack.innerHTML = relic.docs.map((d, i) => {
+    const regex = new RegExp('(' + relic.phrase + ')', 'g');
+    const text = d.text.replace(regex, '<mark>$1</mark>');
+    return `<div class="relic-doc" style="--i:${i}" onclick="hideRelics()">
+      <div class="rd-title">${d.name}</div>
+      <div class="rd-text">${text}</div>
+    </div>`;
+  }).join('');
+  relicsEl.classList.add('show');
+  dimSurface();
+}
+function hideRelics() { relicsEl.classList.remove('show'); undimSurface(); }
+
+// mouseup: selection detector
+document.addEventListener('mouseup', () => {
+  const s = window.getSelection().toString().trim();
+  if (s && s.length >= 2 && s.length <= 10) {
+    const matched = INK_RELICS.find(r => s.includes(r.phrase) || r.phrase.includes(s));
+    if (matched) {
+      showToast('"' + matched.phrase + '" has an Ink Relic — try bottom bar "Ink Relics"');
+    }
+  }
+});
+
+// ════ TIME BANDS ════
+const bandsEl = document.getElementById('bandList');
+
+function showTimeBands() {
+  bandsEl.innerHTML = TIME_BANDS.map(t => `
+    <div class="band-row">
+      <div class="band-time">${t.time}</div>
+      <div class="band-bar" style="background:${t.bandColor}"></div>
+      <div class="band-text">${t.text}</div>
+    </div>
+  `).join('');
+  document.getElementById('bands').classList.add('show');
+  dimSurface();
+}
+function hideTimeBands() {
+  document.getElementById('bands').classList.remove('show');
+  undimSurface();
+}
+
+// ════ DESK ════
+const desk = document.getElementById('desk');
+
+function openDesk() {
+  if (!bootDismissed) return;
+  renderPapers();
+  desk.classList.add('show');
+  dimSurface();
+  document.getElementById('resonance').classList.remove('show');
+}
+function closeDesk() {
+  desk.classList.remove('show');
+  undimSurface();
+}
+
+function renderPapers() {
+  const papers = document.getElementById('papers');
+  const sorted = [...DOCS].sort((a, b) => a.hoursAgo - b.hoursAgo);
+  papers.innerHTML = sorted.map((d, i) => `
+    <div class="paper ${d.id === currentDocId ? 'current' : ''}" style="--i:${i}" onclick="openDoc(${d.id})">
+      <div class="p-title">${d.name}</div>
+      <div class="p-text">${d.text}</div>
+      <div class="p-meta"><span>${d.words}w</span><span>${fmtTime(d.hoursAgo)}</span></div>
+    </div>
+  `).join('') + `
+    <div class="paper-add" onclick="showToast('New doc goes center-left of Desk')">+</div>
+  `;
+}
+
+function openDoc(id) {
+  currentDocId = id;
+  const doc = DOCS.find(d => d.id === id);
+  document.getElementById('docName').textContent = doc.name;
+  document.getElementById('docTime').textContent = (doc.today ? '今天 · ' : '') + fmtTime(d.hoursAgo);
+  closeDesk();
+  showFold();
+}
+
+// ════ HELPERS ════
+function fmtTime(h) {
+  if (h < 1) return '刚刚';
+  if (h < 24) return h + '小时前';
+  return Math.floor(h / 24) + '天前';
+}
+let toastTimer = null;
+function showToast(msg, sticky) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  if (toastTimer) clearTimeout(toastTimer);
+  if (!sticky) toastTimer = setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ════ KEYBOARD ════
+document.addEventListener('keydown', (e) => {
+  // Omni-Search: Escape when open
+  if (omniOpen && e.key === 'Escape') {
+    e.preventDefault();
+    closeOmni();
+    return;
+  }
+  // Omni-Search: navigation when open
+  if (omniOpen) {
+    if (e.key === 'ArrowDown') { e.preventDefault(); omniMove(1); return; }
+    if (e.key === 'ArrowUp') { e.preventDefault(); omniMove(-1); return; }
+    if (e.key === 'Enter') { e.preventDefault(); omniEnter(e.metaKey || e.ctrlKey); return; }
+    // let input handle typing
+    return;
+  }
+
+  // Dock: Escape closes if open and not pinned
+  if (e.key === 'Escape' && dockOpen && !dockPinned) {
+    e.preventDefault();
+    toggleDock();
+    return;
+  }
+
+  // Cmd+E = Dock
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'e') {
+    e.preventDefault();
+    toggleDock();
+    return;
+  }
+  // Cmd+P = Omni
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'p') {
+    e.preventDefault();
+    openOmni();
+    return;
+  }
+  // Cmd+↑ = Desk
+  if ((e.metaKey || e.ctrlKey) && e.key === 'ArrowUp') {
+    e.preventDefault();
+    openDesk();
+    return;
+  }
+  // Cmd+↓ = Close Desk / back
+  if ((e.metaKey || e.ctrlKey) && e.key === 'ArrowDown') {
+    e.preventDefault();
+    if (desk.classList.contains('show')) closeDesk();
+    return;
+  }
+  // T = Time Bands (unless in editor)
+  if (e.key.toLowerCase() === 't' && !e.metaKey && !e.ctrlKey && !e.altKey && document.activeElement !== editor) {
+    e.preventDefault();
+    const bandsEl2 = document.getElementById('bands');
+    if (bandsEl2.classList.contains('show')) hideTimeBands(); else showTimeBands();
+    return;
+  }
+  // Global Escape
+  if (e.key === 'Escape') {
+    if (relicsEl.classList.contains('show')) hideRelics();
+    else if (document.getElementById('bands').classList.contains('show')) hideTimeBands();
+    else if (reading.classList.contains('show')) hideReading();
+    else if (desk.classList.contains('show')) closeDesk();
+    else if (dockOpen && dockPinned) return; // pinned dock doesn't close on Esc
+    return;
+  }
+});
+
+// Init word count
+document.getElementById('wordCount').textContent = editor.innerText.length + ' 字';
+</script>
+</body>
+</html>

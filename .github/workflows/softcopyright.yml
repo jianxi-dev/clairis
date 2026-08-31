@@ -1,0 +1,62 @@
+name: 软著资料一键产出
+
+# 仅手动触发（workflow_dispatch）——绝不随 push / PR 运行，与 ci.yml 并存互不干扰。
+# 从 GitHub Actions 页面点击 "Run workflow" 执行；产物通过 upload-artifact 托管，可在
+# Actions 运行详情页下载。软著资料在 config.ownerName 为空时不含个人信息，可安全托管。
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 软著登记版本号（默认与 scripts/softcopyright/config.json 的 version 字段同步）
+        required: false
+        # GitHub Actions 表达式无法直接读取仓库内 JSON 作为 input 默认值，故此处硬编码
+        # 默认值，并在第一步用 node 读取 config.json 的真实 version 输出到 $GITHUB_OUTPUT。
+        # 若 config.json 的 version 变更，请同步更新此默认值。
+        default: V1.0
+
+jobs:
+  softcopyright:
+    runs-on: macos-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Read config version
+        id: config-version
+        run: |
+          echo "config_version=$(node -p "require('./scripts/softcopyright/config.json').version")" >> "$GITHUB_OUTPUT"
+          echo "input_version=${{ inputs.version }}"
+
+      - name: Count source lines
+        run: |
+          mkdir -p scripts/softcopyright/out
+          node scripts/softcopyright/count-lines.mjs > scripts/softcopyright/out/count-report.json
+          node -e "JSON.parse(require('fs').readFileSync('scripts/softcopyright/out/count-report.json','utf8')); console.log('count-report.json OK')"
+
+      # capture-screens.mjs 优先使用系统 Chrome（channel: "chrome"）；macos-latest 已预装
+      # Google Chrome，无需在 workflow 中安装浏览器。脚本自身管理 dev server 与截图采集。
+      - name: Capture screenshots
+        run: node scripts/softcopyright/capture-screens.mjs
+
+      - name: Build source doc PDF
+        run: node scripts/softcopyright/build-source-doc.mjs
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: softcopyright-materials-${{ github.run_id }}
+          if-no-files-found: error
+          path: |
+            scripts/softcopyright/out/source-doc.pdf
+            scripts/softcopyright/out/count-report.json
+            docs/delivery/softcopyright/screenshots/
+            docs/delivery/softcopyright/ledger.md

@@ -1,10 +1,11 @@
 import type { FileKind } from "../types";
-import { renderMarkdown, processMarkdownLinks } from "./markdown";
+import { renderMarkdown } from "./markdown";
 import { renderText } from "./text";
 
-export { renderMarkdown, processMarkdownLinks } from "./markdown";
-export { rewriteHtmlPaths } from "./html";
+export { renderMarkdown, takeDarkVars } from "./markdown";
+export { rewriteHtmlPaths, buildAssetUrl } from "./html";
 export { renderText } from "./text";
+export { renderMermaid } from "./mermaid";
 
 /**
  * Render document content to HTML based on its file kind.
@@ -14,10 +15,12 @@ export { renderText } from "./text";
 export function renderByKind(kind: FileKind, content: string): string {
   switch (kind) {
     case "markdown":
-      return processMarkdownLinks(renderMarkdown(content));
+      return renderMarkdown(content);
     case "html":
       return content; // Raw — HtmlPreview handles srcdoc + path rewriting
     case "text":
+      return renderText(content);
+    default:
       return renderText(content);
   }
 }

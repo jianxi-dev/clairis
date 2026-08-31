@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 :root {
-  --editor-font-size: 16px;
+  --editor-font-size: 17px;
 }
 
 * {
@@ -21,7 +21,8 @@ body,
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
     "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial,
     sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -34,132 +35,332 @@ body {
   line-height: 1.7;
 }
 
-/* ── ProseMirror ─────────────────────────────────────── */
-.ProseMirror {
-  outline: none;
-  min-height: 100%;
-  padding: 1rem;
-}
-
-.ProseMirror p {
-  margin: 0.5em 0;
-}
-
-/* Inline code */
-.ProseMirror code {
-  background: rgba(0, 0, 0, 0.06);
-  border-radius: 3px;
-  padding: 0.15em 0.35em;
-  font-size: 0.9em;
-  font-family: "SF Mono", "Fira Code", "Fira Mono", "Menlo", Consolas, monospace;
-}
-
-/* Code block */
-.ProseMirror pre {
-  background: #f5f5f5;
-  border-radius: 4px;
-  padding: 0.75rem 1rem;
-  overflow-x: auto;
-}
-
-.ProseMirror pre code {
-  background: none;
-  padding: 0;
-  border-radius: 0;
-  font-size: inherit;
-}
-
-/* Lists */
-.ProseMirror ul {
-  list-style: disc;
-  padding-left: 1.5em;
-  margin: 0.5em 0;
-}
-
-.ProseMirror ol {
-  list-style: decimal;
-  padding-left: 1.5em;
-  margin: 0.5em 0;
-}
-
-.ProseMirror li {
-  margin: 0.25em 0;
-}
-
-.ProseMirror ul ul,
-.ProseMirror ol ul {
-  list-style: circle;
-}
-
-.ProseMirror ul ul ul,
-.ProseMirror ol ul ul {
-  list-style: square;
-}
-
-/* Task list */
-.ProseMirror li[data-type="task-item"] {
-  list-style: none;
-  margin-left: 0;
-  padding-left: 0;
-}
-
-.ProseMirror li[data-type="task-item"] label {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.4em;
-  cursor: pointer;
-}
-
-.ProseMirror li[data-type="task-item"] input[type="checkbox"] {
-  flex-shrink: 0;
-  width: 1em;
-  height: 1em;
-  margin-top: 0.35em;
-  cursor: pointer;
-  accent-color: #2563eb;
-}
-
-/* Tables */
-.ProseMirror table {
-  border-collapse: collapse;
-  width: 100%;
-  margin: 0.5em 0;
-}
-
-.ProseMirror th,
-.ProseMirror td {
-  border: 1px solid #d1d5db;
-  padding: 0.4em 0.6em;
-  text-align: left;
-  vertical-align: top;
-}
-
-.ProseMirror th {
-  background-color: #f9fafb;
-  font-weight: 600;
-}
-
-/* Blockquote */
-.ProseMirror blockquote {
-  border-left: 3px solid #d1d5db;
-  padding-left: 1em;
-  margin-left: 0;
-  color: #6b7280;
-}
-
-/* Horizontal rule */
-.ProseMirror hr {
-  border: none;
-  border-top: 1px solid #d1d5db;
-  margin: 1em 0;
-}
-
 /* ── CodeMirror ────────────────────────────────────────── */
 .cm-editor {
   height: 100%;
   font-size: var(--editor-font-size);
+  color: #1f2937;
+  background: #ffffff;
 }
 
 .cm-editor .cm-scroller {
-  font-family: "SF Mono", "Fira Code", "Fira Mono", "Menlo", Consolas, monospace;
+  font-family:
+    "SF Mono", "Fira Code", "Fira Mono", "Menlo", Consolas, monospace;
+}
+
+.cm-editor .cm-content {
+  color: #1f2937;
+}
+
+.cm-editor .cm-gutters {
+  background: #f9fafb;
+  color: #6b7280;
+  border-right: 1px solid #e5e7eb;
+}
+
+.cm-editor .cm-activeLine {
+  background: rgba(59, 130, 246, 0.05);
+}
+
+.cm-editor .cm-selectionBackground {
+  background: rgba(59, 130, 246, 0.2);
+}
+
+.cm-editor .cm-cursor {
+  border-left-color: #1f2937;
+}
+
+/* ── Dark Mode: CM6 Editor ────────────────────────────────── */
+.dark .cm-editor {
+  color: #e5e7eb;
+  background: #111827;
+}
+
+.dark .cm-editor .cm-content {
+  color: #e5e7eb;
+}
+
+.dark .cm-editor .cm-gutters {
+  background: #1f2937;
+  color: #9ca3af;
+  border-right-color: #374151;
+}
+
+.dark .cm-editor .cm-activeLine {
+  background: rgba(59, 130, 246, 0.08);
+}
+
+.dark .cm-editor .cm-selectionBackground {
+  background: rgba(59, 130, 246, 0.3);
+}
+
+.dark .cm-editor .cm-cursor {
+  border-left-color: #e5e7eb;
+}
+
+/* Editor container mount point */
+.cm-editor-container {
+  height: 100%;
+}
+
+/* ── L2 Decoration Styles ────────────────────────────────── */
+
+/* Bold (**text**) — delimiter hidden, text bold */
+.cm-strong {
+  font-weight: 700;
+}
+
+/* Italic (*text*) — delimiter hidden, text italic */
+.cm-em {
+  font-style: italic;
+}
+
+/* Inline code (`code`) — backticks hidden, monospace + gray bg */
+.cm-inline-code {
+  font-family:
+    "SF Mono", "Fira Code", "Fira Mono", "Menlo", Consolas, monospace;
+  font-size: 0.9em;
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: 3px;
+  padding: 0.15em 0.35em;
+}
+
+.dark .cm-inline-code {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Heading text — larger, bolder */
+.cm-heading {
+  font-weight: 700;
+  font-size: 1.1em;
+}
+
+/* Heading marker widget [H1]-[H6] */
+.cm-heading-marker {
+  display: inline-block;
+  font-size: 0.7em;
+  font-weight: 600;
+  color: #fff;
+  background: #6b7280;
+  border-radius: 3px;
+  padding: 1px 5px;
+  margin-right: 4px;
+  vertical-align: middle;
+  cursor: pointer;
+  user-select: none;
+}
+
+.cm-heading-marker:hover {
+  background: #4b5563;
+}
+
+.dark .cm-heading-marker {
+  background: #4b5563;
+}
+
+.dark .cm-heading-marker:hover {
+  background: #6b7280;
+}
+
+/* Inline link — URL hidden, blue clickable text */
+.cm-link {
+  color: #2563eb;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  cursor: pointer;
+}
+
+.cm-link:hover {
+  color: #1d4ed8;
+}
+
+.dark .cm-link {
+  color: #60a5fa;
+}
+
+.dark .cm-link:hover {
+  color: #93bbfd;
+}
+
+/* List items — marker replaced, no special text styling needed */
+.cm-list {
+  /* marker is hidden via replace, line inherits normal text style */
+}
+
+/* Task items */
+.cm-task-done {
+  text-decoration: line-through;
+  color: #9ca3af;
+}
+
+.dark .cm-task-done {
+  color: #6b7280;
+}
+
+.cm-task-pending {
+  color: inherit;
+}
+
+/* Blockquote — > hidden, left border + gray bg applied */
+.cm-quote {
+  border-left: 3px solid #d1d5db;
+  background: rgba(0, 0, 0, 0.02);
+  color: #6b7280;
+  font-style: italic;
+}
+
+.dark .cm-quote {
+  border-left-color: #4b5563;
+  background: rgba(255, 255, 255, 0.03);
+  color: #9ca3af;
+}
+
+/* ── SplitResizeHandle ─────────────────────────────────────────── */
+
+.split-resize-handle {
+  background: transparent;
+  transition: background 0.15s;
+  user-select: none;
+  /* Minimum 16px touch/click target via invisible padding */
+  position: relative;
+}
+
+.split-resize-handle::before {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  /* Expands hit area to ≥ 16px while visual bar stays 4px */
+}
+
+/* Horizontal split: vertical bar */
+.split-handle-h {
+  width: 4px;
+  cursor: col-resize;
+}
+
+/* Vertical split: horizontal bar */
+.split-handle-v {
+  height: 4px;
+  cursor: row-resize;
+}
+
+.split-resize-handle:hover,
+.split-resize-handle.dragging {
+  background: #93c5fd;
+}
+
+.dark .split-resize-handle:hover,
+.dark .split-resize-handle.dragging {
+  background: #3b82f6;
+}
+
+.split-resize-handle:focus-visible {
+  background: #3b82f6;
+  outline: 2px solid #3b82f6;
+  outline-offset: 1px;
+}
+
+/* Respect reduced-motion preference */
+@media (prefers-reduced-motion: reduce) {
+  .split-resize-handle {
+    transition: none;
+  }
+}
+
+/* ── Immersive reading (A-5): chrome fade in/out, main area untouched ── */
+
+.app-chrome {
+  transition:
+    opacity 0.3s ease,
+    visibility 0.3s ease;
+}
+
+.immersive .app-chrome {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.immersive.immersive-peek .app-chrome {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.immersive-peek-zone {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  z-index: 60;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-chrome {
+    transition: none;
+  }
+}
+
+/* ── Capture Overlay ────────────────────────────────────────── */
+
+@keyframes overlayIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.overlay-enter {
+  animation: overlayIn 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes capsuleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.capsule-enter {
+  animation: capsuleIn 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes archiveSlideOut {
+  0% {
+    transform: translateX(0);
+    opacity: 1;
+    background: rgba(254, 243, 199, 0.4);
+  }
+  100% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+@keyframes fadeInSlide {
+  0% {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .overlay-enter,
+  .capsule-enter {
+    animation: none;
+  }
+  [style*="fadeInSlide"] {
+    animation: none !important;
+  }
 }

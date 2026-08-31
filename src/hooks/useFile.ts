@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useEditorStore } from "../stores/editorStore";
+import { log } from "../utils/log";
 
 interface FileResult {
   content: string;
@@ -13,7 +14,6 @@ interface SaveResult {
 }
 
 const SOURCE_MODE_LIMIT = 500 * 1024;
-const SOURCE_READ_ONLY_LIMIT = 2 * 1024 * 1024;
 
 export function useFile() {
   const store = useEditorStore();
@@ -29,16 +29,14 @@ export function useFile() {
       store.incContentVersion();
 
       // Auto-switch editor mode based on file size
-      if (result.file_size > SOURCE_READ_ONLY_LIMIT) {
-        store.setEditorMode("sourceReadOnly");
-      } else if (result.file_size > SOURCE_MODE_LIMIT) {
+      if (result.file_size > SOURCE_MODE_LIMIT) {
         store.setEditorMode("source");
       } else {
-        store.setEditorMode("wysiwyg");
+        store.setEditorMode("edit");
       }
     } catch (e) {
       if (String(e) !== "Operation cancelled") {
-        console.error("Failed to open file:", e);
+        log.error("File", "Failed to open file", e);
       }
     }
   }, [store]);
@@ -54,7 +52,7 @@ export function useFile() {
       });
       store.setDirty(false);
     } catch (e) {
-      console.error("Failed to save file:", e);
+      log.error("File", "Failed to save file", e);
     }
   }, [store]);
 
@@ -68,7 +66,7 @@ export function useFile() {
       store.setDirty(false);
     } catch (e) {
       if (String(e) !== "Operation cancelled") {
-        console.error("Failed to save file as:", e);
+        log.error("File", "Failed to save file as", e);
       }
     }
   }, [store]);

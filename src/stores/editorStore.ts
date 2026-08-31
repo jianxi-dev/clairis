@@ -1,3 +1,6 @@
+// @deprecated — 考虑合并到 useStore (src/stores/index.ts)。当前两个 store 分离
+// 导致跨 store 操作复杂（config 在 editorStore，tabs 在 useStore）。
+// Phase 1a 后评估合并。
 import { create } from "zustand";
 import type {
   AppConfig,
@@ -70,8 +73,8 @@ const initialState = {
   fileName: null as string | null,
   fileSize: null as number | null,
   content: "",
-  editorMode: "wysiwyg" as EditorMode,
-  fontSize: 16,
+  editorMode: "preview" as EditorMode,
+  fontSize: 17,
   headingColors: DEFAULT_HEADING_COLORS,
   translation: {
     active: false,
@@ -90,8 +93,7 @@ const initialState = {
 export const useEditorStore = create<EditorStore>((set) => ({
   ...initialState,
 
-  setContent: (content) =>
-    set({ content, dirty: true }),
+  setContent: (content) => set({ content, dirty: true }),
 
   incContentVersion: () =>
     set((prev) => ({ contentVersion: prev.contentVersion + 1 })),
@@ -99,36 +101,29 @@ export const useEditorStore = create<EditorStore>((set) => ({
   setFilePath: (path, name) =>
     set({ filePath: path, fileName: name, dirty: false }),
 
-  setFileSize: (size) =>
-    set({ fileSize: size }),
+  setFileSize: (size) => set({ fileSize: size }),
 
-  setEditorMode: (mode) =>
-    set({ editorMode: mode }),
+  setEditorMode: (mode) => set({ editorMode: mode }),
 
-  setFontSize: (size) =>
-    set({ fontSize: size }),
+  setFontSize: (size) => set({ fontSize: size }),
 
-  setHeadingColors: (colors) =>
-    set({ headingColors: colors }),
+  setHeadingColors: (colors) => set({ headingColors: colors }),
 
   setTranslation: (state) =>
     set((prev) => ({
       translation: { ...prev.translation, ...state },
     })),
 
-  setDirty: (dirty) =>
-    set({ dirty }),
+  setDirty: (dirty) => set({ dirty }),
 
   setConfig: (config) =>
     set((prev) => ({
       config: { ...prev.config, ...config },
     })),
 
-  setConfigLoaded: (loaded) =>
-    set({ configLoaded: loaded }),
+  setConfigLoaded: (loaded) => set({ configLoaded: loaded }),
 
-  setConfigLoading: (loading) =>
-    set({ configLoading: loading }),
+  setConfigLoading: (loading) => set({ configLoading: loading }),
 
   reset: () => set(initialState),
 }));

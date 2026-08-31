@@ -68,12 +68,11 @@ export function createExtensions(fileKind: FileKind): Extension[] {
         decorCompartment.of(fullDecorations()),
       ];
     case "html":
-      return [
-        ...base,
-        html(),
-      ];
+      return [...base, html()];
     case "text":
       return base; // Plain text, no language extension
+    default:
+      return base;
   }
 }
 

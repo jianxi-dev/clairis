@@ -1,0 +1,612 @@
+<!--
+title: "prototype erosion"
+type: design
+status: superseded
+last_updated: 2026-08-01
+source_of_truth: historical
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Erosion — A Writing Tool</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,600;1,400&display=swap');
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'EB Garamond', Georgia, serif;
+  background: #141110;
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+  user-select: none;
+}
+
+/* Sandy/sedimentary background */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 900px 500px at 25% 30%, rgba(70,60,48,0.35) 0%, transparent 70%),
+    radial-gradient(ellipse 700px 400px at 70% 55%, rgba(55,48,38,0.3) 0%, transparent 70%),
+    radial-gradient(ellipse 600px 350px at 45% 80%, rgba(75,62,45,0.2) 0%, transparent 70%),
+    radial-gradient(ellipse 500px 300px at 85% 20%, rgba(50,42,32,0.25) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Grain/noise texture */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  opacity: 0.04;
+  background-image:
+    repeating-linear-gradient(15deg, transparent, transparent 1px, rgba(255,240,220,0.4) 1px, transparent 2px),
+    repeating-linear-gradient(-15deg, transparent, transparent 1px, rgba(255,240,220,0.3) 1px, transparent 2px);
+  pointer-events: none;
+  z-index: 0;
+  background-size: 2px 2px, 2px 3px;
+}
+
+/* UI overlay */
+#ui {
+  position: fixed;
+  top: 28px;
+  left: 28px;
+  z-index: 100;
+  color: rgba(200,180,150,0.65);
+  font-size: 13px;
+  letter-spacing: 2px;
+  pointer-events: none;
+}
+#ui h2 {
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 5px;
+  text-transform: uppercase;
+  opacity: 0.5;
+}
+#ui p {
+  font-size: 11px;
+  font-style: italic;
+  opacity: 0.35;
+  margin-top: 6px;
+}
+
+#stats {
+  position: fixed;
+  bottom: 20px;
+  right: 28px;
+  z-index: 100;
+  color: rgba(180,160,130,0.45);
+  font-size: 10px;
+  letter-spacing: 1px;
+  font-family: 'SF Mono', monospace;
+  pointer-events: none;
+}
+
+/* --- Rock --- */
+.rock {
+  position: absolute;
+  padding: 24px 32px;
+  cursor: grab;
+  max-width: 300px;
+  min-width: 100px;
+  z-index: 10;
+  box-shadow:
+    inset 0 -4px 10px rgba(0,0,0,0.35),
+    inset 0 2px 5px rgba(255,255,255,0.04),
+    0 6px 24px rgba(0,0,0,0.45);
+  transition:
+    filter 1.4s cubic-bezier(0.4,0,0.2,1),
+    opacity 1.4s cubic-bezier(0.4,0,0.2,1),
+    transform 0.5s cubic-bezier(0.4,0,0.2,1),
+    box-shadow 1.4s ease;
+  will-change: filter, opacity, transform;
+}
+.rock:active { cursor: grabbing; }
+
+.rock .text {
+  position: relative;
+  z-index: 2;
+  line-height: 1.45;
+  transition: filter 1.4s ease, color 1.4s ease;
+  font-size: 16px;
+  letter-spacing: 0.2px;
+}
+.rock .text em {
+  font-style: italic;
+  display: block;
+  margin-top: 7px;
+  font-size: 13px;
+}
+
+/* Dust particles inside rocks */
+.dust {
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  border-radius: 50%;
+  background: rgba(190,168,128,0);
+  pointer-events: none;
+  z-index: 1;
+  transition: background 2s ease;
+}
+.dust.a { animation: drift 5s ease-in-out infinite; top: 30%; left: 50%; }
+.dust.b { animation: drift 6.5s ease-in-out infinite 1s; top: 55%; left: 30%; }
+.dust.c { animation: drift 4.5s ease-in-out infinite 2s; top: 70%; left: 65%; }
+
+@keyframes drift {
+  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.8; }
+  25% { transform: translate(var(--dx1), var(--dy1)) scale(1.2); opacity: 1; }
+  50% { transform: translate(var(--dx2), var(--dy2)) scale(0.6); opacity: 0.4; }
+  75% { transform: translate(var(--dx3), var(--dy3)) scale(1.1); opacity: 0.7; }
+}
+
+/* --- Age states --- */
+
+/* Fresh (<6hr): crisp, high contrast, bright */
+.rock.fresh {
+  filter: blur(0px);
+  opacity: 1;
+  background: linear-gradient(145deg, #3d372f 0%, #322c26 50%, #2a2520 100%);
+  color: #f7f1e7;
+  transform: scale(1);
+}
+.rock.fresh .text em { opacity: 0.5; color: #c8bca8; }
+.rock.fresh:hover {
+  box-shadow:
+    inset 0 -4px 10px rgba(0,0,0,0.35),
+    inset 0 2px 5px rgba(255,255,255,0.06),
+    0 6px 30px rgba(0,0,0,0.5),
+    0 0 50px rgba(200,180,140,0.08);
+}
+
+/* Aging (6-24hr): slight warm shift */
+.rock.aging {
+  filter: blur(0.4px);
+  opacity: 0.88;
+  background: linear-gradient(145deg, #4d4236 0%, #41372e 50%, #362d24 100%);
+  color: #e8dcc4;
+  transform: scale(0.97);
+}
+.rock.aging .text em { opacity: 0.4; color: #b8a890; }
+.rock.aging .dust { background: rgba(190,168,128,0.25); }
+
+/* Old (24-72hr): blurred, desaturated, warmer */
+.rock.old {
+  filter: blur(1px);
+  opacity: 0.65;
+  background: linear-gradient(145deg, #5e4e3c 0%, #524435 50%, #463829 100%);
+  color: #d4c2a0;
+  transform: scale(0.92);
+}
+.rock.old .text em { opacity: 0.3; color: #a89878; }
+.rock.old .dust { background: rgba(190,168,128,0.45); }
+
+/* Ancient (>72hr): ghostly, blurred, crumbling */
+.rock.ancient {
+  filter: blur(2px);
+  opacity: 0.32;
+  background: linear-gradient(145deg, #635240 0%, #574838 50%, #4c3d2e 100%);
+  color: #b8a484;
+  transform: scale(0.84);
+}
+.rock.ancient .text em { opacity: 0.2; color: #98886a; }
+.rock.ancient .dust { background: rgba(190,168,128,0.75); animation-duration: 3.5s; }
+
+/* Restored (temporary clarity on click) */
+.rock.restored {
+  filter: blur(0px) !important;
+  opacity: 1 !important;
+  background: linear-gradient(145deg, #3d372f 0%, #322c26 50%, #2a2520 100%) !important;
+  color: #f7f1e7 !important;
+  transform: scale(1) !important;
+  box-shadow:
+    inset 0 -4px 10px rgba(0,0,0,0.35),
+    inset 0 2px 5px rgba(255,255,255,0.08),
+    0 8px 40px rgba(0,0,0,0.6),
+    0 0 80px rgba(210,190,150,0.18) !important;
+  transition: all 0.35s cubic-bezier(0.4,0,0.2,1) !important;
+}
+.rock.restored .text em { opacity: 0.5 !important; color: #c8bca8 !important; }
+.rock.restored .dust { background: rgba(190,168,128,0.15) !important; }
+
+/* Underwater */
+.rock.underwater {
+  opacity: calc(var(--ro, 1) * 0.45) !important;
+  filter: blur(calc(var(--bf, 0) + 2px)) brightness(0.5) saturate(0.5) !important;
+  transition: opacity 2s, filter 2s !important;
+}
+
+/* New rock pulse */
+.new-rock {
+  animation: pulse 2.5s ease-out;
+}
+@keyframes pulse {
+  0%   { box-shadow: inset 0 -4px 10px rgba(0,0,0,0.35), 0 0 0 0 rgba(200,180,130,0.5); }
+  50%  { box-shadow: inset 0 -2px 6px rgba(0,0,0,0.2), 0 0 30px 8px rgba(200,180,130,0.25); }
+  100% { box-shadow: inset 0 -4px 10px rgba(0,0,0,0.35), 0 0 0 0 rgba(200,180,130,0); }
+}
+
+/* --- Crumble particle --- */
+.crumb {
+  position: fixed;
+  pointer-events: none;
+  z-index: 999;
+  width: 4px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(170,148,110,0.7);
+  animation: fall 1.4s cubic-bezier(0.25,0.1,0.25,1) forwards;
+}
+@keyframes fall {
+  0% {
+    transform: translate(0, 0) rotate(0deg) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--dx), var(--dy)) rotate(420deg) scale(0.15);
+    opacity: 0;
+  }
+}
+
+/* --- Water --- */
+#water {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 50;
+  pointer-events: none;
+  height: 0;
+  background: linear-gradient(to top,
+    rgba(18,22,32,0.96) 0%,
+    rgba(24,34,54,0.82) 35%,
+    rgba(30,50,72,0.5) 65%,
+    transparent 100%);
+  transition: height 0.2s linear;
+}
+#water::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg,
+    transparent, rgba(100,150,180,0.6), transparent, rgba(100,150,180,0.4), transparent);
+  animation: shimmer 4s ease-in-out infinite;
+}
+@keyframes shimmer {
+  0%, 100% { transform: translateX(-60%); opacity: 0.5; }
+  50% { transform: translateX(60%); opacity: 1; }
+}
+</style>
+</head>
+<body>
+
+<div id="ui">
+  <h2>Erosion</h2>
+  <p>writing that decays · attention restores · double-click to add</p>
+</div>
+
+<div id="stats">
+  water: <span id="wp">0</span>% ·
+  rocks: <span id="rc">0</span>
+</div>
+
+<div id="water"></div>
+
+<script>
+// ── Text fragments ──
+const TEXTS = [
+  { q: "Architecture is the will of an epoch translated into space.", a: "Mies van der Rohe" },
+  { q: "Less is more.", a: "Mies van der Rohe" },
+  { q: "Form and function should be one, joined in a spiritual union.", a: "Frank Lloyd Wright" },
+  { q: "God is in the details.", a: "Mies van der Rohe" },
+  { q: "Design is not just what it looks like. Design is how it works.", a: "Steve Jobs" },
+  { q: "A room is not a room without natural light.", a: "Louis Kahn" },
+  { q: "Architecture should speak of its time and place, but yearn for timelessness.", a: "Frank Gehry" },
+  { q: "Content precedes design. Design in the absence of content is decoration.", a: "Jeffrey Zeldman" },
+  { q: "The details are not the details. They make the design.", a: "Charles Eames" },
+  { q: "We shape our buildings; thereafter they shape us.", a: "Winston Churchill" },
+  { q: "Organic architecture seeks superior sense of use and a finer sense of comfort.", a: "Frank Lloyd Wright" },
+  { q: "Architecture is frozen music.", a: "Goethe" },
+  { q: "There are no straight lines in nature. I build with the rhythms of the earth.", a: "Zaha Hadid" },
+  { q: "A designer knows perfection when there is nothing left to take away.", a: "Saint-Exupéry" },
+  { q: "Simplicity is the ultimate sophistication.", a: "Leonardo da Vinci" },
+  { q: "The best design is the simplest one that works.", a: "Albert Einstein" },
+  { q: "Design creates culture. Culture shapes values. Values determine the future.", a: "Robert L. Peters" },
+  { q: "Space and light and order. Those are the things that people need.", a: "Louis Kahn" },
+  { q: "Architecture is the thoughtful making of spaces.", a: "Louis Kahn" },
+  { q: "To provide meaningful architecture is not to parrot our past but to articulate our present.", a: "Juhani Pallasmaa" },
+  { q: "The house is a machine for living in.", a: "Le Corbusier" },
+  { q: "I don't build buildings. I build ideas.", a: "Tadao Ando" }
+];
+
+// ── Irregular shapes ──
+const SHAPES = [
+  { br: "30% 70% 60% 40% / 35% 45% 55% 65%", r: -7 },
+  { br: "60% 40% 30% 70% / 55% 65% 35% 45%", r: 4 },
+  { br: "45% 55% 70% 30% / 40% 30% 60% 70%", r: -10 },
+  { br: "70% 30% 50% 50% / 65% 55% 45% 35%", r: 11 },
+  { br: "35% 65% 40% 60% / 50% 40% 70% 30%", r: -14 },
+  { br: "50% 50% 35% 65% / 35% 60% 40% 65%", r: 6 },
+  { br: "65% 35% 55% 45% / 45% 35% 65% 55%", r: -4 },
+  { br: "40% 60% 65% 35% / 60% 50% 35% 65%", r: 2 },
+  { br: "55% 45% 35% 65% / 55% 45% 55% 45%", r: -2 },
+  { br: "35% 65% 55% 45% / 45% 55% 40% 60%", r: 9 }
+];
+
+// Starting positions (percentage of viewport)
+const POSITIONS = [
+  { x: 8,  y: 14 }, { x: 32, y: 10 }, { x: 56, y: 16 }, { x: 78, y: 12 },
+  { x: 18, y: 42 }, { x: 42, y: 32 }, { x: 66, y: 38 }, { x: 88, y: 46 },
+  { x: 12, y: 68 }, { x: 38, y: 60 }, { x: 58, y: 72 }, { x: 80, y: 64 }
+];
+
+// Time thresholds
+const HOUR = 3600000;
+const THRESHOLDS = { fresh: 6 * HOUR, aging: 24 * HOUR, old: 72 * HOUR };
+
+// ── State ──
+const rocks = [];
+let waterPct = 0, waterDir = 1;
+const waterEl = document.getElementById('water');
+const wpEl = document.getElementById('wp');
+const rcEl = document.getElementById('rc');
+
+// ── Create rocks ──
+function rand(a, b) { return a + Math.random() * (b - a); }
+function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+function createRock(textData, shape, pos, birthTime, isNew) {
+  const el = document.createElement('div');
+  el.className = 'rock' + (isNew ? ' new-rock' : '');
+  el.dataset.birth = birthTime;
+  el.style.left = pos.x + 'vw';
+  el.style.top = pos.y + 'vh';
+  el.style.borderRadius = shape.br;
+  el.style.transform = `rotate(${shape.r}deg) scale(1)`;
+  el.style.zIndex = rocks.length;
+
+  el.innerHTML =
+    `<div class="text">${textData.q.replace(/"/g,'&ldquo;').replace(/"/g,'&rdquo;')}<em>— ${textData.a}</em></div>` +
+    `<div class=" dust a"></div><div class=" dust b"></div><div class=" dust c"></div>`;
+
+  // Set dust random drift variables
+  el.querySelectorAll('.dust').forEach(d => {
+    d.style.setProperty('--dx1', rand(-25, 25) + 'px');
+    d.style.setProperty('--dy1', rand(-20, -4) + 'px');
+    d.style.setProperty('--dx2', rand(-20, 20) + 'px');
+    d.style.setProperty('--dy2', rand(-5, 15) + 'px');
+    d.style.setProperty('--dx3', rand(-15, 15) + 'px');
+    d.style.setProperty('--dy3', rand(0, 20) + 'px');
+  });
+
+  // Events
+  el.addEventListener('mousedown', onPointerDown);
+  el.addEventListener('touchstart', onTouchStart, { passive: false });
+
+  document.body.appendChild(el);
+  updateRockState(el);
+  return el;
+}
+
+// ── Age / state calculation ──
+function updateRockState(el) {
+  const age = Date.now() - parseFloat(el.dataset.birth);
+  el.classList.remove('fresh', 'aging', 'old', 'ancient');
+  let blurBase;
+  if (age < THRESHOLDS.fresh) {
+    el.classList.add('fresh');
+    el.style.setProperty('--ro', '1');
+    blurBase = '0px';
+  } else if (age < THRESHOLDS.aging) {
+    el.classList.add('aging');
+    el.style.setProperty('--ro', '0.88');
+    blurBase = '0.4px';
+  } else if (age < THRESHOLDS.old) {
+    el.classList.add('old');
+    el.style.setProperty('--ro', '0.65');
+    blurBase = '1px';
+  } else {
+    el.classList.add('ancient');
+    el.style.setProperty('--ro', '0.32');
+    blurBase = '2px';
+  }
+  el.style.setProperty('--bf', blurBase);
+
+  // Underwater
+  const rect = el.getBoundingClientRect();
+  const rockCx = rect.left + rect.width / 2;
+  const rockCy = rect.top + rect.height / 2;
+  const waterLine = window.innerHeight - (waterPct / 100 * window.innerHeight);
+  el.classList.toggle('underwater', rockCy > waterLine && !el.classList.contains('restored'));
+}
+
+// ── Click = restore clarity temporarily ──
+function restoreRock(el) {
+  if (el.dataset.restoreId) clearTimeout(parseInt(el.dataset.restoreId));
+  el.classList.add('restored');
+  const id = setTimeout(() => {
+    el.classList.remove('restored');
+    updateRockState(el);
+    delete el.dataset.restoreId;
+  }, 2000);
+  el.dataset.restoreId = id;
+}
+
+// ── Drag ──
+let drag = null, dragOff = { x: 0, y: 0 };
+
+function onPointerDown(e) {
+  e.preventDefault();
+  const el = e.currentTarget;
+  drag = el;
+  const rect = el.getBoundingClientRect();
+  dragOff.x = e.clientX - rect.left;
+  dragOff.y = e.clientY - rect.top;
+  el.style.zIndex = 500;
+  el.style.pointerEvents = 'none';
+  restoreRock(el);
+  document.addEventListener('mousemove', onDragMove);
+  document.addEventListener('mouseup', onDragEnd);
+}
+
+function onTouchStart(e) {
+  e.preventDefault();
+  const el = e.currentTarget;
+  drag = el;
+  const rect = el.getBoundingClientRect();
+  dragOff.x = e.touches[0].clientX - rect.left;
+  dragOff.y = e.touches[0].clientY - rect.top;
+  el.style.zIndex = 500;
+  restoreRock(el);
+  document.addEventListener('touchmove', onTouchMove, { passive: false });
+  document.addEventListener('touchend', onTouchEnd, { once: true });
+}
+
+function onDragMove(e) {
+  if (!drag) return;
+  const x = (e.clientX - dragOff.x) / window.innerWidth * 100;
+  const y = (e.clientY - dragOff.y) / window.innerHeight * 100;
+  drag.style.left = x + 'vw';
+  drag.style.top = y + 'vh';
+}
+
+function onTouchMove(e) {
+  e.preventDefault();
+  if (!drag) return;
+  const x = (e.touches[0].clientX - dragOff.x) / window.innerWidth * 100;
+  const y = (e.touches[0].clientY - dragOff.y) / window.innerHeight * 100;
+  drag.style.left = x + 'vw';
+  drag.style.top = y + 'vh';
+}
+
+function onDragEnd() {
+  if (drag) { drag.style.zIndex = 10; drag.style.pointerEvents = 'auto'; drag = null; }
+  document.removeEventListener('mousemove', onDragMove);
+  document.removeEventListener('mouseup', onDragEnd);
+}
+
+function onTouchEnd() {
+  if (drag) { drag.style.zIndex = 10; drag.style.pointerEvents = 'auto'; drag = null; }
+  document.removeEventListener('touchmove', onTouchMove);
+}
+
+// ── Crumble particles on hover (ancient rocks only) ──
+let crumbleTimers = new Map();
+
+function startCrumble(el) {
+  const age = Date.now() - parseFloat(el.dataset.birth);
+  if (age < THRESHOLDS.old) return;
+  if (crumbleTimers.has(el)) return;
+
+  function spawn() {
+    const r = el.getBoundingClientRect();
+    const c = document.createElement('div');
+    c.className = 'crumb';
+    const sx = r.left + Math.random() * r.width;
+    const sy = r.top + Math.random() * r.height * 0.6;
+    c.style.left = sx + 'px';
+    c.style.top = sy + 'px';
+    c.style.setProperty('--dx', rand(-60, 60) + 'px');
+    c.style.setProperty('--dy', rand(40, 120) + 'px');
+    c.style.background = pick([
+      'rgba(165,142,100,0.7)', 'rgba(180,158,120,0.6)',
+      'rgba(150,130,90,0.8)', 'rgba(190,168,130,0.5)'
+    ]);
+    c.style.width = rand(3, 7) + 'px';
+    c.style.height = rand(2, 5) + 'px';
+    document.body.appendChild(c);
+    c.addEventListener('animationend', () => c.remove());
+  }
+
+  spawn();
+  const id = setInterval(spawn, 200);
+  crumbleTimers.set(el, id);
+}
+
+function stopCrumble(el) {
+  const id = crumbleTimers.get(el);
+  if (id) { clearInterval(id); crumbleTimers.delete(el); }
+}
+
+// Wire crumble hover
+document.addEventListener('mouseover', e => {
+  const rock = e.target.closest('.rock');
+  if (rock) startCrumble(rock);
+});
+document.addEventListener('mouseout', e => {
+  const rock = e.target.closest('.rock');
+  if (rock && !rock.contains(e.relatedTarget)) stopCrumble(rock);
+});
+
+// ── Water animation ──
+function animateWater() {
+  waterPct += waterDir * 0.1;
+  if (waterPct > 38) waterDir = -1;
+  if (waterPct < 0) { waterPct = 0; waterDir = 1; }
+  waterEl.style.height = waterPct + 'vh';
+  wpEl.textContent = Math.round(waterPct);
+  rocks.forEach(updateRockState);
+  requestAnimationFrame(animateWater);
+}
+
+// ── Generate initial rocks ──
+const now = Date.now();
+const ageSeed = [
+  -0.5, 1, 3, 5, 8, 15, 28, 48, 76, 96, 120, 4, 20, 60, 90
+];
+
+for (let i = 0; i < TEXTS.length; i++) {
+  const hours = ageSeed[i % ageSeed.length] * HOUR;
+  const birth = now - hours % 1000000;
+  const shape = SHAPES[i % SHAPES.length];
+  const pos = POSITIONS[i % POSITIONS.length];
+  // Nudge positions slightly for variety
+  const posJitter = {
+    x: pos.x + rand(-4, 4),
+    y: pos.y + rand(-4, 4)
+  };
+  const rock = createRock(TEXTS[i], shape, posJitter, birth + i * 1000, false);
+  rocks.push(rock);
+}
+
+rcEl.textContent = rocks.length;
+
+// ── Double-click to add new rock ──
+document.addEventListener('dblclick', e => {
+  if (e.target.closest('.rock')) return;
+  const remaining = TEXTS.filter(t => !document.body.textContent.includes(t.q.substring(0, 18)));
+  const textData = remaining.length ? pick(remaining) : pick(TEXTS);
+  const shape = pick(SHAPES);
+  const pos = {
+    x: (e.clientX / window.innerWidth) * 85,
+    y: (e.clientY / window.innerHeight) * 80
+  };
+  const rock = createRock(textData, shape, pos, Date.now(), true);
+  rocks.push(rock);
+  rcEl.textContent = rocks.length;
+
+  // Remove pulse after animation
+  setTimeout(() => rock.classList.remove('new-rock'), 2500);
+});
+
+// ── Periodic state refresh (for age changes without interaction) ──
+setInterval(() => rocks.forEach(updateRockState), 15000);
+
+// ── Start water ──
+requestAnimationFrame(animateWater);
+
+// ── Prevent text selection on long-press ──
+document.addEventListener('selectstart', e => e.preventDefault());
+
+</script>
+</body>
+</html>
