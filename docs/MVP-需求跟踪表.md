@@ -1,4 +1,16 @@
+---
+title: MVP 需求跟踪表
+type: delivery
+status: superseded
+last_updated: 2026-09-02
+source_of_truth: historical
+superseded_by: delivery/requirements-status.md
+redirect: delivery/requirements-status.md
+---
+
 # 渐晰 MVP — 需求跟踪表
+
+> ⚠️ **已废弃（2026-09-02）**：本表被 [需求实现状态总览](./delivery/requirements-status.md) 取代，仅作历史对照。需求跟踪的活入口为 `openspec/specs/` + `openspec/changes/`，状态一览见上表。
 
 > **创建:** 2026-07-05  
 > **用途:** 按功能点逐项跟踪，标注阶段、明确度、开发状态，作为开发执行依据  

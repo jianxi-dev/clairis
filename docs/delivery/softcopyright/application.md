@@ -7,7 +7,7 @@ last_updated: 2026-08-02
 
 # 软著申请操作手册
 
-Clairis（渐晰）软件著作权登记申请的**操作手册**：申请主体核实、申请表字段映射、日期逻辑校验、常见补正原因与预案、提交前自查清单。配套材料见 [软著资料台账](./ledger.md) 与 [交付路线图](../roadmap.md)；工具配置见 `scripts/softcopyright/config.json`。
+Clairis（渐晰）软件著作权登记申请的**操作手册**：申请主体核实、申请表字段映射、日期逻辑校验、常见补正原因与预案、提交前自查清单。配套材料见 [软著资料台账](./软著资料台账.md) 与 [交付路线图](../roadmap.md)；工具配置见 `scripts/softcopyright/config.json`。
 
 > ⚠️ **本手册不填写具体申请日期**：申请时机由维护者按路线图 Phase R（Release 1.0 稳定版发布）完成节点自行决定，手册只提供校验与自查方法，不替用户决定申请时间。
 
@@ -59,7 +59,7 @@ Clairis（渐晰）软件著作权登记申请的**操作手册**：申请主体
 |---|---|---|
 | 开发完成日期 | git 历史中**最早提交日期**（起算锚）与里程碑 `v1.0.0` tag 日期（完成锚），以里程碑 tag 日期为开发完成日期 | `git log --reverse --format="%ad %s" --date=short \| head`；`git log -1 --format="%ad" --date=short v1.0.0` |
 | 首次发表日期 | GitHub Release 发布页日期；无公开则填"未发表" | GitHub Release 页（R 级期创建） |
-| 交叉复核 | 里程碑记录表（台账/路线图） | `docs/delivery/roadmap.md`、软著台账 [ledger.md](./ledger.md) |
+| 交叉复核 | 里程碑记录表（台账/路线图） | `docs/delivery/roadmap.md`、软著台账 [ledger.md](./软著资料台账.md) |
 
 ---
 

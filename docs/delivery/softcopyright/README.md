@@ -17,7 +17,7 @@ Clairis（渐晰）软件著作权登记申请的**资料积累与准备域**。
 
 | 文档 | 职责 | 状态 |
 |---|---|---|
-| [资料台账 `ledger.md`](./ledger.md) | 材料清单 + 状态 + 采集时机 + 盘点 checklist（**域核心**） | 已建立 |
+| [资料台账 `ledger.md`](./软著资料台账.md) | 材料清单 + 状态 + 采集时机 + 盘点 checklist（**域核心**） | 已建立 |
 | [开发流程证据链规范 `process.md`](./process.md) | git 提交 / 里程碑 tag 与 Release / 文件头注释 / AI 辅助开发记录 / 行数守护与盘点 | 已建立 |
 | [申请操作手册 `application.md`](./application.md) | 主体核实、字段映射、日期逻辑、补正预案、自查清单 | 后续任务建立 |
 | [说明书骨架 `manual-skeleton.md`](./manual-skeleton.md) | 说明书结构、截图规范、正文模板 | 后续任务建立 |
