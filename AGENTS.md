@@ -144,3 +144,9 @@ GBrain 已在本机配置并同步。当问题偏语义、或尚不确定确切�
 ### Domain docs
 
 单上下文（single-context）——词汇表 `CONTEXT.md` 在仓库根，架构决策 ADR 在 `docs/architecture/decisions/`。详见 `docs/agents/domain.md`。
+
+### Change workflow（变更流程 gate）
+
+启动新 change、接手进行中 change、拆票、提交/PR、收尾与归档，一律经 `.opencode/skills/change-workflow/`（G0-G4 五 gate + fix-first 自愈回路）。拆票/commit/闭环规范见 `docs/agents/task-tracking.md`（1 task = 1 ticket，1 issue = 1 PR）；看板入列 API 见 `docs/agents/project-board.md`。缺陷流程见 `docs/agents/defect-workflow.md`。
+
+> 配置：`.change-workflow.conf`（看板 ID / 标签 / 门禁命令 / 目录约定）
