@@ -205,7 +205,12 @@
 /* ── 列表 ────────────────────────────────────────────── */
 .preview-content ul,
 .preview-content ol {
+  list-style-type: disc;
   padding-inline-start: 1.5em;
+}
+
+.preview-content ol {
+  list-style-type: decimal;
 }
 
 .preview-content li {
@@ -273,6 +278,13 @@
 
 .preview-content blockquote > :last-child {
   margin-bottom: 0;
+}
+
+/* marked 不开 breaks：连续 `>` 行（无空行）的软换行以 \n 保留在 <p> 内，
+   默认 CSS 会折叠成空格导致"排成一段话"。pre-line 让换行符可见，
+   属性列表（> **键**: 值）这类格式无需空行也能逐行显示。 */
+.preview-content blockquote p {
+  white-space: pre-line;
 }
 
 /* ── 行内代码 ────────────────────────────────────────── */

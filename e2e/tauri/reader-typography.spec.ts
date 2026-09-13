@@ -207,6 +207,39 @@ test("预览排版：Callout / 公式 / 表格 / 任务列表 / 中西文间距�
   expect(padWidth).toBeLessThan(4);
 });
 
+test("预览排版：连续引用行无空行也逐行显示", async ({ page }) => {
+  await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
+  await page.goto(APP_URL, { waitUntil: "networkidle" });
+  await page.waitForSelector("header", { timeout: 10000 });
+
+  const quote = [
+    "> **报告日期**: 2026-08-31",
+    "> **评估对象**: MDE（格式标准）",
+    "> **评估问题**: 可行性评估",
+  ].join("\n");
+  await openFile(page, quote);
+
+  const bq = page.locator(".preview-content blockquote");
+  await expect(bq).toHaveCount(1);
+
+  // pre-line：<p> 内的软换行符可见（marked 不开 breaks，连续 > 行是单个 <p>）
+  const ws = await bq
+    .locator("p")
+    .evaluate((el) => getComputedStyle(el).whiteSpace);
+  expect(ws).toBe("pre-line");
+
+  // 行为验证：3 行文本渲染成多行，而不是折叠成 1 行
+  // （getClientRects 对含 inline 子元素与 CJK 的 range 会拆成大量片段，不可用，
+  //   改用高度对比：合并成 1 行时高度 ≈ 1 倍行高）
+  const lines = await bq.evaluate((el) => {
+    const p = el.querySelector("p");
+    if (!p) return 0;
+    const lh = parseFloat(getComputedStyle(p).lineHeight);
+    return p.getBoundingClientRect().height / lh;
+  });
+  expect(lines).toBeGreaterThan(2.5);
+});
+
 test("预览排版：阅读设置可改字号与行宽", async ({ page }) => {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto(APP_URL, { waitUntil: "networkidle" });
