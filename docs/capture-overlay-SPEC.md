@@ -1,4 +1,16 @@
+---
+title: Capture Overlay v5.5 实施规格书
+type: design
+status: superseded
+last_updated: 2026-09-02
+source_of_truth: historical
+superseded_by: ../openspec/specs/capture/spec.md
+redirect: ../openspec/specs/capture/spec.md
+---
+
 # Capture Overlay v5.5 — 实施规格书 (SPEC)
+
+> ⚠️ **已废弃（2026-09-02）**：本实施规格已被 [OpenSpec capture 域主规格](../openspec/specs/capture/spec.md) 取代，仅作历史对照。Capture 需求的活入口为 `openspec/specs/capture/spec.md`，状态一览见 [需求台账](./delivery/requirements-status.md)。
 
 > **对应设计**: capture-overlay-v5.3.md (v5.4 + v5.5 增补)
 > **Ponytail**: full · spec = v5.5 P0 逐项覆盖 · 每个 API 有精确签名 · 每个 P0 case 有具体步骤

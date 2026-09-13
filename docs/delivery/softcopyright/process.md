@@ -10,7 +10,7 @@ last_updated: 2026-08-02
 Clairis（渐晰）软件著作权登记申请的**开发过程证据链规范**：从 Phase M 开发期起，git 历史、里程碑 tag、文件头注释、AI 辅助开发记录与行数/截图盘点共同构成"原创性演进 + 开发完成日期 + 首次发表日期"的证据链。申请时机在 Phase R（Release 1.0 稳定版发布）之后。
 
 - 阶段参照：Phase M = 软著 MVP（占位与最小可用），Phase R = Release 1.0（正式发布），见 [`roadmap.md`](../roadmap.md)。
-- 材料追踪：本规范执行结果（日期锚点、盘点记录）登记在[资料台账 `ledger.md`](./ledger.md)。
+- 材料追踪：本规范执行结果（日期锚点、盘点记录）登记在[资料台账 `ledger.md`](./软著资料台账.md)。
 - 规划与决策来源：`../../../.omo/drafts/clairis-software-copyright-prep.md` Decision 4/5/6/7。
 - 工具：行数统计 [`count-lines.mjs`](../../../scripts/softcopyright/count-lines.mjs)、截图采集 [`capture-screens.mjs`](../../../scripts/softcopyright/capture-screens.mjs)。
 

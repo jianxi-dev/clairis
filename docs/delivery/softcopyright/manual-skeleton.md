@@ -10,7 +10,7 @@ last_updated: 2026-08-02
 本文档是 Clairis（渐晰）软件著作权登记《软件说明书》的**骨架模板**：固定 6 章结构 + 每章截图占位标记 + 文末"截图与排版规范"。正式申请时（Phase R / V1.0 稳定版发布后），以真实界面截图替换占位标记、按规范补全文字即可成稿。
 
 - 阶段参照：Phase M = 软著 MVP（占位与最小可用），Phase R = Release 1.0（正式发布），见 [`../roadmap.md`](../roadmap.md)。
-- 资料台账：材料项状态见 [`ledger.md`](./ledger.md)（说明书项：状态=未开始，骨架为本文件）。
+- 资料台账：材料项状态见 [`ledger.md`](./软著资料台账.md)（说明书项：状态=未开始，骨架为本文件）。
 - 截图场景清单与 scene-id：`scripts/softcopyright/screens-config.json`（任务 2/3 产物）；截图存档：`docs/delivery/softcopyright/screenshots/`。
 - 软件名称/版本占位值：`scripts/softcopyright/config.json`（唯一配置源，申请前定稿）。
 

@@ -19,12 +19,12 @@ Clairis 面向中文用户，维护者母语为中文。以下为**硬约定**�
 
 > 本文件是"地图"。各工具内容在各自的文件里，此处只标位置。
 
-- **规范与变更（OpenSpec）**：功能规格真相源 `openspec/specs/`，进行中变更 `openspec/changes/`；配置 `openspec/config.yaml`；`openspec list` 查看状态
+- **规范与变更（OpenSpec）**：功能规格真相源 `openspec/specs/`，进行中变更 `openspec/changes/`（活跃变更 = 正在实现的需求）；配置 `openspec/config.yaml`；`openspec list` 查看状态，`openspec view` 交互式 dashboard；需求×实现状态一览见 `docs/delivery/requirements-status.md`
 - **共享词汇与架构决策（Real Engineers）**：词汇表 `CONTEXT.md`；架构现状 `docs/architecture/overview.md`，架构决策 `docs/architecture/decisions/`
 - **项目结构与模块地图（OmO init-deep）**：`.opencode/project-tree.md`；OmO 命令与技能在 `.opencode/`
 - **架构/产品/设计文档**：`docs/`（索引 `docs/README.md`）：产品 `docs/product/`、批准设计 `docs/design/approved/`、探索 `docs/design/explorations/`、研究 `docs/research/`、交付 `docs/delivery/`、历史 `docs/archive/`；总纲由 `docs/README.md` + `docs/architecture/overview.md` 承担
 - **知识检索（GBrain）**：`gbrain search "<语义问题>"` / `gbrain query`；代码符号查 `gbrain code-def/code-refs`；配置 `~/.gbrain/config.json`（pglite，本仓库由 `gbrain autopilot --repo` 自动增量索引；当前无常驻 daemon，手动 `gbrain dream` 触发）
-- **需求基线与跟踪**：产品愿景/原则/范围 `docs/product/`，交付路线图 `docs/delivery/roadmap.md`，功能规格 `openspec/specs/`（旧 `CORE-REQUIREMENTS-clairis.md`/`PLAN.md` 等已 superseded/归档，不作活入口）
+- **需求基线与跟踪**：产品愿景/原则/范围 `docs/product/`，交付路线图 `docs/delivery/roadmap.md`，功能规格 `openspec/specs/`，需求×实现状态一览 `docs/delivery/requirements-status.md`（旧 `CORE-REQUIREMENTS-clairis.md`/`PLAN.md`/`MVP-需求跟踪表.md` 等已 superseded/归档，不作活入口）
 - **软著资料准备**：`docs/delivery/softcopyright/`（台账/开发流程证据链规范/申请操作手册）
 
 ## Skill 路由（gstack）
@@ -82,6 +82,7 @@ Clairis 面向中文用户，维护者母语为中文。以下为**硬约定**�
 - 最小 diff 优先。删除 > 新增。
 - 实根因修复，不在每个调用点打补丁。
 - 业务边界输入必须校验。
+- **需求/功能变更必须先走 OpenSpec 闭环**（硬约束）：新增或变更需求 → `/opsx-propose` 建 change（proposal+design+tasks）；实现 → `/opsx-apply` 勾任务；完成后 → `/opsx-archive` 归档并更新 `docs/delivery/requirements-status.md`。**禁止**绕过 change 直接改 `openspec/specs/` 主规格，也禁止不归档就把需求标为已完成。
 
 ## UI 修复后必做检查清单
 
@@ -112,13 +113,19 @@ Clairis 面向中文用户，维护者母语为中文。以下为**硬约定**�
 - Artifacts sync: off（Step 7 选择"不需要"；GitHub 当前不可达）
 - Current repo policy: read-write（github.com/lqtdys/clairis）
 - transcript_ingest_mode: incremental
-- Last cycle: 2026-08-02 手动 `gbrain dream` 跑通（`doctor` cycle_freshness OK；sync 4 页、embed 11 页、edges_resolved 16；`propose_takes` 因无 LLM provider 跳过）。当前无常驻 `autopilot` daemon，需手动 `gbrain dream` 触发；可选 `gbrain autopilot --install` 或 cron `0 2 * * * gbrain dream --json` 常驻
+- Last cycle: 2026-08-30 增量 sync（`gstack-code-clairis-0cb0a733` 252 页、memory 53 条、call graph 已建 edges 可用）。autopilot 已通过 launchd `com.gbrain.autopilot` 常驻（`gbrain autopilot --repo <repo>` 自动重启）；同步期间勿跑 `/sync-gbrain`
 
 ## GBrain Search Guidance（configured by /sync-gbrain）
 <!-- gstack-gbrain-search-guidance:start -->
 
-GBrain 已在本机配置并同步。当问题偏语义、或尚不确定确切标识符时，agent 应优先用 `gbrain` 而非 Grep。两个可检索语料库：
-- 本仓库代码（注册为 `gstack-code-<repo>` 源）。
+GBrain 已在本机配置并同步。当问题偏语义、或尚不确定确切标识符时，agent 应优先用 `gbrain` 而非 Grep。
+
+**本 worktree 已 pin 到 worktree 级代码源**（仓库根 `.gbrain-source` 文件，kubectl 风格上下文）：`gbrain code-def/code-refs/code-callers/code-callees/search/query` 在该 worktree 任意位置默认路由到该源，无需 `--source` 标志。同仓库的 Conductor 兄弟 worktree 各自有独立 pin 与独立索引页，语义结果与当前磁盘代码一致。
+
+调用图查询（`code-callers`/`code-callees`）需要图已构建——若返回 `count: 0` 先跑 `/sync-gbrain --dream`（或 `--full`）。仅当该源的 gbrain schema pack 能提取代码符号时有效；非 code-aware pack 上 `--dream` 会完成但图保持为空并报 WARN。`code-def`/`code-refs` 同样依赖符号提取。
+
+两个可检索语料库：
+- 本 worktree 代码（经 `.gbrain-source` 自动 pin）。
 - `~/.gstack/` 精选记忆（经现有 federation 管线注册为 `gstack-brain-<user>` 源）。
 
 优先用 gbrain 的场景：
@@ -127,9 +134,11 @@ GBrain 已在本机配置并同步。当问题偏语义、或尚不确定确切�
 - "什么调用了 Y？" / "Y 依赖什么？"：`gbrain code-callers <符号>` / `gbrain code-callees <符号>`
 - "上次我们决定了什么？" / 过往计划、retro、learnings：`gbrain search "<词>" --source gstack-brain-<user>`
 
-已知确切字符串、正则、多行、glob 时仍用 Grep。brain 在每个 gstack skill 启动时增量自动同步。跑 `/sync-gbrain` 强制刷新，`/sync-gbrain --full` 全量重建索引。
+已知确切字符串、正则、多行、glob 时仍用 Grep。代码有意义变更后跑 `/sync-gbrain` 刷新；需要跨 worktree 持续自动同步时，每台机器跑一次 `gbrain autopilot --install`（本机已通过 launchd `com.gbrain.autopilot` 常驻）。
 
-<!-- gstack-gbrain-search-guid:end -->
+安全注意：`gbrain autopilot` 运行期间不要跑 `/sync-gbrain`（orchestrator 检测到活动 autopilot 会拒绝破坏性源操作，避免竞态 #1734）。注册用户仓库优先 `gbrain sources add --path <dir>`（不带 `--url`：URL 管理源可能自动 re-clone，其同步需要显式 `--allow-reclone` 选入）。
+
+<!-- gstack-gbrain-search-guidance:end -->
 
 ## Agent skills
 
