@@ -20,6 +20,7 @@ Clairis 面向中文用户，维护者母语为中文。以下为**硬约定**�
 > 本文件是"地图"。各工具内容在各自的文件里，此处只标位置。
 
 - **规范与变更（OpenSpec）**：功能规格真相源 `openspec/specs/`，进行中变更 `openspec/changes/`（活跃变更 = 正在实现的需求）；配置 `openspec/config.yaml`；`openspec list` 查看状态，`openspec view` 交互式 dashboard；需求×实现状态一览见 `docs/delivery/requirements-status.md`
+- **变更收尾**：合并后本地工作区停留在 main（详见 `docs/agents/incident-merge-local-workspace.md`）
 - **共享词汇与架构决策（Real Engineers）**：词汇表 `CONTEXT.md`；架构现状 `docs/architecture/overview.md`，架构决策 `docs/architecture/decisions/`
 - **项目结构与模块地图（OmO init-deep）**：`.opencode/project-tree.md`；OmO 命令与技能在 `.opencode/`
 - **架构/产品/设计文档**：`docs/`（索引 `docs/README.md`）：产品 `docs/product/`、批准设计 `docs/design/approved/`、探索 `docs/design/explorations/`、研究 `docs/research/`、交付 `docs/delivery/`、历史 `docs/archive/`；总纲由 `docs/README.md` + `docs/architecture/overview.md` 承担
