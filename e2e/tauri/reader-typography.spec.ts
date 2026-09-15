@@ -426,3 +426,191 @@ test("六项反馈的浏览器层验收：图 / 背景 / 表格 / 主题 / 内�
   };
   expect(lum(darkBg)).toBeLessThan(lum(lightBg));
 });
+
+// ── A-11 预览表格宽度与自动换行（change: preview-table-width）──────────────
+// 长 token 用真实 URL 形态 + 超长英文单词，验证「换行而非横向延展」。
+const LONG_TOKEN = "a".repeat(120);
+const LONG_TABLE_DOC = [
+  "# 长内容表格",
+  "",
+  "| 项目 | 地址 | 说明 |",
+  "| --- | --- | --- |",
+  `| 链接 | https://example.com/${"segment-of-path/".repeat(12)}${LONG_TOKEN} | 说明文本 |`,
+  `| 单词 | ${LONG_TOKEN} | 说明文本 |`,
+].join("\n");
+
+const SHORT_TABLE_DOC = [
+  "# 短表格",
+  "",
+  "| 列一 | 列二 |",
+  "| --- | --- |",
+  "| 1 | 2 |",
+].join("\n");
+
+// 极端不可断内容：内嵌固定宽度元素（消毒白名单放开 style 属性，见 markdown.ts）
+const WIDE_CELL_DOC = [
+  "# 极端兜底",
+  "",
+  "| 列一 | 列二 |",
+  "| --- | --- |",
+  '| <div style="width:1600px">x</div> | 2 |',
+].join("\n");
+
+/** 量表格与 .table-wrap 的宽度关系：inner 为容器内容区宽度（扣 padding）。 */
+function tableMetrics(page: import("@playwright/test").Page) {
+  return page.locator(".table-wrap").evaluate((el) => {
+    const table = el.querySelector("table") as HTMLElement;
+    const cs = getComputedStyle(el);
+    const inner =
+      el.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+    return {
+      wrapClient: el.clientWidth,
+      wrapScroll: el.scrollWidth,
+      inner,
+      tableW: table.getBoundingClientRect().width,
+    };
+  });
+}
+
+test("预览排版：长内容表格不横向延展，单元格自动换行", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
+  await page.goto(APP_URL, { waitUntil: "networkidle" });
+  await page.waitForSelector("header", { timeout: 10000 });
+  await openFile(page, LONG_TABLE_DOC);
+
+  const wrap = page.locator(".table-wrap");
+  await expect(wrap).toHaveCount(1);
+
+  // 表格宽度不超出容器内容区（+1px 舍入容差），容器无横向溢出
+  const m = await tableMetrics(page);
+  expect(m.tableW).toBeLessThanOrEqual(m.inner + 1);
+  expect(m.wrapScroll).toBeLessThanOrEqual(m.wrapClient + 1);
+
+  // 长 URL 单元格换行：高度进入多行区间（1 行时约 1.6 倍行高）
+  const urlLines = await page
+    .locator(".preview-content td")
+    .filter({ hasText: "segment-of-path" })
+    .first()
+    .evaluate((el) => {
+      const lh = parseFloat(getComputedStyle(el).lineHeight);
+      return el.getBoundingClientRect().height / lh;
+    });
+  expect(urlLines).toBeGreaterThan(2);
+
+  // 判别性证据：纯 a 重复 token（无可断点）只能靠 overflow-wrap: anywhere 换行，
+  // URL 在 `/` 处天然可断，不足以证明换行机制生效
+  const wordLines = await page
+    .locator(".preview-content tbody tr")
+    .filter({ hasText: "单词" })
+    .locator("td")
+    .nth(1)
+    .evaluate((el) => {
+      const lh = parseFloat(getComputedStyle(el).lineHeight);
+      return el.getBoundingClientRect().height / lh;
+    });
+  expect(wordLines).toBeGreaterThan(2);
+
+  // 窗口变窄后仍不横向延展（窗口宽度联动）
+  await page.setViewportSize({ width: 820, height: 900 });
+  await page.waitForTimeout(300);
+  const narrow = await tableMetrics(page);
+  expect(narrow.tableW).toBeLessThanOrEqual(narrow.inner + 1);
+  expect(narrow.wrapScroll).toBeLessThanOrEqual(narrow.wrapClient + 1);
+});
+
+test("预览排版：短内容表格保持满宽", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
+  await page.goto(APP_URL, { waitUntil: "networkidle" });
+  await page.waitForSelector("header", { timeout: 10000 });
+  await openFile(page, SHORT_TABLE_DOC);
+
+  const wrap = page.locator(".table-wrap");
+  await expect(wrap).toHaveCount(1);
+
+  // 内容再短，表格仍占满容器内容区（不缩到内容宽度）
+  const m = await tableMetrics(page);
+  expect(Math.abs(m.tableW - m.inner)).toBeLessThanOrEqual(2);
+  expect(m.wrapScroll).toBeLessThanOrEqual(m.wrapClient + 1);
+});
+
+test("预览排版：表格随阅读行宽设置同步适配", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
+  await page.goto(APP_URL, { waitUntil: "networkidle" });
+  await page.waitForSelector("header", { timeout: 10000 });
+  await openFile(page, LONG_TABLE_DOC);
+
+  await expect(page.locator(".table-wrap")).toHaveCount(1);
+
+  // 默认「标准」行宽（1080）：表格占满内容区且不横向延展
+  const standard = await tableMetrics(page);
+  expect(standard.tableW).toBeLessThanOrEqual(standard.inner + 1);
+  expect(standard.wrapScroll).toBeLessThanOrEqual(standard.wrapClient + 1);
+
+  // 复用既有阅读设置机制切到「紧凑」（720）
+  await page.locator(".reader-settings-toggle").click();
+  await expect(page.locator(".reader-settings-panel")).toBeVisible();
+  await page
+    .locator(".reader-settings-panel .reader-pill", { hasText: "紧凑" })
+    .click();
+  await page.waitForTimeout(300);
+
+  // 行宽变窄后表格同步收窄，且仍不横向延展
+  const compact = await tableMetrics(page);
+  expect(compact.inner).toBeLessThan(standard.inner);
+  expect(compact.tableW).toBeLessThan(standard.tableW);
+  expect(compact.tableW).toBeLessThanOrEqual(compact.inner + 1);
+  expect(compact.wrapScroll).toBeLessThanOrEqual(compact.wrapClient + 1);
+});
+
+test("预览排版：极端不可断内容在表格容器内横向滚动兜底", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
+  await page.goto(APP_URL, { waitUntil: "networkidle" });
+  await page.waitForSelector("header", { timeout: 10000 });
+  await openFile(page, WIDE_CELL_DOC);
+
+  const wrap = page.locator(".table-wrap");
+  await expect(wrap).toHaveCount(1);
+
+  // 先确认内嵌定宽元素真的渲染（style 未被消毒剥离）
+  const cell = await page
+    .locator(".preview-content tbody td")
+    .first()
+    .evaluate((el) => {
+      const child = el.firstElementChild as HTMLElement | null;
+      return {
+        html: el.innerHTML,
+        childW: child ? child.getBoundingClientRect().width : 0,
+      };
+    });
+  expect(cell.html).toContain("1600px");
+  expect(cell.childW).toBeGreaterThan(1400);
+
+  const geom = await page.evaluate(() => {
+    const w = document.querySelector(".table-wrap") as HTMLElement;
+    const content = document.querySelector(".preview-content") as HTMLElement;
+    const cs = getComputedStyle(content);
+    const contentInner =
+      content.clientWidth -
+      parseFloat(cs.paddingLeft) -
+      parseFloat(cs.paddingRight);
+    return {
+      wrapClient: w.clientWidth,
+      wrapScroll: w.scrollWidth,
+      wrapW: w.getBoundingClientRect().width,
+      contentInner,
+      docScroll: document.documentElement.scrollWidth,
+      docClient: document.documentElement.clientWidth,
+    };
+  });
+
+  // 兜底滚动只在 .table-wrap 内生效
+  expect(geom.wrapScroll).toBeGreaterThan(geom.wrapClient + 1);
+  // 容器自身不溢出纸面内容区
+  expect(geom.wrapW).toBeLessThanOrEqual(geom.contentInner + 1);
+  // 页面级无横向溢出
+  expect(geom.docScroll).toBeLessThanOrEqual(geom.docClient + 1);
+});
