@@ -520,9 +520,9 @@
 .preview-content table {
   border-collapse: separate;
   border-spacing: 0;
-  /* 按内容自然展开，宁可横向滚动也不把列压成竖条 */
-  width: max-content;
-  min-width: 100%;
+  /* 占满纸面可用宽度，列宽仍按内容自动分配（非均分）；长内容在单元格内换行，
+     不再按不换行的自然宽度横向延展。极端不可断内容由 .table-wrap 滚动兜底。 */
+  width: 100%;
   font-size: 0.95em;
 }
 
@@ -532,6 +532,8 @@
   border-bottom: 1px solid var(--reader-line);
   text-align: start;
   vertical-align: top;
+  /* anywhere 参与 min-content 计算：长 URL / 长英文单词可断行，不撑宽表格 */
+  overflow-wrap: anywhere;
 }
 
 .preview-content thead th {
