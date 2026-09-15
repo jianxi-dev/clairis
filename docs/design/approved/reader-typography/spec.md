@@ -2,7 +2,7 @@
 title: "Markdown 预览排版与阅读体验设计（reader typography）"
 type: design
 status: accepted
-last_updated: 2026-08-29
+last_updated: 2026-09-15
 source_of_truth: supporting
 ---
 
@@ -185,7 +185,7 @@ source_of_truth: supporting
 - **列表**：`::marker` 用弱化色，保留定位但降低存在感。
 - **任务列表**：原生 input 改 `appearance: none` 自绘——16px 圆角方框，勾选时墨蓝填充 + 白色对勾；**完成项只变灰（`--reader-ink-3`），不加删除线**（删除线会显著伤害可读性；内容仍然清晰可见，只是退到背景层）。
 - **引用**：左侧 2px 墨蓝淡条 + 极淡底 + **次级墨色（不灰化）**；嵌套引用不再叠加底色。
-- **表格**：外容器 `overflow-x: auto` + 圆角（走 wide 通道）；`border-collapse: separate`、**只留横向分隔线**（去掉纵向线噪音）；表头浅底 + 600 字重；`tbody tr:hover` 极淡 accent 底，横向扫读不串行。
+- **表格**：`width: 100%` 占满内容区可用宽度（走 wide 通道），列宽按内容自动分配（不强制均分）；单元格 `overflow-wrap: anywhere`，长句 / 长 URL / 长英文单词 / 长标识符可断行，不再按内容自然宽度横向延展；极端不可断内容（如内嵌固定宽度元素）仅在 `.table-wrap` 容器（保留圆角）内横向滚动兜底，不溢出纸面；`border-collapse: separate`、**只留横向分隔线**（去掉纵向线噪音）；表头浅底 + 600 字重；`tbody tr:hover` 极淡 accent 底，横向扫读不串行。
 - **行内代码**：沉底 + 1px 边框 + 4px 圆角 + 0.88em + 低饱和朱色（light `#a03a63` / dark `#e59ac0`），比中性灰更易在段落中被扫到。
 - **链接**：accent 色 + 1px 下划线 + `text-underline-offset: .18em`；hover 加粗下划线 + 极淡 accent 底；保留现有 `target="_blank"` 逻辑。
 - **链接悬浮卡片**（新增）：hover 停留约 350ms 后，在链接下方浮出卡片——外链显示完整 URL 与域名，本地文件显示路径与标题；卡片上提供**复制**与**打开**两个动作。卡片用原生 `resize: both` 支持**拖拽调整大小**（零 JS），位置与尺寸在会话内记忆。卡片贴着链接出现，不做全局浮动窗口，避免遮挡正文。
