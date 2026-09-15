@@ -2,7 +2,7 @@
 title: 需求实现状态总览
 type: delivery
 status: accepted
-last_updated: 2026-09-02
+last_updated: 2026-09-15
 source_of_truth: supporting
 ---
 
@@ -35,17 +35,17 @@ openspec view              # 交互式 dashboard（specs + changes 一屏总览�
 openspec status --change <name>   # 单个变更工件完成度
 ```
 
-## 总览统计（截至 2026-09-02）
+## 总览统计（截至 2026-09-15）
 
-- 规格：7 域 / 49 requirement（`openspec validate` 通过）
-- ✅ 经 openspec 归档实现：9
+- 规格：7 域 / 50 requirement（`openspec validate` 通过）
+- ✅ 经 openspec 归档实现：10
 - 🟡 已实现/设计完成（未走 openspec 变更）：24
 - ⬜ 待开发：16
 - 🗒 未立项（遗留散件登记）：约 16（展卷仪式 8 模块 + TODOS 安全/功能项）
 
 ## 逐域状态
 
-### reading（9）
+### reading（10）
 
 | 编号 | 需求 | 状态 | 证据 |
 |---|---|---|---|
@@ -58,6 +58,7 @@ openspec status --change <name>   # 单个变更工件完成度
 | A-8 | 滚动顺滑 | 🟡 | V3 沿用 |
 | A-9 | 阅读进度与位置恢复 | ✅ | change `reading-view-implementation` |
 | A-10 | 阅读宽度与标题配色 | ✅ | change `html-preview-rework` |
+| A-11 | 预览表格宽度与自动换行 | ✅ | change `preview-table-width` |
 
 ### capture（15）
 
