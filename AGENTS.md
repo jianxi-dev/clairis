@@ -160,3 +160,16 @@ GBrain 已在本机配置并同步。当问题偏语义、或尚不确定确切�
 启动新 change、接手进行中 change、拆票、提交/PR、收尾与归档，一律经 `.opencode/skills/change-workflow/`（G0-G4 五 gate + fix-first 自愈回路）。拆票/commit/闭环规范见 `docs/agents/task-tracking.md`（1 task = 1 ticket，1 issue = 1 PR）；看板入列 API 见 `docs/agents/project-board.md`。缺陷流程见 `docs/agents/defect-workflow.md`。
 
 > 配置：`.change-workflow.conf`（看板 ID / 标签 / 门禁命令 / 目录约定）
+
+### 更新 change-workflow 工具包
+
+```bash
+# 检查是否有新版本（不落盘）
+./scripts/cw-update.sh --check
+
+# 执行更新（有冲突会写 .new 旁路文件，退 1 是正常语义）
+./scripts/cw-update.sh
+
+# 快捷方式（如已安装 Makefile）
+make cw-update
+```
