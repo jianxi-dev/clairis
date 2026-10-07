@@ -26,3 +26,7 @@ coverage/
 gbrain-sync-*.md
 _cap_check*.md
 index.html.artifact.json
+# Agent 技能镜像 + 锁（skills CLI 生成，重新生成勿提交；同 .codebuddy/.codex/.gemini）
+.agents/
+.claude/skills/
+skills-lock.json
