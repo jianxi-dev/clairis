@@ -10,12 +10,12 @@
 #   ./scripts/pr-automation.sh --role feat --issue 42 --title "..." --refs-only   # PR body 用 Refs #N（不关 issue）
 #
 # --refs-only: PR body 关联用 `Refs #N`（parent/spec issue 场景，避免合并提前关闭）
-# auto-merge: risk-low 尝试启用；仓库未启用时 fail-open（提示手动合并，退出 0）
+# auto-merge: risk-low/medium 尝试启用；risk-high 不自动合并（人工）；仓库未启用时 fail-open（提示手动合并，退出 0）
 # --verified-sha: 仅 --resume-branch 模式；QG-5 验证时效检查——与分支 HEAD 不一致（rebase/追加提交后未重验）即拒收退 1，未提供仅警告
 #
 # 流程: 校验仓库干净 → 基于 origin/main 建分支 → 本地验证四件套硬门禁
 #        → 显式 git add 白名单提交 → push → gh pr create(模板+风险标签)
-#        → 按风险分级启用 auto-merge
+#        → 按风险分级启用 auto-merge（low/medium 自动；high 人工）
 #
 # 白名单路径若被 .gitignore 匹配(如 force-tracked 的 .omo/notepads/**),
 # git add 会失败,此时自动 fallback 到 git add -f(路径已由 --files 显式限定)。
@@ -31,7 +31,7 @@
 #   - 1 分支 = 1 PR,绝不复用
 #   - 分支名: feat/<slug> / fix/<slug>,基于 origin/main
 #   - commit 引用 fixes #N → PR 合并自动关 issue
-#   - risk-low → auto-merge; risk-medium/high → 人工评审
+#   - 全风险 auto-merge（low/medium 尝试；high 人工合并门）
 # =============================================================================
 set -euo pipefail
 
@@ -305,12 +305,40 @@ else
   echo "==> 跳过提交(无 --files 参数)。分支上已有 commit; 直接 push + PR 检测"
 fi
 
+# --- ui-surface 票证据 manifest 校验（IC-2/IC-5）------------------------------
+# fail-open: gh 不可用/标签取不到/jq 不可用 → 跳过（不阻断既有流程）。
+# ui-surface 判定: gh issue label 含 ui-surface（IC-5 label 通道）。
+# 判据: .artifacts/<ISSUE>/state-coverage.json 缺失或态数 <4 → 退 1。
+if command -v gh >/dev/null 2>&1; then
+  ISSUE_LABELS="$(gh issue view "$ISSUE" --json labels --jq '.labels[].name' 2>/dev/null || true)"
+  if [[ "$ISSUE_LABELS" == *"ui-surface"* ]]; then
+    MANIFEST=".artifacts/${ISSUE}/state-coverage.json"
+    if [[ ! -f "$MANIFEST" ]]; then
+      echo "❌ ui-surface 票 #${ISSUE} 缺少证据 manifest: ${MANIFEST}（IC-2: ui-surface 票须提交 state-coverage.json，≥4 态）" >&2
+      exit 1
+    fi
+    STATE_COUNT="$(jq '.states | length' "$MANIFEST" 2>/dev/null || true)"
+    if [[ ! "$STATE_COUNT" =~ ^[0-9]+$ ]]; then
+      echo "⚠️  无法解析态数（jq 不可用或 manifest 非法），跳过 ui-surface 校验（fail-open）" >&2
+    elif [[ "$STATE_COUNT" -lt 4 ]]; then
+      echo "❌ ui-surface 票 #${ISSUE} 证据 manifest 态数不足: ${STATE_COUNT} < 4（IC-2: 状态覆盖矩阵 ≥4 态）" >&2
+      exit 1
+    else
+      echo "    [ui-surface] 证据 manifest 校验通过（${STATE_COUNT} 态）"
+    fi
+  fi
+fi
+
 echo "==> 4/6 推送分支"
 git push -u origin "$BRANCH"
 
 echo "==> 5/6 创建/检测 PR"
-PR_JSON=$(gh pr view --head "$BRANCH" --json number,headRefName,baseRefName,title,state 2>/dev/null || echo "NO_PR")
-if [[ "$PR_JSON" == "NO_PR" || "$PR_JSON" == "null" ]]; then
+# 无匹配时 gh 2.95.0 的 `--jq '.[0]'` 输出**空串**（不是 `null`）——实测 `xxd` 仅 `0a`。
+# 故 jq 替代运算符把 null/空归一为 `NO_PR` 哨兵；:338 的 `-z` 再兜一道（防其他 gh/jq 版本差异）。
+# 教训（1.12.1 回归）：桩测试若假定 `jq '.[0]'` → `null`，就会漏掉真实 gh 的空输出行为。
+PR_JSON=$(gh pr list --head "$BRANCH" --state all --limit 1 \
+  --json number,headRefName,baseRefName,title,state --jq '.[0] // "NO_PR"' 2>/dev/null || echo "NO_PR")
+if [[ -z "$PR_JSON" || "$PR_JSON" == "NO_PR" || "$PR_JSON" == "null" ]]; then
   BODY_FILE="$(mktemp)"
   cat > "$BODY_FILE" <<EOF
 ## 变更概述
@@ -383,15 +411,14 @@ else
 fi
 
 echo "==> 6/6 风险分级"
-if [[ "$RISK" == "low" ]]; then
-  PR_NUM=$(echo "$PR_URL" | grep -o '[0-9]*$')
-  if gh pr merge "$PR_NUM" --auto --squash 2>/dev/null; then
-    echo "    risk-low → 已启用 auto-merge(CI 绿自动合并)"
-  else
-    echo "    risk-low → auto-merge 不可用(仓库未启用)，CI 绿后合并: gh pr merge $PR_NUM --squash"
-  fi
+PR_NUM=$(echo "$PR_URL" | grep -o '[0-9]*$')
+# 风险分档：low/medium 尝试 auto-merge；high 必须人工合并（不可逆/高风险变更不静默落库）
+if [[ "$RISK" == "high" ]]; then
+  echo "    risk-high → 人工合并: gh pr merge ${PR_NUM} --squash（高风险不自动合并）"
+elif gh pr merge "$PR_NUM" --auto --squash 2>/dev/null; then
+  echo "    risk-${RISK} → 已启用 auto-merge(CI 绿自动合并)"
 else
-  echo "    risk-$RISK → 人工评审,等待确认"
+  echo "    risk-${RISK} → auto-merge 不可用(仓库未启用)，CI 绿后合并: gh pr merge ${PR_NUM} --squash"
 fi
 
 echo "==> 完成。分支: $BRANCH | PR: $PR_URL"
