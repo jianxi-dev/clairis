@@ -437,6 +437,87 @@ pub fn save_config_at(base: &Path, config: &AppConfig) -> Result<(), AppError> {
     Ok(())
 }
 
+/// 把 JSON 合并补丁打进 user 层，复用 C2 的校验 / 快照 / 原子写语义。
+///
+/// 顺序：读 user（缺失按 `{}`）→ `merge_json` 深合并 → 反序列化 → 校验 →
+/// 快照当前 user → 原子写 user + state。任一步失败都不落盘；返回新的有效配置。
+pub fn apply_patch_at(base: &Path, patch: &Value) -> Result<AppConfig, AppError> {
+    if !patch.is_object() {
+        return Err(AppError::Validation {
+            context: "patch".into(),
+            message: "补丁必须是 JSON 对象".into(),
+        });
+    }
+    ensure_defaults(base)?;
+    migrate_legacy(base)?;
+    let current_user = read_json_or_quarantine(&user_path(base)).unwrap_or(Value::Null);
+    let merged = merge_json(&current_user, patch);
+    let config: AppConfig =
+        serde_json::from_value(merged).map_err(|e| json_err("patched config", e))?;
+    validate_config(&config)?;
+
+    snapshot_user(base)?;
+    let user = serde_json::to_vec_pretty(&settings_value(&config)?)
+        .map_err(|e| json_err("user config", e))?;
+    let state =
+        serde_json::to_vec_pretty(&state_value(&config)?).map_err(|e| json_err("state", e))?;
+    atomic_write(&user_path(base), &user)?;
+    atomic_write(&state_path(base), &state)?;
+    prune_snapshots(base)?;
+
+    load_config_at(base)
+}
+
+/// 首次启动写一份给 AI 读的配置地图；文件已存在则保留用户改动，不覆盖。
+pub fn seed_skill_map(app: &AppHandle) {
+    let path = config_base(app)
+        .join("skills")
+        .join("biaoyue")
+        .join("SKILL.md");
+    if path.exists() {
+        return;
+    }
+    if let Err(e) = atomic_write(&path, SKILL_MAP.as_bytes()) {
+        warn!(error = %e, path = %path.display(), "SKILL.md 写入失败");
+    }
+}
+
+const SKILL_MAP: &str = r#"# Biaoyue 配置地图
+
+这是标月的配置心智地图，供 AI agent 读取。配置分三层，都位于应用配置目录下：
+
+| 层 | 路径 | 作用 |
+| --- | --- | --- |
+| defaults | `defaults/settings.json` | 代码默认值，首次运行生成 |
+| user | `user/settings.json` | 用户设置，`patch_config` 写这里 |
+| state | `state/state.json` | 派生状态（recentFiles / scrollPositions），不归 patch 管 |
+| snapshots | `snapshots/settings-*.json` | 每次写入前的 user 层副本，保留最新 10 份 |
+
+## 可用工具
+
+- `read_config`：返回合并后的有效配置。
+- `patch_config`：`{"patch": {...}}`，深合并进 user 层，写入前校验并生成快照；非法值不落盘。
+- `list_snapshots`：返回快照文件名，最旧在前。
+
+## 可改键与取值范围（camelCase）
+
+| 键 | 范围 / 取值 |
+| --- | --- |
+| `fontSize` | 8–96 |
+| `readerFontSize` | 8–96 |
+| `readerWidth` | 480–2400 |
+| `sidebarLeftWidth` / `sidebarRightWidth` | 0–800 |
+| `horizontalSplitRatio` / `verticalSplitRatio` | 0–1 |
+| `theme` | `light` / `dark` / `warm` / `system` |
+| `readerSkin` | `paper` / `plain` |
+| `openaiEndpoint` / `openaiModel` | 任意字符串 |
+
+## 禁止项
+
+- API key 只存操作系统 keyring，绝不写进配置文件、日志或本文件。
+- 不要手改 `state/state.json`；它由应用维护。
+"#;
+
 fn config_base(app: &AppHandle) -> PathBuf {
     app.path()
         .app_config_dir()

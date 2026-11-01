@@ -1,0 +1,12 @@
+$ cargo test ai_agent::tests
+test ai_agent::tests::completions_url_respects_versioned_bases ... ok
+test ai_agent::tests::tool_schemas_cover_three_tools ... ok
+test ai_agent::tests::unknown_tool_returns_structured_error ... ok
+test ai_agent::tests::loop_stops_at_turn_limit ... ok
+test ai_agent::tests::two_turn_loop_runs_tool_then_returns_text ... ok
+test ai_agent::tests::read_config_matches_effective_config ... ok
+test ai_agent::tests::invalid_patch_is_rejected_without_writing ... ok
+test ai_agent::tests::valid_patch_updates_user_layer_and_snapshots ... ok
+test ai_agent::tests::openai_completer_uses_configured_endpoint_and_bearer ... ok
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 49 filtered out; finished in 0.11s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s

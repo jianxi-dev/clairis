@@ -1,3 +1,4 @@
+mod ai_agent;
 mod commands;
 mod config;
 mod errors;
@@ -5,6 +6,7 @@ mod media_protocol;
 mod types;
 mod validation;
 
+use commands::ai_agent_cmd::run_agent_turn;
 use commands::config_cmd::{
     delete_api_key, get_api_key, list_config_snapshots, load_config, restore_config_snapshot,
     save_config, set_api_key,
@@ -173,6 +175,7 @@ pub fn run() {
             }
 
             config::spawn_config_watcher(app.handle().clone());
+            config::seed_skill_map(app.handle());
 
             Ok(())
         })
@@ -209,6 +212,7 @@ pub fn run() {
             commands::capture::set_overlay_pinned,
             commands::capture::show_overlay_window,
             commands::capture::hide_overlay_window,
+            run_agent_turn,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

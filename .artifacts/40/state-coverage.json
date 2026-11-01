@@ -1,0 +1,13 @@
+{
+  "task": "1.1",
+  "change": "ai-agent-loop",
+  "issue": 40,
+  "states": [
+    {"state": "agent-loop-two-turn", "screenshot": "01-agent-loop.txt", "assertion": "passed", "probe": "脚本化 Completer 两轮：执行 read_config、回灌 tool 消息、返回最终文本"},
+    {"state": "turn-limit", "screenshot": "01-agent-loop.txt", "assertion": "passed", "probe": "连续 8 轮工具请求后以 TurnLimit 终止，不发起第 9 轮"},
+    {"state": "provider-http", "screenshot": "02-provider-http.txt", "assertion": "passed", "probe": "真实 TCP 桩：请求命中配置的 endpoint、携带 Bearer key 与 model；带版本段的 base 只补 /chat/completions"},
+    {"state": "presets", "screenshot": "03-presets.txt", "assertion": "passed", "probe": "8 条预设；已验证的 5 条有 https endpoint；WorkBuddy/Pi/自定义 留空由用户填"},
+    {"state": "skill-map-seeded", "screenshot": "04-skill-map.txt", "assertion": "passed", "probe": "首次启动生成 SKILL.md，用户追加标记后重启仍在（不覆盖）"},
+    {"state": "patch-reversible", "screenshot": "05-patch-reversible.txt", "assertion": "passed", "probe": "非法 fontSize=200 不落盘；合法 theme=dark 写盘前产生快照且 list_snapshots 可见"}
+  ]
+}
