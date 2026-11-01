@@ -1,0 +1,26 @@
+manifest 封闭字段（vendor schema manifest-1.0 抽取）
+additionalProperties: false
+title: "mdpkg manifest v1.0",
+  type: "object",
+  required: ["format", "spec_version", "resources"],
+  additionalProperties: false,
+  properties: {
+    format: { const: "mdpkg" },
+    spec_version: { type: "string", pattern: "^1\\.\\d+$" },
+    entrypoint: { type: "string", minLength: 1, maxLength: 1024 },
+    encoding: { const: "utf-8" },
+    extensions: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        symbols: { enum: ["off", "core", "extended"] },
+        include: { type: "boolean" }
+      }
+    },
+    extensions_required: {
+      type: "array",
+      items: { type: "string", minLength: 1 },
+      uniqueItems: true
+    },
+    resources: {
+      type: 

@@ -1,0 +1,4 @@
+$ npx tsc --noEmit
+TSC_EXIT=0
+$ npx eslint src/lib/mdpkg src/__tests__/mdpkg.test.ts
+ESLINT_EXIT=0
