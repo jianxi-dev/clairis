@@ -1,5 +1,6 @@
 import { useEffect, useCallback, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { useEditorStore } from "../stores/editorStore";
 import { useStore } from "../stores/index";
 import { isTauriEnv } from "../utils/tauri";
@@ -88,6 +89,83 @@ export async function saveAppConfig(): Promise<void> {
   }
 }
 
+/**
+ * Map a Rust config onto the stores and the document.
+ * Touches config/theme only; never rewrites editor content.
+ */
+function applyRustConfig(raw: RustAppConfig): void {
+  const config: Partial<AppConfig> = {
+    fontSize: raw.fontSize ?? 17,
+    headingColors: raw.headingColors
+      ? (raw.headingColors as unknown as AppConfig["headingColors"])
+      : undefined,
+    readerFontSize: raw.readerFontSize ?? 17,
+    readerWidth: raw.readerWidth ?? 1080,
+    readerSkin: raw.readerSkin ?? "paper",
+    ollamaEndpoint: raw.ollamaEndpoint ?? "http://localhost:11434",
+    openaiEndpoint: raw.openaiEndpoint ?? "https://api.openai.com",
+    openaiModel: raw.openaiModel ?? "gpt-4o-mini",
+    translationProvider:
+      (raw.translationProvider as AppConfig["translationProvider"]) ?? "ollama",
+    langPair: {
+      source: raw.sourceLang ?? "en",
+      target: raw.targetLang ?? "zh-CN",
+    },
+    theme: (raw.theme as Theme) ?? "system",
+    sidebarLeftVisible: raw.sidebarLeftVisible ?? true,
+    sidebarRightVisible: raw.sidebarRightVisible ?? false,
+    sidebarLeftWidth: raw.sidebarLeftWidth ?? 220,
+    sidebarRightWidth: raw.sidebarRightWidth ?? 320,
+    horizontalSplitRatio: raw.horizontalSplitRatio ?? 0.5,
+    verticalSplitRatio: raw.verticalSplitRatio ?? 0.5,
+    recentFiles: raw.recentFiles ?? [],
+  };
+
+  const es = useEditorStore.getState();
+  es.setConfig(config);
+  es.setFontSize(config.fontSize ?? 17);
+  es.setConfigLoaded(true);
+
+  // Restore scroll positions (A-9)
+  useStore.getState().setScrollPositions(raw.scrollPositions ?? {});
+
+  // Restore sidebar state
+  if (config.sidebarLeftVisible !== undefined) {
+    useStore.getState().setSidebarLeftVisible(config.sidebarLeftVisible);
+  }
+  if (config.sidebarRightVisible !== undefined) {
+    useStore.getState().setSidebarRightVisible(config.sidebarRightVisible);
+  }
+
+  // Restore split ratios
+  const splitRatios = {
+    horizontal: config.horizontalSplitRatio,
+    vertical: config.verticalSplitRatio,
+  };
+  useStore.getState().setSplitRatios(splitRatios);
+
+  // Sync recent files
+  if (config.recentFiles && config.recentFiles.length > 0) {
+    const { recentFiles } = useStore.getState();
+    if (recentFiles.length === 0) {
+      config.recentFiles.forEach((f) =>
+        useStore.getState().addRecentFile(f.path, f.title),
+      );
+    }
+  }
+
+  applyTheme(config.theme ?? "system");
+  applyReaderSkin(config.readerSkin ?? "paper");
+}
+
+/** Re-read the effective config from Rust and apply it without touching content. */
+function reloadConfig(): void {
+  if (!isTauriEnv()) return;
+  invoke<RustAppConfig>("load_config")
+    .then(applyRustConfig)
+    .catch((e) => log.error("Config", "Failed to reload config", e));
+}
+
 export function useConfig() {
   const configLoaded = useEditorStore((s) => s.configLoaded);
   const configLoading = useEditorStore((s) => s.configLoading);
@@ -133,73 +211,7 @@ export function useConfig() {
     }
 
     invoke<RustAppConfig>("load_config")
-      .then((raw) => {
-        const config: Partial<AppConfig> = {
-          fontSize: raw.fontSize ?? 17,
-          headingColors: raw.headingColors
-            ? (raw.headingColors as unknown as AppConfig["headingColors"])
-            : undefined,
-          readerFontSize: raw.readerFontSize ?? 17,
-          readerWidth: raw.readerWidth ?? 1080,
-          readerSkin: raw.readerSkin ?? "paper",
-          ollamaEndpoint: raw.ollamaEndpoint ?? "http://localhost:11434",
-          openaiEndpoint: raw.openaiEndpoint ?? "https://api.openai.com",
-          openaiModel: raw.openaiModel ?? "gpt-4o-mini",
-          translationProvider:
-            (raw.translationProvider as AppConfig["translationProvider"]) ??
-            "ollama",
-          langPair: {
-            source: raw.sourceLang ?? "en",
-            target: raw.targetLang ?? "zh-CN",
-          },
-          theme: (raw.theme as Theme) ?? "system",
-          sidebarLeftVisible: raw.sidebarLeftVisible ?? true,
-          sidebarRightVisible: raw.sidebarRightVisible ?? false,
-          sidebarLeftWidth: raw.sidebarLeftWidth ?? 220,
-          sidebarRightWidth: raw.sidebarRightWidth ?? 320,
-          horizontalSplitRatio: raw.horizontalSplitRatio ?? 0.5,
-          verticalSplitRatio: raw.verticalSplitRatio ?? 0.5,
-          recentFiles: raw.recentFiles ?? [],
-        };
-
-        const es = useEditorStore.getState();
-        es.setConfig(config);
-        es.setFontSize(config.fontSize ?? 17);
-        es.setConfigLoaded(true);
-
-        // Restore scroll positions (A-9)
-        useStore.getState().setScrollPositions(raw.scrollPositions ?? {});
-
-        // Restore sidebar state
-        if (config.sidebarLeftVisible !== undefined) {
-          useStore.getState().setSidebarLeftVisible(config.sidebarLeftVisible);
-        }
-        if (config.sidebarRightVisible !== undefined) {
-          useStore
-            .getState()
-            .setSidebarRightVisible(config.sidebarRightVisible);
-        }
-
-        // Restore split ratios
-        const splitRatios = {
-          horizontal: config.horizontalSplitRatio,
-          vertical: config.verticalSplitRatio,
-        };
-        useStore.getState().setSplitRatios(splitRatios);
-
-        // Sync recent files
-        if (config.recentFiles && config.recentFiles.length > 0) {
-          const { recentFiles } = useStore.getState();
-          if (recentFiles.length === 0) {
-            config.recentFiles.forEach((f) =>
-              useStore.getState().addRecentFile(f.path, f.title),
-            );
-          }
-        }
-
-        applyTheme(config.theme ?? "system");
-        applyReaderSkin(config.readerSkin ?? "paper");
-      })
+      .then(applyRustConfig)
       .catch((e) => {
         log.error("Config", "Failed to load config", e);
       })
@@ -207,6 +219,25 @@ export function useConfig() {
         useEditorStore.getState().setConfigLoading(false);
       });
   }, []); // Only run once on mount
+
+  // Hot-apply config written by the app, the AI, or an external editor (C2).
+  useEffect(() => {
+    if (!isTauriEnv()) return;
+    let unlisten: (() => void) | undefined;
+    let cancelled = false;
+    listen("config-changed", reloadConfig)
+      .then((fn) => {
+        if (cancelled) fn();
+        else unlisten = fn;
+      })
+      .catch((e) => {
+        log.error("Config", "Failed to subscribe config-changed", e);
+      });
+    return () => {
+      cancelled = true;
+      unlisten?.();
+    };
+  }, []);
 
   const saveConfig = useCallback(() => {
     void saveAppConfig();

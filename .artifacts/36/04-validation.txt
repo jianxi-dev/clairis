@@ -1,0 +1,9 @@
+$ cargo test --manifest-path src-tauri/Cargo.toml validation
+test validation::tests::test_invalid_url ... ok
+test config::tests::validation_covers_every_rule ... ok
+test validation::tests::test_ollama_ipv6_localhost ... ok
+test validation::tests::test_ollama_external_blocked ... ok
+test validation::tests::test_ollama_127_allowed ... ok
+test validation::tests::test_ollama_localhost_allowed ... ok
+test validation::tests::test_unsupported_scheme ... ok
+test validation::tests::test_openai_external_allowed ... ok

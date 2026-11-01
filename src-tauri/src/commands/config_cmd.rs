@@ -16,6 +16,18 @@ pub async fn save_config(app: AppHandle, config: AppConfig) -> Result<(), AppErr
     config::save_config(&app, &config).await
 }
 
+/// List config snapshots, oldest first.
+#[tauri::command]
+pub async fn list_config_snapshots(app: AppHandle) -> Result<Vec<String>, AppError> {
+    config::list_config_snapshots(&app).await
+}
+
+/// Restore a config snapshot; the current state is snapshotted first.
+#[tauri::command]
+pub async fn restore_config_snapshot(app: AppHandle, name: String) -> Result<AppConfig, AppError> {
+    config::restore_config_snapshot(&app, &name).await
+}
+
 /// Get API key from system keyring.
 #[tauri::command]
 pub async fn get_api_key(service: String, account: String) -> Result<Option<String>, AppError> {

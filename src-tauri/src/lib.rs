@@ -5,7 +5,10 @@ mod media_protocol;
 mod types;
 mod validation;
 
-use commands::config_cmd::{delete_api_key, get_api_key, load_config, save_config, set_api_key};
+use commands::config_cmd::{
+    delete_api_key, get_api_key, list_config_snapshots, load_config, restore_config_snapshot,
+    save_config, set_api_key,
+};
 use commands::directory::{flatten_files, get_file_info, list_media_in_dir, read_directory};
 use commands::file::{
     open_file, open_file_direct, pick_folder, read_file_base64, save_as_file, save_file,
@@ -169,6 +172,8 @@ pub fn run() {
                     })?;
             }
 
+            config::spawn_config_watcher(app.handle().clone());
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -187,6 +192,8 @@ pub fn run() {
             list_media_in_dir,
             load_config,
             save_config,
+            list_config_snapshots,
+            restore_config_snapshot,
             get_api_key,
             set_api_key,
             delete_api_key,
