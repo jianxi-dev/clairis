@@ -16,12 +16,12 @@
 | 了解产品边界 | [docs/product/scope.md](./product/scope.md) |
 | 查某功能怎么算对 | `openspec/specs/<domain>/spec.md`（reading/editing/file-management/navigation/capture/application-shell） |
 | 看当前架构 | [docs/architecture/overview.md](./architecture/overview.md) |
-| 查架构决策 | [docs/architecture/decisions/](./architecture/decisions/README.md)（ADR 0001-0005） |
+| 查架构决策 | [docs/architecture/decisions/](./architecture/decisions/README.md)（ADR 0001-0009） |
 | 看路线图 | [docs/delivery/roadmap.md](./delivery/roadmap.md) |
 | 查某功能批准设计 | `docs/design/approved/<feature>/` |
 | 查迁移去向 | [docs/MIGRATION-REPORT.md](./MIGRATION-REPORT.md) |
 | 了解治理规则 | [docs/GOVERNANCE.md](./GOVERNANCE.md) |
-| 查进行中变更 | `openspec/changes/`（5 个变更：均已完成待归档） |
+| 查进行中变更 | `openspec/changes/`（活动变更见 `openspec list`） |
 
 ---
 
