@@ -1,0 +1,5 @@
+$ find ~/Library/Application Support/dev.biaoyue.app -maxdepth 2 -type f
+~/app_config.json
+~/defaults/settings.json
+~/state/state.json
+~/user/settings.json

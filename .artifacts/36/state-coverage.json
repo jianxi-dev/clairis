@@ -1,0 +1,43 @@
+{
+  "task": "1.1",
+  "change": "text-config-layer",
+  "issue": 36,
+  "states": [
+    {
+      "state": "layer-layout",
+      "screenshot": "01-layer-layout.txt",
+      "assertion": "passed",
+      "probe": "真实运行 npm run tauri dev 后，配置目录出现 defaults/settings.json、user/settings.json、state/state.json"
+    },
+    {
+      "state": "legacy-migration",
+      "screenshot": "02-migration.txt",
+      "assertion": "passed",
+      "probe": "旧 app_config.json 的 theme 被拆进 user 层；user 层不含 recentFiles/scrollPositions；旧文件保留；迁移单测通过"
+    },
+    {
+      "state": "hot-apply",
+      "screenshot": "03-hot-apply.txt",
+      "assertion": "passed",
+      "probe": "两次外部改写各触发一次 watcher 事件；useConfig 监听器把新配置应用到 store 与 <html class=dark>，编辑器内容不变"
+    },
+    {
+      "state": "validation-rejects",
+      "screenshot": "04-validation.txt",
+      "assertion": "passed",
+      "probe": "fontSize=200 等非法值被 validate_config 拒绝，磁盘不变"
+    },
+    {
+      "state": "snapshot-retention",
+      "screenshot": "05-snapshots.txt",
+      "assertion": "passed",
+      "probe": "连续 12 次保存只保留最新 10 份；恢复前先为当前状态拍快照"
+    },
+    {
+      "state": "atomic-write-failure",
+      "screenshot": "06-atomic.txt",
+      "assertion": "passed",
+      "probe": "原子写失败时目标文件字节与写入前一致"
+    }
+  ]
+}

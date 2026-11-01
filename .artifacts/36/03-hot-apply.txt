@@ -1,0 +1,5 @@
+$ grep -c "外部修改已检测" /tmp/c2-probe.log  # 两次外部改写的运行日志
+2
+$ npx vitest run src/__tests__/useConfig.hotApply.test.ts
+ Test Files  1 passed (1)
+      Tests  2 passed (2)

@@ -1,0 +1,5 @@
+$ cargo test --manifest-path src-tauri/Cargo.toml snapshot
+test config::tests::restore_snapshots_current_state_first ... ok
+test config::tests::twelve_saves_keep_newest_ten_snapshots ... ok
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 47 filtered out; finished in 0.22s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s

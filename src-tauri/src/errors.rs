@@ -30,6 +30,10 @@ pub enum AppError {
         host: String,
         ip: String,
     },
+    Validation {
+        context: String,
+        message: String,
+    },
 }
 
 impl From<std::io::Error> for AppError {
@@ -62,6 +66,9 @@ impl std::fmt::Display for AppError {
             }
             AppError::EndpointBlocked { host, ip } => {
                 write!(f, "Endpoint blocked: {host} resolves to {ip}")
+            }
+            AppError::Validation { context, message } => {
+                write!(f, "Validation error ({context}): {message}")
             }
         }
     }
