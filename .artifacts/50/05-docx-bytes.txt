@@ -1,0 +1,13 @@
+$ unzip -l .artifacts/50/exported.docx
+Archive:  .artifacts/50/exported.docx
+  Length      Date    Time    Name
+---------  ---------- -----   ----
+      695  01-01-1980 08:00   [Content_Types].xml
+      300  01-01-1980 08:00   _rels/.rels
+      418  01-01-1980 08:00   word/_rels/document.xml.rels
+      922  01-01-1980 08:00   word/document.xml
+     1683  01-01-1980 08:00   word/numbering.xml
+     3727  01-01-1980 08:00   word/styles.xml
+---------                     -------
+$ unzip -p exported.docx word/document.xml | grep -c 元数据
+0

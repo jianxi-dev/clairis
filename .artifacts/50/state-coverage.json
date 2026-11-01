@@ -1,0 +1,13 @@
+{
+  "task": "1.1",
+  "change": "export-docx",
+  "issue": 50,
+  "states": [
+    {"state": "tab-menu", "screenshot": "01-menu.png", "assertion": "passed", "probe": "右键页签菜单含「导出 HTML…」「导出图片…」「导出 Word…」"},
+    {"state": "real-docx", "screenshot": "exported.docx", "assertion": "passed", "probe": "页面内 vendor toDocx 产出的真实 .docx（2840 字节），unzip 可见 [Content_Types].xml 等 OOXML 部件"},
+    {"state": "frontmatter-stripped", "screenshot": "05-docx-bytes.txt", "assertion": "passed", "probe": "word/document.xml 中 frontmatter 的「元数据」出现次数为 0"},
+    {"state": "zip-signature", "screenshot": "04-e2e.txt", "assertion": "passed", "probe": "save_binary_as_file 收到 base64 解码后以 PK\\x03\\x04 开头；defaultName=测试文档.docx"},
+    {"state": "cancelled", "screenshot": "03-unit.txt", "assertion": "passed", "probe": "保存取消返回 cancelled，不报错"},
+    {"state": "warnings-and-seams", "screenshot": "03-unit.txt", "assertion": "passed", "probe": "上游警告汇总为 warnings 并在文案显示条数；vendor 抛错收敛为 error"}
+  ]
+}

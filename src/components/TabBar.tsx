@@ -2,11 +2,13 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { useStore } from "../stores";
 import type { Tab } from "../types";
 import { log } from "../utils/log";
+import { exportDocxDocument } from "../lib/export/docx";
 import {
   exportCurrentDocHtml,
   exportMessage,
 } from "../lib/export/exportDocument";
 import { exportPngFromMarkdown, exportPngMessage } from "../lib/export/png";
+import { exportDocxMessage } from "../lib/export/docx";
 
 interface TabBarProps {
   tabs: Record<string, Tab>;
@@ -39,6 +41,7 @@ export default function TabBar({
 
   const [menu, setMenu] = useState<CtxMenu | null>(null);
   const [exportingPng, setExportingPng] = useState(false);
+  const [exportingDocx, setExportingDocx] = useState(false);
 
   const handleContextMenu = useCallback(
     (e: React.MouseEvent, tabId: string) => {
@@ -113,6 +116,46 @@ export default function TabBar({
       if (message) showNotice(message);
     },
     [exportingPng, showNotice],
+  );
+
+  const handleExportDocx = useCallback(
+    async (tabId: string) => {
+      if (exportingDocx) return;
+      const tab = useStore.getState().tabs[tabId];
+      if (!tab) return;
+      setExportingDocx(true);
+      showNotice("正在生成 Word…");
+      let message: string | null = null;
+      try {
+        const dir = tab.path
+          ? tab.path.slice(
+              0,
+              Math.max(tab.path.lastIndexOf("/"), tab.path.lastIndexOf("\\")),
+            )
+          : "";
+        const result = await exportDocxDocument({
+          title: tab.title,
+          markdown: tab.content,
+          baseDir: dir,
+        });
+        if (result.status === "error") {
+          log.error("ExportDocx", "导出 Word 失败", result.message);
+        } else if (result.status === "saved") {
+          log.info("ExportDocx", "已导出 Word", {
+            path: result.path,
+            warnings: result.warnings,
+          });
+        }
+        message = exportDocxMessage(result);
+      } catch (e) {
+        log.error("ExportDocx", "导出 Word 失败", String(e));
+        message = `导出失败：${e instanceof Error ? e.message : String(e)}`;
+      } finally {
+        setExportingDocx(false);
+      }
+      if (message) showNotice(message);
+    },
+    [exportingDocx, showNotice],
   );
 
   // Close menu on any click outside the menu itself
@@ -240,6 +283,17 @@ export default function TabBar({
             }}
           >
             {exportingPng ? "正在生成…" : "导出图片…"}
+          </button>
+          <button
+            data-export-docx
+            disabled={exportingDocx}
+            className="w-full text-left px-3 py-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={() => {
+              void handleExportDocx(menu.tabId);
+              closeMenu();
+            }}
+          >
+            {exportingDocx ? "正在生成…" : "导出 Word…"}
           </button>
           <div className="h-px bg-gray-200 dark:bg-gray-700 my-1" />
           <button
