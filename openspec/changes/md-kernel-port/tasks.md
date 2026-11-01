@@ -1,8 +1,8 @@
 # Tasks: MD 内核移植
 
-> 1 change = 1 issue = 1 PR；内部按三批交付，每批独立验收。
+> 1 change 分 4 批交付，每批一个 PR（`refs` 本 change 的 issue），最后一批收口再关票。
 
-- [ ] 1.1 批 1：基础装饰（heading/list/boldItalic/code/quote）+ block-model + keybindings + commands，装配改为按扩展组合；迁入对应单测并补红线 5 断言
-- [ ] 1.2 批 2：块级装饰（table/columns/callout/image/hr/link/mermaid/cell-*/theme）+ 单测 + CSS 落位
-- [ ] 1.3 批 3：插入入口与智能输入（slash/slash-filter/smart-input/icons/callout-types/color-palette）+ 单测
+- [ ] 1.1 用户可见切片：智能输入 + 斜杠菜单（`smart-input`、`slash`、`slash-filter`、`icons`、`block-model`）——空行输入 `- ` `1. ` `> ` `# ` 自动转换；输入 `/` 出现分类菜单、`/h1` 转一级标题、点击外部或 Esc 关闭无残留；迁入对应单测 + 红线 5（显示=源码）断言
+- [ ] 1.2 装配模型 + 基础装饰升级：按扩展装配替换整篇重建，加 IME 组合期跳过与指针冻结守卫；heading/list/boldItalic/code/quote 迁入 md-bundle 版本（语义揭示：光标所在块显示结构标记、其余块隐藏）+ 单测
+- [ ] 1.3 块级装饰：table/columns/callout/image/hr/link/mermaid/cell-*/theme + 单测 + `cm-*` CSS 落位（红线 5 逐块型补断言）
 - [ ] 1.4 全量验收：949 单测绿 + `verify.sh` 全绿 + 三批块型手动走查 + 红线 1/5 证据
