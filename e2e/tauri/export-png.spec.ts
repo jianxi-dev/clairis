@@ -1,0 +1,72 @@
+import { test, expect } from "@playwright/test";
+
+const APP_URL = "http://localhost:1420";
+
+type Page = Parameters<Parameters<typeof test>[1]>[0]["page"];
+
+async function setup(page: Page) {
+  await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
+  await page.goto(APP_URL, { waitUntil: "networkidle" });
+  await page.waitForSelector("header", { timeout: 10000 });
+}
+
+async function openMockFile(page: Page) {
+  await page.evaluate(() => {
+    const win = window as unknown as Record<string, any>;
+    win.__biaoyue_openFile__(
+      "/Users/test/测试文档.md",
+      "# 测试文档\n\n## 第一节\n\n导出用的正文。",
+      "测试文档.md",
+    );
+  });
+  await expect(page.getByText("测试文档.md").first()).toBeVisible({
+    timeout: 5000,
+  });
+}
+
+test.describe("导出图片", () => {
+  test.beforeEach(async ({ page }) => {
+    await setup(page);
+  });
+
+  test("右键页签 → 导出图片… → save_binary_as_file 收到 PNG", async ({
+    page,
+  }) => {
+    await openMockFile(page);
+
+    await page.locator("[data-tab-id]").first().click({ button: "right" });
+    const menu = page.locator("[data-tab-menu]");
+    await expect(menu).toBeVisible({ timeout: 3000 });
+
+    const exportItem = page.getByRole("button", { name: "导出图片…" });
+    await expect(exportItem).toBeVisible();
+
+    await exportItem.click();
+
+    // 真实浏览器里走 foreignObject + canvas；产物必须是 PNG 签名的 base64。
+    await expect
+      .poll(
+        () =>
+          page.evaluate(
+            () =>
+              (window as unknown as Record<string, any>)
+                .__biaoyue_saved_binaries__?.length ?? 0,
+          ),
+        { timeout: 20000 },
+      )
+      .toBe(1);
+
+    const call = await page.evaluate(
+      () =>
+        (window as unknown as Record<string, any>)
+          .__biaoyue_saved_binaries__[0],
+    );
+
+    expect(call.base64.startsWith("iVBORw0KGgo")).toBe(true);
+    expect(call.defaultName).toBe("测试文档.png");
+
+    await expect(page.locator("[data-export-notice]")).toContainText("已导出", {
+      timeout: 5000,
+    });
+  });
+});

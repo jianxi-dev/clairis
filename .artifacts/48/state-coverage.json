@@ -1,0 +1,14 @@
+{
+  "task": "1.1",
+  "change": "export-png",
+  "issue": 48,
+  "states": [
+    {"state": "tab-menu", "screenshot": "01-menu.png", "assertion": "passed", "probe": "右键页签菜单含「导出 HTML…」与「导出图片…」"},
+    {"state": "real-rasterization", "screenshot": "exported.png", "assertion": "passed", "probe": "页面内 foreignObject+canvas 产出的真实 PNG（2160x1600，OCR 可读「测试文档/第一节/导出用的正文」）"},
+    {"state": "png-signature", "screenshot": "05-e2e-real.txt", "assertion": "passed", "probe": "save_binary_as_file 收到以 iVBORw0KGgo（PNG 签名）开头的 base64"},
+    {"state": "height-limit", "screenshot": "03-unit.txt", "assertion": "passed", "probe": "测量高度 >20000px 时拒绝并提示「文档过长，建议导出 HTML」，不产出截断图"},
+    {"state": "well-formed-xhtml", "screenshot": "03-unit.txt", "assertion": "passed", "probe": "void 元素自闭合、无值属性补 =\"\"、引号内不改写、style CDATA 拆分"},
+    {"state": "atomic-binary-write", "screenshot": "04-rust.txt", "assertion": "passed", "probe": "base64 解码 + 原子覆盖写 + 无残留临时文件；非法 base64 不落盘"},
+    {"state": "no-byline", "screenshot": "03-unit.txt", "assertion": "passed", "probe": "产物不含 byline / 生成器标记"}
+  ]
+}
