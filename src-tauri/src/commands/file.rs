@@ -238,11 +238,21 @@ pub async fn save_binary_as_file(
     base64: String,
     default_name: String,
 ) -> Result<Option<String>, AppError> {
+    let ext = std::path::Path::new(&default_name)
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("")
+        .to_ascii_lowercase();
+    let (label, patterns): (&str, Vec<&str>) = match ext.as_str() {
+        "docx" => ("Word 文档", vec!["docx"]),
+        "png" => ("PNG 图片", vec!["png"]),
+        _ => ("文件", vec!["png", "docx"]),
+    };
     let file = app
         .dialog()
         .file()
         .set_file_name(&default_name)
-        .add_filter("PNG 图片", &["png"])
+        .add_filter(label, &patterns)
         .blocking_save_file();
 
     let path = match file {

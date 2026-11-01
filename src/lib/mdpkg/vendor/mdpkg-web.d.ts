@@ -72,3 +72,20 @@ export function buildManifest(
   files: Map<string, Uint8Array>,
   prev?: Manifest,
 ): Manifest;
+
+export interface DocxOptions {
+  /** 是否输出符号（默认 true；manifest.extensions.symbols === "off" 时强制关闭）。 */
+  symbols?: boolean;
+  imageWidthEmu?: number;
+  imageHeightEmu?: number;
+}
+
+/**
+ * Markdown 文件集合 → `.docx`（OOXML ZIP）字节。
+ * 同步返回 `Uint8Array`（以 `PK\x03\x04` 开头）；非致命问题逐条回调 onWarning。
+ */
+export function toDocx(
+  files: Map<string, Uint8Array>,
+  opts?: DocxOptions,
+  onWarning?: (msg: string) => void,
+): Uint8Array;
