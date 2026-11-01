@@ -1,0 +1,71 @@
+// 导出 HTML：把 Markdown 渲染成单文件、离线可看的 HTML 文档。
+// 样式由调用方以原文传入（Vite `?raw` 导入 reader.css / tokens.css），
+// 这里只负责拼装，不读文件、不引用任何外部资源（D1 单文件离线）。
+import { renderMarkdown } from "../../renderers/markdown";
+
+export interface BuildHtmlOptions {
+  title: string;
+  /** 已读入的 CSS 原文，整体内联进一个 <style> */
+  css: string;
+  /** 正文容器的额外 class（默认就是阅读区的 .preview-content） */
+  bodyClassName?: string;
+}
+
+export function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+/**
+ * 导出产物的外壳样式：reader.css 的排版规则都挂在 `.preview-content` 下，
+ * 而那个选择器在应用里依赖 `.preview-shell` 提供纸面背景与居中。
+ * 这里补一层最小外壳，让独立打开的 HTML 也有纸面、页边距与居中通道。
+ */
+const EXPORT_SHELL_CSS = `
+html { background: var(--app-bg, #f7f7f6); }
+body { margin: 0; }
+.export-root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--app-bg, #f7f7f6);
+}
+`;
+
+/** 正文容器默认 class：直接复用阅读区的排版规则 */
+const DEFAULT_BODY_CLASS = "preview-content";
+
+export function buildHtmlDocument(
+  markdown: string,
+  opts: BuildHtmlOptions,
+): string {
+  const body = renderMarkdown(markdown);
+  const title = escapeHtml(opts.title);
+  const bodyClass = [DEFAULT_BODY_CLASS, opts.bodyClassName]
+    .filter(Boolean)
+    .join(" ");
+
+  return [
+    "<!doctype html>",
+    '<html lang="zh-CN">',
+    "<head>",
+    '<meta charset="utf-8" />',
+    '<meta name="viewport" content="width=device-width, initial-scale=1" />',
+    `<title>${title}</title>`,
+    `<style>${opts.css}\n${EXPORT_SHELL_CSS}</style>`,
+    "</head>",
+    "<body>",
+    '<div class="export-root">',
+    `<div class="${bodyClass}">`,
+    body,
+    "</div>",
+    "</div>",
+    "</body>",
+    "</html>",
+    "",
+  ].join("\n");
+}

@@ -1,6 +1,11 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useStore } from "../stores";
 import type { Tab } from "../types";
+import { log } from "../utils/log";
+import {
+  exportCurrentDocHtml,
+  exportMessage,
+} from "../lib/export/exportDocument";
 
 interface TabBarProps {
   tabs: Record<string, Tab>;
@@ -22,15 +27,54 @@ export default function TabBar({
   onCloseTab,
 }: TabBarProps) {
   const tabIds = Object.keys(tabs);
-  const [menu, setMenu] = useState<CtxMenu | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const handleContextMenu = useCallback((e: React.MouseEvent, tabId: string) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setMenu({ x: e.clientX, y: e.clientY, tabId });
+  const showNotice = useCallback((message: string) => {
+    setNotice(message);
+    if (noticeTimer.current) clearTimeout(noticeTimer.current);
+    noticeTimer.current = setTimeout(() => setNotice(null), 3000);
   }, []);
 
+  const [menu, setMenu] = useState<CtxMenu | null>(null);
+
+  const handleContextMenu = useCallback(
+    (e: React.MouseEvent, tabId: string) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setMenu({ x: e.clientX, y: e.clientY, tabId });
+    },
+    [],
+  );
+
   const closeMenu = useCallback(() => setMenu(null), []);
+
+  const handleExportHtml = useCallback(
+    async (tabId: string) => {
+      const tab = useStore.getState().tabs[tabId];
+      if (!tab) return;
+      const dir = tab.path
+        ? tab.path.slice(
+            0,
+            Math.max(tab.path.lastIndexOf("/"), tab.path.lastIndexOf("\\")),
+          )
+        : "";
+      const result = await exportCurrentDocHtml({
+        title: tab.title,
+        markdown: tab.content,
+        baseDir: dir,
+      });
+      const message = exportMessage(result);
+      if (result.status === "error") {
+        log.error("ExportHtml", "导出 HTML 失败", result.message);
+        showNotice(message ?? "导出失败");
+      } else if (result.status === "saved") {
+        log.info("ExportHtml", message ?? "已导出", { path: result.path });
+        showNotice(message ?? "已导出");
+      }
+    },
+    [showNotice],
+  );
 
   // Close menu on any click outside the menu itself
   useEffect(() => {
@@ -70,6 +114,7 @@ export default function TabBar({
             <div
               key={id}
               onClick={() => onSwitchTab(id)}
+              data-tab-id={id}
               onContextMenu={(e) => handleContextMenu(e, id)}
               className={`flex items-center gap-1 px-3 py-1.5 text-xs cursor-pointer transition-colors whitespace-nowrap ${
                 isActive
@@ -99,9 +144,20 @@ export default function TabBar({
         })}
       </div>
 
+      {notice && (
+        <div
+          data-export-notice
+          role="status"
+          className="fixed bottom-6 left-1/2 z-[2147483000] -translate-x-1/2 rounded-full bg-gray-900/90 px-4 py-2 text-sm text-white shadow-lg dark:bg-gray-700/95"
+        >
+          {notice}
+        </div>
+      )}
+
       {/* Context menu */}
       {menu && (
         <div
+          data-tab-menu
           className="fixed z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded shadow-lg py-1 min-w-[150px] text-xs"
           style={{ left: menu.x, top: menu.y }}
         >
@@ -124,6 +180,16 @@ export default function TabBar({
           >
             向下分栏
             <span className="ml-auto text-gray-400">⌘⇧\</span>
+          </button>
+          <div className="h-px bg-gray-200 dark:bg-gray-700 my-1" />
+          <button
+            className="w-full text-left px-3 py-1.5 hover:bg-gray-100 dark:hover:bg-gray-700"
+            onClick={() => {
+              void handleExportHtml(menu.tabId);
+              closeMenu();
+            }}
+          >
+            导出 HTML…
           </button>
           <div className="h-px bg-gray-200 dark:bg-gray-700 my-1" />
           <button
