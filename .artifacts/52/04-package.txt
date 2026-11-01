@@ -1,0 +1,30 @@
+$ unzip -l .artifacts/52/exported.mdpkg
+Archive:  .artifacts/52/exported.mdpkg
+  Length      Date    Time    Name
+---------  ---------- -----   ----
+      304  01-01-1980 08:00   manifest.json
+       51  01-01-1980 08:00   document.md
+---------                     -------
+      355                     2 files
+$ unzip -p exported.mdpkg manifest.json
+{
+  "format": "mdpkg",
+  "spec_version": "1.0",
+  "entrypoint": "document.md",
+  "encoding": "utf-8",
+  "resources": [
+    {
+      "path": "document.md",
+      "media_type": "text/markdown",
+      "size": 51,
+      "sha256": "22b45e7cd4a8a1f0d5b712423952cbda2b6f306a23f89ca81dacdde8d46449a1"
+    }
+  ]
+}
+
+$ unzip -p exported.mdpkg document.md
+# 测试文档
+
+## 第一节
+
+导出用的正文。

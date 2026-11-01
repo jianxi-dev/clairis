@@ -1,0 +1,4 @@
+$ npx playwright test --config=playwright.tauri.config.ts e2e/tauri/export-mdpkg.spec.ts
+Running 1 test using 1 worker
+·
+  1 passed (2.5s)

@@ -5,6 +5,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import readerCss from "../../styles/reader.css?raw";
 import tokensCss from "../../styles/tokens.css?raw";
+import { blobToBase64 } from "./base64";
 import { buildHtmlDocument } from "./html";
 import { inlineImages } from "./inlineImages";
 
@@ -251,15 +252,6 @@ export function pngFileName(title: string): string {
 }
 
 /** Blob → 纯 base64（去掉 data URL 前缀）。 */
-export async function blobToBase64(blob: Blob): Promise<string> {
-  const bytes = new Uint8Array(await blob.arrayBuffer());
-  let binary = "";
-  const CHUNK = 0x8000;
-  for (let i = 0; i < bytes.length; i += CHUNK) {
-    binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
-  }
-  return btoa(binary);
-}
 
 /** 浏览器端等待字体就绪，避免 CJK 回退字体导致字形错位。 */
 async function waitForFonts(): Promise<void> {
@@ -339,3 +331,5 @@ export function exportPngMessage(result: ExportPngResult): string | null {
   if (result.status === "error") return `导出失败：${result.message}`;
   return null;
 }
+
+export { blobToBase64 };
