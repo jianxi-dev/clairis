@@ -1,0 +1,4 @@
+$ npx playwright test --config=playwright.tauri.config.ts e2e/tauri/smart-input.spec.ts
+Running 2 tests using 1 worker
+··
+  2 passed (3.3s)
