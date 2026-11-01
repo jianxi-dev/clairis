@@ -21,6 +21,7 @@ interface RustAppConfig {
   sourceLang: string | null;
   targetLang: string | null;
   theme: string | null;
+  aiConfirmDensity: string | null;
   sidebarLeftVisible: boolean | null;
   sidebarRightVisible: boolean | null;
   sidebarLeftWidth: number | null;
@@ -73,6 +74,7 @@ export async function saveAppConfig(): Promise<void> {
     sourceLang: es.config.langPair?.source ?? null,
     targetLang: es.config.langPair?.target ?? null,
     theme: es.config.theme ?? null,
+    aiConfirmDensity: es.config.aiConfirmDensity ?? null,
     sidebarLeftVisible: es.config.sidebarLeftVisible ?? null,
     sidebarRightVisible: es.config.sidebarRightVisible ?? null,
     sidebarLeftWidth: es.config.sidebarLeftWidth ?? null,
@@ -112,6 +114,9 @@ function applyRustConfig(raw: RustAppConfig): void {
       target: raw.targetLang ?? "zh-CN",
     },
     theme: (raw.theme as Theme) ?? "system",
+    aiConfirmDensity:
+      (raw.aiConfirmDensity as AppConfig["aiConfirmDensity"]) ??
+      "session-silent",
     sidebarLeftVisible: raw.sidebarLeftVisible ?? true,
     sidebarRightVisible: raw.sidebarRightVisible ?? false,
     sidebarLeftWidth: raw.sidebarLeftWidth ?? 220,
@@ -159,7 +164,7 @@ function applyRustConfig(raw: RustAppConfig): void {
 }
 
 /** Re-read the effective config from Rust and apply it without touching content. */
-function reloadConfig(): void {
+export function reloadAppConfig(): void {
   if (!isTauriEnv()) return;
   invoke<RustAppConfig>("load_config")
     .then(applyRustConfig)
@@ -195,6 +200,7 @@ export function useConfig() {
         translationProvider: "ollama",
         langPair: { source: "en", target: "zh-CN" },
         theme: "system",
+        aiConfirmDensity: "session-silent",
         sidebarLeftVisible: true,
         sidebarRightVisible: false,
         sidebarLeftWidth: 220,
@@ -225,7 +231,7 @@ export function useConfig() {
     if (!isTauriEnv()) return;
     let unlisten: (() => void) | undefined;
     let cancelled = false;
-    listen("config-changed", reloadConfig)
+    listen("config-changed", reloadAppConfig)
       .then((fn) => {
         if (cancelled) fn();
         else unlisten = fn;

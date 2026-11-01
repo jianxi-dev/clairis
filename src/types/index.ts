@@ -46,6 +46,8 @@ export interface AppConfig {
   translationProvider: TranslationProvider;
   langPair: LangPair;
   theme: Theme;
+  /** AI 改动前的确认密度：always 每次确认 / session-silent 本会话静默 / never 只靠撤销 */
+  aiConfirmDensity?: "always" | "session-silent" | "never";
   sidebarLeftVisible: boolean;
   sidebarRightVisible: boolean;
   sidebarLeftWidth: number;
