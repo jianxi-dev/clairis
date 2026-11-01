@@ -1,0 +1,13 @@
+{
+  "task": "1.1",
+  "change": "ai-entry-v1",
+  "issue": 42,
+  "states": [
+    {"state": "overlay-open-empty", "screenshot": "01-overlay-empty.png", "assertion": "passed", "probe": "⌘K 打开浮层，提示 + 两个示例 + 输入框可见（OCR 确认）"},
+    {"state": "overlay-submit-result", "screenshot": "03-result-and-undo.png", "assertion": "passed", "probe": "提交「换成深色主题」后显示人话结果与「已更新 · 撤销」"},
+    {"state": "undo-restores-theme", "screenshot": "05-e2e.txt", "assertion": "passed", "probe": "撤销后 html.dark 消失，提示「已恢复到改动前。」"},
+    {"state": "snapshot-panel-restore", "screenshot": "04-snapshot-panel.png", "assertion": "passed", "probe": "历史面板列出快照（今天 HH:mm），一键恢复后提示「已恢复到选中的历史状态。」"},
+    {"state": "overlay-closes-clean", "screenshot": "05-e2e.txt", "assertion": "passed", "probe": "Esc 关闭后浮层卸载；重新打开输入为空；点外部关闭"},
+    {"state": "human-error-mapping", "screenshot": "06-unit.txt", "assertion": "passed", "probe": "AgentError.validation(fontSize) → 「字号需要在 8–96 之间」，不含字段名/JSON"}
+  ]
+}

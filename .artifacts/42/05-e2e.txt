@@ -1,0 +1,5 @@
+$ npx playwright test --config=playwright.tauri.config.ts e2e/tauri/ai-entry.spec.ts
+
+Running 5 tests using 1 worker
+·····
+  5 passed (8.5s)

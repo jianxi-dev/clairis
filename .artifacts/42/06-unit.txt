@@ -1,0 +1,3 @@
+$ npx vitest run src/__tests__/useAiEntry.test.ts
+ Test Files  1 passed (1)
+      Tests  4 passed (4)

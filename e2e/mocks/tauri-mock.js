@@ -19,6 +19,61 @@ window.__biaoyue_openFile__ = function(path, content, title) {
   return true;
 };
 
+// ── AI entry (C4) mock state ─────────────────────────────────
+var aiState = { config: null, snapshots: [], seq: 0 };
+
+function aiPad(n, w) {
+  var s = String(n);
+  while (s.length < (w || 2)) s = "0" + s;
+  return s;
+}
+
+function aiSnapshotName() {
+  aiState.seq += 1;
+  var d = new Date();
+  var stamp =
+    d.getUTCFullYear() + "-" + aiPad(d.getUTCMonth() + 1) + "-" + aiPad(d.getUTCDate()) +
+    "T" + aiPad(d.getUTCHours()) + "-" + aiPad(d.getUTCMinutes()) + "-" + aiPad(d.getUTCSeconds()) +
+    "-" + aiPad(d.getUTCMilliseconds() * 1000, 6) + "Z";
+  return "settings-" + stamp + "-" + aiState.seq + ".json";
+}
+
+function aiSnapshot() {
+  var name = aiSnapshotName();
+  aiState.snapshots.push({ name: name, config: JSON.parse(JSON.stringify(aiState.config)) });
+  while (aiState.snapshots.length > 10) aiState.snapshots.shift();
+  return name;
+}
+
+// 模拟「AI 改了配置」：先快照当前状态，再应用新值（与真实 patch_config 语义一致）
+window.__biaoyue_ai_theme__ = function(theme) {
+  if (!aiState.config) return null;
+  aiSnapshot();
+  aiState.config.theme = theme;
+  return JSON.parse(JSON.stringify(aiState.config));
+};
+
+function aiRunAgentTurn(messages) {
+  var text = (messages || []).map(function (m) { return (m && m.content) || ""; }).join("\n");
+  if (text.indexOf("深色") >= 0 || text.indexOf("dark") >= 0) {
+    window.__biaoyue_ai_theme__("dark");
+    return { text: "已切换到深色主题。", turns: 2, tool_calls: ["patch_config"] };
+  }
+  if (text.indexOf("浅色") >= 0 || text.indexOf("light") >= 0) {
+    window.__biaoyue_ai_theme__("light");
+    return { text: "已切换到浅色主题。", turns: 2, tool_calls: ["patch_config"] };
+  }
+  if (text.indexOf("字号") >= 0) {
+    aiSnapshot();
+    aiState.config.fontSize = 18;
+    return { text: "已把字号调到 18。", turns: 2, tool_calls: ["patch_config"] };
+  }
+  if (text.indexOf("翻译") >= 0) return { text: "这是翻译后的文本。", turns: 1, tool_calls: [] };
+  if (text.indexOf("润色") >= 0) return { text: "这是润色后的文本。", turns: 1, tool_calls: [] };
+  if (text.indexOf("改写") >= 0) return { text: "这是改写后的文本。", turns: 1, tool_calls: [] };
+  return { text: "收到。", turns: 1, tool_calls: [] };
+}
+
 function mockInvoke(cmd, args) {
   var responses = {
     load_config: { fontSize:16, headingColors:null, ollamaEndpoint:"http://localhost:11434", openaiEndpoint:"https://api.openai.com", openaiModel:"gpt-4o-mini", translationProvider:"ollama", sourceLang:"en", targetLang:"zh-CN", theme:"system", sidebarLeftVisible:true, sidebarRightVisible:false, sidebarLeftWidth:220, sidebarRightWidth:320, recentFiles:[] },
@@ -49,6 +104,28 @@ function mockInvoke(cmd, args) {
   if (cmd === "open_file_direct" && args && args.path) {
     return { content:"# "+args.path.split("/").pop()+"\n\n文件内容。", path:args.path, file_size:100 };
   }
+  if (!aiState.config) {
+    aiState.config = JSON.parse(JSON.stringify(responses.load_config));
+    aiSnapshot();
+  }
+  if (cmd === "load_config") return JSON.parse(JSON.stringify(aiState.config));
+  if (cmd === "save_config" && args && args.config) {
+    aiSnapshot();
+    aiState.config = JSON.parse(JSON.stringify(args.config));
+    return null;
+  }
+  if (cmd === "list_config_snapshots") return aiState.snapshots.map(function (s) { return s.name; });
+  if (cmd === "restore_config_snapshot" && args && args.name) {
+    var hit = null;
+    for (var i = 0; i < aiState.snapshots.length; i++) {
+      if (aiState.snapshots[i].name === args.name) { hit = aiState.snapshots[i]; break; }
+    }
+    if (!hit) throw new Error("快照不存在: " + args.name);
+    aiSnapshot();
+    aiState.config = JSON.parse(JSON.stringify(hit.config));
+    return JSON.parse(JSON.stringify(aiState.config));
+  }
+  if (cmd === "run_agent_turn" && args && args.messages) return aiRunAgentTurn(args.messages);
   if (cmd === "save_file" && args) return { path:args.path };
   if (cmd === "flatten_files") return responses.flatten_files;
   if (cmd === "pick_folder") return responses.pick_folder;

@@ -13,6 +13,11 @@ import FileTree from "./components/Sidebar/FileTree";
 import Outline from "./components/Sidebar/Outline";
 import ContentSplitView from "./components/Content/ContentSplitView";
 import CaptureOverlay from "./components/CaptureOverlay";
+import CommandOverlay from "./components/ai/CommandOverlay";
+import UndoBar from "./components/ai/UndoBar";
+import SnapshotPanel from "./components/ai/SnapshotPanel";
+import SelectionPill from "./components/ai/SelectionPill";
+import { useAiEntryStore } from "./hooks/useAiEntry";
 import { getActiveEditorView, getPanelScrollEl } from "./editors/editorRef";
 import { toggleBold, toggleItalic } from "./editors/keybindings";
 import { saveAppConfig, useConfig } from "./hooks/useConfig";
@@ -297,6 +302,12 @@ function App() {
         handleScaleDelta(delta);
       }
 
+      // Cmd+K: AI command overlay
+      if (meta && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        useAiEntryStore.getState().toggleOverlay();
+      }
+
       // Escape: Exit reading mode
       if (e.key === "Escape" && readingMode) {
         store.setReadingMode(false);
@@ -517,6 +528,10 @@ function App() {
         onRightWidthChange={handleRightWidthChange}
       />
       <CaptureOverlay />
+      <SelectionPill />
+      <CommandOverlay />
+      <UndoBar />
+      <SnapshotPanel />
       {readingMode && (
         <div
           className="immersive-peek-zone"

@@ -27,6 +27,7 @@ pub struct AppConfig {
     pub source_lang: Option<String>,
     pub target_lang: Option<String>,
     pub theme: Option<String>,
+    pub ai_confirm_density: Option<String>,
     pub sidebar_left_visible: Option<bool>,
     pub sidebar_right_visible: Option<bool>,
     pub sidebar_left_width: Option<f64>,
@@ -68,6 +69,7 @@ impl Default for AppConfig {
             source_lang: Some("en".into()),
             target_lang: Some("zh-CN".into()),
             theme: Some("system".into()),
+            ai_confirm_density: Some("session-silent".into()),
             sidebar_left_visible: Some(true),
             sidebar_right_visible: Some(false),
             sidebar_left_width: Some(220.0),
@@ -322,6 +324,11 @@ pub fn validate_config(config: &AppConfig) -> Result<(), AppError> {
         &["light", "dark", "warm", "system"],
     )?;
     check_enum(
+        "aiConfirmDensity",
+        config.ai_confirm_density.as_deref(),
+        &["always", "session-silent", "never"],
+    )?;
+    check_enum(
         "readerSkin",
         config.reader_skin.as_deref(),
         &["paper", "plain"],
@@ -509,6 +516,7 @@ const SKILL_MAP: &str = r#"# Biaoyue 配置地图
 | `sidebarLeftWidth` / `sidebarRightWidth` | 0–800 |
 | `horizontalSplitRatio` / `verticalSplitRatio` | 0–1 |
 | `theme` | `light` / `dark` / `warm` / `system` |
+| `aiConfirmDensity` | `always` / `session-silent` / `never` |
 | `readerSkin` | `paper` / `plain` |
 | `openaiEndpoint` / `openaiModel` | 任意字符串 |
 
@@ -751,6 +759,11 @@ mod tests {
         config.theme = Some("neon".into());
         assert!(validate_config(&config).is_err());
         config.theme = Some("warm".into());
+        assert!(validate_config(&config).is_ok());
+
+        config.ai_confirm_density = Some("sometimes".into());
+        assert!(validate_config(&config).is_err());
+        config.ai_confirm_density = Some("always".into());
         assert!(validate_config(&config).is_ok());
 
         config.reader_skin = Some("indigo".into());
