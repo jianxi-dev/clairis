@@ -1,0 +1,13 @@
+{
+  "task": "1.1",
+  "change": "export-mdpkg",
+  "issue": 52,
+  "states": [
+    {"state": "tab-menu", "screenshot": "01-menu.png", "assertion": "passed", "probe": "右键页签菜单含 HTML / 图片 / Word / .mdpkg 四项"},
+    {"state": "real-package", "screenshot": "exported.mdpkg", "assertion": "passed", "probe": "页面内真实打出的 .mdpkg（477 字节），unzip 见 manifest.json + document.md"},
+    {"state": "entry-fidelity", "screenshot": "04-package.txt", "assertion": "passed", "probe": "document.md 与源文档逐字一致（51 字节）"},
+    {"state": "manifest-valid", "screenshot": "04-package.txt", "assertion": "passed", "probe": "manifest format=mdpkg、spec_version=1.0、entrypoint=document.md、resources 含 sha256"},
+    {"state": "remote-images-excluded", "screenshot": "02-unit.txt", "assertion": "passed", "probe": "https:// 图片不写入包，本地图片按原引用路径入包"},
+    {"state": "cancelled", "screenshot": "02-unit.txt", "assertion": "passed", "probe": "保存取消返回 cancelled，不报错"}
+  ]
+}

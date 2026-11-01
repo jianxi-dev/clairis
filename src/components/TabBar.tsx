@@ -9,6 +9,10 @@ import {
 } from "../lib/export/exportDocument";
 import { exportPngFromMarkdown, exportPngMessage } from "../lib/export/png";
 import { exportDocxMessage } from "../lib/export/docx";
+import {
+  exportMdpkgFromMarkdown,
+  exportMdpkgMessage,
+} from "../lib/export/mdpkg";
 
 interface TabBarProps {
   tabs: Record<string, Tab>;
@@ -42,6 +46,7 @@ export default function TabBar({
   const [menu, setMenu] = useState<CtxMenu | null>(null);
   const [exportingPng, setExportingPng] = useState(false);
   const [exportingDocx, setExportingDocx] = useState(false);
+  const [exportingMdpkg, setExportingMdpkg] = useState(false);
 
   const handleContextMenu = useCallback(
     (e: React.MouseEvent, tabId: string) => {
@@ -156,6 +161,43 @@ export default function TabBar({
       if (message) showNotice(message);
     },
     [exportingDocx, showNotice],
+  );
+
+  const handleExportMdpkg = useCallback(
+    async (tabId: string) => {
+      if (exportingMdpkg) return;
+      const tab = useStore.getState().tabs[tabId];
+      if (!tab) return;
+      setExportingMdpkg(true);
+      showNotice("正在打包 .mdpkg…");
+      let message: string | null = null;
+      try {
+        const dir = tab.path
+          ? tab.path.slice(
+              0,
+              Math.max(tab.path.lastIndexOf("/"), tab.path.lastIndexOf("\\")),
+            )
+          : "";
+        const result = await exportMdpkgFromMarkdown({
+          title: tab.title,
+          markdown: tab.content,
+          baseDir: dir,
+        });
+        if (result.status === "error") {
+          log.error("ExportMdpkg", "导出 .mdpkg 失败", result.message);
+        } else if (result.status === "saved") {
+          log.info("ExportMdpkg", "已导出 .mdpkg", { path: result.path });
+        }
+        message = exportMdpkgMessage(result);
+      } catch (e) {
+        log.error("ExportMdpkg", "导出 .mdpkg 失败", String(e));
+        message = `导出失败：${e instanceof Error ? e.message : String(e)}`;
+      } finally {
+        setExportingMdpkg(false);
+      }
+      if (message) showNotice(message);
+    },
+    [exportingMdpkg, showNotice],
   );
 
   // Close menu on any click outside the menu itself
@@ -294,6 +336,17 @@ export default function TabBar({
             }}
           >
             {exportingDocx ? "正在生成…" : "导出 Word…"}
+          </button>
+          <button
+            data-export-mdpkg
+            disabled={exportingMdpkg}
+            className="w-full text-left px-3 py-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={() => {
+              void handleExportMdpkg(menu.tabId);
+              closeMenu();
+            }}
+          >
+            {exportingMdpkg ? "正在打包…" : "导出 .mdpkg…"}
           </button>
           <div className="h-px bg-gray-200 dark:bg-gray-700 my-1" />
           <button

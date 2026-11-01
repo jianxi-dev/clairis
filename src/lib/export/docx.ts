@@ -2,7 +2,7 @@
 // OOXML 写入 / 图片内联全在 vendor；本模块只做胶水，绝不抛出。
 import { invoke } from "@tauri-apps/api/core";
 import { toDocx } from "../mdpkg/vendor/mdpkg-web.js";
-import { blobToBase64 } from "./png";
+import { base64ToBytes, blobToBase64 } from "./base64";
 
 export interface ExportDocxAsset {
   name: string;
@@ -103,13 +103,6 @@ export async function exportDocxFromMarkdown(
 }
 
 const IMAGE_REF = /!\[[^\]]*\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g;
-
-function base64ToBytes(base64: string): Uint8Array {
-  const binary = atob(base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
-  return bytes;
-}
 
 /** 收集 markdown 里引用的本地图片（远程/data/绝对路径跳过），读不到的直接略过。 */
 export async function collectLocalImages(
