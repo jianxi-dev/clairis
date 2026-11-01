@@ -129,90 +129,334 @@ body {
   background: rgba(255, 255, 255, 0.1);
 }
 
-/* Heading text — larger, bolder */
+/* ── 活源码装饰两态（移植自 md-bundle decorations/theme.ts） ──────────
+ * 语义编辑：非活跃块完全渲染、零语法标记可见；活跃块（光标所在块）以低透明度
+ * 显示结构标记。行内标记（加粗/斜体/删除线/下划线）两态都隐藏。
+ * 颜色走 tokens.css 的语义变量，不写死 hex。 */
+
+/* 标题正文 —— 字号按级别缩放 */
 .cm-heading {
-  font-weight: 700;
-  font-size: 1.1em;
+  color: var(--app-text-strong);
+  font-weight: 650;
+  line-height: 1.3;
 }
 
-/* Heading marker widget [H1]-[H6] */
+.cm-heading.cm-h1 {
+  font-size: 1.75em;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.cm-heading.cm-h2 {
+  font-size: 1.4em;
+  font-weight: 700;
+  letter-spacing: 0.005em;
+}
+
+.cm-heading.cm-h3 {
+  font-size: 1.2em;
+  line-height: 1.4;
+}
+
+.cm-heading.cm-h4 {
+  font-size: 1.05em;
+  line-height: 1.4;
+}
+
+.cm-heading.cm-h5 {
+  font-size: 0.95em;
+  line-height: 1.4;
+  color: var(--app-text-2);
+}
+
+.cm-heading.cm-h6 {
+  font-size: 0.875em;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  line-height: 1.4;
+  color: var(--app-text-3);
+}
+
+/* 标题标记（原始 `# ` 前缀）—— 非活跃块透明度 0，只看到渲染后的标题 */
 .cm-heading-marker {
   display: inline-block;
-  font-size: 0.7em;
+  font-family:
+    "SF Mono", "Fira Code", "Fira Mono", "Menlo", Consolas, monospace;
+  font-size: 0.72em;
   font-weight: 600;
-  color: #fff;
-  background: #6b7280;
-  border-radius: 3px;
-  padding: 1px 5px;
-  margin-right: 4px;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  color: var(--app-text-3);
+  margin-right: 0.35em;
   vertical-align: middle;
+  user-select: none;
+  opacity: 0;
+  transition: opacity 120ms ease-out;
+}
+
+/* 活跃块：低透明度显示结构标记 */
+.cm-heading-marker.cm-heading-marker-active {
+  opacity: 0.4;
+  margin-right: 0.25em;
+}
+
+/* 行内强调 */
+.cm-strikethrough {
+  text-decoration: line-through;
+}
+
+.cm-underline {
+  text-decoration: underline;
+}
+
+/* 原始 HTML 透传 span：字体 / 文字色 / 背景色 */
+.cm-font-serif {
+  font-family: Georgia, "Songti SC", serif;
+}
+
+.cm-font-mono {
+  font-family:
+    "SF Mono", "Fira Code", "Fira Mono", "Menlo", Consolas, monospace;
+}
+
+.cm-font-sans {
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+    "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+}
+
+.cm-color-red {
+  color: #d14343;
+}
+
+.cm-color-orange {
+  color: #c2761b;
+}
+
+.cm-color-yellow {
+  color: #a88412;
+}
+
+.cm-color-green {
+  color: #2f8f46;
+}
+
+.cm-color-cyan {
+  color: #1a8f88;
+}
+
+.cm-color-blue {
+  color: #2f6fd0;
+}
+
+.cm-color-purple {
+  color: #8a4fd0;
+}
+
+/* 背景色半透明，深浅两套主题下都保持可读 */
+.cm-bg-red {
+  background: rgba(248, 81, 73, 0.25);
+}
+
+.cm-bg-darkred {
+  background: rgba(179, 68, 68, 0.3);
+}
+
+.cm-bg-orange {
+  background: rgba(227, 179, 65, 0.25);
+}
+
+.cm-bg-brown {
+  background: rgba(132, 81, 23, 0.3);
+}
+
+.cm-bg-yellow {
+  background: rgba(240, 182, 34, 0.25);
+}
+
+.cm-bg-olive {
+  background: rgba(135, 123, 16, 0.3);
+}
+
+.cm-bg-green {
+  background: rgba(63, 185, 80, 0.25);
+}
+
+.cm-bg-darkgreen {
+  background: rgba(41, 107, 34, 0.3);
+}
+
+.cm-bg-cyan {
+  background: rgba(32, 178, 170, 0.25);
+}
+
+.cm-bg-blue {
+  background: rgba(123, 134, 234, 0.25);
+}
+
+.cm-bg-navy {
+  background: rgba(32, 62, 120, 0.3);
+}
+
+.cm-bg-purple {
+  background: rgba(163, 113, 247, 0.25);
+}
+
+.cm-bg-indigo {
+  background: rgba(77, 38, 145, 0.3);
+}
+
+.cm-bg-gray {
+  background: rgba(235, 235, 235, 0.22);
+}
+
+.cm-bg-slate {
+  background: rgba(95, 95, 95, 0.3);
+}
+
+/* 列表 —— 无序列表项目符号由 ::before 画，原始 `- ` 两态都隐藏 */
+.cm-line.cm-list {
+  padding-inline-start: 1.5em;
+  line-height: 1.7em;
+}
+
+.cm-line.cm-list:not(.cm-list-ordered):not(.cm-task-done):not(
+    .cm-task-pending
+  )::before {
+  content: "•  ";
+  color: var(--app-text-3);
+}
+
+/* 有序列表序号是语义内容，两态都可见；活跃块低透明度 */
+.cm-list-marker {
+  color: var(--app-text-2);
+  font-family:
+    "SF Mono", "Fira Code", "Fira Mono", "Menlo", Consolas, monospace;
+  font-size: 0.9em;
+  margin-inline-end: 0.25em;
+}
+
+.cm-list-marker.cm-list-marker-active {
+  color: var(--app-text-3);
+  opacity: 0.4;
+  font-size: 0.85em;
+}
+
+/* 任务列表复选框（替换 `- [ ] ` / `- [x] ` 标记） */
+.cm-task-checkbox {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  margin-inline-end: 0.4em;
+  border: 1.5px solid var(--app-text-3);
+  border-radius: 3px;
   cursor: pointer;
+  vertical-align: middle;
+  transition:
+    background 100ms ease-out,
+    border-color 100ms ease-out;
+}
+
+.cm-task-checkbox[data-checked="true"] {
+  background: #2f8f46;
+  border-color: #2f8f46;
+}
+
+.cm-task-checkbox[data-checked="true"]::after {
+  content: "✓";
+  font-size: 10px;
+  line-height: 1;
+  color: #ffffff;
+}
+
+/* 已勾选整行退到三级文字色（不只是复选框，✓ 才保持白字绿底） */
+.cm-line.cm-task-done {
+  color: var(--app-text-3);
+}
+
+/* 引用 —— 左侧竖线 + 底色 */
+.cm-line.cm-quote {
+  border-inline-start: 2px solid var(--app-accent);
+  padding-inline-start: 1em;
+  padding-block: 0.7em;
+  margin-block: 0 0;
+  line-height: 1.7em;
+  color: var(--app-text-2);
+  background: var(--app-accent-soft);
+  border-radius: 0 var(--app-radius) var(--app-radius) 0;
+}
+
+/* 活跃引用块：低透明度显示 `> ` 前缀 */
+.cm-quote-marker-active {
+  color: var(--app-text-3);
+  opacity: 0.4;
+  font-family:
+    "SF Mono", "Fira Code", "Fira Mono", "Menlo", Consolas, monospace;
+  font-size: 0.85em;
+  margin-inline-end: 0.25em;
+}
+
+/* 行内代码 */
+.cm-inline-code {
+  font-family:
+    "SF Mono", "Fira Code", "Fira Mono", "Menlo", Consolas, monospace;
+  font-size: 0.88em;
+  color: var(--app-text);
+  background: var(--app-sunken);
+  border: 1px solid var(--app-border);
+  border-radius: 4px;
+  padding: 0.12em 0.35em;
+}
+
+/* 活跃块：低透明度显示反引号 */
+.cm-code-marker-active {
+  color: var(--app-text-3);
+  opacity: 0.4;
+  font-family:
+    "SF Mono", "Fira Code", "Fira Mono", "Menlo", Consolas, monospace;
+  font-size: 0.85em;
+}
+
+/* 围栏代码块：整块一个圆角容器 */
+.cm-line.cm-fenced-code {
+  background: var(--app-sunken);
+  color: var(--app-text);
+  border-inline: 1px solid var(--app-border);
+}
+
+.cm-line.cm-fenced-code.cm-block-inactive {
+  background: var(--app-sunken);
+}
+
+/* 活跃块：底色变淡，让用户看到代码结构 */
+.cm-line.cm-fenced-code.cm-block-active {
+  background: color-mix(in srgb, var(--app-sunken) 60%, transparent);
+}
+
+/* 开栏行语言名标签 */
+.cm-fenced-code-language {
+  display: inline-block;
+  float: right;
+  font-size: 0.75em;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  line-height: 1.4;
+  text-transform: uppercase;
+  color: var(--app-text-3);
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  border-radius: 4px;
+  padding: 0.1em 0.45em;
+  margin-left: 0.5em;
+  vertical-align: middle;
   user-select: none;
 }
 
-.cm-heading-marker:hover {
-  background: #4b5563;
-}
-
-.dark .cm-heading-marker {
-  background: #4b5563;
-}
-
-.dark .cm-heading-marker:hover {
-  background: #6b7280;
-}
-
-/* Inline link — URL hidden, blue clickable text */
-.cm-link {
-  color: #2563eb;
-  text-decoration: underline;
-  text-decoration-style: dotted;
-  cursor: pointer;
-}
-
-.cm-link:hover {
-  color: #1d4ed8;
-}
-
-.dark .cm-link {
-  color: #60a5fa;
-}
-
-.dark .cm-link:hover {
-  color: #93bbfd;
-}
-
-/* List items — marker replaced, no special text styling needed */
-.cm-list {
-  /* marker is hidden via replace, line inherits normal text style */
-}
-
-/* Task items */
-.cm-task-done {
-  text-decoration: line-through;
-  color: #9ca3af;
-}
-
-.dark .cm-task-done {
-  color: #6b7280;
-}
-
-.cm-task-pending {
-  color: inherit;
-}
-
-/* Blockquote — > hidden, left border + gray bg applied */
-.cm-quote {
-  border-left: 3px solid #d1d5db;
-  background: rgba(0, 0, 0, 0.02);
-  color: #6b7280;
-  font-style: italic;
-}
-
-.dark .cm-quote {
-  border-left-color: #4b5563;
-  background: rgba(255, 255, 255, 0.03);
-  color: #9ca3af;
+.cm-fenced-code-language.cm-fenced-code-language-active {
+  opacity: 0.5;
+  color: var(--app-text-2);
 }
 
 /* ── SplitResizeHandle ─────────────────────────────────────────── */
