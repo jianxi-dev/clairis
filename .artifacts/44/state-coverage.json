@@ -1,0 +1,12 @@
+{
+  "task": "1.1",
+  "change": "mdpkg-port",
+  "issue": 44,
+  "states": [
+    {"state": "vendor-verbatim", "screenshot": "01-vendor-verbatim.txt", "assertion": "passed", "probe": "搬入的 mdpkg-web.js 与 md-bundle 源 shasum 完全一致"},
+    {"state": "open-and-errors", "screenshot": "02-tests.txt", "assertion": "passed", "probe": "非 ZIP / 0 条目输入返回中文 {error} 且不抛；E103 翻译为「文件格式不正确」"},
+    {"state": "round-trip", "screenshot": "02-tests.txt", "assertion": "passed", "probe": "打包→解包后入口 Markdown 与打包前逐字一致"},
+    {"state": "manifest-closed", "screenshot": "04-manifest-schema.txt", "assertion": "passed", "probe": "manifest schema required=[format,spec_version,resources]、additionalProperties=false，额外字段被打包拒绝并报字段名"},
+    {"state": "typecheck-lint", "screenshot": "03-typecheck-lint.txt", "assertion": "passed", "probe": "tsc 0 错；eslint 对封装与测试 0 error（vendor 为第三方原样，已加入忽略）"}
+  ]
+}

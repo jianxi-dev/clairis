@@ -8,7 +8,7 @@ import reactHooks from "eslint-plugin-react-hooks";
 import reactRefresh from "eslint-plugin-react-refresh";
 
 export default tseslint.config(
-  { ignores: ["dist", "target", "e2e", "src-tauri"] },
+  { ignores: ["dist", "target", "e2e", "src-tauri", "src/lib/mdpkg/vendor"] },
 
   // Base JS/TS rules
   ...tseslint.configs.recommended,

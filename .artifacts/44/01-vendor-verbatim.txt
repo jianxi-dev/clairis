@@ -1,0 +1,3 @@
+$ shasum -a 256 vendor (clairis) vs source (md-bundle)
+07a4e7253452f69058c4d1543f2532caf77f8f1c5f0731eb2d56b8248a31a6ea  src/lib/mdpkg/vendor/mdpkg-web.js
+07a4e7253452f69058c4d1543f2532caf77f8f1c5f0731eb2d56b8248a31a6ea  /Users/mason/ToHighs/md-bundle/packages/app-kit/vendor/mdpkg-web.js
