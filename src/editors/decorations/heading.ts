@@ -44,12 +44,16 @@ export function createHeadingDecorations(text: string): Range<Decoration>[] {
       }).range(from, to),
     );
 
-    // Apply heading class to the text portion
+    // Apply heading class to the text portion. An empty heading (`# ` with no
+    // text yet — exactly the state right after the slash menu inserts `# `)
+    // has a zero-width text range, and CM6 rejects empty mark decorations.
     const textFrom = to;
     const textTo = from + match[0].length;
-    decorations.push(
-      Decoration.mark({ class: HEADING_CLASS }).range(textFrom, textTo),
-    );
+    if (textTo > textFrom) {
+      decorations.push(
+        Decoration.mark({ class: HEADING_CLASS }).range(textFrom, textTo),
+      );
+    }
   }
 
   return decorations;

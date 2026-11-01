@@ -10,6 +10,7 @@ import { createListDecorations } from "./decorations/list";
 import { createQuoteDecorations } from "./decorations/quote";
 import { createCodeDecorations } from "./decorations/code";
 import { smartInput } from "./smart-input";
+import { slashKeymap } from "./slash";
 
 const SOURCE_MODE_LIMIT = 500 * 1024;
 
@@ -67,6 +68,8 @@ export function createExtensions(fileKind: FileKind): Extension[] {
         ...base,
         markdown({ base: markdownLanguage }),
         smartInput(),
+        // 斜杠菜单：`Prec.high` 绑定优先于 defaultKeymap，菜单关闭时全部返回 false。
+        slashKeymap(),
         decorCompartment.of(fullDecorations()),
       ];
     case "html":

@@ -13,6 +13,7 @@
 
 import { EditorView, keymap, ViewPlugin } from "@codemirror/view";
 import { type EditorState, type Extension, Prec } from "@codemirror/state";
+import { isSlashMenuOpen } from "./slash";
 
 // --- IME 组合守卫 ------------------------------------------------------------
 
@@ -217,6 +218,7 @@ function promoteHeadingOnLine(
  * - 其余：交回默认行为
  */
 export function smartEnter(view: EditorView): boolean {
+  if (isSlashMenuOpen(view)) return false;
   const { selection } = view.state;
   const { main } = selection;
   const line = view.state.doc.lineAt(main.head);
@@ -672,10 +674,13 @@ const compositionGuardPlugin = ViewPlugin.define(() => ({}), {
 
 /** 组合式智能输入扩展，启用全部智能输入行为。 */
 export function smartInput(): Extension {
+  // Prec.highest：markdown() 自带 `Prec.high(keymap.of(markdownKeymap))`，
+  // 同优先级下它排在前面会先吃掉 Enter，智能输入的列表退出/续写永远不生效。
+  // 斜杠菜单打开时两个 handler 都让位（见 isSlashMenuOpen 守卫）。
   return [
-    markdownShortcutKeymap,
-    smartEnterKeymap,
-    smartBackspaceKeymap,
+    Prec.highest(markdownShortcutKeymap),
+    Prec.highest(smartEnterKeymap),
+    Prec.highest(smartBackspaceKeymap),
     autoPairInputHandler,
     Prec.high(headingTabKeymap),
     compositionGuardPlugin,

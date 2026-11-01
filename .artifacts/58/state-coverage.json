@@ -1,0 +1,37 @@
+{
+  "task": "1.2b",
+  "change": "md-kernel-port",
+  "issue": 58,
+  "states": [
+    {
+      "state": "menu-open",
+      "screenshot": ".artifacts/58/01-menu-open.png",
+      "assertion": "passed",
+      "probe": "行首输入 / 弹出分类菜单，首项可见"
+    },
+    {
+      "state": "filtered",
+      "screenshot": ".artifacts/58/02-filtered.png",
+      "assertion": "passed",
+      "probe": "输入 b 后菜单收窄到标题相关行"
+    },
+    {
+      "state": "closed-no-residue",
+      "screenshot": ".artifacts/58/03-closed.png",
+      "assertion": "passed",
+      "probe": "Esc 后 .mdb-slash-menu 计数 = 0"
+    },
+    {
+      "state": "table-grid",
+      "screenshot": ".artifacts/58/04-table-grid.png",
+      "assertion": "passed",
+      "probe": "输入 t53 弹出 5×3 表格尺寸网格"
+    },
+    {
+      "state": "applied-heading",
+      "screenshot": ".artifacts/58/05-applied-heading.png",
+      "assertion": "passed",
+      "probe": "/b → Enter → Enter 后文档内容为 \"# 标题\""
+    }
+  ]
+}

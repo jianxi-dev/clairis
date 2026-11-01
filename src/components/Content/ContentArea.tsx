@@ -12,6 +12,8 @@ import { basicSetup } from "codemirror";
 import { useStore } from "../../stores/index";
 import { isMediaKind } from "../../stores/index";
 import { decorCompartment, fullDecorations } from "../../editors/setup";
+import { slashKeymap } from "../../editors/slash";
+import { smartInput } from "../../editors/smart-input";
 import {
   setEditorView,
   setActivePanel,
@@ -29,6 +31,8 @@ function createLanguageExtension(kind: FileKind) {
     case "markdown":
       return [
         markdown({ base: markdownLanguage }),
+        smartInput(),
+        slashKeymap(),
         decorCompartment.of(fullDecorations()),
       ];
     case "html":
