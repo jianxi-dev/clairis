@@ -16,9 +16,9 @@
 - 探索稿在定案前不得直接进入本目录。
 - 新增文档须带 frontmatter（`title` / `type: design` / `status` / `last_updated`），规范见 `../../GOVERNANCE.md`。
 
-## 当前状态：9 个已批准 feature
+## 当前状态：10 个已批准 feature
 
-**截至 2026-08-30，本目录包含 9 个已批准设计。**
+**截至 2026-11-01，本目录包含 10 个已批准设计。**
 
 | Feature | 批准设计 | 行为规格（canonical） | 需求编号 |
 | --- | --- | --- | --- |
@@ -31,6 +31,7 @@
 | 界面布局 | [shell-ui/spec.md](./shell-ui/spec.md) | `openspec/specs/application-shell/spec.md` | G-1..G-5 |
 | 阅读排版 | [reader-typography/spec.md](./reader-typography/spec.md) | 阅读排版设计系统（实现见 `src/styles/tokens.css`、`src/styles/reader.css`、`src/renderers/`） | — |
 | 视频播放器增强 | [video-player/spec.md](./video-player/spec.md) | 待同步 `openspec/specs/`（实施中） | — |
+| 门户与布局 | [layout-portal/spec.md](./layout-portal/spec.md) | `openspec/specs/navigation/spec.md` | 布局规格 v1.0（12 条验收） |
 
 批准依据：`docs/MVP-需求跟踪表.md`「已落地为」列明确引用。行为规格的真相源始终是 `openspec/specs/`。
 
