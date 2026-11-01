@@ -1,0 +1,9 @@
+
+ RUN  v4.1.11 /Users/mason/ToHighs/clairis
+
+
+ Test Files  1 passed (1)
+      Tests  29 passed (29)
+   Start at  07:30:29
+   Duration  998ms (transform 60ms, setup 49ms, import 82ms, tests 317ms, environment 386ms)
+

@@ -3,6 +3,10 @@ import {
   inlineCodeRegex,
   INLINE_CODE_CLASS,
   createCodeDecorations,
+  CODE_MARKER_ACTIVE_CLASS,
+  FENCED_CODE_CLASS,
+  BLOCK_ACTIVE_CLASS,
+  BLOCK_INACTIVE_CLASS,
 } from "../../../editors/decorations/code";
 
 describe("code decoration", () => {
@@ -69,6 +73,86 @@ describe("code decoration", () => {
 
     it("returns empty for plain text", () => {
       const result = createCodeDecorations("plain text");
+      expect(result).toHaveLength(0);
+    });
+  });
+
+  describe("inline code two-state", () => {
+    it("hides backticks when the block is inactive", () => {
+      const result = createCodeDecorations("Use `code` here");
+      expect(result[0].value.spec.widget).toBeUndefined();
+      expect(result[0].value.spec.class).toBeUndefined();
+      expect(result[2].value.spec.class).toBeUndefined();
+    });
+
+    it("reveals faint backticks and marks the content active", () => {
+      const result = createCodeDecorations("Use `code` here", 4, 11);
+      expect(result[0].value.spec.class).toBe(CODE_MARKER_ACTIVE_CLASS);
+      expect(result[1].value.spec.class).toContain(INLINE_CODE_CLASS);
+      expect(result[1].value.spec.class).toContain(BLOCK_ACTIVE_CLASS);
+      expect(result[2].value.spec.class).toBe(CODE_MARKER_ACTIVE_CLASS);
+    });
+  });
+
+  describe("fenced code blocks", () => {
+    const fenced = "```ts\nconst a = 1;\n```";
+
+    it("replaces both fence lines when inactive", () => {
+      const result = createCodeDecorations(fenced);
+      const replaces = result.filter(
+        (d) => !d.value.spec.class && !d.value.spec.widget,
+      );
+      expect(replaces).toHaveLength(2);
+      expect(replaces[0].from).toBe(0);
+      expect(replaces[0].to).toBe(5); // "```ts"
+      expect(replaces[1].from).toBe(19); // "```"
+      expect(replaces[1].to).toBe(22);
+    });
+
+    it("keeps the raw fences when the block is active", () => {
+      const result = createCodeDecorations(fenced, 0, 22);
+      const replaces = result.filter(
+        (d) => !d.value.spec.class && !d.value.spec.widget,
+      );
+      expect(replaces).toHaveLength(0);
+    });
+
+    it("renders the language label widget", () => {
+      const result = createCodeDecorations(fenced);
+      const widget = result.find((d) => d.value.spec.widget);
+      expect(widget).toBeDefined();
+      expect(widget!.from).toBe(5);
+      expect(widget!.value.spec.widget.language).toBe("ts");
+      expect(widget!.value.spec.widget.active).toBe(false);
+    });
+
+    it("marks the active language label", () => {
+      const result = createCodeDecorations(fenced, 0, 22);
+      const widget = result.find((d) => d.value.spec.widget);
+      expect(widget!.value.spec.widget.active).toBe(true);
+    });
+
+    it("paints every line of the block", () => {
+      const result = createCodeDecorations(fenced);
+      const lines = result.filter((d) =>
+        d.value.spec.class?.includes(FENCED_CODE_CLASS),
+      );
+      expect(lines).toHaveLength(3);
+      expect(lines[0].value.spec.class).toContain(BLOCK_INACTIVE_CLASS);
+    });
+
+    it("emits no label and no error without a language", () => {
+      const result = createCodeDecorations("```\nbody\n```");
+      expect(result.find((d) => d.value.spec.widget)).toBeUndefined();
+    });
+
+    it("skips mermaid blocks (replaced wholesale by the mermaid decorator)", () => {
+      const result = createCodeDecorations("```mermaid\ngraph TD\n```");
+      expect(result).toHaveLength(0);
+    });
+
+    it("leaves an unclosed fence alone", () => {
+      const result = createCodeDecorations("```ts\nconst a = 1;");
       expect(result).toHaveLength(0);
     });
   });
