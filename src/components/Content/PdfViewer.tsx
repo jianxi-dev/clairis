@@ -54,9 +54,9 @@ const DISABLED_CATEGORIES = [
 function hidePrintAnnotationOption(container: EmbedPdfContainer): void {
   const shadow = container.shadowRoot;
   if (!shadow) return;
-  if (shadow.querySelector("style[data-clairis-pdf-print]")) return;
+  if (shadow.querySelector("style[data-biaoyue-pdf-print]")) return;
   const style = document.createElement("style");
-  style.setAttribute("data-clairis-pdf-print", "");
+  style.setAttribute("data-biaoyue-pdf-print", "");
   style.textContent =
     "label:has(> span.text-fg-secondary.text-sm.font-medium){display:none !important}";
   shadow.appendChild(style);

@@ -1,4 +1,4 @@
-// Clairis 示例编辑器模块（fixture：60 行非空，含 3 行行注释）
+// Biaoyue 示例编辑器模块（fixture：60 行非空，含 3 行行注释）
 // 仅用于行数统计测试，不参与编译
 // 以下 57 行为占位代码，确保每行均为非空行
 export const placeholderValue01: number = 1;

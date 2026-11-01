@@ -1,5 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { useCaptureOverlayStore } from "../stores/captureOverlay";
+import {
+  useCaptureOverlayStore,
+  migrateLegacyCaptureFallback,
+} from "../stores/captureOverlay";
 
 // Override the global setup.ts mock so we can control invoke per-test.
 const { invokeMock } = vi.hoisted(() => ({ invokeMock: vi.fn() }));
@@ -96,7 +99,7 @@ describe("captureOverlay store — batch submission", () => {
       await useCaptureOverlayStore.getState().handleCmdEnter();
 
       const fallback = JSON.parse(
-        localStorage.getItem("clairis_capture_fallback") || "[]",
+        localStorage.getItem("biaoyue_capture_fallback") || "[]",
       );
       expect(fallback).toHaveLength(2);
       expect(useCaptureOverlayStore.getState().history).toHaveLength(2);
@@ -152,6 +155,31 @@ describe("captureOverlay store — batch submission", () => {
     it("has no prefix for normal content", () => {
       useCaptureOverlayStore.getState().setDraftContent("hello", 5);
       expect(useCaptureOverlayStore.getState().draftPrefix).toBe("");
+    });
+  });
+
+  describe("legacy localStorage key migration", () => {
+    it("copies the legacy fallback key to the new key when the new key is absent", () => {
+      localStorage.clear();
+      localStorage.setItem("clairis_capture_fallback", '[{"id":"old"}]');
+
+      migrateLegacyCaptureFallback();
+
+      expect(localStorage.getItem("biaoyue_capture_fallback")).toBe(
+        '[{"id":"old"}]',
+      );
+    });
+
+    it("does not overwrite an existing new key", () => {
+      localStorage.clear();
+      localStorage.setItem("clairis_capture_fallback", '[{"id":"old"}]');
+      localStorage.setItem("biaoyue_capture_fallback", '[{"id":"new"}]');
+
+      migrateLegacyCaptureFallback();
+
+      expect(localStorage.getItem("biaoyue_capture_fallback")).toBe(
+        '[{"id":"new"}]',
+      );
     });
   });
 });

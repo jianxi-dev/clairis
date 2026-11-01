@@ -16,9 +16,9 @@ source_of_truth: supporting
 
 ## 1. 核心哲学
 
-同一时间，全渐晰只有一个字号。
+同一时间，全标月只有一个字号。
 
-不存在"这篇读诗要大字、那篇写代码要小字"——那是工具软件的思路。渐晰的字号是"我现在的阅读状态"，不是文档的属性。
+不存在"这篇读诗要大字、那篇写代码要小字"——那是工具软件的思路。标月的字号是"我现在的阅读状态"，不是文档的属性。
 
 调字号本质是调"视觉舒适度"，不是调数字。用户不看 px 值，看的是文字本身大了还是小了。
 
@@ -30,7 +30,7 @@ source_of_truth: supporting
 全局 baseFontSize = 17   // 存于现有 config.json
 ```
 
-**全部存储**：现有 `~/.config/clairis/config.json` 的 `fontSize: number = 17`。零新文件，零新字段。
+**全部存储**：现有 `~/.config/biaoyue/config.json` 的 `fontSize: number = 17`。零新文件，零新字段。
 
 **范围**：12px ≤ fontSize ≤ 32px，步进 1px。
 
@@ -129,17 +129,17 @@ function injectFontSizeToIframe(iframe: HTMLIFrameElement, baseFontSize: number)
     if (!doc) return;
     
     // 如果内部已经有 html { font-size: ... }，删掉旧的，避免重复注入
-    const existing = doc.querySelector('style[data-clairis="font-inject"]');
+    const existing = doc.querySelector('style[data-biaoyue="font-inject"]');
     if (existing) existing.remove();
     
     const style = doc.createElement('style');
-    style.setAttribute('data-clairis', 'font-inject');
+    style.setAttribute('data-biaoyue', 'font-inject');
     style.textContent = `html { font-size: ${baseFontSize}px; }`;
     doc.head.appendChild(style);
   } catch (e) {
     // 跨域（无法从父页面读取 iframe 内部 DOM）→ 静默放弃
     // HTML 内容字号不受全局调整影响，回到 px 写死时的样子
-    console.warn('[Clairis] Cannot inject font size into cross-origin iframe', e);
+    console.warn('[Biaoyue] Cannot inject font size into cross-origin iframe', e);
   }
 }
 ```
@@ -237,7 +237,7 @@ Ctrl+=/- (App.tsx handler)
 1. **不做每文档字号记忆**——字号是全局状态
 2. **不做字号滑杆 UI**——Ctrl+=/- 是唯一入口
 3. **不做字号数字浮现**（toast）——已删
-4. **不做"跟随字号系统设置"**——iOS/macOS 系统字号是另一回事，渐晰内部自己管
+4. **不做"跟随字号系统设置"**——iOS/macOS 系统字号是另一回事，标月内部自己管
 5. **不做"字号历史" / Cmd+Z 撤销字号**——字号调节不是编辑操作，不该出现在撤销栈里
 6. **不做"字号导出"**——字号是阅读偏好，不该写入文档 frontmatter
 7. **不做"字号按设备同步"**——P2 如果有云端同步再说

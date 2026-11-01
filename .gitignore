@@ -30,3 +30,16 @@ index.html.artifact.json
 .agents/
 .claude/skills/
 skills-lock.json
+
+# 本地设计原型与笔记
+.lavish/
+
+# gbrain 自动管理的本地目录
+transcripts/
+learnings/
+timelines/
+design-docs/
+docs/designs/
+
+# 证据截图不入库（只提交 state-coverage.json）
+.artifacts/**/*.png

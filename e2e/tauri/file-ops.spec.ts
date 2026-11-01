@@ -15,7 +15,7 @@ async function openMockFile(
 ) {
   await page.evaluate(() => {
     const win = window as unknown as Record<string, unknown>;
-    (win as any).__clairis_openFile__(
+    (win as any).__biaoyue_openFile__(
       "/Users/test/测试文档.md",
       `# 测试文档\n\n## 第一节\n\n测试内容。\n\n## 第二节\n\n更多。\n\n### 子节\n\n嵌套。\n\n- 列表1\n- 列表2\n\n> 引用\n\n**粗体** *斜体*\n\n- [ ] 待办\n- [x] 完成`,
       "测试文档.md",
@@ -28,7 +28,7 @@ async function openFileB(
   page: Parameters<Parameters<typeof test>[1]>[0]["page"],
 ) {
   await page.evaluate(() => {
-    (window as unknown as Record<string, any>).__clairis_openFile__(
+    (window as unknown as Record<string, any>).__biaoyue_openFile__(
       "/Users/test/文件B.md",
       "# 文件B\n\n这是第二个文件的内容，完全不同。\n\n## B的第二节\n\n文件B特有内容。",
       "文件B.md",
@@ -37,7 +37,7 @@ async function openFileB(
   await page.waitForTimeout(300);
 }
 
-test.describe("Clairis — Tauri Mocked", () => {
+test.describe("Biaoyue — Tauri Mocked", () => {
   test.beforeEach(async ({ page }) => {
     await setup(page);
   });
@@ -62,7 +62,7 @@ test.describe("Clairis — Tauri Mocked", () => {
     await openMockFile(page);
     // Open second file
     await page.evaluate(() => {
-      (window as unknown as Record<string, any>).__clairis_openFile__(
+      (window as unknown as Record<string, any>).__biaoyue_openFile__(
         "/Users/test/另一个.md",
         "# 另一个文件\n\n不同内容。",
         "另一个.md",
@@ -124,7 +124,7 @@ test.describe("Clairis — Tauri Mocked", () => {
 
   test("4. Cmd+N new tab, visible in TabBar", async ({ page }) => {
     await page.evaluate(() => {
-      (window as unknown as Record<string, any>).__clairis_store__
+      (window as unknown as Record<string, any>).__biaoyue_store__
         .getState()
         .newTab();
     });
@@ -201,7 +201,7 @@ test.describe("Clairis — Tauri Mocked", () => {
     // Open two files
     await page.evaluate(() => {
       const w = window as unknown as Record<string, any>;
-      w.__clairis_openFile__(
+      w.__biaoyue_openFile__(
         "/Users/test/文件A.md",
         "# 文件A\n\n这是第一个文件的内容。\n\n## A的第二节\n\n文件A特有内容。",
         "文件A.md",
@@ -209,7 +209,7 @@ test.describe("Clairis — Tauri Mocked", () => {
     });
     await page.waitForTimeout(200);
     await page.evaluate(() => {
-      (window as unknown as Record<string, any>).__clairis_openFile__(
+      (window as unknown as Record<string, any>).__biaoyue_openFile__(
         "/Users/test/文件B.md",
         "# 文件B\n\n这是第二个文件的内容，完全不同。\n\n## B的第二节\n\n文件B特有内容。",
         "文件B.md",
@@ -220,7 +220,7 @@ test.describe("Clairis — Tauri Mocked", () => {
     // Split 文件B to right panel via store API (bypasses context menu)
     await page.evaluate(() => {
       const store = (window as unknown as Record<string, any>)
-        .__clairis_store__;
+        .__biaoyue_store__;
       const tabs = store.getState().tabs;
       const tabB = Object.values(tabs).find(
         (t: any) => t.title === "文件B.md",
@@ -245,7 +245,7 @@ test.describe("Clairis — Tauri Mocked", () => {
     });
     await openMockFile(page);
     await page.evaluate(() => {
-      (window as unknown as Record<string, any>).__clairis_store__
+      (window as unknown as Record<string, any>).__biaoyue_store__
         .getState()
         .newTab();
     });

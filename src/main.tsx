@@ -7,7 +7,7 @@ import "./styles/reader.css";
 
 const rootEl = document.getElementById("root");
 if (!rootEl) {
-  console.error("[Clairis] #root element not found!");
+  console.error("[Biaoyue] #root element not found!");
 }
 
 // Detect which window we're in via URL param
@@ -17,7 +17,7 @@ const isOverlay = urlParams.get("window") === "overlay";
 if (isOverlay) {
   // Overlay window: render only the capture overlay
   console.info(
-    "[Clairis] Overlay window detected, mounting capture overlay...",
+    "[Biaoyue] Overlay window detected, mounting capture overlay...",
   );
   import("./components/CaptureOverlay").then((mod) => {
     const CaptureOverlay = mod.default;
@@ -29,17 +29,17 @@ if (isOverlay) {
   });
 } else {
   // Main window: render the full app
-  console.info("[Clairis] main.tsx loaded, mounting React...");
+  console.info("[Biaoyue] main.tsx loaded, mounting React...");
   window.addEventListener("error", (e) => {
-    console.error("[Clairis] Global error:", e.message, e.filename, e.lineno);
+    console.error("[Biaoyue] Global error:", e.message, e.filename, e.lineno);
   });
   window.addEventListener("unhandledrejection", (e) => {
-    console.error("[Clairis] Unhandled promise rejection:", e.reason);
+    console.error("[Biaoyue] Unhandled promise rejection:", e.reason);
   });
 
   // Expose main store so capture overlay can call openFile
   import("./stores/index").then((mod) => {
-    (window as any).__CLAIRIS_MAIN_STORE__ = mod.useStore;
+    (window as any).__BIAOYUE_MAIN_STORE__ = mod.useStore;
   });
 
   // Listen for events from the overlay window
@@ -66,12 +66,12 @@ if (isOverlay) {
                 path: `~/documents/inbox/inbox-${date}.md`,
               },
             );
-            const mainStore = (window as any).__CLAIRIS_MAIN_STORE__;
+            const mainStore = (window as any).__BIAOYUE_MAIN_STORE__;
             if (mainStore && mainStore.getState) {
               mainStore.getState().openFile(result.path, result.content);
             }
           } catch (err) {
-            console.warn("[Clairis] open-file-in-main failed:", err);
+            console.warn("[Biaoyue] open-file-in-main failed:", err);
           }
         },
       ).catch(() => {});
@@ -104,4 +104,4 @@ if (isOverlay) {
   });
 }
 
-console.info("[Clairis] React render called.");
+console.info("[Biaoyue] React render called.");

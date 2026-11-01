@@ -21,7 +21,7 @@ source_of_truth: supporting
 1. 知道自己在哪（位置感）
 2. 下次打开还在那（记忆）
 
-其他都是 Readwise Reader 的 feature creep。渐晰的进度系统应该是存在感最低的那个。
+其他都是 Readwise Reader 的 feature creep。标月的进度系统应该是存在感最低的那个。
 
 ---
 

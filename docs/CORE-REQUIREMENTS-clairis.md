@@ -1,5 +1,5 @@
 ---
-title: "渐晰 — 完整需求整合文档 v2.4（docs 全量副本）"
+title: "标月 — 完整需求整合文档 v2.4（docs 全量副本）"
 type: product
 status: superseded
 last_updated: 2026-07-11
@@ -7,7 +7,7 @@ source_of_truth: historical
 superseded_by: docs/product/
 redirect: docs/product/README.md
 ---
-# 渐晰 — 完整需求整合文档
+# 标月 — 完整需求整合文档
 
 > **版本:** v2.4
 > **创建:** 2026-07-05
@@ -53,9 +53,9 @@ redirect: docs/product/README.md
 
 | 方案 | 名称 |
 |------|------|
-| 中文主名 | 渐晰 |
-| 英文主名 | Clairis |
-| 国际简写 | Clairis |
+| 中文主名 | 标月 |
+| 英文主名 | Biaoyue |
+| 国际简写 | Biaoyue |
 
 ### 1.2 一句话定义
 > 一款陪伴人类学习成长的精神伙伴——懂你、减负、惊喜、正向陪伴。
@@ -203,7 +203,7 @@ Phase P2              → 空间导航模式+知识网络+成长系统+移动端
 | 层级       | 类型            | 示例                                         |
 | -------- | ------------- | ------------------------------------------ |
 | **L1**   | macOS 系统保留    | Cmd+Space / Cmd+Tab / Cmd+Q / Cmd+H — 永不占用 |
-| **L1.5** | 应用内全局（焦点在渐晰时） | —                                          |
+| **L1.5** | 应用内全局（焦点在标月时） | —                                          |
 | **L2**   | 编辑器快捷键        | 文字编辑/光标移动 — 仅在编辑状态                         |
 | **L3**   | 应用焦点快捷键       | Cmd+O/S/N/W/=//\\ — 焦点在应用时                 |
 | **L4**   | 面板/模式快捷键      | Cmd+1/2/3/4、Cmd+Shift+E/A/T — 不冲突          |
@@ -254,7 +254,7 @@ Phase P2              → 空间导航模式+知识网络+成长系统+移动端
 | 双击文件 | 文件关联（R） | 打开 |
 | Cmd+[/Cmd+] | 后退/前进 | 历史栈导航 |
 
-**内置示例文件**:释放到 `~/documents/clairis/`,仅首次启动或目录清空后重新释放。
+**内置示例文件**:释放到 `~/documents/biaoyue/`,仅首次启动或目录清空后重新释放。
 
 ### 4.2 统一文件面板（Cmd+P）— 上下文浏览器
 
@@ -388,28 +388,28 @@ T0 (0ms) 启动信号
 |---------|---------|------|---------|---------|
 | 文档内容 | 100% 本地读写 | ❌ | 用户保存路径 | 完全 |
 | 自动保存 | 本地原子写入 | ❌ | 用户保存路径 | 关闭 |
-| 应用配置 | zustand + Tauri Store | ❌ | `~/.config/clairis/config.json` | 完全 |
-| 示例文件 | 首次释放 | ❌ | `~/documents/clairis/` | 删除 |
+| 应用配置 | zustand + Tauri Store | ❌ | `~/.config/biaoyue/config.json` | 完全 |
+| 示例文件 | 首次释放 | ❌ | `~/documents/biaoyue/` | 删除 |
 | **AI 对话** | 默认本地 Ollama | ❌ | 会话历史本地 | 可切换云端 |
 | AI 对话（云端） | OpenAI API | ✅ 用户发送内容 | OpenAI 服务器 | 每次状态栏提示 |
 | 翻译 | 默认本地 Ollama | ❌ | 本地缓存 | — |
-| 灵感记录 | 本地 Markdown | ❌ | `~/documents/clairis/inspiration/` | 完全 |
+| 灵感记录 | 本地 Markdown | ❌ | `~/documents/biaoyue/inspiration/` | 完全 |
 | 灵感同步（P2） | E2E 加密上传 | ✅ 加密态 | 用户指定云服务 | 用户持有密钥 |
-| 语义索引 | 本地向量计算 | ❌ | 内存+`~/.config/clairis/index/` | 重置 |
+| 语义索引 | 本地向量计算 | ❌ | 内存+`~/.config/biaoyue/index/` | 重置 |
 | 使用统计 | **不上传** | ❌ | 本地聚合（见 §7.2） | 重置 |
 
 ### 7.2 双目录职责表
 
 | 目录 | 用途 | 内容 |
 |------|------|------|
-| `~/.config/clairis/` | 应用持久化配置（macOS 规范） | config.json、recent-files.json、search-index/ |
-| `~/documents/clairis/` | 用户可见的数据文件 | 示例文件、灵感文件夹、用户自定义模板 |
+| `~/.config/biaoyue/` | 应用持久化配置（macOS 规范） | config.json、recent-files.json、search-index/ |
+| `~/documents/biaoyue/` | 用户可见的数据文件 | 示例文件、灵感文件夹、用户自定义模板 |
 
 ### 7.3 元数据收集声明
 
 > 「不收集元数据」指的是:不上传分析所需的任何使用数据
 >
-> 灵感文件中的 YAML frontmatter（tags、source、related_docs）是用户主动创建、本地存储、不上传的手段,属于 **用户自管理的数据结构**,并非「渐晰系统为分析目的收集的元数据」。
+> 灵感文件中的 YAML frontmatter（tags、source、related_docs）是用户主动创建、本地存储、不上传的手段,属于 **用户自管理的数据结构**,并非「标月系统为分析目的收集的元数据」。
 
 ### 7.4 云端功能提示规范
 
@@ -425,7 +425,7 @@ T0 (0ms) 启动信号
 |------|---------|
 | 本地聚合结果是否给用户看? | 是（读写统计在状态栏展示）;仅聚合不暴露原始操作记录 |
 | 重装系统后统计是否丢失? | 是（跟随应用卸载/系统重装丢失） |
-| 是否明文暴露给其他 App? | 统计存储于 `~/.config/clairis/stats.json`,文件权限 600（当前用户读写）,不可被其他 App 读取 |
+| 是否明文暴露给其他 App? | 统计存储于 `~/.config/biaoyue/stats.json`,文件权限 600（当前用户读写）,不可被其他 App 读取 |
 
 ---
 
@@ -443,7 +443,7 @@ T0 (0ms) 启动信号
 
 ### 8.2 R 阶段方案
 
-- Tauri 自定义协议 `tauri://clairis.local/<path>` 映射到用户文档同目录
+- Tauri 自定义协议 `tauri://biaoyue.local/<path>` 映射到用户文档同目录
 - 白名单放宽:`script-src 'none'`（脚本仍禁止）、`style-src 'self' https://cdn.jsdelivr.net`、`font-src 'self' https://fonts.gstatic.com`
 
 ### 8.3 M 阶段 CSP 定义
@@ -505,7 +505,7 @@ base-uri 'none';
 
 | 决策 | 选择 |
 |------|------|
-| 产品名称 | 渐晰 |
+| 产品名称 | 标月 |
 | 文件面板（R）、大纲（Hover+Pin P1）、AI（Cmd+Shift+A P1）、翻译（Cmd+Shift+T P1）、灵感（Cmd+Shift+. 系统级 R） |
 | 主画布四模式 | 文档/灵感/磁场/空间导航 |
 | 视觉引擎 | CanvasFrame 注册制 |
@@ -635,7 +635,7 @@ Cmd+P → nav.openPanel()
 
 ---
 
-> 本文档为渐晰产品**唯一需求来源**。
+> 本文档为标月产品**唯一需求来源**。
 > v2.4:Store 架构收敛 + 导航面板合并 + Desk→空间导航 + Omni→统一文件面板。
 > v2.3:吸纳 FanBox 5 项 — 未保存守卫/并发覆盖保护/双层搜索(mdfind+grep+fuzzy)/媒体预览(原生HTML)/强色文件图标。保留三套皮肤切换(P2)。img缩放+HTML加载优化待后续专项。
 > v2.2 修正:pi 对抗审查后修正 20 项（快捷键冲突/隐私双目录/工具栏规格/M 阶段 HTML 方案/M 阶段 CSP/Intel TTI buffer/V3V4 清除/健康留存统计安全/收入目标搁置）。

@@ -1,0 +1,11 @@
+$ ls -la ~/Library/Application Support/dev.biaoyue.app/
+total 104
+drwxr-xr-x@   3 mason  staff     96 11月  1 23:06 .
+drwx------+ 244 mason  staff   7808 11月  1 23:06 ..
+-rw-r--r--@   1 mason  staff  52796 11月  1 23:06 app_config.json
+$ shasum -a 256 <legacy> <new>
+6bce184ba171a560b404304d5ee008c5f1ed34ff310cf89fa1d6eb9062ba60bf  /Users/mason/Library/Application Support/com.clairis.app/app_config.json
+0427a13b9bb0d53bace4e7ea9582b2f639b5c387f1db5bcba6747c4c4e545025  /Users/mason/Library/Application Support/dev.biaoyue.app/app_config.json
+$ diff <(jq -S . legacy) <(jq -S . new); echo EXIT=$?
+EXIT=0
+# 语义一致（排序后 diff 为空）；旧目录 sha256 与迁移前一致，未被修改

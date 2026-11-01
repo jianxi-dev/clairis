@@ -40,7 +40,7 @@ export default function HtmlPreview({
 <style>html { font-size: ${fontSize}px; }</style>
 </head>
 <body>
-<!-- Preview rendered by Clairis — paths rewritten for local asset loading -->
+<!-- Preview rendered by Biaoyue — paths rewritten for local asset loading -->
 ${processed}
 </body></html>`;
   }, [content, filePath, fontSize]);

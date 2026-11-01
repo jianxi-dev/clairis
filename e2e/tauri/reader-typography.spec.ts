@@ -42,13 +42,13 @@ async function openFile(
     const w = window as unknown as Record<string, unknown>;
     (
       w as {
-        __clairis_openFile__?: (
+        __biaoyue_openFile__?: (
           path: string,
           content: string,
           title: string,
         ) => void;
       }
-    ).__clairis_openFile__?.("/Users/test/排版.md", c, "排版.md");
+    ).__biaoyue_openFile__?.("/Users/test/排版.md", c, "排版.md");
   }, content);
   await page.waitForTimeout(400);
 }

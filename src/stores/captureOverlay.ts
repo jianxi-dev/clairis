@@ -16,6 +16,22 @@ function nextEntryId(): string {
 const UNDO_MS = 5000;
 let _fontSaveTimer: ReturnType<typeof setTimeout> | null = null;
 
+const CAPTURE_FALLBACK_KEY = "biaoyue_capture_fallback";
+const LEGACY_CAPTURE_FALLBACK_KEY = "clairis_capture_fallback";
+
+export function migrateLegacyCaptureFallback(): void {
+  try {
+    if (localStorage.getItem(CAPTURE_FALLBACK_KEY) !== null) return;
+    const legacy = localStorage.getItem(LEGACY_CAPTURE_FALLBACK_KEY);
+    if (legacy === null) return;
+    localStorage.setItem(CAPTURE_FALLBACK_KEY, legacy);
+  } catch {
+    // localStorage 不可用（隐私模式 / 配额）——忽略，继续使用内存态
+  }
+}
+
+migrateLegacyCaptureFallback();
+
 const IME_PREFIX_MAP: Record<string, CapturePrefix> = {
   ".": ".",
   "。": ".",
@@ -311,13 +327,10 @@ export const useCaptureOverlayStore = create<CaptureOverlayStore>(
           }
         } catch {
           const fallback = JSON.parse(
-            localStorage.getItem("clairis_capture_fallback") || "[]",
+            localStorage.getItem(CAPTURE_FALLBACK_KEY) || "[]",
           );
           fallback.push(...entries);
-          localStorage.setItem(
-            "clairis_capture_fallback",
-            JSON.stringify(fallback),
-          );
+          localStorage.setItem(CAPTURE_FALLBACK_KEY, JSON.stringify(fallback));
         }
       }
 
@@ -463,7 +476,7 @@ export const useCaptureOverlayStore = create<CaptureOverlayStore>(
         set({ history: unique });
       } catch {
         const fallback: InboxEntry[] = JSON.parse(
-          localStorage.getItem("clairis_capture_fallback") || "[]",
+          localStorage.getItem(CAPTURE_FALLBACK_KEY) || "[]",
         );
         set({ history: fallback });
       }
@@ -491,15 +504,12 @@ export const useCaptureOverlayStore = create<CaptureOverlayStore>(
         });
       } catch {
         const fallback: InboxEntry[] = JSON.parse(
-          localStorage.getItem("clairis_capture_fallback") || "[]",
+          localStorage.getItem(CAPTURE_FALLBACK_KEY) || "[]",
         );
         const updated = fallback.map((e) =>
           e.id === editingId ? { ...e, content: newContent } : e,
         );
-        localStorage.setItem(
-          "clairis_capture_fallback",
-          JSON.stringify(updated),
-        );
+        localStorage.setItem(CAPTURE_FALLBACK_KEY, JSON.stringify(updated));
       }
       set((s) => ({
         history: s.history.map((e) =>

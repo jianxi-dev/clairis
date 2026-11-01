@@ -6,7 +6,7 @@ last_updated: 2026-08-30
 source_of_truth: canonical
 ---
 
-# 架构现状总览（Clairis / 渐晰）
+# 架构现状总览（Biaoyue / 标月）
 
 > 本文只描述**与当前代码一致**的架构现状，是架构主题的当前权威文档。
 > 「为什么这么决定」属于决策历史，见 [`decisions/`](./decisions/README.md) 下的 ADR；本文不复述论证。
@@ -14,7 +14,7 @@ source_of_truth: canonical
 
 ## 一、总体形态
 
-Clairis 是 Tauri 2 桌面应用：Rust 后端（`src-tauri/`）提供文件系统、配置、翻译等命令，前端 Webview 用 React 18 + TypeScript（`src/`）渲染，编辑器为 CodeMirror 6。
+Biaoyue 是 Tauri 2 桌面应用：Rust 后端（`src-tauri/`）提供文件系统、配置、翻译等命令，前端 Webview 用 React 18 + TypeScript（`src/`）渲染，编辑器为 CodeMirror 6。
 
 - Tauri 命令注册入口：`src-tauri/src/lib.rs`（`tauri::generate_handler!`）。
 - 前端入口：`src/main.tsx`、`src/App.tsx`。

@@ -1,12 +1,12 @@
 ---
-title: "渐晰主界面 Shell 设计 — 定稿"
+title: "标月主界面 Shell 设计 — 定稿"
 type: design
 status: accepted
 last_updated: 2026-08-01
 source_of_truth: supporting
 ---
 
-# 渐晰主界面 Shell 设计 — 定稿
+# 标月主界面 Shell 设计 — 定稿
 
 > R 阶段 | Tauri + React + CM6 | 超越 Xcode  
 > 综合 Codex 评审 + 印哥 6 大问题修订

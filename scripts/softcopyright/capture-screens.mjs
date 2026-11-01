@@ -175,10 +175,10 @@ async function runScene(context, config, scene, screenshotsDir, date) {
     if (action.type === "openFile") {
       const ok = await page.evaluate((a) => {
         const w = window;
-        if (typeof w.__clairis_openFile__ !== "function") return false;
-        return w.__clairis_openFile__(a.path, a.content, a.title);
+        if (typeof w.__biaoyue_openFile__ !== "function") return false;
+        return w.__biaoyue_openFile__(a.path, a.content, a.title);
       }, action);
-      if (!ok) throw new Error("openFile 桥不可用（__clairis_openFile__ 未注入或返回 false）");
+      if (!ok) throw new Error("openFile 桥不可用（__biaoyue_openFile__ 未注入或返回 false）");
       await page.waitForTimeout(400);
     }
 

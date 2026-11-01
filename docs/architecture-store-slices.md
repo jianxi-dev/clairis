@@ -1,4 +1,4 @@
-# 渐晰架构收敛 — Store Slice 最终方案
+# 标月架构收敛 — Store Slice 最终方案
 
 > 状态: 已定稿
 > 来源: Codex + Ponytail 5 轮对抗审查

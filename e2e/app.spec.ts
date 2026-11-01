@@ -3,10 +3,14 @@ import { test, expect } from "@playwright/test";
 const APP_URL = "http://localhost:1420";
 const MOD = process.platform === "darwin" ? "Meta" : "Control";
 
-test.describe("Clairis E2E", () => {
+test.describe("Biaoyue E2E", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto(APP_URL, { waitUntil: "networkidle" });
     await page.waitForSelector("header", { timeout: 10000 });
+  });
+
+  test("页面标题显示新品牌名", async ({ page }) => {
+    await expect(page).toHaveTitle("标月 Biaoyue");
   });
 
   test("1. left sidebar visible with content", async ({ page }) => {
@@ -117,7 +121,7 @@ test.describe("Clairis E2E", () => {
     // Open two tabs via the exposed store bridge (web mode has no real fs)
     await page.evaluate(() => {
       const store = (window as unknown as Record<string, any>)
-        .__clairis_store__;
+        .__biaoyue_store__;
       store.getState().openFile("/virtual/a.md", "# A\n\ntab a content");
       store.getState().openFile("/virtual/b.md", "# B\n\ntab b content");
     });

@@ -2,11 +2,11 @@
 
 ## 项目
 
-Clairis（渐晰）— Tauri 2 + React 18 + TypeScript 桌面 Markdown 阅读/编辑器。前端 Vite + CodeMirror 6 + Zustand，Rust 后端在 `src-tauri/`。文档入口见 `docs/README.md`，架构现状见 `docs/architecture/overview.md`（中文）。旧名 Folio/MDWRT/Jianming（渐明）仍出现在脚本注释和文档中，是同一项目。
+Biaoyue（标月）— Tauri 2 + React 18 + TypeScript 桌面 Markdown 阅读/编辑器。前端 Vite + CodeMirror 6 + Zustand，Rust 后端在 `src-tauri/`。文档入口见 `docs/README.md`，架构现状见 `docs/architecture/overview.md`（中文）。旧名 Folio/MDWRT/Jianming（渐明）仍出现在脚本注释和文档中，是同一项目。
 
 ## 语言约定（中文优先）
 
-Clairis 面向中文用户，维护者母语为中文。以下为**硬约定**，不是建议：
+Biaoyue 面向中文用户，维护者母语为中文。以下为**硬约定**，不是建议：
 
 - **反馈与协作**：用户反馈、issue、PR 描述、commit message、评审意见默认中文。
 - **文档**：设计文档、需求文档、架构文档、CHANGELOG 用中文 + 保留 markdown 格式。
@@ -56,7 +56,7 @@ Clairis 面向中文用户，维护者母语为中文。以下为**硬约定**�
 - 两套配置：
   - `npx playwright test` — `e2e/*.spec.ts`，浏览器层 UI 测试。
   - `npx playwright test --config=playwright.tauri.config.ts` — `e2e/tauri/`，通过 `addInitScript` 注入 `e2e/mocks/tauri-mock.js` 模拟 Tauri IPC。
-- mock 桥：app 暴露 `window.__clairis_store__`（Zustand store），mock 提供 `__clairis_openFile__(path, content, title)`。新 e2e 用这两个桥驱动，不依赖真实文件系统。
+- mock 桥：app 暴露 `window.__biaoyue_store__`（Zustand store），mock 提供 `__biaoyue_openFile__(path, content, title)`。新 e2e 用这两个桥驱动，不依赖真实文件系统。
 - CI 不跑 E2E（只跑 tsc + `vitest --coverage` + css-manifest-check，macos-latest）。coverage 有阈值（lines/statements 30、branches/functions 20），删测试或不覆盖新代码会挂 CI。
 
 ## 仓库特有约束

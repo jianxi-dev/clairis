@@ -1,6 +1,6 @@
 # GFM Markdown 示例
 
-> 这篇文档展示 GitHub Flavored Markdown（GFM）的完整语法。你可以用它测试渐晰的渲染效果。
+> 这篇文档展示 GitHub Flavored Markdown（GFM）的完整语法。你可以用它测试标月的渲染效果。
 
 ---
 
@@ -48,9 +48,9 @@
 
 ## 链接和图片
 
-[渐晰官网](https://clairis.dev)
+[标月官网](https://biaoyue.dev)
 
-![渐晰 Logo](https://clairis.dev/logo.png)
+![标月 Logo](https://biaoyue.dev/logo.png)
 
 ---
 
@@ -74,7 +74,7 @@ function greet(name: string): string {
   return `Hello, ${name}!`;
 }
 
-console.log(greet("Clairis"));
+console.log(greet("Biaoyue"));
 ```
 
 ```html

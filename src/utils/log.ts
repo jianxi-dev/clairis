@@ -1,5 +1,5 @@
 /**
- * Unified logger for Clairis.
+ * Unified logger for Biaoyue.
  * In Tauri: logs to Rust tracing backend (via invoke or console).
  * In browser: logs to console with timestamp and level prefix.
  *
@@ -102,5 +102,5 @@ export const log = {
 
 // Expose for console debugging
 if (typeof window !== "undefined") {
-  (window as unknown as Record<string, unknown>).__clairis_log__ = log;
+  (window as unknown as Record<string, unknown>).__biaoyue_log__ = log;
 }

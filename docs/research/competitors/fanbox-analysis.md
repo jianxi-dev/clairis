@@ -1,12 +1,12 @@
 ---
-title: "FanBox 技术解析 & Clairis 媒体支持参考"
+title: "FanBox 技术解析 & Biaoyue 媒体支持参考"
 type: research
 source_of_truth: historical
 status: draft
 last_updated: 2026-08-01
 ---
 
-# FanBox 技术解析 & Clairis 媒体支持参考
+# FanBox 技术解析 & Biaoyue 媒体支持参考
 
 > 源: /Users/mason/Downloads/fanbox-2.6.1，2.6.1 版本
 > 日期: 2026-07-09
@@ -44,12 +44,12 @@ await fh.writeFile(content, 'utf8');
 await fh.sync();
 await fsp.rename(tmp, file);
 ```
-→ Clairis 做笔记/知识库存储时直接抄。
+→ Biaoyue 做笔记/知识库存储时直接抄。
 
 ### 2.2 双层搜索 (mdfind + grep)
 - mdfind(Spotlight): 属性查询 `kMDItemTextContent == "*关键词*"cd`，毫秒级返回
 - grep fallback: 遍历+按mtime排序+行级命中预览，限时 3.5s
-- Clairis 知识库检索可免费用，比手搓 SQLite FTS 省事
+- Biaoyue 知识库检索可免费用，比手搓 SQLite FTS 省事
 
 ### 2.3 模糊打分算法
 - 子序列匹配 + 连续命中加分 + 词首加分 + 靠前加分 + 近期修改加权
@@ -85,7 +85,7 @@ await fsp.rename(tmp, file);
 
 ---
 
-## 3. Clairis 媒体预览方案
+## 3. Biaoyue 媒体预览方案
 
 ### 3.1 实现代码
 ```js
@@ -120,7 +120,7 @@ function renderPreview(file) {
 
 ---
 
-## 4. 可借鉴优先级 (for Clairis)
+## 4. 可借鉴优先级 (for Biaoyue)
 
 | 优先级 | 功能 | 成本 |
 |---|---|---|
@@ -142,4 +142,4 @@ function renderPreview(file) {
 - 单文件 476 行，Tailwind CDN + Google Fonts + 内联 SVG
 - 信息密度结构: Hero → 是什么 → 里面有什么 → 能做什么 → 怎么用 → 可信度 → 注意事项 → 未来
 - 结尾附"精简版"section（一页速查）+ 触发词速查卡
-- Clairis 落地页/帮助页可参考此结构
+- Biaoyue 落地页/帮助页可参考此结构

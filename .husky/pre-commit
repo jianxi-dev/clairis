@@ -1,4 +1,4 @@
-# Folio pre-commit validation
+# Biaoyue pre-commit validation
 # 1. Format + lint staged files
 npx lint-staged
 # 2. CSS manifest check (fast)

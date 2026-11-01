@@ -25,7 +25,7 @@ test("HTML 预览：点击 iframe 内 select 后 2.5s 交互窗口内焦点不�
   await page.evaluate(
     ([p, c]) => {
       const w = window as unknown as Record<string, unknown>;
-      const store = (w as { __clairis_store__?: unknown }).__clairis_store__;
+      const store = (w as { __biaoyue_store__?: unknown }).__biaoyue_store__;
       if (!store) throw new Error("store bridge missing");
       (
         store as {

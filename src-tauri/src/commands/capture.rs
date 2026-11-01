@@ -462,17 +462,27 @@ pub struct CaptureConfig {
     pub panel_ratio: Option<f64>,
 }
 
+fn migrate_legacy_capture_config(legacy: &std::path::Path, target: &std::path::Path) {
+    if target.exists() || legacy == target || !legacy.exists() {
+        return;
+    }
+    let _ = fs::copy(legacy, target);
+}
+
 fn config_path() -> Result<std::path::PathBuf, AppError> {
     let home = dirs::home_dir().ok_or(AppError::Io {
         context: "Cannot determine home dir".into(),
         source: std::io::Error::new(std::io::ErrorKind::Other, "no home"),
     })?;
-    let dir = home.join(".clairis");
+    let dir = home.join(".biaoyue");
     fs::create_dir_all(&dir).map_err(|e| AppError::Io {
-        context: "create .clairis dir".into(),
+        context: "create .biaoyue dir".into(),
         source: e,
     })?;
-    Ok(dir.join("config.toml"))
+    let path = dir.join("config.toml");
+    let legacy = home.join(".clairis").join("config.toml");
+    migrate_legacy_capture_config(&legacy, &path);
+    Ok(path)
 }
 
 #[tauri::command]
@@ -678,7 +688,7 @@ mod tests {
 
     fn setup_inbox_dir(label: &str) -> std::path::PathBuf {
         let dir = std::env::temp_dir().join(format!(
-            "clairis_test_inbox_{}_{}",
+            "biaoyue_test_inbox_{}_{}",
             label,
             std::process::id()
         ));
@@ -994,5 +1004,40 @@ mod tests {
         assert_eq!(loaded[0].prefix, "?");
 
         let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn migrate_legacy_capture_config_copies_once_without_overwrite() {
+        let nanos = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let root = std::env::temp_dir().join(format!(
+            "biaoyue_test_capture_migrate_{}_{}",
+            std::process::id(),
+            nanos
+        ));
+        let legacy = root.join(".clairis").join("config.toml");
+        let target = root.join(".biaoyue").join("config.toml");
+        fs::create_dir_all(legacy.parent().unwrap()).unwrap();
+        fs::create_dir_all(target.parent().unwrap()).unwrap();
+        fs::write(&legacy, "theme = \"dark\"\n").unwrap();
+
+        migrate_legacy_capture_config(&legacy, &target);
+
+        assert!(target.exists());
+        assert!(fs::read_to_string(&target).unwrap().contains("dark"));
+        assert!(legacy.exists());
+
+        fs::write(&target, "theme = \"warm\"\n").unwrap();
+        fs::write(&legacy, "theme = \"cold\"\n").unwrap();
+
+        migrate_legacy_capture_config(&legacy, &target);
+
+        let kept = fs::read_to_string(&target).unwrap();
+        assert!(kept.contains("warm"));
+        assert!(!kept.contains("cold"));
+
+        let _ = fs::remove_dir_all(&root);
     }
 }

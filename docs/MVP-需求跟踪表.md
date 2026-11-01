@@ -8,7 +8,7 @@ superseded_by: delivery/requirements-status.md
 redirect: delivery/requirements-status.md
 ---
 
-# 渐晰 MVP — 需求跟踪表
+# 标月 MVP — 需求跟踪表
 
 > ⚠️ **已废弃（2026-09-02）**：本表被 [需求实现状态总览](./delivery/requirements-status.md) 取代，仅作历史对照。需求跟踪的活入口为 `openspec/specs/` + `openspec/changes/`，状态一览见上表。
 
@@ -86,7 +86,7 @@ redirect: delivery/requirements-status.md
 | D-12 | X 按钮保存关闭 | ✅ 已明确 | R | 已完成 | 有内容先保存再关闭，无内容直接关闭 | v5.4 新增，SPEC §三.5 |
 | D-13 | Escape 无内容直接关闭 | ✅ 已明确 | R | 已完成 | 不再 minimize 到胶囊，直接关闭 | v5.4 新增，SPEC §三.7 |
 | D-14 | Capsule tooltip 移除 | ✅ 已明确 | R | 已完成 | hover 无视觉反馈，只保留单击 popover + 双击恢复 | v5.4 新增，SPEC §三.8 |
-| D-15 | 一次批量混合 prefix 录入 | ✅ 已明确 | R | 已完成 | 多行混合 prefix 一次批量提交；无前缀续行归并；空行硬分隔并清空 prefix；批内 capturedAt 严格互异（第 i 条 `Date.now() + i`）；失败降级链 `append_inbox_batch` → 逐条 `append_inbox` → localStorage `clairis_capture_fallback`；空切分结果不写入 | v5.5 新增，SPEC §三.12 |
+| D-15 | 一次批量混合 prefix 录入 | ✅ 已明确 | R | 已完成 | 多行混合 prefix 一次批量提交；无前缀续行归并；空行硬分隔并清空 prefix；批内 capturedAt 严格互异（第 i 条 `Date.now() + i`）；失败降级链 `append_inbox_batch` → 逐条 `append_inbox` → localStorage `biaoyue_capture_fallback`；空切分结果不写入 | v5.5 新增，SPEC §三.12 |
 
 ---
 
@@ -114,7 +114,7 @@ redirect: delivery/requirements-status.md
 | 编号 | 功能点 | 需求明确度 | 阶段 | 开发状态 | 说明 | 备注 |
 |------|--------|----------|------|---------|------|------|
 | G-1 | 移除左侧栏逻辑 | ✅ 已明确 | R | 待开发 | 移除 Toolbar 左栏按钮、移除 Cmd+\ 快捷键、leftSidebar 传 null | 设计文档：`openspec/specs/application-shell/spec.md`（设计依据 `docs/design/approved/shell-ui/`） |
-| G-2 | 右侧边栏默认隐藏+空占位 | ✅ 已明确 | R | 待开发 | Clairis 无边栏哲学 — **无右侧边栏**。收回原设计，导航由 Cmd+P 承担 | 设计文档：`openspec/specs/application-shell/spec.md`（设计依据 `docs/design/approved/shell-ui/`） |
+| G-2 | 右侧边栏默认隐藏+空占位 | ✅ 已明确 | R | 待开发 | Biaoyue 无边栏哲学 — **无右侧边栏**。收回原设计，导航由 Cmd+P 承担 | 设计文档：`openspec/specs/application-shell/spec.md`（设计依据 `docs/design/approved/shell-ui/`） |
 | G-3 | 工具栏 hover 淡入 | ✅ 已明确 | R | 待开发 | Toolbar 被删除 — 合并进 Chrome Bar（单一顶栏 40px） | 设计文档：`openspec/specs/application-shell/spec.md`（设计依据 `docs/design/approved/shell-ui/`） |
 | G-5 | 正文分栏（可选） | ✅ 已明确 | R | 待开发 | Cmd+Option+→/↓ 分栏，拖拽页签到边缘生成，分隔线 hover 暗示，独立 TabBar | 设计文档：`openspec/specs/application-shell/spec.md`（设计依据 `docs/design/approved/shell-ui/`） |
 
@@ -156,7 +156,7 @@ redirect: delivery/requirements-status.md
 |------|--------|---------------|
 | M-2 | L2 编辑器 bug 修复 | ✅ 已明确 | E-2 decorations 已覆盖核心语法，IME/Cmd+Click 留 P1 |
 | M-3 | 移除左侧栏逻辑 | ✅ 已明确 | G-1 设计已定：Toolbar 移除左栏按钮，App 移除 Cmd+\ 快捷键 |
-| M-4 | 右侧边栏默认隐藏 | ✅ 已明确 | Clairis 无边栏 — 导航由 Cmd+P 承担 |
+| M-4 | 右侧边栏默认隐藏 | ✅ 已明确 | Biaoyue 无边栏 — 导航由 Cmd+P 承担 |
 | M-5 | 工具栏 hover 淡入 | ✅ 已明确 | Chrome Bar 常驻显示（不再需要 hover 触发），40px 单一顶栏 |
 | M-6 | i18n 中文 | 确认所有菜单位置是否已覆盖 |
 | M-7 | 软著截图+说明书 | B-1/B-4 设计已完成，待 R 阶段开发完成后截图 |
@@ -171,7 +171,7 @@ redirect: delivery/requirements-status.md
 
 ---
 
-> 本文档为渐晰开发**唯一跟踪依据**。  
+> 本文档为标月开发**唯一跟踪依据**。  
 > 任何 ⚠️/❌ 标记的功能点，开发前必须先回复明确需求并更新此表。  
 > 功能进度变化格式：待开发 → 开发中 → 待测试 → 已完成。  
 > 任何变更须同步更新 `openspec/specs/` 功能规格，并在 `docs/delivery/roadmap.md` 反映阶段归属（原 `docs/CORE-REQUIREMENTS-clairis.md` 已被取代，不再维护）。

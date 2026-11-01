@@ -5,6 +5,12 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循
 [语义化版本（Semantic Versioning）](https://semver.org/lang/zh-CN/)。
 
+## [Unreleased]
+
+### Changed（变更）
+
+- **品牌更名**：Clairis（渐晰）更名为标月（Biaoyue）；应用标识、bundle ID（`dev.biaoyue.app`）、配置目录、调试桥、文档与软著材料同步更新。首次以新标识启动时会迁移旧配置，旧目录保留可回滚。
+
 ## [0.2.0] - 2026-08-30
 
 ### Added（新增）

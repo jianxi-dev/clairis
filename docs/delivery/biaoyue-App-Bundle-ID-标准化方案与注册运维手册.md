@@ -1,22 +1,22 @@
 ---
-title: "渐晰（Clairis）App Bundle ID 标准化方案与注册运维手册"
+title: "标月（Biaoyue）App Bundle ID 标准化方案与注册运维手册"
 type: delivery
 status: draft
-last_updated: 2026-08-01
+last_updated: 2026-11-01
 source_of_truth: supporting
 ---
 
-# 渐晰（Clairis）App Bundle ID 标准化方案与注册运维手册
+# 标月（Biaoyue）App Bundle ID 标准化方案与注册运维手册
 
 ## 1\. 产品基础信息
 
 |项目|内容|
 |---|---|
-|中文产品名|渐晰|
-|英文品牌标识|Clairis|
-|出海主域名（自有）|clairis\.dev|
-|中文产品域名（自有）|clairis\.me|
-|App入口域名（自有）|clairis\.app|
+|中文产品名|标月|
+|英文品牌标识|Biaoyue|
+|出海主域名（自有）|biaoyue\.dev|
+|中文产品域名（自有）|biaoyue\.me|
+|App入口域名（自有）|biaoyue\.app|
 |产品运营节奏|先深耕国内市场，后期全球出海|
 
 ## 2\. 专属 Bundle ID 最终方案（长期最优）
@@ -31,13 +31,13 @@ Bundle ID为后台底层唯一标识，**用户端完全不可见**，不影响�
 
 严格遵循苹果反向域名规范：全小写、无空格、无特殊符号、全局唯一
 
-- **线上正式包（国内\+出海通用主ID）**：`com.clairis.app`
+- **线上正式包（国内\+出海通用主ID）**：`dev.biaoyue.app`
 
-- **TestFlight 内测包**：`com.clairis.app.beta`
+- **TestFlight 内测包**：`dev.biaoyue.app.beta`
 
-- **本地开发调试包**：`com.clairis.app.dev`
+- **本地开发调试包**：`dev.biaoyue.app.dev`
 
-- **App 小组件扩展**：`com.clairis.app.widget`
+- **App 小组件扩展**：`dev.biaoyue.app.widget`
 
 ### 2\.3 方案核心优势
 
@@ -45,9 +45,9 @@ Bundle ID为后台底层唯一标识，**用户端完全不可见**，不影响�
 
 2. **环境完全隔离**：正式/测试/开发包数据、推送、iCloud、内购完全独立，互不污染
 
-3. **多域名兼容**：可同时绑定 `clairis.dev`、`clairis.me`、`clairis.app` 三套域名做通用链接跳转
+3. **多域名兼容**：可同时绑定 `biaoyue.dev`、`biaoyue.me`、`biaoyue.app` 三套域名做通用链接跳转
 
-4. **跨端统一**：Android包名可同步为 `com.clairis.app`，双端品牌、配置完全对齐
+4. **跨端统一**：Android包名可同步为 `dev.biaoyue.app`，双端品牌、配置完全对齐
 
 5. **终身无需更换**：上架后无需重构App、迁移用户资产，节省后期迭代成本
 
@@ -108,11 +108,11 @@ Bundle ID 是苹果生态App的**全局唯一身份证**，并非单纯标识，
 
 4. **填写核心信息（关键）**
 
-    - Description（备注）：`Clairis渐晰-线上正式主包`（自定义，仅内部识别）
+    - Description（备注）：`标月-线上正式主包`（自定义，仅内部识别）
 
     - 选择【Explicit App ID（精准ID）】（必选，通配符无法开通推送/内购等能力）
 
-    - Bundle ID 输入：`com.clairis.app`（严格全小写，无任何符号）
+    - Bundle ID 输入：`dev.biaoyue.app`（严格全小写，无任何符号）
 
 5. **勾选必备能力**（可后期补充，建议提前勾选）
 
@@ -134,7 +134,7 @@ Bundle ID 是苹果生态App的**全局唯一身份证**，并非单纯标识，
 
 1. **Xcode 同步配置**：Target → Signing \& Capabilities → 粘贴对应环境Bundle ID，保证完全一致
 
-2. **App Store Connect 创建应用**：新建App时，下拉选择已注册的 `com.clairis.app`
+2. **App Store Connect 创建应用**：新建App时，下拉选择已注册的 `dev.biaoyue.app`
 
 3. **生成配套证书**：为该ID创建开发/生产推送证书、各类描述文件
 
@@ -152,7 +152,7 @@ Bundle ID 是苹果生态App的**全局唯一身份证**，并非单纯标识，
 
 ## 6\. 为什么不推荐后期更换Bundle ID
 
-若前期使用 `com.clairis.app`，后期出海更换为海外ID，会产生不可逆损失：
+若前期使用 `dev.biaoyue.app`，后期出海更换为海外ID，会产生不可逆损失：
 
 - App被商店判定为全新应用，原有评分、评论、下载数据、用户资产全部清零
 

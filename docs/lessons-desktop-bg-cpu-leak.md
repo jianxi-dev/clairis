@@ -1,14 +1,14 @@
 ---
-title: 桌面应用后台进程烧 CPU 事故复盘与 Clairis 避坑清单
+title: 桌面应用后台进程烧 CPU 事故复盘与 Biaoyue 避坑清单
 type: guide
 status: accepted
 last_updated: 2026-09-02
 source_of_truth: supporting
 ---
 
-# 桌面应用后台进程烧 CPU 事故复盘与 Clairis 避坑清单
+# 桌面应用后台进程烧 CPU 事故复盘与 Biaoyue 避坑清单
 
-> 一句话结论：**Electron 多渲染进程 + 隔离副本运行 + 渲染进程死循环 = 前台无窗口、后台烧 CPU、机身发烫、用户却"看不到任何程序在跑"。** Clairis 的 Tauri 架构天然免疫了孤儿渲染进程，但 HTML 预览 iframe 允许脚本执行是同类风险，需在开发与分发时主动设防。
+> 一句话结论：**Electron 多渲染进程 + 隔离副本运行 + 渲染进程死循环 = 前台无窗口、后台烧 CPU、机身发烫、用户却"看不到任何程序在跑"。** Biaoyue 的 Tauri 架构天然免疫了孤儿渲染进程，但 HTML 预览 iframe 允许脚本执行是同类风险，需在开发与分发时主动设防。
 
 ---
 
@@ -56,11 +56,11 @@ source_of_truth: supporting
 
 ---
 
-## 三、对照 Clairis：哪些天然免疫，哪些是风险
+## 三、对照 Biaoyue：哪些天然免疫，哪些是风险
 
 ### 3.1 架构天然免疫（Tauri 2 的优势）
 
-| Sunote 的问题 | Clairis 的对应情况 | 判定 |
+| Sunote 的问题 | Biaoyue 的对应情况 | 判定 |
 |---|---|---|
 | Electron 多渲染进程，退出后 Renderer Helper 孤儿化 | Tauri 的 webview 是**系统 WebKit 进程**（`com.apple.WebKit.WebContent`），随应用退出由系统回收 | ✅ 无孤儿渲染进程 |
 | 从 dmg 直接打开 → AppTranslocation 隔离副本 | Tauri 应用资源在 bundle 内，影响比 Electron 小 | ✅ 影响较小（仍有分发注意点，见 4.2） |
@@ -80,7 +80,7 @@ source_of_truth: supporting
 />
 ```
 
-- 用户用 Clairis 打开一个**内含死循环 JS 的本地 HTML 文档**时，WebKit WebContent 进程会持续烧 CPU——与 Sunote 渲染进程 450% 同款问题。
+- 用户用 Biaoyue 打开一个**内含死循环 JS 的本地 HTML 文档**时，WebKit WebContent 进程会持续烧 CPU——与 Sunote 渲染进程 450% 同款问题。
 - srcdoc 回退路径有 `script-src 'none'`，但 **asset 直载路径没有任何 CSP 限制**。
 - 且 `allow-scripts + allow-same-origin` 同时出现是**安全反模式**：等于沙箱失效，iframe 内脚本理论上可访问父文档上下文。
 - 不能简单禁脚本：此前"文档正文不显示"的 bug 正是禁脚本导致，脚本执行是功能需求。
@@ -99,7 +99,7 @@ source_of_truth: supporting
 
 ### 4.1 iframe CPU 看门狗（建议实现，对应风险 ①）
 
-- asset 直载改为「fetch 内容 → 重写路径 → srcdoc 注入 CSP + 看门狗脚本」：脚本仍可执行（保住"正文能显示"），但控制权回到 Clairis。
+- asset 直载改为「fetch 内容 → 重写路径 → srcdoc 注入 CSP + 看门狗脚本」：脚本仍可执行（保住"正文能显示"），但控制权回到 Biaoyue。
 - 看门狗原理：iframe 内 `setInterval` 心跳 → 父窗口检测心跳丢失（主线程卡死）→ reload iframe 并提示"此文档脚本疑似死循环"。
 - 始终避免 `allow-scripts + allow-same-origin` 同开；确需同开时必须有 CSP 与心跳兜底。
 

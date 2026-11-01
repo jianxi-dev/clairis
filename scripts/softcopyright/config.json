@@ -1,6 +1,6 @@
 {
-  "softwareName": "Clairis 渐晰阅读编辑软件",
-  "softwareShortName": "Clairis 渐晰",
+  "softwareName": "标月阅读编辑软件",
+  "softwareShortName": "标月",
   "version": "V1.0",
   "ownerName": "",
   "sourceRoots": ["src", "src-tauri/src"],

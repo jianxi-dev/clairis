@@ -474,14 +474,14 @@ handleCmdEnter: async (): Promise<string | null> => {
     capturedAt: new Date(now + i).toISOString(),
   }));
 
-  // 失败降级链：append_inbox_batch → 逐条 append_inbox → localStorage clairis_capture_fallback
+  // 失败降级链：append_inbox_batch → 逐条 append_inbox → localStorage biaoyue_capture_fallback
   try {
     await invoke('append_inbox_batch', { entries });
   } catch {
     try {
       for (const e of entries) await invoke('append_inbox', { entry: e });
     } catch {
-      localStorage.setItem('clairis_capture_fallback', JSON.stringify(entries));
+      localStorage.setItem('biaoyue_capture_fallback', JSON.stringify(entries));
     }
   }
 
@@ -494,7 +494,7 @@ handleCmdEnter: async (): Promise<string | null> => {
 - `chunkDraft(raw: string): { prefix: CapturePrefix; content: string }[]` — 按行切块：前缀行开启新条目、无前缀续行并入当前条目（`\n` 连接）、空行硬分隔并清空粘性 prefix
 - `handleCmdEnter: () => Promise<string | null>` — 一次提交将切分结果批量写入当日 inbox
 - 批内每条 `capturedAt` 严格互异（第 i 条取 `Date.now() + i`），保证 `load_inbox_by_date` / `edit` / `delete` / `archive` 经 `time_hint` 首个匹配不塌缩到同一实块
-- 失败降级链：`append_inbox_batch` → 逐条 `append_inbox` → localStorage `clairis_capture_fallback`（注意是 `clairis_` 前缀，不是 `clave_`）
+- 失败降级链：`append_inbox_batch` → 逐条 `append_inbox` → localStorage `biaoyue_capture_fallback`（注意是 `biaoyue_` 前缀，不是 `clave_`）
 - 空切分结果（全空 / 全空行）不触发任何写入
 
 ---
@@ -520,7 +520,7 @@ dirs = "5"
 | `archive_entry` | `date: String, entryId: String` → `Result<(), AppError>` | 解析 active 文件 → 找到条目 → append 到 archive → 删除 from active |
 | `load_today_inbox` | `() → Result<Vec<InboxEntry>, AppError>` | 读取今天的 active 文件 → 解析 frontmatter + 内容 |
 | `load_inbox_by_date` | `date: String → Result<Vec<InboxEntry>, AppError>` | 同上，按日期 |
-| `save_config_capture` | `capture_config: CaptureConfig` → `Result<(), AppError>` | 写入 `~/.clairis/config.toml` `[capture]` 段 |
+| `save_config_capture` | `capture_config: CaptureConfig` → `Result<(), AppError>` | 写入 `~/.biaoyue/config.toml` `[capture]` 段 |
 | `load_config_capture` | `() → Result<CaptureConfig, AppError>` | 读取配置，缺失字段返回 None |
 | `set_overlay_pinned` | `pinned: bool` → `Result<(), AppError>` | 调用 `window.set_always_on_top(pinned)` |
 
@@ -626,7 +626,7 @@ async function openOverlay() {
 ## 七、字号持久化 + 窗口配置
 
 ```ts
-// ~/.clairis/config.toml
+// ~/.biaoyue/config.toml
 [capture]
 font_size = 15
 position_x = 80

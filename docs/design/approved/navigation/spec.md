@@ -1,12 +1,12 @@
 ---
-title: "渐晰无侧栏导航 — 最终方案"
+title: "标月无侧栏导航 — 最终方案"
 type: design
 status: accepted
 last_updated: 2026-08-01
 source_of_truth: supporting
 ---
 
-# 渐晰无侧栏导航 — 最终方案
+# 标月无侧栏导航 — 最终方案
 
 > 状态: 已定稿  
 > 来源: Codex / Ponytail / 印哥 三方收敛  

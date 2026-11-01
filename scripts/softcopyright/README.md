@@ -1,6 +1,6 @@
 # 软著资料准备工具集（scripts/softcopyright）
 
-为 Clairis（渐晰）申请软件著作权登记准备申请材料的工具目录。定位：**从 M 级开发期就开始的资料积累体系**，申请时机为 Phase R（V1.0 稳定版发布）之后，详见 [`docs/delivery/roadmap.md`](../../docs/delivery/roadmap.md) 与资料台账 [`docs/delivery/softcopyright/ledger.md`](../../docs/delivery/softcopyright/ledger.md)。
+为 Biaoyue（标月）申请软件著作权登记准备申请材料的工具目录。定位：**从 M 级开发期就开始的资料积累体系**，申请时机为 Phase R（V1.0 稳定版发布）之后，详见 [`docs/delivery/roadmap.md`](../../docs/delivery/roadmap.md) 与资料台账 [`docs/delivery/softcopyright/ledger.md`](../../docs/delivery/softcopyright/ledger.md)。
 
 > 本目录仅含工具骨架与配置（任务 1）。统计、截图、PDF 生成逻辑由后续任务补充。
 

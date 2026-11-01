@@ -1,12 +1,12 @@
 ---
-title: "渐晰 — 大纲 + Quick Capture v2.3 设计"
+title: "标月 — 大纲 + Quick Capture v2.3 设计"
 type: design
 status: accepted
 last_updated: 2026-08-01
 source_of_truth: supporting
 ---
 
-# 渐晰 — 大纲 + Quick Capture v2.3 设计
+# 标月 — 大纲 + Quick Capture v2.3 设计
 
 > 状态: v2.3 — Enter reset + History collapse + main-window review
 > 来源: 印哥反馈 v2.3 + Ponytail/Codex v1→v2→v2.2→v2.3
@@ -41,7 +41,7 @@ source_of_truth: supporting
 
 ```
 Cmd+Shift+.（系统级全局）:
-  if (已聚焦渐晰) → overlay 弹出 + auto-focus 输入框
+  if (已聚焦标月) → overlay 弹出 + auto-focus 输入框
   if (其他 App)   → Dock bounce + overlay show（不抢焦点）
                     onFocusChanged → auto-focus 输入框
 ```
@@ -161,7 +161,7 @@ Cmd+R (应用焦点内):
 │─────────────│──────────────────────────────│
 │ + 产品定义  │                              │
 │   + 一句话  │  # 1. 产品定义               │
-│ - 路线图 ←  │  渐晰是一款陪伴人类学习      │
+│ - 路线图 ←  │  标月是一款陪伴人类学习      │
 │   + PM      │  成长的精神伙伴——懂你、...  │
 │ + 性能      │                              │
 │             │  [38 字 · 2 小节 · H2]      │
@@ -206,7 +206,7 @@ Phase 2: 聚焦 Focused Reading
 
 ---
 
-## 三、渐晰主窗口中的查看/操作 (R)
+## 三、标月主窗口中的查看/操作 (R)
 
 ### 3.1 文件面板 `Cmd+P` 接入
 

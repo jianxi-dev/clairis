@@ -2,7 +2,7 @@
   "meta": {
     "purpose": "软著测试截图场景清单（任务 3 产物）。capture-screens.mjs 逐场景驱动真实浏览器渲染并截图存档。",
     "actionContract": {
-      "type": "openFile 表示调用 mock 桥 __clairis_openFile__(path, content, title) 打开示例文档（内容全部为测试示例，不含用户真实数据）；type 为 none 表示无文件动作，仅执行 steps。",
+      "type": "openFile 表示调用 mock 桥 __biaoyue_openFile__(path, content, title) 打开示例文档（内容全部为测试示例，不含用户真实数据）；type 为 none 表示无文件动作，仅执行 steps。",
       "steps": "可选 UI 驱动步骤数组，支持 op：click（role+name 或 text 或 selector，scope 限定容器）、press（keyboard.press）、fill（selector+value）、wait（ms）、expectText（等待文本可见）、expectSelector（等待元素可见）。",
       "status": "ready 表示可真实截图；pending 表示功能未实现/环境不可达，不尝试截图。"
     },
@@ -18,7 +18,7 @@
       "action": {
         "type": "openFile",
         "path": "/Users/test/示例文档.md",
-        "content": "# 示例文档\n\n## 章节标题\n\n这是一段**粗体**与*斜体*正文，含 `行内代码`。\n\n> 引用块示例\n\n- 无序列表项一\n- 无序列表项二\n\n1. 有序列表项一\n2. 有序列表项二\n\n```js\nconsole.log('Clairis 示例');\n```\n\n---\n\n| 列一 | 列二 |\n| --- | --- |\n| A | 1 |\n| B | 2 |\n\n- [ ] 待办事项\n- [x] 已完成事项\n\n[链接文本](https://example.com)",
+        "content": "# 示例文档\n\n## 章节标题\n\n这是一段**粗体**与*斜体*正文，含 `行内代码`。\n\n> 引用块示例\n\n- 无序列表项一\n- 无序列表项二\n\n1. 有序列表项一\n2. 有序列表项二\n\n```js\nconsole.log('Biaoyue 示例');\n```\n\n---\n\n| 列一 | 列二 |\n| --- | --- |\n| A | 1 |\n| B | 2 |\n\n- [ ] 待办事项\n- [x] 已完成事项\n\n[链接文本](https://example.com)",
         "title": "示例文档.md"
       },
       "steps": [
@@ -33,7 +33,7 @@
       "action": {
         "type": "openFile",
         "path": "/Users/test/示例文档.md",
-        "content": "# 示例文档\n\n## 章节标题\n\n这是一段**粗体**与*斜体*正文，含 `行内代码`。\n\n> 引用块示例\n\n- 列表项一\n- 列表项二\n\n```js\nconsole.log('Clairis 示例');\n```",
+        "content": "# 示例文档\n\n## 章节标题\n\n这是一段**粗体**与*斜体*正文，含 `行内代码`。\n\n> 引用块示例\n\n- 列表项一\n- 列表项二\n\n```js\nconsole.log('Biaoyue 示例');\n```",
         "title": "示例文档.md"
       },
       "steps": [
