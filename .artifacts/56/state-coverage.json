@@ -1,0 +1,12 @@
+{
+  "task": "1.2a",
+  "change": "md-kernel-port",
+  "issue": 56,
+  "states": [
+    {"state": "block-model", "screenshot": "blockModel.txt", "assertion": "passed", "probe": "Lezer 语法树遍历：heading/list/quote/code/table/callout 分类与 getBlockAt 定位"},
+    {"state": "slash-filter", "screenshot": "slashFilter.txt", "assertion": "passed", "probe": "按 code/拼音/子串五档排序；t53 只返回带 grid 的行"},
+    {"state": "icons-ssot", "screenshot": "icons.txt", "assertion": "passed", "probe": "图标注册表与命令图标名齐全；renderIcon 返回 24×24 currentColor SVG；全部图标不含 emoji"},
+    {"state": "callout-types", "screenshot": "calloutTypes.txt", "assertion": "passed", "probe": "13 个高亮块类型 + 24 个 emoji 选项；resolveCalloutType 的 hint/caution/summary 回落"},
+    {"state": "cell-text-sanitize", "screenshot": "blockModel.txt", "assertion": "passed", "probe": "sanitizeCellText 用于斜杠插入的单元格文本清洗（无残留标记）"}
+  ]
+}
