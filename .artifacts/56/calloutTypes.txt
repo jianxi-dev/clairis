@@ -1,0 +1,3 @@
+$ npx vitest run src/__tests__/editor/calloutTypes.test.ts
+ Test Files  1 passed (1)
+      Tests  10 passed (10)
