@@ -1,0 +1,5 @@
+$ cargo test save_binary
+test commands::file::tests::save_binary_rejects_invalid_base64 ... ok
+test commands::file::tests::save_binary_decodes_and_writes_atomically ... ok
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 58 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s

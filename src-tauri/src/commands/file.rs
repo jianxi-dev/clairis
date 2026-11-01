@@ -191,6 +191,81 @@ pub async fn save_as_file(app: AppHandle, content: String) -> Result<SaveResult,
     Ok(SaveResult { path: path_str })
 }
 
+/// Write raw bytes to `target` atomically (temp file in the same dir, then rename).
+fn write_bytes_atomic(target: &Path, bytes: &[u8]) -> Result<(), AppError> {
+    if let Some(parent) = target.parent() {
+        if !parent.as_os_str().is_empty() {
+            fs::create_dir_all(parent).map_err(|e| AppError::Io {
+                context: "create parent dir".into(),
+                source: e,
+            })?;
+        }
+    }
+    let dir = target.parent().unwrap_or_else(|| std::path::Path::new("."));
+    let tmp = NamedTempFile::new_in(dir).map_err(|e| AppError::Io {
+        context: "create temp file".into(),
+        source: e,
+    })?;
+    fs::write(&tmp, bytes).map_err(|e| AppError::Io {
+        context: "write temp file".into(),
+        source: e,
+    })?;
+    tmp.persist(target).map_err(|e| AppError::Io {
+        context: "persist temp file".into(),
+        source: e.error,
+    })?;
+    Ok(())
+}
+
+/// Decode base64 and write the bytes atomically. Returns the written byte count.
+fn save_base64_to_path(path: &str, base64: &str) -> Result<usize, AppError> {
+    use base64::Engine as _;
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(base64.trim())
+        .map_err(|e| AppError::Validation {
+            context: "save binary".into(),
+            message: format!("base64 解码失败: {e}"),
+        })?;
+    write_bytes_atomic(Path::new(path), &bytes)?;
+    Ok(bytes.len())
+}
+
+/// Open "Save As" dialog (PNG) and write decoded base64 bytes.
+/// Cancel is not an error: returns `None`.
+#[tauri::command]
+pub async fn save_binary_as_file(
+    app: AppHandle,
+    base64: String,
+    default_name: String,
+) -> Result<Option<String>, AppError> {
+    let file = app
+        .dialog()
+        .file()
+        .set_file_name(&default_name)
+        .add_filter("PNG 图片", &["png"])
+        .blocking_save_file();
+
+    let path = match file {
+        Some(p) => p.into_path().map_err(|e| AppError::Validation {
+            context: "save binary".into(),
+            message: e.to_string(),
+        })?,
+        None => return Ok(None),
+    };
+
+    let path_str = path.to_string_lossy().into_owned();
+    let write_path = path_str.clone();
+    let written = tokio::task::spawn_blocking(move || save_base64_to_path(&write_path, &base64))
+        .await
+        .map_err(|e| AppError::Io {
+            context: "save binary task join".into(),
+            source: std::io::Error::other(e.to_string()),
+        })??;
+
+    info!(path = %path_str, bytes = written, "Binary file saved atomically");
+    Ok(Some(path_str))
+}
+
 /// Open a folder picker dialog and return the selected path.
 #[tauri::command]
 pub async fn pick_folder(app: AppHandle) -> Result<String, AppError> {
@@ -240,6 +315,31 @@ mod tests {
                 "case {name}"
             );
         }
+    }
+
+    #[test]
+    fn save_binary_decodes_and_writes_atomically() {
+        let dir = tempfile::tempdir().unwrap();
+        let target = dir.path().join("out.png");
+        let path = target.to_string_lossy().into_owned();
+
+        // "iVBORw0KGgo=" decodes to the PNG signature prefix 89 50 4E 47 0D 0A 1A.
+        let written = save_base64_to_path(&path, "iVBORw0KGgo=").unwrap();
+        assert_eq!(written, 8);
+        assert_eq!(fs::read(&target).unwrap(), b"\x89PNG\r\n\x1a\n");
+
+        // Overwrite is atomic and leaves no temp files behind.
+        save_base64_to_path(&path, "AAECAwQ=").unwrap();
+        assert_eq!(fs::read(&target).unwrap(), b"\x00\x01\x02\x03\x04");
+        assert_eq!(fs::read_dir(dir.path()).unwrap().count(), 1);
+    }
+
+    #[test]
+    fn save_binary_rejects_invalid_base64() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("bad.png").to_string_lossy().into_owned();
+        assert!(save_base64_to_path(&path, "not base64!!").is_err());
+        assert!(!Path::new(&path).exists());
     }
 
     #[test]

@@ -1,0 +1,7 @@
+$ npx playwright test --config=playwright.tauri.config.ts e2e/tauri/export-png.spec.ts
+Running 1 test using 1 worker
+·
+  1 passed (4.5s)
+# 真实 PNG（由页面内 foreignObject+canvas 生成并落盘）
+.artifacts/48/exported.png PNG 2160x1600 2160x1600+0+0 8-bit sRGB 90076B 0.000u 0:00.000
+测试文档 第一节 导出用的正文。 

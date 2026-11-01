@@ -12,6 +12,7 @@ window.__TAURI_INTERNALS__ = {
 // Expose store access for E2E tests
 window.__biaoyue_store__ = null;
 window.__biaoyue_saved_files__ = [];
+window.__biaoyue_saved_binaries__ = [];
 window.__biaoyue_openFile__ = function(path, content, title) {
   if (!window.__biaoyue_store__) return false;
   var store = window.__biaoyue_store__.getState();
@@ -130,6 +131,13 @@ function mockInvoke(cmd, args) {
   if (cmd === "save_as_file" && args) {
     window.__biaoyue_saved_files__.push({ content: args.content });
     return { path: "/Users/test/测试文档.html" };
+  }
+  if (cmd === "save_binary_as_file" && args) {
+    window.__biaoyue_saved_binaries__.push({
+      base64: args.base64,
+      defaultName: args.defaultName,
+    });
+    return "/Users/test/" + (args.defaultName || "导出.png");
   }
   if (cmd === "save_file" && args) return { path:args.path };
   if (cmd === "flatten_files") return responses.flatten_files;

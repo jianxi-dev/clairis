@@ -6,6 +6,7 @@ import {
   exportCurrentDocHtml,
   exportMessage,
 } from "../lib/export/exportDocument";
+import { exportPngFromMarkdown, exportPngMessage } from "../lib/export/png";
 
 interface TabBarProps {
   tabs: Record<string, Tab>;
@@ -37,6 +38,7 @@ export default function TabBar({
   }, []);
 
   const [menu, setMenu] = useState<CtxMenu | null>(null);
+  const [exportingPng, setExportingPng] = useState(false);
 
   const handleContextMenu = useCallback(
     (e: React.MouseEvent, tabId: string) => {
@@ -74,6 +76,43 @@ export default function TabBar({
       }
     },
     [showNotice],
+  );
+
+  const handleExportPng = useCallback(
+    async (tabId: string) => {
+      if (exportingPng) return;
+      const tab = useStore.getState().tabs[tabId];
+      if (!tab) return;
+      const dir = tab.path
+        ? tab.path.slice(
+            0,
+            Math.max(tab.path.lastIndexOf("/"), tab.path.lastIndexOf("\\")),
+          )
+        : "";
+      setExportingPng(true);
+      showNotice("正在生成图片…");
+      let message: string | null = null;
+      try {
+        const result = await exportPngFromMarkdown({
+          title: tab.title,
+          markdown: tab.content,
+          baseDir: dir,
+        });
+        if (result.status === "error") {
+          log.error("ExportPng", "导出图片失败", result.message);
+        } else if (result.status === "saved") {
+          log.info("ExportPng", "已导出图片", { path: result.path });
+        }
+        message = exportPngMessage(result);
+      } catch (e) {
+        log.error("ExportPng", "导出图片失败", String(e));
+        message = `导出失败：${e instanceof Error ? e.message : String(e)}`;
+      } finally {
+        setExportingPng(false);
+      }
+      if (message) showNotice(message);
+    },
+    [exportingPng, showNotice],
   );
 
   // Close menu on any click outside the menu itself
@@ -190,6 +229,17 @@ export default function TabBar({
             }}
           >
             导出 HTML…
+          </button>
+          <button
+            data-export-png
+            disabled={exportingPng}
+            className="w-full text-left px-3 py-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={() => {
+              void handleExportPng(menu.tabId);
+              closeMenu();
+            }}
+          >
+            {exportingPng ? "正在生成…" : "导出图片…"}
           </button>
           <div className="h-px bg-gray-200 dark:bg-gray-700 my-1" />
           <button
