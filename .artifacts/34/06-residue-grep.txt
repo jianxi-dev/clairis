@@ -1,0 +1,20 @@
+$ git grep -n -E "Clairis|渐晰|com\.clairis\.app" -- . <exclusions>
+CHANGELOG.md:12:- **品牌更名**：Clairis（渐晰）更名为标月（Biaoyue）；应用标识、bundle ID（`dev.biaoyue.app`）、配置目录、调试桥、文档与软著材料同步更新。首次以新标识启动时会迁移旧配置，旧目录保留可回滚。
+CHANGELOG.md:24:- **品牌更名**：Jianming 正式更名为 Clairis（渐晰），应用标识、窗口标题、内部桥接与文档统一更新。
+docs/delivery/BIAOYUE-NAMING-REGISTRATION.md:19:旧名「渐晰 / Clairis」的商标路径已经走死（驳回记录见 §1.1），2026-10-31 维护者定名 **标月 / Biaoyue**。
+docs/delivery/BIAOYUE-NAMING-REGISTRATION.md:35:### 1.1 旧名「渐晰 / Clairis」商标驳回记录（历史）
+docs/delivery/BIAOYUE-NAMING-REGISTRATION.md:41:随后定名「渐晰 / Clairis」，但该名注册失败：
+docs/delivery/BIAOYUE-NAMING-REGISTRATION.md:43:- 中文名「渐晰」商标注册被国家知识产权局驳回。
+docs/delivery/BIAOYUE-NAMING-REGISTRATION.md:44:- 组合名「渐晰 Clairis」商标注册被国家知识产权局驳回。
+docs/delivery/BIAOYUE-NAMING-REGISTRATION.md:306:| 渐晰 / Clairis | 废弃（商标已驳回，见 §1.1）  |
+docs/product/scope.md:21:> 来源：全量需求文档 §1.2、§1.5（历史原稿已被取代，历史存根 `docs/CORE-REQUIREMENTS-clairis.md`；逐功能规格见 `openspec/specs/`）；[重新定义（历史原稿）](../渐晰-重新定义.md)；[MVP-渐明-v1](../archive/2026/legacy-docs/MVP-渐明-v1.md) §三。
+docs/product/scope.md:34:  > 来源：[MVP-渐明-v1](../archive/2026/legacy-docs/MVP-渐明-v1.md) §1.4、§1.5、§3.2；[重新定义（历史原稿）](../渐晰-重新定义.md)；[MVP-需求跟踪表](../MVP-需求跟踪表.md)「里程碑跟踪」中「Biaoyue 无边栏」决策。
+docs/product/users.md:28:> 来源：[重新定义（历史原稿）](../渐晰-重新定义.md)。
+docs/product/vision.md:43:  > 来源：[重新定义（历史原稿）](../渐晰-重新定义.md)。
+docs/product/vision.md:49:  > 来源：全量需求文档 §1.5「路线图摘要」（历史原稿已被取代，历史存根 `docs/CORE-REQUIREMENTS-clairis.md`；阶段方向见 [交付路线图](../delivery/roadmap.md)）；[重新定义（历史原稿）](../渐晰-重新定义.md)。
+docs/research/README.md:22:| [渐晰-vs-Obsidian-竞品深度分析.md](./competitors/渐晰-vs-Obsidian-竞品深度分析.md) | `docs/research/competitors/渐晰-vs-Obsidian-竞品深度分析.md` | 竞品分析 | 已迁入（任务9.5） |
+docs/research/README.md:23:| [渐晰-vs-Typora-Bear-Ulysses-四象限对比.md](./competitors/渐晰-vs-Typora-Bear-Ulysses-四象限对比.md) | `docs/research/competitors/渐晰-vs-Typora-Bear-Ulysses-四象限对比.md` | 竞品分析 | 已迁入（任务9.5） |
+src-tauri/src/config.rs:97:const LEGACY_BUNDLE_IDENTIFIER: &str = "com.clairis.app";
+src-tauri/src/config.rs:238:        let legacy = root.join("com.clairis.app").join("app_config.json");
+src-tauri/src/config.rs:260:        let legacy = root.join("com.clairis.app").join("app_config.json");
+# 以上命中均为：CHANGELOG 历史条目、命名档案商标驳回史、docs/CORE-REQUIREMENTS-clairis.md 历史存根引用、旧名竞品研究 README、兼容层常量

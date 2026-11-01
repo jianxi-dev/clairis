@@ -1,14 +1,14 @@
 ---
-title: "渐晰（Clairis）App 商店上架全套命名方案（国内App Store + 海外App Store双适配）"
+title: "标月（Biaoyue）App 商店上架全套命名方案（国内App Store + 海外App Store双适配）"
 type: delivery
 status: draft
-last_updated: 2026-08-01
+last_updated: 2026-11-01
 source_of_truth: supporting
 ---
 
-# 渐晰（Clairis）App 商店上架全套命名方案（国内App Store \+ 海外App Store双适配）
+# 标月（Biaoyue）App 商店上架全套命名方案（国内App Store \+ 海外App Store双适配）
 
-结合你的产品：主打国内、后期出海，中文名「渐晰」，英文品牌 Clairis，Bundle ID 固定`com.clairis.app`，分**国内商店名称**、**海外商店名称**、副标题、关键词、备注命名规范四部分。
+结合你的产品：主打国内、后期出海，中文名「标月」，英文品牌 Biaoyue，Bundle ID 固定`dev.biaoyue.app`，分**国内商店名称**、**海外商店名称**、副标题、关键词、备注命名规范四部分。
 
 ## 一、中国大陆 App Store 上架命名（优先适配国内用户）
 
@@ -16,7 +16,7 @@ source_of_truth: supporting
 
 #### 方案 A｜简洁标准版（推荐，干净高级）
 
-**渐晰**
+**标月**
 
 - 优势：极简、记忆点强，中文辨识度拉满；商店标题短，搜索展示完整；无多余冗余，符合国内工具类 App 命名习惯。
 
@@ -24,15 +24,15 @@ source_of_truth: supporting
 
 #### 方案 B｜功能补充版（适合刚上线，用户看不懂产品用途）
 
-**渐晰 \- 清晰整理思绪笔记**
+**标月 \- 清晰整理思绪笔记**
 
 - 优势：标题自带功能说明，搜索流量更高；新用户一眼知道产品定位。
 
 #### 方案 C｜品牌英文点缀版（兼顾未来出海，不突兀）
 
-**渐晰 Clairis**
+**标月 Biaoyue**
 
-- 优势：统一海内外品牌词，国内用户慢慢熟悉 Clairis，后续海外不用换名；Bundle ID、品牌、商店名三者对应。
+- 优势：统一海内外品牌词，国内用户慢慢熟悉 Biaoyue，后续海外不用换名；Bundle ID、品牌、商店名三者对应。
 
 ### 2\. 副标题（100 字符，核心引流，必写）
 
@@ -41,15 +41,15 @@ source_of_truth: supporting
 
 ### 3\. 关键词建议（后台填写）
 
-渐晰，Clairis, 笔记，思绪整理，备忘录，思维记录，轻量化笔记，灵感收集
+标月，Biaoyue, 笔记，思绪整理，备忘录，思维记录，轻量化笔记，灵感收集
 
 ## 二、海外区 App Store（美区 / 全球上架命名）
 
 ### 1\. 主名称（30 字符）
 
-**Clairis**
+**Biaoyue**
 
-- 统一品牌域名`clairis.dev`、Bundle ID，海外投放、Google Play 完全统一。
+- 统一品牌域名`biaoyue.dev`、Bundle ID，海外投放、Google Play 完全统一。
 
 ### 2\. 海外副标题
 
@@ -57,18 +57,18 @@ Lightweight Thought \& Note Organizer, Clear Your Mind
 
 ## 三、App 图标下方桌面短名称（iPhone 桌面小字）
 
-- 国内：渐晰
+- 国内：标月
 
-- 海外：Clairis
+- 海外：Biaoyue
 设置路径：Xcode → Info\.plist → Bundle display name
 
-## 四、为什么不建议商店名全用 Clairis / 拼音
+## 四、为什么不建议商店名全用 Biaoyue / 拼音
 
 1. 国内用户看不懂拼音，搜索、传播弱；
 
-2. 海外市场拼音辨识度极低，不如原生品牌词 Clairis；
+2. 海外市场拼音辨识度极低，不如原生品牌词 Biaoyue；
 
-3. 你的核心品牌符号是「渐晰」中文 \+ Clairis 英文，两者搭配最均衡。
+3. 你的核心品牌符号是「标月」中文 \+ Biaoyue 英文，两者搭配最均衡。
 
 ## 五、上架命名避坑规则（苹果审核红线）
 
@@ -78,7 +78,7 @@ Lightweight Thought \& Note Organizer, Clear Your Mind
 
 3. 不要在主名称里放版本号、公司名；公司名统一放在开发者栏；
 
-4. 中英文不要混杂乱序，国内优先中文在前；海外仅使用 Clairis；
+4. 中英文不要混杂乱序，国内优先中文在前；海外仅使用 Biaoyue；
 
 5. 一旦上架，App 主名称可申请修改，但频繁改名会影响搜索权重；尽量上线前定好永久名称。
 
@@ -86,27 +86,27 @@ Lightweight Thought \& Note Organizer, Clear Your Mind
 
 |维度|统一标准命名|
 |---|---|
-|国内商店主名|渐晰 / 渐晰 Clairis|
-|海外商店主名|Clairis|
-|桌面显示名|国内：渐晰；海外：Clairis|
-|Bundle ID|com\.clairis\.app|
-|出海官网|clairis\.dev|
-|国内产品站|\[clairis\.me\]\(clairis\.me\)|
+|国内商店主名|标月 / 标月 Biaoyue|
+|海外商店主名|Biaoyue|
+|桌面显示名|国内：标月；海外：Biaoyue|
+|Bundle ID|dev\.biaoyue\.app|
+|出海官网|biaoyue\.dev|
+|国内产品站|\[biaoyue\.me\]\(biaoyue\.me\)|
 
 ## 七、最终落地推荐组合（一套用到出海，无需改动）
 
 1. 中国区 App Store
 
-- 应用名称：渐晰 Clairis
+- 应用名称：标月 Biaoyue
 
 - 副标题：轻量化思绪整理笔记，梳理碎片化灵感，让思路清晰有序
 
 2. 全球海外地区
 
-- 应用名称：Clairis
+- 应用名称：Biaoyue
 
 - 副标题：Thought \& Idea Organizer for Daily Notes
 
-这套命名兼顾国内用户认知，同时预埋海外品牌标识，和你选定的`com.clairis.app` Bundle ID、域名体系完全匹配，未来出海不用重构产品名称、品牌资产。
+这套命名兼顾国内用户认知，同时预埋海外品牌标识，和你选定的`dev.biaoyue.app` Bundle ID、域名体系完全匹配，未来出海不用重构产品名称、品牌资产。
 
 > （注：部分内容可能由 AI 生成）

@@ -8,7 +8,7 @@ source_of_truth: canonical
 
 # 范围边界（做什么 / 不做什么）
 
-本文档只在**产品级**上界定 Clairis 的范围与方向性取舍，回答“做什么、不做什么”。**不含逐功能清单**；逐功能可验收行为以 `openspec/specs/` 为准。阶段方向见 [交付路线图](../delivery/roadmap.md)。
+本文档只在**产品级**上界定 Biaoyue 的范围与方向性取舍，回答“做什么、不做什么”。**不含逐功能清单**；逐功能可验收行为以 `openspec/specs/` 为准。阶段方向见 [交付路线图](../delivery/roadmap.md)。
 
 ## 一、做什么（产品级范围）
 
@@ -18,7 +18,7 @@ source_of_truth: canonical
 - **灵感即时记录**：念头出现即可录入，不打断当前任务。
 - **AI 能力**：围绕用户目标提供对话、翻译、润色等智能化帮助（本地优先方向）。
 
-> 来源：全量需求文档 §1.2、§1.5（历史原稿已被取代，历史存根 `docs/CORE-REQUIREMENTS-clairis.md`；逐功能规格见 `openspec/specs/`）；[渐晰-重新定义](../渐晰-重新定义.md)；[MVP-渐明-v1](../archive/2026/legacy-docs/MVP-渐明-v1.md) §三。
+> 来源：全量需求文档 §1.2、§1.5（历史原稿已被取代，历史存根 `docs/CORE-REQUIREMENTS-clairis.md`；逐功能规格见 `openspec/specs/`）；[重新定义（历史原稿）](../渐晰-重新定义.md)；[MVP-渐明-v1](../archive/2026/legacy-docs/MVP-渐明-v1.md) §三。
 > 说明：以上为方向级概括，具体功能的阶段归属见 [交付路线图](../delivery/roadmap.md)，行为细节不在此列出。
 
 ## 二、不做什么（产品级边界）
@@ -31,7 +31,7 @@ source_of_truth: canonical
 ### 2.2 无侧栏方向
 
 - 取消左侧边栏 + 文件树；正文区支持左右与上下独立分栏，右侧边栏保留（默认隐藏），导航由统一文件面板（命令面板式搜索）承担。
-  > 来源：[MVP-渐明-v1](../archive/2026/legacy-docs/MVP-渐明-v1.md) §1.4、§1.5、§3.2；[渐晰-重新定义](../渐晰-重新定义.md)；[MVP-需求跟踪表](../MVP-需求跟踪表.md)「里程碑跟踪」中「Clairis 无边栏」决策。
+  > 来源：[MVP-渐明-v1](../archive/2026/legacy-docs/MVP-渐明-v1.md) §1.4、§1.5、§3.2；[重新定义（历史原稿）](../渐晰-重新定义.md)；[MVP-需求跟踪表](../MVP-需求跟踪表.md)「里程碑跟踪」中「Biaoyue 无边栏」决策。
 
 ### 2.3 范围治理边界
 

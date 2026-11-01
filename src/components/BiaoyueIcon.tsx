@@ -1,18 +1,18 @@
 import type { LucideIcon } from "lucide-react";
 
-interface ClairisIconProps {
+interface BiaoyueIconProps {
   icon: LucideIcon;
   size?: number;
   strokeWidth?: number;
   className?: string;
 }
 
-export default function ClairisIcon({
+export default function BiaoyueIcon({
   icon: Icon,
   size = 16,
   strokeWidth = 1.5,
   className = "",
-}: ClairisIconProps) {
+}: BiaoyueIconProps) {
   return (
     <Icon
       size={size}

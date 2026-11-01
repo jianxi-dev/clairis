@@ -1,4 +1,4 @@
-# Clairis（渐晰）
+# Biaoyue（标月）
 
 桌面 Markdown 阅读 / 编辑器 —— Tauri 2 + React 18 + TypeScript，前端 Vite + CodeMirror 6 + Zustand，Rust 后端在 `src-tauri/`。
 

@@ -1,12 +1,12 @@
 ---
-title: "渐晰空状态 — 今日继续"
+title: "标月空状态 — 今日继续"
 type: design
 status: accepted
 last_updated: 2026-08-01
 source_of_truth: supporting
 ---
 
-# 渐晰空状态 — 今日继续
+# 标月空状态 — 今日继续
 
 ponytail mode: full
 
@@ -31,10 +31,10 @@ ponytail mode: full
 |                                       |
 |  (0-welcome.md 渲染区域)               |
 |                                       |
-|  # 渐晰                               |
+|  # 标月                               |
 |  > 懂你、减负、惊喜、正向陪伴           |
 |  ...                                  |
-|  **打开一个文件，渐晰会记住你在哪。**    |
+|  **打开一个文件，标月会记住你在哪。**    |
 |                                       |
 +---------------------------------------+
 |  上次停在这                            |

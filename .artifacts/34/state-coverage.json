@@ -1,0 +1,43 @@
+{
+  "task": "1.1",
+  "change": "rename-biaoyue",
+  "issue": 34,
+  "states": [
+    {
+      "state": "browser-page-title",
+      "screenshot": "01-page-title.txt",
+      "assertion": "passed",
+      "probe": "npx playwright test e2e/app.spec.ts -g 页面标题 → 1 passed；expect(page).toHaveTitle(\"标月 Biaoyue\")"
+    },
+    {
+      "state": "tauri-window-title",
+      "screenshot": "02-tauri-window-title.txt",
+      "assertion": "passed",
+      "probe": "System Events get title of window 1 = 标月；进程名 biaoyue（npm run tauri dev 实跑）"
+    },
+    {
+      "state": "config-migration",
+      "screenshot": "03-config-migration.txt",
+      "assertion": "passed",
+      "probe": "首次以 dev.biaoyue.app 启动后新配置落地；jq -S 语义 diff EXIT=0；旧目录 sha256 与迁移前一致"
+    },
+    {
+      "state": "capture-overlay-brand",
+      "screenshot": "04-capture-overlay-2026-11-01.png",
+      "assertion": "passed",
+      "probe": "截图取自改名后构建；浮层标题栏品牌文字为「标月」"
+    },
+    {
+      "state": "reading-content-brand",
+      "screenshot": "05-reading-preview-2026-11-01.png",
+      "assertion": "passed",
+      "probe": "OCR 检出示例代码行 `console.log('Biaoyue 示例')`，确认渲染管线使用新品牌"
+    },
+    {
+      "state": "legacy-residue-grep",
+      "screenshot": "06-residue-grep.txt",
+      "assertion": "passed",
+      "probe": "排除历史目录后仅剩：CHANGELOG 历史条目、命名档案商标驳回史、CORE-REQUIREMENTS-clairis.md 历史存根引用、旧名竞品研究 README、兼容层常量"
+    }
+  ]
+}

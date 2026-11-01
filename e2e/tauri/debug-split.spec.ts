@@ -17,7 +17,7 @@ test("DEBUG: split panels — capture pageerror + console", async ({ page }) => 
 
   await page.evaluate(() => {
     const w = window as unknown as Record<string, any>;
-    w.__clairis_openFile__(
+    w.__biaoyue_openFile__(
       "/Users/test/文件A.md",
       "# 文件A\n\n这是第一个文件的内容。\n\n## A的第二节\n\n文件A特有内容。",
       "文件A.md",
@@ -25,7 +25,7 @@ test("DEBUG: split panels — capture pageerror + console", async ({ page }) => 
   });
   await page.waitForTimeout(200);
   await page.evaluate(() => {
-    (window as unknown as Record<string, any>).__clairis_openFile__(
+    (window as unknown as Record<string, any>).__biaoyue_openFile__(
       "/Users/test/文件B.md",
       "# 文件B\n\n这是第二个文件的内容，完全不同。\n\n## B的第二节\n\n文件B特有内容。",
       "文件B.md",
@@ -34,7 +34,7 @@ test("DEBUG: split panels — capture pageerror + console", async ({ page }) => 
   await page.waitForTimeout(300);
 
   await page.evaluate(() => {
-    const store = (window as unknown as Record<string, any>).__clairis_store__;
+    const store = (window as unknown as Record<string, any>).__biaoyue_store__;
     const tabs = store.getState().tabs;
     const tabB = Object.values(tabs).find(
       (t: any) => t.title === "文件B.md",

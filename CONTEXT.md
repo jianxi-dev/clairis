@@ -6,13 +6,13 @@
 
 | 术语 | 含义 | 备注 |
 |------|------|------|
-| **Clairis / 渐晰** | 产品名。旧名 Folio / MDWRT / Jianming（渐明）同源，老文档/脚本中出现时指同一项目 | Bundle ID 方案见 `docs/delivery/渐晰（Clairis）App Bundle ID 标准化方案与注册运维手册.md` |
+| **Biaoyue / 标月** | 产品名。旧名 Folio / MDWRT / Jianming（渐明）同源，老文档/脚本中出现时指同一项目 | Bundle ID 方案见 `docs/delivery/biaoyue-App-Bundle-ID-标准化方案与注册运维手册.md` |
 | **panel / panelId** | 编辑器面板实例标识。`editorRef.ts` 模块级 Map 的 key | EditorView 按 panelId 存取 |
 | **模式（mode）** | preview / edit / source 三态。CSS display 切换，**不 remount** | 见架构决策 #2 |
 | **decoration** | CM6 装饰插件，`src/editors/decorations/`。类名前缀 `cm-*` | 每个类名必须在 `src/styles/` 有对应规则（CSS manifest 校验） |
 | **large file guard** | 500KB 强制 source 的历史守卫，仅存在于旧 `useFile` 流程 | 当前页签打开流程未接入，实际不生效 |
 | **CSS manifest 检查** | pre-commit/CI/verify.sh 中的 decoration 类名 ↔ CSS 规则一致性校验 | 挂了这个 = 漏写 CSS |
-| **mock 桥** | e2e 的 `window.__clairis_store__` + `__clairis_openFile__(path, content, title)` | 新 e2e 必须用它，不依赖真实文件系统 |
+| **mock 桥** | e2e 的 `window.__biaoyue_store__` + `__biaoyue_openFile__(path, content, title)` | 新 e2e 必须用它，不依赖真实文件系统 |
 | **capture overlay** | 快速捕获浮层，`stores/captureOverlay.ts` | 需求见 `docs/capture-overlay-SPEC.md` |
 | **双渲染管线** | 阅读管线（`src/renderers/`，marked→DOMPurify）与编辑管线（CM6）分离 | 架构决策 #1 |
 | **keyring** | OS 钥匙串。API key 唯一合法存储位置（`get/set/delete_api_key` 命令） | 禁止写入 config 文件 |

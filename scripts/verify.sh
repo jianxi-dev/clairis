@@ -1,10 +1,10 @@
 #!/bin/bash
-# Folio — mandatory pre-handoff verification
+# Biaoyue — mandatory pre-handoff verification
 # Run before handing code to the user. All steps must pass.
 set -e
 
 echo "═══════════════════════════════════════"
-echo "  Folio Verification Suite"
+echo "  Biaoyue Verification Suite"
 echo "═══════════════════════════════════════"
 
 FAIL=0

@@ -12,13 +12,13 @@ async function openFile(
       const w = window as unknown as Record<string, unknown>;
       (
         w as {
-          __clairis_openFile__?: (
+          __biaoyue_openFile__?: (
             path: string,
             content: string,
             title: string,
           ) => void;
         }
-      ).__clairis_openFile__?.(p, c, p.split("/").pop() ?? p);
+      ).__biaoyue_openFile__?.(p, c, p.split("/").pop() ?? p);
     },
     [path, content],
   );
@@ -69,7 +69,7 @@ test("打开视频 → 打开非音视频文件 → 播放器保留（离屏继�
   // 切回视频 tab → 恢复全尺寸
   await page.evaluate(() => {
     const store = (window as unknown as Record<string, unknown>)
-      .__clairis_store__ as {
+      .__biaoyue_store__ as {
       getState: () => {
         tabs: Record<string, { path: string; id: string }>;
         switchTab: (id: string) => void;

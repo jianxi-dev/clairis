@@ -1,0 +1,5 @@
+
+Running 1 test using 1 worker
+
+[1/1] e2e/app.spec.ts:12:3 › Biaoyue E2E › 页面标题显示新品牌名
+  1 passed (3.7s)

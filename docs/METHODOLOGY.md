@@ -1,4 +1,4 @@
-# Clairis 设计工作方法论 — 从 Capture Overlay 复盘
+# Biaoyue 设计工作方法论 — 从 Capture Overlay 复盘
 
 > **版本**: v1.0
 > **来源**: Capture Overlay v3.1 → v5.3 全复盘

@@ -431,7 +431,7 @@ mod tests {
 
     fn setup_test_dir(label: &str) -> PathBuf {
         let dir =
-            std::env::temp_dir().join(format!("clairis_test_{}_{}", label, std::process::id()));
+            std::env::temp_dir().join(format!("biaoyue_test_{}_{}", label, std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(dir.join("subdir")).unwrap();
         fs::write(dir.join("file1.md"), "# Hello").unwrap();
@@ -516,7 +516,7 @@ mod tests {
 
     #[test]
     fn test_list_media_in_dir_filters_and_registers() {
-        let dir = std::env::temp_dir().join(format!("clairis_test_media_{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("biaoyue_test_media_{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
         fs::write(dir.join("clip.mp4"), "v").unwrap();

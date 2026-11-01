@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Manager};
 use tracing::{info, warn};
 
@@ -94,12 +94,44 @@ fn config_path(app: &AppHandle) -> PathBuf {
     dir.join("app_config.json")
 }
 
+const LEGACY_BUNDLE_IDENTIFIER: &str = "com.clairis.app";
+
+fn legacy_config_path(app: &AppHandle) -> Option<PathBuf> {
+    app.path()
+        .config_dir()
+        .ok()
+        .map(|dir| dir.join(LEGACY_BUNDLE_IDENTIFIER).join("app_config.json"))
+}
+
+/// 仅当目标缺失且旧文件可读可解析时迁移；旧文件保留，便于回滚。
+async fn migrate_legacy_config(legacy: &Path, target: &Path) -> Option<AppConfig> {
+    if target.exists() || legacy == target {
+        return None;
+    }
+    let data = tokio::fs::read_to_string(legacy).await.ok()?;
+    let config: AppConfig = serde_json::from_str(&data).ok()?;
+    if let Some(parent) = target.parent() {
+        if tokio::fs::create_dir_all(parent).await.is_ok() {
+            let _ = tokio::fs::copy(legacy, target).await;
+        }
+    }
+    info!(from = %legacy.display(), to = %target.display(), "旧配置已迁移到新目录");
+    Some(config)
+}
+
 /// Load config from disk, return default on missing/corrupt.
 pub async fn load_config(app: &AppHandle) -> Result<AppConfig, AppError> {
     let path = config_path(app);
     let data = match tokio::fs::read_to_string(&path).await {
         Ok(d) => d,
-        Err(_) => return Ok(AppConfig::default()),
+        Err(_) => {
+            if let Some(legacy) = legacy_config_path(app) {
+                if let Some(config) = migrate_legacy_config(&legacy, &path).await {
+                    return Ok(config);
+                }
+            }
+            return Ok(AppConfig::default());
+        }
     };
 
     match serde_json::from_str::<AppConfig>(&data) {
@@ -181,4 +213,70 @@ pub async fn delete_api_key(service: &str, account: &str) -> Result<(), AppError
         source: e.to_string(),
     })?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn unique_dir(tag: &str) -> PathBuf {
+        let nanos = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        std::env::temp_dir().join(format!(
+            "biaoyue_test_config_migrate_{}_{}_{}",
+            tag,
+            std::process::id(),
+            nanos
+        ))
+    }
+
+    #[tokio::test]
+    async fn migrates_legacy_config_when_target_missing() {
+        let root = unique_dir("migrate");
+        let legacy = root.join("com.clairis.app").join("app_config.json");
+        let target = root.join("dev.biaoyue.app").join("app_config.json");
+        tokio::fs::create_dir_all(legacy.parent().unwrap())
+            .await
+            .unwrap();
+        tokio::fs::write(&legacy, r#"{"theme":"dark","readerFontSize":19.0}"#)
+            .await
+            .unwrap();
+
+        let config = migrate_legacy_config(&legacy, &target).await;
+
+        let config = config.expect("legacy config should be migrated");
+        assert_eq!(config.theme.as_deref(), Some("dark"));
+        assert_eq!(config.reader_font_size, Some(19.0));
+        assert!(target.exists());
+        assert!(legacy.exists());
+        let _ = tokio::fs::remove_dir_all(&root).await;
+    }
+
+    #[tokio::test]
+    async fn does_not_overwrite_existing_target() {
+        let root = unique_dir("keep");
+        let legacy = root.join("com.clairis.app").join("app_config.json");
+        let target = root.join("dev.biaoyue.app").join("app_config.json");
+        tokio::fs::create_dir_all(legacy.parent().unwrap())
+            .await
+            .unwrap();
+        tokio::fs::create_dir_all(target.parent().unwrap())
+            .await
+            .unwrap();
+        tokio::fs::write(&legacy, r#"{"theme":"dark"}"#)
+            .await
+            .unwrap();
+        tokio::fs::write(&target, r#"{"theme":"warm"}"#)
+            .await
+            .unwrap();
+
+        let config = migrate_legacy_config(&legacy, &target).await;
+
+        assert!(config.is_none());
+        let kept = tokio::fs::read_to_string(&target).await.unwrap();
+        assert!(kept.contains("warm"));
+        let _ = tokio::fs::remove_dir_all(&root).await;
+    }
 }

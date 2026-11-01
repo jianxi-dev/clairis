@@ -38,8 +38,8 @@ const REAL_CONFIG = path.join(__dirname, "config.json");
 const SCRIPT_PATH = path.join(__dirname, "build-source-doc.mjs");
 
 const BASE_CONFIG = {
-  softwareName: "Clairis 渐晰阅读编辑软件",
-  softwareShortName: "Clairis",
+  softwareName: "标月阅读编辑软件",
+  softwareShortName: "标月",
   version: "V1.0",
   ownerName: "",
   sourceRoots: ["."],
@@ -209,11 +209,11 @@ test("renderHtml：页眉含软件全称+版本号、页码正确、每页 50 �
     ["const last = true;"],
   ];
   const html = renderHtml(pages, {
-    softwareName: "Clairis 渐晰阅读编辑软件",
+    softwareName: "标月阅读编辑软件",
     version: "V1.0",
     mode: "full",
   });
-  assert.ok(html.includes("Clairis 渐晰阅读编辑软件"), "页眉含软件全称");
+  assert.ok(html.includes("标月阅读编辑软件"), "页眉含软件全称");
   assert.ok(html.includes("V1.0"), "页眉含版本号");
   assert.ok(html.includes("第 1 / 2 页") && html.includes("第 2 / 2 页"), "页码正确");
   assert.ok(html.includes("data-page=\"1\"") && html.includes("data-page=\"2\""));
@@ -230,10 +230,10 @@ test("renderHtml：页眉含软件全称+版本号、页码正确、每页 50 �
 test("detectCopyrightWarnings：Copyright (c) 不含软件名 → WARN；含软件名 → 不 WARN", () => {
   const lines = [
     "// Copyright (c) 2024 外部作者",
-    "// Copyright (c) 2026 Clairis 渐晰阅读编辑软件",
+    "// Copyright (c) 2026 标月阅读编辑软件",
     "const x = 1;",
   ];
-  const warns = detectCopyrightWarnings(lines, "Clairis 渐晰阅读编辑软件");
+  const warns = detectCopyrightWarnings(lines, "标月阅读编辑软件");
   assert.equal(warns.length, 1);
   assert.match(warns[0], /外部作者/);
 });
@@ -253,7 +253,7 @@ test("真实仓库构建：PDF 生成、页数一致、meta 落盘", async () =>
 
   const metaPath = path.join(__dirname, "out", "source-doc-meta.json");
   const meta = JSON.parse(fs.readFileSync(metaPath, "utf8"));
-  assert.equal(meta.softwareName, "Clairis 渐晰阅读编辑软件");
+  assert.equal(meta.softwareName, "标月阅读编辑软件");
   assert.equal(meta.version, "V1.0");
   assert.equal(meta.pdfPages, meta.expectedPages);
 });

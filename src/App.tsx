@@ -82,7 +82,7 @@ function App() {
   useEffect(() => {
     const captureOverlayStore = useCaptureOverlayStore.getState();
 
-    (window as unknown as Record<string, unknown>).__clairis_toggle_capture__ =
+    (window as unknown as Record<string, unknown>).__biaoyue_toggle_capture__ =
       () => {
         captureOverlayStore.toggle();
       };
@@ -104,7 +104,7 @@ function App() {
         capture: true,
       });
       delete (window as unknown as Record<string, unknown>)
-        .__clairis_toggle_capture__;
+        .__biaoyue_toggle_capture__;
     };
   }, []);
 

@@ -203,7 +203,7 @@ Inspector SHALL 支持 filter tabs 过滤、批量归档（batch archive）与�
 
 ### Requirement: D-15 一次批量混合 prefix 录入
 
-浮窗草稿区 SHALL 支持一次批量录入多行混合 prefix 的 inbox 条目：按行切块（前缀行开启新条目、无前缀续行并入当前条目并以 `\n` 连接、空行作为硬分隔并清除粘性 prefix），一次提交 SHALL 将切分结果批量写入当日 inbox。批内每条 `capturedAt` SHALL 严格互异（第 i 条取 `Date.now() + i`），保证 `load_inbox_by_date` / `edit` / `delete` / `archive` 经 `time_hint` 首个匹配不塌缩到同一实块。批量写入 SHALL 采用失败降级链：`append_inbox_batch` → 逐条 `append_inbox` → localStorage `clairis_capture_fallback`。空的切分结果（全空 / 全空行）SHALL 不触发任何写入。
+浮窗草稿区 SHALL 支持一次批量录入多行混合 prefix 的 inbox 条目：按行切块（前缀行开启新条目、无前缀续行并入当前条目并以 `\n` 连接、空行作为硬分隔并清除粘性 prefix），一次提交 SHALL 将切分结果批量写入当日 inbox。批内每条 `capturedAt` SHALL 严格互异（第 i 条取 `Date.now() + i`），保证 `load_inbox_by_date` / `edit` / `delete` / `archive` 经 `time_hint` 首个匹配不塌缩到同一实块。批量写入 SHALL 采用失败降级链：`append_inbox_batch` → 逐条 `append_inbox` → localStorage `biaoyue_capture_fallback`。空的切分结果（全空 / 全空行）SHALL 不触发任何写入。
 
 #### Scenario: 多行混合 prefix 一次批量提交
 
@@ -228,7 +228,7 @@ Inspector SHALL 支持 filter tabs 过滤、批量归档（batch archive）与�
 #### Scenario: 批量写入失败降级
 
 - **WHEN** `append_inbox_batch` 写入失败
-- **THEN** 应用 SHALL 依次降级为逐条 `append_inbox`，仍失败则写入 localStorage `clairis_capture_fallback`，保证数据不丢失
+- **THEN** 应用 SHALL 依次降级为逐条 `append_inbox`，仍失败则写入 localStorage `biaoyue_capture_fallback`，保证数据不丢失
 
 #### Scenario: 空切分结果不写入
 

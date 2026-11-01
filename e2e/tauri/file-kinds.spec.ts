@@ -12,13 +12,13 @@ async function openFile(
       const w = window as unknown as Record<string, unknown>;
       (
         w as {
-          __clairis_openFile__?: (
+          __biaoyue_openFile__?: (
             path: string,
             content: string,
             title: string,
           ) => void;
         }
-      ).__clairis_openFile__?.(p, c, p.split("/").pop() ?? p);
+      ).__biaoyue_openFile__?.(p, c, p.split("/").pop() ?? p);
     },
     [path, content],
   );
@@ -42,7 +42,7 @@ test("代码文件默认编辑模式且渲染 CM6 高亮容器", async ({ page }
   // store 中 editorMode 为 edit
   const mode = await page.evaluate(() => {
     const store = (window as unknown as Record<string, unknown>)
-      .__clairis_store__ as {
+      .__biaoyue_store__ as {
       getState: () => {
         tabs: Record<string, { editorMode: string }>;
         activeTabId: string | null;
@@ -81,7 +81,7 @@ test("媒体文件不可切换到编辑模式（按钮隐藏 + store 拦截）",
   // store 层面拦截：直接调 setEditorMode 不生效
   const mode = await page.evaluate(() => {
     const store = (window as unknown as Record<string, unknown>)
-      .__clairis_store__ as {
+      .__biaoyue_store__ as {
       getState: () => {
         setEditorMode: (m: string) => void;
         tabs: Record<string, { editorMode: string }>;
@@ -188,7 +188,7 @@ test("PDF 查看器翻页与搜索", async ({ page }) => {
   await viewer.locator("button[aria-label='搜索']").click();
   const searchInput = viewer.locator("input[placeholder='搜索']");
   await expect(searchInput).toHaveCount(1);
-  await searchInput.fill("ClairisPDFTest");
+  await searchInput.fill("BiaoyuePDFTest");
   await expect
     .poll(() =>
       page.evaluate(
@@ -313,7 +313,7 @@ test("PDF 查看器隐藏未启用功能（无批注/导出/全屏等，打印�
   await viewer.locator("button[aria-label='搜索']").click();
   const searchInput = viewer.locator("input[placeholder='搜索']");
   await expect(searchInput).toHaveCount(1);
-  await searchInput.fill("ClairisPDFTest");
+  await searchInput.fill("BiaoyuePDFTest");
   await expect
     .poll(() =>
       page.evaluate(
@@ -383,7 +383,7 @@ test("编辑态长行自动换行（无水平滚动）", async ({ page }) => {
   // 编辑模式（markdown 默认 preview → 切 edit）
   await page.evaluate(() => {
     const store = (window as unknown as Record<string, unknown>)
-      .__clairis_store__ as {
+      .__biaoyue_store__ as {
       getState: () => { setEditorMode: (m: string) => void };
     };
     store.getState().setEditorMode("edit");

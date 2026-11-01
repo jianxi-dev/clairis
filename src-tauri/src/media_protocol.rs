@@ -210,13 +210,21 @@ mod tests {
         *ALLOWED_MEDIA.lock().unwrap() = None;
     }
 
+    static MEDIA_TEST_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+    fn lock_media_tests() -> std::sync::MutexGuard<'static, ()> {
+        MEDIA_TEST_LOCK
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+    }
+
     fn temp_file(content: &[u8]) -> PathBuf {
         let nanos = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
             .as_nanos();
         let mut p = std::env::temp_dir().join(format!(
-            "clairis_media_test_{}_{}",
+            "biaoyue_media_test_{}_{}",
             std::process::id(),
             nanos
         ));
@@ -236,6 +244,7 @@ mod tests {
 
     #[test]
     fn handler_rejects_cross_origin_fetch() {
+        let _guard = lock_media_tests();
         reset_allowlist();
         let p = temp_file(b"media-data");
         register_media_path(p.to_string_lossy().into_owned());
@@ -247,6 +256,7 @@ mod tests {
 
     #[test]
     fn handler_serves_only_registered_paths() {
+        let _guard = lock_media_tests();
         reset_allowlist();
         let p = temp_file(b"secret");
         // NOT registered → 404 even though the file exists on disk.
@@ -258,6 +268,7 @@ mod tests {
 
     #[test]
     fn handler_serves_registered_file_full_content() {
+        let _guard = lock_media_tests();
         reset_allowlist();
         let p = temp_file(b"0123456789");
         register_media_path(p.to_string_lossy().into_owned());
@@ -270,6 +281,7 @@ mod tests {
 
     #[test]
     fn handler_returns_partial_content_for_range() {
+        let _guard = lock_media_tests();
         reset_allowlist();
         let p = temp_file(b"0123456789");
         register_media_path(p.to_string_lossy().into_owned());
@@ -289,6 +301,7 @@ mod tests {
 
     #[test]
     fn handler_empty_file_returns_ok() {
+        let _guard = lock_media_tests();
         reset_allowlist();
         let p = temp_file(b"");
         register_media_path(p.to_string_lossy().into_owned());
@@ -301,9 +314,10 @@ mod tests {
 
     #[test]
     fn handler_missing_file_returns_not_found() {
+        let _guard = lock_media_tests();
         reset_allowlist();
         let missing = std::env::temp_dir().join(format!(
-            "clairis_media_missing_{}_{}.mp4",
+            "biaoyue_media_missing_{}_{}.mp4",
             std::process::id(),
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)

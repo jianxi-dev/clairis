@@ -1,4 +1,4 @@
-# 渐晰 Clairis｜App Store Connect新建App完整填写清单
+# 标月 Biaoyue｜App Store Connect新建App完整填写清单
 
 > 方案：**单条 App 记录，iOS\+macOS 通用购买（一次购买双端可用）**
 > ⚠️SKU 一旦创建**永久不可修改**；上传第一个构建包后 Bundle ID 不可修改
@@ -10,10 +10,10 @@
 |配置项|填写值|备注|
 |---|---|---|
 |平台|✅iOS、✅macOS|只建 1 条记录，不要分开建 2 个 App|
-|名称（Name）|`渐晰`|主语言下商店名称，≤30 字符，App Store 全局不能重名|
+|名称（Name）|`标月`|主语言下商店名称，≤30 字符，App Store 全局不能重名|
 |主要语言 \(Primary Language\)|`简体中文(Chinese(Simplified))`|默认兜底语言，后期修改成本很高|
-|Bundle ID|`com.yourdomain.clairis`|**必须和 Xcode iOS、macOS 两个 Target 完全一致**；先在开发者证书后台注册好 ID 再下拉选择|
-|SKU（内部 ID，用户看不见）|`clairis‑ios`|账号内唯一；字母数字横杠下划线，不能中文空格；创建后不可改|
+|Bundle ID|`com.yourdomain.biaoyue`|**必须和 Xcode iOS、macOS 两个 Target 完全一致**；先在开发者证书后台注册好 ID 再下拉选择|
+|SKU（内部 ID，用户看不见）|`biaoyue‑ios`|账号内唯一；字母数字横杠下划线，不能中文空格；创建后不可改|
 |用户访问权限|Full Access（完全访问）|个人开发者选此项|
 
 > 点击【Create】创建 App 记录。
@@ -30,7 +30,7 @@
 
 ### 简体中文（zh‑Hans）
 
-- App 名称：`渐晰`
+- App 名称：`标月`
 
 - 副标题：填写中文副标题（≤30 字符）
 
@@ -40,7 +40,7 @@
 
 ### English\(U\.S\.\)
 
-- App 名称：`Clairis`
+- App 名称：`Biaoyue`
 
 - 副标题：填写英文副标题（≤30 字符）
 
@@ -64,9 +64,9 @@
 
     - key：`CFBundleDisplayName`
 
-        - zh‑Hans：`渐晰`
+        - zh‑Hans：`标月`
 
-        - en‑US：`Clairis`
+        - en‑US：`Biaoyue`
 
 3. Info\.plist 新增键值（macOS 必须配置，Dock 本地化名称生效）
 
@@ -75,7 +75,7 @@
 <true/>
 ```
 
-4. iOS Target、macOS Target **Bundle ID 统一为 ****`com.yourdomain.clairis`**
+4. iOS Target、macOS Target **Bundle ID 统一为 ****`com.yourdomain.biaoyue`**
 
 > ✅区分：
 > 
@@ -124,9 +124,9 @@
 > 
 > 
 
-1. iOS 记录：SKU=`clairis‑ios`，BundleID=`com.yourdomain.clairis.ios`，名称`渐晰`
+1. iOS 记录：SKU=`biaoyue‑ios`，BundleID=`com.yourdomain.biaoyue.ios`，名称`标月`
 
-2. macOS 记录：SKU=`clairis‑mac`，BundleID=`com.yourdomain.clairis.mac`，名称`渐晰 Mac`
+2. macOS 记录：SKU=`biaoyue‑mac`，BundleID=`com.yourdomain.biaoyue.mac`，名称`标月 Mac`
 
 > Mac 名称必须加后缀，完全同名苹果审核拒绝。
 > 

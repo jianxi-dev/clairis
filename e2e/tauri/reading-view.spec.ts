@@ -19,13 +19,13 @@ async function openFile(
       const w = window as unknown as Record<string, unknown>;
       (
         w as {
-          __clairis_openFile__?: (
+          __biaoyue_openFile__?: (
             path: string,
             content: string,
             title: string,
           ) => void;
         }
-      ).__clairis_openFile__?.(p, c, p.split("/").pop() ?? p);
+      ).__biaoyue_openFile__?.(p, c, p.split("/").pop() ?? p);
     },
     [path, content],
   );
@@ -45,7 +45,7 @@ test("阅读模式：墨线随模式与沉浸态显隐", async ({ page }) => {
   // 编辑模式：墨线隐藏
   await page.evaluate(() => {
     const store = (window as unknown as Record<string, unknown>)
-      .__clairis_store__ as {
+      .__biaoyue_store__ as {
       getState: () => { setEditorMode: (m: string) => void };
     };
     store.getState().setEditorMode("edit");
@@ -56,7 +56,7 @@ test("阅读模式：墨线随模式与沉浸态显隐", async ({ page }) => {
   // 切回预览：墨线恢复
   await page.evaluate(() => {
     const store = (window as unknown as Record<string, unknown>)
-      .__clairis_store__ as {
+      .__biaoyue_store__ as {
       getState: () => { setEditorMode: (m: string) => void };
     };
     store.getState().setEditorMode("preview");
@@ -115,7 +115,7 @@ test("阅读模式：滚动位置在关闭后重开时恢复", async ({ page }) 
   // 关闭 tab（captureScrollNow 立即写入）
   const tabInfo = await page.evaluate(() => {
     const store = (window as unknown as Record<string, unknown>)
-      .__clairis_store__ as {
+      .__biaoyue_store__ as {
       getState: () => {
         activeTabId: string | null;
         closeTab: (id: string) => void;

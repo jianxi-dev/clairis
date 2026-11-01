@@ -12,13 +12,13 @@ async function openFile(
       const w = window as unknown as Record<string, unknown>;
       (
         w as {
-          __clairis_openFile__?: (
+          __biaoyue_openFile__?: (
             path: string,
             content: string,
             title: string,
           ) => void;
         }
-      ).__clairis_openFile__?.(p, c, p.split("/").pop() ?? p);
+      ).__biaoyue_openFile__?.(p, c, p.split("/").pop() ?? p);
     },
     [path, content],
   );
@@ -53,7 +53,7 @@ test("HTML 预览：无路径回退 srcdoc 且脚本仍禁", async ({ page }) =>
   // 实际无路径 html 场景=新建文档切 html，此处验证 iframe 存在性即可
   await page.evaluate(() => {
     const store = (window as unknown as Record<string, unknown>)
-      .__clairis_store__ as {
+      .__biaoyue_store__ as {
       getState: () => {
         openFile: (p: string, c: string) => void;
       };

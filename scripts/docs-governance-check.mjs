@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * docs-governance-check.mjs — Clairis 文档治理检查器（任务 5）
+ * docs-governance-check.mjs — Biaoyue 文档治理检查器（任务 5）
  *
  * 默认只读。单一入口。用 unified + remark-parse + remark-frontmatter 构建
  * Markdown AST 并用 yaml 解析 frontmatter；严禁用正则替代 Markdown 语法解析链接。
@@ -121,7 +121,7 @@ function parseArgs(argv) {
   return args;
 }
 
-const HELP = `docs-governance-check.mjs — Clairis 文档治理检查器（只读）
+const HELP = `docs-governance-check.mjs — Biaoyue 文档治理检查器（只读）
 
 用法:
   --fixture <dir>          检查指定夹具目录

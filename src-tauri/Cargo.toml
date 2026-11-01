@@ -1,12 +1,12 @@
 [package]
-name = "clairis"
+name = "biaoyue"
 version = "0.4.0"
-description = "Folio — Lightweight Markdown Reader/Editor"
+description = "Biaoyue — Lightweight Markdown Reader/Editor"
 authors = ["you"]
 edition = "2021"
 
 [lib]
-name = "clairis_lib"
+name = "biaoyue_lib"
 crate-type = ["lib", "cdylib", "staticlib"]
 
 [build-dependencies]

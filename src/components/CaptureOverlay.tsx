@@ -254,7 +254,7 @@ export default function CaptureOverlay() {
         getCurrentWindow().startDragging();
       })
       .catch((err) => {
-        console.warn("[Clairis] startDragging failed:", err);
+        console.warn("[Biaoyue] startDragging failed:", err);
       });
   };
 
@@ -387,7 +387,7 @@ export default function CaptureOverlay() {
       document.addEventListener("mousemove", onMove);
       document.addEventListener("mouseup", onUp);
     } catch (err) {
-      console.warn("[Clairis] overlay resize failed:", err);
+      console.warn("[Biaoyue] overlay resize failed:", err);
     }
   };
 
@@ -590,7 +590,7 @@ export default function CaptureOverlay() {
             ≡
           </div>
           <span className="ml-2 text-[13px] text-gray-600 dark:text-gray-300 font-medium">
-            Clairis
+            标月
           </span>
           <div className="flex-1" />
           <span className="text-[12px] text-gray-400 mr-2">

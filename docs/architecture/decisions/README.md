@@ -2,7 +2,7 @@
 
 ## 职责
 
-存放 Clairis 的 **ADR（Architecture Decision Records）**：记录每个重要架构决策的背景、决定、后果与状态。这是“历史调查 / 为什么当初这么决定”类任务的首选入口之一。
+存放 Biaoyue 的 **ADR（Architecture Decision Records）**：记录每个重要架构决策的背景、决定、后果与状态。这是“历史调查 / 为什么当初这么决定”类任务的首选入口之一。
 
 ## 不放在这里
 
