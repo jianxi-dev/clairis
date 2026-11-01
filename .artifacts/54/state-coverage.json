@@ -1,0 +1,12 @@
+{
+  "task": "1.1",
+  "change": "md-kernel-port",
+  "issue": 54,
+  "states": [
+    {"state": "list-conversion", "screenshot": "01-list.png", "assertion": "passed", "probe": "行首输入 `- ` 后源码为 `- 项`，编辑区显示列表（e2e 真实按键）"},
+    {"state": "heading-conversion", "screenshot": "03-e2e.txt", "assertion": "passed", "probe": "行首输入 `# ` 后源码为 `# 标题`"},
+    {"state": "smart-enter", "screenshot": "02-unit.txt", "assertion": "passed", "probe": "列表回车续写、空项退出、引用续写、代码块保留缩进（单测）"},
+    {"state": "auto-pair", "screenshot": "02-unit.txt", "assertion": "passed", "probe": "中英文括号/引号自动配对与闭合跳过（单测）"},
+    {"state": "display-equals-source", "screenshot": "02-unit.txt", "assertion": "passed", "probe": "红线 5：转换后文档源码与编辑区可见文本一致（3 条断言）"}
+  ]
+}

@@ -9,6 +9,7 @@ import { createBoldItalicDecorations } from "./decorations/boldItalic";
 import { createListDecorations } from "./decorations/list";
 import { createQuoteDecorations } from "./decorations/quote";
 import { createCodeDecorations } from "./decorations/code";
+import { smartInput } from "./smart-input";
 
 const SOURCE_MODE_LIMIT = 500 * 1024;
 
@@ -65,6 +66,7 @@ export function createExtensions(fileKind: FileKind): Extension[] {
       return [
         ...base,
         markdown({ base: markdownLanguage }),
+        smartInput(),
         decorCompartment.of(fullDecorations()),
       ];
     case "html":
