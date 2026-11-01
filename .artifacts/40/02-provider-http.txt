@@ -1,0 +1,8 @@
+$ cargo test openai_completer
+test ai_agent::tests::openai_completer_uses_configured_endpoint_and_bearer ... ok
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 57 filtered out; finished in 0.02s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+$ cargo test completions_url
+test ai_agent::tests::completions_url_respects_versioned_bases ... ok
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 57 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s

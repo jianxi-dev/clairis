@@ -1,0 +1,7 @@
+运行时探针：首次启动生成 SKILL.md，用户改写后重启不被覆盖
+before_exists=no
+skill_created_after=8s
+marker_survived_after_restart=1
+# Biaoyue 配置地图
+
+这是标月的配置心智地图，供 AI agent 读取。配置分三层，都位于应用配置目录下：
