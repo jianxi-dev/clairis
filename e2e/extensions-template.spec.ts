@@ -56,13 +56,14 @@ test("点新建出现模板选择器，选择后写入替换正文且标题为�
   const picker = page.locator('[data-testid="template-picker"]');
   await expect(picker).toBeVisible();
   await expect(
-    picker.locator("button").filter({ hasText: "日记" }),
+    picker.locator('[data-testid="template-item"]').filter({ hasText: "日记" }),
   ).toBeVisible();
-  await expect(
-    picker.locator("button").filter({ hasText: "空白文档" }),
-  ).toBeVisible();
+  await expect(picker.locator('[data-testid="template-blank"]')).toBeVisible();
 
-  await picker.locator("button").filter({ hasText: "日记" }).click();
+  await picker
+    .locator('[data-testid="template-item"]')
+    .filter({ hasText: "日记" })
+    .click();
 
   await expect(picker).toHaveCount(0);
   const tab = await readActiveTab(page);
@@ -104,7 +105,7 @@ test("选空白文档走默认新建", async ({ page }) => {
   const picker = page.locator('[data-testid="template-picker"]');
   await expect(picker).toBeVisible();
 
-  await picker.locator("button").filter({ hasText: "空白文档" }).click();
+  await picker.locator('[data-testid="template-blank"]').click();
   await expect(picker).toHaveCount(0);
   const tab = await readActiveTab(page);
   expect(tab.title).toBe("未命名");

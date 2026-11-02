@@ -65,17 +65,39 @@ fn is_valid_id(value: &str) -> bool {
             .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-')
 }
 
-/// theme token 键必须匹配 `^--app-[a-z0-9-]+$`。
-fn is_valid_token_key(key: &str) -> bool {
-    match key.strip_prefix("--app-") {
-        Some(rest) => {
-            !rest.is_empty()
-                && rest
-                    .chars()
-                    .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-')
-        }
-        None => false,
+/// `src/styles/tokens.css` 已声明的 token 名（不含 `--app-` 前缀）。
+/// 新增内置 token 时同步此处；未声明的键一律忽略。
+const DECLARED_TOKENS: &[&str] = &[
+    "accent",
+    "accent-soft",
+    "bg",
+    "surface",
+    "sunken",
+    "text",
+    "text-strong",
+    "text-2",
+    "text-3",
+    "border",
+    "border-strong",
+    "radius",
+    "shadow",
+];
+
+/// 把 `theme.toml` 里的键规范化成 `--app-<name>`。
+/// `accent` 与 `--app-accent` 两种写法等价；未声明或形状非法返回 `None`。
+fn normalize_token_key(key: &str) -> Option<String> {
+    let name = key.strip_prefix("--app-").unwrap_or(key);
+    if name.is_empty()
+        || !name
+            .chars()
+            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-')
+    {
+        return None;
     }
+    if !DECLARED_TOKENS.contains(&name) {
+        return None;
+    }
+    Some(format!("--app-{name}"))
 }
 
 /// 颜色白名单：`#rgb` / `#rrggbb` / `rgb(` / `rgba(` / `hsl(` / `hsla(` / 具名色。
@@ -317,11 +339,15 @@ fn scan_theme(dir: &Path) -> ThemeTokens {
                         invalid += 1;
                         continue;
                     };
-                    if !is_valid_token_key(key) || !is_valid_color(value) {
+                    let Some(key) = normalize_token_key(key) else {
+                        invalid += 1;
+                        continue;
+                    };
+                    if !is_valid_color(value) {
                         invalid += 1;
                         continue;
                     }
-                    tokens.insert(key.clone(), value.to_string());
+                    tokens.insert(key, value.to_string());
                 }
             }
         }
@@ -478,7 +504,7 @@ mod tests {
         write_file(
             base,
             "theme.toml",
-            "[tokens]\n--app-accent = \"#c2410c\"\n--app-bg = \"rgb(255, 255, 255)\"\n--app-fg = \"red\"\n",
+            "[tokens]\n--app-accent = \"#c2410c\"\n--app-bg = \"rgb(255, 255, 255)\"\n--app-text = \"red\"\n",
         );
 
         let snapshot = scan_extensions(base);
@@ -501,9 +527,68 @@ mod tests {
             Some("rgb(255, 255, 255)")
         );
         assert_eq!(
-            snapshot.theme.tokens.get("--app-fg").map(String::as_str),
+            snapshot.theme.tokens.get("--app-text").map(String::as_str),
             Some("red")
         );
+    }
+
+    #[test]
+    fn theme_bare_token_name_matches_prefixed_form() {
+        let dir = temp_dir("theme_bare");
+        let base = dir.path();
+        write_file(
+            base,
+            "theme.toml",
+            "[tokens]\naccent = \"#c2410c\"\ntext-2 = \"#55595f\"\n",
+        );
+
+        let snapshot = scan_extensions(base);
+
+        assert!(
+            snapshot.theme.warnings.is_empty(),
+            "got {:?}",
+            snapshot.theme.warnings
+        );
+        assert_eq!(
+            snapshot
+                .theme
+                .tokens
+                .get("--app-accent")
+                .map(String::as_str),
+            Some("#c2410c")
+        );
+        assert_eq!(
+            snapshot
+                .theme
+                .tokens
+                .get("--app-text-2")
+                .map(String::as_str),
+            Some("#55595f")
+        );
+        assert!(!snapshot.theme.tokens.contains_key("accent"));
+    }
+
+    #[test]
+    fn theme_undeclared_app_prefixed_key_is_rejected() {
+        let dir = temp_dir("theme_undeclared");
+        let base = dir.path();
+        write_file(
+            base,
+            "theme.toml",
+            "[tokens]\n--app-not-a-real-token = \"#fff\"\n--app-accent = \"#c2410c\"\n",
+        );
+
+        let snapshot = scan_extensions(base);
+
+        assert_eq!(snapshot.theme.tokens.len(), 1);
+        assert!(snapshot.theme.tokens.contains_key("--app-accent"));
+        assert_eq!(
+            snapshot.theme.warnings.len(),
+            1,
+            "got {:?}",
+            snapshot.theme.warnings
+        );
+        assert!(snapshot.theme.warnings[0].contains("忽略 1 个非法 token"));
     }
 
     #[test]
@@ -513,7 +598,7 @@ mod tests {
         write_file(
             base,
             "theme.toml",
-            "[tokens]\n--app-accent = \"#c2410c\"\n--unknown = \"#fff\"\n--app-bg = \"url(http://x)\"\n--app-fg = \"expression(alert(1))\"\n",
+            "[tokens]\n--app-accent = \"#c2410c\"\n--unknown = \"#fff\"\n--app-bg = \"url(http://x)\"\n--app-text = \"expression(alert(1))\"\n",
         );
 
         let snapshot = scan_extensions(base);

@@ -7,7 +7,7 @@ import { useEditorStore } from "./stores/editorStore";
 import { useCaptureOverlayStore } from "./stores/captureOverlay";
 import Layout from "./components/Layout";
 import Toolbar from "./components/Toolbar";
-import NewFileTemplatePicker from "./components/NewFileTemplatePicker";
+import TemplatePicker from "./components/TemplatePicker";
 import SettingsDialog from "./components/SettingsDialog";
 import SidebarPanel from "./components/SidebarPanel";
 import RecentFiles from "./components/Sidebar/RecentFiles";
@@ -597,7 +597,7 @@ function App() {
         <SettingsDialog onClose={() => setSettingsOpen(false)} />
       )}
       {pickerOpen && templates.length > 0 && (
-        <NewFileTemplatePicker
+        <TemplatePicker
           templates={templates}
           onSelect={handleTemplateSelect}
           onBlank={handleBlankSelect}
