@@ -526,7 +526,8 @@ const SKILL_MAP: &str = r#"# Biaoyue 配置地图
 - 不要手改 `state/state.json`；它由应用维护。
 "#;
 
-fn config_base(app: &AppHandle) -> PathBuf {
+/// 应用配置目录（用户层根目录）。扩展点扫描复用同一目录解析。
+pub fn config_base(app: &AppHandle) -> PathBuf {
     app.path()
         .app_config_dir()
         .unwrap_or_else(|_| PathBuf::from("."))

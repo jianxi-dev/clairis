@@ -3,6 +3,7 @@ use tauri::AppHandle;
 use crate::config;
 use crate::config::AppConfig;
 use crate::errors::AppError;
+use crate::extensions::ExtensionsSnapshot;
 
 /// Load configuration from disk.
 #[tauri::command]
@@ -44,6 +45,14 @@ pub async fn set_api_key(service: String, account: String, key: String) -> Resul
 #[tauri::command]
 pub async fn delete_api_key(service: String, account: String) -> Result<(), AppError> {
     config::delete_api_key(&service, &account).await
+}
+
+/// Scan user extension directories (snippets / templates / theme.toml).
+#[tauri::command]
+pub fn list_extensions(app: AppHandle) -> Result<ExtensionsSnapshot, String> {
+    Ok(crate::extensions::scan_extensions(&config::config_base(
+        &app,
+    )))
 }
 
 #[cfg(test)]
