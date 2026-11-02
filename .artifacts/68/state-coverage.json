@@ -1,0 +1,36 @@
+{
+  "task": "1.5",
+  "change": "md-kernel-port",
+  "states": [
+    {
+      "state": "mixed-document",
+      "screenshot": ".artifacts/68/walk-full.png",
+      "assertion": "passed",
+      "probe": "同一文档内标题/列表/引用/表格/高亮块/分栏共存，无 pageerror，store 内容与源码逐字一致"
+    },
+    {
+      "state": "heading-two-state",
+      "screenshot": ".artifacts/68/walk-full.png",
+      "assertion": "passed",
+      "probe": "光标在结尾段落时标题标记 computed opacity=0（全渲染）"
+    },
+    {
+      "state": "table-inactive",
+      "screenshot": ".artifacts/68/walk-full.png",
+      "assertion": "passed",
+      "probe": "table.cm-table 渲染，tbody 1 行，管道符不可见"
+    },
+    {
+      "state": "callout-inactive",
+      "screenshot": ".artifacts/68/walk-full.png",
+      "assertion": "passed",
+      "probe": ".cm-callout 卡片标题「小提示」，[!TIP] 源标记不可见"
+    },
+    {
+      "state": "columns",
+      "screenshot": ".artifacts/68/walk-full.png",
+      "assertion": "passed",
+      "probe": "::: {.col-2} 渲染为 2 个 .cm-column"
+    }
+  ]
+}

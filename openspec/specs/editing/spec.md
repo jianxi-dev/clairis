@@ -8,9 +8,7 @@ editing 域定义标月桌面端的基础编辑能力：阅读/源码模式切�
 
 - 需求基线：`docs/CORE-REQUIREMENTS-clairis.md` §二 阶段矩阵 Phase M（源码模式查看、加粗/斜体/删除线、语法高亮、工具栏、未保存守卫、并发覆盖保护、原子写入）、§三 快捷键体系；`docs/MVP-需求跟踪表.md` 模块 E（E-1 至 E-4 均标 ✅）
 - 硬约束：模式切换（preview/edit/source）使用 CSS display 切换，不 remount EditorView，以保留 undo/选区/编辑状态（见 `AGENTS.md` 仓库约束与 `CONTEXT.md`）
-
 ## Requirements
-
 ### Requirement: E-1 源码模式
 
 应用 SHALL 提供预览与源码模式的一键切换；切换 SHALL 保留编辑状态（不 remount 编辑器实例，undo 栈、选区、光标位置均保留）。
@@ -61,3 +59,27 @@ editing 域定义标月桌面端的基础编辑能力：阅读/源码模式切�
 
 - **WHEN** 用户将 `.html` 文件切换到源码/编辑模式
 - **THEN** 内容 SHALL 以 HTML 语法高亮呈现并可编辑
+
+### Requirement: E-6 编辑内核与插入入口
+
+编辑模式 SHALL 支持块级装饰（表格、分栏、高亮块、图片、链接、分割线、代码围栏、引用、列表、标题）、插入入口（斜杠菜单、空行「+」、块手柄占位）与智能输入（`# ` `- ` `> ` `1. ` `- [ ] ` 自动转换）。装饰层 SHALL 通过 CM6 扩展装配，模式切换 SHALL NOT remount EditorView。
+
+所有操作 SHALL 满足两条红线：
+1. **源码无损**：操作后 Markdown 只在目标处变化，其余字节不变。
+2. **显示=源码**：被操作元素的可见文本 SHALL 严格等于其在源码中的值。
+
+#### Scenario: 表格单元格编辑
+
+- **WHEN** 用户点击单元格并把 `B2` 改成 `B2XYZ`
+- **THEN** 源码 SHALL 只在该单元格变化，且单元格**可见文本** SHALL 立即为 `B2XYZ`（不需要再点别处）
+
+#### Scenario: 斜杠插入
+
+- **WHEN** 用户在空行输入 `/h1`
+- **THEN** 当前行 SHALL 变为一级标题，源码为 `# `，其余行逐字节不变
+
+#### Scenario: 取消无残留
+
+- **WHEN** 用户打开斜杠菜单后点击外部或按 Esc
+- **THEN** 菜单 SHALL 关闭，输入框 SHALL NOT 残留 `/`
+

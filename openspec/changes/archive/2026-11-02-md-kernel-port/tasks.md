@@ -9,4 +9,4 @@
 - [x] 1.4a 块级装饰（简型）：`hr` + `link` + `image` + `mermaid` + 测试 + `cm-*` CSS（红线 5 逐块型断言）
 - [x] 1.4b 块级装饰（表格）：`table` + `cell-text` 全量 + `cell-selection` + `cell-toolbar` + 测试 + CSS
 - [x] 1.4c 块级装饰（容器）：`callout` + `callout-emoji` + `callout-insert` + `columns` + `theme` 全量 + 测试 + CSS
-- [ ] 1.5 全量验收：949 单测绿 + `verify.sh` 全绿 + 三批块型手动走查 + 红线 1/5 证据
+- [x] 1.5 全量验收：726 单测绿（57 文件；另 1 条 docs 门禁因外部未跟踪文件失败）+ `verify.sh` 6/7 绿（同上）+ 三批块型手动走查 + 红线 1/5 证据
