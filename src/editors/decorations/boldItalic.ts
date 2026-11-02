@@ -24,7 +24,7 @@ export const fontRegex = new RegExp(
   "g",
 );
 export const colorRegex = new RegExp(
-  `<span class="mdb-color-(red|orange|yellow|green|cyan|blue|purple)">(${spanBody})<\\/span>`,
+  `<span class="mdb-color-(red|orange|yellow|green|cyan|blue|purple|gray)">(${spanBody})<\\/span>`,
   "g",
 );
 export const bgRegex = new RegExp(

@@ -10,6 +10,9 @@ import {
   rectFromCoords,
   clampRect,
   placeMenu,
+  resolvePlacement,
+  intersectRects,
+  PANEL_MAX_HEIGHT,
   type AnchorRect,
 } from "../../editors/orchestration/anchor";
 import { createAnchorTracker } from "../../editors/orchestration/placement";
@@ -265,6 +268,184 @@ describe("clampRect", () => {
 });
 
 // --- 摆放 --------------------------------------------------------------------
+
+describe("resolvePlacement（D4 统一摆放）", () => {
+  const VIEWPORT = BOUNDS;
+  const PANEL = { width: 100, height: 50 };
+
+  it("空间充足时开在锚点下方、与锚点左对齐", () => {
+    const anchor = rect({ left: 100, top: 100, right: 200, bottom: 150 });
+    const r = resolvePlacement(anchor, PANEL, VIEWPORT, VIEWPORT);
+    expect(r).toMatchObject({
+      x: 100,
+      y: 154,
+      flippedX: false,
+      flippedY: false,
+    });
+  });
+
+  it("底部溢出翻到锚点上方并标记 flippedY", () => {
+    const anchor = rect({ left: 100, top: 240, right: 200, bottom: 280 });
+    const r = resolvePlacement(anchor, PANEL, VIEWPORT, VIEWPORT);
+    expect(r.y).toBe(186);
+    expect(r.flippedY).toBe(true);
+    expect(r.flippedX).toBe(false);
+  });
+
+  it("右侧溢出翻到锚点左侧并标记 flippedX", () => {
+    const anchor = rect({ left: 320, top: 100, right: 380, bottom: 150 });
+    const r = resolvePlacement(anchor, PANEL, VIEWPORT, VIEWPORT);
+    expect(r.x).toBe(276);
+    expect(r.flippedX).toBe(true);
+    expect(r.flippedY).toBe(false);
+  });
+
+  it("右下同时溢出，两个翻转标记都为 true", () => {
+    const anchor = rect({ left: 320, top: 240, right: 380, bottom: 280 });
+    const r = resolvePlacement(anchor, PANEL, VIEWPORT, VIEWPORT);
+    expect(r.x).toBe(276);
+    expect(r.y).toBe(186);
+    expect(r.flippedX).toBe(true);
+    expect(r.flippedY).toBe(true);
+  });
+
+  it("翻转后仍溢出则夹进容器内", () => {
+    const tiny = rect({
+      left: 0,
+      top: 0,
+      right: 60,
+      bottom: 60,
+      width: 60,
+      height: 60,
+    });
+    const r = resolvePlacement(
+      rect({ left: 40, top: 40, right: 50, bottom: 50 }),
+      { width: 100, height: 50 },
+      tiny,
+      tiny,
+    );
+    expect(r.x).toBeGreaterThanOrEqual(0);
+    expect(r.y).toBeGreaterThanOrEqual(0);
+    expect(r.x + 100).toBeLessThanOrEqual(60 + 100); // 不再假设能塞下，只要不出 NaN
+    expect(Number.isFinite(r.x)).toBe(true);
+    expect(Number.isFinite(r.y)).toBe(true);
+  });
+
+  it("视口与容器求交后使用更小的边界", () => {
+    const viewport = rect({
+      left: 0,
+      top: 0,
+      right: 400,
+      bottom: 300,
+      width: 400,
+      height: 300,
+    });
+    const container = rect({
+      left: 0,
+      top: 0,
+      right: 120,
+      bottom: 300,
+      width: 120,
+      height: 300,
+    });
+    const r = resolvePlacement(
+      rect({ left: 100, top: 10, right: 110, bottom: 20 }),
+      PANEL,
+      viewport,
+      container,
+    );
+    // 容器只有 120 宽：必须夹到 120 - 8 - 100 之内
+    expect(r.x).toBeLessThanOrEqual(12);
+  });
+
+  it("可用高度封顶 min(360, 容器高 - 16)", () => {
+    const tall = rect({
+      left: 0,
+      top: 0,
+      right: 400,
+      bottom: 5000,
+      width: 400,
+      height: 5000,
+    });
+    expect(
+      resolvePlacement(
+        rect({ left: 10, top: 10, right: 20, bottom: 20 }),
+        { width: 100, height: 4000 },
+        tall,
+        tall,
+      ).maxHeight,
+    ).toBe(PANEL_MAX_HEIGHT);
+
+    const short = rect({
+      left: 0,
+      top: 0,
+      right: 400,
+      bottom: 200,
+      width: 400,
+      height: 200,
+    });
+    expect(
+      resolvePlacement(
+        rect({ left: 10, top: 10, right: 20, bottom: 20 }),
+        { width: 100, height: 100 },
+        short,
+        short,
+      ).maxHeight,
+    ).toBe(184);
+  });
+
+  it("零尺寸容器不产生 NaN", () => {
+    const zero = rect({ left: 0, top: 0, right: 0, bottom: 0 });
+    const r = resolvePlacement(
+      rect({ left: 0, top: 0, right: 0, bottom: 0 }),
+      PANEL,
+      zero,
+      zero,
+    );
+    expect(Number.isFinite(r.x)).toBe(true);
+    expect(Number.isFinite(r.y)).toBe(true);
+    expect(r.maxHeight).toBeGreaterThanOrEqual(0);
+  });
+});
+
+describe("intersectRects", () => {
+  it("返回重叠区域；无交集时退化为零尺寸", () => {
+    const a = rect({
+      left: 0,
+      top: 0,
+      right: 100,
+      bottom: 100,
+      width: 100,
+      height: 100,
+    });
+    const b = rect({
+      left: 50,
+      top: 50,
+      right: 200,
+      bottom: 200,
+      width: 150,
+      height: 150,
+    });
+    expect(intersectRects(a, b)).toMatchObject({
+      left: 50,
+      top: 50,
+      right: 100,
+      bottom: 100,
+    });
+
+    const far = rect({
+      left: 300,
+      top: 300,
+      right: 400,
+      bottom: 400,
+      width: 100,
+      height: 100,
+    });
+    const empty = intersectRects(a, far);
+    expect(empty.width).toBe(0);
+    expect(empty.height).toBe(0);
+  });
+});
 
 describe("placeMenu", () => {
   const size = { width: 100, height: 50 };

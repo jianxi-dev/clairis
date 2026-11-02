@@ -39,7 +39,7 @@ export function sanitizeCellText(text: string): string {
  * 形状，把 `<td>`/`<th>` 本身上色，而不是把 span 标记显示出来。
  */
 const BACKGROUND_SPAN_RE =
-  /^<span class="(mdb-bg-(?:red|blue|green|orange|purple))">([\s\S]*)<\/span>$/;
+  /^<span class="(mdb-bg-(?:red|orange|yellow|green|cyan|blue|purple|gray|darkred|brown|olive|darkgreen|navy|indigo|slate))">([\s\S]*)<\/span>$/;
 
 export interface ParsedCellBackground {
   /** `mdb-bg-*` span 类名。 */

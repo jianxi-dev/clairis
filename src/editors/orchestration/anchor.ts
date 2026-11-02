@@ -100,6 +100,79 @@ function clampRange(value: number, lo: number, hi: number): number {
   return Math.min(Math.max(value, lo), Math.max(lo, hi));
 }
 
+/** 菜单垂直可用高度的上限（design D4 规则 2）。 */
+export const PANEL_MAX_HEIGHT = 360;
+
+/** 两个矩形的交集；无交集时退化为零尺寸（不产生负数）。 */
+export function intersectRects(a: AnchorRect, b: AnchorRect): AnchorRect {
+  return clampRect(a, b);
+}
+
+export interface PlacementResult {
+  x: number;
+  y: number;
+  flippedX: boolean;
+  flippedY: boolean;
+  /** 面板可用的最大高度：`min(360, 容器高 - 16)` 与面板自身高度的较小值。 */
+  maxHeight: number;
+}
+
+/**
+ * 统一的浮层摆放（design D4 规则 3）：先与视口、容器求交，再做翻转与夹取。
+ *
+ * - 水平：右侧溢出先翻到锚点左侧，仍溢出夹到容器右缘 - margin。
+ * - 垂直：底部溢出先翻到锚点上方，仍溢出夹进容器；可用高度封顶
+ *   `min(360px, 容器高 - 2 * margin)`。
+ *
+ * 纯函数：输入输出都是同一坐标系的矩形/数值，不读 DOM。
+ */
+export function resolvePlacement(
+  anchor: AnchorRect,
+  panelSize: { width: number; height: number },
+  viewportRect: AnchorRect,
+  containerRect: AnchorRect,
+  margin = 8,
+): PlacementResult {
+  const bounds = intersectRects(viewportRect, containerRect);
+  const minLeft = bounds.left + margin;
+  const maxRight = bounds.right - margin;
+  const minTop = bounds.top + margin;
+  const maxBottom = bounds.bottom - margin;
+
+  const maxHeight = Math.max(
+    0,
+    Math.min(PANEL_MAX_HEIGHT, bounds.height - margin * 2),
+  );
+  const height = Math.max(0, Math.min(panelSize.height, maxHeight));
+  const width = Math.max(0, panelSize.width);
+
+  let x = anchor.left;
+  let flippedX = false;
+  if (x + width > maxRight) {
+    const flippedLeft = anchor.right - width - MENU_GAP;
+    if (flippedLeft >= minLeft) {
+      x = flippedLeft;
+      flippedX = true;
+    } else {
+      x = clampRange(flippedLeft, minLeft, maxRight - width);
+      flippedX = true;
+    }
+  }
+
+  let y = anchor.bottom + MENU_GAP;
+  let flippedY = false;
+  if (y + height > maxBottom) {
+    const flippedTop = anchor.top - height - MENU_GAP;
+    y =
+      flippedTop >= minTop
+        ? flippedTop
+        : clampRange(flippedTop, minTop, maxBottom - height);
+    flippedY = true;
+  }
+
+  return { x, y, flippedX, flippedY, maxHeight };
+}
+
 /**
  * 计算菜单左上角。
  *
