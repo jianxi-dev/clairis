@@ -1,0 +1,31 @@
+{
+  "task": "1.4a",
+  "change": "md-kernel-port",
+  "issue": 62,
+  "states": [
+    {
+      "state": "hr",
+      "screenshot": ".artifacts/62/01-hr.png",
+      "assertion": "passed",
+      "probe": "--- 渲染为 .cm-thematic-break 分割线"
+    },
+    {
+      "state": "link",
+      "screenshot": ".artifacts/62/02-link.png",
+      "assertion": "passed",
+      "probe": "非活跃块中 [示例](url) 渲染为 .cm-link，源标记不可见"
+    },
+    {
+      "state": "image-fallback",
+      "screenshot": ".artifacts/62/03-image-fallback.png",
+      "assertion": "passed",
+      "probe": "无解析器时 ![示意图](missing.png) 显示 [图片: missing.png] 回退"
+    },
+    {
+      "state": "mermaid",
+      "screenshot": ".artifacts/62/04-mermaid.png",
+      "assertion": "passed",
+      "probe": "非活跃 mermaid 围栏出现 .cm-mermaid-block 容器，围栏文本不再可见"
+    }
+  ]
+}

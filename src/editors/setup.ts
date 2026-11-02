@@ -5,6 +5,7 @@ import { html } from "@codemirror/lang-html";
 import { EditorView } from "@codemirror/view";
 import type { FileKind } from "../types";
 import { editorDecorations } from "./decorations";
+import type { EditorDecorationsOptions } from "./decorations";
 import { smartInput } from "./smart-input";
 import { slashKeymap } from "./slash";
 
@@ -19,8 +20,10 @@ export const decorCompartment = new Compartment();
  * 组合期与指针冻结期有守卫，不再整篇重建。保留函数名，调用方（ContentArea
  * 与 source 模式切换）无需改动。
  */
-export function fullDecorations(): Extension[] {
-  return [editorDecorations()];
+export function fullDecorations(
+  options?: EditorDecorationsOptions,
+): Extension[] {
+  return [editorDecorations(options)];
 }
 
 /** Common base extensions shared by all file kinds */
