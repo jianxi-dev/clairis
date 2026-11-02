@@ -1,0 +1,31 @@
+{
+  "task": "1.2",
+  "change": "md-orchestration",
+  "issue": 74,
+  "states": [
+    {
+      "state": "handle-visible",
+      "screenshot": ".artifacts/74/01-handle-visible.png",
+      "assertion": "passed",
+      "probe": "悬停块 300ms 后 42×26 药丸淡入（宽≥40 高≥24）"
+    },
+    {
+      "state": "drag-reorder",
+      "screenshot": ".artifacts/74/02-after-drag.png",
+      "assertion": "passed",
+      "probe": "拖第 2 段到第 1 段前，store 内容为 \"第二段\\n\\n第一段\"（其余字节不变）"
+    },
+    {
+      "state": "add-menu",
+      "screenshot": ".artifacts/74/03-add-menu.png",
+      "assertion": "passed",
+      "probe": "空行「+」点击后 .mdb-slash-menu 计数 1"
+    },
+    {
+      "state": "unit",
+      "screenshot": "block-handle-unit.txt",
+      "assertion": "passed",
+      "probe": "图标映射与 moveBlock 前移/后移/首尾/相邻/目标在块内/空文档"
+    }
+  ]
+}

@@ -7,9 +7,9 @@
 export type PointerKind = "mouse" | "touch" | "pen";
 
 /** 鼠标停留多久才显现。 */
-const SHOW_DELAY_MS = 300;
+export const SHOW_DELAY_MS = 300;
 /** 离开后多久才收起（给「斜向移到菜单」留缓冲）。 */
-const HIDE_DELAY_MS = 150;
+export const HIDE_DELAY_MS = 150;
 
 export class HoverGate {
   private pendingShowAt: number | null = null;
