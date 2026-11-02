@@ -4,13 +4,13 @@
   "issue": 66,
   "states": [
     {
-      "state": "callout-rendered",
+      "state": "callout-card",
       "screenshot": ".artifacts/66/01-callout.png",
       "assertion": "passed",
-      "probe": "非活跃高亮块渲染为卡片：图标 + 标题「重要提醒」+ 正文「记得带伞」"
+      "probe": "> [!NOTE] 渲染为 .cm-callout 卡片：图标 📝 + 标题 + 内容，源标记不可见"
     },
     {
-      "state": "title-inline-edit",
+      "state": "callout-title-edit",
       "screenshot": ".artifacts/66/02-title-edit.png",
       "assertion": "passed",
       "probe": "点击标题出现行内 input，值为原标题"
@@ -19,13 +19,13 @@
       "state": "columns",
       "screenshot": ".artifacts/66/03-columns.png",
       "assertion": "passed",
-      "probe": "::: {.col-2} 渲染为两列，左右栏内容各归其位"
+      "probe": "::: {.col-2} 渲染为两列，左右内容各自落位"
     },
     {
       "state": "emoji-picker",
       "screenshot": ".artifacts/66/04-emoji-picker.png",
       "assertion": "passed",
-      "probe": "点击卡片图标弹出 emoji 选择器（.cm-callout-emoji-picker 计数 1）"
+      "probe": "点击卡片图标打开 .cm-callout-emoji-picker（计数 1）"
     }
   ]
 }
