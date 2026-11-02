@@ -1,15 +1,25 @@
-import { Compartment, Extension } from "@codemirror/state";
-import { basicSetup } from "codemirror";
+import { Compartment, EditorState, Extension } from "@codemirror/state";
+import {
+  defaultKeymap,
+  history,
+  historyKeymap,
+  indentWithTab,
+} from "@codemirror/commands";
+import {
+  bracketMatching,
+  defaultHighlightStyle,
+  indentOnInput,
+  syntaxHighlighting,
+} from "@codemirror/language";
+import { drawSelection, EditorView, keymap } from "@codemirror/view";
+import { searchKeymap } from "@codemirror/search";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
 import { html } from "@codemirror/lang-html";
-import { EditorView } from "@codemirror/view";
 import type { FileKind } from "../types";
 import { editorDecorations } from "./decorations";
 import type { EditorDecorationsOptions } from "./decorations";
 import { smartInput } from "./smart-input";
 import { slashKeymap } from "./slash";
-
-const SOURCE_MODE_LIMIT = 500 * 1024;
 
 export const decorCompartment = new Compartment();
 
@@ -24,6 +34,36 @@ export function fullDecorations(
   options?: EditorDecorationsOptions,
 ): Extension[] {
   return [editorDecorations(options)];
+}
+
+/**
+ * 编辑态基础扩展集。
+ *
+ * 刻意**不用** `basicSetup`：它带进来的行号槽、折叠箭头、活动行高亮、自动
+ * 补全把文档编辑器渲染成代码面板，与「在预览态里编辑」的产品目标相反（上游
+ * md-bundle 的编辑器同样只装显式扩展集）。这里只保留正文编辑真正需要的：
+ * 折行、选区绘制、撤销历史、缩进、括号匹配与基础键位映射。
+ *
+ * 不要在这里加回 `lineNumbers()` / `foldGutter()` / `highlightActiveLine()`：
+ * 编辑态的「当前块」由装饰层的 `cm-block-active` 表达，不是行号。
+ */
+export function baseEditorExtensions(): Extension[] {
+  return [
+    EditorView.lineWrapping,
+    drawSelection(),
+    EditorState.allowMultipleSelections.of(true),
+    history(),
+    indentOnInput(),
+    bracketMatching(),
+    syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+    // searchKeymap 保留 Cmd+F 查找：basicSetup 撤掉后这是唯一还需要的面板键位。
+    keymap.of([
+      ...defaultKeymap,
+      ...historyKeymap,
+      ...searchKeymap,
+      indentWithTab,
+    ]),
+  ];
 }
 
 /** Common base extensions shared by all file kinds */
@@ -42,7 +82,7 @@ function commonExtensions(): Extension[] {
  * Create editor extensions based on file kind.
  */
 export function createExtensions(fileKind: FileKind): Extension[] {
-  const base = [basicSetup, ...commonExtensions()];
+  const base = [...baseEditorExtensions(), ...commonExtensions()];
 
   switch (fileKind) {
     case "markdown":

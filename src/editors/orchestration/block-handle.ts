@@ -15,6 +15,7 @@ import { renderIcon, ADD_ICON_NAME } from "../icons";
 import {
   openBlockMenu,
   closeBlockMenu,
+  isBlockMenuOpen,
   scheduleBlockMenuClose,
 } from "./block-menu";
 import { openSlashMenuAtCursor } from "../slash";
@@ -94,6 +95,9 @@ const HANDLE_GAP_PX = 4;
 /** 按下后移动超过这个距离才算拖动，否则视为点击。 */
 const DRAG_THRESHOLD_PX = 4;
 
+/** 悬停到手柄后开菜单的意图延迟（对齐 md-bundle 的 120ms）。 */
+const MENU_INTENT_DELAY_MS = 120;
+
 interface BlockRange {
   from: number;
   to: number;
@@ -112,6 +116,13 @@ interface HandleEntry {
   startY: number;
   onMove: (event: PointerEvent) => void;
   onUp: (event: PointerEvent) => void;
+  /** 悬停意图延迟定时器：到点才开块菜单。 */
+  menuTimer: number | null;
+  /**
+   * 手柄纵向锚点：跟随指针所在的可视行（对齐 md-bundle 的 showHandleAt）。
+   * 长段落/折行时不能锚在 block.from，否则手柄会跑到块顶。
+   */
+  anchorPos: number | null;
 }
 
 function pointerKind(type: string): PointerKind {
@@ -158,7 +169,7 @@ class BlockHandlePlugin {
   /** 重算所有手柄位置（不重建 DOM）。 */
   private reposition(): void {
     for (const handle of this.handles) {
-      this.position(handle.el, handle.block.from);
+      this.position(handle.el, handle.anchorPos ?? handle.block.from);
     }
   }
 
@@ -198,7 +209,10 @@ class BlockHandlePlugin {
         const hit = this.handles.find(
           (handle) => pos >= handle.block.from && pos <= handle.block.to,
         );
-        if (hit) activeFrom = hit.block.from;
+        if (hit) {
+          activeFrom = hit.block.from;
+          hit.anchorPos = Math.min(Math.max(pos, hit.block.from), hit.block.to);
+        }
       }
     }
     for (const handle of this.handles) {
@@ -299,6 +313,8 @@ class BlockHandlePlugin {
       startY: 0,
       onMove: () => {},
       onUp: () => {},
+      menuTimer: null,
+      anchorPos: null,
     };
 
     if (empty) {
@@ -319,12 +335,23 @@ class BlockHandlePlugin {
       el.appendChild(grip);
     }
 
-    // 滑入即显示（D2 规则 1）：手柄已由门控显示后，指针进入手柄即开块菜单。
+    // 滑入即显示（D2 规则 1）＋意图延迟（对齐 md-bundle 的 120ms 缓冲）：
+    // 指针停住才开菜单，擦过手柄不再把 236px 面板糊到正文上。
     el.addEventListener("pointerenter", () => {
       if (entry.dragging || !entry.gate.isOpen()) return;
-      openBlockMenu(this.view, block, el);
+      if (entry.menuTimer !== null) window.clearTimeout(entry.menuTimer);
+      entry.menuTimer = window.setTimeout(() => {
+        entry.menuTimer = null;
+        if (entry.dragging) return;
+        if (isBlockMenuOpen(this.view)) return;
+        openBlockMenu(this.view, block, entry.anchorPos ?? block.from);
+      }, MENU_INTENT_DELAY_MS);
     });
     el.addEventListener("pointerleave", () => {
+      if (entry.menuTimer !== null) {
+        window.clearTimeout(entry.menuTimer);
+        entry.menuTimer = null;
+      }
       if (entry.dragging) return;
       scheduleBlockMenuClose(this.view);
     });

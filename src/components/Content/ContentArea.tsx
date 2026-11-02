@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { EditorState, Compartment } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
@@ -8,11 +8,15 @@ import { python } from "@codemirror/lang-python";
 import { json } from "@codemirror/lang-json";
 import { javascript } from "@codemirror/lang-javascript";
 import { yaml } from "@codemirror/lang-yaml";
-import { basicSetup } from "codemirror";
 import { invoke } from "@tauri-apps/api/core";
 import { useStore } from "../../stores/index";
 import { isMediaKind } from "../../stores/index";
-import { decorCompartment, fullDecorations } from "../../editors/setup";
+import { useEditorStore } from "../../stores/editorStore";
+import {
+  baseEditorExtensions,
+  decorCompartment,
+  fullDecorations,
+} from "../../editors/setup";
 import type { EditorDecorationsOptions } from "../../editors/decorations";
 import { slashKeymap, setUserSlashCommands } from "../../editors/slash";
 import { loadUserExtensions } from "../../editors/user-extensions";
@@ -109,6 +113,27 @@ export default function ContentArea({
   // Keep tab ID ref current so the updateListener closure can read it
   currentTabIdRef.current = tab?.id || null;
 
+  // 与 PreviewView 的 `.preview-content` 注入同一组变量，两个模式才会同貌。
+  const headingColors = useEditorStore((s) => s.headingColors);
+  const readerFontSize = useEditorStore((s) => s.config.readerFontSize);
+  const readerWidth = useEditorStore((s) => s.config.readerWidth);
+
+  const editorThemeVars = useMemo(() => {
+    const vars: Record<string, string> = {};
+    if (headingColors) {
+      for (const level of ["h1", "h2", "h3", "h4", "h5", "h6"] as const) {
+        const color = headingColors[level];
+        if (color) vars[`--heading-${level}`] = color;
+      }
+    }
+    if (readerFontSize) vars["--type-font-size"] = `${readerFontSize}px`;
+    if (readerWidth) {
+      vars["--type-measure"] = `${readerWidth}px`;
+      vars["--type-measure-wide"] = `${Math.min(readerWidth + 120, 1400)}px`;
+    }
+    return vars as React.CSSProperties;
+  }, [headingColors, readerFontSize, readerWidth]);
+
   // Register preview scroll container for scroll position capture
   useEffect(() => {
     const el = scrollContainerRef.current;
@@ -164,8 +189,7 @@ export default function ContentArea({
     const state = EditorState.create({
       doc: "",
       extensions: [
-        basicSetup,
-        EditorView.lineWrapping,
+        ...baseEditorExtensions(),
         langCompartment.of([]),
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {
@@ -252,6 +276,7 @@ export default function ContentArea({
           style={{
             height: "100%",
             display: editorMode === "preview" || !tab ? "none" : "block",
+            ...editorThemeVars,
           }}
         />
         {editorMode === "preview" && tab && (

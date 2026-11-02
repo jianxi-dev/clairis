@@ -29,73 +29,73 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Editor area */
+/* ── 编辑器外壳：与预览同一张纸 ──────────────────────────
+ * 编辑态不是「代码面板」，而是把 `.preview-content` 的纸搬进 CodeMirror：
+ * 同一纸宽（--type-measure-wide）、同一窄栏正文（--type-measure）、同一
+ * 字号 / 行高 / 纸面底色 / 投影 / 阅读强调色。排版变量由 ContentArea 注入，
+ * 与 PreviewView 同源；下面的值是变量缺失时的兜底。
+ * 行号槽、折叠箭头、活动行高亮一律不装扩展，也不在这里给样式。 */
 .editor-area {
-  font-size: var(--editor-font-size);
-  line-height: 1.7;
+  font-size: var(--type-font-size, var(--editor-font-size, 17px));
+  line-height: var(--type-line, 1.78);
 }
 
-/* ── CodeMirror ────────────────────────────────────────── */
 .cm-editor {
   height: 100%;
-  font-size: var(--editor-font-size);
-  color: #1f2937;
-  background: #ffffff;
+  font-size: var(--type-font-size, var(--editor-font-size, 17px));
+  color: var(--app-text);
+  background: var(--app-bg);
+  /* 与 reader.css 的阅读强调色同源（引用竖线、链接） */
+  --reader-accent: var(--tone-accent, #3d5a8a);
+  --reader-accent-soft: rgba(61, 90, 138, 0.1);
+}
+
+.dark .cm-editor {
+  --reader-accent: var(--tone-accent, #8ab4e8);
+  --reader-accent-soft: rgba(138, 180, 232, 0.14);
 }
 
 .cm-editor .cm-scroller {
   font-family:
-    "SF Mono", "Fira Code", "Fira Mono", "Menlo", Consolas, monospace;
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "PingFang SC",
+    "Hiragino Sans GB", "Source Han Sans SC", "Noto Sans CJK SC",
+    "Microsoft YaHei", sans-serif;
+  line-height: var(--type-line, 1.78);
+  overflow-x: hidden;
 }
 
 .cm-editor .cm-content {
-  color: #1f2937;
+  width: 100%;
+  max-width: var(--type-measure-wide, 1200px);
+  min-height: 100%;
+  margin-inline: auto;
+  padding: 2.5rem 2rem 6rem;
+  background: var(--app-surface);
+  box-shadow: var(--app-shadow);
+  color: var(--app-text);
+  caret-color: var(--app-accent);
 }
 
-.cm-editor .cm-gutters {
-  background: #f9fafb;
-  color: #6b7280;
-  border-right: 1px solid #e5e7eb;
+/* 正文走窄通道（与 `.preview-content > *` 的 --type-measure 一致），
+ * 表格 / 分栏 / 图片 / 媒体这些宽内容走满纸宽。 */
+.cm-editor .cm-line {
+  max-width: var(--type-measure, 1080px);
+  margin-inline: auto;
 }
 
-.cm-editor .cm-activeLine {
-  background: rgba(59, 130, 246, 0.05);
+.cm-editor .cm-line:has(.cm-table-wrap),
+.cm-editor .cm-line:has(.cm-columns),
+.cm-editor .cm-line:has(.cm-image-widget),
+.cm-editor .cm-line:has(.cm-media-widget) {
+  max-width: 100%;
 }
 
 .cm-editor .cm-selectionBackground {
-  background: rgba(59, 130, 246, 0.2);
+  background: var(--app-accent-soft);
 }
 
 .cm-editor .cm-cursor {
-  border-left-color: #1f2937;
-}
-
-/* ── Dark Mode: CM6 Editor ────────────────────────────────── */
-.dark .cm-editor {
-  color: #e5e7eb;
-  background: #111827;
-}
-
-.dark .cm-editor .cm-content {
-  color: #e5e7eb;
-}
-
-.dark .cm-editor .cm-gutters {
-  background: #1f2937;
-  color: #9ca3af;
-  border-right-color: #374151;
-}
-
-.dark .cm-editor .cm-activeLine {
-  background: rgba(59, 130, 246, 0.08);
-}
-
-.dark .cm-editor .cm-selectionBackground {
-  background: rgba(59, 130, 246, 0.3);
-}
-
-.dark .cm-editor .cm-cursor {
-  border-left-color: #e5e7eb;
+  border-left-color: var(--app-accent);
 }
 
 /* Editor container mount point */
@@ -115,20 +115,6 @@ body {
   font-style: italic;
 }
 
-/* Inline code (`code`) — backticks hidden, monospace + gray bg */
-.cm-inline-code {
-  font-family:
-    "SF Mono", "Fira Code", "Fira Mono", "Menlo", Consolas, monospace;
-  font-size: 0.9em;
-  background: rgba(0, 0, 0, 0.06);
-  border-radius: 3px;
-  padding: 0.15em 0.35em;
-}
-
-.dark .cm-inline-code {
-  background: rgba(255, 255, 255, 0.1);
-}
-
 /* ── 活源码装饰两态（移植自 md-bundle decorations/theme.ts） ──────────
  * 语义编辑：非活跃块完全渲染、零语法标记可见；活跃块（光标所在块）以低透明度
  * 显示结构标记。行内标记（加粗/斜体/删除线/下划线）两态都隐藏。
@@ -145,28 +131,32 @@ body {
   font-size: 1.75em;
   font-weight: 700;
   letter-spacing: 0.01em;
+  color: var(--tone-1, var(--heading-h1, var(--app-text-strong)));
 }
 
 .cm-heading.cm-h2 {
   font-size: 1.4em;
   font-weight: 700;
   letter-spacing: 0.005em;
+  color: var(--tone-1, var(--heading-h2, var(--app-text-strong)));
 }
 
 .cm-heading.cm-h3 {
   font-size: 1.2em;
   line-height: 1.4;
+  color: var(--tone-2, var(--heading-h3, var(--app-text-strong)));
 }
 
 .cm-heading.cm-h4 {
   font-size: 1.05em;
   line-height: 1.4;
+  color: var(--tone-2, var(--heading-h4, var(--app-text-strong)));
 }
 
 .cm-heading.cm-h5 {
   font-size: 0.95em;
   line-height: 1.4;
-  color: var(--app-text-2);
+  color: var(--tone-3, var(--heading-h5, var(--app-text-2)));
 }
 
 .cm-heading.cm-h6 {
@@ -174,7 +164,7 @@ body {
   font-weight: 600;
   letter-spacing: 0.04em;
   line-height: 1.4;
-  color: var(--app-text-3);
+  color: var(--tone-3, var(--heading-h6, var(--app-text-3)));
 }
 
 /* 标题标记（原始 `# ` 前缀）—— 非活跃块透明度 0，只看到渲染后的标题 */
@@ -353,10 +343,17 @@ body {
   line-height: 1.7em;
 }
 
+/* 项目符号挂在缩进里（宽 0 + 负边距），正文仍从 1.5em 起，与预览 `li::marker`
+ * 的悬挂位置一致；否则每行正文会比预览右移约 1em。 */
 .cm-line.cm-list:not(.cm-list-ordered):not(.cm-task-done):not(
     .cm-task-pending
   )::before {
-  content: "•  ";
+  content: "•";
+  display: inline-block;
+  width: 0;
+  margin-inline: -0.95em 0.95em;
+  font-size: 1.15em;
+  line-height: 1;
   color: var(--app-text-3);
 }
 
@@ -375,31 +372,32 @@ body {
   font-size: 0.85em;
 }
 
-/* 任务列表复选框（替换 `- [ ] ` / `- [x] ` 标记） */
+/* 任务列表复选框（替换 `- [ ] ` / `- [x] ` 标记）
+ * 与 reader.css 的同名控件同形：圆形、1em、阅读强调色。 */
 .cm-task-checkbox {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 14px;
-  height: 14px;
-  margin-inline-end: 0.4em;
-  border: 1.5px solid var(--app-text-3);
-  border-radius: 3px;
+  width: 1em;
+  height: 1em;
+  margin-inline-end: 0.6em;
+  border: 1.5px solid var(--app-border-strong);
+  border-radius: 50%;
   cursor: pointer;
-  vertical-align: middle;
+  vertical-align: -2px;
   transition:
     background 100ms ease-out,
     border-color 100ms ease-out;
 }
 
 .cm-task-checkbox[data-checked="true"] {
-  background: #2f8f46;
-  border-color: #2f8f46;
+  background: var(--reader-accent);
+  border-color: var(--reader-accent);
 }
 
 .cm-task-checkbox[data-checked="true"]::after {
   content: "✓";
-  font-size: 10px;
+  font-size: 0.62em;
   line-height: 1;
   color: #ffffff;
 }
@@ -409,15 +407,14 @@ body {
   color: var(--app-text-3);
 }
 
-/* 引用 —— 左侧竖线 + 底色 */
+/* 引用 —— 与 reader.css 的 blockquote 同一配方：左竖线 + 底色 + 右侧圆角 */
 .cm-line.cm-quote {
-  border-inline-start: 2px solid var(--app-accent);
-  padding-inline-start: 1em;
-  padding-block: 0.7em;
+  border-inline-start: 2px solid var(--reader-accent);
+  padding: 0.7em 1em;
   margin-block: 0 0;
   line-height: 1.7em;
   color: var(--app-text-2);
-  background: var(--app-accent-soft);
+  background: var(--reader-accent-soft);
   border-radius: 0 var(--app-radius) var(--app-radius) 0;
 }
 
@@ -436,11 +433,15 @@ body {
   font-family:
     "SF Mono", "Fira Code", "Fira Mono", "Menlo", Consolas, monospace;
   font-size: 0.88em;
-  color: var(--app-text);
+  color: var(--tone-code, #a03a63);
   background: var(--app-sunken);
   border: 1px solid var(--app-border);
   border-radius: 4px;
   padding: 0.12em 0.35em;
+}
+
+.dark .cm-inline-code {
+  color: var(--tone-code, #e59ac0);
 }
 
 /* 活跃块：低透明度显示反引号 */
@@ -452,11 +453,32 @@ body {
   font-size: 0.85em;
 }
 
-/* 围栏代码块：整块一个圆角容器 */
+/* 围栏代码块：整段是一张圆角卡片（与 reader.css 的 .code-block 同形） */
 .cm-line.cm-fenced-code {
+  font-family: var(
+    --type-font-mono,
+    "SF Mono",
+    "Fira Code",
+    "Fira Mono",
+    "Menlo",
+    Consolas,
+    monospace
+  );
+  font-size: 0.88em;
+  line-height: 1.75em;
   background: var(--app-sunken);
   color: var(--app-text);
   border-inline: 1px solid var(--app-border);
+}
+
+.cm-line:not(.cm-fenced-code) + .cm-line.cm-fenced-code {
+  border-start-start-radius: var(--app-radius);
+  border-start-end-radius: var(--app-radius);
+}
+
+.cm-line.cm-fenced-code:not(:has(+ .cm-line.cm-fenced-code)) {
+  border-end-start-radius: var(--app-radius);
+  border-end-end-radius: var(--app-radius);
 }
 
 .cm-line.cm-fenced-code.cm-block-inactive {
@@ -472,6 +494,10 @@ body {
 .cm-fenced-code-language {
   display: inline-block;
   float: right;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "PingFang SC",
+    "Hiragino Sans GB", "Source Han Sans SC", "Noto Sans CJK SC",
+    "Microsoft YaHei", sans-serif;
   font-size: 0.75em;
   font-weight: 500;
   letter-spacing: 0.03em;
@@ -501,10 +527,11 @@ body {
 
 /* 链接 —— 非活跃块只留链接文字；活跃块保留源码，文字仍是链接色 */
 .cm-link {
-  color: var(--app-accent);
+  color: var(--reader-accent);
   text-decoration: underline;
-  text-decoration-color: var(--app-accent);
-  text-underline-offset: 2px;
+  text-decoration-thickness: 1px;
+  text-decoration-color: var(--reader-accent);
+  text-underline-offset: 0.18em;
   cursor: pointer;
 }
 
@@ -1837,6 +1864,7 @@ body {
   position: absolute;
   z-index: 40;
   padding: 4px 0;
+  overflow-y: auto;
   border: 1px solid var(--app-border);
   border-radius: 8px;
   background: var(--app-surface);

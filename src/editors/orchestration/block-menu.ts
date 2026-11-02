@@ -10,6 +10,7 @@ import type { EditorView } from "@codemirror/view";
 import { defaultCommands, openInsertMenu } from "../slash";
 import { renderIcon } from "../icons";
 import { menuStack } from "./menu-stack";
+import { rectFromCoords, resolvePlacement, type AnchorRect } from "./anchor";
 import {
   blockConvertChanges,
   blockMenuItems,
@@ -71,38 +72,76 @@ function applyConvert(
   view.dispatch({ changes, scrollIntoView: true });
 }
 
+function viewportRect(): AnchorRect {
+  const width = window.innerWidth;
+  const height = window.innerHeight;
+  return { left: 0, top: 0, right: width, bottom: height, width, height };
+}
+
+function boxRect(rect: DOMRect): AnchorRect {
+  return {
+    left: rect.left,
+    top: rect.top,
+    right: rect.right,
+    bottom: rect.bottom,
+    width: rect.width,
+    height: rect.height,
+  };
+}
+
+/**
+ * 锚点矩形（D3）：纵向取指针所在的可视行，横向取该行行首。只走 `coordsAtPos`，
+ * 不读手柄的 DOM 位置——滚动后 DOM 坐标会漂移，而块菜单必须贴着锚点行
+ * （#453 / #466 / #487）。
+ */
+function anchorRectAt(view: EditorView, pos: number): AnchorRect {
+  const clamped = Math.max(0, Math.min(pos, view.state.doc.length));
+  let row: ReturnType<EditorView["coordsAtPos"]> | null = null;
+  let lineStart: ReturnType<EditorView["coordsAtPos"]> | null = null;
+  try {
+    row = view.coordsAtPos(clamped);
+    lineStart = view.coordsAtPos(view.state.doc.lineAt(clamped).from);
+  } catch {
+    row = null;
+  }
+  const rect = rectFromCoords(row, view.documentTop);
+  const left = lineStart?.left ?? rect.left;
+  const width = Math.max(0, rect.right - left);
+  return { ...rect, left, width, right: left + width };
+}
+
+/**
+ * 菜单摆放走 `resolvePlacement`（D4 契约）：先翻转再夹取，可用高度封顶。
+ */
 function positionPanel(
   view: EditorView,
   panel: HTMLElement,
-  anchor: HTMLElement | null,
-  block: BlockLike,
+  anchorPos: number,
 ): void {
-  const base = view.dom.getBoundingClientRect();
-  const rect =
-    anchor?.getBoundingClientRect() ??
-    (() => {
-      const coords = view.coordsAtPos(block.from);
-      return coords
-        ? {
-            left: coords.left,
-            top: coords.top,
-            right: coords.left,
-            bottom: coords.bottom,
-          }
-        : null;
-    })();
-  if (!rect) return;
-  const left = rect.right - base.left + 8;
-  const top = rect.top - base.top;
-  panel.style.left = `${Math.max(0, left)}px`;
-  panel.style.top = `${Math.max(0, top)}px`;
+  const own = view.dom.getBoundingClientRect();
+  const anchor = anchorRectAt(view, anchorPos);
+  const box = panel.getBoundingClientRect();
+  const placement = resolvePlacement(
+    anchor,
+    {
+      width: box.width || panel.offsetWidth || BLOCK_MENU_WIDTH,
+      height: box.height || panel.offsetHeight,
+    },
+    viewportRect(),
+    boxRect(own),
+    8,
+    Number.POSITIVE_INFINITY,
+  );
+  panel.style.left = `${placement.x - own.left}px`;
+  panel.style.top = `${placement.y - own.top}px`;
+  panel.style.maxHeight = `${Math.max(120, placement.maxHeight)}px`;
 }
 
 /** 打开（或替换）该块的菜单。 */
 export function openBlockMenu(
   view: EditorView,
   block: BlockLike,
-  anchor: HTMLElement | null = null,
+  anchorPos: number | null = null,
 ): void {
   closeBlockMenu(view);
 
@@ -168,7 +207,7 @@ export function openBlockMenu(
   panel.appendChild(addBelow);
 
   view.dom.appendChild(panel);
-  positionPanel(view, panel, anchor, block);
+  positionPanel(view, panel, anchorPos ?? block.from);
 
   // CM6 keymap 只在编辑器聚焦时触发；块菜单是 hover 召唤，焦点可能还在别处，
   // 所以自己接一个捕获阶段的 Esc（只负责本视图的块菜单层）。

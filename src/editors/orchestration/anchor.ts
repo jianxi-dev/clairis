@@ -132,6 +132,7 @@ export function resolvePlacement(
   viewportRect: AnchorRect,
   containerRect: AnchorRect,
   margin = 8,
+  maxHeightCap = PANEL_MAX_HEIGHT,
 ): PlacementResult {
   const bounds = intersectRects(viewportRect, containerRect);
   const minLeft = bounds.left + margin;
@@ -141,7 +142,7 @@ export function resolvePlacement(
 
   const maxHeight = Math.max(
     0,
-    Math.min(PANEL_MAX_HEIGHT, bounds.height - margin * 2),
+    Math.min(maxHeightCap, bounds.height - margin * 2),
   );
   const height = Math.max(0, Math.min(panelSize.height, maxHeight));
   const width = Math.max(0, panelSize.width);
