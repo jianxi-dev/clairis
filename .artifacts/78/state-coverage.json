@@ -1,0 +1,31 @@
+{
+  "task": "1.1",
+  "change": "extension-points",
+  "issue": 78,
+  "states": [
+    {
+      "state": "snippets-parse",
+      "screenshot": "cargo-test.txt",
+      "assertion": "passed",
+      "probe": "frontmatter 扁平子集解析：id/label/keywords/icon，正文原样保留；缺 id 跳过并记原因"
+    },
+    {
+      "state": "templates-scan",
+      "screenshot": "cargo-test.txt",
+      "assertion": "passed",
+      "probe": "templates/*.md 文件名即模板名，正文原样（占位替换留 1.3）"
+    },
+    {
+      "state": "theme-whitelist",
+      "screenshot": "cargo-test.txt",
+      "assertion": "passed",
+      "probe": "theme.toml 只接受 --app-* 与合法颜色；非法键/值忽略并聚合告警"
+    },
+    {
+      "state": "missing-dir",
+      "screenshot": "cargo-test.txt",
+      "assertion": "passed",
+      "probe": "目录/文件不存在返回空快照，不报错"
+    }
+  ]
+}

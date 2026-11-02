@@ -2,14 +2,15 @@ mod ai_agent;
 mod commands;
 mod config;
 mod errors;
+mod extensions;
 mod media_protocol;
 mod types;
 mod validation;
 
 use commands::ai_agent_cmd::run_agent_turn;
 use commands::config_cmd::{
-    delete_api_key, get_api_key, list_config_snapshots, load_config, restore_config_snapshot,
-    save_config, set_api_key,
+    delete_api_key, get_api_key, list_config_snapshots, list_extensions, load_config,
+    restore_config_snapshot, save_config, set_api_key,
 };
 use commands::directory::{flatten_files, get_file_info, list_media_in_dir, read_directory};
 use commands::file::{
@@ -199,6 +200,7 @@ pub fn run() {
             save_config,
             list_config_snapshots,
             restore_config_snapshot,
+            list_extensions,
             get_api_key,
             set_api_key,
             delete_api_key,
