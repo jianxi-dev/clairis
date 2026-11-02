@@ -1525,6 +1525,15 @@ export function slashMenuSubmenuBack(view: EditorView): boolean {
 
 /** Escape：收起菜单，触发文本一并带走（无残留）。 */
 export function slashMenuClose(view: EditorView): boolean {
+  // 块菜单也可能是栈顶：Esc 先收它，再轮到斜杠菜单。
+  const top = menuStack.top(view);
+  if (top !== null && top.id.startsWith("block:")) {
+    menuStack.closeAll(
+      "escape",
+      (entry) => entry.scope === view && entry.id.startsWith("block:"),
+    );
+    return true;
+  }
   const state = menus.get(view);
   if (!state?.open || !isActiveLayer(view, state)) return false;
   dismissMenu(view);
@@ -1678,14 +1687,25 @@ const slashCompositionGuard = ViewPlugin.define((view) => {
  */
 const outsideClickDismiss = ViewPlugin.define((view) => {
   const onMouseDown = (event: MouseEvent): void => {
-    const state = menus.get(view);
-    if (!state?.open) return;
     const target = event.target;
+    const inRegisteredLayer =
+      target instanceof Node && menuStack.containsElement(target);
     const inTriggerChrome =
       target instanceof Element &&
       target.closest(
         ".cm-table-cell-handle, .mdb-block-handle-menu, .mdb-block-handle",
       ) !== null;
+
+    // 块菜单可能是唯一打开的层：即使没有斜杠菜单，外部点击也要收起。
+    if (!inRegisteredLayer && !inTriggerChrome) {
+      menuStack.closeAll(
+        "outside",
+        (entry) => entry.scope === view && entry.id.startsWith("block:"),
+      );
+    }
+
+    const state = menus.get(view);
+    if (!state?.open) return;
     if (
       target instanceof Node &&
       (state.dom?.contains(target) ||

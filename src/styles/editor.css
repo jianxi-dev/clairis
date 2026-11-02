@@ -1797,3 +1797,54 @@ body {
 .cm-block-handle-dragging {
   background: var(--app-accent-soft);
 }
+
+/* 块菜单（E1b 1.3b / design D6）：236px 宽、行高 32px、顶端对齐块顶。
+ * 由 HoverGate 在指针停在块手柄上时召唤，menuStack 统一管开合。 */
+.cm-block-menu {
+  position: absolute;
+  z-index: 40;
+  padding: 4px 0;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  background: var(--app-surface);
+  box-shadow: 0 8px 24px rgba(31, 26, 20, 0.12);
+  font-size: 13px;
+  color: var(--app-text);
+  user-select: none;
+}
+
+.cm-block-menu-group {
+  padding: 4px 12px 2px;
+  font-size: 11px;
+  color: var(--app-text-3);
+}
+
+.cm-block-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 0 12px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cm-block-menu-item:hover {
+  background: var(--app-sunken);
+}
+
+.cm-block-menu-item svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+
+.cm-block-menu-separator {
+  height: 1px;
+  margin: 4px 0;
+  background: var(--app-border);
+}
