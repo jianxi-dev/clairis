@@ -15,6 +15,7 @@ import { decorCompartment, fullDecorations } from "../../editors/setup";
 import type { EditorDecorationsOptions } from "../../editors/decorations";
 import { slashKeymap } from "../../editors/slash";
 import { smartInput } from "../../editors/smart-input";
+import { blockHandle } from "../../editors/orchestration/block-handle";
 import {
   setEditorView,
   setActivePanel,
@@ -49,6 +50,7 @@ function createLanguageExtension(kind: FileKind) {
         markdown({ base: markdownLanguage }),
         smartInput(),
         slashKeymap(),
+        blockHandle(),
         decorCompartment.of(fullDecorations(editorDecorationOptions)),
       ];
     case "html":

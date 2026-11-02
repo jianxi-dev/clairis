@@ -1734,3 +1734,66 @@ body {
 .cm-content .cm-column-gutter:hover .cm-column-gutter-line {
   background: var(--app-accent);
 }
+
+/* ── 块手柄（md-orchestration 1.2 / design D6） ────────────────────
+ *
+ * 42×26 药丸：左段块型图标、右段拖拽把手；空行退化为单段「+」。
+ * 默认 opacity 0，由 HoverGate 切换 `.cm-block-handle-visible` 淡入 120ms。
+ * 拖拽期间给整块加 `.cm-block-handle-dragging` 高亮。
+ */
+
+.cm-block-handle {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  width: 42px;
+  height: 26px;
+  padding: 1px;
+  gap: 0;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  border-radius: 6px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+  opacity: 0;
+  transition: opacity 120ms ease;
+  cursor: default;
+  user-select: none;
+  z-index: 20;
+}
+
+.cm-block-handle.cm-block-handle-visible {
+  opacity: 1;
+}
+
+.cm-block-handle-icon,
+.cm-block-handle-grip,
+.cm-block-handle-add {
+  flex: 1 1 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 22px;
+  border-radius: 4px;
+  color: var(--app-text-2);
+  cursor: grab;
+}
+
+.cm-block-handle-grip:active {
+  cursor: grabbing;
+}
+
+.cm-block-handle-icon:hover,
+.cm-block-handle-grip:hover,
+.cm-block-handle-add:hover {
+  background: var(--app-sunken);
+  color: var(--app-text);
+}
+
+.cm-block-handle-add {
+  cursor: pointer;
+}
+
+/* 拖拽进行中：整块（药丸与被移动块的行）高亮。 */
+.cm-block-handle-dragging {
+  background: var(--app-accent-soft);
+}
