@@ -4,6 +4,9 @@
  * `{ id, label, keywords, icon?, body, path }`（serde 默认 snake_case）。
  * 本模块把它映射成 `SlashCommand`，让同一套过滤/渲染/单事务插入逻辑复用。
  *
+ * 模板与主题 token 的前端接入见 `src/lib/extensions/`（bundle / templates /
+ * theme-tokens），本模块只管 snippets。
+ *
  * 任何调用异常或返回形状不对都返回空列表——菜单退回纯内置命令，
  * 不抛错、不打 error 级日志（`list_extensions` 在纯浏览器/老版本里不存在）。
  */
@@ -79,7 +82,7 @@ function toSnippet(raw: unknown): UserSnippet | null {
 }
 
 /** 从 `list_extensions` 返回值里取 snippets；形状不对返回空列表。 */
-function extractSnippets(result: unknown): UserSnippet[] {
+export function extractSnippets(result: unknown): UserSnippet[] {
   if (!isRecord(result)) return [];
   const snippets = result.snippets;
   if (!Array.isArray(snippets)) return [];

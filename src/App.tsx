@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { useStore } from "./stores/index";
@@ -7,6 +7,7 @@ import { useEditorStore } from "./stores/editorStore";
 import { useCaptureOverlayStore } from "./stores/captureOverlay";
 import Layout from "./components/Layout";
 import Toolbar from "./components/Toolbar";
+import NewFileTemplatePicker from "./components/NewFileTemplatePicker";
 import SidebarPanel from "./components/SidebarPanel";
 import RecentFiles from "./components/Sidebar/RecentFiles";
 import FileTree from "./components/Sidebar/FileTree";
@@ -22,6 +23,14 @@ import { getActiveEditorView, getPanelScrollEl } from "./editors/editorRef";
 import { toggleBold, toggleItalic } from "./editors/keybindings";
 import { saveAppConfig, useConfig } from "./hooks/useConfig";
 import { log } from "./utils/log";
+import { loadExtensionBundle } from "./lib/extensions/bundle";
+import type { ExtensionBundle } from "./lib/extensions/bundle";
+import {
+  applyTemplatePlaceholders,
+  todayStamp,
+} from "./lib/extensions/templates";
+import type { Template } from "./lib/extensions/templates";
+import { applyThemeTokens } from "./lib/extensions/theme-tokens";
 
 const isTauri =
   typeof window !== "undefined" &&
@@ -35,6 +44,8 @@ function App() {
   const readingMode = useStore((s) => s.readingMode);
   const immersiveChromeVisible = useStore((s) => s.immersiveChromeVisible);
   const peekTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [templates, setTemplates] = useState<Template[]>([]);
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   // Init config loading + theme on mount
   const { setTheme, scheduleSave } = useConfig();
@@ -79,7 +90,36 @@ function App() {
   }, [activeTab?.path, activeTab?.content, activeTab?.fileKind]);
 
   const handleNewFile = useCallback(() => {
+    if (templates.length > 0) {
+      setPickerOpen(true);
+      return;
+    }
     useStore.getState().newTab();
+  }, [templates]);
+
+  // 启动时读一次扩展 bundle：模板供新建页选择，theme token 覆盖内置变量。
+  // 加载失败静默（空 bundle → 无模板选择器、无 token 覆盖）。
+  useEffect(() => {
+    void loadExtensionBundle(invoke).then((bundle: ExtensionBundle) => {
+      setTemplates(bundle.templates);
+      applyThemeTokens(bundle.themeTokens);
+    });
+  }, []);
+
+  const handleTemplateSelect = useCallback((template: Template) => {
+    useStore.getState().newTabWith(
+      template.name,
+      applyTemplatePlaceholders(template.body, {
+        title: template.name,
+        date: todayStamp(),
+      }),
+    );
+    setPickerOpen(false);
+  }, []);
+
+  const handleBlankSelect = useCallback(() => {
+    useStore.getState().newTab();
+    setPickerOpen(false);
   }, []);
 
   // ── Capture Overlay — Cmd+Shift+. global shortcut ─────────────────
@@ -216,7 +256,7 @@ function App() {
       // Cmd+N: New file
       if (meta && e.key === "n") {
         e.preventDefault();
-        store.newTab();
+        handleNewFile();
       }
 
       // Cmd+W: Close active tab
@@ -336,6 +376,7 @@ function App() {
   }, [
     handleOpenFile,
     handleSaveFile,
+    handleNewFile,
     activeTab?.editorMode,
     readingMode,
     activeTabId,
@@ -532,6 +573,14 @@ function App() {
       <CommandOverlay />
       <UndoBar />
       <SnapshotPanel />
+      {pickerOpen && templates.length > 0 && (
+        <NewFileTemplatePicker
+          templates={templates}
+          onSelect={handleTemplateSelect}
+          onBlank={handleBlankSelect}
+          onClose={() => setPickerOpen(false)}
+        />
+      )}
       {readingMode && (
         <div
           className="immersive-peek-zone"
