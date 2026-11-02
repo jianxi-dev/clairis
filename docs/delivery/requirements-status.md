@@ -37,8 +37,8 @@ openspec status --change <name>   # 单个变更工件完成度
 
 ## 总览统计（截至 2026-11-02）
 
-- 规格：8 域 / 54 requirement（`openspec validate` 通过）
-- ✅ 经 openspec 归档实现：12
+- 规格：8 域 / 55 requirement（`openspec validate` 通过）
+- ✅ 经 openspec 归档实现：13
 - 🟡 已实现/设计完成（未走 openspec 变更）：24
 - ⬜ 待开发：16
 - 🗒 未立项（遗留散件登记）：约 16（展卷仪式 8 模块 + TODOS 安全/功能项）
@@ -113,7 +113,7 @@ openspec status --change <name>   # 单个变更工件完成度
 | C-5 | 全部文件视图 | ⬜ | 依赖 B-3 |
 | C-6 | 视频预览播放器 | ✅ | change `video-preview-player` |
 
-### editing（5）
+### editing（6）
 
 | 编号 | 需求 | 状态 | 证据 |
 |---|---|---|---|
@@ -122,6 +122,7 @@ openspec status --change <name>   # 单个变更工件完成度
 | E-3 | 保存文件与写入保护 | 🟡 | V3 沿用（原子写入） |
 | E-4 | HTML 源码编辑 | 🟡 | V3 沿用 |
 | E-6 | 编辑内核与插入入口（块级装饰 / 斜杠菜单 / 智能输入） | ✅ | change `md-kernel-port` |
+| E-7 | 编排层交互契约（块手柄 / 菜单栈 / 浮层裁剪 / 共享色板） | ✅ | change `md-orchestration`（归档 2026-11-03） |
 
 ### docs-governance（3）
 
