@@ -2,7 +2,7 @@
 title: 需求实现状态总览
 type: delivery
 status: accepted
-last_updated: 2026-09-15
+last_updated: 2026-11-02
 source_of_truth: supporting
 ---
 
@@ -35,10 +35,10 @@ openspec view              # 交互式 dashboard（specs + changes 一屏总览�
 openspec status --change <name>   # 单个变更工件完成度
 ```
 
-## 总览统计（截至 2026-09-15）
+## 总览统计（截至 2026-11-02）
 
-- 规格：7 域 / 50 requirement（`openspec validate` 通过）
-- ✅ 经 openspec 归档实现：10
+- 规格：7 域 / 51 requirement（`openspec validate` 通过）
+- ✅ 经 openspec 归档实现：11
 - 🟡 已实现/设计完成（未走 openspec 变更）：24
 - ⬜ 待开发：16
 - 🗒 未立项（遗留散件登记）：约 16（展卷仪式 8 模块 + TODOS 安全/功能项）
@@ -113,7 +113,7 @@ openspec status --change <name>   # 单个变更工件完成度
 | C-5 | 全部文件视图 | ⬜ | 依赖 B-3 |
 | C-6 | 视频预览播放器 | ✅ | change `video-preview-player` |
 
-### editing（4）
+### editing（5）
 
 | 编号 | 需求 | 状态 | 证据 |
 |---|---|---|---|
@@ -121,6 +121,7 @@ openspec status --change <name>   # 单个变更工件完成度
 | E-2 | GFM L2 编辑 | 🟡 | `src/editors/decorations/` 已实现 |
 | E-3 | 保存文件与写入保护 | 🟡 | V3 沿用（原子写入） |
 | E-4 | HTML 源码编辑 | 🟡 | V3 沿用 |
+| E-6 | 编辑内核与插入入口（块级装饰 / 斜杠菜单 / 智能输入） | ✅ | change `md-kernel-port` |
 
 ### docs-governance（3）
 
