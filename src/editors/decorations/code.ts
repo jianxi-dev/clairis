@@ -19,6 +19,9 @@ export const inlineCodeRegex = /(`+)(.+?)\1/g;
 export const INLINE_CODE_CLASS = "cm-inline-code";
 export const CODE_MARKER_ACTIVE_CLASS = "cm-code-marker-active";
 export const FENCED_CODE_CLASS = "cm-fenced-code";
+// 围栏标记行单独收高，否则非活跃块的上/下围栏各占一整行，卡片内多出空行。
+export const FENCED_CODE_FENCE_START_CLASS = "cm-fenced-fence-start";
+export const FENCED_CODE_FENCE_END_CLASS = "cm-fenced-fence-end";
 export const FENCED_CODE_LANGUAGE_CLASS = "cm-fenced-code-language";
 export const FENCED_CODE_LANGUAGE_ACTIVE_CLASS =
   "cm-fenced-code-language-active";
@@ -264,12 +267,19 @@ export function createCodeDecorations(
     for (const start of lineStarts) {
       if (start < block.openStart) continue;
       if (start > block.closeStart) break;
+      const fenceClass =
+        start === block.openStart
+          ? FENCED_CODE_FENCE_START_CLASS
+          : start === block.closeStart
+            ? FENCED_CODE_FENCE_END_CLASS
+            : "";
+      const classes = [
+        FENCED_CODE_CLASS,
+        fenceClass,
+        isActive ? BLOCK_ACTIVE_CLASS : BLOCK_INACTIVE_CLASS,
+      ].filter(Boolean);
       decorations.push(
-        Decoration.line({
-          class: isActive
-            ? `${FENCED_CODE_CLASS} ${BLOCK_ACTIVE_CLASS}`
-            : `${FENCED_CODE_CLASS} ${BLOCK_INACTIVE_CLASS}`,
-        }).range(start),
+        Decoration.line({ class: classes.join(" ") }).range(start),
       );
     }
 

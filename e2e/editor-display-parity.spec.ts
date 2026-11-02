@@ -10,6 +10,7 @@ const DOC = [
   "## 二级标题",
   "",
   "- 无序列表项一",
+  "  - 嵌套子项甲",
   "- 无序列表项二",
   "",
   "- [ ] 待办未完成",
@@ -19,7 +20,11 @@ const DOC = [
   "const a = 1;",
   "```",
   "",
-  "> 引用一行",
+  "> 引用第一行",
+  "> 引用第二行",
+  "",
+  "> [!TIP] 高亮块标题",
+  "> 高亮块正文",
   "",
 ].join("\n");
 
@@ -136,4 +141,82 @@ test("编辑态代码围栏与行内元素沿用预览排版", async ({ page }) 
   expect(typography!.fenceSize).toBe("14.96px");
   expect(typography!.quoteBorder).not.toBe("rgb(99, 102, 241)");
   expect(typography!.checkboxRadius).toBe("50%");
+});
+
+test("语法高亮不改写标题排版", async ({ page }) => {
+  await openInEditMode(page);
+
+  const decorations = await page.evaluate(() =>
+    [
+      ...document.querySelectorAll<HTMLElement>(
+        ".cm-editor .cm-h1, .cm-editor .cm-h2",
+      ),
+    ].map((el) => getComputedStyle(el).textDecorationLine),
+  );
+
+  expect(decorations.length).toBeGreaterThan(0);
+  expect(decorations.every((line) => line === "none")).toBe(true);
+});
+
+test("块级组合：引用单卡、高亮块不套引用、围栏不占空行、嵌套列表", async ({
+  page,
+}) => {
+  await openInEditMode(page);
+
+  const state = await page.evaluate(() => {
+    const quoteLines = [
+      ...document.querySelectorAll<HTMLElement>(".cm-editor .cm-line.cm-quote"),
+    ];
+    const calloutQuote = quoteLines.filter((el) =>
+      (el.textContent ?? "").includes("高亮块正文"),
+    ).length;
+    const quotePads = quoteLines.map((el) => ({
+      text: (el.textContent ?? "").trim(),
+      paddingTop: getComputedStyle(el).paddingTop,
+    }));
+
+    const fenceStart = document.querySelector<HTMLElement>(
+      ".cm-fenced-fence-start",
+    );
+    const fenceEnd = document.querySelector<HTMLElement>(
+      ".cm-fenced-fence-end",
+    );
+
+    const nested = [
+      ...document.querySelectorAll<HTMLElement>(".cm-editor .cm-line"),
+    ].find((el) => (el.textContent ?? "").includes("嵌套子项甲"));
+    const topLevel = [
+      ...document.querySelectorAll<HTMLElement>(".cm-editor .cm-line"),
+    ].find((el) => (el.textContent ?? "").trim() === "无序列表项一");
+
+    return {
+      calloutQuote,
+      quotePads,
+      fenceStartHeight: fenceStart?.getBoundingClientRect().height ?? null,
+      fenceEndHeight: fenceEnd?.getBoundingClientRect().height ?? null,
+      nestedClass: nested?.className ?? "",
+      nestedText: (nested?.textContent ?? "").trim(),
+      nestedPad: nested
+        ? parseFloat(getComputedStyle(nested).paddingInlineStart)
+        : null,
+      topLevelPad: topLevel
+        ? parseFloat(getComputedStyle(topLevel).paddingInlineStart)
+        : null,
+    };
+  });
+
+  expect(state.calloutQuote).toBe(0);
+
+  const first = state.quotePads[0];
+  const second = state.quotePads[1];
+  expect(parseFloat(first.paddingTop)).toBeGreaterThan(0);
+  expect(parseFloat(second.paddingTop)).toBe(0);
+
+  expect(state.fenceStartHeight).not.toBeNull();
+  expect(state.fenceStartHeight!).toBeLessThan(30);
+  expect(state.fenceEndHeight!).toBeLessThan(20);
+
+  expect(state.nestedClass).toContain("cm-list-depth-1");
+  expect(state.nestedText).toBe("嵌套子项甲");
+  expect(state.nestedPad!).toBeGreaterThan(state.topLevelPad!);
 });

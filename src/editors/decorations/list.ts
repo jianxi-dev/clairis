@@ -18,6 +18,9 @@ export const taskListRegex = /^- \[([ xX])\]\s/;
 
 export const LIST_CLASS = "cm-list";
 export const LIST_ORDERED_CLASS = "cm-list-ordered";
+export const LIST_DEPTH_1_CLASS = "cm-list-depth-1";
+export const LIST_DEPTH_2_CLASS = "cm-list-depth-2";
+export const LIST_DEPTH_3_CLASS = "cm-list-depth-3";
 export const LIST_MARKER_CLASS = "cm-list-marker";
 export const LIST_MARKER_ACTIVE_CLASS = "cm-list-marker-active";
 export const TASK_DONE_CLASS = "cm-task-done";
@@ -31,7 +34,11 @@ export interface ListLineInfo {
   kind: "task" | "unordered" | "ordered" | "plain";
   /** 行首引用前缀（`> `）长度，没有则为 0。 */
   prefixLen: number;
-  /** 前缀之后的标记长度（`- `、`1. `、`- [x] `），普通行为 0。 */
+  /** 前缀之后的行首缩进长度（嵌套层级用）。 */
+  indentLen: number;
+  /** 嵌套深度 0–3（两空格一层）。 */
+  depth: number;
+  /** 缩进之后的标记长度（`- `、`1. `、`- [x] `），普通行为 0。 */
   markerLen: number;
   /** 任务行：复选框是否勾选。 */
   checked: boolean;
@@ -45,36 +52,31 @@ export interface ListLineInfo {
  */
 export function classifyListLine(line: string): ListLineInfo {
   const prefixLen = line.match(blockquotePrefixRegex)?.[0].length ?? 0;
-  const body = line.slice(prefixLen);
+  const afterPrefix = line.slice(prefixLen);
+  const indentLen = afterPrefix.match(/^[ \t]*/)?.[0].length ?? 0;
+  const depth = Math.min(3, Math.floor(indentLen / 2));
+  const body = afterPrefix.slice(indentLen);
+
+  const base = { prefixLen, indentLen, depth, checked: false };
 
   const task = taskListRegex.exec(body);
   if (task) {
     return {
+      ...base,
       kind: "task",
-      prefixLen,
       markerLen: task[0].length,
       checked: task[1].toLowerCase() === "x",
     };
   }
   const unordered = unorderedListRegex.exec(body);
   if (unordered) {
-    return {
-      kind: "unordered",
-      prefixLen,
-      markerLen: unordered[0].length,
-      checked: false,
-    };
+    return { ...base, kind: "unordered", markerLen: unordered[0].length };
   }
   const ordered = orderedListRegex.exec(body);
   if (ordered) {
-    return {
-      kind: "ordered",
-      prefixLen,
-      markerLen: ordered[0].length,
-      checked: false,
-    };
+    return { ...base, kind: "ordered", markerLen: ordered[0].length };
   }
-  return { kind: "plain", prefixLen, markerLen: 0, checked: false };
+  return { ...base, kind: "plain", markerLen: 0 };
 }
 
 /**
@@ -148,11 +150,20 @@ export function createListDecorations(
       activeFrom >= 0 && lineStart >= activeFrom && lineEnd <= activeTo;
     const blockClass = isActive ? BLOCK_ACTIVE_CLASS : BLOCK_INACTIVE_CLASS;
     const info = classifyListLine(line);
-    const markerFrom = pos + info.prefixLen;
+    const markerFrom = pos + info.prefixLen + info.indentLen;
+    const depthClass =
+      info.depth === 1
+        ? LIST_DEPTH_1_CLASS
+        : info.depth === 2
+          ? LIST_DEPTH_2_CLASS
+          : info.depth >= 3
+            ? LIST_DEPTH_3_CLASS
+            : "";
 
     if (info.kind === "task" && info.markerLen > 0) {
-      const bracketFrom = markerFrom + line.slice(info.prefixLen).indexOf("[");
-      const lineClasses = `${LIST_CLASS} ${info.checked ? TASK_DONE_CLASS : TASK_PENDING_CLASS} ${blockClass}`;
+      const bracketFrom =
+        markerFrom + line.slice(info.prefixLen + info.indentLen).indexOf("[");
+      const lineClasses = `${LIST_CLASS} ${info.checked ? TASK_DONE_CLASS : TASK_PENDING_CLASS} ${depthClass} ${blockClass}`;
       decorations.push(
         Decoration.replace({
           widget: new TaskCheckboxWidget(info.checked, bracketFrom),
@@ -164,7 +175,9 @@ export function createListDecorations(
         Decoration.replace({}).range(markerFrom, markerFrom + info.markerLen),
       );
       decorations.push(
-        Decoration.line({ class: `${LIST_CLASS} ${blockClass}` }).range(pos),
+        Decoration.line({
+          class: `${LIST_CLASS} ${depthClass} ${blockClass}`,
+        }).range(pos),
       );
     } else if (info.kind === "ordered" && info.markerLen > 0) {
       const markerClass = isActive
@@ -178,7 +191,7 @@ export function createListDecorations(
       );
       decorations.push(
         Decoration.line({
-          class: `${LIST_CLASS} ${LIST_ORDERED_CLASS} ${blockClass}`,
+          class: `${LIST_CLASS} ${LIST_ORDERED_CLASS} ${depthClass} ${blockClass}`,
         }).range(pos),
       );
     }

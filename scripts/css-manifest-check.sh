@@ -21,8 +21,10 @@ sort -u -o "$DECLARED" "$DECLARED"
 
 # 2. Extract class names from CSS style files (strip leading .)
 DEFINED=$(mktemp)
-grep -rhn '\.cm-[a-z-]*' "$ROOT/src/styles/" 2>/dev/null | \
-  grep -o '\.cm-[a-z-]*' | sed 's/^\.//' | sort -u > "$DEFINED"
+# 数字也要吃进类名（cm-list-depth-1 / cm-h1），否则提取结果被截断成
+# `cm-list-depth-`，合法规则被误报成缺失。
+grep -rhn '\.cm-[a-z0-9-]*' "$ROOT/src/styles/" 2>/dev/null | \
+  grep -o '\.cm-[a-z0-9-]*' | sed 's/^\.//' | sort -u > "$DEFINED"
 
 # 3. Find missing (declared but not defined)
 MISSING=$(comm -23 "$DECLARED" "$DEFINED")

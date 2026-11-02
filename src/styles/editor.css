@@ -345,6 +345,19 @@ body {
 
 /* 项目符号挂在缩进里（宽 0 + 负边距），正文仍从 1.5em 起，与预览 `li::marker`
  * 的悬挂位置一致；否则每行正文会比预览右移约 1em。 */
+/* 嵌套层级：每层再缩进 1.5em（与预览 `ul ul` 的累计缩进一致） */
+.cm-line.cm-list-depth-1 {
+  padding-inline-start: 3em;
+}
+
+.cm-line.cm-list-depth-2 {
+  padding-inline-start: 4.5em;
+}
+
+.cm-line.cm-list-depth-3 {
+  padding-inline-start: 6em;
+}
+
 .cm-line.cm-list:not(.cm-list-ordered):not(.cm-task-done):not(
     .cm-task-pending
   )::before {
@@ -363,7 +376,6 @@ body {
   font-family:
     "SF Mono", "Fira Code", "Fira Mono", "Menlo", Consolas, monospace;
   font-size: 0.9em;
-  margin-inline-end: 0.25em;
 }
 
 .cm-list-marker.cm-list-marker-active {
@@ -407,15 +419,27 @@ body {
   color: var(--app-text-3);
 }
 
-/* 引用 —— 与 reader.css 的 blockquote 同一配方：左竖线 + 底色 + 右侧圆角 */
+/* 引用 —— 与 reader.css 的 blockquote 同一配方：左竖线 + 底色 + 右侧圆角。
+ * 连续 `>` 行是一张卡片：纵向内边距只给首/末行，中间行只留左右内边距。 */
 .cm-line.cm-quote {
   border-inline-start: 2px solid var(--reader-accent);
-  padding: 0.7em 1em;
-  margin-block: 0 0;
+  padding-inline: 1em;
+  padding-block: 0;
+  margin-block: 0;
   line-height: 1.7em;
   color: var(--app-text-2);
   background: var(--reader-accent-soft);
-  border-radius: 0 var(--app-radius) var(--app-radius) 0;
+}
+
+.cm-line:not(.cm-quote) + .cm-line.cm-quote,
+.cm-content > .cm-line.cm-quote:first-child {
+  padding-block-start: 0.7em;
+  border-start-end-radius: var(--app-radius);
+}
+
+.cm-line.cm-quote:not(:has(+ .cm-line.cm-quote)) {
+  padding-block-end: 0.7em;
+  border-end-end-radius: var(--app-radius);
 }
 
 /* 活跃引用块：低透明度显示 `> ` 前缀 */
@@ -481,6 +505,18 @@ body {
   border-end-end-radius: var(--app-radius);
 }
 
+/* 非活跃块的上/下围栏行收高：只留语言标签带（约与预览 pre 的上内边距相当）
+ * 和一条窄下沿，正文行之外不再出现整行空白。活跃块不适用——源码要可编辑。 */
+.cm-line.cm-fenced-code.cm-fenced-fence-start.cm-block-inactive {
+  height: 22px;
+  line-height: 22px;
+}
+
+.cm-line.cm-fenced-code.cm-fenced-fence-end.cm-block-inactive {
+  height: 10px;
+  line-height: 10px;
+}
+
 .cm-line.cm-fenced-code.cm-block-inactive {
   background: var(--app-sunken);
 }
@@ -518,11 +554,18 @@ body {
   color: var(--app-text-2);
 }
 
-/* 分割线（--- / *** / ___）—— 非活跃块画一条水平线，标记已隐藏 */
+/* 分割线（--- / *** / ___）—— 与预览同一配方：一行居中点线 */
 .cm-line.cm-thematic-break {
-  border-top: 1px solid var(--app-border);
-  margin-block: 0.7em;
-  min-height: 0.7em;
+  border-top: 0;
+  margin-block: 0;
+  min-height: 0;
+  height: 1.5em;
+  background: radial-gradient(
+      circle at center,
+      var(--app-border-strong) 1.5px,
+      transparent 1.7px
+    )
+    center / 20px 100% repeat-x;
 }
 
 /* 链接 —— 非活跃块只留链接文字；活跃块保留源码，文字仍是链接色 */
@@ -1055,10 +1098,18 @@ body {
   border-radius: 50%;
   cursor: pointer;
   user-select: none;
+  /* 与单元格手柄一致：默认不显示，指针进表格才浮现，纸面保持干净。 */
+  opacity: 0;
   transition:
+    opacity 120ms ease,
     width 80ms ease,
     height 80ms ease,
     font-size 80ms ease;
+}
+
+.cm-table-wrap:hover .cm-table-anchor,
+.cm-table-anchor:focus-visible {
+  opacity: 1;
 }
 
 .cm-table-anchor:hover {

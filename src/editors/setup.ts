@@ -7,10 +7,10 @@ import {
 } from "@codemirror/commands";
 import {
   bracketMatching,
-  defaultHighlightStyle,
   indentOnInput,
   syntaxHighlighting,
 } from "@codemirror/language";
+import { classHighlighter } from "@lezer/highlight";
 import { drawSelection, EditorView, keymap } from "@codemirror/view";
 import { searchKeymap } from "@codemirror/search";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
@@ -55,7 +55,9 @@ export function baseEditorExtensions(): Extension[] {
     history(),
     indentOnInput(),
     bracketMatching(),
-    syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+    // classHighlighter 只输出 `.tok-*`，与预览共用一套 token 配色；换成
+    // defaultHighlightStyle 会给 `tags.heading` 加下划线与字重，压住装饰层排版。
+    syntaxHighlighting(classHighlighter),
     // searchKeymap 保留 Cmd+F 查找：basicSetup 撤掉后这是唯一还需要的面板键位。
     keymap.of([
       ...defaultKeymap,
