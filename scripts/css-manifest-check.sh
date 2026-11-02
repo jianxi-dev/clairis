@@ -12,11 +12,11 @@ echo "=== CSS Manifest Check ==="
 # 1. Extract class names from decoration modules (both "CLASS =" constants and hardcoded)
 DECLARED=$(mktemp)
 # From CLASS = "..." constants
-grep -rhn 'CLASS\s*=\s*"' "$ROOT/src/editors/decorations/" 2>/dev/null | \
-  grep -o '"[^"]*"' | tr -d '"' > "$DECLARED"
+grep -rhn 'CLASS\s*=\s*"' "$ROOT/src/editors/" 2>/dev/null | \
+  grep -o '"[^"]*"' | tr -d '"' | grep '^cm-' > "$DECLARED"
 # From hardcoded className = "..."
-grep -rhn 'className\s*=\s*"' "$ROOT/src/editors/decorations/" 2>/dev/null | \
-  grep -o '"[^"]*"' | tr -d '"' >> "$DECLARED"
+grep -rhn 'className\s*=\s*"' "$ROOT/src/editors/" 2>/dev/null | \
+  grep -o '"[^"]*"' | tr -d '"' | grep '^cm-' >> "$DECLARED"
 sort -u -o "$DECLARED" "$DECLARED"
 
 # 2. Extract class names from CSS style files (strip leading .)
