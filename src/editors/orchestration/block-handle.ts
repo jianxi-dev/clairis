@@ -10,8 +10,13 @@
  */
 import type { Extension } from "@codemirror/state";
 import { ViewPlugin, type EditorView, type ViewUpdate } from "@codemirror/view";
-import { getBlocks, getBlockAt } from "../block-model";
+import { getBlocks, getBlockAt, type BlockType } from "../block-model";
 import { renderIcon, ADD_ICON_NAME } from "../icons";
+import {
+  openBlockMenu,
+  closeBlockMenu,
+  scheduleBlockMenuClose,
+} from "./block-menu";
 import { openSlashMenuAtCursor } from "../slash";
 import {
   HoverGate,
@@ -92,7 +97,7 @@ const DRAG_THRESHOLD_PX = 4;
 interface BlockRange {
   from: number;
   to: number;
-  type: string;
+  type: BlockType | "";
 }
 
 interface HandleEntry {
@@ -314,6 +319,16 @@ class BlockHandlePlugin {
       el.appendChild(grip);
     }
 
+    // 滑入即显示（D2 规则 1）：手柄已由门控显示后，指针进入手柄即开块菜单。
+    el.addEventListener("pointerenter", () => {
+      if (entry.dragging || !entry.gate.isOpen()) return;
+      openBlockMenu(this.view, block, el);
+    });
+    el.addEventListener("pointerleave", () => {
+      if (entry.dragging) return;
+      scheduleBlockMenuClose(this.view);
+    });
+
     if (empty) {
       el.addEventListener("pointerdown", (event) =>
         this.onAddPointerDown(event, entry),
@@ -403,6 +418,7 @@ class BlockHandlePlugin {
     if (event.button !== 0) return;
     event.preventDefault();
     entry.gate.suppress(true);
+    closeBlockMenu(this.view);
     entry.dragging = false;
     entry.startX = event.clientX;
     entry.startY = event.clientY;
