@@ -1,5 +1,6 @@
 import katex from "katex";
 import type { TokenizerAndRendererExtension } from "marked";
+import { isCapabilityEnabled } from "../lib/capabilities";
 
 /** 公式渲染结果暂存区。marked 的 extension 是全局注册的，拿不到局部上下文；
  *  渲染是同步的（marked.parse async: false），所以用模块级数组是安全的。 */
@@ -39,6 +40,7 @@ export const mathBlockExtension: TokenizerAndRendererExtension = {
   name: "mathBlock",
   level: "block",
   tokenizer(src) {
+    if (!isCapabilityEnabled("math")) return undefined;
     const m = /^ {0,3}\$\$[ \t]*\n([\s\S]*?)\n[ \t]*\$\$(?:\n|$)/.exec(src);
     if (!m) return undefined;
     return { type: "mathBlock", raw: m[0], text: m[1].trim() };
@@ -57,6 +59,7 @@ export const mathInlineExtension: TokenizerAndRendererExtension = {
     return src.indexOf("$");
   },
   tokenizer(src) {
+    if (!isCapabilityEnabled("math")) return undefined;
     const m = /^\$(?!\s)([^$\n]*?)(?<!\s)\$(?!\d)/.exec(src);
     if (!m) return undefined;
     return { type: "mathInline", raw: m[0], text: m[1] };

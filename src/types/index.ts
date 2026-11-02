@@ -56,6 +56,8 @@ export interface AppConfig {
   verticalSplitRatio: number;
   recentFiles: RecentFile[];
   scrollPositions: Record<string, ScrollPosition>;
+  /** 核心能力开关：只存被关闭的项，缺省全开（spec X-3） */
+  capabilities?: Record<string, boolean>;
 }
 
 export type Theme = "system" | "light" | "dark";

@@ -1,0 +1,60 @@
+{
+  "states": [
+    {
+      "state": "设置面板默认全开",
+      "screenshot": ".artifacts/88/01-settings-default.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-02T16:00:37Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "关闭数学公式后预览显示原文",
+      "screenshot": ".artifacts/88/02-math-off.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-02T16:00:37Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "关闭代码高亮后回退纯文本",
+      "screenshot": ".artifacts/88/03-highlight-off.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-02T16:00:37Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "Esc 关闭面板后状态保持",
+      "screenshot": ".artifacts/88/04-closed-source-visible.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-02T16:00:37Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "设置面板可打开且能力默认全开",
+      "screenshot": ".artifacts/88/01-settings-default.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-02T16:00:39Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "关闭数学公式后预览显示原文（katex 节点为 0）",
+      "screenshot": ".artifacts/88/02-math-off.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-02T16:00:39Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "关闭代码高亮后代码块回退纯文本、源码不丢",
+      "screenshot": ".artifacts/88/03-highlight-off.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-02T16:00:39Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "Esc 关闭设置且能力状态保持",
+      "screenshot": ".artifacts/88/04-closed-source-visible.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-02T16:00:39Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}
