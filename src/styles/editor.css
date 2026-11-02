@@ -459,6 +459,112 @@ body {
   color: var(--app-text-2);
 }
 
+/* 分割线（--- / *** / ___）—— 非活跃块画一条水平线，标记已隐藏 */
+.cm-line.cm-thematic-break {
+  border-top: 1px solid var(--app-border);
+  margin-block: 0.7em;
+  min-height: 0.7em;
+}
+
+/* 链接 —— 非活跃块只留链接文字；活跃块保留源码，文字仍是链接色 */
+.cm-link {
+  color: var(--app-accent);
+  text-decoration: underline;
+  text-decoration-color: var(--app-accent);
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.cm-link.cm-block-active {
+  color: var(--app-text);
+  text-decoration-color: var(--app-text-3);
+}
+
+/* 图片 widget —— 圆角裁在 <img> 自身像素上，容器只铺纸面底色 */
+.cm-image-widget {
+  margin-inline: 0.15em;
+  vertical-align: middle;
+}
+
+.cm-image-fallback {
+  color: var(--app-text-2);
+  font-style: italic;
+}
+
+.cm-image-toolbar {
+  background: var(--app-surface);
+  color: var(--app-text);
+  border: 1px solid var(--app-border);
+}
+
+.cm-image-resize {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  width: 10px;
+  height: 10px;
+  cursor: nwse-resize;
+  border-right: 2px solid var(--app-text-3);
+  border-bottom: 2px solid var(--app-text-3);
+  border-radius: 0 0 3px 0;
+}
+
+/* 视频播放器 / 文件卡片 */
+.cm-media-widget {
+  margin-inline: 0.15em;
+  vertical-align: middle;
+}
+
+.cm-media-widget video {
+  display: block;
+  max-width: 100%;
+  border-radius: var(--app-radius);
+}
+
+.cm-media-file {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  padding: 0.35em 0.7em;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius);
+  background: var(--app-sunken);
+}
+
+.cm-media-file a {
+  color: var(--app-accent);
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+/* mermaid 块 —— 非活跃块整块换成图；未水合时保留源码框 */
+.cm-mermaid-block {
+  display: block;
+  min-height: 80px;
+  margin-block: 0.4em 0;
+  padding: 1em 1.1em;
+  background: var(--app-sunken);
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius);
+  overflow-x: auto;
+}
+
+.cm-mermaid-block pre.mermaid {
+  margin: 0;
+  color: var(--app-text-2);
+  font-family:
+    "SF Mono", "Fira Code", "Fira Mono", "Menlo", Consolas, monospace;
+  font-size: 0.85em;
+  white-space: pre-wrap;
+}
+
+.cm-mermaid-block .mermaid-view svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin-inline: auto;
+}
+
 /* ── SplitResizeHandle ─────────────────────────────────────────── */
 
 .split-resize-handle {

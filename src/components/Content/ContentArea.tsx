@@ -12,6 +12,7 @@ import { basicSetup } from "codemirror";
 import { useStore } from "../../stores/index";
 import { isMediaKind } from "../../stores/index";
 import { decorCompartment, fullDecorations } from "../../editors/setup";
+import type { EditorDecorationsOptions } from "../../editors/decorations";
 import { slashKeymap } from "../../editors/slash";
 import { smartInput } from "../../editors/smart-input";
 import {
@@ -20,11 +21,26 @@ import {
   setPanelScrollEl,
 } from "../../editors/editorRef";
 import { resolveScrollTarget } from "../../utils/scrollPosition";
+import { renderMermaid } from "../../renderers/mermaid";
 import PreviewView from "./PreviewView";
 import ReadingProgressInk from "./ReadingProgressInk";
 import type { EditorMode, FileKind, Tab } from "../../types";
 
 const langCompartment = new Compartment();
+
+/** 编辑态 mermaid 水合：把装饰 widget 里的源码块渲染成 SVG。 */
+function hydrateMermaid(
+  root: HTMLElement,
+  theme: "dark" | "light",
+): Promise<void> {
+  root.dataset.theme = theme;
+  return renderMermaid(root);
+}
+
+/** 编辑态装饰选项：本批只接 mermaid 水合，图片解析器留空走 alt 回退。 */
+const editorDecorationOptions: EditorDecorationsOptions = {
+  hydrateMermaid,
+};
 
 function createLanguageExtension(kind: FileKind) {
   switch (kind) {
@@ -33,7 +49,7 @@ function createLanguageExtension(kind: FileKind) {
         markdown({ base: markdownLanguage }),
         smartInput(),
         slashKeymap(),
-        decorCompartment.of(fullDecorations()),
+        decorCompartment.of(fullDecorations(editorDecorationOptions)),
       ];
     case "html":
       return [html()];
@@ -204,7 +220,9 @@ export default function ContentArea({
       viewRef.current.dispatch({ effects: decorCompartment.reconfigure([]) });
     } else if (editorMode === "edit") {
       viewRef.current.dispatch({
-        effects: decorCompartment.reconfigure(fullDecorations()),
+        effects: decorCompartment.reconfigure(
+          fullDecorations(editorDecorationOptions),
+        ),
       });
     }
   }, [editorMode, tab?.fileKind]);

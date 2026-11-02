@@ -18,9 +18,9 @@
  * 多实例安全：`composing` / `frozen` 是模块级标志，IME 组合与指针事件都是
  * 浏览器单例，多编辑器实例共用安全。
  *
- * 本批只装配五个基础模块。表格 / 分栏 / 高亮块 / 图片 / 链接 / 分割线 /
- * mermaid 属块级装饰批次，`EditorDecorationsOptions` 已留出扩展位，后续加字段
- * 不需要改函数签名。
+ * 本批装配五个基础模块（标题 / 加粗斜体 / 列表 / 引用 / 代码）与四个简型
+ * 块级模块（分割线 / 链接 / 图片 / mermaid）。表格 / 分栏 / 高亮块属后续批次，
+ * `EditorDecorationsOptions` 已留出扩展位，后续加字段不需要改函数签名。
  */
 import type { Extension, EditorState, Range } from "@codemirror/state";
 import { StateEffect, StateField } from "@codemirror/state";
@@ -35,18 +35,38 @@ import { createBoldItalicDecorations } from "./boldItalic";
 import { createListDecorations } from "./list";
 import { createQuoteDecorations } from "./quote";
 import { createCodeDecorations } from "./code";
+import { createHrDecorations } from "./hr";
+import { createLinkDecorations } from "./link";
+import { createImageDecorations, type ImageResolver } from "./image";
+import {
+  createMermaidDecorations,
+  type MermaidHydrator,
+  type MermaidTheme,
+} from "./mermaid";
 import { editorDecorationsThemeExt } from "./theme";
 import { getBlocks, getBlockAt } from "../block-model";
 
 /**
  * `editorDecorations()` 的选项，全部可选。
  *
- * 块级装饰批次（图片解析器、mermaid 水合器等）在这里追加字段即可，函数签名
- * 不变。
+ * 图片解析器与悬停回调、mermaid 水合器都从这里注入：装饰层不依赖应用层
+ * 资源，缺省时图片退化成 alt 文字回退、mermaid 不出图。
  */
 export interface EditorDecorationsOptions {
-  /** 预留：图片路径解析器（块级装饰批次）。 */
-  resolveImage?: (path: string) => string | null;
+  /** 图片路径解析器；返回 null 时走 `[图片: path]` 文字回退。 */
+  resolveImage?: ImageResolver;
+  /** 点击图片「替换」按钮。 */
+  onImageReplace?: (path: string) => void;
+  /** 拖拽图片宽度松手后持久化（`from` 是图片 markdown 起点）。 */
+  onImageResize?: (from: number, width: number) => void;
+  /** 点击图片「删除」按钮。 */
+  onImageDelete?: (path: string) => void;
+  /** 点击图片「定位」按钮。 */
+  onImageLocate?: (path: string) => void;
+  /** mermaid 水合器；缺省时 mermaid 块不出图，源码保持可见。 */
+  hydrateMermaid?: MermaidHydrator;
+  /** 交给 mermaid 水合器的主题；缺省读文档根的 `data-theme`。 */
+  mermaidTheme?: MermaidTheme;
 }
 
 // --- IME 组合守卫 -------------------------------------------------------------
@@ -115,15 +135,27 @@ function buildDecorationSet(
   const activeFrom = activeBlock?.from ?? -1;
   const activeTo = activeBlock?.to ?? -1;
 
-  // `options` 本批没有消费者；保留参数位让块级装饰批次直接接入。
-  void options;
-
   const all: Range<Decoration>[] = [
     ...createHeadingDecorations(docText, activeFrom, activeTo),
     ...createBoldItalicDecorations(docText, activeFrom, activeTo),
     ...createListDecorations(docText, activeFrom, activeTo),
     ...createQuoteDecorations(docText, activeFrom, activeTo),
     ...createCodeDecorations(docText, activeFrom, activeTo),
+    ...createHrDecorations(docText, activeFrom, activeTo),
+    ...createLinkDecorations(docText, activeFrom, activeTo),
+    ...createImageDecorations(docText, options?.resolveImage, {
+      onImageReplace: options?.onImageReplace,
+      onImageResize: options?.onImageResize,
+      onImageDelete: options?.onImageDelete,
+      onImageLocate: options?.onImageLocate,
+    }),
+    ...createMermaidDecorations(
+      docText,
+      activeFrom,
+      activeTo,
+      options?.hydrateMermaid,
+      options?.mermaidTheme,
+    ),
   ];
 
   // 按起点排序（CM6 要求）
