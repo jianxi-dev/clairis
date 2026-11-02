@@ -329,6 +329,20 @@ export const defaultCommands: SlashCommand[] = [
   },
 ];
 
+// 用户片段命令（来自 `list_extensions`）。宿主在编辑器创建后加载一次并注册；
+// 菜单每次打开都读这份列表，所以后加载的命令下一次打开即出现，无需重建视图。
+let userSlashCommands: SlashCommand[] = [];
+
+/** 注册用户片段命令；传空数组回到纯内置命令。 */
+export function setUserSlashCommands(commands: SlashCommand[]): void {
+  userSlashCommands = [...commands];
+}
+
+/** 内置 + 用户命令。菜单每次打开都取这份最新列表，用户命令后加载也生效。 */
+export function getSlashCommands(): SlashCommand[] {
+  return [...defaultCommands, ...userSlashCommands];
+}
+
 /** 第一个 code/alias 等于 `query` 的根行或子行（可叶子应用）。 */
 function findCodeMatch(
   commands: SlashCommand[],
@@ -1294,7 +1308,7 @@ const FULLWIDTH_SLASH = "\uFF0F";
  */
 export function insertSlashChar(
   view: EditorView,
-  commands: SlashCommand[] = defaultCommands,
+  commands?: SlashCommand[],
   slashChar: "/" | typeof FULLWIDTH_SLASH = "/",
 ): boolean {
   if (slashComposing) return false;
@@ -1319,7 +1333,7 @@ export function insertSlashChar(
     selection: { anchor: head + slashChar.length },
   });
   // dispatch 之后再打开，避免 ViewPlugin 的文档变更关闭器立刻把它关掉。
-  openMenu(view, head, commands);
+  openMenu(view, head, commands ?? getSlashCommands());
   return true;
 }
 
@@ -1328,10 +1342,10 @@ export function insertSlashChar(
  */
 export function openSlashMenuAtCursor(
   view: EditorView,
-  commands: SlashCommand[] = defaultCommands,
+  commands?: SlashCommand[],
 ): void {
   const head = view.state.selection.main.head;
-  openMenu(view, head, commands);
+  openMenu(view, head, commands ?? getSlashCommands());
 }
 
 /** ArrowDown：移动浮层选中，或根列表选中，向下。 */
@@ -1571,7 +1585,7 @@ const slashCompositionGuard = ViewPlugin.define((view) => {
     // 提交文本是斜杠（ASCII 或全角）时触发菜单：中文输入法下输入 `/` 会产生
     // 全角斜杠。斜杠已由浏览器/输入法插入，这里只在当前光标处打开菜单。
     if (data === "/" || data === FULLWIDTH_SLASH) {
-      openSlashMenuAtCursor(view, defaultCommands);
+      openSlashMenuAtCursor(view);
     }
   };
   document.addEventListener("compositionstart", onCompositionStart, true);
@@ -1647,7 +1661,6 @@ const chineseCommaTrigger = ViewPlugin.define((view) => {
 export function slashKeymap(
   options: { commands?: SlashCommand[] } = {},
 ): Extension {
-  const commands = options.commands ?? defaultCommands;
   return [
     Prec.high(
       keymap.of([
@@ -1655,7 +1668,8 @@ export function slashKeymap(
           key: "/",
           // 不设 `scope`——CM6 默认 keydown 处理器只跑 "editor" 作用域；自定义
           // 作用域（如 "typing"）会让这个绑定不可达。默认作用域在编辑器聚焦时生效。
-          run: (view) => insertSlashChar(view, commands),
+          // `options.commands` 原样下传：打开菜单时才解析，用户命令后加载无需重建视图。
+          run: (view) => insertSlashChar(view, options.commands),
         },
         { key: "ArrowDown", run: (view) => slashMenuSelectNext(view) },
         { key: "ArrowUp", run: (view) => slashMenuSelectPrev(view) },

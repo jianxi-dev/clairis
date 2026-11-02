@@ -1,0 +1,31 @@
+{
+  "task": "1.2",
+  "change": "extension-points",
+  "issue": 80,
+  "states": [
+    {
+      "state": "snippet-in-menu",
+      "screenshot": ".artifacts/80/01-snippet-found.png",
+      "assertion": "passed",
+      "probe": "/zhoubao 过滤后出现「周报片段」一行"
+    },
+    {
+      "state": "inserted",
+      "screenshot": ".artifacts/80/02-inserted.png",
+      "assertion": "passed",
+      "probe": "回车后 store 内容严格等于片段正文"
+    },
+    {
+      "state": "undo-once",
+      "screenshot": ".artifacts/80/03-undo.png",
+      "assertion": "passed",
+      "probe": "Meta+Z 一次撤销回到空文档（e2e 断言）"
+    },
+    {
+      "state": "mapping",
+      "screenshot": "unit.txt",
+      "assertion": "passed",
+      "probe": "snippetToCommand 映射 code/label/icon/aliases；loadUserExtensions 正常/异常/空返回"
+    }
+  ]
+}

@@ -139,6 +139,12 @@ function mockInvoke(cmd, args) {
     });
     return "/Users/test/" + (args.defaultName || "导出.png");
   }
+  if (cmd === "list_extensions") {
+    // 测试通过 window.__biaoyue_extensions__ 注入用户片段；未注入时返回空快照。
+    var ext = window.__biaoyue_extensions__;
+    if (!ext) return { snippets: [], templates: [], theme: { tokens: {}, warnings: [] }, warnings: [] };
+    return ext;
+  }
   if (cmd === "save_file" && args) return { path:args.path };
   if (cmd === "flatten_files") return responses.flatten_files;
   if (cmd === "pick_folder") return responses.pick_folder;

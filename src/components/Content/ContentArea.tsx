@@ -9,11 +9,13 @@ import { json } from "@codemirror/lang-json";
 import { javascript } from "@codemirror/lang-javascript";
 import { yaml } from "@codemirror/lang-yaml";
 import { basicSetup } from "codemirror";
+import { invoke } from "@tauri-apps/api/core";
 import { useStore } from "../../stores/index";
 import { isMediaKind } from "../../stores/index";
 import { decorCompartment, fullDecorations } from "../../editors/setup";
 import type { EditorDecorationsOptions } from "../../editors/decorations";
-import { slashKeymap } from "../../editors/slash";
+import { slashKeymap, setUserSlashCommands } from "../../editors/slash";
+import { loadUserExtensions } from "../../editors/user-extensions";
 import { smartInput } from "../../editors/smart-input";
 import { blockHandle } from "../../editors/orchestration/block-handle";
 import {
@@ -184,6 +186,12 @@ export default function ContentArea({
 
     viewRef.current = new EditorView({ state, parent: editorRef.current });
     setEditorView(panelId, viewRef.current);
+
+    // 用户片段：编辑器创建后加载一次并注册进斜杠菜单。加载失败静默——菜单退回
+    // 纯内置命令（`list_extensions` 在纯浏览器/老版本里不存在）。
+    void loadUserExtensions(invoke).then((commands) => {
+      setUserSlashCommands(commands);
+    });
 
     return () => {
       setEditorView(panelId, null);
