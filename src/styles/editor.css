@@ -883,3 +883,475 @@ body {
   background: var(--app-accent);
   border-color: var(--app-accent);
 }
+
+/* ── 表格块装饰（cm-table-*，移植自 md-bundle） ──────────────
+ * 表格整块被 widget 替换，源码不可见；单元格文本由 renderCellText 渲染成
+ * HTML。几何（left/top/width/height）由 table.ts 在运行时写入，这里只管外观。
+ * 颜色全部走 tokens.css 的语义变量，不写死 hex。 */
+.cm-table-wrap {
+  position: relative;
+  margin: 0.35em 0;
+  padding-top: 10px;
+  overflow-x: auto;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius);
+}
+
+.cm-table {
+  width: 100%;
+  margin: 0;
+  font-size: 0.95em;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.cm-table th,
+.cm-table td {
+  position: relative;
+  padding: 0.55em 0.8em;
+  text-align: left;
+  vertical-align: top;
+  cursor: text;
+  border-bottom: 1px solid var(--app-border);
+}
+
+.cm-table th {
+  font-weight: 600;
+  color: var(--app-text-2);
+  background: var(--app-sunken);
+  border-top: 0;
+}
+
+.cm-table-cell-text {
+  display: inline-block;
+  min-width: 1em;
+  min-height: 1em;
+  white-space: pre-wrap;
+  cursor: text;
+}
+
+.cm-table-cell-editing .cm-table-cell-text {
+  visibility: hidden;
+}
+
+.cm-table-cell-input {
+  position: absolute;
+  inset: 0;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  padding: 0.55em 0.8em;
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: none;
+  outline: none;
+}
+
+.cm-table-cell-active {
+  box-shadow: inset 0 0 0 2px var(--app-accent);
+}
+
+.cm-table-cell-selected {
+  background: var(--app-accent-soft);
+  box-shadow: inset 0 0 0 2px var(--app-accent);
+}
+
+.cm-table-cell-bg-red {
+  background: rgba(248, 81, 73, 0.25);
+}
+
+.cm-table-cell-bg-blue {
+  background: rgba(123, 134, 234, 0.25);
+}
+
+.cm-table-cell-bg-green {
+  background: rgba(63, 185, 80, 0.25);
+}
+
+.cm-table-cell-bg-orange {
+  background: rgba(227, 179, 65, 0.25);
+}
+
+.cm-table-cell-bg-purple {
+  background: rgba(163, 113, 247, 0.25);
+}
+
+.cm-table-anchor {
+  position: absolute;
+  top: 1px;
+  left: 4px;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 12px;
+  height: 12px;
+  font-size: 0;
+  line-height: 1;
+  color: var(--app-text-2);
+  background: var(--app-sunken);
+  border: 1px solid var(--app-border);
+  border-radius: 50%;
+  cursor: pointer;
+  user-select: none;
+  transition:
+    width 80ms ease,
+    height 80ms ease,
+    font-size 80ms ease;
+}
+
+.cm-table-anchor:hover {
+  width: 18px;
+  height: 18px;
+  font-size: 12px;
+}
+
+.cm-table-cell-handle {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  background: var(--app-sunken);
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius);
+  opacity: 0;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.cm-table th:hover .cm-table-cell-handle,
+.cm-table td:hover .cm-table-cell-handle,
+.cm-table-cell-handle-active,
+.cm-table-cell-handle:hover {
+  opacity: 1;
+}
+
+.cm-table-boundaries {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.cm-table-boundary {
+  background: transparent;
+  pointer-events: none;
+}
+
+.cm-table-boundary-line {
+  position: absolute;
+  background: transparent;
+  border-radius: 1px;
+  transition: background-color 120ms ease-out;
+}
+
+.cm-table-boundary-col .cm-table-boundary-line {
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 2px;
+  transform: translateX(-50%);
+}
+
+.cm-table-boundary-row .cm-table-boundary-line {
+  top: 50%;
+  right: 0;
+  left: 0;
+  height: 2px;
+  transform: translateY(-50%);
+}
+
+.cm-table-boundary-active .cm-table-boundary-line {
+  background: var(--app-accent);
+}
+
+.cm-table-hotspot {
+  position: absolute;
+  z-index: 6;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.cm-table-hotspot.cm-table-hotspot-revealed {
+  display: flex;
+}
+
+.cm-table-hotspot-col {
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.cm-table-hotspot-row {
+  top: 50%;
+  left: 8px;
+  transform: translateY(-50%);
+}
+
+.cm-table-hotspot-col.cm-table-hotspot-edge {
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.cm-table-hotspot-row.cm-table-hotspot-edge {
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.cm-table-hotspot-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 16px;
+  height: 16px;
+  font-size: 12px;
+  line-height: 1;
+  color: var(--app-text-2);
+  background: var(--app-sunken);
+  border: 1px solid var(--app-border);
+  border-radius: 50%;
+  pointer-events: auto;
+}
+
+.cm-table-hotspot-active .cm-table-hotspot-dot {
+  color: #ffffff;
+  background: var(--app-accent);
+  border-color: var(--app-accent);
+}
+
+.cm-table-hotspot-bubble {
+  position: absolute;
+  z-index: 7;
+  display: none;
+  gap: 2px;
+  align-items: center;
+  padding: 2px 4px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--app-text);
+  white-space: nowrap;
+  background: var(--app-sunken);
+  border: 1px solid var(--app-border);
+  border-radius: 4px;
+  pointer-events: auto;
+}
+
+.cm-table-hotspot-active .cm-table-hotspot-bubble {
+  display: inline-flex;
+}
+
+.cm-table-boundary-insert {
+  padding: 1px 4px;
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.cm-table-boundary-delete {
+  padding: 1px 4px;
+  font: inherit;
+  color: var(--app-accent);
+  background: transparent;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.cm-table-hotspot-col .cm-table-hotspot-bubble {
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.cm-table-hotspot-row .cm-table-hotspot-bubble {
+  top: 50%;
+  left: 22px;
+  transform: translateY(-50%);
+}
+
+/* 表格 widget 所在行可能带块级 padding/border，重置让 widget 占满内容宽度。 */
+.cm-line:has(.cm-table-wrap) {
+  padding: 0;
+  border: none;
+}
+
+/* ── 单元格选区工具条（mdb-cell-toolbar-*，移植自 md-bundle） ──
+ * 定位（left/top）由 cell-toolbar.ts 在运行时写入，这里只管外观。 */
+.mdb-cell-toolbar {
+  position: absolute;
+  z-index: 1002;
+  display: none;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+}
+
+.mdb-cell-toolbar-btn {
+  padding: 4px 8px;
+  font-size: 13px;
+  line-height: 1;
+  color: var(--app-text);
+  white-space: nowrap;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.mdb-cell-toolbar-btn:hover {
+  background: var(--app-sunken);
+}
+
+.mdb-cell-toolbar-btn-disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.mdb-cell-toolbar-merge,
+.mdb-cell-toolbar-dropdown-btn {
+  font-size: 13px;
+}
+
+.mdb-cell-toolbar-dropdown {
+  position: relative;
+  display: inline-flex;
+}
+
+.mdb-cell-toolbar-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 1003;
+  display: none;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 120px;
+  margin-top: 4px;
+  padding: 6px;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+}
+
+.mdb-color-swatches {
+  display: flex;
+  gap: 6px;
+}
+
+.mdb-color-swatch {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid var(--app-border);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.mdb-color-swatch-bg {
+  border-color: var(--app-border);
+}
+
+.mdb-cell-toolbar-reset {
+  padding: 4px 6px;
+  font-size: 13px;
+  color: var(--app-text);
+  text-align: left;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+/* 单元格选区工具条与色板（cm-* 前缀，与 mdb-* 同节点）。
+ * 定位（left/top）由 cell-toolbar.ts 在运行时写入，这里只管外观。 */
+.cm-cell-toolbar {
+  position: absolute;
+  z-index: 1002;
+  display: none;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+}
+
+.cm-cell-toolbar-merge,
+.cm-cell-toolbar-dropdown-btn {
+  padding: 4px 8px;
+  font-size: 13px;
+  line-height: 1;
+  color: var(--app-text);
+  white-space: nowrap;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.cm-cell-toolbar-dropdown {
+  position: relative;
+  display: inline-flex;
+}
+
+.cm-cell-toolbar-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 1003;
+  display: none;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 120px;
+  margin-top: 4px;
+  padding: 6px;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+}
+
+.cm-cell-toolbar-reset {
+  padding: 4px 6px;
+  font-size: 13px;
+  color: var(--app-text);
+  text-align: left;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.cm-color-swatches {
+  display: flex;
+  gap: 6px;
+}
+
+.cm-color-swatch-bg {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid var(--app-border);
+  border-radius: 4px;
+  cursor: pointer;
+}

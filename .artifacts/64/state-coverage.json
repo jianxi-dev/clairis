@@ -1,0 +1,31 @@
+{
+  "task": "1.4b",
+  "change": "md-kernel-port",
+  "issue": 64,
+  "states": [
+    {
+      "state": "table-rendered",
+      "screenshot": ".artifacts/64/01-table-rendered.png",
+      "assertion": "passed",
+      "probe": "非活跃表格渲染为 table.cm-table（2 列 2 行），管道符不可见"
+    },
+    {
+      "state": "cell-editing",
+      "screenshot": ".artifacts/64/02-cell-editing.png",
+      "assertion": "passed",
+      "probe": "点击单元格出现行内 input，值为该单元格源码文本"
+    },
+    {
+      "state": "cell-selection",
+      "screenshot": ".artifacts/64/03-cell-selection.png",
+      "assertion": "passed",
+      "probe": "拖选 2×2 后四个 td 均带 cm-table-cell-selected"
+    },
+    {
+      "state": "selection-toolbar",
+      "screenshot": ".artifacts/64/04-selection-toolbar.png",
+      "assertion": "passed",
+      "probe": "范围选区出现 cell-toolbar，合并按钮可用"
+    }
+  ]
+}

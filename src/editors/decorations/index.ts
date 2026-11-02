@@ -18,8 +18,9 @@
  * 多实例安全：`composing` / `frozen` 是模块级标志，IME 组合与指针事件都是
  * 浏览器单例，多编辑器实例共用安全。
  *
- * 本批装配五个基础模块（标题 / 加粗斜体 / 列表 / 引用 / 代码）与四个简型
- * 块级模块（分割线 / 链接 / 图片 / mermaid）。表格 / 分栏 / 高亮块属后续批次，
+ * 本批装配五个基础模块（标题 / 加粗斜体 / 列表 / 引用 / 代码）、四个简型
+ * 块级模块（分割线 / 链接 / 图片 / mermaid）与表格模块（`table` +
+ * `cell-selection` + `cell-toolbar`）。分栏 / 高亮块属后续批次，
  * `EditorDecorationsOptions` 已留出扩展位，后续加字段不需要改函数签名。
  */
 import type { Extension, EditorState, Range } from "@codemirror/state";
@@ -43,6 +44,12 @@ import {
   type MermaidHydrator,
   type MermaidTheme,
 } from "./mermaid";
+import {
+  createTableDecorations,
+  scheduleTableFlush,
+  tableCellSelectionPainter,
+} from "./table";
+import { cellToolbar } from "./cell-toolbar";
 import { editorDecorationsThemeExt } from "./theme";
 import { getBlocks, getBlockAt } from "../block-model";
 
@@ -156,6 +163,7 @@ function buildDecorationSet(
       options?.hydrateMermaid,
       options?.mermaidTheme,
     ),
+    ...createTableDecorations(docText, activeFrom, activeTo),
   ];
 
   // 按起点排序（CM6 要求）
@@ -234,6 +242,23 @@ const compositionGuard = ViewPlugin.define(() => ({}), {
 });
 
 /**
+ * 在插件离开配置时 flush 暂存的表格单元格文本——模式切换与拆除这两条没有
+ * blur 可以落定的路径。
+ *
+ * 用 `fromClass` 是因为 PluginSpec 没有 `destroy` 钩子；只有类插件值会收到一个。
+ */
+class tableFlushGuard {
+  constructor(private readonly view: EditorView) {}
+
+  destroy(): void {
+    // 在 CM6 update 内调用，同步派发非法，所以延后。
+    scheduleTableFlush(this.view);
+  }
+}
+
+const tableFlush = ViewPlugin.fromClass(tableFlushGuard);
+
+/**
  * 活源码装饰扩展。
  *
  * ```ts
@@ -246,6 +271,9 @@ export function editorDecorations(
   return [
     createDecorationField(options),
     compositionGuard.extension,
+    tableFlush.extension,
+    tableCellSelectionPainter(),
+    cellToolbar(),
     editorDecorationsThemeExt,
   ];
 }
