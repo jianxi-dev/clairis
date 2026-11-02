@@ -1,0 +1,31 @@
+{
+  "task": "1.3",
+  "change": "extension-points",
+  "issue": 83,
+  "states": [
+    {
+      "state": "template-picker",
+      "screenshot": ".artifacts/83/01-template-picker.png",
+      "assertion": "passed",
+      "probe": "有模板时点「新建」出现 template-picker，列出模板名与「空白文档」"
+    },
+    {
+      "state": "template-page",
+      "screenshot": ".artifacts/83/02-template-page.png",
+      "assertion": "passed",
+      "probe": "选择「周报」后新页 title=周报，正文 \"# 周报\\n\\n日期：2026-11-02\\n\"（占位符已替换）"
+    },
+    {
+      "state": "theme-token",
+      "screenshot": ".artifacts/83/02-template-page.png",
+      "assertion": "passed",
+      "probe": "--app-accent 计算值为 #c2410c，head 中恰好一个 #user-theme-tokens"
+    },
+    {
+      "state": "no-template",
+      "screenshot": "unit.txt",
+      "assertion": "passed",
+      "probe": "无模板/空 token 时选择器不渲染、style 不创建（单测 + e2e 覆盖）"
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+npm warn Unknown user config "electron_mirror". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+ RUN  v4.1.11 /Users/mason/ToHighs/clairis
+
+
+ Test Files  2 passed (2)
+      Tests  24 passed (24)
+   Start at  23:36:37
+   Duration  691ms (transform 79ms, setup 115ms, import 49ms, tests 25ms, environment 744ms)
+

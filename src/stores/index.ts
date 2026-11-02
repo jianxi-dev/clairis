@@ -107,6 +107,7 @@ interface AppStore {
   reset: () => void;
   openFile: (path: string, content: string) => void;
   newTab: () => void;
+  newTabWith: (title: string, content: string) => void;
   switchTab: (id: string) => void;
   closeTab: (id: string) => void;
   updateContent: (content: string) => void;
@@ -319,14 +320,16 @@ export const useStore = create<AppStore>((set, get) => ({
     });
   },
 
-  newTab: () => {
+  newTab: () => get().newTabWith("未命名", ""),
+
+  newTabWith: (title: string, content: string) => {
     const id = generateId();
     const tab: Tab = {
       id,
-      title: "未命名",
+      title,
       path: null,
       fileKind: "markdown",
-      content: "",
+      content,
       dirty: false,
       editorMode: "edit",
       scrollPos: 0,
