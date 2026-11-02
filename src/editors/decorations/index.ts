@@ -19,8 +19,8 @@
  * 浏览器单例，多编辑器实例共用安全。
  *
  * 本批装配五个基础模块（标题 / 加粗斜体 / 列表 / 引用 / 代码）、四个简型
- * 块级模块（分割线 / 链接 / 图片 / mermaid）与表格模块（`table` +
- * `cell-selection` + `cell-toolbar`）。分栏 / 高亮块属后续批次，
+ * 块级模块（分割线 / 链接 / 图片 / mermaid）、表格模块（`table` +
+ * `cell-selection` + `cell-toolbar`）与两个容器模块（`callout` + `columns`）。
  * `EditorDecorationsOptions` 已留出扩展位，后续加字段不需要改函数签名。
  */
 import type { Extension, EditorState, Range } from "@codemirror/state";
@@ -50,6 +50,8 @@ import {
   tableCellSelectionPainter,
 } from "./table";
 import { cellToolbar } from "./cell-toolbar";
+import { createCalloutDecorations, scheduleCalloutFlush } from "./callout";
+import { createColumnsDecorations } from "./columns";
 import { editorDecorationsThemeExt } from "./theme";
 import { getBlocks, getBlockAt } from "../block-model";
 
@@ -163,7 +165,9 @@ function buildDecorationSet(
       options?.hydrateMermaid,
       options?.mermaidTheme,
     ),
+    ...createCalloutDecorations(docText, activeFrom, activeTo),
     ...createTableDecorations(docText, activeFrom, activeTo),
+    ...createColumnsDecorations(docText),
   ];
 
   // 按起点排序（CM6 要求）
@@ -253,6 +257,7 @@ class tableFlushGuard {
   destroy(): void {
     // 在 CM6 update 内调用，同步派发非法，所以延后。
     scheduleTableFlush(this.view);
+    scheduleCalloutFlush(this.view);
   }
 }
 

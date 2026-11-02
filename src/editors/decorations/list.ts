@@ -188,3 +188,42 @@ export function createListDecorations(
 
   return decorations;
 }
+
+/**
+ * 构建高亮块正文一行的展示 DOM。
+ *
+ * 高亮块正文由 widget 渲染，不是可编辑的 CM6 文本，装饰范围永远到不了它。
+ * 这里是上面列表装饰语言的 DOM 孪生：列表行带同样的 `cm-line cm-list` /
+ * `cm-list-ordered` / `cm-list-marker` / 任务类，所以高亮块里的列表与独立
+ * 成行的列表读起来一致（#382）。
+ */
+export function createContentLineElement(line: string): HTMLElement {
+  const el = document.createElement("div");
+  el.className = "cm-callout-line";
+  const info = classifyListLine(line);
+
+  if (info.kind === "plain") {
+    el.textContent = line;
+    return el;
+  }
+
+  const body = line.slice(info.prefixLen);
+  el.classList.add("cm-line", LIST_CLASS);
+  if (info.kind === "ordered") el.classList.add(LIST_ORDERED_CLASS);
+  if (info.kind === "task") {
+    el.classList.add(info.checked ? TASK_DONE_CLASS : TASK_PENDING_CLASS);
+    const box = document.createElement("span");
+    box.className = TASK_CHECKBOX_CLASS;
+    box.setAttribute("aria-hidden", "true");
+    if (info.checked) box.setAttribute("data-checked", "true");
+    el.appendChild(box);
+  }
+  if (info.kind === "ordered") {
+    const marker = document.createElement("span");
+    marker.className = LIST_MARKER_CLASS;
+    marker.textContent = body.slice(0, info.markerLen);
+    el.appendChild(marker);
+  }
+  el.appendChild(document.createTextNode(body.slice(info.markerLen)));
+  return el;
+}

@@ -8,7 +8,8 @@
  * 2. 标记过渡：透明度 120ms 淡入淡出，状态切换不突兀。
  *
  * 上游 1085 行版本里的块级装饰（表格 / 分栏 / 高亮块 / 图片 / mermaid）与
- * reader CSS 变量桥接属块级装饰批次，这里不搬。
+ * reader CSS 变量桥接属块级装饰批次，外观规则一律落 `src/styles/editor.css`
+ * （可被 CSS manifest 检查）；本文件只保留 CSS 表达不了的两条 baseTheme。
  */
 import { EditorView } from "@codemirror/view";
 import type { Extension } from "@codemirror/state";
