@@ -241,6 +241,15 @@ body {
   max-width: 236px;
 }
 
+.cm-color-swatch {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid var(--app-border);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
 .cm-color-swatch-default {
   background:
     linear-gradient(
