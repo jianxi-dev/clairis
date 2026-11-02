@@ -37,8 +37,8 @@ openspec status --change <name>   # 单个变更工件完成度
 
 ## 总览统计（截至 2026-11-02）
 
-- 规格：7 域 / 51 requirement（`openspec validate` 通过）
-- ✅ 经 openspec 归档实现：11
+- 规格：8 域 / 54 requirement（`openspec validate` 通过）
+- ✅ 经 openspec 归档实现：12
 - 🟡 已实现/设计完成（未走 openspec 变更）：24
 - ⬜ 待开发：16
 - 🗒 未立项（遗留散件登记）：约 16（展卷仪式 8 模块 + TODOS 安全/功能项）
@@ -130,6 +130,14 @@ openspec status --change <name>   # 单个变更工件完成度
 | G-1 | 文档体系结构 | ✅ | change `docs-migration-governance` |
 | G-2 | 引用与索引有效性门禁 | ✅ | 同上 |
 | G-3 | 开发者上下文路由 | ✅ | 同上 |
+
+### extensions（3，2026-11-03 新增）
+
+| 编号 | 需求 | 状态 | 证据 |
+|---|---|---|---|
+| X-1 | 数据文件扩展点（snippets / templates） | ✅ | change `extension-points`（归档 2026-11-03）；`src-tauri/src/extensions.rs`、`src/lib/extensions/` |
+| X-2 | 主题 token 覆盖（`theme.toml` 白名单） | ✅ | 同上；`src/lib/extensions/theme-tokens.ts` |
+| X-3 | 核心能力开关（幂等 enable/disable） | ✅ | 同上；`src/lib/capabilities.ts`、`src/components/SettingsDialog.tsx` |
 
 ---
 
