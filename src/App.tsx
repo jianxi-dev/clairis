@@ -8,6 +8,7 @@ import { useCaptureOverlayStore } from "./stores/captureOverlay";
 import Layout from "./components/Layout";
 import Toolbar from "./components/Toolbar";
 import NewFileTemplatePicker from "./components/NewFileTemplatePicker";
+import SettingsDialog from "./components/SettingsDialog";
 import SidebarPanel from "./components/SidebarPanel";
 import RecentFiles from "./components/Sidebar/RecentFiles";
 import FileTree from "./components/Sidebar/FileTree";
@@ -46,6 +47,7 @@ function App() {
   const peekTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   // Init config loading + theme on mount
   const { setTheme, scheduleSave } = useConfig();
@@ -104,6 +106,18 @@ function App() {
       setTemplates(bundle.templates);
       applyThemeTokens(bundle.themeTokens);
     });
+  }, []);
+
+  // 原生菜单「设置…」与 Cmd+, 走同一入口；无常驻按钮。
+  useEffect(() => {
+    if (!isTauri) return;
+    let unlisten: (() => void) | undefined;
+    listen("open-settings", () => setSettingsOpen(true))
+      .then((un) => {
+        unlisten = un;
+      })
+      .catch((e) => log.warn("App", "Settings listener unavailable", e));
+    return () => unlisten?.();
   }, []);
 
   const handleTemplateSelect = useCallback((template: Template) => {
@@ -343,6 +357,12 @@ function App() {
       }
 
       // Cmd+K: AI command overlay
+      if (meta && e.key === ",") {
+        e.preventDefault();
+        setSettingsOpen(true);
+        return;
+      }
+
       if (meta && e.key.toLowerCase() === "k") {
         e.preventDefault();
         useAiEntryStore.getState().toggleOverlay();
@@ -573,6 +593,9 @@ function App() {
       <CommandOverlay />
       <UndoBar />
       <SnapshotPanel />
+      {settingsOpen && (
+        <SettingsDialog onClose={() => setSettingsOpen(false)} />
+      )}
       {pickerOpen && templates.length > 0 && (
         <NewFileTemplatePicker
           templates={templates}

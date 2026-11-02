@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { renderMarkdown, renderMermaid, takeDarkVars } from "../../renderers";
+import {
+  isCapabilityEnabled,
+  subscribeCapability,
+} from "../../lib/capabilities";
 import HtmlPreview from "./HtmlPreview";
 import PdfViewer from "./PdfViewer";
 import ReaderSettingsPopover from "./ReaderSettingsPopover";
@@ -41,6 +45,7 @@ function usePreviewZoom() {
   zoomRef.current = zoom;
 
   const onWheel = useCallback((e: React.WheelEvent) => {
+    if (!isCapabilityEnabled("preview-zoom")) return;
     if (e.ctrlKey || e.metaKey) {
       e.preventDefault();
       setZoom(clampPreviewZoom(zoomRef.current * (e.deltaY < 0 ? 1.1 : 0.9)));
@@ -62,6 +67,7 @@ function usePreviewZoom() {
       startZoomRef.current = zoomRef.current;
     };
     const onChange = (e: Event) => {
+      if (!isCapabilityEnabled("preview-zoom")) return;
       if (!isInside(e.target)) return;
       const scale = (e as unknown as { scale?: number }).scale;
       if (scale) setZoom(clampPreviewZoom(startZoomRef.current * scale));
@@ -111,6 +117,13 @@ export default function PreviewView({
   const readerFontSize = useEditorStore((s) => s.config.readerFontSize);
   const readerWidth = useEditorStore((s) => s.config.readerWidth);
   const readerSkin = useEditorStore((s) => s.config.readerSkin);
+  // 能力开关变化时重算 HTML：关闭公式/高亮后当前文档要立刻反映，而不是等下次改内容。
+  const [capabilityEpoch, setCapabilityEpoch] = useState(0);
+
+  useEffect(
+    () => subscribeCapability(() => setCapabilityEpoch((n) => n + 1)),
+    [],
+  );
 
   const headingVars = useMemo(() => {
     if (!headingColors) return undefined;
@@ -149,7 +162,7 @@ export default function PreviewView({
       default:
         return renderMarkdown(content);
     }
-  }, [content, fileKind]);
+  }, [content, fileKind, capabilityEpoch]);
 
   // 图片/视频/音频/HTML/PDF 保持各自渲染（HTML 用整体缩放，避免重排偏移）
   if (fileKind === "html") {
@@ -244,6 +257,7 @@ function useFrameScale() {
   usePreviewScaleEvent(zoomIn, zoomOut, reset);
 
   const onWheel = useCallback((e: React.WheelEvent) => {
+    if (!isCapabilityEnabled("preview-zoom")) return;
     if (e.ctrlKey || e.metaKey) {
       e.preventDefault();
       setScale(clampFrameScale(scaleRef.current * (e.deltaY < 0 ? 1.1 : 0.9)));

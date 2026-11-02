@@ -44,13 +44,19 @@ pub fn run() {
                 MenuItem::with_id(handle, "preview-zoom-reset", "实际大小", true, None::<&str>)?;
             let view =
                 Submenu::with_items(handle, "视图", true, &[&zoom_in, &zoom_out, &zoom_reset])?;
+            let settings = MenuItem::with_id(handle, "open-settings", "设置…", true, None::<&str>)?;
             let mut menu = Menu::default(handle)?;
             menu.append(&view)?;
+            menu.append(&settings)?;
             Ok(menu)
         })
         .on_menu_event(|app, event| {
             use tauri::Emitter;
             let id = event.id();
+            if id == "open-settings" {
+                let _ = app.emit("open-settings", ());
+                return;
+            }
             let delta = if id == "preview-zoom-in" {
                 1
             } else if id == "preview-zoom-out" {

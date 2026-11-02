@@ -6,6 +6,10 @@ import { useStore } from "../stores/index";
 import { isTauriEnv } from "../utils/tauri";
 import { log } from "../utils/log";
 import type { AppConfig, ScrollPosition, Theme } from "../types";
+import {
+  applyCapabilityConfig,
+  serializeCapabilities,
+} from "../lib/capabilities";
 
 /** Snake-case config from Rust, mapped to camelCase in the store. */
 interface RustAppConfig {
@@ -30,6 +34,7 @@ interface RustAppConfig {
   verticalSplitRatio: number | null;
   recentFiles: Array<{ path: string; title: string; openedAt: string }> | null;
   scrollPositions: Record<string, ScrollPosition> | null;
+  capabilities?: Record<string, boolean> | null;
 }
 
 const DEBOUNCE_MS = 500;
@@ -83,6 +88,7 @@ export async function saveAppConfig(): Promise<void> {
     verticalSplitRatio: es.config.verticalSplitRatio ?? null,
     recentFiles: es.config.recentFiles ?? null,
     scrollPositions: useStore.getState().scrollPositions ?? null,
+    capabilities: serializeCapabilities(),
   };
   try {
     await invoke("save_config", { config });
@@ -124,6 +130,7 @@ function applyRustConfig(raw: RustAppConfig): void {
     horizontalSplitRatio: raw.horizontalSplitRatio ?? 0.5,
     verticalSplitRatio: raw.verticalSplitRatio ?? 0.5,
     recentFiles: raw.recentFiles ?? [],
+    capabilities: raw.capabilities ?? {},
   };
 
   const es = useEditorStore.getState();
@@ -161,6 +168,7 @@ function applyRustConfig(raw: RustAppConfig): void {
 
   applyTheme(config.theme ?? "system");
   applyReaderSkin(config.readerSkin ?? "paper");
+  applyCapabilityConfig(raw.capabilities);
 }
 
 /** Re-read the effective config from Rust and apply it without touching content. */

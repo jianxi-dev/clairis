@@ -1,0 +1,8 @@
+能力开关单测（vitest）
+- src/__tests__/lib/capabilities.test.ts
+- src/__tests__/capabilitiesGating.test.ts
+- src/__tests__/components/SettingsDialog.test.tsx
+结果：3 files / 27 tests 全绿
+全量：npx vitest run → 66 files / 841 tests 全绿
+Rust：cargo test --manifest-path src-tauri/Cargo.toml → 72 passed
+e2e：npx playwright test e2e/extensions-capabilities.spec.ts → 4 passed
