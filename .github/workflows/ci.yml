@@ -5,6 +5,13 @@ on:
   pull_request:
     branches: [main]
 
+# 同一分支的 push 与 pull_request 会各触发一次（同一 commit 两个 run）。
+# 并发组按分支收敛：新 run 起来就取消旧的，避免同一 sha 出现两个 verify、
+# 也避免排队占用 macOS runner。
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
 jobs:
   verify:
     runs-on: macos-latest

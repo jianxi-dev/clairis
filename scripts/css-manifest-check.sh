@@ -29,10 +29,12 @@ MISSING=$(comm -23 "$DECLARED" "$DEFINED")
 if [ -n "$MISSING" ]; then
   echo ""
   echo "❌ MISSING CSS DEFINITIONS (declared in TS, no CSS rule):"
-  echo "$MISSING" | while read cls; do
+  # 注意：不能把 FAIL=1 写进管道里的 while（子 shell，赋值不会传回父 shell，
+  # 门禁会永远退 0）。循环只负责打印，失败标志放在循环外。
+  while IFS= read -r cls; do
     echo "  $cls"
-    FAIL=1
-  done
+  done <<< "$MISSING"
+  FAIL=1
 else
   echo "  ✅ All decoration CSS classes have definitions"
 fi
