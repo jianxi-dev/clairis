@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import type { Template } from "../lib/extensions/templates";
 
-interface NewFileTemplatePickerProps {
+interface TemplatePickerProps {
   templates: Template[];
   onSelect: (template: Template) => void;
   onBlank: () => void;
@@ -13,12 +13,12 @@ interface NewFileTemplatePickerProps {
  * 新建页模板选择浮层：模板名列表 + 空白文档项 + 取消。
  * 无常驻 UI（仅存在模板且用户点「新建」时挂载）；Esc 或点击外部关闭。
  */
-export default function NewFileTemplatePicker({
+export default function TemplatePicker({
   templates,
   onSelect,
   onBlank,
   onClose,
-}: NewFileTemplatePickerProps) {
+}: TemplatePickerProps) {
   const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -56,6 +56,7 @@ export default function NewFileTemplatePicker({
             <li key={template.path}>
               <button
                 type="button"
+                data-testid="template-item"
                 className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700"
                 onClick={() => onSelect(template)}
               >
@@ -66,6 +67,7 @@ export default function NewFileTemplatePicker({
           <li>
             <button
               type="button"
+              data-testid="template-blank"
               className="w-full px-3 py-2 text-left text-sm text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700"
               onClick={onBlank}
             >

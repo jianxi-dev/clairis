@@ -7,7 +7,7 @@ import { useEditorStore } from "./stores/editorStore";
 import { useCaptureOverlayStore } from "./stores/captureOverlay";
 import Layout from "./components/Layout";
 import Toolbar from "./components/Toolbar";
-import NewFileTemplatePicker from "./components/NewFileTemplatePicker";
+import TemplatePicker from "./components/TemplatePicker";
 import SidebarPanel from "./components/SidebarPanel";
 import RecentFiles from "./components/Sidebar/RecentFiles";
 import FileTree from "./components/Sidebar/FileTree";
@@ -574,7 +574,7 @@ function App() {
       <UndoBar />
       <SnapshotPanel />
       {pickerOpen && templates.length > 0 && (
-        <NewFileTemplatePicker
+        <TemplatePicker
           templates={templates}
           onSelect={handleTemplateSelect}
           onBlank={handleBlankSelect}
