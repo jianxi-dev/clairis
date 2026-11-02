@@ -24,19 +24,10 @@ import {
   type CellSelection,
 } from "./cell-selection";
 import { mergeTableCellSelection, setCellBackground } from "./table";
-
-/** 背景选项，镜像浮动色板的「背景色」行。 */
-const CELL_BG_COLORS: readonly {
-  label: string;
-  swatch: string;
-  colorClass: string;
-}[] = [
-  { label: "红色", swatch: "#ffd8d3", colorClass: "mdb-bg-red" },
-  { label: "蓝色", swatch: "#d7dcff", colorClass: "mdb-bg-blue" },
-  { label: "绿色", swatch: "#d2f8d2", colorClass: "mdb-bg-green" },
-  { label: "橙色", swatch: "#ffedd0", colorClass: "mdb-bg-orange" },
-  { label: "紫色", swatch: "#e8d7ff", colorClass: "mdb-bg-purple" },
-];
+import {
+  BACKGROUND_COLORS,
+  createColorRow,
+} from "../orchestration/color-palette";
 
 function styleToolbar(root: HTMLElement): void {
   root.style.position = "absolute";
@@ -206,45 +197,22 @@ export function cellToolbar(): Extension {
         menu.style.minWidth = "120px";
         menu.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.18)";
 
-        const swatches = document.createElement("div");
-        swatches.className = "cm-color-swatches";
-        swatches.classList.add("mdb-color-swatches");
-        swatches.style.display = "flex";
-        swatches.style.gap = "6px";
-        for (const color of CELL_BG_COLORS) {
-          const swatch = document.createElement("button");
-          swatch.type = "button";
-          swatch.className = "cm-color-swatch-bg";
-          swatch.classList.add(
-            "cm-color-swatch",
-            "mdb-color-swatch",
-            "mdb-color-swatch-bg",
-          );
-          swatch.title = color.label;
-          swatch.setAttribute("aria-label", color.label);
-          swatch.style.width = "20px";
-          swatch.style.height = "20px";
-          swatch.style.borderRadius = "4px";
-          swatch.style.border = "1px solid var(--app-border)";
-          swatch.style.cursor = "pointer";
-          swatch.style.padding = "0";
-          swatch.style.background = color.swatch;
-          swatch.addEventListener("mousedown", (event) => {
-            event.preventDefault();
-            event.stopPropagation();
+        const swatches = createColorRow(
+          "background",
+          BACKGROUND_COLORS,
+          (_kind, className) => {
             const selection = getCellSelection(view);
             if (selection) {
               setCellBackground(
                 view,
                 selection.tableIndex,
                 cellRect(selection),
-                color.colorClass,
+                className === "" ? null : className,
               );
             }
             this.closeMenu();
-          });
-          swatches.appendChild(swatch);
-        }
+          },
+        );
         menu.appendChild(swatches);
 
         const reset = document.createElement("button");

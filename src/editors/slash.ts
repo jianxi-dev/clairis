@@ -35,6 +35,11 @@ import { sanitizeCellText } from "./decorations/cell-text";
 import { renderIcon } from "./icons";
 import { formatKeyChord } from "./key-chord";
 import { menuStack, type MenuToken } from "./orchestration/menu-stack";
+import {
+  rectFromCoords,
+  resolvePlacement,
+  type AnchorRect,
+} from "./orchestration/anchor";
 
 export interface SlashCommand {
   id: string;
@@ -883,47 +888,73 @@ export function releaseInsertMenu(
  * 把锚定面板放在调用方给出的矩形旁（表格单元格把手 / 锚点）。面板裁剪用
  * `overflow:hidden`，所以夹取用 `.cm-editor` 而不是 `view.dom`。
  */
+/** 视口矩形（D4 规则 3 的 viewportRect）。 */
+function viewportRect(): AnchorRect {
+  const width = window.innerWidth;
+  const height = window.innerHeight;
+  return { left: 0, top: 0, right: width, bottom: height, width, height };
+}
+
+/** DOM 矩形 → AnchorRect。 */
+function boxRect(rect: {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+  width: number;
+  height: number;
+}): AnchorRect {
+  return {
+    left: rect.left,
+    top: rect.top,
+    right: rect.right,
+    bottom: rect.bottom,
+    width: rect.width,
+    height: rect.height,
+  };
+}
+
+/** 统一摆放并写回面板样式（相对 view.dom 的绝对定位）。 */
+function applyPlacement(
+  view: EditorView,
+  menu: HTMLDivElement,
+  anchor: AnchorRect,
+): void {
+  const own = view.dom.getBoundingClientRect();
+  const menuRect = menu.getBoundingClientRect();
+  const placement = resolvePlacement(
+    anchor,
+    {
+      width: menuRect.width || menu.offsetWidth || 220,
+      height: menuRect.height || menu.offsetHeight || 0,
+    },
+    viewportRect(),
+    boxRect(own),
+  );
+  menu.style.left = `${placement.x - own.left}px`;
+  menu.style.top = `${placement.y - own.top}px`;
+  menu.style.maxHeight = `${Math.max(120, placement.maxHeight)}px`;
+}
+
 function positionMenuAtRect(
   view: EditorView,
   menu: HTMLDivElement,
   anchor: { left: number; right: number; top: number; bottom: number },
 ): void {
-  const pane = view.dom.closest(".cm-editor") ?? view.dom;
-  const paneRect = pane.getBoundingClientRect();
-  const ownRect = view.dom.getBoundingClientRect();
-  const menuRect = menu.getBoundingClientRect();
-  const width = menuRect.width || menu.offsetWidth;
-  const height = menuRect.height || menu.offsetHeight;
-  const gap = 8;
-  const margin = 8;
-
-  let left = anchor.right - ownRect.left + gap;
-  if (ownRect.left + left + width > paneRect.right - margin) {
-    left = anchor.left - ownRect.left - gap - width;
+  try {
+    applyPlacement(view, menu, {
+      left: anchor.left,
+      top: anchor.top,
+      right: anchor.right,
+      bottom: anchor.bottom,
+      width: anchor.right - anchor.left,
+      height: anchor.bottom - anchor.top,
+    });
+  } catch {
+    // 忽略——jsdom / 未测量的内容
   }
-  left = Math.max(paneRect.left - ownRect.left + margin, left);
-
-  const paneTop = Math.max(window.innerHeight * 0, paneRect.top) + margin;
-  const paneBottom = Math.min(window.innerHeight, paneRect.bottom) - margin;
-  const available = Math.max(120, paneBottom - paneTop);
-  if (height > available) {
-    menu.style.maxHeight = `${available}px`;
-    menu.style.overflowY = "auto";
-  }
-  const effective = Math.min(height, available);
-  const centred = anchor.top + (anchor.bottom - anchor.top) / 2 - effective / 2;
-  const maxTop = paneBottom - effective;
-  const topV = Math.max(paneTop, Math.min(centred, maxTop));
-
-  menu.style.left = `${left}px`;
-  menu.style.top = `${topV - ownRect.top}px`;
 }
 
-/**
- * 把菜单放在光标处，右边缘夹进编辑器窗格（底部夹进视口并限制高度），让长菜单
- * 或二级菜单滚动而不是溢出。coordsAtPos 返回视口坐标，而菜单是 view.dom 的
- * 子元素，所以要减去编辑器原点。jsdom 没有布局，try/catch 让它停在 0,0。
- */
 function positionMenu(
   view: EditorView,
   menu: HTMLDivElement,
@@ -935,37 +966,12 @@ function positionMenu(
       trigger === "anchor" ? slashPos : slashPos + 1,
     );
     if (!coords) return;
-    const rect = view.dom.getBoundingClientRect();
-    const menuRect = menu.getBoundingClientRect();
-    const viewportH = window.innerHeight;
-
-    let leftV = coords.left;
-    let topV = coords.bottom + 4;
-    // 水平夹取针对编辑器盒子而不是视口：菜单是 view.dom 的绝对定位子元素，
-    // 宿主窗格用 overflow:hidden 裁剪。夹到视口会让面板在窗格右缘被切掉，
-    // 即使它在窗口内。
-    if (leftV + menuRect.width > rect.right - 8) {
-      leftV = Math.max(rect.left + 8, rect.right - 8 - menuRect.width);
-    }
-    // 优先在光标下方展开，列表高就滚动；只有下方确实没空间才翻到上方。翻转
-    // 夹到编辑器原点（绝不是视口顶），行不会停到应用头部下面点不到。
-    const MIN_SPACE_BELOW = 180;
-    if (viewportH - 8 - topV < MIN_SPACE_BELOW) {
-      topV = Math.max(rect.top, viewportH - 8 - menuRect.height);
-    }
-
-    menu.style.left = `${leftV - rect.left}px`;
-    menu.style.top = `${topV - rect.top}px`;
-    menu.style.maxHeight = `${Math.max(120, viewportH - 8 - topV)}px`;
+    applyPlacement(view, menu, rectFromCoords(coords, 0));
   } catch {
     // 忽略——jsdom / 未测量的内容
   }
 }
 
-/**
- * 用 `text` 替换 `[from, to]`，光标停在插入内容之后。`to === from` 是锚定/
- * 下方位置的零宽插入。
- */
 function replaceTrigger(
   view: EditorView,
   from: number,
@@ -1593,6 +1599,23 @@ function isCaretAtQueryEnd(
  * 滚动即收（design D4 规则 4）：编辑器滚动容器一滚，收起本视图作用域内的
  * 全部浮层。按作用域收，分栏的另一个面板不受影响。
  */
+const resizeReposition = ViewPlugin.define((view) => {
+  const reposition = (): void => {
+    const state = menus.get(view);
+    if (!state?.open || !state.dom) return;
+    positionMenu(view, state.dom, state.slashPos, state.trigger);
+    if (state.flyoutDom && isFlyoutOpen(state)) positionFlyout(view, state);
+  };
+  window.addEventListener("resize", reposition);
+  window.visualViewport?.addEventListener("resize", reposition);
+  return {
+    destroy(): void {
+      window.removeEventListener("resize", reposition);
+      window.visualViewport?.removeEventListener("resize", reposition);
+    },
+  };
+});
+
 const scrollDismiss = ViewPlugin.define((view) => {
   const onScroll = (): void => {
     if (menuStack.top(view) === null) return;
@@ -1770,6 +1793,7 @@ export function slashKeymap(
       ]),
     ),
     menuSyncPlugin,
+    resizeReposition,
     scrollDismiss,
     slashCompositionGuard,
     outsideClickDismiss,

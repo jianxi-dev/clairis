@@ -229,6 +229,39 @@ body {
   color: #d14343;
 }
 
+.cm-color-gray {
+  color: #8b8f96;
+}
+
+/* 色板行：字体色 9 格 / 背景色 16 格，超宽自动换行。 */
+.cm-color-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-width: 236px;
+}
+
+.cm-color-swatch {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid var(--app-border);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.cm-color-swatch-default {
+  background:
+    linear-gradient(
+      to top right,
+      transparent calc(50% - 1px),
+      var(--app-border-strong) calc(50% - 1px),
+      var(--app-border-strong) calc(50% + 1px),
+      transparent calc(50% + 1px)
+    ),
+    var(--app-surface);
+}
+
 .cm-color-orange {
   color: #c2761b;
 }
