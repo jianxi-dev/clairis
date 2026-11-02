@@ -8,5 +8,5 @@
 - [x] 1.3 装配模型 + 基础装饰升级：按扩展装配替换整篇重建，加 IME 组合期跳过与指针冻结守卫；heading/list/boldItalic/code/quote 迁入 md-bundle 版本（语义揭示：光标所在块显示结构标记、其余块隐藏）+ 单测
 - [x] 1.4a 块级装饰（简型）：`hr` + `link` + `image` + `mermaid` + 测试 + `cm-*` CSS（红线 5 逐块型断言）
 - [x] 1.4b 块级装饰（表格）：`table` + `cell-text` 全量 + `cell-selection` + `cell-toolbar` + 测试 + CSS
-- [ ] 1.4c 块级装饰（容器）：`callout` + `callout-emoji` + `callout-insert` + `columns` + `theme` 全量 + 测试 + CSS
+- [x] 1.4c 块级装饰（容器）：`callout` + `callout-emoji` + `callout-insert` + `columns` + `theme` 全量 + 测试 + CSS
 - [ ] 1.5 全量验收：949 单测绿 + `verify.sh` 全绿 + 三批块型手动走查 + 红线 1/5 证据
