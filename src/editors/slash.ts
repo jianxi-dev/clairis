@@ -34,6 +34,7 @@ import { TABLE_SIZE_QUERY, filterSlashCommands } from "./slash-filter";
 import { sanitizeCellText } from "./decorations/cell-text";
 import { renderIcon } from "./icons";
 import { formatKeyChord } from "./key-chord";
+import { menuStack, type MenuToken } from "./orchestration/menu-stack";
 
 export interface SlashCommand {
   id: string;
@@ -414,6 +415,10 @@ interface SlashMenuState {
   grid: GridState | null;
   dom: HTMLDivElement | null;
   flyoutDom: HTMLDivElement | null;
+  /** 根面板在菜单栈里的 token；未入栈为 null。 */
+  stackToken: MenuToken | null;
+  /** 二级浮层（行浮层 / 网格）在栈里的 token。 */
+  flyoutToken: MenuToken | null;
 }
 
 const menus = new WeakMap<EditorView, SlashMenuState>();
@@ -464,18 +469,39 @@ function scheduleAnchorClose(view: EditorView): void {
   );
 }
 
+/**
+ * keymap 只问栈顶（design D2 规则 4）：该视图的根面板或浮层必须是栈顶才处理
+ * 按键，否则返回 false 把事件让给 CodeMirror 默认行为。
+ */
+function isActiveLayer(view: EditorView, state: SlashMenuState): boolean {
+  const top = menuStack.top(view);
+  if (!top) return false;
+  return top.element === state.dom || top.element === state.flyoutDom;
+}
+
 /** 关闭菜单（根面板 + 浮层），不动文档。 */
 function closeMenu(view: EditorView): void {
   cancelAnchorClose(view);
   const state = menus.get(view);
   if (!state) return;
+  menus.delete(view);
   if (state.dom && state.dom.parentNode) {
     state.dom.parentNode.removeChild(state.dom);
   }
   if (state.flyoutDom && state.flyoutDom.parentNode) {
     state.flyoutDom.parentNode.removeChild(state.flyoutDom);
   }
-  menus.delete(view);
+  // 先删状态再 pop：pop 会回调 onClose，此时菜单已不在表里，递归立即返回。
+  if (state.flyoutToken !== null) {
+    const token = state.flyoutToken;
+    state.flyoutToken = null;
+    menuStack.pop(token);
+  }
+  if (state.stackToken !== null) {
+    const token = state.stackToken;
+    state.stackToken = null;
+    menuStack.pop(token);
+  }
 }
 
 /**
@@ -769,6 +795,8 @@ function openMenu(
     bottom: number;
   } | null = null,
 ): void {
+  // 每个视图只允许一个菜单层：先收掉旧的，避免旧 token 留在栈里。
+  if (menus.has(view)) closeMenu(view);
   const menu = document.createElement("div");
   menu.className = "mdb-slash-menu";
   menu.dataset.testid = "slash-menu";
@@ -795,6 +823,8 @@ function openMenu(
     grid: null,
     dom: menu,
     flyoutDom: null,
+    stackToken: null,
+    flyoutToken: null,
   };
   menus.set(view, state);
   renderMenu(view, state);
@@ -803,6 +833,13 @@ function openMenu(
     view.dom.style.position = "relative";
   }
   view.dom.appendChild(menu);
+  state.stackToken = menuStack.push({
+    id: `slash:${trigger}:${slashPos}`,
+    owner: null,
+    element: menu,
+    scope: view,
+    onClose: () => closeMenu(view),
+  });
   if (anchorRect) positionMenuAtRect(view, menu, anchorRect);
   else positionMenu(view, menu, slashPos, trigger);
 }
@@ -1149,6 +1186,15 @@ function ensureFlyoutDom(
   if (state.flyoutDom.parentNode !== view.dom) {
     view.dom.appendChild(state.flyoutDom);
   }
+  if (state.flyoutToken === null) {
+    state.flyoutToken = menuStack.push({
+      id: `slash-flyout:${state.slashPos}`,
+      owner: null,
+      element: state.flyoutDom,
+      scope: view,
+      onClose: () => closeFlyout(state),
+    });
+  }
   return state.flyoutDom;
 }
 
@@ -1156,6 +1202,11 @@ function ensureFlyoutDom(
 function closeFlyout(state: SlashMenuState): void {
   if (state.flyoutDom?.parentNode) {
     state.flyoutDom.parentNode.removeChild(state.flyoutDom);
+  }
+  if (state.flyoutToken !== null) {
+    const token = state.flyoutToken;
+    state.flyoutToken = null;
+    menuStack.pop(token);
   }
   state.submenuParent = null;
   state.flyoutRows = [];
@@ -1351,7 +1402,7 @@ export function openSlashMenuAtCursor(
 /** ArrowDown：移动浮层选中，或根列表选中，向下。 */
 export function slashMenuSelectNext(view: EditorView): boolean {
   const state = menus.get(view);
-  if (!state?.open || !state.dom) return false;
+  if (!state?.open || !state.dom || !isActiveLayer(view, state)) return false;
   if (state.grid) return true;
   if (isFlyoutOpen(state)) {
     state.flyoutSelected = Math.min(
@@ -1369,7 +1420,7 @@ export function slashMenuSelectNext(view: EditorView): boolean {
 /** ArrowUp：移动浮层选中，或根列表选中，向上。 */
 export function slashMenuSelectPrev(view: EditorView): boolean {
   const state = menus.get(view);
-  if (!state?.open || !state.dom) return false;
+  if (!state?.open || !state.dom || !isActiveLayer(view, state)) return false;
   if (state.grid) return true;
   if (isFlyoutOpen(state)) {
     state.flyoutSelected = Math.max(state.flyoutSelected - 1, 0);
@@ -1414,7 +1465,7 @@ function applyTableSize(
 /** Enter：应用选中行（网格打开时插入悬停尺寸）。 */
 export function slashMenuApply(view: EditorView): boolean {
   const state = menus.get(view);
-  if (!state?.open || !state.dom) return false;
+  if (!state?.open || !state.dom || !isActiveLayer(view, state)) return false;
   if (state.grid) {
     applyTableSize(view, state, state.grid.hoverC, state.grid.hoverR);
     return true;
@@ -1443,7 +1494,8 @@ export function slashMenuApply(view: EditorView): boolean {
 /** ArrowRight：选中行有子项时打开它的浮层。 */
 export function slashMenuSubmenuEnter(view: EditorView): boolean {
   const state = menus.get(view);
-  if (!state?.open || !state.dom || isFlyoutOpen(state)) return false;
+  if (!state?.open || !state.dom || !isActiveLayer(view, state)) return false;
+  if (isFlyoutOpen(state)) return false;
   const cmd = state.rows[state.selected];
   if (cmd?.grid) {
     openGrid(view, cmd);
@@ -1459,7 +1511,7 @@ export function slashMenuSubmenuEnter(view: EditorView): boolean {
 /** ArrowLeft：关闭打开的浮层，或离开网格选择器。 */
 export function slashMenuSubmenuBack(view: EditorView): boolean {
   const state = menus.get(view);
-  if (!state?.open || !state.dom) return false;
+  if (!state?.open || !state.dom || !isActiveLayer(view, state)) return false;
   if (isFlyoutOpen(state)) {
     closeFlyout(state);
     return true;
@@ -1473,7 +1525,8 @@ export function slashMenuSubmenuBack(view: EditorView): boolean {
 
 /** Escape：收起菜单，触发文本一并带走（无残留）。 */
 export function slashMenuClose(view: EditorView): boolean {
-  if (!menus.get(view)?.open) return false;
+  const state = menus.get(view);
+  if (!state?.open || !isActiveLayer(view, state)) return false;
   dismissMenu(view);
   return true;
 }
@@ -1527,6 +1580,23 @@ function isCaretAtQueryEnd(
  * - 光标离开触发点时菜单随之收起，放弃触发点绝不留下孤立的 `/`。
  * - IME 组合期间菜单保持不动：组合既不能关闭菜单，也不能选中命令。
  */
+/**
+ * 滚动即收（design D4 规则 4）：编辑器滚动容器一滚，收起本视图作用域内的
+ * 全部浮层。按作用域收，分栏的另一个面板不受影响。
+ */
+const scrollDismiss = ViewPlugin.define((view) => {
+  const onScroll = (): void => {
+    if (menuStack.top(view) === null) return;
+    menuStack.closeScope(view, "scroll");
+  };
+  view.scrollDOM.addEventListener("scroll", onScroll, { passive: true });
+  return {
+    destroy(): void {
+      view.scrollDOM.removeEventListener("scroll", onScroll);
+    },
+  };
+});
+
 const menuSyncPlugin = ViewPlugin.define((view) => ({
   update(u: ViewUpdate): void {
     const state = menus.get(u.view);
@@ -1680,6 +1750,7 @@ export function slashKeymap(
       ]),
     ),
     menuSyncPlugin,
+    scrollDismiss,
     slashCompositionGuard,
     outsideClickDismiss,
     chineseCommaTrigger,

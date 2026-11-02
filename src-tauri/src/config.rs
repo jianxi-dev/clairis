@@ -36,6 +36,8 @@ pub struct AppConfig {
     pub vertical_split_ratio: Option<f64>,
     pub recent_files: Option<Vec<RecentFile>>,
     pub scroll_positions: Option<HashMap<String, ScrollPosition>>,
+    /// 核心能力开关：只记录被关闭的能力，缺省即全开（spec X-3）。
+    pub capabilities: Option<HashMap<String, bool>>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -78,6 +80,7 @@ impl Default for AppConfig {
             vertical_split_ratio: Some(0.5),
             recent_files: Some(Vec::new()),
             scroll_positions: Some(HashMap::new()),
+            capabilities: Some(HashMap::new()),
         }
     }
 }
