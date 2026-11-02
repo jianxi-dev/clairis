@@ -1,0 +1,31 @@
+{
+  "task": "1.1",
+  "change": "md-orchestration",
+  "issue": 72,
+  "states": [
+    {
+      "state": "menu-stack",
+      "screenshot": "orchestration-unit.txt",
+      "assertion": "passed",
+      "probe": "push/pop 幂等、不同 owner 返回 null（不 retarget）、closeAll LIFO、onClose 只调一次"
+    },
+    {
+      "state": "placement",
+      "screenshot": "orchestration-unit.txt",
+      "assertion": "passed",
+      "probe": "四象限翻转、四边夹取、零尺寸容器不出 NaN"
+    },
+    {
+      "state": "hover-gate",
+      "screenshot": "orchestration-unit.txt",
+      "assertion": "passed",
+      "probe": "300ms 显现 / 150ms 收起 / 键盘触摸拖拽抑制 / leave 取消 pending show"
+    },
+    {
+      "state": "anchor",
+      "screenshot": "orchestration-unit.txt",
+      "assertion": "passed",
+      "probe": "coordsAtPos 为 null 时零宽回退且无 NaN；真实 EditorView 上 blockAnchor 有限"
+    }
+  ]
+}
