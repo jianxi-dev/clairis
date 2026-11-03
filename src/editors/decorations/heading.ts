@@ -8,6 +8,7 @@
  */
 import type { Range } from "@codemirror/state";
 import { Decoration } from "@codemirror/view";
+import { fencedCodeRanges } from "./code";
 
 export const headingRegex = /^(#{1,6})\s+(.*)$/gm;
 
@@ -30,10 +31,14 @@ export function createHeadingDecorations(
   activeTo: number = -1,
 ): Range<Decoration>[] {
   const decorations: Range<Decoration>[] = [];
+  const fences = fencedCodeRanges(text);
+  const inFence = (pos: number): boolean =>
+    fences.some((range) => pos >= range.from && pos <= range.to);
   headingRegex.lastIndex = 0;
 
   let match: RegExpExecArray | null;
   while ((match = headingRegex.exec(text)) !== null) {
+    if (inFence(match.index)) continue;
     const level = match[1];
     // 标记范围只有 `# ` 前缀，标题正文从其后开始。
     const from = match.index;

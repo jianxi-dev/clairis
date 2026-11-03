@@ -43,3 +43,4 @@ docs/designs/
 
 # 证据截图不入库（只提交 state-coverage.json）
 .artifacts/**/*.png
+.artifacts/**/*.webm

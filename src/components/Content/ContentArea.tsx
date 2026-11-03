@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { EditorState, Compartment } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
@@ -8,11 +8,15 @@ import { python } from "@codemirror/lang-python";
 import { json } from "@codemirror/lang-json";
 import { javascript } from "@codemirror/lang-javascript";
 import { yaml } from "@codemirror/lang-yaml";
-import { basicSetup } from "codemirror";
 import { invoke } from "@tauri-apps/api/core";
 import { useStore } from "../../stores/index";
 import { isMediaKind } from "../../stores/index";
-import { decorCompartment, fullDecorations } from "../../editors/setup";
+import { useEditorStore } from "../../stores/editorStore";
+import {
+  baseEditorExtensions,
+  decorCompartment,
+  fullDecorations,
+} from "../../editors/setup";
 import type { EditorDecorationsOptions } from "../../editors/decorations";
 import { slashKeymap, setUserSlashCommands } from "../../editors/slash";
 import { loadUserExtensions } from "../../editors/user-extensions";
@@ -26,6 +30,7 @@ import {
 import { resolveScrollTarget } from "../../utils/scrollPosition";
 import { renderMermaid } from "../../renderers/mermaid";
 import PreviewView from "./PreviewView";
+import OutlineMenu from "./OutlineMenu";
 import ReadingProgressInk from "./ReadingProgressInk";
 import type { EditorMode, FileKind, Tab } from "../../types";
 
@@ -98,6 +103,9 @@ export default function ContentArea({
 
   const editorRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
+  const [editorViewState, setEditorViewState] = useState<EditorView | null>(
+    null,
+  );
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [scrollContainer, setScrollContainer] = useState<HTMLDivElement | null>(
     null,
@@ -108,6 +116,27 @@ export default function ContentArea({
 
   // Keep tab ID ref current so the updateListener closure can read it
   currentTabIdRef.current = tab?.id || null;
+
+  // 与 PreviewView 的 `.preview-content` 注入同一组变量，两个模式才会同貌。
+  const headingColors = useEditorStore((s) => s.headingColors);
+  const readerFontSize = useEditorStore((s) => s.config.readerFontSize);
+  const readerWidth = useEditorStore((s) => s.config.readerWidth);
+
+  const editorThemeVars = useMemo(() => {
+    const vars: Record<string, string> = {};
+    if (headingColors) {
+      for (const level of ["h1", "h2", "h3", "h4", "h5", "h6"] as const) {
+        const color = headingColors[level];
+        if (color) vars[`--heading-${level}`] = color;
+      }
+    }
+    if (readerFontSize) vars["--type-font-size"] = `${readerFontSize}px`;
+    if (readerWidth) {
+      vars["--type-measure"] = `${readerWidth}px`;
+      vars["--type-measure-wide"] = `${Math.min(readerWidth + 120, 1400)}px`;
+    }
+    return vars as React.CSSProperties;
+  }, [headingColors, readerFontSize, readerWidth]);
 
   // Register preview scroll container for scroll position capture
   useEffect(() => {
@@ -164,8 +193,7 @@ export default function ContentArea({
     const state = EditorState.create({
       doc: "",
       extensions: [
-        basicSetup,
-        EditorView.lineWrapping,
+        ...baseEditorExtensions(),
         langCompartment.of([]),
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {
@@ -186,6 +214,7 @@ export default function ContentArea({
 
     viewRef.current = new EditorView({ state, parent: editorRef.current });
     setEditorView(panelId, viewRef.current);
+    setEditorViewState(viewRef.current);
 
     // 用户片段：编辑器创建后加载一次并注册进斜杠菜单。加载失败静默——菜单退回
     // 纯内置命令（`list_extensions` 在纯浏览器/老版本里不存在）。
@@ -195,6 +224,7 @@ export default function ContentArea({
 
     return () => {
       setEditorView(panelId, null);
+      setEditorViewState(null);
       viewRef.current?.destroy();
       viewRef.current = null;
     };
@@ -239,7 +269,12 @@ export default function ContentArea({
 
   return (
     <div
-      style={{ height: "100%", display: "flex", flexDirection: "column" }}
+      style={{
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+        position: "relative",
+      }}
       className="dark:bg-gray-800"
     >
       <div
@@ -252,6 +287,7 @@ export default function ContentArea({
           style={{
             height: "100%",
             display: editorMode === "preview" || !tab ? "none" : "block",
+            ...editorThemeVars,
           }}
         />
         {editorMode === "preview" && tab && (
@@ -265,6 +301,14 @@ export default function ContentArea({
           <ReadingProgressInk scrollEl={scrollContainer} />
         )}
       </div>
+      {tab?.fileKind === "markdown" && (
+        <OutlineMenu
+          mode={editorMode}
+          documentText={tab.content}
+          view={editorViewState}
+          container={scrollContainer}
+        />
+      )}
     </div>
   );
 }

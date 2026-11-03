@@ -518,11 +518,13 @@ export function renderIcon(name: string): SVGSVGElement {
   if (def.kind === "text") {
     const text = document.createElementNS(SVG_NS, "text");
     text.setAttribute("x", "12");
-    text.setAttribute("y", "17");
+    text.setAttribute("y", "18");
     text.setAttribute("text-anchor", "middle");
+    // 16px 的槽位里，字形要填满 24 视野才有与路径图标相当的光学尺寸：
+    // 11/13 只有约 7px，块菜单里读作「没图标」（#484）。
     text.setAttribute(
       "font-size",
-      def.weight && def.weight >= 700 ? "11" : "13",
+      def.weight && def.weight >= 700 ? "18" : "17",
     );
     if (def.weight) text.setAttribute("font-weight", String(def.weight));
     text.textContent = def.label;

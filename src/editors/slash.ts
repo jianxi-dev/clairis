@@ -36,6 +36,7 @@ import { renderIcon } from "./icons";
 import { formatKeyChord } from "./key-chord";
 import { menuStack, type MenuToken } from "./orchestration/menu-stack";
 import {
+  PANEL_MAX_HEIGHT,
   rectFromCoords,
   resolvePlacement,
   type AnchorRect,
@@ -845,8 +846,15 @@ function openMenu(
     scope: view,
     onClose: () => closeMenu(view),
   });
-  if (anchorRect) positionMenuAtRect(view, menu, anchorRect);
-  else positionMenu(view, menu, slashPos, trigger);
+  if (anchorRect) {
+    // 块把手的「在下方添加」向右展开（#456）；表格单元格锚点仍向下开。
+    positionMenuAtRect(
+      view,
+      menu,
+      anchorRect,
+      trigger === "below" ? "right" : "below",
+    );
+  } else positionMenu(view, menu, slashPos, trigger);
 }
 
 /**
@@ -919,6 +927,7 @@ function applyPlacement(
   view: EditorView,
   menu: HTMLDivElement,
   anchor: AnchorRect,
+  align: "below" | "right" = "below",
 ): void {
   const own = view.dom.getBoundingClientRect();
   const menuRect = menu.getBoundingClientRect();
@@ -930,6 +939,9 @@ function applyPlacement(
     },
     viewportRect(),
     boxRect(own),
+    8,
+    PANEL_MAX_HEIGHT,
+    align,
   );
   menu.style.left = `${placement.x - own.left}px`;
   menu.style.top = `${placement.y - own.top}px`;
@@ -940,16 +952,22 @@ function positionMenuAtRect(
   view: EditorView,
   menu: HTMLDivElement,
   anchor: { left: number; right: number; top: number; bottom: number },
+  align: "below" | "right" = "below",
 ): void {
   try {
-    applyPlacement(view, menu, {
-      left: anchor.left,
-      top: anchor.top,
-      right: anchor.right,
-      bottom: anchor.bottom,
-      width: anchor.right - anchor.left,
-      height: anchor.bottom - anchor.top,
-    });
+    applyPlacement(
+      view,
+      menu,
+      {
+        left: anchor.left,
+        top: anchor.top,
+        right: anchor.right,
+        bottom: anchor.bottom,
+        width: anchor.right - anchor.left,
+        height: anchor.bottom - anchor.top,
+      },
+      align,
+    );
   } catch {
     // 忽略——jsdom / 未测量的内容
   }

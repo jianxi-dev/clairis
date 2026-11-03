@@ -217,20 +217,18 @@ function App() {
         return;
       }
       const editorStore = useEditorStore.getState();
-      if (delta === 0) {
-        editorStore.setFontSize(17);
-        document.documentElement.style.setProperty(
-          "--editor-font-size",
-          "17px",
-        );
-      } else {
-        const next = Math.max(12, Math.min(32, editorStore.fontSize + delta));
-        editorStore.setFontSize(next);
-        document.documentElement.style.setProperty(
-          "--editor-font-size",
-          `${next}px`,
-        );
-      }
+      // 编辑态与阅读态共用一个字号：readerFontSize 驱动 --type-font-size，
+      // 编辑器的纸面排版也读它，Cmd+/- 因此不会在编辑态失效。
+      const applied =
+        delta === 0
+          ? 17
+          : Math.max(12, Math.min(32, editorStore.fontSize + delta));
+      editorStore.setFontSize(applied);
+      editorStore.setConfig({ readerFontSize: applied });
+      document.documentElement.style.setProperty(
+        "--editor-font-size",
+        `${applied}px`,
+      );
       scheduleSave();
     },
     [scheduleSave],

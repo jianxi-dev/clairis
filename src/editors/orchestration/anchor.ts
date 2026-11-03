@@ -108,6 +108,16 @@ export function intersectRects(a: AnchorRect, b: AnchorRect): AnchorRect {
   return clampRect(a, b);
 }
 
+/**
+ * 摆放对齐方式。
+ *
+ * - `below`：开在锚点下方，下方放不下翻到上方（斜杠菜单等）。
+ * - `center-right`：纵向以锚点行为中心、横向贴锚点右侧（块手柄菜单，md-bundle
+ *   #453 / #466）。
+ * - `right`：贴着锚点右侧、顶端对齐（「在下方添加」二级面板，#456）。
+ */
+export type PlacementAlign = "below" | "center-right" | "right";
+
 export interface PlacementResult {
   x: number;
   y: number;
@@ -132,6 +142,8 @@ export function resolvePlacement(
   viewportRect: AnchorRect,
   containerRect: AnchorRect,
   margin = 8,
+  maxHeightCap = PANEL_MAX_HEIGHT,
+  align: PlacementAlign = "below",
 ): PlacementResult {
   const bounds = intersectRects(viewportRect, containerRect);
   const minLeft = bounds.left + margin;
@@ -139,35 +151,67 @@ export function resolvePlacement(
   const minTop = bounds.top + margin;
   const maxBottom = bounds.bottom - margin;
 
+  // 居中/右侧摆法要贴着锚点：先按锚点较大一侧封顶，超高的菜单就地滚动，
+  // 而不是被推到几百像素外（#487）。
+  const anchorCentre =
+    align === "below" ? anchor.bottom : (anchor.top + anchor.bottom) / 2;
+  const roomBelow = maxBottom - anchorCentre;
+  const roomAbove = anchorCentre - minTop;
+  const adjacentCap =
+    align === "below"
+      ? maxHeightCap
+      : Math.max(160, Math.max(roomBelow, roomAbove) - MENU_GAP);
   const maxHeight = Math.max(
     0,
-    Math.min(PANEL_MAX_HEIGHT, bounds.height - margin * 2),
+    Math.min(maxHeightCap, adjacentCap, bounds.height - margin * 2),
   );
   const height = Math.max(0, Math.min(panelSize.height, maxHeight));
   const width = Math.max(0, panelSize.width);
 
   let x = anchor.left;
   let flippedX = false;
-  if (x + width > maxRight) {
-    const flippedLeft = anchor.right - width - MENU_GAP;
-    if (flippedLeft >= minLeft) {
-      x = flippedLeft;
+  if (align === "below") {
+    if (x + width > maxRight) {
+      const flippedLeft = anchor.right - width - MENU_GAP;
+      if (flippedLeft >= minLeft) {
+        x = flippedLeft;
+      } else {
+        x = clampRange(flippedLeft, minLeft, maxRight - width);
+      }
       flippedX = true;
-    } else {
-      x = clampRange(flippedLeft, minLeft, maxRight - width);
+    }
+  } else {
+    // 贴锚点右侧，右侧放不下翻到左侧（#453）。
+    x = anchor.right + MENU_GAP;
+    if (x + width > maxRight) {
+      const flippedLeft = anchor.left - MENU_GAP - width;
+      x =
+        flippedLeft >= minLeft
+          ? flippedLeft
+          : clampRange(flippedLeft, minLeft, maxRight - width);
       flippedX = true;
     }
   }
 
   let y = anchor.bottom + MENU_GAP;
   let flippedY = false;
-  if (y + height > maxBottom) {
-    const flippedTop = anchor.top - height - MENU_GAP;
-    y =
-      flippedTop >= minTop
-        ? flippedTop
-        : clampRange(flippedTop, minTop, maxBottom - height);
-    flippedY = true;
+  if (align === "below") {
+    if (y + height > maxBottom) {
+      const flippedTop = anchor.top - height - MENU_GAP;
+      y =
+        flippedTop >= minTop
+          ? flippedTop
+          : clampRange(flippedTop, minTop, maxBottom - height);
+      flippedY = true;
+    }
+  } else if (align === "right") {
+    y = clampRange(anchor.top, minTop, maxBottom - height);
+  } else {
+    // #466：以指针行为中心；放不下时夹进可视区——离"居中"最近的合法位置，
+    // 而不是把菜单甩到锚点另一侧。
+    const centred = anchorCentre - height / 2;
+    y = clampRange(centred, minTop, maxBottom - height);
+    flippedY = y !== centred;
   }
 
   return { x, y, flippedX, flippedY, maxHeight };

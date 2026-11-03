@@ -108,3 +108,112 @@ test("滚动即收：编辑器滚动后块菜单关闭", async ({ page }) => {
 
   await expect(page.locator('[data-testid="block-menu"]')).toHaveCount(0);
 });
+
+test("点击手柄也打开菜单（不必等 hover）", async ({ page }) => {
+  const line = page.locator(".cm-line").nth(2);
+  await line.hover();
+  const handle = page.locator(
+    '[data-testid="block-handle"].cm-block-handle-visible',
+  );
+  await expect(handle).toHaveCount(1, { timeout: 3000 });
+  await handle.click();
+  await expect(page.locator('[data-testid="block-menu"]')).toBeVisible({
+    timeout: 3000,
+  });
+});
+
+test("菜单贴手柄右侧，并以指针行为中心", async ({ page }) => {
+  await hoverHandle(page, 2);
+
+  const geometry = await page.evaluate(() => {
+    const menu = document.querySelector<HTMLElement>(
+      '[data-testid="block-menu"]',
+    )!;
+    const handle = document.querySelector<HTMLElement>(
+      '[data-testid="block-handle"].cm-block-handle-visible',
+    )!;
+    const menuRect = menu.getBoundingClientRect();
+    const handleRect = handle.getBoundingClientRect();
+    const pane = (
+      document.querySelector(".cm-editor") as HTMLElement
+    ).getBoundingClientRect();
+    const margin = 8;
+    const minCentre = pane.top + margin + menuRect.height / 2;
+    const maxCentre = pane.bottom - margin - menuRect.height / 2;
+    const idealCentre = Math.max(
+      minCentre,
+      Math.min(handleRect.top + handleRect.height / 2, maxCentre),
+    );
+    return {
+      menuLeft: menuRect.left,
+      menuCentreY: (menuRect.top + menuRect.bottom) / 2,
+      handleRight: handleRect.right,
+      idealCentre,
+      insidePane:
+        menuRect.top >= pane.top - 1 && menuRect.bottom <= pane.bottom + 1,
+    };
+  });
+
+  expect(geometry.menuLeft).toBeGreaterThanOrEqual(geometry.handleRight - 1);
+  expect(
+    Math.abs(geometry.menuCentreY - geometry.idealCentre),
+  ).toBeLessThanOrEqual(2);
+  expect(geometry.insidePane).toBe(true);
+});
+
+test("块菜单每一行都有图标", async ({ page }) => {
+  await hoverHandle(page, 0);
+  const rows = page.locator('[data-testid="block-menu-item"]');
+  const count = await rows.count();
+  expect(count).toBeGreaterThan(0);
+  for (let i = 0; i < count; i += 1) {
+    await expect(rows.nth(i).locator("svg")).toHaveCount(1);
+  }
+});
+
+test("「在下方添加」悬停即向右展开二级面板，父菜单保留", async ({ page }) => {
+  await hoverHandle(page, 2);
+
+  const menuBefore = await page
+    .locator('[data-testid="block-menu"]')
+    .boundingBox();
+  await page.locator('[data-testid="block-menu-add-below"]').hover();
+
+  const flyout = page.locator(".mdb-slash-menu");
+  await expect(flyout).toBeVisible({ timeout: 3000 });
+
+  const menuAfter = await page
+    .locator('[data-testid="block-menu"]')
+    .boundingBox();
+  expect(menuAfter).not.toBeNull();
+  expect(Math.round(menuAfter!.height)).toBe(Math.round(menuBefore!.height));
+
+  const flyoutBox = (await flyout.boundingBox())!;
+  expect(flyoutBox.x).toBeGreaterThanOrEqual(
+    menuAfter!.x + menuAfter!.width - 1,
+  );
+});
+
+test("菜单打开时移动指针不再冒出其它手柄", async ({ page }) => {
+  await hoverHandle(page, 2);
+  const menu = page.locator('[data-testid="block-menu"]');
+  const box = (await menu.boundingBox())!;
+  await page.mouse.move(box.x + 80, box.y + 120);
+  await page.waitForTimeout(400);
+  await expect(page.locator(".cm-block-handle-visible")).toHaveCount(1);
+});
+
+test("打字结束后移动到正文仍能召唤手柄", async ({ page }) => {
+  await page.locator(".cm-content").click();
+  await page.keyboard.type("x");
+  await page.keyboard.press("Backspace");
+
+  const line = page
+    .locator(".cm-line")
+    .filter({ hasText: "第一段正文" })
+    .first();
+  await line.hover();
+  await expect(page.locator(".cm-block-handle-visible")).toHaveCount(1, {
+    timeout: 3000,
+  });
+});

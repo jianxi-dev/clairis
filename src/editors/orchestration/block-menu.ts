@@ -7,9 +7,10 @@
 
 import type { EditorView } from "@codemirror/view";
 
-import { defaultCommands, openInsertMenu } from "../slash";
+import { defaultCommands, openInsertMenu, releaseInsertMenu } from "../slash";
 import { renderIcon } from "../icons";
 import { menuStack } from "./menu-stack";
+import { rectFromCoords, resolvePlacement, type AnchorRect } from "./anchor";
 import {
   blockConvertChanges,
   blockMenuItems,
@@ -43,6 +44,8 @@ export function closeBlockMenu(view: EditorView): void {
     (entry) =>
       entry.scope === view && entry.id.startsWith(BLOCK_MENU_ID_PREFIX),
   );
+  // 父菜单收起时二级插入面板不能变成孤儿。
+  releaseInsertMenu(view, "below");
 }
 
 export function scheduleBlockMenuClose(view: EditorView): void {
@@ -71,38 +74,88 @@ function applyConvert(
   view.dispatch({ changes, scrollIntoView: true });
 }
 
+function viewportRect(): AnchorRect {
+  const width = window.innerWidth;
+  const height = window.innerHeight;
+  return { left: 0, top: 0, right: width, bottom: height, width, height };
+}
+
+function boxRect(rect: DOMRect): AnchorRect {
+  return {
+    left: rect.left,
+    top: rect.top,
+    right: rect.right,
+    bottom: rect.bottom,
+    width: rect.width,
+    height: rect.height,
+  };
+}
+
+/**
+ * 锚点矩形：纵向取指针所在的可视行（`coordsAtPos`），横向取手柄自身的左右边界。
+ *
+ * 纵向必须走 `coordsAtPos`（滚动后 DOM 坐标会漂移）；横向必须用手柄，因为菜单
+ * 要贴着手柄弹出而不是压住正文（md-bundle #453）。
+ */
+function anchorRectAt(
+  view: EditorView,
+  pos: number,
+  handle: HTMLElement | null,
+): AnchorRect {
+  const clamped = Math.max(0, Math.min(pos, view.state.doc.length));
+  let row: ReturnType<EditorView["coordsAtPos"]> | null = null;
+  try {
+    row = view.coordsAtPos(clamped);
+  } catch {
+    row = null;
+  }
+  const rect = rectFromCoords(row, view.documentTop);
+  if (!handle) return rect;
+  const handleRect = handle.getBoundingClientRect();
+  return {
+    ...rect,
+    left: handleRect.left,
+    right: handleRect.right,
+    width: Math.max(0, handleRect.right - handleRect.left),
+  };
+}
+
+/**
+ * 菜单摆放走 `resolvePlacement`：贴手柄右侧、纵向以指针行为中心，越界先翻转再
+ * 夹取，并把高度封顶到锚点较大一侧（#453 / #466 / #487）。
+ */
 function positionPanel(
   view: EditorView,
   panel: HTMLElement,
-  anchor: HTMLElement | null,
-  block: BlockLike,
+  anchorPos: number,
+  handle: HTMLElement | null,
 ): void {
-  const base = view.dom.getBoundingClientRect();
-  const rect =
-    anchor?.getBoundingClientRect() ??
-    (() => {
-      const coords = view.coordsAtPos(block.from);
-      return coords
-        ? {
-            left: coords.left,
-            top: coords.top,
-            right: coords.left,
-            bottom: coords.bottom,
-          }
-        : null;
-    })();
-  if (!rect) return;
-  const left = rect.right - base.left + 8;
-  const top = rect.top - base.top;
-  panel.style.left = `${Math.max(0, left)}px`;
-  panel.style.top = `${Math.max(0, top)}px`;
+  const own = view.dom.getBoundingClientRect();
+  const anchor = anchorRectAt(view, anchorPos, handle);
+  const box = panel.getBoundingClientRect();
+  const placement = resolvePlacement(
+    anchor,
+    {
+      width: box.width || panel.offsetWidth || BLOCK_MENU_WIDTH,
+      height: box.height || panel.offsetHeight,
+    },
+    viewportRect(),
+    boxRect(own),
+    8,
+    Number.POSITIVE_INFINITY,
+    "center-right",
+  );
+  panel.style.left = `${placement.x - own.left}px`;
+  panel.style.top = `${placement.y - own.top}px`;
+  panel.style.maxHeight = `${Math.max(120, placement.maxHeight)}px`;
 }
 
 /** 打开（或替换）该块的菜单。 */
 export function openBlockMenu(
   view: EditorView,
   block: BlockLike,
-  anchor: HTMLElement | null = null,
+  anchorPos: number | null = null,
+  handle: HTMLElement | null = null,
 ): void {
   closeBlockMenu(view);
 
@@ -153,22 +206,53 @@ export function openBlockMenu(
   const addLabel = document.createElement("span");
   addLabel.textContent = "在下方添加";
   addBelow.appendChild(addLabel);
-  addBelow.addEventListener("pointerdown", (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    closeBlockMenu(view);
+  const openBelow = (): void => {
+    cancelPendingClose(view);
+    const rowRect = addBelow.getBoundingClientRect();
     openInsertMenu(
       view,
       block.to,
       defaultCommands,
       { from: block.from, to: block.to },
       "below",
+      {
+        left: rowRect.left,
+        right: rowRect.right,
+        top: rowRect.top,
+        bottom: rowRect.bottom,
+      },
     );
+    // 父菜单保留、二级面板向右展开（#456）；指针跨到面板时不要收起父菜单（#480）。
+    view.dom
+      .querySelector<HTMLElement>(".mdb-slash-menu")
+      ?.addEventListener("pointerenter", () => cancelPendingClose(view));
+  };
+
+  let belowTimer: number | null = null;
+  addBelow.addEventListener("pointerenter", () => {
+    cancelPendingClose(view);
+    if (belowTimer !== null) window.clearTimeout(belowTimer);
+    belowTimer = window.setTimeout(() => {
+      belowTimer = null;
+      openBelow();
+    }, 150);
+  });
+  addBelow.addEventListener("pointerleave", () => {
+    if (belowTimer !== null) {
+      window.clearTimeout(belowTimer);
+      belowTimer = null;
+    }
+    scheduleClose(view);
+  });
+  addBelow.addEventListener("pointerdown", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    openBelow();
   });
   panel.appendChild(addBelow);
 
   view.dom.appendChild(panel);
-  positionPanel(view, panel, anchor, block);
+  positionPanel(view, panel, anchorPos ?? block.from, handle);
 
   // CM6 keymap 只在编辑器聚焦时触发；块菜单是 hover 召唤，焦点可能还在别处，
   // 所以自己接一个捕获阶段的 Esc（只负责本视图的块菜单层）。

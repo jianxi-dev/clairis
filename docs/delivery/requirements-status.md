@@ -2,7 +2,7 @@
 title: 需求实现状态总览
 type: delivery
 status: accepted
-last_updated: 2026-11-02
+last_updated: 2026-11-03
 source_of_truth: supporting
 ---
 
@@ -113,7 +113,7 @@ openspec status --change <name>   # 单个变更工件完成度
 | C-5 | 全部文件视图 | ⬜ | 依赖 B-3 |
 | C-6 | 视频预览播放器 | ✅ | change `video-preview-player` |
 
-### editing（6）
+### editing（9）
 
 | 编号 | 需求 | 状态 | 证据 |
 |---|---|---|---|
@@ -123,6 +123,10 @@ openspec status --change <name>   # 单个变更工件完成度
 | E-4 | HTML 源码编辑 | 🟡 | V3 沿用 |
 | E-6 | 编辑内核与插入入口（块级装饰 / 斜杠菜单 / 智能输入） | ✅ | change `md-kernel-port` |
 | E-7 | 编排层交互契约（块手柄 / 菜单栈 / 浮层裁剪 / 共享色板） | ✅ | change `md-orchestration`（归档 2026-11-03） |
+| E-8 | 编辑态与预览态同貌（同一张纸 / 同一套排版 / 块级组合规则） | ✅ | change `editor-preview-parity`（归档 2026-11-02） |
+| E-9 | 单元格工具条可见性（单击显示 / 底色 / 合并） | ✅ | change `editor-interaction-fixes`（归档 2026-11-03） |
+| E-10 | 编辑器大纲浮层（右上角入口 / 跳转 / 跳过代码块） | ✅ | change `editor-outline`（归档 2026-11-03） |
+| E-7 修订 | 块菜单贴手柄居中、二级面板、hover 稳定性 | ✅ | change `editor-interaction-fixes`（归档 2026-11-03） |
 
 ### docs-governance（3）
 

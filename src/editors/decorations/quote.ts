@@ -5,8 +5,26 @@
  */
 import type { Range } from "@codemirror/state";
 import { Decoration } from "@codemirror/view";
+import { resolveCalloutType } from "../callout-types";
+import { fencedCodeRanges } from "./code";
 
 export const quoteRegex = /^>\s?/m;
+
+/**
+ * 高亮块起始行（`> [!NOTE]` 之类）。高亮块自带卡片外观，若再套引用底色就会
+ * 出现「卡片外套一条灰带」，所以整块跳过引用装饰。非法类型（`[!FOO]`）不算
+ * 高亮块——它本来就该回落到普通引用。
+ */
+const calloutStartRegex = /^>\s*\[!([^\]]+)\]/;
+
+function isCalloutStart(line: string): boolean {
+  const match = calloutStartRegex.exec(line);
+  if (!match) return false;
+  return (
+    resolveCalloutType(match[1].trim().replace(/[-+]$/, "").toLowerCase()) !==
+    null
+  );
+}
 
 export const QUOTE_CLASS = "cm-quote";
 export const QUOTE_MARKER_ACTIVE_CLASS = "cm-quote-marker-active";
@@ -26,11 +44,18 @@ export function createQuoteDecorations(
   activeTo: number = -1,
 ): Range<Decoration>[] {
   const decorations: Range<Decoration>[] = [];
+  const fences = fencedCodeRanges(text);
+  const inFence = (pos: number): boolean =>
+    fences.some((range) => pos >= range.from && pos <= range.to);
   const lines = text.split("\n");
 
   let pos = 0;
+  let inCallout = false;
   for (const line of lines) {
-    const match = line.match(quoteRegex);
+    if (!line.startsWith(">")) inCallout = false;
+    else if (isCalloutStart(line)) inCallout = true;
+
+    const match = inCallout || inFence(pos) ? null : line.match(quoteRegex);
     if (match) {
       const lineStart = pos;
       const lineEnd = pos + line.length;
