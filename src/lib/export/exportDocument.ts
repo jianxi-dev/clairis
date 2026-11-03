@@ -2,6 +2,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import readerCss from "../../styles/reader.css?raw";
 import tokensCss from "../../styles/tokens.css?raw";
+import { ensureDiagramEngine } from "../../renderers/diagram/engine";
 import { buildHtmlDocument } from "./html";
 import { inlineImages } from "./inlineImages";
 
@@ -24,9 +25,13 @@ export async function exportCurrentDocHtml(
   input: ExportHtmlInput,
 ): Promise<ExportHtmlResult> {
   try {
+    const engine = await ensureDiagramEngine();
     const doc = buildHtmlDocument(input.markdown, {
       title: input.title,
       css: `${tokensCss}\n${readerCss}`,
+      diagramSvg: engine
+        ? (source) => engine.renderToString(source)
+        : undefined,
     });
     const { html, inlined, failed } = await inlineImages(
       doc,

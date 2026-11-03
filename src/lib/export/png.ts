@@ -5,6 +5,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import readerCss from "../../styles/reader.css?raw";
 import tokensCss from "../../styles/tokens.css?raw";
+import { ensureDiagramEngine } from "../../renderers/diagram/engine";
 import { blobToBase64 } from "./base64";
 import { buildHtmlDocument } from "./html";
 import { inlineImages } from "./inlineImages";
@@ -51,7 +52,7 @@ function fixBareAttrs(attrs: string): string {
     } else if (/[a-z]/.test(ch)) {
       let word = "";
       let j = i;
-      while (j < attrs.length && /[a-z0-9-]/.test(attrs[j]!)) {
+      while (j < attrs.length && /[a-zA-Z0-9-]/.test(attrs[j]!)) {
         word += attrs[j];
         j++;
       }
@@ -289,9 +290,13 @@ export async function exportPngFromMarkdown(
       ((base64: string, defaultName: string) =>
         invoke<string | null>("save_binary_as_file", { base64, defaultName }));
 
+    const engine = await ensureDiagramEngine();
     const doc = buildHtmlDocument(input.markdown, {
       title: input.title,
       css: input.css ?? defaultCss(),
+      diagramSvg: engine
+        ? (source) => engine.renderToString(source)
+        : undefined,
     });
     const { html } = await inlineImages(doc, input.baseDir, readBase64);
 

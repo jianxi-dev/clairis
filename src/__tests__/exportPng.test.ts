@@ -229,6 +229,35 @@ describe("exportPngFromMarkdown", () => {
     expect(measuredHtml).toContain("data:image/png;base64,QUJD");
   });
 
+  it("inlines a mermaid diagram as SVG and keeps the XHTML well-formed", async () => {
+    let seenSvg = "";
+    const result = await exportPngFromMarkdown(
+      {
+        title: "图.md",
+        markdown: "```mermaid\nflowchart LR\n  开始 --> 结束\n```",
+        baseDir: "",
+      },
+      {
+        measure: async () => 300,
+        toBlob: async (svg) => {
+          seenSvg = svg;
+          return fakePngBlob();
+        },
+        save: async () => "/Users/test/图.png",
+        readBase64: async () => null,
+      },
+    );
+
+    expect(result).toEqual({ status: "saved", path: "/Users/test/图.png" });
+    expect(seenSvg).toContain("<svg");
+    expect(seenSvg).toContain("开始");
+    expect(seenSvg).toContain("结束");
+    expect(seenSvg).toContain('viewBox="0 0 ');
+    expect(seenSvg).not.toContain('view=""Box');
+    const parsed = new DOMParser().parseFromString(seenSvg, "image/svg+xml");
+    expect(parsed.querySelector("parsererror")).toBeNull();
+  });
+
   it("emits no byline or generator signature", async () => {
     let svg = "";
     await exportPngFromMarkdown(

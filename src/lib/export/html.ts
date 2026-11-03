@@ -9,6 +9,11 @@ export interface BuildHtmlOptions {
   css: string;
   /** 正文容器的额外 class（默认就是阅读区的 .preview-content） */
   bodyClassName?: string;
+  /**
+   * 可选的同步图表渲染器：把 mermaid 源码块换成内联 SVG（design D7）。
+   * 返回 null 时保留源码块——单图失败不阻断整份导出。
+   */
+  diagramSvg?: (source: string) => string | null;
 }
 
 export function escapeHtml(s: string): string {
@@ -39,11 +44,38 @@ body { margin: 0; }
 /** 正文容器默认 class：直接复用阅读区的排版规则 */
 const DEFAULT_BODY_CLASS = "preview-content";
 
+/** renderMarkdown 对 mermaid 块输出的确切 markup（见 renderers/markdown.ts）。 */
+const MERMAID_SOURCE_RE = /<pre class="mermaid">([\s\S]*?)<\/pre>/g;
+
+/** 还原 renderMarkdown 对图源码做的 HTML 转义；&amp; 必须最后替换，避免二次还原。 */
+function unescapeHtml(s: string): string {
+  return s
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, "&");
+}
+
+/** 用内联 SVG 替换 mermaid 源码块；渲染器返回 null 时原样保留该块。 */
+function injectDiagrams(
+  body: string,
+  render: (source: string) => string | null,
+): string {
+  return body.replace(MERMAID_SOURCE_RE, (block, escaped: string) => {
+    const svg = render(unescapeHtml(escaped));
+    return svg && svg.trim() ? svg : block;
+  });
+}
+
 export function buildHtmlDocument(
   markdown: string,
   opts: BuildHtmlOptions,
 ): string {
-  const body = renderMarkdown(markdown);
+  const rendered = renderMarkdown(markdown);
+  const body = opts.diagramSvg
+    ? injectDiagrams(rendered, opts.diagramSvg)
+    : rendered;
   const title = escapeHtml(opts.title);
   const bodyClass = [DEFAULT_BODY_CLASS, opts.bodyClassName]
     .filter(Boolean)
