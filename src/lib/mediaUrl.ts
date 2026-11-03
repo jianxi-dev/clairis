@@ -10,7 +10,7 @@
  *
  * 外部链接（http/https/data/已有协议）原样返回——用户自己写的远程图片不该被改写。
  */
-import { convertFileSrc } from "@tauri-apps/api/core";
+import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 
 export type MediaKind = "image" | "video" | "audio" | "file";
 
@@ -103,6 +103,11 @@ export function resolveDocMediaHref(
   const absolute = resolveRelativeToDoc(href, docPath);
   if (!absolute) return null;
 
-  if (kind === "video" || kind === "audio") return mediaUrlForPath(absolute);
+  if (kind === "video" || kind === "audio") {
+    // media:// 只服务登记过的路径（防任意本地文件读取）。不登记就是 404，
+    // 表现是「播放器出来了但播不动」。
+    void invoke("register_media_path", { path: absolute }).catch(() => {});
+    return mediaUrlForPath(absolute);
+  }
   return convertFileSrc(absolute);
 }

@@ -101,6 +101,9 @@ const SANITIZE_CONFIG = {
     "href",
     "src",
     "alt",
+    // 编辑态拖拽写下的图片宽度：渲染时由 span 占位带到 img 上，必须放行
+    "data-img-width",
+    "width",
     "title",
     "class",
     "target",
@@ -263,7 +266,14 @@ export function renderMarkdown(
   registerCheckboxGuard();
   resetMathStore();
 
-  const body = content.replace(FRONTMATTER_RE, "");
+  // `![x](a.png)<!--w=635-->`：宽度注释是给编辑态持久化用的，直接在正文里
+  // 渲染出来会变成一行可见的注释文本。这里先换成带 data 属性的 span，等 DOM
+  // 建好再取到图片上。
+  const withWidths = content.replace(
+    /(!\[[^\]]*\]\([^)]*\))[ \t]*\n?<!--\s*w=(\d+)\s*-->/g,
+    '$1<span data-img-width="$2"></span>',
+  );
+  const body = withWidths.replace(FRONTMATTER_RE, "");
   const raw = marked.parse(body, { async: false }) as string;
   const clean = DOMPurify.sanitize(raw, SANITIZE_CONFIG);
   const result = postProcess(clean);
@@ -271,10 +281,32 @@ export function renderMarkdown(
   return result;
 }
 
-/** sanitize 之后的一趟 DOM 处理：Callout → 公式回填 → 链接 → 中西文间距 */
+/**
+ * 把 `[data-img-width]` 落到前一张图上，并清掉占位节点。
+ *
+ * 宽度来自编辑态拖拽写下的 `<!--w=N-->`；预览必须尊重同一个值，否则一份
+ * 文档在两种模式下排版不一致。
+ */
+function applyImageWidths(doc: Document): void {
+  doc.querySelectorAll("[data-img-width]").forEach((marker) => {
+    const width = Number(marker.getAttribute("data-img-width"));
+    let node = marker.previousElementSibling;
+    if (!node) node = marker.parentElement;
+    const img = node?.querySelector?.("img") ?? null;
+    if (img && Number.isFinite(width) && width > 0) {
+      img.setAttribute("width", String(width));
+      // 原图更宽时按容器收缩，不撑破正文
+      img.setAttribute("style", "max-width:100%;height:auto");
+    }
+    marker.remove();
+  });
+}
+
+/** sanitize 之后的一趟 DOM 处理：Callout → 图片宽度 → 公式回填 → 链接 → 中西文间距 */
 function postProcess(html: string): string {
   const doc = new DOMParser().parseFromString(html, "text/html");
   convertCallouts(doc);
+  applyImageWidths(doc);
   prepareDarkColors(doc);
   fillMath(doc);
   doc.querySelectorAll("a").forEach((a) => {

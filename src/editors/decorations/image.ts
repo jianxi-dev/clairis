@@ -78,6 +78,16 @@ export const MAX_IMAGE_WIDTH = 2000;
 
 const WIDTH_COMMENT_RE = /^[ \t]*<!--\s*w=(\d+)\s*-->/;
 
+/** 宽度注释的结束位置（含注释本身），没有则 null。编辑态要把它藏起来。 */
+export function imageWidthCommentEnd(
+  text: string,
+  after: number,
+): number | null {
+  const match = WIDTH_COMMENT_RE.exec(text.slice(after, after + 64));
+  if (!match) return null;
+  return after + match[0].length;
+}
+
 /** 图片 markdown 之后紧跟的宽度注释，没有则 null。 */
 export function parseImageWidth(text: string, after: number): number | null {
   const match = WIDTH_COMMENT_RE.exec(text.slice(after, after + 64));
@@ -510,6 +520,13 @@ export function createImageDecorations(
           inclusive: false,
         }).range(from, to),
       );
+      // 宽度注释是持久化用的，不该在正文里露出来。
+      const commentEnd = imageWidthCommentEnd(docText, to);
+      if (commentEnd !== null) {
+        decorations.push(
+          Decoration.replace({ inclusive: false }).range(to, commentEnd),
+        );
+      }
       continue;
     }
 
