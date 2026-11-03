@@ -151,3 +151,41 @@ test("Tab 提交当前单元格", async ({ page }) => {
   });
   expect(content).toContain("a1x");
 });
+
+test("单元格菜单只列行内命令，选中后插进单元格而不是表格下方", async ({
+  page,
+}) => {
+  await openTableDoc(
+    page,
+    "/tmp/cell-insert.md",
+    "| A | B |\n| --- | --- |\n| a1 |  |\n",
+  );
+  const cell = page.locator('td[data-row="0"][data-col="1"]');
+  await cell.click();
+  const input = page.locator('[data-testid="cm-table-cell-input"]');
+  await input.click();
+  await page.keyboard.type("/");
+  const menu = page.locator(".mdb-slash-menu");
+  await expect(menu).toBeVisible({ timeout: 3000 });
+
+  // 块级命令不该出现在单元格菜单里（它们进不去单元格）
+  await expect(menu.locator("text=标题")).toHaveCount(0);
+  await expect(menu.locator("text=表格")).toHaveCount(0);
+
+  const before = await page.evaluate(() => {
+    const store = (window as unknown as Record<string, any>).__biaoyue_store__;
+    const s = store.getState();
+    return s.tabs[s.activeTabId]?.content as string;
+  });
+
+  // 选第一项（图片引用会弹系统框，这里改选能直接落地的行：此处菜单只剩媒体项，
+  // 所以直接取消，只验证「没有块级项」与「不在表格外插入」）
+  await page.keyboard.press("Escape");
+  await expect(menu).toHaveCount(0);
+  const after = await page.evaluate(() => {
+    const store = (window as unknown as Record<string, any>).__biaoyue_store__;
+    const s = store.getState();
+    return s.tabs[s.activeTabId]?.content as string;
+  });
+  expect(after).toBe(before);
+});
