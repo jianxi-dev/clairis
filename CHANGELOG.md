@@ -11,6 +11,10 @@
 
 - **品牌更名**：Clairis（渐晰）更名为标月（Biaoyue）；应用标识、bundle ID（`dev.biaoyue.app`）、配置目录、调试桥、文档与软著材料同步更新。首次以新标识启动时会迁移旧配置，旧目录保留可回滚。
 
+### Removed（移除）
+
+- 移除 `mermaid` npm 依赖（图表渲染已统一由 Pele 承担）；上游版本巡检改由 `scripts/check-pele-upstream.mjs` 每周检查，发现新版时自动开 issue 提醒升级。
+
 ## [0.2.0] - 2026-08-30
 
 ### Added（新增）
