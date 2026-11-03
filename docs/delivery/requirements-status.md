@@ -35,9 +35,9 @@ openspec view              # 交互式 dashboard（specs + changes 一屏总览�
 openspec status --change <name>   # 单个变更工件完成度
 ```
 
-## 总览统计（截至 2026-11-02）
+## 总览统计（截至 2026-11-03）
 
-- 规格：8 域 / 55 requirement（`openspec validate` 通过）
+- 规格：17 域 / 99 requirement（`openspec validate --specs --strict` 通过）
 - ✅ 经 openspec 归档实现：13
 - 🟡 已实现/设计完成（未走 openspec 变更）：24
 - ⬜ 待开发：16
@@ -59,6 +59,7 @@ openspec status --change <name>   # 单个变更工件完成度
 | A-9 | 阅读进度与位置恢复 | ✅ | change `reading-view-implementation` |
 | A-10 | 阅读宽度与标题配色 | ✅ | change `html-preview-rework` |
 | A-11 | 预览表格宽度与自动换行 | ✅ | change `preview-table-width` |
+| A-12 | 图表渲染（Pele，同步出图 / 主题变量 / 导出带图） | ✅ | change `diagram-engine-pele` |
 
 ### capture（15）
 
