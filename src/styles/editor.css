@@ -664,6 +664,25 @@ body {
   white-space: pre-wrap;
 }
 
+.cm-mermaid-block .mermaid-view {
+  /* 图主题走 CSS 变量（design D5）：与 reader.css 的 .mermaid-view 同一张
+     --pele-* 表，但解析到编辑区 token。--app-* 随 .dark 翻转，深浅切换
+     不重渲；bg 取 sunken 与块背景一致，否则标签背板描边发花。 */
+  --pele-bg: var(--app-sunken);
+  --pele-fg: var(--app-text);
+  --pele-muted: var(--app-text-3);
+  --pele-line: var(--app-text-2);
+  --pele-surface: var(--app-surface);
+  --pele-surface-alt: var(--app-sunken);
+  --pele-border: var(--app-border);
+  --pele-accent: var(--app-accent);
+  --pele-font:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+    "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial,
+    sans-serif;
+  --pele-radius: var(--app-radius);
+}
+
 .cm-mermaid-block .mermaid-view svg {
   display: block;
   max-width: 100%;

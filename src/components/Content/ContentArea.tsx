@@ -34,7 +34,7 @@ import {
 import { resolveScrollTarget } from "../../utils/scrollPosition";
 import { pickMediaForDocument } from "../../lib/mediaPicker";
 import { resolveDocMediaHref } from "../../lib/mediaUrl";
-import { renderMermaid } from "../../renderers/mermaid";
+import { renderAllStatic } from "../../renderers/diagram/engine";
 import PreviewView from "./PreviewView";
 import OutlineMenu from "./OutlineMenu";
 import ReadingProgressInk from "./ReadingProgressInk";
@@ -42,13 +42,14 @@ import type { EditorMode, FileKind, Tab } from "../../types";
 
 const langCompartment = new Compartment();
 
-/** 编辑态 mermaid 水合：把装饰 widget 里的源码块渲染成 SVG。 */
+/** 编辑态 mermaid 水合：把装饰 widget 里的源码块渲染成 SVG。
+ *  走适配层的静态 `render()` 路径（design D4，无 ResizeObserver）；主题由
+ *  CSS 变量驱动（D5），theme 参数仅为水合器签名保留，不再写 dataset。 */
 function hydrateMermaid(
   root: HTMLElement,
-  theme: "dark" | "light",
+  _theme: "dark" | "light",
 ): Promise<void> {
-  root.dataset.theme = theme;
-  return renderMermaid(root);
+  return renderAllStatic(root);
 }
 
 /**

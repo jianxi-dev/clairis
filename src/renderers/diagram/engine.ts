@@ -102,6 +102,41 @@ export async function renderAll(root: ParentNode | null): Promise<void> {
   }
 }
 
+/**
+ * 编辑态静态渲染（design D4）：不走 `mount()`——CM6 widget 没有可靠的卸载钩子，
+ * 会留下 ResizeObserver 残留。这里用适配层的纯函数 `render()`，同步写出 SVG；
+ * 单块失败只影响该块，源码保持可见（spec D-4/D-6）。引擎只等一次；await 期间
+ * 能力可能被关闭，与 renderAll 相同地复检一次（review: TOCTOU）。
+ */
+export async function renderAllStatic(root: ParentNode | null): Promise<void> {
+  if (!root) return;
+  if (!isCapabilityEnabled("mermaid")) return;
+  const blocks = Array.from(root.querySelectorAll<HTMLElement>("pre.mermaid"));
+  if (!blocks.length) return;
+
+  const engine = await ensureDiagramEngine();
+  if (!engine) return;
+  if (!isCapabilityEnabled("mermaid")) return;
+
+  for (const src of blocks) {
+    const block = src.parentElement;
+    if (!block) continue;
+    let view = block.querySelector<HTMLElement>(".mermaid-view");
+    if (!view) {
+      view = document.createElement("div");
+      view.className = "mermaid-view";
+      block.appendChild(view);
+    }
+    try {
+      view.innerHTML = engine.renderToString(src.textContent ?? "");
+      src.hidden = true;
+    } catch (error) {
+      view.textContent = engine.describeDiagramError(error);
+      src.hidden = false;
+    }
+  }
+}
+
 subscribeCapability((id, enabled) => {
   if (id !== "mermaid") return;
   for (const root of Array.from(renderedRoots)) {
