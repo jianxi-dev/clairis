@@ -14,6 +14,7 @@ import { rectFromCoords, resolvePlacement, type AnchorRect } from "./anchor";
 import {
   blockConvertChanges,
   blockMenuItems,
+  currentConvertTarget,
   type BlockConvertTarget,
   type BlockLike,
 } from "./block-convert";
@@ -173,25 +174,37 @@ export function openBlockMenu(
     group.className = "cm-block-menu-group";
     group.textContent = "转为";
     panel.appendChild(group);
-  }
 
-  for (const item of items) {
-    const row = document.createElement("button");
-    row.type = "button";
-    row.className = "cm-block-menu-item";
-    row.dataset.testid = "block-menu-item";
-    row.dataset.target = item.target;
-    row.style.height = `${BLOCK_MENU_ROW_HEIGHT}px`;
-    row.appendChild(renderIcon(item.icon));
-    const label = document.createElement("span");
-    label.textContent = item.label;
-    row.appendChild(label);
-    row.addEventListener("pointerdown", (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      applyConvert(view, block, item.target);
-    });
-    panel.appendChild(row);
+    // 豆包把「转为」做成图标网格（5 列 × 2 行）：图标即语义，扫一眼就认出来。
+    // 十条等长文字排成一列正是「菜单显小气」的来源（#111）。
+    const active = currentConvertTarget(
+      view.state.doc.sliceString(block.from, block.to),
+      block.type,
+    );
+    const grid = document.createElement("div");
+    grid.className = "cm-block-menu-grid";
+    grid.dataset.testid = "block-menu-grid";
+    for (const item of items) {
+      const cell = document.createElement("button");
+      cell.type = "button";
+      cell.className = "cm-block-menu-cell";
+      cell.dataset.testid = "block-menu-cell";
+      cell.dataset.target = item.target;
+      cell.dataset.active = String(item.target === active);
+      cell.title = item.label;
+      cell.appendChild(renderIcon(item.icon));
+      const label = document.createElement("span");
+      label.className = "cm-block-menu-cell-label";
+      label.textContent = item.shortLabel ?? item.label;
+      cell.appendChild(label);
+      cell.addEventListener("pointerdown", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        applyConvert(view, block, item.target);
+      });
+      grid.appendChild(cell);
+    }
+    panel.appendChild(grid);
   }
 
   const separator = document.createElement("div");
@@ -203,9 +216,16 @@ export function openBlockMenu(
   addBelow.className = "cm-block-menu-item";
   addBelow.dataset.testid = "block-menu-add-below";
   addBelow.style.height = `${BLOCK_MENU_ROW_HEIGHT}px`;
+  addBelow.appendChild(renderIcon("AddOutlined"));
   const addLabel = document.createElement("span");
   addLabel.textContent = "在下方添加";
   addBelow.appendChild(addLabel);
+  // 右侧 chevron：这一行会向右展开二级面板，没有指示用户不知道可以横着走。
+  const chevron = document.createElement("span");
+  chevron.className = "cm-block-menu-chevron";
+  chevron.textContent = "›";
+  chevron.setAttribute("aria-hidden", "true");
+  addBelow.appendChild(chevron);
   const openBelow = (): void => {
     cancelPendingClose(view);
     const rowRect = addBelow.getBoundingClientRect();

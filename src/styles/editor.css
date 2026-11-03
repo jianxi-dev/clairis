@@ -1914,7 +1914,7 @@ body {
 .cm-block-menu {
   position: absolute;
   z-index: 40;
-  padding: 4px 0;
+  padding: 5px 0;
   overflow-y: auto;
   border: 1px solid var(--app-border);
   border-radius: 8px;
@@ -1950,9 +1950,56 @@ body {
 }
 
 .cm-block-menu-item svg {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   flex: none;
+}
+
+/* 转为网格（豆包 §4.3：5 列 × 2 行，图标即语义）。 */
+.cm-block-menu-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 2px;
+  padding: 0 5px;
+}
+
+.cm-block-menu-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 56px;
+  padding: 4px 2px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.cm-block-menu-cell:hover {
+  background: var(--app-sunken);
+}
+
+.cm-block-menu-cell[data-active="true"] {
+  background: var(--app-accent-soft);
+  color: var(--app-accent);
+}
+
+.cm-block-menu-cell-label {
+  font-size: 12px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.cm-block-menu-chevron {
+  margin-inline-start: auto;
+  font-size: 15px;
+  line-height: 1;
+  color: var(--app-text-3);
 }
 
 .cm-block-menu-separator {
