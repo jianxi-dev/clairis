@@ -27,6 +27,25 @@ async function openPreview(
   await page.locator(".preview-content").waitFor({ timeout: 10000 });
 }
 
+async function openEditor(
+  page: import("@playwright/test").Page,
+  doc: string,
+  name: string,
+) {
+  await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
+  await page.goto("/", { waitUntil: "networkidle" });
+  await page.waitForSelector("header", { timeout: 10000 });
+  await page.evaluate(
+    ({ doc, name }) => {
+      const win = window as unknown as Record<string, any>;
+      win.__biaoyue_openFile__(`/tmp/${name}/${name}.md`, doc, `${name}.md`);
+      win.__biaoyue_store__.getState().setEditorMode("edit");
+    },
+    { doc, name },
+  );
+  await page.locator(".cm-content").waitFor({ timeout: 10000 });
+}
+
 test("相对图片解析成 asset:// 再进 img.src", async ({ page }) => {
   await openPreview(page, "![pic](assets/pic.png)\n", "mimg");
   const img = page.locator(".preview-content img").first();
@@ -53,4 +72,26 @@ test("远程图片保持原样，不被本地化", async ({ page }) => {
     "src",
     "https://example.com/a.png",
   );
+});
+
+test("拖动写入的宽度注释：预览尊重同一宽度，且不露注释文本", async ({
+  page,
+}) => {
+  await openPreview(page, "![pic](assets/pic.png)<!--w=320-->\n", "mwidth");
+  const img = page.locator(".preview-content img").first();
+  await expect(img).toHaveCount(1);
+  await expect(img).toHaveAttribute("width", "320");
+  // 注释是持久化用的，不该变成一行可见文字
+  const text = await page.locator(".preview-content").innerText();
+  expect(text).not.toContain("w=320");
+  expect(text).not.toContain("<!--");
+});
+
+test("编辑态：图片显示出来，宽度注释不露成文本", async ({ page }) => {
+  await openEditor(page, "![pic](assets/pic.png)<!--w=320-->\n", "medit");
+  await page.locator(".cm-content").click();
+  await expect(page.locator('.cm-content img[src^="asset://"]')).toHaveCount(1);
+  const text = await page.locator(".cm-content").innerText();
+  expect(text).not.toContain("w=320");
+  expect(text).not.toContain("<!--");
 });

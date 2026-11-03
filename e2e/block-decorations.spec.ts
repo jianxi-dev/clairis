@@ -44,16 +44,20 @@ test("链接渲染为链接装饰且非活跃块隐藏源标记", async ({ page 
   await expect(link).toHaveText("示例");
 });
 
-test("图片无解析器时退化为 alt 文本回退", async ({ page }) => {
+test("相对图片路径解析成 asset://（桌面端不再退化成文字）", async ({
+  page,
+}) => {
+  // 行为变更（#103）：应用现在始终提供图片解析器，相对引用会落到文档目录
+  // 并换成 asset://；只有解析不出来（浏览器 / 未保存文档）才退化成 alt 文本。
   await openInactive(
     page,
     "/Users/test/bd-image.md",
     "![示意图](missing.png)\n\n正文",
   );
   await expect(page.locator(".cm-image-widget").first()).toBeVisible();
-  await expect(page.locator(".cm-image-fallback").first()).toHaveText(
-    "[图片: missing.png]",
-  );
+  await expect(
+    page.locator('.cm-image-widget img[src^="asset://"]').first(),
+  ).toHaveAttribute("src", /asset:\/\//);
 });
 
 test("mermaid 块在非活跃时出图容器", async ({ page }) => {
