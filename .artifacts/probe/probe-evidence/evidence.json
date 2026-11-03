@@ -1,0 +1,15 @@
+{
+  "probe_run": "2026-11-03 local, playwright chromium 1280x800, HEAD e9ac558",
+  "1_task_list_enter": "- [ ] 第一件\n- 第二件",
+  "2_fullwidth_punct": "你好，世界／测试",
+  "3_add_handle_opens_convert_menu": { "value": true, "note": "第二次探针：先等 + 手柄可见再悬停 → 转换菜单确实弹出" },
+  "4_heading_handle": { "dataIcon": "DragHandleOutlined", "svgCount": 1 },
+  "5_add_below_icon": { "svg": 0, "text": "在下方添加" },
+  "5_menu_metrics": { "font": "13px", "width": 236, "rowHeight": 32, "iconSize": 16 },
+  "6_outline_gap_px": 6,
+  "6_outline_survives_move_fast": true,
+  "6_outline_hover_after_gap_pause_120ms": false,
+  "7_table_corner_dot": { "exists": true, "width": 16, "opacity": "1", "testid": "cm-table-cell-handle" },
+  "8_cell_editor": { "tag": "INPUT", "slashMenuOpened": false },
+  "9_media_command": { "slashMenuOpened": true, "row": "图片引用", "contentAfterEnter": "正文\n", "dialogCount": 0 }
+}
