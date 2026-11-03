@@ -371,14 +371,8 @@ function ZoomablePreview({
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
+    // 深浅色切换由 CSS 变量跟随（design D5），不重渲；源码仍留在 DOM 里可重复渲染
     void renderMermaid(el);
-    // 深浅切换后 mermaid 要重新出图，源码仍留在 DOM 里可重复渲染
-    const mo = new MutationObserver(() => void renderMermaid(el));
-    mo.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ["class"],
-    });
-    return () => mo.disconnect();
   }, [html]);
 
   // 代码块复制按钮：事件委托，避免给每个代码块单独挂监听

@@ -1066,6 +1066,22 @@ details.callout > summary::before {
   white-space: pre-wrap;
 }
 
+.preview-content .mermaid-view {
+  /* 图主题走 CSS 变量（design D5）：Pele 从 --pele-* 读色与字体，
+     映射到阅读区 token；--app-* 随 .dark 翻转，深浅切换无需重渲。
+     bg 取 sunken：连线的底衬/标签背板要与块背景一致，否则描边发花。 */
+  --pele-bg: var(--reader-sunken);
+  --pele-fg: var(--reader-ink);
+  --pele-muted: var(--reader-ink-3);
+  --pele-line: var(--reader-ink-2);
+  --pele-surface: var(--reader-paper);
+  --pele-surface-alt: var(--reader-sunken);
+  --pele-border: var(--reader-line);
+  --pele-accent: var(--reader-accent);
+  --pele-font: var(--type-font-sans);
+  --pele-radius: var(--reader-radius);
+}
+
 .preview-content .mermaid-view svg {
   display: block;
   max-width: 100%;
