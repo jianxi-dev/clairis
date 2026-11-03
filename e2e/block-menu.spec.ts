@@ -202,3 +202,18 @@ test("菜单打开时移动指针不再冒出其它手柄", async ({ page }) => 
   await page.waitForTimeout(400);
   await expect(page.locator(".cm-block-handle-visible")).toHaveCount(1);
 });
+
+test("打字结束后移动到正文仍能召唤手柄", async ({ page }) => {
+  await page.locator(".cm-content").click();
+  await page.keyboard.type("x");
+  await page.keyboard.press("Backspace");
+
+  const line = page
+    .locator(".cm-line")
+    .filter({ hasText: "第一段正文" })
+    .first();
+  await line.hover();
+  await expect(page.locator(".cm-block-handle-visible")).toHaveCount(1, {
+    timeout: 3000,
+  });
+});
