@@ -47,6 +47,8 @@
 | 行内图标 | 每行 1 个 `svg[data-icon]`，18px | ✅ `ui-fidelity.spec.ts` | — |
 | 「在下方添加」 | 有图标 + 右侧 chevron + 向右展开二级面板，父菜单高度不变 | ✅ `ui-fidelity.spec.ts` / `block-menu.spec.ts` | — |
 | 表格块 | 标题行/标题列/均分列宽/删除 | ⛔ 菜单被清空只剩一行 | #114 |
+| 结构动作（复制/剪切/上下移/缩进/删除） | 直接改源码，其余字节不变 | ✅ `block-menu.spec.ts` + `blockActions.test.ts` | — |
+| 表格结构项（标题行/列/均分列宽） | GFM 无法表达，暂不渲染 | ⛔ 待定（#114 评论） | #114 |
 | Esc / 滚动 / 外部点击 | 收起 | ✅ `block-menu.spec.ts` | — |
 | 菜单打开时移动指针 | 不 retarget、不召唤别的手柄 | ✅ `block-menu.spec.ts` | — |
 

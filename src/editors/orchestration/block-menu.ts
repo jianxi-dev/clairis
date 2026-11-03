@@ -11,6 +11,8 @@ import { defaultCommands, openInsertMenu, releaseInsertMenu } from "../slash";
 import { renderIcon } from "../icons";
 import { menuStack } from "./menu-stack";
 import { rectFromCoords, resolvePlacement, type AnchorRect } from "./anchor";
+import { getBlocks } from "../block-model";
+import { moveBlock } from "./block-handle";
 import {
   blockConvertChanges,
   blockMenuItems,
@@ -18,6 +20,12 @@ import {
   type BlockConvertTarget,
   type BlockLike,
 } from "./block-convert";
+import {
+  computeBlockDelete,
+  computeBlockDuplicate,
+  indentBlock,
+  outdentBlock,
+} from "./block-actions";
 
 export const BLOCK_MENU_WIDTH = 264;
 export const BLOCK_MENU_ROW_HEIGHT = 36;
@@ -26,6 +34,17 @@ export const BLOCK_MENU_ROW_HEIGHT = 36;
 export const BLOCK_MENU_ID_PREFIX = "block:";
 
 const HIDE_DELAY_MS = 150;
+
+/** 结构动作组：直接在源码上执行的块级操作。 */
+const ACTION_ROWS: ReadonlyArray<readonly [string, string, string]> = [
+  ["复制块", "CopyOutlined", "duplicate"],
+  ["剪切块", "FeishuclipOutlined", "cut"],
+  ["上移", "ArrowUpwardOutlined", "move-up"],
+  ["下移", "ArrowDownwardOutlined", "move-down"],
+  ["增加缩进", "AlignLeftOutlined", "indent"],
+  ["减少缩进", "AlignClearOutlined", "outdent"],
+  ["删除块", "DeleteTrashOutlined", "delete"],
+];
 
 const closeTimers = new WeakMap<EditorView, number>();
 
@@ -210,6 +229,69 @@ export function openBlockMenu(
   const separator = document.createElement("div");
   separator.className = "cm-block-menu-separator";
   panel.appendChild(separator);
+
+  // 结构动作组：复制 / 剪切 / 上下移 / 缩进 / 删除。都直接改源码，
+  // 不做「看起来生效」的假动作（#114）。
+  const runAction = (action: string): void => {
+    const docText = view.state.doc.toString();
+    const next = (() => {
+      switch (action) {
+        case "duplicate":
+          return computeBlockDuplicate(docText, block.from, block.to);
+        case "delete":
+          return computeBlockDelete(docText, block.from, block.to);
+        case "cut": {
+          void navigator.clipboard?.writeText(
+            docText.slice(block.from, block.to),
+          );
+          return computeBlockDelete(docText, block.from, block.to);
+        }
+        case "indent":
+        case "outdent": {
+          const text = docText.slice(block.from, block.to);
+          const changed =
+            action === "indent" ? indentBlock(text) : outdentBlock(text);
+          if (changed === text) return docText;
+          return (
+            docText.slice(0, block.from) + changed + docText.slice(block.to)
+          );
+        }
+        case "move-up":
+        case "move-down": {
+          const blocks = getBlocks(view.state);
+          const index = blocks.findIndex((b) => b.from === block.from);
+          const target =
+            action === "move-up" ? blocks[index - 1] : blocks[index + 1];
+          if (index < 0 || !target) return docText;
+          return moveBlock(docText, block, { from: target.from });
+        }
+        default:
+          return docText;
+      }
+    })();
+    closeBlockMenu(view);
+    if (next === docText) return;
+    view.dispatch({ changes: { from: 0, to: docText.length, insert: next } });
+  };
+
+  for (const [label, icon, action] of ACTION_ROWS) {
+    const row = document.createElement("button");
+    row.type = "button";
+    row.className = "cm-block-menu-item";
+    row.dataset.testid = "block-menu-action";
+    row.dataset.action = action;
+    row.style.height = `${BLOCK_MENU_ROW_HEIGHT}px`;
+    row.appendChild(renderIcon(icon));
+    const text = document.createElement("span");
+    text.textContent = label;
+    row.appendChild(text);
+    row.addEventListener("pointerdown", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      runAction(action);
+    });
+    panel.appendChild(row);
+  }
 
   const addBelow = document.createElement("button");
   addBelow.type = "button";
