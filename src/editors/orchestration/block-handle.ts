@@ -8,7 +8,7 @@
  * 松手用 `moveBlock` 算出新文档，单次 `dispatch` 整篇替换（选择自动映射，光标不跳）。
  * 纯函数（`blockHandleIcon` / `moveBlock`）不碰 DOM，由单测钉死。
  */
-import type { Extension } from "@codemirror/state";
+import type { EditorState, Extension } from "@codemirror/state";
 import { ViewPlugin, type EditorView, type ViewUpdate } from "@codemirror/view";
 import { getBlocks, getBlockAt, type BlockType } from "../block-model";
 import { renderIcon, ADD_ICON_NAME } from "../icons";
@@ -32,18 +32,40 @@ import {
 const BLOCK_ICON_NAME: Record<string, string> = {
   table: "DataSheetOutlined",
   list: "DisorderListOutlined",
+  task: "TodoOutlined",
   callout: "CalloutOutlined",
+  blockquote: "ReferenceOutlined",
+  paragraph: "FormatParagraphOutlined",
+  thematicBreak: "DividerOutlined",
   fencedCode: "CodeblockOutlined",
   codeBlock: "CodeblockOutlined",
   image: "ImageOutlined",
 };
 
 /**
- * 解析块型对应的手柄图标名。未登记的块型（段落、标题、引用、分割线…）一律
- * 退化为 `DragHandleOutlined`。
+ * 解析块型对应的手柄图标名。
+ *
+ * `heading` 与 `list` 只说得出大类，具体是哪一级标题、有序还是无序要看首行：
+ * 全退化成同一个拖拽把手，用户面前就是一排「文本行图标」（#104）。
+ * 拿不到首行时退化为 `DragHandleOutlined`，不猜。
  */
-export function blockHandleIcon(type: string): string {
+export function blockHandleIcon(type: string, firstLine = ""): string {
+  if (type === "heading") {
+    const level = /^(#{1,6})\s/.exec(firstLine)?.[1].length;
+    return level ? `H${level}Outlined` : "DragHandleOutlined";
+  }
+  if (type === "list") {
+    return /^\s*\d+\./.test(firstLine)
+      ? "OrderListOutlined"
+      : "DisorderListOutlined";
+  }
   return BLOCK_ICON_NAME[type] ?? "DragHandleOutlined";
+}
+
+/** 取块首行文本：标题级别与有序/无序只能从内容判定。 */
+function firstLineOf(state: EditorState, from: number, to: number): string {
+  const text = state.doc.sliceString(from, Math.min(to, state.doc.length));
+  return text.split("\n")[0] ?? "";
 }
 
 /** 去掉首尾换行，让块与块之间重新用单个空行相接。 */
@@ -332,7 +354,14 @@ class BlockHandlePlugin {
     } else {
       const icon = document.createElement("span");
       icon.className = "cm-block-handle-icon";
-      icon.appendChild(renderIcon(blockHandleIcon(block.type)));
+      icon.appendChild(
+        renderIcon(
+          blockHandleIcon(
+            block.type,
+            firstLineOf(this.view.state, block.from, block.to),
+          ),
+        ),
+      );
       el.appendChild(icon);
 
       const grip = document.createElement("span");

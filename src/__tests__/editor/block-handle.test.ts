@@ -11,27 +11,36 @@ import {
 } from "../../editors/orchestration/block-handle";
 
 describe("blockHandleIcon", () => {
-  it("映射表格 / 列表 / 高亮 / 代码 / 图片", () => {
+  it("映射表格 / 列表 / 高亮 / 代码 / 图片 / 引用 / 段落 / 分割线 / 任务", () => {
     expect(blockHandleIcon("table")).toBe("DataSheetOutlined");
     expect(blockHandleIcon("list")).toBe("DisorderListOutlined");
     expect(blockHandleIcon("callout")).toBe("CalloutOutlined");
     expect(blockHandleIcon("fencedCode")).toBe("CodeblockOutlined");
     expect(blockHandleIcon("codeBlock")).toBe("CodeblockOutlined");
     expect(blockHandleIcon("image")).toBe("ImageOutlined");
+    expect(blockHandleIcon("blockquote")).toBe("ReferenceOutlined");
+    expect(blockHandleIcon("paragraph")).toBe("FormatParagraphOutlined");
+    expect(blockHandleIcon("thematicBreak")).toBe("DividerOutlined");
+    expect(blockHandleIcon("task")).toBe("TodoOutlined");
   });
 
-  it("未登记的块型退化为拖拽把手", () => {
-    for (const type of [
-      "paragraph",
-      "heading",
-      "blockquote",
-      "task",
-      "thematicBreak",
-      "htmlBlock",
-      "yamlFrontMatter",
-      "",
-      "unknown",
-    ]) {
+  it("标题按首行级别取 H1–H6，不退化成一个把手", () => {
+    for (let level = 1; level <= 6; level += 1) {
+      const firstLine = `${"#".repeat(level)} 标题`;
+      expect(blockHandleIcon("heading", firstLine)).toBe(`H${level}Outlined`);
+    }
+    // 拿不到首行时不猜
+    expect(blockHandleIcon("heading")).toBe("DragHandleOutlined");
+  });
+
+  it("列表按首行区分有序 / 无序", () => {
+    expect(blockHandleIcon("list", "1. 第一项")).toBe("OrderListOutlined");
+    expect(blockHandleIcon("list", "  12. 缩进项")).toBe("OrderListOutlined");
+    expect(blockHandleIcon("list", "- 无序项")).toBe("DisorderListOutlined");
+  });
+
+  it("仍无对应图标的块型退化为拖拽把手", () => {
+    for (const type of ["htmlBlock", "yamlFrontMatter", "", "unknown"]) {
       expect(blockHandleIcon(type)).toBe("DragHandleOutlined");
     }
   });
