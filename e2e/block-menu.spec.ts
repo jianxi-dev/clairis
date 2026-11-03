@@ -217,3 +217,29 @@ test("打字结束后移动到正文仍能召唤手柄", async ({ page }) => {
     timeout: 3000,
   });
 });
+
+test("结构动作：复制块 / 删除块 / 缩进 都真的改源码", async ({ page }) => {
+  await hoverHandle(page, 2);
+  const actions = page.locator('[data-testid="block-menu-action"]');
+  await expect(actions.first()).toBeVisible();
+
+  // 复制块
+  await page.locator('[data-action="duplicate"]').click();
+  await expect
+    .poll(() => storeContent(page))
+    .toBe("# 标题\n\n第一段正文\n\n第一段正文\n\n第二段正文\n");
+});
+
+test("删除块只删目标块", async ({ page }) => {
+  await hoverHandle(page, 2);
+  await page.locator('[data-action="delete"]').click();
+  await expect.poll(() => storeContent(page)).toBe("# 标题\n\n第二段正文\n");
+});
+
+test("增加缩进给块内每行加两个空格", async ({ page }) => {
+  await hoverHandle(page, 2);
+  await page.locator('[data-action="indent"]').click();
+  await expect
+    .poll(() => storeContent(page))
+    .toBe("# 标题\n\n  第一段正文\n\n第二段正文\n");
+});
