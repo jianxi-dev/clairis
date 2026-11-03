@@ -49,7 +49,6 @@ import {
   scheduleTableFlush,
   tableCellSelectionPainter,
 } from "./table";
-import { cellToolbar } from "./cell-toolbar";
 import { createCalloutDecorations, scheduleCalloutFlush } from "./callout";
 import { createColumnsDecorations } from "./columns";
 import { editorDecorationsThemeExt } from "./theme";
@@ -278,7 +277,6 @@ export function editorDecorations(
     compositionGuard.extension,
     tableFlush.extension,
     tableCellSelectionPainter(),
-    cellToolbar(),
     editorDecorationsThemeExt,
   ];
 }

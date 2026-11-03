@@ -385,109 +385,6 @@ function readCell(block: TableBlock, row: number, col: number): string {
 }
 
 /**
- * 把选区矩形合并进它的左上角单元格。
- *
- * GFM 管道表格没有 colspan，所以「合并」**定义为**：把选中单元格里的非空文本
- * 用单个空格连接，写进左上角单元格，并把该区域里其余单元格清空。整个表格块
- * 在**一个**事务里替换。选区随即可折叠到左上角单元格，让合并动作变成禁用。
- *
- * 有事务派发时返回 true。
- */
-export function mergeTableCellSelection(
-  view: EditorView,
-  tableIndex: number,
-  rect: CellRect,
-): boolean {
-  flushDirtyTables(view);
-  const block = findTables(view.state.doc.toString())[tableIndex];
-  if (!block) return false;
-
-  const parts: string[] = [];
-  for (let row = rect.minRow; row <= rect.maxRow; row += 1) {
-    for (let col = rect.minCol; col <= rect.maxCol; col += 1) {
-      const text = readCell(block, row, col).trim();
-      if (text) parts.push(text);
-    }
-  }
-  const joined = parts.join(" ");
-
-  const header = [...block.header];
-  const rows = block.rows.map((row) => [...row]);
-  const writeCell = (row: number, col: number, value: string): void => {
-    if (row === -1) header[col] = value;
-    else rows[row][col] = value;
-  };
-  for (let row = rect.minRow; row <= rect.maxRow; row += 1) {
-    for (let col = rect.minCol; col <= rect.maxCol; col += 1) {
-      writeCell(row, col, "");
-    }
-  }
-  writeCell(rect.minRow, rect.minCol, joined);
-
-  view.dispatch({
-    changes: {
-      from: block.from,
-      to: block.to,
-      insert: buildTableMarkdown(header, rows),
-    },
-  });
-  setCellSelection(view, {
-    tableIndex,
-    anchorRow: rect.minRow,
-    anchorCol: rect.minCol,
-    headRow: rect.minRow,
-    headCol: rect.minCol,
-  });
-  return true;
-}
-
-/**
- * 给选区矩形的每个单元格应用（或清除）背景。
- *
- * `colorClass` 是 `mdb-bg-*` span 类，或 null 表示清除。每个单元格先剥掉已有
- * 的背景包裹，所以换色是替换而非嵌套，清除也不留残余类。**一个**事务。
- *
- * 有事务派发时返回 true。
- */
-export function setCellBackground(
-  view: EditorView,
-  tableIndex: number,
-  rect: CellRect,
-  colorClass: string | null,
-): boolean {
-  flushDirtyTables(view);
-  const block = findTables(view.state.doc.toString())[tableIndex];
-  if (!block) return false;
-
-  const header = [...block.header];
-  const rows = block.rows.map((row) => [...row]);
-  let changed = false;
-  for (let row = rect.minRow; row <= rect.maxRow; row += 1) {
-    for (let col = rect.minCol; col <= rect.maxCol; col += 1) {
-      const current = readCell(block, row, col);
-      const inner = stripCellBackground(current);
-      const next = colorClass
-        ? `<span class="${colorClass}">${inner}</span>`
-        : inner;
-      if (next === current) continue;
-      changed = true;
-      if (row === -1) header[col] = next;
-      else rows[row][col] = next;
-    }
-  }
-  if (!changed) return false;
-
-  view.dispatch({
-    changes: {
-      from: block.from,
-      to: block.to,
-      insert: buildTableMarkdown(header, rows),
-    },
-  });
-  return true;
-}
-
-/**
  * 按存储的选区切换每个活动单元格的 `.cm-table-cell-selected`。在原始拖拽事件
  * 后调用（没有 CM6 事务），让范围立刻高亮；`buildCell`/`updateDOM` 在重建后
  * 重新应用它。
@@ -1183,7 +1080,6 @@ class TableWidget extends WidgetType {
         if (target?.closest?.(".mdb-slash-menu")) return;
         // 单元格工具条在 wrap 外；在它上面的按压必须保住单元格选区，供它即将
         // 执行的动作使用。
-        if (target?.closest?.(".mdb-cell-toolbar")) return;
         flushDirtyTables(view);
         clearCellSelection(view);
       },
