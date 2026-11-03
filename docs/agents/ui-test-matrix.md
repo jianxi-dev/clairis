@@ -65,8 +65,9 @@
 | 状态 | 期望 | 覆盖 | 票 |
 |---|---|---|---|
 | 悬停按钮 | 展开 | ✅ `ui-fidelity.spec.ts` | — |
-| 穿过按钮→面板空隙 | 保持展开 | ⛔ 当前消失 | #107 |
+| 穿过按钮→面板空隙 | 保持展开 | ✅ `ui-fidelity.spec.ts` | — |
 | 点击钉住 / Esc / 外部点击 | 钉住 / 收起 / 收起 | ✅ `ui-fidelity.spec.ts` | — |
+| 离开整体 | 200ms 后收起（延迟不粘住） | ✅ `ui-fidelity.spec.ts` | — |
 | 列表 | 跳过 ``` 与 ~~~ 围栏（含未闭合） | ✅ `src/__tests__/components/Sidebar/Outline.test.ts` | — |
 | 多页签 | 跟随当前页签 | ✅ `outline-menu.spec.ts` | — |
 

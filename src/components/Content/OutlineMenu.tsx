@@ -55,6 +55,12 @@ export default function OutlineMenu({
 }: OutlineMenuProps) {
   const [pinned, setPinned] = useState(false);
   const [hovering, setHovering] = useState(false);
+  /**
+   * 收起延迟。按钮与面板之间有一条缝，指针跨过去时会先触发一次 mouseleave——
+   * 立即收起的话面板在指针到达前就没了（#107）。留一点时间让指针走进面板，
+   * 进去即取消。
+   */
+  const closeTimer = useRef<number | null>(null);
   const [activeIndex, setActiveIndex] = useState(-1);
   const [domHeadings, setDomHeadings] = useState<OutlineHeading[]>([]);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -62,6 +68,23 @@ export default function OutlineMenu({
   const btnRef = useRef<HTMLButtonElement>(null);
 
   const visible = pinned || hovering;
+
+  const cancelClose = useCallback(() => {
+    if (closeTimer.current !== null) {
+      window.clearTimeout(closeTimer.current);
+      closeTimer.current = null;
+    }
+  }, []);
+
+  const scheduleClose = useCallback(() => {
+    cancelClose();
+    closeTimer.current = window.setTimeout(() => {
+      closeTimer.current = null;
+      setHovering(false);
+    }, 200);
+  }, [cancelClose]);
+
+  useEffect(() => cancelClose, [cancelClose]);
 
   // 预览的 DOM 在 commit 阶段才更新，必须在布局效果里读，避免拿到上一份文档的标题。
   useLayoutEffect(() => {
@@ -147,9 +170,13 @@ export default function OutlineMenu({
       ref={wrapRef}
       className="biaoyue-outline"
       data-testid="outline-wrap"
-      onMouseEnter={() => setHovering(true)}
+      onMouseEnter={() => {
+        cancelClose();
+        setHovering(true);
+      }}
       onMouseLeave={() => {
-        if (!pinned) setHovering(false);
+        if (pinned) return;
+        scheduleClose();
       }}
     >
       <button

@@ -203,10 +203,15 @@ test.describe("大纲浮层", () => {
     await expect(page.locator('[data-testid="outline-menu"]')).toHaveCount(0);
   });
 
-  // 已知缺口：按钮与面板之间的 6px 空隙会让浮层在指针到达前消失（#107）。
-  test.fixme("指针穿过按钮与面板之间的空隙，浮层不消失（缺口 #107）", async ({
-    page,
-  }) => {
+  test("离开整体后收起（延迟不等于粘住）", async ({ page }) => {
+    await page.locator('[data-testid="outline-btn"]').hover();
+    const panel = page.locator('[data-testid="outline-menu"]');
+    await expect(panel).toBeVisible();
+    await moveThrough(page, [{ x: 600, y: 500 }], { steps: 4 });
+    await expect(panel).toHaveCount(0, { timeout: 3000 });
+  });
+
+  test("指针穿过按钮与面板之间的空隙，浮层不消失", async ({ page }) => {
     await page.locator('[data-testid="outline-btn"]').hover();
     const panel = page.locator('[data-testid="outline-menu"]');
     await expect(panel).toBeVisible();
