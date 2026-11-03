@@ -43,7 +43,7 @@ async function hoverHandle(page: Page, lineIndex: number) {
 test("hover 块手柄弹出块菜单，十项转换 + 在下方添加", async ({ page }) => {
   await hoverHandle(page, 0);
 
-  const items = page.locator('[data-testid="block-menu-item"]');
+  const items = page.locator('[data-testid="block-menu-cell"]');
   await expect(items).toHaveCount(10);
   await expect(
     page.locator('[data-testid="block-menu-add-below"]'),
@@ -57,7 +57,7 @@ test("点「一级标题」把段落转成标题，其余字节不变", async ({
   await hoverHandle(page, 2);
 
   await page
-    .locator('[data-testid="block-menu-item"][data-target="h1"]')
+    .locator('[data-testid="block-menu-cell"][data-target="h1"]')
     .click();
 
   await expect(page.locator('[data-testid="block-menu"]')).toHaveCount(0);
@@ -69,7 +69,7 @@ test("点「一级标题」把段落转成标题，其余字节不变", async ({
 test("红线 5：转换后可见文本等于源码文本（去掉标记）", async ({ page }) => {
   await hoverHandle(page, 2);
   await page
-    .locator('[data-testid="block-menu-item"][data-target="h1"]')
+    .locator('[data-testid="block-menu-cell"][data-target="h1"]')
     .click();
 
   // 源码：首行带标记
@@ -163,7 +163,7 @@ test("菜单贴手柄右侧，并以指针行为中心", async ({ page }) => {
 
 test("块菜单每一行都有图标", async ({ page }) => {
   await hoverHandle(page, 0);
-  const rows = page.locator('[data-testid="block-menu-item"]');
+  const rows = page.locator('[data-testid="block-menu-cell"]');
   const count = await rows.count();
   expect(count).toBeGreaterThan(0);
   for (let i = 0; i < count; i += 1) {

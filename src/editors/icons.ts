@@ -12,7 +12,7 @@
 const SVG_NS = "http://www.w3.org/2000/svg";
 
 /** Default rendered icon size — matches the existing 16px gutter slot. */
-const ICON_SIZE_PX = "16px";
+const ICON_SIZE_PX = "18px";
 
 type IconDef =
   | { readonly kind: "text"; readonly label: string; readonly weight?: number }

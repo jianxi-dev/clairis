@@ -62,7 +62,8 @@ test.describe("块菜单几何与图标", () => {
     expect(
       Math.abs(menu.width - EDITOR_ANCHORS.menu.width),
     ).toBeLessThanOrEqual(ANCHOR_TOLERANCE_PX);
-    const rows = page.locator('[data-testid="block-menu-item"]');
+    // 网格单元不是 32px 行；行高锚点只约束列表行（「在下方添加」等）。
+    const rows = page.locator(".cm-block-menu-item");
     const count = await rows.count();
     expect(count).toBeGreaterThan(0);
     for (let i = 0; i < count; i += 1) {
@@ -71,24 +72,32 @@ test.describe("块菜单几何与图标", () => {
     }
   });
 
-  test("「转为」有 10 项（豆包 §4.3）", async ({ page }) => {
-    await expect(page.locator('[data-testid="block-menu-item"]')).toHaveCount(
+  test("「转为」是 5 列 × 2 行网格（豆包 §4.3）", async ({ page }) => {
+    await expect(page.locator('[data-testid="block-menu-cell"]')).toHaveCount(
       EDITOR_ANCHORS.convertCells,
     );
+    const columns = await page
+      .locator('[data-testid="block-menu-grid"]')
+      .evaluate(
+        (el) =>
+          getComputedStyle(el)
+            .gridTemplateColumns.split(" ")
+            .filter((part) => part.trim() !== "").length,
+      );
+    expect(columns).toBe(5);
   });
 
-  test("每个「转为」行都有图标", async ({ page }) => {
-    const rows = page.locator('[data-testid="block-menu-item"]');
+  test("每个「转为」单元都有图标", async ({ page }) => {
+    const rows = page.locator('[data-testid="block-menu-cell"]');
     const count = await rows.count();
     for (let i = 0; i < count; i += 1) {
       await expect(rows.nth(i).locator("svg")).toHaveCount(1);
     }
   });
 
-  // 已知缺口：当前渲染 16px，锚点要求 18px（#111 菜单图标网格）。
-  test.fixme("菜单图标渲染 18px（豆包 §2.2，缺口 #111）", async ({ page }) => {
+  test("菜单图标渲染 18px（豆包 §2.2）", async ({ page }) => {
     const width = await page
-      .locator('[data-testid="block-menu-item"] svg')
+      .locator('[data-testid="block-menu-cell"] svg')
       .first()
       .evaluate((el) => Math.round(el.getBoundingClientRect().width));
     expect(width).toBeGreaterThanOrEqual(
@@ -96,12 +105,10 @@ test.describe("块菜单几何与图标", () => {
     );
   });
 
-  // 已知缺口：修复前该行没有图标（#104 手柄图标体系 / #111 菜单图标网格）。
-  // 用 fixme 而不是改选择器绕过——上一次正是把这一行排除在集合外才测不出问题。
-  test.fixme("「在下方添加」行也有图标（缺口 #111）", async ({ page }) => {
-    await expect(
-      page.locator('[data-testid="block-menu-add-below"] svg'),
-    ).toHaveCount(1);
+  test("「在下方添加」行也有图标与展开指示", async ({ page }) => {
+    const row = page.locator('[data-testid="block-menu-add-below"]');
+    await expect(row.locator("svg")).toHaveCount(1);
+    await expect(row.locator(".cm-block-menu-chevron")).toHaveCount(1);
   });
 });
 

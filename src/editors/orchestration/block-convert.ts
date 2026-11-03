@@ -126,18 +126,54 @@ export function blockConvertChanges(
   ];
 }
 
+/**
+ * 当前块对应的「转为」目标，用于菜单里的高亮单元。
+ *
+ * 只认能一一对应的形态：H4 及以上、图片/表格等没有对应单元，返回 null
+ * （菜单里就不高亮任何一格，而不是错高亮 H3）。
+ */
+export function currentConvertTarget(
+  blockText: string,
+  type: BlockType | "",
+): BlockConvertTarget | null {
+  const firstLine = blockText.split("\n")[0] ?? "";
+  switch (type) {
+    case "heading": {
+      const match = /^(#{1,6})\s/.exec(firstLine);
+      if (!match) return null;
+      const level = match[1].length;
+      return level <= 3 ? (`h${level}` as BlockConvertTarget) : null;
+    }
+    case "paragraph":
+      return "paragraph";
+    case "blockquote":
+      return "quote";
+    case "task":
+      return "todo";
+    case "list":
+      return /^\s*\d+\./.test(firstLine) ? "ordered" : "bullet";
+    case "fencedCode":
+    case "codeBlock":
+      return "code";
+    default:
+      return null;
+  }
+}
+
 export interface BlockMenuItem {
   target: BlockConvertTarget;
   label: string;
   icon: string;
+  /** 网格单元里的短标签：236px / 5 列只有约 44px 宽，四字标题会压到邻格。 */
+  shortLabel?: string;
 }
 
 /** 菜单十项（design D6：236px / 行高 32px / 按块型裁剪）。 */
 const ALL_ITEMS: readonly BlockMenuItem[] = [
   { target: "paragraph", label: "正文", icon: "TextOutlined" },
-  { target: "h1", label: "一级标题", icon: "H1Outlined" },
-  { target: "h2", label: "二级标题", icon: "H2Outlined" },
-  { target: "h3", label: "三级标题", icon: "H3Outlined" },
+  { target: "h1", label: "一级标题", shortLabel: "一级", icon: "H1Outlined" },
+  { target: "h2", label: "二级标题", shortLabel: "二级", icon: "H2Outlined" },
+  { target: "h3", label: "三级标题", shortLabel: "三级", icon: "H3Outlined" },
   { target: "ordered", label: "有序", icon: "OrderListOutlined" },
   { target: "bullet", label: "无序", icon: "DisorderListOutlined" },
   { target: "todo", label: "待办", icon: "TodoOutlined" },
