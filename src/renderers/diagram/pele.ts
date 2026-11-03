@@ -60,3 +60,16 @@ export function describeDiagramError(error: unknown): string {
   if (error instanceof PeleError) return error.message;
   return String(error ?? "图表渲染失败");
 }
+
+/**
+ * 同步出图：返回完整 `<svg>`，无法绘制时返回 null（导出降级用，不抛）。
+ * 导出链路要在同一调用栈内拿字符串，故走 render() 而非需要 DOM 的 mount()。
+ */
+export function renderToString(source: string): string | null {
+  try {
+    const result = render(source, { imageSchemes: IMAGE_SCHEMES });
+    return result.svg || null;
+  } catch {
+    return null;
+  }
+}

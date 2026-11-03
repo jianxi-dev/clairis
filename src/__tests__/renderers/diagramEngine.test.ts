@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { resetCapabilities } from "../../lib/capabilities";
 import { clearMermaid, renderMermaid } from "../../renderers/mermaid";
 import { engineLoadCount } from "../../renderers/diagram/engine";
+import { renderToString } from "../../renderers/diagram/pele";
 
 beforeEach(() => {
   resetCapabilities();
@@ -135,6 +136,18 @@ describe("图表引擎契约（Pele，8 类代表图）", () => {
     expect(el.querySelector(".mermaid-view .pele")).not.toBeNull();
     expect(pres[1].hidden).toBe(true);
     expect(el.querySelectorAll(".mermaid-view svg").length).toBe(1);
+  });
+});
+
+describe("renderToString（导出用同步出图）", () => {
+  it("合法图返回含 <svg 的字符串", () => {
+    const svg = renderToString("flowchart LR\n  开始 --> 结束");
+    expect(svg).toContain("<svg");
+    expect(svg).toContain("开始");
+  });
+
+  it("非法语法返回 null，不抛出", () => {
+    expect(renderToString("flowchart TD\n  A --> (((\n  断")).toBeNull();
   });
 });
 
