@@ -1,0 +1,193 @@
+{
+  "change": "diagram-engine-pele",
+  "requirements": [
+    {
+      "id": "R-1",
+      "text": "图表同步出图",
+      "anchors": [
+        {
+          "id": "A-1.1",
+          "claim": "单个合法图块渲染后 `.mermaid-view svg` 数量",
+          "kind": "exact",
+          "assert": "1",
+          "source": "design D3/D4"
+        },
+        {
+          "id": "A-1.2",
+          "claim": "同文档三个图块共用引擎的模块加载次数",
+          "kind": "exact",
+          "assert": "1",
+          "source": "design D3"
+        },
+        {
+          "id": "A-1.3",
+          "claim": "出图后可见的 `pre.mermaid` 数量",
+          "kind": "exact",
+          "assert": "0",
+          "source": "现状契约 renderers/mermaid.ts"
+        }
+      ]
+    },
+    {
+      "id": "R-2",
+      "text": "主题跟随变量",
+      "anchors": [
+        {
+          "id": "A-2.1",
+          "claim": "深色切换后现有 svg 被替换的次数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "design D5"
+        },
+        {
+          "id": "A-2.2",
+          "claim": "`--pele-bg` 与 `--app-surface` 解析值差异的字符数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "design D5"
+        },
+        {
+          "id": "A-2.3",
+          "claim": "监听根节点 class 的 MutationObserver 数量",
+          "kind": "exact",
+          "assert": "0",
+          "source": "design D5"
+        }
+      ]
+    },
+    {
+      "id": "R-3",
+      "text": "能力开关语义",
+      "anchors": [
+        {
+          "id": "A-3.1",
+          "claim": "关闭能力后预览区 `.mermaid-view svg` 数量",
+          "kind": "exact",
+          "assert": "0",
+          "source": "spec D-3"
+        },
+        {
+          "id": "A-3.2",
+          "claim": "关闭能力后可见 `pre.mermaid` 数量",
+          "kind": "exact",
+          "assert": "1",
+          "source": "spec D-3"
+        },
+        {
+          "id": "A-3.3",
+          "claim": "关闭再开启后每个块内图表容器数量",
+          "kind": "exact",
+          "assert": "1",
+          "source": "spec D-3"
+        }
+      ]
+    },
+    {
+      "id": "R-4",
+      "text": "错误降级",
+      "anchors": [
+        {
+          "id": "A-4.1",
+          "claim": "非法语法块的可见源码数量",
+          "kind": "exact",
+          "assert": "1",
+          "source": "spec D-4"
+        },
+        {
+          "id": "A-4.2",
+          "claim": "同文档合法块的 svg 数量",
+          "kind": "exact",
+          "assert": "1",
+          "source": "spec D-4"
+        }
+      ]
+    },
+    {
+      "id": "R-5",
+      "text": "协议白名单",
+      "anchors": [
+        {
+          "id": "A-5.1",
+          "claim": "产出 SVG 中 `javascript:` 出现次数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "design D6"
+        },
+        {
+          "id": "A-5.2",
+          "claim": "产出 SVG 中 `file:` 链接出现次数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "design D6"
+        },
+        {
+          "id": "A-5.3",
+          "claim": "`asset:` 图片在 SVG 中的 href 出现次数",
+          "kind": "exact",
+          "assert": "1",
+          "source": "design D6"
+        }
+      ]
+    },
+    {
+      "id": "R-6",
+      "text": "编辑态两态与无残留",
+      "anchors": [
+        {
+          "id": "A-6.1",
+          "claim": "光标进入/离开 mermaid 块",
+          "kind": "state-machine",
+          "assert": "进入=显示围栏, 离开=显示图",
+          "source": "spec D-6"
+        },
+        {
+          "id": "A-6.2",
+          "claim": "反复进出 5 次后块内图表容器数量",
+          "kind": "exact",
+          "assert": "1",
+          "source": "spec D-6"
+        }
+      ]
+    },
+    {
+      "id": "R-7",
+      "text": "导出带图",
+      "anchors": [
+        {
+          "id": "A-7.1",
+          "claim": "导出 HTML 图块位置内联 `<svg>` 数量",
+          "kind": "exact",
+          "assert": "1",
+          "source": "spec EX-1"
+        },
+        {
+          "id": "A-7.2",
+          "claim": "导出产物中 mermaid 围栏源码残留数量",
+          "kind": "exact",
+          "assert": "0",
+          "source": "spec EX-1"
+        },
+        {
+          "id": "A-7.3",
+          "claim": "导出 PNG 前 HTML 中 `<svg>` 数量下限",
+          "kind": "exact",
+          "assert": "1",
+          "source": "spec EX-1"
+        }
+      ]
+    },
+    {
+      "id": "R-8",
+      "text": "中文标签排版",
+      "anchors": [
+        {
+          "id": "A-8.1",
+          "claim": "中文标签文本宽度超出节点宽度的像素",
+          "kind": "exact",
+          "assert": "0",
+          "source": "spec D-7"
+        }
+      ]
+    }
+  ]
+}
