@@ -275,6 +275,21 @@ export default function ContentArea({
     }
   }, [tab?.id, tab?.fileKind]);
 
+  /**
+   * 从预览切回编辑时强制重测视口。
+   *
+   * 编辑器容器在预览态是 `display: none`，CM6 量到的高度是 0，只渲染了很少
+   * 几行；切回可见后它**不会自己重新测量**，于是只剩顶部一截内容、下面全空
+   * （预览 → 编辑偶发空白）。等一帧让布局落定再 requestMeasure。
+   */
+  useEffect(() => {
+    if (editorMode === "preview") return;
+    const view = viewRef.current;
+    if (!view) return;
+    const frame = requestAnimationFrame(() => view.requestMeasure());
+    return () => cancelAnimationFrame(frame);
+  }, [editorMode]);
+
   // Toggle decorations on mode change
   useEffect(() => {
     if (!viewRef.current || !tab) return;

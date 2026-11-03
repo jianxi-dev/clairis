@@ -156,6 +156,52 @@ test.describe("块型图标（E-7：块型图标 + 拖拽把手）", () => {
   }
 });
 
+test.describe("模式切换与空大纲（2026-11-03 走查）", () => {
+  test("预览切回编辑后视口铺满，不留空白", async ({ page }) => {
+    const lines = Array.from(
+      { length: 120 },
+      (_, i) => `第 ${i + 1} 段正文`,
+    ).join("\n\n");
+    await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
+    await page.goto("/", { waitUntil: "networkidle" });
+    await page.waitForSelector("header", { timeout: 10000 });
+    await page.evaluate((doc) => {
+      const win = window as unknown as Record<string, any>;
+      win.__biaoyue_openFile__("/tmp/long/long.md", doc, "long.md");
+      win.__biaoyue_store__.getState().setEditorMode("preview");
+    }, lines);
+    await page.waitForTimeout(500);
+    await page.evaluate(() => {
+      (window as unknown as Record<string, any>).__biaoyue_store__
+        .getState()
+        .setEditorMode("edit");
+    });
+    await page.waitForTimeout(800);
+    // 隐藏态量到的高度是 0，切回可见必须重新测量，否则只渲染顶部几行
+    const shown = await page.evaluate(() => {
+      const scroller = document.querySelector<HTMLElement>(".cm-scroller");
+      const content = document.querySelector<HTMLElement>(".cm-content");
+      return {
+        lines: document.querySelectorAll(".cm-line").length,
+        contentH: content?.clientHeight ?? 0,
+        scrollerH: scroller?.clientHeight ?? 0,
+      };
+    });
+    expect(shown.contentH).toBeGreaterThan(shown.scrollerH * 2);
+    expect(shown.lines).toBeGreaterThan(20);
+  });
+
+  test("没有标题时不显示大纲按钮", async ({ page }) => {
+    await openMarkdownInEdit(page, "只有正文，没有标题\n", "no-heading");
+    await expect(page.locator('[data-testid="outline-btn"]')).toHaveCount(0);
+  });
+
+  test("有标题时大纲按钮出现", async ({ page }) => {
+    await openMarkdownInEdit(page, "# 有标题\n\n正文\n", "has-heading");
+    await expect(page.locator('[data-testid="outline-btn"]')).toHaveCount(1);
+  });
+});
+
 test.describe("空行「+」手柄", () => {
   test("悬停只召唤它自己，不弹转换菜单；点击才开插入菜单", async ({ page }) => {
     await openMarkdownInEdit(page, "第一段\n\n\n第二段\n", "fidelity-plus");
@@ -218,7 +264,7 @@ test.describe("块菜单几何与图标", () => {
     }
   });
 
-  test("菜单图标渲染 18px（豆包 §2.2）", async ({ page }) => {
+  test("菜单图标渲染 20px（放大一档，2026-11-03）", async ({ page }) => {
     const width = await page
       .locator('[data-testid="block-menu-cell"] svg')
       .first()
