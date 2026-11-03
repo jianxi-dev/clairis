@@ -150,10 +150,10 @@ describe("table cell selection + toolbar (ticket #328)", () => {
     expect(mergeBtn().disabled).toBe(false);
   });
 
-  it("a single-cell click opens the cell editor without a toolbar (#455)", async () => {
+  it("a single-cell click opens the cell editor and the toolbar", async () => {
     mousedown(cell(0, 0));
-    // 单个单元格是「光标在这里」，不是选区：没有工具条误导。
-    expect(toolbarVisible()).toBe(false);
+    // 单击进单元格也要能改底色/合并：工具条随选区出现（用户实测「工具条没接进来」）。
+    expect(toolbarVisible()).toBe(true);
 
     docMouseup();
     await nextFrame();
@@ -211,9 +211,9 @@ describe("table cell selection + toolbar (ticket #328)", () => {
         "| 3 | 4 |",
       ].join("\n"),
     );
-    // 选区折叠到单个左上角单元格 → 工具条隐藏（#455）。
+    // 选区折叠到单个左上角单元格：工具条仍在（合并结果可继续改底色）。
     expect(cellSelectionCount(getCellSelection(view)!)).toBe(1);
-    expect(toolbarVisible()).toBe(false);
+    expect(toolbarVisible()).toBe(true);
   });
 
   it("applying a background wraps the cell text in an mdb-bg span and paints the cell", async () => {

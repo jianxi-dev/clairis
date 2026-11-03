@@ -28,7 +28,7 @@ const DOC = [
   "",
 ].join("\n");
 
-async function openInEditMode(page: Page): Promise<void> {
+async function openInEditMode(page: Page, body: string = DOC): Promise<void> {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto(APP_URL, { waitUntil: "networkidle" });
   await page.waitForSelector("header", { timeout: 15000 });
@@ -40,7 +40,7 @@ async function openInEditMode(page: Page): Promise<void> {
       "display-parity.md",
     );
     store.getState().setEditorMode("edit");
-  }, DOC);
+  }, body);
   await page.locator(".cm-content").waitFor({ timeout: 10000 });
 }
 
@@ -219,4 +219,42 @@ test("块级组合：引用单卡、高亮块不套引用、围栏不占空行�
   expect(state.nestedClass).toContain("cm-list-depth-1");
   expect(state.nestedText).toBe("嵌套子项甲");
   expect(state.nestedPad!).toBeGreaterThan(state.topLevelPad!);
+});
+
+test("围栏代码块里的 Markdown 标记不被渲染成块级语法", async ({ page }) => {
+  const body = [
+    "```md",
+    "# 代码里的井号",
+    "- 代码里的短横",
+    "> 代码里的引用",
+    "**代码里的星号**",
+    "```",
+    "",
+  ].join("\n");
+  await openInEditMode(page, body);
+
+  const decorated = await page.evaluate(() => {
+    const lines = [
+      ...document.querySelectorAll<HTMLElement>(".cm-editor .cm-line"),
+    ];
+    return lines
+      .filter((line) => (line.textContent ?? "").trim() !== "")
+      .map((line) => ({
+        text: (line.textContent ?? "").trim(),
+        className: line.className,
+        hasHeading: !!line.querySelector(".cm-heading"),
+        hasStrong: !!line.querySelector(".cm-strong"),
+      }));
+  });
+
+  const codeLines = decorated.filter((line) => line.text.includes("代码里的"));
+  expect(codeLines.length).toBe(4);
+  for (const line of codeLines) {
+    expect(line.className).toContain("cm-fenced-code");
+    expect(line.className).not.toContain("cm-heading");
+    expect(line.className).not.toContain("cm-quote");
+    expect(line.className).not.toContain("cm-list");
+    expect(line.hasHeading).toBe(false);
+    expect(line.hasStrong).toBe(false);
+  }
 });

@@ -6,6 +6,7 @@
 import type { Range } from "@codemirror/state";
 import { Decoration } from "@codemirror/view";
 import { resolveCalloutType } from "../callout-types";
+import { fencedCodeRanges } from "./code";
 
 export const quoteRegex = /^>\s?/m;
 
@@ -43,6 +44,9 @@ export function createQuoteDecorations(
   activeTo: number = -1,
 ): Range<Decoration>[] {
   const decorations: Range<Decoration>[] = [];
+  const fences = fencedCodeRanges(text);
+  const inFence = (pos: number): boolean =>
+    fences.some((range) => pos >= range.from && pos <= range.to);
   const lines = text.split("\n");
 
   let pos = 0;
@@ -51,7 +55,7 @@ export function createQuoteDecorations(
     if (!line.startsWith(">")) inCallout = false;
     else if (isCalloutStart(line)) inCallout = true;
 
-    const match = inCallout ? null : line.match(quoteRegex);
+    const match = inCallout || inFence(pos) ? null : line.match(quoteRegex);
     if (match) {
       const lineStart = pos;
       const lineEnd = pos + line.length;

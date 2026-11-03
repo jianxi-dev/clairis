@@ -10,6 +10,7 @@
  */
 import type { Range } from "@codemirror/state";
 import { Decoration } from "@codemirror/view";
+import { fencedCodeRanges } from "./code";
 
 export const boldRegex = /\*\*(.+?)\*\*/g;
 export const italicRegex = /(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)|_(.+?)_/g;
@@ -150,11 +151,16 @@ export function createBoldItalicDecorations(
   _activeTo: number = -1,
 ): Range<Decoration>[] {
   const decorations: Range<Decoration>[] = [];
+  // 围栏代码块里的 `**` / `~~` / `<u>` 是代码内容，不能当行内语法渲染。
+  const fences = fencedCodeRanges(text);
+  const inFence = (pos: number): boolean =>
+    fences.some((range) => pos >= range.from && pos <= range.to);
 
   // 加粗：**text** → 隐藏 **，正文加粗
   boldRegex.lastIndex = 0;
   let match: RegExpExecArray | null;
   while ((match = boldRegex.exec(text)) !== null) {
+    if (inFence(match.index)) continue;
     const from = match.index;
     const to = from + match[0].length;
     const delimLen = 2;
@@ -172,6 +178,7 @@ export function createBoldItalicDecorations(
   // 斜体：*text* 或 _text_ → 隐藏分隔符，正文斜体
   italicRegex.lastIndex = 0;
   while ((match = italicRegex.exec(text)) !== null) {
+    if (inFence(match.index)) continue;
     const from = match.index;
     const to = from + match[0].length;
     const delimLen = 1;
@@ -189,6 +196,7 @@ export function createBoldItalicDecorations(
   // 删除线：~~text~~ → 隐藏 ~~，正文加删除线（#260）
   strikeRegex.lastIndex = 0;
   while ((match = strikeRegex.exec(text)) !== null) {
+    if (inFence(match.index)) continue;
     const from = match.index;
     const to = from + match[0].length;
     const delimLen = 2;
@@ -205,6 +213,7 @@ export function createBoldItalicDecorations(
   // 下划线：<u>text</u> → 隐藏原始标签，正文加下划线（#260）
   underlineRegex.lastIndex = 0;
   while ((match = underlineRegex.exec(text)) !== null) {
+    if (inFence(match.index)) continue;
     const from = match.index;
     const to = from + match[0].length;
     const openLen = "<u>".length;

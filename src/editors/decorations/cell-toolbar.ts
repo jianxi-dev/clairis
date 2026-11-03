@@ -310,12 +310,9 @@ export function cellToolbar(): Extension {
 
       private sync(): void {
         const selection = getCellSelection(this.view);
-        // 普通点击只是把光标放进单元格——没有工具条。刻意选中（拖拽或
-        // shift-click）可以是单个单元格，且仍想要背景控件（#455）。
-        const deliberate =
-          selection !== null &&
-          (cellSelectionCount(selection) > 1 || selection.explicit === true);
-        if (!selection || !deliberate) {
+        // 只要存在单元格选区就显示工具条：单击进单元格也要能改底色/合并，
+        // 不再要求先拖拽或 shift-click（用户实测「工具条没接进来」）。
+        if (!selection) {
           this.closeMenu();
           if (this.root) this.root.style.display = "none";
           return;

@@ -8,6 +8,7 @@
  */
 import type { Range } from "@codemirror/state";
 import { Decoration, WidgetType } from "@codemirror/view";
+import { fencedCodeRanges } from "./code";
 
 export const HR_CLASS = "cm-thematic-break";
 
@@ -49,11 +50,14 @@ export function createHrDecorations(
   activeTo: number = -1,
 ): Range<Decoration>[] {
   const decorations: Range<Decoration>[] = [];
+  const fences = fencedCodeRanges(text);
+  const inFence = (pos: number): boolean =>
+    fences.some((range) => pos >= range.from && pos <= range.to);
   const lines = text.split("\n");
 
   let pos = 0;
   for (const line of lines) {
-    if (hrRegex.test(line)) {
+    if (!inFence(pos) && hrRegex.test(line)) {
       const lineStart = pos;
       const lineEnd = pos + line.length;
       const isActive =

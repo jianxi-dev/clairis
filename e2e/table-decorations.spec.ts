@@ -115,3 +115,81 @@ test("拖选多个单元格出现选区高亮", async ({ page }) => {
   await expect(page.locator('[data-testid="cell-toolbar"]')).toBeVisible();
   await expect(page.locator('[data-testid="cell-merge"]')).toBeEnabled();
 });
+
+test("点击单元格显示工具条（含颜色）", async ({ page }) => {
+  await openTableDoc(
+    page,
+    "/Users/test/tbl-toolbar.md",
+    "| 姓名 | 城市 |\n| --- | --- |\n| 甲 | 北京 |",
+  );
+
+  await page.locator('td[data-row="0"][data-col="0"]').click();
+
+  const toolbar = page.locator('[data-testid="cell-toolbar"]');
+  await expect(toolbar).toBeVisible({ timeout: 3000 });
+  await expect(toolbar.locator('[data-testid="cell-bg"]')).toBeVisible();
+  // 16 个底色格已接入（菜单默认收起，悬停才展开）。
+  await expect(
+    toolbar.locator('[data-testid="color-swatch-background"]'),
+  ).toHaveCount(16);
+});
+
+test("单元格背景色写入源码", async ({ page }) => {
+  await openTableDoc(
+    page,
+    "/Users/test/tbl-bg.md",
+    "| 姓名 | 城市 |\n| --- | --- |\n| 甲 | 北京 |",
+  );
+
+  await page.locator('td[data-row="0"][data-col="0"]').click();
+  const toolbar = page.locator('[data-testid="cell-toolbar"]');
+  await expect(toolbar).toBeVisible({ timeout: 3000 });
+
+  await toolbar.locator('[data-testid="cell-bg"]').hover();
+  const swatch = page.locator(
+    '[data-testid="color-swatch-background"][data-class-name="mdb-bg-blue"]',
+  );
+  await expect(swatch).toBeVisible({ timeout: 3000 });
+  await swatch.click();
+
+  const content = await page.evaluate(() => {
+    const store = (window as unknown as Record<string, any>).__biaoyue_store__;
+    const state = store.getState();
+    return state.tabs[state.activeTabId]?.content ?? "";
+  });
+  expect(content).toContain("mdb-bg-blue");
+});
+
+test("拖选多格后合并按钮可用并执行合并", async ({ page }) => {
+  await openTableDoc(
+    page,
+    "/Users/test/tbl-merge.md",
+    "| A | B |\n| --- | --- |\n| 1 | 2 |\n| 3 | 4 |",
+  );
+
+  const first = page.locator('td[data-row="0"][data-col="0"]');
+  const second = page.locator('td[data-row="0"][data-col="1"]');
+  const from = await first.boundingBox();
+  const to = await second.boundingBox();
+  if (!from || !to) throw new Error("cells have no layout box");
+  await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, {
+    steps: 8,
+  });
+  await page.mouse.up();
+
+  const merge = page.locator('[data-testid="cell-merge"]');
+  await expect(merge).toBeEnabled({ timeout: 3000 });
+  await merge.click();
+
+  const content = await page.evaluate(() => {
+    const store = (window as unknown as Record<string, any>).__biaoyue_store__;
+    const state = store.getState();
+    return state.tabs[state.activeTabId]?.content ?? "";
+  });
+  expect(content).toContain("1");
+  await expect(page.locator("table.cm-table tbody td").first()).toContainText(
+    "1",
+  );
+});

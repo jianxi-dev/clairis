@@ -297,3 +297,19 @@ export function createCodeDecorations(
 
   return decorations;
 }
+
+/**
+ * 围栏代码块占用的全文区间（含未闭合围栏到文末）。
+ *
+ * 其它装饰扫描全文时必须跳过这些区间，否则代码里的 `# 标题`、`- 项`、`> 引用`
+ * 会被当成真正的块级语法渲染成标题/列表/引用。
+ */
+export function fencedCodeRanges(text: string): { from: number; to: number }[] {
+  const ranges = parseFencedBlocks(text).map((block) => ({
+    from: block.openStart,
+    to: block.closeEnd,
+  }));
+  const unclosed = findUnclosedFenceStart(text);
+  if (unclosed !== null) ranges.push({ from: unclosed, to: text.length });
+  return ranges;
+}

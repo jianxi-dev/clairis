@@ -10,6 +10,7 @@
  */
 import type { Range } from "@codemirror/state";
 import { Decoration, WidgetType, type EditorView } from "@codemirror/view";
+import { fencedCodeRanges } from "./code";
 
 const blockquotePrefixRegex = /^(?:>[ \t]?)+/;
 export const unorderedListRegex = /^[-*+]\s/;
@@ -139,6 +140,9 @@ export function createListDecorations(
   activeTo: number = -1,
 ): Range<Decoration>[] {
   const decorations: Range<Decoration>[] = [];
+  const fences = fencedCodeRanges(text);
+  const inFence = (pos: number): boolean =>
+    fences.some((range) => pos >= range.from && pos <= range.to);
   const lines = text.split("\n");
 
   let pos = 0;
@@ -149,7 +153,11 @@ export function createListDecorations(
     const isActive =
       activeFrom >= 0 && lineStart >= activeFrom && lineEnd <= activeTo;
     const blockClass = isActive ? BLOCK_ACTIVE_CLASS : BLOCK_INACTIVE_CLASS;
-    const info = classifyListLine(line);
+    const info = inFence(lineStart) ? null : classifyListLine(line);
+    if (!info) {
+      pos += lineLen;
+      continue;
+    }
     const markerFrom = pos + info.prefixLen + info.indentLen;
     const depthClass =
       info.depth === 1

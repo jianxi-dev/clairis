@@ -199,6 +199,12 @@ class BlockHandlePlugin {
     const overHandle = target?.closest?.(
       ".cm-block-handle",
     ) as HTMLElement | null;
+    // 菜单打开期间不改召唤对象（D2 不 retarget）：指针在菜单或别的块上滑动时，
+    // 不能给「菜单后面的内容」再冒出手柄。
+    if (isBlockMenuOpen(this.view) && !overHandle) return;
+    // 补漏：keyup 有时落在编辑器外（菜单抢焦点），抑制标志会永久卡住，
+    // 指针一动就解除，手柄不至于「忽然召唤不出来」。
+    for (const handle of this.handles) handle.gate.suppress(false);
     let activeFrom: number | null = overHandle
       ? Number(overHandle.dataset.blockFrom)
       : null;
@@ -344,7 +350,7 @@ class BlockHandlePlugin {
         entry.menuTimer = null;
         if (entry.dragging) return;
         if (isBlockMenuOpen(this.view)) return;
-        openBlockMenu(this.view, block, entry.anchorPos ?? block.from);
+        openBlockMenu(this.view, block, entry.anchorPos ?? block.from, el);
       }, MENU_INTENT_DELAY_MS);
     });
     el.addEventListener("pointerleave", () => {
@@ -483,8 +489,16 @@ class BlockHandlePlugin {
     entry.gate.suppress(false);
 
     if (!entry.dragging) {
-      // 移动不足阈值：视为点击，不重排。
+      // 移动不足阈值：视为点击，开菜单而不是空转。
       entry.dragging = false;
+      if (!isBlockMenuOpen(this.view)) {
+        openBlockMenu(
+          this.view,
+          entry.block,
+          entry.anchorPos ?? entry.block.from,
+          entry.el,
+        );
+      }
       return;
     }
     entry.dragging = false;
