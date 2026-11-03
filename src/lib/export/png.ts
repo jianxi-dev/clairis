@@ -295,7 +295,7 @@ export async function exportPngFromMarkdown(
       title: input.title,
       css: input.css ?? defaultCss(),
       diagramSvg: engine
-        ? (source) => engine.renderToString(source)
+        ? (source) => engine.renderToSvgOrNull(source)
         : undefined,
     });
     const { html } = await inlineImages(doc, input.baseDir, readBase64);

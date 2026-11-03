@@ -62,10 +62,11 @@ export function describeDiagramError(error: unknown): string {
 }
 
 /**
- * 同步出图：返回完整 `<svg>`，无法绘制时返回 null（导出降级用，不抛）。
+ * 导出用同步出图：返回完整 `<svg>`，无法绘制时返回 null（降级保留源码，不抛）。
+ * 与 `renderToString` 同名会与编辑态语义冲突（#152），故单独命名。
  * 导出链路要在同一调用栈内拿字符串，故走 render() 而非需要 DOM 的 mount()。
  */
-export function renderToString(source: string): string | null {
+export function renderToSvgOrNull(source: string): string | null {
   try {
     const result = render(source, { imageSchemes: IMAGE_SCHEMES });
     return result.svg || null;
