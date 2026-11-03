@@ -30,6 +30,7 @@ import {
 import { resolveScrollTarget } from "../../utils/scrollPosition";
 import { renderMermaid } from "../../renderers/mermaid";
 import PreviewView from "./PreviewView";
+import OutlineMenu from "./OutlineMenu";
 import ReadingProgressInk from "./ReadingProgressInk";
 import type { EditorMode, FileKind, Tab } from "../../types";
 
@@ -102,6 +103,9 @@ export default function ContentArea({
 
   const editorRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
+  const [editorViewState, setEditorViewState] = useState<EditorView | null>(
+    null,
+  );
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [scrollContainer, setScrollContainer] = useState<HTMLDivElement | null>(
     null,
@@ -210,6 +214,7 @@ export default function ContentArea({
 
     viewRef.current = new EditorView({ state, parent: editorRef.current });
     setEditorView(panelId, viewRef.current);
+    setEditorViewState(viewRef.current);
 
     // 用户片段：编辑器创建后加载一次并注册进斜杠菜单。加载失败静默——菜单退回
     // 纯内置命令（`list_extensions` 在纯浏览器/老版本里不存在）。
@@ -219,6 +224,7 @@ export default function ContentArea({
 
     return () => {
       setEditorView(panelId, null);
+      setEditorViewState(null);
       viewRef.current?.destroy();
       viewRef.current = null;
     };
@@ -263,7 +269,12 @@ export default function ContentArea({
 
   return (
     <div
-      style={{ height: "100%", display: "flex", flexDirection: "column" }}
+      style={{
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+        position: "relative",
+      }}
       className="dark:bg-gray-800"
     >
       <div
@@ -290,6 +301,14 @@ export default function ContentArea({
           <ReadingProgressInk scrollEl={scrollContainer} />
         )}
       </div>
+      {tab?.fileKind === "markdown" && (
+        <OutlineMenu
+          mode={editorMode}
+          documentText={tab.content}
+          view={editorViewState}
+          container={scrollContainer}
+        />
+      )}
     </div>
   );
 }
