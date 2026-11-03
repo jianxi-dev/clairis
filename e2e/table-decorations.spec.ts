@@ -193,3 +193,42 @@ test("拖选多格后合并按钮可用并执行合并", async ({ page }) => {
     "1",
   );
 });
+
+test("单元格里打 / 打开插入菜单，选中后内容进单元格", async ({ page }) => {
+  await openTableDoc(
+    page,
+    "/tmp/cell-slash.md",
+    "| A | B |\n| --- | --- |\n| a1 |  |\n",
+  );
+  const cell = page.locator('td[data-row="0"][data-col="1"]');
+  await cell.click();
+  const input = page.locator('[data-testid="cm-table-cell-input"]');
+  await input.click();
+  await page.keyboard.type("/");
+  await expect(page.locator(".mdb-slash-menu")).toBeVisible({ timeout: 3000 });
+  // 取消，验证菜单确实挂在单元格上而不是块的斜杠菜单
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".mdb-slash-menu")).toHaveCount(0);
+});
+
+test("Tab 提交当前单元格", async ({ page }) => {
+  await openTableDoc(
+    page,
+    "/tmp/cell-tab.md",
+    "| A | B |\n| --- | --- |\n| a1 | b1 |\n",
+  );
+  await page.locator('td[data-row="0"][data-col="0"]').click();
+  const input = page.locator('[data-testid="cm-table-cell-input"]');
+  await input.click();
+  await page.keyboard.type("x");
+  await page.keyboard.press("Tab");
+  await expect(page.locator('[data-testid="cm-table-cell-input"]')).toHaveCount(
+    0,
+  );
+  const content = await page.evaluate(() => {
+    const store = (window as unknown as Record<string, any>).__biaoyue_store__;
+    const s = store.getState();
+    return s.tabs[s.activeTabId]?.content as string;
+  });
+  expect(content).toContain("a1x");
+});

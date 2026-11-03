@@ -534,6 +534,13 @@ export function tableCellSelectionPainter(): Extension {
   );
 }
 
+/** 该表格的列数（用于 Tab 右移时判断是否换行）。 */
+function widgetColumns(view: EditorView, tableIndex: number): number {
+  const table = view.dom.querySelectorAll(".cm-table")[tableIndex];
+  const firstRow = table?.querySelector("tr");
+  return firstRow ? firstRow.querySelectorAll("th, td").length : 0;
+}
+
 /**
  * 打开某单元格的行内 `<input>` 编辑器。
  *
@@ -613,13 +620,42 @@ function openCellEditor(
     composing = false;
     stage();
   });
-  input.addEventListener("input", stage);
+  input.addEventListener("input", () => {
+    stage();
+    // 行内插入入口：在末尾打 `/` 就打开锚定插入菜单（与块里输 `/` 一致）。
+    // 先把 `/` 从输入框里去掉，菜单插入的内容才不会顶着它。
+    if (composing) return;
+    if (!input.value.endsWith("/")) return;
+    input.value = input.value.slice(0, -1);
+    stage();
+    const widget = liveTableWidgets.get(view);
+    if (!widget) return;
+    // 不先 commit：openCellMenu 自己会 flush 暂存文本，提前 teardown 会让
+    // 输入框在菜单取锚点前消失。
+    widget.openCellMenuFor(view, row, col);
+  });
   input.addEventListener("keydown", (event) => {
     event.stopPropagation();
-    if (event.key === "Enter" || event.key === "Tab") {
+    if (event.key === "Enter") {
       event.preventDefault();
       commit();
-    } else if (event.key === "Escape") {
+      return;
+    }
+    if (event.key === "Tab") {
+      event.preventDefault();
+      commit();
+      // 右移一格：单元格是网格，Tab 的语义就是「下一个」。越过最后一列时
+      // 落到下一行首列；没下一行就停在原地。
+      const columns = widgetColumns(view, tableIndex);
+      const nextRow = col + 1 >= columns ? row + 1 : row;
+      const nextCol = col + 1 >= columns ? 0 : col + 1;
+      const exists = view.dom.querySelector(
+        `.cm-table td[data-row="${nextRow}"][data-col="${nextCol}"], .cm-table th[data-row="${nextRow}"][data-col="${nextCol}"]`,
+      );
+      if (exists) openCellEditor(view, tableIndex, nextRow, nextCol);
+      return;
+    }
+    if (event.key === "Escape") {
       event.preventDefault();
       clearDirty(view, tableIndex, row, col);
       teardown();
