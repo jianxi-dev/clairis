@@ -61,3 +61,19 @@ test("空列表项回车退出列表", async ({ page }) => {
   const text = await storeContent(page);
   expect(text).toBe("- 项\n");
 });
+
+test("全角逗号与斜杠换成半角", async ({ page }) => {
+  await openMarkdownForEditing(page, "/Users/test/si-punct.md");
+  await page.keyboard.type("你好，世界／测试");
+  const text = await storeContent(page);
+  expect(text).toBe("你好,世界/测试");
+});
+
+test("围栏代码块内保留全角", async ({ page }) => {
+  await openMarkdownForEditing(page, "/Users/test/si-punct-code.md");
+  await page.keyboard.type("```");
+  await page.keyboard.press("Enter");
+  await page.keyboard.type("，");
+  const text = await storeContent(page);
+  expect(text).toContain("，");
+});

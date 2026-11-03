@@ -1,5 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { EditorView } from "@codemirror/view";
+import { EditorState } from "@codemirror/state";
+import { markdown } from "@codemirror/lang-markdown";
+import { history, undo } from "@codemirror/commands";
 import {
   handleMarkdownShortcut,
   smartEnter,
@@ -484,5 +487,70 @@ describe("red line 5: rendered text equals source", () => {
 describe("smartInput extension", () => {
   it("returns an array of extensions", () => {
     expect(Array.isArray(smartInput())).toBe(true);
+  });
+});
+
+describe("全角标点归一（E-13）", () => {
+  /** 模拟一次真实键入：userEvent 必须是 input.*，否则过滤器按程序化变更跳过。 */
+  function typeAt(pos: number, text: string): number {
+    let transactions = 0;
+    const listener = EditorView.updateListener.of((update) => {
+      if (update.docChanged) transactions += 1;
+    });
+    void listener;
+    editor.view.dispatch({
+      changes: { from: pos, insert: text },
+      selection: { anchor: pos + text.length },
+      userEvent: "input.type",
+    });
+    return transactions;
+  }
+
+  it("全角逗号落成半角", () => {
+    typeAt(0, "你好，世界");
+    expect(editor.view.state.doc.toString()).toBe("你好,世界");
+  });
+
+  it("全角斜杠落成半角", () => {
+    typeAt(0, "a／b");
+    expect(editor.view.state.doc.toString()).toBe("a/b");
+  });
+
+  it("围栏代码块内保留全角", () => {
+    editor.view.dispatch({
+      changes: { from: 0, insert: "正文\n\n```\n\n```\n" },
+    });
+    const fencePos = editor.view.state.doc.toString().indexOf("```") + 4;
+    typeAt(fencePos, "，");
+    expect(editor.view.state.doc.toString()).toContain("```\n，");
+  });
+
+  it("行内代码内保留全角", () => {
+    editor.view.dispatch({ changes: { from: 0, insert: "`x`" } });
+    // 插到反引号内部（`x` 的 x 之前）
+    typeAt(1, "，");
+    expect(editor.view.state.doc.toString()).toBe("`，x`");
+  });
+
+  it("一次 undo 回到键入前（单事务，不产生两条历史）", () => {
+    const parent = document.createElement("div");
+    document.body.appendChild(parent);
+    const view = new EditorView({
+      parent,
+      state: EditorState.create({
+        doc: "",
+        extensions: [markdown(), smartInput(), history()],
+      }),
+    });
+    view.dispatch({
+      changes: { from: 0, insert: "，" },
+      selection: { anchor: 1 },
+      userEvent: "input.type",
+    });
+    expect(view.state.doc.toString()).toBe(",");
+    expect(undo(view)).toBe(true);
+    expect(view.state.doc.toString()).toBe("");
+    view.destroy();
+    parent.remove();
   });
 });
