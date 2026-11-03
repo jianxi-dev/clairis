@@ -2043,7 +2043,7 @@ body {
 
 .biaoyue-outline-panel {
   position: absolute;
-  top: calc(100% + 6px);
+  top: calc(100% + 4px);
   right: 0;
   width: 240px;
   max-height: min(50vh, 420px);
