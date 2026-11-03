@@ -18,7 +18,11 @@ import {
   fullDecorations,
 } from "../../editors/setup";
 import type { EditorDecorationsOptions } from "../../editors/decorations";
-import { slashKeymap, setUserSlashCommands } from "../../editors/slash";
+import {
+  slashKeymap,
+  setUserSlashCommands,
+  registerPickMediaFile,
+} from "../../editors/slash";
 import { loadUserExtensions } from "../../editors/user-extensions";
 import { smartInput } from "../../editors/smart-input";
 import { blockHandle } from "../../editors/orchestration/block-handle";
@@ -28,6 +32,8 @@ import {
   setPanelScrollEl,
 } from "../../editors/editorRef";
 import { resolveScrollTarget } from "../../utils/scrollPosition";
+import { pickMediaForDocument } from "../../lib/mediaPicker";
+import { resolveDocMediaHref } from "../../lib/mediaUrl";
 import { renderMermaid } from "../../renderers/mermaid";
 import PreviewView from "./PreviewView";
 import OutlineMenu from "./OutlineMenu";
@@ -45,9 +51,18 @@ function hydrateMermaid(
   return renderMermaid(root);
 }
 
-/** 编辑态装饰选项：本批只接 mermaid 水合，图片解析器留空走 alt 回退。 */
+/**
+ * 编辑态装饰选项。
+ *
+ * 图片解析器读模块级当前文档路径：装饰选项在模块作用域构造一次，而文档随
+ * 页签切换——用 getter 而不是把路径烘进常量，切页签后新插入的相对引用才
+ * 找得到同级的 `assets/`。
+ */
+let activeDocPath: string | null = null;
+
 const editorDecorationOptions: EditorDecorationsOptions = {
   hydrateMermaid,
+  resolveImage: (path) => resolveDocMediaHref(path, activeDocPath),
 };
 
 function createLanguageExtension(kind: FileKind) {
@@ -112,10 +127,14 @@ export default function ContentArea({
   );
   const currentKindRef = useRef<FileKind | null>(null);
   const currentTabIdRef = useRef<string | null>(null);
+  /** 当前页签的绝对路径：媒体导入要落在文档同级 assets/ 下。 */
+  const tabPathRef = useRef<string | null>(null);
   const restoredTabRef = useRef<string | null>(null);
 
   // Keep tab ID ref current so the updateListener closure can read it
   currentTabIdRef.current = tab?.id || null;
+  tabPathRef.current = tab?.path || null;
+  activeDocPath = tab?.path || null;
 
   // 与 PreviewView 的 `.preview-content` 注入同一组变量，两个模式才会同貌。
   const headingColors = useEditorStore((s) => s.headingColors);
@@ -215,6 +234,11 @@ export default function ContentArea({
     viewRef.current = new EditorView({ state, parent: editorRef.current });
     setEditorView(panelId, viewRef.current);
     setEditorViewState(viewRef.current);
+    // 媒体选择走宿主：编辑器只发「请给我一个文件」，落点在哪儿由这里决定。
+    // 挂载只跑一次，所以用 ref 读当前页签路径，避免闭包停在打开第一天的文档上。
+    registerPickMediaFile(viewRef.current, () =>
+      pickMediaForDocument(tabPathRef.current),
+    );
 
     // 用户片段：编辑器创建后加载一次并注册进斜杠菜单。加载失败静默——菜单退回
     // 纯内置命令（`list_extensions` 在纯浏览器/老版本里不存在）。

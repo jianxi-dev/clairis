@@ -438,12 +438,15 @@ export function isSlashMenuOpen(view: EditorView): boolean {
  * 宿主注入的文件选择器，按视图存放。编辑器包从不直接碰 DOM file input；
  * 宿主注册一个打开原生选择器并返回所选 File（取消返回 null）的回调。
  */
-const pickMediaFiles = new WeakMap<EditorView, () => Promise<File | null>>();
+const pickMediaFiles = new WeakMap<
+  EditorView,
+  () => Promise<{ name: string; href: string } | null>
+>();
 
 /** 为一个视图注册文件选择器。 */
 export function registerPickMediaFile(
   view: EditorView,
-  pickMediaFile: () => Promise<File | null>,
+  pickMediaFile: () => Promise<{ name: string; href: string } | null>,
 ): void {
   pickMediaFiles.set(view, pickMediaFile);
 }
@@ -1041,12 +1044,12 @@ function applyCommand(view: EditorView, cmd: SlashCommand): void {
     // 光标挡住：表格单元格菜单靠悬停把手打开，从不移动光标。只有斜杠插入
     // （替换 `[slashPos, head]`）是基于光标的。
     if (!anchored && !below && head < from) return;
-    void pickMediaFile().then((file) => {
-      if (!file) {
+    void pickMediaFile().then((picked) => {
+      if (!picked) {
         if (trigger === "slash") removeSlashTrigger(view, from, query);
         return;
       }
-      const ref = `![${file.name}](${file.name})`;
+      const ref = `![${picked.name}](${picked.href})`;
       if (anchored) {
         // 单元格插入必须保持单行，否则会拆开表格行。
         replaceTrigger(view, from, from, sanitizeCellText(ref));

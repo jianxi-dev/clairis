@@ -565,6 +565,24 @@
   box-shadow: 0 1px 3px rgba(31, 26, 20, 0.08);
 }
 
+/* 视频/音频：`![](clip.mp4)` 渲染成播放器，按正文宽撑开，别缩成一个小方块。 */
+.preview-content video {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  max-height: 70vh;
+  margin-inline: auto;
+  border-radius: var(--reader-radius);
+  background: #000;
+}
+
+.preview-content audio {
+  display: block;
+  width: 100%;
+  margin-inline: auto;
+}
+
 .preview-content figcaption {
   padding-block-start: 0.8em;
   font-size: 0.82em;
