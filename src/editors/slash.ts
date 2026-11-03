@@ -73,6 +73,11 @@ export interface SlashCommand {
    */
   insert?(state: EditorState): { from: number; to: number; text: string };
   /**
+   * 为 true 时表示这条命令产出的是**行内**内容，可以放进 GFM 单元格；
+   * 块级命令（标题/列表/表格/分栏…）只能落在块层，单元格菜单里不出现。
+   */
+  inline?: boolean;
+  /**
    * 为 true 时，激活该行会让宿主通过注入的 `pickMediaFile` 回调选择媒体文件，
    * 而不是插入静态文本。选中文件的文件名变成可编辑的 `![name](name.ext)`。
    */
@@ -236,6 +241,7 @@ export const defaultCommands: SlashCommand[] = [
     aliases: ["img"],
     group: "常用",
     pickMedia: true,
+    inline: true,
   },
   {
     id: "media-ref",
@@ -875,7 +881,13 @@ export function openInsertMenu(
 ): void {
   cancelAnchorClose(view);
   closeMenu(view);
-  openMenu(view, at, commands, trigger, anchorRange, anchorRect);
+  // GFM 单元格只有一行：块级模板（标题/列表/表格/分栏…）进了单元格会被压平
+  // 成一行文本或直接破坏表格，所以单元格菜单只列行内命令。
+  const offered =
+    trigger === "anchor"
+      ? commands.filter((cmd) => cmd.inline === true)
+      : commands;
+  openMenu(view, at, offered, trigger, anchorRange, anchorRect);
 }
 
 /**
@@ -1089,19 +1101,9 @@ function applyCommand(view: EditorView, cmd: SlashCommand): void {
   closeMenu(view);
   if (head < from && !below) return;
   if (anchored) {
+    // 菜单只会给出 `inline` 命令（见 openInsertMenu），所以这里一定插进单元格。
+    // 早前把所有块级模板挪到表格下方，用户点完菜单会看到内容凭空出现在表外。
     const raw = cmd.insert(view.state).text;
-    // GFM 单元格只有一行：只有行内引用属于其中。所有块级模板落在表格之后，
-    // 行保持完整。
-    if (cmd.id !== "image-ref" && cmd.id !== "media-ref") {
-      const at = endOfTableBlock(view.state, from);
-      const text = `\n\n${raw}`;
-      view.dispatch({
-        changes: { from: at, to: at, insert: text },
-        selection: { anchor: at + text.length },
-        scrollIntoView: true,
-      });
-      return;
-    }
     const text = sanitizeCellText(raw);
     view.dispatch({
       changes: { from, to: from, insert: text },
