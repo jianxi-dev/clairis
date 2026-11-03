@@ -32,7 +32,7 @@
 | 指针在正文块内 | 手柄淡入，锚在指针所在行 | ✅ `block-menu.spec.ts` / `ui-fidelity.spec.ts` | — |
 | 手柄本体尺寸 | 42×26 药丸 | ✅ `ui-fidelity.spec.ts` | — |
 | 块型 → 图标 | 标题 H1–H6 / 引用 / 分割线 / 有序·无序 / 任务 / 代码 各自图标 | ✅ `ui-fidelity.spec.ts` | — |
-| 空行「+」悬停 | 不弹转换菜单 | ⛔ 当前弹出 | #105 |
+| 空行「+」悬停 | 不弹转换菜单 | ✅ `ui-fidelity.spec.ts` | — |
 | 空行「+」点击 | 打开插入菜单，光标落该行 | ✅ `block-menu.spec.ts` | — |
 | 拖拽 ≥4px | 整块高亮 + 松手重排 | ✅ `block-menu.spec.ts` | — |
 | 键盘输入中 | 手柄隐藏 | ✅ `block-menu.spec.ts` | — |
