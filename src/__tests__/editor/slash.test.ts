@@ -8,6 +8,7 @@ import {
   setSlashKeyChordResolver,
   slashKeymap,
   slashMenuApply,
+  markdownDestination,
   slashMenuClose,
   slashMenuSelectNext,
   slashMenuSelectPrev,
@@ -939,5 +940,19 @@ describe("slash menu lifecycle", () => {
     expect(slashMenuApply(view)).toBe(false);
     expect(slashMenuClose(view)).toBe(false);
     expect(view.state.doc.toString()).toBe("text");
+  });
+});
+
+describe("markdownDestination（含空格的文件名）", () => {
+  it("普通路径不加包装", () => {
+    expect(markdownDestination("assets/pic.png")).toBe("assets/pic.png");
+  });
+
+  it("含空格/括号时用尖括号包住，否则整段退化成正文", () => {
+    expect(markdownDestination("assets/a b.mp4")).toBe("<assets/a b.mp4>");
+    expect(markdownDestination("assets/a(1).png")).toBe("<assets/a(1).png>");
+    expect(markdownDestination("assets/中文 名 视频.mp4")).toBe(
+      "<assets/中文 名 视频.mp4>",
+    );
   });
 });

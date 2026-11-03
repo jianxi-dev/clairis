@@ -12,6 +12,7 @@
  */
 import type { Range } from "@codemirror/state";
 import { Decoration, WidgetType, EditorView } from "@codemirror/view";
+import { stripAngleWrappers } from "../../lib/mediaUrl";
 
 // --- 类型 --------------------------------------------------------------------
 
@@ -499,7 +500,9 @@ export function createImageDecorations(
     if (isInsideRange(matchStart, fencedRanges)) continue;
 
     const alt = match[1];
-    const path = match[2];
+    // 含空格/括号的目标在 markdown 里写成 `<...>`，取出来先把壳拆掉，
+    // 否则扩展名判断会把这个 `>` 算进去（#103 后续）。
+    const path = stripAngleWrappers(match[2]);
     const kind = classifyMedia(path);
     const from = matchStart;
     const to = matchStart + match[0].length;

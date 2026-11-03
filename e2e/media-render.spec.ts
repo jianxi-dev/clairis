@@ -95,3 +95,15 @@ test("编辑态：图片显示出来，宽度注释不露成文本", async ({ pa
   expect(text).not.toContain("w=320");
   expect(text).not.toContain("<!--");
 });
+
+test("文件名带空格：视频仍渲染成播放器，不退化成正文", async ({ page }) => {
+  const name = "克里斯 - 每天悬挂100秒丨小改变 大收获 - 001.mp4";
+  await openPreview(page, `![${name}](<assets/${name}>)\n`, "mspace");
+  await expect(page.locator(".preview-content video")).toHaveCount(1);
+  const src = await page.locator(".preview-content video").getAttribute("src");
+  expect(src?.startsWith("media://")).toBe(true);
+  expect(src).toContain("%20");
+  // 退化的典型症状：整段 markdown 源码变成正文
+  const text = await page.locator(".preview-content").innerText();
+  expect(text).not.toContain("![");
+});

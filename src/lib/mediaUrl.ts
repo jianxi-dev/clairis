@@ -31,13 +31,25 @@ const IMAGE_EXT = new Set([
 /** 带协议、协议相对、锚点、data URL：都不是文档内相对路径。 */
 const EXTERNAL = /^(?:[a-z][a-z0-9+.-]*:|\/\/|#)/i;
 
+/**
+ * markdown 的目标里含空格/括号时用 `<...>` 包住（CommonMark 允许这样写，
+ * `marked` 也认）。解析路径前要先把这层壳拆掉。
+ */
+export function stripAngleWrappers(href: string): string {
+  const trimmed = href.trim();
+  if (trimmed.startsWith("<") && trimmed.endsWith(">")) {
+    return trimmed.slice(1, -1).trim();
+  }
+  return trimmed;
+}
+
 export function isExternalHref(href: string): boolean {
   return EXTERNAL.test(href.trim());
 }
 
 /** 按扩展名判媒体类型；认不出的一律当普通文件。 */
 export function mediaKindOf(path: string): MediaKind {
-  const clean = path.split(/[?#]/)[0] ?? path;
+  const clean = stripAngleWrappers(path).split(/[?#]/)[0] ?? path;
   const dot = clean.lastIndexOf(".");
   const ext = dot >= 0 ? clean.slice(dot + 1).toLowerCase() : "";
   if (IMAGE_EXT.has(ext)) return "image";
@@ -66,7 +78,7 @@ export function resolveRelativeToDoc(
   href: string,
   docPath: string,
 ): string | null {
-  const clean = decodeURI(href.trim());
+  const clean = decodeURI(stripAngleWrappers(href));
   if (clean === "") return null;
   if (clean.startsWith("/")) return clean;
 
