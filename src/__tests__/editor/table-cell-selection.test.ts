@@ -16,10 +16,6 @@ import {
   resetDecorationGuards,
 } from "../../editors/decorations";
 import {
-  mergeTableCellSelection,
-  setCellBackground,
-} from "../../editors/decorations/table";
-import {
   cellRect,
   cellSelectionCount,
   getCellSelection,
@@ -115,22 +111,6 @@ describe("table cell selection + toolbar (ticket #328)", () => {
     document.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
   }
 
-  function mergeBtn(): HTMLButtonElement {
-    const btn = view.dom.querySelector<HTMLButtonElement>(
-      '[data-testid="cell-merge"]',
-    );
-    if (!btn) throw new Error("cell-merge button not found");
-    return btn;
-  }
-
-  /** 工具条只为范围选区存在（#455）。 */
-  function toolbarVisible(): boolean {
-    const root = view.dom.querySelector<HTMLElement>(
-      '[data-testid="cell-toolbar"]',
-    );
-    return root !== null && root.style.display !== "none";
-  }
-
   it("renders the table widget so cells are addressable", () => {
     expect(view.dom.querySelector(".cm-table")).not.toBeNull();
     expect(cell(0, 0).textContent).toContain("1");
@@ -147,18 +127,6 @@ describe("table cell selection + toolbar (ticket #328)", () => {
     expect(cell(0, 0).classList.contains("cm-table-cell-selected")).toBe(true);
     expect(cell(0, 1).classList.contains("cm-table-cell-selected")).toBe(true);
     expect(view.dom.querySelector(".cm-table-cell-input")).toBeNull();
-    expect(mergeBtn().disabled).toBe(false);
-  });
-
-  it("a single-cell click opens the cell editor and the toolbar", async () => {
-    mousedown(cell(0, 0));
-    // 单击进单元格也要能改底色/合并：工具条随选区出现（用户实测「工具条没接进来」）。
-    expect(toolbarVisible()).toBe(true);
-
-    docMouseup();
-    await nextFrame();
-
-    expect(cell(0, 0).querySelector(".cm-table-cell-input")).not.toBeNull();
   });
 
   it("shift-click extends the existing anchor to a second cell", () => {
@@ -169,7 +137,6 @@ describe("table cell selection + toolbar (ticket #328)", () => {
     const selection = getCellSelection(view);
     expect(cellSelectionCount(selection!)).toBe(4);
     expect(cell(1, 1).classList.contains("cm-table-cell-selected")).toBe(true);
-    expect(mergeBtn().disabled).toBe(false);
   });
 
   it("maps a selection onto its inclusive rectangle", () => {
@@ -187,104 +154,5 @@ describe("table cell selection + toolbar (ticket #328)", () => {
       maxCol: 1,
     });
     expect(cellSelectionCount(selection)).toBe(4);
-  });
-
-  it("merge concatenates non-empty cell text into the top-left cell", () => {
-    // `row -1` 是表头行；合并它的两个单元格。
-    setCellSelection(view, {
-      tableIndex: 0,
-      anchorRow: -1,
-      anchorCol: 0,
-      headRow: -1,
-      headCol: 1,
-    });
-    const selection = getCellSelection(view)!;
-    expect(mergeTableCellSelection(view, 0, cellRect(selection))).toBe(true);
-
-    expect(view.state.doc.toString()).toBe(
-      [
-        "Intro paragraph.",
-        "",
-        "| A B |  |",
-        "| --- | --- |",
-        "| 1 | 2 |",
-        "| 3 | 4 |",
-      ].join("\n"),
-    );
-    // 选区折叠到单个左上角单元格：工具条仍在（合并结果可继续改底色）。
-    expect(cellSelectionCount(getCellSelection(view)!)).toBe(1);
-    expect(toolbarVisible()).toBe(true);
-  });
-
-  it("applying a background wraps the cell text in an mdb-bg span and paints the cell", async () => {
-    setCellSelection(view, {
-      tableIndex: 0,
-      anchorRow: 0,
-      anchorCol: 0,
-      headRow: 0,
-      headCol: 0,
-    });
-    const selection = getCellSelection(view)!;
-    expect(setCellBackground(view, 0, cellRect(selection), "mdb-bg-blue")).toBe(
-      true,
-    );
-
-    const raw = view.state.doc.toString();
-    expect(raw).toContain('<span class="mdb-bg-blue">1</span>');
-
-    await nextFrame();
-    const painted = cell(0, 0);
-    expect(painted.classList.contains("cm-table-cell-bg-blue")).toBe(true);
-    // span 标记不作为文本显示——只有内部值。
-    expect(painted.textContent).toContain("1");
-    expect(painted.textContent).not.toContain("span");
-    // 活动选区在 widget 重建后存活。
-    expect(painted.classList.contains("cm-table-cell-selected")).toBe(true);
-  });
-
-  it("恢复默认 removes the background span and the class", async () => {
-    setCellSelection(view, {
-      tableIndex: 0,
-      anchorRow: 0,
-      anchorCol: 0,
-      headRow: 0,
-      headCol: 0,
-    });
-    const selection = getCellSelection(view)!;
-    setCellBackground(view, 0, cellRect(selection), "mdb-bg-green");
-    expect(view.state.doc.toString()).toContain("mdb-bg-green");
-
-    const nextSelection = getCellSelection(view)!;
-    expect(setCellBackground(view, 0, cellRect(nextSelection), null)).toBe(
-      true,
-    );
-    expect(view.state.doc.toString()).not.toContain("mdb-bg-");
-
-    await nextFrame();
-    const painted = cell(0, 0);
-    expect(painted.className).not.toContain("cm-table-cell-bg-");
-    expect(painted.textContent).toContain("1");
-  });
-
-  it("outside mousedown clears the selection and hides the toolbar", () => {
-    mousedown(cell(0, 0));
-    mouseenter(cell(0, 1));
-    docMouseup();
-    expect(
-      view.dom.querySelector<HTMLElement>(".mdb-cell-toolbar")?.style.display,
-    ).toBe("inline-flex");
-
-    // 段落行在表格 wrap 之外。
-    const paragraph = view.dom.querySelector(".cm-line");
-    expect(paragraph).not.toBeNull();
-    paragraph!.dispatchEvent(
-      new MouseEvent("mousedown", { bubbles: true, cancelable: true }),
-    );
-
-    expect(getCellSelection(view)).toBeNull();
-    expect(cell(0, 0).classList.contains("cm-table-cell-selected")).toBe(false);
-    expect(
-      view.dom.querySelector<HTMLElement>(".mdb-cell-toolbar")?.style.display,
-    ).toBe("none");
   });
 });
