@@ -30,7 +30,7 @@ export async function exportCurrentDocHtml(
       title: input.title,
       css: `${tokensCss}\n${readerCss}`,
       diagramSvg: engine
-        ? (source) => engine.renderToString(source)
+        ? (source) => engine.renderToSvgOrNull(source)
         : undefined,
     });
     const { html, inlined, failed } = await inlineImages(
