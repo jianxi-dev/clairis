@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  calloutKeyOf,
+  changeCalloutType,
   computeBlockDelete,
   computeBlockDuplicate,
   indentBlock,
@@ -55,5 +57,24 @@ describe("缩进", () => {
 
   it("缩进后再减缩进回到原样", () => {
     expect(outdentBlock(indentBlock("a\nb"))).toBe("a\nb");
+  });
+});
+
+describe("高亮块类型", () => {
+  const CALLOUT = "> [!note] 标题\n> 正文一行\n";
+
+  it("识别当前类型", () => {
+    expect(calloutKeyOf(CALLOUT)).toBe("note");
+    expect(calloutKeyOf("普通段落")).toBeNull();
+  });
+
+  it("只改类型标记，正文逐字保留", () => {
+    expect(changeCalloutType(CALLOUT, "tip")).toBe(
+      "> [!tip] 标题\n> 正文一行\n",
+    );
+  });
+
+  it("非高亮块原样返回", () => {
+    expect(changeCalloutType("普通段落\n", "tip")).toBe("普通段落\n");
   });
 });

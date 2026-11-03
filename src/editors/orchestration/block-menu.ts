@@ -21,11 +21,14 @@ import {
   type BlockLike,
 } from "./block-convert";
 import {
+  calloutKeyOf,
+  changeCalloutType,
   computeBlockDelete,
   computeBlockDuplicate,
   indentBlock,
   outdentBlock,
 } from "./block-actions";
+import { CALLOUT_EDIT_TYPES } from "../callout-types";
 
 export const BLOCK_MENU_WIDTH = 264;
 export const BLOCK_MENU_ROW_HEIGHT = 36;
@@ -273,6 +276,85 @@ export function openBlockMenu(
     if (next === docText) return;
     view.dispatch({ changes: { from: 0, to: docText.length, insert: next } });
   };
+
+  // 类型（仅高亮块）：直接把 `[!note]` 换成 `[!tip]`，块内正文不动。
+  const blockText = view.state.doc.sliceString(block.from, block.to);
+  if (calloutKeyOf(blockText) !== null) {
+    const typeRow = document.createElement("button");
+    typeRow.type = "button";
+    typeRow.className = "cm-block-menu-item";
+    typeRow.dataset.testid = "block-menu-type";
+    typeRow.style.height = `${BLOCK_MENU_ROW_HEIGHT}px`;
+    typeRow.appendChild(renderIcon("CalloutOutlined"));
+    const typeLabel = document.createElement("span");
+    typeLabel.textContent = "类型";
+    typeRow.appendChild(typeLabel);
+    const typeChevron = document.createElement("span");
+    typeChevron.className = "cm-block-menu-chevron";
+    typeChevron.textContent = "›";
+    typeChevron.setAttribute("aria-hidden", "true");
+    typeRow.appendChild(typeChevron);
+
+    let typePanel: HTMLElement | null = null;
+    const closeTypePanel = (): void => {
+      typePanel?.remove();
+      typePanel = null;
+    };
+    const openTypePanel = (): void => {
+      closeTypePanel();
+      const current = calloutKeyOf(
+        view.state.doc.sliceString(block.from, block.to),
+      );
+      const panelEl = document.createElement("div");
+      panelEl.className = "cm-block-menu-flyout";
+      panelEl.dataset.testid = "block-menu-type-panel";
+      // E-14：贴在「类型」行右侧，缝隙 ≤ 8px，同一行每次打开位置一致。
+      const rowRect = typeRow.getBoundingClientRect();
+      panelEl.style.left = `${rowRect.right - panel.getBoundingClientRect().left + 4}px`;
+      panelEl.style.top = `${rowRect.top - panel.getBoundingClientRect().top}px`;
+      for (const type of CALLOUT_EDIT_TYPES) {
+        const option = document.createElement("button");
+        option.type = "button";
+        option.className = "cm-block-menu-flyout-item";
+        option.dataset.testid = "block-menu-type-option";
+        option.dataset.typeKey = type.key;
+        option.dataset.active = String(type.key === current);
+        const emoji = document.createElement("span");
+        emoji.textContent = type.emoji;
+        emoji.setAttribute("aria-hidden", "true");
+        option.appendChild(emoji);
+        const text = document.createElement("span");
+        text.textContent = type.label;
+        option.appendChild(text);
+        option.addEventListener("pointerdown", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          const rest = view.state.doc.sliceString(block.from, block.to);
+          const next = changeCalloutType(rest, type.key);
+          closeBlockMenu(view);
+          if (next === rest) return;
+          view.dispatch({
+            changes: { from: block.from, to: block.to, insert: next },
+          });
+        });
+        panelEl.appendChild(option);
+      }
+      panel.appendChild(panelEl);
+      panelEl.addEventListener("pointerenter", () => cancelPendingClose(view));
+      typePanel = panelEl;
+    };
+
+    typeRow.addEventListener("pointerenter", () => {
+      cancelPendingClose(view);
+      openTypePanel();
+    });
+    typeRow.addEventListener("pointerdown", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      openTypePanel();
+    });
+    panel.appendChild(typeRow);
+  }
 
   for (const [label, icon, action] of ACTION_ROWS) {
     const row = document.createElement("button");
