@@ -85,6 +85,23 @@ interface TableBlock {
 
 // --- 纯解析助手 --------------------------------------------------------------
 
+/**
+ * 把「空 / 有内容」写进单元格手柄：图标、可访问名、data-cell-empty。
+ *
+ * 只在创建时算一次是不够的：用户在空单元格里打完字，手柄还停在「+」上
+ * （#108）。updateDOM 每次刷新单元格都会调这里，按当前内容重算。
+ * 内容态没变就直接返回，避免无谓重建 SVG。
+ */
+function applyCellHandleState(handle: HTMLElement, text: string): void {
+  const empty = text.trim() === "";
+  const iconName = empty ? ADD_ICON_NAME : "DataSheetOutlined";
+  handle.dataset.cellEmpty = String(empty);
+  handle.title = empty ? "插入内容" : "转换块内容";
+  if (handle.dataset.icon === iconName) return;
+  handle.dataset.icon = iconName;
+  handle.replaceChildren(renderIcon(iconName));
+}
+
 function splitCells(line: string): string[] {
   const parts = line.split("|");
   return parts.slice(1, parts.length - 1).map((cell) => cell.trim());
@@ -1047,9 +1064,7 @@ class TableWidget extends WidgetType {
     // #452：有内容的单元格是表格单元格，所以用 gutter 把手在任何表格行上显示的
     // 同一个表格图标（DataSheetOutlined）。这里用引用图标会读成「转换/引用」，
     // 破坏共享词汇。
-    const iconName = empty ? ADD_ICON_NAME : "DataSheetOutlined";
-    handle.dataset.icon = iconName;
-    handle.replaceChildren(renderIcon(iconName));
+    applyCellHandleState(handle, text);
     el.appendChild(handle);
 
     if (view) this.wireCell(view, el, handle, row, col);
@@ -1598,6 +1613,11 @@ class TableWidget extends WidgetType {
           body.dataset.rawText = displayText;
           body.innerHTML = renderCellText(displayText);
         }
+        // 手柄图标跟着内容走：空 <-> 有内容 两态都要立刻切（#108）。
+        const cellHandle = cellEl?.querySelector<HTMLElement>(
+          ".cm-table-cell-handle",
+        );
+        if (cellHandle) applyCellHandleState(cellHandle, displayText);
         if (background) {
           cellEl.dataset.cellBg = background.colorClass;
           cellEl.classList.add(cellBackgroundClass(background.colorClass));
