@@ -54,3 +54,21 @@ export function outdentBlock(blockText: string): string {
     .map((line) => line.replace(/^ {1,2}/, ""))
     .join("\n");
 }
+
+/**
+ * 改高亮块的类型标记：把首行的 `[!旧]` 换成 `[!新]`。
+ *
+ * 只动那一处标记，块内正文逐字保留；找不到标记时原样返回（调用方据此
+ * 判断「这个块不是高亮块」，而不是先猜）。
+ */
+export function changeCalloutType(blockText: string, nextKey: string): string {
+  const match = /^(>[ \t]*)\[![^\]\r\n]*\]/m.exec(blockText);
+  if (!match) return blockText;
+  return blockText.replace(/\[![^\]\r\n]*\]/, `[!${nextKey}]`);
+}
+
+/** 块首行是不是高亮块标记；块菜单据此决定要不要显示「类型」。 */
+export function calloutKeyOf(blockText: string): string | null {
+  const match = /\[!([^\]\r\n]+)\]/.exec(blockText);
+  return match ? match[1].trim().toLowerCase() : null;
+}

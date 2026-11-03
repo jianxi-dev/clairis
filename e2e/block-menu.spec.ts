@@ -243,3 +243,32 @@ test("增加缩进给块内每行加两个空格", async ({ page }) => {
     .poll(() => storeContent(page))
     .toBe("# 标题\n\n  第一段正文\n\n第二段正文\n");
 });
+
+test("高亮块菜单出现「类型」，切换后源码只改标记", async ({ page }) => {
+  await page.evaluate(() => {
+    const win = window as unknown as Record<string, any>;
+    win.__biaoyue_openFile__(
+      "/tmp/block-callout.md",
+      "> [!note] 标题\n> 正文一行\n",
+      "block-callout.md",
+    );
+    win.__biaoyue_store__.getState().setEditorMode("edit");
+  });
+  await page.locator(".cm-content").waitFor({ timeout: 5000 });
+  await hoverHandle(page, 0);
+  const typeRow = page.locator('[data-testid="block-menu-type"]');
+  await expect(typeRow).toBeVisible();
+  await typeRow.hover();
+  await page.locator('[data-testid="block-menu-type-panel"]').waitFor({
+    timeout: 3000,
+  });
+  await page.locator('[data-type-key="tip"]').click();
+  await expect
+    .poll(() => storeContent(page))
+    .toBe("> [!tip] 标题\n> 正文一行\n");
+});
+
+test("普通块没有「类型」入口", async ({ page }) => {
+  await hoverHandle(page, 2);
+  await expect(page.locator('[data-testid="block-menu-type"]')).toHaveCount(0);
+});
