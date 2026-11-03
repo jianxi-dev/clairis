@@ -165,6 +165,9 @@ export default function OutlineMenu({
 
   const highlighted = activeIndex >= 0 ? activeIndex : currentIndex;
 
+  // 没有大纲就没有入口：一个点开是「无标题」的按钮只是噪声。
+  if (headings.length === 0) return null;
+
   return (
     <div
       ref={wrapRef}

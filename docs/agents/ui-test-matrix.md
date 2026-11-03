@@ -64,6 +64,7 @@
 
 | 状态 | 期望 | 覆盖 | 票 |
 |---|---|---|---|
+| 无标题文档 | 不渲染大纲入口 | ✅ `ui-fidelity.spec.ts` | — |
 | 悬停按钮 | 展开 | ✅ `ui-fidelity.spec.ts` | — |
 | 穿过按钮→面板空隙 | 保持展开 | ✅ `ui-fidelity.spec.ts` | — |
 | 点击钉住 / Esc / 外部点击 | 钉住 / 收起 / 收起 | ✅ `ui-fidelity.spec.ts` | — |

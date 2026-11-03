@@ -1879,20 +1879,20 @@ body {
 .cm-block-menu {
   position: absolute;
   z-index: 40;
-  padding: 5px 0;
+  padding: 6px 0;
   overflow-y: auto;
   border: 1px solid var(--app-border);
   border-radius: 8px;
   background: var(--app-surface);
   box-shadow: 0 8px 24px rgba(31, 26, 20, 0.12);
-  font-size: 13px;
+  font-size: 14px;
   color: var(--app-text);
   user-select: none;
 }
 
 .cm-block-menu-group {
-  padding: 4px 12px 2px;
-  font-size: 11px;
+  padding: 4px 13px 3px;
+  font-size: 12px;
   color: var(--app-text-3);
 }
 
@@ -1915,8 +1915,8 @@ body {
 }
 
 .cm-block-menu-item svg {
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   flex: none;
 }
 
@@ -1933,9 +1933,9 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  height: 56px;
-  padding: 4px 2px;
+  gap: 5px;
+  height: 62px;
+  padding: 5px 2px;
   border: 0;
   border-radius: 4px;
   background: transparent;
@@ -1955,7 +1955,7 @@ body {
 }
 
 .cm-block-menu-cell-label {
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1;
   white-space: nowrap;
 }

@@ -19,8 +19,8 @@ import {
   type BlockLike,
 } from "./block-convert";
 
-export const BLOCK_MENU_WIDTH = 236;
-export const BLOCK_MENU_ROW_HEIGHT = 32;
+export const BLOCK_MENU_WIDTH = 264;
+export const BLOCK_MENU_ROW_HEIGHT = 36;
 
 /** 菜单 id 前缀：Esc / 外部点击用它识别块菜单层。 */
 export const BLOCK_MENU_ID_PREFIX = "block:";
