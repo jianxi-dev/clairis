@@ -49,6 +49,61 @@ test.describe("块手柄几何", () => {
   });
 });
 
+test.describe("块型图标（E-7：块型图标 + 拖拽把手）", () => {
+  const cases: ReadonlyArray<{ name: string; doc: string; icon: string }> = [
+    { name: "H2 标题", doc: "## 标题\n", icon: "H2Outlined" },
+    { name: "段落", doc: "一段正文\n", icon: "FormatParagraphOutlined" },
+    { name: "引用", doc: "> 引用一行\n", icon: "ReferenceOutlined" },
+    { name: "无序列表", doc: "- 一项\n", icon: "DisorderListOutlined" },
+    { name: "有序列表", doc: "1. 一项\n", icon: "OrderListOutlined" },
+    { name: "任务", doc: "- [ ] 一项\n", icon: "TodoOutlined" },
+    {
+      name: "代码块",
+      doc: "```js\nconst a = 1;\n```\n",
+      icon: "CodeblockOutlined",
+    },
+  ];
+
+  test("转换块型后图标立即跟随（不残留上一块）", async ({ page }) => {
+    await openMarkdownInEdit(page, "一段正文\n", "fidelity-icon-refresh");
+    await page.locator(".cm-line").first().hover();
+    const handle = page.locator(
+      '[data-testid="block-handle"].cm-block-handle-visible',
+    );
+    await expect(handle).toHaveCount(1, { timeout: 3000 });
+    await handle.hover();
+    await page
+      .locator('[data-testid="block-menu-cell"][data-target="h1"]')
+      .click();
+    await page.waitForTimeout(150);
+    await page.mouse.move(900, 500);
+    await page.locator(".cm-line").first().hover();
+    const refreshed = page.locator(
+      '[data-testid="block-handle"].cm-block-handle-visible',
+    );
+    await expect(refreshed).toHaveCount(1, { timeout: 3000 });
+    await expect(
+      refreshed.locator(".cm-block-handle-icon svg"),
+    ).toHaveAttribute("data-icon", "H1Outlined");
+  });
+
+  for (const item of cases) {
+    test(`${item.name} 的手柄是 ${item.icon}`, async ({ page }) => {
+      await openMarkdownInEdit(page, item.doc, `fidelity-icon-${item.icon}`);
+      await page.locator(".cm-line").first().hover();
+      const handle = page.locator(
+        '[data-testid="block-handle"].cm-block-handle-visible',
+      );
+      await expect(handle).toHaveCount(1, { timeout: 3000 });
+      // 药丸有两段：左段块型图标、右段拖拽把手。只看左段。
+      await expect(handle.locator(".cm-block-handle-icon svg")).toHaveAttribute(
+        "data-icon",
+        item.icon,
+      );
+    });
+  }
+});
+
 test.describe("块菜单几何与图标", () => {
   test.beforeEach(async ({ page }) => {
     await openMarkdownInEdit(page, DOC, "fidelity-menu");
