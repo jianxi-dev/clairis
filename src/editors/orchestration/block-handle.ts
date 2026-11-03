@@ -372,16 +372,21 @@ class BlockHandlePlugin {
 
     // 滑入即显示（D2 规则 1）＋意图延迟（对齐 md-bundle 的 120ms 缓冲）：
     // 指针停住才开菜单，擦过手柄不再把 236px 面板糊到正文上。
-    el.addEventListener("pointerenter", () => {
-      if (entry.dragging || !entry.gate.isOpen()) return;
-      if (entry.menuTimer !== null) window.clearTimeout(entry.menuTimer);
-      entry.menuTimer = window.setTimeout(() => {
-        entry.menuTimer = null;
-        if (entry.dragging) return;
-        if (isBlockMenuOpen(this.view)) return;
-        openBlockMenu(this.view, block, entry.anchorPos ?? block.from, el);
-      }, MENU_INTENT_DELAY_MS);
-    });
+    //
+    // 只有块手柄有转换菜单。空行「+」是插入入口，悬停弹转换菜单是错的
+    // （#105）——它只在按压时打开插入菜单（见 onAddPointerDown）。
+    if (!empty) {
+      el.addEventListener("pointerenter", () => {
+        if (entry.dragging || !entry.gate.isOpen()) return;
+        if (entry.menuTimer !== null) window.clearTimeout(entry.menuTimer);
+        entry.menuTimer = window.setTimeout(() => {
+          entry.menuTimer = null;
+          if (entry.dragging) return;
+          if (isBlockMenuOpen(this.view)) return;
+          openBlockMenu(this.view, block, entry.anchorPos ?? block.from, el);
+        }, MENU_INTENT_DELAY_MS);
+      });
+    }
     el.addEventListener("pointerleave", () => {
       if (entry.menuTimer !== null) {
         window.clearTimeout(entry.menuTimer);

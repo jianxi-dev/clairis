@@ -104,6 +104,22 @@ test.describe("块型图标（E-7：块型图标 + 拖拽把手）", () => {
   }
 });
 
+test.describe("空行「+」手柄", () => {
+  test("悬停只召唤它自己，不弹转换菜单；点击才开插入菜单", async ({ page }) => {
+    await openMarkdownInEdit(page, "第一段\n\n\n第二段\n", "fidelity-plus");
+    const plus = page.locator('[data-empty="true"]').first();
+    await expect(plus).toHaveCount(1);
+    await plus.hover();
+    // 给意图延迟留足时间：如果监听还挂在空行手柄上，这里就会弹出转换菜单。
+    await page.waitForTimeout(400);
+    await expect(page.locator('[data-testid="block-menu"]')).toHaveCount(0);
+    await plus.click();
+    await expect(page.locator(".mdb-slash-menu")).toBeVisible({
+      timeout: 3000,
+    });
+  });
+});
+
 test.describe("块菜单几何与图标", () => {
   test.beforeEach(async ({ page }) => {
     await openMarkdownInEdit(page, DOC, "fidelity-menu");
