@@ -75,7 +75,7 @@
 | 状态 | 期望 | 覆盖 | 票 |
 |---|---|---|---|
 | 列表回车 | 续写标记，有序自增 | ✅ `smart-input.spec.ts` | — |
-| 任务项回车 | 续写 `- [ ] `，`[x]` 新项不继承勾选 | ⛔ 变普通列表 | #106 |
+| 任务项回车 | 续写 `- [ ] `，`[x]` 新项不继承勾选 | ✅ `smartInput.test.ts` / `smart-input.spec.ts` | — |
 | 空列表项回车 | 退出列表 | ✅ `smart-input.spec.ts` | — |
 | 全角 `，`/`／` | 落成半角；代码块与行内代码内不转；单事务 | ✅ `smartInput.test.ts` / `smart-input.spec.ts` | — |
 | 中文 composition | 不丢字、不提前提交 | ⛔ 未覆盖 | #112 / #113 |
