@@ -1,5 +1,6 @@
 import { marked } from "marked";
 import DOMPurify from "dompurify";
+import { mediaKindOf } from "../lib/mediaUrl";
 import { highlightCodeBlock } from "./highlight";
 import {
   mathBlockExtension,
@@ -31,6 +32,11 @@ const CLOSE_TAG_RE = (tag: string) =>
  * .preview-content 的 `contain: layout paint style` 兜住（见 reader.css）。
  */
 const SANITIZE_CONFIG = {
+  // DOMPurify 默认只放行 http(s)/mailto/… 等协议，`asset:` 与 `media:` 会被
+  // 当成危险 URL 把整个 src 属性剥掉——元素还在、图是空的，表现为「插入后
+  // 不显示」。这两个协议是本应用自己的本地读取通道，必须显式放行。
+  ALLOWED_URI_REGEXP:
+    /^(?:(?:(?:f|ht)tps?|mailto|tel|callto|sms|cid|xmpp|matrix|asset|media):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i,
   ALLOWED_TAGS: [
     // markdown 基本集
     "p",
@@ -53,6 +59,7 @@ const SANITIZE_CONFIG = {
     "th",
     "td",
     "img",
+    "video",
     "a",
     "em",
     "strong",
@@ -115,7 +122,7 @@ const SANITIZE_CONFIG = {
     "data-callout",
   ],
   ALLOW_DATA_ATTR: false,
-  ADD_ATTR: ["target"],
+  ADD_ATTR: ["target", "controls", "preload", "playsinline"],
 };
 
 function escapeHtml(s: string): string {
@@ -191,7 +198,17 @@ marked.use({
       const caption = title
         ? `<figcaption>${escapeHtml(title)}</figcaption>`
         : "";
-      return `<figure class="wide"><img src="${escapeHtml(href)}" alt="${alt}" />${caption}</figure>`;
+      // 文档内相对引用要落到文档目录并换成 WebView 能读的协议；
+      // 解析不出来（浏览器 / 未保存文档）就保留原 href，至少不伪造一个路径。
+      const resolved = activeResolveMedia?.(href) ?? href;
+      const src = escapeHtml(resolved);
+      const kind = mediaKindOf(href);
+      if (kind === "video" || kind === "audio") {
+        // `![](clip.mp4)` 在预览里是播放器，不是一张裂图。
+        const tag = kind === "video" ? "video" : "audio";
+        return `<figure class="wide"><${tag} controls preload="metadata" src="${src}"></${tag}>${caption}</figure>`;
+      }
+      return `<figure class="wide"><img src="${src}" alt="${alt}" />${caption}</figure>`;
     },
     table(header: string, body: string) {
       return `<div class="table-wrap wide"><table>\n<thead>\n${header}</thead>\n<tbody>\n${body}</tbody>\n</table></div>`;
@@ -221,8 +238,27 @@ function registerCheckboxGuard(): void {
 // \uFEFF? 容忍 BOM 前缀（Obsidian 文件常带）。
 const FRONTMATTER_RE = /^\uFEFF?---\s*\n[\s\S]*?\n---\s*(?:\n|$)/;
 
-export function renderMarkdown(content: string): string {
+/**
+ * 当前这次渲染使用的媒体解析器。
+ *
+ * marked 的 renderer 在模块作用域注册，没法按调用传参；沿用 `resetMathStore`
+ * 的做法，渲染前设一次、渲染后清掉。并发渲染（多个预览面板）会互相覆盖——
+ * 两个面板的文档目录不同，但同一时刻只有一个 `renderMarkdown` 在跑（同步）。
+ */
+let activeResolveMedia: ((href: string) => string | null) | null = null;
+
+export interface RenderMarkdownOptions {
+  /** 把文档内相对引用解析成可加载 URL；返回 null 走原始 href。 */
+  resolveMedia?: (href: string) => string | null;
+}
+
+export function renderMarkdown(
+  content: string,
+  options: RenderMarkdownOptions = {},
+): string {
   if (!content) return "";
+
+  activeResolveMedia = options.resolveMedia ?? null;
 
   registerCheckboxGuard();
   resetMathStore();
@@ -230,7 +266,9 @@ export function renderMarkdown(content: string): string {
   const body = content.replace(FRONTMATTER_RE, "");
   const raw = marked.parse(body, { async: false }) as string;
   const clean = DOMPurify.sanitize(raw, SANITIZE_CONFIG);
-  return postProcess(clean);
+  const result = postProcess(clean);
+  activeResolveMedia = null;
+  return result;
 }
 
 /** sanitize 之后的一趟 DOM 处理：Callout → 公式回填 → 链接 → 中西文间距 */

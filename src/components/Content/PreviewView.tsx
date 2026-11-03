@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { renderMarkdown, renderMermaid, takeDarkVars } from "../../renderers";
+import { resolveDocMediaHref } from "../../lib/mediaUrl";
 import {
   isCapabilityEnabled,
   subscribeCapability,
@@ -160,9 +161,12 @@ export default function PreviewView({
       case "html":
         return null; // HtmlPreview handles rendering
       default:
-        return renderMarkdown(content);
+        // 相对引用按当前文档目录解析：`assets/pic.png` 才能在预览里显示。
+        return renderMarkdown(content, {
+          resolveMedia: (href) => resolveDocMediaHref(href, filePath),
+        });
     }
-  }, [content, fileKind, capabilityEpoch]);
+  }, [content, fileKind, capabilityEpoch, filePath]);
 
   // 图片/视频/音频/HTML/PDF 保持各自渲染（HTML 用整体缩放，避免重排偏移）
   if (fileKind === "html") {

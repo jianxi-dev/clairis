@@ -736,18 +736,23 @@ describe("media pick commands", () => {
    * 纯微任务刷新永远不会推进帧，afterEach 的 destroy 会在待定 rAF 触发前取消它。
    */
   function deferredPicker(): {
-    pickMediaFile: () => Promise<File | null>;
-    resolve: (file: File | null) => void;
+    pickMediaFile: () => Promise<{ name: string; href: string } | null>;
+    resolve: (picked: { name: string; href: string } | null) => void;
   } {
     // 用持有者而不是捕获局部变量：executor 在 `deferredPicker` 返回后才重新
     // 绑定 `holder.resolve`，返回的包装必须读最新绑定，否则会调用初始空函数。
-    const holder: { resolve: (file: File | null) => void } = {
+    const holder: {
+      resolve: (picked: { name: string; href: string } | null) => void;
+    } = {
       resolve: () => {},
     };
     const pickMediaFile = vi.fn(
-      () => new Promise<File | null>((res) => (holder.resolve = res)),
+      () =>
+        new Promise<{ name: string; href: string } | null>(
+          (res) => (holder.resolve = res),
+        ),
     );
-    return { pickMediaFile, resolve: (file) => holder.resolve(file) };
+    return { pickMediaFile, resolve: (picked) => holder.resolve(picked) };
   }
 
   /** 只排空微任务——绝不推进定时器或 requestAnimationFrame。 */
@@ -766,7 +771,7 @@ describe("media pick commands", () => {
   });
 
   it("applying image-ref with an injected picker inserts an editable reference", async () => {
-    const file = new File(["x"], "pic.png", { type: "image/png" });
+    const picked = { name: "pic.png", href: "assets/pic.png" };
     const { pickMediaFile, resolve } = deferredPicker();
     registerPickMediaFile(view, pickMediaFile);
 
@@ -775,15 +780,15 @@ describe("media pick commands", () => {
     slashMenuApply(view);
 
     expect(pickMediaFile).toHaveBeenCalledTimes(1);
-    resolve(file);
+    resolve(picked);
     await flushMicrotasks();
-    expect(view.state.doc.toString()).toBe("![pic.png](pic.png)");
+    expect(view.state.doc.toString()).toBe("![pic.png](assets/pic.png)");
     expect(view.state.selection.main.head).toBe(view.state.doc.length);
     expect(view.dom.querySelector(".mdb-slash-menu")).toBeNull();
   });
 
   it("applying media-ref inserts its picked file reference", async () => {
-    const file = new File(["v"], "clip.mp4", { type: "video/mp4" });
+    const picked = { name: "clip.mp4", href: "assets/clip.mp4" };
     const { pickMediaFile, resolve } = deferredPicker();
     registerPickMediaFile(view, pickMediaFile);
 
@@ -792,9 +797,9 @@ describe("media pick commands", () => {
     slashMenuApply(view);
 
     expect(pickMediaFile).toHaveBeenCalledTimes(1);
-    resolve(file);
+    resolve(picked);
     await flushMicrotasks();
-    expect(view.state.doc.toString()).toBe("![clip.mp4](clip.mp4)");
+    expect(view.state.doc.toString()).toBe("![clip.mp4](assets/clip.mp4)");
   });
 
   it("applying image-ref without an injected picker removes the trigger and inserts nothing", () => {
@@ -853,7 +858,7 @@ describe("media pick commands", () => {
   });
 
   it("an anchored (table cell) apply inserts at the anchor even when the caret precedes it", async () => {
-    const file = new File(["x"], "pic.png", { type: "image/png" });
+    const picked = { name: "pic.png", href: "assets/pic.png" };
     const { pickMediaFile, resolve } = deferredPicker();
     registerPickMediaFile(view, pickMediaFile);
 
@@ -865,13 +870,13 @@ describe("media pick commands", () => {
     selectRootRow(5);
     slashMenuApply(view);
 
-    resolve(file);
+    resolve(picked);
     await flushMicrotasks();
-    expect(view.state.doc.toString()).toBe("ab![pic.png](pic.png)cdef");
+    expect(view.state.doc.toString()).toBe("ab![pic.png](assets/pic.png)cdef");
   });
 
   it("a below (block handle) apply inserts the reference on a new line at the block end", async () => {
-    const file = new File(["x"], "pic.png", { type: "image/png" });
+    const picked = { name: "pic.png", href: "assets/pic.png" };
     const { pickMediaFile, resolve } = deferredPicker();
     registerPickMediaFile(view, pickMediaFile);
 
@@ -880,9 +885,9 @@ describe("media pick commands", () => {
     selectRootRow(5);
     slashMenuApply(view);
 
-    resolve(file);
+    resolve(picked);
     await flushMicrotasks();
-    expect(view.state.doc.toString()).toBe("abc\n![pic.png](pic.png)");
+    expect(view.state.doc.toString()).toBe("abc\n![pic.png](assets/pic.png)");
   });
 });
 

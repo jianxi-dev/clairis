@@ -393,3 +393,158 @@ pub async fn read_file_base64(path: String) -> Result<String, AppError> {
     use base64::Engine as _;
     Ok(base64::engine::general_purpose::STANDARD.encode(&bytes))
 }
+
+/// `import_media_file` 的结果：写入后的绝对路径与相对文档目录的引用名。
+#[derive(Serialize)]
+pub struct ImportedMedia {
+    pub path: String,
+    pub name: String,
+}
+
+/// 把一张媒体文件复制到文档同级的 `assets/` 下，返回可写进 markdown 的相对名。
+///
+/// 为什么复制而不是引用原路径：markdown 里写绝对路径在这台机器能看、换台机器
+/// 就裂图；写 `assets/名字` 跟着文档走，doc 一起搬也不丢。
+///
+/// 重名不覆盖：同名但大小不同会退到 `名字-1.ext`、`名字-2.ext`；大小相同的
+/// 直接复用已有文件，重复插入同一张图不会堆出一串副本。
+fn copy_into_assets(doc_path: &str, src_path: &str) -> Result<ImportedMedia, AppError> {
+    let src = PathBuf::from(src_path);
+    let meta = fs::metadata(&src).map_err(|e| AppError::Io {
+        context: "stat media source".into(),
+        source: e,
+    })?;
+    if !meta.is_file() {
+        return Err(AppError::Io {
+            context: "media source is not a file".into(),
+            source: std::io::Error::new(std::io::ErrorKind::InvalidInput, "not a file"),
+        });
+    }
+
+    let doc_dir = Path::new(doc_path)
+        .parent()
+        .ok_or_else(|| AppError::Io {
+            context: "document has no parent directory".into(),
+            source: std::io::Error::new(std::io::ErrorKind::InvalidInput, "no parent"),
+        })?
+        .to_path_buf();
+    let assets = doc_dir.join("assets");
+    fs::create_dir_all(&assets).map_err(|e| AppError::Io {
+        context: "create assets dir".into(),
+        source: e,
+    })?;
+
+    let stem = src
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("asset")
+        .to_string();
+    let ext = src
+        .extension()
+        .and_then(|s| s.to_str())
+        .map(|s| format!(".{s}"))
+        .unwrap_or_default();
+
+    for attempt in 0..1000u32 {
+        let candidate = if attempt == 0 {
+            format!("{stem}{ext}")
+        } else {
+            format!("{stem}-{attempt}{ext}")
+        };
+        let dest = assets.join(&candidate);
+        if dest.exists() {
+            let existing = fs::metadata(&dest).map(|m| m.len()).unwrap_or(u64::MAX);
+            if existing == meta.len() {
+                return Ok(ImportedMedia {
+                    path: dest.to_string_lossy().to_string(),
+                    name: format!("assets/{candidate}"),
+                });
+            }
+            continue;
+        }
+        fs::copy(&src, &dest).map_err(|e| AppError::Io {
+            context: "copy media into assets".into(),
+            source: e,
+        })?;
+        return Ok(ImportedMedia {
+            path: dest.to_string_lossy().to_string(),
+            name: format!("assets/{candidate}"),
+        });
+    }
+    Err(AppError::Io {
+        context: "too many files with the same name".into(),
+        source: std::io::Error::new(std::io::ErrorKind::AlreadyExists, "duplicate"),
+    })
+}
+
+#[tauri::command]
+pub async fn import_media_file(
+    doc_path: String,
+    src_path: String,
+) -> Result<ImportedMedia, AppError> {
+    tokio::task::spawn_blocking(move || copy_into_assets(&doc_path, &src_path))
+        .await
+        .map_err(|e| AppError::Io {
+            context: "import media task".into(),
+            source: std::io::Error::other(e.to_string()),
+        })?
+}
+
+#[cfg(test)]
+mod import_media_tests {
+    use super::copy_into_assets;
+    use std::fs;
+
+    fn temp_dir(tag: &str) -> std::path::PathBuf {
+        let dir = std::env::temp_dir().join(format!("biaoyue-media-{tag}-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    #[test]
+    fn copies_next_to_document_and_returns_relative_name() {
+        let dir = temp_dir("copy");
+        let doc = dir.join("note.md");
+        fs::write(&doc, "# t").unwrap();
+        let src = dir.join("pic.png");
+        fs::write(&src, b"PNG").unwrap();
+
+        let got = copy_into_assets(doc.to_str().unwrap(), src.to_str().unwrap()).unwrap();
+        assert_eq!(got.name, "assets/pic.png");
+        assert_eq!(fs::read(dir.join("assets/pic.png")).unwrap(), b"PNG");
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn same_content_is_reused_and_different_content_gets_a_suffix() {
+        let dir = temp_dir("dedupe");
+        let doc = dir.join("note.md");
+        fs::write(&doc, "# t").unwrap();
+        let src = dir.join("pic.png");
+        fs::write(&src, b"AAA").unwrap();
+
+        assert_eq!(
+            copy_into_assets(doc.to_str().unwrap(), src.to_str().unwrap())
+                .unwrap()
+                .name,
+            "assets/pic.png"
+        );
+        // 同样大小：复用，不产生副本
+        assert_eq!(
+            copy_into_assets(doc.to_str().unwrap(), src.to_str().unwrap())
+                .unwrap()
+                .name,
+            "assets/pic.png"
+        );
+        // 同名不同大小：退位
+        fs::write(&src, b"BBBB").unwrap();
+        assert_eq!(
+            copy_into_assets(doc.to_str().unwrap(), src.to_str().unwrap())
+                .unwrap()
+                .name,
+            "assets/pic-1.png"
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
+}

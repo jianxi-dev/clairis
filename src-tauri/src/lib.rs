@@ -14,8 +14,8 @@ use commands::config_cmd::{
 };
 use commands::directory::{flatten_files, get_file_info, list_media_in_dir, read_directory};
 use commands::file::{
-    open_file, open_file_direct, pick_folder, read_file_base64, save_as_file, save_binary_as_file,
-    save_file,
+    import_media_file, open_file, open_file_direct, pick_folder, read_file_base64, save_as_file,
+    save_binary_as_file, save_file,
 };
 use commands::translate::{stop_translation, translate_text};
 
@@ -196,6 +196,7 @@ pub fn run() {
             save_file,
             save_as_file,
             save_binary_as_file,
+            import_media_file,
             translate_text,
             stop_translation,
             read_directory,
