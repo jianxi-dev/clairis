@@ -10,7 +10,10 @@ on:
 
 jobs:
   verify:
-    runs-on: macos-latest
+    # 这一步只跑 tsc / vitest / CSS manifest，没有任何 macOS 专属动作；
+    # 放在 macos-latest 上既排队又烧额度（2026-11-03 连续四次拿不到 runner，
+    # job 根本没启动就被取消）。cargo 尚未纳入 CI，所以 Rust 工具链也一并去掉。
+    runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
@@ -21,10 +24,8 @@ jobs:
           node-version: 24
           cache: "npm"
 
-      - name: Setup Rust
-        uses: actions-rust-lang/setup-rust-toolchain@v1
-        with:
-          toolchain: stable
+      # cargo check 尚未纳入 CI。要加时单独开一个 job，别和 web 检查抢同一个
+      # runner 的墙钟时间。
 
       - name: Install dependencies
         run: npm ci
