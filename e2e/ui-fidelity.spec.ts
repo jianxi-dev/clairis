@@ -49,6 +49,40 @@ test.describe("块手柄几何", () => {
   });
 });
 
+test.describe("单元格手柄随内容变化（#108）", () => {
+  const CELL = 'td[data-row="0"][data-col="1"]';
+
+  async function handleIcon(page: import("@playwright/test").Page) {
+    return page
+      .locator(`${CELL} .cm-table-cell-handle`)
+      .evaluate((el) => (el as HTMLElement).dataset.icon ?? null);
+  }
+
+  test("空 → 有内容：图标从 + 变成转换块", async ({ page }) => {
+    await openMarkdownInEdit(
+      page,
+      "| A | B |\n| --- | --- |\n| a1 |  |\n",
+      "fidelity-cell-icon",
+    );
+    await expect.poll(() => handleIcon(page)).toBe("AddOutlined");
+
+    await page.locator(CELL).click();
+    const input = page.locator('[data-testid="cm-table-cell-input"]');
+    await input.click();
+    await page.keyboard.type("新内容");
+    await page.keyboard.press("Enter");
+
+    await expect.poll(() => handleIcon(page)).toBe("DataSheetOutlined");
+    await expect
+      .poll(() =>
+        page
+          .locator(`${CELL} .cm-table-cell-handle`)
+          .evaluate((el) => (el as HTMLElement).dataset.cellEmpty),
+      )
+      .toBe("false");
+  });
+});
+
 test.describe("块型图标（E-7：块型图标 + 拖拽把手）", () => {
   const cases: ReadonlyArray<{ name: string; doc: string; icon: string }> = [
     { name: "H2 标题", doc: "## 标题\n", icon: "H2Outlined" },
