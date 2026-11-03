@@ -1,0 +1,83 @@
+name: Pele 上游巡检
+
+# 每周一 03:17 UTC 巡检 pele 上游版本，也可手动触发。
+# 与 ci.yml 并存：本 workflow 不随 push / PR 运行，只在计划或手动时执行。
+on:
+  schedule:
+    - cron: "17 3 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: 运行上游巡检脚本
+        id: upstream
+        run: |
+          set +e
+          output="$(node scripts/check-pele-upstream.mjs 2>&1)"
+          code=$?
+          set -e
+          printf '%s\n' "$output"
+          {
+            echo "exit_code=$code"
+            echo "local_version=$(printf '%s\n' "$output" | sed -n 's/^本地 pele 版本：\([^（]*\).*/\1/p')"
+            echo "latest_version=$(printf '%s\n' "$output" | sed -n 's/^上游 pele 版本：\([^ ]*\).*/\1/p')"
+          } >> "$GITHUB_OUTPUT"
+          # 10 = 有新版（预期分支）；0 = 已最新；其余视为运行错误，工作流失败。
+          if [ "$code" -ne 0 ] && [ "$code" -ne 10 ]; then
+            echo "巡检脚本运行失败（退出码 $code）。" >&2
+            exit "$code"
+          fi
+
+      - name: 开 issue（上游有新版本时）
+        if: steps.upstream.outputs.exit_code == '10'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          LOCAL_VERSION: ${{ steps.upstream.outputs.local_version }}
+          LATEST_VERSION: ${{ steps.upstream.outputs.latest_version }}
+        run: |
+          set -euo pipefail
+
+          title="[deps] pele 上游有新版本"
+          body_file="$(mktemp)"
+          cat > "$body_file" <<EOF
+          pele 上游发布了新版本，需要评估升级（design D9：semver + lockfile + 契约测试）。
+
+          - 本地版本：${LOCAL_VERSION}
+          - 上游版本：${LATEST_VERSION}
+          - 发布说明：https://www.npmjs.com/package/pele
+
+          升级步骤：
+          1. 更新 package.json 的 pele 范围并 npm install；
+          2. 跑 8 类代表图契约测试，审快照 diff；
+          3. 只改 src/renderers/diagram/pele.ts 适配层，跑 bash scripts/verify.sh。
+          EOF
+
+          # 幂等：已存在同名 open issue 时追加评论，不重复创建。
+          existing="$(gh issue list --repo "$GITHUB_REPOSITORY" --state open \
+            --search "\"$title\"" --limit 1 --json number --jq '.[0].number // empty')"
+          if [ -n "$existing" ]; then
+            echo "已存在同名 open issue #${existing}，追加评论而非重复创建。"
+            gh issue comment "$existing" --repo "$GITHUB_REPOSITORY" --body-file "$body_file"
+          else
+            echo "未找到同名 open issue，创建新 issue。"
+            gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --body-file "$body_file"
+          fi
+          rm -f "$body_file"
