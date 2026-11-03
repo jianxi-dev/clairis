@@ -12,7 +12,8 @@
  */
 
 import { EditorView, keymap, ViewPlugin } from "@codemirror/view";
-import { type EditorState, type Extension, Prec } from "@codemirror/state";
+import { EditorState, type Extension, Prec } from "@codemirror/state";
+import { syntaxTree } from "@codemirror/language";
 import { isSlashMenuOpen } from "./slash";
 
 // --- IME 组合守卫 ------------------------------------------------------------
@@ -657,6 +658,73 @@ const headingTabKeymap = keymap.of([
   },
 ]);
 
+// --- 全角标点归一 ------------------------------------------------------------
+
+/** 中文输入法下最常打错的两个：全角逗号与全角斜杠。 */
+const FULLWIDTH_TO_ASCII: Readonly<Record<string, string>> = {
+  "，": ",",
+  "／": "/",
+};
+
+/** 代码、行内代码、链接地址里的全角标点是有意为之，不能改。 */
+function inProtectedRegion(state: EditorState, pos: number): boolean {
+  let node = syntaxTree(state).resolveInner(pos, -1);
+  while (node) {
+    switch (node.name) {
+      case "InlineCode":
+      case "CodeText":
+      case "FencedCode":
+      case "CodeBlock":
+      case "URL":
+      case "Link":
+        return true;
+      default:
+        break;
+    }
+    if (!node.parent) break;
+    node = node.parent;
+  }
+  return false;
+}
+
+/**
+ * 全角 → 半角的事务过滤器。
+ *
+ * 用 `transactionFilter` 而不是 `inputHandler`：中文输入法的字符是
+ * composition 结束后一次性落盘的，inputHandler 收不到；事务过滤器两种
+ * 路径都能拦到，而且改写后仍是**一个**事务（一次 undo 回到全角）。
+ *
+ * 只替换「单字符纯插入」：1:1 等长替换，选择区间与后续映射都不受影响，
+ * 可以直接复用原 spec。
+ */
+export function fullwidthPunctuation(): Extension {
+  return EditorState.transactionFilter.of((tr) => {
+    if (!tr.docChanged) return tr;
+    // 只处理用户输入：打开文件、格式化等程序化变更不动。
+    if (!tr.isUserEvent("input.type")) return tr;
+    const replacements: { from: number; to: number; insert: string }[] = [];
+    tr.changes.iterChanges((fromA, toA, _fromB, _toB, inserted) => {
+      if (toA - fromA > 0) return; // 纯插入才处理
+      const text = inserted.toString();
+      if (!/[，／]/.test(text)) return;
+      if (inProtectedRegion(tr.startState, fromA)) return;
+      // 逐字符 1:1 替换，长度不变，选择区间与原 spec 仍然成立。
+      const converted = Array.from(
+        text,
+        (ch) => FULLWIDTH_TO_ASCII[ch] ?? ch,
+      ).join("");
+      replacements.push({ from: fromA, to: toA, insert: converted });
+    });
+    if (replacements.length === 0) return tr;
+    return tr.startState.update({
+      changes: tr.startState.changes(replacements),
+      selection: tr.selection,
+      userEvent: "input.type",
+      scrollIntoView: tr.scrollIntoView,
+    });
+  });
+}
+
 /**
  * 通过 DOM 事件追踪 IME 组合状态的 ViewPlugin，写入模块级 `composing`，
  * 供自动配对 inputHandler 在组合期跳过。
@@ -682,6 +750,7 @@ export function smartInput(): Extension {
     Prec.highest(smartEnterKeymap),
     Prec.highest(smartBackspaceKeymap),
     autoPairInputHandler,
+    fullwidthPunctuation(),
     Prec.high(headingTabKeymap),
     compositionGuardPlugin,
   ];
