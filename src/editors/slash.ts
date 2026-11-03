@@ -1021,6 +1021,16 @@ function removeSlashTrigger(
   replaceTrigger(view, from, to, "");
 }
 
+/**
+ * markdown 链接目标：含空格或括号时必须用 `<...>` 包住。
+ *
+ * 文件名里的空格会让 `![x](assets/a b.mp4)` 整段退化成普通文本——预览里
+ * 看到的就是一行 markdown 源码（#103 后续）。CommonMark 用尖括号解决。
+ */
+export function markdownDestination(href: string): string {
+  return /[\s()<>]/.test(href) ? `<${href}>` : href;
+}
+
 function applyCommand(view: EditorView, cmd: SlashCommand): void {
   const state = menus.get(view);
   const trigger = state?.trigger ?? "slash";
@@ -1049,7 +1059,7 @@ function applyCommand(view: EditorView, cmd: SlashCommand): void {
         if (trigger === "slash") removeSlashTrigger(view, from, query);
         return;
       }
-      const ref = `![${picked.name}](${picked.href})`;
+      const ref = `![${picked.name}](${markdownDestination(picked.href)})`;
       if (anchored) {
         // 单元格插入必须保持单行，否则会拆开表格行。
         replaceTrigger(view, from, from, sanitizeCellText(ref));
