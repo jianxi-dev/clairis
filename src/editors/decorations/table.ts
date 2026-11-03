@@ -685,7 +685,7 @@ if (typeof document !== "undefined") {
 
 /**
  * 一次捕获阶段的 `mousedown` 处理编辑器根上的每个表格指针入口：单元格把手、
- * 左上角锚点圆点、边界气泡的插入/删除按钮。
+ * 边界气泡的插入/删除按钮。
  *
  * `composedPath()` 是事件派发时取的快照，所以即使 CM6 在同一次按压中重建
  * （并分离）了 widget，target 仍然可读（#492）。
@@ -706,20 +706,14 @@ function installTablePointer(view: EditorView): void {
             node instanceof HTMLElement && node.matches?.(selector) === true,
         );
 
-      const anchorDot = pick(".cm-table-anchor");
       const cellHandle = pick(".cm-table-cell-handle");
       const boundaryButton = pick(
         ".cm-table-boundary-delete, .cm-table-boundary-insert",
       );
-      if (!anchorDot && !cellHandle && !boundaryButton) return;
+      if (!cellHandle && !boundaryButton) return;
 
       event.preventDefault();
       event.stopPropagation();
-
-      if (anchorDot) {
-        widget.openCellMenuFor(view, 0, 0);
-        return;
-      }
 
       if (boundaryButton) {
         const boundary = pick(".cm-table-boundary");
@@ -956,27 +950,6 @@ class TableWidget extends WidgetType {
     table.appendChild(tbody);
 
     wrap.appendChild(table);
-
-    if (view) {
-      // 表格左上角一个锚点圆点（#399）。悬停显示「+」，按压在第一个单元格打开
-      // 插入菜单——表格级入口，与逐单元格把手并存。
-      const anchor = document.createElement("div");
-      anchor.className = "cm-table-anchor";
-      anchor.setAttribute("data-testid", "cm-table-anchor");
-      anchor.setAttribute("role", "button");
-      anchor.setAttribute("tabindex", "0");
-      anchor.title = "插入内容";
-      anchor.setAttribute("aria-label", "插入内容");
-      anchor.textContent = "＋";
-      const openFromAnchor = (): void => this.openCellMenuFor(view, 0, 0);
-      anchor.addEventListener("keydown", (event) => {
-        if (event.key !== "Enter" && event.key !== " ") return;
-        event.preventDefault();
-        event.stopPropagation();
-        openFromAnchor();
-      });
-      wrap.appendChild(anchor);
-    }
 
     const boundaries = document.createElement("div");
     boundaries.className = "cm-table-boundaries";

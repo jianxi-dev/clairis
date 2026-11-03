@@ -1080,44 +1080,6 @@ body {
   background: rgba(163, 113, 247, 0.25);
 }
 
-.cm-table-anchor {
-  position: absolute;
-  top: 1px;
-  left: 4px;
-  z-index: 6;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 12px;
-  height: 12px;
-  font-size: 0;
-  line-height: 1;
-  color: var(--app-text-2);
-  background: var(--app-sunken);
-  border: 1px solid var(--app-border);
-  border-radius: 50%;
-  cursor: pointer;
-  user-select: none;
-  /* 与单元格手柄一致：默认不显示，指针进表格才浮现，纸面保持干净。 */
-  opacity: 0;
-  transition:
-    opacity 120ms ease,
-    width 80ms ease,
-    height 80ms ease,
-    font-size 80ms ease;
-}
-
-.cm-table-wrap:hover .cm-table-anchor,
-.cm-table-anchor:focus-visible {
-  opacity: 1;
-}
-
-.cm-table-anchor:hover {
-  width: 18px;
-  height: 18px;
-  font-size: 12px;
-}
-
 .cm-table-cell-handle {
   position: absolute;
   top: 2px;

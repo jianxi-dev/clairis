@@ -49,6 +49,24 @@ test.describe("块手柄几何", () => {
   });
 });
 
+test.describe("表格左上角（#109）", () => {
+  test("悬停表格不再出现锚点圆点", async ({ page }) => {
+    await openMarkdownInEdit(
+      page,
+      "| A | B |\n| --- | --- |\n| a1 | b1 |\n",
+      "fidelity-table-corner",
+    );
+    await page.locator("td[data-row='0'][data-col='0']").hover();
+    await page.waitForTimeout(300);
+    await expect(page.locator(".cm-table-anchor")).toHaveCount(0);
+    await expect(page.locator('[data-testid="cm-table-anchor"]')).toHaveCount(
+      0,
+    );
+    // 逐单元格把手是另一件事（#108），必须还在。
+    await expect(page.locator(".cm-table-cell-handle").first()).toBeVisible();
+  });
+});
+
 test.describe("单元格手柄随内容变化（#108）", () => {
   const CELL = 'td[data-row="0"][data-col="1"]';
 
