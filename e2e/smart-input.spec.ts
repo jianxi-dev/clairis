@@ -77,3 +77,12 @@ test("围栏代码块内保留全角", async ({ page }) => {
   const text = await storeContent(page);
   expect(text).toContain("，");
 });
+
+test("任务项回车续写 checkbox", async ({ page }) => {
+  await openMarkdownForEditing(page, "/Users/test/si-task.md");
+  await page.keyboard.type("- [ ] 第一件");
+  await page.keyboard.press("Enter");
+  await page.keyboard.type("第二件");
+  const text = await storeContent(page);
+  expect(text).toBe("- [ ] 第一件\n- [ ] 第二件");
+});

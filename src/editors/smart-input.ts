@@ -230,6 +230,31 @@ export function smartEnter(view: EditorView): boolean {
     return false;
   }
 
+  // 任务项必须先于普通列表匹配：`- [ ] 甲` 的 marker 会被普通列表正则
+  // 读成 `-`，续写就退化成无序列表（#106）。
+  const taskMatch = lineText.match(/^(\s*)([-*+])\s+\[([ xX])\]\s?(.*)/);
+  if (taskMatch) {
+    const [, indent, marker, , content] = taskMatch;
+
+    if (content.trim() === "") {
+      view.dispatch({
+        changes: [{ from: line.from, to: line.to, insert: "" }],
+        selection: { anchor: line.from + indent.length },
+        scrollIntoView: true,
+      });
+      return true;
+    }
+
+    // 新项一律未勾选：勾选态属于「这一件事做完了」，不该被续写继承。
+    const insert = `\n${indent}${marker} [ ] `;
+    view.dispatch({
+      changes: { from: main.head, insert },
+      selection: { anchor: main.head + insert.length },
+      scrollIntoView: true,
+    });
+    return true;
+  }
+
   const listMatch = lineText.match(/^(\s*)([-*+]|\d+\.)\s*(.*)/);
   if (listMatch) {
     const [, indent, marker, content] = listMatch;

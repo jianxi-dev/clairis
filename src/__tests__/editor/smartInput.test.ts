@@ -195,6 +195,32 @@ describe("smart enter", () => {
   });
 });
 
+describe("任务项回车（#106）", () => {
+  it("续写未勾选的任务项", () => {
+    type("- [ ] 第一件");
+    expect(smartEnter(editor.view)).toBe(true);
+    expect(editor.view.state.doc.toString()).toBe("- [ ] 第一件\n- [ ] ");
+  });
+
+  it("已勾选的任务项续写为新未勾选项", () => {
+    type("- [x] 已经做完");
+    expect(smartEnter(editor.view)).toBe(true);
+    expect(editor.view.state.doc.toString()).toBe("- [x] 已经做完\n- [ ] ");
+  });
+
+  it("`*` 与 `+` 前缀同样续写", () => {
+    type("* [ ] 星号");
+    expect(smartEnter(editor.view)).toBe(true);
+    expect(editor.view.state.doc.toString()).toBe("* [ ] 星号\n* [ ] ");
+  });
+
+  it("空任务项回车退出列表且不留空格", () => {
+    type("- [ ] ");
+    expect(smartEnter(editor.view)).toBe(true);
+    expect(editor.view.state.doc.toString()).toBe("");
+  });
+});
+
 describe("smart backspace", () => {
   it("removes list marker at start of empty list item", () => {
     type("- ");
