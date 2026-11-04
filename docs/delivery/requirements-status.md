@@ -133,6 +133,7 @@ openspec status --change <name>   # 单个变更工件完成度
 | E-13 | 全角标点修正 | ✅ | `transactionFilter`（PR #121） |
 | E-14 | 浮层定位优先级（不遮挡不越界 > 对齐 > 最近） | ✅ | PR #134 + `e2e/shortest-path.spec.ts` |
 | E-15 | HTML 编辑闭环（iframe 预览 / 相对资源 / 编辑后可见） | ✅ | change `html-edit-loop`（归档 2026-11-04，PR #159） |
+| E-16 | HTML 可视化编辑（点选 / 改字 / 拆块 / 保存零残留） | ✅ | change `html-visual-editing`（PR #168/#169/#188/#189）；ADR 0010 |
 
 ### docs-governance（3）
 

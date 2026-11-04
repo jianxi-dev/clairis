@@ -35,4 +35,4 @@
 
 ## 6. 文档与 ADR
 
-- [ ] 6.1 overview 补面板位置 + 两条 ADR（D2/D5）+ 台账 E-16
+- [x] 6.1 overview 补面板位置 + 两条 ADR（D2/D5）+ 台账 E-16
