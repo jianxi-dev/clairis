@@ -82,6 +82,75 @@ function runtimeSource(version: number): string {
     b.style.height = r.height + "px";
   };
 
+  // —— 文本编辑（切片 4）——
+  // 只有块级容器可编辑：行内元素上双击改字会拆碎句子。
+  const EDITABLE = new Set(["p", "h1", "h2", "h3", "h4", "h5", "h6", "li", "blockquote"]);
+  let editing = null;
+  let timer = null;
+
+  const caretOffset = (el) => {
+    const sel = getSelection();
+    if (!sel || sel.rangeCount === 0) return 0;
+    const r = sel.getRangeAt(0).cloneRange();
+    r.selectNodeContents(el);
+    try {
+      r.setEnd(sel.getRangeAt(0).startContainer, sel.getRangeAt(0).startOffset);
+    } catch (err) {
+      return 0;
+    }
+    return r.toString().length;
+  };
+
+  const flush = () => {
+    if (!editing) return;
+    post({ type: "textEditInput", nodeId: editing.getAttribute("data-cm-node-id"), text: editing.textContent || "" });
+  };
+
+  const endEdit = () => {
+    if (!editing) return;
+    if (timer) { clearTimeout(timer); timer = null; }
+    flush();
+    const nodeId = editing.getAttribute("data-cm-node-id");
+    editing.removeAttribute("contenteditable");
+    editing = null;
+    post({ type: "textEditEnd", nodeId });
+  };
+
+  document.addEventListener("dblclick", (e) => {
+    const el = e.target && e.target.closest && e.target.closest("[data-cm-node-id]");
+    if (!el) return;
+    const tag = el.tagName.toLowerCase();
+    if (!EDITABLE.has(tag)) return;
+    e.preventDefault();
+    if (editing) endEdit();
+    editing = el;
+    el.setAttribute("contenteditable", "true");
+    el.focus();
+    post({ type: "textEditBegin", nodeId: el.getAttribute("data-cm-node-id") });
+  }, true);
+
+  document.addEventListener("input", () => {
+    if (!editing) return;
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(flush, 400);
+  }, true);
+
+  document.addEventListener("keydown", (e) => {
+    if (!editing) return;
+    if (e.key === "Escape") { e.preventDefault(); endEdit(); return; }
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+    const nodeId = editing.getAttribute("data-cm-node-id");
+    const offset = caretOffset(editing);
+    endEdit();
+    post({ type: "splitBlock", nodeId, offset });
+  }, true);
+
+  document.addEventListener("focusout", () => {
+    // 焦点离开编辑元素即收尾：别让 contenteditable 挂在那儿进快照
+    setTimeout(() => { if (editing && !editing.contains(document.activeElement)) endEdit(); }, 0);
+  }, true);
+
   document.addEventListener("click", (e) => post({ type: "selection", nodeId: anchorOf(e.target) }), true);
   addEventListener("scroll", place, true);
   addEventListener("resize", place);

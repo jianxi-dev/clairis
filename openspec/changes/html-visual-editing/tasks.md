@@ -24,7 +24,7 @@
 
 ## 4. 文本编辑
 
-- [ ] 4.1 双击进 `contenteditable`，`textEditBegin/Input/End` 上报；以 `content` 为唯一真相回写；Enter 拆块
+- [x] 4.1 双击进 `contenteditable`，`textEditBegin/Input/End` 上报；以 `content` 为唯一真相回写；Enter 拆块
 
 ## 5. 保存闭环
 

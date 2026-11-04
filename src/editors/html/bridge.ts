@@ -19,7 +19,32 @@ export interface ReadyMessage {
   nodeCount: number;
 }
 
-export type BridgeMessage = SelectionMessage | ReadyMessage;
+export interface TextEditMessage {
+  v: number;
+  type: "textEditInput";
+  nodeId: string;
+  text: string;
+}
+
+export interface BlockSplitMessage {
+  v: number;
+  type: "splitBlock";
+  nodeId: string;
+  offset: number;
+}
+
+export interface TextEditEdgeMessage {
+  v: number;
+  type: "textEditBegin" | "textEditEnd";
+  nodeId: string;
+}
+
+export type BridgeMessage =
+  | TextEditEdgeMessage
+  | SelectionMessage
+  | ReadyMessage
+  | TextEditMessage
+  | BlockSplitMessage;
 
 /** 主侧 → iframe 的命令。 */
 export interface HighlightCommand {
@@ -45,6 +70,34 @@ export function parseBridgeMessage(data: unknown): BridgeMessage | null {
     case "ready":
       if (typeof msg.nodeCount !== "number") return null;
       return { v: BRIDGE_VERSION, type: "ready", nodeCount: msg.nodeCount };
+    case "textEditBegin":
+    case "textEditEnd":
+      if (typeof msg.nodeId !== "string") return null;
+      return { v: BRIDGE_VERSION, type: msg.type, nodeId: msg.nodeId };
+    case "textEditInput":
+      if (typeof msg.nodeId !== "string" || typeof msg.text !== "string") {
+        return null;
+      }
+      return {
+        v: BRIDGE_VERSION,
+        type: "textEditInput",
+        nodeId: msg.nodeId,
+        text: msg.text,
+      };
+    case "splitBlock":
+      if (
+        typeof msg.nodeId !== "string" ||
+        typeof msg.offset !== "number" ||
+        !Number.isFinite(msg.offset)
+      ) {
+        return null;
+      }
+      return {
+        v: BRIDGE_VERSION,
+        type: "splitBlock",
+        nodeId: msg.nodeId,
+        offset: msg.offset,
+      };
     default:
       return null;
   }

@@ -275,7 +275,10 @@ export default function ContentArea({
         ),
       });
     }
-  }, [tab?.id, tab?.fileKind]);
+    // `tab.content` 也要跟进：可视化编辑不经过 CM6，改完切到源码时必须把新内容
+    // dispatch 进去，否则源码里还是打开时的旧文档，再一敲字就把编辑结果覆盖回去。
+    // CM 自己触发的更新在这里是 no-op（current === tab.content）。
+  }, [tab?.id, tab?.fileKind, tab?.content]);
 
   /**
    * `.html` 的「编辑」走可视化面板，CM6 退到源码模式（design D7）。
@@ -343,7 +346,16 @@ export default function ContentArea({
           }}
         />
         {htmlVisual && tab && (
-          <HtmlVisualEditor content={tab.content} filePath={tab.path} />
+          <HtmlVisualEditor
+            content={tab.content}
+            filePath={tab.path}
+            onContentChange={(updater) => {
+              // 以 store 里的最新值为基准求值，而不是渲染期的 tab.content
+              const store = useStore.getState();
+              const prev = store.tabs[tab.id]?.content ?? "";
+              store.updateTabContent(tab.id, updater(prev));
+            }}
+          />
         )}
         {editorMode === "preview" && tab && (
           <PreviewView
