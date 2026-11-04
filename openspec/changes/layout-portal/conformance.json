@@ -1,0 +1,470 @@
+{
+  "change": "layout-portal",
+  "requirements": [
+    {
+      "id": "R-1",
+      "text": "门户启动首屏",
+      "anchors": [
+        {
+          "id": "A-1.1",
+          "claim": "分类磁贴数量",
+          "kind": "exact",
+          "assert": "8",
+          "source": "批准设计 §2"
+        },
+        {
+          "id": "A-1.2",
+          "claim": "最近文件卡片数",
+          "kind": "exact",
+          "assert": "4–6",
+          "source": "批准设计 §2"
+        },
+        {
+          "id": "A-1.3",
+          "claim": "门户「来源」入口数量",
+          "kind": "exact",
+          "assert": "0",
+          "source": "批准设计 §1/§2"
+        },
+        {
+          "id": "A-1.4",
+          "claim": "空态引导动作数量",
+          "kind": "exact",
+          "assert": "3",
+          "source": "批准设计 §2"
+        },
+        {
+          "id": "A-1.5",
+          "claim": "快速动作带文字的主入口数量",
+          "kind": "exact",
+          "assert": "1",
+          "source": "批准设计 §2"
+        }
+      ]
+    },
+    {
+      "id": "R-2",
+      "text": "工作区 pane 递归树",
+      "anchors": [
+        {
+          "id": "A-2.1",
+          "claim": "格最小尺寸",
+          "kind": "exact",
+          "assert": "240px",
+          "source": "批准设计 §3"
+        },
+        {
+          "id": "A-2.2",
+          "claim": "分裂与全屏键",
+          "kind": "state-machine",
+          "assert": "右分=⌘⌥→, 下分=⌘⌥↓, 全屏=⌘⇧↵",
+          "source": "批准设计 §3/§11"
+        },
+        {
+          "id": "A-2.3",
+          "claim": "拖格落区语义",
+          "kind": "state-machine",
+          "assert": "中心→互换, 四边→移动重排, 窗口边缘→根层, Esc→取消",
+          "source": "批准设计 §3"
+        },
+        {
+          "id": "A-2.4",
+          "claim": "布局持久化",
+          "kind": "state-machine",
+          "assert": "重启恢复=结构+比例+页签+活动页签+焦点",
+          "source": "批准设计 §3"
+        },
+        {
+          "id": "A-2.5",
+          "claim": "⋯ 菜单项数",
+          "kind": "exact",
+          "assert": "7（不含全屏）",
+          "source": "批准设计 §3"
+        },
+        {
+          "id": "A-2.6",
+          "claim": "文件四向落区方向数",
+          "kind": "exact",
+          "assert": "4",
+          "source": "批准设计 §3"
+        }
+      ]
+    },
+    {
+      "id": "R-3",
+      "text": "阅读空间竖排栏",
+      "anchors": [
+        {
+          "id": "A-3.1",
+          "claim": "折叠态边缘条宽",
+          "kind": "exact",
+          "assert": "12px",
+          "source": "批准设计 §4"
+        },
+        {
+          "id": "A-3.2",
+          "claim": "浮层与钉住宽度",
+          "kind": "exact",
+          "assert": "240px",
+          "source": "批准设计 §4"
+        },
+        {
+          "id": "A-3.3",
+          "claim": "悬停移开收回延时",
+          "kind": "exact",
+          "assert": "300ms",
+          "source": "批准设计 §4"
+        },
+        {
+          "id": "A-3.4",
+          "claim": "密度三档行高",
+          "kind": "exact",
+          "assert": "32/56/112px",
+          "source": "批准设计 §4"
+        },
+        {
+          "id": "A-3.5",
+          "claim": "卡片高度可调范围",
+          "kind": "exact",
+          "assert": "88–160",
+          "source": "批准设计 §4"
+        },
+        {
+          "id": "A-3.6",
+          "claim": "卡片缩略图规格",
+          "kind": "exact",
+          "assert": "4:3 = 72×54",
+          "source": "批准设计 §4/§12"
+        },
+        {
+          "id": "A-3.7",
+          "claim": "三态切换",
+          "kind": "state-machine",
+          "assert": "折叠→悬停浮层→钉住→折叠 无残留",
+          "source": "批准设计 §4"
+        },
+        {
+          "id": "A-3.8",
+          "claim": "默认密度与布局",
+          "kind": "exact",
+          "assert": "密度→卡片, 布局→堆叠",
+          "source": "批准设计 §4"
+        },
+        {
+          "id": "A-3.9",
+          "claim": "卡片 hover 动作数",
+          "kind": "exact",
+          "assert": "3（打开/分屏→/分屏↓）",
+          "source": "批准设计 §4"
+        },
+        {
+          "id": "A-3.10",
+          "claim": "分类 chips 数",
+          "kind": "exact",
+          "assert": "9（全部 + 8 类）",
+          "source": "批准设计 §4"
+        }
+      ]
+    },
+    {
+      "id": "R-4",
+      "text": "网格概览",
+      "anchors": [
+        {
+          "id": "A-4.1",
+          "claim": "打开语义",
+          "kind": "state-machine",
+          "assert": "⌘⇧\\ →打开网格, 不聚焦搜索, 选中第 1 张卡",
+          "source": "批准设计 §5"
+        },
+        {
+          "id": "A-4.2",
+          "claim": "键盘语义",
+          "kind": "state-machine",
+          "assert": "j/k→整行, h/l→行内, PageUp/Down→整页, Home/End→首尾",
+          "source": "批准设计 §5"
+        },
+        {
+          "id": "A-4.3",
+          "claim": "tile 三型尺寸",
+          "kind": "exact",
+          "assert": "大 2×2, 中 2×1, 小 1×1",
+          "source": "批准设计 §5"
+        },
+        {
+          "id": "A-4.4",
+          "claim": "动态编号",
+          "kind": "state-machine",
+          "assert": "按住 ⌘ 显视口编号 1–9, 滚动/翻页/筛选后重算",
+          "source": "批准设计 §5"
+        },
+        {
+          "id": "A-4.5",
+          "claim": "顶部点击循环控件数",
+          "kind": "exact",
+          "assert": "0（全下拉）",
+          "source": "批准设计 §5"
+        },
+        {
+          "id": "A-4.6",
+          "claim": "tile 顶条宽",
+          "kind": "exact",
+          "assert": "2px 类型色",
+          "source": "批准设计 §5"
+        }
+      ]
+    },
+    {
+      "id": "R-5",
+      "text": "悬浮预览窗",
+      "anchors": [
+        {
+          "id": "A-5.1",
+          "claim": "最小尺寸",
+          "kind": "exact",
+          "assert": "260×200",
+          "source": "批准设计 §6"
+        },
+        {
+          "id": "A-5.2",
+          "claim": "缩放",
+          "kind": "state-machine",
+          "assert": "四边+四角拖拽; 贴边翻转→锚定边互换",
+          "source": "批准设计 §6"
+        },
+        {
+          "id": "A-5.3",
+          "claim": "锚定",
+          "kind": "state-machine",
+          "assert": "阅读空间 x=栏右缘+12 y=跟行; 网格=贴卡右缘+12 y=贴卡顶",
+          "source": "批准设计 §6"
+        },
+        {
+          "id": "A-5.4",
+          "claim": "拖动",
+          "kind": "state-machine",
+          "assert": "拖动→位置保持到关闭; 重开→回到默认锚定",
+          "source": "批准设计 §6"
+        },
+        {
+          "id": "A-5.5",
+          "claim": "双开关",
+          "kind": "state-machine",
+          "assert": "阅读空间悬停(默认开 250ms) / 网格(点击默认) 独立",
+          "source": "批准设计 §6"
+        },
+        {
+          "id": "A-5.6",
+          "claim": "底部动作区显隐",
+          "kind": "exact",
+          "assert": "hover→显示, 离开→隐藏",
+          "source": "批准设计 §6"
+        }
+      ]
+    },
+    {
+      "id": "R-6",
+      "text": "AI 两形态",
+      "anchors": [
+        {
+          "id": "A-6.1",
+          "claim": "AI 入口数量",
+          "kind": "exact",
+          "assert": "1（顶栏星芒）",
+          "source": "批准设计 §7"
+        },
+        {
+          "id": "A-6.2",
+          "claim": "小窗默认尺寸与位置",
+          "kind": "exact",
+          "assert": "285×260, 右下距边 16px",
+          "source": "批准设计 §7"
+        },
+        {
+          "id": "A-6.3",
+          "claim": "两形态切换",
+          "kind": "state-machine",
+          "assert": "小窗⇄停靠嵌入(默认右 28%), 对话历史连续",
+          "source": "批准设计 §7"
+        },
+        {
+          "id": "A-6.4",
+          "claim": "确认卡密度档数",
+          "kind": "exact",
+          "assert": "3（默认=本会话总是后静默）",
+          "source": "批准设计 §7"
+        },
+        {
+          "id": "A-6.5",
+          "claim": "快照容量",
+          "kind": "exact",
+          "assert": "10",
+          "source": "批准设计 §7"
+        },
+        {
+          "id": "A-6.6",
+          "claim": "视图改写预设数",
+          "kind": "exact",
+          "assert": "6",
+          "source": "批准设计 §7"
+        },
+        {
+          "id": "A-6.7",
+          "claim": "撤销条淡出时间",
+          "kind": "exact",
+          "assert": "3s（hover 重现）",
+          "source": "批准设计 §7"
+        }
+      ]
+    },
+    {
+      "id": "R-7",
+      "text": "设置",
+      "anchors": [
+        {
+          "id": "A-7.1",
+          "claim": "左导航分区数",
+          "kind": "exact",
+          "assert": "10",
+          "source": "批准设计 §8"
+        },
+        {
+          "id": "A-7.2",
+          "claim": "跟随系统外观",
+          "kind": "state-machine",
+          "assert": "默认开; 系统深色→应用深色",
+          "source": "批准设计 §8"
+        },
+        {
+          "id": "A-7.3",
+          "claim": "API key 配置文件出现次数",
+          "kind": "exact",
+          "assert": "0（仅钥匙串）",
+          "source": "批准设计 §8 / ADR 0005"
+        },
+        {
+          "id": "A-7.4",
+          "claim": "主题选项数",
+          "kind": "exact",
+          "assert": "3（浅/深/暖）",
+          "source": "批准设计 §8"
+        }
+      ]
+    },
+    {
+      "id": "R-8",
+      "text": "扩展管理",
+      "anchors": [
+        {
+          "id": "A-8.1",
+          "claim": "导入语义",
+          "kind": "state-machine",
+          "assert": "拖入文件夹/.zip 即启用, 安装步骤数 0",
+          "source": "批准设计 §9"
+        },
+        {
+          "id": "A-8.2",
+          "claim": "管理列表字段",
+          "kind": "exact",
+          "assert": "5 要素: 名称/来源徽章(内置或 AI 生成)/启用开关/打开文件夹/卸载",
+          "source": "批准设计 §9"
+        },
+        {
+          "id": "A-8.3",
+          "claim": "AI 生成",
+          "kind": "state-machine",
+          "assert": "完成→新扩展卡, 默认启用=1, 附 SKILL.md 预览",
+          "source": "批准设计 §9"
+        }
+      ]
+    },
+    {
+      "id": "R-9",
+      "text": "图标体系",
+      "anchors": [
+        {
+          "id": "A-9.1",
+          "claim": "图标渲染规格",
+          "kind": "exact",
+          "assert": "24×24 viewBox, fill=currentColor, 18/24px",
+          "source": "批准设计 §10"
+        },
+        {
+          "id": "A-9.2",
+          "claim": "类型色",
+          "kind": "exact",
+          "assert": "MD #6366f1, HTML #f59e0b, 文本 #64748b, PDF #ef4444, 视频 #a855f7, 图片 #10b981, 代码 #06b6d4, 音频 #ec4899",
+          "source": "批准设计 §10"
+        },
+        {
+          "id": "A-9.3",
+          "claim": "emoji 出现次数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "批准设计 §10"
+        },
+        {
+          "id": "A-9.4",
+          "claim": "标签级数",
+          "kind": "exact",
+          "assert": "3（自动/始终显示文字/仅图标）",
+          "source": "批准设计 §10"
+        }
+      ]
+    },
+    {
+      "id": "R-10",
+      "text": "快捷键家族与总览",
+      "anchors": [
+        {
+          "id": "A-10.1",
+          "claim": "全局快捷键条数",
+          "kind": "exact",
+          "assert": "9（⌘P/⌘\\ / ⌘⇧\\ / ⌘K/⌘⇧A/⌘,/⌘⇧V/?/Esc）",
+          "source": "批准设计 §11"
+        },
+        {
+          "id": "A-10.2",
+          "claim": "类型过滤键",
+          "kind": "exact",
+          "assert": "⌥1–8 = 八类, ⌥0 = 全部",
+          "source": "批准设计 §11"
+        },
+        {
+          "id": "A-10.3",
+          "claim": "总览浮层",
+          "kind": "state-machine",
+          "assert": "`?`→打开总览, Esc→关闭",
+          "source": "批准设计 §11"
+        },
+        {
+          "id": "A-10.4",
+          "claim": "设计规则",
+          "kind": "state-machine",
+          "assert": "三修饰键组合=0; tooltip 键位显示覆盖=全表",
+          "source": "批准设计 §11"
+        }
+      ]
+    },
+    {
+      "id": "R-11",
+      "text": "哲学红线核查",
+      "anchors": [
+        {
+          "id": "A-11.1",
+          "claim": "红线核查记录条数",
+          "kind": "exact",
+          "assert": "12（逐条=通过或缺陷票引用）",
+          "source": "设计哲学 12 红线"
+        },
+        {
+          "id": "A-11.2",
+          "claim": "逐条验收记录空缺数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "批准设计 §14"
+        }
+      ]
+    }
+  ]
+}

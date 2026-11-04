@@ -2,7 +2,7 @@
 title: 门户与布局规格（构建参考）v1.0
 type: design
 status: accepted
-last_updated: 2026-11-01
+last_updated: 2026-11-04
 source_of_truth: canonical
 ---
 
@@ -11,7 +11,7 @@ source_of_truth: canonical
 > **状态**：定稿（2026-11-01，维护者确认原型定稿）
 > **来源**：布局决议（[#31](https://github.com/jianxi-dev/clairis/issues/31)）十二轮迭代 + 设计哲学 v2.0
 > **原型**：`.lavish/biaoyue-prototype-v11.html`（最终版；本文件为构建依据，冲突以本文件为准）
-> **配套**：产品铁律 D1–D10（`docs/product/principles.md`）· 设计哲学 P1–P6（`.omo/wayfinder/design-philosophy.md`）
+> **配套**：产品铁律 D1–D10（`docs/product/principles.md`）· 设计哲学 P1–P7（`.omo/wayfinder/design-philosophy.md`）
 > **效力**：实现期按本规格构建与验收；任何偏离需引用条款并说明。
 
 ---
@@ -28,6 +28,7 @@ source_of_truth: canonical
 | P4 | 可塑即可久 | 视图规格/配置/扩展皆文本，用户与 AI 可改；扩展包拷入即用 |
 | P5 | 可逆即敢用 | 确认卡（人话）+ 快照 + 撤销，覆盖一切 AI 改动 |
 | P6 | 默认即成 | 精选默认（卡片+堆叠、285×260 小窗、点击预览）、零门槛、生成物离线可看 |
+| P7 | 最短路径优先 | 鼠标落点→弹层位置→待点选项，以最短路径为第一原则（落点最近、点击代价最小）；其次统一性、简洁性与特殊情况（视口夹取/翻转）；保证高效与最少干扰的舒适操作 |
 
 **12 条红线**：见设计哲学文档；构建验收逐条打勾。
 
