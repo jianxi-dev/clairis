@@ -14,6 +14,8 @@ import RecentFiles from "./components/Sidebar/RecentFiles";
 import FileTree from "./components/Sidebar/FileTree";
 import Outline from "./components/Sidebar/Outline";
 import ContentSplitView from "./components/Content/ContentSplitView";
+import PortalView from "./components/PortalView";
+import GridView from "./components/GridView";
 import CaptureOverlay from "./components/CaptureOverlay";
 import CommandOverlay from "./components/ai/CommandOverlay";
 import UndoBar from "./components/ai/UndoBar";
@@ -52,6 +54,7 @@ function App() {
   // Init config loading + theme on mount
   const { setTheme, scheduleSave } = useConfig();
   const theme = useEditorStore((s) => s.config.theme ?? "system");
+  const scene = useStore((s) => s.scene);
 
   // ── File operations ──────────────────────────────────────────
 
@@ -65,10 +68,6 @@ function App() {
       }>("open_file");
       const store = useStore.getState();
       store.openFile(result.path, result.content);
-      store.addRecentFile(
-        result.path,
-        result.path.split("/").pop() || result.path,
-      );
       scheduleSave();
     } catch (e) {
       if (String(e) !== "Operation cancelled") {
@@ -76,6 +75,25 @@ function App() {
       }
     }
   }, [scheduleSave]);
+
+  /** 按路径打开（门户 hero / 最近卡 / 网格条目用；表格里没有页签时走这条） */
+  const handleOpenPath = useCallback(
+    async (path: string) => {
+      try {
+        const result = await invoke<{
+          content: string;
+          path: string;
+          file_size: number;
+        }>("open_file_direct", { path });
+        const store = useStore.getState();
+        store.openFile(result.path, result.content);
+        scheduleSave();
+      } catch (e) {
+        log.error("App", "Failed to open recent file", e);
+      }
+    },
+    [scheduleSave],
+  );
 
   const handleSaveFile = useCallback(async () => {
     if (!isTauri || !activeTab?.path) return;
@@ -251,6 +269,15 @@ function App() {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const meta = e.metaKey || e.ctrlKey;
+
+      // 门户/网格是覆盖层：底下的编辑器不可见，快捷键作用上去用户看不见后果
+      // （⌘W 关掉隐藏页签、⌘B 改隐藏文档……）。这里只放行不触碰隐藏状态的键。
+      if (useStore.getState().scene !== "workspace") {
+        if (!meta) return;
+        const k = e.key.toLowerCase();
+        if (!["o", "n", ",", "p", "k"].includes(k)) return;
+      }
+
       const store = useStore.getState();
 
       // Cmd+O: Open file
@@ -423,10 +450,6 @@ function App() {
             .then((result) => {
               const store = useStore.getState();
               store.openFile(result.path, result.content);
-              store.addRecentFile(
-                result.path,
-                result.path.split("/").pop() || result.path,
-              );
               scheduleSave();
             })
             .catch((err: unknown) =>
@@ -591,6 +614,31 @@ function App() {
       <CommandOverlay />
       <UndoBar />
       <SnapshotPanel />
+      {scene === "portal" && (
+        <div className="fixed inset-0 z-40 bg-white dark:bg-gray-900">
+          <PortalView
+            onOpenFile={handleOpenFile}
+            onNewFile={handleNewFile}
+            onOpenPath={handleOpenPath}
+            onAiCommand={() => {
+              useStore.getState().setScene("workspace");
+              useAiEntryStore.getState().openOverlay();
+            }}
+            onStudyPage={() => {
+              useStore.getState().setScene("workspace");
+              useAiEntryStore
+                .getState()
+                .setInput("把这篇文档整理成一份学习页：要点、例子、自测题。");
+              useAiEntryStore.getState().openOverlay();
+            }}
+          />
+        </div>
+      )}
+      {scene === "grid" && (
+        <div className="fixed inset-0 z-40 bg-white dark:bg-gray-900">
+          <GridView onOpenPath={handleOpenPath} />
+        </div>
+      )}
       {settingsOpen && (
         <SettingsDialog onClose={() => setSettingsOpen(false)} />
       )}

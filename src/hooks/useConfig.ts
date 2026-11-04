@@ -33,7 +33,12 @@ interface RustAppConfig {
   sidebarRightWidth: number | null;
   horizontalSplitRatio: number | null;
   verticalSplitRatio: number | null;
-  recentFiles: Array<{ path: string; title: string; openedAt: string }> | null;
+  recentFiles: Array<{
+    path: string;
+    title: string;
+    openedAt: string;
+    excerpt?: string;
+  }> | null;
   scrollPositions: Record<string, ScrollPosition> | null;
   capabilities?: Record<string, boolean> | null;
 }
@@ -88,7 +93,9 @@ export async function saveAppConfig(): Promise<void> {
     sidebarRightWidth: es.config.sidebarRightWidth ?? null,
     horizontalSplitRatio: es.config.horizontalSplitRatio ?? null,
     verticalSplitRatio: es.config.verticalSplitRatio ?? null,
-    recentFiles: es.config.recentFiles ?? null,
+    // 读 store 的实时值，不是加载时的陈旧快照——否则本次会话新开的文件
+    // 永远不会被持久化，门户下次启动又变成空的
+    recentFiles: useStore.getState().recentFiles,
     scrollPositions: useStore.getState().scrollPositions ?? null,
     capabilities: serializeCapabilities(),
   };
@@ -163,9 +170,19 @@ function applyRustConfig(raw: RustAppConfig): void {
   if (config.recentFiles && config.recentFiles.length > 0) {
     const { recentFiles } = useStore.getState();
     if (recentFiles.length === 0) {
-      config.recentFiles.forEach((f) =>
-        useStore.getState().addRecentFile(f.path, f.title),
-      );
+      // 整体赋值而不是逐条 addRecentFile：那个 API 是前置插入，逐条加会把
+      // 持久化的「最近优先」顺序翻反——重启后门户 hero 会显示最旧的一份。
+      // 直接放回数组也保住了原来的 openedAt（否则相对时间全变成「刚刚」）。
+      useStore.setState({
+        recentFiles: config.recentFiles
+          .map((f) => ({
+            path: f.path,
+            title: f.title,
+            openedAt: f.openedAt,
+            excerpt: f.excerpt,
+          }))
+          .slice(0, 10),
+      });
     }
   }
 

@@ -93,7 +93,12 @@ export interface RecentFile {
   path: string;
   title: string;
   openedAt: string;
+  /** 打开时截下的前 160 字，门户卡片用它显示真摘要（不是占位文案） */
+  excerpt?: string;
 }
+
+/** 应用场景（Layout Portal §1） */
+export type Scene = "portal" | "workspace" | "grid" | "settings";
 
 export interface ScrollPosition {
   scrollPos: number;

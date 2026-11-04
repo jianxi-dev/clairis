@@ -4,8 +4,15 @@ import type {
   EditorMode,
   FileKind,
   RecentFile,
+  Scene,
   ScrollPosition,
 } from "../types";
+import type { FileTypeKind } from "../lib/fileType";
+
+/** 门户卡片摘要：取正文前 160 字，压掉多余空白。不是占位文案，是文件真实开头。 */
+function excerptOf(content: string): string {
+  return content.replace(/\s+/g, " ").trim().slice(0, 160);
+}
 
 export type SplitDirection = "horizontal" | "vertical";
 
@@ -96,6 +103,10 @@ interface AppStore {
   immersiveChromeVisible: boolean;
   scrollPositions: Record<string, ScrollPosition>;
   recentFiles: RecentFile[];
+  /** 当前场景：门户 / 工作区 / 网格 / 设置（Layout Portal §1） */
+  scene: Scene;
+  /** 网格按类型过滤（门户分类磁贴点击后带入） */
+  gridTypeFilter: FileTypeKind | null;
   // Split panel — each panel holds its own tab refs
   splitDirection: SplitDirection | null;
   splitTabIds: string[];
@@ -126,7 +137,9 @@ interface AppStore {
   toggleRightSidebar: () => void;
   setSidebarLeftVisible: (v: boolean) => void;
   setSidebarRightVisible: (v: boolean) => void;
-  addRecentFile: (path: string, title: string) => void;
+  addRecentFile: (path: string, title: string, excerpt?: string) => void;
+  setScene: (scene: Scene) => void;
+  setGridTypeFilter: (kind: FileTypeKind | null) => void;
   clearRecentFiles: () => void;
   // Split actions
   splitTab: (tabId: string, direction: SplitDirection) => void;
@@ -148,6 +161,8 @@ const initialState = {
   immersiveChromeVisible: false,
   scrollPositions: {} as Record<string, ScrollPosition>,
   recentFiles: [] as RecentFile[],
+  scene: "portal" as Scene,
+  gridTypeFilter: null as FileTypeKind | null,
   splitDirection: null as SplitDirection | null,
   splitTabIds: [] as string[],
   splitActiveTabId: null as string | null,
@@ -176,6 +191,17 @@ export const useStore = create<AppStore>((set, get) => ({
           },
         },
         activeTabId: existing.id,
+        scene: "workspace",
+        // 重开已存在的文件也要把它顶到最近列表最前：否则"最近"会停留在很久以前
+        recentFiles: [
+          {
+            path,
+            title: existing.title,
+            openedAt: new Date().toISOString(),
+            excerpt: excerptOf(content),
+          },
+          ...state.recentFiles.filter((f) => f.path !== path),
+        ].slice(0, 10),
       });
       return;
     }
@@ -204,6 +230,17 @@ export const useStore = create<AppStore>((set, get) => ({
     set({
       tabs: { ...state.tabs, [id]: tab },
       activeTabId: id,
+      // 打开文件即离开门户（Layout Portal §1 场景图）
+      scene: "workspace",
+      recentFiles: [
+        {
+          path,
+          title,
+          openedAt: new Date().toISOString(),
+          excerpt: excerptOf(content),
+        },
+        ...state.recentFiles.filter((f) => f.path !== path),
+      ].slice(0, 10),
     });
   },
 
@@ -350,13 +387,21 @@ export const useStore = create<AppStore>((set, get) => ({
   setSidebarLeftVisible: (v: boolean) => set({ sidebarLeftVisible: v }),
   setSidebarRightVisible: (v: boolean) => set({ sidebarRightVisible: v }),
 
-  addRecentFile: (path: string, title: string) => {
+  setScene: (scene: Scene) => set({ scene }),
+  setGridTypeFilter: (kind: FileTypeKind | null) =>
+    set({ gridTypeFilter: kind }),
+
+  addRecentFile: (path: string, title: string, excerpt?: string) => {
     set((s) => {
+      const prev = s.recentFiles.find((f) => f.path === path);
       const filtered = s.recentFiles.filter((f) => f.path !== path);
       const entry: RecentFile = {
         path,
         title,
         openedAt: new Date().toISOString(),
+        // 没带摘要时沿用已有的：调用点常常只有路径与标题，
+        // 直接覆盖会把 openFile 时截下的真摘要抹掉
+        excerpt: excerpt?.slice(0, 160) ?? prev?.excerpt,
       };
       return { recentFiles: [entry, ...filtered].slice(0, 10) };
     });

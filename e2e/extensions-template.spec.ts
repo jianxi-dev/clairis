@@ -21,6 +21,12 @@ async function gotoWithExtensions(page: Page, extensions: Extensions | null) {
     }, extensions);
   }
   await page.goto(APP_URL, { waitUntil: "networkidle" });
+  // 应用启动在门户首屏（layout-portal 2.1）；本套用例测的是工作区外壳
+  await page.evaluate(() => {
+    const w = window as unknown as Record<string, any>;
+    w.__biaoyue_store__?.getState?.().setScene("workspace");
+  });
+
   await page.waitForSelector("header", { timeout: 10000 });
 }
 

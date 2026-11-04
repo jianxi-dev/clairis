@@ -78,7 +78,10 @@ function aiRunAgentTurn(messages) {
 
 function mockInvoke(cmd, args) {
   var responses = {
-    load_config: { fontSize:16, headingColors:null, ollamaEndpoint:"http://localhost:11434", openaiEndpoint:"https://api.openai.com", openaiModel:"gpt-4o-mini", translationProvider:"ollama", sourceLang:"en", targetLang:"zh-CN", theme:"system", sidebarLeftVisible:true, sidebarRightVisible:false, sidebarLeftWidth:220, sidebarRightWidth:320, recentFiles:[] },
+    load_config: { fontSize:16, headingColors:null, ollamaEndpoint:"http://localhost:11434", openaiEndpoint:"https://api.openai.com", openaiModel:"gpt-4o-mini", translationProvider:"ollama", sourceLang:"en", targetLang:"zh-CN", theme:"system", sidebarLeftVisible:true, sidebarRightVisible:false, sidebarLeftWidth:220, sidebarRightWidth:320, recentFiles:[
+      { path:"/Users/test/测试文档.md", title:"测试文档.md", openedAt:"2020-01-02T10:00:00.000Z", excerpt:"这是从文件里截下来的真实开头，不是占位文案。" },
+      { path:"/Users/test/另一个.md", title:"另一个.md", openedAt:"2020-01-01T09:00:00.000Z", excerpt:"另一份文档的开头。" },
+    ] },
     open_file: { content: "# 测试文档\n\n## 第一节\n\n这是测试内容。\n\n## 第二节\n\n更多内容。\n\n### 子节\n\n嵌套标题。\n\n- 列表项1\n- 列表项2\n\n```js\nconsole.log('hello')\n```\n\n> 引用文本\n\n**粗体** 和 *斜体*\n\n- [ ] 待办\n- [x] 已完成", path:"/Users/test/测试文档.md", file_size:350 },
     save_file: { path:"/Users/test/测试文档.md" },
     save_as_file: { path:"/Users/test/新文件.md" },
