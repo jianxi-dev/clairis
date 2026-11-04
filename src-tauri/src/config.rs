@@ -50,12 +50,15 @@ pub struct AppConfig {
     pub rail_view_spec: Option<RailViewSpec>,
 }
 
-/// 阅读空间栏视图规格：布局（堆叠/标签）与密度（紧凑/舒适/卡片）。
+/// 阅读空间栏视图规格：布局（堆叠/标签）、密度（紧凑/舒适/卡片）与卡片高度。
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct RailViewSpec {
     pub layout: Option<String>,
     pub density: Option<String>,
+    /// 卡片档高度 88–160；旧配置无此字段仍可加载（default + skip）。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub card_height: Option<f64>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -377,6 +380,7 @@ pub fn validate_config(config: &AppConfig) -> Result<(), AppError> {
             spec.density.as_deref(),
             &["compact", "comfortable", "card"],
         )?;
+        check_range("railViewSpec.cardHeight", spec.card_height, 88.0, 160.0)?;
     }
     Ok(())
 }
@@ -982,6 +986,7 @@ mod tests {
         config.rail_view_spec = Some(RailViewSpec {
             layout: Some("tabs".into()),
             density: Some("compact".into()),
+            card_height: Some(112.0),
         });
         save_config_at(base, &config).unwrap();
         let user = read_user(base);
@@ -992,11 +997,21 @@ mod tests {
         let loaded = load_config_at(base).unwrap().rail_view_spec.unwrap();
         assert_eq!(loaded.layout.as_deref(), Some("tabs"));
         assert_eq!(loaded.density.as_deref(), Some("compact"));
+        assert_eq!(loaded.card_height, Some(112.0));
 
         // 非法取值被校验拦下，不落盘
         config.rail_view_spec = Some(RailViewSpec {
             layout: Some("diagonal".into()),
             density: Some("comfortable".into()),
+            card_height: None,
+        });
+        assert!(validate_config(&config).is_err());
+
+        // 卡片高度越界同样拦下
+        config.rail_view_spec = Some(RailViewSpec {
+            layout: Some("stacked".into()),
+            density: Some("card".into()),
+            card_height: Some(200.0),
         });
         assert!(validate_config(&config).is_err());
     }

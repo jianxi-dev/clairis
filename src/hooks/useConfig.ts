@@ -21,6 +21,7 @@ import {
   type RailLayout,
   type RailViewSpec,
 } from "../lib/railView";
+import { DENSITY_HEIGHT, clampCardHeight } from "../lib/railCards";
 
 /** Snake-case config from Rust, mapped to camelCase in the store. */
 interface RustAppConfig {
@@ -53,7 +54,11 @@ interface RustAppConfig {
   scrollPositions: Record<string, ScrollPosition> | null;
   capabilities?: Record<string, boolean> | null;
   paneLayout?: string | null;
-  railViewSpec?: { layout: string | null; density: string | null } | null;
+  railViewSpec?: {
+    layout: string | null;
+    density: string | null;
+    cardHeight?: number | null;
+  } | null;
 }
 
 const DEBOUNCE_MS = 500;
@@ -198,7 +203,13 @@ function normalizeRailViewSpec(
   const density = densities.includes(raw?.density as RailDensity)
     ? (raw?.density as RailDensity)
     : DEFAULT_RAIL_VIEW_SPEC.density;
-  return { layout, density };
+  const cardHeight = clampCardHeight(
+    raw?.cardHeight ?? DEFAULT_RAIL_VIEW_SPEC.cardHeight ?? DENSITY_HEIGHT.card,
+  );
+  // 卡片高度只属于卡片档；紧凑/舒适档保持 6.1 的规格形状（无该字段）
+  return density === "card"
+    ? { layout, density, cardHeight }
+    : { layout, density };
 }
 
 /**
@@ -291,6 +302,13 @@ function applyRustConfig(raw: RustAppConfig): void {
     railViewSpec: railSpec,
     railLayout: railSpec.layout,
     railDensity: railSpec.density,
+    railCardHeight:
+      railSpec.cardHeight ??
+      clampCardHeight(
+        raw.railViewSpec?.cardHeight ??
+          DEFAULT_RAIL_VIEW_SPEC.cardHeight ??
+          DENSITY_HEIGHT.card,
+      ),
   });
 
   // 布局树恢复放在配置生效之后：它依赖 tabs 记录与页签打开流程
