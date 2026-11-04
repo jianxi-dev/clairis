@@ -2062,3 +2062,17 @@ body {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* ── 阅读空间竖排栏（layout-portal 6.1）────────────────────────── */
+/* 折叠边缘条严格 12px：内部图标缩到 12 像素才塞得下，不溢出。 */
+.rail-edge-icon {
+  width: 12px;
+  height: 12px;
+}
+
+.rail-hit {
+  background: var(--app-accent-soft);
+  color: var(--app-accent);
+  border-radius: 2px;
+  padding: 0 1px;
+}

@@ -15,6 +15,12 @@ import {
   restoreLayout,
   type SerializedNode,
 } from "../lib/paneTree";
+import {
+  DEFAULT_RAIL_VIEW_SPEC,
+  type RailDensity,
+  type RailLayout,
+  type RailViewSpec,
+} from "../lib/railView";
 
 /** Snake-case config from Rust, mapped to camelCase in the store. */
 interface RustAppConfig {
@@ -47,6 +53,7 @@ interface RustAppConfig {
   scrollPositions: Record<string, ScrollPosition> | null;
   capabilities?: Record<string, boolean> | null;
   paneLayout?: string | null;
+  railViewSpec?: { layout: string | null; density: string | null } | null;
 }
 
 const DEBOUNCE_MS = 500;
@@ -106,6 +113,8 @@ export async function saveAppConfig(): Promise<void> {
     capabilities: serializeCapabilities(),
     // 读实时值：本次会话分裂/调整的比例要能持久化
     paneLayout: useStore.getState().paneLayoutJson(),
+    // 阅读空间栏「设为默认」规格（layout-portal 6.1）
+    railViewSpec: useStore.getState().railViewSpec,
   };
   try {
     await invoke("save_config", { config });
@@ -172,6 +181,24 @@ async function restorePaneLayout(
 
   const { root, focusedId } = restoreLayout(parsed, idOfPath);
   useStore.getState().restorePaneLayout(root, focusedId);
+}
+
+/**
+ * 阅读空间栏视图规格的合法取值；非法 / 缺失一律退回默认。
+ * 老配置没有 `rail_view_spec` 时走默认值，绝不抛错。
+ */
+function normalizeRailViewSpec(
+  raw: RustAppConfig["railViewSpec"],
+): RailViewSpec {
+  const layouts: RailLayout[] = ["stacked", "tabs"];
+  const densities: RailDensity[] = ["compact", "comfortable", "card"];
+  const layout = layouts.includes(raw?.layout as RailLayout)
+    ? (raw?.layout as RailLayout)
+    : DEFAULT_RAIL_VIEW_SPEC.layout;
+  const density = densities.includes(raw?.density as RailDensity)
+    ? (raw?.density as RailDensity)
+    : DEFAULT_RAIL_VIEW_SPEC.density;
+  return { layout, density };
 }
 
 /**
@@ -257,6 +284,14 @@ function applyRustConfig(raw: RustAppConfig): void {
   applyTheme(config.theme ?? "system");
   applyReaderSkin(config.readerSkin ?? "paper");
   applyCapabilityConfig(raw.capabilities);
+
+  // 阅读空间栏视图规格（layout-portal 6.1）：老配置缺字段 → 默认；重启后与所设严格相等
+  const railSpec = normalizeRailViewSpec(raw.railViewSpec);
+  useStore.setState({
+    railViewSpec: railSpec,
+    railLayout: railSpec.layout,
+    railDensity: railSpec.density,
+  });
 
   // 布局树恢复放在配置生效之后：它依赖 tabs 记录与页签打开流程
   void restorePaneLayout(raw.paneLayout);

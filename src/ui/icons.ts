@@ -37,7 +37,9 @@ export type IconName =
   | "splitRight"
   | "splitDown"
   | "locate"
-  | "copyPath";
+  | "copyPath"
+  | "chevronLeft"
+  | "chevronRight";
 
 export interface IconDef {
   /**
@@ -165,6 +167,14 @@ export const ICONS: Record<IconName, IconDef> = {
   copyPath: {
     label: "复制",
     d: "M4 7h11a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V8a1 1 0 011-1z M8 3h11a1 1 0 011 1v11h-2V5H8z",
+  },
+  chevronRight: {
+    label: "展开栏",
+    d: "M9.6 6L18 12l-8.4 6-1.8-1.8L14.4 12 7.8 7.8z",
+  },
+  chevronLeft: {
+    label: "收起栏",
+    d: "M14.4 6L16.2 7.8 9.6 12l6.6 4.2L14.4 18 6 12z",
   },
 };
 
