@@ -16,6 +16,7 @@ import {
   leafOfTab,
   listLeaves,
   removeLeaf,
+  reorderLeafTabs,
   serializeLayout,
   setBranchRatio,
   siblingLeafId,
@@ -186,6 +187,7 @@ interface AppStore {
   toggleFullscreenPane: () => void;
   setPaneRatio: (branchId: string, ratio: number) => void;
   setPaneEditorMode: (leafId: string, mode: EditorMode) => void;
+  reorderPaneTabs: (leafId: string, from: number, to: number) => void;
   restorePaneLayout: (root: PaneLayout, focusedId: string) => void;
   collapsePanes: () => void;
   paneLayoutJson: () => string;
@@ -706,6 +708,12 @@ export const useStore = create<AppStore>((set, get) => ({
       paneRoot: updateLeaf(state.paneRoot, leafId, { editorMode: mode }),
       tabs,
     });
+  },
+
+  reorderPaneTabs: (leafId, from, to) => {
+    const state = get();
+    const paneRoot = reorderLeafTabs(state.paneRoot, leafId, from, to);
+    if (paneRoot !== state.paneRoot) set({ paneRoot });
   },
 
   restorePaneLayout: (root, focusedId) => {

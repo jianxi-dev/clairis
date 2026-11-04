@@ -1,4 +1,11 @@
-import { useCallback, useRef, type CSSProperties } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { useStore, isMediaKind } from "../../stores";
 import { getPanelScrollEl } from "../../editors/editorRef";
 import { saveAppConfig } from "../../hooks/useConfig";
@@ -8,6 +15,16 @@ import {
   MIN_PANE_PX,
   type PaneLayout,
 } from "../../lib/paneTree";
+import {
+  nextPaneMode,
+  PANE_MENU_ITEMS,
+  type PaneMenuAction,
+} from "../../lib/paneHeaderMenu";
+import {
+  exportCurrentDocHtml,
+  exportMessage,
+} from "../../lib/export/exportDocument";
+import { log } from "../../utils/log";
 import type { EditorMode, Tab } from "../../types";
 import TabBar from "../TabBar";
 import ErrorBoundary from "../ErrorBoundary";
@@ -16,58 +33,19 @@ import ContentArea from "./ContentArea";
 import MediaPlayerHost from "./MediaPlayerHost";
 import PaneDivider from "./PaneDivider";
 
-function ModeButton({
-  label,
-  active,
-  onClick,
-}: {
-  label: string;
-  active: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={`px-1.5 py-0.5 rounded text-xs ${
-        active
-          ? "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 font-medium"
-          : "hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400"
-      }`}
-    >
-      {label}
-    </button>
-  );
+function dirOfTabPath(path: string | null): string {
+  if (!path) return "";
+  return path.slice(0, Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\")));
 }
 
-function ModeButtons({
-  editorMode,
-  isMedia,
-  onChange,
-}: {
-  editorMode: EditorMode;
-  isMedia: boolean;
-  onChange: (m: EditorMode) => void;
-}) {
-  if (isMedia) return null;
-  return (
-    <div className="flex gap-0.5 px-2 shrink-0">
-      <ModeButton
-        label="预览"
-        active={editorMode === "preview"}
-        onClick={() => onChange("preview")}
-      />
-      <ModeButton
-        label="编辑"
-        active={editorMode === "edit"}
-        onClick={() => onChange("edit")}
-      />
-      <ModeButton
-        label="源码"
-        active={editorMode === "source"}
-        onClick={() => onChange("source")}
-      />
-    </div>
-  );
+async function copyText(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch (e) {
+    log.warn("PaneHeader", "复制失败", e);
+    return false;
+  }
 }
 
 interface PaneNodeProps {
@@ -191,6 +169,39 @@ function PaneHeader({
     if (allTabs[id]) leafTabs[id] = allTabs[id];
   }
   const activeTab = activeTabId ? allTabs[activeTabId] : null;
+  const isMedia = activeTab ? isMediaKind(activeTab.fileKind) : false;
+
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+  const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  const showNotice = useCallback((message: string) => {
+    setNotice(message);
+    if (noticeTimer.current) clearTimeout(noticeTimer.current);
+    noticeTimer.current = setTimeout(() => setNotice(null), 3000);
+  }, []);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMenuOpen(false);
+    };
+    const id = setTimeout(() => {
+      window.addEventListener("mousedown", onDown, true);
+      window.addEventListener("keydown", onKey, true);
+    }, 0);
+    return () => {
+      clearTimeout(id);
+      window.removeEventListener("mousedown", onDown, true);
+      window.removeEventListener("keydown", onKey, true);
+    };
+  }, [menuOpen]);
 
   const captureScroll = useCallback(() => {
     const store = useStore.getState();
@@ -218,21 +229,106 @@ function PaneHeader({
     [captureScroll],
   );
 
+  const setMode = useCallback(
+    (m: EditorMode) => useStore.getState().setPaneEditorMode(leafId, m),
+    [leafId],
+  );
+
+  const runMenu = useCallback(
+    (action: PaneMenuAction) => {
+      setMenuOpen(false);
+      const store = useStore.getState();
+      const tab = activeTabId ? store.tabs[activeTabId] : null;
+      switch (action) {
+        case "export": {
+          if (!tab) return;
+          void exportCurrentDocHtml({
+            title: tab.title,
+            markdown: tab.content,
+            baseDir: dirOfTabPath(tab.path),
+          }).then((result) => {
+            const message = exportMessage(result);
+            if (result.status === "error") {
+              log.error("PaneHeader", "导出 HTML 失败", result.message);
+              showNotice(message ?? "导出失败");
+            } else if (result.status === "saved") {
+              showNotice(message ?? "已导出");
+            }
+          });
+          return;
+        }
+        case "share": {
+          if (!tab) return;
+          const text = tab.path ? `${tab.title} ${tab.path}` : tab.content;
+          void copyText(text).then((ok) =>
+            showNotice(ok ? "分享内容已复制" : "复制失败"),
+          );
+          return;
+        }
+        case "splitRight":
+          store.splitPane("row");
+          return;
+        case "splitDown":
+          store.splitPane("col");
+          return;
+        case "source":
+          setMode("source");
+          return;
+        case "locate": {
+          if (!tab?.path) {
+            showNotice("此页签尚未保存，无路径可定位");
+            return;
+          }
+          void invoke("reveal_in_finder", { path: tab.path }).catch((e) =>
+            log.error("PaneHeader", "定位失败", e),
+          );
+          return;
+        }
+        case "copyPath": {
+          if (!tab?.path) {
+            showNotice("此页签尚未保存，无路径可复制");
+            return;
+          }
+          void copyText(tab.path).then((ok) =>
+            showNotice(ok ? "路径已复制" : "复制失败"),
+          );
+          return;
+        }
+      }
+    },
+    [activeTabId, setMode, showNotice],
+  );
+
   return (
-    <div className="app-chrome flex items-center shrink-0 border-b border-gray-100 dark:border-gray-700">
+    <div
+      data-testid="pane-header"
+      className="app-chrome flex items-center shrink-0 border-b border-gray-100 dark:border-gray-700"
+    >
       <div className="flex-1 min-w-0 overflow-hidden">
         <TabBar
           tabs={leafTabs}
           activeTabId={activeTabId}
           onSwitchTab={handleSwitch}
           onCloseTab={handleClose}
+          onReorderTabs={(from, to) =>
+            useStore.getState().reorderPaneTabs(leafId, from, to)
+          }
+          alwaysShowClose
         />
       </div>
-      <ModeButtons
-        editorMode={activeTab?.editorMode ?? editorMode}
-        isMedia={activeTab ? isMediaKind(activeTab.fileKind) : false}
-        onChange={(m) => useStore.getState().setPaneEditorMode(leafId, m)}
-      />
+      {!isMedia && (
+        <button
+          type="button"
+          data-testid="pane-mode"
+          data-mode={editorMode}
+          title={editorMode === "preview" ? "切换到编辑" : "切换到预览"}
+          aria-label={editorMode === "preview" ? "切换到编辑" : "切换到预览"}
+          onClick={() => setMode(nextPaneMode(editorMode))}
+          className="p-0.5 mx-1 rounded text-gray-500 hover:bg-gray-200 hover:text-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-100 shrink-0"
+        >
+          <Icon name={editorMode === "preview" ? "eye" : "pencil"} size={18} />
+        </button>
+      )}
       <div className="flex items-center gap-0.5 px-1 shrink-0">
         <button
           type="button"
@@ -244,6 +340,41 @@ function PaneHeader({
         >
           <Icon name="expand" size={18} />
         </button>
+        <div className="relative" ref={menuRef}>
+          <button
+            type="button"
+            data-testid="pane-menu-button"
+            title="更多操作"
+            aria-label="更多操作"
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+            onClick={() => setMenuOpen((v) => !v)}
+            className="p-0.5 rounded text-gray-400 hover:bg-gray-200 hover:text-gray-700 dark:hover:bg-gray-700 dark:hover:text-gray-200"
+          >
+            <Icon name="more" size={18} />
+          </button>
+          {menuOpen && (
+            <div
+              data-testid="pane-menu"
+              role="menu"
+              className="absolute right-0 top-full z-50 mt-1 min-w-[150px] rounded border border-gray-200 bg-white py-1 text-xs shadow-lg dark:border-gray-700 dark:bg-gray-800"
+            >
+              {PANE_MENU_ITEMS.map((item) => (
+                <button
+                  key={item.action}
+                  type="button"
+                  role="menuitem"
+                  data-menu-item={item.action}
+                  onClick={() => runMenu(item.action)}
+                  className="flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-gray-100 dark:hover:bg-gray-700"
+                >
+                  <Icon name={item.icon} size={18} />
+                  <span>{item.label}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         {showClose && (
           <button
             type="button"
@@ -257,6 +388,14 @@ function PaneHeader({
           </button>
         )}
       </div>
+      {notice && (
+        <div
+          role="status"
+          className="fixed bottom-6 left-1/2 z-[2147483000] -translate-x-1/2 rounded-full bg-gray-900/90 px-4 py-2 text-sm text-white shadow-lg dark:bg-gray-700/95"
+        >
+          {notice}
+        </div>
+      )}
     </div>
   );
 }

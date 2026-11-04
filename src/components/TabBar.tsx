@@ -1,7 +1,7 @@
 import Icon from "./Icon";
 import { useEditorStore } from "../stores/editorStore";
 import { colorOfType, fileTypeOf, iconOfType } from "../lib/fileType";
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, Fragment } from "react";
 import { useStore } from "../stores";
 import type { Tab } from "../types";
 import { log } from "../utils/log";
@@ -22,7 +22,14 @@ interface TabBarProps {
   activeTabId: string | null;
   onSwitchTab: (id: string) => void;
   onCloseTab: (id: string) => void;
+  /** 提供时启用页签指针拖拽换位；缺省（legacy 分栏）不启用以保持原行为。 */
+  onReorderTabs?: (from: number, to: number) => void;
+  /** 缺省时沿用「仅多签才显示 ×」；格头页签条传 true 以始终显示 ×。 */
+  alwaysShowClose?: boolean;
 }
+
+/** 指针移动超过该像素才算拖拽，以下视为点击切签。 */
+const DRAG_THRESHOLD_PX = 4;
 
 interface CtxMenu {
   x: number;
@@ -35,6 +42,8 @@ export default function TabBar({
   activeTabId,
   onSwitchTab,
   onCloseTab,
+  onReorderTabs,
+  alwaysShowClose,
 }: TabBarProps) {
   const tabIds = Object.keys(tabs);
   // 图标标签级别（设置里可改）：只有 text 显示标题；auto（重复处仅图标）与
@@ -42,6 +51,74 @@ export default function TabBar({
   const iconLabel = useEditorStore((s) => s.config.iconLabel ?? "text");
   const [notice, setNotice] = useState<string | null>(null);
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const stripRef = useRef<HTMLDivElement>(null);
+  const dragRef = useRef<{
+    from: number;
+    startX: number;
+    active: boolean;
+  } | null>(null);
+  const dragGapRef = useRef<number | null>(null);
+  const suppressClickRef = useRef(false);
+  const [dragFrom, setDragFrom] = useState<number | null>(null);
+  const [dragGap, setDragGap] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!onReorderTabs) return;
+    const onMove = (e: PointerEvent) => {
+      const drag = dragRef.current;
+      if (!drag) return;
+      if (!drag.active) {
+        if (Math.abs(e.clientX - drag.startX) < DRAG_THRESHOLD_PX) return;
+        drag.active = true;
+        setDragFrom(drag.from);
+      }
+      const strip = stripRef.current;
+      if (!strip) return;
+      const els = Array.from(
+        strip.querySelectorAll<HTMLElement>("[data-tab-id]"),
+      );
+      let gap = els.length;
+      for (let i = 0; i < els.length; i++) {
+        const r = els[i].getBoundingClientRect();
+        if (e.clientX < r.left + r.width / 2) {
+          gap = i;
+          break;
+        }
+      }
+      dragGapRef.current = gap;
+      setDragGap(gap);
+    };
+    const finish = (commit: boolean) => {
+      const drag = dragRef.current;
+      if (!drag) return;
+      if (drag.active) {
+        // 拖拽结束后的那次 click 是拖拽的尾巴，不能当作切签
+        suppressClickRef.current = true;
+        if (commit && onReorderTabs) {
+          const gap = dragGapRef.current ?? drag.from;
+          const target = gap > drag.from ? gap - 1 : gap;
+          if (target !== drag.from) onReorderTabs(drag.from, target);
+        }
+      }
+      dragRef.current = null;
+      dragGapRef.current = null;
+      setDragFrom(null);
+      setDragGap(null);
+    };
+    const onUp = () => finish(true);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") finish(false);
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("keydown", onKey, true);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("keydown", onKey, true);
+    };
+  }, [onReorderTabs]);
 
   const showNotice = useCallback((message: string) => {
     setNotice(message);
@@ -226,62 +303,104 @@ export default function TabBar({
   }, [menu]);
 
   if (tabIds.length === 0) return null;
-  const showClose = tabIds.length > 1;
+  const showClose = alwaysShowClose ?? tabIds.length > 1;
+
+  const placeholder =
+    dragGap === null ? null : (
+      <div
+        data-testid="tab-drag-placeholder"
+        className="drag-placeholder shrink-0 rounded-sm"
+        style={{
+          width: 3,
+          alignSelf: "stretch",
+          margin: "4px 1px",
+          background: "var(--tab-accent, #3b82f6)",
+        }}
+      />
+    );
 
   return (
     <>
       <div
+        ref={stripRef}
         className="flex items-end shrink-0 select-none overflow-x-auto"
         style={{
           borderBottom: "1px solid var(--tab-border, #e5e7eb)",
           background: "var(--tab-bg, #f9fafb)",
         }}
       >
-        {tabIds.map((id) => {
+        {tabIds.map((id, index) => {
           const tab = tabs[id];
           const isActive = id === activeTabId;
+          const typeColor = colorOfType(fileTypeOf(tab.path));
           return (
-            <div
-              key={id}
-              onClick={() => onSwitchTab(id)}
-              data-tab-id={id}
-              aria-label={iconLabel === "text" ? undefined : tab.title}
-              title={iconLabel === "text" ? undefined : tab.title}
-              onContextMenu={(e) => handleContextMenu(e, id)}
-              className={`flex items-center gap-1 px-3 py-1.5 text-xs cursor-pointer transition-colors whitespace-nowrap ${
-                isActive
-                  ? "bg-white dark:bg-gray-800 border-b-2 border-b-blue-500 font-medium"
-                  : "hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 border-b-2 border-b-transparent"
-              }`}
-              style={{ borderRight: "1px solid var(--tab-border, #e5e7eb)" }}
-            >
-              <Icon
-                name={iconOfType(fileTypeOf(tab.path))}
-                size={18}
-                color={colorOfType(fileTypeOf(tab.path))}
-                className="mr-0.5"
-              />
-              {iconLabel === "text" && (
-                <span className="truncate max-w-40">{tab.title}</span>
-              )}
-              {tab.dirty && (
-                <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />
-              )}
-              {showClose && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onCloseTab(id);
-                  }}
-                  className="ml-1 px-1 rounded hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 shrink-0"
-                  title="关闭 (Cmd+W)"
-                >
-                  ×
-                </button>
-              )}
-            </div>
+            <Fragment key={id}>
+              {dragGap === index && placeholder}
+              <div
+                onClick={() => {
+                  if (suppressClickRef.current) {
+                    suppressClickRef.current = false;
+                    return;
+                  }
+                  onSwitchTab(id);
+                }}
+                onPointerDown={
+                  onReorderTabs
+                    ? (e) => {
+                        if (e.button !== 0) return;
+                        suppressClickRef.current = false;
+                        dragRef.current = {
+                          from: index,
+                          startX: e.clientX,
+                          active: false,
+                        };
+                      }
+                    : undefined
+                }
+                data-tab-id={id}
+                data-tab-color={typeColor}
+                style={{
+                  borderRight: "1px solid var(--tab-border, #e5e7eb)",
+                  ...(dragFrom === index ? { opacity: 0.5 } : null),
+                }}
+                aria-label={iconLabel === "text" ? undefined : tab.title}
+                title={iconLabel === "text" ? undefined : tab.title}
+                onContextMenu={(e) => handleContextMenu(e, id)}
+                className={`flex items-center gap-1 px-3 py-1.5 text-xs cursor-pointer transition-colors whitespace-nowrap ${
+                  isActive
+                    ? "bg-white dark:bg-gray-800 border-b-2 border-b-blue-500 font-medium"
+                    : "hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 border-b-2 border-b-transparent"
+                }`}
+              >
+                <Icon
+                  name={iconOfType(fileTypeOf(tab.path))}
+                  size={18}
+                  color={typeColor}
+                  className="mr-0.5"
+                />
+                {iconLabel === "text" && (
+                  <span className="truncate max-w-40">{tab.title}</span>
+                )}
+                {tab.dirty && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />
+                )}
+                {showClose && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onCloseTab(id);
+                    }}
+                    className="ml-1 px-1 rounded hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 shrink-0"
+                    title="关闭 (Cmd+W)"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+            </Fragment>
           );
         })}
+        {dragGap === tabIds.length && placeholder}
       </div>
 
       {notice && (

@@ -159,6 +159,12 @@ function mockInvoke(cmd, args) {
   }
   if (cmd === "flatten_files") return responses.flatten_files;
   if (cmd === "pick_folder") return responses.pick_folder;
+  if (cmd === "reveal_in_finder" && args) {
+    const w = typeof window !== "undefined" ? window : globalThis;
+    w.__reveal_calls__ = w.__reveal_calls__ || [];
+    w.__reveal_calls__.push(args.path);
+    return null;
+  }
   if (responses[cmd]) return responses[cmd];
   console.warn("[TauriMock] unknown command:", cmd);
   return null;

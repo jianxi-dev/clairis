@@ -281,6 +281,32 @@ export function removeTab(
   return updateLeaf(root, leafId, { tabs, activeTabId });
 }
 
+/** 把数组元素从 `from` 移到 `to`（终态下标，splice 语义）；越界或原位返回副本。 */
+export function moveItem<T>(arr: readonly T[], from: number, to: number): T[] {
+  const n = arr.length;
+  if (from < 0 || from >= n) return arr.slice();
+  const clamped = Math.max(0, Math.min(n - 1, to));
+  if (clamped === from) return arr.slice();
+  const next = arr.slice();
+  const [item] = next.splice(from, 1);
+  next.splice(clamped, 0, item);
+  return next;
+}
+
+/** 在 leafId 内把页签从 `from` 移到 `to`（终态下标）。原位/越界返回原树。 */
+export function reorderLeafTabs(
+  root: PaneLayout,
+  leafId: string,
+  from: number,
+  to: number,
+): PaneLayout {
+  const leaf = findLeaf(root, leafId);
+  if (!leaf) return root;
+  const tabs = moveItem(leaf.tabs, from, to);
+  if (tabs.every((id, i) => id === leaf.tabs[i])) return root;
+  return updateLeaf(root, leafId, { tabs });
+}
+
 /** 序列化：丢弃没有 path 的页签（未保存新页签跨重启无法恢复）。 */
 export function serializeLayout(
   layout: PaneLayout,

@@ -28,7 +28,16 @@ export type IconName =
   | "pin"
   | "check"
   | "warning"
-  | "expand";
+  | "expand"
+  | "more"
+  | "eye"
+  | "pencil"
+  | "export"
+  | "share"
+  | "splitRight"
+  | "splitDown"
+  | "locate"
+  | "copyPath";
 
 export interface IconDef {
   /**
@@ -120,6 +129,42 @@ export const ICONS: Record<IconName, IconDef> = {
   expand: {
     label: "全屏格",
     d: "M4 4h6v2H6v4H4z M14 4h6v6h-2V6h-4z M4 14h2v4h4v2H4z M18 14h2v6h-6v-2h4z",
+  },
+  more: {
+    label: "更多",
+    d: "M5 11h2.4v2.4H5z M10.8 11h2.4v2.4h-2.4z M16.6 11h2.4v2.4h-2.4z",
+  },
+  eye: {
+    label: "预览",
+    d: "M12 5.2C7.3 5.2 3.5 8.3 1.6 12c1.9 3.7 5.7 6.8 10.4 6.8s8.5-3.1 10.4-6.8C20.5 8.3 16.7 5.2 12 5.2z M12 8.6a3.4 3.4 0 100 6.8 3.4 3.4 0 000-6.8z",
+  },
+  pencil: {
+    label: "编辑",
+    d: "M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z M20.71 7.04a1 1 0 000-1.41l-2.34-2.34a1 1 0 00-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z",
+  },
+  export: {
+    label: "导出",
+    d: "M11 3h2v7h-2z M12 14.5l-4.6-4.5h9.2z M4 18h16v2H4z",
+  },
+  share: {
+    label: "分享",
+    d: "M11 3h2v7h-2z M12 2l4.6 4.5h-9.2z M4 11h2v7h12v-7h2v9H4z",
+  },
+  splitRight: {
+    label: "向右分栏",
+    d: "M3 5h8v14H3z M13 5h8v14h-8z",
+  },
+  splitDown: {
+    label: "向下分栏",
+    d: "M3 5h18v6H3z M3 13h18v6H3z",
+  },
+  locate: {
+    label: "定位",
+    d: "M12 6.4a5.6 5.6 0 100 11.2 5.6 5.6 0 000-11.2z M12 9.4a2.6 2.6 0 100 5.2 2.6 2.6 0 000-5.2z M11 2h2v3.4h-2z M11 18.6h2V22h-2z M2 11h3.4v2H2z M18.6 11H22v2h-3.4z",
+  },
+  copyPath: {
+    label: "复制",
+    d: "M4 7h11a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V8a1 1 0 011-1z M8 3h11a1 1 0 011 1v11h-2V5H8z",
   },
 };
 
