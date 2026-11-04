@@ -48,6 +48,10 @@ pub struct RecentFile {
     pub path: String,
     pub title: String,
     pub opened_at: String,
+    /// 打开时截下的正文开头；门户卡片用它显示真摘要。
+    /// `default` + `skip_serializing_if` 保证老配置文件仍能读、新文件不多出空字段。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub excerpt: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -697,6 +701,7 @@ mod tests {
             path: "/tmp/a.md".into(),
             title: "a.md".into(),
             opened_at: "2026-01-01T00:00:00Z".into(),
+            excerpt: None,
         }]);
 
         save_config_at(base, &config).unwrap();

@@ -1,0 +1,25 @@
+{
+  "states": [
+    {
+      "state": "portal",
+      "screenshot": "/Users/mason/ToHighs/clairis/.artifacts/172/portal-populated.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-04T14:48:13Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "portal-empty",
+      "screenshot": "/Users/mason/ToHighs/clairis/.artifacts/172/portal-empty.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-04T14:48:13Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "grid-markdown",
+      "screenshot": "/Users/mason/ToHighs/clairis/.artifacts/172/grid-markdown.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-04T14:48:14Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}
