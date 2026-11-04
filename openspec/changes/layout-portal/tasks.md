@@ -5,7 +5,7 @@
 
 ## 1. 图标体系与类型色基座
 
-- [ ] 1.1 universe-icon 全站 Icon 组件（24 viewBox、fill=currentColor、18/24 两档）+ 8 类类型色 CSS token（MD #6366f1/HTML #f59e0b/文本 #64748b/PDF #ef4444/视频 #a855f7/图片 #10b981/代码 #06b6d4/音频 #ec4899）+ 标签三级设置（自动/始终文字/仅图标）+ 设置内图标抽屉；全站现有图标位切换到 Icon 组件、清除 emoji；与 editor-block-parity icons.ts 的收编点开工前 overlap 预检（QG-6 checkpoint ①）
+- [x] 1.1 universe-icon 全站 Icon 组件（24 viewBox、fill=currentColor、18/24 两档）+ 8 类类型色 CSS token（MD #6366f1/HTML #f59e0b/文本 #64748b/PDF #ef4444/视频 #a855f7/图片 #10b981/代码 #06b6d4/音频 #ec4899）+ 标签三级设置（自动/始终文字/仅图标）+ 设置内图标抽屉；全站现有图标位切换到 Icon 组件、清除 emoji；与 editor-block-parity icons.ts 的收编点开工前 overlap 预检（QG-6 checkpoint ①）
 
 ## 2. 门户启动首屏
 
