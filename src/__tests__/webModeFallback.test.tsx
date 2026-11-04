@@ -53,13 +53,13 @@ describe("非 Tauri 环境（浏览器 dev / 无 mock e2e）不崩溃", () => {
     expect(container.querySelector("iframe")).toBeNull();
   });
 
-  it("Tauri 环境（有 __TAURI_INTERNALS__）仍走 asset 直载分支", () => {
+  it("Tauri 环境同样走 srcdoc（编辑改动切回预览才可见）", () => {
     const { container } = render(
       <HtmlPreview content="<p>x</p>" filePath="/tmp/a.html" />,
     );
     const iframe = container.querySelector("iframe");
-    // buildAssetUrl 保留目录结构：前导 %2F + 段编码，斜杠保留
-    expect(iframe?.getAttribute("src")).toBe("asset://localhost/%2Ftmp/a.html");
-    expect(iframe?.getAttribute("srcdoc")).toBeNull();
+    // E-15：不再 asset 直载磁盘文件——那样读到的是旧内容
+    expect(iframe?.getAttribute("src")).toBeNull();
+    expect(iframe?.getAttribute("srcdoc")).toContain("<p>x</p>");
   });
 });
