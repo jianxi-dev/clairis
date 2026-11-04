@@ -203,7 +203,7 @@ test.describe("Biaoyue — Tauri Mocked", () => {
   });
 
   test("9. split panels show DIFFERENT file content", async ({ page }) => {
-    // Open two files
+    // Open first file into the root pane
     await page.evaluate(() => {
       const w = window as unknown as Record<string, any>;
       w.__biaoyue_openFile__(
@@ -213,6 +213,15 @@ test.describe("Biaoyue — Tauri Mocked", () => {
       );
     });
     await page.waitForTimeout(200);
+
+    // pane 递归树（layout-portal 3.1）：对聚焦格右分，再把第二个文件开进新格
+    await page.evaluate(() => {
+      (window as unknown as Record<string, any>).__biaoyue_store__
+        .getState()
+        .splitPane("row");
+    });
+    await page.waitForTimeout(200);
+
     await page.evaluate(() => {
       (window as unknown as Record<string, any>).__biaoyue_openFile__(
         "/Users/test/文件B.md",
@@ -220,25 +229,13 @@ test.describe("Biaoyue — Tauri Mocked", () => {
         "文件B.md",
       );
     });
-    await page.waitForTimeout(300);
+    await page.waitForTimeout(400);
 
-    // Split 文件B to right panel via store API (bypasses context menu)
-    await page.evaluate(() => {
-      const store = (window as unknown as Record<string, any>)
-        .__biaoyue_store__;
-      const tabs = store.getState().tabs;
-      const tabB = Object.values(tabs).find(
-        (t: any) => t.title === "文件B.md",
-      ) as any;
-      if (tabB) store.getState().splitTab(tabB.id, "horizontal");
-    });
-    await page.waitForTimeout(500);
-
-    // Verify content is DIFFERENT across panels
+    // 两格各自渲染自己的活动页签
+    await expect(page.locator("[data-pane-id]")).toHaveCount(2);
     const body = await page.locator("body").innerHTML();
     expect(body).toContain("文件A特有内容");
     expect(body).toContain("文件B特有内容");
-    // Both files should be visible (not duplicated)
     console.log("✅ Split panels show different content");
   });
 

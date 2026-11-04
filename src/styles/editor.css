@@ -742,6 +742,62 @@ body {
   }
 }
 
+/* ── Pane 递归树（layout-portal 3.1）─────────────────────────── */
+
+/* 240px 是硬下限：比例已由 clampRatio 兜底，这里再兜一次，任何窗口
+   尺寸下都不会出现小于 240px 的格。 */
+.pane-leaf {
+  min-width: 240px;
+  min-height: 240px;
+}
+
+.pane-divider {
+  background: transparent;
+  transition: background 0.15s;
+  user-select: none;
+  position: relative;
+  z-index: 10;
+}
+
+/* 扩大命中区到 ≥ 16px，视觉条仍只有 4px */
+.pane-divider::before {
+  content: "";
+  position: absolute;
+  inset: -6px;
+}
+
+.pane-divider-h {
+  width: 4px;
+  cursor: col-resize;
+}
+
+.pane-divider-v {
+  height: 4px;
+  cursor: row-resize;
+}
+
+.pane-divider:hover,
+.pane-divider.dragging {
+  background: #93c5fd;
+}
+
+.dark .pane-divider:hover,
+.dark .pane-divider.dragging {
+  background: #3b82f6;
+}
+
+.pane-divider:focus-visible {
+  background: #3b82f6;
+  outline: 2px solid #3b82f6;
+  outline-offset: 1px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pane-divider {
+    transition: none;
+  }
+}
+
 /* ── Immersive reading (A-5): chrome fade in/out, main area untouched ── */
 
 .app-chrome {

@@ -123,7 +123,9 @@ test.describe("Biaoyue E2E", () => {
     }
   });
 
-  test("12. Cmd+Shift+H/V/S cycles content split", async ({ page }) => {
+  test("12. Cmd+Shift+H/V adds panes, Cmd+Shift+S collapses", async ({
+    page,
+  }) => {
     // Open two tabs via the exposed store bridge (web mode has no real fs)
     await page.evaluate(() => {
       const store = (window as unknown as Record<string, any>)
@@ -133,22 +135,19 @@ test.describe("Biaoyue E2E", () => {
     });
     await page.waitForTimeout(300);
 
-    // Start with single panel (off)
+    // pane 递归树（layout-portal 3.1）：每格一个 CM 容器
     await expect(page.locator(".cm-editor-container")).toHaveCount(1);
 
-    // Cmd+Shift+H: horizontal split (active tab to the right)
+    // Cmd+Shift+H: split the focused pane to the right
     await page.keyboard.press(`${MOD}+Shift+H`);
-    await page.waitForTimeout(400);
     await expect(page.locator(".cm-editor-container")).toHaveCount(2);
 
-    // Cmd+Shift+V: vertical split (active tab to the bottom)
+    // Cmd+Shift+V: split the focused (new) pane downward
     await page.keyboard.press(`${MOD}+Shift+V`);
-    await page.waitForTimeout(400);
-    await expect(page.locator(".cm-editor-container")).toHaveCount(2);
+    await expect(page.locator(".cm-editor-container")).toHaveCount(3);
 
-    // Cmd+Shift+S: stop split (back to single panel)
+    // Cmd+Shift+S: collapse the tree back to a single pane
     await page.keyboard.press(`${MOD}+Shift+S`);
-    await page.waitForTimeout(400);
     await expect(page.locator(".cm-editor-container")).toHaveCount(1);
   });
 
