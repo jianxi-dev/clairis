@@ -30,7 +30,15 @@ export interface BlockSplitMessage {
   v: number;
   type: "splitBlock";
   nodeId: string;
-  offset: number;
+  /** 光标之前的部分。由 iframe 给出——它才是那一刻文本的真相 */
+  before: string;
+  /** 光标之后的部分 */
+  after: string;
+}
+
+export interface SaveRequestMessage {
+  v: number;
+  type: "saveRequest";
 }
 
 export interface TextEditEdgeMessage {
@@ -40,6 +48,7 @@ export interface TextEditEdgeMessage {
 }
 
 export type BridgeMessage =
+  | SaveRequestMessage
   | TextEditEdgeMessage
   | SelectionMessage
   | ReadyMessage
@@ -70,6 +79,8 @@ export function parseBridgeMessage(data: unknown): BridgeMessage | null {
     case "ready":
       if (typeof msg.nodeCount !== "number") return null;
       return { v: BRIDGE_VERSION, type: "ready", nodeCount: msg.nodeCount };
+    case "saveRequest":
+      return { v: BRIDGE_VERSION, type: "saveRequest" };
     case "textEditBegin":
     case "textEditEnd":
       if (typeof msg.nodeId !== "string") return null;
@@ -87,8 +98,8 @@ export function parseBridgeMessage(data: unknown): BridgeMessage | null {
     case "splitBlock":
       if (
         typeof msg.nodeId !== "string" ||
-        typeof msg.offset !== "number" ||
-        !Number.isFinite(msg.offset)
+        typeof msg.before !== "string" ||
+        typeof msg.after !== "string"
       ) {
         return null;
       }
@@ -96,7 +107,8 @@ export function parseBridgeMessage(data: unknown): BridgeMessage | null {
         v: BRIDGE_VERSION,
         type: "splitBlock",
         nodeId: msg.nodeId,
-        offset: msg.offset,
+        before: msg.before,
+        after: msg.after,
       };
     default:
       return null;

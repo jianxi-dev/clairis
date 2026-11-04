@@ -86,7 +86,6 @@ function runtimeSource(version: number): string {
   // 只有块级容器可编辑：行内元素上双击改字会拆碎句子。
   const EDITABLE = new Set(["p", "h1", "h2", "h3", "h4", "h5", "h6", "li", "blockquote"]);
   let editing = null;
-  let timer = null;
 
   const caretOffset = (el) => {
     const sel = getSelection();
@@ -108,7 +107,6 @@ function runtimeSource(version: number): string {
 
   const endEdit = () => {
     if (!editing) return;
-    if (timer) { clearTimeout(timer); timer = null; }
     flush();
     const nodeId = editing.getAttribute("data-cm-node-id");
     editing.removeAttribute("contenteditable");
@@ -129,21 +127,32 @@ function runtimeSource(version: number): string {
     post({ type: "textEditBegin", nodeId: el.getAttribute("data-cm-node-id") });
   }, true);
 
+  // 每个 input 直接上报，不做节流：编辑期文档是冻结的（不会因为 content 变化重建），
+  // 所以逐键提交没有重建成本，却能消灭「最后 N 毫秒的击键在保存时还没落地」这类丢字。
   document.addEventListener("input", () => {
     if (!editing) return;
-    if (timer) clearTimeout(timer);
-    timer = setTimeout(flush, 400);
+    flush();
   }, true);
 
+  // ⌘S / Ctrl+S：焦点在 iframe 里时，主窗口的全局快捷键收不到这个按键，
+  // 不转发的话"编辑中按保存没反应"，只能等自动保存。转发出去让主侧走同一条保存链路。
   document.addEventListener("keydown", (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s") {
+      e.preventDefault();
+      post({ type: "saveRequest" });
+      return;
+    }
     if (!editing) return;
     if (e.key === "Escape") { e.preventDefault(); endEdit(); return; }
     if (e.key !== "Enter") return;
     e.preventDefault();
     const nodeId = editing.getAttribute("data-cm-node-id");
     const offset = caretOffset(editing);
+    const text = editing.textContent || "";
     endEdit();
-    post({ type: "splitBlock", nodeId, offset });
+    // 直接把切开的两半发出去：主侧的 content 与这里的文本可能差一次提交，
+    // 用 offset 让主侧再切一次就是在赌两者同步（实测会偶发丢块）。
+    post({ type: "splitBlock", nodeId, before: text.slice(0, offset), after: text.slice(offset) });
   }, true);
 
   document.addEventListener("focusout", () => {

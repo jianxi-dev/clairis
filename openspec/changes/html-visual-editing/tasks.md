@@ -28,7 +28,7 @@
 
 ## 5. 保存闭环
 
-- [ ] 5.1 `snapshot` → `cleanSnapshot` → 写回；打开不产生副作用
+- [x] 5.1 `snapshot` → `cleanSnapshot` → 写回；打开不产生副作用
   - 保存后文件内搜不到 `cm-`/`cmid`（e2e 断言）
   - 再打开内容与保存前一致（幂等）
   - `bash scripts/verify.sh` 全绿

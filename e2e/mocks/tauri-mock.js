@@ -145,7 +145,15 @@ function mockInvoke(cmd, args) {
     if (!ext) return { snippets: [], templates: [], theme: { tokens: {}, warnings: [] }, warnings: [] };
     return ext;
   }
-  if (cmd === "save_file" && args) return { path:args.path };
+  if (cmd === "save_file" && args) {
+    // 记录写盘内容，供 e2e 断言"存下来的字节里没有编辑痕迹"
+    const w = typeof window !== "undefined" ? window : globalThis;
+    w.__saved_files__ = w.__saved_files__ || {};
+    w.__saved_files__[args.path] = args.content;
+    w.__save_calls__ = w.__save_calls__ || [];
+    w.__save_calls__.push({ path: args.path, at: Date.now(), content: args.content });
+    return { path:args.path };
+  }
   if (cmd === "flatten_files") return responses.flatten_files;
   if (cmd === "pick_folder") return responses.pick_folder;
   if (responses[cmd]) return responses[cmd];
