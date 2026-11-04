@@ -24,6 +24,7 @@ import {
   registerPickMediaFile,
 } from "../../editors/slash";
 import { loadUserExtensions } from "../../editors/user-extensions";
+import HtmlVisualEditor from "./HtmlVisualEditor";
 import { smartInput } from "../../editors/smart-input";
 import { blockHandle } from "../../editors/orchestration/block-handle";
 import {
@@ -277,6 +278,15 @@ export default function ContentArea({
   }, [tab?.id, tab?.fileKind]);
 
   /**
+   * `.html` 的「编辑」走可视化面板，CM6 退到源码模式（design D7）。
+   *
+   * CM6 容器只是被 `display:none` 藏起来，**不销毁**——这样源码模式的 undo 栈
+   * 与选区在 可视化 → 源码 之间来回切时都还在。
+   */
+  const htmlVisual = tab?.fileKind === "html" && editorMode === "edit";
+  const cmVisible = !!tab && editorMode !== "preview" && !htmlVisual;
+
+  /**
    * 从预览切回编辑时强制重测视口。
    *
    * 编辑器容器在预览态是 `display: none`，CM6 量到的高度是 0，只渲染了很少
@@ -284,12 +294,14 @@ export default function ContentArea({
    * （预览 → 编辑偶发空白）。等一帧让布局落定再 requestMeasure。
    */
   useEffect(() => {
-    if (editorMode === "preview") return;
+    // 只有 CM6 真正可见时才测；隐藏态的测量结果恒为 0 高度。
+    // 依赖里带上 cmVisible，才能覆盖「可视化 → 源码」这条解除隐藏的路径。
+    if (!cmVisible) return;
     const view = viewRef.current;
     if (!view) return;
     const frame = requestAnimationFrame(() => view.requestMeasure());
     return () => cancelAnimationFrame(frame);
-  }, [editorMode]);
+  }, [editorMode, cmVisible]);
 
   // Toggle decorations on mode change
   useEffect(() => {
@@ -326,10 +338,13 @@ export default function ContentArea({
           className="cm-editor-container"
           style={{
             height: "100%",
-            display: editorMode === "preview" || !tab ? "none" : "block",
+            display: cmVisible ? "block" : "none",
             ...editorThemeVars,
           }}
         />
+        {htmlVisual && tab && (
+          <HtmlVisualEditor content={tab.content} filePath={tab.path} />
+        )}
         {editorMode === "preview" && tab && (
           <PreviewView
             content={tab.content}

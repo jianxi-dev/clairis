@@ -62,10 +62,11 @@ test("相对图片在预览里落到文档目录", async ({ page }) => {
 
 test("编辑后切回预览能看到改动，且编辑器未被重建", async ({ page }) => {
   await openHtml(page, HTML, "h3");
+  // E-16 起 `.html` 的「编辑」是可视化面板，改源码走「源码」模式
   await page.evaluate(() => {
     (window as unknown as Record<string, any>).__biaoyue_store__
       .getState()
-      .setEditorMode("edit");
+      .setEditorMode("source");
   });
   const editor = page.locator(".cm-content");
   await editor.waitFor({ timeout: 5000 });
