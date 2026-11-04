@@ -1,37 +1,58 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useEditorStore } from "../../stores/editorStore";
 import {
   commandForSelection,
   parseBridgeMessage,
 } from "../../editors/html/bridge";
+import { applyBlockSplit, applyTextEdit } from "../../editors/html/edit";
 import { buildEditableDoc } from "../../editors/html/runtime";
 
 interface HtmlVisualEditorProps {
   content: string;
   filePath?: string | null;
+  /**
+   * 编辑器的改动交回主侧；`content` 是唯一真相（design D2）。
+   *
+   * 接收 updater 而不是成品字符串：同一 tick 内会连发 textEditInput /
+   * textEditEnd / splitBlock 三条消息，若各自拿渲染期的 `content` 去算，
+   * 后到的那条会把先到的覆盖掉（打字内容直接丢）。
+   */
+  onContentChange?: (updater: (prev: string) => string) => void;
 }
 
 /**
  * HTML 可视化编辑面板（E-16 / H2）。
  *
  * 与 `HtmlPreview` 是**两条通道**（design D1）：预览禁一切脚本，这里只放行
- * 带 nonce 的注入运行时。刻意不复用同一个组件加开关——两种安全姿态混在
- * 一个 iframe 里，迟早会漂移。
+ * 带 nonce 的注入运行时。
  *
- * 高亮框画在 iframe 自己里面（切片 3）：主应用与 srcdoc 跨源，主文档拿不到
- * iframe 的布局坐标，也画不到上面去。主侧只负责判定选中的是哪个节点。
+ * 高亮框与文本编辑都在 iframe 内部完成（跨源，主文档碰不到它的布局）；
+ * 主侧只做两件事：判定"选中的是哪个节点"，以及把改动折算回 `content`。
  */
 export default function HtmlVisualEditor({
   content,
   filePath,
+  onContentChange,
 }: HtmlVisualEditorProps) {
   const fontSize = useEditorStore((s) => s.fontSize);
   const frameRef = useRef<HTMLIFrameElement | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
+  // 编辑期间冻结文档：否则每敲一个字都重建 iframe，光标当场丢掉
+  const frozenRef = useRef<string | null>(null);
 
-  const srcDoc = useMemo(
-    () => buildEditableDoc(content, { filePath, fontSize }),
-    [content, filePath, fontSize],
+  const srcDoc = useMemo(() => {
+    if (editing && frozenRef.current) return frozenRef.current;
+    const doc = buildEditableDoc(content, { filePath, fontSize });
+    frozenRef.current = doc;
+    return doc;
+  }, [content, filePath, fontSize, editing]);
+
+  const commit = useCallback(
+    (updater: (prev: string) => string) => {
+      onContentChange?.(updater);
+    },
+    [onContentChange],
   );
 
   // 收上报：只认自己这一帧发来的，载荷交给 bridge 解析（版本位/形状不对就丢）
@@ -41,13 +62,35 @@ export default function HtmlVisualEditor({
       if (!frame || e.source !== frame.contentWindow) return;
       const msg = parseBridgeMessage(e.data);
       if (!msg) return;
-      if (msg.type === "selection") setSelected(msg.nodeId);
+      switch (msg.type) {
+        case "selection":
+          setSelected(msg.nodeId);
+          break;
+        case "textEditBegin":
+          setEditing(true);
+          break;
+        case "textEditEnd":
+          // 先解冻再提交：让 iframe 按新内容重建一次
+          frozenRef.current = null;
+          setEditing(false);
+          break;
+        case "textEditInput":
+          commit((prev) => applyTextEdit(prev, msg.nodeId, msg.text));
+          break;
+        case "splitBlock":
+          frozenRef.current = null;
+          setEditing(false);
+          commit((prev) => applyBlockSplit(prev, msg.nodeId, msg.offset));
+          break;
+        default:
+          break;
+      }
     };
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
-  }, []);
+  }, [commit]);
 
-  // 选中变化 → 下发命令让 iframe 自己挪框。文档重建后也重发一次，否则框会丢。
+  // 选中变化 → 下发命令让 iframe 自己挪框。文档重建后也重发一次。
   useEffect(() => {
     frameRef.current?.contentWindow?.postMessage(
       commandForSelection(selected),

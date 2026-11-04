@@ -51,6 +51,14 @@ iframe → 主侧：`selection`、`hover`、`textEditBegin`、`textEditInput`、
 - 编辑期注入的 `contenteditable`、outline 内联样式
 - 注入的 `<style>`/`<script>` 运行时
 
+清洗写成**纯函数**（`src/editors/html/model.ts` 的 `cleanSnapshot`）
+
+### D6 增补：编辑会拍平行内标记（已观察，接受）
+
+`applyTextEdit` 用整段文本覆盖被编辑块（`el.innerHTML = escapeText(text)`），所以块内的 `<strong>`/`<span>`/链接/`<br>` 在第一次提交时会被拍平——这是「以文本为真相」的直接代价，不是 bug。同理：`li` 内含嵌套 `<ul>` 时子列表会被毁，doctype 会被归一化成 `<!DOCTYPE html>`，用户自写的 `data-cm-*`/`spellcheck`/`cmid:` 注释会被清洗掉（后者与 E-16「保存零残留」一致）。
+
+如果要保住行内结构，正确做法是**只同步最小文本 diff**（记录 caret 所在的文本节点而非整块），而不是在整块覆盖上加补丁。留到有真实需求时按那个方向做。
+
 清洗写成**纯函数** `cleanSnapshot(html) → html`，独立单测：喂「被编辑污染的 DOM 串」，断言产物里**一个 `cm-` 前缀都不剩**。这条是整个特性最容易出脏数据的口子，必须有测试兜。
 
 ## D7 源码模式与可视化模式共享 content，两者不 remount 对方
