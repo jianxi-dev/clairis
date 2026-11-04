@@ -52,6 +52,60 @@ pub fn is_binary_extension(path: &Path) -> bool {
     )
 }
 
+/// 在系统文件管理器中显示给定路径（定位）。只定位，不读取文件内容。
+#[tauri::command]
+pub async fn reveal_in_finder(path: String) -> Result<(), AppError> {
+    let target = PathBuf::from(&path);
+    reveal_path(&target).await.map_err(|e| AppError::Io {
+        context: format!("reveal_in_finder: {path}"),
+        source: e,
+    })
+}
+
+#[cfg(target_os = "macos")]
+async fn reveal_path(target: &Path) -> std::io::Result<()> {
+    let status = tokio::process::Command::new("open")
+        .arg("-R")
+        .arg(target)
+        .status()
+        .await?;
+    if status.success() {
+        Ok(())
+    } else {
+        Err(std::io::Error::other(format!("open -R 退出码 {status}")))
+    }
+}
+
+#[cfg(target_os = "windows")]
+async fn reveal_path(target: &Path) -> std::io::Result<()> {
+    let status = tokio::process::Command::new("explorer")
+        .arg("/select,")
+        .arg(target)
+        .status()
+        .await?;
+    if status.success() {
+        Ok(())
+    } else {
+        Err(std::io::Error::other(format!(
+            "explorer /select 退出码 {status}"
+        )))
+    }
+}
+
+#[cfg(all(unix, not(target_os = "macos")))]
+async fn reveal_path(target: &Path) -> std::io::Result<()> {
+    let dir = target.parent().unwrap_or(target);
+    let status = tokio::process::Command::new("xdg-open")
+        .arg(dir)
+        .status()
+        .await?;
+    if status.success() {
+        Ok(())
+    } else {
+        Err(std::io::Error::other(format!("xdg-open 退出码 {status}")))
+    }
+}
+
 /// Open a file via system dialog and read its contents.
 #[tauri::command]
 pub async fn open_file(app: AppHandle) -> Result<FileResult, AppError> {

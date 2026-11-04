@@ -298,6 +298,12 @@ function App() {
         handleNewFile();
       }
 
+      // Cmd+T: New tab in the focused pane
+      if (meta && !e.shiftKey && e.key.toLowerCase() === "t") {
+        e.preventDefault();
+        store.newTab();
+      }
+
       // Cmd+W: Close active tab
       if (meta && e.key === "w" && activeTabId) {
         e.preventDefault();
