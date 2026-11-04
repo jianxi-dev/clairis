@@ -33,20 +33,20 @@ describe("文本编辑折算回 content（E-16 切片 4）", () => {
   });
 
   it("Enter 拆块：中间切开，两段都有内容", () => {
-    const out = applyBlockSplit(DOC, "p:0", 2);
+    const out = applyBlockSplit(DOC, "p:0", "第一", "段");
     expect((out.match(/<p/g) ?? []).length).toBe(2);
     expect(out).toContain("第一");
     expect(out).toContain("段");
   });
 
-  it("边界 offset 不拆（0 / 末尾）", () => {
-    expect(applyBlockSplit(DOC, "p:0", 0)).toBe(DOC);
-    expect(applyBlockSplit(DOC, "p:0", 99)).toBe(DOC);
+  it("半段为空不拆（光标在首/尾）", () => {
+    expect(applyBlockSplit(DOC, "p:0", "", "第一段")).toBe(DOC);
+    expect(applyBlockSplit(DOC, "p:0", "第一段", "")).toBe(DOC);
   });
 
   it("行内元素不拆块", () => {
     const inline = `<!DOCTYPE html><html><body><p>a<span>bc</span></p></body></html>`;
-    const out = applyBlockSplit(inline, "span:0", 1);
+    const out = applyBlockSplit(inline, "span:0", "b", "c");
     expect(out).toBe(inline);
   });
 });

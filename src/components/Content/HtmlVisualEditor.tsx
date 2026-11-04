@@ -37,23 +37,34 @@ export default function HtmlVisualEditor({
   const fontSize = useEditorStore((s) => s.fontSize);
   const frameRef = useRef<HTMLIFrameElement | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
-  const [editing, setEditing] = useState(false);
-  // 编辑期间冻结文档：否则每敲一个字都重建 iframe，光标当场丢掉
+  // 编辑期间冻结文档：否则每敲一个字都重建 iframe，光标与编辑态一起丢。
+  //
+  // 用 ref 而不是 state 做判定：content 走的是外部 store，订阅回调可能在
+  // setState 提交之前就触发重渲染；那时若读的是 state，会看到 editing=false
+  // 而重建文档——表现为"打着字，iframe 突然刷新，回车没人接"（实测偶发）。
+  const editingRef = useRef(false);
   const frozenRef = useRef<string | null>(null);
+  // 只用来在进入/离开编辑时触发一次重算
+  const [docTick, setDocTick] = useState(0);
 
   const srcDoc = useMemo(() => {
-    if (editing && frozenRef.current) return frozenRef.current;
+    if (editingRef.current && frozenRef.current) return frozenRef.current;
     const doc = buildEditableDoc(content, { filePath, fontSize });
-    frozenRef.current = doc;
+    if (!editingRef.current) frozenRef.current = doc;
     return doc;
-  }, [content, filePath, fontSize, editing]);
+  }, [content, filePath, fontSize, docTick]);
 
-  const commit = useCallback(
-    (updater: (prev: string) => string) => {
-      onContentChange?.(updater);
-    },
-    [onContentChange],
-  );
+  // 订阅必须稳定：onContentChange 是调用方每次渲染新建的箭头函数，若把它写进
+  // effect 依赖，监听见会在每次按键后解绑-重绑；Enter 连发的三条消息正好可能落进
+  // 那个空窗，表现为「偶发丢字」（这个 flake 是真的，不是运气）。
+  const changeRef = useRef(onContentChange);
+  useEffect(() => {
+    changeRef.current = onContentChange;
+  }, [onContentChange]);
+
+  const commit = useCallback((updater: (prev: string) => string) => {
+    changeRef.current?.(updater);
+  }, []);
 
   // 收上报：只认自己这一帧发来的，载荷交给 bridge 解析（版本位/形状不对就丢）
   useEffect(() => {
@@ -66,21 +77,36 @@ export default function HtmlVisualEditor({
         case "selection":
           setSelected(msg.nodeId);
           break;
+        case "saveRequest":
+          // 转成主窗口的快捷键事件，复用 App 里那一份保存逻辑，而不是另写一条
+          window.dispatchEvent(
+            new KeyboardEvent("keydown", {
+              key: "s",
+              metaKey: true,
+              bubbles: true,
+            }),
+          );
+          break;
         case "textEditBegin":
-          setEditing(true);
+          editingRef.current = true;
+          setDocTick((n) => n + 1);
           break;
         case "textEditEnd":
           // 先解冻再提交：让 iframe 按新内容重建一次
+          editingRef.current = false;
           frozenRef.current = null;
-          setEditing(false);
+          setDocTick((n) => n + 1);
           break;
         case "textEditInput":
           commit((prev) => applyTextEdit(prev, msg.nodeId, msg.text));
           break;
         case "splitBlock":
+          editingRef.current = false;
           frozenRef.current = null;
-          setEditing(false);
-          commit((prev) => applyBlockSplit(prev, msg.nodeId, msg.offset));
+          setDocTick((n) => n + 1);
+          commit((prev) =>
+            applyBlockSplit(prev, msg.nodeId, msg.before, msg.after),
+          );
           break;
         default:
           break;
@@ -88,7 +114,7 @@ export default function HtmlVisualEditor({
     };
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
-  }, [commit]);
+  }, []);
 
   // 选中变化 → 下发命令让 iframe 自己挪框。文档重建后也重发一次。
   useEffect(() => {

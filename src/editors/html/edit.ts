@@ -41,7 +41,9 @@ export function applyTextEdit(
 }
 
 /**
- * Enter 拆块：把节点在 `offset` 处一分为二，后半段放进一个同标签的兄弟节点。
+ * Enter 拆块：把节点按 iframe 给出的两半（before / after）重写，后半段放进
+ * 一个同标签的兄弟节点。改叫 before/after 是因为原先传 offset、由主侧再切一次，
+ * 会赌「主侧 content 与 iframe 当时的文本同步」——实测会偶发丢块。
  *
  * 只在块级容器（p/h1-h6/li/blockquote）上做；行内元素里按 Enter 保持原样，
  * 否则会把一句话拆成两个 `span`，语义上说不通。
@@ -61,19 +63,18 @@ const SPLITTABLE = new Set([
 export function applyBlockSplit(
   content: string,
   nodeId: string,
-  offset: number,
+  before: string,
+  after: string,
 ): string {
+  if (!before || !after) return content;
   const doc = new DOMParser().parseFromString(annotate(content), "text/html");
   const el = anchorEl(doc, nodeId);
   if (!el) return content;
   if (!SPLITTABLE.has(el.tagName.toLowerCase())) return content;
 
-  const text = el.textContent ?? "";
-  if (offset <= 0 || offset >= text.length) return content;
-
   const tail = doc.createElement(el.tagName.toLowerCase());
-  tail.innerHTML = escapeText(text.slice(offset));
-  el.innerHTML = escapeText(text.slice(0, offset));
+  tail.innerHTML = escapeText(after);
+  el.innerHTML = escapeText(before);
   el.parentNode?.insertBefore(tail, el.nextSibling);
   return cleanSnapshot(`<!DOCTYPE html>\n${doc.documentElement.outerHTML}`);
 }
