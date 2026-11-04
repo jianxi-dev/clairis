@@ -1,15 +1,14 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useEditorStore } from "../../stores/editorStore";
 import {
-  buildEditableDoc,
-  type BridgeMessage,
-} from "../../editors/html/runtime";
+  commandForSelection,
+  parseBridgeMessage,
+} from "../../editors/html/bridge";
+import { buildEditableDoc } from "../../editors/html/runtime";
 
 interface HtmlVisualEditorProps {
   content: string;
   filePath?: string | null;
-  /** 桥上报的入口，切片 3 之后在这里派发 selection / textEdit。 */
-  onBridgeMessage?: (msg: BridgeMessage) => void;
 }
 
 /**
@@ -18,40 +17,43 @@ interface HtmlVisualEditorProps {
  * 与 `HtmlPreview` 是**两条通道**（design D1）：预览禁一切脚本，这里只放行
  * 带 nonce 的注入运行时。刻意不复用同一个组件加开关——两种安全姿态混在
  * 一个 iframe 里，迟早会漂移。
+ *
+ * 高亮框画在 iframe 自己里面（切片 3）：主应用与 srcdoc 跨源，主文档拿不到
+ * iframe 的布局坐标，也画不到上面去。主侧只负责判定选中的是哪个节点。
  */
 export default function HtmlVisualEditor({
   content,
   filePath,
-  onBridgeMessage,
 }: HtmlVisualEditorProps) {
   const fontSize = useEditorStore((s) => s.fontSize);
   const frameRef = useRef<HTMLIFrameElement | null>(null);
+  const [selected, setSelected] = useState<string | null>(null);
 
   const srcDoc = useMemo(
     () => buildEditableDoc(content, { filePath, fontSize }),
     [content, filePath, fontSize],
   );
 
+  // 收上报：只认自己这一帧发来的，载荷交给 bridge 解析（版本位/形状不对就丢）
   useEffect(() => {
-    if (!onBridgeMessage) return;
     const onMessage = (e: MessageEvent) => {
-      // 只收自己 iframe 发来的消息：srcdoc + sandbox 下 origin 是 "null"，
-      // 靠 source 比对才靠得住。
-      if (frameRef.current && e.source !== frameRef.current.contentWindow)
-        return;
-      const data = e.data as BridgeMessage | undefined;
-      if (
-        !data ||
-        typeof data.v !== "number" ||
-        typeof data.type !== "string"
-      ) {
-        return;
-      }
-      onBridgeMessage(data);
+      const frame = frameRef.current;
+      if (!frame || e.source !== frame.contentWindow) return;
+      const msg = parseBridgeMessage(e.data);
+      if (!msg) return;
+      if (msg.type === "selection") setSelected(msg.nodeId);
     };
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
-  }, [onBridgeMessage]);
+  }, []);
+
+  // 选中变化 → 下发命令让 iframe 自己挪框。文档重建后也重发一次，否则框会丢。
+  useEffect(() => {
+    frameRef.current?.contentWindow?.postMessage(
+      commandForSelection(selected),
+      "*",
+    );
+  }, [selected, srcDoc]);
 
   return (
     <iframe

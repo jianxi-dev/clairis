@@ -11,30 +11,27 @@
  */
 
 import { rewriteHtmlPaths } from "../../renderers/html";
+import { BRIDGE_VERSION } from "./bridge";
 import { INTERNAL_ATTR, annotate } from "./model";
 
 /** 桥协议版本。见 design D4：iframe 里跑的是「用户文档的上下文」，UI 一升级就会和主侧对不上。 */
-export const RUNTIME_VERSION = 1;
-
-export type BridgeMessage =
-  | { v: number; type: "ready"; nodeCount: number }
-  | { v: number; type: "selection"; nodeId: string | null };
-
-function nonce(): string {
-  const bytes = new Uint8Array(16);
-  crypto.getRandomValues(bytes);
-  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
-}
+export const RUNTIME_VERSION = BRIDGE_VERSION;
 
 function runtimeSource(version: number): string {
-  // 只做切片 2 需要的事：报到、把 select/点选上报为 selection。
+  // 切片 3：点选上报 + 按主侧命令画高亮框。
   // 文本编辑、拆块在后续切片往这里加，保持单一入口。
   return `
 (() => {
   const V = ${version};
+  const HL = "highlight";
+  // html/body 不算可点选目标：点它们等于点空白，应当清掉高亮，
+  // 否则框会一直贴在整页边缘，看起来像"没反应"。
   const anchorOf = (el) => {
     const host = el && el.closest && el.closest("[data-cm-node-id]");
-    return host ? host.getAttribute("data-cm-node-id") : null;
+    if (!host) return null;
+    const tag = host.tagName.toLowerCase();
+    if (tag === "html" || tag === "body") return null;
+    return host.getAttribute("data-cm-node-id");
   };
   const post = (msg) => parent.postMessage(Object.assign({ v: V }, msg), "*");
 
@@ -42,15 +39,67 @@ function runtimeSource(version: number): string {
     post({ type: "ready", nodeCount: document.querySelectorAll("[data-cm-node-id]").length });
   });
 
+  // 高亮框必须活在这个文档里：主应用与 srcdoc 跨源，画不到上面去。
+  let box = null;
   let current = null;
-  document.addEventListener("click", (e) => {
-    const nodeId = anchorOf(e.target);
-    if (nodeId === current) return;
-    current = nodeId;
-    post({ type: "selection", nodeId });
-  }, true);
+
+  const ensureBox = () => {
+    if (box && box.isConnected) return box;
+    box = document.createElement("div");
+    box.setAttribute("data-cm-internal", HL);
+    box.setAttribute("data-cm-hl-for", "");
+    Object.assign(box.style, {
+      position: "absolute",
+      pointerEvents: "none",
+      zIndex: "2147483647",
+      border: "2px solid rgba(59,130,246,0.9)",
+      borderRadius: "2px",
+      background: "rgba(59,130,246,0.08)",
+      boxSizing: "border-box",
+      display: "none",
+    });
+    document.body.appendChild(box);
+    return box;
+  };
+
+  const place = () => {
+    // current 可能来自用户文档（annotate 不覆盖已有 data-cm-node-id），
+    // 直接拼进选择器会被引号/括号打断，必须转义。
+    const el = current
+      ? document.querySelector('[data-cm-node-id="' + CSS.escape(current) + '"]')
+      : null;
+    if (!el) {
+      if (box) box.style.display = "none";
+      return;
+    }
+    const r = el.getBoundingClientRect();
+    const b = ensureBox();
+    b.setAttribute("data-cm-hl-for", current);
+    b.style.display = "block";
+    b.style.left = (r.left + scrollX) + "px";
+    b.style.top = (r.top + scrollY) + "px";
+    b.style.width = r.width + "px";
+    b.style.height = r.height + "px";
+  };
+
+  document.addEventListener("click", (e) => post({ type: "selection", nodeId: anchorOf(e.target) }), true);
+  addEventListener("scroll", place, true);
+  addEventListener("resize", place);
+  addEventListener("message", (e) => {
+    if (e.source !== parent) return;
+    const d = e.data;
+    if (!d || d.v !== V || d.type !== "highlight") return;
+    current = typeof d.nodeId === "string" ? d.nodeId : null;
+    place();
+  });
 })();
 `.trim();
+}
+
+function nonce(): string {
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 interface EditableDocOptions {
