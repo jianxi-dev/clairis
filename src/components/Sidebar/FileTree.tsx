@@ -5,6 +5,7 @@ import { useState, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useStore } from "../../stores";
 import { useConfig } from "../../hooks/useConfig";
+import { fileDragHandlers } from "../../hooks/fileDrag";
 import { log } from "../../utils/log";
 
 interface FlatEntry {
@@ -227,6 +228,8 @@ export default function FileTree() {
         {files.map((f) => (
           <button
             key={f.path}
+            data-file-path={f.path}
+            {...fileDragHandlers(f.path)}
             onClick={() => handleOpenFile(f.path)}
             className="w-full text-left px-3 py-1.5 text-xs hover:bg-gray-100 dark:hover:bg-gray-800 border-b border-gray-50 dark:border-gray-700 flex items-center gap-1.5"
             title={f.path}

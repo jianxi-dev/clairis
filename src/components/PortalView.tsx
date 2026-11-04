@@ -7,6 +7,7 @@ import {
   iconOfType,
   type FileTypeKind,
 } from "../lib/fileType";
+import { fileDragHandlers } from "../hooks/fileDrag";
 
 /** 8 类磁贴的固定顺序与中文名（门户 §2 分类磁贴） */
 const TILES: Array<{ kind: FileTypeKind; label: string }> = [
@@ -184,6 +185,7 @@ export default function PortalView({
             <button
               data-testid="portal-hero"
               data-recent-path={hero.path}
+              {...fileDragHandlers(hero.path)}
               onClick={() => openRecent(hero.path)}
               className="mb-8 block w-full rounded-lg border border-gray-200 p-5 text-left hover:border-gray-300 hover:bg-gray-50 dark:border-gray-700 dark:hover:border-gray-600 dark:hover:bg-gray-800"
             >
@@ -225,6 +227,7 @@ export default function PortalView({
                 <button
                   key={f.path}
                   data-recent-path={f.path}
+                  {...fileDragHandlers(f.path)}
                   onClick={() => openRecent(f.path)}
                   className="rounded-lg border border-gray-200 p-4 text-left hover:border-gray-300 hover:bg-gray-50 dark:border-gray-700 dark:hover:border-gray-600 dark:hover:bg-gray-800"
                 >

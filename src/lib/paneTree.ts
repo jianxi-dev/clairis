@@ -22,6 +22,14 @@ export const MAX_PANE_DEPTH = 32;
 
 export type PaneDir = "row" | "col";
 
+/** 落区方向（相对目标格的某一侧）；用于拖拽换位（change layout-portal / 5.1）。 */
+export type PaneSide = "left" | "right" | "top" | "bottom";
+
+/** 左右侧是水平分裂（row），上下侧是垂直分裂（col）。 */
+export function sideToDir(side: PaneSide): PaneDir {
+  return side === "left" || side === "right" ? "row" : "col";
+}
+
 export interface PaneLeaf {
   type: "leaf";
   id: string;
@@ -305,6 +313,119 @@ export function reorderLeafTabs(
   const tabs = moveItem(leaf.tabs, from, to);
   if (tabs.every((id, i) => id === leaf.tabs[i])) return root;
   return updateLeaf(root, leafId, { tabs });
+}
+
+// ── 拖拽换位（change layout-portal / 5.1）────────────────────────
+
+/**
+ * 把 newNode 包成 targetId 所在 leaf 的兄弟：target 与 newNode 组成一个
+ * ratio 0.5 的新分支，newNode 落在 side 指定的那一侧。找不到 target 返回原树。
+ */
+function wrapLeafWith(
+  root: PaneLayout,
+  targetId: string,
+  newNode: PaneLeaf,
+  side: PaneSide,
+): PaneLayout {
+  const dir = sideToDir(side);
+  const before = side === "left" || side === "top";
+  const walk = (node: PaneLayout): PaneLayout => {
+    if (isLeaf(node)) {
+      if (node.id !== targetId) return node;
+      return {
+        type: "node",
+        id: generateBranchId(),
+        dir,
+        ratio: 0.5,
+        children: before ? [newNode, node] : [node, newNode],
+      };
+    }
+    return {
+      ...node,
+      children: [walk(node.children[0]), walk(node.children[1])],
+    };
+  };
+  return walk(root);
+}
+
+/**
+ * 互换两个 leaf 的位置：只交换两棵子树，分支与各分支 ratio 保持在原结构位置；
+ * 每个 leaf 自带的页签 / activeTabId / editorMode 随 leaf 一起搬走。
+ * 同一个 id、或任一 id 不存在时返回原树。
+ */
+export function swapLeaves(
+  root: PaneLayout,
+  aId: string,
+  bId: string,
+): PaneLayout {
+  if (aId === bId) return root;
+  const a = findLeaf(root, aId);
+  const b = findLeaf(root, bId);
+  if (!a || !b) return root;
+  return mapLeaves(root, (leaf) => {
+    if (leaf.id === aId) return b;
+    if (leaf.id === bId) return a;
+    return leaf;
+  });
+}
+
+/**
+ * 把 sourceId 的 leaf 移到 targetId 的某一侧：先从原位置摘除（父分支塌缩），
+ * 再作为兄弟插到 target 该侧，target 与它组成 ratio 0.5 的新分支。
+ * source === target、或任一 id 不存在时返回原树。
+ */
+export function moveLeaf(
+  root: PaneLayout,
+  sourceId: string,
+  targetId: string,
+  side: PaneSide,
+): PaneLayout {
+  if (sourceId === targetId) return root;
+  const source = findLeaf(root, sourceId);
+  if (!source) return root;
+  if (!findLeaf(root, targetId)) return root;
+  const { root: removed, removed: ok } = removeLeaf(root, sourceId);
+  if (!ok) return root;
+  return wrapLeafWith(removed, targetId, source, side);
+}
+
+/**
+ * 把 sourceId 的 leaf 提到根层：摘除后与整棵剩余树组成新的根分支，
+ * moved leaf 落在 side 侧、ratio 0.5。根就是单个 leaf、或 id 不存在时返回原树。
+ */
+export function moveLeafToRoot(
+  root: PaneLayout,
+  sourceId: string,
+  side: PaneSide,
+): PaneLayout {
+  if (isLeaf(root)) return root;
+  const source = findLeaf(root, sourceId);
+  if (!source) return root;
+  const { root: rest, removed } = removeLeaf(root, sourceId);
+  if (!removed) return root;
+  const dir = sideToDir(side);
+  const before = side === "left" || side === "top";
+  return {
+    type: "node",
+    id: generateBranchId(),
+    dir,
+    ratio: 0.5,
+    children: before ? [source, rest] : [rest, source],
+  };
+}
+
+/**
+ * 在 leafId 的某一侧分裂：newLeaf 作为该侧的新兄弟，ratio 0.5。
+ * 与 `splitLeaf` 的区别是能指定新格在左/上（splitLeaf 恒把新格放 children[1]）。
+ */
+export function splitLeafSide(
+  root: PaneLayout,
+  leafId: string,
+  side: PaneSide,
+  newLeaf: PaneLeaf,
+): PaneLayout {
+  if (!containsLeaf(root, leafId)) return root;
+  return wrapLeafWith(root, leafId, newLeaf, side);
 }
 
 /** 序列化：丢弃没有 path 的页签（未保存新页签跨重启无法恢复）。 */
