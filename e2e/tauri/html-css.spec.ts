@@ -25,9 +25,10 @@ async function openFile(
   await page.waitForTimeout(300);
 }
 
-test("HTML 预览：asset:// 直载（iframe src 指向本地文件）", async ({
-  page,
-}) => {
+// 行为变更（E-15 / H1）：预览不再 asset:// 直载磁盘文件，而是一律 srcdoc。
+// 直载读的是磁盘旧内容，编辑后未保存时切回预览看不到改动；srcdoc 用当前
+// content 重建，相对引用由 rewriteHtmlPaths 重写成 asset://。脚本执行留给 H2。
+test("HTML 预览：srcdoc 渲染且相对引用被重写", async ({ page }) => {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto(APP_URL, { waitUntil: "networkidle" });
   await page.waitForSelector("header", { timeout: 10000 });
@@ -36,15 +37,14 @@ test("HTML 预览：asset:// 直载（iframe src 指向本地文件）", async (
 
   const iframe = page.locator('iframe[title="HTML 预览"]');
   await expect(iframe).toHaveCount(1);
-  const src = await iframe.getAttribute("src");
-  // buildAssetUrl 保留目录结构：前导 %2F 保留绝对路径语义，段间斜杠字面保留
-  expect(src).toBe("asset://localhost/%2FUsers/test/complex.html");
-  // 脚本默认允许：sandbox 含 allow-scripts
-  const sandbox = await iframe.getAttribute("sandbox");
-  expect(sandbox).toContain("allow-scripts");
+  const srcdoc = await iframe.getAttribute("srcdoc");
+  expect(srcdoc).not.toBeNull();
+  expect(srcdoc).toContain("<p>hi</p>");
+  // 预览态禁用脚本：CSP script-src 'none'（H2 再设计桥协议）
+  expect(srcdoc).toContain("script-src 'none'");
 });
 
-test("HTML 预览：无路径回退 srcdoc 且脚本仍禁", async ({ page }) => {
+test("HTML 预览：无路径文档同样走 srcdoc", async ({ page }) => {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto(APP_URL, { waitUntil: "networkidle" });
   await page.waitForSelector("header", { timeout: 10000 });
@@ -62,11 +62,11 @@ test("HTML 预览：无路径回退 srcdoc 且脚本仍禁", async ({ page }) =>
   });
   await page.waitForTimeout(300);
 
-  // 打开的文件总是有路径 → asset 直载
   const iframe = page.locator('iframe[title="HTML 预览"]');
   await expect(iframe).toHaveCount(1);
-  const src = await iframe.getAttribute("src");
-  expect(src).toBe("asset://localhost/%2FUsers/test/untitled.html");
+  const srcdoc = await iframe.getAttribute("srcdoc");
+  expect(srcdoc).not.toBeNull();
+  expect(srcdoc).toContain("<p>x</p>");
 });
 
 test("HTML 预览：锚点点击不崩溃（iframe 保持存在）", async ({ page }) => {

@@ -55,12 +55,19 @@ export function rewriteHtmlPaths(
   const dir = getDirPath(filePath);
   if (!dir) return content;
 
-  // Replace src="" and href="" attribute values
+  // Replace src/href/poster values — **双引号与单引号都要管**。
+  // 用户手写的 HTML 里单引号很常见；只认双引号时这些引用不会被重写，
+  // 在 srcdoc 里就变成相对应用 origin 的 404（E-15 走查发现）。
   let result = content.replace(
-    /(src|href|poster)="([^"]*)"/gi,
-    (_match, attr, url) => {
+    /(src|href|poster)=("([^"]*)"|'([^']*)')/gi,
+    (_match, attr, _quoted, doubleValue, singleValue) => {
+      const url: string = doubleValue ?? singleValue ?? "";
       const resolved = resolvePath(url, dir);
-      return resolved !== url ? `${attr}="${resolved}"` : `${attr}="${url}"`;
+      const value = resolved !== url ? resolved : url;
+      // 保留原引号风格，减少无谓 diff（导出的 HTML 也应该看起来没被动过）
+      return doubleValue !== undefined
+        ? `${attr}="${value}"`
+        : `${attr}='${value}'`;
     },
   );
 

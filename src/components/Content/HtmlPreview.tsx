@@ -1,8 +1,6 @@
 import { useState, useMemo } from "react";
-import { buildAssetUrl } from "../../renderers";
 import { rewriteHtmlPaths } from "../../renderers";
 import { useEditorStore } from "../../stores/editorStore";
-import { isTauriEnv } from "../../utils/tauri";
 
 interface HtmlPreviewProps {
   content: string;
@@ -19,11 +17,13 @@ export default function HtmlPreview({
   const [error, setError] = useState<string | null>(null);
   const fontSize = useEditorStore((s) => s.fontSize);
 
-  // Asset 直载：iframe 通过 asset 协议加载真实本地文件——脚本可执行但与主窗口跨源隔离，
-  // 相对资源按文件路径天然解析（buildAssetUrl 保留目录结构，convertFileSrc 会塌缩路径
-  // 导致文档内相对引用 404），锚点导航正常。无路径或非 Tauri 环境时回退 srcdoc
-  // （convertFileSrc 在浏览器环境无 __TAURI_INTERNALS__ 会同步抛错击穿渲染树）。
-  const assetSrc = filePath && isTauriEnv() ? buildAssetUrl(filePath) : null;
+  // 一律用 srcdoc，不再走 asset 协议直载磁盘文件。
+  //
+  // 直载的好处是脚本能跑、相对引用天然解析；代价是**预览读的是磁盘上的旧内容**
+  // ——编辑态改了还没保存时，切回预览看到的还是上一次保存的版本（E-15 要求
+  // 编辑改动切回预览可见）。相对资源改由 rewriteHtmlPaths 重写成 asset://，
+  // 效果等价；脚本执行留给 H2 的可视化编辑专门设计（届时需要 postMessage 桥，
+  // 现在的 CSP `script-src 'none'` 正好不会让半成品脚本干扰预览）。
 
   const sandboxed = useMemo(() => {
     if (!content) {
@@ -60,18 +60,6 @@ ${processed}
       >
         <p>{error}</p>
       </div>
-    );
-  }
-
-  if (assetSrc) {
-    return (
-      <iframe
-        src={assetSrc}
-        sandbox="allow-scripts allow-same-origin allow-popups"
-        style={{ zoom, width: "100%", height: "100%", border: "none" }}
-        title="HTML 预览"
-        onError={handleError}
-      />
     );
   }
 
