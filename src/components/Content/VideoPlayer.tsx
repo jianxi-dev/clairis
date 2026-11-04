@@ -3,6 +3,7 @@ import Artplayer from "artplayer";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { getActiveEditorView } from "../../editors/editorRef";
+import Icon from "../Icon";
 
 /**
  * 媒体预览播放器（ArtPlayer 封装）
@@ -84,7 +85,7 @@ const AUDIO_POSTER =
   encodeURIComponent(
     `<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360">
       <rect width="100%" height="100%" fill="#18181f"/>
-      <text x="50%" y="50%" font-size="96" text-anchor="middle" dominant-baseline="central">🎵</text>
+      <text x="50%" y="50%" font-size="96" text-anchor="middle" dominant-baseline="central"></text>
     </svg>`,
   );
 
@@ -799,7 +800,7 @@ export default function VideoPlayer({
                 cursor: "pointer",
               }}
             >
-              ✕
+              <Icon name="close" size={18} />
             </button>
           </div>
           {mediaItems.length === 0 && (
@@ -825,7 +826,12 @@ export default function VideoPlayer({
                 color: i === currentIndex ? "#fff" : "rgba(255,255,255,0.8)",
               }}
             >
-              <span>{item.kind === "audio" ? "🎵" : "🎬"}</span>
+              <span>
+                <Icon
+                  name={item.kind === "audio" ? "audio" : "video"}
+                  size={18}
+                />
+              </span>
               <span
                 style={{
                   flex: 1,
@@ -864,7 +870,7 @@ export default function VideoPlayer({
                 cursor: "pointer",
               }}
             >
-              ✕
+              <Icon name="close" size={18} />
             </button>
           </div>
           {subtitleList.length === 0 && (
@@ -948,7 +954,7 @@ export default function VideoPlayer({
                 cursor: "pointer",
               }}
             >
-              ✕
+              <Icon name="close" size={18} />
             </button>
           </div>
           <div
@@ -1011,7 +1017,10 @@ export default function VideoPlayer({
               userSelect: "none",
             }}
           >
-            <span>📝 记录 @ {formatTime(noteTime)}</span>
+            <span>
+              <Icon name="text" size={18} className="mr-1 inline-block" />
+              记录 @ {formatTime(noteTime)}
+            </span>
             <button
               onClick={() => {
                 setShowNote(false);
@@ -1025,7 +1034,7 @@ export default function VideoPlayer({
                 fontSize: 11,
               }}
             >
-              ✕
+              <Icon name="close" size={18} />
             </button>
           </div>
           {/* 输入区（弹性放大） */}

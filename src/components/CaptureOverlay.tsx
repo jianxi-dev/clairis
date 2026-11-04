@@ -5,6 +5,7 @@ import {
   useCaptureOverlayStore,
 } from "../stores/captureOverlay";
 import type { InboxEntry } from "../types";
+import Icon from "./Icon";
 
 const PREFIX_COLORS: Record<string, string> = {
   "": "text-gray-400",
@@ -604,14 +605,14 @@ export default function CaptureOverlay() {
             className={`w-7 h-7 rounded-md flex items-center justify-center transition-colors ${store.pinned ? "text-orange-500 bg-orange-50 dark:bg-orange-900/30" : "text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"}`}
             title={store.pinned ? "取消置顶" : "置顶"}
           >
-            📌
+            <Icon name="pin" size={18} />
           </button>
           <button
             onClick={handleXClick}
             className="w-7 h-7 rounded-md flex items-center justify-center text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
             title="关闭"
           >
-            ✕
+            <Icon name="close" size={18} />
           </button>
         </div>
 
@@ -781,7 +782,7 @@ export default function CaptureOverlay() {
                                 className="w-7 h-7 rounded-md flex items-center justify-center text-gray-400 hover:bg-emerald-500/10 hover:text-emerald-500"
                                 title="归档"
                               >
-                                ✓
+                                <Icon name="check" size={18} />
                               </button>
                               <button
                                 onClick={(e) => {

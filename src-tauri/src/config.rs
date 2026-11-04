@@ -38,6 +38,8 @@ pub struct AppConfig {
     pub scroll_positions: Option<HashMap<String, ScrollPosition>>,
     /// 核心能力开关：只记录被关闭的能力，缺省即全开（spec X-3）。
     pub capabilities: Option<HashMap<String, bool>>,
+    /// 图标标签级别（Layout Portal §10）：auto / text / icon。
+    pub icon_label: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -72,6 +74,7 @@ impl Default for AppConfig {
             target_lang: Some("zh-CN".into()),
             theme: Some("system".into()),
             ai_confirm_density: Some("session-silent".into()),
+            icon_label: Some("text".into()),
             sidebar_left_visible: Some(true),
             sidebar_right_visible: Some(false),
             sidebar_left_width: Some(220.0),
@@ -330,6 +333,11 @@ pub fn validate_config(config: &AppConfig) -> Result<(), AppError> {
         "aiConfirmDensity",
         config.ai_confirm_density.as_deref(),
         &["always", "session-silent", "never"],
+    )?;
+    check_enum(
+        "iconLabel",
+        config.icon_label.as_deref(),
+        &["auto", "text", "icon"],
     )?;
     check_enum(
         "readerSkin",

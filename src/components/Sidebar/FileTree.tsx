@@ -1,3 +1,6 @@
+import Icon from "../Icon";
+import { useEditorStore } from "../../stores/editorStore";
+import { colorOfType, fileTypeOf, iconOfType } from "../../lib/fileType";
 import { useState, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useStore } from "../../stores";
@@ -23,6 +26,7 @@ const isTauri =
     undefined;
 
 export default function FileTree() {
+  const iconLabel = useEditorStore((s) => s.config.iconLabel ?? "text");
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
   const [entries, setEntries] = useState<FlatEntry[]>([]);
   const [loading, setLoading] = useState(false);
@@ -134,7 +138,7 @@ export default function FileTree() {
           onClick={() => setSelectedFolder(null)}
           className="text-blue-500 hover:underline shrink-0"
         >
-          📁
+          <Icon name="folder" size={18} />
         </button>
         <span className="text-gray-300 dark:text-gray-600">/</span>
         {breadcrumbs.map((seg, i) => {
@@ -182,7 +186,8 @@ export default function FileTree() {
       <div className="flex-1 overflow-y-auto">
         {truncated && (
           <div className="px-3 py-1 text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800">
-            ⚠ 文件过多，仅显示前 2000 个
+            <Icon name="warning" size={18} className="mr-1 inline-block" />
+            文件过多，仅显示前 2000 个
           </div>
         )}
         {loading && (
@@ -210,7 +215,7 @@ export default function FileTree() {
                 onClick={() => loadFolder(d.path)}
                 className="w-full text-left px-3 py-1.5 text-xs hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center gap-1.5"
               >
-                <span className="text-yellow-600">📁</span>
+                <Icon name="folder" size={18} className="text-yellow-600" />
                 <span className="text-gray-700 dark:text-gray-300 truncate">
                   {d.relative_path}
                 </span>
@@ -225,11 +230,18 @@ export default function FileTree() {
             onClick={() => handleOpenFile(f.path)}
             className="w-full text-left px-3 py-1.5 text-xs hover:bg-gray-100 dark:hover:bg-gray-800 border-b border-gray-50 dark:border-gray-700 flex items-center gap-1.5"
             title={f.path}
+            aria-label={iconLabel === "icon" ? f.name : undefined}
           >
-            <span className="text-blue-500 shrink-0">📄</span>
-            <span className="text-gray-800 dark:text-gray-200 truncate">
-              {search ? f.relative_path : f.name}
-            </span>
+            <Icon
+              name={iconOfType(fileTypeOf(f.path))}
+              size={18}
+              color={colorOfType(fileTypeOf(f.path))}
+            />
+            {iconLabel !== "icon" && (
+              <span className="text-gray-800 dark:text-gray-200 truncate">
+                {search ? f.relative_path : f.name}
+              </span>
+            )}
             {!search && (
               <span className="text-gray-400 dark:text-gray-600 text-xs truncate ml-auto">
                 {f.relative_path.split("/").slice(0, -1).join("/")}

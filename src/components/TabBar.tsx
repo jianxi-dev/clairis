@@ -1,3 +1,6 @@
+import Icon from "./Icon";
+import { useEditorStore } from "../stores/editorStore";
+import { colorOfType, fileTypeOf, iconOfType } from "../lib/fileType";
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useStore } from "../stores";
 import type { Tab } from "../types";
@@ -34,6 +37,9 @@ export default function TabBar({
   onCloseTab,
 }: TabBarProps) {
   const tabIds = Object.keys(tabs);
+  // 图标标签级别（设置里可改）：只有 text 显示标题；auto（重复处仅图标）与
+  // icon（全站仅图标）都隐藏标题
+  const iconLabel = useEditorStore((s) => s.config.iconLabel ?? "text");
   const [notice, setNotice] = useState<string | null>(null);
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -239,6 +245,8 @@ export default function TabBar({
               key={id}
               onClick={() => onSwitchTab(id)}
               data-tab-id={id}
+              aria-label={iconLabel === "text" ? undefined : tab.title}
+              title={iconLabel === "text" ? undefined : tab.title}
               onContextMenu={(e) => handleContextMenu(e, id)}
               className={`flex items-center gap-1 px-3 py-1.5 text-xs cursor-pointer transition-colors whitespace-nowrap ${
                 isActive
@@ -247,7 +255,15 @@ export default function TabBar({
               }`}
               style={{ borderRight: "1px solid var(--tab-border, #e5e7eb)" }}
             >
-              <span className="truncate max-w-40">{tab.title}</span>
+              <Icon
+                name={iconOfType(fileTypeOf(tab.path))}
+                size={18}
+                color={colorOfType(fileTypeOf(tab.path))}
+                className="mr-0.5"
+              />
+              {iconLabel === "text" && (
+                <span className="truncate max-w-40">{tab.title}</span>
+              )}
               {tab.dirty && (
                 <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />
               )}

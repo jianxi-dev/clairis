@@ -1,3 +1,4 @@
+import Icon from "../Icon";
 import { useAiEntryStore, formatSnapshotTime } from "../../hooks/useAiEntry";
 
 export default function SnapshotPanel() {
@@ -23,7 +24,7 @@ export default function SnapshotPanel() {
           aria-label="关闭历史面板"
           className="w-6 h-6 rounded-md text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
         >
-          ✕
+          <Icon name="close" size={18} />
         </button>
       </div>
 

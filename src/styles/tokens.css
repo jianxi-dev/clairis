@@ -8,6 +8,16 @@
  * 而非抢眼。想统一时把 --reader-accent 指回 var(--app-accent) 即可。
  */
 :root {
+  /* 文件类型色（Layout Portal §10）。深色模式不换色：类型色是识别标志，
+     换掉会让同一个文件在两种主题下看起来是两种东西。 */
+  --type-markdown: #6366f1;
+  --type-html: #f59e0b;
+  --type-text: #64748b;
+  --type-pdf: #ef4444;
+  --type-video: #a855f7;
+  --type-image: #10b981;
+  --type-code: #06b6d4;
+  --type-audio: #ec4899;
   --app-accent: #6366f1;
   --app-accent-soft: rgba(99, 102, 241, 0.1);
 

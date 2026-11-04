@@ -1,4 +1,5 @@
 import type { Theme } from "../types";
+import Icon from "./Icon";
 
 interface ToolbarProps {
   isTauri: boolean;
@@ -102,7 +103,12 @@ export default function Toolbar({
         className="px-2 py-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-xs whitespace-nowrap"
         title={`当前: ${theme === "system" ? "跟随系统" : theme === "dark" ? "暗色" : "亮色"}`}
       >
-        {theme === "dark" ? "☀️" : theme === "light" ? "🌙" : "💻"}
+        <Icon
+          name={
+            theme === "dark" ? "sun" : theme === "light" ? "moon" : "monitor"
+          }
+          size={18}
+        />
       </button>
 
       {/* Mode buttons */}
