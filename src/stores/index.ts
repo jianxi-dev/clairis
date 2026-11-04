@@ -18,6 +18,7 @@ import {
   type RailState,
   type RailViewSpec,
 } from "../lib/railView";
+import { DENSITY_HEIGHT, clampCardHeight } from "../lib/railCards";
 import {
   addTab,
   createLeaf,
@@ -175,6 +176,8 @@ interface AppStore {
   railLayout: RailLayout;
   /** 栏内密度：紧凑 / 舒适 / 卡片。 */
   railDensity: RailDensity;
+  /** 卡片档高度（88–160，默认 112）；只影响卡片密度。 */
+  railCardHeight: number;
   /** 顶部搜索是否处于展开（聚焦）状态。 */
   railSearchOpen: boolean;
   /** 栏内搜索词；与网格搜索完全独立。 */
@@ -249,6 +252,7 @@ interface AppStore {
   toggleRailPin: () => void;
   setRailLayout: (layout: RailLayout) => void;
   setRailDensity: (density: RailDensity) => void;
+  setRailCardHeight: (height: number) => void;
   openRailSearch: () => void;
   closeRailSearch: () => void;
   setRailQuery: (query: string) => void;
@@ -283,6 +287,7 @@ const initialState = {
   railPinned: false,
   railLayout: DEFAULT_RAIL_VIEW_SPEC.layout,
   railDensity: DEFAULT_RAIL_VIEW_SPEC.density,
+  railCardHeight: DEFAULT_RAIL_VIEW_SPEC.cardHeight ?? DENSITY_HEIGHT.card,
   railSearchOpen: false,
   railQuery: "",
   railSection: "recent" as RailSection,
@@ -923,6 +928,9 @@ export const useStore = create<AppStore>((set, get) => ({
 
   setRailDensity: (density) => set({ railDensity: density }),
 
+  setRailCardHeight: (height) =>
+    set({ railCardHeight: clampCardHeight(height) }),
+
   openRailSearch: () => set({ railSearchOpen: true }),
 
   closeRailSearch: () => set({ railSearchOpen: false, railQuery: "" }),
@@ -934,8 +942,17 @@ export const useStore = create<AppStore>((set, get) => ({
   setRailChip: (chip) => set({ railChip: chip }),
 
   saveRailViewSpec: () => {
-    const { railLayout, railDensity } = get();
-    set({ railViewSpec: { layout: railLayout, density: railDensity } });
+    const { railLayout, railDensity, railCardHeight } = get();
+    // 卡片高度只在卡片档有意义；紧凑/舒适档不写这个字段，保持 6.1 旧规格形状
+    const railViewSpec: RailViewSpec =
+      railDensity === "card"
+        ? {
+            layout: railLayout,
+            density: railDensity,
+            cardHeight: clampCardHeight(railCardHeight),
+          }
+        : { layout: railLayout, density: railDensity };
+    set({ railViewSpec });
     // 动态导入避免 stores ↔ useConfig 的静态循环依赖（useConfig 依赖本模块）
     void import("../hooks/useConfig").then((m) => m.saveAppConfig());
   },

@@ -21,6 +21,7 @@ import {
   HOVER_CLOSE_MS,
   HOVER_OPEN_MS,
   RAIL_EDGE_PX,
+  RAIL_KIND_LABELS,
   RAIL_SECTIONS,
   RAIL_WIDTH_PX,
   filterRailItems,
@@ -34,16 +35,22 @@ import {
   type RailLayout,
   type RailSection,
 } from "../../lib/railView";
+import {
+  CARD_MAX,
+  CARD_MIN,
+  DENSITY_HEIGHT,
+  metaLine,
+  parentPathOf,
+  relativeDate,
+  taskProgressOf,
+  thumbDescriptorOf,
+  thumbnailBox,
+  type ThumbDescriptor,
+} from "../../lib/railCards";
+import { buildAssetUrl } from "../../renderers/html";
 import { log } from "../../utils/log";
 import { isTauriEnv } from "../../utils/tauri";
 import type { RecentFile } from "../../types";
-
-/** 密度 → 单行间距 / 边框（卡片密度只加圆角边框，不做缩略图——那是 7.1 的活）。 */
-const DENSITY_ROW: Record<RailDensity, string> = {
-  compact: "py-0.5",
-  comfortable: "py-1",
-  card: "py-1.5 my-1 rounded border border-gray-200 dark:border-gray-700",
-};
 
 const LAYOUT_LABELS: Record<RailLayout, string> = {
   stacked: "堆叠",
@@ -67,61 +74,368 @@ interface RailRowProps {
   item: RecentFile;
   ranges: MatchRange[];
   density: RailDensity;
+  cardHeight: number;
   pinned: boolean;
+  readPercent?: number;
   onOpen: (path: string) => void;
+  onSplit: (path: string, dir: "row" | "col") => void;
+  onReveal: (path: string) => void;
   onTogglePin: (path: string) => void;
+}
+
+/** 本地图片路径 → asset:// URL；浏览器直跑（无 Tauri）时保持原路径。 */
+function assetSrc(src: string): string {
+  if (!src) return "";
+  if (/^(data:|blob:|asset:|https?:)/i.test(src)) return src;
+  return isTauriEnv() ? buildAssetUrl(src) : src;
+}
+
+/**
+ * 卡片右侧 4:3 缩略图（72×54）。
+ *
+ * 六种类型全部确定性离线生成：HTML=橙页、PDF=红文档页、视频=紫海报+播放、
+ * 音频=粉波形、图片/MD 首图=真 <img>。纯文本与无图 MD 不会调用到这里。
+ */
+function RailThumb({ descriptor }: { descriptor: ThumbDescriptor }) {
+  const box = thumbnailBox();
+  const size = { width: box.w, height: box.h };
+  const kind = descriptor.kind;
+
+  if (kind === "image" || kind === "md-cover") {
+    return (
+      <div
+        data-testid="rail-thumb"
+        data-thumb-kind={kind}
+        style={size}
+        className="rail-thumb shrink-0"
+      >
+        <img
+          src={assetSrc(descriptor.src ?? "")}
+          alt=""
+          width={box.w}
+          height={box.h}
+          className="h-full w-full object-cover"
+        />
+      </div>
+    );
+  }
+
+  if (kind === "video-poster") {
+    return (
+      <div
+        data-testid="rail-thumb"
+        data-thumb-kind={kind}
+        style={{
+          ...size,
+          background:
+            "color-mix(in srgb, var(--type-video) 26%, var(--app-surface))",
+        }}
+        className="rail-thumb shrink-0"
+      >
+        <span className="rail-thumb-play">
+          <Icon name="video" size={24} color="var(--app-surface)" />
+        </span>
+      </div>
+    );
+  }
+
+  if (kind === "audio-wave") {
+    return (
+      <div
+        data-testid="rail-thumb"
+        data-thumb-kind={kind}
+        style={{
+          ...size,
+          background:
+            "color-mix(in srgb, var(--type-audio) 20%, var(--app-surface))",
+          color: "var(--type-audio)",
+        }}
+        className="rail-thumb rail-thumb-wave shrink-0"
+      >
+        {[6, 12, 18, 10, 16, 8, 14].map((h, i) => (
+          <span key={i} className="rail-thumb-bar" style={{ height: h }} />
+        ))}
+      </div>
+    );
+  }
+
+  const token = kind === "html-page" ? "html" : "pdf";
+  return (
+    <div
+      data-testid="rail-thumb"
+      data-thumb-kind={kind}
+      style={{
+        ...size,
+        background: `color-mix(in srgb, var(--type-${token}) 16%, var(--app-surface))`,
+        color: `var(--type-${token})`,
+      }}
+      className="rail-thumb rail-thumb-page shrink-0"
+    >
+      <span className="rail-thumb-line" />
+      <span className="rail-thumb-line" />
+      <span className="rail-thumb-line" />
+    </div>
+  );
 }
 
 function RailRow({
   item,
   ranges,
   density,
+  cardHeight,
   pinned,
+  readPercent,
   onOpen,
+  onSplit,
+  onReveal,
   onTogglePin,
 }: RailRowProps) {
   const kind: FileTypeKind = fileTypeOf(item.path);
   const segments = splitByRanges(item.title, ranges);
+  const pinButton = (
+    <button
+      type="button"
+      data-testid="rail-item-pin"
+      data-pinned={pinned ? "true" : "false"}
+      aria-label={pinned ? "取消置顶" : "置顶"}
+      title={pinned ? "取消置顶" : "置顶"}
+      onClick={(e) => {
+        e.stopPropagation();
+        onTogglePin(item.path);
+      }}
+      className="shrink-0 rounded p-0.5 text-gray-300 hover:text-gray-600 dark:text-gray-600 dark:hover:text-gray-300"
+    >
+      <Icon
+        name="pin"
+        size={18}
+        color={pinned ? "var(--app-accent)" : undefined}
+      />
+    </button>
+  );
+
+  const title = (className: string) => (
+    <span className={className}>
+      {segments.map((seg, i) =>
+        seg.hit ? (
+          <mark key={i} data-testid="rail-hit" className="rail-hit">
+            {seg.text}
+          </mark>
+        ) : (
+          <span key={i}>{seg.text}</span>
+        ),
+      )}
+    </span>
+  );
+
+  if (density === "compact") {
+    return (
+      <div
+        data-testid="rail-item"
+        data-rail-path={item.path}
+        data-kind={kind}
+        data-density="compact"
+        style={{ height: DENSITY_HEIGHT.compact }}
+        className="group relative box-border flex items-center gap-1 px-2"
+      >
+        <button
+          type="button"
+          onClick={() => onOpen(item.path)}
+          className="flex min-w-0 flex-1 items-center gap-1.5 rounded px-1 text-left hover:bg-gray-100 dark:hover:bg-gray-800"
+        >
+          <Icon name={iconOfType(kind)} size={18} color={colorOfType(kind)} />
+          {title("truncate text-xs text-gray-700 dark:text-gray-200")}
+        </button>
+        <span
+          data-testid="rail-item-time"
+          className="shrink-0 text-[10px] text-gray-400 dark:text-gray-500"
+        >
+          {relativeDate(item.openedAt)}
+        </span>
+        {pinButton}
+      </div>
+    );
+  }
+
+  if (density === "comfortable") {
+    return (
+      <div
+        data-testid="rail-item"
+        data-rail-path={item.path}
+        data-kind={kind}
+        data-density="comfortable"
+        style={{ height: DENSITY_HEIGHT.comfortable }}
+        className="group relative box-border flex flex-col justify-center px-2 py-1"
+      >
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => onOpen(item.path)}
+            className="flex min-w-0 flex-1 items-center gap-1.5 text-left"
+          >
+            <Icon name={iconOfType(kind)} size={18} color={colorOfType(kind)} />
+            {title("truncate text-xs text-gray-700 dark:text-gray-200")}
+          </button>
+          {pinButton}
+        </div>
+        <div
+          data-testid="rail-item-sub"
+          className="mt-0.5 flex min-w-0 items-center gap-1 pl-[22px] text-[10px] text-gray-400 dark:text-gray-500"
+        >
+          <span className="truncate">{parentPathOf(item.path)}</span>
+          <span>·</span>
+          <span className="shrink-0">{relativeDate(item.openedAt)}</span>
+          {pinned && (
+            <span
+              data-testid="rail-item-pinned"
+              className="shrink-0 rounded-full bg-[var(--app-accent-soft)] px-1 text-[9px] leading-tight text-[var(--app-accent)]"
+            >
+              置顶
+            </span>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  const thumb = thumbDescriptorOf(item);
+  const meta = metaLine(item, readPercent);
+  const tasks = taskProgressOf(item.excerpt);
+  const readPct =
+    typeof readPercent === "number" && Number.isFinite(readPercent)
+      ? Math.min(100, Math.max(0, Math.round(readPercent)))
+      : null;
+  const progressPct = tasks
+    ? Math.round((tasks.done / tasks.total) * 100)
+    : meta.kind === "read"
+      ? readPct
+      : null;
+
   return (
     <div
       data-testid="rail-item"
       data-rail-path={item.path}
       data-kind={kind}
-      className={`group flex items-center gap-1 px-2 ${DENSITY_ROW[density]}`}
+      data-density="card"
+      style={{ height: cardHeight }}
+      className="group relative my-1 box-border flex flex-col justify-between overflow-hidden rounded border border-gray-200 px-2 py-1.5 dark:border-gray-700"
     >
-      <button
-        type="button"
-        onClick={() => onOpen(item.path)}
-        className="flex min-w-0 flex-1 items-center gap-1.5 rounded px-1 py-0.5 text-left hover:bg-gray-100 dark:hover:bg-gray-800"
+      <div className="flex min-h-0 flex-1 gap-1.5 overflow-hidden">
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+          <button
+            type="button"
+            onClick={() => onOpen(item.path)}
+            className="flex min-w-0 items-start gap-1.5 text-left"
+          >
+            <Icon name={iconOfType(kind)} size={18} color={colorOfType(kind)} />
+            {title(
+              "line-clamp-2 text-xs font-semibold leading-snug text-gray-800 dark:text-gray-100",
+            )}
+          </button>
+          <p
+            data-testid="rail-card-excerpt"
+            className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-gray-500 dark:text-gray-400"
+          >
+            {item.excerpt || "（暂无正文）"}
+          </p>
+        </div>
+        {thumb && <RailThumb descriptor={thumb} />}
+      </div>
+
+      <div
+        data-testid="rail-card-meta"
+        data-meta-kind={meta.kind}
+        className="flex min-w-0 items-center gap-1 text-[10px] text-gray-400 dark:text-gray-500"
       >
-        <Icon name={iconOfType(kind)} size={18} color={colorOfType(kind)} />
-        <span className="truncate text-xs text-gray-700 dark:text-gray-200">
-          {segments.map((seg, i) =>
-            seg.hit ? (
-              <mark key={i} data-testid="rail-hit" className="rail-hit">
-                {seg.text}
-              </mark>
-            ) : (
-              <span key={i}>{seg.text}</span>
-            ),
-          )}
+        <span
+          data-testid="rail-card-chip"
+          data-kind={kind}
+          style={{ color: colorOfType(kind), borderColor: colorOfType(kind) }}
+          className="shrink-0 rounded-full border px-1.5 py-px leading-none"
+        >
+          {RAIL_KIND_LABELS[kind]}
         </span>
-      </button>
-      <button
-        type="button"
-        data-testid="rail-item-pin"
-        data-pinned={pinned ? "true" : "false"}
-        aria-label={pinned ? "取消置顶" : "置顶"}
-        title={pinned ? "取消置顶" : "置顶"}
-        onClick={() => onTogglePin(item.path)}
-        className="shrink-0 rounded p-0.5 text-gray-300 hover:text-gray-600 dark:text-gray-600 dark:hover:text-gray-300"
+        <button
+          type="button"
+          data-testid="rail-item-pin"
+          data-pinned={pinned ? "true" : "false"}
+          aria-label={pinned ? "取消置顶" : "置顶"}
+          title={pinned ? "取消置顶" : "置顶"}
+          onClick={() => onTogglePin(item.path)}
+          className={`shrink-0 rounded px-1 py-px leading-none ${
+            pinned
+              ? "bg-[var(--app-accent-soft)] text-[var(--app-accent)]"
+              : "text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+          }`}
+        >
+          置顶
+        </button>
+        {progressPct !== null && (
+          <span
+            data-testid="rail-meta-progress"
+            data-meta-kind={meta.kind}
+            className="flex shrink-0 items-center gap-1"
+          >
+            <span className="inline-block h-0.5 w-4 overflow-hidden rounded bg-gray-200 dark:bg-gray-700">
+              <span
+                className="block h-full bg-[var(--app-accent)]"
+                style={{ width: `${progressPct}%` }}
+              />
+            </span>
+            <span>{meta.text}</span>
+          </span>
+        )}
+        <span data-testid="rail-item-date" className="shrink-0">
+          {meta.date}
+        </span>
+        <button
+          type="button"
+          data-testid="rail-card-path"
+          title={item.path}
+          onClick={() => onReveal(item.path)}
+          className="min-w-0 truncate text-left hover:text-gray-700 dark:hover:text-gray-200"
+        >
+          {meta.path}
+        </button>
+      </div>
+
+      <div
+        data-testid="rail-card-actions"
+        className="absolute right-1 top-1 z-10 flex gap-0.5 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100"
       >
-        <Icon
-          name="pin"
-          size={18}
-          color={pinned ? "var(--app-accent)" : undefined}
-        />
-      </button>
+        <button
+          type="button"
+          data-testid="rail-card-action"
+          data-action="open"
+          title="打开"
+          aria-label="打开"
+          onClick={() => onOpen(item.path)}
+          className="rounded p-0.5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+        >
+          <Icon name="eye" size={18} />
+        </button>
+        <button
+          type="button"
+          data-testid="rail-card-action"
+          data-action="split-right"
+          title="向右分屏"
+          aria-label="向右分屏"
+          onClick={() => onSplit(item.path, "row")}
+          className="rounded p-0.5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+        >
+          <Icon name="splitRight" size={18} />
+        </button>
+        <button
+          type="button"
+          data-testid="rail-card-action"
+          data-action="split-down"
+          title="向下分屏"
+          aria-label="向下分屏"
+          onClick={() => onSplit(item.path, "col")}
+          className="rounded p-0.5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+        >
+          <Icon name="splitDown" size={18} />
+        </button>
+      </div>
     </div>
   );
 }
@@ -192,6 +506,7 @@ export default function ReadingRail({
   const railState = useStore((s) => s.railState);
   const railLayout = useStore((s) => s.railLayout);
   const railDensity = useStore((s) => s.railDensity);
+  const railCardHeight = useStore((s) => s.railCardHeight);
   const railQuery = useStore((s) => s.railQuery);
   const railSearchOpen = useStore((s) => s.railSearchOpen);
   const railSection = useStore((s) => s.railSection);
@@ -199,11 +514,13 @@ export default function ReadingRail({
   const recentFiles = useStore((s) => s.recentFiles);
   const tabs = useStore((s) => s.tabs);
   const activeTabId = useStore((s) => s.activeTabId);
+  const scrollPositions = useStore((s) => s.scrollPositions);
 
   const setRailState = useStore((s) => s.setRailState);
   const toggleRailPin = useStore((s) => s.toggleRailPin);
   const setRailLayout = useStore((s) => s.setRailLayout);
   const setRailDensity = useStore((s) => s.setRailDensity);
+  const setRailCardHeight = useStore((s) => s.setRailCardHeight);
   const setRailQuery = useStore((s) => s.setRailQuery);
   const openRailSearch = useStore((s) => s.openRailSearch);
   const closeRailSearch = useStore((s) => s.closeRailSearch);
@@ -313,6 +630,33 @@ export default function ReadingRail({
     );
   }, []);
 
+  const readPercentOf = useCallback(
+    (path: string): number | undefined => {
+      const pos = scrollPositions[path];
+      if (!pos || pos.contentHeight <= 0) return undefined;
+      return Math.min(
+        100,
+        Math.round((pos.scrollPos / pos.contentHeight) * 100),
+      );
+    },
+    [scrollPositions],
+  );
+
+  const revealPath = useCallback((path: string) => {
+    if (!isTauriEnv()) return;
+    invoke("reveal_in_finder", { path }).catch((e) =>
+      log.warn("Rail", "在 Finder 中显示失败", e),
+    );
+  }, []);
+
+  const openInSplit = useCallback(
+    (path: string, dir: "row" | "col") => {
+      useStore.getState().splitPane(dir);
+      void Promise.resolve(onOpenPath(path));
+    },
+    [onOpenPath],
+  );
+
   const loadSnapshots = useCallback(() => {
     if (!isTauriEnv()) return;
     invoke<string[]>("list_config_snapshots")
@@ -375,8 +719,12 @@ export default function ReadingRail({
               item={m.item}
               ranges={m.ranges}
               density={railDensity}
+              cardHeight={railCardHeight}
               pinned={pinnedPaths.includes(m.item.path)}
+              readPercent={readPercentOf(m.item.path)}
               onOpen={onOpenPath}
+              onSplit={openInSplit}
+              onReveal={revealPath}
               onTogglePin={togglePinPath}
             />
           ))
@@ -485,6 +833,25 @@ export default function ReadingRail({
                 {DENSITY_LABELS[d]}
               </button>
             ))}
+            <div className="px-3 py-1.5">
+              <div className="flex items-center justify-between text-[11px] text-gray-500 dark:text-gray-400">
+                <span>卡片高度</span>
+                <span data-testid="rail-card-height-value">
+                  {railCardHeight}px
+                </span>
+              </div>
+              <input
+                type="range"
+                min={CARD_MIN}
+                max={CARD_MAX}
+                step={1}
+                value={railCardHeight}
+                data-testid="rail-card-height"
+                aria-label="卡片高度"
+                onChange={(e) => setRailCardHeight(Number(e.target.value))}
+                className="mt-1 w-full accent-[var(--app-accent)]"
+              />
+            </div>
             <div className="mt-1 border-t border-gray-100 px-3 py-1 text-[10px] uppercase text-gray-400 dark:border-gray-700">
               快照
             </div>

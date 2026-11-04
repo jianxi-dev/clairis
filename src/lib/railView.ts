@@ -63,11 +63,15 @@ export type RailDensity = "compact" | "comfortable" | "card";
 export interface RailViewSpec {
   layout: RailLayout;
   density: RailDensity;
+  /** 卡片档高度；88–160。旧配置缺省时由 normalize 补 112。 */
+  cardHeight?: number;
 }
 
 export const DEFAULT_RAIL_VIEW_SPEC: RailViewSpec = {
   layout: "stacked",
-  density: "comfortable",
+  // 7.1 起默认卡片档（112px）；布局仍是堆叠
+  density: "card",
+  cardHeight: 112,
 };
 
 /** 8 类固定顺序（与门户磁贴、fileType 词表一致）。 */

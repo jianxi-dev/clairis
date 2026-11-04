@@ -1,0 +1,46 @@
+{
+  "states": [
+    {
+      "state": "rail-density-card-default",
+      "screenshot": "/Users/mason/ToHighs/clairis/.artifacts/177/rail-density-card-default.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-04T23:28:41Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "rail-density-compact",
+      "screenshot": "/Users/mason/ToHighs/clairis/.artifacts/177/rail-density-compact.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-04T23:28:41Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "rail-density-comfortable",
+      "screenshot": "/Users/mason/ToHighs/clairis/.artifacts/177/rail-density-comfortable.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-04T23:28:41Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "rail-card-thumbnails",
+      "screenshot": "/Users/mason/ToHighs/clairis/.artifacts/177/rail-card-thumbnails.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-04T23:28:41Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "rail-card-hover-actions",
+      "screenshot": "/Users/mason/ToHighs/clairis/.artifacts/177/rail-card-hover-actions.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-04T23:28:41Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "rail-card-height-160",
+      "screenshot": "/Users/mason/ToHighs/clairis/.artifacts/177/rail-card-height-160.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-04T23:28:41Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}
