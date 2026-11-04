@@ -200,16 +200,22 @@ describe("applyAllowlistToLegacy", () => {
 });
 
 describe("needsReviewReport", () => {
-  it("MIGRATION-MAP needs-review 条目 > 0 且与交叉核对一致（全被跟踪）", () => {
-    const rep = needsReviewReport(projectRoot);
-    expect(rep.affectsExitCode).toBe(false);
-    expect(rep.migrationMap.ok).toBe(true);
-    expect(rep.migrationMap.entries).toBeGreaterThan(0);
-    expect(rep.migrationMap.consistent).toBe(true);
-    expect(rep.migrationMap.entries).toBe(rep.migrationMap.crossCheck);
-    expect(rep.tracked).toBe(true);
-    expect(rep.liveDocs.total).toBeGreaterThan(0);
-  });
+  // 该用例扫描整个仓库的文档与 MIGRATION-MAP，CI（2 核 + coverage 插桩）
+  // 实测 9s+，超过 5s 默认超时。放宽到 30s：断言不变，只承载真实 I/O 耗时。
+  it(
+    "MIGRATION-MAP needs-review 条目 > 0 且与交叉核对一致（全被跟踪）",
+    { timeout: 30_000 },
+    () => {
+      const rep = needsReviewReport(projectRoot);
+      expect(rep.affectsExitCode).toBe(false);
+      expect(rep.migrationMap.ok).toBe(true);
+      expect(rep.migrationMap.entries).toBeGreaterThan(0);
+      expect(rep.migrationMap.consistent).toBe(true);
+      expect(rep.migrationMap.entries).toBe(rep.migrationMap.crossCheck);
+      expect(rep.tracked).toBe(true);
+      expect(rep.liveDocs.total).toBeGreaterThan(0);
+    },
+  );
 });
 
 describe("runFixtureSuite — 任务 5 夹具套件（6+6+2）", () => {
