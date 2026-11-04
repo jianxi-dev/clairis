@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import Icon from "./Icon";
 import { useStore } from "../stores/index";
 import { TYPE_COLORS, fileTypeOf, iconOfType } from "../lib/fileType";
+import { fileDragHandlers } from "../hooks/fileDrag";
 
 /**
  * 网格场景的最小可用形态（layout-portal 2.1 接入的场景路由）。
@@ -73,6 +74,7 @@ export default function GridView({
               <button
                 key={f.path}
                 data-grid-item={f.path}
+                {...fileDragHandlers(f.path)}
                 onClick={() => {
                   const tabs = useStore.getState().tabs;
                   const tab = Object.values(tabs).find(

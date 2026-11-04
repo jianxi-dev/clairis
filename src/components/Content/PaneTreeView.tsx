@@ -1,14 +1,22 @@
 import {
+  createContext,
   useCallback,
+  useContext,
   useEffect,
   useRef,
   useState,
   type CSSProperties,
+  type PointerEvent as ReactPointerEvent,
 } from "react";
+import { createPortal } from "react-dom";
 import { invoke } from "@tauri-apps/api/core";
 import { useStore, isMediaKind } from "../../stores";
 import { getPanelScrollEl } from "../../editors/editorRef";
 import { saveAppConfig } from "../../hooks/useConfig";
+import {
+  usePaneDragController,
+  type DropOverlayState,
+} from "../../hooks/usePaneDragController";
 import {
   containsLeaf,
   isLeaf,
@@ -32,6 +40,70 @@ import Icon from "../Icon";
 import ContentArea from "./ContentArea";
 import MediaPlayerHost from "./MediaPlayerHost";
 import PaneDivider from "./PaneDivider";
+
+type PaneDragStarter = (leafId: string, e: ReactPointerEvent) => void;
+const PaneDragContext = createContext<PaneDragStarter>(() => {});
+
+const ROOT_BAND_PX = 48;
+
+/** 落区指示层（layout-portal 5.1）：只做视觉反馈，pointer-events:none 不挡命中判定。 */
+function PaneDropIndicators({ overlay }: { overlay: DropOverlayState }) {
+  if (typeof document === "undefined") return null;
+  let node = null;
+  if (overlay.rootZone && overlay.viewport) {
+    const { width, height } = overlay.viewport;
+    const top = overlay.rootZone === "root-top";
+    const bottom = overlay.rootZone === "root-bottom";
+    const style: CSSProperties = {
+      position: "fixed",
+      top: top ? 0 : bottom ? height - ROOT_BAND_PX : 0,
+      left:
+        top || bottom
+          ? 0
+          : overlay.rootZone === "root-left"
+            ? 0
+            : width - ROOT_BAND_PX,
+      width: top || bottom ? width : ROOT_BAND_PX,
+      height: top || bottom ? ROOT_BAND_PX : height,
+    };
+    node = (
+      <div
+        data-testid="root-drop-indicator"
+        data-drop-zone={overlay.rootZone}
+        className="pane-root-drop"
+        style={style}
+      />
+    );
+  } else if (overlay.zone && overlay.rect) {
+    const { x, y, width, height } = overlay.rect;
+    const zone = overlay.zone;
+    const inner: CSSProperties =
+      zone === "left"
+        ? { left: 0, top: 0, width: "50%", height: "100%" }
+        : zone === "right"
+          ? { right: 0, top: 0, width: "50%", height: "100%" }
+          : zone === "top"
+            ? { left: 0, top: 0, width: "100%", height: "50%" }
+            : zone === "bottom"
+              ? { left: 0, bottom: 0, width: "100%", height: "50%" }
+              : { inset: 0 };
+    node = (
+      <div
+        data-testid="pane-drop-indicator"
+        data-drop-zone={zone}
+        className="pane-drop-overlay"
+        style={{ position: "fixed", left: x, top: y, width, height }}
+      >
+        <div
+          className={zone === "center" ? "pane-drop-center" : "pane-drop-zone"}
+          style={inner}
+        />
+      </div>
+    );
+  }
+  if (!node) return null;
+  return createPortal(node, document.body);
+}
 
 function dirOfTabPath(path: string | null): string {
   if (!path) return "";
@@ -175,6 +247,17 @@ function PaneHeader({
   const [notice, setNotice] = useState<string | null>(null);
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const startPaneDrag = useContext(PaneDragContext);
+
+  const onHeaderPointerDown = useCallback(
+    (e: ReactPointerEvent) => {
+      const target = e.target;
+      if (!(target instanceof Element)) return;
+      if (target.closest("button, [data-tab-id], input, select, a")) return;
+      startPaneDrag(leafId, e);
+    },
+    [startPaneDrag, leafId],
+  );
 
   const showNotice = useCallback((message: string) => {
     setNotice(message);
@@ -302,6 +385,7 @@ function PaneHeader({
   return (
     <div
       data-testid="pane-header"
+      onPointerDown={onHeaderPointerDown}
       className="app-chrome flex items-center shrink-0 border-b border-gray-100 dark:border-gray-700"
     >
       <div className="flex-1 min-w-0 overflow-hidden">
@@ -425,17 +509,21 @@ export default function PaneTreeView() {
   const focusedPaneId = useStore((s) => s.focusedPaneId);
   const fullscreenPaneId = useStore((s) => s.fullscreenPaneId);
   const rootIsLeaf = paneRoot.type === "leaf";
+  const { startPaneDrag, overlay } = usePaneDragController();
 
   return (
-    <div className="relative h-full w-full overflow-hidden">
-      <PaneNode
-        node={paneRoot}
-        style={{ width: "100%", height: "100%" }}
-        fullscreenId={fullscreenPaneId}
-        rootIsLeaf={rootIsLeaf}
-        focusedPaneId={focusedPaneId}
-      />
-      <MediaPlayerHost />
-    </div>
+    <PaneDragContext.Provider value={startPaneDrag}>
+      <div className="relative h-full w-full overflow-hidden">
+        <PaneNode
+          node={paneRoot}
+          style={{ width: "100%", height: "100%" }}
+          fullscreenId={fullscreenPaneId}
+          rootIsLeaf={rootIsLeaf}
+          focusedPaneId={focusedPaneId}
+        />
+        <MediaPlayerHost />
+      </div>
+      <PaneDropIndicators overlay={overlay} />
+    </PaneDragContext.Provider>
   );
 }

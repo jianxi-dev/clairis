@@ -1,0 +1,39 @@
+{
+  "states": [
+    {
+      "state": "pane-drag-center-indicator",
+      "screenshot": "/Users/mason/ToHighs/clairis/.artifacts/175/pane-drag-center-indicator.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-04T22:41:49Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "after-swap",
+      "screenshot": "/Users/mason/ToHighs/clairis/.artifacts/175/after-swap.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-04T22:41:49Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "pane-drag-edge-indicator",
+      "screenshot": "/Users/mason/ToHighs/clairis/.artifacts/175/pane-drag-edge-indicator.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-04T22:41:49Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "pane-drag-root-indicator",
+      "screenshot": "/Users/mason/ToHighs/clairis/.artifacts/175/pane-drag-root-indicator.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-04T22:41:49Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "file-drop-right-split",
+      "screenshot": "/Users/mason/ToHighs/clairis/.artifacts/175/file-drop-right-split.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-04T22:41:49Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}

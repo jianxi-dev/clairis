@@ -798,6 +798,36 @@ body {
   }
 }
 
+/* ── 拖拽落区指示（layout-portal 5.1）────────────────────────── */
+/* 只做转瞬交互反馈，pointer-events:none 保证不挡 elementFromPoint 命中判定。 */
+
+.pane-drop-overlay,
+.pane-root-drop {
+  z-index: 60;
+  pointer-events: none;
+  background: var(--app-accent-soft);
+  border: 2px solid var(--app-accent);
+  border-radius: 4px;
+  box-sizing: border-box;
+  transition: opacity 0.1s ease;
+}
+
+.pane-drop-zone,
+.pane-drop-center {
+  position: absolute;
+  background: var(--app-accent-soft);
+  border: 2px solid var(--app-accent);
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pane-drop-overlay,
+  .pane-root-drop {
+    transition: none;
+  }
+}
+
 /* ── Immersive reading (A-5): chrome fade in/out, main area untouched ── */
 
 .app-chrome {

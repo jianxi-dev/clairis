@@ -15,15 +15,22 @@ import {
   findLeaf,
   leafOfTab,
   listLeaves,
+  mapLeaves,
+  moveLeaf,
+  moveLeafToRoot,
   removeLeaf,
   reorderLeafTabs,
   serializeLayout,
   setBranchRatio,
   siblingLeafId,
   splitLeaf,
+  splitLeafSide,
+  swapLeaves,
   updateLeaf,
   type PaneDir,
   type PaneLayout,
+  type PaneLeaf,
+  type PaneSide,
 } from "../lib/paneTree";
 
 /** 门户卡片摘要：取正文前 160 字，压掉多余空白。不是占位文案，是文件真实开头。 */
@@ -144,6 +151,10 @@ interface AppStore {
   focusedPaneId: string;
   /** 全屏格 id；null = 正常多格布局。 */
   fullscreenPaneId: string | null;
+  /** 正在被拖拽的格 id；仅 UI 预览，不持久化。 */
+  dragPaneSourceId: string | null;
+  /** 正在被拖拽的文件路径；仅 UI 预览，不持久化。 */
+  draggingFilePath: string | null;
 
   reset: () => void;
   openFile: (path: string, content: string) => void;
@@ -191,6 +202,18 @@ interface AppStore {
   restorePaneLayout: (root: PaneLayout, focusedId: string) => void;
   collapsePanes: () => void;
   paneLayoutJson: () => string;
+  // 拖拽换位 actions（layout-portal 5.1）
+  swapPanes: (a: string, b: string) => void;
+  movePane: (sourceId: string, targetId: string, side: PaneSide) => void;
+  movePaneToRoot: (sourceId: string, side: PaneSide) => void;
+  dropFileOnPane: (
+    path: string,
+    content: string,
+    targetLeafId: string,
+    side: PaneSide,
+  ) => void;
+  setDragPaneSource: (id: string | null) => void;
+  setDraggingFilePath: (path: string | null) => void;
 }
 
 const initialState = {
@@ -213,6 +236,8 @@ const initialState = {
   paneRoot: createRootLeaf() as PaneLayout,
   focusedPaneId: "main",
   fullscreenPaneId: null as string | null,
+  dragPaneSourceId: null as string | null,
+  draggingFilePath: null as string | null,
 };
 
 export const useStore = create<AppStore>((set, get) => ({
@@ -744,6 +769,94 @@ export const useStore = create<AppStore>((set, get) => ({
       tabId && tabs[tabId]?.path ? tabs[tabId].path : null;
     return JSON.stringify(serializeLayout(paneRoot, focusedPaneId, pathOf));
   },
+
+  // ── 拖拽换位 actions（layout-portal 5.1）──
+
+  swapPanes: (a, b) => {
+    const state = get();
+    const paneRoot = swapLeaves(state.paneRoot, a, b);
+    if (paneRoot !== state.paneRoot) set({ paneRoot });
+  },
+
+  movePane: (sourceId, targetId, side) => {
+    const state = get();
+    const paneRoot = moveLeaf(state.paneRoot, sourceId, targetId, side);
+    if (paneRoot === state.paneRoot) return;
+    set({ paneRoot, focusedPaneId: sourceId, fullscreenPaneId: null });
+  },
+
+  movePaneToRoot: (sourceId, side) => {
+    const state = get();
+    const paneRoot = moveLeafToRoot(state.paneRoot, sourceId, side);
+    if (paneRoot === state.paneRoot) return;
+    set({ paneRoot, focusedPaneId: sourceId, fullscreenPaneId: null });
+  },
+
+  dropFileOnPane: (path, content, targetLeafId, side) => {
+    const state = get();
+    if (!findLeaf(state.paneRoot, targetLeafId)) return;
+
+    // 去重：该文件若已在其它格打开，先整体移除，保证只出现在新格
+    const existing = Object.values(state.tabs).find((t) => t.path === path);
+    const tabId = existing ? existing.id : generateId();
+    const fileKind = existing?.fileKind ?? detectFileKind(path);
+    const title = existing?.title ?? extractFileName(path);
+    const editorMode: EditorMode =
+      existing?.editorMode ??
+      (CODE_KINDS.includes(fileKind) ? "edit" : "preview");
+    const tab: Tab = existing
+      ? { ...existing, content, dirty: false }
+      : {
+          id: tabId,
+          title,
+          path,
+          fileKind,
+          content,
+          dirty: false,
+          editorMode,
+          scrollPos: 0,
+          contentHeight: 0,
+        };
+
+    let root = mapLeaves(state.paneRoot, (leaf) => {
+      if (!leaf.tabs.includes(tabId)) return leaf;
+      const tabs = leaf.tabs.filter((t) => t !== tabId);
+      const activeTabId =
+        leaf.activeTabId === tabId ? (tabs[0] ?? null) : leaf.activeTabId;
+      return { ...leaf, tabs, activeTabId };
+    });
+
+    const newLeaf: PaneLeaf = {
+      type: "leaf",
+      id: generatePaneId(),
+      tabs: [tabId],
+      activeTabId: tabId,
+      editorMode,
+    };
+    root = splitLeafSide(root, targetLeafId, side, newLeaf);
+
+    set({
+      tabs: { ...state.tabs, [tabId]: tab },
+      paneRoot: root,
+      focusedPaneId: newLeaf.id,
+      activeTabId: tabId,
+      scene: "workspace",
+      fullscreenPaneId: null,
+      recentFiles: [
+        {
+          path,
+          title,
+          openedAt: new Date().toISOString(),
+          excerpt: excerptOf(content),
+        },
+        ...state.recentFiles.filter((f) => f.path !== path),
+      ].slice(0, 10),
+    });
+  },
+
+  setDragPaneSource: (id) => set({ dragPaneSourceId: id }),
+
+  setDraggingFilePath: (path) => set({ draggingFilePath: path }),
 }));
 
 // Expose store for E2E testing (Tauri Mock bridge)
