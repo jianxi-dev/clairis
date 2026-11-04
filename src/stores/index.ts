@@ -8,6 +8,22 @@ import type {
   ScrollPosition,
 } from "../types";
 import type { FileTypeKind } from "../lib/fileType";
+import {
+  addTab,
+  createLeaf,
+  createRootLeaf,
+  findLeaf,
+  leafOfTab,
+  listLeaves,
+  removeLeaf,
+  serializeLayout,
+  setBranchRatio,
+  siblingLeafId,
+  splitLeaf,
+  updateLeaf,
+  type PaneDir,
+  type PaneLayout,
+} from "../lib/paneTree";
 
 /** 门户卡片摘要：取正文前 160 字，压掉多余空白。不是占位文案，是文件真实开头。 */
 function excerptOf(content: string): string {
@@ -19,6 +35,11 @@ export type SplitDirection = "horizontal" | "vertical";
 let nextId = 1;
 function generateId(): string {
   return `tab-${nextId++}`;
+}
+
+let nextPaneId = 1;
+function generatePaneId(): string {
+  return `pane-${nextPaneId++}`;
 }
 
 const TEXT_EXTENSIONS: Record<string, FileKind> = {
@@ -115,6 +136,14 @@ interface AppStore {
   horizontalSplitRatio: number;
   verticalSplitRatio: number;
 
+  // ── Pane 递归树（change layout-portal / 3.1）──
+  /** 工作区分栏树。根 leaf id 固定 `"main"`。 */
+  paneRoot: PaneLayout;
+  /** 当前聚焦的 leaf id（⌘⌥→ / ⌘⌥↓ 作用于此格）。 */
+  focusedPaneId: string;
+  /** 全屏格 id；null = 正常多格布局。 */
+  fullscreenPaneId: string | null;
+
   reset: () => void;
   openFile: (path: string, content: string) => void;
   newTab: () => void;
@@ -150,6 +179,16 @@ interface AppStore {
   setSplitActiveTab: (id: string) => void;
   setSplitRatio: (direction: SplitDirection, ratio: number) => void;
   setSplitRatios: (ratios: { horizontal?: number; vertical?: number }) => void;
+  // Pane 递归树 actions（layout-portal 3.1）
+  splitPane: (dir: PaneDir) => void;
+  closePane: (leafId: string) => void;
+  focusPane: (id: string) => void;
+  toggleFullscreenPane: () => void;
+  setPaneRatio: (branchId: string, ratio: number) => void;
+  setPaneEditorMode: (leafId: string, mode: EditorMode) => void;
+  restorePaneLayout: (root: PaneLayout, focusedId: string) => void;
+  collapsePanes: () => void;
+  paneLayoutJson: () => string;
 }
 
 const initialState = {
@@ -169,6 +208,9 @@ const initialState = {
   splitEditorMode: "preview" as EditorMode,
   horizontalSplitRatio: 0.5,
   verticalSplitRatio: 0.5,
+  paneRoot: createRootLeaf() as PaneLayout,
+  focusedPaneId: "main",
+  fullscreenPaneId: null as string | null,
 };
 
 export const useStore = create<AppStore>((set, get) => ({
@@ -181,6 +223,18 @@ export const useStore = create<AppStore>((set, get) => ({
     // Check if tab for this path already exists
     const existing = Object.values(state.tabs).find((t) => t.path === path);
     if (existing) {
+      const hostLeaf =
+        leafOfTab(state.paneRoot, existing.id) ??
+        findLeaf(state.paneRoot, state.focusedPaneId);
+      const paneRoot = hostLeaf
+        ? updateLeaf(state.paneRoot, hostLeaf.id, {
+            tabs: hostLeaf.tabs.includes(existing.id)
+              ? hostLeaf.tabs
+              : [...hostLeaf.tabs, existing.id],
+            activeTabId: existing.id,
+            editorMode: existing.editorMode,
+          })
+        : state.paneRoot;
       set({
         tabs: {
           ...state.tabs,
@@ -191,6 +245,8 @@ export const useStore = create<AppStore>((set, get) => ({
           },
         },
         activeTabId: existing.id,
+        focusedPaneId: hostLeaf?.id ?? state.focusedPaneId,
+        paneRoot,
         scene: "workspace",
         // 重开已存在的文件也要把它顶到最近列表最前：否则"最近"会停留在很久以前
         recentFiles: [
@@ -227,9 +283,24 @@ export const useStore = create<AppStore>((set, get) => ({
       contentHeight: 0,
     };
 
+    // 新页签落进当前聚焦格（无有效聚焦格时退回第一个 leaf）
+    const hostLeaf =
+      findLeaf(state.paneRoot, state.focusedPaneId) ??
+      listLeaves(state.paneRoot)[0] ??
+      null;
+    let paneRoot = state.paneRoot;
+    if (hostLeaf) {
+      paneRoot = updateLeaf(state.paneRoot, hostLeaf.id, {
+        editorMode: defaultEditorMode,
+      });
+      paneRoot = addTab(paneRoot, hostLeaf.id, id);
+    }
+
     set({
       tabs: { ...state.tabs, [id]: tab },
       activeTabId: id,
+      focusedPaneId: hostLeaf?.id ?? state.focusedPaneId,
+      paneRoot,
       // 打开文件即离开门户（Layout Portal §1 场景图）
       scene: "workspace",
       recentFiles: [
@@ -245,20 +316,64 @@ export const useStore = create<AppStore>((set, get) => ({
   },
 
   switchTab: (id: string) => {
-    set({ activeTabId: id });
+    const state = get();
+    const leaf = leafOfTab(state.paneRoot, id);
+    if (!leaf) {
+      set({ activeTabId: id });
+      return;
+    }
+    const tab = state.tabs[id];
+    set({
+      activeTabId: id,
+      focusedPaneId: leaf.id,
+      paneRoot: updateLeaf(state.paneRoot, leaf.id, {
+        activeTabId: id,
+        editorMode: tab ? tab.editorMode : leaf.editorMode,
+      }),
+    });
   },
 
   closeTab: (id: string) => {
     const state = get();
     const { [id]: _removed, ...remaining } = state.tabs;
+    const leaf = leafOfTab(state.paneRoot, id);
 
-    let activeTabId = state.activeTabId;
-    if (activeTabId === id) {
-      const remainingIds = Object.keys(remaining);
-      activeTabId = remainingIds.length > 0 ? remainingIds[0] : null;
+    // 页签不在任何格（历史遗留）：只处理 tabs / activeTabId
+    if (!leaf) {
+      let activeTabId = state.activeTabId;
+      if (activeTabId === id) {
+        const remainingIds = Object.keys(remaining);
+        activeTabId = remainingIds.length > 0 ? remainingIds[0] : null;
+      }
+      set({ tabs: remaining, activeTabId });
+      return;
     }
 
-    set({ tabs: remaining, activeTabId });
+    const newTabs = leaf.tabs.filter((t) => t !== id);
+    let paneRoot: PaneLayout;
+    let focusedPaneId = state.focusedPaneId;
+
+    if (newTabs.length === 0 && state.paneRoot.type !== "leaf") {
+      // 关掉该格最后一签：删格，兄弟扩展，焦点移到兄弟
+      const sibling = siblingLeafId(state.paneRoot, leaf.id);
+      const { root } = removeLeaf(state.paneRoot, leaf.id);
+      paneRoot = root;
+      focusedPaneId =
+        state.focusedPaneId === leaf.id
+          ? (sibling ?? listLeaves(root)[0]?.id ?? "main")
+          : state.focusedPaneId;
+    } else {
+      let activeTabId = leaf.activeTabId;
+      if (activeTabId === id) activeTabId = newTabs[0] ?? null;
+      paneRoot = updateLeaf(state.paneRoot, leaf.id, {
+        tabs: newTabs,
+        activeTabId,
+      });
+    }
+
+    // 扁平 activeTabId 始终镜像聚焦格
+    const activeTabId = findLeaf(paneRoot, focusedPaneId)?.activeTabId ?? null;
+    set({ tabs: remaining, activeTabId, paneRoot, focusedPaneId });
   },
 
   updateContent: (content: string) => {
@@ -298,11 +413,18 @@ export const useStore = create<AppStore>((set, get) => ({
     if (!tab) return;
     if (isMediaKind(tab.fileKind)) return;
 
+    const leaf = findLeaf(state.paneRoot, state.focusedPaneId);
+    const paneRoot =
+      leaf && leaf.activeTabId === activeTabId
+        ? updateLeaf(state.paneRoot, leaf.id, { editorMode: mode })
+        : state.paneRoot;
+
     set({
       tabs: {
         ...tabs,
         [activeTabId]: { ...tab, editorMode: mode },
       },
+      paneRoot,
     });
   },
 
@@ -360,6 +482,7 @@ export const useStore = create<AppStore>((set, get) => ({
   newTab: () => get().newTabWith("未命名", ""),
 
   newTabWith: (title: string, content: string) => {
+    const state = get();
     const id = generateId();
     const tab: Tab = {
       id,
@@ -372,10 +495,23 @@ export const useStore = create<AppStore>((set, get) => ({
       scrollPos: 0,
       contentHeight: 0,
     };
-    set((s) => ({
-      tabs: { ...s.tabs, [id]: tab },
+    const hostLeaf =
+      findLeaf(state.paneRoot, state.focusedPaneId) ??
+      listLeaves(state.paneRoot)[0] ??
+      null;
+    let paneRoot = state.paneRoot;
+    if (hostLeaf) {
+      paneRoot = updateLeaf(state.paneRoot, hostLeaf.id, {
+        editorMode: "edit",
+      });
+      paneRoot = addTab(paneRoot, hostLeaf.id, id);
+    }
+    set({
+      tabs: { ...state.tabs, [id]: tab },
       activeTabId: id,
-    }));
+      focusedPaneId: hostLeaf?.id ?? state.focusedPaneId,
+      paneRoot,
+    });
   },
 
   toggleLeftSidebar: () =>
@@ -493,6 +629,112 @@ export const useStore = create<AppStore>((set, get) => ({
       patch.verticalSplitRatio = Math.max(0.1, Math.min(0.9, ratios.vertical));
     }
     set(patch as Partial<AppStore>);
+  },
+
+  // ── Pane 递归树 actions（layout-portal 3.1）──
+
+  splitPane: (dir) => {
+    const state = get();
+    if (!findLeaf(state.paneRoot, state.focusedPaneId)) return;
+    const newLeaf = createLeaf(generatePaneId());
+    // 新格为空并获得焦点 → 扁平 activeTabId 同步为 null（镜像聚焦格）
+    set({
+      paneRoot: splitLeaf(state.paneRoot, state.focusedPaneId, dir, newLeaf),
+      focusedPaneId: newLeaf.id,
+      activeTabId: newLeaf.activeTabId,
+      fullscreenPaneId: null,
+    });
+  },
+
+  closePane: (leafId) => {
+    const state = get();
+    if (state.paneRoot.type === "leaf") return;
+    const leaf = findLeaf(state.paneRoot, leafId);
+    if (!leaf) return;
+    const sibling = siblingLeafId(state.paneRoot, leafId);
+    const { root, removed } = removeLeaf(state.paneRoot, leafId);
+    if (!removed) return;
+
+    // 关格连带关掉它的页签（页签是全局记录）
+    const tabs = { ...state.tabs };
+    for (const t of leaf.tabs) delete tabs[t];
+
+    const focusedPaneId =
+      state.focusedPaneId === leafId
+        ? (sibling ?? listLeaves(root)[0]?.id ?? "main")
+        : state.focusedPaneId;
+    const activeTabId = findLeaf(root, focusedPaneId)?.activeTabId ?? null;
+    set({
+      paneRoot: root,
+      tabs,
+      focusedPaneId,
+      activeTabId,
+      fullscreenPaneId:
+        state.fullscreenPaneId === leafId ? null : state.fullscreenPaneId,
+    });
+  },
+
+  focusPane: (id) => {
+    const state = get();
+    const leaf = findLeaf(state.paneRoot, id);
+    if (!leaf) return;
+    set({ focusedPaneId: id, activeTabId: leaf.activeTabId });
+  },
+
+  toggleFullscreenPane: () => {
+    const state = get();
+    set({
+      fullscreenPaneId: state.fullscreenPaneId ? null : state.focusedPaneId,
+    });
+  },
+
+  setPaneRatio: (branchId, ratio) => {
+    const state = get();
+    set({ paneRoot: setBranchRatio(state.paneRoot, branchId, ratio) });
+  },
+
+  setPaneEditorMode: (leafId, mode) => {
+    const state = get();
+    const leaf = findLeaf(state.paneRoot, leafId);
+    if (!leaf) return;
+    const activeTab = leaf.activeTabId ? state.tabs[leaf.activeTabId] : null;
+    if (activeTab && isMediaKind(activeTab.fileKind)) return;
+    const tabs = activeTab
+      ? { ...state.tabs, [activeTab.id]: { ...activeTab, editorMode: mode } }
+      : state.tabs;
+    set({
+      paneRoot: updateLeaf(state.paneRoot, leafId, { editorMode: mode }),
+      tabs,
+    });
+  },
+
+  restorePaneLayout: (root, focusedId) => {
+    const leaf = findLeaf(root, focusedId);
+    set({
+      paneRoot: root,
+      focusedPaneId: focusedId,
+      fullscreenPaneId: null,
+      activeTabId: leaf?.activeTabId ?? null,
+    });
+  },
+
+  collapsePanes: () => {
+    const state = get();
+    const activeTab = state.activeTabId ? state.tabs[state.activeTabId] : null;
+    const root: PaneLayout = {
+      ...createRootLeaf(),
+      tabs: Object.keys(state.tabs),
+      activeTabId: state.activeTabId,
+      editorMode: activeTab ? activeTab.editorMode : "preview",
+    };
+    set({ paneRoot: root, focusedPaneId: "main", fullscreenPaneId: null });
+  },
+
+  paneLayoutJson: () => {
+    const { paneRoot, focusedPaneId, tabs } = get();
+    const pathOf = (tabId: string | null) =>
+      tabId && tabs[tabId]?.path ? tabs[tabId].path : null;
+    return JSON.stringify(serializeLayout(paneRoot, focusedPaneId, pathOf));
   },
 }));
 

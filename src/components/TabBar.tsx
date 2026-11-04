@@ -304,7 +304,9 @@ export default function TabBar({
           <button
             className="w-full text-left px-3 py-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
             onClick={() => {
-              useStore.getState().splitTab(menu.tabId, "horizontal");
+              const store = useStore.getState();
+              store.switchTab(menu.tabId);
+              store.splitPane("row");
               closeMenu();
             }}
           >
@@ -314,7 +316,9 @@ export default function TabBar({
           <button
             className="w-full text-left px-3 py-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
             onClick={() => {
-              useStore.getState().splitTab(menu.tabId, "vertical");
+              const store = useStore.getState();
+              store.switchTab(menu.tabId);
+              store.splitPane("col");
               closeMenu();
             }}
           >

@@ -60,6 +60,8 @@ export interface AppConfig {
   capabilities?: Record<string, boolean>;
   /** 图标标签级别（Layout Portal §10）：自动 / 始终文字 / 仅图标 */
   iconLabel?: "auto" | "text" | "icon";
+  /** 工作区 pane 递归树（layout-portal 3.1）：序列化 JSON，跨重启恢复 */
+  paneLayout?: string | null;
 }
 
 export type Theme = "system" | "light" | "dark";

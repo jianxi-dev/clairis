@@ -40,6 +40,10 @@ pub struct AppConfig {
     pub capabilities: Option<HashMap<String, bool>>,
     /// 图标标签级别（Layout Portal §10）：auto / text / icon。
     pub icon_label: Option<String>,
+    /// 工作区 pane 递归树（layout-portal 3.1）：序列化后的 JSON 字符串。
+    /// `default` + `skip_serializing_if` 让老配置仍能读、新配置不多出空字段。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pane_layout: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -79,6 +83,7 @@ impl Default for AppConfig {
             theme: Some("system".into()),
             ai_confirm_density: Some("session-silent".into()),
             icon_label: Some("text".into()),
+            pane_layout: None,
             sidebar_left_visible: Some(true),
             sidebar_right_visible: Some(false),
             sidebar_left_width: Some(220.0),

@@ -10,6 +10,11 @@ import {
   applyCapabilityConfig,
   serializeCapabilities,
 } from "../lib/capabilities";
+import {
+  parseSerializedLayout,
+  restoreLayout,
+  type SerializedNode,
+} from "../lib/paneTree";
 
 /** Snake-case config from Rust, mapped to camelCase in the store. */
 interface RustAppConfig {
@@ -41,6 +46,7 @@ interface RustAppConfig {
   }> | null;
   scrollPositions: Record<string, ScrollPosition> | null;
   capabilities?: Record<string, boolean> | null;
+  paneLayout?: string | null;
 }
 
 const DEBOUNCE_MS = 500;
@@ -98,12 +104,74 @@ export async function saveAppConfig(): Promise<void> {
     recentFiles: useStore.getState().recentFiles,
     scrollPositions: useStore.getState().scrollPositions ?? null,
     capabilities: serializeCapabilities(),
+    // 读实时值：本次会话分裂/调整的比例要能持久化
+    paneLayout: useStore.getState().paneLayoutJson(),
   };
   try {
     await invoke("save_config", { config });
   } catch (e) {
     log.error("Config", "Failed to save config", e);
   }
+}
+
+/**
+ * 启动时恢复工作区布局树（layout-portal 3.1）。
+ *
+ * 持久化的是每格页签的文件路径；这里按路径走 open_file_direct 把页签重建
+ * 出来，再按原结构还原。解析失败 / 文件已不在都退化处理，绝不抛错。
+ * 只在首次配置加载时跑一次（reloadAppConfig 重入由 guard 拦掉）。
+ */
+let paneRestoreStarted = false;
+
+async function restorePaneLayout(
+  paneLayoutJson: string | null | undefined,
+): Promise<void> {
+  if (paneRestoreStarted) return;
+  paneRestoreStarted = true;
+  if (!paneLayoutJson) return;
+
+  const parsed = parseSerializedLayout(paneLayoutJson);
+  if (!parsed) {
+    log.warn("Config", "paneLayout 解析失败，退回默认单格");
+    return;
+  }
+
+  const paths = new Set<string>();
+  const collect = (node: SerializedNode) => {
+    if (node.type === "leaf") {
+      for (const p of node.tabs) paths.add(p);
+      if (node.activePath) paths.add(node.activePath);
+    } else {
+      collect(node.children[0]);
+      collect(node.children[1]);
+    }
+  };
+  collect(parsed.root);
+  if (paths.size === 0) return;
+
+  const idOfPath = (path: string): string | null => {
+    const tab = Object.values(useStore.getState().tabs).find(
+      (t) => t.path === path,
+    );
+    return tab ? tab.id : null;
+  };
+
+  for (const path of paths) {
+    if (idOfPath(path)) continue;
+    try {
+      const result = await invoke<{
+        content: string;
+        path: string;
+        file_size: number;
+      }>("open_file_direct", { path });
+      useStore.getState().openFile(result.path, result.content);
+    } catch (e) {
+      log.warn("Config", `布局恢复：文件打不开，跳过 ${path}`, e);
+    }
+  }
+
+  const { root, focusedId } = restoreLayout(parsed, idOfPath);
+  useStore.getState().restorePaneLayout(root, focusedId);
 }
 
 /**
@@ -189,6 +257,9 @@ function applyRustConfig(raw: RustAppConfig): void {
   applyTheme(config.theme ?? "system");
   applyReaderSkin(config.readerSkin ?? "paper");
   applyCapabilityConfig(raw.capabilities);
+
+  // 布局树恢复放在配置生效之后：它依赖 tabs 记录与页签打开流程
+  void restorePaneLayout(raw.paneLayout);
 }
 
 /** Re-read the effective config from Rust and apply it without touching content. */

@@ -27,7 +27,8 @@ export type IconName =
   | "monitor"
   | "pin"
   | "check"
-  | "warning";
+  | "warning"
+  | "expand";
 
 export interface IconDef {
   /**
@@ -115,6 +116,10 @@ export const ICONS: Record<IconName, IconDef> = {
   settings: {
     label: "设置",
     d: "M12 8.5a3.5 3.5 0 100 7 3.5 3.5 0 000-7z M10.6 2h2.8l.4 2.3 1.9 1.1 2.2-.9 1.4 2.4-1.7 1.6v2.2l1.7 1.6-1.4 2.4-2.2-.9-1.9 1.1-.4 2.3h-2.8l-.4-2.3-1.9-1.1-2.2.9-1.4-2.4L4.2 11V8.8L2.5 7.2 3.9 4.8l2.2.9 1.9-1.1z",
+  },
+  expand: {
+    label: "全屏格",
+    d: "M4 4h6v2H6v4H4z M14 4h6v6h-2V6h-4z M4 14h2v4h4v2H4z M18 14h2v6h-6v-2h4z",
   },
 };
 

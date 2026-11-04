@@ -13,7 +13,7 @@ import SidebarPanel from "./components/SidebarPanel";
 import RecentFiles from "./components/Sidebar/RecentFiles";
 import FileTree from "./components/Sidebar/FileTree";
 import Outline from "./components/Sidebar/Outline";
-import ContentSplitView from "./components/Content/ContentSplitView";
+import PaneTreeView from "./components/Content/PaneTreeView";
 import PortalView from "./components/PortalView";
 import GridView from "./components/GridView";
 import CaptureOverlay from "./components/CaptureOverlay";
@@ -328,28 +328,36 @@ function App() {
         store.setImmersiveChromeVisible(!store.immersiveChromeVisible);
       }
 
-      // Cmd+Shift+S: Stop split (unsplit)
+      // Cmd+Shift+S: collapse panes back to a single root leaf
       if (meta && e.shiftKey && e.key.toLowerCase() === "s") {
         e.preventDefault();
-        store.unsplit();
+        store.collapsePanes();
       }
 
-      // Cmd+Shift+H: Horizontal split (active tab to the right)
-      if (meta && e.shiftKey && e.key.toLowerCase() === "h" && activeTabId) {
+      // Cmd+Shift+H / Cmd+Shift+V: split the focused pane right / down
+      if (meta && e.shiftKey && e.key.toLowerCase() === "h") {
         e.preventDefault();
-        if (store.splitDirection) {
-          store.unsplit();
-        }
-        store.splitTab(activeTabId, "horizontal");
+        store.splitPane("row");
+      }
+      if (meta && e.shiftKey && e.key.toLowerCase() === "v") {
+        e.preventDefault();
+        store.splitPane("col");
       }
 
-      // Cmd+Shift+V: Vertical split (active tab to the bottom)
-      if (meta && e.shiftKey && e.key.toLowerCase() === "v" && activeTabId) {
+      // Cmd+Alt+Right / Cmd+Alt+Down: split the focused pane (layout-portal 3.1)
+      if (meta && e.altKey && e.key === "ArrowRight") {
         e.preventDefault();
-        if (store.splitDirection) {
-          store.unsplit();
-        }
-        store.splitTab(activeTabId, "vertical");
+        store.splitPane("row");
+      }
+      if (meta && e.altKey && e.key === "ArrowDown") {
+        e.preventDefault();
+        store.splitPane("col");
+      }
+
+      // Cmd+Shift+Enter: fullscreen the focused pane
+      if (meta && e.shiftKey && e.key === "Enter") {
+        e.preventDefault();
+        store.toggleFullscreenPane();
       }
 
       // Cmd+Shift+M: Toggle editor mode
@@ -393,9 +401,13 @@ function App() {
         useAiEntryStore.getState().toggleOverlay();
       }
 
-      // Escape: Exit reading mode
-      if (e.key === "Escape" && readingMode) {
-        store.setReadingMode(false);
+      // Escape: exit fullscreen pane first, otherwise exit reading mode
+      if (e.key === "Escape") {
+        if (store.fullscreenPaneId) {
+          store.toggleFullscreenPane();
+        } else if (readingMode) {
+          store.setReadingMode(false);
+        }
       }
     };
 
@@ -501,6 +513,13 @@ function App() {
     scheduleSave();
   }, [horizontalSplitRatio, verticalSplitRatio, scheduleSave]);
 
+  // Persist pane layout whenever the tree or focus changes (debounced)
+  const paneRoot = useStore((s) => s.paneRoot);
+  const focusedPaneId = useStore((s) => s.focusedPaneId);
+  useEffect(() => {
+    scheduleSave();
+  }, [paneRoot, focusedPaneId, scheduleSave]);
+
   // Persist scroll positions after each update (A-9; switch/close flushes via saveAppConfig)
   const scrollPositions = useStore((s) => s.scrollPositions);
   useEffect(() => {
@@ -588,7 +607,7 @@ function App() {
             defaultTab="files"
           />
         }
-        center={<ContentSplitView />}
+        center={<PaneTreeView />}
         rightSidebar={
           <SidebarPanel
             side="right"
