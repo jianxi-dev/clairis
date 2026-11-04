@@ -9,6 +9,16 @@ import type {
 } from "../types";
 import type { FileTypeKind } from "../lib/fileType";
 import {
+  DEFAULT_RAIL_VIEW_SPEC,
+  nextRailState,
+  type RailChipKind,
+  type RailDensity,
+  type RailLayout,
+  type RailSection,
+  type RailState,
+  type RailViewSpec,
+} from "../lib/railView";
+import {
   addTab,
   createLeaf,
   createRootLeaf,
@@ -156,6 +166,26 @@ interface AppStore {
   /** 正在被拖拽的文件路径；仅 UI 预览，不持久化。 */
   draggingFilePath: string | null;
 
+  // ── 阅读空间竖排栏（change layout-portal / 6.1）──
+  /** 栏三态：折叠 / 悬停浮层 / 钉住。瞬态，不持久化。 */
+  railState: RailState;
+  /** 是否钉住（= railState === 'pinned' 的镜像）。 */
+  railPinned: boolean;
+  /** 栏内布局：段叠放 / 分段页签。 */
+  railLayout: RailLayout;
+  /** 栏内密度：紧凑 / 舒适 / 卡片。 */
+  railDensity: RailDensity;
+  /** 顶部搜索是否处于展开（聚焦）状态。 */
+  railSearchOpen: boolean;
+  /** 栏内搜索词；与网格搜索完全独立。 */
+  railQuery: string;
+  /** 当前段（标签布局下的活动签 / 堆叠布局下无强约束）。 */
+  railSection: RailSection;
+  /** 分类段的活动 chip。 */
+  railChip: RailChipKind;
+  /** 「设为默认」保存的视图规格，持久化到 Rust `rail_view_spec`。 */
+  railViewSpec: RailViewSpec;
+
   reset: () => void;
   openFile: (path: string, content: string) => void;
   newTab: () => void;
@@ -214,6 +244,17 @@ interface AppStore {
   ) => void;
   setDragPaneSource: (id: string | null) => void;
   setDraggingFilePath: (path: string | null) => void;
+  // 阅读空间栏 actions（layout-portal 6.1）
+  setRailState: (state: RailState) => void;
+  toggleRailPin: () => void;
+  setRailLayout: (layout: RailLayout) => void;
+  setRailDensity: (density: RailDensity) => void;
+  openRailSearch: () => void;
+  closeRailSearch: () => void;
+  setRailQuery: (query: string) => void;
+  setRailSection: (section: RailSection) => void;
+  setRailChip: (chip: RailChipKind) => void;
+  saveRailViewSpec: () => void;
 }
 
 const initialState = {
@@ -238,6 +279,15 @@ const initialState = {
   fullscreenPaneId: null as string | null,
   dragPaneSourceId: null as string | null,
   draggingFilePath: null as string | null,
+  railState: "collapsed" as RailState,
+  railPinned: false,
+  railLayout: DEFAULT_RAIL_VIEW_SPEC.layout,
+  railDensity: DEFAULT_RAIL_VIEW_SPEC.density,
+  railSearchOpen: false,
+  railQuery: "",
+  railSection: "recent" as RailSection,
+  railChip: "all" as RailChipKind,
+  railViewSpec: { ...DEFAULT_RAIL_VIEW_SPEC },
 };
 
 export const useStore = create<AppStore>((set, get) => ({
@@ -857,6 +907,38 @@ export const useStore = create<AppStore>((set, get) => ({
   setDragPaneSource: (id) => set({ dragPaneSourceId: id }),
 
   setDraggingFilePath: (path) => set({ draggingFilePath: path }),
+
+  // ── 阅读空间栏 actions（layout-portal 6.1）──
+
+  setRailState: (state) =>
+    set({ railState: state, railPinned: state === "pinned" }),
+
+  toggleRailPin: () => {
+    const { railState } = get();
+    const next = nextRailState(railState, { type: "toggle-pin" });
+    set({ railState: next, railPinned: next === "pinned" });
+  },
+
+  setRailLayout: (layout) => set({ railLayout: layout }),
+
+  setRailDensity: (density) => set({ railDensity: density }),
+
+  openRailSearch: () => set({ railSearchOpen: true }),
+
+  closeRailSearch: () => set({ railSearchOpen: false, railQuery: "" }),
+
+  setRailQuery: (query) => set({ railQuery: query, railSearchOpen: true }),
+
+  setRailSection: (section) => set({ railSection: section }),
+
+  setRailChip: (chip) => set({ railChip: chip }),
+
+  saveRailViewSpec: () => {
+    const { railLayout, railDensity } = get();
+    set({ railViewSpec: { layout: railLayout, density: railDensity } });
+    // 动态导入避免 stores ↔ useConfig 的静态循环依赖（useConfig 依赖本模块）
+    void import("../hooks/useConfig").then((m) => m.saveAppConfig());
+  },
 }));
 
 // Expose store for E2E testing (Tauri Mock bridge)

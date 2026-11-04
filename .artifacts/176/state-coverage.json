@@ -1,0 +1,39 @@
+{
+  "states": [
+    {
+      "state": "rail-collapsed",
+      "screenshot": "/Users/mason/ToHighs/clairis/.artifacts/176/rail-collapsed.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-04T23:03:15Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "rail-hover-overlay",
+      "screenshot": "/Users/mason/ToHighs/clairis/.artifacts/176/rail-hover-overlay.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-04T23:03:15Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "rail-pinned-stacked",
+      "screenshot": "/Users/mason/ToHighs/clairis/.artifacts/176/rail-pinned-stacked.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-04T23:03:15Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "rail-tabs-category",
+      "screenshot": "/Users/mason/ToHighs/clairis/.artifacts/176/rail-tabs-category.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-04T23:03:15Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "rail-search-highlight",
+      "screenshot": "/Users/mason/ToHighs/clairis/.artifacts/176/rail-search-highlight.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-04T23:03:15Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}

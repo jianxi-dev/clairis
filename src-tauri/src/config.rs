@@ -44,6 +44,18 @@ pub struct AppConfig {
     /// `default` + `skip_serializing_if` 让老配置仍能读、新配置不多出空字段。
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub pane_layout: Option<String>,
+    /// 阅读空间栏「设为默认」的视图规格（layout-portal 6.1）。
+    /// `default` + `skip_serializing_if` 让老配置仍能读、新配置不多出空字段。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rail_view_spec: Option<RailViewSpec>,
+}
+
+/// 阅读空间栏视图规格：布局（堆叠/标签）与密度（紧凑/舒适/卡片）。
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct RailViewSpec {
+    pub layout: Option<String>,
+    pub density: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -84,6 +96,7 @@ impl Default for AppConfig {
             ai_confirm_density: Some("session-silent".into()),
             icon_label: Some("text".into()),
             pane_layout: None,
+            rail_view_spec: None,
             sidebar_left_visible: Some(true),
             sidebar_right_visible: Some(false),
             sidebar_left_width: Some(220.0),
@@ -353,6 +366,18 @@ pub fn validate_config(config: &AppConfig) -> Result<(), AppError> {
         config.reader_skin.as_deref(),
         &["paper", "plain"],
     )?;
+    if let Some(spec) = &config.rail_view_spec {
+        check_enum(
+            "railViewSpec.layout",
+            spec.layout.as_deref(),
+            &["stacked", "tabs"],
+        )?;
+        check_enum(
+            "railViewSpec.density",
+            spec.density.as_deref(),
+            &["compact", "comfortable", "card"],
+        )?;
+    }
     Ok(())
 }
 
@@ -941,5 +966,38 @@ mod tests {
         let recent = config.recent_files.unwrap();
         assert_eq!(recent.len(), 1);
         assert_eq!(recent[0].path, "/tmp/b.md");
+    }
+
+    #[test]
+    fn rail_view_spec_round_trips_and_defaults_for_old_configs() {
+        let dir = temp_base("rail");
+        let base = dir.path();
+
+        // 老配置（无字段）→ 默认 None，读得进
+        write_user(base, r#"{"theme":"dark"}"#);
+        assert_eq!(load_config_at(base).unwrap().rail_view_spec, None);
+
+        // 写入规格 → 落盘 → 读回严格相等
+        let mut config = AppConfig::default();
+        config.rail_view_spec = Some(RailViewSpec {
+            layout: Some("tabs".into()),
+            density: Some("compact".into()),
+        });
+        save_config_at(base, &config).unwrap();
+        let user = read_user(base);
+        assert!(
+            user.contains("railViewSpec"),
+            "user 层应含 railViewSpec: {user}"
+        );
+        let loaded = load_config_at(base).unwrap().rail_view_spec.unwrap();
+        assert_eq!(loaded.layout.as_deref(), Some("tabs"));
+        assert_eq!(loaded.density.as_deref(), Some("compact"));
+
+        // 非法取值被校验拦下，不落盘
+        config.rail_view_spec = Some(RailViewSpec {
+            layout: Some("diagonal".into()),
+            density: Some("comfortable".into()),
+        });
+        assert!(validate_config(&config).is_err());
     }
 }

@@ -14,6 +14,7 @@ import RecentFiles from "./components/Sidebar/RecentFiles";
 import FileTree from "./components/Sidebar/FileTree";
 import Outline from "./components/Sidebar/Outline";
 import PaneTreeView from "./components/Content/PaneTreeView";
+import ReadingRail from "./components/Rail/ReadingRail";
 import PortalView from "./components/PortalView";
 import GridView from "./components/GridView";
 import CaptureOverlay from "./components/CaptureOverlay";
@@ -25,6 +26,7 @@ import { useAiEntryStore } from "./hooks/useAiEntry";
 import { getActiveEditorView, getPanelScrollEl } from "./editors/editorRef";
 import { toggleBold, toggleItalic } from "./editors/keybindings";
 import { saveAppConfig, useConfig } from "./hooks/useConfig";
+import { nextRailState } from "./lib/railView";
 import { log } from "./utils/log";
 import { loadExtensionBundle } from "./lib/extensions/bundle";
 import type { ExtensionBundle } from "./lib/extensions/bundle";
@@ -310,10 +312,17 @@ function App() {
         store.closeTab(activeTabId);
       }
 
-      // Cmd+\ : Toggle reading mode (immersive) — A-5
+      // Cmd+\ : 阅读空间栏（layout-portal 6.1）与沉浸阅读（A-5）共用此键。
+      // 栏已展开（钉住/悬停）时收/钉栏；折叠态时不抢键，仍是沉浸阅读切换。
       if (meta && e.key === "\\") {
         e.preventDefault();
-        store.setReadingMode(!store.readingMode);
+        if (store.railState === "pinned" || store.railState === "hover") {
+          store.setRailState(
+            nextRailState(store.railState, { type: "toggle-key" }),
+          );
+        } else {
+          store.setReadingMode(!store.readingMode);
+        }
       }
 
       // Cmd+Shift+\ : Toggle right sidebar
@@ -599,41 +608,49 @@ function App() {
         onSetTheme={setTheme}
       />
 
-      <Layout
-        initialLeftWidth={sidebarLeftWidth ?? 280}
-        initialRightWidth={sidebarRightWidth ?? 320}
-        leftSidebar={
-          <SidebarPanel
-            side="left"
-            tabs={[
-              { key: "files", label: "文件", content: <FileTree /> },
-              { key: "recent", label: "最近", content: <RecentFiles /> },
-              { key: "outline", label: "目录", content: <Outline /> },
-            ]}
-            defaultTab="files"
+      <div className="relative flex-1 flex min-w-0 overflow-hidden">
+        <ReadingRail onOpenPath={handleOpenPath} />
+        <div
+          className="flex-1 min-w-0 flex overflow-hidden"
+          data-testid="workspace-body"
+        >
+          <Layout
+            initialLeftWidth={sidebarLeftWidth ?? 280}
+            initialRightWidth={sidebarRightWidth ?? 320}
+            leftSidebar={
+              <SidebarPanel
+                side="left"
+                tabs={[
+                  { key: "files", label: "文件", content: <FileTree /> },
+                  { key: "recent", label: "最近", content: <RecentFiles /> },
+                  { key: "outline", label: "目录", content: <Outline /> },
+                ]}
+                defaultTab="files"
+              />
+            }
+            center={<PaneTreeView />}
+            rightSidebar={
+              <SidebarPanel
+                side="right"
+                tabs={[
+                  {
+                    key: "translate",
+                    label: "翻译",
+                    content: (
+                      <div className="p-3 text-xs text-gray-400 dark:text-gray-500">
+                        选中文本后翻译
+                      </div>
+                    ),
+                  },
+                ]}
+                defaultTab="translate"
+              />
+            }
+            onLeftWidthChange={handleLeftWidthChange}
+            onRightWidthChange={handleRightWidthChange}
           />
-        }
-        center={<PaneTreeView />}
-        rightSidebar={
-          <SidebarPanel
-            side="right"
-            tabs={[
-              {
-                key: "translate",
-                label: "翻译",
-                content: (
-                  <div className="p-3 text-xs text-gray-400 dark:text-gray-500">
-                    选中文本后翻译
-                  </div>
-                ),
-              },
-            ]}
-            defaultTab="translate"
-          />
-        }
-        onLeftWidthChange={handleLeftWidthChange}
-        onRightWidthChange={handleRightWidthChange}
-      />
+        </div>
+      </div>
       <CaptureOverlay />
       <SelectionPill />
       <CommandOverlay />
