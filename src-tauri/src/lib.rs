@@ -2,6 +2,7 @@ mod ai_agent;
 mod commands;
 mod config;
 mod errors;
+mod extension_packages;
 mod extensions;
 mod media_protocol;
 mod types;
@@ -18,6 +19,11 @@ use commands::file::{
     reveal_in_finder, save_as_file, save_binary_as_file, save_file,
 };
 use commands::translate::{stop_translation, translate_text};
+use extension_packages::{
+    generate_extension_package, import_extension_package, list_extension_packages,
+    package_extension_package, pick_extension_source, read_extension_skill,
+    remove_extension_package, set_extension_package_enabled,
+};
 
 /// Register a media path for the media:// preview protocol (called by the frontend).
 #[tauri::command]
@@ -209,6 +215,14 @@ pub fn run() {
             list_config_snapshots,
             restore_config_snapshot,
             list_extensions,
+            list_extension_packages,
+            import_extension_package,
+            set_extension_package_enabled,
+            remove_extension_package,
+            package_extension_package,
+            pick_extension_source,
+            generate_extension_package,
+            read_extension_skill,
             get_api_key,
             set_api_key,
             delete_api_key,

@@ -1,0 +1,82 @@
+{
+  "task": "184-extensions",
+  "states": [
+    {
+      "state": "01-builtins",
+      "screenshot": ".artifacts/184/01-builtins.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T15:45:44.651Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "02-imported",
+      "screenshot": ".artifacts/184/02-imported.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T15:45:44.690Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "03-toggled",
+      "screenshot": ".artifacts/184/03-toggled.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T15:45:44.741Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "04-exported",
+      "screenshot": ".artifacts/184/04-exported.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T15:45:44.778Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "05-preview",
+      "screenshot": ".artifacts/184/05-preview.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T15:45:44.812Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "06-removed",
+      "screenshot": ".artifacts/184/06-removed.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T15:45:44.845Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "07-reimported",
+      "screenshot": ".artifacts/184/07-reimported.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T15:45:44.877Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "08-generating",
+      "screenshot": ".artifacts/184/08-generating.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T15:45:46.018Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "09-ai-row",
+      "screenshot": ".artifacts/184/09-ai-row.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T15:45:46.328Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "10-ai-preview",
+      "screenshot": ".artifacts/184/10-ai-preview.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T15:45:46.368Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "11-cancelled",
+      "screenshot": ".artifacts/184/11-cancelled.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T15:45:46.439Z",
+      "runner": "mason@unknown"
+    }
+  ]
+}
