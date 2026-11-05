@@ -1,0 +1,68 @@
+{
+  "task": "183-settings-content",
+  "states": [
+    {
+      "state": "01-defaults-set",
+      "screenshot": ".artifacts/183/01-defaults-set.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T14:48:08.238Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "02-defaults-reloaded",
+      "screenshot": ".artifacts/183/02-defaults-reloaded.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T14:48:09.240Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "03-ai-providers",
+      "screenshot": ".artifacts/183/03-ai-providers.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T14:48:10.533Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "04-ai-key-saved",
+      "screenshot": ".artifacts/183/04-ai-key-saved.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T14:48:10.640Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "05-ai-key-not-leaked",
+      "screenshot": ".artifacts/183/05-ai-key-not-leaked.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T14:48:10.746Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "06-snapshots-listed",
+      "screenshot": ".artifacts/183/06-snapshots-listed.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T14:48:12.329Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "07-restore-cancelled",
+      "screenshot": ".artifacts/183/07-restore-cancelled.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T14:48:12.452Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "08-restore-confirmed",
+      "screenshot": ".artifacts/183/08-restore-confirmed.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T14:48:12.560Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "09-about",
+      "screenshot": ".artifacts/183/09-about.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T14:48:13.809Z",
+      "runner": "mason@unknown"
+    }
+  ]
+}

@@ -24,6 +24,12 @@ window.__biaoyue_openFile__ = function(path, content, title) {
 // ── AI entry (C4) mock state ─────────────────────────────────
 var aiState = { config: null, snapshots: [], seq: 0 };
 
+// 系统钥匙串 mock：只存 service:account → key，绝不落配置/存储
+window.__biaoyue_keyring__ = {};
+window.__biaoyue_ai_config__ = function () {
+  return aiState.config ? JSON.parse(JSON.stringify(aiState.config)) : null;
+};
+
 function aiPad(n, w) {
   var s = String(n);
   while (s.length < (w || 2)) s = "0" + s;
@@ -117,6 +123,17 @@ function mockInvoke(cmd, args) {
   if (cmd === "save_config" && args && args.config) {
     aiSnapshot();
     aiState.config = JSON.parse(JSON.stringify(args.config));
+    return null;
+  }
+  if (cmd === "set_api_key" && args) {
+    window.__biaoyue_keyring__[args.service + ":" + args.account] = args.key;
+    return null;
+  }
+  if (cmd === "get_api_key" && args) {
+    return window.__biaoyue_keyring__[args.service + ":" + args.account] || null;
+  }
+  if (cmd === "delete_api_key" && args) {
+    delete window.__biaoyue_keyring__[args.service + ":" + args.account];
     return null;
   }
   if (cmd === "list_config_snapshots") return aiState.snapshots.map(function (s) { return s.name; });

@@ -27,6 +27,7 @@ const FORBIDDEN = [
   "railPinnedWidth",
   "gridMode",
   "gridGrouping",
+  "gridSort",
   "unreadOnly",
   "themeGroups",
   "pinnedAndRecentOnly",
@@ -155,6 +156,7 @@ describe("aiViewSpec —— 人话描述", () => {
     ["railPinnedWidth", 300],
     ["gridMode", "list"],
     ["gridGrouping", "type"],
+    ["gridSort", "name"],
     ["unreadOnly", true],
     ["themeGroups", true],
     ["pinnedAndRecentOnly", true],
@@ -167,7 +169,7 @@ describe("aiViewSpec —— 人话描述", () => {
     );
   });
 
-  it("覆盖全部 13 个字段且不含技术语言", () => {
+  it("覆盖全部 14 个字段且不含技术语言", () => {
     for (const [key, value] of VARIANTS) {
       const after = applySpec(DEFAULT_VIEW_SPEC, {
         [key]: value,
@@ -215,6 +217,12 @@ describe("aiViewSpec —— 相等判定", () => {
       viewSpecEquals(DEFAULT_VIEW_SPEC, {
         ...DEFAULT_VIEW_SPEC,
         gridMode: "list",
+      }),
+    ).toBe(false);
+    expect(
+      viewSpecEquals(DEFAULT_VIEW_SPEC, {
+        ...DEFAULT_VIEW_SPEC,
+        gridSort: "name",
       }),
     ).toBe(false);
   });

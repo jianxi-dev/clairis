@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import SettingsView from "../../components/SettingsView";
 import { useEditorStore } from "../../stores/editorStore";
 import { useStore } from "../../stores/index";
@@ -7,6 +7,7 @@ import { resetCapabilities } from "../../lib/capabilities";
 
 vi.mock("../../hooks/useConfig", () => ({
   saveAppConfig: () => Promise.resolve(),
+  reloadAppConfig: vi.fn(),
   applyTheme: vi.fn(),
 }));
 
@@ -54,5 +55,45 @@ describe("SettingsView", () => {
     expect(screen.getByTestId("theme-option-light").textContent).toBe("浅色");
     expect(screen.getByTestId("theme-option-dark").textContent).toBe("深色");
     expect(screen.getByTestId("theme-option-warm").textContent).toBe("暖色");
+  });
+
+  it("阅读空间与网格概览：默认控件就位", () => {
+    render(<SettingsView onClose={() => {}} />);
+
+    fireEvent.click(screen.getAllByTestId("settings-nav-item")[2]);
+    expect(screen.getByTestId("rail-default-layout-stacked")).toBeTruthy();
+    expect(screen.getByTestId("rail-default-layout-tabs")).toBeTruthy();
+    expect(screen.getByTestId("rail-default-density-compact")).toBeTruthy();
+    expect(screen.getByTestId("rail-default-density-comfortable")).toBeTruthy();
+    expect(screen.getByTestId("rail-default-density-card")).toBeTruthy();
+    expect(screen.getByTestId("rail-default-card-height")).toBeTruthy();
+
+    fireEvent.click(screen.getAllByTestId("settings-nav-item")[3]);
+    expect(screen.getByTestId("grid-default-group-time")).toBeTruthy();
+    expect(screen.getByTestId("grid-default-group-type")).toBeTruthy();
+    expect(screen.getByTestId("grid-default-group-theme")).toBeTruthy();
+    expect(screen.getByTestId("grid-default-group-none")).toBeTruthy();
+    expect(screen.getByTestId("grid-default-sort-recent")).toBeTruthy();
+    expect(screen.getByTestId("grid-default-sort-name")).toBeTruthy();
+    expect(screen.getByTestId("grid-default-sort-type")).toBeTruthy();
+    expect(screen.getByTestId("grid-default-mode-grid")).toBeTruthy();
+    expect(screen.getByTestId("grid-default-mode-list")).toBeTruthy();
+  });
+
+  it("AI 服务区：8 个提供方与 2 个规划中条目", () => {
+    render(<SettingsView onClose={() => {}} />);
+
+    fireEvent.click(screen.getAllByTestId("settings-nav-item")[5]);
+    expect(screen.getAllByTestId("ai-provider")).toHaveLength(8);
+    expect(screen.getAllByTestId("ai-planned")).toHaveLength(2);
+    expect(screen.getAllByTestId("ai-planned")[0].textContent).toContain(
+      "本地 LLM（Ollama）",
+    );
+    expect(screen.getAllByTestId("ai-planned")[1].textContent).toContain(
+      "多 agent 协同",
+    );
+    for (const planned of screen.getAllByTestId("ai-planned")) {
+      expect(planned.textContent).toContain("规划中");
+    }
   });
 });
