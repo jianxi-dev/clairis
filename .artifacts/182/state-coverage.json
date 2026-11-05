@@ -1,0 +1,110 @@
+{
+  "task": "182-settings",
+  "states": [
+    {
+      "state": "01-scene-open",
+      "screenshot": ".artifacts/182/01-scene-open.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T13:24:56.016Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "02-nav-editor",
+      "screenshot": ".artifacts/182/02-nav-editor.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T13:24:56.137Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "03-esc-closed",
+      "screenshot": ".artifacts/182/03-esc-closed.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T13:24:56.177Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "04-theme-default",
+      "screenshot": ".artifacts/182/04-theme-default.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T13:24:57.232Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "05-system-dark",
+      "screenshot": ".artifacts/182/05-system-dark.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T13:24:57.270Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "06-warm",
+      "screenshot": ".artifacts/182/06-warm.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T13:24:57.374Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "07-light",
+      "screenshot": ".artifacts/182/07-light.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T13:24:57.430Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "08-font-19",
+      "screenshot": ".artifacts/182/08-font-19.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T13:24:58.587Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "09-font-15",
+      "screenshot": ".artifacts/182/09-font-15.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T13:24:58.678Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "10-preview-off",
+      "screenshot": ".artifacts/182/10-preview-off.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T13:24:59.816Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "11-grid-no-preview",
+      "screenshot": ".artifacts/182/11-grid-no-preview.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T13:24:59.913Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "12-preview-click",
+      "screenshot": ".artifacts/182/12-preview-click.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T13:24:59.968Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "13-grid-preview-restored",
+      "screenshot": ".artifacts/182/13-grid-preview-restored.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T13:25:00.018Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "14-shortcuts-core",
+      "screenshot": ".artifacts/182/14-shortcuts-core.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T13:25:00.899Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "15-shortcuts-full",
+      "screenshot": ".artifacts/182/15-shortcuts-full.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T13:25:00.942Z",
+      "runner": "mason@unknown"
+    }
+  ]
+}

@@ -53,15 +53,35 @@ export default function Toolbar({
       <button
         onClick={() =>
           onSetTheme(
-            theme === "light" ? "dark" : theme === "dark" ? "system" : "light",
+            theme === "light"
+              ? "dark"
+              : theme === "dark"
+                ? "warm"
+                : theme === "warm"
+                  ? "system"
+                  : "light",
           )
         }
         className="px-2 py-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-xs whitespace-nowrap"
-        title={`当前: ${theme === "system" ? "跟随系统" : theme === "dark" ? "暗色" : "亮色"}`}
+        title={`当前: ${
+          theme === "system"
+            ? "跟随系统"
+            : theme === "dark"
+              ? "暗色"
+              : theme === "warm"
+                ? "暖色"
+                : "亮色"
+        }`}
       >
         <Icon
           name={
-            theme === "dark" ? "sun" : theme === "light" ? "moon" : "monitor"
+            theme === "light"
+              ? "moon"
+              : theme === "dark"
+                ? "sun"
+                : theme === "warm"
+                  ? "sun"
+                  : "monitor"
           }
           size={18}
         />

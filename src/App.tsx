@@ -7,7 +7,7 @@ import { useEditorStore } from "./stores/editorStore";
 import { useCaptureOverlayStore } from "./stores/captureOverlay";
 import Toolbar from "./components/Toolbar";
 import TemplatePicker from "./components/TemplatePicker";
-import SettingsDialog from "./components/SettingsDialog";
+import SettingsView from "./components/SettingsView";
 import PaneTreeView from "./components/Content/PaneTreeView";
 import ReadingRail from "./components/Rail/ReadingRail";
 import FloatingPreview from "./components/Preview/FloatingPreview";
@@ -33,6 +33,7 @@ import {
 } from "./lib/extensions/templates";
 import type { Template } from "./lib/extensions/templates";
 import { applyThemeTokens } from "./lib/extensions/theme-tokens";
+import type { Scene } from "./types";
 
 const isTauri =
   typeof window !== "undefined" &&
@@ -48,12 +49,26 @@ function App() {
   const peekTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const settingsReturnRef = useRef<Scene>("workspace");
 
   // Init config loading + theme on mount
   const { setTheme, scheduleSave } = useConfig();
   const theme = useEditorStore((s) => s.config.theme ?? "system");
   const scene = useStore((s) => s.scene);
+
+  const openSettings = useCallback(() => {
+    const st = useStore.getState();
+    if (st.scene !== "settings") {
+      settingsReturnRef.current = st.scene;
+    }
+    st.setScene("settings");
+  }, []);
+
+  const closeSettings = useCallback(() => {
+    const target = settingsReturnRef.current ?? "workspace";
+    settingsReturnRef.current = "workspace";
+    useStore.getState().setScene(target);
+  }, []);
 
   // ── File operations ──────────────────────────────────────────
 
@@ -129,13 +144,13 @@ function App() {
   useEffect(() => {
     if (!isTauri) return;
     let unlisten: (() => void) | undefined;
-    listen("open-settings", () => setSettingsOpen(true))
+    listen("open-settings", () => openSettings())
       .then((un) => {
         unlisten = un;
       })
       .catch((e) => log.warn("App", "Settings listener unavailable", e));
     return () => unlisten?.();
-  }, []);
+  }, [openSettings]);
 
   const handleTemplateSelect = useCallback((template: Template) => {
     useStore.getState().newTabWith(
@@ -407,10 +422,10 @@ function App() {
         handleScaleDelta(delta);
       }
 
-      // Cmd+K: AI command overlay
+      // Cmd+,: 打开设置场景
       if (meta && e.key === ",") {
         e.preventDefault();
-        setSettingsOpen(true);
+        openSettings();
         return;
       }
 
@@ -470,6 +485,7 @@ function App() {
     readingMode,
     activeTabId,
     handleScaleDelta,
+    openSettings,
   ]);
 
   // ── Drag-and-drop (Tauri v2 native event) ────────────────────
@@ -570,7 +586,7 @@ function App() {
   // ── Render ───────────────────────────────────────────────────
 
   const rootClass = [
-    "h-screen w-screen flex flex-col bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100",
+    "h-screen w-screen flex flex-col bg-[var(--app-bg)] text-[var(--app-text)]",
     readingMode ? "immersive" : "",
     readingMode && immersiveChromeVisible ? "immersive-peek" : "",
   ]
@@ -631,8 +647,10 @@ function App() {
           <GridView onOpenPath={handleOpenPath} />
         </div>
       )}
-      {settingsOpen && (
-        <SettingsDialog onClose={() => setSettingsOpen(false)} />
+      {scene === "settings" && (
+        <div className="fixed inset-0 z-50">
+          <SettingsView onClose={closeSettings} />
+        </div>
       )}
       {pickerOpen && templates.length > 0 && (
         <TemplatePicker
