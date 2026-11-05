@@ -86,7 +86,7 @@ export default function Toolbar({
           <button
             onClick={onToggleRightSidebar}
             className="px-2 py-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-xs"
-            title="切换右侧栏 (Cmd+Shift+\)"
+            title="切换右侧栏"
           >
             翻译
           </button>

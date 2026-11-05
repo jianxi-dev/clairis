@@ -1,0 +1,89 @@
+{
+  "task": "180-grid-overview",
+  "states": [
+    {
+      "state": "01-open-select",
+      "screenshot": ".artifacts/180/01-open-select.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T05:48:25.276Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "02-portal-type-filter",
+      "screenshot": ".artifacts/180/02-portal-type-filter.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T05:48:26.216Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "03-dropdowns",
+      "screenshot": ".artifacts/180/03-dropdowns.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T05:48:27.159Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "04-tile-sizes",
+      "screenshot": ".artifacts/180/04-tile-sizes.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T05:48:28.176Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "05-pin-large",
+      "screenshot": ".artifacts/180/05-pin-large.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T05:48:29.175Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "06-sticky-headers",
+      "screenshot": ".artifacts/180/06-sticky-headers.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T05:48:30.299Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "07-click-preview",
+      "screenshot": ".artifacts/180/07-click-preview.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T05:48:31.409Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "08-search-filter",
+      "screenshot": ".artifacts/180/08-search-filter.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T05:48:32.347Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "09-list-mode",
+      "screenshot": ".artifacts/180/09-list-mode.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T05:48:33.409Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "10-pinned-filter",
+      "screenshot": ".artifacts/180/10-pinned-filter.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T05:48:34.455Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "11-hover-actions",
+      "screenshot": ".artifacts/180/11-hover-actions.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T05:48:35.903Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "12-open-from-hover",
+      "screenshot": ".artifacts/180/12-open-from-hover.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T05:48:35.972Z",
+      "runner": "mason@unknown"
+    }
+  ]
+}

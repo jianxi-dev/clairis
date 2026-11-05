@@ -31,6 +31,7 @@ import {
   type PreviewSettings,
   type PreviewState,
 } from "../lib/previewAnchor";
+import type { GridGroupMode, GridSort } from "../lib/gridView";
 import {
   addTab,
   createLeaf,
@@ -159,6 +160,17 @@ function extractFileName(path: string): string {
   return parts[parts.length - 1] || path;
 }
 
+/**
+ * 把 AI 视图规格里的分组维度翻译成网格的 gridGroup（layout-portal 10.1）。
+ * 主题分组优先于类型分组；规格未声明分组（默认 none）时返回 null——调用点保留
+ * 网格当前分组，避免配置加载把默认「时间」冲成「不分组」。
+ */
+function gridGroupFromSpec(spec: ViewSpec): GridGroupMode | null {
+  if (spec.themeGroups) return "theme";
+  if (spec.gridGrouping === "type") return "type";
+  return null;
+}
+
 interface AppStore {
   activeTabId: string | null;
   tabs: Record<string, Tab>;
@@ -172,6 +184,19 @@ interface AppStore {
   scene: Scene;
   /** 网格按类型过滤（门户分类磁贴点击后带入） */
   gridTypeFilter: FileTypeKind | null;
+  // ── 网格概览会话状态（change layout-portal / 10.1）──
+  /** 网格搜索词；与阅读空间搜索完全独立。 */
+  gridQuery: string;
+  /** 网格排序：最近 / 名称 / 类型。 */
+  gridSort: GridSort;
+  /** 网格分组：时间 / 类型 / 主题 / 不分组。 */
+  gridGroup: GridGroupMode;
+  /** 只显示置顶条目。 */
+  gridPinnedOnly: boolean;
+  /** 当前选中条目路径；null = 无选中。 */
+  gridSelectedPath: string | null;
+  /** 置顶条目路径（网格与阅读空间共享；会话级，不持久化）。 */
+  pinnedPaths: string[];
   // Split panel — each panel holds its own tab refs
   splitDirection: SplitDirection | null;
   splitTabIds: string[];
@@ -239,6 +264,12 @@ interface AppStore {
   addRecentFile: (path: string, title: string, excerpt?: string) => void;
   setScene: (scene: Scene) => void;
   setGridTypeFilter: (kind: FileTypeKind | null) => void;
+  setGridQuery: (query: string) => void;
+  setGridSort: (sort: GridSort) => void;
+  setGridGroup: (group: GridGroupMode) => void;
+  setGridPinnedOnly: (only: boolean) => void;
+  setGridSelectedPath: (path: string | null) => void;
+  togglePinnedPath: (path: string) => void;
   clearRecentFiles: () => void;
   // Split actions
   splitTab: (tabId: string, direction: SplitDirection) => void;
@@ -333,6 +364,12 @@ const initialState = {
   recentFiles: [] as RecentFile[],
   scene: "portal" as Scene,
   gridTypeFilter: null as FileTypeKind | null,
+  gridQuery: "",
+  gridSort: "recent" as GridSort,
+  gridGroup: "time" as GridGroupMode,
+  gridPinnedOnly: false,
+  gridSelectedPath: null as string | null,
+  pinnedPaths: [] as string[],
   splitDirection: null as SplitDirection | null,
   splitTabIds: [] as string[],
   splitActiveTabId: null as string | null,
@@ -672,6 +709,26 @@ export const useStore = create<AppStore>((set, get) => ({
   setScene: (scene: Scene) => set({ scene }),
   setGridTypeFilter: (kind: FileTypeKind | null) =>
     set({ gridTypeFilter: kind }),
+  setGridQuery: (query: string) => set({ gridQuery: query }),
+  setGridSort: (sort: GridSort) => set({ gridSort: sort }),
+  setGridGroup: (group: GridGroupMode) =>
+    set((s) => ({
+      gridGroup: group,
+      // 同步回 viewSpec，避免之后配置重载（setViewSpec）把用户手选的分组悄悄改掉
+      viewSpec: {
+        ...s.viewSpec,
+        themeGroups: group === "theme",
+        gridGrouping: group === "type" ? "type" : "none",
+      },
+    })),
+  setGridPinnedOnly: (only: boolean) => set({ gridPinnedOnly: only }),
+  setGridSelectedPath: (path: string | null) => set({ gridSelectedPath: path }),
+  togglePinnedPath: (path: string) =>
+    set((s) => ({
+      pinnedPaths: s.pinnedPaths.includes(path)
+        ? s.pinnedPaths.filter((p) => p !== path)
+        : [...s.pinnedPaths, path],
+    })),
 
   addRecentFile: (path: string, title: string, excerpt?: string) => {
     set((s) => {
@@ -1082,8 +1139,10 @@ export const useStore = create<AppStore>((set, get) => ({
 
   setViewSpec: (spec) => {
     const next = normalizeViewSpec(spec);
+    const grouped = gridGroupFromSpec(next);
     set((s) => ({
       viewSpec: next,
+      gridGroup: grouped ?? s.gridGroup,
       railLayout: next.railLayout,
       railDensity: next.railDensity,
       railCardHeight: next.railCardHeight,
@@ -1095,8 +1154,12 @@ export const useStore = create<AppStore>((set, get) => ({
 
   applyViewSpec: (patch) => {
     const next = applyViewSpecPatch(get().captureViewSpec(), patch);
+    // 只有补丁真的碰了分组维度才镜像到 gridGroup，避免网格/列表切换覆盖用户所选分组
+    const touchesGrouping = "themeGroups" in patch || "gridGrouping" in patch;
+    const grouped = touchesGrouping ? gridGroupFromSpec(next) : null;
     set((s) => ({
       viewSpec: next,
+      gridGroup: grouped ?? s.gridGroup,
       railLayout: next.railLayout,
       railDensity: next.railDensity,
       railCardHeight: next.railCardHeight,

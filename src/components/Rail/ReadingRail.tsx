@@ -41,13 +41,15 @@ import {
   DENSITY_HEIGHT,
   metaLine,
   parentPathOf,
+  readPercentOf,
   relativeDate,
   taskProgressOf,
   thumbDescriptorOf,
   thumbnailBox,
   type ThumbDescriptor,
 } from "../../lib/railCards";
-import { buildAssetUrl } from "../../renderers/html";
+import { assetSrc } from "../../lib/assetSrc";
+import { revealInFinder } from "../../lib/finder";
 import {
   HOVER_DELAY_MS,
   PREVIEW_DEFAULT_H,
@@ -94,13 +96,6 @@ interface RailRowProps {
   onTogglePin: (path: string) => void;
   onRowHover?: (el: HTMLElement) => void;
   onRowLeave?: () => void;
-}
-
-/** 本地图片路径 → asset:// URL；浏览器直跑（无 Tauri）时保持原路径。 */
-function assetSrc(src: string): string {
-  if (!src) return "";
-  if (/^(data:|blob:|asset:|https?:)/i.test(src)) return src;
-  return isTauriEnv() ? buildAssetUrl(src) : src;
 }
 
 /**
@@ -545,6 +540,8 @@ export default function ReadingRail({
   const scrollPositions = useStore((s) => s.scrollPositions);
   const previewEnabled = useStore((s) => s.previewSettings.enabled);
   const viewSpec = useStore((s) => s.viewSpec);
+  const pinnedPaths = useStore((s) => s.pinnedPaths);
+  const togglePinnedPath = useStore((s) => s.togglePinnedPath);
 
   const setRailState = useStore((s) => s.setRailState);
   const toggleRailPin = useStore((s) => s.toggleRailPin);
@@ -558,7 +555,6 @@ export default function ReadingRail({
   const setRailChip = useStore((s) => s.setRailChip);
   const saveRailViewSpec = useStore((s) => s.saveRailViewSpec);
 
-  const [pinnedPaths, setPinnedPaths] = useState<string[]>([]);
   const [menuOpen, setMenuOpen] = useState(false);
   const [snapshots, setSnapshots] = useState<string[]>([]);
   const [notice, setNotice] = useState<string | null>(null);
@@ -661,30 +657,10 @@ export default function ReadingRail({
     }, HOVER_CLOSE_MS);
   }, [clearTimer, setRailState]);
 
-  const togglePinPath = useCallback((path: string) => {
-    setPinnedPaths((prev) =>
-      prev.includes(path) ? prev.filter((p) => p !== path) : [...prev, path],
-    );
-  }, []);
-
-  const readPercentOf = useCallback(
-    (path: string): number | undefined => {
-      const pos = scrollPositions[path];
-      if (!pos || pos.contentHeight <= 0) return undefined;
-      return Math.min(
-        100,
-        Math.round((pos.scrollPos / pos.contentHeight) * 100),
-      );
-    },
+  const readPercentFor = useCallback(
+    (path: string): number | undefined => readPercentOf(scrollPositions[path]),
     [scrollPositions],
   );
-
-  const revealPath = useCallback((path: string) => {
-    if (!isTauriEnv()) return;
-    invoke("reveal_in_finder", { path }).catch((e) =>
-      log.warn("Rail", "在 Finder 中显示失败", e),
-    );
-  }, []);
 
   const openInSplit = useCallback(
     (path: string, dir: "row" | "col") => {
@@ -821,13 +797,13 @@ export default function ReadingRail({
               density={railDensity}
               cardHeight={railCardHeight}
               pinned={pinnedPaths.includes(m.item.path)}
-              readPercent={readPercentOf(m.item.path)}
+              readPercent={readPercentFor(m.item.path)}
               scale={section === "pinned" ? viewSpec.pinnedSegmentScale : 1}
               blockColors={viewSpec.blockColors}
               onOpen={onOpenPath}
               onSplit={openInSplit}
-              onReveal={revealPath}
-              onTogglePin={togglePinPath}
+              onReveal={revealInFinder}
+              onTogglePin={togglePinnedPath}
               onRowHover={(el) => onRowEnter(m.item, el)}
               onRowLeave={onRowLeave}
             />
