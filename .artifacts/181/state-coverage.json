@@ -1,0 +1,138 @@
+{
+  "task": "181-grid-keyboard",
+  "states": [
+    {
+      "state": "01-j-next-row",
+      "screenshot": ".artifacts/181/01-j-next-row.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T12:35:28.671Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "02-l-same-row",
+      "screenshot": ".artifacts/181/02-l-same-row.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T12:35:28.730Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "03-end",
+      "screenshot": ".artifacts/181/03-end.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T12:35:29.654Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "04-home",
+      "screenshot": ".artifacts/181/04-home.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T12:35:29.672Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "05-page-down",
+      "screenshot": ".artifacts/181/05-page-down.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T12:35:30.644Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "06-numbers",
+      "screenshot": ".artifacts/181/06-numbers.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T12:35:31.706Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "07-numbers-after-page",
+      "screenshot": ".artifacts/181/07-numbers-after-page.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T12:35:31.829Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "08-digit-open",
+      "screenshot": ".artifacts/181/08-digit-open.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T12:35:32.819Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "09-digit-split-right",
+      "screenshot": ".artifacts/181/09-digit-split-right.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T12:35:33.730Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "19-split-existing",
+      "screenshot": ".artifacts/181/19-split-existing.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T12:35:34.895Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "10-digit-split-down",
+      "screenshot": ".artifacts/181/10-digit-split-down.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T12:35:35.785Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "11-locate-rail",
+      "screenshot": ".artifacts/181/11-locate-rail.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T12:35:36.680Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "15-enter-open",
+      "screenshot": ".artifacts/181/15-enter-open.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T12:35:37.649Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "16-cmd-enter-split",
+      "screenshot": ".artifacts/181/16-cmd-enter-split.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T12:35:38.845Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "17-tab-cycle",
+      "screenshot": ".artifacts/181/17-tab-cycle.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T12:35:39.816Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "18-typing-inert",
+      "screenshot": ".artifacts/181/18-typing-inert.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T12:35:40.811Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "12-esc-typed",
+      "screenshot": ".artifacts/181/12-esc-typed.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T12:35:41.839Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "13-esc-clear-query",
+      "screenshot": ".artifacts/181/13-esc-clear-query.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T12:35:41.872Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "14-esc-close-grid",
+      "screenshot": ".artifacts/181/14-esc-close-grid.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T12:35:41.896Z",
+      "runner": "mason@unknown"
+    }
+  ]
+}

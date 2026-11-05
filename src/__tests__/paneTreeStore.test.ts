@@ -37,6 +37,25 @@ describe("pane 递归树 store（layout-portal 3.1）", () => {
     expect(s.focusedPaneId).not.toBe(afterFirst);
   });
 
+  it("moveTabToPane 把页签搬到新格，源格保留剩余页签", () => {
+    useStore.getState().openFile("/a.md", "a");
+    useStore.getState().openFile("/b.md", "b");
+    const aId = tabIdByPath("/a.md");
+    useStore.getState().splitPane("row");
+    const targetId = useStore.getState().focusedPaneId;
+
+    useStore.getState().moveTabToPane(aId, targetId);
+
+    const s = useStore.getState();
+    expect(findLeaf(s.paneRoot, "main")?.tabs).not.toContain(aId);
+    expect(findLeaf(s.paneRoot, "main")?.tabs).toContain(tabIdByPath("/b.md"));
+    expect(findLeaf(s.paneRoot, targetId)?.tabs).toContain(aId);
+    expect(s.focusedPaneId).toBe(targetId);
+    expect(s.scene).toBe("workspace");
+    // 源格搬空后仍保留（分屏持久）
+    expect(leafCount(s.paneRoot)).toBe(2);
+  });
+
   it("新页签落进聚焦格（不是根格）", () => {
     useStore.getState().openFile("/a.md", "a");
     useStore.getState().splitPane("row");

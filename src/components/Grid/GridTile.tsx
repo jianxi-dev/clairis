@@ -143,6 +143,7 @@ interface GridTileProps {
   pinned: boolean;
   blockColors?: boolean;
   readPercent?: number;
+  number?: number;
   onCardClick: (item: RecentFile, el: HTMLElement) => void;
   onOpen: (path: string) => void;
   onSplit: (path: string, dir: "row" | "col") => void;
@@ -163,6 +164,7 @@ export default function GridTile({
   pinned,
   blockColors = true,
   readPercent,
+  number,
   onCardClick,
   onOpen,
   onSplit,
@@ -210,6 +212,14 @@ export default function GridTile({
       }}
       className="group relative flex cursor-pointer flex-col overflow-hidden rounded-lg border border-gray-200 bg-white hover:-translate-y-0.5 hover:shadow-md dark:border-gray-700 dark:bg-gray-800"
     >
+      {number !== undefined && (
+        <span
+          data-grid-number={number}
+          className="absolute left-1 top-1 z-10 flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--app-accent)] px-1 text-[11px] font-semibold leading-none text-white shadow-sm"
+        >
+          {number}
+        </span>
+      )}
       <div
         data-tile-topbar
         data-tile-type={kind}

@@ -43,6 +43,7 @@ import {
   moveLeaf,
   moveLeafToRoot,
   removeLeaf,
+  removeTab,
   reorderLeafTabs,
   serializeLayout,
   setBranchRatio,
@@ -288,6 +289,8 @@ interface AppStore {
   setPaneRatio: (branchId: string, ratio: number) => void;
   setPaneEditorMode: (leafId: string, mode: EditorMode) => void;
   reorderPaneTabs: (leafId: string, from: number, to: number) => void;
+  /** 把页签移到目标格；源格与目标格相同则只聚焦。不删空源格。 */
+  moveTabToPane: (tabId: string, targetLeafId: string) => void;
   restorePaneLayout: (root: PaneLayout, focusedId: string) => void;
   collapsePanes: () => void;
   paneLayoutJson: () => string;
@@ -882,6 +885,30 @@ export const useStore = create<AppStore>((set, get) => ({
       activeTabId,
       fullscreenPaneId:
         state.fullscreenPaneId === leafId ? null : state.fullscreenPaneId,
+    });
+  },
+
+  moveTabToPane: (tabId, targetLeafId) => {
+    const state = get();
+    const source = leafOfTab(state.paneRoot, tabId);
+    const target = findLeaf(state.paneRoot, targetLeafId);
+    if (!source || !target) return;
+    if (source.id === target.id) {
+      set({
+        focusedPaneId: target.id,
+        activeTabId: tabId,
+        scene: "workspace",
+      });
+      return;
+    }
+    // 搬走页签但保留空源格：分屏必须持久存在
+    let paneRoot = removeTab(state.paneRoot, source.id, tabId);
+    paneRoot = addTab(paneRoot, target.id, tabId);
+    set({
+      paneRoot,
+      focusedPaneId: target.id,
+      activeTabId: tabId,
+      scene: "workspace",
     });
   },
 
