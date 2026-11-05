@@ -565,13 +565,16 @@ export default function ReadingRail({
   const [menuOpen, setMenuOpen] = useState(false);
   const [snapshots, setSnapshots] = useState<string[]>([]);
   const [notice, setNotice] = useState<string | null>(null);
+  const [locatedPath, setLocatedPath] = useState<string | null>(null);
 
   const openTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const previewTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const locateTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const railPanelRef = useRef<HTMLDivElement>(null);
 
   const clearTimer = useCallback(
     (ref: { current: ReturnType<typeof setTimeout> | null }) => {
@@ -604,11 +607,53 @@ export default function ReadingRail({
     if (railSearchOpen) inputRef.current?.focus();
   }, [railSearchOpen, railQuery]);
 
+  useEffect(() => {
+    const onLocate = (e: Event) => {
+      const path = (e as CustomEvent<string>).detail;
+      if (typeof path === "string") setLocatedPath(path);
+    };
+    window.addEventListener("rail-locate", onLocate);
+    return () => window.removeEventListener("rail-locate", onLocate);
+  }, []);
+
+  useEffect(() => {
+    if (!locatedPath) return;
+    const panel = railPanelRef.current;
+    if (!panel) return;
+    const matches = Array.from(
+      panel.querySelectorAll<HTMLElement>(
+        `[data-rail-path="${CSS.escape(locatedPath)}"]`,
+      ),
+    );
+    if (matches.length === 0) return;
+    matches[0].scrollIntoView({ block: "nearest" });
+    for (const el of matches) {
+      el.setAttribute("data-located", "true");
+      el.classList.add("rail-located");
+    }
+    clearTimer(locateTimer);
+    locateTimer.current = setTimeout(() => {
+      locateTimer.current = null;
+      for (const el of matches) {
+        el.removeAttribute("data-located");
+        el.classList.remove("rail-located");
+      }
+    }, 1600);
+    return () => {
+      clearTimer(locateTimer);
+      for (const el of matches) {
+        el.removeAttribute("data-located");
+        el.classList.remove("rail-located");
+      }
+    };
+  }, [locatedPath, railState, clearTimer]);
+
   useEffect(
     () => () => {
       clearTimer(openTimer);
       clearTimer(closeTimer);
       clearTimer(noticeTimer);
+      clearTimer(locateTimer);
     },
     [clearTimer],
   );
@@ -1080,7 +1125,10 @@ export default function ReadingRail({
     );
 
   const panel = (
-    <div className="rail-panel flex h-full flex-col bg-gray-50 text-sm dark:bg-gray-900">
+    <div
+      ref={railPanelRef}
+      className="rail-panel flex h-full flex-col bg-gray-50 text-sm dark:bg-gray-900"
+    >
       {header}
       {search}
       <div className="flex-1 overflow-y-auto">{listBody}</div>

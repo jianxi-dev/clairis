@@ -2077,6 +2077,12 @@ body {
   padding: 0 1px;
 }
 
+.rail-located {
+  outline: 2px solid var(--app-accent);
+  outline-offset: -2px;
+  background: var(--app-accent-soft);
+}
+
 /* ── 阅读空间卡片缩略图（layout-portal 7.1）────────────────────
    盒尺寸由组件内联 style 从 thumbnailBox() 取（严格 72×54），这里只管
    占位图的内部绘制：页面线条 / 波形 / 播放三角，全部离线确定性生成。 */

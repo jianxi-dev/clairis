@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Icon from "./Icon";
 import { useStore } from "../stores";
 import { colorOfType, fileTypeOf, iconOfType } from "../lib/fileType";
@@ -13,6 +13,15 @@ import {
   tileSizeOf,
 } from "../lib/gridView";
 import {
+  digitFromCode,
+  moveHorizontal,
+  moveVertical,
+  pageStep,
+  sequenceOfVisible,
+  type GridBox,
+  type GridViewport,
+} from "../lib/gridKeyboard";
+import {
   PREVIEW_DEFAULT_H,
   PREVIEW_DEFAULT_W,
   anchorFromGrid,
@@ -22,6 +31,18 @@ import {
 import GridToolbar from "./Grid/GridToolbar";
 import GridTile from "./Grid/GridTile";
 import type { RecentFile } from "../types";
+
+function isEditableTarget(target: EventTarget | null): boolean {
+  const el = target as HTMLElement | null;
+  if (!el || !el.tagName) return false;
+  const tag = el.tagName;
+  return (
+    tag === "INPUT" ||
+    tag === "TEXTAREA" ||
+    tag === "SELECT" ||
+    el.isContentEditable === true
+  );
+}
 
 /**
  * 网格概览（layout-portal 10.1）。⌘⇧\ 打开：不聚焦搜索、默认选中第一张卡；
@@ -45,6 +66,13 @@ export default function GridView({
   const viewSpec = useStore((s) => s.viewSpec);
 
   const setGridSelectedPath = useStore((s) => s.setGridSelectedPath);
+
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const rafRef = useRef<number | null>(null);
+  const sequenceRef = useRef<string[]>([]);
+  const metaHeldRef = useRef(false);
+  const [sequence, setSequence] = useState<string[]>([]);
+  const [metaHeld, setMetaHeld] = useState(false);
 
   const filtered = useMemo(() => {
     const list = filterGridItems(recentFiles, {
@@ -90,11 +118,78 @@ export default function GridView({
 
   const splitItem = useCallback(
     (path: string, dir: "row" | "col") => {
+      const store = useStore.getState();
+      const existing = Object.values(store.tabs).find((t) => t.path === path);
+      if (existing) {
+        store.switchTab(existing.id);
+        useStore.getState().splitPane(dir);
+        const targetId = useStore.getState().focusedPaneId;
+        useStore.getState().moveTabToPane(existing.id, targetId);
+        return;
+      }
       useStore.getState().splitPane(dir);
       void Promise.resolve(onOpenPath(path));
     },
     [onOpenPath],
   );
+
+  const readBoxes = useCallback((): GridBox[] => {
+    const el = scrollRef.current;
+    if (!el) return [];
+    const boxes: GridBox[] = [];
+    for (const node of Array.from(
+      el.querySelectorAll<HTMLElement>("[data-grid-item]"),
+    )) {
+      const path = node.getAttribute("data-grid-item");
+      if (!path) continue;
+      const rect = node.getBoundingClientRect();
+      if (rect.width === 0 && rect.height === 0) continue;
+      boxes.push({
+        path,
+        top: rect.top,
+        bottom: rect.bottom,
+        left: rect.left,
+        right: rect.right,
+      });
+    }
+    return boxes;
+  }, []);
+
+  const computeSequence = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) {
+      sequenceRef.current = [];
+      setSequence([]);
+      return;
+    }
+    const rect = el.getBoundingClientRect();
+    const viewport: GridViewport = {
+      top: rect.top,
+      bottom: rect.bottom,
+      left: rect.left,
+      right: rect.right,
+    };
+    const next = sequenceOfVisible(readBoxes(), viewport, 9);
+    sequenceRef.current = next;
+    setSequence(next);
+  }, [readBoxes]);
+
+  const scheduleRecompute = useCallback(() => {
+    if (rafRef.current !== null) return;
+    rafRef.current = requestAnimationFrame(() => {
+      rafRef.current = null;
+      computeSequence();
+    });
+  }, [computeSequence]);
+
+  const locateInRail = useCallback((path: string) => {
+    const st = useStore.getState();
+    st.setScene("workspace");
+    if (st.railState === "collapsed") st.setRailState("hover");
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent("rail-locate", { detail: path }));
+    }, 0);
+  }, []);
 
   const openCardPreview = useCallback((item: RecentFile, el: HTMLElement) => {
     const st = useStore.getState();
@@ -180,6 +275,226 @@ export default function GridView({
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  // 按住 ⌘/Ctrl 显示视口编号；滚动 / 窗口失焦时重算或清除
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+
+    const clearSequence = () => {
+      metaHeldRef.current = false;
+      setMetaHeld(false);
+      sequenceRef.current = [];
+      setSequence([]);
+    };
+    const onScroll = () => {
+      if (metaHeldRef.current) scheduleRecompute();
+    };
+    const onMetaDown = (e: KeyboardEvent) => {
+      if (e.key !== "Meta" && e.key !== "Control") return;
+      if (isEditableTarget(e.target)) return;
+      metaHeldRef.current = true;
+      setMetaHeld(true);
+      computeSequence();
+    };
+    const onMetaUp = (e: KeyboardEvent) => {
+      if (e.key !== "Meta" && e.key !== "Control") return;
+      clearSequence();
+    };
+    const onBlur = () => clearSequence();
+    const onResize = () => {
+      if (metaHeldRef.current) scheduleRecompute();
+    };
+
+    el.addEventListener("scroll", onScroll);
+    window.addEventListener("keydown", onMetaDown);
+    window.addEventListener("keyup", onMetaUp);
+    window.addEventListener("blur", onBlur);
+    window.addEventListener("resize", onResize);
+    return () => {
+      el.removeEventListener("scroll", onScroll);
+      window.removeEventListener("keydown", onMetaDown);
+      window.removeEventListener("keyup", onMetaUp);
+      window.removeEventListener("blur", onBlur);
+      window.removeEventListener("resize", onResize);
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+    };
+  }, [computeSequence, scheduleRecompute]);
+
+  // 筛选 / 排序 / 分组 / 模式变化后重算编号（rAF 节流）
+  useEffect(() => {
+    if (metaHeldRef.current) scheduleRecompute();
+  }, [visible, listMode, scheduleRecompute]);
+
+  // 键盘导航：j/k/h/l、Home/End、整页、Enter 系、数字直开、Tab 切筛选
+  useEffect(() => {
+    const pageScroll = (dir: 1 | -1) => {
+      const el = scrollRef.current;
+      if (!el) return;
+      const step = pageStep(el.clientHeight);
+      const max = el.scrollHeight - el.clientHeight;
+      const next = dir === 1 ? el.scrollTop + step : el.scrollTop - step;
+      el.scrollTop = Math.max(0, Math.min(max, next));
+      if (metaHeldRef.current) scheduleRecompute();
+    };
+
+    const scrollSelectedIntoView = (path: string) => {
+      const el = scrollRef.current;
+      if (!el) return;
+      const node = el.querySelector<HTMLElement>(
+        `[data-grid-item="${CSS.escape(path)}"]`,
+      );
+      node?.scrollIntoView({ block: "nearest" });
+    };
+
+    const moveSelection = (key: "j" | "k" | "h" | "l") => {
+      const boxes = readBoxes();
+      if (boxes.length === 0) return;
+      const current = useStore.getState().gridSelectedPath;
+      if (!current) return;
+      const next =
+        key === "j"
+          ? moveVertical(boxes, current, 1)
+          : key === "k"
+            ? moveVertical(boxes, current, -1)
+            : key === "h"
+              ? moveHorizontal(boxes, current, -1)
+              : moveHorizontal(boxes, current, 1);
+      if (!next) return;
+      useStore.getState().setGridSelectedPath(next);
+      requestAnimationFrame(() => scrollSelectedIntoView(next));
+    };
+
+    const jumpToEdge = (edge: "start" | "end") => {
+      const boxes = readBoxes();
+      if (boxes.length === 0) return;
+      // Home/End 按视觉阅读顺序（先上后左）取首尾，而非 DOM 顺序
+      const sorted = [...boxes].sort(
+        (a, b) => a.top - b.top || a.left - b.left,
+      );
+      const next =
+        edge === "start" ? sorted[0].path : sorted[sorted.length - 1].path;
+      useStore.getState().setGridSelectedPath(next);
+      requestAnimationFrame(() => scrollSelectedIntoView(next));
+    };
+
+    const cycleFilterControl = (dir: 1 | -1) => {
+      const el = scrollRef.current;
+      if (!el) return;
+      const controls = [
+        el.querySelector<HTMLElement>("[data-grid-search]"),
+        el.querySelector<HTMLElement>("[data-grid-type-select]"),
+        el.querySelector<HTMLElement>("[data-grid-sort-select]"),
+        el.querySelector<HTMLElement>("[data-grid-group-select]"),
+        el.querySelector<HTMLElement>("[data-grid-pinned-select]"),
+      ].filter((c): c is HTMLElement => c !== null);
+      if (controls.length === 0) return;
+      const active = document.activeElement as HTMLElement | null;
+      const index = active ? controls.indexOf(active) : -1;
+      const next =
+        index === -1
+          ? dir === 1
+            ? 0
+            : controls.length - 1
+          : (index + dir + controls.length) % controls.length;
+      controls[next].focus();
+    };
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      const el = scrollRef.current;
+      if (!el) return;
+      const meta = e.metaKey || e.ctrlKey;
+      const typing = isEditableTarget(e.target);
+
+      if (e.key === "Meta" || e.key === "Control") return;
+
+      if (meta) {
+        const digit = digitFromCode(e.code);
+        if (digit !== null) {
+          if (typing) return;
+          e.preventDefault();
+          computeSequence();
+          const path = sequenceRef.current[digit - 1];
+          if (!path) return;
+          if (e.altKey) splitItem(path, "col");
+          else if (e.shiftKey) splitItem(path, "row");
+          else openItem(path);
+          return;
+        }
+      }
+
+      if (typing) {
+        if (e.key === "PageDown" || e.key === "PageUp") {
+          e.preventDefault();
+          pageScroll(e.key === "PageDown" ? 1 : -1);
+        }
+        return;
+      }
+
+      switch (e.key) {
+        case "j":
+        case "k":
+        case "h":
+        case "l": {
+          if (meta || e.altKey) return;
+          e.preventDefault();
+          moveSelection(e.key);
+          return;
+        }
+        case "Home":
+        case "End": {
+          if (meta || e.altKey) return;
+          e.preventDefault();
+          jumpToEdge(e.key === "Home" ? "start" : "end");
+          return;
+        }
+        case "PageDown":
+        case "PageUp": {
+          if (e.altKey) return;
+          e.preventDefault();
+          pageScroll(e.key === "PageDown" ? 1 : -1);
+          return;
+        }
+        case "Enter": {
+          if (e.altKey) return;
+          const path = useStore.getState().gridSelectedPath;
+          if (!path) return;
+          e.preventDefault();
+          if (meta) splitItem(path, "row");
+          else if (e.shiftKey) locateInRail(path);
+          else openItem(path);
+          return;
+        }
+        case "Tab": {
+          if (meta || e.altKey) return;
+          e.preventDefault();
+          cycleFilterControl(e.shiftKey ? -1 : 1);
+          return;
+        }
+        default:
+          return;
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [
+    computeSequence,
+    scheduleRecompute,
+    readBoxes,
+    openItem,
+    splitItem,
+    locateInRail,
+  ]);
+
+  const numberFor = (path: string): number | undefined => {
+    if (!metaHeld) return undefined;
+    const index = sequence.indexOf(path);
+    return index >= 0 ? index + 1 : undefined;
+  };
+
   const renderTile = (item: RecentFile) => {
     const pinned = pinnedPaths.includes(item.path);
     const size = tileSizeOf(item, { pinned, continuePath });
@@ -192,6 +507,7 @@ export default function GridView({
         pinned={pinned}
         blockColors={viewSpec.blockColors}
         readPercent={readPercentFor(item.path)}
+        number={numberFor(item.path)}
         onCardClick={onCardClick}
         onOpen={openItem}
         onSplit={splitItem}
@@ -203,6 +519,7 @@ export default function GridView({
 
   const renderRow = (item: RecentFile) => {
     const kind = fileTypeOf(item.path);
+    const number = numberFor(item.path);
     return (
       <button
         key={item.path}
@@ -214,6 +531,14 @@ export default function GridView({
         onClick={(e) => onCardClick(item, e.currentTarget)}
         className="flex w-full items-center gap-2 rounded border border-gray-200 px-3 py-2 text-left hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
       >
+        {number !== undefined && (
+          <span
+            data-grid-number={number}
+            className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--app-accent)] text-[11px] font-semibold leading-none text-white"
+          >
+            {number}
+          </span>
+        )}
         <Icon
           name={iconOfType(kind)}
           size={18}
@@ -231,6 +556,7 @@ export default function GridView({
 
   return (
     <div
+      ref={scrollRef}
       data-testid="grid"
       data-grid-filter={filter ?? "all"}
       data-grid-mode={viewSpec.gridMode}
