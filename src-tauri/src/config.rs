@@ -80,6 +80,8 @@ pub struct AiViewSpec {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub grid_grouping: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub grid_sort: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub unread_only: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub theme_groups: Option<bool>,
@@ -464,7 +466,12 @@ pub fn validate_config(config: &AppConfig) -> Result<(), AppError> {
         check_enum(
             "aiViewSpec.gridGrouping",
             spec.grid_grouping.as_deref(),
-            &["none", "type"],
+            &["time", "none", "type"],
+        )?;
+        check_enum(
+            "aiViewSpec.gridSort",
+            spec.grid_sort.as_deref(),
+            &["recent", "name", "type"],
         )?;
         check_range(
             "aiViewSpec.railCardHeight",
@@ -1183,6 +1190,7 @@ mod tests {
             rail_pinned_width: Some(300.0),
             grid_mode: Some("list".into()),
             grid_grouping: Some("type".into()),
+            grid_sort: Some("name".into()),
             unread_only: Some(true),
             theme_groups: Some(true),
             pinned_and_recent_only: Some(true),
@@ -1197,6 +1205,8 @@ mod tests {
         let loaded = load_config_at(base).unwrap().ai_view_spec.unwrap();
         assert_eq!(loaded.rail_layout.as_deref(), Some("tabs"));
         assert_eq!(loaded.grid_mode.as_deref(), Some("list"));
+        assert_eq!(loaded.grid_grouping.as_deref(), Some("type"));
+        assert_eq!(loaded.grid_sort.as_deref(), Some("name"));
         assert_eq!(loaded.icon_label.as_deref(), Some("icon"));
         assert_eq!(loaded.preview_enabled, Some(false));
         assert_eq!(loaded.rail_pinned_width, Some(300.0));
@@ -1206,6 +1216,12 @@ mod tests {
         let valid = config.ai_view_spec.clone().unwrap();
         config.ai_view_spec = Some(AiViewSpec {
             rail_layout: Some("diagonal".into()),
+            ..valid.clone()
+        });
+        assert!(validate_config(&config).is_err());
+
+        config.ai_view_spec = Some(AiViewSpec {
+            grid_sort: Some("size".into()),
             ..valid.clone()
         });
         assert!(validate_config(&config).is_err());

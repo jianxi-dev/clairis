@@ -1,15 +1,20 @@
 import { useEffect, useRef, useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import {
   listCapabilities,
   setCapabilityEnabled,
   type CapabilityId,
 } from "../lib/capabilities";
 import type { PreviewSettings } from "../lib/previewAnchor";
-import { applyTheme, saveAppConfig } from "../hooks/useConfig";
+import { applyTheme, reloadAppConfig, saveAppConfig } from "../hooks/useConfig";
 import { useEditorStore } from "../stores/editorStore";
 import { useStore } from "../stores/index";
+import { PROVIDERS } from "../lib/providers";
+import { formatSnapshotTime } from "../hooks/useAiEntry";
+import { isTauriEnv } from "../utils/tauri";
 import Icon from "./Icon";
 import { ICONS, ICON_NAMES } from "../ui/icons";
+import pkg from "../../package.json";
 
 interface SettingsViewProps {
   onClose: () => void;
@@ -30,14 +35,39 @@ const SECTIONS = [
 
 type SectionId = (typeof SECTIONS)[number]["id"];
 
-const PLACEHOLDER_SECTIONS: ReadonlySet<SectionId> = new Set([
-  "reading",
-  "grid",
-  "ai",
-  "extensions",
-  "data",
-  "about",
-]);
+const RAIL_LAYOUT_OPTIONS = [
+  { value: "stacked", label: "堆叠" },
+  { value: "tabs", label: "标签页" },
+] as const;
+
+const RAIL_DENSITY_OPTIONS = [
+  { value: "compact", label: "紧凑" },
+  { value: "comfortable", label: "舒适" },
+  { value: "card", label: "卡片" },
+] as const;
+
+const GRID_GROUP_OPTIONS = [
+  { value: "time", label: "时间" },
+  { value: "type", label: "类型" },
+  { value: "theme", label: "主题" },
+  { value: "none", label: "不分组" },
+] as const;
+
+const GRID_SORT_OPTIONS = [
+  { value: "recent", label: "最近" },
+  { value: "name", label: "名称" },
+  { value: "type", label: "类型" },
+] as const;
+
+const GRID_MODE_OPTIONS = [
+  { value: "grid", label: "网格" },
+  { value: "list", label: "列表" },
+] as const;
+
+const PLANNED_PROVIDERS = [
+  { id: "local-llm", label: "本地 LLM（Ollama）" },
+  { id: "multi-agent", label: "多 agent 协同" },
+] as const;
 
 const THEME_OPTIONS = [
   { value: "light", label: "浅色" },
@@ -106,6 +136,7 @@ const FULL_SHORTCUTS: ReadonlyArray<{
 ];
 
 export default function SettingsView({ onClose }: SettingsViewProps) {
+  const tauriEnv = isTauriEnv();
   const [active, setActive] = useState<SectionId>("appearance");
   const [capabilities, setCapabilities] = useState(listCapabilities);
   const [showFullShortcuts, setShowFullShortcuts] = useState(false);
@@ -113,10 +144,39 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
   const theme = useEditorStore((s) => s.config.theme ?? "system");
   const iconLabel = useEditorStore((s) => s.config.iconLabel ?? "text");
   const readerFontSize = useEditorStore((s) => s.config.readerFontSize ?? 17);
+  const fontSize = useEditorStore((s) => s.fontSize);
+  const openaiEndpoint = useEditorStore((s) => s.config.openaiEndpoint ?? "");
+  const openaiModel = useEditorStore((s) => s.config.openaiModel ?? "");
   const setConfig = useEditorStore((s) => s.setConfig);
   const setFontSize = useEditorStore((s) => s.setFontSize);
 
   const previewSettings = useStore((s) => s.previewSettings);
+  const railLayout = useStore((s) => s.railLayout);
+  const railDensity = useStore((s) => s.railDensity);
+  const railCardHeight = useStore((s) => s.railCardHeight);
+  const gridGroup = useStore((s) => s.gridGroup);
+  const gridSort = useStore((s) => s.gridSort);
+  const viewSpec = useStore((s) => s.viewSpec);
+  const setRailLayout = useStore((s) => s.setRailLayout);
+  const setRailDensity = useStore((s) => s.setRailDensity);
+  const setRailCardHeight = useStore((s) => s.setRailCardHeight);
+  const saveRailViewSpec = useStore((s) => s.saveRailViewSpec);
+  const setGridGroup = useStore((s) => s.setGridGroup);
+  const setGridSort = useStore((s) => s.setGridSort);
+  const applyViewSpec = useStore((s) => s.applyViewSpec);
+
+  const [selectedProvider, setSelectedProvider] = useState("");
+  const [keyInput, setKeyInput] = useState("");
+  const [keyStatus, setKeyStatus] = useState<
+    "loading" | "configured" | "empty" | "error"
+  >("loading");
+  const [keyBusy, setKeyBusy] = useState(false);
+  const [keyNotice, setKeyNotice] = useState("");
+
+  const [snapshots, setSnapshots] = useState<string[]>([]);
+  const [snapshotsLoading, setSnapshotsLoading] = useState(false);
+  const [pendingRestore, setPendingRestore] = useState<string | null>(null);
+  const [restoreNotice, setRestoreNotice] = useState("");
 
   const [systemDark, setSystemDark] = useState(
     () =>
@@ -141,6 +201,42 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
   useEffect(() => {
     rootRef.current?.focus();
   }, []);
+
+  useEffect(() => {
+    if (active !== "ai" || !tauriEnv) return;
+    let cancelled = false;
+    invoke<string | null>("get_api_key", {
+      service: "biaoyue",
+      account: "openai",
+    })
+      .then((key) => {
+        if (!cancelled) setKeyStatus(key ? "configured" : "empty");
+      })
+      .catch(() => {
+        if (!cancelled) setKeyStatus("error");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [active, tauriEnv]);
+
+  useEffect(() => {
+    if (active !== "data" || !tauriEnv) return;
+    let cancelled = false;
+    invoke<string[]>("list_config_snapshots")
+      .then((names) => {
+        if (!cancelled) setSnapshots([...names].reverse());
+      })
+      .catch(() => {
+        if (!cancelled) setSnapshots([]);
+      })
+      .finally(() => {
+        if (!cancelled) setSnapshotsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [active, tauriEnv]);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -197,6 +293,121 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
     void saveAppConfig();
   };
 
+  const chooseEditorFontSize = (size: number) => {
+    setFontSize(size);
+    setConfig({ fontSize: size });
+    document.documentElement.style.setProperty(
+      "--editor-font-size",
+      `${size}px`,
+    );
+    void saveAppConfig();
+  };
+
+  const chooseRailLayout = (layout: "stacked" | "tabs") => {
+    setRailLayout(layout);
+    saveRailViewSpec();
+  };
+
+  const chooseRailDensity = (density: "compact" | "comfortable" | "card") => {
+    setRailDensity(density);
+    saveRailViewSpec();
+  };
+
+  const changeRailCardHeight = (height: number) => {
+    setRailCardHeight(height);
+    saveRailViewSpec();
+  };
+
+  const chooseGridGroup = (group: "time" | "type" | "theme" | "none") => {
+    setGridGroup(group);
+    void saveAppConfig();
+  };
+
+  const chooseGridSort = (sort: "recent" | "name" | "type") => {
+    setGridSort(sort);
+    void saveAppConfig();
+  };
+
+  const chooseGridMode = (mode: "grid" | "list") => {
+    applyViewSpec({ gridMode: mode });
+    void saveAppConfig();
+  };
+
+  const selectProvider = (id: string) => {
+    const preset = PROVIDERS.find((p) => p.id === id);
+    if (!preset) return;
+    setSelectedProvider(id);
+    setConfig({
+      openaiEndpoint: preset.endpoint,
+      openaiModel: preset.defaultModel,
+    });
+    void saveAppConfig();
+  };
+
+  const commitAiConfig = () => {
+    void saveAppConfig();
+  };
+
+  const saveKey = async () => {
+    const key = keyInput.trim();
+    if (!key || keyBusy) return;
+    setKeyBusy(true);
+    try {
+      await invoke("set_api_key", {
+        service: "biaoyue",
+        account: "openai",
+        key,
+      });
+      setKeyStatus("configured");
+      setKeyInput("");
+      setKeyNotice("已保存到系统钥匙串。");
+    } catch {
+      setKeyNotice("保存失败，请重试。");
+    } finally {
+      setKeyBusy(false);
+    }
+  };
+
+  const deleteKey = async () => {
+    if (keyBusy) return;
+    setKeyBusy(true);
+    try {
+      await invoke("delete_api_key", {
+        service: "biaoyue",
+        account: "openai",
+      });
+      setKeyStatus("empty");
+      setKeyInput("");
+      setKeyNotice("已删除钥匙串中的密钥。");
+    } catch {
+      setKeyNotice("删除失败，请重试。");
+    } finally {
+      setKeyBusy(false);
+    }
+  };
+
+  const confirmRestore = async () => {
+    const name = pendingRestore;
+    if (!name) return;
+    setPendingRestore(null);
+    try {
+      await invoke("restore_config_snapshot", { name });
+      reloadAppConfig();
+      if (tauriEnv) {
+        const names = await invoke<string[]>("list_config_snapshots");
+        setSnapshots([...names].reverse());
+      }
+      setRestoreNotice("已恢复所选快照。");
+    } catch {
+      setRestoreNotice("恢复失败，请重试。");
+    }
+  };
+
+  const cancelRestore = () => {
+    setPendingRestore(null);
+    setRestoreNotice("");
+  };
+
   return (
     <div
       ref={rootRef}
@@ -219,7 +430,13 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
               data-testid="settings-nav-item"
               data-settings-nav={section.id}
               data-active={isActive ? "true" : "false"}
-              onClick={() => setActive(section.id)}
+              onClick={() => {
+                if (section.id === active) return;
+                if (section.id === "ai" && tauriEnv) setKeyStatus("loading");
+                if (section.id === "data" && tauriEnv)
+                  setSnapshotsLoading(true);
+                setActive(section.id);
+              }}
               className={`rounded px-3 py-1.5 text-left text-sm ${
                 isActive
                   ? "bg-[var(--app-accent-soft)] font-medium text-[var(--app-accent)]"
@@ -372,39 +589,499 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
           )}
 
           {active === "editor" && (
+            <div className="space-y-6">
+              <section>
+                <h2 className="mb-2 text-sm font-medium text-[var(--app-text-strong)]">
+                  编辑器字号
+                </h2>
+                <div className="flex flex-wrap gap-2">
+                  {FONT_SIZES.map((size) => {
+                    const selected = fontSize === size;
+                    return (
+                      <button
+                        key={size}
+                        type="button"
+                        data-testid={`editor-font-size-${size}`}
+                        aria-pressed={selected}
+                        onClick={() => chooseEditorFontSize(size)}
+                        className={`rounded border px-3 py-1.5 text-sm ${
+                          selected
+                            ? "border-[var(--app-accent)] bg-[var(--app-accent-soft)] text-[var(--app-accent)]"
+                            : "border-[var(--app-border)] text-[var(--app-text-2)] hover:bg-[var(--app-sunken)]"
+                        }`}
+                      >
+                        {size}
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+
+              <section>
+                <h2 className="mb-1 text-sm font-medium text-[var(--app-text-strong)]">
+                  高级
+                </h2>
+                <p className="mb-3 text-xs text-[var(--app-text-3)]">
+                  能力默认全开；关闭后只是不再渲染，文档内容不受影响。
+                </p>
+                <ul className="space-y-2">
+                  {capabilities.map((capability) => (
+                    <li key={capability.id}>
+                      <label className="flex cursor-pointer items-start gap-2">
+                        <input
+                          type="checkbox"
+                          data-testid={`capability-${capability.id}`}
+                          checked={capability.enabled}
+                          onChange={(e) =>
+                            toggleCapability(capability.id, e.target.checked)
+                          }
+                          className="mt-0.5"
+                        />
+                        <span>
+                          <span className="block text-sm text-[var(--app-text)]">
+                            {capability.label}
+                          </span>
+                          <span className="block text-xs text-[var(--app-text-3)]">
+                            {capability.hint}
+                          </span>
+                        </span>
+                      </label>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            </div>
+          )}
+
+          {active === "reading" && (
+            <div className="space-y-6">
+              <section>
+                <h2 className="mb-2 text-sm font-medium text-[var(--app-text-strong)]">
+                  默认布局
+                </h2>
+                <div className="flex flex-wrap gap-2">
+                  {RAIL_LAYOUT_OPTIONS.map((option) => {
+                    const selected = railLayout === option.value;
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        data-testid={`rail-default-layout-${option.value}`}
+                        aria-pressed={selected}
+                        onClick={() => chooseRailLayout(option.value)}
+                        className={`rounded border px-3 py-1.5 text-sm ${
+                          selected
+                            ? "border-[var(--app-accent)] bg-[var(--app-accent-soft)] text-[var(--app-accent)]"
+                            : "border-[var(--app-border)] text-[var(--app-text-2)] hover:bg-[var(--app-sunken)]"
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+
+              <section>
+                <h2 className="mb-2 text-sm font-medium text-[var(--app-text-strong)]">
+                  默认密度
+                </h2>
+                <div className="flex flex-wrap gap-2">
+                  {RAIL_DENSITY_OPTIONS.map((option) => {
+                    const selected = railDensity === option.value;
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        data-testid={`rail-default-density-${option.value}`}
+                        aria-pressed={selected}
+                        onClick={() => chooseRailDensity(option.value)}
+                        className={`rounded border px-3 py-1.5 text-sm ${
+                          selected
+                            ? "border-[var(--app-accent)] bg-[var(--app-accent-soft)] text-[var(--app-accent)]"
+                            : "border-[var(--app-border)] text-[var(--app-text-2)] hover:bg-[var(--app-sunken)]"
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+
+              <section>
+                <h2 className="mb-2 text-sm font-medium text-[var(--app-text-strong)]">
+                  卡片高度
+                </h2>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="range"
+                    min={88}
+                    max={160}
+                    step={1}
+                    data-testid="rail-default-card-height"
+                    value={railCardHeight}
+                    disabled={railDensity !== "card"}
+                    onChange={(e) =>
+                      changeRailCardHeight(Number(e.target.value))
+                    }
+                    className="w-56"
+                  />
+                  <span className="text-sm text-[var(--app-text-2)]">
+                    {railCardHeight}px
+                  </span>
+                </div>
+                {railDensity !== "card" && (
+                  <p className="mt-1 text-xs text-[var(--app-text-3)]">
+                    仅在卡片密度下生效
+                  </p>
+                )}
+              </section>
+            </div>
+          )}
+
+          {active === "grid" && (
+            <div className="space-y-6">
+              <section>
+                <h2 className="mb-2 text-sm font-medium text-[var(--app-text-strong)]">
+                  默认分组
+                </h2>
+                <div className="flex flex-wrap gap-2">
+                  {GRID_GROUP_OPTIONS.map((option) => {
+                    const selected = gridGroup === option.value;
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        data-testid={`grid-default-group-${option.value}`}
+                        aria-pressed={selected}
+                        onClick={() => chooseGridGroup(option.value)}
+                        className={`rounded border px-3 py-1.5 text-sm ${
+                          selected
+                            ? "border-[var(--app-accent)] bg-[var(--app-accent-soft)] text-[var(--app-accent)]"
+                            : "border-[var(--app-border)] text-[var(--app-text-2)] hover:bg-[var(--app-sunken)]"
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+
+              <section>
+                <h2 className="mb-2 text-sm font-medium text-[var(--app-text-strong)]">
+                  默认排序
+                </h2>
+                <div className="flex flex-wrap gap-2">
+                  {GRID_SORT_OPTIONS.map((option) => {
+                    const selected = gridSort === option.value;
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        data-testid={`grid-default-sort-${option.value}`}
+                        aria-pressed={selected}
+                        onClick={() => chooseGridSort(option.value)}
+                        className={`rounded border px-3 py-1.5 text-sm ${
+                          selected
+                            ? "border-[var(--app-accent)] bg-[var(--app-accent-soft)] text-[var(--app-accent)]"
+                            : "border-[var(--app-border)] text-[var(--app-text-2)] hover:bg-[var(--app-sunken)]"
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+
+              <section>
+                <h2 className="mb-2 text-sm font-medium text-[var(--app-text-strong)]">
+                  视图模式
+                </h2>
+                <div className="flex flex-wrap gap-2">
+                  {GRID_MODE_OPTIONS.map((option) => {
+                    const selected = viewSpec.gridMode === option.value;
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        data-testid={`grid-default-mode-${option.value}`}
+                        aria-pressed={selected}
+                        onClick={() => chooseGridMode(option.value)}
+                        className={`rounded border px-3 py-1.5 text-sm ${
+                          selected
+                            ? "border-[var(--app-accent)] bg-[var(--app-accent-soft)] text-[var(--app-accent)]"
+                            : "border-[var(--app-border)] text-[var(--app-text-2)] hover:bg-[var(--app-sunken)]"
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+            </div>
+          )}
+
+          {active === "ai" && (
+            <div className="space-y-6">
+              <section>
+                <h2 className="mb-1 text-sm font-medium text-[var(--app-text-strong)]">
+                  服务提供方
+                </h2>
+                <p className="mb-2 text-xs text-[var(--app-text-3)]">
+                  选择提供方后会填入其默认接口与模型，可再手动调整。
+                </p>
+                <ul className="space-y-1.5">
+                  {PROVIDERS.map((provider) => {
+                    const selected = selectedProvider === provider.id;
+                    return (
+                      <li key={provider.id}>
+                        <button
+                          type="button"
+                          data-testid="ai-provider"
+                          data-provider={provider.id}
+                          aria-pressed={selected}
+                          onClick={() => selectProvider(provider.id)}
+                          className={`flex w-full items-center justify-between rounded border px-3 py-2 text-left text-sm ${
+                            selected
+                              ? "border-[var(--app-accent)] bg-[var(--app-accent-soft)] text-[var(--app-accent)]"
+                              : "border-[var(--app-border)] text-[var(--app-text)] hover:bg-[var(--app-sunken)]"
+                          }`}
+                        >
+                          <span>{provider.label}</span>
+                          {selected && (
+                            <span className="text-xs text-[var(--app-accent)]">
+                              当前
+                            </span>
+                          )}
+                        </button>
+                      </li>
+                    );
+                  })}
+                  {PLANNED_PROVIDERS.map((provider) => (
+                    <li
+                      key={provider.id}
+                      data-testid="ai-planned"
+                      className="flex items-center justify-between rounded border border-dashed border-[var(--app-border)] px-3 py-2"
+                    >
+                      <span className="text-sm text-[var(--app-text-3)]">
+                        {provider.label}
+                      </span>
+                      <span className="rounded bg-[var(--app-sunken)] px-1.5 py-0.5 text-[10px] text-[var(--app-text-3)]">
+                        规划中
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+
+              <section>
+                <h2 className="mb-2 text-sm font-medium text-[var(--app-text-strong)]">
+                  接口与模型
+                </h2>
+                <div className="space-y-2">
+                  <label className="block">
+                    <span className="mb-1 block text-xs text-[var(--app-text-3)]">
+                      接口地址
+                    </span>
+                    <input
+                      type="text"
+                      data-testid="ai-endpoint-input"
+                      value={openaiEndpoint}
+                      onChange={(e) =>
+                        setConfig({ openaiEndpoint: e.target.value })
+                      }
+                      onBlur={commitAiConfig}
+                      className="w-full rounded border border-[var(--app-border)] bg-[var(--app-surface)] px-2 py-1.5 text-sm text-[var(--app-text)] outline-none focus:border-[var(--app-accent)]"
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="mb-1 block text-xs text-[var(--app-text-3)]">
+                      模型
+                    </span>
+                    <input
+                      type="text"
+                      data-testid="ai-model-input"
+                      value={openaiModel}
+                      onChange={(e) =>
+                        setConfig({ openaiModel: e.target.value })
+                      }
+                      onBlur={commitAiConfig}
+                      className="w-full rounded border border-[var(--app-border)] bg-[var(--app-surface)] px-2 py-1.5 text-sm text-[var(--app-text)] outline-none focus:border-[var(--app-accent)]"
+                    />
+                  </label>
+                </div>
+              </section>
+
+              <section>
+                <h2 className="mb-2 text-sm font-medium text-[var(--app-text-strong)]">
+                  API 密钥
+                </h2>
+                {!tauriEnv ? (
+                  <p
+                    className="text-sm text-[var(--app-text-3)]"
+                    data-testid="ai-key-note"
+                  >
+                    密钥仅保存在桌面版的系统钥匙串中，浏览器预览不可用。
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="password"
+                        data-testid="ai-key-input"
+                        value={keyInput}
+                        onChange={(e) => setKeyInput(e.target.value)}
+                        placeholder="sk-..."
+                        className="flex-1 rounded border border-[var(--app-border)] bg-[var(--app-surface)] px-2 py-1.5 text-sm text-[var(--app-text)] outline-none focus:border-[var(--app-accent)]"
+                      />
+                      <button
+                        type="button"
+                        data-testid="ai-key-save"
+                        disabled={keyBusy || keyInput.trim() === ""}
+                        onClick={() => void saveKey()}
+                        className="rounded border border-[var(--app-border)] px-3 py-1.5 text-sm text-[var(--app-text-2)] hover:bg-[var(--app-sunken)] disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        保存
+                      </button>
+                      <button
+                        type="button"
+                        data-testid="ai-key-delete"
+                        disabled={keyBusy || keyStatus !== "configured"}
+                        onClick={() => void deleteKey()}
+                        className="rounded border border-[var(--app-border)] px-3 py-1.5 text-sm text-[var(--app-text-2)] hover:bg-[var(--app-sunken)] disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        删除
+                      </button>
+                    </div>
+                    <p
+                      className="text-xs text-[var(--app-text-3)]"
+                      data-testid="ai-key-status"
+                    >
+                      {keyStatus === "configured"
+                        ? "已配置（密钥仅保存在系统钥匙串）"
+                        : keyStatus === "empty"
+                          ? "未配置"
+                          : keyStatus === "loading"
+                            ? "读取中…"
+                            : "无法读取钥匙串状态"}
+                    </p>
+                    {keyNotice && (
+                      <p className="text-xs text-[var(--app-accent)]">
+                        {keyNotice}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </section>
+            </div>
+          )}
+
+          {active === "data" && (
             <section>
               <h2 className="mb-1 text-sm font-medium text-[var(--app-text-strong)]">
-                高级
+                配置快照
               </h2>
-              <p className="mb-3 text-xs text-[var(--app-text-3)]">
-                能力默认全开；关闭后只是不再渲染，文档内容不受影响。
+              <p className="mb-2 text-xs text-[var(--app-text-3)]">
+                每次保存配置前自动留存一份，可恢复到任一历史状态。
               </p>
-              <ul className="space-y-2">
-                {capabilities.map((capability) => (
-                  <li key={capability.id}>
-                    <label className="flex cursor-pointer items-start gap-2">
-                      <input
-                        type="checkbox"
-                        data-testid={`capability-${capability.id}`}
-                        checked={capability.enabled}
-                        onChange={(e) =>
-                          toggleCapability(capability.id, e.target.checked)
-                        }
-                        className="mt-0.5"
-                      />
-                      <span>
-                        <span className="block text-sm text-[var(--app-text)]">
-                          {capability.label}
+              {snapshotsLoading ? (
+                <p className="text-sm text-[var(--app-text-3)]">读取中…</p>
+              ) : snapshots.length === 0 ? (
+                <p
+                  className="text-sm text-[var(--app-text-3)]"
+                  data-testid="snapshot-empty"
+                >
+                  暂无快照
+                </p>
+              ) : (
+                <ul className="space-y-1.5">
+                  {snapshots.map((name) => (
+                    <li
+                      key={name}
+                      data-testid="snapshot-item"
+                      data-snapshot-name={name}
+                    >
+                      <div className="flex items-center justify-between gap-2 rounded border border-[var(--app-border)] px-3 py-2">
+                        <span className="text-sm text-[var(--app-text)]">
+                          {formatSnapshotTime(name)}
                         </span>
-                        <span className="block text-xs text-[var(--app-text-3)]">
-                          {capability.hint}
-                        </span>
-                      </span>
-                    </label>
-                  </li>
-                ))}
-              </ul>
+                        <button
+                          type="button"
+                          data-testid="snapshot-restore"
+                          onClick={() => {
+                            setPendingRestore(name);
+                            setRestoreNotice("");
+                          }}
+                          className="rounded border border-[var(--app-border)] px-2 py-1 text-xs text-[var(--app-text-2)] hover:bg-[var(--app-sunken)]"
+                        >
+                          恢复
+                        </button>
+                      </div>
+                      {pendingRestore === name && (
+                        <div
+                          data-testid="snapshot-confirm"
+                          className="mt-1 flex items-center gap-2 rounded border border-[var(--app-accent)] bg-[var(--app-accent-soft)] px-3 py-2"
+                        >
+                          <span className="text-xs text-[var(--app-text)]">
+                            确认恢复到此快照？当前配置会先自动留存。
+                          </span>
+                          <button
+                            type="button"
+                            data-testid="snapshot-confirm-ok"
+                            onClick={() => void confirmRestore()}
+                            className="rounded border border-[var(--app-accent)] px-2 py-1 text-xs text-[var(--app-accent)] hover:bg-[var(--app-sunken)]"
+                          >
+                            确认恢复
+                          </button>
+                          <button
+                            type="button"
+                            data-testid="snapshot-cancel"
+                            onClick={cancelRestore}
+                            className="rounded border border-[var(--app-border)] px-2 py-1 text-xs text-[var(--app-text-2)] hover:bg-[var(--app-sunken)]"
+                          >
+                            取消
+                          </button>
+                        </div>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {restoreNotice && (
+                <p className="mt-2 text-xs text-[var(--app-accent)]">
+                  {restoreNotice}
+                </p>
+              )}
             </section>
+          )}
+
+          {active === "about" && (
+            <section>
+              <h2 className="mb-2 text-sm font-medium text-[var(--app-text-strong)]">
+                关于
+              </h2>
+              <div className="rounded border border-[var(--app-border)] px-4 py-3">
+                <p className="text-sm font-medium text-[var(--app-text-strong)]">
+                  标月 Biaoyue
+                </p>
+                <p className="mt-1 text-xs text-[var(--app-text-3)]">
+                  桌面 Markdown 阅读与编辑器，离线优先，数据保存在本机。
+                </p>
+                <p className="mt-2 text-xs text-[var(--app-text-3)]">
+                  版本 <span data-testid="about-version">v{pkg.version}</span>
+                </p>
+              </div>
+            </section>
+          )}
+
+          {active === "extensions" && (
+            <p className="text-sm text-[var(--app-text-3)]">
+              此分区将在后续票补全
+            </p>
           )}
 
           {active === "preview" && (
@@ -515,12 +1192,6 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
                 </div>
               )}
             </section>
-          )}
-
-          {PLACEHOLDER_SECTIONS.has(active) && (
-            <p className="text-sm text-[var(--app-text-3)]">
-              此分区将在后续票补全
-            </p>
           )}
         </div>
       </div>

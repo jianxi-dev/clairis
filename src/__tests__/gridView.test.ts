@@ -264,6 +264,14 @@ it("setGridGroup 同步 viewSpec 分组，避免重载回退", () => {
   expect(useStore.getState().viewSpec.themeGroups).toBe(true);
   useStore.getState().setGridGroup("time");
   expect(useStore.getState().viewSpec.themeGroups).toBe(false);
-  expect(useStore.getState().viewSpec.gridGrouping).toBe("none");
+  expect(useStore.getState().viewSpec.gridGrouping).toBe("time");
+  useStore.getState().reset();
+});
+
+it("setGridSort 同步 viewSpec 排序，避免重载回退", () => {
+  useStore.getState().setGridSort("name");
+  expect(useStore.getState().viewSpec.gridSort).toBe("name");
+  useStore.getState().setGridSort("type");
+  expect(useStore.getState().viewSpec.gridSort).toBe("type");
   useStore.getState().reset();
 });

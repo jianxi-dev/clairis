@@ -80,6 +80,7 @@ interface RustAppConfig {
     railPinnedWidth?: number | null;
     gridMode?: string | null;
     gridGrouping?: string | null;
+    gridSort?: string | null;
     unreadOnly?: boolean | null;
     themeGroups?: boolean | null;
     pinnedAndRecentOnly?: boolean | null;

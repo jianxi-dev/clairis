@@ -163,13 +163,11 @@ function extractFileName(path: string): string {
 
 /**
  * 把 AI 视图规格里的分组维度翻译成网格的 gridGroup（layout-portal 10.1）。
- * 主题分组优先于类型分组；规格未声明分组（默认 none）时返回 null——调用点保留
- * 网格当前分组，避免配置加载把默认「时间」冲成「不分组」。
+ * 主题分组优先；其余按规格声明（默认「时间」）。
  */
-function gridGroupFromSpec(spec: ViewSpec): GridGroupMode | null {
+function gridGroupFromSpec(spec: ViewSpec): GridGroupMode {
   if (spec.themeGroups) return "theme";
-  if (spec.gridGrouping === "type") return "type";
-  return null;
+  return spec.gridGrouping;
 }
 
 interface AppStore {
@@ -713,7 +711,12 @@ export const useStore = create<AppStore>((set, get) => ({
   setGridTypeFilter: (kind: FileTypeKind | null) =>
     set({ gridTypeFilter: kind }),
   setGridQuery: (query: string) => set({ gridQuery: query }),
-  setGridSort: (sort: GridSort) => set({ gridSort: sort }),
+  setGridSort: (sort: GridSort) =>
+    set((s) => ({
+      gridSort: sort,
+      // 同步回 viewSpec，避免之后配置重载（setViewSpec）把用户手选的排序悄悄改掉
+      viewSpec: { ...s.viewSpec, gridSort: sort },
+    })),
   setGridGroup: (group: GridGroupMode) =>
     set((s) => ({
       gridGroup: group,
@@ -721,7 +724,8 @@ export const useStore = create<AppStore>((set, get) => ({
       viewSpec: {
         ...s.viewSpec,
         themeGroups: group === "theme",
-        gridGrouping: group === "type" ? "type" : "none",
+        gridGrouping:
+          group === "type" ? "type" : group === "time" ? "time" : "none",
       },
     })),
   setGridPinnedOnly: (only: boolean) => set({ gridPinnedOnly: only }),
@@ -1166,10 +1170,10 @@ export const useStore = create<AppStore>((set, get) => ({
 
   setViewSpec: (spec) => {
     const next = normalizeViewSpec(spec);
-    const grouped = gridGroupFromSpec(next);
     set((s) => ({
       viewSpec: next,
-      gridGroup: grouped ?? s.gridGroup,
+      gridGroup: gridGroupFromSpec(next),
+      gridSort: next.gridSort,
       railLayout: next.railLayout,
       railDensity: next.railDensity,
       railCardHeight: next.railCardHeight,
@@ -1187,6 +1191,7 @@ export const useStore = create<AppStore>((set, get) => ({
     set((s) => ({
       viewSpec: next,
       gridGroup: grouped ?? s.gridGroup,
+      gridSort: next.gridSort,
       railLayout: next.railLayout,
       railDensity: next.railDensity,
       railCardHeight: next.railCardHeight,
@@ -1205,6 +1210,7 @@ export const useStore = create<AppStore>((set, get) => ({
         railDensity: s.railDensity,
         railCardHeight: s.railCardHeight,
         previewEnabled: s.previewSettings.enabled,
+        gridSort: s.gridSort,
         iconLabel:
           useEditorStore.getState().config.iconLabel ?? s.viewSpec.iconLabel,
       },

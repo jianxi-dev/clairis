@@ -21,8 +21,10 @@ export interface ViewSpec {
   railPinnedWidth: number;
   /** 网格排布：网格 / 列表。 */
   gridMode: "grid" | "list";
-  /** 网格分组：不分组 / 按类型分组。 */
-  gridGrouping: "none" | "type";
+  /** 网格分组：时间 / 不分组 / 按类型分组。 */
+  gridGrouping: "time" | "none" | "type";
+  /** 网格排序：最近 / 名称 / 类型。 */
+  gridSort: "recent" | "name" | "type";
   /** 只显示未读。 */
   unreadOnly: boolean;
   /**
@@ -47,7 +49,8 @@ export const DEFAULT_VIEW_SPEC: ViewSpec = {
   previewEnabled: true,
   railPinnedWidth: 240,
   gridMode: "grid",
-  gridGrouping: "none",
+  gridGrouping: "time",
+  gridSort: "recent",
   unreadOnly: false,
   themeGroups: false,
   pinnedAndRecentOnly: false,
@@ -95,7 +98,13 @@ const ICON_LABELS: ReadonlyArray<ViewSpec["iconLabel"]> = [
 ];
 const GRID_MODES: ReadonlyArray<ViewSpec["gridMode"]> = ["grid", "list"];
 const GRID_GROUPINGS: ReadonlyArray<ViewSpec["gridGrouping"]> = [
+  "time",
   "none",
+  "type",
+];
+const GRID_SORTS: ReadonlyArray<ViewSpec["gridSort"]> = [
+  "recent",
+  "name",
   "type",
 ];
 
@@ -140,6 +149,7 @@ export function normalizeViewSpec(
     ),
     gridMode: pickEnum(src.gridMode, GRID_MODES, base.gridMode),
     gridGrouping: pickEnum(src.gridGrouping, GRID_GROUPINGS, base.gridGrouping),
+    gridSort: pickEnum(src.gridSort, GRID_SORTS, base.gridSort),
     unreadOnly: pickBool(src.unreadOnly, base.unreadOnly),
     themeGroups: pickBool(src.themeGroups, base.themeGroups),
     pinnedAndRecentOnly: pickBool(
@@ -173,6 +183,7 @@ export function viewSpecEquals(a: ViewSpec, b: ViewSpec): boolean {
     a.railPinnedWidth === b.railPinnedWidth &&
     a.gridMode === b.gridMode &&
     a.gridGrouping === b.gridGrouping &&
+    a.gridSort === b.gridSort &&
     a.unreadOnly === b.unreadOnly &&
     a.themeGroups === b.themeGroups &&
     a.pinnedAndRecentOnly === b.pinnedAndRecentOnly &&
@@ -277,8 +288,21 @@ export function humanizeChange(before: ViewSpec, after: ViewSpec): string {
   }
   if (before.gridGrouping !== after.gridGrouping) {
     parts.push(
-      after.gridGrouping === "type" ? "网格按类型分组" : "网格取消分组",
+      after.gridGrouping === "type"
+        ? "网格按类型分组"
+        : after.gridGrouping === "time"
+          ? "网格按时间分组"
+          : "网格取消分组",
     );
+  }
+  if (before.gridSort !== after.gridSort) {
+    const label =
+      after.gridSort === "name"
+        ? "名称"
+        : after.gridSort === "type"
+          ? "类型"
+          : "最近";
+    parts.push(`网格改为按${label}排序`);
   }
   if (before.unreadOnly !== after.unreadOnly) {
     parts.push(after.unreadOnly ? "只显示未读的文件" : "显示全部文件");
