@@ -37,12 +37,12 @@ openspec status --change <name>   # 单个变更工件完成度
 
 ## 总览统计（截至 2026-11-06）
 
-- 规格：17 域 / 99 requirement（`openspec validate --specs --strict` 通过）
-- ✅ 经 openspec 归档实现：13
+- 规格：17 域 / 112 requirement（`openspec validate --specs --strict` 通过）
+- ✅ 经 openspec 归档实现：14
 - 🟡 已实现/设计完成（未走 openspec 变更）：24
 - ⬜ 待开发：16
 - 🗒 未立项（遗留散件登记）：约 16（展卷仪式 8 模块 + TODOS 安全/功能项）
-- 布局域（`layout-portal`）：12 条构建验收（L-1…L-12，第 12 条 Out of Scope）已实现，16/16 票合并，**待 G4 归档**
+- 布局域（`layout-portal`）：12 条构建验收（L-1…L-12，第 12 条 Out of Scope）已实现，16/16 票合并，已归档 `openspec/changes/archive/2026-11-05-layout-portal`
 
 ## 逐域状态
 
@@ -106,7 +106,7 @@ openspec status --change <name>   # 单个变更工件完成度
 
 ### layout（12）
 
-> change `layout-portal`（spec issue #170 / 收尾票 #186）：16/16 票已实现并合并（含收尾阶段的 #204–#209），**待 G4 归档**。逐条证据见 [layout-portal-acceptance.md](./layout-portal-acceptance.md)。
+> change `layout-portal`（spec issue #170 / 收尾票 #186）：16/16 票已实现并合并（含收尾阶段的 #204–#209），已归档 `openspec/changes/archive/2026-11-05-layout-portal`。逐条证据见 [layout-portal-acceptance.md](./layout-portal-acceptance.md)。
 
 | 编号 | 需求 | 状态 | 证据 |
 |---|---|---|---|
