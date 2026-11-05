@@ -1,0 +1,145 @@
+{
+  "task": "185-shortcuts",
+  "states": [
+    {
+      "state": "01-overlay-open",
+      "screenshot": ".artifacts/185/01-overlay-open.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T16:40:15.833Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "02-overlay-closed",
+      "screenshot": ".artifacts/185/02-overlay-closed.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T16:40:15.863Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "19-typing-guard",
+      "screenshot": ".artifacts/185/19-typing-guard.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T16:40:16.887Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "20-esc-layering",
+      "screenshot": ".artifacts/185/20-esc-layering.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T16:40:17.822Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "03-cmd-p-search",
+      "screenshot": ".artifacts/185/03-cmd-p-search.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T16:40:19.040Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "04-cmd-backslash-immersive",
+      "screenshot": ".artifacts/185/04-cmd-backslash-immersive.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T16:40:19.063Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "05-cmd-shift-backslash-grid",
+      "screenshot": ".artifacts/185/05-cmd-shift-backslash-grid.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T16:40:19.093Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "06-cmd-k-ai-overlay",
+      "screenshot": ".artifacts/185/06-cmd-k-ai-overlay.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T16:40:19.128Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "07-cmd-shift-a-bubble",
+      "screenshot": ".artifacts/185/07-cmd-shift-a-bubble.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T16:40:19.158Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "08-cmd-comma-settings",
+      "screenshot": ".artifacts/185/08-cmd-comma-settings.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T16:40:19.202Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "09-cmd-shift-v-preview",
+      "screenshot": ".artifacts/185/09-cmd-shift-v-preview.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T16:40:19.232Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "10-question-overlay",
+      "screenshot": ".artifacts/185/10-question-overlay.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T16:40:19.268Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "11-esc-closed",
+      "screenshot": ".artifacts/185/11-esc-closed.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T16:40:19.288Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "12-rail-alt-4-pdf",
+      "screenshot": ".artifacts/185/12-rail-alt-4-pdf.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T16:40:20.372Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "13-rail-alt-0-all",
+      "screenshot": ".artifacts/185/13-rail-alt-0-all.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T16:40:20.400Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "14-grid-alt-4-pdf",
+      "screenshot": ".artifacts/185/14-grid-alt-4-pdf.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T16:40:20.439Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "15-grid-alt-0-all",
+      "screenshot": ".artifacts/185/15-grid-alt-0-all.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T16:40:20.465Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "16-mode-cycle",
+      "screenshot": ".artifacts/185/16-mode-cycle.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T16:40:21.563Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "17-tooltips",
+      "screenshot": ".artifacts/185/17-tooltips.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T16:40:22.516Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "18-registry-rules",
+      "screenshot": ".artifacts/185/18-registry-rules.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T16:40:23.469Z",
+      "runner": "mason@unknown"
+    }
+  ]
+}

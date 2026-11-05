@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 import Icon from "../Icon";
 import { useStore } from "../../stores";
 import { RAIL_KIND_LABELS, RAIL_KIND_ORDER } from "../../lib/railView";
@@ -47,6 +47,12 @@ export default function GridToolbar({ count }: { count: number }) {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  useLayoutEffect(() => {
+    const onFocusSearch = () => inputRef.current?.focus();
+    window.addEventListener("grid-focus-search", onFocusSearch);
+    return () => window.removeEventListener("grid-focus-search", onFocusSearch);
   }, []);
 
   return (

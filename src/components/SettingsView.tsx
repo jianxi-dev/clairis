@@ -14,6 +14,12 @@ import { formatSnapshotTime } from "../hooks/useAiEntry";
 import { isTauriEnv } from "../utils/tauri";
 import Icon from "./Icon";
 import { ICONS, ICON_NAMES } from "../ui/icons";
+import {
+  SHORTCUT_FAMILY_LABELS,
+  SHORTCUT_FAMILY_ORDER,
+  coreShortcuts,
+  shortcutsByFamily,
+} from "../lib/shortcuts";
 import pkg from "../../package.json";
 
 interface SettingsViewProps {
@@ -105,52 +111,6 @@ const GRID_MODES = [
   { value: "click", label: "点击" },
   { value: "off", label: "关闭" },
 ] as const;
-
-const CORE_SHORTCUTS = [
-  { keys: "⌘P", label: "统一检索" },
-  { keys: "⌘\\", label: "阅读空间" },
-  { keys: "⌘⇧\\", label: "网格概览" },
-  { keys: "⌘K", label: "AI 浮层" },
-  { keys: "⌘⇧A", label: "AI 小窗·停靠" },
-  { keys: "⌘,", label: "设置" },
-  { keys: "?", label: "快捷键总览" },
-] as const;
-
-const FULL_SHORTCUTS: ReadonlyArray<{
-  group: string;
-  items: ReadonlyArray<{ keys: string; label: string }>;
-}> = [
-  {
-    group: "文件",
-    items: [
-      { keys: "⌘O", label: "打开" },
-      { keys: "⌘S", label: "保存" },
-      { keys: "⌘N", label: "新建" },
-      { keys: "⌘T", label: "新页签" },
-      { keys: "⌘W", label: "关页签 / 格" },
-    ],
-  },
-  {
-    group: "工作区",
-    items: [
-      { keys: "⌘↵", label: "打开选中" },
-      { keys: "⌘⌥→", label: "右分" },
-      { keys: "⌘⌥↓", label: "下分" },
-      { keys: "⌘⇧↵", label: "全屏当前格" },
-    ],
-  },
-  {
-    group: "导航",
-    items: [
-      { keys: "j / k", label: "上下整行" },
-      { keys: "h / l", label: "行内左右" },
-      { keys: "PageUp / PageDown", label: "整页" },
-      { keys: "Home / End", label: "首尾" },
-      { keys: "Enter", label: "打开" },
-      { keys: "/", label: "搜索" },
-    ],
-  },
-];
 
 function ExtensionsSection({
   tauriEnv,
@@ -1569,9 +1529,9 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
                 核心快捷键
               </h2>
               <ul className="divide-y divide-[var(--app-border)] border-y border-[var(--app-border)]">
-                {CORE_SHORTCUTS.map((shortcut) => (
+                {coreShortcuts().map((shortcut) => (
                   <li
-                    key={shortcut.keys}
+                    key={shortcut.id}
                     data-testid="shortcut-core"
                     className="flex items-center justify-between py-2"
                   >
@@ -1594,29 +1554,33 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
               </button>
               {showFullShortcuts && (
                 <div data-testid="shortcuts-full" className="mt-4 space-y-4">
-                  {FULL_SHORTCUTS.map((group) => (
-                    <div key={group.group}>
-                      <h3 className="mb-1 text-xs font-medium text-[var(--app-text-3)]">
-                        {group.group}
-                      </h3>
-                      <ul className="divide-y divide-[var(--app-border)] border-y border-[var(--app-border)]">
-                        {group.items.map((shortcut) => (
-                          <li
-                            key={shortcut.keys}
-                            data-testid="shortcut-full-row"
-                            className="flex items-center justify-between py-2"
-                          >
-                            <span className="text-sm text-[var(--app-text)]">
-                              {shortcut.label}
-                            </span>
-                            <kbd className="rounded border border-[var(--app-border-strong)] bg-[var(--app-sunken)] px-2 py-0.5 text-xs text-[var(--app-text-2)]">
-                              {shortcut.keys}
-                            </kbd>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ))}
+                  {SHORTCUT_FAMILY_ORDER.map((family) => {
+                    const items = shortcutsByFamily(family);
+                    if (items.length === 0) return null;
+                    return (
+                      <div key={family}>
+                        <h3 className="mb-1 text-xs font-medium text-[var(--app-text-3)]">
+                          {SHORTCUT_FAMILY_LABELS[family]}
+                        </h3>
+                        <ul className="divide-y divide-[var(--app-border)] border-y border-[var(--app-border)]">
+                          {items.map((shortcut) => (
+                            <li
+                              key={shortcut.id}
+                              data-testid="shortcut-full-row"
+                              className="flex items-center justify-between py-2"
+                            >
+                              <span className="text-sm text-[var(--app-text)]">
+                                {shortcut.label}
+                              </span>
+                              <kbd className="rounded border border-[var(--app-border-strong)] bg-[var(--app-sunken)] px-2 py-0.5 text-xs text-[var(--app-text-2)]">
+                                {shortcut.keys}
+                              </kbd>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </section>

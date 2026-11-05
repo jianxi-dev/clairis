@@ -76,7 +76,7 @@ async function seed(page: Page): Promise<void> {
       files.push({
         path: `/lib/kb-${String(i).padStart(2, "0")}.${ext}`,
         title: `键盘${String(i).padStart(2, "0")}.${ext}`,
-        openedAt: iso(startToday + (16 - i) * 3_600_000),
+        openedAt: iso(now - i * 1_000),
         excerpt: i === 0 ? "# 键盘导航\n\n第一份文档正文。" : "",
       });
     }
