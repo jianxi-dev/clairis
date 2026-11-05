@@ -15,6 +15,7 @@ import FileTree from "./components/Sidebar/FileTree";
 import Outline from "./components/Sidebar/Outline";
 import PaneTreeView from "./components/Content/PaneTreeView";
 import ReadingRail from "./components/Rail/ReadingRail";
+import FloatingPreview from "./components/Preview/FloatingPreview";
 import PortalView from "./components/PortalView";
 import GridView from "./components/GridView";
 import CaptureOverlay from "./components/CaptureOverlay";
@@ -349,14 +350,17 @@ function App() {
         store.collapsePanes();
       }
 
-      // Cmd+Shift+H / Cmd+Shift+V: split the focused pane right / down
+      // Cmd+Shift+H: split the focused pane right
       if (meta && e.shiftKey && e.key.toLowerCase() === "h") {
         e.preventDefault();
         store.splitPane("row");
       }
+
+      // Cmd+Shift+V: 悬浮预览总开关（layout-portal 8.1）。
+      // 旧「向下分屏」的 ⌘⇧V 已移除——它与 ⌘⌥↓ 语义重复，让位给预览开关。
       if (meta && e.shiftKey && e.key.toLowerCase() === "v") {
         e.preventDefault();
-        store.splitPane("col");
+        store.togglePreviewEnabled();
       }
 
       // Cmd+Alt+Right / Cmd+Alt+Down: split the focused pane (layout-portal 3.1)
@@ -656,6 +660,7 @@ function App() {
       <CommandOverlay />
       <UndoBar />
       <SnapshotPanel />
+      <FloatingPreview onOpenPath={handleOpenPath} />
       {scene === "portal" && (
         <div className="fixed inset-0 z-40 bg-white dark:bg-gray-900">
           <PortalView

@@ -20,6 +20,11 @@ import {
 } from "../lib/railView";
 import { DENSITY_HEIGHT, clampCardHeight } from "../lib/railCards";
 import {
+  DEFAULT_PREVIEW_SETTINGS,
+  type PreviewSettings,
+  type PreviewState,
+} from "../lib/previewAnchor";
+import {
   addTab,
   createLeaf,
   createRootLeaf,
@@ -259,6 +264,28 @@ interface AppStore {
   setRailSection: (section: RailSection) => void;
   setRailChip: (chip: RailChipKind) => void;
   saveRailViewSpec: () => void;
+
+  // ── 悬浮预览窗（change layout-portal / 8.1）──
+  /** 当前悬浮预览窗；null = 不显示。瞬态，不持久化（重开回默认锚定）。 */
+  preview: PreviewState | null;
+  /** 双轨开关：阅读空间悬停 / 网格触发方式 / 总开关。持久化到 Rust `preview_settings`。 */
+  previewSettings: PreviewSettings;
+  openPreview: (payload: Omit<PreviewState, "pinned">) => void;
+  closePreview: () => void;
+  movePreview: (
+    x: number,
+    y: number,
+    flippedX: boolean,
+    flippedY: boolean,
+  ) => void;
+  resizePreviewTo: (
+    rect: { x: number; y: number; w: number; h: number },
+    flippedX: boolean,
+    flippedY: boolean,
+  ) => void;
+  togglePreviewPin: () => void;
+  setPreviewSettings: (patch: Partial<PreviewSettings>) => void;
+  togglePreviewEnabled: () => void;
 }
 
 const initialState = {
@@ -293,6 +320,8 @@ const initialState = {
   railSection: "recent" as RailSection,
   railChip: "all" as RailChipKind,
   railViewSpec: { ...DEFAULT_RAIL_VIEW_SPEC },
+  preview: null as PreviewState | null,
+  previewSettings: { ...DEFAULT_PREVIEW_SETTINGS },
 };
 
 export const useStore = create<AppStore>((set, get) => ({
@@ -956,6 +985,55 @@ export const useStore = create<AppStore>((set, get) => ({
     // 动态导入避免 stores ↔ useConfig 的静态循环依赖（useConfig 依赖本模块）
     void import("../hooks/useConfig").then((m) => m.saveAppConfig());
   },
+
+  // ── 悬浮预览窗 actions（layout-portal 8.1）──
+
+  openPreview: (payload) =>
+    set((s) => ({
+      // 再次锚定（换行）时保留钉住态；位置恒取新锚点，绝不沿用拖动后的旧坐标
+      preview: { ...payload, pinned: s.preview?.pinned ?? false },
+    })),
+
+  closePreview: () => set({ preview: null }),
+
+  movePreview: (x, y, flippedX, flippedY) =>
+    set((s) =>
+      s.preview ? { preview: { ...s.preview, x, y, flippedX, flippedY } } : {},
+    ),
+
+  resizePreviewTo: (rect, flippedX, flippedY) =>
+    set((s) =>
+      s.preview
+        ? {
+            preview: {
+              ...s.preview,
+              x: rect.x,
+              y: rect.y,
+              w: rect.w,
+              h: rect.h,
+              flippedX,
+              flippedY,
+            },
+          }
+        : {},
+    ),
+
+  togglePreviewPin: () =>
+    set((s) =>
+      s.preview ? { preview: { ...s.preview, pinned: !s.preview.pinned } } : {},
+    ),
+
+  setPreviewSettings: (patch) =>
+    set((s) => ({ previewSettings: { ...s.previewSettings, ...patch } })),
+
+  togglePreviewEnabled: () =>
+    set((s) => {
+      const enabled = !s.previewSettings.enabled;
+      return {
+        previewSettings: { ...s.previewSettings, enabled },
+        preview: enabled ? s.preview : null,
+      };
+    }),
 }));
 
 // Expose store for E2E testing (Tauri Mock bridge)
