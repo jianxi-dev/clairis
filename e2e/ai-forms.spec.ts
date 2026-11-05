@@ -116,20 +116,6 @@ test("小窗发消息 → 停靠为右 28% 窗格、历史连续；⋯ 脱离回
     .toBeGreaterThanOrEqual(2);
   const before = await page.locator("[data-ai-message]").count();
 
-  // 主题改动会触发一次配置热应用（把左侧栏重置为显示）；先收起左侧栏，
-  // 使 pane 树容器 = workspace-body，再量停靠占比
-  await page.evaluate(() => {
-    (
-      window as unknown as {
-        __biaoyue_store__: {
-          getState: () => { setSidebarLeftVisible: (v: boolean) => void };
-        };
-      }
-    ).__biaoyue_store__
-      .getState()
-      .setSidebarLeftVisible(false);
-  });
-
   await page.locator("[data-ai-dock-button]").click();
   await expect(page.locator("[data-ai-docked]")).toBeVisible();
   await expect(page.locator("[data-ai-bubble]")).toHaveCount(0);

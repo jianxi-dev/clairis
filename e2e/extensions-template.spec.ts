@@ -1,6 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 
 const APP_URL = "http://localhost:1420";
+const MOD = process.platform === "darwin" ? "Meta" : "Control";
 
 interface Extensions {
   snippets: unknown[];
@@ -57,7 +58,7 @@ test("点新建出现模板选择器，选择后写入替换正文且标题为�
     warnings: [],
   });
 
-  await page.locator("button").filter({ hasText: "新建" }).click();
+  await page.keyboard.press(`${MOD}+n`);
 
   const picker = page.locator('[data-testid="template-picker"]');
   await expect(picker).toBeVisible();
@@ -89,7 +90,7 @@ test("Esc 关闭选择器且不新建页签", async ({ page }) => {
     warnings: [],
   });
 
-  await page.locator("button").filter({ hasText: "新建" }).click();
+  await page.keyboard.press(`${MOD}+n`);
   const picker = page.locator('[data-testid="template-picker"]');
   await expect(picker).toBeVisible();
 
@@ -107,7 +108,7 @@ test("选空白文档走默认新建", async ({ page }) => {
     warnings: [],
   });
 
-  await page.locator("button").filter({ hasText: "新建" }).click();
+  await page.keyboard.press(`${MOD}+n`);
   const picker = page.locator('[data-testid="template-picker"]');
   await expect(picker).toBeVisible();
 
@@ -126,7 +127,7 @@ test("无模板时不出现选择器，新建直接空白页", async ({ page }) 
     warnings: [],
   });
 
-  await page.locator("button").filter({ hasText: "新建" }).click();
+  await page.keyboard.press(`${MOD}+n`);
   await expect(page.locator('[data-testid="template-picker"]')).toHaveCount(0);
   const tab = await readActiveTab(page);
   expect(tab.title).toBe("未命名");

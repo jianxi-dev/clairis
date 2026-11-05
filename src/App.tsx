@@ -5,14 +5,9 @@ import { useStore } from "./stores/index";
 import { isMediaKind } from "./stores/index";
 import { useEditorStore } from "./stores/editorStore";
 import { useCaptureOverlayStore } from "./stores/captureOverlay";
-import Layout from "./components/Layout";
 import Toolbar from "./components/Toolbar";
 import TemplatePicker from "./components/TemplatePicker";
 import SettingsDialog from "./components/SettingsDialog";
-import SidebarPanel from "./components/SidebarPanel";
-import RecentFiles from "./components/Sidebar/RecentFiles";
-import FileTree from "./components/Sidebar/FileTree";
-import Outline from "./components/Sidebar/Outline";
 import PaneTreeView from "./components/Content/PaneTreeView";
 import ReadingRail from "./components/Rail/ReadingRail";
 import FloatingPreview from "./components/Preview/FloatingPreview";
@@ -515,29 +510,6 @@ function App() {
     };
   }, [scheduleSave]);
 
-  // ── Panel width persistence ──────────────────────────────────
-
-  const sidebarLeftWidth = useEditorStore((s) => s.config.sidebarLeftWidth);
-  const sidebarRightWidth = useEditorStore((s) => s.config.sidebarRightWidth);
-
-  const handleLeftWidthChange = useCallback(
-    (width: number) => {
-      const w = Math.round(width);
-      useEditorStore.getState().setConfig({ sidebarLeftWidth: w });
-      scheduleSave();
-    },
-    [scheduleSave],
-  );
-
-  const handleRightWidthChange = useCallback(
-    (width: number) => {
-      const w = Math.round(width);
-      useEditorStore.getState().setConfig({ sidebarRightWidth: w });
-      scheduleSave();
-    },
-    [scheduleSave],
-  );
-
   // ── Split ratio persistence ──────────────────────────────────
 
   const horizontalSplitRatio = useStore((s) => s.horizontalSplitRatio);
@@ -608,23 +580,11 @@ function App() {
   return (
     <div className={rootClass}>
       <Toolbar
-        isTauri={isTauri}
         title={activeTab?.title || ""}
         activeTabExists={!!activeTab}
         isMedia={activeTab ? isMediaKind(activeTab.fileKind) : false}
         editorMode={activeTab?.editorMode || "preview"}
         theme={theme}
-        onOpenFile={handleOpenFile}
-        onSaveFile={handleSaveFile}
-        onNewFile={handleNewFile}
-        onToggleLeftSidebar={() => {
-          useStore.getState().toggleLeftSidebar();
-          scheduleSave();
-        }}
-        onToggleRightSidebar={() => {
-          useStore.getState().toggleRightSidebar();
-          scheduleSave();
-        }}
         onSetMode={(mode) => useStore.getState().setEditorMode(mode)}
         onSetReadingMode={(on) => useStore.getState().setReadingMode(on)}
         onSetTheme={setTheme}
@@ -636,41 +596,7 @@ function App() {
           className="flex-1 min-w-0 flex overflow-hidden"
           data-testid="workspace-body"
         >
-          <Layout
-            initialLeftWidth={sidebarLeftWidth ?? 280}
-            initialRightWidth={sidebarRightWidth ?? 320}
-            leftSidebar={
-              <SidebarPanel
-                side="left"
-                tabs={[
-                  { key: "files", label: "文件", content: <FileTree /> },
-                  { key: "recent", label: "最近", content: <RecentFiles /> },
-                  { key: "outline", label: "目录", content: <Outline /> },
-                ]}
-                defaultTab="files"
-              />
-            }
-            center={<PaneTreeView />}
-            rightSidebar={
-              <SidebarPanel
-                side="right"
-                tabs={[
-                  {
-                    key: "translate",
-                    label: "翻译",
-                    content: (
-                      <div className="p-3 text-xs text-gray-400 dark:text-gray-500">
-                        选中文本后翻译
-                      </div>
-                    ),
-                  },
-                ]}
-                defaultTab="translate"
-              />
-            }
-            onLeftWidthChange={handleLeftWidthChange}
-            onRightWidthChange={handleRightWidthChange}
-          />
+          <PaneTreeView />
         </div>
       </div>
       <CaptureOverlay />

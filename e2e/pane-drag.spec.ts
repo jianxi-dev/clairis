@@ -312,9 +312,12 @@ test("文件拖到右半区：右侧分裂出新格，文件只在新格", async
   await openFile(page, "/tmp/pd/a.md");
   await expect.poll(() => paneIds(page)).toHaveLength(1);
 
-  // 左栏文件树：选择文件夹后出现带路径的条目
-  await page.getByRole("button", { name: "选择文件夹" }).click();
-  const row = page.locator('[data-file-path="/Users/test/测试文档.md"]');
+  // 左侧阅读空间：mock 配置里已有最近文件，悬停展开后作为拖拽源
+  await page.hover('[data-testid="rail-edge"]');
+  await expect(page.locator('[data-testid="rail-panel"]')).toBeVisible();
+  const row = page
+    .locator('[data-rail-path="/Users/test/测试文档.md"]')
+    .first();
   await expect(row).toBeVisible();
 
   const from = await row.boundingBox();

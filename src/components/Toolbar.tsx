@@ -3,96 +3,33 @@ import Icon from "./Icon";
 import { useAiEntryStore } from "../hooks/useAiEntry";
 
 interface ToolbarProps {
-  isTauri: boolean;
   title: string;
   activeTabExists: boolean;
   editorMode: "preview" | "edit" | "source";
   theme: Theme;
-  /** 媒体类文件（图片/视频/PDF）：隐藏保存与模式切换 */
+  /** 媒体类文件（图片/视频/PDF）：隐藏模式切换 */
   isMedia?: boolean;
-  onOpenFile: () => void;
-  onSaveFile: () => void;
-  onNewFile: () => void;
-  onToggleLeftSidebar: () => void;
-  onToggleRightSidebar: () => void;
   onSetMode: (mode: "preview" | "edit" | "source") => void;
   onSetReadingMode: (on: boolean) => void;
   onSetTheme: (theme: Theme) => void;
 }
 
 export default function Toolbar({
-  isTauri,
   title,
   activeTabExists,
   editorMode,
   theme,
   isMedia = false,
-  onOpenFile,
-  onSaveFile,
-  onNewFile,
-  onToggleLeftSidebar,
-  onToggleRightSidebar,
   onSetMode,
   onSetReadingMode,
   onSetTheme,
 }: ToolbarProps) {
   return (
     <header className="app-chrome flex items-center gap-2 px-3 py-1.5 border-b border-gray-200 bg-gray-50 dark:bg-gray-800 dark:border-gray-700 text-sm select-none shrink-0">
-      {/* File operations */}
-      {isTauri && (
-        <>
-          <button
-            onClick={onOpenFile}
-            className="px-2 py-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-xs"
-            title="打开文件 (Cmd+O)"
-          >
-            打开
-          </button>
-          {!isMedia && (
-            <button
-              onClick={onSaveFile}
-              className="px-2 py-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-xs"
-              title="保存文件 (Cmd+S)"
-            >
-              保存
-            </button>
-          )}
-          <button
-            onClick={onNewFile}
-            className="px-2 py-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-xs"
-            title="新建 (Cmd+N)"
-          >
-            新建
-          </button>
-          <div className="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-1" />
-        </>
-      )}
-
       {/* Title */}
       <span className="text-gray-500 dark:text-gray-400 text-xs flex-1 truncate">
-        {title || (isTauri ? "Cmd+O 打开文件" : "Web 模式 — 仅展示 UI")}
+        {title || "标月 Biaoyue"}
       </span>
-
-      {/* Sidebar toggles */}
-      {activeTabExists && (
-        <>
-          <button
-            onClick={onToggleLeftSidebar}
-            className="px-2 py-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-xs"
-            title="切换左侧栏 (Cmd+\)"
-          >
-            侧栏
-          </button>
-          <button
-            onClick={onToggleRightSidebar}
-            className="px-2 py-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-xs"
-            title="切换右侧栏"
-          >
-            翻译
-          </button>
-          <div className="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-1" />
-        </>
-      )}
 
       {/* AI：全产品唯一常驻入口（顶栏星芒）。门户里的 [data-testid="quick-ai"]
           是场景内快捷方式，不是常驻入口——唯一入口判定只看 data-ai-entry。 */}
