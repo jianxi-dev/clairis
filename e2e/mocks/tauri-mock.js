@@ -24,6 +24,42 @@ window.__biaoyue_openFile__ = function(path, content, title) {
 // ── AI entry (C4) mock state ─────────────────────────────────
 var aiState = { config: null, snapshots: [], seq: 0 };
 
+// ── 扩展包管理（#184）mock state ─────────────────────────────
+var extensionPackages = [
+  {
+    id: "builtin-reading",
+    name: "阅读增强",
+    version: "1.0.0",
+    description: "内置阅读扩展",
+    source: "builtin",
+    enabled: true,
+    dir: null,
+    skill: "# 阅读增强\n\n内置扩展：提供阅读辅助能力。",
+  },
+  {
+    id: "builtin-outline",
+    name: "大纲导航",
+    version: "1.0.0",
+    description: "内置大纲扩展",
+    source: "builtin",
+    enabled: true,
+    dir: null,
+    skill: "# 大纲导航\n\n内置扩展：提供文档大纲导航。",
+  },
+];
+window.__biaoyue_extension_packages__ = extensionPackages;
+
+function cloneJson(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+function findExtensionPackage(id) {
+  for (var i = 0; i < extensionPackages.length; i++) {
+    if (extensionPackages[i].id === id) return extensionPackages[i];
+  }
+  return null;
+}
+
 // 系统钥匙串 mock：只存 service:account → key，绝不落配置/存储
 window.__biaoyue_keyring__ = {};
 window.__biaoyue_ai_config__ = function () {
@@ -181,6 +217,65 @@ function mockInvoke(cmd, args) {
     w.__reveal_calls__ = w.__reveal_calls__ || [];
     w.__reveal_calls__.push(args.path);
     return null;
+  }
+  if (cmd === "list_extension_packages") return cloneJson(extensionPackages);
+  if (cmd === "import_extension_package" && args && args.path) {
+    var base = String(args.path).split("/").pop() || "extension";
+    var existing = findExtensionPackage(base);
+    var imported = {
+      id: base,
+      name: base,
+      version: "1.0.0",
+      description: "从 " + args.path + " 导入",
+      source: "user",
+      enabled: true,
+      dir: args.path,
+      skill: "# " + base + "\n\n用户导入的扩展。",
+    };
+    if (existing) {
+      extensionPackages[extensionPackages.indexOf(existing)] = imported;
+    } else {
+      extensionPackages.push(imported);
+    }
+    return cloneJson(imported);
+  }
+  if (cmd === "set_extension_package_enabled" && args) {
+    var target = findExtensionPackage(args.id);
+    if (target) target.enabled = !!args.enabled;
+    return null;
+  }
+  if (cmd === "remove_extension_package" && args) {
+    var victim = findExtensionPackage(args.id);
+    if (victim) extensionPackages.splice(extensionPackages.indexOf(victim), 1);
+    return null;
+  }
+  if (cmd === "package_extension_package" && args) {
+    return "/tmp/extensions-export/" + args.id + ".zip";
+  }
+  if (cmd === "pick_extension_source" && args) {
+    if (args.kind === "folder") return "/tmp/extensions-import/demo";
+    if (args.kind === "zip") return "/tmp/extensions-import/demo.zip";
+    return null;
+  }
+  if (cmd === "generate_extension_package" && args) {
+    var prompt = String(args.prompt || "");
+    return new Promise(function (resolve) {
+      setTimeout(function () {
+        var id = "ai-" + Date.now();
+        var generated = {
+          id: id,
+          name: prompt.slice(0, 20) || "AI 扩展",
+          version: "1.0.0",
+          description: "AI 生成的扩展",
+          source: "ai",
+          enabled: true,
+          dir: "/tmp/extensions-ai/" + id,
+          skill: "# " + (prompt.slice(0, 20) || "AI 扩展") + "\n\n" + prompt,
+        };
+        extensionPackages.push(generated);
+        resolve(cloneJson(generated));
+      }, 250);
+    });
   }
   if (responses[cmd]) return responses[cmd];
   console.warn("[TauriMock] unknown command:", cmd);

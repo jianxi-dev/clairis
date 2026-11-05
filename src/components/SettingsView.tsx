@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import {
   listCapabilities,
@@ -19,6 +19,23 @@ import pkg from "../../package.json";
 interface SettingsViewProps {
   onClose: () => void;
 }
+
+interface ExtensionPackage {
+  id: string;
+  name: string;
+  version: string;
+  description: string;
+  source: "builtin" | "ai" | "user";
+  enabled: boolean;
+  dir: string | null;
+  skill: string;
+}
+
+const SOURCE_LABELS: Record<ExtensionPackage["source"], string> = {
+  builtin: "内置",
+  ai: "AI 生成",
+  user: "用户导入",
+};
 
 const SECTIONS = [
   { id: "appearance", label: "外观" },
@@ -135,6 +152,409 @@ const FULL_SHORTCUTS: ReadonlyArray<{
   },
 ];
 
+function ExtensionsSection({
+  tauriEnv,
+  dropActive,
+  setDropActive,
+}: {
+  tauriEnv: boolean;
+  dropActive: boolean;
+  setDropActive: (next: boolean) => void;
+}) {
+  const [packages, setPackages] = useState<ExtensionPackage[]>([]);
+  const [loading, setLoading] = useState(tauriEnv);
+  const [notice, setNotice] = useState("");
+  const [previewId, setPreviewId] = useState<string | null>(null);
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [aiBusy, setAiBusy] = useState(false);
+  const aiRunRef = useRef(0);
+
+  const refresh = useCallback(async () => {
+    if (!tauriEnv) return;
+    try {
+      const list = await invoke<ExtensionPackage[]>("list_extension_packages");
+      setPackages(Array.isArray(list) ? list : []);
+    } catch {
+      setPackages([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [tauriEnv]);
+
+  useEffect(() => {
+    if (!tauriEnv) return;
+    let cancelled = false;
+    invoke<ExtensionPackage[]>("list_extension_packages")
+      .then((list) => {
+        if (!cancelled) setPackages(Array.isArray(list) ? list : []);
+      })
+      .catch(() => {
+        if (!cancelled) setPackages([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [tauriEnv]);
+
+  const importPath = useCallback(
+    async (target: string) => {
+      if (!tauriEnv) return;
+      try {
+        await invoke<ExtensionPackage>("import_extension_package", {
+          path: target,
+        });
+        await refresh();
+        setNotice(`已导入扩展：${target}`);
+      } catch {
+        setNotice("导入失败，请重试。");
+      }
+    },
+    [tauriEnv, refresh],
+  );
+
+  const importFrom = async (kind: "folder" | "zip") => {
+    if (!tauriEnv) return;
+    try {
+      const picked = await invoke<string | null>("pick_extension_source", {
+        kind,
+      });
+      if (!picked) return;
+      await importPath(picked);
+    } catch {
+      setNotice("导入失败，请重试。");
+    }
+  };
+
+  // Tauri webview 拖放：进入/悬停显示浮层，松开导入首个路径，离开或 Esc 收起。
+  useEffect(() => {
+    if (!tauriEnv) return;
+    let unlisten: (() => void) | null = null;
+    let disposed = false;
+    (async () => {
+      try {
+        const { getCurrentWebview } = await import("@tauri-apps/api/webview");
+        if (disposed) return;
+        unlisten = await getCurrentWebview().onDragDropEvent((event) => {
+          const type = event.payload.type;
+          if (type === "enter" || type === "over") {
+            setDropActive(true);
+            return;
+          }
+          if (type === "leave") {
+            setDropActive(false);
+            return;
+          }
+          if (type !== "drop") return;
+          setDropActive(false);
+          const path = event.payload.paths[0];
+          if (path) void importPath(path);
+        });
+      } catch {
+        /* 浏览器预览无 webview 拖放事件 */
+      }
+    })();
+    return () => {
+      disposed = true;
+      unlisten?.();
+    };
+  }, [tauriEnv, importPath, setDropActive]);
+
+  const togglePackage = async (pkg: ExtensionPackage, enabled: boolean) => {
+    try {
+      await invoke("set_extension_package_enabled", {
+        id: pkg.id,
+        enabled,
+      });
+      await refresh();
+    } catch {
+      /* 开关失败时保留原状态 */
+    }
+  };
+
+  const removePackage = async (id: string) => {
+    try {
+      await invoke("remove_extension_package", { id });
+      await refresh();
+      setNotice("已卸载扩展。");
+    } catch {
+      setNotice("卸载失败，请重试。");
+    }
+  };
+
+  const exportPackage = async (id: string) => {
+    try {
+      const out = await invoke<string>("package_extension_package", { id });
+      setNotice(`已导出：${out}`);
+    } catch {
+      setNotice("导出失败，请重试。");
+    }
+  };
+
+  const openDir = async (dir: string | null) => {
+    if (!dir) return;
+    try {
+      await invoke("reveal_in_finder", { path: dir });
+    } catch {
+      /* 打开文件夹失败静默 */
+    }
+  };
+
+  const generateAi = async () => {
+    const prompt = aiPrompt.trim();
+    if (!prompt || aiBusy) return;
+    const run = aiRunRef.current + 1;
+    aiRunRef.current = run;
+    setAiBusy(true);
+    try {
+      const generated = await invoke<ExtensionPackage>(
+        "generate_extension_package",
+        { prompt },
+      );
+      if (run !== aiRunRef.current) {
+        try {
+          await invoke("remove_extension_package", { id: generated.id });
+        } catch {
+          /* 取消后的清理失败不覆盖用户操作 */
+        }
+        return;
+      }
+      await refresh();
+      setNotice("已生成扩展。");
+    } catch {
+      if (run === aiRunRef.current) setNotice("生成失败，请重试。");
+    } finally {
+      if (run === aiRunRef.current) setAiBusy(false);
+    }
+  };
+
+  const cancelAi = () => {
+    aiRunRef.current += 1;
+    setAiBusy(false);
+  };
+
+  return (
+    <div className="space-y-6">
+      <section>
+        <h2 className="mb-1 text-sm font-medium text-[var(--app-text-strong)]">
+          扩展
+        </h2>
+        <p className="mb-3 text-xs text-[var(--app-text-3)]">
+          拖入含 manifest.json 与 SKILL.md 的文件夹或 .zip，导入后立即启用。
+        </p>
+        {!tauriEnv ? (
+          <p
+            className="text-sm text-[var(--app-text-3)]"
+            data-testid="extensions-disabled-note"
+          >
+            扩展管理仅在桌面版可用，浏览器预览不可用。
+          </p>
+        ) : (
+          <>
+            <div
+              data-testid="extensions-dropzone"
+              className="rounded border border-dashed border-[var(--app-border)] px-4 py-6 text-center"
+            >
+              <p className="text-sm text-[var(--app-text-2)]">
+                把扩展文件夹或 .zip 拖到这里
+              </p>
+              <div className="mt-3 flex justify-center gap-2">
+                <button
+                  type="button"
+                  data-testid="extensions-import-folder"
+                  onClick={() => void importFrom("folder")}
+                  className="rounded border border-[var(--app-border)] px-3 py-1.5 text-sm text-[var(--app-text-2)] hover:bg-[var(--app-sunken)]"
+                >
+                  选择文件夹
+                </button>
+                <button
+                  type="button"
+                  data-testid="extensions-import-zip"
+                  onClick={() => void importFrom("zip")}
+                  className="rounded border border-[var(--app-border)] px-3 py-1.5 text-sm text-[var(--app-text-2)] hover:bg-[var(--app-sunken)]"
+                >
+                  选择 .zip
+                </button>
+              </div>
+            </div>
+            {dropActive && (
+              <div
+                data-testid="extensions-drop-overlay"
+                className="mt-3 rounded border border-[var(--app-accent)] bg-[var(--app-accent-soft)] px-4 py-6 text-center text-sm text-[var(--app-accent)]"
+              >
+                松开以导入扩展，Esc 取消
+              </div>
+            )}
+          </>
+        )}
+      </section>
+
+      <section>
+        <h2 className="mb-2 text-sm font-medium text-[var(--app-text-strong)]">
+          已安装
+        </h2>
+        {loading ? (
+          <p className="text-sm text-[var(--app-text-3)]">读取中…</p>
+        ) : packages.length === 0 ? (
+          <p
+            className="text-sm text-[var(--app-text-3)]"
+            data-testid="extensions-empty"
+          >
+            暂无扩展
+          </p>
+        ) : (
+          <ul className="space-y-2">
+            {packages.map((pkg) => {
+              const isBuiltin = pkg.source === "builtin";
+              return (
+                <li
+                  key={pkg.id}
+                  data-testid="extension-row"
+                  data-extension-id={pkg.id}
+                  className="rounded border border-[var(--app-border)] px-3 py-2"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="truncate text-sm text-[var(--app-text)]">
+                          {pkg.name}
+                        </span>
+                        <span
+                          data-testid="extension-source"
+                          className="shrink-0 rounded bg-[var(--app-sunken)] px-1.5 py-0.5 text-[10px] text-[var(--app-text-3)]"
+                        >
+                          {SOURCE_LABELS[pkg.source]}
+                        </span>
+                      </div>
+                      {pkg.description && (
+                        <p className="mt-0.5 truncate text-xs text-[var(--app-text-3)]">
+                          {pkg.description}
+                        </p>
+                      )}
+                    </div>
+                    <label className="flex shrink-0 items-center gap-1.5">
+                      <input
+                        type="checkbox"
+                        data-testid="extension-toggle"
+                        checked={pkg.enabled}
+                        disabled={isBuiltin}
+                        onChange={(e) =>
+                          void togglePackage(pkg, e.target.checked)
+                        }
+                      />
+                      <span className="text-xs text-[var(--app-text-3)]">
+                        {pkg.enabled ? "启用" : "停用"}
+                      </span>
+                    </label>
+                    <button
+                      type="button"
+                      data-testid="extension-open"
+                      disabled={isBuiltin || !pkg.dir}
+                      onClick={() => void openDir(pkg.dir)}
+                      className="shrink-0 rounded border border-[var(--app-border)] px-2 py-1 text-xs text-[var(--app-text-2)] hover:bg-[var(--app-sunken)] disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      打开文件夹
+                    </button>
+                    <button
+                      type="button"
+                      data-testid="extension-export"
+                      disabled={isBuiltin}
+                      onClick={() => void exportPackage(pkg.id)}
+                      className="shrink-0 rounded border border-[var(--app-border)] px-2 py-1 text-xs text-[var(--app-text-2)] hover:bg-[var(--app-sunken)] disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      导出
+                    </button>
+                    <button
+                      type="button"
+                      data-testid="extension-preview"
+                      onClick={() =>
+                        setPreviewId((cur) => (cur === pkg.id ? null : pkg.id))
+                      }
+                      className="shrink-0 rounded border border-[var(--app-border)] px-2 py-1 text-xs text-[var(--app-text-2)] hover:bg-[var(--app-sunken)]"
+                    >
+                      {previewId === pkg.id ? "收起" : "预览"}
+                    </button>
+                    <button
+                      type="button"
+                      data-testid="extension-remove"
+                      disabled={isBuiltin}
+                      onClick={() => void removePackage(pkg.id)}
+                      className="shrink-0 rounded border border-[var(--app-border)] px-2 py-1 text-xs text-[var(--app-text-2)] hover:bg-[var(--app-sunken)] disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      卸载
+                    </button>
+                  </div>
+                  {previewId === pkg.id && (
+                    <pre
+                      data-testid="extension-skill"
+                      className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap rounded border border-[var(--app-border)] bg-[var(--app-sunken)] p-2 text-xs text-[var(--app-text-2)]"
+                    >
+                      {pkg.skill}
+                    </pre>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+        {notice && (
+          <p
+            data-testid="extension-notice"
+            className="mt-2 text-xs text-[var(--app-accent)]"
+          >
+            {notice}
+          </p>
+        )}
+      </section>
+
+      <section>
+        <h2 className="mb-2 text-sm font-medium text-[var(--app-text-strong)]">
+          AI 生成
+        </h2>
+        <div className="flex items-center gap-2">
+          <input
+            type="text"
+            data-testid="ai-extension-prompt"
+            value={aiPrompt}
+            onChange={(e) => setAiPrompt(e.target.value)}
+            placeholder="说出你要的功能"
+            className="flex-1 rounded border border-[var(--app-border)] bg-[var(--app-surface)] px-2 py-1.5 text-sm text-[var(--app-text)] outline-none focus:border-[var(--app-accent)]"
+          />
+          <button
+            type="button"
+            data-testid="ai-extension-generate"
+            disabled={aiBusy || aiPrompt.trim() === ""}
+            onClick={() => void generateAi()}
+            className="rounded border border-[var(--app-border)] px-3 py-1.5 text-sm text-[var(--app-text-2)] hover:bg-[var(--app-sunken)] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            生成
+          </button>
+          {aiBusy && (
+            <button
+              type="button"
+              data-testid="ai-extension-cancel"
+              onClick={cancelAi}
+              className="rounded border border-[var(--app-border)] px-3 py-1.5 text-sm text-[var(--app-text-2)] hover:bg-[var(--app-sunken)]"
+            >
+              取消
+            </button>
+          )}
+        </div>
+        {aiBusy && (
+          <p
+            data-testid="ai-extension-generating"
+            className="mt-2 text-xs text-[var(--app-text-3)]"
+          >
+            生成中…
+          </p>
+        )}
+      </section>
+    </div>
+  );
+}
+
 export default function SettingsView({ onClose }: SettingsViewProps) {
   const tauriEnv = isTauriEnv();
   const [active, setActive] = useState<SectionId>("appearance");
@@ -172,6 +592,8 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
   >("loading");
   const [keyBusy, setKeyBusy] = useState(false);
   const [keyNotice, setKeyNotice] = useState("");
+
+  const [dropActive, setDropActive] = useState(false);
 
   const [snapshots, setSnapshots] = useState<string[]>([]);
   const [snapshotsLoading, setSnapshotsLoading] = useState(false);
@@ -243,12 +665,16 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
       if (e.key === "Escape") {
         e.preventDefault();
         e.stopPropagation();
+        if (dropActive) {
+          setDropActive(false);
+          return;
+        }
         onClose();
       }
     };
     document.addEventListener("keydown", onKeyDown, true);
     return () => document.removeEventListener("keydown", onKeyDown, true);
-  }, [onClose]);
+  }, [onClose, dropActive]);
 
   const chooseTheme = (next: "light" | "dark" | "warm") => {
     lastExplicitRef.current = next;
@@ -1079,9 +1505,11 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
           )}
 
           {active === "extensions" && (
-            <p className="text-sm text-[var(--app-text-3)]">
-              此分区将在后续票补全
-            </p>
+            <ExtensionsSection
+              tauriEnv={tauriEnv}
+              dropActive={dropActive}
+              setDropActive={setDropActive}
+            />
           )}
 
           {active === "preview" && (

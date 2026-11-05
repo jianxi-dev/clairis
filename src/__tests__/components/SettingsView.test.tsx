@@ -80,6 +80,25 @@ describe("SettingsView", () => {
     expect(screen.getByTestId("grid-default-mode-list")).toBeTruthy();
   });
 
+  it("扩展区：浏览器预览显示不可用提示", () => {
+    const w = window as unknown as {
+      __TAURI_INTERNALS__?: Record<string, unknown>;
+    };
+    const internals = w.__TAURI_INTERNALS__;
+    delete w.__TAURI_INTERNALS__;
+    try {
+      render(<SettingsView onClose={() => {}} />);
+
+      fireEvent.click(screen.getAllByTestId("settings-nav-item")[6]);
+      expect(screen.getByTestId("extensions-disabled-note")).toBeTruthy();
+      expect(
+        screen.getByTestId("extensions-disabled-note").textContent,
+      ).toContain("浏览器预览不可用");
+    } finally {
+      w.__TAURI_INTERNALS__ = internals;
+    }
+  });
+
   it("AI 服务区：8 个提供方与 2 个规划中条目", () => {
     render(<SettingsView onClose={() => {}} />);
 

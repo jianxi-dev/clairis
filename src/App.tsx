@@ -499,6 +499,7 @@ function App() {
       try {
         const { getCurrentWebview } = await import("@tauri-apps/api/webview");
         unlisten = await getCurrentWebview().onDragDropEvent((event) => {
+          if (useStore.getState().scene === "settings") return;
           if (event.payload.type !== "drop") return;
           const path = event.payload.paths[0];
           if (!path) return;
