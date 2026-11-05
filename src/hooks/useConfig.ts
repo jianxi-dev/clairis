@@ -98,11 +98,8 @@ export function applyTheme(theme: string): void {
     (theme === "system" &&
       window.matchMedia("(prefers-color-scheme: dark)").matches);
 
-  if (isDark) {
-    root.classList.add("dark");
-  } else {
-    root.classList.remove("dark");
-  }
+  root.classList.toggle("dark", isDark);
+  root.classList.toggle("warm", !isDark && theme === "warm");
 }
 
 /** Apply theme to <html> element. */

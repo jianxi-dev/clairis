@@ -36,7 +36,8 @@ async function openInPreview(page: Page) {
 
 async function openSettings(page: Page) {
   await page.keyboard.press("Meta+,");
-  await expect(page.locator('[data-testid="settings-dialog"]')).toBeVisible();
+  await expect(page.locator('[data-testid="settings-scene"]')).toBeVisible();
+  await page.locator('[data-settings-nav="editor"]').click();
 }
 
 test("Cmd+, 打开设置，能力默认全开", async ({ page }) => {
@@ -83,6 +84,6 @@ test("Esc 关闭设置，能力状态保持", async ({ page }) => {
   await page.locator('[data-testid="capability-math"]').uncheck();
 
   await page.keyboard.press("Escape");
-  await expect(page.locator('[data-testid="settings-dialog"]')).toHaveCount(0);
+  await expect(page.locator('[data-testid="settings-scene"]')).toHaveCount(0);
   await expect(page.locator(".preview-content .katex")).toHaveCount(0);
 });

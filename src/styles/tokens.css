@@ -54,3 +54,21 @@
   --app-border: #2e3138;
   --app-border-strong: #3d4149;
 }
+
+/* 暖色（Layout Portal §8 外观区第三主题）：独立暖纸面，不与 dark 叠加。 */
+.warm {
+  --app-accent: #0071e3;
+  --app-accent-soft: rgba(0, 113, 227, 0.08);
+
+  --app-bg: #f2e9da;
+  --app-surface: #fbf4e8;
+  --app-sunken: #efe3d0;
+
+  --app-text: #3b3024;
+  --app-text-strong: #241c12;
+  --app-text-2: #6b5a45;
+  --app-text-3: #96826a;
+
+  --app-border: #e0d2bc;
+  --app-border-strong: #cdbca1;
+}

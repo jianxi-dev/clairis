@@ -68,7 +68,7 @@ export interface AppConfig {
   aiViewSpec?: ViewSpec | null;
 }
 
-export type Theme = "system" | "light" | "dark";
+export type Theme = "system" | "light" | "dark" | "warm";
 
 export type CaptureStatus = "closed" | "normal" | "pinned" | "capsule";
 export type CapturePrefix = "" | "." | "-" | "!" | "?";

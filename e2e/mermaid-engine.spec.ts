@@ -77,7 +77,8 @@ test("关闭「图表水合」移除图并显示源码，重新开启恢复且�
   ).toBeVisible();
 
   await page.keyboard.press("Meta+,");
-  await expect(page.locator('[data-testid="settings-dialog"]')).toBeVisible();
+  await expect(page.locator('[data-testid="settings-scene"]')).toBeVisible();
+  await page.locator('[data-settings-nav="editor"]').click();
   await page.locator('[data-testid="capability-mermaid"]').uncheck();
 
   await expect(page.locator(".preview-content .mermaid-view")).toHaveCount(0);
@@ -88,7 +89,7 @@ test("关闭「图表水合」移除图并显示源码，重新开启恢复且�
 
   await page.locator('[data-testid="capability-mermaid"]').check();
   await page.keyboard.press("Escape");
-  await expect(page.locator('[data-testid="settings-dialog"]')).toHaveCount(0);
+  await expect(page.locator('[data-testid="settings-scene"]')).toHaveCount(0);
 
   await expect(
     page.locator(".preview-content .mermaid-view svg"),
