@@ -405,4 +405,101 @@ describe("paneTree 模型", () => {
       expect(leafCount(t)).toBe(3);
     });
   });
+
+  describe("AI 停靠叶（layout-portal 9.1）", () => {
+    const paths: Record<string, string> = { t1: "/docs/a.md" };
+    const pathOf = (id: string | null) => (id ? (paths[id] ?? null) : null);
+
+    function treeWithAi(): PaneLayout {
+      const withTab = addTab(createRootLeaf(), "main", "t1");
+      return {
+        type: "node",
+        id: "b-ai",
+        dir: "row",
+        ratio: 0.72,
+        children: [
+          withTab,
+          {
+            type: "leaf",
+            id: "ai",
+            tabs: [],
+            activeTabId: null,
+            editorMode: "preview",
+            kind: "ai",
+          },
+        ],
+      };
+    }
+
+    it("serializeLayout 为 AI 叶输出 kind:ai，普通叶不带 kind", () => {
+      const s = serializeLayout(treeWithAi(), "main", pathOf);
+      if (s.root.type !== "node") throw new Error("expected branch");
+      expect(s.root.children[1]).toMatchObject({
+        type: "leaf",
+        id: "ai",
+        kind: "ai",
+      });
+      expect((s.root.children[0] as { kind?: string }).kind).toBeUndefined();
+    });
+
+    it("空 AI 叶恢复时保留，不塌缩、不退默认单格", () => {
+      const parsed = parseSerializedLayout(
+        JSON.stringify(serializeLayout(treeWithAi(), "main", pathOf)),
+      );
+      if (!parsed) throw new Error("parse failed");
+      const { root } = restoreLayout(parsed, () => null);
+      expect(root).toMatchObject({ type: "leaf", id: "ai", kind: "ai" });
+      expect(leafCount(root)).toBe(1);
+    });
+
+    it("整棵树只有空 AI 叶时保留该叶", () => {
+      const only: unknown = {
+        version: 1,
+        focusedId: "ai",
+        root: {
+          type: "leaf",
+          id: "ai",
+          tabs: [],
+          activePath: null,
+          editorMode: "preview",
+          kind: "ai",
+        },
+      };
+      const parsed = parseSerializedLayout(JSON.stringify(only));
+      if (!parsed) throw new Error("parse failed");
+      const { root } = restoreLayout(parsed, () => null);
+      expect(root).toMatchObject({ type: "leaf", id: "ai", kind: "ai" });
+    });
+
+    it("非法 kind 被解析拒绝", () => {
+      const bad: unknown = {
+        version: 1,
+        focusedId: "main",
+        root: {
+          type: "leaf",
+          id: "main",
+          tabs: [],
+          activePath: null,
+          editorMode: "preview",
+          kind: "chat",
+        },
+      };
+      expect(parseSerializedLayout(JSON.stringify(bad))).toBeNull();
+    });
+
+    it("老配置缺 kind 仍可解析", () => {
+      const old: unknown = {
+        version: 1,
+        focusedId: "main",
+        root: {
+          type: "leaf",
+          id: "main",
+          tabs: [],
+          activePath: null,
+          editorMode: "preview",
+        },
+      };
+      expect(parseSerializedLayout(JSON.stringify(old))).not.toBeNull();
+    });
+  });
 });

@@ -14,7 +14,9 @@ export type PaneMenuAction =
   | "splitDown"
   | "source"
   | "locate"
-  | "copyPath";
+  | "copyPath"
+  | "undockAi"
+  | "closePane";
 
 export interface PaneMenuItem {
   action: PaneMenuAction;
@@ -30,6 +32,14 @@ export const PANE_MENU_ITEMS: readonly PaneMenuItem[] = [
   { action: "source", label: "源码模式", icon: "code" },
   { action: "locate", label: "定位", icon: "locate" },
   { action: "copyPath", label: "复制路径", icon: "copyPath" },
+];
+
+/**
+ * AI 停靠窗格的 ⋯ 菜单（layout-portal 9.1）——独立于普通格的 7 项列表，
+ * 保证 pane-header 用例对普通格「恰好 7 项」的断言不受影响。
+ */
+export const AI_PANE_MENU_ITEMS: readonly PaneMenuItem[] = [
+  { action: "undockAi", label: "脱离为小窗", icon: "export" },
 ];
 
 /** 模式图标只在预览↔编辑间切换；源码模式由 ⋯ 菜单进入。 */

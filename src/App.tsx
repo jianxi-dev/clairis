@@ -23,6 +23,7 @@ import CommandOverlay from "./components/ai/CommandOverlay";
 import UndoBar from "./components/ai/UndoBar";
 import SnapshotPanel from "./components/ai/SnapshotPanel";
 import SelectionPill from "./components/ai/SelectionPill";
+import AiBubble from "./components/ai/AiBubble";
 import { useAiEntryStore } from "./hooks/useAiEntry";
 import { getActiveEditorView, getPanelScrollEl } from "./editors/editorRef";
 import { toggleBold, toggleItalic } from "./editors/keybindings";
@@ -278,7 +279,7 @@ function App() {
       if (useStore.getState().scene !== "workspace") {
         if (!meta) return;
         const k = e.key.toLowerCase();
-        if (!["o", "n", ",", "p", "k"].includes(k)) return;
+        if (!["o", "n", ",", "p", "k", "a"].includes(k)) return;
       }
 
       const store = useStore.getState();
@@ -420,9 +421,23 @@ function App() {
         useAiEntryStore.getState().toggleOverlay();
       }
 
-      // Escape: exit fullscreen pane first, otherwise exit reading mode
+      // Cmd+Shift+A: 切换 AI 小窗 ⇄ 停靠窗格
+      if (meta && e.shiftKey && e.key.toLowerCase() === "a") {
+        e.preventDefault();
+        useAiEntryStore.getState().toggleForm();
+      }
+
+      // Escape: 待确认改动 → 取消；否则按形态关闭 AI；再否则退回全屏/阅读态
       if (e.key === "Escape") {
-        if (store.fullscreenPaneId) {
+        const ai = useAiEntryStore.getState();
+        if (ai.pendingConfirm) {
+          ai.cancelPendingSubmit();
+        } else if (ai.form === "docked") {
+          ai.undock();
+          ai.closeBubble();
+        } else if (ai.bubbleOpen) {
+          ai.closeBubble();
+        } else if (store.fullscreenPaneId) {
           store.toggleFullscreenPane();
         } else if (readingMode) {
           store.setReadingMode(false);
@@ -660,6 +675,7 @@ function App() {
       <CommandOverlay />
       <UndoBar />
       <SnapshotPanel />
+      <AiBubble />
       <FloatingPreview onOpenPath={handleOpenPath} />
       {scene === "portal" && (
         <div className="fixed inset-0 z-40 bg-white dark:bg-gray-900">

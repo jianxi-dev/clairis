@@ -8,6 +8,7 @@ import type {
   ScrollPosition,
 } from "../types";
 import type { FileTypeKind } from "../lib/fileType";
+import { useEditorStore } from "./editorStore";
 import {
   DEFAULT_RAIL_VIEW_SPEC,
   nextRailState,
@@ -19,6 +20,12 @@ import {
   type RailViewSpec,
 } from "../lib/railView";
 import { DENSITY_HEIGHT, clampCardHeight } from "../lib/railCards";
+import {
+  DEFAULT_VIEW_SPEC,
+  applySpec as applyViewSpecPatch,
+  normalizeViewSpec,
+  type ViewSpec,
+} from "../lib/aiViewSpec";
 import {
   DEFAULT_PREVIEW_SETTINGS,
   type PreviewSettings,
@@ -54,7 +61,20 @@ function excerptOf(content: string): string {
   return content.replace(/\s+/g, " ").trim().slice(0, 160);
 }
 
-export type SplitDirection = "horizontal" | "vertical";
+type SplitDirection = "horizontal" | "vertical";
+
+/** AI 停靠窗格在分栏树里的固定 leaf id（layout-portal 9.1）。 */
+export const AI_PANE_ID = "ai";
+
+/**
+ * AI 停靠窗格被关闭时的回调。靠注册而不是静态 import useAiEntry，避免
+ * stores ↔ hooks 的循环依赖；useAiEntry 在模块加载时注册。
+ */
+let onAiPaneClosed: (() => void) | null = null;
+
+export function setAiPaneClosedHandler(fn: (() => void) | null): void {
+  onAiPaneClosed = fn;
+}
 
 let nextId = 1;
 function generateId(): string {
@@ -286,6 +306,20 @@ interface AppStore {
   togglePreviewPin: () => void;
   setPreviewSettings: (patch: Partial<PreviewSettings>) => void;
   togglePreviewEnabled: () => void;
+
+  // ── AI 视图规格（change layout-portal / 9.1）──
+  /** AI 可改写的整体视图规格；唯一真相，镜像到 rail/preview/editor 各域。 */
+  viewSpec: ViewSpec;
+  /** 整体写入（归一化 + 夹取）并镜像各域。 */
+  setViewSpec: (spec: ViewSpec) => void;
+  /** 在现有规格上叠加补丁并镜像各域。 */
+  applyViewSpec: (patch: Partial<ViewSpec>) => void;
+  /** 返回当前规格快照（供持久化）。 */
+  captureViewSpec: () => ViewSpec;
+  /** 把 AI 停靠为右侧分栏窗格（默认右侧 28%）；返回该 leaf id。 */
+  dockAiPane: () => string;
+  /** 移除 AI 停靠窗格；不存在时无操作。 */
+  undockAiPane: () => void;
 }
 
 const initialState = {
@@ -322,6 +356,7 @@ const initialState = {
   railViewSpec: { ...DEFAULT_RAIL_VIEW_SPEC },
   preview: null as PreviewState | null,
   previewSettings: { ...DEFAULT_PREVIEW_SETTINGS },
+  viewSpec: { ...DEFAULT_VIEW_SPEC },
 };
 
 export const useStore = create<AppStore>((set, get) => ({
@@ -759,8 +794,16 @@ export const useStore = create<AppStore>((set, get) => ({
 
   closePane: (leafId) => {
     const state = get();
+    const target = findLeaf(state.paneRoot, leafId);
+    if (target?.kind === "ai") {
+      // 关闭 AI 格 = 脱离为小窗：宿主由 useAiEntry 回落，其 undock 已移除该格
+      if (onAiPaneClosed) {
+        onAiPaneClosed();
+        return;
+      }
+    }
     if (state.paneRoot.type === "leaf") return;
-    const leaf = findLeaf(state.paneRoot, leafId);
+    const leaf = target;
     if (!leaf) return;
     const sibling = siblingLeafId(state.paneRoot, leafId);
     const { root, removed } = removeLeaf(state.paneRoot, leafId);
@@ -1034,6 +1077,97 @@ export const useStore = create<AppStore>((set, get) => ({
         preview: enabled ? s.preview : null,
       };
     }),
+
+  // ── AI 视图规格（layout-portal 9.1）──
+
+  setViewSpec: (spec) => {
+    const next = normalizeViewSpec(spec);
+    set((s) => ({
+      viewSpec: next,
+      railLayout: next.railLayout,
+      railDensity: next.railDensity,
+      railCardHeight: next.railCardHeight,
+      previewSettings: { ...s.previewSettings, enabled: next.previewEnabled },
+      preview: next.previewEnabled ? s.preview : null,
+    }));
+    useEditorStore.getState().setConfig({ iconLabel: next.iconLabel });
+  },
+
+  applyViewSpec: (patch) => {
+    const next = applyViewSpecPatch(get().captureViewSpec(), patch);
+    set((s) => ({
+      viewSpec: next,
+      railLayout: next.railLayout,
+      railDensity: next.railDensity,
+      railCardHeight: next.railCardHeight,
+      previewSettings: { ...s.previewSettings, enabled: next.previewEnabled },
+      preview: next.previewEnabled ? s.preview : null,
+    }));
+    useEditorStore.getState().setConfig({ iconLabel: next.iconLabel });
+  },
+
+  captureViewSpec: () => {
+    const s = get();
+    return normalizeViewSpec(
+      {
+        ...s.viewSpec,
+        railLayout: s.railLayout,
+        railDensity: s.railDensity,
+        railCardHeight: s.railCardHeight,
+        previewEnabled: s.previewSettings.enabled,
+        iconLabel:
+          useEditorStore.getState().config.iconLabel ?? s.viewSpec.iconLabel,
+      },
+      s.viewSpec,
+    );
+  },
+
+  dockAiPane: () => {
+    const state = get();
+    if (findLeaf(state.paneRoot, AI_PANE_ID)) return AI_PANE_ID;
+    const aiLeaf: PaneLeaf = {
+      type: "leaf",
+      id: AI_PANE_ID,
+      tabs: [],
+      activeTabId: null,
+      editorMode: "preview",
+      kind: "ai",
+    };
+    const root: PaneLayout = {
+      type: "node",
+      id: generatePaneId(),
+      dir: "row",
+      ratio: 0.72,
+      children: [state.paneRoot, aiLeaf],
+    };
+    set({
+      paneRoot: root,
+      focusedPaneId: findLeaf(root, state.focusedPaneId)
+        ? state.focusedPaneId
+        : (listLeaves(root)[0]?.id ?? "main"),
+      fullscreenPaneId: null,
+    });
+    return AI_PANE_ID;
+  },
+
+  undockAiPane: () => {
+    const state = get();
+    if (!findLeaf(state.paneRoot, AI_PANE_ID)) return;
+    const sibling = siblingLeafId(state.paneRoot, AI_PANE_ID);
+    const { root, removed } = removeLeaf(state.paneRoot, AI_PANE_ID);
+    if (!removed) return;
+    const focusedPaneId =
+      state.focusedPaneId === AI_PANE_ID
+        ? (sibling ?? listLeaves(root)[0]?.id ?? "main")
+        : state.focusedPaneId;
+    set({
+      paneRoot: root,
+      focusedPaneId,
+      activeTabId: findLeaf(root, focusedPaneId)?.activeTabId ?? null,
+      fullscreenPaneId:
+        state.fullscreenPaneId === AI_PANE_ID ? null : state.fullscreenPaneId,
+    });
+  },
 }));
 
 // Expose store for E2E testing (Tauri Mock bridge)

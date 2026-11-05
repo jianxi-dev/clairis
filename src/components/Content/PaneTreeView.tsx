@@ -25,6 +25,7 @@ import {
 } from "../../lib/paneTree";
 import {
   nextPaneMode,
+  AI_PANE_MENU_ITEMS,
   PANE_MENU_ITEMS,
   type PaneMenuAction,
 } from "../../lib/paneHeaderMenu";
@@ -40,6 +41,7 @@ import Icon from "../Icon";
 import ContentArea from "./ContentArea";
 import MediaPlayerHost from "./MediaPlayerHost";
 import PaneDivider from "./PaneDivider";
+import AiDockedPane from "../ai/AiDockedPane";
 
 type PaneDragStarter = (leafId: string, e: ReactPointerEvent) => void;
 const PaneDragContext = createContext<PaneDragStarter>(() => {});
@@ -141,6 +143,7 @@ function PaneNode({
   if (isLeaf(node)) {
     const hidden = fullscreenId !== null && fullscreenId !== node.id;
     const fullscreen = fullscreenId !== null && fullscreenId === node.id;
+    const isAi = node.kind === "ai";
     const leafStyle: CSSProperties = {
       ...style,
       // 内联兜底：父级传下来的 minWidth:0 会盖过 CSS 类的 240px，这里显式再压一次
@@ -155,25 +158,34 @@ function PaneNode({
         style={leafStyle}
         className="pane-leaf flex flex-col min-w-0 min-h-0 overflow-hidden"
         data-pane-id={node.id}
+        data-pane-kind={isAi ? "ai" : "tabs"}
         data-focused={focusedPaneId === node.id ? "true" : "false"}
         data-fullscreen={fullscreen ? "true" : "false"}
         onMouseDownCapture={() => useStore.getState().focusPane(node.id)}
       >
-        <PaneHeader
-          leafId={node.id}
-          tabs={node.tabs}
-          activeTabId={node.activeTabId}
-          editorMode={node.editorMode}
-          showClose={!rootIsLeaf}
-        />
+        {isAi ? (
+          <AiPaneHeader leafId={node.id} />
+        ) : (
+          <PaneHeader
+            leafId={node.id}
+            tabs={node.tabs}
+            activeTabId={node.activeTabId}
+            editorMode={node.editorMode}
+            showClose={!rootIsLeaf}
+          />
+        )}
         <div className="relative flex-1 overflow-hidden">
-          <ErrorBoundary panelId={node.id}>
-            <PaneBody
-              leafId={node.id}
-              activeTabId={node.activeTabId}
-              editorMode={node.editorMode}
-            />
-          </ErrorBoundary>
+          {isAi ? (
+            <AiDockedPane />
+          ) : (
+            <ErrorBoundary panelId={node.id}>
+              <PaneBody
+                leafId={node.id}
+                activeTabId={node.activeTabId}
+                editorMode={node.editorMode}
+              />
+            </ErrorBoundary>
+          )}
         </div>
       </div>
     );
@@ -480,6 +492,96 @@ function PaneHeader({
           {notice}
         </div>
       )}
+    </div>
+  );
+}
+
+/** 停靠态 AI 格的头部（layout-portal 9.1）：标题 + ⋯ 菜单 + 关闭。 */
+function AiPaneHeader({ leafId }: { leafId: string }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMenuOpen(false);
+    };
+    window.addEventListener("mousedown", onDown, true);
+    window.addEventListener("keydown", onKey, true);
+    return () => {
+      window.removeEventListener("mousedown", onDown, true);
+      window.removeEventListener("keydown", onKey, true);
+    };
+  }, [menuOpen]);
+
+  const run = (action: PaneMenuAction) => {
+    setMenuOpen(false);
+    if (action === "undockAi" || action === "closePane") {
+      useStore.getState().closePane(leafId);
+    }
+  };
+
+  return (
+    <div
+      data-testid="ai-pane-header"
+      className="app-chrome flex items-center shrink-0 border-b border-gray-100 px-2 py-1 dark:border-gray-700"
+    >
+      <Icon name="sparkle" size={18} color="var(--app-accent)" />
+      <span className="ml-1.5 text-xs font-medium text-gray-700 dark:text-gray-200">
+        AI
+      </span>
+      <div className="ml-auto flex items-center gap-0.5">
+        <div className="relative" ref={menuRef}>
+          <button
+            type="button"
+            data-testid="ai-pane-menu-button"
+            title="更多操作"
+            aria-label="更多操作"
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+            onClick={() => setMenuOpen((v) => !v)}
+            className="p-0.5 rounded text-gray-400 hover:bg-gray-200 hover:text-gray-700 dark:hover:bg-gray-700 dark:hover:text-gray-200"
+          >
+            <Icon name="more" size={18} />
+          </button>
+          {menuOpen && (
+            <div
+              data-testid="ai-pane-menu"
+              role="menu"
+              className="absolute right-0 top-full z-50 mt-1 min-w-[150px] rounded border border-gray-200 bg-white py-1 text-xs shadow-lg dark:border-gray-700 dark:bg-gray-800"
+            >
+              {AI_PANE_MENU_ITEMS.map((item) => (
+                <button
+                  key={item.action}
+                  type="button"
+                  role="menuitem"
+                  data-ai-menu-item={item.action}
+                  onClick={() => run(item.action)}
+                  className="flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-gray-100 dark:hover:bg-gray-700"
+                >
+                  <Icon name={item.icon} size={18} />
+                  <span>{item.label}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        <button
+          type="button"
+          data-testid="ai-pane-close"
+          title="关闭"
+          aria-label="关闭 AI 窗格"
+          onClick={() => useStore.getState().closePane(leafId)}
+          className="p-0.5 rounded text-gray-400 hover:bg-gray-200 hover:text-gray-700 dark:hover:bg-gray-700 dark:hover:text-gray-200"
+        >
+          <Icon name="close" size={18} />
+        </button>
+      </div>
     </div>
   );
 }

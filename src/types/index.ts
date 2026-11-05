@@ -1,5 +1,7 @@
 export type EditorMode = "preview" | "edit" | "source";
 
+import type { ViewSpec } from "../lib/aiViewSpec";
+
 export type FileKind =
   | "markdown"
   | "html"
@@ -62,6 +64,8 @@ export interface AppConfig {
   iconLabel?: "auto" | "text" | "icon";
   /** 工作区 pane 递归树（layout-portal 3.1）：序列化 JSON，跨重启恢复 */
   paneLayout?: string | null;
+  /** AI 视图改写规格（layout-portal 9.1）：持久化到 Rust `aiViewSpec` */
+  aiViewSpec?: ViewSpec | null;
 }
 
 export type Theme = "system" | "light" | "dark";
