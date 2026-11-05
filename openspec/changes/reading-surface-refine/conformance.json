@@ -1,0 +1,168 @@
+{
+  "change": "reading-surface-refine",
+  "requirements": [
+    {
+      "id": "R-1",
+      "text": "外壳与主题",
+      "anchors": [
+        {
+          "id": "A-1.1",
+          "claim": "顶栏文件名字符串数量",
+          "kind": "exact",
+          "assert": "0",
+          "source": "维护者反馈 #2"
+        },
+        {
+          "id": "A-1.2",
+          "claim": "页签标题可见数量",
+          "kind": "exact",
+          "assert": "每个页签 1 个",
+          "source": "维护者反馈 #2"
+        },
+        {
+          "id": "A-1.3",
+          "claim": "主题切换覆盖",
+          "kind": "state-machine",
+          "assert": "1 个根 dark class + 4 类 surface token 同步",
+          "source": "维护者反馈 #1"
+        },
+        {
+          "id": "A-1.4",
+          "claim": "单格全屏按钮",
+          "kind": "state-machine",
+          "assert": "单格 0 个；多格 1 个且点击后全屏",
+          "source": "维护者反馈 #11"
+        }
+      ]
+    },
+    {
+      "id": "R-2",
+      "text": "阅读空间",
+      "anchors": [
+        {
+          "id": "A-2.1",
+          "claim": "缩略图与动作按钮重叠像素",
+          "kind": "exact",
+          "assert": "0",
+          "source": "维护者反馈 #3"
+        },
+        {
+          "id": "A-2.2",
+          "claim": "HTML 摘要中的 `<tag>` 数量",
+          "kind": "exact",
+          "assert": "0",
+          "source": "维护者反馈 #3"
+        },
+        {
+          "id": "A-2.3",
+          "claim": "最近文件来源",
+          "kind": "state-machine",
+          "assert": "启动加载 20 条，mtime 倒序",
+          "source": "维护者反馈 #5"
+        },
+        {
+          "id": "A-2.4",
+          "claim": "父文件夹点击",
+          "kind": "state-machine",
+          "assert": "1 次系统文件管理器调用",
+          "source": "维护者反馈 #5"
+        }
+      ]
+    },
+    {
+      "id": "R-3",
+      "text": "悬浮预览",
+      "anchors": [
+        {
+          "id": "A-3.1",
+          "claim": "左半区触发",
+          "kind": "state-machine",
+          "assert": "0 个预览打开",
+          "source": "维护者反馈 #6"
+        },
+        {
+          "id": "A-3.2",
+          "claim": "右半区触发",
+          "kind": "state-machine",
+          "assert": "250ms 后打开并锚定该行",
+          "source": "维护者反馈 #6"
+        },
+        {
+          "id": "A-3.3",
+          "claim": "离窗关闭延时",
+          "kind": "exact",
+          "assert": "180ms",
+          "source": "维护者反馈 #4"
+        },
+        {
+          "id": "A-3.4",
+          "claim": "媒体元素",
+          "kind": "exact",
+          "assert": "3 类 img/video/audio",
+          "source": "维护者反馈 #4"
+        }
+      ]
+    },
+    {
+      "id": "R-4",
+      "text": "编辑与选区",
+      "anchors": [
+        {
+          "id": "A-4.1",
+          "claim": "块手柄召唤区",
+          "kind": "exact",
+          "assert": "正文左侧 25%",
+          "source": "维护者反馈 #8"
+        },
+        {
+          "id": "A-4.2",
+          "claim": "滑入手柄开菜单延时",
+          "kind": "exact",
+          "assert": "60ms",
+          "source": "维护者反馈 #15"
+        },
+        {
+          "id": "A-4.3",
+          "claim": "阅读态选区",
+          "kind": "state-machine",
+          "assert": "3 个动作胶囊",
+          "source": "维护者反馈 #9"
+        }
+      ]
+    },
+    {
+      "id": "R-5",
+      "text": "设置与检索",
+      "anchors": [
+        {
+          "id": "A-5.1",
+          "claim": "正文右上角设置浮层数量",
+          "kind": "exact",
+          "assert": "0",
+          "source": "维护者反馈 #11"
+        },
+        {
+          "id": "A-5.2",
+          "claim": "设置窗窄窗",
+          "kind": "state-machine",
+          "assert": "0 越界，滚动可达底部",
+          "source": "维护者反馈 #14"
+        },
+        {
+          "id": "A-5.3",
+          "claim": "Ctrl/Cmd+P",
+          "kind": "state-machine",
+          "assert": "1 个快速打开，0 原生打印",
+          "source": "维护者反馈 #12"
+        },
+        {
+          "id": "A-5.4",
+          "claim": "本机检索",
+          "kind": "state-machine",
+          "assert": "1 个正文命中，2 类筛选",
+          "source": "维护者反馈 #16"
+        }
+      ]
+    }
+  ]
+}
