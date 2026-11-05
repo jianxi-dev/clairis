@@ -13,7 +13,7 @@ vi.mock("@tauri-apps/api/event", () => ({
 
 vi.mock("../utils/tauri", () => ({ isTauriEnv: () => true }));
 
-import { useAiEntryStore } from "../hooks/useAiEntry";
+import { useAiEntryStore, __resetAiSession } from "../hooks/useAiEntry";
 import { humanizeAgentError } from "../lib/aiErrors";
 import { useEditorStore } from "../stores/editorStore";
 
@@ -44,6 +44,7 @@ function rustConfig(theme: string) {
 }
 
 function resetState() {
+  __resetAiSession();
   useAiEntryStore.setState({
     overlayOpen: false,
     input: "",
@@ -53,11 +54,21 @@ function resetState() {
     undoVisible: false,
     undoTarget: null,
     undoPreConfig: null,
+    undoPreSpec: null,
     panelOpen: false,
     snapshots: [],
     snapshotsLoading: false,
+    form: "bubble",
+    bubbleOpen: false,
+    bubbleRect: null,
   });
   useEditorStore.getState().setConfig({ aiConfirmDensity: "session-silent" });
+}
+
+/** session-silent 首次同类提交会弹确认卡；本测试统一走「确认后提交」。 */
+function submitConfirmed(text: string): void {
+  useAiEntryStore.getState().requestSubmit(text);
+  useAiEntryStore.getState().confirmPendingSubmit();
 }
 
 describe("useAiEntry — 撤销指向提交前最后一个快照", () => {
@@ -94,7 +105,7 @@ describe("useAiEntry — 撤销指向提交前最后一个快照", () => {
       return Promise.resolve(null);
     });
 
-    useAiEntryStore.getState().requestSubmit("换成深色主题");
+    submitConfirmed("换成深色主题");
 
     await vi.waitFor(() => {
       expect(useAiEntryStore.getState().undoTarget).toBe(
@@ -127,7 +138,7 @@ describe("useAiEntry — 撤销指向提交前最后一个快照", () => {
       return Promise.resolve(rustConfig("system"));
     });
 
-    useAiEntryStore.getState().requestSubmit("换成深色主题");
+    submitConfirmed("换成深色主题");
 
     await vi.waitFor(() => {
       expect(useAiEntryStore.getState().undoVisible).toBe(true);
@@ -157,7 +168,7 @@ describe("useAiEntry — 撤销指向提交前最后一个快照", () => {
       return Promise.resolve(null);
     });
 
-    useAiEntryStore.getState().requestSubmit("字号调到 200");
+    submitConfirmed("字号调到 200");
 
     await vi.waitFor(() => {
       expect(useAiEntryStore.getState().messages.length).toBe(2);

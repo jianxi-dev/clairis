@@ -23,6 +23,11 @@ import {
 } from "../lib/railView";
 import { DENSITY_HEIGHT, clampCardHeight } from "../lib/railCards";
 import { normalizePreviewSettings } from "../lib/previewAnchor";
+import {
+  DEFAULT_VIEW_SPEC,
+  normalizeViewSpec,
+  type ViewSpec,
+} from "../lib/aiViewSpec";
 
 /** Snake-case config from Rust, mapped to camelCase in the store. */
 interface RustAppConfig {
@@ -64,6 +69,21 @@ interface RustAppConfig {
     railHover: boolean | null;
     gridMode: string | null;
     enabled: boolean | null;
+  } | null;
+  aiViewSpec?: {
+    railLayout?: string | null;
+    railDensity?: string | null;
+    railCardHeight?: number | null;
+    blockColors?: boolean | null;
+    iconLabel?: string | null;
+    previewEnabled?: boolean | null;
+    railPinnedWidth?: number | null;
+    gridMode?: string | null;
+    gridGrouping?: string | null;
+    unreadOnly?: boolean | null;
+    themeGroups?: boolean | null;
+    pinnedAndRecentOnly?: boolean | null;
+    pinnedSegmentScale?: number | null;
   } | null;
 }
 
@@ -128,6 +148,8 @@ export async function saveAppConfig(): Promise<void> {
     railViewSpec: useStore.getState().railViewSpec,
     // 悬浮预览窗双轨开关（layout-portal 8.1）
     previewSettings: useStore.getState().previewSettings,
+    // AI 视图改写规格（layout-portal 9.1）
+    aiViewSpec: useStore.getState().captureViewSpec(),
   };
   try {
     await invoke("save_config", { config });
@@ -320,9 +342,21 @@ function applyRustConfig(raw: RustAppConfig): void {
   });
 
   // 悬浮预览窗开关（layout-portal 8.1）：老配置缺字段 → 默认；非法值归一化
-  useStore.setState({
-    previewSettings: normalizePreviewSettings(raw.previewSettings),
-  });
+  const previewSpec = normalizePreviewSettings(raw.previewSettings);
+  useStore.setState({ previewSettings: previewSpec });
+
+  // AI 视图规格（layout-portal 9.1）：最后应用，覆盖 rail/preview；缺字段回落
+  const baseViewSpec: ViewSpec = {
+    ...DEFAULT_VIEW_SPEC,
+    railLayout: railSpec.layout,
+    railDensity: railSpec.density,
+    railCardHeight: railSpec.cardHeight ?? DEFAULT_VIEW_SPEC.railCardHeight,
+    previewEnabled: previewSpec.enabled,
+    iconLabel: config.iconLabel ?? DEFAULT_VIEW_SPEC.iconLabel,
+  };
+  useStore
+    .getState()
+    .setViewSpec(normalizeViewSpec(raw.aiViewSpec, baseViewSpec));
 
   // 布局树恢复放在配置生效之后：它依赖 tabs 记录与页签打开流程
   void restorePaneLayout(raw.paneLayout);

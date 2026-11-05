@@ -111,15 +111,20 @@ export default function CommandOverlay() {
         )}
       </div>
 
-      {/* 二次确认卡（aiConfirmDensity = always） */}
+      {/* 二次确认卡（确认密度非 never 时） */}
       {store.pendingConfirm && (
-        <div className="mx-3 mt-2 rounded-lg border border-amber-200 dark:border-amber-700/50 bg-amber-50 dark:bg-amber-900/20 px-3 py-2">
+        <div
+          data-ai-confirm-card
+          className="mx-3 mt-2 rounded-lg border border-amber-200 dark:border-amber-700/50 bg-amber-50 dark:bg-amber-900/20 px-3 py-2"
+        >
           <p className="text-xs text-gray-700 dark:text-gray-200">
-            将让 AI 修改配置，继续？
+            {store.pendingConfirm.summary ||
+              "将让 AI 修改标月的显示设置，继续？"}
           </p>
           <div className="mt-1.5 flex gap-2">
             <button
               type="button"
+              data-ai-confirm-ok
               onClick={store.confirmPendingSubmit}
               className="px-2.5 py-1 rounded-md bg-[#0071e3] text-white text-xs font-medium"
             >
@@ -127,6 +132,7 @@ export default function CommandOverlay() {
             </button>
             <button
               type="button"
+              data-ai-confirm-cancel
               onClick={store.cancelPendingSubmit}
               className="px-2.5 py-1 rounded-md bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-200 text-xs"
             >

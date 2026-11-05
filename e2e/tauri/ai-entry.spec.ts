@@ -50,6 +50,8 @@ test("一句话改主题后撤销，主题回原值", async ({ page }) => {
   const overlay = page.locator("[data-ai-overlay]");
   await page.locator("[data-ai-input]").fill("换成深色主题");
   await page.keyboard.press("Enter");
+  // session-silent（默认）首次同类需确认
+  await page.locator("[data-ai-confirm-ok]").click();
 
   await expect(overlay.getByText("已切换到深色主题。")).toBeVisible({
     timeout: 5000,
@@ -84,6 +86,7 @@ test("撤销条旁的历史打开快照面板，可一键恢复", async ({ page 
   await page.keyboard.press("Meta+k");
   await page.locator("[data-ai-input]").fill("字号调到 18");
   await page.keyboard.press("Enter");
+  await page.locator("[data-ai-confirm-ok]").click();
   await expect(
     page.locator("[data-ai-overlay]").getByText("已把字号调到 18。"),
   ).toBeVisible({ timeout: 5000 });

@@ -39,7 +39,8 @@ export type IconName =
   | "locate"
   | "copyPath"
   | "chevronLeft"
-  | "chevronRight";
+  | "chevronRight"
+  | "sparkle";
 
 export interface IconDef {
   /**
@@ -175,6 +176,10 @@ export const ICONS: Record<IconName, IconDef> = {
   chevronLeft: {
     label: "收起栏",
     d: "M14.4 6L16.2 7.8 9.6 12l6.6 4.2L14.4 18 6 12z",
+  },
+  sparkle: {
+    label: "AI",
+    d: "M12 2l1.9 6.1L20 10l-6.1 1.9L12 18l-1.9-6.1L4 10l6.1-1.9z M18.6 2.6l.7 2.2 2.2.7-2.2.7-.7 2.2-.7-2.2-2.2-.7 2.2-.7z M5.6 14.6l.6 1.9 1.9.6-1.9.6-.6 1.9-.6-1.9L3.1 17.1l1.9-.6z",
   },
 };
 

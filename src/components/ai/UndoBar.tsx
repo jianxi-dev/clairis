@@ -2,7 +2,10 @@ import { useAiEntryStore } from "../../hooks/useAiEntry";
 
 export default function UndoBar() {
   const store = useAiEntryStore();
-  const armed = store.undoTarget !== null || store.undoPreConfig !== null;
+  const armed =
+    store.undoTarget !== null ||
+    store.undoPreConfig !== null ||
+    store.undoPreSpec !== null;
 
   if (!armed) return null;
 

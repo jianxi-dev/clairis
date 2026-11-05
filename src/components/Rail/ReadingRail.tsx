@@ -23,7 +23,6 @@ import {
   RAIL_EDGE_PX,
   RAIL_KIND_LABELS,
   RAIL_SECTIONS,
-  RAIL_WIDTH_PX,
   filterRailItems,
   fileTypeChips,
   nextRailState,
@@ -35,6 +34,7 @@ import {
   type RailLayout,
   type RailSection,
 } from "../../lib/railView";
+import { isUnread } from "../../lib/aiViewSpec";
 import {
   CARD_MAX,
   CARD_MIN,
@@ -84,6 +84,10 @@ interface RailRowProps {
   cardHeight: number;
   pinned: boolean;
   readPercent?: number;
+  /** 条目高度倍率（置顶段放大）；默认 1。 */
+  scale?: number;
+  /** 是否给类型图标上色；false 时单色。 */
+  blockColors?: boolean;
   onOpen: (path: string) => void;
   onSplit: (path: string, dir: "row" | "col") => void;
   onReveal: (path: string) => void;
@@ -194,6 +198,8 @@ function RailRow({
   cardHeight,
   pinned,
   readPercent,
+  scale = 1,
+  blockColors = true,
   onOpen,
   onSplit,
   onReveal,
@@ -202,6 +208,7 @@ function RailRow({
   onRowLeave,
 }: RailRowProps) {
   const kind: FileTypeKind = fileTypeOf(item.path);
+  const iconColor = blockColors ? colorOfType(kind) : undefined;
   const segments = splitByRanges(item.title, ranges);
   const pinButton = (
     <button
@@ -245,7 +252,7 @@ function RailRow({
         data-rail-path={item.path}
         data-kind={kind}
         data-density="compact"
-        style={{ height: DENSITY_HEIGHT.compact }}
+        style={{ height: Math.round(DENSITY_HEIGHT.compact * scale) }}
         onMouseEnter={
           onRowHover ? (e) => onRowHover(e.currentTarget) : undefined
         }
@@ -257,7 +264,7 @@ function RailRow({
           onClick={() => onOpen(item.path)}
           className="flex min-w-0 flex-1 items-center gap-1.5 rounded px-1 text-left hover:bg-gray-100 dark:hover:bg-gray-800"
         >
-          <Icon name={iconOfType(kind)} size={18} color={colorOfType(kind)} />
+          <Icon name={iconOfType(kind)} size={18} color={iconColor} />
           {title("truncate text-xs text-gray-700 dark:text-gray-200")}
         </button>
         <span
@@ -278,7 +285,7 @@ function RailRow({
         data-rail-path={item.path}
         data-kind={kind}
         data-density="comfortable"
-        style={{ height: DENSITY_HEIGHT.comfortable }}
+        style={{ height: Math.round(DENSITY_HEIGHT.comfortable * scale) }}
         onMouseEnter={
           onRowHover ? (e) => onRowHover(e.currentTarget) : undefined
         }
@@ -291,7 +298,7 @@ function RailRow({
             onClick={() => onOpen(item.path)}
             className="flex min-w-0 flex-1 items-center gap-1.5 text-left"
           >
-            <Icon name={iconOfType(kind)} size={18} color={colorOfType(kind)} />
+            <Icon name={iconOfType(kind)} size={18} color={iconColor} />
             {title("truncate text-xs text-gray-700 dark:text-gray-200")}
           </button>
           {pinButton}
@@ -335,7 +342,7 @@ function RailRow({
       data-rail-path={item.path}
       data-kind={kind}
       data-density="card"
-      style={{ height: cardHeight }}
+      style={{ height: Math.round(cardHeight * scale) }}
       onMouseEnter={onRowHover ? (e) => onRowHover(e.currentTarget) : undefined}
       onMouseLeave={onRowLeave}
       className="group relative my-1 box-border flex flex-col justify-between overflow-hidden rounded border border-gray-200 px-2 py-1.5 dark:border-gray-700"
@@ -347,7 +354,7 @@ function RailRow({
             onClick={() => onOpen(item.path)}
             className="flex min-w-0 items-start gap-1.5 text-left"
           >
-            <Icon name={iconOfType(kind)} size={18} color={colorOfType(kind)} />
+            <Icon name={iconOfType(kind)} size={18} color={iconColor} />
             {title(
               "line-clamp-2 text-xs font-semibold leading-snug text-gray-800 dark:text-gray-100",
             )}
@@ -537,6 +544,7 @@ export default function ReadingRail({
   const activeTabId = useStore((s) => s.activeTabId);
   const scrollPositions = useStore((s) => s.scrollPositions);
   const previewEnabled = useStore((s) => s.previewSettings.enabled);
+  const viewSpec = useStore((s) => s.viewSpec);
 
   const setRailState = useStore((s) => s.setRailState);
   const toggleRailPin = useStore((s) => s.toggleRailPin);
@@ -761,6 +769,14 @@ export default function ReadingRail({
 
   const chips = useMemo(() => fileTypeChips(recentFiles), [recentFiles]);
 
+  const panelWidth = viewSpec.railPinnedWidth;
+  const railSections = viewSpec.pinnedAndRecentOnly
+    ? RAIL_SECTIONS.filter((s) => s.key === "pinned" || s.key === "recent")
+    : RAIL_SECTIONS;
+  const activeSection = railSections.some((s) => s.key === railSection)
+    ? railSection
+    : (railSections[0]?.key ?? "recent");
+
   const itemsForSection = useCallback(
     (section: RailSection): RecentFile[] => {
       if (section === "now") {
@@ -780,7 +796,9 @@ export default function ReadingRail({
     const matches = filterRailItems(itemsForSection(section), {
       chip,
       query: railQuery,
-    });
+    }).filter(
+      (m) => !viewSpec.unreadOnly || isUnread(m.item.path, scrollPositions),
+    );
     return (
       <>
         {section === "category" && (
@@ -804,6 +822,8 @@ export default function ReadingRail({
               cardHeight={railCardHeight}
               pinned={pinnedPaths.includes(m.item.path)}
               readPercent={readPercentOf(m.item.path)}
+              scale={section === "pinned" ? viewSpec.pinnedSegmentScale : 1}
+              blockColors={viewSpec.blockColors}
               onOpen={onOpenPath}
               onSplit={openInSplit}
               onReveal={revealPath}
@@ -1040,7 +1060,7 @@ export default function ReadingRail({
   const listBody =
     railLayout === "stacked" ? (
       <div data-testid="rail-layout-stacked">
-        {RAIL_SECTIONS.map((section) => (
+        {railSections.map((section) => (
           <section
             key={section.key}
             data-testid="rail-section"
@@ -1054,16 +1074,16 @@ export default function ReadingRail({
     ) : (
       <div data-testid="rail-layout-tabs">
         <div className="flex border-b border-gray-100 dark:border-gray-800">
-          {RAIL_SECTIONS.map((section) => (
+          {railSections.map((section) => (
             <button
               key={section.key}
               type="button"
               data-testid="rail-tab"
               data-section={section.key}
-              data-active={railSection === section.key ? "true" : "false"}
+              data-active={activeSection === section.key ? "true" : "false"}
               onClick={() => setRailSection(section.key)}
               className={`flex-1 px-1 py-1 text-[11px] ${
-                railSection === section.key
+                activeSection === section.key
                   ? "border-b-2 border-[var(--app-accent)] text-[var(--app-accent)]"
                   : "text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
               }`}
@@ -1072,7 +1092,7 @@ export default function ReadingRail({
             </button>
           ))}
         </div>
-        <div data-testid="rail-list">{renderList(railSection)}</div>
+        <div data-testid="rail-list">{renderList(activeSection)}</div>
       </div>
     );
 
@@ -1109,7 +1129,10 @@ export default function ReadingRail({
       <div
         data-testid="rail-panel"
         data-rail-state="pinned"
-        style={{ width: RAIL_WIDTH_PX }}
+        data-rail-pinned-width={panelWidth}
+        data-rail-scale={viewSpec.pinnedSegmentScale}
+        data-rail-block-colors={viewSpec.blockColors ? "true" : "false"}
+        style={{ width: panelWidth }}
         className="rail-root shrink-0 border-r border-gray-200 dark:border-gray-700"
         onMouseEnter={onEnter}
         onMouseLeave={onLeave}
@@ -1120,13 +1143,16 @@ export default function ReadingRail({
     );
   }
 
-  const overlayWidth = railState === "hover" ? RAIL_WIDTH_PX : RAIL_EDGE_PX;
+  const overlayWidth = railState === "hover" ? panelWidth : RAIL_EDGE_PX;
   return (
     <>
       <div
         data-testid={railState === "collapsed" ? undefined : "rail-panel"}
         data-rail-state={railState}
         data-rail-overlay="true"
+        data-rail-pinned-width={panelWidth}
+        data-rail-scale={viewSpec.pinnedSegmentScale}
+        data-rail-block-colors={viewSpec.blockColors ? "true" : "false"}
         style={{
           position: "absolute",
           left: 0,

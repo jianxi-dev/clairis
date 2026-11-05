@@ -36,6 +36,8 @@ export interface PaneLeaf {
   tabs: string[];
   activeTabId: string | null;
   editorMode: EditorMode;
+  /** leaf 角色：普通页签格（缺省）或 AI 停靠窗格（layout-portal 9.1）。 */
+  kind?: "tabs" | "ai";
 }
 
 export interface PaneBranch {
@@ -55,6 +57,8 @@ export interface SerializedLeaf {
   tabs: string[];
   activePath: string | null;
   editorMode: EditorMode;
+  /** AI 停靠窗格持久化为 "ai"；普通格缺省（老配置兼容）。 */
+  kind?: "tabs" | "ai";
 }
 
 export interface SerializedBranch {
@@ -446,6 +450,7 @@ export function serializeLayout(
         tabs,
         activePath: activePath ?? null,
         editorMode: n.editorMode,
+        ...(n.kind === "ai" ? { kind: "ai" as const } : null),
       };
     }
     return {
@@ -469,6 +474,8 @@ function isValidLeaf(node: unknown): node is SerializedLeaf {
   }
   if (n.activePath !== null && typeof n.activePath !== "string") return false;
   if (!EDITOR_MODES.includes(n.editorMode as EditorMode)) return false;
+  if (n.kind !== undefined && n.kind !== "tabs" && n.kind !== "ai")
+    return false;
   return true;
 }
 
@@ -540,9 +547,12 @@ export function restoreLayout(
   idOfPath: (path: string) => string | null,
 ): { root: PaneLayout; focusedId: string } {
   let anyTab = false;
+  let anyAi = false;
 
   const node = (n: SerializedNode): PaneLayout => {
     if (n.type === "leaf") {
+      const isAi = n.kind === "ai";
+      if (isAi) anyAi = true;
       const tabs: string[] = [];
       for (const path of n.tabs) {
         const id = idOfPath(path);
@@ -560,6 +570,7 @@ export function restoreLayout(
         editorMode: EDITOR_MODES.includes(n.editorMode)
           ? n.editorMode
           : "preview",
+        ...(isAi ? { kind: "ai" as const } : null),
       };
     }
     return {
@@ -573,11 +584,14 @@ export function restoreLayout(
 
   let root = node(state.root);
 
-  // 空 leaf（非根）塌缩。每次都重算，直到树稳定。
+  // 空 leaf（非根、非 AI）塌缩。每次都重算，直到树稳定。
+  // AI 窗格无页签但必须保留——它承载 AI 对话宿主，不是空占位。
   let changed = true;
   while (changed && !isLeaf(root)) {
     changed = false;
-    const empties = listLeaves(root).filter((leaf) => leaf.tabs.length === 0);
+    const empties = listLeaves(root).filter(
+      (leaf) => leaf.kind !== "ai" && leaf.tabs.length === 0,
+    );
     for (const leaf of empties) {
       if (isLeaf(root)) break;
       const res = removeLeaf(root, leaf.id);
@@ -588,7 +602,7 @@ export function restoreLayout(
     }
   }
 
-  if (!anyTab) {
+  if (!anyTab && !anyAi) {
     return { root: createRootLeaf(), focusedId: "main" };
   }
 

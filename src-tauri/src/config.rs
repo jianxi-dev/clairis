@@ -52,6 +52,41 @@ pub struct AppConfig {
     /// `default` + `skip_serializing_if` 让老配置仍能读、新配置不多出空字段。
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub preview_settings: Option<PreviewSettings>,
+    /// AI 视图改写规格（layout-portal 9.1）。
+    /// `default` + `skip_serializing_if` 让老配置仍能读、新配置不多出空字段。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ai_view_spec: Option<AiViewSpec>,
+}
+
+/// AI 视图改写规格：布局 / 密度 / 卡片高度 / 区块颜色 / 图标标签 / 预览开关 /
+/// 面板宽窄 / 网格排布与分组 / 未读 / 主题分组 / 置顶段缩放。
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct AiViewSpec {
+    pub rail_layout: Option<String>,
+    pub rail_density: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rail_card_height: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub block_colors: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub icon_label: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub preview_enabled: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rail_pinned_width: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub grid_mode: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub grid_grouping: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub unread_only: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub theme_groups: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pinned_and_recent_only: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pinned_segment_scale: Option<f64>,
 }
 
 /// 悬浮预览窗开关：阅读空间悬停 / 网格触发方式 / 总开关。
@@ -115,6 +150,7 @@ impl Default for AppConfig {
             pane_layout: None,
             rail_view_spec: None,
             preview_settings: None,
+            ai_view_spec: None,
             sidebar_left_visible: Some(true),
             sidebar_right_visible: Some(false),
             sidebar_left_width: Some(220.0),
@@ -402,6 +438,51 @@ pub fn validate_config(config: &AppConfig) -> Result<(), AppError> {
             "previewSettings.gridMode",
             preview.grid_mode.as_deref(),
             &["hover", "click", "off"],
+        )?;
+    }
+    if let Some(spec) = &config.ai_view_spec {
+        check_enum(
+            "aiViewSpec.railLayout",
+            spec.rail_layout.as_deref(),
+            &["stacked", "tabs"],
+        )?;
+        check_enum(
+            "aiViewSpec.railDensity",
+            spec.rail_density.as_deref(),
+            &["compact", "comfortable", "card"],
+        )?;
+        check_enum(
+            "aiViewSpec.iconLabel",
+            spec.icon_label.as_deref(),
+            &["auto", "text", "icon"],
+        )?;
+        check_enum(
+            "aiViewSpec.gridMode",
+            spec.grid_mode.as_deref(),
+            &["grid", "list"],
+        )?;
+        check_enum(
+            "aiViewSpec.gridGrouping",
+            spec.grid_grouping.as_deref(),
+            &["none", "type"],
+        )?;
+        check_range(
+            "aiViewSpec.railCardHeight",
+            spec.rail_card_height,
+            88.0,
+            160.0,
+        )?;
+        check_range(
+            "aiViewSpec.railPinnedWidth",
+            spec.rail_pinned_width,
+            200.0,
+            360.0,
+        )?;
+        check_range(
+            "aiViewSpec.pinnedSegmentScale",
+            spec.pinned_segment_scale,
+            1.0,
+            1.5,
         )?;
     }
     Ok(())
@@ -1079,5 +1160,62 @@ mod tests {
             enabled: Some(false),
         });
         assert!(validate_config(&config).is_ok());
+    }
+
+    #[test]
+    fn ai_view_spec_round_trips_and_defaults_for_old_configs() {
+        let dir = temp_base("aispec");
+        let base = dir.path();
+
+        // 老配置（无字段）→ None，读得进
+        write_user(base, r#"{"theme":"dark"}"#);
+        assert_eq!(load_config_at(base).unwrap().ai_view_spec, None);
+
+        // 完整规格 → 落盘 → 读回严格相等
+        let mut config = AppConfig::default();
+        config.ai_view_spec = Some(AiViewSpec {
+            rail_layout: Some("tabs".into()),
+            rail_density: Some("compact".into()),
+            rail_card_height: Some(112.0),
+            block_colors: Some(false),
+            icon_label: Some("icon".into()),
+            preview_enabled: Some(false),
+            rail_pinned_width: Some(300.0),
+            grid_mode: Some("list".into()),
+            grid_grouping: Some("type".into()),
+            unread_only: Some(true),
+            theme_groups: Some(true),
+            pinned_and_recent_only: Some(true),
+            pinned_segment_scale: Some(1.25),
+        });
+        save_config_at(base, &config).unwrap();
+        let user = read_user(base);
+        assert!(
+            user.contains("aiViewSpec"),
+            "user 层应含 aiViewSpec: {user}"
+        );
+        let loaded = load_config_at(base).unwrap().ai_view_spec.unwrap();
+        assert_eq!(loaded.rail_layout.as_deref(), Some("tabs"));
+        assert_eq!(loaded.grid_mode.as_deref(), Some("list"));
+        assert_eq!(loaded.icon_label.as_deref(), Some("icon"));
+        assert_eq!(loaded.preview_enabled, Some(false));
+        assert_eq!(loaded.rail_pinned_width, Some(300.0));
+        assert_eq!(loaded.pinned_segment_scale, Some(1.25));
+
+        // 非法枚举被校验拦下，不落盘
+        let valid = config.ai_view_spec.clone().unwrap();
+        config.ai_view_spec = Some(AiViewSpec {
+            rail_layout: Some("diagonal".into()),
+            ..valid.clone()
+        });
+        assert!(validate_config(&config).is_err());
+
+        // 越界数值同样拦下
+        config.ai_view_spec = Some(AiViewSpec {
+            rail_layout: Some("stacked".into()),
+            pinned_segment_scale: Some(2.0),
+            ..valid
+        });
+        assert!(validate_config(&config).is_err());
     }
 }

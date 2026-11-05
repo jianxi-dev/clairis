@@ -1,5 +1,6 @@
 import type { Theme } from "../types";
 import Icon from "./Icon";
+import { useAiEntryStore } from "../hooks/useAiEntry";
 
 interface ToolbarProps {
   isTauri: boolean;
@@ -92,6 +93,24 @@ export default function Toolbar({
           <div className="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-1" />
         </>
       )}
+
+      {/* AI：全产品唯一常驻入口（顶栏星芒）。门户里的 [data-testid="quick-ai"]
+          是场景内快捷方式，不是常驻入口——唯一入口判定只看 data-ai-entry。 */}
+      <button
+        data-ai-entry
+        data-testid="ai-entry"
+        title="AI（⌘⇧A 切换形态）"
+        aria-label="AI"
+        onClick={() => {
+          const st = useAiEntryStore.getState();
+          if (st.form === "docked") st.undock();
+          else if (st.bubbleOpen) st.closeBubble();
+          else st.openBubble();
+        }}
+        className="px-2 py-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
+      >
+        <Icon name="sparkle" size={18} color="var(--app-accent)" />
+      </button>
 
       {/* Theme toggle */}
       <button
