@@ -7,7 +7,7 @@
  */
 
 import { fileTypeOf } from "./fileType";
-import type { RecentFile } from "../types";
+import type { RecentFile, ScrollPosition } from "../types";
 import type { RailDensity } from "./railView";
 
 /** 三档密度高度（严格像素值，e2e 会量）。 */
@@ -67,6 +67,15 @@ export function relativeDate(iso: string, now: number = Date.now()): string {
 export interface TaskProgress {
   done: number;
   total: number;
+}
+
+/**
+ * 阅读进度百分比（scrollPos / contentHeight）。没有记录或 contentHeight 非法时
+ * 返回 undefined——绝不退化成伪造的 0%。
+ */
+export function readPercentOf(pos?: ScrollPosition): number | undefined {
+  if (!pos || pos.contentHeight <= 0) return undefined;
+  return Math.min(100, Math.round((pos.scrollPos / pos.contentHeight) * 100));
 }
 
 /**

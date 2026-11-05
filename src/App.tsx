@@ -274,6 +274,16 @@ function App() {
     const handler = (e: KeyboardEvent) => {
       const meta = e.metaKey || e.ctrlKey;
 
+      // Cmd+Shift+\ : 打开网格概览（任意场景可用，门户里也能直接进）
+      if (meta && e.shiftKey && (e.key === "\\" || e.key === "|")) {
+        e.preventDefault();
+        const st = useStore.getState();
+        st.setGridTypeFilter(null);
+        st.setGridSelectedPath(null);
+        st.setScene("grid");
+        return;
+      }
+
       // 门户/网格是覆盖层：底下的编辑器不可见，快捷键作用上去用户看不见后果
       // （⌘W 关掉隐藏页签、⌘B 改隐藏文档……）。这里只放行不触碰隐藏状态的键。
       if (useStore.getState().scene !== "workspace") {
@@ -325,13 +335,6 @@ function App() {
         } else {
           store.setReadingMode(!store.readingMode);
         }
-      }
-
-      // Cmd+Shift+\ : Toggle right sidebar
-      if (meta && e.shiftKey && e.key === "\\") {
-        e.preventDefault();
-        store.toggleRightSidebar();
-        scheduleSave();
       }
 
       // Cmd+Shift+T : Toggle chrome visibility inside immersive mode — A-5

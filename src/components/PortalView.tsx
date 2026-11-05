@@ -74,6 +74,9 @@ export default function PortalView({
   const scrollPositions = useStore((s) => s.scrollPositions);
   const setScene = useStore((s) => s.setScene);
   const setGridTypeFilter = useStore((s) => s.setGridTypeFilter);
+  const setGridQuery = useStore((s) => s.setGridQuery);
+  const setGridPinnedOnly = useStore((s) => s.setGridPinnedOnly);
+  const setGridSelectedPath = useStore((s) => s.setGridSelectedPath);
   const setActiveTab = useStore((s) => s.switchTab);
   const tabs = useStore((s) => s.tabs);
 
@@ -275,6 +278,9 @@ export default function PortalView({
                   data-tile-kind={tile.kind}
                   onClick={() => {
                     setGridTypeFilter(tile.kind);
+                    setGridQuery("");
+                    setGridPinnedOnly(false);
+                    setGridSelectedPath(null);
                     setScene("grid");
                   }}
                   className="flex items-center gap-2 rounded border border-gray-200 px-3 py-2 text-xs hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"

@@ -430,7 +430,7 @@ export default function TabBar({
             }}
           >
             向右分栏
-            <span className="ml-auto text-gray-400">⌘\</span>
+            <span className="ml-auto text-gray-400">⌘⌥→</span>
           </button>
           <button
             className="w-full text-left px-3 py-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
@@ -442,7 +442,7 @@ export default function TabBar({
             }}
           >
             向下分栏
-            <span className="ml-auto text-gray-400">⌘⇧\</span>
+            <span className="ml-auto text-gray-400">⌘⌥↓</span>
           </button>
           <div className="h-px bg-gray-200 dark:bg-gray-700 my-1" />
           <button
