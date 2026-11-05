@@ -111,7 +111,7 @@ export default function Toolbar({
             <button
               onClick={() => onSetReadingMode(true)}
               className="px-2 py-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-xs"
-              title="进入阅读模式 (沉浸全屏)"
+              title="进入阅读模式（⌘⇧F 沉浸）"
             >
               阅读
             </button>
@@ -134,6 +134,7 @@ function ModeButton({
   return (
     <button
       onClick={onClick}
+      title="预览 / 编辑 / 源码（⌘⇧M 循环）"
       className={`px-2 py-0.5 rounded text-xs ${
         active
           ? "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 font-medium"

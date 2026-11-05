@@ -13,6 +13,7 @@ import ReadingRail from "./components/Rail/ReadingRail";
 import FloatingPreview from "./components/Preview/FloatingPreview";
 import PortalView from "./components/PortalView";
 import GridView from "./components/GridView";
+import ShortcutOverlay from "./components/ShortcutOverlay";
 import CaptureOverlay from "./components/CaptureOverlay";
 import CommandOverlay from "./components/ai/CommandOverlay";
 import UndoBar from "./components/ai/UndoBar";
@@ -23,7 +24,8 @@ import { useAiEntryStore } from "./hooks/useAiEntry";
 import { getActiveEditorView, getPanelScrollEl } from "./editors/editorRef";
 import { toggleBold, toggleItalic } from "./editors/keybindings";
 import { saveAppConfig, useConfig } from "./hooks/useConfig";
-import { nextRailState } from "./lib/railView";
+import { nextRailState, RAIL_KIND_ORDER } from "./lib/railView";
+import type { FileTypeKind } from "./lib/fileType";
 import { log } from "./utils/log";
 import { loadExtensionBundle } from "./lib/extensions/bundle";
 import type { ExtensionBundle } from "./lib/extensions/bundle";
@@ -40,6 +42,27 @@ const isTauri =
   (window as unknown as Record<string, unknown>).__TAURI_INTERNALS__ !==
     undefined;
 
+/** 输入态（INPUT/TEXTAREA/SELECT/contenteditable）：此时不触发全局单键快捷键。 */
+function isEditableTarget(target: EventTarget | null): boolean {
+  const el = target as HTMLElement | null;
+  if (!el || !el.tagName) return false;
+  const tag = el.tagName;
+  return (
+    tag === "INPUT" ||
+    tag === "TEXTAREA" ||
+    tag === "SELECT" ||
+    el.isContentEditable === true
+  );
+}
+
+/** ⌥1–8 → 八类；⌥0 → null（全部）；非数字键 → undefined。 */
+function kindFromDigitCode(code: string): FileTypeKind | null | undefined {
+  const m = /^Digit([0-8])$/.exec(code);
+  if (!m) return undefined;
+  const n = Number(m[1]);
+  return n === 0 ? null : RAIL_KIND_ORDER[n - 1];
+}
+
 function App() {
   const activeTabId = useStore((s) => s.activeTabId);
   const tabs = useStore((s) => s.tabs);
@@ -49,6 +72,7 @@ function App() {
   const peekTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const settingsReturnRef = useRef<Scene>("workspace");
 
   // Init config loading + theme on mount
@@ -283,26 +307,56 @@ function App() {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const meta = e.metaKey || e.ctrlKey;
+      const store = useStore.getState();
+
+      const questionKey = e.key === "?" || (e.key === "/" && e.shiftKey);
+      if (questionKey && !meta && !e.altKey && !isEditableTarget(e.target)) {
+        e.preventDefault();
+        setShortcutsOpen((v) => !v);
+        return;
+      }
+
+      if (e.altKey && !meta && !e.shiftKey) {
+        if (isEditableTarget(e.target)) return;
+        const kind = kindFromDigitCode(e.code);
+        if (kind !== undefined) {
+          e.preventDefault();
+          if (store.scene === "grid") {
+            store.setGridTypeFilter(kind);
+          } else if (store.scene === "workspace") {
+            store.setRailChip(kind ?? "all");
+            store.setRailSection("category");
+            if (store.railState === "collapsed") store.setRailState("hover");
+          }
+          return;
+        }
+      }
+
+      if (meta && !e.shiftKey && e.key.toLowerCase() === "p") {
+        e.preventDefault();
+        store.setScene("grid");
+        window.setTimeout(() => {
+          window.dispatchEvent(new CustomEvent("grid-focus-search"));
+        }, 0);
+        return;
+      }
 
       // Cmd+Shift+\ : 打开网格概览（任意场景可用，门户里也能直接进）
       if (meta && e.shiftKey && (e.key === "\\" || e.key === "|")) {
         e.preventDefault();
-        const st = useStore.getState();
-        st.setGridTypeFilter(null);
-        st.setGridSelectedPath(null);
-        st.setScene("grid");
+        store.setGridTypeFilter(null);
+        store.setGridSelectedPath(null);
+        store.setScene("grid");
         return;
       }
 
       // 门户/网格是覆盖层：底下的编辑器不可见，快捷键作用上去用户看不见后果
       // （⌘W 关掉隐藏页签、⌘B 改隐藏文档……）。这里只放行不触碰隐藏状态的键。
-      if (useStore.getState().scene !== "workspace") {
+      if (store.scene !== "workspace") {
         if (!meta) return;
         const k = e.key.toLowerCase();
         if (!["o", "n", ",", "p", "k", "a"].includes(k)) return;
       }
-
-      const store = useStore.getState();
 
       // Cmd+O: Open file
       if (meta && e.key === "o") {
@@ -348,6 +402,7 @@ function App() {
       }
 
       // Cmd+Shift+T : Toggle chrome visibility inside immersive mode — A-5
+      // 沉浸态保留旧语义；非沉浸态让位给 AI 翻译（layout-portal 15.1 裁定）。
       if (
         meta &&
         e.shiftKey &&
@@ -356,6 +411,28 @@ function App() {
       ) {
         e.preventDefault();
         store.setImmersiveChromeVisible(!store.immersiveChromeVisible);
+      }
+
+      if (
+        meta &&
+        e.shiftKey &&
+        e.key.toLowerCase() === "t" &&
+        !store.readingMode
+      ) {
+        e.preventDefault();
+        store.setScene("workspace");
+        const ai = useAiEntryStore.getState();
+        ai.setInput("翻译选中的内容");
+        ai.openOverlay();
+      }
+
+      // Cmd+Shift+E: 生成学习页（layout-portal 15.1）
+      if (meta && e.shiftKey && e.key.toLowerCase() === "e") {
+        e.preventDefault();
+        store.setScene("workspace");
+        const ai = useAiEntryStore.getState();
+        ai.setInput("把这篇文档整理成一份学习页：要点、例子、自测题。");
+        ai.openOverlay();
       }
 
       // Cmd+Shift+S: collapse panes back to a single root leaf
@@ -375,6 +452,19 @@ function App() {
       if (meta && e.shiftKey && e.key.toLowerCase() === "v") {
         e.preventDefault();
         store.togglePreviewEnabled();
+      }
+
+      // Cmd+Shift+F: 沉浸阅读开关（layout-portal 15.1）
+      if (meta && e.shiftKey && e.key.toLowerCase() === "f") {
+        e.preventDefault();
+        store.setReadingMode(!store.readingMode);
+      }
+
+      // Cmd+Shift+P: 置顶当前文件（layout-portal 15.1）
+      if (meta && e.shiftKey && e.key.toLowerCase() === "p") {
+        e.preventDefault();
+        const tab = store.activeTabId ? store.tabs[store.activeTabId] : null;
+        if (tab?.path) store.togglePinnedPath(tab.path);
       }
 
       // Cmd+Alt+Right / Cmd+Alt+Down: split the focused pane (layout-portal 3.1)
@@ -442,6 +532,10 @@ function App() {
 
       // Escape: 待确认改动 → 取消；否则按形态关闭 AI；再否则退回全屏/阅读态
       if (e.key === "Escape") {
+        if (shortcutsOpen) {
+          setShortcutsOpen(false);
+          return;
+        }
         const ai = useAiEntryStore.getState();
         if (ai.pendingConfirm) {
           ai.cancelPendingSubmit();
@@ -486,6 +580,7 @@ function App() {
     activeTabId,
     handleScaleDelta,
     openSettings,
+    shortcutsOpen,
   ]);
 
   // ── Drag-and-drop (Tauri v2 native event) ────────────────────
@@ -661,6 +756,10 @@ function App() {
           onClose={() => setPickerOpen(false)}
         />
       )}
+      <ShortcutOverlay
+        open={shortcutsOpen}
+        onClose={() => setShortcutsOpen(false)}
+      />
       {readingMode && (
         <div
           className="immersive-peek-zone"
