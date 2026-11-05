@@ -48,6 +48,20 @@ pub struct AppConfig {
     /// `default` + `skip_serializing_if` 让老配置仍能读、新配置不多出空字段。
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub rail_view_spec: Option<RailViewSpec>,
+    /// 悬浮预览窗双轨开关（layout-portal 8.1）。
+    /// `default` + `skip_serializing_if` 让老配置仍能读、新配置不多出空字段。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub preview_settings: Option<PreviewSettings>,
+}
+
+/// 悬浮预览窗开关：阅读空间悬停 / 网格触发方式 / 总开关。
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct PreviewSettings {
+    pub rail_hover: Option<bool>,
+    /// hover / click / off；非法值由校验拦下。
+    pub grid_mode: Option<String>,
+    pub enabled: Option<bool>,
 }
 
 /// 阅读空间栏视图规格：布局（堆叠/标签）、密度（紧凑/舒适/卡片）与卡片高度。
@@ -100,6 +114,7 @@ impl Default for AppConfig {
             icon_label: Some("text".into()),
             pane_layout: None,
             rail_view_spec: None,
+            preview_settings: None,
             sidebar_left_visible: Some(true),
             sidebar_right_visible: Some(false),
             sidebar_left_width: Some(220.0),
@@ -381,6 +396,13 @@ pub fn validate_config(config: &AppConfig) -> Result<(), AppError> {
             &["compact", "comfortable", "card"],
         )?;
         check_range("railViewSpec.cardHeight", spec.card_height, 88.0, 160.0)?;
+    }
+    if let Some(preview) = &config.preview_settings {
+        check_enum(
+            "previewSettings.gridMode",
+            preview.grid_mode.as_deref(),
+            &["hover", "click", "off"],
+        )?;
     }
     Ok(())
 }
@@ -1014,5 +1036,48 @@ mod tests {
             card_height: Some(200.0),
         });
         assert!(validate_config(&config).is_err());
+    }
+
+    #[test]
+    fn preview_settings_round_trips_and_defaults_for_old_configs() {
+        let dir = temp_base("preview");
+        let base = dir.path();
+
+        // 老配置（无字段）→ None，读得进
+        write_user(base, r#"{"theme":"dark"}"#);
+        assert_eq!(load_config_at(base).unwrap().preview_settings, None);
+
+        // 写入开关 → 落盘 → 读回严格相等
+        let mut config = AppConfig::default();
+        config.preview_settings = Some(PreviewSettings {
+            rail_hover: Some(false),
+            grid_mode: Some("hover".into()),
+            enabled: Some(true),
+        });
+        save_config_at(base, &config).unwrap();
+        let user = read_user(base);
+        assert!(
+            user.contains("previewSettings"),
+            "user 层应含 previewSettings: {user}"
+        );
+        let loaded = load_config_at(base).unwrap().preview_settings.unwrap();
+        assert_eq!(loaded.rail_hover, Some(false));
+        assert_eq!(loaded.grid_mode.as_deref(), Some("hover"));
+        assert_eq!(loaded.enabled, Some(true));
+
+        // 非法 gridMode 被校验拦下，不落盘
+        config.preview_settings = Some(PreviewSettings {
+            rail_hover: Some(true),
+            grid_mode: Some("diagonal".into()),
+            enabled: Some(true),
+        });
+        assert!(validate_config(&config).is_err());
+
+        config.preview_settings = Some(PreviewSettings {
+            rail_hover: Some(true),
+            grid_mode: Some("off".into()),
+            enabled: Some(false),
+        });
+        assert!(validate_config(&config).is_ok());
     }
 }

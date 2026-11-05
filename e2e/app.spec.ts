@@ -123,7 +123,7 @@ test.describe("Biaoyue E2E", () => {
     }
   });
 
-  test("12. Cmd+Shift+H/V adds panes, Cmd+Shift+S collapses", async ({
+  test("12. Cmd+Shift+H / Cmd+Alt+Down add panes, Cmd+Shift+S collapses", async ({
     page,
   }) => {
     // Open two tabs via the exposed store bridge (web mode has no real fs)
@@ -142,8 +142,9 @@ test.describe("Biaoyue E2E", () => {
     await page.keyboard.press(`${MOD}+Shift+H`);
     await expect(page.locator(".cm-editor-container")).toHaveCount(2);
 
-    // Cmd+Shift+V: split the focused (new) pane downward
-    await page.keyboard.press(`${MOD}+Shift+V`);
+    // Cmd+Alt+Down: split the focused (new) pane downward.
+    // （layout-portal 8.1 起 ⌘⇧V 让位给悬浮预览开关，向下分屏改用 ⌘⌥↓）
+    await page.keyboard.press(`${MOD}+Alt+ArrowDown`);
     await expect(page.locator(".cm-editor-container")).toHaveCount(3);
 
     // Cmd+Shift+S: collapse the tree back to a single pane

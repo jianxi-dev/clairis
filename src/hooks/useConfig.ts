@@ -22,6 +22,7 @@ import {
   type RailViewSpec,
 } from "../lib/railView";
 import { DENSITY_HEIGHT, clampCardHeight } from "../lib/railCards";
+import { normalizePreviewSettings } from "../lib/previewAnchor";
 
 /** Snake-case config from Rust, mapped to camelCase in the store. */
 interface RustAppConfig {
@@ -58,6 +59,11 @@ interface RustAppConfig {
     layout: string | null;
     density: string | null;
     cardHeight?: number | null;
+  } | null;
+  previewSettings?: {
+    railHover: boolean | null;
+    gridMode: string | null;
+    enabled: boolean | null;
   } | null;
 }
 
@@ -120,6 +126,8 @@ export async function saveAppConfig(): Promise<void> {
     paneLayout: useStore.getState().paneLayoutJson(),
     // 阅读空间栏「设为默认」规格（layout-portal 6.1）
     railViewSpec: useStore.getState().railViewSpec,
+    // 悬浮预览窗双轨开关（layout-portal 8.1）
+    previewSettings: useStore.getState().previewSettings,
   };
   try {
     await invoke("save_config", { config });
@@ -309,6 +317,11 @@ function applyRustConfig(raw: RustAppConfig): void {
           DEFAULT_RAIL_VIEW_SPEC.cardHeight ??
           DENSITY_HEIGHT.card,
       ),
+  });
+
+  // 悬浮预览窗开关（layout-portal 8.1）：老配置缺字段 → 默认；非法值归一化
+  useStore.setState({
+    previewSettings: normalizePreviewSettings(raw.previewSettings),
   });
 
   // 布局树恢复放在配置生效之后：它依赖 tabs 记录与页签打开流程

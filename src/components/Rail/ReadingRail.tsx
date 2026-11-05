@@ -48,6 +48,13 @@ import {
   type ThumbDescriptor,
 } from "../../lib/railCards";
 import { buildAssetUrl } from "../../renderers/html";
+import {
+  HOVER_DELAY_MS,
+  PREVIEW_DEFAULT_H,
+  PREVIEW_DEFAULT_W,
+  anchorFromRail,
+  clampPreviewSize,
+} from "../../lib/previewAnchor";
 import { log } from "../../utils/log";
 import { isTauriEnv } from "../../utils/tauri";
 import type { RecentFile } from "../../types";
@@ -81,6 +88,8 @@ interface RailRowProps {
   onSplit: (path: string, dir: "row" | "col") => void;
   onReveal: (path: string) => void;
   onTogglePin: (path: string) => void;
+  onRowHover?: (el: HTMLElement) => void;
+  onRowLeave?: () => void;
 }
 
 /** 本地图片路径 → asset:// URL；浏览器直跑（无 Tauri）时保持原路径。 */
@@ -189,6 +198,8 @@ function RailRow({
   onSplit,
   onReveal,
   onTogglePin,
+  onRowHover,
+  onRowLeave,
 }: RailRowProps) {
   const kind: FileTypeKind = fileTypeOf(item.path);
   const segments = splitByRanges(item.title, ranges);
@@ -235,6 +246,10 @@ function RailRow({
         data-kind={kind}
         data-density="compact"
         style={{ height: DENSITY_HEIGHT.compact }}
+        onMouseEnter={
+          onRowHover ? (e) => onRowHover(e.currentTarget) : undefined
+        }
+        onMouseLeave={onRowLeave}
         className="group relative box-border flex items-center gap-1 px-2"
       >
         <button
@@ -264,6 +279,10 @@ function RailRow({
         data-kind={kind}
         data-density="comfortable"
         style={{ height: DENSITY_HEIGHT.comfortable }}
+        onMouseEnter={
+          onRowHover ? (e) => onRowHover(e.currentTarget) : undefined
+        }
+        onMouseLeave={onRowLeave}
         className="group relative box-border flex flex-col justify-center px-2 py-1"
       >
         <div className="flex items-center gap-1">
@@ -317,6 +336,8 @@ function RailRow({
       data-kind={kind}
       data-density="card"
       style={{ height: cardHeight }}
+      onMouseEnter={onRowHover ? (e) => onRowHover(e.currentTarget) : undefined}
+      onMouseLeave={onRowLeave}
       className="group relative my-1 box-border flex flex-col justify-between overflow-hidden rounded border border-gray-200 px-2 py-1.5 dark:border-gray-700"
     >
       <div className="flex min-h-0 flex-1 gap-1.5 overflow-hidden">
@@ -515,6 +536,7 @@ export default function ReadingRail({
   const tabs = useStore((s) => s.tabs);
   const activeTabId = useStore((s) => s.activeTabId);
   const scrollPositions = useStore((s) => s.scrollPositions);
+  const previewEnabled = useStore((s) => s.previewSettings.enabled);
 
   const setRailState = useStore((s) => s.setRailState);
   const toggleRailPin = useStore((s) => s.toggleRailPin);
@@ -536,6 +558,7 @@ export default function ReadingRail({
   const openTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const previewTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -549,11 +572,17 @@ export default function ReadingRail({
     [],
   );
 
-  // 状态变化时清掉两个悬停计时器：避免过期回调把栏拉回旧态
+  // 状态变化时清掉悬停计时器：避免过期回调把栏/预览拉回旧态
   useEffect(() => {
     clearTimer(openTimer);
     clearTimer(closeTimer);
+    clearTimer(previewTimer);
   }, [railState, clearTimer]);
+
+  // 预览总开关关闭时取消待触发的悬停计时器，避免关闭后仍弹出
+  useEffect(() => {
+    if (!previewEnabled) clearTimer(previewTimer);
+  }, [previewEnabled, clearTimer]);
 
   // 折叠即清空搜索：不留残余过滤
   useEffect(() => {
@@ -657,6 +686,59 @@ export default function ReadingRail({
     [onOpenPath],
   );
 
+  // 悬浮预览锚定：x 恒 = 栏右缘 + 12（item 满宽，右缘 = 栏右缘），y 跟随行顶
+  const openRowPreview = useCallback((item: RecentFile, el: HTMLElement) => {
+    const st = useStore.getState();
+    if (!st.previewSettings.enabled || !st.previewSettings.railHover) return;
+    const rect = el.getBoundingClientRect();
+    const current = st.preview?.source === "rail" ? st.preview : null;
+    const size = clampPreviewSize(
+      current
+        ? { w: current.w, h: current.h }
+        : { w: PREVIEW_DEFAULT_W, h: PREVIEW_DEFAULT_H },
+    );
+    const anchor = anchorFromRail({
+      railRightX: rect.right,
+      rowTopY: rect.top,
+      rowHeight: rect.height,
+      size,
+      viewport: { width: window.innerWidth, height: window.innerHeight },
+    });
+    st.openPreview({
+      path: item.path,
+      title: item.title,
+      x: anchor.x,
+      y: anchor.y,
+      w: size.w,
+      h: size.h,
+      flippedX: anchor.flipped.x,
+      flippedY: anchor.flipped.y,
+      source: "rail",
+    });
+  }, []);
+
+  const onRowEnter = useCallback(
+    (item: RecentFile, el: HTMLElement) => {
+      const st = useStore.getState();
+      if (!st.previewSettings.enabled || !st.previewSettings.railHover) return;
+      clearTimer(previewTimer);
+      // 已开则立即重锚到新行（x 不变、y 跟随），首次打开才走 250ms 延时
+      if (st.preview?.source === "rail") {
+        openRowPreview(item, el);
+        return;
+      }
+      previewTimer.current = setTimeout(() => {
+        previewTimer.current = null;
+        openRowPreview(item, el);
+      }, HOVER_DELAY_MS);
+    },
+    [clearTimer, openRowPreview],
+  );
+
+  const onRowLeave = useCallback(() => {
+    clearTimer(previewTimer);
+  }, [clearTimer]);
+
   const loadSnapshots = useCallback(() => {
     if (!isTauriEnv()) return;
     invoke<string[]>("list_config_snapshots")
@@ -726,6 +808,8 @@ export default function ReadingRail({
               onSplit={openInSplit}
               onReveal={revealPath}
               onTogglePin={togglePinPath}
+              onRowHover={(el) => onRowEnter(m.item, el)}
+              onRowLeave={onRowLeave}
             />
           ))
         )}

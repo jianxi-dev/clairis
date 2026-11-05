@@ -1,0 +1,373 @@
+import { test, expect, type Page } from "@playwright/test";
+import { mkdirSync } from "node:fs";
+import path from "node:path";
+
+/**
+ * 悬浮预览窗（layout-portal 8.1）真实浏览器用例。
+ *
+ * 走 e2e/mocks/tauri-mock.js 模拟 Tauri IPC，用 `window.__biaoyue_store__` 桥
+ * 驱动状态。锚定坐标走状态机断言：x 恒 = 栏右缘 + 12、y 跟随悬停行；横向移动
+ * 指针不得让窗口左右跳。⌘ 用 Control 代替（App 判定 metaKey || ctrlKey）。
+ */
+
+const APP_URL = "http://localhost:1420";
+const ART = path.resolve(process.cwd(), ".artifacts/178");
+
+mkdirSync(ART, { recursive: true });
+
+const PREVIEW = '[data-testid="floating-preview"]';
+const RECENT_ROWS = '[data-section="recent"] [data-testid="rail-item"]';
+
+async function boot(page: Page): Promise<void> {
+  await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
+  await page.goto(APP_URL, { waitUntil: "networkidle" });
+  await page.waitForSelector("header", { timeout: 15000 });
+}
+
+async function seed(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const w = window as unknown as {
+      __biaoyue_openFile__: (p: string, c: string, t: string) => void;
+      __biaoyue_store__: {
+        getState: () => {
+          setRailDensity: (d: string) => void;
+          scene: string;
+        };
+      };
+    };
+    for (let i = 1; i <= 10; i += 1) {
+      w.__biaoyue_openFile__(
+        `/tmp/fp/doc${i}.md`,
+        `# 文件${i}\n\n这是第 ${i} 份文档的真实正文，用来验证预览渲染的是真内容。\n\n> 引用\n\n- 列表项\n\n\`\`\`js\nconst n = ${i};\n\`\`\``,
+        `文件${i}`,
+      );
+    }
+    // 紧凑密度：10 行全在视口内，row3 / row8 都可直接悬停，无需滚动
+    w.__biaoyue_store__.getState().setRailDensity("compact");
+  });
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          (
+            window as unknown as {
+              __biaoyue_store__: { getState: () => { scene: string } };
+            }
+          ).__biaoyue_store__.getState().scene,
+      ),
+    )
+    .toBe("workspace");
+}
+
+async function railRows(page: Page) {
+  return page.locator(RECENT_ROWS);
+}
+
+/** 悬停边缘条展开 → 点钉住：钉住态阅读空间常驻，行始终渲染。 */
+async function pinRail(page: Page): Promise<void> {
+  const edge = page.locator('[data-testid="rail-edge"]');
+  if (await edge.isVisible().catch(() => false)) {
+    await edge.hover();
+  }
+  const panel = page.locator('[data-testid="rail-panel"]');
+  await expect(panel).toBeVisible();
+  await page.locator('[data-testid="rail-pin"]').click();
+  await expect(panel).toHaveAttribute("data-rail-state", "pinned");
+}
+
+async function storeState<T>(page: Page, pick: string): Promise<T> {
+  return page.evaluate((key) => {
+    const s = (
+      window as unknown as {
+        __biaoyue_store__: { getState: () => Record<string, unknown> };
+      }
+    ).__biaoyue_store__.getState();
+    return s[key] as never;
+  }, pick) as Promise<T>;
+}
+
+async function closePreview(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    (
+      window as unknown as {
+        __biaoyue_store__: { getState: () => { closePreview: () => void } };
+      }
+    ).__biaoyue_store__
+      .getState()
+      .closePreview();
+  });
+}
+
+async function dragBy(
+  page: Page,
+  selector: string,
+  dx: number,
+  dy: number,
+): Promise<void> {
+  const b = await page.locator(selector).boundingBox();
+  if (!b) throw new Error(`不可测量: ${selector}`);
+  const cx = b.x + Math.min(30, b.width / 2);
+  const cy = b.y + Math.min(b.height - 3, b.height * 0.6);
+  await page.mouse.move(cx, cy);
+  await page.mouse.down();
+  await page.mouse.move(cx + dx, cy + dy, { steps: 12 });
+  await page.mouse.up();
+}
+
+async function dragHandle(
+  page: Page,
+  edge: string,
+  dx: number,
+  dy: number,
+): Promise<void> {
+  const sel = `[data-testid="preview-handle-${edge}"]`;
+  const b = await page.locator(sel).boundingBox();
+  if (!b) throw new Error(`手柄不可测量: ${sel}`);
+  const cx = b.x + b.width / 2;
+  const cy = b.y + b.height / 2;
+  await page.mouse.move(cx, cy);
+  await page.mouse.down();
+  await page.mouse.move(cx + dx, cy + dy, { steps: 10 });
+  await page.mouse.up();
+}
+
+/** 打开悬浮预览（悬停第 1 行，等 250ms 延时触发）。 */
+async function openPreview(page: Page): Promise<void> {
+  const rows = await railRows(page);
+  await rows.first().hover();
+  await expect(page.locator(PREVIEW)).toBeVisible({ timeout: 3000 });
+}
+
+async function previewBox(page: Page) {
+  const b = await page.locator(PREVIEW).boundingBox();
+  if (!b) throw new Error("悬浮预览窗不可测量");
+  return {
+    x: Math.round(b.x),
+    y: Math.round(b.y),
+    w: Math.round(b.width),
+    h: Math.round(b.height),
+  };
+}
+
+test("阅读空间锚定：x 恒=栏右缘+12、y 跟随悬停行、横向不随鼠标", async ({
+  page,
+}) => {
+  await boot(page);
+  await seed(page);
+  await pinRail(page);
+
+  const rows = await railRows(page);
+  const row3 = rows.nth(2);
+  const row8 = rows.nth(7);
+  const r3 = (await row3.boundingBox())!;
+  const r8 = (await row8.boundingBox())!;
+
+  // 悬停第 3 行 → 250ms 后弹出，x = 行右缘 + 12、y = 行顶
+  await row3.hover();
+  const preview = page.locator(PREVIEW);
+  await expect(preview).toBeVisible({ timeout: 3000 });
+  const b3 = await previewBox(page);
+  expect(
+    Math.abs(b3.x - (Math.round(r3.x + r3.width) + 12)),
+  ).toBeLessThanOrEqual(1);
+  expect(Math.abs(b3.y - Math.round(r3.y))).toBeLessThanOrEqual(1);
+  // 真内容渲染（markdown 标题/引用/列表/代码）
+  await expect(page.locator('[data-testid="preview-doc"]')).toBeVisible();
+  await page.screenshot({ path: path.join(ART, "preview-rail-anchored.png") });
+
+  // 钉住预览，保证跨行切换时窗口不关
+  await page.locator('[data-testid="preview-pin"]').click();
+  await expect(preview).toHaveAttribute("data-pinned", "true");
+
+  // 悬停第 8 行 → x 不变，y 跟随到第 8 行
+  await row8.hover();
+  await expect
+    .poll(async () => (await previewBox(page)).y)
+    .toBe(Math.round(r8.y));
+  const b8 = await previewBox(page);
+  expect(b8.x).toBe(b3.x);
+
+  // 横向抖动指针：x 不得变化
+  await page.mouse.move(r8.x + r8.width - 8, r8.y + r8.height / 2);
+  await page.waitForTimeout(120);
+  expect((await previewBox(page)).x).toBe(b8.x);
+});
+
+test("缩放：四边 + 一角拖到最小，尺寸严格钳到 260×200", async ({ page }) => {
+  await boot(page);
+  await seed(page);
+  await pinRail(page);
+
+  const preview = page.locator(PREVIEW);
+
+  // 东/西：宽度钳到 260
+  await openPreview(page);
+  expect((await previewBox(page)).w).toBe(320);
+  await dragHandle(page, "e", -600, 0);
+  expect((await previewBox(page)).w).toBe(260);
+
+  await closePreview(page);
+  await openPreview(page);
+  await dragHandle(page, "w", 600, 0);
+  expect((await previewBox(page)).w).toBe(260);
+
+  // 南/北：高度钳到 200
+  await closePreview(page);
+  await openPreview(page);
+  await dragHandle(page, "s", 0, -600);
+  expect((await previewBox(page)).h).toBe(200);
+
+  await closePreview(page);
+  await openPreview(page);
+  await dragHandle(page, "n", 0, 600);
+  expect((await previewBox(page)).h).toBe(200);
+
+  // 一角（东南）：两轴同时到底 → 严格 260×200
+  await closePreview(page);
+  await openPreview(page);
+  await dragHandle(page, "se", -600, -600);
+  const min = await previewBox(page);
+  expect(min.w).toBe(260);
+  expect(min.h).toBe(200);
+  await page.screenshot({ path: path.join(ART, "preview-resized-min.png") });
+});
+
+test("贴边翻转：拖到窗口边缘后锚定边互换", async ({ page }) => {
+  await boot(page);
+  await seed(page);
+  await pinRail(page);
+  await openPreview(page);
+
+  const preview = page.locator(PREVIEW);
+  await expect(preview).toHaveAttribute("data-flipped-x", "false");
+  await expect(preview).toHaveAttribute("data-flipped-y", "false");
+
+  // 把标题栏拖到右下角：越过右缘与下缘
+  await dragBy(page, '[data-testid="preview-titlebar"]', 900, 560);
+  await expect(preview).toHaveAttribute("data-flipped-x", "true");
+  await expect(preview).toHaveAttribute("data-flipped-y", "true");
+  await page.screenshot({ path: path.join(ART, "preview-flipped-edge.png") });
+});
+
+test("拖动后关闭再触发：回默认锚定，不保留旧坐标", async ({ page }) => {
+  await boot(page);
+  await seed(page);
+  await pinRail(page);
+  await openPreview(page);
+
+  const preview = page.locator(PREVIEW);
+  const base = await previewBox(page);
+
+  // 拖动到新位置
+  await dragBy(page, '[data-testid="preview-titlebar"]', 180, 150);
+  const moved = await previewBox(page);
+  expect(moved.x).not.toBe(base.x);
+
+  // × 关闭
+  await page.locator('[data-testid="preview-close"]').click();
+  await expect(preview).toHaveCount(0);
+
+  // 重新触发：回到默认锚定而非关闭前位置
+  await closePreview(page);
+  await openPreview(page);
+  const again = await previewBox(page);
+  expect(again.x).toBe(base.x);
+  expect(again.y).toBe(base.y);
+});
+
+test("⌘⇧V 开关：关闭后悬停不再弹，开启后 250ms 弹出；两开关独立", async ({
+  page,
+}) => {
+  await boot(page);
+  await seed(page);
+  await pinRail(page);
+
+  const preview = page.locator(PREVIEW);
+  const rows = await railRows(page);
+
+  // 关闭总开关
+  await page.keyboard.press("Control+Shift+V");
+  await expect
+    .poll(
+      async () =>
+        (await storeState<{ enabled: boolean }>(page, "previewSettings"))
+          .enabled,
+    )
+    .toBe(false);
+
+  // 悬停行也不弹（等超过 250ms 延时）
+  await rows.first().hover();
+  await page.waitForTimeout(600);
+  await expect(preview).toHaveCount(0);
+  await page.screenshot({ path: path.join(ART, "preview-disabled.png") });
+
+  // 再按恢复：先把指针移开，再悬停 → 250ms 后弹出
+  await page.mouse.move(700, 400);
+  await page.keyboard.press("Control+Shift+V");
+  await expect
+    .poll(
+      async () =>
+        (await storeState<{ enabled: boolean }>(page, "previewSettings"))
+          .enabled,
+    )
+    .toBe(true);
+  await rows.first().hover();
+  await expect(preview).toBeVisible({ timeout: 3000 });
+
+  // 双开关独立：关阅读空间悬停不动网格模式与总开关
+  await page.evaluate(() => {
+    (
+      window as unknown as {
+        __biaoyue_store__: {
+          getState: () => {
+            setPreviewSettings: (p: { railHover: boolean }) => void;
+          };
+        };
+      }
+    ).__biaoyue_store__
+      .getState()
+      .setPreviewSettings({ railHover: false });
+  });
+  const settings = await storeState<{
+    railHover: boolean;
+    gridMode: string;
+    enabled: boolean;
+  }>(page, "previewSettings");
+  expect(settings).toEqual({
+    railHover: false,
+    gridMode: "click",
+    enabled: true,
+  });
+
+  // 悬停不再弹（阅读空间开关关）：移开指针后重悬停
+  await closePreview(page);
+  await page.mouse.move(700, 400);
+  await rows.first().hover();
+  await page.waitForTimeout(600);
+  await expect(preview).toHaveCount(0);
+});
+
+test("底部动作区仅 hover 显示，取消 hover 后无残留", async ({ page }) => {
+  await boot(page);
+  await seed(page);
+  await pinRail(page);
+  await openPreview(page);
+
+  const preview = page.locator(PREVIEW);
+  const actions = page.locator('[data-testid="preview-actions"]');
+
+  // 指针在阅读空间行上，未 hover 窗口 → 无动作区
+  await expect(actions).toHaveCount(0);
+
+  // 钉住预览，保证移开指针后窗口仍在（只验证动作区残留）
+  await page.locator('[data-testid="preview-pin"]').click();
+  await page.hover('[data-testid="preview-titlebar"]');
+  await expect(actions).toBeVisible();
+  await expect(page.locator('[data-testid="preview-action"]')).toHaveCount(4);
+  await page.screenshot({ path: path.join(ART, "preview-actions-hover.png") });
+
+  // 移开指针：动作区消失，窗口因钉住仍在
+  await page.mouse.move(600, 780);
+  await expect(actions).toHaveCount(0);
+  await expect(preview).toBeVisible();
+});
