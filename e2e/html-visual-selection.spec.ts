@@ -76,7 +76,9 @@ test("点空白处高亮消失", async ({ page }) => {
   await frame.locator("h1").click();
   await expect(frame.locator(HL)).toBeVisible();
 
-  // 点 html/body 等于点空白：运行时上报 nodeId:null，高亮应当清掉
-  await frame.locator("body").click({ position: { x: 5, y: 500 } });
+  // 点 html/body 等于点空白：运行时上报 nodeId:null，高亮应当清掉。
+  // x=5 会落在折叠阅读空间 12px 边缘条的覆盖层上（它拦截最左侧指针事件），
+  // 这里仍点空白区，只是避开边缘条。
+  await frame.locator("body").click({ position: { x: 20, y: 500 } });
   await expect(frame.locator(HL)).toBeHidden();
 });

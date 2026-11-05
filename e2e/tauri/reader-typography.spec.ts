@@ -277,7 +277,9 @@ test("预览排版：阅读设置可改字号与行宽", async ({ page }) => {
 });
 
 test("预览排版：纸宽撑满可用宽度，且随窗口与行宽设置变化", async ({ page }) => {
-  await page.setViewportSize({ width: 1440, height: 900 });
+  // 工作区已改为全宽外壳（旧 280px 侧栏移除）；1100 宽仍小于 1200 的宽通道，
+  // 用来验证「纸必须撑满可用宽度」，更宽的窗口在下一段验证截住并居中。
+  await page.setViewportSize({ width: 1100, height: 900 });
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto(APP_URL, { waitUntil: "networkidle" });
   await page.waitForSelector("header", { timeout: 10000 });

@@ -7,6 +7,7 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
 } from "react";
+import { fileDragHandlers } from "../../hooks/fileDrag";
 import { invoke } from "@tauri-apps/api/core";
 import { useStore } from "../../stores";
 import { reloadAppConfig } from "../../hooks/useConfig";
@@ -245,6 +246,8 @@ function RailRow({
       <div
         data-testid="rail-item"
         data-rail-path={item.path}
+        data-file-path={item.path}
+        {...fileDragHandlers(item.path)}
         data-kind={kind}
         data-density="compact"
         style={{ height: Math.round(DENSITY_HEIGHT.compact * scale) }}
@@ -278,6 +281,8 @@ function RailRow({
       <div
         data-testid="rail-item"
         data-rail-path={item.path}
+        data-file-path={item.path}
+        {...fileDragHandlers(item.path)}
         data-kind={kind}
         data-density="comfortable"
         style={{ height: Math.round(DENSITY_HEIGHT.comfortable * scale) }}
@@ -335,6 +340,8 @@ function RailRow({
     <div
       data-testid="rail-item"
       data-rail-path={item.path}
+      data-file-path={item.path}
+      {...fileDragHandlers(item.path)}
       data-kind={kind}
       data-density="card"
       style={{ height: Math.round(cardHeight * scale) }}

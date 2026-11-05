@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "01-workspace-shell",
+      "screenshot": ".artifacts/203/01-workspace-shell.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T11:15:34Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "02-file-open",
+      "screenshot": ".artifacts/203/02-file-open.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T11:15:34Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "03-rail-hover",
+      "screenshot": ".artifacts/203/03-rail-hover.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T11:15:34Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "04-ai-entry",
+      "screenshot": ".artifacts/203/04-ai-entry.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T11:15:34Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}

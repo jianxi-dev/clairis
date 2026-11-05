@@ -1,7 +1,6 @@
 import { test, expect } from "@playwright/test";
 
 const APP_URL = "http://localhost:1420";
-const MOD = process.platform === "darwin" ? "Meta" : "Control";
 
 async function setup(page: Parameters<Parameters<typeof test>[1]>[0]["page"]) {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
@@ -93,40 +92,6 @@ test.describe("Biaoyue — Tauri Mocked", () => {
     console.log("✅ Context menu → split");
   });
 
-  test("3. outline shows headings, click navigates", async ({ page }) => {
-    await openMockFile(page);
-    await page.waitForTimeout(300);
-
-    // Switch to edit mode from toolbar
-    const editBtn = page
-      .locator("header button")
-      .filter({ hasText: "编辑" })
-      .first();
-    if (await editBtn.isVisible()) {
-      await editBtn.click();
-      await page.waitForTimeout(300);
-    }
-
-    // Switch to outline tab
-    await page.getByRole("button", { name: "目录", exact: true }).click();
-    await page.waitForTimeout(300);
-
-    // Headings from mock content
-    await expect(page.getByRole("button", { name: /第一节/ })).toBeVisible({
-      timeout: 5000,
-    });
-    await expect(page.getByRole("button", { name: /第二节/ })).toBeVisible();
-    await expect(page.getByRole("button", { name: /子节/ })).toBeVisible();
-
-    // Click first heading — should navigate editor
-    await page.getByRole("button", { name: /第一节/ }).click();
-    await page.waitForTimeout(300);
-
-    // Editor should be visible (we're in edit mode)
-    await expect(page.locator(".cm-editor").first()).toBeVisible();
-    console.log("✅ Outline headings + click navigation");
-  });
-
   test("4. Cmd+N new tab, visible in TabBar", async ({ page }) => {
     await page.evaluate(() => {
       (window as unknown as Record<string, any>).__biaoyue_store__
@@ -158,48 +123,6 @@ test.describe("Biaoyue — Tauri Mocked", () => {
       .evaluate((el) => window.getComputedStyle(el).backgroundColor);
     expect(bg).not.toBe("rgb(255, 255, 255)");
     console.log(`✅ Dark mode: bg=${bg}`);
-  });
-
-  test("6. FileTree pick_folder → files appear", async ({ page }) => {
-    await page.getByRole("button", { name: "文件", exact: true }).click();
-    await page.getByRole("button", { name: "选择文件夹" }).click();
-    await page.waitForTimeout(500);
-
-    await expect(page.getByText("测试文档.md")).toBeVisible({ timeout: 5000 });
-    await expect(page.getByText("另一个.md")).toBeVisible();
-    console.log("✅ FileTree populated");
-  });
-
-  test("7. open file from FileTree creates tab", async ({ page }) => {
-    // First pick folder
-    await page.getByRole("button", { name: "文件", exact: true }).click();
-    await page.getByRole("button", { name: "选择文件夹" }).click();
-    await page.waitForTimeout(500);
-
-    // Click a file to open it
-    // The file "测试文档.md" should appear — click it
-    const fileEntry = page.getByText("测试文档.md").first();
-    await expect(fileEntry).toBeVisible({ timeout: 5000 });
-    await fileEntry.click();
-    await page.waitForTimeout(500);
-
-    // The file name should appear in both the toolbar title and tab bar
-    const tabTitle = page.getByText("测试文档.md").first();
-    await expect(tabTitle).toBeVisible({ timeout: 5000 });
-    console.log("✅ FileTree → open file → tab created");
-  });
-
-  test("8. Cmd+\\ toggle sidebar with file open", async ({ page }) => {
-    await openMockFile(page);
-    const fileBtn = page.getByRole("button", { name: "文件", exact: true });
-    await expect(fileBtn).toBeVisible();
-    await page.keyboard.press(`${MOD}+\\`);
-    await page.waitForTimeout(400);
-    await expect(fileBtn).not.toBeVisible();
-    await page.keyboard.press(`${MOD}+\\`);
-    await page.waitForTimeout(400);
-    await expect(fileBtn).toBeVisible();
-    console.log("✅ Sidebar toggle");
   });
 
   test("9. split panels show DIFFERENT file content", async ({ page }) => {
