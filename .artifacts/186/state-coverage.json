@@ -1,0 +1,89 @@
+{
+  "task": "186-walkthrough",
+  "states": [
+    {
+      "state": "01-open-portal",
+      "screenshot": ".artifacts/186/01-open-portal.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T17:01:26.096Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "01-open-workspace",
+      "screenshot": ".artifacts/186/01-open-workspace.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T17:01:26.170Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "02-browse-preview",
+      "screenshot": ".artifacts/186/02-browse-preview.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T17:01:26.286Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "02-browse-back",
+      "screenshot": ".artifacts/186/02-browse-back.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T17:01:26.328Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "03-edit-typed",
+      "screenshot": ".artifacts/186/03-edit-typed.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T17:01:26.434Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "04-scene-settings",
+      "screenshot": ".artifacts/186/04-scene-settings.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T17:01:26.472Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "04-scene-grid",
+      "screenshot": ".artifacts/186/04-scene-grid.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T17:01:26.514Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "04-scene-back-workspace",
+      "screenshot": ".artifacts/186/04-scene-back-workspace.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T17:01:26.546Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "05-cancel-ai-open",
+      "screenshot": ".artifacts/186/05-cancel-ai-open.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T17:01:26.580Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "05-cancel-ai-closed",
+      "screenshot": ".artifacts/186/05-cancel-ai-closed.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T17:01:26.612Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "06-close-split",
+      "screenshot": ".artifacts/186/06-close-split.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T17:01:26.658Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "06-close-recovered",
+      "screenshot": ".artifacts/186/06-close-recovered.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T17:01:26.743Z",
+      "runner": "mason@unknown"
+    }
+  ]
+}

@@ -2,7 +2,7 @@
 title: 需求实现状态总览
 type: delivery
 status: accepted
-last_updated: 2026-11-03
+last_updated: 2026-11-06
 source_of_truth: supporting
 ---
 
@@ -35,13 +35,14 @@ openspec view              # 交互式 dashboard（specs + changes 一屏总览�
 openspec status --change <name>   # 单个变更工件完成度
 ```
 
-## 总览统计（截至 2026-11-03）
+## 总览统计（截至 2026-11-06）
 
 - 规格：17 域 / 99 requirement（`openspec validate --specs --strict` 通过）
 - ✅ 经 openspec 归档实现：13
 - 🟡 已实现/设计完成（未走 openspec 变更）：24
 - ⬜ 待开发：16
 - 🗒 未立项（遗留散件登记）：约 16（展卷仪式 8 模块 + TODOS 安全/功能项）
+- 布局域（`layout-portal`）：12 条构建验收（L-1…L-12，第 12 条 Out of Scope）已实现，16/16 票合并，**待 G4 归档**
 
 ## 逐域状态
 
@@ -102,6 +103,25 @@ openspec status --change <name>   # 单个变更工件完成度
 | B-6 | 三视图切换 | ⬜ | 无实现 |
 | B-7 | Ctrl+1~9 直开条目 | ⬜ | 无实现 |
 | B-8 | 后退/前进历史导航 | ⬜ | 无实现 |
+
+### layout（12）
+
+> change `layout-portal`（spec issue #170 / 收尾票 #186）：16/16 票已实现并合并（含收尾阶段的 #204–#209），**待 G4 归档**。逐条证据见 [layout-portal-acceptance.md](./layout-portal-acceptance.md)。
+
+| 编号 | 需求 | 状态 | 证据 |
+|---|---|---|---|
+| L-1 | 门户四块齐全，无「来源」 | ✅ | [e2e/portal.spec.ts](../../e2e/portal.spec.ts) |
+| L-2 | 工作区 pane 递归树（N 栏/多页签/全屏/拖拽换位/四向落区/240px/持久化） | ✅ | [e2e/pane-tree.spec.ts](../../e2e/pane-tree.spec.ts)、[e2e/pane-drag.spec.ts](../../e2e/pane-drag.spec.ts) |
+| L-3 | 阅读空间三态/双布局/三密度/卡片规格/滑杆下拉「设为默认」 | ✅ | [e2e/reading-rail.spec.ts](../../e2e/reading-rail.spec.ts)、[e2e/rail-cards.spec.ts](../../e2e/rail-cards.spec.ts) |
+| L-4 | 网格下拉/bento 三型/缩略图优先/首卡选中/键盘行切换/动态编号 | ✅ | [e2e/grid-overview.spec.ts](../../e2e/grid-overview.spec.ts)、[e2e/grid-keyboard.spec.ts](../../e2e/grid-keyboard.spec.ts) |
+| L-5 | 悬浮预览窗真内容/四边四角缩放/贴栏锚定/拖动保持/hover 动作区/双开关独立 | ✅ | [e2e/floating-preview.spec.ts](../../e2e/floating-preview.spec.ts) |
+| L-6 | AI 唯一入口/小窗 285×260/停靠脱离/人话确认卡/撤销+快照/视图改写 | ✅ | [e2e/ai-forms.spec.ts](../../e2e/ai-forms.spec.ts) |
+| L-7 | 设置左导航 10 区/跟随系统外观 | ✅ | [e2e/settings-scene.spec.ts](../../e2e/settings-scene.spec.ts)、[e2e/settings-content.spec.ts](../../e2e/settings-content.spec.ts) |
+| L-8 | 扩展拖入即用/导出/AI 生成 | ✅ | [e2e/extensions-manage.spec.ts](../../e2e/extensions-manage.spec.ts) |
+| L-9 | 图标 universe-icon/标签三级/类型色/无 emoji | ✅ | [e2e/icon-system.spec.ts](../../e2e/icon-system.spec.ts) |
+| L-10 | 快捷键完整表可执行/tooltip 显示/`?` 总览 | ✅ | [e2e/shortcuts.spec.ts](../../e2e/shortcuts.spec.ts) |
+| L-11 | 哲学 12 红线全过 | ✅ | [layout-portal-acceptance.md](./layout-portal-acceptance.md) §二 |
+| L-12 | 生成物离线单文件（contentweave 部分） | ⬜ Out of Scope | 批准设计 §14 第 12 条 + §15；contentweave 单文件生成不属于本 change，显式记录不阻塞 |
 
 ### file-management（6）
 
