@@ -65,4 +65,4 @@
 
 ## 16. 收尾核查与文档
 
-- [ ] 16.1 12 条验收逐条核查（第 12 条 Out of Scope 显式记录）+ 哲学 12 红线全过 + 台账新增布局域行（无空证据）+ docs/architecture/overview.md 场景化外壳与视图规格持久化现状更新 + openspec validate --strict 通过 + QG-6 checkpoint ⑤（终验浏览器走查六态）
+- [x] 16.1 12 条验收逐条核查（第 12 条 Out of Scope 显式记录）+ 哲学 12 红线全过 + 台账新增布局域行（无空证据）+ docs/architecture/overview.md 场景化外壳与视图规格持久化现状更新 + openspec validate --strict 通过 + QG-6 checkpoint ⑤（终验浏览器走查六态）

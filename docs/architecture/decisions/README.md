@@ -17,7 +17,7 @@
 - 旧决定发生改变时，**只新增一条 superseding ADR**，不改写旧 ADR 正文。
 - 新增文档须带 frontmatter（`title` / `type: adr` / `status` / `last_updated`），规范见 `../../GOVERNANCE.md`。
 
-## 当前 ADR 索引（0001–0009）
+## 当前 ADR 索引（0001–0011）
 
 | # | 决策 | 状态 |
 |---|---|---|
@@ -30,6 +30,8 @@
 | 0007 | 生成物=编译产物，源 md 唯一事实源 | accepted |
 | 0008 | AI 入口分期与语音第二输入源 | accepted |
 | 0009 | 可折叠阅读空间取代无侧栏 | accepted |
+| 0010 | HTML 可视化编辑以 content 为唯一真相 | accepted |
+| 0011 | 场景化外壳与 Pane 递归树取代旧扁平分屏 | accepted |
 
 ## 权威级别
 
