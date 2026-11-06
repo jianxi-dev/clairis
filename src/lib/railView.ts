@@ -6,12 +6,19 @@
  */
 
 import { fileTypeOf, type FileTypeKind } from "./fileType";
+import { stripMarkdownOf } from "./railCards";
 import type { RecentFile, SearchHit } from "../types";
 
 /** 折叠态边缘条宽度（严格 12px，e2e 会量）。 */
 export const RAIL_EDGE_PX = 12;
-/** 悬停浮层 / 钉住常驻的栏宽（严格 240px）。 */
+/** 悬停浮层 / 钉住常驻的默认栏宽。 */
 export const RAIL_WIDTH_PX = 240;
+/** 钉住栏右缘拖拽手柄的视觉宽度（命中区再向外扩）。 */
+export const RAIL_RESIZE_HANDLE_PX = 4;
+/** 同时渲染的 HTML iframe 缩略图上限，超出后回退到 glyph 占位。 */
+export const HTML_IFRAME_CAP = 4;
+/** 布局 / 密度 / 快照菜单的最大高度，超出滚动。 */
+export const RAIL_MENU_MAX_HEIGHT = "calc(100vh - 48px)";
 /** 指针移开后收回折叠的延迟。 */
 export const HOVER_CLOSE_MS = 300;
 /** 悬停边缘条的驻留时间，超过才展开浮层。 */
@@ -185,8 +192,16 @@ export function filterSearchHits(
     if (chip !== "all" && fileTypeOf(hit.path) !== chip) continue;
     if (time !== "all" && timeBucketOf(hit.openedAt, now) !== time) continue;
     const ranges = matchRanges(hit.title, needle);
-    const excerptRanges = matchRanges(hit.excerpt, needle);
-    if (needle && ranges.length === 0 && excerptRanges.length === 0) continue;
+    // 高亮区间按「展示文本」算：Markdown 卡片渲染时会剥掉语法，若这里按原文算，
+    // 区间会整体错位。是否保留命中仍看原文，避免 query 只命中语法时被误丢。
+    const displayExcerpt =
+      fileTypeOf(hit.path) === "markdown"
+        ? stripMarkdownOf(hit.excerpt)
+        : hit.excerpt;
+    const rawExcerptRanges = matchRanges(hit.excerpt, needle);
+    const excerptRanges = matchRanges(displayExcerpt, needle);
+    if (needle && ranges.length === 0 && rawExcerptRanges.length === 0)
+      continue;
     out.push({ hit, ranges, excerptRanges });
   }
   return out;

@@ -336,12 +336,16 @@ test("缩略图居中、动作按钮位于其下方且不重叠；路径只显�
   const thumbBox = await thumb.boundingBox();
   const actionsBox = await actions.boundingBox();
   if (!thumbBox || !actionsBox) throw new Error("目标元素不可测量");
-  // 动作按钮在缩略图下方：顶边不高于缩略图底边（允许 1px 取整误差）
-  expect(actionsBox.y).toBeGreaterThanOrEqual(thumbBox.y + thumbBox.height - 1);
-  // 同一右列内居中：两者水平中心对齐
-  const thumbCenter = thumbBox.x + thumbBox.width / 2;
-  const actionsCenter = actionsBox.x + actionsBox.width / 2;
-  expect(Math.abs(thumbCenter - actionsCenter)).toBeLessThan(2);
+  // 动作按钮固定在卡片右上角（顶部），不随缩略图纵向排布
+  expect(actionsBox.y).toBeLessThanOrEqual(thumbBox.y + 1);
+  // 缩略图在剩余列中居中（72×54 固定盒）
+  expect(await boxOf(thumb)).toEqual({ w: 72, h: 54 });
+  // 动作按钮贴右上：右缘不超出卡片右缘
+  const cardBox = await card.boundingBox();
+  if (!cardBox) throw new Error("卡片不可测量");
+  expect(
+    cardBox.x + cardBox.width - (actionsBox.x + actionsBox.width),
+  ).toBeLessThan(8);
 
   const buttons = card.locator('[data-testid="rail-card-action"]');
   await expect(buttons).toHaveCount(3);

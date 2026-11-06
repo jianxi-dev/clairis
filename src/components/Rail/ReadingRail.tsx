@@ -1,18 +1,20 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
 import { fileDragHandlers } from "../../hooks/fileDrag";
 import { invoke } from "@tauri-apps/api/core";
 import { useStore } from "../../stores";
 import { useEditorStore } from "../../stores/editorStore";
-import { reloadAppConfig } from "../../hooks/useConfig";
+import { reloadAppConfig, saveAppConfig } from "../../hooks/useConfig";
 import Icon from "../Icon";
 import {
   colorOfType,
@@ -23,8 +25,10 @@ import {
 import {
   HOVER_CLOSE_MS,
   HOVER_OPEN_MS,
+  HTML_IFRAME_CAP,
   RAIL_EDGE_PX,
-  RAIL_KIND_LABELS,
+  RAIL_MENU_MAX_HEIGHT,
+  RAIL_RESIZE_HANDLE_PX,
   RAIL_SEARCH_TIMES,
   RAIL_SECTIONS,
   filterRailItems,
@@ -40,6 +44,10 @@ import {
   type RailSearchTime,
   type RailSection,
 } from "../../lib/railView";
+import {
+  RAIL_PINNED_WIDTH_MAX,
+  RAIL_PINNED_WIDTH_MIN,
+} from "../../lib/aiViewSpec";
 import { isUnread } from "../../lib/aiViewSpec";
 import {
   CARD_MAX,
@@ -50,12 +58,15 @@ import {
   parentPathOf,
   readPercentOf,
   relativeDate,
+  stripMarkdownOf,
   taskProgressOf,
   thumbDescriptorOf,
   thumbnailBox,
+  type MetaKind,
   type ThumbDescriptor,
 } from "../../lib/railCards";
 import { assetSrc } from "../../lib/assetSrc";
+import { mediaUrlForPath } from "../../lib/mediaUrl";
 import { revealInFinder } from "../../lib/finder";
 import {
   HOVER_DELAY_MS,
@@ -72,6 +83,22 @@ import type { RecentFile, SearchHit } from "../../types";
 
 const SEARCH_DEBOUNCE_MS = 300;
 const SEARCH_LIMIT = 30;
+
+/** HTML iframe 缩略图：720×540 画布缩到 72×54（10%），避免触发移动端布局。 */
+const HTML_THUMB_BASE_W = 720;
+const HTML_THUMB_BASE_H = 540;
+const HTML_THUMB_SCALE = 0.1;
+
+/** 并发 iframe 上限的全局计数；超出后 HTML 卡片回退到 glyph 占位。 */
+let activeHtmlThumbs = 0;
+function acquireHtmlThumb(): boolean {
+  if (activeHtmlThumbs >= HTML_IFRAME_CAP) return false;
+  activeHtmlThumbs += 1;
+  return true;
+}
+function releaseHtmlThumb(): void {
+  activeHtmlThumbs = Math.max(0, activeHtmlThumbs - 1);
+}
 
 const LAYOUT_LABELS: Record<RailLayout, string> = {
   stacked: "堆叠",
@@ -122,13 +149,37 @@ interface RailRowProps {
 /**
  * 卡片右侧 4:3 缩略图（72×54）。
  *
- * 六种类型全部确定性离线生成：HTML=中性图标占位、PDF=红文档页、视频=紫海报+播放、
- * 音频=粉波形、图片/MD 首图=真 <img>。纯文本与无图 MD 不会调用到这里。
+ * 图片 / MD 首图 = 真 <img>；视频 = <video> 首帧；HTML = sandbox iframe 缩略
+ * （并发超限回退 glyph）；PDF / 音频 = 确定性离线图形。纯文本与无图 MD 不会
+ * 调用到这里。
  */
 function RailThumb({ descriptor }: { descriptor: ThumbDescriptor }) {
   const box = thumbnailBox();
   const size = { width: box.w, height: box.h };
   const kind = descriptor.kind;
+  const src = descriptor.src ?? "";
+
+  const [htmlSlot, setHtmlSlot] = useState(false);
+  const htmlAcquiredRef = useRef(false);
+
+  useEffect(() => {
+    if (kind !== "html-page" || !isTauriEnv() || !src) return;
+    if (acquireHtmlThumb()) {
+      htmlAcquiredRef.current = true;
+      setHtmlSlot(true);
+    }
+    return () => {
+      if (htmlAcquiredRef.current) {
+        htmlAcquiredRef.current = false;
+        releaseHtmlThumb();
+      }
+    };
+  }, [kind, src]);
+
+  useEffect(() => {
+    if (kind !== "video-poster" || !isTauriEnv() || !src) return;
+    void invoke("register_media_path", { path: src }).catch(() => {});
+  }, [kind, src]);
 
   if (kind === "image" || kind === "md-cover") {
     return (
@@ -150,6 +201,7 @@ function RailThumb({ descriptor }: { descriptor: ThumbDescriptor }) {
   }
 
   if (kind === "video-poster") {
+    const showVideo = isTauriEnv() && !!src;
     return (
       <div
         data-testid="rail-thumb"
@@ -164,6 +216,15 @@ function RailThumb({ descriptor }: { descriptor: ThumbDescriptor }) {
         <span className="rail-thumb-play">
           <Icon name="video" size={24} color="var(--app-surface)" />
         </span>
+        {showVideo && (
+          <video
+            src={mediaUrlForPath(src)}
+            preload="metadata"
+            muted
+            playsInline
+            className="relative h-full w-full object-cover"
+          />
+        )}
       </div>
     );
   }
@@ -203,6 +264,25 @@ function RailThumb({ descriptor }: { descriptor: ThumbDescriptor }) {
         className="rail-thumb flex shrink-0 items-center justify-center border"
       >
         <Icon name="html" size={24} color="var(--type-html)" />
+        {htmlSlot && src && (
+          <iframe
+            sandbox=""
+            src={assetSrc(src)}
+            title=""
+            tabIndex={-1}
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              width: HTML_THUMB_BASE_W,
+              height: HTML_THUMB_BASE_H,
+              border: "none",
+              transform: `scale(${HTML_THUMB_SCALE})`,
+              transformOrigin: "top left",
+              pointerEvents: "none",
+            }}
+          />
+        )}
       </div>
     );
   }
@@ -222,6 +302,32 @@ function RailThumb({ descriptor }: { descriptor: ThumbDescriptor }) {
       <span className="rail-thumb-line" />
       <span className="rail-thumb-line" />
     </div>
+  );
+}
+
+function RailProgress({
+  pct,
+  text,
+  kind,
+}: {
+  pct: number;
+  text: string;
+  kind: MetaKind;
+}) {
+  return (
+    <span
+      data-testid="rail-meta-progress"
+      data-meta-kind={kind}
+      className="flex shrink-0 items-center gap-1 text-[10px]"
+    >
+      <span className="inline-block h-0.5 w-4 overflow-hidden rounded bg-gray-200 dark:bg-gray-700">
+        <span
+          className="block h-full bg-[var(--app-accent)]"
+          style={{ width: `${pct}%` }}
+        />
+      </span>
+      <span>{text}</span>
+    </span>
   );
 }
 
@@ -245,6 +351,25 @@ function RailRow({
   const kind: FileTypeKind = fileTypeOf(item.path);
   const iconColor = blockColors ? colorOfType(kind) : undefined;
   const segments = splitByRanges(item.title, ranges);
+  const meta = metaLine(item, readPercent);
+  const tasks = taskProgressOf(item.excerpt);
+  const readPct =
+    typeof readPercent === "number" && Number.isFinite(readPercent)
+      ? Math.min(100, Math.max(0, Math.round(readPercent)))
+      : null;
+  const progressPct = tasks
+    ? Math.round((tasks.done / tasks.total) * 100)
+    : meta.kind === "read"
+      ? readPct
+      : null;
+  const progressNode =
+    progressPct !== null ? (
+      <RailProgress
+        pct={progressPct}
+        text={tasks ? `${tasks.done}/${tasks.total}` : meta.text}
+        kind={tasks ? "task" : "read"}
+      />
+    ) : null;
   const pinButton = (
     <button
       type="button"
@@ -303,6 +428,7 @@ function RailRow({
           <Icon name={iconOfType(kind)} size={18} color={iconColor} />
           {title("truncate text-xs text-gray-700 dark:text-gray-200")}
         </button>
+        {progressNode}
         <span
           data-testid="rail-item-time"
           className="shrink-0 text-[10px] text-gray-400 dark:text-gray-500"
@@ -347,6 +473,7 @@ function RailRow({
           <Icon name="folder" size={18} />
           <span className="truncate">{parentFolderNameOf(item.path)}</span>
           <span>·</span>
+          {progressNode}
           <span className="shrink-0">{relativeDate(item.openedAt)}</span>
           {pinned && (
             <span
@@ -362,21 +489,13 @@ function RailRow({
   }
 
   const thumb = thumbDescriptorOf(item);
-  const meta = metaLine(item, readPercent);
+  const rawExcerpt = item.excerpt || "（暂无正文）";
+  const displayExcerpt =
+    kind === "markdown" ? stripMarkdownOf(rawExcerpt) : rawExcerpt;
   const excerptSegments = splitByRanges(
-    item.excerpt || "（暂无正文）",
+    displayExcerpt || rawExcerpt,
     excerptRanges ?? [],
   );
-  const tasks = taskProgressOf(item.excerpt);
-  const readPct =
-    typeof readPercent === "number" && Number.isFinite(readPercent)
-      ? Math.min(100, Math.max(0, Math.round(readPercent)))
-      : null;
-  const progressPct = tasks
-    ? Math.round((tasks.done / tasks.total) * 100)
-    : meta.kind === "read"
-      ? readPct
-      : null;
 
   const actions = (
     <div
@@ -461,9 +580,8 @@ function RailRow({
           </p>
         </div>
         {thumb && (
-          <div className="flex shrink-0 flex-col items-center justify-center gap-0.5">
+          <div className="flex shrink-0 items-center justify-center">
             <RailThumb descriptor={thumb} />
-            {actions}
           </div>
         )}
       </div>
@@ -473,14 +591,6 @@ function RailRow({
         data-meta-kind={meta.kind}
         className="flex min-w-0 items-center gap-1 text-[10px] text-gray-400 dark:text-gray-500"
       >
-        <span
-          data-testid="rail-card-chip"
-          data-kind={kind}
-          style={{ color: colorOfType(kind), borderColor: colorOfType(kind) }}
-          className="shrink-0 rounded-full border px-1.5 py-px leading-none"
-        >
-          {RAIL_KIND_LABELS[kind]}
-        </span>
         <button
           type="button"
           data-testid="rail-item-pin"
@@ -496,21 +606,7 @@ function RailRow({
         >
           置顶
         </button>
-        {progressPct !== null && (
-          <span
-            data-testid="rail-meta-progress"
-            data-meta-kind={meta.kind}
-            className="flex shrink-0 items-center gap-1"
-          >
-            <span className="inline-block h-0.5 w-4 overflow-hidden rounded bg-gray-200 dark:bg-gray-700">
-              <span
-                className="block h-full bg-[var(--app-accent)]"
-                style={{ width: `${progressPct}%` }}
-              />
-            </span>
-            <span>{meta.text}</span>
-          </span>
-        )}
+        {progressNode}
         <span data-testid="rail-item-date" className="shrink-0">
           {meta.date}
         </span>
@@ -526,7 +622,7 @@ function RailRow({
         </button>
       </div>
 
-      {!thumb && <div className="absolute right-1 top-1 z-10">{actions}</div>}
+      <div className="absolute right-1 top-1 z-10">{actions}</div>
     </div>
   );
 }
@@ -632,6 +728,8 @@ export default function ReadingRail({
   const [searchedQuery, setSearchedQuery] = useState("");
   const [searchChip, setSearchChip] = useState<RailChipKind>("all");
   const [searchTime, setSearchTime] = useState<RailSearchTime>("all");
+  const [railWidth, setRailWidthState] = useState(viewSpec.railPinnedWidth);
+  const [menuFlip, setMenuFlip] = useState(false);
 
   const openTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -656,6 +754,42 @@ export default function ReadingRail({
       }
     },
     [],
+  );
+
+  // 配置重载（快照恢复 / 启动）后同步外部写入的宽度：渲染期调整，避免 effect 回写
+  const [prevSpecWidth, setPrevSpecWidth] = useState(viewSpec.railPinnedWidth);
+  if (prevSpecWidth !== viewSpec.railPinnedWidth) {
+    setPrevSpecWidth(viewSpec.railPinnedWidth);
+    setRailWidthState(viewSpec.railPinnedWidth);
+  }
+
+  const onResizeStart = useCallback(
+    (e: ReactPointerEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const startX = e.clientX;
+      const startWidth = railWidth;
+      let last = startWidth;
+      const onMove = (ev: PointerEvent) => {
+        last = Math.min(
+          RAIL_PINNED_WIDTH_MAX,
+          Math.max(
+            RAIL_PINNED_WIDTH_MIN,
+            Math.round(startWidth + ev.clientX - startX),
+          ),
+        );
+        setRailWidthState(last);
+      };
+      const onUp = () => {
+        window.removeEventListener("pointermove", onMove);
+        window.removeEventListener("pointerup", onUp);
+        useStore.getState().applyViewSpec({ railPinnedWidth: last });
+        void saveAppConfig();
+      };
+      window.addEventListener("pointermove", onMove);
+      window.addEventListener("pointerup", onUp);
+    },
+    [railWidth],
   );
 
   // 状态变化时清掉悬停计时器：避免过期回调把栏/预览拉回旧态
@@ -774,6 +908,17 @@ export default function ReadingRail({
     },
     [clearTimer],
   );
+
+  // 栏宽小于菜单宽度时，right-0 会把菜单顶到视口左缘之外，改用 left-0 翻转
+  useLayoutEffect(() => {
+    if (!menuOpen) return;
+    const anchor = menuRef.current;
+    const menuEl = anchor?.querySelector<HTMLElement>(
+      '[data-testid="rail-menu"]',
+    );
+    if (!anchor || !menuEl) return;
+    setMenuFlip(anchor.getBoundingClientRect().right - menuEl.offsetWidth < 0);
+  }, [menuOpen, railWidth]);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -961,7 +1106,7 @@ export default function ReadingRail({
     [searchHits, searchedQuery, railQuery],
   );
 
-  const panelWidth = viewSpec.railPinnedWidth;
+  const panelWidth = railWidth;
   const railSections = viewSpec.pinnedAndRecentOnly
     ? RAIL_SECTIONS.filter((s) => s.key === "pinned" || s.key === "recent")
     : RAIL_SECTIONS;
@@ -1085,7 +1230,14 @@ export default function ReadingRail({
           <div
             data-testid="rail-menu"
             role="menu"
-            className="absolute right-0 top-full z-50 mt-1 w-56 rounded border border-gray-200 bg-white py-1 text-xs shadow-lg dark:border-gray-700 dark:bg-gray-800"
+            style={{
+              ...(menuFlip
+                ? { left: 0, right: "auto" }
+                : { right: 0, left: "auto" }),
+              maxHeight: RAIL_MENU_MAX_HEIGHT,
+              overflowY: "auto",
+            }}
+            className="absolute top-full z-50 mt-1 w-56 rounded border border-gray-200 bg-white py-1 text-xs shadow-lg dark:border-gray-700 dark:bg-gray-800"
           >
             <div className="px-3 py-1 text-[10px] uppercase text-gray-400">
               布局
@@ -1392,15 +1544,9 @@ export default function ReadingRail({
       onClick={toggleRailPin}
       title="阅读空间"
       aria-label="展开阅读空间"
-      className="rail-edge flex h-full w-full flex-col items-center justify-center gap-1 overflow-hidden bg-gray-50 text-gray-400 dark:bg-gray-900"
+      className="rail-edge flex h-full w-full items-center justify-center overflow-hidden bg-gray-50 text-gray-400 dark:bg-gray-900"
     >
       <Icon name="chevronRight" size={18} className="rail-edge-icon" />
-      <span
-        data-testid="rail-count"
-        className="text-[9px] leading-none text-gray-500 dark:text-gray-400"
-      >
-        {recentFiles.length}
-      </span>
     </button>
   );
 
@@ -1413,11 +1559,21 @@ export default function ReadingRail({
         data-rail-scale={viewSpec.pinnedSegmentScale}
         data-rail-block-colors={viewSpec.blockColors ? "true" : "false"}
         style={{ width: panelWidth }}
-        className="rail-root shrink-0 border-r border-gray-200 dark:border-gray-700"
+        className="rail-root relative shrink-0 border-r border-gray-200 dark:border-gray-700"
         onMouseEnter={onEnter}
         onMouseLeave={onLeave}
       >
         {panel}
+        <div
+          data-testid="rail-resize-handle"
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="拖动调整阅读空间宽度"
+          title="拖动调整宽度"
+          onPointerDown={onResizeStart}
+          className="absolute right-0 top-0 z-20 h-full cursor-col-resize hover:bg-[var(--app-accent-soft)]"
+          style={{ width: RAIL_RESIZE_HANDLE_PX }}
+        />
         {notice && <RailNotice text={notice} />}
       </div>
     );
