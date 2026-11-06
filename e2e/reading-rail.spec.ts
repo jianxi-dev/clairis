@@ -247,6 +247,85 @@ test("搜索即时过滤并高亮；× 清空保持聚焦；Esc 先清后收", a
   await expect(page.locator('[data-testid="rail-panel"]')).toHaveCount(0);
 });
 
+test("本机检索：正文命中高亮；类型与时间筛选生效", async ({ page }) => {
+  await boot(page);
+  await seed(page);
+  await openHover(page);
+  await page.locator('[data-testid="rail-pin"]').click();
+  await expect(page.locator('[data-testid="rail-panel"]')).toHaveAttribute(
+    "data-rail-state",
+    "pinned",
+  );
+
+  const now = Date.now();
+  const older = now - 10 * 86_400_000;
+  await page.evaluate(
+    ([nowMs, olderMs]) => {
+      const w = window as unknown as {
+        __biaoyue_search_documents__: unknown[];
+      };
+      w.__biaoyue_search_documents__ = [
+        {
+          path: "/Users/test/Documents/架构笔记.md",
+          title: "架构笔记",
+          openedAt: new Date(nowMs).toISOString(),
+          excerpt: "…正文片段包含关键词…",
+          matchedIn: "content",
+        },
+        {
+          path: "/Users/test/Documents/会议纪要.md",
+          title: "会议纪要",
+          openedAt: new Date(olderMs).toISOString(),
+          excerpt: "关键词出现在这里。",
+          matchedIn: "content",
+        },
+        {
+          path: "/Users/test/Desktop/页面.html",
+          title: "页面",
+          openedAt: new Date(nowMs).toISOString(),
+          excerpt: "HTML 里的关键词。",
+          matchedIn: "content",
+        },
+      ];
+    },
+    [now, older],
+  );
+
+  const input = page.locator('[data-testid="rail-search-input"]');
+  await input.click();
+  await input.fill("关键词");
+
+  const results = page.locator('[data-testid="rail-search-results"]');
+  await expect(results).toBeVisible();
+  await expect(page.locator('[data-testid="rail-search-count"]')).toHaveText(
+    "3 条",
+  );
+  const marks = results.locator('[data-testid="rail-hit"]');
+  await expect(marks.first()).toBeVisible();
+  await expect(marks.first()).toHaveText("关键词");
+  await shot(page, "rail-search-local");
+
+  // 类型筛选：Markdown → 2 条
+  await results
+    .locator('[data-testid="rail-chip"][data-chip="markdown"]')
+    .click();
+  await expect(results.locator('[data-testid="rail-item"]')).toHaveCount(2);
+  await shot(page, "rail-search-type-filter");
+
+  // 时间筛选：今天 → 只剩架构笔记
+  await results
+    .locator('[data-testid="rail-search-time"][data-time="today"]')
+    .click();
+  await expect(results.locator('[data-testid="rail-item"]')).toHaveCount(1);
+  await expect(
+    results.locator('[data-testid="rail-item"]').first(),
+  ).toHaveAttribute("data-rail-path", "/Users/test/Documents/架构笔记.md");
+
+  // 无命中 → 空态
+  await input.fill("不存在的词");
+  await expect(page.locator('[data-testid="rail-search-empty"]')).toBeVisible();
+});
+
 test("设为默认后重启：rail 视图规格与所设严格相等", async ({ page }) => {
   await boot(page);
   await seed(page);

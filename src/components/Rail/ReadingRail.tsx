@@ -25,8 +25,10 @@ import {
   HOVER_OPEN_MS,
   RAIL_EDGE_PX,
   RAIL_KIND_LABELS,
+  RAIL_SEARCH_TIMES,
   RAIL_SECTIONS,
   filterRailItems,
+  filterSearchHits,
   fileTypeChips,
   nextRailState,
   splitByRanges,
@@ -35,6 +37,7 @@ import {
   type RailChipKind,
   type RailDensity,
   type RailLayout,
+  type RailSearchTime,
   type RailSection,
 } from "../../lib/railView";
 import { isUnread } from "../../lib/aiViewSpec";
@@ -65,7 +68,10 @@ import {
 } from "../../lib/previewAnchor";
 import { log } from "../../utils/log";
 import { isTauriEnv } from "../../utils/tauri";
-import type { RecentFile } from "../../types";
+import type { RecentFile, SearchHit } from "../../types";
+
+const SEARCH_DEBOUNCE_MS = 300;
+const SEARCH_LIMIT = 30;
 
 const LAYOUT_LABELS: Record<RailLayout, string> = {
   stacked: "堆叠",
@@ -96,6 +102,7 @@ function boxOf(el: HTMLElement): Box {
 interface RailRowProps {
   item: RecentFile;
   ranges: MatchRange[];
+  excerptRanges?: MatchRange[];
   density: RailDensity;
   cardHeight: number;
   pinned: boolean;
@@ -221,6 +228,7 @@ function RailThumb({ descriptor }: { descriptor: ThumbDescriptor }) {
 function RailRow({
   item,
   ranges,
+  excerptRanges,
   density,
   cardHeight,
   pinned,
@@ -355,6 +363,10 @@ function RailRow({
 
   const thumb = thumbDescriptorOf(item);
   const meta = metaLine(item, readPercent);
+  const excerptSegments = splitByRanges(
+    item.excerpt || "（暂无正文）",
+    excerptRanges ?? [],
+  );
   const tasks = taskProgressOf(item.excerpt);
   const readPct =
     typeof readPercent === "number" && Number.isFinite(readPercent)
@@ -437,7 +449,15 @@ function RailRow({
             data-testid="rail-card-excerpt"
             className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-gray-500 dark:text-gray-400"
           >
-            {item.excerpt || "（暂无正文）"}
+            {excerptSegments.map((seg, i) =>
+              seg.hit ? (
+                <mark key={i} data-testid="rail-hit" className="rail-hit">
+                  {seg.text}
+                </mark>
+              ) : (
+                <span key={i}>{seg.text}</span>
+              ),
+            )}
           </p>
         </div>
         {thumb && (
@@ -608,12 +628,18 @@ export default function ReadingRail({
   const [snapshots, setSnapshots] = useState<string[]>([]);
   const [notice, setNotice] = useState<string | null>(null);
   const [locatedPath, setLocatedPath] = useState<string | null>(null);
+  const [searchHits, setSearchHits] = useState<SearchHit[]>([]);
+  const [searchedQuery, setSearchedQuery] = useState("");
+  const [searchChip, setSearchChip] = useState<RailChipKind>("all");
+  const [searchTime, setSearchTime] = useState<RailSearchTime>("all");
 
   const openTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const previewTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const locateTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchSeq = useRef(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const railPanelRef = useRef<HTMLDivElement>(null);
@@ -676,6 +702,36 @@ export default function ReadingRail({
       cancelled = true;
     };
   }, [configLoaded]);
+
+  // 本机检索：query 去抖 300ms 后调用 search_documents；序号丢弃过期响应。
+  // searching 由 searchedQuery 派生，不在 effect 里同步 setState。
+  useEffect(() => {
+    const query = railQuery.trim();
+    if (!query || !isTauriEnv() || query === searchedQuery) {
+      searchSeq.current += 1;
+      return;
+    }
+    const seq = ++searchSeq.current;
+    clearTimer(searchTimer);
+    searchTimer.current = setTimeout(() => {
+      searchTimer.current = null;
+      invoke<SearchHit[]>("search_documents", { query, limit: SEARCH_LIMIT })
+        .then((hits) => {
+          if (searchSeq.current !== seq) return;
+          setSearchHits(Array.isArray(hits) ? hits : []);
+          setSearchedQuery(query);
+        })
+        .catch(() => {
+          if (searchSeq.current !== seq) return;
+          setSearchHits([]);
+          setSearchedQuery(query);
+        });
+    }, SEARCH_DEBOUNCE_MS);
+    return () => clearTimer(searchTimer);
+  }, [railQuery, searchedQuery, clearTimer]);
+
+  const searching =
+    railQuery.trim() !== "" && railQuery.trim() !== searchedQuery;
 
   useEffect(() => {
     if (!locatedPath) return;
@@ -774,7 +830,7 @@ export default function ReadingRail({
   useEffect(() => {
     const el = listScrollRef.current;
     if (el) el.scrollTop = 0;
-  }, [railLayout, railDensity, railChip]);
+  }, [railLayout, railDensity, railChip, searchChip, searchTime]);
 
   const readPercentFor = useCallback(
     (path: string): number | undefined => readPercentOf(scrollPositions[path]),
@@ -888,6 +944,22 @@ export default function ReadingRail({
   );
 
   const chips = useMemo(() => fileTypeChips(recentFiles), [recentFiles]);
+
+  const searchMatches = useMemo(
+    () =>
+      railQuery.trim() === searchedQuery
+        ? filterSearchHits(searchHits, {
+            chip: searchChip,
+            time: searchTime,
+            query: railQuery,
+          })
+        : [],
+    [searchHits, searchedQuery, searchChip, searchTime, railQuery],
+  );
+  const searchChips = useMemo(
+    () => fileTypeChips(railQuery.trim() === searchedQuery ? searchHits : []),
+    [searchHits, searchedQuery, railQuery],
+  );
 
   const panelWidth = viewSpec.railPinnedWidth;
   const railSections = viewSpec.pinnedAndRecentOnly
@@ -1153,7 +1225,7 @@ export default function ReadingRail({
         ref={inputRef}
         data-testid="rail-search-input"
         value={railQuery}
-        placeholder="搜索栏内文件"
+        placeholder="搜索本机文件"
         onChange={(e) => setRailQuery(e.target.value)}
         onFocus={openRailSearch}
         onKeyDown={onSearchKeyDown}
@@ -1176,6 +1248,84 @@ export default function ReadingRail({
       )}
     </div>
   );
+
+  const searchBlock =
+    railSearchOpen && railQuery.trim() !== "" ? (
+      <div
+        data-testid="rail-search-results"
+        className="border-b border-gray-100 pb-1 dark:border-gray-800"
+      >
+        <div className="flex items-center gap-1 px-3 py-1 text-[11px] text-gray-500 dark:text-gray-400">
+          <span className="mr-auto font-medium">本机检索</span>
+          <span data-testid="rail-search-count">
+            {searching ? "检索中…" : `${searchMatches.length} 条`}
+          </span>
+        </div>
+        <RailChips
+          chips={searchChips}
+          active={searchChip}
+          onPick={setSearchChip}
+        />
+        <div
+          data-testid="rail-search-times"
+          className="flex flex-wrap gap-1 px-2 pb-1"
+        >
+          {RAIL_SEARCH_TIMES.map((t) => (
+            <button
+              key={t.key}
+              type="button"
+              data-testid="rail-search-time"
+              data-time={t.key}
+              data-active={searchTime === t.key ? "true" : "false"}
+              onClick={() => setSearchTime(t.key)}
+              className={`rounded-full border px-2 py-0.5 text-[11px] ${
+                searchTime === t.key
+                  ? "border-transparent bg-[var(--app-accent-soft)] text-[var(--app-accent)]"
+                  : "border-gray-200 text-gray-500 hover:bg-gray-100 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800"
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+        {searchMatches.length === 0 ? (
+          <div
+            data-testid="rail-search-empty"
+            className="px-3 py-3 text-[11px] text-gray-400 dark:text-gray-500"
+          >
+            {searching ? "检索中…" : "无命中"}
+          </div>
+        ) : (
+          searchMatches.map((m) => {
+            const item: RecentFile = {
+              path: m.hit.path,
+              title: m.hit.title,
+              openedAt: m.hit.openedAt,
+              excerpt: m.hit.excerpt,
+            };
+            return (
+              <RailRow
+                key={m.hit.path}
+                item={item}
+                ranges={m.ranges}
+                excerptRanges={m.excerptRanges}
+                density={railDensity}
+                cardHeight={railCardHeight}
+                pinned={pinnedPaths.includes(m.hit.path)}
+                readPercent={readPercentFor(m.hit.path)}
+                blockColors={viewSpec.blockColors}
+                onOpen={onOpenPath}
+                onSplit={openInSplit}
+                onReveal={revealInFinder}
+                onTogglePin={togglePinnedPath}
+                onRowMove={(e) => handleRowMove(item, e.currentTarget, e)}
+                onRowLeave={onRowLeave}
+              />
+            );
+          })
+        )}
+      </div>
+    ) : null;
 
   const listBody =
     railLayout === "stacked" ? (
@@ -1228,6 +1378,7 @@ export default function ReadingRail({
         data-testid="rail-scroll"
         className="flex-1 overflow-y-auto"
       >
+        {searchBlock}
         {listBody}
       </div>
     </div>

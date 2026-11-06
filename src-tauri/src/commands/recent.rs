@@ -13,14 +13,14 @@ const MAX_RESULTS: usize = 50;
 const EXCERPT_LIMIT: usize = 400;
 /// 摘要读取窗口：足够覆盖常见 `<script>` / `<style>` 块，避免闭标签落在窗口外导致正文泄露。
 const EXCERPT_READ_LIMIT: u64 = 8192;
-const SCAN_DIRS: &[&str] = &["Documents", "Desktop", "Downloads"];
+pub(crate) const SCAN_DIRS: &[&str] = &["Documents", "Desktop", "Downloads"];
 
 /// 应用能打开的类型：文档 + 图片/视频/PDF/音频（最近文件卡片要显示这些类型）。
 fn is_supported(path: &Path) -> bool {
     is_supported_document(path) || is_binary_extension(path)
 }
 
-fn is_html(path: &Path) -> bool {
+pub(crate) fn is_html(path: &Path) -> bool {
     matches!(
         path.extension()
             .and_then(|e| e.to_str())
@@ -35,7 +35,7 @@ struct ScanItem {
     modified: SystemTime,
 }
 
-fn is_heavy_dir(name: &str) -> bool {
+pub(crate) fn is_heavy_dir(name: &str) -> bool {
     matches!(
         name,
         "node_modules" | ".git" | "target" | "dist" | ".next" | "__pycache__" | "vendor" | ".cache"
@@ -75,7 +75,7 @@ fn scan_dir(dir: &Path, depth: usize, out: &mut Vec<ScanItem>) {
     }
 }
 
-fn to_iso8601(time: SystemTime) -> String {
+pub(crate) fn to_iso8601(time: SystemTime) -> String {
     chrono::DateTime::<chrono::Utc>::from(time).to_rfc3339_opts(chrono::SecondsFormat::Millis, true)
 }
 
@@ -89,7 +89,7 @@ fn decode_entities(text: &str) -> String {
         .replace("&amp;", "&")
 }
 
-fn strip_html_tags(html: &str) -> String {
+pub(crate) fn strip_html_tags(html: &str) -> String {
     let lower = html.to_ascii_lowercase();
     let mut out = String::with_capacity(html.len());
     let mut index = 0;
