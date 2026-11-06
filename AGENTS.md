@@ -24,7 +24,7 @@ Biaoyue 面向中文用户，维护者母语为中文。以下为**硬约定**�
 - **共享词汇与架构决策（Real Engineers）**：词汇表 `CONTEXT.md`；架构现状 `docs/architecture/overview.md`，架构决策 `docs/architecture/decisions/`
 - **项目结构与模块地图（OmO init-deep）**：`.opencode/project-tree.md`；OmO 命令与技能在 `.opencode/`
 - **架构/产品/设计文档**：`docs/`（索引 `docs/README.md`）：产品 `docs/product/`、批准设计 `docs/design/approved/`、探索 `docs/design/explorations/`、研究 `docs/research/`、交付 `docs/delivery/`、历史 `docs/archive/`；总纲由 `docs/README.md` + `docs/architecture/overview.md` 承担
-- **知识检索（GBrain）**：`gbrain search "<语义问题>"` / `gbrain query`；代码符号查 `gbrain code-def/code-refs`；配置 `~/.gbrain/config.json`（pglite，本仓库由 `gbrain autopilot --repo` 自动增量索引；当前无常驻 daemon，手动 `gbrain dream` 触发）
+- **知识检索（GBrain）**：agent 通过 MCP 工具 `search` / `query` / `get_page` / `code_def` / `code_refs`（共享 HTTP owner，`http://127.0.0.1:3131/mcp`）。PGLite 单写者下，同样功能的 CLI `gbrain search/query/status` 会报 `pglite_busy`；`gbrain sync` 例外，走委托可正常跑。**无常驻 autopilot**，索引刷新用 `/sync-gbrain`。配置 `~/.gbrain/config.json`。
 - **需求基线与跟踪**：产品愿景/原则/范围 `docs/product/`，交付路线图 `docs/delivery/roadmap.md`，功能规格 `openspec/specs/`，需求×实现状态一览 `docs/delivery/requirements-status.md`（旧 `CORE-REQUIREMENTS-clairis.md`/`PLAN.md`/`MVP-需求跟踪表.md` 等已 superseded/归档，不作活入口）
 - **软著资料准备**：`docs/delivery/softcopyright/`（台账/开发流程证据链规范/申请操作手册）
 
@@ -106,15 +106,23 @@ Biaoyue 面向中文用户，维护者母语为中文。以下为**硬约定**�
 
 ## GBrain Configuration（由 /setup-gbrain 配置）
 
-- Mode: local-stdio
-- Engine: pglite
+- Mode: local-shared-http（单一 owner）
+- Engine: pglite（单写者）
 - Config file: ~/.gbrain/config.json（mode 0600）
 - Setup date: 2026-08-02
-- MCP registered: no（本机无 `claude` CLI，OpenCode 主机适配跳过；如需可自行 `gbrain serve` + 在 agent 的 MCP 配置里注册）
+- MCP registered: yes —— 共享 HTTP owner（launchd `com.gbrain.serve` → `gbrain serve --http`，`http://127.0.0.1:3131/mcp`）；opencode 与 pi 均以 HTTP + bearer token 连接，不再每会话各起一个 stdio serve
 - Artifacts sync: off（Step 7 选择"不需要"；GitHub 当前不可达）
 - Current repo policy: read-write（github.com/lqtdys/clairis）
 - transcript_ingest_mode: incremental
-- Last cycle: 2026-08-30 增量 sync（`gstack-code-clairis-0cb0a733` 252 页、memory 53 条、call graph 已建 edges 可用）。autopilot 已通过 launchd `com.gbrain.autopilot` 常驻（`gbrain autopilot --repo <repo>` 自动重启）；同步期间勿跑 `/sync-gbrain`
+- Last cycle: 2026-11-06 增量 sync（`gstack-code-clairis-0cb0a733`，commit `fe5d86ca`，421 页，未嵌入 0）。**无常驻 autopilot**（`launchctl list` 里没有 `com.gbrain.autopilot`；此前文档写"已常驻"是错的）。
+- PGLite 单写者约束（重要）：brain 由 launchd `com.gbrain.serve` 独占持有。
+  - `gbrain sync --source <id> --no-pull` **可用**：CLI 会委托给运行中的 owner 执行。
+  - `gbrain search/get/query/status/sources ...` 等直接开库的命令会报 `pglite_busy`。读操作请走 MCP 工具（`search` / `query` / `get_page` / `sources_status`），或先 `gbrain mcp expose --remove` 停共享服务再跑 CLI（停服务期间 agent 的 MCP 不可用）。
+  - autopilot 与共享 serve 互斥：两者都要独占 PGLite，不要同时开。
+- 客户端 token 有效期 90 天（TTL 上限 `7776000`s，无法设更长）。到期后 agent 的 gbrain 工具会返回 `invalid_token`，看起来像"又锁死了"，其实只需轮换：
+  1. `gbrain connect http://127.0.0.1:3131/mcp --harness opencode --credentials-file ~/.gbrain/private/local-agents.json --install --fresh-token`
+  2. 读出 `~/.config/opencode/opencode.json` 里 `mcp.gbrain.headers.Authorization` 的 token，然后 `pi mcp add gbrain --url http://127.0.0.1:3131/mcp --header "Authorization=Bearer <token>"`
+  3. `pi mcp list` 应显示 `gbrain: connected`。注意 `~/.gbrain/private/local-agents.json` 里的 `expires_at` 是首次签发时的过期时间，不会随轮换更新，不要拿它判断有效期。
 
 ## GBrain Search Guidance（configured by /sync-gbrain）
 <!-- gstack-gbrain-search-guidance:start -->
@@ -135,7 +143,7 @@ GBrain 已在本机配置并同步。当问题偏语义、或尚不确定确切�
 - "什么调用了 Y？" / "Y 依赖什么？"：`gbrain code-callers <符号>` / `gbrain code-callees <符号>`
 - "上次我们决定了什么？" / 过往计划、retro、learnings：`gbrain search "<词>" --source gstack-brain-<user>`
 
-已知确切字符串、正则、多行、glob 时仍用 Grep。代码有意义变更后跑 `/sync-gbrain` 刷新；需要跨 worktree 持续自动同步时，每台机器跑一次 `gbrain autopilot --install`（本机已通过 launchd `com.gbrain.autopilot` 常驻）。
+已知确切字符串、正则、多行、glob 时仍用 Grep。代码有意义变更后跑 `/sync-gbrain` 刷新（sync 走委托，不会撞锁）。**本机无常驻 autopilot**；要装 `gbrain autopilot --install` 必须先停掉共享 HTTP serve —— PGLite 不允许两个 owner。
 
 安全注意：`gbrain autopilot` 运行期间不要跑 `/sync-gbrain`（orchestrator 检测到活动 autopilot 会拒绝破坏性源操作，避免竞态 #1734）。注册用户仓库优先 `gbrain sources add --path <dir>`（不带 `--url`：URL 管理源可能自动 re-clone，其同步需要显式 `--allow-reclone` 选入）。
 
