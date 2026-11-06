@@ -149,6 +149,58 @@ async function previewBox(page: Page) {
   };
 }
 
+/** 悬停最近段某类型行的右半区（触发区）。 */
+async function hoverRowRightHalf(page: Page, kind: string): Promise<void> {
+  const row = page
+    .locator(
+      `[data-section="recent"] [data-testid="rail-item"][data-kind="${kind}"]`,
+    )
+    .first();
+  const b = await row.boundingBox();
+  if (!b) throw new Error(`行不可测量: ${kind}`);
+  await page.mouse.move(b.x + Math.round(b.width * 0.75), b.y + b.height / 2);
+}
+
+/** 悬停最近段某类型行的左半区（非触发区）。 */
+async function hoverRowLeftHalf(page: Page, kind: string): Promise<void> {
+  const row = page
+    .locator(
+      `[data-section="recent"] [data-testid="rail-item"][data-kind="${kind}"]`,
+    )
+    .first();
+  const b = await row.boundingBox();
+  if (!b) throw new Error(`行不可测量: ${kind}`);
+  await page.mouse.move(b.x + Math.round(b.width * 0.25), b.y + b.height / 2);
+}
+
+async function seedMedia(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const w = window as unknown as {
+      __biaoyue_openFile__: (p: string, c: string, t: string) => void;
+      __biaoyue_store__: {
+        getState: () => { setRailDensity: (d: string) => void; scene: string };
+      };
+    };
+    w.__biaoyue_openFile__("/tmp/media/pic.png", "x", "图片");
+    w.__biaoyue_openFile__("/tmp/media/clip.mp4", "x", "视频");
+    w.__biaoyue_openFile__("/tmp/media/song.mp3", "x", "音频");
+    w.__biaoyue_openFile__("/tmp/media/doc.pdf", "x", "文档");
+    w.__biaoyue_store__.getState().setRailDensity("compact");
+  });
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          (
+            window as unknown as {
+              __biaoyue_store__: { getState: () => { scene: string } };
+            }
+          ).__biaoyue_store__.getState().scene,
+      ),
+    )
+    .toBe("workspace");
+}
+
 test("阅读空间锚定：x 恒=栏右缘+12、y 跟随悬停行、横向不随鼠标", async ({
   page,
 }) => {
@@ -370,4 +422,90 @@ test("底部动作区仅 hover 显示，取消 hover 后无残留", async ({ pag
   await page.mouse.move(600, 780);
   await expect(actions).toHaveCount(0);
   await expect(preview).toBeVisible();
+});
+
+test("触发区：左半区不打开；右半区 250ms 打开（时钟推进）", async ({
+  page,
+}) => {
+  await boot(page);
+  await seed(page);
+  await pinRail(page);
+  await page.clock.install();
+
+  const preview = page.locator(PREVIEW);
+  await hoverRowLeftHalf(page, "markdown");
+  await page.clock.runFor(400);
+  await expect(preview).toHaveCount(0);
+
+  await hoverRowRightHalf(page, "markdown");
+  await page.clock.runFor(250);
+  await expect(preview).toBeVisible();
+  await page.screenshot({ path: path.join(ART, "preview-right-half.png") });
+});
+
+test("左半区关闭已打开的 rail 预览（未钉住）", async ({ page }) => {
+  await boot(page);
+  await seed(page);
+  await pinRail(page);
+  await page.clock.install();
+
+  const preview = page.locator(PREVIEW);
+  await hoverRowRightHalf(page, "markdown");
+  await page.clock.runFor(250);
+  await expect(preview).toBeVisible();
+
+  await hoverRowLeftHalf(page, "markdown");
+  await expect(preview).toHaveCount(0);
+});
+
+test("离窗 180ms 防抖关闭；179ms 内保持", async ({ page }) => {
+  await boot(page);
+  await seed(page);
+  await pinRail(page);
+  await page.clock.install();
+
+  const preview = page.locator(PREVIEW);
+  await hoverRowRightHalf(page, "markdown");
+  await page.clock.runFor(250);
+  await expect(preview).toBeVisible();
+
+  await page.mouse.move(700, 780);
+  await page.clock.runFor(179);
+  await expect(preview).toBeVisible();
+  await page.clock.runFor(1);
+  await expect(preview).toHaveCount(0);
+});
+
+test("媒体真实渲染：图片 img / 视频 video / 音频 audio / PDF 占位", async ({
+  page,
+}) => {
+  await boot(page);
+  await seedMedia(page);
+  await pinRail(page);
+  await page.clock.install();
+
+  await hoverRowRightHalf(page, "image");
+  await page.clock.runFor(250);
+  const img = page.locator('[data-testid="preview-media"] img');
+  await expect(img).toBeVisible();
+  await expect(img).toHaveAttribute("src", /asset:\/\//);
+
+  await hoverRowRightHalf(page, "video");
+  const video = page.locator('[data-testid="preview-media"] video');
+  await expect(video).toBeVisible();
+  await expect(video).toHaveAttribute("src", /media:\/\//);
+  await expect(video).toHaveJSProperty("controls", true);
+
+  await hoverRowRightHalf(page, "audio");
+  const audio = page.locator('[data-testid="preview-media"] audio');
+  await expect(audio).toBeVisible();
+  await expect(audio).toHaveAttribute("src", /media:\/\//);
+  await expect(audio).toHaveJSProperty("controls", true);
+
+  await hoverRowRightHalf(page, "pdf");
+  await expect(
+    page.locator('[data-testid="preview-media-placeholder"]'),
+  ).toBeVisible();
+  await expect(page.locator('[data-testid="preview-media"]')).toHaveCount(0);
+  await page.screenshot({ path: path.join(ART, "preview-media-kinds.png") });
 });

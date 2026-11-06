@@ -1,0 +1,53 @@
+{
+  "states": [
+    {
+      "state": "01-left-half-no-preview",
+      "screenshot": ".artifacts/215/01-left-half-no-preview.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-06T03:37:09Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "02-right-half-preview-open",
+      "screenshot": ".artifacts/215/02-right-half-preview-open.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-06T03:37:09Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "03-preview-closed-after-leave",
+      "screenshot": ".artifacts/215/03-preview-closed-after-leave.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-06T03:37:09Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "04-media-preview-image",
+      "screenshot": ".artifacts/215/04-media-preview-image.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-06T03:37:09Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "05-media-preview-video",
+      "screenshot": ".artifacts/215/05-media-preview-video.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-06T03:37:09Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "06-media-preview-audio",
+      "screenshot": ".artifacts/215/06-media-preview-audio.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-06T03:37:09Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "07-scroll-top-after-layout-switch",
+      "screenshot": ".artifacts/215/07-scroll-top-after-layout-switch.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-06T03:37:09Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}

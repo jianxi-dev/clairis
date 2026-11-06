@@ -19,6 +19,8 @@ export const PREVIEW_MIN_H = 200;
 export const PREVIEW_GAP = 12;
 /** 阅读空间悬停多久才弹出预览。 */
 export const HOVER_DELAY_MS = 250;
+/** 指针离开预览窗后多久关闭（防抖）。 */
+export const PREVIEW_LEAVE_CLOSE_MS = 180;
 
 /** 首次打开预览窗的默认尺寸（均大于最小值）。 */
 export const PREVIEW_DEFAULT_W = 320;
@@ -236,6 +238,54 @@ export const DEFAULT_PREVIEW_SETTINGS: PreviewSettings = {
   gridMode: "click",
   enabled: true,
 };
+
+export interface Point {
+  x: number;
+  y: number;
+}
+
+/** DOMRect 风格的矩形（left/top/width/height）。 */
+export interface Box {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
+/** 指针是否落在矩形内（含边界）。 */
+export function pointInBox(p: Point, b: Box | null | undefined): boolean {
+  if (!b) return false;
+  return (
+    p.x >= b.left &&
+    p.x <= b.left + b.width &&
+    p.y >= b.top &&
+    p.y <= b.top + b.height
+  );
+}
+
+/**
+ * 指针是否位于条目右半区（预览触发区）。
+ * 奇数宽度时中线所在的那一列归右——指针坐标为整数，居中悬停必须触发。
+ */
+export function isRightHalfOfBox(p: Point, b: Box): boolean {
+  return p.x >= b.left + Math.floor(b.width / 2);
+}
+
+/**
+ * 是否应当安排离窗关闭：钉住 / 拖拽缩放中 / 指针仍在预览窗或 rail 均不关。
+ */
+export function shouldScheduleLeaveClose(input: {
+  pointer: Point;
+  previewBox: Box | null;
+  railBox: Box | null;
+  pinned: boolean;
+  interacting: boolean;
+}): boolean {
+  if (input.pinned || input.interacting) return false;
+  if (pointInBox(input.pointer, input.previewBox)) return false;
+  if (pointInBox(input.pointer, input.railBox)) return false;
+  return true;
+}
 
 /**
  * 归一化持久化开关注入值：老配置缺字段 / 非法值一律退回默认，绝不抛错。

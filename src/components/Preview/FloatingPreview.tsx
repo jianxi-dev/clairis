@@ -1,21 +1,24 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { invoke } from "@tauri-apps/api/core";
+import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import { useStore } from "../../stores";
 import Icon from "../Icon";
 import {
+  PREVIEW_LEAVE_CLOSE_MS,
   PREVIEW_MIN_H,
   PREVIEW_MIN_W,
   RESIZE_EDGES,
   flipAnchor,
   resizePreview,
+  shouldScheduleLeaveClose,
+  type Box,
   type Rect,
   type ResizeEdge,
   type Viewport,
 } from "../../lib/previewAnchor";
-import { fileTypeOf } from "../../lib/fileType";
+import { fileTypeOf, type FileTypeKind } from "../../lib/fileType";
 import { renderMarkdown, renderText } from "../../renderers";
-import { resolveDocMediaHref } from "../../lib/mediaUrl";
+import { mediaUrlForPath, resolveDocMediaHref } from "../../lib/mediaUrl";
 import { isTauriEnv } from "../../utils/tauri";
 import { log } from "../../utils/log";
 
@@ -53,6 +56,58 @@ const HANDLE_STYLE: Record<ResizeEdge, React.CSSProperties> = {
 
 function viewportOf(): Viewport {
   return { width: window.innerWidth, height: window.innerHeight };
+}
+
+function boxOf(el: HTMLElement | null): Box | null {
+  if (!el) return null;
+  const r = el.getBoundingClientRect();
+  return { left: r.left, top: r.top, width: r.width, height: r.height };
+}
+
+function railBox(): Box | null {
+  return boxOf(document.querySelector<HTMLElement>(".rail-root"));
+}
+
+/** 媒体真实渲染：图片 img、视频/音频播放器；PDF 与非 Tauri 环境回占位。 */
+function MediaBody({ path, kind }: { path: string; kind: FileTypeKind }) {
+  if (!isTauriEnv()) return <MediaPlaceholder path={path} />;
+  if (kind === "image") {
+    return (
+      <div
+        data-testid="preview-media"
+        data-media-kind="image"
+        className="flex h-full items-center justify-center bg-gray-50 dark:bg-gray-900"
+      >
+        <img
+          src={convertFileSrc(path)}
+          alt={path}
+          className="max-h-full max-w-full object-contain"
+        />
+      </div>
+    );
+  }
+  const url = mediaUrlForPath(path);
+  if (kind === "video") {
+    return (
+      <div
+        data-testid="preview-media"
+        data-media-kind="video"
+        className="flex h-full items-center justify-center bg-black"
+      >
+        <video src={url} controls className="max-h-full max-w-full" />
+      </div>
+    );
+  }
+  return (
+    <div
+      data-testid="preview-media"
+      data-media-kind="audio"
+      className="flex h-full flex-col items-center justify-center gap-3 p-4"
+    >
+      <Icon name="audio" size={24} className="text-gray-400" />
+      <audio src={url} controls className="w-full" />
+    </div>
+  );
 }
 
 function MediaPlaceholder({ path }: { path: string }) {
@@ -100,6 +155,8 @@ export default function FloatingPreview({
   const resizeOrigin = useRef<{ rect: Rect; px: number; py: number } | null>(
     null,
   );
+  const previewRef = useRef<HTMLDivElement>(null);
+  const interactingRef = useRef(false);
 
   const previewPath = preview?.path ?? null;
   const previewTitle = preview?.title ?? "";
@@ -174,6 +231,55 @@ export default function FloatingPreview({
     };
   }, [resizeEdge]);
 
+  useEffect(() => {
+    interactingRef.current = dragging || resizeEdge !== null;
+  }, [dragging, resizeEdge]);
+
+  const previewSource = preview?.source ?? null;
+
+  // rail 源离窗关闭：全局 pointermove 180ms 防抖；钉住/拖拽/缩放豁免，指针仍在 rail 保持
+  useEffect(() => {
+    if (previewSource !== "rail") return;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const clear = () => {
+      if (timer) {
+        clearTimeout(timer);
+        timer = null;
+      }
+    };
+    const onMove = (e: PointerEvent) => {
+      clear();
+      const st = useStore.getState();
+      const p = st.preview;
+      if (!p || p.source !== "rail") return;
+      if (
+        !shouldScheduleLeaveClose({
+          pointer: { x: e.clientX, y: e.clientY },
+          previewBox: boxOf(previewRef.current),
+          railBox: railBox(),
+          pinned: p.pinned,
+          interacting: interactingRef.current,
+        })
+      ) {
+        return;
+      }
+      timer = setTimeout(() => {
+        timer = null;
+        const cur = useStore.getState().preview;
+        if (!cur || cur.source !== "rail" || cur.pinned) return;
+        // 拖拽/缩放可能在首个 pointermove 之前就把 interactingRef 置真；
+        // 到期时再确认一次，避免把进行中的拖动误关。
+        if (interactingRef.current) return;
+        useStore.getState().closePreview();
+      }, PREVIEW_LEAVE_CLOSE_MS);
+    };
+    window.addEventListener("pointermove", onMove);
+    return () => {
+      clear();
+      window.removeEventListener("pointermove", onMove);
+    };
+  }, [previewSource]);
+
   const onHeaderPointerDown = useCallback((e: React.PointerEvent) => {
     if ((e.target as HTMLElement).closest("button")) return;
     const p = useStore.getState().preview;
@@ -201,14 +307,19 @@ export default function FloatingPreview({
 
   const kind = previewPath ? fileTypeOf(previewPath) : "text";
 
+  // 视频/音频经 media:// 播放：先注册到白名单，否则协议 404 只剩控件
+  useEffect(() => {
+    if (!previewPath) return;
+    if (kind !== "video" && kind !== "audio") return;
+    void invoke("register_media_path", { path: previewPath }).catch(() => {});
+  }, [kind, previewPath]);
+
   const body = useMemo(() => {
     if (!previewPath) return null;
-    if (
-      kind === "pdf" ||
-      kind === "video" ||
-      kind === "image" ||
-      kind === "audio"
-    ) {
+    if (kind === "image" || kind === "video" || kind === "audio") {
+      return <MediaBody path={previewPath} kind={kind} />;
+    }
+    if (kind === "pdf") {
       return <MediaPlaceholder path={previewPath} />;
     }
     if (kind === "html") {
@@ -250,6 +361,7 @@ export default function FloatingPreview({
 
   return createPortal(
     <div
+      ref={previewRef}
       data-testid="floating-preview"
       data-preview-path={preview.path}
       data-flipped-x={flippedX ? "true" : "false"}
@@ -270,7 +382,8 @@ export default function FloatingPreview({
       onMouseEnter={() => setHovering(true)}
       onMouseLeave={() => {
         setHovering(false);
-        // 拖动/缩放中指针会短暂离开窗口，不能据此关闭；钉住态也不关
+        // rail 源的离窗关闭由全局 pointermove 防抖处理；网格源保持即关
+        if (preview.source === "rail") return;
         if (pinned || dragging || resizeEdge) return;
         closePreview();
       }}
