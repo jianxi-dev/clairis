@@ -192,6 +192,30 @@ describe("railCards —— 合并最近文件", () => {
     expect(merged[0].openedAt).toBe("2026-02-01T00:00:00.000Z");
   });
 
+  it("历史条目没有摘要时采纳扫描摘要，且不改动更晚的 openedAt", () => {
+    const merged = mergeRecentFileList(
+      [
+        {
+          path: "/a/page.html",
+          title: "page.html",
+          openedAt: "2026-02-01T00:00:00.000Z",
+        },
+      ],
+      [
+        {
+          path: "/a/page.html",
+          title: "page.html",
+          openedAt: "2026-01-01T00:00:00.000Z",
+          excerpt: "扫描到的正文",
+        },
+      ],
+      10,
+    );
+    expect(merged).toHaveLength(1);
+    expect(merged[0].excerpt).toBe("扫描到的正文");
+    expect(merged[0].openedAt).toBe("2026-02-01T00:00:00.000Z");
+  });
+
   it("超过 cap 时保留最新的 cap 条", () => {
     const existing: RecentFile[] = Array.from({ length: 15 }, (_, i) => ({
       path: `/a/f${String(i).padStart(2, "0")}.md`,

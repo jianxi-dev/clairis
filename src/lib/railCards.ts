@@ -119,7 +119,7 @@ function openedAtValue(file: RecentFile): number {
 
 /**
  * 合并最近文件：按 path 去重，按 openedAt 倒序，截到 cap。本机扫描结果与
- * 会话内打开的记录同 path 时保留历史摘要，只把时间推到更晚的一边。
+ * 会话内打开的记录同 path 时保留历史摘要；历史条目没有摘要时采纳扫描摘要。
  */
 export function mergeRecentFileList(
   existing: RecentFile[],
@@ -137,8 +137,15 @@ export function mergeRecentFileList(
       byPath.set(file.path, file);
       continue;
     }
-    if (openedAtValue(file) > openedAtValue(prev)) {
-      byPath.set(file.path, { ...prev, openedAt: file.openedAt });
+    const newer = openedAtValue(file) > openedAtValue(prev);
+    // 旧配置里的历史条目可能没有摘要；扫描读到了就用上，别让卡片空着
+    const adoptExcerpt = !prev.excerpt && !!file.excerpt;
+    if (newer || adoptExcerpt) {
+      byPath.set(file.path, {
+        ...prev,
+        openedAt: newer ? file.openedAt : prev.openedAt,
+        excerpt: prev.excerpt ?? file.excerpt,
+      });
     }
   }
   return Array.from(byPath.values())
