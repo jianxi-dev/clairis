@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "01-pill-visible-before-scroll",
+      "screenshot": ".artifacts/230/01-pill-visible-before-scroll.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-06T13:09:53Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "02-pill-hidden-after-real-scroll",
+      "screenshot": ".artifacts/230/02-pill-hidden-after-real-scroll.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-06T13:09:53Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "03-pill-visible-after-reselect",
+      "screenshot": ".artifacts/230/03-pill-visible-after-reselect.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-06T13:09:53Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "04-edit-mode-pill",
+      "screenshot": ".artifacts/230/04-edit-mode-pill.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-06T13:09:53Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}
