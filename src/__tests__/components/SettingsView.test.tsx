@@ -9,6 +9,9 @@ vi.mock("../../hooks/useConfig", () => ({
   saveAppConfig: () => Promise.resolve(),
   reloadAppConfig: vi.fn(),
   applyTheme: vi.fn(),
+  applyReaderSkin: (skin: string) => {
+    document.documentElement.dataset.skin = skin || "paper";
+  },
 }));
 
 const NAV_LABELS = [
@@ -36,6 +39,7 @@ afterEach(() => {
   useEditorStore.getState().reset();
   resetCapabilities();
   document.documentElement.classList.remove("dark", "warm");
+  delete document.documentElement.dataset.skin;
 });
 
 describe("SettingsView", () => {
@@ -78,6 +82,57 @@ describe("SettingsView", () => {
     expect(screen.getByTestId("grid-default-sort-type")).toBeTruthy();
     expect(screen.getByTestId("grid-default-mode-grid")).toBeTruthy();
     expect(screen.getByTestId("grid-default-mode-list")).toBeTruthy();
+  });
+
+  it("阅读空间区：行宽三档与配色四项就位，点击写入配置并应用皮肤", () => {
+    render(<SettingsView onClose={() => {}} />);
+    fireEvent.click(screen.getAllByTestId("settings-nav-item")[2]);
+
+    const widths = screen.getAllByTestId(/^reader-width-/);
+    expect(widths).toHaveLength(3);
+    expect(widths.map((el) => el.textContent)).toEqual([
+      "紧凑",
+      "标准",
+      "宽松",
+    ]);
+    const tones = screen.getAllByTestId(/^reader-tone-/);
+    expect(tones).toHaveLength(4);
+    expect(tones.map((el) => el.textContent)).toEqual([
+      "纸墨",
+      "靛青",
+      "松绿",
+      "赭石",
+    ]);
+
+    fireEvent.click(screen.getByTestId("reader-width-720"));
+    expect(useEditorStore.getState().config.readerWidth).toBe(720);
+
+    fireEvent.click(screen.getByTestId("reader-tone-indigo"));
+    expect(useEditorStore.getState().config.readerSkin).toBe("indigo");
+    expect(document.documentElement.dataset.skin).toBe("indigo");
+  });
+
+  it("外观区保留阅读字号入口，点击写入 readerFontSize", () => {
+    render(<SettingsView onClose={() => {}} />);
+
+    expect(screen.getAllByTestId(/^font-size-/)).toHaveLength(6);
+    fireEvent.click(screen.getByTestId("font-size-19"));
+    expect(useEditorStore.getState().config.readerFontSize).toBe(19);
+  });
+
+  it("设置窗自适应：根容器裁剪，内容区与导航各自可滚动", () => {
+    render(<SettingsView onClose={() => {}} />);
+
+    const scene = screen.getByTestId("settings-scene");
+    expect(scene.className).toContain("min-h-0");
+    expect(scene.className).toContain("overflow-hidden");
+
+    const nav = screen.getByTestId("settings-nav");
+    expect(nav.className).toContain("overflow-y-auto");
+    expect(nav.className).toContain("min-h-0");
+
+    const content = scene.querySelector(".overflow-y-auto");
+    expect(content?.className).toContain("min-h-0");
   });
 
   it("扩展区：浏览器预览显示不可用提示", () => {
