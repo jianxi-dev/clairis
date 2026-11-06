@@ -85,3 +85,5 @@ export function packPackage(
 // 透出：读取入口 Markdown 原文（include 未展开），预览源码用；入口缺失时抛 MdeError。
 export { readEntrySource, MdeError } from "./vendor/mdpkg-web.js";
 export { buildManifest };
+export { toZip } from "./vendor/mdpkg-web.js";
+export type { ZipExportOptions } from "./vendor/mdpkg-web.js";

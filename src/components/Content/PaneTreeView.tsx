@@ -27,12 +27,21 @@ import {
   nextPaneMode,
   AI_PANE_MENU_ITEMS,
   PANE_MENU_ITEMS,
+  EXPORT_MENU_ITEMS,
   type PaneMenuAction,
+  type ExportMenuAction,
 } from "../../lib/paneHeaderMenu";
 import {
   exportCurrentDocHtml,
   exportMessage,
 } from "../../lib/export/exportDocument";
+import { exportPngFromMarkdown, exportPngMessage } from "../../lib/export/png";
+import { exportDocxDocument, exportDocxMessage } from "../../lib/export/docx";
+import {
+  exportMdpkgFromMarkdown,
+  exportMdpkgMessage,
+} from "../../lib/export/mdpkg";
+import { exportZipFromMarkdown, exportZipMessage } from "../../lib/export/zip";
 import { log } from "../../utils/log";
 import type { EditorMode, Tab } from "../../types";
 import TabBar from "../TabBar";
@@ -171,7 +180,8 @@ function PaneNode({
             tabs={node.tabs}
             activeTabId={node.activeTabId}
             editorMode={node.editorMode}
-            showPaneControls={!rootIsLeaf}
+            showFullscreen
+            showClosePane={!rootIsLeaf}
           />
         )}
         <div className="relative flex-1 overflow-hidden">
@@ -239,13 +249,15 @@ function PaneHeader({
   tabs,
   activeTabId,
   editorMode,
-  showPaneControls,
+  showFullscreen,
+  showClosePane,
 }: {
   leafId: string;
   tabs: string[];
   activeTabId: string | null;
   editorMode: EditorMode;
-  showPaneControls: boolean;
+  showFullscreen: boolean;
+  showClosePane: boolean;
 }) {
   const allTabs = useStore((s) => s.tabs);
   const fullscreenPaneId = useStore((s) => s.fullscreenPaneId);
@@ -257,6 +269,7 @@ function PaneHeader({
   const isMedia = activeTab ? isMediaKind(activeTab.fileKind) : false;
 
   const [menuOpen, setMenuOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -283,10 +296,14 @@ function PaneHeader({
     const onDown = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setMenuOpen(false);
+        setExportOpen(false);
       }
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setMenuOpen(false);
+      if (e.key === "Escape") {
+        setMenuOpen(false);
+        setExportOpen(false);
+      }
     };
     const id = setTimeout(() => {
       window.addEventListener("mousedown", onDown, true);
@@ -333,26 +350,10 @@ function PaneHeader({
   const runMenu = useCallback(
     (action: PaneMenuAction) => {
       setMenuOpen(false);
+      setExportOpen(false);
       const store = useStore.getState();
       const tab = activeTabId ? store.tabs[activeTabId] : null;
       switch (action) {
-        case "export": {
-          if (!tab) return;
-          void exportCurrentDocHtml({
-            title: tab.title,
-            markdown: tab.content,
-            baseDir: dirOfTabPath(tab.path),
-          }).then((result) => {
-            const message = exportMessage(result);
-            if (result.status === "error") {
-              log.error("PaneHeader", "导出 HTML 失败", result.message);
-              showNotice(message ?? "导出失败");
-            } else if (result.status === "saved") {
-              showNotice(message ?? "已导出");
-            }
-          });
-          return;
-        }
         case "share": {
           if (!tab) return;
           const text = tab.path ? `${tab.title} ${tab.path}` : tab.content;
@@ -395,11 +396,113 @@ function PaneHeader({
     [activeTabId, setMode, showNotice],
   );
 
+  const runExport = useCallback(
+    (action: ExportMenuAction) => {
+      setMenuOpen(false);
+      setExportOpen(false);
+      const tab = activeTabId ? useStore.getState().tabs[activeTabId] : null;
+      if (!tab) return;
+      const baseDir = dirOfTabPath(tab.path);
+      if (action === "exportHtml") {
+        void exportCurrentDocHtml({
+          title: tab.title,
+          markdown: tab.content,
+          baseDir,
+        }).then((result) => {
+          const message = exportMessage(result);
+          if (result.status === "error") {
+            log.error("PaneHeader", "导出 HTML 失败", result.message);
+            showNotice(message ?? "导出失败");
+          } else if (result.status === "saved") {
+            showNotice(message ?? "已导出");
+          }
+        });
+        return;
+      }
+      const run = async <R extends { status: string; message?: string }>(
+        exportFn: () => Promise<R>,
+        messageFn: (result: R) => string | null,
+        pending: string,
+        label: string,
+      ) => {
+        showNotice(pending);
+        let message: string | null = null;
+        try {
+          const result = await exportFn();
+          if (result.status === "error") {
+            log.error("PaneHeader", `${label}失败`, result.message);
+          }
+          message = messageFn(result);
+        } catch (e) {
+          log.error("PaneHeader", `${label}失败`, String(e));
+          message = `导出失败：${e instanceof Error ? e.message : String(e)}`;
+        }
+        if (message) showNotice(message);
+      };
+      if (action === "exportPng") {
+        void run(
+          () =>
+            exportPngFromMarkdown({
+              title: tab.title,
+              markdown: tab.content,
+              baseDir,
+            }),
+          exportPngMessage,
+          "正在生成图片…",
+          "导出图片",
+        );
+        return;
+      }
+      if (action === "exportDocx") {
+        void run(
+          () =>
+            exportDocxDocument({
+              title: tab.title,
+              markdown: tab.content,
+              baseDir,
+            }),
+          exportDocxMessage,
+          "正在生成 Word…",
+          "导出 Word",
+        );
+        return;
+      }
+      if (action === "exportMdpkg") {
+        void run(
+          () =>
+            exportMdpkgFromMarkdown({
+              title: tab.title,
+              markdown: tab.content,
+              baseDir,
+            }),
+          exportMdpkgMessage,
+          "正在打包 .mdpkg…",
+          "导出 .mdpkg",
+        );
+        return;
+      }
+      if (action === "exportZip") {
+        void run(
+          () =>
+            exportZipFromMarkdown({
+              title: tab.title,
+              markdown: tab.content,
+              baseDir,
+            }),
+          exportZipMessage,
+          "正在打包 ZIP…",
+          "导出 ZIP",
+        );
+      }
+    },
+    [activeTabId, showNotice],
+  );
+
   return (
     <div
       data-testid="pane-header"
       onPointerDown={onHeaderPointerDown}
-      className="app-chrome flex items-center shrink-0 border-b border-gray-100 dark:border-gray-700"
+      className="app-chrome flex items-center shrink-0 border-b border-[var(--app-border)]"
     >
       <div className="flex-1 min-w-0 overflow-hidden">
         <TabBar
@@ -407,10 +510,13 @@ function PaneHeader({
           activeTabId={activeTabId}
           onSwitchTab={handleSwitch}
           onCloseTab={handleClose}
+          paneId={leafId}
           onReorderTabs={(from, to) =>
             useStore.getState().reorderPaneTabs(leafId, from, to)
           }
-          alwaysShowClose
+          onMoveToPane={(tabId, targetLeafId) =>
+            useStore.getState().moveTabToPane(tabId, targetLeafId)
+          }
         />
       </div>
       {!isMedia && (
@@ -423,13 +529,13 @@ function PaneHeader({
           }
           aria-label={editorMode === "preview" ? "切换到编辑" : "切换到预览"}
           onClick={() => setMode(nextPaneMode(editorMode))}
-          className="p-0.5 mx-1 rounded text-gray-500 hover:bg-gray-200 hover:text-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-100 shrink-0"
+          className="p-0.5 mx-1 rounded text-[var(--app-text-3)] hover:bg-[var(--app-sunken)] hover:text-[var(--app-text-2)] shrink-0"
         >
           <Icon name={editorMode === "preview" ? "eye" : "pencil"} size={18} />
         </button>
       )}
       <div className="flex items-center gap-0.5 px-1 shrink-0">
-        {showPaneControls && (
+        {showFullscreen && (
           <button
             type="button"
             data-testid="pane-fullscreen"
@@ -453,8 +559,11 @@ function PaneHeader({
             aria-label="更多操作"
             aria-haspopup="menu"
             aria-expanded={menuOpen}
-            onClick={() => setMenuOpen((v) => !v)}
-            className="p-0.5 rounded text-gray-400 hover:bg-gray-200 hover:text-gray-700 dark:hover:bg-gray-700 dark:hover:text-gray-200"
+            onClick={() => {
+              setExportOpen(false);
+              setMenuOpen((v) => !v);
+            }}
+            className="p-0.5 rounded text-[var(--app-text-3)] hover:bg-[var(--app-sunken)] hover:text-[var(--app-text-2)]"
           >
             <Icon name="more" size={18} />
           </button>
@@ -462,32 +571,84 @@ function PaneHeader({
             <div
               data-testid="pane-menu"
               role="menu"
-              className="absolute right-0 top-full z-50 mt-1 min-w-[150px] rounded border border-gray-200 bg-white py-1 text-xs shadow-lg dark:border-gray-700 dark:bg-gray-800"
+              className="absolute right-0 top-full z-50 mt-1 min-w-[132px] rounded border py-1 text-xs shadow-lg"
+              style={{
+                background: "var(--app-surface)",
+                borderColor: "var(--app-border)",
+                color: "var(--app-text-2)",
+              }}
             >
               {PANE_MENU_ITEMS.map((item) => (
-                <button
-                  key={item.action}
-                  type="button"
-                  role="menuitem"
-                  data-menu-item={item.action}
-                  onClick={() => runMenu(item.action)}
-                  className="flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-gray-100 dark:hover:bg-gray-700"
-                >
-                  <Icon name={item.icon} size={18} />
-                  <span>{item.label}</span>
-                </button>
+                <div key={item.action} className="relative">
+                  <button
+                    type="button"
+                    role="menuitem"
+                    data-menu-item={item.action}
+                    aria-haspopup={
+                      item.action === "export" ? "menu" : undefined
+                    }
+                    aria-expanded={
+                      item.action === "export" ? exportOpen : undefined
+                    }
+                    onClick={() => {
+                      if (item.action === "export") {
+                        setExportOpen((v) => !v);
+                        return;
+                      }
+                      runMenu(item.action);
+                    }}
+                    className="flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-[var(--app-sunken)]"
+                  >
+                    <Icon name={item.icon} size={18} />
+                    <span>{item.label}</span>
+                    {item.action === "export" && (
+                      <span
+                        className="ml-auto h-0 w-0 border-y-4 border-l-4 border-y-transparent border-l-[var(--app-text-3)]"
+                        aria-hidden="true"
+                      />
+                    )}
+                  </button>
+                  {item.action === "export" && exportOpen && (
+                    <div
+                      data-testid="pane-export-submenu"
+                      role="menu"
+                      className="absolute right-full top-0 mr-1 min-w-[132px] rounded border py-1 text-xs shadow-lg"
+                      style={{
+                        background: "var(--app-surface)",
+                        borderColor: "var(--app-border)",
+                        color: "var(--app-text-2)",
+                      }}
+                    >
+                      {EXPORT_MENU_ITEMS.map((sub) => (
+                        <button
+                          key={sub.action}
+                          type="button"
+                          role="menuitem"
+                          data-export-item={sub.action}
+                          disabled={sub.disabled}
+                          title={sub.title}
+                          onClick={() => runExport(sub.action)}
+                          className="flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-[var(--app-sunken)] disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          <Icon name={sub.icon} size={18} />
+                          <span>{sub.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               ))}
             </div>
           )}
         </div>
-        {showPaneControls && (
+        {showClosePane && (
           <button
             type="button"
             data-testid="pane-close"
             title="关闭此格"
             aria-label="关闭此格"
             onClick={() => useStore.getState().closePane(leafId)}
-            className="p-0.5 rounded text-gray-400 hover:bg-gray-200 hover:text-gray-700 dark:hover:bg-gray-700 dark:hover:text-gray-200"
+            className="p-0.5 rounded text-[var(--app-text-3)] hover:bg-[var(--app-sunken)] hover:text-[var(--app-text-2)]"
           >
             <Icon name="close" size={18} />
           </button>
@@ -496,6 +657,7 @@ function PaneHeader({
       {notice && (
         <div
           role="status"
+          data-export-notice
           className="fixed bottom-6 left-1/2 z-[2147483000] -translate-x-1/2 rounded-full bg-gray-900/90 px-4 py-2 text-sm text-white shadow-lg dark:bg-gray-700/95"
         >
           {notice}

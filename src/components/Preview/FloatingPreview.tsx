@@ -17,6 +17,7 @@ import {
   type Viewport,
 } from "../../lib/previewAnchor";
 import { fileTypeOf, type FileTypeKind } from "../../lib/fileType";
+import { parentFolderNameOf } from "../../lib/railCards";
 import { renderMarkdown, renderText } from "../../renderers";
 import { mediaUrlForPath, resolveDocMediaHref } from "../../lib/mediaUrl";
 import { isTauriEnv } from "../../utils/tauri";
@@ -76,7 +77,7 @@ function MediaBody({ path, kind }: { path: string; kind: FileTypeKind }) {
       <div
         data-testid="preview-media"
         data-media-kind="image"
-        className="flex h-full items-center justify-center bg-gray-50 dark:bg-gray-900"
+        className="flex h-full items-center justify-center bg-[var(--app-sunken)]"
       >
         <img
           src={convertFileSrc(path)}
@@ -104,7 +105,7 @@ function MediaBody({ path, kind }: { path: string; kind: FileTypeKind }) {
       data-media-kind="audio"
       className="flex h-full flex-col items-center justify-center gap-3 p-4"
     >
-      <Icon name="audio" size={24} className="text-gray-400" />
+      <Icon name="audio" size={24} className="text-[var(--app-text-3)]" />
       <audio src={url} controls className="w-full" />
     </div>
   );
@@ -124,11 +125,11 @@ function MediaPlaceholder({ path }: { path: string }) {
     <div
       data-testid="preview-media-placeholder"
       data-media-kind={kind}
-      className="flex h-full min-h-[120px] flex-col items-center justify-center gap-2 p-4 text-center text-xs text-gray-400 dark:text-gray-500"
+      className="flex h-full min-h-[120px] flex-col items-center justify-center gap-2 p-4 text-center text-xs text-[var(--app-text-3)]"
     >
       <Icon name={kind} size={24} />
       <span>{label}</span>
-      <span className="break-all px-2 text-[10px] text-gray-400 dark:text-gray-600">
+      <span className="break-all px-2 text-[10px] text-[var(--app-text-3)]">
         {path}
       </span>
     </div>
@@ -180,54 +181,97 @@ export default function FloatingPreview({
 
   const content = loaded && loaded.path === previewPath ? loaded.content : "";
 
-  // 标题栏拖动：全局 pointermove/pointerup，起止成对清理
+  // 标题栏拖动：全局 pointermove/pointerup，起止成对清理。
+  // pointermove 只记录最新坐标并调度一帧 rAF；rAF 里写一次 store，
+  // 避免每个 pointermove 都触发整棵订阅树重渲染（卡顿根因）。
   useEffect(() => {
     if (!dragging) return;
+    let rafId: number | null = null;
+    let pending: { x: number; y: number } | null = null;
+    const commit = () => {
+      rafId = null;
+      const next = pending;
+      pending = null;
+      if (!next) return;
+      const p = useStore.getState().preview;
+      if (!p) return;
+      const flipped = flipAnchor(
+        { x: next.x, y: next.y, w: p.w, h: p.h },
+        viewportOf(),
+      );
+      useStore.getState().movePreview(next.x, next.y, flipped.x, flipped.y);
+    };
     const move = (e: PointerEvent) => {
       const p = useStore.getState().preview;
       if (!p) return;
-      const nx = Math.round(
-        dragOrigin.current.ox + (e.clientX - dragOrigin.current.px),
-      );
-      const ny = Math.round(
-        dragOrigin.current.oy + (e.clientY - dragOrigin.current.py),
-      );
-      const flipped = flipAnchor(
-        { x: nx, y: ny, w: p.w, h: p.h },
-        viewportOf(),
-      );
-      useStore.getState().movePreview(nx, ny, flipped.x, flipped.y);
+      pending = {
+        x: Math.round(
+          dragOrigin.current.ox + (e.clientX - dragOrigin.current.px),
+        ),
+        y: Math.round(
+          dragOrigin.current.oy + (e.clientY - dragOrigin.current.py),
+        ),
+      };
+      if (rafId === null) rafId = requestAnimationFrame(commit);
     };
-    const up = () => setDragging(false);
+    const up = () => {
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
+      commit();
+      setDragging(false);
+    };
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
     return () => {
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
+      if (rafId !== null) cancelAnimationFrame(rafId);
+      rafId = null;
+      pending = null;
     };
   }, [dragging]);
 
-  // 缩放：按手柄语义改 x/y/w/h，最小值钳制 + 贴边翻转
+  // 缩放：按手柄语义改 x/y/w/h，最小值钳制 + 贴边翻转。
+  // rAF 合并：pointermove 只记最新偏移，一帧写一次 store。
   useEffect(() => {
     if (!resizeEdge) return;
-    const move = (e: PointerEvent) => {
+    let rafId: number | null = null;
+    let pending: { dx: number; dy: number } | null = null;
+    const commit = () => {
+      rafId = null;
+      const next = pending;
+      pending = null;
+      if (!next) return;
       const origin = resizeOrigin.current;
       if (!origin) return;
-      const rect = resizePreview(
-        resizeEdge,
-        origin.rect,
-        e.clientX - origin.px,
-        e.clientY - origin.py,
-      );
+      const rect = resizePreview(resizeEdge, origin.rect, next.dx, next.dy);
       const flipped = flipAnchor(rect, viewportOf());
       useStore.getState().resizePreviewTo(rect, flipped.x, flipped.y);
     };
-    const up = () => setResizeEdge(null);
+    const move = (e: PointerEvent) => {
+      const origin = resizeOrigin.current;
+      if (!origin) return;
+      pending = { dx: e.clientX - origin.px, dy: e.clientY - origin.py };
+      if (rafId === null) rafId = requestAnimationFrame(commit);
+    };
+    const up = () => {
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
+      commit();
+      setResizeEdge(null);
+    };
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
     return () => {
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
+      if (rafId !== null) cancelAnimationFrame(rafId);
+      rafId = null;
+      pending = null;
     };
   }, [resizeEdge]);
 
@@ -378,7 +422,7 @@ export default function FloatingPreview({
         minWidth: PREVIEW_MIN_W,
         minHeight: PREVIEW_MIN_H,
       }}
-      className="flex flex-col overflow-hidden rounded-lg border border-gray-300 bg-white shadow-2xl dark:border-gray-600 dark:bg-gray-800"
+      className="flex flex-col overflow-hidden rounded-lg border border-[var(--app-border)] bg-[var(--app-surface)] shadow-2xl"
       onMouseEnter={() => setHovering(true)}
       onMouseLeave={() => {
         setHovering(false);
@@ -391,14 +435,14 @@ export default function FloatingPreview({
       <div
         data-testid="preview-titlebar"
         onPointerDown={onHeaderPointerDown}
-        className={`flex shrink-0 items-center gap-1 border-b border-gray-200 px-2 py-1 dark:border-gray-700 ${
+        className={`flex shrink-0 items-center gap-1 border-b border-[var(--app-border)] px-2 py-0.5 ${
           dragging ? "cursor-grabbing" : "cursor-grab"
         }`}
       >
         <Icon name={kind} size={18} />
         <span
           data-testid="preview-title"
-          className="mr-auto min-w-0 flex-1 truncate text-xs font-medium text-gray-700 dark:text-gray-200"
+          className="mr-auto min-w-0 flex-1 truncate text-xs font-medium text-[var(--app-text-2)]"
           title={preview.path}
         >
           {preview.title}
@@ -411,7 +455,7 @@ export default function FloatingPreview({
           title={pinned ? "取消钉住" : "钉住"}
           aria-label={pinned ? "取消钉住" : "钉住"}
           onClick={togglePreviewPin}
-          className="shrink-0 rounded p-0.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-700 dark:hover:text-gray-200"
+          className="shrink-0 rounded p-0.5 text-[var(--app-text-3)] hover:bg-[var(--app-sunken)] hover:text-[var(--app-text-2)]"
         >
           <Icon
             name="pin"
@@ -425,7 +469,7 @@ export default function FloatingPreview({
           title="关闭"
           aria-label="关闭"
           onClick={closePreview}
-          className="shrink-0 rounded p-0.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-700 dark:hover:text-gray-200"
+          className="shrink-0 rounded p-0.5 text-[var(--app-text-3)] hover:bg-[var(--app-sunken)] hover:text-[var(--app-text-2)]"
         >
           <Icon name="close" size={18} />
         </button>
@@ -441,7 +485,7 @@ export default function FloatingPreview({
       {hovering && (
         <div
           data-testid="preview-actions"
-          className="flex shrink-0 items-center gap-1 border-t border-gray-200 px-2 py-1 text-[11px] dark:border-gray-700"
+          className="flex shrink-0 items-center gap-1 border-t border-[var(--app-border)] px-2 py-1 text-[11px]"
         >
           <button
             type="button"
@@ -450,10 +494,9 @@ export default function FloatingPreview({
             title="打开"
             aria-label="打开"
             onClick={() => void Promise.resolve(onOpenPath(preview.path))}
-            className="flex items-center gap-1 rounded px-1.5 py-0.5 text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-200"
+            className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[var(--app-text-2)] hover:bg-[var(--app-sunken)] hover:text-[var(--app-text-2)]"
           >
             <Icon name="eye" size={18} />
-            打开
           </button>
           <button
             type="button"
@@ -462,7 +505,7 @@ export default function FloatingPreview({
             title="向右分屏"
             aria-label="向右分屏"
             onClick={() => split("row")}
-            className="rounded p-0.5 text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-200"
+            className="rounded p-0.5 text-[var(--app-text-2)] hover:bg-[var(--app-sunken)] hover:text-[var(--app-text-2)]"
           >
             <Icon name="splitRight" size={18} />
           </button>
@@ -473,7 +516,7 @@ export default function FloatingPreview({
             title="向下分屏"
             aria-label="向下分屏"
             onClick={() => split("col")}
-            className="rounded p-0.5 text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-200"
+            className="rounded p-0.5 text-[var(--app-text-2)] hover:bg-[var(--app-sunken)] hover:text-[var(--app-text-2)]"
           >
             <Icon name="splitDown" size={18} />
           </button>
@@ -483,9 +526,9 @@ export default function FloatingPreview({
             data-action="path"
             title={preview.path}
             onClick={() => void Promise.resolve(onOpenPath(preview.path))}
-            className="ml-auto min-w-0 truncate rounded px-1 text-left text-gray-400 hover:text-gray-700 dark:text-gray-500 dark:hover:text-gray-200"
+            className="ml-auto min-w-0 truncate rounded px-1 text-left text-[var(--app-text-3)] hover:text-[var(--app-text-2)]"
           >
-            {preview.path}
+            {parentFolderNameOf(preview.path)}
           </button>
         </div>
       )}

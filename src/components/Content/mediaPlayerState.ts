@@ -3,7 +3,7 @@
  *
  * 背景：ContentArea 是单实例，tab 切换会卸载 PreviewView → VideoPlayer。
  * 播放器实例常驻挂载（MediaPlayerHost 挂在 ContentSplitView 层）：
- * - 媒体 tab 激活 → 全尺寸覆盖内容区（visible=true）
+ * - 媒体 tab 激活 → 播放器覆盖**所属格**内容区（visible=true）
  * - 切到其他 tab → 播放不中断，移出视口（visible=false），但不显示迷你条
  * - 切回媒体 tab → 恢复全尺寸
  */
@@ -12,6 +12,11 @@ export interface MediaSource {
   filePath: string;
   url: string;
   fileKind: "video" | "audio";
+  /**
+   * 媒体所属格的 leaf id（`[data-pane-id]`）。宿主据此把播放器限制在该格
+   * 内容区内，而不是覆盖整棵格树；缺省（旧调用/无格信息）时退回全尺寸。
+   */
+  paneId?: string;
 }
 
 export interface MediaPlayerState {
@@ -34,11 +39,12 @@ export const mediaPlayer = {
     const sameSource =
       current.source?.url === source.url &&
       current.source?.filePath === source.filePath;
+    const samePane = current.source?.paneId === source.paneId;
     const wasHidden = !current.visible;
     current = { source, visible: true };
-    // 源变化（switchUrl）或从离屏恢复可见（StrictMode 下 effect
-    // 会 show→minimize→show，第二次 show 必须 emit 才能刷新 Host）都要通知
-    if (!sameSource || wasHidden) emit();
+    // 源变化（switchUrl）、换格（paneId 变化）或从离屏恢复可见（StrictMode 下
+    // effect 会 show→minimize→show，第二次 show 必须 emit 才能刷新 Host）都要通知
+    if (!sameSource || !samePane || wasHidden) emit();
   },
   /** 媒体 tab 切走：保持播放，移出视口（无迷你条） */
   minimize() {

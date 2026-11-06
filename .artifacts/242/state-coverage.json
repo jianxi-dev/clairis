@@ -1,0 +1,40 @@
+{
+  "task": "242-pane-header-tabs",
+  "states": [
+    {
+      "state": "single-pane-fullscreen",
+      "screenshot": ".artifacts/242/single-pane-fullscreen.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-06T14:37:58Z",
+      "runner": "local@MMBP.local"
+    },
+    {
+      "state": "tab-close-hover",
+      "screenshot": ".artifacts/242/tab-close-hover.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-06T14:37:59Z",
+      "runner": "local@MMBP.local"
+    },
+    {
+      "state": "tab-context-menu",
+      "screenshot": ".artifacts/242/tab-context-menu.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-06T14:38:00Z",
+      "runner": "local@MMBP.local"
+    },
+    {
+      "state": "export-submenu",
+      "screenshot": ".artifacts/242/export-submenu.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-06T14:38:01Z",
+      "runner": "local@MMBP.local"
+    },
+    {
+      "state": "cross-pane-drag",
+      "screenshot": ".artifacts/242/cross-pane-drag.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-06T14:38:02Z",
+      "runner": "local@MMBP.local"
+    }
+  ]
+}

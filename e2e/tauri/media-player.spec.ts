@@ -1,6 +1,11 @@
 import { test, expect } from "@playwright/test";
+import { mkdirSync } from "node:fs";
+import path from "node:path";
 
 const APP_URL = "http://localhost:1420";
+const ART = path.resolve(process.cwd(), ".artifacts/247");
+
+mkdirSync(ART, { recursive: true });
 
 async function openFile(
   page: import("@playwright/test").Page,
@@ -43,6 +48,8 @@ test("打开视频 → 全尺寸播放器挂载，无迷你条", async ({ page }
   // 无迷你条（没有「回到播放」按钮）
   const mini = page.locator("button", { hasText: "回到播放" });
   await expect(mini).toHaveCount(0);
+
+  await page.screenshot({ path: path.join(ART, "video-in-pane.png") });
 });
 
 test("打开视频 → 打开非音视频文件 → 播放器保留（离屏继续播放），无迷你条", async ({

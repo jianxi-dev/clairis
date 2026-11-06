@@ -529,7 +529,7 @@ export default function GridView({
         data-tile-size="row"
         data-selected={selectedPath === item.path ? "true" : "false"}
         onClick={(e) => onCardClick(item, e.currentTarget)}
-        className="flex w-full items-center gap-2 rounded border border-gray-200 px-3 py-2 text-left hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
+        className="flex w-full items-center gap-2 rounded border border-[var(--app-border)] bg-[var(--app-surface)] px-3 py-2 text-left hover:bg-[var(--app-sunken)]"
       >
         {number !== undefined && (
           <span
@@ -544,10 +544,10 @@ export default function GridView({
           size={18}
           color={viewSpec.blockColors ? colorOfType(kind) : undefined}
         />
-        <span className="truncate text-sm text-gray-900 dark:text-gray-100">
+        <span className="truncate text-sm text-[var(--app-text)]">
           {item.title}
         </span>
-        <span className="ml-auto shrink-0 truncate text-xs text-gray-400 dark:text-gray-500">
+        <span className="ml-auto shrink-0 truncate text-xs text-[var(--app-text-3)]">
           {parentPathOf(item.path)} · {relativeDate(item.openedAt)}
         </span>
       </button>
@@ -561,12 +561,15 @@ export default function GridView({
       data-grid-filter={filter ?? "all"}
       data-grid-mode={viewSpec.gridMode}
       data-grid-grouping={group}
-      className="h-full overflow-auto bg-white dark:bg-gray-900"
+      className="h-full overflow-auto bg-[var(--app-surface)]"
     >
       <GridToolbar count={filtered.length} />
 
       {visible.length === 0 ? (
-        <p data-testid="grid-empty" className="p-8 text-sm text-gray-400">
+        <p
+          data-testid="grid-empty"
+          className="p-8 text-sm text-[var(--app-text-3)]"
+        >
           该条件下还没有文件。
         </p>
       ) : (
@@ -576,7 +579,7 @@ export default function GridView({
               {g.label !== "" && (
                 <h2
                   data-grid-group-head
-                  className="sticky top-0 z-10 mb-2 bg-white px-1 py-1.5 text-xs font-medium text-gray-500 dark:bg-gray-900 dark:text-gray-400"
+                  className="sticky top-0 z-10 mb-2 bg-[var(--app-surface)] px-1 py-1.5 text-xs font-medium text-[var(--app-text-2)]"
                 >
                   {g.label}
                 </h2>

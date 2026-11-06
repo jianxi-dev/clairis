@@ -1,6 +1,11 @@
 import { test, expect } from "@playwright/test";
+import { mkdirSync } from "node:fs";
+import path from "node:path";
 
 const APP_URL = "http://localhost:1420";
+const ART = path.resolve(process.cwd(), ".artifacts/244");
+
+mkdirSync(ART, { recursive: true });
 
 type Page = Parameters<Parameters<typeof test>[1]>[0]["page"];
 
@@ -29,19 +34,15 @@ test.describe("导出 .mdpkg", () => {
     await setup(page);
   });
 
-  test("右键页签 → 导出 .mdpkg… → save_binary_as_file 收到 ZIP", async ({
+  test("格头更多 → 导出 → .mdpkg… → save_binary_as_file 收到 ZIP", async ({
     page,
   }) => {
     await openMockFile(page);
 
-    await page.locator("[data-tab-id]").first().click({ button: "right" });
-    const menu = page.locator("[data-tab-menu]");
-    await expect(menu).toBeVisible({ timeout: 3000 });
-
-    const exportItem = page.getByRole("button", { name: "导出 .mdpkg…" });
-    await expect(exportItem).toBeVisible();
-
-    await exportItem.click();
+    await page.locator('[data-testid="pane-menu-button"]').first().click();
+    await expect(page.locator('[data-testid="pane-menu"]')).toBeVisible();
+    await page.locator('[data-menu-item="export"]').click();
+    await page.locator('[data-export-item="exportMdpkg"]').click();
 
     await expect
       .poll(
@@ -73,5 +74,7 @@ test.describe("导出 .mdpkg", () => {
     await expect(page.locator("[data-export-notice]")).toContainText("已导出", {
       timeout: 5000,
     });
+
+    await page.screenshot({ path: path.join(ART, "mdpkg-saved.png") });
   });
 });

@@ -24,6 +24,7 @@
   --app-bg: #f7f7f6;
   --app-surface: #fbfaf8;
   --app-sunken: #f4f2ec;
+  --app-chrome-bg: var(--app-surface);
 
   --app-text: #24262b;
   --app-text-strong: #16181c;
@@ -45,6 +46,7 @@
   --app-bg: #131316;
   --app-surface: #1a1b1e;
   --app-sunken: #22242a;
+  --app-chrome-bg: var(--app-surface);
 
   --app-text: #d8dade;
   --app-text-strong: #eceef1;
@@ -63,6 +65,7 @@
   --app-bg: #f2e9da;
   --app-surface: #fbf4e8;
   --app-sunken: #efe3d0;
+  --app-chrome-bg: var(--app-surface);
 
   --app-text: #3b3024;
   --app-text-strong: #241c12;

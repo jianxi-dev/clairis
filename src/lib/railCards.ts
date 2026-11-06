@@ -112,6 +112,63 @@ export function excerptOf(text: string | undefined, path?: string): string {
   return plain.replace(/\s+/g, " ").trim().slice(0, 160);
 }
 
+/**
+ * 去掉 Markdown 语法标记，只留可读文字（卡片摘要展示用）。
+ *
+ * 与 `plainTextOf` 平行：HTML 在 `excerptOf` 里已去标签，Markdown 的语法
+ * 则在渲染卡片时经这里剥离。**不改写 `excerptOf`**——存储的摘要要保留
+ * `- [ ]` 任务标记与 `![img]()` 首图语法，供任务进度与封面缩略图解析。
+ */
+export function stripMarkdownOf(text: string): string {
+  if (!text) return "";
+  let out = text;
+
+  // 围栏代码块：去掉围栏标记、保留块内文字；未闭合的围栏只删开栏行
+  out = out.replace(/^[ \t]*```[^\n]*\n([\s\S]*?)^[ \t]*```[ \t]*$/gm, "$1");
+  out = out.replace(/^[ \t]*```[^\n]*$/gm, "");
+  out = out.replace(/`+([^`]*)`+/g, "$1");
+
+  // 图片保留 alt，链接保留文字，自动链接去掉尖括号
+  out = out.replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1");
+  out = out.replace(/\[([^\]]*)\]\([^)]*\)/g, "$1");
+  out = out.replace(/<((?:https?|mailto):[^>]+)>/g, "$1");
+
+  // 强调：先双后单，避免 **x** 被单星号规则切碎
+  out = out.replace(/\*\*([^*]+)\*\*/g, "$1");
+  out = out.replace(/__([^_]+)__/g, "$1");
+  out = out.replace(/\*([^*]+)\*/g, "$1");
+  out = out.replace(/~~([^~]+)~~/g, "$1");
+  out = out.replace(/(^|\W)_([^_]+)_(?=\W|$)/g, "$1$2");
+
+  // 标题 / 引用 / 列表（任务勾选框连标记一起去掉）
+  out = out.replace(/^[ \t]{0,3}#{1,6}[ \t]+/gm, "");
+  out = out.replace(/^[ \t]{0,3}>[ \t]?/gm, "");
+  out = out.replace(/^[ \t]*[-*+][ \t]+\[[ xX]\][ \t]+/gm, "");
+  out = out.replace(/^[ \t]*\d+[.)][ \t]+\[[ xX]\][ \t]+/gm, "");
+  out = out.replace(/^[ \t]*[-*+][ \t]+/gm, "");
+  out = out.replace(/^[ \t]*\d+[.)][ \t]+/gm, "");
+
+  // 表格：删分隔行，竖线换空格
+  out = out
+    .split("\n")
+    .filter((line) => {
+      const t = line.trim();
+      return !(t.length > 0 && t.includes("-") && /^[|:\-\s]+$/.test(t));
+    })
+    .map((line) =>
+      line
+        .replace(/^[ \t]*\|/, "")
+        .replace(/\|[ \t]*$/, "")
+        .replace(/[ \t]*\|[ \t]*/g, " "),
+    )
+    .join("\n");
+
+  // 分割线
+  out = out.replace(/^[ \t]{0,3}([-*_])[ \t]*(?:\1[ \t]*){2,}$/gm, "");
+
+  return out.replace(/\s+/g, " ").trim();
+}
+
 function openedAtValue(file: RecentFile): number {
   const ms = Date.parse(file.openedAt ?? "");
   return Number.isFinite(ms) ? ms : 0;
@@ -249,7 +306,10 @@ export type ThumbKind =
 
 export interface ThumbDescriptor {
   kind: ThumbKind;
-  /** md-cover / image 的真图路径（本地路径，渲染层再转 asset://）；其余为 null。 */
+  /**
+   * 本地路径：image / md-cover 的真图，video / html 的原文件。渲染层按 kind
+   * 转成 asset:// 或 media://；其余为 null。
+   */
   src: string | null;
   /** 文件指纹：path + openedAt + 首图地址；索引缓存以它为键。 */
   fingerprint: string;
@@ -321,8 +381,9 @@ export function thumbDescriptorOf(item: RecentFile): ThumbDescriptor | null {
   const fingerprint = thumbFingerprint(item);
   const cached = THUMB_CACHE.get(fingerprint);
   if (cached) return cached;
+  // 视频 / HTML 的 src 是文件绝对路径，渲染层再转 media:// / asset://
   const src =
-    kind === "image"
+    kind === "image" || kind === "video-poster" || kind === "html-page"
       ? item.path
       : kind === "md-cover"
         ? coverSrcOf(item)

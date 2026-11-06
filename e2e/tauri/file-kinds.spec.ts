@@ -1,6 +1,11 @@
 import { test, expect } from "@playwright/test";
+import { mkdirSync } from "node:fs";
+import path from "node:path";
 
 const APP_URL = "http://localhost:1420";
+const ART = path.resolve(process.cwd(), ".artifacts/247");
+
+mkdirSync(ART, { recursive: true });
 
 async function openFile(
   page: import("@playwright/test").Page,
@@ -437,4 +442,6 @@ test("图片预览默认宽度 1180 且支持滚轮缩放", async ({ page }) => 
   await page.waitForTimeout(200);
   const w2 = await img.evaluate((el) => (el as HTMLElement).style.width);
   expect(parseFloat(w2)).toBeGreaterThan(1180);
+
+  await page.screenshot({ path: path.join(ART, "image-zoom.png") });
 });

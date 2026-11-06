@@ -1,0 +1,33 @@
+{
+  "task": "244-export-menu",
+  "states": [
+    {
+      "state": "export-submenu",
+      "screenshot": ".artifacts/244/export-submenu.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-06T14:38:01Z",
+      "runner": "local@MMBP.local"
+    },
+    {
+      "state": "html-saved",
+      "screenshot": ".artifacts/244/html-saved.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-06T14:38:20Z",
+      "runner": "local@MMBP.local"
+    },
+    {
+      "state": "png-saved",
+      "screenshot": ".artifacts/244/png-saved.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-06T14:38:21Z",
+      "runner": "local@MMBP.local"
+    },
+    {
+      "state": "mdpkg-saved",
+      "screenshot": ".artifacts/244/mdpkg-saved.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-06T14:38:22Z",
+      "runner": "local@MMBP.local"
+    }
+  ]
+}

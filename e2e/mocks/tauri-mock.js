@@ -185,7 +185,10 @@ function mockInvoke(cmd, args) {
   }
   if (cmd === "run_agent_turn" && args && args.messages) return aiRunAgentTurn(args.messages);
   if (cmd === "save_as_file" && args) {
-    window.__biaoyue_saved_files__.push({ content: args.content });
+    window.__biaoyue_saved_files__.push({
+      content: args.content,
+      defaultName: args.defaultName,
+    });
     return { path: "/Users/test/测试文档.html" };
   }
   if (cmd === "save_binary_as_file" && args) {

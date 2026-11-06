@@ -133,18 +133,18 @@ export default function PortalView({
   return (
     <div
       data-testid="portal"
-      className="h-full overflow-auto bg-white px-10 py-8 dark:bg-gray-900"
+      className="h-full overflow-auto bg-[var(--app-surface)] px-10 py-8"
     >
       <header className="mb-8">
         <h1
           data-testid="portal-greeting"
-          className="text-2xl font-medium text-gray-900 dark:text-gray-100"
+          className="text-2xl font-medium text-[var(--app-text)]"
         >
           {greeting(now)}
         </h1>
         <p
           data-testid="portal-date"
-          className="mt-1 text-sm text-gray-400 dark:text-gray-500"
+          className="mt-1 text-sm text-[var(--app-text-3)]"
         >
           {dateLabel}
         </p>
@@ -153,30 +153,30 @@ export default function PortalView({
       {recentFiles.length === 0 ? (
         <section
           data-testid="portal-empty"
-          className="rounded-lg border border-dashed border-gray-200 p-10 text-center dark:border-gray-700"
+          className="rounded-lg border border-dashed border-[var(--app-border)] p-10 text-center"
         >
-          <p className="mb-4 text-sm text-gray-500 dark:text-gray-400">
+          <p className="mb-4 text-sm text-[var(--app-text-3)]">
             还没有打开过文件。开始第一份文档吧。
           </p>
           <div className="flex justify-center gap-3">
             <button
               onClick={onNewFile}
               data-testid="empty-new"
-              className="rounded border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-800"
+              className="rounded border border-[var(--app-border-strong)] px-3 py-1.5 text-sm hover:bg-[var(--app-sunken)]"
             >
               新建文档
             </button>
             <button
               onClick={onOpenFile}
               data-testid="empty-open"
-              className="rounded border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-800"
+              className="rounded border border-[var(--app-border-strong)] px-3 py-1.5 text-sm hover:bg-[var(--app-sunken)]"
             >
               打开文件
             </button>
             <button
               onClick={onOpenFile}
               data-testid="empty-import"
-              className="rounded border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-800"
+              className="rounded border border-[var(--app-border-strong)] px-3 py-1.5 text-sm hover:bg-[var(--app-sunken)]"
             >
               导入
             </button>
@@ -190,9 +190,9 @@ export default function PortalView({
               data-recent-path={hero.path}
               {...fileDragHandlers(hero.path)}
               onClick={() => openRecent(hero.path)}
-              className="mb-8 block w-full rounded-lg border border-gray-200 p-5 text-left hover:border-gray-300 hover:bg-gray-50 dark:border-gray-700 dark:hover:border-gray-600 dark:hover:bg-gray-800"
+              className="mb-8 block w-full rounded-lg border border-[var(--app-border)] p-5 text-left hover:border-[var(--app-border-strong)] hover:bg-[var(--app-sunken)]"
             >
-              <div className="mb-2 flex items-center gap-2 text-xs text-gray-400">
+              <div className="mb-2 flex items-center gap-2 text-xs text-[var(--app-text-3)]">
                 <Icon
                   name={iconOfType(fileTypeOf(hero.path))}
                   size={18}
@@ -200,13 +200,13 @@ export default function PortalView({
                 />
                 继续阅读
               </div>
-              <div className="text-lg font-medium text-gray-900 dark:text-gray-100">
+              <div className="text-lg font-medium text-[var(--app-text)]">
                 {hero.title}
               </div>
-              <p className="mt-1 line-clamp-2 text-sm text-gray-500 dark:text-gray-400">
+              <p className="mt-1 line-clamp-2 text-sm text-[var(--app-text-3)]">
                 {hero.excerpt || "（还没有内容）"}
               </p>
-              <div className="mt-3 flex items-center gap-2 text-xs text-gray-400">
+              <div className="mt-3 flex items-center gap-2 text-xs text-[var(--app-text-3)]">
                 <span>{relativeTime(hero.openedAt)}</span>
                 {heroPercent > 0 && (
                   <>
@@ -219,7 +219,7 @@ export default function PortalView({
           )}
 
           <section className="mb-8">
-            <h2 className="mb-3 text-xs font-medium text-gray-500 dark:text-gray-400">
+            <h2 className="mb-3 text-xs font-medium text-[var(--app-text-2)]">
               最近文件
             </h2>
             <div
@@ -232,7 +232,7 @@ export default function PortalView({
                   data-recent-path={f.path}
                   {...fileDragHandlers(f.path)}
                   onClick={() => openRecent(f.path)}
-                  className="rounded-lg border border-gray-200 p-4 text-left hover:border-gray-300 hover:bg-gray-50 dark:border-gray-700 dark:hover:border-gray-600 dark:hover:bg-gray-800"
+                  className="rounded-lg border border-[var(--app-border)] p-4 text-left hover:border-[var(--app-border-strong)] hover:bg-[var(--app-sunken)]"
                 >
                   <div className="mb-1.5 flex items-center gap-2">
                     <Icon
@@ -240,14 +240,14 @@ export default function PortalView({
                       size={18}
                       color={TYPE_COLORS[fileTypeOf(f.path)]}
                     />
-                    <span className="truncate text-sm font-medium text-gray-900 dark:text-gray-100">
+                    <span className="truncate text-sm font-medium text-[var(--app-text)]">
                       {f.title}
                     </span>
                   </div>
-                  <p className="mb-1 line-clamp-2 h-8 text-xs text-gray-500 dark:text-gray-400">
+                  <p className="mb-1 line-clamp-2 h-8 text-xs text-[var(--app-text-3)]">
                     {f.excerpt || "（还没有内容）"}
                   </p>
-                  <div className="flex items-center justify-between text-[11px] text-gray-400">
+                  <div className="flex items-center justify-between text-[11px] text-[var(--app-text-3)]">
                     <span className="truncate">{parentOf(f.path)}</span>
                     <span className="shrink-0">
                       {relativeTime(f.openedAt)}
@@ -265,7 +265,7 @@ export default function PortalView({
           </section>
 
           <section className="mb-8">
-            <h2 className="mb-3 text-xs font-medium text-gray-500 dark:text-gray-400">
+            <h2 className="mb-3 text-xs font-medium text-[var(--app-text-2)]">
               按类型
             </h2>
             <div
@@ -283,17 +283,15 @@ export default function PortalView({
                     setGridSelectedPath(null);
                     setScene("grid");
                   }}
-                  className="flex items-center gap-2 rounded border border-gray-200 px-3 py-2 text-xs hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
+                  className="flex items-center gap-2 rounded border border-[var(--app-border)] px-3 py-2 text-xs hover:bg-[var(--app-sunken)]"
                 >
                   <Icon
                     name={iconOfType(tile.kind)}
                     size={18}
                     color={TYPE_COLORS[tile.kind]}
                   />
-                  <span className="text-gray-700 dark:text-gray-300">
-                    {tile.label}
-                  </span>
-                  <span className="ml-auto text-gray-400">
+                  <span className="text-[var(--app-text)]">{tile.label}</span>
+                  <span className="ml-auto text-[var(--app-text-3)]">
                     {counts.get(tile.kind) ?? 0}
                   </span>
                 </button>
@@ -304,14 +302,14 @@ export default function PortalView({
       )}
 
       <section className="mb-8">
-        <h2 className="mb-3 text-xs font-medium text-gray-500 dark:text-gray-400">
+        <h2 className="mb-3 text-xs font-medium text-[var(--app-text-2)]">
           快速动作
         </h2>
         <div className="flex flex-wrap gap-2">
           <button
             onClick={onNewFile}
             data-testid="quick-new"
-            className="flex items-center gap-1.5 rounded border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-800"
+            className="flex items-center gap-1.5 rounded border border-[var(--app-border-strong)] px-3 py-1.5 text-sm hover:bg-[var(--app-sunken)]"
           >
             <Icon name="file" size={18} />
             新建文档
@@ -319,7 +317,7 @@ export default function PortalView({
           <button
             onClick={onOpenFile}
             data-testid="quick-open-file"
-            className="flex items-center gap-1.5 rounded border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-800"
+            className="flex items-center gap-1.5 rounded border border-[var(--app-border-strong)] px-3 py-1.5 text-sm hover:bg-[var(--app-sunken)]"
           >
             <Icon name="folder" size={18} />
             打开文件
@@ -327,7 +325,7 @@ export default function PortalView({
           <button
             onClick={onStudyPage}
             data-testid="quick-study"
-            className="flex items-center gap-1.5 rounded border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-800"
+            className="flex items-center gap-1.5 rounded border border-[var(--app-border-strong)] px-3 py-1.5 text-sm hover:bg-[var(--app-sunken)]"
           >
             <Icon name="text" size={18} />
             生成学习页
@@ -335,7 +333,7 @@ export default function PortalView({
           <button
             onClick={onAiCommand}
             data-testid="quick-ai"
-            className="flex items-center gap-1.5 rounded border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-800"
+            className="flex items-center gap-1.5 rounded border border-[var(--app-border-strong)] px-3 py-1.5 text-sm hover:bg-[var(--app-sunken)]"
           >
             <Icon name="settings" size={18} />
             AI 指令
@@ -345,7 +343,7 @@ export default function PortalView({
 
       <footer
         data-testid="portal-hint"
-        className="text-xs text-gray-400 dark:text-gray-500"
+        className="text-xs text-[var(--app-text-3)]"
       >
         ⌘P 搜索全部
       </footer>

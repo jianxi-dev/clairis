@@ -167,6 +167,24 @@ function App() {
     });
   }, []);
 
+  // 原生顶栏跟随主题：system 传 null 交回系统（Tauri 语义），非 Tauri 环境跳过。
+  useEffect(() => {
+    if (!isTauri) return;
+    let cancelled = false;
+    import("@tauri-apps/api/window")
+      .then(({ getCurrentWindow }) => {
+        if (cancelled) return;
+        const native = theme === "dark" ? "dark" : "light";
+        return getCurrentWindow()
+          .setTheme(theme === "system" ? null : native)
+          .catch(() => {});
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [theme]);
+
   // 原生菜单「设置…」与 Cmd+, 走同一入口；无常驻按钮。
   useEffect(() => {
     if (!isTauri) return;
@@ -758,7 +776,7 @@ function App() {
       <AiBubble />
       <FloatingPreview onOpenPath={handleOpenPath} />
       {scene === "portal" && (
-        <div className="fixed inset-0 z-40 bg-white dark:bg-gray-900">
+        <div className="fixed inset-0 z-40 bg-[var(--app-surface)]">
           <PortalView
             onOpenFile={handleOpenFile}
             onNewFile={handleNewFile}
@@ -778,7 +796,7 @@ function App() {
         </div>
       )}
       {scene === "grid" && (
-        <div className="fixed inset-0 z-40 bg-white dark:bg-gray-900">
+        <div className="fixed inset-0 z-40 bg-[var(--app-surface)]">
           <GridView onOpenPath={handleOpenPath} />
         </div>
       )}

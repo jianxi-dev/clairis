@@ -45,7 +45,10 @@ export async function exportCurrentDocHtml(
       },
     );
 
-    const saved = await invoke<SaveResult>("save_as_file", { content: html });
+    const saved = await invoke<SaveResult>("save_as_file", {
+      content: html,
+      defaultName: htmlFileName(input.title),
+    });
     return { status: "saved", path: saved?.path ?? "", inlined, failed };
   } catch (e) {
     // Rust 的 AppError::Cancelled 是 unit variant，序列化为字符串 "Cancelled"。
@@ -55,6 +58,16 @@ export async function exportCurrentDocHtml(
     }
     return { status: "error", message: String(e) };
   }
+}
+
+/** 导出文件名：`标题.html`，去掉路径分隔符与首尾空白。 */
+export function htmlFileName(title: string): string {
+  const base =
+    title
+      .replace(/[\\/]/g, "-")
+      .replace(/\.(md|markdown|mdown|mdwn|txt)$/i, "")
+      .trim() || "未命名";
+  return `${base}.html`;
 }
 
 export function exportMessage(result: ExportHtmlResult): string | null {

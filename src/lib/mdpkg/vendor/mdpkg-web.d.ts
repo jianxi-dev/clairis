@@ -89,3 +89,13 @@ export function toDocx(
   opts?: DocxOptions,
   onWarning?: (msg: string) => void,
 ): Uint8Array;
+
+export interface ZipExportOptions {
+  readme?: string;
+}
+
+/** Zip 导出（buildZipExport 别名）：包 → 标准 zip 交付物（include 展开、无 manifest.json、附 README.md） */
+export declare function toZip(
+  pkg: Map<string, Uint8Array>,
+  opts?: ZipExportOptions,
+): Uint8Array;

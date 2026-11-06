@@ -235,12 +235,29 @@ pub async fn save_file(path: String, content: String) -> Result<SaveResult, AppE
 
 /// Open "Save As" dialog and write file.
 #[tauri::command]
-pub async fn save_as_file(app: AppHandle, content: String) -> Result<SaveResult, AppError> {
-    let file = app
-        .dialog()
-        .file()
-        .add_filter("文档", DOC_EXTENSIONS)
-        .blocking_save_file();
+pub async fn save_as_file(
+    app: AppHandle,
+    content: String,
+    default_name: Option<String>,
+) -> Result<SaveResult, AppError> {
+    let ext = default_name
+        .as_deref()
+        .and_then(|name| Path::new(name).extension())
+        .and_then(|e| e.to_str())
+        .map(|e| e.to_ascii_lowercase());
+    let (label, patterns): (&str, Vec<&str>) = match ext.as_deref() {
+        Some("html") | Some("htm") => ("HTML 文档", vec!["html", "htm"]),
+        Some("md") | Some("markdown") | Some("mdown") | Some("mdwn") | Some("txt") => {
+            ("文档", DOC_EXTENSIONS.to_vec())
+        }
+        _ => ("文档", DOC_EXTENSIONS.to_vec()),
+    };
+
+    let mut dialog = app.dialog().file();
+    if let Some(name) = default_name.as_deref() {
+        dialog = dialog.set_file_name(name);
+    }
+    let file = dialog.add_filter(label, &patterns).blocking_save_file();
 
     let path = match file {
         Some(p) => p.into_path().unwrap(),
@@ -308,7 +325,9 @@ pub async fn save_binary_as_file(
     let (label, patterns): (&str, Vec<&str>) = match ext.as_str() {
         "docx" => ("Word 文档", vec!["docx"]),
         "png" => ("PNG 图片", vec!["png"]),
-        _ => ("文件", vec!["png", "docx"]),
+        "mdpkg" => ("MDPKG 包", vec!["mdpkg"]),
+        "zip" => ("ZIP 压缩包", vec!["zip"]),
+        _ => ("文件", vec!["png", "docx", "mdpkg", "zip"]),
     };
     let file = app
         .dialog()

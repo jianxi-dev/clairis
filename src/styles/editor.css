@@ -90,8 +90,16 @@ body {
   max-width: 100%;
 }
 
-.cm-editor .cm-selectionBackground {
-  background: var(--app-accent-soft);
+/* drawSelection 注入的 `.cm-focused > .cm-scroller > .cm-selectionLayer
+ * .cm-selectionBackground` 特异性高于本文件，且 `--app-accent-soft` 太淡，
+ * 编辑态选区几乎不可见；这里用 !important 压住并换成明显的强调色底。 */
+.cm-editor .cm-selectionBackground,
+.cm-editor.cm-focused .cm-selectionBackground {
+  background: color-mix(in srgb, var(--app-accent) 30%, transparent) !important;
+}
+
+.cm-editor .cm-content ::selection {
+  background: color-mix(in srgb, var(--app-accent) 30%, transparent) !important;
 }
 
 .cm-editor .cm-cursor {

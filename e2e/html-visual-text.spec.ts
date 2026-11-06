@@ -1,4 +1,10 @@
 import { test, expect, type Page } from "@playwright/test";
+import { mkdirSync } from "node:fs";
+import path from "node:path";
+
+const ART = path.resolve(process.cwd(), ".artifacts/247");
+
+mkdirSync(ART, { recursive: true });
 
 /**
  * 文本编辑（E-16 切片 4 / 票 165）。
@@ -42,6 +48,7 @@ test("双击进入编辑，输入回写 content", async ({ page }) => {
   await p.dblclick();
   // 进入编辑态：该元素变成 contenteditable
   await expect(p).toHaveAttribute("contenteditable", "true");
+  await page.screenshot({ path: path.join(ART, "html-visual-edit.png") });
 
   await page.keyboard.press("ControlOrMeta+a");
   await page.keyboard.type("改过的段落");
@@ -82,6 +89,7 @@ test("改动在预览里可见，且编辑器未被每次按键重建", async ({
   await expect(preview).toHaveCount(1);
   const srcdoc = await preview.getAttribute("srcdoc");
   expect(srcdoc).toContain("XY");
+  await page.screenshot({ path: path.join(ART, "html-live-preview.png") });
 });
 
 test("先打字再回车：打字内容不丢，且确实拆成两块", async ({ page }) => {

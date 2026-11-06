@@ -9,7 +9,11 @@ use crate::commands::file::is_supported_document;
 use crate::commands::recent::{is_heavy_dir, is_html, strip_html_tags, to_iso8601, SCAN_DIRS};
 use crate::errors::AppError;
 
-const MAX_DEPTH: usize = 2;
+/// 目录递归深度上限：从 Documents / Desktop / Downloads 起算，向下最多 5 层
+/// （第 6 层目录里的文件不扫）。2 层时 `Desktop/AI学习/skill集合/x.html`
+/// 这类三层目录下的文件会漏检，故提到 5。heavy dir 与 MAX_SCAN_FILES
+/// 仍然兜底，不会把整个 home 扫穿。
+const MAX_DEPTH: usize = 5;
 /// 默认返回条数：防止全盘扫描后一次性回传过多。
 const DEFAULT_LIMIT: usize = 30;
 /// 单次检索最多回传的条数。
@@ -421,6 +425,38 @@ mod tests {
         let hits = collect_search_hits(&home, "关键词", 30);
         assert_eq!(hits.len(), 1);
         assert!(hits[0].path.ends_with("ok.md"));
+
+        let _ = fs::remove_dir_all(&home);
+    }
+
+    #[test]
+    fn scans_up_to_depth_five_but_not_deeper() {
+        let home = temp_home("depth");
+        let root = home.join("Documents");
+        // 第 2 层目录里的文件（旧 MAX_DEPTH=2 的边界）
+        write_with_mtime(
+            &root.join("AI学习").join("skill集合").join("x.html"),
+            at(1000),
+            "<html><body>深层关键词</body></html>".as_bytes(),
+        );
+        // 第 5 层目录里的文件（新上限之内）
+        write_with_mtime(
+            &root.join("a/b/c/d/e").join("deep.md"),
+            at(2000),
+            "深层关键词".as_bytes(),
+        );
+        // 第 6 层目录里的文件（超出上限，不应扫到）
+        write_with_mtime(
+            &root.join("a/b/c/d/e/f").join("toodeep.md"),
+            at(3000),
+            "深层关键词".as_bytes(),
+        );
+
+        let hits = collect_search_hits(&home, "深层关键词", 30);
+        assert_eq!(hits.len(), 2, "第 2、5 层应命中，第 6 层应被挡下");
+        assert!(hits.iter().any(|h| h.path.ends_with("x.html")));
+        assert!(hits.iter().any(|h| h.path.ends_with("deep.md")));
+        assert!(!hits.iter().any(|h| h.path.ends_with("toodeep.md")));
 
         let _ = fs::remove_dir_all(&home);
     }

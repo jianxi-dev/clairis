@@ -203,7 +203,7 @@ test.describe("选区胶囊双模式", () => {
         "[data-selection-pill]",
       );
       const chip = document.querySelector<HTMLElement>(
-        "[data-testid='rail-card-chip']",
+        "[data-testid='rail-chip']",
       );
       const tab = document.querySelector<HTMLElement>("[data-tab-id]");
       return {

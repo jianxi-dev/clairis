@@ -120,7 +120,7 @@ function ThumbBody({
   }
   if ((item.excerpt ?? "").trim() !== "") {
     return (
-      <div className="h-full w-full overflow-hidden p-1.5 text-[8px] leading-[1.35] text-gray-500 dark:text-gray-400">
+      <div className="h-full w-full overflow-hidden p-1.5 text-[8px] leading-[1.35] text-[var(--app-text-3)]">
         {item.excerpt}
       </div>
     );
@@ -210,7 +210,7 @@ export default function GridTile({
         outline: selected ? "2px solid var(--app-accent)" : undefined,
         outlineOffset: selected ? "-2px" : undefined,
       }}
-      className="group relative flex cursor-pointer flex-col overflow-hidden rounded-lg border border-gray-200 bg-white hover:-translate-y-0.5 hover:shadow-md dark:border-gray-700 dark:bg-gray-800"
+      className="group relative flex cursor-pointer flex-col overflow-hidden rounded-lg border border-[var(--app-border)] bg-[var(--app-surface)] hover:-translate-y-0.5 hover:shadow-md"
     >
       {number !== undefined && (
         <span
@@ -230,7 +230,7 @@ export default function GridTile({
           data-tile-thumb
           data-thumb-kind={descriptor?.kind ?? "text"}
           style={{ height: THUMB_H[size], aspectRatio: "4 / 3" }}
-          className="relative shrink-0 overflow-hidden rounded border border-gray-100 bg-gray-50 dark:border-gray-800 dark:bg-gray-900"
+          className="relative shrink-0 overflow-hidden rounded border border-[var(--app-border)] bg-[var(--app-sunken)]"
         >
           <ThumbBody
             descriptor={descriptor}
@@ -242,13 +242,13 @@ export default function GridTile({
         <div className="flex min-w-0 flex-1 flex-col">
           <div className="flex min-w-0 items-start gap-1.5">
             <Icon name={iconOfType(kind)} size={18} color={iconColor} />
-            <span className="line-clamp-2 text-xs font-semibold leading-snug text-gray-800 dark:text-gray-100">
+            <span className="line-clamp-2 text-xs font-semibold leading-snug text-[var(--app-text)]">
               {item.title}
             </span>
           </div>
           <div
             data-tile-meta
-            className="mt-0.5 flex min-w-0 items-center gap-1 text-[10px] text-gray-400 dark:text-gray-500"
+            className="mt-0.5 flex min-w-0 items-center gap-1 text-[10px] text-[var(--app-text-3)]"
           >
             <span className="shrink-0">{relativeDate(item.openedAt)}</span>
             <span>·</span>
@@ -260,7 +260,7 @@ export default function GridTile({
                 e.stopPropagation();
                 onReveal(item.path);
               }}
-              className="min-w-0 truncate text-left hover:text-gray-700 dark:hover:text-gray-200"
+              className="min-w-0 truncate text-left hover:text-[var(--app-text)]"
             >
               {parentPathOf(item.path)}
             </button>
@@ -268,7 +268,7 @@ export default function GridTile({
           {excerptLines !== "" && (
             <p
               data-tile-excerpt
-              className={`mt-1 ${excerptLines} text-[11px] leading-snug text-gray-500 dark:text-gray-400`}
+              className={`mt-1 ${excerptLines} text-[11px] leading-snug text-[var(--app-text-3)]`}
             >
               {item.excerpt || "（暂无正文）"}
             </p>
@@ -276,9 +276,9 @@ export default function GridTile({
           {size === "large" && progressPct !== null && (
             <div
               data-tile-progress
-              className="mt-auto flex items-center gap-1 pt-1 text-[10px] text-gray-400"
+              className="mt-auto flex items-center gap-1 pt-1 text-[10px] text-[var(--app-text-3)]"
             >
-              <span className="inline-block h-0.5 w-16 overflow-hidden rounded bg-gray-200 dark:bg-gray-700">
+              <span className="inline-block h-0.5 w-16 overflow-hidden rounded bg-[var(--app-border)]">
                 <span
                   className="block h-full bg-[var(--app-accent)]"
                   style={{ width: `${progressPct}%` }}
@@ -307,7 +307,7 @@ export default function GridTile({
             e.stopPropagation();
             onOpen(item.path);
           }}
-          className="rounded bg-white/80 p-0.5 text-gray-500 hover:text-gray-800 dark:bg-gray-900/70 dark:text-gray-400 dark:hover:text-gray-100"
+          className="rounded bg-[var(--app-surface)] p-0.5 text-[var(--app-text-3)] hover:text-[var(--app-text)]"
         >
           <Icon name="eye" size={18} />
         </button>
@@ -320,7 +320,7 @@ export default function GridTile({
             e.stopPropagation();
             onSplit(item.path, "row");
           }}
-          className="rounded bg-white/80 p-0.5 text-gray-500 hover:text-gray-800 dark:bg-gray-900/70 dark:text-gray-400 dark:hover:text-gray-100"
+          className="rounded bg-[var(--app-surface)] p-0.5 text-[var(--app-text-3)] hover:text-[var(--app-text)]"
         >
           <Icon name="splitRight" size={18} />
         </button>
@@ -333,7 +333,7 @@ export default function GridTile({
             e.stopPropagation();
             onSplit(item.path, "col");
           }}
-          className="rounded bg-white/80 p-0.5 text-gray-500 hover:text-gray-800 dark:bg-gray-900/70 dark:text-gray-400 dark:hover:text-gray-100"
+          className="rounded bg-[var(--app-surface)] p-0.5 text-[var(--app-text-3)] hover:text-[var(--app-text)]"
         >
           <Icon name="splitDown" size={18} />
         </button>
