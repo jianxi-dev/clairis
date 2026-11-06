@@ -1,0 +1,29 @@
+{
+  "task": "252-reading-rail",
+  "states": [
+    {
+      "state": "thumbnails",
+      "screenshot": ".artifacts/245/rail-card-thumbnails.png",
+      "assertion": "passed",
+      "note": "六类缩略图 72×54；本轮补 PDF 首页/视频首帧数据源"
+    },
+    {
+      "state": "search",
+      "screenshot": ".artifacts/245/rail-search-local.png",
+      "assertion": "passed",
+      "note": "本机检索；本轮扩到 home 根并含 H1"
+    },
+    {
+      "state": "hover-actions",
+      "screenshot": ".artifacts/245/rail-card-hover-actions.png",
+      "assertion": "passed",
+      "note": "卡片 hover 动作"
+    },
+    {
+      "state": "collapsed",
+      "screenshot": ".artifacts/245/rail-collapsed.png",
+      "assertion": "passed",
+      "note": "折叠态"
+    }
+  ]
+}

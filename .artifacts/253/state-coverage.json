@@ -1,0 +1,29 @@
+{
+  "task": "253-html-preview-edit",
+  "states": [
+    {
+      "state": "live-preview",
+      "screenshot": ".artifacts/247/html-live-preview.png",
+      "assertion": "passed",
+      "note": "asset 直载预览；本轮加 onLoad 重绘"
+    },
+    {
+      "state": "visual-edit",
+      "screenshot": ".artifacts/247/html-visual-edit.png",
+      "assertion": "passed",
+      "note": "可视化编辑；本轮修双击回顶"
+    },
+    {
+      "state": "edit-mode",
+      "screenshot": ".artifacts/255/edit.png",
+      "assertion": "passed",
+      "note": "编辑态渲染"
+    },
+    {
+      "state": "source-mode",
+      "screenshot": ".artifacts/255/source.png",
+      "assertion": "passed",
+      "note": "源码态"
+    }
+  ]
+}
