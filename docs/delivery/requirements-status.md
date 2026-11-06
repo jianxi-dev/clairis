@@ -37,7 +37,7 @@ openspec status --change <name>   # 单个变更工件完成度
 
 ## 总览统计（截至 2026-11-06）
 
-- 规格：17 域 / 112 requirement（`openspec validate --specs --strict` 通过）
+- 规格：17 域 / 124 requirement（2026-11-06 归档 reading-surface-refine 与 editor-block-parity 后）
 - ✅ 经 openspec 归档实现：14
 - 🟡 已实现/设计完成（未走 openspec 变更）：24
 - ⬜ 待开发：16
