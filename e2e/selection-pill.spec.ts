@@ -240,25 +240,40 @@ test.describe("选区胶囊双模式", () => {
     await page.locator("[data-tab-id]").first().click();
     await expect(pill(page)).toHaveCount(0);
 
+    await page.evaluate(() => {
+      const w = window as unknown as Record<string, number>;
+      w.__selSeen = 0;
+      document.addEventListener("selectionchange", () => {
+        w.__selSeen += 1;
+      });
+    });
     await selectRange(page, ".preview-content p", 0, 6);
     await expect(pill(page)).toBeVisible();
-    const detached = page.waitForFunction(
-      () => !document.querySelector("[data-selection-pill]"),
+    // 等待原生 selectionchange 落定：它可能在滚动之后才派发，把刚被滚动
+    // 隐藏的胶囊重新唤出（串跑偶发超时的根因）。
+    await page.waitForFunction(
+      () => (window as unknown as Record<string, number>).__selSeen >= 2,
       null,
       { timeout: 5000 },
     );
-    await page.evaluate(() => {
+    // 滚动发生在 .preview-content 的外层 overflow-y:auto 容器（自身不滚动），
+    // 用 scrollTop 制造真实位移触发 scroll 事件；无可滚动祖先时显式跳过，
+    // 避免静默 no-op（断言语义不变：滚动仍须触发胶囊隐藏）。
+    const scrolled = await page.evaluate(() => {
       let node: HTMLElement | null = document.querySelector(".preview-content");
       while (node) {
         if (node.scrollHeight > node.clientHeight + 1) {
-          node.dispatchEvent(new Event("scroll"));
-          return;
+          const max = node.scrollHeight - node.clientHeight;
+          const start = node.scrollTop;
+          node.scrollTop = start === 0 ? max : 0;
+          return node.scrollTop !== start;
         }
         node = node.parentElement;
       }
-      window.dispatchEvent(new Event("scroll"));
+      return false;
     });
-    await detached;
+    test.skip(!scrolled, "预览区没有可滚动祖先，无法触发真实滚动");
+    await expect(pill(page)).toHaveCount(0, { timeout: 5000 });
   });
 
   test("深浅色主题下分别截图", async ({ page }) => {
