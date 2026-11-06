@@ -6,7 +6,7 @@
  * 设计依据：docs/design/explorations/reader-typography/README.md
  */
 
-/* ── 外壳：窗口底（滚动交给外层容器，这里只负责定位设置入口）─── */
+/* ── 外壳：窗口底（滚动交给外层容器）─────────────────── */
 /* min-height 而非 height：内容超过一屏时外壳跟着长，背景不再只铺第一屏 */
 .preview-shell {
   position: relative;
@@ -941,110 +941,9 @@ details.callout > summary::before {
   background: transparent;
 }
 
-/* ── 阅读设置入口 ────────────────────────────────────── */
-.reader-settings {
-  position: absolute;
-  inset-block-start: 14px;
-  inset-inline-end: 18px;
-  z-index: 6;
-}
-
-.reader-settings-toggle {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 26px;
-  height: 26px;
-  border: 1px solid var(--app-border);
-  border-radius: 999px;
-  background: var(--app-surface);
-  color: var(--app-text-2);
-  cursor: pointer;
-  transition:
-    color 0.15s ease,
-    border-color 0.15s ease;
-}
-
-.reader-settings-toggle:hover {
-  color: var(--app-accent);
-  border-color: var(--app-accent);
-}
-
-.reader-settings-panel {
-  position: absolute;
-  inset-block-start: 34px;
-  inset-inline-end: 0;
-  width: 248px;
-  padding: 12px 14px;
-  background: var(--app-surface);
-  border: 1px solid var(--app-border);
-  border-radius: 8px;
-  box-shadow: var(--app-shadow);
-  font-size: 12px;
-  line-height: 1.6;
-  color: var(--app-text-2);
-  user-select: none;
-}
-
-.reader-settings-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-block-end: 10px;
-}
-
-.reader-settings-row:last-child {
-  margin-block-end: 0;
-}
-
-.reader-settings-label {
-  flex: none;
-  color: var(--app-text-3);
-}
-
-.reader-settings-pills {
-  display: flex;
-  gap: 4px;
-  flex-wrap: wrap;
-}
-
-.reader-pill {
-  font: inherit;
-  font-size: 12px;
-  padding: 2px 8px;
-  border: 1px solid var(--app-border);
-  border-radius: 999px;
-  background: transparent;
-  color: var(--app-text-2);
-  cursor: pointer;
-}
-
-.reader-pill:hover {
-  border-color: var(--app-border-strong);
-}
-
-.reader-pill.on {
-  background: var(--app-accent);
-  border-color: var(--app-accent);
-  color: #fff;
-}
-
-.reader-range {
-  flex: 1;
-  accent-color: var(--app-accent);
-}
-
-.reader-settings-value {
-  width: 48px;
-  text-align: end;
-  color: var(--app-text-3);
-  font-variant-numeric: tabular-nums;
-}
-
 @media (prefers-reduced-motion: reduce) {
   .preview-content .code-lang,
-  .preview-content .code-copy,
-  .reader-settings-toggle {
+  .preview-content .code-copy {
     transition: none;
   }
 }
@@ -1089,22 +988,11 @@ details.callout > summary::before {
   margin-inline: auto;
 }
 
-/* 主题色卡：让用户看到组合效果，而不是读一个名字 */
-.reader-pill .reader-swatch {
-  display: inline-block;
-  width: 0.7em;
-  height: 0.7em;
-  margin-inline-end: 0.4em;
-  vertical-align: -0.05em;
-  border-radius: 50%;
-  border: 1px solid rgba(0, 0, 0, 0.15);
-}
-
 /* ── 阅读主题 ─────────────────────────────────────────────
  * 一套 --tone-* 同时决定标题层级 / 加粗 / 强调与链接 / 行内代码，
  * 切一次换整套。优先级：主题 > 编辑器标题色 > 默认墨色。
  * 「纸墨」为默认，故意不定义 --tone-*，行为与主题功能上线前一致。
- * 新增主题：这里加一个块 + ReaderSettingsPopover 的 TONES 加一项。
+ * 新增主题：这里加一个块 + SettingsView 阅读空间区的 READER_TONES 加一项。
  */
 html[data-skin="indigo"] .preview-content {
   --tone-1: #26456f;

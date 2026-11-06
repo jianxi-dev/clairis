@@ -6,7 +6,12 @@ import {
   type CapabilityId,
 } from "../lib/capabilities";
 import type { PreviewSettings } from "../lib/previewAnchor";
-import { applyTheme, reloadAppConfig, saveAppConfig } from "../hooks/useConfig";
+import {
+  applyReaderSkin,
+  applyTheme,
+  reloadAppConfig,
+  saveAppConfig,
+} from "../hooks/useConfig";
 import { useEditorStore } from "../stores/editorStore";
 import { useStore } from "../stores/index";
 import { PROVIDERS } from "../lib/providers";
@@ -99,6 +104,19 @@ const THEME_OPTIONS = [
 ] as const;
 
 const FONT_SIZES = [15, 16, 17, 18, 19, 21] as const;
+
+const READER_WIDTH_PRESETS = [
+  { value: 720, label: "紧凑" },
+  { value: 1080, label: "标准" },
+  { value: 1200, label: "宽松" },
+] as const;
+
+const READER_TONES = [
+  { id: "paper", label: "纸墨", swatch: "#1f1d1a" },
+  { id: "indigo", label: "靛青", swatch: "#2b4a7d" },
+  { id: "moss", label: "松绿", swatch: "#2f5d3f" },
+  { id: "clay", label: "赭石", swatch: "#8a4b2a" },
+] as const;
 
 const GRID_MODES = [
   { value: "hover", label: "悬停" },
@@ -517,6 +535,8 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
 
   const theme = useEditorStore((s) => s.config.theme ?? "system");
   const readerFontSize = useEditorStore((s) => s.config.readerFontSize ?? 17);
+  const readerWidth = useEditorStore((s) => s.config.readerWidth ?? 1080);
+  const readerSkin = useEditorStore((s) => s.config.readerSkin ?? "paper");
   const fontSize = useEditorStore((s) => s.fontSize);
   const openaiEndpoint = useEditorStore((s) => s.config.openaiEndpoint ?? "");
   const openaiModel = useEditorStore((s) => s.config.openaiModel ?? "");
@@ -677,6 +697,17 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
     void saveAppConfig();
   };
 
+  const chooseReaderWidth = (width: number) => {
+    setConfig({ readerWidth: width });
+    void saveAppConfig();
+  };
+
+  const chooseReaderSkin = (skin: string) => {
+    setConfig({ readerSkin: skin });
+    applyReaderSkin(skin);
+    void saveAppConfig();
+  };
+
   const chooseRailLayout = (layout: "stacked" | "tabs") => {
     setRailLayout(layout);
     saveRailViewSpec();
@@ -789,11 +820,11 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
       tabIndex={-1}
       role="dialog"
       aria-label="设置"
-      className="flex h-full w-full bg-[var(--app-bg)] outline-none"
+      className="flex h-full min-h-0 w-full overflow-hidden bg-[var(--app-bg)] outline-none"
     >
       <nav
         data-testid="settings-nav"
-        className="flex w-[220px] shrink-0 flex-col gap-0.5 border-r border-[var(--app-border)] bg-[var(--app-surface)] p-2"
+        className="flex min-h-0 w-[220px] shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-[var(--app-border)] bg-[var(--app-surface)] p-2"
       >
         {SECTIONS.map((section) => {
           const isActive = active === section.id;
@@ -823,7 +854,7 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
         })}
       </nav>
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto max-w-2xl px-6 py-6">
           <div className="mb-5 flex items-center justify-between">
             <h1 className="text-base font-medium text-[var(--app-text-strong)]">
@@ -1008,6 +1039,64 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
 
           {active === "reading" && (
             <div className="space-y-6">
+              <section>
+                <h2 className="mb-2 text-sm font-medium text-[var(--app-text-strong)]">
+                  行宽
+                </h2>
+                <div className="flex flex-wrap gap-2">
+                  {READER_WIDTH_PRESETS.map((option) => {
+                    const selected = readerWidth === option.value;
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        data-testid={`reader-width-${option.value}`}
+                        aria-pressed={selected}
+                        onClick={() => chooseReaderWidth(option.value)}
+                        className={`rounded border px-3 py-1.5 text-sm ${
+                          selected
+                            ? "border-[var(--app-accent)] bg-[var(--app-accent-soft)] text-[var(--app-accent)]"
+                            : "border-[var(--app-border)] text-[var(--app-text-2)] hover:bg-[var(--app-sunken)]"
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+
+              <section>
+                <h2 className="mb-2 text-sm font-medium text-[var(--app-text-strong)]">
+                  配色
+                </h2>
+                <div className="flex flex-wrap gap-2">
+                  {READER_TONES.map((tone) => {
+                    const selected = readerSkin === tone.id;
+                    return (
+                      <button
+                        key={tone.id}
+                        type="button"
+                        data-testid={`reader-tone-${tone.id}`}
+                        aria-pressed={selected}
+                        onClick={() => chooseReaderSkin(tone.id)}
+                        className={`flex items-center rounded border px-3 py-1.5 text-sm ${
+                          selected
+                            ? "border-[var(--app-accent)] bg-[var(--app-accent-soft)] text-[var(--app-accent)]"
+                            : "border-[var(--app-border)] text-[var(--app-text-2)] hover:bg-[var(--app-sunken)]"
+                        }`}
+                      >
+                        <span
+                          className="mr-1.5 inline-block h-2.5 w-2.5 rounded-full border border-black/15"
+                          style={{ background: tone.swatch }}
+                        />
+                        {tone.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+
               <section>
                 <h2 className="mb-2 text-sm font-medium text-[var(--app-text-strong)]">
                   默认布局

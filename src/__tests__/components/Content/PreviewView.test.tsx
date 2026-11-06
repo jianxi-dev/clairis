@@ -53,4 +53,10 @@ describe("PreviewView", () => {
     const { container } = render(<PreviewView content="hello" />);
     expect(container.querySelector(".preview-view")).toBeDefined();
   });
+
+  it("正文右上角不再渲染阅读设置浮层", () => {
+    const { container } = render(<PreviewView content="# 标题" />);
+    expect(container.querySelector(".reader-settings")).toBeNull();
+    expect(container.querySelector('[aria-label="阅读设置"]')).toBeNull();
+  });
 });

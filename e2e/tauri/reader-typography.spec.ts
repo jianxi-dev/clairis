@@ -53,6 +53,16 @@ async function openFile(
   await page.waitForTimeout(400);
 }
 
+async function openSettings(page: import("@playwright/test").Page) {
+  await page.keyboard.press("Meta+,");
+  await expect(page.locator('[data-testid="settings-scene"]')).toBeVisible();
+}
+
+async function closeSettings(page: import("@playwright/test").Page) {
+  await page.keyboard.press("Escape");
+  await expect(page.locator('[data-testid="settings-scene"]')).toHaveCount(0);
+}
+
 test("预览排版：容器尺度按设计 token 生效", async ({ page }) => {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto(APP_URL, { waitUntil: "networkidle" });
@@ -246,34 +256,23 @@ test("预览排版：阅读设置可改字号与行宽", async ({ page }) => {
   await page.waitForSelector("header", { timeout: 10000 });
   await openFile(page, DOC);
 
-  await page.locator(".reader-settings-toggle").click();
-  await expect(page.locator(".reader-settings-panel")).toBeVisible();
+  await openSettings(page);
+  await page.locator('[data-settings-nav="reading"]').click();
+  await page.locator('[data-testid="reader-width-720"]').click();
+  await page.locator('[data-settings-nav="appearance"]').click();
+  await page.locator('[data-testid="font-size-19"]').click();
+  await closeSettings(page);
 
-  // 字号 19
-  await page
-    .locator(".reader-settings-panel .reader-pill", { hasText: "19" })
-    .first()
-    .click();
-  await page.waitForTimeout(200);
   const fontSize = await page
     .locator(".preview-content")
     .evaluate((el) => getComputedStyle(el).fontSize);
   expect(fontSize).toBe("19px");
 
-  // 行宽切到紧凑档
-  await page
-    .locator(".reader-settings-panel .reader-pill", { hasText: "紧凑" })
-    .click();
-  await page.waitForTimeout(200);
   const width = await page
     .locator(".preview-content > p")
     .first()
     .evaluate((el) => getComputedStyle(el).maxWidth);
   expect(width).toBe("720px");
-
-  // Esc 关闭
-  await page.keyboard.press("Escape");
-  await expect(page.locator(".reader-settings-panel")).toHaveCount(0);
 });
 
 test("预览排版：纸宽撑满可用宽度，且随窗口与行宽设置变化", async ({ page }) => {
@@ -333,12 +332,10 @@ test("预览排版：纸宽撑满可用宽度，且随窗口与行宽设置变�
   // 行宽设置必须真的改变渲染宽度，而不只是改 max-width
   await page.setViewportSize({ width: 1800, height: 900 });
   await page.waitForTimeout(300);
-  await page.locator(".reader-settings-toggle").click();
-  await expect(page.locator(".reader-settings-panel")).toBeVisible();
-  await page
-    .locator(".reader-settings-panel .reader-pill", { hasText: "紧凑" })
-    .click();
-  await page.waitForTimeout(300);
+  await openSettings(page);
+  await page.locator('[data-settings-nav="reading"]').click();
+  await page.locator('[data-testid="reader-width-720"]').click();
+  await closeSettings(page);
   const g3 = await geom();
   expect(g3!.pcW).toBeLessThan(g2!.pcW);
   expect(g3!.paraW).toBeLessThan(g2!.paraW);
@@ -404,8 +401,10 @@ test("六项反馈的浏览器层验收：图 / 背景 / 表格 / 主题 / 内�
   const before = await page
     .locator(".preview-content h1")
     .evaluate((el) => getComputedStyle(el).color);
-  await page.locator(".reader-settings-toggle").click();
-  await page.getByRole("button", { name: "靛青" }).click();
+  await openSettings(page);
+  await page.locator('[data-settings-nav="reading"]').click();
+  await page.locator('[data-testid="reader-tone-indigo"]').click();
+  await closeSettings(page);
   const after = await page
     .locator(".preview-content h1")
     .evaluate((el) => getComputedStyle(el).color);
@@ -552,12 +551,10 @@ test("预览排版：表格随阅读行宽设置同步适配", async ({ page }) 
   expect(standard.wrapScroll).toBeLessThanOrEqual(standard.wrapClient + 1);
 
   // 复用既有阅读设置机制切到「紧凑」（720）
-  await page.locator(".reader-settings-toggle").click();
-  await expect(page.locator(".reader-settings-panel")).toBeVisible();
-  await page
-    .locator(".reader-settings-panel .reader-pill", { hasText: "紧凑" })
-    .click();
-  await page.waitForTimeout(300);
+  await openSettings(page);
+  await page.locator('[data-settings-nav="reading"]').click();
+  await page.locator('[data-testid="reader-width-720"]').click();
+  await closeSettings(page);
 
   // 行宽变窄后表格同步收窄，且仍不横向延展
   const compact = await tableMetrics(page);

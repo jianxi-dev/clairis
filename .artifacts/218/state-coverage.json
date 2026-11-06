@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "01-reading-no-settings-popover",
+      "screenshot": ".artifacts/218/01-reading-no-settings-popover.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-06T09:36:31Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "02-settings-reading-section",
+      "screenshot": ".artifacts/218/02-settings-reading-section.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-06T09:36:31Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "03-width-tone-applied",
+      "screenshot": ".artifacts/218/03-width-tone-applied.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-06T09:36:31Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "04-narrow-settings-scroll-bottom",
+      "screenshot": ".artifacts/218/04-narrow-settings-scroll-bottom.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-06T09:36:31Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}

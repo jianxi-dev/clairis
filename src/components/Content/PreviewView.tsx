@@ -8,7 +8,6 @@ import {
 } from "../../lib/capabilities";
 import HtmlPreview from "./HtmlPreview";
 import PdfViewer from "./PdfViewer";
-import ReaderSettingsPopover from "./ReaderSettingsPopover";
 import { mediaPlayer } from "./mediaPlayerState";
 import { useEditorStore } from "../../stores/editorStore";
 import { applyReaderSkin } from "../../hooks/useConfig";
@@ -403,7 +402,6 @@ function ZoomablePreview({
         style={{ ...typeVars, ...headingVars }}
         dangerouslySetInnerHTML={{ __html: html ?? "" }}
       />
-      <ReaderSettingsPopover />
     </div>
   );
 }
