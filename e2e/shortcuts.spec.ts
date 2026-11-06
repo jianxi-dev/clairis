@@ -220,10 +220,11 @@ test("全局 9 条逐一触发均生效（严格 9 项）", async ({ page }) => 
   let observed = 0;
 
   await page.keyboard.press("Meta+p");
-  await expect(page.locator('[data-testid="grid"]')).toBeVisible();
-  await expect(page.locator("[data-grid-search]")).toBeFocused();
+  await expect(page.locator('[data-testid="quick-open"]')).toBeVisible();
   observed += 1;
-  await record(page, "03-cmd-p-search");
+  await record(page, "03-cmd-p-quick-open");
+  await page.keyboard.press("Escape");
+  await expect(page.locator('[data-testid="quick-open"]')).toHaveCount(0);
   await page.evaluate(() => {
     (
       window as unknown as {

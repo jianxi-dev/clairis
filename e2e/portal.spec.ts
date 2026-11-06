@@ -66,7 +66,7 @@ test("门户齐备：问候语/日期、hero、最近卡、8 磁贴、快速动�
   ]);
 
   await expect(page.locator('[data-testid="quick-new"]')).toBeVisible();
-  await expect(page.locator('[data-testid="quick-open"]')).toBeVisible();
+  await expect(page.locator('[data-testid="quick-open-file"]')).toBeVisible();
   await expect(page.locator('[data-testid="quick-ai"]')).toBeVisible();
   await expect(page.locator('[data-testid="portal-hint"]')).toContainText("⌘P");
 
@@ -251,7 +251,7 @@ test("重启后 hero 是最新那份，且保留原始时间", async ({ page }) 
 test("快速动作四项齐全，生成学习页会把意图填进 AI 输入框", async ({ page }) => {
   await seed(page);
   await expect(page.locator('[data-testid="quick-new"]')).toBeVisible();
-  await expect(page.locator('[data-testid="quick-open"]')).toBeVisible();
+  await expect(page.locator('[data-testid="quick-open-file"]')).toBeVisible();
   await expect(page.locator('[data-testid="quick-study"]')).toBeVisible();
   await expect(page.locator('[data-testid="quick-ai"]')).toBeVisible();
 

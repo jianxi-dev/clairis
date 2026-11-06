@@ -8,7 +8,7 @@ import {
 } from "../../lib/shortcuts";
 
 const CONTESTED_IDS = [
-  "global-search",
+  "global-quick-open",
   "global-reading-rail",
   "global-grid",
   "global-preview-toggle",
