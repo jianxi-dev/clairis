@@ -3,17 +3,20 @@ import {
   HOVER_CLOSE_MS,
   HOVER_OPEN_MS,
   RAIL_EDGE_PX,
+  RAIL_SEARCH_TIMES,
   RAIL_SECTIONS,
   RAIL_WIDTH_PX,
   fileTypeChips,
   filterRailItems,
+  filterSearchHits,
   matchRanges,
   nextRailState,
   splitByRanges,
+  timeBucketOf,
   type RailEvent,
   type RailState,
 } from "../lib/railView";
-import type { RecentFile } from "../types";
+import type { RecentFile, SearchHit } from "../types";
 
 function file(path: string, title?: string): RecentFile {
   return {
@@ -182,5 +185,120 @@ describe("matchRanges / splitByRanges", () => {
     expect(splitByRanges("无命中", [])).toEqual([
       { text: "无命中", hit: false },
     ]);
+  });
+});
+
+function hit(
+  path: string,
+  title: string,
+  excerpt: string,
+  openedAt: string,
+): SearchHit {
+  return { path, title, excerpt, openedAt, matchedIn: "content" };
+}
+
+const NOW = new Date(2026, 0, 10, 12, 0, 0).getTime();
+const TODAY = new Date(2026, 0, 10, 9, 0, 0).toISOString();
+const WEEK = new Date(2026, 0, 7, 9, 0, 0).toISOString();
+const OLDER = new Date(2026, 0, 1, 9, 0, 0).toISOString();
+
+const HITS: SearchHit[] = [
+  hit("/u/Documents/架构笔记.md", "架构笔记", "…正文片段包含关键词…", TODAY),
+  hit("/u/Documents/会议纪要.md", "会议纪要", "关键词出现在这里。", OLDER),
+  hit("/u/Desktop/页面.html", "页面", "HTML 里的关键词。", WEEK),
+];
+
+describe("timeBucketOf —— 时间段归类", () => {
+  it("今天 / 本周 / 更早按本地日期边界划分", () => {
+    expect(timeBucketOf(TODAY, NOW)).toBe("today");
+    expect(timeBucketOf(WEEK, NOW)).toBe("week");
+    expect(timeBucketOf(OLDER, NOW)).toBe("older");
+  });
+
+  it("无法解析的时间归入更早", () => {
+    expect(timeBucketOf("not-a-date", NOW)).toBe("older");
+  });
+
+  it("时间段 chips 恒为 全部/今天/本周/更早", () => {
+    expect(RAIL_SEARCH_TIMES.map((t) => t.key)).toEqual([
+      "all",
+      "today",
+      "week",
+      "older",
+    ]);
+    expect(RAIL_SEARCH_TIMES.map((t) => t.label)).toEqual([
+      "全部",
+      "今天",
+      "本周",
+      "更早",
+    ]);
+  });
+});
+
+describe("filterSearchHits —— 本机检索过滤", () => {
+  it("类型 chip 严格过滤", () => {
+    const out = filterSearchHits(HITS, {
+      chip: "markdown",
+      time: "all",
+      query: "关键词",
+    });
+    expect(out.map((m) => m.hit.title)).toEqual(["架构笔记", "会议纪要"]);
+    const html = filterSearchHits(HITS, {
+      chip: "html",
+      time: "all",
+      query: "关键词",
+    });
+    expect(html.map((m) => m.hit.title)).toEqual(["页面"]);
+  });
+
+  it("时间段过滤：今天只剩架构笔记，更早只剩会议纪要", () => {
+    const today = filterSearchHits(HITS, {
+      chip: "all",
+      time: "today",
+      query: "关键词",
+      now: NOW,
+    });
+    expect(today.map((m) => m.hit.title)).toEqual(["架构笔记"]);
+    const older = filterSearchHits(HITS, {
+      chip: "all",
+      time: "older",
+      query: "关键词",
+      now: NOW,
+    });
+    expect(older.map((m) => m.hit.title)).toEqual(["会议纪要"]);
+  });
+
+  it("标题与片段各自计算高亮区间", () => {
+    const out = filterSearchHits(HITS, {
+      chip: "all",
+      time: "all",
+      query: "关键词",
+    });
+    expect(out).toHaveLength(3);
+    const first = out[0];
+    expect(first.ranges).toEqual([]);
+    expect(first.excerptRanges.length).toBeGreaterThan(0);
+    expect(
+      first.hit.excerpt.slice(
+        first.excerptRanges[0][0],
+        first.excerptRanges[0][1],
+      ),
+    ).toBe("关键词");
+  });
+
+  it("query 为空时全部通过且区间为空", () => {
+    const out = filterSearchHits(HITS, { chip: "all", time: "all", query: "" });
+    expect(out).toHaveLength(3);
+    expect(out.every((m) => m.ranges.length === 0)).toBe(true);
+    expect(out.every((m) => m.excerptRanges.length === 0)).toBe(true);
+  });
+
+  it("query 在结果里无命中时剔除该条（防御）", () => {
+    const out = filterSearchHits(HITS, {
+      chip: "all",
+      time: "all",
+      query: "不存在的词",
+    });
+    expect(out).toHaveLength(0);
   });
 });

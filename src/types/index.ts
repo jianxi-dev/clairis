@@ -103,6 +103,18 @@ export interface RecentFile {
   excerpt?: string;
 }
 
+/** 本机全文检索命中（search_documents 返回，Rust 侧 serde camelCase）。 */
+export interface SearchHit {
+  path: string;
+  /** frontmatter title 优先，缺省为文件名 */
+  title: string;
+  openedAt: string;
+  /** 命中片段（含命中词上下文），供前端高亮 */
+  excerpt: string;
+  /** 命中字段：filename / title / h1 / content */
+  matchedIn: string;
+}
+
 /** 应用场景（Layout Portal §1） */
 export type Scene = "portal" | "workspace" | "grid" | "settings";
 

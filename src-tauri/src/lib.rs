@@ -19,6 +19,7 @@ use commands::file::{
     reveal_in_finder, save_as_file, save_binary_as_file, save_file,
 };
 use commands::recent::list_recent_documents;
+use commands::search::search_documents;
 use commands::translate::{stop_translation, translate_text};
 use extension_packages::{
     generate_extension_package, import_extension_package, list_extension_packages,
@@ -205,6 +206,7 @@ pub fn run() {
             save_binary_as_file,
             reveal_in_finder,
             list_recent_documents,
+            search_documents,
             import_media_file,
             translate_text,
             stop_translation,

@@ -217,6 +217,20 @@ function mockInvoke(cmd, args) {
     var docs = window.__biaoyue_recent_documents__;
     return Array.isArray(docs) ? cloneJson(docs) : [];
   }
+  if (cmd === "search_documents") {
+    // 本机检索：测试用 __biaoyue_search_documents__ 注入固定样例；
+    // 按 query 过滤 title/excerpt/path，模拟 Rust 侧大小写不敏感子串匹配。
+    var hits = window.__biaoyue_search_documents__;
+    if (!Array.isArray(hits)) return [];
+    var q = args && args.query ? String(args.query).toLowerCase() : "";
+    var matched = [];
+    for (var i = 0; i < hits.length; i++) {
+      var h = hits[i];
+      var hay = ((h.title || "") + " " + (h.excerpt || "") + " " + (h.path || "")).toLowerCase();
+      if (!q || hay.indexOf(q) >= 0) matched.push(cloneJson(h));
+    }
+    return matched;
+  }
   if (cmd === "reveal_in_finder" && args) {
     const w = typeof window !== "undefined" ? window : globalThis;
     w.__reveal_calls__ = w.__reveal_calls__ || [];

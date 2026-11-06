@@ -6,7 +6,7 @@
  */
 
 import { fileTypeOf, type FileTypeKind } from "./fileType";
-import type { RecentFile } from "../types";
+import type { RecentFile, SearchHit } from "../types";
 
 /** 折叠态边缘条宽度（严格 12px，e2e 会量）。 */
 export const RAIL_EDGE_PX = 12;
@@ -108,7 +108,9 @@ export interface RailChip {
 /**
  * 分类过滤 chips：恒为 9 个（全部 + 8 类），带计数。纯过滤行，不做瀑布式分类行。
  */
-export function fileTypeChips(items: RecentFile[]): RailChip[] {
+export function fileTypeChips(
+  items: ReadonlyArray<{ path: string }>,
+): RailChip[] {
   const counts = new Map<FileTypeKind, number>();
   for (const item of items) {
     const kind = fileTypeOf(item.path);
@@ -122,6 +124,72 @@ export function fileTypeChips(items: RecentFile[]): RailChip[] {
       count: counts.get(kind) ?? 0,
     })),
   ];
+}
+
+export type RailSearchTime = "all" | "today" | "week" | "older";
+
+export const RAIL_SEARCH_TIMES: ReadonlyArray<{
+  key: RailSearchTime;
+  label: string;
+}> = [
+  { key: "all", label: "全部" },
+  { key: "today", label: "今天" },
+  { key: "week", label: "本周" },
+  { key: "older", label: "更早" },
+];
+
+const DAY_MS = 86_400_000;
+
+function startOfLocalDay(ms: number): number {
+  const d = new Date(ms);
+  d.setHours(0, 0, 0, 0);
+  return d.getTime();
+}
+
+export function timeBucketOf(
+  openedAt: string,
+  now: number = Date.now(),
+): Exclude<RailSearchTime, "all"> {
+  const t = new Date(openedAt).getTime();
+  if (!Number.isFinite(t)) return "older";
+  if (t >= startOfLocalDay(now)) return "today";
+  if (t >= now - 7 * DAY_MS) return "week";
+  return "older";
+}
+
+export interface SearchMatch {
+  hit: SearchHit;
+  /** 标题里需要高亮的区间。 */
+  ranges: MatchRange[];
+  /** 命中片段里需要高亮的区间。 */
+  excerptRanges: MatchRange[];
+}
+
+/**
+ * 本机检索结果过滤：类型 chip + 时间段 + query 命中区间。
+ * Rust 侧已按 query 过滤，这里再算一次高亮区间（标题与片段各自独立）。
+ */
+export function filterSearchHits(
+  hits: ReadonlyArray<SearchHit>,
+  opts: {
+    chip: RailChipKind;
+    time: RailSearchTime;
+    query: string;
+    now?: number;
+  },
+): SearchMatch[] {
+  const { chip, time, query, now } = opts;
+  const needle = query.trim();
+  const out: SearchMatch[] = [];
+  for (const hit of hits) {
+    if (chip !== "all" && fileTypeOf(hit.path) !== chip) continue;
+    if (time !== "all" && timeBucketOf(hit.openedAt, now) !== time) continue;
+    const ranges = matchRanges(hit.title, needle);
+    const excerptRanges = matchRanges(hit.excerpt, needle);
+    if (needle && ranges.length === 0 && excerptRanges.length === 0) continue;
+    out.push({ hit, ranges, excerptRanges });
+  }
+  return out;
 }
 
 /** 一处命中：`[start, end)` 的半开区间（单位是字符下标）。 */
