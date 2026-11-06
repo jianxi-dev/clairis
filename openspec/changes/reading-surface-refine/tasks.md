@@ -47,7 +47,7 @@
   - 用户可见：Ctrl+P 出搜索窗；网格有明确入口。
   - 接线：`App.tsx`、`QuickOpen.tsx`、`Toolbar.tsx`。
   - 验收：Ctrl+P 打开 quick-open；原生打印不触发；网格入口可见。
-- [ ] 6.2 本机检索：新增 `search_documents` Rust command（文件名/title/H1/正文，限量），前端阅读空间搜索接本机结果，支持类型与时间筛选。
+- [x] 6.2 本机检索：新增 `search_documents` Rust command（文件名/title/H1/正文，限量），前端阅读空间搜索接本机结果，支持类型与时间筛选。
   - 用户可见：阅读空间搜索能搜本机正文并筛选。
   - 接线：`src-tauri/src/commands/`、`lib.rs`、`ReadingRail.tsx`、`src/lib/railView.ts`。
   - 验收：正文命中并高亮；类型/时间筛选生效。
