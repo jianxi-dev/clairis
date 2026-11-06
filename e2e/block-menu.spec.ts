@@ -29,7 +29,17 @@ function storeContent(page: Page): Promise<string> {
 
 async function hoverHandle(page: Page, lineIndex: number) {
   const line = page.locator(".cm-line").nth(lineIndex);
-  await line.hover();
+  const box = (await line.boundingBox())!;
+  const content = await page.evaluate(() => {
+    const rect = (
+      document.querySelector(".cm-content") as HTMLElement
+    ).getBoundingClientRect();
+    return { left: rect.left, width: rect.width };
+  });
+  await page.mouse.move(
+    Math.max(box.x, content.left + content.width * 0.1),
+    box.y + box.height / 2,
+  );
   const handle = page.locator(
     '[data-testid="block-handle"].cm-block-handle-visible',
   );
@@ -111,7 +121,17 @@ test("滚动即收：编辑器滚动后块菜单关闭", async ({ page }) => {
 
 test("点击手柄也打开菜单（不必等 hover）", async ({ page }) => {
   const line = page.locator(".cm-line").nth(2);
-  await line.hover();
+  const box = (await line.boundingBox())!;
+  const content = await page.evaluate(() => {
+    const rect = (
+      document.querySelector(".cm-content") as HTMLElement
+    ).getBoundingClientRect();
+    return { left: rect.left, width: rect.width };
+  });
+  await page.mouse.move(
+    Math.max(box.x, content.left + content.width * 0.1),
+    box.y + box.height / 2,
+  );
   const handle = page.locator(
     '[data-testid="block-handle"].cm-block-handle-visible',
   );
@@ -212,7 +232,17 @@ test("打字结束后移动到正文仍能召唤手柄", async ({ page }) => {
     .locator(".cm-line")
     .filter({ hasText: "第一段正文" })
     .first();
-  await line.hover();
+  const box = (await line.boundingBox())!;
+  const content = await page.evaluate(() => {
+    const rect = (
+      document.querySelector(".cm-content") as HTMLElement
+    ).getBoundingClientRect();
+    return { left: rect.left, width: rect.width };
+  });
+  await page.mouse.move(
+    Math.max(box.x, content.left + content.width * 0.1),
+    box.y + box.height / 2,
+  );
   await expect(page.locator(".cm-block-handle-visible")).toHaveCount(1, {
     timeout: 3000,
   });
@@ -271,4 +301,79 @@ test("高亮块菜单出现「类型」，切换后源码只改标记", async ({
 test("普通块没有「类型」入口", async ({ page }) => {
   await hoverHandle(page, 2);
   await expect(page.locator('[data-testid="block-menu-type"]')).toHaveCount(0);
+});
+
+test("颜色行打开二级面板，含字体色与背景色双行", async ({ page }) => {
+  await hoverHandle(page, 2);
+
+  await page.locator('[data-testid="block-menu-color"]').hover();
+  const panel = page.locator('[data-testid="block-menu-color-panel"]');
+  await expect(panel).toBeVisible({ timeout: 3000 });
+  await expect(panel.locator(".cm-color-row")).toHaveCount(2);
+  await expect(panel.locator('[data-testid="color-swatch-font"]')).toHaveCount(
+    9,
+  );
+  await expect(
+    panel.locator('[data-testid="color-swatch-background"]'),
+  ).toHaveCount(16);
+});
+
+test("点红色字体色把块内容包进 mdb-color-red，写入源码", async ({ page }) => {
+  await hoverHandle(page, 2);
+
+  await page.locator('[data-testid="block-menu-color"]').hover();
+  await page
+    .locator('[data-testid="block-menu-color-panel"]')
+    .locator(
+      '[data-testid="color-swatch-font"][data-class-name="mdb-color-red"]',
+    )
+    .click();
+
+  await expect
+    .poll(() => storeContent(page))
+    .toBe(
+      '# 标题\n\n<span class="mdb-color-red">第一段正文</span>\n\n第二段正文\n',
+    );
+});
+
+test("再点「默认」清除颜色包裹，源码回到原文", async ({ page }) => {
+  await page.evaluate((body) => {
+    const win = window as unknown as Record<string, any>;
+    win.__biaoyue_openFile__(
+      "/tmp/block-menu-color.md",
+      '# 标题\n\n<span class="mdb-color-red">第一段正文</span>\n\n第二段正文\n',
+      "block-menu-color.md",
+    );
+    win.__biaoyue_store__.getState().setEditorMode("edit");
+  }, DOC);
+  await page.locator(".cm-content").waitFor({ timeout: 5000 });
+  await hoverHandle(page, 2);
+
+  await page.locator('[data-testid="block-menu-color"]').hover();
+  await page
+    .locator('[data-testid="block-menu-color-panel"]')
+    .locator('[data-testid="color-swatch-font"][data-class-name=""]')
+    .click();
+
+  await expect
+    .poll(() => storeContent(page))
+    .toBe("# 标题\n\n第一段正文\n\n第二段正文\n");
+});
+
+test("点背景色把块内容包进 mdb-bg-blue", async ({ page }) => {
+  await hoverHandle(page, 2);
+
+  await page.locator('[data-testid="block-menu-color"]').hover();
+  await page
+    .locator('[data-testid="block-menu-color-panel"]')
+    .locator(
+      '[data-testid="color-swatch-background"][data-class-name="mdb-bg-blue"]',
+    )
+    .click();
+
+  await expect
+    .poll(() => storeContent(page))
+    .toBe(
+      '# 标题\n\n<span class="mdb-bg-blue">第一段正文</span>\n\n第二段正文\n',
+    );
 });

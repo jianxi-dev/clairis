@@ -1936,6 +1936,21 @@ body {
   color: var(--app-accent);
 }
 
+.cm-block-menu-color-panel {
+  min-width: 0;
+  width: 248px;
+  padding: 8px;
+}
+
+.cm-block-menu-color-panel .cm-color-row {
+  max-width: none;
+  gap: 6px;
+}
+
+.cm-block-menu-color-panel .cm-color-row + .cm-color-row {
+  margin-top: 8px;
+}
+
 .cm-block-menu-chevron {
   margin-inline-start: auto;
   font-size: 15px;
