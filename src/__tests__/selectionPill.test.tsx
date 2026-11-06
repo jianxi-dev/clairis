@@ -208,7 +208,7 @@ describe("SelectionPill 编辑态（不回归）", () => {
 
     const pill = document.querySelector<HTMLElement>("[data-selection-pill]");
     expect(pill).not.toBeNull();
-    expect(pill!.getAttribute("data-selection-pill-mode")).toBe("editor");
+    expect(pill!.getAttribute("data-selection-pill-mode")).toBe("edit");
     expect(pillLabels()).toEqual(["改写", "翻译", "润色"]);
   });
 

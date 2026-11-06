@@ -5,18 +5,19 @@ import { invoke } from "@tauri-apps/api/core";
 import { humanizeAgentError } from "../../lib/aiErrors";
 import { useAiEntryStore } from "../../hooks/useAiEntry";
 import { detectSelectionPillMode } from "../../lib/selectionPillMode";
+import type { SelectionPillMode } from "../../lib/selectionPillMode";
 import DiffView from "./DiffView";
 
-type PillMode = "editor" | "preview";
-
-interface PillSelection {
-  mode: PillMode;
-  text: string;
-  x: number;
-  y: number;
-  from: number;
-  to: number;
-}
+type PillSelection =
+  | {
+      mode: "edit";
+      text: string;
+      x: number;
+      y: number;
+      from: number;
+      to: number;
+    }
+  | { mode: "preview"; text: string; x: number; y: number };
 
 interface DiffResult {
   before: string;
@@ -69,6 +70,12 @@ const PREVIEW_ACTIONS: readonly PreviewAction[] = [
   },
 ];
 
+interface PillButtonAction {
+  key: string;
+  label: string;
+  run: () => void;
+}
+
 function previewRoots(): HTMLElement[] {
   return Array.from(document.querySelectorAll<HTMLElement>(".preview-content"));
 }
@@ -97,7 +104,7 @@ export default function SelectionPill() {
       }
       const s = window.getSelection();
       const view = getActiveEditorView();
-      const mode = detectSelectionPillMode(
+      const mode: SelectionPillMode | null = detectSelectionPillMode(
         s,
         view?.dom ?? null,
         previewRoots(),
@@ -117,7 +124,7 @@ export default function SelectionPill() {
       const y = rect.top;
 
       if (mode === "preview") {
-        setPill({ mode, text, x, y, from: 0, to: 0 });
+        setPill({ mode, text, x, y });
         return;
       }
 
@@ -172,30 +179,8 @@ export default function SelectionPill() {
     setNotice(null);
   }
 
-  function copySelection(text: string): void {
-    // 剪贴板不可用（如非安全上下文）时静默；胶囊仍按预期关闭
-    navigator.clipboard?.writeText(text).catch(() => {});
-    closeAll();
-  }
-
-  function askAi(prompt: string, text: string): void {
-    const ai = useAiEntryStore.getState();
-    ai.setInput(`${prompt}\n\n${text}`);
-    ai.openOverlay();
-    closeAll();
-  }
-
-  function runPreviewAction(action: PreviewAction): void {
-    if (!pill) return;
-    if (action.key === "copy") {
-      copySelection(pill.text);
-      return;
-    }
-    askAi(action.prompt, pill.text);
-  }
-
-  async function run(action: EditorAction): Promise<void> {
-    if (!pill || busyRef.current) return;
+  async function runEditor(action: EditorAction): Promise<void> {
+    if (!pill || pill.mode !== "edit" || busyRef.current) return;
     const selection = pill;
     setBusy(action.key);
     setNotice(null);
@@ -220,6 +205,20 @@ export default function SelectionPill() {
       setBusy(null);
       setPill(null);
     }
+  }
+
+  function runPreview(action: PreviewAction): void {
+    if (!pill || pill.mode !== "preview") return;
+    const text = pill.text;
+    if (action.key === "copy") {
+      navigator.clipboard?.writeText(text).catch(() => {});
+      closeAll();
+      return;
+    }
+    const ai = useAiEntryStore.getState();
+    ai.setInput(`${action.prompt}\n\n${text}`);
+    ai.openOverlay();
+    closeAll();
   }
 
   async function applyResult(): Promise<void> {
@@ -250,38 +249,39 @@ export default function SelectionPill() {
     setPill(null);
   }
 
+  const actions: readonly PillButtonAction[] =
+    pill && pill.mode === "edit"
+      ? EDITOR_ACTIONS.map((a) => ({
+          key: a.key,
+          label: a.label,
+          run: () => void runEditor(a),
+        }))
+      : PREVIEW_ACTIONS.map((a) => ({
+          key: a.key,
+          label: a.label,
+          run: () => runPreview(a),
+        }));
+
   return (
     <>
       {pill && !busy && !diff && (
         <div
           data-selection-pill
           data-selection-pill-mode={pill.mode}
-          className="app-capsule fixed z-[2147482960] flex items-center gap-0.5 -translate-x-1/2 border border-black/6 dark:border-white/10 bg-white/95 dark:bg-[#1c1c1e]/95 backdrop-blur-sm shadow-lg px-1.5 py-1"
+          className="fixed z-[2147482960] flex items-center gap-0.5 -translate-x-1/2 rounded-full border border-black/6 dark:border-white/10 bg-white/95 dark:bg-[#1c1c1e]/95 backdrop-blur-sm shadow-lg px-1.5 py-1"
           style={{ left: pill.x, top: Math.max(8, pill.y - 44) }}
         >
-          {pill.mode === "editor"
-            ? EDITOR_ACTIONS.map((a) => (
-                <button
-                  key={a.key}
-                  type="button"
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => void run(a)}
-                  className="px-2 py-0.5 rounded-full text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                >
-                  {a.label}
-                </button>
-              ))
-            : PREVIEW_ACTIONS.map((a) => (
-                <button
-                  key={a.key}
-                  type="button"
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => runPreviewAction(a)}
-                  className="px-2 py-0.5 rounded-full text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                >
-                  {a.label}
-                </button>
-              ))}
+          {actions.map((a) => (
+            <button
+              key={a.key}
+              type="button"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={a.run}
+              className="px-2 py-0.5 rounded-full text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            >
+              {a.label}
+            </button>
+          ))}
         </div>
       )}
 

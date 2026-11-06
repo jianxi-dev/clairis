@@ -56,7 +56,7 @@ describe("detectSelectionPillMode", () => {
   it("returns editor when both endpoints are inside the editor DOM", () => {
     const f = makeFixture();
     const s = select(f.editorText, 0, f.editorText, 5);
-    expect(detectSelectionPillMode(s, f.editor, [f.preview])).toBe("editor");
+    expect(detectSelectionPillMode(s, f.editor, [f.preview])).toBe("edit");
   });
 
   it("returns preview when both endpoints are inside one preview root", () => {

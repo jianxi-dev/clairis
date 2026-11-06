@@ -1,6 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
 
-const APP_URL = "http://localhost:1420";
 const ARTIFACTS = ".artifacts/217";
 
 const EDIT_DOC = "这是编辑态的正文段落，用来验证选区胶囊的改写翻译润色动作。";
@@ -9,7 +8,7 @@ const PREVIEW_DOC =
 
 async function bootstrap(page: Page): Promise<void> {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
-  await page.goto(APP_URL, { waitUntil: "networkidle" });
+  await page.goto("/", { waitUntil: "networkidle" });
   await page.waitForSelector("header", { timeout: 15000 });
 }
 
@@ -103,7 +102,7 @@ test.describe("选区胶囊双模式", () => {
     await selectRange(page, ".cm-content", 0, 6);
     await expect(pill(page)).toBeVisible({ timeout: 5000 });
     expect(await pill(page).getAttribute("data-selection-pill-mode")).toBe(
-      "editor",
+      "edit",
     );
     expect(await pillLabels(page)).toEqual(["改写", "翻译", "润色"]);
   });
@@ -243,18 +242,23 @@ test.describe("选区胶囊双模式", () => {
 
     await selectRange(page, ".preview-content p", 0, 6);
     await expect(pill(page)).toBeVisible();
+    const detached = page.waitForFunction(
+      () => !document.querySelector("[data-selection-pill]"),
+      null,
+      { timeout: 5000 },
+    );
     await page.evaluate(() => {
       let node: HTMLElement | null = document.querySelector(".preview-content");
       while (node) {
         if (node.scrollHeight > node.clientHeight + 1) {
-          node.scrollTop += 200;
+          node.dispatchEvent(new Event("scroll"));
           return;
         }
         node = node.parentElement;
       }
-      window.scrollBy(0, 200);
+      window.dispatchEvent(new Event("scroll"));
     });
-    await expect(pill(page)).toHaveCount(0);
+    await detached;
   });
 
   test("深浅色主题下分别截图", async ({ page }) => {
