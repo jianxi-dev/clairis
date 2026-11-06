@@ -19,7 +19,12 @@ import {
   type RailState,
   type RailViewSpec,
 } from "../lib/railView";
-import { DENSITY_HEIGHT, clampCardHeight } from "../lib/railCards";
+import {
+  DENSITY_HEIGHT,
+  clampCardHeight,
+  excerptOf,
+  mergeRecentFileList,
+} from "../lib/railCards";
 import {
   DEFAULT_VIEW_SPEC,
   applySpec as applyViewSpecPatch,
@@ -57,11 +62,6 @@ import {
   type PaneLeaf,
   type PaneSide,
 } from "../lib/paneTree";
-
-/** 门户卡片摘要：取正文前 160 字，压掉多余空白。不是占位文案，是文件真实开头。 */
-function excerptOf(content: string): string {
-  return content.replace(/\s+/g, " ").trim().slice(0, 160);
-}
 
 type SplitDirection = "horizontal" | "vertical";
 
@@ -261,6 +261,7 @@ interface AppStore {
   setSidebarLeftVisible: (v: boolean) => void;
   setSidebarRightVisible: (v: boolean) => void;
   addRecentFile: (path: string, title: string, excerpt?: string) => void;
+  mergeRecentFiles: (incoming: RecentFile[]) => void;
   setScene: (scene: Scene) => void;
   setGridTypeFilter: (kind: FileTypeKind | null) => void;
   setGridQuery: (query: string) => void;
@@ -438,7 +439,7 @@ export const useStore = create<AppStore>((set, get) => ({
             path,
             title: existing.title,
             openedAt: new Date().toISOString(),
-            excerpt: excerptOf(content),
+            excerpt: excerptOf(content, path),
           },
           ...state.recentFiles.filter((f) => f.path !== path),
         ].slice(0, 10),
@@ -492,7 +493,7 @@ export const useStore = create<AppStore>((set, get) => ({
           path,
           title,
           openedAt: new Date().toISOString(),
-          excerpt: excerptOf(content),
+          excerpt: excerptOf(content, path),
         },
         ...state.recentFiles.filter((f) => f.path !== path),
       ].slice(0, 10),
@@ -751,6 +752,13 @@ export const useStore = create<AppStore>((set, get) => ({
       };
       return { recentFiles: [entry, ...filtered].slice(0, 10) };
     });
+  },
+
+  mergeRecentFiles: (incoming) => {
+    if (!Array.isArray(incoming) || incoming.length === 0) return;
+    set((s) => ({
+      recentFiles: mergeRecentFileList(s.recentFiles, incoming, 10),
+    }));
   },
 
   clearRecentFiles: () => set({ recentFiles: [] }),
@@ -1062,7 +1070,7 @@ export const useStore = create<AppStore>((set, get) => ({
           path,
           title,
           openedAt: new Date().toISOString(),
-          excerpt: excerptOf(content),
+          excerpt: excerptOf(content, path),
         },
         ...state.recentFiles.filter((f) => f.path !== path),
       ].slice(0, 10),

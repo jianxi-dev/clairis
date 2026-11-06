@@ -52,6 +52,14 @@ pub fn is_binary_extension(path: &Path) -> bool {
     )
 }
 
+/// 应用支持的文档扩展名（与打开对话框的「文档」过滤一致）。本机最近文件扫描复用。
+pub(crate) fn is_supported_document(path: &Path) -> bool {
+    matches!(
+        extension_of(path),
+        Some(ref ext) if DOC_EXTENSIONS.contains(&ext.as_str())
+    )
+}
+
 /// 在系统文件管理器中显示给定路径（定位）。只定位，不读取文件内容。
 #[tauri::command]
 pub async fn reveal_in_finder(path: String) -> Result<(), AppError> {
