@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "01-summon-handle-left-quarter",
+      "screenshot": ".artifacts/237/01-summon-handle-left-quarter.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-06T11:47:35Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "02-block-menu-open",
+      "screenshot": ".artifacts/237/02-block-menu-open.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-06T11:47:35Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "03-block-type-icon",
+      "screenshot": ".artifacts/237/03-block-type-icon.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-06T11:47:35Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "04-flyout-gap",
+      "screenshot": ".artifacts/237/04-flyout-gap.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-06T11:47:35Z",
+      "runner": "unknown@MMBP"
+    }
+  ]
+}
