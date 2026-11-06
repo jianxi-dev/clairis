@@ -361,7 +361,7 @@ export default function TabBar({
                 }}
                 title={tab.title}
                 onContextMenu={(e) => handleContextMenu(e, id)}
-                className={`flex min-w-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs cursor-pointer transition-colors whitespace-nowrap ${
+                className={`app-capsule flex min-w-0 items-center gap-1.5 px-2.5 py-1 text-xs cursor-pointer transition-colors whitespace-nowrap ${
                   isActive
                     ? "bg-[var(--app-accent-soft)] font-medium text-[var(--app-accent)] shadow-sm"
                     : "text-[var(--app-text-2)] hover:bg-[var(--app-sunken)]"

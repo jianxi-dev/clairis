@@ -55,6 +55,11 @@
   --app-border-strong: #3d4149;
 }
 
+/* 胶囊圆角：选区胶囊 / 文件类型 chip / 活跃页签共用。 */
+.app-capsule {
+  border-radius: 9999px;
+}
+
 /* 暖色（Layout Portal §8 外观区第三主题）：独立暖纸面，不与 dark 叠加。 */
 .warm {
   --app-accent: #0071e3;
