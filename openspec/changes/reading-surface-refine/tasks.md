@@ -11,7 +11,7 @@
 
 ## 2. 阅读空间卡片、本机最近文件与路径
 
-- [ ] 2.1 卡片与数据：缩略图居中、动作按钮移到缩略图下方；无缩略图卡片恢复通栏摘要；HTML 缩略图中性占位；`excerptOf` 对 HTML 去标签；新增 `list_recent_documents` Rust command 启动自动发现最近文件（mtime 倒序）；卡片路径显示父文件夹名（文件夹图标），点击调用 `reveal_in_finder` 打开目录，移除完整路径 tooltip。
+- [x] 2.1 卡片与数据：缩略图居中、动作按钮移到缩略图下方；无缩略图卡片恢复通栏摘要；HTML 缩略图中性占位；`excerptOf` 对 HTML 去标签；新增 `list_recent_documents` Rust command 启动自动发现最近文件（mtime 倒序）；卡片路径显示父文件夹名（文件夹图标），点击调用 `reveal_in_finder` 打开目录，移除完整路径 tooltip。
   - 用户可见：缩略图不再被按钮压住；HTML 卡片显示正文摘要；启动即有最近文件；点父文件夹能打开目录。
   - 接线：`ReadingRail.tsx`、`src/lib/railCards.ts`、`src/stores/index.ts`、`src-tauri/src/commands/`、`lib.rs`。
   - 验收：缩略图与按钮重叠 0；HTML 摘要 `<tag>` 0；启动后 recent 非空且按 mtime 倒序；父文件夹点击触发系统打开。

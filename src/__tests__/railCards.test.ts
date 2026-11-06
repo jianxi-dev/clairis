@@ -8,9 +8,13 @@ import {
   clampCardHeight,
   clearThumbCache,
   coverSrcOf,
+  excerptOf,
   firstImageOf,
+  mergeRecentFileList,
   metaLine,
+  parentFolderNameOf,
   parentPathOf,
+  plainTextOf,
   relativeDate,
   taskProgressOf,
   thumbCacheSize,
@@ -80,6 +84,123 @@ describe("railCards —— 路径与时间", () => {
     expect(relativeDate("2025-12-31T23:10:00.000Z", NOW)).toBe("1 小时前");
     expect(relativeDate("2025-12-31T00:10:00.000Z", NOW)).toBe("昨天");
     expect(relativeDate("not-a-date", NOW)).toBe("");
+  });
+});
+
+describe("railCards —— 父文件夹名", () => {
+  it("只取父路径最后一段；根目录回 /，无分隔符回空串", () => {
+    expect(parentFolderNameOf("/Users/x/Documents/Notes/a.md")).toBe("Notes");
+    expect(parentFolderNameOf("/tmp/rc/cover.md")).toBe("rc");
+    expect(parentFolderNameOf("/c.md")).toBe("/");
+    expect(parentFolderNameOf("c.md")).toBe("");
+    expect(parentFolderNameOf("")).toBe("");
+  });
+});
+
+describe("railCards —— HTML 摘要去标签", () => {
+  it("去标签、去脚本样式、解实体、压空白", () => {
+    expect(
+      plainTextOf("<html><body><h1>页面</h1><p>HTML 预览</p></body></html>"),
+    ).toBe("页面 HTML 预览");
+    expect(plainTextOf("<script>var x=1;</script><p>正文</p>")).toBe("正文");
+    expect(plainTextOf("<style>.a{}</style><p>正文</p>")).toBe("正文");
+    expect(plainTextOf("<!-- 注释 --><p>正文</p>")).toBe("正文");
+    expect(plainTextOf("<p>a &amp; b &lt;tag&gt; &nbsp; c</p>")).toBe(
+      "a & b <tag> c",
+    );
+    expect(plainTextOf("<p>第一</p><p>第二</p>")).toBe("第一 第二");
+    // 越界 / 代理区码点不能抛错，原样保留
+    expect(plainTextOf("<p>&#x110000; &#xD800; &#65;</p>")).toBe(
+      "&#x110000; &#xD800; A",
+    );
+  });
+
+  it("excerptOf 只对 HTML 路径去标签，markdown 保留比较运算符", () => {
+    expect(excerptOf("<p>Hello <b>world</b></p>", "/a/b.html")).toBe(
+      "Hello world",
+    );
+    expect(excerptOf("<p>Hello</p>", "/a/b.htm")).toBe("Hello");
+    expect(excerptOf("# 标题\n\n1 < 2 且 3 > 2", "/a/b.md")).toBe(
+      "# 标题 1 < 2 且 3 > 2",
+    );
+    expect(excerptOf(undefined, "/a/b.html")).toBe("");
+  });
+
+  it("excerptOf 截到 160 字", () => {
+    const long = "字".repeat(300);
+    expect(excerptOf(long, "/a/b.html").length).toBe(160);
+  });
+});
+
+describe("railCards —— 合并最近文件", () => {
+  it("按 path 去重、按 openedAt 倒序、截到 cap", () => {
+    const merged = mergeRecentFileList(
+      [
+        {
+          path: "/a/old.md",
+          title: "old.md",
+          openedAt: "2026-01-01T00:00:00.000Z",
+        },
+      ],
+      [
+        {
+          path: "/a/new.md",
+          title: "new.md",
+          openedAt: "2026-01-03T00:00:00.000Z",
+        },
+        {
+          path: "/a/mid.md",
+          title: "mid.md",
+          openedAt: "2026-01-02T00:00:00.000Z",
+        },
+        {
+          path: "/a/old.md",
+          title: "old.md",
+          openedAt: "2025-12-31T00:00:00.000Z",
+        },
+      ],
+      10,
+    );
+    expect(merged.map((f) => f.path)).toEqual([
+      "/a/new.md",
+      "/a/mid.md",
+      "/a/old.md",
+    ]);
+  });
+
+  it("同 path 保留历史摘要，只把时间推到更晚的一边", () => {
+    const merged = mergeRecentFileList(
+      [
+        {
+          path: "/a/page.html",
+          title: "page.html",
+          openedAt: "2026-01-01T00:00:00.000Z",
+          excerpt: "真实摘要",
+        },
+      ],
+      [
+        {
+          path: "/a/page.html",
+          title: "page.html",
+          openedAt: "2026-02-01T00:00:00.000Z",
+        },
+      ],
+      10,
+    );
+    expect(merged).toHaveLength(1);
+    expect(merged[0].excerpt).toBe("真实摘要");
+    expect(merged[0].openedAt).toBe("2026-02-01T00:00:00.000Z");
+  });
+
+  it("超过 cap 时保留最新的 cap 条", () => {
+    const existing: RecentFile[] = Array.from({ length: 15 }, (_, i) => ({
+      path: `/a/f${String(i).padStart(2, "0")}.md`,
+      title: `f${i}.md`,
+      openedAt: new Date(Date.UTC(2026, 0, 1, 0, 0, i)).toISOString(),
+    }));
+    const merged = mergeRecentFileList([], existing, 10);
+    expect(merged).toHaveLength(10);
+    expect(merged[0].path).toBe("/a/f14.md");
   });
 });
 

@@ -45,6 +45,107 @@ export function parentPathOf(path: string): string {
   return path.slice(0, idx);
 }
 
+/**
+ * 父文件夹名：`/Users/x/Documents/Notes/a.md` → `Notes`。
+ * 根目录回 `/`，无分隔符回空串——卡片 meta 只显示文件夹名，不显示完整路径。
+ */
+export function parentFolderNameOf(path: string): string {
+  const parent = parentPathOf(path);
+  if (!parent) return "";
+  if (parent === "/") return "/";
+  const name = parent.split("/").filter(Boolean).pop();
+  return name ?? parent;
+}
+
+const HTML_ENTITIES: Record<string, string> = {
+  amp: "&",
+  lt: "<",
+  gt: ">",
+  quot: '"',
+  apos: "'",
+  nbsp: " ",
+  ndash: "–",
+  mdash: "—",
+  hellip: "…",
+  copy: "©",
+  reg: "®",
+  trade: "™",
+  laquo: "«",
+  raquo: "»",
+};
+
+/**
+ * 纯文本化：去掉 `<script>` / `<style>` 整块、所有标签与基本实体，再压平空白。
+ * HTML 摘要与本机最近文件摘要共用，保证卡片不露 `<tag>` 源码。
+ */
+export function plainTextOf(html: string): string {
+  return html
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/gi, " ")
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style\s*>/gi, " ")
+    .replace(/<!--[\s\S]*?-->/g, " ")
+    .replace(/<[^>]*>/g, " ")
+    .replace(
+      /&(#x[0-9a-f]+|#\d+|[a-z][a-z0-9]*);/gi,
+      (match, entity: string) => {
+        const key = entity.toLowerCase();
+        if (!key.startsWith("#")) return HTML_ENTITIES[key] ?? match;
+        const code = key.startsWith("#x")
+          ? Number.parseInt(key.slice(2), 16)
+          : Number.parseInt(key.slice(1), 10);
+        // 越界 / 代理区码点会让 String.fromCodePoint 抛错，原样保留实体
+        const valid =
+          Number.isFinite(code) &&
+          code >= 0 &&
+          code <= 0x10ffff &&
+          !(code >= 0xd800 && code <= 0xdfff);
+        return valid ? String.fromCodePoint(code) : match;
+      },
+    )
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** 摘要：HTML 去标签后截 160 字；其余类型只压平空白。门户卡片与阅读空间卡片共用。 */
+export function excerptOf(text: string | undefined, path?: string): string {
+  if (!text) return "";
+  const plain = path && /\.html?$/i.test(path) ? plainTextOf(text) : text;
+  return plain.replace(/\s+/g, " ").trim().slice(0, 160);
+}
+
+function openedAtValue(file: RecentFile): number {
+  const ms = Date.parse(file.openedAt ?? "");
+  return Number.isFinite(ms) ? ms : 0;
+}
+
+/**
+ * 合并最近文件：按 path 去重，按 openedAt 倒序，截到 cap。本机扫描结果与
+ * 会话内打开的记录同 path 时保留历史摘要，只把时间推到更晚的一边。
+ */
+export function mergeRecentFileList(
+  existing: RecentFile[],
+  incoming: RecentFile[],
+  cap = 10,
+): RecentFile[] {
+  const byPath = new Map<string, RecentFile>();
+  for (const file of existing) {
+    if (file?.path) byPath.set(file.path, file);
+  }
+  for (const file of incoming) {
+    if (!file?.path) continue;
+    const prev = byPath.get(file.path);
+    if (!prev) {
+      byPath.set(file.path, file);
+      continue;
+    }
+    if (openedAtValue(file) > openedAtValue(prev)) {
+      byPath.set(file.path, { ...prev, openedAt: file.openedAt });
+    }
+  }
+  return Array.from(byPath.values())
+    .sort((a, b) => openedAtValue(b) - openedAtValue(a))
+    .slice(0, Math.max(0, cap));
+}
+
 /** 相对时间（10 分钟前 / 昨天 / 6月20日）；`now` 可注入以便单测确定。 */
 export function relativeDate(iso: string, now: number = Date.now()): string {
   const time = Date.parse(iso);

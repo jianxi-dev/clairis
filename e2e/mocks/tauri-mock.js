@@ -212,6 +212,11 @@ function mockInvoke(cmd, args) {
   }
   if (cmd === "flatten_files") return responses.flatten_files;
   if (cmd === "pick_folder") return responses.pick_folder;
+  if (cmd === "list_recent_documents") {
+    // 默认空扫描：本机最近文件是可选能力，测试用 __biaoyue_recent_documents__ 注入。
+    var docs = window.__biaoyue_recent_documents__;
+    return Array.isArray(docs) ? cloneJson(docs) : [];
+  }
   if (cmd === "reveal_in_finder" && args) {
     const w = typeof window !== "undefined" ? window : globalThis;
     w.__reveal_calls__ = w.__reveal_calls__ || [];

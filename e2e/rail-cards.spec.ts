@@ -54,8 +54,18 @@ const FILES: Array<{ path: string; content: string }> = [
   },
 ];
 
-async function boot(page: Page): Promise<void> {
+async function boot(
+  page: Page,
+  scanDocs?: Array<Record<string, unknown>>,
+): Promise<void> {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
+  if (scanDocs) {
+    await page.addInitScript((docs) => {
+      (
+        window as unknown as Record<string, unknown>
+      ).__biaoyue_recent_documents__ = docs;
+    }, scanDocs);
+  }
   await page.addInitScript(() => {
     const w = window as unknown as {
       __TAURI_INTERNALS__?: {
@@ -225,7 +235,7 @@ test("默认卡片 112px + 堆叠；滑杆 88/160；三档行高严格 32/56/112
   await expect(first).toHaveAttribute("data-density", "comfortable");
   await expect.poll(() => heightOf(first)).toBe(56);
   const sub = first.locator('[data-testid="rail-item-sub"]');
-  await expect(sub).toContainText("/tmp/rc");
+  await expect(sub).toContainText("rc");
   await expect(sub).toContainText(/刚刚|分钟前|小时前|昨天|天前/);
   await shot(page, "rail-density-comfortable");
 
@@ -309,7 +319,7 @@ test("六类缩略图均为 72×54（4:3）；纯文本与无图 MD 零缩略图
   await shot(page, "rail-card-thumbnails");
 });
 
-test("hover 只出右上角三钮且不改变缩略图 72×54；路径点击调用 reveal_in_finder", async ({
+test("缩略图居中、动作按钮位于其下方且不重叠；路径只显示父文件夹名并触发 reveal_in_finder", async ({
   page,
 }) => {
   await boot(page);
@@ -318,12 +328,21 @@ test("hover 只出右上角三钮且不改变缩略图 72×54；路径点击调�
 
   const card = recentItem(page, "/tmp/rc/cover.md");
   const thumb = card.locator('[data-testid="rail-thumb"]');
-  const before = await boxOf(thumb);
-
   const actions = card.locator('[data-testid="rail-card-actions"]');
   await expect(actions).toHaveCSS("opacity", "0");
   await card.hover();
   await expect(actions).toHaveCSS("opacity", "1");
+
+  const thumbBox = await thumb.boundingBox();
+  const actionsBox = await actions.boundingBox();
+  if (!thumbBox || !actionsBox) throw new Error("目标元素不可测量");
+  // 动作按钮在缩略图下方：顶边不高于缩略图底边（允许 1px 取整误差）
+  expect(actionsBox.y).toBeGreaterThanOrEqual(thumbBox.y + thumbBox.height - 1);
+  // 同一右列内居中：两者水平中心对齐
+  const thumbCenter = thumbBox.x + thumbBox.width / 2;
+  const actionsCenter = actionsBox.x + actionsBox.width / 2;
+  expect(Math.abs(thumbCenter - actionsCenter)).toBeLessThan(2);
+
   const buttons = card.locator('[data-testid="rail-card-action"]');
   await expect(buttons).toHaveCount(3);
   for (let i = 0; i < 3; i++) await expect(buttons.nth(i)).toBeVisible();
@@ -331,12 +350,13 @@ test("hover 只出右上角三钮且不改变缩略图 72×54；路径点击调�
   await expect(buttons.nth(1)).toHaveAttribute("data-action", "split-right");
   await expect(buttons.nth(2)).toHaveAttribute("data-action", "split-down");
 
-  const after = await boxOf(thumb);
-  expect(after).toEqual(before);
-  expect(after).toEqual({ w: 72, h: 54 });
+  expect(await boxOf(thumb)).toEqual({ w: 72, h: 54 });
   await shot(page, "rail-card-hover-actions");
 
-  await card.locator('[data-testid="rail-card-path"]').click();
+  const path = card.locator('[data-testid="rail-card-path"]');
+  await expect(path).toContainText("rc");
+  await expect(path).not.toHaveAttribute("title");
+  await path.click();
   await expect
     .poll(() =>
       page.evaluate(
@@ -348,7 +368,92 @@ test("hover 只出右上角三钮且不改变缩略图 72×54；路径点击调�
           ).__reveal_calls__ ?? [],
       ),
     )
-    .toContain("/tmp/rc/cover.md");
+    .toContain("/tmp/rc");
+});
+
+test("HTML 卡片：中性占位缩略图 + 去标签摘要（无 <tag> 源码）", async ({
+  page,
+}) => {
+  await boot(page);
+  await seed(page);
+  await openPinnedRail(page);
+
+  const card = recentItem(page, "/tmp/rc/page.html");
+  const thumb = card.locator('[data-testid="rail-thumb"]');
+  await expect(thumb).toHaveCount(1);
+  await expect(thumb).toHaveAttribute("data-thumb-kind", "html-page");
+  await expect(thumb.locator('[data-icon="html"]')).toHaveCount(1);
+  await expect(thumb.locator(".rail-thumb-line")).toHaveCount(0);
+
+  const excerpt = card.locator('[data-testid="rail-card-excerpt"]');
+  await expect(excerpt).toContainText("页面");
+  await expect(excerpt).toContainText("HTML 预览");
+  await expect(excerpt).not.toContainText("<");
+});
+
+test("启动即合并本机最近文件：recent 含扫描结果且按时间倒序", async ({
+  page,
+}) => {
+  await boot(page, [
+    {
+      path: "/Users/test/Documents/本地笔记.md",
+      title: "本地笔记.md",
+      openedAt: "2020-02-03T10:00:00.000Z",
+      excerpt: "本机扫描到的最近文档，启动即出现在阅读空间。",
+    },
+    {
+      path: "/Users/test/Desktop/桌面速记.html",
+      title: "桌面速记.html",
+      openedAt: "2020-02-02T10:00:00.000Z",
+    },
+    {
+      path: "/Users/test/Downloads/下载文档.md",
+      title: "下载文档.md",
+      openedAt: "2020-02-01T10:00:00.000Z",
+      excerpt: "下载目录里的文档。",
+    },
+  ]);
+  await page.evaluate(() => {
+    const w = window as unknown as {
+      __biaoyue_openFile__: (
+        path: string,
+        content: string,
+        title: string,
+      ) => void;
+    };
+    w.__biaoyue_openFile__("/tmp/scan-seed.md", "# 种子", "种子");
+  });
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          (
+            window as unknown as {
+              __biaoyue_store__: { getState: () => { scene: string } };
+            }
+          ).__biaoyue_store__.getState().scene,
+      ),
+    )
+    .toBe("workspace");
+  await openPinnedRail(page);
+
+  // 扫描合并完成后：种子刚打开排最前，其余按 openedAt（= 本机 mtime）倒序
+  await expect
+    .poll(() =>
+      page
+        .locator('[data-section="recent"] [data-testid="rail-item"]')
+        .evaluateAll((els) =>
+          els.map((el) => el.getAttribute("data-rail-path")),
+        ),
+    )
+    .toEqual([
+      "/tmp/scan-seed.md",
+      "/Users/test/Documents/本地笔记.md",
+      "/Users/test/Desktop/桌面速记.html",
+      "/Users/test/Downloads/下载文档.md",
+      "/Users/test/测试文档.md",
+      "/Users/test/另一个.md",
+    ]);
 });
 
 test("滑杆改到 160 后设为默认：重启回来 railViewSpec 与保存值严格相等", async ({

@@ -10,6 +10,7 @@ import {
 import { fileDragHandlers } from "../../hooks/fileDrag";
 import { invoke } from "@tauri-apps/api/core";
 import { useStore } from "../../stores";
+import { useEditorStore } from "../../stores/editorStore";
 import { reloadAppConfig } from "../../hooks/useConfig";
 import Icon from "../Icon";
 import {
@@ -41,6 +42,7 @@ import {
   CARD_MIN,
   DENSITY_HEIGHT,
   metaLine,
+  parentFolderNameOf,
   parentPathOf,
   readPercentOf,
   relativeDate,
@@ -80,6 +82,9 @@ const EMPTY_TEXT: Record<RailSection, string> = {
   category: "该类型下暂无条目",
 };
 
+/** 本机最近文件只扫描一次（React StrictMode 下 effect 会双跑）。 */
+let recentScanStarted = false;
+
 interface RailRowProps {
   item: RecentFile;
   ranges: MatchRange[];
@@ -102,7 +107,7 @@ interface RailRowProps {
 /**
  * 卡片右侧 4:3 缩略图（72×54）。
  *
- * 六种类型全部确定性离线生成：HTML=橙页、PDF=红文档页、视频=紫海报+播放、
+ * 六种类型全部确定性离线生成：HTML=中性图标占位、PDF=红文档页、视频=紫海报+播放、
  * 音频=粉波形、图片/MD 首图=真 <img>。纯文本与无图 MD 不会调用到这里。
  */
 function RailThumb({ descriptor }: { descriptor: ThumbDescriptor }) {
@@ -168,15 +173,33 @@ function RailThumb({ descriptor }: { descriptor: ThumbDescriptor }) {
     );
   }
 
-  const token = kind === "html-page" ? "html" : "pdf";
+  if (kind === "html-page") {
+    return (
+      <div
+        data-testid="rail-thumb"
+        data-thumb-kind={kind}
+        style={{
+          ...size,
+          background:
+            "color-mix(in srgb, var(--type-html) 10%, var(--app-surface))",
+          borderColor: "var(--type-html)",
+          color: "var(--type-html)",
+        }}
+        className="rail-thumb flex shrink-0 items-center justify-center border"
+      >
+        <Icon name="html" size={24} color="var(--type-html)" />
+      </div>
+    );
+  }
+
   return (
     <div
       data-testid="rail-thumb"
       data-thumb-kind={kind}
       style={{
         ...size,
-        background: `color-mix(in srgb, var(--type-${token}) 16%, var(--app-surface))`,
-        color: `var(--type-${token})`,
+        background: `color-mix(in srgb, var(--type-pdf) 16%, var(--app-surface))`,
+        color: "var(--type-pdf)",
       }}
       className="rail-thumb rail-thumb-page shrink-0"
     >
@@ -307,7 +330,8 @@ function RailRow({
           data-testid="rail-item-sub"
           className="mt-0.5 flex min-w-0 items-center gap-1 pl-[22px] text-[10px] text-gray-400 dark:text-gray-500"
         >
-          <span className="truncate">{parentPathOf(item.path)}</span>
+          <Icon name="folder" size={18} />
+          <span className="truncate">{parentFolderNameOf(item.path)}</span>
           <span>·</span>
           <span className="shrink-0">{relativeDate(item.openedAt)}</span>
           {pinned && (
@@ -335,6 +359,47 @@ function RailRow({
     : meta.kind === "read"
       ? readPct
       : null;
+
+  const actions = (
+    <div
+      data-testid="rail-card-actions"
+      className="flex gap-0.5 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100"
+    >
+      <button
+        type="button"
+        data-testid="rail-card-action"
+        data-action="open"
+        title="打开"
+        aria-label="打开"
+        onClick={() => onOpen(item.path)}
+        className="rounded p-0.5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+      >
+        <Icon name="eye" size={18} />
+      </button>
+      <button
+        type="button"
+        data-testid="rail-card-action"
+        data-action="split-right"
+        title="向右分屏"
+        aria-label="向右分屏"
+        onClick={() => onSplit(item.path, "row")}
+        className="rounded p-0.5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+      >
+        <Icon name="splitRight" size={18} />
+      </button>
+      <button
+        type="button"
+        data-testid="rail-card-action"
+        data-action="split-down"
+        title="向下分屏"
+        aria-label="向下分屏"
+        onClick={() => onSplit(item.path, "col")}
+        className="rounded p-0.5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+      >
+        <Icon name="splitDown" size={18} />
+      </button>
+    </div>
+  );
 
   return (
     <div
@@ -368,7 +433,12 @@ function RailRow({
             {item.excerpt || "（暂无正文）"}
           </p>
         </div>
-        {thumb && <RailThumb descriptor={thumb} />}
+        {thumb && (
+          <div className="flex shrink-0 flex-col items-center justify-center gap-0.5">
+            <RailThumb descriptor={thumb} />
+            {actions}
+          </div>
+        )}
       </div>
 
       <div
@@ -420,52 +490,16 @@ function RailRow({
         <button
           type="button"
           data-testid="rail-card-path"
-          title={item.path}
-          onClick={() => onReveal(item.path)}
-          className="min-w-0 truncate text-left hover:text-gray-700 dark:hover:text-gray-200"
+          aria-label={`打开所在文件夹 ${parentFolderNameOf(item.path)}`}
+          onClick={() => onReveal(parentPathOf(item.path))}
+          className="flex min-w-0 items-center gap-0.5 truncate text-left hover:text-gray-700 dark:hover:text-gray-200"
         >
-          {meta.path}
+          <Icon name="folder" size={18} />
+          <span className="truncate">{parentFolderNameOf(item.path)}</span>
         </button>
       </div>
 
-      <div
-        data-testid="rail-card-actions"
-        className="absolute right-1 top-1 z-10 flex gap-0.5 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100"
-      >
-        <button
-          type="button"
-          data-testid="rail-card-action"
-          data-action="open"
-          title="打开"
-          aria-label="打开"
-          onClick={() => onOpen(item.path)}
-          className="rounded p-0.5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
-        >
-          <Icon name="eye" size={18} />
-        </button>
-        <button
-          type="button"
-          data-testid="rail-card-action"
-          data-action="split-right"
-          title="向右分屏"
-          aria-label="向右分屏"
-          onClick={() => onSplit(item.path, "row")}
-          className="rounded p-0.5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
-        >
-          <Icon name="splitRight" size={18} />
-        </button>
-        <button
-          type="button"
-          data-testid="rail-card-action"
-          data-action="split-down"
-          title="向下分屏"
-          aria-label="向下分屏"
-          onClick={() => onSplit(item.path, "col")}
-          className="rounded p-0.5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
-        >
-          <Icon name="splitDown" size={18} />
-        </button>
-      </div>
+      {!thumb && <div className="absolute right-1 top-1 z-10">{actions}</div>}
     </div>
   );
 }
@@ -549,6 +583,7 @@ export default function ReadingRail({
   const viewSpec = useStore((s) => s.viewSpec);
   const pinnedPaths = useStore((s) => s.pinnedPaths);
   const togglePinnedPath = useStore((s) => s.togglePinnedPath);
+  const configLoaded = useEditorStore((s) => s.configLoaded);
 
   const setRailState = useStore((s) => s.setRailState);
   const toggleRailPin = useStore((s) => s.toggleRailPin);
@@ -615,6 +650,21 @@ export default function ReadingRail({
     window.addEventListener("rail-locate", onLocate);
     return () => window.removeEventListener("rail-locate", onLocate);
   }, []);
+
+  useEffect(() => {
+    if (recentScanStarted || !configLoaded || !isTauriEnv()) return;
+    recentScanStarted = true;
+    let cancelled = false;
+    invoke<RecentFile[]>("list_recent_documents")
+      .then((files) => {
+        if (cancelled || !Array.isArray(files)) return;
+        useStore.getState().mergeRecentFiles(files);
+      })
+      .catch((e) => log.warn("Rail", "读取本机最近文件失败", e));
+    return () => {
+      cancelled = true;
+    };
+  }, [configLoaded]);
 
   useEffect(() => {
     if (!locatedPath) return;
