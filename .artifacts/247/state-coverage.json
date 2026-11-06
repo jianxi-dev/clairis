@@ -1,0 +1,33 @@
+{
+  "task": "247-media-html",
+  "states": [
+    {
+      "state": "video-in-pane",
+      "screenshot": ".artifacts/247/video-in-pane.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-06T14:38:50Z",
+      "runner": "local@MMBP.local"
+    },
+    {
+      "state": "image-zoom",
+      "screenshot": ".artifacts/247/image-zoom.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-06T14:38:51Z",
+      "runner": "local@MMBP.local"
+    },
+    {
+      "state": "html-live-preview",
+      "screenshot": ".artifacts/247/html-live-preview.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-06T14:38:52Z",
+      "runner": "local@MMBP.local"
+    },
+    {
+      "state": "html-visual-edit",
+      "screenshot": ".artifacts/247/html-visual-edit.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-06T14:38:53Z",
+      "runner": "local@MMBP.local"
+    }
+  ]
+}

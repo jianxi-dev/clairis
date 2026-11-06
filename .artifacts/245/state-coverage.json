@@ -1,0 +1,33 @@
+{
+  "task": "245-reading-rail",
+  "states": [
+    {
+      "state": "rail-collapsed",
+      "screenshot": ".artifacts/245/rail-collapsed.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-06T14:38:30Z",
+      "runner": "local@MMBP.local"
+    },
+    {
+      "state": "rail-card-thumbnails",
+      "screenshot": ".artifacts/245/rail-card-thumbnails.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-06T14:38:31Z",
+      "runner": "local@MMBP.local"
+    },
+    {
+      "state": "rail-card-hover-actions",
+      "screenshot": ".artifacts/245/rail-card-hover-actions.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-06T14:38:32Z",
+      "runner": "local@MMBP.local"
+    },
+    {
+      "state": "rail-search-local",
+      "screenshot": ".artifacts/245/rail-search-local.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-06T14:38:33Z",
+      "runner": "local@MMBP.local"
+    }
+  ]
+}

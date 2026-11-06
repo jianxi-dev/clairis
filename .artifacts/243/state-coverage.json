@@ -1,0 +1,33 @@
+{
+  "task": "243-theme-switch",
+  "states": [
+    {
+      "state": "theme-light",
+      "screenshot": ".artifacts/243/theme-light.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-06T14:38:03Z",
+      "runner": "local@MMBP.local"
+    },
+    {
+      "state": "theme-dark",
+      "screenshot": ".artifacts/243/theme-dark.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-06T14:38:04Z",
+      "runner": "local@MMBP.local"
+    },
+    {
+      "state": "theme-warm",
+      "screenshot": ".artifacts/243/theme-warm.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-06T14:38:05Z",
+      "runner": "local@MMBP.local"
+    },
+    {
+      "state": "theme-system",
+      "screenshot": ".artifacts/243/theme-system.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-06T14:38:06Z",
+      "runner": "local@MMBP.local"
+    }
+  ]
+}

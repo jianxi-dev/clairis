@@ -18,8 +18,10 @@ import path from "node:path";
 const APP_URL = "http://localhost:1420";
 const SPLIT_RIGHT = "Control+Alt+ArrowRight";
 const ART = path.resolve(process.cwd(), ".artifacts/bug2");
+const ART_THEME = path.resolve(process.cwd(), ".artifacts/243");
 
 mkdirSync(ART, { recursive: true });
+mkdirSync(ART_THEME, { recursive: true });
 
 type Store = {
   getState: () => {
@@ -115,6 +117,7 @@ test("页签关闭 × 默认透明，悬停页签后显现", async ({ page }) =>
   await expect(closeBtn).toHaveCSS("opacity", "0");
   await tab.hover();
   await expect(closeBtn).toHaveCSS("opacity", "1");
+  await shot(page, "tab-close-hover");
 });
 
 test("页签右键菜单收窄到 132px 且不再提供导出", async ({ page }) => {
@@ -132,6 +135,7 @@ test("页签右键菜单收窄到 132px 且不再提供导出", async ({ page })
   expect(box).not.toBeNull();
   expect(box!.width).toBeLessThanOrEqual(150);
   expect(await menu.innerText()).not.toContain("导出");
+  await shot(page, "tab-context-menu");
 });
 
 test("格头更多 → 导出：二级菜单 5 项且 ZIP 可用", async ({ page }) => {
@@ -188,4 +192,35 @@ test("跨格拖拽：页签从左格搬到右格，paneRoot 同步", async ({ pa
   await expect.poll(() => leafTabs(page, "main")).toBe(0);
   await expect.poll(() => leafTabs(page, rightPaneId)).toBe(1);
   await shot(page, "cross-pane-drag");
+});
+
+test("主题四态：亮 / 暗 / 暖 / 跟随系统，标题与 html class 同步", async ({
+  page,
+}) => {
+  await boot(page);
+  await openFile(page, "/tmp/bug2/theme.md");
+
+  const themeBtn = page.locator('header button[title^="当前"]');
+  const title = () => themeBtn.getAttribute("title");
+  const rootClass = () =>
+    page.evaluate(() => document.documentElement.className);
+
+  // 起始为跟随系统（亮色环境下 class 为空）。依次点击循环
+  // system → light → dark → warm → system，逐态断言标题与 class。
+  // light 与 system 在亮色环境下 class 同为空，故 class 序列为
+  // "" → "dark" → "warm" → ""，断言精确到态而非仅断言"变了"。
+  const expected = [
+    { name: "theme-light", title: "当前: 亮色", cls: "" },
+    { name: "theme-dark", title: "当前: 暗色", cls: "dark" },
+    { name: "theme-warm", title: "当前: 暖色", cls: "warm" },
+    { name: "theme-system", title: "当前: 跟随系统", cls: "" },
+  ];
+  for (const exp of expected) {
+    await themeBtn.click();
+    await expect.poll(title, { timeout: 5000 }).toBe(exp.title);
+    expect(await rootClass()).toBe(exp.cls);
+    await page.screenshot({
+      path: path.join(ART_THEME, `${exp.name}.png`),
+    });
+  }
 });

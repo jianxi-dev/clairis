@@ -1,6 +1,11 @@
 import { test, expect } from "@playwright/test";
+import { mkdirSync } from "node:fs";
+import path from "node:path";
 
 const APP_URL = "http://localhost:1420";
+const ART = path.resolve(process.cwd(), ".artifacts/244");
+
+mkdirSync(ART, { recursive: true });
 
 type Page = Parameters<Parameters<typeof test>[1]>[0]["page"];
 
@@ -69,5 +74,7 @@ test.describe("导出 HTML", () => {
     expect(content).toContain("<style>");
     expect(content).not.toMatch(/<script[^>]+src=/i);
     expect(content).not.toMatch(/<link[^>]+rel=["']?stylesheet/i);
+
+    await page.screenshot({ path: path.join(ART, "html-saved.png") });
   });
 });
