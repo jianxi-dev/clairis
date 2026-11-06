@@ -20,8 +20,6 @@ export const EDITOR_ANCHORS = {
   menuIcon: 20,
   /** 「转为」单元数（豆包 §4.3）。 */
   convertCells: 10,
-  /** 表格块菜单的结构开关数（change editor-block-parity R-1）。 */
-  tableStructuralSwitches: 3,
 } as const;
 
 /** 允许的测量误差（取整与边框造成的 1px 级偏差）。 */

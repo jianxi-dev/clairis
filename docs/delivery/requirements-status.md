@@ -160,11 +160,11 @@ openspec status --change <name>   # 单个变更工件完成度
 | E-6 | 编辑内核与插入入口（块级装饰 / 斜杠菜单 / 智能输入） | ✅ | change `md-kernel-port` |
 | E-7 | 编排层交互契约（块手柄 / 菜单栈 / 浮层裁剪 / 共享色板） | ✅ | change `md-orchestration`（归档 2026-11-03） |
 | E-8 | 编辑态与预览态同貌（同一张纸 / 同一套排版 / 块级组合规则） | ✅ | change `editor-preview-parity`（归档 2026-11-02） |
-| E-9 | 单元格工具条可见性（单击显示 / 底色 / 合并） | ✅ | change `editor-interaction-fixes`（归档 2026-11-03） |
+| E-9 | 单元格工具条（已整体移除：无合并 / 无背景色） | ✅（移除） | change `editor-block-parity`（归档 2026-11-06；#140 实施移除） |
 | E-10 | 编辑器大纲浮层（右上角入口 / 跳转 / 跳过代码块） | ✅ | change `editor-outline`（归档 2026-11-03） |
 | E-7 修订 | 块菜单贴手柄居中、二级面板、hover 稳定性 | ✅ | change `editor-interaction-fixes`（归档 2026-11-03） |
-| E-11 | 块菜单结构与图标体系 | ✅ | change `editor-block-parity` |
-| E-12 | 单元格富文本编辑 | ✅ | change `editor-block-parity` |
+| E-11 | 块菜单结构与图标体系 | ✅ | change `editor-block-parity`（归档 2026-11-06） |
+| E-12 | 单元格富文本编辑 | ✅ | change `editor-block-parity`（归档 2026-11-06） |
 | E-13 | 全角标点修正 | ✅ | `transactionFilter`（PR #121） |
 | E-14 | 浮层定位优先级（不遮挡不越界 > 对齐 > 最近） | ✅ | PR #134 + `e2e/shortest-path.spec.ts` |
 | E-15 | HTML 编辑闭环（iframe 预览 / 相对资源 / 编辑后可见） | ✅ | change `html-edit-loop`（归档 2026-11-04，PR #159） |
