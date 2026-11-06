@@ -1,0 +1,53 @@
+{
+  "states": [
+    {
+      "state": "01-light-workspace",
+      "screenshot": ".artifacts/213/01-light-workspace.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T23:57:12Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "02-dark-workspace",
+      "screenshot": ".artifacts/213/02-dark-workspace.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T23:57:12Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "03-warm-workspace",
+      "screenshot": ".artifacts/213/03-warm-workspace.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T23:57:12Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "04-tabs-with-titles",
+      "screenshot": ".artifacts/213/04-tabs-with-titles.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T23:57:12Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "05-single-pane-no-fullscreen",
+      "screenshot": ".artifacts/213/05-single-pane-no-fullscreen.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T23:57:12Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "06-multi-pane-fullscreen-toggle",
+      "screenshot": ".artifacts/213/06-multi-pane-fullscreen-on.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T23:57:12Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "07-settings-icon-drawer-theme",
+      "screenshot": ".artifacts/213/07-settings-icon-drawer-theme.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-05T23:57:12Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}

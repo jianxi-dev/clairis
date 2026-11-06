@@ -20,7 +20,9 @@ async function openInactive(page: Page, path: string, content: string) {
     },
     { p: path, c: content },
   );
-  await page.locator("button").filter({ hasText: "编辑" }).first().click();
+  const modeBtn = page.locator('[data-testid="pane-mode"]').first();
+  if ((await modeBtn.getAttribute("data-mode")) !== "edit")
+    await modeBtn.click();
   const editor = page.locator(".cm-content");
   await editor.waitFor({ state: "visible", timeout: 10000 });
   await editor.click();

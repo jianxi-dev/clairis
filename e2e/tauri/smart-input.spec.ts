@@ -25,7 +25,9 @@ test("行首输入 - 后自动成为列表（源码出现标记）", async ({ pa
       "smart.md",
     );
   });
-  await page.locator("button").filter({ hasText: "编辑" }).first().click();
+  const modeBtn = page.locator('[data-testid="pane-mode"]').first();
+  if ((await modeBtn.getAttribute("data-mode")) !== "edit")
+    await modeBtn.click();
   const content = page.locator(".cm-content");
   await content.click();
   await page.keyboard.press("Meta+ArrowUp");
@@ -45,7 +47,9 @@ test("行首输入 # 后成为标题（源码出现 #）", async ({ page }) => {
       "smart2.md",
     );
   });
-  await page.locator("button").filter({ hasText: "编辑" }).first().click();
+  const modeBtn = page.locator('[data-testid="pane-mode"]').first();
+  if ((await modeBtn.getAttribute("data-mode")) !== "edit")
+    await modeBtn.click();
   const content = page.locator(".cm-content");
   await content.click();
   await page.keyboard.press("Meta+ArrowUp");

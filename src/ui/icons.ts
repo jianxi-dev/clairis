@@ -26,6 +26,7 @@ export type IconName =
   | "moon"
   | "monitor"
   | "pin"
+  | "grid"
   | "check"
   | "warning"
   | "expand"
@@ -115,7 +116,11 @@ export const ICONS: Record<IconName, IconDef> = {
   },
   pin: {
     label: "钉住",
-    d: "M14 2l8 8-3 1-1 5-3 3-2-6-5-1 1-3z M8 14l-5 5 1.4 1.4 5-5z",
+    d: "M9 3h6l-.8 4.2 2.8 2.8v1.5h-5v6.2l-1 2.3-1-2.3v-6.2H4v-1.5L6.8 7.2z M10.5 4.5l-.6 3.3L7 10.5h10l-2.9-2.7-.6-3.3z",
+  },
+  grid: {
+    label: "网格概览",
+    d: "M4 4h6.5v6.5H4z M13.5 4H20v6.5h-6.5z M4 13.5h6.5V20H4z M13.5 13.5H20V20h-6.5z M5.5 5.5v3.5h3.5V5.5z M15 5.5v3.5h3.5V5.5z M5.5 15v3.5h3.5V15z M15 15v3.5h3.5V15z",
   },
   check: {
     label: "完成",
@@ -131,7 +136,7 @@ export const ICONS: Record<IconName, IconDef> = {
   },
   expand: {
     label: "全屏格",
-    d: "M4 4h6v2H6v4H4z M14 4h6v6h-2V6h-4z M4 14h2v4h4v2H4z M18 14h2v6h-6v-2h4z",
+    d: "M4 4h5v1.5H5.5V9H4z M15 4h5v5h-1.5V5.5H15z M4 15h1.5v3.5H9V20H4z M18.5 15H20v5h-5v-1.5h3.5z",
   },
   more: {
     label: "更多",
@@ -155,11 +160,11 @@ export const ICONS: Record<IconName, IconDef> = {
   },
   splitRight: {
     label: "向右分栏",
-    d: "M3 5h8v14H3z M13 5h8v14h-8z",
+    d: "M3 5.5h7.5v13H3z M4.5 7v10h4.5V7z M13.5 5.5H21v13h-7.5z M15 7v10h4.5V7z",
   },
   splitDown: {
     label: "向下分栏",
-    d: "M3 5h18v6H3z M3 13h18v6H3z",
+    d: "M3 4.5h18v6H3z M4.5 6v3h15V6z M3 12.5h18v7H3z M4.5 14v4h15v-4z",
   },
   locate: {
     label: "定位",

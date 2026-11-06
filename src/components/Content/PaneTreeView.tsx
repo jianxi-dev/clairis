@@ -171,7 +171,7 @@ function PaneNode({
             tabs={node.tabs}
             activeTabId={node.activeTabId}
             editorMode={node.editorMode}
-            showClose={!rootIsLeaf}
+            showPaneControls={!rootIsLeaf}
           />
         )}
         <div className="relative flex-1 overflow-hidden">
@@ -239,15 +239,16 @@ function PaneHeader({
   tabs,
   activeTabId,
   editorMode,
-  showClose,
+  showPaneControls,
 }: {
   leafId: string;
   tabs: string[];
   activeTabId: string | null;
   editorMode: EditorMode;
-  showClose: boolean;
+  showPaneControls: boolean;
 }) {
   const allTabs = useStore((s) => s.tabs);
+  const fullscreenPaneId = useStore((s) => s.fullscreenPaneId);
   const leafTabs: Record<string, Tab> = {};
   for (const id of tabs) {
     if (allTabs[id]) leafTabs[id] = allTabs[id];
@@ -417,7 +418,9 @@ function PaneHeader({
           type="button"
           data-testid="pane-mode"
           data-mode={editorMode}
-          title={editorMode === "preview" ? "切换到编辑" : "切换到预览"}
+          title={
+            editorMode === "preview" ? "切换到编辑（⌘⇧M）" : "切换到预览（⌘⇧M）"
+          }
           aria-label={editorMode === "preview" ? "切换到编辑" : "切换到预览"}
           onClick={() => setMode(nextPaneMode(editorMode))}
           className="p-0.5 mx-1 rounded text-gray-500 hover:bg-gray-200 hover:text-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-100 shrink-0"
@@ -426,16 +429,22 @@ function PaneHeader({
         </button>
       )}
       <div className="flex items-center gap-0.5 px-1 shrink-0">
-        <button
-          type="button"
-          data-testid="pane-fullscreen"
-          title="全屏当前格 (⌘⇧↵)"
-          aria-label="全屏当前格"
-          onClick={() => useStore.getState().toggleFullscreenPane()}
-          className="p-0.5 rounded text-gray-400 hover:bg-gray-200 hover:text-gray-700 dark:hover:bg-gray-700 dark:hover:text-gray-200"
-        >
-          <Icon name="expand" size={18} />
-        </button>
+        {showPaneControls && (
+          <button
+            type="button"
+            data-testid="pane-fullscreen"
+            title="全屏当前格 (⌘⇧↵)"
+            aria-label="全屏当前格"
+            aria-pressed={fullscreenPaneId === leafId}
+            onClick={() => {
+              useStore.getState().focusPane(leafId);
+              useStore.getState().toggleFullscreenPane();
+            }}
+            className="p-0.5 rounded text-[var(--app-text-3)] hover:bg-[var(--app-accent-soft)] hover:text-[var(--app-accent)]"
+          >
+            <Icon name="expand" size={18} />
+          </button>
+        )}
         <div className="relative" ref={menuRef}>
           <button
             type="button"
@@ -471,7 +480,7 @@ function PaneHeader({
             </div>
           )}
         </div>
-        {showClose && (
+        {showPaneControls && (
           <button
             type="button"
             data-testid="pane-close"

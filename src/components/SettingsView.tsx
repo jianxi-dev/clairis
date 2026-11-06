@@ -100,12 +100,6 @@ const THEME_OPTIONS = [
 
 const FONT_SIZES = [15, 16, 17, 18, 19, 21] as const;
 
-const LABEL_LEVELS = [
-  { value: "auto", label: "自动", hint: "主入口图标+文字，重复处仅图标" },
-  { value: "text", label: "始终显示文字", hint: "任何位置都带文字标签" },
-  { value: "icon", label: "仅图标", hint: "任何位置都不显示文字" },
-] as const;
-
 const GRID_MODES = [
   { value: "hover", label: "悬停" },
   { value: "click", label: "点击" },
@@ -522,7 +516,6 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
   const [showFullShortcuts, setShowFullShortcuts] = useState(false);
 
   const theme = useEditorStore((s) => s.config.theme ?? "system");
-  const iconLabel = useEditorStore((s) => s.config.iconLabel ?? "text");
   const readerFontSize = useEditorStore((s) => s.config.readerFontSize ?? 17);
   const fontSize = useEditorStore((s) => s.fontSize);
   const openaiEndpoint = useEditorStore((s) => s.config.openaiEndpoint ?? "");
@@ -660,11 +653,6 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
       "--editor-font-size",
       `${size}px`,
     );
-    void saveAppConfig();
-  };
-
-  const chooseLabelLevel = (value: "auto" | "text" | "icon") => {
-    setConfig({ iconLabel: value });
     void saveAppConfig();
   };
 
@@ -931,27 +919,6 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
                 <p className="mb-2 text-xs text-[var(--app-text-3)]">
                   全站同一概念同一形状，尺寸只有 18（密集）与 24（主操作）两档。
                 </p>
-                <div className="mb-3 flex flex-wrap gap-3">
-                  {LABEL_LEVELS.map((level) => (
-                    <label
-                      key={level.value}
-                      className="flex cursor-pointer items-start gap-1.5"
-                      title={level.hint}
-                    >
-                      <input
-                        type="radio"
-                        name="icon-label-level"
-                        data-testid={`icon-label-${level.value}`}
-                        checked={iconLabel === level.value}
-                        onChange={() => chooseLabelLevel(level.value)}
-                        className="mt-0.5"
-                      />
-                      <span className="text-xs text-[var(--app-text)]">
-                        {level.label}
-                      </span>
-                    </label>
-                  ))}
-                </div>
                 <div
                   data-testid="icon-drawer"
                   className="grid max-h-56 grid-cols-2 gap-1.5 overflow-auto rounded border border-[var(--app-border)] p-2"

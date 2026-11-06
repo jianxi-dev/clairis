@@ -1,5 +1,4 @@
 import Icon from "./Icon";
-import { useEditorStore } from "../stores/editorStore";
 import { colorOfType, fileTypeOf, iconOfType } from "../lib/fileType";
 import { useState, useCallback, useEffect, useRef, Fragment } from "react";
 import { useStore } from "../stores";
@@ -46,9 +45,6 @@ export default function TabBar({
   alwaysShowClose,
 }: TabBarProps) {
   const tabIds = Object.keys(tabs);
-  // 图标标签级别（设置里可改）：只有 text 显示标题；auto（重复处仅图标）与
-  // icon（全站仅图标）都隐藏标题
-  const iconLabel = useEditorStore((s) => s.config.iconLabel ?? "text");
   const [notice, setNotice] = useState<string | null>(null);
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -323,7 +319,7 @@ export default function TabBar({
     <>
       <div
         ref={stripRef}
-        className="flex items-end shrink-0 select-none overflow-x-auto"
+        className="flex items-center gap-1 shrink-0 select-none overflow-x-auto px-1"
         style={{
           borderBottom: "1px solid var(--tab-border, #e5e7eb)",
           background: "var(--tab-bg, #f9fafb)",
@@ -363,13 +359,12 @@ export default function TabBar({
                   borderRight: "1px solid var(--tab-border, #e5e7eb)",
                   ...(dragFrom === index ? { opacity: 0.5 } : null),
                 }}
-                aria-label={iconLabel === "text" ? undefined : tab.title}
-                title={iconLabel === "text" ? undefined : tab.title}
+                title={tab.title}
                 onContextMenu={(e) => handleContextMenu(e, id)}
-                className={`flex items-center gap-1 px-3 py-1.5 text-xs cursor-pointer transition-colors whitespace-nowrap ${
+                className={`flex min-w-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs cursor-pointer transition-colors whitespace-nowrap ${
                   isActive
-                    ? "bg-white dark:bg-gray-800 border-b-2 border-b-blue-500 font-medium"
-                    : "hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 border-b-2 border-b-transparent"
+                    ? "bg-[var(--app-accent-soft)] font-medium text-[var(--app-accent)] shadow-sm"
+                    : "text-[var(--app-text-2)] hover:bg-[var(--app-sunken)]"
                 }`}
               >
                 <Icon
@@ -378,9 +373,7 @@ export default function TabBar({
                   color={typeColor}
                   className="mr-0.5"
                 />
-                {iconLabel === "text" && (
-                  <span className="truncate max-w-40">{tab.title}</span>
-                )}
+                <span className="max-w-44 truncate">{tab.title}</span>
                 {tab.dirty && (
                   <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />
                 )}
