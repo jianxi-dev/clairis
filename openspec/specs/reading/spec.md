@@ -265,7 +265,7 @@ reading 域定义标月桌面端的核心阅读体验：文件打开后的可读
 - **WHEN** 单元格含不可断的固定宽度内容（如内嵌宽图片）
 - **THEN** 超出部分 SHALL 仅在 `.table-wrap` 容器内横向滚动，不得溢出内容区
 
-### Requirement: R-4 悬浮预览的离开关闭与媒体渲染
+### Requirement: A-13 悬浮预览的离开关闭与媒体渲染
 
 悬浮预览窗 SHALL 在指针离开窗口且未钉住、未拖动、未缩放时自动关闭；SHALL 在指针仍位于阅读空间触发条目上时保持打开。预览 SHALL 对图片、视频、音频渲染真实媒体元素并支持播放；HTML SHALL 以沙箱 iframe 渲染，SHALL NOT 显示源码文本。
 
@@ -277,7 +277,7 @@ reading 域定义标月桌面端的核心阅读体验：文件打开后的可读
 - **WHEN** 用户预览图片、视频或音频文件
 - **THEN** 预览窗 SHALL 渲染 `img` / `video` / `audio` 元素而非纯文字占位
 
-### Requirement: R-5 HTML 摘要文本化
+### Requirement: A-14 HTML 摘要文本化
 
 阅读空间与门户中的 HTML 文件摘要 SHALL 显示去标签后的正文文字，SHALL NOT 显示 HTML 源码；缩略图 SHALL 显示中性占位图，不伪造 HTML 页面缩略图。
 
