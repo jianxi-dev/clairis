@@ -24,6 +24,17 @@ export interface PaneMenuItem {
   icon: IconName;
 }
 
+export type ExportMenuAction =
+  "exportHtml" | "exportPng" | "exportDocx" | "exportMdpkg" | "exportZip";
+
+export interface ExportMenuItem {
+  action: ExportMenuAction;
+  label: string;
+  icon: IconName;
+  disabled?: boolean;
+  title?: string;
+}
+
 export const PANE_MENU_ITEMS: readonly PaneMenuItem[] = [
   { action: "export", label: "导出", icon: "export" },
   { action: "share", label: "分享", icon: "share" },
@@ -32,6 +43,14 @@ export const PANE_MENU_ITEMS: readonly PaneMenuItem[] = [
   { action: "source", label: "源码模式", icon: "code" },
   { action: "locate", label: "定位", icon: "locate" },
   { action: "copyPath", label: "复制路径", icon: "copyPath" },
+];
+
+export const EXPORT_MENU_ITEMS: readonly ExportMenuItem[] = [
+  { action: "exportHtml", label: "HTML", icon: "html" },
+  { action: "exportPng", label: "图片", icon: "image" },
+  { action: "exportDocx", label: "Word", icon: "file" },
+  { action: "exportMdpkg", label: ".mdpkg", icon: "markdown" },
+  { action: "exportZip", label: "ZIP", icon: "folder" },
 ];
 
 /**

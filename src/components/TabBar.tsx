@@ -3,18 +3,6 @@ import { colorOfType, fileTypeOf, iconOfType } from "../lib/fileType";
 import { useState, useCallback, useEffect, useRef, Fragment } from "react";
 import { useStore } from "../stores";
 import type { Tab } from "../types";
-import { log } from "../utils/log";
-import { exportDocxDocument } from "../lib/export/docx";
-import {
-  exportCurrentDocHtml,
-  exportMessage,
-} from "../lib/export/exportDocument";
-import { exportPngFromMarkdown, exportPngMessage } from "../lib/export/png";
-import { exportDocxMessage } from "../lib/export/docx";
-import {
-  exportMdpkgFromMarkdown,
-  exportMdpkgMessage,
-} from "../lib/export/mdpkg";
 
 interface TabBarProps {
   tabs: Record<string, Tab>;
@@ -23,7 +11,11 @@ interface TabBarProps {
   onCloseTab: (id: string) => void;
   /** 提供时启用页签指针拖拽换位；缺省（legacy 分栏）不启用以保持原行为。 */
   onReorderTabs?: (from: number, to: number) => void;
-  /** 缺省时沿用「仅多签才显示 ×」；格头页签条传 true 以始终显示 ×。 */
+  /** 所在格 id；与 onMoveToPane 一起启用跨格拖放命中判定。 */
+  paneId?: string;
+  /** 把页签搬到目标格（跨格拖放落点）。 */
+  onMoveToPane?: (tabId: string, targetLeafId: string) => void;
+  /** 缺省时关闭 × 悬停/聚焦才显示；传 true 则始终显示。 */
   alwaysShowClose?: boolean;
 }
 
@@ -36,21 +28,33 @@ interface CtxMenu {
   tabId: string;
 }
 
+function paneIdAt(x: number, y: number): string | null {
+  if (typeof document === "undefined") return null;
+  if (typeof document.elementFromPoint !== "function") return null;
+  const el = document.elementFromPoint(x, y);
+  if (!(el instanceof Element)) return null;
+  return (
+    el.closest<HTMLElement>("[data-pane-id]")?.getAttribute("data-pane-id") ??
+    null
+  );
+}
+
 export default function TabBar({
   tabs,
   activeTabId,
   onSwitchTab,
   onCloseTab,
   onReorderTabs,
+  paneId,
+  onMoveToPane,
   alwaysShowClose,
 }: TabBarProps) {
   const tabIds = Object.keys(tabs);
-  const [notice, setNotice] = useState<string | null>(null);
-  const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const stripRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{
     from: number;
+    tabId: string;
     startX: number;
     active: boolean;
   } | null>(null);
@@ -58,9 +62,12 @@ export default function TabBar({
   const suppressClickRef = useRef(false);
   const [dragFrom, setDragFrom] = useState<number | null>(null);
   const [dragGap, setDragGap] = useState<number | null>(null);
+  const [overPaneId, setOverPaneId] = useState<string | null>(null);
+
+  const dragEnabled = Boolean(onReorderTabs || onMoveToPane);
 
   useEffect(() => {
-    if (!onReorderTabs) return;
+    if (!dragEnabled) return;
     const onMove = (e: PointerEvent) => {
       const drag = dragRef.current;
       if (!drag) return;
@@ -70,28 +77,35 @@ export default function TabBar({
         setDragFrom(drag.from);
       }
       const strip = stripRef.current;
-      if (!strip) return;
-      const els = Array.from(
-        strip.querySelectorAll<HTMLElement>("[data-tab-id]"),
-      );
-      let gap = els.length;
-      for (let i = 0; i < els.length; i++) {
-        const r = els[i].getBoundingClientRect();
-        if (e.clientX < r.left + r.width / 2) {
-          gap = i;
-          break;
+      if (strip) {
+        const els = Array.from(
+          strip.querySelectorAll<HTMLElement>("[data-tab-id]"),
+        );
+        let gap = els.length;
+        for (let i = 0; i < els.length; i++) {
+          const r = els[i].getBoundingClientRect();
+          if (e.clientX < r.left + r.width / 2) {
+            gap = i;
+            break;
+          }
         }
+        dragGapRef.current = gap;
+        setDragGap(gap);
       }
-      dragGapRef.current = gap;
-      setDragGap(gap);
+      const over = paneId ? paneIdAt(e.clientX, e.clientY) : null;
+      setOverPaneId(over && over !== paneId ? over : null);
     };
-    const finish = (commit: boolean) => {
+    const finish = (commit: boolean, e?: PointerEvent) => {
       const drag = dragRef.current;
       if (!drag) return;
       if (drag.active) {
         // 拖拽结束后的那次 click 是拖拽的尾巴，不能当作切签
         suppressClickRef.current = true;
-        if (commit && onReorderTabs) {
+        const targetPaneId =
+          paneId && e ? paneIdAt(e.clientX, e.clientY) : null;
+        if (targetPaneId && targetPaneId !== paneId && onMoveToPane) {
+          onMoveToPane(drag.tabId, targetPaneId);
+        } else if (commit && onReorderTabs) {
           const gap = dragGapRef.current ?? drag.from;
           const target = gap > drag.from ? gap - 1 : gap;
           if (target !== drag.from) onReorderTabs(drag.from, target);
@@ -101,8 +115,9 @@ export default function TabBar({
       dragGapRef.current = null;
       setDragFrom(null);
       setDragGap(null);
+      setOverPaneId(null);
     };
-    const onUp = () => finish(true);
+    const onUp = (e: PointerEvent) => finish(true, e);
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") finish(false);
     };
@@ -114,18 +129,9 @@ export default function TabBar({
       window.removeEventListener("pointerup", onUp);
       window.removeEventListener("keydown", onKey, true);
     };
-  }, [onReorderTabs]);
-
-  const showNotice = useCallback((message: string) => {
-    setNotice(message);
-    if (noticeTimer.current) clearTimeout(noticeTimer.current);
-    noticeTimer.current = setTimeout(() => setNotice(null), 3000);
-  }, []);
+  }, [dragEnabled, onReorderTabs, paneId, onMoveToPane]);
 
   const [menu, setMenu] = useState<CtxMenu | null>(null);
-  const [exportingPng, setExportingPng] = useState(false);
-  const [exportingDocx, setExportingDocx] = useState(false);
-  const [exportingMdpkg, setExportingMdpkg] = useState(false);
 
   const handleContextMenu = useCallback(
     (e: React.MouseEvent, tabId: string) => {
@@ -137,147 +143,6 @@ export default function TabBar({
   );
 
   const closeMenu = useCallback(() => setMenu(null), []);
-
-  const handleExportHtml = useCallback(
-    async (tabId: string) => {
-      const tab = useStore.getState().tabs[tabId];
-      if (!tab) return;
-      const dir = tab.path
-        ? tab.path.slice(
-            0,
-            Math.max(tab.path.lastIndexOf("/"), tab.path.lastIndexOf("\\")),
-          )
-        : "";
-      const result = await exportCurrentDocHtml({
-        title: tab.title,
-        markdown: tab.content,
-        baseDir: dir,
-      });
-      const message = exportMessage(result);
-      if (result.status === "error") {
-        log.error("ExportHtml", "导出 HTML 失败", result.message);
-        showNotice(message ?? "导出失败");
-      } else if (result.status === "saved") {
-        log.info("ExportHtml", message ?? "已导出", { path: result.path });
-        showNotice(message ?? "已导出");
-      }
-    },
-    [showNotice],
-  );
-
-  const handleExportPng = useCallback(
-    async (tabId: string) => {
-      if (exportingPng) return;
-      const tab = useStore.getState().tabs[tabId];
-      if (!tab) return;
-      const dir = tab.path
-        ? tab.path.slice(
-            0,
-            Math.max(tab.path.lastIndexOf("/"), tab.path.lastIndexOf("\\")),
-          )
-        : "";
-      setExportingPng(true);
-      showNotice("正在生成图片…");
-      let message: string | null = null;
-      try {
-        const result = await exportPngFromMarkdown({
-          title: tab.title,
-          markdown: tab.content,
-          baseDir: dir,
-        });
-        if (result.status === "error") {
-          log.error("ExportPng", "导出图片失败", result.message);
-        } else if (result.status === "saved") {
-          log.info("ExportPng", "已导出图片", { path: result.path });
-        }
-        message = exportPngMessage(result);
-      } catch (e) {
-        log.error("ExportPng", "导出图片失败", String(e));
-        message = `导出失败：${e instanceof Error ? e.message : String(e)}`;
-      } finally {
-        setExportingPng(false);
-      }
-      if (message) showNotice(message);
-    },
-    [exportingPng, showNotice],
-  );
-
-  const handleExportDocx = useCallback(
-    async (tabId: string) => {
-      if (exportingDocx) return;
-      const tab = useStore.getState().tabs[tabId];
-      if (!tab) return;
-      setExportingDocx(true);
-      showNotice("正在生成 Word…");
-      let message: string | null = null;
-      try {
-        const dir = tab.path
-          ? tab.path.slice(
-              0,
-              Math.max(tab.path.lastIndexOf("/"), tab.path.lastIndexOf("\\")),
-            )
-          : "";
-        const result = await exportDocxDocument({
-          title: tab.title,
-          markdown: tab.content,
-          baseDir: dir,
-        });
-        if (result.status === "error") {
-          log.error("ExportDocx", "导出 Word 失败", result.message);
-        } else if (result.status === "saved") {
-          log.info("ExportDocx", "已导出 Word", {
-            path: result.path,
-            warnings: result.warnings,
-          });
-        }
-        message = exportDocxMessage(result);
-      } catch (e) {
-        log.error("ExportDocx", "导出 Word 失败", String(e));
-        message = `导出失败：${e instanceof Error ? e.message : String(e)}`;
-      } finally {
-        setExportingDocx(false);
-      }
-      if (message) showNotice(message);
-    },
-    [exportingDocx, showNotice],
-  );
-
-  const handleExportMdpkg = useCallback(
-    async (tabId: string) => {
-      if (exportingMdpkg) return;
-      const tab = useStore.getState().tabs[tabId];
-      if (!tab) return;
-      setExportingMdpkg(true);
-      showNotice("正在打包 .mdpkg…");
-      let message: string | null = null;
-      try {
-        const dir = tab.path
-          ? tab.path.slice(
-              0,
-              Math.max(tab.path.lastIndexOf("/"), tab.path.lastIndexOf("\\")),
-            )
-          : "";
-        const result = await exportMdpkgFromMarkdown({
-          title: tab.title,
-          markdown: tab.content,
-          baseDir: dir,
-        });
-        if (result.status === "error") {
-          log.error("ExportMdpkg", "导出 .mdpkg 失败", result.message);
-        } else if (result.status === "saved") {
-          log.info("ExportMdpkg", "已导出 .mdpkg", { path: result.path });
-        }
-        message = exportMdpkgMessage(result);
-      } catch (e) {
-        log.error("ExportMdpkg", "导出 .mdpkg 失败", String(e));
-        message = `导出失败：${e instanceof Error ? e.message : String(e)}`;
-      } finally {
-        setExportingMdpkg(false);
-      }
-      if (message) showNotice(message);
-    },
-    [exportingMdpkg, showNotice],
-  );
 
   // Close menu on any click outside the menu itself
   useEffect(() => {
@@ -299,7 +164,6 @@ export default function TabBar({
   }, [menu]);
 
   if (tabIds.length === 0) return null;
-  const showClose = alwaysShowClose ?? tabIds.length > 1;
 
   const placeholder =
     dragGap === null ? null : (
@@ -310,7 +174,7 @@ export default function TabBar({
           width: 3,
           alignSelf: "stretch",
           margin: "4px 1px",
-          background: "var(--tab-accent, #3b82f6)",
+          background: "var(--app-accent)",
         }}
       />
     );
@@ -321,14 +185,15 @@ export default function TabBar({
         ref={stripRef}
         className="flex items-center gap-1 shrink-0 select-none overflow-x-auto px-1"
         style={{
-          borderBottom: "1px solid var(--tab-border, #e5e7eb)",
-          background: "var(--tab-bg, #f9fafb)",
+          borderBottom: "1px solid var(--app-border)",
+          background: "var(--app-surface)",
         }}
       >
         {tabIds.map((id, index) => {
           const tab = tabs[id];
           const isActive = id === activeTabId;
           const typeColor = colorOfType(fileTypeOf(tab.path));
+          const isDragged = dragFrom === index;
           return (
             <Fragment key={id}>
               {dragGap === index && placeholder}
@@ -341,12 +206,13 @@ export default function TabBar({
                   onSwitchTab(id);
                 }}
                 onPointerDown={
-                  onReorderTabs
+                  dragEnabled
                     ? (e) => {
                         if (e.button !== 0) return;
                         suppressClickRef.current = false;
                         dragRef.current = {
                           from: index,
+                          tabId: id,
                           startX: e.clientX,
                           active: false,
                         };
@@ -356,12 +222,18 @@ export default function TabBar({
                 data-tab-id={id}
                 data-tab-color={typeColor}
                 style={{
-                  borderRight: "1px solid var(--tab-border, #e5e7eb)",
-                  ...(dragFrom === index ? { opacity: 0.5 } : null),
+                  borderRight: "1px solid var(--app-border)",
+                  ...(isDragged ? { opacity: 0.5 } : null),
+                  ...(isDragged && overPaneId
+                    ? {
+                        outline: "2px dashed var(--app-accent)",
+                        outlineOffset: 2,
+                      }
+                    : null),
                 }}
                 title={tab.title}
                 onContextMenu={(e) => handleContextMenu(e, id)}
-                className={`flex min-w-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs cursor-pointer transition-colors whitespace-nowrap ${
+                className={`group flex min-w-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs cursor-pointer transition-colors whitespace-nowrap ${
                   isActive
                     ? "bg-[var(--app-accent-soft)] font-medium text-[var(--app-accent)] shadow-sm"
                     : "text-[var(--app-text-2)] hover:bg-[var(--app-sunken)]"
@@ -377,18 +249,20 @@ export default function TabBar({
                 {tab.dirty && (
                   <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />
                 )}
-                {showClose && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onCloseTab(id);
-                    }}
-                    className="ml-1 px-1 rounded hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 shrink-0"
-                    title="关闭 (Cmd+W)"
-                  >
-                    ×
-                  </button>
-                )}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onCloseTab(id);
+                  }}
+                  className={`ml-1 px-1 rounded shrink-0 transition-opacity ${
+                    alwaysShowClose
+                      ? "text-[var(--app-text-3)] hover:bg-[var(--app-sunken)] hover:text-[var(--app-text-2)]"
+                      : "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto focus:opacity-100 focus:pointer-events-auto text-[var(--app-text-3)] hover:bg-[var(--app-sunken)] hover:text-[var(--app-text-2)]"
+                  }`}
+                  title="关闭 (Cmd+W)"
+                >
+                  ×
+                </button>
               </div>
             </Fragment>
           );
@@ -396,25 +270,21 @@ export default function TabBar({
         {dragGap === tabIds.length && placeholder}
       </div>
 
-      {notice && (
-        <div
-          data-export-notice
-          role="status"
-          className="fixed bottom-6 left-1/2 z-[2147483000] -translate-x-1/2 rounded-full bg-gray-900/90 px-4 py-2 text-sm text-white shadow-lg dark:bg-gray-700/95"
-        >
-          {notice}
-        </div>
-      )}
-
       {/* Context menu */}
       {menu && (
         <div
           data-tab-menu
-          className="fixed z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded shadow-lg py-1 min-w-[150px] text-xs"
-          style={{ left: menu.x, top: menu.y }}
+          className="fixed z-50 w-[132px] rounded border py-1 text-xs shadow-lg"
+          style={{
+            left: menu.x,
+            top: menu.y,
+            background: "var(--app-surface)",
+            borderColor: "var(--app-border)",
+            color: "var(--app-text-2)",
+          }}
         >
           <button
-            className="w-full text-left px-3 py-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+            className="w-full text-left px-3 py-1.5 hover:bg-[var(--app-sunken)]"
             onClick={() => {
               const store = useStore.getState();
               store.switchTab(menu.tabId);
@@ -423,10 +293,9 @@ export default function TabBar({
             }}
           >
             向右分栏
-            <span className="ml-auto text-gray-400">⌘⌥→</span>
           </button>
           <button
-            className="w-full text-left px-3 py-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+            className="w-full text-left px-3 py-1.5 hover:bg-[var(--app-sunken)]"
             onClick={() => {
               const store = useStore.getState();
               store.switchTab(menu.tabId);
@@ -435,54 +304,13 @@ export default function TabBar({
             }}
           >
             向下分栏
-            <span className="ml-auto text-gray-400">⌘⌥↓</span>
           </button>
-          <div className="h-px bg-gray-200 dark:bg-gray-700 my-1" />
+          <div
+            className="h-px my-1"
+            style={{ background: "var(--app-border)" }}
+          />
           <button
-            className="w-full text-left px-3 py-1.5 hover:bg-gray-100 dark:hover:bg-gray-700"
-            onClick={() => {
-              void handleExportHtml(menu.tabId);
-              closeMenu();
-            }}
-          >
-            导出 HTML…
-          </button>
-          <button
-            data-export-png
-            disabled={exportingPng}
-            className="w-full text-left px-3 py-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            onClick={() => {
-              void handleExportPng(menu.tabId);
-              closeMenu();
-            }}
-          >
-            {exportingPng ? "正在生成…" : "导出图片…"}
-          </button>
-          <button
-            data-export-docx
-            disabled={exportingDocx}
-            className="w-full text-left px-3 py-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            onClick={() => {
-              void handleExportDocx(menu.tabId);
-              closeMenu();
-            }}
-          >
-            {exportingDocx ? "正在生成…" : "导出 Word…"}
-          </button>
-          <button
-            data-export-mdpkg
-            disabled={exportingMdpkg}
-            className="w-full text-left px-3 py-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            onClick={() => {
-              void handleExportMdpkg(menu.tabId);
-              closeMenu();
-            }}
-          >
-            {exportingMdpkg ? "正在打包…" : "导出 .mdpkg…"}
-          </button>
-          <div className="h-px bg-gray-200 dark:bg-gray-700 my-1" />
-          <button
-            className="w-full text-left px-3 py-1.5 hover:bg-gray-100 dark:hover:bg-gray-700"
+            className="w-full text-left px-3 py-1.5 hover:bg-[var(--app-sunken)]"
             onClick={() => {
               onCloseTab(menu.tabId);
               closeMenu();
@@ -491,7 +319,7 @@ export default function TabBar({
             关闭
           </button>
           <button
-            className="w-full text-left px-3 py-1.5 hover:bg-gray-100 dark:hover:bg-gray-700"
+            className="w-full text-left px-3 py-1.5 hover:bg-[var(--app-sunken)]"
             onClick={() => {
               const ids = Object.keys(tabs).filter((id) => id !== menu.tabId);
               ids.forEach((id) => onCloseTab(id));
