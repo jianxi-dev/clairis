@@ -3,6 +3,7 @@ import { ANCHOR_TOLERANCE_PX, EDITOR_ANCHORS } from "./fixtures/editor-anchors";
 import {
   boxOf,
   centerOf,
+  hoverLineLeft,
   moveThrough,
   openMarkdownInEdit,
 } from "./helpers/ui-probe";
@@ -17,7 +18,7 @@ import {
 const DOC = ["# 标题一", "", "第一段正文", "", "第二段正文", ""].join("\n");
 
 async function summonHandle(page: import("@playwright/test").Page) {
-  await page.locator(".cm-line").nth(2).hover();
+  await hoverLineLeft(page, page.locator(".cm-line").nth(2));
   const handle = page.locator(
     '[data-testid="block-handle"].cm-block-handle-visible',
   );
@@ -118,7 +119,7 @@ test.describe("块型图标（E-7：块型图标 + 拖拽把手）", () => {
 
   test("转换块型后图标立即跟随（不残留上一块）", async ({ page }) => {
     await openMarkdownInEdit(page, "一段正文\n", "fidelity-icon-refresh");
-    await page.locator(".cm-line").first().hover();
+    await hoverLineLeft(page, page.locator(".cm-line").first());
     const handle = page.locator(
       '[data-testid="block-handle"].cm-block-handle-visible',
     );
@@ -129,7 +130,7 @@ test.describe("块型图标（E-7：块型图标 + 拖拽把手）", () => {
       .click();
     await page.waitForTimeout(150);
     await page.mouse.move(900, 500);
-    await page.locator(".cm-line").first().hover();
+    await hoverLineLeft(page, page.locator(".cm-line").first());
     const refreshed = page.locator(
       '[data-testid="block-handle"].cm-block-handle-visible',
     );
@@ -142,7 +143,7 @@ test.describe("块型图标（E-7：块型图标 + 拖拽把手）", () => {
   for (const item of cases) {
     test(`${item.name} 的手柄是 ${item.icon}`, async ({ page }) => {
       await openMarkdownInEdit(page, item.doc, `fidelity-icon-${item.icon}`);
-      await page.locator(".cm-line").first().hover();
+      await hoverLineLeft(page, page.locator(".cm-line").first());
       const handle = page.locator(
         '[data-testid="block-handle"].cm-block-handle-visible',
       );
@@ -226,12 +227,13 @@ test.describe("块菜单几何与图标", () => {
     await page.locator('[data-testid="block-menu"]').waitFor({ timeout: 3000 });
   });
 
-  test("菜单宽 236、行高 32（E-7）", async ({ page }) => {
+  // 数值取自 EDITOR_ANCHORS.menu（E-7，2026-11-03 放大一档）。
+  test("菜单宽与行高符合 E-7 锚点", async ({ page }) => {
     const menu = await boxOf(page, '[data-testid="block-menu"]');
     expect(
       Math.abs(menu.width - EDITOR_ANCHORS.menu.width),
     ).toBeLessThanOrEqual(ANCHOR_TOLERANCE_PX);
-    // 网格单元不是 32px 行；行高锚点只约束列表行（「在下方添加」等）。
+    // 网格单元不受行高锚点约束；行高只约束列表行（「在下方添加」等）。
     const rows = page.locator(".cm-block-menu-item");
     const count = await rows.count();
     expect(count).toBeGreaterThan(0);

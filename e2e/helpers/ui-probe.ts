@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 
 /**
  * 真实指针路径。
@@ -19,6 +19,37 @@ export async function moveThrough(
     await page.mouse.move(point.x, point.y, { steps });
     if (pauseMs > 0) await page.waitForTimeout(pauseMs);
   }
+}
+
+/** 探针点取 `.cm-content` 左缘的比例（D5 召唤区是左 25%，取 10% 落在区内）。 */
+const SUMMON_PROBE_RATIO = 0.1;
+
+/**
+ * 在行的左缘召唤区内移动指针（D5：块手柄只在 `.cm-content` 左缘 25% 召唤）。
+ *
+ * 行中心悬停召唤不出手柄——T4.1（#228）把召唤区收窄到左 25% 后，旧的行中心
+ * 悬停用例全部超时。取 `.cm-content` 左侧 10% 处（落在 25% 内），并保证不
+ * 超出行的左边界。只移动指针，不等手柄；调用方自己等 `.cm-block-handle-visible`。
+ */
+export async function hoverLineLeft(page: Page, line: Locator): Promise<void> {
+  const box = await line.boundingBox();
+  if (!box) throw new Error("找不到可测量的行");
+  const content = await page.evaluate(() => {
+    const rect = (
+      document.querySelector(".cm-content") as HTMLElement
+    ).getBoundingClientRect();
+    return { left: rect.left, width: rect.width };
+  });
+  await moveThrough(
+    page,
+    [
+      {
+        x: Math.max(box.x, content.left + content.width * SUMMON_PROBE_RATIO),
+        y: box.y + box.height / 2,
+      },
+    ],
+    { steps: 4 },
+  );
 }
 
 /** 元素中心点；元素不存在时抛错（不要返回 0,0 让后续断言失真）。 */

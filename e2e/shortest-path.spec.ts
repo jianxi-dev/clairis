@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { openMarkdownInEdit } from "./helpers/ui-probe";
+import { hoverLineLeft, openMarkdownInEdit } from "./helpers/ui-probe";
 
 /**
  * 浮层定位（E-14）：最短路径是默认，但优先级是「可见 > 同类一致 > 最近」。
@@ -32,7 +32,7 @@ test.describe("浮层定位：距离（E-14 优先级 3）", () => {
       "# 标题\n\n第一段正文\n\n第二段\n",
       "sp-block",
     );
-    await page.locator(".cm-line").nth(2).hover();
+    await hoverLineLeft(page, page.locator(".cm-line").nth(2));
     const handle = page.locator(
       '[data-testid="block-handle"].cm-block-handle-visible',
     );
@@ -66,7 +66,7 @@ test.describe("浮层定位：距离（E-14 优先级 3）", () => {
       "# 标题\n\n第一段正文\n\n第二段\n",
       "sp-flyout",
     );
-    await page.locator(".cm-line").nth(2).hover();
+    await hoverLineLeft(page, page.locator(".cm-line").nth(2));
     const handle = page.locator(
       '[data-testid="block-handle"].cm-block-handle-visible',
     );
@@ -131,7 +131,7 @@ test.describe("同类浮层位置一致（E-14 优先级 2）", () => {
     );
 
     const summonAndMeasure = async () => {
-      await page.locator(".cm-line").nth(2).hover();
+      await hoverLineLeft(page, page.locator(".cm-line").nth(2));
       const handle = page.locator(
         '[data-testid="block-handle"].cm-block-handle-visible',
       );
