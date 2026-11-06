@@ -29,19 +29,15 @@ test.describe("导出 .mdpkg", () => {
     await setup(page);
   });
 
-  test("右键页签 → 导出 .mdpkg… → save_binary_as_file 收到 ZIP", async ({
+  test("格头更多 → 导出 → .mdpkg… → save_binary_as_file 收到 ZIP", async ({
     page,
   }) => {
     await openMockFile(page);
 
-    await page.locator("[data-tab-id]").first().click({ button: "right" });
-    const menu = page.locator("[data-tab-menu]");
-    await expect(menu).toBeVisible({ timeout: 3000 });
-
-    const exportItem = page.getByRole("button", { name: "导出 .mdpkg…" });
-    await expect(exportItem).toBeVisible();
-
-    await exportItem.click();
+    await page.locator('[data-testid="pane-menu-button"]').first().click();
+    await expect(page.locator('[data-testid="pane-menu"]')).toBeVisible();
+    await page.locator('[data-menu-item="export"]').click();
+    await page.locator('[data-export-item="exportMdpkg"]').click();
 
     await expect
       .poll(

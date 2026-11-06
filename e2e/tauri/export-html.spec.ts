@@ -29,19 +29,15 @@ test.describe("导出 HTML", () => {
     await setup(page);
   });
 
-  test("右键页签 → 导出 HTML… → save_as_file 收到离线单文件", async ({
+  test("格头更多 → 导出 → HTML… → save_as_file 收到离线单文件", async ({
     page,
   }) => {
     await openMockFile(page);
 
-    await page.locator("[data-tab-id]").first().click({ button: "right" });
-    const menu = page.locator("[data-tab-menu]");
-    await expect(menu).toBeVisible({ timeout: 3000 });
-
-    const exportItem = page.getByRole("button", { name: "导出 HTML…" });
-    await expect(exportItem).toBeVisible();
-
-    await exportItem.click();
+    await page.locator('[data-testid="pane-menu-button"]').first().click();
+    await expect(page.locator('[data-testid="pane-menu"]')).toBeVisible();
+    await page.locator('[data-menu-item="export"]').click();
+    await page.locator('[data-export-item="exportHtml"]').click();
 
     await expect
       .poll(
@@ -55,11 +51,17 @@ test.describe("导出 HTML", () => {
       )
       .toBe(1);
 
-    const content = await page.evaluate(
+    const saved = await page.evaluate(
       () =>
-        (window as unknown as Record<string, any>).__biaoyue_saved_files__[0]
-          .content as string,
+        (window as unknown as Record<string, any>)
+          .__biaoyue_saved_files__[0] as {
+          content: string;
+          defaultName: string;
+        },
     );
+
+    expect(saved.defaultName).toBe("测试文档.html");
+    const content = saved.content;
 
     expect(content.startsWith("<!doctype html>")).toBe(true);
     expect(content).toContain("<title>测试文档.md</title>");
