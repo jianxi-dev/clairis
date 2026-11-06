@@ -424,14 +424,13 @@ test("tooltip 显示键位：AI 星芒 / 模式 / 阅读含键位，主题按钮
   expect(aiTitle).toContain("⌘⇧A");
 
   const modeTitle = await page
-    .locator('button[title*="⌘⇧M"]')
+    .locator('[data-testid="pane-mode"]')
     .first()
     .getAttribute("title");
   expect(modeTitle).toContain("⌘⇧M");
 
   const readingTitle = await page
-    .locator('button[title*="⌘⇧F"]')
-    .first()
+    .locator('[data-testid="immersive-entry"]')
     .getAttribute("title");
   expect(readingTitle).toContain("⌘⇧F");
 

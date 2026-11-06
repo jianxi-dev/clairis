@@ -78,35 +78,21 @@ test("设置里的图标抽屉列全在用图标，无空项", async ({ page }) 
   }
 });
 
-test("标签三级：auto 页签仅图标、text 带标题、icon 连文件树也只剩图标", async ({
+test("页签始终显示图标+标题，设置里不再有图标标签级别开关", async ({
   page,
 }) => {
   await openDoc(page, "/tmp/ic/note.md");
   const tabTitle = page.locator("[data-tab-id] span.truncate").first();
   const tabIcon = page.locator('[data-tab-id] svg[data-icon="markdown"]');
 
-  // 默认 text：页签带标题（保留改造前的可读性）
   await expect(tabIcon).toHaveCount(1);
-  await expect(tabTitle).toBeVisible();
-
-  await page.keyboard.press("ControlOrMeta+,");
-  await page.locator('[data-testid="icon-label-text"]').check();
-  await page.keyboard.press("Escape");
-  // text：页签也带上标题，且只有一处（没有残留重复）
+  await expect(tabTitle).toHaveText("note.md");
   await expect(page.locator("[data-tab-id] span.truncate")).toHaveCount(1);
 
   await page.keyboard.press("ControlOrMeta+,");
-  await page.locator('[data-testid="icon-label-icon"]').check();
-  await page.keyboard.press("Escape");
-  await expect(page.locator("[data-tab-id] span.truncate")).toHaveCount(0);
-  await expect(tabIcon).toHaveCount(1);
-
-  // auto：页签是「重复处」→ 只留图标
-  await page.keyboard.press("ControlOrMeta+,");
-  await page.locator('[data-testid="icon-label-auto"]').check();
-  await page.keyboard.press("Escape");
-  await expect(page.locator("[data-tab-id] span.truncate")).toHaveCount(0);
-  await expect(tabIcon).toHaveCount(1);
+  await expect(page.locator('[data-testid="icon-label-auto"]')).toHaveCount(0);
+  await expect(page.locator('[data-testid="icon-label-text"]')).toHaveCount(0);
+  await expect(page.locator('[data-testid="icon-label-icon"]')).toHaveCount(0);
 });
 
 test("8 个类型图标渲染出的像素各不相同（不是同一个色块）", async ({ page }) => {

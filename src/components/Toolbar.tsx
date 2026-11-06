@@ -3,33 +3,42 @@ import Icon from "./Icon";
 import { useAiEntryStore } from "../hooks/useAiEntry";
 
 interface ToolbarProps {
-  title: string;
-  activeTabExists: boolean;
-  editorMode: "preview" | "edit" | "source";
   theme: Theme;
-  /** 媒体类文件（图片/视频/PDF）：隐藏模式切换 */
-  isMedia?: boolean;
-  onSetMode: (mode: "preview" | "edit" | "source") => void;
+  readingMode: boolean;
   onSetReadingMode: (on: boolean) => void;
   onSetTheme: (theme: Theme) => void;
+  onOpenGrid: () => void;
 }
 
+/**
+ * 全局顶栏只保留产品级入口：网格概览、AI、主题、沉浸。
+ *
+ * 文件标题与预览/编辑/源码切换已经下沉到每个分栏的页签条——同一份状态不再
+ * 在顶栏和分栏各画一遍，顶栏也不再承担当前文档的身份。
+ */
 export default function Toolbar({
-  title,
-  activeTabExists,
-  editorMode,
   theme,
-  isMedia = false,
-  onSetMode,
+  readingMode,
   onSetReadingMode,
   onSetTheme,
+  onOpenGrid,
 }: ToolbarProps) {
   return (
-    <header className="app-chrome flex items-center gap-2 px-3 py-1.5 border-b border-gray-200 bg-gray-50 dark:bg-gray-800 dark:border-gray-700 text-sm select-none shrink-0">
-      {/* Title */}
-      <span className="text-gray-500 dark:text-gray-400 text-xs flex-1 truncate">
-        {title || "标月 Biaoyue"}
+    <header className="app-chrome flex items-center gap-1 px-3 py-1.5 border-b border-[var(--app-border)] bg-[var(--app-surface)] text-sm select-none shrink-0">
+      <span className="mr-auto text-xs font-medium tracking-wide text-[var(--app-text-2)]">
+        标月
       </span>
+
+      <button
+        type="button"
+        data-testid="grid-entry"
+        title="网格概览（⌘⇧\\）"
+        aria-label="网格概览"
+        onClick={onOpenGrid}
+        className="rounded-full px-2 py-0.5 text-[var(--app-text-2)] hover:bg-[var(--app-accent-soft)] hover:text-[var(--app-accent)]"
+      >
+        <Icon name="grid" size={18} />
+      </button>
 
       {/* AI：全产品唯一常驻入口（顶栏星芒）。门户里的 [data-testid="quick-ai"]
           是场景内快捷方式，不是常驻入口——唯一入口判定只看 data-ai-entry。 */}
@@ -44,7 +53,7 @@ export default function Toolbar({
           else if (st.bubbleOpen) st.closeBubble();
           else st.openBubble();
         }}
-        className="px-2 py-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
+        className="rounded-full px-2 py-0.5 text-[var(--app-text-2)] hover:bg-[var(--app-accent-soft)] hover:text-[var(--app-accent)]"
       >
         <Icon name="sparkle" size={18} color="var(--app-accent)" />
       </button>
@@ -62,7 +71,7 @@ export default function Toolbar({
                   : "light",
           )
         }
-        className="px-2 py-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-xs whitespace-nowrap"
+        className="rounded-full px-2 py-0.5 text-[var(--app-text-2)] hover:bg-[var(--app-accent-soft)] hover:text-[var(--app-accent)]"
         title={`当前: ${
           theme === "system"
             ? "跟随系统"
@@ -87,61 +96,20 @@ export default function Toolbar({
         />
       </button>
 
-      {/* Mode buttons */}
-      {activeTabExists && !isMedia && (
-        <>
-          <div className="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-1" />
-          <div className="flex gap-1 items-center">
-            <ModeButton
-              label="预览"
-              active={editorMode === "preview"}
-              onClick={() => onSetMode("preview")}
-            />
-            <ModeButton
-              label="编辑"
-              active={editorMode === "edit"}
-              onClick={() => onSetMode("edit")}
-            />
-            <ModeButton
-              label="源码"
-              active={editorMode === "source"}
-              onClick={() => onSetMode("source")}
-            />
-            <div className="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-1" />
-            <button
-              onClick={() => onSetReadingMode(true)}
-              className="px-2 py-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-xs"
-              title="进入阅读模式（⌘⇧F 沉浸）"
-            >
-              阅读
-            </button>
-          </div>
-        </>
-      )}
+      <button
+        type="button"
+        data-testid="immersive-entry"
+        aria-pressed={readingMode}
+        onClick={() => onSetReadingMode(!readingMode)}
+        className={`rounded-full px-2.5 py-0.5 text-xs ${
+          readingMode
+            ? "bg-[var(--app-accent-soft)] font-medium text-[var(--app-accent)]"
+            : "text-[var(--app-text-2)] hover:bg-[var(--app-accent-soft)] hover:text-[var(--app-accent)]"
+        }`}
+        title="沉浸阅读（⌘⇧F）"
+      >
+        沉浸
+      </button>
     </header>
-  );
-}
-
-function ModeButton({
-  label,
-  active,
-  onClick,
-}: {
-  label: string;
-  active: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      title="预览 / 编辑 / 源码（⌘⇧M 循环）"
-      className={`px-2 py-0.5 rounded text-xs ${
-        active
-          ? "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 font-medium"
-          : "hover:bg-gray-200 dark:hover:bg-gray-700 dark:text-gray-300"
-      }`}
-    >
-      {label}
-    </button>
   );
 }

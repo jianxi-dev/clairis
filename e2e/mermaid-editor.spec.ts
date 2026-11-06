@@ -30,7 +30,9 @@ async function openInEdit(page: Page) {
       "mermaid-editor.md",
     );
   }, DOC);
-  await page.locator("button").filter({ hasText: "编辑" }).first().click();
+  const modeBtn = page.locator('[data-testid="pane-mode"]').first();
+  if ((await modeBtn.getAttribute("data-mode")) !== "edit")
+    await modeBtn.click();
   const editor = page.locator(".cm-content");
   await editor.waitFor({ state: "visible", timeout: 10000 });
   await editor.getByText("正文").click();

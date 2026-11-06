@@ -290,6 +290,14 @@ function App() {
     [scheduleSave],
   );
 
+  // 打开网格概览：清空筛选与选中后切场景。键盘 ⌘⇧\ 与顶栏入口共用同一动作。
+  const openGridOverview = useCallback(() => {
+    const store = useStore.getState();
+    store.setGridTypeFilter(null);
+    store.setGridSelectedPath(null);
+    store.setScene("grid");
+  }, []);
+
   // macOS 原生菜单（Cmd+=/-/0）拦截键盘，由 Rust 侧菜单项转发为 preview-scale 事件
   useEffect(() => {
     if (!isTauri) return;
@@ -344,9 +352,7 @@ function App() {
       // Cmd+Shift+\ : 打开网格概览（任意场景可用，门户里也能直接进）
       if (meta && e.shiftKey && (e.key === "\\" || e.key === "|")) {
         e.preventDefault();
-        store.setGridTypeFilter(null);
-        store.setGridSelectedPath(null);
-        store.setScene("grid");
+        openGridOverview();
         return;
       }
 
@@ -579,6 +585,7 @@ function App() {
     readingMode,
     activeTabId,
     handleScaleDelta,
+    openGridOverview,
     openSettings,
     shortcutsOpen,
   ]);
@@ -692,14 +699,11 @@ function App() {
   return (
     <div className={rootClass}>
       <Toolbar
-        title={activeTab?.title || ""}
-        activeTabExists={!!activeTab}
-        isMedia={activeTab ? isMediaKind(activeTab.fileKind) : false}
-        editorMode={activeTab?.editorMode || "preview"}
         theme={theme}
-        onSetMode={(mode) => useStore.getState().setEditorMode(mode)}
+        readingMode={readingMode}
         onSetReadingMode={(on) => useStore.getState().setReadingMode(on)}
         onSetTheme={setTheme}
+        onOpenGrid={openGridOverview}
       />
 
       <div className="relative flex-1 flex min-w-0 overflow-hidden">

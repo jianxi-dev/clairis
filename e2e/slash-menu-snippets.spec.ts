@@ -39,7 +39,9 @@ async function openMarkdownForEditing(page: Page, path: string) {
       p.split("/").pop(),
     );
   }, path);
-  await page.locator("button").filter({ hasText: "编辑" }).first().click();
+  const modeBtn = page.locator('[data-testid="pane-mode"]').first();
+  if ((await modeBtn.getAttribute("data-mode")) !== "edit")
+    await modeBtn.click();
   const content = page.locator(".cm-content");
   await content.waitFor({ state: "visible", timeout: 10000 });
   await content.click();
