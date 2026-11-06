@@ -1,0 +1,29 @@
+{
+  "task": "250-pane-divider-focus",
+  "states": [
+    {
+      "state": "divider",
+      "screenshot": ".artifacts/250/divider.png",
+      "assertion": "passed",
+      "note": "两栏之间默认可见 1px 分割线"
+    },
+    {
+      "state": "focus",
+      "screenshot": ".artifacts/250/focus.png",
+      "assertion": "passed",
+      "note": "聚焦栏有内描边"
+    },
+    {
+      "state": "tab-drop",
+      "screenshot": ".artifacts/250/tab-drop.png",
+      "assertion": "passed",
+      "note": "拖拽落区环"
+    },
+    {
+      "state": "warm-menu",
+      "screenshot": ".artifacts/250/warm-menu.png",
+      "assertion": "passed",
+      "note": "暖色菜单表面"
+    }
+  ]
+}

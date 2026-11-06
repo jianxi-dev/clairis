@@ -55,10 +55,18 @@ export default function PaneDivider({
       aria-orientation={isRow ? "vertical" : "horizontal"}
       aria-valuenow={Math.round(branch.ratio * 100)}
       tabIndex={0}
-      onMouseDown={() => {
+      onPointerDown={(e) => {
+        if (e.button !== 0) return;
+        e.preventDefault();
         setDragging(true);
-        drag.startDrag(isRow ? "col-resize" : "row-resize");
+        drag.startDrag(
+          isRow ? "col-resize" : "row-resize",
+          e.currentTarget,
+          e.pointerId,
+        );
       }}
+      onLostPointerCapture={() => setDragging(false)}
+      onPointerCancel={() => setDragging(false)}
       onDoubleClick={() => useStore.getState().setPaneRatio(branch.id, 0.5)}
       onKeyDown={(e) => {
         if (isRow && e.key === "ArrowLeft") {

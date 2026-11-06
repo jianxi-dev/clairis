@@ -38,7 +38,16 @@ struct ScanItem {
 pub(crate) fn is_heavy_dir(name: &str) -> bool {
     matches!(
         name,
-        "node_modules" | ".git" | "target" | "dist" | ".next" | "__pycache__" | "vendor" | ".cache"
+        "node_modules"
+            | ".git"
+            | "target"
+            | "dist"
+            | ".next"
+            | "__pycache__"
+            | "vendor"
+            | ".cache"
+            | "Library"
+            | "Applications"
     )
 }
 

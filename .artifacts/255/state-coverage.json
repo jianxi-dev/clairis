@@ -1,0 +1,40 @@
+{
+  "task": "255-markdown-structural-tags",
+  "states": [
+    {
+      "state": "preview-before",
+      "screenshot": ".artifacts/255/before.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-06T17:57:13Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "preview-after",
+      "screenshot": ".artifacts/255/after.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-06T17:57:13Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "edit-before",
+      "screenshot": ".artifacts/255/edit-before.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-06T18:02:00Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "edit-after",
+      "screenshot": ".artifacts/255/edit.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-06T17:57:13Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "source-after",
+      "screenshot": ".artifacts/255/source.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-06T17:57:13Z",
+      "runner": "unknown@MMBP"
+    }
+  ]
+}

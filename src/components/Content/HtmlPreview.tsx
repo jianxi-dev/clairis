@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useCallback } from "react";
 import { rewriteHtmlPaths, buildAssetUrl } from "../../renderers";
 import { useEditorStore } from "../../stores/editorStore";
 import { isTauriEnv } from "../../utils/tauri";
@@ -22,7 +22,21 @@ export default function HtmlPreview({
   live = false,
 }: HtmlPreviewProps) {
   const [error, setError] = useState<string | null>(null);
+  const frameRef = useRef<HTMLIFrameElement | null>(null);
   const fontSize = useEditorStore((s) => s.fontSize);
+
+  // WKWebView 有时要一次布局失效才绘制 iframe 首帧（打开本地 HTML 空白，
+  // 拖一下窗口才出现）。onLoad 后强制一次 1px 宽度往返即可触发重绘。
+  const nudgePaint = useCallback(() => {
+    const el = frameRef.current;
+    if (!el) return;
+    requestAnimationFrame(() => {
+      const prev = el.style.width;
+      el.style.width = "100.01%";
+      void el.offsetWidth;
+      el.style.width = prev || "100%";
+    });
+  }, []);
 
   // 已保存文件走 asset 直载：脚本能跑、相对引用天然解析、CDN/外链字体不被拦。
   // dirty 内容仍走 srcdoc——预览必须反映未保存的编辑（E-15），且未保存内容
@@ -69,10 +83,12 @@ ${processed}
   if (live && filePath && isTauriEnv()) {
     return (
       <iframe
+        ref={frameRef}
         src={buildAssetUrl(filePath)}
         sandbox="allow-scripts allow-same-origin allow-popups"
         style={{ zoom, width: "100%", height: "100%", border: "none" }}
         title="HTML 预览"
+        onLoad={nudgePaint}
         onError={handleError}
       />
     );
@@ -80,10 +96,12 @@ ${processed}
 
   return (
     <iframe
+      ref={frameRef}
       srcDoc={sandboxed}
       sandbox="allow-same-origin allow-popups"
       style={{ zoom, width: "100%", height: "100%", border: "none" }}
       title="HTML 预览"
+      onLoad={nudgePaint}
       onError={handleError}
     />
   );

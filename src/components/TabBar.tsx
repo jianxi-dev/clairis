@@ -64,6 +64,15 @@ export default function TabBar({
   const [dragGap, setDragGap] = useState<number | null>(null);
   const [overPaneId, setOverPaneId] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const target = overPaneId
+      ? document.querySelector<HTMLElement>(`[data-pane-id="${overPaneId}"]`)
+      : null;
+    target?.setAttribute("data-tab-drop", "true");
+    return () => target?.removeAttribute("data-tab-drop");
+  }, [overPaneId]);
+
   const dragEnabled = Boolean(onReorderTabs || onMoveToPane);
 
   useEffect(() => {
@@ -236,7 +245,7 @@ export default function TabBar({
                 className={`group flex min-w-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs cursor-pointer transition-colors whitespace-nowrap ${
                   isActive
                     ? "bg-[var(--app-accent-soft)] font-medium text-[var(--app-accent)] shadow-sm"
-                    : "text-[var(--app-text-2)] hover:bg-[var(--app-sunken)]"
+                    : "bg-[var(--app-sunken)] text-[var(--app-text-2)] hover:brightness-[0.98]"
                 }`}
               >
                 <Icon

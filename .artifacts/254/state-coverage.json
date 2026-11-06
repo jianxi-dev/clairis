@@ -1,0 +1,29 @@
+{
+  "task": "254-floating-preview",
+  "states": [
+    {
+      "state": "hover-actions",
+      "screenshot": ".artifacts/246/preview-actions-hover.png",
+      "assertion": "passed",
+      "note": "动作区；本轮路径行补 folder 图标"
+    },
+    {
+      "state": "rail-anchored",
+      "screenshot": ".artifacts/246/preview-rail-anchored.png",
+      "assertion": "passed",
+      "note": "锚定阅读栏"
+    },
+    {
+      "state": "flipped-edge",
+      "screenshot": ".artifacts/246/preview-flipped-edge.png",
+      "assertion": "passed",
+      "note": "贴边翻转"
+    },
+    {
+      "state": "resized-min",
+      "screenshot": ".artifacts/246/preview-resized-min.png",
+      "assertion": "passed",
+      "note": "最小尺寸"
+    }
+  ]
+}

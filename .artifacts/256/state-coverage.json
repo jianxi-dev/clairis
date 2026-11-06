@@ -1,0 +1,9 @@
+{
+  "task": "256-icon-system",
+  "states": [
+    {"state": "overview-top", "screenshot": ".artifacts/256/overview-top.png", "assertion": "passed"},
+    {"state": "overview-bottom", "screenshot": ".artifacts/256/overview-bottom.png", "assertion": "passed"},
+    {"state": "icons-full", "screenshot": ".artifacts/256/icons-full.png", "assertion": "passed"},
+    {"state": "width-1024", "screenshot": ".artifacts/256/width-1024.png", "assertion": "passed"}
+  ]
+}

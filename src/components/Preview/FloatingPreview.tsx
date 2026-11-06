@@ -526,9 +526,12 @@ export default function FloatingPreview({
             data-action="path"
             title={preview.path}
             onClick={() => void Promise.resolve(onOpenPath(preview.path))}
-            className="ml-auto min-w-0 truncate rounded px-1 text-left text-[var(--app-text-3)] hover:text-[var(--app-text-2)]"
+            className="ml-auto flex min-w-0 items-center gap-1 rounded px-1 text-left text-[var(--app-text-3)] hover:text-[var(--app-text-2)]"
           >
-            {parentFolderNameOf(preview.path)}
+            <Icon name="folder" size={18} />
+            <span className="min-w-0 truncate">
+              {parentFolderNameOf(preview.path)}
+            </span>
           </button>
         </div>
       )}

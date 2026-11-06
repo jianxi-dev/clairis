@@ -1,0 +1,29 @@
+{
+  "task": "249-theme-consistency",
+  "states": [
+    {
+      "state": "warm-menu",
+      "screenshot": ".artifacts/250/warm-menu.png",
+      "assertion": "passed",
+      "note": "暖色下栏目菜单背景 = --app-surface"
+    },
+    {
+      "state": "theme-warm",
+      "screenshot": ".artifacts/243/theme-warm.png",
+      "assertion": "passed",
+      "note": "暖色主题整体"
+    },
+    {
+      "state": "theme-dark",
+      "screenshot": ".artifacts/243/theme-dark.png",
+      "assertion": "passed",
+      "note": "深色主题整体"
+    },
+    {
+      "state": "theme-light",
+      "screenshot": ".artifacts/243/theme-light.png",
+      "assertion": "passed",
+      "note": "亮色主题整体"
+    }
+  ]
+}

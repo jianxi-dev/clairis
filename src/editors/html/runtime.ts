@@ -126,10 +126,15 @@ function runtimeSource(version: number): string {
     if (!el || el.nodeType !== 1 || el === document.body) return;
     if (!el.getAttribute("data-cm-node-id")) return;
     e.preventDefault();
+    // contenteditable 聚焦会滚动 iframe；先记下滚动位，聚焦后恢复，
+    // 否则双击任何位置都会把长文拉回顶部。
+    const scrollX = window.scrollX;
+    const scrollY = window.scrollY;
     if (editing) endEdit();
     editing = el;
     el.setAttribute("contenteditable", "true");
-    el.focus();
+    el.focus({ preventScroll: true });
+    window.scrollTo(scrollX, scrollY);
     post({ type: "textEditBegin", nodeId: el.getAttribute("data-cm-node-id") });
   }, true);
 

@@ -383,7 +383,10 @@ export function thumbDescriptorOf(item: RecentFile): ThumbDescriptor | null {
   if (cached) return cached;
   // 视频 / HTML 的 src 是文件绝对路径，渲染层再转 media:// / asset://
   const src =
-    kind === "image" || kind === "video-poster" || kind === "html-page"
+    kind === "image" ||
+    kind === "video-poster" ||
+    kind === "html-page" ||
+    kind === "pdf-page"
       ? item.path
       : kind === "md-cover"
         ? coverSrcOf(item)
