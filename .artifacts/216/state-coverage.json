@@ -1,0 +1,39 @@
+{
+  "states": [
+    {
+      "state": "01-right-zone-no-handle",
+      "screenshot": ".artifacts/216/01-right-zone-no-handle.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-06T06:55:20Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "02-left-zone-handle-visible",
+      "screenshot": ".artifacts/216/02-left-zone-handle-visible.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-06T06:55:20Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "03-menu-open-within-60ms",
+      "screenshot": ".artifacts/216/03-menu-open-within-60ms.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-06T06:55:20Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "04-color-panel-open",
+      "screenshot": ".artifacts/216/04-color-panel-open.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-06T06:55:21Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "05-color-written-to-source",
+      "screenshot": ".artifacts/216/05-color-written-to-source.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-06T06:55:21Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}

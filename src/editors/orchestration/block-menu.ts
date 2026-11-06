@@ -29,12 +29,21 @@ import {
   outdentBlock,
 } from "./block-actions";
 import { CALLOUT_EDIT_TYPES } from "../callout-types";
+import { applyBlockColor, blockColorOf, type ColorFamily } from "./block-color";
+import {
+  BACKGROUND_COLORS,
+  FONT_COLORS,
+  createColorRow,
+} from "./color-palette";
 
 export const BLOCK_MENU_WIDTH = 264;
 export const BLOCK_MENU_ROW_HEIGHT = 36;
 
 /** 菜单 id 前缀：Esc / 外部点击用它识别块菜单层。 */
 export const BLOCK_MENU_ID_PREFIX = "block:";
+
+/** 颜色二级面板类名（挂在通用 flyout 类之外，供 CSS 收窄宽度）。 */
+const COLOR_PANEL_CLASS = "cm-block-menu-color-panel";
 
 const HIDE_DELAY_MS = 150;
 
@@ -355,6 +364,86 @@ export function openBlockMenu(
     });
     panel.appendChild(typeRow);
   }
+
+  const colorRow = document.createElement("button");
+  colorRow.type = "button";
+  colorRow.className = "cm-block-menu-item";
+  colorRow.dataset.testid = "block-menu-color";
+  colorRow.style.height = `${BLOCK_MENU_ROW_HEIGHT}px`;
+  colorRow.appendChild(renderIcon("FontcolorOutlined"));
+  const colorLabel = document.createElement("span");
+  colorLabel.textContent = "颜色";
+  colorRow.appendChild(colorLabel);
+  const colorChevron = document.createElement("span");
+  colorChevron.className = "cm-block-menu-chevron";
+  colorChevron.textContent = "›";
+  colorChevron.setAttribute("aria-hidden", "true");
+  colorRow.appendChild(colorChevron);
+
+  let colorPanel: HTMLElement | null = null;
+  const closeColorPanel = (): void => {
+    colorPanel?.remove();
+    colorPanel = null;
+  };
+  const openColorPanel = (): void => {
+    closeColorPanel();
+    const panelEl = document.createElement("div");
+    panelEl.className = "cm-block-menu-flyout";
+    panelEl.classList.add(COLOR_PANEL_CLASS);
+    panelEl.dataset.testid = "block-menu-color-panel";
+    const rowRect = colorRow.getBoundingClientRect();
+    panelEl.style.left = `${rowRect.right - panel.getBoundingClientRect().left + 4}px`;
+    panelEl.style.top = `${rowRect.top - panel.getBoundingClientRect().top}px`;
+
+    const blockText = view.state.doc.sliceString(block.from, block.to);
+    const applyColor = (family: ColorFamily, className: string): void => {
+      const next = applyBlockColor(blockText, block.type, family, className);
+      closeBlockMenu(view);
+      if (next === null) return;
+      view.dispatch({
+        changes: { from: block.from, to: block.to, insert: next },
+      });
+    };
+
+    const fontRow = createColorRow("font", FONT_COLORS, (_kind, cls) =>
+      applyColor("mdb-color", cls),
+    );
+    const activeFont = blockColorOf(blockText, "mdb-color");
+    fontRow
+      .querySelectorAll<HTMLButtonElement>(".cm-color-swatch")
+      .forEach((swatch) => {
+        swatch.dataset.active = String(swatch.dataset.className === activeFont);
+      });
+    panelEl.appendChild(fontRow);
+
+    const bgRow = createColorRow(
+      "background",
+      BACKGROUND_COLORS,
+      (_kind, cls) => applyColor("mdb-bg", cls),
+    );
+    const activeBg = blockColorOf(blockText, "mdb-bg");
+    bgRow
+      .querySelectorAll<HTMLButtonElement>(".cm-color-swatch")
+      .forEach((swatch) => {
+        swatch.dataset.active = String(swatch.dataset.className === activeBg);
+      });
+    panelEl.appendChild(bgRow);
+
+    panel.appendChild(panelEl);
+    panelEl.addEventListener("pointerenter", () => cancelPendingClose(view));
+    colorPanel = panelEl;
+  };
+
+  colorRow.addEventListener("pointerenter", () => {
+    cancelPendingClose(view);
+    openColorPanel();
+  });
+  colorRow.addEventListener("pointerdown", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    openColorPanel();
+  });
+  panel.appendChild(colorRow);
 
   for (const [label, icon, action] of ACTION_ROWS) {
     const row = document.createElement("button");

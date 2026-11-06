@@ -3,6 +3,7 @@
  * 每个块左侧一个 42×26 药丸：左段是块型图标，右段是拖拽把手；空行退化为单段「+」。
  * hover 由 1.1 的 HoverGate 门控（300ms 显现、150ms 收起，键盘 / 触摸 / 拖拽抑制），
  * 门控只负责切换 `.cm-block-handle-visible`，透明度由 CSS 过渡（D5）。
+ * 召唤区收窄到 `.cm-content` 左缘 25%（手柄自身豁免），滑入手柄 60ms 开菜单（D5）。
  *
  * 拖拽：pointerdown 后移动 ≥4px 才算拖动，整块加 `.cm-block-handle-dragging` 高亮；
  * 松手用 `moveBlock` 算出新文档，单次 `dispatch` 整篇替换（选择自动映射，光标不跳）。
@@ -117,8 +118,24 @@ const HANDLE_GAP_PX = 4;
 /** 按下后移动超过这个距离才算拖动，否则视为点击。 */
 const DRAG_THRESHOLD_PX = 4;
 
-/** 悬停到手柄后开菜单的意图延迟（对齐 md-bundle 的 120ms）。 */
-const MENU_INTENT_DELAY_MS = 120;
+/** 悬停到手柄后开菜单的意图延迟（design D5：滑入 60ms 出菜单）。 */
+const MENU_INTENT_DELAY_MS = 60;
+
+/** 块手柄召唤区占 `.cm-content` 左缘宽度的比例（design D5：左侧 25%）。 */
+export const SUMMON_ZONE_RATIO = 0.25;
+
+/**
+ * 指针是否落在 `.cm-content` 左缘 25% 召唤区内。
+ *
+ * 纯几何判定，便于单测；`rect` 取 `.cm-content` 的边界矩形（含 padding），
+ * 与 design D5「左侧 25%」同口径。
+ */
+export function isInSummonZone(
+  clientX: number,
+  rect: { left: number; width: number },
+): boolean {
+  return clientX <= rect.left + rect.width * SUMMON_ZONE_RATIO;
+}
 
 interface BlockRange {
   from: number;
@@ -231,15 +248,26 @@ class BlockHandlePlugin {
       ? Number(overHandle.dataset.blockFrom)
       : null;
     if (activeFrom === null) {
-      const pos = this.view.posAtCoords({ x: event.clientX, y: event.clientY });
-      if (pos !== null) {
-        // 空行「+」也要能被召唤：它的范围退化为于点（from === to）。
-        const hit = this.handles.find(
-          (handle) => pos >= handle.block.from && pos <= handle.block.to,
-        );
-        if (hit) {
-          activeFrom = hit.block.from;
-          hit.anchorPos = Math.min(Math.max(pos, hit.block.from), hit.block.to);
+      // D5：只有 `.cm-content` 左缘 25% 召唤；右侧 75% 移动指针不冒手柄。
+      // 不在召唤区时 activeFrom 保持 null，下方 leave 分支会收掉已召唤的手柄。
+      const zone = this.view.contentDOM.getBoundingClientRect();
+      if (isInSummonZone(event.clientX, zone)) {
+        const pos = this.view.posAtCoords({
+          x: event.clientX,
+          y: event.clientY,
+        });
+        if (pos !== null) {
+          // 空行「+」也要能被召唤：它的范围退化为于点（from === to）。
+          const hit = this.handles.find(
+            (handle) => pos >= handle.block.from && pos <= handle.block.to,
+          );
+          if (hit) {
+            activeFrom = hit.block.from;
+            hit.anchorPos = Math.min(
+              Math.max(pos, hit.block.from),
+              hit.block.to,
+            );
+          }
         }
       }
     }

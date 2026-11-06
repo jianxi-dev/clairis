@@ -7,7 +7,9 @@
 import { describe, expect, it } from "vitest";
 import {
   blockHandleIcon,
+  isInSummonZone,
   moveBlock,
+  SUMMON_ZONE_RATIO,
 } from "../../editors/orchestration/block-handle";
 
 describe("blockHandleIcon", () => {
@@ -43,6 +45,28 @@ describe("blockHandleIcon", () => {
     for (const type of ["htmlBlock", "yamlFrontMatter", "", "unknown"]) {
       expect(blockHandleIcon(type)).toBe("DragHandleOutlined");
     }
+  });
+});
+
+describe("isInSummonZone", () => {
+  // `.cm-content` 宽 1000px，左缘在 200：召唤区 = [200, 450]。
+  const rect = { left: 200, width: 1000 };
+
+  it("左缘 25% 内返回 true", () => {
+    expect(SUMMON_ZONE_RATIO).toBe(0.25);
+    expect(isInSummonZone(200, rect)).toBe(true);
+    expect(isInSummonZone(300, rect)).toBe(true);
+    expect(isInSummonZone(450, rect)).toBe(true);
+  });
+
+  it("超过左缘 25% 返回 false", () => {
+    expect(isInSummonZone(451, rect)).toBe(false);
+    expect(isInSummonZone(900, rect)).toBe(false);
+    expect(isInSummonZone(1199, rect)).toBe(false);
+  });
+
+  it("左缘之外（负坐标）也算召唤区内", () => {
+    expect(isInSummonZone(100, rect)).toBe(true);
   });
 });
 
