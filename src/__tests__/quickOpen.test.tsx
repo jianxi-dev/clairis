@@ -177,7 +177,31 @@ describe("QuickOpen —— 键盘与执行", () => {
 
   it("遮罩 mousedown 关闭，面板内 mousedown 不关闭", () => {
     const props = setup();
+    fireEvent.mouseDown(screen.getByTestId("quick-open-input"));
+    expect(props.onClose).not.toHaveBeenCalled();
     fireEvent.mouseDown(screen.getByTestId("quick-open"));
     expect(props.onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("重开时选中态回到首行", () => {
+    const props = {
+      open: true,
+      query: "",
+      onQueryChange: vi.fn(),
+      onClose: vi.fn(),
+      onOpenTab: vi.fn(),
+      onOpenPath: vi.fn(),
+      onOpenGrid: vi.fn(),
+      onOpenSettings: vi.fn(),
+    };
+    const { rerender } = render(<QuickOpen {...props} />);
+    fireEvent.keyDown(window, { key: "ArrowDown" });
+    const moved = screen.getAllByTestId("quick-open-row");
+    expect(moved[1]).toHaveAttribute("data-active", "true");
+
+    rerender(<QuickOpen {...props} open={false} />);
+    rerender(<QuickOpen {...props} open={true} />);
+    const reopened = screen.getAllByTestId("quick-open-row");
+    expect(reopened[0]).toHaveAttribute("data-active", "true");
   });
 });

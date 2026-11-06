@@ -126,6 +126,14 @@ export default function QuickOpen({
       ? Math.min(selection.index, Math.max(0, items.length - 1))
       : 0;
 
+  const prevOpenRef = useRef(open);
+  useEffect(() => {
+    if (open && !prevOpenRef.current) {
+      setSelection({ query, index: 0 });
+    }
+    prevOpenRef.current = open;
+  }, [open, query]);
+
   useEffect(() => {
     if (!open) return;
     const id = requestAnimationFrame(() => inputRef.current?.focus());

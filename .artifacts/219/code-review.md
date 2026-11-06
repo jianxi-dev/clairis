@@ -44,3 +44,11 @@ vitest 渲染真实 App 并派发真实 KeyboardEvent（断言 preventDefault �
 无（0 未决）。
 
 留痕：mock 的 `__biaoyue_openFile__` 不把 title 传给 tab（tab 标题由文件名派生），同路径 recent 项被去重——探针初版按 H1 词过滤落空属种子设计问题，非实现缺陷；已在探针中改用文件名子串并留此记录。
+
+## 验证原始输出（2026-11-06 补齐）
+
+- `npx tsc --noEmit` → exit 0，无输出
+- `npx eslint src/` → 0 errors，39 warnings（均为既有，非本次引入）
+- `npm test` → Test Files 101 passed (101)，Tests 1301 passed (1301)
+- `npx playwright test e2e/quick-open.spec.ts` → 11 passed
+- `npx playwright test e2e/quick-open.spec.ts e2e/shortcuts.spec.ts e2e/app.spec.ts e2e/portal.spec.ts` → 35 passed，1 skipped（app.spec 的 tab 右键菜单在 web 模式无页签，既有 skip）
