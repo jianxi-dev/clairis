@@ -5,7 +5,7 @@
  * `.preview-content` 容器内。跨越编辑/阅读边界、跨越多个预览容器、或落在
  * 两者之外的选区一律视为无效（不显示胶囊）。抽成纯函数以便单测。
  */
-export type SelectionPillMode = "editor" | "preview";
+export type SelectionPillMode = "edit" | "preview";
 
 export function detectSelectionPillMode(
   selection: Selection | null,
@@ -23,7 +23,7 @@ export function detectSelectionPillMode(
     editorDom.contains(anchorNode) &&
     editorDom.contains(focusNode)
   ) {
-    return "editor";
+    return "edit";
   }
 
   const bothInOnePreview = previewRoots.some(
