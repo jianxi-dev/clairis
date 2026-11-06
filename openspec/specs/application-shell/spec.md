@@ -10,9 +10,7 @@ application-shell 域定义标月桌面端的整体界面布局决策与空状�
 - B-2 / B-4 / B-5 批准设计：`docs/design/approved/empty-state/spec.md`（空状态分块、示例文件释放与标记机制）；示例文件内容见 `src-tauri/samples/`
 - 需求基线：`docs/CORE-REQUIREMENTS-clairis.md` §四 UI 架构 4.1（空状态与导航入口、内置示例文件）、4.5（文档模式分栏规则）；`docs/MVP-需求跟踪表.md` 模块 G / B（均标 ✅）
 - 启动面板/欢迎页（B-1）与统一文件面板（B-3）归属 navigation 域
-
 ## Requirements
-
 ### Requirement: G-1 移除左侧栏逻辑
 
 应用外壳 SHALL 移除左侧栏：Toolbar 中的左栏按钮 SHALL 被移除，用于切换左侧栏的旧 `Cmd+\` 快捷键 SHALL 被移除，布局参数 `leftSidebar` SHALL 传 null。导航职责由统一文件面板（Cmd+P，见 navigation 域 B-3）承担。
@@ -100,6 +98,34 @@ application-shell 域定义标月桌面端的整体界面布局决策与空状�
 
 - **WHEN** 新用户首次打开应用
 - **THEN** 首屏 SHALL 渲染 `0-welcome.md`（空白但不空旷），主 CTA SHALL 在首屏可达，欢迎页内 SHALL 内嵌快捷键提示；存在历史时最近保存 chips SHALL 展示 5 个
+
+### Requirement: G-6 顶栏职责与页签身份
+
+应用外壳 SHALL 以顶栏承载产品级入口（网格概览、AI、主题、沉浸），SHALL NOT 在顶栏显示当前文件名或预览/编辑/源码切换；文件身份 SHALL 仅由每个分栏的页签条表达，且页签 SHALL 始终同时显示类型图标与文件名。活跃页签 SHALL 以胶囊高亮表达，而非下划线。浅色/深色/暖色切换 SHALL 通过根节点 class 驱动全站语义 token 与 `dark:` 组件样式，整窗一致变化。
+
+#### Scenario: 顶栏不再重复文件身份
+- **WHEN** 用户打开任意文档并进入工作区
+- **THEN** 顶栏 SHALL 只显示标月品牌、网格、AI、主题与沉浸入口，SHALL NOT 显示文件名或预览/编辑/源码按钮
+
+#### Scenario: 页签始终带名称
+- **WHEN** 分栏内存在一个或多个页签
+- **THEN** 每个页签 SHALL 同时渲染类型图标与文件名，活跃页签 SHALL 为胶囊高亮
+
+#### Scenario: 主题切换覆盖整窗
+- **WHEN** 用户从浅色切换到深色
+- **THEN** 根节点 SHALL 切换 `dark` class，顶栏、面板、卡片、弹层与正文背景 SHALL 同时使用深色语义 token
+
+### Requirement: G-7 图标语义与全屏可用性
+
+全站图标 SHALL 使用同一 24×24 线性语言，分栏图标 SHALL 用左右/上下矩形面积差表达方向，钉住与全屏 SHALL 用轻量轮廓而非重填充。单格工作区 SHALL NOT 显示无效的全屏按钮；多格工作区全屏按钮 SHALL 聚焦当前格并切换全屏态。
+
+#### Scenario: 单格隐藏全屏
+- **WHEN** 工作区只有一个 pane
+- **THEN** 该 pane 头部 SHALL NOT 渲染全屏按钮
+
+#### Scenario: 多格全屏生效
+- **WHEN** 工作区有至少两个 pane，用户点击当前 pane 的全屏按钮
+- **THEN** 当前 pane SHALL 进入全屏态，再次点击 SHALL 退出
 
 ## 待裁定与跨域冲突记录（非规范性）
 
