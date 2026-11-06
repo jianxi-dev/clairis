@@ -1,29 +1,32 @@
 import { useState, useMemo } from "react";
-import { rewriteHtmlPaths } from "../../renderers";
+import { rewriteHtmlPaths, buildAssetUrl } from "../../renderers";
 import { useEditorStore } from "../../stores/editorStore";
+import { isTauriEnv } from "../../utils/tauri";
 
 interface HtmlPreviewProps {
   content: string;
   filePath?: string | null;
   /** 整体缩放比例（iframe 元素 zoom，视觉缩放不重排） */
   zoom?: number;
+  /**
+   * 直载磁盘文件（asset URL）：脚本与 CDN/字体等外链照常执行/加载。
+   * 仅已保存文件可直载；未保存（dirty）必须回退 srcdoc + 禁脚本 CSP。
+   */
+  live?: boolean;
 }
 
 export default function HtmlPreview({
   content,
   filePath,
   zoom = 1,
+  live = false,
 }: HtmlPreviewProps) {
   const [error, setError] = useState<string | null>(null);
   const fontSize = useEditorStore((s) => s.fontSize);
 
-  // 一律用 srcdoc，不再走 asset 协议直载磁盘文件。
-  //
-  // 直载的好处是脚本能跑、相对引用天然解析；代价是**预览读的是磁盘上的旧内容**
-  // ——编辑态改了还没保存时，切回预览看到的还是上一次保存的版本（E-15 要求
-  // 编辑改动切回预览可见）。相对资源改由 rewriteHtmlPaths 重写成 asset://，
-  // 效果等价；脚本执行留给 H2 的可视化编辑专门设计（届时需要 postMessage 桥，
-  // 现在的 CSP `script-src 'none'` 正好不会让半成品脚本干扰预览）。
+  // 已保存文件走 asset 直载：脚本能跑、相对引用天然解析、CDN/外链字体不被拦。
+  // dirty 内容仍走 srcdoc——预览必须反映未保存的编辑（E-15），且未保存内容
+  // 不可信，绝不给它脚本执行权。
 
   const sandboxed = useMemo(() => {
     if (!content) {
@@ -60,6 +63,18 @@ ${processed}
       >
         <p>{error}</p>
       </div>
+    );
+  }
+
+  if (live && filePath && isTauriEnv()) {
+    return (
+      <iframe
+        src={buildAssetUrl(filePath)}
+        sandbox="allow-scripts allow-same-origin allow-popups"
+        style={{ zoom, width: "100%", height: "100%", border: "none" }}
+        title="HTML 预览"
+        onError={handleError}
+      />
     );
   }
 

@@ -10,6 +10,7 @@ import HtmlPreview from "./HtmlPreview";
 import PdfViewer from "./PdfViewer";
 import { mediaPlayer } from "./mediaPlayerState";
 import { useEditorStore } from "../../stores/editorStore";
+import { useStore } from "../../stores";
 import { applyReaderSkin } from "../../hooks/useConfig";
 import { isTauriEnv } from "../../utils/tauri";
 import type { FileKind } from "../../types";
@@ -83,7 +84,7 @@ function usePreviewZoom() {
   return { zoom, onWheel, onDoubleClick: resetZoom, bindGesture };
 }
 
-/** 视频/音频预览：注册到常驻播放器，由 MediaPlayerHost 全尺寸覆盖；卸载时保持播放移出视口（无迷你条） */
+/** 视频/音频预览：注册到常驻播放器，由 MediaPlayerHost 限制在所属格内；卸载时保持播放移出视口（无迷你条） */
 function MediaPreviewRegistrar({
   filePath,
   fileKind,
@@ -91,17 +92,33 @@ function MediaPreviewRegistrar({
   filePath: string;
   fileKind: "video" | "audio";
 }) {
+  const placeholderRef = useRef<HTMLDivElement | null>(null);
+  // 占位节点重新挂载（页签被移到别的格）时自增，触发下面的 effect 重跑。
+  const [mountEpoch, setMountEpoch] = useState(0);
+  const refCallback = useCallback((el: HTMLDivElement | null) => {
+    placeholderRef.current = el;
+    setMountEpoch((n) => n + 1);
+  }, []);
+
   useEffect(() => {
+    // effect 在 ref 挂载后运行，此刻读到正确的所属格；直接读 DOM 避免首帧
+    // 以「无格信息」注册、播放器先铺满整屏再收敛到格内。
+    const paneId =
+      placeholderRef.current
+        ?.closest("[data-pane-id]")
+        ?.getAttribute("data-pane-id") ?? undefined;
     mediaPlayer.show({
       filePath,
       url: mediaUrlForPath(filePath),
       fileKind,
+      paneId,
     });
     return () => mediaPlayer.minimize();
-  }, [filePath, fileKind]);
+  }, [filePath, fileKind, mountEpoch]);
 
   return (
     <div
+      ref={refCallback}
       data-media-preview
       style={{ width: "100%", height: "100%", minHeight: 200 }}
     />
@@ -167,10 +184,22 @@ export default function PreviewView({
     }
   }, [content, fileKind, capabilityEpoch, filePath]);
 
+  // HTML 预览：磁盘文件且未 dirty 才 asset 直载（脚本/外链可跑）；dirty 回退 srcdoc。
+  const htmlLive = useStore((s) => {
+    if (!filePath || !isTauriEnv()) return false;
+    const tab = Object.values(s.tabs).find((t) => t.path === filePath);
+    return tab ? !tab.dirty : false;
+  });
+
   // 图片/视频/音频/HTML/PDF 保持各自渲染（HTML 用整体缩放，避免重排偏移）
   if (fileKind === "html") {
     return (
-      <FramePreview content={content} fileKind={fileKind} filePath={filePath} />
+      <FramePreview
+        content={content}
+        fileKind={fileKind}
+        filePath={filePath}
+        live={htmlLive}
+      />
     );
   }
   if (fileKind === "pdf") {
@@ -194,7 +223,7 @@ export default function PreviewView({
     if (fileKind === "image") {
       return <ImagePreview filePath={filePath} />;
     }
-    // 视频/音频：由常驻播放器（MediaPlayerHost）全尺寸覆盖本区域
+    // 视频/音频：由常驻播放器（MediaPlayerHost）覆盖本格内容区
     return (
       <MediaPreviewRegistrar
         filePath={filePath}
@@ -275,10 +304,12 @@ function FramePreview({
   content,
   fileKind,
   filePath,
+  live,
 }: {
   content: string;
   fileKind: FileKind;
   filePath?: string | null;
+  live: boolean;
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const { scale, onWheel, onDoubleClick } = useFrameScale();
@@ -327,7 +358,12 @@ function FramePreview({
       onDoubleClick={onDoubleClick}
     >
       {fileKind === "html" ? (
-        <HtmlPreview content={content} filePath={filePath} zoom={scale} />
+        <HtmlPreview
+          content={content}
+          filePath={filePath}
+          zoom={scale}
+          live={live}
+        />
       ) : null}
       <div
         style={{
@@ -419,7 +455,8 @@ function mediaUrlForPath(path: string): string {
 
 const IMAGE_BASE_WIDTH = 1180;
 const IMAGE_MIN_ZOOM = 0.2;
-const IMAGE_MAX_ZOOM = 5;
+// 20 是防布局爆掉的兜底上限，不是用户可见的缩放边界。
+const IMAGE_MAX_ZOOM = 20;
 
 function clampZoom(z: number): number {
   return Math.min(IMAGE_MAX_ZOOM, Math.max(IMAGE_MIN_ZOOM, z));

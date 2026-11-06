@@ -115,10 +115,16 @@ function runtimeSource(version: number): string {
   };
 
   document.addEventListener("dblclick", (e) => {
-    const el = e.target && e.target.closest && e.target.closest("[data-cm-node-id]");
-    if (!el) return;
-    const tag = el.tagName.toLowerCase();
-    if (!EDITABLE.has(tag)) return;
+    // 向上找最近的可编辑块：双击落在行内元素（span/a/strong）上时，
+    // closest("[data-cm-node-id]") 会停在这个行内元素，它不在 EDITABLE 里，
+    // 于是编辑永远不开始。块级祖先（p/h1-h6/li/blockquote）才是编辑单元。
+    let el = e.target;
+    while (el && el.nodeType === 1 && el !== document.body) {
+      if (EDITABLE.has(el.tagName.toLowerCase())) break;
+      el = el.parentElement;
+    }
+    if (!el || el.nodeType !== 1 || el === document.body) return;
+    if (!el.getAttribute("data-cm-node-id")) return;
     e.preventDefault();
     if (editing) endEdit();
     editing = el;

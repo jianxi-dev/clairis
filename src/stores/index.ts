@@ -9,6 +9,7 @@ import type {
 } from "../types";
 import type { FileTypeKind } from "../lib/fileType";
 import { useEditorStore } from "./editorStore";
+import { mediaPlayer } from "../components/Content/mediaPlayerState";
 import {
   DEFAULT_RAIL_VIEW_SPEC,
   nextRailState,
@@ -520,6 +521,15 @@ export const useStore = create<AppStore>((set, get) => ({
 
   closeTab: (id: string) => {
     const state = get();
+    // 关闭的页签正是当前媒体源 → 立即停止并释放，否则播放器在后台继续放。
+    // 媒体源按文件路径标识，因此无论该页签在哪个格、是否聚焦都能命中。
+    const closedTab = state.tabs[id];
+    if (
+      closedTab?.path &&
+      mediaPlayer.getState().source?.filePath === closedTab.path
+    ) {
+      mediaPlayer.stop();
+    }
     const { [id]: _removed, ...remaining } = state.tabs;
     const leaf = leafOfTab(state.paneRoot, id);
 
