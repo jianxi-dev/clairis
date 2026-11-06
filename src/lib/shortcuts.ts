@@ -56,12 +56,12 @@ export const SHORTCUT_FAMILY_ORDER: readonly ShortcutFamily[] = [
 export const SHORTCUTS: readonly ShortcutDef[] = [
   // ── 全局（9）──────────────────────────────────────────────
   {
-    id: "global-search",
+    id: "global-quick-open",
     keys: "⌘P",
-    label: "统一检索",
+    label: "快速打开",
     family: "global",
     core: true,
-    decision: "文件检索；AI 指令走 ⌘K",
+    decision: "页签 / 最近文件 / 命令；统一文件面板见 B-3",
     implemented: true,
   },
   {

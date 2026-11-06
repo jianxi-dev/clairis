@@ -14,6 +14,7 @@ import FloatingPreview from "./components/Preview/FloatingPreview";
 import PortalView from "./components/PortalView";
 import GridView from "./components/GridView";
 import ShortcutOverlay from "./components/ShortcutOverlay";
+import QuickOpen from "./components/QuickOpen";
 import CaptureOverlay from "./components/CaptureOverlay";
 import CommandOverlay from "./components/ai/CommandOverlay";
 import UndoBar from "./components/ai/UndoBar";
@@ -73,6 +74,8 @@ function App() {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [quickOpenOpen, setQuickOpenOpen] = useState(false);
+  const [quickOpenQuery, setQuickOpenQuery] = useState("");
   const settingsReturnRef = useRef<Scene>("workspace");
 
   // Init config loading + theme on mount
@@ -298,6 +301,29 @@ function App() {
     store.setScene("grid");
   }, []);
 
+  // 快速打开回调保持引用稳定，避免 QuickOpen 的键盘 effect 每帧重订阅。
+  const handleQuickOpenClose = useCallback(() => setQuickOpenOpen(false), []);
+  const handleQuickOpenTab = useCallback((tabId: string) => {
+    useStore.getState().switchTab(tabId);
+    useStore.getState().setScene("workspace");
+    setQuickOpenOpen(false);
+  }, []);
+  const handleQuickOpenPath = useCallback(
+    (path: string) => {
+      setQuickOpenOpen(false);
+      void handleOpenPath(path);
+    },
+    [handleOpenPath],
+  );
+  const handleQuickOpenGrid = useCallback(() => {
+    setQuickOpenOpen(false);
+    openGridOverview();
+  }, [openGridOverview]);
+  const handleQuickOpenSettings = useCallback(() => {
+    setQuickOpenOpen(false);
+    openSettings();
+  }, [openSettings]);
+
   // macOS 原生菜单（Cmd+=/-/0）拦截键盘，由 Rust 侧菜单项转发为 preview-scale 事件
   useEffect(() => {
     if (!isTauri) return;
@@ -316,6 +342,23 @@ function App() {
     const handler = (e: KeyboardEvent) => {
       const meta = e.metaKey || e.ctrlKey;
       const store = useStore.getState();
+
+      // Cmd/Ctrl+P：阻止浏览器原生打印，改为打开快速打开（页签/最近文件/命令）。
+      // 已打开时再按一次关闭；输入法组合态（e.isComposing）不拦截，避免打断上屏。
+      if (
+        meta &&
+        !e.shiftKey &&
+        e.key.toLowerCase() === "p" &&
+        !e.isComposing
+      ) {
+        e.preventDefault();
+        setQuickOpenQuery("");
+        setQuickOpenOpen((v) => !v);
+        return;
+      }
+
+      // 快速打开打开时，其余全局快捷键让位（Esc/↑↓/Enter 由 QuickOpen 自行拦截）。
+      if (quickOpenOpen) return;
 
       const questionKey = e.key === "?" || (e.key === "/" && e.shiftKey);
       if (questionKey && !meta && !e.altKey && !isEditableTarget(e.target)) {
@@ -338,15 +381,6 @@ function App() {
           }
           return;
         }
-      }
-
-      if (meta && !e.shiftKey && e.key.toLowerCase() === "p") {
-        e.preventDefault();
-        store.setScene("grid");
-        window.setTimeout(() => {
-          window.dispatchEvent(new CustomEvent("grid-focus-search"));
-        }, 0);
-        return;
       }
 
       // Cmd+Shift+\ : 打开网格概览（任意场景可用，门户里也能直接进）
@@ -588,6 +622,7 @@ function App() {
     openGridOverview,
     openSettings,
     shortcutsOpen,
+    quickOpenOpen,
   ]);
 
   // ── Drag-and-drop (Tauri v2 native event) ────────────────────
@@ -763,6 +798,16 @@ function App() {
       <ShortcutOverlay
         open={shortcutsOpen}
         onClose={() => setShortcutsOpen(false)}
+      />
+      <QuickOpen
+        open={quickOpenOpen}
+        query={quickOpenQuery}
+        onQueryChange={setQuickOpenQuery}
+        onClose={handleQuickOpenClose}
+        onOpenTab={handleQuickOpenTab}
+        onOpenPath={handleQuickOpenPath}
+        onOpenGrid={handleQuickOpenGrid}
+        onOpenSettings={handleQuickOpenSettings}
       />
       {readingMode && (
         <div

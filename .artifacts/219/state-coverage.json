@@ -1,0 +1,54 @@
+{
+  "task": "219-quick-open",
+  "states": [
+    {
+      "state": "01-quick-open-workspace",
+      "screenshot": ".artifacts/219/01-quick-open-workspace.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-06T10:13:15.491Z",
+      "runner": "unknown@unknown"
+    },
+    {
+      "state": "02-filtered-results",
+      "screenshot": ".artifacts/219/02-filtered-results.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-06T10:13:18.003Z",
+      "runner": "unknown@unknown"
+    },
+    {
+      "state": "03-command-navigation",
+      "screenshot": ".artifacts/219/03-command-navigation.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-06T10:13:19.127Z",
+      "runner": "unknown@unknown"
+    },
+    {
+      "state": "04-grid-regression",
+      "screenshot": ".artifacts/219/04-grid-regression.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-06T10:13:22.545Z",
+      "runner": "unknown@unknown"
+    },
+    {
+      "state": "05-portal-scene",
+      "screenshot": ".artifacts/219/05-portal-scene.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-06T10:13:25.131Z",
+      "runner": "unknown@unknown"
+    },
+    {
+      "state": "06-grid-scene",
+      "screenshot": ".artifacts/219/06-grid-scene.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-06T10:13:26.162Z",
+      "runner": "unknown@unknown"
+    },
+    {
+      "state": "07-quick-open-dark",
+      "screenshot": ".artifacts/219/07-quick-open-dark.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-06T10:13:27.503Z",
+      "runner": "unknown@unknown"
+    }
+  ]
+}

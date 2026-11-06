@@ -318,7 +318,7 @@ export default function PortalView({
           </button>
           <button
             onClick={onOpenFile}
-            data-testid="quick-open"
+            data-testid="quick-open-file"
             className="flex items-center gap-1.5 rounded border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-800"
           >
             <Icon name="folder" size={18} />
