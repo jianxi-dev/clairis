@@ -136,7 +136,7 @@ export default function HtmlVisualEditor({
         width: "100%",
         height: "100%",
         border: "none",
-        background: "#fff",
+        background: "var(--app-surface)",
       }}
     />
   );

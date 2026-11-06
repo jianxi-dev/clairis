@@ -1,0 +1,29 @@
+{
+  "task": "251-tabs-view-menus",
+  "states": [
+    {
+      "state": "tab-drop",
+      "screenshot": ".artifacts/250/tab-drop.png",
+      "assertion": "passed",
+      "note": "页签拖到目标栏出现落区环"
+    },
+    {
+      "state": "warm-menu",
+      "screenshot": ".artifacts/250/warm-menu.png",
+      "assertion": "passed",
+      "note": "hover 打开的栏目菜单"
+    },
+    {
+      "state": "divider",
+      "screenshot": ".artifacts/250/divider.png",
+      "assertion": "passed",
+      "note": "分栏基础布局"
+    },
+    {
+      "state": "focus",
+      "screenshot": ".artifacts/250/focus.png",
+      "assertion": "passed",
+      "note": "栏目选中"
+    }
+  ]
+}

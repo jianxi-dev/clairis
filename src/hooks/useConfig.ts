@@ -90,6 +90,9 @@ interface RustAppConfig {
 
 const DEBOUNCE_MS = 500;
 
+const SAVE_ECHO_WINDOW_MS = 1500;
+let lastLocalSaveAt = 0;
+
 /** Apply theme to <html> element. */
 export function applyTheme(theme: string): void {
   const root = document.documentElement;
@@ -111,6 +114,7 @@ export function applyReaderSkin(skin: string): void {
 /** Persist the current editor + app config (module-level, callable outside hooks). */
 export async function saveAppConfig(): Promise<void> {
   if (!isTauriEnv()) return;
+  lastLocalSaveAt = Date.now();
   const es = useEditorStore.getState();
   const config: RustAppConfig = {
     fontSize: es.fontSize,
@@ -363,6 +367,7 @@ function applyRustConfig(raw: RustAppConfig): void {
 /** Re-read the effective config from Rust and apply it without touching content. */
 export function reloadAppConfig(): void {
   if (!isTauriEnv()) return;
+  if (Date.now() - lastLocalSaveAt < SAVE_ECHO_WINDOW_MS) return;
   invoke<RustAppConfig>("load_config")
     .then(applyRustConfig)
     .catch((e) => log.error("Config", "Failed to reload config", e));

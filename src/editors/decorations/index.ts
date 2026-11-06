@@ -51,6 +51,7 @@ import {
 } from "./table";
 import { createCalloutDecorations, scheduleCalloutFlush } from "./callout";
 import { createColumnsDecorations } from "./columns";
+import { createStructuralTagDecorations } from "./structuralTags";
 import { editorDecorationsThemeExt } from "./theme";
 import { getBlocks, getBlockAt } from "../block-model";
 
@@ -167,6 +168,7 @@ function buildDecorationSet(
     ...createCalloutDecorations(docText, activeFrom, activeTo),
     ...createTableDecorations(docText, activeFrom, activeTo),
     ...createColumnsDecorations(docText),
+    ...createStructuralTagDecorations(docText),
   ];
 
   // 按起点排序（CM6 要求）

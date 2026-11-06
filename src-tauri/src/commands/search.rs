@@ -6,20 +6,18 @@ use serde::Serialize;
 use tracing::info;
 
 use crate::commands::file::is_supported_document;
-use crate::commands::recent::{is_heavy_dir, is_html, strip_html_tags, to_iso8601, SCAN_DIRS};
+use crate::commands::recent::{is_heavy_dir, is_html, strip_html_tags, to_iso8601};
 use crate::errors::AppError;
 
-/// 目录递归深度上限：从 Documents / Desktop / Downloads 起算，向下最多 5 层
-/// （第 6 层目录里的文件不扫）。2 层时 `Desktop/AI学习/skill集合/x.html`
-/// 这类三层目录下的文件会漏检，故提到 5。heavy dir 与 MAX_SCAN_FILES
-/// 仍然兜底，不会把整个 home 扫穿。
-const MAX_DEPTH: usize = 5;
+/// 递归深度上限：从 home 起算。用户在 `~/Projects/.../notes` 这类深层目录
+/// 里的文件要能搜到，故给到 7 层；heavy dir 与 MAX_SCAN_FILES 兜底。
+const MAX_DEPTH: usize = 7;
 /// 默认返回条数：防止全盘扫描后一次性回传过多。
 const DEFAULT_LIMIT: usize = 30;
 /// 单次检索最多回传的条数。
 const MAX_LIMIT: usize = 100;
 /// 最多扫描的文件数：超过即停止，避免大目录卡住 UI。
-const MAX_SCAN_FILES: usize = 5_000;
+const MAX_SCAN_FILES: usize = 20_000;
 /// 正文匹配读取上限：只读前 64KB，避免整读大文件。
 const MATCH_READ_LIMIT: u64 = 64 * 1024;
 /// 命中片段窗口半径（命中词前后各取这么多字符）。
@@ -239,7 +237,7 @@ fn match_document(doc: &ScanDoc, query: &str, lower_query: &str) -> Option<Searc
     })
 }
 
-/// 扫描 home 下 Documents / Desktop / Downloads，按 mtime 倒序返回前 `limit` 条命中。
+/// 扫描 home（跳过 heavy dir），按 mtime 倒序返回前 `limit` 条命中。
 pub fn collect_search_hits(home: &Path, query: &str, limit: usize) -> Vec<SearchHit> {
     let query = query.trim();
     if query.is_empty() {
@@ -247,12 +245,7 @@ pub fn collect_search_hits(home: &Path, query: &str, limit: usize) -> Vec<Search
     }
     let lower_query = query.to_lowercase();
     let mut docs: Vec<ScanDoc> = Vec::new();
-    for name in SCAN_DIRS {
-        let dir = home.join(name);
-        if dir.is_dir() {
-            scan_documents(&dir, 0, &mut docs);
-        }
-    }
+    scan_documents(home, 0, &mut docs);
     let mut hits: Vec<SearchHit> = docs
         .iter()
         .filter_map(|doc| match_document(doc, query, &lower_query))
@@ -430,7 +423,7 @@ mod tests {
     }
 
     #[test]
-    fn scans_up_to_depth_five_but_not_deeper() {
+    fn scans_up_to_depth_six_but_not_deeper() {
         let home = temp_home("depth");
         let root = home.join("Documents");
         // 第 2 层目录里的文件（旧 MAX_DEPTH=2 的边界）
@@ -445,17 +438,24 @@ mod tests {
             at(2000),
             "深层关键词".as_bytes(),
         );
-        // 第 6 层目录里的文件（超出上限，不应扫到）
+        // 第 6 层目录里的文件（新上限之内）
         write_with_mtime(
-            &root.join("a/b/c/d/e/f").join("toodeep.md"),
+            &root.join("a/b/c/d/e/f").join("deep6.md"),
             at(3000),
+            "深层关键词".as_bytes(),
+        );
+        // 第 7 层目录里的文件（超出上限，不应扫到）
+        write_with_mtime(
+            &root.join("a/b/c/d/e/f/g").join("toodeep.md"),
+            at(4000),
             "深层关键词".as_bytes(),
         );
 
         let hits = collect_search_hits(&home, "深层关键词", 30);
-        assert_eq!(hits.len(), 2, "第 2、5 层应命中，第 6 层应被挡下");
+        assert_eq!(hits.len(), 3, "第 2、5、6 层应命中，第 7 层应被挡下");
         assert!(hits.iter().any(|h| h.path.ends_with("x.html")));
         assert!(hits.iter().any(|h| h.path.ends_with("deep.md")));
+        assert!(hits.iter().any(|h| h.path.ends_with("deep6.md")));
         assert!(!hits.iter().any(|h| h.path.ends_with("toodeep.md")));
 
         let _ = fs::remove_dir_all(&home);

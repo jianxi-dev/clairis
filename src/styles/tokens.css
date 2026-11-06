@@ -75,3 +75,160 @@
   --app-border: #e0d2bc;
   --app-border-strong: #cdbca1;
 }
+
+/* ── 旧工具类 → 语义色兼容层（#249） ─────────────────────────────
+ * 历史组件用 `bg-white dark:bg-gray-*` 书写表面色。Tailwind 的 `dark:` 只在
+ * `.dark` 生效，暖色主题没有对应变体，整片回退成亮白。这里把仍在用的
+ * 中性工具类映射回 `--app-*`，使亮/暗/暖三主题共用同一套语义色。
+ * 新增组件请直接用 `var(--app-*)`，不要再依赖这层。 */
+.warm .bg-white,
+.warm .bg-gray-50,
+.warm .bg-gray-100 {
+  background-color: var(--app-surface) !important;
+}
+
+.warm .bg-gray-200 {
+  background-color: var(--app-sunken) !important;
+}
+
+.warm .bg-gray-800,
+.warm .bg-gray-900 {
+  background-color: var(--app-text) !important;
+}
+
+.warm .bg-white\/88,
+.warm .bg-white\/90,
+.warm .bg-white\/92,
+.warm .bg-white\/95,
+.warm .bg-gray-50\/95,
+.warm .bg-gray-900\/92 {
+  background-color: color-mix(
+    in srgb,
+    var(--app-surface) 94%,
+    transparent
+  ) !important;
+}
+
+.warm .text-gray-700,
+.warm .text-gray-800,
+.warm .text-gray-900 {
+  color: var(--app-text) !important;
+}
+
+.warm .text-gray-400,
+.warm .text-gray-500,
+.warm .text-gray-600 {
+  color: var(--app-text-2) !important;
+}
+
+.warm .border-gray-100,
+.warm .border-gray-200,
+.warm .border-gray-300 {
+  border-color: var(--app-border) !important;
+}
+
+.warm .hover\:bg-gray-100:hover,
+.warm .hover\:bg-gray-200:hover {
+  background-color: var(--app-sunken) !important;
+}
+
+.dark .dark\:bg-gray-800,
+.dark .dark\:bg-gray-900 {
+  background-color: var(--app-surface) !important;
+}
+
+.dark .dark\:bg-gray-700 {
+  background-color: var(--app-sunken) !important;
+}
+
+.dark .dark\:text-gray-100,
+.dark .dark\:text-gray-200 {
+  color: var(--app-text) !important;
+}
+
+.dark .dark\:text-gray-400,
+.dark .dark\:text-gray-500 {
+  color: var(--app-text-2) !important;
+}
+
+.dark .dark\:border-gray-700 {
+  border-color: var(--app-border) !important;
+}
+
+.dark .dark\:hover\:bg-gray-700:hover,
+.dark .dark\:hover\:bg-gray-800:hover {
+  background-color: var(--app-sunken) !important;
+}
+
+/* ── 主题兼容层（#249）───────────────────────────────────────────────
+ * 历史组件用 `bg-white dark:bg-gray-*` 这类工具类；Tailwind 的 `dark:`
+ * 只在 `.dark` 下生效，`.warm` 没有对应变体，于是暖色主题回退到亮白。
+ * 这里把菜单/AI 弹窗等表面用到的工具类映射回语义变量，保证三主题一致。
+ * 新组件仍应直接用 `var(--app-*)`，不要再新增依赖本层的写法。 */
+.warm .bg-white,
+.warm .bg-white\/88,
+.warm .bg-white\/90,
+.warm .bg-white\/92,
+.warm .bg-white\/95 {
+  background-color: var(--app-surface) !important;
+}
+
+.warm .bg-gray-50,
+.warm .bg-gray-100 {
+  background-color: var(--app-sunken) !important;
+}
+
+.warm .bg-gray-200 {
+  background-color: var(--app-border) !important;
+}
+
+.warm .text-gray-400,
+.warm .text-gray-500,
+.warm .text-gray-600 {
+  color: var(--app-text-2) !important;
+}
+
+.warm .text-gray-700,
+.warm .text-gray-800,
+.warm .text-gray-900 {
+  color: var(--app-text) !important;
+}
+
+.warm .border-gray-100,
+.warm .border-gray-200,
+.warm .border-gray-300,
+.warm .border-gray-700 {
+  border-color: var(--app-border) !important;
+}
+
+.warm .hover\:bg-gray-50:hover,
+.warm .hover\:bg-gray-100:hover,
+.warm .hover\:bg-gray-200:hover,
+.warm .hover\:bg-gray-700:hover,
+.warm .hover\:bg-gray-800:hover {
+  background-color: var(--app-sunken) !important;
+}
+
+.dark .dark\:bg-gray-800,
+.dark .dark\:bg-gray-900 {
+  background-color: var(--app-surface) !important;
+}
+
+.dark .dark\:text-gray-100,
+.dark .dark\:text-gray-200 {
+  color: var(--app-text) !important;
+}
+
+.dark .dark\:text-gray-400,
+.dark .dark\:text-gray-500 {
+  color: var(--app-text-2) !important;
+}
+
+.dark .dark\:border-gray-700 {
+  border-color: var(--app-border) !important;
+}
+
+.dark .dark\:hover\:bg-gray-700:hover,
+.dark .dark\:hover\:bg-gray-800:hover {
+  background-color: var(--app-sunken) !important;
+}

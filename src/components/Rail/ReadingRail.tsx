@@ -160,6 +160,7 @@ function RailThumb({ descriptor }: { descriptor: ThumbDescriptor }) {
   const src = descriptor.src ?? "";
 
   const [htmlSlot, setHtmlSlot] = useState(false);
+  const [mediaReady, setMediaReady] = useState(false);
   const htmlAcquiredRef = useRef(false);
 
   useEffect(() => {
@@ -178,7 +179,16 @@ function RailThumb({ descriptor }: { descriptor: ThumbDescriptor }) {
 
   useEffect(() => {
     if (kind !== "video-poster" || !isTauriEnv() || !src) return;
-    void invoke("register_media_path", { path: src }).catch(() => {});
+    let cancelled = false;
+    setMediaReady(false);
+    void invoke("register_media_path", { path: src })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setMediaReady(true);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [kind, src]);
 
   if (kind === "image" || kind === "md-cover") {
@@ -216,12 +226,20 @@ function RailThumb({ descriptor }: { descriptor: ThumbDescriptor }) {
         <span className="rail-thumb-play">
           <Icon name="video" size={24} color="var(--app-surface)" />
         </span>
-        {showVideo && (
+        {showVideo && mediaReady && (
           <video
             src={mediaUrlForPath(src)}
-            preload="metadata"
+            preload="auto"
             muted
             playsInline
+            onLoadedMetadata={(e) => {
+              const video = e.currentTarget;
+              try {
+                video.currentTime = Math.min(0.1, video.duration || 0.1);
+              } catch {
+                /* 元数据未就绪时忽略 */
+              }
+            }}
             className="relative h-full w-full object-cover"
           />
         )}
@@ -266,7 +284,7 @@ function RailThumb({ descriptor }: { descriptor: ThumbDescriptor }) {
         <Icon name="html" size={24} color="var(--type-html)" />
         {htmlSlot && src && (
           <iframe
-            sandbox=""
+            sandbox="allow-scripts"
             src={assetSrc(src)}
             title=""
             tabIndex={-1}
@@ -280,6 +298,43 @@ function RailThumb({ descriptor }: { descriptor: ThumbDescriptor }) {
               transform: `scale(${HTML_THUMB_SCALE})`,
               transformOrigin: "top left",
               pointerEvents: "none",
+            }}
+          />
+        )}
+      </div>
+    );
+  }
+
+  if (kind === "pdf-page") {
+    const showPdf = isTauriEnv() && !!src;
+    return (
+      <div
+        data-testid="rail-thumb"
+        data-thumb-kind={kind}
+        style={{
+          ...size,
+          background: `color-mix(in srgb, var(--type-pdf) 16%, var(--app-surface))`,
+          color: "var(--type-pdf)",
+        }}
+        className="rail-thumb rail-thumb-page relative shrink-0 overflow-hidden"
+      >
+        <span className="rail-thumb-line" />
+        <span className="rail-thumb-line" />
+        <span className="rail-thumb-line" />
+        {showPdf && (
+          <iframe
+            src={`${assetSrc(src)}#toolbar=0&navpanes=0&scrollbar=0&view=FitH`}
+            title=""
+            tabIndex={-1}
+            loading="lazy"
+            style={{
+              position: "absolute",
+              inset: 0,
+              width: "100%",
+              height: "100%",
+              border: "none",
+              pointerEvents: "none",
+              background: "var(--app-surface)",
             }}
           />
         )}
@@ -366,7 +421,7 @@ function RailRow({
     progressPct !== null ? (
       <RailProgress
         pct={progressPct}
-        text={tasks ? `${tasks.done}/${tasks.total}` : meta.text}
+        text={tasks ? `${tasks.done}/${tasks.total}` : `已读 ${readPct ?? 0}%`}
         kind={tasks ? "task" : "read"}
       />
     ) : null;
@@ -740,6 +795,18 @@ export default function ReadingRail({
   const searchSeq = useRef(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const menuHoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hoverOpenMenu = (): void => {
+    if (menuHoverTimer.current) clearTimeout(menuHoverTimer.current);
+    menuHoverTimer.current = setTimeout(() => {
+      setMenuOpen(true);
+      loadSnapshots();
+    }, 120);
+  };
+  const hoverCloseMenu = (): void => {
+    if (menuHoverTimer.current) clearTimeout(menuHoverTimer.current);
+    menuHoverTimer.current = setTimeout(() => setMenuOpen(false), 240);
+  };
   const railPanelRef = useRef<HTMLDivElement>(null);
   const listScrollRef = useRef<HTMLDivElement>(null);
   const hoverZoneRef = useRef<{ path: string; zone: "left" | "right" } | null>(
@@ -770,6 +837,13 @@ export default function ReadingRail({
       const startX = e.clientX;
       const startWidth = railWidth;
       let last = startWidth;
+      const handle = e.currentTarget;
+      handle.setPointerCapture(e.pointerId);
+      const detach = () => {
+        window.removeEventListener("pointermove", onMove);
+        window.removeEventListener("pointerup", onUp);
+        window.removeEventListener("pointercancel", onUp);
+      };
       const onMove = (ev: PointerEvent) => {
         last = Math.min(
           RAIL_PINNED_WIDTH_MAX,
@@ -781,13 +855,16 @@ export default function ReadingRail({
         setRailWidthState(last);
       };
       const onUp = () => {
-        window.removeEventListener("pointermove", onMove);
-        window.removeEventListener("pointerup", onUp);
+        detach();
+        if (handle.hasPointerCapture?.(e.pointerId)) {
+          handle.releasePointerCapture(e.pointerId);
+        }
         useStore.getState().applyViewSpec({ railPinnedWidth: last });
         void saveAppConfig();
       };
       window.addEventListener("pointermove", onMove);
       window.addEventListener("pointerup", onUp);
+      window.addEventListener("pointercancel", onUp);
     },
     [railWidth],
   );
@@ -1209,7 +1286,12 @@ export default function ReadingRail({
           {LAYOUT_LABELS[layout]}
         </button>
       ))}
-      <div className="relative" ref={menuRef}>
+      <div
+        className="relative"
+        ref={menuRef}
+        onPointerEnter={hoverOpenMenu}
+        onPointerLeave={hoverCloseMenu}
+      >
         <button
           type="button"
           data-testid="rail-settings"

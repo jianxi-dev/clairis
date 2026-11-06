@@ -1102,9 +1102,23 @@ export const useStore = create<AppStore>((set, get) => ({
     set({ railState: next, railPinned: next === "pinned" });
   },
 
-  setRailLayout: (layout) => set({ railLayout: layout }),
+  setRailLayout: (layout) =>
+    set((s) => ({
+      railLayout: layout,
+      viewSpec: normalizeViewSpec(
+        { ...s.viewSpec, railLayout: layout },
+        s.viewSpec,
+      ),
+    })),
 
-  setRailDensity: (density) => set({ railDensity: density }),
+  setRailDensity: (density) =>
+    set((s) => ({
+      railDensity: density,
+      viewSpec: normalizeViewSpec(
+        { ...s.viewSpec, railDensity: density },
+        s.viewSpec,
+      ),
+    })),
 
   setRailCardHeight: (height) =>
     set({ railCardHeight: clampCardHeight(height) }),

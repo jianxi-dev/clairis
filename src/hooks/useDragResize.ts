@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef } from "react";
 
 interface UseDragResizeOptions {
-  /** Called on each mousemove during drag. Receives the raw MouseEvent. */
-  onDrag: (e: MouseEvent) => void;
-  /** Called on mouseup after drag ends. */
+  /** Called on each pointermove during drag. */
+  onDrag: (e: PointerEvent) => void;
+  /** Called on pointerup/pointercancel after drag ends. */
   onEnd?: () => void;
   /** RAF throttle. Default true. */
   throttle?: boolean;
@@ -11,13 +11,9 @@ interface UseDragResizeOptions {
 
 /**
  * Reusable drag-to-resize hook.
- * Encapsulates the mousedown/mousemove/mouseup lifecycle with cursor
- * management and user-select toggling. Used by both Layout sidebars
- * and SplitResizeHandle.
  *
- * Usage:
- *   const { startDrag } = useDragResize({ onDrag: (e) => updateWidth(e.clientX) });
- *   <div onMouseDown={() => startDrag("col-resize")} />
+ * Pointer capture is set on the handle so moves over embedded iframes still
+ * reach us; without it the iframe swallows pointermove and the drag sticks.
  */
 export function useDragResize({
   onDrag,
@@ -25,46 +21,62 @@ export function useDragResize({
   throttle = true,
 }: UseDragResizeOptions) {
   const dragging = useRef(false);
+  const capture = useRef<{ el: Element; pointerId: number } | null>(null);
   const onDragRef = useRef(onDrag);
   const onEndRef = useRef(onEnd);
 
-  // Keep refs current without re-registering listeners
   onDragRef.current = onDrag;
   onEndRef.current = onEnd;
 
+  const finish = useCallback(() => {
+    if (!dragging.current) return;
+    dragging.current = false;
+    const cap = capture.current;
+    capture.current = null;
+    if (cap && cap.el.hasPointerCapture?.(cap.pointerId)) {
+      cap.el.releasePointerCapture(cap.pointerId);
+    }
+    document.body.style.cursor = "";
+    document.body.style.userSelect = "";
+    onEndRef.current?.();
+  }, []);
+
   useEffect(() => {
-    const onMouseMove = (e: MouseEvent) => {
+    const onMove = (e: PointerEvent) => {
       if (!dragging.current) return;
       onDragRef.current(e);
     };
 
-    const onMouseUp = () => {
-      if (!dragging.current) return;
-      dragging.current = false;
-      document.body.style.cursor = "";
-      document.body.style.userSelect = "";
-      onEndRef.current?.();
-    };
-
     const moveHandler = throttle
-      ? (e: MouseEvent) => {
-          requestAnimationFrame(() => onMouseMove(e));
+      ? (e: PointerEvent) => {
+          requestAnimationFrame(() => onMove(e));
         }
-      : onMouseMove;
+      : onMove;
 
-    document.addEventListener("mousemove", moveHandler);
-    document.addEventListener("mouseup", onMouseUp);
+    document.addEventListener("pointermove", moveHandler);
+    document.addEventListener("pointerup", finish);
+    document.addEventListener("pointercancel", finish);
     return () => {
-      document.removeEventListener("mousemove", moveHandler);
-      document.removeEventListener("mouseup", onMouseUp);
+      document.removeEventListener("pointermove", moveHandler);
+      document.removeEventListener("pointerup", finish);
+      document.removeEventListener("pointercancel", finish);
+      finish();
     };
-  }, [throttle]);
+  }, [throttle, finish]);
 
-  const startDrag = useCallback((cursor: string) => {
-    dragging.current = true;
-    document.body.style.cursor = cursor;
-    document.body.style.userSelect = "none";
-  }, []);
+  const startDrag = useCallback(
+    (cursor: string, target?: Element, pointerId?: number) => {
+      dragging.current = true;
+      capture.current =
+        target && pointerId !== undefined ? { el: target, pointerId } : null;
+      if (capture.current) {
+        target!.setPointerCapture(pointerId!);
+      }
+      document.body.style.cursor = cursor;
+      document.body.style.userSelect = "none";
+    },
+    [],
+  );
 
   return { startDrag };
 }

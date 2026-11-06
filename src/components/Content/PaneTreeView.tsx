@@ -273,6 +273,18 @@ function PaneHeader({
   const [notice, setNotice] = useState<string | null>(null);
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hoverOpen = (): void => {
+    if (hoverTimer.current) clearTimeout(hoverTimer.current);
+    hoverTimer.current = setTimeout(() => setMenuOpen(true), 120);
+  };
+  const hoverClose = (): void => {
+    if (hoverTimer.current) clearTimeout(hoverTimer.current);
+    hoverTimer.current = setTimeout(() => {
+      setMenuOpen(false);
+      setExportOpen(false);
+    }, 240);
+  };
   const startPaneDrag = useContext(PaneDragContext);
 
   const onHeaderPointerDown = useCallback(
@@ -551,7 +563,12 @@ function PaneHeader({
             <Icon name="expand" size={18} />
           </button>
         )}
-        <div className="relative" ref={menuRef}>
+        <div
+          className="relative"
+          ref={menuRef}
+          onPointerEnter={hoverOpen}
+          onPointerLeave={hoverClose}
+        >
           <button
             type="button"
             data-testid="pane-menu-button"
@@ -579,7 +596,16 @@ function PaneHeader({
               }}
             >
               {PANE_MENU_ITEMS.map((item) => (
-                <div key={item.action} className="relative">
+                <div
+                  key={item.action}
+                  className="relative"
+                  onPointerEnter={() => {
+                    if (item.action === "export") setExportOpen(true);
+                  }}
+                  onPointerLeave={() => {
+                    if (item.action === "export") setExportOpen(false);
+                  }}
+                >
                   <button
                     type="button"
                     role="menuitem"

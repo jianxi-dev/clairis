@@ -207,6 +207,43 @@ export default function ContentArea({
     restoredTabRef.current = tab.id;
   }, [tab?.id, tab?.path, editorMode]);
 
+  // 首次打开文件时先写一条 0% 记录：阅读空间卡片据此显示「已读 0%」
+  // 并在滚动后增长；没有记录时卡片不会渲染进度条（#252）。
+  useEffect(() => {
+    if (!tab?.path) return;
+    const store = useStore.getState();
+    if (store.scrollPositions[tab.path]) return;
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const frame = requestAnimationFrame(() => {
+      useStore
+        .getState()
+        .updateScrollPos(
+          tab.id,
+          el.scrollTop,
+          el.scrollHeight || el.clientHeight,
+        );
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [tab?.id, tab?.path]);
+
+  // 打开即落一条 0% 的阅读记录：否则卡片在用户第一次滚动前没有数据，
+  // 进度条永远不出现（#252）。
+  useEffect(() => {
+    if (!tab?.path) return;
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const path = tab.path;
+    const tabId = tab.id;
+    const raf = requestAnimationFrame(() => {
+      const store = useStore.getState();
+      if (!store.scrollPositions[path]) {
+        store.updateScrollPos(tabId, el.scrollTop, el.scrollHeight);
+      }
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [tab?.id, tab?.path, editorMode]);
+
   // Create EditorView once per panelId
   useEffect(() => {
     if (viewRef.current || !editorRef.current) return;

@@ -8,12 +8,15 @@ import {
   resetMathStore,
   takeMathHtml,
 } from "./math";
+import {
+  BLOCK_HTML_TAGS,
+  SANITIZE_ALLOWED_TAGS,
+  isUnknownStructuralTagLine,
+} from "../editors/decorations/structuralTagPattern";
 
 // ── 块级 HTML 深度闭合（对齐 Obsidian 的 HTML 块行为）────────
 // marked 的 html 正则把块级标签一律吞到下一个空行，用户写
 // `<div>…</div>` 卡片后再接 markdown 时，后续内容会整段被吞。
-const BLOCK_HTML_TAGS =
-  "address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer|form|frame|frameset|h[1-6]|head|header|hr|html|iframe|legend|li|link|main|menu|menuitem|meta|nav|noframes|ol|optgroup|option|p|param|search|section|summary|table|tbody|td|tfoot|th|thead|title|tr|track|ul";
 
 const OPEN_BLOCK_HTML_RE = new RegExp(
   `^ {0,3}<(${BLOCK_HTML_TAGS})(?:\\s[^>]*)?>(?=[ \\t]*(?:\\n|$))`,
@@ -37,66 +40,7 @@ const SANITIZE_CONFIG = {
   // 不显示」。这两个协议是本应用自己的本地读取通道，必须显式放行。
   ALLOWED_URI_REGEXP:
     /^(?:(?:(?:f|ht)tps?|mailto|tel|callto|sms|cid|xmpp|matrix|asset|media):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i,
-  ALLOWED_TAGS: [
-    // markdown 基本集
-    "p",
-    "h1",
-    "h2",
-    "h3",
-    "h4",
-    "h5",
-    "h6",
-    "ul",
-    "ol",
-    "li",
-    "pre",
-    "code",
-    "blockquote",
-    "table",
-    "thead",
-    "tbody",
-    "tr",
-    "th",
-    "td",
-    "img",
-    "video",
-    "a",
-    "em",
-    "strong",
-    "del",
-    "hr",
-    "br",
-    "input",
-    // 富文本子集（内嵌 HTML）
-    "div",
-    "span",
-    "section",
-    "article",
-    "details",
-    "summary",
-    "figure",
-    "figcaption",
-    "dl",
-    "dt",
-    "dd",
-    "kbd",
-    "sup",
-    "sub",
-    "mark",
-    "abbr",
-    "small",
-    "u",
-    "s",
-    "var",
-    "samp",
-    "cite",
-    "q",
-    "time",
-    "picture",
-    "source",
-    // 代码块复制按钮
-    "button",
-  ],
+  ALLOWED_TAGS: SANITIZE_ALLOWED_TAGS,
   ALLOWED_ATTR: [
     "href",
     "src",
@@ -241,6 +185,51 @@ function registerCheckboxGuard(): void {
 // \uFEFF? 容忍 BOM 前缀（Obsidian 文件常带）。
 const FRONTMATTER_RE = /^\uFEFF?---\s*\n[\s\S]*?\n---\s*(?:\n|$)/;
 
+// 结构标签行清理（#255）：
+// 独占一行的未知 HTML 标签会触发 CommonMark type-7 HTML 块，从这行起
+// 一直吞到下一个空行——后面的 `## 标题`、表格行全被当成 HTML 原文，
+// 表现为标题样式丢失、表格不渲染。这些标签是文档的结构标记
+//（`<objective>` / `</essential_principles>` 等），预览里不该出现，
+// 直接删行即可。
+const FENCE_LINE_RE = /^( {0,3})(`{3,}|~{3,})[ \t]*(.*)$/;
+
+/**
+ * 删掉独占一行的未知结构标签（开 / 闭 / 自闭合）。
+ *
+ * 行内标签（`正文 <u>下划线</u>`）不匹配——正则要求整行只有标签；
+ * 围栏代码块内的行是代码内容，跳过。
+ */
+function stripStructuralTagLines(content: string): string {
+  const lines = content.split("\n");
+  const kept: string[] = [];
+  let fence: { char: string; len: number } | null = null;
+
+  for (const line of lines) {
+    const fenceMatch = FENCE_LINE_RE.exec(line);
+    if (fence) {
+      kept.push(line);
+      if (
+        fenceMatch &&
+        fenceMatch[2][0] === fence.char &&
+        fenceMatch[2].length >= fence.len &&
+        fenceMatch[3].trim() === ""
+      ) {
+        fence = null;
+      }
+      continue;
+    }
+    if (fenceMatch) {
+      fence = { char: fenceMatch[2][0], len: fenceMatch[2].length };
+      kept.push(line);
+      continue;
+    }
+    if (isUnknownStructuralTagLine(line)) continue;
+    kept.push(line);
+  }
+
+  return kept.join("\n");
+}
+
 /**
  * 当前这次渲染使用的媒体解析器。
  *
@@ -273,7 +262,7 @@ export function renderMarkdown(
     /(!\[[^\]]*\]\([^)]*\))[ \t]*\n?<!--\s*w=(\d+)\s*-->/g,
     '$1<span data-img-width="$2"></span>',
   );
-  const body = withWidths.replace(FRONTMATTER_RE, "");
+  const body = stripStructuralTagLines(withWidths.replace(FRONTMATTER_RE, ""));
   const raw = marked.parse(body, { async: false }) as string;
   const clean = DOMPurify.sanitize(raw, SANITIZE_CONFIG);
   const result = postProcess(clean);

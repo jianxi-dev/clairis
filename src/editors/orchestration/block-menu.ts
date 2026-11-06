@@ -76,7 +76,10 @@ export function closeBlockMenu(view: EditorView): void {
     (entry) =>
       entry.scope === view && entry.id.startsWith(BLOCK_MENU_ID_PREFIX),
   );
-  // 父菜单收起时二级插入面板不能变成孤儿。
+  // 父菜单收起时二级面板不能变成孤儿。
+  document
+    .querySelectorAll<HTMLElement>("[data-block-flyout]")
+    .forEach((el) => el.remove());
   releaseInsertMenu(view, "below");
 }
 
@@ -317,10 +320,13 @@ export function openBlockMenu(
       const panelEl = document.createElement("div");
       panelEl.className = "cm-block-menu-flyout";
       panelEl.dataset.testid = "block-menu-type-panel";
+      panelEl.dataset.blockFlyout = "1";
       // E-14：贴在「类型」行右侧，缝隙 ≤ 8px，同一行每次打开位置一致。
+      // 挂到编辑器根节点，避免被父菜单的 overflow 裁掉。
       const rowRect = typeRow.getBoundingClientRect();
-      panelEl.style.left = `${rowRect.right - panel.getBoundingClientRect().left + 4}px`;
-      panelEl.style.top = `${rowRect.top - panel.getBoundingClientRect().top}px`;
+      const own = view.dom.getBoundingClientRect();
+      panelEl.style.left = `${rowRect.right - own.left + 4}px`;
+      panelEl.style.top = `${rowRect.top - own.top}px`;
       for (const type of CALLOUT_EDIT_TYPES) {
         const option = document.createElement("button");
         option.type = "button";
@@ -348,7 +354,7 @@ export function openBlockMenu(
         });
         panelEl.appendChild(option);
       }
-      panel.appendChild(panelEl);
+      view.dom.appendChild(panelEl);
       panelEl.addEventListener("pointerenter", () => cancelPendingClose(view));
       typePanel = panelEl;
     };
@@ -391,9 +397,11 @@ export function openBlockMenu(
     panelEl.className = "cm-block-menu-flyout";
     panelEl.classList.add(COLOR_PANEL_CLASS);
     panelEl.dataset.testid = "block-menu-color-panel";
+    panelEl.dataset.blockFlyout = "1";
+    const own = view.dom.getBoundingClientRect();
     const rowRect = colorRow.getBoundingClientRect();
-    panelEl.style.left = `${rowRect.right - panel.getBoundingClientRect().left + 4}px`;
-    panelEl.style.top = `${rowRect.top - panel.getBoundingClientRect().top}px`;
+    panelEl.style.left = `${rowRect.right - own.left + 4}px`;
+    panelEl.style.top = `${rowRect.top - own.top}px`;
 
     const blockText = view.state.doc.sliceString(block.from, block.to);
     const applyColor = (family: ColorFamily, className: string): void => {
@@ -429,7 +437,7 @@ export function openBlockMenu(
       });
     panelEl.appendChild(bgRow);
 
-    panel.appendChild(panelEl);
+    view.dom.appendChild(panelEl);
     panelEl.addEventListener("pointerenter", () => cancelPendingClose(view));
     colorPanel = panelEl;
   };
