@@ -24,7 +24,7 @@ export const PREVIEW_LEAVE_CLOSE_MS = 180;
 
 /** 首次打开预览窗的默认尺寸（均大于最小值）。 */
 export const PREVIEW_DEFAULT_W = 320;
-export const PREVIEW_DEFAULT_H = 240;
+export const PREVIEW_DEFAULT_H = 300;
 
 export interface Size {
   w: number;
