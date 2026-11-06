@@ -5,6 +5,7 @@ import {
   useRef,
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
+  type MouseEvent as ReactMouseEvent,
   type ReactNode,
 } from "react";
 import { fileDragHandlers } from "../../hooks/fileDrag";
@@ -59,6 +60,8 @@ import {
   PREVIEW_DEFAULT_W,
   anchorFromRail,
   clampPreviewSize,
+  isRightHalfOfBox,
+  type Box,
 } from "../../lib/previewAnchor";
 import { log } from "../../utils/log";
 import { isTauriEnv } from "../../utils/tauri";
@@ -85,6 +88,11 @@ const EMPTY_TEXT: Record<RailSection, string> = {
 /** 本机最近文件只扫描一次（React StrictMode 下 effect 会双跑）。 */
 let recentScanStarted = false;
 
+function boxOf(el: HTMLElement): Box {
+  const r = el.getBoundingClientRect();
+  return { left: r.left, top: r.top, width: r.width, height: r.height };
+}
+
 interface RailRowProps {
   item: RecentFile;
   ranges: MatchRange[];
@@ -100,7 +108,7 @@ interface RailRowProps {
   onSplit: (path: string, dir: "row" | "col") => void;
   onReveal: (path: string) => void;
   onTogglePin: (path: string) => void;
-  onRowHover?: (el: HTMLElement) => void;
+  onRowMove?: (e: ReactMouseEvent<HTMLElement>) => void;
   onRowLeave?: () => void;
 }
 
@@ -223,7 +231,7 @@ function RailRow({
   onSplit,
   onReveal,
   onTogglePin,
-  onRowHover,
+  onRowMove,
   onRowLeave,
 }: RailRowProps) {
   const kind: FileTypeKind = fileTypeOf(item.path);
@@ -274,9 +282,8 @@ function RailRow({
         data-kind={kind}
         data-density="compact"
         style={{ height: Math.round(DENSITY_HEIGHT.compact * scale) }}
-        onMouseEnter={
-          onRowHover ? (e) => onRowHover(e.currentTarget) : undefined
-        }
+        onMouseMove={onRowMove}
+        onMouseEnter={onRowMove}
         onMouseLeave={onRowLeave}
         className="group relative box-border flex items-center gap-1 px-2"
       >
@@ -309,9 +316,8 @@ function RailRow({
         data-kind={kind}
         data-density="comfortable"
         style={{ height: Math.round(DENSITY_HEIGHT.comfortable * scale) }}
-        onMouseEnter={
-          onRowHover ? (e) => onRowHover(e.currentTarget) : undefined
-        }
+        onMouseMove={onRowMove}
+        onMouseEnter={onRowMove}
         onMouseLeave={onRowLeave}
         className="group relative box-border flex flex-col justify-center px-2 py-1"
       >
@@ -410,7 +416,8 @@ function RailRow({
       data-kind={kind}
       data-density="card"
       style={{ height: Math.round(cardHeight * scale) }}
-      onMouseEnter={onRowHover ? (e) => onRowHover(e.currentTarget) : undefined}
+      onMouseMove={onRowMove}
+      onMouseEnter={onRowMove}
       onMouseLeave={onRowLeave}
       className="group relative my-1 box-border flex flex-col justify-between overflow-hidden rounded border border-gray-200 px-2 py-1.5 dark:border-gray-700"
     >
@@ -610,6 +617,10 @@ export default function ReadingRail({
   const inputRef = useRef<HTMLInputElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const railPanelRef = useRef<HTMLDivElement>(null);
+  const listScrollRef = useRef<HTMLDivElement>(null);
+  const hoverZoneRef = useRef<{ path: string; zone: "left" | "right" } | null>(
+    null,
+  );
 
   const clearTimer = useCallback(
     (ref: { current: ReturnType<typeof setTimeout> | null }) => {
@@ -759,6 +770,12 @@ export default function ReadingRail({
     }, HOVER_CLOSE_MS);
   }, [clearTimer, setRailState]);
 
+  // 布局 / 密度 / 筛选变化后列表回顶
+  useEffect(() => {
+    const el = listScrollRef.current;
+    if (el) el.scrollTop = 0;
+  }, [railLayout, railDensity, railChip]);
+
   const readPercentFor = useCallback(
     (path: string): number | undefined => readPercentOf(scrollPositions[path]),
     [scrollPositions],
@@ -821,7 +838,32 @@ export default function ReadingRail({
     [clearTimer, openRowPreview],
   );
 
+  const onRowLeftHalf = useCallback(() => {
+    clearTimer(previewTimer);
+    const st = useStore.getState();
+    const p = st.preview;
+    if (!p || p.source !== "rail" || p.pinned) return;
+    st.closePreview();
+  }, [clearTimer]);
+
+  const handleRowMove = useCallback(
+    (item: RecentFile, el: HTMLElement, e: ReactMouseEvent<HTMLElement>) => {
+      const st = useStore.getState();
+      if (!st.previewSettings.enabled || !st.previewSettings.railHover) return;
+      const zone = isRightHalfOfBox({ x: e.clientX, y: e.clientY }, boxOf(el))
+        ? ("right" as const)
+        : ("left" as const);
+      const prev = hoverZoneRef.current;
+      if (prev && prev.path === item.path && prev.zone === zone) return;
+      hoverZoneRef.current = { path: item.path, zone };
+      if (zone === "right") onRowEnter(item, el);
+      else onRowLeftHalf();
+    },
+    [onRowEnter, onRowLeftHalf],
+  );
+
   const onRowLeave = useCallback(() => {
+    hoverZoneRef.current = null;
     clearTimer(previewTimer);
   }, [clearTimer]);
 
@@ -906,7 +948,7 @@ export default function ReadingRail({
               onSplit={openInSplit}
               onReveal={revealInFinder}
               onTogglePin={togglePinnedPath}
-              onRowHover={(el) => onRowEnter(m.item, el)}
+              onRowMove={(e) => handleRowMove(m.item, e.currentTarget, e)}
               onRowLeave={onRowLeave}
             />
           ))
@@ -1181,7 +1223,13 @@ export default function ReadingRail({
     >
       {header}
       {search}
-      <div className="flex-1 overflow-y-auto">{listBody}</div>
+      <div
+        ref={listScrollRef}
+        data-testid="rail-scroll"
+        className="flex-1 overflow-y-auto"
+      >
+        {listBody}
+      </div>
     </div>
   );
 

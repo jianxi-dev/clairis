@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   HOVER_DELAY_MS,
+  PREVIEW_LEAVE_CLOSE_MS,
   PREVIEW_GAP,
   PREVIEW_MIN_H,
   PREVIEW_MIN_W,
@@ -10,7 +11,11 @@ import {
   clampPreviewSize,
   flipAnchor,
   gridTriggerOf,
+  isRightHalfOfBox,
+  pointInBox,
   resizePreview,
+  shouldScheduleLeaveClose,
+  type Box,
   type Rect,
   type ResizeEdge,
   type Viewport,
@@ -311,5 +316,103 @@ describe("锚定契约一致性", () => {
     const a = anchorFromRail(input);
     // 翻转后左侧落点应不再越界
     expect(flipAnchor({ x: a.x, y: a.y, ...SIZE }, VIEW).x).toBe(false);
+  });
+});
+
+describe("触发区判定（右半区）", () => {
+  const box: Box = { left: 100, top: 0, width: 200, height: 40 };
+
+  it("中线归右：右半区 true、左半区 false", () => {
+    expect(isRightHalfOfBox({ x: 200, y: 20 }, box)).toBe(true);
+    expect(isRightHalfOfBox({ x: 201, y: 20 }, box)).toBe(true);
+    expect(isRightHalfOfBox({ x: 199, y: 20 }, box)).toBe(false);
+    expect(isRightHalfOfBox({ x: 100, y: 20 }, box)).toBe(false);
+  });
+
+  it("与指针 y 无关，只看 x", () => {
+    expect(isRightHalfOfBox({ x: 250, y: 9999 }, box)).toBe(true);
+    expect(isRightHalfOfBox({ x: 50, y: 9999 }, box)).toBe(false);
+  });
+
+  it("奇数宽度：中线所在列归右（居中悬停必须触发）", () => {
+    const odd: Box = { left: 0, top: 0, width: 239, height: 32 };
+    expect(isRightHalfOfBox({ x: 119, y: 16 }, odd)).toBe(true);
+    expect(isRightHalfOfBox({ x: 118, y: 16 }, odd)).toBe(false);
+  });
+});
+
+describe("pointInBox", () => {
+  const box: Box = { left: 10, top: 20, width: 100, height: 50 };
+
+  it("边界含在内", () => {
+    expect(pointInBox({ x: 10, y: 20 }, box)).toBe(true);
+    expect(pointInBox({ x: 110, y: 70 }, box)).toBe(true);
+    expect(pointInBox({ x: 10, y: 70 }, box)).toBe(true);
+  });
+
+  it("越界为 false；空矩形为 false", () => {
+    expect(pointInBox({ x: 9, y: 20 }, box)).toBe(false);
+    expect(pointInBox({ x: 111, y: 20 }, box)).toBe(false);
+    expect(pointInBox({ x: 50, y: 19 }, box)).toBe(false);
+    expect(pointInBox({ x: 50, y: 71 }, box)).toBe(false);
+    expect(pointInBox({ x: 50, y: 50 }, null)).toBe(false);
+  });
+});
+
+describe("shouldScheduleLeaveClose（离窗关闭判定）", () => {
+  const pointer: { x: number; y: number } = { x: 1000, y: 700 };
+  const previewBox: Box = { left: 300, top: 100, width: 320, height: 240 };
+  const railBox: Box = { left: 0, top: 0, width: 240, height: 800 };
+  const base = {
+    pointer,
+    previewBox,
+    railBox,
+    pinned: false,
+    interacting: false,
+  };
+
+  it("指针在两者之外 → 安排关闭", () => {
+    expect(shouldScheduleLeaveClose(base)).toBe(true);
+  });
+
+  it("钉住 / 拖拽缩放中 → 不关", () => {
+    expect(shouldScheduleLeaveClose({ ...base, pinned: true })).toBe(false);
+    expect(shouldScheduleLeaveClose({ ...base, interacting: true })).toBe(
+      false,
+    );
+  });
+
+  it("指针在预览窗内 → 不关", () => {
+    expect(
+      shouldScheduleLeaveClose({
+        ...base,
+        pointer: { x: 400, y: 200 },
+      }),
+    ).toBe(false);
+  });
+
+  it("指针在 rail 内 → 不关", () => {
+    expect(
+      shouldScheduleLeaveClose({
+        ...base,
+        pointer: { x: 120, y: 400 },
+      }),
+    ).toBe(false);
+  });
+
+  it("无 rail 矩形时只按预览窗判定", () => {
+    expect(
+      shouldScheduleLeaveClose({
+        ...base,
+        railBox: null,
+        pointer: { x: 120, y: 400 },
+      }),
+    ).toBe(true);
+  });
+});
+
+describe("离窗关闭延迟", () => {
+  it("PREVIEW_LEAVE_CLOSE_MS 为 180", () => {
+    expect(PREVIEW_LEAVE_CLOSE_MS).toBe(180);
   });
 });

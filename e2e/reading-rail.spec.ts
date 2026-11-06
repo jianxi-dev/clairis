@@ -296,3 +296,44 @@ test("设为默认后重启：rail 视图规格与所设严格相等", async ({ 
   expect(spec.density).toBe("compact");
   expect(spec.spec).toEqual({ layout: "tabs", density: "compact" });
 });
+
+test("三点菜单切换布局/密度后列表回顶", async ({ page }) => {
+  await boot(page);
+  await seed(page);
+  await page.evaluate(() => {
+    const w = window as unknown as {
+      __biaoyue_openFile__: (p: string, c: string, t: string) => void;
+    };
+    for (let i = 1; i <= 9; i += 1) {
+      w.__biaoyue_openFile__(`/tmp/rr/extra${i}.md`, `# 额外${i}`, `额外${i}`);
+    }
+  });
+  await openHover(page);
+  await page.locator('[data-testid="rail-pin"]').click();
+  await expect(page.locator('[data-testid="rail-panel"]')).toHaveAttribute(
+    "data-rail-state",
+    "pinned",
+  );
+
+  const scroll = page.locator('[data-testid="rail-scroll"]');
+  const scrollTop = () => scroll.evaluate((el) => el.scrollTop);
+  const scrollTo = (top: number) =>
+    page.evaluate((t) => {
+      const el = document.querySelector('[data-testid="rail-scroll"]');
+      if (el) el.scrollTop = t;
+    }, top);
+
+  await page.locator('[data-testid="rail-settings"]').click();
+  await expect(page.locator('[data-testid="rail-menu"]')).toBeVisible();
+
+  await scrollTo(300);
+  await expect.poll(scrollTop).toBe(300);
+  await page.locator('[data-testid="rail-layout-tabs"]').click();
+  await expect.poll(scrollTop).toBe(0);
+
+  await scrollTo(300);
+  await expect.poll(scrollTop).toBe(300);
+  await page.locator('[data-testid="rail-density-compact"]').click();
+  await expect.poll(scrollTop).toBe(0);
+  await shot(page, "rail-scroll-reset");
+});
