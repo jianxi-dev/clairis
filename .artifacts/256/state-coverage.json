@@ -1,0 +1,29 @@
+{
+  "task": "256-icon-system",
+  "states": [
+    {
+      "state": "overview-1200",
+      "screenshot": ".artifacts/256/overview-1200.png",
+      "assertion": "passed",
+      "note": "1200px 原型总览"
+    },
+    {
+      "state": "overview-1024",
+      "screenshot": ".artifacts/256/overview-1024.png",
+      "assertion": "passed",
+      "note": "1024px 无横向滚动"
+    },
+    {
+      "state": "full-1200",
+      "screenshot": ".artifacts/256/full-1200.png",
+      "assertion": "passed",
+      "note": "全页：33 图标 / 三主题 / 场景"
+    },
+    {
+      "state": "full-1024",
+      "screenshot": ".artifacts/256/full-1024.png",
+      "assertion": "passed",
+      "note": "窄宽全页"
+    }
+  ]
+}
