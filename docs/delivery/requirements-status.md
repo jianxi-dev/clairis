@@ -43,6 +43,7 @@ openspec status --change <name>   # 单个变更工件完成度
 - ⬜ 待开发：16
 - 🗒 未立项（遗留散件登记）：约 16（展卷仪式 8 模块 + TODOS 安全/功能项）
 - 布局域（`layout-portal`）：12 条构建验收（L-1…L-12，第 12 条 Out of Scope）已实现，16/16 票合并，已归档 `openspec/changes/archive/2026-11-05-layout-portal`
+- 阅读/编辑表面域（`reading-surface-refine`）：+10 需求（G-6/G-7、A-13/A-14、E-17/E-18、N-1…N-3、CF-6）已实现，8/8 票合并（含 #224/#226/#231 三次缺陷修复），已归档 `openspec/changes/archive/2026-11-06-reading-surface-refine`
 
 ## 逐域状态
 
@@ -61,6 +62,8 @@ openspec status --change <name>   # 单个变更工件完成度
 | A-10 | 阅读宽度与标题配色 | ✅ | change `html-preview-rework` |
 | A-11 | 预览表格宽度与自动换行 | ✅ | change `preview-table-width` |
 | A-12 | 图表渲染（Pele，同步出图 / 主题变量 / 导出带图） | ✅ | change `diagram-engine-pele` |
+| A-13 | 悬浮预览的离开关闭与媒体渲染 | ✅ | change `reading-surface-refine`（归档 2026-11-06） |
+| A-14 | HTML 摘要文本化 | ✅ | change `reading-surface-refine`（归档 2026-11-06） |
 
 ### capture（15）
 
@@ -93,6 +96,8 @@ openspec status --change <name>   # 单个变更工件完成度
 | B-2 | 空状态继续区分块 | 🟡 | 设计已批 `docs/design/approved/empty-state/` |
 | B-4 | 内置示例文件释放 | 🟡 | `src-tauri/samples/` 已就位 |
 | B-5 | 空状态设计规则 | 🟡 | 设计已批 `docs/design/approved/empty-state/` |
+| G-6 | 顶栏职责与页签身份 | ✅ | change `reading-surface-refine`（归档 2026-11-06） |
+| G-7 | 图标语义与全屏可用性 | ✅ | change `reading-surface-refine`（归档 2026-11-06） |
 
 ### navigation（5）
 
@@ -103,6 +108,16 @@ openspec status --change <name>   # 单个变更工件完成度
 | B-6 | 三视图切换 | ⬜ | 无实现 |
 | B-7 | Ctrl+1~9 直开条目 | ⬜ | 无实现 |
 | B-8 | 后退/前进历史导航 | ⬜ | 无实现 |
+| N-1 | 本机最近文件自动发现 | ✅ | change `reading-surface-refine`（归档 2026-11-06） |
+| N-2 | 阅读空间预览触发区与列表回顶 | ✅ | change `reading-surface-refine`（归档 2026-11-06） |
+| N-3 | 本机标题与正文检索 | ✅ | change `reading-surface-refine`（归档 2026-11-06） |
+
+### configuration（1）
+
+| 编号 | 需求 | 状态 | 证据 |
+|---|---|---|---|
+| CF-1…CF-5 | 配置三层/原子写/快照回滚/校验/热应用 | ✅ | 既有实现（V3 沿用） |
+| CF-6 | 阅读设置归属与设置窗自适应 | ✅ | change `reading-surface-refine`（归档 2026-11-06） |
 
 ### layout（12）
 
@@ -154,6 +169,8 @@ openspec status --change <name>   # 单个变更工件完成度
 | E-14 | 浮层定位优先级（不遮挡不越界 > 对齐 > 最近） | ✅ | PR #134 + `e2e/shortest-path.spec.ts` |
 | E-15 | HTML 编辑闭环（iframe 预览 / 相对资源 / 编辑后可见） | ✅ | change `html-edit-loop`（归档 2026-11-04，PR #159） |
 | E-16 | HTML 可视化编辑（点选 / 改字 / 拆块 / 保存零残留） | ✅ | change `html-visual-editing`（PR #168/#169/#188/#189）；ADR 0010 |
+| E-17 | 块手柄召唤区域与滑入菜单 | ✅ | change `reading-surface-refine`（归档 2026-11-06） |
+| E-18 | 正文选区胶囊 | ✅ | change `reading-surface-refine`（归档 2026-11-06） |
 
 ### docs-governance（3）
 
