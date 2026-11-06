@@ -463,6 +463,9 @@ test("离窗 180ms 防抖关闭；179ms 内保持", async ({ page }) => {
   await seed(page);
   await pinRail(page);
   await page.clock.install();
+  // 暂停真实时间流：install 后 Date.now 随真实时间前进，runFor(179) 会被真实
+  // 时间漏过 180ms 边界。pauseAt 冻结后 runFor 只推进 fake clock，边界才确定。
+  await page.clock.pauseAt((await page.evaluate(() => Date.now())) + 1000);
 
   const preview = page.locator(PREVIEW);
   await hoverRowRightHalf(page, "markdown");
