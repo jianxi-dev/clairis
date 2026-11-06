@@ -3,9 +3,14 @@ import type { EditorView } from "@codemirror/view";
 import { getActiveEditorView } from "../../editors/editorRef";
 import { invoke } from "@tauri-apps/api/core";
 import { humanizeAgentError } from "../../lib/aiErrors";
+import { useAiEntryStore } from "../../hooks/useAiEntry";
+import { detectSelectionPillMode } from "../../lib/selectionPillMode";
 import DiffView from "./DiffView";
 
+type PillMode = "editor" | "preview";
+
 interface PillSelection {
+  mode: PillMode;
   text: string;
   x: number;
   y: number;
@@ -20,26 +25,53 @@ interface DiffResult {
   to: number;
 }
 
-const ACTIONS = [
+interface EditorAction {
+  key: string;
+  label: string;
+  prompt: (t: string) => string;
+}
+
+const EDITOR_ACTIONS: readonly EditorAction[] = [
   {
     key: "rewrite",
     label: "改写",
-    prompt: (t: string) =>
-      `请改写下面的文本，只返回替换后的文本，不要解释：\n\n${t}`,
+    prompt: (t) => `请改写下面的文本，只返回替换后的文本，不要解释：\n\n${t}`,
   },
   {
     key: "translate",
     label: "翻译",
-    prompt: (t: string) =>
-      `请把下面的文本翻译成中文，只返回译文，不要解释：\n\n${t}`,
+    prompt: (t) => `请把下面的文本翻译成中文，只返回译文，不要解释：\n\n${t}`,
   },
   {
     key: "polish",
     label: "润色",
-    prompt: (t: string) =>
+    prompt: (t) =>
       `请润色下面的文本，保持原意，只返回润色后的文本，不要解释：\n\n${t}`,
   },
-] as const;
+];
+
+type PreviewAction =
+  | { key: "copy"; label: "复制" }
+  | { key: "explain"; label: "解释"; prompt: string }
+  | { key: "translate"; label: "翻译"; prompt: string };
+
+const PREVIEW_ACTIONS: readonly PreviewAction[] = [
+  { key: "copy", label: "复制" },
+  {
+    key: "explain",
+    label: "解释",
+    prompt: "请解释下面这段文字，说明它的含义与上下文：",
+  },
+  {
+    key: "translate",
+    label: "翻译",
+    prompt: "请把下面这段文字翻译成中文，只返回译文：",
+  },
+];
+
+function previewRoots(): HTMLElement[] {
+  return Array.from(document.querySelectorAll<HTMLElement>(".preview-content"));
+}
 
 export default function SelectionPill() {
   const [pill, setPill] = useState<PillSelection | null>(null);
@@ -64,18 +96,13 @@ export default function SelectionPill() {
         return;
       }
       const s = window.getSelection();
-      if (!s || s.isCollapsed || s.rangeCount === 0) {
-        setPill(null);
-        return;
-      }
       const view = getActiveEditorView();
-      if (
-        !view ||
-        !s.anchorNode ||
-        !s.focusNode ||
-        !view.dom.contains(s.anchorNode) ||
-        !view.dom.contains(s.focusNode)
-      ) {
+      const mode = detectSelectionPillMode(
+        s,
+        view?.dom ?? null,
+        previewRoots(),
+      );
+      if (!mode || !s) {
         setPill(null);
         return;
       }
@@ -86,13 +113,22 @@ export default function SelectionPill() {
       }
       const rect = s.getRangeAt(0).getBoundingClientRect();
       if (!rect || (rect.width === 0 && rect.height === 0)) return;
+      const x = rect.left + rect.width / 2;
+      const y = rect.top;
+
+      if (mode === "preview") {
+        setPill({ mode, text, x, y, from: 0, to: 0 });
+        return;
+      }
+
       try {
-        const from = view.posAtDOM(s.anchorNode, s.anchorOffset);
-        const to = view.posAtDOM(s.focusNode, s.focusOffset);
+        const from = view!.posAtDOM(s.anchorNode!, s.anchorOffset);
+        const to = view!.posAtDOM(s.focusNode!, s.focusOffset);
         setPill({
+          mode,
           text,
-          x: rect.left + rect.width / 2,
-          y: rect.top,
+          x,
+          y,
           from: Math.min(from, to),
           to: Math.max(from, to),
         });
@@ -103,13 +139,30 @@ export default function SelectionPill() {
     const onHide = () => {
       if (!busyRef.current && !diffRef.current) setPill(null);
     };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      if (busyRef.current || diffRef.current) return;
+      setPill(null);
+    };
+    const onDocMouseDown = (e: MouseEvent) => {
+      if (busyRef.current || diffRef.current) return;
+      const pillEl = document.querySelector<HTMLElement>(
+        "[data-selection-pill]",
+      );
+      if (pillEl?.contains(e.target as Node)) return;
+      setPill(null);
+    };
     document.addEventListener("selectionchange", onSelectionChange);
+    document.addEventListener("mousedown", onDocMouseDown, true);
     window.addEventListener("scroll", onHide, { capture: true });
     window.addEventListener("resize", onHide);
+    window.addEventListener("keydown", onKey);
     return () => {
       document.removeEventListener("selectionchange", onSelectionChange);
+      document.removeEventListener("mousedown", onDocMouseDown, true);
       window.removeEventListener("scroll", onHide, { capture: true });
       window.removeEventListener("resize", onHide);
+      window.removeEventListener("keydown", onKey);
     };
   }, []);
 
@@ -119,7 +172,29 @@ export default function SelectionPill() {
     setNotice(null);
   }
 
-  async function run(action: (typeof ACTIONS)[number]): Promise<void> {
+  function copySelection(text: string): void {
+    // 剪贴板不可用（如非安全上下文）时静默；胶囊仍按预期关闭
+    navigator.clipboard?.writeText(text).catch(() => {});
+    closeAll();
+  }
+
+  function askAi(prompt: string, text: string): void {
+    const ai = useAiEntryStore.getState();
+    ai.setInput(`${prompt}\n\n${text}`);
+    ai.openOverlay();
+    closeAll();
+  }
+
+  function runPreviewAction(action: PreviewAction): void {
+    if (!pill) return;
+    if (action.key === "copy") {
+      copySelection(pill.text);
+      return;
+    }
+    askAi(action.prompt, pill.text);
+  }
+
+  async function run(action: EditorAction): Promise<void> {
     if (!pill || busyRef.current) return;
     const selection = pill;
     setBusy(action.key);
@@ -180,20 +255,33 @@ export default function SelectionPill() {
       {pill && !busy && !diff && (
         <div
           data-selection-pill
-          className="fixed z-[2147482960] flex items-center gap-0.5 -translate-x-1/2 rounded-full border border-black/6 dark:border-white/10 bg-white/95 dark:bg-[#1c1c1e]/95 backdrop-blur-sm shadow-lg px-1.5 py-1"
+          data-selection-pill-mode={pill.mode}
+          className="app-capsule fixed z-[2147482960] flex items-center gap-0.5 -translate-x-1/2 border border-black/6 dark:border-white/10 bg-white/95 dark:bg-[#1c1c1e]/95 backdrop-blur-sm shadow-lg px-1.5 py-1"
           style={{ left: pill.x, top: Math.max(8, pill.y - 44) }}
         >
-          {ACTIONS.map((a) => (
-            <button
-              key={a.key}
-              type="button"
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => void run(a)}
-              className="px-2 py-0.5 rounded-full text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-            >
-              {a.label}
-            </button>
-          ))}
+          {pill.mode === "editor"
+            ? EDITOR_ACTIONS.map((a) => (
+                <button
+                  key={a.key}
+                  type="button"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => void run(a)}
+                  className="px-2 py-0.5 rounded-full text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                >
+                  {a.label}
+                </button>
+              ))
+            : PREVIEW_ACTIONS.map((a) => (
+                <button
+                  key={a.key}
+                  type="button"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => runPreviewAction(a)}
+                  className="px-2 py-0.5 rounded-full text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                >
+                  {a.label}
+                </button>
+              ))}
         </div>
       )}
 

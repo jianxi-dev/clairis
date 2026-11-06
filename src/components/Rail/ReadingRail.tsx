@@ -457,7 +457,7 @@ function RailRow({
           data-testid="rail-card-chip"
           data-kind={kind}
           style={{ color: colorOfType(kind), borderColor: colorOfType(kind) }}
-          className="shrink-0 rounded-full border px-1.5 py-px leading-none"
+          className="app-capsule shrink-0 border px-1.5 py-px leading-none"
         >
           {RAIL_KIND_LABELS[kind]}
         </span>

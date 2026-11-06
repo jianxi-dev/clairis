@@ -1,0 +1,46 @@
+{
+  "states": [
+    {
+      "state": "01-editor-pill-light",
+      "screenshot": ".artifacts/217/01-editor-pill-light.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-06T07:46:05Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "02-reading-pill-light",
+      "screenshot": ".artifacts/217/02-reading-pill-light.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-06T07:46:05Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "03-capsule-unification",
+      "screenshot": ".artifacts/217/03-capsule-unification.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-06T07:46:05Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "04-no-residue",
+      "screenshot": ".artifacts/217/04-no-residue.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-06T07:46:05Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "05-editor-pill-dark",
+      "screenshot": ".artifacts/217/05-editor-pill-dark.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-06T07:46:05Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "06-reading-pill-dark",
+      "screenshot": ".artifacts/217/06-reading-pill-dark.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-06T07:46:05Z",
+      "runner": "unknown@MMBP"
+    }
+  ]
+}
