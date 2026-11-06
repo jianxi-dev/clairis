@@ -43,7 +43,7 @@
 
 ## 6. 快速打开、网格入口与本机检索
 
-- [ ] 6.1 Cmd/Ctrl+P 阻止原生打印并打开 QuickOpen（页签/最近文件/命令：网格、设置）；网格保留 Cmd+Shift+\ 与顶栏入口。
+- [x] 6.1 Cmd/Ctrl+P 阻止原生打印并打开 QuickOpen（页签/最近文件/命令：网格、设置）；网格保留 Cmd+Shift+\ 与顶栏入口。
   - 用户可见：Ctrl+P 出搜索窗；网格有明确入口。
   - 接线：`App.tsx`、`QuickOpen.tsx`、`Toolbar.tsx`。
   - 验收：Ctrl+P 打开 quick-open；原生打印不触发；网格入口可见。
