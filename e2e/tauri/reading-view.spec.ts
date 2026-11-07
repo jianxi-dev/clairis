@@ -64,24 +64,27 @@ test("阅读模式：墨线随模式与沉浸态显隐", async ({ page }) => {
   await page.waitForTimeout(200);
   await expect(page.locator(".reading-ink")).toHaveCount(1);
 
-  // Cmd+\ 进入沉浸：chrome 淡出、墨线隐藏
+  // Cmd+\ 进入沉浸：chrome 高度收拢为 0、墨线隐藏
   await page.keyboard.press("Meta+\\");
   await page.waitForTimeout(500);
   await expect(page.locator(".reading-ink")).toHaveCount(0);
-  const hiddenVisibility = await page.evaluate(() => {
+  const hiddenHeight = await page.evaluate(() => {
     const header = document.querySelector("header");
-    return header ? getComputedStyle(header).visibility : "missing";
+    return header ? Math.round(header.getBoundingClientRect().height) : -1;
   });
-  expect(hiddenVisibility).toBe("hidden");
+  expect(hiddenHeight).toBe(0);
 
-  // Shift+Cmd+T 浮出 chrome
+  // Shift+Cmd+T 唤出悬浮页签条（流内顶栏保持收拢）
   await page.keyboard.press("Meta+Shift+T");
   await page.waitForTimeout(500);
-  const shownVisibility = await page.evaluate(() => {
+  await expect(page.locator('[data-testid="immersive-peek-bar"]')).toHaveCount(
+    1,
+  );
+  const stillHidden = await page.evaluate(() => {
     const header = document.querySelector("header");
-    return header ? getComputedStyle(header).visibility : "missing";
+    return header ? Math.round(header.getBoundingClientRect().height) : -1;
   });
-  expect(shownVisibility).toBe("visible");
+  expect(stillHidden).toBe(0);
 
   // Esc 退出沉浸：墨线恢复
   await page.keyboard.press("Escape");

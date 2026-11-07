@@ -25,10 +25,11 @@ async function openFile(
   await page.waitForTimeout(300);
 }
 
-// 行为变更（E-15 / H1）：预览不再 asset:// 直载磁盘文件，而是一律 srcdoc。
-// 直载读的是磁盘旧内容，编辑后未保存时切回预览看不到改动；srcdoc 用当前
-// content 重建，相对引用由 rewriteHtmlPaths 重写成 asset://。脚本执行留给 H2。
-test("HTML 预览：srcdoc 渲染且相对引用被重写", async ({ page }) => {
+// 已保存且未编辑：asset 直载（脚本/相对路径由文档自身解析，A-3）；
+// 未保存改动：回退 srcdoc，相对引用由 rewriteHtmlPaths 重写，脚本被 CSP 禁掉。
+test("HTML 预览：已保存文件 asset 直载；改动后回退 srcdoc 并重写", async ({
+  page,
+}) => {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto(APP_URL, { waitUntil: "networkidle" });
   await page.waitForSelector("header", { timeout: 10000 });
@@ -37,28 +38,50 @@ test("HTML 预览：srcdoc 渲染且相对引用被重写", async ({ page }) => 
 
   const iframe = page.locator('iframe[title="HTML 预览"]');
   await expect(iframe).toHaveCount(1);
+  await expect(iframe).toHaveAttribute("src", /asset:\/\//);
+  expect(await iframe.getAttribute("srcdoc")).toBeNull();
+
+  // 标脏 → srcdoc 回退
+  await page.evaluate(() => {
+    const store = (window as unknown as Record<string, unknown>)
+      .__biaoyue_store__ as {
+      getState: () => {
+        activeTabId: string;
+        updateTabContent: (id: string, content: string) => void;
+      };
+    };
+    const s = store.getState();
+    s.updateTabContent(s.activeTabId, '<p>hi</p><img src="./pic.png">');
+  });
+  await expect
+    .poll(async () => await iframe.getAttribute("srcdoc"))
+    .not.toBeNull();
   const srcdoc = await iframe.getAttribute("srcdoc");
-  expect(srcdoc).not.toBeNull();
   expect(srcdoc).toContain("<p>hi</p>");
-  // 预览态禁用脚本：CSP script-src 'none'（H2 再设计桥协议）
+  expect(srcdoc).toContain("asset://");
+  // 未保存内容不可信：CSP script-src 'none'
   expect(srcdoc).toContain("script-src 'none'");
 });
 
-test("HTML 预览：无路径文档同样走 srcdoc", async ({ page }) => {
+test("HTML 预览：无路径文档走 srcdoc", async ({ page }) => {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto(APP_URL, { waitUntil: "networkidle" });
   await page.waitForSelector("header", { timeout: 10000 });
 
-  // 无路径：直接渲染 PreviewView 的 srcdoc 回退（通过 newTab + html kind 不可行，用 evaluate 直接验证组件）
-  // 实际无路径 html 场景=新建文档切 html，此处验证 iframe 存在性即可
   await page.evaluate(() => {
     const store = (window as unknown as Record<string, unknown>)
       .__biaoyue_store__ as {
       getState: () => {
         openFile: (p: string, c: string) => void;
+        newTab: () => void;
+        updateTabContent: (id: string, content: string) => void;
+        activeTabId: string;
       };
     };
     store.getState().openFile("/Users/test/untitled.html", "<p>x</p>");
+    const s = store.getState();
+    // 模拟未保存文档：路径无法直载时走 srcdoc
+    s.updateTabContent(s.activeTabId, "<p>x</p>");
   });
   await page.waitForTimeout(300);
 
