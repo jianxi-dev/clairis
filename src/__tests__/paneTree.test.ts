@@ -6,6 +6,8 @@ import {
   createLeaf,
   createRootLeaf,
   findLeaf,
+  generateBranchId,
+  generateLeafId,
   leafCount,
   leafOfTab,
   listLeaves,
@@ -128,6 +130,34 @@ describe("paneTree 模型", () => {
       expect(next).toMatchObject({ ratio: 0.7 });
       const bad = setBranchRatio(t, branchId, Number.NaN);
       expect(bad).toMatchObject({ ratio: 0.5 });
+    });
+
+    it("重复 branch id 时只更新第一个分支（#272）", () => {
+      const branchId = "branch-dup";
+      const dup: PaneLayout = {
+        type: "node",
+        id: branchId,
+        dir: "row",
+        ratio: 0.5,
+        children: [
+          {
+            type: "node",
+            id: branchId,
+            dir: "col",
+            ratio: 0.5,
+            children: [createLeaf("a"), createLeaf("b")],
+          },
+          createLeaf("c"),
+        ],
+      };
+      const next = setBranchRatio(dup, branchId, 0.8);
+      expect(next.type).toBe("node");
+      if (next.type !== "node") throw new Error("expected branch");
+      expect(next.ratio).toBe(0.8);
+      const inner = next.children[0];
+      expect(inner.type).toBe("node");
+      if (inner.type !== "node") throw new Error("expected inner branch");
+      expect(inner.ratio).toBe(0.5);
     });
 
     it("addTab / removeTab 维护 activeTabId", () => {
@@ -500,6 +530,24 @@ describe("paneTree 模型", () => {
         },
       };
       expect(parseSerializedLayout(JSON.stringify(old))).not.toBeNull();
+    });
+    describe("id 生成（#272）", () => {
+      it("branch / leaf id 每次不同且带前缀", () => {
+        const b1 = generateBranchId();
+        const b2 = generateBranchId();
+        expect(b1).not.toBe(b2);
+        expect(b1.startsWith("branch-")).toBe(true);
+        expect(b2.startsWith("branch-")).toBe(true);
+
+        const p1 = generateLeafId();
+        const p2 = generateLeafId();
+        expect(p1).not.toBe(p2);
+        expect(p1.startsWith("pane-")).toBe(true);
+        expect(p2.startsWith("pane-")).toBe(true);
+        // 旧持久化 id 的形态（branch-1 / pane-1）不再产生
+        expect(b1).not.toBe("branch-1");
+        expect(p1).not.toBe("pane-1");
+      });
     });
   });
 });

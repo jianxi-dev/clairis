@@ -24,12 +24,15 @@ export function useDragResize({
   const capture = useRef<{ el: Element; pointerId: number } | null>(null);
   const onDragRef = useRef(onDrag);
   const onEndRef = useRef(onEnd);
+  /** 生效中的帧合并 flush；finish 时先 flush，避免丢掉最后一帧位置。 */
+  const flushRef = useRef<() => void>(() => {});
 
   onDragRef.current = onDrag;
   onEndRef.current = onEnd;
 
   const finish = useCallback(() => {
     if (!dragging.current) return;
+    flushRef.current();
     dragging.current = false;
     const cap = capture.current;
     capture.current = null;
@@ -42,16 +45,41 @@ export function useDragResize({
   }, []);
 
   useEffect(() => {
-    const onMove = (e: PointerEvent) => {
-      if (!dragging.current) return;
-      onDragRef.current(e);
+    let rafId: number | null = null;
+    let pending: PointerEvent | null = null;
+
+    const flush = () => {
+      rafId = null;
+      const ev = pending;
+      pending = null;
+      if (ev && dragging.current) onDragRef.current(ev);
     };
 
+    // 一帧只排一次、只取最新事件。旧实现每个 pointermove 都排一帧，
+    // 高频移动会把几十次 setState 堆进同一帧，拖动因此发涩。
     const moveHandler = throttle
       ? (e: PointerEvent) => {
-          requestAnimationFrame(() => onMove(e));
+          if (!dragging.current) return;
+          pending = e;
+          if (rafId === null) rafId = requestAnimationFrame(flush);
         }
-      : onMove;
+      : (e: PointerEvent) => {
+          if (!dragging.current) return;
+          onDragRef.current(e);
+        };
+
+    const cancelFrame = () => {
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
+      pending = null;
+    };
+
+    flushRef.current = () => {
+      cancelFrame();
+      flush();
+    };
 
     document.addEventListener("pointermove", moveHandler);
     document.addEventListener("pointerup", finish);
@@ -60,6 +88,8 @@ export function useDragResize({
       document.removeEventListener("pointermove", moveHandler);
       document.removeEventListener("pointerup", finish);
       document.removeEventListener("pointercancel", finish);
+      cancelFrame();
+      flushRef.current = () => {};
       finish();
     };
   }, [throttle, finish]);

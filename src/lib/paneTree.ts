@@ -79,9 +79,28 @@ export interface SerializedPaneLayout {
 
 const EDITOR_MODES: readonly EditorMode[] = ["preview", "edit", "source"];
 
-let nextBranchId = 1;
-function generateBranchId(): string {
-  return `branch-${nextBranchId++}`;
+/**
+ * 全局唯一 id。模块级自增计数器在重启后会从 1 重新开始，与持久化布局里的
+ * 旧 id（`branch-1` / `pane-1`）撞车；`setBranchRatio` 会把所有同 id 分支
+ * 一起改写，表现为「拖一个分隔线，其他并行栏目跟着变」。改用随机 token 后，
+ * 新 id 与任何历史 id 都不相等，无需在恢复时重排。
+ */
+function uniqueId(prefix: string): string {
+  const c = globalThis.crypto;
+  const token =
+    c && typeof c.randomUUID === "function"
+      ? c.randomUUID()
+      : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+  return `${prefix}-${token}`;
+}
+
+export function generateBranchId(): string {
+  return uniqueId("branch");
+}
+
+/** 新 leaf 的 id（`stores/index.ts` 的 splitPane / dropFileOnPane 共用）。 */
+export function generateLeafId(): string {
+  return uniqueId("pane");
 }
 
 export function createRootLeaf(): PaneLeaf {
@@ -230,15 +249,20 @@ export function setBranchRatio(
   ratio: number,
 ): PaneLayout {
   const safe = Number.isFinite(ratio) ? Math.min(1, Math.max(0, ratio)) : 0.5;
+  // 只改第一个匹配分支：即使外部状态里出现重复 id，也不能让一次拖拽
+  // 扩散到整棵树（#272 的根因之一）。
+  let done = false;
   const walk = (node: PaneLayout): PaneLayout => {
     if (isLeaf(node)) return node;
-    const children: [PaneLayout, PaneLayout] = [
-      walk(node.children[0]),
-      walk(node.children[1]),
-    ];
-    return node.id === branchId
-      ? { ...node, ratio: safe, children }
-      : { ...node, children };
+    // 先序匹配：父分支优先于同名后代，符合「拖的就是这一条分隔线」的直觉。
+    if (!done && node.id === branchId) {
+      done = true;
+      return { ...node, ratio: safe };
+    }
+    return {
+      ...node,
+      children: [walk(node.children[0]), walk(node.children[1])],
+    };
   };
   return walk(root);
 }

@@ -57,6 +57,9 @@ export default function TabBar({
     tabId: string;
     startX: number;
     active: boolean;
+    /** 捕获指针的元素与 id：指针越过正文 iframe 时仍能收到 move/up。 */
+    el: HTMLElement;
+    pointerId: number;
   } | null>(null);
   const dragGapRef = useRef<number | null>(null);
   const suppressClickRef = useRef(false);
@@ -107,6 +110,9 @@ export default function TabBar({
     const finish = (commit: boolean, e?: PointerEvent) => {
       const drag = dragRef.current;
       if (!drag) return;
+      if (drag.el.hasPointerCapture?.(drag.pointerId)) {
+        drag.el.releasePointerCapture(drag.pointerId);
+      }
       if (drag.active) {
         // 拖拽结束后的那次 click 是拖拽的尾巴，不能当作切签
         suppressClickRef.current = true;
@@ -127,15 +133,18 @@ export default function TabBar({
       setOverPaneId(null);
     };
     const onUp = (e: PointerEvent) => finish(true, e);
+    const onCancel = () => finish(false);
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") finish(false);
     };
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onCancel);
     window.addEventListener("keydown", onKey, true);
     return () => {
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onCancel);
       window.removeEventListener("keydown", onKey, true);
     };
   }, [dragEnabled, onReorderTabs, paneId, onMoveToPane]);
@@ -180,10 +189,12 @@ export default function TabBar({
         data-testid="tab-drag-placeholder"
         className="drag-placeholder shrink-0 rounded-sm"
         style={{
-          width: 3,
+          width: 4,
           alignSelf: "stretch",
-          margin: "4px 1px",
+          margin: "3px 1px",
+          borderRadius: 2,
           background: "var(--app-accent)",
+          boxShadow: "0 0 0 1px var(--app-accent-soft)",
         }}
       />
     );
@@ -218,12 +229,21 @@ export default function TabBar({
                   dragEnabled
                     ? (e) => {
                         if (e.button !== 0) return;
+                        // 关闭按钮等子控件自己处理点击：不要捕获指针，
+                        // 否则 click 会被重定向到页签本体，关闭按钮失效。
+                        if ((e.target as HTMLElement).closest("button")) return;
                         suppressClickRef.current = false;
+                        // 捕获指针：拖过正文 iframe 时 pointermove/pointerup
+                        // 仍冒泡到 window，轨迹与落点不会中断。
+                        const el = e.currentTarget;
+                        el.setPointerCapture?.(e.pointerId);
                         dragRef.current = {
                           from: index,
                           tabId: id,
                           startX: e.clientX,
                           active: false,
+                          el,
+                          pointerId: e.pointerId,
                         };
                       }
                     : undefined
@@ -232,11 +252,12 @@ export default function TabBar({
                 data-tab-color={typeColor}
                 style={{
                   borderRight: "1px solid var(--app-border)",
-                  ...(isDragged ? { opacity: 0.5 } : null),
-                  ...(isDragged && overPaneId
+                  ...(isDragged
                     ? {
+                        opacity: 0.5,
                         outline: "2px dashed var(--app-accent)",
                         outlineOffset: 2,
+                        zIndex: 1,
                       }
                     : null),
                 }}
@@ -295,9 +316,8 @@ export default function TabBar({
           <button
             className="w-full text-left px-3 py-1.5 hover:bg-[var(--app-sunken)]"
             onClick={() => {
-              const store = useStore.getState();
-              store.switchTab(menu.tabId);
-              store.splitPane("row");
+              // 右键分栏 = 把当前文件分到那边，而不是新建一个空栏（#272）。
+              useStore.getState().splitPaneWithTab("row", menu.tabId);
               closeMenu();
             }}
           >
@@ -306,9 +326,7 @@ export default function TabBar({
           <button
             className="w-full text-left px-3 py-1.5 hover:bg-[var(--app-sunken)]"
             onClick={() => {
-              const store = useStore.getState();
-              store.switchTab(menu.tabId);
-              store.splitPane("col");
+              useStore.getState().splitPaneWithTab("col", menu.tabId);
               closeMenu();
             }}
           >

@@ -41,8 +41,10 @@ import type { GridGroupMode, GridSort } from "../lib/gridView";
 import {
   addTab,
   createLeaf,
+  leafCount,
   createRootLeaf,
   findLeaf,
+  generateLeafId,
   leafOfTab,
   listLeaves,
   mapLeaves,
@@ -84,9 +86,13 @@ function generateId(): string {
   return `tab-${nextId++}`;
 }
 
-let nextPaneId = 1;
+/**
+ * 新 leaf id。统一走 paneTree 的全局唯一生成器：模块级计数器重启后会与
+ * 持久化布局里的 `pane-N` 撞车，造成 `findLeaf` / `data-pane-id` / React key
+ * 命中错误格（看起来像「复制栏目」）。见 #272。
+ */
 function generatePaneId(): string {
-  return `pane-${nextPaneId++}`;
+  return generateLeafId();
 }
 
 const TEXT_EXTENSIONS: Record<string, FileKind> = {
@@ -283,6 +289,8 @@ interface AppStore {
   setSplitRatios: (ratios: { horizontal?: number; vertical?: number }) => void;
   // Pane 递归树 actions（layout-portal 3.1）
   splitPane: (dir: PaneDir) => void;
+  /** 在 tabId 所在格的指定方向新建一格，并把该页签搬进去（页签右键分栏）。 */
+  splitPaneWithTab: (dir: PaneDir, tabId: string) => void;
   closePane: (leafId: string) => void;
   focusPane: (id: string) => void;
   toggleFullscreenPane: () => void;
@@ -874,6 +882,28 @@ export const useStore = create<AppStore>((set, get) => ({
     });
   },
 
+  splitPaneWithTab: (dir, tabId) => {
+    const state = get();
+    const source = leafOfTab(state.paneRoot, tabId);
+    if (!source) return;
+    const newLeaf = createLeaf(generatePaneId());
+    const split = splitLeaf(state.paneRoot, source.id, dir, newLeaf);
+    if (split === state.paneRoot) return;
+    // 先移除源格页签再落入新格：先加后删会让同一 tabId 短暂出现在两格。
+    const paneRoot = addTab(
+      removeTab(split, source.id, tabId),
+      newLeaf.id,
+      tabId,
+    );
+    set({
+      paneRoot,
+      focusedPaneId: newLeaf.id,
+      activeTabId: tabId,
+      fullscreenPaneId: null,
+      scene: "workspace",
+    });
+  },
+
   closePane: (leafId) => {
     const state = get();
     const target = findLeaf(state.paneRoot, leafId);
@@ -1027,10 +1057,11 @@ export const useStore = create<AppStore>((set, get) => ({
 
   dropFileOnPane: (path, content, targetLeafId, side) => {
     const state = get();
-    if (!findLeaf(state.paneRoot, targetLeafId)) return;
+    const target = findLeaf(state.paneRoot, targetLeafId);
+    if (!target) return;
 
-    // 去重：该文件若已在其它格打开，先整体移除，保证只出现在新格
     const existing = Object.values(state.tabs).find((t) => t.path === path);
+    const source = existing ? leafOfTab(state.paneRoot, existing.id) : null;
     const tabId = existing ? existing.id : generateId();
     const fileKind = existing?.fileKind ?? detectFileKind(path);
     const title = existing?.title ?? extractFileName(path);
@@ -1050,13 +1081,38 @@ export const useStore = create<AppStore>((set, get) => ({
           scrollPos: 0,
           contentHeight: 0,
         };
+    const tabs = { ...state.tabs, [tabId]: tab };
+    const recentFiles = [
+      {
+        path,
+        title,
+        openedAt: new Date().toISOString(),
+        excerpt: excerptOf(content, path),
+      },
+      ...state.recentFiles.filter((f) => f.path !== path),
+    ].slice(0, 10);
 
-    let root = mapLeaves(state.paneRoot, (leaf) => {
+    // 文件已经在目标格：只聚焦并切到它。绝不「先清空目标格再新建一格」——
+    // 那会留下一个空格，看起来像把栏目复制了一份（#272）。
+    if (existing && source?.id === target.id) {
+      set({
+        tabs,
+        focusedPaneId: target.id,
+        activeTabId: tabId,
+        scene: "workspace",
+        fullscreenPaneId: null,
+        recentFiles,
+      });
+      return;
+    }
+
+    // 去重：从所有格移除该页签，保证只出现在新格。
+    const stripped = mapLeaves(state.paneRoot, (leaf) => {
       if (!leaf.tabs.includes(tabId)) return leaf;
-      const tabs = leaf.tabs.filter((t) => t !== tabId);
+      const nextTabs = leaf.tabs.filter((t) => t !== tabId);
       const activeTabId =
-        leaf.activeTabId === tabId ? (tabs[0] ?? null) : leaf.activeTabId;
-      return { ...leaf, tabs, activeTabId };
+        leaf.activeTabId === tabId ? (nextTabs[0] ?? null) : leaf.activeTabId;
+      return { ...leaf, tabs: nextTabs, activeTabId };
     });
 
     const newLeaf: PaneLeaf = {
@@ -1066,24 +1122,30 @@ export const useStore = create<AppStore>((set, get) => ({
       activeTabId: tabId,
       editorMode,
     };
-    root = splitLeafSide(root, targetLeafId, side, newLeaf);
+    let root = splitLeafSide(stripped, targetLeafId, side, newLeaf);
+    // 目标格已消失（并发关闭）：保持原布局，不丢页签。
+    if (root === stripped || leafCount(root) === leafCount(stripped)) {
+      set({ tabs, recentFiles });
+      return;
+    }
+    root = addTab(root, newLeaf.id, tabId);
+
+    // 源格被搬空且不是根 → 塌缩，避免留下与目标格并排的空格。
+    if (source && source.id !== target.id && root.type !== "leaf") {
+      const emptied = findLeaf(root, source.id);
+      if (emptied && emptied.tabs.length === 0) {
+        root = removeLeaf(root, source.id).root;
+      }
+    }
 
     set({
-      tabs: { ...state.tabs, [tabId]: tab },
+      tabs,
       paneRoot: root,
       focusedPaneId: newLeaf.id,
       activeTabId: tabId,
       scene: "workspace",
       fullscreenPaneId: null,
-      recentFiles: [
-        {
-          path,
-          title,
-          openedAt: new Date().toISOString(),
-          excerpt: excerptOf(content, path),
-        },
-        ...state.recentFiles.filter((f) => f.path !== path),
-      ].slice(0, 10),
+      recentFiles,
     });
   },
 
