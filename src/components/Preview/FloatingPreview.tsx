@@ -7,6 +7,7 @@ import {
   PREVIEW_LEAVE_CLOSE_MS,
   PREVIEW_MIN_H,
   PREVIEW_MIN_W,
+  PREVIEW_RAIL_NARROW_MIN_W,
   RESIZE_EDGES,
   flipAnchor,
   resizePreview,
@@ -17,6 +18,8 @@ import {
   type Viewport,
 } from "../../lib/previewAnchor";
 import { fileTypeOf, type FileTypeKind } from "../../lib/fileType";
+import { parentFolderNameOf, parentPathOf } from "../../lib/railCards";
+import { revealInFinder } from "../../lib/finder";
 import { buildAssetUrl, renderMarkdown, renderText } from "../../renderers";
 import { mediaUrlForPath, resolveDocMediaHref } from "../../lib/mediaUrl";
 import { isTauriEnv } from "../../utils/tauri";
@@ -53,6 +56,9 @@ const HANDLE_STYLE: Record<ResizeEdge, React.CSSProperties> = {
   se: { bottom: 0, right: 0, width: 16, height: 16 },
   sw: { bottom: 0, left: 0, width: 16, height: 16 },
 };
+
+/** 底部动作区高度带：指针进入窗底此高度内才显示动作条。 */
+const ACTION_BAND_H = 32;
 
 function viewportOf(): Viewport {
   return { width: window.innerWidth, height: window.innerHeight };
@@ -148,6 +154,7 @@ export default function FloatingPreview({
     path: string;
     content: string;
   } | null>(null);
+  const [actionsVisible, setActionsVisible] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [resizeEdge, setResizeEdge] = useState<ResizeEdge | null>(null);
   const dragOrigin = useRef({ px: 0, py: 0, ox: 0, oy: 0 });
@@ -257,7 +264,12 @@ export default function FloatingPreview({
       if (!next) return;
       const origin = resizeOrigin.current;
       if (!origin) return;
-      const rect = resizePreview(resizeEdge, origin.rect, next.dx, next.dy);
+      const p = useStore.getState().preview;
+      if (!p) return;
+      const rect = resizePreview(resizeEdge, origin.rect, next.dx, next.dy, {
+        w: p.narrow ? PREVIEW_RAIL_NARROW_MIN_W : PREVIEW_MIN_W,
+        h: PREVIEW_MIN_H,
+      });
       const flipped = flipAnchor(rect, viewportOf());
       useStore.getState().resizePreviewTo(rect, flipped.x, flipped.y);
     };
@@ -428,6 +440,11 @@ export default function FloatingPreview({
 
   const { x, y, w, h, flippedX, flippedY, pinned } = preview;
 
+  const split = (dir: "row" | "col") => {
+    useStore.getState().splitPane(dir);
+    void Promise.resolve(onOpenPath(preview.path));
+  };
+
   return createPortal(
     <div
       ref={previewRef}
@@ -444,11 +461,20 @@ export default function FloatingPreview({
         width: w,
         height: h,
         zIndex: 60,
-        minWidth: PREVIEW_MIN_W,
+        minWidth: preview.narrow ? PREVIEW_RAIL_NARROW_MIN_W : PREVIEW_MIN_W,
         minHeight: PREVIEW_MIN_H,
       }}
       className="flex flex-col overflow-hidden rounded-lg border border-[var(--app-border)] bg-[var(--app-surface)] shadow-2xl"
+      onPointerMove={(e) => {
+        const el = previewRef.current;
+        if (!el) return;
+        const r = el.getBoundingClientRect();
+        setActionsVisible(
+          e.clientY >= r.bottom - ACTION_BAND_H && e.clientY <= r.bottom,
+        );
+      }}
       onMouseLeave={() => {
+        setActionsVisible(false);
         // rail 源的离窗关闭由全局 pointermove 防抖处理；网格源保持即关
         if (preview.source === "rail") return;
         if (pinned || dragging || resizeEdge) return;
@@ -505,6 +531,61 @@ export default function FloatingPreview({
       >
         {body}
       </div>
+
+      {actionsVisible && (
+        <div
+          data-testid="preview-actions"
+          className="flex shrink-0 items-center gap-1 border-t border-[var(--app-border)] px-2 py-1 text-[11px]"
+        >
+          <button
+            type="button"
+            data-testid="preview-action"
+            data-action="open"
+            title="打开"
+            aria-label="打开"
+            onClick={() => void Promise.resolve(onOpenPath(preview.path))}
+            className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[var(--app-text-2)] hover:bg-[var(--app-sunken)] hover:text-[var(--app-text-2)]"
+          >
+            <Icon name="eye" size={18} />
+          </button>
+          <button
+            type="button"
+            data-testid="preview-action"
+            data-action="split-right"
+            title="向右分屏"
+            aria-label="向右分屏"
+            onClick={() => split("row")}
+            className="rounded p-0.5 text-[var(--app-text-2)] hover:bg-[var(--app-sunken)] hover:text-[var(--app-text-2)]"
+          >
+            <Icon name="splitRight" size={18} />
+          </button>
+          <button
+            type="button"
+            data-testid="preview-action"
+            data-action="split-down"
+            title="向下分屏"
+            aria-label="向下分屏"
+            onClick={() => split("col")}
+            className="rounded p-0.5 text-[var(--app-text-2)] hover:bg-[var(--app-sunken)] hover:text-[var(--app-text-2)]"
+          >
+            <Icon name="splitDown" size={18} />
+          </button>
+          <button
+            type="button"
+            data-testid="preview-action"
+            data-action="path"
+            title={preview.path}
+            aria-label={`打开所在文件夹 ${parentFolderNameOf(preview.path)}`}
+            onClick={() => revealInFinder(parentPathOf(preview.path))}
+            className="ml-auto flex min-w-0 items-center gap-1 rounded px-1 text-left text-[var(--app-text-3)] hover:text-[var(--app-text-2)]"
+          >
+            <Icon name="folder" size={18} />
+            <span className="min-w-0 truncate">
+              {parentFolderNameOf(preview.path)}
+            </span>
+          </button>
+        </div>
+      )}
 
       {RESIZE_EDGES.map((edge) => (
         <div
