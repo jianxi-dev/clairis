@@ -34,6 +34,9 @@ export type IconName =
   | "eye"
   | "pencil"
   | "export"
+  | "exportWord"
+  | "exportZip"
+  | "exportMdpkg"
   | "share"
   | "splitRight"
   | "splitDown"
@@ -196,6 +199,18 @@ export const ICONS: Record<IconName, IconDef> = {
     label: "导出",
     s: "M12 15V3 M8 7l4-4 4 4 M4 14v6h16v-6",
   },
+  exportWord: {
+    label: "Word 导出",
+    s: "M6 3h8l4 4v14H6z M14 3v4h4 M8.5 9.5l1.6 6.5 1.9-4.3 1.9 4.3 1.6-6.5",
+  },
+  exportZip: {
+    label: "ZIP 导出",
+    s: "M4 5h16v14H4z M12 5v14 M10.6 8h2.8 M10.6 11h2.8 M10.6 14h2.8",
+  },
+  exportMdpkg: {
+    label: ".mdpkg 导出",
+    s: "M12 3l8 4.5v9L12 21l-8-4.5v-9z M4 7.5l8 4.5 8-4.5 M12 12v9",
+  },
   share: {
     label: "分享",
     s: "M6 12a2 2 0 100-4 2 2 0 000 4z M18 6a2 2 0 100-4 2 2 0 000 4z M18 22a2 2 0 100-4 2 2 0 000 4z M8 10l8-3 M8 14l8 3",
@@ -277,7 +292,7 @@ export const ICONS: Record<IconName, IconDef> = {
   },
   subtitle: {
     label: "字幕",
-    s: "M4.5 5.5h15v10H4.5z M8 9.3h4 M8 12.2h7.5",
+    s: "M4 5h16v9H9.5L6 17.5V14H4z M8 8.5h8 M8 11.5h5",
   },
   timestampNote: {
     label: "时间戳笔记",
@@ -285,7 +300,7 @@ export const ICONS: Record<IconName, IconDef> = {
   },
   keyboardHints: {
     label: "快捷键",
-    s: "M2.5 7h19v10H2.5z M5.5 10h2 M8.5 10h2 M11.5 10h2 M14.5 10h2 M17.5 10h1.5 M7 13.5h10",
+    s: "M2.5 6.5h19v11H2.5z M5.3 9.4h2.6v2.6H5.3z M9.2 9.4h2.6v2.6H9.2z M13.1 9.4h2.6v2.6h-2.6z M17 9.4h2.6v2.6H17z M5.3 13.6h13.4v1.8H5.3z",
   },
   pip: {
     label: "画中画",

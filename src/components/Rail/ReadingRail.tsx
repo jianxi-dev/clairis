@@ -425,7 +425,7 @@ function RailRow({
       className="shrink-0 rounded p-0.5 text-gray-300 hover:text-gray-600 dark:text-gray-600 dark:hover:text-gray-300"
     >
       <Icon
-        name="pin"
+        name={pinned ? "pinOff" : "pin"}
         size={18}
         color={pinned ? "var(--app-accent)" : undefined}
       />
@@ -1425,7 +1425,7 @@ export default function ReadingRail({
         className="rounded p-0.5 text-[var(--app-text-3)] hover:bg-[var(--app-sunken)] hover:text-[var(--app-text-2)]"
       >
         <Icon
-          name="pin"
+          name={railState === "pinned" ? "pinOff" : "pin"}
           size={18}
           color={railState === "pinned" ? "var(--app-accent)" : undefined}
         />

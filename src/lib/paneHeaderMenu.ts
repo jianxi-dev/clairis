@@ -48,9 +48,9 @@ export const PANE_MENU_ITEMS: readonly PaneMenuItem[] = [
 export const EXPORT_MENU_ITEMS: readonly ExportMenuItem[] = [
   { action: "exportHtml", label: "HTML", icon: "html" },
   { action: "exportPng", label: "图片", icon: "image" },
-  { action: "exportDocx", label: "Word", icon: "file" },
-  { action: "exportMdpkg", label: ".mdpkg", icon: "markdown" },
-  { action: "exportZip", label: "ZIP", icon: "folder" },
+  { action: "exportDocx", label: "Word", icon: "exportWord" },
+  { action: "exportMdpkg", label: ".mdpkg", icon: "exportMdpkg" },
+  { action: "exportZip", label: "ZIP", icon: "exportZip" },
 ];
 
 /**

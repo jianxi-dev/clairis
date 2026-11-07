@@ -482,7 +482,7 @@ export default function FloatingPreview({
           className="shrink-0 rounded p-0.5 text-[var(--app-text-3)] hover:bg-[var(--app-sunken)] hover:text-[var(--app-text-2)]"
         >
           <Icon
-            name="pin"
+            name={pinned ? "pinOff" : "pin"}
             size={18}
             color={pinned ? "var(--app-accent)" : undefined}
           />

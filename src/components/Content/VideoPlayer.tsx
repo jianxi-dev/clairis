@@ -58,6 +58,18 @@ const LOOP_ICON_NAME: Record<LoopMode, IconName> = {
   playlist: "loopPlaylist",
 };
 
+// .art-icon 外壳复用 ArtPlayer 原生控件的 36px 尺寸/缩放；内层 svg 保持 22px 与原生一致。
+const PLAYER_ICON_SIZE = 22;
+
+function controlSvg(name: IconName): string {
+  return `<i class="art-icon">${iconSvg(name, PLAYER_ICON_SIZE)}</i>`;
+}
+
+function loopControlSvg(mode: LoopMode): string {
+  const svg = controlSvg(LOOP_ICON_NAME[mode]);
+  return mode === "none" ? svg.replace("<i ", '<i style="opacity:0.45" ') : svg;
+}
+
 function loopIconSvg(mode: LoopMode): string {
   const svg = iconSvg(LOOP_ICON_NAME[mode]);
   return mode === "none"
@@ -273,7 +285,7 @@ export default function VideoPlayer({
     art.option.loop = next === "single";
     // 同步循环按钮图标
     const btn = art.query<HTMLElement>(".art-control[data-name='loop']");
-    if (btn) btn.innerHTML = loopIconSvg(next);
+    if (btn) btn.innerHTML = loopControlSvg(next);
     art.notice.show = `循环: ${LOOP_LABEL[next]}`;
   }, []);
 
@@ -435,7 +447,7 @@ export default function VideoPlayer({
           name: "playlist",
           position: "right",
           index: 42,
-          html: iconSvg("playlist"),
+          html: controlSvg("playlist"),
           tooltip: "播放列表",
           mounted: function ($control) {
             playlistBtnRef.current = $control;
@@ -452,7 +464,7 @@ export default function VideoPlayer({
           name: "loop",
           position: "right",
           index: 52,
-          html: loopIconSvg("none"),
+          html: loopControlSvg("none"),
           tooltip: "循环模式",
           mounted: function ($control) {
             $control.dataset.name = "loop";
@@ -463,7 +475,7 @@ export default function VideoPlayer({
           name: "subtitle",
           position: "right",
           index: 54,
-          html: iconSvg("subtitle"),
+          html: controlSvg("subtitle"),
           tooltip: "字幕",
           mounted: function ($control) {
             subtitleBtnRef.current = $control;
@@ -480,7 +492,7 @@ export default function VideoPlayer({
           name: "note",
           position: "right",
           index: 56,
-          html: iconSvg("timestampNote"),
+          html: controlSvg("timestampNote"),
           tooltip: "时间戳笔记",
           mounted: function ($control) {
             this.proxy($control, "click", () => openNote());
@@ -490,7 +502,7 @@ export default function VideoPlayer({
           name: "hints",
           position: "right",
           index: 80,
-          html: iconSvg("keyboardHints"),
+          html: controlSvg("keyboardHints"),
           tooltip: "快捷键说明",
           mounted: function ($control) {
             hintsBtnRef.current = $control;

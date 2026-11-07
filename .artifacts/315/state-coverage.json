@@ -1,0 +1,39 @@
+{
+  "states": [
+    {
+      "state": "export-trio",
+      "screenshot": ".artifacts/315/01-export-trio.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T20:07:09Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "immersive-entry",
+      "screenshot": ".artifacts/315/02-immersive-entry.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T20:07:09Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "pin-off",
+      "screenshot": ".artifacts/315/03-pin-off.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T20:07:09Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "player-controls",
+      "screenshot": ".artifacts/315/04-player-controls.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T20:07:09Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "warm-theme",
+      "screenshot": ".artifacts/315/05-warm-theme.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T20:07:09Z",
+      "runner": "unknown@MMBP"
+    }
+  ]
+}
