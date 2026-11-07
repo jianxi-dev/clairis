@@ -2,6 +2,9 @@ import { test, expect, type Page } from "@playwright/test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
+const ART275 = path.resolve(process.cwd(), ".artifacts/275");
+mkdirSync(ART275, { recursive: true });
+
 /**
  * 网格概览（layout-portal 10.1）真实浏览器用例。
  *
@@ -613,4 +616,26 @@ test("hover 操作区：显形、tile 抬起，打开动作进入工作区", asy
 
   await expect(page.locator('[data-testid="grid"]')).toHaveCount(0);
   await record(page, "12-open-from-hover");
+});
+
+test("PDF 卡片不渲染悬停工具条，其他类型保持三个动作（#275）", async ({
+  page,
+}) => {
+  await boot(page);
+  await seed(page);
+  await enterGridWithShortcut(page);
+
+  const pdf = page.locator('[data-grid-item="/lib/older.pdf"]');
+  await pdf.hover();
+  await expect(pdf.locator("[data-tile-actions]")).toHaveCount(0);
+  await page.screenshot({
+    path: path.join(ART275, "grid-pdf-no-actions.png"),
+  });
+
+  const md = page.locator('[data-grid-item="/lib/today.md"]');
+  await md.hover();
+  await expect(md.locator("[data-tile-actions] button")).toHaveCount(3);
+  await page.screenshot({
+    path: path.join(ART275, "grid-md-actions.png"),
+  });
 });

@@ -677,7 +677,9 @@ function RailRow({
         </button>
       </div>
 
-      <div className="absolute right-1 top-1 z-10">{actions}</div>
+      {kind !== "pdf" && (
+        <div className="absolute right-1 top-1 z-10">{actions}</div>
+      )}
     </div>
   );
 }

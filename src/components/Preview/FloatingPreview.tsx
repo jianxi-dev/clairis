@@ -156,6 +156,16 @@ export default function FloatingPreview({
   );
   const previewRef = useRef<HTMLDivElement>(null);
   const interactingRef = useRef(false);
+  /** 拖拽/缩放期间被捕获指针的元素：跨 iframe 仍能收到 move/up。 */
+  const captureRef = useRef<{ el: Element; pointerId: number } | null>(null);
+
+  const releaseCapture = useCallback(() => {
+    const cap = captureRef.current;
+    captureRef.current = null;
+    if (cap && cap.el.hasPointerCapture?.(cap.pointerId)) {
+      cap.el.releasePointerCapture(cap.pointerId);
+    }
+  }, []);
 
   const previewPath = preview?.path ?? null;
   const previewTitle = preview?.title ?? "";
@@ -218,18 +228,21 @@ export default function FloatingPreview({
         rafId = null;
       }
       commit();
+      releaseCapture();
       setDragging(false);
     };
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
     return () => {
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
       if (rafId !== null) cancelAnimationFrame(rafId);
       rafId = null;
       pending = null;
     };
-  }, [dragging]);
+  }, [dragging, releaseCapture]);
 
   // 缩放：按手柄语义改 x/y/w/h，最小值钳制 + 贴边翻转。
   // rAF 合并：pointermove 只记最新偏移，一帧写一次 store。
@@ -260,18 +273,21 @@ export default function FloatingPreview({
         rafId = null;
       }
       commit();
+      releaseCapture();
       setResizeEdge(null);
     };
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
     return () => {
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
       if (rafId !== null) cancelAnimationFrame(rafId);
       rafId = null;
       pending = null;
     };
-  }, [resizeEdge]);
+  }, [resizeEdge, releaseCapture]);
 
   useEffect(() => {
     interactingRef.current = dragging || resizeEdge !== null;
@@ -327,6 +343,9 @@ export default function FloatingPreview({
     const p = useStore.getState().preview;
     if (!p) return;
     e.preventDefault();
+    const el = e.currentTarget;
+    el.setPointerCapture?.(e.pointerId);
+    captureRef.current = { el, pointerId: e.pointerId };
     dragOrigin.current = { px: e.clientX, py: e.clientY, ox: p.x, oy: p.y };
     setDragging(true);
   }, []);
@@ -337,6 +356,9 @@ export default function FloatingPreview({
       if (!p) return;
       e.preventDefault();
       e.stopPropagation();
+      const el = e.currentTarget;
+      el.setPointerCapture?.(e.pointerId);
+      captureRef.current = { el, pointerId: e.pointerId };
       resizeOrigin.current = {
         rect: { x: p.x, y: p.y, w: p.w, h: p.h },
         px: e.clientX,
@@ -436,7 +458,8 @@ export default function FloatingPreview({
       <div
         data-testid="preview-titlebar"
         onPointerDown={onHeaderPointerDown}
-        className={`flex shrink-0 items-center gap-1 border-b border-[var(--app-border)] px-2 py-0.5 ${
+        onLostPointerCapture={() => setDragging(false)}
+        className={`flex shrink-0 touch-none select-none items-center gap-1 border-b border-[var(--app-border)] px-2 py-0.5 ${
           dragging ? "cursor-grabbing" : "cursor-grab"
         }`}
       >
@@ -488,6 +511,7 @@ export default function FloatingPreview({
           key={edge}
           data-testid={`preview-handle-${edge}`}
           onPointerDown={(e) => onHandlePointerDown(edge, e)}
+          onLostPointerCapture={() => setResizeEdge(null)}
           style={{
             position: "absolute",
             cursor: HANDLE_CURSOR[edge],
