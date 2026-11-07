@@ -18,11 +18,11 @@
 
 ```bash
 # 交互式创建
-cd /Users/mason/ToHighs/biaoyue
+cd /Users/mason/ToHighs/clairis
 gh issue create --title "[bug] 缺陷标题" --body "详细描述" --label "bug,p0,editor"
 
 # 或一次性创建（推荐用于批量导入）
-cd /Users/mason/ToHighs/biaoyue
+cd /Users/mason/ToHighs/clairis
 gh issue create \
   --title "[bug] 缺陷标题" \
   --body "## 问题描述
@@ -45,7 +45,7 @@ gh issue create \
 
 ```bash
 # 列出所有开放缺陷
-cd /Users/mason/ToHighs/biaoyue
+cd /Users/mason/ToHighs/clairis
 gh issue list --state open
 
 # 按标签过滤
@@ -59,7 +59,7 @@ gh issue list --state open --json number,title,labels,assignees
 
 ```bash
 # 添加评论
-cd /Users/mason/ToHighs/biaoyue
+cd /Users/mason/ToHighs/clairis
 gh issue comment <编号> --body "修复中..."
 
 # 移交 triage 状态（5 个 canonical 标签）
@@ -68,7 +68,7 @@ gh issue edit <编号> --add-label "ready-for-human"    # 需要人类决策或�
 gh issue edit <编号> --remove-label "needs-triage"    # 离开待评估队列
 
 # 关闭缺陷（修复完成）
-cd /Users/mason/ToHighs/biaoyue
+cd /Users/mason/ToHighs/clairis
 gh issue close <编号> --comment "已修复，提交 commit: xxx"
 ```
 
@@ -121,7 +121,7 @@ gh issue close <编号> --comment "已修复，提交 commit: xxx"
 
 2. **创建 GitHub Issue**
    ```bash
-   cd /Users/mason/ToHighs/biaoyue
+   cd /Users/mason/ToHighs/clairis
    gh issue create \
      --title "[bug] 问题摘要" \
      --body "## 用户反馈
@@ -152,7 +152,7 @@ gh issue close <编号> --comment "已修复，提交 commit: xxx"
 
 ```bash
 # 先确保所有标签已创建（模块标签按本仓实际填写，即 .change-workflow.conf 的 MODULE_LABELS）
-cd /Users/mason/ToHighs/biaoyue
+cd /Users/mason/ToHighs/clairis
 for label in "p0" "p1" "p2" "p3" "bug" <module-a> <module-b>; do
   gh label create "$label" --force
 done
