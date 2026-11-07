@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ICONS, type IconDef } from "../../ui/icons";
+import { ICONS, iconSvg, type IconDef } from "../../ui/icons";
 
 /**
  * IconDef 契约（icon-system-v3-redraw 1.1 / 3.2）。
@@ -26,5 +26,19 @@ describe("IconDef 双字段契约", () => {
     >) {
       expect(def.label.trim().length, `${name} label 为空`).toBeGreaterThan(0);
     }
+  });
+
+  it("iconSvg 描边图标带 stroke，实心图标不带", () => {
+    const stroke = iconSvg("close");
+    expect(stroke).toContain('stroke="currentColor"');
+    expect(stroke).toContain('fill="none"');
+    const fill = iconSvg("more");
+    expect(fill).not.toContain('stroke="currentColor"');
+    expect(fill).toContain('fill="currentColor"');
+  });
+
+  it("iconSvg 默认 22px，parts 保留虚线", () => {
+    expect(iconSvg("close")).toContain('width="22"');
+    expect(iconSvg("splitRight")).toContain('stroke-dasharray="2 2"');
   });
 });

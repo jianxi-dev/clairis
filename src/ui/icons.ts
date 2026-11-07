@@ -303,5 +303,32 @@ export const ICONS: Record<IconName, IconDef> = {
 
 export const ICON_NAMES = Object.keys(ICONS) as IconName[];
 
+/**
+ * 把图标序列化成 HTML 字符串，供非 React 渲染面（播放器 ArtPlayer 自绘控件）
+ * 复用同一张表。规则与 `Icon.tsx` 保持一致：`s` 描边、`d` 实心、`parts` 多段。
+ */
+export function iconSvg(name: IconName, size = 22): string {
+  const def = ICONS[name];
+  const parts = def.parts ?? [{ d: def.d, s: def.s, dash: def.dash }];
+  const inner = parts
+    .map((part) => {
+      const out: string[] = [];
+      if (part.s) {
+        const dash = part.dash ? ` stroke-dasharray="${part.dash}"` : "";
+        out.push(
+          `<path d="${part.s}" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"${dash}/>`,
+        );
+      }
+      if (part.d) {
+        out.push(
+          `<path d="${part.d}" fill="currentColor" fill-rule="evenodd"/>`,
+        );
+      }
+      return out.join("");
+    })
+    .join("");
+  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="currentColor">${inner}</svg>`;
+}
+
 /** 两档尺寸：密集列表 18px，主操作 24px。 */
 export type IconSize = 18 | 24;

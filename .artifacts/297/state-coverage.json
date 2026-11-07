@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "视频区域渲染",
+      "screenshot": ".artifacts/297/state-video.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T17:03:15Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "暗主题视频",
+      "screenshot": ".artifacts/297/state-video-dark.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T17:03:15Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "图标抽屉媒体族（svg text 节点 0）",
+      "screenshot": ".artifacts/297/state-drawer.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T17:03:16Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "窄屏 390px",
+      "screenshot": ".artifacts/297/state-narrow.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T17:03:16Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}

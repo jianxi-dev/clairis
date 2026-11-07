@@ -4,6 +4,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { getActiveEditorView } from "../../editors/editorRef";
 import Icon from "../Icon";
+import { iconSvg, type IconName } from "../../ui/icons";
 
 /**
  * 媒体预览播放器（ArtPlayer 封装）
@@ -51,12 +52,18 @@ const LOOP_LABEL: Record<LoopMode, string> = {
   playlist: "列表循环",
 };
 
-/** 三态循环图标（none 灰色 / single 单箭头 / playlist 列表+箭头） */
-const LOOP_ICONS: Record<LoopMode, string> = {
-  none: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" opacity="0.45"><path d="M17 2l4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14M7 22l-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></svg>`,
-  single: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 2l4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14M7 22l-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/><text x="15" y="20" font-size="8" fill="currentColor">1</text></svg>`,
-  playlist: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 2l4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14M7 22l-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/><text x="12" y="20" font-size="8" fill="currentColor">N</text></svg>`,
+const LOOP_ICON_NAME: Record<LoopMode, IconName> = {
+  none: "loopNone",
+  single: "loopSingle",
+  playlist: "loopPlaylist",
 };
+
+function loopIconSvg(mode: LoopMode): string {
+  const svg = iconSvg(LOOP_ICON_NAME[mode]);
+  return mode === "none"
+    ? svg.replace("<svg ", '<svg style="opacity:0.45" ')
+    : svg;
+}
 
 /** 媒体文件 → media:// URL（斜杠保留、host 后不追加斜杠，与 Rust decode 约定一致） */
 function mediaUrlForPath(path: string): string {
@@ -88,13 +95,6 @@ const AUDIO_POSTER =
       <text x="50%" y="50%" font-size="96" text-anchor="middle" dominant-baseline="central"></text>
     </svg>`,
   );
-
-const ICONS = {
-  playlist: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h13M3 12h13M3 18h9M18 8v8m0 0l4-3"/></svg>`,
-  subtitle: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M6 10h4M6 14h8M14 10h4"/></svg>`,
-  note: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>`,
-  hints: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M6 14h.01M18 14h.01M9 14h6"/></svg>`,
-};
 
 const SHORTCUT_ROWS: Array<[string, string]> = [
   ["空格", "播放 / 暂停"],
@@ -273,7 +273,7 @@ export default function VideoPlayer({
     art.option.loop = next === "single";
     // 同步循环按钮图标
     const btn = art.query<HTMLElement>(".art-control[data-name='loop']");
-    if (btn) btn.innerHTML = LOOP_ICONS[next];
+    if (btn) btn.innerHTML = loopIconSvg(next);
     art.notice.show = `循环: ${LOOP_LABEL[next]}`;
   }, []);
 
@@ -435,7 +435,7 @@ export default function VideoPlayer({
           name: "playlist",
           position: "right",
           index: 42,
-          html: ICONS.playlist,
+          html: iconSvg("playlist"),
           tooltip: "播放列表",
           mounted: function ($control) {
             playlistBtnRef.current = $control;
@@ -452,7 +452,7 @@ export default function VideoPlayer({
           name: "loop",
           position: "right",
           index: 52,
-          html: LOOP_ICONS.none,
+          html: loopIconSvg("none"),
           tooltip: "循环模式",
           mounted: function ($control) {
             $control.dataset.name = "loop";
@@ -463,7 +463,7 @@ export default function VideoPlayer({
           name: "subtitle",
           position: "right",
           index: 54,
-          html: ICONS.subtitle,
+          html: iconSvg("subtitle"),
           tooltip: "字幕",
           mounted: function ($control) {
             subtitleBtnRef.current = $control;
@@ -480,7 +480,7 @@ export default function VideoPlayer({
           name: "note",
           position: "right",
           index: 56,
-          html: ICONS.note,
+          html: iconSvg("timestampNote"),
           tooltip: "时间戳笔记",
           mounted: function ($control) {
             this.proxy($control, "click", () => openNote());
@@ -490,7 +490,7 @@ export default function VideoPlayer({
           name: "hints",
           position: "right",
           index: 80,
-          html: ICONS.hints,
+          html: iconSvg("keyboardHints"),
           tooltip: "快捷键说明",
           mounted: function ($control) {
             hintsBtnRef.current = $control;
@@ -788,7 +788,7 @@ export default function VideoPlayer({
           >
             <span
               dangerouslySetInnerHTML={{
-                __html: `${LOOP_ICONS[loopMode]} 播放列表（${mediaItems.length}）· ${LOOP_LABEL[loopMode]}`,
+                __html: `${loopIconSvg(loopMode)} 播放列表（${mediaItems.length}）· ${LOOP_LABEL[loopMode]}`,
               }}
             />
             <button
