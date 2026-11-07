@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "顶栏图标",
+      "screenshot": ".artifacts/294/state-toolbar.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T16:46:43Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "图标抽屉 35 个概念",
+      "screenshot": ".artifacts/294/state-drawer.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T16:46:43Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "暗主题",
+      "screenshot": ".artifacts/294/state-drawer-dark.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T16:46:43Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "窄屏 390px",
+      "screenshot": ".artifacts/294/state-narrow.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T16:46:43Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}
