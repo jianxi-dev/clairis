@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "live-unit-no-rewrite",
+      "screenshot": ".artifacts/258/preview.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T02:25:06Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "zoom-1-no-inline",
+      "screenshot": ".artifacts/258/preview.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T02:25:06Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "zoom-110",
+      "screenshot": ".artifacts/258/zoom.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T02:25:06Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "dirty-srcdoc",
+      "screenshot": ".artifacts/258/dirty-srcdoc.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T02:25:06Z",
+      "runner": "unknown@MMBP"
+    }
+  ]
+}

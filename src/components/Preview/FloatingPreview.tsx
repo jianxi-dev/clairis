@@ -17,8 +17,7 @@ import {
   type Viewport,
 } from "../../lib/previewAnchor";
 import { fileTypeOf, type FileTypeKind } from "../../lib/fileType";
-import { parentFolderNameOf } from "../../lib/railCards";
-import { renderMarkdown, renderText } from "../../renderers";
+import { buildAssetUrl, renderMarkdown, renderText } from "../../renderers";
 import { mediaUrlForPath, resolveDocMediaHref } from "../../lib/mediaUrl";
 import { isTauriEnv } from "../../utils/tauri";
 import { log } from "../../utils/log";
@@ -28,7 +27,7 @@ import { log } from "../../utils/log";
  *
  * 经 createPortal 渲到 document.body：逃出工作区的层叠上下文/overflow 裁剪，
  * 不卸载任何 pane 或 EditorView。渲染真文档内容（读 `open_file_direct`），
- * 标题栏可拖动、四边 + 四角可缩放、贴边翻转锚定边；底部动作区仅 hover 显示。
+ * 标题栏可拖动、四边 + 四角可缩放、贴边翻转锚定边。
  * 位置是瞬态的——关闭再触发一律回默认锚定，不保留拖动后的旧坐标。
  */
 
@@ -149,7 +148,6 @@ export default function FloatingPreview({
     path: string;
     content: string;
   } | null>(null);
-  const [hovering, setHovering] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [resizeEdge, setResizeEdge] = useState<ResizeEdge | null>(null);
   const dragOrigin = useRef({ px: 0, py: 0, ox: 0, oy: 0 });
@@ -364,7 +362,17 @@ export default function FloatingPreview({
       return <MediaBody path={previewPath} kind={kind} />;
     }
     if (kind === "pdf") {
-      return <MediaPlaceholder path={previewPath} />;
+      return (
+        <iframe
+          data-testid="preview-pdf"
+          title={previewTitle}
+          src={
+            buildAssetUrl(previewPath) +
+            "#toolbar=0&navpanes=0&scrollbar=0&view=FitH"
+          }
+          className="h-full w-full border-0 bg-white"
+        />
+      );
     }
     if (kind === "html") {
       // 沙箱 iframe：无 allow-scripts，脚本不执行；只展示真内容
@@ -398,11 +406,6 @@ export default function FloatingPreview({
 
   const { x, y, w, h, flippedX, flippedY, pinned } = preview;
 
-  const split = (dir: "row" | "col") => {
-    useStore.getState().splitPane(dir);
-    void Promise.resolve(onOpenPath(preview.path));
-  };
-
   return createPortal(
     <div
       ref={previewRef}
@@ -423,9 +426,7 @@ export default function FloatingPreview({
         minHeight: PREVIEW_MIN_H,
       }}
       className="flex flex-col overflow-hidden rounded-lg border border-[var(--app-border)] bg-[var(--app-surface)] shadow-2xl"
-      onMouseEnter={() => setHovering(true)}
       onMouseLeave={() => {
-        setHovering(false);
         // rail 源的离窗关闭由全局 pointermove 防抖处理；网格源保持即关
         if (preview.source === "rail") return;
         if (pinned || dragging || resizeEdge) return;
@@ -481,60 +482,6 @@ export default function FloatingPreview({
       >
         {body}
       </div>
-
-      {hovering && (
-        <div
-          data-testid="preview-actions"
-          className="flex shrink-0 items-center gap-1 border-t border-[var(--app-border)] px-2 py-1 text-[11px]"
-        >
-          <button
-            type="button"
-            data-testid="preview-action"
-            data-action="open"
-            title="打开"
-            aria-label="打开"
-            onClick={() => void Promise.resolve(onOpenPath(preview.path))}
-            className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[var(--app-text-2)] hover:bg-[var(--app-sunken)] hover:text-[var(--app-text-2)]"
-          >
-            <Icon name="eye" size={18} />
-          </button>
-          <button
-            type="button"
-            data-testid="preview-action"
-            data-action="split-right"
-            title="向右分屏"
-            aria-label="向右分屏"
-            onClick={() => split("row")}
-            className="rounded p-0.5 text-[var(--app-text-2)] hover:bg-[var(--app-sunken)] hover:text-[var(--app-text-2)]"
-          >
-            <Icon name="splitRight" size={18} />
-          </button>
-          <button
-            type="button"
-            data-testid="preview-action"
-            data-action="split-down"
-            title="向下分屏"
-            aria-label="向下分屏"
-            onClick={() => split("col")}
-            className="rounded p-0.5 text-[var(--app-text-2)] hover:bg-[var(--app-sunken)] hover:text-[var(--app-text-2)]"
-          >
-            <Icon name="splitDown" size={18} />
-          </button>
-          <button
-            type="button"
-            data-testid="preview-action"
-            data-action="path"
-            title={preview.path}
-            onClick={() => void Promise.resolve(onOpenPath(preview.path))}
-            className="ml-auto flex min-w-0 items-center gap-1 rounded px-1 text-left text-[var(--app-text-3)] hover:text-[var(--app-text-2)]"
-          >
-            <Icon name="folder" size={18} />
-            <span className="min-w-0 truncate">
-              {parentFolderNameOf(preview.path)}
-            </span>
-          </button>
-        </div>
-      )}
 
       {RESIZE_EDGES.map((edge) => (
         <div

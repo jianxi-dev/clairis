@@ -27,14 +27,17 @@ export default function HtmlPreview({
 
   // WKWebView 有时要一次布局失效才绘制 iframe 首帧（打开本地 HTML 空白，
   // 拖一下窗口才出现）。onLoad 后强制一次 1px 宽度往返即可触发重绘。
+  // 双 rAF：把这次强制重排推到首帧绘制之后，避开首帧关键路径（#258）。
   const nudgePaint = useCallback(() => {
     const el = frameRef.current;
     if (!el) return;
     requestAnimationFrame(() => {
-      const prev = el.style.width;
-      el.style.width = "100.01%";
-      void el.offsetWidth;
-      el.style.width = prev || "100%";
+      requestAnimationFrame(() => {
+        const prev = el.style.width;
+        el.style.width = "100.01%";
+        void el.offsetWidth;
+        el.style.width = prev || "100%";
+      });
     });
   }, []);
 
@@ -43,6 +46,10 @@ export default function HtmlPreview({
   // 不可信，绝不给它脚本执行权。
 
   const sandboxed = useMemo(() => {
+    // live（asset 直载）分支不使用 srcdoc：跳过 rewriteHtmlPaths 与整段拼接，
+    // 大文档首屏不必白算一遍正则重写（#258）。
+    if (live) return "";
+
     if (!content) {
       return "<!DOCTYPE html><html><head><meta charset='utf-8'></head><body></body></html>";
     }
@@ -60,7 +67,7 @@ export default function HtmlPreview({
 <!-- Preview rendered by Biaoyue — paths rewritten for local asset loading -->
 ${processed}
 </body></html>`;
-  }, [content, filePath, fontSize]);
+  }, [content, filePath, fontSize, live]);
 
   const handleError = () => {
     setError("HTML 预览加载失败。尝试右键 → 在浏览器打开。");
@@ -86,7 +93,12 @@ ${processed}
         ref={frameRef}
         src={buildAssetUrl(filePath)}
         sandbox="allow-scripts allow-same-origin allow-popups"
-        style={{ zoom, width: "100%", height: "100%", border: "none" }}
+        style={{
+          ...(zoom === 1 ? {} : { zoom }),
+          width: "100%",
+          height: "100%",
+          border: "none",
+        }}
         title="HTML 预览"
         onLoad={nudgePaint}
         onError={handleError}
@@ -99,7 +111,12 @@ ${processed}
       ref={frameRef}
       srcDoc={sandboxed}
       sandbox="allow-same-origin allow-popups"
-      style={{ zoom, width: "100%", height: "100%", border: "none" }}
+      style={{
+        ...(zoom === 1 ? {} : { zoom }),
+        width: "100%",
+        height: "100%",
+        border: "none",
+      }}
       title="HTML 预览"
       onLoad={nudgePaint}
       onError={handleError}

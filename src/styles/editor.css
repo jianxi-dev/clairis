@@ -1979,11 +1979,11 @@ body {
 
 /* ── 编辑器大纲浮层（移植自 md-bundle app-kit/outline/OutlineMenu.tsx） ──
  * 触发钮在内容区右上角，悬停展开、点击钉住、Esc 收起。
- * 位置让开右侧 46px：预览模式下 Aa 阅读设置钮固定在 18px 处，两者不叠。 */
+ * right 23px：原 46px 是为已移除的 Aa 阅读设置钮预留的空隙，现取一半。 */
 .biaoyue-outline {
   position: absolute;
   top: 10px;
-  right: 46px;
+  right: 23px;
   z-index: 30;
 }
 

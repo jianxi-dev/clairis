@@ -11,7 +11,7 @@ import path from "node:path";
  */
 
 const APP_URL = "http://localhost:1420";
-const ART = path.resolve(process.cwd(), ".artifacts/178");
+const ART = path.resolve(process.cwd(), ".artifacts/260");
 
 mkdirSync(ART, { recursive: true });
 
@@ -399,7 +399,7 @@ test("⌘⇧V 开关：关闭后悬停不再弹，开启后 250ms 弹出；两�
   await expect(preview).toHaveCount(0);
 });
 
-test("底部动作区仅 hover 显示，取消 hover 后无残留", async ({ page }) => {
+test("悬浮窗不再渲染底部动作条（恒为 0）", async ({ page }) => {
   await boot(page);
   await seed(page);
   await pinRail(page);
@@ -411,14 +411,14 @@ test("底部动作区仅 hover 显示，取消 hover 后无残留", async ({ pag
   // 指针在阅读空间行上，未 hover 窗口 → 无动作区
   await expect(actions).toHaveCount(0);
 
-  // 钉住预览，保证移开指针后窗口仍在（只验证动作区残留）
+  // 钉住预览并 hover 窗口：动作条已移除，仍恒为 0
   await page.locator('[data-testid="preview-pin"]').click();
   await page.hover('[data-testid="preview-titlebar"]');
-  await expect(actions).toBeVisible();
-  await expect(page.locator('[data-testid="preview-action"]')).toHaveCount(4);
-  await page.screenshot({ path: path.join(ART, "preview-actions-hover.png") });
+  await expect(actions).toHaveCount(0);
+  await expect(page.locator('[data-testid="preview-action"]')).toHaveCount(0);
+  await page.screenshot({ path: path.join(ART, "preview-no-actions.png") });
 
-  // 移开指针：动作区消失，窗口因钉住仍在
+  // 移开指针：动作区仍为 0，窗口因钉住仍在
   await page.mouse.move(600, 780);
   await expect(actions).toHaveCount(0);
   await expect(preview).toBeVisible();
@@ -479,7 +479,7 @@ test("离窗 180ms 防抖关闭；179ms 内保持", async ({ page }) => {
   await expect(preview).toHaveCount(0);
 });
 
-test("媒体真实渲染：图片 img / 视频 video / 音频 audio / PDF 占位", async ({
+test("媒体真实渲染：图片 img / 视频 video / 音频 audio / PDF iframe", async ({
   page,
 }) => {
   await boot(page);
@@ -506,9 +506,29 @@ test("媒体真实渲染：图片 img / 视频 video / 音频 audio / PDF 占位
   await expect(audio).toHaveJSProperty("controls", true);
 
   await hoverRowRightHalf(page, "pdf");
+  await expect(page.locator('[data-testid="preview-pdf"]')).toBeVisible();
   await expect(
     page.locator('[data-testid="preview-media-placeholder"]'),
-  ).toBeVisible();
-  await expect(page.locator('[data-testid="preview-media"]')).toHaveCount(0);
+  ).toHaveCount(0);
   await page.screenshot({ path: path.join(ART, "preview-media-kinds.png") });
+});
+
+test("PDF 悬浮预览：asset iframe 带 #toolbar=0 且无 sandbox", async ({
+  page,
+}) => {
+  await boot(page);
+  await seedMedia(page);
+  await pinRail(page);
+  await page.clock.install();
+
+  await hoverRowRightHalf(page, "pdf");
+  await page.clock.runFor(250);
+
+  const pdf = page.locator(
+    '[data-testid="floating-preview"] [data-testid="preview-pdf"]',
+  );
+  await expect(pdf).toBeVisible();
+  await expect(pdf).toHaveAttribute("src", /#toolbar=0/);
+  await expect(pdf).not.toHaveAttribute("sandbox");
+  await page.screenshot({ path: path.join(ART, "preview-pdf.png") });
 });

@@ -726,10 +726,10 @@ function AiPaneHeader({ leafId }: { leafId: string }) {
   return (
     <div
       data-testid="ai-pane-header"
-      className="app-chrome flex items-center shrink-0 border-b border-gray-100 px-2 py-1 dark:border-gray-700"
+      className="app-chrome flex items-center shrink-0 border-b border-[var(--app-border)] px-2 py-1"
     >
       <Icon name="sparkle" size={18} color="var(--app-accent)" />
-      <span className="ml-1.5 text-xs font-medium text-gray-700 dark:text-gray-200">
+      <span className="ml-1.5 text-xs font-medium text-[var(--app-text)]">
         AI
       </span>
       <div className="ml-auto flex items-center gap-0.5">
@@ -742,7 +742,7 @@ function AiPaneHeader({ leafId }: { leafId: string }) {
             aria-haspopup="menu"
             aria-expanded={menuOpen}
             onClick={() => setMenuOpen((v) => !v)}
-            className="p-0.5 rounded text-gray-400 hover:bg-gray-200 hover:text-gray-700 dark:hover:bg-gray-700 dark:hover:text-gray-200"
+            className="p-0.5 rounded text-[var(--app-text-3)] hover:bg-[var(--app-sunken)] hover:text-[var(--app-text-2)]"
           >
             <Icon name="more" size={18} />
           </button>
@@ -750,7 +750,7 @@ function AiPaneHeader({ leafId }: { leafId: string }) {
             <div
               data-testid="ai-pane-menu"
               role="menu"
-              className="absolute right-0 top-full z-50 mt-1 min-w-[150px] rounded border border-gray-200 bg-white py-1 text-xs shadow-lg dark:border-gray-700 dark:bg-gray-800"
+              className="absolute right-0 top-full z-50 mt-1 min-w-[150px] rounded border border-[var(--app-border)] bg-[var(--app-surface)] py-1 text-xs shadow-lg"
             >
               {AI_PANE_MENU_ITEMS.map((item) => (
                 <button
@@ -759,7 +759,7 @@ function AiPaneHeader({ leafId }: { leafId: string }) {
                   role="menuitem"
                   data-ai-menu-item={item.action}
                   onClick={() => run(item.action)}
-                  className="flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-gray-100 dark:hover:bg-gray-700"
+                  className="flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-[var(--app-sunken)]"
                 >
                   <Icon name={item.icon} size={18} />
                   <span>{item.label}</span>
@@ -774,7 +774,7 @@ function AiPaneHeader({ leafId }: { leafId: string }) {
           title="关闭"
           aria-label="关闭 AI 窗格"
           onClick={() => useStore.getState().closePane(leafId)}
-          className="p-0.5 rounded text-gray-400 hover:bg-gray-200 hover:text-gray-700 dark:hover:bg-gray-700 dark:hover:text-gray-200"
+          className="p-0.5 rounded text-[var(--app-text-3)] hover:bg-[var(--app-sunken)] hover:text-[var(--app-text-2)]"
         >
           <Icon name="close" size={18} />
         </button>

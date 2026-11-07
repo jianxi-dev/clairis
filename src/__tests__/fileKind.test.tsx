@@ -398,9 +398,8 @@ describe("HTML/PDF 视口缩放（Cmd+=/-/0）", () => {
       />,
     );
     const iframe = container.querySelector("iframe") as HTMLElement;
-    expect(iframe.style.zoom || iframe.style.getPropertyValue("zoom")).toBe(
-      "1",
-    );
+    // zoom=1 时不写 zoom 样式（#258）
+    expect(iframe.style.zoom || iframe.style.getPropertyValue("zoom")).toBe("");
 
     window.dispatchEvent(new CustomEvent("preview-scale", { detail: 1 }));
     await waitFor(() => {
