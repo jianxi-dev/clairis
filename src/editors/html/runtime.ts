@@ -80,6 +80,9 @@ function runtimeSource(version: number): string {
     b.style.top = (r.top + scrollY) + "px";
     b.style.width = r.width + "px";
     b.style.height = r.height + "px";
+    // 工具条画在主文档（design D1），但只有这里知道元素的精确矩形。
+    // 视口坐标直接上报，主侧加上 iframe 自身的偏移即可。
+    post({ type: "selectionRect", nodeId: current, rect: { x: r.left, y: r.top, width: r.width, height: r.height } });
   };
 
   // —— 文本编辑（切片 4）——
