@@ -45,10 +45,15 @@ export type IconName =
 
 export interface IconDef {
   /**
-   * 单条 path 的 `d`。多个子路径要合并在这一条里（用 `M` 分隔）——
+   * 实心子路径的 `d`。多个子路径要合并在这一条里（用 `M` 分隔）——
    * 分成多个 <path> 各自填充的话，内部字形会被同色填充盖掉，图标退化成色块。
    */
-  d: string;
+  d?: string;
+  /**
+   * 描边子路径的 `d`。`Icon` 组件对本字段渲染 `fill="none" stroke="currentColor"`。
+   * `d` 与 `s` 至少存在其一。
+   */
+  s?: string;
   /** 图标抽屉里显示的中文名 */
   label: string;
 }
