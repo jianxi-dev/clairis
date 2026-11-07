@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "双格格头（全屏按钮 expand）",
+      "screenshot": ".artifacts/295/state-header.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T16:52:59Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "⋯菜单右分/下分双格虚线",
+      "screenshot": ".artifacts/295/state-menu.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T16:52:59Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "全屏态 collapse 四角内收",
+      "screenshot": ".artifacts/295/state-fullscreen.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T16:52:59Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "暗主题全屏态",
+      "screenshot": ".artifacts/295/state-fullscreen-dark.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T16:52:59Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}

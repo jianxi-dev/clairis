@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import { ICONS, type IconName, type IconSize } from "../ui/icons";
 
 interface IconProps {
@@ -24,6 +25,7 @@ export default function Icon({
   title,
 }: IconProps) {
   const def = ICONS[name];
+  const parts = def.parts ?? [{ d: def.d, s: def.s, dash: def.dash }];
   return (
     <svg
       width={size}
@@ -40,17 +42,22 @@ export default function Icon({
       data-icon-size={size}
     >
       {title && <title>{title}</title>}
-      {def.s && (
-        <path
-          d={def.s}
-          fill="none"
-          stroke={color ?? "currentColor"}
-          strokeWidth={1.7}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      )}
-      {def.d && <path d={def.d} />}
+      {parts.map((part, index) => (
+        <Fragment key={index}>
+          {part.s && (
+            <path
+              d={part.s}
+              fill="none"
+              stroke={color ?? "currentColor"}
+              strokeWidth={1.7}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeDasharray={part.dash}
+            />
+          )}
+          {part.d && <path d={part.d} />}
+        </Fragment>
+      ))}
     </svg>
   );
 }
