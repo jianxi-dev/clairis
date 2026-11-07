@@ -69,6 +69,21 @@ export default function TabBar({
   const [overPaneId, setOverPaneId] = useState<string | null>(null);
   // 跟手 ghost 的指针位置（视口坐标）；仅在拖拽激活后有值。
   const [dragPos, setDragPos] = useState<{ x: number; y: number } | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState("");
+  const cancelRenameRef = useRef(false);
+  const commitRename = useCallback(
+    (id: string, fallback: string) => {
+      if (cancelRenameRef.current) {
+        cancelRenameRef.current = false;
+        setEditingId(null);
+        return;
+      }
+      useStore.getState().renameTab(id, editValue.trim() || fallback);
+      setEditingId(null);
+    },
+    [editValue],
+  );
 
   useEffect(() => {
     if (typeof document === "undefined") return;
@@ -240,7 +255,8 @@ export default function TabBar({
                         if (e.button !== 0) return;
                         // 关闭按钮等子控件自己处理点击：不要捕获指针，
                         // 否则 click 会被重定向到页签本体，关闭按钮失效。
-                        if ((e.target as HTMLElement).closest("button")) return;
+                        if ((e.target as HTMLElement).closest("button, input"))
+                          return;
                         suppressClickRef.current = false;
                         useStore.getState().setTabDragActive(true);
                         // 捕获指针：拖过正文 iframe 时 pointermove/pointerup
@@ -272,6 +288,12 @@ export default function TabBar({
                 }}
                 title={tab.title}
                 onContextMenu={(e) => handleContextMenu(e, id)}
+                onDoubleClick={(e) => {
+                  if ((e.target as HTMLElement).closest("button, input"))
+                    return;
+                  setEditingId(id);
+                  setEditValue(tab.title);
+                }}
                 className={`group flex min-w-0 items-center gap-1.5 px-2.5 py-1 text-xs cursor-pointer transition-colors whitespace-nowrap ${
                   isActive
                     ? "tab-capsule rounded-full bg-[var(--app-accent-soft)] font-medium text-[var(--app-accent)] shadow-sm"
@@ -284,7 +306,35 @@ export default function TabBar({
                   color={typeColor}
                   className="mr-0.5"
                 />
-                <span className="max-w-44 truncate">{tab.title}</span>
+                {editingId === id ? (
+                  <input
+                    data-testid="tab-title-input"
+                    autoFocus
+                    value={editValue}
+                    onChange={(e) => setEditValue(e.target.value)}
+                    onClick={(e) => e.stopPropagation()}
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onDoubleClick={(e) => e.stopPropagation()}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        commitRename(id, tab.title);
+                      } else if (e.key === "Escape") {
+                        e.preventDefault();
+                        cancelRenameRef.current = true;
+                        setEditingId(null);
+                      }
+                    }}
+                    onBlur={() => commitRename(id, tab.title)}
+                    className="w-32 min-w-0 rounded border bg-transparent px-1 text-xs outline-none"
+                    style={{
+                      borderColor: "var(--app-border)",
+                      color: "var(--app-text)",
+                    }}
+                  />
+                ) : (
+                  <span className="max-w-44 truncate">{tab.title}</span>
+                )}
                 {tab.dirty && (
                   <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />
                 )}

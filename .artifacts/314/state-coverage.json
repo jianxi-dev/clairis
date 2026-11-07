@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "双击页签名进入行内改名输入",
+      "screenshot": ".artifacts/314/edit-input.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T20:19:11Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "改名输入框可键入",
+      "screenshot": ".artifacts/314/edit-typed.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T20:19:11Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "回车提交后标题更新",
+      "screenshot": ".artifacts/314/after-enter.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T20:19:11Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "Esc 取消后标题回原值",
+      "screenshot": ".artifacts/314/after-escape.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T20:19:11Z",
+      "runner": "unknown@MMBP"
+    }
+  ]
+}
