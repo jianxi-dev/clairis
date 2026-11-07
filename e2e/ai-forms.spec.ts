@@ -157,8 +157,8 @@ test("预设菜单恰好 6 条、固定顺序", async ({ page }) => {
   const labels = (await items.allInnerTexts()).map((t) => t.trim());
   expect(labels).toEqual([
     "按主题分组",
-    "只留置顶和最近",
-    "置顶段放大",
+    "只留收藏和最近",
+    "收藏段放大",
     "网格改列表",
     "网格按类型分组",
     "加未读筛选",

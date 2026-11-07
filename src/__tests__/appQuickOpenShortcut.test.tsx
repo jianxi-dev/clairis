@@ -110,7 +110,7 @@ describe("App ⌘P 拦截原生打印", () => {
     expect(screen.queryByTestId("quick-open")).toBeNull();
   });
 
-  it("⌘⇧P 仍是置顶，不打开 quick-open", async () => {
+  it("⌘⇧P 仍是收藏，不打开 quick-open", async () => {
     render(<App />);
     await waitFor(() =>
       expect(screen.getByTestId("grid-entry")).toBeInTheDocument(),

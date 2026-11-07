@@ -199,11 +199,11 @@ interface AppStore {
   gridSort: GridSort;
   /** 网格分组：时间 / 类型 / 主题 / 不分组。 */
   gridGroup: GridGroupMode;
-  /** 只显示置顶条目。 */
+  /** 只显示收藏条目。 */
   gridPinnedOnly: boolean;
   /** 当前选中条目路径；null = 无选中。 */
   gridSelectedPath: string | null;
-  /** 置顶条目路径（网格与阅读空间共享；会话级，不持久化）。 */
+  /** 收藏条目路径（网格与阅读空间共享；会话级，不持久化）。 */
   pinnedPaths: string[];
   // Split panel — each panel holds its own tab refs
   splitDirection: SplitDirection | null;

@@ -214,14 +214,14 @@ test("门户磁贴点击进入后列表严格等于该类型文件", async ({ pa
   await record(page, "02-portal-type-filter");
 });
 
-test("顶部排序/分组/置顶为原生下拉；类型筛选为 hover 自定义菜单", async ({
+test("顶部排序/分组/收藏为原生下拉；类型筛选为 hover 自定义菜单", async ({
   page,
 }) => {
   await boot(page);
   await seed(page);
   await enterGridWithShortcut(page);
 
-  // 排序/分组/置顶仍是原生 SELECT
+  // 排序/分组/收藏仍是原生 SELECT
   const selects = page.locator('[data-testid="grid-toolbar"] select');
   await expect(selects).toHaveCount(3);
   const selectTags = await selects.evaluateAll((els) =>
@@ -364,7 +364,7 @@ test("tile 三型：2×2 / 2×1 / 1×1 跨度、2px 类型色顶条、4:3 缩略
   await record(page, "04-tile-sizes");
 });
 
-test("置顶 → 大 tile；取消置顶后大 tile 无残留", async ({ page }) => {
+test("收藏 → 大 tile；取消收藏后大 tile 无残留", async ({ page }) => {
   await boot(page);
   await seed(page);
   await enterGridWithShortcut(page);
@@ -548,7 +548,7 @@ test("网格/列表切换：列表单列渲染、网格恢复，viewSpec.gridMod
   await expect(page.locator('[data-tile-size="row"]')).toHaveCount(0);
 });
 
-test("置顶筛选：仅置顶只剩该条并计数 1 项，切回全部恢复 7 项", async ({
+test("收藏筛选：仅收藏只剩该条并计数 1 项，切回全部恢复 7 项", async ({
   page,
 }) => {
   await boot(page);

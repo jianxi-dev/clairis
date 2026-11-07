@@ -34,9 +34,9 @@ export interface ViewSpec {
    * 语义放在这里，渲染侧只按父目录分组。
    */
   themeGroups: boolean;
-  /** 阅读空间只留置顶与最近两段。 */
+  /** 阅读空间只留收藏与最近两段。 */
   pinnedAndRecentOnly: boolean;
-  /** 置顶段条目高度倍率 1.0–1.5，默认 1。 */
+  /** 收藏段条目高度倍率 1.0–1.5，默认 1。 */
   pinnedSegmentScale: number;
 }
 
@@ -206,12 +206,12 @@ export const SPEC_PRESETS: ReadonlyArray<SpecPreset> = [
   },
   {
     id: "pinned-recent-only",
-    label: "只留置顶和最近",
+    label: "只留收藏和最近",
     apply: (s) => applySpec(s, { pinnedAndRecentOnly: true }),
   },
   {
     id: "pinned-scale",
-    label: "置顶段放大",
+    label: "收藏段放大",
     apply: (s) => applySpec(s, { pinnedSegmentScale: 1.25 }),
   },
   {
@@ -312,11 +312,11 @@ export function humanizeChange(before: ViewSpec, after: ViewSpec): string {
   }
   if (before.pinnedAndRecentOnly !== after.pinnedAndRecentOnly) {
     parts.push(
-      after.pinnedAndRecentOnly ? "只显示置顶和最近的文件" : "显示全部段",
+      after.pinnedAndRecentOnly ? "只显示收藏和最近的文件" : "显示全部段",
     );
   }
   if (before.pinnedSegmentScale !== after.pinnedSegmentScale) {
-    parts.push(`置顶段放大到 ${after.pinnedSegmentScale} 倍`);
+    parts.push(`收藏段放大到 ${after.pinnedSegmentScale} 倍`);
   }
 
   return parts.length > 0 ? parts.join("；") : "没有需要调整的地方";

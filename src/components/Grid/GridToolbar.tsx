@@ -35,7 +35,7 @@ const TYPE_MENU_CLOSE_MS = 240;
 /**
  * 网格顶部单行工具条（layout-portal 10.1）。
  *
- * 类型筛选是 hover 自定义菜单（#262）；排序 / 分组 / 置顶保持原生 `<select>`。
+ * 类型筛选是 hover 自定义菜单（#262）；排序 / 分组 / 收藏保持原生 `<select>`。
  * 网格 / 列表是两个各自定值的按钮。`/` 聚焦搜索，`×` 清空。
  */
 export default function GridToolbar({ count }: { count: number }) {
@@ -354,13 +354,13 @@ export default function GridToolbar({ count }: { count: number }) {
       <select
         data-grid-pinned-select
         data-testid="grid-pinned-select"
-        aria-label="置顶筛选"
+        aria-label="收藏筛选"
         value={pinnedOnly ? "pinned" : "all"}
         onChange={(e) => setPinnedOnly(e.target.value === "pinned")}
         className="shrink-0 rounded border border-gray-200 bg-transparent px-1.5 py-0.5 text-xs text-gray-700 dark:border-gray-700 dark:text-gray-200"
       >
         <option value="all">全部</option>
-        <option value="pinned">仅置顶</option>
+        <option value="pinned">仅收藏</option>
       </select>
 
       <span

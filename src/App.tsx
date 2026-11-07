@@ -530,7 +530,7 @@ function App() {
         store.setReadingMode(!store.readingMode);
       }
 
-      // Cmd+Shift+P: 置顶当前文件（layout-portal 15.1）
+      // Cmd+Shift+P: 收藏当前文件（layout-portal 15.1）
       if (meta && e.shiftKey && e.key.toLowerCase() === "p") {
         e.preventDefault();
         const tab = store.activeTabId ? store.tabs[store.activeTabId] : null;

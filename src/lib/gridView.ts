@@ -178,7 +178,7 @@ export function groupGridItems(
 }
 
 export interface TileSizeContext {
-  /** 该条目是否被置顶。 */
+  /** 该条目是否被收藏。 */
   pinned: boolean;
   /** 「继续阅读」条目路径；null = 无。 */
   continuePath: string | null;
@@ -186,7 +186,7 @@ export interface TileSizeContext {
 
 /**
  * tile 尺寸（确定性规则）：
- * 1. 置顶、或等于「继续阅读」条目 → `large`（2×2）
+ * 1. 收藏、或等于「继续阅读」条目 → `large`（2×2）
  * 2. 有缩略图类型、或摘要非空 → `medium`（2×1）
  * 3. 其余（无图且无摘要）→ `small`（1×1）
  */
@@ -211,7 +211,7 @@ export interface GridFilter {
   type: FileTypeKind | null;
   /** 标题大小写不敏感子串；空串 = 不过滤。 */
   query: string;
-  /** 只留置顶条目。 */
+  /** 只留收藏条目。 */
   pinnedOnly: boolean;
   pinnedPaths: readonly string[];
 }

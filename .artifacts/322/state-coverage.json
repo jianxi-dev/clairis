@@ -1,0 +1,39 @@
+{
+  "states": [
+    {
+      "state": "card-default",
+      "screenshot": ".artifacts/322/card-default.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T22:49:05Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "hover-actions-bottom-left",
+      "screenshot": ".artifacts/322/hover-actions-bottom-left.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T22:49:06Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "progress-time-top-right",
+      "screenshot": ".artifacts/322/progress-time-top-right.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T22:49:06Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "progress-hover-yidu",
+      "screenshot": ".artifacts/322/progress-hover-yidu.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T22:49:06Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "collapsed-edge",
+      "screenshot": ".artifacts/322/collapsed-edge.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T22:49:06Z",
+      "runner": "unknown@MMBP"
+    }
+  ]
+}

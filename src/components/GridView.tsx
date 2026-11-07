@@ -46,7 +46,7 @@ function isEditableTarget(target: EventTarget | null): boolean {
 
 /**
  * 网格概览（layout-portal 10.1）。⌘⇧\ 打开：不聚焦搜索、默认选中第一张卡；
- * 顶部单行全下拉；tile 三型（大 2×2 仅置顶/继续阅读）；时间粘性分组头；
+ * 顶部单行全下拉；tile 三型（大 2×2 仅收藏/继续阅读）；时间粘性分组头；
  * 点击档经 8.1 悬浮预览窗贴卡右缘 +12 弹出真内容。
  */
 export default function GridView({

@@ -44,7 +44,7 @@ describe("railView —— 常量", () => {
     expect(HOVER_OPEN_MS).toBe(250);
   });
 
-  it("段固定为 现在/置顶/最近/分类", () => {
+  it("段固定为 现在/收藏/最近/分类", () => {
     expect(RAIL_SECTIONS.map((s) => s.key)).toEqual([
       "now",
       "pinned",
@@ -53,7 +53,7 @@ describe("railView —— 常量", () => {
     ]);
     expect(RAIL_SECTIONS.map((s) => s.label)).toEqual([
       "现在",
-      "置顶",
+      "收藏",
       "最近",
       "分类",
     ]);
