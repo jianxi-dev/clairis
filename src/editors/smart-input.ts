@@ -11,10 +11,15 @@
  * 也无法表达 `[` 依赖前一个字符（`!`）的上下文。
  */
 
-import { EditorView, keymap, ViewPlugin } from "@codemirror/view";
+import {
+  EditorView,
+  keymap,
+  ViewPlugin,
+  type ViewUpdate,
+} from "@codemirror/view";
 import { EditorState, type Extension, Prec } from "@codemirror/state";
 import { syntaxTree } from "@codemirror/language";
-import { isSlashMenuOpen } from "./slash";
+import { isSlashMenuOpen, openSlashMenuAt, slashMenuRequest } from "./slash";
 
 // --- IME 组合守卫 ------------------------------------------------------------
 
@@ -685,11 +690,15 @@ const headingTabKeymap = keymap.of([
 
 // --- 全角标点归一 ------------------------------------------------------------
 
-/** 中文输入法下最常打错的两个：全角逗号与全角斜杠。 */
+/** 中文输入法下最常打错的三个：全角逗号、全角斜杠与顿号。 */
 const FULLWIDTH_TO_ASCII: Readonly<Record<string, string>> = {
   "，": ",",
   "／": "/",
+  "、": "/",
 };
+
+/** 归一成 `/` 后要顺手唤起斜杠菜单的源字符（全角斜杠与顿号）。 */
+const SLASH_TRIGGERS: ReadonlySet<string> = new Set(["／", "、"]);
 
 /** 代码、行内代码、链接地址里的全角标点是有意为之，不能改。 */
 function inProtectedRegion(state: EditorState, pos: number): boolean {
@@ -713,6 +722,36 @@ function inProtectedRegion(state: EditorState, pos: number): boolean {
 }
 
 /**
+ * 与 `insertSlashChar` 的词首判定一致：行首，或前一个字符是空白。
+ * `prefix` 是本次插入里位于该字符之前的文本（pos 在 startState 里，多字符
+ * 插入时后续字符的位置会超出原文档长度）。
+ */
+function isWordStart(state: EditorState, pos: number, prefix: string): boolean {
+  const line = state.doc.lineAt(pos);
+  const textBefore = line.text.slice(0, pos - line.from) + prefix;
+  return textBefore.length === 0 || /\s$/.test(textBefore);
+}
+
+/**
+ * 读取全角标点归一挂上的 `slashMenuRequest` 注解，打开斜杠菜单。
+ *
+ * 必须等到 update 周期之外（微任务）再开：ViewPlugin 的 update 跑在
+ * `updateState == Updating` 期间，`coordsAtPos` 会抛「Reading the editor
+ * layout isn't allowed during an update」，`positionMenu` 吞掉异常后菜单停在
+ * 默认位置（左上角），正好盖住 `/`。微任务在 update 结束后落地，坐标可读。
+ */
+const openSlashMenuPlugin = ViewPlugin.define(() => ({
+  update(u: ViewUpdate): void {
+    for (const tr of u.transactions) {
+      const pos = tr.annotation(slashMenuRequest);
+      if (pos !== undefined) {
+        queueMicrotask(() => openSlashMenuAt(u.view, pos));
+      }
+    }
+  },
+}));
+
+/**
  * 全角 → 半角的事务过滤器。
  *
  * 用 `transactionFilter` 而不是 `inputHandler`：中文输入法的字符是
@@ -721,33 +760,56 @@ function inProtectedRegion(state: EditorState, pos: number): boolean {
  *
  * 只替换「单字符纯插入」：1:1 等长替换，选择区间与后续映射都不受影响，
  * 可以直接复用原 spec。
+ *
+ * `／` 与 `、` 归一成 `/` 后，如果落在词首且不在受保护区，就挂上
+ * `slashMenuRequest` 注解，由 `openSlashMenuPlugin` 开菜单。走注解而不是
+ * 在过滤器里直接开：transactionFilter 拿不到 view，且菜单要等事务落地。
+ * `，` 只归一，不挂注解，所以不会开菜单。
  */
-export function fullwidthPunctuation(): Extension {
-  return EditorState.transactionFilter.of((tr) => {
-    if (!tr.docChanged) return tr;
-    // 只处理用户输入：打开文件、格式化等程序化变更不动。
-    if (!tr.isUserEvent("input.type")) return tr;
-    const replacements: { from: number; to: number; insert: string }[] = [];
-    tr.changes.iterChanges((fromA, toA, _fromB, _toB, inserted) => {
-      if (toA - fromA > 0) return; // 纯插入才处理
-      const text = inserted.toString();
-      if (!/[，／]/.test(text)) return;
-      if (inProtectedRegion(tr.startState, fromA)) return;
-      // 逐字符 1:1 替换，长度不变，选择区间与原 spec 仍然成立。
-      const converted = Array.from(
-        text,
-        (ch) => FULLWIDTH_TO_ASCII[ch] ?? ch,
-      ).join("");
-      replacements.push({ from: fromA, to: toA, insert: converted });
-    });
-    if (replacements.length === 0) return tr;
-    return tr.startState.update({
-      changes: tr.startState.changes(replacements),
-      selection: tr.selection,
-      userEvent: "input.type",
-      scrollIntoView: tr.scrollIntoView,
-    });
-  });
+export function fullwidthPunctuation(): Extension[] {
+  return [
+    EditorState.transactionFilter.of((tr) => {
+      if (!tr.docChanged) return tr;
+      // 只处理用户输入：打开文件、格式化等程序化变更不动。
+      if (!tr.isUserEvent("input.type")) return tr;
+      const replacements: { from: number; to: number; insert: string }[] = [];
+      let slashPos: number | null = null;
+      tr.changes.iterChanges((fromA, toA, _fromB, _toB, inserted) => {
+        if (toA - fromA > 0) return; // 纯插入才处理
+        const text = inserted.toString();
+        if (!/[，／、]/.test(text)) return;
+        if (inProtectedRegion(tr.startState, fromA)) return;
+        // 逐字符 1:1 替换，长度不变，选择区间与原 spec 仍然成立。
+        const converted = Array.from(
+          text,
+          (ch) => FULLWIDTH_TO_ASCII[ch] ?? ch,
+        ).join("");
+        replacements.push({ from: fromA, to: toA, insert: converted });
+        if (slashPos !== null) return;
+        let offset = 0;
+        for (const ch of Array.from(text)) {
+          if (
+            SLASH_TRIGGERS.has(ch) &&
+            isWordStart(tr.startState, fromA, text.slice(0, offset))
+          ) {
+            slashPos = fromA + offset;
+            return;
+          }
+          offset += ch.length;
+        }
+      });
+      if (replacements.length === 0) return tr;
+      return tr.startState.update({
+        changes: tr.startState.changes(replacements),
+        selection: tr.selection,
+        userEvent: "input.type",
+        scrollIntoView: tr.scrollIntoView,
+        annotations:
+          slashPos === null ? undefined : slashMenuRequest.of(slashPos),
+      });
+    }),
+    openSlashMenuPlugin,
+  ];
 }
 
 /**
@@ -775,7 +837,7 @@ export function smartInput(): Extension {
     Prec.highest(smartEnterKeymap),
     Prec.highest(smartBackspaceKeymap),
     autoPairInputHandler,
-    fullwidthPunctuation(),
+    ...fullwidthPunctuation(),
     Prec.high(headingTabKeymap),
     compositionGuardPlugin,
   ];

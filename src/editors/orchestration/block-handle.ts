@@ -403,9 +403,12 @@ class BlockHandlePlugin {
     //
     // 只有块手柄有转换菜单。空行「+」是插入入口，悬停弹转换菜单是错的
     // （#105）——它只在按压时打开插入菜单（见 onAddPointerDown）。
+    //
+    // 不要求 gate 已开：指针从正文滑入手柄时，gate 可能还在 300ms 显现延迟
+    // 里，而 pointerenter 只触发一次；加了 gate 前置条件菜单就永远不会开。
     if (!empty) {
       el.addEventListener("pointerenter", () => {
-        if (entry.dragging || !entry.gate.isOpen()) return;
+        if (entry.dragging) return;
         if (entry.menuTimer !== null) window.clearTimeout(entry.menuTimer);
         entry.menuTimer = window.setTimeout(() => {
           entry.menuTimer = null;
