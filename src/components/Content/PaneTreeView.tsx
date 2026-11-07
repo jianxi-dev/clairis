@@ -180,7 +180,7 @@ function PaneNode({
             tabs={node.tabs}
             activeTabId={node.activeTabId}
             editorMode={node.editorMode}
-            showFullscreen
+            showFullscreen={!rootIsLeaf}
             showClosePane={!rootIsLeaf}
           />
         )}
@@ -551,8 +551,12 @@ function PaneHeader({
           <button
             type="button"
             data-testid="pane-fullscreen"
-            title="全屏当前格 (⌘⇧↵)"
-            aria-label="全屏当前格"
+            title={
+              fullscreenPaneId === leafId
+                ? "退出全屏（Esc）"
+                : "全屏当前格 (⌘⇧↵)"
+            }
+            aria-label={fullscreenPaneId === leafId ? "退出全屏" : "全屏当前格"}
             aria-pressed={fullscreenPaneId === leafId}
             onClick={() => {
               useStore.getState().focusPane(leafId);
@@ -560,7 +564,10 @@ function PaneHeader({
             }}
             className="p-0.5 rounded text-[var(--app-text-3)] hover:bg-[var(--app-accent-soft)] hover:text-[var(--app-accent)]"
           >
-            <Icon name="expand" size={18} />
+            <Icon
+              name={fullscreenPaneId === leafId ? "collapse" : "expand"}
+              size={18}
+            />
           </button>
         )}
         <div
