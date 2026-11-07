@@ -29,14 +29,25 @@ test.describe("Biaoyue E2E", () => {
     }
   });
 
-  test("2. 顶栏无旧控件，AI 入口唯一", async ({ page }) => {
+  test("2. 顶栏无旧控件；四个产品入口唯一且只在状态栏", async ({ page }) => {
     const banner = page.getByRole("banner");
     for (const name of ["打开", "保存", "新建", "侧栏", "翻译"]) {
       await expect(
         banner.getByRole("button", { name, exact: true }),
       ).toHaveCount(0);
     }
-    await expect(page.locator("[data-ai-entry]")).toHaveCount(1);
+    const bar = page.getByTestId("status-bar");
+    await expect(bar.locator("[data-ai-entry]")).toHaveCount(1);
+    await expect(bar.locator('[data-testid="grid-entry"]')).toHaveCount(1);
+    await expect(bar.locator('[data-testid="immersive-entry"]')).toHaveCount(1);
+    for (const sel of [
+      "[data-ai-entry]",
+      '[data-testid="grid-entry"]',
+      '[data-testid="immersive-entry"]',
+      '[title^="当前:"]',
+    ]) {
+      await expect(banner.locator(sel)).toHaveCount(0);
+    }
   });
 
   test("3. toolbar header visible", async ({ page }) => {

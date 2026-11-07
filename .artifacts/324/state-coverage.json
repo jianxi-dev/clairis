@@ -1,0 +1,39 @@
+{
+  "states": [
+    {
+      "state": "status-bar-default",
+      "screenshot": ".artifacts/324/01-status-bar-default.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T23:37:49Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "status-bar-immersive",
+      "screenshot": ".artifacts/324/02-status-bar-immersive.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T23:37:49Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "status-bar-dark",
+      "screenshot": ".artifacts/324/03-status-bar-dark.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T23:37:49Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "status-bar-grid",
+      "screenshot": ".artifacts/324/04-status-bar-grid.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T23:37:49Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "status-bar-ai",
+      "screenshot": ".artifacts/324/05-status-bar-ai.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T23:37:49Z",
+      "runner": "unknown@MMBP"
+    }
+  ]
+}
