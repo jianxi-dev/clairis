@@ -306,7 +306,10 @@ function RailThumb({ descriptor }: { descriptor: ThumbDescriptor }) {
   }
 
   if (kind === "pdf-page") {
-    const showPdf = isTauriEnv() && !!src;
+    // 卡片缩略图**不嵌入** PDF 查看器（#286）：macOS WKWebView 用 PDFKit
+    // 渲染 iframe，忽略 `#toolbar=0`；它的悬浮控制条是原生视图层，
+    // CSS `pointer-events:none` 也拦不住。唯一可靠的做法是不给卡片加载
+    // 查看器——保留类型色占位。悬浮预览窗是用户主动阅读面，继续用 iframe。
     return (
       <div
         data-testid="rail-thumb"
@@ -321,23 +324,6 @@ function RailThumb({ descriptor }: { descriptor: ThumbDescriptor }) {
         <span className="rail-thumb-line" />
         <span className="rail-thumb-line" />
         <span className="rail-thumb-line" />
-        {showPdf && (
-          <iframe
-            src={`${assetSrc(src)}#toolbar=0&navpanes=0&scrollbar=0&view=FitH`}
-            title=""
-            tabIndex={-1}
-            loading="lazy"
-            style={{
-              position: "absolute",
-              inset: 0,
-              width: "100%",
-              height: "100%",
-              border: "none",
-              pointerEvents: "none",
-              background: "var(--app-surface)",
-            }}
-          />
-        )}
       </div>
     );
   }

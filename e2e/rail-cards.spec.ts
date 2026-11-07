@@ -13,7 +13,9 @@ const APP_URL = "http://localhost:1420";
 const ART = path.resolve(process.cwd(), ".artifacts/177");
 
 const ART275 = path.resolve(process.cwd(), ".artifacts/275");
+const ART286 = path.resolve(process.cwd(), ".artifacts/286");
 mkdirSync(ART275, { recursive: true });
+mkdirSync(ART286, { recursive: true });
 
 mkdirSync(ART, { recursive: true });
 
@@ -556,4 +558,34 @@ test("PDF 卡片不渲染悬停工具条，其他类型保持（#275）", async 
   await expect(
     md.locator('[data-testid="rail-card-actions"] button'),
   ).toHaveCount(3);
+});
+
+test("PDF 卡片缩略图不嵌入查看器，原生工具条无宿主（#286）", async ({
+  page,
+}) => {
+  await boot(page);
+  await seed(page);
+  await openPinnedRail(page);
+
+  const card = recentItem(page, "/tmp/rc/report.pdf");
+  const thumb = card.locator('[data-testid="rail-thumb"]');
+  await expect(thumb).toHaveAttribute("data-thumb-kind", "pdf-page");
+  await expect(thumb.locator("iframe")).toHaveCount(0);
+  await expect(thumb.locator(".rail-thumb-line")).toHaveCount(3);
+  await page.screenshot({ path: path.join(ART286, "pdf-card-idle.png") });
+
+  // 悬停也不得出现查看器（原缺陷正是 hover 时浮出原生控制条）
+  await card.hover();
+  await expect(thumb.locator("iframe")).toHaveCount(0);
+  await page.screenshot({
+    path: path.join(ART286, "pdf-card-no-viewer.png"),
+  });
+
+  // 非 PDF 卡片的动作条不受影响
+  const md = recentItem(page, "/tmp/rc/cover.md");
+  await md.hover();
+  await expect(
+    md.locator('[data-testid="rail-card-actions"] button'),
+  ).toHaveCount(3);
+  await page.screenshot({ path: path.join(ART286, "md-card-actions.png") });
 });
