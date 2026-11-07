@@ -131,7 +131,7 @@ test("PDF 文件预览渲染查看器（无 iframe，位图渲染）", async ({ 
     .toBeGreaterThanOrEqual(1);
 });
 
-test("PDF 下 Cmd/Ctrl+= 不触发全局字号变化，查看器放大按钮生效", async ({
+test("PDF 下 Cmd/Ctrl+= 不触发全局字号变化，缩放独立按钮已移除", async ({
   page,
 }) => {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
@@ -153,13 +153,22 @@ test("PDF 下 Cmd/Ctrl+= 不触发全局字号变化，查看器放大按钮生�
   await page.waitForTimeout(300);
   expect(await readFontSize()).toBe(before);
 
-  // 查看器自带放大按钮生效（缩放输入 84% → 94%）
+  // 缩放工具栏不再有独立的「放大」「缩小」按钮（缩放交给触摸板捏合）
+  await expect(viewer.locator("button[aria-label='放大']")).toHaveCount(0);
+  await expect(viewer.locator("button[aria-label='缩小']")).toHaveCount(0);
+
+  // 缩放输入框与缩放菜单保留可用：输入 120 → 回车生效
+  const zoomToolbar = viewer.locator("[data-epdf-i='zoom-toolbar']");
   const zoomInput = viewer.locator("input[aria-label='Set zoom']");
-  const zoomBefore = parseFloat(await zoomInput.inputValue());
-  await viewer.locator("button[aria-label='放大']").click();
+  await expect(zoomInput).toHaveCount(1);
+  await expect(
+    zoomToolbar.locator("button[aria-label='缩放菜单']"),
+  ).toHaveCount(1);
+  await zoomInput.fill("120");
+  await page.keyboard.press("Enter");
   await expect
     .poll(async () => parseFloat(await zoomInput.inputValue()))
-    .toBeGreaterThan(zoomBefore);
+    .toBe(120);
 
   // markdown 下 Ctrl+= 仍走字号分支（回归固化：非 PDF 语义不变）。
   // mock load_config fontSize=16，故首次按 16→17，二次 17→18，断言递增即可
@@ -174,7 +183,7 @@ test("PDF 下 Cmd/Ctrl+= 不触发全局字号变化，查看器放大按钮生�
   expect(mdAfter2).toBeGreaterThan(mdAfter1);
 });
 
-test("PDF 查看器翻页与搜索", async ({ page }) => {
+test("PDF 查看器翻页（顶栏页码导航）与搜索", async ({ page }) => {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto(APP_URL, { waitUntil: "networkidle" });
   await page.waitForSelector("header", { timeout: 10000 });
@@ -183,11 +192,18 @@ test("PDF 查看器翻页与搜索", async ({ page }) => {
   const viewer = page.locator("embedpdf-container");
   await expect(viewer).toHaveCount(1);
 
-  // 翻页：当前页 input 1 → 2（总页数 span 为 2）
-  const pageInput = viewer.locator("input[type='text']:not([aria-label])");
+  // 翻页入口在顶栏：上一页 / 页码输入 / 下一页（当前页 1 → 2）
+  const topToolbar = viewer.locator("[data-epdf-i='main-toolbar']");
+  const pageInput = topToolbar.locator("input[type='text']:not([aria-label])");
   await expect(pageInput).toHaveValue("1");
-  await viewer.locator("button[aria-label='下一页']").click();
+  await topToolbar.locator("button[aria-label='下一页']").click();
   await expect(pageInput).toHaveValue("2");
+
+  // 滚动后底部不再弹出 page-controls 浮层
+  await page.mouse.move(600, 400);
+  await page.mouse.wheel(0, 400);
+  await page.waitForTimeout(800);
+  await expect(viewer.locator("[data-epdf-i='page-controls']")).toHaveCount(0);
 
   // 搜索：唤起搜索框 → 输入 mini.pdf 内嵌词 → 结果面板命中 ≥ 1
   await viewer.locator("button[aria-label='搜索']").click();
