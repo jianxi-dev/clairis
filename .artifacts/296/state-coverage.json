@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "图标抽屉含 16 媒体概念",
+      "screenshot": ".artifacts/296/state-drawer.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T16:56:54Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "暗主题媒体图标",
+      "screenshot": ".artifacts/296/state-drawer-dark.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T16:56:54Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "宽屏 1440 抽屉",
+      "screenshot": ".artifacts/296/state-drawer-wide.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T16:56:54Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "循环三态角标为笔画、无 text 节点",
+      "screenshot": ".artifacts/296/state-drawer.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T16:57:08Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}
