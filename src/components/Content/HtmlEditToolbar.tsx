@@ -30,6 +30,8 @@ export interface HtmlEditToolbarProps {
   onReplaceTag: (tag: string) => void;
   onPatchStyle: (styles: Record<string, string | null>) => void;
   onPatchAttr: (attrs: Record<string, string | null>) => void;
+  /** 进入区域截图模式（E-21） */
+  onCapture: () => void;
   onClose: () => void;
 }
 
@@ -53,6 +55,7 @@ export default function HtmlEditToolbar({
   onReplaceTag,
   onPatchStyle,
   onPatchAttr,
+  onCapture,
   onClose,
 }: HtmlEditToolbarProps) {
   const ref = useRef<HTMLDivElement | null>(null);
@@ -186,6 +189,16 @@ export default function HtmlEditToolbar({
         onChange={(e) => setId(e.target.value)}
         onBlur={() => commitAttr("id", id.trim())}
       />
+
+      <button
+        type="button"
+        aria-label="截图"
+        title="截图：拖出要截取的区域"
+        className="html-edit-toolbar__btn"
+        onClick={onCapture}
+      >
+        截图
+      </button>
 
       <button
         type="button"

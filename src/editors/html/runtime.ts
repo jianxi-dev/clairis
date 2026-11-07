@@ -85,6 +85,86 @@ function runtimeSource(version: number): string {
     post({ type: "selectionRect", nodeId: current, rect: { x: r.left, y: r.top, width: r.width, height: r.height } });
   };
 
+  // 截图模式（E-21）下禁用点选/拖拽/编辑，光标切十字
+  let captureMode = false;
+
+  // —— 拖拽移动（E-20）——
+  // 阈值 4px：低于它算点击（design D2）。越过阈值前不 preventDefault，
+  // 用户反悔时松手仍是一次正常的点选。
+  const DRAG_THRESHOLD = 4;
+  let dragFrom = null;
+  let dragEl = null;
+  let dropTarget = null;
+  let dropLine = null;
+  let suppressClick = false;
+
+  const ensureDropLine = () => {
+    if (dropLine && dropLine.isConnected) return dropLine;
+    dropLine = document.createElement("div");
+    dropLine.setAttribute("data-cm-internal", "dropline");
+    Object.assign(dropLine.style, {
+      position: "absolute",
+      pointerEvents: "none",
+      zIndex: "2147483646",
+      height: "2px",
+      background: "rgba(59,130,246,0.9)",
+      borderRadius: "1px",
+      display: "none",
+    });
+    document.body.appendChild(dropLine);
+    return dropLine;
+  };
+
+  const hideDropLine = () => {
+    if (dropLine) dropLine.style.display = "none";
+    dropTarget = null;
+  };
+
+  document.addEventListener("mousedown", (e) => {
+    if (captureMode || editing || e.button !== 0) return;
+    const el = e.target && e.target.closest ? e.target.closest("[data-cm-node-id]") : null;
+    if (!el) return;
+    const tag = el.tagName.toLowerCase();
+    if (tag === "html" || tag === "body") return;
+    dragFrom = { el: el, nodeId: el.getAttribute("data-cm-node-id"), x: e.clientX, y: e.clientY };
+  }, true);
+
+  document.addEventListener("mousemove", (e) => {
+    if (captureMode || !dragFrom) return;
+    if (!dragEl) {
+      if (Math.abs(e.clientX - dragFrom.x) < DRAG_THRESHOLD && Math.abs(e.clientY - dragFrom.y) < DRAG_THRESHOLD) return;
+      dragEl = dragFrom.el;
+      suppressClick = true;
+    }
+    e.preventDefault();
+    const under = document.elementFromPoint(e.clientX, e.clientY);
+    const cand = under && under.closest ? under.closest("[data-cm-node-id]") : null;
+    // 拖到自己或自己的子孙上：浏览器会让整棵子树消失，直接不给落点（design D3）
+    if (!cand || cand === dragEl || dragEl.contains(cand)) { hideDropLine(); return; }
+    const r = cand.getBoundingClientRect();
+    const position = e.clientY < r.top + r.height / 2 ? "before" : "after";
+    dropTarget = { nodeId: cand.getAttribute("data-cm-node-id"), position: position };
+    const line = ensureDropLine();
+    line.setAttribute("data-cm-drop", position);
+    line.style.display = "block";
+    line.style.left = (r.left + scrollX) + "px";
+    line.style.width = r.width + "px";
+    line.style.top = ((position === "before" ? r.top : r.bottom) + scrollY - 1) + "px";
+  }, true);
+
+  document.addEventListener("mouseup", () => {
+    if (dragEl) {
+      if (dropTarget) {
+        post({ type: "moveNode", nodeId: dragFrom.nodeId, targetId: dropTarget.nodeId, position: dropTarget.position });
+      }
+      hideDropLine();
+      dragEl = null;
+    }
+    dragFrom = null;
+    // click 紧跟在 mouseup 后同步触发；这里放到下个任务再解，刚好吞掉它
+    if (suppressClick) setTimeout(() => { suppressClick = false; }, 0);
+  }, true);
+
   // —— 文本编辑（切片 4）——
   // 只有块级容器可编辑：行内元素上双击改字会拆碎句子。
   const EDITABLE = new Set(["p", "h1", "h2", "h3", "h4", "h5", "h6", "li", "blockquote"]);
@@ -118,6 +198,7 @@ function runtimeSource(version: number): string {
   };
 
   document.addEventListener("dblclick", (e) => {
+    if (captureMode) return;
     // 向上找最近的可编辑块：双击落在行内元素（span/a/strong）上时，
     // closest("[data-cm-node-id]") 会停在这个行内元素，它不在 EDITABLE 里，
     // 于是编辑永远不开始。块级祖先（p/h1-h6/li/blockquote）才是编辑单元。
@@ -174,13 +255,96 @@ function runtimeSource(version: number): string {
     setTimeout(() => { if (editing && !editing.contains(document.activeElement)) endEdit(); }, 0);
   }, true);
 
-  document.addEventListener("click", (e) => post({ type: "selection", nodeId: anchorOf(e.target) }), true);
+  // —— 区域截图（E-21）——
+  // 框只能画在 iframe 内（主文档跨源描不到）；主侧拿到的只是坐标，
+  // 真正的渲染走它自己的 SVG→canvas 管线。
+  let capStart = null;
+  let capBox = null;
+
+  const ensureCapBox = () => {
+    if (capBox && capBox.isConnected) return capBox;
+    capBox = document.createElement("div");
+    capBox.setAttribute("data-cm-internal", "capture");
+    Object.assign(capBox.style, {
+      position: "absolute",
+      pointerEvents: "none",
+      zIndex: "2147483647",
+      border: "1px dashed rgba(59,130,246,0.9)",
+      background: "rgba(59,130,246,0.12)",
+      boxSizing: "border-box",
+      display: "none",
+    });
+    document.body.appendChild(capBox);
+    return capBox;
+  };
+
+  // 只收这几个键：它们拼进 SVG 的 style 属性，多一个都不认（design D5）
+  const BODY_STYLE_KEYS = ["margin", "padding", "background-color", "background-image", "color", "font-family", "font-size", "line-height", "font-weight", "font-style"];
+
+  document.addEventListener("mousedown", (e) => {
+    if (!captureMode || e.button !== 0) return;
+    e.preventDefault();
+    capStart = { x: e.clientX, y: e.clientY };
+    const b = ensureCapBox();
+    b.style.display = "block";
+    b.style.left = (capStart.x + scrollX) + "px";
+    b.style.top = (capStart.y + scrollY) + "px";
+    b.style.width = "0px";
+    b.style.height = "0px";
+  }, true);
+
+  document.addEventListener("mousemove", (e) => {
+    if (!captureMode || !capStart) return;
+    e.preventDefault();
+    const b = ensureCapBox();
+    b.style.left = (Math.min(capStart.x, e.clientX) + scrollX) + "px";
+    b.style.top = (Math.min(capStart.y, e.clientY) + scrollY) + "px";
+    b.style.width = Math.abs(e.clientX - capStart.x) + "px";
+    b.style.height = Math.abs(e.clientY - capStart.y) + "px";
+  }, true);
+
+  document.addEventListener("mouseup", (e) => {
+    if (!captureMode || !capStart) return;
+    const left = Math.min(capStart.x, e.clientX);
+    const top = Math.min(capStart.y, e.clientY);
+    const width = Math.abs(e.clientX - capStart.x);
+    const height = Math.abs(e.clientY - capStart.y);
+    capStart = null;
+    ensureCapBox().style.display = "none";
+    // 宽高不足 1px 视为误触，不上报（主侧也就不必白跑一遍栅格化）
+    if (width < 1 || height < 1) return;
+    const cs = getComputedStyle(document.body);
+    const bodyStyle = {};
+    for (const key of BODY_STYLE_KEYS) bodyStyle[key] = cs.getPropertyValue(key);
+    post({
+      type: "captureRegion",
+      region: { x: left + scrollX, y: top + scrollY, width: width, height: height },
+      viewportWidth: document.documentElement.clientWidth,
+      bodyStyle: bodyStyle,
+    });
+  }, true);
+
+  document.addEventListener("click", (e) => {
+    // 拖拽结束后的那一次 click 不算点选；截图模式下完全不报选区
+    if (suppressClick || captureMode) return;
+    post({ type: "selection", nodeId: anchorOf(e.target) });
+  }, true);
   addEventListener("scroll", place, true);
   addEventListener("resize", place);
   addEventListener("message", (e) => {
     if (e.source !== parent) return;
     const d = e.data;
-    if (!d || d.v !== V || d.type !== "highlight") return;
+    if (!d || d.v !== V) return;
+    if (d.type === "captureMode") {
+      captureMode = !!d.active;
+      document.body.style.cursor = captureMode ? "crosshair" : "";
+      if (!captureMode) {
+        capStart = null;
+        if (capBox) capBox.style.display = "none";
+      }
+      return;
+    }
+    if (d.type !== HL) return;
     current = typeof d.nodeId === "string" ? d.nodeId : null;
     place();
   });

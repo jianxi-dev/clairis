@@ -1,18 +1,22 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useEditorStore } from "../../stores/editorStore";
 import {
+  commandForCaptureMode,
   commandForSelection,
   parseBridgeMessage,
+  type CaptureRegionMessage,
   type SelectionRect,
 } from "../../editors/html/bridge";
 import {
   applyAttrPatch,
   applyBlockSplit,
+  applyNodeMove,
   applyStylePatch,
   applyTagReplace,
   applyTextEdit,
   describeNode,
 } from "../../editors/html/edit";
+import { captureRegionToPng } from "../../editors/html/capture";
 import { buildEditableDoc } from "../../editors/html/runtime";
 import HtmlEditToolbar from "./HtmlEditToolbar";
 
@@ -61,6 +65,18 @@ export default function HtmlVisualEditor({
   const frozenRef = useRef<string | null>(null);
   // 只用来在进入/离开编辑时触发一次重算
   const [docTick, setDocTick] = useState(0);
+  // 截图模式 + 结果提示（截图是异步的，且不进 content，不接受控字段）
+  const [capturing, setCapturing] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+  const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // 消息监听的 effect 依赖是空数组，读不到最新 props——用 ref 带走。
+  // 在 effect 里写而不是渲染期写：渲染期写 ref 与并发渲染打架。
+  const contentRef = useRef(content);
+  const pathRef = useRef(filePath);
+  useEffect(() => {
+    contentRef.current = content;
+    pathRef.current = filePath;
+  });
 
   const srcDoc = useMemo(() => {
     if (editingRef.current && frozenRef.current) return frozenRef.current;
@@ -80,6 +96,37 @@ export default function HtmlVisualEditor({
   const commit = useCallback((updater: (prev: string) => string) => {
     changeRef.current?.(updater);
   }, []);
+
+  const send = useCallback((payload: unknown) => {
+    frameRef.current?.contentWindow?.postMessage(payload, "*");
+  }, []);
+
+  const showNotice = useCallback((message: string) => {
+    setNotice(message);
+    if (noticeTimer.current) clearTimeout(noticeTimer.current);
+    noticeTimer.current = setTimeout(() => setNotice(null), 3000);
+  }, []);
+
+  /** 截图：iframe 只给区域，渲染与落盘都在主侧（沿用导出 PNG 的管线）。 */
+  const handleCapture = useCallback(
+    async (msg: CaptureRegionMessage) => {
+      setCapturing(false);
+      send(commandForCaptureMode(false));
+      const result = await captureRegionToPng({
+        content: contentRef.current,
+        filePath: pathRef.current,
+        region: msg.region,
+        viewportWidth: msg.viewportWidth,
+        bodyStyle: msg.bodyStyle,
+      });
+      if (result.status === "error") {
+        showNotice(`截图失败：${result.message}`);
+      } else if (result.status === "saved") {
+        showNotice("已保存截图");
+      }
+    },
+    [send, showNotice],
+  );
 
   // 收上报：只认自己这一帧发来的，载荷交给 bridge 解析（版本位/形状不对就丢）
   useEffect(() => {
@@ -139,13 +186,24 @@ export default function HtmlVisualEditor({
             applyBlockSplit(prev, msg.nodeId, msg.before, msg.after),
           );
           break;
+        case "moveNode":
+          // 拖拽后同标签元素的序号全变，旧选中已失效（design D7）
+          setSelected(null);
+          setBox(null);
+          commit((prev) =>
+            applyNodeMove(prev, msg.nodeId, msg.targetId, msg.position),
+          );
+          break;
+        case "captureRegion":
+          void handleCapture(msg);
+          break;
         default:
           break;
       }
     };
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
-  }, []);
+  }, [commit, handleCapture]);
 
   // 选中变化 → 下发命令让 iframe 自己挪框。文档重建后也重发一次。
   useEffect(() => {
@@ -202,12 +260,20 @@ export default function HtmlVisualEditor({
           onPatchStyle={(styles) =>
             commit((prev) => applyStylePatch(prev, selected, styles))
           }
+          onCapture={() => {
+            setSelected(null);
+            setBox(null);
+            setCapturing(true);
+            send(commandForCaptureMode(true));
+          }}
           onPatchAttr={(attrs) =>
             commit((prev) => applyAttrPatch(prev, selected, attrs))
           }
           onClose={() => setSelected(null)}
         />
       )}
+      {capturing && <div className="html-capture-hint">拖出要截图的区域</div>}
+      {notice && <div className="html-edit-notice">{notice}</div>}
     </>
   );
 }
