@@ -40,7 +40,17 @@ export default function Icon({
       data-icon-size={size}
     >
       {title && <title>{title}</title>}
-      <path d={def.d ?? def.s ?? ""} />
+      {def.s && (
+        <path
+          d={def.s}
+          fill="none"
+          stroke={color ?? "currentColor"}
+          strokeWidth={1.7}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      )}
+      {def.d && <path d={def.d} />}
     </svg>
   );
 }

@@ -101,7 +101,7 @@ export const ICONS: Record<IconName, IconDef> = {
   },
   close: {
     label: "关闭",
-    d: "M7.1 8.5l1.4-1.4 8.4 8.4-1.4 1.4z M8.5 16.9L7.1 15.5 15.5 7.1l1.4 1.4z",
+    s: "M6.5 6.5l11 11 M17.5 6.5l-11 11",
   },
   search: {
     label: "搜索",
