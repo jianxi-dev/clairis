@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "单格不渲染全屏按钮",
+      "screenshot": ".artifacts/298/state-single.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T17:08:18Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "双格格头 expand",
+      "screenshot": ".artifacts/298/state-two-expand.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T17:08:18Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "全屏态 collapse + aria-pressed",
+      "screenshot": ".artifacts/298/state-fullscreen-collapse.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T17:08:18Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "暗主题全屏态",
+      "screenshot": ".artifacts/298/state-fullscreen-dark.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T17:08:18Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}
