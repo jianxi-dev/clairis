@@ -37,7 +37,7 @@ openspec status --change <name>   # 单个变更工件完成度
 
 ## 总览统计（截至 2026-11-07）
 
-- 规格：17 域 / 127 requirement（2026-11-07 归档 html-edit-toolbar、html-visual-move-capture 后）
+- 规格：17 域 / 128 requirement（2026-11-07 归档 html-edit-toolbar、html-visual-move-capture、html-toolbar-by-node-type 后）
 - ✅ 经 openspec 归档实现：14
 - 🟡 已实现/设计完成（未走 openspec 变更）：24
 - ⬜ 待开发：16
@@ -46,6 +46,7 @@ openspec status --change <name>   # 单个变更工件完成度
 - 阅读/编辑表面域（`reading-surface-refine`）：+10 需求（G-6/G-7、A-13/A-14、E-17/E-18、N-1…N-3、CF-6）已实现，8/8 票合并（含 #224/#226/#231 三次缺陷修复），已归档 `openspec/changes/archive/2026-11-06-reading-surface-refine`
 - 编辑域（`html-edit-toolbar`）：+1 需求（E-19 HTML 可视化编辑工具条），已归档 `openspec/changes/archive/2026-11-07-html-edit-toolbar`（PR #264）
 - 编辑域（`html-visual-move-capture`）：+2 需求（E-20 拖拽移动节点、E-21 区域截图），已归档 `openspec/changes/archive/2026-11-07-html-visual-move-capture`（PR #266）
+- 编辑域（`html-toolbar-by-node-type`）：+1 需求（E-22 工具条按节点类型分化），已归档 `openspec/changes/archive/2026-11-07-html-toolbar-by-node-type`（PR #269）
 
 ## 逐域状态
 
@@ -176,6 +177,7 @@ openspec status --change <name>   # 单个变更工件完成度
 | E-19 | HTML 可视化编辑工具条（换标签 / 改样式 / 改属性） | ✅ | change `html-edit-toolbar`（归档 2026-11-07，PR #264） |
 | E-20 | HTML 可视化编辑：拖拽移动节点 | ✅ | change `html-visual-move-capture`（归档 2026-11-07，PR #266） |
 | E-21 | HTML 可视化编辑：区域截图 | ✅ | change `html-visual-move-capture`（归档 2026-11-07，PR #266） |
+| E-22 | HTML 可视化编辑：工具条按节点类型分化 | ✅ | change `html-toolbar-by-node-type`（归档 2026-11-07，PR #269） |
 
 ### docs-governance（3）
 
