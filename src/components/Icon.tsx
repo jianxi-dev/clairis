@@ -40,7 +40,7 @@ export default function Icon({
       data-icon-size={size}
     >
       {title && <title>{title}</title>}
-      <path d={def.d} />
+      <path d={def.d ?? def.s ?? ""} />
     </svg>
   );
 }

@@ -39,7 +39,8 @@ describe("文件类型 → 图标 / 类型色（layout-portal 1.1）", () => {
     >) {
       const name = iconOfType(kind);
       expect(ICONS[name]).toBeTruthy();
-      expect(ICONS[name].d.length).toBeGreaterThan(0);
+      const glyph = ICONS[name].d ?? ICONS[name].s ?? "";
+      expect(glyph.length).toBeGreaterThan(0);
     }
   });
 
