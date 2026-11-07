@@ -86,7 +86,7 @@ export default function PaneDivider({
           useStore.getState().setPaneRatio(branch.id, 0.5);
         }
       }}
-      className={`pane-divider ${isRow ? "pane-divider-h" : "pane-divider-v"} ${
+      className={`pane-divider shrink-0 ${isRow ? "pane-divider-h" : "pane-divider-v"} ${
         dragging ? "dragging" : ""
       }`}
     />

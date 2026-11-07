@@ -14,8 +14,10 @@ const APP_URL = "http://localhost:1420";
 const SPLIT_RIGHT = "Control+Alt+ArrowRight";
 const SPLIT_DOWN = "Control+Alt+ArrowDown";
 const ART = path.resolve(process.cwd(), ".artifacts/175");
+const ART272 = path.resolve(process.cwd(), ".artifacts/272");
 
 mkdirSync(ART, { recursive: true });
+mkdirSync(ART272, { recursive: true });
 
 type Store = {
   getState: () => {
@@ -143,6 +145,10 @@ async function drag(
 
 function shot(page: Page, name: string): Promise<void> {
   return page.screenshot({ path: path.join(ART, `${name}.png`) });
+}
+
+function shot272(page: Page, name: string): Promise<void> {
+  return page.screenshot({ path: path.join(ART272, `${name}.png`) });
 }
 
 test("中心释放：两格互换，各自页签随行、比例锚定不变", async ({ page }) => {
@@ -346,4 +352,148 @@ test("文件拖到右半区：右侧分裂出新格，文件只在新格", async
     0,
   );
   await shot(page, "file-drop-right-split");
+});
+
+type LayoutNode = {
+  type: "node" | "leaf";
+  id: string;
+  ratio?: number;
+  children?: [LayoutNode, LayoutNode];
+  tabs?: string[];
+};
+
+async function layout(page: Page): Promise<LayoutNode> {
+  const parsed = JSON.parse(await layoutJson(page)) as { root: LayoutNode };
+  return parsed.root;
+}
+
+test("拖动根分隔线只改自己的分支，内层分支比例不变（#272）", async ({
+  page,
+}) => {
+  await boot(page);
+  await openFile(page, "/tmp/pd/a.md");
+  await page.keyboard.press(SPLIT_RIGHT);
+  await expect.poll(() => paneIds(page)).toHaveLength(2);
+  await openFile(page, "/tmp/pd/b.md");
+
+  // 左侧再竖分一次：root = row[ col[main, p3], p2 ]
+  await page.evaluate(() => {
+    (window as unknown as { __biaoyue_store__: Store }).__biaoyue_store__
+      .getState()
+      .focusPane("main");
+  });
+  await page.keyboard.press(SPLIT_DOWN);
+  await expect.poll(() => paneIds(page)).toHaveLength(3);
+
+  const before = await layout(page);
+  const innerId = before.children![0].id;
+  await page.evaluate((id) => {
+    (window as unknown as { __biaoyue_store__: Store }).__biaoyue_store__
+      .getState()
+      .setPaneRatio(id, 0.3);
+  }, innerId);
+  const rooted = await layout(page);
+  expect(rooted.children![0].ratio).toBeCloseTo(0.3, 3);
+
+  const divider = page.locator(`[data-pane-divider="${before.id}"]`);
+  const box = await divider.boundingBox();
+  if (!box) throw new Error("分隔线不可测量");
+  const cx = box.x + box.width / 2;
+  const cy = box.y + box.height / 2;
+  await page.mouse.move(cx, cy);
+  await page.mouse.down();
+  await page.mouse.move(cx + 120, cy, { steps: 8 });
+  await page.mouse.up();
+
+  const after = await layout(page);
+  expect(after.ratio).not.toBeCloseTo(0.5, 3);
+  expect(after.children![0].ratio).toBeCloseTo(0.3, 3);
+  await shot272(page, "divider-independent");
+});
+
+test("拖页签跨格：页签搬走、格数量不变（#272）", async ({ page }) => {
+  await boot(page);
+  await openFile(page, "/tmp/pd/a.md");
+  await page.keyboard.press(SPLIT_RIGHT);
+  await expect.poll(() => paneIds(page)).toHaveLength(2);
+  await openFile(page, "/tmp/pd/b.md");
+  const p2 = await focusedId(page);
+
+  const tab = page.locator('[data-pane-id="main"] [data-tab-id]').first();
+  const tabBox = await tab.boundingBox();
+  const target = page.locator(`[data-pane-id="${p2}"]`);
+  const targetBox = await target.boundingBox();
+  if (!tabBox || !targetBox) throw new Error("拖拽端点不可测量");
+
+  await page.mouse.move(
+    tabBox.x + tabBox.width / 2,
+    tabBox.y + tabBox.height / 2,
+  );
+  await page.mouse.down();
+  await page.mouse.move(
+    targetBox.x + targetBox.width / 2,
+    targetBox.y + targetBox.height / 2,
+    { steps: 10 },
+  );
+  // 目标格落区环 + 插入轨迹
+  await expect(target).toHaveAttribute("data-tab-drop", "true");
+  await expect(
+    page.locator('[data-testid="tab-drag-placeholder"]'),
+  ).toBeVisible();
+  await shot272(page, "tab-drag-track");
+  await page.mouse.up();
+
+  await expect.poll(() => paneIds(page)).toHaveLength(2);
+  expect(await paneTabPaths(page, "main")).toEqual([]);
+  expect(await paneTabPaths(page, p2)).toEqual([
+    "/tmp/pd/b.md",
+    "/tmp/pd/a.md",
+  ]);
+});
+
+test("页签右键分栏把文件搬进新格（#272）", async ({ page }) => {
+  await boot(page);
+  await openFile(page, "/tmp/pd/a.md");
+  await expect.poll(() => paneIds(page)).toHaveLength(1);
+
+  const tab = page.locator('[data-pane-id="main"] [data-tab-id]').first();
+  await tab.click({ button: "right" });
+  await page.getByText("向右分栏", { exact: true }).click();
+
+  await expect.poll(() => paneIds(page)).toHaveLength(2);
+  expect(await paneTabPaths(page, "main")).toEqual([]);
+  const ids = await paneIds(page);
+  const newPane = ids.find((id) => id !== "main") ?? "";
+  expect(newPane).not.toBe("");
+  expect(await paneTabPaths(page, newPane)).toEqual(["/tmp/pd/a.md"]);
+  await shot272(page, "context-split-moved");
+});
+
+test("关闭页签后布局仍可拖拽分隔线（#272）", async ({ page }) => {
+  await boot(page);
+  await openFile(page, "/tmp/pd/a.md");
+  await openFile(page, "/tmp/pd/b.md");
+  await page.keyboard.press(SPLIT_RIGHT);
+  await expect.poll(() => paneIds(page)).toHaveLength(2);
+  await openFile(page, "/tmp/pd/c.md");
+
+  // 关掉 main 的第一个页签：main 仍有另一个页签，布局保留
+  const tab = page.locator('[data-pane-id="main"] [data-tab-id]').first();
+  await tab.hover();
+  await tab.locator("button").click();
+  await expect.poll(() => paneTabPaths(page, "main")).toEqual(["/tmp/pd/b.md"]);
+
+  const before = await layout(page);
+  const divider = page.locator(`[data-pane-divider="${before.id}"]`);
+  const box = await divider.boundingBox();
+  if (!box) throw new Error("分隔线不可测量");
+  const cx = box.x + box.width / 2;
+  const cy = box.y + box.height / 2;
+  await page.mouse.move(cx, cy);
+  await page.mouse.down();
+  await page.mouse.move(cx + 100, cy, { steps: 8 });
+  await page.mouse.up();
+
+  expect((await layout(page)).ratio).not.toBeCloseTo(0.5, 3);
+  await shot272(page, "close-tab-layout");
 });

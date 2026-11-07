@@ -203,4 +203,104 @@ describe("pane 递归树 store（layout-portal 3.1）", () => {
     }
     expect(seen.size).toBe(Object.keys(useStore.getState().tabs).length);
   });
+
+  it("splitPaneWithTab 把页签搬进新格，原格不再保留（#272）", () => {
+    useStore.getState().openFile("/a.md", "a");
+    useStore.getState().openFile("/b.md", "b");
+    const aId = tabIdByPath("/a.md");
+    const bId = tabIdByPath("/b.md");
+
+    useStore.getState().splitPaneWithTab("row", aId);
+
+    const s = useStore.getState();
+    expect(leafCount(s.paneRoot)).toBe(2);
+    expect(findLeaf(s.paneRoot, "main")?.tabs).toEqual([bId]);
+    const newLeaf = findLeaf(s.paneRoot, s.focusedPaneId);
+    expect(newLeaf?.tabs).toEqual([aId]);
+    expect(s.activeTabId).toBe(aId);
+  });
+
+  it("dropFileOnPane：文件已在目标格时不复制栏目（#272）", () => {
+    useStore.getState().openFile("/a.md", "a");
+    const aId = tabIdByPath("/a.md");
+    const before = leafCount(useStore.getState().paneRoot);
+
+    useStore.getState().dropFileOnPane("/a.md", "a2", "main", "right");
+
+    const s = useStore.getState();
+    expect(leafCount(s.paneRoot)).toBe(before);
+    expect(findLeaf(s.paneRoot, "main")?.tabs).toEqual([aId]);
+    expect(s.tabs[aId]?.content).toBe("a2");
+    expect(s.focusedPaneId).toBe("main");
+  });
+
+  it("dropFileOnPane：文件在别的格时搬入新格并塌缩空源格（#272）", () => {
+    useStore.getState().openFile("/b.md", "b");
+    const bId = tabIdByPath("/b.md");
+    useStore.getState().splitPane("row");
+    const targetId = useStore.getState().focusedPaneId;
+    useStore.getState().openFile("/c.md", "c");
+    expect(leafCount(useStore.getState().paneRoot)).toBe(2);
+
+    useStore.getState().dropFileOnPane("/b.md", "b2", targetId, "right");
+
+    const s = useStore.getState();
+    // 源格 main 被搬空并塌缩（-1），目标右侧新增一格（+1）→ 总数不变
+    expect(leafCount(s.paneRoot)).toBe(2);
+    expect(findLeaf(s.paneRoot, "main")).toBeNull();
+    const leaves = listLeaves(s.paneRoot);
+    const holder = leaves.find((leaf) => leaf.tabs.includes(bId));
+    expect(holder).toBeTruthy();
+    expect(holder?.tabs).toEqual([bId]);
+    expect(s.tabs[bId]?.content).toBe("b2");
+  });
+
+  it("恢复旧布局后新建分栏的 id 不与持久化 id 撞车（#272）", () => {
+    useStore.getState().openFile("/a.md", "a");
+    const aId = tabIdByPath("/a.md");
+    useStore.getState().restorePaneLayout(
+      {
+        type: "node",
+        id: "branch-1",
+        dir: "row",
+        ratio: 0.5,
+        children: [
+          {
+            type: "leaf",
+            id: "pane-1",
+            tabs: [aId],
+            activeTabId: aId,
+            editorMode: "preview",
+          },
+          {
+            type: "leaf",
+            id: "main",
+            tabs: [],
+            activeTabId: null,
+            editorMode: "preview",
+          },
+        ],
+      },
+      "pane-1",
+    );
+
+    useStore.getState().splitPane("row");
+
+    const collect = (node: unknown, out: string[]): void => {
+      const n = node as { type: string; id: string; children?: unknown[] };
+      out.push(n.id);
+      if (n.type === "node" && n.children) {
+        collect(n.children[0], out);
+        collect(n.children[1], out);
+      }
+    };
+    const ids: string[] = [];
+    collect(useStore.getState().paneRoot, ids);
+    // 全部 id 唯一
+    expect(new Set(ids).size).toBe(ids.length);
+    // 旧持久化 id 仍在，新 id 不与它们相等
+    expect(ids).toContain("branch-1");
+    expect(ids).toContain("pane-1");
+    expect(ids.filter((id) => id.startsWith("branch-")).length).toBe(2);
+  });
 });
