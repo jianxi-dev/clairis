@@ -532,14 +532,31 @@ describe("全角标点归一（E-13）", () => {
     return transactions;
   }
 
-  it("全角逗号落成半角", () => {
+  it("全角逗号落成半角，不开菜单", () => {
     typeAt(0, "你好，世界");
     expect(editor.view.state.doc.toString()).toBe("你好,世界");
+    expect(editor.view.dom.querySelector(".mdb-slash-menu")).toBeNull();
   });
 
-  it("全角斜杠落成半角", () => {
+  it("全角斜杠在词首落成半角并唤起斜杠菜单", async () => {
+    typeAt(0, "／");
+    // 菜单由 ViewPlugin 在微任务里开（update 期间不能读布局）。
+    await Promise.resolve();
+    expect(editor.view.state.doc.toString()).toBe("/");
+    expect(editor.view.dom.querySelector(".mdb-slash-menu")).not.toBeNull();
+  });
+
+  it("全角斜杠在词中只落成半角，不开菜单", () => {
     typeAt(0, "a／b");
     expect(editor.view.state.doc.toString()).toBe("a/b");
+    expect(editor.view.dom.querySelector(".mdb-slash-menu")).toBeNull();
+  });
+
+  it("顿号落成半角斜杠并唤起斜杠菜单", async () => {
+    typeAt(0, "、");
+    await Promise.resolve();
+    expect(editor.view.state.doc.toString()).toBe("/");
+    expect(editor.view.dom.querySelector(".mdb-slash-menu")).not.toBeNull();
   });
 
   it("围栏代码块内保留全角", () => {

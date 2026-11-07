@@ -672,7 +672,7 @@ describe("slash key chord display", () => {
   });
 });
 
-describe("IME composition handling", () => {
+describe("全角斜杠 / 顿号归一（E-13）", () => {
   let parent: HTMLElement;
   let view: EditorView;
 
@@ -687,12 +687,40 @@ describe("IME composition handling", () => {
     parent.remove();
   });
 
-  it("full-width slash (U+FF0F) triggers the menu when not composing", () => {
-    const FULLWIDTH_SLASH = "\uFF0F";
-    const inserted = insertSlashChar(view, defaultCommands, FULLWIDTH_SLASH);
-    expect(inserted).toBe(true);
-    expect(view.state.doc.toString()).toBe(FULLWIDTH_SLASH);
+  /** 模拟一次真实键入：userEvent 必须是 input.type，否则过滤器按程序化变更跳过。 */
+  function typeAt(pos: number, text: string): void {
+    view.dispatch({
+      changes: { from: pos, insert: text },
+      selection: { anchor: pos + text.length },
+      userEvent: "input.type",
+    });
+  }
+
+  it("全角斜杠在词首归一成半角并打开斜杠菜单", async () => {
+    typeAt(0, "／");
+    // 菜单由 ViewPlugin 在微任务里开（update 期间不能读布局）。
+    await Promise.resolve();
+    expect(view.state.doc.toString()).toBe("/");
     expect(view.dom.querySelector(".mdb-slash-menu")).not.toBeNull();
+  });
+
+  it("顿号在词首归一成半角斜杠并打开斜杠菜单", async () => {
+    typeAt(0, "、");
+    await Promise.resolve();
+    expect(view.state.doc.toString()).toBe("/");
+    expect(view.dom.querySelector(".mdb-slash-menu")).not.toBeNull();
+  });
+
+  it("全角斜杠在词中只归一、不开菜单", () => {
+    typeAt(0, "a／");
+    expect(view.state.doc.toString()).toBe("a/");
+    expect(view.dom.querySelector(".mdb-slash-menu")).toBeNull();
+  });
+
+  it("全角逗号只归一、不开菜单", () => {
+    typeAt(0, "你好，世界");
+    expect(view.state.doc.toString()).toBe("你好,世界");
+    expect(view.dom.querySelector(".mdb-slash-menu")).toBeNull();
   });
 
   // 注：ViewPlugin 的 compositionstart/compositionend 处理器在 jsdom 里不好测。

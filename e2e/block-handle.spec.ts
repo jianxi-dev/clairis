@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { moveThrough } from "./helpers/ui-probe";
 
 const APP_URL = "http://localhost:1420";
 
@@ -144,6 +145,48 @@ test("滑入手柄 60ms 内开出块菜单", async ({ page }) => {
   expect(await page.locator('[data-testid="block-menu"]').count()).toBe(0);
   await page.clock.runFor(1);
   expect(await page.locator('[data-testid="block-menu"]').count()).toBe(1);
+});
+
+test("指针从正文分步滑入手柄即开块菜单（gate 未开也要开）", async ({
+  page,
+}) => {
+  await openDoc(page, "/Users/test/bh-slide.md", "第一段\n\n第二段");
+  const line = page.locator(".cm-line").first();
+  const lineBox = (await line.boundingBox())!;
+  const content = await page.evaluate(() => {
+    const rect = (
+      document.querySelector(".cm-content") as HTMLElement
+    ).getBoundingClientRect();
+    return { left: rect.left, width: rect.width };
+  });
+  // 手柄 opacity 0 但已布局，boundingBox 可测。
+  const handle = page.locator(
+    '[data-testid="block-handle"][data-block-from="0"]',
+  );
+  const handleBox = (await handle.boundingBox())!;
+  // 从行中心（非召唤区）分步滑入召唤区再滑入手柄：pointerenter 落在 gate 的
+  // 300ms 显现延迟内，旧实现会因为 gate 未开而直接 return，菜单永远不开。
+  await moveThrough(
+    page,
+    [
+      {
+        x: lineBox.x + lineBox.width * 0.5,
+        y: lineBox.y + lineBox.height / 2,
+      },
+      {
+        x: content.left + content.width * 0.1,
+        y: lineBox.y + lineBox.height / 2,
+      },
+      {
+        x: handleBox.x + handleBox.width / 2,
+        y: handleBox.y + handleBox.height / 2,
+      },
+    ],
+    { steps: 3 },
+  );
+  await expect(page.locator('[data-testid="block-menu"]')).toBeVisible({
+    timeout: 3000,
+  });
 });
 
 test("空行「+」打开插入菜单", async ({ page }) => {

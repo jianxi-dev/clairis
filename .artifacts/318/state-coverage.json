@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "顿号→斜杠+菜单",
+      "screenshot": ".artifacts/318/dun-slash-menu.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T21:22:13Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "全角斜杠→斜杠+菜单",
+      "screenshot": ".artifacts/318/fullwidth-slash-menu.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T21:22:20Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "全角逗号→半角逗号(无菜单)",
+      "screenshot": ".artifacts/318/fullwidth-comma-no-menu.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T21:22:20Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "手柄滑入→块菜单",
+      "screenshot": ".artifacts/318/handle-slide-block-menu.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T21:22:20Z",
+      "runner": "unknown@MMBP"
+    }
+  ]
+}

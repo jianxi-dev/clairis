@@ -28,7 +28,12 @@ import {
   keymap,
   type ViewUpdate,
 } from "@codemirror/view";
-import { Prec, type EditorState, type Extension } from "@codemirror/state";
+import {
+  Annotation,
+  Prec,
+  type EditorState,
+  type Extension,
+} from "@codemirror/state";
 import { CALLOUT_EDIT_TYPES } from "./callout-types";
 import { TABLE_SIZE_QUERY, filterSlashCommands } from "./slash-filter";
 import { sanitizeCellText } from "./decorations/cell-text";
@@ -1384,22 +1389,30 @@ function backToRoot(view: EditorView): void {
  */
 let slashComposing = false;
 
-/** 全角斜杠（U+FF0F），部分输入法使用。 */
-const FULLWIDTH_SLASH = "\uFF0F";
+/**
+ * 事务注解：请求在指定位置打开斜杠菜单。
+ *
+ * 全角标点归一（`／` / `、` → `/`）在 transactionFilter 里挂上，smart-input
+ * 的 ViewPlugin 读取后调用 `openSlashMenuAt`。用注解而不是在过滤器里直接开
+ * 菜单：transactionFilter 拿不到 view，且菜单必须在事务落地后打开才能按 `/`
+ * 的位置测量坐标。
+ */
+export const slashMenuRequest = Annotation.define<number>();
 
 /**
- * 处理输入 `/` 或 `／`。在光标处打开命令菜单。菜单已打开时（连续第二个斜杠）
+ * 处理输入 `/`。在光标处打开命令菜单。菜单已打开时（连续第二个斜杠）
  * 关闭它并返回 false，让 keymap 落到默认行为——不重复开菜单，不重复插入。
  *
  * 只在以下条件触发：
- * - 字符是 ASCII `/`（U+002F）或全角 `／`（U+FF0F）。
  * - 光标在词首（行内它之前没有内容，或紧邻的前一个字符是空白）。
  * - IME 不在组合中（直接 keymap 路径；compositionend 路径单独处理已提交的斜杠）。
+ *
+ * 全角 `／` 与顿号 `、` 不经过这里：它们由 `smart-input` 的
+ * `fullwidthPunctuation` 先归一成 `/`，再经 `slashMenuRequest` 打开菜单。
  */
 export function insertSlashChar(
   view: EditorView,
   commands?: SlashCommand[],
-  slashChar: "/" | typeof FULLWIDTH_SLASH = "/",
 ): boolean {
   if (slashComposing) return false;
 
@@ -1419,8 +1432,8 @@ export function insertSlashChar(
     return false;
 
   view.dispatch({
-    changes: { from: head, insert: slashChar },
-    selection: { anchor: head + slashChar.length },
+    changes: { from: head, insert: "/" },
+    selection: { anchor: head + 1 },
   });
   // dispatch 之后再打开，避免 ViewPlugin 的文档变更关闭器立刻把它关掉。
   openMenu(view, head, commands ?? getSlashCommands());
@@ -1436,6 +1449,18 @@ export function openSlashMenuAtCursor(
 ): void {
   const head = view.state.selection.main.head;
   openMenu(view, head, commands ?? getSlashCommands());
+}
+
+/**
+ * 在已经存在的 `/` 位置打开斜杠菜单（不插入字符）。供全角标点归一
+ * （`／` / `、` → `/`）在事务落地后调用。
+ */
+export function openSlashMenuAt(
+  view: EditorView,
+  slashPos: number,
+  commands?: SlashCommand[],
+): void {
+  openMenu(view, slashPos, commands ?? getSlashCommands());
 }
 
 /** ArrowDown：移动浮层选中，或根列表选中，向下。 */
@@ -1717,9 +1742,11 @@ const slashCompositionGuard = ViewPlugin.define((view) => {
     const target = event.target as Node | null;
     if (target !== null && target !== document && !view.dom.contains(target))
       return;
-    // 提交文本是斜杠（ASCII 或全角）时触发菜单：中文输入法下输入 `/` 会产生
-    // 全角斜杠。斜杠已由浏览器/输入法插入，这里只在当前光标处打开菜单。
-    if (data === "/" || data === FULLWIDTH_SLASH) {
+    // 提交文本是 ASCII 斜杠时触发菜单：斜杠已由浏览器/输入法插入，这里只在
+    // 当前光标处打开菜单。全角 `／` 与顿号 `、` 不走这里——它们由 smart-input
+    // 的 fullwidthPunctuation 归一成 `/` 后经 slashMenuRequest 开菜单，
+    // 两条路径同时开会重复打开。
+    if (data === "/") {
       openSlashMenuAtCursor(view);
     }
   };
@@ -1784,22 +1811,6 @@ const outsideClickDismiss = ViewPlugin.define((view) => {
   };
 });
 
-const COMMA_TRIGGER = "\u3001";
-
-const chineseCommaTrigger = ViewPlugin.define((view) => {
-  const onBeforeInput = (event: Event): void => {
-    if ((event as InputEvent).data !== COMMA_TRIGGER) return;
-    if (slashComposing || menus.get(view)?.open) return;
-    if (insertSlashChar(view)) event.preventDefault();
-  };
-  view.contentDOM.addEventListener("beforeinput", onBeforeInput);
-  return {
-    destroy(): void {
-      view.contentDOM.removeEventListener("beforeinput", onBeforeInput);
-    },
-  };
-});
-
 /**
  * 接线斜杠菜单的 keymap 扩展。返回 `Prec.high(...)`，绑定优先于
  * `defaultKeymap`；菜单关闭时每个绑定都返回 false，保留 CodeMirror 默认行为。
@@ -1830,6 +1841,5 @@ export function slashKeymap(
     scrollDismiss,
     slashCompositionGuard,
     outsideClickDismiss,
-    chineseCommaTrigger,
   ];
 }

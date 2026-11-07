@@ -64,11 +64,25 @@ test("空列表项回车退出列表", async ({ page }) => {
   expect(text).toBe("- 项\n");
 });
 
-test("全角逗号与斜杠换成半角", async ({ page }) => {
-  await openMarkdownForEditing(page, "/Users/test/si-punct.md");
-  await page.keyboard.type("你好，世界／测试");
-  const text = await storeContent(page);
-  expect(text).toBe("你好,世界/测试");
+test("全角逗号换成半角（不唤起菜单）", async ({ page }) => {
+  await openMarkdownForEditing(page, "/Users/test/si-punct-comma.md");
+  await page.keyboard.type("你好，世界");
+  await expect.poll(() => storeContent(page)).toBe("你好,世界");
+  expect(await page.locator('[data-testid="slash-menu"]').count()).toBe(0);
+});
+
+test("全角斜杠在词首换成半角并唤起菜单", async ({ page }) => {
+  await openMarkdownForEditing(page, "/Users/test/si-punct-slash.md");
+  await page.keyboard.type("／");
+  await expect.poll(() => storeContent(page)).toBe("/");
+  await expect(page.locator('[data-testid="slash-menu"]')).toBeVisible();
+});
+
+test("顿号在词首换成半角斜杠并唤起菜单", async ({ page }) => {
+  await openMarkdownForEditing(page, "/Users/test/si-punct-dun.md");
+  await page.keyboard.type("、");
+  await expect.poll(() => storeContent(page)).toBe("/");
+  await expect(page.locator('[data-testid="slash-menu"]')).toBeVisible();
 });
 
 test("围栏代码块内保留全角", async ({ page }) => {
