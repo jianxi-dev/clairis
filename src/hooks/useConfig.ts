@@ -365,9 +365,9 @@ function applyRustConfig(raw: RustAppConfig): void {
 }
 
 /** Re-read the effective config from Rust and apply it without touching content. */
-export function reloadAppConfig(): void {
+export function reloadAppConfig(force = false): void {
   if (!isTauriEnv()) return;
-  if (Date.now() - lastLocalSaveAt < SAVE_ECHO_WINDOW_MS) return;
+  if (!force && Date.now() - lastLocalSaveAt < SAVE_ECHO_WINDOW_MS) return;
   invoke<RustAppConfig>("load_config")
     .then(applyRustConfig)
     .catch((e) => log.error("Config", "Failed to reload config", e));
@@ -433,7 +433,7 @@ export function useConfig() {
     if (!isTauriEnv()) return;
     let unlisten: (() => void) | undefined;
     let cancelled = false;
-    listen("config-changed", reloadAppConfig)
+    listen("config-changed", () => reloadAppConfig())
       .then((fn) => {
         if (cancelled) fn();
         else unlisten = fn;
