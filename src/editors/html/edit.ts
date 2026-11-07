@@ -272,3 +272,91 @@ export function applyNodeMove(
     return true;
   });
 }
+
+/**
+ * 文本级元素：工具条给的是「这段文字怎么排版」——字号、粗体、斜体、
+ * 下划线、删除线、链接、对齐、文字颜色（对照 WorkBuddy 的文字工具条）。
+ *
+ * 与 `BLOCK_TAGS` 的分化是刻意的：给一个 `<section>` 加粗体毫无意义，
+ * 给一个 `<p>` 加背景框也少见，两类混在一起只会让工具条又长又没用。
+ */
+export const TEXT_TAGS = [
+  "p",
+  "h1",
+  "h2",
+  "h3",
+  "h4",
+  "h5",
+  "h6",
+  "li",
+  "blockquote",
+  "span",
+  "a",
+  "strong",
+  "em",
+  "b",
+  "i",
+  "u",
+  "s",
+  "code",
+  "pre",
+  "td",
+  "th",
+  "figcaption",
+  "label",
+  "dt",
+  "dd",
+] as const;
+
+/** 区块容器：工具条给的是「这个区块长什么样」——布局、背景、边框。 */
+export const BLOCK_TAGS = [
+  "div",
+  "section",
+  "article",
+  "aside",
+  "header",
+  "footer",
+  "main",
+  "nav",
+  "ul",
+  "ol",
+  "table",
+  "figure",
+  "form",
+] as const;
+
+const BLOCK_SET = new Set<string>(BLOCK_TAGS);
+
+export type NodeKind = "text" | "block";
+
+/** 未知标签按文本处理：排版类操作比容器类操作更通用，误判代价更小。 */
+export function nodeKindOf(tag: string): NodeKind {
+  return BLOCK_SET.has(tag.trim().toLowerCase()) ? "block" : "text";
+}
+
+/**
+ * `text-decoration` 是单值属性：下划线与删除线共用它，必须按 token 合并，
+ * 各写各的会互相覆盖（勾上下划线，删除线就没了）。
+ */
+export function toggleDecoration(
+  current: string | undefined,
+  target: "underline" | "line-through",
+): string | null {
+  const tokens = (current ?? "")
+    .split(/\s+/)
+    .filter((token) => token && token !== "none");
+  const next = tokens.includes(target)
+    ? tokens.filter((token) => token !== target)
+    : [...tokens, target];
+  return next.length ? next.join(" ") : null;
+}
+
+/** 删除节点（连同子树）。html/body 不接受——那等于清空整篇文档。 */
+export function applyNodeRemove(content: string, nodeId: string): string {
+  return rewrite(content, nodeId, (el) => {
+    const tag = el.tagName.toLowerCase();
+    if (tag === "html" || tag === "body") return false;
+    el.parentNode?.removeChild(el);
+    return true;
+  });
+}

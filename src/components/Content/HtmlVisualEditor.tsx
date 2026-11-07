@@ -11,6 +11,7 @@ import {
   applyAttrPatch,
   applyBlockSplit,
   applyNodeMove,
+  applyNodeRemove,
   applyStylePatch,
   applyTagReplace,
   applyTextEdit,
@@ -257,9 +258,19 @@ export default function HtmlVisualEditor({
               setBox((prev) => (prev ? { ...prev, nodeId: nextId } : prev));
             }
           }}
-          onPatchStyle={(styles) =>
-            commit((prev) => applyStylePatch(prev, selected, styles))
+          onPatchStyle={(patch) =>
+            commit((prev) => {
+              // 基于**最新 content** 求样式：连点两个开关时，第二次若用渲染期
+              // 的旧样式算，会把第一次的结果覆盖掉。
+              const current = describeNode(prev, selected)?.style ?? {};
+              return applyStylePatch(prev, selected, patch(current));
+            })
           }
+          onRemove={() => {
+            commit((prev) => applyNodeRemove(prev, selected));
+            setSelected(null);
+            setBox(null);
+          }}
           onCapture={() => {
             setSelected(null);
             setBox(null);
