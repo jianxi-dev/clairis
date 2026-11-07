@@ -281,3 +281,53 @@ test("页签图标颜色严格等于文件类型色（data-tab-color）", async 
   expect(fill).toBe(resolved);
   expect(fill).toBe(tokenColor);
 });
+
+test("双击页签名改名：回车提交、Esc 取消、路径不变", async ({ page }) => {
+  await boot(page);
+  await openFile(page, "/tmp/ph/a.md");
+  const tab = page.locator('[data-pane-id="main"] [data-tab-id]').first();
+  await expect(tab).toHaveCount(1);
+
+  const pathBefore = await page.evaluate(() => {
+    const s = (
+      window as unknown as {
+        __biaoyue_store__: {
+          getState: () => {
+            activeTabId: string | null;
+            tabs: Record<string, { path: string | null }>;
+          };
+        };
+      }
+    ).__biaoyue_store__.getState();
+    return s.activeTabId ? s.tabs[s.activeTabId].path : null;
+  });
+
+  await tab.locator("span").first().dblclick();
+  const input = page.getByTestId("tab-title-input");
+  await expect(input).toBeVisible();
+  await input.fill("新名字");
+  await input.press("Enter");
+  await expect(tab).toHaveAttribute("title", "新名字");
+
+  const pathAfter = await page.evaluate(() => {
+    const s = (
+      window as unknown as {
+        __biaoyue_store__: {
+          getState: () => {
+            activeTabId: string | null;
+            tabs: Record<string, { path: string | null }>;
+          };
+        };
+      }
+    ).__biaoyue_store__.getState();
+    return s.activeTabId ? s.tabs[s.activeTabId].path : null;
+  });
+  expect(pathAfter).toBe(pathBefore);
+
+  await tab.locator("span").first().dblclick();
+  await expect(page.getByTestId("tab-title-input")).toBeVisible();
+  await page.getByTestId("tab-title-input").fill("不该生效");
+  await page.getByTestId("tab-title-input").press("Escape");
+  await expect(page.getByTestId("tab-title-input")).toHaveCount(0);
+  await expect(tab).toHaveAttribute("title", "新名字");
+});

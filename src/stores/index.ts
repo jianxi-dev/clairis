@@ -255,6 +255,7 @@ interface AppStore {
   closeTab: (id: string) => void;
   updateContent: (content: string) => void;
   updateTabContent: (tabId: string, content: string) => void;
+  renameTab: (tabId: string, title: string) => void;
   setEditorMode: (mode: EditorMode) => void;
   setReadingMode: (on: boolean) => void;
   setImmersiveChromeVisible: (v: boolean) => void;
@@ -609,6 +610,15 @@ export const useStore = create<AppStore>((set, get) => ({
         [tabId]: { ...tab, content, dirty: true },
       },
     });
+  },
+
+  renameTab: (tabId: string, title: string) => {
+    const { tabs } = get();
+    const tab = tabs[tabId];
+    if (!tab) return;
+    const next = title.trim();
+    if (!next || next === tab.title) return;
+    set({ tabs: { ...tabs, [tabId]: { ...tab, title: next } } });
   },
 
   setEditorMode: (mode: EditorMode) => {
