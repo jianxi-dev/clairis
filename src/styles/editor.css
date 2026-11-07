@@ -882,6 +882,24 @@ body {
   height: 16px;
 }
 
+/* 悬浮条与热区重叠：条从屏幕顶缘起，16px 热区压在条上，条上方不留透明空行。 */
+.immersive-peek-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+}
+
+/* 页签胶囊高度略降；页签条保留原高，胶囊上下留缝不压边线。 */
+.tab-capsule {
+  padding-top: 2px;
+  padding-bottom: 2px;
+}
+
+.tab-strip {
+  min-height: 27px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .app-chrome {
     transition: none;

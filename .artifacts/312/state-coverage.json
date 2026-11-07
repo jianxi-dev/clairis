@@ -1,0 +1,39 @@
+{
+  "states": [
+    {
+      "state": "沉浸态悬浮条跟随指针所在格",
+      "screenshot": ".artifacts/312/immersive-follow-no-band.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T19:31:35Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "沉浸态悬浮条上方无空白带(bar.y=0)",
+      "screenshot": ".artifacts/312/immersive-follow-no-band.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T19:31:35Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "沉浸态空格兜底文案「空分栏」",
+      "screenshot": ".artifacts/312/immersive-empty-fallback.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T19:31:35Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "单格工作区显示全屏按钮",
+      "screenshot": ".artifacts/312/single-pane-fullscreen.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T19:31:35Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "页签胶囊高度下调(capH=22 stripH=27)",
+      "screenshot": ".artifacts/312/capsule-height.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T19:31:35Z",
+      "runner": "unknown@MMBP"
+    }
+  ]
+}

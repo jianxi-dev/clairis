@@ -184,6 +184,8 @@ interface AppStore {
   sidebarRightVisible: boolean;
   readingMode: boolean;
   immersiveChromeVisible: boolean;
+  /** 页签拖拽进行中：抑制沉浸热区 2s 收起，避免拖拽被浮层卸载打断。 */
+  tabDragActive: boolean;
   scrollPositions: Record<string, ScrollPosition>;
   recentFiles: RecentFile[];
   /** 当前场景：门户 / 工作区 / 网格 / 设置（Layout Portal §1） */
@@ -256,6 +258,7 @@ interface AppStore {
   setEditorMode: (mode: EditorMode) => void;
   setReadingMode: (on: boolean) => void;
   setImmersiveChromeVisible: (v: boolean) => void;
+  setTabDragActive: (v: boolean) => void;
   updateScrollPos: (
     tabId: string,
     scrollPos: number,
@@ -371,6 +374,7 @@ const initialState = {
   sidebarRightVisible: false,
   readingMode: false,
   immersiveChromeVisible: false,
+  tabDragActive: false,
   scrollPositions: {} as Record<string, ScrollPosition>,
   recentFiles: [] as RecentFile[],
   scene: "portal" as Scene,
@@ -640,6 +644,10 @@ export const useStore = create<AppStore>((set, get) => ({
 
   setImmersiveChromeVisible: (v: boolean) => {
     set({ immersiveChromeVisible: v });
+  },
+
+  setTabDragActive: (v: boolean) => {
+    set({ tabDragActive: v });
   },
 
   updateScrollPos: (

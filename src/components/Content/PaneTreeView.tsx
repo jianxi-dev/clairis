@@ -180,7 +180,7 @@ function PaneNode({
             tabs={node.tabs}
             activeTabId={node.activeTabId}
             editorMode={node.editorMode}
-            showFullscreen={!rootIsLeaf}
+            showFullscreen={true}
             showClosePane={!rootIsLeaf}
           />
         )}
