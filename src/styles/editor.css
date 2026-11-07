@@ -843,31 +843,43 @@ body {
 
 /* ── Immersive reading (A-5): chrome fade in/out, main area untouched ── */
 
+/*
+ * 沉浸模式：顶栏与每格页签条真正向上收拢（高度归零），而不是只把文字
+ * 变透明继续占位。max-height 可动画，且不会像 display:none 那样丢状态。
+ */
 .app-chrome {
+  max-height: 200px;
   transition:
-    opacity 0.3s ease,
-    visibility 0.3s ease;
+    max-height 0.3s ease,
+    padding 0.3s ease,
+    opacity 0.3s ease;
 }
 
 .immersive .app-chrome {
+  /* flex 子项的 min-height:auto 会撑住内容高度，必须显式归零；
+     内边距也算在 border-box 的 max-height 里，一并收掉。 */
+  min-height: 0;
+  max-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
   opacity: 0;
-  visibility: hidden;
+  overflow: hidden;
   pointer-events: none;
+  border-bottom-width: 0;
 }
 
-.immersive.immersive-peek .app-chrome {
-  opacity: 1;
-  visibility: visible;
-  pointer-events: auto;
-}
-
+/* 顶部热区：16px 才够鼠标稳定命中；悬浮条出现后容器随之变高，
+   指针从热区移到条上不会触发 mouseleave。 */
 .immersive-peek-zone {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
-  height: 2px;
   z-index: 60;
+}
+
+.immersive-peek-trigger {
+  height: 16px;
 }
 
 @media (prefers-reduced-motion: reduce) {

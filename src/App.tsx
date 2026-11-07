@@ -6,6 +6,7 @@ import { isMediaKind } from "./stores/index";
 import { useEditorStore } from "./stores/editorStore";
 import { useCaptureOverlayStore } from "./stores/captureOverlay";
 import Toolbar from "./components/Toolbar";
+import ImmersivePeekBar from "./components/ImmersivePeekBar";
 import TemplatePicker from "./components/TemplatePicker";
 import SettingsView from "./components/SettingsView";
 import PaneTreeView from "./components/Content/PaneTreeView";
@@ -744,7 +745,6 @@ function App() {
   const rootClass = [
     "h-screen w-screen flex flex-col bg-[var(--app-bg)] text-[var(--app-text)]",
     readingMode ? "immersive" : "",
-    readingMode && immersiveChromeVisible ? "immersive-peek" : "",
   ]
     .filter(Boolean)
     .join(" ");
@@ -830,6 +830,7 @@ function App() {
       {readingMode && (
         <div
           className="immersive-peek-zone"
+          data-testid="immersive-peek-zone"
           onMouseEnter={() => {
             if (peekTimerRef.current) clearTimeout(peekTimerRef.current);
             peekTimerRef.current = setTimeout(() => {
@@ -842,7 +843,10 @@ function App() {
               useStore.getState().setImmersiveChromeVisible(false);
             }, 2000);
           }}
-        />
+        >
+          <div className="immersive-peek-trigger" />
+          {immersiveChromeVisible && <ImmersivePeekBar />}
+        </div>
       )}
     </div>
   );
