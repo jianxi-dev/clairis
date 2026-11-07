@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "窄窗-右半触发宽96",
+      "screenshot": ".artifacts/323/01-narrow.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T23:16:27Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "底部动作区-悬停显示",
+      "screenshot": ".artifacts/323/02-actions-hover.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T23:16:27Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "底部动作区-指针在中部隐藏",
+      "screenshot": ".artifacts/323/03-actions-hidden.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T23:16:27Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "默认宽320对比",
+      "screenshot": ".artifacts/323/04-default-width.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T23:16:27Z",
+      "runner": "unknown@MMBP"
+    }
+  ]
+}

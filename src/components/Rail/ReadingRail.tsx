@@ -71,7 +71,8 @@ import { revealInFinder } from "../../lib/finder";
 import {
   HOVER_DELAY_MS,
   PREVIEW_DEFAULT_H,
-  PREVIEW_DEFAULT_W,
+  PREVIEW_RAIL_NARROW_MIN_W,
+  PREVIEW_RAIL_NARROW_W,
   anchorFromRail,
   clampPreviewSize,
   isRightHalfOfBox,
@@ -1108,7 +1109,8 @@ export default function ReadingRail({
     const size = clampPreviewSize(
       current
         ? { w: current.w, h: current.h }
-        : { w: PREVIEW_DEFAULT_W, h: PREVIEW_DEFAULT_H },
+        : { w: PREVIEW_RAIL_NARROW_W, h: PREVIEW_DEFAULT_H },
+      PREVIEW_RAIL_NARROW_MIN_W,
     );
     const anchor = anchorFromRail({
       railRightX: rect.right,
@@ -1127,6 +1129,7 @@ export default function ReadingRail({
       flippedX: anchor.flipped.x,
       flippedY: anchor.flipped.y,
       source: "rail",
+      narrow: true,
     });
   }, []);
 

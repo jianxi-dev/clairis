@@ -26,6 +26,14 @@ export const PREVIEW_LEAVE_CLOSE_MS = 180;
 export const PREVIEW_DEFAULT_W = 320;
 export const PREVIEW_DEFAULT_H = 300;
 
+/**
+ * 阅读空间右半触发的窄窗宽度：卡片缩略图 72 + 预览内容内边距 24（px-3 两侧）。
+ * 规格（navigation/spec.md）：不大于缩略图宽 + 内边距，SHALL NOT 用默认 320。
+ */
+export const PREVIEW_RAIL_NARROW_W = 96;
+/** 窄窗最小宽度：与初始同宽，只允许放大；默认窗仍钳到 PREVIEW_MIN_W。 */
+export const PREVIEW_RAIL_NARROW_MIN_W = 96;
+
 export interface Size {
   w: number;
   h: number;
@@ -69,13 +77,17 @@ export const RESIZE_EDGES: readonly ResizeEdge[] = [
   "sw",
 ];
 
-/** 尺寸钳制：非有限值回最小尺寸，越界贴边，小数取整。 */
-export function clampPreviewSize(size: Size): Size {
-  const w = Number.isFinite(size.w) ? Math.round(size.w) : PREVIEW_MIN_W;
-  const h = Number.isFinite(size.h) ? Math.round(size.h) : PREVIEW_MIN_H;
+/** 尺寸钳制：非有限值回最小尺寸，越界贴边，小数取整。minW/minH 按模式注入。 */
+export function clampPreviewSize(
+  size: Size,
+  minW: number = PREVIEW_MIN_W,
+  minH: number = PREVIEW_MIN_H,
+): Size {
+  const w = Number.isFinite(size.w) ? Math.round(size.w) : minW;
+  const h = Number.isFinite(size.h) ? Math.round(size.h) : minH;
   return {
-    w: Math.max(PREVIEW_MIN_W, w),
-    h: Math.max(PREVIEW_MIN_H, h),
+    w: Math.max(minW, w),
+    h: Math.max(minH, h),
   };
 }
 
@@ -149,6 +161,7 @@ export function resizePreview(
   start: Rect,
   dx: number,
   dy: number,
+  min: Size = { w: PREVIEW_MIN_W, h: PREVIEW_MIN_H },
 ): Rect {
   const east = edge.includes("e");
   const west = edge.includes("w");
@@ -162,8 +175,8 @@ export function resizePreview(
   if (south) h = start.h + dy;
   if (north) h = start.h - dy;
 
-  if (w < PREVIEW_MIN_W) w = PREVIEW_MIN_W;
-  if (h < PREVIEW_MIN_H) h = PREVIEW_MIN_H;
+  if (w < min.w) w = min.w;
+  if (h < min.h) h = min.h;
 
   // 对边锚死：西/北拖拽时由对边位置反推新起点
   const x = west ? start.x + start.w - w : start.x;
@@ -207,6 +220,8 @@ export interface PreviewState {
   flippedY: boolean;
   pinned: boolean;
   source: PreviewAnchorSource;
+  /** 阅读空间右半触发的窄窗模式：初始宽 = 缩略图宽 + 内边距，拖拽最小宽同步收窄。 */
+  narrow?: boolean;
 }
 
 /** 网格侧触发预览的方式。 */

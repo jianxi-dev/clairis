@@ -1,6 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
+import { moveThrough } from "./helpers/ui-probe";
 
 /**
  * 悬浮预览窗（layout-portal 8.1）真实浏览器用例。
@@ -140,6 +141,47 @@ async function openPreview(page: Page): Promise<void> {
   await expect(page.locator(PREVIEW)).toBeVisible({ timeout: 3000 });
 }
 
+/** 经 store 桥开非窄预览（默认 320 宽），用于验证默认窗缩放钳到 260×200。 */
+async function openPreviewNonNarrow(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    (
+      window as unknown as {
+        __biaoyue_store__: {
+          getState: () => {
+            openPreview: (p: {
+              path: string;
+              title: string;
+              x: number;
+              y: number;
+              w: number;
+              h: number;
+              flippedX: boolean;
+              flippedY: boolean;
+              source: "rail" | "grid";
+              narrow: boolean;
+            }) => void;
+          };
+        };
+      }
+    ).__biaoyue_store__
+      .getState()
+      .openPreview({
+        path: "/tmp/fp/doc1.md",
+        title: "文件1",
+        x: 400,
+        y: 100,
+        w: 320,
+        h: 300,
+        flippedX: false,
+        flippedY: false,
+        source: "rail",
+        narrow: false,
+      });
+  });
+  await expect(page.locator(PREVIEW)).toBeVisible();
+  await page.locator('[data-testid="preview-pin"]').click();
+}
+
 async function previewBox(page: Page) {
   const b = await page.locator(PREVIEW).boundingBox();
   if (!b) throw new Error("悬浮预览窗不可测量");
@@ -255,30 +297,30 @@ test("缩放：四边 + 一角拖到最小，尺寸严格钳到 260×200", async
   const preview = page.locator(PREVIEW);
 
   // 东/西：宽度钳到 260
-  await openPreview(page);
+  await openPreviewNonNarrow(page);
   expect((await previewBox(page)).w).toBe(320);
   await dragHandle(page, "e", -600, 0);
   expect((await previewBox(page)).w).toBe(260);
 
   await closePreview(page);
-  await openPreview(page);
+  await openPreviewNonNarrow(page);
   await dragHandle(page, "w", 600, 0);
   expect((await previewBox(page)).w).toBe(260);
 
   // 南/北：高度钳到 200
   await closePreview(page);
-  await openPreview(page);
+  await openPreviewNonNarrow(page);
   await dragHandle(page, "s", 0, -600);
   expect((await previewBox(page)).h).toBe(200);
 
   await closePreview(page);
-  await openPreview(page);
+  await openPreviewNonNarrow(page);
   await dragHandle(page, "n", 0, 600);
   expect((await previewBox(page)).h).toBe(200);
 
   // 一角（东南）：两轴同时到底 → 严格 260×200
   await closePreview(page);
-  await openPreview(page);
+  await openPreviewNonNarrow(page);
   await dragHandle(page, "se", -600, -600);
   const min = await previewBox(page);
   expect(min.w).toBe(260);
@@ -401,29 +443,55 @@ test("⌘⇧V 开关：关闭后悬停不再弹，开启后 250ms 弹出；两�
   await expect(preview).toHaveCount(0);
 });
 
-test("悬浮窗不再渲染底部动作条（恒为 0）", async ({ page }) => {
+test("右半触发窄窗 + 底部按钮区悬停重显三按钮", async ({ page }) => {
   await boot(page);
   await seed(page);
   await pinRail(page);
-  await openPreview(page);
 
   const preview = page.locator(PREVIEW);
   const actions = page.locator('[data-testid="preview-actions"]');
 
-  // 指针在阅读空间行上，未 hover 窗口 → 无动作区
+  // 右半区触发 → 窄窗：≈缩略图 72 + 内边距 24 = 96，严格 < 320
+  await hoverRowRightHalf(page, "markdown");
+  await expect(preview).toBeVisible({ timeout: 3000 });
+  const narrow = await previewBox(page);
+  expect(narrow.w).toBeLessThan(320);
+  expect(Math.abs(narrow.w - 96)).toBeLessThanOrEqual(2);
+  await page.screenshot({ path: path.join(ART, "preview-narrow.png") });
+
+  // 指针在阅读空间行上（未进入窗口底部带）→ 动作区隐藏
   await expect(actions).toHaveCount(0);
 
-  // 钉住预览并 hover 窗口：动作条已移除，仍恒为 0
+  // 钉住，避免指针移动途中离窗关闭
   await page.locator('[data-testid="preview-pin"]').click();
-  await page.hover('[data-testid="preview-titlebar"]');
-  await expect(actions).toHaveCount(0);
-  await expect(page.locator('[data-testid="preview-action"]')).toHaveCount(0);
-  await page.screenshot({ path: path.join(ART, "preview-no-actions.png") });
+  await expect(preview).toHaveAttribute("data-pinned", "true");
 
-  // 移开指针：动作区仍为 0，窗口因钉住仍在
-  await page.mouse.move(600, 780);
+  // 窄窗拖拽：宽钳到窄窗最小 96、高钳到 200
+  await dragHandle(page, "e", -600, 0);
+  expect((await previewBox(page)).w).toBe(96);
+  await dragHandle(page, "s", 0, -600);
+  expect((await previewBox(page)).h).toBe(200);
+
+  // 分步把指针移入窗口底部按钮高度带 → 动作区出现
+  const pb = await previewBox(page);
+  const bandY = pb.y + pb.h - 16;
+  await moveThrough(
+    page,
+    [
+      { x: pb.x + pb.w / 2, y: pb.y + pb.h / 2 },
+      { x: pb.x + pb.w / 2, y: bandY },
+    ],
+    { steps: 8 },
+  );
+  await expect(actions).toBeVisible();
+  await expect(page.locator('[data-testid="preview-action"]')).toHaveCount(4);
+  await page.screenshot({ path: path.join(ART, "preview-actions-hover.png") });
+
+  // 移回窗口中部 → 动作区隐藏
+  await moveThrough(page, [{ x: pb.x + pb.w / 2, y: pb.y + pb.h / 2 }], {
+    steps: 8,
+  });
   await expect(actions).toHaveCount(0);
-  await expect(preview).toBeVisible();
 });
 
 test("触发区：左半区不打开；右半区 250ms 打开（时钟推进）", async ({
@@ -570,8 +638,10 @@ test("拖动标题栏经过 iframe 内容区仍持续跟手（#275）", async ({
   await expect(page.locator('[data-testid="preview-html"]')).toBeVisible();
 
   const b = await previewBox(page);
-  const startX = b.x + Math.round(b.w / 2);
-  const startY = b.y + 12;
+  // 标题栏可拖区：标题 span 起点固定在图标+内边距之后（b.x+31），取 b.x+33；
+  // 纵向避开顶部 resize 手柄（顶边 8–16px），取 b.y+18
+  const startX = b.x + 33;
+  const startY = b.y + 18;
   await page.mouse.move(startX, startY);
   await page.mouse.down();
 
