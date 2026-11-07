@@ -293,9 +293,22 @@ export default function ContentArea({
     };
   }, [panelId]);
 
+  /**
+   * `.html` 的「编辑」走可视化面板，CM6 退到源码模式（design D7）。
+   *
+   * CM6 容器只是被 `display:none` 藏起来，**不销毁**——这样源码模式的 undo 栈
+   * 与选区在 可视化 → 源码 之间来回切时都还在。
+   */
+  const htmlVisual = tab?.fileKind === "html" && editorMode === "edit";
+  const cmVisible = !!tab && editorMode !== "preview" && !htmlVisual;
+
   // Sync tab content → editor
   useEffect(() => {
     if (!viewRef.current || !tab) return;
+    // 预览态不预热编辑器：把整篇文档 dispatch 进 CM6 会同步跑一遍语法解析，
+    // 大 HTML 首屏被它拖慢；初始 dispatch 还会把页签标脏，让 HTML 预览从
+    // asset 直载退回禁脚本的 srcdoc。首次切到编辑/源码时再同步（#276）。
+    if (!cmVisible) return;
 
     const current = viewRef.current.state.doc.toString();
     if (current !== tab.content) {
@@ -315,16 +328,7 @@ export default function ContentArea({
     // `tab.content` 也要跟进：可视化编辑不经过 CM6，改完切到源码时必须把新内容
     // dispatch 进去，否则源码里还是打开时的旧文档，再一敲字就把编辑结果覆盖回去。
     // CM 自己触发的更新在这里是 no-op（current === tab.content）。
-  }, [tab?.id, tab?.fileKind, tab?.content]);
-
-  /**
-   * `.html` 的「编辑」走可视化面板，CM6 退到源码模式（design D7）。
-   *
-   * CM6 容器只是被 `display:none` 藏起来，**不销毁**——这样源码模式的 undo 栈
-   * 与选区在 可视化 → 源码 之间来回切时都还在。
-   */
-  const htmlVisual = tab?.fileKind === "html" && editorMode === "edit";
-  const cmVisible = !!tab && editorMode !== "preview" && !htmlVisual;
+  }, [tab?.id, tab?.fileKind, tab?.content, cmVisible]);
 
   /**
    * 从预览切回编辑时强制重测视口。
