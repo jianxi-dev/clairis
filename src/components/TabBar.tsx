@@ -221,6 +221,11 @@ export default function TabBar({
     );
 
   const ghostTab = dragFrom !== null ? tabs[tabIds[dragFrom]] : undefined;
+  const ghostKind = ghostTab
+    ? ghostTab.path
+      ? fileTypeOf(ghostTab.path)
+      : "markdown"
+    : "text";
 
   return (
     <>
@@ -236,7 +241,8 @@ export default function TabBar({
         {tabIds.map((id, index) => {
           const tab = tabs[id];
           const isActive = id === activeTabId;
-          const typeColor = colorOfType(fileTypeOf(tab.path));
+          const tabKind = tab.path ? fileTypeOf(tab.path) : "markdown";
+          const typeColor = colorOfType(tabKind);
           const isDragged = dragFrom === index;
           return (
             <Fragment key={id}>
@@ -301,7 +307,7 @@ export default function TabBar({
                 }`}
               >
                 <Icon
-                  name={iconOfType(fileTypeOf(tab.path))}
+                  name={iconOfType(tabKind)}
                   size={18}
                   color={typeColor}
                   className="mr-0.5"
@@ -375,9 +381,9 @@ export default function TabBar({
             }}
           >
             <Icon
-              name={iconOfType(fileTypeOf(ghostTab.path))}
+              name={iconOfType(ghostKind)}
               size={18}
-              color={colorOfType(fileTypeOf(ghostTab.path))}
+              color={colorOfType(ghostKind)}
               className="mr-0.5"
             />
             <span className="max-w-44 truncate">{ghostTab.title}</span>
