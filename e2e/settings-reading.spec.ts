@@ -1,4 +1,9 @@
 import { test, expect, type Page } from "@playwright/test";
+import { mkdirSync } from "node:fs";
+import path from "node:path";
+
+const ART274 = path.resolve(process.cwd(), ".artifacts/274");
+mkdirSync(ART274, { recursive: true });
 
 /**
  * 设置迁移（reading-surface-refine 5.1 / #218）真实浏览器用例。
@@ -96,7 +101,9 @@ test("设置阅读空间区：行宽/配色/字号可改并持久化生效", asy
   await openSettings(page);
 
   await page.locator('[data-settings-nav="reading"]').click();
-  await expect(page.locator('[data-testid^="reader-width-"]')).toHaveCount(3);
+  await expect(
+    page.locator('button[data-testid^="reader-width-"]'),
+  ).toHaveCount(3);
   await expect(page.locator('[data-testid^="reader-tone-"]')).toHaveCount(4);
 
   await page.locator('[data-testid="reader-width-720"]').click();
@@ -196,4 +203,50 @@ test("矮窗设置导航独立滚动", async ({ page }) => {
   expect(after.scrollTop + after.clientHeight).toBeGreaterThanOrEqual(
     after.scrollHeight - 1,
   );
+});
+
+test("行宽滑块 480–2400 连续可调，并与预设同步（#274）", async ({ page }) => {
+  await boot(page);
+  await openPreviewDoc(page);
+  await openSettings(page);
+  await page.locator('[data-settings-nav="reading"]').click();
+
+  const range = page.locator('[data-testid="reader-width-range"]');
+  await expect(range).toHaveAttribute("min", "480");
+  await expect(range).toHaveAttribute("max", "2400");
+
+  // React 受控 range：走原生 setter 再派发 input，才能触发 onChange
+  await range.evaluate((el, v) => {
+    const setter = Object.getOwnPropertyDescriptor(
+      window.HTMLInputElement.prototype,
+      "value",
+    )?.set;
+    setter?.call(el, String(v));
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+  }, 1400);
+
+  await expect(page.locator('[data-testid="reader-width-value"]')).toHaveText(
+    "1400px",
+  );
+  await page.screenshot({
+    path: path.join(ART274, "reader-width-slider-1400.png"),
+  });
+  await expect
+    .poll(() =>
+      page
+        .locator(".preview-content > p")
+        .first()
+        .evaluate((el) => getComputedStyle(el).maxWidth),
+    )
+    .toBe("1400px");
+
+  // 预设与滑块同步
+  await page.locator('[data-testid="reader-width-1200"]').click();
+  await expect(range).toHaveValue("1200");
+  await expect(page.locator('[data-testid="reader-width-value"]')).toHaveText(
+    "1200px",
+  );
+  await page.screenshot({
+    path: path.join(ART274, "reader-width-preset-1200.png"),
+  });
 });

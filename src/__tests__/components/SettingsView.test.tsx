@@ -88,7 +88,9 @@ describe("SettingsView", () => {
     render(<SettingsView onClose={() => {}} />);
     fireEvent.click(screen.getAllByTestId("settings-nav-item")[2]);
 
-    const widths = screen.getAllByTestId(/^reader-width-/);
+    const widths = screen
+      .getAllByTestId(/^reader-width-/)
+      .filter((el) => el.tagName === "BUTTON");
     expect(widths).toHaveLength(3);
     expect(widths.map((el) => el.textContent)).toEqual([
       "紧凑",
@@ -106,6 +108,15 @@ describe("SettingsView", () => {
 
     fireEvent.click(screen.getByTestId("reader-width-720"));
     expect(useEditorStore.getState().config.readerWidth).toBe(720);
+
+    // 连续滑块（#274）：480–2400，实时写配置与数值展示
+    const range = screen.getByTestId("reader-width-range") as HTMLInputElement;
+    expect(range.min).toBe("480");
+    expect(range.max).toBe("2400");
+    expect(screen.getByTestId("reader-width-value").textContent).toBe("720px");
+    fireEvent.change(range, { target: { value: "1400" } });
+    expect(useEditorStore.getState().config.readerWidth).toBe(1400);
+    expect(screen.getByTestId("reader-width-value").textContent).toBe("1400px");
 
     fireEvent.click(screen.getByTestId("reader-tone-indigo"));
     expect(useEditorStore.getState().config.readerSkin).toBe("indigo");
