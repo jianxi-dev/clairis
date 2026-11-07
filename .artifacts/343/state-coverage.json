@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "进入沉浸态顶栏收拢",
+      "screenshot": ".artifacts/343/immersive-collapsed.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T23:45:12Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "Meta+Shift+T 唤出悬浮条",
+      "screenshot": ".artifacts/343/peek-shown.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T23:45:12Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "2.5s 后悬浮条仍可见（回归护栏）",
+      "screenshot": ".artifacts/343/peek-after-2s.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T23:45:12Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "Esc 退出沉浸恢复墨线",
+      "screenshot": ".artifacts/343/esc-restored.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T23:45:12Z",
+      "runner": "unknown@MMBP"
+    }
+  ]
+}
