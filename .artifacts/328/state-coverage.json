@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "pane-header-export-submenu-open",
+      "screenshot": ".artifacts/328/01-export-submenu.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T21:56:38Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "export-docx-notice-visible",
+      "screenshot": ".artifacts/328/02-export-notice.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T21:56:38Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "ai-theme-dark-applied",
+      "screenshot": ".artifacts/328/03-theme-dark.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T21:56:38Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "snapshot-panel-open",
+      "screenshot": ".artifacts/328/04-snapshot-panel.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T21:56:38Z",
+      "runner": "unknown@MMBP"
+    }
+  ]
+}

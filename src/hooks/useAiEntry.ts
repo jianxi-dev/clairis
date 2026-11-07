@@ -227,7 +227,7 @@ export const useAiEntryStore = create<AiEntryState>()((set, get) => {
         const changed = after.length > before.length;
 
         if (changed) {
-          reloadAppConfig();
+          reloadAppConfig(true);
           set({
             undoTarget: beforeSnapshot,
             undoPreConfig: preConfig,
@@ -407,10 +407,10 @@ export const useAiEntryStore = create<AiEntryState>()((set, get) => {
       try {
         if (undoTarget) {
           await invoke("restore_config_snapshot", { name: undoTarget });
-          reloadAppConfig();
+          reloadAppConfig(true);
         } else if (undoPreConfig) {
           await invoke("save_config", { config: undoPreConfig });
-          reloadAppConfig();
+          reloadAppConfig(true);
         }
         if (undoPreSpec) {
           // 同步还原视图规格；reloadAppConfig 为 fire-and-forget，且缺字段不覆盖
@@ -466,7 +466,7 @@ export const useAiEntryStore = create<AiEntryState>()((set, get) => {
     restoreSnapshot: async (name) => {
       try {
         await invoke("restore_config_snapshot", { name });
-        reloadAppConfig();
+        reloadAppConfig(true);
         await get().loadSnapshots();
         set({
           messages: [

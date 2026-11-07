@@ -625,7 +625,7 @@ function PaneHeader({
                     }
                     onClick={() => {
                       if (item.action === "export") {
-                        setExportOpen((v) => !v);
+                        setExportOpen(true);
                         return;
                       }
                       runMenu(item.action);
