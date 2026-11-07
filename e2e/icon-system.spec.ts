@@ -121,6 +121,12 @@ test("8 个类型图标渲染出的像素各不相同（不是同一个色块）
       clone.setAttribute("width", "24");
       clone.setAttribute("height", "24");
       clone.setAttribute("fill", "#000");
+      // 隔离 SVG 文档里 currentColor 不可靠，描边 path 需落成实体黑才能栅格化。
+      clone.querySelectorAll("path").forEach((p) => {
+        if (p.getAttribute("fill") === "none") {
+          p.setAttribute("stroke", "#000");
+        }
+      });
       const src = new XMLSerializer().serializeToString(clone);
       const url = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(src);
       const img = new Image();

@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "页签 markdown 图标描边渲染",
+      "screenshot": ".artifacts/293/state-tab.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T16:41:28Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "图标抽屉 8 类型图标",
+      "screenshot": ".artifacts/293/state-drawer.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T16:41:28Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "暗主题图标",
+      "screenshot": ".artifacts/293/state-drawer-dark.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T16:41:28Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "markdown path fill=none + stroke",
+      "screenshot": ".artifacts/293/state-markdown.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T16:41:28Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}

@@ -21,7 +21,7 @@ describe("Icon 描边渲染", () => {
   });
 
   it("纯实心图标不写 fill=none，svg 根保留 fill", () => {
-    const { container } = render(<Icon name="markdown" />);
+    const { container } = render(<Icon name="more" />);
     const svg = container.querySelector("svg")!;
     const paths = container.querySelectorAll("path");
     expect(paths.length).toBe(1);
