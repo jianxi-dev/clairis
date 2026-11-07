@@ -37,7 +37,7 @@
 
 ## 4. 卡片与悬浮窗（反馈 1 / 12）
 
-- [ ] 4.1 PDF 卡片不显示悬停工具条、悬浮窗拖动不被 iframe 吞事件
+- [x] 4.1 PDF 卡片不显示悬停工具条、悬浮窗拖动不被 iframe 吞事件
 
   实现要点：
   - `GridTile.tsx`：`kind === "pdf"` 不渲染 `data-tile-actions`

@@ -12,8 +12,10 @@ import path from "node:path";
 
 const APP_URL = "http://localhost:1420";
 const ART = path.resolve(process.cwd(), ".artifacts/260");
+const ART275 = path.resolve(process.cwd(), ".artifacts/275");
 
 mkdirSync(ART, { recursive: true });
+mkdirSync(ART275, { recursive: true });
 
 const PREVIEW = '[data-testid="floating-preview"]';
 const RECENT_ROWS = '[data-section="recent"] [data-testid="rail-item"]';
@@ -531,4 +533,61 @@ test("PDF 悬浮预览：asset iframe 带 #toolbar=0 且无 sandbox", async ({
   await expect(pdf).toHaveAttribute("src", /#toolbar=0/);
   await expect(pdf).not.toHaveAttribute("sandbox");
   await page.screenshot({ path: path.join(ART, "preview-pdf.png") });
+});
+
+function previewY(page: Page): Promise<number | null> {
+  return page.evaluate(() => {
+    const s = (
+      window as unknown as {
+        __biaoyue_store__: {
+          getState: () => { preview: { y: number } | null };
+        };
+      }
+    ).__biaoyue_store__.getState();
+    return s.preview?.y ?? null;
+  });
+}
+
+test("拖动标题栏经过 iframe 内容区仍持续跟手（#275）", async ({ page }) => {
+  await boot(page);
+  await seed(page);
+  // 追加一个 HTML 行：悬浮窗内容是 iframe，正是旧实现丢 pointermove 的场景
+  await page.evaluate(() => {
+    const w = window as unknown as {
+      __biaoyue_openFile__: (p: string, c: string, t: string) => void;
+    };
+    w.__biaoyue_openFile__(
+      "/tmp/fp/page.html",
+      "<html><body><p>iframe 内容</p></body></html>",
+      "page.html",
+    );
+  });
+  await pinRail(page);
+
+  const row = page.locator('[data-rail-path="/tmp/fp/page.html"]').first();
+  await row.hover();
+  await expect(page.locator(PREVIEW)).toBeVisible({ timeout: 3000 });
+  await expect(page.locator('[data-testid="preview-html"]')).toBeVisible();
+
+  const b = await previewBox(page);
+  const startX = b.x + Math.round(b.w / 2);
+  const startY = b.y + 12;
+  await page.mouse.move(startX, startY);
+  await page.mouse.down();
+
+  // 第一次移动：指针已进入 iframe 区域
+  await page.mouse.move(startX, startY + 60, { steps: 6 });
+  await expect(page.locator(PREVIEW)).toHaveAttribute("data-dragging", "true");
+  const y1 = await previewY(page);
+  // 第二次移动：没有指针捕获时这里会冻结在 y1
+  await page.mouse.move(startX, startY + 120, { steps: 6 });
+  const y2 = await previewY(page);
+  await page.screenshot({
+    path: path.join(ART275, "preview-drag-over-iframe.png"),
+  });
+  await page.mouse.up();
+
+  expect(y1 ?? 0).toBeGreaterThan(b.y + 20);
+  expect(y2 ?? 0).toBeGreaterThan((y1 ?? 0) + 20);
+  await expect(page.locator(PREVIEW)).toHaveAttribute("data-dragging", "false");
 });

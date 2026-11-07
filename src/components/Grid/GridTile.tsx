@@ -294,50 +294,52 @@ export default function GridTile({
         </div>
       </div>
 
-      <div
-        data-tile-actions
-        className="absolute right-1 top-1 z-10 flex gap-0.5 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100"
-      >
-        <button
-          type="button"
-          data-tile-action="open"
-          title="打开"
-          aria-label="打开"
-          onClick={(e) => {
-            e.stopPropagation();
-            onOpen(item.path);
-          }}
-          className="rounded bg-[var(--app-surface)] p-0.5 text-[var(--app-text-3)] hover:text-[var(--app-text)]"
+      {kind !== "pdf" && (
+        <div
+          data-tile-actions
+          className="absolute right-1 top-1 z-10 flex gap-0.5 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100"
         >
-          <Icon name="eye" size={18} />
-        </button>
-        <button
-          type="button"
-          data-tile-action="split-right"
-          title="向右分屏"
-          aria-label="向右分屏"
-          onClick={(e) => {
-            e.stopPropagation();
-            onSplit(item.path, "row");
-          }}
-          className="rounded bg-[var(--app-surface)] p-0.5 text-[var(--app-text-3)] hover:text-[var(--app-text)]"
-        >
-          <Icon name="splitRight" size={18} />
-        </button>
-        <button
-          type="button"
-          data-tile-action="split-down"
-          title="向下分屏"
-          aria-label="向下分屏"
-          onClick={(e) => {
-            e.stopPropagation();
-            onSplit(item.path, "col");
-          }}
-          className="rounded bg-[var(--app-surface)] p-0.5 text-[var(--app-text-3)] hover:text-[var(--app-text)]"
-        >
-          <Icon name="splitDown" size={18} />
-        </button>
-      </div>
+          <button
+            type="button"
+            data-tile-action="open"
+            title="打开"
+            aria-label="打开"
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpen(item.path);
+            }}
+            className="rounded bg-[var(--app-surface)] p-0.5 text-[var(--app-text-3)] hover:text-[var(--app-text)]"
+          >
+            <Icon name="eye" size={18} />
+          </button>
+          <button
+            type="button"
+            data-tile-action="split-right"
+            title="向右分屏"
+            aria-label="向右分屏"
+            onClick={(e) => {
+              e.stopPropagation();
+              onSplit(item.path, "row");
+            }}
+            className="rounded bg-[var(--app-surface)] p-0.5 text-[var(--app-text-3)] hover:text-[var(--app-text)]"
+          >
+            <Icon name="splitRight" size={18} />
+          </button>
+          <button
+            type="button"
+            data-tile-action="split-down"
+            title="向下分屏"
+            aria-label="向下分屏"
+            onClick={(e) => {
+              e.stopPropagation();
+              onSplit(item.path, "col");
+            }}
+            className="rounded bg-[var(--app-surface)] p-0.5 text-[var(--app-text-3)] hover:text-[var(--app-text)]"
+          >
+            <Icon name="splitDown" size={18} />
+          </button>
+        </div>
+      )}
     </article>
   );
 }

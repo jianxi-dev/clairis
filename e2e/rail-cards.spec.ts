@@ -12,6 +12,9 @@ import path from "node:path";
 const APP_URL = "http://localhost:1420";
 const ART = path.resolve(process.cwd(), ".artifacts/177");
 
+const ART275 = path.resolve(process.cwd(), ".artifacts/275");
+mkdirSync(ART275, { recursive: true });
+
 mkdirSync(ART, { recursive: true });
 
 const FILES: Array<{ path: string; content: string }> = [
@@ -534,4 +537,23 @@ test("滑杆改到 160 后设为默认：重启回来 railViewSpec 与保存值�
     density: "card",
     cardHeight: 160,
   });
+});
+
+test("PDF 卡片不渲染悬停工具条，其他类型保持（#275）", async ({ page }) => {
+  await boot(page);
+  await seed(page);
+  await openPinnedRail(page);
+
+  const pdf = recentItem(page, "/tmp/rc/report.pdf");
+  await pdf.hover();
+  await expect(pdf.locator('[data-testid="rail-card-actions"]')).toHaveCount(0);
+  await page.screenshot({
+    path: path.join(ART275, "rail-pdf-no-actions.png"),
+  });
+
+  const md = recentItem(page, "/tmp/rc/cover.md");
+  await md.hover();
+  await expect(
+    md.locator('[data-testid="rail-card-actions"] button'),
+  ).toHaveCount(3);
 });
