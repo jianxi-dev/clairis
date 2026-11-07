@@ -206,7 +206,8 @@ export default function TabBar({
         className="flex items-center gap-1 shrink-0 select-none overflow-x-auto px-1"
         style={{
           borderBottom: "1px solid var(--app-border)",
-          background: "var(--app-surface)",
+          // 页签条与栏目头/顶栏同底色：容器自身不再刷第二层表面色（#273）。
+          background: "transparent",
         }}
       >
         {tabIds.map((id, index) => {
@@ -251,7 +252,6 @@ export default function TabBar({
                 data-tab-id={id}
                 data-tab-color={typeColor}
                 style={{
-                  borderRight: "1px solid var(--app-border)",
                   ...(isDragged
                     ? {
                         opacity: 0.5,
@@ -263,10 +263,10 @@ export default function TabBar({
                 }}
                 title={tab.title}
                 onContextMenu={(e) => handleContextMenu(e, id)}
-                className={`group flex min-w-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs cursor-pointer transition-colors whitespace-nowrap ${
+                className={`group flex min-w-0 items-center gap-1.5 px-2.5 py-1 text-xs cursor-pointer transition-colors whitespace-nowrap ${
                   isActive
-                    ? "bg-[var(--app-accent-soft)] font-medium text-[var(--app-accent)] shadow-sm"
-                    : "bg-[var(--app-sunken)] text-[var(--app-text-2)] hover:brightness-[0.98]"
+                    ? "rounded-full bg-[var(--app-accent-soft)] font-medium text-[var(--app-accent)] shadow-sm"
+                    : "rounded-none bg-transparent text-[var(--app-text-2)] hover:rounded-full hover:bg-[var(--app-sunken)]"
                 }`}
               >
                 <Icon

@@ -24,7 +24,7 @@ export default function Toolbar({
   onOpenGrid,
 }: ToolbarProps) {
   return (
-    <header className="app-chrome flex items-center gap-1 px-3 py-1.5 border-b border-[var(--app-border)] bg-[var(--app-surface)] text-sm select-none shrink-0">
+    <header className="app-chrome flex items-center gap-1 px-3 py-1.5 border-b border-[var(--app-border)] bg-transparent text-sm select-none shrink-0">
       <span className="mr-auto text-xs font-medium tracking-wide text-[var(--app-text-2)]">
         标月
       </span>
