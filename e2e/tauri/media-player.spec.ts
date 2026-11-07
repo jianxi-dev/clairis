@@ -1,9 +1,12 @@
 import { test, expect } from "@playwright/test";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 
 const APP_URL = "http://localhost:1420";
 const ART = path.resolve(process.cwd(), ".artifacts/247");
+const TINY_MP4 = readFileSync(
+  path.resolve(process.cwd(), "e2e/fixtures/tiny.mp4"),
+);
 
 mkdirSync(ART, { recursive: true });
 
@@ -28,6 +31,33 @@ async function openFile(
     [path, content],
   );
   await page.waitForTimeout(400);
+}
+
+async function injectMediaDir(
+  page: import("@playwright/test").Page,
+  files: string[],
+) {
+  await page.addInitScript({
+    content: `
+      window.__biaoyue_media_dir__ = ${JSON.stringify(files)};
+      (function () {
+        var internals = window.__TAURI_INTERNALS__;
+        if (!internals) return;
+        var orig = internals.invoke;
+        internals.invoke = function (cmd, args) {
+          if (cmd === "list_media_in_dir") {
+            return (window.__biaoyue_media_dir__ || []).map(function (p) {
+              var name = String(p).split("/").pop();
+              var ext = (name.split(".").pop() || "").toLowerCase();
+              var kind = (ext === "mp3" || ext === "m4a" || ext === "wav" || ext === "flac" || ext === "ogg") ? "audio" : "video";
+              return { path: String(p), name: name, kind: kind, target: name.replace(/\\.[^.]+$/, "") };
+            });
+          }
+          return orig.call(this, cmd, args);
+        };
+      })();
+    `,
+  });
 }
 
 test("打开视频 → 全尺寸播放器挂载，无迷你条", async ({ page }) => {
@@ -119,4 +149,34 @@ test("打开视频 A → 再打开视频 B → B 全尺寸显示且播放源切�
   expect(left).toBe("0px");
   const mini = page.locator("button", { hasText: "回到播放" });
   await expect(mini).toHaveCount(0);
+});
+
+test("播放列表切集 → 页签标题同步为新文件名", async ({ page }) => {
+  await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
+  await injectMediaDir(page, ["/Users/test/clip.mp4", "/Users/test/clip2.mp4"]);
+  await page.route("**/*", async (route) => {
+    if (route.request().url().startsWith("media://")) {
+      await route.fulfill({
+        status: 200,
+        contentType: "video/mp4",
+        body: TINY_MP4,
+      });
+      return;
+    }
+    await route.continue();
+  });
+  await page.goto(APP_URL, { waitUntil: "networkidle" });
+  await page.waitForSelector("header", { timeout: 10000 });
+
+  await openFile(page, "/Users/test/clip.mp4", "");
+
+  const tabTitle = page.locator(".tab-strip [data-tab-id] span.max-w-44");
+  await expect(tabTitle).toHaveText("clip.mp4");
+
+  await page.locator(".art-video-player").hover();
+  await page.locator(".art-control-playlist").click();
+  await page.getByText("clip2.mp4", { exact: true }).waitFor();
+  await page.getByText("clip2.mp4", { exact: true }).click();
+
+  await expect(tabTitle).toHaveText("clip2.mp4");
 });

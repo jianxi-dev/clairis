@@ -3,6 +3,7 @@ import Artplayer from "artplayer";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { getActiveEditorView } from "../../editors/editorRef";
+import { useStore } from "../../stores";
 import Icon from "../Icon";
 import { iconSvg, type IconName } from "../../ui/icons";
 
@@ -145,6 +146,10 @@ export default function VideoPlayer({
 
   // props 的 ref 镜像（常驻实例读取最新值，避免创建 effect 因 props 变化重建）
   const urlRef = useRef(url);
+  const filePathRef = useRef(filePath);
+  useEffect(() => {
+    filePathRef.current = filePath;
+  }, [filePath]);
   const fileKindRef = useRef(fileKind);
   useEffect(() => {
     fileKindRef.current = fileKind;
@@ -257,6 +262,14 @@ export default function VideoPlayer({
     setCurrentIndex(idx);
     try {
       await art.switchUrl(mediaUrlForPath(list[idx].path));
+      // 页签路径保持不变（仍归属原文件），仅显示名跟随当前媒体
+      const store = useStore.getState();
+      const owner = Object.values(store.tabs).find(
+        (t) => t.path === filePathRef.current,
+      );
+      if (owner) {
+        store.renameTab(owner.id, list[idx].name || baseName(list[idx].path));
+      }
       // 切集后自动加载对应同名字幕（若有）
       const stem = list[idx].name.replace(/\.[^.]+$/, "");
       const sub = subtitleRef.current.find((s) => s.target === stem);

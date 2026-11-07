@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "opened-video-a",
+      "screenshot": ".artifacts/326/01-opened-clip.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T22:17:16Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "playlist-open",
+      "screenshot": ".artifacts/326/02-playlist-open.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T22:17:16Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "switched-video-b",
+      "screenshot": ".artifacts/326/03-switched-clip2.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T22:17:16Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "switched-back-video-a",
+      "screenshot": ".artifacts/326/04-switched-back-clip.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T22:17:16Z",
+      "runner": "unknown@MMBP"
+    }
+  ]
+}
