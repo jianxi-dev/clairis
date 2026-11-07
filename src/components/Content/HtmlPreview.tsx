@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useCallback } from "react";
+import { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import { rewriteHtmlPaths, buildAssetUrl } from "../../renderers";
 import { useEditorStore } from "../../stores/editorStore";
 import { isTauriEnv } from "../../utils/tauri";
@@ -22,6 +22,8 @@ export default function HtmlPreview({
   live = false,
 }: HtmlPreviewProps) {
   const [error, setError] = useState<string | null>(null);
+  // 首帧骨架：iframe 文档（尤其带 CDN 脚本/字体的页面）加载期间不再是一片空白。
+  const [loading, setLoading] = useState(true);
   const frameRef = useRef<HTMLIFrameElement | null>(null);
   const fontSize = useEditorStore((s) => s.fontSize);
 
@@ -40,6 +42,16 @@ export default function HtmlPreview({
       });
     });
   }, []);
+
+  // 切换文件或加载方式时重新进入骨架态；srcDoc 内容变化不重置，避免编辑时闪烁。
+  useEffect(() => {
+    setLoading(true);
+  }, [filePath, live]);
+
+  const onFrameLoad = useCallback(() => {
+    setLoading(false);
+    nudgePaint();
+  }, [nudgePaint]);
 
   // 已保存文件走 asset 直载：脚本能跑、相对引用天然解析、CDN/外链字体不被拦。
   // dirty 内容仍走 srcdoc——预览必须反映未保存的编辑（E-15），且未保存内容
@@ -87,12 +99,43 @@ ${processed}
     );
   }
 
+  const skeleton = loading ? (
+    <div
+      data-testid="html-preview-skeleton"
+      aria-hidden="true"
+      className="absolute inset-0 z-10 animate-pulse bg-[var(--app-sunken)]"
+    />
+  ) : null;
+
   if (live && filePath && isTauriEnv()) {
     return (
+      <div className="relative h-full w-full">
+        {skeleton}
+        <iframe
+          ref={frameRef}
+          src={buildAssetUrl(filePath)}
+          sandbox="allow-scripts allow-same-origin allow-popups"
+          style={{
+            ...(zoom === 1 ? {} : { zoom }),
+            width: "100%",
+            height: "100%",
+            border: "none",
+          }}
+          title="HTML 预览"
+          onLoad={onFrameLoad}
+          onError={handleError}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative h-full w-full">
+      {skeleton}
       <iframe
         ref={frameRef}
-        src={buildAssetUrl(filePath)}
-        sandbox="allow-scripts allow-same-origin allow-popups"
+        srcDoc={sandboxed}
+        sandbox="allow-same-origin allow-popups"
         style={{
           ...(zoom === 1 ? {} : { zoom }),
           width: "100%",
@@ -100,26 +143,9 @@ ${processed}
           border: "none",
         }}
         title="HTML 预览"
-        onLoad={nudgePaint}
+        onLoad={onFrameLoad}
         onError={handleError}
       />
-    );
-  }
-
-  return (
-    <iframe
-      ref={frameRef}
-      srcDoc={sandboxed}
-      sandbox="allow-same-origin allow-popups"
-      style={{
-        ...(zoom === 1 ? {} : { zoom }),
-        width: "100%",
-        height: "100%",
-        border: "none",
-      }}
-      title="HTML 预览"
-      onLoad={nudgePaint}
-      onError={handleError}
-    />
+    </div>
   );
 }
