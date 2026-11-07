@@ -162,3 +162,69 @@ test("8 个类型图标渲染出的像素各不相同（不是同一个色块）
   const hashes = new Set(entries.map(([, s]) => s.hash));
   expect(hashes.size).toBe(8);
 });
+
+test("导出二级菜单 Word/ZIP/.mdpkg 三项图标互不相同", async ({ page }) => {
+  await openDoc(page, "/tmp/ic/a.md");
+  await page.locator('[data-testid="pane-menu-button"]').first().click();
+  await expect(page.locator('[data-testid="pane-menu"]')).toBeVisible();
+  await page.locator('[data-menu-item="export"]').click();
+  const submenu = page.locator('[data-testid="pane-export-submenu"]');
+  await expect(submenu).toBeVisible();
+
+  const trio = ["exportWord", "exportZip", "exportMdpkg"];
+  const icons = await submenu
+    .locator("[data-export-item] svg[data-icon]")
+    .evaluateAll((els) => els.map((e) => e.getAttribute("data-icon")));
+  const present = trio.filter((n) => icons.includes(n));
+  expect(present.sort()).toEqual([...trio].sort());
+  expect(new Set(present).size).toBe(3);
+  expect(icons).not.toContain("file");
+  expect(icons).not.toContain("folder");
+  expect(icons).not.toContain("markdown");
+});
+
+test("字幕与快捷键说明的图标形状不同", async ({ page }) => {
+  await openDoc(page, "/tmp/ic/a.md");
+  await page.keyboard.press("ControlOrMeta+,");
+  await expect(page.locator('[data-testid="icon-drawer"]')).toBeVisible();
+  const paths = await page.evaluate(() => {
+    const get = (n: string) =>
+      document
+        .querySelector(`[data-testid="icon-drawer"] svg[data-icon="${n}"] path`)
+        ?.getAttribute("d");
+    return { subtitle: get("subtitle"), keyboardHints: get("keyboardHints") };
+  });
+  expect(paths.subtitle).toBeTruthy();
+  expect(paths.keyboardHints).toBeTruthy();
+  expect(paths.subtitle).not.toBe(paths.keyboardHints);
+});
+
+test("顶栏沉浸入口为 immersive 图标 + 文字", async ({ page }) => {
+  await openDoc(page, "/tmp/ic/a.md");
+  const entry = page.locator('[data-testid="immersive-entry"]');
+  await expect(entry.locator('svg[data-icon="immersive"]')).toHaveCount(1);
+  await expect(entry).toContainText("沉浸");
+});
+
+test("钉住后 pin 按钮切换为 pinOff，取消后回 pin", async ({ page }) => {
+  await openDoc(page, "/tmp/ic/a.md");
+  await page.evaluate(() => {
+    const w = window as unknown as {
+      __biaoyue_store__: {
+        getState: () => { setRailDensity: (d: string) => void };
+      };
+    };
+    w.__biaoyue_store__.getState().setRailDensity("compact");
+  });
+  await page.hover('[data-testid="rail-edge"]');
+  await expect(page.locator('[data-testid="rail-panel"]')).toBeVisible();
+
+  const itemPin = page.locator('[data-testid="rail-item-pin"]').first();
+  await expect(itemPin.locator('svg[data-icon="pin"]')).toHaveCount(1);
+  await itemPin.click();
+  await expect(itemPin.locator('svg[data-icon="pinOff"]')).toHaveCount(1);
+  await expect(itemPin.locator('svg[data-icon="pin"]')).toHaveCount(0);
+  await itemPin.click();
+  await expect(itemPin.locator('svg[data-icon="pin"]')).toHaveCount(1);
+  await expect(itemPin.locator('svg[data-icon="pinOff"]')).toHaveCount(0);
+});

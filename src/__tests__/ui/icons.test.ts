@@ -41,4 +41,25 @@ describe("IconDef 双字段契约", () => {
     expect(iconSvg("close")).toContain('width="22"');
     expect(iconSvg("splitRight")).toContain('stroke-dasharray="2 2"');
   });
+
+  it("iconSvg 显式尺寸生效", () => {
+    expect(iconSvg("playlist", 36)).toContain('width="36"');
+    expect(iconSvg("playlist", 36)).toContain('height="36"');
+  });
+
+  it("导出族三项各为独立形状，不复用 file/folder/markdown", () => {
+    const trio = [ICONS.exportWord.s, ICONS.exportZip.s, ICONS.exportMdpkg.s];
+    for (const s of trio) {
+      expect((s ?? "").length, "导出族图标缺形状").toBeGreaterThan(0);
+    }
+    expect(new Set(trio).size).toBe(3);
+    const generic = [ICONS.file.s, ICONS.folder.s, ICONS.markdown.s];
+    for (const s of trio) {
+      expect(generic).not.toContain(s);
+    }
+  });
+
+  it("字幕与快捷键说明的 path 字符串不同", () => {
+    expect(ICONS.subtitle.s).not.toBe(ICONS.keyboardHints.s);
+  });
 });

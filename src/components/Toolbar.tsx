@@ -108,7 +108,10 @@ export default function Toolbar({
         }`}
         title="沉浸阅读（⌘⇧F）"
       >
-        沉浸
+        <span className="inline-flex items-center gap-1">
+          <Icon name="immersive" size={18} />
+          沉浸
+        </span>
       </button>
     </header>
   );
