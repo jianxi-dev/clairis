@@ -1,0 +1,293 @@
+{
+  "change": "shell-editor-batch5",
+  "requirements": [
+    {
+      "id": "R-1",
+      "text": "分栏 · 页签 · 沉浸（反馈 1 / 2 / 3 / 9 / 10）",
+      "anchors": [
+        {
+          "id": "A-1.1",
+          "claim": "沉浸态指针移入第二格后唤出的悬浮条所列页签集",
+          "kind": "state-machine",
+          "assert": "\"\"\"second-pane\"\"\"",
+          "source": "spec G-10"
+        },
+        {
+          "id": "A-1.2",
+          "claim": "沉浸态悬浮条与屏幕顶部之间的可见透明空行高度",
+          "kind": "exact",
+          "assert": "0",
+          "source": "spec G-10"
+        },
+        {
+          "id": "A-1.3",
+          "claim": "沉浸态悬浮条对应空格时的兜底文案存在",
+          "kind": "state-machine",
+          "assert": "\"\"\"true\"\"\"",
+          "source": "spec G-10"
+        },
+        {
+          "id": "A-1.4",
+          "claim": "沉浸态从悬浮条把页签拖到另一格后目标格页签数",
+          "kind": "state-machine",
+          "assert": "1",
+          "source": "spec G-10"
+        },
+        {
+          "id": "A-1.5",
+          "claim": "拖拽页签时 ghost 元素存在且文本含页签标题",
+          "kind": "state-machine",
+          "assert": "\"\"\"true\"\"\"",
+          "source": "spec G-8"
+        },
+        {
+          "id": "A-1.6",
+          "claim": "单格工作区全屏按钮数量",
+          "kind": "exact",
+          "assert": "1",
+          "source": "spec G-7"
+        },
+        {
+          "id": "A-1.7",
+          "claim": "阅读空间折叠态边缘条计算背景 alpha",
+          "kind": "exact",
+          "assert": "0",
+          "source": "spec 阅读空间竖排栏"
+        },
+        {
+          "id": "A-1.8",
+          "claim": "双击页签名改名回车后页签标题",
+          "kind": "state-machine",
+          "assert": "\"\"\"新名\"\"\"",
+          "source": "spec 页签条与格头"
+        }
+      ]
+    },
+    {
+      "id": "R-2",
+      "text": "图标体系（反馈 7 / 15）",
+      "anchors": [
+        {
+          "id": "A-2.1",
+          "claim": "导出二级菜单 Word/ZIP/.mdpkg 三项图标名互不相同",
+          "kind": "exact",
+          "assert": "3",
+          "source": "spec 图标体系"
+        },
+        {
+          "id": "A-2.2",
+          "claim": "subtitle 与 keyboardHints 的 path 字符串不同",
+          "kind": "exact",
+          "assert": "\"\"\"true\"\"\"",
+          "source": "spec 图标体系"
+        },
+        {
+          "id": "A-2.3",
+          "claim": "视频全屏控件与其它自绘控件渲染尺寸相等",
+          "kind": "exact",
+          "assert": "\"\"\"true\"\"\"",
+          "source": "spec 图标体系"
+        },
+        {
+          "id": "A-2.4",
+          "claim": "顶栏沉浸入口含 `svg[data-icon=immersive]`",
+          "kind": "exact",
+          "assert": "1",
+          "source": "spec 图标体系"
+        },
+        {
+          "id": "A-2.5",
+          "claim": "钉住后按钮 `data-icon`",
+          "kind": "state-machine",
+          "assert": "\"\"\"pinOff\"\"\"",
+          "source": "spec 图标体系"
+        }
+      ]
+    },
+    {
+      "id": "R-3",
+      "text": "PDF 预览（反馈 5 / 6）",
+      "anchors": [
+        {
+          "id": "A-3.1",
+          "claim": "PDF 顶栏放大/缩小按钮数量",
+          "kind": "exact",
+          "assert": "0",
+          "source": "spec PDF 预览缩放"
+        },
+        {
+          "id": "A-3.2",
+          "claim": "双指捏合后 PDF 缩放比例变化",
+          "kind": "state-machine",
+          "assert": "\"\"\"changed\"\"\"",
+          "source": "spec PDF 预览缩放"
+        },
+        {
+          "id": "A-3.3",
+          "claim": "滚动 PDF 组合成事件后底部页码工具条数量",
+          "kind": "exact",
+          "assert": "0",
+          "source": "spec PDF 页码工具条位置"
+        },
+        {
+          "id": "A-3.4",
+          "claim": "PDF 卡片缩略图为真实位图而非占位线块",
+          "kind": "state-machine",
+          "assert": "\"\"\"image\"\"\"",
+          "source": "spec PDF 卡片缩略图"
+        }
+      ]
+    },
+    {
+      "id": "R-4",
+      "text": "Markdown 编辑（反馈 18 / 19 / 20 / 21 / 23 / 24 / 25 / 26）",
+      "anchors": [
+        {
+          "id": "A-4.1",
+          "claim": "行首输入顿号后斜杠命令菜单打开",
+          "kind": "state-machine",
+          "assert": "\"\"\"open\"\"\"",
+          "source": "spec E-13"
+        },
+        {
+          "id": "A-4.2",
+          "claim": "指针滑入已显示手柄后块菜单打开",
+          "kind": "state-machine",
+          "assert": "\"\"\"open\"\"\"",
+          "source": "spec E-17"
+        },
+        {
+          "id": "A-4.3",
+          "claim": "大纲按钮钉住后 `data-pinned`",
+          "kind": "state-machine",
+          "assert": "\"\"\"true\"\"\"",
+          "source": "spec E-10"
+        },
+        {
+          "id": "A-4.4",
+          "claim": "有下级内容的标题前折叠三角数量",
+          "kind": "exact",
+          "assert": "1",
+          "source": "spec 标题折叠"
+        },
+        {
+          "id": "A-4.5",
+          "claim": "选中文字后文字工具条控件名集合",
+          "kind": "state-machine",
+          "assert": "\"\"\"workbuddy-text-set\"\"\"",
+          "source": "spec 选区浮动工具条"
+        },
+        {
+          "id": "A-4.6",
+          "claim": "预览→编辑同步后按一次 Ctrl+Z 正文非空",
+          "kind": "state-machine",
+          "assert": "\"\"\"true\"\"\"",
+          "source": "spec 前进后退恢复"
+        },
+        {
+          "id": "A-4.7",
+          "claim": "应用居中后源码含对齐标记",
+          "kind": "state-machine",
+          "assert": "\"\"\"true\"\"\"",
+          "source": "spec 块对齐"
+        }
+      ]
+    },
+    {
+      "id": "R-5",
+      "text": "阅读空间卡片 · 状态栏 · 新建（反馈 11 / 13 / 14 / 16 / 22）",
+      "anchors": [
+        {
+          "id": "A-5.1",
+          "claim": "卡片动作按钮顺序",
+          "kind": "exact",
+          "assert": "\"\"\"open,split-right,split-down,favorite,path\"\"\"",
+          "source": "spec 阅读空间密度与卡片规格"
+        },
+        {
+          "id": "A-5.2",
+          "claim": "分段标签中含「收藏」且不含「置顶」",
+          "kind": "exact",
+          "assert": "\"\"\"true\"\"\"",
+          "source": "spec 阅读空间竖排栏"
+        },
+        {
+          "id": "A-5.3",
+          "claim": "阅读空间右侧 1/2 触发窗宽 ≤ 缩略图宽+内边距",
+          "kind": "exact",
+          "assert": "\"\"\"true\"\"\"",
+          "source": "spec 悬浮预览窗"
+        },
+        {
+          "id": "A-5.4",
+          "claim": "底部按钮高度区悬停后三按钮可见",
+          "kind": "state-machine",
+          "assert": "\"\"\"true\"\"\"",
+          "source": "spec 悬浮预览窗"
+        },
+        {
+          "id": "A-5.5",
+          "claim": "状态栏右侧图标数量",
+          "kind": "exact",
+          "assert": "4",
+          "source": "spec 状态栏"
+        },
+        {
+          "id": "A-5.6",
+          "claim": "顶栏四个入口图标数量",
+          "kind": "exact",
+          "assert": "0",
+          "source": "spec G-3"
+        },
+        {
+          "id": "A-5.7",
+          "claim": "首页点新建后 scene",
+          "kind": "state-machine",
+          "assert": "\"\"\"workspace\"\"\"",
+          "source": "spec C-4"
+        },
+        {
+          "id": "A-5.8",
+          "claim": "新建页签类型图标",
+          "kind": "state-machine",
+          "assert": "\"\"\"markdown\"\"\"",
+          "source": "spec C-4"
+        }
+      ]
+    },
+    {
+      "id": "R-6",
+      "text": "视频 / HTML / 既有失败（反馈 8 / 4 / 12）",
+      "anchors": [
+        {
+          "id": "A-6.1",
+          "claim": "切换视频文件后页签标题为 B 文件名",
+          "kind": "state-machine",
+          "assert": "\"\"\"B\"\"\"",
+          "source": "spec C-6"
+        },
+        {
+          "id": "A-6.2",
+          "claim": "复杂 HTML 编辑态可见节点数 > 0",
+          "kind": "state-machine",
+          "assert": "\"\"\"true\"\"\"",
+          "source": "spec E-16"
+        },
+        {
+          "id": "A-6.3",
+          "claim": "修复后 tauri-mock 导出/ai-entry 失败数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "一手观察（base 复现 5 failed）"
+        },
+        {
+          "id": "A-6.4",
+          "claim": "修复后 ai-forms 快照面板失败数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "一手观察（base 复现 1 failed）"
+        }
+      ]
+    }
+  ]
+}
