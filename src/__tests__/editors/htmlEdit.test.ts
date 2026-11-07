@@ -3,10 +3,13 @@ import {
   applyAttrPatch,
   applyBlockSplit,
   applyNodeMove,
+  applyNodeRemove,
   applyStylePatch,
   applyTagReplace,
   applyTextEdit,
   describeNode,
+  nodeKindOf,
+  toggleDecoration,
 } from "../../editors/html/edit";
 
 const DOC = `<!DOCTYPE html>
@@ -207,5 +210,50 @@ describe("拖拽移动（E-20）", () => {
     const out = applyNodeMove(TWO, "p:1", "p:0", "before");
     expect(out).not.toContain("data-cm-");
     expect(out).not.toContain("cmid");
+  });
+});
+
+describe("工具条按节点类型分化（E-22）", () => {
+  it("文本标签归 text，容器归 block，未知按文本", () => {
+    for (const tag of ["p", "h2", "span", "li", "blockquote", "td"]) {
+      expect(nodeKindOf(tag)).toBe("text");
+    }
+    for (const tag of ["div", "section", "article", "ul", "figure", "table"]) {
+      expect(nodeKindOf(tag)).toBe("block");
+    }
+    expect(nodeKindOf("custom-thing")).toBe("text");
+    expect(nodeKindOf("DIV")).toBe("block");
+  });
+
+  it("下划线与删除线共享 text-decoration，不互相覆盖", () => {
+    expect(toggleDecoration(undefined, "underline")).toBe("underline");
+    expect(toggleDecoration("underline", "line-through")).toBe(
+      "underline line-through",
+    );
+    expect(toggleDecoration("underline line-through", "underline")).toBe(
+      "line-through",
+    );
+    expect(toggleDecoration("underline", "underline")).toBeNull();
+    // `none` 是初值，不能被当成一个 token 留下来
+    expect(toggleDecoration("none", "underline")).toBe("underline");
+  });
+
+  it("删除节点连同子树", () => {
+    const src = `<!DOCTYPE html><html><body><div id="a"><p>x</p></div><p>留</p></body></html>`;
+    const out = applyNodeRemove(src, "div:0");
+    expect(out).not.toContain('id="a"');
+    expect(out).toContain("留");
+  });
+
+  it("不删 html / body——那等于清空整篇文档", () => {
+    const src = `<!DOCTYPE html><html><body><p>x</p></body></html>`;
+    expect(applyNodeRemove(src, "body:0")).toBe(src);
+    expect(applyNodeRemove(src, "html:0")).toBe(src);
+  });
+
+  it("删除后无编辑期痕迹", () => {
+    const out = applyNodeRemove(DOC, "p:0");
+    expect(out).not.toContain("data-cm-");
+    expect(out).not.toContain("cmid:");
   });
 });
