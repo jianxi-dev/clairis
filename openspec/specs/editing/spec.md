@@ -371,7 +371,9 @@ MD 编辑态与阅读态的正文选区 SHALL 显示胶囊工具条；编辑态 
 
 ### Requirement: E-19 HTML 可视化编辑工具条
 
-`.html` 文件的编辑态 SHALL 在用户选中元素后提供工具条，支持三类操作：**替换标签**、**修改样式**（字号 / 文字颜色 / 对齐）、**修改属性**（`class` / `id`）。工具条 SHALL 跟随选中元素定位，且 SHALL NOT 遮挡被选中元素本身。
+`.html` 文件的编辑态 SHALL 在用户选中元素后提供工具条，支持：**替换标签**、**修改样式**、**修改属性**（`class` / `id`）、**删除元素**、**区域截图**（见 E-21）。控件集 SHALL 按节点类型分化（见 E-22）：文本级元素给排版类控件，区块容器给容器类控件。
+
+工具条 SHALL 跟随选中元素定位，且 SHALL NOT 遮挡被选中元素本身。
 
 工具条产生的改动 SHALL 折算回文档 `content`（样式写内联 `style`、属性写对应属性），并 SHALL 立即在渲染结果中可见。保存 SHALL 沿用 E-16 的清洗链路：写回文件不得残留 `data-cm-*` 属性、`cmid` 注释锚点、`contenteditable`、注入的运行时脚本/样式。
 
@@ -445,4 +447,42 @@ MD 编辑态与阅读态的正文选区 SHALL 显示胶囊工具条；编辑态 
 
 - **WHEN** 用户拖出的区域宽度或高度为 0
 - **THEN** SHALL NOT 写出文件，SHALL 提示区域无效
+
+### Requirement: E-22 HTML 可视化编辑：工具条按节点类型分化
+
+可视化编辑态的工具条 SHALL 按选中节点的类型提供不同的控件集：
+
+- **文本级元素**（`p` / `h1`–`h6` / `li` / `blockquote` / `span` / `a` / `strong` / `em` / `b` / `i` / `u` / `s` / `code` / `pre` / `td` / `th` / `figcaption` / `label` / `dt` / `dd`，以及未知标签）SHALL 提供：字号、粗体、斜体、下划线、删除线、对齐、文字颜色；选中元素为 `<a>` 时 SHALL 额外提供 `href` 输入。
+- **区块容器**（`div` / `section` / `article` / `aside` / `header` / `footer` / `main` / `nav` / `ul` / `ol` / `table` / `figure` / `form`）SHALL 提供：对齐、背景色、边框。
+
+两类工具条 SHALL 共同提供：标签替换、`class` / `id`、区域截图、删除元素、关闭。文本级工具条 SHALL NOT 显示背景色与边框控件；区块工具条 SHALL NOT 显示字号与粗体/斜体/下划线/删除线控件。
+
+粗体、斜体、下划线、删除线 SHALL 以元素的内联样式表达，SHALL 可再次点击取消。下划线与删除线 SHALL 能同时存在。样式写入 SHALL 基于文档的最新状态，连续操作两个开关时 SHALL NOT 互相覆盖。
+
+删除元素 SHALL 移除该元素及其子树；选中 `html` 或 `body` 时删除 SHALL NOT 生效。
+
+#### Scenario: 选中段落看到文字排版控件
+
+- **WHEN** 用户点选一个 `<p>`
+- **THEN** 工具条 SHALL 显示字号、粗体、斜体、下划线、删除线、对齐、文字颜色，且 SHALL NOT 显示背景色与边框
+
+#### Scenario: 选中容器看到容器控件
+
+- **WHEN** 用户点选一个 `<section>` 或 `<div>`
+- **THEN** 工具条 SHALL 显示对齐、背景色、边框，且 SHALL NOT 显示字号与粗体/斜体/下划线/删除线
+
+#### Scenario: 连续勾选下划线与删除线互不覆盖
+
+- **WHEN** 用户先点下划线、紧接着点删除线
+- **THEN** 该元素的 `text-decoration` SHALL 同时包含 `underline` 与 `line-through`
+
+#### Scenario: 删除元素
+
+- **WHEN** 用户点工具条的删除按钮
+- **THEN** 该元素及其子树 SHALL 从文档 `content` 与渲染结果中消失，工具条 SHALL 关闭
+
+#### Scenario: 不可删除 html/body
+
+- **WHEN** 当前选中的是 `html` 或 `body`
+- **THEN** 删除 SHALL NOT 生效，文档 `content` SHALL 保持不变
 
