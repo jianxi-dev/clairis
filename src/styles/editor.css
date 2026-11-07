@@ -868,6 +868,12 @@ body {
   border-bottom-width: 0;
 }
 
+/* 底部状态栏（G-3）：沉浸态只收拢 .app-chrome，状态栏常驻不透明。 */
+.app-status-bar {
+  border-top: 1px solid var(--app-border);
+  background: var(--app-bg);
+}
+
 /* 顶部热区：16px 才够鼠标稳定命中；悬浮条出现后容器随之变高，
    指针从热区移到条上不会触发 mouseleave。 */
 .immersive-peek-zone {

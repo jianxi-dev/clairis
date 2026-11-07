@@ -6,6 +6,7 @@ import { isMediaKind } from "./stores/index";
 import { useEditorStore } from "./stores/editorStore";
 import { useCaptureOverlayStore } from "./stores/captureOverlay";
 import Toolbar from "./components/Toolbar";
+import StatusBar from "./components/StatusBar";
 import ImmersivePeekBar from "./components/ImmersivePeekBar";
 import TemplatePicker from "./components/TemplatePicker";
 import SettingsView from "./components/SettingsView";
@@ -762,13 +763,7 @@ function App() {
 
   return (
     <div className={rootClass}>
-      <Toolbar
-        theme={theme}
-        readingMode={readingMode}
-        onSetReadingMode={(on) => useStore.getState().setReadingMode(on)}
-        onSetTheme={setTheme}
-        onOpenGrid={openGridOverview}
-      />
+      <Toolbar />
 
       <div className="relative flex-1 flex min-w-0 overflow-hidden">
         <ReadingRail onOpenPath={handleOpenPath} />
@@ -779,6 +774,14 @@ function App() {
           <PaneTreeView />
         </div>
       </div>
+
+      <StatusBar
+        theme={theme}
+        readingMode={readingMode}
+        onSetReadingMode={(on) => useStore.getState().setReadingMode(on)}
+        onSetTheme={setTheme}
+        onOpenGrid={openGridOverview}
+      />
       <CaptureOverlay />
       <SelectionPill />
       <CommandOverlay />
