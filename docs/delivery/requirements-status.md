@@ -37,8 +37,8 @@ openspec status --change <name>   # 单个变更工件完成度
 
 ## 总览统计（截至 2026-11-07）
 
-- 规格：17 域 / 128 requirement（2026-11-07 归档 html-edit-toolbar、html-visual-move-capture、html-toolbar-by-node-type 后）
-- ✅ 经 openspec 归档实现：14
+- 规格：17 域 / 136 requirement（2026-11-07 归档 workspace-ux-batch4 后）
+- ✅ 经 openspec 归档实现：15
 - 🟡 已实现/设计完成（未走 openspec 变更）：24
 - ⬜ 待开发：16
 - 🗒 未立项（遗留散件登记）：约 16（展卷仪式 8 模块 + TODOS 安全/功能项）
@@ -47,10 +47,11 @@ openspec status --change <name>   # 单个变更工件完成度
 - 编辑域（`html-edit-toolbar`）：+1 需求（E-19 HTML 可视化编辑工具条），已归档 `openspec/changes/archive/2026-11-07-html-edit-toolbar`（PR #264）
 - 编辑域（`html-visual-move-capture`）：+2 需求（E-20 拖拽移动节点、E-21 区域截图），已归档 `openspec/changes/archive/2026-11-07-html-visual-move-capture`（PR #266）
 - 编辑域（`html-toolbar-by-node-type`）：+1 需求（E-22 工具条按节点类型分化），已归档 `openspec/changes/archive/2026-11-07-html-toolbar-by-node-type`（PR #269）
+- 外壳/阅读域（`workspace-ux-batch4`）：+8 需求（G-8…G-12、A-15…A-17），5/5 票合并（PR #278–#282），已归档 `openspec/changes/archive/2026-11-07-workspace-ux-batch4`
 
 ## 逐域状态
 
-### reading（10）
+### reading（13）
 
 | 编号 | 需求 | 状态 | 证据 |
 |---|---|---|---|
@@ -67,6 +68,9 @@ openspec status --change <name>   # 单个变更工件完成度
 | A-12 | 图表渲染（Pele，同步出图 / 主题变量 / 导出带图） | ✅ | change `diagram-engine-pele` |
 | A-13 | 悬浮预览的离开关闭与媒体渲染 | ✅ | change `reading-surface-refine`（归档 2026-11-06） |
 | A-14 | HTML 摘要文本化 | ✅ | change `reading-surface-refine`（归档 2026-11-06） |
+| A-15 | 阅读空间宽度可调（钉住/悬浮两态） | ✅ | change `workspace-ux-batch4`（归档 2026-11-07，PR #279） |
+| A-16 | 正文行宽连续可调（480–2400px 滑块） | ✅ | change `workspace-ux-batch4`（归档 2026-11-07，PR #279） |
+| A-17 | HTML 预览首屏不阻塞（不预热编辑器 + 骨架） | ✅ | change `workspace-ux-batch4`（归档 2026-11-07，PR #280） |
 
 ### capture（15）
 
@@ -88,7 +92,7 @@ openspec status --change <name>   # 单个变更工件完成度
 | D-14 | Capsule tooltip 移除 | 🟡 | v5.4 已实现 |
 | D-15 | 一次批量混合 prefix 录入 | ✅ | change `capture-mixed-prefix-input` |
 
-### application-shell（7）
+### application-shell（12）
 
 | 编号 | 需求 | 状态 | 证据 |
 |---|---|---|---|
@@ -101,6 +105,11 @@ openspec status --change <name>   # 单个变更工件完成度
 | B-5 | 空状态设计规则 | 🟡 | 设计已批 `docs/design/approved/empty-state/` |
 | G-6 | 顶栏职责与页签身份 | ✅ | change `reading-surface-refine`（归档 2026-11-06） |
 | G-7 | 图标语义与全屏可用性 | ✅ | change `reading-surface-refine`（归档 2026-11-06） |
+| G-8 | 页签拖拽轨迹与落点反馈 | ✅ | change `workspace-ux-batch4`（归档 2026-11-07，PR #278） |
+| G-9 | 页签与栏目视觉贴合主题 | ✅ | change `workspace-ux-batch4`（归档 2026-11-07，PR #281） |
+| G-10 | 沉浸模式顶栏收纳与悬浮回显 | ✅ | change `workspace-ux-batch4`（归档 2026-11-07，PR #281） |
+| G-11 | 文件卡片工具条按类型收敛 | ✅ | change `workspace-ux-batch4`（归档 2026-11-07，PR #282） |
+| G-12 | 分栏语义与分隔线独立性 | ✅ | change `workspace-ux-batch4`（归档 2026-11-07，PR #278） |
 
 ### navigation（5）
 
