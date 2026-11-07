@@ -732,6 +732,7 @@ export const useStore = create<AppStore>((set, get) => ({
       activeTabId: id,
       focusedPaneId: hostLeaf?.id ?? state.focusedPaneId,
       paneRoot,
+      scene: "workspace",
     });
   },
 

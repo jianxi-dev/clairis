@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "首页门户（点新建前）",
+      "screenshot": ".artifacts/325/portal.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T22:24:53Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "点新建后进入工作区栏目页",
+      "screenshot": ".artifacts/325/workspace.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T22:24:53Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "新建页签显示 Markdown 图标",
+      "screenshot": ".artifacts/325/tab-md-icon.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T22:24:53Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "已存在 .md 文件页签仍为 md 图标",
+      "screenshot": ".artifacts/325/md-path-tab.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T22:24:53Z",
+      "runner": "unknown@MMBP"
+    }
+  ]
+}

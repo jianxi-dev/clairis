@@ -133,3 +133,31 @@ test("无模板时不出现选择器，新建直接空白页", async ({ page }) 
   expect(tab.title).toBe("未命名");
   expect(tab.content).toBe("");
 });
+
+test("首页点新建 → 进入工作区且页签为 Markdown 图标（#325）", async ({
+  page,
+}) => {
+  await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
+  await page.goto(APP_URL, { waitUntil: "networkidle" });
+  await page.waitForSelector("header", { timeout: 10000 });
+
+  await page
+    .getByTestId(/^(empty-new|quick-new)$/)
+    .first()
+    .click();
+
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          (
+            window as unknown as Record<string, any>
+          ).__biaoyue_store__.getState().scene,
+      ),
+    )
+    .toBe("workspace");
+
+  const tab = page.locator('[data-pane-id="main"] [data-tab-id]').first();
+  await expect(tab).toHaveCount(1);
+  await expect(tab.locator('svg[data-icon="markdown"]')).toHaveCount(1);
+});
