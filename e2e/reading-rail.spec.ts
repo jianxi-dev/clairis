@@ -13,8 +13,10 @@ import path from "node:path";
 
 const APP_URL = "http://localhost:1420";
 const ART = path.resolve(process.cwd(), ".artifacts/176");
+const ART274 = path.resolve(process.cwd(), ".artifacts/274");
 
 mkdirSync(ART, { recursive: true });
+mkdirSync(ART274, { recursive: true });
 
 async function boot(page: Page): Promise<void> {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
@@ -32,7 +34,12 @@ async function boot(page: Page): Promise<void> {
         const res = (await orig(cmd, args)) as Record<string, unknown>;
         try {
           const stored = localStorage.getItem("__rail_view_spec__");
-          if (stored) return { ...res, railViewSpec: JSON.parse(stored) };
+          const aiStored = localStorage.getItem("__ai_view_spec__");
+          return {
+            ...res,
+            ...(stored ? { railViewSpec: JSON.parse(stored) } : null),
+            ...(aiStored ? { aiViewSpec: JSON.parse(aiStored) } : null),
+          };
         } catch {
           /* localStorage 不可用时按缺省处理 */
         }
@@ -47,6 +54,16 @@ async function boot(page: Page): Promise<void> {
             localStorage.setItem(
               "__rail_view_spec__",
               JSON.stringify(config.railViewSpec),
+            );
+          } catch {
+            /* ignore */
+          }
+        }
+        if (config && "aiViewSpec" in config) {
+          try {
+            localStorage.setItem(
+              "__ai_view_spec__",
+              JSON.stringify(config.aiViewSpec),
             );
           } catch {
             /* ignore */
@@ -99,6 +116,10 @@ async function bodyWidth(page: Page): Promise<number> {
 
 async function shot(page: Page, name: string): Promise<void> {
   await page.screenshot({ path: path.join(ART, `${name}.png`) });
+}
+
+function shot274(page: Page, name: string): Promise<void> {
+  return page.screenshot({ path: path.join(ART274, `${name}.png`) });
 }
 
 async function openHover(page: Page): Promise<void> {
@@ -415,4 +436,57 @@ test("三点菜单切换布局/密度后列表回顶", async ({ page }) => {
   await page.locator('[data-testid="rail-density-compact"]').click();
   await expect.poll(scrollTop).toBe(0);
   await shot(page, "rail-scroll-reset");
+});
+
+test("悬浮态可拖宽并持久化，拖动中不被收起（#274）", async ({ page }) => {
+  await boot(page);
+  await seed(page);
+  await openHover(page);
+
+  const panel = page.locator('[data-testid="rail-panel"]');
+  await expect(panel).toHaveAttribute("data-rail-state", "hover");
+  const handle = page.locator('[data-testid="rail-resize-handle"]');
+  await expect(handle).toHaveCount(1);
+  const hb = await handle.boundingBox();
+  if (!hb) throw new Error("手柄不可测量");
+  const x = hb.x + hb.width / 2;
+  const y = hb.y + hb.height / 2;
+
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x + 60, y, { steps: 8 });
+  await page.mouse.up();
+
+  await expect
+    .poll(async () => (await panel.boundingBox())?.width ?? 0)
+    .toBeGreaterThan(280);
+  // 拖完仍在悬浮态（没有被 hover-leave 收起）
+  await expect(panel).toHaveAttribute("data-rail-state", "hover");
+  await shot274(page, "rail-hover-resized");
+
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const raw = localStorage.getItem("__ai_view_spec__");
+        return raw
+          ? (JSON.parse(raw) as { railPinnedWidth?: number }).railPinnedWidth
+          : null;
+      }),
+    )
+    .toBeGreaterThan(280);
+
+  // 重启恢复：reload 后悬停展开，宽度仍是拖过的值
+  await page.reload({ waitUntil: "networkidle" });
+  await page.waitForSelector("header", { timeout: 15000 });
+  await seed(page);
+  await openHover(page);
+  await expect
+    .poll(async () =>
+      Math.round(
+        (await page.locator('[data-testid="rail-panel"]').boundingBox())
+          ?.width ?? 0,
+      ),
+    )
+    .toBeGreaterThan(280);
+  await shot274(page, "rail-width-restored");
 });

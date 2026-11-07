@@ -111,6 +111,11 @@ const READER_WIDTH_PRESETS = [
   { value: 1200, label: "宽松" },
 ] as const;
 
+/** 与 `lib/aiErrors.ts` 的校验区间一致（480–2400）。 */
+const READER_WIDTH_MIN = 480;
+const READER_WIDTH_MAX = 2400;
+const READER_WIDTH_STEP = 20;
+
 const READER_TONES = [
   { id: "paper", label: "纸墨", swatch: "#1f1d1a" },
   { id: "indigo", label: "靛青", swatch: "#2b4a7d" },
@@ -702,6 +707,16 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
     void saveAppConfig();
   };
 
+  // 拖动滑块时只更新配置（正文即时跟随）；松手/失焦再落盘，避免每一档
+  // 都触发一次 saveAppConfig。
+  const previewReaderWidth = (width: number) => {
+    setConfig({ readerWidth: width });
+  };
+
+  const commitReaderWidth = () => {
+    void saveAppConfig();
+  };
+
   const chooseReaderSkin = (skin: string) => {
     setConfig({ readerSkin: skin });
     applyReaderSkin(skin);
@@ -1063,6 +1078,31 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
                       </button>
                     );
                   })}
+                </div>
+                <div className="mt-3 flex items-center gap-3">
+                  <input
+                    type="range"
+                    data-testid="reader-width-range"
+                    min={READER_WIDTH_MIN}
+                    max={READER_WIDTH_MAX}
+                    step={READER_WIDTH_STEP}
+                    value={Math.min(
+                      READER_WIDTH_MAX,
+                      Math.max(READER_WIDTH_MIN, readerWidth),
+                    )}
+                    aria-label="正文行宽"
+                    onChange={(e) => previewReaderWidth(Number(e.target.value))}
+                    onPointerUp={commitReaderWidth}
+                    onKeyUp={commitReaderWidth}
+                    onBlur={commitReaderWidth}
+                    className="h-1 w-full cursor-pointer accent-[var(--app-accent)]"
+                  />
+                  <span
+                    data-testid="reader-width-value"
+                    className="w-16 shrink-0 text-right text-xs tabular-nums text-[var(--app-text-2)]"
+                  >
+                    {readerWidth}px
+                  </span>
                 </div>
               </section>
 

@@ -807,6 +807,8 @@ export default function ReadingRail({
     if (menuHoverTimer.current) clearTimeout(menuHoverTimer.current);
     menuHoverTimer.current = setTimeout(() => setMenuOpen(false), 240);
   };
+  /** 拖拽调宽期间抑制「移出即收起」，否则浮层会在拖动途中消失。 */
+  const resizingRef = useRef(false);
   const railPanelRef = useRef<HTMLDivElement>(null);
   const listScrollRef = useRef<HTMLDivElement>(null);
   const hoverZoneRef = useRef<{ path: string; zone: "left" | "right" } | null>(
@@ -839,7 +841,10 @@ export default function ReadingRail({
       let last = startWidth;
       const handle = e.currentTarget;
       handle.setPointerCapture(e.pointerId);
+      resizingRef.current = true;
+      clearTimer(closeTimer);
       const detach = () => {
+        resizingRef.current = false;
         window.removeEventListener("pointermove", onMove);
         window.removeEventListener("pointerup", onUp);
         window.removeEventListener("pointercancel", onUp);
@@ -866,7 +871,7 @@ export default function ReadingRail({
       window.addEventListener("pointerup", onUp);
       window.addEventListener("pointercancel", onUp);
     },
-    [railWidth],
+    [clearTimer, railWidth],
   );
 
   // 状态变化时清掉悬停计时器：避免过期回调把栏/预览拉回旧态
@@ -1038,6 +1043,8 @@ export default function ReadingRail({
 
   const onLeave = useCallback(() => {
     clearTimer(openTimer);
+    // 拖动调宽时不收起：指针可能短暂离开浮层边界。
+    if (resizingRef.current) return;
     if (useStore.getState().railState !== "hover") return;
     clearTimer(closeTimer);
     closeTimer.current = setTimeout(() => {
@@ -1684,6 +1691,18 @@ export default function ReadingRail({
         onMouseLeave={onLeave}
       >
         {railState === "hover" ? panel : collapsed}
+        {railState === "hover" && (
+          <div
+            data-testid="rail-resize-handle"
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="拖动调整阅读空间宽度"
+            title="拖动调整宽度"
+            onPointerDown={onResizeStart}
+            className="absolute right-0 top-0 z-40 h-full cursor-col-resize hover:bg-[var(--app-accent-soft)]"
+            style={{ width: RAIL_RESIZE_HANDLE_PX }}
+          />
+        )}
       </div>
       {notice && <RailNotice text={notice} />}
     </>
