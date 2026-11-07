@@ -156,9 +156,11 @@ test.describe("Biaoyue — Tauri Mocked", () => {
 
     // 两格各自渲染自己的活动页签
     await expect(page.locator("[data-pane-id]")).toHaveCount(2);
-    const body = await page.locator("body").innerHTML();
-    expect(body).toContain("文件A特有内容");
-    expect(body).toContain("文件B特有内容");
+    // innerText 而非 innerHTML：CJK 间距会在「文件」与「A」之间插
+    // <span class="cjk-pad">，字符串直连断言恒假（陈旧断言，与功能无关）。
+    const text = await page.locator("body").innerText();
+    expect(text).toContain("文件A特有内容");
+    expect(text).toContain("文件B特有内容");
     console.log("✅ Split panels show different content");
   });
 
