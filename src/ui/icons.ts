@@ -43,7 +43,15 @@ export type IconName =
   | "chevronRight"
   | "sparkle"
   | "pinOff"
-  | "immersive";
+  | "immersive"
+  | "collapse";
+
+export interface IconPart {
+  d?: string;
+  s?: string;
+  /** stroke-dasharray 值，如 "2 2"。 */
+  dash?: string;
+}
 
 export interface IconDef {
   /**
@@ -56,6 +64,9 @@ export interface IconDef {
    * `d` 与 `s` 至少存在其一。
    */
   s?: string;
+  dash?: string;
+  /** 存在时覆盖 `d`/`s`，用于「实线格 + 虚线格」这类多段图标。 */
+  parts?: IconPart[];
   /** 图标抽屉里显示的中文名 */
   label: string;
 }
@@ -147,7 +158,11 @@ export const ICONS: Record<IconName, IconDef> = {
   },
   expand: {
     label: "全屏格",
-    d: "M4 4h5v1.5H5.5V9H4z M15 4h5v5h-1.5V5.5H15z M4 15h1.5v3.5H9V20H4z M18.5 15H20v5h-5v-1.5h3.5z",
+    s: "M4 9V4h5 M15 4h5v5 M4 15v5h5 M15 20h5v-5",
+  },
+  collapse: {
+    label: "退出全屏",
+    s: "M4 9h5V4 M20 9h-5V4 M4 15h5v5 M20 15h-5v5",
   },
   more: {
     label: "更多",
@@ -171,11 +186,14 @@ export const ICONS: Record<IconName, IconDef> = {
   },
   splitRight: {
     label: "向右分栏",
-    d: "M3 5.5h7.5v13H3z M4.5 7v10h4.5V7z M13.5 5.5H21v13h-7.5z M15 7v10h4.5V7z",
+    parts: [
+      { s: "M4 5h6.5v14H4z" },
+      { s: "M13.5 5h6.5v14h-6.5z", dash: "2 2" },
+    ],
   },
   splitDown: {
     label: "向下分栏",
-    d: "M3 4.5h18v6H3z M4.5 6v3h15V6z M3 12.5h18v7H3z M4.5 14v4h15v-4z",
+    parts: [{ s: "M5 4h14v6.5H5z" }, { s: "M5 13.5h14v6.5H5z", dash: "2 2" }],
   },
   locate: {
     label: "定位",

@@ -45,4 +45,22 @@ describe("Icon 描边渲染", () => {
     expect(svg.getAttribute("width")).toBe("24");
     expect(svg.getAttribute("height")).toBe("24");
   });
+
+  it("parts 多段渲染：实线格 + 虚线格", () => {
+    const { container } = render(<Icon name="splitRight" />);
+    const paths = container.querySelectorAll("path");
+    expect(paths.length).toBe(2);
+    expect(paths[0].getAttribute("stroke-dasharray")).toBeNull();
+    expect(paths[1].getAttribute("stroke-dasharray")).toBe("2 2");
+  });
+
+  it("expand 与 collapse 的 d 不相等", () => {
+    const expand = render(<Icon name="expand" />)
+      .container.querySelector("path")!
+      .getAttribute("d");
+    const collapse = render(<Icon name="collapse" />)
+      .container.querySelector("path")!
+      .getAttribute("d");
+    expect(expand).not.toBe(collapse);
+  });
 });
