@@ -13,6 +13,21 @@ export interface SelectionMessage {
   nodeId: string | null;
 }
 
+/** 选中元素的矩形（iframe 视口坐标）。主侧靠它定位工具条（design D2）。 */
+export interface SelectionRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface SelectionRectMessage {
+  v: number;
+  type: "selectionRect";
+  nodeId: string;
+  rect: SelectionRect;
+}
+
 export interface ReadyMessage {
   v: number;
   type: "ready";
@@ -51,6 +66,7 @@ export type BridgeMessage =
   | SaveRequestMessage
   | TextEditEdgeMessage
   | SelectionMessage
+  | SelectionRectMessage
   | ReadyMessage
   | TextEditMessage
   | BlockSplitMessage;
@@ -76,6 +92,21 @@ export function parseBridgeMessage(data: unknown): BridgeMessage | null {
     case "selection":
       if (msg.nodeId !== null && typeof msg.nodeId !== "string") return null;
       return { v: BRIDGE_VERSION, type: "selection", nodeId: msg.nodeId };
+    case "selectionRect": {
+      if (typeof msg.nodeId !== "string") return null;
+      const rect = msg.rect as Record<string, unknown> | null;
+      if (typeof rect !== "object" || rect === null) return null;
+      const { x, y, width, height } = rect;
+      for (const n of [x, y, width, height]) {
+        if (typeof n !== "number" || !Number.isFinite(n)) return null;
+      }
+      return {
+        v: BRIDGE_VERSION,
+        type: "selectionRect",
+        nodeId: msg.nodeId,
+        rect: { x, y, width, height } as SelectionRect,
+      };
+    }
     case "ready":
       if (typeof msg.nodeCount !== "number") return null;
       return { v: BRIDGE_VERSION, type: "ready", nodeCount: msg.nodeCount };

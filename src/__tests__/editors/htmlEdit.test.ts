@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { applyBlockSplit, applyTextEdit } from "../../editors/html/edit";
+import {
+  applyAttrPatch,
+  applyBlockSplit,
+  applyStylePatch,
+  applyTagReplace,
+  applyTextEdit,
+  describeNode,
+} from "../../editors/html/edit";
 
 const DOC = `<!DOCTYPE html>
 <html><head><style>p{color:red}</style></head>
@@ -48,5 +55,124 @@ describe("文本编辑折算回 content（E-16 切片 4）", () => {
     const inline = `<!DOCTYPE html><html><body><p>a<span>bc</span></p></body></html>`;
     const out = applyBlockSplit(inline, "span:0", "b", "c");
     expect(out).toBe(inline);
+  });
+});
+
+describe("工具条：换标签（E-19）", () => {
+  it("换标签保留文本与子树", () => {
+    const out = applyTagReplace(DOC, "h1:0", "h2").content;
+    expect(out).toContain("<h2>标题</h2>");
+    expect(out).not.toContain("<h1");
+  });
+
+  it("属性跟着元素走", () => {
+    const src = `<!DOCTYPE html><html><body><p class="lead" id="x">文</p></body></html>`;
+    const out = applyTagReplace(src, "p:0", "h3").content;
+    expect(out).toContain('<h3 class="lead" id="x">文</h3>');
+  });
+
+  it("白名单之外的标签原样返回", () => {
+    expect(applyTagReplace(DOC, "p:0", "table")).toEqual({
+      content: DOC,
+      nodeId: "p:0",
+    });
+    expect(applyTagReplace(DOC, "p:0", "script")).toEqual({
+      content: DOC,
+      nodeId: "p:0",
+    });
+  });
+
+  it("同标签不动（避免无意义的整体重排）", () => {
+    expect(applyTagReplace(DOC, "p:0", "p")).toEqual({
+      content: DOC,
+      nodeId: "p:0",
+    });
+  });
+
+  it("返回新 nodeId——工具条靠它保持选中", () => {
+    expect(applyTagReplace(DOC, "h1:0", "h2").nodeId).toBe("h2:0");
+    const src = `<!DOCTYPE html><html><body><h2>a</h2><p>x</p><h2>b</h2></body></html>`;
+    // 换完夹在两个既有 h2 之间，序号必须是 1（与 annotate 的遍历计数一致）
+    expect(applyTagReplace(src, "p:0", "h2").nodeId).toBe("h2:1");
+  });
+
+  it("产物无编辑期痕迹", () => {
+    const out = applyTagReplace(DOC, "p:0", "div").content;
+    expect(out).not.toContain("data-cm-");
+    expect(out).not.toContain("cmid");
+    expect(out).not.toContain("contenteditable");
+  });
+});
+
+describe("工具条：改样式（E-19）", () => {
+  it("写入 inline style 并保留既有样式", () => {
+    const src = `<!DOCTYPE html><html><body><p style="color: red">字</p></body></html>`;
+    const out = applyStylePatch(src, "p:0", {
+      "font-size": "24px",
+      "text-align": "center",
+    });
+    expect(out).toContain("font-size: 24px");
+    expect(out).toContain("text-align: center");
+    expect(out).toContain("color: red");
+  });
+
+  it("清空某项只删该项，其它保留", () => {
+    const src = `<!DOCTYPE html><html><body><p style="font-size: 24px; color: red">字</p></body></html>`;
+    const out = applyStylePatch(src, "p:0", { "font-size": null });
+    expect(out).not.toContain("font-size");
+    expect(out).toContain("color: red");
+  });
+
+  it("全部清空后不留空的 style 属性", () => {
+    const src = `<!DOCTYPE html><html><body><p style="color: red">字</p></body></html>`;
+    const out = applyStylePatch(src, "p:0", { color: null });
+    expect(out).not.toContain("style=");
+    expect(out).not.toContain("color");
+  });
+
+  it("值未变化时原样返回", () => {
+    const src = `<!DOCTYPE html><html><body><p style="color: red">字</p></body></html>`;
+    expect(applyStylePatch(src, "p:0", { color: "red" })).toBe(src);
+  });
+});
+
+describe("工具条：改属性（E-19）", () => {
+  it("写入 class 与 id", () => {
+    const out = applyAttrPatch(DOC, "p:0", { class: "lead", id: "intro" });
+    expect(out).toContain('class="lead"');
+    expect(out).toContain('id="intro"');
+  });
+
+  it("空值删除属性，不留空壳", () => {
+    const src = `<!DOCTYPE html><html><body><p class="lead">字</p></body></html>`;
+    const out = applyAttrPatch(src, "p:0", { class: "" });
+    expect(out).not.toContain("class=");
+    expect(out).toContain("<p>字</p>");
+  });
+
+  it("非法属性名与编辑期属性被忽略", () => {
+    const src = `<!DOCTYPE html><html><body><p>字</p></body></html>`;
+    expect(applyAttrPatch(src, "p:0", { "on click": "x" })).toBe(src);
+    expect(applyAttrPatch(src, "p:0", { "data-cm-node-id": "x" })).toBe(src);
+    expect(applyAttrPatch(src, "p:0", { contenteditable: "true" })).toBe(src);
+  });
+});
+
+describe("describeNode：工具条显示真值（E-19）", () => {
+  it("读出标签、属性与内联样式", () => {
+    const src = `<!DOCTYPE html><html><body><p class="lead" style="font-size: 24px; color: red">字</p></body></html>`;
+    const info = describeNode(src, "p:0");
+    expect(info?.tag).toBe("p");
+    expect(info?.attrs.class).toBe("lead");
+    expect(info?.style["font-size"]).toBe("24px");
+    expect(info?.style.color).toBe("red");
+    // 锚点属性不算用户属性
+    expect(
+      Object.keys(info?.attrs ?? {}).some((k) => k.startsWith("data-cm-")),
+    ).toBe(false);
+  });
+
+  it("节点不存在返回 null", () => {
+    expect(describeNode(DOC, "p:99")).toBeNull();
   });
 });

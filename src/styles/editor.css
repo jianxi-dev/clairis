@@ -2172,3 +2172,89 @@ body {
   align-items: center;
   justify-content: center;
 }
+
+/* ── HTML 可视化编辑工具条（E-19）──────────────────────────────────────
+   画在主文档（portal 到 body），用应用 token 而不是用户文档的样式，
+   所以它长什么样与打开的 HTML 无关。 */
+.html-edit-toolbar {
+  position: fixed;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  max-width: calc(100vw - 16px);
+  background: var(--app-surface);
+  color: var(--app-text);
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius);
+  box-shadow: var(--app-shadow);
+  font-size: 12px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.html-edit-toolbar__tag {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-weight: 600;
+  color: var(--app-text-2);
+  padding: 0 2px;
+}
+
+.html-edit-toolbar select,
+.html-edit-toolbar__text {
+  font: inherit;
+  padding: 3px 5px;
+  color: inherit;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  border-radius: 4px;
+  outline: none;
+}
+
+.html-edit-toolbar select:focus-visible,
+.html-edit-toolbar__text:focus-visible {
+  border-color: var(--app-accent);
+}
+
+.html-edit-toolbar__text {
+  width: 74px;
+}
+
+.html-edit-toolbar input[type="color"] {
+  width: 24px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--app-border);
+  border-radius: 4px;
+  background: none;
+  cursor: pointer;
+}
+
+.html-edit-toolbar__group {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.html-edit-toolbar__btn {
+  font: inherit;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 4px;
+  color: var(--app-text-2);
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.html-edit-toolbar__btn:hover {
+  color: var(--app-text);
+  border-color: var(--app-border-strong);
+}
+
+.html-edit-toolbar__btn.is-active {
+  color: var(--app-accent);
+  background: var(--app-accent-soft);
+  border-color: var(--app-accent);
+}

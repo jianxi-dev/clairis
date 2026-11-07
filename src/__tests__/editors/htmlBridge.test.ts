@@ -57,3 +57,35 @@ describe("桥消息收口（E-16 切片 3）", () => {
     expect(commandForSelection(null).nodeId).toBeNull();
   });
 });
+
+describe("选区几何上报（E-19 工具条定位）", () => {
+  it("矩形消息解析通过", () => {
+    const msg = {
+      v: BRIDGE_VERSION,
+      type: "selectionRect",
+      nodeId: "p:1",
+      rect: { x: 10, y: 20, width: 300, height: 40 },
+    };
+    expect(parseBridgeMessage(msg)).toEqual(msg);
+  });
+
+  it("缺字段或非数字一律丢弃", () => {
+    const base = {
+      v: BRIDGE_VERSION,
+      type: "selectionRect",
+      nodeId: "p:0",
+      rect: { x: 0, y: 0, width: 10, height: 10 },
+    };
+    expect(parseBridgeMessage({ ...base, rect: null })).toBeNull();
+    expect(
+      parseBridgeMessage({ ...base, rect: { x: 0, y: 0, width: "10" } }),
+    ).toBeNull();
+    expect(
+      parseBridgeMessage({
+        ...base,
+        rect: { x: 0, y: 0, width: 10, height: NaN },
+      }),
+    ).toBeNull();
+    expect(parseBridgeMessage({ ...base, nodeId: undefined })).toBeNull();
+  });
+});
