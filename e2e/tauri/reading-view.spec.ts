@@ -80,6 +80,11 @@ test("阅读模式：墨线随模式与沉浸态显隐", async ({ page }) => {
   await expect(page.locator('[data-testid="immersive-peek-bar"]')).toHaveCount(
     1,
   );
+  // 挂载期定时器不得误收用户显式唤出的悬浮条（#343）
+  await page.waitForTimeout(2500);
+  await expect(page.locator('[data-testid="immersive-peek-bar"]')).toHaveCount(
+    1,
+  );
   const stillHidden = await page.evaluate(() => {
     const header = document.querySelector("header");
     return header ? Math.round(header.getBoundingClientRect().height) : -1;

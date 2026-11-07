@@ -75,6 +75,7 @@ function App() {
   const tabDragActive = useStore((s) => s.tabDragActive);
   const peekTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const peekInsideRef = useRef(false);
+  const prevTabDragRef = useRef(false);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
@@ -82,8 +83,12 @@ function App() {
   const [quickOpenQuery, setQuickOpenQuery] = useState("");
   const settingsReturnRef = useRef<Scene>("workspace");
 
-  // 拖拽结束后若指针已在热区外，补上被抑制的 2s 收起。
+  // 拖拽结束（true→false）且指针已在热区外时，补上被抑制的 2s 收起。
+  // 只在拖拽真正结束的那一刻动作：挂载时不得武装收起，否则会误收用户显式唤出的悬浮条（#343）。
   useEffect(() => {
+    const wasDragging = prevTabDragRef.current;
+    prevTabDragRef.current = tabDragActive;
+    if (!wasDragging) return;
     if (tabDragActive || peekInsideRef.current) return;
     if (peekTimerRef.current) clearTimeout(peekTimerRef.current);
     peekTimerRef.current = setTimeout(() => {
