@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "拖拽中跟手 ghost 存在",
+      "screenshot": ".artifacts/313/ghost-during-drag.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T19:34:59Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "拖拽中落点占位条存在",
+      "screenshot": ".artifacts/313/placeholder-indicator.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T19:34:59Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "松手后 ghost 与占位条清零",
+      "screenshot": ".artifacts/313/after-drop-clean.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T19:34:59Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "Esc 取消后 ghost 与占位条清零",
+      "screenshot": ".artifacts/313/after-escape-clean.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T19:34:59Z",
+      "runner": "unknown@MMBP"
+    }
+  ]
+}

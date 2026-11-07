@@ -120,6 +120,7 @@ test("拖动页签换位：顺序严格等于落点；Esc 取消不留占位", a
 
   const stripTabs = page.locator('[data-pane-id="main"] [data-tab-id]');
   const before = await tabOrder(page, "main");
+  const firstTitle = (await stripTabs.nth(0).getAttribute("title")) ?? "";
   const first = await stripTabs.nth(0).boundingBox();
   const last = await stripTabs.nth(2).boundingBox();
   if (!first || !last) throw new Error("页签不可测量");
@@ -139,8 +140,12 @@ test("拖动页签换位：顺序严格等于落点；Esc 取消不留占位", a
   await expect(
     page.locator('[data-testid="tab-drag-placeholder"]'),
   ).toHaveCount(1);
+  const ghost = page.locator('[data-testid="tab-drag-ghost"]');
+  await expect(ghost).toHaveCount(1);
+  await expect(ghost).toContainText(firstTitle);
   await shot(page, "tab-drag-indicator");
   await page.mouse.up();
+  await expect(ghost).toHaveCount(0);
 
   await expect
     .poll(() => tabOrder(page, "main"))
@@ -176,6 +181,7 @@ test("拖动页签换位：顺序严格等于落点；Esc 取消不留占位", a
   await expect(
     page.locator('[data-testid="tab-drag-placeholder"]'),
   ).toHaveCount(0);
+  await expect(page.locator('[data-testid="tab-drag-ghost"]')).toHaveCount(0);
   await page.mouse.up();
   expect(await tabOrder(page, "main")).toEqual(order);
 });
