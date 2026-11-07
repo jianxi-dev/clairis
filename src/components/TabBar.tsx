@@ -110,6 +110,7 @@ export default function TabBar({
     const finish = (commit: boolean, e?: PointerEvent) => {
       const drag = dragRef.current;
       if (!drag) return;
+      useStore.getState().setTabDragActive(false);
       if (drag.el.hasPointerCapture?.(drag.pointerId)) {
         drag.el.releasePointerCapture(drag.pointerId);
       }
@@ -203,7 +204,7 @@ export default function TabBar({
     <>
       <div
         ref={stripRef}
-        className="flex items-center gap-1 shrink-0 select-none overflow-x-auto px-1"
+        className="tab-strip flex items-center gap-1 shrink-0 select-none overflow-x-auto px-1"
         style={{
           borderBottom: "1px solid var(--app-border)",
           // 页签条与栏目头/顶栏同底色：容器自身不再刷第二层表面色（#273）。
@@ -234,6 +235,7 @@ export default function TabBar({
                         // 否则 click 会被重定向到页签本体，关闭按钮失效。
                         if ((e.target as HTMLElement).closest("button")) return;
                         suppressClickRef.current = false;
+                        useStore.getState().setTabDragActive(true);
                         // 捕获指针：拖过正文 iframe 时 pointermove/pointerup
                         // 仍冒泡到 window，轨迹与落点不会中断。
                         const el = e.currentTarget;
@@ -265,7 +267,7 @@ export default function TabBar({
                 onContextMenu={(e) => handleContextMenu(e, id)}
                 className={`group flex min-w-0 items-center gap-1.5 px-2.5 py-1 text-xs cursor-pointer transition-colors whitespace-nowrap ${
                   isActive
-                    ? "rounded-full bg-[var(--app-accent-soft)] font-medium text-[var(--app-accent)] shadow-sm"
+                    ? "tab-capsule rounded-full bg-[var(--app-accent-soft)] font-medium text-[var(--app-accent)] shadow-sm"
                     : "rounded-none bg-transparent text-[var(--app-text-2)] hover:rounded-full hover:bg-[var(--app-sunken)]"
                 }`}
               >

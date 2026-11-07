@@ -99,13 +99,13 @@ function shot(page: Page, name: string): Promise<void> {
   return page.screenshot({ path: path.join(ART, `${name}.png`) });
 }
 
-test("单栏：格头不出现全屏按钮（G-7）、不出现关闭按钮", async ({ page }) => {
+test("单栏：格头出现全屏按钮（G-7）、不出现关闭按钮", async ({ page }) => {
   await boot(page);
   await openFile(page, "/tmp/bug2/fullscreen.md");
 
-  await expect(page.locator('[data-testid="pane-fullscreen"]')).toHaveCount(0);
+  await expect(page.locator('[data-testid="pane-fullscreen"]')).toHaveCount(1);
   await expect(page.locator('[data-testid="pane-close"]')).toHaveCount(0);
-  await shot(page, "single-pane-no-fullscreen");
+  await shot(page, "single-pane-fullscreen");
 });
 
 test("页签关闭 × 默认透明，悬停页签后显现", async ({ page }) => {

@@ -71,13 +71,24 @@ function App() {
   const activeTab = activeTabId ? tabs[activeTabId] : null;
   const readingMode = useStore((s) => s.readingMode);
   const immersiveChromeVisible = useStore((s) => s.immersiveChromeVisible);
+  const tabDragActive = useStore((s) => s.tabDragActive);
   const peekTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const peekInsideRef = useRef(false);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [quickOpenOpen, setQuickOpenOpen] = useState(false);
   const [quickOpenQuery, setQuickOpenQuery] = useState("");
   const settingsReturnRef = useRef<Scene>("workspace");
+
+  // 拖拽结束后若指针已在热区外，补上被抑制的 2s 收起。
+  useEffect(() => {
+    if (tabDragActive || peekInsideRef.current) return;
+    if (peekTimerRef.current) clearTimeout(peekTimerRef.current);
+    peekTimerRef.current = setTimeout(() => {
+      useStore.getState().setImmersiveChromeVisible(false);
+    }, 2000);
+  }, [tabDragActive]);
 
   // Init config loading + theme on mount
   const { setTheme, scheduleSave } = useConfig();
@@ -832,13 +843,17 @@ function App() {
           className="immersive-peek-zone"
           data-testid="immersive-peek-zone"
           onMouseEnter={() => {
+            peekInsideRef.current = true;
             if (peekTimerRef.current) clearTimeout(peekTimerRef.current);
             peekTimerRef.current = setTimeout(() => {
               useStore.getState().setImmersiveChromeVisible(true);
             }, 400);
           }}
           onMouseLeave={() => {
+            peekInsideRef.current = false;
             if (peekTimerRef.current) clearTimeout(peekTimerRef.current);
+            // 拖拽页签期间不收起：浮层卸载会中断进行中的拖拽。
+            if (useStore.getState().tabDragActive) return;
             peekTimerRef.current = setTimeout(() => {
               useStore.getState().setImmersiveChromeVisible(false);
             }, 2000);

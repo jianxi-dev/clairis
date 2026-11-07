@@ -11,9 +11,20 @@ async function openDoc(page: Page) {
   });
 }
 
-test("单格不渲染全屏按钮", async ({ page }) => {
+test("单格渲染可用的全屏按钮（G-7）", async ({ page }) => {
   await openDoc(page);
-  await expect(page.locator('[data-testid="pane-fullscreen"]')).toHaveCount(0);
+  const btn = page.locator('[data-testid="pane-fullscreen"]').first();
+  await expect(btn).toBeVisible();
+  await expect(btn).toHaveAttribute("aria-pressed", "false");
+  await expect(btn.locator("svg")).toHaveAttribute("data-icon", "expand");
+
+  await btn.click();
+  await expect(btn).toHaveAttribute("aria-pressed", "true");
+  await expect(btn.locator("svg")).toHaveAttribute("data-icon", "collapse");
+
+  await btn.click();
+  await expect(btn).toHaveAttribute("aria-pressed", "false");
+  await expect(btn.locator("svg")).toHaveAttribute("data-icon", "expand");
 });
 
 test("全屏按钮随状态切换 expand ↔ collapse", async ({ page }) => {

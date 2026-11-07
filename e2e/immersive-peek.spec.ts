@@ -1,6 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
+import { moveThrough } from "./helpers/ui-probe";
 
 /**
  * 页签视觉与沉浸收纳（workspace-ux-batch4 / #273）。
@@ -20,6 +21,7 @@ type Store = {
     readingMode: boolean;
     immersiveChromeVisible: boolean;
     activeTabId: string | null;
+    focusedPaneId: string;
     tabs: Record<string, { path: string | null }>;
     setReadingMode: (on: boolean) => void;
   };
@@ -178,4 +180,175 @@ test("沉浸态顶栏收纳为 0，顶部热区唤出悬浮页签条并切签（
         .evaluate((el) => Math.round(el.getBoundingClientRect().height)),
     )
     .toBeGreaterThan(0);
+});
+
+test("悬浮条跟随指针所在格，条上方无空白带（#312 / G-10）", async ({
+  page,
+}) => {
+  await boot(page);
+  await page.evaluate(() => {
+    const w = window as unknown as {
+      __biaoyue_openFile__: (
+        path: string,
+        content: string,
+        title: string,
+      ) => void;
+      __biaoyue_store__: Store;
+    };
+    w.__biaoyue_openFile__("/tmp/imm/a.md", "# A\n\n甲", "a.md");
+    w.__biaoyue_store__.getState().setReadingMode(false);
+  });
+  await expect(page.locator('[data-pane-id="main"] [data-tab-id]')).toHaveCount(
+    1,
+  );
+
+  // 向右分栏：新格聚焦，在右格打开 b.md
+  await page.keyboard.press("Control+Alt+ArrowRight");
+  await expect(page.locator("[data-pane-id]")).toHaveCount(2);
+  const pane2 = await page.evaluate(() => {
+    const s = (
+      window as unknown as { __biaoyue_store__: Store }
+    ).__biaoyue_store__.getState();
+    return s.focusedPaneId;
+  });
+  expect(pane2).not.toBe("main");
+  await page.evaluate(() => {
+    const w = window as unknown as {
+      __biaoyue_openFile__: (
+        path: string,
+        content: string,
+        title: string,
+      ) => void;
+    };
+    w.__biaoyue_openFile__("/tmp/imm/b.md", "# B\n\n乙", "b.md");
+  });
+  await expect(
+    page.locator(`[data-pane-id="${pane2}"] [data-tab-id]`),
+  ).toHaveCount(1);
+
+  await page.locator('[data-testid="immersive-entry"]').click();
+
+  // 指针先在右格，再移到顶部热区唤出悬浮条
+  await moveThrough(page, [{ x: 900, y: 400 }], { steps: 6 });
+  await moveThrough(page, [{ x: 900, y: 4 }], { steps: 4, pauseMs: 600 });
+
+  const bar = page.getByTestId("immersive-peek-bar");
+  await expect(bar).toBeVisible({ timeout: 4000 });
+  await expect(bar.locator("[data-tab-id]")).toHaveCount(1);
+  await expect(bar.locator("[data-tab-id]")).toContainText("b.md");
+
+  // 条顶贴屏幕顶缘：上方无可见空白带
+  const box = await bar.boundingBox();
+  expect(box).not.toBeNull();
+  expect(box!.y).toBe(0);
+
+  // 指针移入左格：悬浮条跟随为左格页签
+  await moveThrough(page, [{ x: 300, y: 400 }], { steps: 8 });
+  await expect(bar.locator("[data-tab-id]")).toContainText("a.md");
+  await shot(page, "immersive-follows-pane");
+});
+
+test("悬浮条空格显示兜底文案「空分栏」（#312 / G-10）", async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    const w = window as unknown as {
+      __biaoyue_openFile__: (
+        path: string,
+        content: string,
+        title: string,
+      ) => void;
+      __biaoyue_store__: Store;
+    };
+    w.__biaoyue_openFile__("/tmp/imm/a.md", "# A\n\n甲", "a.md");
+    w.__biaoyue_store__.getState().setReadingMode(false);
+  });
+  await expect(page.locator('[data-pane-id="main"] [data-tab-id]')).toHaveCount(
+    1,
+  );
+  // 向右分栏：右格为空
+  await page.keyboard.press("Control+Alt+ArrowRight");
+  await expect(page.locator("[data-pane-id]")).toHaveCount(2);
+
+  await page.locator('[data-testid="immersive-entry"]').click();
+  await moveThrough(page, [{ x: 900, y: 400 }], { steps: 6 });
+  await moveThrough(page, [{ x: 900, y: 4 }], { steps: 4, pauseMs: 600 });
+
+  const bar = page.getByTestId("immersive-peek-bar");
+  await expect(bar).toBeVisible({ timeout: 4000 });
+  await expect(bar.locator("[data-tab-id]")).toHaveCount(0);
+  await expect(bar).toContainText("空分栏");
+  await shot(page, "immersive-empty-pane");
+});
+
+test("从悬浮条把页签拖到另一格（#312 / G-8）", async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    const w = window as unknown as {
+      __biaoyue_openFile__: (
+        path: string,
+        content: string,
+        title: string,
+      ) => void;
+      __biaoyue_store__: Store;
+    };
+    w.__biaoyue_openFile__("/tmp/imm/a.md", "# A\n\n甲", "a.md");
+    w.__biaoyue_store__.getState().setReadingMode(false);
+  });
+  await expect(page.locator('[data-pane-id="main"] [data-tab-id]')).toHaveCount(
+    1,
+  );
+  await page.keyboard.press("Control+Alt+ArrowRight");
+  await expect(page.locator("[data-pane-id]")).toHaveCount(2);
+  const pane2 = await page.evaluate(() => {
+    const s = (
+      window as unknown as { __biaoyue_store__: Store }
+    ).__biaoyue_store__.getState();
+    return s.focusedPaneId;
+  });
+  await page.evaluate(() => {
+    const w = window as unknown as {
+      __biaoyue_openFile__: (
+        path: string,
+        content: string,
+        title: string,
+      ) => void;
+    };
+    w.__biaoyue_openFile__("/tmp/imm/b.md", "# B\n\n乙", "b.md");
+  });
+  await expect(
+    page.locator(`[data-pane-id="${pane2}"] [data-tab-id]`),
+  ).toHaveCount(1);
+
+  await page.locator('[data-testid="immersive-entry"]').click();
+  await moveThrough(page, [{ x: 900, y: 400 }], { steps: 6 });
+  await moveThrough(page, [{ x: 900, y: 4 }], { steps: 4, pauseMs: 600 });
+
+  const bar = page.getByTestId("immersive-peek-bar");
+  await expect(bar).toBeVisible({ timeout: 4000 });
+  const tab = bar.locator("[data-tab-id]").first();
+  await expect(tab).toContainText("b.md");
+  const from = await tab.boundingBox();
+  if (!from) throw new Error("悬浮条页签不可测量");
+
+  // 从悬浮条拖到左格
+  await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(
+    from.x + from.width / 2 + 12,
+    from.y + from.height / 2 + 6,
+    { steps: 3 },
+  );
+  await moveThrough(page, [{ x: 300, y: 400 }], { steps: 8 });
+  await page.mouse.up();
+
+  // b.md 落到左格，右格空
+  await expect(page.locator('[data-pane-id="main"] [data-tab-id]')).toHaveCount(
+    2,
+  );
+  await expect(
+    page.locator(`[data-pane-id="${pane2}"] [data-tab-id]`),
+  ).toHaveCount(0);
+  // 拖拽结束后指针在热区外，2s 后悬浮条收起
+  await expect(bar).toHaveCount(0, { timeout: 5000 });
+  await shot(page, "immersive-drag-to-pane");
 });
