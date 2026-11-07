@@ -1,0 +1,541 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>标月图标体系 v3 · 小样评审</title>
+<style>
+:root{--r:6px;--mono:ui-monospace,SFMono-Regular,Menlo,monospace}
+body{--bg:#f7f7f6;--surface:#fbfaf8;--sunken:#f4f2ec;--text:#24262b;--text2:#55595f;--text3:#8b8f96;--border:#e7e3db;--border-strong:#d8d3c8;--accent:#6366f1;--accent-soft:rgba(99,102,241,.1)}
+body.dark{--bg:#131316;--surface:#1a1b1e;--sunken:#22242a;--text:#d8dade;--text2:#a7abb3;--text3:#75797f;--border:#2e3138;--border-strong:#3d4149;--accent:#818cf8;--accent-soft:rgba(129,140,248,.14)}
+body.warm{--bg:#f2e9da;--surface:#fbf4e8;--sunken:#efe3d0;--text:#3b3024;--text2:#6b5a45;--text3:#96826a;--border:#e0d2bc;--border-strong:#cdbca1;--accent:#0071e3;--accent-soft:rgba(0,113,227,.08)}
+*{box-sizing:border-box}
+body{margin:0;padding:0 0 64px;background:var(--bg);color:var(--text);font:14px/1.6 -apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif}
+code,.mono{font-family:var(--mono);font-size:11.5px}
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px}
+header.top{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--surface) 92%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--border)}
+header.top .wrap{display:flex;align-items:center;gap:14px;padding-top:12px;padding-bottom:12px;flex-wrap:wrap}
+h1{font-size:18px;margin:0}
+.sub{color:var(--text2);font-size:12.5px}
+.themes{margin-left:auto;display:flex;gap:4px;background:var(--sunken);border-radius:999px;padding:3px}
+.themes button{border:0;background:transparent;color:var(--text2);font:12px/1 inherit;padding:6px 12px;border-radius:999px;cursor:pointer}
+.themes button[aria-pressed="true"]{background:var(--surface);color:var(--text);box-shadow:0 1px 2px rgba(0,0,0,.12)}
+.criteria{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.chip{font-size:11.5px;color:var(--text2);background:var(--sunken);border-radius:999px;padding:3px 9px}
+section.block{margin-top:34px}
+h2{font-size:15px;margin:0 0 4px;display:flex;align-items:baseline;gap:8px}
+h2 .num{font-family:var(--mono);font-size:11px;color:var(--accent);border:1px solid var(--accent);border-radius:4px;padding:1px 5px}
+.lead{color:var(--text2);font-size:12.5px;margin:0 0 14px}
+.grid{display:grid;gap:12px}
+.g4{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+.g3{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:12px}
+.card.pick{border-left:3px solid var(--accent)}
+.tag{font-size:10.5px;font-family:var(--mono);padding:1px 6px;border-radius:4px;background:var(--accent-soft);color:var(--accent)}
+.tag.alt{background:var(--sunken);color:var(--text2)}
+.name{font-size:13px;font-weight:600;margin:8px 0 2px}
+.desc{font-size:11.5px;color:var(--text2);min-height:32px}
+.row{display:flex;align-items:center;gap:18px;margin-top:10px;padding-top:10px;border-top:1px dashed var(--border);flex-wrap:wrap}
+.cell{display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--text2)}
+.cell .lbl{font-size:10px;font-family:var(--mono);color:var(--text3)}
+.cell[data-size="24"] svg{color:var(--text)}
+.cell[data-size="18"] svg{color:var(--text3)}
+.family{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+.family .f{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);min-width:72px}
+.family .f .nm{font-size:10.5px;color:var(--text2)}
+.bar{display:flex;align-items:center;gap:14px;padding:10px 14px;background:#0d0d10;color:#fff;border-radius:8px;overflow-x:auto}
+.bar .sep{width:1px;height:18px;background:rgba(255,255,255,.18);flex:none}
+.bar .t{font-size:11px;font-family:var(--mono);color:rgba(255,255,255,.6);flex:none}
+.bar .track{flex:1;height:3px;border-radius:2px;background:rgba(255,255,255,.2);position:relative;min-width:80px}
+.bar .track i{position:absolute;left:0;top:0;bottom:0;width:38%;background:#6366f1;border-radius:2px}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:middle}
+th{color:var(--text2);font-weight:500;font-size:11.5px}
+td.ic{width:96px}
+td .pair{display:flex;gap:14px;align-items:center}
+.swatches{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.swatch{border-radius:var(--r);padding:14px;border:1px solid var(--border);background:var(--surface);color:var(--text)}
+.swatch.light{--bg:#f7f7f6;--surface:#fbfaf8;--sunken:#f4f2ec;--text:#24262b;--text2:#55595f;--text3:#8b8f96;--border:#e7e3db;--accent:#6366f1}
+.swatch.dark{--bg:#131316;--surface:#1a1b1e;--sunken:#22242a;--text:#d8dade;--text2:#a7abb3;--text3:#75797f;--border:#2e3138;--accent:#818cf8}
+.swatch.warm{--bg:#f2e9da;--surface:#fbf4e8;--sunken:#efe3d0;--text:#3b3024;--text2:#6b5a45;--text3:#96826a;--border:#e0d2bc;--accent:#0071e3}
+.swatch .cap{font-size:11px;color:var(--text2);margin-bottom:10px}
+.swatch .line{display:flex;align-items:center;gap:12px;color:var(--text2);flex-wrap:wrap}
+.chrome{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.chrome .hd{display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid var(--border);background:var(--sunken)}
+.tab{display:inline-flex;align-items:center;gap:6px;padding:3px 8px;border-radius:5px;font-size:11.5px;color:var(--text2);white-space:nowrap}
+.tab.on{background:var(--surface);color:var(--text);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.btn{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:5px;color:var(--text3)}
+.btn.on{background:var(--accent-soft);color:var(--accent)}
+.menu{display:flex;flex-direction:column;gap:2px;padding:6px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:0 8px 24px rgba(0,0,0,.08);min-width:150px}
+.mi{display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:4px;font-size:11.5px;color:var(--text2)}
+.mi.on{background:var(--accent-soft);color:var(--accent)}
+.note{font-size:11.5px;color:var(--text3);margin-top:10px}
+.q{font-size:11px;color:var(--accent);margin-top:6px}
+.pill{font-size:10.5px;font-family:var(--mono);color:var(--text3)}
+</style>
+</head>
+<body class="light">
+<header class="top">
+  <div class="wrap">
+    <div>
+      <h1>标月图标体系 v3 · 小样评审</h1>
+      <div class="sub">单文件离线原型 · 每个争议概念给「现状 / 定案 / 对照」并排 · 18px 与 24px 两档 · 亮 / 暗 / 暖三主题</div>
+    </div>
+    <div class="themes" role="group" aria-label="主题">
+      <button data-theme="light" aria-pressed="true">亮</button>
+      <button data-theme="dark" aria-pressed="false">暗</button>
+      <button data-theme="warm" aria-pressed="false">暖</button>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+<section class="block">
+  <h2><span class="num">00</span>评审判据</h2>
+  <p class="lead">五个判据，逐格对照。任何一格不满足其中一条，就回退重画，不接受「看起来还行」。</p>
+  <div class="criteria">
+    <span class="chip">① 遮住标签，5 人里 ≥4 人说出正确动作</span>
+    <span class="chip">② 18px 不糊、不并线</span>
+    <span class="chip">③ 去掉颜色仍可区分</span>
+    <span class="chip">④ 可逆动作必须成对出现</span>
+    <span class="chip">⑤ 亮 / 暗 / 暖三主题一致</span>
+  </div>
+  <p class="note">打开方式：直接双击本文件；或带主题参数 <code>icon-system-v3-proto.html?theme=dark</code>。本页所有图形均为内联矢量，无任何外部引用。</p>
+</section>
+
+<section class="block">
+  <h2><span class="num">01</span>问题一 · Markdown 文件图标</h2>
+  <p class="lead">用户反馈：v2 把 M 换成了 <code>#</code>，结果反而认不出这是 Markdown。定案方向是把 M 请回来，并让它成为主形，外壳退居配角。</p>
+  <div class="grid g4">
+    <div class="card">
+      <span class="tag alt">现状 v1</span>
+      <div class="name">折角文档 + 实心块拼 M</div>
+      <div class="row">
+        <span class="cell" data-icon="cur-markdown" data-size="24"><span class="lbl">24</span></span>
+        <span class="cell" data-icon="cur-markdown" data-size="18"><span class="lbl">18</span></span>
+      </div>
+      <div class="desc">M 由矩形拼成，18px 下糊成色块。</div>
+      <div class="q">问：这是 Markdown 吗？答不出。</div>
+    </div>
+    <div class="card pick">
+      <span class="tag">定案 B</span>
+      <div class="name">圆角纸片 + 粗 M</div>
+      <div class="row">
+        <span class="cell" data-icon="md" data-size="24"><span class="lbl">24</span></span>
+        <span class="cell" data-icon="md" data-size="18"><span class="lbl">18</span></span>
+      </div>
+      <div class="desc">去掉折角，纸片退成底；M 宽 7 单位，18px 下 5.25px。</div>
+      <div class="q">问：这是哪个类型的文件？答：Markdown。</div>
+    </div>
+    <div class="card">
+      <span class="tag alt">对照 A</span>
+      <div class="name">折角文档 + 描边 M</div>
+      <div class="row">
+        <span class="cell" data-icon="md-fold" data-size="24"><span class="lbl">24</span></span>
+        <span class="cell" data-icon="md-fold" data-size="18"><span class="lbl">18</span></span>
+      </div>
+      <div class="desc">M 回来了，但折角吃掉画布，M 被挤小。</div>
+      <div class="q">问：比定案 B 差在哪？答：M 更小、更靠下。</div>
+    </div>
+    <div class="card">
+      <span class="tag alt">对照 C</span>
+      <div class="name">实心徽章 + 挖空 M</div>
+      <div class="row">
+        <span class="cell" data-icon="md-badge" data-size="24"><span class="lbl">24</span></span>
+        <span class="cell" data-icon="md-badge" data-size="18"><span class="lbl">18</span></span>
+      </div>
+      <div class="desc">辨识度最高，但是实心块，与全族描边语言冲突。</div>
+      <div class="q">问：能认出来吗？答：能，但风格是另一套。</div>
+    </div>
+  </div>
+  <div class="family">
+    <div class="f"><span data-icon="md" data-size="24"></span><span class="nm">markdown</span></div>
+    <div class="f"><span data-icon="html" data-size="24"></span><span class="nm">html</span></div>
+    <div class="f"><span data-icon="text" data-size="24"></span><span class="nm">text</span></div>
+    <div class="f"><span data-icon="pdf" data-size="24"></span><span class="nm">pdf</span></div>
+    <div class="f"><span data-icon="video" data-size="24"></span><span class="nm">video</span></div>
+    <div class="f"><span data-icon="image" data-size="24"></span><span class="nm">image</span></div>
+    <div class="f"><span data-icon="code" data-size="24"></span><span class="nm">code</span></div>
+    <div class="f"><span data-icon="audio" data-size="24"></span><span class="nm">audio</span></div>
+  </div>
+  <p class="note">同一族内：文档类共用圆角纸片外壳，媒体类用圆角框，code / audio 无外壳。注意 html 与 code 不再同形（<code>&lt;/&gt;</code> 有斜杠，<code>&lt;&gt;</code> 没有）。</p>
+</section>
+
+<section class="block">
+  <h2><span class="num">02</span>问题二 · 右分栏 / 下分栏</h2>
+  <p class="lead">用户反馈：现在画成「外框 + 一条中线」，看不出这是在说「右边要新长出一格」。定案方向是把「新增的那一格」直接画成虚线。</p>
+  <div class="grid g3">
+    <div class="card">
+      <span class="tag alt">现状 v2</span>
+      <div class="name">外框 + 中线</div>
+      <div class="row">
+        <span class="cell" data-icon="cur-splitRight" data-size="24"><span class="lbl">右分 24</span></span>
+        <span class="cell" data-icon="cur-splitRight" data-size="18"><span class="lbl">右分 18</span></span>
+        <span class="cell" data-icon="cur-splitDown" data-size="24"><span class="lbl">下分 24</span></span>
+        <span class="cell" data-icon="cur-splitDown" data-size="18"><span class="lbl">下分 18</span></span>
+      </div>
+      <div class="desc">只陈述「有两格」，不陈述「往哪边新增」。</div>
+      <div class="q">问：点下去会怎样？答：不知道。</div>
+    </div>
+    <div class="card pick">
+      <span class="tag">定案 A</span>
+      <div class="name">双格 · 新格虚线</div>
+      <div class="row">
+        <span class="cell" data-icon="splitRight" data-size="24"><span class="lbl">右分 24</span></span>
+        <span class="cell" data-icon="splitRight" data-size="18"><span class="lbl">右分 18</span></span>
+        <span class="cell" data-icon="splitDown" data-size="24"><span class="lbl">下分 24</span></span>
+        <span class="cell" data-icon="splitDown" data-size="18"><span class="lbl">下分 18</span></span>
+      </div>
+      <div class="desc">实线格是现在，虚线格是即将产生的。两格间距 3 单位，18px 下净空约 1px。</div>
+      <div class="q">问：点下去会怎样？答：右边再开一格。</div>
+    </div>
+    <div class="card">
+      <span class="tag alt">对照 B</span>
+      <div class="name">外框 + 中线 + 短箭头</div>
+      <div class="row">
+        <span class="cell" data-icon="splitRightArrow" data-size="24"><span class="lbl">右分 24</span></span>
+        <span class="cell" data-icon="splitRightArrow" data-size="18"><span class="lbl">右分 18</span></span>
+        <span class="cell" data-icon="splitDownArrow" data-size="24"><span class="lbl">下分 24</span></span>
+        <span class="cell" data-icon="splitDownArrow" data-size="18"><span class="lbl">下分 18</span></span>
+      </div>
+      <div class="desc">比现状多了方向，但多一笔、更密，18px 下箭头易糊。</div>
+      <div class="q">问：比定案 A 差在哪？答：元素更多，更吵。</div>
+    </div>
+  </div>
+</section>
+
+<section class="block">
+  <h2><span class="num">03</span>问题三 · 全屏 / 退出全屏</h2>
+  <p class="lead">用户反馈两条：一是全屏图标本身不直观；二是<b>全屏之后还是同一个全屏图标</b>，没有「缩小回去」的入口。第二条是行为缺失，光换形状解决不了。</p>
+  <div class="grid g3">
+    <div class="card">
+      <span class="tag alt">现状 v1</span>
+      <div class="name">实心四角括号（恒定不变）</div>
+      <div class="row">
+        <span class="cell" data-icon="cur-expand" data-size="24"><span class="lbl">24</span></span>
+        <span class="cell" data-icon="cur-expand" data-size="18"><span class="lbl">18</span></span>
+      </div>
+      <div class="desc">进入与退出共用一个形状，全屏中点了没反应（视觉上）。</div>
+      <div class="q">问：现在全屏了吗？答：看不出来。</div>
+    </div>
+    <div class="card pick">
+      <span class="tag">定案 A · 成对</span>
+      <div class="name">四角括号：外扩 ↔ 内收</div>
+      <div class="row">
+        <span class="cell" data-icon="expand" data-size="24"><span class="lbl">未全屏 24</span></span>
+        <span class="cell" data-icon="expand" data-size="18"><span class="lbl">未全屏 18</span></span>
+        <span class="cell" data-icon="collapse" data-size="24"><span class="lbl">全屏中 24</span></span>
+        <span class="cell" data-icon="collapse" data-size="18"><span class="lbl">全屏中 18</span></span>
+      </div>
+      <div class="desc">同一构图、方向相反：外扩=去全屏，内收=退全屏。学一次会两次。</div>
+      <div class="q">问：现在能退出吗？答：能，图标朝内收。</div>
+    </div>
+    <div class="card">
+      <span class="tag alt">对照 B</span>
+      <div class="name">对角双箭头 ↔ 双叠框</div>
+      <div class="row">
+        <span class="cell" data-icon="expandDiag" data-size="24"><span class="lbl">24</span></span>
+        <span class="cell" data-icon="expandDiag" data-size="18"><span class="lbl">18</span></span>
+        <span class="cell" data-icon="collapseOverlap" data-size="24"><span class="lbl">24</span></span>
+        <span class="cell" data-icon="collapseOverlap" data-size="18"><span class="lbl">18</span></span>
+      </div>
+      <div class="desc">退出态（双叠框）很直观，但两个形状不同构图，等于两个概念。</div>
+      <div class="q">问：这一对好记吗？答：要分别记。</div>
+    </div>
+  </div>
+  <p class="note">行为口径（写进规范）：格头按钮在 <code>fullscreenPaneId === leafId</code> 时渲染 <code>collapse</code>，否则渲染 <code>expand</code>；<code>aria-pressed</code> 保持同步。</p>
+</section>
+
+<section class="block">
+  <h2><span class="num">04</span>问题四 · 媒体播放控件</h2>
+  <p class="lead">播放器现在自带一套 22px、2px 描边的内联图形，与全站 24 网格 / 1.7 描边是两套语言。本期只做「统一样式」，播放列表、循环、字幕、笔记、画中画、倍速、首页、全屏统一进 24 网格。</p>
+  <div class="bar">
+    <span data-icon="prev" data-size="18"></span>
+    <span data-icon="play" data-size="24"></span>
+    <span data-icon="next" data-size="18"></span>
+    <span class="sep"></span>
+    <span class="t">03:12</span>
+    <span class="track"><i></i></span>
+    <span class="t">12:40</span>
+    <span class="sep"></span>
+    <span data-icon="volume" data-size="18"></span>
+    <span data-icon="playlist" data-size="18"></span>
+    <span data-icon="loopNone" data-size="18"></span>
+    <span data-icon="subtitle" data-size="18"></span>
+    <span data-icon="timestampNote" data-size="18"></span>
+    <span data-icon="keyboardHints" data-size="18"></span>
+    <span data-icon="pip" data-size="18"></span>
+    <span data-icon="speed" data-size="18"></span>
+    <span data-icon="collapse" data-size="18"></span>
+    <span data-icon="home" data-size="18"></span>
+  </div>
+  <div class="grid g3" style="margin-top:12px">
+    <div class="card">
+      <span class="tag">循环三态</span>
+      <div class="name">同一主形 + 角标区分</div>
+      <div class="row">
+        <span class="cell" data-icon="loopNone" data-size="24"><span class="lbl">不循环</span></span>
+        <span class="cell" data-icon="loopSingle" data-size="24"><span class="lbl">单集</span></span>
+        <span class="cell" data-icon="loopPlaylist" data-size="24"><span class="lbl">列表</span></span>
+      </div>
+      <div class="desc">角标 <code>1</code> / <code>N</code> 用笔画表达，不再用文字元素硬塞。</div>
+    </div>
+    <div class="card">
+      <span class="tag alt">对照 · 静音</span>
+      <div class="name">volume ↔ volumeMute</div>
+      <div class="row">
+        <span class="cell" data-icon="volume" data-size="24"><span class="lbl">24</span></span>
+        <span class="cell" data-icon="volume" data-size="18"><span class="lbl">18</span></span>
+        <span class="cell" data-icon="volumeMute" data-size="24"><span class="lbl">24</span></span>
+        <span class="cell" data-icon="volumeMute" data-size="18"><span class="lbl">18</span></span>
+      </div>
+      <div class="desc">同一喇叭主体，加一道斜杠即静音。</div>
+    </div>
+    <div class="card">
+      <span class="tag alt">实心例外</span>
+      <div class="name">play / pause 保持实心</div>
+      <div class="row">
+        <span class="cell" data-icon="play" data-size="24"><span class="lbl">播放 24</span></span>
+        <span class="cell" data-icon="play" data-size="18"><span class="lbl">播放 18</span></span>
+        <span class="cell" data-icon="pause" data-size="24"><span class="lbl">暂停 24</span></span>
+        <span class="cell" data-icon="pause" data-size="18"><span class="lbl">暂停 18</span></span>
+      </div>
+      <div class="desc">点状强调类保持实心，这是规范里登记的三处例外之一。</div>
+    </div>
+    <div class="card pick">
+      <span class="tag">定案</span>
+      <div class="name">倍速（A 速度表）· 首页</div>
+      <div class="row">
+        <span class="cell" data-icon="speed" data-size="24"><span class="lbl">倍速 24</span></span>
+        <span class="cell" data-icon="speed" data-size="18"><span class="lbl">倍速 18</span></span>
+        <span class="cell" data-icon="home" data-size="24"><span class="lbl">首页 24</span></span>
+        <span class="cell" data-icon="home" data-size="18"><span class="lbl">首页 18</span></span>
+      </div>
+      <div class="desc">倍速采用 A：240° 速度表（弧 + 指针 + 轴心）；B 双箭头留作对照。首页用房子。</div>
+    </div>
+  </div>
+</section>
+
+<section class="block">
+  <h2><span class="num">05</span>状态对总表（可逆动作必须成对）</h2>
+  <p class="lead">凡是能来回切换的动作，一律先画一对再画单个；同一构图、反向指示，不允许两个形状各讲各的。</p>
+  <table>
+    <thead><tr><th>动作</th><th>关闭 / 未激活</th><th>开启 / 激活</th><th>成对逻辑</th></tr></thead>
+    <tbody>
+      <tr><td>格全屏</td><td class="ic"><span class="pair"><span data-icon="expand" data-size="18"></span><span data-icon="collapse" data-size="18"></span></span></td><td class="ic"><span class="pair"><span data-icon="collapse" data-size="18"></span><span data-icon="expand" data-size="18"></span></span></td><td>同构图，括号外扩 ↔ 内收</td></tr>
+      <tr><td>播放</td><td class="ic"><span data-icon="play" data-size="18"></span></td><td class="ic"><span data-icon="pause" data-size="18"></span></td><td>实心三角 ↔ 实心双条</td></tr>
+      <tr><td>音量</td><td class="ic"><span data-icon="volume" data-size="18"></span></td><td class="ic"><span data-icon="volumeMute" data-size="18"></span></td><td>同主体，加斜杠</td></tr>
+      <tr><td>钉住</td><td class="ic"><span data-icon="pin" data-size="18"></span></td><td class="ic"><span data-icon="pinOff" data-size="18"></span></td><td>同构图，加斜杠</td></tr>
+      <tr><td>预览模式</td><td class="ic"><span data-icon="eye" data-size="18"></span></td><td class="ic"><span data-icon="pencil" data-size="18"></span></td><td>眼镜＝预览，笔＝编辑；显示的是「下一个动作」</td></tr>
+      <tr><td>循环</td><td class="ic"><span data-icon="loopNone" data-size="18"></span></td><td class="ic"><span class="pair"><span data-icon="loopSingle" data-size="18"></span><span data-icon="loopPlaylist" data-size="18"></span></span></td><td>三态，角标 1 / N 区分</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section class="block">
+  <h2><span class="num">06</span>三主题实拍</h2>
+  <p class="lead">同一组图标在三套主题色下的样子。类型色三主题不变，图标本体只跟随前景色。</p>
+  <div class="swatches">
+    <div class="swatch light">
+      <div class="cap">亮色</div>
+      <div class="line"><span data-icon="md" data-size="18"></span><span data-icon="splitRight" data-size="18"></span><span data-icon="expand" data-size="18"></span><span data-icon="play" data-size="18"></span><span data-icon="folder" data-size="18"></span><span data-icon="search" data-size="18"></span><span data-icon="eye" data-size="18"></span><span data-icon="more" data-size="18"></span></div>
+    </div>
+    <div class="swatch dark">
+      <div class="cap">暗色</div>
+      <div class="line"><span data-icon="md" data-size="18"></span><span data-icon="splitRight" data-size="18"></span><span data-icon="expand" data-size="18"></span><span data-icon="play" data-size="18"></span><span data-icon="folder" data-size="18"></span><span data-icon="search" data-size="18"></span><span data-icon="eye" data-size="18"></span><span data-icon="more" data-size="18"></span></div>
+    </div>
+    <div class="swatch warm">
+      <div class="cap">暖色</div>
+      <div class="line"><span data-icon="md" data-size="18"></span><span data-icon="splitRight" data-size="18"></span><span data-icon="expand" data-size="18"></span><span data-icon="play" data-size="18"></span><span data-icon="folder" data-size="18"></span><span data-icon="search" data-size="18"></span><span data-icon="eye" data-size="18"></span><span data-icon="more" data-size="18"></span></div>
+    </div>
+  </div>
+</section>
+
+<section class="block">
+  <h2><span class="num">07</span>场景实拍</h2>
+  <p class="lead">把图标放回真实界面位置：页签条、格头、更多菜单。判断标准是「不看文字能不能用」。</p>
+  <div class="grid g3">
+    <div class="chrome">
+      <div class="hd">
+        <span class="tab on"><span data-icon="md" data-size="18"></span>季度报告.md</span>
+        <span class="tab"><span data-icon="html" data-size="18"></span>方案.html</span>
+        <span class="tab"><span data-icon="pdf" data-size="18"></span>合同.pdf</span>
+        <span class="tab"><span data-icon="code" data-size="18"></span>snippet.js</span>
+      </div>
+      <div style="padding:10px;font-size:11.5px;color:var(--text2)">页签条：类型图标承担「这是什么文件」的全部信息，文字只是补充。</div>
+    </div>
+    <div class="chrome">
+      <div class="hd">
+        <span class="tab on"><span data-icon="md" data-size="18"></span>季度报告.md</span>
+        <span style="flex:1"></span>
+        <span class="btn"><span data-icon="eye" data-size="18"></span></span>
+        <span class="btn on"><span data-icon="collapse" data-size="18"></span></span>
+        <span class="btn"><span data-icon="more" data-size="18"></span></span>
+      </div>
+      <div style="padding:10px;font-size:11.5px;color:var(--text2)">格头（全屏中）：退出按钮已是内收括号，与旁边的预览、更多不重形。</div>
+    </div>
+    <div class="chrome">
+      <div class="hd"><span style="flex:1"></span><span class="btn"><span data-icon="more" data-size="18"></span></span></div>
+      <div style="padding:10px">
+        <div class="menu">
+          <div class="mi"><span data-icon="export" data-size="18"></span>导出</div>
+          <div class="mi"><span data-icon="share" data-size="18"></span>分享</div>
+          <div class="mi"><span data-icon="splitRight" data-size="18"></span>右分</div>
+          <div class="mi"><span data-icon="splitDown" data-size="18"></span>下分</div>
+          <div class="mi"><span data-icon="code" data-size="18"></span>源码模式</div>
+          <div class="mi"><span data-icon="locate" data-size="18"></span>定位</div>
+          <div class="mi"><span data-icon="copyPath" data-size="18"></span>复制路径</div>
+        </div>
+      </div>
+      <div style="padding:0 10px 10px;font-size:11.5px;color:var(--text2)">更多菜单：右分与下分并排时，虚线格的方向差异必须一眼可辨。</div>
+    </div>
+  </div>
+  <div class="chrome" style="margin-top:12px">
+    <div class="hd">
+      <span class="pill">标月</span>
+      <span style="flex:1"></span>
+      <span class="btn"><span data-icon="grid" data-size="18"></span></span>
+      <span class="btn"><span data-icon="sparkle" data-size="18"></span></span>
+      <span class="btn"><span data-icon="sun" data-size="18"></span></span>
+      <span class="btn on" style="border-radius:999px;font-size:11px;padding:0 10px;width:auto;gap:5px"><span data-icon="immersive" data-size="18"></span>沉浸</span>
+    </div>
+    <div style="padding:10px;font-size:11.5px;color:var(--text2)">顶栏：网格 / AI / 主题三个常驻入口，形状互不重形。</div>
+  </div>
+</section>
+
+<section class="block">
+  <h2><span class="num">08</span>附 · 其余动作图标（定稿口径）</h2>
+  <p class="lead">这些形状按规范重绘为 1.7px 描边；<code>more</code> 与 <code>sparkle</code> 是登记在案的实心例外。用于确认整套语言是否统一。</p>
+  <div class="family">
+    <div class="f"><span data-icon="folder" data-size="24"></span><span class="nm">folder</span></div>
+    <div class="f"><span data-icon="file" data-size="24"></span><span class="nm">file</span></div>
+    <div class="f"><span data-icon="search" data-size="24"></span><span class="nm">search</span></div>
+    <div class="f"><span data-icon="grid" data-size="24"></span><span class="nm">grid</span></div>
+    <div class="f"><span data-icon="pin" data-size="24"></span><span class="nm">pin</span></div>
+    <div class="f"><span data-icon="pinOff" data-size="24"></span><span class="nm">pinOff</span></div>
+    <div class="f"><span data-icon="chevronLeft" data-size="24"></span><span class="nm">chevronLeft</span></div>
+    <div class="f"><span data-icon="chevronRight" data-size="24"></span><span class="nm">chevronRight</span></div>
+    <div class="f"><span data-icon="sun" data-size="24"></span><span class="nm">sun</span></div>
+    <div class="f"><span data-icon="moon" data-size="24"></span><span class="nm">moon</span></div>
+    <div class="f"><span data-icon="monitor" data-size="24"></span><span class="nm">monitor</span></div>
+    <div class="f"><span data-icon="close" data-size="24"></span><span class="nm">close</span></div>
+    <div class="f"><span data-icon="settings" data-size="24"></span><span class="nm">settings</span></div>
+    <div class="f"><span data-icon="more" data-size="24"></span><span class="nm">more</span></div>
+    <div class="f"><span data-icon="eye" data-size="24"></span><span class="nm">eye</span></div>
+    <div class="f"><span data-icon="pencil" data-size="24"></span><span class="nm">pencil</span></div>
+    <div class="f"><span data-icon="export" data-size="24"></span><span class="nm">export</span></div>
+    <div class="f"><span data-icon="share" data-size="24"></span><span class="nm">share</span></div>
+    <div class="f"><span data-icon="locate" data-size="24"></span><span class="nm">locate</span></div>
+    <div class="f"><span data-icon="copyPath" data-size="24"></span><span class="nm">copyPath</span></div>
+    <div class="f"><span data-icon="check" data-size="24"></span><span class="nm">check</span></div>
+    <div class="f"><span data-icon="warning" data-size="24"></span><span class="nm">warning</span></div>
+    <div class="f"><span data-icon="sparkle" data-size="24"></span><span class="nm">sparkle</span></div>
+    <div class="f"><span data-icon="immersive" data-size="24"></span><span class="nm">immersive</span></div>
+  </div>
+</section>
+
+<p class="note">本页为评审用静态原型，不参与实现裁定；正式替换会一次性更新 <code>src/ui/icons.ts</code> 与图标抽屉。</p>
+
+</div>
+
+<script>
+var ICONS = {
+  md:      {s:"M7 4h10a2 2 0 012 2v12a2 2 0 01-2 2H7a2 2 0 01-2-2V6a2 2 0 012-2z M8.5 16.5V10L12 14.2L15.5 10V16.5"},
+  html:    {s:"M7 4h10a2 2 0 012 2v12a2 2 0 01-2 2H7a2 2 0 01-2-2V6a2 2 0 012-2z M10 12l-2 2.5L10 17 M14 12l2 2.5L14 17 M13 11l-2 7"},
+  text:    {s:"M7 4h10a2 2 0 012 2v12a2 2 0 01-2 2H7a2 2 0 01-2-2V6a2 2 0 012-2z M9.5 12h5 M9.5 15h5 M9.5 18h3"},
+  pdf:     {s:"M7 4h10a2 2 0 012 2v12a2 2 0 01-2 2H7a2 2 0 01-2-2V6a2 2 0 012-2z M9.5 17V11h2.6a2 2 0 010 4H9.5"},
+  video:   {s:"M3.5 6h17v12h-17z M10 9.5l5 2.5-5 2.5z"},
+  image:   {s:"M3.5 5h17v14h-17z M8 10.2a1.4 1.4 0 110-2.8 1.4 1.4 0 010 2.8z M5 17.5l4.5-5 3 3.2 2-2.2 4.5 4"},
+  code:    {s:"M9 8l-5 4 5 4 M15 8l5 4-5 4"},
+  audio:   {s:"M10 18V7l7-2v11 M10 18a2 2 0 11-4 0 2 2 0 014 0z M17 16a2 2 0 11-4 0 2 2 0 014 0z"},
+  "md-fold": {s:"M6 3h8l4 4v14H6z M14 3v4h4 M9 17.5V11L12 14.8L15 11V17.5"},
+  "md-badge":{d:"M4 5h16v14H4z M8.5 17V9h2L12 12.2 13.5 9h2v8h-1.8v-4.6L12 15l-1.7-2.6V17z"},
+  "cur-markdown": {d:"M5 3h9l5 5v13H5z M14 3v5h5 M9 12v5h1.6v-2.4L12 16.2l1.4-1.6V17H15v-5h-1.6L12 13.4 10.6 12z"},
+  "cur-splitRight": {d:"M3 5.5h7.5v13H3z M4.5 7v10h4.5V7z M13.5 5.5H21v13h-7.5z M15 7v10h4.5V7z"},
+  "cur-splitDown":  {d:"M3 4.5h18v6H3z M4.5 6v3h15V6z M3 12.5h18v7H3z M4.5 14v4h15v-4z"},
+  "cur-expand": {d:"M4 4h5v1.5H5.5V9H4z M15 4h5v5h-1.5V5.5H15z M4 15h1.5v3.5H9V20H4z M18.5 15H20v5h-5v-1.5h3.5z"},
+  splitRight: {parts:[{s:"M4 5h6.5v14H4z"},{s:"M13.5 5h6.5v14h-6.5z",dash:"2 2"}]},
+  splitDown:  {parts:[{s:"M5 4h14v6.5H5z"},{s:"M5 13.5h14v6.5H5z",dash:"2 2"}]},
+  "splitRightArrow": {s:"M4 5h16v14H4z M12 5v14 M15 12h4 M17 10l2 2-2 2"},
+  "splitDownArrow":  {s:"M4 5h16v14H4z M4 12h16 M12 15v4 M10 17l2 2 2-2"},
+  expand:  {s:"M4 9V4h5 M15 4h5v5 M4 15v5h5 M15 20h5v-5"},
+  collapse:{s:"M4 9h5V4 M20 9h-5V4 M4 15h5v5 M20 15h-5v5"},
+  "expandDiag": {s:"M4 5h16v14H4z M8.5 15.5L15.5 8.5 M13 8.5h2.5V11 M11 15.5H8.5V13"},
+  "collapseOverlap": {s:"M4 8h12v12H4z M8 4h12v12H8z"},
+  folder: {s:"M3.5 7h6l2 2h9v10h-17z"},
+  file:   {s:"M6 3h8l4 4v14H6z M14 3v4h4"},
+  search: {s:"M10.5 4a6.5 6.5 0 100 13 6.5 6.5 0 000-13z M15.5 15.5L21 21"},
+  grid:   {s:"M4 4h6v6H4z M14 4h6v6h-6z M4 14h6v6H4z M14 14h6v6h-6z"},
+  pin:    {s:"M9 3h6v3H9z M9 6h6l-3 4z M12 10v9"},
+  pinOff: {s:"M9 3h6v3H9z M9 6h6l-3 4z M12 10v9 M8.5 15.5l7-7"},
+  chevronLeft:  {s:"M15 7l-6 5 6 5"},
+  chevronRight: {s:"M9 7l6 5-6 5"},
+  sun:    {s:"M12 8a4 4 0 100 8 4 4 0 000-8z M12 2.5v2 M12 19.5v2 M2.5 12h2 M19.5 12h2"},
+  moon:   {s:"M13.5 3a9 9 0 107.5 12.9A7.2 7.2 0 0113.5 3z"},
+  monitor:{s:"M4 5h16v11H4z M9.5 18.5h5"},
+  close:  {s:"M6.5 6.5l11 11 M17.5 6.5l-11 11"},
+  settings:{s:"M18.6 10.1L20.3 10A0.6 0.6 0 0 1 21 10.6L21 13.4A0.6 0.6 0 0 1 20.3 14L18.6 13.9A0.6 0.6 0 0 0 18 14.2L17.4 15.3A0.6 0.6 0 0 0 17.5 16L18.8 17.2A0.6 0.6 0 0 1 18.7 18.1L16.5 19.9A0.6 0.6 0 0 1 15.6 19.8L14.6 18.3A0.6 0.6 0 0 0 14 18L12.8 18.3A0.6 0.6 0 0 0 12.4 18.8L12.1 20.6A0.6 0.6 0 0 1 11.4 21.1L8.6 20.4A0.6 0.6 0 0 1 8.2 19.7L8.7 18A0.6 0.6 0 0 0 8.5 17.3L7.6 16.6A0.6 0.6 0 0 0 6.9 16.5L5.4 17.4A0.6 0.6 0 0 1 4.5 17.2L3.3 14.6A0.6 0.6 0 0 1 3.6 13.8L5.3 13.2A0.6 0.6 0 0 0 5.7 12.6L5.7 11.4A0.6 0.6 0 0 0 5.3 10.8L3.6 10.2A0.6 0.6 0 0 1 3.3 9.4L4.5 6.8A0.6 0.6 0 0 1 5.4 6.6L6.9 7.5A0.6 0.6 0 0 0 7.6 7.4L8.5 6.7A0.6 0.6 0 0 0 8.7 6L8.2 4.3A0.6 0.6 0 0 1 8.6 3.6L11.4 2.9A0.6 0.6 0 0 1 12.1 3.4L12.4 5.2A0.6 0.6 0 0 0 12.8 5.7L14 6A0.6 0.6 0 0 0 14.6 5.7L15.6 4.2A0.6 0.6 0 0 1 16.5 4.1L18.7 5.9A0.6 0.6 0 0 1 18.8 6.8L17.5 8A0.6 0.6 0 0 0 17.4 8.7L18 9.8A0.6 0.6 0 0 0 18.6 10.1Z M12 8.8a3.2 3.2 0 100 6.4a3.2 3.2 0 100 0 -6.4z"},
+  more:   {d:"M5 11h2.4v2.4H5z M10.8 11h2.4v2.4h-2.4z M16.6 11h2.4v2.4h-2.4z"},
+  eye:    {s:"M2.5 12c2.2-3.4 5.6-5.4 9.5-5.4s7.3 2 9.5 5.4c-2.2 3.4-5.6 5.4-9.5 5.4s-7.3-2-9.5-5.4z M12 9.4a2.6 2.6 0 100 5.2 2.6 2.6 0 000-5.2z"},
+  pencil: {s:"M4 20h4l10.4-10.4-4-4L4 16z M14.4 5.6l1.5-1.5a1 1 0 011.4 0l2.6 2.6a1 1 0 010 1.4l-1.5 1.5z"},
+  export: {s:"M12 15V3 M8 7l4-4 4 4 M4 14v6h16v-6"},
+  share:  {s:"M6 12a2 2 0 100-4 2 2 0 000 4z M18 6a2 2 0 100-4 2 2 0 000 4z M18 22a2 2 0 100-4 2 2 0 000 4z M8 10l8-3 M8 14l8 3"},
+  locate: {s:"M12 6.8a5.2 5.2 0 100 10.4 5.2 5.2 0 000-10.4z M12 9.6a2.4 2.4 0 100 4.8 2.4 2.4 0 000-4.8z M12 2v3 M12 19v3 M2 12h3 M19 12h3"},
+  copyPath:{s:"M5 8h10v12H5z M9 5h10v11"},
+  check:  {s:"M5 12.5l4.5 4.5L19 7.5"},
+  warning:{s:"M12 3.5l9.5 16H2.5z M12 9.5v4.5 M11.4 16.6h1.2"},
+  sparkle:{d:"M12 2l1.9 6.1L20 10l-6.1 1.9L12 18l-1.9-6.1L4 10l6.1-1.9z M18.6 2.6l.7 2.2 2.2.7-2.2.7-.7 2.2-.7-2.2-2.2-.7 2.2-.7z M5.6 14.6l.6 1.9 1.9.6-1.9.6-.6 1.9-.6-1.9L3.1 17.1l1.9-.6z"},
+  play:   {d:"M8.5 5.2v13.6L19 12z"},
+  pause:  {d:"M7.4 5h3.2v14H7.4z M13.4 5h3.2v14h-3.2z"},
+  prev:   {parts:[{stroke:"M7 5v14"},{fill:"M18 5.4v13.2L9.6 12z"}]},
+  next:   {parts:[{stroke:"M17 5v14"},{fill:"M6 5.4v13.2L14.4 12z"}]},
+  volume: {s:"M4 9.5h3.5L12 5.8v12.4L7.5 14.5H4z M15.5 9.2a4 4 0 010 5.6 M18.2 6.6a7.5 7.5 0 010 10.8"},
+  volumeMute:{s:"M4 9.5h3.5L12 5.8v12.4L7.5 14.5H4z M5.8 7.2l5.4 9.6"},
+  playlist:{s:"M4 6h10 M4 11h10 M4 16h7 M15 10.2l5.5 3-5.5 3z"},
+  loopNone:{s:"M5.5 10.5a5.5 5.5 0 0111-2.9 M18.5 13.5a5.5 5.5 0 01-11 2.9 M14 7.6h2.5V5.1 M10 16.4H7.5v2.5"},
+  loopSingle:{s:"M5.5 10.5a5.5 5.5 0 0111-2.9 M18.5 13.5a5.5 5.5 0 01-11 2.9 M14 7.6h2.5V5.1 M10 16.4H7.5v2.5 M11.5 10v4.5 M10.4 11.2l1.1-1.1"},
+  loopPlaylist:{s:"M5.5 10.5a5.5 5.5 0 0111-2.9 M18.5 13.5a5.5 5.5 0 01-11 2.9 M14 7.6h2.5V5.1 M10 16.4H7.5v2.5 M10.5 10v4.5 M10.5 10l3.2 4.5 M13.7 10v4.5"},
+  subtitle:{s:"M4.5 5.5h15v10H4.5z M8 9.3h4 M8 12.2h7.5"},
+  timestampNote:{s:"M12 20h8 M16.2 3.8a2 2 0 012.8 2.8L7 18.6l-3.8 1 1-3.8z"},
+  keyboardHints:{s:"M2.5 7h19v10H2.5z M5.5 10h2 M8.5 10h2 M11.5 10h2 M14.5 10h2 M17.5 10h1.5 M7 13.5h10"},
+  pip:    {s:"M3 5.5h18v13H3z M12.5 12.5h6v4h-6z"},
+  speed:  {s:"M6.4 16.8a6.5 6.5 0 1111.2 0 M12 13.5l2.3-3.9 M12 13.5h.01"},
+  speedAlt:{s:"M4.5 7l4.5 5-4.5 5 M11 7l4.5 5-4.5 5"},
+  home:   {s:"M4 11l8-7 8 7 M6 10v9h12v-9 M10 19v-5h4v5"},
+  immersive:{s:"M7.2 17.8a7.5 7.5 0 119.6 0"}
+};
+
+function buildIcon(name, size){
+  var it = ICONS[name];
+  if(!it) throw new Error("unknown icon: " + name);
+  var out = [];
+  function one(p){
+    if(p.d) out.push('<path d="'+p.d+'" fill="currentColor" fill-rule="evenodd"/>');
+    if(p.s) out.push('<path d="'+p.s+'" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"'+(p.dash?' stroke-dasharray="'+p.dash+'"':'')+'/>');
+    if(p.stroke) out.push('<path d="'+p.stroke+'" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>');
+    if(p.fill) out.push('<path d="'+p.fill+'" fill="currentColor" fill-rule="evenodd"/>');
+  }
+  if(it.parts) it.parts.forEach(one); else one(it);
+  return '<svg viewBox="0 0 24 24" width="'+size+'" height="'+size+'" aria-hidden="true" focusable="false">'+out.join("")+'</svg>';
+}
+
+Array.prototype.forEach.call(document.querySelectorAll("[data-icon]"), function(el){
+  var name = el.getAttribute("data-icon");
+  var size = parseInt(el.getAttribute("data-size") || "18", 10);
+  el.innerHTML = buildIcon(name, size);
+});
+
+function setTheme(t){
+  document.body.className = t;
+  Array.prototype.forEach.call(document.querySelectorAll(".themes button"), function(b){
+    b.setAttribute("aria-pressed", b.getAttribute("data-theme") === t ? "true" : "false");
+  });
+}
+Array.prototype.forEach.call(document.querySelectorAll(".themes button"), function(b){
+  b.addEventListener("click", function(){ setTheme(b.getAttribute("data-theme")); });
+});
+var q = new URLSearchParams(location.search);
+if(q.get("theme")) setTheme(q.get("theme"));
+</script>
+</body>
+</html>

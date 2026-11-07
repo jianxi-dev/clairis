@@ -1,0 +1,108 @@
+{
+  "change": "icon-system-v3-redraw",
+  "requirements": [
+    {
+      "id": "R-1",
+      "text": "图标体系（navigation）",
+      "anchors": [
+        {
+          "id": "A-1.1",
+          "claim": "任一描边图标的 `<path>` fill 属性",
+          "kind": "exact",
+          "assert": "\"\"\"none\"\"\"",
+          "source": "spec navigation 图标体系"
+        },
+        {
+          "id": "A-1.2",
+          "claim": "任一描边图标 `<path>` 的 stroke 属性",
+          "kind": "exact",
+          "assert": "\"\"\"currentColor\"\"\"",
+          "source": "spec navigation 图标体系"
+        },
+        {
+          "id": "A-1.3",
+          "claim": "设置图标抽屉 `[data-icon-entry]` 条目数下界",
+          "kind": "exact",
+          "assert": "13",
+          "source": "e2e/icon-system.spec.ts:71"
+        },
+        {
+          "id": "A-1.4",
+          "claim": "页面正文 emoji 字符数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "spec navigation 图标体系"
+        },
+        {
+          "id": "A-1.5",
+          "claim": "`play` 图标 `<path>` 的 fill 属性",
+          "kind": "exact",
+          "assert": "\"\"\"currentColor\"\"\"",
+          "source": "spec navigation 图标体系"
+        },
+        {
+          "id": "A-1.6",
+          "claim": "`collapse` 的 d 与 `expand` 的 d 相等",
+          "kind": "state-machine",
+          "assert": "0",
+          "source": "design D4"
+        },
+        {
+          "id": "A-1.7",
+          "claim": "8 个文件类型图标的 `<path>` 数量",
+          "kind": "exact",
+          "assert": "1",
+          "source": "e2e/icon-system.spec.ts:51"
+        },
+        {
+          "id": "A-1.8",
+          "claim": "读取 `src/ui/icons.ts` 中 `<text` 出现次数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "tasks 4.1"
+        }
+      ]
+    },
+    {
+      "id": "R-2",
+      "text": "全屏退出态（application-shell G-7）",
+      "anchors": [
+        {
+          "id": "A-2.1",
+          "claim": "全屏态格头按钮 `data-icon`",
+          "kind": "exact",
+          "assert": "\"\"\"collapse\"\"\"",
+          "source": "spec G-7"
+        },
+        {
+          "id": "A-2.2",
+          "claim": "全屏态格头按钮 `aria-pressed`",
+          "kind": "exact",
+          "assert": "\"\"\"true\"\"\"",
+          "source": "spec G-7"
+        },
+        {
+          "id": "A-2.3",
+          "claim": "退出全屏后按钮 `data-icon`",
+          "kind": "exact",
+          "assert": "\"\"\"expand\"\"\"",
+          "source": "spec G-7"
+        },
+        {
+          "id": "A-2.4",
+          "claim": "单格工作区全屏按钮数量",
+          "kind": "exact",
+          "assert": "0",
+          "source": "spec G-7"
+        },
+        {
+          "id": "A-2.5",
+          "claim": "全屏态按钮 `aria-label`",
+          "kind": "exact",
+          "assert": "\"\"\"退出全屏\"\"\"",
+          "source": "spec G-7"
+        }
+      ]
+    }
+  ]
+}
