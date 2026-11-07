@@ -58,7 +58,7 @@ export const RAIL_SECTIONS: ReadonlyArray<{
   label: string;
 }> = [
   { key: "now", label: "现在" },
-  { key: "pinned", label: "置顶" },
+  { key: "pinned", label: "收藏" },
   { key: "recent", label: "最近" },
   { key: "category", label: "分类" },
 ];

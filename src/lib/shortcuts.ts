@@ -243,7 +243,7 @@ export const SHORTCUTS: readonly ShortcutDef[] = [
   {
     id: "file-pin",
     keys: "⌘⇧P",
-    label: "置顶",
+    label: "收藏",
     family: "file",
     implemented: true,
   },

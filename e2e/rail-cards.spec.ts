@@ -299,37 +299,46 @@ test("六类缩略图均为 72×54（4:3）；纯文本与无图 MD 零缩略图
   );
   expect(plainExcerpt.w).toBeGreaterThan(withThumbExcerpt.w + 30);
 
-  const plainMeta = recentItem(page, "/tmp/rc/plain.txt").locator(
-    '[data-testid="rail-card-meta"]',
-  );
-  await expect(plainMeta).toHaveAttribute("data-meta-kind", "none");
+  const plainCard = recentItem(page, "/tmp/rc/plain.txt");
   await expect(
-    recentItem(page, "/tmp/rc/plain.txt").locator(
-      '[data-testid="rail-meta-progress"]',
-    ),
+    plainCard.locator('[data-testid="rail-card-progress"]'),
   ).toHaveCount(0);
-  expect(await plainMeta.innerText()).not.toMatch(/\d+\/\d+/);
-
   await expect(
-    recentItem(page, "/tmp/rc/tasks.md").locator(
-      '[data-testid="rail-card-meta"]',
-    ),
+    plainCard.locator('[data-testid="rail-card-time"]'),
+  ).toBeVisible();
+
+  const tasksCard = recentItem(page, "/tmp/rc/tasks.md");
+  await expect(
+    tasksCard.locator('[data-testid="rail-card-progress"]'),
   ).toHaveAttribute("data-meta-kind", "task");
   await expect(
-    recentItem(page, "/tmp/rc/tasks.md").locator(
-      '[data-testid="rail-meta-progress"]',
-    ),
+    tasksCard.locator('[data-testid="rail-card-progress"]'),
   ).toHaveText("1/3");
 
   await shot(page, "rail-card-thumbnails");
 });
 
-test("缩略图居中、动作按钮位于其下方且不重叠；路径只显示父文件夹名并触发 reveal_in_finder", async ({
+test("卡片动作组位于左下角且顺序为 打开/右分栏/下分栏/收藏/路径；右上角显示进度与时间", async ({
   page,
 }) => {
   await boot(page);
   await seed(page);
   await openPinnedRail(page);
+
+  await page.evaluate(() => {
+    const w = window as unknown as {
+      __biaoyue_store__: {
+        getState: () => {
+          setScrollPositions: (
+            p: Record<string, { scrollPos: number; contentHeight: number }>,
+          ) => void;
+        };
+      };
+    };
+    w.__biaoyue_store__.getState().setScrollPositions({
+      "/tmp/rc/cover.md": { scrollPos: 680, contentHeight: 1000 },
+    });
+  });
 
   const card = recentItem(page, "/tmp/rc/cover.md");
   const thumb = card.locator('[data-testid="rail-thumb"]');
@@ -338,31 +347,47 @@ test("缩略图居中、动作按钮位于其下方且不重叠；路径只显�
   await card.hover();
   await expect(actions).toHaveCSS("opacity", "1");
 
-  const thumbBox = await thumb.boundingBox();
-  const actionsBox = await actions.boundingBox();
-  if (!thumbBox || !actionsBox) throw new Error("目标元素不可测量");
-  // 动作按钮固定在卡片右上角（顶部），不随缩略图纵向排布
-  expect(actionsBox.y).toBeLessThanOrEqual(thumbBox.y + 1);
   // 缩略图在剩余列中居中（72×54 固定盒）
   expect(await boxOf(thumb)).toEqual({ w: 72, h: 54 });
-  // 动作按钮贴右上：右缘不超出卡片右缘
+
   const cardBox = await card.boundingBox();
-  if (!cardBox) throw new Error("卡片不可测量");
+  const actionsBox = await actions.boundingBox();
+  if (!cardBox || !actionsBox) throw new Error("目标元素不可测量");
+  expect(actionsBox.x - cardBox.x).toBeLessThan(12);
   expect(
-    cardBox.x + cardBox.width - (actionsBox.x + actionsBox.width),
-  ).toBeLessThan(8);
+    cardBox.y + cardBox.height - (actionsBox.y + actionsBox.height),
+  ).toBeLessThan(12);
 
-  const buttons = card.locator('[data-testid="rail-card-action"]');
-  await expect(buttons).toHaveCount(3);
-  for (let i = 0; i < 3; i++) await expect(buttons.nth(i)).toBeVisible();
-  await expect(buttons.nth(0)).toHaveAttribute("data-action", "open");
-  await expect(buttons.nth(1)).toHaveAttribute("data-action", "split-right");
-  await expect(buttons.nth(2)).toHaveAttribute("data-action", "split-down");
+  const order = await card
+    .locator('[data-testid="rail-card-action"]')
+    .evaluateAll((els) => els.map((el) => el.getAttribute("data-action")));
+  expect(order).toEqual(["open", "split-right", "split-down", "pin", "path"]);
 
-  expect(await boxOf(thumb)).toEqual({ w: 72, h: 54 });
+  const pin = card.locator('[data-action="pin"]');
+  await expect(pin).toContainText("收藏");
+
+  const topright = card.locator('[data-testid="rail-card-topright"]');
+  const toprightBox = await topright.boundingBox();
+  if (!toprightBox) throw new Error("右上角不可测量");
+  expect(
+    cardBox.x + cardBox.width - (toprightBox.x + toprightBox.width),
+  ).toBeLessThan(12);
+  expect(toprightBox.y - cardBox.y).toBeLessThan(12);
+
+  const progress = card.locator('[data-testid="rail-card-progress"]');
+  await expect(progress).toHaveAttribute("data-meta-kind", "read");
+  expect(await progress.innerText()).toBe("68%");
+
+  const time = card.locator('[data-testid="rail-card-time"]');
+  await expect(time).toBeVisible();
+  expect(await time.innerText()).not.toBe("");
+
+  await progress.hover();
+  expect(await progress.innerText()).toBe("已读");
+
   await shot(page, "rail-card-hover-actions");
 
-  const path = card.locator('[data-testid="rail-card-path"]');
+  const path = card.locator('[data-action="path"]');
   await expect(path).toContainText("rc");
   await expect(path).not.toHaveAttribute("title");
   await path.click();
@@ -557,7 +582,7 @@ test("PDF 卡片不渲染悬停工具条，其他类型保持（#275）", async 
   await md.hover();
   await expect(
     md.locator('[data-testid="rail-card-actions"] button'),
-  ).toHaveCount(3);
+  ).toHaveCount(5);
 });
 
 test("PDF 卡片缩略图不嵌入查看器，原生工具条无宿主（#286）", async ({
@@ -581,11 +606,10 @@ test("PDF 卡片缩略图不嵌入查看器，原生工具条无宿主（#286）
     path: path.join(ART286, "pdf-card-no-viewer.png"),
   });
 
-  // 非 PDF 卡片的动作条不受影响
   const md = recentItem(page, "/tmp/rc/cover.md");
   await md.hover();
   await expect(
     md.locator('[data-testid="rail-card-actions"] button'),
-  ).toHaveCount(3);
+  ).toHaveCount(5);
   await page.screenshot({ path: path.join(ART286, "md-card-actions.png") });
 });

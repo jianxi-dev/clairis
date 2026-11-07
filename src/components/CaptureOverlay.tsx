@@ -603,7 +603,7 @@ export default function CaptureOverlay() {
               store.setPinned(!store.pinned);
             }}
             className={`w-7 h-7 rounded-md flex items-center justify-center transition-colors ${store.pinned ? "text-orange-500 bg-orange-50 dark:bg-orange-900/30" : "text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"}`}
-            title={store.pinned ? "取消置顶" : "置顶"}
+            title={store.pinned ? "取消收藏" : "收藏"}
           >
             <Icon name={store.pinned ? "pinOff" : "pin"} size={18} />
           </button>

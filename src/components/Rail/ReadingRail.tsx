@@ -113,7 +113,7 @@ const DENSITY_LABELS: Record<RailDensity, string> = {
 
 const EMPTY_TEXT: Record<RailSection, string> = {
   now: "暂无正在阅读",
-  pinned: "还没有置顶条目",
+  pinned: "还没有收藏条目",
   recent: "暂无最近文件",
   category: "该类型下暂无条目",
 };
@@ -134,7 +134,7 @@ interface RailRowProps {
   cardHeight: number;
   pinned: boolean;
   readPercent?: number;
-  /** 条目高度倍率（置顶段放大）；默认 1。 */
+  /** 条目高度倍率（收藏段放大）；默认 1。 */
   scale?: number;
   /** 是否给类型图标上色；false 时单色。 */
   blockColors?: boolean;
@@ -372,6 +372,36 @@ function RailProgress({
   );
 }
 
+function RailCardProgress({
+  text,
+  kind,
+}: {
+  text: string;
+  kind: Exclude<MetaKind, "none">;
+}) {
+  if (kind === "read") {
+    return (
+      <span
+        data-testid="rail-card-progress"
+        data-meta-kind={kind}
+        className="group/progress flex shrink-0 items-center text-[10px]"
+      >
+        <span className="group-hover/progress:hidden">{text}</span>
+        <span className="hidden group-hover/progress:inline">已读</span>
+      </span>
+    );
+  }
+  return (
+    <span
+      data-testid="rail-card-progress"
+      data-meta-kind={kind}
+      className="shrink-0 text-[10px]"
+    >
+      {text}
+    </span>
+  );
+}
+
 function RailRow({
   item,
   ranges,
@@ -411,13 +441,20 @@ function RailRow({
         kind={tasks ? "task" : "read"}
       />
     ) : null;
+  const cardProgressNode =
+    progressPct !== null ? (
+      <RailCardProgress
+        kind={tasks ? "task" : "read"}
+        text={tasks ? `${tasks.done}/${tasks.total}` : `${progressPct}%`}
+      />
+    ) : null;
   const pinButton = (
     <button
       type="button"
       data-testid="rail-item-pin"
       data-pinned={pinned ? "true" : "false"}
-      aria-label={pinned ? "取消置顶" : "置顶"}
-      title={pinned ? "取消置顶" : "置顶"}
+      aria-label={pinned ? "取消收藏" : "收藏"}
+      title={pinned ? "取消收藏" : "收藏"}
       onClick={(e) => {
         e.stopPropagation();
         onTogglePin(item.path);
@@ -521,7 +558,7 @@ function RailRow({
               data-testid="rail-item-pinned"
               className="shrink-0 rounded-full bg-[var(--app-accent-soft)] px-1 text-[9px] leading-tight text-[var(--app-accent)]"
             >
-              置顶
+              收藏
             </span>
           )}
         </div>
@@ -541,7 +578,7 @@ function RailRow({
   const actions = (
     <div
       data-testid="rail-card-actions"
-      className="flex gap-0.5 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100"
+      className="absolute bottom-1 left-1 z-10 flex gap-0.5 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100"
     >
       <button
         type="button"
@@ -576,6 +613,34 @@ function RailRow({
       >
         <Icon name="splitDown" size={18} />
       </button>
+      <button
+        type="button"
+        data-testid="rail-card-action"
+        data-action="pin"
+        data-pinned={pinned ? "true" : "false"}
+        title={pinned ? "取消收藏" : "收藏"}
+        aria-label={pinned ? "取消收藏" : "收藏"}
+        onClick={() => onTogglePin(item.path)}
+        className={`flex items-center gap-0.5 rounded p-0.5 text-[10px] ${
+          pinned
+            ? "text-[var(--app-accent)]"
+            : "text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+        }`}
+      >
+        <Icon name={pinned ? "pinOff" : "pin"} size={18} />
+        收藏
+      </button>
+      <button
+        type="button"
+        data-testid="rail-card-action"
+        data-action="path"
+        aria-label={`打开所在文件夹 ${parentFolderNameOf(item.path)}`}
+        onClick={() => onReveal(parentPathOf(item.path))}
+        className="flex min-w-0 items-center gap-0.5 truncate text-left text-[10px] hover:text-gray-700 dark:hover:text-gray-200"
+      >
+        <Icon name="folder" size={18} />
+        <span className="truncate">{parentFolderNameOf(item.path)}</span>
+      </button>
     </div>
   );
 
@@ -594,7 +659,7 @@ function RailRow({
       className="group relative my-1 box-border flex flex-col justify-between overflow-hidden rounded border border-gray-200 px-2 py-1.5 dark:border-gray-700"
     >
       <div className="flex min-h-0 flex-1 gap-1.5 overflow-hidden">
-        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden pr-2">
           <button
             type="button"
             onClick={() => onOpen(item.path)}
@@ -628,44 +693,16 @@ function RailRow({
       </div>
 
       <div
-        data-testid="rail-card-meta"
-        data-meta-kind={meta.kind}
-        className="flex min-w-0 items-center gap-1 text-[10px] text-gray-400 dark:text-gray-500"
+        data-testid="rail-card-topright"
+        className="absolute right-1 top-1 z-10 flex items-center gap-1 text-[10px] text-gray-400 dark:text-gray-500"
       >
-        <button
-          type="button"
-          data-testid="rail-item-pin"
-          data-pinned={pinned ? "true" : "false"}
-          aria-label={pinned ? "取消置顶" : "置顶"}
-          title={pinned ? "取消置顶" : "置顶"}
-          onClick={() => onTogglePin(item.path)}
-          className={`shrink-0 rounded px-1 py-px leading-none ${
-            pinned
-              ? "bg-[var(--app-accent-soft)] text-[var(--app-accent)]"
-              : "text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
-          }`}
-        >
-          置顶
-        </button>
-        {progressNode}
-        <span data-testid="rail-item-date" className="shrink-0">
+        {cardProgressNode}
+        <span data-testid="rail-card-time" className="shrink-0">
           {meta.date}
         </span>
-        <button
-          type="button"
-          data-testid="rail-card-path"
-          aria-label={`打开所在文件夹 ${parentFolderNameOf(item.path)}`}
-          onClick={() => onReveal(parentPathOf(item.path))}
-          className="flex min-w-0 items-center gap-0.5 truncate text-left hover:text-gray-700 dark:hover:text-gray-200"
-        >
-          <Icon name="folder" size={18} />
-          <span className="truncate">{parentFolderNameOf(item.path)}</span>
-        </button>
       </div>
 
-      {kind !== "pdf" && (
-        <div className="absolute right-1 top-1 z-10">{actions}</div>
-      )}
+      {kind !== "pdf" && actions}
     </div>
   );
 }
@@ -1621,7 +1658,7 @@ export default function ReadingRail({
       onClick={toggleRailPin}
       title="阅读空间"
       aria-label="展开阅读空间"
-      className="rail-edge flex h-full w-full items-center justify-center overflow-hidden bg-gray-50 text-gray-400 dark:bg-gray-900"
+      className="rail-edge flex h-full w-full items-center justify-center overflow-hidden text-gray-400"
     >
       <Icon name="chevronRight" size={18} className="rail-edge-icon" />
     </button>

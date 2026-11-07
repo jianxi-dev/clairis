@@ -139,6 +139,10 @@ test("折叠边缘严格 12px；悬停浮层 240px 且正文宽度不变；移�
   if (!ebox) throw new Error("rail-edge 不可测量");
   expect(Math.round(ebox.width)).toBe(12);
   expect(await edge.getAttribute("data-rail-state")).toBe("collapsed");
+  const edgeBg = await edge.evaluate(
+    (el) => getComputedStyle(el).backgroundColor,
+  );
+  expect(edgeBg).toBe("rgba(0, 0, 0, 0)");
   await shot(page, "rail-collapsed");
 
   const bodyBefore = await bodyWidth(page);
@@ -201,6 +205,12 @@ test("堆叠↔标签切换段结构；分类 chips 恰好 9 个；HTML chip 只
   ).toBeVisible();
   await expect(page.locator('[data-testid="rail-layout-tabs"]')).toHaveCount(0);
   await expect(page.locator('[data-testid="rail-section"]')).toHaveCount(4);
+  const sectionLabels = await page
+    .locator('[data-testid="rail-section"] h3')
+    .evaluateAll((els) => els.map((el) => el.textContent ?? ""));
+  expect(sectionLabels).toEqual(["现在", "收藏", "最近", "分类"]);
+  const railText = await page.locator('[data-testid="rail-panel"]').innerText();
+  expect(railText).not.toContain("置顶");
   await expect(
     page.locator('[data-section="category"] [data-testid="rail-chip"]'),
   ).toHaveCount(9);

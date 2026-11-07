@@ -2123,6 +2123,10 @@ body {
 
 /* ── 阅读空间竖排栏（layout-portal 6.1）────────────────────────── */
 /* 折叠边缘条严格 12px：内部图标缩到 12 像素才塞得下，不溢出。 */
+.rail-edge {
+  background: transparent;
+}
+
 .rail-edge-icon {
   width: 12px;
   height: 12px;

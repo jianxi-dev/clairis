@@ -112,8 +112,8 @@ describe("aiViewSpec —— 预设", () => {
     ]);
     expect(SPEC_PRESETS.map((p) => p.label)).toEqual([
       "按主题分组",
-      "只留置顶和最近",
-      "置顶段放大",
+      "只留收藏和最近",
+      "收藏段放大",
       "网格改列表",
       "网格按类型分组",
       "加未读筛选",

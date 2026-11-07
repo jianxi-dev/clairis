@@ -163,7 +163,7 @@ describe("gridView —— 分组", () => {
 });
 
 describe("gridView —— tile 尺寸", () => {
-  it("置顶或继续阅读 → large", () => {
+  it("收藏或继续阅读 → large", () => {
     const item = file("/u/a.md", undefined, "正文");
     expect(tileSizeOf(item, { pinned: true, continuePath: null })).toBe(
       "large",
