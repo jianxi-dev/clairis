@@ -62,11 +62,32 @@ export interface TextEditEdgeMessage {
   nodeId: string;
 }
 
+/** 拖拽移动（E-20）：把 `nodeId` 放到 `targetId` 之前/之后。 */
+export interface MoveNodeMessage {
+  v: number;
+  type: "moveNode";
+  nodeId: string;
+  targetId: string;
+  position: "before" | "after";
+}
+
+/** 区域截图（E-21）：选区坐标 + 排版所需的视口宽度与 body 级样式。 */
+export interface CaptureRegionMessage {
+  v: number;
+  type: "captureRegion";
+  region: SelectionRect;
+  viewportWidth: number;
+  /** 键为 CSS 属性名（`background-color` 这类），值为字符串 */
+  bodyStyle: Record<string, string>;
+}
+
 export type BridgeMessage =
   | SaveRequestMessage
   | TextEditEdgeMessage
   | SelectionMessage
   | SelectionRectMessage
+  | MoveNodeMessage
+  | CaptureRegionMessage
   | ReadyMessage
   | TextEditMessage
   | BlockSplitMessage;
@@ -76,6 +97,13 @@ export interface HighlightCommand {
   v: number;
   type: "highlight";
   nodeId: string | null;
+}
+
+/** 主侧 → iframe：开关截图框选模式。 */
+export interface CaptureModeCommand {
+  v: number;
+  type: "captureMode";
+  active: boolean;
 }
 
 /**
@@ -141,6 +169,50 @@ export function parseBridgeMessage(data: unknown): BridgeMessage | null {
         before: msg.before,
         after: msg.after,
       };
+    case "moveNode":
+      if (
+        typeof msg.nodeId !== "string" ||
+        typeof msg.targetId !== "string" ||
+        (msg.position !== "before" && msg.position !== "after")
+      ) {
+        return null;
+      }
+      return {
+        v: BRIDGE_VERSION,
+        type: "moveNode",
+        nodeId: msg.nodeId,
+        targetId: msg.targetId,
+        position: msg.position,
+      };
+    case "captureRegion": {
+      const region = msg.region as Record<string, unknown> | null;
+      if (typeof region !== "object" || region === null) return null;
+      const { x, y, width, height } = region;
+      for (const n of [x, y, width, height]) {
+        if (typeof n !== "number" || !Number.isFinite(n)) return null;
+      }
+      if (
+        typeof msg.viewportWidth !== "number" ||
+        !Number.isFinite(msg.viewportWidth)
+      ) {
+        return null;
+      }
+      // bodyStyle 会拼进 SVG 的 style 属性，只收字符串值，其余当没给
+      const raw = msg.bodyStyle;
+      const bodyStyle: Record<string, string> = {};
+      if (typeof raw === "object" && raw !== null) {
+        for (const [key, value] of Object.entries(raw as object)) {
+          if (typeof value === "string") bodyStyle[key] = value;
+        }
+      }
+      return {
+        v: BRIDGE_VERSION,
+        type: "captureRegion",
+        region: { x, y, width, height } as SelectionRect,
+        viewportWidth: msg.viewportWidth,
+        bodyStyle,
+      };
+    }
     default:
       return null;
   }
@@ -149,4 +221,9 @@ export function parseBridgeMessage(data: unknown): BridgeMessage | null {
 /** selection 变化 → 需要下发给 iframe 的命令（nodeId 为 null 表示清除高亮）。 */
 export function commandForSelection(nodeId: string | null): HighlightCommand {
   return { v: BRIDGE_VERSION, type: "highlight", nodeId };
+}
+
+/** 截图模式开关 → 下发给 iframe 的命令。 */
+export function commandForCaptureMode(active: boolean): CaptureModeCommand {
+  return { v: BRIDGE_VERSION, type: "captureMode", active };
 }

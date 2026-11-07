@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   BRIDGE_VERSION,
+  commandForCaptureMode,
   commandForSelection,
   parseBridgeMessage,
 } from "../../editors/html/bridge";
@@ -87,5 +88,53 @@ describe("选区几何上报（E-19 工具条定位）", () => {
       }),
     ).toBeNull();
     expect(parseBridgeMessage({ ...base, nodeId: undefined })).toBeNull();
+  });
+});
+
+describe("拖拽移动与区域截图消息（E-20 / E-21）", () => {
+  it("moveNode 需要 nodeId / targetId / position", () => {
+    const ok = {
+      v: BRIDGE_VERSION,
+      type: "moveNode",
+      nodeId: "p:1",
+      targetId: "p:0",
+      position: "before",
+    };
+    expect(parseBridgeMessage(ok)).toEqual(ok);
+    expect(parseBridgeMessage({ ...ok, position: "inside" })).toBeNull();
+    expect(parseBridgeMessage({ ...ok, targetId: 3 })).toBeNull();
+  });
+
+  it("captureRegion 解析区域与 body 样式，非字符串值被丢弃", () => {
+    const parsed = parseBridgeMessage({
+      v: BRIDGE_VERSION,
+      type: "captureRegion",
+      region: { x: 10, y: 20, width: 300, height: 100 },
+      viewportWidth: 900,
+      bodyStyle: { "font-size": "16px", bad: 42 },
+    });
+    expect(parsed).toEqual({
+      v: BRIDGE_VERSION,
+      type: "captureRegion",
+      region: { x: 10, y: 20, width: 300, height: 100 },
+      viewportWidth: 900,
+      bodyStyle: { "font-size": "16px" },
+    });
+    expect(
+      parseBridgeMessage({
+        v: BRIDGE_VERSION,
+        type: "captureRegion",
+        region: { x: 0, y: 0, width: 1, height: 1 },
+        viewportWidth: "900",
+      }),
+    ).toBeNull();
+  });
+
+  it("截图模式命令与版本位同源", () => {
+    expect(commandForCaptureMode(true)).toEqual({
+      v: BRIDGE_VERSION,
+      type: "captureMode",
+      active: true,
+    });
   });
 });

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   applyAttrPatch,
   applyBlockSplit,
+  applyNodeMove,
   applyStylePatch,
   applyTagReplace,
   applyTextEdit,
@@ -174,5 +175,37 @@ describe("describeNode：工具条显示真值（E-19）", () => {
 
   it("节点不存在返回 null", () => {
     expect(describeNode(DOC, "p:99")).toBeNull();
+  });
+});
+
+describe("拖拽移动（E-20）", () => {
+  const TWO = `<!DOCTYPE html><html><body><section><p>第一段</p><p>第二段</p></section></body></html>`;
+
+  it("挪到目标之前：顺序真的换了", () => {
+    const out = applyNodeMove(TWO, "p:1", "p:0", "before");
+    expect(out.indexOf("第二段")).toBeLessThan(out.indexOf("第一段"));
+    expect((out.match(/<p>/g) ?? []).length).toBe(2);
+    expect(out).toContain("<section>");
+  });
+
+  it("挪到目标之后", () => {
+    const out = applyNodeMove(TWO, "p:0", "p:1", "after");
+    expect(out.indexOf("第一段")).toBeGreaterThan(out.indexOf("第二段"));
+  });
+
+  it("拒绝把容器拖进自己的子树（否则整棵子树消失）", () => {
+    const nested = `<!DOCTYPE html><html><body><div><p>里面</p></div></body></html>`;
+    expect(applyNodeMove(nested, "div:0", "p:0", "before")).toBe(nested);
+    expect(applyNodeMove(nested, "div:0", "div:0", "after")).toBe(nested);
+  });
+
+  it("目标不存在时原样返回", () => {
+    expect(applyNodeMove(TWO, "p:0", "p:99", "before")).toBe(TWO);
+  });
+
+  it("产物无编辑期痕迹", () => {
+    const out = applyNodeMove(TWO, "p:1", "p:0", "before");
+    expect(out).not.toContain("data-cm-");
+    expect(out).not.toContain("cmid");
   });
 });

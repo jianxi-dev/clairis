@@ -2258,3 +2258,29 @@ body {
   background: var(--app-accent-soft);
   border-color: var(--app-accent);
 }
+
+/* 截图模式的提示条与结果提示（E-21） */
+.html-capture-hint,
+.html-edit-notice {
+  position: fixed;
+  z-index: 61;
+  padding: 6px 10px;
+  background: var(--app-surface);
+  color: var(--app-text);
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius);
+  box-shadow: var(--app-shadow);
+  font-size: 12px;
+  pointer-events: none;
+}
+
+.html-capture-hint {
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.html-edit-notice {
+  right: 16px;
+  bottom: 16px;
+}

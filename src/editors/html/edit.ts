@@ -247,3 +247,28 @@ export function describeNode(content: string, nodeId: string): NodeInfo | null {
 
   return { tag: el.tagName.toLowerCase(), attrs, style };
 }
+
+export type MovePosition = "before" | "after";
+
+/**
+ * 拖拽移动（E-20）：把节点挪到目标节点之前/之后。
+ *
+ * 目标是自己或自己的子孙时必须拒绝——`insertBefore` 把父节点塞进自己的子树，
+ * 浏览器会让整棵子树从文档里消失，这是"拖一下没了半页"的经典事故。
+ */
+export function applyNodeMove(
+  content: string,
+  nodeId: string,
+  targetId: string,
+  position: MovePosition,
+): string {
+  return rewrite(content, nodeId, (el) => {
+    const doc = el.ownerDocument;
+    const target = anchorEl(doc, targetId);
+    if (!target) return false;
+    if (target === el || el.contains(target)) return false;
+    const anchor = position === "before" ? target : target.nextSibling;
+    target.parentNode?.insertBefore(el, anchor);
+    return true;
+  });
+}
