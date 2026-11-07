@@ -1,6 +1,15 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { PDFViewer } from "@embedpdf/react-pdf-viewer";
-import type { EmbedPdfContainer } from "@embedpdf/snippet";
+import type {
+  CommandsPlugin,
+  DocumentManagerPlugin,
+  EmbedPdfContainer,
+  PluginRegistry,
+  ToolbarSchema,
+  UIPlugin,
+  ZoomCapability,
+  ZoomPlugin,
+} from "@embedpdf/snippet";
 import { loadPdfBytes } from "../../utils/pdfSource";
 import { isTauriEnv } from "../../utils/tauri";
 
@@ -29,6 +38,13 @@ interface PdfViewerProps {
  *
  * 保留：search / thumbnail / outline / zoom / pan / scroll / rotate /
  * print / selection / bookmark / history（均不在禁用列表内）。
+ *
+ * zoom-in / zoom-out：缩放工具栏内「放大」「缩小」两个独立按钮的命令类别。
+ * 禁用后命令被标记为 disabled（经实证：类别只置灰、不移除按钮，因为这两个
+ * 按钮是 zoom-toolbar 自定义组件内部硬编码的 command-button，不是 schema item，
+ * 没有 data-epdf-cat 可供类别 CSS 命中）。因此再于 onReady 用 commands 插件的
+ * registerCommand 把 visible 覆盖为 false，让按钮真正不渲染。
+ * 注意不能禁用 "zoom"——那会连缩放输入框/菜单一起隐藏。
  */
 const DISABLED_CATEGORIES = [
   "annotation",
@@ -42,23 +58,30 @@ const DISABLED_CATEGORIES = [
   "capture",
   "document-protect",
   "spread",
+  "zoom-in",
+  "zoom-out",
 ];
 
 /**
- * 最小补充（disabledCategories 无法覆盖）：打印弹窗的「包含批注」复选框是
- * snippet 打印组件内硬编码 JSX（非 schema item，不受类别裁剪影响）。
- * 用一条仅命中该复选框的 CSS（其 span 类名 `text-fg-secondary text-sm font-medium`
- * 在整份 bundle 中唯一）注入 shadow root 隐藏。来源实证见
- * .omo/evidence/pdf-viewer-upgrade/f4-fix-evidence/03-print-modal-css.txt。
+ * 最小补充（disabledCategories / schema 无法覆盖）：
+ * 1. 打印弹窗的「包含批注」复选框是 snippet 打印组件内硬编码 JSX
+ *    （非 schema item，不受类别裁剪影响）。用一条仅命中该复选框的 CSS
+ *    （其 span 类名 `text-fg-secondary text-sm font-medium` 在整份 bundle 中唯一）
+ *    注入 shadow root 隐藏。来源实证见
+ *    .omo/evidence/pdf-viewer-upgrade/f4-fix-evidence/03-print-modal-css.txt。
+ * 2. 顶栏 page-controls 组件（上一页/页码/下一页）默认由滚动活动驱动透明度
+ *    （4 秒无滚动即 opacity-0），放进工具栏后强制常驻。
  */
-function hidePrintAnnotationOption(container: EmbedPdfContainer): void {
+function injectPdfUiCss(container: EmbedPdfContainer): void {
   const shadow = container.shadowRoot;
   if (!shadow) return;
-  if (shadow.querySelector("style[data-biaoyue-pdf-print]")) return;
+  if (shadow.querySelector("style[data-biaoyue-pdf-ui]")) return;
   const style = document.createElement("style");
-  style.setAttribute("data-biaoyue-pdf-print", "");
-  style.textContent =
-    "label:has(> span.text-fg-secondary.text-sm.font-medium){display:none !important}";
+  style.setAttribute("data-biaoyue-pdf-ui", "");
+  style.textContent = [
+    "label:has(> span.text-fg-secondary.text-sm.font-medium){display:none !important}",
+    '[data-epdf-i="pdf-page-nav"]>div>div{opacity:1 !important}',
+  ].join("\n");
   shadow.appendChild(style);
 }
 
@@ -66,6 +89,142 @@ type PdfLoadState =
   | { status: "loading" }
   | { status: "error"; error: string }
   | { status: "ready"; buffer: ArrayBuffer };
+
+/** 顶栏 page-controls 组件的 schema item id（与 injectPdfUiCss 的选择器对应） */
+const PAGE_NAV_ITEM_ID = "pdf-page-nav";
+
+/**
+ *  registry 就绪后的 UI 配置：
+ * 1. 禁用底部 page-controls 浮层（滚动不再弹出）。
+ * 2. 把 page-controls 组件（上一页/页码/下一页）挂进 main-toolbar 的 center-group。
+ * 3. 覆盖 zoom:in / zoom:out 命令的 visible，移除缩放工具栏内的两个独立按钮。
+ * 返回一个清理函数（取消文档激活订阅）。
+ */
+function configurePdfUi(registry: PluginRegistry): () => void {
+  const ui = registry.getPlugin<UIPlugin>("ui")?.provides();
+  const docManager = registry
+    .getPlugin<DocumentManagerPlugin>("document-manager")
+    ?.provides();
+  const commands = registry.getPlugin<CommandsPlugin>("commands")?.provides();
+  if (!ui || !docManager) return () => {};
+
+  // 底部 page-controls 浮层：对每个文档禁用（文档可能晚于 registry 就绪才激活）
+  const disablePageControls = (documentId: string): void => {
+    try {
+      ui.disableOverlay("page-controls", documentId);
+    } catch {
+      // 文档尚未激活时忽略，后续 onActiveDocumentChanged 会补上
+    }
+  };
+  const activeId = docManager.getActiveDocumentId();
+  if (activeId) disablePageControls(activeId);
+  const unsubscribe = docManager.onActiveDocumentChanged(
+    ({ currentDocumentId }) => {
+      if (currentDocumentId) disablePageControls(currentDocumentId);
+    },
+  );
+
+  // 顶栏加入 page-controls（上一页/页码/下一页），插在缩放工具栏之后
+  const schema = ui.getSchema();
+  const mainToolbar = schema.toolbars["main-toolbar"];
+  if (mainToolbar) {
+    const items = mainToolbar.items.map((item) => {
+      if (item.type !== "group" || item.id !== "center-group") return item;
+      const centerItems = [...item.items];
+      const zoomIdx = centerItems.findIndex((i) => i.id === "zoom-toolbar");
+      if (zoomIdx >= 0) {
+        centerItems.splice(zoomIdx + 1, 0, {
+          type: "custom",
+          id: PAGE_NAV_ITEM_ID,
+          componentId: "page-controls",
+          categories: ["page", "navigation"],
+        });
+      }
+      return { ...item, items: centerItems };
+    });
+    const merged: ToolbarSchema = { ...mainToolbar, items };
+    ui.mergeSchema({ toolbars: { "main-toolbar": merged } });
+  }
+
+  // 缩放工具栏内的「放大」「缩小」按钮：类别只置灰，覆盖 visible 让其不渲染
+  if (commands) {
+    const zoomButtons = [
+      { id: "zoom:in", label: "放大", icon: "zoomIn", category: "zoom-in" },
+      { id: "zoom:out", label: "缩小", icon: "zoomOut", category: "zoom-out" },
+    ] as const;
+    for (const btn of zoomButtons) {
+      commands.registerCommand({
+        id: btn.id,
+        label: btn.label,
+        icon: btn.icon,
+        categories: ["zoom", btn.category],
+        visible: () => false,
+        action: () => {},
+      });
+    }
+  }
+
+  return unsubscribe;
+}
+
+/**
+ * 触摸板双指捏合缩放（WebKit gesture 事件）。监听挂在 document 捕获阶段，
+ * 使 shadow DOM 内的手势也能被父文档捕获；用容器包含判断过滤多实例。
+ * 缩放的绝对倍率 = 手势开始时的当前倍率 × gesturechange.scale。
+ */
+function usePdfPinchZoom(
+  registry: PluginRegistry | null,
+  containerRef: React.RefObject<HTMLDivElement | null>,
+  active: boolean,
+) {
+  useEffect(() => {
+    if (!active || !registry) return;
+    if (typeof document === "undefined") return;
+    const el = containerRef.current;
+    if (!el) return;
+
+    let startZoom = 1;
+    const isInside = (target: EventTarget | null): boolean => {
+      const node = target instanceof Element ? target : null;
+      return !!node && (el.contains(node) || node === el);
+    };
+    const getZoom = (): ZoomCapability | null => {
+      try {
+        return registry.getPlugin<ZoomPlugin>("zoom")?.provides() ?? null;
+      } catch {
+        return null;
+      }
+    };
+    const onStart = (e: Event) => {
+      if (!isInside(e.target)) return;
+      const zoom = getZoom();
+      if (!zoom) return;
+      try {
+        startZoom = zoom.getState().currentZoomLevel;
+      } catch {
+        startZoom = 1;
+      }
+    };
+    const onChange = (e: Event) => {
+      if (!isInside(e.target)) return;
+      const scale = (e as unknown as { scale?: number }).scale;
+      if (!scale) return;
+      const zoom = getZoom();
+      if (!zoom) return;
+      try {
+        zoom.requestZoom(startZoom * scale);
+      } catch {
+        // 文档未激活时忽略
+      }
+    };
+    document.addEventListener("gesturestart", onStart, true);
+    document.addEventListener("gesturechange", onChange, true);
+    return () => {
+      document.removeEventListener("gesturestart", onStart, true);
+      document.removeEventListener("gesturechange", onChange, true);
+    };
+  }, [registry, containerRef, active]);
+}
 
 /**
  * PDF 预览组件：读取本地 PDF 字节后交给 EmbedPDF v2 查看器渲染。
@@ -81,6 +240,8 @@ export default function PdfViewer({ filePath }: PdfViewerProps) {
       ? { status: "loading" }
       : { status: "error", error: "无法预览 PDF：需在 Tauri 桌面环境中运行" },
   );
+  const [registry, setRegistry] = useState<PluginRegistry | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!isTauriEnv()) return; // 非 Tauri 已在初始 state 短路为错误态
@@ -117,6 +278,22 @@ export default function PdfViewer({ filePath }: PdfViewerProps) {
     };
   }, [filePath]);
 
+  const handleInit = useCallback((container: EmbedPdfContainer) => {
+    injectPdfUiCss(container);
+  }, []);
+
+  const handleReady = useCallback((r: PluginRegistry) => {
+    setRegistry(r);
+  }, []);
+
+  // registry 就绪后配置 UI（浮层 / 顶栏页码 / 缩放按钮）
+  useEffect(() => {
+    if (!registry) return;
+    return configurePdfUi(registry);
+  }, [registry]);
+
+  usePdfPinchZoom(registry, containerRef, state.status === "ready");
+
   if (state.status === "loading") {
     return (
       <div
@@ -143,24 +320,27 @@ export default function PdfViewer({ filePath }: PdfViewerProps) {
   }
 
   return (
-    <PDFViewer
-      config={{
-        wasmUrl: "/pdfium.wasm",
-        worker: false,
-        fontFallback: null,
-        fonts: { ui: null, signature: null },
-        stamp: { defaultLibrary: false, manifests: [] },
-        i18n: { defaultLocale: "zh-CN" },
-        disabledCategories: DISABLED_CATEGORIES,
-        documentManager: {
-          initialDocuments: [
-            { buffer: state.buffer, name: fileNameFromPath(filePath) },
-          ],
-        },
-      }}
-      onInit={hidePrintAnnotationOption}
-      style={{ width: "100%", height: "100%" }}
-    />
+    <div ref={containerRef} style={{ width: "100%", height: "100%" }}>
+      <PDFViewer
+        config={{
+          wasmUrl: "/pdfium.wasm",
+          worker: false,
+          fontFallback: null,
+          fonts: { ui: null, signature: null },
+          stamp: { defaultLibrary: false, manifests: [] },
+          i18n: { defaultLocale: "zh-CN" },
+          disabledCategories: DISABLED_CATEGORIES,
+          documentManager: {
+            initialDocuments: [
+              { buffer: state.buffer, name: fileNameFromPath(filePath) },
+            ],
+          },
+        }}
+        onInit={handleInit}
+        onReady={handleReady}
+        style={{ width: "100%", height: "100%" }}
+      />
+    </div>
   );
 }
 
