@@ -1,0 +1,196 @@
+{
+  "change": "workspace-ux-batch4",
+  "requirements": [
+    {
+      "id": "R-1",
+      "text": "分栏布局与页签拖拽正确性",
+      "anchors": [
+        {
+          "id": "A-1.1",
+          "claim": "拖动一条分隔线后，未被拖动分支的 ratio 变化",
+          "kind": "exact",
+          "assert": "0",
+          "source": "design D1/D2"
+        },
+        {
+          "id": "A-1.2",
+          "claim": "跨格拖拽一个页签后 leaf 数量变化",
+          "kind": "exact",
+          "assert": "0",
+          "source": "spec G-12"
+        },
+        {
+          "id": "A-1.3",
+          "claim": "右键「向右分栏」后原格中该文件页签数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "spec G-12"
+        },
+        {
+          "id": "A-1.4",
+          "claim": "右键「向右分栏」后新格中该文件页签数",
+          "kind": "exact",
+          "assert": "1",
+          "source": "spec G-12"
+        },
+        {
+          "id": "A-1.5",
+          "claim": "拖拽中按 Escape 后页签顺序",
+          "kind": "state-machine",
+          "assert": "\"\"\"unchanged\"\"\"",
+          "source": "spec G-8"
+        },
+        {
+          "id": "A-1.6",
+          "claim": "关闭一个页签后剩余分隔线可拖拽判定",
+          "kind": "exact",
+          "assert": "1",
+          "source": "spec G-12"
+        }
+      ]
+    },
+    {
+      "id": "R-2",
+      "text": "页签视觉与沉浸收纳",
+      "anchors": [
+        {
+          "id": "A-2.1",
+          "claim": "未选中且未悬停页签的胶囊圆角类数量",
+          "kind": "exact",
+          "assert": "0",
+          "source": "spec G-9"
+        },
+        {
+          "id": "A-2.2",
+          "claim": "悬停后未选中页签的背景色",
+          "kind": "exact",
+          "assert": "\"\"\"var(--app-sunken)\"\"\"",
+          "source": "spec G-9"
+        },
+        {
+          "id": "A-2.3",
+          "claim": "沉浸态顶栏计算高度",
+          "kind": "exact",
+          "assert": "\"\"\"0px\"\"\"",
+          "source": "spec G-10"
+        },
+        {
+          "id": "A-2.4",
+          "claim": "顶部热区停留 400ms 后悬浮页签条可见",
+          "kind": "state-machine",
+          "assert": "\"\"\"true\"\"\"",
+          "source": "spec G-10"
+        },
+        {
+          "id": "A-2.5",
+          "claim": "页签条容器背景 alpha 通道",
+          "kind": "exact",
+          "assert": "0",
+          "source": "spec G-9"
+        }
+      ]
+    },
+    {
+      "id": "R-3",
+      "text": "阅读表面宽度",
+      "anchors": [
+        {
+          "id": "A-3.1",
+          "claim": "阅读空间悬浮态拖拽手柄数量",
+          "kind": "exact",
+          "assert": "1",
+          "source": "spec A-15"
+        },
+        {
+          "id": "A-3.2",
+          "claim": "行宽滑块 min 属性",
+          "kind": "exact",
+          "assert": "480",
+          "source": "spec A-16"
+        },
+        {
+          "id": "A-3.3",
+          "claim": "行宽滑块 max 属性",
+          "kind": "exact",
+          "assert": "2400",
+          "source": "spec A-16"
+        },
+        {
+          "id": "A-3.4",
+          "claim": "滑块设 1400 后正文 `--type-measure`",
+          "kind": "exact",
+          "assert": "\"\"\"1400px\"\"\"",
+          "source": "spec A-16"
+        }
+      ]
+    },
+    {
+      "id": "R-4",
+      "text": "卡片与悬浮窗",
+      "anchors": [
+        {
+          "id": "A-4.1",
+          "claim": "PDF 网格卡片 hover 后工具条按钮数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "spec G-11"
+        },
+        {
+          "id": "A-4.2",
+          "claim": "Markdown 网格卡片 hover 后工具条按钮数",
+          "kind": "exact",
+          "assert": "3",
+          "source": "spec G-11"
+        },
+        {
+          "id": "A-4.3",
+          "claim": "拖动悬浮窗标题栏经过 iframe 后窗口位置",
+          "kind": "state-machine",
+          "assert": "\"\"\"changed\"\"\"",
+          "source": "design D3"
+        },
+        {
+          "id": "A-4.4",
+          "claim": "悬浮窗拖动期间预览坐标更新次数下限",
+          "kind": "exact",
+          "assert": "1",
+          "source": "design D3"
+        }
+      ]
+    },
+    {
+      "id": "R-5",
+      "text": "HTML 打开性能",
+      "anchors": [
+        {
+          "id": "A-5.1",
+          "claim": "预览态隐藏编辑器 doc 长度",
+          "kind": "exact",
+          "assert": "0",
+          "source": "spec A-17"
+        },
+        {
+          "id": "A-5.2",
+          "claim": "切到源码后编辑器内容与读盘内容比对",
+          "kind": "state-machine",
+          "assert": "\"\"\"equal\"\"\"",
+          "source": "spec A-17"
+        },
+        {
+          "id": "A-5.3",
+          "claim": "iframe 加载中骨架节点数",
+          "kind": "exact",
+          "assert": "1",
+          "source": "spec A-17"
+        },
+        {
+          "id": "A-5.4",
+          "claim": "50KB HTML 打开到正文可见耗时上限（毫秒）",
+          "kind": "exact",
+          "assert": "1500",
+          "source": "spec A-17"
+        }
+      ]
+    }
+  ]
+}
