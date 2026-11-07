@@ -14,8 +14,10 @@ const APP_URL = "http://localhost:1420";
 const SPLIT_RIGHT = "Control+Alt+ArrowRight";
 const SPLIT_DOWN = "Control+Alt+ArrowDown";
 const ART = path.resolve(process.cwd(), ".artifacts/175");
+const ART272 = path.resolve(process.cwd(), ".artifacts/272");
 
 mkdirSync(ART, { recursive: true });
+mkdirSync(ART272, { recursive: true });
 
 type Store = {
   getState: () => {
@@ -143,6 +145,10 @@ async function drag(
 
 function shot(page: Page, name: string): Promise<void> {
   return page.screenshot({ path: path.join(ART, `${name}.png`) });
+}
+
+function shot272(page: Page, name: string): Promise<void> {
+  return page.screenshot({ path: path.join(ART272, `${name}.png`) });
 }
 
 test("中心释放：两格互换，各自页签随行、比例锚定不变", async ({ page }) => {
@@ -402,6 +408,7 @@ test("拖动根分隔线只改自己的分支，内层分支比例不变（#272�
   const after = await layout(page);
   expect(after.ratio).not.toBeCloseTo(0.5, 3);
   expect(after.children![0].ratio).toBeCloseTo(0.3, 3);
+  await shot272(page, "divider-independent");
 });
 
 test("拖页签跨格：页签搬走、格数量不变（#272）", async ({ page }) => {
@@ -428,8 +435,12 @@ test("拖页签跨格：页签搬走、格数量不变（#272）", async ({ page
     targetBox.y + targetBox.height / 2,
     { steps: 10 },
   );
-  // 目标格落区环
+  // 目标格落区环 + 插入轨迹
   await expect(target).toHaveAttribute("data-tab-drop", "true");
+  await expect(
+    page.locator('[data-testid="tab-drag-placeholder"]'),
+  ).toBeVisible();
+  await shot272(page, "tab-drag-track");
   await page.mouse.up();
 
   await expect.poll(() => paneIds(page)).toHaveLength(2);
@@ -455,6 +466,7 @@ test("页签右键分栏把文件搬进新格（#272）", async ({ page }) => {
   const newPane = ids.find((id) => id !== "main") ?? "";
   expect(newPane).not.toBe("");
   expect(await paneTabPaths(page, newPane)).toEqual(["/tmp/pd/a.md"]);
+  await shot272(page, "context-split-moved");
 });
 
 test("关闭页签后布局仍可拖拽分隔线（#272）", async ({ page }) => {
@@ -483,4 +495,5 @@ test("关闭页签后布局仍可拖拽分隔线（#272）", async ({ page }) =>
   await page.mouse.up();
 
   expect((await layout(page)).ratio).not.toBeCloseTo(0.5, 3);
+  await shot272(page, "close-tab-layout");
 });
