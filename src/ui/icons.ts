@@ -44,7 +44,23 @@ export type IconName =
   | "sparkle"
   | "pinOff"
   | "immersive"
-  | "collapse";
+  | "collapse"
+  | "play"
+  | "pause"
+  | "prev"
+  | "next"
+  | "volume"
+  | "volumeMute"
+  | "playlist"
+  | "loopNone"
+  | "loopSingle"
+  | "loopPlaylist"
+  | "subtitle"
+  | "timestampNote"
+  | "keyboardHints"
+  | "pip"
+  | "speed"
+  | "home";
 
 export interface IconPart {
   d?: string;
@@ -218,6 +234,70 @@ export const ICONS: Record<IconName, IconDef> = {
   immersive: {
     label: "沉浸",
     s: "M7.2 17.8a7.5 7.5 0 119.6 0",
+  },
+  play: {
+    label: "播放",
+    d: "M8.5 5.2v13.6L19 12z",
+  },
+  pause: {
+    label: "暂停",
+    d: "M7.4 5h3.2v14H7.4z M13.4 5h3.2v14h-3.2z",
+  },
+  prev: {
+    label: "上一首",
+    parts: [{ s: "M7 5v14" }, { d: "M18 5.4v13.2L9.6 12z" }],
+  },
+  next: {
+    label: "下一首",
+    parts: [{ s: "M17 5v14" }, { d: "M6 5.4v13.2L14.4 12z" }],
+  },
+  volume: {
+    label: "音量",
+    s: "M4 9.5h3.5L12 5.8v12.4L7.5 14.5H4z M15.5 9.2a4 4 0 010 5.6 M18.2 6.6a7.5 7.5 0 010 10.8",
+  },
+  volumeMute: {
+    label: "静音",
+    s: "M4 9.5h3.5L12 5.8v12.4L7.5 14.5H4z M5.8 7.2l5.4 9.6",
+  },
+  playlist: {
+    label: "播放列表",
+    s: "M4 6h10 M4 11h10 M4 16h7 M15 10.2l5.5 3-5.5 3z",
+  },
+  loopNone: {
+    label: "不循环",
+    s: "M5.5 10.5a5.5 5.5 0 0111-2.9 M18.5 13.5a5.5 5.5 0 01-11 2.9 M14 7.6h2.5V5.1 M10 16.4H7.5v2.5",
+  },
+  loopSingle: {
+    label: "单曲循环",
+    s: "M5.5 10.5a5.5 5.5 0 0111-2.9 M18.5 13.5a5.5 5.5 0 01-11 2.9 M14 7.6h2.5V5.1 M10 16.4H7.5v2.5 M11.5 10v4.5 M10.4 11.2l1.1-1.1",
+  },
+  loopPlaylist: {
+    label: "列表循环",
+    s: "M5.5 10.5a5.5 5.5 0 0111-2.9 M18.5 13.5a5.5 5.5 0 01-11 2.9 M14 7.6h2.5V5.1 M10 16.4H7.5v2.5 M10.5 10v4.5 M10.5 10l3.2 4.5 M13.7 10v4.5",
+  },
+  subtitle: {
+    label: "字幕",
+    s: "M4.5 5.5h15v10H4.5z M8 9.3h4 M8 12.2h7.5",
+  },
+  timestampNote: {
+    label: "时间戳笔记",
+    s: "M12 20h8 M16.2 3.8a2 2 0 012.8 2.8L7 18.6l-3.8 1 1-3.8z",
+  },
+  keyboardHints: {
+    label: "快捷键",
+    s: "M2.5 7h19v10H2.5z M5.5 10h2 M8.5 10h2 M11.5 10h2 M14.5 10h2 M17.5 10h1.5 M7 13.5h10",
+  },
+  pip: {
+    label: "画中画",
+    s: "M3 5.5h18v13H3z M12.5 12.5h6v4h-6z",
+  },
+  speed: {
+    label: "倍速",
+    s: "M6.4 16.8a6.5 6.5 0 1111.2 0 M12 13.5l2.3-3.9 M12 13.5h.01",
+  },
+  home: {
+    label: "首页",
+    s: "M4 11l8-7 8 7 M6 10v9h12v-9 M10 19v-5h4v5",
   },
 };
 
