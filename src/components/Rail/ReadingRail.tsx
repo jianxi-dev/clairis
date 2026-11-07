@@ -1265,8 +1265,8 @@ export default function ReadingRail({
   };
 
   const header = (
-    <div className="flex items-center gap-1 border-b border-gray-200 px-2 py-1.5 dark:border-gray-700">
-      <span className="mr-auto truncate text-xs font-medium text-gray-700 dark:text-gray-200">
+    <div className="flex items-center gap-1 border-b border-[var(--app-border)] px-2 py-1.5">
+      <span className="mr-auto truncate text-xs font-medium text-[var(--app-text)]">
         阅读空间
       </span>
       {(["stacked", "tabs"] as RailLayout[]).map((layout) => (
@@ -1280,7 +1280,7 @@ export default function ReadingRail({
           className={`rounded px-1.5 py-0.5 text-[11px] ${
             railLayout === layout
               ? "bg-[var(--app-accent-soft)] text-[var(--app-accent)]"
-              : "text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
+              : "text-[var(--app-text-3)] hover:bg-[var(--app-sunken)]"
           }`}
         >
           {LAYOUT_LABELS[layout]}
@@ -1304,7 +1304,7 @@ export default function ReadingRail({
             setMenuOpen(next);
             if (next) loadSnapshots();
           }}
-          className="rounded p-0.5 text-gray-400 hover:bg-gray-200 hover:text-gray-700 dark:hover:bg-gray-700 dark:hover:text-gray-200"
+          className="rounded p-0.5 text-[var(--app-text-3)] hover:bg-[var(--app-sunken)] hover:text-[var(--app-text-2)]"
         >
           <Icon name="settings" size={18} />
         </button>
@@ -1319,9 +1319,9 @@ export default function ReadingRail({
               maxHeight: RAIL_MENU_MAX_HEIGHT,
               overflowY: "auto",
             }}
-            className="absolute top-full z-50 mt-1 w-56 rounded border border-gray-200 bg-white py-1 text-xs shadow-lg dark:border-gray-700 dark:bg-gray-800"
+            className="absolute top-full z-50 mt-1 w-56 rounded border border-[var(--app-border)] bg-[var(--app-surface)] py-1 text-xs shadow-lg"
           >
-            <div className="px-3 py-1 text-[10px] uppercase text-gray-400">
+            <div className="px-3 py-1 text-[10px] uppercase text-[var(--app-text-3)]">
               布局
             </div>
             {(["stacked", "tabs"] as RailLayout[]).map((layout) => (
@@ -1332,7 +1332,7 @@ export default function ReadingRail({
                 aria-checked={railLayout === layout}
                 data-testid={`rail-layout-${layout}`}
                 onClick={() => setRailLayout(layout)}
-                className="flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-gray-100 dark:hover:bg-gray-700"
+                className="flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-[var(--app-sunken)]"
               >
                 {railLayout === layout ? (
                   <Icon name="check" size={18} />
@@ -1342,7 +1342,7 @@ export default function ReadingRail({
                 {LAYOUT_LABELS[layout]}
               </button>
             ))}
-            <div className="mt-1 px-3 py-1 text-[10px] uppercase text-gray-400">
+            <div className="mt-1 px-3 py-1 text-[10px] uppercase text-[var(--app-text-3)]">
               密度
             </div>
             {(["compact", "comfortable", "card"] as RailDensity[]).map((d) => (
@@ -1353,7 +1353,7 @@ export default function ReadingRail({
                 aria-checked={railDensity === d}
                 data-testid={`rail-density-${d}`}
                 onClick={() => setRailDensity(d)}
-                className="flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-gray-100 dark:hover:bg-gray-700"
+                className="flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-[var(--app-sunken)]"
               >
                 {railDensity === d ? (
                   <Icon name="check" size={18} />
@@ -1364,7 +1364,7 @@ export default function ReadingRail({
               </button>
             ))}
             <div className="px-3 py-1.5">
-              <div className="flex items-center justify-between text-[11px] text-gray-500 dark:text-gray-400">
+              <div className="flex items-center justify-between text-[11px] text-[var(--app-text-2)]">
                 <span>卡片高度</span>
                 <span data-testid="rail-card-height-value">
                   {railCardHeight}px
@@ -1382,11 +1382,11 @@ export default function ReadingRail({
                 className="mt-1 w-full accent-[var(--app-accent)]"
               />
             </div>
-            <div className="mt-1 border-t border-gray-100 px-3 py-1 text-[10px] uppercase text-gray-400 dark:border-gray-700">
+            <div className="mt-1 border-t border-[var(--app-border)] px-3 py-1 text-[10px] uppercase text-[var(--app-text-3)]">
               快照
             </div>
             {snapshots.length === 0 ? (
-              <div className="px-3 py-1.5 text-[11px] text-gray-400">
+              <div className="px-3 py-1.5 text-[11px] text-[var(--app-text-3)]">
                 暂无快照
               </div>
             ) : (
@@ -1396,14 +1396,14 @@ export default function ReadingRail({
                   type="button"
                   data-testid="rail-snapshot"
                   onClick={() => restoreSnapshot(name)}
-                  className="block w-full truncate px-3 py-1.5 text-left text-[11px] hover:bg-gray-100 dark:hover:bg-gray-700"
+                  className="block w-full truncate px-3 py-1.5 text-left text-[11px] hover:bg-[var(--app-sunken)]"
                   title={name}
                 >
                   {name}
                 </button>
               ))
             )}
-            <div className="mt-1 border-t border-gray-100 dark:border-gray-700">
+            <div className="mt-1 border-t border-[var(--app-border)]">
               <button
                 type="button"
                 data-testid="rail-save-default"
@@ -1411,7 +1411,7 @@ export default function ReadingRail({
                   saveRailViewSpec();
                   showNotice("已设为默认");
                 }}
-                className="w-full px-3 py-1.5 text-left hover:bg-gray-100 dark:hover:bg-gray-700"
+                className="w-full px-3 py-1.5 text-left hover:bg-[var(--app-sunken)]"
               >
                 设为默认
               </button>
@@ -1427,7 +1427,7 @@ export default function ReadingRail({
         title={railState === "pinned" ? "取消钉住" : "钉住"}
         aria-label={railState === "pinned" ? "取消钉住" : "钉住"}
         onClick={toggleRailPin}
-        className="rounded p-0.5 text-gray-400 hover:bg-gray-200 hover:text-gray-700 dark:hover:bg-gray-700 dark:hover:text-gray-200"
+        className="rounded p-0.5 text-[var(--app-text-3)] hover:bg-[var(--app-sunken)] hover:text-[var(--app-text-2)]"
       >
         <Icon
           name="pin"
@@ -1441,7 +1441,7 @@ export default function ReadingRail({
         title="收起"
         aria-label="收起"
         onClick={() => setRailState("collapsed")}
-        className="rounded p-0.5 text-gray-400 hover:bg-gray-200 hover:text-gray-700 dark:hover:bg-gray-700 dark:hover:text-gray-200"
+        className="rounded p-0.5 text-[var(--app-text-3)] hover:bg-[var(--app-sunken)] hover:text-[var(--app-text-2)]"
       >
         <Icon name="chevronLeft" size={18} />
       </button>

@@ -10,7 +10,7 @@ import path from "node:path";
 
 const APP_URL = "http://localhost:1420";
 const FIXTURE = path.resolve(process.cwd(), "e2e/fixtures/structural-tags.md");
-const ART = path.resolve(process.cwd(), ".artifacts/255");
+const ART = path.resolve(process.cwd(), ".artifacts/263");
 
 mkdirSync(ART, { recursive: true });
 
@@ -55,6 +55,10 @@ test("预览：结构标签不吞标题与表格", async ({ page }) => {
   expect(text).not.toContain("essential_principles");
   expect(text).not.toContain("</objective>");
   expect(text).not.toContain("|----------|");
+  // 围栏内的同名标签是代码内容，必须可见
+  await expect(preview.locator("code", { hasText: "fenced_tag" })).toHaveCount(
+    1,
+  );
 
   await page.screenshot({ path: path.join(ART, "preview.png") });
 });
@@ -74,6 +78,7 @@ test("编辑态隐藏结构标签行，源码模式保留", async ({ page }) => 
     .poll(() => content.innerText())
     .not.toContain("essential_principles");
   expect(await content.innerText()).toContain("核心原则");
+  expect(await content.innerText()).toContain("fenced_tag");
 
   await page.screenshot({ path: path.join(ART, "edit.png") });
 

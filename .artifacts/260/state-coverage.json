@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "pdf-iframe",
+      "screenshot": ".artifacts/260/preview-pdf.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T02:25:07Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "no-actions",
+      "screenshot": ".artifacts/260/preview-no-actions.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T02:25:07Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "media-kinds",
+      "screenshot": ".artifacts/260/preview-media-kinds.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T02:25:07Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "rail-anchored",
+      "screenshot": ".artifacts/260/preview-rail-anchored.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-07T02:25:07Z",
+      "runner": "unknown@MMBP"
+    }
+  ]
+}

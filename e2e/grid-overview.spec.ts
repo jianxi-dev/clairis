@@ -211,27 +211,32 @@ test("门户磁贴点击进入后列表严格等于该类型文件", async ({ pa
   await record(page, "02-portal-type-filter");
 });
 
-test("顶部类型/排序/分组三控件皆为原生下拉；页面内点击循环控件数 = 0", async ({
+test("顶部排序/分组/置顶为原生下拉；类型筛选为 hover 自定义菜单", async ({
   page,
 }) => {
   await boot(page);
   await seed(page);
   await enterGridWithShortcut(page);
 
-  // 下拉是真的下拉：类型/排序/分组/置顶四个控件都是原生 SELECT
+  // 排序/分组/置顶仍是原生 SELECT
   const selects = page.locator('[data-testid="grid-toolbar"] select');
-  await expect(selects).toHaveCount(4);
+  await expect(selects).toHaveCount(3);
   const selectTags = await selects.evaluateAll((els) =>
     els.map((el) => el.tagName),
   );
-  expect(selectTags).toEqual(["SELECT", "SELECT", "SELECT", "SELECT"]);
+  expect(selectTags).toEqual(["SELECT", "SELECT", "SELECT"]);
 
   // 每个下拉都是真下拉：至少两个可选项
   const optionCounts = await selects.evaluateAll((els) =>
     els.map((el) => el.querySelectorAll("option").length),
   );
-  expect(optionCounts).toHaveLength(4);
+  expect(optionCounts).toHaveLength(3);
   for (const n of optionCounts) expect(n).toBeGreaterThanOrEqual(2);
+
+  // 类型筛选改为按钮 + 受控菜单
+  const typeTrigger = page.locator("[data-grid-type-select]");
+  await expect(typeTrigger).toHaveAttribute("aria-haspopup", "menu");
+  await expect(typeTrigger).toHaveAttribute("aria-expanded", "false");
 
   // 网格/列表是两颗各自定值的按钮：恰好 grid / list，各自带 aria-pressed
   const toggles = page.locator("[data-grid-mode-toggle] button");
@@ -248,7 +253,8 @@ test("顶部类型/排序/分组三控件皆为原生下拉；页面内点击循
   ]);
 
   // 下拉真的生效：选 markdown 后只剩该类型，计数同步
-  await page.locator("[data-grid-type-select]").selectOption("markdown");
+  await page.locator("[data-grid-type-select]").hover();
+  await page.locator('[data-grid-type-option="markdown"]').click();
   const items = page.locator("[data-grid-item]");
   const n = await items.count();
   expect(n).toBe(3);
@@ -257,7 +263,8 @@ test("顶部类型/排序/分组三控件皆为原生下拉；页面内点击循
   }
 
   // 排序下拉：切到名称，首项按标题升序
-  await page.locator("[data-grid-type-select]").selectOption("all");
+  await page.locator("[data-grid-type-select]").hover();
+  await page.locator('[data-grid-type-option="all"]').click();
   await page.locator("[data-grid-sort-select]").selectOption("name");
 
   // AI 视图规格「网格按类型分组」仍真的改变网格（9.1 → 10.1 桥接，不空操作）
@@ -497,7 +504,7 @@ test("搜索：/ 聚焦、输入过滤列表、× 清除恢复计数", async ({ 
   await expect(page.locator('[data-testid="grid-count"]')).toHaveText("7 项");
 
   // SELECT 聚焦时 / 不抢焦点
-  await page.locator("[data-grid-type-select]").focus();
+  await page.locator("[data-grid-sort-select]").focus();
   await page.keyboard.press("/");
   const focusedOnSelect = await page.evaluate(
     () => document.activeElement?.hasAttribute("data-grid-search") ?? false,
