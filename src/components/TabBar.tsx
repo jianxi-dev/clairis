@@ -1,6 +1,7 @@
 import Icon from "./Icon";
 import { colorOfType, fileTypeOf, iconOfType } from "../lib/fileType";
 import { useState, useCallback, useEffect, useRef, Fragment } from "react";
+import { createPortal } from "react-dom";
 import { useStore } from "../stores";
 import type { Tab } from "../types";
 
@@ -66,6 +67,8 @@ export default function TabBar({
   const [dragFrom, setDragFrom] = useState<number | null>(null);
   const [dragGap, setDragGap] = useState<number | null>(null);
   const [overPaneId, setOverPaneId] = useState<string | null>(null);
+  // 跟手 ghost 的指针位置（视口坐标）；仅在拖拽激活后有值。
+  const [dragPos, setDragPos] = useState<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
     if (typeof document === "undefined") return;
@@ -88,6 +91,7 @@ export default function TabBar({
         drag.active = true;
         setDragFrom(drag.from);
       }
+      setDragPos({ x: e.clientX, y: e.clientY });
       const strip = stripRef.current;
       if (strip) {
         const els = Array.from(
@@ -132,6 +136,7 @@ export default function TabBar({
       setDragFrom(null);
       setDragGap(null);
       setOverPaneId(null);
+      setDragPos(null);
     };
     const onUp = (e: PointerEvent) => finish(true, e);
     const onCancel = () => finish(false);
@@ -199,6 +204,8 @@ export default function TabBar({
         }}
       />
     );
+
+  const ghostTab = dragFrom !== null ? tabs[tabIds[dragFrom]] : undefined;
 
   return (
     <>
@@ -301,6 +308,32 @@ export default function TabBar({
         })}
         {dragGap === tabIds.length && placeholder}
       </div>
+
+      {ghostTab &&
+        dragPos &&
+        createPortal(
+          <div
+            data-testid="tab-drag-ghost"
+            className="fixed z-50 flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs shadow-lg"
+            style={{
+              left: dragPos.x + 8,
+              top: dragPos.y + 8,
+              pointerEvents: "none",
+              background: "var(--app-surface)",
+              borderColor: "var(--app-border)",
+              color: "var(--app-text-2)",
+            }}
+          >
+            <Icon
+              name={iconOfType(fileTypeOf(ghostTab.path))}
+              size={18}
+              color={colorOfType(fileTypeOf(ghostTab.path))}
+              className="mr-0.5"
+            />
+            <span className="max-w-44 truncate">{ghostTab.title}</span>
+          </div>,
+          document.body,
+        )}
 
       {/* Context menu */}
       {menu && (
