@@ -328,7 +328,7 @@ export const ICONS: Record<IconName, IconDef> = {
   },
   keyboardHints: {
     label: "快捷键",
-    s: "M2.5 6.5h19v11H2.5z M5.3 9.4h2.6v2.6H5.3z M9.2 9.4h2.6v2.6H9.2z M13.1 9.4h2.6v2.6h-2.6z M17 9.4h2.6v2.6H17z M5.3 13.6h13.4v1.8H5.3z",
+    s: "M5.3 7.4h2.6v2.6H5.3z M9.2 7.4h2.6v2.6H9.2z M13.1 7.4h2.6v2.6h-2.6z M17 7.4h2.6v2.6H17z M7 12.6h10v2.2H7z",
   },
   pip: {
     label: "画中画",
@@ -421,7 +421,7 @@ export function iconSvg(name: IconName, size = 22): string {
       return out.join("");
     })
     .join("");
-  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="currentColor">${inner}</svg>`;
+  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="currentColor" data-icon="${name}">${inner}</svg>`;
 }
 
 /** 两档尺寸：密集列表 18px，主操作 24px。 */

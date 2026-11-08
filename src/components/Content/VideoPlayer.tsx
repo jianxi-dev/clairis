@@ -136,13 +136,8 @@ const PLAYBACK_RATES: Array<{ value: number; label: string }> = [
   { value: 2, label: "2.0×" },
 ];
 
-const RATE_LABEL = (value: number): string =>
-  PLAYBACK_RATES.find((r) => r.value === value)?.label ?? `${value}×`;
-
-function rateControlHtml(value: number): string {
-  return `<span class="art-rate-label" style="font-size:12px;line-height:1;letter-spacing:-0.02em;white-space:nowrap">${RATE_LABEL(
-    value,
-  )}</span>`;
+function rateControlHtml(): string {
+  return controlSvg("speed");
 }
 
 type PopoverKind = "playlist" | "subtitle" | "hints" | "rate" | "visual" | null;
@@ -194,6 +189,9 @@ export default function VideoPlayer({
     left: 0,
     bottom: 0,
   });
+
+  const [thumb, setThumb] = useState<{ left: number; t: number } | null>(null);
+  const thumbCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
   const [showNote, setShowNote] = useState(false);
   const [noteText, setNoteText] = useState("");
@@ -253,10 +251,6 @@ export default function VideoPlayer({
     (
       video as HTMLVideoElement & { webkitPreservesPitch?: boolean }
     ).webkitPreservesPitch = true;
-    const label = artRef.current?.query<HTMLElement>(
-      ".art-control[data-name='rate'] .art-rate-label",
-    );
-    if (label) label.textContent = RATE_LABEL(value);
   }, []);
 
   /** 计算按钮相对播放器容器的锚点（浮层从按钮处弹出，右侧不超出容器） */
@@ -278,7 +272,18 @@ export default function VideoPlayer({
 
   const openPopover = useCallback(
     (kind: Exclude<PopoverKind, null>, btn: HTMLElement | null, w: number) => {
-      setPopoverAnchor(anchorFor(btn, w));
+      if (artRef.current?.fullscreenWeb) {
+        artRef.current.notice.show = "全屏下不可用";
+        return;
+      }
+      const anchor = anchorFor(btn, w);
+      const container = containerRef.current;
+      if (kind === "visual" && btn && container) {
+        const cr = container.getBoundingClientRect();
+        const br = btn.getBoundingClientRect();
+        anchor.left = Math.max(8, br.right - cr.left - w);
+      }
+      setPopoverAnchor(anchor);
       setPopover(kind);
     },
     [anchorFor],
@@ -357,8 +362,6 @@ export default function VideoPlayer({
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    const base64 = canvas.toDataURL("image/png").split(",")[1] ?? "";
-    if (!base64) return;
     const stem = (filePathRef.current.split("/").pop() || "frame").replace(
       /\.[^.]+$/,
       "",
@@ -366,13 +369,30 @@ export default function VideoPlayer({
     const total = Math.max(0, Math.floor(video.currentTime || 0));
     const mm = String(Math.floor(total / 60)).padStart(2, "0");
     const ss = String(total % 60).padStart(2, "0");
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob((b) => resolve(b), "image/png"),
+    );
     try {
-      await invoke("save_binary_as_file", {
-        base64,
-        defaultName: `${stem}-${mm}m${ss}s.png`,
-      });
+      if (
+        blob &&
+        typeof ClipboardItem !== "undefined" &&
+        navigator.clipboard?.write
+      ) {
+        await navigator.clipboard.write([
+          new ClipboardItem({ "image/png": blob }),
+        ]);
+        art.notice.show = "截图已复制到剪贴板";
+        return;
+      }
+      throw new Error("clipboard image write unsupported");
     } catch (err) {
-      console.warn("capture frame failed", err);
+      console.warn("capture frame clipboard failed", err);
+      const url = canvas.toDataURL("image/png");
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${stem}-${mm}m${ss}s.png`;
+      a.click();
+      art.notice.show = "剪贴板不可用，已下载截图";
     }
   }, []);
 
@@ -650,7 +670,7 @@ export default function VideoPlayer({
           name: "rate",
           position: "right",
           index: 50,
-          html: rateControlHtml(1),
+          html: rateControlHtml(),
           tooltip: "播放速度",
           mounted: function ($control) {
             $control.dataset.name = "rate";
@@ -660,6 +680,19 @@ export default function VideoPlayer({
               } else {
                 openPopover("rate", $control, 132);
               }
+            });
+          },
+        },
+        {
+          name: "rotate",
+          position: "right",
+          index: 53,
+          html: controlSvg("rotate"),
+          tooltip: "旋转画面",
+          mounted: function ($control) {
+            $control.dataset.name = "rotate";
+            this.proxy($control, "click", () => {
+              applyFrame({ rotation: (frameRef.current.rotation + 90) % 360 });
             });
           },
         },
@@ -710,6 +743,44 @@ export default function VideoPlayer({
       ],
     });
     artRef.current = art;
+
+    const progressEl = container.querySelector<HTMLElement>(".art-progress");
+    const thumbVideo = document.createElement("video");
+    thumbVideo.src = initialUrl;
+    thumbVideo.muted = true;
+    thumbVideo.preload = "auto";
+    thumbVideo.style.display = "none";
+    document.body.appendChild(thumbVideo);
+    let lastThumbAt = 0;
+    const onSeeked = () => {
+      const canvas = thumbCanvasRef.current;
+      if (!canvas || !thumbVideo.videoWidth) return;
+      const ctx2d = canvas.getContext("2d");
+      if (!ctx2d) return;
+      ctx2d.drawImage(thumbVideo, 0, 0, canvas.width, canvas.height);
+    };
+    const onProgressMove = (e: MouseEvent) => {
+      if (!progressEl) return;
+      const rect = progressEl.getBoundingClientRect();
+      const cr = container.getBoundingClientRect();
+      const ratio = Math.min(
+        1,
+        Math.max(0, (e.clientX - rect.left) / rect.width),
+      );
+      const t = ratio * (art.duration || 0);
+      setThumb({ left: rect.left - cr.left + ratio * rect.width, t });
+      if (Date.now() - lastThumbAt < 120) return;
+      lastThumbAt = Date.now();
+      try {
+        thumbVideo.currentTime = t;
+      } catch {
+        // 元数据未就绪：只显示时间
+      }
+    };
+    const onProgressLeave = () => setThumb(null);
+    progressEl?.addEventListener("mousemove", onProgressMove);
+    progressEl?.addEventListener("mouseleave", onProgressLeave);
+    thumbVideo.addEventListener("seeked", onSeeked);
 
     // 双击 → 网页全屏 + 同步窗口全屏
     const toggleFullscreenWeb = () => {
@@ -812,6 +883,11 @@ export default function VideoPlayer({
       fitObserver.disconnect();
       if (fitRaf) window.cancelAnimationFrame(fitRaf);
       document.removeEventListener("fullscreenchange", onNativeFullscreen);
+      progressEl?.removeEventListener("mousemove", onProgressMove);
+      progressEl?.removeEventListener("mouseleave", onProgressLeave);
+      thumbVideo.removeEventListener("seeked", onSeeked);
+      thumbVideo.remove();
+      setThumb(null);
       art.destroy(false);
       artRef.current = null;
     };
@@ -1078,6 +1154,36 @@ export default function VideoPlayer({
           }}
         />
       )}
+      {thumb && (
+        <div
+          data-testid="video-thumb"
+          style={{
+            position: "absolute",
+            left: Math.max(4, thumb.left - 80),
+            bottom: 64,
+            zIndex: 20,
+            width: 160,
+            borderRadius: 6,
+            overflow: "hidden",
+            background: "rgba(0,0,0,0.82)",
+            boxShadow: "0 4px 16px rgba(0,0,0,0.4)",
+            pointerEvents: "none",
+          }}
+        >
+          <canvas ref={thumbCanvasRef} width={160} height={90} />
+          <div
+            style={{
+              padding: "2px 6px",
+              color: "#fff",
+              fontSize: 11,
+              textAlign: "center",
+            }}
+          >
+            {formatTime(thumb.t)}
+          </div>
+        </div>
+      )}
+
       {error && (
         <div
           style={{
@@ -1122,7 +1228,12 @@ export default function VideoPlayer({
                 cursor: "pointer",
               }}
             >
-              {r.label}
+              <span
+                style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
+              >
+                <Icon name="speed" size={14} />
+                {r.label}
+              </span>
               {rate === r.value ? " ✓" : ""}
             </button>
           ))}
@@ -1138,25 +1249,22 @@ export default function VideoPlayer({
           <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
             <button
               type="button"
-              data-testid="visual-rotate"
-              onClick={() =>
-                applyFrame({ rotation: (frameRef.current.rotation + 90) % 360 })
-              }
-            >
-              旋转
-            </button>
-            <button
-              type="button"
               data-testid="visual-zoom-in"
+              title="放大画面"
               onClick={() => applyFrame({ zoom: frameRef.current.zoom * 1.2 })}
+              style={{ display: "flex", alignItems: "center", gap: 4 }}
             >
+              <Icon name="zoomIn" size={18} />
               放大
             </button>
             <button
               type="button"
               data-testid="visual-zoom-out"
+              title="缩小画面"
               onClick={() => applyFrame({ zoom: frameRef.current.zoom / 1.2 })}
+              style={{ display: "flex", alignItems: "center", gap: 4 }}
             >
+              <Icon name="zoomOut" size={18} />
               缩小
             </button>
           </div>

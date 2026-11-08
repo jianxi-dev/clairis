@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "控制条 38px",
+      "screenshot": ".artifacts/447/01-controls-38.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T18:11:34Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "进度条缩略图",
+      "screenshot": ".artifacts/447/02-progress-thumb.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T18:11:34Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "倍速图标菜单",
+      "screenshot": ".artifacts/447/03-rate-icons.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T18:11:34Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "快捷键媒体家族",
+      "screenshot": ".artifacts/447/04-shortcuts-media.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T18:11:34Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}
