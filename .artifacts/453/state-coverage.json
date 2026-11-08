@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "AI 停靠且聚焦",
+      "screenshot": ".artifacts/453/01-ai-docked-focused.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T17:35:19Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "Ctrl+O 文件可见",
+      "screenshot": ".artifacts/453/02-ctrl-o-opened.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T17:35:19Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "卡片打开文件可见",
+      "screenshot": ".artifacts/453/03-card-opened.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T17:35:19Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "AI 栏仍无页签",
+      "screenshot": ".artifacts/453/04-ai-pane-empty.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T17:35:19Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}
