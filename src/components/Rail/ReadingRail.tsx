@@ -624,7 +624,7 @@ function RailRow({
         title="打开"
         aria-label="打开"
         onClick={() => onOpen(item.path)}
-        className="rounded p-0.5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+        className="rounded p-0.5 text-[var(--app-chrome-rest)] hover:text-[var(--app-chrome-hover)]"
       >
         <Icon name="eye" size={14} />
       </button>
@@ -635,7 +635,7 @@ function RailRow({
         title="向右分屏"
         aria-label="向右分屏"
         onClick={() => onSplit(item.path, "row")}
-        className="rounded p-0.5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+        className="rounded p-0.5 text-[var(--app-chrome-rest)] hover:text-[var(--app-chrome-hover)]"
       >
         <Icon name="splitRight" size={14} />
       </button>
@@ -646,7 +646,7 @@ function RailRow({
         title="向下分屏"
         aria-label="向下分屏"
         onClick={() => onSplit(item.path, "col")}
-        className="rounded p-0.5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+        className="rounded p-0.5 text-[var(--app-chrome-rest)] hover:text-[var(--app-chrome-hover)]"
       >
         <Icon name="splitDown" size={14} />
       </button>
@@ -661,7 +661,7 @@ function RailRow({
         className={`flex items-center gap-0.5 rounded p-0.5 ${
           pinned
             ? "text-[var(--app-accent)]"
-            : "text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+            : "text-[var(--app-chrome-rest)] hover:text-[var(--app-chrome-hover)]"
         }`}
       >
         <Icon name={pinned ? "heartFilled" : "heart"} size={14} />
@@ -673,7 +673,7 @@ function RailRow({
         title={item.path}
         aria-label={`打开所在文件夹 ${parentFolderNameOf(item.path)}`}
         onClick={() => onReveal(parentPathOf(item.path))}
-        className="flex min-w-0 items-center gap-0.5 truncate rounded p-0.5 text-left text-[10px] text-gray-400 hover:bg-[var(--app-sunken)] hover:text-gray-700 dark:hover:text-gray-200"
+        className="flex min-w-0 items-center gap-0.5 truncate rounded p-0.5 text-left text-[10px] text-[var(--app-chrome-rest)] hover:bg-[var(--app-sunken)] hover:text-[var(--app-chrome-hover)]"
       >
         <Icon name="folder" size={14} />
         <span className="truncate">{parentFolderNameOf(item.path)}</span>
@@ -1547,7 +1547,7 @@ export default function ReadingRail({
             setRailQuery("");
             inputRef.current?.focus();
           }}
-          className="rounded p-0.5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+          className="rounded p-0.5 text-[var(--app-chrome-rest)] hover:text-[var(--app-chrome-hover)]"
         >
           <Icon name="close" size={18} />
         </button>

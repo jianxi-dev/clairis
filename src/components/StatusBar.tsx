@@ -314,7 +314,7 @@ export default function StatusBar({
           title="主页"
           aria-label="主页"
           onClick={() => useStore.getState().setScene("portal")}
-          className="rounded-full px-2 py-0.5 text-[var(--app-text-2)] hover:bg-[var(--app-accent-soft)] hover:text-[var(--app-accent)]"
+          className="rounded-full px-2 py-0.5 text-[var(--app-chrome-rest)] hover:bg-[var(--app-accent-soft)] hover:text-[var(--app-chrome-hover)]"
         >
           <Icon name="home" size={18} />
         </button>
@@ -325,7 +325,7 @@ export default function StatusBar({
           title="网格概览（⌘⇧\\）"
           aria-label="网格概览"
           onClick={onOpenGrid}
-          className="rounded-full px-2 py-0.5 text-[var(--app-text-2)] hover:bg-[var(--app-accent-soft)] hover:text-[var(--app-accent)]"
+          className="rounded-full px-2 py-0.5 text-[var(--app-chrome-rest)] hover:bg-[var(--app-accent-soft)] hover:text-[var(--app-chrome-hover)]"
         >
           <Icon name="grid" size={18} />
         </button>
@@ -343,7 +343,7 @@ export default function StatusBar({
             else if (st.bubbleOpen) st.closeBubble();
             else st.openBubble();
           }}
-          className="rounded-full px-2 py-0.5 text-[var(--app-text-2)] hover:bg-[var(--app-accent-soft)] hover:text-[var(--app-accent)]"
+          className="rounded-full px-2 py-0.5 text-[var(--app-chrome-rest)] hover:bg-[var(--app-accent-soft)] hover:text-[var(--app-chrome-hover)]"
         >
           <Icon name="sparkle" size={18} color="var(--app-accent)" />
         </button>
@@ -373,7 +373,7 @@ export default function StatusBar({
               setThemeOpen(true);
             }}
             onClick={() => onSetTheme(nextThemeOf(theme))}
-            className="flex items-center gap-0.5 rounded-full px-2 text-[var(--app-text-2)] hover:bg-[var(--app-accent-soft)] hover:text-[var(--app-accent)]"
+            className="flex items-center gap-0.5 rounded-full px-2 text-[var(--app-chrome-rest)] hover:bg-[var(--app-accent-soft)] hover:text-[var(--app-chrome-hover)]"
             title={`当前: ${themeLabelOf(theme)}`}
           >
             <Icon name={iconOfTheme(theme)} size={18} />
@@ -446,7 +446,7 @@ export default function StatusBar({
           className={`rounded-full px-2 py-0.5 ${
             readingMode
               ? "bg-[var(--app-accent-soft)] text-[var(--app-accent)]"
-              : "text-[var(--app-text-2)] hover:bg-[var(--app-accent-soft)] hover:text-[var(--app-accent)]"
+              : "text-[var(--app-chrome-rest)] hover:bg-[var(--app-accent-soft)] hover:text-[var(--app-chrome-hover)]"
           }`}
           title="沉浸阅读（⌘⇧F）"
         >

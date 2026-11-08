@@ -304,7 +304,7 @@ export default function TabBar({
                 className={`group flex min-w-0 items-center gap-1.5 px-2.5 py-1 text-xs cursor-pointer transition-colors whitespace-nowrap outline-none focus:outline-none focus-visible:outline-none ${
                   isActive
                     ? "tab-capsule rounded-full bg-[var(--app-accent-soft)] font-medium text-[var(--app-accent)]"
-                    : "rounded-none bg-transparent text-[var(--app-text-2)] opacity-70 hover:rounded-full hover:bg-[var(--app-sunken)] hover:opacity-100"
+                    : "rounded-none bg-transparent text-[var(--app-chrome-rest)] hover:rounded-full hover:bg-[var(--app-sunken)] hover:text-[var(--app-chrome-hover)]"
                 }`}
               >
                 <Icon

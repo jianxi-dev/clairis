@@ -30,6 +30,10 @@
   --app-text-strong: #16181c;
   --app-text-2: #55595f;
   --app-text-3: #8b8f96;
+  --app-chrome-rest: #8b8f96;
+  --app-chrome-hover: #24262b;
+  --app-chrome-rest: #8b8f96;
+  --app-chrome-hover: #24262b;
 
   --app-border: #e7e3db;
   --app-border-strong: #d8d3c8;
@@ -52,6 +56,10 @@
   --app-text-strong: #eceef1;
   --app-text-2: #a7abb3;
   --app-text-3: #75797f;
+  --app-chrome-rest: #75797f;
+  --app-chrome-hover: #d8dade;
+  --app-chrome-rest: #75797f;
+  --app-chrome-hover: #d8dade;
 
   --app-border: #2e3138;
   --app-border-strong: #3d4149;
@@ -71,6 +79,10 @@
   --app-text-strong: #241c12;
   --app-text-2: #6b5a45;
   --app-text-3: #96826a;
+  --app-chrome-rest: #96826a;
+  --app-chrome-hover: #3b3024;
+  --app-chrome-rest: #96826a;
+  --app-chrome-hover: #3b3024;
 
   --app-border: #e0d2bc;
   --app-border-strong: #cdbca1;

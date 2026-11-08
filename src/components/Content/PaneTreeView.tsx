@@ -576,7 +576,7 @@ function PaneHeader({
           }
           aria-label={editorMode === "preview" ? "切换到编辑" : "切换到预览"}
           onClick={() => setMode(nextPaneMode(editorMode))}
-          className="p-0.5 mx-1 rounded text-[var(--app-text-3)] hover:bg-[var(--app-sunken)] hover:text-[var(--app-text-2)] shrink-0"
+          className="p-0.5 mx-1 rounded text-[var(--app-chrome-rest)] hover:bg-[var(--app-sunken)] hover:text-[var(--app-chrome-hover)] shrink-0"
         >
           <Icon name={editorMode === "preview" ? "eye" : "pencil"} size={18} />
         </button>
@@ -597,7 +597,7 @@ function PaneHeader({
               useStore.getState().focusPane(leafId);
               useStore.getState().toggleFullscreenPane();
             }}
-            className="p-0.5 rounded text-[var(--app-text-3)] hover:bg-[var(--app-accent-soft)] hover:text-[var(--app-accent)]"
+            className="p-0.5 rounded text-[var(--app-chrome-rest)] hover:bg-[var(--app-sunken)] hover:text-[var(--app-chrome-hover)]"
           >
             <Icon
               name={fullscreenPaneId === leafId ? "collapse" : "expand"}
@@ -622,7 +622,7 @@ function PaneHeader({
               setExportOpen(false);
               setMenuOpen((v) => !v);
             }}
-            className="p-0.5 rounded text-[var(--app-text-3)] hover:bg-[var(--app-sunken)] hover:text-[var(--app-text-2)]"
+            className="p-0.5 rounded text-[var(--app-chrome-rest)] hover:bg-[var(--app-sunken)] hover:text-[var(--app-chrome-hover)]"
           >
             <Icon name="more" size={18} />
           </button>
@@ -716,7 +716,7 @@ function PaneHeader({
             title="关闭此格"
             aria-label="关闭此格"
             onClick={() => useStore.getState().closePane(leafId)}
-            className="p-0.5 rounded text-[var(--app-text-3)] hover:bg-[var(--app-sunken)] hover:text-[var(--app-text-2)]"
+            className="p-0.5 rounded text-[var(--app-chrome-rest)] hover:bg-[var(--app-sunken)] hover:text-[var(--app-chrome-hover)]"
           >
             <Icon name="close" size={18} />
           </button>
@@ -784,7 +784,7 @@ function AiPaneHeader({ leafId }: { leafId: string }) {
             aria-haspopup="menu"
             aria-expanded={menuOpen}
             onClick={() => setMenuOpen((v) => !v)}
-            className="p-0.5 rounded text-[var(--app-text-3)] hover:bg-[var(--app-sunken)] hover:text-[var(--app-text-2)]"
+            className="p-0.5 rounded text-[var(--app-chrome-rest)] hover:bg-[var(--app-sunken)] hover:text-[var(--app-chrome-hover)]"
           >
             <Icon name="more" size={18} />
           </button>
@@ -816,7 +816,7 @@ function AiPaneHeader({ leafId }: { leafId: string }) {
           title="关闭"
           aria-label="关闭 AI 窗格"
           onClick={() => useStore.getState().closePane(leafId)}
-          className="p-0.5 rounded text-[var(--app-text-3)] hover:bg-[var(--app-sunken)] hover:text-[var(--app-text-2)]"
+          className="p-0.5 rounded text-[var(--app-chrome-rest)] hover:bg-[var(--app-sunken)] hover:text-[var(--app-chrome-hover)]"
         >
           <Icon name="close" size={18} />
         </button>
