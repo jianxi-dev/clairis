@@ -1,0 +1,60 @@
+{
+  "states": [
+    {
+      "state": "panel-open",
+      "screenshot": ".artifacts/416/panel-open.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T11:20:56Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "rotate-90",
+      "screenshot": ".artifacts/416/rotated.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T11:20:56Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "zoom-max-4x",
+      "screenshot": ".artifacts/416/zoom-max.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T11:20:56Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "visual-panel-open",
+      "screenshot": ".artifacts/416/panel-open.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T11:21:09Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "rotated-90",
+      "screenshot": ".artifacts/416/rotated.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T11:21:09Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "zoom-4x",
+      "screenshot": ".artifacts/416/zoom-max.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T11:21:09Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "brightness-150",
+      "screenshot": ".artifacts/416/brightness-max.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T11:21:09Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "reset-after-switch",
+      "screenshot": ".artifacts/416/after-switch.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T11:21:09Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}
