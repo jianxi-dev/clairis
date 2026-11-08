@@ -22,8 +22,8 @@ export const CARD_MIN = 88;
 export const CARD_MAX = 160;
 
 /** 4:3 缩略图盒（卡片右侧，严格 72×54）。 */
-export const CARD_RATIO_W = 72;
-export const CARD_RATIO_H = 54;
+export const CARD_RATIO_W = 64;
+export const CARD_RATIO_H = 48;
 
 /** 夹取卡片高度：非有限值回默认 112，越界贴边，小数取整。 */
 export function clampCardHeight(n: number): number {

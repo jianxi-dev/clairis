@@ -257,7 +257,7 @@ test("默认卡片 112px + 堆叠；滑杆 88/160；三档行高严格 32/56/112
   await expect.poll(() => heightOf(first)).toBe(112);
 });
 
-test("六类缩略图均为 72×54（4:3）；纯文本与无图 MD 零缩略图节点且摘要通栏", async ({
+test("六类缩略图均为 64×48（4:3）；纯文本与无图 MD 零缩略图节点且摘要通栏", async ({
   page,
 }) => {
   await boot(page);
@@ -279,7 +279,7 @@ test("六类缩略图均为 72×54（4:3）；纯文本与无图 MD 零缩略图
     await expect(thumb).toHaveCount(1);
     await expect(thumb).toHaveAttribute("data-thumb-kind", kind);
     const box = await boxOf(thumb);
-    expect(box).toEqual({ w: 72, h: 54 });
+    expect(box).toEqual({ w: 64, h: 48 });
     expect(box.w / box.h).toBeCloseTo(4 / 3, 2);
   }
 
@@ -351,8 +351,8 @@ test("卡片动作组位于左下角且顺序为 打开/右分栏/下分栏/收�
   await card.hover();
   await expect(actions).toHaveCSS("opacity", "1");
 
-  // 缩略图在剩余列中居中（72×54 固定盒）
-  expect(await boxOf(thumb)).toEqual({ w: 72, h: 54 });
+  // 缩略图在剩余列中居中（64×48 固定盒）
+  expect(await boxOf(thumb)).toEqual({ w: 64, h: 48 });
 
   const cardBox = await card.boundingBox();
   const actionsBox = await actions.boundingBox();
@@ -673,4 +673,33 @@ test("PDF 卡片缩略图不嵌入查看器，原生工具条无宿主（#286）
     md.locator('[data-testid="rail-card-actions"] button'),
   ).toHaveCount(5);
   await page.screenshot({ path: path.join(ART286, "md-card-actions.png") });
+});
+
+test("缩略图降到 64×48 后不与标题、摘要、动作行重叠（#392）", async ({
+  page,
+}) => {
+  await boot(page);
+  await seed(page);
+  await openPinnedRail(page);
+
+  const card = recentItem(page, "/tmp/rc/cover.md");
+  await card.hover();
+  const boxes = await Promise.all([
+    card.locator('[data-testid="rail-thumb"]').boundingBox(),
+    card.locator('[data-testid="rail-card-excerpt"]').boundingBox(),
+    card.locator('[data-testid="rail-card-actions"]').boundingBox(),
+  ]);
+  const [thumb, excerpt, actions] = boxes;
+  if (!thumb || !excerpt || !actions) throw new Error("目标元素不可测量");
+  expect(thumb.height).toBe(48);
+  const overlaps = (
+    a: { x: number; y: number; width: number; height: number },
+    b: typeof a,
+  ) =>
+    a.x < b.x + b.width &&
+    b.x < a.x + a.width &&
+    a.y < b.y + b.height &&
+    b.y < a.y + a.height;
+  expect(overlaps(thumb, excerpt)).toBe(false);
+  expect(overlaps(thumb, actions)).toBe(false);
 });
