@@ -57,6 +57,7 @@ draft, in-review, accepted, implemented, deprecated, superseded, archived
 
 - `accepted` 和 `archived` 状态的文档**不可原地改写**内容。
 - 需要变更时，必须通过 supersede 链：创建新文档，旧文档标记为 `superseded` 并填写 `superseded_by`。
+- **append-only 台账例外**：声明 `ledger: append-only` 的台账类文档，允许**追加**新行，禁止修改或删除既有行；同一主题出现多行时以最新行为准。修订既有行只能通过在其后追加新行并注明取代关系完成。该例外只适用于台账文档，不得用于规范正文或任何规则条文。
 
 ---
 
@@ -78,6 +79,7 @@ title, type, status, last_updated
 - `owner`：文档负责人。单维护者仓库中可省略，不强制历史文档补充。
 - `source_of_truth`：权威性标识，枚举如下。缺省为 `supporting`。
 - `superseded_by`：**仅当** `status=superseded` 时必填，指向替代文档的相对路径。其余状态**禁止出现**此字段。
+- `ledger`：**仅**台账类文档使用，唯一合法值 `append-only`。声明后适用 §2.3 的追加例外。
 
 ### 3.3 source_of_truth 枚举（恰好 3 个）
 
@@ -162,6 +164,12 @@ product, design, architecture, adr, research, delivery, guide, archive
 ```
 
 发现冲突时，低优先级文档应被降级为 `supporting` 或进入 supersede 流程。
+
+### 5.1 解释条款（不改变上表排序）
+
+**条款 A · 具体性优先**：同一事实，若低层文档给出更具体的规定且**不与高层文档矛盾**，两者共存，不构成冲突。高层管原则，低层管具体。
+
+**条款 B · 矛盾即缺陷**：若低层文档与高层文档**矛盾**（例如 approved design 违反 product direction 的某条铁律），按矩阵高层胜，且**低层文档必须修订**。矩阵裁定的是「同一事实的重复表述」，不是「派生方向」；产品方向始终约束设计内容，只是不参与同一事实的具体数值裁定。
 
 ---
 
