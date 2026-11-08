@@ -1,0 +1,400 @@
+{
+  "change": "ui-polish-batch8",
+  "requirements": [
+    {
+      "id": "R-1",
+      "text": "页签拖拽禁选与选中态分级",
+      "anchors": [
+        {
+          "id": "A-1.1",
+          "claim": "拖拽页签经过正文后 `window.getSelection().toString()` 的长度",
+          "kind": "exact",
+          "assert": "0",
+          "source": "design D-1"
+        },
+        {
+          "id": "A-1.2",
+          "claim": "聚焦栏活动页签标题颜色与未选中页签标题颜色的关系",
+          "kind": "exact",
+          "assert": "\"不同（选中为 --app-text-strong）\"",
+          "source": "spec navigation 页签条"
+        },
+        {
+          "id": "A-1.3",
+          "claim": "非聚焦栏活动页签图标的计算颜色",
+          "kind": "exact",
+          "assert": "\"等于 --app-chrome-rest\"",
+          "source": "design D-2"
+        },
+        {
+          "id": "A-1.4",
+          "claim": "聚焦栏活动页签图标计算颜色的类型色通道",
+          "kind": "exact",
+          "assert": "\"#6366f1\"",
+          "source": "spec navigation 图标体系"
+        },
+        {
+          "id": "A-1.5",
+          "claim": "聚焦栏目 `box-shadow` 中 accent 内描边的宽度",
+          "kind": "exact",
+          "assert": "0",
+          "source": "design D-2"
+        }
+      ]
+    },
+    {
+      "id": "R-2",
+      "text": "PDF 顶栏与外围底色",
+      "anchors": [
+        {
+          "id": "A-2.1",
+          "claim": "页码区容器的计算 `border-width`",
+          "kind": "exact",
+          "assert": "0",
+          "source": "design D-4"
+        },
+        {
+          "id": "A-2.2",
+          "claim": "切换 light 与 dark 主题后 PDF 外围背景的计算值与 `--app-bg` 相等",
+          "kind": "state-machine",
+          "assert": "\"true\"",
+          "source": "design D-4"
+        },
+        {
+          "id": "A-2.3",
+          "claim": "PDF 页码 / 翻页控件数量",
+          "kind": "exact",
+          "assert": "1",
+          "source": "spec reading PDF 页码工具条位置"
+        }
+      ]
+    },
+    {
+      "id": "R-3",
+      "text": "主题图标 / 自动布局图标 / 去三角",
+      "anchors": [
+        {
+          "id": "A-3.1",
+          "claim": "`sunBright` 图标中从圆心向外的光线段数",
+          "kind": "exact",
+          "assert": "6",
+          "source": "design D-5"
+        },
+        {
+          "id": "A-3.2",
+          "claim": "`sunBright` 相邻光线的夹角（度）",
+          "kind": "exact",
+          "assert": "60",
+          "source": "design D-5"
+        },
+        {
+          "id": "A-3.3",
+          "claim": "主题入口按钮内的 svg 节点数",
+          "kind": "exact",
+          "assert": "1",
+          "source": "decisions 状态栏主题按钮"
+        },
+        {
+          "id": "A-3.4",
+          "claim": "`layoutAuto` 图标 path 中四宫格矩形段数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "design D-5"
+        },
+        {
+          "id": "A-3.5",
+          "claim": "`layoutAuto` 图标中星芒段数",
+          "kind": "exact",
+          "assert": "3",
+          "source": "design D-5"
+        }
+      ]
+    },
+    {
+      "id": "R-4",
+      "text": "栏目全屏按钮与尺寸下限",
+      "anchors": [
+        {
+          "id": "A-4.1",
+          "claim": "栏目未悬停时全屏按钮的计算 `opacity`",
+          "kind": "exact",
+          "assert": "0",
+          "source": "design D-6"
+        },
+        {
+          "id": "A-4.2",
+          "claim": "指针滑入栏目头后全屏按钮的计算 `opacity`",
+          "kind": "exact",
+          "assert": "1",
+          "source": "design D-6"
+        },
+        {
+          "id": "A-4.3",
+          "claim": "全屏态全屏按钮的计算 `opacity`",
+          "kind": "exact",
+          "assert": "1",
+          "source": "design D-6"
+        },
+        {
+          "id": "A-4.4",
+          "claim": "栏目最小宽度常量（px）",
+          "kind": "exact",
+          "assert": "0",
+          "source": "design D-6"
+        }
+      ]
+    },
+    {
+      "id": "R-5",
+      "text": "悬浮预览动作行与阅读空间路径",
+      "anchors": [
+        {
+          "id": "A-5.1",
+          "claim": "指针移出动作行 150ms 后动作行节点数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "design D-7"
+        },
+        {
+          "id": "A-5.2",
+          "claim": "动作行按钮悬停时计算 `background-color` 的 alpha 通道",
+          "kind": "exact",
+          "assert": "0",
+          "source": "design D-7"
+        },
+        {
+          "id": "A-5.3",
+          "claim": "动作行中路径按钮数量",
+          "kind": "exact",
+          "assert": "1",
+          "source": "design D-7"
+        },
+        {
+          "id": "A-5.4",
+          "claim": "动作行左内距（px）",
+          "kind": "exact",
+          "assert": "24",
+          "source": "design D-7"
+        },
+        {
+          "id": "A-5.5",
+          "claim": "阅读空间路径按钮悬停时计算 `background-color` 的 alpha 通道",
+          "kind": "exact",
+          "assert": "0",
+          "source": "design D-7"
+        }
+      ]
+    },
+    {
+      "id": "R-6",
+      "text": "页签右键菜单「悬浮小窗」",
+      "anchors": [
+        {
+          "id": "A-6.1",
+          "claim": "页签右键菜单项数量",
+          "kind": "exact",
+          "assert": "5",
+          "source": "design D-3"
+        },
+        {
+          "id": "A-6.2",
+          "claim": "菜单首项文案",
+          "kind": "exact",
+          "assert": "\"悬浮小窗\"",
+          "source": "design D-3"
+        },
+        {
+          "id": "A-6.3",
+          "claim": "点击悬浮小窗后 `floating-preview` 的 `data-preview-path` 等于页签路径",
+          "kind": "state-machine",
+          "assert": "\"true\"",
+          "source": "design D-3"
+        }
+      ]
+    },
+    {
+      "id": "R-7",
+      "text": "AI 停靠态打开文件",
+      "anchors": [
+        {
+          "id": "A-7.1",
+          "claim": "AI 停靠且 AI 栏聚焦时，卡片双击打开后工作区新增页签内容可见",
+          "kind": "state-machine",
+          "assert": "\"true\"",
+          "source": "design D-8"
+        },
+        {
+          "id": "A-7.2",
+          "claim": "AI 停靠且 AI 栏聚焦时，Ctrl+O 打开文件后页签落在非 AI 栏",
+          "kind": "state-machine",
+          "assert": "\"true\"",
+          "source": "design D-8"
+        },
+        {
+          "id": "A-7.3",
+          "claim": "停靠 AI 栏在打开文件前后的页签数变化",
+          "kind": "exact",
+          "assert": "0",
+          "source": "design D-8"
+        }
+      ]
+    },
+    {
+      "id": "R-8",
+      "text": "HTML 工具条归属、双击定位与块缩放",
+      "anchors": [
+        {
+          "id": "A-8.1",
+          "claim": "HTML 编辑态 `cm-floating-toolbar` 节点数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "design D-9"
+        },
+        {
+          "id": "A-8.2",
+          "claim": "md 编辑态 `html-edit-toolbar` 节点数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "design D-9"
+        },
+        {
+          "id": "A-8.3",
+          "claim": "HTML 可视化编辑双击后 `selection.toString()` 的长度",
+          "kind": "exact",
+          "assert": "0",
+          "source": "design D-9"
+        },
+        {
+          "id": "A-8.4",
+          "claim": "拖动右下缩放手柄后 content 含 `width:` 与 `height:`",
+          "kind": "state-machine",
+          "assert": "\"true\"",
+          "source": "design D-9"
+        }
+      ]
+    },
+    {
+      "id": "R-9",
+      "text": "大纲按钮几何",
+      "anchors": [
+        {
+          "id": "A-9.1",
+          "claim": "大纲按钮右缘到内容区右缘距离（px）",
+          "kind": "exact",
+          "assert": "28",
+          "source": "design D-10"
+        },
+        {
+          "id": "A-9.2",
+          "claim": "未钉住时按钮计算 `border-width`",
+          "kind": "exact",
+          "assert": "0",
+          "source": "design D-10"
+        },
+        {
+          "id": "A-9.3",
+          "claim": "钉住时按钮计算 `border-width`",
+          "kind": "exact",
+          "assert": "1",
+          "source": "design D-10"
+        }
+      ]
+    },
+    {
+      "id": "R-10",
+      "text": "页面宽度面板",
+      "anchors": [
+        {
+          "id": "A-10.1",
+          "claim": "宽度滑块 `max` 属性",
+          "kind": "exact",
+          "assert": "1400",
+          "source": "design D-11"
+        },
+        {
+          "id": "A-10.2",
+          "claim": "点击宽松档后 `--type-measure` 的值",
+          "kind": "exact",
+          "assert": "\"1200px\"",
+          "source": "design D-11"
+        },
+        {
+          "id": "A-10.3",
+          "claim": "三根刻度柱之间的 `gap`（px）",
+          "kind": "exact",
+          "assert": "0",
+          "source": "design D-11"
+        },
+        {
+          "id": "A-10.4",
+          "claim": "滑块宽度与三柱总宽的差（px）大于",
+          "kind": "exact",
+          "assert": "0",
+          "source": "design D-11"
+        }
+      ]
+    },
+    {
+      "id": "R-11",
+      "text": "视频播放器控制条与截图",
+      "anchors": [
+        {
+          "id": "A-11.1",
+          "claim": "控制条高度（px）",
+          "kind": "exact",
+          "assert": "38",
+          "source": "design D-12"
+        },
+        {
+          "id": "A-11.2",
+          "claim": "自绘控件图标渲染尺寸（px）",
+          "kind": "exact",
+          "assert": "22",
+          "source": "spec navigation 图标体系"
+        },
+        {
+          "id": "A-11.3",
+          "claim": "进度条悬停后缩略图节点数",
+          "kind": "exact",
+          "assert": "1",
+          "source": "design D-12"
+        },
+        {
+          "id": "A-11.4",
+          "claim": "截图后剪贴板写入次数",
+          "kind": "exact",
+          "assert": "1",
+          "source": "design D-12"
+        },
+        {
+          "id": "A-11.5",
+          "claim": "截图后调用系统另存为的次数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "design D-12"
+        },
+        {
+          "id": "A-11.6",
+          "claim": "全屏态点击倍速后展开的二级菜单数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "design D-12"
+        },
+        {
+          "id": "A-11.7",
+          "claim": "快捷键总览中视频家族条目数下限",
+          "kind": "exact",
+          "assert": "10",
+          "source": "design D-12"
+        },
+        {
+          "id": "A-11.8",
+          "claim": "快捷键说明图标的外框矩形段数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "design D-12"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,95 @@
+## MODIFIED Requirements
+
+### Requirement: 工作区 pane 递归树
+
+工作区 SHALL 以 pane 递归树组织分栏：`node = { id, dir: 'row'|'col', ratio, children }`、`leaf = { id, tabs, activeTabId }`。用户 SHALL 可对聚焦 leaf 右分（⌘⌥→）与下分（⌘⌥↓），新 leaf SHALL 获得焦点；关闭最后一页签 SHALL 删除该 leaf 且兄弟扩展，根 leaf SHALL 不显示关闭按钮。栏目 SHALL NOT 设最小宽高——分隔条 SHALL 可把任一栏拖到 0，比例 SHALL 仅钳制在 `[0,1]`；拖到 0 后双击分隔条 SHALL 复位为 0.5。分隔条 SHALL 双向拖拽；⌘⇧↵ 或格头按钮 SHALL 全屏当前格（隐藏其他格与分隔条，再按或 Esc 恢复）；布局树（结构/比例/页签/活动页签/焦点）SHALL 持久化并重启恢复。
+
+#### Scenario: 栏目可拖到 0
+
+- **WHEN** 用户把某两栏之间的分隔条拖到容器边缘
+- **THEN** 该侧栏目的计算宽或高 SHALL 允许为 0，应用 SHALL NOT 因 240px 下限回弹
+
+### Requirement: 页签条与格头
+
+每格 SHALL 支持多页签：⌘T 新页签（当前格）、⌘W 关页签（最后一签关格）、拖拽排序；页签 SHALL 为类型色图标 + 标题 + ×。双击页签标题 SHALL 进入就地重命名（回车提交、Esc 取消、失焦提交），仅改变显示标题，SHALL NOT 改变文件路径。格头 SHALL 为页签条，右侧 SHALL 为模式图标（点击=预览↔编辑）、全屏图标、⋯ 菜单；⋯ 菜单 SHALL 恰含 7 项（导出/分享/右分/下分/源码模式/定位/复制路径，均带图标，不含全屏）。
+
+拖拽页签期间 SHALL NOT 选中经过的正文文字：拖拽一旦超过阈值，应用 SHALL 进入全局禁选会话，拖拽结束或取消后恢复；拖拽前的既有选区 SHALL NOT 被清空，但拖拽期间 `window.getSelection().toString()` SHALL 保持为空。
+
+页签选中态 SHALL NOT 使用描边、下划线或外框线；选中页签标题 SHALL 使用 `--app-text-strong`（亮色近黑 / 暗色近白），未选中页签文字 SHALL 使用次级色。页签图标 SHALL 分级着色：只有**聚焦栏目的活动页签**图标保留文件类型色；未选中页签与其他栏目的活动页签图标 SHALL 使用 chrome 静息灰。其他栏目的活动页签标题 SHALL 仍使用选中色，以表示该文件处于打开状态。页签容器 SHALL NOT 自绘底边框。栏目处于聚焦态时 SHALL NOT 绘制强调色内描边——聚焦语义由页签与内容表达，拖拽落区环除外。
+
+页签右键菜单 SHALL 恰含 5 项，顺序为：悬浮小窗、向右分栏、向下分栏、关闭、关闭其他；每项 SHALL 带图标。点击「悬浮小窗」SHALL 以被右击页签为锚唤出与文件卡片同款的悬浮预览窗，SHALL NOT 新建第二套悬浮窗实现。
+
+#### Scenario: 拖拽页签不选中正文
+
+- **WHEN** 用户按住页签拖到另一栏，指针经过正文段落
+- **THEN** `window.getSelection().toString()` 的长度 SHALL 为 0
+
+#### Scenario: 选中页签标题为强文字色
+
+- **WHEN** 某页签处于选中态
+- **THEN** 该页签的计算 `outline-width` SHALL 为 0px，标题颜色 SHALL 等于 `--app-text-strong`，且 SHALL NOT 绘制下划线或外框线
+
+#### Scenario: 页签图标分级
+
+- **WHEN** 工作区分两栏，分别有活动页签
+- **THEN** 聚焦栏活动页签图标 SHALL 为文件类型色（Markdown 为 `#6366f1`），非聚焦栏活动页签图标 SHALL 等于 `--app-chrome-rest`，两者标题 SHALL 均为选中色
+
+#### Scenario: 栏目聚焦不画蓝框
+
+- **WHEN** 某栏目获得焦点且未处于页签拖拽落区
+- **THEN** 该栏目 `box-shadow` 中 SHALL NOT 含 1.5px 强调色内描边
+
+#### Scenario: 右键菜单含悬浮小窗
+
+- **WHEN** 用户在页签上唤出右键菜单
+- **THEN** 菜单 SHALL 渲染 5 项，首项文案为「悬浮小窗」并带图标
+- **AND WHEN** 用户点击「悬浮小窗」
+- **THEN** SHALL 出现 `floating-preview`，其 `data-preview-path` SHALL 等于该页签的文件路径
+
+### Requirement: 阅读空间密度与卡片规格
+
+密度 SHALL 三档：紧凑 32px（类型图标+标题 1 行+时间）、舒适 56px（+第二行父路径·时间+收藏标）、卡片 112px（默认；cardHeight 可调 88–160）。卡片 SHALL 含：左侧彩色类型图标 18px+粗体标题（1–2 行）、真内容摘要 2 行（无缩略图时通栏）、右侧 4:3 缩略图 64×48、类型 chip、meta（任务进度或阅读进度+日期+可点路径文字，路径点击 SHALL 在 Finder 中显示，无 folder 图标）。卡片布局 SHALL 为：动作按钮组位于卡片**左下角**，按钮顺序 SHALL 依次为 打开、右分栏、下分栏、收藏、路径；卡片**右上角** SHALL 显示阅读进度（仅百分比数字，指针滑入显示「已读」字样）与时间。hover 动作 SHALL 为纯图标，动作图标渲染尺寸 SHALL 为 14px。收藏动作 SHALL 使用爱心图形（收藏态实心、未收藏态空心）。路径按钮 SHALL 与同行其它按钮使用相同的悬停反馈：悬停只改变文字颜色（至 chrome 悬停色）并显示完整路径，SHALL NOT 绘制悬停底色或背景块。底部动作行 SHALL 贴近卡片底边；卡片处于最小高度时，缩略图、阅读进度与底部动作行 SHALL NOT 相互重叠。
+
+#### Scenario: 路径悬停无底色
+
+- **WHEN** 指针悬停在阅读空间卡片底部的路径按钮上
+- **THEN** 按钮的计算 `background-color` alpha 通道 SHALL 为 0，文字颜色 SHALL 变为 chrome 悬停色，`title` SHALL 为完整路径
+
+### Requirement: 悬浮预览窗（缩略图宽度模型）
+
+应用 SHALL 提供悬浮预览窗渲染真文档内容且内部滚动；最小 260×200，SHALL 支持四边+四角拖拽缩放与贴边翻转。锚定 SHALL 为：阅读空间 x 恒定=栏右缘+12、y 跟随悬停行；网格贴卡片右缘+12、y 贴卡顶。阅读空间悬停唤出的预览窗宽度 SHALL 为「上一版基准宽 + 一个缩略图宽度」。
+
+底部动作区 SHALL 仅在指针位于动作行自身时显示：进入即显示，移出 150ms 内隐藏；预览窗处于钉住态时 SHALL 常显。动作按钮 SHALL 采用与阅读空间卡片相同的悬停反馈——静息 chrome 灰、悬停 chrome 亮色、无悬停底色、图标 14px。动作行 SHALL 依次含 打开 / 分栏→ / 分栏↓ / 路径 四个按钮，其中路径按钮 SHALL 显示 `folder` 图标与父目录名、`title` 为完整路径、点击 SHALL 在 Finder 中显示；动作行 SHALL 在起点增加一个按钮位（24px 左内距），使第一个按钮后移。开关 SHALL 双轨独立：阅读空间悬停（默认开，250ms 延时）、网格（悬停/点击（默认）/关闭）；⌘⇧V SHALL 切换悬浮预览开关。
+
+#### Scenario: 动作行随指针进入与离开切换
+
+- **WHEN** 用户把指针移入悬浮预览窗底部动作区
+- **THEN** 动作行 SHALL 显示，且含 1 个路径按钮
+- **AND WHEN** 指针移出动作区 150ms
+- **THEN** 动作行节点数 SHALL 为 0；钉住态下 SHALL 仍可见
+
+#### Scenario: 动作按钮与卡片同款
+
+- **WHEN** 指针悬停在一个动作按钮上
+- **THEN** 该按钮计算 `background-color` 的 alpha 通道 SHALL 为 0，文字颜色 SHALL 变为 chrome 悬停色
+
+#### Scenario: 动作行整体右移一个按钮位
+
+- **WHEN** 测量动作行的左内距
+- **THEN** SHALL 为 24px
+
+### Requirement: AI 两形态
+
+AI SHALL 有全产品唯一入口：状态栏星芒图标。小窗形态 SHALL 为 285×260、默认右下角距边 16px、标题栏可拖动、四边四角可缩放、× 可关闭；「停靠到右侧」SHALL 将其嵌入分栏树（默认右侧 28% 宽，可拖宽/关闭/再分），⋯ 菜单 SHALL 提供「脱离为小窗」；两形态 SHALL 共享同一对话历史。⌘⇧A SHALL 切换 AI 小窗（⇄ 停靠窗格）。AI 改动 SHALL 有确认卡 + 撤销条（3s 淡出、hover 重现）+ 快照（最近 10 份）。
+
+AI 停靠栏 SHALL NOT 接收文件页签：停靠态下无论是卡片双击、卡片「打开」按钮、`Ctrl+O` 还是拖拽打开文件，页签 SHALL 落到普通内容栏——优先当前聚焦的普通栏，其次最近聚焦的普通栏，最后首个普通栏；打开后 SHALL 立即可见，SHALL NOT 出现「已打开但界面不显示」。打开文件 SHALL NOT 改变 AI 栏的页签数量与对话状态。
+
+#### Scenario: 停靠态卡片打开文件
+
+- **WHEN** AI 已停靠到右栏且焦点在 AI 栏，用户双击一张 md 卡片
+- **THEN** 该文件 SHALL 在工作区普通栏中打开并显示内容，AI 栏页签数变化 SHALL 为 0
+
+#### Scenario: 停靠态 Ctrl+O
+
+- **WHEN** AI 已停靠到右栏，用户按 `Ctrl+O` 并选择一个文件
+- **THEN** 文件 SHALL 打开在普通内容栏，SHALL NOT 落入 AI 栏
