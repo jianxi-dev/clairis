@@ -9,13 +9,15 @@ import { describe, expect, it, vi } from "vitest";
 import {
   rectFromCoords,
   clampRect,
-  placeMenu,
   resolvePlacement,
   intersectRects,
   PANEL_MAX_HEIGHT,
   type AnchorRect,
 } from "../../editors/orchestration/anchor";
-import { createAnchorTracker } from "../../editors/orchestration/placement";
+import {
+  createAnchorTracker,
+  placeMenu,
+} from "../../editors/orchestration/placement";
 import {
   MenuStack,
   menuStack,
@@ -455,7 +457,12 @@ describe("placeMenu", () => {
 
     const r = placeMenu(anchor, size, BOUNDS);
 
-    expect(r).toEqual({ left: 100, top: 154, flipped: "none" });
+    expect(r).toEqual({
+      left: 100,
+      top: 154,
+      flippedX: false,
+      flippedY: false,
+    });
   });
 
   it("底部溢出时翻到锚点上方", () => {
@@ -464,7 +471,7 @@ describe("placeMenu", () => {
     const r = placeMenu(anchor, size, BOUNDS);
 
     expect(r.top).toBe(186); // 240 - 50 - 4
-    expect(r.flipped).toBe("vertical");
+    expect(r.flippedY).toBe(true);
     expect(r.left).toBe(100);
   });
 
@@ -474,7 +481,8 @@ describe("placeMenu", () => {
     const r = placeMenu(anchor, size, BOUNDS);
 
     expect(r.left).toBe(276); // 380 - 100 - 4
-    expect(r.flipped).toBe("horizontal");
+    expect(r.flippedX).toBe(true);
+    expect(r.flippedY).toBe(false);
     expect(r.top).toBe(154);
   });
 
@@ -485,7 +493,7 @@ describe("placeMenu", () => {
 
     expect(r.top).toBe(186);
     expect(r.left).toBe(276);
-    expect(r.flipped).toBe("horizontal");
+    expect(r.flippedX).toBe(true);
   });
 
   it("翻转后仍溢出则夹取到边界内", () => {

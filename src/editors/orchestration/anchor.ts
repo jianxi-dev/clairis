@@ -16,9 +16,6 @@ export interface AnchorRect {
   height: number;
 }
 
-/** 菜单相对锚点的翻转方向。 */
-export type Flip = "none" | "vertical" | "horizontal";
-
 /** 把可能为 NaN / Infinity 的数值收敛为有限数。 */
 function finite(value: number, fallback: number): number {
   return Number.isFinite(value) ? value : fallback;
@@ -215,48 +212,4 @@ export function resolvePlacement(
   }
 
   return { x, y, flippedX, flippedY, maxHeight };
-}
-
-/**
- * 计算菜单左上角。
- *
- * 默认开在锚点下方 `MENU_GAP`；底部溢出先翻到锚点上方，仍溢出则夹进 `bounds`；
- * 水平溢出先翻到锚点左侧，再夹取。`margin` 是菜单与边界的最小间距（默认 8）。
- */
-export function placeMenu(
-  anchor: AnchorRect,
-  size: { width: number; height: number },
-  bounds: AnchorRect,
-  margin = 8,
-): { left: number; top: number; flipped: Flip } {
-  const minLeft = bounds.left + margin;
-  const maxRight = bounds.right - margin;
-  const minTop = bounds.top + margin;
-  const maxBottom = bounds.bottom - margin;
-
-  let top = anchor.bottom + MENU_GAP;
-  let left = anchor.left;
-  let flipped: Flip = "none";
-
-  // 垂直：优先向下；下方放不下翻到上方；再不行夹进边界（D4 规则 2）。
-  if (top + size.height > maxBottom) {
-    const flippedTop = anchor.top - size.height - MENU_GAP;
-    top =
-      flippedTop >= minTop && flippedTop + size.height <= maxBottom
-        ? flippedTop
-        : clampRange(top, minTop, maxBottom - size.height);
-    flipped = "vertical";
-  }
-
-  // 水平：优先贴锚点左侧；右侧放不下翻到左侧；再不行夹进边界（D4 规则 1）。
-  if (left + size.width > maxRight) {
-    const flippedLeft = anchor.right - size.width - MENU_GAP;
-    left =
-      flippedLeft >= minLeft && flippedLeft + size.width <= maxRight
-        ? flippedLeft
-        : clampRange(left, minLeft, maxRight - size.width);
-    flipped = "horizontal";
-  }
-
-  return { left, top, flipped };
 }

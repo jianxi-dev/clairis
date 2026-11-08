@@ -462,3 +462,127 @@ test("对齐入口：异对齐换类名", async ({ page }) => {
     .poll(() => storeContent(page))
     .toBe("# 标题\n\n::: {.align-right}\n第一段正文\n:::\n\n第二段正文\n");
 });
+
+async function rectGap(
+  page: Page,
+  selector: string,
+  reference: string,
+): Promise<{ dx: number; dy: number }> {
+  return page.evaluate(
+    ({ selector, reference }) => {
+      const a = document.querySelector(selector)!.getBoundingClientRect();
+      const b = document.querySelector(reference)!.getBoundingClientRect();
+      const dx = Math.max(0, b.left - a.right, a.left - b.right);
+      const dy = Math.max(0, b.top - a.bottom, a.top - b.bottom);
+      return { dx, dy };
+    },
+    { selector, reference },
+  );
+}
+
+test("菜单贴着块手柄：矩形间距不超过 8px", async ({ page }) => {
+  await hoverHandle(page, 2);
+
+  const gap = await rectGap(
+    page,
+    '[data-testid="block-menu"]',
+    '[data-testid="block-handle"]',
+  );
+  expect(gap.dx).toBeLessThanOrEqual(8);
+  expect(gap.dy).toBeLessThanOrEqual(8);
+  await page.screenshot({ path: ".artifacts/371/01-gap.png" });
+});
+
+test("连续两次召唤同一菜单，偏移完全一致", async ({ page }) => {
+  await hoverHandle(page, 2);
+  const before = await page
+    .locator('[data-testid="block-menu"]')
+    .evaluate((el) => {
+      const style = (el as HTMLElement).style;
+      return { left: style.left, top: style.top };
+    });
+
+  await page.keyboard.press("Escape");
+  await expect(page.locator('[data-testid="block-menu"]')).toHaveCount(0);
+
+  await hoverHandle(page, 2);
+  const after = await page
+    .locator('[data-testid="block-menu"]')
+    .evaluate((el) => {
+      const style = (el as HTMLElement).style;
+      return { left: style.left, top: style.top };
+    });
+
+  expect(after).toEqual(before);
+});
+
+test("触发元素贴底时菜单完整留在视口内", async ({ page }) => {
+  // 视口压到 320px 高：块手柄所在行贴近底边，菜单无论如何都要留在视口内。
+  await page.setViewportSize({ width: 1000, height: 320 });
+  await hoverHandle(page, 2);
+
+  const inside = await page.evaluate(() => {
+    const el = document.querySelector(
+      '[data-testid="block-menu"]',
+    ) as HTMLElement;
+    const r = el.getBoundingClientRect();
+    return {
+      top: r.top,
+      left: r.left,
+      bottom: r.bottom,
+      right: r.right,
+      innerHeight: window.innerHeight,
+      innerWidth: window.innerWidth,
+    };
+  });
+  expect(inside.top).toBeGreaterThanOrEqual(0);
+  expect(inside.left).toBeGreaterThanOrEqual(0);
+  expect(inside.bottom).toBeLessThanOrEqual(inside.innerHeight);
+  expect(inside.right).toBeLessThanOrEqual(inside.innerWidth);
+  await page.screenshot({ path: ".artifacts/371/02-bottom-edge.png" });
+});
+
+test("视口右侧放不下时菜单翻到锚点左侧，仍在视口内", async ({ page }) => {
+  await page.setViewportSize({ width: 520, height: 640 });
+  await hoverHandle(page, 2);
+
+  const box = await page.evaluate(() => {
+    const el = document.querySelector(
+      '[data-testid="block-menu"]',
+    ) as HTMLElement;
+    const r = el.getBoundingClientRect();
+    return { left: r.left, right: r.right, innerWidth: window.innerWidth };
+  });
+  expect(box.left).toBeGreaterThanOrEqual(0);
+  expect(box.right).toBeLessThanOrEqual(box.innerWidth);
+  await page.screenshot({ path: ".artifacts/371/03-flip-left.png" });
+});
+
+test("选区工具条同样走统一落位，贴选区下方且不越视口", async ({ page }) => {
+  const line = page.locator(".cm-line").nth(2);
+  const box = (await line.boundingBox())!;
+  const y = box.y + box.height / 2;
+  await page.mouse.move(box.x + 3, y);
+  await page.mouse.down();
+  await page.mouse.move(box.x + Math.min(box.width - 3, 60), y, { steps: 6 });
+  await page.mouse.up();
+
+  const toolbar = page.locator('[data-testid="floating-toolbar"]');
+  await expect(toolbar).toBeVisible({ timeout: 3000 });
+  const rect = await toolbar.evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    return {
+      top: r.top,
+      left: r.left,
+      bottom: r.bottom,
+      right: r.right,
+      innerHeight: window.innerHeight,
+      innerWidth: window.innerWidth,
+    };
+  });
+  expect(rect.top).toBeGreaterThanOrEqual(0);
+  expect(rect.left).toBeGreaterThanOrEqual(0);
+  expect(rect.bottom).toBeLessThanOrEqual(rect.innerHeight);
+  expect(rect.right).toBeLessThanOrEqual(rect.innerWidth);
+  await page.screenshot({ path: ".artifacts/371/04-toolbar.png" });
+});
