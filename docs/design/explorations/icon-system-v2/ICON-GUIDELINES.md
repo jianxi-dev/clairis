@@ -1,8 +1,11 @@
 ---
 title: 标月图标体系规范 v2（草案）
 type: design
-status: draft
-last_updated: 2026-11-07
+status: superseded
+last_updated: 2026-11-08
+source_of_truth: historical
+superseded_by: ../../system/spec.md
+redirect: ../../system/spec.md
 ---
 
 # 标月图标体系规范 v2（草案）

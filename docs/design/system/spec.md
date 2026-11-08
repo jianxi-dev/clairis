@@ -1,0 +1,169 @@
+---
+title: "标月设计系统规格"
+type: design
+status: in-review
+last_updated: 2026-11-08
+source_of_truth: canonical
+---
+
+# 标月设计系统规格
+
+> 本文件是**视觉数值的唯一来源**。任何界面、票面、e2e 断言需要具体像素值时引用本文件条款号，不复制数值。
+> 具体部件的单点裁决记在 [decisions.md](./decisions.md)（append-only 台账），与本文件分工见 §9。
+
+## 1. 定位与权威
+
+- **位置**：`docs/design/system/`，属 approved design 范畴，在权威优先级矩阵中位于**第 4 层**（见 `docs/README.md` §二、`GOVERNANCE.md` §5）。
+- **冲突裁定**：本文件与 canonical spec（`openspec/specs/`）或 ADR 冲突时，**后者胜**，本文件修订。
+- **对外关系**：单 feature 设计（`docs/design/approved/<feature>/`）**只引用条款号，不复制数值**；票面同理。
+- **本文的性质**：**誊写 + 收敛**，不是发明。下表每个数值都能追溯到"已在用"或"已被用户裁决"；无来源的新档位一律不写进来。
+
+## 2. 图标系统
+
+吸收 `explorations/icon-system-v2/ICON-GUIDELINES.md` 的规则框架 + `icon-system-v3/PROTOTYPE-QA.md` 七轮评审的最终形状决案（v3 晚于 v2，冲突时 v3 胜）。两代原文已标 superseded，仅作历史。
+
+### 2.1 网格与笔画
+
+| 项 | 规范 |
+|---|---|
+| viewBox | `0 0 24 24` |
+| 安全区 | 四周 2px，所有笔画落在 2..22 |
+| 等效笔画 | **1.7px**（1.6–1.8 区间）；`stroke-linecap="round"` `stroke-linejoin="round"` |
+| 圆角 | 容器 2px；小元素 1–1.5px |
+| 光学对齐 | 按视觉重心居中，不按包围盒硬居中；圆形元素比方形大 0.5px |
+| 密度 | 单个图标内部 ≤6 条独立笔画，超出则简化语义 |
+| 尺寸 | **只用 18 / 24 两档**，第三档不存在（台账·图标尺寸） |
+| 颜色 | path 内不写死颜色，一律 `currentColor`；类型色由容器 `--type-*` 提供 |
+
+### 2.2 实现契约
+
+保留现有 `Icon` 组件 `fill="currentColor"` 契约：描边图标在 path 上写
+`fill="none" stroke="currentColor" stroke-width="1.7"`。新增概念必须同时更新 `src/ui/icons.ts` 的 `ICONS` 表，禁止组件内联一次性 SVG。
+
+### 2.3 语义分组（33 概念）
+
+| 组 | 概念 |
+|---|---|
+| 文件类型（8） | markdown / html / text / pdf / video / image / code / audio |
+| 导航与外观（10） | folder / file / search / grid / pin / chevronLeft / chevronRight / sun / moon / monitor |
+| 动作（10） | close / settings / expand / more / eye / pencil / export / share / locate / copyPath |
+| 状态（2） | check / warning |
+| 分屏（2） | splitRight / splitDown |
+| AI（1） | sparkle |
+
+### 2.4 状态对规则
+
+可逆动作**必须成对**：pin / pinOff、expand / collapse、volume / volumeMute、play / pause、沉浸进入 / 退出。禁止出现单向孤儿（只能进不能出的图标）。
+
+### 2.5 已定案形状（v3 覆盖 v2 的部分）
+
+| 概念 | 定案 |
+|---|---|
+| markdown | 圆角纸片 + 粗 M（M 宽 7 单位；18px 下 5.25px 可读） |
+| html / code | html 带斜杠 `</>`；code 无斜杠 `<>`（并排可区分） |
+| pin / pinOff | 矩形钉头 + 三角钉身 + 针；pinOff 斜杠只穿钉身 |
+| settings | 7 齿圆头齿轮 + 内孔（圆环），半径 9.2 |
+| immersive | 圆相（Ensō），缺口在下 |
+| eye（预览） | 眼睛（两段三次贝塞尔 + 瞳孔），不用眼镜 |
+| speed | 240° 速度表：弧 + 指针 + 轴心 |
+| split | 实线格 + 虚线格，间距 3 单位 |
+| export / share | export = 向上箭头 + 开口托盘；share = 三节点连线（两者不共用托盘构图） |
+
+### 2.6 注意事项
+
+- `collapse` 在 18px 下四角括号内收后形态略接近「+」：必须保留 tooltip 与 `aria-pressed` 兜底；实现时内收位移取 6 单位。
+- 新增概念先问「能否用已有概念表达」，不能才增，避免概念表膨胀。
+
+## 3. 间距刻度
+
+来源：`src/styles/*.css` 实际取值频次统计（2026-11-08）。下表只登记**已在实际使用**的值，按频次收敛为刻度。
+
+| 规范值 | 值 | 出现次数 | 用途 |
+|---|---|---|---|
+| `--space-2` | 2px | 2 次 | 图标与文字的紧贴间距、微调 |
+| `--space-4` | 4px | 104 次 | 紧凑内距、行内元素间隔（主力档） |
+| `--space-6` | 6px | 76 次 | 控件内距、按钮水平 padding |
+| `--space-8` | 8px | 58 次 | 常规内距、列表项间隔 |
+| `--space-10` | 10px | 38 次 | 行高补偿、中等内距 |
+| `--space-12` | 12px | 54 次 | 区块内距 |
+| `--space-16` | 16px | 34 次 | 区块间间隔 |
+| `--space-24` | 24px | 16 次 | 区域分隔、大留白 |
+
+**不进入刻度的值**：`1px`（186 次）为发丝线与边框，语义固定，不入刻度也不 token 化；`3px` / `5px` / `7px` / `14px` 为微调值，允许出现但不作为新代码的首选档。
+
+**新代码规则**：新增布局间距从刻度取值；确需刻度外值时，在 PR 说明理由，不得默默写数。
+
+## 4. 字号阶梯
+
+来源同上（`font-size` 频次统计）。
+
+| 规范值 | 实际次数 | 用途 |
+|---|---|---|
+| `--fs-11` | 11px | 5 次 | 极小标注、状态栏副信息 |
+| `--fs-12` | 12px | 13 次 | 次级 UI 文本（主力） |
+| `--fs-13` | 13px | 6 次 | 常规 UI 文本（主力） |
+| `--fs-14` | 14px | 3 次 | 强调 UI 文本、按钮 |
+
+**正文字号不在此表**：阅读区字号由用户阅读设置控制（见 `approved/reader-typography/`），不受 UI 档位约束。
+
+## 5. 圆角与阴影
+
+**现存矛盾（必须知道）**：`tokens.css` 定义 `--app-radius: 6px`，但实际 CSS 中 `border-radius: 4px` 出现 21 次、`6px` 仅 5 次。规范按**实际使用**裁定，`6px` 保留为存量值，不新增使用。
+
+| 名称 | 值 | 用途 |
+|---|---|---|
+| `--radius-4` | 4px | 控件、按钮、菜单行（基准） |
+| `--radius-8` | 8px | 卡片、浮层、弹窗 |
+| `--radius-full` | 999px | 胶囊、圆形 |
+| `--app-radius` | 6px | **存量**，不新增使用 |
+
+阴影沿用唯一一处定义：`--app-shadow: 0 1px 2px rgba(31,26,20,.05), 0 8px 24px rgba(31,26,20,.05)`。不新增第二档阴影。
+
+## 6. 语义色
+
+来源：`src/styles/tokens.css` 三主题现状**誊写**（不重新设计）。
+
+| 变量 | 亮（:root） | 暗（.dark） | 暖（.warm） |
+|---|---|---|---|
+| `--app-accent` | `#6366f1` | `#818cf8` | `#0071e3` |
+| `--app-bg` | `#f7f7f6` | `#131316` | `#f2e9da` |
+| `--app-surface` | `#fbfaf8` | `#1a1b1e` | `#fbf4e8` |
+| `--app-sunken` | `#f4f2ec` | `#22242a` | `#efe3d0` |
+| `--app-text` | `#24262b` | `#d8dade` | `#3b3024` |
+| `--app-text-strong` | `#16181c` | `#eceef1` | `#241c12` |
+| `--app-text-2` | `#55595f` | `#a7abb3` | `#6b5a45` |
+| `--app-text-3` | `#8b8f96` | `#75797f` | `#96826a` |
+| `--app-border` | `#e7e3db` | `#2e3138` | `#e0d2bc` |
+| `--app-border-strong` | `#d8d3c8` | `#3d4149` | `#cdbca1` |
+
+**类型色**（三主题不换色，类型色是识别标志）：markdown `#6366f1`、html `#f59e0b`、text `#64748b`、pdf `#ef4444`、video `#a855f7`、image `#10b981`、code `#06b6d4`、audio `#ec4899`。
+
+**错误色**：`#ef4444`（现用于 3 处）。**红色只用于错误**，绝不用于脏状态、未保存、警告提示。
+
+**已知缺口**：错误色尚无独立 token（复用类型色值）；`--app-accent-soft` 各主题 alpha 不同（亮 .10 / 暗 .14 / 暖 .08）。两处均在第二个 change 的 token 扩容时处理，本文件先登记，不假装已完成。
+
+## 7. 审美判据（L3，人工裁决，不机检）
+
+来源：`explorations/ui-philosophy/ui-design-philosophy.md` §六检验清单（该文其余数值已作废，仅此清单回收）。每个视觉决策过一遍：
+
+- 能删吗？删掉会影响核心功能吗？
+- 能合并吗？能不能和其他入口合并？
+- 默认出现吗？用户需要时它在那里吗？
+- 能直觉发现吗？不看书能不能找到？
+- 能一键完成吗？操作路径 = 1？
+- 提醒打扰吗？不打扰，除非出错。
+- 心智模型一致吗？和浏览器 / 系统习惯一致吗？
+
+## 8. 明确不做
+
+不为每个像素立法；不做组件模式库；不做动效规范；不做品牌指南；不机检 §7 判据；不因本文件重画已定案图标。
+
+## 9. 变更方式
+
+| 变更性质 | 方式 |
+|---|---|
+| 某个具体部件的单点裁决（尺寸/形状/边框） | 追加 [decisions.md](./decisions.md) 一行，不改本文件 |
+| 刻度级修订（间距/字号/圆角/语义色档位） | supersede：新建本文件新版，旧版标 `status: superseded` + `superseded_by`（`GOVERNANCE.md` §2.3） |
+| 发现本文件缺条款（spec gap） | 先补条款再实现；票面报 gap 是健康信号，不是失败 |
+
+<!-- 数值溯源：间距/字号/圆角频次统计于 2026-11-08，范围 src/styles/*.css（不含 Tailwind 兼容层工具类）；图标规格溯源自 icon-system-v2 §1–§2 与 v3 QA 第一至七轮；语义色逐值誊自 tokens.css。 -->
