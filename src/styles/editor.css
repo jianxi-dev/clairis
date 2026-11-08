@@ -2031,7 +2031,9 @@ body {
 .cm-block-menu-grid {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  gap: 2px;
+  /* 前两行（标题 / 无序列表）之间收紧到 0，与下方结构动作行的 36px 行距拉开
+   * 层次；#373 要求这两行比其它相邻行更紧。 */
+  gap: 0 2px;
   padding: 0 5px;
 }
 
