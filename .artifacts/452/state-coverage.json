@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "右键菜单五项",
+      "screenshot": ".artifacts/452/01-menu-five-items.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T17:31:44Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "首项悬浮小窗悬停",
+      "screenshot": ".artifacts/452/02-menu-first-hover.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T17:31:44Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "悬浮预览打开",
+      "screenshot": ".artifacts/452/03-preview-open.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T17:31:44Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "关闭后无残留",
+      "screenshot": ".artifacts/452/04-preview-closed.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T17:31:44Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}

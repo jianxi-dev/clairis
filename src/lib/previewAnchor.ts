@@ -210,7 +210,7 @@ export function flipAnchor(
 }
 
 /** 预览窗由哪一侧触发打开——用于「换行重锚」时只重锚同源预览。 */
-export type PreviewAnchorSource = "rail" | "grid";
+export type PreviewAnchorSource = "rail" | "grid" | "tab";
 
 /** 悬浮预览窗的瞬时状态；不持久化（关闭即丢，重开回默认锚定）。 */
 export interface PreviewState {
