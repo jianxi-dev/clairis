@@ -1,8 +1,11 @@
 ---
 title: 图标体系 v3 小样 · 三主题逐格验证记录
 type: design
-status: in-review
-last_updated: 2026-11-07
+status: superseded
+last_updated: 2026-11-08
+source_of_truth: historical
+superseded_by: ../../system/spec.md
+redirect: ../../system/spec.md
 prototype: ./icon-system-v3-proto.html
 ---
 

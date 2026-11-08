@@ -1,3 +1,11 @@
+---
+title: "缺陷管理流程"
+type: guide
+status: accepted
+last_updated: 2026-11-08
+source_of_truth: supporting
+---
+
 # 缺陷管理流程
 
 > 本仓库所有缺陷统一使用 **GitHub Issues** 管理，仓库：`jianxi-dev/clairis`
@@ -91,6 +99,33 @@ gh issue close <编号> --comment "已修复，提交 commit: xxx"
 
 - `<module-a>` - 模块 A
 - `<module-b>` - 模块 B
+
+---
+
+## 非功能视觉缺陷（视觉偏差票）
+
+「太大」「太丑」「斜杠有点长」这类反馈不是功能 bug，但必须可提票、可度量、可关闭，否则只能挤进 P3 或不了了之。
+
+**定义**：界面元素在**位置、尺寸、比例、形状、层级、留白**上与 `docs/design/system/spec.md` 条款或 `decisions.md` 台账行不一致；功能行为本身正常。
+
+**建票规则**
+
+- 标签：复用 `bug` + `ui-surface` + 模块标签，**不新建专用标签**。
+- 级别：默认 P3；影响可读性或主流程识别（控件遮挡内容、控件过小点不中）时 P2。
+- 票面必须含三样，缺一样视为信息不足、回 `needs-info`：
+  1. **规范锚点**：`design-system:§N` 或 `ledger:<部件>`
+  2. **现状值**：现在是多少（px / 比例 / 实测截图）
+  3. **期望值**：按规范应为多少，或明确的期望终态描述
+
+- 票面写法：在 `**Acceptance criteria**` 之后增加一行 `**视觉锚点**: design-system:§N` 或 `**视觉锚点**: ledger:<部件>`，多条用 `;` 分隔；**锚点内不得写像素值**（数值只在 spec 定义）。该字段是 `cw-tickets-check.sh` C9 的检查对象（C9 随第二个 change 落地，在此之前由 code-review 执行）。
+
+用户只给模糊描述时，执行者先补全三样，并给 2–3 个候选终态供选择（见 `docs/agents/ui-feedback.md`），再开票或直接改。
+
+**锚点不存在时**（gap）：先补条款或补台账行，不把「规范没有」当成「可以随便定」。gap 本身是正常信号，不等于缺陷挂起。
+
+**关闭条件**：修后附 before/after 成对证据（QG-5 / `evidence-capture`），票面写清对上了哪一条款。
+
+**升级规则**：同一部件 30 天内出现第 2 张视觉偏差票 → 至少追加一行台账并写明复发；累计 **≥3 张同源票**时按 DQ-7 强制升级为规范修订（阈值与 `quality-gates.md` 的 DQ-7 一致）。
 
 ---
 

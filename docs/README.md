@@ -35,6 +35,7 @@
 | 可验收行为（功能怎么算对） | `openspec/specs/`（当前规格真相源） | 逐功能 requirement 与 scenario 的 canonical 归属（6 个功能域规格已建立） |
 | 当前架构（现状是什么样） | [docs/architecture/overview.md](./architecture/overview.md) | 架构现状总览；现状改变只通过 ADR 记录 |
 | 设计体验（界面/交互/视觉定案） | [docs/design/approved/](./design/approved/README.md) | 已批准的生效设计；探索稿不在此 |
+| 视觉数值规范（图标/间距/字号/圆角/色） | [docs/design/system/](./design/system/README.md) | 跨界面共享的设计系统；feature 设计与票面引用其条款号，不复制数值 |
 | 进行中工作（正在改什么） | `openspec/changes/`（活动变更） | 进行中的变更 delta，仅在该变更范围内有效 |
 | 历史调查（过去是什么样/为什么） | [docs/architecture/decisions/](./architecture/decisions/README.md)、`docs/archive/`、[docs/design/explorations/](./design/explorations/README.md) | ADR + 归档 + 设计探索，仅用于回溯 |
 

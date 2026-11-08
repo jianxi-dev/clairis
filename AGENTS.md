@@ -32,6 +32,7 @@ Biaoyue 面向中文用户，维护者母语为中文。以下为**硬约定**�
 - **共享词汇与架构决策（Real Engineers）**：词汇表 `CONTEXT.md`；架构现状 `docs/architecture/overview.md`，架构决策 `docs/architecture/decisions/`
 - **项目结构与模块地图（OmO init-deep）**：`.opencode/project-tree.md`；OmO 命令与技能在 `.opencode/`
 - **架构/产品/设计文档**：`docs/`（索引 `docs/README.md`）：产品 `docs/product/`、批准设计 `docs/design/approved/`、探索 `docs/design/explorations/`、研究 `docs/research/`、交付 `docs/delivery/`、历史 `docs/archive/`；总纲由 `docs/README.md` + `docs/architecture/overview.md` 承担
+- **设计系统（视觉数值唯一来源）**：`docs/design/system/spec.md`（图标/间距/字号/圆角/语义色/判据）、`docs/design/system/decisions.md`（append-only 部件决案台账）；单 feature 设计在 `docs/design/approved/`，只引用条款号不复制数值
 - **知识检索（GBrain）**：agent 通过 MCP 工具 `search` / `query` / `get_page` / `code_def` / `code_refs`（共享 HTTP owner，`http://127.0.0.1:3131/mcp`）。PGLite 单写者下，同样功能的 CLI `gbrain search/query/status` 会报 `pglite_busy`；`gbrain sync` 例外，走委托可正常跑。**无常驻 autopilot**，索引刷新用 `/sync-gbrain`。配置 `~/.gbrain/config.json`。
 - **需求基线与跟踪**：产品愿景/原则/范围 `docs/product/`，交付路线图 `docs/delivery/roadmap.md`，功能规格 `openspec/specs/`，需求×实现状态一览 `docs/delivery/requirements-status.md`（旧 `CORE-REQUIREMENTS-clairis.md`/`PLAN.md`/`MVP-需求跟踪表.md` 等已 superseded/归档，不作活入口）
 - **软著资料准备**：`docs/delivery/softcopyright/`（台账/开发流程证据链规范/申请操作手册）
@@ -111,6 +112,9 @@ Biaoyue 面向中文用户，维护者母语为中文。以下为**硬约定**�
 - 不与用户确认不动文件、不动跟踪表。
 - 设计文档中文 + 保留 markdown 格式。
 - 评审先 /codex N 轮碰撞。
+- 视觉数值只在 `docs/design/system/spec.md` 定义一次；feature 稿、票面、e2e 断言引用条款号或 token 名，不复制像素值。
+- 实现可见 UI 前，票面须有第七字段 `**视觉锚点**:`，值为 `design-system:§N` 或 `ledger:<部件>`（多条用 `;` 分隔，锚点内不写像素值）。它与 change 的 conformance 验收锚点（`A-<n>.<m>`）是**两个东西**：前者指规范条款，后者指本次验收断言。spec 无对应条款 = 规范缺口，先补条款再写码。**已知弱点**：C9 机检随第二个 change 落地，在此之前由 code-review 执行。
+- 单点视觉裁决落 `docs/design/system/decisions.md` 一行（append-only）；刻度级修订走 spec supersede。
 
 ## GBrain Configuration（由 /setup-gbrain 配置）
 
