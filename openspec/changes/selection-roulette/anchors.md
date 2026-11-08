@@ -56,9 +56,9 @@
 
 | id | kind | claim | assert | source |
 |---|---|---|---|---|
-| A-6.1 | state-machine | HTML 编辑态选中元素后出现轮盘 | "true" | design R-D7 |
-| A-6.2 | exact | HTML 编辑态 `.html-edit-toolbar` 横向条节点数 | 0 | design R-D7 |
-| A-6.3 | state-machine | 轮盘换标签后 content 同步 | "true" | design R-D7 |
+| A-6.1 | state-machine | HTML 源码编辑态选中文字后出现轮盘 | "true" | design R-D7 |
+| A-6.2 | exact | HTML 源码编辑态 `.html-edit-toolbar` 横向条节点数 | 0 | design R-D7 |
+| A-6.3 | state-machine | 源码编辑态轮盘加粗后 content 含 `**` | "true" | design R-D7 |
 
 ## R-7 单轨与可访问性
 

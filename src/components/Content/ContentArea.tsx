@@ -27,6 +27,7 @@ import {
 } from "../../editors/slash";
 import { loadUserExtensions } from "../../editors/user-extensions";
 import HtmlVisualEditor from "./HtmlVisualEditor";
+import { floatingToolbar } from "../../editors/orchestration/floating-toolbar";
 import { smartInput } from "../../editors/smart-input";
 import { blockHandle } from "../../editors/orchestration/block-handle";
 import {
@@ -80,17 +81,17 @@ function createLanguageExtension(kind: FileKind) {
         decorCompartment.of(fullDecorations(editorDecorationOptions)),
       ];
     case "html":
-      return [html()];
+      return [html(), floatingToolbar()];
     case "css":
-      return [css()];
+      return [css(), floatingToolbar()];
     case "python":
-      return [python()];
+      return [python(), floatingToolbar()];
     case "json":
-      return [json()];
+      return [json(), floatingToolbar()];
     case "javascript":
-      return [javascript({ typescript: true })];
+      return [javascript({ typescript: true }), floatingToolbar()];
     case "yaml":
-      return [yaml()];
+      return [yaml(), floatingToolbar()];
     default:
       return [];
   }
