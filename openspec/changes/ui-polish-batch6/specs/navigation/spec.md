@@ -114,7 +114,7 @@
 
 ### Requirement: 图标体系
 
-全站图标 SHALL 使用静态 path 表（24×24 viewBox、`fill="currentColor"`、18px 密集/24px 主操作），SHALL NOT 引入图标库（含 universe-icon）、sprite、mask-CSS 或任何构建步骤。图标语言 SHALL 以描边为主（1.7、圆头圆角），实心仅用于播放/暂停、省略号（更多）、AI 星芒三处例外。SHALL 一概念一图标、同概念全产品同图标、不混风格、禁 emoji。可逆动作 SHALL 成对出现（全屏/退出、播放/暂停、音量/静音、钉住/取消钉住、循环三态），由成对 `IconName` 承载、调用点按下一个动作选择，SHALL NOT 给 `Icon` 组件加 state prop；钉住的调用点 SHALL 在钉住态渲染 `pinOff`、未钉住态渲染 `pin`。pin 与 pinOff 的图形 SHALL 收细：图钉帽下的梯形 SHALL 相对钉帽下移、取消钉住的斜杠 SHALL 只覆盖图钉本体，SHALL NOT 用横贯整格的斜杠。编辑器插入菜单的同族图标 SHALL 两两可辨：分栏图标 SHALL 按 1/2/3/4/5 栏画出真实分割比例，表格 SHALL 为封口网格，数据看板、插入 HTML、插入 CSS、流程图、视频、文件、内嵌网页 SHALL 各自成图，SHALL NOT 出现两组完全相同的 path；剪切块图标 SHALL 为直观的剪切语义图形。导出族 SHALL 为不同格式提供各自可辨的图标（Word / ZIP / .mdpkg），SHALL NOT 复用文件/文件夹/通用 markdown 图标。视频「字幕」与「快捷键说明」SHALL 为可区分的两个图形（字幕=对话气泡形、快捷键说明=键位格形）。播放器自绘控件图标的渲染尺寸 SHALL 与原生控件一致（统一视觉尺寸），SHALL NOT 出现全屏/画中画明显大于其它控件的现象。图标 SHALL 支持随主题着色（浅/深/暖），暖色主题下强调色调用点 SHALL 解析为暖色 `--app-accent`。类型色 SHALL 固定 8 类：Markdown #6366f1、HTML #f59e0b、文本 #64748b、PDF #ef4444、视频 #a855f7、图片 #10b981、代码 #06b6d4、音频 #ec4899。标签 SHALL 三级可设置（自动：主入口图标+文字、重复处仅图标/始终显示文字/仅图标）。设置内 SHALL 提供图标抽屉查看全部在用图标（名称/尺寸/已有-新绘）。
+全站图标 SHALL 使用静态 path 表（24×24 viewBox、`fill="currentColor"`、18px 密集/24px 主操作），SHALL NOT 引入图标库（含 universe-icon）、sprite、mask-CSS 或任何构建步骤。图标语言 SHALL 以描边为主（1.7、圆头圆角），实心仅用于播放/暂停、省略号（更多）、AI 星芒三处例外。SHALL 一概念一图标、同概念全产品同图标、不混风格、禁 emoji。可逆动作 SHALL 成对出现（全屏/退出、播放/暂停、音量/静音、钉住/取消钉住、循环三态），由成对 `IconName` 承载、调用点按下一个动作选择，SHALL NOT 给 `Icon` 组件加 state prop；钉住的调用点 SHALL 在钉住态渲染 `pinOff`、未钉住态渲染 `pin`。pin 与 pinOff 的图形 SHALL 收细：图钉帽下的梯形 SHALL 相对钉帽下移、取消钉住的斜杠 SHALL 只覆盖图钉本体，SHALL NOT 用横贯整格的斜杠。编辑器插入菜单的同族图标 SHALL 两两可辨：分栏图标 SHALL 按 1/2/3/4/5 栏画出真实分割比例，表格 SHALL 为封口网格，数据看板、插入 HTML、插入 CSS、流程图、视频、文件、内嵌网页 SHALL 各自成图，SHALL NOT 出现两组完全相同的 path；剪切块图标 SHALL 为直观的剪切语义图形。导出族 SHALL 为不同格式提供各自可辨的图标（Word / ZIP / .mdpkg），SHALL NOT 复用文件/文件夹/通用 markdown 图标。视频「字幕」与「快捷键说明」SHALL 为可区分的两个图形（字幕=对话气泡形、快捷键说明=键位格形）。播放器自绘控件图标的渲染尺寸 SHALL 与原生控件一致（统一视觉尺寸），SHALL NOT 出现全屏/画中画明显大于其它控件的现象。图标 SHALL 支持随主题着色（浅/深/暖），暖色主题下强调色调用点 SHALL 解析为暖色 `--app-accent`。主题选择器中「亮色」与「暖色」SHALL 使用可区分的图形（以光线线条数表达亮度差异，亮色多于暖色），SHALL NOT 复用同一形状。类型色 SHALL 固定 8 类：Markdown #6366f1、HTML #f59e0b、文本 #64748b、PDF #ef4444、视频 #a855f7、图片 #10b981、代码 #06b6d4、音频 #ec4899。标签 SHALL 三级可设置（自动：主入口图标+文字、重复处仅图标/始终显示文字/仅图标）。设置内 SHALL 提供图标抽屉查看全部在用图标（名称/尺寸/已有-新绘）。
 
 #### Scenario: 类型色一致性
 
@@ -161,6 +161,11 @@
 
 - **WHEN** 审查打包产物与 `src/ui/icons.ts`
 - **THEN** 图标 SHALL 全部来自静态 path 表，SHALL NOT 存在图标库依赖或运行时生成
+
+#### Scenario: 亮色与暖色图标不同
+
+- **WHEN** 打开主题选择面板
+- **THEN** 「亮色」与「暖色」两项的图标 path SHALL 不同，亮色图标的光线线条数 SHALL 多于暖色
 
 #### Scenario: 编辑器图标不重复
 

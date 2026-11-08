@@ -23,6 +23,7 @@ import { revealInFinder } from "../../lib/finder";
 import { buildAssetUrl, renderMarkdown, renderText } from "../../renderers";
 import { mediaUrlForPath, resolveDocMediaHref } from "../../lib/mediaUrl";
 import { isTauriEnv } from "../../utils/tauri";
+import { pdfThumbOf } from "../../lib/pdfThumb";
 import { log } from "../../utils/log";
 
 /**
@@ -75,6 +76,40 @@ function railBox(): Box | null {
 }
 
 /** 媒体真实渲染：图片 img、视频/音频播放器；PDF 与非 Tauri 环境回占位。 */
+function PdfPreviewBody({ path, title }: { path: string; title: string }) {
+  const [src, setSrc] = useState<string | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    void pdfThumbOf(path).then((url) => {
+      if (alive) setSrc(url);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [path]);
+
+  if (!src) {
+    return (
+      <div
+        data-testid="preview-pdf"
+        className="flex h-full w-full items-center justify-center bg-white text-xs text-[var(--app-text-3)]"
+      >
+        PDF 预览
+      </div>
+    );
+  }
+
+  return (
+    <img
+      data-testid="preview-pdf"
+      src={src}
+      alt={title}
+      className="h-full w-full bg-white object-contain"
+    />
+  );
+}
+
 function MediaBody({ path, kind }: { path: string; kind: FileTypeKind }) {
   if (!isTauriEnv()) return <MediaPlaceholder path={path} />;
   if (kind === "image") {
@@ -396,17 +431,7 @@ export default function FloatingPreview({
       return <MediaBody path={previewPath} kind={kind} />;
     }
     if (kind === "pdf") {
-      return (
-        <iframe
-          data-testid="preview-pdf"
-          title={previewTitle}
-          src={
-            buildAssetUrl(previewPath) +
-            "#toolbar=0&navpanes=0&scrollbar=0&view=FitH"
-          }
-          className="h-full w-full border-0 bg-white"
-        />
-      );
+      return <PdfPreviewBody path={previewPath} title={previewTitle} />;
     }
     if (kind === "html") {
       // 沙箱 iframe：无 allow-scripts，脚本不执行；只展示真内容

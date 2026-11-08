@@ -173,3 +173,47 @@ Ctrl 与 Cmd 等价。
 |---|---|---|---|---|
 | A-18.1 | state-machine | Control+z 后内容相对前态发生变化 | """true""" | spec 撤销与重做快捷键 |
 | A-18.2 | state-machine | Meta+z 后内容变化与 Control+z 相同 | """true""" | spec 撤销与重做快捷键 |
+
+## R-19 主题按钮去三角与图标区分
+
+主题按钮只留一个图标；亮色与暖色用线条数区分。
+
+| id | kind | claim | assert | source |
+|---|---|---|---|---|
+| A-19.1 | exact | 主题按钮内 svg 数量 | 1 | spec 状态栏 |
+| A-19.2 | state-machine | 亮色与暖色图标 path 不同且亮色光线更多 | """true""" | spec 图标体系 |
+
+## R-20 宽度面板改版
+
+三斜面柱 + 下行长滑块，上限 1400，面板跟随指针。
+
+| id | kind | claim | assert | source |
+|---|---|---|---|---|
+| A-20.1 | exact | 宽度滑块 max | 1400 | spec 状态栏 |
+| A-20.2 | state-machine | 滑块宽度大于三按钮组总宽 | """true""" | spec 状态栏 |
+| A-20.3 | state-machine | 面板水平中位跟随指针且在视口内 | """true""" | spec 状态栏 |
+
+## R-21 PDF 悬浮预览无缩放条
+
+PDF 悬浮预览不显示 embedpdf 缩放按钮。
+
+| id | kind | claim | assert | source |
+|---|---|---|---|---|
+| A-21.1 | exact | PDF 悬浮预览中 zoom-toolbar 按钮数量 | 0 | spec PDF 悬浮预览隐藏缩放条 |
+
+## R-22 卡片缩略图高度
+
+缩略图 64×48 且不与文字重叠。
+
+| id | kind | claim | assert | source |
+|---|---|---|---|---|
+| A-22.1 | exact | 卡片缩略图高度（px） | 48 | spec 卡片缩略图高度 |
+| A-22.2 | exact | 缩略图与标题/摘要/动作行相交对数 | 0 | spec 卡片缩略图高度 |
+
+## R-23 大纲按钮距右缘三分之二
+
+按钮右侧留白 ≈ 容器宽度的 2/3。
+
+| id | kind | claim | assert | source |
+|---|---|---|---|---|
+| A-23.1 | exact | 按钮右侧留白与容器宽度 2/3 的差值上限（px） | 4 | spec E-10 |
