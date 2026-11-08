@@ -2,6 +2,7 @@ import { test, expect, type Page } from "@playwright/test";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { moveThrough } from "./helpers/ui-probe";
+import { PREVIEW_RAIL_NARROW_W } from "../src/lib/previewAnchor";
 
 /**
  * 悬浮预览窗（layout-portal 8.1）真实浏览器用例。
@@ -456,12 +457,12 @@ test("缩略图带触发预览 + 底部按钮区悬停重显按钮", async ({ pa
   const preview = page.locator(PREVIEW);
   const actions = page.locator('[data-testid="preview-actions"]');
 
-  // 缩略图带触发 → 宽度 = 上一版基准 320 + 一个缩略图 72
+  // 缩略图带触发 → 宽度 = 上一版基准 320 + 一个缩略图宽度（常量派生）
   await hoverRowRightHalf(page, "markdown");
   await expect(preview).toBeVisible({ timeout: 3000 });
   const narrow = await previewBox(page);
   expect(narrow.w).toBeGreaterThanOrEqual(320);
-  expect(Math.abs(narrow.w - 392)).toBeLessThanOrEqual(2);
+  expect(Math.abs(narrow.w - PREVIEW_RAIL_NARROW_W)).toBeLessThanOrEqual(2);
   await page.screenshot({ path: path.join(ART, "preview-narrow.png") });
 
   // 指针在阅读空间行上（未进入窗口底部带）→ 动作区隐藏
@@ -471,9 +472,9 @@ test("缩略图带触发预览 + 底部按钮区悬停重显按钮", async ({ pa
   await page.locator('[data-testid="preview-pin"]').click();
   await expect(preview).toHaveAttribute("data-pinned", "true");
 
-  // 拖拽：宽钳到窄窗最小 392、高钳到 200
+  // 拖拽：宽钳到窄窗最小值、高钳到 200
   await dragHandle(page, "e", -600, 0);
-  expect((await previewBox(page)).w).toBe(392);
+  expect((await previewBox(page)).w).toBe(PREVIEW_RAIL_NARROW_W);
   await dragHandle(page, "s", 0, -600);
   expect((await previewBox(page)).h).toBe(200);
 
@@ -554,7 +555,7 @@ test("离窗 180ms 防抖关闭；179ms 内保持", async ({ page }) => {
   await expect(preview).toHaveCount(0);
 });
 
-test("媒体真实渲染：图片 img / 视频 video / 音频 audio / PDF iframe", async ({
+test("媒体真实渲染：图片 img / 视频 video / 音频 audio / PDF 首页图", async ({
   page,
 }) => {
   await boot(page);
@@ -580,7 +581,7 @@ test("媒体真实渲染：图片 img / 视频 video / 音频 audio / PDF iframe
   await expect(audio).toHaveAttribute("src", /media:\/\//);
   await expect(audio).toHaveJSProperty("controls", true);
 
-  await hoverRowRightHalf(page, "markdown");
+  await hoverRowRightHalf(page, "pdf");
   await expect(page.locator('[data-testid="preview-pdf"]')).toBeVisible();
   await expect(
     page.locator('[data-testid="preview-media-placeholder"]'),
@@ -588,23 +589,22 @@ test("媒体真实渲染：图片 img / 视频 video / 音频 audio / PDF iframe
   await page.screenshot({ path: path.join(ART, "preview-media-kinds.png") });
 });
 
-test("PDF 悬浮预览：asset iframe 带 #toolbar=0 且无 sandbox", async ({
-  page,
-}) => {
+test("PDF 悬浮预览：渲首页图，不再用 iframe 工具条", async ({ page }) => {
   await boot(page);
   await seedMedia(page);
   await pinRail(page);
   await page.clock.install();
 
-  await hoverRowRightHalf(page, "markdown");
+  await hoverRowRightHalf(page, "pdf");
   await page.clock.runFor(250);
 
   const pdf = page.locator(
     '[data-testid="floating-preview"] [data-testid="preview-pdf"]',
   );
   await expect(pdf).toBeVisible();
-  await expect(pdf).toHaveAttribute("src", /#toolbar=0/);
-  await expect(pdf).not.toHaveAttribute("sandbox");
+  await expect(
+    page.locator('[data-testid="floating-preview"] iframe'),
+  ).toHaveCount(0);
   await page.screenshot({ path: path.join(ART, "preview-pdf.png") });
 });
 
