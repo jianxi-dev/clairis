@@ -132,3 +132,23 @@ test("切换页签后大纲跟随当前文档", async ({ page }) => {
   await expect(items).toHaveCount(2, { timeout: 3000 });
   await expect(items.nth(0)).toHaveText(/另一篇/);
 });
+
+test("大纲按钮：默认透明底方形圆角，钉住后显示强调色背景", async ({ page }) => {
+  await openDoc(page, "edit");
+
+  const button = page.locator('[data-testid="outline-btn"]');
+  await expect(button).toBeVisible();
+  await expect(button).toHaveAttribute("data-pinned", "false");
+
+  const background = () =>
+    button.evaluate((el) => getComputedStyle(el).backgroundColor);
+  const radius = () =>
+    button.evaluate((el) => getComputedStyle(el).borderRadius);
+
+  expect(await background()).toBe("rgba(0, 0, 0, 0)");
+  expect(await radius()).toBe("8px");
+
+  await button.click();
+  await expect(button).toHaveAttribute("data-pinned", "true");
+  await expect.poll(async () => background()).not.toBe("rgba(0, 0, 0, 0)");
+});
