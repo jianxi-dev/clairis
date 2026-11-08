@@ -807,6 +807,10 @@ function App() {
           onPointerLeave={() => {
             if (statusBarHidden) setStatusBarPeek(false);
           }}
+          onSetReaderWidth={(w) => {
+            useEditorStore.getState().setConfig({ readerWidth: w });
+            scheduleSave();
+          }}
           onToggleVisibility={() => {
             if (statusPeekTimer.current !== null) {
               window.clearTimeout(statusPeekTimer.current);
