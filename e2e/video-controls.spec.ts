@@ -90,34 +90,38 @@ test("控制条顺序：上下集夹住播放键，截图在全屏前、画中�
   );
 });
 
-test("截图写出 PNG，默认名带视频名与时间码", async ({ page }) => {
+test("截图直接写剪贴板并弹胶囊提示，不调用另存为", async ({ page }) => {
   await openMedia(page, "/Users/test/clip.mp4");
   await withRealVideo(page);
+  await page.evaluate(() => {
+    const w = window as unknown as Record<string, any>;
+    w.__clipWrites = 0;
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: {
+        write: async () => {
+          w.__clipWrites += 1;
+        },
+      },
+    });
+  });
   await page.locator(".art-control[data-name='screenshot']").click();
 
   await expect
-    .poll(
-      () =>
-        page.evaluate(
-          () =>
-            (window as unknown as Record<string, { defaultName: string }[]>)
-              .__biaoyue_saved_binaries__?.length ?? 0,
-        ),
-      { timeout: 5000 },
+    .poll(() =>
+      page.evaluate(
+        () => (window as unknown as Record<string, number>).__clipWrites ?? 0,
+      ),
     )
     .toBe(1);
-
-  const saved = await page.evaluate(
-    () =>
-      (
-        window as unknown as Record<
-          string,
-          { defaultName: string; base64: string }[]
-        >
-      ).__biaoyue_saved_binaries__[0],
-  );
-  expect(saved.defaultName).toMatch(/^clip-\d{2}m\d{2}s\.png$/);
-  expect(saved.base64.length).toBeGreaterThan(100);
+  expect(
+    await page.evaluate(
+      () =>
+        (window as unknown as Record<string, unknown[]>)
+          .__biaoyue_saved_binaries__?.length ?? 0,
+    ),
+  ).toBe(0);
+  await expect(page.locator(".art-notice")).toContainText("截图已复制到剪贴板");
 });
 
 test("上一集与下一集可点击且不打断播放器", async ({ page }) => {
@@ -136,4 +140,55 @@ test("音频文件不显示截图与画中画", async ({ page }) => {
     page.locator(".art-control[data-name='screenshot']"),
   ).toBeHidden();
   await expect(page.locator(".art-control[data-name='pip']")).toBeHidden();
+});
+
+test("控制条高度 38px、自绘图标 22px、快捷键图标无外框", async ({ page }) => {
+  await openMedia(page, "/Users/test/clip.mp4");
+  const height = await page
+    .locator(".art-video-player")
+    .evaluate((el) =>
+      getComputedStyle(el).getPropertyValue("--art-control-height").trim(),
+    );
+  expect(height).toBe("38px");
+
+  const icon = page.locator(".art-control-playlist svg").first();
+  expect(await icon.getAttribute("width")).toBe("22");
+
+  const hints = await page
+    .locator(".art-control-hints svg path")
+    .first()
+    .getAttribute("d");
+  expect(hints ?? "").not.toContain("h19v11");
+});
+
+test("进度条悬停显示当前位置缩略图，移开消失", async ({ page }) => {
+  await openMedia(page, "/Users/test/clip.mp4");
+  await withRealVideo(page);
+  const progress = page.locator(".art-progress").first();
+  const box = await progress.boundingBox();
+  if (!box) throw new Error("进度条不可测量");
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await expect(page.locator('[data-testid="video-thumb"]')).toHaveCount(1);
+  await page.mouse.move(box.x + box.width / 2, box.y - 80);
+  await expect(page.locator('[data-testid="video-thumb"]')).toHaveCount(0);
+});
+
+test("全屏态点击倍速不展开二级菜单", async ({ page }) => {
+  await openMedia(page, "/Users/test/clip.mp4");
+  await withRealVideo(page);
+  await page.locator(".art-control-fullscreenWeb").click();
+  await page.waitForTimeout(300);
+  await page.locator(".art-control[data-name='rate']").click();
+  await expect(page.locator(".rate-menu")).toHaveCount(0);
+  await expect(page.locator(".art-notice")).toContainText("全屏下不可用");
+});
+
+test("快捷键总览含媒体家族条目", async ({ page }) => {
+  await openMedia(page, "/Users/test/clip.mp4");
+  await page.keyboard.press("Shift+Slash");
+  const overlay = page.locator('[data-testid="shortcut-overlay"]');
+  await expect(overlay).toBeVisible();
+  expect(
+    await page.locator('[data-shortcut-id^="media-"]').count(),
+  ).toBeGreaterThanOrEqual(10);
 });

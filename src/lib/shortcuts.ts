@@ -15,7 +15,8 @@ export type ShortcutFamily =
   | "workspace"
   | "navigation"
   | "card"
-  | "ai";
+  | "ai"
+  | "media";
 
 export interface ShortcutDef {
   id: string;
@@ -39,6 +40,7 @@ export const SHORTCUT_FAMILY_LABELS: Record<ShortcutFamily, string> = {
   navigation: "导航",
   card: "卡片直开",
   ai: "AI / 其他",
+  media: "媒体",
 };
 
 /** 家族展示顺序（总览浮层与设置完整列表按此顺序分组）。 */
@@ -51,6 +53,7 @@ export const SHORTCUT_FAMILY_ORDER: readonly ShortcutFamily[] = [
   "navigation",
   "card",
   "ai",
+  "media",
 ];
 
 export const SHORTCUTS: readonly ShortcutDef[] = [
@@ -379,6 +382,92 @@ export const SHORTCUTS: readonly ShortcutDef[] = [
     keys: "⌘⇧.",
     label: "快速捕获",
     family: "ai",
+    implemented: true,
+  },
+
+  // ── 媒体（播放器聚焦时生效）────────────────────────────────
+  {
+    id: "media-play-pause",
+    keys: "空格",
+    label: "播放 / 暂停",
+    family: "media",
+    implemented: true,
+  },
+  {
+    id: "media-seek-back",
+    keys: "←",
+    label: "快退 5s",
+    family: "media",
+    implemented: true,
+  },
+  {
+    id: "media-seek-forward",
+    keys: "→",
+    label: "快进 5s",
+    family: "media",
+    implemented: true,
+  },
+  {
+    id: "media-volume-up",
+    keys: "↑",
+    label: "音量 +",
+    family: "media",
+    implemented: true,
+  },
+  {
+    id: "media-volume-down",
+    keys: "↓",
+    label: "音量 −",
+    family: "media",
+    implemented: true,
+  },
+  {
+    id: "media-fullscreen",
+    keys: "F",
+    label: "全屏",
+    family: "media",
+    implemented: true,
+  },
+  {
+    id: "media-mute",
+    keys: "M",
+    label: "静音",
+    family: "media",
+    implemented: true,
+  },
+  {
+    id: "media-prev-next",
+    keys: "N / P",
+    label: "上一集 / 下一集",
+    family: "media",
+    implemented: true,
+  },
+  {
+    id: "media-loop",
+    keys: "L",
+    label: "循环模式",
+    family: "media",
+    implemented: true,
+  },
+  {
+    id: "media-subtitle-track",
+    keys: "C",
+    label: "字幕轨道",
+    family: "media",
+    implemented: true,
+  },
+  {
+    id: "media-subtitle-position",
+    keys: "X",
+    label: "字幕上 / 下",
+    family: "media",
+    implemented: true,
+  },
+  {
+    id: "media-timestamp-note",
+    keys: "T",
+    label: "时间戳笔记",
+    family: "media",
     implemented: true,
   },
 ];

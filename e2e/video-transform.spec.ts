@@ -49,7 +49,7 @@ async function videoStyle(page: Page) {
 test("画面面板提供旋转/放大/缩小/亮度/重置", async ({ page }) => {
   await openPlayer(page);
   await openVisual(page);
-  await expect(page.getByTestId("visual-rotate")).toBeVisible();
+  await expect(page.locator(".art-control-rotate")).toBeVisible();
   await expect(page.getByTestId("visual-zoom-in")).toBeVisible();
   await expect(page.getByTestId("visual-zoom-out")).toBeVisible();
   await expect(page.getByTestId("visual-brightness")).toBeVisible();
@@ -59,10 +59,10 @@ test("画面面板提供旋转/放大/缩小/亮度/重置", async ({ page }) =>
 test("连续四次旋转回到 0°，缩放上限 4 倍", async ({ page }) => {
   await openPlayer(page);
   await openVisual(page);
-  await page.getByTestId("visual-rotate").click();
+  await page.locator(".art-control-rotate").click();
   expect((await videoStyle(page)).transform).toContain("rotate(90deg)");
   for (let i = 0; i < 3; i += 1)
-    await page.getByTestId("visual-rotate").click();
+    await page.locator(".art-control-rotate").click();
   expect((await videoStyle(page)).transform).toContain("rotate(0deg)");
 
   for (let i = 0; i < 20; i += 1)
@@ -80,7 +80,7 @@ test("亮度可调到 150%", async ({ page }) => {
 test("切换文件后画面状态复位", async ({ page }) => {
   await openPlayer(page);
   await openVisual(page);
-  await page.getByTestId("visual-rotate").click();
+  await page.locator(".art-control-rotate").click();
   await page.getByTestId("visual-zoom-in").click();
   await page.getByTestId("visual-brightness").fill("150");
   await page

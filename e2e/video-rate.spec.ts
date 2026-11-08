@@ -49,11 +49,11 @@ async function pickRate(page: Page, label: string) {
   await item.click();
 }
 
-test("倍速菜单恰好六档，主控件显示当前档位", async ({ page }) => {
+test("倍速菜单恰好六档，主控件为速度表图标", async ({ page }) => {
   await openPlayer(page);
 
   const button = page.locator(".art-control[data-name='rate']");
-  await expect(button).toHaveText("1.0×");
+  await expect(button.locator("svg[data-icon='speed']")).toHaveCount(1);
 
   await button.click();
   await expect(page.locator(".rate-menu-item")).toHaveCount(6);
@@ -72,9 +72,9 @@ test("选 1.5× 后播放速率与变调修正同时生效", async ({ page }) =>
   await openPlayer(page);
   await pickRate(page, "1.5×");
 
-  await expect(page.locator(".art-control[data-name='rate']")).toHaveText(
-    "1.5×",
-  );
+  await expect(
+    page.locator(".art-control[data-name='rate'] svg[data-icon='speed']"),
+  ).toHaveCount(1);
   const state = await videoState(page);
   expect(state.rate).toBe(1.5);
   expect(state.preservesPitch).toBe(true);
@@ -90,7 +90,7 @@ test("关闭菜单后倍速保持，重开菜单标记当前档位", async ({ pa
   await expect(page.locator(".rate-menu")).toHaveCount(0);
 
   const button = page.locator(".art-control[data-name='rate']");
-  await expect(button).toHaveText("2.0×");
+  await expect(button.locator("svg[data-icon='speed']")).toHaveCount(1);
   await button.click();
   await expect(
     page.locator(".rate-menu-item", { hasText: "2.0×" }).first(),
@@ -107,8 +107,8 @@ test("切换到另一个视频后倍速回到 1.0", async ({ page }) => {
   await openMedia(page, "/Users/test/clip2.mp4");
   const state = await videoState(page);
   expect(state.rate).toBe(1);
-  await expect(page.locator(".art-control[data-name='rate']")).toHaveText(
-    "1.0×",
-  );
+  await expect(
+    page.locator(".art-control[data-name='rate'] svg[data-icon='speed']"),
+  ).toHaveCount(1);
   await page.screenshot({ path: path.join(ART, "03-switch-reset.png") });
 });
