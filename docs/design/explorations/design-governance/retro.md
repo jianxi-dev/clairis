@@ -1,9 +1,9 @@
 ---
 title: "设计复盘 — 为何 UI 效果反复返工"
 type: design
-status: exploratory
+status: draft
 last_updated: 2026-11-08
-source_of_truth: exploratory
+source_of_truth: supporting
 ---
 
 # 设计复盘：为何设计出来的效果不理想、要反复调整

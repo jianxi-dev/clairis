@@ -1,9 +1,9 @@
 ---
 title: "设计方案 — 设计规范的治理定位与落地机制"
 type: design
-status: exploratory
+status: draft
 last_updated: 2026-11-08
-source_of_truth: exploratory
+source_of_truth: supporting
 ---
 
 # 设计方案：让「产品的统一语言」真正在线

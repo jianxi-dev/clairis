@@ -1,9 +1,9 @@
 ---
 title: "设计治理 — 复盘与方案"
 type: design
-status: exploratory
+status: draft
 last_updated: 2026-11-08
-source_of_truth: exploratory
+source_of_truth: supporting
 ---
 
 # 设计治理（design-governance）
