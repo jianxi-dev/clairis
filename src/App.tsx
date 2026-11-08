@@ -99,6 +99,9 @@ function App() {
   const { setTheme, scheduleSave } = useConfig();
   const theme = useEditorStore((s) => s.config.theme ?? "system");
   const scene = useStore((s) => s.scene);
+  const [statusBarHidden, setStatusBarHidden] = useState(false);
+  const [statusBarPeek, setStatusBarPeek] = useState(false);
+  const statusPeekTimer = useRef<number | null>(null);
 
   const openSettings = useCallback(() => {
     const st = useStore.getState();
@@ -777,13 +780,43 @@ function App() {
         </div>
       </div>
 
-      <StatusBar
-        theme={theme}
-        readingMode={readingMode}
-        onSetReadingMode={(on) => useStore.getState().setReadingMode(on)}
-        onSetTheme={setTheme}
-        onOpenGrid={openGridOverview}
-      />
+      {statusBarHidden && !statusBarPeek ? (
+        <div
+          data-testid="status-hotzone"
+          className="status-hotzone"
+          onPointerEnter={() => {
+            statusPeekTimer.current = window.setTimeout(
+              () => setStatusBarPeek(true),
+              500,
+            );
+          }}
+          onPointerLeave={() => {
+            if (statusPeekTimer.current !== null) {
+              window.clearTimeout(statusPeekTimer.current);
+              statusPeekTimer.current = null;
+            }
+          }}
+        />
+      ) : (
+        <StatusBar
+          theme={theme}
+          readingMode={readingMode}
+          onSetReadingMode={(on) => useStore.getState().setReadingMode(on)}
+          onSetTheme={setTheme}
+          onOpenGrid={openGridOverview}
+          onPointerLeave={() => {
+            if (statusBarHidden) setStatusBarPeek(false);
+          }}
+          onToggleVisibility={() => {
+            if (statusPeekTimer.current !== null) {
+              window.clearTimeout(statusPeekTimer.current);
+              statusPeekTimer.current = null;
+            }
+            setStatusBarPeek(false);
+            setStatusBarHidden((v) => !v);
+          }}
+        />
+      )}
       <CaptureOverlay />
       <SelectionPill />
       <CommandOverlay />

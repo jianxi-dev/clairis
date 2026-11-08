@@ -11,6 +11,8 @@ interface StatusBarProps {
   onSetReadingMode: (on: boolean) => void;
   onSetTheme: (theme: Theme) => void;
   onOpenGrid: () => void;
+  onToggleVisibility: () => void;
+  onPointerLeave?: () => void;
 }
 
 /** 中文用户直觉的字数：CJK 字符数 + 西文单词数（不含 markdown 符号与空白）。 */
@@ -39,6 +41,8 @@ export default function StatusBar({
   onSetReadingMode,
   onSetTheme,
   onOpenGrid,
+  onToggleVisibility,
+  onPointerLeave,
 }: StatusBarProps) {
   const activeTabId = useStore((s) => s.activeTabId);
   const tabs = useStore((s) => s.tabs);
@@ -55,8 +59,13 @@ export default function StatusBar({
 
   return (
     <footer
-      className="app-status-bar flex items-center gap-3 px-3 py-1 text-xs text-[var(--app-text-2)] select-none shrink-0"
+      className="app-status-bar flex items-center gap-3 px-3 py-0.5 text-xs text-[var(--app-text-2)] select-none shrink-0"
       data-testid="status-bar"
+      onPointerLeave={onPointerLeave}
+      onDoubleClick={(e) => {
+        if ((e.target as HTMLElement).closest("button")) return;
+        onToggleVisibility();
+      }}
     >
       <div className="flex items-center gap-2 opacity-60">
         <span
