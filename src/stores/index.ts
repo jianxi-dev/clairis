@@ -72,6 +72,21 @@ type SplitDirection = "horizontal" | "vertical";
 /** AI 停靠窗格在分栏树里的固定 leaf id（layout-portal 9.1）。 */
 export const AI_PANE_ID = "ai";
 
+/** 选择能承载文件页签的普通栏：聚焦普通栏 → 最近普通栏 → 首个普通栏。 */
+export function tabsHostLeaf(
+  root: PaneLayout,
+  focusedId: string,
+  lastTabsId: string,
+): PaneLeaf | null {
+  const isTabs = (leaf: PaneLeaf | null): leaf is PaneLeaf =>
+    !!leaf && leaf.kind !== "ai";
+  const focused = findLeaf(root, focusedId);
+  if (isTabs(focused)) return focused;
+  const last = findLeaf(root, lastTabsId);
+  if (isTabs(last)) return last;
+  return listLeaves(root).find(isTabs) ?? null;
+}
+
 /**
  * AI 停靠窗格被关闭时的回调。靠注册而不是静态 import useAiEntry，避免
  * stores ↔ hooks 的循环依赖；useAiEntry 在模块加载时注册。
@@ -220,6 +235,8 @@ interface AppStore {
   paneRoot: PaneLayout;
   /** 当前聚焦的 leaf id（⌘⌥→ / ⌘⌥↓ 作用于此格）。 */
   focusedPaneId: string;
+  /** 最近一次聚焦的普通栏（跳过 AI 停靠栏），供打开文件选宿主。 */
+  lastTabsPaneId: string;
   /** 全屏格 id；null = 正常多格布局。 */
   fullscreenPaneId: string | null;
   /** 正在被拖拽的格 id；仅 UI 预览，不持久化。 */
@@ -399,6 +416,7 @@ const initialState = {
   verticalSplitRatio: 0.5,
   paneRoot: createRootLeaf() as PaneLayout,
   focusedPaneId: "main",
+  lastTabsPaneId: "main",
   fullscreenPaneId: null as string | null,
   dragPaneSourceId: null as string | null,
   draggingFilePath: null as string | null,
@@ -429,7 +447,7 @@ export const useStore = create<AppStore>((set, get) => ({
     if (existing) {
       const hostLeaf =
         leafOfTab(state.paneRoot, existing.id) ??
-        findLeaf(state.paneRoot, state.focusedPaneId);
+        tabsHostLeaf(state.paneRoot, state.focusedPaneId, state.lastTabsPaneId);
       const paneRoot = hostLeaf
         ? updateLeaf(state.paneRoot, hostLeaf.id, {
             tabs: hostLeaf.tabs.includes(existing.id)
@@ -487,11 +505,12 @@ export const useStore = create<AppStore>((set, get) => ({
       contentHeight: 0,
     };
 
-    // 新页签落进当前聚焦格（无有效聚焦格时退回第一个 leaf）
-    const hostLeaf =
-      findLeaf(state.paneRoot, state.focusedPaneId) ??
-      listLeaves(state.paneRoot)[0] ??
-      null;
+    // 新页签只落普通栏：AI 停靠栏不接收文件页签（#453）
+    const hostLeaf = tabsHostLeaf(
+      state.paneRoot,
+      state.focusedPaneId,
+      state.lastTabsPaneId,
+    );
     let paneRoot = state.paneRoot;
     if (hostLeaf) {
       paneRoot = updateLeaf(state.paneRoot, hostLeaf.id, {
@@ -724,10 +743,11 @@ export const useStore = create<AppStore>((set, get) => ({
       scrollPos: 0,
       contentHeight: 0,
     };
-    const hostLeaf =
-      findLeaf(state.paneRoot, state.focusedPaneId) ??
-      listLeaves(state.paneRoot)[0] ??
-      null;
+    const hostLeaf = tabsHostLeaf(
+      state.paneRoot,
+      state.focusedPaneId,
+      state.lastTabsPaneId,
+    );
     let paneRoot = state.paneRoot;
     if (hostLeaf) {
       paneRoot = updateLeaf(state.paneRoot, hostLeaf.id, {
@@ -995,7 +1015,11 @@ export const useStore = create<AppStore>((set, get) => ({
     const state = get();
     const leaf = findLeaf(state.paneRoot, id);
     if (!leaf) return;
-    set({ focusedPaneId: id, activeTabId: leaf.activeTabId });
+    set({
+      focusedPaneId: id,
+      activeTabId: leaf.activeTabId,
+      ...(leaf.kind === "ai" ? null : { lastTabsPaneId: id }),
+    });
   },
 
   toggleFullscreenPane: () => {
@@ -1097,7 +1121,16 @@ export const useStore = create<AppStore>((set, get) => ({
 
   dropFileOnPane: (path, content, targetLeafId, side) => {
     const state = get();
-    const target = findLeaf(state.paneRoot, targetLeafId);
+    const found = findLeaf(state.paneRoot, targetLeafId);
+    if (!found) return;
+    const target =
+      found.kind === "ai"
+        ? tabsHostLeaf(
+            state.paneRoot,
+            state.focusedPaneId,
+            state.lastTabsPaneId,
+          )
+        : found;
     if (!target) return;
 
     const existing = Object.values(state.tabs).find((t) => t.path === path);
