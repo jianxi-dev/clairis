@@ -337,6 +337,36 @@ export default function VideoPlayer({
     playIndexRef.current = playIndex;
   }, [playIndex]);
 
+  const captureFrame = useCallback(async () => {
+    const art = artRef.current;
+    if (!art) return;
+    const video = art.video;
+    if (!video.videoWidth || !video.videoHeight) return;
+    const canvas = document.createElement("canvas");
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const base64 = canvas.toDataURL("image/png").split(",")[1] ?? "";
+    if (!base64) return;
+    const stem = (filePathRef.current.split("/").pop() || "frame").replace(
+      /\.[^.]+$/,
+      "",
+    );
+    const total = Math.max(0, Math.floor(video.currentTime || 0));
+    const mm = String(Math.floor(total / 60)).padStart(2, "0");
+    const ss = String(total % 60).padStart(2, "0");
+    try {
+      await invoke("save_binary_as_file", {
+        base64,
+        defaultName: `${stem}-${mm}m${ss}s.png`,
+      });
+    } catch (err) {
+      console.warn("capture frame failed", err);
+    }
+  }, []);
+
   const cycleLoop = useCallback(() => {
     const next =
       LOOP_ORDER[(LOOP_ORDER.indexOf(loopRef.current) + 1) % LOOP_ORDER.length];
@@ -496,7 +526,7 @@ export default function VideoPlayer({
       autoSize: true,
       fullscreen: false,
       fullscreenWeb: true,
-      pip: true,
+      pip: false,
       // 记忆播放：显示「上次看到 mm:ss / 跳转播放」浮层（下详 ready 自动跳转）
       autoPlayback: true,
       hotkey: true,
@@ -505,6 +535,63 @@ export default function VideoPlayer({
       ...(initialKind === "audio" ? { poster: AUDIO_POSTER } : {}),
       moreVideoAttr: { playsInline: true },
       controls: [
+        {
+          name: "prev",
+          position: "left",
+          index: 5,
+          html: controlSvg("prev"),
+          tooltip: "上一集",
+          mounted: function ($control) {
+            $control.dataset.name = "prev";
+            this.proxy($control, "click", () => {
+              void playIndex(currentIndexRef.current - 1);
+            });
+          },
+        },
+        {
+          name: "next",
+          position: "left",
+          index: 15,
+          html: controlSvg("next"),
+          tooltip: "下一集",
+          mounted: function ($control) {
+            $control.dataset.name = "next";
+            this.proxy($control, "click", () => {
+              void playIndex(currentIndexRef.current + 1);
+            });
+          },
+        },
+        {
+          name: "screenshot",
+          position: "right",
+          index: 58,
+          html: controlSvg("camera"),
+          tooltip: "截取当前画面",
+          mounted: function ($control) {
+            $control.dataset.name = "screenshot";
+            this.proxy($control, "click", () => {
+              void captureFrame();
+            });
+          },
+        },
+        {
+          name: "pip",
+          position: "right",
+          index: 64,
+          html: controlSvg("pip"),
+          tooltip: "画中画",
+          mounted: function ($control) {
+            $control.dataset.name = "pip";
+            this.proxy($control, "click", () => {
+              const video = art.video;
+              if (document.pictureInPictureElement) {
+                void document.exitPictureInPicture();
+              } else {
+                void video.requestPictureInPicture?.().catch(() => {});
+              }
+            });
+          },
+        },
         {
           name: "playlist",
           position: "right",
@@ -722,7 +809,7 @@ export default function VideoPlayer({
       .catch(() => {});
   }, [url, applyRate]);
 
-  // 媒体类型切换（video ↔ audio）：更新 poster
+  // 媒体类型切换（video ↔ audio）：更新 poster，并收起只对画面有意义的控件
   useEffect(() => {
     const art = artRef.current;
     if (!art) return;
@@ -730,6 +817,13 @@ export default function VideoPlayer({
       art.poster = AUDIO_POSTER;
     } else {
       art.poster = "";
+    }
+    const visual = ["screenshot", "pip"];
+    for (const name of visual) {
+      const node = containerRef.current?.querySelector<HTMLElement>(
+        `.art-control[data-name="${name}"]`,
+      );
+      if (node) node.style.display = fileKind === "audio" ? "none" : "";
     }
   }, [fileKind]);
 
