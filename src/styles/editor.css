@@ -198,6 +198,34 @@ body {
   margin-right: 0.25em;
 }
 
+/* 标题折叠三角（shell-editor-batch5）：有下级的标题才渲染，点击折叠/展开 */
+.cm-fold-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 2px;
+  color: var(--app-text-3);
+  cursor: pointer;
+  opacity: 0.55;
+  vertical-align: middle;
+  transition: opacity 120ms ease-out;
+}
+
+.cm-fold-toggle:hover {
+  opacity: 1;
+  color: var(--app-text-2);
+}
+
+.cm-fold-toggle-icon {
+  display: block;
+  transform: rotate(90deg);
+  transition: transform 120ms ease-out;
+}
+
+.cm-fold-toggle-folded .cm-fold-toggle-icon {
+  transform: rotate(0deg);
+}
+
 /* 行内强调 */
 .cm-strikethrough {
   text-decoration: line-through;
@@ -2031,19 +2059,30 @@ body {
   height: 28px;
   padding: 0;
   border: 1px solid var(--app-border);
-  border-radius: 999px;
-  background: var(--app-surface);
+  border-radius: 8px;
+  background: transparent;
   color: var(--app-text-2);
   opacity: 0.75;
   cursor: pointer;
   transition:
     opacity 150ms ease,
-    color 150ms ease;
+    color 150ms ease,
+    background-color 150ms ease,
+    border-color 150ms ease;
 }
 
 .biaoyue-outline-button:hover {
   opacity: 1;
   color: var(--app-text);
+}
+
+/* 钉住态：强调色系背景（E-10）。透明底是默认，钉住后才显底色。 */
+.biaoyue-outline-button[data-pinned="true"],
+.biaoyue-outline-button[data-pinned="true"]:hover {
+  background: var(--app-accent-soft);
+  border-color: transparent;
+  color: var(--app-accent);
+  opacity: 1;
 }
 
 .biaoyue-outline-panel {

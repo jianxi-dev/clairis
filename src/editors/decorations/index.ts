@@ -52,6 +52,7 @@ import {
 import { createCalloutDecorations, scheduleCalloutFlush } from "./callout";
 import { createColumnsDecorations } from "./columns";
 import { createStructuralTagDecorations } from "./structuralTags";
+import { createFoldDecorations, foldState } from "./fold";
 import { editorDecorationsThemeExt } from "./theme";
 import { getBlocks, getBlockAt } from "../block-model";
 
@@ -169,6 +170,7 @@ function buildDecorationSet(
     ...createTableDecorations(docText, activeFrom, activeTo),
     ...createColumnsDecorations(docText),
     ...createStructuralTagDecorations(docText),
+    ...createFoldDecorations(state, state.field(foldState)),
   ];
 
   // 按起点排序（CM6 要求）
@@ -198,10 +200,14 @@ function createDecorationField(options?: EditorDecorationsOptions) {
       // （「格式删不掉」，#226）。
       if (frozen && tr.selection && !tr.docChanged) return decos;
 
-      // 文档/选区变化、组合结束、冻结解除时重建。
+      // 文档/选区变化、折叠切换、组合结束、冻结解除时重建。
+      const foldChanged =
+        tr.startState.field(foldState, false) !==
+        tr.state.field(foldState, false);
       if (
         tr.docChanged ||
         tr.selection ||
+        foldChanged ||
         tr.effects.some((e) => e.is(rebuildAfterComposition)) ||
         tr.effects.some((e) => e.is(unfreezeRebuild))
       ) {
@@ -275,6 +281,7 @@ export function editorDecorations(
   options?: EditorDecorationsOptions,
 ): Extension {
   return [
+    foldState,
     createDecorationField(options),
     compositionGuard.extension,
     tableFlush.extension,

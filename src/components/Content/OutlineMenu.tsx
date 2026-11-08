@@ -187,6 +187,7 @@ export default function OutlineMenu({
         type="button"
         className="biaoyue-outline-button"
         data-testid="outline-btn"
+        data-pinned={pinned ? "true" : "false"}
         title="大纲"
         aria-label="大纲"
         aria-expanded={visible}
