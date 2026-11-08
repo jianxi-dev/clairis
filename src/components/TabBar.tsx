@@ -406,22 +406,24 @@ export default function TabBar({
           }}
         >
           <button
-            className="w-full text-left px-3 py-1.5 hover:bg-[var(--app-sunken)]"
+            className="w-full flex items-center gap-2 text-left px-3 py-1.5 hover:bg-[var(--app-sunken)]"
             onClick={() => {
               // 右键分栏 = 把当前文件分到那边，而不是新建一个空栏（#272）。
               useStore.getState().splitPaneWithTab("row", menu.tabId);
               closeMenu();
             }}
           >
+            <Icon name="splitRight" size={18} />
             向右分栏
           </button>
           <button
-            className="w-full text-left px-3 py-1.5 hover:bg-[var(--app-sunken)]"
+            className="w-full flex items-center gap-2 text-left px-3 py-1.5 hover:bg-[var(--app-sunken)]"
             onClick={() => {
               useStore.getState().splitPaneWithTab("col", menu.tabId);
               closeMenu();
             }}
           >
+            <Icon name="splitDown" size={18} />
             向下分栏
           </button>
           <div
@@ -429,22 +431,24 @@ export default function TabBar({
             style={{ background: "var(--app-border)" }}
           />
           <button
-            className="w-full text-left px-3 py-1.5 hover:bg-[var(--app-sunken)]"
+            className="w-full flex items-center gap-2 text-left px-3 py-1.5 hover:bg-[var(--app-sunken)]"
             onClick={() => {
               onCloseTab(menu.tabId);
               closeMenu();
             }}
           >
+            <Icon name="close" size={18} />
             关闭
           </button>
           <button
-            className="w-full text-left px-3 py-1.5 hover:bg-[var(--app-sunken)]"
+            className="w-full flex items-center gap-2 text-left px-3 py-1.5 hover:bg-[var(--app-sunken)]"
             onClick={() => {
               const ids = Object.keys(tabs).filter((id) => id !== menu.tabId);
               ids.forEach((id) => onCloseTab(id));
               closeMenu();
             }}
           >
+            <Icon name="closeOthers" size={18} />
             关闭其他
           </button>
         </div>
