@@ -43,9 +43,10 @@ import { menuStack, type MenuToken } from "./orchestration/menu-stack";
 import {
   PANEL_MAX_HEIGHT,
   rectFromCoords,
-  resolvePlacement,
+  intersectRects,
   type AnchorRect,
 } from "./orchestration/anchor";
+import { placeMenu } from "./orchestration/placement";
 
 export interface SlashCommand {
   id: string;
@@ -950,22 +951,26 @@ function applyPlacement(
   align: "below" | "right" = "below",
 ): void {
   const own = view.dom.getBoundingClientRect();
+  const bounds = intersectRects(viewportRect(), boxRect(own));
+  // 先封顶高度再量：超高菜单按自然高度参与落位，所有候选项都会「放不下」，
+  // 结果被夹到视口顶部，看起来像没有跟随锚点。
+  menu.style.maxHeight = `${Math.max(
+    120,
+    Math.min(PANEL_MAX_HEIGHT, bounds.height - 16),
+  )}px`;
   const menuRect = menu.getBoundingClientRect();
-  const placement = resolvePlacement(
+  const placement = placeMenu(
     anchor,
     {
       width: menuRect.width || menu.offsetWidth || 220,
       height: menuRect.height || menu.offsetHeight || 0,
     },
-    viewportRect(),
-    boxRect(own),
+    bounds,
     8,
-    PANEL_MAX_HEIGHT,
     align,
   );
-  menu.style.left = `${placement.x - own.left}px`;
-  menu.style.top = `${placement.y - own.top}px`;
-  menu.style.maxHeight = `${Math.max(120, placement.maxHeight)}px`;
+  menu.style.left = `${placement.left - own.left}px`;
+  menu.style.top = `${placement.top - own.top}px`;
 }
 
 function positionMenuAtRect(

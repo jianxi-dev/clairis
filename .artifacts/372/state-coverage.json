@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "悬停即开菜单",
+      "screenshot": ".artifacts/372/01-hover-open.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T09:08:39Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "菜单跟随指针",
+      "screenshot": ".artifacts/372/02-follow-pointer.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T09:08:39Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "指针移入菜单不消失",
+      "screenshot": ".artifacts/372/03-enter-menu.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T09:08:40Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "离开后120ms收起",
+      "screenshot": ".artifacts/372/04-after-leave.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T09:08:40Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}

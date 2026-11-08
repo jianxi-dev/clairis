@@ -1,7 +1,11 @@
 import { test, expect, type Page } from "@playwright/test";
 import { moveThrough } from "./helpers/ui-probe";
+import { mkdirSync } from "node:fs";
+import path from "node:path";
 
 const APP_URL = "http://localhost:1420";
+const ART = path.resolve(process.cwd(), ".artifacts/372");
+mkdirSync(ART, { recursive: true });
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
@@ -198,4 +202,79 @@ test("空行「+」打开插入菜单", async ({ page }) => {
   ).toHaveClass(/cm-block-handle-visible/, { timeout: 3000 });
   await add.click();
   await expect(page.locator(".mdb-slash-menu")).toHaveCount(1);
+});
+
+test("指针滑到空行「+」即打开插入菜单，不需点击", async ({ page }) => {
+  await openDoc(page, "/Users/test/bh-add-hover.md", "第一段\n\n\n第二段");
+  const add = page.locator(".cm-block-handle-add").first();
+  await add.hover();
+
+  await expect(page.locator(".mdb-slash-menu")).toHaveCount(1, {
+    timeout: 3000,
+  });
+  await page.screenshot({ path: path.join(ART, "01-hover-open.png") });
+});
+
+test("菜单跟随指针：两个空行的菜单坐标不同", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  const doc = Array.from({ length: 12 }, (_, i) => `第 ${i + 1} 段正文`).join(
+    "\n\n",
+  );
+  await openDoc(page, "/Users/test/bh-add-follow.md", doc);
+
+  const tops = await page
+    .locator(".cm-block-handle-add")
+    .evaluateAll((els) => els.map((el) => el.getBoundingClientRect().top));
+  const nearest = (target: number) =>
+    tops.reduce(
+      (best, top, index) =>
+        Math.abs(top - target) < Math.abs(tops[best] - target) ? index : best,
+      0,
+    );
+  const upper = nearest(160);
+  const lower = nearest(560);
+  expect(lower).not.toBe(upper);
+
+  const menu = page.locator(".mdb-slash-menu");
+  const readTop = async () =>
+    menu.evaluate((el) => (el as HTMLElement).style.top);
+
+  await page.locator(".cm-block-handle-add").nth(upper).hover();
+  await expect(menu).toHaveCount(1, { timeout: 3000 });
+  const firstTop = await readTop();
+
+  await page.mouse.move(20, 20);
+  await expect(menu).toHaveCount(0, { timeout: 2000 });
+
+  await page.locator(".cm-block-handle-add").nth(lower).hover();
+  await expect(menu).toHaveCount(1, { timeout: 3000 });
+  const secondTop = await readTop();
+
+  expect(secondTop).not.toBe(firstTop);
+  await page.screenshot({ path: path.join(ART, "02-follow-pointer.png") });
+});
+
+test("指针从「+」移进菜单，菜单不消失", async ({ page }) => {
+  await openDoc(page, "/Users/test/bh-add-enter.md", "第一段\n\n\n第二段");
+  const add = page.locator(".cm-block-handle-add").first();
+  await add.hover();
+  const menu = page.locator(".mdb-slash-menu");
+  await expect(menu).toHaveCount(1, { timeout: 3000 });
+
+  await menu.hover();
+  await page.waitForTimeout(400);
+  await expect(menu).toHaveCount(1);
+  await page.screenshot({ path: path.join(ART, "03-enter-menu.png") });
+});
+
+test("指针离开后 120ms 宽限期结束才收起", async ({ page }) => {
+  await openDoc(page, "/Users/test/bh-add-leave.md", "第一段\n\n\n第二段");
+  const add = page.locator(".cm-block-handle-add").first();
+  await add.hover();
+  const menu = page.locator(".mdb-slash-menu");
+  await expect(menu).toHaveCount(1, { timeout: 3000 });
+
+  await page.mouse.move(20, 20);
+  await expect(menu).toHaveCount(0, { timeout: 2000 });
+  await page.screenshot({ path: path.join(ART, "04-after-leave.png") });
 });
