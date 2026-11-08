@@ -67,7 +67,9 @@ export type IconName =
   | "speed"
   | "home"
   | "heart"
-  | "heartFilled";
+  | "heartFilled"
+  | "sunBright"
+  | "sunWarm";
 
 export interface IconPart {
   d?: string;
@@ -153,6 +155,14 @@ export const ICONS: Record<IconName, IconDef> = {
   sun: {
     label: "浅色",
     s: "M12 8a4 4 0 100 8 4 4 0 000-8z M12 2.5v2 M12 19.5v2 M2.5 12h2 M19.5 12h2",
+  },
+  sunBright: {
+    label: "亮色",
+    s: "M12 8.5a3.5 3.5 0 100 7 3.5 3.5 0 000-7z M12 1.8v2 M12 20.2v2 M1.8 12h2 M20.2 12h2 M4.8 4.8l1.4 1.4 M17.8 17.8l1.4 1.4",
+  },
+  sunWarm: {
+    label: "暖色",
+    s: "M12 8.5a3.5 3.5 0 100 7 3.5 3.5 0 000-7z M12 2.5v2.2 M12 19.3v2.2 M2.5 12h2.2 M19.3 12h2.2",
   },
   moon: {
     label: "深色",

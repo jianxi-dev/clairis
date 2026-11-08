@@ -80,3 +80,23 @@ test.describe("页面宽度调整面板（ui-polish-batch6 6.2）", () => {
     await expect(widthText).toHaveText("720px");
   });
 });
+
+test.describe("主题按钮去三角与图标区分（ui-polish-batch6 18.1）", () => {
+  test("按钮只有一个图标；亮色与暖色图形不同", async ({ page }) => {
+    await boot(page);
+    const btn = page.getByTestId("theme-entry");
+    await expect(btn.locator("svg")).toHaveCount(1);
+
+    const paths = await page.evaluate(async () => {
+      const mod = await import("/src/ui/icons.ts");
+      const icons = (
+        mod as unknown as { ICONS: Record<string, { s?: string }> }
+      ).ICONS;
+      return { bright: icons.sunBright?.s ?? "", warm: icons.sunWarm?.s ?? "" };
+    });
+    expect(paths.bright).not.toBe(paths.warm);
+    const rays = (d: string) => (d.match(/M/g) ?? []).length - 1;
+    expect(rays(paths.bright)).toBe(6);
+    expect(rays(paths.warm)).toBe(4);
+  });
+});

@@ -16,11 +16,11 @@ const WIDTH_PRESETS = [
 const THEME_OPTIONS: {
   value: Theme;
   label: string;
-  icon: "sun" | "moon" | "monitor";
+  icon: "sunBright" | "moon" | "sunWarm" | "monitor";
 }[] = [
-  { value: "light", label: "亮色", icon: "sun" },
+  { value: "light", label: "亮色", icon: "sunBright" },
   { value: "dark", label: "暗色", icon: "moon" },
-  { value: "warm", label: "暖色", icon: "sun" },
+  { value: "warm", label: "暖色", icon: "sunWarm" },
   { value: "system", label: "跟随系统", icon: "monitor" },
 ];
 
@@ -28,8 +28,10 @@ function themeLabelOf(theme: Theme): string {
   return THEME_OPTIONS.find((o) => o.value === theme)?.label ?? "亮色";
 }
 
-function iconOfTheme(theme: Theme): "sun" | "moon" | "monitor" {
-  return THEME_OPTIONS.find((o) => o.value === theme)?.icon ?? "sun";
+function iconOfTheme(
+  theme: Theme,
+): "sunBright" | "moon" | "sunWarm" | "monitor" {
+  return THEME_OPTIONS.find((o) => o.value === theme)?.icon ?? "sunBright";
 }
 
 interface StatusBarProps {
@@ -248,7 +250,6 @@ export default function StatusBar({
             title={`当前: ${themeLabelOf(theme)}`}
           >
             <Icon name={iconOfTheme(theme)} size={18} />
-            <Icon name="chevronDown" size={18} />
           </button>
           {themeOpen && themeRect
             ? createPortal(
