@@ -37,7 +37,7 @@ openspec status --change <name>   # 单个变更工件完成度
 
 ## 总览统计（截至 2026-11-07）
 
-- 规格：17 域 / 150 requirement（2026-11-08 归档 ui-polish-batch6 后）
+- 规格：17 域 / 153 requirement（2026-11-08 归档 shell-media-batch7 后）
 - ✅ 经 openspec 归档实现：29
 - 🟡 已实现/设计完成（未走 openspec 变更）：24
 - ⬜ 待开发：16
@@ -50,6 +50,8 @@ openspec status --change <name>   # 单个变更工件完成度
 - 外壳/阅读域（`workspace-ux-batch4`）：+8 需求（G-8…G-12、A-15…A-17），5/5 票合并（PR #278–#282），已归档 `openspec/changes/archive/2026-11-07-workspace-ux-batch4`
 - 外壳/编辑/阅读/文件域（`shell-editor-batch5`）：+9 需求（C-4、E-10/E-11/E-13/E-16、G-3/G-7/G-8/G-10），18/18 票合并（PR #331–#351，含 #343/#347 两个缺陷），已归档 `openspec/changes/archive/2026-11-08-shell-editor-batch5`
   - 附加入口批：PDF 卡片真首页缩略图（#317，pdfium 渲首页→dataURL，失败回退占位）、pin/pinOff 改标准图钉造型（#352，PR #353）
+- 外壳/媒体/阅读域（`shell-media-batch7`）：11/11 票合并（PR #423–#436），净 +3 requirement（+5 新增、-2 被取代），已归档 `openspec/changes/archive/2026-11-08-shell-media-batch7`
+  - 主题弹层生命周期 + 单击循环切主题、图片右键应用内菜单、chrome 前景色统一、关闭其他图标、视频容器自适应与画面变换、沉浸态隐藏状态栏/未钉住左栏与每栏独立页签条、悬浮窗图片按宽可滚 + HTML 本地直载、一键自动布局
 - 外壳/页面/编辑/阅读/文件域（`ui-polish-batch6`）：25/25 票合并（PR #394–#408），净 +5 requirement（+8 新增、-3 被取代），已归档 `openspec/changes/archive/2026-11-08-ui-polish-batch6`
   - 顶栏取消（G-3 改为无品牌顶栏）、状态栏五入口 + 紧凑高度 + 宽度/主题面板、页签与状态栏视觉、视频倍速、选区工具条归属与 AI 三键、placeMenu 统一落位、空行手柄悬停即开、块菜单对齐与缩进合并、色板二级保持、PDF 悬浮预览隐藏缩放条、卡片缩略图高度收窄
 
@@ -70,7 +72,7 @@ openspec status --change <name>   # 单个变更工件完成度
 | A-10 | 阅读宽度与标题配色 | ✅ | change `html-preview-rework` |
 | A-11 | 预览表格宽度与自动换行 | ✅ | change `preview-table-width` |
 | A-12 | 图表渲染（Pele，同步出图 / 主题变量 / 导出带图） | ✅ | change `diagram-engine-pele` |
-| A-13 | 悬浮预览的离开关闭与媒体渲染 | ✅ | change `reading-surface-refine`（归档 2026-11-06） |
+| A-13 | 悬浮预览的离开关闭与媒体渲染（图片按宽可滚 / HTML 本地直载） | ✅ | `reading-surface-refine`（2026-11-06）；`shell-media-batch7`（归档 2026-11-08） |
 | A-14 | HTML 摘要文本化 | ✅ | change `reading-surface-refine`（归档 2026-11-06） |
 | A-15 | 阅读空间宽度可调（钉住/悬浮两态） | ✅ | change `workspace-ux-batch4`（归档 2026-11-07，PR #279） |
 | A-16 | 正文行宽连续可调（480–2400px 滑块） | ✅ | change `workspace-ux-batch4`（归档 2026-11-07，PR #279） |
@@ -103,7 +105,7 @@ openspec status --change <name>   # 单个变更工件完成度
 | G-1 | 移除左侧栏逻辑 | ⬜ | 设计已批 `docs/design/approved/shell-ui/` |
 | G-2 | 无右侧边栏 | ⬜ | 设计已批同上 |
 | G-3 | 无品牌顶栏（内容贴顶；原「单一顶栏」已由本变更取代） | ✅ | `ui-polish-batch6`（归档 2026-11-08） |
-| 状态栏 | 五入口 / ≤26px / 双击显隐 / 宽度面板 / 主题悬停面板 | ✅ | `ui-polish-batch6`（归档 2026-11-08） |
+| 状态栏 | 六入口（含自动布局）/ ≤26px / 双击显隐 / 宽度面板 / 主题悬停面板 + 单击循环 | ✅ | `ui-polish-batch6`（归档 2026-11-08）；`shell-media-batch7`（归档 2026-11-08） |
 | G-5 | 正文分栏（可选） | ⬜ | 设计已批同上 |
 | B-2 | 空状态继续区分块 | 🟡 | 设计已批 `docs/design/approved/empty-state/` |
 | B-4 | 内置示例文件释放 | 🟡 | `src-tauri/samples/` 已就位 |
@@ -112,7 +114,7 @@ openspec status --change <name>   # 单个变更工件完成度
 | G-7 | 图标语义与全屏可用性 | ✅ | change `reading-surface-refine`（归档 2026-11-06）；`shell-editor-batch5`（2026-11-08） |
 | G-8 | 页签拖拽轨迹与落点反馈 | ✅ | change `workspace-ux-batch4`（归档 2026-11-07，PR #278）；`shell-editor-batch5`（2026-11-08） |
 | G-9 | 页签与栏目视觉贴合主题 | ✅ | change `workspace-ux-batch4`（归档 2026-11-07，PR #281） |
-| G-10 | 沉浸模式顶栏收纳与悬浮回显 | ✅ | change `workspace-ux-batch4`（归档 2026-11-07，PR #281）；`shell-editor-batch5`（2026-11-08） |
+| G-10 | 沉浸模式 chrome 收纳（状态栏 / 未钉住左栏）与每栏独立页签条 | ✅ | `workspace-ux-batch4`（2026-11-07）；`shell-editor-batch5`（2026-11-08）；`shell-media-batch7`（归档 2026-11-08） |
 | G-11 | 文件卡片工具条按类型收敛 | ✅ | change `workspace-ux-batch4`（归档 2026-11-07，PR #282） |
 | G-12 | 分栏语义与分隔线独立性 | ✅ | change `workspace-ux-batch4`（归档 2026-11-07，PR #278） |
 
@@ -167,7 +169,7 @@ openspec status --change <name>   # 单个变更工件完成度
 | C-3 | 自动保存 | 🟡 | V3 沿用（2s debounce） |
 | C-4 | 新建文档 | ✅ | change `shell-editor-batch5`（归档 2026-11-08） |
 | C-5 | 全部文件视图 | ⬜ | 依赖 B-3 |
-| C-6 | 视频预览播放器（含六档倍速 / 保音调 / 切文件复位） | ✅ | change `video-preview-player`；`ui-polish-batch6`（归档 2026-11-08） |
+| C-6 | 视频预览播放器（六档倍速 / 上下集 / 截图 / 旋转缩放亮度 / 容器自适应） | ✅ | `video-preview-player`；`ui-polish-batch6`；`shell-media-batch7`（归档 2026-11-08） |
 
 ### editing（9）
 
