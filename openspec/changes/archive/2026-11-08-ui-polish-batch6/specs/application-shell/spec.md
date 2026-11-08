@@ -1,6 +1,6 @@
-## MODIFIED Requirements
+## ADDED Requirements
 
-### Requirement: G-3 单一顶栏（Chrome Bar）
+### Requirement: G-3 无品牌顶栏（内容贴顶）
 
 应用外壳 SHALL NOT 渲染品牌顶栏：窗口内容区上方 SHALL NOT 出现一条只承载产品名「标月」的横条。产品级入口（网格概览 / AI / 主题 / 沉浸）SHALL 全部位于底部状态栏右侧，顺序保持 网格概览 / AI / 主题 / 沉浸。首个分栏的页签条 SHALL 直接贴内容区顶缘，其上 SHALL NOT 存在空白带或占位横条。
 
@@ -19,7 +19,7 @@
 - **WHEN** 审查顶栏 DOM
 - **THEN** 顶栏 SHALL NOT 含 `data-testid="grid-entry"` / `data-ai-entry` / 主题切换 / `data-testid="immersive-entry"` 四个入口
 
-### Requirement: 状态栏
+### Requirement: 状态栏（含主页入口 / 宽度面板 / 主题面板）
 
 应用外壳 SHALL 在窗口底部常驻一条状态栏。状态栏右侧 SHALL 依次排放 主页 / 网格概览 / AI / 主题切换 / 沉浸入口 五个图标，点击行为与图标语义 SHALL 不变。状态栏 SHALL NOT 因沉浸模式而隐藏其图标（沉浸收纳仅作用于页签条）。状态栏高度 SHALL 紧凑（默认字号下计算高度不超过 26px）。双击状态栏空白处 SHALL 切换显隐；隐藏态 SHALL 在指针滑入窗口底部热区 0.5 秒内显现，指针移出后 SHALL 立即隐藏。状态栏上的页面宽度数字 SHALL 可点击打开宽度调整面板：上行三个可点击的斜面柱状代表三档（高度递增），下行一条滑块，滑块长度 SHALL 大于上行按钮组总宽，且三档位置 SHALL 与滑块三挡对齐；正文宽度最大值为 1400px。面板 SHALL 以指针 x 为中位出现，并 SHALL 按窗口宽度夹取在可视区内。主题按钮 SHALL NOT 渲染下拉三角指示，指针悬停 SHALL 弹出主题选择面板（亮色 / 暗色 / 暖色 / 跟随系统），后续新增主题 SHALL 只需向该面板追加一项。主页入口 SHALL 回到程序启动时的页面。
 
@@ -67,6 +67,16 @@
 
 - **WHEN** 用户点击状态栏的主页图标
 - **THEN** 应用 SHALL 回到程序启动时显示的页面
+
+## REMOVED Requirements
+
+### Requirement: G-3 单一顶栏（Chrome Bar）
+
+**Reason**: 品牌顶栏在批次六取消（反馈 4/5）；顶栏「40px 常驻、承载品牌」的前提已不存在，入口全部移入状态栏。
+
+### Requirement: 状态栏
+
+**Reason**: 旧需求按四图标与固定高度描述；批次六加入主页入口、紧凑高度、双击显隐、宽度面板与主题悬停面板，旧场景（含四图标）已不成立。
 
 ## 待裁定与跨域冲突记录（非规范性）
 

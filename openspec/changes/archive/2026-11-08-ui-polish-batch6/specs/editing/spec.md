@@ -84,6 +84,16 @@
 - **WHEN** 审查块菜单中标题行与无序列表行的垂直间距
 - **THEN** 该间距 SHALL 小于菜单其它相邻行的间距
 
+#### Scenario: 缩进图标语义正确
+
+- **WHEN** 审查「对齐与缩进」二级菜单里的增加缩进 / 减少缩进两项
+- **THEN** 两项图标 SHALL 为缩进与反缩进语义图形，SHALL NOT 与对齐类图标混淆
+
+#### Scenario: 颜色观感为实色
+
+- **WHEN** 用户展开块菜单的颜色面板
+- **THEN** 色板 SHALL 呈现实色观感（字色与底色两组），SHALL NOT 呈现为偏淡的浅色块
+
 ## ADDED Requirements
 
 ### Requirement: 颜色面板二级保持
