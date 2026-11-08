@@ -1,4 +1,5 @@
-import { keymap, type EditorView } from "@codemirror/view";
+import { keymap, type EditorView, type KeyBinding } from "@codemirror/view";
+import { redo, undo } from "@codemirror/commands";
 
 /**
  * CM6 markdown formatting keybindings: Cmd+B (bold), Cmd+I (italic).
@@ -15,6 +16,16 @@ export function formattingKeymap() {
     },
   ]);
 }
+
+/**
+ * historyKeymap 只绑定 `Mod-`（macOS 上是 Command）。这里补 Control 变体，
+ * 让习惯 Ctrl 的用户不必去够 Command；两者指向同一组 undo/redo 命令。
+ */
+export const ctrlHistoryBindings: KeyBinding[] = [
+  { key: "Ctrl-z", run: undo, preventDefault: true },
+  { key: "Ctrl-Shift-z", run: redo, preventDefault: true },
+  { key: "Ctrl-y", run: redo, preventDefault: true },
+];
 
 export function toggleBold(view: EditorView): boolean {
   toggleFormatting(view, "**");
@@ -34,7 +45,10 @@ function toggleFormatting(view: EditorView, delimiter: string) {
     // No selection: insert delimiter pair, cursor in middle
     view.dispatch({
       changes: { from, to, insert: delimiter + delimiter },
-      selection: { anchor: from + delimiter.length, head: from + delimiter.length },
+      selection: {
+        anchor: from + delimiter.length,
+        head: from + delimiter.length,
+      },
     });
     return;
   }
@@ -43,7 +57,11 @@ function toggleFormatting(view: EditorView, delimiter: string) {
   const len = delimiter.length;
 
   // Check if already wrapped
-  if (selected.startsWith(delimiter) && selected.endsWith(delimiter) && selected.length >= len * 2) {
+  if (
+    selected.startsWith(delimiter) &&
+    selected.endsWith(delimiter) &&
+    selected.length >= len * 2
+  ) {
     const inner = selected.slice(len, -len);
     view.dispatch({
       changes: { from, to, insert: inner },

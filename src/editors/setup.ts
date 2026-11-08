@@ -1,4 +1,5 @@
 import { Compartment, EditorState, Extension } from "@codemirror/state";
+import { ctrlHistoryBindings } from "./keybindings";
 import {
   defaultKeymap,
   history,
@@ -81,6 +82,7 @@ export function baseEditorExtensions(): Extension[] {
     keymap.of([
       ...defaultKeymap,
       ...historyKeymap,
+      ...ctrlHistoryBindings,
       ...searchKeymap,
       indentWithTab,
     ]),
