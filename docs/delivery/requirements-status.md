@@ -2,7 +2,7 @@
 title: 需求实现状态总览
 type: delivery
 status: accepted
-last_updated: 2026-11-07
+last_updated: 2026-11-08
 source_of_truth: supporting
 ---
 
@@ -37,8 +37,8 @@ openspec status --change <name>   # 单个变更工件完成度
 
 ## 总览统计（截至 2026-11-07）
 
-- 规格：17 域 / 136 requirement（2026-11-07 归档 workspace-ux-batch4 后）
-- ✅ 经 openspec 归档实现：15
+- 规格：17 域 / 145 requirement（2026-11-08 归档 shell-editor-batch5 后）
+- ✅ 经 openspec 归档实现：24
 - 🟡 已实现/设计完成（未走 openspec 变更）：24
 - ⬜ 待开发：16
 - 🗒 未立项（遗留散件登记）：约 16（展卷仪式 8 模块 + TODOS 安全/功能项）
@@ -48,6 +48,8 @@ openspec status --change <name>   # 单个变更工件完成度
 - 编辑域（`html-visual-move-capture`）：+2 需求（E-20 拖拽移动节点、E-21 区域截图），已归档 `openspec/changes/archive/2026-11-07-html-visual-move-capture`（PR #266）
 - 编辑域（`html-toolbar-by-node-type`）：+1 需求（E-22 工具条按节点类型分化），已归档 `openspec/changes/archive/2026-11-07-html-toolbar-by-node-type`（PR #269）
 - 外壳/阅读域（`workspace-ux-batch4`）：+8 需求（G-8…G-12、A-15…A-17），5/5 票合并（PR #278–#282），已归档 `openspec/changes/archive/2026-11-07-workspace-ux-batch4`
+- 外壳/编辑/阅读/文件域（`shell-editor-batch5`）：+9 需求（C-4、E-10/E-11/E-13/E-16、G-3/G-7/G-8/G-10），18/18 票合并（PR #331–#351，含 #343/#347 两个缺陷），已归档 `openspec/changes/archive/2026-11-08-shell-editor-batch5`
+  - 附加入口批：PDF 卡片真首页缩略图（#317，pdfium 渲首页→dataURL，失败回退占位）、pin/pinOff 改标准图钉造型（#352，PR #353）
 
 ## 逐域状态
 
@@ -98,16 +100,16 @@ openspec status --change <name>   # 单个变更工件完成度
 |---|---|---|---|
 | G-1 | 移除左侧栏逻辑 | ⬜ | 设计已批 `docs/design/approved/shell-ui/` |
 | G-2 | 无右侧边栏 | ⬜ | 设计已批同上 |
-| G-3 | 单一顶栏（Chrome Bar） | ⬜ | 设计已批同上 |
+| G-3 | 单一顶栏（Chrome Bar） | ✅ | 设计已批同上；`shell-editor-batch5`（2026-11-08） |
 | G-5 | 正文分栏（可选） | ⬜ | 设计已批同上 |
 | B-2 | 空状态继续区分块 | 🟡 | 设计已批 `docs/design/approved/empty-state/` |
 | B-4 | 内置示例文件释放 | 🟡 | `src-tauri/samples/` 已就位 |
 | B-5 | 空状态设计规则 | 🟡 | 设计已批 `docs/design/approved/empty-state/` |
 | G-6 | 顶栏职责与页签身份 | ✅ | change `reading-surface-refine`（归档 2026-11-06） |
-| G-7 | 图标语义与全屏可用性 | ✅ | change `reading-surface-refine`（归档 2026-11-06） |
-| G-8 | 页签拖拽轨迹与落点反馈 | ✅ | change `workspace-ux-batch4`（归档 2026-11-07，PR #278） |
+| G-7 | 图标语义与全屏可用性 | ✅ | change `reading-surface-refine`（归档 2026-11-06）；`shell-editor-batch5`（2026-11-08） |
+| G-8 | 页签拖拽轨迹与落点反馈 | ✅ | change `workspace-ux-batch4`（归档 2026-11-07，PR #278）；`shell-editor-batch5`（2026-11-08） |
 | G-9 | 页签与栏目视觉贴合主题 | ✅ | change `workspace-ux-batch4`（归档 2026-11-07，PR #281） |
-| G-10 | 沉浸模式顶栏收纳与悬浮回显 | ✅ | change `workspace-ux-batch4`（归档 2026-11-07，PR #281） |
+| G-10 | 沉浸模式顶栏收纳与悬浮回显 | ✅ | change `workspace-ux-batch4`（归档 2026-11-07，PR #281）；`shell-editor-batch5`（2026-11-08） |
 | G-11 | 文件卡片工具条按类型收敛 | ✅ | change `workspace-ux-batch4`（归档 2026-11-07，PR #282） |
 | G-12 | 分栏语义与分隔线独立性 | ✅ | change `workspace-ux-batch4`（归档 2026-11-07，PR #278） |
 
@@ -157,7 +159,7 @@ openspec status --change <name>   # 单个变更工件完成度
 | C-1 | 打开文件 | ✅ | change `file-format-support` / `pdf-viewer-text-selection` |
 | C-2 | 拖拽打开 | 🟡 | V3 沿用 |
 | C-3 | 自动保存 | 🟡 | V3 沿用（2s debounce） |
-| C-4 | 新建文档 | ⬜ | — |
+| C-4 | 新建文档 | ✅ | change `shell-editor-batch5`（归档 2026-11-08） |
 | C-5 | 全部文件视图 | ⬜ | 依赖 B-3 |
 | C-6 | 视频预览播放器 | ✅ | change `video-preview-player` |
 
@@ -173,14 +175,14 @@ openspec status --change <name>   # 单个变更工件完成度
 | E-7 | 编排层交互契约（块手柄 / 菜单栈 / 浮层裁剪 / 共享色板） | ✅ | change `md-orchestration`（归档 2026-11-03） |
 | E-8 | 编辑态与预览态同貌（同一张纸 / 同一套排版 / 块级组合规则） | ✅ | change `editor-preview-parity`（归档 2026-11-02） |
 | E-9 | 单元格工具条（已整体移除：无合并 / 无背景色） | ✅（移除） | change `editor-block-parity`（归档 2026-11-06；#140 实施移除） |
-| E-10 | 编辑器大纲浮层（右上角入口 / 跳转 / 跳过代码块） | ✅ | change `editor-outline`（归档 2026-11-03） |
+| E-10 | 编辑器大纲浮层（右上角入口 / 跳转 / 跳过代码块） | ✅ | change `editor-outline`（归档 2026-11-03）；`shell-editor-batch5`（2026-11-08） |
 | E-7 修订 | 块菜单贴手柄居中、二级面板、hover 稳定性 | ✅ | change `editor-interaction-fixes`（归档 2026-11-03） |
-| E-11 | 块菜单结构与图标体系 | ✅ | change `editor-block-parity`（归档 2026-11-06） |
+| E-11 | 块菜单结构与图标体系 | ✅ | change `editor-block-parity`（归档 2026-11-06）；`shell-editor-batch5`（2026-11-08） |
 | E-12 | 单元格富文本编辑 | ✅ | change `editor-block-parity`（归档 2026-11-06） |
-| E-13 | 全角标点修正 | ✅ | `transactionFilter`（PR #121） |
+| E-13 | 全角标点修正 | ✅ | `transactionFilter`（PR #121）；`shell-editor-batch5`（2026-11-08） |
 | E-14 | 浮层定位优先级（不遮挡不越界 > 对齐 > 最近） | ✅ | PR #134 + `e2e/shortest-path.spec.ts` |
 | E-15 | HTML 编辑闭环（iframe 预览 / 相对资源 / 编辑后可见） | ✅ | change `html-edit-loop`（归档 2026-11-04，PR #159） |
-| E-16 | HTML 可视化编辑（点选 / 改字 / 拆块 / 保存零残留） | ✅ | change `html-visual-editing`（PR #168/#169/#188/#189）；ADR 0010 |
+| E-16 | HTML 可视化编辑（点选 / 改字 / 拆块 / 保存零残留） | ✅ | change `html-visual-editing`（PR #168/#169/#188/#189）；ADR 0010；`shell-editor-batch5`（2026-11-08） |
 | E-17 | 块手柄召唤区域与滑入菜单 | ✅ | change `reading-surface-refine`（归档 2026-11-06） |
 | E-18 | 正文选区胶囊 | ✅ | change `reading-surface-refine`（归档 2026-11-06） |
 | E-19 | HTML 可视化编辑工具条（换标签 / 改样式 / 改属性） | ✅ | change `html-edit-toolbar`（归档 2026-11-07，PR #264） |
