@@ -1,0 +1,46 @@
+{
+  "states": [
+    {
+      "state": "two-panes-before",
+      "screenshot": ".artifacts/421/before-two.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T11:57:23Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "two-panes-even-split",
+      "screenshot": ".artifacts/421/after-two.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T11:57:23Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "single-pane-unchanged",
+      "screenshot": ".artifacts/421/single.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T11:57:27Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "before-auto-layout",
+      "screenshot": ".artifacts/421/before-two.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T11:57:27Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "two-panes-balanced",
+      "screenshot": ".artifacts/421/after-two.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T11:57:27Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "four-panes-2x2",
+      "screenshot": ".artifacts/421/after-four.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T11:57:27Z",
+      "runner": "unknown@MMBP"
+    }
+  ]
+}

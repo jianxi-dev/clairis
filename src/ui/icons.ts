@@ -66,6 +66,7 @@ export type IconName =
   | "pip"
   | "camera"
   | "tune"
+  | "layoutAuto"
   | "rotate"
   | "zoomIn"
   | "zoomOut"
@@ -332,6 +333,13 @@ export const ICONS: Record<IconName, IconDef> = {
   pip: {
     label: "画中画",
     s: "M3 5.5h18v13H3z M12.5 12.5h6v4h-6z",
+  },
+  layoutAuto: {
+    label: "自动布局",
+    parts: [
+      { s: "M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z" },
+      { s: "M12 2.5l0.6 1.9 1.9 0.6-1.9 0.6L12 7.5l-0.6-1.9-1.9-0.6 1.9-0.6z" },
+    ],
   },
   tune: {
     label: "画面",

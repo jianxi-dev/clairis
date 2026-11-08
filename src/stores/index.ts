@@ -65,6 +65,7 @@ import {
   type PaneLeaf,
   type PaneSide,
 } from "../lib/paneTree";
+import { autoLayoutPanes as buildAutoLayout } from "../lib/paneAutoLayout";
 
 type SplitDirection = "horizontal" | "vertical";
 
@@ -307,6 +308,7 @@ interface AppStore {
   moveTabToPane: (tabId: string, targetLeafId: string) => void;
   restorePaneLayout: (root: PaneLayout, focusedId: string) => void;
   collapsePanes: () => void;
+  autoLayoutPanes: () => void;
   paneLayoutJson: () => string;
   // 拖拽换位 actions（layout-portal 5.1）
   swapPanes: (a: string, b: string) => void;
@@ -1049,6 +1051,19 @@ export const useStore = create<AppStore>((set, get) => ({
       editorMode: activeTab ? activeTab.editorMode : "preview",
     };
     set({ paneRoot: root, focusedPaneId: "main", fullscreenPaneId: null });
+  },
+
+  autoLayoutPanes: () => {
+    const state = get();
+    if (listLeaves(state.paneRoot).length < 2) return;
+    const isMedia = (leaf: PaneLeaf) => {
+      const tab = leaf.activeTabId ? state.tabs[leaf.activeTabId] : null;
+      return !!tab && isMediaKind(tab.fileKind);
+    };
+    set({
+      paneRoot: buildAutoLayout({ root: state.paneRoot, isMedia }),
+      fullscreenPaneId: null,
+    });
   },
 
   paneLayoutJson: () => {

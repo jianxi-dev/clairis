@@ -321,6 +321,17 @@ export default function StatusBar({
 
         <button
           type="button"
+          data-testid="auto-layout-entry"
+          title="自动布局"
+          aria-label="自动布局"
+          onClick={() => useStore.getState().autoLayoutPanes()}
+          className="rounded-full px-2 py-0.5 text-[var(--app-chrome-rest)] hover:bg-[var(--app-accent-soft)] hover:text-[var(--app-chrome-hover)]"
+        >
+          <Icon name="layoutAuto" size={18} />
+        </button>
+
+        <button
+          type="button"
           data-testid="grid-entry"
           title="网格概览（⌘⇧\\）"
           aria-label="网格概览"
