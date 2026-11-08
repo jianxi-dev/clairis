@@ -27,3 +27,28 @@ test.describe("页签右键菜单图标（ui-polish-batch6 3.1）", () => {
     }
   });
 });
+
+test.describe("「关闭其他」图标可辨（shell-media-batch7 3.1）", () => {
+  test("单一叉、无虚线、与「关闭」不同", async ({ page }) => {
+    await boot(page);
+    await page.locator('[role="tab"]').first().click({ button: "right" });
+
+    const svg = page
+      .getByRole("button", { name: "关闭其他", exact: true })
+      .locator("svg");
+    expect(await svg.locator("[stroke-dasharray]").count()).toBe(0);
+
+    const paths = await svg
+      .locator("path")
+      .evaluateAll((els) => els.map((e) => e.getAttribute("d") ?? ""));
+    expect(paths).toHaveLength(3);
+    expect((paths[0].match(/M/gi) ?? []).length).toBe(2);
+
+    const closeD = await page
+      .getByRole("button", { name: "关闭", exact: true })
+      .locator("svg path")
+      .first()
+      .getAttribute("d");
+    expect(paths.join("|")).not.toBe(closeD);
+  });
+});
