@@ -673,7 +673,7 @@ function RailRow({
         title={item.path}
         aria-label={`打开所在文件夹 ${parentFolderNameOf(item.path)}`}
         onClick={() => onReveal(parentPathOf(item.path))}
-        className="flex min-w-0 items-center gap-0.5 truncate rounded p-0.5 text-left text-[10px] text-[var(--app-chrome-rest)] hover:bg-[var(--app-sunken)] hover:text-[var(--app-chrome-hover)]"
+        className="flex min-w-0 items-center gap-0.5 truncate rounded p-0.5 text-left text-[10px] text-[var(--app-chrome-rest)] hover:text-[var(--app-chrome-hover)]"
       >
         <Icon name="folder" size={14} />
         <span className="truncate">{parentFolderNameOf(item.path)}</span>

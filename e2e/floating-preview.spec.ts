@@ -465,7 +465,10 @@ test("缩略图带触发预览 + 底部按钮区悬停重显按钮", async ({ pa
   expect(Math.abs(narrow.w - PREVIEW_RAIL_NARROW_W)).toBeLessThanOrEqual(2);
   await page.screenshot({ path: path.join(ART, "preview-narrow.png") });
 
-  // 指针在阅读空间行上（未进入窗口底部带）→ 动作区隐藏
+  const nb = await previewBox(page);
+  await moveThrough(page, [{ x: nb.x + nb.w / 2, y: nb.y + nb.h / 2 }], {
+    steps: 6,
+  });
   await expect(actions).toHaveCount(0);
 
   // 钉住，避免指针移动途中离窗关闭
@@ -490,7 +493,18 @@ test("缩略图带触发预览 + 底部按钮区悬停重显按钮", async ({ pa
     { steps: 8 },
   );
   await expect(actions).toBeVisible();
-  await expect(page.locator('[data-testid="preview-action"]')).toHaveCount(3);
+  await expect(page.locator('[data-testid="preview-action"]')).toHaveCount(4);
+  const pathBtn = page.locator(
+    '[data-testid="preview-action"][data-action="path"]',
+  );
+  await expect(pathBtn).toHaveCount(1);
+  await expect(pathBtn).toHaveAttribute("title", /\/tmp\/fp\/doc\d+\.md/);
+  expect(
+    await pathBtn.evaluate((el) => getComputedStyle(el).backgroundColor),
+  ).toBe("rgba(0, 0, 0, 0)");
+  expect(await actions.evaluate((el) => getComputedStyle(el).paddingLeft)).toBe(
+    "24px",
+  );
   await page.screenshot({ path: path.join(ART, "preview-actions-hover.png") });
 
   // 移回窗口中部 → 动作区隐藏
@@ -671,7 +685,7 @@ test("拖动标题栏经过 iframe 内容区仍持续跟手（#275）", async ({
   await expect(page.locator(PREVIEW)).toHaveAttribute("data-dragging", "false");
 });
 
-test("悬浮窗底部动作行：默认不渲染、悬停浮现三按钮、图标 14px、PDF 同样（#365）", async ({
+test("悬浮窗底部动作行：默认不渲染、悬停浮现四按钮、图标 14px、PDF 同样（#365）", async ({
   page,
 }) => {
   await boot(page);
@@ -698,10 +712,10 @@ test("悬浮窗底部动作行：默认不渲染、悬停浮现三按钮、图�
 
   const actions = page.locator('[data-testid="preview-actions"]');
   await expect(actions).toBeVisible();
-  await expect(page.locator('[data-testid="preview-action"]')).toHaveCount(3);
+  await expect(page.locator('[data-testid="preview-action"]')).toHaveCount(4);
 
   const svgs = page.locator('[data-testid="preview-action"] svg');
-  for (let i = 0; i < 3; i += 1) {
+  for (let i = 0; i < 4; i += 1) {
     expect(await svgs.nth(i).getAttribute("width")).toBe("14");
   }
 });
@@ -726,4 +740,32 @@ test("PDF 悬浮预览不显示缩放工具条（#391）", async ({ page }) => {
   await expect(preview.locator('[data-testid="preview-pdf"]')).toBeVisible();
   await expect(preview.locator('[data-epdf-i="zoom-toolbar"]')).toHaveCount(0);
   await expect(preview.getByRole("button", { name: "放大" })).toHaveCount(0);
+});
+
+test("阅读空间卡片路径按钮悬停无底色", async ({ page }) => {
+  await boot(page);
+  await seed(page);
+  await pinRail(page);
+  await closePreview(page);
+  await page.evaluate(() => {
+    (
+      window as unknown as {
+        __biaoyue_store__: {
+          getState: () => { setRailDensity: (d: string) => void };
+        };
+      }
+    ).__biaoyue_store__
+      .getState()
+      .setRailDensity("card");
+  });
+  const pathBtn = page
+    .locator(
+      '[data-section="recent"] [data-testid="rail-card-action"][data-action="path"]',
+    )
+    .first();
+  await pathBtn.hover({ force: true });
+  expect(
+    await pathBtn.evaluate((el) => getComputedStyle(el).backgroundColor),
+  ).toBe("rgba(0, 0, 0, 0)");
+  await expect(pathBtn).toHaveAttribute("title", /\/tmp\/fp\/doc/);
 });

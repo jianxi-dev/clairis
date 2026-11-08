@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "动作行默认隐藏",
+      "screenshot": ".artifacts/451/01-actions-hidden.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T17:29:30Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "动作行显示含路径",
+      "screenshot": ".artifacts/451/02-actions-visible-path.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T17:29:30Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "路径按钮悬停无底色",
+      "screenshot": ".artifacts/451/03-action-path-hover.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T17:29:30Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "阅读空间路径悬停无底色",
+      "screenshot": ".artifacts/451/04-rail-path-hover.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T17:29:33Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}
