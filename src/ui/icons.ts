@@ -153,11 +153,11 @@ export const ICONS: Record<IconName, IconDef> = {
   },
   pin: {
     label: "钉住",
-    s: "M9 3h6v3H9z M9 6h6l-3 4z M12 10v9",
+    s: "M9 4h6 M12 4v1.6 M9.4 5.6h5.2l1.2 3.6H8.2L9.4 5.6z M8.4 9.2h7.2 M12 9.2v6.8",
   },
   pinOff: {
     label: "取消钉住",
-    s: "M9 3h6v3H9z M9 6h6l-3 4z M12 10v9 M8.5 15.5l7-7",
+    s: "M9 4h6 M12 4v1.6 M9.4 5.6h5.2l1.2 3.6H8.2L9.4 5.6z M8.4 9.2h7.2 M12 9.2v6.8 M5 19L19 5",
   },
   grid: {
     label: "网格概览",
