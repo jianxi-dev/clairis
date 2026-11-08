@@ -140,3 +140,30 @@ test("点空白处关闭工具条", async ({ page }) => {
   await frame.locator("body").click({ position: { x: 400, y: 500 } });
   await expect(page.locator(TOOLBAR)).toHaveCount(0);
 });
+
+test("工具条归属：md 编辑态无 HTML 工具条，HTML 编辑态无 CM 工具条", async ({
+  page,
+}) => {
+  await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
+  await page.goto("/", { waitUntil: "networkidle" });
+  await page.waitForSelector('[data-testid="pane-header"]');
+
+  await page.evaluate(() => {
+    const win = window as unknown as Record<string, any>;
+    win.__biaoyue_openFile__(
+      "/tmp/tb/text.md",
+      "# 标题\n\n一段正文",
+      "text.md",
+    );
+    win.__biaoyue_store__.getState().setEditorMode("edit");
+  });
+  await page.locator(".cm-content").click();
+  await page.keyboard.press("ControlOrMeta+a");
+  await expect(page.locator(".cm-floating-toolbar")).toHaveCount(1);
+  await expect(page.locator(".html-edit-toolbar")).toHaveCount(0);
+
+  const frame = await openVisual(page);
+  await frame.locator("h1").click();
+  await expect(page.locator(".html-edit-toolbar")).toBeVisible();
+  await expect(page.locator(".cm-floating-toolbar")).toHaveCount(0);
+});
