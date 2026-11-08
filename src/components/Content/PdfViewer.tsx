@@ -80,7 +80,10 @@ function injectPdfUiCss(container: EmbedPdfContainer): void {
   style.setAttribute("data-biaoyue-pdf-ui", "");
   style.textContent = [
     "label:has(> span.text-fg-secondary.text-sm.font-medium){display:none !important}",
-    '[data-epdf-i="pdf-page-nav"]>div>div{opacity:1 !important}',
+    '[data-epdf-i="pdf-page-nav"]>div>div{opacity:1 !important;border:0 !important;background:transparent !important;box-shadow:none !important}',
+    ":host{background:var(--app-bg) !important}",
+    ".bg-bg-app{background:var(--app-bg) !important}",
+    ".bg-bg-surface{background:var(--app-surface) !important}",
   ].join("\n");
   shadow.appendChild(style);
 }
@@ -320,7 +323,14 @@ export default function PdfViewer({ filePath }: PdfViewerProps) {
   }
 
   return (
-    <div ref={containerRef} style={{ width: "100%", height: "100%" }}>
+    <div
+      ref={containerRef}
+      style={{
+        width: "100%",
+        height: "100%",
+        background: "var(--app-bg)",
+      }}
+    >
       <PDFViewer
         config={{
           wasmUrl: "/pdfium.wasm",
