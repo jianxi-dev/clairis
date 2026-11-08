@@ -808,6 +808,7 @@ export default function ReadingRail({
   onOpenPath: (path: string) => void | Promise<void>;
 }) {
   const railState = useStore((s) => s.railState);
+  const readingMode = useStore((s) => s.readingMode);
   const railLayout = useStore((s) => s.railLayout);
   const railDensity = useStore((s) => s.railDensity);
   const railCardHeight = useStore((s) => s.railCardHeight);
@@ -1688,6 +1689,8 @@ export default function ReadingRail({
       </div>
     </div>
   );
+
+  if (readingMode && railState !== "pinned") return null;
 
   const collapsed = (
     <button

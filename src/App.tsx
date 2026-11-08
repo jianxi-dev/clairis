@@ -108,12 +108,21 @@ function App() {
   const handleStatusBarPopupOpen = useCallback(
     (open: boolean) => {
       setStatusBarPopupOpen(open);
-      if (!open && statusBarHidden && !statusBarHoverRef.current) {
+      if (
+        !open &&
+        (statusBarHidden || readingMode) &&
+        !statusBarHoverRef.current
+      ) {
         setStatusBarPeek(false);
       }
     },
-    [statusBarHidden],
+    [statusBarHidden, readingMode],
   );
+
+  // 退出沉浸时收回临时显现，回到隐藏前的可见性（派生，不写回用户偏好）
+  useEffect(() => {
+    if (!readingMode) setStatusBarPeek(false);
+  }, [readingMode]);
 
   const openSettings = useCallback(() => {
     const st = useStore.getState();
@@ -792,7 +801,9 @@ function App() {
         </div>
       </div>
 
-      {statusBarHidden && !statusBarPeek && !statusBarPopupOpen ? (
+      {(statusBarHidden || readingMode) &&
+      !statusBarPeek &&
+      !statusBarPopupOpen ? (
         <div
           data-testid="status-hotzone"
           className="status-hotzone"
@@ -821,7 +832,9 @@ function App() {
           }}
           onPointerLeave={() => {
             statusBarHoverRef.current = false;
-            if (statusBarHidden && !statusBarPopupOpen) setStatusBarPeek(false);
+            if ((statusBarHidden || readingMode) && !statusBarPopupOpen) {
+              setStatusBarPeek(false);
+            }
           }}
           onPopupOpenChange={handleStatusBarPopupOpen}
           onSetReaderWidth={(w) => {
