@@ -413,6 +413,47 @@ export default function TabBar({
           }}
         >
           <button
+            className="w-full flex items-center gap-2 text-left px-3 py-1.5 hover:bg-[var(--app-sunken)] disabled:cursor-not-allowed disabled:opacity-45"
+            disabled={!tabs[menu.tabId]?.path}
+            title={
+              tabs[menu.tabId]?.path
+                ? "悬浮小窗"
+                : "此页签尚未保存，无路径可预览"
+            }
+            onClick={() => {
+              const tab = tabs[menu.tabId];
+              const path = tab?.path;
+              const el = stripRef.current?.querySelector<HTMLElement>(
+                `[data-tab-id="${menu.tabId}"]`,
+              );
+              if (!path || !el) {
+                closeMenu();
+                return;
+              }
+              const rect = el.getBoundingClientRect();
+              const w = 320;
+              const h = 360;
+              useStore.getState().openPreview({
+                path,
+                title: tab.title,
+                x: Math.max(
+                  8,
+                  Math.min(rect.right + 12, window.innerWidth - w - 8),
+                ),
+                y: Math.max(8, Math.min(rect.top, window.innerHeight - h - 8)),
+                w,
+                h,
+                flippedX: false,
+                flippedY: false,
+                source: "tab",
+              });
+              closeMenu();
+            }}
+          >
+            <Icon name="pip" size={18} />
+            悬浮小窗
+          </button>
+          <button
             className="w-full flex items-center gap-2 text-left px-3 py-1.5 hover:bg-[var(--app-sunken)]"
             onClick={() => {
               // 右键分栏 = 把当前文件分到那边，而不是新建一个空栏（#272）。

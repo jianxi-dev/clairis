@@ -52,3 +52,26 @@ test.describe("「关闭其他」图标可辨（shell-media-batch7 3.1）", () =
     expect(paths.join("|")).not.toBe(closeD);
   });
 });
+
+test.describe("页签右键菜单「悬浮小窗」（ui-polish-batch8 6.1）", () => {
+  test("首项为悬浮小窗，点击唤出同款预览", async ({ page }) => {
+    await boot(page);
+    await page.locator('[role="tab"]').first().click({ button: "right" });
+
+    const items = page.locator("[data-tab-menu] > button");
+    await expect(items).toHaveCount(5);
+    await expect(items.first()).toHaveText(/悬浮小窗/);
+    expect(await items.first().locator("svg").count()).toBe(1);
+
+    await items.first().click();
+    const preview = page.locator('[data-testid="floating-preview"]');
+    await expect(preview).toBeVisible();
+    await expect(preview).toHaveAttribute(
+      "data-preview-path",
+      "/tmp/e2e-ctx.md",
+    );
+
+    await page.locator('[data-testid="preview-close"]').click();
+    await expect(preview).toHaveCount(0);
+  });
+});
