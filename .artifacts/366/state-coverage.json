@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "card-pin",
+      "screenshot": ".artifacts/366/01-card-pin.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T07:34:12Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "pin",
+      "screenshot": ".artifacts/366/02-pin.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T07:34:12Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "pinoff",
+      "screenshot": ".artifacts/366/03-pinoff.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T07:34:12Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "after-pin",
+      "screenshot": ".artifacts/366/04-after-pin.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T07:34:13Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}

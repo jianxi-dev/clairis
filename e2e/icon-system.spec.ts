@@ -234,3 +234,18 @@ test("钉住后 pin 按钮切换为 pinOff，取消后回 pin", async ({ page })
   await expect(itemPin.locator('svg[data-icon="pin"]')).toHaveCount(1);
   await expect(itemPin.locator('svg[data-icon="pinOff"]')).toHaveCount(0);
 });
+
+test("图钉造型：pin 与 pinOff 形状不同、斜杠只覆盖图钉本体（#366）", async ({
+  page,
+}) => {
+  await page.goto("http://localhost:1420", { waitUntil: "networkidle" });
+  const iconPaths = await page.evaluate(async () => {
+    const mod = await import("/src/ui/icons.ts");
+    const icons = (mod as unknown as { ICONS: Record<string, { s?: string }> })
+      .ICONS;
+    return { pin: icons.pin?.s ?? "", pinOff: icons.pinOff?.s ?? "" };
+  });
+  expect(iconPaths.pin).not.toBe(iconPaths.pinOff);
+  expect(iconPaths.pinOff).not.toContain("M5 19L19 5");
+  expect(iconPaths.pinOff).toContain("M7.4 16.6L16.6 7.4");
+});
