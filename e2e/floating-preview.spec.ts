@@ -137,7 +137,8 @@ async function dragHandle(
 /** 打开悬浮预览（悬停第 1 行，等 250ms 延时触发）。 */
 async function openPreview(page: Page): Promise<void> {
   const rows = await railRows(page);
-  await rows.first().hover();
+  const b = (await rows.first().boundingBox())!;
+  await page.mouse.move(b.x + b.width - 20, b.y + b.height / 2);
   await expect(page.locator(PREVIEW)).toBeVisible({ timeout: 3000 });
 }
 
@@ -193,7 +194,7 @@ async function previewBox(page: Page) {
   };
 }
 
-/** 悬停最近段某类型行的右半区（触发区）。 */
+/** 悬停最近段某类型行右侧缩略图带（触发区，带宽=缩略图宽 72）。 */
 async function hoverRowRightHalf(page: Page, kind: string): Promise<void> {
   const row = page
     .locator(
@@ -202,7 +203,7 @@ async function hoverRowRightHalf(page: Page, kind: string): Promise<void> {
     .first();
   const b = await row.boundingBox();
   if (!b) throw new Error(`行不可测量: ${kind}`);
-  await page.mouse.move(b.x + Math.round(b.width * 0.75), b.y + b.height / 2);
+  await page.mouse.move(b.x + b.width - 20, b.y + b.height / 2);
 }
 
 /** 悬停最近段某类型行的左半区（非触发区）。 */
@@ -259,7 +260,7 @@ test("阅读空间锚定：x 恒=栏右缘+12、y 跟随悬停行、横向不随
   const r8 = (await row8.boundingBox())!;
 
   // 悬停第 3 行 → 250ms 后弹出，x = 行右缘 + 12、y = 行顶
-  await row3.hover();
+  await page.mouse.move(r3.x + r3.width - 20, r3.y + r3.height / 2);
   const preview = page.locator(PREVIEW);
   await expect(preview).toBeVisible({ timeout: 3000 });
   const b3 = await previewBox(page);
@@ -276,7 +277,7 @@ test("阅读空间锚定：x 恒=栏右缘+12、y 跟随悬停行、横向不随
   await expect(preview).toHaveAttribute("data-pinned", "true");
 
   // 悬停第 8 行 → x 不变，y 跟随到第 8 行
-  await row8.hover();
+  await page.mouse.move(r8.x + r8.width - 20, r8.y + r8.height / 2);
   await expect
     .poll(async () => (await previewBox(page)).y)
     .toBe(Math.round(r8.y));
@@ -407,7 +408,11 @@ test("⌘⇧V 开关：关闭后悬停不再弹，开启后 250ms 弹出；两�
           .enabled,
     )
     .toBe(true);
-  await rows.first().hover();
+  const firstBox = (await rows.first().boundingBox())!;
+  await page.mouse.move(
+    firstBox.x + firstBox.width - 20,
+    firstBox.y + firstBox.height / 2,
+  );
   await expect(preview).toBeVisible({ timeout: 3000 });
 
   // 双开关独立：关阅读空间悬停不动网格模式与总开关
@@ -443,7 +448,7 @@ test("⌘⇧V 开关：关闭后悬停不再弹，开启后 250ms 弹出；两�
   await expect(preview).toHaveCount(0);
 });
 
-test("右半触发窄窗 + 底部按钮区悬停重显三按钮", async ({ page }) => {
+test("缩略图带触发预览 + 底部按钮区悬停重显按钮", async ({ page }) => {
   await boot(page);
   await seed(page);
   await pinRail(page);
@@ -451,12 +456,12 @@ test("右半触发窄窗 + 底部按钮区悬停重显三按钮", async ({ page 
   const preview = page.locator(PREVIEW);
   const actions = page.locator('[data-testid="preview-actions"]');
 
-  // 右半区触发 → 窄窗：≈缩略图 72 + 内边距 24 = 96，严格 < 320
+  // 缩略图带触发 → 宽度 = 上一版基准 320 + 一个缩略图 72
   await hoverRowRightHalf(page, "markdown");
   await expect(preview).toBeVisible({ timeout: 3000 });
   const narrow = await previewBox(page);
-  expect(narrow.w).toBeLessThan(320);
-  expect(Math.abs(narrow.w - 96)).toBeLessThanOrEqual(2);
+  expect(narrow.w).toBeGreaterThanOrEqual(320);
+  expect(Math.abs(narrow.w - 392)).toBeLessThanOrEqual(2);
   await page.screenshot({ path: path.join(ART, "preview-narrow.png") });
 
   // 指针在阅读空间行上（未进入窗口底部带）→ 动作区隐藏
@@ -466,9 +471,9 @@ test("右半触发窄窗 + 底部按钮区悬停重显三按钮", async ({ page 
   await page.locator('[data-testid="preview-pin"]').click();
   await expect(preview).toHaveAttribute("data-pinned", "true");
 
-  // 窄窗拖拽：宽钳到窄窗最小 96、高钳到 200
+  // 拖拽：宽钳到窄窗最小 392、高钳到 200
   await dragHandle(page, "e", -600, 0);
-  expect((await previewBox(page)).w).toBe(96);
+  expect((await previewBox(page)).w).toBe(392);
   await dragHandle(page, "s", 0, -600);
   expect((await previewBox(page)).h).toBe(200);
 
@@ -494,7 +499,7 @@ test("右半触发窄窗 + 底部按钮区悬停重显三按钮", async ({ page 
   await expect(actions).toHaveCount(0);
 });
 
-test("触发区：左半区不打开；右半区 250ms 打开（时钟推进）", async ({
+test("触发区：缩略图左侧不打开；缩略图带上 250ms 打开（时钟推进）", async ({
   page,
 }) => {
   await boot(page);
@@ -633,7 +638,11 @@ test("拖动标题栏经过 iframe 内容区仍持续跟手（#275）", async ({
   await pinRail(page);
 
   const row = page.locator('[data-rail-path="/tmp/fp/page.html"]').first();
-  await row.hover();
+  const rowBox = (await row.boundingBox())!;
+  await page.mouse.move(
+    rowBox.x + rowBox.width - 20,
+    rowBox.y + rowBox.height / 2,
+  );
   await expect(page.locator(PREVIEW)).toBeVisible({ timeout: 3000 });
   await expect(page.locator('[data-testid="preview-html"]')).toBeVisible();
 
