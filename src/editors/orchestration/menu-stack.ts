@@ -55,6 +55,21 @@ interface StackedEntry {
 export class MenuStack {
   private items: StackedEntry[] = [];
   private byToken = new Map<MenuToken, StackedEntry>();
+  private keepOpenScopes = new Set<string>();
+
+  /**
+   * 钉住某作用域的菜单：置位期间指针离开父面板不关闭菜单，二级色板才不会
+   * 在指针穿过缝隙的一瞬间连父带子一起消失。由二级面板的开关成对调用。
+   */
+  setKeepOpen(scope: object | undefined, keepOpen: boolean): void {
+    const key = scopeKey(scope);
+    if (keepOpen) this.keepOpenScopes.add(key);
+    else this.keepOpenScopes.delete(key);
+  }
+
+  isKeepOpen(scope?: object): boolean {
+    return this.keepOpenScopes.has(scopeKey(scope));
+  }
 
   private topOfScope(scope: object | undefined): StackedEntry | undefined {
     const key = scopeKey(scope);
@@ -167,6 +182,7 @@ export class MenuStack {
   clear(): void {
     this.items = [];
     this.byToken.clear();
+    this.keepOpenScopes.clear();
   }
 
   private close(item: StackedEntry, reason: string): void {

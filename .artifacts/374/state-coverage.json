@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "指针移出仍保持",
+      "screenshot": ".artifacts/374/01-keep-open.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T08:51:49Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "外部点击关闭无残留",
+      "screenshot": ".artifacts/374/02-outside-click.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T08:51:49Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "选色关闭并生效",
+      "screenshot": ".artifacts/374/03-color-applied.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T08:51:50Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "关闭后重开可用",
+      "screenshot": ".artifacts/374/04-reopen.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T08:51:50Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}

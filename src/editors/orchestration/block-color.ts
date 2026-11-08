@@ -14,6 +14,32 @@
 /** 色板族前缀 → 源码 span 类名前缀。 */
 export type ColorFamily = "mdb-color" | "mdb-bg" | "mdb-border";
 
+/** 需要钉住父菜单的最小接口，避免 block-color 反向依赖 menu-stack 的实现。 */
+export interface KeepOpenTarget {
+  setKeepOpen(scope: object, keepOpen: boolean): void;
+}
+
+/**
+ * 色板打开期间钉住父菜单。
+ *
+ * 二级色板挂在编辑器根节点、与父面板之间有 4px 缝隙：指针从「颜色」行移向
+ * 色板时会先触发父面板 pointerleave。没有这个标记，色板会在指尖还停在色板
+ * 上时被 150ms 的延迟关闭带走。返回的 release 在选色 / Esc / 点外部时调用，
+ * 重复调用无副作用。
+ */
+export function keepColorPanelOpen(
+  target: KeepOpenTarget,
+  scope: object,
+): () => void {
+  target.setKeepOpen(scope, true);
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    target.setKeepOpen(scope, false);
+  };
+}
+
 /** 结构块：包裹会破坏语法，一律不动。 */
 const NON_COLORABLE = new Set([
   "fencedCode",
