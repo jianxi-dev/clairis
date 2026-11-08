@@ -2532,3 +2532,31 @@ body {
   background: var(--app-border);
   flex: none;
 }
+
+.theme-menu {
+  position: fixed;
+  z-index: 80;
+  min-width: 132px;
+  padding: 4px;
+  border: 1px solid var(--app-border);
+  border-radius: 10px;
+  background: var(--app-surface);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.18);
+}
+
+.theme-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 5px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--app-text-2);
+}
+
+.theme-menu-item:hover,
+.theme-menu-item.is-active {
+  background: var(--app-accent-soft);
+  color: var(--app-accent);
+}

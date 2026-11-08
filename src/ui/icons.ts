@@ -45,6 +45,7 @@ export type IconName =
   | "copyPath"
   | "chevronLeft"
   | "chevronRight"
+  | "chevronDown"
   | "sparkle"
   | "pinOff"
   | "immersive"
@@ -241,6 +242,10 @@ export const ICONS: Record<IconName, IconDef> = {
   copyPath: {
     label: "复制",
     s: "M5 8h10v12H5z M9 5h10v11",
+  },
+  chevronDown: {
+    label: "展开",
+    s: "M6 9l6 6 6-6",
   },
   chevronRight: {
     label: "展开栏",

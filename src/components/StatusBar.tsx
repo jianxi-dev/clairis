@@ -1,9 +1,30 @@
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { Theme } from "../types";
 import Icon from "./Icon";
 import { useAiEntryStore } from "../hooks/useAiEntry";
 import { useEditorStore } from "../stores/editorStore";
 import { useStore } from "../stores/index";
 import { readPercentOf } from "../lib/railCards";
+
+const THEME_OPTIONS: {
+  value: Theme;
+  label: string;
+  icon: "sun" | "moon" | "monitor";
+}[] = [
+  { value: "light", label: "亮色", icon: "sun" },
+  { value: "dark", label: "暗色", icon: "moon" },
+  { value: "warm", label: "暖色", icon: "sun" },
+  { value: "system", label: "跟随系统", icon: "monitor" },
+];
+
+function themeLabelOf(theme: Theme): string {
+  return THEME_OPTIONS.find((o) => o.value === theme)?.label ?? "亮色";
+}
+
+function iconOfTheme(theme: Theme): "sun" | "moon" | "monitor" {
+  return THEME_OPTIONS.find((o) => o.value === theme)?.icon ?? "sun";
+}
 
 interface StatusBarProps {
   theme: Theme;
@@ -56,6 +77,23 @@ export default function StatusBar({
   const percent = activeTab?.path
     ? readPercentOf(scrollPositions[activeTab.path])
     : undefined;
+
+  const [themeOpen, setThemeOpen] = useState(false);
+  const [themeRect, setThemeRect] = useState<DOMRect | null>(null);
+  const themeBtnRef = useRef<HTMLButtonElement | null>(null);
+  const themeCloseTimer = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!themeOpen) return;
+    const el = themeBtnRef.current;
+    if (el) setThemeRect(el.getBoundingClientRect());
+  }, [themeOpen]);
+
+  const scheduleThemeClose = () => {
+    if (themeCloseTimer.current !== null)
+      window.clearTimeout(themeCloseTimer.current);
+    themeCloseTimer.current = window.setTimeout(() => setThemeOpen(false), 150);
+  };
 
   return (
     <footer
@@ -124,43 +162,54 @@ export default function StatusBar({
           <Icon name="sparkle" size={18} color="var(--app-accent)" />
         </button>
 
-        {/* Theme toggle */}
-        <button
-          onClick={() =>
-            onSetTheme(
-              theme === "light"
-                ? "dark"
-                : theme === "dark"
-                  ? "warm"
-                  : theme === "warm"
-                    ? "system"
-                    : "light",
-            )
-          }
-          className="rounded-full px-2 py-0.5 text-[var(--app-text-2)] hover:bg-[var(--app-accent-soft)] hover:text-[var(--app-accent)]"
-          title={`当前: ${
-            theme === "system"
-              ? "跟随系统"
-              : theme === "dark"
-                ? "暗色"
-                : theme === "warm"
-                  ? "暖色"
-                  : "亮色"
-          }`}
+        <div
+          className="relative"
+          onPointerEnter={() => setThemeOpen(true)}
+          onPointerLeave={() => scheduleThemeClose()}
         >
-          <Icon
-            name={
-              theme === "light"
-                ? "moon"
-                : theme === "dark"
-                  ? "sun"
-                  : theme === "warm"
-                    ? "sun"
-                    : "monitor"
-            }
-            size={18}
-          />
-        </button>
+          <button
+            ref={themeBtnRef}
+            data-testid="theme-entry"
+            onPointerEnter={() => setThemeOpen(true)}
+            onClick={() => setThemeOpen((v) => !v)}
+            className="flex items-center gap-0.5 rounded-full px-2 text-[var(--app-text-2)] hover:bg-[var(--app-accent-soft)] hover:text-[var(--app-accent)]"
+            title={`当前: ${themeLabelOf(theme)}`}
+          >
+            <Icon name={iconOfTheme(theme)} size={18} />
+            <Icon name="chevronDown" size={18} />
+          </button>
+          {themeOpen && themeRect
+            ? createPortal(
+                <div
+                  data-testid="theme-menu"
+                  className="theme-menu"
+                  style={{
+                    left: themeRect.left,
+                    bottom: window.innerHeight - themeRect.top + 6,
+                  }}
+                  onPointerEnter={() => setThemeOpen(true)}
+                  onPointerLeave={() => scheduleThemeClose()}
+                >
+                  {THEME_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      data-testid={`theme-option-${opt.value}`}
+                      onClick={() => {
+                        onSetTheme(opt.value);
+                        setThemeOpen(false);
+                      }}
+                      className={`theme-menu-item ${theme === opt.value ? "is-active" : ""}`}
+                    >
+                      <Icon name={opt.icon} size={18} />
+                      <span>{opt.label}</span>
+                    </button>
+                  ))}
+                </div>,
+                document.body,
+              )
+            : null}
+        </div>
 
         <button
           type="button"
