@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "HTML 源码轮盘",
+      "screenshot": ".artifacts/459/01-html-source-wheel.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T19:11:48Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "格式扇形",
+      "screenshot": ".artifacts/459/02-format-fan.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T19:11:48Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "加粗写入内容",
+      "screenshot": ".artifacts/459/03-bold-written.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T19:11:48Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "关闭后无残留",
+      "screenshot": ".artifacts/459/04-wheel-closed.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T19:11:48Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}

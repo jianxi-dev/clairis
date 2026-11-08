@@ -59,18 +59,18 @@ MD 编辑态与阅读态的正文选区 SHALL 显示胶囊工具条；编辑态 
 
 ### Requirement: E-19 HTML 可视化编辑工具条
 
-`.html` 文件的编辑态 SHALL 在用户选中元素后提供可操作入口，支持：**替换标签**、**修改样式**、**修改属性**（`class` / `id`）、**删除元素**、**区域截图**（见 E-21）。入口 SHALL 使用与选区轮盘相同的径向几何与交互（`role="menu"`、扇区就近展开、`Esc` 逐层后退）；SHALL NOT 渲染横向 `.html-edit-toolbar` 条。控件集 SHALL 按节点类型分化（见 E-22）。
+`.html` 文件的编辑态 SHALL 在用户选中元素后提供可操作入口，支持：**替换标签**、**修改样式**、**修改属性**（`class` / `id`）、**删除元素**、**区域截图**（见 E-21）。HTML 的**源码编辑态**（CM6）SHALL 使用与 md 编辑态相同的选区轮盘；HTML **可视化编辑态**的元素工具条 SHALL 保持既有横向实现（`.html-edit-toolbar`），不改为轮盘。源码编辑态 SHALL NOT 渲染 `.html-edit-toolbar`。
 
 入口 SHALL 跟随选中元素定位，且 SHALL NOT 遮挡被选中元素本身。
 
 入口产生的改动 SHALL 折算回文档 `content`（样式写内联 `style`、属性写对应属性），并 SHALL 立即在渲染结果中可见。保存 SHALL 沿用 E-16 的清洗链路：写回文件不得残留 `data-cm-*` 属性、`cmid` 注释锚点、`contenteditable`、注入的运行时脚本/样式。
 
-#### Scenario: HTML 编辑态使用轮盘
+#### Scenario: HTML 源码编辑态使用轮盘
 
-- **WHEN** 用户在 HTML 可视化编辑态点选一个元素
+- **WHEN** 用户在 HTML 源码编辑态选中一段文字
 - **THEN** SHALL 出现径向轮盘，`.html-edit-toolbar` 横向条节点数 SHALL 为 0
 
-#### Scenario: 轮盘换标签同步内容
+#### Scenario: HTML 源码编辑态加粗写入内容
 
-- **WHEN** 用户在 HTML 轮盘中把 `<h2>` 换成 `<h3>`
-- **THEN** 渲染结果与文档 `content` SHALL 同步变为 `<h3>`，轮盘 SHALL 保持可用
+- **WHEN** 用户在 HTML 源码编辑态通过轮盘加粗选中行
+- **THEN** 文档 `content` SHALL 出现 `**` 包裹，渲染与分析链路 SHALL 不残留 `.html-edit-toolbar`
