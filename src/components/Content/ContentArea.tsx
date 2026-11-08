@@ -368,7 +368,12 @@ export default function ContentArea({
   // Toggle decorations on mode change
   useEffect(() => {
     if (!viewRef.current || !tab) return;
-    if (tab.fileKind !== "markdown") return;
+    // 非 markdown 一律摘掉：装饰与浮动工具条是 markdown 编辑态专属，
+    // 切到 html/text 页签时留着会把 md 工具条画到 html 源码编辑上（双条）。
+    if (tab.fileKind !== "markdown") {
+      viewRef.current.dispatch({ effects: decorCompartment.reconfigure([]) });
+      return;
+    }
 
     if (editorMode === "source") {
       viewRef.current.dispatch({ effects: decorCompartment.reconfigure([]) });

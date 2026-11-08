@@ -1,9 +1,9 @@
 /* 文字选区浮动工具条（shell-editor-batch5 / design D16，迁移自 md-bundle
  * `floating-toolbar.ts`）。
  *
- * 选中文本即出现，控件集合按 workbuddy 收敛为 10 项：
- * AI 编辑 / 字号（显示当前值）/ 加粗 / 斜体 / 下划线 / 删除线 / 链接 / 对齐 /
- * 文字颜色 / 删除。
+ * 选中文本即出现，控件集合按 md-bundle 收敛为 12 项：
+ * AI 组（改写 / 翻译 / 润色）+ 格式组（字号（显示当前值）/ 加粗 / 斜体 /
+ * 下划线 / 删除线 / 链接 / 对齐 / 文字颜色 / 删除）。
  *
  * 作用域：
  * - 加粗 / 斜体 / 下划线 / 删除线 / 链接 / 文字颜色 → 选区范围。
@@ -219,23 +219,50 @@ function buildColorControl(view: EditorView): HTMLElement {
   return container;
 }
 
-function buildAiControl(view: EditorView): HTMLButtonElement {
+interface AiAction {
+  readonly action: string;
+  readonly label: string;
+  readonly icon: string;
+  readonly prompt: string;
+}
+
+/** 三种明确意图各自预填指令；一个笼统的「AI 编辑」按钮每次都要用户自己补全。 */
+const AI_ACTIONS: readonly AiAction[] = [
+  {
+    action: "rewrite",
+    label: "改写",
+    icon: "SharewordsOutlined",
+    prompt: "请改写下面的文本，只返回替换后的文本，不要解释：",
+  },
+  {
+    action: "translate",
+    label: "翻译",
+    icon: "TranslateOutlined",
+    prompt: "请翻译下面的文本（英译中或中译英），只返回译文，不要解释：",
+  },
+  {
+    action: "polish",
+    label: "润色",
+    icon: "AiEditOutlined",
+    prompt: "请润色下面的文本，让它更通顺自然，只返回润色后的文本，不要解释：",
+  },
+];
+
+function buildAiControl(view: EditorView, spec: AiAction): HTMLButtonElement {
   const btn = document.createElement("button");
   btn.type = "button";
   btn.className = "cm-toolbar-btn";
-  btn.dataset.action = "ai-edit";
-  btn.title = "AI 编辑";
+  btn.dataset.action = spec.action;
+  btn.title = spec.label;
   applyButtonStyle(btn);
-  setIcon(btn, "AiEditOutlined");
+  setIcon(btn, spec.icon);
   btn.addEventListener("mousedown", (e) => {
     e.preventDefault();
     e.stopPropagation();
     const { from, to } = view.state.selection.main;
     const text = view.state.doc.sliceString(from, to);
     const ai = useAiEntryStore.getState();
-    ai.setInput(
-      `请改写下面的文本，只返回替换后的文本，不要解释：\n\n${text}`.trim(),
-    );
+    ai.setInput(`${spec.prompt}\n\n${text}`.trim());
     ai.openOverlay();
   });
   return btn;
@@ -246,7 +273,8 @@ function buildToolbar(view: EditorView): HTMLDivElement {
   toolbar.className = FLOATING_TOOLBAR_CLASS;
   toolbar.dataset.testid = "floating-toolbar";
 
-  toolbar.appendChild(buildAiControl(view));
+  for (const spec of AI_ACTIONS)
+    toolbar.appendChild(buildAiControl(view, spec));
 
   const fontSize = buildFontSizeControl(view);
   toolbar.appendChild(fontSize);

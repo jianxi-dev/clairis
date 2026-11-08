@@ -1,10 +1,16 @@
 import { test, expect, type Page } from "@playwright/test";
+import { mkdirSync } from "node:fs";
+import path from "node:path";
 
 const APP_URL = "http://localhost:1420";
+const ART = path.resolve(process.cwd(), ".artifacts/370");
+mkdirSync(ART, { recursive: true });
 const DOC = ["# 标题", "", "第一段正文", "", "第二段正文", ""].join("\n");
 
 const TEXT_ACTIONS = [
-  "ai-edit",
+  "rewrite",
+  "translate",
+  "polish",
   "font-size",
   "toggle-bold",
   "toggle-italic",
@@ -69,14 +75,14 @@ async function selectLine(page: Page, lineIndex: number): Promise<void> {
   });
 }
 
-test("选中文字出现文字工具条，控件集合恰为 workbuddy 10 项", async ({
+test("选中文字出现文字工具条，控件集合恰为 md-bundle 12 项", async ({
   page,
 }) => {
   await selectLine(page, 2);
 
   const toolbar = page.locator('[data-testid="floating-toolbar"]');
   const actions = toolbar.locator("[data-action]");
-  await expect(actions).toHaveCount(10);
+  await expect(actions).toHaveCount(12);
 
   const names = await actions.evaluateAll((els) =>
     els.map((el) => el.getAttribute("data-action")),
@@ -120,20 +126,45 @@ test("字号控件改字号并显示新值", async ({ page }) => {
   expect(Number(await value.textContent())).toBe(24);
 });
 
-test("AI 编辑打开 AI 浮层并预填选区文本", async ({ page }) => {
+const AI_ACTIONS: ReadonlyArray<readonly [string, string]> = [
+  ["rewrite", "改写"],
+  ["translate", "翻译"],
+  ["polish", "润色"],
+];
+
+for (const [action, keyword] of AI_ACTIONS) {
+  test(`${keyword}打开 AI 浮层，指令与选区文本都预填`, async ({ page }) => {
+    await selectLine(page, 2);
+    const selected = await page.evaluate(
+      () => window.getSelection()?.toString() ?? "",
+    );
+    expect(selected.length).toBeGreaterThan(0);
+
+    await page
+      .locator(`[data-testid="floating-toolbar"] [data-action="${action}"]`)
+      .click();
+
+    await expect(page.locator("[data-ai-overlay]")).toBeVisible();
+    const inputValue = await page.locator("[data-ai-input]").inputValue();
+    expect(inputValue).toContain(keyword);
+    expect(inputValue).toContain(selected.slice(0, 4));
+    await page.screenshot({
+      path: path.join(
+        ART,
+        `0${2 + AI_ACTIONS.findIndex(([a]) => a === action)}-${action}.png`,
+      ),
+    });
+  });
+}
+
+test("md 工具条里没有任何 html 专属按钮", async ({ page }) => {
   await selectLine(page, 2);
-  const selected = await page.evaluate(
-    () => window.getSelection()?.toString() ?? "",
-  );
-  expect(selected.length).toBeGreaterThan(0);
 
-  await page
-    .locator('[data-testid="floating-toolbar"] [data-action="ai-edit"]')
-    .click();
-
-  await expect(page.locator("[data-ai-overlay]")).toBeVisible();
-  const inputValue = await page.locator("[data-ai-input]").inputValue();
-  expect(inputValue).toContain(selected.slice(0, 4));
+  const toolbar = page.locator('[data-testid="floating-toolbar"]');
+  await expect(toolbar).toBeVisible();
+  await expect(toolbar.locator(".html-edit-toolbar__btn")).toHaveCount(0);
+  await expect(toolbar.locator(".html-edit-toolbar")).toHaveCount(0);
+  await page.screenshot({ path: path.join(ART, "01-md-toolbar.png") });
 });
 
 test("加粗作用于选区，未选中部分不受影响", async ({ page }) => {
@@ -230,4 +261,31 @@ test("取消选区后工具条消失", async ({ page }) => {
 
   await page.locator(".cm-line").nth(0).click();
   await expect(page.locator('[data-testid="floating-toolbar"]')).toBeHidden();
+});
+
+const HTML_DOC = [
+  "<!DOCTYPE html><html><head><style>",
+  "body{margin:0;font-family:serif;min-height:600px}",
+  "h1{font-size:32px;margin:0;padding:8px}",
+  "</style></head><body><h1>标题</h1></body></html>",
+].join("");
+
+test("切到 html 编辑态只留 html 工具条，md 浮动条不残留", async ({ page }) => {
+  // 先在 markdown 编辑态把浮动条装出来，再切 html 页签——这条路径正是
+  // 装饰隔层不跟随 fileKind 时漏出双条的地方。
+  await selectLine(page, 2);
+  await expect(page.locator('[data-testid="floating-toolbar"]')).toBeVisible();
+
+  await page.evaluate((content) => {
+    const win = window as unknown as Record<string, any>;
+    win.__biaoyue_openFile__("/tmp/tb/doc.html", content, "doc.html");
+    win.__biaoyue_store__.getState().setEditorMode("edit");
+  }, HTML_DOC);
+
+  const frame = page.frameLocator('iframe[title="HTML 可视化编辑"]');
+  await frame.locator("h1").click();
+
+  await expect(page.locator(".html-edit-toolbar")).toBeVisible();
+  await expect(page.locator('[data-testid="floating-toolbar"]')).toHaveCount(0);
+  await page.screenshot({ path: path.join(ART, "05-html-only.png") });
 });
