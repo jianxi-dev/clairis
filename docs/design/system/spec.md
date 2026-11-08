@@ -1,7 +1,7 @@
 ---
 title: "标月设计系统规格"
 type: design
-status: in-review
+status: accepted
 last_updated: 2026-11-08
 source_of_truth: canonical
 ---
@@ -18,7 +18,7 @@ source_of_truth: canonical
 - **对外关系**：单 feature 设计（`docs/design/approved/<feature>/`）**只引用条款号，不复制数值**；票面同理。
 - **本文的性质**：**誊写 + 收敛**，不是发明。下表每个数值都能追溯到"已在用"或"已被用户裁决"；无来源的新档位一律不写进来。
 - **不在本文范围**：交互行为阈值（如拖拽判定 3–5px）、动画时长与缓动、键盘映射。这些属于交互规范，不因本文的"数值唯一来源"规则被收编。
-- **状态**：当前 `in-review`，作为唯一候选执行；维护者定案后改 `accepted`（同一 PR 内一行变更）。
+- **状态**：`accepted`（2026-11-08 定案）。刻度级修订走 supersede；单点裁决追加台账。
 - **token 名称是目标**：`--space-*` / `--fs-*` / `--radius-*` 尚未在 `tokens.css` 定义；落地前以本表字面值为准，不假装 token 已存在。
 - **存量不追溯**：`docs/design/approved/` 现有约 86 处 px 字面量（9 个文件）与 `src/styles/` 的存量值不强制改写；本规则只约束新增与本次触及的代码。
 

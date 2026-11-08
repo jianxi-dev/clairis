@@ -21,7 +21,7 @@ source_of_truth: supporting
 ## 进入条件
 
 - 内容是**会被多个界面复用**的设计规则，而非一次性草图。
-- 已批准（`accepted`）后可进入；正在定案的**唯一候选稿**（`in-review`）也允许，但同一主题不得并列第二份候选，比稿仍须先在 `../explorations/` 沉淀。
+- 已批准（`accepted`）后可进入；草案与比稿先在 `../explorations/` 沉淀。
 - 新增文档须带 frontmatter（`title` / `type: design` / `status` / `last_updated`），规范见 `../../GOVERNANCE.md`。
 
 ## 权威级别
@@ -32,7 +32,7 @@ source_of_truth: supporting
 
 | 文档 | 内容 | 状态 |
 | --- | --- | --- |
-| [spec.md](./spec.md) | 设计系统规格：图标、间距、字号、圆角阴影、语义色、审美判据。面向全应用的通用刻度与规则 | in-review · canonical |
+| [spec.md](./spec.md) | 设计系统规格：图标、间距、字号、圆角阴影、语义色、审美判据。面向全应用的通用刻度与规则 | accepted · canonical |
 | [decisions.md](./decisions.md) | 设计决案台账：具体部件的单点裁决，append-only，以最新行为准 | accepted · canonical |
 | [biaoyue-颜色设计体系.md](./biaoyue-颜色设计体系.md) | 早期颜色主题草稿（空壳），内容已被 spec.md §6 吸收 | superseded |
 
