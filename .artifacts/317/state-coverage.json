@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "green-real-thumb",
+      "screenshot": ".artifacts/317/02-green-real-thumb.png",
+      "assertion": "passed (PDF 卡片缩略图是真位图：img[src^=data:image/png]，naturalWidth>0)",
+      "recorded_at": "2026-11-08T03:41:00Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "green-no-viewer-hover",
+      "screenshot": ".artifacts/317/04-green-no-viewer-hover.png",
+      "assertion": "passed (悬停仍无 iframe：#286 原生工具条不会复现)",
+      "recorded_at": "2026-11-08T03:41:00Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "green-rail-overview",
+      "screenshot": ".artifacts/317/05-green-rail-overview.png",
+      "assertion": "passed (阅读栏杆位里 PDF 卡片与其它类型并存，布局未变)",
+      "recorded_at": "2026-11-08T03:41:00Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "green-rail-actions",
+      "screenshot": ".artifacts/317/06-green-rail-actions.png",
+      "assertion": "passed (卡片动作组/进度/时间等其余信息不受缩略图影响)",
+      "recorded_at": "2026-11-08T03:41:00Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}

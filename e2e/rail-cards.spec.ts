@@ -38,6 +38,10 @@ const FILES: Array<{ path: string; content: string }> = [
     content: "PDF document content",
   },
   {
+    path: "/Users/test/doc.pdf",
+    content: "PDF document content",
+  },
+  {
     path: "/tmp/rc/movie.mp4",
     content: "video",
   },
@@ -596,7 +600,14 @@ test("PDF 卡片缩略图不嵌入查看器，原生工具条无宿主（#286）
   const thumb = card.locator('[data-testid="rail-thumb"]');
   await expect(thumb).toHaveAttribute("data-thumb-kind", "pdf-page");
   await expect(thumb.locator("iframe")).toHaveCount(0);
-  await expect(thumb.locator(".rail-thumb-line")).toHaveCount(3);
+
+  const bitmap = thumb.locator('[data-testid="rail-thumb-pdf-img"]');
+  await expect(bitmap).toBeVisible({ timeout: 20000 });
+  await expect(bitmap).toHaveAttribute("src", /^data:image\/png;base64,/);
+  const natural = await bitmap.evaluate(
+    (el) => (el as HTMLImageElement).naturalWidth,
+  );
+  expect(natural).toBeGreaterThan(0);
   await page.screenshot({ path: path.join(ART286, "pdf-card-idle.png") });
 
   // 悬停也不得出现查看器（原缺陷正是 hover 时浮出原生控制条）
