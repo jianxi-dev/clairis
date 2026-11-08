@@ -26,7 +26,7 @@ const PRESET_IDS = [
 async function boot(page: Page): Promise<void> {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto(APP_URL, { waitUntil: "networkidle" });
-  await page.waitForSelector("header", { timeout: 15000 });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 15000 });
 }
 
 async function openFile(page: Page, p: string): Promise<void> {

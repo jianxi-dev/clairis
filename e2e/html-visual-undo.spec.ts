@@ -24,7 +24,7 @@ const DOC = [
 async function openVisual(page: Page): Promise<FrameLocator> {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto("http://localhost:1420", { waitUntil: "networkidle" });
-  await page.waitForSelector("header", { timeout: 15000 });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 15000 });
   await page.evaluate((content) => {
     const win = window as unknown as Record<string, any>;
     win.__biaoyue_openFile__("/tmp/undo/doc.html", content, "doc.html");

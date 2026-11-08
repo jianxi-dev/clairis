@@ -109,7 +109,7 @@ function editorMode(page: Page): Promise<string | null> {
 async function boot(page: Page): Promise<void> {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto(APP_URL, { waitUntil: "networkidle" });
-  await page.waitForSelector("header", { timeout: 15000 });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 15000 });
 }
 
 test("? 打开总览：全表与注册表严格相等，Esc 关闭无残留", async ({ page }) => {

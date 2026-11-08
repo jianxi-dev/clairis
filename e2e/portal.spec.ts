@@ -19,7 +19,7 @@ const FILES: Array<[string, string, string]> = [
 async function seed(page: Page, files = FILES) {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto("/", { waitUntil: "networkidle" });
-  await page.waitForSelector("header", { timeout: 10000 });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 10000 });
   await page.evaluate((list) => {
     const w = window as unknown as Record<string, any>;
     const store = w.__biaoyue_store__;
@@ -78,7 +78,7 @@ test("门户齐备：问候语/日期、hero、最近卡、8 磁贴、快速动�
 test("空态：三动作，hero 与磁贴计数无残留", async ({ page }) => {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto("/", { waitUntil: "networkidle" });
-  await page.waitForSelector("header", { timeout: 10000 });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 10000 });
   await page.evaluate(() => {
     const w = window as unknown as Record<string, any>;
     w.__biaoyue_store__.getState().clearRecentFiles();
@@ -141,7 +141,7 @@ test("hero 卡进度严格等于实际阅读进度", async ({ page }) => {
 test("冷启动：持久化的最近记录带真摘要，不是占位", async ({ page }) => {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto("/", { waitUntil: "networkidle" });
-  await page.waitForSelector("header", { timeout: 10000 });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 10000 });
   // 等配置加载完把 recentFiles 灌进 store
   await expect
     .poll(() =>
@@ -166,7 +166,7 @@ test("冷启动：持久化的最近记录带真摘要，不是占位", async ({
 test("冷启动点 hero：真的按路径打开文件并进入工作区", async ({ page }) => {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto("/", { waitUntil: "networkidle" });
-  await page.waitForSelector("header", { timeout: 10000 });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 10000 });
   await expect
     .poll(() =>
       page.evaluate(
@@ -218,7 +218,7 @@ test("门户里按 ⌘W 不会关掉背后的页签", async ({ page }) => {
 test("重启后 hero 是最新那份，且保留原始时间", async ({ page }) => {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto("/", { waitUntil: "networkidle" });
-  await page.waitForSelector("header", { timeout: 10000 });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 10000 });
   await expect
     .poll(() =>
       page.evaluate(

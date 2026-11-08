@@ -60,7 +60,7 @@ test.afterAll(() => {
 async function boot(page: Page): Promise<void> {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto(APP_URL, { waitUntil: "networkidle" });
-  await page.waitForSelector("header", { timeout: 15000 });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 15000 });
 }
 
 /** 播种：跨 今天/昨天/本周/更早 四桶 + 多类型（供缩略图与尺寸分型）。 */

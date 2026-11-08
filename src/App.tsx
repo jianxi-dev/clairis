@@ -5,7 +5,6 @@ import { useStore } from "./stores/index";
 import { isMediaKind } from "./stores/index";
 import { useEditorStore } from "./stores/editorStore";
 import { useCaptureOverlayStore } from "./stores/captureOverlay";
-import Toolbar from "./components/Toolbar";
 import StatusBar from "./components/StatusBar";
 import ImmersivePeekBar from "./components/ImmersivePeekBar";
 import TemplatePicker from "./components/TemplatePicker";
@@ -768,8 +767,6 @@ function App() {
 
   return (
     <div className={rootClass}>
-      <Toolbar />
-
       <div className="relative flex-1 flex min-w-0 overflow-hidden">
         <ReadingRail onOpenPath={handleOpenPath} />
         <div

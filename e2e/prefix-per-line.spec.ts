@@ -11,7 +11,9 @@ async function openOverlay(page: import("@playwright/test").Page) {
 test.describe("Prefix per-line detection", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto(APP_URL, { waitUntil: "networkidle" });
-    await page.waitForSelector("header", { timeout: 10000 });
+    await page.waitForSelector('[data-testid="pane-header"]', {
+      timeout: 10000,
+    });
   });
 
   test("1. type . at line start → prefix triggers, content empty", async ({

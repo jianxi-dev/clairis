@@ -63,7 +63,7 @@ async function injectMediaDir(
 test("打开视频 → 全尺寸播放器挂载，无迷你条", async ({ page }) => {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto(APP_URL, { waitUntil: "networkidle" });
-  await page.waitForSelector("header", { timeout: 10000 });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 10000 });
 
   await openFile(page, "/Users/test/clip.mp4", "");
 
@@ -87,7 +87,7 @@ test("打开视频 → 打开非音视频文件 → 播放器保留（离屏继�
 }) => {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto(APP_URL, { waitUntil: "networkidle" });
-  await page.waitForSelector("header", { timeout: 10000 });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 10000 });
 
   await openFile(page, "/Users/test/clip.mp4", "");
   const art = page.locator(".art-video-player");
@@ -128,7 +128,7 @@ test("打开视频 A → 再打开视频 B → B 全尺寸显示且播放源切�
 }) => {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto(APP_URL, { waitUntil: "networkidle" });
-  await page.waitForSelector("header", { timeout: 10000 });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 10000 });
 
   await openFile(page, "/Users/test/clip.mp4", "");
   const art = page.locator(".art-video-player");
@@ -166,7 +166,7 @@ test("播放列表切集 → 页签标题同步为新文件名", async ({ page }
     await route.continue();
   });
   await page.goto(APP_URL, { waitUntil: "networkidle" });
-  await page.waitForSelector("header", { timeout: 10000 });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 10000 });
 
   await openFile(page, "/Users/test/clip.mp4", "");
 

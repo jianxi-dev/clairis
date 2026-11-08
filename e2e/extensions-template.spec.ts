@@ -28,7 +28,7 @@ async function gotoWithExtensions(page: Page, extensions: Extensions | null) {
     w.__biaoyue_store__?.getState?.().setScene("workspace");
   });
 
-  await page.waitForSelector("header", { timeout: 10000 });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 10000 });
 }
 
 function readActiveTab(
@@ -139,7 +139,7 @@ test("首页点新建 → 进入工作区且页签为 Markdown 图标（#325）"
 }) => {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto(APP_URL, { waitUntil: "networkidle" });
-  await page.waitForSelector("header", { timeout: 10000 });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 10000 });
 
   await page
     .getByTestId(/^(empty-new|quick-new)$/)

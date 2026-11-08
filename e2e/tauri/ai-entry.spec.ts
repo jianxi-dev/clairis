@@ -5,7 +5,7 @@ const APP_URL = "http://localhost:1420";
 test.beforeEach(async ({ page }) => {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto(APP_URL, { waitUntil: "networkidle" });
-  await page.waitForSelector("header", { timeout: 10000 });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 10000 });
 });
 
 test("Cmd+K 打开浮层并聚焦输入，Esc 关闭且无残留", async ({ page }) => {

@@ -35,7 +35,7 @@ async function openFile(
 test("阅读模式：墨线随模式与沉浸态显隐", async ({ page }) => {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto(APP_URL, { waitUntil: "networkidle" });
-  await page.waitForSelector("header", { timeout: 10000 });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 10000 });
 
   await openFile(page, "/Users/test/阅读.md", LONG_DOC);
 
@@ -100,7 +100,7 @@ test("阅读模式：墨线随模式与沉浸态显隐", async ({ page }) => {
 test("阅读模式：滚动位置在关闭后重开时恢复", async ({ page }) => {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto(APP_URL, { waitUntil: "networkidle" });
-  await page.waitForSelector("header", { timeout: 10000 });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 10000 });
 
   await openFile(page, "/Users/test/进度.md", LONG_DOC);
 

@@ -66,7 +66,7 @@ async function closeSettings(page: import("@playwright/test").Page) {
 test("预览排版：容器尺度按设计 token 生效", async ({ page }) => {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto(APP_URL, { waitUntil: "networkidle" });
-  await page.waitForSelector("header", { timeout: 10000 });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 10000 });
 
   await openFile(page, DOC);
 
@@ -106,7 +106,7 @@ test("预览排版：容器尺度按设计 token 生效", async ({ page }) => {
 test("预览排版：代码块高亮与容器细节生效", async ({ page }) => {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto(APP_URL, { waitUntil: "networkidle" });
-  await page.waitForSelector("header", { timeout: 10000 });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 10000 });
   await openFile(page, DOC);
 
   const block = page.locator(".code-block").first();
@@ -147,7 +147,7 @@ test("预览排版：Callout / 公式 / 表格 / 任务列表 / 中西文间距�
 }) => {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto(APP_URL, { waitUntil: "networkidle" });
-  await page.waitForSelector("header", { timeout: 10000 });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 10000 });
   await openFile(page, DOC);
 
   // Callout：类型、主色条、标题
@@ -220,7 +220,7 @@ test("预览排版：Callout / 公式 / 表格 / 任务列表 / 中西文间距�
 test("预览排版：连续引用行无空行也逐行显示", async ({ page }) => {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto(APP_URL, { waitUntil: "networkidle" });
-  await page.waitForSelector("header", { timeout: 10000 });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 10000 });
 
   const quote = [
     "> **报告日期**: 2026-08-31",
@@ -253,7 +253,7 @@ test("预览排版：连续引用行无空行也逐行显示", async ({ page }) 
 test("预览排版：阅读设置可改字号与行宽", async ({ page }) => {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto(APP_URL, { waitUntil: "networkidle" });
-  await page.waitForSelector("header", { timeout: 10000 });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 10000 });
   await openFile(page, DOC);
 
   await openSettings(page);
@@ -281,7 +281,7 @@ test("预览排版：纸宽撑满可用宽度，且随窗口与行宽设置变�
   await page.setViewportSize({ width: 1100, height: 900 });
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto(APP_URL, { waitUntil: "networkidle" });
-  await page.waitForSelector("header", { timeout: 10000 });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 10000 });
   await openFile(page, "# 短\n\n一句话。");
 
   // 内容再短，纸也必须撑满外壳：列向 flex 项的 margin-inline: auto 会关掉
@@ -366,7 +366,7 @@ test("六项反馈的浏览器层验收：图 / 背景 / 表格 / 主题 / 内�
 }) => {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto(APP_URL, { waitUntil: "networkidle" });
-  await page.waitForSelector("header", { timeout: 10000 });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 10000 });
   await openFile(page, RICH_DOC);
 
   // 4. callout 正文只出现一次
@@ -477,7 +477,7 @@ test("预览排版：长内容表格不横向延展，单元格自动换行", as
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto(APP_URL, { waitUntil: "networkidle" });
-  await page.waitForSelector("header", { timeout: 10000 });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 10000 });
   await openFile(page, LONG_TABLE_DOC);
 
   const wrap = page.locator(".table-wrap");
@@ -524,7 +524,7 @@ test("预览排版：短内容表格保持满宽", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto(APP_URL, { waitUntil: "networkidle" });
-  await page.waitForSelector("header", { timeout: 10000 });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 10000 });
   await openFile(page, SHORT_TABLE_DOC);
 
   const wrap = page.locator(".table-wrap");
@@ -540,7 +540,7 @@ test("预览排版：表格随阅读行宽设置同步适配", async ({ page }) 
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto(APP_URL, { waitUntil: "networkidle" });
-  await page.waitForSelector("header", { timeout: 10000 });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 10000 });
   await openFile(page, LONG_TABLE_DOC);
 
   await expect(page.locator(".table-wrap")).toHaveCount(1);
@@ -568,7 +568,7 @@ test("预览排版：极端不可断内容在表格容器内横向滚动兜底",
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto(APP_URL, { waitUntil: "networkidle" });
-  await page.waitForSelector("header", { timeout: 10000 });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 10000 });
   await openFile(page, WIDE_CELL_DOC);
 
   const wrap = page.locator(".table-wrap");

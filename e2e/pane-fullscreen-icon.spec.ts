@@ -3,7 +3,7 @@ import { test, expect, type Page } from "@playwright/test";
 async function openDoc(page: Page) {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto("/", { waitUntil: "networkidle" });
-  await page.waitForSelector("header", { timeout: 10000 });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 10000 });
   await page.evaluate(() => {
     const win = window as unknown as Record<string, any>;
     win.__biaoyue_openFile__("/tmp/ic/a.md", "# 标题\n正文", "a.md");

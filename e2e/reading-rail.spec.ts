@@ -74,7 +74,7 @@ async function boot(page: Page): Promise<void> {
     };
   });
   await page.goto(APP_URL, { waitUntil: "networkidle" });
-  await page.waitForSelector("header", { timeout: 15000 });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 15000 });
 }
 
 async function seed(page: Page): Promise<void> {
@@ -383,7 +383,7 @@ test("设为默认后重启：rail 视图规格与所设严格相等", async ({ 
   });
 
   await page.reload({ waitUntil: "networkidle" });
-  await page.waitForSelector("header", { timeout: 15000 });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 15000 });
   const spec = await page.evaluate(() => {
     const s = (
       window as unknown as {
@@ -487,7 +487,7 @@ test("悬浮态可拖宽并持久化，拖动中不被收起（#274）", async (
 
   // 重启恢复：reload 后悬停展开，宽度仍是拖过的值
   await page.reload({ waitUntil: "networkidle" });
-  await page.waitForSelector("header", { timeout: 15000 });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 15000 });
   await seed(page);
   await openHover(page);
   await expect

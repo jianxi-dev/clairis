@@ -22,7 +22,7 @@ const EMOJI = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/u;
 async function openDoc(page: Page, path: string, content = "# 标题\n正文") {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto("/", { waitUntil: "networkidle" });
-  await page.waitForSelector("header", { timeout: 10000 });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 10000 });
   await page.evaluate(
     ({ p, c }) => {
       const win = window as unknown as Record<string, any>;

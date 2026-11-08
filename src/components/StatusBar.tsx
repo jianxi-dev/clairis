@@ -157,18 +157,16 @@ export default function StatusBar({
           type="button"
           data-testid="immersive-entry"
           aria-pressed={readingMode}
+          aria-label="沉浸阅读"
           onClick={() => onSetReadingMode(!readingMode)}
-          className={`rounded-full px-2.5 py-0.5 text-xs ${
+          className={`rounded-full px-2 py-0.5 ${
             readingMode
-              ? "bg-[var(--app-accent-soft)] font-medium text-[var(--app-accent)]"
+              ? "bg-[var(--app-accent-soft)] text-[var(--app-accent)]"
               : "text-[var(--app-text-2)] hover:bg-[var(--app-accent-soft)] hover:text-[var(--app-accent)]"
           }`}
           title="沉浸阅读（⌘⇧F）"
         >
-          <span className="inline-flex items-center gap-1">
-            <Icon name="immersive" size={18} />
-            沉浸
-          </span>
+          <Icon name="immersive" size={18} />
         </button>
       </div>
     </footer>

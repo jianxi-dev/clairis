@@ -17,7 +17,7 @@ test("HTML 预览：点击 iframe 内 select 后 2.5s 交互窗口内焦点不�
   page,
 }) => {
   await page.goto(APP_URL, { waitUntil: "networkidle" });
-  await page.waitForSelector("header", { timeout: 10000 });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 10000 });
 
   // 通过 store 桥打开内嵌 <select> 的 HTML 文件（fileKind=html → FramePreview）
   const html = `<!DOCTYPE html><html><head><meta charset="utf-8"></head>

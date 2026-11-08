@@ -26,7 +26,7 @@ const DOC = [
 async function openDoc(page: Page) {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto(APP_URL, { waitUntil: "networkidle" });
-  await page.waitForSelector("header", { timeout: 15000 });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 15000 });
   await page.evaluate((body) => {
     const store = (window as unknown as Record<string, any>).__biaoyue_store__;
     (window as unknown as Record<string, any>).__biaoyue_openFile__(

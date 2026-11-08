@@ -20,7 +20,7 @@ const DOC = [
 async function openVisual(page: Page) {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto("/", { waitUntil: "networkidle" });
-  await page.waitForSelector("header", { timeout: 10000 });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 10000 });
   await page.evaluate((content) => {
     const win = window as unknown as Record<string, any>;
     win.__biaoyue_openFile__("/tmp/dc/doc.html", content, "doc.html");
