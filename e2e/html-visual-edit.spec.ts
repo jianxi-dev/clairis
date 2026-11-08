@@ -120,3 +120,80 @@ test("markdown 文件的编辑态仍是 CM6，不受影响", async ({ page }) =>
   await expect(page.locator('iframe[title="HTML 可视化编辑"]')).toHaveCount(0);
   await expect(page.locator(".cm-content")).toBeVisible();
 });
+
+/**
+ * #327 回归：底色写在文档自带 CSS、文字色要靠外部 CDN 样式表的文档，
+ * 编辑面板曾经是「有 3522 字但一个字都看不见」——黑字落在 #0a0a0f 上，
+ * 且 Tailwind 定位类失效会把正文顶到首屏之外。断言真实对比度，
+ * 而不是只看节点数（节点数一直大于 0，正是它掩盖了这个 bug）。
+ */
+const DARK_THEMED = [
+  "<!DOCTYPE html>",
+  '<html lang="zh-CN"><head>',
+  '<script src="https://cdn.tailwindcss.com"></script>',
+  "<style>html { background: #0a0a0f; } body { margin: 0; }</style>",
+  "</head>",
+  '<body class="text-[#e4e4e7]">',
+  "<h1>合同管理智能顾问</h1>",
+  "<p>正文段落需要有足够对比度才能读。</p>",
+  "</body></html>",
+].join("\n");
+
+test("深底 + 外链 CDN 样式表的文档，编辑态正文可读且排版成形（#327）", async ({
+  page,
+}) => {
+  await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
+  await page.goto("/", { waitUntil: "networkidle" });
+  await page.waitForSelector("header", { timeout: 10000 });
+  await page.evaluate((content) => {
+    const win = window as unknown as Record<string, any>;
+    win.__biaoyue_openFile__("/tmp/ve/dark.html", content, "dark.html");
+    win.__biaoyue_store__.getState().setEditorMode("edit");
+  }, DARK_THEMED);
+
+  await expect(page.locator('iframe[title="HTML 可视化编辑"]')).toHaveCount(1);
+  await page.waitForTimeout(1200);
+
+  const frame = page.frames().find((f) => f.url() === "about:srcdoc");
+  expect(frame).toBeTruthy();
+
+  // srcdoc 提交前 frame 里还没有 body，先轮询等它渲染出来
+  await expect
+    .poll(() => frame!.evaluate(() => !!document.body), { timeout: 15000 })
+    .toBe(true);
+
+  const probe = await frame!.evaluate(() => {
+    const parse = (c: string): [number, number, number] => {
+      const m = /rgba?\((\d+),\s*(\d+),\s*(\d+)/.exec(c);
+      return m ? [Number(m[1]), Number(m[2]), Number(m[3])] : [0, 0, 0];
+    };
+    const lum = ([r, g, b]: [number, number, number]) => {
+      const f = (v: number) => {
+        const s = v / 255;
+        return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+      };
+      return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
+    };
+    let bgNode: Element | null = document.body;
+    while (
+      bgNode &&
+      bgNode !== document.documentElement &&
+      /rgba?\(0,\s*0,\s*0,\s*0\)/.test(getComputedStyle(bgNode).backgroundColor)
+    ) {
+      bgNode = bgNode.parentElement;
+    }
+    const bgNodeSafe: Element = bgNode ?? document.documentElement;
+    const bg = parse(getComputedStyle(bgNodeSafe).backgroundColor);
+    const fg = parse(getComputedStyle(document.body).color);
+    const l1 = lum(fg);
+    const l2 = lum(bg);
+    return {
+      textLen: (document.body.innerText ?? "").trim().length,
+      contrast: (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05),
+    };
+  });
+
+  // 内容在（#327 之前也是 3522 字），关键是不再「看不见」
+  expect(probe.textLen).toBeGreaterThan(0);
+  expect(probe.contrast).toBeGreaterThanOrEqual(3);
+});

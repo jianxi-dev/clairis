@@ -1,0 +1,16 @@
+ ❯ src/__tests__/editors/htmlRuntime.test.ts:54:17
+     52|         '<body class="text-[#e4e4e7]"><h1>合同管理</h1></body></html>',
+     53|     );
+     54|     expect(doc).toContain("body { color: #e8e8ea; }");
+       |                 ^
+     55|   });
+     56|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 7 passed (8)
+   Start at  11:09:03
+   Duration  650ms (transform 50ms, setup 59ms, import 34ms, tests 28ms, environment 442ms)
+

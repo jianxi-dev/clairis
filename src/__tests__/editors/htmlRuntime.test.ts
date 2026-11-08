@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { RUNTIME_VERSION, buildEditableDoc } from "../../editors/html/runtime";
+import { cleanSnapshot } from "../../editors/html/model";
 
 /**
  * 编辑态文档组装（E-16 切片 2）。
@@ -43,5 +44,41 @@ describe("buildEditableDoc", () => {
   it("运行时与内部样式都带 data-cm-internal，可被 cleanSnapshot 剥掉", () => {
     const doc = buildEditableDoc("<html><body><p>x</p></body></html>");
     expect(doc).toContain('data-cm-internal="runtime"');
+  });
+
+  it("深色底 + 文档自己没写 color 时补可读兜底色（#327）", () => {
+    const doc = buildEditableDoc(
+      "<html><head><style>html { background: #0a0a0f; }</style></head>" +
+        '<body class="text-[#e4e4e7]"><h1>合同管理</h1></body></html>',
+    );
+    expect(doc).toContain("body { color: #e8e8ea; }");
+  });
+
+  it("文档自己声明了 color 时绝不覆盖（#327）", () => {
+    const doc = buildEditableDoc(
+      "<html><head><style>html{background:#0a0a0f} body{color:#e4e4e7}</style></head>" +
+        "<body><h1>t</h1></body></html>",
+    );
+    expect(doc).not.toContain("color: #e8e8ea");
+  });
+
+  it("浅色底不补兜底色（#327）", () => {
+    const doc = buildEditableDoc(
+      "<html><head><style>html { background: #ffffff; }</style></head>" +
+        "<body><h1>t</h1></body></html>",
+    );
+    expect(doc).not.toContain("color: #e8e8ea");
+  });
+
+  it("兜底样式随编辑期脚手架一起被剥掉，不写回文件（#327）", () => {
+    const doc = buildEditableDoc(
+      "<html><head><style>html { background: #0a0a0f; }</style></head>" +
+        "<body><h1>t</h1></body></html>",
+    );
+    const saved = cleanSnapshot(doc);
+    expect(saved).not.toContain("data-cm-node-id");
+    expect(saved).not.toContain("cmid:");
+    expect(saved).not.toContain("data-cm-internal");
+    expect(saved).not.toContain("color: #e8e8ea");
   });
 });

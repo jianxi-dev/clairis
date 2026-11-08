@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "red-blank-edit",
+      "screenshot": ".artifacts/327/01-red-real-file.png",
+      "assertion": "failed (修复前：8,951 字全部不可见，实测对比度 1.06:1)",
+      "recorded_at": "2026-11-08T03:03:00Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "green-real-file",
+      "screenshot": ".artifacts/327/02-green-real-file.png",
+      "assertion": "passed (修复后：真实文件 hero 正常渲染，标题在首屏 y=298)",
+      "recorded_at": "2026-11-08T03:07:00Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "green-dark-fixture",
+      "screenshot": ".artifacts/327/03-green-dark-fixture.png",
+      "assertion": "passed (深底 + CDN 样式表，正文可读，对比度 >= 3)",
+      "recorded_at": "2026-11-08T03:07:00Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "green-light-control",
+      "screenshot": ".artifacts/327/04-green-light-control.png",
+      "assertion": "passed (作者自己写了 color 的浅色文档不被兜底色覆盖)",
+      "recorded_at": "2026-11-08T03:07:00Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}

@@ -379,6 +379,75 @@ interface EditableDocOptions {
   fontSize?: number;
 }
 
+/** 取出文档自己声明的 CSS 文本（`<style>` 内容 + 元素上的 style 属性）。 */
+function authorCss(content: string): string {
+  const blocks: string[] = [];
+  const styleRe = /<style[^>]*>([\s\S]*?)<\/style>/gi;
+  let m: RegExpExecArray | null;
+  while ((m = styleRe.exec(content))) blocks.push(m[1]);
+  const inlineRe = /\sstyle="([^"]*)"/gi;
+  while ((m = inlineRe.exec(content))) blocks.push(m[1]);
+  return blocks.join("\n");
+}
+
+function parseColor(raw: string): [number, number, number] | null {
+  const v = raw.trim().toLowerCase();
+  const hex = /^#([0-9a-f]{3}|[0-9a-f]{6})$/.exec(v);
+  if (hex) {
+    const h =
+      hex[1].length === 3
+        ? hex[1]
+            .split("")
+            .map((c) => c + c)
+            .join("")
+        : hex[1];
+    return [
+      parseInt(h.slice(0, 2), 16),
+      parseInt(h.slice(2, 4), 16),
+      parseInt(h.slice(4, 6), 16),
+    ];
+  }
+  const rgb = /^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/.exec(v);
+  if (rgb) return [Number(rgb[1]), Number(rgb[2]), Number(rgb[3])];
+  return null;
+}
+
+function luminance([r, g, b]: [number, number, number]): number {
+  const f = (c: number) => {
+    const s = c / 255;
+    return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+  };
+  return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
+}
+
+/**
+ * 深底兜底文字色（#327）。
+ *
+ * 有些文档把底色写在自带 CSS 里，文字色却交给外部样式表（典型：Tailwind CDN 的
+ * `text-[#e4e4e7]`）。编辑态按设计不执行文档脚本，那份样式表不会生效，文字就退回
+ * 浏览器默认的纯黑 —— 黑字落在 `#0a0a0f` 这类近黑底上，正文 3522 字全看不见，
+ * 面板看起来是「空白」。
+ *
+ * 只在「文档自己没声明任何 color + 自己的底色是深色」时补一条兜底色；作者写了
+ * color 就完全不动，避免覆盖正常文档。
+ */
+function readableFallback(css: string): string {
+  if (/(^|[;{\s])color\s*:/i.test(css)) return "";
+  const bgRe = /(?:^|[;{\s])background(?:-color)?\s*:\s*([^;}]+)/gi;
+  let dark: boolean | null = null;
+  let m: RegExpExecArray | null;
+  while ((m = bgRe.exec(css))) {
+    const value = m[1];
+    const hex = /#[0-9a-f]{3,6}\b/i.exec(value);
+    const rgb = /rgba?\([^)]*\)/i.exec(value);
+    const parsed = hex ? parseColor(hex[0]) : rgb ? parseColor(rgb[0]) : null;
+    if (!parsed) continue;
+    dark = luminance(parsed) < 0.2;
+  }
+  if (dark !== true) return "";
+  return "body { color: #e8e8ea; }";
+}
+
 /**
  * 组装编辑态文档：相对资源重写 → 打锚点 → 注入 CSP(nonce) 与运行时。
  *
@@ -396,18 +465,24 @@ export function buildEditableDoc(
 
   const csp = [
     "default-src 'self' 'unsafe-inline'",
-    `script-src 'nonce-${n}'`,
-    "img-src 'self' data: asset:",
-    "style-src 'self' 'unsafe-inline' asset:",
-    "font-src 'self' asset: data:",
+    // 外链脚本必须放行（#327）：像 Tailwind CDN 这类样式表是脚本在运行时生成的，
+    // 拦掉它页面不仅没样式，还会因为 absolute/flex 定位类失效把正文顶到几屏之外。
+    // 内联脚本仍然只认 nonce —— 用户文档里的 <script>…</script> 照旧不执行。
+    `script-src 'nonce-${n}' https:`,
+    "img-src 'self' data: asset: https:",
+    "style-src 'self' 'unsafe-inline' asset: https:",
+    "font-src 'self' asset: data: https:",
     "media-src 'self' asset:",
     "frame-src 'self' asset:",
   ].join("; ");
+
+  const fallback = readableFallback(authorCss(content));
 
   const head = [
     `<meta charset="utf-8">`,
     `<meta http-equiv="Content-Security-Policy" content="${csp}">`,
     `<style ${INTERNAL_ATTR}="runtime">html { font-size: ${fontSize}px; }</style>`,
+    fallback ? `<style ${INTERNAL_ATTR}="runtime">${fallback}</style>` : "",
     `<script nonce="${n}" ${INTERNAL_ATTR}="runtime">${runtimeSource(RUNTIME_VERSION)}</script>`,
   ].join("");
 
