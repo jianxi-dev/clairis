@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "initial-fitted",
+      "screenshot": ".artifacts/414/initial.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T10:49:44Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "divider-resize-72",
+      "screenshot": ".artifacts/414/after-divider-resize.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T10:49:44Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "divider-resize-30",
+      "screenshot": ".artifacts/414/after-second-resize.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T10:49:44Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "window-resize",
+      "screenshot": ".artifacts/414/window-resize.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T10:49:44Z",
+      "runner": "unknown@MMBP"
+    }
+  ]
+}
