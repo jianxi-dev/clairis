@@ -54,13 +54,9 @@ test.describe("Biaoyue E2E", () => {
   });
 
   test("4. dark mode changes editor bg", async ({ page }) => {
-    const btn = page.getByTitle(/当前:/);
-    for (let i = 0; i < 5; i++) {
-      const title = await btn.getAttribute("title");
-      if (title?.includes("暗色")) break;
-      await btn.click();
-      await page.waitForTimeout(100);
-    }
+    // 主题按钮自 #389 起是「悬停开菜单再选」，不再点击循环。
+    await page.getByTestId("theme-entry").hover();
+    await page.getByTestId("theme-option-dark").click();
     await expect(page.locator("html")).toHaveClass(/dark/);
 
     const bg = await page
