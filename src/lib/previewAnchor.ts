@@ -12,6 +12,8 @@
  */
 
 /** 悬浮窗最小宽度（严格，e2e 会量）。 */
+import { CARD_RATIO_W } from "./railCards";
+
 export const PREVIEW_MIN_W = 260;
 /** 悬浮窗最小高度（严格，e2e 会量）。 */
 export const PREVIEW_MIN_H = 200;
@@ -27,12 +29,14 @@ export const PREVIEW_DEFAULT_W = 320;
 export const PREVIEW_DEFAULT_H = 300;
 
 /**
- * 阅读空间右半触发的窄窗宽度：卡片缩略图 72 + 预览内容内边距 24（px-3 两侧）。
- * 规格（navigation/spec.md）：不大于缩略图宽 + 内边距，SHALL NOT 用默认 320。
+ * 阅读空间唤出的预览窗宽度：上一版基准宽（PREVIEW_DEFAULT_W）+ 一个卡片缩略图宽。
+ * 缩略图宽度是唯一变量，其余为常量偏移（navigation/spec.md 悬浮预览窗）。
  */
-export const PREVIEW_RAIL_NARROW_W = 96;
-/** 窄窗最小宽度：与初始同宽，只允许放大；默认窗仍钳到 PREVIEW_MIN_W。 */
-export const PREVIEW_RAIL_NARROW_MIN_W = 96;
+export const PREVIEW_RAIL_NARROW_W = PREVIEW_DEFAULT_W + CARD_RATIO_W;
+/** 与初始同宽，只允许放大；默认窗仍钳到 PREVIEW_MIN_W。 */
+export const PREVIEW_RAIL_NARROW_MIN_W = PREVIEW_RAIL_NARROW_W;
+/** 阅读空间卡片右侧缩略图的唤出带宽（与缩略图等宽）。 */
+export const RAIL_HOVER_ZONE_W = CARD_RATIO_W;
 
 export interface Size {
   w: number;
@@ -284,6 +288,19 @@ export function pointInBox(p: Point, b: Box | null | undefined): boolean {
  */
 export function isRightHalfOfBox(p: Point, b: Box): boolean {
   return p.x >= b.left + Math.floor(b.width / 2);
+}
+
+/**
+ * 指针是否落在卡片右侧唤出带内（宽度 = 缩略图宽度）。
+ * 缩略图左侧的正文区不唤出悬浮窗。
+ */
+export function isThumbZoneOfBox(
+  point: { x: number; y: number },
+  box: Box,
+  zoneWidth: number = RAIL_HOVER_ZONE_W,
+): boolean {
+  const right = box.left + box.width;
+  return point.x >= right - zoneWidth && point.x <= right;
 }
 
 /**

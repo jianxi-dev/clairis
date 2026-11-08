@@ -76,7 +76,7 @@ import {
   PREVIEW_RAIL_NARROW_W,
   anchorFromRail,
   clampPreviewSize,
-  isRightHalfOfBox,
+  isThumbZoneOfBox,
   type Box,
 } from "../../lib/previewAnchor";
 import { log } from "../../utils/log";
@@ -1199,7 +1199,7 @@ export default function ReadingRail({
     (item: RecentFile, el: HTMLElement, e: ReactMouseEvent<HTMLElement>) => {
       const st = useStore.getState();
       if (!st.previewSettings.enabled || !st.previewSettings.railHover) return;
-      const zone = isRightHalfOfBox({ x: e.clientX, y: e.clientY }, boxOf(el))
+      const zone = isThumbZoneOfBox({ x: e.clientX, y: e.clientY }, boxOf(el))
         ? ("right" as const)
         : ("left" as const);
       const prev = hoverZoneRef.current;
