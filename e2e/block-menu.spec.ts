@@ -377,3 +377,88 @@ test("点背景色把块内容包进 mdb-bg-blue", async ({ page }) => {
       '# 标题\n\n<span class="mdb-bg-blue">第一段正文</span>\n\n第二段正文\n',
     );
 });
+
+test("缩进 / 减少缩进图标语义正确（不是对齐图标）", async ({ page }) => {
+  await hoverHandle(page, 2);
+
+  const indentIcon = page
+    .locator('[data-action="indent"]')
+    .locator("svg[data-icon]");
+  await expect(indentIcon).toHaveAttribute(
+    "data-icon",
+    "IndentIncreaseOutlined",
+  );
+
+  const outdentIcon = page
+    .locator('[data-action="outdent"]')
+    .locator("svg[data-icon]");
+  await expect(outdentIcon).toHaveAttribute(
+    "data-icon",
+    "IndentDecreaseOutlined",
+  );
+});
+
+test("颜色面板色块呈实色（背景色无偏淡浅色块）", async ({ page }) => {
+  await hoverHandle(page, 2);
+  await page.locator('[data-testid="block-menu-color"]').hover();
+  const panel = page.locator('[data-testid="block-menu-color-panel"]');
+  await expect(panel).toBeVisible({ timeout: 3000 });
+
+  const bgSwatch = panel.locator(
+    '[data-testid="color-swatch-background"][data-class-name="mdb-bg-red"]',
+  );
+  const background = await bgSwatch.evaluate(
+    (el) => getComputedStyle(el).backgroundColor,
+  );
+  // 实色 #f0000e = rgb(240, 0, 14)
+  expect(background).toBe("rgb(240, 0, 14)");
+});
+
+test("对齐入口：应用居中写入围栏 div，再次应用拆掉", async ({ page }) => {
+  await hoverHandle(page, 2);
+
+  await page.locator('[data-testid="block-menu-align"]').hover();
+  await page
+    .locator('[data-testid="block-menu-align-panel"]')
+    .locator('[data-alignment="center"]')
+    .click();
+
+  await expect
+    .poll(() => storeContent(page))
+    .toBe("# 标题\n\n::: {.align-center}\n第一段正文\n:::\n\n第二段正文\n");
+
+  await hoverHandle(page, 2);
+  await page.locator('[data-testid="block-menu-align"]').hover();
+  await page
+    .locator('[data-testid="block-menu-align-panel"]')
+    .locator('[data-alignment="center"]')
+    .click();
+
+  await expect
+    .poll(() => storeContent(page))
+    .toBe("# 标题\n\n第一段正文\n\n第二段正文\n");
+});
+
+test("对齐入口：异对齐换类名", async ({ page }) => {
+  await page.evaluate((body) => {
+    const win = window as unknown as Record<string, any>;
+    win.__biaoyue_openFile__(
+      "/tmp/block-menu-align.md",
+      body,
+      "block-menu-align.md",
+    );
+    win.__biaoyue_store__.getState().setEditorMode("edit");
+  }, "# 标题\n\n::: {.align-center}\n第一段正文\n:::\n\n第二段正文\n");
+  await page.locator(".cm-content").waitFor({ timeout: 5000 });
+
+  await hoverHandle(page, 2);
+  await page.locator('[data-testid="block-menu-align"]').hover();
+  await page
+    .locator('[data-testid="block-menu-align-panel"]')
+    .locator('[data-alignment="right"]')
+    .click();
+
+  await expect
+    .poll(() => storeContent(page))
+    .toBe("# 标题\n\n::: {.align-right}\n第一段正文\n:::\n\n第二段正文\n");
+});

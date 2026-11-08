@@ -315,3 +315,33 @@ describe("renderMarkdown 块级 HTML 闭合", () => {
     expect(html).toContain("<h2>标题</h2>");
   });
 });
+
+describe("renderMarkdown 块对齐围栏 div", () => {
+  it("::: {.align-center} 渲染成带 layout-align-center 的 div", () => {
+    const html = renderMarkdown("::: {.align-center}\n正文\n:::");
+    expect(html).toContain('class="layout-align-center"');
+    expect(html).toContain("正文");
+    expect(html).not.toContain(":::");
+  });
+
+  it("左 / 右对齐分别渲染成对应类名", () => {
+    expect(renderMarkdown("::: {.align-left}\n正文\n:::")).toContain(
+      "layout-align-left",
+    );
+    expect(renderMarkdown("::: {.align-right}\n正文\n:::")).toContain(
+      "layout-align-right",
+    );
+  });
+
+  it("围栏内是 markdown，仍被解析", () => {
+    const html = renderMarkdown("::: {.align-center}\n## 标题\n:::");
+    expect(html).toContain("layout-align-center");
+    expect(html).toContain("<h2>");
+  });
+
+  it("没有闭合 ::: 的半截包裹原样留下", () => {
+    const html = renderMarkdown("::: {.align-center}\n正文");
+    expect(html).toContain(":::");
+    expect(html).not.toContain("layout-align-center");
+  });
+});

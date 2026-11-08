@@ -1,0 +1,46 @@
+{
+  "states": [
+    {
+      "state": "01-text-toolbar",
+      "screenshot": ".artifacts/320/01-text-toolbar.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T01:12:12Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "02-block-toolbar",
+      "screenshot": ".artifacts/320/02-block-toolbar.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T01:12:13Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "03-align-center-editor",
+      "screenshot": ".artifacts/320/03-align-center-editor.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T01:12:13Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "04-align-center-preview",
+      "screenshot": ".artifacts/320/04-align-center-preview.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T01:12:13Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "05-palette-solid",
+      "screenshot": ".artifacts/320/05-palette-solid.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T01:12:13Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "06-border-color",
+      "screenshot": ".artifacts/320/06-border-color.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T01:12:13Z",
+      "runner": "unknown@MMBP"
+    }
+  ]
+}
