@@ -135,6 +135,17 @@ export default function StatusBar({
       <div className="ml-auto flex items-center gap-1">
         <button
           type="button"
+          data-testid="home-entry"
+          title="主页"
+          aria-label="主页"
+          onClick={() => useStore.getState().setScene("portal")}
+          className="rounded-full px-2 py-0.5 text-[var(--app-text-2)] hover:bg-[var(--app-accent-soft)] hover:text-[var(--app-accent)]"
+        >
+          <Icon name="home" size={18} />
+        </button>
+
+        <button
+          type="button"
           data-testid="grid-entry"
           title="网格概览（⌘⇧\\）"
           aria-label="网格概览"

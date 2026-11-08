@@ -55,3 +55,11 @@ test.describe("主题下拉弹窗（ui-polish-batch6 5.1）", () => {
     await expect(menu).toHaveCount(0);
   });
 });
+
+test.describe("主页入口（ui-polish-batch6 6.1）", () => {
+  test("点击主页回到启动页", async ({ page }) => {
+    await boot(page);
+    await page.getByTestId("home-entry").click();
+    await expect(page.getByTestId("portal")).toBeVisible({ timeout: 5000 });
+  });
+});
