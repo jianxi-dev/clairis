@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { convertFileSrc } from "@tauri-apps/api/core";
+import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import { renderMarkdown, renderMermaid, takeDarkVars } from "../../renderers";
 import { resolveDocMediaHref } from "../../lib/mediaUrl";
 import {
@@ -13,6 +13,9 @@ import { useEditorStore } from "../../stores/editorStore";
 import { useStore } from "../../stores";
 import { applyReaderSkin } from "../../hooks/useConfig";
 import { isTauriEnv } from "../../utils/tauri";
+import { revealInFinder } from "../../lib/finder";
+import { log } from "../../utils/log";
+import ContextMenu, { type ContextMenuItem } from "../ContextMenu";
 import type { FileKind } from "../../types";
 
 interface PreviewViewProps {
@@ -465,9 +468,57 @@ function clampZoom(z: number): number {
 function ImagePreview({ filePath }: { filePath: string }) {
   const [zoom, setZoom] = useState(1);
   const [naturalWidth, setNaturalWidth] = useState<number | null>(null);
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const zoomRef = useRef(1);
   const startZoomRef = useRef(1);
+
+  const closeCtxMenu = useCallback(() => setCtxMenu(null), []);
+
+  const contextItems = useMemo<ContextMenuItem[]>(() => {
+    const name = filePath.split("/").pop() || "image.png";
+    return [
+      {
+        label: "打开所在文件夹",
+        icon: "folder",
+        onSelect: () => revealInFinder(filePath),
+      },
+      {
+        label: "另存为…",
+        icon: "export",
+        onSelect: () => {
+          void (async () => {
+            try {
+              const base64 = await invoke<string>("read_file_base64", {
+                path: filePath,
+              });
+              await invoke("save_binary_as_file", {
+                base64,
+                defaultName: name,
+              });
+            } catch (err) {
+              log.warn("ImagePreview", "另存为失败", err);
+            }
+          })();
+        },
+      },
+      {
+        label: "复制文件路径",
+        icon: "copyPath",
+        onSelect: () => {
+          void navigator.clipboard?.writeText(filePath).catch(() => {});
+        },
+      },
+      {
+        label: "关闭预览",
+        icon: "close",
+        onSelect: () => {
+          const st = useStore.getState();
+          if (st.activeTabId) st.closeTab(st.activeTabId);
+        },
+      },
+    ];
+  }, [filePath]);
 
   zoomRef.current = zoom;
 
@@ -516,8 +567,14 @@ function ImagePreview({ filePath }: { filePath: string }) {
   return (
     <div
       ref={containerRef}
+      data-testid="image-preview"
       tabIndex={-1}
       style={{ height: "100%", overflow: "auto", padding: 16 }}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setCtxMenu({ x: e.clientX, y: e.clientY });
+      }}
       onClick={(e) => {
         const el = containerRef.current;
         if (el && document.activeElement !== el) el.focus();
@@ -533,6 +590,7 @@ function ImagePreview({ filePath }: { filePath: string }) {
       onDoubleClick={() => setZoom(1)}
     >
       <img
+        data-testid="image-preview-img"
         src={convertFileSrc(filePath)}
         alt=""
         style={{
@@ -559,6 +617,15 @@ function ImagePreview({ filePath }: { filePath: string }) {
       >
         滚轮/双指捏合缩放 · 双击复位
       </div>
+      {ctxMenu && (
+        <ContextMenu
+          x={ctxMenu.x}
+          y={ctxMenu.y}
+          items={contextItems}
+          onClose={closeCtxMenu}
+          testId="image-context-menu"
+        />
+      )}
     </div>
   );
 }

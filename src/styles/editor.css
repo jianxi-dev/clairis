@@ -2571,6 +2571,37 @@ body {
   color: var(--app-accent);
 }
 
+.context-menu {
+  position: fixed;
+  z-index: 90;
+  padding: 4px;
+  border: 1px solid var(--app-border);
+  border-radius: 10px;
+  background: var(--app-surface);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.18);
+}
+
+.context-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 5px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--app-text-2);
+}
+
+.context-menu-item:hover,
+.context-menu-item:focus-visible {
+  background: var(--app-accent-soft);
+  color: var(--app-accent);
+}
+
+.context-menu-item:disabled {
+  opacity: 0.45;
+}
+
 .width-panel {
   position: fixed;
   z-index: 80;

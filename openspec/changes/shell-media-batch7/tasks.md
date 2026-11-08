@@ -24,7 +24,7 @@
 
 依赖：无（新增独立组件，不与其他票同文件）
 
-- [ ] 2.1 预览区右键图片改为应用自绘菜单，渲染不等 IPC
+- [x] 2.1 预览区右键图片改为应用自绘菜单，渲染不等 IPC
 
   实现要点：
   - 新增应用内右键菜单渲染路径（portal + 与 1.1 同一套关闭逻辑）；`Content/PreviewView.tsx` 的图片预览容器绑定 `contextmenu`，`preventDefault` 后**同步** `setState`，不 await 任何 `invoke`。
