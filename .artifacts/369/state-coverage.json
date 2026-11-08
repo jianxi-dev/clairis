@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "倍速菜单六档",
+      "screenshot": ".artifacts/369/01-rate-menu.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T08:39:59Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "1.5倍速生效且变调修正",
+      "screenshot": ".artifacts/369/02-rate-1_5.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T08:39:59Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "切换视频复位1.0",
+      "screenshot": ".artifacts/369/03-switch-reset.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T08:39:59Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "重开菜单标记当前档位",
+      "screenshot": ".artifacts/369/04-rate-reopen.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T08:39:59Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}
