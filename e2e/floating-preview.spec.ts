@@ -489,7 +489,7 @@ test("缩略图带触发预览 + 底部按钮区悬停重显按钮", async ({ pa
     { steps: 8 },
   );
   await expect(actions).toBeVisible();
-  await expect(page.locator('[data-testid="preview-action"]')).toHaveCount(4);
+  await expect(page.locator('[data-testid="preview-action"]')).toHaveCount(3);
   await page.screenshot({ path: path.join(ART, "preview-actions-hover.png") });
 
   // 移回窗口中部 → 动作区隐藏
@@ -580,7 +580,7 @@ test("媒体真实渲染：图片 img / 视频 video / 音频 audio / PDF iframe
   await expect(audio).toHaveAttribute("src", /media:\/\//);
   await expect(audio).toHaveJSProperty("controls", true);
 
-  await hoverRowRightHalf(page, "pdf");
+  await hoverRowRightHalf(page, "markdown");
   await expect(page.locator('[data-testid="preview-pdf"]')).toBeVisible();
   await expect(
     page.locator('[data-testid="preview-media-placeholder"]'),
@@ -596,7 +596,7 @@ test("PDF 悬浮预览：asset iframe 带 #toolbar=0 且无 sandbox", async ({
   await pinRail(page);
   await page.clock.install();
 
-  await hoverRowRightHalf(page, "pdf");
+  await hoverRowRightHalf(page, "markdown");
   await page.clock.runFor(250);
 
   const pdf = page.locator(
@@ -669,4 +669,39 @@ test("拖动标题栏经过 iframe 内容区仍持续跟手（#275）", async ({
   expect(y1 ?? 0).toBeGreaterThan(b.y + 20);
   expect(y2 ?? 0).toBeGreaterThan((y1 ?? 0) + 20);
   await expect(page.locator(PREVIEW)).toHaveAttribute("data-dragging", "false");
+});
+
+test("悬浮窗底部动作行：默认不渲染、悬停浮现三按钮、图标 14px、PDF 同样（#365）", async ({
+  page,
+}) => {
+  await boot(page);
+  await seed(page);
+  await pinRail(page);
+
+  const preview = page.locator(PREVIEW);
+  await hoverRowRightHalf(page, "markdown");
+  await expect(preview).toBeVisible({ timeout: 3000 });
+  await expect(page.locator('[data-testid="preview-actions"]')).toHaveCount(0);
+
+  await page.locator('[data-testid="preview-pin"]').click();
+  await expect(preview).toHaveAttribute("data-pinned", "true");
+
+  const pb = await previewBox(page);
+  await moveThrough(
+    page,
+    [
+      { x: pb.x + pb.w / 2, y: pb.y + pb.h / 2 },
+      { x: pb.x + pb.w / 2, y: pb.y + pb.h - 16 },
+    ],
+    { steps: 8 },
+  );
+
+  const actions = page.locator('[data-testid="preview-actions"]');
+  await expect(actions).toBeVisible();
+  await expect(page.locator('[data-testid="preview-action"]')).toHaveCount(3);
+
+  const svgs = page.locator('[data-testid="preview-action"] svg');
+  for (let i = 0; i < 3; i += 1) {
+    expect(await svgs.nth(i).getAttribute("width")).toBe("14");
+  }
 });
