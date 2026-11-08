@@ -959,6 +959,12 @@ body {
     opacity 0.3s ease;
 }
 
+.immersive [data-immersive-peek="true"] .app-chrome {
+  max-height: 200px;
+  opacity: 1;
+  pointer-events: auto;
+}
+
 .immersive .app-chrome {
   /* flex 子项的 min-height:auto 会撑住内容高度，必须显式归零；
      内边距也算在 border-box 的 max-height 里，一并收掉。 */

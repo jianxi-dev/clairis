@@ -148,6 +148,8 @@ function PaneNode({
   focusedPaneId,
 }: PaneNodeProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const readingMode = useStore((s) => s.readingMode);
+  const peekPaneId = useStore((s) => s.immersivePeekPaneId);
 
   if (isLeaf(node)) {
     const hidden = fullscreenId !== null && fullscreenId !== node.id;
@@ -170,21 +172,54 @@ function PaneNode({
         data-pane-kind={isAi ? "ai" : "tabs"}
         data-focused={focusedPaneId === node.id ? "true" : "false"}
         data-fullscreen={fullscreen ? "true" : "false"}
+        data-immersive-peek={
+          readingMode && peekPaneId === node.id ? "true" : undefined
+        }
         onMouseDownCapture={() => useStore.getState().focusPane(node.id)}
       >
-        {isAi ? (
-          <AiPaneHeader leafId={node.id} />
-        ) : (
-          <PaneHeader
-            leafId={node.id}
-            tabs={node.tabs}
-            activeTabId={node.activeTabId}
-            editorMode={node.editorMode}
-            showFullscreen={true}
-            showClosePane={!rootIsLeaf}
-          />
-        )}
+        <div
+          onPointerLeave={() => {
+            if (!readingMode) return;
+            window.setTimeout(() => {
+              const st = useStore.getState();
+              if (st.tabDragActive) return;
+              if (st.immersivePeekPaneId === node.id) {
+                st.setImmersivePeekPaneId(null);
+              }
+            }, 400);
+          }}
+        >
+          {isAi ? (
+            <AiPaneHeader leafId={node.id} />
+          ) : (
+            <PaneHeader
+              leafId={node.id}
+              tabs={node.tabs}
+              activeTabId={node.activeTabId}
+              editorMode={node.editorMode}
+              showFullscreen={true}
+              showClosePane={!rootIsLeaf}
+            />
+          )}
+        </div>
         <div className="relative flex-1 overflow-hidden">
+          {readingMode && (
+            <div
+              data-testid="pane-tab-hotzone"
+              data-pane-hotzone={node.id}
+              style={{
+                position: "absolute",
+                left: 0,
+                right: 0,
+                top: 0,
+                height: 16,
+                zIndex: 20,
+              }}
+              onPointerEnter={() =>
+                useStore.getState().setImmersivePeekPaneId(node.id)
+              }
+            />
+          )}
           {isAi ? (
             <AiDockedPane />
           ) : (

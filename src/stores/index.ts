@@ -184,6 +184,7 @@ interface AppStore {
   sidebarRightVisible: boolean;
   readingMode: boolean;
   immersiveChromeVisible: boolean;
+  immersivePeekPaneId: string | null;
   /** 页签拖拽进行中：抑制沉浸热区 2s 收起，避免拖拽被浮层卸载打断。 */
   tabDragActive: boolean;
   scrollPositions: Record<string, ScrollPosition>;
@@ -259,6 +260,7 @@ interface AppStore {
   setEditorMode: (mode: EditorMode) => void;
   setReadingMode: (on: boolean) => void;
   setImmersiveChromeVisible: (v: boolean) => void;
+  setImmersivePeekPaneId: (id: string | null) => void;
   setTabDragActive: (v: boolean) => void;
   updateScrollPos: (
     tabId: string,
@@ -375,6 +377,7 @@ const initialState = {
   sidebarRightVisible: false,
   readingMode: false,
   immersiveChromeVisible: false,
+  immersivePeekPaneId: null,
   tabDragActive: false,
   scrollPositions: {} as Record<string, ScrollPosition>,
   recentFiles: [] as RecentFile[],
@@ -649,12 +652,15 @@ export const useStore = create<AppStore>((set, get) => ({
     set({
       readingMode: on,
       immersiveChromeVisible: false,
+      immersivePeekPaneId: null,
     });
   },
 
   setImmersiveChromeVisible: (v: boolean) => {
     set({ immersiveChromeVisible: v });
   },
+
+  setImmersivePeekPaneId: (id) => set({ immersivePeekPaneId: id }),
 
   setTabDragActive: (v: boolean) => {
     set({ tabDragActive: v });

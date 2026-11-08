@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "immersive-all-collapsed",
+      "screenshot": ".artifacts/418/immersive-collapsed.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T11:31:17Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "left-pane-open",
+      "screenshot": ".artifacts/418/left-open.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T11:31:17Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "right-pane-open",
+      "screenshot": ".artifacts/418/right-open.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T11:31:17Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "exit-restored",
+      "screenshot": ".artifacts/418/exit-restored.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T11:31:17Z",
+      "runner": "unknown@MMBP"
+    }
+  ]
+}
