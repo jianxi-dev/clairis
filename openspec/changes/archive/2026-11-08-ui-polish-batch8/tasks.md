@@ -9,7 +9,7 @@
 
 依赖：无
 
-- [ ] 1.1 拖拽页签不再选中正文文字；页签选中态与图标分级生效
+- [x] 1.1 拖拽页签不再选中正文文字；页签选中态与图标分级生效
 
   实现要点：
   - `components/TabBar.tsx`：拖拽激活时 `document.documentElement.dataset.tabDrag = "true"`，`finish` 时删除；`stores/index.ts` 的 `tabDragActive` 保留供现有热区逻辑使用
@@ -22,7 +22,7 @@
 
 依赖：无
 
-- [ ] 2.1 页码区去外框、PDF 外围底色跟随主题
+- [x] 2.1 页码区去外框、PDF 外围底色跟随主题
 
   实现要点：
   - `components/Content/PdfViewer.tsx` `injectPdfUiCss`：追加 `[data-epdf-i="pdf-page-nav"] *` 相关容器 `border: 0`，只去框不隐藏控件
@@ -33,7 +33,7 @@
 
 依赖：无（图标表与状态栏，与 1 不同文件）
 
-- [ ] 3.1 三个图标与主题入口视觉修正
+- [x] 3.1 三个图标与主题入口视觉修正
 
   实现要点：
   - `ui/icons.ts`：`sunBright` 重绘为 6 条 60° 等角光线（半径 6.5→9.5）+ 中心圆 r3.5；`layoutAuto` 改为魔法棒（斜棒 + 3 星芒）
@@ -45,7 +45,7 @@
 
 依赖：无
 
-- [ ] 4.1 全屏按钮默认隐藏、悬停显示；栏目可拖到 0
+- [x] 4.1 全屏按钮默认隐藏、悬停显示；栏目可拖到 0
 
   实现要点：
   - `PaneTreeView.tsx`：全屏按钮加 `pane-fullscreen-button`，全屏态带 `data-fullscreen`
@@ -57,7 +57,7 @@
 
 依赖：无
 
-- [ ] 5.1 悬浮窗动作行自动隐藏、同卡片交互、显示路径、整体右移一个按钮位；阅读空间路径悬停去底色
+- [x] 5.1 悬浮窗动作行自动隐藏、同卡片交互、显示路径、整体右移一个按钮位；阅读空间路径悬停去底色
 
   实现要点：
   - `components/Preview/FloatingPreview.tsx`：动作行显隐改为指针在动作行自身；离开即隐藏（钉住除外）；按钮类名改 `text-[var(--app-chrome-rest)] hover:text-[var(--app-chrome-hover)]` 无底色；新增路径按钮（`folder` + 父目录名 + 完整路径 title + reveal）；动作行 `padding-left: 24px`
@@ -68,7 +68,7 @@
 
 依赖：5.1（复用悬浮预览动作与定义，同组件但不同文件；按依赖序开工）
 
-- [ ] 6.1 右键菜单新增悬浮小窗并唤出悬浮预览
+- [x] 6.1 右键菜单新增悬浮小窗并唤出悬浮预览
 
   实现要点：
   - `TabBar.tsx` 右键菜单第一项「悬浮小窗」（图标 `pip`），点击读取页签元素矩形并 `openPreview`（`source: "tab"`），同时 `closeMenu`
@@ -79,7 +79,7 @@
 
 依赖：无
 
-- [ ] 7.1 停靠 AI 时卡片打开与 Ctrl+O 落到普通内容栏
+- [x] 7.1 停靠 AI 时卡片打开与 Ctrl+O 落到普通内容栏
 
   实现要点：
   - `stores/index.ts`：新增 `lastTabsPaneId`（`focusPane` 更新、跳过 `kind === "ai"`）；`openFile` 与 `dropFileOnPane` 用「聚焦非 AI 栏 → 最近非 AI 栏 → 首个非 AI 栏」选宿主
@@ -90,7 +90,7 @@
 
 依赖：无
 
-- [ ] 8.1 HTML 工具条只属于 HTML 编辑；双击只定位；选中块可拖拽改宽高
+- [x] 8.1 HTML 工具条只属于 HTML 编辑；双击只定位；选中块可拖拽改宽高
 
   实现要点：
   - 归属：先真机复现两种编辑态实际渲染的选择器；确保 `html-edit-toolbar` 仅在 `HtmlVisualEditor` 内、`cm-floating-toolbar`/`cm-block-toolbar` 仅在 md 编辑态；必要时在 `ContentArea` 初始化扩展处按 `fileKind` 分流
@@ -102,7 +102,7 @@
 
 依赖：无
 
-- [ ] 9.1 按钮距右缘一个按钮宽、未钉住无边框、钉住细边框
+- [x] 9.1 按钮距右缘一个按钮宽、未钉住无边框、钉住细边框
 
   实现要点：
   - `styles/editor.css`：`.biaoyue-outline` 的 `right` 由 `calc(100% / 3)` 改为 `28px`（一个按钮宽）；按钮默认 `border-color: transparent`，钉住 `border: 1px solid var(--app-border)`；浮层未钉住 `border: 0`、钉住 1px 保持
@@ -112,7 +112,7 @@
 
 依赖：无
 
-- [ ] 10.1 上限 1400、宽松 1200、三柱居中相接并收窄，滑块稍长于三柱
+- [x] 10.1 上限 1400、宽松 1200、三柱居中相接并收窄，滑块稍长于三柱
 
   实现要点：
   - `StatusBar.tsx`：`WIDTH_PRESETS` 改 720/960/1200，柱高 14/18/22；`WIDTH_MAX` 保持 1400；`WIDTH_PANEL_W` 改 200
@@ -124,7 +124,7 @@
 
 依赖：无
 
-- [ ] 11.1 进度条缩略图、控制条尺寸还原、图标规范、截图入剪贴板、全屏禁二级菜单、快捷键并入总览
+- [x] 11.1 进度条缩略图、控制条尺寸还原、图标规范、截图入剪贴板、全屏禁二级菜单、快捷键并入总览
 
   实现要点：
   - `styles/player.css`：控制高度 38px、图标 24px、padding 12px（还原上一版）
