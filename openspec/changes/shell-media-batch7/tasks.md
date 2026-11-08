@@ -109,7 +109,7 @@
 
 依赖：1.1（`StatusBar.tsx`）、3.1（`ui/icons.ts`/`TabBar.tsx`）、8.1（`PaneTreeView.tsx`）
 
-- [ ] 9.1 新增 chrome 前景色 token 并替换四处零散实现
+- [x] 9.1 新增 chrome 前景色 token 并替换四处零散实现
 
   实现要点：
   - `styles/tokens.css`：新增 `--app-chrome-rest`（默认暗）与 `--app-chrome-hover`（悬停亮），三主题各自取值。

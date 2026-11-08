@@ -1,0 +1,46 @@
+{
+  "states": [
+    {
+      "state": "fullscreen-hover-matched",
+      "screenshot": ".artifacts/419/hover-fullscreen.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T11:40:31Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "dark-theme-unified",
+      "screenshot": ".artifacts/419/dark.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T11:40:32Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "chrome-rest-unified",
+      "screenshot": ".artifacts/419/rest.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T11:40:36Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "pane-hover-bright",
+      "screenshot": ".artifacts/419/hover-pane.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T11:40:36Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "fullscreen-hover-matches",
+      "screenshot": ".artifacts/419/hover-fullscreen.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T11:40:36Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "dark-theme-same-rule",
+      "screenshot": ".artifacts/419/dark.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T11:40:36Z",
+      "runner": "unknown@MMBP"
+    }
+  ]
+}
