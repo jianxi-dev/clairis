@@ -40,3 +40,18 @@ test.describe("状态栏高度与显隐（ui-polish-batch6 4.1）", () => {
     await expect(bar).toHaveCount(0, { timeout: 3000 });
   });
 });
+
+test.describe("主题下拉弹窗（ui-polish-batch6 5.1）", () => {
+  test("悬停弹出四项，点击暗色后切换并关闭", async ({ page }) => {
+    await boot(page);
+    await page.getByTestId("theme-entry").hover();
+
+    const menu = page.getByTestId("theme-menu");
+    await expect(menu).toBeVisible({ timeout: 3000 });
+    await expect(menu.locator("button")).toHaveCount(4);
+
+    await page.getByTestId("theme-option-dark").click();
+    await expect(page.locator("html")).toHaveClass(/dark/);
+    await expect(menu).toHaveCount(0);
+  });
+});
