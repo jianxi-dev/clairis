@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "card-actions",
+      "screenshot": ".artifacts/363/01-card-actions.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T07:14:29Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "actions",
+      "screenshot": ".artifacts/363/02-actions.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T07:14:29Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "path-hover",
+      "screenshot": ".artifacts/363/03-path-hover.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T07:14:29Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "pdf-actions",
+      "screenshot": ".artifacts/363/04-pdf-actions.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T07:14:29Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}

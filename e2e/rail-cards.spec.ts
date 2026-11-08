@@ -368,7 +368,7 @@ test("卡片动作组位于左下角且顺序为 打开/右分栏/下分栏/收�
   expect(order).toEqual(["open", "split-right", "split-down", "pin", "path"]);
 
   const pin = card.locator('[data-action="pin"]');
-  await expect(pin).toContainText("收藏");
+  await expect(pin).toHaveAttribute("aria-label", /收藏/);
 
   const topright = card.locator('[data-testid="rail-card-topright"]');
   const toprightBox = await topright.boundingBox();
@@ -393,7 +393,7 @@ test("卡片动作组位于左下角且顺序为 打开/右分栏/下分栏/收�
 
   const path = card.locator('[data-action="path"]');
   await expect(path).toContainText("rc");
-  await expect(path).not.toHaveAttribute("title");
+  await expect(path).toHaveAttribute("title", /\/tmp\/rc\/cover\.md$/);
   await path.click();
   await expect
     .poll(() =>
@@ -570,16 +570,20 @@ test("滑杆改到 160 后设为默认：重启回来 railViewSpec 与保存值�
   });
 });
 
-test("PDF 卡片不渲染悬停工具条，其他类型保持（#275）", async ({ page }) => {
+test("PDF 卡片与其它类型一样渲染底部动作行（#275 作废，改由 #363 统一）", async ({
+  page,
+}) => {
   await boot(page);
   await seed(page);
   await openPinnedRail(page);
 
   const pdf = recentItem(page, "/tmp/rc/report.pdf");
   await pdf.hover();
-  await expect(pdf.locator('[data-testid="rail-card-actions"]')).toHaveCount(0);
+  await expect(
+    pdf.locator('[data-testid="rail-card-actions"] button'),
+  ).toHaveCount(5);
   await page.screenshot({
-    path: path.join(ART275, "rail-pdf-no-actions.png"),
+    path: path.join(ART275, "rail-pdf-actions.png"),
   });
 
   const md = recentItem(page, "/tmp/rc/cover.md");
@@ -587,6 +591,52 @@ test("PDF 卡片不渲染悬停工具条，其他类型保持（#275）", async 
   await expect(
     md.locator('[data-testid="rail-card-actions"] button'),
   ).toHaveCount(5);
+});
+
+test("底部行图标 14px、收藏为爱心、路径带完整标题、最小高度不重叠（#363）", async ({
+  page,
+}) => {
+  await boot(page);
+  await seed(page);
+  await openPinnedRail(page);
+
+  const card = recentItem(page, "/tmp/rc/cover.md");
+  await card.hover();
+  const actions = card.locator('[data-testid="rail-card-actions"]');
+  await expect(actions).toHaveCSS("opacity", "1");
+
+  const svgs = actions.locator("svg");
+  const svgCount = await svgs.count();
+  expect(svgCount).toBe(5);
+  for (let i = 0; i < svgCount; i += 1) {
+    expect(await svgs.nth(i).getAttribute("width")).toBe("14");
+  }
+
+  const pinBtn = actions.locator('[data-action="pin"]');
+  const pinPath = await pinBtn.locator("path").first().getAttribute("d");
+  expect(pinPath ?? "").toContain("M12 19.5s-6.8");
+
+  const pathBtn = actions.locator('[data-action="path"]');
+  await expect(pathBtn).toHaveAttribute("title", "/tmp/rc/cover.md");
+
+  const boxes = await Promise.all([
+    card.locator('[data-testid="rail-thumb"]').boundingBox(),
+    card.locator('[data-testid="rail-card-topright"]').boundingBox(),
+    actions.boundingBox(),
+  ]);
+  const [thumb, topRight, row] = boxes;
+  if (!thumb || !topRight || !row) throw new Error("目标元素不可测量");
+  const overlaps = (
+    a: { x: number; y: number; width: number; height: number },
+    b: typeof a,
+  ) =>
+    a.x < b.x + b.width &&
+    b.x < a.x + a.width &&
+    a.y < b.y + b.height &&
+    b.y < a.y + a.height;
+  expect(overlaps(thumb, row)).toBe(false);
+  expect(overlaps(topRight, row)).toBe(false);
+  expect(overlaps(thumb, topRight)).toBe(false);
 });
 
 test("PDF 卡片缩略图不嵌入查看器，原生工具条无宿主（#286）", async ({

@@ -65,7 +65,9 @@ export type IconName =
   | "keyboardHints"
   | "pip"
   | "speed"
-  | "home";
+  | "home"
+  | "heart"
+  | "heartFilled";
 
 export interface IconPart {
   d?: string;
@@ -323,6 +325,14 @@ export const ICONS: Record<IconName, IconDef> = {
     label: "倍速",
     s: "M6.4 16.8a6.5 6.5 0 1111.2 0 M12 13.5l2.3-3.9 M12 13.5h.01",
   },
+  heart: {
+    label: "收藏",
+    s: "M12 19.5s-6.8-4.3-6.8-9.2A3.6 3.6 0 0112 8a3.6 3.6 0 016.8 2.3c0 4.9-6.8 9.2-6.8 9.2z",
+  },
+  heartFilled: {
+    label: "已收藏",
+    d: "M12 20.2s-7.4-4.6-7.4-9.8A3.9 3.9 0 0112 7.6a3.9 3.9 0 017.4 2.8c0 5.2-7.4 9.8-7.4 9.8z",
+  },
   home: {
     label: "首页",
     s: "M4 11l8-7 8 7 M6 10v9h12v-9 M10 19v-5h4v5",
@@ -359,4 +369,4 @@ export function iconSvg(name: IconName, size = 22): string {
 }
 
 /** 两档尺寸：密集列表 18px，主操作 24px。 */
-export type IconSize = 18 | 24;
+export type IconSize = 14 | 18 | 24;
