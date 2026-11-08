@@ -7,7 +7,7 @@ test.beforeEach(async ({ page }) => {
   // 直接打开一个 markdown 页签。
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto(APP_URL, { waitUntil: "networkidle" });
-  await page.waitForSelector("header", { timeout: 10000 });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 10000 });
 });
 
 /** 打开一个 markdown 页签并切到编辑模式，返回可输入的内容区。 */

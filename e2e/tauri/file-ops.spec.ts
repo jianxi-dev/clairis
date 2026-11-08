@@ -5,7 +5,7 @@ const APP_URL = "http://localhost:1420";
 async function setup(page: Parameters<Parameters<typeof test>[1]>[0]["page"]) {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto(APP_URL, { waitUntil: "networkidle" });
-  await page.waitForSelector("header", { timeout: 10000 });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 10000 });
   // 应用启动在门户首屏（layout-portal 2.1）；本套用例测的是工作区外壳
   await page.evaluate(() => {
     const w = window as unknown as Record<string, any>;

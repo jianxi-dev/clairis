@@ -12,7 +12,9 @@ test.describe("Biaoyue E2E", () => {
       w.__biaoyue_store__?.getState?.().setScene("workspace");
     });
 
-    await page.waitForSelector("header", { timeout: 10000 });
+    await page.waitForSelector('[data-testid="pane-header"]', {
+      timeout: 10000,
+    });
   });
 
   test("页面标题显示新品牌名", async ({ page }) => {
@@ -29,13 +31,9 @@ test.describe("Biaoyue E2E", () => {
     }
   });
 
-  test("2. 顶栏无旧控件；四个产品入口唯一且只在状态栏", async ({ page }) => {
-    const banner = page.getByRole("banner");
-    for (const name of ["打开", "保存", "新建", "侧栏", "翻译"]) {
-      await expect(
-        banner.getByRole("button", { name, exact: true }),
-      ).toHaveCount(0);
-    }
+  test("2. 顶栏已移除；四个产品入口唯一且只在状态栏", async ({ page }) => {
+    await expect(page.getByRole("banner")).toHaveCount(0);
+
     const bar = page.getByTestId("status-bar");
     await expect(bar.locator("[data-ai-entry]")).toHaveCount(1);
     await expect(bar.locator('[data-testid="grid-entry"]')).toHaveCount(1);
@@ -46,12 +44,13 @@ test.describe("Biaoyue E2E", () => {
       '[data-testid="immersive-entry"]',
       '[title^="当前:"]',
     ]) {
-      await expect(banner.locator(sel)).toHaveCount(0);
+      await expect(page.locator(sel)).toHaveCount(1);
     }
   });
 
-  test("3. toolbar header visible", async ({ page }) => {
-    await expect(page.getByRole("banner")).toBeVisible();
+  test("3. 顶部没有品牌横条", async ({ page }) => {
+    await expect(page.getByRole("banner")).toHaveCount(0);
+    await expect(page.getByText("标月", { exact: true })).toHaveCount(0);
   });
 
   test("4. dark mode changes editor bg", async ({ page }) => {
@@ -131,7 +130,9 @@ test.describe("Biaoyue E2E", () => {
       if (msg.type() === "error") errors.push(msg.text());
     });
     await page.reload();
-    await page.waitForSelector("header", { timeout: 10000 });
+    await page.waitForSelector('[data-testid="pane-header"]', {
+      timeout: 10000,
+    });
     const critical = errors.filter(
       (e) =>
         !e.includes("Failed to load config") &&

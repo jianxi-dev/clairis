@@ -42,7 +42,9 @@ async function dragCapsule(
 test.describe("Capsule Popover Positioning", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto(APP_URL, { waitUntil: "networkidle" });
-    await page.waitForSelector("header", { timeout: 10000 });
+    await page.waitForSelector('[data-testid="pane-header"]', {
+      timeout: 10000,
+    });
   });
 
   test("capsule popover opens and is visible", async ({ page }) => {

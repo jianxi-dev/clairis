@@ -32,7 +32,7 @@ test("HTML 预览：已保存文件 asset 直载；改动后回退 srcdoc 并重
 }) => {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto(APP_URL, { waitUntil: "networkidle" });
-  await page.waitForSelector("header", { timeout: 10000 });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 10000 });
 
   await openFile(page, "/Users/test/complex.html", "<p>hi</p>");
 
@@ -66,7 +66,7 @@ test("HTML 预览：已保存文件 asset 直载；改动后回退 srcdoc 并重
 test("HTML 预览：无路径文档走 srcdoc", async ({ page }) => {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto(APP_URL, { waitUntil: "networkidle" });
-  await page.waitForSelector("header", { timeout: 10000 });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 10000 });
 
   await page.evaluate(() => {
     const store = (window as unknown as Record<string, unknown>)
@@ -95,7 +95,7 @@ test("HTML 预览：无路径文档走 srcdoc", async ({ page }) => {
 test("HTML 预览：锚点点击不崩溃（iframe 保持存在）", async ({ page }) => {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto(APP_URL, { waitUntil: "networkidle" });
-  await page.waitForSelector("header", { timeout: 10000 });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 10000 });
 
   await openFile(
     page,

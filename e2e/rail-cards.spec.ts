@@ -114,7 +114,7 @@ async function boot(
     };
   });
   await page.goto(APP_URL, { waitUntil: "networkidle" });
-  await page.waitForSelector("header", { timeout: 15000 });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 15000 });
 }
 
 async function seed(page: Page): Promise<void> {
@@ -539,7 +539,7 @@ test("滑杆改到 160 后设为默认：重启回来 railViewSpec 与保存值�
   });
 
   await page.reload({ waitUntil: "networkidle" });
-  await page.waitForSelector("header", { timeout: 15000 });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 15000 });
   const state = await page.evaluate(() => {
     const s = (
       window as unknown as {

@@ -5,7 +5,7 @@ const APP_URL = "http://localhost:1420";
 test.beforeEach(async ({ page }) => {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto(APP_URL, { waitUntil: "networkidle" });
-  await page.waitForSelector("header", { timeout: 10000 });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 10000 });
 });
 
 /** 打开一个 markdown 页签、切到编辑模式，光标停在文末正文（表格块非活跃）。 */

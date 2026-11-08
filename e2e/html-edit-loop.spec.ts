@@ -25,7 +25,7 @@ const HTML = [
 async function openHtml(page: Page, content: string, name = "h1") {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto("/", { waitUntil: "networkidle" });
-  await page.waitForSelector("header", { timeout: 10000 });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 10000 });
   await page.evaluate(
     ({ content, name }) => {
       const win = window as unknown as Record<string, any>;
@@ -93,7 +93,7 @@ test("50KB HTML 打开：首屏 iframe 快速挂载、页签不被标脏（#276�
 }) => {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto("/", { waitUntil: "networkidle" });
-  await page.waitForSelector("header", { timeout: 10000 });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 10000 });
 
   // 生成约 50KB 的 HTML（与用户文件同量级：560+ 元素 + 内联样式）
   const big =

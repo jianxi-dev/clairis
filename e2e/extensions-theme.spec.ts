@@ -16,7 +16,7 @@ async function gotoWithTokens(page: Page, tokens: Record<string, string>) {
     };
   }, tokens);
   await page.goto(APP_URL, { waitUntil: "networkidle" });
-  await page.waitForSelector("header", { timeout: 10000 });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 10000 });
 }
 
 test("注入的 theme token 覆盖 :root 变量且只挂一个 style", async ({ page }) => {

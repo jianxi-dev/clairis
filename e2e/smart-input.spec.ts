@@ -5,7 +5,7 @@ const APP_URL = "http://localhost:1420";
 test.beforeEach(async ({ page }) => {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto(APP_URL, { waitUntil: "networkidle" });
-  await page.waitForSelector("header", { timeout: 10000 });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 10000 });
 });
 
 async function openMarkdownForEditing(page: Page, path: string) {

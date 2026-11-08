@@ -33,7 +33,7 @@ async function openFile(
 test("代码文件默认编辑模式且渲染 CM6 高亮容器", async ({ page }) => {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto(APP_URL, { waitUntil: "networkidle" });
-  await page.waitForSelector("header", { timeout: 10000 });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 10000 });
 
   await openFile(page, "/Users/test/app.py", 'def hello():\n    print("hi")\n');
   await page.waitForTimeout(300);
@@ -62,7 +62,7 @@ test("代码文件默认编辑模式且渲染 CM6 高亮容器", async ({ page }
 test("图片文件预览渲染 img 且资源为 asset URL", async ({ page }) => {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto(APP_URL, { waitUntil: "networkidle" });
-  await page.waitForSelector("header", { timeout: 10000 });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 10000 });
 
   await openFile(page, "/Users/test/pic.png", "");
   await page.waitForTimeout(300);
@@ -78,7 +78,7 @@ test("媒体文件不可切换到编辑模式（按钮隐藏 + store 拦截）",
 }) => {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto(APP_URL, { waitUntil: "networkidle" });
-  await page.waitForSelector("header", { timeout: 10000 });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 10000 });
 
   await openFile(page, "/Users/test/pic.png", "");
   await page.waitForTimeout(300);
@@ -108,7 +108,7 @@ test("媒体文件不可切换到编辑模式（按钮隐藏 + store 拦截）",
 test("PDF 文件预览渲染查看器（无 iframe，位图渲染）", async ({ page }) => {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto(APP_URL, { waitUntil: "networkidle" });
-  await page.waitForSelector("header", { timeout: 10000 });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 10000 });
 
   await openFile(page, "/Users/test/doc.pdf", "");
   await page.waitForTimeout(300);
@@ -136,7 +136,7 @@ test("PDF 下 Cmd/Ctrl+= 不触发全局字号变化，缩放独立按钮已移�
 }) => {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto(APP_URL, { waitUntil: "networkidle" });
-  await page.waitForSelector("header", { timeout: 10000 });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 10000 });
 
   await openFile(page, "/Users/test/doc.pdf", "");
   const viewer = page.locator("embedpdf-container");
@@ -186,7 +186,7 @@ test("PDF 下 Cmd/Ctrl+= 不触发全局字号变化，缩放独立按钮已移�
 test("PDF 查看器翻页（顶栏页码导航）与搜索", async ({ page }) => {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto(APP_URL, { waitUntil: "networkidle" });
-  await page.waitForSelector("header", { timeout: 10000 });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 10000 });
 
   await openFile(page, "/Users/test/doc.pdf", "");
   const viewer = page.locator("embedpdf-container");
@@ -226,7 +226,7 @@ test("PDF 查看器隐藏未启用功能（无批注/导出/全屏等，打印�
 }) => {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto(APP_URL, { waitUntil: "networkidle" });
-  await page.waitForSelector("header", { timeout: 10000 });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 10000 });
 
   await openFile(page, "/Users/test/doc.pdf", "");
   const viewer = page.locator("embedpdf-container");
@@ -393,7 +393,7 @@ test("PDF 查看器隐藏未启用功能（无批注/导出/全屏等，打印�
 test("编辑态长行自动换行（无水平滚动）", async ({ page }) => {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto(APP_URL, { waitUntil: "networkidle" });
-  await page.waitForSelector("header", { timeout: 10000 });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 10000 });
 
   const longLine =
     "这是一个非常长的行，用于验证编辑模式自动换行功能。" +
@@ -424,7 +424,7 @@ test("视频文件预览：media:// 协议直连（ArtPlayer 常驻播放器）"
 }) => {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto(APP_URL, { waitUntil: "networkidle" });
-  await page.waitForSelector("header", { timeout: 10000 });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 10000 });
 
   await openFile(page, "/Users/test/clip.mp4", "");
   const art = page.locator(".art-video-player");
@@ -441,7 +441,7 @@ test("视频文件预览：media:// 协议直连（ArtPlayer 常驻播放器）"
 test("图片预览默认宽度 1180 且支持滚轮缩放", async ({ page }) => {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto(APP_URL, { waitUntil: "networkidle" });
-  await page.waitForSelector("header", { timeout: 10000 });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 10000 });
 
   await openFile(page, "/Users/test/pic.png", "");
   const img = page.locator(

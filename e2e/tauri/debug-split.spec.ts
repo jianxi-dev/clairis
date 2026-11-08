@@ -12,7 +12,7 @@ test("DEBUG: split panels — capture pageerror + console", async ({ page }) => 
 
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto(APP_URL, { waitUntil: "networkidle" });
-  await page.waitForSelector("header", { timeout: 10000 });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 10000 });
   console.log("✅ header visible after setup");
 
   await page.evaluate(() => {

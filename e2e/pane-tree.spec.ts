@@ -58,7 +58,7 @@ async function boot(page: Page): Promise<void> {
     };
   });
   await page.goto(APP_URL, { waitUntil: "networkidle" });
-  await page.waitForSelector("header", { timeout: 15000 });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 15000 });
 }
 
 async function openFile(page: Page, path: string): Promise<void> {
@@ -248,7 +248,7 @@ test("布局树持久化：reload 后结构/比例/活动页签严格相等", as
     .toBe(JSON.stringify(before));
 
   await page.reload({ waitUntil: "networkidle" });
-  await page.waitForSelector("header", { timeout: 15000 });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 15000 });
   await expect.poll(() => paneCount(page)).toBe(2);
 
   const after = JSON.parse(await layoutJson(page));

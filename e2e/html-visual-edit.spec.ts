@@ -18,7 +18,7 @@ const DOC = [
 async function openHtml(page: Page, mode: "edit" | "source" | "preview") {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto("/", { waitUntil: "networkidle" });
-  await page.waitForSelector("header", { timeout: 10000 });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 10000 });
   await page.evaluate(
     ({ content, mode }) => {
       const win = window as unknown as Record<string, any>;
@@ -45,7 +45,7 @@ test("编辑态起 iframe，且锚点已打上", async ({ page }) => {
 test("用户文件里的脚本不执行，注入运行时执行", async ({ page }) => {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto("/", { waitUntil: "networkidle" });
-  await page.waitForSelector("header", { timeout: 10000 });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 10000 });
   // 先装监听，再开文件，避免漏掉早期消息
   await page.evaluate(() => {
     const w = window as unknown as Record<string, any>;
@@ -111,7 +111,7 @@ test("可视化 ↔ 源码 切换不重建 CM6", async ({ page }) => {
 test("markdown 文件的编辑态仍是 CM6，不受影响", async ({ page }) => {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto("/", { waitUntil: "networkidle" });
-  await page.waitForSelector("header", { timeout: 10000 });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 10000 });
   await page.evaluate(() => {
     const win = window as unknown as Record<string, any>;
     win.__biaoyue_openFile__("/tmp/ve/a.md", "# 标题\n正文", "a.md");
@@ -144,7 +144,7 @@ test("深底 + 外链 CDN 样式表的文档，编辑态正文可读且排版成
 }) => {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto("/", { waitUntil: "networkidle" });
-  await page.waitForSelector("header", { timeout: 10000 });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 10000 });
   await page.evaluate((content) => {
     const win = window as unknown as Record<string, any>;
     win.__biaoyue_openFile__("/tmp/ve/dark.html", content, "dark.html");

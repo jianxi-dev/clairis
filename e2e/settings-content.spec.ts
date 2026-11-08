@@ -94,7 +94,7 @@ async function boot(page: Page): Promise<void> {
     };
   });
   await page.goto(APP_URL, { waitUntil: "networkidle" });
-  await page.waitForSelector("header", { timeout: 15000 });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 15000 });
 }
 
 async function openSettings(page: Page): Promise<void> {
@@ -178,7 +178,7 @@ test("阅读空间/网格概览默认值保存后重启严格相等", async ({ p
   await record(page, "01-defaults-set");
 
   await page.reload({ waitUntil: "networkidle" });
-  await page.waitForSelector("header", { timeout: 15000 });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 15000 });
 
   await expect
     .poll(() => defaultsOf(page))
