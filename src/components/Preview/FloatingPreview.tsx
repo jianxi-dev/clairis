@@ -58,8 +58,9 @@ const HANDLE_STYLE: Record<ResizeEdge, React.CSSProperties> = {
   sw: { bottom: 0, left: 0, width: 16, height: 16 },
 };
 
-/** 底部动作区高度带：指针进入窗底此高度内才显示动作条。 */
-const ACTION_BAND_H = 36;
+const PREVIEW_ACTIONS_ICON = 14;
+
+const ACTIONS_TRIGGER_H = 24;
 
 function viewportOf(): Viewport {
   return { width: window.innerWidth, height: window.innerHeight };
@@ -500,9 +501,7 @@ export default function FloatingPreview({
         const el = previewRef.current;
         if (!el) return;
         const r = el.getBoundingClientRect();
-        setActionsVisible(
-          e.clientY >= r.bottom - ACTION_BAND_H && e.clientY <= r.bottom,
-        );
+        setActionsVisible(e.clientY >= r.bottom - ACTIONS_TRIGGER_H);
       }}
       onMouseLeave={() => {
         setActionsVisible(false);
@@ -566,7 +565,10 @@ export default function FloatingPreview({
       {actionsVisible && (
         <div
           data-testid="preview-actions"
-          className="flex shrink-0 items-center gap-0.5 border-t border-[var(--app-border)] px-2 py-1 text-[11px]"
+          onPointerEnter={() => setActionsVisible(true)}
+          onPointerLeave={() => setActionsVisible(false)}
+          className="flex shrink-0 items-center gap-0.5 border-t border-[var(--app-border)] py-1 pr-2 text-[11px]"
+          style={{ paddingLeft: 24 }}
         >
           <button
             type="button"
@@ -575,9 +577,9 @@ export default function FloatingPreview({
             title="打开"
             aria-label="打开"
             onClick={() => void Promise.resolve(onOpenPath(preview.path))}
-            className="rounded p-0.5 text-[var(--app-text-2)] hover:bg-[var(--app-sunken)] hover:text-[var(--app-text-2)]"
+            className="rounded p-0.5 text-[var(--app-chrome-rest)] hover:text-[var(--app-chrome-hover)]"
           >
-            <Icon name="eye" size={14} />
+            <Icon name="eye" size={PREVIEW_ACTIONS_ICON} />
           </button>
           <button
             type="button"
@@ -586,9 +588,9 @@ export default function FloatingPreview({
             title="向右分屏"
             aria-label="向右分屏"
             onClick={() => split("row")}
-            className="rounded p-0.5 text-[var(--app-text-2)] hover:bg-[var(--app-sunken)] hover:text-[var(--app-text-2)]"
+            className="rounded p-0.5 text-[var(--app-chrome-rest)] hover:text-[var(--app-chrome-hover)]"
           >
-            <Icon name="splitRight" size={14} />
+            <Icon name="splitRight" size={PREVIEW_ACTIONS_ICON} />
           </button>
           <button
             type="button"
@@ -597,9 +599,21 @@ export default function FloatingPreview({
             title="向下分屏"
             aria-label="向下分屏"
             onClick={() => split("col")}
-            className="rounded p-0.5 text-[var(--app-text-2)] hover:bg-[var(--app-sunken)] hover:text-[var(--app-text-2)]"
+            className="rounded p-0.5 text-[var(--app-chrome-rest)] hover:text-[var(--app-chrome-hover)]"
           >
-            <Icon name="splitDown" size={14} />
+            <Icon name="splitDown" size={PREVIEW_ACTIONS_ICON} />
+          </button>
+          <button
+            type="button"
+            data-testid="preview-action"
+            data-action="path"
+            title={preview.path}
+            aria-label={`打开所在文件夹 ${parentFolderNameOf(preview.path)}`}
+            onClick={() => void revealInFinder(parentPathOf(preview.path))}
+            className="flex min-w-0 items-center gap-0.5 truncate rounded p-0.5 text-left text-[10px] text-[var(--app-chrome-rest)] hover:text-[var(--app-chrome-hover)]"
+          >
+            <Icon name="folder" size={PREVIEW_ACTIONS_ICON} />
+            <span className="truncate">{parentFolderNameOf(preview.path)}</span>
           </button>
         </div>
       )}
