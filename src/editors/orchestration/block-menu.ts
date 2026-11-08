@@ -183,8 +183,12 @@ function positionPanel(
 ): void {
   const own = view.dom.getBoundingClientRect();
   const anchor = anchorRectAt(view, anchorPos, handle);
-  const box = panel.getBoundingClientRect();
   const bounds = intersectRects(viewportRect(), boxRect(own));
+  panel.style.maxHeight = `${Math.max(
+    120,
+    Math.min(PANEL_MAX_HEIGHT, bounds.height - 16),
+  )}px`;
+  const box = panel.getBoundingClientRect();
   const placement = placeMenu(
     anchor,
     {
@@ -197,10 +201,6 @@ function positionPanel(
   );
   panel.style.left = `${placement.left - own.left}px`;
   panel.style.top = `${placement.top - own.top}px`;
-  panel.style.maxHeight = `${Math.max(
-    120,
-    Math.min(PANEL_MAX_HEIGHT, bounds.height - 16),
-  )}px`;
 }
 
 /** 打开（或替换）该块的菜单。 */

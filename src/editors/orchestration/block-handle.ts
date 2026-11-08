@@ -19,7 +19,11 @@ import {
   isBlockMenuOpen,
   scheduleBlockMenuClose,
 } from "./block-menu";
-import { openSlashMenuAtCursor } from "../slash";
+import {
+  defaultCommands,
+  openInsertMenu,
+  openSlashMenuAtCursor,
+} from "../slash";
 import {
   HoverGate,
   SHOW_DELAY_MS,
@@ -120,6 +124,30 @@ const DRAG_THRESHOLD_PX = 4;
 
 /** 悬停到手柄后开菜单的意图延迟（design D5：滑入 60ms 出菜单）。 */
 const MENU_INTENT_DELAY_MS = 60;
+
+/** 指针离开「+」到菜单收起之间的宽限：够指针跨过缝隙落进菜单，又不显得拖沓。 */
+const ADD_MENU_CLOSE_DELAY_MS = 120;
+
+const addMenuCloseTimers = new WeakMap<EditorView, number>();
+
+function cancelAddMenuClose(view: EditorView): void {
+  const timer = addMenuCloseTimers.get(view);
+  if (timer !== undefined) {
+    window.clearTimeout(timer);
+    addMenuCloseTimers.delete(view);
+  }
+}
+
+function scheduleAddMenuClose(view: EditorView): void {
+  cancelAddMenuClose(view);
+  addMenuCloseTimers.set(
+    view,
+    window.setTimeout(() => {
+      addMenuCloseTimers.delete(view);
+      closeBlockMenu(view);
+    }, ADD_MENU_CLOSE_DELAY_MS),
+  );
+}
 
 /** 块手柄召唤区占 `.cm-content` 左缘宽度的比例（design D5：左侧 25%）。 */
 export const SUMMON_ZONE_RATIO = 0.25;
@@ -417,6 +445,38 @@ class BlockHandlePlugin {
           openBlockMenu(this.view, block, entry.anchorPos ?? block.from, el);
         }, MENU_INTENT_DELAY_MS);
       });
+    } else {
+      // 空行「+」滑入即开插入菜单（不必先点一下），锚点取指针位置（#372）。
+      el.addEventListener("pointerenter", (event) => {
+        if (entry.dragging) return;
+        cancelAddMenuClose(this.view);
+        if (entry.menuTimer !== null) window.clearTimeout(entry.menuTimer);
+        const anchor = {
+          left: event.clientX,
+          right: event.clientX,
+          top: event.clientY,
+          bottom: event.clientY,
+        };
+        entry.menuTimer = window.setTimeout(() => {
+          entry.menuTimer = null;
+          if (entry.dragging) return;
+          if (isBlockMenuOpen(this.view)) return;
+          openInsertMenu(
+            this.view,
+            block.from,
+            defaultCommands,
+            { from: block.from, to: block.from },
+            "below",
+            anchor,
+          );
+          // 菜单是 view.dom 的兄弟节点：指针移进去不能算「离开手柄」。
+          this.view.dom
+            .querySelector<HTMLElement>(".mdb-slash-menu")
+            ?.addEventListener("pointerenter", () =>
+              cancelAddMenuClose(this.view),
+            );
+        }, MENU_INTENT_DELAY_MS);
+      });
     }
     el.addEventListener("pointerleave", () => {
       if (entry.menuTimer !== null) {
@@ -424,6 +484,10 @@ class BlockHandlePlugin {
         entry.menuTimer = null;
       }
       if (entry.dragging) return;
+      if (empty) {
+        scheduleAddMenuClose(this.view);
+        return;
+      }
       scheduleBlockMenuClose(this.view);
     });
 
