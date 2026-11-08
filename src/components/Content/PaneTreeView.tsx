@@ -199,6 +199,7 @@ function PaneNode({
               editorMode={node.editorMode}
               showFullscreen={true}
               showClosePane={!rootIsLeaf}
+              paneFocused={focusedPaneId === node.id}
             />
           )}
         </div>
@@ -286,12 +287,14 @@ function PaneHeader({
   editorMode,
   showFullscreen,
   showClosePane,
+  paneFocused,
 }: {
   leafId: string;
   tabs: string[];
   activeTabId: string | null;
   editorMode: EditorMode;
   showFullscreen: boolean;
+  paneFocused: boolean;
   showClosePane: boolean;
 }) {
   const allTabs = useStore((s) => s.tabs);
@@ -564,6 +567,7 @@ function PaneHeader({
           onMoveToPane={(tabId, targetLeafId) =>
             useStore.getState().moveTabToPane(tabId, targetLeafId)
           }
+          paneFocused={paneFocused}
         />
       </div>
       {!isMedia && (

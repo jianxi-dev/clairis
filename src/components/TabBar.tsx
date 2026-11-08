@@ -18,6 +18,7 @@ interface TabBarProps {
   onMoveToPane?: (tabId: string, targetLeafId: string) => void;
   /** 缺省时关闭 × 悬停/聚焦才显示；传 true 则始终显示。 */
   alwaysShowClose?: boolean;
+  paneFocused?: boolean;
 }
 
 /** 指针移动超过该像素才算拖拽，以下视为点击切签。 */
@@ -49,6 +50,7 @@ export default function TabBar({
   paneId,
   onMoveToPane,
   alwaysShowClose,
+  paneFocused = true,
 }: TabBarProps) {
   const tabIds = Object.keys(tabs);
 
@@ -104,6 +106,7 @@ export default function TabBar({
       if (!drag.active) {
         if (Math.abs(e.clientX - drag.startX) < DRAG_THRESHOLD_PX) return;
         drag.active = true;
+        document.documentElement.dataset.tabDrag = "true";
         setDragFrom(drag.from);
       }
       setDragPos({ x: e.clientX, y: e.clientY });
@@ -129,6 +132,7 @@ export default function TabBar({
     const finish = (commit: boolean, e?: PointerEvent) => {
       const drag = dragRef.current;
       if (!drag) return;
+      delete document.documentElement.dataset.tabDrag;
       useStore.getState().setTabDragActive(false);
       if (drag.el.hasPointerCapture?.(drag.pointerId)) {
         drag.el.releasePointerCapture(drag.pointerId);
@@ -163,6 +167,7 @@ export default function TabBar({
     window.addEventListener("pointercancel", onCancel);
     window.addEventListener("keydown", onKey, true);
     return () => {
+      delete document.documentElement.dataset.tabDrag;
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
       window.removeEventListener("pointercancel", onCancel);
@@ -242,6 +247,8 @@ export default function TabBar({
           const isActive = id === activeTabId;
           const tabKind = tab.path ? fileTypeOf(tab.path) : "markdown";
           const typeColor = colorOfType(tabKind);
+          const iconColor =
+            isActive && paneFocused ? typeColor : "var(--app-chrome-rest)";
           const isDragged = dragFrom === index;
           return (
             <Fragment key={id}>
@@ -303,14 +310,14 @@ export default function TabBar({
                 }}
                 className={`group flex min-w-0 items-center gap-1.5 px-2.5 py-1 text-xs cursor-pointer transition-colors whitespace-nowrap outline-none focus:outline-none focus-visible:outline-none ${
                   isActive
-                    ? "tab-capsule rounded-full bg-[var(--app-accent-soft)] font-medium text-[var(--app-accent)]"
+                    ? "tab-capsule rounded-full bg-[var(--app-accent-soft)] font-medium text-[var(--app-text-strong)]"
                     : "rounded-none bg-transparent text-[var(--app-chrome-rest)] hover:rounded-full hover:bg-[var(--app-sunken)] hover:text-[var(--app-chrome-hover)]"
                 }`}
               >
                 <Icon
                   name={iconOfType(tabKind)}
                   size={18}
-                  color={typeColor}
+                  color={iconColor}
                   className="mr-0.5"
                 />
                 {editingId === id ? (
