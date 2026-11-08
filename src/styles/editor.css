@@ -856,11 +856,28 @@ body {
 
 /* ── Pane 递归树（layout-portal 3.1）─────────────────────────── */
 
-/* 240px 是硬下限：比例已由 clampRatio 兜底，这里再兜一次，任何窗口
-   尺寸下都不会出现小于 240px 的格。 */
 .pane-leaf {
-  min-width: 240px;
-  min-height: 240px;
+  min-width: 0;
+  min-height: 0;
+}
+
+.pane-fullscreen-button {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 150ms ease;
+}
+
+.pane-leaf:hover .pane-fullscreen-button,
+.pane-leaf:focus-within .pane-fullscreen-button,
+.pane-leaf[data-fullscreen="true"] .pane-fullscreen-button {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pane-fullscreen-button {
+    transition: none;
+  }
 }
 
 /* #251：页签拖拽经过目标栏时的落区环。 */

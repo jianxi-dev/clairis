@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "全屏按钮默认隐藏",
+      "screenshot": ".artifacts/450/01-fullscreen-hidden.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T17:16:47Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "悬停显示全屏按钮",
+      "screenshot": ".artifacts/450/02-fullscreen-hover.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T17:16:47Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "全屏态常显",
+      "screenshot": ".artifacts/450/03-fullscreen-active.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T17:16:48Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "栏目可拖到0",
+      "screenshot": ".artifacts/450/04-zero-width-pane.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T17:16:48Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}
