@@ -80,6 +80,8 @@ test.describe("页面宽度调整面板（ui-polish-batch6 6.2）", () => {
 
     await page.getByTestId("width-preset-720").click();
     await expect(widthText).toHaveText("720px");
+    await page.getByTestId("width-preset-1200").click();
+    await expect(widthText).toHaveText("1200px");
 
     const slider = page.getByTestId("width-slider");
     expect(await slider.getAttribute("max")).toBe("1400");
@@ -91,6 +93,23 @@ test.describe("页面宽度调整面板（ui-polish-batch6 6.2）", () => {
     const panelBox = (await panel.boundingBox())!;
     expect(panelBox.x).toBeGreaterThanOrEqual(0);
     expect(panelBox.x + panelBox.width).toBeLessThanOrEqual(1440);
+    expect(Math.abs(panelBox.width - 200)).toBeLessThanOrEqual(1);
+    expect(Math.abs(barsBox.width - 66)).toBeLessThanOrEqual(1);
+    expect(
+      Math.abs(
+        barsBox.x + barsBox.width / 2 - (panelBox.x + panelBox.width / 2),
+      ),
+    ).toBeLessThanOrEqual(1);
+
+    const bars = panel.locator(".width-bar");
+    expect(await bars.count()).toBe(3);
+    for (let i = 0; i < 3; i += 1) {
+      const b = (await bars.nth(i).boundingBox())!;
+      expect(Math.abs(b.width - 22)).toBeLessThanOrEqual(1);
+    }
+    const first = (await bars.nth(0).boundingBox())!;
+    const second = (await bars.nth(1).boundingBox())!;
+    expect(Math.abs(second.x - (first.x + first.width))).toBeLessThanOrEqual(1);
   });
 });
 

@@ -8,13 +8,13 @@ import { useStore } from "../stores/index";
 import { readPercentOf } from "../lib/railCards";
 
 const WIDTH_PRESETS = [
-  { value: 720, label: "紧凑", bar: 16 },
-  { value: 1080, label: "标准", bar: 24 },
-  { value: 1400, label: "宽松", bar: 32 },
+  { value: 720, label: "紧凑", bar: 14 },
+  { value: 960, label: "标准", bar: 18 },
+  { value: 1200, label: "宽松", bar: 22 },
 ] as const;
 
 const WIDTH_MAX = 1400;
-const WIDTH_PANEL_W = 236;
+const WIDTH_PANEL_W = 200;
 
 /** 主题点击循环次序（点击图标 = 切到下一个）。 */
 const THEME_CYCLE: Theme[] = ["system", "light", "dark", "warm"];

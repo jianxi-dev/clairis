@@ -2633,7 +2633,7 @@ html[data-tab-drag="true"] body * {
   flex-direction: column;
   align-items: stretch;
   gap: 8px;
-  width: 236px;
+  width: 200px;
   padding: 10px;
   border: 1px solid var(--app-border);
   border-radius: 10px;
@@ -2642,18 +2642,20 @@ html[data-tab-drag="true"] body * {
 }
 
 .width-bars {
-  width: 62%;
+  width: 66px;
   display: flex;
   align-items: flex-end;
-  justify-content: space-between;
-  gap: 10px;
-  height: 36px;
+  justify-content: center;
+  gap: 0;
+  height: 24px;
+  margin: 0 auto;
 }
 
 .width-bar {
-  flex: 1;
+  flex: 0 0 22px;
   align-self: flex-end;
   border: 0;
+  border-right: 1px solid var(--app-bg);
   border-radius: 3px 3px 0 0;
   background: var(--app-sunken);
   clip-path: polygon(0 100%, 22% 0, 100% 0, 100% 100%);
@@ -2665,6 +2667,11 @@ html[data-tab-drag="true"] body * {
   background: var(--app-accent);
 }
 
+.width-bar:last-child {
+  border-right: 0;
+}
+
 .width-slider {
-  width: 100%;
+  width: 78%;
+  align-self: center;
 }

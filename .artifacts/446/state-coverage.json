@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "面板三柱居中相接",
+      "screenshot": ".artifacts/446/01-panel-centered-bars.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T17:54:20Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "宽松档 1200",
+      "screenshot": ".artifacts/446/02-preset-1200.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T17:54:20Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "标准档 960",
+      "screenshot": ".artifacts/446/03-preset-960.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T17:54:20Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "面板细节",
+      "screenshot": ".artifacts/446/04-panel-detail.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T17:54:20Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}
