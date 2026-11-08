@@ -123,6 +123,39 @@ const ICON_REGISTRY: Record<string, IconDef> = {
   },
 
   // Code — </>
+  ColumnsOutlined: {
+    kind: "paths",
+    paths: ["M3.5 5h17v14h-17z M9.2 5v14 M14.8 5v14"],
+  },
+  TableGridOutlined: {
+    kind: "paths",
+    paths: [
+      "M3.5 4.5h17v15h-17z M3.5 9.5h17 M3.5 14.5h17 M9.2 4.5v15 M14.8 4.5v15",
+    ],
+  },
+  KanbanOutlined: {
+    kind: "paths",
+    paths: [
+      "M4 19.5V13h3.6v6.5z M10.2 19.5V8h3.6v11.5z M16.4 19.5V4.5h3.6v15z",
+      "M3 19.5h18",
+    ],
+  },
+  CssOutlined: {
+    kind: "paths",
+    paths: ["M9.4 4L7 20 M17 4l-2.4 16 M4.4 9h15.4 M3.6 15h15.4"],
+  },
+  FlowOutlined: {
+    kind: "paths",
+    paths: ["M12 3l4.2 4.2L12 11.4 7.8 7.2z M12 11.4v4.2 M9 15.6h6v4.8H9z"],
+  },
+  BrowserOutlined: {
+    kind: "paths",
+    paths: ["M3 5h18v14H3z M3 8.6h18 M5.8 6.8h.01 M8.2 6.8h.01"],
+  },
+  MediaFileOutlined: {
+    kind: "paths",
+    paths: ["M4 4.5h11l5 5v10H4z M15 4.5v5h5 M9.6 11.4l4.6 2.6-4.6 2.6z"],
+  },
   CodeOutlined: {
     kind: "paths",
     paths: [

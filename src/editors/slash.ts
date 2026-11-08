@@ -251,7 +251,7 @@ export const defaultCommands: SlashCommand[] = [
   {
     id: "media-ref",
     label: "视频/文件",
-    icon: "ImageOutlined",
+    icon: "MediaFileOutlined",
     code: "v",
     aliases: ["media"],
     group: "常用",
@@ -260,7 +260,7 @@ export const defaultCommands: SlashCommand[] = [
   {
     id: "table",
     label: "表格",
-    icon: "TableChartOutlined",
+    icon: "TableGridOutlined",
     code: "t",
     group: "常用",
     grid: { rows: 10, cols: 10 },
@@ -268,7 +268,7 @@ export const defaultCommands: SlashCommand[] = [
   {
     id: "columns",
     label: "分栏",
-    icon: "TextOutlined",
+    icon: "ColumnsOutlined",
     code: "f",
     group: "常用",
     children: COLUMN_COUNTS.map(columnCount),
@@ -288,7 +288,7 @@ export const defaultCommands: SlashCommand[] = [
   {
     id: "data-kanban",
     label: "数据看板",
-    icon: "TableChartOutlined",
+    icon: "KanbanOutlined",
     group: "数据",
   },
   {
@@ -309,7 +309,7 @@ export const defaultCommands: SlashCommand[] = [
   {
     id: "insert-css",
     label: "插入 CSS",
-    icon: "CodeOutlined",
+    icon: "CssOutlined",
     aliases: ["css"],
     group: "绘图",
     insert(state) {
@@ -320,7 +320,7 @@ export const defaultCommands: SlashCommand[] = [
   {
     id: "flowchart",
     label: "流程图",
-    icon: "CodeOffOutlined",
+    icon: "FlowOutlined",
     group: "绘图",
   },
   {
@@ -342,7 +342,7 @@ export const defaultCommands: SlashCommand[] = [
   {
     id: "embed-web",
     label: "内嵌网页",
-    icon: "ImageOutlined",
+    icon: "BrowserOutlined",
     group: "更多小组件",
   },
 ];
