@@ -38,7 +38,7 @@ openspec status --change <name>   # 单个变更工件完成度
 ## 总览统计（截至 2026-11-07）
 
 - 规格：17 域 / 145 requirement（2026-11-08 归档 shell-editor-batch5 后）
-- ✅ 经 openspec 归档实现：15
+- ✅ 经 openspec 归档实现：24
 - 🟡 已实现/设计完成（未走 openspec 变更）：24
 - ⬜ 待开发：16
 - 🗒 未立项（遗留散件登记）：约 16（展卷仪式 8 模块 + TODOS 安全/功能项）
