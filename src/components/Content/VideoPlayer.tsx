@@ -126,7 +126,26 @@ const SHORTCUT_ROWS: Array<[string, string]> = [
 
 const RESUME_MIN_SECONDS = 5;
 
-type PopoverKind = "playlist" | "subtitle" | "hints" | null;
+/** 倍速档位：label 直接做主控件文案，比图标更容易一眼读出当前速度。 */
+const PLAYBACK_RATES: Array<{ value: number; label: string }> = [
+  { value: 0.5, label: "0.5×" },
+  { value: 0.75, label: "0.75×" },
+  { value: 1, label: "1.0×" },
+  { value: 1.25, label: "1.25×" },
+  { value: 1.5, label: "1.5×" },
+  { value: 2, label: "2.0×" },
+];
+
+const RATE_LABEL = (value: number): string =>
+  PLAYBACK_RATES.find((r) => r.value === value)?.label ?? `${value}×`;
+
+function rateControlHtml(value: number): string {
+  return `<span class="art-rate-label" style="font-size:12px;line-height:1;letter-spacing:-0.02em;white-space:nowrap">${RATE_LABEL(
+    value,
+  )}</span>`;
+}
+
+type PopoverKind = "playlist" | "subtitle" | "hints" | "rate" | null;
 
 /** 浮层锚点：相对播放器容器的偏移 */
 interface PopoverAnchor {
@@ -158,6 +177,7 @@ export default function VideoPlayer({
   const [playlist, setPlaylist] = useState<MediaEntry[]>([]);
   const [currentIndex, setCurrentIndex] = useState(-1);
   const [loopMode, setLoopMode] = useState<LoopMode>("none");
+  const [rate, setRate] = useState(1);
   const [subtitlePos, setSubtitlePos] = useState<"bottom" | "top">("bottom");
   const [activeSubtitle, setActiveSubtitle] = useState<string>("");
   const [subtitleList, setSubtitleList] = useState<MediaEntry[]>([]);
@@ -175,6 +195,7 @@ export default function VideoPlayer({
   const [noteRect, setNoteRect] = useState({ x: 0, y: 0, w: 360, h: 220 });
 
   const loopRef = useRef<LoopMode>("none");
+  const rateRef = useRef(1);
   const currentIndexRef = useRef(-1);
   const subtitlePosRef = useRef<"bottom" | "top">("bottom");
   const playlistRef = useRef<MediaEntry[]>([]);
@@ -206,6 +227,28 @@ export default function VideoPlayer({
   useEffect(() => {
     popoverRef.current = popover;
   }, [popover]);
+
+  /**
+   * 设置倍速并同步主控件文案。
+   *
+   * 变调修正必须同时写 `preservesPitch` 与旧 WebKit 的 `webkitPreservesPitch`：
+   * 只写前者时部分 WebKit 内核仍会变调（听感上 1.5× 像快放磁带的尖叫）。
+   */
+  const applyRate = useCallback((value: number) => {
+    rateRef.current = value;
+    setRate(value);
+    const video = artRef.current?.video;
+    if (!video) return;
+    video.playbackRate = value;
+    video.preservesPitch = true;
+    (
+      video as HTMLVideoElement & { webkitPreservesPitch?: boolean }
+    ).webkitPreservesPitch = true;
+    const label = artRef.current?.query<HTMLElement>(
+      ".art-control[data-name='rate'] .art-rate-label",
+    );
+    if (label) label.textContent = RATE_LABEL(value);
+  }, []);
 
   /** 计算按钮相对播放器容器的锚点（浮层从按钮处弹出，右侧不超出容器） */
   const anchorFor = useCallback(
@@ -253,37 +296,43 @@ export default function VideoPlayer({
   }, [filePath]);
 
   const playIndexRef = useRef<(i: number) => void>(() => {});
-  const playIndex = useCallback(async (i: number) => {
-    const art = artRef.current;
-    const list = playlistRef.current;
-    if (!art || list.length === 0) return;
-    const idx = ((i % list.length) + list.length) % list.length;
-    currentIndexRef.current = idx;
-    setCurrentIndex(idx);
-    try {
-      await art.switchUrl(mediaUrlForPath(list[idx].path));
-      // 页签路径保持不变（仍归属原文件），仅显示名跟随当前媒体
-      const store = useStore.getState();
-      const owner = Object.values(store.tabs).find(
-        (t) => t.path === filePathRef.current,
-      );
-      if (owner) {
-        store.renameTab(owner.id, list[idx].name || baseName(list[idx].path));
+  const playIndex = useCallback(
+    async (i: number) => {
+      const art = artRef.current;
+      const list = playlistRef.current;
+      if (!art || list.length === 0) return;
+      const idx = ((i % list.length) + list.length) % list.length;
+      currentIndexRef.current = idx;
+      setCurrentIndex(idx);
+      applyRate(1);
+      try {
+        await art.switchUrl(mediaUrlForPath(list[idx].path));
+        // 页签路径保持不变（仍归属原文件），仅显示名跟随当前媒体
+        const store = useStore.getState();
+        const owner = Object.values(store.tabs).find(
+          (t) => t.path === filePathRef.current,
+        );
+        if (owner) {
+          store.renameTab(owner.id, list[idx].name || baseName(list[idx].path));
+        }
+        // 切集后自动加载对应同名字幕（若有）
+        const stem = list[idx].name.replace(/\.[^.]+$/, "");
+        const sub = subtitleRef.current.find((s) => s.target === stem);
+        if (sub) {
+          void art.subtitle.switch(mediaUrlForPath(sub.path), {
+            name: sub.name,
+          });
+          setActiveSubtitle(sub.name);
+        } else {
+          setActiveSubtitle("");
+        }
+      } catch {
+        // 文件损坏/不可解码：跳到下一个可播文件
+        if (list.length > 1) playIndexRef.current(idx + 1);
       }
-      // 切集后自动加载对应同名字幕（若有）
-      const stem = list[idx].name.replace(/\.[^.]+$/, "");
-      const sub = subtitleRef.current.find((s) => s.target === stem);
-      if (sub) {
-        void art.subtitle.switch(mediaUrlForPath(sub.path), { name: sub.name });
-        setActiveSubtitle(sub.name);
-      } else {
-        setActiveSubtitle("");
-      }
-    } catch {
-      // 文件损坏/不可解码：跳到下一个可播文件
-      if (list.length > 1) playIndexRef.current(idx + 1);
-    }
-  }, []);
+    },
+    [applyRate],
+  );
   useEffect(() => {
     playIndexRef.current = playIndex;
   }, [playIndex]);
@@ -485,6 +534,23 @@ export default function VideoPlayer({
           },
         },
         {
+          name: "rate",
+          position: "right",
+          index: 50,
+          html: rateControlHtml(1),
+          tooltip: "播放速度",
+          mounted: function ($control) {
+            $control.dataset.name = "rate";
+            this.proxy($control, "click", () => {
+              if (popoverRef.current === "rate") {
+                setPopover(null);
+              } else {
+                openPopover("rate", $control, 132);
+              }
+            });
+          },
+        },
+        {
           name: "subtitle",
           position: "right",
           index: 54,
@@ -633,13 +699,14 @@ export default function VideoPlayer({
     const art = artRef.current;
     if (!art) return;
     if (url === lastUrlRef.current) return;
+    applyRate(1);
     void art
       .switchUrl(url)
       .then(() => {
         lastUrlRef.current = url;
       })
       .catch(() => {});
-  }, [url]);
+  }, [url, applyRate]);
 
   // 媒体类型切换（video ↔ audio）：更新 poster
   useEffect(() => {
@@ -796,6 +863,44 @@ export default function VideoPlayer({
           }}
         >
           {error}
+        </div>
+      )}
+
+      {/* 倍速菜单（从按钮处弹出） */}
+      {popover === "rate" && (
+        <div
+          className="rate-menu"
+          role="menu"
+          style={{ ...popoverStyle, width: 132, padding: "4px 0" }}
+        >
+          {PLAYBACK_RATES.map((r) => (
+            <button
+              key={r.value}
+              type="button"
+              role="menuitemradio"
+              aria-checked={rate === r.value}
+              className="rate-menu-item"
+              data-rate={r.value}
+              onClick={() => {
+                applyRate(r.value);
+                setPopover(null);
+              }}
+              style={{
+                display: "block",
+                width: "100%",
+                padding: "7px 12px",
+                border: "none",
+                background: rate === r.value ? "rgba(99,102,241,0.35)" : "none",
+                color: rate === r.value ? "#fff" : "rgba(255,255,255,0.78)",
+                fontSize: 12,
+                textAlign: "left",
+                cursor: "pointer",
+              }}
+            >
+              {r.label}
+              {rate === r.value ? " ✓" : ""}
+            </button>
+          ))}
         </div>
       )}
 
