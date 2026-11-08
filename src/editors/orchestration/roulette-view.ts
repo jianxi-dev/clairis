@@ -1,7 +1,6 @@
 import { iconSvg, type IconName } from "../../ui/icons";
 import { FONT_COLORS, BACKGROUND_COLORS } from "./color-palette";
 import {
-  CENTER_DEAD_ZONE,
   FAN_ITEM_SIZE,
   FAN_RADIUS,
   ROOT_SECTORS,
@@ -66,7 +65,9 @@ export interface RouletteHandle {
 export function createRoulette(
   actions: RouletteActions,
   onClose: () => void,
+  options: { sectors?: readonly SectorId[] } = {},
 ): RouletteHandle {
+  const sectors = options.sectors ?? ROOT_SECTORS.map((s) => s.id);
   const root = document.createElement("div");
   root.className = "selection-roulette";
   root.dataset.testid = "selection-roulette";
@@ -108,7 +109,6 @@ export function createRoulette(
   let cleanup = () => {};
 
   const close = (): void => {
-    console.log("CLOSE", new Error().stack?.split("\n").slice(1, 4).join("|"));
     if (closed) return;
     closed = true;
     cleanup();
@@ -131,7 +131,6 @@ export function createRoulette(
       el.addEventListener("pointerdown", (e) => {
         e.preventDefault();
         e.stopPropagation();
-        console.log("ITEM_DOWN", item.id);
         if (item.children && item.children.length > 0) {
           center.textContent = "‹";
           center.setAttribute("aria-label", "返回");
@@ -231,7 +230,9 @@ export function createRoulette(
     renderItems(items, def.angle);
   };
 
-  ROOT_SECTORS.forEach((sector) => {
+  sectors.forEach((id) => {
+    const sector = ROOT_SECTORS.find((s) => s.id === id);
+    if (!sector) return;
     const el = button("sr-sector");
     el.dataset.sector = sector.id;
     el.title = sector.label;
@@ -292,7 +293,8 @@ export function createRoulette(
     }
     if (e.key >= "1" && e.key <= "8") {
       const index = Number(e.key) - 1;
-      const sector = ROOT_SECTORS[index];
+      const id = sectors[index];
+      const sector = ROOT_SECTORS.find((s) => s.id === id);
       if (sector) {
         e.preventDefault();
         open(sector.id);
@@ -303,7 +305,6 @@ export function createRoulette(
 
   const onOutside = (e: PointerEvent) => {
     if (root.contains(e.target as Node)) return;
-    console.log("OUTSIDE_ACTIVE", actions.painter.active());
     if (actions.painter.active()) return;
     close();
   };
@@ -315,7 +316,6 @@ export function createRoulette(
   };
 
   const destroy = () => {
-    console.log("DESTROY");
     closed = true;
     cleanup();
     clearTimers();

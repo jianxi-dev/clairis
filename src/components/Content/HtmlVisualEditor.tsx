@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useEditorStore } from "../../stores/editorStore";
 import {
   commandForCaptureMode,
+  commandForRange,
   commandForSelection,
   parseBridgeMessage,
   type CaptureRegionMessage,
@@ -12,6 +13,7 @@ import {
   applyBlockSplit,
   applyNodeMove,
   applyNodeRemove,
+  applyInnerHtml,
   applyStylePatch,
   applyTagReplace,
   applyTextEdit,
@@ -27,6 +29,7 @@ import {
   type UndoStack,
 } from "../../editors/html/undoStack";
 import HtmlEditToolbar from "./HtmlEditToolbar";
+import HtmlRoulette from "./HtmlRoulette";
 
 interface HtmlVisualEditorProps {
   content: string;
@@ -82,6 +85,9 @@ export default function HtmlVisualEditor({
   // setState 提交之前就触发重渲染；那时若读的是 state，会看到 editing=false
   // 而重建文档——表现为"打着字，iframe 突然刷新，回车没人接"（实测偶发）。
   const editingRef = useRef(false);
+  // 文字选区期间冻结 iframe：格式化会改 content，重建会把选区连同轮盘一起丢掉。
+  const textSelectingRef = useRef(false);
+  const rangeDirtyRef = useRef(false);
   const frozenRef = useRef<string | null>(null);
   // 文档级撤销栈（#321）：iframe 里没有可用的撤销栈，每次提交都在这里留一份
   // 「改动前」的快照；Ctrl/Cmd+Z 由运行时转发成 undoRequest 后按快照回退。
@@ -90,6 +96,11 @@ export default function HtmlVisualEditor({
   const [docTick, setDocTick] = useState(0);
   // 截图模式 + 结果提示（截图是异步的，且不进 content，不接受控字段）
   const [capturing, setCapturing] = useState(false);
+  // 文字选区（HTML 文字轮盘）。矩形是主视口坐标，text 只用于判空。
+  const [textSel, setTextSel] = useState<{
+    anchor: SelectionRect;
+    text: string;
+  } | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // 消息监听的 effect 依赖是空数组，读不到最新 props——用 ref 带走。
@@ -102,9 +113,12 @@ export default function HtmlVisualEditor({
   });
 
   const srcDoc = useMemo(() => {
-    if (editingRef.current && frozenRef.current) return frozenRef.current;
+    if ((editingRef.current || textSelectingRef.current) && frozenRef.current) {
+      return frozenRef.current;
+    }
     const doc = buildEditableDoc(content, { filePath, fontSize });
-    if (!editingRef.current) frozenRef.current = doc;
+    if (!editingRef.current && !textSelectingRef.current)
+      frozenRef.current = doc;
     return doc;
   }, [content, filePath, fontSize, docTick]);
 
@@ -190,6 +204,35 @@ export default function HtmlVisualEditor({
         case "selection":
           setSelected(msg.nodeId);
           if (!msg.nodeId) setBox(null);
+          break;
+        case "textSelection": {
+          if (!msg.rect) {
+            if (textSelectingRef.current || rangeDirtyRef.current) {
+              textSelectingRef.current = false;
+              rangeDirtyRef.current = false;
+              setDocTick((n) => n + 1);
+            }
+            setTextSel(null);
+            break;
+          }
+          const frame = frameRef.current?.getBoundingClientRect();
+          textSelectingRef.current = true;
+          setSelected(null);
+          setBox(null);
+          setTextSel({
+            anchor: {
+              x: (frame?.left ?? 0) + msg.rect.x,
+              y: (frame?.top ?? 0) + msg.rect.y,
+              width: msg.rect.width,
+              height: msg.rect.height,
+            },
+            text: msg.text,
+          });
+          break;
+        }
+        case "rangeHtml":
+          rangeDirtyRef.current = true;
+          commit((prev) => applyInnerHtml(prev, msg.nodeId, msg.html));
           break;
         case "selectionRect": {
           // iframe 报的是它自己的视口坐标，换算到主视口放这里（事件回调里读
@@ -405,7 +448,23 @@ export default function HtmlVisualEditor({
           })}
         </div>
       )}
-      {selected && box?.nodeId === selected && info && (
+      {textSel && (
+        <HtmlRoulette
+          anchor={textSel.anchor}
+          onCommand={(command, value) => send(commandForRange(command, value))}
+          onUndo={handleUndo}
+          onRedo={handleRedo}
+          onClose={() => {
+            textSelectingRef.current = false;
+            if (rangeDirtyRef.current) {
+              rangeDirtyRef.current = false;
+              setDocTick((n) => n + 1);
+            }
+            setTextSel(null);
+          }}
+        />
+      )}
+      {!textSel && selected && box?.nodeId === selected && info && (
         <HtmlEditToolbar
           key={selected}
           nodeId={selected}

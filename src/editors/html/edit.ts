@@ -52,6 +52,24 @@ export function applyTextEdit(
 }
 
 /**
+ * 文字选区格式化：用 iframe 回报的块级 `innerHTML` 替换该节点内容。
+ *
+ * `cleanSnapshot` 会洗掉锚点、`contenteditable` 与内部属性；格式本身（span
+ * 的 style、a 的 href）保留，因为那是用户这次编辑的产物。
+ */
+export function applyInnerHtml(
+  content: string,
+  nodeId: string,
+  html: string,
+): string {
+  const doc = new DOMParser().parseFromString(annotate(content), "text/html");
+  const el = anchorEl(doc, nodeId);
+  if (!el) return content;
+  el.innerHTML = html;
+  return cleanSnapshot(`<!DOCTYPE html>\n${doc.documentElement.outerHTML}`);
+}
+
+/**
  * Enter 拆块：把节点按 iframe 给出的两半（before / after）重写，后半段放进
  * 一个同标签的兄弟节点。改叫 before/after 是因为原先传 offset、由主侧再切一次，
  * 会赌「主侧 content 与 iframe 当时的文本同步」——实测会偶发丢块。

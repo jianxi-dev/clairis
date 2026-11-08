@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   applyAttrPatch,
   applyBlockSplit,
+  applyInnerHtml,
   applyNodeMove,
   applyNodeRemove,
   applyStylePatch,
@@ -236,6 +237,18 @@ describe("工具条按节点类型分化（E-22）", () => {
     expect(toggleDecoration("underline", "underline")).toBeNull();
     // `none` 是初值，不能被当成一个 token 留下来
     expect(toggleDecoration("none", "underline")).toBe("underline");
+  });
+
+  it("文字选区格式化只替换目标节点的 innerHTML", () => {
+    const out = applyInnerHtml(
+      DOC,
+      "p:0",
+      '<span style="font-weight:bold">第一段</span>',
+    );
+    expect(out).toContain('<span style="font-weight:bold">第一段</span>');
+    expect(out).toContain("<h1>标题</h1>");
+    expect(out).not.toContain("data-cm-");
+    expect(out).not.toContain("contenteditable");
   });
 
   it("删除节点连同子树", () => {

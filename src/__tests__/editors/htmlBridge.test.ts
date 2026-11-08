@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   BRIDGE_VERSION,
   commandForCaptureMode,
+  commandForRange,
   commandForSelection,
   parseBridgeMessage,
 } from "../../editors/html/bridge";
@@ -97,6 +98,66 @@ describe("选区几何上报（E-19 工具条定位）", () => {
       }),
     ).toBeNull();
     expect(parseBridgeMessage({ ...base, nodeId: undefined })).toBeNull();
+  });
+});
+
+describe("文字选区与回写消息（HTML 文字工具条）", () => {
+  it("textSelection 接受矩形；null 表示清空", () => {
+    const rect = { x: 1, y: 2, width: 30, height: 20 };
+    expect(
+      parseBridgeMessage({
+        v: BRIDGE_VERSION,
+        type: "textSelection",
+        rect,
+        text: "第一段",
+      }),
+    ).toEqual({
+      v: BRIDGE_VERSION,
+      type: "textSelection",
+      rect,
+      text: "第一段",
+    });
+    expect(
+      parseBridgeMessage({
+        v: BRIDGE_VERSION,
+        type: "textSelection",
+        rect: null,
+        text: "",
+      }),
+    ).toEqual({
+      v: BRIDGE_VERSION,
+      type: "textSelection",
+      rect: null,
+      text: "",
+    });
+    expect(
+      parseBridgeMessage({
+        v: BRIDGE_VERSION,
+        type: "textSelection",
+        rect: { x: 0, y: 0, width: "1", height: 1 },
+        text: "x",
+      }),
+    ).toBeNull();
+  });
+
+  it("rangeHtml 必须同时带 nodeId 与 html", () => {
+    const ok = {
+      v: BRIDGE_VERSION,
+      type: "rangeHtml",
+      nodeId: "p:0",
+      html: "<span>改</span>",
+    };
+    expect(parseBridgeMessage(ok)).toEqual(ok);
+    expect(parseBridgeMessage({ ...ok, html: 3 })).toBeNull();
+  });
+
+  it("rangeCommand 与版本位同源", () => {
+    expect(commandForRange("bold")).toEqual({
+      v: BRIDGE_VERSION,
+      type: "rangeCommand",
+      command: "bold",
+      value: undefined,
+    });
   });
 });
 

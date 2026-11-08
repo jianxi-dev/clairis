@@ -28,6 +28,24 @@ export interface SelectionRectMessage {
   rect: SelectionRect;
 }
 
+/** HTML 可视化编辑中的文字选区（主侧据此显示轮盘）。 */
+export interface TextSelectionMessage {
+  v: number;
+  type: "textSelection";
+  /** 选区矩形；`null` 表示选区已折叠/清空 */
+  rect: SelectionRect | null;
+  /** 选区文本（截断后仅供判断非空） */
+  text: string;
+}
+
+/** 文字格式化后的块级节点内容（主侧回写 `content`）。 */
+export interface RangeHtmlMessage {
+  v: number;
+  type: "rangeHtml";
+  nodeId: string;
+  html: string;
+}
+
 export interface ReadyMessage {
   v: number;
   type: "ready";
@@ -105,6 +123,8 @@ export type BridgeMessage =
   | TextEditEdgeMessage
   | SelectionMessage
   | SelectionRectMessage
+  | TextSelectionMessage
+  | RangeHtmlMessage
   | MoveNodeMessage
   | CaptureRegionMessage
   | ReadyMessage
@@ -116,6 +136,11 @@ export interface HighlightCommand {
   v: number;
   type: "highlight";
   nodeId: string | null;
+}
+
+/** 主侧 → iframe：对当前文字选区应用格式命令。 */
+export function commandForRange(command: string, value?: string) {
+  return { v: BRIDGE_VERSION, type: "rangeCommand", command, value };
 }
 
 /** 主侧 → iframe：开关截图框选模式。 */
@@ -154,6 +179,39 @@ export function parseBridgeMessage(data: unknown): BridgeMessage | null {
         rect: { x, y, width, height } as SelectionRect,
       };
     }
+    case "textSelection": {
+      if (msg.rect === null) {
+        return {
+          v: BRIDGE_VERSION,
+          type: "textSelection",
+          rect: null,
+          text: "",
+        };
+      }
+      const rect = msg.rect as Record<string, unknown> | null;
+      if (typeof rect !== "object" || rect === null) return null;
+      const { x, y, width, height } = rect;
+      for (const n of [x, y, width, height]) {
+        if (typeof n !== "number" || !Number.isFinite(n)) return null;
+      }
+      if (typeof msg.text !== "string") return null;
+      return {
+        v: BRIDGE_VERSION,
+        type: "textSelection",
+        rect: { x, y, width, height } as SelectionRect,
+        text: msg.text,
+      };
+    }
+    case "rangeHtml":
+      if (typeof msg.nodeId !== "string" || typeof msg.html !== "string") {
+        return null;
+      }
+      return {
+        v: BRIDGE_VERSION,
+        type: "rangeHtml",
+        nodeId: msg.nodeId,
+        html: msg.html,
+      };
     case "ready":
       if (typeof msg.nodeCount !== "number") return null;
       return { v: BRIDGE_VERSION, type: "ready", nodeCount: msg.nodeCount };
