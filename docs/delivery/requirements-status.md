@@ -37,8 +37,8 @@ openspec status --change <name>   # 单个变更工件完成度
 
 ## 总览统计（截至 2026-11-07）
 
-- 规格：17 域 / 145 requirement（2026-11-08 归档 shell-editor-batch5 后）
-- ✅ 经 openspec 归档实现：24
+- 规格：17 域 / 150 requirement（2026-11-08 归档 ui-polish-batch6 后）
+- ✅ 经 openspec 归档实现：29
 - 🟡 已实现/设计完成（未走 openspec 变更）：24
 - ⬜ 待开发：16
 - 🗒 未立项（遗留散件登记）：约 16（展卷仪式 8 模块 + TODOS 安全/功能项）
@@ -50,6 +50,8 @@ openspec status --change <name>   # 单个变更工件完成度
 - 外壳/阅读域（`workspace-ux-batch4`）：+8 需求（G-8…G-12、A-15…A-17），5/5 票合并（PR #278–#282），已归档 `openspec/changes/archive/2026-11-07-workspace-ux-batch4`
 - 外壳/编辑/阅读/文件域（`shell-editor-batch5`）：+9 需求（C-4、E-10/E-11/E-13/E-16、G-3/G-7/G-8/G-10），18/18 票合并（PR #331–#351，含 #343/#347 两个缺陷），已归档 `openspec/changes/archive/2026-11-08-shell-editor-batch5`
   - 附加入口批：PDF 卡片真首页缩略图（#317，pdfium 渲首页→dataURL，失败回退占位）、pin/pinOff 改标准图钉造型（#352，PR #353）
+- 外壳/页面/编辑/阅读/文件域（`ui-polish-batch6`）：25/25 票合并（PR #394–#408），净 +5 requirement（+8 新增、-3 被取代），已归档 `openspec/changes/archive/2026-11-08-ui-polish-batch6`
+  - 顶栏取消（G-3 改为无品牌顶栏）、状态栏五入口 + 紧凑高度 + 宽度/主题面板、页签与状态栏视觉、视频倍速、选区工具条归属与 AI 三键、placeMenu 统一落位、空行手柄悬停即开、块菜单对齐与缩进合并、色板二级保持、PDF 悬浮预览隐藏缩放条、卡片缩略图高度收窄
 
 ## 逐域状态
 
@@ -100,7 +102,8 @@ openspec status --change <name>   # 单个变更工件完成度
 |---|---|---|---|
 | G-1 | 移除左侧栏逻辑 | ⬜ | 设计已批 `docs/design/approved/shell-ui/` |
 | G-2 | 无右侧边栏 | ⬜ | 设计已批同上 |
-| G-3 | 单一顶栏（Chrome Bar） | ✅ | 设计已批同上；`shell-editor-batch5`（2026-11-08） |
+| G-3 | 无品牌顶栏（内容贴顶；原「单一顶栏」已由本变更取代） | ✅ | `ui-polish-batch6`（归档 2026-11-08） |
+| 状态栏 | 五入口 / ≤26px / 双击显隐 / 宽度面板 / 主题悬停面板 | ✅ | `ui-polish-batch6`（归档 2026-11-08） |
 | G-5 | 正文分栏（可选） | ⬜ | 设计已批同上 |
 | B-2 | 空状态继续区分块 | 🟡 | 设计已批 `docs/design/approved/empty-state/` |
 | B-4 | 内置示例文件释放 | 🟡 | `src-tauri/samples/` 已就位 |
@@ -125,6 +128,9 @@ openspec status --change <name>   # 单个变更工件完成度
 | N-1 | 本机最近文件自动发现 | ✅ | change `reading-surface-refine`（归档 2026-11-06） |
 | N-2 | 阅读空间预览触发区与列表回顶 | ✅ | change `reading-surface-refine`（归档 2026-11-06） |
 | N-3 | 本机标题与正文检索 | ✅ | change `reading-surface-refine`（归档 2026-11-06） |
+| N-4 | 悬浮预览窗缩略图宽度模型 | ✅ | `ui-polish-batch6`（归档 2026-11-08） |
+| N-5 | PDF 悬浮预览隐藏缩放工具条 | ✅ | `ui-polish-batch6`（归档 2026-11-08） |
+| N-6 | 卡片缩略图高度 48（与文字不重叠） | ✅ | `ui-polish-batch6`（归档 2026-11-08） |
 
 ### configuration（1）
 
@@ -161,7 +167,7 @@ openspec status --change <name>   # 单个变更工件完成度
 | C-3 | 自动保存 | 🟡 | V3 沿用（2s debounce） |
 | C-4 | 新建文档 | ✅ | change `shell-editor-batch5`（归档 2026-11-08） |
 | C-5 | 全部文件视图 | ⬜ | 依赖 B-3 |
-| C-6 | 视频预览播放器 | ✅ | change `video-preview-player` |
+| C-6 | 视频预览播放器（含六档倍速 / 保音调 / 切文件复位） | ✅ | change `video-preview-player`；`ui-polish-batch6`（归档 2026-11-08） |
 
 ### editing（9）
 
@@ -189,6 +195,9 @@ openspec status --change <name>   # 单个变更工件完成度
 | E-20 | HTML 可视化编辑：拖拽移动节点 | ✅ | change `html-visual-move-capture`（归档 2026-11-07，PR #266） |
 | E-21 | HTML 可视化编辑：区域截图 | ✅ | change `html-visual-move-capture`（归档 2026-11-07，PR #266） |
 | E-22 | HTML 可视化编辑：工具条按节点类型分化 | ✅ | change `html-toolbar-by-node-type`（归档 2026-11-07，PR #269） |
+| E-23 | 颜色面板二级保持 | ✅ | `ui-polish-batch6`（归档 2026-11-08） |
+| E-24 | 编辑态工具条归属（md 12 键 / html 只在 html 态） | ✅ | `ui-polish-batch6`（归档 2026-11-08） |
+| E-25 | 撤销与重做同时响应 Ctrl 与 Cmd | ✅ | `ui-polish-batch6`（归档 2026-11-08） |
 
 ### docs-governance（3）
 
