@@ -58,7 +58,7 @@ const HANDLE_STYLE: Record<ResizeEdge, React.CSSProperties> = {
 };
 
 /** 底部动作区高度带：指针进入窗底此高度内才显示动作条。 */
-const ACTION_BAND_H = 32;
+const ACTION_BAND_H = 36;
 
 function viewportOf(): Viewport {
   return { width: window.innerWidth, height: window.innerHeight };
@@ -535,7 +535,7 @@ export default function FloatingPreview({
       {actionsVisible && (
         <div
           data-testid="preview-actions"
-          className="flex shrink-0 items-center gap-1 border-t border-[var(--app-border)] px-2 py-1 text-[11px]"
+          className="flex shrink-0 items-center gap-0.5 border-t border-[var(--app-border)] px-2 py-1 text-[11px]"
         >
           <button
             type="button"
@@ -544,9 +544,9 @@ export default function FloatingPreview({
             title="打开"
             aria-label="打开"
             onClick={() => void Promise.resolve(onOpenPath(preview.path))}
-            className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[var(--app-text-2)] hover:bg-[var(--app-sunken)] hover:text-[var(--app-text-2)]"
+            className="rounded p-0.5 text-[var(--app-text-2)] hover:bg-[var(--app-sunken)] hover:text-[var(--app-text-2)]"
           >
-            <Icon name="eye" size={18} />
+            <Icon name="eye" size={14} />
           </button>
           <button
             type="button"
@@ -557,7 +557,7 @@ export default function FloatingPreview({
             onClick={() => split("row")}
             className="rounded p-0.5 text-[var(--app-text-2)] hover:bg-[var(--app-sunken)] hover:text-[var(--app-text-2)]"
           >
-            <Icon name="splitRight" size={18} />
+            <Icon name="splitRight" size={14} />
           </button>
           <button
             type="button"
@@ -568,21 +568,7 @@ export default function FloatingPreview({
             onClick={() => split("col")}
             className="rounded p-0.5 text-[var(--app-text-2)] hover:bg-[var(--app-sunken)] hover:text-[var(--app-text-2)]"
           >
-            <Icon name="splitDown" size={18} />
-          </button>
-          <button
-            type="button"
-            data-testid="preview-action"
-            data-action="path"
-            title={preview.path}
-            aria-label={`打开所在文件夹 ${parentFolderNameOf(preview.path)}`}
-            onClick={() => revealInFinder(parentPathOf(preview.path))}
-            className="ml-auto flex min-w-0 items-center gap-1 rounded px-1 text-left text-[var(--app-text-3)] hover:text-[var(--app-text-2)]"
-          >
-            <Icon name="folder" size={18} />
-            <span className="min-w-0 truncate">
-              {parentFolderNameOf(preview.path)}
-            </span>
+            <Icon name="splitDown" size={14} />
           </button>
         </div>
       )}
