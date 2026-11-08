@@ -55,7 +55,7 @@ source_of_truth: canonical
 | 分屏（2） | splitRight / splitDown |
 | AI（1） | sparkle |
 
-**覆盖范围（缺口）**：本表沿用 icon-system-v2 的 33 概念分组；`src/ui/icons.ts` 实现现有 **61 个键**，多出媒体控件（play / pause / prev / next / volume / volumeMute / playlist / loop×3 / subtitle / timestampNote / keyboardHints / pip / speed / home / heart×2）、导出族（exportWord / exportZip / exportMdpkg）与其余（pinOff / collapse / sunBright / sunWarm / closeOthers / chevronDown）。本表不声称穷举；未归组的概念不是"规范缺省"，是**待归组的缺口**。
+**覆盖范围（缺口）**：本表沿用 icon-system-v2 的 33 概念分组；`src/ui/icons.ts` 实现现有 **61 个键**，另有 28 个未归组——媒体控件（play / pause / prev / next / volume / volumeMute / playlist / loopNone / loopSingle / loopPlaylist / subtitle / timestampNote / keyboardHints / pip / speed / home / heart / heartFilled）、导出族（exportWord / exportZip / exportMdpkg）、其余（pinOff / collapse / sunBright / sunWarm / closeOthers / chevronDown / immersive）。本表不声称穷举；未归组的概念不是"规范缺省"，是**待归组的缺口**。
 
 ### 2.4 状态对规则
 
@@ -122,7 +122,7 @@ source_of_truth: canonical
 | `--radius-full` | 999px | 胶囊、圆形 |
 | `--app-radius` | 6px | **存量**，不新增使用 |
 
-阴影：**现存矛盾，不假装只有一处**。`tokens.css` 定义 `--app-shadow`，但 `src/styles/*.css` 另有 20 处 `box-shadow` 声明、13 种字面量（含 `0 4px 12px rgba(0,0,0,.18)` ×3、`0 8px 24px rgba(31,26,20,.12)` ×2），`reader.css` 还有独立的 `--reader-shadow`。规则：**新代码一律用 `--app-shadow`**；存量字面量登记为待收敛，不追溯，下次触及该组件时改引 token。
+阴影：**现存矛盾，不假装只有一处**。`src/styles/*.css` 共 20 处 `box-shadow` 声明——6 处纯 token（`--app-shadow` ×5、`--reader-shadow` ×1）、4 处 inset 描边混用 `--app-accent`、10 处纯字面量（6 种，如 `0 4px 12px rgba(0,0,0,.18)` ×3、`0 8px 24px rgba(31,26,20,.12)` ×2）。规则：**新代码一律用 `--app-shadow`**；存量字面量登记为待收敛，不追溯，下次触及该组件时改引 token。
 
 ## 6. 语义色
 

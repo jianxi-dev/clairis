@@ -60,6 +60,7 @@ draft, in-review, accepted, implemented, deprecated, superseded, archived
 - **append-only 台账例外**：声明 `ledger: append-only` 的台账类文档，允许**追加**新行，禁止修改或删除既有行；同一主题出现多行时以最新行为准。修订既有行只能通过在其后追加新行并注明取代关系完成。该例外只适用于台账文档，不得用于规范正文或任何规则条文。
 - 台账文件的 diff 必须是**纯追加**（旧版内容是新版的前缀），否则视为违例；台账限定为 `docs/design/system/` 下的单文件，且必须 `status: accepted` + `source_of_truth: canonical`。
 - 同一部件的新行若与既有行冲突，必须在决定列注明「取代第 N 行」；该例外不适用于 `archived` 文档。
+- 追加约束以**已合并**的台账为准；同一 PR 内定稿前的更正不受此限（合并版本是唯一发布内容，squash 合并后以最终内容为准）。
 
 ---
 
