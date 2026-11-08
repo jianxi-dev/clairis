@@ -63,3 +63,20 @@ test.describe("主页入口（ui-polish-batch6 6.1）", () => {
     await expect(page.getByTestId("portal")).toBeVisible({ timeout: 5000 });
   });
 });
+
+test.describe("页面宽度调整面板（ui-polish-batch6 6.2）", () => {
+  test("三档预设与滑块，选择后宽度同步", async ({ page }) => {
+    await boot(page);
+    const widthText = page.getByTestId("status-width");
+    await expect(widthText).toHaveText(/^\d+px$/);
+
+    await widthText.click();
+    const panel = page.getByTestId("width-panel");
+    await expect(panel).toBeVisible({ timeout: 3000 });
+    await expect(panel.locator("button")).toHaveCount(3);
+    await expect(page.getByTestId("width-slider")).toHaveCount(1);
+
+    await page.getByTestId("width-preset-720").click();
+    await expect(widthText).toHaveText("720px");
+  });
+});

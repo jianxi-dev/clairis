@@ -2560,3 +2560,34 @@ body {
   background: var(--app-accent-soft);
   color: var(--app-accent);
 }
+
+.width-panel {
+  position: fixed;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid var(--app-border);
+  border-radius: 10px;
+  background: var(--app-surface);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.18);
+}
+
+.width-preset {
+  padding: 3px 8px;
+  border: 1px solid var(--app-border);
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--app-text-2);
+}
+
+.width-preset.is-active {
+  border-color: var(--app-accent);
+  background: var(--app-accent-soft);
+  color: var(--app-accent);
+}
+
+.width-slider {
+  width: 120px;
+}

@@ -7,6 +7,12 @@ import { useEditorStore } from "../stores/editorStore";
 import { useStore } from "../stores/index";
 import { readPercentOf } from "../lib/railCards";
 
+const WIDTH_PRESETS = [
+  { value: 720, label: "紧凑" },
+  { value: 1080, label: "标准" },
+  { value: 1200, label: "宽松" },
+] as const;
+
 const THEME_OPTIONS: {
   value: Theme;
   label: string;
@@ -34,6 +40,7 @@ interface StatusBarProps {
   onOpenGrid: () => void;
   onToggleVisibility: () => void;
   onPointerLeave?: () => void;
+  onSetReaderWidth: (width: number) => void;
 }
 
 /** 中文用户直觉的字数：CJK 字符数 + 西文单词数（不含 markdown 符号与空白）。 */
@@ -64,6 +71,7 @@ export default function StatusBar({
   onOpenGrid,
   onToggleVisibility,
   onPointerLeave,
+  onSetReaderWidth,
 }: StatusBarProps) {
   const activeTabId = useStore((s) => s.activeTabId);
   const tabs = useStore((s) => s.tabs);
@@ -88,6 +96,16 @@ export default function StatusBar({
     const el = themeBtnRef.current;
     if (el) setThemeRect(el.getBoundingClientRect());
   }, [themeOpen]);
+
+  const [widthOpen, setWidthOpen] = useState(false);
+  const [widthRect, setWidthRect] = useState<DOMRect | null>(null);
+  const widthBtnRef = useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    if (!widthOpen) return;
+    const el = widthBtnRef.current;
+    if (el) setWidthRect(el.getBoundingClientRect());
+  }, [widthOpen]);
 
   const scheduleThemeClose = () => {
     if (themeCloseTimer.current !== null)
@@ -127,9 +145,52 @@ export default function StatusBar({
           {percent === undefined ? "—" : `${percent}%`}
         </span>
         <span aria-hidden="true">·</span>
-        <span data-testid="status-width" title={`页面宽度 ${readerWidth}px`}>
+        <button
+          type="button"
+          ref={widthBtnRef}
+          data-testid="status-width"
+          title={`页面宽度 ${readerWidth}px（点击调整）`}
+          onClick={() => setWidthOpen((v) => !v)}
+          className="rounded px-1 hover:bg-[var(--app-accent-soft)] hover:text-[var(--app-accent)]"
+        >
           {readerWidth}px
-        </span>
+        </button>
+        {widthOpen && widthRect
+          ? createPortal(
+              <div
+                data-testid="width-panel"
+                className="width-panel"
+                style={{
+                  left: widthRect.left,
+                  bottom: window.innerHeight - widthRect.top + 6,
+                }}
+              >
+                {WIDTH_PRESETS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    data-testid={`width-preset-${opt.value}`}
+                    aria-pressed={readerWidth === opt.value}
+                    onClick={() => onSetReaderWidth(opt.value)}
+                    className={`width-preset ${readerWidth === opt.value ? "is-active" : ""}`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+                <input
+                  data-testid="width-slider"
+                  type="range"
+                  min={480}
+                  max={2400}
+                  step={20}
+                  value={readerWidth}
+                  onChange={(e) => onSetReaderWidth(Number(e.target.value))}
+                  className="width-slider"
+                />
+              </div>,
+              document.body,
+            )
+          : null}
       </div>
 
       <div className="ml-auto flex items-center gap-1">
