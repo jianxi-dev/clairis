@@ -353,9 +353,193 @@ function runtimeSource(version: number): string {
     });
   }, true);
 
+  // —— 文字选区（HTML 文字工具条）——
+  // 主侧拿不到 iframe 的 Selection（跨源），所以选区矩形与文本由这里算好上报；
+  // 格式化命令再回传进来，用 Range/execCommand 作用在同一个选区上。
+  let savedRange = null;
+  let lastTextReport = "none";
+
+  const blockOf = (node) => {
+    let el = node && node.nodeType === 1 ? node : node && node.parentElement;
+    while (el && el !== document.body) {
+      if (
+        el.getAttribute &&
+        el.getAttribute("data-cm-node-id") &&
+        /^(P|H[1-6]|LI|BLOCKQUOTE|TD|TH|DIV)$/.test(el.tagName)
+      ) {
+        return el;
+      }
+      el = el.parentElement;
+    }
+    return null;
+  };
+
+  const reportTextSelection = () => {
+    if (editing) return;
+    const sel = getSelection();
+    if (!sel || sel.rangeCount === 0 || sel.isCollapsed) {
+      if (lastTextReport !== "none") {
+        lastTextReport = "none";
+        savedRange = null;
+        post({ type: "textSelection", rect: null, text: "" });
+      }
+      return;
+    }
+    const text = sel.toString().replace(/\s+/g, " ").trim();
+    if (!text) return;
+    const range = sel.getRangeAt(0);
+    const rects = range.getClientRects();
+    let left = Infinity, top = Infinity, right = -Infinity, bottom = -Infinity;
+    for (let i = 0; i < rects.length; i++) {
+      const r = rects[i];
+      if (!r || (r.width === 0 && r.height === 0)) continue;
+      left = Math.min(left, r.left);
+      top = Math.min(top, r.top);
+      right = Math.max(right, r.right);
+      bottom = Math.max(bottom, r.bottom);
+    }
+    if (!Number.isFinite(left)) return;
+    savedRange = range.cloneRange();
+    const sig = [Math.round(left), Math.round(top), Math.round(right), Math.round(bottom), text.length].join("|");
+    if (sig === lastTextReport) return;
+    lastTextReport = sig;
+    const block = blockOf(range.startContainer);
+    post({
+      type: "textSelection",
+      rect: { x: left, y: top, width: right - left, height: bottom - top },
+      text: text.slice(0, 80),
+      nodeId: block ? block.getAttribute("data-cm-node-id") : null,
+    });
+  };
+
+  const wrapSaved = (style) => {
+    if (!savedRange) return false;
+    const range = savedRange.cloneRange();
+    const span = document.createElement("span");
+    span.setAttribute("style", style);
+    try {
+      range.surroundContents(span);
+    } catch (err) {
+      const frag = range.extractContents();
+      span.appendChild(frag);
+      range.insertNode(span);
+    }
+    const next = document.createRange();
+    next.selectNodeContents(span);
+    savedRange = next;
+    const sel = getSelection();
+    if (sel) {
+      sel.removeAllRanges();
+      sel.addRange(next);
+    }
+    return true;
+  };
+
+  const unwrapStyle = (prop, block) => {
+    if (!savedRange) return false;
+    let el = savedRange.startContainer;
+    el = el.nodeType === 1 ? el : el.parentElement;
+    while (el && el !== block) {
+      if (el.tagName === "SPAN" && el.style && el.style[prop]) {
+        el.style[prop] = "";
+        if (!el.getAttribute("style")) {
+          const parent = el.parentNode;
+          while (el.firstChild) parent.insertBefore(el.firstChild, el);
+          parent.removeChild(el);
+        }
+        return true;
+      }
+      el = el.parentElement;
+    }
+    return false;
+  };
+
+  const applyRangeCommand = (command, value) => {
+    if (!savedRange) return;
+    const block = blockOf(savedRange.startContainer);
+    const toggle = (prop, css) => {
+      if (!unwrapStyle(prop, block)) wrapSaved(css);
+    };
+    switch (command) {
+      case "bold":
+        toggle("fontWeight", "font-weight:bold");
+        break;
+      case "italic":
+        toggle("fontStyle", "font-style:italic");
+        break;
+      case "underline":
+        wrapSaved("text-decoration:underline");
+        break;
+      case "strikeThrough":
+        wrapSaved("text-decoration:line-through");
+        break;
+      case "code":
+        wrapSaved("font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:rgba(127,127,127,0.16);border-radius:3px;padding:0 2px");
+        break;
+      case "fontSize":
+        if (value) wrapSaved("font-size:" + value);
+        break;
+      case "foreColor":
+        if (value) wrapSaved("color:" + value);
+        break;
+      case "bgColor":
+        if (value) wrapSaved("background-color:" + value);
+        break;
+      case "fontDefault":
+        wrapSaved("color:inherit");
+        break;
+      case "bgDefault":
+        wrapSaved("background-color:transparent");
+        break;
+      case "justifyLeft":
+      case "justifyCenter":
+      case "justifyRight":
+      case "justifyFull":
+        if (block) {
+          block.style.textAlign = command.replace("justify", "").toLowerCase();
+        }
+        break;
+      case "removeFormat": {
+        if (!block) return;
+        const range = savedRange.cloneRange();
+        for (const span of Array.from(block.querySelectorAll("span[style]"))) {
+          if (range.intersectsNode(span)) {
+            const parent = span.parentNode;
+            while (span.firstChild) parent.insertBefore(span.firstChild, span);
+            parent.removeChild(span);
+          }
+        }
+        block.removeAttribute("style");
+        break;
+      }
+      default:
+        return;
+    }
+    if (block) {
+      post({
+        type: "rangeHtml",
+        nodeId: block.getAttribute("data-cm-node-id"),
+        html: block.innerHTML,
+      });
+    }
+    lastTextReport = "";
+    reportTextSelection();
+  };
+
+  document.addEventListener("selectionchange", () => {
+    if (editing) return;
+    requestAnimationFrame(reportTextSelection);
+  });
+
   document.addEventListener("click", (e) => {
     // 拖拽结束后的那一次 click 不算点选；截图模式下完全不报选区
     if (suppressClick || captureMode) return;
+    const sel = getSelection();
+    if (sel && !sel.isCollapsed && sel.toString().trim()) {
+      reportTextSelection();
+      return;
+    }
+    reportTextSelection();
     post({ type: "selection", nodeId: anchorOf(e.target) });
   }, true);
   addEventListener("scroll", place, true);
@@ -371,6 +555,10 @@ function runtimeSource(version: number): string {
         capStart = null;
         if (capBox) capBox.style.display = "none";
       }
+      return;
+    }
+    if (d.type === "rangeCommand") {
+      applyRangeCommand(d.command, d.value);
       return;
     }
     if (d.type !== HL) return;

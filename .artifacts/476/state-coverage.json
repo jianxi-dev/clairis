@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "选中文字出现轮盘",
+      "screenshot": ".artifacts/476/01-text-selection-wheel.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T23:32:35Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "格式扇形",
+      "screenshot": ".artifacts/476/02-format-fan.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T23:32:35Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "加粗仅作用于选区",
+      "screenshot": ".artifacts/476/03-bold-range.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T23:32:35Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "单击元素仍显示元素工具条",
+      "screenshot": ".artifacts/476/04-click-element-toolbar.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T23:32:35Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}
