@@ -1,0 +1,7 @@
+/* 播放器控制条：控件变多后收紧尺寸；进度条高度不受影响。
+   双写类名是为了盖过 ArtPlayer 运行时注入的同名变量（注入样式在 cascade 里更靠后）。 */
+.art-video-player.art-video-player {
+  --art-control-height: 32px;
+  --art-control-icon-size: 26px;
+  --art-padding: 8px;
+}

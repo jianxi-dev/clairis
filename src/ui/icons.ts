@@ -64,6 +64,7 @@ export type IconName =
   | "timestampNote"
   | "keyboardHints"
   | "pip"
+  | "camera"
   | "speed"
   | "home"
   | "heart"
@@ -327,6 +328,15 @@ export const ICONS: Record<IconName, IconDef> = {
   pip: {
     label: "画中画",
     s: "M3 5.5h18v13H3z M12.5 12.5h6v4h-6z",
+  },
+  camera: {
+    label: "截取当前画面",
+    parts: [
+      {
+        s: "M3 8.5A1.5 1.5 0 0 1 4.5 7h3l1.5-2h6l1.5 2h3A1.5 1.5 0 0 1 21 8.5v9A1.5 1.5 0 0 1 19.5 19h-15A1.5 1.5 0 0 1 3 17.5z",
+      },
+      { s: "M12 10.5a3 3 0 1 0 0 6 3 3 0 0 0 0-6z" },
+    ],
   },
   speed: {
     label: "倍速",

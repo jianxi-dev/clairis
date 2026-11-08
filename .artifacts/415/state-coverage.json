@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "controls-order",
+      "screenshot": ".artifacts/415/controls.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T10:57:07Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "screenshot-saved",
+      "screenshot": ".artifacts/415/screenshot-saved.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T10:57:07Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "audio-controls-hidden",
+      "screenshot": ".artifacts/415/audio-controls.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T10:57:07Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "control-size-32",
+      "screenshot": ".artifacts/415/controls.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T10:57:07Z",
+      "runner": "unknown@MMBP"
+    }
+  ]
+}
