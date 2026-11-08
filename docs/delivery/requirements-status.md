@@ -35,10 +35,10 @@ openspec view              # 交互式 dashboard（specs + changes 一屏总览�
 openspec status --change <name>   # 单个变更工件完成度
 ```
 
-## 总览统计（截至 2026-11-07）
+## 总览统计（截至 2026-11-08）
 
-- 规格：17 域 / 153 requirement（2026-11-08 归档 shell-media-batch7 后）
-- ✅ 经 openspec 归档实现：29
+- 规格：17 域 / 157 requirement（2026-11-08 归档 design-system-governance 后）
+- ✅ 经 openspec 归档实现：33
 - 🟡 已实现/设计完成（未走 openspec 变更）：24
 - ⬜ 待开发：16
 - 🗒 未立项（遗留散件登记）：约 16（展卷仪式 8 模块 + TODOS 安全/功能项）
@@ -55,6 +55,8 @@ openspec status --change <name>   # 单个变更工件完成度
   - 主题弹层生命周期 + 单击循环切主题、图片右键应用内菜单、chrome 前景色统一、关闭其他图标、视频容器自适应与画面变换、沉浸态隐藏状态栏/未钉住左栏与每栏独立页签条、悬浮窗图片按宽可滚 + HTML 本地直载、一键自动布局
 - 外壳/页面/编辑/阅读/文件域（`ui-polish-batch6`）：25/25 票合并（PR #394–#408），净 +5 requirement（+8 新增、-3 被取代），已归档 `openspec/changes/archive/2026-11-08-ui-polish-batch6`
   - 顶栏取消（G-3 改为无品牌顶栏）、状态栏五入口 + 紧凑高度 + 宽度/主题面板、页签与状态栏视觉、视频倍速、选区工具条归属与 AI 三键、placeMenu 统一落位、空行手柄悬停即开、块菜单对齐与缩进合并、色板二级保持、PDF 悬浮预览隐藏缩放条、卡片缩略图高度收窄
+- 文档治理域（`design-system-governance`）：+4 requirement（DG-2…DG-5），纯文档与流程改动，无运行时变更，已归档 `openspec/changes/archive/2026-11-08-design-system-governance`（PR #442）
+  - 视觉数值唯一来源 `docs/design/system/spec.md`、append-only 决案台账 `decisions.md`、GOVERNANCE 台账例外与矩阵解释条款、ui-surface 票面视觉锚点、非功能视觉缺陷通道与四要素反馈模板；C9 机检 / tokens 扩容 / e2e 锚定留后续 change
 
 ## 逐域状态
 
@@ -202,13 +204,17 @@ openspec status --change <name>   # 单个变更工件完成度
 | E-24 | 编辑态工具条归属（md 12 键 / html 只在 html 态） | ✅ | `ui-polish-batch6`（归档 2026-11-08） |
 | E-25 | 撤销与重做同时响应 Ctrl 与 Cmd | ✅ | `ui-polish-batch6`（归档 2026-11-08） |
 
-### docs-governance（3）
+### docs-governance（7）
 
 | 编号 | 需求 | 状态 | 证据 |
 |---|---|---|---|
 | G-1 | 文档体系结构 | ✅ | change `docs-migration-governance` |
 | G-2 | 引用与索引有效性门禁 | ✅ | 同上 |
 | G-3 | 开发者上下文路由 | ✅ | 同上 |
+| DG-2 | 设计系统为视觉数值唯一来源 | ✅ | change `design-system-governance`（归档 2026-11-08）；`docs/design/system/spec.md` |
+| DG-3 | append-only 决案台账 | ✅ | 同上；`docs/design/system/decisions.md` |
+| DG-4 | 票面视觉锚点 | ✅ | 同上；`AGENTS.md`、`docs/agents/defect-workflow.md`（C9 机检待后续） |
+| DG-5 | 视觉偏差缺陷承接 | ✅ | 同上；`docs/agents/defect-workflow.md`、`docs/agents/ui-feedback.md` |
 
 ### extensions（3，2026-11-03 新增）
 
