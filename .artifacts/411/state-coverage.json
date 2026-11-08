@@ -1,0 +1,46 @@
+{
+  "states": [
+    {
+      "state": "hover-open",
+      "screenshot": ".artifacts/411/inside-panel.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T10:17:13Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "gap-crossing-350ms",
+      "screenshot": ".artifacts/411/after-gap-crossing.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T10:17:13Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "escape-closed",
+      "screenshot": ".artifacts/411/after-escape.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T10:17:13Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "peek-mode-open",
+      "screenshot": ".artifacts/411/peek-mode-panel.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T10:17:13Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "keyboard-open",
+      "screenshot": ".artifacts/411/keyboard-open.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T10:28:06Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "bar-stays-on-popup-close",
+      "screenshot": ".artifacts/411/bar-stays-on-popup-close.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T10:28:06Z",
+      "runner": "unknown@MMBP"
+    }
+  ]
+}

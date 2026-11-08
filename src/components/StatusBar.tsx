@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { Theme } from "../types";
 import Icon from "./Icon";
@@ -15,6 +15,14 @@ const WIDTH_PRESETS = [
 
 const WIDTH_MAX = 1400;
 const WIDTH_PANEL_W = 236;
+
+/** 主题点击循环次序（点击图标 = 切到下一个）。 */
+const THEME_CYCLE: Theme[] = ["system", "light", "dark", "warm"];
+
+/** 悬停弹层的关闭宽限：足够让指针跨过触发器与面板之间的桥接区。 */
+const THEME_CLOSE_MS = 250;
+
+const THEME_MENU_W = 132;
 
 const THEME_OPTIONS: {
   value: Theme;
@@ -37,6 +45,11 @@ function iconOfTheme(
   return THEME_OPTIONS.find((o) => o.value === theme)?.icon ?? "sunBright";
 }
 
+function nextThemeOf(theme: Theme): Theme {
+  const i = THEME_CYCLE.indexOf(theme);
+  return THEME_CYCLE[(i + 1) % THEME_CYCLE.length];
+}
+
 interface StatusBarProps {
   theme: Theme;
   readingMode: boolean;
@@ -44,8 +57,11 @@ interface StatusBarProps {
   onSetTheme: (theme: Theme) => void;
   onOpenGrid: () => void;
   onToggleVisibility: () => void;
+  onPointerEnter?: () => void;
   onPointerLeave?: () => void;
   onSetReaderWidth: (width: number) => void;
+  /** 主题 / 宽度面板的展开状态；父级据此避免在面板打开时卸载状态栏。 */
+  onPopupOpenChange?: (open: boolean) => void;
 }
 
 /** 中文用户直觉的字数：CJK 字符数 + 西文单词数（不含 markdown 符号与空白）。 */
@@ -75,8 +91,10 @@ export default function StatusBar({
   onSetTheme,
   onOpenGrid,
   onToggleVisibility,
+  onPointerEnter,
   onPointerLeave,
   onSetReaderWidth,
+  onPopupOpenChange,
 }: StatusBarProps) {
   const activeTabId = useStore((s) => s.activeTabId);
   const tabs = useStore((s) => s.tabs);
@@ -94,6 +112,7 @@ export default function StatusBar({
   const [themeOpen, setThemeOpen] = useState(false);
   const [themeRect, setThemeRect] = useState<DOMRect | null>(null);
   const themeBtnRef = useRef<HTMLButtonElement | null>(null);
+  const themeMenuRef = useRef<HTMLDivElement | null>(null);
   const themeCloseTimer = useRef<number | null>(null);
 
   useEffect(() => {
@@ -106,6 +125,7 @@ export default function StatusBar({
   const [widthAnchor, setWidthAnchor] = useState(0);
   const [widthRect, setWidthRect] = useState<DOMRect | null>(null);
   const widthBtnRef = useRef<HTMLButtonElement | null>(null);
+  const widthPanelRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!widthOpen) return;
@@ -113,16 +133,94 @@ export default function StatusBar({
     if (el) setWidthRect(el.getBoundingClientRect());
   }, [widthOpen]);
 
-  const scheduleThemeClose = () => {
-    if (themeCloseTimer.current !== null)
+  const cancelThemeClose = useCallback(() => {
+    if (themeCloseTimer.current !== null) {
       window.clearTimeout(themeCloseTimer.current);
-    themeCloseTimer.current = window.setTimeout(() => setThemeOpen(false), 150);
-  };
+      themeCloseTimer.current = null;
+    }
+  }, []);
+
+  const scheduleThemeClose = useCallback(() => {
+    cancelThemeClose();
+    themeCloseTimer.current = window.setTimeout(() => {
+      themeCloseTimer.current = null;
+      setThemeOpen(false);
+    }, THEME_CLOSE_MS);
+  }, [cancelThemeClose]);
+
+  useEffect(() => cancelThemeClose, [cancelThemeClose]);
+
+  const popupOpenRef = useRef(false);
+  useEffect(() => {
+    const open = themeOpen || widthOpen;
+    if (popupOpenRef.current === open) return;
+    popupOpenRef.current = open;
+    onPopupOpenChange?.(open);
+  }, [themeOpen, widthOpen, onPopupOpenChange]);
+
+  const focusThemeItem = useCallback((direction: 0 | 1 | -1) => {
+    const items = Array.from(
+      themeMenuRef.current?.querySelectorAll<HTMLButtonElement>(
+        '[role="menuitemradio"]',
+      ) ?? [],
+    );
+    if (items.length === 0) return;
+    const current = items.findIndex((el) => el === document.activeElement);
+    if (current === -1) {
+      const checked = items.findIndex(
+        (el) => el.getAttribute("aria-checked") === "true",
+      );
+      items[Math.max(checked, 0)].focus();
+      return;
+    }
+    if (direction === 0) return;
+    items[(current + direction + items.length) % items.length].focus();
+  }, []);
+
+  const pendingThemeFocusRef = useRef(false);
+  useEffect(() => {
+    if (!themeOpen || !themeRect) return;
+    if (!pendingThemeFocusRef.current) return;
+    pendingThemeFocusRef.current = false;
+    focusThemeItem(0);
+  }, [themeOpen, themeRect, focusThemeItem]);
+
+  useEffect(() => {
+    if (!themeOpen && !widthOpen) return;
+    const closeAll = () => {
+      setThemeOpen(false);
+      setWidthOpen(false);
+    };
+    const onPointerDown = (e: PointerEvent) => {
+      const target = e.target as Node;
+      if (themeBtnRef.current?.contains(target)) return;
+      if (themeMenuRef.current?.contains(target)) return;
+      if (widthBtnRef.current?.contains(target)) return;
+      if (widthPanelRef.current?.contains(target)) return;
+      closeAll();
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      e.stopPropagation();
+      closeAll();
+    };
+    document.addEventListener("pointerdown", onPointerDown, true);
+    document.addEventListener("keydown", onKeyDown);
+    window.addEventListener("scroll", closeAll, true);
+    window.addEventListener("resize", closeAll);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown, true);
+      document.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("scroll", closeAll, true);
+      window.removeEventListener("resize", closeAll);
+    };
+  }, [themeOpen, widthOpen]);
 
   return (
     <footer
       className="app-status-bar flex items-center gap-3 px-3 py-0.5 text-xs text-[var(--app-text-2)] select-none shrink-0"
       data-testid="status-bar"
+      onPointerEnter={onPointerEnter}
       onPointerLeave={onPointerLeave}
       onDoubleClick={(e) => {
         if ((e.target as HTMLElement).closest("button")) return;
@@ -167,6 +265,7 @@ export default function StatusBar({
         {widthOpen && widthRect
           ? createPortal(
               <div
+                ref={widthPanelRef}
                 data-testid="width-panel"
                 className="width-panel"
                 style={{
@@ -251,14 +350,29 @@ export default function StatusBar({
 
         <div
           className="relative"
-          onPointerEnter={() => setThemeOpen(true)}
-          onPointerLeave={() => scheduleThemeClose()}
+          onPointerEnter={() => {
+            cancelThemeClose();
+            setThemeOpen(true);
+          }}
+          onPointerLeave={scheduleThemeClose}
         >
           <button
             ref={themeBtnRef}
             data-testid="theme-entry"
-            onPointerEnter={() => setThemeOpen(true)}
-            onClick={() => setThemeOpen((v) => !v)}
+            aria-haspopup="menu"
+            aria-expanded={themeOpen}
+            aria-label={`主题：${themeLabelOf(theme)}（点击切换，悬停选择）`}
+            onPointerEnter={() => {
+              cancelThemeClose();
+              setThemeOpen(true);
+            }}
+            onKeyDown={(e) => {
+              if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+              e.preventDefault();
+              pendingThemeFocusRef.current = true;
+              setThemeOpen(true);
+            }}
+            onClick={() => onSetTheme(nextThemeOf(theme))}
             className="flex items-center gap-0.5 rounded-full px-2 text-[var(--app-text-2)] hover:bg-[var(--app-accent-soft)] hover:text-[var(--app-accent)]"
             title={`当前: ${themeLabelOf(theme)}`}
           >
@@ -267,30 +381,56 @@ export default function StatusBar({
           {themeOpen && themeRect
             ? createPortal(
                 <div
+                  ref={themeMenuRef}
                   data-testid="theme-menu"
-                  className="theme-menu"
+                  className="theme-menu-wrap"
                   style={{
-                    left: themeRect.left,
-                    bottom: window.innerHeight - themeRect.top + 6,
+                    left: Math.min(
+                      themeRect.left,
+                      Math.max(window.innerWidth - THEME_MENU_W - 8, 8),
+                    ),
+                    bottom: window.innerHeight - themeRect.top,
                   }}
-                  onPointerEnter={() => setThemeOpen(true)}
-                  onPointerLeave={() => scheduleThemeClose()}
+                  onPointerEnter={cancelThemeClose}
+                  onPointerLeave={scheduleThemeClose}
                 >
-                  {THEME_OPTIONS.map((opt) => (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      data-testid={`theme-option-${opt.value}`}
-                      onClick={() => {
-                        onSetTheme(opt.value);
+                  <div
+                    className="theme-menu"
+                    role="menu"
+                    aria-label="主题"
+                    onKeyDown={(e) => {
+                      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+                        e.preventDefault();
+                        focusThemeItem(e.key === "ArrowDown" ? 1 : -1);
+                        return;
+                      }
+                      if (e.key === "Escape") {
+                        e.stopPropagation();
                         setThemeOpen(false);
-                      }}
-                      className={`theme-menu-item ${theme === opt.value ? "is-active" : ""}`}
-                    >
-                      <Icon name={opt.icon} size={18} />
-                      <span>{opt.label}</span>
-                    </button>
-                  ))}
+                        themeBtnRef.current?.focus();
+                        return;
+                      }
+                      if (e.key === "Tab") setThemeOpen(false);
+                    }}
+                  >
+                    {THEME_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        role="menuitemradio"
+                        aria-checked={theme === opt.value}
+                        data-testid={`theme-option-${opt.value}`}
+                        onClick={() => {
+                          onSetTheme(opt.value);
+                          setThemeOpen(false);
+                        }}
+                        className={`theme-menu-item ${theme === opt.value ? "is-active" : ""}`}
+                      >
+                        <Icon name={opt.icon} size={18} />
+                        <span>{opt.label}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>,
                 document.body,
               )
