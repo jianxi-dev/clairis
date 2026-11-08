@@ -2234,7 +2234,7 @@ html[data-tab-drag="true"] body * {
 .biaoyue-outline {
   position: absolute;
   top: 10px;
-  right: calc(100% / 3);
+  right: 28px;
   z-index: 30;
 }
 
@@ -2245,7 +2245,7 @@ html[data-tab-drag="true"] body * {
   width: 28px;
   height: 28px;
   padding: 0;
-  border: 1px solid var(--app-border);
+  border: 0;
   border-radius: 8px;
   background: transparent;
   color: var(--app-text-2);
@@ -2267,7 +2267,7 @@ html[data-tab-drag="true"] body * {
 .biaoyue-outline-button[data-pinned="true"],
 .biaoyue-outline-button[data-pinned="true"]:hover {
   background: var(--app-accent-soft);
-  border-color: transparent;
+  border: 1px solid var(--app-border);
   color: var(--app-accent);
   opacity: 1;
 }

@@ -29,6 +29,11 @@ test.describe("大纲浮层边框（ui-polish-batch6 11.1）", () => {
       (el) => window.getComputedStyle(el).borderTopWidth,
     );
     expect(unpinned).toBe("0px");
+    expect(
+      await page
+        .getByTestId("outline-btn")
+        .evaluate((el) => getComputedStyle(el).borderTopWidth),
+    ).toBe("0px");
 
     await page.getByTestId("outline-btn").click();
     await expect(panel).toHaveAttribute("data-pinned", "true");
@@ -36,10 +41,15 @@ test.describe("大纲浮层边框（ui-polish-batch6 11.1）", () => {
       (el) => window.getComputedStyle(el).borderTopWidth,
     );
     expect(pinned).toBe("1px");
+    expect(
+      await page
+        .getByTestId("outline-btn")
+        .evaluate((el) => getComputedStyle(el).borderTopWidth),
+    ).toBe("1px");
   });
 });
 
-test("大纲按钮距内容区右缘约容器宽度的 2/3（#393）", async ({ page }) => {
+test("大纲按钮距内容区右缘恰为一个按钮宽（28px）", async ({ page }) => {
   await boot(page);
   const gap = await page.evaluate(() => {
     const btn = document.querySelector('[data-testid="outline-btn"]')!;
@@ -51,5 +61,5 @@ test("大纲按钮距内容区右缘约容器宽度的 2/3（#393）", async ({ 
     return { gap: c.right - b.right, width: c.width };
   });
   if (!gap) throw new Error("无法测量大纲按钮");
-  expect(Math.abs(gap.gap - gap.width / 3)).toBeLessThanOrEqual(4);
+  expect(Math.abs(gap.gap - 28)).toBeLessThanOrEqual(2);
 });
