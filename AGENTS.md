@@ -113,7 +113,7 @@ Biaoyue 面向中文用户，维护者母语为中文。以下为**硬约定**�
 - 设计文档中文 + 保留 markdown 格式。
 - 评审先 /codex N 轮碰撞。
 - 视觉数值只在 `docs/design/system/spec.md` 定义一次；feature 稿、票面、e2e 断言引用条款号或 token 名，不复制像素值。
-- 实现可见 UI 前，票面须有 `**视觉锚点**:` 字段，值为 `design-system:§N` 或 `ledger:<部件>`（多条用 `;` 分隔，锚点内不写像素值）；spec 无对应条款 = 规范缺口，先补条款再写码。C9 机检在第二个 change 落地，之前由 code-review 执行。
+- 实现可见 UI 前，票面须有第七字段 `**视觉锚点**:`，值为 `design-system:§N` 或 `ledger:<部件>`（多条用 `;` 分隔，锚点内不写像素值）。它与 change 的 conformance 验收锚点（`A-<n>.<m>`）是**两个东西**：前者指规范条款，后者指本次验收断言。spec 无对应条款 = 规范缺口，先补条款再写码。C9 机检随第二个 change 落地，之前由 code-review 执行；本约定自 `spec.md` 转 accepted 起生效。
 - 单点视觉裁决落 `docs/design/system/decisions.md` 一行（append-only）；刻度级修订走 spec supersede。
 
 ## GBrain Configuration（由 /setup-gbrain 配置）

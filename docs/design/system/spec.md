@@ -19,6 +19,8 @@ source_of_truth: canonical
 - **本文的性质**：**誊写 + 收敛**，不是发明。下表每个数值都能追溯到"已在用"或"已被用户裁决"；无来源的新档位一律不写进来。
 - **不在本文范围**：交互行为阈值（如拖拽判定 3–5px）、动画时长与缓动、键盘映射。这些属于交互规范，不因本文的"数值唯一来源"规则被收编。
 - **状态**：当前 `in-review`，作为唯一候选执行；维护者定案后改 `accepted`（同一 PR 内一行变更）。
+- **token 名称是目标**：`--space-*` / `--fs-*` / `--radius-*` 尚未在 `tokens.css` 定义；落地前以本表字面值为准，不假装 token 已存在。
+- **存量不追溯**：`docs/design/approved/` 现有约 86 处 px 字面量（9 个文件）与 `src/styles/` 的存量值不强制改写；本规则只约束新增与本次触及的代码。
 
 ## 2. 图标系统
 
@@ -53,9 +55,11 @@ source_of_truth: canonical
 | 分屏（2） | splitRight / splitDown |
 | AI（1） | sparkle |
 
+**覆盖范围（缺口）**：本表沿用 icon-system-v2 的 33 概念分组；`src/ui/icons.ts` 实现现有 **61 个键**，多出媒体控件（play / pause / prev / next / volume / volumeMute / playlist / loop×3 / subtitle / timestampNote / keyboardHints / pip / speed / home / heart×2）、导出族（exportWord / exportZip / exportMdpkg）与其余（pinOff / collapse / sunBright / sunWarm / closeOthers / chevronDown）。本表不声称穷举；未归组的概念不是"规范缺省"，是**待归组的缺口**。
+
 ### 2.4 状态对规则
 
-可逆动作**必须成对**：pin / pinOff、expand / collapse、volume / volumeMute、play / pause、沉浸进入 / 退出。禁止出现单向孤儿（只能进不能出的图标）。
+可逆动作**必须成对**：pin / pinOff、expand / collapse、volume / volumeMute、play / pause、heart / heartFilled、沉浸进入 / 退出（v3 QA 第 20 格核到 6 对）。禁止出现单向孤儿（只能进不能出的图标）。
 
 ### 2.5 形状定案的归属
 
@@ -69,7 +73,7 @@ source_of_truth: canonical
 
 ### 2.6 注意事项
 
-- `collapse` 在 18px 下四角括号内收后形态略接近「+」：必须保留 tooltip 与 `aria-pressed` 兜底；实现时内收位移取 6 单位。
+- `collapse` 在 18px 下四角括号内收后形态略接近「+」：必须保留 tooltip 与 `aria-pressed` 兜底；QA 原文对加大内收位移措辞是"可考虑"，当前实现未调整，下次触及该图标时再改，不单独开票。
 - **实现偏差（已知）**：`src/ui/icons.ts` 的 pinOff 斜杠仍是贯穿整格的版本，尚未对齐台账定案；按缺口处理，不阻断本文档落地。
 - 新增概念先问「能否用已有概念表达」，不能才增，避免概念表膨胀。
 
@@ -90,14 +94,16 @@ source_of_truth: canonical
 
 **不进入刻度的值**：`1px`（93 次）为发丝线与边框，语义固定，不入刻度也不 token 化；`3px`（14 次）/ `5px`（7 次）/ `14px`（7 次）为微调值，允许出现但不作为新代码的首选档；`20px` / `22px` 多为容器宽高，不是间距。
 
+`24px` 入档凭**语义**（区域分隔与图标大档），不凭频次；`3px` 保留为存量微调档，不新增使用。
+
 **新代码规则**：新增布局间距从刻度取值；确需刻度外值时，在 PR 说明理由，不得默默写数。
 
 ## 4. 字号阶梯
 
 来源同上（`font-size` 频次统计）。
 
-| 规范值 | 实际次数 | 用途 |
-|---|---|---|
+| 规范值 | 值 | 出现次数 | 用途 |
+|---|---|---|---|
 | `--fs-11` | 11px | 5 次 | 极小标注、状态栏副信息 |
 | `--fs-12` | 12px | 13 次 | 次级 UI 文本（主力） |
 | `--fs-13` | 13px | 6 次 | 常规 UI 文本（主力） |
@@ -116,7 +122,7 @@ source_of_truth: canonical
 | `--radius-full` | 999px | 胶囊、圆形 |
 | `--app-radius` | 6px | **存量**，不新增使用 |
 
-阴影沿用唯一一处定义：`--app-shadow: 0 1px 2px rgba(31,26,20,.05), 0 8px 24px rgba(31,26,20,.05)`。不新增第二档阴影。
+阴影：**现存矛盾，不假装只有一处**。`tokens.css` 定义 `--app-shadow`，但 `src/styles/*.css` 另有 20 处 `box-shadow` 声明、13 种字面量（含 `0 4px 12px rgba(0,0,0,.18)` ×3、`0 8px 24px rgba(31,26,20,.12)` ×2），`reader.css` 还有独立的 `--reader-shadow`。规则：**新代码一律用 `--app-shadow`**；存量字面量登记为待收敛，不追溯，下次触及该组件时改引 token。
 
 ## 6. 语义色
 
@@ -165,4 +171,8 @@ source_of_truth: canonical
 | 刻度级修订（间距/字号/圆角/语义色档位） | supersede：新建本文件新版，旧版标 `status: superseded` + `superseded_by`（`GOVERNANCE.md` §2.3） |
 | 发现本文件缺条款（spec gap） | 先补条款再实现；票面报 gap 是健康信号，不是失败 |
 
-<!-- 数值溯源：间距/字号/圆角频次统计于 2026-11-08，范围 src/styles/*.css（不含 Tailwind 兼容层工具类）；图标规格溯源自 icon-system-v2 §1–§2 与 v3 QA 第一至七轮；语义色逐值誊自 tokens.css。 -->
+<!-- 数值溯源与复现：间距/字号/圆角频次统计于 2026-11-08。
+     复现命令（注意必须只传单一 glob；同时传 src/**/*.css 会递归包含 src/styles/*.css 导致数值翻倍）：
+     python3 -c "import re,glob,collections;pat=re.compile(r'(?<![\d.])(\d+)px');c=collections.Counter();[c.update(int(m) for m in pat.findall(open(f,encoding='utf-8').read())) for f in glob.glob('src/styles/*.css')];print(sorted(c.items(),key=lambda x:-x[1]))"
+     图标规格溯源自 icon-system-v2 §1–§2 与 v3 QA 第一至七轮；语义色逐值誊自 tokens.css。 -->
+

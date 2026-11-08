@@ -59,6 +59,7 @@ draft, in-review, accepted, implemented, deprecated, superseded, archived
 - 需要变更时，必须通过 supersede 链：创建新文档，旧文档标记为 `superseded` 并填写 `superseded_by`。
 - **append-only 台账例外**：声明 `ledger: append-only` 的台账类文档，允许**追加**新行，禁止修改或删除既有行；同一主题出现多行时以最新行为准。修订既有行只能通过在其后追加新行并注明取代关系完成。该例外只适用于台账文档，不得用于规范正文或任何规则条文。
 - 台账文件的 diff 必须是**纯追加**（旧版内容是新版的前缀），否则视为违例；台账限定为 `docs/design/system/` 下的单文件，且必须 `status: accepted` + `source_of_truth: canonical`。
+- 同一部件的新行若与既有行冲突，必须在决定列注明「取代第 N 行」；该例外不适用于 `archived` 文档。
 
 ---
 
@@ -81,6 +82,7 @@ title, type, status, last_updated
 - `source_of_truth`：权威性标识，枚举如下。缺省为 `supporting`。
 - `superseded_by`：**仅当** `status=superseded` 时必填，指向替代文档的相对路径。其余状态**禁止出现**此字段。
 - `ledger`：**仅**台账类文档使用，唯一合法值 `append-only`。同时必须满足 `status=accepted`、`source_of_truth=canonical`、位于 `docs/design/system/` 之下；声明后适用 §2.3 的追加例外。台账须保持稳定表头与固定列。
+- `redirect`：`superseded` / `archived` 文档指向替代文档的相对路径，供留在原位置的旧稿使用（与 `superseded_by` 并存，两者语义相同）。
 
 ### 3.3 source_of_truth 枚举（恰好 3 个）
 
