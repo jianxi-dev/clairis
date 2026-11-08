@@ -65,7 +65,7 @@ test("轮盘加粗只作用于选区并写回 content", async ({ page }) => {
   const frame = await openVisual(page);
   await selectText(frame);
   await page.locator('[data-sector="format"]').hover();
-  await expect(page.locator(".sr-item")).toHaveCount(7);
+  await expect(page.locator(".sr-item")).toHaveCount(10);
   await page
     .locator('.sr-item[data-action="format-bold"]')
     .dispatchEvent("pointerdown");

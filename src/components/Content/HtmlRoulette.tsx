@@ -137,20 +137,13 @@ export default function HtmlRoulette({
           keepOpen: true,
           run: run("code"),
         },
-        {
-          id: "format-size-18",
-          label: "字号 18",
-          icon: "tune",
+        ...["12", "16", "20", "24", "32"].map((size) => ({
+          id: `format-size-${size}`,
+          label: `字号 ${size}`,
+          icon: "tune" as const,
           keepOpen: true,
-          run: run("fontSize", "18px"),
-        },
-        {
-          id: "format-size-24",
-          label: "字号 24",
-          icon: "tune",
-          keepOpen: true,
-          run: run("fontSize", "24px"),
-        },
+          run: run("fontSize", `${size}px`),
+        })),
       ] satisfies RouletteItem[],
       color: (kind, className) => {
         const swatch =
