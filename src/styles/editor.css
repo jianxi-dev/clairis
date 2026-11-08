@@ -2569,29 +2569,41 @@ body {
   position: fixed;
   z-index: 80;
   display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  width: 236px;
+  padding: 10px;
   border: 1px solid var(--app-border);
   border-radius: 10px;
   background: var(--app-surface);
   box-shadow: 0 8px 24px rgb(0 0 0 / 0.18);
 }
 
-.width-preset {
-  padding: 3px 8px;
-  border: 1px solid var(--app-border);
-  border-radius: 6px;
-  font-size: 12px;
-  color: var(--app-text-2);
+.width-bars {
+  width: 62%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 10px;
+  height: 36px;
 }
 
-.width-preset.is-active {
-  border-color: var(--app-accent);
-  background: var(--app-accent-soft);
-  color: var(--app-accent);
+.width-bar {
+  flex: 1;
+  align-self: flex-end;
+  border: 0;
+  border-radius: 3px 3px 0 0;
+  background: var(--app-sunken);
+  clip-path: polygon(0 100%, 22% 0, 100% 0, 100% 100%);
+  color: transparent;
+  cursor: pointer;
+}
+
+.width-bar.is-active {
+  background: var(--app-accent);
 }
 
 .width-slider {
-  width: 120px;
+  width: 100%;
 }
