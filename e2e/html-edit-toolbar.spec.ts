@@ -159,11 +159,15 @@ test("工具条归属：md 编辑态无 HTML 工具条，HTML 编辑态无 CM �
   });
   await page.locator(".cm-content").click();
   await page.keyboard.press("ControlOrMeta+a");
-  await expect(page.locator(".cm-floating-toolbar")).toHaveCount(1);
+  await expect(page.locator('[data-testid="selection-roulette"]')).toHaveCount(
+    1,
+  );
   await expect(page.locator(".html-edit-toolbar")).toHaveCount(0);
 
   const frame = await openVisual(page);
   await frame.locator("h1").click();
   await expect(page.locator(".html-edit-toolbar")).toBeVisible();
-  await expect(page.locator(".cm-floating-toolbar")).toHaveCount(0);
+  await expect(page.locator('[data-testid="selection-roulette"]')).toHaveCount(
+    0,
+  );
 });

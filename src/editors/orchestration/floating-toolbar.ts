@@ -1,430 +1,547 @@
-/* 文字选区浮动工具条（shell-editor-batch5 / design D16，迁移自 md-bundle
- * `floating-toolbar.ts`）。
+/* 选区轮盘工具条（selection-roulette，批准设计见
+ * docs/design/approved/selection-roulette/README.md）。
  *
- * 选中文本即出现，控件集合按 md-bundle 收敛为 12 项：
- * AI 组（改写 / 翻译 / 润色）+ 格式组（字号（显示当前值）/ 加粗 / 斜体 /
- * 下划线 / 删除线 / 链接 / 对齐 / 文字颜色 / 删除）。
- *
- * 作用域：
- * - 加粗 / 斜体 / 下划线 / 删除线 / 链接 / 文字颜色 → 选区范围。
- * - 对齐 / 删除 → 选区所在的整个块。
- *
- * 定位：优先贴在选区下方，下方放不下时翻到上方（md-bundle `positionToolbar`）。
+ * 以鼠标落点为圆心，根环 8 扇区；二级/三级只在父扇区方向就近展开；
+ * 颜色为文字色 / 背景色双圈。旧的横向工具条已删除，不留双轨。
  */
 
 import { EditorView, ViewPlugin, type ViewUpdate } from "@codemirror/view";
-
-import { renderIcon, hasIcon } from "../icons";
-import { FONT_COLORS, createColorRow, type ColorKind } from "./color-palette";
+import { undo, redo } from "@codemirror/commands";
 import {
   alignBlock,
   blockAt,
-  deleteBlock,
   toggleRangeSpan,
   toggleWrap,
-  wirePopup,
 } from "./toolbar-shared";
-import type { BlockAlignment } from "./block-alignment";
-import { useEditorStore } from "../../stores/editorStore";
+import { blockConvertChanges, type BlockConvertTarget } from "./block-convert";
 import { useAiEntryStore } from "../../hooks/useAiEntry";
-import { placeMenu } from "./placement";
-import type { AnchorRect } from "./anchor";
+import {
+  createRoulette,
+  type RouletteActions,
+  type RouletteItem,
+} from "./roulette-view";
 
-export const FLOATING_TOOLBAR_CLASS = "cm-floating-toolbar";
-
-interface AlignOption {
-  readonly alignment: BlockAlignment;
-  readonly label: string;
-  readonly icon: string;
+function selectionText(view: EditorView): string {
+  const { from, to } = view.state.selection.main;
+  return view.state.doc.sliceString(from, to);
 }
 
-const ALIGN_OPTIONS: readonly AlignOption[] = [
-  { alignment: "left", label: "左对齐", icon: "AlignLeftOutlined" },
-  { alignment: "center", label: "居中", icon: "AlignCenterOutlined" },
-  { alignment: "right", label: "右对齐", icon: "AlignRightOutlined" },
-];
-
-const FONT_SIZE_CHOICES: readonly number[] = [
-  12, 14, 15, 16, 17, 18, 20, 22, 24, 28, 32,
-];
-
-function applyButtonStyle(btn: HTMLButtonElement): void {
-  btn.style.background = "transparent";
-  btn.style.border = "none";
-  btn.style.color = "var(--app-text-2)";
-  btn.style.padding = "4px";
-  btn.style.cursor = "pointer";
-  btn.style.borderRadius = "6px";
-  btn.style.display = "flex";
-  btn.style.alignItems = "center";
-  btn.style.justifyContent = "center";
-  btn.style.gap = "2px";
-  btn.style.minWidth = "28px";
-  btn.style.height = "28px";
-  btn.style.boxSizing = "border-box";
-  btn.addEventListener("mouseenter", () => {
-    btn.style.background = "var(--app-hover, rgba(0, 0, 0, 0.06))";
-  });
-  btn.addEventListener("mouseleave", () => {
-    btn.style.background = "transparent";
-  });
+function ensureWrap(view: EditorView, open: string, close: string): void {
+  const text = selectionText(view);
+  if (text.startsWith(open) && text.endsWith(close)) return;
+  toggleWrap(view, open, close);
 }
 
-function setIcon(btn: HTMLButtonElement, icon: string | undefined): void {
-  if (icon && hasIcon(icon)) btn.appendChild(renderIcon(icon));
-}
-
-function buildAlignControl(view: EditorView): HTMLElement {
-  const container = document.createElement("div");
-  container.className = "cm-toolbar-dropdown";
-  container.style.position = "relative";
-  container.style.display = "inline-flex";
-
-  const btn = document.createElement("button");
-  btn.type = "button";
-  btn.className = "cm-toolbar-btn";
-  btn.dataset.action = "align";
-  btn.title = "对齐";
-  applyButtonStyle(btn);
-  setIcon(btn, "AlignLeftOutlined");
-  const caret = document.createElement("span");
-  caret.textContent = "▾";
-  caret.setAttribute("aria-hidden", "true");
-  caret.style.fontSize = "10px";
-  btn.appendChild(caret);
-
-  const menu = document.createElement("div");
-  menu.className = "cm-toolbar-menu";
-  menu.style.display = "none";
-
-  const { closeMenu } = wirePopup(container, btn, menu);
-
-  for (const option of ALIGN_OPTIONS) {
-    const item = document.createElement("button");
-    item.type = "button";
-    item.className = "cm-toolbar-menu-item";
-    item.dataset.option = `align-${option.alignment}`;
-    item.title = option.label;
-    item.appendChild(renderIcon(option.icon));
-    const text = document.createElement("span");
-    text.textContent = option.label;
-    item.appendChild(text);
-    item.addEventListener("mousedown", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const block = blockAt(view, view.state.selection.main.head);
-      if (block) alignBlock(view, block, option.alignment);
-      closeMenu();
-    });
-    menu.appendChild(item);
-  }
-
-  container.appendChild(btn);
-  container.appendChild(menu);
-  return container;
-}
-
-function buildFontSizeControl(view: EditorView): HTMLElement {
-  const container = document.createElement("div");
-  container.className = "cm-toolbar-dropdown";
-  container.style.position = "relative";
-  container.style.display = "inline-flex";
-
-  const btn = document.createElement("button");
-  btn.type = "button";
-  btn.className = "cm-toolbar-btn";
-  btn.dataset.action = "font-size";
-  btn.title = "字号";
-  applyButtonStyle(btn);
-  const value = document.createElement("span");
-  value.className = "cm-toolbar-font-size-value";
-  value.textContent = String(useEditorStore.getState().fontSize);
-  btn.appendChild(value);
-  const caret = document.createElement("span");
-  caret.textContent = "▾";
-  caret.setAttribute("aria-hidden", "true");
-  caret.style.fontSize = "10px";
-  btn.appendChild(caret);
-
-  const menu = document.createElement("div");
-  menu.className = "cm-toolbar-menu";
-  menu.style.display = "none";
-
-  const { closeMenu } = wirePopup(container, btn, menu);
-
-  const applySize = (size: number): void => {
-    const store = useEditorStore.getState();
-    store.setFontSize(size);
-    store.setConfig({ readerFontSize: size });
-    document.documentElement.style.setProperty(
-      "--editor-font-size",
-      `${size}px`,
-    );
-    value.textContent = String(size);
-    closeMenu();
+function blockTextOf(
+  view: EditorView,
+): { from: number; to: number; text: string } | null {
+  const block = blockAt(view, view.state.selection.main.from);
+  if (!block) return null;
+  return {
+    from: block.from,
+    to: block.to,
+    text: view.state.doc.sliceString(block.from, block.to),
   };
-
-  for (const size of FONT_SIZE_CHOICES) {
-    const item = document.createElement("button");
-    item.type = "button";
-    item.className = "cm-toolbar-menu-item";
-    item.dataset.option = `font-size-${size}`;
-    item.textContent = String(size);
-    item.addEventListener("mousedown", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      applySize(size);
-    });
-    menu.appendChild(item);
-  }
-
-  container.appendChild(btn);
-  container.appendChild(menu);
-  return container;
 }
 
-function buildColorControl(view: EditorView): HTMLElement {
-  const container = document.createElement("div");
-  container.className = "cm-toolbar-dropdown";
-  container.style.position = "relative";
-  container.style.display = "inline-flex";
+function replaceBlock(view: EditorView, text: string): void {
+  const block = blockTextOf(view);
+  if (!block || block.text === text) return;
+  view.dispatch({ changes: { from: block.from, to: block.to, insert: text } });
+}
 
-  const btn = document.createElement("button");
-  btn.type = "button";
-  btn.className = "cm-toolbar-btn";
-  btn.dataset.action = "color";
-  btn.title = "文字颜色";
-  applyButtonStyle(btn);
-  setIcon(btn, "FontcolorOutlined");
-  const caret = document.createElement("span");
-  caret.textContent = "▾";
-  caret.setAttribute("aria-hidden", "true");
-  caret.style.fontSize = "10px";
-  btn.appendChild(caret);
-
-  const menu = document.createElement("div");
-  menu.className = "cm-toolbar-menu";
-  menu.classList.add("cm-toolbar-color-menu");
-  menu.style.display = "none";
-
-  const { closeMenu } = wirePopup(container, btn, menu);
-
-  const pick = (kind: ColorKind, className: string): void => {
-    if (kind === "font") toggleRangeSpan(view, className, "mdb-color");
-    closeMenu();
+function convertItem(
+  view: EditorView,
+  id: string,
+  label: string,
+  icon: RouletteItem["icon"],
+  target: BlockConvertTarget | "warning" | "info" | "note" | "danger",
+): RouletteItem {
+  return {
+    id,
+    label,
+    icon,
+    run: () => {
+      const block = blockAt(view, view.state.selection.main.from);
+      if (!block) return;
+      if (["warning", "info", "note", "danger"].includes(target)) {
+        const text = view.state.doc.sliceString(block.from, block.to);
+        const quoted = text
+          .split("\n")
+          .map((line) => `> ${line}`)
+          .join("\n");
+        view.dispatch({
+          changes: {
+            from: block.from,
+            to: block.to,
+            insert: `> [!${target}]\n${quoted}`,
+          },
+        });
+        return;
+      }
+      const changes = blockConvertChanges(
+        view.state.doc,
+        block,
+        target as BlockConvertTarget,
+      );
+      if (changes.length > 0) view.dispatch({ changes });
+    },
   };
-
-  menu.appendChild(createColorRow("font", FONT_COLORS, pick));
-
-  container.appendChild(btn);
-  container.appendChild(menu);
-  return container;
 }
 
-interface AiAction {
-  readonly action: string;
-  readonly label: string;
-  readonly icon: string;
-  readonly prompt: string;
+function setColumns(view: EditorView, n: number): void {
+  const block = blockTextOf(view);
+  if (!block) return;
+  const unwrapped = block.text
+    .replace(/^::: \{\.col-\d\}\n?/, "")
+    .replace(/\n?:::$/, "");
+  replaceBlock(view, `::: {.col-${n}}\n${unwrapped}\n:::`);
 }
 
-/** 三种明确意图各自预填指令；一个笼统的「AI 编辑」按钮每次都要用户自己补全。 */
-const AI_ACTIONS: readonly AiAction[] = [
-  {
-    action: "rewrite",
-    label: "改写",
-    icon: "SharewordsOutlined",
-    prompt: "请改写下面的文本，只返回替换后的文本，不要解释：",
-  },
-  {
-    action: "translate",
-    label: "翻译",
-    icon: "TranslateOutlined",
-    prompt: "请翻译下面的文本（英译中或中译英），只返回译文，不要解释：",
-  },
-  {
-    action: "polish",
-    label: "润色",
-    icon: "AiEditOutlined",
-    prompt: "请润色下面的文本，让它更通顺自然，只返回润色后的文本，不要解释：",
-  },
-];
+function adjustIndent(view: EditorView, delta: number): void {
+  const block = blockTextOf(view);
+  if (!block) return;
+  const match = /^::: \{\.indent-(\d)\}\n([\s\S]*?)\n:::$/.exec(block.text);
+  const current = match ? Number(match[1]) : 0;
+  const body = match ? match[2] : block.text;
+  const next = Math.min(4, Math.max(0, current + delta));
+  replaceBlock(view, next === 0 ? body : `::: {.indent-${next}}\n${body}\n:::`);
+}
 
-function buildAiControl(view: EditorView, spec: AiAction): HTMLButtonElement {
-  const btn = document.createElement("button");
-  btn.type = "button";
-  btn.className = "cm-toolbar-btn";
-  btn.dataset.action = spec.action;
-  btn.title = spec.label;
-  applyButtonStyle(btn);
-  setIcon(btn, spec.icon);
-  btn.addEventListener("mousedown", (e) => {
-    e.preventDefault();
-    e.stopPropagation();
+function clearFormatting(view: EditorView): void {
+  const { from, to } = view.state.selection.main;
+  if (from === to) return;
+  const stripped = selectionText(view)
+    .replace(/<span class="mdb-(?:color|bg)-[\w-]+">/g, "")
+    .replace(/<\/span>/g, "")
+    .replace(/<\/?u>/g, "")
+    .replace(/\*\*|~~|`/g, "")
+    .replace(/(^|[^*])\*(?!\*)/g, "$1");
+  if (stripped === selectionText(view)) return;
+  view.dispatch({ changes: { from, to, insert: stripped } });
+}
+
+function colorAction(
+  view: EditorView,
+  kind: "font" | "background",
+  className: string,
+): void {
+  const prefix = kind === "font" ? "mdb-color" : "mdb-bg";
+  if (!className) {
     const { from, to } = view.state.selection.main;
-    const text = view.state.doc.sliceString(from, to);
-    const ai = useAiEntryStore.getState();
-    ai.setInput(`${spec.prompt}\n\n${text}`.trim());
-    ai.openOverlay();
-  });
-  return btn;
-}
-
-function buildToolbar(view: EditorView): HTMLDivElement {
-  const toolbar = document.createElement("div");
-  toolbar.className = FLOATING_TOOLBAR_CLASS;
-  toolbar.dataset.testid = "floating-toolbar";
-
-  for (const spec of AI_ACTIONS)
-    toolbar.appendChild(buildAiControl(view, spec));
-
-  const fontSize = buildFontSizeControl(view);
-  toolbar.appendChild(fontSize);
-
-  const simple: ReadonlyArray<readonly [string, string, string, string]> = [
-    ["toggle-bold", "加粗", "BoldOutlined", "**"],
-    ["toggle-italic", "斜体", "ItalicOutlined", "*"],
-    ["toggle-underline", "下划线", "UnderlineOutlined", "<u>"],
-    ["toggle-strikethrough", "删除线", "StrikethroughOutlined", "~~"],
-  ];
-  for (const [action, label, icon, marker] of simple) {
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "cm-toolbar-btn";
-    btn.dataset.action = action;
-    btn.title = label;
-    applyButtonStyle(btn);
-    setIcon(btn, icon);
-    btn.addEventListener("mousedown", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const after = marker === "<u>" ? "</u>" : marker;
-      toggleWrap(view, marker, after);
-    });
-    toolbar.appendChild(btn);
+    if (from === to) return;
+    const stripped = selectionText(view)
+      .replace(new RegExp(`<span class="${prefix}-[\\w-]+">`, "g"), "")
+      .replace(/<\/span>/g, "");
+    if (stripped !== selectionText(view)) {
+      view.dispatch({ changes: { from, to, insert: stripped } });
+    }
+    return;
   }
-
-  const link = document.createElement("button");
-  link.type = "button";
-  link.className = "cm-toolbar-btn";
-  link.dataset.action = "toggle-link";
-  link.title = "链接";
-  applyButtonStyle(link);
-  setIcon(link, "GlobalLinkOutlined");
-  link.addEventListener("mousedown", (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    toggleWrap(view, "[", "](url)");
-  });
-  toolbar.appendChild(link);
-
-  toolbar.appendChild(buildAlignControl(view));
-  toolbar.appendChild(buildColorControl(view));
-
-  const del = document.createElement("button");
-  del.type = "button";
-  del.className = "cm-toolbar-btn";
-  del.dataset.action = "delete";
-  del.title = "删除";
-  applyButtonStyle(del);
-  setIcon(del, "DeleteTrashOutlined");
-  del.addEventListener("mousedown", (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const block = blockAt(view, view.state.selection.main.head);
-    if (block) deleteBlock(view, block);
-  });
-  toolbar.appendChild(del);
-
-  return toolbar;
+  toggleRangeSpan(view, className, prefix);
 }
 
-function positionToolbar(view: EditorView, toolbar: HTMLDivElement): void {
-  try {
-    view.requestMeasure({
-      read: (v) => {
-        const { from, to } = v.state.selection.main;
-        const pos = to > from ? to : from;
-        const coords = v.coordsAtPos(pos);
-        if (!coords) return null;
-        const box = toolbar.getBoundingClientRect();
-        return {
-          coords,
-          rect: v.dom.getBoundingClientRect(),
-          width: box.width,
-          height: box.height,
-        };
-      },
-      write: (measure) => {
-        if (!measure) return;
-        const { coords, rect, width, height } = measure;
-        const anchor: AnchorRect = {
-          left: coords.left,
-          top: coords.top,
-          right: coords.right ?? coords.left,
-          bottom: coords.bottom,
-          width: Math.max(0, (coords.right ?? coords.left) - coords.left),
-          height: Math.max(0, coords.bottom - coords.top),
-        };
-        const viewport: AnchorRect = {
-          left: 0,
-          top: 0,
-          right: window.innerWidth,
-          bottom: window.innerHeight,
-          width: window.innerWidth,
-          height: window.innerHeight,
-        };
-        const placement = placeMenu(anchor, { width, height }, viewport);
-        toolbar.style.left = `${placement.left - rect.left}px`;
-        toolbar.style.top = `${placement.top - rect.top}px`;
-      },
-    });
-  } catch {
-    // jsdom / 未测量内容：留在默认位置
-  }
-}
+let sharedHandle: ReturnType<typeof createRoulette> | null = null;
+const painterState: {
+  active: boolean;
+  count: number;
+  marks: {
+    bold: boolean;
+    italic: boolean;
+    underline: boolean;
+    strike: boolean;
+    code: boolean;
+    color: string;
+    bg: string;
+  } | null;
+} = { active: false, count: 0, marks: null };
 
 export function floatingToolbar() {
   return ViewPlugin.define((view) => {
-    let dom: HTMLDivElement | null = null;
-    let visible = false;
+    let handle: ReturnType<typeof createRoulette> | null = sharedHandle;
+    let paintTimer = 0;
+    let marks: {
+      bold: boolean;
+      italic: boolean;
+      underline: boolean;
+      strike: boolean;
+      code: boolean;
+      color: string;
+      bg: string;
+    } | null = null;
 
-    function show(): void {
-      if (!dom) {
-        dom = buildToolbar(view);
+    const ensure = (open: string, close: string) =>
+      ensureWrap(view, open, close);
+
+    const takeMarks = () => {
+      const text = selectionText(view);
+      const next = {
+        bold: /\*\*/.test(text),
+        italic: /(^|[^*])\*(?!\*)/.test(text) || /^\*[^*]/.test(text),
+        underline: /<u>/.test(text),
+        strike: /~~/.test(text),
+        code: /`/.test(text),
+        color: /<span class="mdb-color-[\w-]+">/.test(text)
+          ? (text.match(/mdb-color-[\w-]+/)?.[0] ?? "")
+          : "",
+        bg: /<span class="mdb-bg-[\w-]+">/.test(text)
+          ? (text.match(/mdb-bg-[\w-]+/)?.[0] ?? "")
+          : "",
+      };
+      marks = next;
+      painterState.marks = next;
+    };
+
+    const applyMarks = () => {
+      const m = marks ?? painterState.marks;
+      if (!m) return false;
+      const paintWrap = (open: string, close: string): boolean => {
+        const sel = view.state.selection.main;
+        if (sel.from === sel.to) return false;
+        let end = sel.to;
+        while (
+          end > sel.from &&
+          view.state.doc.sliceString(end - 1, end) === "\n"
+        ) {
+          end -= 1;
+        }
+        const text = view.state.doc.sliceString(sel.from, end);
+        if (text.startsWith(open) && text.endsWith(close)) return false;
+        view.dispatch({
+          changes: [
+            { from: sel.from, insert: open },
+            { from: end, insert: close },
+          ],
+          selection: {
+            anchor: sel.from + open.length,
+            head: end + open.length,
+          },
+        });
+        return true;
+      };
+      let changed = false;
+      if (m.bold) changed = paintWrap("**", "**") || changed;
+      if (m.italic) changed = paintWrap("*", "*") || changed;
+      if (m.underline) changed = paintWrap("<u>", "</u>") || changed;
+      if (m.strike) changed = paintWrap("~~", "~~") || changed;
+      if (m.code) changed = paintWrap("`", "`") || changed;
+      return changed;
+    };
+
+    const actions: RouletteActions = {
+      smart: [
+        {
+          id: "ai-rewrite",
+          label: "改写",
+          icon: "pencil",
+          run: () => {
+            const ai = useAiEntryStore.getState();
+            ai.setInput(`请改写以下内容：\n\n${selectionText(view)}`);
+            ai.openOverlay();
+          },
+        },
+        {
+          id: "ai-translate",
+          label: "翻译",
+          icon: "share",
+          run: () => {
+            const ai = useAiEntryStore.getState();
+            ai.setInput(`请翻译以下内容：\n\n${selectionText(view)}`);
+            ai.openOverlay();
+          },
+        },
+        {
+          id: "ai-polish",
+          label: "润色",
+          icon: "sparkle",
+          run: () => {
+            const ai = useAiEntryStore.getState();
+            ai.setInput(`请润色以下内容：\n\n${selectionText(view)}`);
+            ai.openOverlay();
+          },
+        },
+      ],
+      convert: () => {
+        const block = blockTextOf(view);
+        const isHeading = block ? /^#{1,6}\s/.test(block.text) : false;
+        const items: RouletteItem[] = [];
+        if (isHeading) {
+          items.push(
+            convertItem(view, "convert-paragraph", "正文", "text", "paragraph"),
+          );
+        }
+        items.push({
+          id: "convert-heading-group",
+          label: "标题",
+          icon: "file",
+          children: [
+            convertItem(view, "convert-h1", "一级标题", "file", "h1"),
+            convertItem(view, "convert-h2", "二级标题", "file", "h2"),
+            convertItem(view, "convert-h3", "三级标题", "file", "h3"),
+            convertItem(view, "convert-h4", "四级标题", "file", "h3"),
+          ],
+        });
+        items.push({
+          id: "convert-list-group",
+          label: "列表",
+          icon: "grid",
+          children: [
+            convertItem(view, "convert-bullet", "无序列表", "grid", "bullet"),
+            convertItem(view, "convert-ordered", "有序列表", "grid", "ordered"),
+            convertItem(view, "convert-todo", "待办", "check", "todo"),
+          ],
+        });
+        items.push({
+          id: "convert-callout-group",
+          label: "高亮",
+          icon: "warning",
+          children: [
+            convertItem(view, "convert-note", "提示", "warning", "note"),
+            convertItem(view, "convert-info", "信息", "warning", "info"),
+            convertItem(view, "convert-warning", "警告", "warning", "warning"),
+            convertItem(view, "convert-danger", "危险", "warning", "danger"),
+          ],
+        });
+        items.push(
+          convertItem(view, "convert-quote", "引用", "markdown", "quote"),
+        );
+        items.push(convertItem(view, "convert-code", "代码块", "code", "code"));
+        items.push(
+          convertItem(view, "convert-hr", "分割线", "text", "paragraph"),
+        );
+        return items;
+      },
+      align: [
+        {
+          id: "align-left",
+          label: "左对齐",
+          icon: "text",
+          run: () => {
+            const block = blockAt(view, view.state.selection.main.from);
+            if (block) alignBlock(view, block, "left");
+          },
+        },
+        {
+          id: "align-center",
+          label: "居中",
+          icon: "text",
+          run: () => {
+            const block = blockAt(view, view.state.selection.main.from);
+            if (block) alignBlock(view, block, "center");
+          },
+        },
+        {
+          id: "align-right",
+          label: "右对齐",
+          icon: "text",
+          run: () => {
+            const block = blockAt(view, view.state.selection.main.from);
+            if (block) alignBlock(view, block, "right");
+          },
+        },
+        {
+          id: "indent-in",
+          label: "增加缩进",
+          icon: "chevronRight",
+          run: () => adjustIndent(view, 1),
+        },
+        {
+          id: "indent-out",
+          label: "减少缩进",
+          icon: "chevronLeft",
+          run: () => adjustIndent(view, -1),
+        },
+      ],
+      columns: [1, 2, 3, 4, 5].map((n) => ({
+        id: `columns-${n}`,
+        label: `${n} 栏`,
+        icon: n === 1 ? "file" : "splitRight",
+        run: () => setColumns(view, n),
+      })),
+      history: [
+        {
+          id: "history-undo",
+          label: "后退",
+          icon: "chevronLeft",
+          run: () => undo(view),
+        },
+        {
+          id: "history-redo",
+          label: "前进",
+          icon: "chevronRight",
+          run: () => redo(view),
+        },
+        {
+          id: "history-copy",
+          label: "复制",
+          icon: "copyPath",
+          run: () => {
+            void navigator.clipboard
+              ?.writeText(selectionText(view))
+              .catch(() => {});
+          },
+        },
+        {
+          id: "history-delete",
+          label: "删除",
+          icon: "close",
+          run: () => {
+            const { from, to } = view.state.selection.main;
+            view.dispatch({ changes: { from, to, insert: "" } });
+          },
+        },
+      ],
+      clear: [
+        {
+          id: "clear-format",
+          label: "清除格式",
+          icon: "close",
+          run: () => clearFormatting(view),
+        },
+      ],
+      format: [
+        {
+          id: "format-bold",
+          label: "加粗",
+          icon: "text",
+          keepOpen: true,
+          run: () => toggleWrap(view, "**", "**"),
+        },
+        {
+          id: "format-italic",
+          label: "斜体",
+          icon: "pencil",
+          keepOpen: true,
+          run: () => toggleWrap(view, "*", "*"),
+        },
+        {
+          id: "format-underline",
+          label: "下划线",
+          icon: "text",
+          keepOpen: true,
+          run: () => toggleWrap(view, "<u>", "</u>"),
+        },
+        {
+          id: "format-strike",
+          label: "删除线",
+          icon: "close",
+          keepOpen: true,
+          run: () => toggleWrap(view, "~~", "~~"),
+        },
+        {
+          id: "format-code",
+          label: "行内代码",
+          icon: "code",
+          keepOpen: true,
+          run: () => toggleWrap(view, "`", "`"),
+        },
+        {
+          id: "format-link",
+          label: "链接",
+          icon: "share",
+          keepOpen: true,
+          run: () => toggleWrap(view, "[", "](url)"),
+        },
+      ],
+      color: (kind, className) => colorAction(view, kind, className),
+      painter: {
+        toggle: () => {
+          if (painterState.active) {
+            painterState.active = false;
+            painterState.count = 0;
+            painterState.marks = null;
+            marks = null;
+            return;
+          }
+          painterState.active = true;
+          painterState.count = 0;
+          takeMarks();
+        },
+        count: () => painterState.count,
+        active: () => painterState.active,
+      },
+    };
+
+    const position = () => {
+      if (!handle) return;
+      try {
+        view.requestMeasure({
+          read: (v) => {
+            const { from, to } = v.state.selection.main;
+            const pos = to > from ? to : from;
+            return v.coordsAtPos(pos);
+          },
+          write: (coords) => {
+            if (!coords || !handle) return;
+            handle.setCenter(coords.left, coords.bottom);
+          },
+        });
+      } catch {
+        // jsdom：保持默认位置
+      }
+    };
+
+    const show = () => {
+      if (!handle) {
+        handle = createRoulette(actions, () => {
+          handle = null;
+        });
         if (
           view.dom.style.position === "static" ||
           view.dom.style.position === ""
         ) {
           view.dom.style.position = "relative";
         }
-        view.dom.appendChild(dom);
+        document.body.appendChild(handle.element);
+        handle.element.style.position = "fixed";
+        handle.element.style.zIndex = "3000";
       }
-      dom.style.display = "flex";
-      visible = true;
-      positionToolbar(view, dom);
-    }
+      sharedHandle?.setPainter(painterState.active, painterState.count);
+      position();
+    };
 
-    function hide(): void {
-      if (dom) dom.style.display = "none";
-      visible = false;
-    }
+    const hide = () => {
+      if (!handle) return;
+      handle.destroy();
+      sharedHandle = null;
+      handle = null;
+    };
 
     return {
       update(u: ViewUpdate): void {
         if (!u.selectionSet) return;
         const { from, to } = u.state.selection.main;
         if (from !== to) {
-          if (!visible) show();
-          else positionToolbar(view, dom!);
-        } else if (visible) {
-          hide();
+          if (
+            painterState.active &&
+            (marks ?? painterState.marks) &&
+            !u.docChanged
+          ) {
+            window.clearTimeout(paintTimer);
+            paintTimer = window.setTimeout(() => {
+              if (!painterState.active) return;
+              if (applyMarks()) {
+                painterState.count += 1;
+                const el = document.querySelector<HTMLElement>(
+                  '[data-testid="roulette-center"]',
+                );
+                if (el) {
+                  el.textContent = String(painterState.count);
+                  el.dataset.painter = "true";
+                }
+              }
+            }, 120);
+          }
+          if (!handle) show();
+          else position();
+        } else if (handle) {
+          if (!painterState.active && !handle.element.matches(":hover")) hide();
         }
+        return true as unknown as void;
       },
       destroy(): void {
-        dom?.remove();
-        dom = null;
-        visible = false;
+        if (painterState.active) return;
+        hide();
       },
     };
   });

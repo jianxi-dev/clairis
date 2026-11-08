@@ -192,8 +192,8 @@ describe("SelectionPill 阅读态（.preview-content 选区）", () => {
   });
 });
 
-describe("SelectionPill 编辑态（不回归）", () => {
-  it("选区落在编辑器内时动作仍为 改写/翻译/润色 三个", () => {
+describe("SelectionPill 编辑态（轮盘接管）", () => {
+  it("编辑区选区不再渲染胶囊，由选区轮盘接管", () => {
     const cm = document.createElement("div");
     cm.className = "cm-content";
     cm.textContent = "这是编辑区文本";
@@ -206,35 +206,7 @@ describe("SelectionPill 编辑态（不回归）", () => {
     render(<SelectionPill />);
     fireSelectionChange();
 
-    const pill = document.querySelector<HTMLElement>("[data-selection-pill]");
-    expect(pill).not.toBeNull();
-    expect(pill!.getAttribute("data-selection-pill-mode")).toBe("edit");
-    expect(pillLabels()).toEqual(["改写", "翻译", "润色"]);
-  });
-
-  it("编辑态动作仍走 run_agent_turn 并给出结果面板", async () => {
-    const cm = document.createElement("div");
-    cm.className = "cm-content";
-    cm.textContent = "这是编辑区文本";
-    document.body.appendChild(cm);
-    editorViewFake.current = { dom: cm, posAtDOM: () => 0 };
-
-    vi.mocked(window.getSelection).mockReturnValue(
-      mockSelection("这是编辑区文本", textNodeOf(cm), textNodeOf(cm)),
-    );
-    render(<SelectionPill />);
-    fireSelectionChange();
-
-    await clickButton("改写");
-
-    expect(invokeMock).toHaveBeenCalledWith("run_agent_turn", {
-      messages: [
-        { role: "user", content: expect.stringContaining("这是编辑区文本") },
-      ],
-    });
-    expect(
-      document.querySelector<HTMLElement>("[data-selection-diff]"),
-    ).not.toBeNull();
+    expect(document.querySelector("[data-selection-pill]")).toBeNull();
   });
 });
 

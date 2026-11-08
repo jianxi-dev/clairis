@@ -569,7 +569,7 @@ test("选区工具条同样走统一落位，贴选区下方且不越视口", as
   await page.mouse.move(box.x + Math.min(box.width - 3, 60), y, { steps: 6 });
   await page.mouse.up();
 
-  const toolbar = page.locator('[data-testid="floating-toolbar"]');
+  const toolbar = page.locator('[data-testid="selection-roulette"]');
   await expect(toolbar).toBeVisible({ timeout: 3000 });
   const rect = await toolbar.evaluate((el) => {
     const r = el.getBoundingClientRect();
