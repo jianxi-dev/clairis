@@ -146,18 +146,16 @@ describe("FloatingPreview 媒体真实渲染", () => {
     expect(audio!.hasAttribute("controls")).toBe(true);
   });
 
-  it("PDF 渲染 asset iframe，带 #toolbar=0 且无 sandbox", () => {
+  it("PDF 走首页图预览，不渲染带工具条的 iframe", () => {
     openPreview("/tmp/doc.pdf");
     render(<FloatingPreview onOpenPath={async () => {}} />);
     const pdf = document.querySelector('[data-testid="preview-pdf"]');
     expect(pdf).not.toBeNull();
-    expect(pdf!.getAttribute("src")).toContain("#toolbar=0");
-    expect(pdf!.hasAttribute("sandbox")).toBe(false);
+    expect(document.querySelector("iframe")).toBeNull();
+    expect(document.querySelector('[data-epdf-i="zoom-toolbar"]')).toBeNull();
     expect(
       document.querySelector('[data-testid="preview-media-placeholder"]'),
     ).toBeNull();
-    expect(document.querySelector("img")).toBeNull();
-    expect(document.querySelector("video")).toBeNull();
   });
 
   it("非 Tauri 环境回退占位，不渲染真实媒体元素", () => {

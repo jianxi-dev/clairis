@@ -62,10 +62,10 @@ describe("railCards —— 密度与卡片高度", () => {
     expect(clampCardHeight(160)).toBe(160);
   });
 
-  it("缩略图盒严格 72×54（4:3）", () => {
-    expect(thumbnailBox()).toEqual({ w: 72, h: 54 });
-    expect(CARD_RATIO_W).toBe(72);
-    expect(CARD_RATIO_H).toBe(54);
+  it("缩略图盒严格 64×48（4:3）", () => {
+    expect(thumbnailBox()).toEqual({ w: 64, h: 48 });
+    expect(CARD_RATIO_W).toBe(64);
+    expect(CARD_RATIO_H).toBe(48);
     expect(thumbnailBox().w / thumbnailBox().h).toBeCloseTo(4 / 3, 5);
   });
 });
