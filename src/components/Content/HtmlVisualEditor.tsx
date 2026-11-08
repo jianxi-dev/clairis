@@ -67,6 +67,15 @@ export default function HtmlVisualEditor({
     nodeId: string;
     anchor: SelectionRect;
   } | null>(null);
+  const [resizing, setResizing] = useState<{
+    edge: "e" | "s" | "se" | "w";
+    startX: number;
+    startY: number;
+    startW: number;
+    startH: number;
+    w: number;
+    h: number;
+  } | null>(null);
   // 编辑期间冻结文档：否则每敲一个字都重建 iframe，光标与编辑态一起丢。
   //
   // 用 ref 而不是 state 做判定：content 走的是外部 store，订阅回调可能在
@@ -267,6 +276,67 @@ export default function HtmlVisualEditor({
     [content, selected],
   );
 
+  useEffect(() => {
+    if (!resizing) return;
+    const onMove = (e: PointerEvent) => {
+      setResizing((prev) => {
+        if (!prev) return prev;
+        const dx = e.clientX - prev.startX;
+        const dy = e.clientY - prev.startY;
+        const w = Math.max(
+          24,
+          prev.edge === "w" ? prev.startW - dx : prev.startW + dx,
+        );
+        const h = Math.max(24, prev.startH + dy);
+        return {
+          ...prev,
+          w: prev.edge === "w" || prev.edge === "e" ? w : prev.w,
+          h: prev.edge === "s" || prev.edge === "se" ? h : prev.h,
+          ...(prev.edge === "se" ? { w, h } : null),
+        };
+      });
+    };
+    const onUp = () => {
+      setResizing((prev) => {
+        if (!prev || !selected) return null;
+        const { w, h } = prev;
+        commit((content) =>
+          applyStylePatch(content, selected, {
+            width: `${Math.round(w)}px`,
+            height: `${Math.round(h)}px`,
+          }),
+        );
+        setBox((b) =>
+          b && b.nodeId === selected
+            ? { ...b, anchor: { ...b.anchor, width: w, height: h } }
+            : b,
+        );
+        return null;
+      });
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+    };
+  }, [resizing, selected, commit]);
+
+  const startResize = (edge: "e" | "s" | "se" | "w", e: React.PointerEvent) => {
+    if (!box) return;
+    e.preventDefault();
+    e.stopPropagation();
+    setResizing({
+      edge,
+      startX: e.clientX,
+      startY: e.clientY,
+      startW: box.anchor.width,
+      startH: box.anchor.height,
+      w: box.anchor.width,
+      h: box.anchor.height,
+    });
+  };
+
   return (
     <>
       <iframe
@@ -283,6 +353,58 @@ export default function HtmlVisualEditor({
           background: "var(--app-surface)",
         }}
       />
+      {selected && box?.nodeId === selected && !editingRef.current && (
+        <div
+          data-testid="html-resize-guides"
+          style={{
+            position: "fixed",
+            left: box.anchor.x,
+            top: box.anchor.y,
+            width: resizing?.w ?? box.anchor.width,
+            height: resizing?.h ?? box.anchor.height,
+            border: "1px dashed var(--app-accent)",
+            pointerEvents: "none",
+            zIndex: 40,
+          }}
+        >
+          {(["e", "s", "se", "w"] as const).map((edge) => {
+            const style: React.CSSProperties =
+              edge === "e"
+                ? { right: -4, top: "50%", marginTop: -4, cursor: "ew-resize" }
+                : edge === "s"
+                  ? {
+                      bottom: -4,
+                      left: "50%",
+                      marginLeft: -4,
+                      cursor: "ns-resize",
+                    }
+                  : edge === "se"
+                    ? { right: -4, bottom: -4, cursor: "nwse-resize" }
+                    : {
+                        left: -4,
+                        top: "50%",
+                        marginTop: -4,
+                        cursor: "ew-resize",
+                      };
+            return (
+              <span
+                key={edge}
+                data-testid={`html-resize-${edge}`}
+                onPointerDown={(e) => startResize(edge, e)}
+                style={{
+                  position: "absolute",
+                  width: 8,
+                  height: 8,
+                  borderRadius: 2,
+                  background: "var(--app-accent)",
+                  pointerEvents: "auto",
+                  ...style,
+                }}
+              />
+            );
+          })}
+        </div>
+      )}
       {selected && box?.nodeId === selected && info && (
         <HtmlEditToolbar
           key={selected}

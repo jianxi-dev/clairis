@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "md 编辑无 HTML 工具条",
+      "screenshot": ".artifacts/454/01-md-edit-no-html-toolbar.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T17:47:01Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "HTML 工具条与手柄",
+      "screenshot": ".artifacts/454/02-html-toolbar-handles.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T17:47:01Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "双击仅定位光标",
+      "screenshot": ".artifacts/454/03-dblclick-caret-only.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T17:47:01Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "拖拽调整宽高",
+      "screenshot": ".artifacts/454/04-resized-block.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T17:47:01Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}

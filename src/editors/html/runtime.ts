@@ -218,6 +218,20 @@ function runtimeSource(version: number): string {
     editing = el;
     el.setAttribute("contenteditable", "true");
     el.focus({ preventScroll: true });
+    // 双击的默认语义是选词：把选区折叠到点击点，只保留光标。
+    const sel = getSelection();
+    if (sel) {
+      const doc = el.ownerDocument;
+      const point =
+        typeof doc.caretRangeFromPoint === "function"
+          ? doc.caretRangeFromPoint(e.clientX, e.clientY)
+          : null;
+      sel.removeAllRanges();
+      if (point) {
+        point.collapse(true);
+        sel.addRange(point);
+      }
+    }
     window.scrollTo(scrollX, scrollY);
     post({ type: "textEditBegin", nodeId: el.getAttribute("data-cm-node-id") });
   }, true);

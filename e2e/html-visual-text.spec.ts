@@ -177,3 +177,14 @@ test("Enter 把段落拆成两块", async ({ page }) => {
   expect(after).toContain("一段");
   expect((after.match(/<p/g) ?? []).length).toBe(2);
 });
+
+test("双击只定位光标，不选中邻近文字", async ({ page }) => {
+  const frame = await openVisual(page);
+  const p = frame.locator('[data-cm-node-id="p:0"]');
+  await p.dblclick();
+  await expect(p).toHaveAttribute("contenteditable", "true");
+  const selected = await frame
+    .locator("body")
+    .evaluate(() => window.getSelection()?.toString().length ?? -1);
+  expect(selected).toBe(0);
+});
