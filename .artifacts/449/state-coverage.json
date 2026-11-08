@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "主题系统图标",
+      "screenshot": ".artifacts/449/01-theme-system-icon.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T17:14:20Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "亮色六线图标",
+      "screenshot": ".artifacts/449/02-theme-light-icon.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T17:14:20Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "状态栏图标组",
+      "screenshot": ".artifacts/449/03-status-bar-icons.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T17:14:20Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "自动布局魔法棒",
+      "screenshot": ".artifacts/449/04-auto-layout-wand.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T17:14:20Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}
