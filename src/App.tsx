@@ -6,7 +6,6 @@ import { isMediaKind } from "./stores/index";
 import { useEditorStore } from "./stores/editorStore";
 import { useCaptureOverlayStore } from "./stores/captureOverlay";
 import StatusBar from "./components/StatusBar";
-import ImmersivePeekBar from "./components/ImmersivePeekBar";
 import TemplatePicker from "./components/TemplatePicker";
 import SettingsView from "./components/SettingsView";
 import PaneTreeView from "./components/Content/PaneTreeView";
@@ -70,30 +69,12 @@ function App() {
   const tabs = useStore((s) => s.tabs);
   const activeTab = activeTabId ? tabs[activeTabId] : null;
   const readingMode = useStore((s) => s.readingMode);
-  const immersiveChromeVisible = useStore((s) => s.immersiveChromeVisible);
-  const tabDragActive = useStore((s) => s.tabDragActive);
-  const peekTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const peekInsideRef = useRef(false);
-  const prevTabDragRef = useRef(false);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [quickOpenOpen, setQuickOpenOpen] = useState(false);
   const [quickOpenQuery, setQuickOpenQuery] = useState("");
   const settingsReturnRef = useRef<Scene>("workspace");
-
-  // 拖拽结束（true→false）且指针已在热区外时，补上被抑制的 2s 收起。
-  // 只在拖拽真正结束的那一刻动作：挂载时不得武装收起，否则会误收用户显式唤出的悬浮条（#343）。
-  useEffect(() => {
-    const wasDragging = prevTabDragRef.current;
-    prevTabDragRef.current = tabDragActive;
-    if (!wasDragging) return;
-    if (tabDragActive || peekInsideRef.current) return;
-    if (peekTimerRef.current) clearTimeout(peekTimerRef.current);
-    peekTimerRef.current = setTimeout(() => {
-      useStore.getState().setImmersiveChromeVisible(false);
-    }, 2000);
-  }, [tabDragActive]);
 
   // Init config loading + theme on mount
   const { setTheme, scheduleSave } = useConfig();
@@ -910,31 +891,6 @@ function App() {
         onOpenGrid={handleQuickOpenGrid}
         onOpenSettings={handleQuickOpenSettings}
       />
-      {readingMode && (
-        <div
-          className="immersive-peek-zone"
-          data-testid="immersive-peek-zone"
-          onMouseEnter={() => {
-            peekInsideRef.current = true;
-            if (peekTimerRef.current) clearTimeout(peekTimerRef.current);
-            peekTimerRef.current = setTimeout(() => {
-              useStore.getState().setImmersiveChromeVisible(true);
-            }, 400);
-          }}
-          onMouseLeave={() => {
-            peekInsideRef.current = false;
-            if (peekTimerRef.current) clearTimeout(peekTimerRef.current);
-            // 拖拽页签期间不收起：浮层卸载会中断进行中的拖拽。
-            if (useStore.getState().tabDragActive) return;
-            peekTimerRef.current = setTimeout(() => {
-              useStore.getState().setImmersiveChromeVisible(false);
-            }, 2000);
-          }}
-        >
-          <div className="immersive-peek-trigger" />
-          {immersiveChromeVisible && <ImmersivePeekBar />}
-        </div>
-      )}
     </div>
   );
 }
