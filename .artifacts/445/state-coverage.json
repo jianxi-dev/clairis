@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "单栏打开",
+      "screenshot": ".artifacts/445/01-single-pane.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T17:02:27Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "双栏图标分级",
+      "screenshot": ".artifacts/445/02-two-panes-icons.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T17:02:27Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "拖拽经过正文",
+      "screenshot": ".artifacts/445/03-drag-over-body.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T17:02:27Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "拖放完成",
+      "screenshot": ".artifacts/445/04-after-drop.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T17:02:27Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}
