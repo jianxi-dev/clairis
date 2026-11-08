@@ -219,3 +219,22 @@ source_of_truth: supporting
 ## 7. 明确不做
 
 不做组件模式库、不写动效规范、不做品牌指南、不做像素级审计、不机检审美判据、不为每个像素立法、不追溯改写存量硬编码。
+
+---
+
+## 8. 延伸阅读（建议顺序）
+
+按这个顺序读，先有地图再进细节：
+
+| # | 文档 | 读它回答什么 |
+|---|---|---|
+| 1 | 本文 | 整套机制怎么转起来（地图） |
+| 2 | [设计复盘（retro.md）](../explorations/design-governance/retro.md) | 为什么要做：五个断点与返工证据链 |
+| 3 | [设计系统规格（spec.md）](./spec.md) | 具体数值与规则：图标 / 间距 / 字号 / 圆角 / 色彩 / 判据 |
+| 4 | [决案台账（decisions.md）](./decisions.md) | 已经裁决过的具体部件，以及每条的出处 |
+| 5 | [文档治理规范（GOVERNANCE.md）](../../GOVERNANCE.md) §2.3 / §3.2 / §5.1 / §6.3 | 台账例外、`ledger` 与 `redirect` 字段、矩阵解释条款、归档要求 |
+| 6 | [AGENTS.md](../../../AGENTS.md)「项目上下文路由」「设计」 | agent 实际被约束成什么样 |
+| 7 | [C9 视觉锚点机检方案](../../delivery/plans/c9-visual-anchor.md) | 唯一剩下的机检怎么实现（交 cw 工具包上游） |
+| 8 | [change 归档：design-system-governance](../../../openspec/changes/archive/2026-11-08-design-system-governance/proposal.md) | 这次治理变更的完整 Why / What / Delta |
+
+阅读提示：L3（ADR）与 L6（越界检查）目前只有人工约束，没有机检——那两处是本文最虚的地方，读到时按现状理解，不要当成已自动化。
