@@ -2539,9 +2539,13 @@ body {
   flex: none;
 }
 
-.theme-menu {
+.theme-menu-wrap {
   position: fixed;
   z-index: 80;
+  padding-bottom: 8px;
+}
+
+.theme-menu {
   min-width: 132px;
   padding: 4px;
   border: 1px solid var(--app-border);

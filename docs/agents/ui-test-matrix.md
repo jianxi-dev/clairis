@@ -87,6 +87,24 @@
 | 中文 composition | 不丢字、不提前提交 | ⛔ 未覆盖 | #112 / #113 |
 | 媒体插入（图片/视频） | 桌面端弹系统选择器，文件落到文档同级 `assets/`，源码写相对引用 | 🟡 取文件后全链路有单测（`mediaPicker.test.ts` 6 条 + Rust `import_media` 2 条）；**系统对话框本身无法 headless 驱动**，需 `npm run tauri dev` 人工点一次 | #103 |
 
+### 弹层（悬停打开类）
+
+规则来源：`docs/design/approved/popup-lifecycle/spec.md`。三次同源缺陷（`#328` / `#374` / 1.1）都穿过了「瞬移 hover」用例。
+
+| 状态 | 期望 | 覆盖 | 票 |
+|---|---|---|---|
+| 悬停触发器 | 面板出现 | ✅ `status-bar-visibility.spec.ts` | — |
+| 跨间隙（停顿 ≥200ms） | 面板保持可见 | ✅ `status-bar-visibility.spec.ts` | — |
+| 面板内停留 ≥500ms | 面板保持可见 | ✅ `status-bar-visibility.spec.ts` | — |
+| 面板内点选 | 设定并关闭 | ✅ `status-bar-visibility.spec.ts` | — |
+| 外部点击 | 关闭、无残留节点 | ✅ `status-bar-visibility.spec.ts` | — |
+| `Esc` | 关闭、无残留节点 | ✅ `status-bar-visibility.spec.ts` | — |
+| 滚动 / 尺寸变化 | 关闭 | 🟡 代码已接监听；e2e 未构造滚动容器，人工验证一次 | 1.1 |
+| 父级卸载（隐藏态状态栏） | 面板不随父级消失 | ✅ `status-bar-visibility.spec.ts` | — |
+| 卸载清理 | 定时器与监听器清除 | 🟡 无 e2e；靠 `useEffect` 返回清理函数，人工复核 | 1.1 |
+| 可访问性 | `aria-haspopup` / `aria-expanded` / `role="menu"` / `menuitemradio` + `aria-checked` | ✅ `status-bar-visibility.spec.ts` | — |
+| 点击语义 | 单击触发器按固定次序循环，面板保持并高亮新项 | ✅ `status-bar-visibility.spec.ts` | — |
+
 ## 怎么用
 
 票面写：

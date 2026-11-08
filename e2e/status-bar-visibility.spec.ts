@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { moveThrough } from "./helpers/ui-probe";
 
 const APP_URL = "http://localhost:1420";
 
@@ -35,6 +36,7 @@ test.describe("状态栏高度与显隐（ui-polish-batch6 4.1）", () => {
     await zone.hover();
     await expect(bar).toBeVisible({ timeout: 2000 });
 
+    await bar.hover();
     await page.mouse.move(400, 200);
     await page.mouse.move(400, 260);
     await expect(bar).toHaveCount(0, { timeout: 3000 });
@@ -109,5 +111,256 @@ test.describe("主题按钮去三角与图标区分（ui-polish-batch6 18.1）",
     const rays = (d: string) => (d.match(/M/g) ?? []).length - 1;
     expect(rays(paths.bright)).toBe(6);
     expect(rays(paths.warm)).toBe(4);
+  });
+});
+
+test.describe("主题弹层生命周期与点击循环（shell-media-batch7 1.1）", () => {
+  const ORDER = ["跟随系统", "亮色", "暗色", "暖色"] as const;
+
+  async function themeTitle(page: Page): Promise<string> {
+    return (await page.getByTestId("theme-entry").getAttribute("title")) ?? "";
+  }
+
+  test("指针缓慢横越间隙时面板不消失，仍可点选", async ({ page }) => {
+    await boot(page);
+    const btn = page.getByTestId("theme-entry");
+    await btn.hover();
+    const menu = page.getByTestId("theme-menu");
+    await expect(menu).toBeVisible({ timeout: 3000 });
+
+    const btnBox = (await btn.boundingBox())!;
+    const menuBox = (await menu.boundingBox())!;
+    const gapY = (menuBox.y + menuBox.height + btnBox.y) / 2;
+
+    // 先停在按钮与面板之间的空隙 200ms（旧实现 150ms 关闭定时器会在此触发）
+    await moveThrough(
+      page,
+      [
+        { x: btnBox.x + btnBox.width / 2, y: gapY },
+        { x: menuBox.x + menuBox.width / 2, y: menuBox.y + menuBox.height / 2 },
+      ],
+      { steps: 4, pauseMs: 200 },
+    );
+
+    await expect(menu).toBeVisible({ timeout: 1000 });
+    await page.waitForTimeout(500);
+    await expect(menu).toBeVisible();
+
+    await page.getByTestId("theme-option-dark").click();
+    await expect(page.locator("html")).toHaveClass(/dark/);
+    await expect(menu).toHaveCount(0);
+  });
+
+  test("单击图标按固定次序循环切换主题", async ({ page }) => {
+    await boot(page);
+    const btn = page.getByTestId("theme-entry");
+    const initial = await themeTitle(page);
+    const start = ORDER.findIndex((label) => initial.endsWith(label));
+    expect(start).toBeGreaterThanOrEqual(0);
+
+    let expected = start;
+    for (let i = 1; i <= 4; i += 1) {
+      await btn.click();
+      expected = (expected + 1) % ORDER.length;
+      await expect(btn).toHaveAttribute("title", `当前: ${ORDER[expected]}`);
+    }
+    await expect(btn).toHaveAttribute("title", `当前: ${ORDER[start]}`);
+  });
+
+  test("面板打开时单击图标仍循环且面板保持", async ({ page }) => {
+    await boot(page);
+    const btn = page.getByTestId("theme-entry");
+    await btn.hover();
+    const menu = page.getByTestId("theme-menu");
+    await expect(menu).toBeVisible({ timeout: 3000 });
+
+    const before = await themeTitle(page);
+    await btn.click();
+    await expect(btn).not.toHaveAttribute("title", before);
+    await expect(menu).toBeVisible();
+    await expect(
+      menu.locator('[role="menuitemradio"][aria-checked="true"]'),
+    ).toHaveCount(1);
+  });
+
+  test("Esc 与外部点击关闭面板", async ({ page }) => {
+    await boot(page);
+    const menu = page.getByTestId("theme-menu");
+    await page.getByTestId("theme-entry").hover();
+    await expect(menu).toBeVisible({ timeout: 3000 });
+    await page.keyboard.press("Escape");
+    await expect(menu).toHaveCount(0);
+
+    await page.mouse.move(600, 300);
+    await page.getByTestId("theme-entry").hover();
+    await expect(menu).toBeVisible({ timeout: 3000 });
+    await page.mouse.click(600, 300);
+    await expect(menu).toHaveCount(0);
+  });
+
+  test("可访问性属性：haspopup / expanded / menu / menuitemradio", async ({
+    page,
+  }) => {
+    await boot(page);
+    const btn = page.getByTestId("theme-entry");
+    await expect(btn).toHaveAttribute("aria-haspopup", "menu");
+    await expect(btn).toHaveAttribute("aria-expanded", "false");
+
+    await btn.hover();
+    const menu = page.getByTestId("theme-menu");
+    await expect(menu).toBeVisible({ timeout: 3000 });
+    await expect(btn).toHaveAttribute("aria-expanded", "true");
+    await expect(menu.locator('[role="menu"]')).toHaveCount(1);
+    await expect(menu.locator('[role="menuitemradio"]')).toHaveCount(4);
+    await expect(
+      menu.locator('[role="menuitemradio"][aria-checked="true"]'),
+    ).toHaveCount(1);
+  });
+
+  test("状态栏隐藏后经底部热区唤出，移向面板时面板不丢", async ({ page }) => {
+    await boot(page);
+    const bar = page.getByTestId("status-bar");
+    await bar.locator("span").first().dblclick();
+    await expect(bar).toHaveCount(0);
+
+    await page.getByTestId("status-hotzone").hover();
+    await expect(bar).toBeVisible({ timeout: 3000 });
+    await page.getByTestId("theme-entry").hover();
+    const menu = page.getByTestId("theme-menu");
+    await expect(menu).toBeVisible({ timeout: 3000 });
+
+    const menuBox = (await menu.boundingBox())!;
+    await moveThrough(
+      page,
+      [{ x: menuBox.x + menuBox.width / 2, y: menuBox.y + 10 }],
+      { steps: 4, pauseMs: 300 },
+    );
+    await expect(menu).toBeVisible({ timeout: 1000 });
+    await page.getByTestId("theme-option-warm").click();
+    await expect(page.locator("html")).toHaveClass(/warm/);
+  });
+
+  test("宽度面板按 Esc 关闭", async ({ page }) => {
+    await boot(page);
+    await page.getByTestId("status-width").click();
+    const panel = page.getByTestId("width-panel");
+    await expect(panel).toBeVisible({ timeout: 3000 });
+    await page.keyboard.press("Escape");
+    await expect(panel).toHaveCount(0);
+    await page.getByTestId("status-width").click();
+    await expect(panel).toBeVisible({ timeout: 3000 });
+    await page.mouse.click(600, 300);
+    await expect(panel).toHaveCount(0);
+  });
+});
+
+test.describe("弹层生命周期回归（评审修正）", () => {
+  test("隐藏态下弹层自动关闭时，指针仍在状态栏上则不卸载状态栏", async ({
+    page,
+  }) => {
+    await boot(page);
+    const bar = page.getByTestId("status-bar");
+    await bar.locator("span").first().dblclick();
+    await expect(bar).toHaveCount(0);
+
+    await page.getByTestId("status-hotzone").hover();
+    await expect(bar).toBeVisible({ timeout: 3000 });
+
+    await page.getByTestId("theme-entry").hover();
+    await expect(page.getByTestId("theme-menu")).toBeVisible({
+      timeout: 3000,
+    });
+
+    const lines = (await page.getByTestId("status-lines").boundingBox())!;
+    await moveThrough(
+      page,
+      [{ x: lines.x + lines.width / 2, y: lines.y + lines.height / 2 }],
+      { steps: 4 },
+    );
+    await expect(page.getByTestId("theme-menu")).toHaveCount(0, {
+      timeout: 3000,
+    });
+    await page.waitForTimeout(700);
+    await expect(bar).toBeVisible();
+  });
+
+  test("从面板移回触发器后，面板不应自行关闭", async ({ page }) => {
+    await boot(page);
+    const btn = page.getByTestId("theme-entry");
+    await btn.hover();
+    const menu = page.getByTestId("theme-menu");
+    await expect(menu).toBeVisible({ timeout: 3000 });
+
+    const menuBox = (await menu.boundingBox())!;
+    await moveThrough(
+      page,
+      [{ x: menuBox.x + menuBox.width / 2, y: menuBox.y + menuBox.height / 2 }],
+      { steps: 4, pauseMs: 400 },
+    );
+    await expect(menu).toBeVisible();
+
+    const btnBox = (await btn.boundingBox())!;
+    await moveThrough(
+      page,
+      [{ x: btnBox.x + btnBox.width / 2, y: btnBox.y + btnBox.height / 2 }],
+      { steps: 4 },
+    );
+    await page.waitForTimeout(500);
+    await expect(menu).toBeVisible();
+  });
+
+  test("Esc 只关闭弹层，不触发全局退出沉浸", async ({ page }) => {
+    await boot(page);
+    await page.evaluate(() => {
+      window.__biaoyue_store__?.getState?.().setReadingMode(true);
+    });
+    await page.getByTestId("theme-entry").hover();
+    const menu = page.getByTestId("theme-menu");
+    await expect(menu).toBeVisible({ timeout: 3000 });
+
+    await page.keyboard.press("Escape");
+    await expect(menu).toHaveCount(0);
+    expect(
+      await page.evaluate(
+        () => window.__biaoyue_store__?.getState?.().readingMode,
+      ),
+    ).toBe(true);
+  });
+
+  test("键盘可打开面板、方向键移动、Esc 归还焦点", async ({ page }) => {
+    await boot(page);
+    const btn = page.getByTestId("theme-entry");
+    await btn.focus();
+    await page.keyboard.press("ArrowDown");
+
+    const menu = page.getByTestId("theme-menu");
+    await expect(menu).toBeVisible({ timeout: 3000 });
+    await expect(page.locator('[role="menuitemradio"]:focus')).toHaveCount(1);
+    const firstFocused = await page.evaluate(
+      () => document.activeElement?.getAttribute("data-testid") ?? "",
+    );
+
+    await page.keyboard.press("ArrowDown");
+    const secondFocused = await page.evaluate(
+      () => document.activeElement?.getAttribute("data-testid") ?? "",
+    );
+    expect(secondFocused).not.toBe(firstFocused);
+
+    await page.keyboard.press("Escape");
+    await expect(menu).toHaveCount(0);
+    expect(
+      await page.evaluate(() =>
+        document.activeElement?.getAttribute("data-testid"),
+      ),
+    ).toBe("theme-entry");
+  });
+
+  test("主题面板右缘不超出视口", async ({ page }) => {
+    await boot(page);
+    await page.getByTestId("theme-entry").hover();
+    const menu = page.getByTestId("theme-menu");
+    await expect(menu).toBeVisible({ timeout: 3000 });
+    const box = (await menu.boundingBox())!;
+    expect(box.x + box.width).toBeLessThanOrEqual(1200 - 8 + 1);
   });
 });

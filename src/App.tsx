@@ -101,7 +101,19 @@ function App() {
   const scene = useStore((s) => s.scene);
   const [statusBarHidden, setStatusBarHidden] = useState(false);
   const [statusBarPeek, setStatusBarPeek] = useState(false);
+  const [statusBarPopupOpen, setStatusBarPopupOpen] = useState(false);
+  const statusBarHoverRef = useRef(false);
   const statusPeekTimer = useRef<number | null>(null);
+
+  const handleStatusBarPopupOpen = useCallback(
+    (open: boolean) => {
+      setStatusBarPopupOpen(open);
+      if (!open && statusBarHidden && !statusBarHoverRef.current) {
+        setStatusBarPeek(false);
+      }
+    },
+    [statusBarHidden],
+  );
 
   const openSettings = useCallback(() => {
     const st = useStore.getState();
@@ -780,7 +792,7 @@ function App() {
         </div>
       </div>
 
-      {statusBarHidden && !statusBarPeek ? (
+      {statusBarHidden && !statusBarPeek && !statusBarPopupOpen ? (
         <div
           data-testid="status-hotzone"
           className="status-hotzone"
@@ -804,9 +816,14 @@ function App() {
           onSetReadingMode={(on) => useStore.getState().setReadingMode(on)}
           onSetTheme={setTheme}
           onOpenGrid={openGridOverview}
-          onPointerLeave={() => {
-            if (statusBarHidden) setStatusBarPeek(false);
+          onPointerEnter={() => {
+            statusBarHoverRef.current = true;
           }}
+          onPointerLeave={() => {
+            statusBarHoverRef.current = false;
+            if (statusBarHidden && !statusBarPopupOpen) setStatusBarPeek(false);
+          }}
+          onPopupOpenChange={handleStatusBarPopupOpen}
           onSetReaderWidth={(w) => {
             useEditorStore.getState().setConfig({ readerWidth: w });
             scheduleSave();
