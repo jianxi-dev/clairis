@@ -1,0 +1,39 @@
+{
+  "states": [
+    {
+      "state": "md工具条12项",
+      "screenshot": ".artifacts/370/01-md-toolbar.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T08:46:17Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "改写指令预填",
+      "screenshot": ".artifacts/370/02-rewrite.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T08:46:17Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "翻译指令预填",
+      "screenshot": ".artifacts/370/03-translate.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T08:46:17Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "润色指令预填",
+      "screenshot": ".artifacts/370/04-polish.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T08:46:17Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "html编辑态仅html条",
+      "screenshot": ".artifacts/370/05-html-only.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T08:46:17Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}
