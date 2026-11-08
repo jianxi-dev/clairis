@@ -117,6 +117,8 @@ gh issue close <编号> --comment "已修复，提交 commit: xxx"
   2. **现状值**：现在是多少（px / 比例 / 实测截图）
   3. **期望值**：按规范应为多少，或明确的期望终态描述
 
+- 票面写法：在 `**Acceptance criteria**` 之后增加一行 `**视觉锚点**: design-system:§N` 或 `**视觉锚点**: ledger:<部件>`，多条用 `;` 分隔；**锚点内不得写像素值**（数值只在 spec 定义）。该字段是 `cw-tickets-check.sh` C9 的检查对象（C9 随第二个 change 落地，在此之前由 code-review 执行）。
+
 用户只给模糊描述时，执行者先补全三样，并给 2–3 个候选终态供选择（见 `docs/agents/ui-feedback.md`），再开票或直接改。
 
 **锚点不存在时**（gap）：先补条款或补台账行，不把「规范没有」当成「可以随便定」。gap 本身是正常信号，不等于缺陷挂起。

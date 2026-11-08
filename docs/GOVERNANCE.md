@@ -2,7 +2,7 @@
 title: 文档治理规范
 type: guide
 status: accepted
-last_updated: 2026-07-31
+last_updated: 2026-11-08
 source_of_truth: canonical
 ---
 
@@ -58,6 +58,7 @@ draft, in-review, accepted, implemented, deprecated, superseded, archived
 - `accepted` 和 `archived` 状态的文档**不可原地改写**内容。
 - 需要变更时，必须通过 supersede 链：创建新文档，旧文档标记为 `superseded` 并填写 `superseded_by`。
 - **append-only 台账例外**：声明 `ledger: append-only` 的台账类文档，允许**追加**新行，禁止修改或删除既有行；同一主题出现多行时以最新行为准。修订既有行只能通过在其后追加新行并注明取代关系完成。该例外只适用于台账文档，不得用于规范正文或任何规则条文。
+- 台账文件的 diff 必须是**纯追加**（旧版内容是新版的前缀），否则视为违例；台账限定为 `docs/design/system/` 下的单文件，且必须 `status: accepted` + `source_of_truth: canonical`。
 
 ---
 
@@ -79,7 +80,7 @@ title, type, status, last_updated
 - `owner`：文档负责人。单维护者仓库中可省略，不强制历史文档补充。
 - `source_of_truth`：权威性标识，枚举如下。缺省为 `supporting`。
 - `superseded_by`：**仅当** `status=superseded` 时必填，指向替代文档的相对路径。其余状态**禁止出现**此字段。
-- `ledger`：**仅**台账类文档使用，唯一合法值 `append-only`。声明后适用 §2.3 的追加例外。
+- `ledger`：**仅**台账类文档使用，唯一合法值 `append-only`。同时必须满足 `status=accepted`、`source_of_truth=canonical`、位于 `docs/design/system/` 之下；声明后适用 §2.3 的追加例外。台账须保持稳定表头与固定列。
 
 ### 3.3 source_of_truth 枚举（恰好 3 个）
 
@@ -169,7 +170,7 @@ product, design, architecture, adr, research, delivery, guide, archive
 
 **条款 A · 具体性优先**：同一事实，若低层文档给出更具体的规定且**不与高层文档矛盾**，两者共存，不构成冲突。高层管原则，低层管具体。
 
-**条款 B · 矛盾即缺陷**：若低层文档与高层文档**矛盾**（例如 approved design 违反 product direction 的某条铁律），按矩阵高层胜，且**低层文档必须修订**。矩阵裁定的是「同一事实的重复表述」，不是「派生方向」；产品方向始终约束设计内容，只是不参与同一事实的具体数值裁定。
+**条款 B · 矛盾即缺陷**：若低层文档与高层文档**矛盾**（例如 approved design 违反 product direction 的某条铁律），按矩阵高层胜，且**低层文档必须修订**。矩阵裁定的对象是「同一事实的重复表述」；产品方向对设计的约束通过**评审**落地（G1 出口 code-review 的 Spec 轴核对 D#），不在矩阵内另设一条权威。
 
 ---
 
@@ -177,7 +178,8 @@ product, design, architecture, adr, research, delivery, guide, archive
 
 ### 6.1 活文档更新
 
-- 当前生效的文档（status 为 draft/in-review/accepted/implemented）原地更新。
+- `draft` / `in-review` 状态的文档原地更新。
+- `accepted` / `implemented` 状态的**内容修订**走 supersede 链（§2.3）；台账类文档按 §2.3 的追加例外处理。
 - 历史变更交给 Git 版本历史追溯，不额外维护版本副本。
 
 ### 6.2 不可变快照（仅三种情况生成）
@@ -192,6 +194,7 @@ product, design, architecture, adr, research, delivery, guide, archive
 
 - 归档文档必须设置 `status=archived`。
 - 归档文档必须位于 `archive/` 目录或通过 redirect 指向替代文档。
+- `superseded` 文档同样必须位于 `archive/` 目录或声明 `redirect`（治理检查器按此执行）。
 - 归档后文档内容不可修改。
 
 ---

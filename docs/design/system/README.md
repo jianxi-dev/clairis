@@ -21,7 +21,7 @@ source_of_truth: supporting
 ## 进入条件
 
 - 内容是**会被多个界面复用**的设计规则，而非一次性草图。
-- 已批准后方可进入；草案与比稿先在 `../explorations/` 沉淀。
+- 已批准（`accepted`）后可进入；正在定案的**唯一候选稿**（`in-review`）也允许，但同一主题不得并列第二份候选，比稿仍须先在 `../explorations/` 沉淀。
 - 新增文档须带 frontmatter（`title` / `type: design` / `status` / `last_updated`），规范见 `../../GOVERNANCE.md`。
 
 ## 权威级别
