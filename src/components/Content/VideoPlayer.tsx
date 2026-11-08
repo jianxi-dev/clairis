@@ -683,7 +683,21 @@ export default function VideoPlayer({
       setError("视频加载失败（可能编码不受支持或文件不可访问）");
     });
 
+    // ArtPlayer 的 autoSize 只跟随 window resize；分栏拖拽与格全屏改的是容器尺寸，
+    // 不触发 window resize，画面会停在旧比例。容器自身的尺寸变化必须回到同一条重排入口。
+    let fitRaf = 0;
+    const fitObserver = new ResizeObserver(() => {
+      if (fitRaf) return;
+      fitRaf = window.requestAnimationFrame(() => {
+        fitRaf = 0;
+        art.autoSize();
+      });
+    });
+    fitObserver.observe(container);
+
     return () => {
+      fitObserver.disconnect();
+      if (fitRaf) window.cancelAnimationFrame(fitRaf);
       document.removeEventListener("fullscreenchange", onNativeFullscreen);
       art.destroy(false);
       artRef.current = null;

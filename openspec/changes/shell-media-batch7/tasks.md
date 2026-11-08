@@ -46,7 +46,7 @@
 
 依赖：无（`VideoPlayer.tsx` 串行链首位）
 
-- [ ] 4.1 容器尺寸变化后视频自动重新适配
+- [x] 4.1 容器尺寸变化后视频自动重新适配
 
   实现要点：
   - `Content/VideoPlayer.tsx`：在播放器容器上挂 `ResizeObserver`，去抖后调用播放器自身的重排入口（`autoSize`）；卸载时断开。
