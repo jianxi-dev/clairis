@@ -268,7 +268,8 @@ test("删除块只删目标块", async ({ page }) => {
 
 test("增加缩进给块内每行加两个空格", async ({ page }) => {
   await hoverHandle(page, 2);
-  await page.locator('[data-action="indent"]').click();
+  await page.locator('[data-testid="block-menu-align"]').hover();
+  await page.locator('[data-alignment="indent"]').click();
   await expect
     .poll(() => storeContent(page))
     .toBe("# 标题\n\n  第一段正文\n\n第二段正文\n");
@@ -380,9 +381,10 @@ test("点背景色把块内容包进 mdb-bg-blue", async ({ page }) => {
 
 test("缩进 / 减少缩进图标语义正确（不是对齐图标）", async ({ page }) => {
   await hoverHandle(page, 2);
+  await page.locator('[data-testid="block-menu-align"]').hover();
 
   const indentIcon = page
-    .locator('[data-action="indent"]')
+    .locator('[data-alignment="indent"]')
     .locator("svg[data-icon]");
   await expect(indentIcon).toHaveAttribute(
     "data-icon",
@@ -390,7 +392,7 @@ test("缩进 / 减少缩进图标语义正确（不是对齐图标）", async ({
   );
 
   const outdentIcon = page
-    .locator('[data-action="outdent"]')
+    .locator('[data-alignment="outdent"]')
     .locator("svg[data-icon]");
   await expect(outdentIcon).toHaveAttribute(
     "data-icon",
@@ -585,4 +587,103 @@ test("选区工具条同样走统一落位，贴选区下方且不越视口", as
   expect(rect.bottom).toBeLessThanOrEqual(rect.innerHeight);
   expect(rect.right).toBeLessThanOrEqual(rect.innerWidth);
   await page.screenshot({ path: ".artifacts/371/04-toolbar.png" });
+});
+
+test("「对齐与缩进」二级恰好 5 项：3 对齐带图标 + 2 缩进", async ({ page }) => {
+  await hoverHandle(page, 2);
+
+  const row = page.locator('[data-testid="block-menu-align"]');
+  await expect(row).toContainText("对齐与缩进");
+  await row.hover();
+
+  const panel = page.locator('[data-testid="block-menu-align-panel"]');
+  await expect(panel).toBeVisible({ timeout: 3000 });
+  await expect(
+    panel.locator('[data-testid="block-menu-align-option"]'),
+  ).toHaveCount(5);
+  for (const key of ["left", "center", "right"]) {
+    await expect(panel.locator(`[data-alignment="${key}"] svg`)).toHaveCount(1);
+  }
+  await expect(panel.locator('[data-alignment="indent"] svg')).toHaveCount(1);
+  await expect(panel.locator('[data-alignment="outdent"] svg')).toHaveCount(1);
+  await page.screenshot({ path: ".artifacts/373/01-align-indent.png" });
+});
+
+test("转换菜单与新增手柄菜单同宽（差 0px）", async ({ page }) => {
+  await hoverHandle(page, 2);
+  const blockWidth = await page
+    .locator('[data-testid="block-menu"]')
+    .evaluate((el) => (el as HTMLElement).offsetWidth);
+
+  await page.mouse.move(20, 20);
+  await expect(page.locator('[data-testid="block-menu"]')).toHaveCount(0);
+
+  await page.evaluate(() => {
+    const win = window as unknown as Record<string, any>;
+    win.__biaoyue_openFile__(
+      "/Users/test/bm-width.md",
+      "# 标题\n\n\n第二段",
+      "bm-width.md",
+    );
+    win.__biaoyue_store__.getState().setEditorMode("edit");
+  });
+  await page.locator(".cm-content").waitFor({ timeout: 5000 });
+  const add = page.locator(".cm-block-handle-add").first();
+  await add.hover();
+  const insertWidth = await page
+    .locator(".mdb-slash-menu")
+    .evaluate((el) => (el as HTMLElement).offsetWidth);
+
+  expect(Math.abs(blockWidth - insertWidth)).toBe(0);
+  await page.screenshot({ path: ".artifacts/373/02-same-width.png" });
+});
+
+test("转换网格前两行（标题 / 无序列表）间距小于下方结构行", async ({
+  page,
+}) => {
+  await hoverHandle(page, 2);
+
+  const geometry = await page.evaluate(() => {
+    const cells = Array.from(
+      document.querySelectorAll('[data-testid="block-menu-cell"]'),
+    ) as HTMLElement[];
+    const rects = cells.map((c) => c.getBoundingClientRect());
+    const firstRowTop = rects.slice(0, 5)[0].top;
+    const secondRowTop = rects[5].top;
+    const rowPitch = secondRowTop - firstRowTop;
+    const action = document.querySelector(
+      '[data-testid="block-menu-action"]',
+    ) as HTMLElement;
+    const actionTop = action.getBoundingClientRect().top;
+    const secondRowBottom = rects[9].bottom;
+    return {
+      rowPitch,
+      toAction: actionTop - secondRowBottom,
+    };
+  });
+  expect(geometry.rowPitch).toBeLessThan(64);
+  expect(geometry.toAction).toBeGreaterThan(0);
+  await page.screenshot({ path: ".artifacts/373/03-grid-spacing.png" });
+});
+
+test("二级菜单选「减少缩进」回收两格缩进", async ({ page }) => {
+  await page.evaluate(() => {
+    const win = window as unknown as Record<string, any>;
+    win.__biaoyue_openFile__(
+      "/tmp/block-menu-outdent.md",
+      "# 标题\n\n  第一段正文\n\n第二段正文\n",
+      "block-menu-outdent.md",
+    );
+    win.__biaoyue_store__.getState().setEditorMode("edit");
+  });
+  await page.locator(".cm-content").waitFor({ timeout: 5000 });
+
+  await hoverHandle(page, 2);
+  await page.locator('[data-testid="block-menu-align"]').hover();
+  await page.locator('[data-alignment="outdent"]').click();
+
+  await expect
+    .poll(() => storeContent(page))
+    .toBe("# 标题\n\n第一段正文\n\n第二段正文\n");
+  await page.screenshot({ path: ".artifacts/373/04-outdent.png" });
 });

@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "对齐与缩进二级5项",
+      "screenshot": ".artifacts/373/01-align-indent.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T09:20:31Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "两菜单同宽264",
+      "screenshot": ".artifacts/373/02-same-width.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T09:20:31Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "网格前两行收紧",
+      "screenshot": ".artifacts/373/03-grid-spacing.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T09:20:31Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "减少缩进生效",
+      "screenshot": ".artifacts/373/04-outdent.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T09:20:31Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}

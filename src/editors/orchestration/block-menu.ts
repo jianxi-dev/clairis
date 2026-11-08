@@ -10,6 +10,7 @@ import type { EditorView } from "@codemirror/view";
 import { defaultCommands, openInsertMenu, releaseInsertMenu } from "../slash";
 import { renderIcon } from "../icons";
 import { menuStack } from "./menu-stack";
+import { MENU_WIDTH, MENU_ROW_HEIGHT } from "./menu-metrics";
 import {
   PANEL_MAX_HEIGHT,
   rectFromCoords,
@@ -48,8 +49,7 @@ import {
   createColorRow,
 } from "./color-palette";
 
-export const BLOCK_MENU_WIDTH = 264;
-export const BLOCK_MENU_ROW_HEIGHT = 36;
+export { MENU_ROW_HEIGHT, MENU_WIDTH };
 
 /** 菜单 id 前缀：Esc / 外部点击用它识别块菜单层。 */
 export const BLOCK_MENU_ID_PREFIX = "block:";
@@ -65,9 +65,37 @@ const ACTION_ROWS: ReadonlyArray<readonly [string, string, string]> = [
   ["剪切块", "FeishuclipOutlined", "cut"],
   ["上移", "ArrowUpwardOutlined", "move-up"],
   ["下移", "ArrowDownwardOutlined", "move-down"],
-  ["增加缩进", "IndentIncreaseOutlined", "indent"],
-  ["减少缩进", "IndentDecreaseOutlined", "outdent"],
   ["删除块", "DeleteTrashOutlined", "delete"],
+];
+
+/** 「对齐与缩进」二级：三项对齐（带图标）+ 两项缩进。顺序即用户心智顺序。 */
+const ALIGN_INDENT_ITEMS: ReadonlyArray<{
+  key: string;
+  label: string;
+  icon: string;
+  align?: "left" | "center" | "right";
+  indent?: "indent" | "outdent";
+}> = [
+  { key: "left", label: "左对齐", icon: "AlignLeftOutlined", align: "left" },
+  {
+    key: "center",
+    label: "居中",
+    icon: "AlignCenterOutlined",
+    align: "center",
+  },
+  { key: "right", label: "右对齐", icon: "AlignRightOutlined", align: "right" },
+  {
+    key: "indent",
+    label: "增加缩进",
+    icon: "IndentIncreaseOutlined",
+    indent: "indent",
+  },
+  {
+    key: "outdent",
+    label: "减少缩进",
+    icon: "IndentDecreaseOutlined",
+    indent: "outdent",
+  },
 ];
 
 const closeTimers = new WeakMap<EditorView, number>();
@@ -192,7 +220,7 @@ function positionPanel(
   const placement = placeMenu(
     anchor,
     {
-      width: box.width || panel.offsetWidth || BLOCK_MENU_WIDTH,
+      width: box.width || panel.offsetWidth || MENU_WIDTH,
       height: box.height || panel.offsetHeight,
     },
     bounds,
@@ -216,7 +244,7 @@ export function openBlockMenu(
   panel.className = "cm-block-menu";
   panel.classList.add("mdb-block-handle-menu");
   panel.dataset.testid = "block-menu";
-  panel.style.width = `${BLOCK_MENU_WIDTH}px`;
+  panel.style.width = `${MENU_WIDTH}px`;
   panel.addEventListener("pointerenter", () => cancelPendingClose(view));
   panel.addEventListener("pointerleave", () => scheduleClose(view));
 
@@ -314,7 +342,7 @@ export function openBlockMenu(
     typeRow.type = "button";
     typeRow.className = "cm-block-menu-item";
     typeRow.dataset.testid = "block-menu-type";
-    typeRow.style.height = `${BLOCK_MENU_ROW_HEIGHT}px`;
+    typeRow.style.height = `${MENU_ROW_HEIGHT}px`;
     typeRow.appendChild(renderIcon("CalloutOutlined"));
     const typeLabel = document.createElement("span");
     typeLabel.textContent = "类型";
@@ -393,7 +421,7 @@ export function openBlockMenu(
   colorRow.type = "button";
   colorRow.className = "cm-block-menu-item";
   colorRow.dataset.testid = "block-menu-color";
-  colorRow.style.height = `${BLOCK_MENU_ROW_HEIGHT}px`;
+  colorRow.style.height = `${MENU_ROW_HEIGHT}px`;
   colorRow.appendChild(renderIcon("FontcolorOutlined"));
   const colorLabel = document.createElement("span");
   colorLabel.textContent = "颜色";
@@ -419,6 +447,7 @@ export function openBlockMenu(
     panelEl.classList.add(COLOR_PANEL_CLASS);
     panelEl.dataset.testid = "block-menu-color-panel";
     panelEl.dataset.blockFlyout = "1";
+    panelEl.style.width = `${MENU_WIDTH}px`;
     const own = view.dom.getBoundingClientRect();
     const rowRect = colorRow.getBoundingClientRect();
     panelEl.style.left = `${rowRect.right - own.left + 4}px`;
@@ -476,15 +505,15 @@ export function openBlockMenu(
   });
   panel.appendChild(colorRow);
 
-  // 对齐入口（E-11：结构动作组提供 缩进 / 颜色 / 对齐）。
+  // 对齐与缩进（#373）：两项合并成一行，二级菜单 3 对齐 + 2 缩进。
   const alignRow = document.createElement("button");
   alignRow.type = "button";
   alignRow.className = "cm-block-menu-item";
   alignRow.dataset.testid = "block-menu-align";
-  alignRow.style.height = `${BLOCK_MENU_ROW_HEIGHT}px`;
+  alignRow.style.height = `${MENU_ROW_HEIGHT}px`;
   alignRow.appendChild(renderIcon("AlignLeftOutlined"));
   const alignLabel = document.createElement("span");
-  alignLabel.textContent = "对齐";
+  alignLabel.textContent = "对齐与缩进";
   alignRow.appendChild(alignLabel);
   const alignChevron = document.createElement("span");
   alignChevron.className = "cm-block-menu-chevron";
@@ -503,38 +532,47 @@ export function openBlockMenu(
     panelEl.className = "cm-block-menu-flyout";
     panelEl.dataset.testid = "block-menu-align-panel";
     panelEl.dataset.blockFlyout = "1";
+    panelEl.style.width = `${MENU_WIDTH}px`;
     const own = view.dom.getBoundingClientRect();
     const rowRect = alignRow.getBoundingClientRect();
     panelEl.style.left = `${rowRect.right - own.left + 4}px`;
     panelEl.style.top = `${rowRect.top - own.top}px`;
 
     const blockText = view.state.doc.sliceString(block.from, block.to);
-    const alignments: ReadonlyArray<readonly [string, string, string]> = [
-      ["left", "左对齐", "AlignLeftOutlined"],
-      ["center", "居中", "AlignCenterOutlined"],
-      ["right", "右对齐", "AlignRightOutlined"],
-    ];
-    for (const [key, label, icon] of alignments) {
+    // 缩进的空白在块范围之外（block.from 落在内容首字），单独取到行首，
+    // 否则「减少缩进」永远看不到要剥的空格。
+    const lineStart = view.state.doc.lineAt(block.from).from;
+    for (const item of ALIGN_INDENT_ITEMS) {
       const option = document.createElement("button");
       option.type = "button";
       option.className = "cm-block-menu-flyout-item";
       option.dataset.testid = "block-menu-align-option";
-      option.dataset.alignment = key;
-      option.appendChild(renderIcon(icon));
+      option.dataset.alignment = item.key;
+      option.appendChild(renderIcon(item.icon));
       const text = document.createElement("span");
-      text.textContent = label;
+      text.textContent = item.label;
       option.appendChild(text);
       option.addEventListener("pointerdown", (event) => {
         event.preventDefault();
         event.stopPropagation();
-        const next = toggleBlockAlignmentText(
-          blockText,
-          key as "left" | "center" | "right",
-        );
+        if (item.align) {
+          const next = toggleBlockAlignmentText(blockText, item.align);
+          closeBlockMenu(view);
+          if (next === blockText) return;
+          view.dispatch({
+            changes: { from: block.from, to: block.to, insert: next },
+          });
+          return;
+        }
+        const indented = view.state.doc.sliceString(lineStart, block.to);
+        const next =
+          item.indent === "indent"
+            ? indentBlock(indented)
+            : outdentBlock(indented);
         closeBlockMenu(view);
-        if (next === blockText) return;
+        if (next === indented) return;
         view.dispatch({
-          changes: { from: block.from, to: block.to, insert: next },
+          changes: { from: lineStart, to: block.to, insert: next },
         });
       });
       panelEl.appendChild(option);
@@ -562,7 +600,7 @@ export function openBlockMenu(
     row.className = "cm-block-menu-item";
     row.dataset.testid = "block-menu-action";
     row.dataset.action = action;
-    row.style.height = `${BLOCK_MENU_ROW_HEIGHT}px`;
+    row.style.height = `${MENU_ROW_HEIGHT}px`;
     row.appendChild(renderIcon(icon));
     const text = document.createElement("span");
     text.textContent = label;
@@ -579,7 +617,7 @@ export function openBlockMenu(
   addBelow.type = "button";
   addBelow.className = "cm-block-menu-item";
   addBelow.dataset.testid = "block-menu-add-below";
-  addBelow.style.height = `${BLOCK_MENU_ROW_HEIGHT}px`;
+  addBelow.style.height = `${MENU_ROW_HEIGHT}px`;
   addBelow.appendChild(renderIcon("AddOutlined"));
   const addLabel = document.createElement("span");
   addLabel.textContent = "在下方添加";

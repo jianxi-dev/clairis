@@ -47,6 +47,7 @@ import {
   type AnchorRect,
 } from "./orchestration/anchor";
 import { placeMenu } from "./orchestration/placement";
+import { MENU_WIDTH } from "./orchestration/menu-metrics";
 
 export interface SlashCommand {
   id: string;
@@ -821,6 +822,8 @@ function openMenu(
   const menu = document.createElement("div");
   menu.className = "mdb-slash-menu";
   menu.dataset.testid = "slash-menu";
+  // 与转换菜单同宽（#373）：两个菜单在同一位形互相替换，宽度不同会让人重新找目标。
+  menu.style.width = `${MENU_WIDTH}px`;
   menu.addEventListener("mouseenter", () => cancelAnchorClose(view));
   menu.addEventListener("mouseleave", () => {
     const current = menus.get(view);
