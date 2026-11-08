@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "未钉住无边框",
+      "screenshot": ".artifacts/455/01-unpinned-no-border.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T17:48:55Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "钉住 1px 边框",
+      "screenshot": ".artifacts/455/02-pinned-border.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T17:48:55Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "按钮形态",
+      "screenshot": ".artifacts/455/03-button-pinned.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T17:48:55Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "距右缘 28px",
+      "screenshot": ".artifacts/455/04-position-28.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T17:48:55Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}
