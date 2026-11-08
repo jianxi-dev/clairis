@@ -615,7 +615,7 @@ function RailRow({
   const actions = (
     <div
       data-testid="rail-card-actions"
-      className="absolute bottom-1 left-1 z-10 flex gap-0.5 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100"
+      className="absolute bottom-0.5 left-1 z-10 flex items-center gap-0.5 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100"
     >
       <button
         type="button"
@@ -626,7 +626,7 @@ function RailRow({
         onClick={() => onOpen(item.path)}
         className="rounded p-0.5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
       >
-        <Icon name="eye" size={18} />
+        <Icon name="eye" size={14} />
       </button>
       <button
         type="button"
@@ -637,7 +637,7 @@ function RailRow({
         onClick={() => onSplit(item.path, "row")}
         className="rounded p-0.5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
       >
-        <Icon name="splitRight" size={18} />
+        <Icon name="splitRight" size={14} />
       </button>
       <button
         type="button"
@@ -648,7 +648,7 @@ function RailRow({
         onClick={() => onSplit(item.path, "col")}
         className="rounded p-0.5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
       >
-        <Icon name="splitDown" size={18} />
+        <Icon name="splitDown" size={14} />
       </button>
       <button
         type="button"
@@ -658,24 +658,24 @@ function RailRow({
         title={pinned ? "取消收藏" : "收藏"}
         aria-label={pinned ? "取消收藏" : "收藏"}
         onClick={() => onTogglePin(item.path)}
-        className={`flex items-center gap-0.5 rounded p-0.5 text-[10px] ${
+        className={`flex items-center gap-0.5 rounded p-0.5 ${
           pinned
             ? "text-[var(--app-accent)]"
             : "text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
         }`}
       >
-        <Icon name={pinned ? "pinOff" : "pin"} size={18} />
-        收藏
+        <Icon name={pinned ? "heartFilled" : "heart"} size={14} />
       </button>
       <button
         type="button"
         data-testid="rail-card-action"
         data-action="path"
+        title={item.path}
         aria-label={`打开所在文件夹 ${parentFolderNameOf(item.path)}`}
         onClick={() => onReveal(parentPathOf(item.path))}
-        className="flex min-w-0 items-center gap-0.5 truncate text-left text-[10px] hover:text-gray-700 dark:hover:text-gray-200"
+        className="flex min-w-0 items-center gap-0.5 truncate rounded p-0.5 text-left text-[10px] text-gray-400 hover:bg-[var(--app-sunken)] hover:text-gray-700 dark:hover:text-gray-200"
       >
-        <Icon name="folder" size={18} />
+        <Icon name="folder" size={14} />
         <span className="truncate">{parentFolderNameOf(item.path)}</span>
       </button>
     </div>
@@ -693,7 +693,7 @@ function RailRow({
       onMouseMove={onRowMove}
       onMouseEnter={onRowMove}
       onMouseLeave={onRowLeave}
-      className="group relative my-1 box-border flex flex-col justify-between overflow-hidden rounded border border-gray-200 px-2 py-1.5 dark:border-gray-700"
+      className="group relative my-1 box-border flex flex-col justify-between overflow-hidden rounded border border-gray-200 px-2 pb-4 pt-1.5 dark:border-gray-700"
     >
       <div className="flex min-h-0 flex-1 gap-1.5 overflow-hidden">
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden pr-2">
@@ -723,7 +723,7 @@ function RailRow({
           </p>
         </div>
         {thumb && (
-          <div className="flex shrink-0 items-center justify-center">
+          <div className="mt-3 flex shrink-0 items-center justify-center">
             <RailThumb descriptor={thumb} />
           </div>
         )}
@@ -739,7 +739,7 @@ function RailRow({
         </span>
       </div>
 
-      {kind !== "pdf" && actions}
+      {actions}
     </div>
   );
 }
