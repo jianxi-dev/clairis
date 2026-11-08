@@ -78,6 +78,17 @@ test.describe("页面宽度调整面板（ui-polish-batch6 6.2）", () => {
 
     await page.getByTestId("width-preset-720").click();
     await expect(widthText).toHaveText("720px");
+
+    const slider = page.getByTestId("width-slider");
+    expect(await slider.getAttribute("max")).toBe("1400");
+
+    const sliderBox = (await slider.boundingBox())!;
+    const barsBox = (await page.getByTestId("width-bars").boundingBox())!;
+    expect(sliderBox.width).toBeGreaterThan(barsBox.width);
+
+    const panelBox = (await panel.boundingBox())!;
+    expect(panelBox.x).toBeGreaterThanOrEqual(0);
+    expect(panelBox.x + panelBox.width).toBeLessThanOrEqual(1440);
   });
 });
 

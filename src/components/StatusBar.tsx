@@ -8,10 +8,13 @@ import { useStore } from "../stores/index";
 import { readPercentOf } from "../lib/railCards";
 
 const WIDTH_PRESETS = [
-  { value: 720, label: "紧凑" },
-  { value: 1080, label: "标准" },
-  { value: 1200, label: "宽松" },
+  { value: 720, label: "紧凑", bar: 16 },
+  { value: 1080, label: "标准", bar: 24 },
+  { value: 1400, label: "宽松", bar: 32 },
 ] as const;
+
+const WIDTH_MAX = 1400;
+const WIDTH_PANEL_W = 236;
 
 const THEME_OPTIONS: {
   value: Theme;
@@ -100,6 +103,7 @@ export default function StatusBar({
   }, [themeOpen]);
 
   const [widthOpen, setWidthOpen] = useState(false);
+  const [widthAnchor, setWidthAnchor] = useState(0);
   const [widthRect, setWidthRect] = useState<DOMRect | null>(null);
   const widthBtnRef = useRef<HTMLButtonElement | null>(null);
 
@@ -152,7 +156,10 @@ export default function StatusBar({
           ref={widthBtnRef}
           data-testid="status-width"
           title={`页面宽度 ${readerWidth}px（点击调整）`}
-          onClick={() => setWidthOpen((v) => !v)}
+          onClick={(e) => {
+            setWidthAnchor(e.clientX);
+            setWidthOpen((v) => !v);
+          }}
           className="rounded px-1 hover:bg-[var(--app-accent-soft)] hover:text-[var(--app-accent)]"
         >
           {readerWidth}px
@@ -163,27 +170,33 @@ export default function StatusBar({
                 data-testid="width-panel"
                 className="width-panel"
                 style={{
-                  left: widthRect.left,
+                  left: Math.min(
+                    Math.max(widthAnchor - WIDTH_PANEL_W / 2, 8),
+                    Math.max(window.innerWidth - WIDTH_PANEL_W - 8, 8),
+                  ),
                   bottom: window.innerHeight - widthRect.top + 6,
                 }}
               >
-                {WIDTH_PRESETS.map((opt) => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    data-testid={`width-preset-${opt.value}`}
-                    aria-pressed={readerWidth === opt.value}
-                    onClick={() => onSetReaderWidth(opt.value)}
-                    className={`width-preset ${readerWidth === opt.value ? "is-active" : ""}`}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
+                <div className="width-bars" data-testid="width-bars">
+                  {WIDTH_PRESETS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      data-testid={`width-preset-${opt.value}`}
+                      aria-pressed={readerWidth === opt.value}
+                      title={opt.label}
+                      aria-label={opt.label}
+                      onClick={() => onSetReaderWidth(opt.value)}
+                      style={{ height: opt.bar }}
+                      className={`width-bar ${readerWidth === opt.value ? "is-active" : ""}`}
+                    />
+                  ))}
+                </div>
                 <input
                   data-testid="width-slider"
                   type="range"
                   min={480}
-                  max={2400}
+                  max={WIDTH_MAX}
                   step={20}
                   value={readerWidth}
                   onChange={(e) => onSetReaderWidth(Number(e.target.value))}
