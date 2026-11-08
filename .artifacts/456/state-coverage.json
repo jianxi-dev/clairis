@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "轮盘 8 扇区",
+      "screenshot": ".artifacts/456/01-wheel-8-sectors.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T19:05:46Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "格式就近扇形",
+      "screenshot": ".artifacts/456/02-format-fan.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T19:05:46Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "颜色双圈",
+      "screenshot": ".artifacts/456/03-color-double-ring.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T19:05:46Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "转换三层",
+      "screenshot": ".artifacts/456/04-convert-third.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T19:05:46Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}

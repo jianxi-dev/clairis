@@ -129,6 +129,8 @@ test("选中文字时块工具条隐藏，文字工具条出现", async ({ page 
   await page.mouse.move(box.x + 60, y, { steps: 6 });
   await page.mouse.up();
 
-  await expect(page.locator('[data-testid="floating-toolbar"]')).toBeVisible();
+  await expect(
+    page.locator('[data-testid="selection-roulette"]'),
+  ).toBeVisible();
   await expect(page.locator('[data-testid="block-toolbar"]')).toBeHidden();
 });

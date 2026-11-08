@@ -264,7 +264,7 @@ export default function SelectionPill() {
 
   return (
     <>
-      {pill && !busy && !diff && (
+      {pill && pill.mode === "preview" && !busy && !diff && (
         <div
           data-selection-pill
           data-selection-pill-mode={pill.mode}
