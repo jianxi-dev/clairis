@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "rail-pin-18",
+      "screenshot": ".artifacts/352/03-rail-unpinned.png",
+      "assertion": "passed (阅读杆未钉住态显示新图钉，18px 下轮廓清晰)",
+      "recorded_at": "2026-11-08T04:36:00Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "rail-pinOff-18",
+      "screenshot": ".artifacts/352/04-rail-pinned.png",
+      "assertion": "passed (钉住后切为图钉+斜杠，取消回图钉；data-icon 断言全过)",
+      "recorded_at": "2026-11-08T04:36:00Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "both-140",
+      "screenshot": ".artifacts/352/06-both-140px.png",
+      "assertion": "passed (pin 与 pinOff 造型一致，仅多一道斜杠)",
+      "recorded_at": "2026-11-08T04:36:00Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "sizes-18-24-96",
+      "screenshot": ".artifacts/352/06-sizes-18-24-96.png",
+      "assertion": "passed (18/24 两档与 96px 放大均不糊、不越界)",
+      "recorded_at": "2026-11-08T04:36:00Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}
