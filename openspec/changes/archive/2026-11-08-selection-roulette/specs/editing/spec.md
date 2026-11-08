@@ -57,6 +57,21 @@ MD 编辑态与阅读态的正文选区 SHALL 显示胶囊工具条；编辑态 
 - **WHEN** 用户在轮盘点「后退」后按 `Mod-Shift-z`
 - **THEN** 文档 SHALL 重做同一次改动（两者共用同一份历史）
 
+#### Scenario: 选中文字出现工具条
+
+- **WHEN** 用户在 MD 编辑态选中一段文字
+- **THEN** SHALL 显示文字工具条，含 AI 编辑、字号、加粗、斜体、下划线、删除线、链接、对齐、文字颜色、删除
+
+#### Scenario: 图标按钮生效于选区
+
+- **WHEN** 用户选中文字并点击加粗
+- **THEN** 选区文字 SHALL 加粗（源码包裹），未选中部分 SHALL 不受影响
+
+#### Scenario: 未选中调整整块
+
+- **WHEN** 光标在区块内且未选中文字，用户点击对齐
+- **THEN** 该区块 SHALL 整体应用对齐
+
 ### Requirement: E-19 HTML 可视化编辑工具条
 
 `.html` 文件的编辑态 SHALL 在用户选中元素后提供可操作入口，支持：**替换标签**、**修改样式**、**修改属性**（`class` / `id`）、**删除元素**、**区域截图**（见 E-21）。HTML 的**源码编辑态**（CM6）SHALL 使用与 md 编辑态相同的选区轮盘；HTML **可视化编辑态**的元素工具条 SHALL 保持既有横向实现（`.html-edit-toolbar`），不改为轮盘。源码编辑态 SHALL NOT 渲染 `.html-edit-toolbar`。
@@ -74,3 +89,36 @@ MD 编辑态与阅读态的正文选区 SHALL 显示胶囊工具条；编辑态 
 
 - **WHEN** 用户在 HTML 源码编辑态通过轮盘加粗选中行
 - **THEN** 文档 `content` SHALL 出现 `**` 包裹，渲染与分析链路 SHALL 不残留 `.html-edit-toolbar`
+
+#### Scenario: 工具条归属
+
+- **WHEN** 用户在 markdown 文件的编辑态选中一段文字
+- **THEN** 页面中 `.html-edit-toolbar` 节点数 SHALL 为 0
+- **AND WHEN** 用户在 HTML 文件的编辑态选中一个元素
+- **THEN** `.html-edit-toolbar` SHALL 可见，且 `.cm-floating-toolbar` 节点数 SHALL 为 0
+
+#### Scenario: 换标签保留内容与属性
+
+- **WHEN** 用户选中一个 `<h2 class="lead">标题</h2>` 并在工具条里把标签换成 `h3`
+- **THEN** `content` SHALL 变为 `<h3 class="lead">标题</h3>`，文本与 `class` 都保留，且 `h2` 不再出现
+
+#### Scenario: 改样式立即生效
+
+- **WHEN** 用户在工具条里给选中的段落选 24px 字号并居中
+- **THEN** 文档 `content` SHALL 含该段落的 `style="font-size: 24px; text-align: center"`，渲染结果 SHALL 立即变化
+
+#### Scenario: 清空属性即删除
+
+- **WHEN** 用户把某个元素的 `class` 输入框清空
+- **THEN** `content` 里该元素 SHALL 不再带 `class` 属性，SHALL NOT 出现 `class=""`
+
+#### Scenario: 白名单外标签拒绝
+
+- **WHEN** 工具条请求把一个段落换成白名单之外的标签
+- **THEN** `content` SHALL 保持原样，不产生任何改动
+
+#### Scenario: 保存零残留
+
+- **WHEN** 用户用工具条改过标签与样式后保存
+- **THEN** 写回的文件 SHALL NOT 含 `data-cm-` 前缀、`cmid` 注释、`contenteditable` 或注入运行时的 `<script>`/`<style>`
+
