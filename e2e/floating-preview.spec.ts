@@ -705,3 +705,25 @@ test("悬浮窗底部动作行：默认不渲染、悬停浮现三按钮、图�
     expect(await svgs.nth(i).getAttribute("width")).toBe("14");
   }
 });
+
+test("PDF 悬浮预览不显示缩放工具条（#391）", async ({ page }) => {
+  await boot(page);
+  await seed(page);
+  await page.evaluate(() => {
+    window.__biaoyue_store__
+      .getState()
+      .openFile("/tmp/rc/report.pdf", "PDF document content");
+  });
+  await pinRail(page);
+
+  const row = page.locator('[data-rail-path="/tmp/rc/report.pdf"]').first();
+  await expect(row).toBeVisible({ timeout: 10000 });
+  const b = (await row.boundingBox())!;
+  await page.mouse.move(b.x + b.width - 20, b.y + b.height / 2);
+
+  const preview = page.locator(PREVIEW);
+  await expect(preview).toBeVisible({ timeout: 5000 });
+  await expect(preview.locator('[data-testid="preview-pdf"]')).toBeVisible();
+  await expect(preview.locator('[data-epdf-i="zoom-toolbar"]')).toHaveCount(0);
+  await expect(preview.getByRole("button", { name: "放大" })).toHaveCount(0);
+});

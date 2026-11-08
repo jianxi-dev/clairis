@@ -211,3 +211,56 @@
   - `src/editors/keybindings.ts`：在既有 `Mod-z` / `Mod-Shift-z` 基础上显式加 `Ctrl-z` / `Ctrl-Shift-z` / `Ctrl-y`
   - HTML 编辑态快照栈同一映射
   - 测试：e2e 分别用 `Control+z` 与 `Meta+z` 断言内容回退，`Control+Shift+z` 恢复
+
+## 18. 主题按钮（补充反馈 4 / 6）
+
+依赖：无（`StatusBar` / `ui/icons.ts`，与 5.1 同文件，串行）
+
+- [ ] 18.1 去掉下拉三角，亮色与暖色图标可区分
+
+  实现要点：
+  - `StatusBar.tsx`：主题按钮不再渲染 `chevronDown`，只留主题图形
+  - `ui/icons.ts`：亮色与暖色改用不同线条数表达亮度（亮色 6 条、暖色 4 条），不再共用同一 sun 形
+  - 测试：扩展 `e2e/status-bar-visibility.spec.ts`，断言主题按钮内 `svg` 数量为 1、`sunBright` 与 `sunWarm` 的 path 不同且亮色含 6 段光线
+
+## 19. 页面宽度面板改版（补充反馈 5）
+
+依赖：18.1（同改 `StatusBar`）
+
+- [ ] 19.1 斜面柱状三档 + 下行长滑块，上限 1400
+
+  实现要点：
+  - `StatusBar.tsx`：面板分两行——上行三个可点击斜面柱状（高度递增代表三档），下行一条进度条/滑块，其长度大于上行按钮组总宽；三档位置与滑块三挡对齐
+  - 宽度最大值改为 1400（`READER_WIDTH_MAX` 与滑块 `max` 同步）；预设仍 720/1080/1400
+  - 面板中位默认跟随指针（以指针 x 为中心，再按窗口宽度夹取到可视区内）
+  - 测试：扩展 `e2e/status-bar-visibility.spec.ts`，断言滑块宽度 > 按钮组总宽、滑块 `max=1400`、选「紧凑」后状态栏宽度为 720px
+
+## 20. PDF 悬浮预览屏蔽缩放条（补充反馈 1）
+
+依赖：无
+
+- [ ] 20.1 PDF 悬浮预览不再显示放大缩小工具条
+
+  实现要点：
+  - `Preview/FloatingPreview.tsx`：PDF 预览沿用卡片缩略图的做法，禁用 embedpdf 的 `zoom-in`/`zoom-out` 按钮（`disabledCategories`），与缩略图一致
+  - 测试：扩展 `e2e/floating-preview.spec.ts`，断言 PDF 预览里不出现 `data-epdf-i="zoom-toolbar"` 的缩放按钮
+
+## 21. 卡片缩略图高度（补充反馈 2）
+
+依赖：无（`Rail/ReadingRail.tsx`，与 7.1 同文件，串行）
+
+- [ ] 21.1 缩略图高度下调，避免与上下文字重叠
+
+  实现要点：
+  - 缩略图盒高度由 54 降到 48（宽度保持 4:3 → 64×48），卡片最小高度下与标题、摘要、底部行均不重叠
+  - 测试：扩展 `e2e/rail-cards.spec.ts`，断言缩略图尺寸为新值且与相邻文字矩形不相交
+
+## 22. 大纲按钮位置（补充反馈 3）
+
+依赖：无（`Content/OutlineMenu.tsx`，与 11.1 同文件，串行）
+
+- [ ] 22.1 大纲按钮右移，距右缘为宽度的 2/3
+
+  实现要点：
+  - 大纲按钮定位改为距右侧「容器宽度的 2/3」，在窄窗口下仍完整可见
+  - 测试：扩展 `e2e/outline-border.spec.ts`，断言按钮右侧空白约为容器宽度的 2/3（±4px）

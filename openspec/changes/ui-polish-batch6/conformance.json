@@ -416,6 +416,99 @@
           "source": "spec 撤销与重做快捷键"
         }
       ]
+    },
+    {
+      "id": "R-19",
+      "text": "主题按钮去三角与图标区分",
+      "anchors": [
+        {
+          "id": "A-19.1",
+          "claim": "主题按钮内 svg 数量",
+          "kind": "exact",
+          "assert": "1",
+          "source": "spec 状态栏"
+        },
+        {
+          "id": "A-19.2",
+          "claim": "亮色与暖色图标 path 不同且亮色光线更多",
+          "kind": "state-machine",
+          "assert": "\"\"\"true\"\"\"",
+          "source": "spec 图标体系"
+        }
+      ]
+    },
+    {
+      "id": "R-20",
+      "text": "宽度面板改版",
+      "anchors": [
+        {
+          "id": "A-20.1",
+          "claim": "宽度滑块 max",
+          "kind": "exact",
+          "assert": "1400",
+          "source": "spec 状态栏"
+        },
+        {
+          "id": "A-20.2",
+          "claim": "滑块宽度大于三按钮组总宽",
+          "kind": "state-machine",
+          "assert": "\"\"\"true\"\"\"",
+          "source": "spec 状态栏"
+        },
+        {
+          "id": "A-20.3",
+          "claim": "面板水平中位跟随指针且在视口内",
+          "kind": "state-machine",
+          "assert": "\"\"\"true\"\"\"",
+          "source": "spec 状态栏"
+        }
+      ]
+    },
+    {
+      "id": "R-21",
+      "text": "PDF 悬浮预览无缩放条",
+      "anchors": [
+        {
+          "id": "A-21.1",
+          "claim": "PDF 悬浮预览中 zoom-toolbar 按钮数量",
+          "kind": "exact",
+          "assert": "0",
+          "source": "spec PDF 悬浮预览隐藏缩放条"
+        }
+      ]
+    },
+    {
+      "id": "R-22",
+      "text": "卡片缩略图高度",
+      "anchors": [
+        {
+          "id": "A-22.1",
+          "claim": "卡片缩略图高度（px）",
+          "kind": "exact",
+          "assert": "48",
+          "source": "spec 卡片缩略图高度"
+        },
+        {
+          "id": "A-22.2",
+          "claim": "缩略图与标题/摘要/动作行相交对数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "spec 卡片缩略图高度"
+        }
+      ]
+    },
+    {
+      "id": "R-23",
+      "text": "大纲按钮距右缘三分之二",
+      "anchors": [
+        {
+          "id": "A-23.1",
+          "claim": "按钮右侧留白与容器宽度 2/3 的差值上限（px）",
+          "kind": "exact",
+          "assert": "4",
+          "source": "spec E-10"
+        }
+      ]
     }
   ]
 }
