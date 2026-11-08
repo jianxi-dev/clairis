@@ -185,6 +185,56 @@ function registerCheckboxGuard(): void {
 // \uFEFF? 容忍 BOM 前缀（Obsidian 文件常带）。
 const FRONTMATTER_RE = /^\uFEFF?---\s*\n[\s\S]*?\n---\s*(?:\n|$)/;
 
+// ── 块对齐围栏 div（shell-editor-batch5 D16）────────────────
+// `::: {.align-left|center|right}` … `:::` → `<div class="layout-align-*">`，
+// 内部内容仍交给 marked 解析。没有闭合 `:::` 的半截包裹原样留下。
+
+const ALIGN_DIV_OPEN_RE = /^ {0,3}::: {(\.align-(?:left|center|right))}\s*$/;
+const ALIGN_DIV_CLOSE_RE = /^ {0,3}:::\s*$/;
+
+function preprocessAlignmentDivs(src: string): string {
+  const lines = src.split("\n");
+  const result: string[] = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const open = ALIGN_DIV_OPEN_RE.exec(lines[i]);
+    if (!open) {
+      result.push(lines[i]);
+      i += 1;
+      continue;
+    }
+
+    let depth = 1;
+    let end = -1;
+    for (let j = i + 1; j < lines.length; j += 1) {
+      if (ALIGN_DIV_OPEN_RE.test(lines[j])) depth += 1;
+      else if (ALIGN_DIV_CLOSE_RE.test(lines[j])) {
+        depth -= 1;
+        if (depth === 0) {
+          end = j;
+          break;
+        }
+      }
+    }
+
+    if (end === -1) {
+      result.push(lines[i]);
+      i += 1;
+      continue;
+    }
+
+    result.push(`<div class="layout-${open[1].slice(1)}">`);
+    result.push("");
+    for (let k = i + 1; k < end; k += 1) result.push(lines[k]);
+    result.push("");
+    result.push("</div>");
+    i = end + 1;
+  }
+
+  return result.join("\n");
+}
+
 // 结构标签行清理（#255）：
 // 独占一行的未知 HTML 标签会触发 CommonMark type-7 HTML 块，从这行起
 // 一直吞到下一个空行——后面的 `## 标题`、表格行全被当成 HTML 原文，
@@ -262,7 +312,9 @@ export function renderMarkdown(
     /(!\[[^\]]*\]\([^)]*\))[ \t]*\n?<!--\s*w=(\d+)\s*-->/g,
     '$1<span data-img-width="$2"></span>',
   );
-  const body = stripStructuralTagLines(withWidths.replace(FRONTMATTER_RE, ""));
+  const body = preprocessAlignmentDivs(
+    stripStructuralTagLines(withWidths.replace(FRONTMATTER_RE, "")),
+  );
   const raw = marked.parse(body, { async: false }) as string;
   const clean = DOMPurify.sanitize(raw, SANITIZE_CONFIG);
   const result = postProcess(clean);

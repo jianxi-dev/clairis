@@ -94,6 +94,193 @@
   max-width: var(--type-measure-wide);
 }
 
+/* 块对齐围栏 div（`::: {.align-*}` → `.layout-align-*`） */
+.preview-content .layout-align-left {
+  text-align: left;
+}
+
+.preview-content .layout-align-center {
+  text-align: center;
+}
+
+.preview-content .layout-align-right {
+  text-align: right;
+}
+
+/* ── 块颜色 / 边框色（mdb-* 源码 span 的预览呈现）────────── */
+.preview-content .mdb-color-red {
+  color: #cf222e;
+}
+.preview-content .mdb-color-orange {
+  color: #9a6700;
+}
+.preview-content .mdb-color-yellow {
+  color: #f0b622;
+}
+.preview-content .mdb-color-green {
+  color: #1a7f37;
+}
+.preview-content .mdb-color-cyan {
+  color: #20b2aa;
+}
+.preview-content .mdb-color-blue {
+  color: #4f5ad1;
+}
+.preview-content .mdb-color-purple {
+  color: #7a4f9d;
+}
+.preview-content .mdb-color-gray {
+  color: #8b8f96;
+}
+
+.preview-content .mdb-bg-red {
+  background-color: #ffd8d3;
+}
+.preview-content .mdb-bg-orange {
+  background-color: #ffedd0;
+}
+.preview-content .mdb-bg-yellow {
+  background-color: rgba(240, 182, 34, 0.28);
+}
+.preview-content .mdb-bg-green {
+  background-color: #d2f8d2;
+}
+.preview-content .mdb-bg-cyan {
+  background-color: rgba(32, 178, 170, 0.28);
+}
+.preview-content .mdb-bg-blue {
+  background-color: #d7dcff;
+}
+.preview-content .mdb-bg-purple {
+  background-color: #e8d7ff;
+}
+.preview-content .mdb-bg-gray {
+  background-color: rgba(120, 120, 120, 0.18);
+}
+.preview-content .mdb-bg-darkred {
+  background-color: rgba(179, 68, 68, 0.24);
+}
+.preview-content .mdb-bg-brown {
+  background-color: rgba(132, 81, 23, 0.24);
+}
+.preview-content .mdb-bg-olive {
+  background-color: rgba(135, 123, 16, 0.24);
+}
+.preview-content .mdb-bg-darkgreen {
+  background-color: rgba(41, 107, 34, 0.24);
+}
+.preview-content .mdb-bg-navy {
+  background-color: rgba(32, 62, 120, 0.24);
+}
+.preview-content .mdb-bg-indigo {
+  background-color: rgba(77, 38, 145, 0.24);
+}
+.preview-content .mdb-bg-slate {
+  background-color: rgba(95, 95, 95, 0.24);
+}
+
+.preview-content .mdb-border-red {
+  border: 1px solid rgba(248, 81, 73, 0.6);
+}
+.preview-content .mdb-border-darkred {
+  border: 1px solid rgba(179, 68, 68, 0.6);
+}
+.preview-content .mdb-border-orange {
+  border: 1px solid rgba(227, 179, 65, 0.6);
+}
+.preview-content .mdb-border-brown {
+  border: 1px solid rgba(132, 81, 23, 0.6);
+}
+.preview-content .mdb-border-yellow {
+  border: 1px solid rgba(240, 182, 34, 0.6);
+}
+.preview-content .mdb-border-olive {
+  border: 1px solid rgba(135, 123, 16, 0.6);
+}
+.preview-content .mdb-border-green {
+  border: 1px solid rgba(63, 185, 80, 0.6);
+}
+.preview-content .mdb-border-darkgreen {
+  border: 1px solid rgba(41, 107, 34, 0.6);
+}
+.preview-content .mdb-border-cyan {
+  border: 1px solid rgba(32, 178, 170, 0.6);
+}
+.preview-content .mdb-border-blue {
+  border: 1px solid rgba(123, 134, 234, 0.6);
+}
+.preview-content .mdb-border-navy {
+  border: 1px solid rgba(32, 62, 120, 0.6);
+}
+.preview-content .mdb-border-purple {
+  border: 1px solid rgba(163, 113, 247, 0.6);
+}
+.preview-content .mdb-border-indigo {
+  border: 1px solid rgba(77, 38, 145, 0.6);
+}
+.preview-content .mdb-border-gray {
+  border: 1px solid rgba(235, 235, 235, 0.5);
+}
+.preview-content .mdb-border-slate {
+  border: 1px solid rgba(95, 95, 95, 0.6);
+}
+
+.dark .preview-content .mdb-color-red {
+  color: #f0616d;
+}
+.dark .preview-content .mdb-color-orange {
+  color: #e3b341;
+}
+.dark .preview-content .mdb-color-green {
+  color: #3fb950;
+}
+.dark .preview-content .mdb-color-blue {
+  color: #7b86ea;
+}
+.dark .preview-content .mdb-color-purple {
+  color: #a371f7;
+}
+
+.dark .preview-content .mdb-bg-red {
+  background-color: rgba(248, 81, 73, 0.25);
+}
+.dark .preview-content .mdb-bg-orange {
+  background-color: rgba(227, 179, 65, 0.25);
+}
+.dark .preview-content .mdb-bg-green {
+  background-color: rgba(63, 185, 80, 0.25);
+}
+.dark .preview-content .mdb-bg-cyan {
+  background-color: rgba(32, 178, 170, 0.25);
+}
+.dark .preview-content .mdb-bg-blue {
+  background-color: rgba(123, 134, 234, 0.25);
+}
+.dark .preview-content .mdb-bg-purple {
+  background-color: rgba(163, 113, 247, 0.25);
+}
+.dark .preview-content .mdb-bg-darkred {
+  background-color: rgba(179, 68, 68, 0.3);
+}
+.dark .preview-content .mdb-bg-brown {
+  background-color: rgba(132, 81, 23, 0.3);
+}
+.dark .preview-content .mdb-bg-olive {
+  background-color: rgba(135, 123, 16, 0.3);
+}
+.dark .preview-content .mdb-bg-darkgreen {
+  background-color: rgba(41, 107, 34, 0.3);
+}
+.dark .preview-content .mdb-bg-navy {
+  background-color: rgba(32, 62, 120, 0.3);
+}
+.dark .preview-content .mdb-bg-indigo {
+  background-color: rgba(77, 38, 145, 0.3);
+}
+.dark .preview-content .mdb-bg-slate {
+  background-color: rgba(95, 95, 95, 0.3);
+}
+
 .preview-content > :first-child {
   margin-top: 0;
 }

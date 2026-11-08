@@ -288,6 +288,82 @@ body {
     var(--app-surface);
 }
 
+/* 字体色块里的「A」字形（md-bundle 观感：着色字形而非实心块）。 */
+.cm-color-swatch-glyph {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  pointer-events: none;
+}
+
+/* 共享双色板容器（块工具条 / 文字工具条弹层）。 */
+.cm-color-palette {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* 边框色：与背景色同值，落到块内容外沿。 */
+.cm-border-red {
+  border: 1px solid rgba(248, 81, 73, 0.6);
+}
+
+.cm-border-darkred {
+  border: 1px solid rgba(179, 68, 68, 0.6);
+}
+
+.cm-border-orange {
+  border: 1px solid rgba(227, 179, 65, 0.6);
+}
+
+.cm-border-brown {
+  border: 1px solid rgba(132, 81, 23, 0.6);
+}
+
+.cm-border-yellow {
+  border: 1px solid rgba(240, 182, 34, 0.6);
+}
+
+.cm-border-olive {
+  border: 1px solid rgba(135, 123, 16, 0.6);
+}
+
+.cm-border-green {
+  border: 1px solid rgba(63, 185, 80, 0.6);
+}
+
+.cm-border-darkgreen {
+  border: 1px solid rgba(41, 107, 34, 0.6);
+}
+
+.cm-border-cyan {
+  border: 1px solid rgba(32, 178, 170, 0.6);
+}
+
+.cm-border-blue {
+  border: 1px solid rgba(123, 134, 234, 0.6);
+}
+
+.cm-border-navy {
+  border: 1px solid rgba(32, 62, 120, 0.6);
+}
+
+.cm-border-purple {
+  border: 1px solid rgba(163, 113, 247, 0.6);
+}
+
+.cm-border-indigo {
+  border: 1px solid rgba(77, 38, 145, 0.6);
+}
+
+.cm-border-gray {
+  border: 1px solid rgba(235, 235, 235, 0.5);
+}
+
+.cm-border-slate {
+  border: 1px solid rgba(95, 95, 95, 0.6);
+}
+
 .cm-color-orange {
   color: #c2761b;
 }
@@ -2039,6 +2115,75 @@ body {
   height: 1px;
   margin: 4px 0;
   background: var(--app-border);
+}
+
+/* ── 浮动工具条（选区工具条 / 块工具条，shell-editor-batch5 D16） ── */
+.cm-floating-toolbar,
+.cm-block-toolbar {
+  position: absolute;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.14);
+}
+
+.cm-toolbar-dropdown {
+  display: inline-flex;
+}
+
+.cm-toolbar-btn {
+  font-size: 13px;
+  font-family: inherit;
+}
+
+.cm-toolbar-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 4px;
+  padding: 4px;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+  min-width: 120px;
+  flex-direction: column;
+  gap: 2px;
+  z-index: 1001;
+}
+
+.cm-toolbar-color-menu {
+  min-width: 200px;
+}
+
+.cm-toolbar-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 4px 8px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: var(--app-text-2);
+  font-size: 13px;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cm-toolbar-menu-item:hover {
+  background: var(--app-hover, rgba(0, 0, 0, 0.06));
+}
+
+.cm-toolbar-font-size-value {
+  min-width: 18px;
+  text-align: center;
 }
 
 /* ── 编辑器大纲浮层（移植自 md-bundle app-kit/outline/OutlineMenu.tsx） ──

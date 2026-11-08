@@ -12,7 +12,7 @@
  */
 
 /** 色板族前缀 → 源码 span 类名前缀。 */
-export type ColorFamily = "mdb-color" | "mdb-bg";
+export type ColorFamily = "mdb-color" | "mdb-bg" | "mdb-border";
 
 /** 结构块：包裹会破坏语法，一律不动。 */
 const NON_COLORABLE = new Set([

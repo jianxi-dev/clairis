@@ -197,6 +197,28 @@ const ICON_REGISTRY: Record<string, IconDef> = {
   },
   AlignClearOutlined: { kind: "paths", paths: ["M4 6h16M4 12h16M4 18h16"] },
 
+  // 缩进 / 反缩进 —— 线条错位 + 指向箭头，语义区别于对齐图标。
+  IndentIncreaseOutlined: {
+    kind: "paths",
+    paths: [
+      "M3 21h18v-2H3v2z",
+      "M3 3v2h18V3H3z",
+      "M11 9h10v2H11z",
+      "M11 15h10v2H11z",
+      "M3 8l4 4-4 4V8z",
+    ],
+  },
+  IndentDecreaseOutlined: {
+    kind: "paths",
+    paths: [
+      "M3 21h18v-2H3v2z",
+      "M3 3v2h18V3H3z",
+      "M3 9h10v2H3z",
+      "M3 15h10v2H3z",
+      "M21 8l-4 4 4 4V8z",
+    ],
+  },
+
   // Paragraph / text block — pilcrow.
   TextOutlined: { kind: "text", label: "¶", weight: 700 },
 
@@ -291,6 +313,21 @@ const ICON_REGISTRY: Record<string, IconDef> = {
   // Font colour — a bold "A" the selection toolbar tints per swatch (W5 / #328).
   FormatColorTextOutlined: { kind: "text", label: "A", weight: 700 },
 
+  // AI 编辑 —— 文本字形，与 H1..H6 同一契约。
+  AiEditOutlined: { kind: "text", label: "AI", weight: 700 },
+
+  // 边框色 —— 四条边组成的空心方块。
+  BorderColorOutlined: {
+    kind: "paths",
+    paths: ["M4 4h16v2H4z", "M4 18h16v2H4z", "M4 4h2v16H4z", "M18 4h2v16h-2z"],
+  },
+
+  // 字号 —— 「T」字形。
+  FontSizeOutlined: {
+    kind: "paths",
+    paths: ["M4 4h16v3h-6.5v13h-3V7H4z"],
+  },
+
   HeaderRowOutlined: {
     kind: "paths",
     paths: [
@@ -381,6 +418,9 @@ export const COMMAND_ICON_NAME: Readonly<Record<string, string>> = {
   "toggle-strikethrough": "StrikethroughOutlined",
   "toggle-code": "InlineCodeOutlined",
   "toggle-link": "GlobalLinkOutlined",
+  "ai-edit": "AiEditOutlined",
+  "font-size": "FontSizeOutlined",
+  "border-color": "BorderColorOutlined",
   "insert-unordered-list": "DisorderListOutlined",
   "insert-ordered-list": "OrderListOutlined",
   "insert-task-list": "TodoOutlined",

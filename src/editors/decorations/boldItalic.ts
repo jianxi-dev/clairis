@@ -32,14 +32,18 @@ export const bgRegex = new RegExp(
   `<span class="mdb-bg-(darkred|darkgreen|red|orange|yellow|green|cyan|blue|purple|gray|brown|olive|navy|indigo|slate)">(${spanBody})<\\/span>`,
   "g",
 );
+export const borderRegex = new RegExp(
+  `<span class="mdb-border-(darkred|darkgreen|red|orange|yellow|green|cyan|blue|purple|gray|brown|olive|navy|indigo|slate)">(${spanBody})<\\/span>`,
+  "g",
+);
 
 export const BOLD_CLASS = "cm-strong";
 export const ITALIC_CLASS = "cm-em";
 export const STRIKE_CLASS = "cm-strikethrough";
 export const UNDERLINE_CLASS = "cm-underline";
 
-/** 带原始 HTML 透传 span 的类族（字体 / 文字色 / 背景色）。 */
-type SpanFamily = "mdb-font" | "mdb-color" | "mdb-bg";
+/** 带原始 HTML 透传 span 的类族（字体 / 文字色 / 背景色 / 边框色）。 */
+type SpanFamily = "mdb-font" | "mdb-color" | "mdb-bg" | "mdb-border";
 
 /**
  * 装饰 `mdb-{family}-{variant}` 透传 span：隐藏两侧标签，内容打上对应
@@ -228,10 +232,11 @@ export function createBoldItalicDecorations(
     decorations.push(Decoration.replace({}).range(to - closeLen, to));
   }
 
-  // 原始 HTML 透传 span：字体 / 文字色 / 背景色
+  // 原始 HTML 透传 span：字体 / 文字色 / 背景色 / 边框色
   decorateSpanFamily(text, fontRegex, "mdb-font", decorations);
   decorateSpanFamily(text, colorRegex, "mdb-color", decorations);
   decorateSpanFamily(text, bgRegex, "mdb-bg", decorations);
+  decorateSpanFamily(text, borderRegex, "mdb-border", decorations);
 
   // 边打边渲染：未闭合标记
   const incompleteBold = findIncompleteBold(text);

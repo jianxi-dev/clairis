@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   BACKGROUND_COLORS,
+  BORDER_COLORS,
   FONT_COLORS,
   createColorRow,
 } from "../../editors/orchestration/color-palette";
@@ -29,6 +30,31 @@ describe("色板数据", () => {
     expect(bgClasses.every((c) => c.startsWith("mdb-bg-"))).toBe(true);
     expect(new Set(fontClasses).size).toBe(fontClasses.length);
     expect(new Set(bgClasses).size).toBe(bgClasses.length);
+  });
+
+  it("色块预览色为实色（对齐 md-bundle 色板，不是偏淡浅色块）", () => {
+    const red = BACKGROUND_COLORS.find((c) => c.className === "mdb-bg-red");
+    expect(red?.swatch).toBe("#f0000e");
+    const blue = BACKGROUND_COLORS.find((c) => c.className === "mdb-bg-blue");
+    expect(blue?.swatch).toBe("#4c88ff");
+  });
+
+  it("边框色与背景色同值，类名走 mdb-border-*", () => {
+    expect(BORDER_COLORS).toHaveLength(BACKGROUND_COLORS.length);
+    for (let i = 0; i < BACKGROUND_COLORS.length; i += 1) {
+      const bg = BACKGROUND_COLORS[i];
+      const border = BORDER_COLORS[i];
+      expect(border.swatch).toBe(bg.swatch);
+      expect(border.label).toBe(bg.label);
+      expect(border.isDefault).toBe(bg.isDefault);
+      if (bg.className === "") {
+        expect(border.className).toBe("");
+      } else {
+        expect(border.className).toBe(
+          bg.className.replace("mdb-bg-", "mdb-border-"),
+        );
+      }
+    }
   });
 });
 
@@ -63,6 +89,21 @@ describe("createColorRow", () => {
     swatches[0].dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
 
     expect(picks).toEqual(["mdb-color-red", ""]);
+  });
+
+  it("字体色块渲染着色「A」字形，背景色块渲染实色底", () => {
+    const fontRow = createColorRow("font", FONT_COLORS, () => {});
+    const fontSwatch =
+      fontRow.querySelectorAll<HTMLButtonElement>(".cm-color-swatch")[1];
+    expect(
+      fontSwatch.querySelector(".cm-color-swatch-glyph")?.textContent,
+    ).toBe("A");
+
+    const bgRow = createColorRow("background", BACKGROUND_COLORS, () => {});
+    const bgSwatch =
+      bgRow.querySelectorAll<HTMLButtonElement>(".cm-color-swatch")[1];
+    expect(bgSwatch.style.background).toBe("rgb(240, 0, 14)");
+    expect(bgSwatch.querySelector(".cm-color-swatch-glyph")).toBeNull();
   });
 });
 

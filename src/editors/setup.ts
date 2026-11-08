@@ -20,20 +20,26 @@ import { editorDecorations } from "./decorations";
 import type { EditorDecorationsOptions } from "./decorations";
 import { smartInput } from "./smart-input";
 import { slashKeymap } from "./slash";
+import { floatingToolbar } from "./orchestration/floating-toolbar";
+import { blockToolbar } from "./orchestration/block-toolbar";
 
 export const decorCompartment = new Compartment();
 
 /**
- * 编辑态装饰扩展。
+ * 编辑态扩展集。
  *
  * 装配模型（见 `decorations/index.ts`）：StateField 按活跃块两态构建，IME
  * 组合期与指针冻结期有守卫，不再整篇重建。保留函数名，调用方（ContentArea
  * 与 source 模式切换）无需改动。
+ *
+ * 选区工具条与块工具条（shell-editor-batch5 D16）也挂在这里：它们是编辑态
+ * 专属界面，随 `decorCompartment` 在 edit / source 之间切换，避免在
+ * ContentArea 的装配里再开一个工具条隔层。
  */
 export function fullDecorations(
   options?: EditorDecorationsOptions,
 ): Extension[] {
-  return [editorDecorations(options)];
+  return [editorDecorations(options), floatingToolbar(), blockToolbar()];
 }
 
 /**

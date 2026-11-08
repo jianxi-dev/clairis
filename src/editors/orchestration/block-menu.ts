@@ -30,6 +30,7 @@ import {
 } from "./block-actions";
 import { CALLOUT_EDIT_TYPES } from "../callout-types";
 import { applyBlockColor, blockColorOf, type ColorFamily } from "./block-color";
+import { toggleBlockAlignmentText } from "./block-alignment";
 import {
   BACKGROUND_COLORS,
   FONT_COLORS,
@@ -53,8 +54,8 @@ const ACTION_ROWS: ReadonlyArray<readonly [string, string, string]> = [
   ["剪切块", "FeishuclipOutlined", "cut"],
   ["上移", "ArrowUpwardOutlined", "move-up"],
   ["下移", "ArrowDownwardOutlined", "move-down"],
-  ["增加缩进", "AlignLeftOutlined", "indent"],
-  ["减少缩进", "AlignClearOutlined", "outdent"],
+  ["增加缩进", "IndentIncreaseOutlined", "indent"],
+  ["减少缩进", "IndentDecreaseOutlined", "outdent"],
   ["删除块", "DeleteTrashOutlined", "delete"],
 ];
 
@@ -452,6 +453,86 @@ export function openBlockMenu(
     openColorPanel();
   });
   panel.appendChild(colorRow);
+
+  // 对齐入口（E-11：结构动作组提供 缩进 / 颜色 / 对齐）。
+  const alignRow = document.createElement("button");
+  alignRow.type = "button";
+  alignRow.className = "cm-block-menu-item";
+  alignRow.dataset.testid = "block-menu-align";
+  alignRow.style.height = `${BLOCK_MENU_ROW_HEIGHT}px`;
+  alignRow.appendChild(renderIcon("AlignLeftOutlined"));
+  const alignLabel = document.createElement("span");
+  alignLabel.textContent = "对齐";
+  alignRow.appendChild(alignLabel);
+  const alignChevron = document.createElement("span");
+  alignChevron.className = "cm-block-menu-chevron";
+  alignChevron.textContent = "›";
+  alignChevron.setAttribute("aria-hidden", "true");
+  alignRow.appendChild(alignChevron);
+
+  let alignPanel: HTMLElement | null = null;
+  const closeAlignPanel = (): void => {
+    alignPanel?.remove();
+    alignPanel = null;
+  };
+  const openAlignPanel = (): void => {
+    closeAlignPanel();
+    const panelEl = document.createElement("div");
+    panelEl.className = "cm-block-menu-flyout";
+    panelEl.dataset.testid = "block-menu-align-panel";
+    panelEl.dataset.blockFlyout = "1";
+    const own = view.dom.getBoundingClientRect();
+    const rowRect = alignRow.getBoundingClientRect();
+    panelEl.style.left = `${rowRect.right - own.left + 4}px`;
+    panelEl.style.top = `${rowRect.top - own.top}px`;
+
+    const blockText = view.state.doc.sliceString(block.from, block.to);
+    const alignments: ReadonlyArray<readonly [string, string, string]> = [
+      ["left", "左对齐", "AlignLeftOutlined"],
+      ["center", "居中", "AlignCenterOutlined"],
+      ["right", "右对齐", "AlignRightOutlined"],
+    ];
+    for (const [key, label, icon] of alignments) {
+      const option = document.createElement("button");
+      option.type = "button";
+      option.className = "cm-block-menu-flyout-item";
+      option.dataset.testid = "block-menu-align-option";
+      option.dataset.alignment = key;
+      option.appendChild(renderIcon(icon));
+      const text = document.createElement("span");
+      text.textContent = label;
+      option.appendChild(text);
+      option.addEventListener("pointerdown", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const next = toggleBlockAlignmentText(
+          blockText,
+          key as "left" | "center" | "right",
+        );
+        closeBlockMenu(view);
+        if (next === blockText) return;
+        view.dispatch({
+          changes: { from: block.from, to: block.to, insert: next },
+        });
+      });
+      panelEl.appendChild(option);
+    }
+
+    view.dom.appendChild(panelEl);
+    panelEl.addEventListener("pointerenter", () => cancelPendingClose(view));
+    alignPanel = panelEl;
+  };
+
+  alignRow.addEventListener("pointerenter", () => {
+    cancelPendingClose(view);
+    openAlignPanel();
+  });
+  alignRow.addEventListener("pointerdown", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    openAlignPanel();
+  });
+  panel.appendChild(alignRow);
 
   for (const [label, icon, action] of ACTION_ROWS) {
     const row = document.createElement("button");
