@@ -117,12 +117,12 @@ function MediaBody({ path, kind }: { path: string; kind: FileTypeKind }) {
       <div
         data-testid="preview-media"
         data-media-kind="image"
-        className="flex h-full items-center justify-center bg-[var(--app-sunken)]"
+        className="h-full overflow-auto bg-[var(--app-sunken)]"
       >
         <img
           src={convertFileSrc(path)}
           alt={path}
-          className="max-h-full max-w-full object-contain"
+          className="block h-auto max-w-full"
         />
       </div>
     );
@@ -212,9 +212,16 @@ export default function FloatingPreview({
   const previewPath = preview?.path ?? null;
   const previewTitle = preview?.title ?? "";
 
-  // 读真文档内容：只有 path 变化才重新拉取，拖动/缩放不触发
+  // 读真文档内容：只有 path 变化才重新拉取，拖动/缩放不触发。
+  // 二进制与 HTML 由渲染器直接加载，不走 IPC 预读（大文件读全文只会拖慢首屏）。
+  const needsTextContent = useMemo(() => {
+    if (!previewPath) return false;
+    const kind = fileTypeOf(previewPath);
+    return kind === "markdown" || kind === "text" || kind === "code";
+  }, [previewPath]);
+
   useEffect(() => {
-    if (!previewPath || !isTauriEnv()) return;
+    if (!previewPath || !isTauriEnv() || !needsTextContent) return;
     let cancelled = false;
     invoke<{ content: string; path: string; file_size: number }>(
       "open_file_direct",
@@ -227,7 +234,7 @@ export default function FloatingPreview({
     return () => {
       cancelled = true;
     };
-  }, [previewPath]);
+  }, [previewPath, needsTextContent]);
 
   const content = loaded && loaded.path === previewPath ? loaded.content : "";
 
@@ -434,13 +441,12 @@ export default function FloatingPreview({
       return <PdfPreviewBody path={previewPath} title={previewTitle} />;
     }
     if (kind === "html") {
-      // 沙箱 iframe：无 allow-scripts，脚本不执行；只展示真内容
       return (
         <iframe
           data-testid="preview-html"
           title={previewTitle}
-          sandbox=""
-          srcDoc={content}
+          sandbox="allow-scripts allow-same-origin allow-popups"
+          src={buildAssetUrl(previewPath)}
           className="h-full w-full border-0 bg-white"
         />
       );

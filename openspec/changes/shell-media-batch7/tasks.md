@@ -121,7 +121,7 @@
 
 依赖：无（`FloatingPreview.tsx` 独立）
 
-- [ ] 10.1 图片按宽适配可滚动；HTML 本地地址直载并允许脚本
+- [x] 10.1 图片按宽适配可滚动；HTML 本地地址直载并允许脚本
 
   实现要点：
   - `Preview/FloatingPreview.tsx` 图片分支：容器 `overflow: auto`；图片宽度 `min(100%, 原始宽度)`、高度自动；小图不放大。
