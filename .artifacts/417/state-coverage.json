@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "immersive-hidden",
+      "screenshot": ".artifacts/417/immersive.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T11:10:45Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "bottom-peek-shown",
+      "screenshot": ".artifacts/417/peek.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T11:10:46Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "exit-restored",
+      "screenshot": ".artifacts/417/exit.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T11:10:46Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "pinned-rail-kept",
+      "screenshot": ".artifacts/417/pinned-immersive.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T11:10:46Z",
+      "runner": "unknown@MMBP"
+    }
+  ]
+}
