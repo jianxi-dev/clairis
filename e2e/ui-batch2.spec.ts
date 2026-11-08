@@ -66,7 +66,9 @@ test("暖色主题下菜单表面跟随主题色", async ({ page }) => {
   await boot(page);
   await openFile(page, "/tmp/batch2/warm.md");
 
-  const themeBtn = page.locator('header button[title^="当前"]');
+  const themeBtn = page.locator(
+    '[data-testid="status-bar"] button[title^="当前"]',
+  );
   for (let i = 0; i < 5; i++) {
     if ((await themeBtn.getAttribute("title"))?.includes("暖色")) break;
     await themeBtn.click();

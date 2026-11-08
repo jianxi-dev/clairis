@@ -200,7 +200,9 @@ test("主题四态：亮 / 暗 / 暖 / 跟随系统，标题与 html class 同�
   await boot(page);
   await openFile(page, "/tmp/bug2/theme.md");
 
-  const themeBtn = page.locator('header button[title^="当前"]');
+  const themeBtn = page.locator(
+    '[data-testid="status-bar"] button[title^="当前"]',
+  );
   const title = () => themeBtn.getAttribute("title");
   const rootClass = () =>
     page.evaluate(() => document.documentElement.className);
