@@ -211,6 +211,7 @@ export default function OutlineMenu({
         <div
           ref={menuRef}
           className="biaoyue-outline-panel"
+          data-pinned={pinned ? "true" : "false"}
           data-testid="outline-menu"
           role="menu"
           aria-label="文档大纲"
