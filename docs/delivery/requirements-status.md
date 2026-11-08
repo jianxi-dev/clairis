@@ -51,6 +51,7 @@ openspec status --change <name>   # 单个变更工件完成度
 - 外壳/编辑/阅读/文件域（`shell-editor-batch5`）：+9 需求（C-4、E-10/E-11/E-13/E-16、G-3/G-7/G-8/G-10），18/18 票合并（PR #331–#351，含 #343/#347 两个缺陷），已归档 `openspec/changes/archive/2026-11-08-shell-editor-batch5`
   - 附加入口批：PDF 卡片真首页缩略图（#317，pdfium 渲首页→dataURL，失败回退占位）、pin/pinOff 改标准图钉造型（#352，PR #353）
 - 外壳/媒体/阅读域（`shell-media-batch7`）：11/11 票合并（PR #423–#436），净 +3 requirement（+5 新增、-2 被取代），已归档 `openspec/changes/archive/2026-11-08-shell-media-batch7`
+- 规格对齐（`rail-thumb-spec-sync`）：阅读空间卡片缩略图 72×54 → 64×48（`navigation` 1 条 requirement 修订，总数不变），已归档 `openspec/changes/archive/2026-11-08-rail-thumb-spec-sync`
   - 主题弹层生命周期 + 单击循环切主题、图片右键应用内菜单、chrome 前景色统一、关闭其他图标、视频容器自适应与画面变换、沉浸态隐藏状态栏/未钉住左栏与每栏独立页签条、悬浮窗图片按宽可滚 + HTML 本地直载、一键自动布局
 - 外壳/页面/编辑/阅读/文件域（`ui-polish-batch6`）：25/25 票合并（PR #394–#408），净 +5 requirement（+8 新增、-3 被取代），已归档 `openspec/changes/archive/2026-11-08-ui-polish-batch6`
   - 顶栏取消（G-3 改为无品牌顶栏）、状态栏五入口 + 紧凑高度 + 宽度/主题面板、页签与状态栏视觉、视频倍速、选区工具条归属与 AI 三键、placeMenu 统一落位、空行手柄悬停即开、块菜单对齐与缩进合并、色板二级保持、PDF 悬浮预览隐藏缩放条、卡片缩略图高度收窄

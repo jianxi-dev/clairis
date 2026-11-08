@@ -86,7 +86,7 @@ import type { RecentFile, SearchHit } from "../../types";
 const SEARCH_DEBOUNCE_MS = 300;
 const SEARCH_LIMIT = 30;
 
-/** HTML iframe 缩略图：720×540 画布缩到 72×54（10%），避免触发移动端布局。 */
+/** HTML iframe 缩略图：720×540 画布缩到 72×54（10%），超出盒的部分由外层裁切。 */
 const HTML_THUMB_BASE_W = 720;
 const HTML_THUMB_BASE_H = 540;
 const HTML_THUMB_SCALE = 0.1;
@@ -149,7 +149,7 @@ interface RailRowProps {
 }
 
 /**
- * 卡片右侧 4:3 缩略图（72×54）。
+ * 卡片右侧 4:3 缩略图（64×48）。
  *
  * 图片 / MD 首图 = 真 <img>；视频 = <video> 首帧；HTML = sandbox iframe 缩略
  * （并发超限回退 glyph）；PDF / 音频 = 确定性离线图形。纯文本与无图 MD 不会
