@@ -65,6 +65,10 @@ export type IconName =
   | "keyboardHints"
   | "pip"
   | "camera"
+  | "tune"
+  | "rotate"
+  | "zoomIn"
+  | "zoomOut"
   | "speed"
   | "home"
   | "heart"
@@ -328,6 +332,31 @@ export const ICONS: Record<IconName, IconDef> = {
   pip: {
     label: "画中画",
     s: "M3 5.5h18v13H3z M12.5 12.5h6v4h-6z",
+  },
+  tune: {
+    label: "画面",
+    parts: [
+      { s: "M4 7h9M17 7h3M4 17h3M11 17h9" },
+      { s: "M15 7a2 2 0 1 0 0.01 0zM9 17a2 2 0 1 0 0.01 0z" },
+    ],
+  },
+  rotate: {
+    label: "旋转画面",
+    parts: [{ s: "M4 12a8 8 0 1 1 2.4 5.7" }, { s: "M3 8v4h4" }],
+  },
+  zoomIn: {
+    label: "放大画面",
+    parts: [
+      { s: "M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14z" },
+      { s: "M16 16l5 5M11 8v6M8 11h6" },
+    ],
+  },
+  zoomOut: {
+    label: "缩小画面",
+    parts: [
+      { s: "M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14z" },
+      { s: "M16 16l5 5M8 11h6" },
+    ],
   },
   camera: {
     label: "截取当前画面",

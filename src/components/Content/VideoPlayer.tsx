@@ -145,7 +145,7 @@ function rateControlHtml(value: number): string {
   )}</span>`;
 }
 
-type PopoverKind = "playlist" | "subtitle" | "hints" | "rate" | null;
+type PopoverKind = "playlist" | "subtitle" | "hints" | "rate" | "visual" | null;
 
 /** 浮层锚点：相对播放器容器的偏移 */
 interface PopoverAnchor {
@@ -178,6 +178,13 @@ export default function VideoPlayer({
   const [currentIndex, setCurrentIndex] = useState(-1);
   const [loopMode, setLoopMode] = useState<LoopMode>("none");
   const [rate, setRate] = useState(1);
+  const [frame, setFrame] = useState({
+    rotation: 0,
+    zoom: 1,
+    brightness: 1,
+    panX: 0,
+    panY: 0,
+  });
   const [subtitlePos, setSubtitlePos] = useState<"bottom" | "top">("bottom");
   const [activeSubtitle, setActiveSubtitle] = useState<string>("");
   const [subtitleList, setSubtitleList] = useState<MediaEntry[]>([]);
@@ -196,6 +203,8 @@ export default function VideoPlayer({
 
   const loopRef = useRef<LoopMode>("none");
   const rateRef = useRef(1);
+  const frameRef = useRef(frame);
+  frameRef.current = frame;
   const currentIndexRef = useRef(-1);
   const subtitlePosRef = useRef<"bottom" | "top">("bottom");
   const playlistRef = useRef<MediaEntry[]>([]);
@@ -593,6 +602,23 @@ export default function VideoPlayer({
           },
         },
         {
+          name: "visual",
+          position: "right",
+          index: 44,
+          html: controlSvg("tune"),
+          tooltip: "画面",
+          mounted: function ($control) {
+            $control.dataset.name = "visual";
+            this.proxy($control, "click", () => {
+              if (popoverRef.current === "visual") {
+                setPopover(null);
+              } else {
+                openPopover("visual", $control, 210);
+              }
+            });
+          },
+        },
+        {
           name: "playlist",
           position: "right",
           index: 42,
@@ -818,7 +844,7 @@ export default function VideoPlayer({
     } else {
       art.poster = "";
     }
-    const visual = ["screenshot", "pip"];
+    const visual = ["screenshot", "pip", "visual"];
     for (const name of visual) {
       const node = containerRef.current?.querySelector<HTMLElement>(
         `.art-control[data-name="${name}"]`,
@@ -904,6 +930,97 @@ export default function VideoPlayer({
       }
     };
   }, [fileKind]);
+
+  const applyFrame = useCallback((next: Partial<typeof frame>) => {
+    setFrame((prev) => {
+      const merged = { ...prev, ...next };
+      const zoom = Math.min(4, Math.max(1, merged.zoom));
+      const limit = (zoom - 1) * 240;
+      return {
+        ...merged,
+        zoom,
+        panX: zoom === 1 ? 0 : Math.min(limit, Math.max(-limit, merged.panX)),
+        panY: zoom === 1 ? 0 : Math.min(limit, Math.max(-limit, merged.panY)),
+      };
+    });
+  }, []);
+
+  const resetFrame = useCallback(() => {
+    setFrame({ rotation: 0, zoom: 1, brightness: 1, panX: 0, panY: 0 });
+  }, []);
+
+  useEffect(() => {
+    const video = artRef.current?.video;
+    if (!video) return;
+    video.style.transform = `translate(${frame.panX}px, ${frame.panY}px) rotate(${frame.rotation}deg) scale(${frame.zoom})`;
+    video.style.filter = `brightness(${frame.brightness})`;
+  }, [frame]);
+
+  useEffect(() => {
+    resetFrame();
+  }, [url, resetFrame]);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    let startZoom = 1;
+    const onStart = () => {
+      startZoom = frameRef.current.zoom;
+    };
+    const onChange = (e: Event) => {
+      const scale = (e as unknown as { scale?: number }).scale;
+      if (scale) applyFrame({ zoom: startZoom * scale });
+    };
+    const onWheel = (e: WheelEvent) => {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      e.preventDefault();
+      applyFrame({ zoom: frameRef.current.zoom * (e.deltaY < 0 ? 1.1 : 0.9) });
+    };
+    el.addEventListener("gesturestart", onStart);
+    el.addEventListener("gesturechange", onChange);
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => {
+      el.removeEventListener("gesturestart", onStart);
+      el.removeEventListener("gesturechange", onChange);
+      el.removeEventListener("wheel", onWheel);
+    };
+  }, [applyFrame]);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    let drag: { x: number; y: number; panX: number; panY: number } | null =
+      null;
+    const onDown = (e: PointerEvent) => {
+      if (frameRef.current.zoom <= 1) return;
+      const target = e.target as HTMLElement;
+      if (target.closest(".art-bottom, .art-controls")) return;
+      drag = {
+        x: e.clientX,
+        y: e.clientY,
+        panX: frameRef.current.panX,
+        panY: frameRef.current.panY,
+      };
+    };
+    const onMove = (e: PointerEvent) => {
+      if (!drag) return;
+      applyFrame({
+        panX: drag.panX + (e.clientX - drag.x),
+        panY: drag.panY + (e.clientY - drag.y),
+      });
+    };
+    const onUp = () => {
+      drag = null;
+    };
+    el.addEventListener("pointerdown", onDown);
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    return () => {
+      el.removeEventListener("pointerdown", onDown);
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+    };
+  }, [applyFrame]);
 
   const mediaItems = playlist;
 
@@ -1013,6 +1130,57 @@ export default function VideoPlayer({
       )}
 
       {/* 播放列表浮层（从按钮处弹出） */}
+      {popover === "visual" && (
+        <div
+          data-testid="visual-panel"
+          style={{ ...popoverStyle, width: 210, padding: 10 }}
+        >
+          <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+            <button
+              type="button"
+              data-testid="visual-rotate"
+              onClick={() =>
+                applyFrame({ rotation: (frameRef.current.rotation + 90) % 360 })
+              }
+            >
+              旋转
+            </button>
+            <button
+              type="button"
+              data-testid="visual-zoom-in"
+              onClick={() => applyFrame({ zoom: frameRef.current.zoom * 1.2 })}
+            >
+              放大
+            </button>
+            <button
+              type="button"
+              data-testid="visual-zoom-out"
+              onClick={() => applyFrame({ zoom: frameRef.current.zoom / 1.2 })}
+            >
+              缩小
+            </button>
+          </div>
+          <label style={{ display: "block", marginBottom: 6 }}>
+            亮度
+            <input
+              data-testid="visual-brightness"
+              type="range"
+              min={50}
+              max={150}
+              step={5}
+              value={Math.round(frame.brightness * 100)}
+              onChange={(e) =>
+                applyFrame({ brightness: Number(e.target.value) / 100 })
+              }
+              style={{ width: "100%" }}
+            />
+          </label>
+          <button type="button" data-testid="visual-reset" onClick={resetFrame}>
+            重置
+          </button>
+        </div>
+      )}
+
       {popover === "playlist" && (
         <div style={{ ...popoverStyle, width: 260 }}>
           <div
