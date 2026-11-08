@@ -143,10 +143,7 @@ export const ICONS: Record<IconName, IconDef> = {
   },
   closeOthers: {
     label: "关闭其他",
-    parts: [
-      { s: "M3 3l6 6 M9 3L3 9" },
-      { s: "M14 14l6 6 M20 14l-6 6", dash: "2 2" },
-    ],
+    parts: [{ s: "M4 4l6 6M10 4l-6 6" }, { s: "M14 7h6" }, { s: "M14 13h6" }],
   },
   search: {
     label: "搜索",
