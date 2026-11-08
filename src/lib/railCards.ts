@@ -21,7 +21,7 @@ export const DENSITY_HEIGHT: Record<RailDensity, number> = {
 export const CARD_MIN = 88;
 export const CARD_MAX = 160;
 
-/** 4:3 缩略图盒（卡片右侧，严格 72×54）。 */
+/** 4:3 缩略图盒（卡片右侧，严格 64×48）。 */
 export const CARD_RATIO_W = 64;
 export const CARD_RATIO_H = 48;
 
