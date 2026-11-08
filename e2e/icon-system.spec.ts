@@ -250,3 +250,43 @@ test("图钉造型：pin 与 pinOff 形状不同、斜杠只覆盖图钉本体�
   expect(iconPaths.pinOff).not.toContain("M5 19L19 5");
   expect(iconPaths.pinOff).toContain("M7.4 16.6L16.6 7.4");
 });
+
+test("主题亮色图标 6 条等角光线，入口无三角", async ({ page }) => {
+  await openDoc(page, "/tmp/ic/a.md");
+  const entry = page.locator('[data-testid="theme-entry"]');
+  await entry.click();
+  await expect(entry.locator('svg[data-icon="sunBright"]')).toHaveCount(1);
+
+  const angles = await entry.locator("svg").evaluate((svg) => {
+    const d = svg.querySelector("path")?.getAttribute("d") ?? "";
+    const out: number[] = [];
+    for (const m of d.matchAll(
+      /M([\d.]+) ([\d.]+)(?:v(-?[\d.]+)|l(-?[\d.]+) (-?[\d.]+))/g,
+    )) {
+      const dx = m[4] ? Number(m[4]) : 0;
+      const dy = m[5] ? Number(m[5]) : Number(m[3]);
+      out.push(((Math.atan2(dy, dx) * 180) / Math.PI + 360) % 360);
+    }
+    return out.sort((a, b) => a - b);
+  });
+  expect(angles).toHaveLength(6);
+  for (let i = 0; i < angles.length; i += 1) {
+    const next =
+      angles[(i + 1) % angles.length] + (i === angles.length - 1 ? 360 : 0);
+    expect(Math.abs(next - angles[i] - 60)).toBeLessThanOrEqual(2);
+  }
+});
+
+test("自动布局图标是魔法棒，不含四宫格", async ({ page }) => {
+  await openDoc(page, "/tmp/ic/a.md");
+  const entry = page.locator('[data-testid="auto-layout-entry"]');
+  const d = await entry.locator("svg").evaluate((svg) =>
+    Array.from(svg.querySelectorAll("path"))
+      .map((p) => p.getAttribute("d") ?? "")
+      .join(" "),
+  );
+  expect(d).not.toContain("h6v6");
+  expect(d).toContain("M15 4"); // 主星芒
+  expect(d).toContain("M20 12"); // 右星芒
+  expect(d).toContain("M8 3"); // 上星芒
+});
