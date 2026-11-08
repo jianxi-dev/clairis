@@ -1,0 +1,421 @@
+{
+  "change": "ui-polish-batch6",
+  "requirements": [
+    {
+      "id": "R-1",
+      "text": "顶栏移除与沉浸图标化",
+      "anchors": [
+        {
+          "id": "A-1.1",
+          "claim": "窗口顶部品牌横条文本节点数量",
+          "kind": "exact",
+          "assert": "0",
+          "source": "spec G-3"
+        },
+        {
+          "id": "A-1.2",
+          "claim": "沉浸入口按钮内的文本节点数量",
+          "kind": "exact",
+          "assert": "0",
+          "source": "spec G-3"
+        },
+        {
+          "id": "A-1.3",
+          "claim": "沉浸入口按钮可访问名包含「沉浸阅读」",
+          "kind": "state-machine",
+          "assert": "\"\"\"true\"\"\"",
+          "source": "design D-2"
+        }
+      ]
+    },
+    {
+      "id": "R-2",
+      "text": "页签选中态与底边框",
+      "anchors": [
+        {
+          "id": "A-2.1",
+          "claim": "选中页签计算 outline-width",
+          "kind": "exact",
+          "assert": "0px",
+          "source": "spec 页签条与格头"
+        },
+        {
+          "id": "A-2.2",
+          "claim": "页签容器计算 border-bottom-width",
+          "kind": "exact",
+          "assert": "0px",
+          "source": "spec 页签条与格头"
+        },
+        {
+          "id": "A-2.3",
+          "claim": "选中页签文字色与未选中页签文字色不同",
+          "kind": "state-machine",
+          "assert": "\"\"\"true\"\"\"",
+          "source": "spec 页签条与格头"
+        }
+      ]
+    },
+    {
+      "id": "R-3",
+      "text": "页签右键菜单图标",
+      "anchors": [
+        {
+          "id": "A-3.1",
+          "claim": "右键菜单中无图标的可点击项数量",
+          "kind": "exact",
+          "assert": "0",
+          "source": "spec 页签条与格头"
+        }
+      ]
+    },
+    {
+      "id": "R-4",
+      "text": "状态栏高度与显隐",
+      "anchors": [
+        {
+          "id": "A-4.1",
+          "claim": "默认字号下状态栏计算高度上限（px）",
+          "kind": "exact",
+          "assert": "26",
+          "source": "spec 状态栏"
+        },
+        {
+          "id": "A-4.2",
+          "claim": "双击后状态栏不再可见",
+          "kind": "state-machine",
+          "assert": "\"\"\"false\"\"\"",
+          "source": "spec 状态栏"
+        },
+        {
+          "id": "A-4.3",
+          "claim": "指针进入底部热区 500ms 内状态栏重新可见",
+          "kind": "state-machine",
+          "assert": "\"\"\"true\"\"\"",
+          "source": "spec 状态栏"
+        }
+      ]
+    },
+    {
+      "id": "R-5",
+      "text": "主题弹窗",
+      "anchors": [
+        {
+          "id": "A-5.1",
+          "claim": "主题面板项数",
+          "kind": "exact",
+          "assert": "4",
+          "source": "spec 状态栏"
+        },
+        {
+          "id": "A-5.2",
+          "claim": "点击「暗色」后根节点含 dark class",
+          "kind": "state-machine",
+          "assert": "\"\"\"true\"\"\"",
+          "source": "spec 状态栏"
+        }
+      ]
+    },
+    {
+      "id": "R-6",
+      "text": "主页入口与宽度面板",
+      "anchors": [
+        {
+          "id": "A-6.1",
+          "claim": "状态栏主页按钮存在",
+          "kind": "state-machine",
+          "assert": "\"\"\"true\"\"\"",
+          "source": "spec 状态栏"
+        },
+        {
+          "id": "A-6.2",
+          "claim": "宽度面板预设档数",
+          "kind": "exact",
+          "assert": "3",
+          "source": "spec 状态栏"
+        },
+        {
+          "id": "A-6.3",
+          "claim": "宽度面板滑块数量",
+          "kind": "exact",
+          "assert": "1",
+          "source": "spec 状态栏"
+        }
+      ]
+    },
+    {
+      "id": "R-7",
+      "text": "阅读空间卡片底部行",
+      "anchors": [
+        {
+          "id": "A-7.1",
+          "claim": "底部动作图标渲染尺寸（px）",
+          "kind": "exact",
+          "assert": "14",
+          "source": "spec 阅读空间密度与卡片规格"
+        },
+        {
+          "id": "A-7.2",
+          "claim": "收藏图标为爱心（path 与 heart 一致）",
+          "kind": "state-machine",
+          "assert": "\"\"\"true\"\"\"",
+          "source": "spec 阅读空间密度与卡片规格"
+        },
+        {
+          "id": "A-7.3",
+          "claim": "路径按钮 title 为完整路径",
+          "kind": "state-machine",
+          "assert": "\"\"\"true\"\"\"",
+          "source": "spec 阅读空间密度与卡片规格"
+        },
+        {
+          "id": "A-7.4",
+          "claim": "最小高度下缩略图/进度/底行两两相交对数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "spec 阅读空间密度与卡片规格"
+        }
+      ]
+    },
+    {
+      "id": "R-8",
+      "text": "悬浮预览窗宽度与唤出区",
+      "anchors": [
+        {
+          "id": "A-8.1",
+          "claim": "悬浮窗宽度与基准宽的差值等于缩略图宽度",
+          "kind": "state-machine",
+          "assert": "\"\"\"true\"\"\"",
+          "source": "spec 悬浮预览窗"
+        },
+        {
+          "id": "A-8.2",
+          "claim": "指针停在缩略图左侧正文区时悬浮窗不出现",
+          "kind": "state-machine",
+          "assert": "\"\"\"false\"\"\"",
+          "source": "spec 悬浮预览窗"
+        }
+      ]
+    },
+    {
+      "id": "R-9",
+      "text": "悬浮窗底部动作行",
+      "anchors": [
+        {
+          "id": "A-9.1",
+          "claim": "悬浮窗初始底部动作按钮可见数量",
+          "kind": "exact",
+          "assert": "0",
+          "source": "spec 悬浮预览窗"
+        },
+        {
+          "id": "A-9.2",
+          "claim": "悬停底部后三按钮可见数量",
+          "kind": "exact",
+          "assert": "3",
+          "source": "spec 悬浮预览窗"
+        },
+        {
+          "id": "A-9.3",
+          "claim": "悬浮窗内按钮与卡片内同款按钮宽度差（px）",
+          "kind": "exact",
+          "assert": "0",
+          "source": "spec 悬浮预览窗"
+        }
+      ]
+    },
+    {
+      "id": "R-10",
+      "text": "图钉与编辑器图标",
+      "anchors": [
+        {
+          "id": "A-10.1",
+          "claim": "pin 与 pinOff 的 path 互不相同",
+          "kind": "state-machine",
+          "assert": "\"\"\"true\"\"\"",
+          "source": "spec 图标体系"
+        },
+        {
+          "id": "A-10.2",
+          "claim": "编辑器 10 个同族图标中重复 path 组数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "spec 图标体系"
+        },
+        {
+          "id": "A-10.3",
+          "claim": "pinOff 斜杠起止点不跨越整个 viewBox",
+          "kind": "state-machine",
+          "assert": "\"\"\"true\"\"\"",
+          "source": "spec 图标体系"
+        }
+      ]
+    },
+    {
+      "id": "R-11",
+      "text": "大纲边框",
+      "anchors": [
+        {
+          "id": "A-11.1",
+          "claim": "未钉住时浮层 border-width",
+          "kind": "exact",
+          "assert": "0px",
+          "source": "spec E-10"
+        },
+        {
+          "id": "A-11.2",
+          "claim": "钉住时浮层 border-width",
+          "kind": "exact",
+          "assert": "1px",
+          "source": "spec E-10"
+        }
+      ]
+    },
+    {
+      "id": "R-12",
+      "text": "视频倍速",
+      "anchors": [
+        {
+          "id": "A-12.1",
+          "claim": "倍速菜单项数",
+          "kind": "exact",
+          "assert": "6",
+          "source": "spec C-6"
+        },
+        {
+          "id": "A-12.2",
+          "claim": "选择 1.5× 后 video.playbackRate",
+          "kind": "exact",
+          "assert": "1.5",
+          "source": "spec C-6"
+        },
+        {
+          "id": "A-12.3",
+          "claim": "倍速切换后 preservesPitch 为真",
+          "kind": "state-machine",
+          "assert": "\"\"\"true\"\"\"",
+          "source": "spec C-6"
+        }
+      ]
+    },
+    {
+      "id": "R-13",
+      "text": "编辑态工具条归属",
+      "anchors": [
+        {
+          "id": "A-13.1",
+          "claim": "md 编辑态工具条内 HTML 专属按钮数量",
+          "kind": "exact",
+          "assert": "0",
+          "source": "spec 编辑态工具条归属"
+        },
+        {
+          "id": "A-13.2",
+          "claim": "md 工具条含 改写/翻译/润色 三项",
+          "kind": "state-machine",
+          "assert": "\"\"\"true\"\"\"",
+          "source": "spec 编辑态工具条归属"
+        }
+      ]
+    },
+    {
+      "id": "R-14",
+      "text": "菜单落位最短路径",
+      "anchors": [
+        {
+          "id": "A-14.1",
+          "claim": "菜单与手柄矩形最近距离上限（px）",
+          "kind": "exact",
+          "assert": "8",
+          "source": "spec E-14"
+        },
+        {
+          "id": "A-14.2",
+          "claim": "触发元素贴底时菜单完整落在视口内",
+          "kind": "state-machine",
+          "assert": "\"\"\"true\"\"\"",
+          "source": "spec E-14"
+        }
+      ]
+    },
+    {
+      "id": "R-15",
+      "text": "新增手柄滑入菜单",
+      "anchors": [
+        {
+          "id": "A-15.1",
+          "claim": "指针滑入新增手柄后菜单出现",
+          "kind": "state-machine",
+          "assert": "\"\"\"true\"\"\"",
+          "source": "spec E-17"
+        },
+        {
+          "id": "A-15.2",
+          "claim": "两次不同指针位置下菜单左上角坐标不同",
+          "kind": "state-machine",
+          "assert": "\"\"\"true\"\"\"",
+          "source": "design D-17"
+        }
+      ]
+    },
+    {
+      "id": "R-16",
+      "text": "块菜单结构",
+      "anchors": [
+        {
+          "id": "A-16.1",
+          "claim": "二级菜单项数（3 对齐 + 2 缩进）",
+          "kind": "exact",
+          "assert": "5",
+          "source": "spec E-11"
+        },
+        {
+          "id": "A-16.2",
+          "claim": "新增手柄菜单与转换手柄菜单 offsetWidth 差（px）",
+          "kind": "exact",
+          "assert": "0",
+          "source": "spec E-11"
+        },
+        {
+          "id": "A-16.3",
+          "claim": "标题行与无序列表行间距小于其它相邻行间距",
+          "kind": "state-machine",
+          "assert": "\"\"\"true\"\"\"",
+          "source": "spec E-11"
+        }
+      ]
+    },
+    {
+      "id": "R-17",
+      "text": "颜色面板二级保持",
+      "anchors": [
+        {
+          "id": "A-17.1",
+          "claim": "指针移出父项后色板仍可见",
+          "kind": "state-machine",
+          "assert": "\"\"\"true\"\"\"",
+          "source": "spec 颜色面板二级保持"
+        }
+      ]
+    },
+    {
+      "id": "R-18",
+      "text": "撤销重做双快捷键",
+      "anchors": [
+        {
+          "id": "A-18.1",
+          "claim": "Control+z 后内容相对前态发生变化",
+          "kind": "state-machine",
+          "assert": "\"\"\"true\"\"\"",
+          "source": "spec 撤销与重做快捷键"
+        },
+        {
+          "id": "A-18.2",
+          "claim": "Meta+z 后内容变化与 Control+z 相同",
+          "kind": "state-machine",
+          "assert": "\"\"\"true\"\"\"",
+          "source": "spec 撤销与重做快捷键"
+        }
+      ]
+    }
+  ]
+}
