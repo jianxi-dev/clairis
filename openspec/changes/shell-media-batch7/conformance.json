@@ -1,0 +1,326 @@
+{
+  "change": "shell-media-batch7",
+  "requirements": [
+    {
+      "id": "R-1",
+      "text": "主题弹层生命周期与主题入口",
+      "anchors": [
+        {
+          "id": "A-1.1",
+          "claim": "指针从主题按钮缓慢移动到面板项上停留 500ms 后面板仍可见",
+          "kind": "state-machine",
+          "assert": "\"true\"",
+          "source": "spec 状态栏"
+        },
+        {
+          "id": "A-1.2",
+          "claim": "连续单击主题图标 4 次后的主题序列",
+          "kind": "state-machine",
+          "assert": "\"light → dark → warm → system\"",
+          "source": "spec 状态栏"
+        },
+        {
+          "id": "A-1.3",
+          "claim": "主题面板的 role 属性值",
+          "kind": "exact",
+          "assert": "\"menu\"",
+          "source": "spec 状态栏"
+        },
+        {
+          "id": "A-1.4",
+          "claim": "宽度调整面板按 Esc 后可见面板数量",
+          "kind": "exact",
+          "assert": "0",
+          "source": "spec 状态栏"
+        },
+        {
+          "id": "A-1.5",
+          "claim": "状态栏隐藏态经底部热区唤出后，指针移入主题面板时面板仍可见",
+          "kind": "state-machine",
+          "assert": "\"true\"",
+          "source": "design D-1"
+        }
+      ]
+    },
+    {
+      "id": "R-2",
+      "text": "图片右键菜单",
+      "anchors": [
+        {
+          "id": "A-2.1",
+          "claim": "菜单可见时仍在等待的 invoke 调用数（500ms 延迟桩）",
+          "kind": "exact",
+          "assert": "1",
+          "source": "design D-3"
+        },
+        {
+          "id": "A-2.2",
+          "claim": "图片右键菜单可点击项数量",
+          "kind": "exact",
+          "assert": "4",
+          "source": "spec 状态栏 / design D-3"
+        },
+        {
+          "id": "A-2.3",
+          "claim": "外部点击后菜单节点数量",
+          "kind": "exact",
+          "assert": "0",
+          "source": "design D-1"
+        },
+        {
+          "id": "A-2.4",
+          "claim": "图片上右键时原生菜单被阻止次数",
+          "kind": "exact",
+          "assert": "1",
+          "source": "design D-3"
+        }
+      ]
+    },
+    {
+      "id": "R-3",
+      "text": "「关闭其他」图标",
+      "anchors": [
+        {
+          "id": "A-3.1",
+          "claim": "「关闭其他」图标中带 stroke-dasharray 的路径数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "spec「关闭其他」图标可辨"
+        },
+        {
+          "id": "A-3.2",
+          "claim": "图标中的叉形笔画组数",
+          "kind": "exact",
+          "assert": "1",
+          "source": "spec「关闭其他」图标可辨"
+        },
+        {
+          "id": "A-3.3",
+          "claim": "closeOthers 的 path 与 close 的 path 不同",
+          "kind": "state-machine",
+          "assert": "\"true\"",
+          "source": "spec「关闭其他」图标可辨"
+        }
+      ]
+    },
+    {
+      "id": "R-4",
+      "text": "视频播放器",
+      "anchors": [
+        {
+          "id": "A-4.1",
+          "claim": "容器尺寸变化后视频宽高比与容器宽高比的差值上限",
+          "kind": "exact",
+          "assert": "0.02",
+          "source": "spec C-6"
+        },
+        {
+          "id": "A-4.2",
+          "claim": "上一集按钮位于播放键之前、下一集位于之后",
+          "kind": "state-machine",
+          "assert": "\"true\"",
+          "source": "spec C-6"
+        },
+        {
+          "id": "A-4.3",
+          "claim": "截图按钮在 DOM 中位于网页全屏按钮之前",
+          "kind": "state-machine",
+          "assert": "\"true\"",
+          "source": "spec C-6"
+        },
+        {
+          "id": "A-4.4",
+          "claim": "画面缩放上限倍数",
+          "kind": "exact",
+          "assert": "4",
+          "source": "spec C-6"
+        },
+        {
+          "id": "A-4.5",
+          "claim": "画面亮度上限百分比",
+          "kind": "exact",
+          "assert": "150",
+          "source": "spec C-6"
+        },
+        {
+          "id": "A-4.6",
+          "claim": "切换视频文件后的旋转角度",
+          "kind": "exact",
+          "assert": "0",
+          "source": "spec C-6"
+        },
+        {
+          "id": "A-4.7",
+          "claim": "音频文件控制条中画面类控件（旋转/缩放/亮度/截图）数量",
+          "kind": "exact",
+          "assert": "0",
+          "source": "spec C-6"
+        },
+        {
+          "id": "A-4.8",
+          "claim": "点击截图并取消另存为后新增文件数",
+          "kind": "state-machine",
+          "assert": "\"0\"",
+          "source": "design D-8"
+        }
+      ]
+    },
+    {
+      "id": "R-5",
+      "text": "沉浸模式",
+      "anchors": [
+        {
+          "id": "A-5.1",
+          "claim": "进入沉浸后状态栏计算高度（px）",
+          "kind": "exact",
+          "assert": "0",
+          "source": "spec G-10"
+        },
+        {
+          "id": "A-5.2",
+          "claim": "未钉住时进入沉浸后可见的阅读空间面板数量",
+          "kind": "exact",
+          "assert": "0",
+          "source": "spec G-10"
+        },
+        {
+          "id": "A-5.3",
+          "claim": "钉住时进入沉浸后可见的阅读空间面板数量",
+          "kind": "exact",
+          "assert": "1",
+          "source": "spec G-10"
+        },
+        {
+          "id": "A-5.4",
+          "claim": "两栏沉浸态下同时可见的栏头数量上限",
+          "kind": "exact",
+          "assert": "1",
+          "source": "spec G-10"
+        },
+        {
+          "id": "A-5.5",
+          "claim": "展开的栏头宽度与该栏宽度差值上限（px）",
+          "kind": "exact",
+          "assert": "2",
+          "source": "spec G-10"
+        },
+        {
+          "id": "A-5.6",
+          "claim": "退出沉浸后状态栏恢复可见",
+          "kind": "state-machine",
+          "assert": "\"true\"",
+          "source": "design D-9"
+        }
+      ]
+    },
+    {
+      "id": "R-6",
+      "text": "chrome 前景色统一",
+      "anchors": [
+        {
+          "id": "A-6.1",
+          "claim": "四类 chrome 元素静息计算色的两两差值",
+          "kind": "exact",
+          "assert": "0",
+          "source": "spec chrome 前景色"
+        },
+        {
+          "id": "A-6.2",
+          "claim": "悬停计算色亮度高于静息计算色",
+          "kind": "state-machine",
+          "assert": "\"true\"",
+          "source": "spec chrome 前景色"
+        },
+        {
+          "id": "A-6.3",
+          "claim": "全屏按钮悬停色等于同栏其它按钮悬停色",
+          "kind": "state-machine",
+          "assert": "\"true\"",
+          "source": "spec chrome 前景色"
+        },
+        {
+          "id": "A-6.4",
+          "claim": "AI 图标色与其它图标静息色不同",
+          "kind": "state-machine",
+          "assert": "\"true\"",
+          "source": "spec chrome 前景色"
+        }
+      ]
+    },
+    {
+      "id": "R-7",
+      "text": "阅读空间悬浮窗",
+      "anchors": [
+        {
+          "id": "A-7.1",
+          "claim": "长图渲染宽度与内容区宽度差值（px）",
+          "kind": "exact",
+          "assert": "0",
+          "source": "spec A-13"
+        },
+        {
+          "id": "A-7.2",
+          "claim": "长图预览内容区 scrollHeight 大于 clientHeight",
+          "kind": "state-machine",
+          "assert": "\"true\"",
+          "source": "spec A-13"
+        },
+        {
+          "id": "A-7.3",
+          "claim": "HTML 预览 iframe 的 srcdoc 属性值",
+          "kind": "exact",
+          "assert": "\"null\"",
+          "source": "spec A-13"
+        },
+        {
+          "id": "A-7.4",
+          "claim": "HTML 预览 iframe 的 sandbox 含 allow-scripts",
+          "kind": "state-machine",
+          "assert": "\"true\"",
+          "source": "spec A-13"
+        },
+        {
+          "id": "A-7.5",
+          "claim": "打开图片悬浮预览时 open_file_direct 调用次数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "spec A-13"
+        }
+      ]
+    },
+    {
+      "id": "R-8",
+      "text": "一键自动布局",
+      "anchors": [
+        {
+          "id": "A-8.1",
+          "claim": "自动布局按钮与主页按钮之间的元素数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "spec 一键自动布局"
+        },
+        {
+          "id": "A-8.2",
+          "claim": "2 栏 [Markdown, 视频] 布局后视频栏宽度占比下限",
+          "kind": "exact",
+          "assert": "60%",
+          "source": "spec 一键自动布局"
+        },
+        {
+          "id": "A-8.3",
+          "claim": "4 栏布局后每栏宽高与工作区一半的差值上限（px）",
+          "kind": "exact",
+          "assert": "2",
+          "source": "spec 一键自动布局"
+        },
+        {
+          "id": "A-8.4",
+          "claim": "布局前后页签总数差",
+          "kind": "exact",
+          "assert": "0",
+          "source": "spec 一键自动布局"
+        }
+      ]
+    }
+  ]
+}
