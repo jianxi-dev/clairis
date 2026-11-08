@@ -49,6 +49,7 @@ import {
   RAIL_PINNED_WIDTH_MIN,
 } from "../../lib/aiViewSpec";
 import { isUnread } from "../../lib/aiViewSpec";
+import { pdfThumbCacheGet, pdfThumbOf } from "../../lib/pdfThumb";
 import {
   CARD_MAX,
   CARD_MIN,
@@ -162,6 +163,11 @@ function RailThumb({ descriptor }: { descriptor: ThumbDescriptor }) {
 
   const [htmlSlot, setHtmlSlot] = useState(false);
   const [mediaReady, setMediaReady] = useState(false);
+  const [pdfThumb, setPdfThumb] = useState<string | null | undefined>(() =>
+    descriptor.kind === "pdf-page" && descriptor.src
+      ? pdfThumbCacheGet(descriptor.src)
+      : null,
+  );
   const htmlAcquiredRef = useRef(false);
 
   useEffect(() => {
@@ -187,6 +193,17 @@ function RailThumb({ descriptor }: { descriptor: ThumbDescriptor }) {
       .finally(() => {
         if (!cancelled) setMediaReady(true);
       });
+    return () => {
+      cancelled = true;
+    };
+  }, [kind, src]);
+
+  useEffect(() => {
+    if (kind !== "pdf-page" || !src) return;
+    let cancelled = false;
+    void pdfThumbOf(src).then((url) => {
+      if (!cancelled) setPdfThumb(url);
+    });
     return () => {
       cancelled = true;
     };
@@ -307,6 +324,25 @@ function RailThumb({ descriptor }: { descriptor: ThumbDescriptor }) {
   }
 
   if (kind === "pdf-page") {
+    if (pdfThumb) {
+      return (
+        <div
+          data-testid="rail-thumb"
+          data-thumb-kind={kind}
+          style={size}
+          className="rail-thumb shrink-0 overflow-hidden"
+        >
+          <img
+            data-testid="rail-thumb-pdf-img"
+            src={pdfThumb}
+            alt=""
+            width={box.w}
+            height={box.h}
+            className="h-full w-full object-cover object-top"
+          />
+        </div>
+      );
+    }
     // 卡片缩略图**不嵌入** PDF 查看器（#286）：macOS WKWebView 用 PDFKit
     // 渲染 iframe，忽略 `#toolbar=0`；它的悬浮控制条是原生视图层，
     // CSS `pointer-events:none` 也拦不住。唯一可靠的做法是不给卡片加载

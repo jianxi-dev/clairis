@@ -1,0 +1,8 @@
+    Error: expect(locator).toBeVisible() failed
+    Expected: visible
+    Error: element(s) not found
+      - Expect "toBeVisible" with timeout 20000ms
+    > 605 |   await expect(bitmap).toBeVisible({ timeout: 20000 });
+    Error Context: test-results/rail-cards-PDF-卡片缩略图不嵌入查看器，原生工具条无宿主（-286）/error-context.md
+    Error: expect(locator).toBeVisible() failed
+    Expected: visible
