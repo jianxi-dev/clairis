@@ -978,6 +978,22 @@ body {
   background: var(--app-bg);
 }
 
+.app-status-bar button {
+  padding-top: 0;
+  padding-bottom: 0;
+  height: 18px;
+}
+
+/* 状态栏隐藏后的底部热区：只在指针进入时计时显形，不占布局高度。 */
+.status-hotzone {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 10px;
+  z-index: 40;
+}
+
 /* 顶部热区：16px 才够鼠标稳定命中；悬浮条出现后容器随之变高，
    指针从热区移到条上不会触发 mouseleave。 */
 .immersive-peek-zone {
