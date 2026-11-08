@@ -20,6 +20,7 @@ export type IconName =
   | "folder"
   | "file"
   | "close"
+  | "closeOthers"
   | "search"
   | "settings"
   | "sun"
@@ -134,6 +135,13 @@ export const ICONS: Record<IconName, IconDef> = {
   close: {
     label: "关闭",
     s: "M6.5 6.5l11 11 M17.5 6.5l-11 11",
+  },
+  closeOthers: {
+    label: "关闭其他",
+    parts: [
+      { s: "M3 3l6 6 M9 3L3 9" },
+      { s: "M14 14l6 6 M20 14l-6 6", dash: "2 2" },
+    ],
   },
   search: {
     label: "搜索",
