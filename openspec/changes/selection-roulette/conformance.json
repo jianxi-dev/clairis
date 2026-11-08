@@ -1,0 +1,250 @@
+{
+  "change": "selection-roulette",
+  "requirements": [
+    {
+      "id": "R-1",
+      "text": "轮盘几何",
+      "anchors": [
+        {
+          "id": "A-1.1",
+          "claim": "根环扇区数量",
+          "kind": "exact",
+          "assert": "8",
+          "source": "批准稿 §4.2"
+        },
+        {
+          "id": "A-1.2",
+          "claim": "轮盘圆心与鼠标落点的最大偏差（px）",
+          "kind": "exact",
+          "assert": "1",
+          "source": "批准稿 §5"
+        },
+        {
+          "id": "A-1.3",
+          "claim": "圆心死区半径（px）",
+          "kind": "exact",
+          "assert": "24",
+          "source": "批准稿 §5"
+        },
+        {
+          "id": "A-1.4",
+          "claim": "轮盘包围盒尺寸（px）",
+          "kind": "exact",
+          "assert": "420",
+          "source": "批准稿 §5"
+        },
+        {
+          "id": "A-1.5",
+          "claim": "二级扇形总跨度上限（度）",
+          "kind": "exact",
+          "assert": "136",
+          "source": "批准稿 §4.3"
+        },
+        {
+          "id": "A-1.6",
+          "claim": "二级每格角度（度）",
+          "kind": "exact",
+          "assert": "15",
+          "source": "批准稿 §4.3"
+        },
+        {
+          "id": "A-1.7",
+          "claim": "三级在原位替换第二层，圆心出现返回",
+          "kind": "state-machine",
+          "assert": "\"true\"",
+          "source": "批准稿 §4.4"
+        }
+      ]
+    },
+    {
+      "id": "R-2",
+      "text": "颜色双圈",
+      "anchors": [
+        {
+          "id": "A-2.1",
+          "claim": "内圈文字色格数",
+          "kind": "exact",
+          "assert": "9",
+          "source": "批准稿 §4.5"
+        },
+        {
+          "id": "A-2.2",
+          "claim": "外圈背景色格数",
+          "kind": "exact",
+          "assert": "16",
+          "source": "批准稿 §4.5"
+        },
+        {
+          "id": "A-2.3",
+          "claim": "内圈格渲染的字符",
+          "kind": "exact",
+          "assert": "\"A\"",
+          "source": "批准稿 §8 第三轮"
+        }
+      ]
+    },
+    {
+      "id": "R-3",
+      "text": "命令写入",
+      "anchors": [
+        {
+          "id": "A-3.1",
+          "claim": "3 栏动作写入源码的围栏",
+          "kind": "state-machine",
+          "assert": "\"::: {.col-3}\"",
+          "source": "批准稿 §10"
+        },
+        {
+          "id": "A-3.2",
+          "claim": "「警告」高亮写入源码",
+          "kind": "state-machine",
+          "assert": "\"> [!warning]\"",
+          "source": "批准稿 §4.4"
+        },
+        {
+          "id": "A-3.3",
+          "claim": "增加缩进写入源码",
+          "kind": "state-machine",
+          "assert": "\"::: {.indent-1}\"",
+          "source": "批准稿 §7.3"
+        },
+        {
+          "id": "A-3.4",
+          "claim": "行内代码写入源码",
+          "kind": "state-machine",
+          "assert": "\"`code`\"",
+          "source": "批准稿 §2.3"
+        },
+        {
+          "id": "A-3.5",
+          "claim": "一级标题写入源码",
+          "kind": "state-machine",
+          "assert": "\"# \"",
+          "source": "批准稿 §10"
+        }
+      ]
+    },
+    {
+      "id": "R-4",
+      "text": "格式刷与清格",
+      "anchors": [
+        {
+          "id": "A-4.1",
+          "claim": "格式刷跨两段后计数角标",
+          "kind": "exact",
+          "assert": "2",
+          "source": "批准稿 §7.1"
+        },
+        {
+          "id": "A-4.2",
+          "claim": "清除格式后链接保留",
+          "kind": "state-machine",
+          "assert": "\"true\"",
+          "source": "批准稿 §7.2"
+        },
+        {
+          "id": "A-4.3",
+          "claim": "清除格式后源码中 `mdb-color-` 出现次数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "批准稿 §7.2"
+        },
+        {
+          "id": "A-4.4",
+          "claim": "后退与 Mod-z 共用同一历史",
+          "kind": "state-machine",
+          "assert": "\"true\"",
+          "source": "批准稿 §7.4"
+        }
+      ]
+    },
+    {
+      "id": "R-5",
+      "text": "出现时机与交互",
+      "anchors": [
+        {
+          "id": "A-5.1",
+          "claim": "选区稳定后出现延迟（ms）",
+          "kind": "exact",
+          "assert": "90",
+          "source": "批准稿 §5"
+        },
+        {
+          "id": "A-5.2",
+          "claim": "双击选词时轮盘不在第二次点击前出现",
+          "kind": "state-machine",
+          "assert": "\"true\"",
+          "source": "批准稿 §5.1"
+        },
+        {
+          "id": "A-5.3",
+          "claim": "指针离开整轮后收回扇形延迟（ms）",
+          "kind": "exact",
+          "assert": "240",
+          "source": "批准稿 §5"
+        },
+        {
+          "id": "A-5.4",
+          "claim": "已有展开层时换扇区驻留（ms）",
+          "kind": "exact",
+          "assert": "300",
+          "source": "批准稿 §4.3"
+        }
+      ]
+    },
+    {
+      "id": "R-6",
+      "text": "HTML 编辑态",
+      "anchors": [
+        {
+          "id": "A-6.1",
+          "claim": "HTML 编辑态选中元素后出现轮盘",
+          "kind": "state-machine",
+          "assert": "\"true\"",
+          "source": "design R-D7"
+        },
+        {
+          "id": "A-6.2",
+          "claim": "HTML 编辑态 `.html-edit-toolbar` 横向条节点数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "design R-D7"
+        },
+        {
+          "id": "A-6.3",
+          "claim": "轮盘换标签后 content 同步",
+          "kind": "state-machine",
+          "assert": "\"true\"",
+          "source": "design R-D7"
+        }
+      ]
+    },
+    {
+      "id": "R-7",
+      "text": "单轨与可访问性",
+      "anchors": [
+        {
+          "id": "A-7.1",
+          "claim": "旧的 `.cm-floating-toolbar` 横向条节点数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "批准稿 §9"
+        },
+        {
+          "id": "A-7.2",
+          "claim": "根环扇区 `aria-label` 非空数量",
+          "kind": "exact",
+          "assert": "8",
+          "source": "design R-D8"
+        },
+        {
+          "id": "A-7.3",
+          "claim": "数字键 1–8 进入对应扇区",
+          "kind": "state-machine",
+          "assert": "\"true\"",
+          "source": "批准稿 §5"
+        }
+      ]
+    }
+  ]
+}
