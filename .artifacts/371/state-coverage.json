@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "菜单贴手柄间距≤8",
+      "screenshot": ".artifacts/371/01-gap.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T09:00:15Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "贴底仍在视口内",
+      "screenshot": ".artifacts/371/02-bottom-edge.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T09:00:16Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "右侧不足翻左",
+      "screenshot": ".artifacts/371/03-flip-left.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T09:00:16Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "工具条统一落位",
+      "screenshot": ".artifacts/371/04-toolbar.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T09:00:16Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}

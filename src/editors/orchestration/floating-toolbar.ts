@@ -27,6 +27,8 @@ import {
 import type { BlockAlignment } from "./block-alignment";
 import { useEditorStore } from "../../stores/editorStore";
 import { useAiEntryStore } from "../../hooks/useAiEntry";
+import { placeMenu } from "./placement";
+import type { AnchorRect } from "./anchor";
 
 export const FLOATING_TOOLBAR_CLASS = "cm-floating-toolbar";
 
@@ -356,13 +358,25 @@ function positionToolbar(view: EditorView, toolbar: HTMLDivElement): void {
       write: (measure) => {
         if (!measure) return;
         const { coords, rect, width, height } = measure;
-        const left = coords.left - rect.left;
-        const maxLeft = Math.max(4, rect.width - width - 4);
-        toolbar.style.left = `${Math.max(4, Math.min(left, maxLeft))}px`;
-        const below = coords.bottom - rect.top + 6;
-        const above = coords.top - rect.top - height - 6;
-        const fitsBelow = rect.top + below + height <= window.innerHeight - 4;
-        toolbar.style.top = `${Math.max(4, fitsBelow ? below : above)}px`;
+        const anchor: AnchorRect = {
+          left: coords.left,
+          top: coords.top,
+          right: coords.right ?? coords.left,
+          bottom: coords.bottom,
+          width: Math.max(0, (coords.right ?? coords.left) - coords.left),
+          height: Math.max(0, coords.bottom - coords.top),
+        };
+        const viewport: AnchorRect = {
+          left: 0,
+          top: 0,
+          right: window.innerWidth,
+          bottom: window.innerHeight,
+          width: window.innerWidth,
+          height: window.innerHeight,
+        };
+        const placement = placeMenu(anchor, { width, height }, viewport);
+        toolbar.style.left = `${placement.left - rect.left}px`;
+        toolbar.style.top = `${placement.top - rect.top}px`;
       },
     });
   } catch {

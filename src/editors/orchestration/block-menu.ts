@@ -10,7 +10,13 @@ import type { EditorView } from "@codemirror/view";
 import { defaultCommands, openInsertMenu, releaseInsertMenu } from "../slash";
 import { renderIcon } from "../icons";
 import { menuStack } from "./menu-stack";
-import { rectFromCoords, resolvePlacement, type AnchorRect } from "./anchor";
+import {
+  PANEL_MAX_HEIGHT,
+  rectFromCoords,
+  intersectRects,
+  type AnchorRect,
+} from "./anchor";
+import { placeMenu } from "./placement";
 import { getBlocks } from "../block-model";
 import { moveBlock } from "./block-handle";
 import {
@@ -166,8 +172,8 @@ function anchorRectAt(
 }
 
 /**
- * 菜单摆放走 `resolvePlacement`：贴手柄右侧、纵向以指针行为中心，越界先翻转再
- * 夹取，并把高度封顶到锚点较大一侧（#453 / #466 / #487）。
+ * 菜单摆放走 `placeMenu`（`align: "right"`）：贴手柄右侧、纵向以指针行为中心，
+ * 越界按「右 → 右顶 → 左 → 左顶」取最近可用位，统一 8px 视口边距（#371）。
  */
 function positionPanel(
   view: EditorView,
@@ -178,21 +184,23 @@ function positionPanel(
   const own = view.dom.getBoundingClientRect();
   const anchor = anchorRectAt(view, anchorPos, handle);
   const box = panel.getBoundingClientRect();
-  const placement = resolvePlacement(
+  const bounds = intersectRects(viewportRect(), boxRect(own));
+  const placement = placeMenu(
     anchor,
     {
       width: box.width || panel.offsetWidth || BLOCK_MENU_WIDTH,
       height: box.height || panel.offsetHeight,
     },
-    viewportRect(),
-    boxRect(own),
+    bounds,
     8,
-    Number.POSITIVE_INFINITY,
-    "center-right",
+    "right",
   );
-  panel.style.left = `${placement.x - own.left}px`;
-  panel.style.top = `${placement.y - own.top}px`;
-  panel.style.maxHeight = `${Math.max(120, placement.maxHeight)}px`;
+  panel.style.left = `${placement.left - own.left}px`;
+  panel.style.top = `${placement.top - own.top}px`;
+  panel.style.maxHeight = `${Math.max(
+    120,
+    Math.min(PANEL_MAX_HEIGHT, bounds.height - 16),
+  )}px`;
 }
 
 /** 打开（或替换）该块的菜单。 */
