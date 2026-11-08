@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "📄 PDF 亮色",
+      "screenshot": ".artifacts/448/01-light.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T17:06:45Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "🌙 PDF 暗色",
+      "screenshot": ".artifacts/448/02-dark.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T17:06:45Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "🌅 PDF 暖色",
+      "screenshot": ".artifacts/448/03-warm.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T17:06:45Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "🔲 页码区无外框",
+      "screenshot": ".artifacts/448/04-nav-no-border.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T17:06:45Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}
