@@ -56,6 +56,23 @@ export interface SaveRequestMessage {
   type: "saveRequest";
 }
 
+/**
+ * 文档级撤销/重做请求（#321）。
+ *
+ * iframe 里没有可用的撤销栈：每次按键都通过 `textEditInput` 提交回主侧，
+ * 原生 contenteditable 的撤销在 `textEditEnd` 重建文档时就丢了。Ctrl/Cmd+Z
+ * 与 Ctrl/Cmd+Shift+Z 由运行时拦截后转发成这两条消息，主侧按快照恢复。
+ */
+export interface UndoRequestMessage {
+  v: number;
+  type: "undoRequest";
+}
+
+export interface RedoRequestMessage {
+  v: number;
+  type: "redoRequest";
+}
+
 export interface TextEditEdgeMessage {
   v: number;
   type: "textEditBegin" | "textEditEnd";
@@ -83,6 +100,8 @@ export interface CaptureRegionMessage {
 
 export type BridgeMessage =
   | SaveRequestMessage
+  | UndoRequestMessage
+  | RedoRequestMessage
   | TextEditEdgeMessage
   | SelectionMessage
   | SelectionRectMessage
@@ -140,6 +159,10 @@ export function parseBridgeMessage(data: unknown): BridgeMessage | null {
       return { v: BRIDGE_VERSION, type: "ready", nodeCount: msg.nodeCount };
     case "saveRequest":
       return { v: BRIDGE_VERSION, type: "saveRequest" };
+    case "undoRequest":
+      return { v: BRIDGE_VERSION, type: "undoRequest" };
+    case "redoRequest":
+      return { v: BRIDGE_VERSION, type: "redoRequest" };
     case "textEditBegin":
     case "textEditEnd":
       if (typeof msg.nodeId !== "string") return null;

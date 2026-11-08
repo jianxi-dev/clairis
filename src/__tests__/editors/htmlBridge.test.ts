@@ -49,6 +49,15 @@ describe("桥消息收口（E-16 切片 3）", () => {
     expect(parseBridgeMessage({ v: BRIDGE_VERSION, type: "ready" })).toBeNull();
   });
 
+  it("undoRequest / redoRequest 原样解析（#321）", () => {
+    expect(
+      parseBridgeMessage({ v: BRIDGE_VERSION, type: "undoRequest" }),
+    ).toEqual({ v: BRIDGE_VERSION, type: "undoRequest" });
+    expect(
+      parseBridgeMessage({ v: BRIDGE_VERSION, type: "redoRequest" }),
+    ).toEqual({ v: BRIDGE_VERSION, type: "redoRequest" });
+  });
+
   it("命令与版本位同源", () => {
     expect(commandForSelection("p:0")).toEqual({
       v: BRIDGE_VERSION,

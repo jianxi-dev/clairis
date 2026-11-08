@@ -19,6 +19,13 @@ import {
 } from "../../editors/html/edit";
 import { captureRegionToPng } from "../../editors/html/capture";
 import { buildEditableDoc } from "../../editors/html/runtime";
+import {
+  createUndoStack,
+  recordEdit,
+  undo,
+  redo,
+  type UndoStack,
+} from "../../editors/html/undoStack";
 import HtmlEditToolbar from "./HtmlEditToolbar";
 
 interface HtmlVisualEditorProps {
@@ -30,8 +37,11 @@ interface HtmlVisualEditorProps {
    * 接收 updater 而不是成品字符串：同一 tick 内会连发 textEditInput /
    * textEditEnd / splitBlock 三条消息，若各自拿渲染期的 `content` 去算，
    * 后到的那条会把先到的覆盖掉（打字内容直接丢）。
+   *
+   * 返回应用后的内容：文档级撤销栈要按「改动前 → 改动后」配对，而同一 tick
+   * 内 `contentRef` 可能还没跟上（#321）。
    */
-  onContentChange?: (updater: (prev: string) => string) => void;
+  onContentChange?: (updater: (prev: string) => string) => string;
 }
 
 /**
@@ -64,6 +74,9 @@ export default function HtmlVisualEditor({
   // 而重建文档——表现为"打着字，iframe 突然刷新，回车没人接"（实测偶发）。
   const editingRef = useRef(false);
   const frozenRef = useRef<string | null>(null);
+  // 文档级撤销栈（#321）：iframe 里没有可用的撤销栈，每次提交都在这里留一份
+  // 「改动前」的快照；Ctrl/Cmd+Z 由运行时转发成 undoRequest 后按快照回退。
+  const undoStackRef = useRef<UndoStack>(createUndoStack());
   // 只用来在进入/离开编辑时触发一次重算
   const [docTick, setDocTick] = useState(0);
   // 截图模式 + 结果提示（截图是异步的，且不进 content，不接受控字段）
@@ -95,8 +108,36 @@ export default function HtmlVisualEditor({
   }, [onContentChange]);
 
   const commit = useCallback((updater: (prev: string) => string) => {
-    changeRef.current?.(updater);
+    const prev = contentRef.current;
+    const next = changeRef.current?.(updater) ?? updater(prev);
+    if (next !== prev) {
+      undoStackRef.current = recordEdit(undoStackRef.current, prev);
+    }
+    contentRef.current = next;
   }, []);
+
+  /** 恢复某份文档快照：同时退出编辑冻结，让 iframe 按恢复后的内容重建。 */
+  const restore = useCallback((next: string) => {
+    editingRef.current = false;
+    frozenRef.current = null;
+    setDocTick((n) => n + 1);
+    contentRef.current = next;
+    changeRef.current?.(() => next);
+  }, []);
+
+  const handleUndo = useCallback(() => {
+    const result = undo(undoStackRef.current, contentRef.current);
+    if (result.content === null) return;
+    undoStackRef.current = result.stack;
+    restore(result.content);
+  }, [restore]);
+
+  const handleRedo = useCallback(() => {
+    const result = redo(undoStackRef.current, contentRef.current);
+    if (result.content === null) return;
+    undoStackRef.current = result.stack;
+    restore(result.content);
+  }, [restore]);
 
   const send = useCallback((payload: unknown) => {
     frameRef.current?.contentWindow?.postMessage(payload, "*");
@@ -166,6 +207,12 @@ export default function HtmlVisualEditor({
             }),
           );
           break;
+        case "undoRequest":
+          handleUndo();
+          break;
+        case "redoRequest":
+          handleRedo();
+          break;
         case "textEditBegin":
           editingRef.current = true;
           setDocTick((n) => n + 1);
@@ -204,7 +251,7 @@ export default function HtmlVisualEditor({
     };
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
-  }, [commit, handleCapture]);
+  }, [commit, handleCapture, handleUndo, handleRedo]);
 
   // 选中变化 → 下发命令让 iframe 自己挪框。文档重建后也重发一次。
   useEffect(() => {

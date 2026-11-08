@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { EditorState, Compartment } from "@codemirror/state";
+import { EditorState, Compartment, Transaction } from "@codemirror/state";
+import { history } from "@codemirror/commands";
 import { EditorView } from "@codemirror/view";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
 import { html } from "@codemirror/lang-html";
@@ -16,6 +17,7 @@ import {
   baseEditorExtensions,
   decorCompartment,
   fullDecorations,
+  historyCompartment,
 } from "../../editors/setup";
 import type { EditorDecorationsOptions } from "../../editors/decorations";
 import {
@@ -252,6 +254,7 @@ export default function ContentArea({
       doc: "",
       extensions: [
         ...baseEditorExtensions(),
+        historyCompartment.of(history()),
         langCompartment.of([]),
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {
@@ -301,6 +304,18 @@ export default function ContentArea({
    */
   const htmlVisual = tab?.fileKind === "html" && editorMode === "edit";
   const cmVisible = !!tab && editorMode !== "preview" && !htmlVisual;
+  const tabId = tab?.id;
+
+  // 撤销历史不跨页签（#321）：一个面板只有一个 EditorView，历史却是
+  // EditorState 的一部分。切页签时清空它，否则 A 页签的编辑会让 B 页签的
+  // 一次 Ctrl+Z 把 B 的内容退回成 A 的内容。`reconfigure([])` 摘掉 history
+  // 字段再装回才会重新初始化（见 setup.ts 的 historyCompartment 注释）。
+  useEffect(() => {
+    const view = viewRef.current;
+    if (!view || !tabId) return;
+    view.dispatch({ effects: historyCompartment.reconfigure([]) });
+    view.dispatch({ effects: historyCompartment.reconfigure(history()) });
+  }, [tabId]);
 
   // Sync tab content → editor
   useEffect(() => {
@@ -314,6 +329,9 @@ export default function ContentArea({
     if (current !== tab.content) {
       viewRef.current.dispatch({
         changes: { from: 0, to: current.length, insert: tab.content },
+        // 内容同步不是用户编辑，不能进历史：否则一次 Ctrl+Z 会退回同步前的
+        // 空文档，把整篇正文清空且无法恢复（#321）。
+        annotations: Transaction.addToHistory.of(false),
       });
     }
 
@@ -394,7 +412,9 @@ export default function ContentArea({
               // 以 store 里的最新值为基准求值，而不是渲染期的 tab.content
               const store = useStore.getState();
               const prev = store.tabs[tab.id]?.content ?? "";
-              store.updateTabContent(tab.id, updater(prev));
+              const next = updater(prev);
+              store.updateTabContent(tab.id, next);
+              return next;
             }}
           />
         )}
