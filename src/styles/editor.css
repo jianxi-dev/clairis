@@ -2208,7 +2208,7 @@ body {
 .biaoyue-outline {
   position: absolute;
   top: 10px;
-  right: 23px;
+  right: calc(100% / 3);
   z-index: 30;
 }
 

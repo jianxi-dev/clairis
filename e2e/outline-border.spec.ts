@@ -38,3 +38,18 @@ test.describe("大纲浮层边框（ui-polish-batch6 11.1）", () => {
     expect(pinned).toBe("1px");
   });
 });
+
+test("大纲按钮距内容区右缘约容器宽度的 2/3（#393）", async ({ page }) => {
+  await boot(page);
+  const gap = await page.evaluate(() => {
+    const btn = document.querySelector('[data-testid="outline-btn"]')!;
+    const wrap = btn.closest(".biaoyue-outline") as HTMLElement | null;
+    const container = wrap?.offsetParent as HTMLElement | null;
+    if (!btn || !wrap || !container) return null;
+    const b = btn.getBoundingClientRect();
+    const c = container.getBoundingClientRect();
+    return { gap: c.right - b.right, width: c.width };
+  });
+  if (!gap) throw new Error("无法测量大纲按钮");
+  expect(Math.abs(gap.gap - gap.width / 3)).toBeLessThanOrEqual(4);
+});
