@@ -233,8 +233,7 @@ export default function TabBar({
         ref={stripRef}
         className="tab-strip flex items-center gap-1 shrink-0 select-none overflow-x-auto px-1"
         style={{
-          borderBottom: "1px solid var(--app-border)",
-          // 页签条与栏目头/顶栏同底色：容器自身不再刷第二层表面色（#273）。
+          // 底边只由栏目头（pane-header）画一次；页签条再画一遍会叠成加深双线（#1/#23）。
           background: "transparent",
         }}
       >
@@ -281,6 +280,8 @@ export default function TabBar({
                     : undefined
                 }
                 data-tab-id={id}
+                role="tab"
+                aria-selected={isActive}
                 data-tab-color={typeColor}
                 style={{
                   ...(isDragged
@@ -300,10 +301,10 @@ export default function TabBar({
                   setEditingId(id);
                   setEditValue(tab.title);
                 }}
-                className={`group flex min-w-0 items-center gap-1.5 px-2.5 py-1 text-xs cursor-pointer transition-colors whitespace-nowrap ${
+                className={`group flex min-w-0 items-center gap-1.5 px-2.5 py-1 text-xs cursor-pointer transition-colors whitespace-nowrap outline-none focus:outline-none focus-visible:outline-none ${
                   isActive
-                    ? "tab-capsule rounded-full bg-[var(--app-accent-soft)] font-medium text-[var(--app-accent)] shadow-sm"
-                    : "rounded-none bg-transparent text-[var(--app-text-2)] hover:rounded-full hover:bg-[var(--app-sunken)]"
+                    ? "tab-capsule rounded-full bg-[var(--app-accent-soft)] font-medium text-[var(--app-accent)]"
+                    : "rounded-none bg-transparent text-[var(--app-text-2)] opacity-70 hover:rounded-full hover:bg-[var(--app-sunken)] hover:opacity-100"
                 }`}
               >
                 <Icon
