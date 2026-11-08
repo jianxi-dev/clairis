@@ -29,7 +29,12 @@ import {
   outdentBlock,
 } from "./block-actions";
 import { CALLOUT_EDIT_TYPES } from "../callout-types";
-import { applyBlockColor, blockColorOf, type ColorFamily } from "./block-color";
+import {
+  applyBlockColor,
+  blockColorOf,
+  keepColorPanelOpen,
+  type ColorFamily,
+} from "./block-color";
 import { toggleBlockAlignmentText } from "./block-alignment";
 import {
   BACKGROUND_COLORS,
@@ -72,6 +77,7 @@ function cancelPendingClose(view: EditorView): void {
 /** 关闭该视图的块菜单层（不动文档）。 */
 export function closeBlockMenu(view: EditorView): void {
   cancelPendingClose(view);
+  menuStack.setKeepOpen(view, false);
   menuStack.closeAll(
     "block-close",
     (entry) =>
@@ -94,6 +100,9 @@ function scheduleClose(view: EditorView): void {
     view,
     window.setTimeout(() => {
       closeTimers.delete(view);
+      // 二级色板还开着：指针在父面板与色板之间移动不算离开，等选色 / Esc /
+      // 点外部再收（#374）。
+      if (menuStack.isKeepOpen(view)) return;
       closeBlockMenu(view);
     }, HIDE_DELAY_MS),
   );
@@ -388,7 +397,10 @@ export function openBlockMenu(
   colorRow.appendChild(colorChevron);
 
   let colorPanel: HTMLElement | null = null;
+  let releaseColorKeepOpen: (() => void) | null = null;
   const closeColorPanel = (): void => {
+    releaseColorKeepOpen?.();
+    releaseColorKeepOpen = null;
     colorPanel?.remove();
     colorPanel = null;
   };
@@ -440,6 +452,8 @@ export function openBlockMenu(
 
     view.dom.appendChild(panelEl);
     panelEl.addEventListener("pointerenter", () => cancelPendingClose(view));
+    releaseColorKeepOpen?.();
+    releaseColorKeepOpen = keepColorPanelOpen(menuStack, view);
     colorPanel = panelEl;
   };
 
@@ -633,7 +647,13 @@ export function openBlockMenu(
     scope: view,
     onClose: () => {
       cancelPendingClose(view);
+      menuStack.setKeepOpen(view, false);
       document.removeEventListener("keydown", onKeyDown, true);
+      // 外部点击 / Esc 走栈关闭时不会经过 closeBlockMenu：二级面板挂在与
+      // 父面板平级的编辑器根节点上，必须在这里一并摘掉，否则色板残留。
+      document
+        .querySelectorAll<HTMLElement>("[data-block-flyout]")
+        .forEach((el) => el.remove());
       if (panel.parentNode) panel.parentNode.removeChild(panel);
     },
   });
