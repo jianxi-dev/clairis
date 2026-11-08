@@ -199,14 +199,15 @@ test("字幕与快捷键说明的图标形状不同", async ({ page }) => {
   expect(paths.subtitle).not.toBe(paths.keyboardHints);
 });
 
-test("状态栏沉浸入口为 immersive 图标 + 文字，顶栏不再含该入口", async ({
+test("状态栏沉浸入口为 immersive 纯图标，顶栏不再含该入口", async ({
   page,
 }) => {
   await openDoc(page, "/tmp/ic/a.md");
   const bar = page.getByTestId("status-bar");
   const entry = bar.locator('[data-testid="immersive-entry"]');
   await expect(entry.locator('svg[data-icon="immersive"]')).toHaveCount(1);
-  await expect(entry).toContainText("沉浸");
+  await expect(entry).toHaveAccessibleName(/沉浸阅读/);
+  await expect(entry).toHaveAttribute("title", /沉浸阅读/);
   await expect(
     page.getByRole("banner").locator('[data-testid="immersive-entry"]'),
   ).toHaveCount(0);
