@@ -15,4 +15,4 @@ source_of_truth: supporting
 | [retro.md](./retro.md) | 复盘：五个断点（规范被废弃 / 中间层缺失 / 上下文不在线 / 反馈不可执行 / 检查无设计维度） |
 | [proposal.md](./proposal.md) | 方案：五层裁决链、产出文档清单、三关卡检查、反馈四要素模板、落地顺序 |
 
-状态：探索稿。定案后规范本体迁入 `docs/design/approved/design-system/`，流程增补落 AGENTS.md 与 docs/agents/。
+状态：探索稿。定案后规范本体迁入 `docs/design/system/`（既有已治理子域），运行手册见 [`docs/design/system/governance.md`](../../system/governance.md)。

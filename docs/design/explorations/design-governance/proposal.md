@@ -8,7 +8,8 @@ source_of_truth: supporting
 
 # 设计方案：让「产品的统一语言」真正在线
 
-> 依据 [retro.md](./retro.md) 的五个断点逐一对治。定案前为探索稿；定案后规范本体迁入 `docs/design/approved/design-system/`。
+> **已被最终方案取代（2026-11-08）**：本文是初版探索稿。评审否决了其中两处——落点 `docs/design/approved/design-system/`（与既有 `docs/design/system/` 重复）与「五层裁决链」（与 6 级权威矩阵构成两套层级）。
+> 现行方案见 [`docs/design/system/governance.md`](../../system/governance.md)（运行手册）与 change `2026-11-08-design-system-governance`；本文保留作历史调查。
 
 ## 一、设计规范在产品生命周期中的定位
 
