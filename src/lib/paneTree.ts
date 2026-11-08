@@ -10,13 +10,12 @@
  * 约定：
  *  - 根 leaf 的 id 固定为 "main"：`getActiveEditorView()` 的兜底面板依赖它。
  *  - 根 leaf 永不被删除（只有一个格时关闭按钮不出现）。
- *  - 每格最小 240px（宽与高）：比例侧由 `clampRatio` 兜底，CSS `min-width`
- *    /`min-height` 是最后一层硬保证。
+ *  - 栏目不设最小宽高：比例只钳在 [0,1]，允许拖到 0；双击分隔条复位 0.5。
  */
 
 import type { EditorMode } from "../types";
 
-export const MIN_PANE_PX = 240;
+export const MIN_PANE_PX = 0;
 /** 解析持久化布局时的最大嵌套深度。超过即视为损坏，返回 null。 */
 export const MAX_PANE_DEPTH = 32;
 
@@ -268,8 +267,8 @@ export function setBranchRatio(
 }
 
 /**
- * 把 ratio 钳进 [minPx/containerPx, 1 - minPx/containerPx]，保证两侧都 ≥ 240px。
- * 容器太窄（≤ 2×minPx）时无解，退回 0.5。
+ * 把 ratio 钳进 [minPx/containerPx, 1 - minPx/containerPx]；默认 minPx 为 0，
+ * 即只保证落在 [0,1]。容器宽高无效时退回 0.5。
  */
 export function clampRatio(
   ratio: number,

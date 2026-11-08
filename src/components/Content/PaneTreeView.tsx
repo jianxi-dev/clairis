@@ -597,11 +597,12 @@ function PaneHeader({
             }
             aria-label={fullscreenPaneId === leafId ? "退出全屏" : "全屏当前格"}
             aria-pressed={fullscreenPaneId === leafId}
+            data-fullscreen={fullscreenPaneId === leafId ? "true" : "false"}
             onClick={() => {
               useStore.getState().focusPane(leafId);
               useStore.getState().toggleFullscreenPane();
             }}
-            className="p-0.5 rounded text-[var(--app-chrome-rest)] hover:bg-[var(--app-sunken)] hover:text-[var(--app-chrome-hover)]"
+            className="pane-fullscreen-button p-0.5 rounded text-[var(--app-chrome-rest)] hover:bg-[var(--app-sunken)] hover:text-[var(--app-chrome-hover)]"
           >
             <Icon
               name={fullscreenPaneId === leafId ? "collapse" : "expand"}

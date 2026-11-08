@@ -139,7 +139,7 @@ test("⌘⌥→ 与 ⌘⌥↓ 各一次后出现三格，新格获得焦点", as
   );
 });
 
-test("拖分隔条至左边界，左格被钳制在 240px", async ({ page }) => {
+test("拖分隔条至左边界，左格可被拖到 0", async ({ page }) => {
   await boot(page);
   await openFile(page, "/tmp/pt/a.md");
   await page.keyboard.press(SPLIT_RIGHT);
@@ -151,13 +151,12 @@ test("拖分隔条至左边界，左格被钳制在 240px", async ({ page }) => 
 
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await page.mouse.down();
-  await page.mouse.move(5, box.y + box.height / 2, { steps: 6 });
+  await page.mouse.move(0, box.y + box.height / 2, { steps: 6 });
   await page.mouse.up();
 
   const left = await page.locator('[data-pane-id="main"]').boundingBox();
   if (!left) throw new Error("左格不可测量");
-  expect(left.width).toBeGreaterThanOrEqual(240);
-  expect(Math.abs(left.width - 240)).toBeLessThanOrEqual(1);
+  expect(left.width).toBeLessThanOrEqual(1);
 });
 
 test("关闭非根格最后一签：删格、兄弟扩展、无残留空格", async ({ page }) => {

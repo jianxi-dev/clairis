@@ -105,14 +105,11 @@ describe("paneTree 模型", () => {
   });
 
   describe("clampRatio", () => {
-    it("0.05 / 1200 → 0.2（240px）", () => {
-      expect(clampRatio(0.05, 1200)).toBeCloseTo(0.2, 6);
+    it("无最小值时保留边缘比例", () => {
+      expect(clampRatio(0.05, 1200)).toBeCloseTo(0.05, 6);
+      expect(clampRatio(0.95, 1200)).toBeCloseTo(0.95, 6);
     });
-    it("0.95 / 1200 → 0.8（240px）", () => {
-      expect(clampRatio(0.95, 1200)).toBeCloseTo(0.8, 6);
-    });
-    it("容器过窄 → 0.5", () => {
-      expect(clampRatio(0.3, 400)).toBe(0.5);
+    it("容器尺寸无效 → 0.5", () => {
       expect(clampRatio(0.3, 0)).toBe(0.5);
       expect(clampRatio(0.3, Number.NaN)).toBe(0.5);
     });
