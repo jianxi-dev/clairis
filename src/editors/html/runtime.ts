@@ -232,6 +232,21 @@ function runtimeSource(version: number): string {
   // ⌘S / Ctrl+S：焦点在 iframe 里时，主窗口的全局快捷键收不到这个按键，
   // 不转发的话"编辑中按保存没反应"，只能等自动保存。转发出去让主侧走同一条保存链路。
   document.addEventListener("keydown", (e) => {
+    // 文档级撤销/重做（#321）：iframe 里没有可用的撤销栈（每次按键都已提交回
+    // 主侧，原生 contenteditable 的撤销在文档重建时丢失），转发给主侧按快照恢复。
+    if ((e.metaKey || e.ctrlKey) && !e.altKey) {
+      const key = e.key.toLowerCase();
+      if (key === "z") {
+        e.preventDefault();
+        post({ type: e.shiftKey ? "redoRequest" : "undoRequest" });
+        return;
+      }
+      if (key === "y") {
+        e.preventDefault();
+        post({ type: "redoRequest" });
+        return;
+      }
+    }
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s") {
       e.preventDefault();
       post({ type: "saveRequest" });

@@ -26,6 +26,18 @@ import { blockToolbar } from "./orchestration/block-toolbar";
 export const decorCompartment = new Compartment();
 
 /**
+ * 撤销历史隔层（#321）。
+ *
+ * 每个面板只有一个 EditorView，却服务多个页签；历史是 EditorState 的一部分，
+ * 不清空的话 A 页签的编辑会让 B 页签的 Ctrl+Z 退回 A 的内容。切页签时由
+ * ContentArea 做「摘掉再装回」的重配置来清空它：`history()` 每次返回的是
+ * 同一个 StateField 实例，只 reconfigure 成另一个 `history()` 会走
+ * StateField 的 reconfigure 分支、原样保留旧值，历史不会重置；必须先
+ * reconfigure 成 `[]` 让字段地址消失，再装回才会重新 `create()`。
+ */
+export const historyCompartment = new Compartment();
+
+/**
  * 编辑态扩展集。
  *
  * 装配模型（见 `decorations/index.ts`）：StateField 按活跃块两态构建，IME
@@ -58,7 +70,8 @@ export function baseEditorExtensions(): Extension[] {
     EditorView.lineWrapping,
     drawSelection(),
     EditorState.allowMultipleSelections.of(true),
-    history(),
+    // 撤销历史不在这里：它由 `historyCompartment` 提供，ContentArea 才能在
+    // 切页签时清空（#321）。`createExtensions` 与 ContentArea 都要显式装回。
     indentOnInput(),
     bracketMatching(),
     // classHighlighter 只输出 `.tok-*`，与预览共用一套 token 配色；换成
@@ -90,7 +103,11 @@ function commonExtensions(): Extension[] {
  * Create editor extensions based on file kind.
  */
 export function createExtensions(fileKind: FileKind): Extension[] {
-  const base = [...baseEditorExtensions(), ...commonExtensions()];
+  const base = [
+    ...baseEditorExtensions(),
+    historyCompartment.of(history()),
+    ...commonExtensions(),
+  ];
 
   switch (fileKind) {
     case "markdown":

@@ -1,0 +1,74 @@
+{
+  "states": [
+    {
+      "state": "md-preview",
+      "screenshot": ".artifacts/321/ev-01-md-preview.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T02:32:19Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "md-edit-synced",
+      "screenshot": ".artifacts/321/ev-02-md-edit-synced.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T02:32:19Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "md-undo-not-wiped",
+      "screenshot": ".artifacts/321/ev-03-md-undo-not-wiped.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T02:32:19Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "md-three-edits",
+      "screenshot": ".artifacts/321/ev-04-md-three-edits.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T02:32:19Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "md-undone",
+      "screenshot": ".artifacts/321/ev-05-md-undone.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T02:32:19Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "md-redone",
+      "screenshot": ".artifacts/321/ev-06-md-redone.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T02:32:19Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "md-no-cross-tab",
+      "screenshot": ".artifacts/321/ev5-md-no-cross-tab.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T02:20:40Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "html-edited",
+      "screenshot": ".artifacts/321/ev-07-html-edited.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T02:32:19Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "html-undone",
+      "screenshot": ".artifacts/321/ev-08-html-undone.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T02:32:19Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "html-redone",
+      "screenshot": ".artifacts/321/ev7-html-redone.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T02:20:40Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}
