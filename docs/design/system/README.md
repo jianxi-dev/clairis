@@ -34,8 +34,8 @@ source_of_truth: supporting
 | --- | --- | --- |
 | [spec.md](./spec.md) | 设计系统规格：图标、间距、字号、圆角阴影、语义色、审美判据。面向全应用的通用刻度与规则 | accepted · canonical |
 | [decisions.md](./decisions.md) | 设计决案台账：具体部件的单点裁决，append-only，以最新行为准 | accepted · canonical |
-| [governance.md](./governance.md) | 设计治理运行手册：权威矩阵六层如何贯穿、跨层引用契约、三个回路、现状与失败信号 | in-review · supporting |
+| [governance.md](./governance.md) | 设计全景与治理运行手册：六层内容全貌（Doctrine / 图标 / 间距 / 字号 / 色彩 / 台账 / ADR / 规格 / 探索）+ 跨层契约、回路、现状与失败信号 | in-review · supporting |
 | [biaoyue-颜色设计体系.md](./biaoyue-颜色设计体系.md) | 早期颜色主题草稿（空壳），内容已被 spec.md §6 吸收 | superseded |
 
-> 数值只在 `spec.md` 定义一次；单 feature 设计（`design/approved/`）与票面**引用条款号，不复制数值**。
+> 数值的 **canonical** 只在 `spec.md` 定义一次；单 feature 设计（`design/approved/`）与票面**引用条款号，不复制数值**。`governance.md` 含只读数值快照（用于通读），冲突时以 `spec.md` 为准。
 
