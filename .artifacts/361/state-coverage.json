@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "bar-with-home",
+      "screenshot": ".artifacts/361/01-bar-with-home.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T07:01:50Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "workspace",
+      "screenshot": ".artifacts/361/02-workspace.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T07:01:50Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "back-to-portal",
+      "screenshot": ".artifacts/361/03-back-to-portal.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T07:01:50Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "portal",
+      "screenshot": ".artifacts/361/04-portal.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-08T07:01:51Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}
