@@ -78,6 +78,12 @@ export type IconName =
   | "heartFilled"
   | "sunBright"
   | "sunWarm"
+  | "abstract"
+  | "success"
+  | "question"
+  | "failure"
+  | "bug"
+  | "example"
   | "convert"
   | "align"
   | "bold"
@@ -607,6 +613,30 @@ export const ICONS: Record<IconName, IconDef> = {
   columns5: {
     label: "5 栏",
     s: "M3.5 5.5h17.0v13.0h-17.0z M6.90 5.5V18.5 M10.30 5.5V18.5 M13.70 5.5V18.5 M17.10 5.5V18.5",
+  },
+  abstract: {
+    label: "摘要",
+    s: "M8 5h8v2H8z M6 5h12v14H6z M9 10h6 M9 13h6 M9 16h4",
+  },
+  success: {
+    label: "成功",
+    s: "M12 3.6a8.4 8.4 0 1 0 0 16.8 8.4 8.4 0 0 0 0-16.8z M8.4 12.2l2.4 2.4 4.6-4.8",
+  },
+  question: {
+    label: "问题",
+    s: "M12 3.6a8.4 8.4 0 1 0 0 16.8 8.4 8.4 0 0 0 0-16.8z M9.6 9.2a2.5 2.5 0 0 1 4.8.8c0 1.7-2.4 2-2.4 3.6 M12 16.8v.01",
+  },
+  failure: {
+    label: "失败",
+    s: "M5 5h14v14H5z M9 9l6 6 M15 9l-6 6",
+  },
+  bug: {
+    label: "Bug",
+    s: "M9 6a3 3 0 0 1 6 0 M7 9h10v6a5 5 0 0 1-10 0z M3.5 10h3.5 M17 10h3.5 M3.5 15h3.5 M17 15h3.5 M8 6l-1.5-2 M16 6l1.5-2",
+  },
+  example: {
+    label: "示例",
+    s: "M6 4h9l4 4v12H6z M15 4v4h4 M9 12h7 M9 15h5",
   },
 };
 
