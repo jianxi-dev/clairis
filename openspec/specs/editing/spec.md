@@ -346,15 +346,22 @@ MD 编辑态的块手柄 SHALL 仅在指针位于正文左侧四分之一区域�
 
 ### Requirement: E-18 正文选区胶囊
 
-MD 编辑态与阅读态的正文选区 SHALL 显示胶囊工具条；编辑态 SHALL 提供改写/翻译/润色，阅读态 SHALL 提供复制/解释/翻译。胶囊形状 SHALL 与文件类型 chip、活跃页签高亮一致。
+阅读态的正文选区 SHALL 显示胶囊工具条，提供复制 / 解释 / 翻译。编辑态的 AI 三动作（改写 / 翻译 / 润色）SHALL 由选区轮盘（见「选区浮动工具条」）承载，编辑态 SHALL NOT 再显示胶囊。胶囊形状 SHALL 与文件类型 chip、活跃页签高亮一致。
 
 #### Scenario: 阅读态选区
+
 - **WHEN** 用户在阅读态选中一段正文
-- **THEN** 选区上方 SHALL 显示胶囊工具条
+- **THEN** 选区上方 SHALL 显示胶囊工具条（复制 / 解释 / 翻译）
 
 #### Scenario: 编辑态选区
-- **WHEN** 用户在编辑态选中一段正文
-- **THEN** 选区上方 SHALL 显示改写/翻译/润色胶囊
+
+- **WHEN** 用户在 MD 编辑态选中一段正文
+- **THEN** SHALL 出现选区轮盘，且 DOM 中 `[data-selection-pill]` 节点数 SHALL 为 0
+
+#### Scenario: 编辑态 AI 三动作
+
+- **WHEN** 用户在 MD 编辑态选中文字并打开轮盘「智能」扇区
+- **THEN** SHALL 提供改写 / 翻译 / 润色三项，执行时 SHALL 把选中文本带入 AI 输入框
 
 ### Requirement: E-11 块菜单结构与图标体系
 
@@ -454,7 +461,9 @@ MD 编辑态与阅读态的正文选区 SHALL 显示胶囊工具条；编辑态 
 - 文字节点与文字选区 SHALL 显示：AI、字号、加粗、斜体、下划线、删除线、链接、对齐、文字颜色、截图、删除。
 - 非文字区块 SHALL 显示：AI、背景色、边框色、删除。
 
-工具条 SHALL 跟随选中元素/选区定位且 SHALL NOT 遮挡目标。改动 SHALL 折算回 `content` 并立即可见；保存 SHALL 零残留（无 `data-cm-*`、`cmid`、`contenteditable`、注入脚本/样式）。
+HTML 的**源码编辑态**（CM6）SHALL 使用横向文字工具条（`.cm-floating-toolbar`），SHALL NOT 渲染选区轮盘；该横条 SHALL 提供 AI 改写 / 翻译 / 润色与加粗 / 斜体 / 下划线 / 删除线 / 行内代码 / 链接 / 对齐 / 文字颜色 / 清除格式，按钮 SHALL 作用于当前选合并写回源码。
+
+工具条 SHALL 跟随选中元素 / 选区定位且 SHALL NOT 遮挡目标。改动 SHALL 折算回 `content` 并立即可见；保存 SHALL 零残留（无 `data-cm-*`、`cmid`、`contenteditable`、注入脚本/样式）。
 
 #### Scenario: HTML 文字节点显示文字工具条
 
@@ -465,6 +474,16 @@ MD 编辑态与阅读态的正文选区 SHALL 显示胶囊工具条；编辑态 
 
 - **WHEN** 用户在 HTML 可视化编辑态选中一段文字
 - **THEN** SHALL 出现横向工具条，轮盘节点数 SHALL 为 0
+
+#### Scenario: HTML 源码编辑态使用横条
+
+- **WHEN** 用户在 `.html` 源码编辑态选中一行文字
+- **THEN** SHALL 出现 `.cm-floating-toolbar` 横向条，轮盘 `[data-testid="selection-roulette"]` 节点数 SHALL 为 0
+
+#### Scenario: HTML 源码横条生效于选区
+
+- **WHEN** 用户在 HTML 源码编辑态选中文字并点击加粗
+- **THEN** 源码 SHALL 被 `**` 包裹，未选中部分 SHALL 不受影响
 
 #### Scenario: HTML 区块显示四项
 
@@ -490,12 +509,22 @@ MD 编辑态与阅读态的正文选区 SHALL 显示胶囊工具条；编辑态 
 
 `.html` 可视化编辑态 SHALL 支持用户按住元素拖到另一个元素的位置，松手后该元素（含其子树）在文档中换到目标元素之前或之后。位移小于阈值（4px）时 SHALL 按点击处理，SHALL NOT 触发移动。
 
-拖拽过程 SHALL 显示插入位置指示；落点为目标元素自身或其子孙时 SHALL 拒绝移动并保持文档不变。移动结果 SHALL 折算回 `content`，保存产物 SHALL NOT 残留编辑期属性或锚点。
+拖拽越过阈值后 SHALL 显示跟随指针的元素幽灵（半透明、不接收指针事件），原元素 SHALL 降透明度；落点指示 SHALL 稳定，指针在目标中线附近移动时 SHALL NOT 来回切换 before / after。落点为目标元素自身或其子孙时 SHALL 拒绝移动并保持文档不变。移动结果 SHALL 折算回 `content`，保存产物 SHALL NOT 残留编辑期属性或锚点。
 
 #### Scenario: 把后一段拖到前一段之前
 
 - **WHEN** 用户按住第二个 `<p>` 拖到第一个 `<p>` 的上半部并松手
 - **THEN** 渲染结果里第二段 SHALL 排在前面，`content` 中两段顺序 SHALL 同步调换，且父容器与兄弟结构不受影响
+
+#### Scenario: 拖拽有跟随反馈
+
+- **WHEN** 用户按住一个元素移动超过 4px
+- **THEN** SHALL 出现跟随指针的幽灵节点，原元素 SHALL 变半透明
+
+#### Scenario: 落点指示稳定
+
+- **WHEN** 用户把指针停在目标元素中线附近小幅移动
+- **THEN** 落点 before / after SHALL 保持不抖动
 
 #### Scenario: 微小位移仍算点击
 
@@ -598,45 +627,61 @@ MD 与 HTML 编辑态 SHALL 支持多步撤销/重做，撤销不 SHALL 一次�
 
 ### Requirement: 选区浮动工具条
 
-MD 编辑态与阅读态的正文选区 SHALL 显示胶囊工具条；编辑态 SHALL 提供改写/翻译/润色，阅读态 SHALL 提供复制/解释/翻译。胶囊形状 SHALL 与文件类型 chip、活跃页签高亮一致。
+MD 编辑态的正文选区 SHALL 显示径向轮盘（Selection Roulette），SHALL NOT 渲染横向 `.cm-floating-toolbar`（HTML 源码编辑态除外，见 E-19）。
 
-**编辑态**的选区工具条 SHALL 为径向轮盘（Selection Roulette），SHALL NOT 再渲染横向 `.cm-floating-toolbar`：根环 SHALL 有 8 个扇区（按 12:00 起顺时针：智能 / 转换 / 对齐 / 分栏 / 历史 / 清格 / 格式 / 颜色），每扇区 SHALL 显示 14px 图标与 11px 两字标签。轮盘圆心 SHALL 取鼠标落点（键盘选区取末端 client rect），SHALL 有 24px 圆心死区，420×420 包围盒 SHALL 夹进视口安全区。选区稳定 SHALL 至少 90ms 后才出现轮盘，SHALL NOT 在 `mouseup` 当场出现。
+轮盘 SHALL 为 420×420 的 SVG 扇形盘面，根环 SHALL 有 8 个 45° 扇区（按 12:00 起顺时针：智能 / 转换 / 对齐 / 分栏 / 历史 / 清格 / 格式 / 颜色），根环内半径 30px、外半径 86px、扇区间隙 0.35°；每扇区 SHALL 显示 14px 图标与 11px 两字标签，标签中心位于半径 60px。圆心 SHALL 为独立按钮（格式刷 / 返回），半径 31px。
 
-二级 / 三级选项 SHALL 只在父扇区方向就近展开成等宽扇形：每格 15°，环带 92–122px，纯图标 + `title`，总跨度 SHALL NOT 超过 136°；三级 SHALL 在原位替换第二层，圆心 SHALL 变为返回。颜色扇区 SHALL 展开为双圈：内圈文字色 9 格（默认 + 8，每格渲染着色字母 A，默认项加斜杠），外圈背景色 16 格（无 + 15，色块 16px）。
+轮盘圆心 SHALL 取鼠标落点（键盘选区取选区末端 client rect），整轮包围盒 SHALL 夹进视口安全区。按住鼠标拖选期间轮盘 SHALL NOT 出现；选区稳定 SHALL 至少 90ms 后才出现，SHALL NOT 在 `mouseup` 当场出现；圆心 SHALL NOT 设置死区。
 
-轮盘 SHALL 提供：行内代码、链接、分栏 1–5（各画栏数图标）、转换三层（段落/标题/列表/高亮/引用/代码块/表格/分割线，选项随光标块类型变化）、复制、文字色与背景色、缩进/减少缩进、清除格式、后退/前进、格式刷（圆心）、删除。格式类动作执行后 SHALL 保持展开；破坏性/历史/插入类执行后 SHALL 收起。滚轮或方向键 SHALL 在当前层移动高亮，`Enter` 执行；`Ctrl+F` / `⌘F` SHALL 在圆心展开过滤输入框；数字键 `1–8` SHALL 直接进入对应扇区；`Esc` SHALL 逐层后退。
+二级选项 SHALL 只在父扇区方向就近展开成等宽扇形：环带 92–122px，每格固定 15°、间隙 0.35°，纯图标 + `title`，项少不摊开。分组项（标题 / 列表 / 高亮）的三层 SHALL 画在二层外环 126–152px，使用同一套 15° 扇形、以被点击二层区块的中心角为中心，SHALL NOT 替换二层；三层出现时二层 SHALL 保留并降到 0.7 不透明度，圆心 SHALL 变为 `‹` 返回。展开下级后根环 SHALL 降到 0.7 不透明度。
 
-格式刷 SHALL 读取当前选区的行内包装，之后每次新选区自动套用（幂等）并显示已刷次数；刷完 SHALL 仍展开轮盘；`Esc` 或再点圆心退出。清除格式 SHALL 只解包与选区相交的节点并保留链接，一次提交可撤销。后退/前进 SHALL 映射 CodeMirror 的 undo/redo，与 `Mod-z` / `Mod-Shift-z` 共用同一份历史。轮盘 SHALL 为 `role="menu"`，每扇区 `role="menuitem"` 且 `aria-label` 为中文名。
+颜色扇区 SHALL 展开为双圈窄色条：内圈 90–106px、文字色 9 段（默认 + 8，每段渲染平切于圆的字母 A，默认项加斜杠），外圈 111–127px、背景色 16 段（无 + 15）；SHALL NOT 使用独立色板浮层或色卡。点击色条 SHALL 立即套用且轮盘保持展开。
+
+轮盘 SHALL 提供：行内代码、链接、分栏 1–5（各画栏数图标）、转换二层（代码块 / 表格 / 标题 › / 列表 › / 高亮 › / 引用 / 分割线；光标已在标题时多「正文」）、标题三层 H1–H6、列表三层（无序 / 有序 / 待办）、高亮三层五类（提示 / 信息 / 注意 / 警告 / 危险，分别落 `> [!tip]` / `[!info]` / `[!note]` / `[!warning]` / `[!danger]`）、复制、文字色与背景色、缩进 / 减少缩进、清除格式、后退 / 前进、格式刷、删除。格式二层顺序 SHALL 为：链接 / 下划线 / 斜体 / 加粗 / 行内代码 / 删除线。对齐二层 SHALL 为左 / 中 / 右 / 增加缩进 / 减少缩进五项。
+
+格式类动作执行后 SHALL 保持展开；破坏性 / 历史 / 插入类执行后 SHALL 收起。滚轮或方向键 SHALL 在当前层移动高亮，`Enter` 执行；`Ctrl+F` / `⌘F` SHALL 打开独立筛选面板（输入框 SHALL NOT 在输入过程中重建）；数字键 `1–8` SHALL 直达对应扇区；`Esc` SHALL 逐层后退（筛选 → 三层 → 二层 → 关闭）；指针离开整只轮盘 400ms 后 SHALL 收回下级。
+
+格式刷 SHALL 读取当前选区的行内包装，之后每次新选区自动套用（幂等）并显示已刷次数；刷完 SHALL 仍展开轮盘；`Esc` 或再点圆心退出。清除格式 SHALL 只解包与选区相交的节点并保留链接，一次提交可撤销。后退 / 前进 SHALL 映射 CodeMirror 的 undo / redo，与 `Mod-z` / `Mod-Shift-z` 共用同一份历史。轮盘 SHALL 为 `role="menu"`，每扇区 `role="menuitem"` 且 `aria-label` 为中文名。
 
 #### Scenario: 编辑态出现轮盘而非横条
 
 - **WHEN** 用户在 markdown 编辑态选中一段文字并保持 120ms
 - **THEN** SHALL 出现径向轮盘，8 个扇区可见，页面中 `.cm-floating-toolbar` 节点数 SHALL 为 0
 
+#### Scenario: 拖选期间不出现
+
+- **WHEN** 用户按住鼠标在正文上拖选且尚未松开
+- **THEN** 轮盘节点数 SHALL 为 0；松开 90ms 后 SHALL 在鼠标落点出现
+
 #### Scenario: 圆心与越界夹取
 
 - **WHEN** 用户用鼠标选中靠近窗口右下角的文字
 - **THEN** 轮盘圆心 SHALL 与鼠标落点偏差 ≤1px（未被夹取时），整体包围盒 SHALL 完整落在视口内
 
-#### Scenario: 就近扇形不绕整圈
+#### Scenario: 点击展开而非悬停
 
-- **WHEN** 用户悬停「格式」扇区
-- **THEN** 展开的 6 项扇形总跨度 SHALL 不超过 136°，SHALL NOT 绕满整圈
+- **WHEN** 用户把指针停在「格式」扇区上但不点击
+- **THEN** 二层 SHALL NOT 展开；点击后 SHALL 展开 6 项扇形且总跨度不超过 90°
 
-#### Scenario: 三级原位替换
+#### Scenario: 三层画在二层外环
 
-- **WHEN** 用户在「转换」中悬停「标题 ›」
-- **THEN** 第二层 SHALL 在同一扇形区域替换为 H1–H6，圆心 SHALL 显示返回；按返回后 SHALL 回到第二层
+- **WHEN** 用户在「转换」中点击「标题 ›」
+- **THEN** H1–H6 SHALL 出现在 126–152px 外环，二层 SHALL 仍可见并降到 0.7 不透明度，圆心 SHALL 显示 `‹`
 
 #### Scenario: 颜色双圈
 
-- **WHEN** 用户悬停「颜色」扇区
-- **THEN** 内圈 SHALL 有 9 个字符 A 格，外圈 SHALL 有 16 个色块，两者同时可见
+- **WHEN** 用户点击「颜色」扇区
+- **THEN** 内圈 SHALL 有 9 个字母 A 色段，外圈 SHALL 有 16 个背景色段，两者同时可见且无浮层色板
+
+#### Scenario: 标注类型齐备
+
+- **WHEN** 用户在「转换」中展开「高亮」与「标题」
+- **THEN** 高亮三层 SHALL 有提示 / 信息 / 注意 / 警告 / 危险 5 项，标题三层 SHALL 有一级至六级 6 项
 
 #### Scenario: 分栏与高亮写入源码
 
-- **WHEN** 用户选择「分栏 3」并随后选择「警告」高亮
-- **THEN** 文档源码 SHALL 含 `::: {.col-3}` 与 `> [!warning]`
+- **WHEN** 用户选择「分栏 3」并随后选择「注意」高亮
+- **THEN** 文档源码 SHALL 含 `::: {.col-3}` 与 `> [!note]`
 
 #### Scenario: 格式刷跨选区幂等
 
@@ -653,20 +698,35 @@ MD 编辑态与阅读态的正文选区 SHALL 显示胶囊工具条；编辑态 
 - **WHEN** 用户在轮盘点「后退」后按 `Mod-Shift-z`
 - **THEN** 文档 SHALL 重做同一次改动（两者共用同一份历史）
 
+#### Scenario: 筛选面板不打断输入
+
+- **WHEN** 用户按 `Ctrl+F` 后在筛选框连续输入关键词
+- **THEN** 输入框 SHALL 保持同一个 DOM 节点与焦点，结果行随输入更新，候选可回车执行
+
+#### Scenario: 就近扇形不绕整圈
+
+- **WHEN** 用户点击「格式」扇区
+- **THEN** 展开的 6 项扇形 SHALL 紧排在一侧，覆盖跨度 SHALL 为 90°，SHALL NOT 绕满整圈
+
+#### Scenario: 三级原位替换
+
+- **WHEN** 用户在「转换」中点击「标题 ›」
+- **THEN** 三层 SHALL 画在 126–152px 外环并保留二层（0.7），圆心 SHALL 显示返回；按返回后 SHALL 回到二层
+
 #### Scenario: 选中文字出现工具条
 
 - **WHEN** 用户在 MD 编辑态选中一段文字
-- **THEN** SHALL 显示文字工具条，含 AI 编辑、字号、加粗、斜体、下划线、删除线、链接、对齐、文字颜色、删除
+- **THEN** SHALL 出现径向轮盘（不是横向 12 项工具条），含 8 个根扇区与圆心
 
 #### Scenario: 图标按钮生效于选区
 
-- **WHEN** 用户选中文字并点击加粗
-- **THEN** 选区文字 SHALL 加粗（源码包裹），未选中部分 SHALL 不受影响
+- **WHEN** 用户选中文字并点击「格式」里的加粗
+- **THEN** 选区文字 SHALL 被 `**…**` 包裹，未选中部分 SHALL 不受影响
 
 #### Scenario: 未选中调整整块
 
-- **WHEN** 光标在区块内且未选中文字，用户点击对齐
-- **THEN** 该区块 SHALL 整体应用对齐
+- **WHEN** 光标在区块内且未选中文字，用户点击「对齐」里的居中
+- **THEN** 该区块 SHALL 整体应用居中对齐
 
 ### Requirement: 块对齐
 
@@ -746,4 +806,25 @@ HTML 可视化编辑态在选中一个区块元素后 SHALL 提供尺寸手柄�
 
 - **WHEN** 用户在 HTML 可视化编辑态选中一个 `<div>` 并拖动右下角手柄
 - **THEN** 该元素的渲染宽高 SHALL 改变，文档 `content` 中该元素的内联 `style` SHALL 含 `width:` 与 `height:`
+
+### Requirement: 第十一批走查修正（菜单与折叠）
+
+块菜单的颜色与缩进二级面板 SHALL 在触发行右侧展开；越界时 SHALL 翻转到左侧并保持完整可见。块菜单「对齐与缩进」入口 SHALL 显示图标，其子项 SHALL 保留图标。斜杠菜单「插入 CSS」入口 SHALL 显示图标。
+
+MD 编辑态标题折叠三角与标题可见文字之间的水平距离 SHALL 不超过 2px。
+
+#### Scenario: 二级面板向右展开
+
+- **WHEN** 用户打开块菜单并展开「颜色」或「对齐与缩进」
+- **THEN** 二级面板左缘 SHALL 位于父行右缘右侧，SHALL NOT 覆盖父菜单
+
+#### Scenario: 图标齐全
+
+- **WHEN** 用户打开块菜单与斜杠菜单
+- **THEN** 「对齐与缩进」入口与「插入 CSS」入口 SHALL 各含一个 `svg[data-icon]`
+
+#### Scenario: 折叠三角贴近标题
+
+- **WHEN** 指针进入左侧召唤区并显示某标题的折叠三角
+- **THEN** 三角右缘与标题文字左缘的距离 SHALL ≤2px
 

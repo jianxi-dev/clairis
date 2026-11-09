@@ -97,6 +97,31 @@ MD 编辑态的正文选区 SHALL 显示径向轮盘（Selection Roulette），S
 - **WHEN** 用户按 `Ctrl+F` 后在筛选框连续输入关键词
 - **THEN** 输入框 SHALL 保持同一个 DOM 节点与焦点，结果行随输入更新，候选可回车执行
 
+#### Scenario: 就近扇形不绕整圈
+
+- **WHEN** 用户点击「格式」扇区
+- **THEN** 展开的 6 项扇形 SHALL 紧排在一侧，覆盖跨度 SHALL 为 90°，SHALL NOT 绕满整圈
+
+#### Scenario: 三级原位替换
+
+- **WHEN** 用户在「转换」中点击「标题 ›」
+- **THEN** 三层 SHALL 画在 126–152px 外环并保留二层（0.7），圆心 SHALL 显示返回；按返回后 SHALL 回到二层
+
+#### Scenario: 选中文字出现工具条
+
+- **WHEN** 用户在 MD 编辑态选中一段文字
+- **THEN** SHALL 出现径向轮盘（不是横向 12 项工具条），含 8 个根扇区与圆心
+
+#### Scenario: 图标按钮生效于选区
+
+- **WHEN** 用户选中文字并点击「格式」里的加粗
+- **THEN** 选区文字 SHALL 被 `**…**` 包裹，未选中部分 SHALL 不受影响
+
+#### Scenario: 未选中调整整块
+
+- **WHEN** 光标在区块内且未选中文字，用户点击「对齐」里的居中
+- **THEN** 该区块 SHALL 整体应用居中对齐
+
 ### Requirement: E-19 HTML 可视化编辑工具条
 
 `.html` 文件的编辑态 SHALL 在用户选中元素或文字后提供横向工具条，SHALL NOT 使用选区轮盘。工具条按节点类型分化：
