@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "rate-dial-menu",
+      "screenshot": ".artifacts/487/01-rate-dial.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-09T14:04:03Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "rate-menu-hover",
+      "screenshot": ".artifacts/487/02-rate-menu.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-09T14:04:03Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "rate-selected-1_5",
+      "screenshot": ".artifacts/487/03-rate-selected.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-09T14:04:03Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "rate-menu-reopen",
+      "screenshot": ".artifacts/487/04-rate-reopen.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-09T14:04:03Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}

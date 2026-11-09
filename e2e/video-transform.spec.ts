@@ -65,6 +65,8 @@ test("连续四次旋转回到 0°，缩放上限 4 倍", async ({ page }) => {
     await page.locator(".art-control-rotate").click();
   expect((await videoStyle(page)).transform).toContain("rotate(0deg)");
 
+  await page.locator(".art-control[data-name='visual']").click();
+  await expect(page.getByTestId("visual-panel")).toBeVisible({ timeout: 3000 });
   for (let i = 0; i < 20; i += 1)
     await page.getByTestId("visual-zoom-in").click();
   expect((await videoStyle(page)).transform).toContain("scale(4)");

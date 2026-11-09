@@ -1,0 +1,1 @@
+outline right=undefined more right=undefined diff=NaN

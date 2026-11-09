@@ -143,3 +143,57 @@ test("切换页签后折叠态清空，不误折叠新文档", async ({ page }) 
     page.locator(".cm-line", { hasText: "另一篇内容。" }),
   ).toHaveCount(1);
 });
+
+test("折叠三角 20px、默认隐藏、左侧 25% 召唤区显示", async ({ page }) => {
+  await openDoc(page);
+
+  const toggle = page.locator('[data-fold-line="1"]');
+  const box = await toggle.boundingBox();
+  expect(box).not.toBeNull();
+  expect(Math.round(box!.width)).toBe(20);
+  expect(Math.round(box!.height)).toBe(20);
+
+  // 指针在正文右侧 75%：三角不可见
+  await page.mouse.move(900, 300);
+  await page.waitForTimeout(200);
+  expect(await toggle.evaluate((el) => getComputedStyle(el).opacity)).toBe("0");
+
+  // 指针进入 .cm-content 左缘 25%：三角可见
+  const content = await page.locator(".cm-content").boundingBox();
+  expect(content).not.toBeNull();
+  const summonX = content!.x + 20;
+  const summonY = box!.y + box!.height / 2;
+  await page.mouse.move(summonX, summonY);
+  await page.mouse.move(summonX, summonY);
+  await page.waitForTimeout(300);
+  expect(await toggle.evaluate((el) => getComputedStyle(el).opacity)).toBe("1");
+});
+
+test("四个相邻标题全部折叠后仍各占一行", async ({ page }) => {
+  await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
+  await page.goto(APP_URL, { waitUntil: "networkidle" });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 15000 });
+  await page.evaluate(() => {
+    const w = window as unknown as Record<string, any>;
+    w.__biaoyue_openFile__(
+      "/tmp/fold-adjacent.md",
+      "# A\na content\n# B\nb content\n# C\nc content\n# D\nd content",
+      "fold-adjacent.md",
+    );
+    w.__biaoyue_store__.getState().setEditorMode("edit");
+  });
+  await page.locator(".cm-content").waitFor({ timeout: 10000 });
+  await page.waitForTimeout(400);
+
+  for (const line of [1, 3, 5, 7]) {
+    await page.locator(`[data-fold-line="${line}"]`).click();
+    await page.waitForTimeout(120);
+  }
+
+  const headingLines = page.locator(".cm-line", {
+    hasText: /^#? ?[ABCD]$/,
+  });
+  await expect(headingLines).toHaveCount(4);
+  const texts = await page.locator(".cm-line").allInnerTexts();
+  expect(texts.join("\n")).not.toContain("# A# B");
+});

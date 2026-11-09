@@ -332,27 +332,31 @@ test("双击页签名改名：回车提交、Esc 取消、路径不变", async (
   await expect(tab).toHaveAttribute("title", "新名字");
 });
 
-test("全屏按钮默认隐藏，悬停与全屏态显示", async ({ page }) => {
+test("栏目右上角图标整组默认隐藏，滑入操作区显示", async ({ page }) => {
   await boot(page);
   await openFile(page, "/tmp/ph/full.md");
   const pane = page.locator('[data-pane-id="main"]');
+  const actions = pane.locator(".pane-actions");
   const btn = pane.locator('[data-testid="pane-fullscreen"]');
 
   const away = async () =>
-    page.mouse.move(2, Math.round((await page.viewportSize())!.height / 2));
+    page.mouse.move(
+      Math.round((await page.viewportSize())!.width / 2),
+      Math.round((await page.viewportSize())!.height / 2),
+    );
   await away();
   await expect
-    .poll(() => btn.evaluate((el) => getComputedStyle(el).opacity))
+    .poll(() => actions.evaluate((el) => getComputedStyle(el).opacity))
     .toBe("0");
 
-  await pane.hover();
+  await actions.hover();
   await expect
-    .poll(() => btn.evaluate((el) => getComputedStyle(el).opacity))
+    .poll(() => actions.evaluate((el) => getComputedStyle(el).opacity))
     .toBe("1");
 
   await btn.click();
   await away();
   await expect
-    .poll(() => btn.evaluate((el) => getComputedStyle(el).opacity))
-    .toBe("1");
+    .poll(() => actions.evaluate((el) => getComputedStyle(el).opacity))
+    .toBe("0");
 });

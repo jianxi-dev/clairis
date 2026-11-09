@@ -1,0 +1,1 @@
+before=777 during=800 position=fixed

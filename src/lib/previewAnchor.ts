@@ -214,6 +214,7 @@ export type PreviewAnchorSource = "rail" | "grid" | "tab";
 
 /** 悬浮预览窗的瞬时状态；不持久化（关闭即丢，重开回默认锚定）。 */
 export interface PreviewState {
+  id: string;
   path: string;
   title: string;
   x: number;

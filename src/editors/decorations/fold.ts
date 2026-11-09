@@ -113,7 +113,9 @@ export function computeFoldSections(state: EditorState): FoldSection[] {
       }
     }
 
-    const from = headingLine.to;
+    // 保留标题行末的换行符：替换范围从下一行行首开始。否则相邻标题各自折叠时，
+    // 行尾换行被一起 replace 掉，多个标题会被 CodeMirror 渲染成同一行。
+    const from = headingLine.to + 1;
     if (from >= sectionEnd) continue;
     if (doc.sliceString(from, sectionEnd).trim().length === 0) continue;
 
@@ -146,13 +148,13 @@ class FoldToggleWidget extends WidgetType {
     el.setAttribute("data-folded", this.folded ? "true" : "false");
 
     const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    icon.setAttribute("viewBox", "0 0 10 10");
-    icon.setAttribute("width", "10");
-    icon.setAttribute("height", "10");
+    icon.setAttribute("viewBox", "0 0 20 20");
+    icon.setAttribute("width", "20");
+    icon.setAttribute("height", "20");
     icon.setAttribute("aria-hidden", "true");
     icon.classList.add(FOLD_TOGGLE_ICON_CLASS);
     const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    path.setAttribute("d", "M3 2 L8 5 L3 8 Z");
+    path.setAttribute("d", "M7 4 L14.5 10 L7 16 Z");
     path.setAttribute("fill", "currentColor");
     icon.appendChild(path);
     el.appendChild(icon);

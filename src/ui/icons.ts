@@ -328,7 +328,7 @@ export const ICONS: Record<IconName, IconDef> = {
   },
   keyboardHints: {
     label: "快捷键",
-    s: "M5.3 7.4h2.6v2.6H5.3z M9.2 7.4h2.6v2.6H9.2z M13.1 7.4h2.6v2.6h-2.6z M17 7.4h2.6v2.6H17z M7 12.6h10v2.2H7z",
+    s: "M4.5 6h15A1.5 1.5 0 0121 7.5v9a1.5 1.5 0 01-1.5 1.5h-15A1.5 1.5 0 013 16.5v-9A1.5 1.5 0 014.5 6z M6.5 9h1 M10 9h1 M13.5 9h1 M17 9h1 M6.5 12h1 M17 12h1 M9 12h6 M8 15h8",
   },
   pip: {
     label: "画中画",
@@ -379,7 +379,7 @@ export const ICONS: Record<IconName, IconDef> = {
   },
   speed: {
     label: "倍速",
-    s: "M6.4 16.8a6.5 6.5 0 1111.2 0 M12 13.5l2.3-3.9 M12 13.5h.01",
+    s: "M4.5 18a8 8 0 1115 0 M12 14l3.6-5.6 M12 14h.01",
   },
   heart: {
     label: "收藏",

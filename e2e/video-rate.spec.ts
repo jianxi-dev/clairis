@@ -65,6 +65,23 @@ test("倍速菜单恰好六档，主控件为速度表图标", async ({ page }) 
     "1.5×",
     "2.0×",
   ]);
+  const angles = await page.locator(".rate-menu-item").evaluateAll((els) =>
+    els.map((el) => {
+      const dial = el.querySelector("[data-rate-dial]");
+      return {
+        value: Number((el as HTMLElement).dataset.rate),
+        angle: Number(dial?.getAttribute("data-angle")),
+        count: el.querySelectorAll("[data-rate-dial]").length,
+      };
+    }),
+  );
+  expect(angles.map((a) => a.count)).toEqual([1, 1, 1, 1, 1, 1]);
+  expect(angles.find((a) => a.value === 1)?.angle).toBe(0);
+  expect(angles.find((a) => a.value === 0.5)!.angle).toBeLessThan(0);
+  expect(angles.find((a) => a.value === 2)!.angle).toBeGreaterThan(0);
+  const sorted = angles.map((a) => a.angle);
+  expect(sorted).toEqual([...sorted].sort((a, b) => a - b));
+
   await page.screenshot({ path: path.join(ART, "01-rate-menu.png") });
 });
 

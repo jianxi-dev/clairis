@@ -246,9 +246,14 @@ class BlockHandlePlugin {
     this.view.dom.removeEventListener("pointermove", this.onDomPointerMove);
     this.view.dom.removeEventListener("pointerleave", this.onDomPointerLeave);
     this.view.scrollDOM.removeEventListener("scroll", this.onScroll);
+    this.setSummonZone(false);
     if (this.frame !== null) cancelAnimationFrame(this.frame);
     this.frame = null;
     this.clearHandles();
+  }
+
+  private setSummonZone(on: boolean): void {
+    this.view.contentDOM.classList.toggle("cm-summon-zone", on);
   }
 
   // --- 块级 hover 召唤 -------------------------------------------------------
@@ -269,6 +274,9 @@ class BlockHandlePlugin {
     // 菜单打开期间不改召唤对象（D2 不 retarget）：指针在菜单或别的块上滑动时，
     // 不能给「菜单后面的内容」再冒出手柄。
     if (isBlockMenuOpen(this.view) && !overHandle) return;
+    // 标题折叠三角与块手柄共用同一召唤区（.cm-content 左缘 25%）。
+    const contentRect = this.view.contentDOM.getBoundingClientRect();
+    this.setSummonZone(isInSummonZone(event.clientX, contentRect));
     // 补漏：keyup 有时落在编辑器外（菜单抢焦点），抑制标志会永久卡住，
     // 指针一动就解除，手柄不至于「忽然召唤不出来」。
     for (const handle of this.handles) handle.gate.suppress(false);
@@ -278,8 +286,7 @@ class BlockHandlePlugin {
     if (activeFrom === null) {
       // D5：只有 `.cm-content` 左缘 25% 召唤；右侧 75% 移动指针不冒手柄。
       // 不在召唤区时 activeFrom 保持 null，下方 leave 分支会收掉已召唤的手柄。
-      const zone = this.view.contentDOM.getBoundingClientRect();
-      if (isInSummonZone(event.clientX, zone)) {
+      if (isInSummonZone(event.clientX, contentRect)) {
         const pos = this.view.posAtCoords({
           x: event.clientX,
           y: event.clientY,
@@ -314,6 +321,7 @@ class BlockHandlePlugin {
   };
 
   private readonly onDomPointerLeave = (): void => {
+    this.setSummonZone(false);
     for (const handle of this.handles) {
       if (!handle.hovered) continue;
       handle.hovered = false;

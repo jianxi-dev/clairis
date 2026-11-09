@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import Artplayer from "artplayer";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
@@ -140,6 +141,38 @@ function rateControlHtml(): string {
   return controlSvg("speed");
 }
 
+function rateAngle(rate: number): number {
+  const raw = Math.log2(Math.max(rate, 0.01)) * 60;
+  return Math.round(Math.max(-60, Math.min(60, raw)));
+}
+
+function RateDial({ rate }: { rate: number }) {
+  const angle = rateAngle(rate);
+  return (
+    <svg
+      data-rate-dial
+      data-angle={angle}
+      width={16}
+      height={16}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      aria-hidden="true"
+      style={{ flex: "0 0 auto" }}
+    >
+      <circle cx="12" cy="12" r="8" opacity="0.35" />
+      <path
+        d="M12 12V4.5"
+        strokeWidth="2.2"
+        transform={`rotate(${angle} 12 12)`}
+      />
+      <circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
 type PopoverKind = "playlist" | "subtitle" | "hints" | "rate" | "visual" | null;
 
 /** 浮层锚点：相对播放器容器的偏移 */
@@ -153,6 +186,7 @@ export default function VideoPlayer({
   url,
   fileKind = "video",
 }: VideoPlayerProps) {
+  const rootRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const artRef = useRef<Artplayer | null>(null);
@@ -185,6 +219,7 @@ export default function VideoPlayer({
   const [subtitleList, setSubtitleList] = useState<MediaEntry[]>([]);
 
   const [popover, setPopover] = useState<PopoverKind>(null);
+  const [popoverFixed, setPopoverFixed] = useState(false);
   const [popoverAnchor, setPopoverAnchor] = useState<PopoverAnchor>({
     left: 0,
     bottom: 0,
@@ -192,6 +227,13 @@ export default function VideoPlayer({
 
   const [thumb, setThumb] = useState<{ left: number; t: number } | null>(null);
   const thumbCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const thumbVideoRef = useRef<HTMLVideoElement | null>(null);
+  const [shotNotice, setShotNotice] = useState<{
+    text: string;
+    left: number;
+    bottom: number;
+  } | null>(null);
+  const hoverCloseTimer = useRef<number | null>(null);
 
   const [showNote, setShowNote] = useState(false);
   const [noteText, setNoteText] = useState("");
@@ -255,38 +297,77 @@ export default function VideoPlayer({
 
   /** 计算按钮相对播放器容器的锚点（浮层从按钮处弹出，右侧不超出容器） */
   const anchorFor = useCallback(
-    (btn: HTMLElement | null, popoverWidth: number): PopoverAnchor => {
+    (
+      btn: HTMLElement | null,
+      popoverWidth: number,
+      cursorX?: number,
+    ): PopoverAnchor => {
       const container = containerRef.current;
       if (!container || !btn) return { left: 0, bottom: 0 };
       const cr = container.getBoundingClientRect();
       const br = btn.getBoundingClientRect();
-      const left = br.left - cr.left;
-      const maxLeft = Math.max(0, cr.width - popoverWidth - 8);
+      const center = cursorX ?? br.left + br.width / 2;
+      const raw = center - cr.left - popoverWidth / 2;
+      const maxLeft = Math.max(8, cr.width - popoverWidth - 8);
       return {
-        left: Math.min(left, maxLeft),
+        left: Math.min(Math.max(8, raw), maxLeft),
         bottom: cr.bottom - br.top,
       };
     },
     [],
   );
 
+  const fixedAnchorFor = useCallback(
+    (
+      btn: HTMLElement | null,
+      popoverWidth: number,
+      cursorX?: number,
+    ): PopoverAnchor => {
+      if (!btn) return { left: 0, bottom: 0 };
+      const br = btn.getBoundingClientRect();
+      const center = cursorX ?? br.left + br.width / 2;
+      const maxLeft = Math.max(8, window.innerWidth - popoverWidth - 8);
+      return {
+        left: Math.min(Math.max(8, center - popoverWidth / 2), maxLeft),
+        bottom: window.innerHeight - br.top + 8,
+      };
+    },
+    [],
+  );
+
+  const cancelPopoverClose = useCallback(() => {
+    if (hoverCloseTimer.current !== null) {
+      window.clearTimeout(hoverCloseTimer.current);
+      hoverCloseTimer.current = null;
+    }
+  }, []);
+
+  const schedulePopoverClose = useCallback(() => {
+    cancelPopoverClose();
+    hoverCloseTimer.current = window.setTimeout(() => {
+      hoverCloseTimer.current = null;
+      setPopover(null);
+    }, 180);
+  }, [cancelPopoverClose]);
+
+  useEffect(() => cancelPopoverClose, [cancelPopoverClose]);
+
   const openPopover = useCallback(
-    (kind: Exclude<PopoverKind, null>, btn: HTMLElement | null, w: number) => {
-      if (artRef.current?.fullscreenWeb) {
-        artRef.current.notice.show = "全屏下不可用";
-        return;
-      }
-      const anchor = anchorFor(btn, w);
-      const container = containerRef.current;
-      if (kind === "visual" && btn && container) {
-        const cr = container.getBoundingClientRect();
-        const br = btn.getBoundingClientRect();
-        anchor.left = Math.max(8, br.right - cr.left - w);
-      }
-      setPopoverAnchor(anchor);
+    (
+      kind: Exclude<PopoverKind, null>,
+      btn: HTMLElement | null,
+      w: number,
+      cursorX?: number,
+    ) => {
+      cancelPopoverClose();
+      const fixed = !!artRef.current?.fullscreenWeb;
+      setPopoverFixed(fixed);
+      setPopoverAnchor(
+        fixed ? fixedAnchorFor(btn, w, cursorX) : anchorFor(btn, w, cursorX),
+      );
       setPopover(kind);
     },
-    [anchorFor],
+    [anchorFor, cancelPopoverClose, fixedAnchorFor],
   );
 
   // 打开预览时把路径注册到 media 协议白名单 + 加载播放列表
@@ -320,7 +401,13 @@ export default function VideoPlayer({
       setCurrentIndex(idx);
       applyRate(1);
       try {
-        await art.switchUrl(mediaUrlForPath(list[idx].path));
+        const nextUrl = mediaUrlForPath(list[idx].path);
+        const thumbVideo = thumbVideoRef.current;
+        if (thumbVideo) {
+          thumbVideo.src = nextUrl;
+          thumbVideo.load();
+        }
+        await art.switchUrl(nextUrl);
         // 页签路径保持不变（仍归属原文件），仅显示名跟随当前媒体
         const store = useStore.getState();
         const owner = Object.values(store.tabs).find(
@@ -350,6 +437,27 @@ export default function VideoPlayer({
   useEffect(() => {
     playIndexRef.current = playIndex;
   }, [playIndex]);
+
+  const showShotNotice = useCallback((text: string) => {
+    const root = rootRef.current;
+    const btn = containerRef.current?.querySelector<HTMLElement>(
+      '.art-control[data-name="screenshot"]',
+    );
+    if (!root || !btn) return;
+    const rr = root.getBoundingClientRect();
+    const br = btn.getBoundingClientRect();
+    setShotNotice({
+      text,
+      left: br.left - rr.left + br.width / 2,
+      bottom: rr.bottom - br.top + 8,
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!shotNotice) return;
+    const timer = window.setTimeout(() => setShotNotice(null), 2000);
+    return () => window.clearTimeout(timer);
+  }, [shotNotice]);
 
   const captureFrame = useCallback(async () => {
     const art = artRef.current;
@@ -381,7 +489,7 @@ export default function VideoPlayer({
         await navigator.clipboard.write([
           new ClipboardItem({ "image/png": blob }),
         ]);
-        art.notice.show = "截图已复制到剪贴板";
+        showShotNotice("截图已复制到剪贴板");
         return;
       }
       throw new Error("clipboard image write unsupported");
@@ -392,9 +500,9 @@ export default function VideoPlayer({
       a.href = url;
       a.download = `${stem}-${mm}m${ss}s.png`;
       a.click();
-      art.notice.show = "剪贴板不可用，已下载截图";
+      showShotNotice("剪贴板不可用，已下载截图");
     }
-  }, []);
+  }, [showShotNotice]);
 
   const cycleLoop = useCallback(() => {
     const next =
@@ -625,16 +733,16 @@ export default function VideoPlayer({
           name: "visual",
           position: "right",
           index: 44,
-          html: controlSvg("tune"),
+          html: controlSvg("image"),
           tooltip: "画面",
           mounted: function ($control) {
             $control.dataset.name = "visual";
+            this.proxy($control, "mouseenter", (e: Event) =>
+              openPopover("visual", $control, 210, (e as MouseEvent).clientX),
+            );
+            this.proxy($control, "mouseleave", schedulePopoverClose);
             this.proxy($control, "click", () => {
-              if (popoverRef.current === "visual") {
-                setPopover(null);
-              } else {
-                openPopover("visual", $control, 210);
-              }
+              openPopover("visual", $control, 210);
             });
           },
         },
@@ -646,12 +754,13 @@ export default function VideoPlayer({
           tooltip: "播放列表",
           mounted: function ($control) {
             playlistBtnRef.current = $control;
+            $control.dataset.name = "playlist";
+            this.proxy($control, "mouseenter", (e: Event) =>
+              openPopover("playlist", $control, 260, (e as MouseEvent).clientX),
+            );
+            this.proxy($control, "mouseleave", schedulePopoverClose);
             this.proxy($control, "click", () => {
-              if (popoverRef.current === "playlist") {
-                setPopover(null);
-              } else {
-                openPopover("playlist", $control, 260);
-              }
+              openPopover("playlist", $control, 260);
             });
           },
         },
@@ -674,12 +783,12 @@ export default function VideoPlayer({
           tooltip: "播放速度",
           mounted: function ($control) {
             $control.dataset.name = "rate";
+            this.proxy($control, "mouseenter", (e: Event) =>
+              openPopover("rate", $control, 132, (e as MouseEvent).clientX),
+            );
+            this.proxy($control, "mouseleave", schedulePopoverClose);
             this.proxy($control, "click", () => {
-              if (popoverRef.current === "rate") {
-                setPopover(null);
-              } else {
-                openPopover("rate", $control, 132);
-              }
+              openPopover("rate", $control, 132);
             });
           },
         },
@@ -704,12 +813,13 @@ export default function VideoPlayer({
           tooltip: "字幕",
           mounted: function ($control) {
             subtitleBtnRef.current = $control;
+            $control.dataset.name = "subtitle";
+            this.proxy($control, "mouseenter", (e: Event) =>
+              openPopover("subtitle", $control, 230, (e as MouseEvent).clientX),
+            );
+            this.proxy($control, "mouseleave", schedulePopoverClose);
             this.proxy($control, "click", () => {
-              if (popoverRef.current === "subtitle") {
-                setPopover(null);
-              } else {
-                openPopover("subtitle", $control, 230);
-              }
+              openPopover("subtitle", $control, 230);
             });
           },
         },
@@ -720,6 +830,7 @@ export default function VideoPlayer({
           html: controlSvg("timestampNote"),
           tooltip: "时间戳笔记",
           mounted: function ($control) {
+            $control.dataset.name = "note";
             this.proxy($control, "click", () => openNote());
           },
         },
@@ -731,12 +842,13 @@ export default function VideoPlayer({
           tooltip: "快捷键说明",
           mounted: function ($control) {
             hintsBtnRef.current = $control;
+            $control.dataset.name = "hints";
+            this.proxy($control, "mouseenter", (e: Event) =>
+              openPopover("hints", $control, 168, (e as MouseEvent).clientX),
+            );
+            this.proxy($control, "mouseleave", schedulePopoverClose);
             this.proxy($control, "click", () => {
-              if (popoverRef.current === "hints") {
-                setPopover(null);
-              } else {
-                openPopover("hints", $control, 250);
-              }
+              openPopover("hints", $control, 168);
             });
           },
         },
@@ -749,8 +861,10 @@ export default function VideoPlayer({
     thumbVideo.src = initialUrl;
     thumbVideo.muted = true;
     thumbVideo.preload = "auto";
+    thumbVideo.dataset.testid = "video-thumb-source";
     thumbVideo.style.display = "none";
     document.body.appendChild(thumbVideo);
+    thumbVideoRef.current = thumbVideo;
     let lastThumbAt = 0;
     const onSeeked = () => {
       const canvas = thumbCanvasRef.current;
@@ -801,6 +915,8 @@ export default function VideoPlayer({
       });
     };
     art.on("fullscreenWeb", (state: boolean) => {
+      setPopover(null);
+      setPopoverFixed(false);
       syncWindowFullscreen(state);
     });
     // 浏览器原生全屏事件兜底（ArtPlayer 内部 webkit 全屏路径）
@@ -887,6 +1003,7 @@ export default function VideoPlayer({
       progressEl?.removeEventListener("mouseleave", onProgressLeave);
       thumbVideo.removeEventListener("seeked", onSeeked);
       thumbVideo.remove();
+      if (thumbVideoRef.current === thumbVideo) thumbVideoRef.current = null;
       setThumb(null);
       art.destroy(false);
       artRef.current = null;
@@ -903,6 +1020,11 @@ export default function VideoPlayer({
     if (!art) return;
     if (url === lastUrlRef.current) return;
     applyRate(1);
+    const thumbVideo = thumbVideoRef.current;
+    if (thumbVideo) {
+      thumbVideo.src = url;
+      thumbVideo.load();
+    }
     void art
       .switchUrl(url)
       .then(() => {
@@ -1101,10 +1223,10 @@ export default function VideoPlayer({
   const mediaItems = playlist;
 
   const popoverStyle: React.CSSProperties = {
-    position: "absolute",
+    position: popoverFixed ? "fixed" : "absolute",
     left: popoverAnchor.left,
-    bottom: popoverAnchor.bottom + 8,
-    zIndex: 100,
+    bottom: popoverFixed ? popoverAnchor.bottom : popoverAnchor.bottom + 8,
+    zIndex: popoverFixed ? 100000 : 100,
     borderRadius: 8,
     background: "rgba(0,0,0,0.88)",
     backdropFilter: "blur(8px)",
@@ -1115,94 +1237,18 @@ export default function VideoPlayer({
     overflowY: "auto",
   };
 
-  return (
-    <div
-      style={{
-        position: "relative",
-        display: "flex",
-        flexDirection: "column",
-        width: "100%",
-        height: "100%",
-      }}
-    >
-      <div
-        ref={containerRef}
-        style={{
-          width: "100%",
-          flex: 1,
-          minHeight: 0,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      />
-      {/* 音频频谱覆盖层（仅 audio，且播放中） */}
-      {fileKind === "audio" && (
-        <canvas
-          ref={canvasRef}
-          width={480}
-          height={90}
-          style={{
-            position: "absolute",
-            left: "50%",
-            bottom: 90,
-            transform: "translateX(-50%)",
-            width: "70%",
-            height: 72,
-            pointerEvents: "none",
-            opacity: 0.9,
-          }}
-        />
-      )}
-      {thumb && (
-        <div
-          data-testid="video-thumb"
-          style={{
-            position: "absolute",
-            left: Math.max(4, thumb.left - 80),
-            bottom: 64,
-            zIndex: 20,
-            width: 160,
-            borderRadius: 6,
-            overflow: "hidden",
-            background: "rgba(0,0,0,0.82)",
-            boxShadow: "0 4px 16px rgba(0,0,0,0.4)",
-            pointerEvents: "none",
-          }}
-        >
-          <canvas ref={thumbCanvasRef} width={160} height={90} />
-          <div
-            style={{
-              padding: "2px 6px",
-              color: "#fff",
-              fontSize: 11,
-              textAlign: "center",
-            }}
-          >
-            {formatTime(thumb.t)}
-          </div>
-        </div>
-      )}
-
-      {error && (
-        <div
-          style={{
-            padding: "24px",
-            textAlign: "center",
-            color: "#666",
-            background: "rgba(255,255,255,0.9)",
-          }}
-        >
-          {error}
-        </div>
-      )}
-
+  const popoverPanel = (
+    <>
       {/* 倍速菜单（从按钮处弹出） */}
       {popover === "rate" && (
         <div
           className="rate-menu"
           role="menu"
           style={{ ...popoverStyle, width: 132, padding: "4px 0" }}
+          onMouseEnter={cancelPopoverClose}
+          onPointerDown={cancelPopoverClose}
+          onPointerMove={cancelPopoverClose}
+          onMouseLeave={schedulePopoverClose}
         >
           {PLAYBACK_RATES.map((r) => (
             <button
@@ -1231,7 +1277,7 @@ export default function VideoPlayer({
               <span
                 style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
               >
-                <Icon name="speed" size={14} />
+                <RateDial rate={r.value} />
                 {r.label}
               </span>
               {rate === r.value ? " ✓" : ""}
@@ -1245,6 +1291,10 @@ export default function VideoPlayer({
         <div
           data-testid="visual-panel"
           style={{ ...popoverStyle, width: 210, padding: 10 }}
+          onMouseEnter={cancelPopoverClose}
+          onPointerDown={cancelPopoverClose}
+          onPointerMove={cancelPopoverClose}
+          onMouseLeave={schedulePopoverClose}
         >
           <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
             <button
@@ -1290,7 +1340,13 @@ export default function VideoPlayer({
       )}
 
       {popover === "playlist" && (
-        <div style={{ ...popoverStyle, width: 260 }}>
+        <div
+          style={{ ...popoverStyle, width: 260 }}
+          onMouseEnter={cancelPopoverClose}
+          onPointerDown={cancelPopoverClose}
+          onPointerMove={cancelPopoverClose}
+          onMouseLeave={schedulePopoverClose}
+        >
           <div
             style={{
               display: "flex",
@@ -1364,7 +1420,13 @@ export default function VideoPlayer({
 
       {/* 字幕选择浮层（从按钮处弹出） */}
       {popover === "subtitle" && (
-        <div style={{ ...popoverStyle, width: 230 }}>
+        <div
+          style={{ ...popoverStyle, width: 230 }}
+          onMouseEnter={cancelPopoverClose}
+          onPointerDown={cancelPopoverClose}
+          onPointerMove={cancelPopoverClose}
+          onMouseLeave={schedulePopoverClose}
+        >
           <div
             style={{
               display: "flex",
@@ -1448,7 +1510,14 @@ export default function VideoPlayer({
 
       {/* 快捷键说明浮层（从按钮处弹出） */}
       {popover === "hints" && (
-        <div style={{ ...popoverStyle, width: 250 }}>
+        <div
+          data-testid="hints-panel"
+          style={{ ...popoverStyle, width: 168 }}
+          onMouseEnter={cancelPopoverClose}
+          onPointerDown={cancelPopoverClose}
+          onPointerMove={cancelPopoverClose}
+          onMouseLeave={schedulePopoverClose}
+        >
           <div
             style={{
               display: "flex",
@@ -1488,6 +1557,118 @@ export default function VideoPlayer({
           </div>
         </div>
       )}
+    </>
+  );
+
+  return (
+    <div
+      ref={rootRef}
+      style={{
+        position: "relative",
+        display: "flex",
+        flexDirection: "column",
+        width: "100%",
+        height: "100%",
+      }}
+    >
+      <div
+        ref={containerRef}
+        style={{
+          width: "100%",
+          flex: 1,
+          minHeight: 0,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      />
+      {/* 音频频谱覆盖层（仅 audio，且播放中） */}
+      {fileKind === "audio" && (
+        <canvas
+          ref={canvasRef}
+          width={480}
+          height={90}
+          style={{
+            position: "absolute",
+            left: "50%",
+            bottom: 90,
+            transform: "translateX(-50%)",
+            width: "70%",
+            height: 72,
+            pointerEvents: "none",
+            opacity: 0.9,
+          }}
+        />
+      )}
+      {thumb && (
+        <div
+          data-testid="video-thumb"
+          style={{
+            position: "absolute",
+            left: Math.max(4, thumb.left - 80),
+            bottom: 64,
+            zIndex: 20,
+            width: 160,
+            borderRadius: 6,
+            overflow: "hidden",
+            background: "rgba(0,0,0,0.82)",
+            boxShadow: "0 4px 16px rgba(0,0,0,0.4)",
+            pointerEvents: "none",
+          }}
+        >
+          <canvas ref={thumbCanvasRef} width={160} height={90} />
+          <div
+            style={{
+              padding: "2px 6px",
+              color: "#fff",
+              fontSize: 11,
+              textAlign: "center",
+            }}
+          >
+            {formatTime(thumb.t)}
+          </div>
+        </div>
+      )}
+
+      {shotNotice && (
+        <div
+          data-testid="shot-toast"
+          style={{
+            position: "absolute",
+            left: shotNotice.left,
+            bottom: shotNotice.bottom,
+            transform: "translateX(-50%)",
+            zIndex: 120,
+            padding: "4px 10px",
+            borderRadius: 999,
+            background: "rgba(0,0,0,0.82)",
+            color: "#fff",
+            fontSize: 11,
+            whiteSpace: "nowrap",
+            pointerEvents: "none",
+          }}
+        >
+          {shotNotice.text}
+        </div>
+      )}
+
+      {error && (
+        <div
+          style={{
+            padding: "24px",
+            textAlign: "center",
+            color: "#666",
+            background: "rgba(255,255,255,0.9)",
+          }}
+        >
+          {error}
+        </div>
+      )}
+
+      {popover &&
+        (popoverFixed
+          ? createPortal(popoverPanel, document.body)
+          : popoverPanel)}
 
       {/* 时间戳笔记窗口：可拖动 + 可调整大小 */}
       {showNote && (
