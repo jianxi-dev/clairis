@@ -92,70 +92,26 @@ application-shell 域定义标月桌面端的整体界面布局决策与空状�
 
 ### Requirement: G-6 顶栏职责与页签身份
 
-应用外壳 SHALL 以顶栏承载产品级入口（网格概览、AI、主题、沉浸），SHALL NOT 在顶栏显示当前文件名或预览/编辑/源码切换；文件身份 SHALL 仅由每个分栏的页签条表达，且页签 SHALL 始终同时显示类型图标与文件名。活跃页签 SHALL 以胶囊高亮表达，而非下划线。浅色/深色/暖色切换 SHALL 通过根节点 class 驱动全站语义 token 与 `dark:` 组件样式，整窗一致变化。
+页签标题 SHALL 在双击后进入行内改名；输入框宽度 SHALL 为原宽度的 1.5 倍（`24ch`），回车提交、Esc 取消，路径 SHALL 不变。
 
-#### Scenario: 顶栏不再重复文件身份
-- **WHEN** 用户打开任意文档并进入工作区
-- **THEN** 顶栏 SHALL 只显示标月品牌、网格、AI、主题与沉浸入口，SHALL NOT 显示文件名或预览/编辑/源码按钮
+#### Scenario: 改名输入框加长
 
-#### Scenario: 页签始终带名称
-- **WHEN** 分栏内存在一个或多个页签
-- **THEN** 每个页签 SHALL 同时渲染类型图标与文件名，活跃页签 SHALL 为胶囊高亮
-
-#### Scenario: 主题切换覆盖整窗
-- **WHEN** 用户从浅色切换到深色
-- **THEN** 根节点 SHALL 切换 `dark` class，顶栏、面板、卡片、弹层与正文背景 SHALL 同时使用深色语义 token
+- **WHEN** 用户双击页签标题
+- **THEN** 输入框计算宽度 SHALL 约为 24ch，且不小于原 16ch 的 1.5 倍
 
 ### Requirement: G-7 图标语义与全屏可用性
 
-全站图标 SHALL 使用同一 24×24 线性语言，分栏图标 SHALL 用左右/上下矩形面积差表达方向，钉住与全屏 SHALL 用轻量轮廓而非重填充。单格与多格工作区 SHALL 均显示可用的全屏入口：单格点击全屏 SHALL 让该格铺满工作区（隐藏其余 chrome），再次点击或 Esc SHALL 退出。
+栏目「更多操作」菜单 SHALL 含「刷新」项，点击后 SHALL 从磁盘重新读取当前页签文件并更新内容；未保存修改 SHALL 以磁盘内容覆盖。视频/媒体页签显示时，左侧阅读空间的展开按钮 SHALL 保持可见且可点击，层级 SHALL 高于媒体宿主。
 
-栏目头右侧操作组（模式 / 全屏 / 更多 / 关闭）SHALL 收在同一个操作容器内；默认 SHALL 隐藏（计算 `opacity` 为 0），指针滑入该容器、键盘 `:focus-visible` 或任一菜单打开时 SHALL 显示（计算 `opacity` 为 1）。容器 SHALL 保持可被指针命中，以便隐藏态下通过滑入唤出整组图标。全屏中的格头 SHALL 随操作组显隐，退出形态（`collapse`）与 `aria-pressed="true"` SHALL 保持；退出入口可由悬停操作区或 Esc 唤出。
+#### Scenario: 刷新当前文件
 
-#### Scenario: 全屏按钮默认隐藏、悬停显示
+- **WHEN** 用户修改磁盘上的当前文件后在栏目菜单点「刷新」
+- **THEN** 页签内容 SHALL 变为磁盘最新内容
 
-- **WHEN** 指针不在栏目头右侧操作区
-- **THEN** 该组图标的计算 `opacity` SHALL 为 0
-- **AND WHEN** 指针移入操作区
-- **THEN** 模式 / 全屏 / 更多 / 关闭 SHALL 同时计算 `opacity` 为 1
+#### Scenario: 视频打开时左栏仍可展开
 
-#### Scenario: 全屏态退出入口常显
-
-- **WHEN** 某栏目处于全屏态且指针不在其中
-- **THEN** 退出全屏按钮 SHALL 随操作组隐藏；指针移入操作区或按 Esc 时 SHALL 可见并可退出
-
-#### Scenario: 单格显示全屏
-
-- **WHEN** 工作区只有一个 pane
-- **THEN** 该 pane 头部 SHALL 渲染全屏按钮（`data-testid="pane-fullscreen"`），且可点击
-
-#### Scenario: 多格全屏生效
-
-- **WHEN** 工作区有至少两个 pane，用户点击当前 pane 的全屏按钮
-- **THEN** 当前 pane SHALL 进入全屏态，再次点击 SHALL 退出
-
-#### Scenario: 全屏中显示退出图标
-
-- **WHEN** 某 pane 处于全屏态
-- **THEN** 该 pane 头部按钮的 `data-icon` SHALL 为 `collapse`
-- **AND** `aria-pressed` SHALL 为 `true`
-- **AND** `title`/`aria-label` SHALL 为「退出全屏」
-
-#### Scenario: 退出后恢复进入图标
-
-- **WHEN** 用户在全屏态再次点击同一按钮
-- **THEN** 该按钮 `data-icon` SHALL 恢复为 `expand`
-- **AND** `aria-pressed` SHALL 为 `false`
-
-#### Scenario: 整组图标滑入显示
-
-- **WHEN** 用户把指针移入栏目头右侧操作区
-- **THEN** 模式 / 全屏 / 更多 / 关闭四枚图标 SHALL 同时出现
-
-#### Scenario: 菜单打开时保持可见
-
-- **WHEN** 用户打开「更多操作」菜单
-- **THEN** 操作组 SHALL 保持可见，不得因指针移入菜单而消失
+- **WHEN** 最左侧栏目正在显示视频且阅读空间处于收起态
+- **THEN** `rail-edge` 按钮 SHALL 可见，点击后阅读空间 SHALL 展开
 
 ### Requirement: G-8 页签拖拽轨迹与落点反馈
 
