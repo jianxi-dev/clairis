@@ -2957,3 +2957,58 @@ html[data-tab-drag="true"] body * {
   font-size: 12px;
   color: var(--app-text-3);
 }
+
+/* ── 横向文字工具条（HTML 源码 / 代码编辑态）──────────────── */
+.cm-floating-toolbar {
+  position: fixed;
+  z-index: 3000;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 6px;
+  border: 1px solid var(--app-border);
+  border-radius: var(--radius-8, 8px);
+  background: var(--app-surface);
+  box-shadow: var(--app-shadow);
+}
+
+.cm-toolbar-btn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-4, 4px);
+  background: transparent;
+  color: var(--app-text-2);
+  cursor: pointer;
+}
+
+.cm-toolbar-btn:hover {
+  background: var(--app-accent-soft);
+  color: var(--app-accent);
+}
+
+.cm-toolbar-btn svg {
+  display: block;
+}
+
+.cm-toolbar-sep {
+  width: 1px;
+  height: 18px;
+  margin: 0 3px;
+  background: var(--app-border);
+}
+
+.cm-toolbar-color {
+  height: 26px;
+  max-width: 64px;
+  padding: 0 2px;
+  border: 1px solid var(--app-border);
+  border-radius: var(--radius-4, 4px);
+  background: var(--app-sunken);
+  color: var(--app-text-2);
+  font-size: 11px;
+}

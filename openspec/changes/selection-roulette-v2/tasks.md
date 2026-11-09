@@ -38,7 +38,7 @@
 
 依赖：无（与 1–2 文件不重叠）
 
-- [ ] 3.1 HTML 源码编辑态使用横向文字工具条
+- [x] 3.1 HTML 源码编辑态使用横向文字工具条
   - `floatingToolbar(style)` 支持 `roulette` / `bar`；`bar` 渲染 `.cm-floating-toolbar`（AI 改写/翻译/润色 + 加粗/斜体/下划线/删除线/行内代码/链接/对齐/字色/清除格式）。
   - `ContentArea.createLanguageExtension` 对 `markdown` 挂轮盘、对 `html`/代码类挂横条；`setup.ts` 公共装配不再无条件挂轮盘。
   - 横条定位在选区上方、不遮挡选区；按钮作用于选区并写回源码；轮盘节点数为 0。
