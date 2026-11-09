@@ -1,0 +1,339 @@
+{
+  "change": "ui-polish-batch9",
+  "requirements": [
+    {
+      "id": "R-1",
+      "text": "页面宽度三挡块 hover 虚线",
+      "anchors": [
+        {
+          "id": "A-1.1",
+          "claim": "未悬停时三根刻度柱的计算 `border-style`",
+          "kind": "exact",
+          "assert": "\"dashed\"",
+          "source": "design D-1"
+        },
+        {
+          "id": "A-1.2",
+          "claim": "未悬停时三根刻度柱的 `border-color` alpha 通道",
+          "kind": "exact",
+          "assert": "0",
+          "source": "design D-1"
+        },
+        {
+          "id": "A-1.3",
+          "claim": "悬停单柱后该柱 `border-color` alpha > 0 且另外两柱 = 0",
+          "kind": "state-machine",
+          "assert": "\"true\"",
+          "source": "design D-1"
+        },
+        {
+          "id": "A-1.4",
+          "claim": "刻度柱 hover 边框宽度（px）",
+          "kind": "exact",
+          "assert": "1",
+          "source": "design D-1"
+        }
+      ]
+    },
+    {
+      "id": "R-2",
+      "text": "栏目右上角图标整区显隐",
+      "anchors": [
+        {
+          "id": "A-2.1",
+          "claim": "指针不在操作区时 `.pane-actions` 的计算 `opacity`",
+          "kind": "exact",
+          "assert": "0",
+          "source": "design D-2"
+        },
+        {
+          "id": "A-2.2",
+          "claim": "指针滑入操作区后 `.pane-actions` 的计算 `opacity`",
+          "kind": "exact",
+          "assert": "1",
+          "source": "design D-2"
+        },
+        {
+          "id": "A-2.3",
+          "claim": "打开更多菜单后 `.pane-actions` 的计算 `opacity` 仍为 1",
+          "kind": "state-machine",
+          "assert": "\"true\"",
+          "source": "design D-2"
+        },
+        {
+          "id": "A-2.4",
+          "claim": "操作区内按钮数量（模式/全屏/更多/关闭，单栏无关闭时 3）",
+          "kind": "exact",
+          "assert": "\"≥3\"",
+          "source": "design D-2"
+        }
+      ]
+    },
+    {
+      "id": "R-3",
+      "text": "大纲按钮右缘对齐",
+      "anchors": [
+        {
+          "id": "A-3.1",
+          "claim": "大纲按钮右缘与栏目「更多操作」按钮右缘的差值（px）",
+          "kind": "exact",
+          "assert": "\"≤1\"",
+          "source": "design D-3"
+        },
+        {
+          "id": "A-3.2",
+          "claim": "`.biaoyue-outline` 的 `right` 计算值（px）",
+          "kind": "exact",
+          "assert": "4",
+          "source": "design D-3"
+        },
+        {
+          "id": "A-3.3",
+          "claim": "未钉住时按钮计算 `border-width`",
+          "kind": "exact",
+          "assert": "0",
+          "source": "design D-3"
+        }
+      ]
+    },
+    {
+      "id": "R-4",
+      "text": "悬浮窗钉住后多实例",
+      "anchors": [
+        {
+          "id": "A-4.1",
+          "claim": "钉住 A、打开并钉住 B 后 `floating-preview` 节点数",
+          "kind": "exact",
+          "assert": "2",
+          "source": "design D-4"
+        },
+        {
+          "id": "A-4.2",
+          "claim": "两个窗口的 `data-preview-path` 互不相同且各自保留",
+          "kind": "state-machine",
+          "assert": "\"true\"",
+          "source": "design D-4"
+        },
+        {
+          "id": "A-4.3",
+          "claim": "关闭其中一个后剩余窗口数",
+          "kind": "exact",
+          "assert": "1",
+          "source": "design D-4"
+        },
+        {
+          "id": "A-4.4",
+          "claim": "取消其中一个钉住后其余窗口保持 `data-pinned=\"true\"`",
+          "kind": "state-machine",
+          "assert": "\"true\"",
+          "source": "design D-4"
+        },
+        {
+          "id": "A-4.5",
+          "claim": "未钉住时连续悬停两行后悬浮窗数量",
+          "kind": "exact",
+          "assert": "1",
+          "source": "design D-4"
+        }
+      ]
+    },
+    {
+      "id": "R-5",
+      "text": "状态栏 peek 悬浮化",
+      "anchors": [
+        {
+          "id": "A-5.1",
+          "claim": "peek 状态栏的计算 `position`",
+          "kind": "exact",
+          "assert": "\"fixed\"",
+          "source": "design D-5"
+        },
+        {
+          "id": "A-5.2",
+          "claim": "浮现前后 `workspace-body` 高度差（px）",
+          "kind": "exact",
+          "assert": "0",
+          "source": "design D-5"
+        },
+        {
+          "id": "A-5.3",
+          "claim": "浮现状态栏的 `bottom`（px）",
+          "kind": "exact",
+          "assert": "0",
+          "source": "design D-5"
+        }
+      ]
+    },
+    {
+      "id": "R-6",
+      "text": "视频二级菜单交互",
+      "anchors": [
+        {
+          "id": "A-6.1",
+          "claim": "网页全屏态指针移入倍速控件后 `.rate-menu` 节点数",
+          "kind": "state-machine",
+          "assert": "1",
+          "source": "design D-6"
+        },
+        {
+          "id": "A-6.2",
+          "claim": "hover 画面控件出现菜单，移出 180ms 后节点数",
+          "kind": "state-machine",
+          "assert": "0",
+          "source": "design D-6"
+        },
+        {
+          "id": "A-6.3",
+          "claim": "菜单水平中心与鼠标 x 的差值（px，未触边界）",
+          "kind": "exact",
+          "assert": "\"≤2\"",
+          "source": "design D-6"
+        },
+        {
+          "id": "A-6.4",
+          "claim": "快捷键浮层宽度（px）",
+          "kind": "exact",
+          "assert": "168",
+          "source": "design D-6"
+        },
+        {
+          "id": "A-6.5",
+          "claim": "截图提示底边到截图按钮顶边的距离（px）",
+          "kind": "exact",
+          "assert": "\"≥4\"",
+          "source": "design D-6"
+        },
+        {
+          "id": "A-6.6",
+          "claim": "playlist / subtitle / note / hints 控件的 `data-name` 数量",
+          "kind": "exact",
+          "assert": "4",
+          "source": "design D-6"
+        }
+      ]
+    },
+    {
+      "id": "R-7",
+      "text": "视频右侧按钮与图标",
+      "anchors": [
+        {
+          "id": "A-7.1",
+          "claim": "右侧每个 `.art-control` 的命中盒宽高（px）",
+          "kind": "exact",
+          "assert": "38",
+          "source": "design D-7"
+        },
+        {
+          "id": "A-7.2",
+          "claim": "右侧每个 `.art-icon` 盒子宽高（px）",
+          "kind": "exact",
+          "assert": "24",
+          "source": "design D-7"
+        },
+        {
+          "id": "A-7.3",
+          "claim": "右侧自绘 svg 的渲染宽高（px）",
+          "kind": "exact",
+          "assert": "22",
+          "source": "design D-7"
+        },
+        {
+          "id": "A-7.4",
+          "claim": "`keyboardHints` 图标的外框矩形段数",
+          "kind": "exact",
+          "assert": "\"≥1\"",
+          "source": "design D-7"
+        },
+        {
+          "id": "A-7.5",
+          "claim": "`visual` 图标不再包含滑杆端点圆的数量",
+          "kind": "exact",
+          "assert": "0",
+          "source": "design D-7"
+        }
+      ]
+    },
+    {
+      "id": "R-8",
+      "text": "倍速菜单指针表盘",
+      "anchors": [
+        {
+          "id": "A-8.1",
+          "claim": "倍速菜单每行 `data-rate-dial` 数量",
+          "kind": "exact",
+          "assert": "1",
+          "source": "design D-8"
+        },
+        {
+          "id": "A-8.2",
+          "claim": "1.0× 档的 `data-angle`（度）",
+          "kind": "exact",
+          "assert": "0",
+          "source": "design D-8"
+        },
+        {
+          "id": "A-8.3",
+          "claim": "0.5× 的 `data-angle` < 0、2.0× 的 > 0",
+          "kind": "state-machine",
+          "assert": "\"true\"",
+          "source": "design D-8"
+        },
+        {
+          "id": "A-8.4",
+          "claim": "主倍速控件仍为 `svg[data-icon='speed']` 数量",
+          "kind": "exact",
+          "assert": "1",
+          "source": "design D-8"
+        }
+      ]
+    },
+    {
+      "id": "R-9",
+      "text": "MD 折叠三角与合行修复",
+      "anchors": [
+        {
+          "id": "A-9.1",
+          "claim": "折叠三角 svg 渲染宽高（px）",
+          "kind": "exact",
+          "assert": "20",
+          "source": "design D-9"
+        },
+        {
+          "id": "A-9.2",
+          "claim": "指针在正文右侧 75% 区域时三角计算 `opacity`",
+          "kind": "exact",
+          "assert": "0",
+          "source": "design D-9"
+        },
+        {
+          "id": "A-9.3",
+          "claim": "指针进入 `.cm-content` 左缘 25% 后三角 `opacity`",
+          "kind": "state-machine",
+          "assert": "1",
+          "source": "design D-9"
+        },
+        {
+          "id": "A-9.4",
+          "claim": "四个相邻标题全部折叠后包含标题文本的 `.cm-line` 数量",
+          "kind": "exact",
+          "assert": "4",
+          "source": "design D-9"
+        },
+        {
+          "id": "A-9.5",
+          "claim": "折叠后单行文本出现 `# A# B` 的次数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "design D-9"
+        },
+        {
+          "id": "A-9.6",
+          "claim": "折叠 replace 装饰起点相对标题行末的偏移（字符）",
+          "kind": "exact",
+          "assert": "1",
+          "source": "design D-9"
+        }
+      ]
+    }
+  ]
+}
