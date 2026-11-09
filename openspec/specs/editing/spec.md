@@ -85,7 +85,7 @@ editing 域定义标月桌面端的基础编辑能力：阅读/源码模式切�
 
 ### Requirement: E-7 编排层交互契约
 
-编辑模式 SHALL 提供块手柄、统一菜单栈、锚点化浮层与 hover 门控。浮层生命周期 SHALL 由单一菜单栈管理：滑入即显示、离开整栈即收起、**不 retarget**（栈打开期间指针移动到其它块不得改变锚点，也不得召唤其它手柄）、滚动容器滚动即收起。块菜单位置 SHALL 横向贴触发手柄右缘、纵向以指针所在行为中心；越界时先翻转再夹取，高度 SHALL 封顶到锚点较大一侧并允许滚动，不得被推离锚点。块手柄 SHALL 为 42×26 药丸（块型图标 + 拖拽把手），空行退化为「+」入口；块菜单 SHALL 为 264px 宽、行高 36px、图标 20px，按块型裁剪「转为」项，且每一行 SHALL 带图标。「在下方添加」SHALL 在悬停后向右展开二级面板并保留父菜单，父菜单高度 SHALL NOT 因二级内容变化；点击手柄 SHALL 等价于悬停召唤。
+编辑模式 SHALL 提供块手柄、统一菜单栈、锚点化浮层与 hover 门控。浮层生命周期 SHALL 由单一菜单栈管理：滑入即显示、离开整栈即收起、**不 retarget**（栈打开期间指针移动到其它块不得改变锚点，也不得召唤其它手柄）、滚动容器滚动即收起。块菜单位置 SHALL 横向贴触发手柄右缘、纵向以指针所在行为中心；越界时先翻转再夹取，高度 SHALL 封顶到锚点较大一侧并允许滚动，不得被推离锚点。块手柄 SHALL 为 42×26 药丸（块型图标 + 拖拽把手），空行退化为「+」入口；块菜单 SHALL 为 176px 宽、行高 36px、图标 20px，按块型裁剪「转为」项，且每一行 SHALL 带图标。「在下方添加」SHALL 在悬停后向右展开二级面板并保留父菜单，父菜单高度 SHALL NOT 因二级内容变化；点击手柄 SHALL 等价于悬停召唤。
 
 所有编排操作 SHALL 满足两条红线：
 1. **源码无损**：拖拽、插入、关闭浮层后，除目标块外 Markdown 逐字节不变。
@@ -322,19 +322,27 @@ editing 域定义标月桌面端的基础编辑能力：阅读/源码模式切�
 
 ### Requirement: E-17 块手柄召唤区域与滑入菜单
 
-MD 编辑态的块手柄 SHALL 仅在指针位于正文左侧四分之一区域或手柄自身时召唤；指针位于其余区域 SHALL NOT 显示手柄。指针滑入手柄后 SHALL 自动显示块菜单，无需点击。
+MD 编辑态的块手柄 SHALL 仅在指针位于正文左侧四分之一区域或手柄自身时召唤；指针位于其余区域 SHALL NOT 显示手柄。非空块手柄滑入后 SHALL 自动显示块菜单。空行「+」手柄 SHALL 只在按压时打开插入菜单，指针悬停 SHALL NOT 打开转换菜单。
 
 #### Scenario: 左侧四分之一召唤
+
 - **WHEN** 指针进入正文左侧四分之一区域
 - **THEN** 对应块手柄 SHALL 淡入
 
 #### Scenario: 右侧不召唤
+
 - **WHEN** 指针仅在正文右侧区域移动
 - **THEN** 块手柄 SHALL 保持隐藏
 
-#### Scenario: 滑入即菜单
-- **WHEN** 指针从正文滑入已显示的手柄
+#### Scenario: 非空块滑入即菜单
+
+- **WHEN** 指针从正文滑入已显示的非空块手柄
 - **THEN** 块菜单 SHALL 自动打开
+
+#### Scenario: 空行加号悬停不弹转换菜单
+
+- **WHEN** 用户把指针停在空行「+」手柄上 1 秒
+- **THEN** 转换菜单节点数 SHALL 为 0，插入菜单 SHALL 保持关闭
 
 ### Requirement: E-18 正文选区胶囊
 
@@ -350,7 +358,7 @@ MD 编辑态与阅读态的正文选区 SHALL 显示胶囊工具条；编辑态 
 
 ### Requirement: E-11 块菜单结构与图标体系
 
-块菜单 SHALL 由「转为」图标网格与结构动作组两段组成。「转为」SHALL 渲染为 5 列 × 2 行共 10 项（正文、H1、H2、H3、有序、无序、待办、代码、引用、高亮），当前块型 SHALL 高亮。结构动作组 SHALL 至少包含 复制、剪切、删除；并 SHALL 提供 颜色 与 合并后的「对齐与缩进」入口——缩进（增加 / 减少）与对齐（左 / 中 / 右）SHALL 收在同一个入口的二级菜单内，SHALL NOT 各占一行。对齐三项 SHALL 各带图标。缩进图标 SHALL 使用语义正确的缩进/反缩进图形（SHALL NOT 复用好似「左对齐/清除」的错位图标）。颜色 SHALL 使用共享调色板（字色 8 色 + 底色 15 色的实色观感），SHALL NOT 呈现为偏淡的浅色块。菜单项图标 SHALL 为 20px，行高 SHALL 为 36px，菜单宽 SHALL 为 264px（2026-11-03「放大一档」，与 E-7 一致）；新增手柄菜单与转换手柄菜单 SHALL 共用该宽度常量，SHALL NOT 出现两级菜单宽度不一致。菜单内标题行与无序列表项之间的前两行间距 SHALL 收紧，小于其它相邻行间距。「在下方添加」行 SHALL 带图标与右侧展开指示，形态与其它行一致。
+块菜单 SHALL 由「转为」图标网格与结构动作组两段组成。「转为」SHALL 渲染为 5 列 × 2 行共 10 项（正文、H1、H2、H3、有序、无序、待办、代码、引用、高亮），当前块型 SHALL 高亮。结构动作组 SHALL 至少包含 复制、剪切、删除；并 SHALL 提供 颜色 与 合并后的「对齐与缩进」入口——缩进（增加 / 减少）与对齐（左 / 中 / 右）SHALL 收在同一个入口的二级菜单内，SHALL NOT 各占一行。「对齐与缩进」行 SHALL NOT 显示图标；二级菜单内的对齐三项 SHALL 各带图标。缩进图标 SHALL 使用语义正确的缩进/反缩进图形（SHALL NOT 复用好似「左对齐/清除」的错位图标）。颜色 SHALL 使用共享调色板（字色 8 色 + 底色 15 色的实色观感），SHALL NOT 呈现为偏淡的浅色块；颜色与对齐二级面板 SHALL 在触发行下方展开，指针从行移入面板 SHALL NOT 关闭。菜单项图标 SHALL 为 20px，行高 SHALL 为 36px，菜单宽 SHALL 为 176px（2026-11-09 收窄为原 264px 的 2/3，与 E-7 一致）；新增手柄菜单与转换手柄菜单 SHALL 共用该宽度常量，SHALL NOT 出现两级菜单宽度不一致。菜单内「转为」网格前两行间距 SHALL 收紧约一个汉字高度；新建/转换菜单宽度 SHALL 一致。「在下方添加」行 SHALL 带图标与右侧展开指示，形态与其它行一致。
 
 表格块 SHALL 与文本块共用同一组结构动作（复制、剪切、删除等），SHALL NOT 只显示「在下方添加」。不可用项 SHALL 以禁用态呈现，SHALL NOT 从菜单中消失。
 
@@ -417,22 +425,22 @@ MD 编辑态与阅读态的正文选区 SHALL 显示胶囊工具条；编辑态 
 
 ### Requirement: E-13 全角标点归一
 
-在编辑态输入全角逗号 `，` 与全角斜杠 `／` 时，SHALL 自动替换为半角 `,` 与 `/`。输入全角斜杠 `／` 或中文顿号 `、` 时，替换为半角 `/` 后 SHALL 触发斜杠命令菜单（等价于直接键入半角 `/`）。替换 SHALL 不作用于围栏代码块、行内代码与 URL。替换 SHALL 与普通输入一样只产生一次撤销步（撤销即回到键入前）。
+在编辑态输入全角逗号 `，` 时，SHALL 自动替换为半角 `,`。全角斜杠 `／` 与中文顿号 `、` SHALL 按原字符插入，SHALL NOT 归一为半角 `/`，也 SHALL NOT 触发斜杠命令菜单。替换 SHALL 不作用于围栏代码块、行内代码与 URL。替换 SHALL 与普通输入一样只产生一次撤销步。
 
 #### Scenario: 中文逗号转半角
 
 - **WHEN** 用户在正文输入「你好，世界」
 - **THEN** 源码 SHALL 为「你好,世界」
 
-#### Scenario: 全角斜杠转半角并唤起命令
+#### Scenario: 全角斜杠不触发命令
 
 - **WHEN** 用户在行首输入全角斜杠 `／`
-- **THEN** 源码 SHALL 变为半角 `/`，且斜杠命令菜单 SHALL 打开
+- **THEN** 源码 SHALL 保留 `／`，斜杠命令菜单节点数 SHALL 为 0
 
-#### Scenario: 顿号转半角并唤起命令
+#### Scenario: 顿号不触发命令
 
 - **WHEN** 用户在行首输入中文顿号 `、`
-- **THEN** 源码 SHALL 变为半角 `/`，且斜杠命令菜单 SHALL 打开
+- **THEN** 源码 SHALL 保留 `、`，斜杠命令菜单节点数 SHALL 为 0
 
 #### Scenario: 代码块内不替换
 
@@ -441,53 +449,42 @@ MD 编辑态与阅读态的正文选区 SHALL 显示胶囊工具条；编辑态 
 
 ### Requirement: E-19 HTML 可视化编辑工具条
 
-`.html` 文件的编辑态 SHALL 在用户选中元素后提供可操作入口，支持：**替换标签**、**修改样式**、**修改属性**（`class` / `id`）、**删除元素**、**区域截图**（见 E-21）。HTML 的**源码编辑态**（CM6）SHALL 使用与 md 编辑态相同的选区轮盘；HTML **可视化编辑态**的元素工具条 SHALL 保持既有横向实现（`.html-edit-toolbar`），不改为轮盘。源码编辑态 SHALL NOT 渲染 `.html-edit-toolbar`。
+`.html` 文件的编辑态 SHALL 在用户选中元素或文字后提供横向工具条，SHALL NOT 使用选区轮盘。工具条按节点类型分化：
 
-入口 SHALL 跟随选中元素定位，且 SHALL NOT 遮挡被选中元素本身。
+- 文字节点与文字选区 SHALL 显示：AI、字号、加粗、斜体、下划线、删除线、链接、对齐、文字颜色、截图、删除。
+- 非文字区块 SHALL 显示：AI、背景色、边框色、删除。
 
-入口产生的改动 SHALL 折算回文档 `content`（样式写内联 `style`、属性写对应属性），并 SHALL 立即在渲染结果中可见。保存 SHALL 沿用 E-16 的清洗链路：写回文件不得残留 `data-cm-*` 属性、`cmid` 注释锚点、`contenteditable`、注入的运行时脚本/样式。
+工具条 SHALL 跟随选中元素/选区定位且 SHALL NOT 遮挡目标。改动 SHALL 折算回 `content` 并立即可见；保存 SHALL 零残留（无 `data-cm-*`、`cmid`、`contenteditable`、注入脚本/样式）。
 
-#### Scenario: HTML 源码编辑态使用轮盘
+#### Scenario: HTML 文字节点显示文字工具条
 
-- **WHEN** 用户在 HTML 源码编辑态选中一段文字
-- **THEN** SHALL 出现径向轮盘，`.html-edit-toolbar` 横向条节点数 SHALL 为 0
+- **WHEN** 用户在 HTML 可视化编辑态点选一个 `<p>`
+- **THEN** 工具条 SHALL 含 AI、字号、粗体、斜体、下划线、删除线、链接、对齐、文字颜色、删除，且 SHALL NOT 含背景色与边框色
 
-#### Scenario: HTML 源码编辑态加粗写入内容
+#### Scenario: HTML 文字选区显示同一横向条
 
-- **WHEN** 用户在 HTML 源码编辑态通过轮盘加粗选中行
-- **THEN** 文档 `content` SHALL 出现 `**` 包裹，渲染与分析链路 SHALL 不残留 `.html-edit-toolbar`
+- **WHEN** 用户在 HTML 可视化编辑态选中一段文字
+- **THEN** SHALL 出现横向工具条，轮盘节点数 SHALL 为 0
 
-#### Scenario: 工具条归属
+#### Scenario: HTML 区块显示四项
 
-- **WHEN** 用户在 markdown 文件的编辑态选中一段文字
-- **THEN** 页面中 `.html-edit-toolbar` 节点数 SHALL 为 0
-- **AND WHEN** 用户在 HTML 文件的编辑态选中一个元素
-- **THEN** `.html-edit-toolbar` SHALL 可见，且 `.cm-floating-toolbar` 节点数 SHALL 为 0
+- **WHEN** 用户点选一个 `<section>`
+- **THEN** 工具条 SHALL 只含 AI、背景色、边框色、删除
 
-#### Scenario: 换标签保留内容与属性
+#### Scenario: MD 编辑态不出现块工具条
 
-- **WHEN** 用户选中一个 `<h2 class="lead">标题</h2>` 并在工具条里把标签换成 `h3`
-- **THEN** `content` SHALL 变为 `<h3 class="lead">标题</h3>`，文本与 `class` 都保留，且 `h2` 不再出现
+- **WHEN** 用户在 Markdown 编辑态点击正文任意位置且未选中文字
+- **THEN** `[data-testid="block-toolbar"]` 节点数 SHALL 为 0
 
-#### Scenario: 改样式立即生效
+#### Scenario: AI 按钮带入选中文本
 
-- **WHEN** 用户在工具条里给选中的段落选 24px 字号并居中
-- **THEN** 文档 `content` SHALL 含该段落的 `style="font-size: 24px; text-align: center"`，渲染结果 SHALL 立即变化
-
-#### Scenario: 清空属性即删除
-
-- **WHEN** 用户把某个元素的 `class` 输入框清空
-- **THEN** `content` 里该元素 SHALL 不再带 `class` 属性，SHALL NOT 出现 `class=""`
-
-#### Scenario: 白名单外标签拒绝
-
-- **WHEN** 工具条请求把一个段落换成白名单之外的标签
-- **THEN** `content` SHALL 保持原样，不产生任何改动
+- **WHEN** 用户点选一个文字节点并点击工具条 AI
+- **THEN** AI 浮层 SHALL 打开且输入框含该节点文本
 
 #### Scenario: 保存零残留
 
-- **WHEN** 用户用工具条改过标签与样式后保存
-- **THEN** 写回的文件 SHALL NOT 含 `data-cm-` 前缀、`cmid` 注释、`contenteditable` 或注入运行时的 `<script>`/`<style>`
+- **WHEN** 用户用工具条改过样式后保存
+- **THEN** 写回文件 SHALL NOT 含 `data-cm-`、`cmid`、`contenteditable` 或注入的 `<script>`/`<style>`
 
 ### Requirement: E-20 HTML 可视化编辑：拖拽移动节点
 
@@ -535,26 +532,9 @@ MD 编辑态与阅读态的正文选区 SHALL 显示胶囊工具条；编辑态 
 
 ### Requirement: E-22 HTML 可视化编辑：工具条按节点类型分化
 
-可视化编辑态的工具条 SHALL 按选中节点的类型提供不同的控件集：
+可视化编辑态的工具条 SHALL 按选中节点的类型提供不同的控件集：文字节点/文字选区 SHALL 提供字号、粗体、斜体、下划线、删除线、链接、对齐、文字颜色、AI、删除；区块容器 SHALL 提供对齐、背景色、边框色、AI、删除。文字级工具条 SHALL NOT 显示背景色与边框控件；区块工具条 SHALL NOT 显示字号与粗体/斜体/下划线/删除线控件。
 
-- **文本级元素**（`p` / `h1`–`h6` / `li` / `blockquote` / `span` / `a` / `strong` / `em` / `b` / `i` / `u` / `s` / `code` / `pre` / `td` / `th` / `figcaption` / `label` / `dt` / `dd`，以及未知标签）SHALL 提供：字号、粗体、斜体、下划线、删除线、对齐、文字颜色；选中元素为 `<a>` 时 SHALL 额外提供 `href` 输入。
-- **区块容器**（`div` / `section` / `article` / `aside` / `header` / `footer` / `main` / `nav` / `ul` / `ol` / `table` / `figure` / `form`）SHALL 提供：对齐、背景色、边框。
-
-两类工具条 SHALL 共同提供：标签替换、`class` / `id`、区域截图、删除元素、关闭。文本级工具条 SHALL NOT 显示背景色与边框控件；区块工具条 SHALL NOT 显示字号与粗体/斜体/下划线/删除线控件。
-
-粗体、斜体、下划线、删除线 SHALL 以元素的内联样式表达，SHALL 可再次点击取消。下划线与删除线 SHALL 能同时存在。样式写入 SHALL 基于文档的最新状态，连续操作两个开关时 SHALL NOT 互相覆盖。
-
-删除元素 SHALL 移除该元素及其子树；选中 `html` 或 `body` 时删除 SHALL NOT 生效。
-
-#### Scenario: 选中段落看到文字排版控件
-
-- **WHEN** 用户点选一个 `<p>`
-- **THEN** 工具条 SHALL 显示字号、粗体、斜体、下划线、删除线、对齐、文字颜色，且 SHALL NOT 显示背景色与边框
-
-#### Scenario: 选中容器看到容器控件
-
-- **WHEN** 用户点选一个 `<section>` 或 `<div>`
-- **THEN** 工具条 SHALL 显示对齐、背景色、边框，且 SHALL NOT 显示字号与粗体/斜体/下划线/删除线
+粗体、斜体、下划线、删除线 SHALL 以元素的内联样式表达并可再次点击取消；下划线与删除线 SHALL 能同时存在。删除元素 SHALL 移除该元素及其子树；选中 `html` 或 `body` 时删除 SHALL NOT 生效。
 
 #### Scenario: 连续勾选下划线与删除线互不覆盖
 
@@ -573,43 +553,29 @@ MD 编辑态与阅读态的正文选区 SHALL 显示胶囊工具条；编辑态 
 
 ### Requirement: 标题折叠
 
-MD 编辑态 SHALL 为标题行与其下有下级内容的上级行渲染一个可折叠三角标记。三角图形 SHALL 为 20×20。点击三角 SHALL 折叠/展开该标题下（到下一个同级或更高级标题之前）的全部内容；折叠态 SHALL 视觉隐藏被折叠行。SHALL 至少对 ATX 标题（`#`–`######`）生效。
+MD 编辑态 SHALL 为有下级内容的 ATX 标题渲染 20×20 折叠三角；点击 SHALL 折叠/展开到下一个同级或更高级标题之前的内容。三角默认隐藏；指针位于 `.cm-content` 左缘 25% 召唤区时，SHALL 只显示指针所在行的三角；三角自身悬停、键盘聚焦或已折叠时 SHALL 始终显示。折叠替换 SHALL 保留标题行末换行符。
 
-折叠三角默认 SHALL 隐藏（计算 `opacity` 为 0）；指针进入 `.cm-content` 左缘 25% 的块手柄召唤区时 SHALL 显示，离开召唤区后 SHALL 隐藏；三角自身悬停、键盘聚焦或已处于折叠态时 SHALL 始终显示。
+MD 预览态 SHALL 为每个有下级内容的标题渲染折叠按钮；按钮默认隐藏，指针悬停该标题或已折叠时显示。点击 SHALL 隐藏后续兄弟内容直到下一个同级或更高级标题。
 
-折叠替换范围 SHALL 保留标题行末尾的换行符：替换起点为标题行末之后一个字符。多个相邻标题分别折叠后，每个标题 SHALL 仍占据独立行，SHALL NOT 合并为同一行。
+#### Scenario: 编辑态只显示当前行三角
 
-#### Scenario: 标题前有折叠三角
-
-- **WHEN** 文档含 `# 第一章` 且其下有正文与 `## 小节`
-- **THEN** 标题行前 SHALL 渲染一个 20×20 的折叠三角标记
-
-#### Scenario: 折叠隐藏下级
-
-- **WHEN** 用户点击某标题的折叠三角
-- **THEN** 该标题到下一同级/更高级标题之间的内容 SHALL 视觉隐藏
-
-#### Scenario: 无下级不显示三角
-
-- **WHEN** 某标题下没有内容（到文档末尾前无下级行）
-- **THEN** 该标题 SHALL NOT 渲染折叠三角
-
-#### Scenario: 三角默认隐藏、召唤区显示
-
-- **WHEN** 指针位于正文右侧 75% 区域
-- **THEN** 三角计算 `opacity` SHALL 为 0
-- **AND WHEN** 指针移入 `.cm-content` 左缘 25% 区域
-- **THEN** 该区域所在标题的三角计算 `opacity` SHALL 为 1
+- **WHEN** 指针在召唤区内移动到第二个标题行
+- **THEN** 只有该行折叠三角的计算 `opacity` SHALL 为 1，其他标题 SHALL 为 0
 
 #### Scenario: 相邻折叠不合并
 
 - **WHEN** 用户依次折叠四个相邻的一级标题
-- **THEN** 四个标题 SHALL 分处四个 `.cm-line`，不得出现 `# A# B` 这类同一行文本
+- **THEN** 四个标题 SHALL 分处四个 `.cm-line`
 
-#### Scenario: 折叠态保持可见
+#### Scenario: 预览态折叠
 
-- **WHEN** 某标题已折叠且指针移出召唤区
-- **THEN** 该标题的三角 SHALL 保持可见，以便再次点击展开
+- **WHEN** 用户在 MD 预览态点击某个标题的折叠按钮
+- **THEN** 该标题到下一个同级/更高级标题之间的内容 SHALL 隐藏，按钮 SHALL 转为展开态
+
+#### Scenario: 预览态显隐
+
+- **WHEN** 指针不在任一标题上
+- **THEN** 所有预览折叠按钮的计算 `opacity` SHALL 为 0
 
 ### Requirement: 前进后退恢复
 
