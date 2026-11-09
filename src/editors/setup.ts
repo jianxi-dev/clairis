@@ -22,6 +22,7 @@ import type { EditorDecorationsOptions } from "./decorations";
 import { smartInput } from "./smart-input";
 import { slashKeymap } from "./slash";
 import { floatingToolbar } from "./orchestration/floating-toolbar";
+import { horizontalToolbar } from "./orchestration/horizontal-toolbar";
 
 export const decorCompartment = new Compartment();
 
@@ -121,7 +122,7 @@ export function createExtensions(fileKind: FileKind): Extension[] {
         decorCompartment.of(fullDecorations()),
       ];
     case "html":
-      return [...base, html()];
+      return [...base, html(), horizontalToolbar()];
     case "text":
       return base; // Plain text, no language extension
     default:
