@@ -1,7 +1,7 @@
 ---
 title: "选区轮盘 · 开发交接"
-type: handoff
-status: active
+type: design
+status: accepted
 last_updated: 2026-11-09
 for: 实现会话（另一 session）
 ---
