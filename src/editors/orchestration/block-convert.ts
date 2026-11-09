@@ -20,12 +20,17 @@ export type BlockConvertTarget =
   | "h1"
   | "h2"
   | "h3"
+  | "h4"
+  | "h5"
+  | "h6"
   | "ordered"
   | "bullet"
   | "todo"
   | "quote"
   | "code"
-  | "callout";
+  | "callout"
+  | "table"
+  | "divider";
 
 export interface BlockChange {
   from: number;
@@ -35,13 +40,16 @@ export interface BlockChange {
 
 /** 单行前缀（除代码块与高亮这两类需要整块重写）。 */
 const PREFIX: Record<
-  Exclude<BlockConvertTarget, "code" | "callout">,
+  Exclude<BlockConvertTarget, "code" | "callout" | "table" | "divider">,
   string
 > = {
   paragraph: "",
   h1: "# ",
   h2: "## ",
   h3: "### ",
+  h4: "#### ",
+  h5: "##### ",
+  h6: "###### ",
   ordered: "1. ",
   bullet: "- ",
   todo: "- [ ] ",
@@ -58,7 +66,13 @@ export function stripBlockMarker(line: string): string {
 
 /** 普通块转换：换掉首行标记。 */
 export function convertLine(line: string, target: BlockConvertTarget): string {
-  if (target === "code" || target === "callout") return line;
+  if (
+    target === "code" ||
+    target === "callout" ||
+    target === "table" ||
+    target === "divider"
+  )
+    return line;
   return PREFIX[target] + stripBlockMarker(line);
 }
 
@@ -79,6 +93,23 @@ export function blockConvertChanges(
   if (text === "") return [];
   const lines = text.split("\n");
   const leading = lines[0];
+
+  if (target === "table") {
+    if (/^\|/.test(leading)) return [];
+    const cell = text.replace(/\n/g, " ").trim();
+    return [
+      {
+        from: block.from,
+        to: block.to,
+        insert: `| 列 1 | 列 2 |\n| --- | --- |\n| ${cell} |  |`,
+      },
+    ];
+  }
+
+  if (target === "divider") {
+    if (/^---\s*$/.test(leading)) return [];
+    return [{ from: block.from, to: block.to, insert: "---" }];
+  }
 
   if (target === "code") {
     if (/^```/.test(leading)) return [];
