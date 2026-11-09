@@ -298,3 +298,15 @@ test("点击根扇区不移动轮盘，指针滑入二层不消失", async ({ pa
   await expect(wheel).toBeVisible();
   await expect(page.locator('.sr-sec[data-band="2"]')).toHaveCount(6);
 });
+
+test("MD 源码编辑态同样出轮盘，不出胶囊", async ({ page }) => {
+  await page.evaluate(() => {
+    const store = (window as unknown as Record<string, any>).__biaoyue_store__;
+    store.getState().setEditorMode("source");
+  });
+  await page.locator(".cm-content").waitFor();
+  await page.locator(".cm-line").nth(2).click({ clickCount: 3 });
+  await expect(page.locator(WHEEL)).toBeVisible({ timeout: 3000 });
+  await expect(page.locator("[data-selection-pill]")).toHaveCount(0);
+  await expect(page.locator(".cm-floating-toolbar")).toHaveCount(0);
+});
