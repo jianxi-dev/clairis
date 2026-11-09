@@ -89,13 +89,15 @@ function runtimeSource(version: number): string {
   let captureMode = false;
 
   // —— 拖拽移动（E-20）——
-  // 阈值 4px：低于它算点击（design D2）。越过阈值前不 preventDefault，
-  // 用户反悔时松手仍是一次正常的点选。
+  // 阈值 4px：低于它算点击。越过阈值后显示跟随幽灵与稳定落点指示。
   const DRAG_THRESHOLD = 4;
+  const DROP_HYSTERESIS = 6;
   let dragFrom = null;
   let dragEl = null;
+  let ghost = null;
   let dropTarget = null;
   let dropLine = null;
+  let dropKey = "";
   let suppressClick = false;
 
   const ensureDropLine = () => {
@@ -118,6 +120,49 @@ function runtimeSource(version: number): string {
   const hideDropLine = () => {
     if (dropLine) dropLine.style.display = "none";
     dropTarget = null;
+    dropKey = "";
+  };
+
+  const restoreDragEl = () => {
+    if (!dragEl || !dragEl.dataset) return;
+    dragEl.style.opacity = dragEl.dataset.cmDragOpacity || "";
+    delete dragEl.dataset.cmDragOpacity;
+  };
+
+  const clearDragVisual = () => {
+    if (ghost) { ghost.remove(); ghost = null; }
+    restoreDragEl();
+    hideDropLine();
+  };
+
+  const makeGhost = () => {
+    const rect = dragEl.getBoundingClientRect();
+    dragFrom.rect = { left: rect.left, top: rect.top };
+    const clone = dragEl.cloneNode(true);
+    clone.setAttribute("data-cm-internal", "drag-ghost");
+    clone.removeAttribute("data-cm-node-id");
+    clone.querySelectorAll("[data-cm-node-id]").forEach((n) => n.removeAttribute("data-cm-node-id"));
+    clone.querySelectorAll("[data-cm-internal]").forEach((n) => n.removeAttribute("data-cm-internal"));
+    Object.assign(clone.style, {
+      position: "fixed",
+      left: rect.left + "px",
+      top: rect.top + "px",
+      width: rect.width + "px",
+      height: rect.height + "px",
+      margin: "0",
+      boxSizing: "border-box",
+      opacity: "0.9",
+      pointerEvents: "none",
+      zIndex: "2147483645",
+      transform: "none",
+      transition: "none",
+      boxShadow: "0 8px 24px rgba(0,0,0,.18)",
+      background: "rgba(255,255,255,.7)",
+    });
+    document.body.appendChild(clone);
+    ghost = clone;
+    dragEl.dataset.cmDragOpacity = dragEl.style.opacity || "";
+    dragEl.style.opacity = "0.4";
   };
 
   document.addEventListener("mousedown", (e) => {
@@ -126,7 +171,7 @@ function runtimeSource(version: number): string {
     if (!el) return;
     const tag = el.tagName.toLowerCase();
     if (tag === "html" || tag === "body") return;
-    dragFrom = { el: el, nodeId: el.getAttribute("data-cm-node-id"), x: e.clientX, y: e.clientY };
+    dragFrom = { el: el, nodeId: el.getAttribute("data-cm-node-id"), x: e.clientX, y: e.clientY, rect: null };
   }, true);
 
   document.addEventListener("mousemove", (e) => {
@@ -135,21 +180,44 @@ function runtimeSource(version: number): string {
       if (Math.abs(e.clientX - dragFrom.x) < DRAG_THRESHOLD && Math.abs(e.clientY - dragFrom.y) < DRAG_THRESHOLD) return;
       dragEl = dragFrom.el;
       suppressClick = true;
+      makeGhost();
     }
     e.preventDefault();
+    const dx = e.clientX - dragFrom.x;
+    const dy = e.clientY - dragFrom.y;
+    if (ghost && dragFrom.rect) {
+      ghost.style.left = (dragFrom.rect.left + dx) + "px";
+      ghost.style.top = (dragFrom.rect.top + dy) + "px";
+    }
     const under = document.elementFromPoint(e.clientX, e.clientY);
     const cand = under && under.closest ? under.closest("[data-cm-node-id]") : null;
     // 拖到自己或自己的子孙上：浏览器会让整棵子树消失，直接不给落点（design D3）
     if (!cand || cand === dragEl || dragEl.contains(cand)) { hideDropLine(); return; }
     const r = cand.getBoundingClientRect();
-    const position = e.clientY < r.top + r.height / 2 ? "before" : "after";
-    dropTarget = { nodeId: cand.getAttribute("data-cm-node-id"), position: position };
-    const line = ensureDropLine();
-    line.setAttribute("data-cm-drop", position);
-    line.style.display = "block";
-    line.style.left = (r.left + scrollX) + "px";
-    line.style.width = r.width + "px";
-    line.style.top = ((position === "before" ? r.top : r.bottom) + scrollY - 1) + "px";
+    const mid = r.top + r.height / 2;
+    const nodeId = cand.getAttribute("data-cm-node-id");
+    let position;
+    if (dropTarget && dropTarget.nodeId === nodeId) {
+      // 滞回：只有越过中线 ±6px 才换边，避免在临界点来回跳
+      if (dropTarget.position === "before") {
+        position = e.clientY <= mid + DROP_HYSTERESIS ? "before" : "after";
+      } else {
+        position = e.clientY >= mid - DROP_HYSTERESIS ? "after" : "before";
+      }
+    } else {
+      position = e.clientY < mid ? "before" : "after";
+    }
+    const key = nodeId + ":" + position;
+    if (key !== dropKey) {
+      dropKey = key;
+      dropTarget = { nodeId: nodeId, position: position };
+      const line = ensureDropLine();
+      line.setAttribute("data-cm-drop", position);
+      line.style.display = "block";
+      line.style.left = (r.left + scrollX) + "px";
+      line.style.width = r.width + "px";
+      line.style.top = ((position === "before" ? r.top : r.bottom) + scrollY - 1) + "px";
+    }
   }, true);
 
   document.addEventListener("mouseup", () => {
@@ -157,7 +225,7 @@ function runtimeSource(version: number): string {
       if (dropTarget) {
         post({ type: "moveNode", nodeId: dragFrom.nodeId, targetId: dropTarget.nodeId, position: dropTarget.position });
       }
-      hideDropLine();
+      clearDragVisual();
       dragEl = null;
     }
     dragFrom = null;
