@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "player",
+      "screenshot": ".artifacts/518/01-player.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-09T19:00:11Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "rate-menu",
+      "screenshot": ".artifacts/518/02-rate.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-09T19:00:11Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "playlist",
+      "screenshot": ".artifacts/518/03-playlist.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-09T19:00:11Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "rotated",
+      "screenshot": ".artifacts/518/04-rotated.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-09T19:00:11Z",
+      "runner": "unknown@MMBP"
+    }
+  ]
+}

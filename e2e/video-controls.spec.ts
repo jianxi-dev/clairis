@@ -293,3 +293,24 @@ test("快捷键总览含媒体家族条目", async ({ page }) => {
     await page.locator('[data-shortcut-id^="media-"]').count(),
   ).toBeGreaterThanOrEqual(10);
 });
+
+test("倍速菜单收窄到 88px，旋转按钮逆时针 90°", async ({ page }) => {
+  await openMedia(page, "/Users/test/clip.mp4");
+  await withRealVideo(page);
+
+  await page.locator('.art-control[data-name="rate"]').click();
+  const menu = page.locator(".rate-menu");
+  await expect(menu).toBeVisible();
+  const box = (await menu.boundingBox())!;
+  expect(Math.round(box.width)).toBe(88);
+
+  await page.keyboard.press("Escape");
+  await page.locator('.art-control[data-name="rotate"]').click();
+  const rotation = await page.evaluate(() => {
+    const video = document.querySelector<HTMLVideoElement>(
+      ".art-video-player video",
+    );
+    return video?.style.transform ?? "";
+  });
+  expect(rotation).toMatch(/rotate\((?:-90|270)deg\)/);
+});

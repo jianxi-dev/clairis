@@ -794,11 +794,11 @@ export default function VideoPlayer({
             rateBtnRef.current = $control;
             $control.dataset.name = "rate";
             this.proxy($control, "mouseenter", (e: Event) =>
-              openPopover("rate", $control, 132, (e as MouseEvent).clientX),
+              openPopover("rate", $control, 88, (e as MouseEvent).clientX),
             );
             this.proxy($control, "mouseleave", schedulePopoverClose);
             this.proxy($control, "click", () => {
-              openPopover("rate", $control, 132);
+              openPopover("rate", $control, 88);
             });
           },
         },
@@ -811,7 +811,9 @@ export default function VideoPlayer({
           mounted: function ($control) {
             $control.dataset.name = "rotate";
             this.proxy($control, "click", () => {
-              applyFrame({ rotation: (frameRef.current.rotation + 90) % 360 });
+              applyFrame({
+                rotation: (frameRef.current.rotation - 90 + 360) % 360,
+              });
             });
           },
         },
@@ -997,11 +999,13 @@ export default function VideoPlayer({
       if (btn) openPopover("playlist", btn, 260);
     });
     art.hotkey.add("KeyR", () => {
-      applyFrame({ rotation: (frameRef.current.rotation + 90) % 360 });
+      applyFrame({
+        rotation: (frameRef.current.rotation - 90 + 360) % 360,
+      });
     });
     art.hotkey.add("KeyG", () => {
       const btn = rateBtnRef.current;
-      if (btn) openPopover("rate", btn, 132);
+      if (btn) openPopover("rate", btn, 88);
     });
 
     // 自动播放下一个：默认顺序连播（最后一个停），playlist 模式回绕，single 由 option.loop 内部处理
@@ -1298,7 +1302,7 @@ export default function VideoPlayer({
         <div
           className="rate-menu"
           role="menu"
-          style={{ ...popoverStyle, width: 132, padding: "4px 0" }}
+          style={{ ...popoverStyle, width: 88, padding: "4px 0" }}
           onMouseEnter={cancelPopoverClose}
           onPointerDown={cancelPopoverClose}
           onPointerMove={cancelPopoverClose}
@@ -1415,17 +1419,6 @@ export default function VideoPlayer({
                 __html: `${loopIconSvg(loopMode)} 播放列表（${mediaItems.length}）· ${LOOP_LABEL[loopMode]}`,
               }}
             />
-            <button
-              onClick={() => setPopover(null)}
-              style={{
-                background: "none",
-                border: "none",
-                color: "#fff",
-                cursor: "pointer",
-              }}
-            >
-              <Icon name="close" size={18} />
-            </button>
           </div>
           {mediaItems.length === 0 && (
             <div style={{ padding: 12, color: "rgba(255,255,255,0.5)" }}>
@@ -1491,17 +1484,6 @@ export default function VideoPlayer({
             }}
           >
             <span>字幕</span>
-            <button
-              onClick={() => setPopover(null)}
-              style={{
-                background: "none",
-                border: "none",
-                color: "#fff",
-                cursor: "pointer",
-              }}
-            >
-              <Icon name="close" size={18} />
-            </button>
           </div>
           {subtitleList.length === 0 && (
             <div style={{ padding: 10, color: "rgba(255,255,255,0.5)" }}>
@@ -1582,17 +1564,6 @@ export default function VideoPlayer({
             }}
           >
             <span>快捷键</span>
-            <button
-              onClick={() => setPopover(null)}
-              style={{
-                background: "none",
-                border: "none",
-                color: "#fff",
-                cursor: "pointer",
-              }}
-            >
-              <Icon name="close" size={18} />
-            </button>
           </div>
           <div
             style={{
