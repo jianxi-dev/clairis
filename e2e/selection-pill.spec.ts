@@ -94,17 +94,17 @@ test.describe("选区胶囊双模式", () => {
     await bootstrap(page);
   });
 
-  test("编辑态选区出胶囊：改写/翻译/润色", async ({ page }) => {
+  test("编辑态不出胶囊：AI 三动作归轮盘", async ({ page }) => {
     await openDoc(page, "/tmp/pill-edit.md", EDIT_DOC);
     await setMode(page, "edit");
     await page.locator(".cm-content").waitFor({ state: "visible" });
 
     await selectRange(page, ".cm-content", 0, 6);
-    await expect(pill(page)).toBeVisible({ timeout: 5000 });
-    expect(await pill(page).getAttribute("data-selection-pill-mode")).toBe(
-      "edit",
-    );
-    expect(await pillLabels(page)).toEqual(["改写", "翻译", "润色"]);
+    await expect(
+      page.locator('[data-testid="selection-roulette"]'),
+    ).toBeVisible({ timeout: 5000 });
+    await expect(pill(page)).toHaveCount(0);
+    expect(await pillLabels(page)).toEqual([]);
   });
 
   test("阅读态选区出胶囊：复制/解释/翻译", async ({ page }) => {
@@ -281,11 +281,16 @@ test.describe("选区胶囊双模式", () => {
     await setMode(page, "edit");
     await page.locator(".cm-content").waitFor({ state: "visible" });
     await selectRange(page, ".cm-content", 0, 6);
-    await expect(pill(page)).toBeVisible();
-    await page.screenshot({ path: `${ARTIFACTS}/01-editor-pill-light.png` });
+    await expect(
+      page.locator('[data-testid="selection-roulette"]'),
+    ).toBeVisible();
+    await expect(pill(page)).toHaveCount(0);
+    await page.screenshot({
+      path: `${ARTIFACTS}/01-editor-roulette-light.png`,
+    });
 
     await page.evaluate(() => document.documentElement.classList.add("dark"));
-    await page.screenshot({ path: `${ARTIFACTS}/05-editor-pill-dark.png` });
+    await page.screenshot({ path: `${ARTIFACTS}/05-editor-roulette-dark.png` });
     await page.evaluate(() =>
       document.documentElement.classList.remove("dark"),
     );
