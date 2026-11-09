@@ -33,3 +33,8 @@
   height: 22px;
   display: block;
 }
+
+.rate-menu-item:hover {
+  background: transparent;
+  color: inherit;
+}
