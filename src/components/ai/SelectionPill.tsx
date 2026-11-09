@@ -104,6 +104,18 @@ export default function SelectionPill() {
       }
       const s = window.getSelection();
       const view = getActiveEditorView();
+      // 兜底：选区落在编辑器 DOM 内时，胶囊一律不渲染（AI 三动作归轮盘）。
+      if (
+        s &&
+        view &&
+        s.anchorNode &&
+        s.focusNode &&
+        view.dom.contains(s.anchorNode) &&
+        view.dom.contains(s.focusNode)
+      ) {
+        setPill(null);
+        return;
+      }
       const mode: SelectionPillMode | null = detectSelectionPillMode(
         s,
         view?.dom ?? null,

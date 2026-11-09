@@ -28,6 +28,7 @@ import {
 import { loadUserExtensions } from "../../editors/user-extensions";
 import HtmlVisualEditor from "./HtmlVisualEditor";
 import { horizontalToolbar } from "../../editors/orchestration/horizontal-toolbar";
+import { floatingToolbar } from "../../editors/orchestration/floating-toolbar";
 import { smartInput } from "../../editors/smart-input";
 import { blockHandle } from "../../editors/orchestration/block-handle";
 import {
@@ -377,7 +378,10 @@ export default function ContentArea({
     }
 
     if (editorMode === "source") {
-      viewRef.current.dispatch({ effects: decorCompartment.reconfigure([]) });
+      // 源码模式保留选区轮盘（E-18：AI 三动作归轮盘），但不装 L2 装饰。
+      viewRef.current.dispatch({
+        effects: decorCompartment.reconfigure([floatingToolbar()]),
+      });
     } else if (editorMode === "edit") {
       viewRef.current.dispatch({
         effects: decorCompartment.reconfigure(
