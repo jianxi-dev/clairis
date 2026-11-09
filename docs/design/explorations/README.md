@@ -40,6 +40,7 @@
 | UI 设计哲学 | [ui-philosophy/](./ui-philosophy/README.md) | 1 | 纯探索 |
 | UI HTML 探索 | [ui-html/](./ui-html/) | 4 | 纯探索 |
 | 落地页原型 | [landing/](./landing/) | 1 | 纯探索 |
+| 选区轮盘（已定案） | [selection-roulette/](./selection-roulette/README.md) | 1 | `approved/selection-roulette/` |
 
 ## 权威级别（重要）
 
