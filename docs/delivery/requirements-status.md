@@ -55,6 +55,7 @@ openspec status --change <name>   # 单个变更工件完成度
   - 主题弹层生命周期 + 单击循环切主题、图片右键应用内菜单、chrome 前景色统一、关闭其他图标、视频容器自适应与画面变换、沉浸态隐藏状态栏/未钉住左栏与每栏独立页签条、悬浮窗图片按宽可滚 + HTML 本地直载、一键自动布局
 - 外壳/页面/编辑/阅读/文件域（`ui-polish-batch6`）：25/25 票合并（PR #394–#408），净 +5 requirement（+8 新增、-3 被取代），已归档 `openspec/changes/archive/2026-11-08-ui-polish-batch6`
 - 外壳/页面/编辑/阅读/文件域（`ui-polish-batch8`）：11/11 票合并（PR #461–#471），+1 requirement（E-23 选中块尺寸拖拽），14 条 requirement 修订（状态栏/分栏/页签/悬浮预览/AI/PDF/编辑/视频），已归档 `openspec/changes/archive/2026-11-08-ui-polish-batch8`
+- 外壳/页面/编辑/阅读/文件域（`ui-polish-batch9`）：9/9 票合并（PR #489），7 条 requirement 修订（状态栏/栏目头/悬浮预览/大纲/视频/标题折叠），已归档 `openspec/changes/archive/2026-11-09-ui-polish-batch9`
 - 编辑域（`selection-roulette`）：4/4 票合并（PR #473–#474），2 条 requirement 修订（选区浮动工具条改径向轮盘、E-19 HTML 源码编辑态接入轮盘；可视化块工具条保持），已归档 `openspec/changes/archive/2026-11-08-selection-roulette`
   - 顶栏取消（G-3 改为无品牌顶栏）、状态栏五入口 + 紧凑高度 + 宽度/主题面板、页签与状态栏视觉、视频倍速、选区工具条归属与 AI 三键、placeMenu 统一落位、空行手柄悬停即开、块菜单对齐与缩进合并、色板二级保持、PDF 悬浮预览隐藏缩放条、卡片缩略图高度收窄
 - 文档治理域（`design-system-governance`）：+4 requirement（DG-2…DG-5），纯文档与流程改动，无运行时变更，已归档 `openspec/changes/archive/2026-11-08-design-system-governance`（PR #442）
