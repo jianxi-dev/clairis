@@ -2,7 +2,7 @@ import { test, expect, type Page } from "@playwright/test";
 
 const APP_URL = "http://localhost:1420";
 
-async function openPanel(page: Page) {
+async function boot(page: Page) {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto(APP_URL, { waitUntil: "networkidle" });
   await page.waitForSelector('[data-testid="pane-header"]', { timeout: 15000 });
@@ -11,6 +11,11 @@ async function openPanel(page: Page) {
     w.__biaoyue_openFile__("/tmp/width.md", "# width", "width.md");
   });
   await page.waitForTimeout(300);
+}
+
+async function openPanel(page: Page) {
+  await boot(page);
+  await page.getByTestId("width-control").hover();
   await page.getByTestId("status-width").click();
   await expect(page.getByTestId("width-panel")).toBeVisible();
 }
@@ -24,31 +29,46 @@ function borders(page: Page) {
   );
 }
 
-test("未 hover 时三挡块为透明虚线边框", async ({ page }) => {
+function fills(page: Page) {
+  return page
+    .locator(".width-bar-fill")
+    .evaluateAll((els) => els.map((el) => getComputedStyle(el).opacity));
+}
+
+test("未选中三挡柱体无虚线边框且填充可辨识", async ({ page }) => {
   await openPanel(page);
   const list = await borders(page);
   expect(list).toHaveLength(3);
   for (const b of list) {
-    expect(b.style).toBe("dashed");
-    expect(b.color).toMatch(/rgba\(0, 0, 0, 0\)|transparent/);
+    expect(b.style).toBe("none");
+  }
+  for (const opacity of await fills(page)) {
+    expect(Number(opacity)).toBeGreaterThan(0.5);
   }
 });
 
-test("hover 单柱显示虚线，另外两柱保持透明；移出恢复", async ({ page }) => {
+test("选中柱体与未选中柱体透明度区分", async ({ page }) => {
   await openPanel(page);
-  const bar = page.getByTestId("width-preset-960");
-  await bar.hover();
-  await page.waitForTimeout(200);
-  const hovered = await borders(page);
-  expect(hovered[1].style).toBe("dashed");
-  expect(hovered[1].color).not.toMatch(/rgba\(0, 0, 0, 0\)|transparent/);
-  expect(hovered[0].color).toMatch(/rgba\(0, 0, 0, 0\)|transparent/);
-  expect(hovered[2].color).toMatch(/rgba\(0, 0, 0, 0\)|transparent/);
+  await page.locator('[data-testid="width-preset-960"]').click();
+  const opacities = (await fills(page)).map(Number);
+  expect(opacities).toContain(1);
+  for (const opacity of opacities) {
+    if (opacity !== 1) expect(opacity).toBeLessThan(1);
+  }
+});
+
+test("宽度控件移入淡入、移出淡出", async ({ page }) => {
+  await boot(page);
+  const control = page.getByTestId("width-control");
+  const button = page.getByTestId("status-width");
+
+  expect(await button.evaluate((el) => getComputedStyle(el).opacity)).toBe("0");
+
+  await control.hover();
+  await expect(button).toHaveCSS("opacity", "1", { timeout: 3000 });
 
   await page.mouse.move(10, 10);
-  await page.waitForTimeout(200);
-  const left = await borders(page);
-  expect(left[1].color).toMatch(/rgba\(0, 0, 0, 0\)|transparent/);
+  await expect(button).toHaveCSS("opacity", "0", { timeout: 3000 });
 });
 
 test("三柱居中相接且滑块长于三柱", async ({ page }) => {

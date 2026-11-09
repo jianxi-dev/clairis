@@ -73,5 +73,5 @@
 依赖：1.1–5.1
 
 - 6.1 QG-5 证据：`.artifacts/<票号>/state-coverage.json` 至少 4 态（隐藏 / 根环 / 二层 / 三层 + HTML 横条），截图 + 断言（在各票内产出，不单独成票）
-- 6.2 视觉数值落 `docs/design/system/decisions.md` 一行「选区轮盘」
+- [x] 6.2 视觉数值落 `docs/design/system/decisions.md` 一行「选区轮盘」
 - 6.3 `bash scripts/verify.sh` 全绿

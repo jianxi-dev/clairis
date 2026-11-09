@@ -245,3 +245,40 @@ test("预览态标题折叠：按钮显隐与点击隐藏后续内容", async ({
     page.locator(".preview-content p", { hasText: "开场白" }),
   ).toBeVisible();
 });
+
+test("折叠三角与标题文字间距不超过 2px", async ({ page }) => {
+  await openDoc(page);
+  // 先把光标放到正文，让标题 marker 处于隐藏态（用户看到三角紧贴文字的常态）
+  await page.locator(".cm-line").nth(2).click();
+  const line = page.locator(".cm-line").nth(0);
+  const box = (await line.boundingBox())!;
+  const content = await page.evaluate(() => {
+    const rect = (
+      document.querySelector(".cm-content") as HTMLElement
+    ).getBoundingClientRect();
+    return { left: rect.left, width: rect.width };
+  });
+  await page.mouse.move(
+    Math.max(box.x, content.left + content.width * 0.1),
+    box.y + box.height / 2,
+  );
+  const toggle = line.locator(".cm-fold-toggle");
+  await expect(toggle).toHaveCSS("opacity", "1");
+
+  const gap = await page.evaluate(() => {
+    const first = document.querySelector(".cm-line");
+    if (!first) return -1;
+    const fold = first.querySelector(".cm-fold-toggle") as HTMLElement | null;
+    const marker = first.querySelector(
+      ".cm-heading-marker",
+    ) as HTMLElement | null;
+    if (!fold) return -1;
+    const foldRight = fold.getBoundingClientRect().right;
+    const markerWidth = marker ? marker.getBoundingClientRect().width : 0;
+    const markerMargin = marker
+      ? Number.parseFloat(getComputedStyle(marker).marginRight)
+      : 0;
+    return markerWidth + markerMargin;
+  });
+  expect(gap).toBeLessThanOrEqual(2);
+});

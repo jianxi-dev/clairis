@@ -198,6 +198,14 @@ body {
   margin-right: 0.25em;
 }
 
+/* 有折叠三角的标题：隐藏态标记不再占宽度，三角与标题文字只留 2px 间隙。 */
+.cm-line:has(.cm-fold-toggle)
+  .cm-heading-marker:not(.cm-heading-marker-active) {
+  width: 0;
+  margin-right: 0;
+  overflow: hidden;
+}
+
 /* 标题折叠三角（shell-editor-batch5）：有下级的标题才渲染，点击折叠/展开 */
 .cm-fold-toggle {
   display: inline-flex;
@@ -2072,6 +2080,15 @@ html[data-tab-drag="true"] body * {
   flex: none;
 }
 
+.cm-block-menu-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex: none;
+}
+
 /* 转为网格（豆包 §4.3：5 列 × 2 行，图标即语义）。 */
 .cm-block-menu-grid {
   display: grid;
@@ -2646,6 +2663,22 @@ html[data-tab-drag="true"] body * {
   opacity: 0.45;
 }
 
+/* 页面宽度控件：命中区域（.width-control）常驻，控件本体默认透明；
+   指针进入 / 键盘聚焦 / 面板展开时淡入。淡入 150ms，淡出 200ms。 */
+.width-control > button {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 200ms ease;
+}
+
+.width-control:hover > button,
+.width-control:focus-within > button,
+.width-control.is-open > button {
+  opacity: 1;
+  pointer-events: auto;
+  transition: opacity 150ms ease;
+}
+
 .width-panel {
   position: fixed;
   z-index: 80;
@@ -2676,17 +2709,17 @@ html[data-tab-drag="true"] body * {
   flex: 0 0 22px;
   align-self: flex-end;
   padding: 0;
-  border: 1px dashed transparent;
+  border: 0;
   border-radius: 3px 3px 0 0;
   background: transparent;
   color: transparent;
   cursor: pointer;
-  transition: border-color 120ms ease;
+  transition: background 120ms ease;
 }
 
 .width-bar:hover,
 .width-bar:focus-visible {
-  border-color: var(--app-border-strong);
+  background: var(--app-accent-soft);
 }
 
 .width-bar-fill {
@@ -2694,12 +2727,13 @@ html[data-tab-drag="true"] body * {
   inset: 0;
   display: block;
   border-radius: 3px 3px 0 0;
-  background: var(--app-sunken);
+  background: var(--app-accent);
+  opacity: 0.7;
   clip-path: polygon(0 100%, 22% 0, 100% 0, 100% 100%);
 }
 
 .width-bar.is-active .width-bar-fill {
-  background: var(--app-accent);
+  opacity: 1;
 }
 
 .width-slider {
