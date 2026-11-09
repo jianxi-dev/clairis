@@ -511,10 +511,15 @@ export function floatingToolbar() {
       handle.setPainter(painterState.active, painterState.count);
     };
 
+    /** 指针落在轮盘内部：这是操作轮盘，不是重选文字，不能改锚点。 */
+    const insideWheel = (target: EventTarget | null): boolean =>
+      !!handle && target instanceof Node && handle.element.contains(target);
+
     const scheduleShow = () => {
       window.clearTimeout(showTimer);
       showTimer = window.setTimeout(() => {
         if (pointerDown) return;
+        if (handle?.element.matches(":hover")) return;
         const { from, to } = view.state.selection.main;
         if (from === to) return;
         show();
@@ -528,15 +533,20 @@ export function floatingToolbar() {
       handle = null;
     };
 
-    const onPointerDown = () => {
+    const onPointerDown = (e: PointerEvent) => {
+      if (insideWheel(e.target)) return;
       pointerDown = true;
       window.clearTimeout(showTimer);
     };
     const onPointerMove = (e: PointerEvent) => {
-      if (!pointerDown) return;
+      if (!pointerDown || insideWheel(e.target)) return;
       pointer = { x: e.clientX, y: e.clientY };
     };
     const onPointerUp = (e: PointerEvent) => {
+      if (insideWheel(e.target)) {
+        pointerDown = false;
+        return;
+      }
       if (!pointerDown) return;
       pointerDown = false;
       pointer = { x: e.clientX, y: e.clientY };
