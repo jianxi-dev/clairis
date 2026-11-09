@@ -1,8 +1,8 @@
 /* 选区轮盘工具条（selection-roulette，批准设计见
  * docs/design/approved/selection-roulette/README.md）。
  *
- * 以鼠标落点为圆心，根环 8 扇区；二级/三级只在父扇区方向就近展开；
- * 颜色为文字色 / 背景色双圈。旧的横向工具条已删除，不留双轨。
+ * 以鼠标落点为圆心，根环 8 扇区；二层/三层只在父扇区方向就近展开；
+ * 颜色为文字色 / 背景色双圈。旧的横向工具条在 MD 编辑态不再渲染。
  */
 
 import { EditorView, ViewPlugin, type ViewUpdate } from "@codemirror/view";
@@ -18,18 +18,29 @@ import { useAiEntryStore } from "../../hooks/useAiEntry";
 import {
   createRoulette,
   type RouletteActions,
+  type RouletteHandle,
   type RouletteItem,
 } from "./roulette-view";
+
+const SHOW_DELAY_MS = 90;
+
+type CalloutKind = "tip" | "info" | "note" | "warning" | "danger";
+
+const CALLOUTS: ReadonlyArray<{
+  kind: CalloutKind;
+  label: string;
+  icon: RouletteItem["icon"];
+}> = [
+  { kind: "tip", label: "提示", icon: "bulb" },
+  { kind: "info", label: "信息", icon: "info" },
+  { kind: "note", label: "注意", icon: "callout" },
+  { kind: "warning", label: "警告", icon: "warning" },
+  { kind: "danger", label: "危险", icon: "danger" },
+];
 
 function selectionText(view: EditorView): string {
   const { from, to } = view.state.selection.main;
   return view.state.doc.sliceString(from, to);
-}
-
-function ensureWrap(view: EditorView, open: string, close: string): void {
-  const text = selectionText(view);
-  if (text.startsWith(open) && text.endsWith(close)) return;
-  toggleWrap(view, open, close);
 }
 
 function blockTextOf(
@@ -55,7 +66,7 @@ function convertItem(
   id: string,
   label: string,
   icon: RouletteItem["icon"],
-  target: BlockConvertTarget | "warning" | "info" | "note" | "danger",
+  target: BlockConvertTarget | CalloutKind,
 ): RouletteItem {
   return {
     id,
@@ -64,11 +75,11 @@ function convertItem(
     run: () => {
       const block = blockAt(view, view.state.selection.main.from);
       if (!block) return;
-      if (["warning", "info", "note", "danger"].includes(target)) {
+      if (CALLOUTS.some((c) => c.kind === target)) {
         const text = view.state.doc.sliceString(block.from, block.to);
         const quoted = text
           .split("\n")
-          .map((line) => `> ${line}`)
+          .map((line) => `> ${line.replace(/^>\s?/, "")}`)
           .join("\n");
         view.dispatch({
           changes: {
@@ -108,11 +119,13 @@ function adjustIndent(view: EditorView, delta: number): void {
   replaceBlock(view, next === 0 ? body : `::: {.indent-${next}}\n${body}\n:::`);
 }
 
+/** 清除格式：剥掉行内标记与颜色 span，保留链接。 */
 function clearFormatting(view: EditorView): void {
   const { from, to } = view.state.selection.main;
   if (from === to) return;
   const stripped = selectionText(view)
     .replace(/<span class="mdb-(?:color|bg)-[\w-]+">/g, "")
+    .replace(/<span[^>]*>/g, "")
     .replace(/<\/span>/g, "")
     .replace(/<\/?u>/g, "")
     .replace(/\*\*|~~|`/g, "")
@@ -141,55 +154,49 @@ function colorAction(
   toggleRangeSpan(view, className, prefix);
 }
 
-let sharedHandle: ReturnType<typeof createRoulette> | null = null;
+interface Marks {
+  bold: boolean;
+  italic: boolean;
+  underline: boolean;
+  strike: boolean;
+  code: boolean;
+  color: string;
+  bg: string;
+}
+
 const painterState: {
   active: boolean;
   count: number;
-  marks: {
-    bold: boolean;
-    italic: boolean;
-    underline: boolean;
-    strike: boolean;
-    code: boolean;
-    color: string;
-    bg: string;
-  } | null;
+  marks: Marks | null;
 } = { active: false, count: 0, marks: null };
 
 export function floatingToolbar() {
   return ViewPlugin.define((view) => {
-    let handle: ReturnType<typeof createRoulette> | null = sharedHandle;
+    let handle: RouletteHandle | null = null;
+    let showTimer = 0;
     let paintTimer = 0;
-    let marks: {
-      bold: boolean;
-      italic: boolean;
-      underline: boolean;
-      strike: boolean;
-      code: boolean;
-      color: string;
-      bg: string;
-    } | null = null;
+    let pointer: { x: number; y: number } | null = null;
+    let pointerDown = false;
+    let marks: Marks | null = null;
 
-    const ensure = (open: string, close: string) =>
-      ensureWrap(view, open, close);
+    const ensure = (open: string, close: string) => {
+      const text = selectionText(view);
+      if (text.startsWith(open) && text.endsWith(close)) return;
+      toggleWrap(view, open, close);
+    };
 
     const takeMarks = () => {
       const text = selectionText(view);
-      const next = {
+      marks = {
         bold: /\*\*/.test(text),
         italic: /(^|[^*])\*(?!\*)/.test(text) || /^\*[^*]/.test(text),
         underline: /<u>/.test(text),
         strike: /~~/.test(text),
         code: /`/.test(text),
-        color: /<span class="mdb-color-[\w-]+">/.test(text)
-          ? (text.match(/mdb-color-[\w-]+/)?.[0] ?? "")
-          : "",
-        bg: /<span class="mdb-bg-[\w-]+">/.test(text)
-          ? (text.match(/mdb-bg-[\w-]+/)?.[0] ?? "")
-          : "",
+        color: /mdb-color-[\w-]+/.exec(text)?.[0] ?? "",
+        bg: /mdb-bg-[\w-]+/.exec(text)?.[0] ?? "",
       };
-      marks = next;
-      painterState.marks = next;
+      painterState.marks = marks;
     };
 
     const applyMarks = () => {
@@ -233,7 +240,7 @@ export function floatingToolbar() {
         {
           id: "ai-rewrite",
           label: "改写",
-          icon: "pencil",
+          icon: "edit",
           run: () => {
             const ai = useAiEntryStore.getState();
             ai.setInput(`请改写以下内容：\n\n${selectionText(view)}`);
@@ -243,7 +250,7 @@ export function floatingToolbar() {
         {
           id: "ai-translate",
           label: "翻译",
-          icon: "share",
+          icon: "globe",
           run: () => {
             const ai = useAiEntryStore.getState();
             ai.setInput(`请翻译以下内容：\n\n${selectionText(view)}`);
@@ -270,44 +277,62 @@ export function floatingToolbar() {
             convertItem(view, "convert-paragraph", "正文", "text", "paragraph"),
           );
         }
+        items.push(
+          convertItem(view, "convert-code", "代码块", "blockcode", "code"),
+        );
+        items.push(
+          convertItem(view, "convert-table", "表格", "table", "table"),
+        );
         items.push({
           id: "convert-heading-group",
           label: "标题",
-          icon: "file",
-          children: [
-            convertItem(view, "convert-h1", "一级标题", "file", "h1"),
-            convertItem(view, "convert-h2", "二级标题", "file", "h2"),
-            convertItem(view, "convert-h3", "三级标题", "file", "h3"),
-            convertItem(view, "convert-h4", "四级标题", "file", "h3"),
-          ],
+          icon: "h1",
+          children: ([1, 2, 3, 4, 5, 6] as const).map((n) =>
+            convertItem(
+              view,
+              `convert-h${n}`,
+              [
+                "一级标题",
+                "二级标题",
+                "三级标题",
+                "四级标题",
+                "五级标题",
+                "六级标题",
+              ][n - 1],
+              `h${n}` as RouletteItem["icon"],
+              `h${n}` as BlockConvertTarget,
+            ),
+          ),
         });
         items.push({
           id: "convert-list-group",
           label: "列表",
-          icon: "grid",
+          icon: "bullet",
           children: [
-            convertItem(view, "convert-bullet", "无序列表", "grid", "bullet"),
-            convertItem(view, "convert-ordered", "有序列表", "grid", "ordered"),
-            convertItem(view, "convert-todo", "待办", "check", "todo"),
+            convertItem(view, "convert-bullet", "无序列表", "bullet", "bullet"),
+            convertItem(
+              view,
+              "convert-ordered",
+              "有序列表",
+              "ordered",
+              "ordered",
+            ),
+            convertItem(view, "convert-todo", "待办", "todo", "todo"),
           ],
         });
         items.push({
           id: "convert-callout-group",
           label: "高亮",
-          icon: "warning",
-          children: [
-            convertItem(view, "convert-note", "提示", "warning", "note"),
-            convertItem(view, "convert-info", "信息", "warning", "info"),
-            convertItem(view, "convert-warning", "警告", "warning", "warning"),
-            convertItem(view, "convert-danger", "危险", "warning", "danger"),
-          ],
+          icon: "callout",
+          children: CALLOUTS.map((c) =>
+            convertItem(view, `convert-${c.kind}`, c.label, c.icon, c.kind),
+          ),
         });
         items.push(
-          convertItem(view, "convert-quote", "引用", "markdown", "quote"),
+          convertItem(view, "convert-quote", "引用", "quote", "quote"),
         );
-        items.push(convertItem(view, "convert-code", "代码块", "code", "code"));
         items.push(
-          convertItem(view, "convert-hr", "分割线", "text", "paragraph"),
+          convertItem(view, "convert-divider", "分割线", "divider", "divider"),
         );
         return items;
       },
@@ -315,7 +340,7 @@ export function floatingToolbar() {
         {
           id: "align-left",
           label: "左对齐",
-          icon: "text",
+          icon: "alignLeft",
           run: () => {
             const block = blockAt(view, view.state.selection.main.from);
             if (block) alignBlock(view, block, "left");
@@ -324,7 +349,7 @@ export function floatingToolbar() {
         {
           id: "align-center",
           label: "居中",
-          icon: "text",
+          icon: "alignCenter",
           run: () => {
             const block = blockAt(view, view.state.selection.main.from);
             if (block) alignBlock(view, block, "center");
@@ -333,7 +358,7 @@ export function floatingToolbar() {
         {
           id: "align-right",
           label: "右对齐",
-          icon: "text",
+          icon: "alignRight",
           run: () => {
             const block = blockAt(view, view.state.selection.main.from);
             if (block) alignBlock(view, block, "right");
@@ -342,39 +367,39 @@ export function floatingToolbar() {
         {
           id: "indent-in",
           label: "增加缩进",
-          icon: "chevronRight",
+          icon: "indent",
           run: () => adjustIndent(view, 1),
         },
         {
           id: "indent-out",
           label: "减少缩进",
-          icon: "chevronLeft",
+          icon: "outdent",
           run: () => adjustIndent(view, -1),
         },
       ],
       columns: [1, 2, 3, 4, 5].map((n) => ({
         id: `columns-${n}`,
         label: `${n} 栏`,
-        icon: n === 1 ? "file" : "splitRight",
+        icon: `columns${n}` as RouletteItem["icon"],
         run: () => setColumns(view, n),
       })),
       history: [
         {
           id: "history-undo",
           label: "后退",
-          icon: "chevronLeft",
+          icon: "undo",
           run: () => undo(view),
         },
         {
           id: "history-redo",
           label: "前进",
-          icon: "chevronRight",
+          icon: "redo",
           run: () => redo(view),
         },
         {
           id: "history-copy",
           label: "复制",
-          icon: "copyPath",
+          icon: "copy",
           run: () => {
             void navigator.clipboard
               ?.writeText(selectionText(view))
@@ -384,7 +409,7 @@ export function floatingToolbar() {
         {
           id: "history-delete",
           label: "删除",
-          icon: "close",
+          icon: "trash",
           run: () => {
             const { from, to } = view.state.selection.main;
             view.dispatch({ changes: { from, to, insert: "" } });
@@ -395,38 +420,38 @@ export function floatingToolbar() {
         {
           id: "clear-format",
           label: "清除格式",
-          icon: "close",
+          icon: "brush",
           run: () => clearFormatting(view),
         },
       ],
       format: [
         {
-          id: "format-bold",
-          label: "加粗",
-          icon: "text",
+          id: "format-link",
+          label: "链接",
+          icon: "link",
           keepOpen: true,
-          run: () => toggleWrap(view, "**", "**"),
-        },
-        {
-          id: "format-italic",
-          label: "斜体",
-          icon: "pencil",
-          keepOpen: true,
-          run: () => toggleWrap(view, "*", "*"),
+          run: () => ensure("[", "](url)"),
         },
         {
           id: "format-underline",
           label: "下划线",
-          icon: "text",
+          icon: "underline",
           keepOpen: true,
           run: () => toggleWrap(view, "<u>", "</u>"),
         },
         {
-          id: "format-strike",
-          label: "删除线",
-          icon: "close",
+          id: "format-italic",
+          label: "斜体",
+          icon: "italic",
           keepOpen: true,
-          run: () => toggleWrap(view, "~~", "~~"),
+          run: () => toggleWrap(view, "*", "*"),
+        },
+        {
+          id: "format-bold",
+          label: "加粗",
+          icon: "bold",
+          keepOpen: true,
+          run: () => toggleWrap(view, "**", "**"),
         },
         {
           id: "format-code",
@@ -436,11 +461,11 @@ export function floatingToolbar() {
           run: () => toggleWrap(view, "`", "`"),
         },
         {
-          id: "format-link",
-          label: "链接",
-          icon: "share",
+          id: "format-strike",
+          label: "删除线",
+          icon: "strike",
           keepOpen: true,
-          run: () => toggleWrap(view, "[", "](url)"),
+          run: () => toggleWrap(view, "~~", "~~"),
         },
       ],
       color: (kind, className) => colorAction(view, kind, className),
@@ -462,50 +487,71 @@ export function floatingToolbar() {
       },
     };
 
-    const position = () => {
-      if (!handle) return;
+    const anchorPoint = (): { x: number; y: number } | null => {
+      if (pointer) return pointer;
       try {
-        view.requestMeasure({
-          read: (v) => {
-            const { from, to } = v.state.selection.main;
-            const pos = to > from ? to : from;
-            return v.coordsAtPos(pos);
-          },
-          write: (coords) => {
-            if (!coords || !handle) return;
-            handle.setCenter(coords.left, coords.bottom);
-          },
-        });
+        const coords = view.coordsAtPos(view.state.selection.main.head);
+        if (coords) return { x: coords.left, y: coords.bottom };
       } catch {
-        // jsdom：保持默认位置
+        // jsdom
       }
+      return null;
     };
 
     const show = () => {
+      const point = anchorPoint();
+      if (!point) return;
       if (!handle) {
         handle = createRoulette(actions, () => {
           handle = null;
         });
-        if (
-          view.dom.style.position === "static" ||
-          view.dom.style.position === ""
-        ) {
-          view.dom.style.position = "relative";
-        }
         document.body.appendChild(handle.element);
-        handle.element.style.position = "fixed";
-        handle.element.style.zIndex = "3000";
       }
-      sharedHandle?.setPainter(painterState.active, painterState.count);
-      position();
+      handle.setCenter(point.x, point.y);
+      handle.setPainter(painterState.active, painterState.count);
+    };
+
+    const scheduleShow = () => {
+      window.clearTimeout(showTimer);
+      showTimer = window.setTimeout(() => {
+        if (pointerDown) return;
+        const { from, to } = view.state.selection.main;
+        if (from === to) return;
+        show();
+      }, SHOW_DELAY_MS);
     };
 
     const hide = () => {
+      window.clearTimeout(showTimer);
       if (!handle) return;
       handle.destroy();
-      sharedHandle = null;
       handle = null;
     };
+
+    const onPointerDown = () => {
+      pointerDown = true;
+      window.clearTimeout(showTimer);
+    };
+    const onPointerMove = (e: PointerEvent) => {
+      if (!pointerDown) return;
+      pointer = { x: e.clientX, y: e.clientY };
+    };
+    const onPointerUp = (e: PointerEvent) => {
+      if (!pointerDown) return;
+      pointerDown = false;
+      pointer = { x: e.clientX, y: e.clientY };
+      const { from, to } = view.state.selection.main;
+      if (to > from) scheduleShow();
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      pointer = null;
+    };
+
+    document.addEventListener("pointerdown", onPointerDown, true);
+    document.addEventListener("pointermove", onPointerMove, true);
+    document.addEventListener("pointerup", onPointerUp, true);
+    document.addEventListener("keydown", onKeyDown, true);
 
     return {
       update(u: ViewUpdate): void {
@@ -522,25 +568,24 @@ export function floatingToolbar() {
               if (!painterState.active) return;
               if (applyMarks()) {
                 painterState.count += 1;
-                const el = document.querySelector<HTMLElement>(
-                  '[data-testid="roulette-center"]',
-                );
-                if (el) {
-                  el.textContent = String(painterState.count);
-                  el.dataset.painter = "true";
-                }
+                handle?.setPainter(true, painterState.count);
               }
             }, 120);
           }
-          if (!handle) show();
-          else position();
+          if (!pointerDown) scheduleShow();
         } else if (handle) {
-          if (!painterState.active && !handle.element.matches(":hover")) hide();
+          if (!painterState.active && !handle.element.matches(":hover")) {
+            hide();
+          }
         }
-        return true as unknown as void;
       },
       destroy(): void {
-        if (painterState.active) return;
+        document.removeEventListener("pointerdown", onPointerDown, true);
+        document.removeEventListener("pointermove", onPointerMove, true);
+        document.removeEventListener("pointerup", onPointerUp, true);
+        document.removeEventListener("keydown", onKeyDown, true);
+        window.clearTimeout(paintTimer);
+        window.clearTimeout(showTimer);
         hide();
       },
     };
