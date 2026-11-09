@@ -696,24 +696,17 @@ describe("全角斜杠 / 顿号归一（E-13）", () => {
     });
   }
 
-  it("全角斜杠在词首归一成半角并打开斜杠菜单", async () => {
+  it("全角斜杠原样保留、不开菜单", async () => {
     typeAt(0, "／");
-    // 菜单由 ViewPlugin 在微任务里开（update 期间不能读布局）。
     await Promise.resolve();
-    expect(view.state.doc.toString()).toBe("/");
-    expect(view.dom.querySelector(".mdb-slash-menu")).not.toBeNull();
+    expect(view.state.doc.toString()).toBe("／");
+    expect(view.dom.querySelector(".mdb-slash-menu")).toBeNull();
   });
 
-  it("顿号在词首归一成半角斜杠并打开斜杠菜单", async () => {
+  it("顿号原样保留、不开菜单", async () => {
     typeAt(0, "、");
     await Promise.resolve();
-    expect(view.state.doc.toString()).toBe("/");
-    expect(view.dom.querySelector(".mdb-slash-menu")).not.toBeNull();
-  });
-
-  it("全角斜杠在词中只归一、不开菜单", () => {
-    typeAt(0, "a／");
-    expect(view.state.doc.toString()).toBe("a/");
+    expect(view.state.doc.toString()).toBe("、");
     expect(view.dom.querySelector(".mdb-slash-menu")).toBeNull();
   });
 

@@ -1,5 +1,10 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { mediaPlayer, type MediaPlayerState } from "./mediaPlayerState";
+import {
+  mediaKey,
+  mediaPlayer,
+  type MediaPlayerState,
+  type MediaSource,
+} from "./mediaPlayerState";
 import VideoPlayer from "./VideoPlayer";
 
 interface Rect {
@@ -40,20 +45,40 @@ export default function MediaPlayerHost() {
   const [state, setState] = useState<MediaPlayerState>(() =>
     mediaPlayer.getState(),
   );
-  const hostRef = useRef<HTMLDivElement>(null);
-  // 与 paneId 绑定：换格后旧 rect 立即失效（探测前保持离屏，不会闪现在旧格）。
-  const [paneRect, setPaneRect] = useState<{
-    paneId: string;
-    rect: Rect | null;
-  } | null>(null);
 
   useEffect(
     () => mediaPlayer.subscribe(() => setState(mediaPlayer.getState())),
     [],
   );
 
-  const { source, visible } = state;
-  const paneId = source?.paneId ?? null;
+  if (state.sources.length === 0) return null;
+  return (
+    <>
+      {state.sources.map((source) => (
+        <PaneMediaPlayer
+          key={mediaKey(source)}
+          source={source}
+          visible={state.visibility[mediaKey(source)] === true}
+        />
+      ))}
+    </>
+  );
+}
+
+/** 单个格的播放器：常驻挂载，按格定位；隐藏时移出视口但继续播放。 */
+function PaneMediaPlayer({
+  source,
+  visible,
+}: {
+  source: MediaSource;
+  visible: boolean;
+}) {
+  const hostRef = useRef<HTMLDivElement>(null);
+  const paneId = source.paneId ?? null;
+  const [paneRect, setPaneRect] = useState<{
+    paneId: string;
+    rect: Rect | null;
+  } | null>(null);
   const probed = paneRect?.paneId === paneId;
   const rect = probed ? paneRect.rect : null;
 
@@ -82,10 +107,6 @@ export default function MediaPlayerHost() {
     };
   }, [paneId]);
 
-  if (!source) return null;
-
-  // 有格信息但探测不到内容区（格被全屏隐藏 / 已删除）→ 离屏，而不是退回全尺寸
-  // 覆盖整屏（那正是本票要修的 bug）。
   const offscreen = !visible || (paneId !== null && (!probed || rect === null));
 
   const style: CSSProperties = {
@@ -100,7 +121,7 @@ export default function MediaPlayerHost() {
   };
 
   return (
-    <div ref={hostRef} style={style}>
+    <div ref={hostRef} style={style} data-media-pane={paneId ?? undefined}>
       <VideoPlayer
         filePath={source.filePath}
         url={source.url}

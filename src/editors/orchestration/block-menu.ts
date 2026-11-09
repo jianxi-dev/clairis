@@ -62,7 +62,7 @@ const HIDE_DELAY_MS = 150;
 /** 结构动作组：直接在源码上执行的块级操作。 */
 const ACTION_ROWS: ReadonlyArray<readonly [string, string, string]> = [
   ["复制块", "CopyOutlined", "duplicate"],
-  ["剪切块", "FeishuclipOutlined", "cut"],
+  ["剪切块", "ScissorsOutlined", "cut"],
   ["上移", "ArrowUpwardOutlined", "move-up"],
   ["下移", "ArrowDownwardOutlined", "move-down"],
   ["删除块", "DeleteTrashOutlined", "delete"],
@@ -450,8 +450,8 @@ export function openBlockMenu(
     panelEl.style.width = `${MENU_WIDTH}px`;
     const own = view.dom.getBoundingClientRect();
     const rowRect = colorRow.getBoundingClientRect();
-    panelEl.style.left = `${rowRect.right - own.left + 4}px`;
-    panelEl.style.top = `${rowRect.top - own.top}px`;
+    panelEl.style.left = `${Math.max(4, rowRect.left - own.left)}px`;
+    panelEl.style.top = `${rowRect.bottom - own.top + 4}px`;
 
     const blockText = view.state.doc.sliceString(block.from, block.to);
     const applyColor = (family: ColorFamily, className: string): void => {
@@ -511,7 +511,6 @@ export function openBlockMenu(
   alignRow.className = "cm-block-menu-item";
   alignRow.dataset.testid = "block-menu-align";
   alignRow.style.height = `${MENU_ROW_HEIGHT}px`;
-  alignRow.appendChild(renderIcon("AlignLeftOutlined"));
   const alignLabel = document.createElement("span");
   alignLabel.textContent = "对齐与缩进";
   alignRow.appendChild(alignLabel);
@@ -522,7 +521,10 @@ export function openBlockMenu(
   alignRow.appendChild(alignChevron);
 
   let alignPanel: HTMLElement | null = null;
+  let releaseAlignKeepOpen: (() => void) | null = null;
   const closeAlignPanel = (): void => {
+    releaseAlignKeepOpen?.();
+    releaseAlignKeepOpen = null;
     alignPanel?.remove();
     alignPanel = null;
   };
@@ -535,8 +537,8 @@ export function openBlockMenu(
     panelEl.style.width = `${MENU_WIDTH}px`;
     const own = view.dom.getBoundingClientRect();
     const rowRect = alignRow.getBoundingClientRect();
-    panelEl.style.left = `${rowRect.right - own.left + 4}px`;
-    panelEl.style.top = `${rowRect.top - own.top}px`;
+    panelEl.style.left = `${Math.max(4, rowRect.left - own.left)}px`;
+    panelEl.style.top = `${rowRect.bottom - own.top + 4}px`;
 
     const blockText = view.state.doc.sliceString(block.from, block.to);
     // 缩进的空白在块范围之外（block.from 落在内容首字），单独取到行首，
@@ -580,6 +582,8 @@ export function openBlockMenu(
 
     view.dom.appendChild(panelEl);
     panelEl.addEventListener("pointerenter", () => cancelPendingClose(view));
+    releaseAlignKeepOpen?.();
+    releaseAlignKeepOpen = keepColorPanelOpen(menuStack, view);
     alignPanel = panelEl;
   };
 

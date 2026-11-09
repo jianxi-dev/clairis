@@ -342,6 +342,8 @@ export default function TabBar({
                     onBlur={() => commitRename(id, tab.title)}
                     className="w-32 min-w-0 rounded border bg-transparent px-1 text-xs outline-none"
                     style={{
+                      width: "24ch",
+                      minWidth: "12ch",
                       borderColor: "var(--app-border)",
                       color: "var(--app-text)",
                     }}

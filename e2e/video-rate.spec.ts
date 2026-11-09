@@ -78,6 +78,18 @@ test("倍速菜单恰好六档，主控件为速度表图标", async ({ page }) 
   expect(angles.map((a) => a.count)).toEqual([1, 1, 1, 1, 1, 1]);
   expect(angles.find((a) => a.value === 1)?.angle).toBe(0);
   expect(angles.find((a) => a.value === 0.5)!.angle).toBeLessThan(0);
+
+  // 二级表盘与主控件同形：都有一条相同的弧线，只有指针角度不同
+  const outerD = await page
+    .locator(".art-control[data-name='rate'] svg path")
+    .first()
+    .getAttribute("d");
+  const dialD = await page
+    .locator(".rate-menu-item [data-rate-dial] path")
+    .first()
+    .getAttribute("d");
+  expect(outerD).toContain("M4.5 18a8");
+  expect(dialD).toBe("M4.5 18a8 8 0 1115 0");
   expect(angles.find((a) => a.value === 2)!.angle).toBeGreaterThan(0);
   const sorted = angles.map((a) => a.angle);
   expect(sorted).toEqual([...sorted].sort((a, b) => a - b));

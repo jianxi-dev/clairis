@@ -687,3 +687,29 @@ test("二级菜单选「减少缩进」回收两格缩进", async ({ page }) => 
     .toBe("# 标题\n\n第一段正文\n\n第二段正文\n");
   await page.screenshot({ path: ".artifacts/373/04-outdent.png" });
 });
+
+test("颜色二级面板在行下方展开，指针移入后不消失", async ({ page }) => {
+  await hoverHandle(page, 2);
+  const row = page.locator('[data-testid="block-menu-color"]');
+  await row.hover();
+  const panel = page.locator('[data-testid="block-menu-color-panel"]');
+  await expect(panel).toBeVisible({ timeout: 3000 });
+  const rowBox = (await row.boundingBox())!;
+  const panelBox = (await panel.boundingBox())!;
+  expect(panelBox.y).toBeGreaterThan(rowBox.y + rowBox.height - 1);
+
+  await page.mouse.move(
+    panelBox.x + panelBox.width / 2,
+    panelBox.y + panelBox.height / 2,
+  );
+  await page.waitForTimeout(400);
+  await expect(panel).toBeVisible();
+});
+
+test("剪切块使用剪刀图标", async ({ page }) => {
+  await hoverHandle(page, 2);
+  const cut = page.locator(
+    '[data-testid="block-menu-action"][data-action="cut"]',
+  );
+  await expect(cut.locator("svg[data-icon='ScissorsOutlined']")).toHaveCount(1);
+});

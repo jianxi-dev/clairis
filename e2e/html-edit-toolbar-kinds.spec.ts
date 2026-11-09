@@ -54,9 +54,10 @@ test("选中段落：给文字排版控件，不给背景/边框", async ({ page
   await expect(bar.locator('button[aria-label="删除线"]')).toBeVisible();
   await expect(bar.locator('select[aria-label="字号"]')).toBeVisible();
   await expect(bar.locator('input[aria-label="文字颜色"]')).toBeVisible();
+  await expect(bar.locator('button[aria-label="AI 编辑"]')).toBeVisible();
 
   await expect(bar.locator('input[aria-label="背景色"]')).toHaveCount(0);
-  await expect(bar.locator('button[aria-label="边框"]')).toHaveCount(0);
+  await expect(bar.locator('button[aria-label="边框色"]')).toHaveCount(0);
 });
 
 test("选中容器：给背景/边框控件，不给粗斜体", async ({ page }) => {
@@ -71,7 +72,7 @@ test("选中容器：给背景/边框控件，不给粗斜体", async ({ page })
   const bar = page.locator(`${TOOLBAR}[data-cm-node-kind="block"]`);
   await expect(bar).toBeVisible();
   await expect(bar.locator('input[aria-label="背景色"]')).toBeVisible();
-  await expect(bar.locator('button[aria-label="边框"]')).toBeVisible();
+  await expect(bar.locator('button[aria-label="边框色"]')).toBeVisible();
 
   await expect(bar.locator('button[aria-label="粗体"]')).toHaveCount(0);
   await expect(bar.locator('select[aria-label="字号"]')).toHaveCount(0);
@@ -120,7 +121,7 @@ test("区块加边框后真正画出来", async ({ page }) => {
     wrap!.y + wrap!.height - 20,
   );
 
-  const border = page.locator(`${TOOLBAR} button[aria-label="边框"]`);
+  const border = page.locator(`${TOOLBAR} button[aria-label="边框色"]`);
   await border.click();
   await expect(border).toHaveAttribute("aria-pressed", "true");
 
@@ -142,4 +143,13 @@ test("删除元素：渲染层与 content 同步消失", async ({ page }) => {
   const html = await content(page);
   expect(html).not.toContain("第一段");
   expect(html).not.toContain("data-cm-");
+});
+
+test("AI 入口预填选中节点文本", async ({ page }) => {
+  const frame = await openVisual(page);
+  await frame.locator("p").first().click();
+  await page.locator(`${TOOLBAR} button[aria-label="AI 编辑"]`).click();
+  await expect(page.locator("[data-ai-overlay]")).toBeVisible();
+  const value = await page.locator("[data-ai-input]").inputValue();
+  expect(value).toContain("第一段");
 });

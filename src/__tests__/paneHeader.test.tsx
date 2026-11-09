@@ -43,13 +43,14 @@ describe("reorderLeafTabs", () => {
 });
 
 describe("⋯ 菜单定义", () => {
-  it("恰好 7 项且顺序与名称严格相等", () => {
+  it("恰好 8 项且顺序与名称严格相等", () => {
     expect(PANE_MENU_ITEMS.map((i) => i.label)).toEqual([
       "导出",
       "分享",
       "右分",
       "下分",
       "源码模式",
+      "刷新",
       "定位",
       "复制路径",
     ]);

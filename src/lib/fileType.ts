@@ -42,6 +42,8 @@ const EXT: Record<string, FileTypeKind> = {
   webp: "image",
   svg: "image",
   avif: "image",
+  heif: "image",
+  heic: "image",
   ts: "code",
   tsx: "code",
   js: "code",

@@ -45,6 +45,9 @@ describe("detectFileKind（经 openFile 验证）", () => {
     expect(kindOf("/a.flac")).toBe("audio");
     expect(kindOf("/a.wav")).toBe("audio");
     expect(kindOf("/a.pdf")).toBe("pdf");
+    expect(kindOf("/a.heif")).toBe("image");
+    expect(kindOf("/a.heic")).toBe("image");
+    expect(kindOf("/a.sh")).toBe("text");
   });
 
   it("未知与无扩展名归 text", () => {
@@ -68,6 +71,8 @@ describe("默认打开模式", () => {
       "/a.yaml",
       "/a.css",
       "/a.csv",
+      "/a.sh",
+      "/a.zsh",
     ]) {
       useStore.getState().openFile(path, "x");
       const { tabs, activeTabId } = useStore.getState();
@@ -219,6 +224,8 @@ describe("默认打开模式（C-1 源码/预览分流）", () => {
       "/a.yaml",
       "/a.css",
       "/a.csv",
+      "/a.sh",
+      "/a.zsh",
     ]) {
       expect(modeOf(path)).toBe("edit");
     }

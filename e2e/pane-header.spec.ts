@@ -186,7 +186,7 @@ test("拖动页签换位：顺序严格等于落点；Esc 取消不留占位", a
   expect(await tabOrder(page, "main")).toEqual(order);
 });
 
-test("⋯ 菜单恰好 7 项、每项带图标、无全屏项", async ({ page }) => {
+test("⋯ 菜单恰好 8 项、每项带图标、无全屏项", async ({ page }) => {
   await boot(page);
   await openFile(page, "/tmp/ph/m.md");
 
@@ -194,7 +194,7 @@ test("⋯ 菜单恰好 7 项、每项带图标、无全屏项", async ({ page })
   const menu = page.locator('[data-testid="pane-menu"]');
   await expect(menu).toBeVisible();
   const items = menu.locator("[data-menu-item]");
-  await expect(items).toHaveCount(7);
+  await expect(items).toHaveCount(8);
 
   const labels = (await items.allInnerTexts()).map((t) => t.trim());
   expect(labels).toEqual([
@@ -203,6 +203,7 @@ test("⋯ 菜单恰好 7 项、每项带图标、无全屏项", async ({ page })
     "右分",
     "下分",
     "源码模式",
+    "刷新",
     "定位",
     "复制路径",
   ]);
@@ -359,4 +360,39 @@ test("栏目右上角图标整组默认隐藏，滑入操作区显示", async ({
   await expect
     .poll(() => actions.evaluate((el) => getComputedStyle(el).opacity))
     .toBe("0");
+});
+
+test("页签改名输入框宽度为 24ch", async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    const win = window as unknown as Record<string, any>;
+    win.__biaoyue_openFile__("/Users/test/rename.md", "# 标题", "rename.md");
+  });
+  const tab = page.locator('[data-testid="pane-header"]').first();
+  const title = tab.locator("text=rename.md").first();
+  await title.dblclick();
+  const input = page.locator('[data-testid="tab-title-input"]');
+  await expect(input).toBeVisible();
+  expect(await input.evaluate((el) => (el as HTMLElement).style.width)).toBe(
+    "24ch",
+  );
+});
+
+test("栏目菜单刷新从磁盘重读当前文件", async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    const win = window as unknown as Record<string, any>;
+    win.__biaoyue_openFile__("/Users/test/refresh.md", "旧内容", "refresh.md");
+  });
+  await page.locator('[data-testid="pane-menu-button"]').first().click();
+  await page.locator('[data-menu-item="refresh"]').click();
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const win = window as unknown as Record<string, any>;
+        const st = win.__biaoyue_store__.getState();
+        return st.tabs[st.activeTabId]?.content ?? "";
+      }),
+    )
+    .toContain("文件内容");
 });

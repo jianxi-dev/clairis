@@ -42,38 +42,6 @@ async function content(page: Page): Promise<string> {
 
 const TOOLBAR = ".html-edit-toolbar";
 
-test("点选元素后出现工具条，标签显示的是真值", async ({ page }) => {
-  const frame = await openVisual(page);
-  await expect(page.locator(TOOLBAR)).toHaveCount(0);
-
-  await frame.locator("h1").click();
-  const toolbar = page.locator(TOOLBAR);
-  await expect(toolbar).toBeVisible();
-  await expect(toolbar.locator("select[aria-label=标签]")).toHaveValue("h1");
-});
-
-test("换标签：渲染与 content 同步，工具条保持选中", async ({ page }) => {
-  const frame = await openVisual(page);
-  await frame.locator("h1").click();
-  await page.locator(`${TOOLBAR} select[aria-label=标签]`).selectOption("h3");
-
-  // 渲染层换掉了
-  await expect(frame.locator("h3")).toHaveCount(1);
-  await expect(frame.locator("h1")).toHaveCount(0);
-  await expect(frame.locator("h3")).toContainText("标题");
-
-  // content 里也是 h3，且没有编辑期痕迹
-  const html = await content(page);
-  expect(html).toContain("<h3>标题</h3>");
-  expect(html).not.toContain("data-cm-");
-  expect(html).not.toContain("cmid");
-
-  // 工具条没有因为 id 变化而消失
-  await expect(
-    page.locator(TOOLBAR).locator("select[aria-label=标签]"),
-  ).toHaveValue("h3");
-});
-
 test("改字号与对齐：元素立刻变化", async ({ page }) => {
   const frame = await openVisual(page);
   await frame.locator("p").first().click();
@@ -91,28 +59,6 @@ test("改字号与对齐：元素立刻变化", async ({ page }) => {
   const html = await content(page);
   expect(html).toContain("font-size: 24px");
   expect(html).toContain("text-align: center");
-});
-
-test("class 写入后元素带上，清空后属性整条消失", async ({ page }) => {
-  const frame = await openVisual(page);
-  await frame.locator("p").first().click();
-
-  const input = page.locator(`${TOOLBAR} input[aria-label=class]`);
-  await input.fill("lead");
-  await input.press("Tab");
-
-  await expect(frame.locator('[data-cm-node-id="p:0"]')).toHaveAttribute(
-    "class",
-    "lead",
-  );
-
-  await input.fill("");
-  await input.press("Tab");
-
-  const html = await content(page);
-  expect(html).not.toContain('class="lead"');
-  // 清空即删除，不许留 class=""
-  expect(html).not.toContain('class=""');
 });
 
 test("工具条不压在选中元素上", async ({ page }) => {

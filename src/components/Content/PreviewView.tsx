@@ -116,7 +116,7 @@ function MediaPreviewRegistrar({
       fileKind,
       paneId,
     });
-    return () => mediaPlayer.minimize();
+    return () => mediaPlayer.minimize(paneId);
   }, [filePath, fileKind, mountEpoch]);
 
   return (
@@ -383,6 +383,58 @@ function FramePreview({
   );
 }
 
+/** 预览态标题折叠：给有下级的标题插入三角，点击隐藏后续兄弟直到下一同级/更高级标题。 */
+function decoratePreviewHeadings(root: HTMLElement | null): void {
+  if (!root) return;
+  const content = root.querySelector<HTMLElement>(".preview-content");
+  if (!content) return;
+  const nodes = Array.from(content.children) as HTMLElement[];
+  const headings = nodes.filter((el) => /^H[1-6]$/.test(el.tagName));
+  for (const heading of headings) {
+    if (heading.querySelector(":scope > .preview-heading-fold")) continue;
+    const level = Number(heading.tagName.slice(1));
+    const start = nodes.indexOf(heading);
+    let hasChild = false;
+    for (let i = start + 1; i < nodes.length; i += 1) {
+      const el = nodes[i];
+      if (/^H[1-6]$/.test(el.tagName) && Number(el.tagName.slice(1)) <= level) {
+        break;
+      }
+      if (el.textContent?.trim()) {
+        hasChild = true;
+        break;
+      }
+    }
+    if (!hasChild) continue;
+    heading.classList.add("preview-heading");
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "preview-heading-fold";
+    btn.dataset.folded = "false";
+    btn.setAttribute("aria-label", "折叠");
+    btn.innerHTML =
+      '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 4 L14.5 10 L7 16 Z" fill="currentColor"/></svg>';
+    btn.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const folded = btn.dataset.folded === "true";
+      btn.dataset.folded = String(!folded);
+      btn.setAttribute("aria-label", folded ? "折叠" : "展开");
+      for (let i = start + 1; i < nodes.length; i += 1) {
+        const el = nodes[i];
+        if (
+          /^H[1-6]$/.test(el.tagName) &&
+          Number(el.tagName.slice(1)) <= level
+        ) {
+          break;
+        }
+        el.classList.toggle("preview-fold-hidden", !folded);
+      }
+    });
+    heading.insertBefore(btn, heading.firstChild);
+  }
+}
+
 function ZoomablePreview({
   html,
   headingVars,
@@ -411,6 +463,7 @@ function ZoomablePreview({
     if (!el) return;
     // 深浅色切换由 CSS 变量跟随（design D5），不重渲；源码仍留在 DOM 里可重复渲染
     void renderMermaid(el);
+    decoratePreviewHeadings(el);
   }, [html]);
 
   // 代码块复制按钮：事件委托，避免给每个代码块单独挂监听

@@ -6,7 +6,7 @@
  */
 
 /** 菜单统一宽度（px）。 */
-export const MENU_WIDTH = 264;
+export const MENU_WIDTH = 176;
 
 /** 菜单行高（px）。 */
 export const MENU_ROW_HEIGHT = 36;

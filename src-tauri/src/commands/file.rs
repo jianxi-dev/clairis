@@ -26,16 +26,21 @@ const SOURCE_MODE_LIMIT: u64 = 500 * 1024; // 500KB
 
 const DOC_EXTENSIONS: &[&str] = &[
     "md", "markdown", "mdown", "mdwn", "html", "htm", "txt", "log", "css", "py", "pyw", "json",
-    "jsonc", "js", "mjs", "cjs", "jsx", "ts", "tsx", "yaml", "yml", "csv",
+    "jsonc", "js", "mjs", "cjs", "jsx", "ts", "tsx", "yaml", "yml", "csv", "sh", "bash", "zsh",
+    "fish", "ps1",
 ];
 
-const IMAGE_EXTENSIONS: &[&str] = &["png", "jpg", "jpeg", "gif", "svg", "webp", "bmp", "ico"];
+const IMAGE_EXTENSIONS: &[&str] = &[
+    "png", "jpg", "jpeg", "gif", "svg", "webp", "bmp", "ico", "avif", "heif", "heic",
+];
+
+const AUDIO_EXTENSIONS: &[&str] = &["mp3", "m4a", "wav", "flac", "ogg", "aac"];
 
 const VIDEO_EXTENSIONS: &[&str] = &["mp4", "mov", "webm", "m4v", "mkv", "avi"];
 
 const BINARY_EXTENSIONS: &[&str] = &[
-    "pdf", "png", "jpg", "jpeg", "gif", "svg", "webp", "bmp", "ico", "mp4", "mov", "webm", "m4v",
-    "mkv", "avi", "mp3", "m4a", "wav", "flac", "ogg",
+    "pdf", "png", "jpg", "jpeg", "gif", "svg", "webp", "bmp", "ico", "avif", "heif", "heic", "mp4",
+    "mov", "webm", "m4v", "mkv", "avi", "mp3", "m4a", "wav", "flac", "ogg", "aac",
 ];
 
 fn extension_of(path: &Path) -> Option<String> {
@@ -123,6 +128,7 @@ pub async fn open_file(app: AppHandle) -> Result<FileResult, AppError> {
         .add_filter("文档", DOC_EXTENSIONS)
         .add_filter("图片", IMAGE_EXTENSIONS)
         .add_filter("视频", VIDEO_EXTENSIONS)
+        .add_filter("音频", AUDIO_EXTENSIONS)
         .add_filter("PDF", &["pdf"])
         .blocking_pick_file();
 

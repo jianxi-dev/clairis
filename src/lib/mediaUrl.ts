@@ -26,6 +26,8 @@ const IMAGE_EXT = new Set([
   "bmp",
   "ico",
   "avif",
+  "heif",
+  "heic",
 ]);
 
 /** 带协议、协议相对、锚点、data URL：都不是文档内相对路径。 */

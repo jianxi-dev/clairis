@@ -125,12 +125,14 @@ const ICON_REGISTRY: Record<string, IconDef> = {
   // Code — </>
   ColumnsOutlined: {
     kind: "paths",
-    paths: ["M3.5 5h17v14h-17z M9.2 5v14 M14.8 5v14"],
+    paths: ["M3.5 4.5h5v15h-5z M10.5 4.5h3v15h-3z M15.5 4.5h5v15h-5z"],
   },
   TableGridOutlined: {
     kind: "paths",
     paths: [
-      "M3.5 4.5h17v15h-17z M3.5 9.5h17 M3.5 14.5h17 M9.2 4.5v15 M14.8 4.5v15",
+      "M3.5 4.5h4.6v4H3.5z M9.7 4.5h4.6v4H9.7z M15.9 4.5h4.6v4h-4.6z",
+      "M3.5 10h4.6v4H3.5z M9.7 10h4.6v4H9.7z M15.9 10h4.6v4h-4.6z",
+      "M3.5 15.5h4.6v4H3.5z M9.7 15.5h4.6v4H9.7z M15.9 15.5h4.6v4h-4.6z",
     ],
   },
   KanbanOutlined: {
@@ -150,11 +152,27 @@ const ICON_REGISTRY: Record<string, IconDef> = {
   },
   BrowserOutlined: {
     kind: "paths",
-    paths: ["M3 5h18v14H3z M3 8.6h18 M5.8 6.8h.01 M8.2 6.8h.01"],
+    paths: [
+      "M3 4.5h18v2H3z M3 8h2v11.5H3z M19 8h2v11.5h-2z M3 17.5h18v2H3z",
+      "M10.5 10.5a2.5 2.5 0 100 5 2.5 2.5 0 000-5z M12.5 13v2l1.8 1",
+    ],
   },
   MediaFileOutlined: {
     kind: "paths",
-    paths: ["M4 4.5h11l5 5v10H4z M15 4.5v5h5 M9.6 11.4l4.6 2.6-4.6 2.6z"],
+    paths: ["M4 6h11v12H4z M15 10l5-3v10l-5-3z"],
+  },
+  VideoOutlined: {
+    kind: "paths",
+    paths: ["M4 6h11v12H4z M15 10l5-3v10l-5-3z"],
+  },
+  ScissorsOutlined: {
+    kind: "paths",
+    paths: [
+      "M3.4 4.2l9.2 9.2-1.7 1.7L1.7 5.9z",
+      "M20.6 4.2l-9.2 9.2 1.7 1.7 9.2-9.2z",
+      "M6 20a2.2 2.2 0 100-4.4A2.2 2.2 0 006 20z",
+      "M18 20a2.2 2.2 0 100-4.4A2.2 2.2 0 0018 20z",
+    ],
   },
   CodeOutlined: {
     kind: "paths",

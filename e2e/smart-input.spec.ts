@@ -71,18 +71,18 @@ test("全角逗号换成半角（不唤起菜单）", async ({ page }) => {
   expect(await page.locator('[data-testid="slash-menu"]').count()).toBe(0);
 });
 
-test("全角斜杠在词首换成半角并唤起菜单", async ({ page }) => {
+test("全角斜杠原样保留、不唤起菜单（#318）", async ({ page }) => {
   await openMarkdownForEditing(page, "/Users/test/si-punct-slash.md");
   await page.keyboard.type("／");
-  await expect.poll(() => storeContent(page)).toBe("/");
-  await expect(page.locator('[data-testid="slash-menu"]')).toBeVisible();
+  await expect.poll(() => storeContent(page)).toContain("／");
+  await expect(page.locator('[data-testid="slash-menu"]')).toHaveCount(0);
 });
 
-test("顿号在词首换成半角斜杠并唤起菜单", async ({ page }) => {
+test("顿号原样保留、不唤起菜单（#318）", async ({ page }) => {
   await openMarkdownForEditing(page, "/Users/test/si-punct-dun.md");
   await page.keyboard.type("、");
-  await expect.poll(() => storeContent(page)).toBe("/");
-  await expect(page.locator('[data-testid="slash-menu"]')).toBeVisible();
+  await expect.poll(() => storeContent(page)).toContain("、");
+  await expect(page.locator('[data-testid="slash-menu"]')).toHaveCount(0);
 });
 
 test("围栏代码块内保留全角", async ({ page }) => {

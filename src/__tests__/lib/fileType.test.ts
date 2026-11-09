@@ -12,6 +12,9 @@ describe("文件类型 → 图标 / 类型色（layout-portal 1.1）", () => {
     expect(fileTypeOf("x.png")).toBe("image");
     expect(fileTypeOf("x.ts")).toBe("code");
     expect(fileTypeOf("x.mp3")).toBe("audio");
+    expect(fileTypeOf("x.sh")).toBe("code");
+    expect(fileTypeOf("x.heif")).toBe("image");
+    expect(fileTypeOf("x.heic")).toBe("image");
   });
 
   it("大小写不敏感，认不出的按文本", () => {

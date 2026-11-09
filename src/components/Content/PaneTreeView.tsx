@@ -421,6 +421,24 @@ function PaneHeader({
         case "source":
           setMode("source");
           return;
+        case "refresh": {
+          if (!tab?.path) {
+            showNotice("此页签尚未保存，无法刷新");
+            return;
+          }
+          void invoke<{ path: string; content: string }>("open_file_direct", {
+            path: tab.path,
+          })
+            .then((result) => {
+              useStore.getState().openFile(result.path, result.content);
+              showNotice("已刷新");
+            })
+            .catch((e) => {
+              log.error("PaneHeader", "刷新失败", e);
+              showNotice("刷新失败");
+            });
+          return;
+        }
         case "locate": {
           if (!tab?.path) {
             showNotice("此页签尚未保存，无路径可定位");

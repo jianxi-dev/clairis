@@ -44,6 +44,17 @@ test("表格渲染出真实网格", async ({ page }) => {
   await expect(
     table.locator("tbody tr").first().locator("td").first(),
   ).toHaveText("甲");
+
+  // 第十批：列之间有一条比外框更浅的竖分割线；最后一列不画
+  const cell = table.locator("tbody tr").first().locator("td").first();
+  const border = await cell.evaluate(
+    (el) => getComputedStyle(el).borderRightWidth,
+  );
+  expect(border).toBe("1px");
+  const last = table.locator("thead th").last();
+  expect(
+    await last.evaluate((el) => getComputedStyle(el).borderRightWidth),
+  ).toBe("0px");
 });
 
 test("非活跃表格块不显示 | 管道符", async ({ page }) => {
@@ -190,4 +201,26 @@ test("单元格菜单只列行内命令，选中后插进单元格而不是表�
     return s.tabs[s.activeTabId]?.content as string;
   });
   expect(after).toBe(before);
+});
+
+test("预览态表格同样有浅色竖分割线", async ({ page }) => {
+  await page.evaluate(() => {
+    const win = window as unknown as Record<string, any>;
+    win.__biaoyue_openFile__(
+      "/Users/test/tbl-preview.md",
+      "| 姓名 | 城市 |\n| --- | --- |\n| 甲 | 北京 |",
+      "tbl-preview.md",
+    );
+    win.__biaoyue_store__.getState().setEditorMode("preview");
+  });
+  const table = page.locator(".preview-content table");
+  await expect(table).toBeVisible();
+  const first = table.locator("tbody td").first();
+  expect(
+    await first.evaluate((el) => getComputedStyle(el).borderRightWidth),
+  ).toBe("1px");
+  const last = table.locator("thead th").last();
+  expect(
+    await last.evaluate((el) => getComputedStyle(el).borderRightWidth),
+  ).toBe("0px");
 });

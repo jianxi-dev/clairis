@@ -22,7 +22,6 @@ import type { EditorDecorationsOptions } from "./decorations";
 import { smartInput } from "./smart-input";
 import { slashKeymap } from "./slash";
 import { floatingToolbar } from "./orchestration/floating-toolbar";
-import { blockToolbar } from "./orchestration/block-toolbar";
 
 export const decorCompartment = new Compartment();
 
@@ -52,7 +51,7 @@ export const historyCompartment = new Compartment();
 export function fullDecorations(
   options?: EditorDecorationsOptions,
 ): Extension[] {
-  return [editorDecorations(options), floatingToolbar(), blockToolbar()];
+  return [editorDecorations(options), floatingToolbar()];
 }
 
 /**

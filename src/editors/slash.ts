@@ -156,7 +156,7 @@ function columnCount(count: number): SlashCommand {
   return {
     id: `columns-${count}`,
     label: `${count} 栏`,
-    icon: "TextOutlined",
+    icon: "ColumnsOutlined",
     code: `f${count}`,
     insert(state) {
       const head = state.selection.main.head;
@@ -253,7 +253,7 @@ export const defaultCommands: SlashCommand[] = [
   {
     id: "media-ref",
     label: "视频/文件",
-    icon: "MediaFileOutlined",
+    icon: "VideoOutlined",
     code: "v",
     aliases: ["media"],
     group: "常用",
@@ -311,7 +311,7 @@ export const defaultCommands: SlashCommand[] = [
   {
     id: "insert-css",
     label: "插入 CSS",
-    icon: "CssOutlined",
+    icon: "",
     aliases: ["css"],
     group: "绘图",
     insert(state) {
@@ -637,16 +637,18 @@ function renderRootGrid(view: EditorView, state: SlashMenuState): void {
       cell.setAttribute("data-selected", "true");
     }
 
-    const icon = document.createElement("span");
-    icon.className = "mdb-slash-item-icon";
-    icon.setAttribute("aria-hidden", "true");
-    if (cmd.emoji) {
-      icon.textContent = cmd.emoji;
-      icon.dataset.glyph = "emoji";
-    } else if (cmd.icon) {
-      icon.appendChild(renderIcon(cmd.icon));
+    if (cmd.emoji || cmd.icon) {
+      const icon = document.createElement("span");
+      icon.className = "mdb-slash-item-icon";
+      icon.setAttribute("aria-hidden", "true");
+      if (cmd.emoji) {
+        icon.textContent = cmd.emoji;
+        icon.dataset.glyph = "emoji";
+      } else if (cmd.icon) {
+        icon.appendChild(renderIcon(cmd.icon));
+      }
+      cell.appendChild(icon);
     }
-    cell.appendChild(icon);
 
     const label = document.createElement("span");
     label.className = "mdb-slash-item-label";

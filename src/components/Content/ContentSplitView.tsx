@@ -152,7 +152,7 @@ export default function ContentSplitView() {
   return (
     <div
       ref={splitContainerRef}
-      className={`h-full flex ${isHorizontal ? "" : "flex-col"} overflow-hidden`}
+      className={`relative h-full flex ${isHorizontal ? "" : "flex-col"} overflow-hidden`}
     >
       {/* Panel A — tabs NOT in split */}
       <div
@@ -179,7 +179,6 @@ export default function ContentSplitView() {
               tabOverride={activeTab}
               modeOverride={activeTab?.editorMode}
             />
-            <MediaPlayerHost />
           </div>
         </ErrorBoundary>
       </div>
@@ -218,6 +217,7 @@ export default function ContentSplitView() {
           />
         </ErrorBoundary>
       </div>
+      <MediaPlayerHost />
     </div>
   );
 }

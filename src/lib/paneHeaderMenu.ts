@@ -13,6 +13,7 @@ export type PaneMenuAction =
   | "splitRight"
   | "splitDown"
   | "source"
+  | "refresh"
   | "locate"
   | "copyPath"
   | "undockAi"
@@ -41,6 +42,7 @@ export const PANE_MENU_ITEMS: readonly PaneMenuItem[] = [
   { action: "splitRight", label: "右分", icon: "splitRight" },
   { action: "splitDown", label: "下分", icon: "splitDown" },
   { action: "source", label: "源码模式", icon: "code" },
+  { action: "refresh", label: "刷新", icon: "refresh" },
   { action: "locate", label: "定位", icon: "locate" },
   { action: "copyPath", label: "复制路径", icon: "copyPath" },
 ];
