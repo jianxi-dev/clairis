@@ -59,7 +59,7 @@ async function withRealVideo(page: Page): Promise<void> {
   await page.waitForTimeout(200);
 }
 
-test("控制条顺序：上下集夹住播放键，截图在全屏前、画中画在其后", async ({
+test("控制条顺序：上下集夹住播放键，截图→画中画→全屏自绘按钮", async ({
   page,
 }) => {
   await openMedia(page, "/Users/test/clip.mp4");
@@ -83,10 +83,10 @@ test("控制条顺序：上下集夹住播放键，截图在全屏前、画中�
     at(right, "art-control-screenshot"),
   );
   expect(at(right, "art-control-screenshot")).toBeLessThan(
-    at(right, "art-control-fullscreenWeb"),
-  );
-  expect(at(right, "art-control-fullscreenWeb")).toBeLessThan(
     at(right, "art-control-pip"),
+  );
+  expect(at(right, "art-control-pip")).toBeLessThan(
+    at(right, "art-control-fullscreen"),
   );
 });
 
@@ -248,11 +248,11 @@ test("进度条悬停显示当前位置缩略图，移开消失", async ({ page 
 test("全屏态仍有二级菜单", async ({ page }) => {
   await openMedia(page, "/Users/test/clip.mp4");
   await withRealVideo(page);
-  await page.locator(".art-control-fullscreenWeb").click();
+  await page.locator(".art-control-fullscreen").click();
   await page.waitForTimeout(300);
   await page.locator(".art-control[data-name='rate']").hover();
   await expect(page.locator(".rate-menu")).toHaveCount(1);
-  await page.locator(".art-control-fullscreenWeb").click();
+  await page.locator(".art-control-fullscreen").click();
 });
 
 test("二级菜单 hover 显隐且以鼠标为中心，快捷键浮层 168px", async ({

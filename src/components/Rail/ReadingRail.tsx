@@ -1751,7 +1751,7 @@ export default function ReadingRail({
           top: 0,
           bottom: 0,
           width: overlayWidth,
-          zIndex: 35,
+          zIndex: 60,
         }}
         className="rail-root rail-overlay overflow-hidden shadow-lg"
         onMouseEnter={onEnter}

@@ -42,6 +42,7 @@ export type IconName =
   | "splitRight"
   | "splitDown"
   | "locate"
+  | "refresh"
   | "copyPath"
   | "chevronLeft"
   | "chevronRight"
@@ -62,6 +63,7 @@ export type IconName =
   | "loopPlaylist"
   | "subtitle"
   | "timestampNote"
+  | "fullscreen"
   | "keyboardHints"
   | "pip"
   | "camera"
@@ -250,6 +252,10 @@ export const ICONS: Record<IconName, IconDef> = {
     label: "向下分栏",
     parts: [{ s: "M5 4h14v6.5H5z" }, { s: "M5 13.5h14v6.5H5z", dash: "2 2" }],
   },
+  refresh: {
+    label: "刷新",
+    s: "M20 12a8 8 0 10-2.3 5.6 M20 6v6h-6",
+  },
   locate: {
     label: "定位",
     s: "M12 6.8a5.2 5.2 0 100 10.4 5.2 5.2 0 000-10.4z M12 9.6a2.4 2.4 0 100 4.8 2.4 2.4 0 000-4.8z M12 2v3 M12 19v3 M2 12h3 M19 12h3",
@@ -304,7 +310,7 @@ export const ICONS: Record<IconName, IconDef> = {
   },
   playlist: {
     label: "播放列表",
-    s: "M4 6h10 M4 11h10 M4 16h7 M15 10.2l5.5 3-5.5 3z",
+    s: "M4 6h10 M4 11h10 M4 16h7 M15 13.5l5.5 3-5.5 3z",
   },
   loopNone: {
     label: "不循环",
@@ -324,7 +330,7 @@ export const ICONS: Record<IconName, IconDef> = {
   },
   timestampNote: {
     label: "时间戳笔记",
-    s: "M12 20h8 M16.2 3.8a2 2 0 012.8 2.8L7 18.6l-3.8 1 1-3.8z",
+    s: "M4 5h10v14H4z M7 9h4 M7 12h4 M7 15h2 M18 7a4 4 0 100 8 4 4 0 000-8z M18 9v2l1.5 1",
   },
   keyboardHints: {
     label: "快捷键",
@@ -333,6 +339,10 @@ export const ICONS: Record<IconName, IconDef> = {
   pip: {
     label: "画中画",
     s: "M3 5.5h18v13H3z M12.5 12.5h6v4h-6z",
+  },
+  fullscreen: {
+    label: "全屏",
+    s: "M4 9V4h5 M20 9V4h-5 M4 15v5h5 M20 15v5h-5",
   },
   layoutAuto: {
     label: "自动布局",

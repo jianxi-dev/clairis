@@ -1,0 +1,276 @@
+{
+  "change": "ui-polish-batch10",
+  "requirements": [
+    {
+      "id": "R-1",
+      "text": "工具条归属",
+      "anchors": [
+        {
+          "id": "A-1.1",
+          "claim": "MD 编辑态未选文字时 `[data-testid=\"block-toolbar\"]` 节点数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "design"
+        },
+        {
+          "id": "A-1.2",
+          "claim": "HTML `<p>` 选中时工具条 AI 按钮数",
+          "kind": "exact",
+          "assert": "1",
+          "source": "design"
+        },
+        {
+          "id": "A-1.3",
+          "claim": "HTML `<p>` 选中时字号 / B / I / U / S / 链接 / 对齐 / 字色 / 删除控件齐备",
+          "kind": "exact",
+          "assert": "\"true\"",
+          "source": "design"
+        },
+        {
+          "id": "A-1.4",
+          "claim": "HTML `<section>` 选中时背景色与边框色控件数",
+          "kind": "exact",
+          "assert": "2",
+          "source": "design"
+        },
+        {
+          "id": "A-1.5",
+          "claim": "HTML `<section>` 选中时字号控件数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "design"
+        }
+      ]
+    },
+    {
+      "id": "R-2",
+      "text": "复开缺陷",
+      "anchors": [
+        {
+          "id": "A-2.1",
+          "claim": "空行 + 悬停 1s 后 `[data-testid=\"block-menu\"]` 节点数",
+          "kind": "state-machine",
+          "assert": "0",
+          "source": "design"
+        },
+        {
+          "id": "A-2.2",
+          "claim": "行首输入 `／` 后文档文本",
+          "kind": "exact",
+          "assert": "\"／\"",
+          "source": "design"
+        },
+        {
+          "id": "A-2.3",
+          "claim": "行首输入 `、` 后斜杠菜单节点数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "design"
+        }
+      ]
+    },
+    {
+      "id": "R-3",
+      "text": "视频多栏",
+      "anchors": [
+        {
+          "id": "A-3.1",
+          "claim": "两栏分别打开视频后视频元素数",
+          "kind": "exact",
+          "assert": "2",
+          "source": "design"
+        },
+        {
+          "id": "A-3.2",
+          "claim": "第二栏打开视频后第一栏 `video.src` 保持不变",
+          "kind": "state-machine",
+          "assert": "\"true\"",
+          "source": "design"
+        },
+        {
+          "id": "A-3.3",
+          "claim": "第二栏打开 Markdown 后第一栏视频仍可播放",
+          "kind": "state-machine",
+          "assert": "\"true\"",
+          "source": "design"
+        }
+      ]
+    },
+    {
+      "id": "R-4",
+      "text": "视频按钮",
+      "anchors": [
+        {
+          "id": "A-4.1",
+          "claim": "倍速主控件与档位表盘的 SVG 路径数",
+          "kind": "exact",
+          "assert": "相同",
+          "source": "design"
+        },
+        {
+          "id": "A-4.2",
+          "claim": "全屏与画中画图标描边宽度（px）",
+          "kind": "exact",
+          "assert": "相同",
+          "source": "design"
+        },
+        {
+          "id": "A-4.3",
+          "claim": "时间戳笔记与截图图标高度（px）",
+          "kind": "exact",
+          "assert": "相同",
+          "source": "design"
+        },
+        {
+          "id": "A-4.4",
+          "claim": "快捷键总览「媒体」家族条目数",
+          "kind": "exact",
+          "assert": "\"≥12\"",
+          "source": "design"
+        }
+      ]
+    },
+    {
+      "id": "R-5",
+      "text": "打开类型",
+      "anchors": [
+        {
+          "id": "A-5.1",
+          "claim": "Rust 图片过滤器含 heif/heic",
+          "kind": "exact",
+          "assert": "\"true\"",
+          "source": "design"
+        },
+        {
+          "id": "A-5.2",
+          "claim": "Rust 音频过滤器存在",
+          "kind": "exact",
+          "assert": "\"true\"",
+          "source": "design"
+        },
+        {
+          "id": "A-5.3",
+          "claim": "`.sh` 的 fileType",
+          "kind": "exact",
+          "assert": "\"code\"",
+          "source": "design"
+        }
+      ]
+    },
+    {
+      "id": "R-6",
+      "text": "栏目/页签/左栏",
+      "anchors": [
+        {
+          "id": "A-6.1",
+          "claim": "栏目菜单含 `refresh` 项",
+          "kind": "exact",
+          "assert": "\"true\"",
+          "source": "design"
+        },
+        {
+          "id": "A-6.2",
+          "claim": "页签改名输入框宽度（ch）",
+          "kind": "exact",
+          "assert": "24",
+          "source": "design"
+        },
+        {
+          "id": "A-6.3",
+          "claim": "收起态 `rail-edge` 计算 `visibility`",
+          "kind": "exact",
+          "assert": "\"visible\"",
+          "source": "design"
+        }
+      ]
+    },
+    {
+      "id": "R-7",
+      "text": "菜单",
+      "anchors": [
+        {
+          "id": "A-7.1",
+          "claim": "新建/转换菜单宽度（px）",
+          "kind": "exact",
+          "assert": "176",
+          "source": "design"
+        },
+        {
+          "id": "A-7.2",
+          "claim": "插入 CSS 行图标数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "design"
+        },
+        {
+          "id": "A-7.3",
+          "claim": "对齐与缩进行图标数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "design"
+        },
+        {
+          "id": "A-7.4",
+          "claim": "剪切块图标类名",
+          "kind": "exact",
+          "assert": "\"ScissorsOutlined\"",
+          "source": "design"
+        },
+        {
+          "id": "A-7.5",
+          "claim": "颜色面板指针移出 300ms 后仍存在",
+          "kind": "state-machine",
+          "assert": "\"true\"",
+          "source": "design"
+        }
+      ]
+    },
+    {
+      "id": "R-8",
+      "text": "折叠",
+      "anchors": [
+        {
+          "id": "A-8.1",
+          "claim": "召唤区内仅当前行三角 `opacity` 为 1",
+          "kind": "state-machine",
+          "assert": "\"true\"",
+          "source": "design"
+        },
+        {
+          "id": "A-8.2",
+          "claim": "预览态折叠按钮数（有下级的标题数）",
+          "kind": "exact",
+          "assert": "\"≥1\"",
+          "source": "design"
+        },
+        {
+          "id": "A-8.3",
+          "claim": "预览态点击后后续内容隐藏",
+          "kind": "state-machine",
+          "assert": "\"true\"",
+          "source": "design"
+        }
+      ]
+    },
+    {
+      "id": "R-9",
+      "text": "表格",
+      "anchors": [
+        {
+          "id": "A-9.1",
+          "claim": "编辑态单元格 `border-right-width`",
+          "kind": "exact",
+          "assert": "\"1px\"",
+          "source": "design"
+        },
+        {
+          "id": "A-9.2",
+          "claim": "预览态单元格 `border-right-width`",
+          "kind": "exact",
+          "assert": "\"1px\"",
+          "source": "design"
+        }
+      ]
+    }
+  ]
+}

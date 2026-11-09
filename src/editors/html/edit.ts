@@ -232,6 +232,29 @@ export function applyAttrPatch(
   });
 }
 
+/** 给选中节点包一层 `<a href>`（已是链接则改 href）。 */
+export function applyLink(
+  content: string,
+  nodeId: string,
+  href: string,
+): string {
+  const url = href.trim();
+  if (!url) return content;
+  return rewrite(content, nodeId, (el) => {
+    if (el.tagName.toLowerCase() === "a") {
+      if (el.getAttribute("href") === url) return false;
+      el.setAttribute("href", url);
+      return true;
+    }
+    const doc = el.ownerDocument;
+    const anchor = doc.createElement("a");
+    anchor.setAttribute("href", url);
+    el.parentNode?.replaceChild(anchor, el);
+    anchor.appendChild(el);
+    return true;
+  });
+}
+
 export interface NodeInfo {
   tag: string;
   attrs: Record<string, string>;
@@ -244,6 +267,13 @@ export interface NodeInfo {
  * 不靠 iframe 上报属性：content 才是唯一真相（design D3），工具条显示它，
  * 就和用户在源码模式看到的一致；iframe 只负责告诉主侧"选中了哪个节点"。
  */
+
+/** 选中节点的纯文本（AI 入口用）。 */
+export function textOfNode(content: string, nodeId: string): string {
+  const doc = new DOMParser().parseFromString(annotate(content), "text/html");
+  return anchorEl(doc, nodeId)?.textContent?.trim() ?? "";
+}
+
 export function describeNode(content: string, nodeId: string): NodeInfo | null {
   const doc = new DOMParser().parseFromString(annotate(content), "text/html");
   const el = anchorEl(doc, nodeId);

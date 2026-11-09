@@ -1,9 +1,9 @@
 import { test, expect, type Page } from "@playwright/test";
 
 /**
- * HTML 可视化编辑的文字选区轮盘。
+ * HTML 可视化编辑的文字选区工具条（第十批）。
  *
- * 与点选元素后的横条工具条分工：选中文字 → 轮盘；单击元素 → 元素工具条。
+ * 选中文字 → 横向文字工具条；单击元素 → 同款横向工具条（节点模式）。
  */
 
 const DOC = [
@@ -53,26 +53,24 @@ async function selectText(frame: ReturnType<Page["frameLocator"]>) {
 const WHEEL = '[data-testid="selection-roulette"]';
 const TOOLBAR = ".html-edit-toolbar";
 
-test("选中文字出现轮盘，元素横条让位", async ({ page }) => {
+test("选中文字出现横向文字工具条，轮盘不出现", async ({ page }) => {
   const frame = await openVisual(page);
   await selectText(frame);
-  await expect(page.locator(WHEEL)).toBeVisible({ timeout: 3000 });
-  await expect(page.locator(WHEEL).locator(".sr-sector")).toHaveCount(5);
-  await expect(page.locator(TOOLBAR)).toHaveCount(0);
+  const bar = page.locator(`${TOOLBAR}[data-cm-range-toolbar="true"]`);
+  await expect(bar).toBeVisible({ timeout: 3000 });
+  await expect(bar.locator('button[aria-label="粗体"]')).toBeVisible();
+  await expect(bar.locator('select[aria-label="字号"]')).toBeVisible();
+  await expect(page.locator(WHEEL)).toHaveCount(0);
 });
 
-test("轮盘加粗只作用于选区并写回 content", async ({ page }) => {
+test("文字工具条加粗只作用于选区并写回 content", async ({ page }) => {
   const frame = await openVisual(page);
   await selectText(frame);
-  await page.locator('[data-sector="format"]').hover();
-  await expect(page.locator(".sr-item")).toHaveCount(10);
-  await page
-    .locator('.sr-item[data-action="format-bold"]')
-    .dispatchEvent("pointerdown");
-  await expect
-    .poll(() => content(page))
-    .toContain('<span style="font-weight:bold">第一段文字</span>');
-  await expect(page.locator(WHEEL)).toBeVisible();
+  await page.locator(`${TOOLBAR} button[aria-label="粗体"]`).click();
+  await expect.poll(() => content(page)).toMatch(/font-weight:\s*bold|<b>/i);
+  await expect(
+    page.locator(`${TOOLBAR}[data-cm-range-toolbar="true"]`),
+  ).toBeVisible();
 });
 
 test("单击元素仍是元素工具条，不弹轮盘", async ({ page }) => {

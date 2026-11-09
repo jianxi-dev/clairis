@@ -538,25 +538,24 @@ describe("全角标点归一（E-13）", () => {
     expect(editor.view.dom.querySelector(".mdb-slash-menu")).toBeNull();
   });
 
-  it("全角斜杠在词首落成半角并唤起斜杠菜单", async () => {
+  it("全角斜杠原样保留、不唤起菜单", async () => {
     typeAt(0, "／");
-    // 菜单由 ViewPlugin 在微任务里开（update 期间不能读布局）。
     await Promise.resolve();
-    expect(editor.view.state.doc.toString()).toBe("/");
-    expect(editor.view.dom.querySelector(".mdb-slash-menu")).not.toBeNull();
-  });
-
-  it("全角斜杠在词中只落成半角，不开菜单", () => {
-    typeAt(0, "a／b");
-    expect(editor.view.state.doc.toString()).toBe("a/b");
+    expect(editor.view.state.doc.toString()).toBe("／");
     expect(editor.view.dom.querySelector(".mdb-slash-menu")).toBeNull();
   });
 
-  it("顿号落成半角斜杠并唤起斜杠菜单", async () => {
+  it("全角斜杠在词中保持原样", () => {
+    typeAt(0, "a／b");
+    expect(editor.view.state.doc.toString()).toBe("a／b");
+    expect(editor.view.dom.querySelector(".mdb-slash-menu")).toBeNull();
+  });
+
+  it("顿号原样保留、不唤起菜单", async () => {
     typeAt(0, "、");
     await Promise.resolve();
-    expect(editor.view.state.doc.toString()).toBe("/");
-    expect(editor.view.dom.querySelector(".mdb-slash-menu")).not.toBeNull();
+    expect(editor.view.state.doc.toString()).toBe("、");
+    expect(editor.view.dom.querySelector(".mdb-slash-menu")).toBeNull();
   });
 
   it("围栏代码块内保留全角", () => {

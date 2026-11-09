@@ -1,9 +1,12 @@
 import { test, expect, type Page } from "@playwright/test";
 
+/**
+ * 第十批：MD 编辑态不再出现「AI / 背景 / 边框 / 删除」块工具条。
+ * 该工具条归属 HTML 非文字区块；MD 选区继续使用轮盘。
+ */
+
 const APP_URL = "http://localhost:1420";
 const DOC = ["# 标题", "", "第一段正文", "", "第二段正文", ""].join("\n");
-
-const BLOCK_ACTIONS = ["ai-edit", "background", "border", "delete"];
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
@@ -21,106 +24,12 @@ test.beforeEach(async ({ page }) => {
   await page.locator(".cm-content").waitFor({ timeout: 10000 });
 });
 
-function storeContent(page: Page): Promise<string> {
-  return page.evaluate(() => {
-    const store = (window as unknown as Record<string, any>).__biaoyue_store__;
-    const state = store.getState();
-    return state.tabs[state.activeTabId]?.content ?? "";
-  });
-}
-
-async function clickBlock(page: Page, lineIndex: number): Promise<void> {
-  await page.locator(".cm-line").nth(lineIndex).click();
-  await expect(page.locator('[data-testid="block-toolbar"]')).toBeVisible({
-    timeout: 3000,
-  });
-}
-
-test("光标在块内出现块工具条，控件集合恰为 workbuddy 4 项", async ({
-  page,
-}) => {
-  await clickBlock(page, 2);
-
-  const toolbar = page.locator('[data-testid="block-toolbar"]');
-  const actions = toolbar.locator("[data-action]");
-  await expect(actions).toHaveCount(4);
-
-  const names = await actions.evaluateAll((els) =>
-    els.map((el) => el.getAttribute("data-action")),
-  );
-  expect(names).toEqual(BLOCK_ACTIONS);
+test("MD 点击块内不出现块工具条", async ({ page }) => {
+  await page.locator(".cm-line").nth(2).click();
+  await expect(page.locator('[data-testid="block-toolbar"]')).toHaveCount(0);
 });
 
-test("块工具条每个控件都是图标按钮（SVG）", async ({ page }) => {
-  await clickBlock(page, 2);
-
-  const buttons = page.locator(
-    '[data-testid="block-toolbar"] > [data-action] button.cm-toolbar-btn, [data-testid="block-toolbar"] > button.cm-toolbar-btn',
-  );
-  const count = await buttons.count();
-  expect(count).toBeGreaterThan(0);
-  for (let i = 0; i < count; i += 1) {
-    await expect(buttons.nth(i).locator("svg")).toHaveCount(1);
-  }
-});
-
-test("背景色把块内容包进 mdb-bg-*", async ({ page }) => {
-  await clickBlock(page, 2);
-
-  await page.locator('[data-action="background"]').hover();
-  await page
-    .locator(
-      '[data-testid="color-swatch-background"][data-class-name="mdb-bg-blue"]',
-    )
-    .click();
-
-  await expect
-    .poll(() => storeContent(page))
-    .toBe(
-      '# 标题\n\n<span class="mdb-bg-blue">第一段正文</span>\n\n第二段正文\n',
-    );
-});
-
-test("边框色把块内容包进 mdb-border-*", async ({ page }) => {
-  await clickBlock(page, 2);
-
-  await page.locator('[data-action="border"]').hover();
-  await page
-    .locator(
-      '[data-testid="color-swatch-border"][data-class-name="mdb-border-red"]',
-    )
-    .click();
-
-  await expect
-    .poll(() => storeContent(page))
-    .toBe(
-      '# 标题\n\n<span class="mdb-border-red">第一段正文</span>\n\n第二段正文\n',
-    );
-});
-
-test("删除移除整个块", async ({ page }) => {
-  await clickBlock(page, 2);
-
-  await page
-    .locator('[data-testid="block-toolbar"] [data-action="delete"]')
-    .click();
-
-  await expect.poll(() => storeContent(page)).toBe("# 标题\n\n第二段正文\n");
-});
-
-test("AI 编辑打开 AI 浮层并预填整块文本", async ({ page }) => {
-  await clickBlock(page, 2);
-
-  await page
-    .locator('[data-testid="block-toolbar"] [data-action="ai-edit"]')
-    .click();
-
-  await expect(page.locator("[data-ai-overlay]")).toBeVisible();
-  const inputValue = await page.locator("[data-ai-input]").inputValue();
-  expect(inputValue).toContain("第一段正文");
-});
-
-test("选中文字时块工具条隐藏，文字工具条出现", async ({ page }) => {
+test("MD 选中文字仍出现选区轮盘", async ({ page }) => {
   const line = page.locator(".cm-line").nth(2);
   const box = (await line.boundingBox())!;
   const y = box.y + box.height / 2;
@@ -132,5 +41,34 @@ test("选中文字时块工具条隐藏，文字工具条出现", async ({ page 
   await expect(
     page.locator('[data-testid="selection-roulette"]'),
   ).toBeVisible();
-  await expect(page.locator('[data-testid="block-toolbar"]')).toBeHidden();
+  await expect(page.locator('[data-testid="block-toolbar"]')).toHaveCount(0);
+});
+
+test("空行 + 手柄悬停不弹转换菜单（#105）", async ({ page }) => {
+  await page.evaluate(() => {
+    const store = (window as unknown as Record<string, any>).__biaoyue_store__;
+    const state = store.getState();
+    store.getState().updateTabContent(state.activeTabId, "# 标题\n\n\n");
+  });
+  const handle = page.locator(
+    '[data-testid="block-handle"][data-empty="true"]',
+  );
+  await expect(handle.first()).toBeVisible({ timeout: 5000 });
+  await handle.first().hover();
+  await page.waitForTimeout(1000);
+  await expect(page.locator('[data-testid="block-menu"]')).toHaveCount(0);
+});
+
+test("全角斜杠与顿号不触发命令（#318）", async ({ page }) => {
+  await page.locator(".cm-content").click();
+  await page.keyboard.press("Meta+End");
+  await page.keyboard.type("／");
+  await page.keyboard.type("、");
+  await expect(page.locator('[data-testid="slash-menu"]')).toHaveCount(0);
+  const text = await page.evaluate(() => {
+    const store = (window as unknown as Record<string, any>).__biaoyue_store__;
+    const state = store.getState();
+    return state.tabs[state.activeTabId]?.content ?? "";
+  });
+  expect(text).toContain("／、");
 });

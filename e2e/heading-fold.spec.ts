@@ -161,12 +161,23 @@ test("折叠三角 20px、默认隐藏、左侧 25% 召唤区显示", async ({ p
   // 指针进入 .cm-content 左缘 25%：三角可见
   const content = await page.locator(".cm-content").boundingBox();
   expect(content).not.toBeNull();
-  const summonX = content!.x + 20;
-  const summonY = box!.y + box!.height / 2;
-  await page.mouse.move(summonX, summonY);
+  const lineBox = await page.locator(".cm-line").first().boundingBox();
+  const summonX = (lineBox?.x ?? content!.x) + 8;
+  const summonY = (lineBox?.y ?? box!.y) + (lineBox?.height ?? 20) / 2;
   await page.mouse.move(summonX, summonY);
   await page.waitForTimeout(300);
   expect(await toggle.evaluate((el) => getComputedStyle(el).opacity)).toBe("1");
+
+  // 只显示指针所在行：把指针移到第二个标题行，第一个标题的三角应隐藏
+  const second = page.locator('[data-fold-line="5"]');
+  const secondBox = await second.boundingBox();
+  if (secondBox) {
+    await page.mouse.move(secondBox.x + 4, secondBox.y + secondBox.height / 2);
+    await page.waitForTimeout(200);
+    expect(await toggle.evaluate((el) => getComputedStyle(el).opacity)).toBe(
+      "0",
+    );
+  }
 });
 
 test("四个相邻标题全部折叠后仍各占一行", async ({ page }) => {
@@ -196,4 +207,41 @@ test("四个相邻标题全部折叠后仍各占一行", async ({ page }) => {
   await expect(headingLines).toHaveCount(4);
   const texts = await page.locator(".cm-line").allInnerTexts();
   expect(texts.join("\n")).not.toContain("# A# B");
+});
+
+test("预览态标题折叠：按钮显隐与点击隐藏后续内容", async ({ page }) => {
+  await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
+  await page.goto(APP_URL, { waitUntil: "networkidle" });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 15000 });
+  await page.evaluate((body) => {
+    const win = window as unknown as Record<string, any>;
+    win.__biaoyue_openFile__("/tmp/fold-preview.md", body, "fold-preview.md");
+    win.__biaoyue_store__.getState().setEditorMode("preview");
+  }, DOC);
+  await page.locator(".preview-content").waitFor({ timeout: 10000 });
+
+  const folds = page.locator(".preview-heading-fold");
+  await expect(folds.first()).toBeVisible();
+  expect(await folds.count()).toBeGreaterThanOrEqual(2);
+
+  const first = page
+    .locator(".preview-heading", { hasText: "第一章" })
+    .locator(".preview-heading-fold");
+  await first.click();
+  await expect(first).toHaveAttribute("data-folded", "true");
+  await expect(
+    page.locator(".preview-content p", { hasText: "开场白" }),
+  ).toBeHidden();
+  await expect(
+    page.locator(".preview-content h2", { hasText: "第一节" }),
+  ).toBeHidden();
+  // 同级标题「无下级标题」不能被一起折叠
+  await expect(
+    page.locator(".preview-content h1", { hasText: "无下级标题" }),
+  ).toBeVisible();
+
+  await first.click();
+  await expect(
+    page.locator(".preview-content p", { hasText: "开场白" }),
+  ).toBeVisible();
 });

@@ -211,7 +211,7 @@ body {
   transition: opacity 120ms ease-out;
 }
 
-.cm-summon-zone .cm-fold-toggle,
+.cm-summon-zone .cm-line:hover .cm-fold-toggle,
 .cm-fold-toggle:hover,
 .cm-fold-toggle:focus-visible,
 .cm-fold-toggle-folded {
@@ -1141,7 +1141,7 @@ html[data-tab-drag="true"] body * {
 .mdb-slash-flyout {
   position: absolute;
   z-index: 1000;
-  min-width: 224px;
+  min-width: 176px;
   padding: 0;
   overflow-y: auto;
   font-size: 13px;
@@ -1332,6 +1332,12 @@ html[data-tab-drag="true"] body * {
   vertical-align: top;
   cursor: text;
   border-bottom: 1px solid var(--app-border);
+  border-right: 1px solid color-mix(in srgb, var(--app-border) 45%, transparent);
+}
+
+.cm-table th:last-child,
+.cm-table td:last-child {
+  border-right: 0;
 }
 
 .cm-table th {
@@ -2082,8 +2088,8 @@ html[data-tab-drag="true"] body * {
   align-items: center;
   justify-content: center;
   gap: 5px;
-  height: 62px;
-  padding: 5px 2px;
+  height: 50px;
+  padding: 4px 2px;
   border: 0;
   border-radius: 4px;
   background: transparent;
@@ -2148,7 +2154,7 @@ html[data-tab-drag="true"] body * {
 
 .cm-block-menu-color-panel {
   min-width: 0;
-  width: 248px;
+  width: 168px;
   padding: 8px;
 }
 
@@ -2175,8 +2181,7 @@ html[data-tab-drag="true"] body * {
 }
 
 /* ── 浮动工具条（选区工具条 / 块工具条，shell-editor-batch5 D16） ── */
-.cm-floating-toolbar,
-.cm-block-toolbar {
+.cm-floating-toolbar {
   position: absolute;
   z-index: 1000;
   display: flex;

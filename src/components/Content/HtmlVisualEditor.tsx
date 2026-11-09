@@ -9,15 +9,15 @@ import {
   type SelectionRect,
 } from "../../editors/html/bridge";
 import {
-  applyAttrPatch,
   applyBlockSplit,
   applyNodeMove,
   applyNodeRemove,
   applyInnerHtml,
+  applyLink,
   applyStylePatch,
-  applyTagReplace,
   applyTextEdit,
   describeNode,
+  textOfNode,
 } from "../../editors/html/edit";
 import { captureRegionToPng } from "../../editors/html/capture";
 import { buildEditableDoc } from "../../editors/html/runtime";
@@ -29,7 +29,7 @@ import {
   type UndoStack,
 } from "../../editors/html/undoStack";
 import HtmlEditToolbar from "./HtmlEditToolbar";
-import HtmlRoulette from "./HtmlRoulette";
+import HtmlRangeToolbar from "./HtmlRangeToolbar";
 
 interface HtmlVisualEditorProps {
   content: string;
@@ -449,11 +449,10 @@ export default function HtmlVisualEditor({
         </div>
       )}
       {textSel && (
-        <HtmlRoulette
+        <HtmlRangeToolbar
           anchor={textSel.anchor}
+          text={textSel.text}
           onCommand={(command, value) => send(commandForRange(command, value))}
-          onUndo={handleUndo}
-          onRedo={handleRedo}
           onClose={() => {
             textSelectingRef.current = false;
             if (rangeDirtyRef.current) {
@@ -470,22 +469,7 @@ export default function HtmlVisualEditor({
           nodeId={selected}
           info={info}
           anchor={box.anchor}
-          onReplaceTag={(tag) => {
-            let nextId = selected;
-            // updater 由上层同步求值（ContentArea → store.updateTabContent），
-            // 所以这里能拿到换标签后的新 id：id 是 `tag:index`，不换就会丢选中
-            commit((prev) => {
-              const result = applyTagReplace(prev, selected, tag);
-              nextId = result.nodeId;
-              return result.content;
-            });
-            if (nextId !== selected) {
-              setSelected(nextId);
-              // 选框记的是旧 id：不同步的话，条件 `box.nodeId === selected`
-              // 立刻不成立，工具条会在新矩形回来之前闪掉
-              setBox((prev) => (prev ? { ...prev, nodeId: nextId } : prev));
-            }
-          }}
+          aiText={textOfNode(contentRef.current, selected)}
           onPatchStyle={(patch) =>
             commit((prev) => {
               // 基于**最新 content** 求样式：连点两个开关时，第二次若用渲染期
@@ -494,20 +478,18 @@ export default function HtmlVisualEditor({
               return applyStylePatch(prev, selected, patch(current));
             })
           }
-          onRemove={() => {
-            commit((prev) => applyNodeRemove(prev, selected));
-            setSelected(null);
-            setBox(null);
-          }}
+          onLink={(href) => commit((prev) => applyLink(prev, selected, href))}
           onCapture={() => {
             setSelected(null);
             setBox(null);
             setCapturing(true);
             send(commandForCaptureMode(true));
           }}
-          onPatchAttr={(attrs) =>
-            commit((prev) => applyAttrPatch(prev, selected, attrs))
-          }
+          onRemove={() => {
+            commit((prev) => applyNodeRemove(prev, selected));
+            setSelected(null);
+            setBox(null);
+          }}
           onClose={() => setSelected(null)}
         />
       )}

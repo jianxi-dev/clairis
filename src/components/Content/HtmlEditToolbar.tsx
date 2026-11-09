@@ -2,11 +2,11 @@ import { useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { SelectionRect } from "../../editors/html/bridge";
 import {
-  TAG_WHITELIST,
   nodeKindOf,
   toggleDecoration,
   type NodeInfo,
 } from "../../editors/html/edit";
+import { useAiEntryStore } from "../../hooks/useAiEntry";
 
 /**
  * HTML 可视化编辑工具条（E-19 / E-22）。
@@ -36,7 +36,8 @@ export interface HtmlEditToolbarProps {
   info: NodeInfo;
   /** 选中元素在主视口中的矩形（主侧已加 iframe 偏移） */
   anchor: SelectionRect;
-  onReplaceTag: (tag: string) => void;
+  /** 选中节点的纯文本，供 AI 入口预填。 */
+  aiText: string;
   /**
    * 改样式。接收的是**基于最新文档状态**求值的函数，不是成品对象：
    * 连点两个开关时，第二次点击若拿渲染期的样式去算，会覆盖掉第一次的结果
@@ -45,11 +46,12 @@ export interface HtmlEditToolbarProps {
   onPatchStyle: (
     patch: (current: Record<string, string>) => Record<string, string | null>,
   ) => void;
-  onPatchAttr: (attrs: Record<string, string | null>) => void;
-  /** 删除选中节点（含子树） */
-  onRemove: () => void;
+  /** 给节点加链接 */
+  onLink: (href: string) => void;
   /** 进入区域截图模式（E-21） */
   onCapture: () => void;
+  /** 删除选中节点（含子树） */
+  onRemove: () => void;
   onClose: () => void;
 }
 
@@ -90,11 +92,11 @@ export default function HtmlEditToolbar({
   nodeId,
   info,
   anchor,
-  onReplaceTag,
+  aiText,
   onPatchStyle,
-  onPatchAttr,
-  onRemove,
+  onLink,
   onCapture,
+  onRemove,
   onClose,
 }: HtmlEditToolbarProps) {
   const ref = useRef<HTMLDivElement | null>(null);
@@ -102,9 +104,7 @@ export default function HtmlEditToolbar({
 
   // 初值来自 content；上层用 key={nodeId} 重挂载，所以换选中不会带着上一个
   // 元素的草稿。不另设 effect 回写——工具条自己是这些属性的唯一修改者。
-  const [cls, setCls] = useState(info.attrs.class ?? "");
-  const [id, setId] = useState(info.attrs.id ?? "");
-  const [href, setHref] = useState(info.attrs.href ?? "");
+  const href = info.attrs.href ?? "";
 
   // 工具条宽度取决于渲染出来的控件，只能量过再定位；只量一次（选中变了控件不变）
   useLayoutEffect(() => {
@@ -152,12 +152,6 @@ export default function HtmlEditToolbar({
     </button>
   );
 
-  const commitAttr = (name: "class" | "id" | "href", value: string) => {
-    const current = info.attrs[name] ?? "";
-    if (value === current) return;
-    onPatchAttr({ [name]: value });
-  };
-
   const toolbar = (
     <div
       ref={ref}
@@ -179,21 +173,21 @@ export default function HtmlEditToolbar({
         }
       }}
     >
-      <span className="html-edit-toolbar__tag">{info.tag}</span>
-      <select
-        aria-label="标签"
-        value={info.tag}
-        onChange={(e) => onReplaceTag(e.target.value)}
+      <button
+        type="button"
+        aria-label="AI 编辑"
+        title="AI 编辑"
+        className="html-edit-toolbar__btn"
+        onClick={() => {
+          const ai = useAiEntryStore.getState();
+          ai.setInput(
+            `请改写下面的内容，只返回替换后的文本，不要解释：\n\n${aiText}`,
+          );
+          ai.openOverlay();
+        }}
       >
-        {info.tag && !TAG_WHITELIST.includes(info.tag as never) && (
-          <option value={info.tag}>{info.tag}</option>
-        )}
-        {TAG_WHITELIST.map((tag) => (
-          <option key={tag} value={tag}>
-            {tag}
-          </option>
-        ))}
-      </select>
+        改写
+      </button>
 
       {kind === "text" ? (
         <>
@@ -266,16 +260,18 @@ export default function HtmlEditToolbar({
             )}
           </span>
 
-          {info.tag === "a" && (
-            <input
-              aria-label="链接"
-              className="html-edit-toolbar__text"
-              placeholder="href"
-              value={href}
-              onChange={(e) => setHref(e.target.value)}
-              onBlur={() => commitAttr("href", href.trim())}
-            />
-          )}
+          <button
+            type="button"
+            aria-label="链接"
+            title="链接"
+            className="html-edit-toolbar__btn"
+            onClick={() => {
+              const url = window.prompt("链接地址", href);
+              if (url) onLink(url);
+            }}
+          >
+            链
+          </button>
 
           <span className="html-edit-toolbar__sep" />
           <span className="html-edit-toolbar__group">
@@ -312,30 +308,6 @@ export default function HtmlEditToolbar({
       ) : (
         <>
           <span className="html-edit-toolbar__sep" />
-          <span className="html-edit-toolbar__group">
-            {ALIGNS.map((item) => (
-              <button
-                key={item.value}
-                type="button"
-                data-align={item.value}
-                aria-label={`${item.label}对齐`}
-                aria-pressed={align === item.value}
-                className={
-                  align === item.value
-                    ? "html-edit-toolbar__btn is-active"
-                    : "html-edit-toolbar__btn"
-                }
-                onClick={() =>
-                  onPatchStyle((current) => ({
-                    "text-align":
-                      current["text-align"] === item.value ? null : item.value,
-                  }))
-                }
-              >
-                {item.label}
-              </button>
-            ))}
-          </span>
           <input
             aria-label="背景色"
             type="color"
@@ -354,28 +326,10 @@ export default function HtmlEditToolbar({
                     ? null
                     : BORDER,
               })),
-            "边框",
+            "边框色",
           )}
         </>
       )}
-
-      <span className="html-edit-toolbar__sep" />
-      <input
-        aria-label="class"
-        className="html-edit-toolbar__text"
-        placeholder="class"
-        value={cls}
-        onChange={(e) => setCls(e.target.value)}
-        onBlur={() => commitAttr("class", cls.trim())}
-      />
-      <input
-        aria-label="id"
-        className="html-edit-toolbar__text"
-        placeholder="id"
-        value={id}
-        onChange={(e) => setId(e.target.value)}
-        onBlur={() => commitAttr("id", id.trim())}
-      />
 
       <span className="html-edit-toolbar__sep" />
       <button
@@ -395,14 +349,6 @@ export default function HtmlEditToolbar({
         onClick={onRemove}
       >
         🗑
-      </button>
-      <button
-        type="button"
-        aria-label="关闭工具条"
-        className="html-edit-toolbar__btn"
-        onClick={onClose}
-      >
-        ×
       </button>
     </div>
   );

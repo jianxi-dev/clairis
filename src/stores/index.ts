@@ -132,7 +132,14 @@ const TEXT_EXTENSIONS: Record<string, FileKind> = {
   yaml: "yaml",
   yml: "yaml",
   csv: "csv",
+  sh: "text",
+  bash: "text",
+  zsh: "text",
+  fish: "text",
+  ps1: "text",
 };
+
+const SCRIPT_EXTENSIONS = new Set(["sh", "bash", "zsh", "fish", "ps1"]);
 
 const MEDIA_EXTENSIONS: Record<string, FileKind> = {
   png: "image",
@@ -154,6 +161,9 @@ const MEDIA_EXTENSIONS: Record<string, FileKind> = {
   wav: "audio",
   flac: "audio",
   ogg: "audio",
+  aac: "audio",
+  heif: "image",
+  heic: "image",
   pdf: "pdf",
 };
 
@@ -499,10 +509,12 @@ export const useStore = create<AppStore>((set, get) => ({
     const title = extractFileName(path);
     const id = generateId();
 
-    // 代码类默认编辑模式（C-1 源码打开）；媒体类恒预览；阅读类保持预览
-    const defaultEditorMode: EditorMode = CODE_KINDS.includes(fileKind)
-      ? "edit"
-      : "preview";
+    // 代码类与脚本默认编辑模式（C-1 源码打开）；媒体类恒预览；阅读类保持预览
+    const ext = path.includes(".") ? path.split(".").pop()!.toLowerCase() : "";
+    const defaultEditorMode: EditorMode =
+      CODE_KINDS.includes(fileKind) || SCRIPT_EXTENSIONS.has(ext)
+        ? "edit"
+        : "preview";
 
     const tab: Tab = {
       id,
@@ -572,11 +584,8 @@ export const useStore = create<AppStore>((set, get) => ({
     // 关闭的页签正是当前媒体源 → 立即停止并释放，否则播放器在后台继续放。
     // 媒体源按文件路径标识，因此无论该页签在哪个格、是否聚焦都能命中。
     const closedTab = state.tabs[id];
-    if (
-      closedTab?.path &&
-      mediaPlayer.getState().source?.filePath === closedTab.path
-    ) {
-      mediaPlayer.stop();
+    if (closedTab?.path) {
+      mediaPlayer.stop(closedTab.path);
     }
     const { [id]: _removed, ...remaining } = state.tabs;
     const leaf = leafOfTab(state.paneRoot, id);

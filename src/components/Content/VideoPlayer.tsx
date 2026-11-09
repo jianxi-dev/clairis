@@ -121,6 +121,12 @@ const SHORTCUT_ROWS: Array<[string, string]> = [
   ["C", "字幕轨道"],
   ["X", "字幕上 / 下"],
   ["T", "时间戳笔记"],
+  ["S", "截取画面"],
+  ["I", "画中画"],
+  ["V", "画面菜单"],
+  ["B", "播放列表"],
+  ["R", "旋转画面"],
+  ["G", "倍速菜单"],
   ["Esc", "退出全屏"],
   ["双击", "全屏"],
 ];
@@ -162,13 +168,13 @@ function RateDial({ rate }: { rate: number }) {
       aria-hidden="true"
       style={{ flex: "0 0 auto" }}
     >
-      <circle cx="12" cy="12" r="8" opacity="0.35" />
+      <path d="M4.5 18a8 8 0 1115 0" opacity="0.55" />
       <path
-        d="M12 12V4.5"
-        strokeWidth="2.2"
-        transform={`rotate(${angle} 12 12)`}
+        d="M12 14V8.8"
+        strokeWidth="2"
+        transform={`rotate(${angle} 12 14)`}
       />
-      <circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="14" r="1.3" fill="currentColor" stroke="none" />
     </svg>
   );
 }
@@ -253,6 +259,8 @@ export default function VideoPlayer({
 
   // 控件按钮引用（浮层锚定）
   const playlistBtnRef = useRef<HTMLElement | null>(null);
+  const visualBtnRef = useRef<HTMLElement | null>(null);
+  const rateBtnRef = useRef<HTMLElement | null>(null);
   const subtitleBtnRef = useRef<HTMLElement | null>(null);
   const hintsBtnRef = useRef<HTMLElement | null>(null);
 
@@ -736,6 +744,7 @@ export default function VideoPlayer({
           html: controlSvg("image"),
           tooltip: "画面",
           mounted: function ($control) {
+            visualBtnRef.current = $control;
             $control.dataset.name = "visual";
             this.proxy($control, "mouseenter", (e: Event) =>
               openPopover("visual", $control, 210, (e as MouseEvent).clientX),
@@ -782,6 +791,7 @@ export default function VideoPlayer({
           html: rateControlHtml(),
           tooltip: "播放速度",
           mounted: function ($control) {
+            rateBtnRef.current = $control;
             $control.dataset.name = "rate";
             this.proxy($control, "mouseenter", (e: Event) =>
               openPopover("rate", $control, 132, (e as MouseEvent).clientX),
@@ -835,6 +845,21 @@ export default function VideoPlayer({
           },
         },
         {
+          name: "fullscreen",
+          position: "right",
+          index: 78,
+          html: controlSvg("fullscreen"),
+          tooltip: "全屏",
+          mounted: function ($control) {
+            $control.dataset.name = "fullscreen";
+            this.proxy($control, "click", () => {
+              const player = artRef.current;
+              if (!player) return;
+              player.fullscreenWeb = !player.fullscreenWeb;
+            });
+          },
+        },
+        {
           name: "hints",
           position: "right",
           index: 80,
@@ -855,6 +880,11 @@ export default function VideoPlayer({
       ],
     });
     artRef.current = art;
+
+    // 原生全屏图标线宽/尺寸与画中画不一致（#7），用自绘 fullscreen 控件替代。
+    container
+      .querySelector<HTMLElement>(".art-control-fullscreenWeb")
+      ?.remove();
 
     const progressEl = container.querySelector<HTMLElement>(".art-progress");
     const thumbVideo = document.createElement("video");
@@ -949,6 +979,30 @@ export default function VideoPlayer({
     art.hotkey.add("KeyX", () => toggleSubtitlePos());
 
     art.hotkey.add("KeyT", () => openNote());
+    art.hotkey.add("KeyS", () => void captureFrame());
+    art.hotkey.add("KeyI", () => {
+      const video = art.video;
+      if (document.pictureInPictureElement) {
+        void document.exitPictureInPicture();
+      } else {
+        void video.requestPictureInPicture?.().catch(() => {});
+      }
+    });
+    art.hotkey.add("KeyV", () => {
+      const btn = visualBtnRef.current;
+      if (btn) openPopover("visual", btn, 210);
+    });
+    art.hotkey.add("KeyB", () => {
+      const btn = playlistBtnRef.current;
+      if (btn) openPopover("playlist", btn, 260);
+    });
+    art.hotkey.add("KeyR", () => {
+      applyFrame({ rotation: (frameRef.current.rotation + 90) % 360 });
+    });
+    art.hotkey.add("KeyG", () => {
+      const btn = rateBtnRef.current;
+      if (btn) openPopover("rate", btn, 132);
+    });
 
     // 自动播放下一个：默认顺序连播（最后一个停），playlist 模式回绕，single 由 option.loop 内部处理
     art.on("video:ended", () => {

@@ -697,6 +697,55 @@
   color: #e08b7a;
 }
 
+/* ── 标题折叠（预览态） ─────────────────────────────── */
+.preview-content h1,
+.preview-content h2,
+.preview-content h3,
+.preview-content h4,
+.preview-content h5,
+.preview-content h6 {
+  position: relative;
+}
+
+.preview-heading-fold {
+  position: absolute;
+  left: -18px;
+  top: 0.35em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--reader-ink-3, var(--reader-ink-2));
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 120ms ease-out;
+}
+
+.preview-heading:hover > .preview-heading-fold,
+.preview-heading-fold:focus-visible,
+.preview-heading-fold[data-folded="true"] {
+  opacity: 1;
+}
+
+.preview-heading-fold svg {
+  width: 14px;
+  height: 14px;
+  transform: rotate(90deg);
+  transition: transform 120ms ease-out;
+}
+
+.preview-heading-fold[data-folded="true"] svg {
+  transform: rotate(0deg);
+}
+
+.preview-fold-hidden {
+  display: none !important;
+}
+
 /* ── 表格 ────────────────────────────────────────────── */
 .preview-content .table-wrap {
   overflow-x: auto;
@@ -717,6 +766,8 @@
 .preview-content td {
   padding: 0.55em 0.8em;
   border-bottom: 1px solid var(--reader-line);
+  border-right: 1px solid
+    color-mix(in srgb, var(--reader-line) 45%, transparent);
   text-align: start;
   vertical-align: top;
   /* anywhere 参与 min-content 计算：长 URL / 长英文单词可断行，不撑宽表格 */
@@ -728,6 +779,11 @@
   font-weight: 600;
   color: var(--reader-ink-2);
   border-top: 0;
+}
+
+.preview-content th:last-child,
+.preview-content td:last-child {
+  border-right: 0;
 }
 
 .preview-content tbody tr:last-child td {
