@@ -311,7 +311,7 @@ export const defaultCommands: SlashCommand[] = [
   {
     id: "insert-css",
     label: "插入 CSS",
-    icon: "",
+    icon: "CssOutlined",
     aliases: ["css"],
     group: "绘图",
     insert(state) {

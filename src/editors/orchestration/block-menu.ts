@@ -49,6 +49,18 @@ import {
   createColorRow,
 } from "./color-palette";
 
+/** 二级面板默认在触发行右侧；越界时翻到左侧（E-7 / E-11）。 */
+function flipFlyoutIfNeeded(
+  view: EditorView,
+  panelEl: HTMLElement,
+  rowRect: DOMRect,
+): void {
+  const own = view.dom.getBoundingClientRect();
+  const panel = panelEl.getBoundingClientRect();
+  if (panel.right <= own.right - 4) return;
+  panelEl.style.left = `${Math.max(4, rowRect.left - own.left - panel.width - 4)}px`;
+}
+
 export { MENU_ROW_HEIGHT, MENU_WIDTH };
 
 /** 菜单 id 前缀：Esc / 外部点击用它识别块菜单层。 */
@@ -450,8 +462,8 @@ export function openBlockMenu(
     panelEl.style.width = `${MENU_WIDTH}px`;
     const own = view.dom.getBoundingClientRect();
     const rowRect = colorRow.getBoundingClientRect();
-    panelEl.style.left = `${Math.max(4, rowRect.left - own.left)}px`;
-    panelEl.style.top = `${rowRect.bottom - own.top + 4}px`;
+    panelEl.style.left = `${rowRect.right - own.left + 4}px`;
+    panelEl.style.top = `${rowRect.top - own.top}px`;
 
     const blockText = view.state.doc.sliceString(block.from, block.to);
     const applyColor = (family: ColorFamily, className: string): void => {
@@ -488,6 +500,7 @@ export function openBlockMenu(
     panelEl.appendChild(bgRow);
 
     view.dom.appendChild(panelEl);
+    flipFlyoutIfNeeded(view, panelEl, rowRect);
     panelEl.addEventListener("pointerenter", () => cancelPendingClose(view));
     releaseColorKeepOpen?.();
     releaseColorKeepOpen = keepColorPanelOpen(menuStack, view);
@@ -511,6 +524,10 @@ export function openBlockMenu(
   alignRow.className = "cm-block-menu-item";
   alignRow.dataset.testid = "block-menu-align";
   alignRow.style.height = `${MENU_ROW_HEIGHT}px`;
+  const alignIcon = document.createElement("span");
+  alignIcon.className = "cm-block-menu-icon";
+  alignIcon.appendChild(renderIcon("AlignLeftOutlined"));
+  alignRow.appendChild(alignIcon);
   const alignLabel = document.createElement("span");
   alignLabel.textContent = "对齐与缩进";
   alignRow.appendChild(alignLabel);
@@ -537,8 +554,8 @@ export function openBlockMenu(
     panelEl.style.width = `${MENU_WIDTH}px`;
     const own = view.dom.getBoundingClientRect();
     const rowRect = alignRow.getBoundingClientRect();
-    panelEl.style.left = `${Math.max(4, rowRect.left - own.left)}px`;
-    panelEl.style.top = `${rowRect.bottom - own.top + 4}px`;
+    panelEl.style.left = `${rowRect.right - own.left + 4}px`;
+    panelEl.style.top = `${rowRect.top - own.top}px`;
 
     const blockText = view.state.doc.sliceString(block.from, block.to);
     // 缩进的空白在块范围之外（block.from 落在内容首字），单独取到行首，
@@ -581,6 +598,7 @@ export function openBlockMenu(
     }
 
     view.dom.appendChild(panelEl);
+    flipFlyoutIfNeeded(view, panelEl, rowRect);
     panelEl.addEventListener("pointerenter", () => cancelPendingClose(view));
     releaseAlignKeepOpen?.();
     releaseAlignKeepOpen = keepColorPanelOpen(menuStack, view);

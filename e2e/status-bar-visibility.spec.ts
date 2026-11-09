@@ -89,6 +89,7 @@ test.describe("页面宽度调整面板（ui-polish-batch6 6.2）", () => {
     const widthText = page.getByTestId("status-width");
     await expect(widthText).toHaveText(/^\d+px$/);
 
+    await page.getByTestId("width-control").hover();
     await widthText.click();
     const panel = page.getByTestId("width-panel");
     await expect(panel).toBeVisible({ timeout: 3000 });
@@ -278,11 +279,13 @@ test.describe("主题弹层生命周期与点击循环（shell-media-batch7 1.1�
 
   test("宽度面板按 Esc 关闭", async ({ page }) => {
     await boot(page);
+    await page.getByTestId("width-control").hover();
     await page.getByTestId("status-width").click();
     const panel = page.getByTestId("width-panel");
     await expect(panel).toBeVisible({ timeout: 3000 });
     await page.keyboard.press("Escape");
     await expect(panel).toHaveCount(0);
+    await page.getByTestId("width-control").hover();
     await page.getByTestId("status-width").click();
     await expect(panel).toBeVisible({ timeout: 3000 });
     await page.mouse.click(600, 300);

@@ -254,19 +254,26 @@ export default function StatusBar({
           {percent === undefined ? "—" : `${percent}%`}
         </span>
         <span aria-hidden="true">·</span>
-        <button
-          type="button"
-          ref={widthBtnRef}
-          data-testid="status-width"
-          title={`页面宽度 ${readerWidth}px（点击调整）`}
-          onClick={(e) => {
-            setWidthAnchor(e.clientX);
-            setWidthOpen((v) => !v);
-          }}
-          className="rounded px-1 hover:bg-[var(--app-accent-soft)] hover:text-[var(--app-accent)]"
+        {/* 命中区域常驻，控件本体默认透明；指针进入 / 聚焦 / 面板展开时淡入。
+            只隐藏宽度控件组，不隐藏整个状态栏。 */}
+        <div
+          className={`width-control${widthOpen ? " is-open" : ""}`}
+          data-testid="width-control"
         >
-          {readerWidth}px
-        </button>
+          <button
+            type="button"
+            ref={widthBtnRef}
+            data-testid="status-width"
+            title={`页面宽度 ${readerWidth}px（点击调整）`}
+            onClick={(e) => {
+              setWidthAnchor(e.clientX);
+              setWidthOpen((v) => !v);
+            }}
+            className="rounded px-1 hover:bg-[var(--app-accent-soft)] hover:text-[var(--app-accent)]"
+          >
+            {readerWidth}px
+          </button>
+        </div>
         {widthOpen && widthRect
           ? createPortal(
               <div

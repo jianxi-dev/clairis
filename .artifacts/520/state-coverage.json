@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "menu",
+      "screenshot": ".artifacts/520/01-menu.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-09T19:03:41Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "open-folder",
+      "screenshot": ".artifacts/520/02-open-folder.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-09T19:03:41Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "export-submenu",
+      "screenshot": ".artifacts/520/03-export-submenu.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-09T19:03:41Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "refresh",
+      "screenshot": ".artifacts/520/04-refresh.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-09T19:03:42Z",
+      "runner": "unknown@MMBP"
+    }
+  ]
+}

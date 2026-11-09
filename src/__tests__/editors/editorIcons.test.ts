@@ -21,9 +21,9 @@ describe("编辑器插入菜单图标（#367）", () => {
     expect(new Set(icons).size).toBe(icons.length);
   });
 
-  it("表格换成封口网格、CSS 去图标、视频换摄像机", () => {
+  it("表格换成封口网格、CSS 补图标、视频换摄像机", () => {
     expect(iconOf("表格")).toBe("TableGridOutlined");
-    expect(iconOf("插入 CSS")).toBe("");
+    expect(iconOf("插入 CSS")).toBe("CssOutlined");
     expect(iconOf("插入 HTML")).toBe("CodeOutlined");
     expect(iconOf("视频/文件")).toBe("VideoOutlined");
     const columns = defaultCommands.find((c) => c.label === "分栏");

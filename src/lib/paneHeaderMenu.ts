@@ -1,7 +1,7 @@
 /**
  * 格头 ⋯ 菜单的静态定义与模式切换纯逻辑（layout-portal 4.1）。
  *
- * 与渲染解耦，便于单测断言「恰好 7 项、顺序与图标」以及「模式只在预览↔编辑」。
+ * 与渲染解耦，便于单测断言「恰好 9 项、顺序与图标」以及「模式只在预览↔编辑」。
  */
 
 import type { IconName } from "../ui/icons";
@@ -15,6 +15,7 @@ export type PaneMenuAction =
   | "source"
   | "refresh"
   | "locate"
+  | "openFolder"
   | "copyPath"
   | "undockAi"
   | "closePane";
@@ -44,6 +45,7 @@ export const PANE_MENU_ITEMS: readonly PaneMenuItem[] = [
   { action: "source", label: "源码模式", icon: "code" },
   { action: "refresh", label: "刷新", icon: "refresh" },
   { action: "locate", label: "定位", icon: "locate" },
+  { action: "openFolder", label: "打开所在文件夹", icon: "folder" },
   { action: "copyPath", label: "复制路径", icon: "copyPath" },
 ];
 
@@ -57,7 +59,7 @@ export const EXPORT_MENU_ITEMS: readonly ExportMenuItem[] = [
 
 /**
  * AI 停靠窗格的 ⋯ 菜单（layout-portal 9.1）——独立于普通格的 7 项列表，
- * 保证 pane-header 用例对普通格「恰好 7 项」的断言不受影响。
+ * 保证 pane-header 用例对普通格「恰好 9 项」的断言不受影响。
  */
 export const AI_PANE_MENU_ITEMS: readonly PaneMenuItem[] = [
   { action: "undockAi", label: "脱离为小窗", icon: "export" },

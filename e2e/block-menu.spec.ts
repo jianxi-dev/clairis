@@ -688,7 +688,7 @@ test("二级菜单选「减少缩进」回收两格缩进", async ({ page }) => 
   await page.screenshot({ path: ".artifacts/373/04-outdent.png" });
 });
 
-test("颜色二级面板在行下方展开，指针移入后不消失", async ({ page }) => {
+test("颜色二级面板在触发行右侧展开，指针移入后不消失", async ({ page }) => {
   await hoverHandle(page, 2);
   const row = page.locator('[data-testid="block-menu-color"]');
   await row.hover();
@@ -696,7 +696,7 @@ test("颜色二级面板在行下方展开，指针移入后不消失", async ({
   await expect(panel).toBeVisible({ timeout: 3000 });
   const rowBox = (await row.boundingBox())!;
   const panelBox = (await panel.boundingBox())!;
-  expect(panelBox.y).toBeGreaterThan(rowBox.y + rowBox.height - 1);
+  expect(panelBox.x).toBeGreaterThanOrEqual(rowBox.x + rowBox.width - 1);
 
   await page.mouse.move(
     panelBox.x + panelBox.width / 2,
@@ -712,4 +712,42 @@ test("剪切块使用剪刀图标", async ({ page }) => {
     '[data-testid="block-menu-action"][data-action="cut"]',
   );
   await expect(cut.locator("svg[data-icon='ScissorsOutlined']")).toHaveCount(1);
+});
+
+test("颜色与缩进二级面板在触发行右侧展开", async ({ page }) => {
+  await hoverHandle(page, 0);
+
+  const colorRow = page.locator('[data-testid="block-menu-color"]');
+  await colorRow.hover();
+  const colorPanel = page.locator('[data-testid="block-menu-color-panel"]');
+  await expect(colorPanel).toBeVisible();
+  const colorRowBox = (await colorRow.boundingBox())!;
+  const colorPanelBox = (await colorPanel.boundingBox())!;
+  expect(colorPanelBox.x).toBeGreaterThanOrEqual(
+    colorRowBox.x + colorRowBox.width - 1,
+  );
+
+  await page.locator('[data-testid="block-menu-align"]').hover();
+  const alignPanel = page.locator('[data-testid="block-menu-align-panel"]');
+  await expect(alignPanel).toBeVisible();
+  const alignRowBox = (await page
+    .locator('[data-testid="block-menu-align"]')
+    .boundingBox())!;
+  const alignPanelBox = (await alignPanel.boundingBox())!;
+  expect(alignPanelBox.x).toBeGreaterThanOrEqual(
+    alignRowBox.x + alignRowBox.width - 1,
+  );
+});
+
+test("对齐与缩进入口有图标，子项图标与项数一致", async ({ page }) => {
+  await hoverHandle(page, 0);
+  const alignRow = page.locator('[data-testid="block-menu-align"]');
+  await expect(alignRow.locator("svg[data-icon]")).toHaveCount(1);
+  await alignRow.hover();
+  const panel = page.locator('[data-testid="block-menu-align-panel"]');
+  const options = panel.locator('[data-testid="block-menu-align-option"]');
+  const count = await options.count();
+  for (let i = 0; i < count; i += 1) {
+    await expect(options.nth(i).locator("svg[data-icon]")).toHaveCount(1);
+  }
 });

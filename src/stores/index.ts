@@ -284,6 +284,8 @@ interface AppStore {
   closeTab: (id: string) => void;
   updateContent: (content: string) => void;
   updateTabContent: (tabId: string, content: string) => void;
+  /** 用磁盘内容覆盖页签内容（刷新）：内容以磁盘为准，页签回到干净态。 */
+  refreshTabContent: (tabId: string, content: string) => void;
   renameTab: (tabId: string, title: string) => void;
   setEditorMode: (mode: EditorMode) => void;
   setReadingMode: (on: boolean) => void;
@@ -652,6 +654,18 @@ export const useStore = create<AppStore>((set, get) => ({
       tabs: {
         ...tabs,
         [tabId]: { ...tab, content, dirty: true },
+      },
+    });
+  },
+
+  refreshTabContent: (tabId: string, content: string) => {
+    const { tabs } = get();
+    const tab = tabs[tabId];
+    if (!tab) return;
+    set({
+      tabs: {
+        ...tabs,
+        [tabId]: { ...tab, content, dirty: false },
       },
     });
   },

@@ -71,6 +71,9 @@ const DISABLED_CATEGORIES = [
  *    .omo/evidence/pdf-viewer-upgrade/f4-fix-evidence/03-print-modal-css.txt。
  * 2. 顶栏 page-controls 组件（上一页/页码/下一页）默认由滚动活动驱动透明度
  *    （4 秒无滚动即 opacity-0），放进工具栏后强制常驻。
+ * 3. EmbedPDF 在 :host 生成 --ep-* 主题变量（默认跟随系统），这里用应用语义色
+ *    覆盖，使 PDF UI 跟随亮/暗/暖；再对文件菜单、大纲面板、面板按钮、页码、
+ *    缩放菜单、按钮栏底边做定向兜底。
  */
 function injectPdfUiCss(container: EmbedPdfContainer): void {
   const shadow = container.shadowRoot;
@@ -84,6 +87,14 @@ function injectPdfUiCss(container: EmbedPdfContainer): void {
     ":host{background:var(--app-bg) !important}",
     ".bg-bg-app{background:var(--app-bg) !important}",
     ".bg-bg-surface{background:var(--app-surface) !important}",
+    ":host{--ep-background-app:var(--app-bg) !important;--ep-background-surface:var(--app-surface) !important;--ep-background-surface-alt:var(--app-sunken) !important;--ep-background-elevated:var(--app-surface) !important;--ep-background-input:var(--app-surface) !important;--ep-foreground-primary:var(--app-text) !important;--ep-foreground-secondary:var(--app-text-2) !important;--ep-foreground-muted:var(--app-text-2) !important;--ep-foreground-disabled:var(--app-text-2) !important;--ep-foreground-on-accent:var(--app-surface) !important;--ep-border-default:var(--app-border) !important;--ep-border-subtle:var(--app-border) !important;--ep-border-strong:var(--app-border-strong) !important;--ep-accent-primary:var(--app-accent) !important;--ep-accent-primary-hover:var(--app-accent) !important;--ep-accent-primary-active:var(--app-accent) !important;--ep-accent-primary-light:var(--app-accent-soft) !important;--ep-accent-primary-foreground:var(--app-surface) !important;--ep-interactive-hover:var(--app-accent-soft) !important;--ep-interactive-active:var(--app-accent-soft) !important;--ep-interactive-selected:var(--app-accent-soft) !important;--ep-interactive-focus:var(--app-accent) !important;--ep-interactive-focus-ring:var(--app-accent) !important;--ep-scrollbar-track:var(--app-sunken) !important;--ep-scrollbar-thumb:var(--app-border) !important;--ep-scrollbar-thumb-hover:var(--app-border-strong) !important}",
+    '[data-epdf-i="document-menu"],[data-epdf-i="zoom-menu"]{background:var(--app-surface) !important;border-color:var(--app-border) !important;color:var(--app-text) !important}',
+    '[data-sidebar-id="outline-panel"]{background:var(--app-surface) !important;border-color:var(--app-border) !important;color:var(--app-text) !important}',
+    '[data-sidebar-id="outline-panel"] [role="tab"]{color:var(--app-text-2) !important;border-color:var(--app-border) !important}',
+    '[data-sidebar-id="outline-panel"] [role="tab"][aria-selected="true"]{background:var(--app-accent) !important;border-color:var(--app-accent) !important;color:var(--app-surface) !important}',
+    '[data-epdf-i="page-controls"] input{background:var(--app-surface) !important;border-color:var(--app-border) !important;color:var(--app-text) !important}',
+    '[data-epdf-i="page-controls"] span{color:var(--app-text-2) !important}',
+    '[data-epdf-i="main-toolbar"]{background:var(--app-surface) !important;border-bottom-color:var(--app-border) !important}',
   ].join("\n");
   shadow.appendChild(style);
 }
