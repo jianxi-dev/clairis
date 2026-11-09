@@ -1,0 +1,328 @@
+{
+  "change": "selection-roulette",
+  "requirements": [
+    {
+      "id": "R-1",
+      "text": "轮盘几何",
+      "anchors": [
+        {
+          "id": "A-1.1",
+          "claim": "根环扇区数量",
+          "kind": "exact",
+          "assert": "8",
+          "source": "批准稿 §4.2"
+        },
+        {
+          "id": "A-1.2",
+          "claim": "根环内半径（px）",
+          "kind": "exact",
+          "assert": "30",
+          "source": "原型 §10 常量"
+        },
+        {
+          "id": "A-1.3",
+          "claim": "根环外半径（px）",
+          "kind": "exact",
+          "assert": "86",
+          "source": "原型 §10 常量"
+        },
+        {
+          "id": "A-1.4",
+          "claim": "二层环带内/外半径（px）",
+          "kind": "exact",
+          "assert": "\"92/122\"",
+          "source": "原型 §10 常量"
+        },
+        {
+          "id": "A-1.5",
+          "claim": "三层环带内/外半径（px）",
+          "kind": "exact",
+          "assert": "\"126/152\"",
+          "source": "原型 §10 常量"
+        },
+        {
+          "id": "A-1.6",
+          "claim": "二层每格角度（度）",
+          "kind": "exact",
+          "assert": "15",
+          "source": "批准稿 §4.3"
+        },
+        {
+          "id": "A-1.7",
+          "claim": "扇形缝隙（度）",
+          "kind": "exact",
+          "assert": "0.35",
+          "source": "原型 §10 常量"
+        },
+        {
+          "id": "A-1.8",
+          "claim": "轮盘包围盒尺寸（px）",
+          "kind": "exact",
+          "assert": "420",
+          "source": "批准稿 §5"
+        },
+        {
+          "id": "A-1.9",
+          "claim": "根环标签所在半径（px）",
+          "kind": "exact",
+          "assert": "60",
+          "source": "原型 §10 渲染"
+        }
+      ]
+    },
+    {
+      "id": "R-2",
+      "text": "三层与透明度",
+      "anchors": [
+        {
+          "id": "A-2.1",
+          "claim": "三级出现时二层仍可见且不透明度",
+          "kind": "state-machine",
+          "assert": "0.7",
+          "source": "批准稿 §4.4 / 第九轮"
+        },
+        {
+          "id": "A-2.2",
+          "claim": "三级扇形中心角与所点二层区块中心角之差（度）",
+          "kind": "exact",
+          "assert": "0",
+          "source": "批准稿 §4.4 第八轮"
+        },
+        {
+          "id": "A-2.3",
+          "claim": "展开下级后根环不透明度",
+          "kind": "state-machine",
+          "assert": "0.7",
+          "source": "批准稿 §4.4 / 第九轮"
+        },
+        {
+          "id": "A-2.4",
+          "claim": "三级在场时圆心显示返回符号",
+          "kind": "state-machine",
+          "assert": "\"‹\"",
+          "source": "批准稿 §4.1"
+        }
+      ]
+    },
+    {
+      "id": "R-3",
+      "text": "颜色双圈",
+      "anchors": [
+        {
+          "id": "A-3.1",
+          "claim": "内圈文字色段数",
+          "kind": "exact",
+          "assert": "9",
+          "source": "批准稿 §4.5"
+        },
+        {
+          "id": "A-3.2",
+          "claim": "外圈背景色段数",
+          "kind": "exact",
+          "assert": "16",
+          "source": "批准稿 §4.5"
+        },
+        {
+          "id": "A-3.3",
+          "claim": "内圈色带内/外半径（px）",
+          "kind": "exact",
+          "assert": "\"90/106\"",
+          "source": "原型 §10 常量"
+        },
+        {
+          "id": "A-3.4",
+          "claim": "外圈色带内/外半径（px）",
+          "kind": "exact",
+          "assert": "\"111/127\"",
+          "source": "原型 §10 常量"
+        },
+        {
+          "id": "A-3.5",
+          "claim": "内圈渲染的字母",
+          "kind": "exact",
+          "assert": "\"A\"",
+          "source": "批准稿 §8 第三轮"
+        }
+      ]
+    },
+    {
+      "id": "R-4",
+      "text": "出现时机与交互",
+      "anchors": [
+        {
+          "id": "A-4.1",
+          "claim": "松手后出现延迟（ms）",
+          "kind": "exact",
+          "assert": "90",
+          "source": "批准稿 §5"
+        },
+        {
+          "id": "A-4.2",
+          "claim": "按住拖选期间轮盘节点数",
+          "kind": "state-machine",
+          "assert": "0",
+          "source": "批准稿 §5.1"
+        },
+        {
+          "id": "A-4.3",
+          "claim": "圆心死区半径（px）",
+          "kind": "exact",
+          "assert": "0",
+          "source": "批准稿 §5.1 第七轮"
+        },
+        {
+          "id": "A-4.4",
+          "claim": "离开整轮后收回下级延迟（ms）",
+          "kind": "exact",
+          "assert": "400",
+          "source": "批准稿 §5"
+        },
+        {
+          "id": "A-4.5",
+          "claim": "圆心与鼠标落点最大偏差（px）",
+          "kind": "exact",
+          "assert": "1",
+          "source": "批准稿 §5"
+        },
+        {
+          "id": "A-4.6",
+          "claim": "根环数字键直达范围",
+          "kind": "exact",
+          "assert": "\"1-8\"",
+          "source": "批准稿 §5"
+        }
+      ]
+    },
+    {
+      "id": "R-5",
+      "text": "命令与标注类型",
+      "anchors": [
+        {
+          "id": "A-5.1",
+          "claim": "转换二层·段落形态项数",
+          "kind": "exact",
+          "assert": "7",
+          "source": "批准稿 §4.4"
+        },
+        {
+          "id": "A-5.2",
+          "claim": "转换二层·标题形态项数",
+          "kind": "exact",
+          "assert": "8",
+          "source": "批准稿 §4.4"
+        },
+        {
+          "id": "A-5.3",
+          "claim": "标题三层档数（H1–H6）",
+          "kind": "exact",
+          "assert": "6",
+          "source": "批准稿 §4.4"
+        },
+        {
+          "id": "A-5.4",
+          "claim": "高亮三层类别数",
+          "kind": "exact",
+          "assert": "5",
+          "source": "批准稿 §4.4"
+        },
+        {
+          "id": "A-5.5",
+          "claim": "选择「注意」写入源码",
+          "kind": "state-machine",
+          "assert": "\"> [!note]\"",
+          "source": "批准稿 §4.4"
+        },
+        {
+          "id": "A-5.6",
+          "claim": "选择「六级标题」写入源码",
+          "kind": "state-machine",
+          "assert": "\"###### \"",
+          "source": "批准稿 §4.4"
+        },
+        {
+          "id": "A-5.7",
+          "claim": "选择「3 栏」写入源码",
+          "kind": "state-machine",
+          "assert": "\"::: {.col-3}\"",
+          "source": "批准稿 §10"
+        },
+        {
+          "id": "A-5.8",
+          "claim": "格式二层项数",
+          "kind": "exact",
+          "assert": "6",
+          "source": "批准稿 §4.2"
+        },
+        {
+          "id": "A-5.9",
+          "claim": "格式二层第一项",
+          "kind": "exact",
+          "assert": "\"链接\"",
+          "source": "批准稿 §8 第九轮"
+        },
+        {
+          "id": "A-5.10",
+          "claim": "对齐二层项数",
+          "kind": "exact",
+          "assert": "5",
+          "source": "批准稿 §4.2"
+        }
+      ]
+    },
+    {
+      "id": "R-6",
+      "text": "HTML 分工与胶囊",
+      "anchors": [
+        {
+          "id": "A-6.1",
+          "claim": "HTML 源码编辑态选中文字后横向条节点数",
+          "kind": "state-machine",
+          "assert": "1",
+          "source": "design R-D7"
+        },
+        {
+          "id": "A-6.2",
+          "claim": "HTML 源码编辑态轮盘节点数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "design R-D7"
+        },
+        {
+          "id": "A-6.3",
+          "claim": "HTML 可视化编辑态轮盘节点数",
+          "kind": "state-machine",
+          "assert": "0",
+          "source": "E-19 / E-22"
+        },
+        {
+          "id": "A-6.4",
+          "claim": "MD 编辑态选中文字后胶囊节点数",
+          "kind": "state-machine",
+          "assert": "0",
+          "source": "HANDOFF §7.5"
+        },
+        {
+          "id": "A-6.5",
+          "claim": "阅读态选中文字后胶囊节点数",
+          "kind": "state-machine",
+          "assert": "1",
+          "source": "HANDOFF §7.5"
+        },
+        {
+          "id": "A-6.6",
+          "claim": "HTML 拖拽越过阈值后跟随幽灵节点数",
+          "kind": "state-machine",
+          "assert": "1",
+          "source": "design R-D8"
+        },
+        {
+          "id": "A-6.7",
+          "claim": "拖拽阈值（px）",
+          "kind": "exact",
+          "assert": "4",
+          "source": "E-20"
+        }
+      ]
+    }
+  ]
+}
