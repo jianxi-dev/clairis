@@ -124,3 +124,46 @@ test("截图模式：拖出区域后产出 PNG 并落盘", async ({ page }) => {
   const html = await content(page);
   expect(html).not.toContain("data-cm-");
 });
+
+test("拖拽有跟随幽灵，落点带滞回不抖动", async ({ page }) => {
+  const frame = await openVisual(page);
+  const second = await frame.locator('[data-cm-node-id="p:1"]').boundingBox();
+  const first = await frame.locator('[data-cm-node-id="p:0"]').boundingBox();
+  expect(second).not.toBeNull();
+  expect(first).not.toBeNull();
+
+  await page.mouse.move(second!.x + 40, second!.y + 20);
+  await page.mouse.down();
+  await page.mouse.move(first!.x + 40, first!.y + 4, { steps: 8 });
+
+  const ghost = frame.locator('[data-cm-internal="drag-ghost"]');
+  await expect(ghost).toHaveCount(1);
+  const originalOpacity = await frame
+    .locator('[data-cm-node-id="p:1"]')
+    .evaluate((n) => Number(getComputedStyle(n).opacity));
+  expect(originalOpacity).toBeLessThan(0.6);
+
+  const mid = first!.y + first!.height / 2;
+  await page.mouse.move(first!.x + 40, mid + 2, { steps: 2 });
+  const before = await frame
+    .locator('[data-cm-internal="dropline"]')
+    .getAttribute("data-cm-drop");
+  await page.mouse.move(first!.x + 40, mid + 4, { steps: 2 });
+  const stillBefore = await frame
+    .locator('[data-cm-internal="dropline"]')
+    .getAttribute("data-cm-drop");
+  expect(before).toBe("before");
+  expect(stillBefore).toBe("before");
+
+  await page.mouse.move(first!.x + 40, mid + 12, { steps: 2 });
+  await expect
+    .poll(() =>
+      frame
+        .locator('[data-cm-internal="dropline"]')
+        .getAttribute("data-cm-drop"),
+    )
+    .toBe("after");
+
+  await page.mouse.up();
+  await expect(ghost).toHaveCount(0);
+});

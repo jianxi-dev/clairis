@@ -50,7 +50,7 @@
 
 依赖：无（与 1–3 文件不重叠）
 
-- [ ] 4.1 HTML 可视化拖拽的跟随幽灵与稳定落点
+- [x] 4.1 HTML 可视化拖拽的跟随幽灵与稳定落点
   - 越过 4px 后创建跟随指针的元素幽灵（fixed、pointer-events none、opacity 0.9），原元素加 `.cm-drag-source`。
   - 落点 6px 滞回：指针越过目标中线 ±6px 才切换 before/after；指示线只在候选变化时改位置。
   - `mouseup` 提交一次 `moveNode` 并幂等清理幽灵/类名；拖进自身子树仍拒绝。
