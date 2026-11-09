@@ -280,3 +280,21 @@ test("格式刷：取一次格式后刷到另一段，计数为 2", async ({ pag
   await page.mouse.click(farX, line4.y + line4.height / 2, { clickCount: 3 });
   await expect(page.locator('[data-testid="roulette-center"]')).toHaveText("2");
 });
+
+test("点击根扇区不移动轮盘，指针滑入二层不消失", async ({ page }) => {
+  await selectLine(page, 2);
+  await page.waitForTimeout(200);
+  const wheel = page.locator(WHEEL);
+  const before = (await wheel.boundingBox())!;
+
+  await openSector(page, "format");
+  await page.waitForTimeout(250);
+  const after = (await wheel.boundingBox())!;
+  expect(Math.abs(after.x - before.x)).toBeLessThanOrEqual(1);
+  expect(Math.abs(after.y - before.y)).toBeLessThanOrEqual(1);
+
+  await page.locator('.sr-sec[data-band="2"]').first().hover();
+  await page.waitForTimeout(700);
+  await expect(wheel).toBeVisible();
+  await expect(page.locator('.sr-sec[data-band="2"]')).toHaveCount(6);
+});

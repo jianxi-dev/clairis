@@ -652,15 +652,27 @@ export function createRoulette(
   };
   document.addEventListener("pointerdown", onOutside, true);
 
-  const onLeave = (event: PointerEvent) => {
-    const related = event.relatedTarget as Node | null;
-    if (related && root.contains(related)) return;
-    window.clearTimeout(closeTimer);
+  // 根容器 pointer-events 为 none，pointerleave 在扇格间隙会误判离开；
+  // 用文档级坐标判断是否真的移出 420×420 包围盒。
+  const onDocMove = (event: PointerEvent) => {
+    const rect = root.getBoundingClientRect();
+    const inside =
+      event.clientX >= rect.left &&
+      event.clientX <= rect.right &&
+      event.clientY >= rect.top &&
+      event.clientY <= rect.bottom;
+    if (inside) {
+      window.clearTimeout(closeTimer);
+      closeTimer = 0;
+      return;
+    }
+    if (closeTimer) return;
     closeTimer = window.setTimeout(() => {
+      closeTimer = 0;
       if (filter !== null || group || openSector) backOneLevel();
     }, CLOSE_DELAY_MS);
   };
-  root.addEventListener("pointerleave", onLeave);
+  document.addEventListener("pointermove", onDocMove, true);
 
   const onWheel = (e: WheelEvent) => {
     if (filter !== null) return;
@@ -673,7 +685,7 @@ export function createRoulette(
   cleanup = () => {
     document.removeEventListener("keydown", onKey, true);
     document.removeEventListener("pointerdown", onOutside, true);
-    root.removeEventListener("pointerleave", onLeave);
+    document.removeEventListener("pointermove", onDocMove, true);
     root.removeEventListener("wheel", onWheel);
     window.clearTimeout(closeTimer);
   };
