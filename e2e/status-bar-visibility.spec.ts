@@ -33,13 +33,30 @@ test.describe("状态栏高度与显隐（ui-polish-batch6 4.1）", () => {
     const zone = page.getByTestId("status-hotzone");
     await expect(zone).toHaveCount(1);
 
+    const body = page.getByTestId("workspace-body");
+    const heightBefore = (await body.boundingBox())!.height;
+
     await zone.hover();
     await expect(bar).toBeVisible({ timeout: 2000 });
+    expect(await bar.evaluate((el) => getComputedStyle(el).position)).toBe(
+      "fixed",
+    );
+    const heightPeek = (await body.boundingBox())!.height;
+    expect(Math.abs(heightPeek - heightBefore)).toBeLessThanOrEqual(0.5);
 
     await bar.hover();
     await page.mouse.move(400, 200);
     await page.mouse.move(400, 260);
     await expect(bar).toHaveCount(0, { timeout: 3000 });
+
+    await zone.hover();
+    await expect(bar).toBeVisible({ timeout: 2000 });
+    await bar.hover();
+    await page.mouse.move(400, 200);
+    await page.mouse.move(400, 260);
+    await expect(bar).toHaveCount(0, { timeout: 3000 });
+    const heightAfter = (await body.boundingBox())!.height;
+    expect(Math.abs(heightAfter - heightBefore)).toBeLessThanOrEqual(0.5);
   });
 });
 
@@ -332,6 +349,13 @@ test.describe("弹层生命周期回归（评审修正）", () => {
     await boot(page);
     await page.evaluate(() => {
       window.__biaoyue_store__?.getState?.().setReadingMode(true);
+    });
+    const zone = page.getByTestId("status-hotzone");
+    if (await zone.isVisible().catch(() => false)) {
+      await zone.hover();
+    }
+    await expect(page.getByTestId("status-bar")).toBeVisible({
+      timeout: 3000,
     });
     await page.getByTestId("theme-entry").hover();
     const menu = page.getByTestId("theme-menu");

@@ -49,17 +49,19 @@ test.describe("大纲浮层边框（ui-polish-batch6 11.1）", () => {
   });
 });
 
-test("大纲按钮距内容区右缘恰为一个按钮宽（28px）", async ({ page }) => {
+test("大纲按钮右缘与栏目更多按钮右缘对齐", async ({ page }) => {
   await boot(page);
   const gap = await page.evaluate(() => {
-    const btn = document.querySelector('[data-testid="outline-btn"]')!;
-    const wrap = btn.closest(".biaoyue-outline") as HTMLElement | null;
-    const container = wrap?.offsetParent as HTMLElement | null;
-    if (!btn || !wrap || !container) return null;
-    const b = btn.getBoundingClientRect();
-    const c = container.getBoundingClientRect();
-    return { gap: c.right - b.right, width: c.width };
+    const outline = document.querySelector('[data-testid="outline-btn"]')!;
+    const more = document.querySelector('[data-testid="pane-menu-button"]')!;
+    return (
+      more.getBoundingClientRect().right - outline.getBoundingClientRect().right
+    );
   });
-  if (!gap) throw new Error("无法测量大纲按钮");
-  expect(Math.abs(gap.gap - 28)).toBeLessThanOrEqual(2);
+  expect(Math.abs(gap)).toBeLessThanOrEqual(1);
+  expect(
+    await page
+      .locator(".biaoyue-outline")
+      .evaluate((el) => getComputedStyle(el).right),
+  ).toBe("4px");
 });

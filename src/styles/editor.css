@@ -206,13 +206,19 @@ body {
   margin-right: 2px;
   color: var(--app-text-3);
   cursor: pointer;
-  opacity: 0.55;
+  opacity: 0;
   vertical-align: middle;
   transition: opacity 120ms ease-out;
 }
 
-.cm-fold-toggle:hover {
+.cm-summon-zone .cm-fold-toggle,
+.cm-fold-toggle:hover,
+.cm-fold-toggle:focus-visible,
+.cm-fold-toggle-folded {
   opacity: 1;
+}
+
+.cm-fold-toggle:hover {
   color: var(--app-text-2);
 }
 
@@ -861,21 +867,21 @@ body {
   min-height: 0;
 }
 
-.pane-fullscreen-button {
+.pane-actions {
+  display: flex;
+  align-items: center;
   opacity: 0;
-  pointer-events: none;
   transition: opacity 150ms ease;
 }
 
-.pane-leaf:hover .pane-fullscreen-button,
-.pane-leaf:focus-within .pane-fullscreen-button,
-.pane-leaf[data-fullscreen="true"] .pane-fullscreen-button {
+.pane-actions:hover,
+.pane-actions:has(:focus-visible),
+.pane-actions[data-open="true"] {
   opacity: 1;
-  pointer-events: auto;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .pane-fullscreen-button {
+  .pane-actions {
     transition: none;
   }
 }
@@ -994,6 +1000,15 @@ body {
 .app-status-bar {
   border-top: 1px solid var(--app-border);
   background: var(--app-bg);
+}
+
+.app-status-bar--floating {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 40;
+  box-shadow: 0 -8px 24px rgb(0 0 0 / 0.12);
 }
 
 .app-status-bar button {
@@ -2234,7 +2249,7 @@ html[data-tab-drag="true"] body * {
 .biaoyue-outline {
   position: absolute;
   top: 10px;
-  right: 28px;
+  right: 4px;
   z-index: 30;
 }
 
@@ -2652,23 +2667,34 @@ html[data-tab-drag="true"] body * {
 }
 
 .width-bar {
+  position: relative;
   flex: 0 0 22px;
   align-self: flex-end;
-  border: 0;
-  border-right: 1px solid var(--app-bg);
+  padding: 0;
+  border: 1px dashed transparent;
+  border-radius: 3px 3px 0 0;
+  background: transparent;
+  color: transparent;
+  cursor: pointer;
+  transition: border-color 120ms ease;
+}
+
+.width-bar:hover,
+.width-bar:focus-visible {
+  border-color: var(--app-border-strong);
+}
+
+.width-bar-fill {
+  position: absolute;
+  inset: 0;
+  display: block;
   border-radius: 3px 3px 0 0;
   background: var(--app-sunken);
   clip-path: polygon(0 100%, 22% 0, 100% 0, 100% 100%);
-  color: transparent;
-  cursor: pointer;
 }
 
-.width-bar.is-active {
+.width-bar.is-active .width-bar-fill {
   background: var(--app-accent);
-}
-
-.width-bar:last-child {
-  border-right: 0;
 }
 
 .width-slider {

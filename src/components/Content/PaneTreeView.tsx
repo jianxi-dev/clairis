@@ -570,162 +570,174 @@ function PaneHeader({
           paneFocused={paneFocused}
         />
       </div>
-      {!isMedia && (
-        <button
-          type="button"
-          data-testid="pane-mode"
-          data-mode={editorMode}
-          title={
-            editorMode === "preview" ? "切换到编辑（⌘⇧M）" : "切换到预览（⌘⇧M）"
-          }
-          aria-label={editorMode === "preview" ? "切换到编辑" : "切换到预览"}
-          onClick={() => setMode(nextPaneMode(editorMode))}
-          className="p-0.5 mx-1 rounded text-[var(--app-chrome-rest)] hover:bg-[var(--app-sunken)] hover:text-[var(--app-chrome-hover)] shrink-0"
-        >
-          <Icon name={editorMode === "preview" ? "eye" : "pencil"} size={18} />
-        </button>
-      )}
-      <div className="flex items-center gap-0.5 px-1 shrink-0">
-        {showFullscreen && (
+      <div
+        className="pane-actions"
+        data-open={menuOpen || exportOpen ? "true" : undefined}
+      >
+        {!isMedia && (
           <button
             type="button"
-            data-testid="pane-fullscreen"
+            data-testid="pane-mode"
+            data-mode={editorMode}
             title={
-              fullscreenPaneId === leafId
-                ? "退出全屏（Esc）"
-                : "全屏当前格 (⌘⇧↵)"
+              editorMode === "preview"
+                ? "切换到编辑（⌘⇧M）"
+                : "切换到预览（⌘⇧M）"
             }
-            aria-label={fullscreenPaneId === leafId ? "退出全屏" : "全屏当前格"}
-            aria-pressed={fullscreenPaneId === leafId}
-            data-fullscreen={fullscreenPaneId === leafId ? "true" : "false"}
-            onClick={() => {
-              useStore.getState().focusPane(leafId);
-              useStore.getState().toggleFullscreenPane();
-            }}
-            className="pane-fullscreen-button p-0.5 rounded text-[var(--app-chrome-rest)] hover:bg-[var(--app-sunken)] hover:text-[var(--app-chrome-hover)]"
+            aria-label={editorMode === "preview" ? "切换到编辑" : "切换到预览"}
+            onClick={() => setMode(nextPaneMode(editorMode))}
+            className="p-0.5 mx-1 rounded text-[var(--app-chrome-rest)] hover:bg-[var(--app-sunken)] hover:text-[var(--app-chrome-hover)] shrink-0"
           >
             <Icon
-              name={fullscreenPaneId === leafId ? "collapse" : "expand"}
+              name={editorMode === "preview" ? "eye" : "pencil"}
               size={18}
             />
           </button>
         )}
-        <div
-          className="relative"
-          ref={menuRef}
-          onPointerEnter={hoverOpen}
-          onPointerLeave={hoverClose}
-        >
-          <button
-            type="button"
-            data-testid="pane-menu-button"
-            title="更多操作"
-            aria-label="更多操作"
-            aria-haspopup="menu"
-            aria-expanded={menuOpen}
-            onClick={() => {
-              setExportOpen(false);
-              setMenuOpen((v) => !v);
-            }}
-            className="p-0.5 rounded text-[var(--app-chrome-rest)] hover:bg-[var(--app-sunken)] hover:text-[var(--app-chrome-hover)]"
-          >
-            <Icon name="more" size={18} />
-          </button>
-          {menuOpen && (
-            <div
-              data-testid="pane-menu"
-              role="menu"
-              className="absolute right-0 top-full z-50 mt-1 min-w-[132px] rounded border py-1 text-xs shadow-lg"
-              style={{
-                background: "var(--app-surface)",
-                borderColor: "var(--app-border)",
-                color: "var(--app-text-2)",
+        <div className="flex items-center gap-0.5 px-1 shrink-0">
+          {showFullscreen && (
+            <button
+              type="button"
+              data-testid="pane-fullscreen"
+              title={
+                fullscreenPaneId === leafId
+                  ? "退出全屏（Esc）"
+                  : "全屏当前格 (⌘⇧↵)"
+              }
+              aria-label={
+                fullscreenPaneId === leafId ? "退出全屏" : "全屏当前格"
+              }
+              aria-pressed={fullscreenPaneId === leafId}
+              data-fullscreen={fullscreenPaneId === leafId ? "true" : "false"}
+              onClick={() => {
+                useStore.getState().focusPane(leafId);
+                useStore.getState().toggleFullscreenPane();
               }}
+              className="pane-fullscreen-button p-0.5 rounded text-[var(--app-chrome-rest)] hover:bg-[var(--app-sunken)] hover:text-[var(--app-chrome-hover)]"
             >
-              {PANE_MENU_ITEMS.map((item) => (
-                <div
-                  key={item.action}
-                  className="relative"
-                  onPointerEnter={() => {
-                    if (item.action === "export") setExportOpen(true);
-                  }}
-                  onPointerLeave={() => {
-                    if (item.action === "export") setExportOpen(false);
-                  }}
-                >
-                  <button
-                    type="button"
-                    role="menuitem"
-                    data-menu-item={item.action}
-                    aria-haspopup={
-                      item.action === "export" ? "menu" : undefined
-                    }
-                    aria-expanded={
-                      item.action === "export" ? exportOpen : undefined
-                    }
-                    onClick={() => {
-                      if (item.action === "export") {
-                        setExportOpen(true);
-                        return;
-                      }
-                      runMenu(item.action);
+              <Icon
+                name={fullscreenPaneId === leafId ? "collapse" : "expand"}
+                size={18}
+              />
+            </button>
+          )}
+          <div
+            className="relative"
+            ref={menuRef}
+            onPointerEnter={hoverOpen}
+            onPointerLeave={hoverClose}
+          >
+            <button
+              type="button"
+              data-testid="pane-menu-button"
+              title="更多操作"
+              aria-label="更多操作"
+              aria-haspopup="menu"
+              aria-expanded={menuOpen}
+              onClick={() => {
+                setExportOpen(false);
+                setMenuOpen((v) => !v);
+              }}
+              className="p-0.5 rounded text-[var(--app-chrome-rest)] hover:bg-[var(--app-sunken)] hover:text-[var(--app-chrome-hover)]"
+            >
+              <Icon name="more" size={18} />
+            </button>
+            {menuOpen && (
+              <div
+                data-testid="pane-menu"
+                role="menu"
+                className="absolute right-0 top-full z-50 mt-1 min-w-[132px] rounded border py-1 text-xs shadow-lg"
+                style={{
+                  background: "var(--app-surface)",
+                  borderColor: "var(--app-border)",
+                  color: "var(--app-text-2)",
+                }}
+              >
+                {PANE_MENU_ITEMS.map((item) => (
+                  <div
+                    key={item.action}
+                    className="relative"
+                    onPointerEnter={() => {
+                      if (item.action === "export") setExportOpen(true);
                     }}
-                    className="flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-[var(--app-sunken)]"
+                    onPointerLeave={() => {
+                      if (item.action === "export") setExportOpen(false);
+                    }}
                   >
-                    <Icon name={item.icon} size={18} />
-                    <span>{item.label}</span>
-                    {item.action === "export" && (
-                      <span
-                        className="ml-auto h-0 w-0 border-y-4 border-l-4 border-y-transparent border-l-[var(--app-text-3)]"
-                        aria-hidden="true"
-                      />
-                    )}
-                  </button>
-                  {item.action === "export" && exportOpen && (
-                    <div
-                      data-testid="pane-export-submenu"
-                      role="menu"
-                      className="absolute right-full top-0 mr-1 min-w-[132px] rounded border py-1 text-xs shadow-lg"
-                      style={{
-                        background: "var(--app-surface)",
-                        borderColor: "var(--app-border)",
-                        color: "var(--app-text-2)",
+                    <button
+                      type="button"
+                      role="menuitem"
+                      data-menu-item={item.action}
+                      aria-haspopup={
+                        item.action === "export" ? "menu" : undefined
+                      }
+                      aria-expanded={
+                        item.action === "export" ? exportOpen : undefined
+                      }
+                      onClick={() => {
+                        if (item.action === "export") {
+                          setExportOpen(true);
+                          return;
+                        }
+                        runMenu(item.action);
                       }}
+                      className="flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-[var(--app-sunken)]"
                     >
-                      {EXPORT_MENU_ITEMS.map((sub) => (
-                        <button
-                          key={sub.action}
-                          type="button"
-                          role="menuitem"
-                          data-export-item={sub.action}
-                          disabled={sub.disabled}
-                          title={sub.title}
-                          onClick={() => runExport(sub.action)}
-                          className="flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-[var(--app-sunken)] disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          <Icon name={sub.icon} size={18} />
-                          <span>{sub.label}</span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
+                      <Icon name={item.icon} size={18} />
+                      <span>{item.label}</span>
+                      {item.action === "export" && (
+                        <span
+                          className="ml-auto h-0 w-0 border-y-4 border-l-4 border-y-transparent border-l-[var(--app-text-3)]"
+                          aria-hidden="true"
+                        />
+                      )}
+                    </button>
+                    {item.action === "export" && exportOpen && (
+                      <div
+                        data-testid="pane-export-submenu"
+                        role="menu"
+                        className="absolute right-full top-0 mr-1 min-w-[132px] rounded border py-1 text-xs shadow-lg"
+                        style={{
+                          background: "var(--app-surface)",
+                          borderColor: "var(--app-border)",
+                          color: "var(--app-text-2)",
+                        }}
+                      >
+                        {EXPORT_MENU_ITEMS.map((sub) => (
+                          <button
+                            key={sub.action}
+                            type="button"
+                            role="menuitem"
+                            data-export-item={sub.action}
+                            disabled={sub.disabled}
+                            title={sub.title}
+                            onClick={() => runExport(sub.action)}
+                            className="flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-[var(--app-sunken)] disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            <Icon name={sub.icon} size={18} />
+                            <span>{sub.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          {showClosePane && (
+            <button
+              type="button"
+              data-testid="pane-close"
+              title="关闭此格"
+              aria-label="关闭此格"
+              onClick={() => useStore.getState().closePane(leafId)}
+              className="p-0.5 rounded text-[var(--app-chrome-rest)] hover:bg-[var(--app-sunken)] hover:text-[var(--app-chrome-hover)]"
+            >
+              <Icon name="close" size={18} />
+            </button>
           )}
         </div>
-        {showClosePane && (
-          <button
-            type="button"
-            data-testid="pane-close"
-            title="关闭此格"
-            aria-label="关闭此格"
-            onClick={() => useStore.getState().closePane(leafId)}
-            className="p-0.5 rounded text-[var(--app-chrome-rest)] hover:bg-[var(--app-sunken)] hover:text-[var(--app-chrome-hover)]"
-          >
-            <Icon name="close" size={18} />
-          </button>
-        )}
       </div>
       {notice && (
         <div

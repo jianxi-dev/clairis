@@ -60,6 +60,8 @@ interface StatusBarProps {
   onPointerEnter?: () => void;
   onPointerLeave?: () => void;
   onSetReaderWidth: (width: number) => void;
+  /** 隐藏/沉浸态临时浮现时以 fixed 浮层覆盖内容，不参与流式布局。 */
+  floating?: boolean;
   /** 主题 / 宽度面板的展开状态；父级据此避免在面板打开时卸载状态栏。 */
   onPopupOpenChange?: (open: boolean) => void;
 }
@@ -94,6 +96,7 @@ export default function StatusBar({
   onPointerEnter,
   onPointerLeave,
   onSetReaderWidth,
+  floating,
   onPopupOpenChange,
 }: StatusBarProps) {
   const activeTabId = useStore((s) => s.activeTabId);
@@ -218,7 +221,9 @@ export default function StatusBar({
 
   return (
     <footer
-      className="app-status-bar flex items-center gap-3 px-3 py-0.5 text-xs text-[var(--app-text-2)] select-none shrink-0"
+      className={`app-status-bar flex items-center gap-3 px-3 py-0.5 text-xs text-[var(--app-text-2)] select-none shrink-0${
+        floating ? " app-status-bar--floating" : ""
+      }`}
       data-testid="status-bar"
       onPointerEnter={onPointerEnter}
       onPointerLeave={onPointerLeave}
@@ -288,7 +293,9 @@ export default function StatusBar({
                       onClick={() => onSetReaderWidth(opt.value)}
                       style={{ height: opt.bar }}
                       className={`width-bar ${readerWidth === opt.value ? "is-active" : ""}`}
-                    />
+                    >
+                      <span className="width-bar-fill" aria-hidden="true" />
+                    </button>
                   ))}
                 </div>
                 <input

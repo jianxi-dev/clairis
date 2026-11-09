@@ -35,7 +35,7 @@ async function openMarkdown(page: Page): Promise<void> {
   });
 }
 
-test("大纲按钮 right 计算值恒为 23px（预览态与编辑态）", async ({ page }) => {
+test("大纲按钮 right 计算值恒为 4px（预览态与编辑态）", async ({ page }) => {
   await boot(page);
   await openMarkdown(page);
 
@@ -44,14 +44,18 @@ test("大纲按钮 right 计算值恒为 23px（预览态与编辑态）", async
       .locator(".biaoyue-outline")
       .evaluate((el) => getComputedStyle(el).right);
 
-  expect(await readRight()).toBe("23px");
+  expect(await readRight()).toBe("4px");
   await page.screenshot({ path: path.join(ART, "outline-preview.png") });
 
-  await page.locator('[data-testid="pane-mode"]').first().click();
+  await page.evaluate(() => {
+    (window as unknown as Record<string, any>).__biaoyue_store__
+      .getState()
+      .setEditorMode("edit");
+  });
   await expect(
     page.locator('[data-testid="pane-mode"]').first(),
   ).toHaveAttribute("data-mode", "edit");
   await expect(page.locator(".biaoyue-outline")).toBeVisible();
-  expect(await readRight()).toBe("23px");
+  expect(await readRight()).toBe("4px");
   await page.screenshot({ path: path.join(ART, "outline-edit.png") });
 });

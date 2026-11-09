@@ -355,22 +355,26 @@ interface AppStore {
   // ── 悬浮预览窗（change layout-portal / 8.1）──
   /** 当前悬浮预览窗；null = 不显示。瞬态，不持久化（重开回默认锚定）。 */
   preview: PreviewState | null;
+  /** 已钉住的悬浮窗；钉住后继续打开新窗不会替换这些实例。 */
+  pinnedPreviews: PreviewState[];
   /** 双轨开关：阅读空间悬停 / 网格触发方式 / 总开关。持久化到 Rust `preview_settings`。 */
   previewSettings: PreviewSettings;
-  openPreview: (payload: Omit<PreviewState, "pinned">) => void;
-  closePreview: () => void;
+  openPreview: (payload: Omit<PreviewState, "pinned" | "id">) => void;
+  closePreview: (id?: string) => void;
   movePreview: (
+    id: string,
     x: number,
     y: number,
     flippedX: boolean,
     flippedY: boolean,
   ) => void;
   resizePreviewTo: (
+    id: string,
     rect: { x: number; y: number; w: number; h: number },
     flippedX: boolean,
     flippedY: boolean,
   ) => void;
-  togglePreviewPin: () => void;
+  togglePreviewPin: (id?: string) => void;
   setPreviewSettings: (patch: Partial<PreviewSettings>) => void;
   togglePreviewEnabled: () => void;
 
@@ -387,6 +391,12 @@ interface AppStore {
   dockAiPane: () => string;
   /** 移除 AI 停靠窗格；不存在时无操作。 */
   undockAiPane: () => void;
+}
+
+let previewSeq = 0;
+function nextPreviewId(): string {
+  previewSeq += 1;
+  return `preview-${Date.now().toString(36)}-${previewSeq}`;
 }
 
 const initialState = {
@@ -431,6 +441,7 @@ const initialState = {
   railChip: "all" as RailChipKind,
   railViewSpec: { ...DEFAULT_RAIL_VIEW_SPEC },
   preview: null as PreviewState | null,
+  pinnedPreviews: [] as PreviewState[],
   previewSettings: { ...DEFAULT_PREVIEW_SETTINGS },
   viewSpec: { ...DEFAULT_VIEW_SPEC },
 };
@@ -1287,39 +1298,77 @@ export const useStore = create<AppStore>((set, get) => ({
   // ── 悬浮预览窗 actions（layout-portal 8.1）──
 
   openPreview: (payload) =>
-    set((s) => ({
-      // 再次锚定（换行）时保留钉住态；位置恒取新锚点，绝不沿用拖动后的旧坐标
-      preview: { ...payload, pinned: s.preview?.pinned ?? false },
+    set(() => ({
+      // 新打开的窗口恒为未钉住；已钉住的实例留在 pinnedPreviews，不被替换。
+      preview: { ...payload, id: nextPreviewId(), pinned: false },
     })),
 
-  closePreview: () => set({ preview: null }),
+  closePreview: (id) =>
+    set((s) => {
+      const targetId = id ?? s.preview?.id;
+      if (!targetId) return {};
+      return {
+        preview: s.preview?.id === targetId ? null : s.preview,
+        pinnedPreviews: s.pinnedPreviews.filter((p) => p.id !== targetId),
+      };
+    }),
 
-  movePreview: (x, y, flippedX, flippedY) =>
-    set((s) =>
-      s.preview ? { preview: { ...s.preview, x, y, flippedX, flippedY } } : {},
-    ),
+  movePreview: (id, x, y, flippedX, flippedY) =>
+    set((s) => ({
+      preview:
+        s.preview?.id === id
+          ? { ...s.preview, x, y, flippedX, flippedY }
+          : s.preview,
+      pinnedPreviews: s.pinnedPreviews.map((p) =>
+        p.id === id ? { ...p, x, y, flippedX, flippedY } : p,
+      ),
+    })),
 
-  resizePreviewTo: (rect, flippedX, flippedY) =>
-    set((s) =>
-      s.preview
-        ? {
-            preview: {
-              ...s.preview,
-              x: rect.x,
-              y: rect.y,
-              w: rect.w,
-              h: rect.h,
-              flippedX,
-              flippedY,
-            },
-          }
-        : {},
-    ),
+  resizePreviewTo: (id, rect, flippedX, flippedY) =>
+    set((s) => {
+      const patch = {
+        x: rect.x,
+        y: rect.y,
+        w: rect.w,
+        h: rect.h,
+        flippedX,
+        flippedY,
+      };
+      return {
+        preview: s.preview?.id === id ? { ...s.preview, ...patch } : s.preview,
+        pinnedPreviews: s.pinnedPreviews.map((p) =>
+          p.id === id ? { ...p, ...patch } : p,
+        ),
+      };
+    }),
 
-  togglePreviewPin: () =>
-    set((s) =>
-      s.preview ? { preview: { ...s.preview, pinned: !s.preview.pinned } } : {},
-    ),
+  togglePreviewPin: (id) =>
+    set((s) => {
+      const target = id
+        ? s.preview?.id === id
+          ? s.preview
+          : s.pinnedPreviews.find((p) => p.id === id)
+        : s.preview;
+      if (!target) return {};
+      if (target.pinned) {
+        return {
+          preview:
+            s.preview?.id === target.id
+              ? { ...s.preview, pinned: false }
+              : s.preview,
+          pinnedPreviews: s.pinnedPreviews.map((p) =>
+            p.id === target.id ? { ...p, pinned: false } : p,
+          ),
+        };
+      }
+      const pinned = { ...target, pinned: true };
+      return {
+        preview: s.preview?.id === target.id ? pinned : s.preview,
+        pinnedPreviews: s.pinnedPreviews.some((p) => p.id === target.id)
+          ? s.pinnedPreviews.map((p) => (p.id === target.id ? pinned : p))
+          : [...s.pinnedPreviews, pinned],
+      };
+    }),
 
   setPreviewSettings: (patch) =>
     set((s) => ({ previewSettings: { ...s.previewSettings, ...patch } })),
@@ -1330,6 +1379,7 @@ export const useStore = create<AppStore>((set, get) => ({
       return {
         previewSettings: { ...s.previewSettings, enabled },
         preview: enabled ? s.preview : null,
+        pinnedPreviews: enabled ? s.pinnedPreviews : [],
       };
     }),
 
@@ -1346,6 +1396,7 @@ export const useStore = create<AppStore>((set, get) => ({
       railCardHeight: next.railCardHeight,
       previewSettings: { ...s.previewSettings, enabled: next.previewEnabled },
       preview: next.previewEnabled ? s.preview : null,
+      pinnedPreviews: next.previewEnabled ? s.pinnedPreviews : [],
     }));
     useEditorStore.getState().setConfig({ iconLabel: next.iconLabel });
   },
@@ -1364,6 +1415,7 @@ export const useStore = create<AppStore>((set, get) => ({
       railCardHeight: next.railCardHeight,
       previewSettings: { ...s.previewSettings, enabled: next.previewEnabled },
       preview: next.previewEnabled ? s.preview : null,
+      pinnedPreviews: next.previewEnabled ? s.pinnedPreviews : [],
     }));
     useEditorStore.getState().setConfig({ iconLabel: next.iconLabel });
   },

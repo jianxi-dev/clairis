@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "controls-row-unified",
+      "screenshot": ".artifacts/486/01-controls-row.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-09T14:04:03Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "player-overview",
+      "screenshot": ".artifacts/486/02-player.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-09T14:04:03Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "visual-menu",
+      "screenshot": ".artifacts/486/03-visual-menu.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-09T14:04:03Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "controls-fullscreen",
+      "screenshot": ".artifacts/486/04-controls-fullscreen.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-09T14:04:03Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}

@@ -10,7 +10,7 @@ import TemplatePicker from "./components/TemplatePicker";
 import SettingsView from "./components/SettingsView";
 import PaneTreeView from "./components/Content/PaneTreeView";
 import ReadingRail from "./components/Rail/ReadingRail";
-import FloatingPreview from "./components/Preview/FloatingPreview";
+import { FloatingPreviewList } from "./components/Preview/FloatingPreview";
 import PortalView from "./components/PortalView";
 import GridView from "./components/GridView";
 import ShortcutOverlay from "./components/ShortcutOverlay";
@@ -817,6 +817,7 @@ function App() {
               setStatusBarPeek(false);
             }
           }}
+          floating={(statusBarHidden || readingMode) && statusBarPeek}
           onPopupOpenChange={handleStatusBarPopupOpen}
           onSetReaderWidth={(w) => {
             useEditorStore.getState().setConfig({ readerWidth: w });
@@ -838,7 +839,7 @@ function App() {
       <UndoBar />
       <SnapshotPanel />
       <AiBubble />
-      <FloatingPreview onOpenPath={handleOpenPath} />
+      <FloatingPreviewList onOpenPath={handleOpenPath} />
       {scene === "portal" && (
         <div className="fixed inset-0 z-40 bg-[var(--app-surface)]">
           <PortalView

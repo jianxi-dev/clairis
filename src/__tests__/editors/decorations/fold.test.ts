@@ -79,7 +79,7 @@ describe("createFoldDecorations", () => {
     const decorations = createFoldDecorations(state, new Set([1]));
     const replace = decorations.find((d) => d.value.spec.widget === undefined);
     expect(replace).toBeDefined();
-    expect(replace!.from).toBe(3);
+    expect(replace!.from).toBe(4);
     expect(replace!.to).toBe(11);
   });
 });

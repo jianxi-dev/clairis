@@ -5,3 +5,31 @@
   --art-control-icon-size: 24px;
   --art-padding: 12px;
 }
+
+.art-video-player.art-video-player .art-controls-right {
+  align-items: center;
+}
+
+.art-video-player.art-video-player .art-controls-right .art-control {
+  min-width: 38px;
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.art-video-player.art-video-player .art-controls-right .art-control .art-icon {
+  width: 24px;
+  height: 24px;
+  transform: none;
+}
+
+.art-video-player.art-video-player
+  .art-controls-right
+  .art-control
+  .art-icon
+  svg {
+  width: 22px;
+  height: 22px;
+  display: block;
+}

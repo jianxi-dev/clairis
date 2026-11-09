@@ -273,22 +273,39 @@ test("阅读空间锚定：x 恒=栏右缘+12、y 跟随悬停行、横向不随
   await expect(page.locator('[data-testid="preview-doc"]')).toBeVisible();
   await page.screenshot({ path: path.join(ART, "preview-rail-anchored.png") });
 
-  // 钉住预览，保证跨行切换时窗口不关
+  // 钉住 doc3：后续悬停会新增未钉住窗口，而不是替换它
   await page.locator('[data-testid="preview-pin"]').click();
   await expect(preview).toHaveAttribute("data-pinned", "true");
 
-  // 悬停第 8 行 → x 不变，y 跟随到第 8 行
+  // 悬停第 8 行 → 新窗口 doc8，x 不变，y 跟随第 8 行
   await page.mouse.move(r8.x + r8.width - 20, r8.y + r8.height / 2);
-  await expect
-    .poll(async () => (await previewBox(page)).y)
-    .toBe(Math.round(r8.y));
-  const b8 = await previewBox(page);
+  const preview8 = page.locator(
+    '[data-testid="floating-preview"][data-preview-path="/tmp/fp/doc3.md"]',
+  );
+  await expect(preview8).toBeVisible({ timeout: 3000 });
+  const box8 = async () => {
+    const b = await preview8.boundingBox();
+    if (!b) throw new Error("预览窗不可测量");
+    return {
+      x: Math.round(b.x),
+      y: Math.round(b.y),
+      w: Math.round(b.width),
+      h: Math.round(b.height),
+    };
+  };
+  await expect.poll(async () => (await box8()).y).toBe(Math.round(r8.y));
+  const b8 = await box8();
   expect(b8.x).toBe(b3.x);
+  await expect(
+    page.locator(
+      '[data-testid="floating-preview"][data-preview-path="/tmp/fp/doc8.md"]',
+    ),
+  ).toHaveAttribute("data-pinned", "true");
 
   // 横向抖动指针：x 不得变化
   await page.mouse.move(r8.x + r8.width - 8, r8.y + r8.height / 2);
   await page.waitForTimeout(120);
-  expect((await previewBox(page)).x).toBe(b8.x);
+  expect((await box8()).x).toBe(b8.x);
 });
 
 test("缩放：四边 + 一角拖到最小，尺寸严格钳到 260×200", async ({ page }) => {

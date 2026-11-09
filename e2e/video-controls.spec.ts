@@ -121,7 +121,29 @@ test("截图直接写剪贴板并弹胶囊提示，不调用另存为", async ({
           .__biaoyue_saved_binaries__?.length ?? 0,
     ),
   ).toBe(0);
-  await expect(page.locator(".art-notice")).toContainText("截图已复制到剪贴板");
+  const toast = page.locator('[data-testid="shot-toast"]');
+  await expect(toast).toContainText("截图已复制到剪贴板");
+  const toastBox = await toast.boundingBox();
+  const shotBox = await page
+    .locator(".art-control[data-name='screenshot']")
+    .boundingBox();
+  expect(toastBox).not.toBeNull();
+  expect(shotBox).not.toBeNull();
+  expect(toastBox!.y + toastBox!.height).toBeLessThanOrEqual(shotBox!.y - 4);
+});
+
+test("切换文件后缩略图源跟随新视频", async ({ page }) => {
+  await openMedia(page, "/Users/test/a.mp4");
+  await withRealVideo(page);
+  await page.evaluate(() => {
+    const w = window as unknown as Record<string, any>;
+    w.__biaoyue_openFile__("/Users/test/b.mp4", "", "b.mp4");
+  });
+  await expect
+    .poll(() =>
+      page.locator('[data-testid="video-thumb-source"]').getAttribute("src"),
+    )
+    .toContain("b.mp4");
 });
 
 test("上一集与下一集可点击且不打断播放器", async ({ page }) => {
@@ -142,7 +164,7 @@ test("音频文件不显示截图与画中画", async ({ page }) => {
   await expect(page.locator(".art-control[data-name='pip']")).toBeHidden();
 });
 
-test("控制条高度 38px、自绘图标 22px、快捷键图标无外框", async ({ page }) => {
+test("控制条 38px、右侧按钮与图标统一尺寸", async ({ page }) => {
   await openMedia(page, "/Users/test/clip.mp4");
   const height = await page
     .locator(".art-video-player")
@@ -151,14 +173,64 @@ test("控制条高度 38px、自绘图标 22px、快捷键图标无外框", asyn
     );
   expect(height).toBe("38px");
 
-  const icon = page.locator(".art-control-playlist svg").first();
-  expect(await icon.getAttribute("width")).toBe("22");
+  const controls = await page
+    .locator(".art-controls-right .art-control")
+    .evaluateAll((els) =>
+      els.map((el) => {
+        const r = el.getBoundingClientRect();
+        return [Math.round(r.width), Math.round(r.height)];
+      }),
+    );
+  for (const [w, h] of controls) {
+    expect(w).toBe(38);
+    expect(h).toBe(38);
+  }
+
+  const iconDetails = await page
+    .locator(".art-controls-right .art-control")
+    .evaluateAll((els) =>
+      els.map((el) => {
+        const ic = el.querySelector(".art-icon");
+        const r = ic?.getBoundingClientRect();
+        return {
+          name: (el as HTMLElement).dataset.name || "",
+          cls: el.className,
+          w: r ? Math.round(r.width) : -1,
+          h: r ? Math.round(r.height) : -1,
+        };
+      }),
+    );
+  const icons = iconDetails.map((d) => [d.w, d.h]);
+  for (const [w, h] of icons) {
+    expect(w).toBe(24);
+    expect(h).toBe(24);
+  }
+
+  const svgDetails = await page
+    .locator(".art-controls-right .art-control")
+    .evaluateAll((els) =>
+      els.map((el) => {
+        const sv = el.querySelector(".art-icon svg");
+        const r = sv?.getBoundingClientRect();
+        return {
+          name: (el as HTMLElement).dataset.name || "",
+          w: r ? Math.round(r.width) : -1,
+          h: r ? Math.round(r.height) : -1,
+          html: sv ? sv.outerHTML.slice(0, 80) : "none",
+        };
+      }),
+    );
+  const svgs = svgDetails.map((d) => [d.w, d.h]);
+  for (const [w, h] of svgs) {
+    expect(w).toBe(22);
+    expect(h).toBe(22);
+  }
 
   const hints = await page
-    .locator(".art-control-hints svg path")
+    .locator(".art-control[data-name='hints'] svg path")
     .first()
     .getAttribute("d");
-  expect(hints ?? "").not.toContain("h19v11");
+  expect(hints ?? "").toContain("h15");
 });
 
 test("进度条悬停显示当前位置缩略图，移开消失", async ({ page }) => {
@@ -173,14 +245,43 @@ test("进度条悬停显示当前位置缩略图，移开消失", async ({ page 
   await expect(page.locator('[data-testid="video-thumb"]')).toHaveCount(0);
 });
 
-test("全屏态点击倍速不展开二级菜单", async ({ page }) => {
+test("全屏态仍有二级菜单", async ({ page }) => {
   await openMedia(page, "/Users/test/clip.mp4");
   await withRealVideo(page);
   await page.locator(".art-control-fullscreenWeb").click();
   await page.waitForTimeout(300);
-  await page.locator(".art-control[data-name='rate']").click();
-  await expect(page.locator(".rate-menu")).toHaveCount(0);
-  await expect(page.locator(".art-notice")).toContainText("全屏下不可用");
+  await page.locator(".art-control[data-name='rate']").hover();
+  await expect(page.locator(".rate-menu")).toHaveCount(1);
+  await page.locator(".art-control-fullscreenWeb").click();
+});
+
+test("二级菜单 hover 显隐且以鼠标为中心，快捷键浮层 168px", async ({
+  page,
+}) => {
+  await openMedia(page, "/Users/test/clip.mp4");
+  await withRealVideo(page);
+
+  const subtitle = page.locator(".art-control[data-name='subtitle']");
+  const sbox = await subtitle.boundingBox();
+  if (!sbox) throw new Error("字幕按钮不可测量");
+  await page.mouse.move(sbox.x + sbox.width / 2, sbox.y + sbox.height / 2);
+  const menu = page.locator('div[style*="width: 230px"]').first();
+  await expect(menu).toBeVisible({ timeout: 2000 });
+  const mbox = (await menu.boundingBox())!;
+  expect(
+    Math.abs(mbox.x + mbox.width / 2 - (sbox.x + sbox.width / 2)),
+  ).toBeLessThanOrEqual(2);
+
+  await page.mouse.move(200, 300);
+  await expect(menu).toHaveCount(0, { timeout: 2000 });
+
+  const hints = page.locator(".art-control[data-name='hints']");
+  await hints.hover();
+  const hintsPanel = page.getByTestId("hints-panel");
+  await expect(hintsPanel).toBeVisible({ timeout: 2000 });
+  expect(Math.round((await hintsPanel.boundingBox())!.width)).toBe(168);
+  await page.mouse.move(200, 300);
+  await expect(hintsPanel).toHaveCount(0, { timeout: 2000 });
 });
 
 test("快捷键总览含媒体家族条目", async ({ page }) => {

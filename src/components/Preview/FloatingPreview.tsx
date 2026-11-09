@@ -13,6 +13,7 @@ import {
   resizePreview,
   shouldScheduleLeaveClose,
   type Box,
+  type PreviewState,
   type Rect,
   type ResizeEdge,
   type Viewport,
@@ -177,12 +178,40 @@ function MediaPlaceholder({ path }: { path: string }) {
   );
 }
 
-export default function FloatingPreview({
+export function FloatingPreviewList({
   onOpenPath,
 }: {
   onOpenPath: (path: string) => void | Promise<void>;
 }) {
-  const preview = useStore((s) => s.preview);
+  const current = useStore((s) => s.preview);
+  const pinned = useStore((s) => s.pinnedPreviews);
+  const windows = [...pinned];
+  if (current && !windows.some((p) => p.id === current.id)) {
+    windows.push(current);
+  }
+  return (
+    <>
+      {windows.map((p) => (
+        <FloatingPreview key={p.id} preview={p} onOpenPath={onOpenPath} />
+      ))}
+    </>
+  );
+}
+
+export default function FloatingPreview({
+  onOpenPath,
+  preview: previewProp,
+}: {
+  onOpenPath: (path: string) => void | Promise<void>;
+  preview?: PreviewState | null;
+}) {
+  const storePreview = useStore((s) => s.preview);
+  const preview = previewProp !== undefined ? previewProp : storePreview;
+  const previewId = preview?.id ?? null;
+  const previewIdRef = useRef(previewId);
+  const previewStateRef = useRef(preview);
+  previewIdRef.current = previewId;
+  previewStateRef.current = preview;
   const closePreview = useStore((s) => s.closePreview);
   const togglePreviewPin = useStore((s) => s.togglePreviewPin);
 
@@ -251,17 +280,19 @@ export default function FloatingPreview({
       const next = pending;
       pending = null;
       if (!next) return;
-      const p = useStore.getState().preview;
-      if (!p) return;
+      const p = previewStateRef.current;
+      if (!p || p.id !== previewIdRef.current) return;
       const flipped = flipAnchor(
         { x: next.x, y: next.y, w: p.w, h: p.h },
         viewportOf(),
       );
-      useStore.getState().movePreview(next.x, next.y, flipped.x, flipped.y);
+      useStore
+        .getState()
+        .movePreview(p.id, next.x, next.y, flipped.x, flipped.y);
     };
     const move = (e: PointerEvent) => {
-      const p = useStore.getState().preview;
-      if (!p) return;
+      const p = previewStateRef.current;
+      if (!p || p.id !== previewIdRef.current) return;
       pending = {
         x: Math.round(
           dragOrigin.current.ox + (e.clientX - dragOrigin.current.px),
@@ -307,14 +338,14 @@ export default function FloatingPreview({
       if (!next) return;
       const origin = resizeOrigin.current;
       if (!origin) return;
-      const p = useStore.getState().preview;
-      if (!p) return;
+      const p = previewStateRef.current;
+      if (!p || p.id !== previewIdRef.current) return;
       const rect = resizePreview(resizeEdge, origin.rect, next.dx, next.dy, {
         w: p.narrow ? PREVIEW_RAIL_NARROW_MIN_W : PREVIEW_MIN_W,
         h: PREVIEW_MIN_H,
       });
       const flipped = flipAnchor(rect, viewportOf());
-      useStore.getState().resizePreviewTo(rect, flipped.x, flipped.y);
+      useStore.getState().resizePreviewTo(p.id, rect, flipped.x, flipped.y);
     };
     const move = (e: PointerEvent) => {
       const origin = resizeOrigin.current;
@@ -362,9 +393,8 @@ export default function FloatingPreview({
     };
     const onMove = (e: PointerEvent) => {
       clear();
-      const st = useStore.getState();
-      const p = st.preview;
-      if (!p || p.source !== "rail") return;
+      const p = previewStateRef.current;
+      if (!p || p.id !== previewIdRef.current || p.source !== "rail") return;
       if (
         !shouldScheduleLeaveClose({
           pointer: { x: e.clientX, y: e.clientY },
@@ -378,12 +408,13 @@ export default function FloatingPreview({
       }
       timer = setTimeout(() => {
         timer = null;
-        const cur = useStore.getState().preview;
-        if (!cur || cur.source !== "rail" || cur.pinned) return;
+        const cur = previewStateRef.current;
+        if (!cur || cur.id !== previewIdRef.current) return;
+        if (cur.source !== "rail" || cur.pinned) return;
         // 拖拽/缩放可能在首个 pointermove 之前就把 interactingRef 置真；
         // 到期时再确认一次，避免把进行中的拖动误关。
         if (interactingRef.current) return;
-        useStore.getState().closePreview();
+        useStore.getState().closePreview(cur.id);
       }, PREVIEW_LEAVE_CLOSE_MS);
     };
     window.addEventListener("pointermove", onMove);
@@ -395,8 +426,8 @@ export default function FloatingPreview({
 
   const onHeaderPointerDown = useCallback((e: React.PointerEvent) => {
     if ((e.target as HTMLElement).closest("button")) return;
-    const p = useStore.getState().preview;
-    if (!p) return;
+    const p = previewStateRef.current;
+    if (!p || p.id !== previewIdRef.current) return;
     e.preventDefault();
     const el = e.currentTarget;
     el.setPointerCapture?.(e.pointerId);
@@ -407,8 +438,8 @@ export default function FloatingPreview({
 
   const onHandlePointerDown = useCallback(
     (edge: ResizeEdge, e: React.PointerEvent) => {
-      const p = useStore.getState().preview;
-      if (!p) return;
+      const p = previewStateRef.current;
+      if (!p || p.id !== previewIdRef.current) return;
       e.preventDefault();
       e.stopPropagation();
       const el = e.currentTarget;
@@ -508,7 +539,7 @@ export default function FloatingPreview({
         // rail 源的离窗关闭由全局 pointermove 防抖处理；网格源保持即关
         if (preview.source === "rail") return;
         if (pinned || dragging || resizeEdge) return;
-        closePreview();
+        if (previewId) closePreview(previewId);
       }}
     >
       <div
@@ -534,7 +565,9 @@ export default function FloatingPreview({
           aria-pressed={pinned}
           title={pinned ? "取消钉住" : "钉住"}
           aria-label={pinned ? "取消钉住" : "钉住"}
-          onClick={togglePreviewPin}
+          onClick={() => {
+            if (previewId) togglePreviewPin(previewId);
+          }}
           className="shrink-0 rounded p-0.5 text-[var(--app-text-3)] hover:bg-[var(--app-sunken)] hover:text-[var(--app-text-2)]"
         >
           <Icon
@@ -548,7 +581,9 @@ export default function FloatingPreview({
           data-testid="preview-close"
           title="关闭"
           aria-label="关闭"
-          onClick={closePreview}
+          onClick={() => {
+            if (previewId) closePreview(previewId);
+          }}
           className="shrink-0 rounded p-0.5 text-[var(--app-text-3)] hover:bg-[var(--app-sunken)] hover:text-[var(--app-text-2)]"
         >
           <Icon name="close" size={18} />
