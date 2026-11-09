@@ -203,7 +203,9 @@ test("标题三层 H1–H6 画在外环，二层保留并降到 0.7", async ({ p
   await expect.poll(() => content(page)).toMatch(/###### 第一段正文/);
 });
 
-test("高亮三层五类：提示/信息/注意/警告/危险", async ({ page }) => {
+test("高亮三层十三类：注释/信息/摘要/待办/提示/成功/问题/警告/失败/危险/Bug/示例/引用", async ({
+  page,
+}) => {
   await selectLine(page, 2);
   await openSector(page, "convert");
   await page
@@ -215,11 +217,19 @@ test("高亮三层五类：提示/信息/注意/警告/危险", async ({ page })
       nodes.map((n) => (n as HTMLElement).dataset.action),
     );
   expect(ids).toEqual([
-    "convert-tip",
-    "convert-info",
     "convert-note",
+    "convert-info",
+    "convert-abstract",
+    "convert-todo",
+    "convert-tip",
+    "convert-success",
+    "convert-question",
     "convert-warning",
+    "convert-failure",
     "convert-danger",
+    "convert-bug",
+    "convert-example",
+    "convert-quote",
   ]);
   await page
     .locator('.sr-sec[data-band="3"][data-action="convert-note"]')

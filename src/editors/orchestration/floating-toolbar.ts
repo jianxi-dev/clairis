@@ -15,6 +15,7 @@ import {
 } from "./toolbar-shared";
 import { blockConvertChanges, type BlockConvertTarget } from "./block-convert";
 import { useAiEntryStore } from "../../hooks/useAiEntry";
+import { CALLOUT_EDIT_TYPES } from "../callout-types";
 import {
   createRoulette,
   type RouletteActions,
@@ -24,19 +25,33 @@ import {
 
 const SHOW_DELAY_MS = 90;
 
-type CalloutKind = "tip" | "info" | "note" | "warning" | "danger";
+type CalloutKind = string;
+
+const CALLOUT_ICONS: Record<string, RouletteItem["icon"]> = {
+  note: "callout",
+  info: "info",
+  abstract: "abstract",
+  todo: "todo",
+  tip: "bulb",
+  success: "success",
+  question: "question",
+  warning: "warning",
+  failure: "failure",
+  danger: "danger",
+  bug: "bug",
+  example: "example",
+  quote: "quote",
+};
 
 const CALLOUTS: ReadonlyArray<{
   kind: CalloutKind;
   label: string;
   icon: RouletteItem["icon"];
-}> = [
-  { kind: "tip", label: "提示", icon: "bulb" },
-  { kind: "info", label: "信息", icon: "info" },
-  { kind: "note", label: "注意", icon: "callout" },
-  { kind: "warning", label: "警告", icon: "warning" },
-  { kind: "danger", label: "危险", icon: "danger" },
-];
+}> = CALLOUT_EDIT_TYPES.map((type) => ({
+  kind: type.key,
+  label: type.label,
+  icon: CALLOUT_ICONS[type.key] ?? "callout",
+}));
 
 function selectionText(view: EditorView): string {
   const { from, to } = view.state.selection.main;

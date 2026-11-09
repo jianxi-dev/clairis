@@ -2784,7 +2784,7 @@ html[data-tab-drag="true"] body * {
 .sr-sec:hover,
 .sr-sec.hot,
 .sr-sec.active {
-  fill: var(--app-accent-soft);
+  fill: color-mix(in srgb, var(--app-accent) 22%, var(--app-surface));
   stroke: var(--app-accent);
 }
 
