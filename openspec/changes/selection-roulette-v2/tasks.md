@@ -62,7 +62,7 @@
 
 依赖：1.1、2.1
 
-- [ ] 5.1 编辑态停用选区胶囊，AI 三动作归轮盘
+- [x] 5.1 编辑态停用选区胶囊，AI 三动作归轮盘
   - `detectSelectionPillMode` 对编辑态返回 `null`；阅读态分支不动；`SelectionPill` 组件保留。
   - 编辑态选中文字只出现轮盘；轮盘「智能」扇区改写/翻译/润色带入选中文本。
   - 单测 `selectionPillMode.test.ts` 与 e2e `selection-pill.spec.ts`：编辑态反转为「轮盘在、胶囊不在」，阅读态保持。

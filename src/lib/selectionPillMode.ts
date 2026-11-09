@@ -1,11 +1,11 @@
 /**
  * 选区胶囊的模式判定。
  *
- * 编辑态选区必须整体落在 CodeMirror 的 DOM 内；阅读态选区必须整体落在同一个
- * `.preview-content` 容器内。跨越编辑/阅读边界、跨越多个预览容器、或落在
- * 两者之外的选区一律视为无效（不显示胶囊）。抽成纯函数以便单测。
+ * 编辑态的 AI 三动作由选区轮盘承载（2026-11-09 维护者裁决），胶囊只在阅读态
+ * 出现：选区必须整体落在同一个 `.preview-content` 容器内。编辑态、跨越
+ * 编辑/阅读边界、跨越多个预览容器、或落在两者之外的选区一律不显示胶囊。
  */
-export type SelectionPillMode = "edit" | "preview";
+export type SelectionPillMode = "preview";
 
 export function detectSelectionPillMode(
   selection: Selection | null,
@@ -23,7 +23,7 @@ export function detectSelectionPillMode(
     editorDom.contains(anchorNode) &&
     editorDom.contains(focusNode)
   ) {
-    return "edit";
+    return null;
   }
 
   const bothInOnePreview = previewRoots.some(

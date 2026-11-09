@@ -53,10 +53,10 @@ describe("detectSelectionPillMode", () => {
     window.getSelection()?.removeAllRanges();
   });
 
-  it("returns editor when both endpoints are inside the editor DOM", () => {
+  it("returns null in the editor: AI actions live in the roulette", () => {
     const f = makeFixture();
     const s = select(f.editorText, 0, f.editorText, 5);
-    expect(detectSelectionPillMode(s, f.editor, [f.preview])).toBe("edit");
+    expect(detectSelectionPillMode(s, f.editor, [f.preview])).toBeNull();
   });
 
   it("returns preview when both endpoints are inside one preview root", () => {
