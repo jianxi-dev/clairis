@@ -26,6 +26,7 @@ import {
   type RouletteItem,
 } from "./roulette-view";
 import { createCapsuleToolbar, type CapsuleItem } from "./capsule-toolbar";
+import { ROOT_SECTORS, type SectorId } from "./roulette";
 import { BACKGROUND_COLORS, FONT_COLORS } from "./color-palette";
 import { registerCommand } from "./commands";
 
@@ -633,6 +634,15 @@ export function floatingToolbar(allowCapsule = false) {
       return true;
     };
 
+    const configuredSectors = (): SectorId[] | undefined => {
+      const configured = useEditorStore.getState().config.rouletteSectors;
+      if (!configured) return undefined;
+      const valid = configured.filter((id): id is SectorId =>
+        ROOT_SECTORS.some((sector) => sector.id === id),
+      );
+      return valid.length > 0 ? valid : undefined;
+    };
+
     const show = () => {
       const point = anchorPoint();
       if (!point) return;
@@ -643,7 +653,7 @@ export function floatingToolbar(allowCapsule = false) {
           () => {
             handle = null;
           },
-          { commandContext: () => ({ view }) },
+          { commandContext: () => ({ view }), sectors: configuredSectors() },
         );
         document.body.appendChild(handle.element);
       }

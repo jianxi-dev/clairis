@@ -66,6 +66,8 @@ export interface AppConfig {
   capabilities?: Record<string, boolean>;
   /** 图标标签级别（Layout Portal §10）：自动 / 始终文字 / 仅图标 */
   iconLabel?: "auto" | "text" | "icon";
+  /** 轮盘根扇区集合与顺序；null/缺省 = 内置 8 项（ui-command-registry 2.1） */
+  rouletteSectors?: string[] | null;
   /** 工作区 pane 递归树（layout-portal 3.1）：序列化 JSON，跨重启恢复 */
   paneLayout?: string | null;
   /** AI 视图改写规格（layout-portal 9.1）：持久化到 Rust `aiViewSpec` */
