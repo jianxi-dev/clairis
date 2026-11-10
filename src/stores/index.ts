@@ -287,6 +287,8 @@ interface AppStore {
   /** 用磁盘内容覆盖页签内容（刷新）：内容以磁盘为准，页签回到干净态。 */
   refreshTabContent: (tabId: string, content: string) => void;
   renameTab: (tabId: string, title: string) => void;
+  /** 文件在磁盘上被移动后，同步页签的路径与标题。 */
+  setTabPath: (tabId: string, path: string) => void;
   setEditorMode: (mode: EditorMode) => void;
   setReadingMode: (on: boolean) => void;
   setImmersiveChromeVisible: (v: boolean) => void;
@@ -677,6 +679,16 @@ export const useStore = create<AppStore>((set, get) => ({
     const next = title.trim();
     if (!next || next === tab.title) return;
     set({ tabs: { ...tabs, [tabId]: { ...tab, title: next } } });
+  },
+
+  setTabPath: (tabId, path) => {
+    const { tabs } = get();
+    const tab = tabs[tabId];
+    if (!tab) return;
+    const title = path.split("/").pop() || tab.title;
+    set({
+      tabs: { ...tabs, [tabId]: { ...tab, path, title, dirty: false } },
+    });
   },
 
   setEditorMode: (mode: EditorMode) => {

@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "栏目菜单8项无复制路径",
+      "screenshot": ".artifacts/543/state-pane-menu.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-10T07:25:10Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "页签右键分隔线下方两项",
+      "screenshot": ".artifacts/543/state-tab-menu.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-10T07:25:10Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "复制路径写入剪贴板",
+      "screenshot": ".artifacts/543/state-copied.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-10T07:25:10Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "移动到后页签路径更新",
+      "screenshot": ".artifacts/543/state-moved.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-10T07:25:10Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}

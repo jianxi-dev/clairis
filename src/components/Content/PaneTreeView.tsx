@@ -494,16 +494,6 @@ function PaneHeader({
           );
           return;
         }
-        case "copyPath": {
-          if (!tab?.path) {
-            showNotice("此页签尚未保存，无路径可复制");
-            return;
-          }
-          void copyText(tab.path).then((ok) =>
-            showNotice(ok ? "路径已复制" : "复制失败"),
-          );
-          return;
-        }
       }
     },
     [activeTabId, leafId, setMode, showNotice],

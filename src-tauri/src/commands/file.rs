@@ -363,6 +363,65 @@ pub async fn save_binary_as_file(
     Ok(Some(path_str))
 }
 
+/// Move a file into `to_dir`, returning the new absolute path.
+///
+/// 同名冲突时追加 `-1`/`-2` 序号，不覆盖已有文件；跨设备 `rename` 失败时
+/// 回退为 copy + remove。
+#[tauri::command]
+pub async fn move_file(from: String, to_dir: String) -> Result<String, AppError> {
+    let src = PathBuf::from(&from);
+    if !src.is_file() {
+        return Err(AppError::Io {
+            context: format!("move_file: source not a file: {from}"),
+            source: std::io::Error::new(std::io::ErrorKind::NotFound, "source missing"),
+        });
+    }
+    let dest_dir = PathBuf::from(&to_dir);
+    fs::create_dir_all(&dest_dir).map_err(|e| AppError::Io {
+        context: format!("move_file: create dir {to_dir}"),
+        source: e,
+    })?;
+
+    let file_name = src
+        .file_name()
+        .map(|n| n.to_os_string())
+        .ok_or_else(|| AppError::Io {
+            context: "move_file: source has no file name".into(),
+            source: std::io::Error::new(std::io::ErrorKind::InvalidInput, "no file name"),
+        })?;
+
+    let stem = src
+        .file_stem()
+        .map(|s| s.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    let ext = src
+        .extension()
+        .map(|e| format!(".{}", e.to_string_lossy()))
+        .unwrap_or_default();
+
+    let mut dest = dest_dir.join(&file_name);
+    let mut seq = 1;
+    while dest.exists() {
+        dest = dest_dir.join(format!("{stem}-{seq}{ext}"));
+        seq += 1;
+    }
+
+    if fs::rename(&src, &dest).is_err() {
+        fs::copy(&src, &dest).map_err(|e| AppError::Io {
+            context: format!("move_file: copy to {}", dest.display()),
+            source: e,
+        })?;
+        fs::remove_file(&src).map_err(|e| AppError::Io {
+            context: format!("move_file: remove source {from}"),
+            source: e,
+        })?;
+    }
+
+    let dest_str = dest.to_string_lossy().into_owned();
+    info!(from = %from, to = %dest_str, "file moved");
+    Ok(dest_str)
+}
+
 /// Open a folder picker dialog and return the selected path.
 #[tauri::command]
 pub async fn pick_folder(app: AppHandle) -> Result<String, AppError> {

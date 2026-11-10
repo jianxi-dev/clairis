@@ -15,7 +15,7 @@ use commands::config_cmd::{
 };
 use commands::directory::{flatten_files, get_file_info, list_media_in_dir, read_directory};
 use commands::file::{
-    import_media_file, open_file, open_file_direct, pick_folder, read_file_base64,
+    import_media_file, move_file, open_file, open_file_direct, pick_folder, read_file_base64,
     reveal_in_finder, save_as_file, save_binary_as_file, save_file,
 };
 use commands::recent::list_recent_documents;
@@ -199,6 +199,7 @@ pub fn run() {
             open_file,
             open_file_direct,
             pick_folder,
+            move_file,
             read_file_base64,
             register_media_path,
             save_file,

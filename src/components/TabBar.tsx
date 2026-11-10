@@ -1,3 +1,4 @@
+import { invoke } from "@tauri-apps/api/core";
 import Icon from "./Icon";
 import { colorOfType, fileTypeOf, iconOfType } from "../lib/fileType";
 import { useState, useCallback, useEffect, useRef, Fragment } from "react";
@@ -480,6 +481,56 @@ export default function TabBar({
             className="h-px my-1"
             style={{ background: "var(--app-border)" }}
           />
+          <button
+            className="w-full flex items-center gap-2 text-left px-3 py-1.5 hover:bg-[var(--app-sunken)] disabled:cursor-not-allowed disabled:opacity-45"
+            disabled={!tabs[menu.tabId]?.path}
+            title={
+              tabs[menu.tabId]?.path
+                ? "复制路径"
+                : "此页签尚未保存，无路径可复制"
+            }
+            onClick={() => {
+              const path = tabs[menu.tabId]?.path;
+              if (!path) {
+                closeMenu();
+                return;
+              }
+              void navigator.clipboard.writeText(path).catch(() => undefined);
+              closeMenu();
+            }}
+          >
+            <Icon name="copyPath" size={18} />
+            复制路径
+          </button>
+          <button
+            className="w-full flex items-center gap-2 text-left px-3 py-1.5 hover:bg-[var(--app-sunken)] disabled:cursor-not-allowed disabled:opacity-45"
+            disabled={!tabs[menu.tabId]?.path}
+            title={
+              tabs[menu.tabId]?.path ? "移动到…" : "此页签尚未保存，无法移动"
+            }
+            onClick={() => {
+              const tab = tabs[menu.tabId];
+              const path = tab?.path;
+              closeMenu();
+              if (!path) return;
+              void (async () => {
+                try {
+                  const dir = await invoke<string>("pick_folder");
+                  if (!dir) return;
+                  const next = await invoke<string>("move_file", {
+                    from: path,
+                    toDir: dir,
+                  });
+                  useStore.getState().setTabPath(menu.tabId, next);
+                } catch {
+                  // 取消选择或移动失败：保持原路径不变
+                }
+              })();
+            }}
+          >
+            <Icon name="locate" size={18} />
+            移动到…
+          </button>
           <button
             className="w-full flex items-center gap-2 text-left px-3 py-1.5 hover:bg-[var(--app-sunken)]"
             onClick={() => {
