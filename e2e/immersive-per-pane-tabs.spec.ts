@@ -87,3 +87,39 @@ test("退出沉浸后所有栏页签条恢复显示", async ({ page }) => {
   const heights = await headerHeights(page);
   expect(heights.every((p) => p.h > 0)).toBe(true);
 });
+
+test("沉浸态页签条为浮层：absolute 定位且不改变正文高度", async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() =>
+    window.__biaoyue_store__.getState().setReadingMode(true),
+  );
+  await page.waitForTimeout(500);
+
+  const bodyBoxBefore = await page.evaluate(() => {
+    const pane = document.querySelector("[data-pane-id]") as HTMLElement;
+    const content = pane.querySelector(".cm-editor") as HTMLElement | null;
+    const el = content ?? pane;
+    return Math.round(el.getBoundingClientRect().height);
+  });
+
+  const paneId = await page.evaluate(() =>
+    document.querySelector("[data-pane-id]")?.getAttribute("data-pane-id"),
+  );
+  await page.locator(`[data-pane-hotzone="${paneId}"]`).hover();
+  await page.waitForTimeout(500);
+
+  const probe = await page.evaluate(() => {
+    const pane = document.querySelector("[data-pane-id]") as HTMLElement;
+    const header = pane.querySelector<HTMLElement>(".app-chrome");
+    const content = pane.querySelector(".cm-editor") as HTMLElement | null;
+    const el = content ?? pane;
+    return {
+      position: header ? getComputedStyle(header).position : "missing",
+      visible: header ? getComputedStyle(header).opacity : "missing",
+      bodyHeight: Math.round(el.getBoundingClientRect().height),
+    };
+  });
+  expect(probe.position).toBe("absolute");
+  expect(probe.visible).toBe("1");
+  expect(probe.bodyHeight).toBe(bodyBoxBefore);
+});

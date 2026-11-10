@@ -103,3 +103,43 @@ test("PDF 页码区无外框，外围底色跟随主题", async ({ page }) => {
   await page.evaluate(() => document.documentElement.classList.remove("dark"));
   await expect.poll(() => shadowBg(page, ".bg-bg-app")).toBe(lightAppBg);
 });
+
+test("沉浸态 PDF 顶栏 1.2s 无交互自动收起，指针活动复现", async ({ page }) => {
+  await installShadowProbe(page);
+  await boot(page);
+  await openPdf(page);
+  await page.evaluate(() => {
+    window.__biaoyue_store__.getState().setReadingMode(true);
+  });
+  await page.waitForTimeout(300);
+
+  const toolbarOpacity = () =>
+    page.evaluate(() => {
+      const bar = window.findInShadow('[data-epdf-i="main-toolbar"]');
+      if (!bar) return "missing";
+      return getComputedStyle(bar).opacity;
+    });
+
+  // 指针在预览内活动 → 顶栏可见
+  const host = page
+    .locator("div")
+    .filter({ has: page.locator("shadow=no") })
+    .first();
+  await page.mouse.move(600, 400);
+  await page.mouse.move(610, 410);
+  await page.waitForTimeout(250);
+  expect(await toolbarOpacity()).toBe("1");
+
+  // 指针停住 1.6s → 顶栏收起（opacity 0）
+  await page.waitForTimeout(1600);
+  expect(await toolbarOpacity()).toBe("0");
+
+  // 再活动 → 复现
+  await page.mouse.move(620, 420);
+  await page.waitForTimeout(300);
+  expect(await toolbarOpacity()).toBe("1");
+
+  await page.evaluate(() => {
+    window.__biaoyue_store__.getState().setReadingMode(false);
+  });
+});
