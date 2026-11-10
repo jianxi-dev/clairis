@@ -42,9 +42,45 @@
 
 ### Requirement: C-6 视频预览播放器
 
+应用 SHALL 以 `media://` 协议 Range 流式播放本地视频。播放器 SHALL 提供自定义控制条、快捷键、记忆播放位置、网页全屏与倍速播放。多栏场景下，每一格 SHALL 独立持有播放器实例与播放源：任一格打开新媒体 SHALL NOT 替换其他格的源，正在显示的视频 SHALL NOT 变黑或中断；同格切走页签 SHALL 保持播放并移出视口。
+
 应用 SHALL 以暂停态打开视频文件：`autoplay` SHALL 关闭、`autoPlayback` SHALL 关闭；程序重启恢复工作区后 SHALL NOT 自动播放。已有观看进度 MAY 被恢复为起始位置，但 SHALL NOT 因此开始播放。
 
-多个栏目同时显示视频时，每格 SHALL 持有独立的播放器与播放状态，播放/暂停/静音 SHALL 互不影响；多个视频 SHALL 可同时输出声音（SHALL NOT 只允许一路出声，SHALL NOT 自动静音非焦点格）。既有约束继续有效：第二栏打开视频或其它格式 SHALL NOT 影响第一栏正在显示的视频。
+多个栏目同时显示视频时，每格 SHALL 持有独立的播放器与播放状态，播放/暂停/静音 SHALL 互不影响；多个视频 SHALL 可同时输出声音（SHALL NOT 只允许一路出声，SHALL NOT 自动静音非焦点格）。
+
+控制条 SHALL 采用控制高度 38px、图标盒 24px、自绘图标 22px；右侧按钮 SHALL 统一 38×38 命中盒。倍速主控件与二级每档 SHALL 使用同一表盘几何，仅指针角度不同。全屏按钮 SHALL 使用与画中画相同线宽、相同尺寸的自绘图标。时间戳笔记图标 SHALL 与截图图标等高；播放列表图标底部 SHALL 与画面图标底部对齐。
+
+二级菜单 SHALL 在 hover 时显示、移出 180ms 后隐藏，网页全屏态可用。进度条悬停缩略图 SHALL 对应当前媒体。截图 SHALL 写入剪贴板并在按钮上方提示。快捷键 SHALL 覆盖截图、画中画、画面、播放列表、循环、倍速、旋转、字幕、时间戳笔记、快捷键说明，并出现在总览「媒体」家族。
+
+#### Scenario: 第二栏打开视频不影响第一栏
+
+- **WHEN** 第一栏正在播放视频 A，用户在第二栏打开视频 B
+- **THEN** 第一栏视频 A SHALL 继续播放且画面不变黑，第二栏视频 B SHALL 正常播放
+
+#### Scenario: 第二栏打开其他格式不影响视频
+
+- **WHEN** 第一栏正在播放视频，用户在第二栏打开 Markdown 文件
+- **THEN** 第一栏视频 SHALL 继续播放
+
+#### Scenario: 倍速表盘同形
+
+- **WHEN** 打开倍速菜单
+- **THEN** 主控件与每个档位 SHALL 使用同一表盘轮廓，1.0× 的 `data-angle` SHALL 为 0
+
+#### Scenario: 全屏图标与画中画同线宽
+
+- **WHEN** 测量全屏与画中画图标
+- **THEN** 两者渲染尺寸 SHALL 均为 22×22，描边宽度 SHALL 相同
+
+#### Scenario: 快捷按钮补齐
+
+- **WHEN** 用户打开快捷键说明
+- **THEN** 截图、画中画、画面、播放列表、循环、倍速、旋转、字幕、时间戳笔记 SHALL 均有对应快捷键条目
+
+#### Scenario: 截图入剪贴板
+
+- **WHEN** 用户点击「截取当前画面」
+- **THEN** 剪贴板 SHALL 收到 PNG，提示 SHALL 出现在按钮上方
 
 #### Scenario: 打开视频为暂停态
 
@@ -61,11 +97,6 @@
 - **WHEN** 用户在两个栏目各打开一个视频，并分别点两点各自的播放按钮
 - **THEN** 两个 `video` 元素 SHALL 同时为 `paused === false`
 - **AND** 两个 `video` 元素的 `muted` SHALL 均为 `false`
-
-#### Scenario: 第二栏不影响第一栏
-
-- **WHEN** 第一栏正在播放视频，用户在第二栏打开另一个视频
-- **THEN** 第一栏的视频源与播放状态 SHALL 不变
 
 ## ADDED Requirements
 

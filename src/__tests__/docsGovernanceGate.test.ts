@@ -80,7 +80,8 @@ describe("runGoverned — 已治理域强校验", () => {
     expect(res.contentFiles).toBeGreaterThan(0);
     expect(res.exemptFiles).toBeGreaterThan(0);
     expect(res.governedDirs).toEqual([...GOVERNED_DIRS]);
-  });
+    // 全仓扫描在 CI 磁盘上可能超过默认 5s（归档后 openspec 文件增多）
+  }, 30000);
 });
 
 describe("runGoverned — 故意破坏的已治理域 fixture 失败", () => {
