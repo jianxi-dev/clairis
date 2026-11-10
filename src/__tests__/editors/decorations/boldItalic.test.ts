@@ -161,6 +161,20 @@ describe("boldItalic decoration", () => {
       ).toBeDefined();
     });
 
+    it("renders nested color inside background spans with both classes", () => {
+      const text =
+        '<span class="mdb-color-green"><span class="mdb-bg-purple">发现遗漏</span></span>';
+      const result = createBoldItalicDecorations(text);
+      expect(
+        result.find((d) => d.value.spec.class === "cm-color-green"),
+      ).toBeDefined();
+      expect(
+        result.find((d) => d.value.spec.class === "cm-bg-purple"),
+      ).toBeDefined();
+      const hidden = result.filter((d) => d.value.spec.widget === undefined);
+      expect(hidden.length).toBeGreaterThanOrEqual(2);
+    });
+
     it("renders nested <u> inside a color span as underline (#467)", () => {
       const result = createBoldItalicDecorations(
         '正文<span class="mdb-color-red"><u>段落</u></span>。',

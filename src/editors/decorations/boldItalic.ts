@@ -43,55 +43,44 @@ export const STRIKE_CLASS = "cm-strikethrough";
 export const UNDERLINE_CLASS = "cm-underline";
 
 /** 带原始 HTML 透传 span 的类族（字体 / 文字色 / 背景色 / 边框色）。 */
-type SpanFamily = "mdb-font" | "mdb-color" | "mdb-bg" | "mdb-border";
+type SpanFamily = "font" | "color" | "bg" | "border";
 
 /**
  * 装饰 `mdb-{family}-{variant}` 透传 span：隐藏两侧标签，内容打上对应
- * `cm-*` 类。字体 / 文字色 / 背景色三族共用（#278）。
+ * `cm-*` 类。单遍括号配对，允许任意层嵌套（字色里套背景色等），四族共用。
  */
-function decorateSpanFamily(
-  text: string,
-  regex: RegExp,
-  family: SpanFamily,
-  decorations: Range<Decoration>[],
-): void {
-  regex.lastIndex = 0;
+function decorateSpans(text: string, decorations: Range<Decoration>[]): void {
+  const token = /<span class="mdb-(font|color|bg|border)-([a-z]+)">|<\/span>/g;
+  const stack: Array<{
+    from: number;
+    contentFrom: number;
+    family: SpanFamily;
+    variant: string;
+  }> = [];
   let match: RegExpExecArray | null;
-  while ((match = regex.exec(text)) !== null) {
-    const from = match.index;
-    const to = from + match[0].length;
-    const openTag = `<span class="${family}-${match[1]}">`;
-    const closeTag = "</span>";
-    const openLen = openTag.length;
-    const closeLen = closeTag.length;
-    const markClass = `cm-${family.slice("mdb-".length)}-${match[1]}`;
-
-    const contentFrom = from + openLen;
-    const contentTo = to - closeLen;
-    decorations.push(Decoration.replace({}).range(from, contentFrom));
-    decorations.push(
-      Decoration.mark({ class: markClass }).range(contentFrom, contentTo),
-    );
-    decorations.push(Decoration.replace({}).range(contentTo, to));
-
-    // span 内嵌的 `<u>…</u>`：隐藏标签并加下划线，让颜色与下划线叠加（#467）。
-    const inner = text.slice(contentFrom, contentTo);
-    const nestedUnderline = /<u>([^<]+?)<\/u>/g;
-    let nested: RegExpExecArray | null;
-    while ((nested = nestedUnderline.exec(inner)) !== null) {
-      const innerFrom = contentFrom + nested.index;
-      const innerTo = innerFrom + nested[0].length;
-      const innerTextFrom = innerFrom + "<u>".length;
-      const innerTextTo = innerTo - "</u>".length;
-      decorations.push(Decoration.replace({}).range(innerFrom, innerTextFrom));
+  while ((match = token.exec(text)) !== null) {
+    if (match[0] === "</span>") {
+      const open = stack.pop();
+      if (!open) continue;
+      const closeFrom = match.index;
+      const closeTo = closeFrom + match[0].length;
       decorations.push(
-        Decoration.mark({ class: UNDERLINE_CLASS }).range(
-          innerTextFrom,
-          innerTextTo,
-        ),
+        Decoration.replace({}).range(open.from, open.contentFrom),
       );
-      decorations.push(Decoration.replace({}).range(innerTextTo, innerTo));
+      decorations.push(
+        Decoration.mark({
+          class: `cm-${open.family}-${open.variant}`,
+        }).range(open.contentFrom, closeFrom),
+      );
+      decorations.push(Decoration.replace({}).range(closeFrom, closeTo));
+      continue;
     }
+    stack.push({
+      from: match.index,
+      contentFrom: match.index + match[0].length,
+      family: match[1] as SpanFamily,
+      variant: match[2],
+    });
   }
 }
 
@@ -232,11 +221,8 @@ export function createBoldItalicDecorations(
     decorations.push(Decoration.replace({}).range(to - closeLen, to));
   }
 
-  // 原始 HTML 透传 span：字体 / 文字色 / 背景色 / 边框色
-  decorateSpanFamily(text, fontRegex, "mdb-font", decorations);
-  decorateSpanFamily(text, colorRegex, "mdb-color", decorations);
-  decorateSpanFamily(text, bgRegex, "mdb-bg", decorations);
-  decorateSpanFamily(text, borderRegex, "mdb-border", decorations);
+  // 原始 HTML 透传 span：字体 / 文字色 / 背景色 / 边框色（支持嵌套）
+  decorateSpans(text, decorations);
 
   // 边打边渲染：未闭合标记
   const incompleteBold = findIncompleteBold(text);

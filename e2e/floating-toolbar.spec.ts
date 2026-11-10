@@ -320,3 +320,41 @@ test("MD 源码编辑态同样出轮盘，不出胶囊", async ({ page }) => {
   await expect(page.locator("[data-selection-pill]")).toHaveCount(0);
   await expect(page.locator(".cm-floating-toolbar")).toHaveCount(0);
 });
+
+test("字色与背景色可叠加，且清除格式对已设背景生效", async ({ page }) => {
+  await page.evaluate(() => {
+    const win = window as unknown as Record<string, any>;
+    win.__biaoyue_openFile__(
+      "/tmp/roulette-stack.md",
+      "颜色叠加测试\n",
+      "roulette-stack.md",
+    );
+    win.__biaoyue_store__.getState().setEditorMode("edit");
+  });
+  await page.locator(".cm-content").waitFor();
+  await selectLine(page, 0);
+  await openSector(page, "color");
+  await page.locator(".sr-color-font").nth(4).click({ force: true });
+  await page.locator(".sr-color-bg").nth(7).click({ force: true });
+
+  const source = await content(page);
+  expect(source).toContain("mdb-color-green");
+  expect(source).toContain("mdb-bg-purple");
+
+  const tinted = page.locator(".cm-content .cm-bg-purple").first();
+  await expect(tinted).toHaveCount(1);
+  const styles = await tinted.evaluate((el) => {
+    const cs = getComputedStyle(el);
+    return { color: cs.color, background: cs.backgroundColor };
+  });
+  expect(styles.color).toBe("rgb(47, 143, 70)");
+  expect(styles.background).toBe("rgba(163, 113, 247, 0.25)");
+
+  const visibleText = await page.locator(".cm-content").textContent();
+  expect(visibleText).not.toContain("<span");
+
+  await page.locator('[data-sector="clear"]').click({ force: true });
+  await expect.poll(() => content(page)).not.toContain("mdb-color-");
+  expect(await content(page)).not.toContain("mdb-bg-");
+  expect(await content(page)).toContain("颜色叠加测试");
+});
