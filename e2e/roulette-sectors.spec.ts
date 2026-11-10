@@ -55,3 +55,78 @@ test("缺省配置保持 8 个扇区", async ({ page }) => {
   const wheel = await openWheel(page);
   await expect(wheel.locator("[data-sector]")).toHaveCount(8);
 });
+
+async function openSettingsEditor(page: Page) {
+  await page.keyboard.press("Meta+,");
+  await expect(page.locator('[data-testid="settings-scene"]')).toBeVisible();
+  await page.locator('[data-settings-nav="editor"]').click();
+}
+
+async function closeSettings(page: Page) {
+  await page.keyboard.press("Escape");
+  await expect(page.locator('[data-testid="settings-scene"]')).toHaveCount(0, {
+    timeout: 3000,
+  });
+}
+
+test("设置中取消勾选分栏后轮盘为 7 个扇区", async ({ page }) => {
+  await boot(page);
+  await openSettingsEditor(page);
+  await page
+    .locator('[data-testid="roulette-sector-toggle-columns"]')
+    .uncheck();
+  await page.waitForTimeout(300);
+  await closeSettings(page);
+  const wheel = await openWheel(page);
+  await expect(wheel.locator("[data-sector]")).toHaveCount(7);
+  await expect(wheel.locator('[data-sector="columns"]')).toHaveCount(0);
+});
+
+test("上移一项改变扇区顺序", async ({ page }) => {
+  await boot(page);
+  await openSettingsEditor(page);
+  await page.locator('[data-testid="roulette-sector-up-format"]').click();
+  await page.waitForTimeout(300);
+  await closeSettings(page);
+  const wheel = await openWheel(page);
+  const order = await wheel
+    .locator("[data-sector]")
+    .evaluateAll((els) => els.map((el) => el.getAttribute("data-sector")));
+  expect(order.indexOf("format")).toBeLessThan(order.indexOf("clear"));
+});
+
+test("恢复默认回到 8 个扇区", async ({ page }) => {
+  await boot(page);
+  await openSettingsEditor(page);
+  await page
+    .locator('[data-testid="roulette-sector-toggle-columns"]')
+    .uncheck();
+  await page.waitForTimeout(300);
+  await page.locator('[data-testid="roulette-sector-reset"]').click();
+  await page.waitForTimeout(300);
+  await closeSettings(page);
+  const wheel = await openWheel(page);
+  await expect(wheel.locator("[data-sector]")).toHaveCount(8);
+});
+
+test("取消勾选后重启仍保持", async ({ page }) => {
+  await boot(page);
+  await openSettingsEditor(page);
+  await page
+    .locator('[data-testid="roulette-sector-toggle-columns"]')
+    .uncheck();
+  await page.waitForTimeout(500);
+  await page.reload({ waitUntil: "networkidle" });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 15000 });
+  await page.evaluate(() => {
+    window.__biaoyue_openFile__(
+      "/tmp/sectors2.md",
+      "# 标题\n\n正文。",
+      "sectors2.md",
+    );
+    window.__biaoyue_store__.getState().setEditorMode("edit");
+  });
+  await page.waitForTimeout(300);
+  const wheel = await openWheel(page);
+  await expect(wheel.locator("[data-sector]")).toHaveCount(7);
+});
