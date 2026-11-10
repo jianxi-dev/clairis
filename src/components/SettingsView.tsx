@@ -107,6 +107,7 @@ const FONT_SIZES = [15, 16, 17, 18, 19, 21] as const;
 
 const READER_WIDTH_PRESETS = [
   { value: 720, label: "紧凑" },
+  { value: 960, label: "适中" },
   { value: 1080, label: "标准" },
   { value: 1200, label: "宽松" },
 ] as const;

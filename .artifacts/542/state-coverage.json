@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "控件默认隐藏",
+      "screenshot": ".artifacts/542/state-control-hidden.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-10T05:58:39Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "悬停显示按钮与弹窗",
+      "screenshot": ".artifacts/542/state-hover-open.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-10T05:58:39Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "选中1080档",
+      "screenshot": ".artifacts/542/state-selected-1080.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-10T05:58:39Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "选中1200档",
+      "screenshot": ".artifacts/542/state-selected-1200.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-10T05:58:39Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}
