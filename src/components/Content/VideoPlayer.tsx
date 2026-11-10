@@ -1051,15 +1051,17 @@ export default function VideoPlayer({
       if (btn) openPopover("rate", btn, 88);
     });
 
-    // 自动播放下一个：默认顺序连播（最后一个停），playlist 模式回绕，single 由 option.loop 内部处理
+    // 播完处理：只有「列表循环」才接管下一项。默认的不循环档位必须停在
+    // 当前文件 —— 否则同目录下一项（可能是音频）会被静默播起来，画面看着
+    // 已经停了，声音却要关掉页签才停。
     art.on("video:ended", () => {
       if (loopRef.current === "single") return; // ArtPlayer 内部 loop 已处理
       const list = playlistRef.current;
-      const cur = currentIndexRef.current;
-      if (list.length === 0) return;
-      if (loopRef.current === "playlist" || cur < list.length - 1) {
-        void playIndex(cur + 1);
+      if (loopRef.current === "playlist" && list.length > 0) {
+        void playIndex(currentIndexRef.current + 1);
+        return;
       }
+      art.pause();
     });
 
     // 起播态：打开即播放。上次看到的位置作为起点，播放在 seek 之后发起。

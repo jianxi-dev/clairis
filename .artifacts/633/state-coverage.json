@@ -1,0 +1,39 @@
+{
+  "states": [
+    {
+      "state": "视频页签显示喇叭",
+      "screenshot": ".artifacts/633/video-tab-mute.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-10T23:53:06Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "音频页签显示喇叭",
+      "screenshot": ".artifacts/633/audio-tab-mute.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-10T23:53:06Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "PDF页签无喇叭",
+      "screenshot": ".artifacts/633/pdf-no-mute.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-10T23:53:06Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "图片页签无喇叭",
+      "screenshot": ".artifacts/633/image-no-mute.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-10T23:53:06Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "播完停在当前文件不连播",
+      "screenshot": ".artifacts/633/ended-no-advance.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-10T23:53:06Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}
