@@ -7,10 +7,11 @@
  * `getBlockAt()` 在该数组上二分查找。
  *
  * 重解析策略：编辑后对新 state 调 `getBlocks()` 即可——CM6 的增量解析
- * 只重解析改动区域，所以代价是 O(改动块数)，不是 O(文档)。
+ * 只重解析改动区域，所以代价是 O(改动块数)，不是 O(文档)。首次调用会
+ * 强制解析到文档末尾一次（见 `getBlocks` 内的 `ensureSyntaxTree`）。
  */
 import type { EditorState } from "@codemirror/state";
-import { syntaxTree } from "@codemirror/language";
+import { ensureSyntaxTree, syntaxTree } from "@codemirror/language";
 
 // --- 块类型 ------------------------------------------------------------------
 
@@ -117,7 +118,11 @@ function isTaskChecked(text: string): boolean {
  */
 export function getBlocks(state: EditorState): Block[] {
   const blocks: Block[] = [];
-  const tree = syntaxTree(state);
+  // `syntaxTree()` 返回的是「当前已解析」的树：解析受时间预算约束，可能只覆盖
+  // 文档前段。块遍历要求读到文档全部顶层节点，故先强制解析到文档末尾；超时
+  // 时退回当前树，保持原有降级行为（不阻塞编辑）。
+  const tree =
+    ensureSyntaxTree(state, state.doc.length, 5000) ?? syntaxTree(state);
 
   // 游标停在文档根，只迭代顶层子节点。
   const cursor = tree.cursor();

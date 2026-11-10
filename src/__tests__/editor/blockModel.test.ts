@@ -81,6 +81,12 @@ describe("getBlocks", () => {
     expect(blocks[1].level).toBe(2);
   });
 
+  it("reads every block of a document longer than one parse budget", () => {
+    const sections = Array.from({ length: 200 }, (_, i) => `Heading ${i}\n===`);
+    const state = makeState(sections.join("\n\n"));
+    expect(getBlocks(state)).toHaveLength(200);
+  });
+
   it("identifies task list items (bullet)", () => {
     const state = makeState("- [ ] todo\n- [x] done\n- [X] also done");
     const blocks = getBlocks(state);
