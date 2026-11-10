@@ -1,0 +1,344 @@
+{
+  "change": "ui-polish-batch13",
+  "requirements": [
+    {
+      "id": "R-1",
+      "text": "编辑态装饰重建",
+      "anchors": [
+        {
+          "id": "A-1.1",
+          "claim": "分栏后原格 `data-mode`",
+          "kind": "exact",
+          "assert": "\"edit\"",
+          "source": "用户需求 2 / design R-2"
+        },
+        {
+          "id": "A-1.2",
+          "claim": "分栏后原格 `.cm-heading-marker` 数量下限",
+          "kind": "exact",
+          "assert": "\">=1\"",
+          "source": "用户需求 2 / 探针复现"
+        },
+        {
+          "id": "A-1.3",
+          "claim": "分栏后原格 `.cm-callout` 数量下限",
+          "kind": "exact",
+          "assert": "\">=1\"",
+          "source": "用户需求 2 / 探针复现"
+        },
+        {
+          "id": "A-1.4",
+          "claim": "编辑态正文字面出现的 `**` 源码片段数",
+          "kind": "exact",
+          "assert": "\"0\"",
+          "source": "用户需求 2"
+        }
+      ]
+    },
+    {
+      "id": "R-2",
+      "text": "轮盘视觉与三级联动",
+      "anchors": [
+        {
+          "id": "A-2.1",
+          "claim": "颜色扇区图标名",
+          "kind": "exact",
+          "assert": "\"droplet\"",
+          "source": "用户需求 1"
+        },
+        {
+          "id": "A-2.2",
+          "claim": "三层展开后根扇区计算 opacity",
+          "kind": "exact",
+          "assert": "\"0.25\"",
+          "source": "用户需求 1"
+        },
+        {
+          "id": "A-2.3",
+          "claim": "三层展开瞬间 `.hot` 的层内数量",
+          "kind": "exact",
+          "assert": "\"1\"",
+          "source": "用户需求 1"
+        },
+        {
+          "id": "A-2.4",
+          "claim": "指针沿二层自左向右滑动时三层 hot 索引",
+          "kind": "state-machine",
+          "assert": "\"单调不减\"",
+          "source": "用户需求 1"
+        },
+        {
+          "id": "A-2.5",
+          "claim": "悬停根扇区 600ms 后 `.app-tip` 数量",
+          "kind": "exact",
+          "assert": "\"0\"",
+          "source": "用户需求 1"
+        },
+        {
+          "id": "A-2.6",
+          "claim": "悬停圆心出现的提示文案片段",
+          "kind": "exact",
+          "assert": "\"格式刷\"",
+          "source": "用户需求 1"
+        }
+      ]
+    },
+    {
+      "id": "R-3",
+      "text": "格式刷与胶囊工具条",
+      "anchors": [
+        {
+          "id": "A-3.1",
+          "claim": "格式刷后目标段源码含加粗标记",
+          "kind": "exact",
+          "assert": "\"**\"",
+          "source": "用户需求 1"
+        },
+        {
+          "id": "A-3.2",
+          "claim": "格式刷后目标段源码含字色类",
+          "kind": "exact",
+          "assert": "\"mdb-color-\"",
+          "source": "用户需求 1"
+        },
+        {
+          "id": "A-3.3",
+          "claim": "格式刷圆心计数",
+          "kind": "exact",
+          "assert": "\"2\"",
+          "source": "用户需求 1"
+        },
+        {
+          "id": "A-3.4",
+          "claim": "胶囊模式下 `.selection-roulette` 数量",
+          "kind": "exact",
+          "assert": "\"0\"",
+          "source": "用户需求 7"
+        },
+        {
+          "id": "A-3.5",
+          "claim": "胶囊可见行数",
+          "kind": "exact",
+          "assert": "\"2\"",
+          "source": "用户需求 7"
+        },
+        {
+          "id": "A-3.6",
+          "claim": "设置项 `selectionToolbar` 可选值数量",
+          "kind": "exact",
+          "assert": "\"2\"",
+          "source": "用户需求 7"
+        }
+      ]
+    },
+    {
+      "id": "R-4",
+      "text": "高亮块图标与间距",
+      "anchors": [
+        {
+          "id": "A-4.1",
+          "claim": "转换为 TIP 后卡片 emoji 等于 TIP 默认",
+          "kind": "exact",
+          "assert": "\"💡\"",
+          "source": "用户需求 3 / callout-types"
+        },
+        {
+          "id": "A-4.2",
+          "claim": "图标右缘与标题左缘间距上限 px",
+          "kind": "exact",
+          "assert": "\"<=2\"",
+          "source": "用户需求 3"
+        }
+      ]
+    },
+    {
+      "id": "R-5",
+      "text": "撤销/重做快捷键",
+      "anchors": [
+        {
+          "id": "A-5.1",
+          "claim": "点击栏目头后按 ⌘Z 的内容变化",
+          "kind": "state-machine",
+          "assert": "\"abc → 空\"",
+          "source": "用户需求 4"
+        },
+        {
+          "id": "A-5.2",
+          "claim": "再按 ⌘⇧Z 的内容变化",
+          "kind": "state-machine",
+          "assert": "\"空 → abc\"",
+          "source": "用户需求 4"
+        }
+      ]
+    },
+    {
+      "id": "R-6",
+      "text": "文案与行宽上限",
+      "anchors": [
+        {
+          "id": "A-6.1",
+          "claim": "栏目菜单项文本",
+          "kind": "exact",
+          "assert": "\"打开文件位置\"",
+          "source": "用户需求 5"
+        },
+        {
+          "id": "A-6.2",
+          "claim": "状态栏宽度按钮 title 全文",
+          "kind": "exact",
+          "assert": "\"页面宽度 1080px\"",
+          "source": "用户需求 9"
+        },
+        {
+          "id": "A-6.3",
+          "claim": "设置行宽滑块与状态栏滑块 max",
+          "kind": "exact",
+          "assert": "\"1400, 1400\"",
+          "source": "用户需求 6"
+        }
+      ]
+    },
+    {
+      "id": "R-7",
+      "text": "页签栏双击与弹窗提示抑制",
+      "anchors": [
+        {
+          "id": "A-7.1",
+          "claim": "双击空白后的页签数增量",
+          "kind": "exact",
+          "assert": "\"1\"",
+          "source": "用户需求 8"
+        },
+        {
+          "id": "A-7.2",
+          "claim": "新页签默认模式",
+          "kind": "exact",
+          "assert": "\"edit\"",
+          "source": "用户需求 8 / newTabWith"
+        },
+        {
+          "id": "A-7.3",
+          "claim": "菜单打开期间悬停 600ms 后 `.app-tip` 数量",
+          "kind": "exact",
+          "assert": "\"0\"",
+          "source": "用户需求 11"
+        }
+      ]
+    },
+    {
+      "id": "R-8",
+      "text": "视频自动播放与图标",
+      "anchors": [
+        {
+          "id": "A-8.1",
+          "claim": "打开视频 800ms 后 `video.paused`",
+          "kind": "exact",
+          "assert": "\"false\"",
+          "source": "用户需求 10"
+        },
+        {
+          "id": "A-8.2",
+          "claim": "两格视频的 muted 值",
+          "kind": "exact",
+          "assert": "\"false, false\"",
+          "source": "用户需求 10"
+        },
+        {
+          "id": "A-8.3",
+          "claim": "时间戳按钮图标 path 与旧值不同",
+          "kind": "exact",
+          "assert": "\"changed\"",
+          "source": "用户需求 10"
+        }
+      ]
+    },
+    {
+      "id": "R-9",
+      "text": "HTML 卡片缩略图",
+      "anchors": [
+        {
+          "id": "A-9.1",
+          "claim": "HTML 卡片内 iframe 数量",
+          "kind": "exact",
+          "assert": "\">=1\"",
+          "source": "用户需求 12"
+        },
+        {
+          "id": "A-9.2",
+          "claim": "加载完成 iframe 计算 opacity",
+          "kind": "exact",
+          "assert": "\"1\"",
+          "source": "用户需求 12"
+        }
+      ]
+    },
+    {
+      "id": "R-10",
+      "text": "PDF 工具栏",
+      "anchors": [
+        {
+          "id": "A-10.1",
+          "claim": "打开 PDF 时顶栏 opacity",
+          "kind": "exact",
+          "assert": "\"1\"",
+          "source": "用户需求 13"
+        },
+        {
+          "id": "A-10.2",
+          "claim": "双击收起后顶栏 opacity",
+          "kind": "exact",
+          "assert": "\"0\"",
+          "source": "用户需求 13"
+        },
+        {
+          "id": "A-10.3",
+          "claim": "收起后正文高度增量下限 px",
+          "kind": "exact",
+          "assert": "\">=24\"",
+          "source": "用户需求 13"
+        },
+        {
+          "id": "A-10.4",
+          "claim": "顶部 16px 滑入后顶栏 position",
+          "kind": "state-machine",
+          "assert": "\"absolute\"",
+          "source": "用户需求 13"
+        },
+        {
+          "id": "A-10.5",
+          "claim": "正文中部滑入后顶栏 opacity",
+          "kind": "exact",
+          "assert": "\"0\"",
+          "source": "用户需求 13"
+        }
+      ]
+    },
+    {
+      "id": "R-11",
+      "text": "悬浮小窗编辑",
+      "anchors": [
+        {
+          "id": "A-11.1",
+          "claim": "钉住按钮右侧切换按钮存在",
+          "kind": "exact",
+          "assert": "\">=1\"",
+          "source": "用户需求 14"
+        },
+        {
+          "id": "A-11.2",
+          "claim": "编辑态 textarea 数量",
+          "kind": "exact",
+          "assert": "\"1\"",
+          "source": "用户需求 14"
+        },
+        {
+          "id": "A-11.3",
+          "claim": "保存调用写文件命令次数",
+          "kind": "exact",
+          "assert": "\">=1\"",
+          "source": "用户需求 14"
+        }
+      ]
+    }
+  ]
+}
