@@ -12,6 +12,7 @@ import type {
 } from "@embedpdf/snippet";
 import { loadPdfBytes } from "../../utils/pdfSource";
 import { isTauriEnv } from "../../utils/tauri";
+import { useStore } from "../../stores";
 
 interface PdfViewerProps {
   filePath: string;
@@ -95,6 +96,9 @@ function injectPdfUiCss(container: EmbedPdfContainer): void {
     '[data-epdf-i="page-controls"] input{background:var(--app-surface) !important;border-color:var(--app-border) !important;color:var(--app-text) !important}',
     '[data-epdf-i="page-controls"] span{color:var(--app-text-2) !important}',
     '[data-epdf-i="main-toolbar"]{background:var(--app-surface) !important;border-bottom-color:var(--app-border) !important}',
+    '[data-epdf-i="main-toolbar"]{transition:opacity .25s ease,transform .25s ease !important}',
+    '[data-epdf-i="main-toolbar"]{opacity:calc(1 - var(--pdf-chrome-idle, 0)) !important;transform:translateY(calc(var(--pdf-chrome-idle, 0) * -100%)) !important}',
+    ":host(.pdf-chrome-idle) *{pointer-events:none !important}",
   ].join("\n");
   shadow.appendChild(style);
 }
@@ -307,6 +311,36 @@ export default function PdfViewer({ filePath }: PdfViewerProps) {
   }, [registry]);
 
   usePdfPinchZoom(registry, containerRef, state.status === "ready");
+
+  // 沉浸态 PDF 顶栏自动收起（ui-polish-batch12 7.1）：1.2s 无指针交互加
+  // pdf-chrome-idle，容器内任何指针活动解除；transform/opacity 收起，
+  // 不改变内容布局。
+  const readingMode = useStore((s) => s.readingMode);
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!readingMode || state.status !== "ready" || !el) {
+      el?.classList.remove("pdf-chrome-idle");
+      return;
+    }
+    let timer: number | null = null;
+    const arm = () => {
+      if (timer !== null) window.clearTimeout(timer);
+      el.classList.remove("pdf-chrome-idle");
+      timer = window.setTimeout(() => {
+        timer = null;
+        el.classList.add("pdf-chrome-idle");
+      }, 1200);
+    };
+    arm();
+    el.addEventListener("pointermove", arm);
+    el.addEventListener("pointerdown", arm);
+    return () => {
+      if (timer !== null) window.clearTimeout(timer);
+      el.classList.remove("pdf-chrome-idle");
+      el.removeEventListener("pointermove", arm);
+      el.removeEventListener("pointerdown", arm);
+    };
+  }, [readingMode, state.status]);
 
   if (state.status === "loading") {
     return (

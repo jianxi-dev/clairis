@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "沉浸态PDF顶栏可见",
+      "screenshot": ".artifacts/545/state-pdf-bar-visible.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-10T08:28:48Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "顶栏1.5s后收起",
+      "screenshot": ".artifacts/545/state-pdf-bar-hidden.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-10T08:28:48Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "页签条浮出为悬浮栏",
+      "screenshot": ".artifacts/545/state-tabbar-float.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-10T08:28:49Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "浮层状态正文高度不变",
+      "screenshot": ".artifacts/545/state-tabbar-float.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-10T08:28:49Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}

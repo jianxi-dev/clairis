@@ -873,6 +873,8 @@ body {
 .pane-leaf {
   min-width: 0;
   min-height: 0;
+  /* 沉浸态页签条浮层的定位基准 */
+  position: relative;
 }
 
 .pane-actions {
@@ -992,8 +994,13 @@ body {
 }
 
 .immersive .app-chrome {
-  /* flex 子项的 min-height:auto 会撑住内容高度，必须显式归零；
-     内边距也算在 border-box 的 max-height 里，一并收掉。 */
+  /* 浮层化（ui-polish-batch12 7.1）：沉浸态页签条脱离文档流，展开时
+     以悬浮栏覆盖在正文上方，不推挤内容；收拢时同样不占布局高度。 */
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 30;
   min-height: 0;
   max-height: 0;
   padding-top: 0;
@@ -1002,6 +1009,15 @@ body {
   overflow: hidden;
   pointer-events: none;
   border-bottom-width: 0;
+  background: var(--app-surface);
+  box-shadow: var(--app-shadow);
+  border-radius: 0 0 var(--radius-8, 8px) var(--radius-8, 8px);
+}
+
+/* 沉浸态 PDF 顶栏自动收起：自定义属性穿透 EmbedPDF shadow DOM，
+   顶栏 opacity/transform 由该变量驱动（见 PdfViewer 注入的样式）。 */
+.pdf-chrome-idle {
+  --pdf-chrome-idle: 1;
 }
 
 /* 底部状态栏（G-3）：沉浸态只收拢 .app-chrome，状态栏常驻不透明。 */
