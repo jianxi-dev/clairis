@@ -35,6 +35,14 @@
 
 批准依据：`docs/MVP-需求跟踪表.md`「已落地为」列明确引用。行为规格的真相源始终是 `openspec/specs/`。
 
+## 实现落点偏离（勘误索引）
+
+已批准设计稿受治理 §2.3 保护（`accepted` 不可原地改写），实现期与设计稿不一致的落点在此登记，裁定以更高层为准：
+
+| 设计稿条目 | 设计稿写法 | 实际落点 | 裁定依据 |
+| --- | --- | --- | --- |
+| [layout-portal/spec.md](./layout-portal/spec.md) §13 / D11 | `$APPCONFIG/user/views/rail.json` / `grid.json` / `preview.json` + 布局树文件 | `user/settings.json` 的 `railViewSpec` / `previewSettings` / `aiViewSpec` / `paneLayout` 四字段；**三个 views 文件从未实现** | [ADR 0011](../../architecture/decisions/0011-scenario-shell-and-pane-tree.md)（第 3 层）与 [overview §7](../../architecture/overview.md) 覆盖第 4 层设计稿；勘误记录见 `docs/research/technical/data-fileization-omarchy-inventory.md`（2026-11-10） |
+
 ## 权威级别
 
 已批准设计在权威优先级矩阵中位于第 4 层。**creative / 设计表现内容不得自动升级为 canonical requirement**；功能行为的真相源始终是 `openspec/specs/`。
