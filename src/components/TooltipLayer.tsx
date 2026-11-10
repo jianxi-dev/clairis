@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { isOverlayOpen, subscribeOverlay } from "../lib/overlayGate";
 
 /**
  * 全局胶囊提示（ui-polish-batch12 9.1）。
@@ -40,6 +41,7 @@ export default function TooltipLayer() {
     };
 
     const onOver = (e: PointerEvent) => {
+      if (isOverlayOpen()) return;
       const target = e.target;
       if (!(target instanceof Element)) return;
       const el = target.closest("[title]");
@@ -58,6 +60,7 @@ export default function TooltipLayer() {
       const y = e.clientY;
       timerRef.current = window.setTimeout(() => {
         timerRef.current = null;
+        if (isOverlayOpen()) return;
         setTip({ text, x, y });
       }, 400);
     };
@@ -83,6 +86,10 @@ export default function TooltipLayer() {
       restore();
     };
 
+    const unsubscribe = subscribeOverlay((open) => {
+      if (open) clear();
+    });
+
     document.addEventListener("pointerover", onOver, true);
     document.addEventListener("pointerout", onOut, true);
     document.addEventListener("pointerdown", onDownRestore, true);
@@ -94,6 +101,7 @@ export default function TooltipLayer() {
       document.removeEventListener("pointerdown", onDownRestore, true);
       window.removeEventListener("scroll", clear, true);
       window.removeEventListener("blur", clear);
+      unsubscribe();
       cancelTimer();
     };
   }, []);

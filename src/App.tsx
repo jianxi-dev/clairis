@@ -34,6 +34,7 @@ import { saveAppConfig, useConfig } from "./hooks/useConfig";
 import { nextRailState, RAIL_KIND_ORDER } from "./lib/railView";
 import type { FileTypeKind } from "./lib/fileType";
 import { log } from "./utils/log";
+import { popOverlay, pushOverlay } from "./lib/overlayGate";
 import { loadExtensionBundle } from "./lib/extensions/bundle";
 import type { ExtensionBundle } from "./lib/extensions/bundle";
 import {
@@ -92,8 +93,14 @@ function App() {
   const statusBarHoverRef = useRef(false);
   const statusPeekTimer = useRef<number | null>(null);
 
+  const statusBarPopupGate = useRef(false);
   const handleStatusBarPopupOpen = useCallback(
     (open: boolean) => {
+      if (open !== statusBarPopupGate.current) {
+        statusBarPopupGate.current = open;
+        if (open) pushOverlay();
+        else popOverlay();
+      }
       setStatusBarPopupOpen(open);
       if (
         !open &&

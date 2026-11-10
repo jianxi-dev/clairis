@@ -44,6 +44,7 @@ import {
 } from "../../lib/export/mdpkg";
 import { exportZipFromMarkdown, exportZipMessage } from "../../lib/export/zip";
 import { log } from "../../utils/log";
+import { popOverlay, pushOverlay } from "../../lib/overlayGate";
 import type { EditorMode, Tab } from "../../types";
 import TabBar from "../TabBar";
 import ErrorBoundary from "../ErrorBoundary";
@@ -341,7 +342,8 @@ function PaneHeader({
     (e: ReactPointerEvent) => {
       const target = e.target;
       if (!(target instanceof Element)) return;
-      if (target.closest("button, [data-tab-id], input, select, a")) return;
+      if (target.closest("button, [data-tab-id], input, select, a, .tab-strip"))
+        return;
       startPaneDrag(leafId, e);
     },
     [startPaneDrag, leafId],
@@ -352,6 +354,12 @@ function PaneHeader({
     if (noticeTimer.current) clearTimeout(noticeTimer.current);
     noticeTimer.current = setTimeout(() => setNotice(null), 3000);
   }, []);
+
+  useEffect(() => {
+    if (!menuOpen && !exportOpen) return;
+    pushOverlay();
+    return () => popOverlay();
+  }, [menuOpen, exportOpen]);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -822,6 +830,12 @@ function PaneHeader({
 function AiPaneHeader({ leafId }: { leafId: string }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    pushOverlay();
+    return () => popOverlay();
+  }, [menuOpen]);
 
   useEffect(() => {
     if (!menuOpen) return;

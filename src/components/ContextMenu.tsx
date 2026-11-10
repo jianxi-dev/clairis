@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import Icon from "./Icon";
 import type { IconName } from "../ui/icons";
+import { popOverlay, pushOverlay } from "../lib/overlayGate";
 
 export interface ContextMenuItem {
   label: string;
@@ -29,6 +30,11 @@ export default function ContextMenu({
   testId,
 }: ContextMenuProps) {
   const ref = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    pushOverlay();
+    return () => popOverlay();
+  }, []);
 
   useEffect(() => {
     const onPointerDown = (e: PointerEvent) => {

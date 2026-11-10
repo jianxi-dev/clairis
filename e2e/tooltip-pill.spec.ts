@@ -14,7 +14,7 @@ async function boot(page: Page): Promise<void> {
 
 test("悬停功能按钮出现胶囊提示，原生矩形不再出现", async ({ page }) => {
   await boot(page);
-  const btn = page.getByTestId("theme-entry");
+  const btn = page.getByTestId("home-entry");
   await btn.hover();
   const tip = page.locator(".app-tip");
   await expect(tip).toBeVisible({ timeout: 3000 });
@@ -41,7 +41,7 @@ test("悬停功能按钮出现胶囊提示，原生矩形不再出现", async ({
   expect(restored).not.toBe("");
 });
 
-test("轮盘扇区悬停显示中文名称提示", async ({ page }) => {
+test("轮盘扇区不再出现提示，只有圆心保留操作说明", async ({ page }) => {
   await boot(page);
   await page.evaluate(() => {
     window.__biaoyue_store__.getState().setEditorMode("edit");
@@ -52,7 +52,23 @@ test("轮盘扇区悬停显示中文名称提示", async ({ page }) => {
   await expect(wheel).toBeVisible({ timeout: 3000 });
 
   await wheel.locator('[data-sector="convert"]').hover();
-  const tip = page.locator(".app-tip");
-  await expect(tip).toBeVisible({ timeout: 3000 });
-  await expect(tip).toHaveText("转换");
+  await page.waitForTimeout(700);
+  await expect(page.locator(".app-tip")).toHaveCount(0);
+});
+
+test("右键菜单打开期间不出现悬停提示，关闭后恢复", async ({ page }) => {
+  await boot(page);
+  const tab = page.locator("[data-tab-id]").first();
+  await tab.click({ button: "right" });
+  await expect(page.locator(".fixed.z-50").first()).toBeVisible();
+
+  const btn = page.getByTestId("pane-mode").first();
+  await btn.hover();
+  await page.waitForTimeout(700);
+  await expect(page.locator(".app-tip")).toHaveCount(0);
+
+  await page.mouse.click(400, 300);
+  await page.mouse.move(10, 10);
+  await btn.hover();
+  await expect(page.locator(".app-tip")).toBeVisible({ timeout: 3000 });
 });
