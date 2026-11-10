@@ -751,3 +751,32 @@ test("对齐与缩进入口有图标，子项图标与项数一致", async ({ pa
     await expect(options.nth(i).locator("svg[data-icon]")).toHaveCount(1);
   }
 });
+
+test("类型二级面板：指针移出后仍保持，Esc 才收起", async ({ page }) => {
+  await page.evaluate(() => {
+    const win = window as unknown as Record<string, any>;
+    win.__biaoyue_openFile__(
+      "/tmp/block-callout-keep.md",
+      "> [!note] 标题\n> 正文一行\n",
+      "block-callout-keep.md",
+    );
+    win.__biaoyue_store__.getState().setEditorMode("edit");
+  });
+  await page.locator(".cm-content").waitFor({ timeout: 5000 });
+  await hoverHandle(page, 0);
+  await page.locator('[data-testid="block-menu-type"]').hover();
+  const panel = page.locator('[data-testid="block-menu-type-panel"]');
+  await panel.waitFor({ timeout: 3000 });
+
+  await page.mouse.move(900, 620);
+  await page.waitForTimeout(600);
+  await expect(panel).toBeVisible();
+  await expect(page.locator('[data-testid="block-menu"]')).toBeVisible();
+
+  await page.keyboard.press("Escape");
+  await expect(panel).toHaveCount(0);
+  await expect(page.locator('[data-testid="block-menu"]')).toHaveCount(0);
+  await expect
+    .poll(() => storeContent(page))
+    .toBe("> [!note] 标题\n> 正文一行\n");
+});

@@ -366,7 +366,10 @@ export function openBlockMenu(
     typeRow.appendChild(typeChevron);
 
     let typePanel: HTMLElement | null = null;
+    let releaseTypeKeepOpen: (() => void) | null = null;
     const closeTypePanel = (): void => {
+      releaseTypeKeepOpen?.();
+      releaseTypeKeepOpen = null;
       typePanel?.remove();
       typePanel = null;
     };
@@ -414,6 +417,7 @@ export function openBlockMenu(
       }
       view.dom.appendChild(panelEl);
       panelEl.addEventListener("pointerenter", () => cancelPendingClose(view));
+      releaseTypeKeepOpen = keepColorPanelOpen(menuStack, view);
       typePanel = panelEl;
     };
 
