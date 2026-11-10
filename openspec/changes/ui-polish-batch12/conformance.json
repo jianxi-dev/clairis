@@ -1,0 +1,262 @@
+{
+  "change": "ui-polish-batch12",
+  "requirements": [
+    {
+      "id": "R-1",
+      "text": "视频暂停起播与多路并行",
+      "anchors": [
+        {
+          "id": "A-1.1",
+          "claim": "打开视频 500ms 后 video.paused",
+          "kind": "exact",
+          "assert": "\"true\"",
+          "source": "用户需求 1"
+        },
+        {
+          "id": "A-1.2",
+          "claim": "两格同时播放时 muted",
+          "kind": "exact",
+          "assert": "\"false, false\"",
+          "source": "用户需求 1"
+        },
+        {
+          "id": "A-1.3",
+          "claim": "重启恢复后仍为暂停",
+          "kind": "state-machine",
+          "assert": "\"暂停 → 恢复布局 → 仍暂停\"",
+          "source": "用户需求 1"
+        }
+      ]
+    },
+    {
+      "id": "R-2",
+      "text": "转换手柄二级菜单常驻",
+      "anchors": [
+        {
+          "id": "A-2.1",
+          "claim": "指针移出 600ms 后二级面板可见",
+          "kind": "state-machine",
+          "assert": "\"可见 → 移出 600ms → 仍可见\"",
+          "source": "用户需求 2"
+        },
+        {
+          "id": "A-2.2",
+          "claim": "Esc 后二级面板节点数",
+          "kind": "exact",
+          "assert": "\"0\"",
+          "source": "popup-lifecycle R3"
+        }
+      ]
+    },
+    {
+      "id": "R-3",
+      "text": "行内字色与背景色叠加",
+      "anchors": [
+        {
+          "id": "A-3.1",
+          "claim": "编辑态字色绿色计算值",
+          "kind": "exact",
+          "assert": "\"#2f8f46\"",
+          "source": "editor.css .cm-color-green"
+        },
+        {
+          "id": "A-3.2",
+          "claim": "编辑态背景紫色计算值",
+          "kind": "exact",
+          "assert": "\"rgba(163, 113, 247, 0.25)\"",
+          "source": "editor.css .cm-bg-purple"
+        },
+        {
+          "id": "A-3.3",
+          "claim": "嵌套后编辑区出现的 span 源码文本数",
+          "kind": "exact",
+          "assert": "\"0\"",
+          "source": "用户需求 3"
+        },
+        {
+          "id": "A-3.4",
+          "claim": "清除格式后源码含 mdb-color-/mdb-bg- 的计数",
+          "kind": "exact",
+          "assert": "\"0\"",
+          "source": "用户需求 3"
+        }
+      ]
+    },
+    {
+      "id": "R-4",
+      "text": "页面宽度四档与悬停弹窗",
+      "anchors": [
+        {
+          "id": "A-4.1",
+          "claim": "宽度档位色块数量",
+          "kind": "exact",
+          "assert": "\"4\"",
+          "source": "用户需求 4"
+        },
+        {
+          "id": "A-4.2",
+          "claim": "四档色块高度（px）",
+          "kind": "exact",
+          "assert": "\"14, 17, 20, 23\"",
+          "source": "用户需求 4"
+        },
+        {
+          "id": "A-4.3",
+          "claim": "选中/未选中填充不透明度",
+          "kind": "exact",
+          "assert": "\"1 / <=0.45\"",
+          "source": "用户需求 4"
+        },
+        {
+          "id": "A-4.4",
+          "claim": "移出控件 300ms 后按钮与弹窗",
+          "kind": "state-machine",
+          "assert": "\"可见 → 移出 300ms → 均不可见\"",
+          "source": "popup-lifecycle R1"
+        }
+      ]
+    },
+    {
+      "id": "R-5",
+      "text": "页签右键菜单与移动文件",
+      "anchors": [
+        {
+          "id": "A-5.1",
+          "claim": "栏目「更多」菜单项数量",
+          "kind": "exact",
+          "assert": "\"8\"",
+          "source": "paneHeaderMenu 9 项减 copyPath"
+        },
+        {
+          "id": "A-5.2",
+          "claim": "页签右键分隔线下方项文案",
+          "kind": "exact",
+          "assert": "\"复制路径, 移动到…\"",
+          "source": "用户需求 5"
+        },
+        {
+          "id": "A-5.3",
+          "claim": "复制路径后剪贴板内容",
+          "kind": "exact",
+          "assert": "\"/Users/test/a.md\"",
+          "source": "用户需求 5"
+        },
+        {
+          "id": "A-5.4",
+          "claim": "移动到目标目录后原目录",
+          "kind": "state-machine",
+          "assert": "\"存在 → 移动 → 不存在\"",
+          "source": "用户需求 5"
+        }
+      ]
+    },
+    {
+      "id": "R-6",
+      "text": "新建文件默认保存路径",
+      "anchors": [
+        {
+          "id": "A-6.1",
+          "claim": "保存对话框初始目录",
+          "kind": "exact",
+          "assert": "\"/Users/test/Docs\"",
+          "source": "用户需求 6"
+        },
+        {
+          "id": "A-6.2",
+          "claim": "设置默认路径后重启仍生效",
+          "kind": "state-machine",
+          "assert": "\"设置 → 重启 → 仍为 /Users/test/Docs\"",
+          "source": "用户需求 6"
+        },
+        {
+          "id": "A-6.3",
+          "claim": "未落盘页签 Cmd+S 触发保存对话框次数",
+          "kind": "exact",
+          "assert": "\"1\"",
+          "source": "既有缺陷修复"
+        }
+      ]
+    },
+    {
+      "id": "R-7",
+      "text": "胶囊形悬停提示",
+      "anchors": [
+        {
+          "id": "A-7.1",
+          "claim": "提示元素计算 border-radius",
+          "kind": "exact",
+          "assert": "\"999px\"",
+          "source": "design system §5 --radius-full"
+        },
+        {
+          "id": "A-7.2",
+          "claim": "轮盘「转换」扇区提示文案",
+          "kind": "exact",
+          "assert": "\"转换\"",
+          "source": "用户需求 7"
+        },
+        {
+          "id": "A-7.3",
+          "claim": "页面残留原生 title 提示元素数",
+          "kind": "exact",
+          "assert": "\"0\"",
+          "source": "用户需求 7"
+        }
+      ]
+    },
+    {
+      "id": "R-8",
+      "text": "阅读空间 HTML 卡片缩略图",
+      "anchors": [
+        {
+          "id": "A-8.1",
+          "claim": "最近列表 HTML 卡片数量（用例构造）",
+          "kind": "exact",
+          "assert": "\"6\"",
+          "source": "用户需求 8"
+        },
+        {
+          "id": "A-8.2",
+          "claim": "每张 HTML 卡片缩略图可见数",
+          "kind": "exact",
+          "assert": "\"6\"",
+          "source": "用户需求 8"
+        },
+        {
+          "id": "A-8.3",
+          "claim": "卡片内 iframe 节点数",
+          "kind": "exact",
+          "assert": "\"0\"",
+          "source": "reading spec A-14"
+        }
+      ]
+    },
+    {
+      "id": "R-9",
+      "text": "沉浸态浮层",
+      "anchors": [
+        {
+          "id": "A-9.1",
+          "claim": "沉浸态 PDF 顶栏 1.5s 无交互后 opacity",
+          "kind": "exact",
+          "assert": "\"0\"",
+          "source": "用户需求 9"
+        },
+        {
+          "id": "A-9.2",
+          "claim": "页签条展开前后正文高度",
+          "kind": "state-machine",
+          "assert": "\"高度 h → 浮出 → 仍为 h\"",
+          "source": "用户需求 9"
+        },
+        {
+          "id": "A-9.3",
+          "claim": "沉浸态页签条计算 position",
+          "kind": "exact",
+          "assert": "\"absolute\"",
+          "source": "用户需求 9"
+        }
+      ]
+    }
+  ]
+}
