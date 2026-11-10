@@ -48,11 +48,13 @@ export const PANE_MENU_ITEMS: readonly PaneMenuItem[] = [
   { action: "openFolder", label: "打开文件位置", icon: "folder" },
 ];
 
+// 用户 2026-11-10 指定顺序：word、mdpkg、图片、pdf、html、zip。
+// PDF 导出依赖待裁定（md-bundle vendor 无 PDF API），裁定前不渲染该槽位。
 export const EXPORT_MENU_ITEMS: readonly ExportMenuItem[] = [
-  { action: "exportHtml", label: "HTML", icon: "html" },
-  { action: "exportPng", label: "图片", icon: "image" },
   { action: "exportDocx", label: "Word", icon: "exportWord" },
   { action: "exportMdpkg", label: ".mdpkg", icon: "exportMdpkg" },
+  { action: "exportPng", label: "图片", icon: "image" },
+  { action: "exportHtml", label: "HTML", icon: "html" },
   { action: "exportZip", label: "ZIP", icon: "exportZip" },
 ];
 
