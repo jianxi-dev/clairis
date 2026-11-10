@@ -1,0 +1,73 @@
+{
+  "change": "ui-toolbar-slots",
+  "requirements": [
+    {
+      "id": "R-1",
+      "text": "槽位模型与配置驱动",
+      "anchors": [
+        {
+          "id": "A-1.1",
+          "claim": "默认工具条 `[data-action]` 数量（12 动作 + 清除格式）",
+          "kind": "exact",
+          "assert": "\"13\"",
+          "source": "design D1 / 现状勘察"
+        },
+        {
+          "id": "A-1.2",
+          "claim": "配置去掉 `format-bold` 后 `[data-action]` 数量",
+          "kind": "exact",
+          "assert": "\"12\"",
+          "source": "design D2"
+        },
+        {
+          "id": "A-1.3",
+          "claim": "配置去掉 `format-bold` 后该动作节点数量",
+          "kind": "exact",
+          "assert": "\"0\"",
+          "source": "design D2"
+        },
+        {
+          "id": "A-1.4",
+          "claim": "配置把 `format-italic` 排首位后首个 `[data-action]` 值",
+          "kind": "exact",
+          "assert": "\"format-italic\"",
+          "source": "design D1"
+        }
+      ]
+    },
+    {
+      "id": "R-2",
+      "text": "设置面与回滚",
+      "anchors": [
+        {
+          "id": "A-2.1",
+          "claim": "设置中取消勾选「粗体」后 `[data-action]` 数量",
+          "kind": "exact",
+          "assert": "\"12\"",
+          "source": "design D4"
+        },
+        {
+          "id": "A-2.2",
+          "claim": "点「恢复默认」后 `[data-action]` 数量",
+          "kind": "exact",
+          "assert": "\"13\"",
+          "source": "design D4"
+        },
+        {
+          "id": "A-2.3",
+          "claim": "取消勾选并重启后 `[data-action]` 数量",
+          "kind": "exact",
+          "assert": "\"12\"",
+          "source": "design D4"
+        },
+        {
+          "id": "A-2.4",
+          "claim": "空数组保存结果",
+          "kind": "exact",
+          "assert": "\"rejected\"",
+          "source": "design D3"
+        }
+      ]
+    }
+  ]
+}
