@@ -175,41 +175,54 @@ export interface RasterizeOptions {
  * 默认栅格化：SVG data URI → `<img>` → canvas(scale) → toBlob('image/png')。
  * 任一步失败都 reject —— 绝不产出损坏或截断的 PNG。
  */
-const rasterizeWithCanvas: SvgToBlob = async (svg) => {
-  const dims = svg.match(/<svg[^>]*\bwidth="(\d+)"[^>]*\bheight="(\d+)"/);
-  if (!dims) throw new Error("PNG 栅格化失败：SVG 缺少 width/height");
-  const width = Number(dims[1]);
-  const height = Number(dims[2]);
-  const scale = PNG_SCALE;
+const rasterizeWithCanvasMime =
+  (mime: "image/png" | "image/jpeg"): SvgToBlob =>
+  async (svg) => {
+    const dims = svg.match(/<svg[^>]*\bwidth="(\d+)"[^>]*\bheight="(\d+)"/);
+    if (!dims) throw new Error("PNG 栅格化失败：SVG 缺少 width/height");
+    const width = Number(dims[1]);
+    const height = Number(dims[2]);
+    const scale = PNG_SCALE;
 
-  const img = new Image();
-  const dataUri = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
-  await new Promise<void>((resolve, reject) => {
-    img.onload = () => resolve();
-    img.onerror = () => reject(new Error("PNG 栅格化失败：SVG 图片加载出错"));
-    img.src = dataUri;
-  });
+    const img = new Image();
+    const dataUri = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+    await new Promise<void>((resolve, reject) => {
+      img.onload = () => resolve();
+      img.onerror = () => reject(new Error("PNG 栅格化失败：SVG 图片加载出错"));
+      img.src = dataUri;
+    });
 
-  const canvas = document.createElement("canvas");
-  canvas.width = Math.round(width * scale);
-  canvas.height = Math.round(height * scale);
-  const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("PNG 栅格化失败：无法创建 canvas 2D 上下文");
-  ctx.scale(scale, scale);
-  ctx.drawImage(img, 0, 0);
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(width * scale);
+    canvas.height = Math.round(height * scale);
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("PNG 栅格化失败：无法创建 canvas 2D 上下文");
+    ctx.scale(scale, scale);
+    ctx.drawImage(img, 0, 0);
 
-  const blob = await new Promise<Blob | null>((resolve) =>
-    canvas.toBlob(resolve, "image/png"),
-  );
-  if (!blob) throw new Error("PNG 编码失败：canvas.toBlob 返回空");
-  return blob;
-};
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve, mime, mime === "image/jpeg" ? 0.92 : undefined),
+    );
+    if (!blob) throw new Error("栅格化失败：canvas.toBlob 返回空");
+    return blob;
+  };
+
+const rasterizeWithCanvas = rasterizeWithCanvasMime("image/png");
 
 export async function rasterizeSvgToPng(
   svg: string,
   opts: RasterizeOptions,
 ): Promise<Blob> {
   const toBlob = opts.toBlob ?? rasterizeWithCanvas;
+  return toBlob(svg);
+}
+
+/** 同一管线出 JPEG（供 PDF 单页嵌入，DCTDecode）。 */
+export async function rasterizeSvgToJpeg(
+  svg: string,
+  opts: RasterizeOptions,
+): Promise<Blob> {
+  const toBlob = opts.toBlob ?? rasterizeWithCanvasMime("image/jpeg");
   return toBlob(svg);
 }
 
@@ -238,7 +251,7 @@ export interface ExportPngSeams {
   save?: (base64: string, defaultName: string) => Promise<string | null>;
 }
 
-function defaultCss(): string {
+export function defaultCss(): string {
   return `${tokensCss}\n${readerCss}`;
 }
 
@@ -255,7 +268,7 @@ export function pngFileName(title: string): string {
 /** Blob → 纯 base64（去掉 data URL 前缀）。 */
 
 /** 浏览器端等待字体就绪，避免 CJK 回退字体导致字形错位。 */
-async function waitForFonts(): Promise<void> {
+export async function waitForFonts(): Promise<void> {
   const fonts = (
     document as Document & { fonts?: { ready?: Promise<unknown> } }
   ).fonts;
