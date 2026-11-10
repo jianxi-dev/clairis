@@ -704,10 +704,14 @@ test("缩略图降到 64×48 后不与标题、摘要、动作行重叠（#392�
   expect(overlaps(thumb, actions)).toBe(false);
 });
 
-test("六个 HTML 卡片逐个滚动，缩略图恒可见且无 iframe（#546）", async ({
-  page,
-}) => {
+test("六个 HTML 卡片逐个滚动，缩略图显示真实首屏（#569）", async ({ page }) => {
   await boot(page);
+  await page.route("https://thumbs.test/**", (route) =>
+    route.fulfill({
+      contentType: "text/html",
+      body: "<!doctype html><html><body style='margin:0;background:#eef'>thumb</body></html>",
+    }),
+  );
   await page.evaluate(() => {
     const w = window as unknown as {
       __biaoyue_store__: {
@@ -719,13 +723,13 @@ test("六个 HTML 卡片逐个滚动，缩略图恒可见且无 iframe（#546）
     for (let i = 1; i <= 6; i += 1) {
       w.__biaoyue_store__
         .getState()
-        .addRecentFile(`/tmp/rc/many/page-${i}.html`, `page-${i}.html`);
+        .addRecentFile(`https://thumbs.test/page-${i}.html`, `page-${i}.html`);
     }
   });
   await openPinnedRail(page);
 
   const cards = page.locator(
-    '[data-section="recent"] [data-testid="rail-item"][data-rail-path*="/tmp/rc/many/"]',
+    '[data-section="recent"] [data-testid="rail-item"][data-rail-path*="thumbs.test"]',
   );
   await expect(cards).toHaveCount(6);
 
@@ -735,10 +739,13 @@ test("六个 HTML 卡片逐个滚动，缩略图恒可见且无 iframe（#546）
     const thumb = card.locator('[data-testid="rail-thumb"]');
     await expect(thumb).toHaveAttribute("data-thumb-kind", "html-page");
     await expect(thumb.locator('[data-icon="html"]')).toHaveCount(1);
+    const frame = thumb.locator('[data-testid="rail-thumb-html-frame"]');
+    await expect(frame).toHaveCount(1);
+    await expect
+      .poll(() => frame.evaluate((el) => getComputedStyle(el).opacity))
+      .toBe("1");
     const box = await thumb.boundingBox();
     expect(box).not.toBeNull();
     expect(box!.height).toBeGreaterThan(0);
   }
-
-  expect(await page.locator('[data-section="recent"] iframe').count()).toBe(0);
 });

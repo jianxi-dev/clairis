@@ -145,6 +145,7 @@ function RailThumb({ descriptor }: { descriptor: ThumbDescriptor }) {
   const src = descriptor.src ?? "";
 
   const [mediaReady, setMediaReady] = useState(false);
+  const [htmlReady, setHtmlReady] = useState(false);
   const [pdfThumb, setPdfThumb] = useState<string | null | undefined>(() =>
     descriptor.kind === "pdf-page" && descriptor.src
       ? pdfThumbCacheGet(descriptor.src)
@@ -252,8 +253,8 @@ function RailThumb({ descriptor }: { descriptor: ThumbDescriptor }) {
   }
 
   if (kind === "html-page") {
-    // 中性占位（A-14）：确定性渲染，不伪造 HTML 页面缩略图，也没有
-    // 并发配额与加载失败导致的空白。
+    // 真实首屏缩略图（#569）：受控 iframe 10% 缩放；类型色占位在底层，
+    // 加载完成才淡入。加载失败时 iframe 保持透明，占位仍可见，不出现白块。
     return (
       <div
         data-testid="rail-thumb"
@@ -265,9 +266,33 @@ function RailThumb({ descriptor }: { descriptor: ThumbDescriptor }) {
           borderColor: "var(--type-html)",
           color: "var(--type-html)",
         }}
-        className="rail-thumb flex shrink-0 items-center justify-center border"
+        className="rail-thumb relative flex shrink-0 items-center justify-center overflow-hidden border"
       >
         <Icon name="html" size={24} color="var(--type-html)" />
+        {src && (
+          <iframe
+            data-testid="rail-thumb-html-frame"
+            sandbox="allow-scripts"
+            src={assetSrc(src)}
+            title=""
+            tabIndex={-1}
+            loading="lazy"
+            onLoad={() => setHtmlReady(true)}
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              width: 720,
+              height: 540,
+              border: "none",
+              transform: "scale(0.1)",
+              transformOrigin: "top left",
+              pointerEvents: "none",
+              opacity: htmlReady ? 1 : 0,
+              transition: "opacity 120ms ease",
+            }}
+          />
+        )}
       </div>
     );
   }
