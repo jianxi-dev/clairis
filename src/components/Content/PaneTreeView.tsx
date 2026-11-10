@@ -38,6 +38,7 @@ import {
   exportMessage,
 } from "../../lib/export/exportDocument";
 import { exportPngFromMarkdown, exportPngMessage } from "../../lib/export/png";
+import { exportPdfFromMarkdown, exportPdfMessage } from "../../lib/export/pdf";
 import { exportDocxDocument, exportDocxMessage } from "../../lib/export/docx";
 import {
   exportMdpkgFromMarkdown,
@@ -564,6 +565,20 @@ function PaneHeader({
           exportPngMessage,
           "正在生成图片…",
           "导出图片",
+        );
+        return;
+      }
+      if (action === "exportPdf") {
+        void run(
+          () =>
+            exportPdfFromMarkdown({
+              title: tab.title,
+              markdown: tab.content,
+              baseDir,
+            }),
+          exportPdfMessage,
+          "正在生成 PDF…",
+          "导出 PDF",
         );
         return;
       }

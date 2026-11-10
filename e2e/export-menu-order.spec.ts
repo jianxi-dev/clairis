@@ -16,7 +16,9 @@ async function boot(page: Page): Promise<void> {
   await page.waitForTimeout(300);
 }
 
-test("导出菜单顺序为 Word / .mdpkg / 图片 / HTML / ZIP", async ({ page }) => {
+test("导出菜单顺序为 Word / .mdpkg / 图片 / PDF / HTML / ZIP", async ({
+  page,
+}) => {
   await boot(page);
   const dir = process.env.EVIDENCE_DIR;
   await page.locator('[data-testid="pane-menu-button"]').first().click();
@@ -36,9 +38,35 @@ test("导出菜单顺序为 Word / .mdpkg / 图片 / HTML / ZIP", async ({ page 
     "exportDocx",
     "exportMdpkg",
     "exportPng",
+    "exportPdf",
     "exportHtml",
     "exportZip",
   ]);
+});
+
+test("点击 PDF 生成 PDF 文件", async ({ page }) => {
+  await boot(page);
+  await page.locator('[data-testid="pane-menu-button"]').first().click();
+  await page.locator('[data-menu-item="export"]').first().hover();
+  await page.locator('[data-export-item="exportPdf"]').click();
+  await expect
+    .poll(
+      () =>
+        page.evaluate(() => {
+          const w = window as unknown as Record<string, unknown>;
+          const list = w.__biaoyue_saved_binaries__ as
+            { base64: string; defaultName: string }[] | undefined;
+          return list && list.length > 0
+            ? list[list.length - 1].base64.slice(0, 8)
+            : "";
+        }),
+      { timeout: 20000 },
+    )
+    .toBe("JVBERi0x");
+  const dir = process.env.EVIDENCE_DIR;
+  if (dir) {
+    await page.screenshot({ path: `${dir}/pdf-exported.png` });
+  }
 });
 
 test("导出菜单关闭后无残留", async ({ page }) => {

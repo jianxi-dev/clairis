@@ -27,6 +27,13 @@
       "assertion": "passed",
       "recorded_at": "2026-11-10T20:04:41Z",
       "runner": "unknown@MMBP"
+    },
+    {
+      "state": "pdf-exported",
+      "screenshot": ".artifacts/615/pdf-exported.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-10T20:28:29Z",
+      "runner": "unknown@MMBP"
     }
   ]
 }

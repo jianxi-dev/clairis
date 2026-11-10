@@ -27,7 +27,12 @@ export interface PaneMenuItem {
 }
 
 export type ExportMenuAction =
-  "exportHtml" | "exportPng" | "exportDocx" | "exportMdpkg" | "exportZip";
+  | "exportHtml"
+  | "exportPng"
+  | "exportPdf"
+  | "exportDocx"
+  | "exportMdpkg"
+  | "exportZip";
 
 export interface ExportMenuItem {
   action: ExportMenuAction;
@@ -54,6 +59,7 @@ export const EXPORT_MENU_ITEMS: readonly ExportMenuItem[] = [
   { action: "exportDocx", label: "Word", icon: "exportWord" },
   { action: "exportMdpkg", label: ".mdpkg", icon: "exportMdpkg" },
   { action: "exportPng", label: "图片", icon: "image" },
+  { action: "exportPdf", label: "PDF", icon: "pdf" },
   { action: "exportHtml", label: "HTML", icon: "html" },
   { action: "exportZip", label: "ZIP", icon: "exportZip" },
 ];
