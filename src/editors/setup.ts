@@ -5,6 +5,8 @@ import {
   history,
   historyKeymap,
   indentWithTab,
+  redo,
+  undo,
 } from "@codemirror/commands";
 import {
   bracketMatching,
@@ -80,6 +82,8 @@ export function baseEditorExtensions(): Extension[] {
     syntaxHighlighting(classHighlighter),
     // searchKeymap 保留 Cmd+F 查找：basicSetup 撤掉后这是唯一还需要的面板键位。
     keymap.of([
+      { key: "Mod-[", run: undo },
+      { key: "Mod-]", run: redo },
       ...defaultKeymap,
       ...historyKeymap,
       ...ctrlHistoryBindings,
