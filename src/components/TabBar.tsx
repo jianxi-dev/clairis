@@ -4,6 +4,7 @@ import { colorOfType, fileTypeOf, iconOfType } from "../lib/fileType";
 import { useState, useCallback, useEffect, useRef, Fragment } from "react";
 import { createPortal } from "react-dom";
 import { useStore } from "../stores";
+import { popOverlay, pushOverlay } from "../lib/overlayGate";
 import type { Tab } from "../types";
 
 interface TabBarProps {
@@ -189,6 +190,12 @@ export default function TabBar({
 
   const closeMenu = useCallback(() => setMenu(null), []);
 
+  useEffect(() => {
+    if (!menu) return;
+    pushOverlay();
+    return () => popOverlay();
+  }, [menu]);
+
   // Close menu on any click outside the menu itself
   useEffect(() => {
     if (!menu) return;
@@ -207,8 +214,6 @@ export default function TabBar({
       window.removeEventListener("click", handler, true);
     };
   }, [menu]);
-
-  if (tabIds.length === 0) return null;
 
   const placeholder =
     dragGap === null ? null : (
@@ -237,7 +242,12 @@ export default function TabBar({
     <>
       <div
         ref={stripRef}
-        className="tab-strip flex items-center gap-1 shrink-0 select-none overflow-x-auto px-1"
+        onDoubleClick={(e) => {
+          if ((e.target as HTMLElement).closest("[data-tab-id], button, input"))
+            return;
+          useStore.getState().newTab();
+        }}
+        className="tab-strip flex min-h-[26px] w-full items-center gap-1 shrink-0 select-none overflow-x-auto px-1"
         style={{
           // 底边只由栏目头（pane-header）画一次；页签条再画一遍会叠成加深双线（#1/#23）。
           background: "transparent",
