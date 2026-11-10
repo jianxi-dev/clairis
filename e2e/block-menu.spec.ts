@@ -780,3 +780,34 @@ test("类型二级面板：指针移出后仍保持，Esc 才收起", async ({ p
     .poll(() => storeContent(page))
     .toBe("> [!note] 标题\n> 正文一行\n");
 });
+
+test("改过的 emoji 不跟随错误类型：转 TIP 后回到 TIP 默认图标", async ({
+  page,
+}) => {
+  await page.evaluate(() => {
+    const win = window as unknown as Record<string, any>;
+    win.__biaoyue_openFile__(
+      "/tmp/block-callout-emoji.md",
+      "> [!note] 标题\n> 正文一行\n",
+      "block-callout-emoji.md",
+    );
+    win.__biaoyue_store__.getState().setEditorMode("edit");
+  });
+  await page.locator(".cm-content").waitFor({ timeout: 5000 });
+
+  const card = page.locator(".cm-callout").first();
+  await card.locator(".cm-callout-icon").click();
+  await page
+    .locator('[data-testid="cm-callout-emoji-option"][data-emoji="🚀"]')
+    .click();
+  await expect(card).toHaveAttribute("data-callout-emoji", "🚀");
+
+  await hoverHandle(page, 0);
+  await page.locator('[data-testid="block-menu-type"]').hover();
+  await page.locator('[data-testid="block-menu-type-panel"]').waitFor({
+    timeout: 3000,
+  });
+  await page.locator('[data-type-key="tip"]').click();
+  await expect(card).toHaveAttribute("data-callout-emoji", "💡");
+  await expect(card).not.toHaveAttribute("data-callout-emoji", "🚀");
+});

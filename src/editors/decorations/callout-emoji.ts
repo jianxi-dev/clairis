@@ -11,8 +11,11 @@
 import type { EditorView } from "@codemirror/view";
 import { CALLOUT_EMOJI_CHOICES } from "../callout-types";
 
-/** 头部 emoji 覆盖，按 view 再按高亮块序号存。 */
-const calloutEmojiOverrides = new WeakMap<EditorView, Map<number, string>>();
+/** 头部 emoji 覆盖，按 view 再按高亮块序号存；记录类型，转换后自动失效。 */
+const calloutEmojiOverrides = new WeakMap<
+  EditorView,
+  Map<number, { type: string; emoji: string }>
+>();
 
 /** 文档级「按外部关闭」处理器，避免被移除的取色器泄漏监听。 */
 const pickerDismissers = new WeakMap<
@@ -30,7 +33,7 @@ export function getCalloutEmojiOverrides(
   const map = calloutEmojiOverrides.get(view);
   if (!map || map.size === 0) return [];
   const highest = Math.max(...map.keys());
-  return Array.from({ length: highest + 1 }, (_, i) => map.get(i));
+  return Array.from({ length: highest + 1 }, (_, i) => map.get(i)?.emoji);
 }
 
 /** 通知宿主覆盖快照变了（`mdb:callout-emoji`）。 */
@@ -47,8 +50,10 @@ function publishOverrides(view: EditorView): void {
 export function getCalloutEmojiOverride(
   view: EditorView,
   index: number,
+  type: string,
 ): string | undefined {
-  return calloutEmojiOverrides.get(view)?.get(index);
+  const entry = calloutEmojiOverrides.get(view)?.get(index);
+  return entry && entry.type === type ? entry.emoji : undefined;
 }
 
 /** 解析某个序号对应的实时卡片（widget 重建会摘掉旧的）。 */
@@ -75,6 +80,7 @@ function applyEmoji(
   index: number,
   emoji: string | null,
   defaultEmoji: string,
+  type: string,
 ): void {
   let overrides = calloutEmojiOverrides.get(view);
   if (emoji === null) {
@@ -84,7 +90,7 @@ function applyEmoji(
       overrides = new Map();
       calloutEmojiOverrides.set(view, overrides);
     }
-    overrides.set(index, emoji);
+    overrides.set(index, { type, emoji });
   }
   publishOverrides(view);
   const next = emoji ?? defaultEmoji;
@@ -102,6 +108,7 @@ function buildEmojiPicker(
   view: EditorView,
   index: number,
   defaultEmoji: string,
+  type: string,
 ): HTMLElement {
   const picker = document.createElement("div");
   picker.className = "cm-callout-emoji-picker";
@@ -131,7 +138,7 @@ function buildEmojiPicker(
     btn.textContent = choice.emoji;
     btn.addEventListener("click", (event) => {
       event.stopPropagation();
-      applyEmoji(view, index, choice.emoji, defaultEmoji);
+      applyEmoji(view, index, choice.emoji, defaultEmoji, type);
       closeEmojiPicker(picker);
     });
     options.push(btn);
@@ -154,7 +161,7 @@ function buildEmojiPicker(
   reset.textContent = "恢复默认";
   reset.addEventListener("click", (event) => {
     event.stopPropagation();
-    applyEmoji(view, index, null, defaultEmoji);
+    applyEmoji(view, index, null, defaultEmoji, type);
     closeEmojiPicker(picker);
   });
   picker.appendChild(reset);
@@ -167,6 +174,7 @@ export function openCalloutEmojiPicker(
   view: EditorView,
   index: number,
   defaultEmoji: string,
+  type: string,
 ): void {
   const card = liveCard(view, index);
   if (!card) return;
@@ -175,7 +183,7 @@ export function openCalloutEmojiPicker(
     closeEmojiPicker(existing);
     return;
   }
-  const picker = buildEmojiPicker(view, index, defaultEmoji);
+  const picker = buildEmojiPicker(view, index, defaultEmoji, type);
   const onDocDown = (event: MouseEvent): void => {
     const target = event.target;
     const onIcon =

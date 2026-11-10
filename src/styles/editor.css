@@ -1704,9 +1704,9 @@ html[data-tab-drag="true"] body * {
   color: var(--app-text);
 }
 
-/* 无标题卡片保留一个可点的空标题槽，否则无法触达标题编辑器（#451）。 */
+/* 无标题卡片的空标题槽不占宽；点击头部空白即进入标题编辑（#451 / #566）。 */
 .cm-content .cm-callout-title[data-callout-empty-title] {
-  min-width: 40px;
+  min-width: 0;
   min-height: 1.2em;
   display: inline-block;
 }
@@ -1715,7 +1715,7 @@ html[data-tab-drag="true"] body * {
   position: relative;
   display: flex;
   align-items: baseline;
-  gap: 0.5em;
+  gap: 0;
 }
 
 .cm-content .cm-callout-icon {
@@ -1724,7 +1724,7 @@ html[data-tab-drag="true"] body * {
   flex-shrink: 0;
   cursor: pointer;
   border-radius: 4px;
-  padding: 0 2px;
+  padding: 0;
 }
 
 .cm-content .cm-callout-icon:hover {

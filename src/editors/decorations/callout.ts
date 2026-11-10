@@ -399,8 +399,9 @@ class CalloutWidget extends WidgetType {
     container.classList.add(`cm-callout-tone-${this.tone}`);
     if (this.fold) container.setAttribute("data-fold", this.fold);
     const emoji =
-      (view ? getCalloutEmojiOverride(view, this.index) : undefined) ??
-      this.icon;
+      (view
+        ? getCalloutEmojiOverride(view, this.index, this.type)
+        : undefined) ?? this.icon;
     container.setAttribute("data-callout-emoji", emoji);
     // #468：徽标已移除，卡片改为用 data 携带类型。
     container.setAttribute("data-callout-type", this.type);
@@ -427,14 +428,18 @@ class CalloutWidget extends WidgetType {
         const onEmoji =
           event.target instanceof Element &&
           event.target.closest(".cm-callout-icon") !== null;
-        const onTitle =
+        const onHeader =
           event.target instanceof Element &&
-          event.target.closest(".cm-callout-title") !== null;
+          event.target.closest(".cm-callout-header") !== null;
+        const onTitle =
+          (event.target instanceof Element &&
+            event.target.closest(".cm-callout-title") !== null) ||
+          (onHeader && !this.title);
         const press = { x: event.clientX, y: event.clientY };
         const open = (): void => {
           if (onEmoji) {
             flushCalloutEdits(view);
-            openCalloutEmojiPicker(view, index, defaultEmoji);
+            openCalloutEmojiPicker(view, index, defaultEmoji, this.type);
           } else if (onTitle) {
             openCalloutTitleEditor(view, index);
           } else {
@@ -470,7 +475,7 @@ class CalloutWidget extends WidgetType {
         event.preventDefault();
         event.stopPropagation();
         flushCalloutEdits(view);
-        openCalloutEmojiPicker(view, index, defaultEmoji);
+        openCalloutEmojiPicker(view, index, defaultEmoji, this.type);
       });
     }
     header.appendChild(iconEl);
