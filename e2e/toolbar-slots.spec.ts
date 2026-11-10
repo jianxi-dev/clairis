@@ -141,3 +141,103 @@ test("证据：四态截图", async ({ page }) => {
   await openBar(page);
   await page.screenshot({ path: `${dir}/unknown-fallback-13.png` });
 });
+
+async function openSettingsEditor(page: Page) {
+  await page.keyboard.press("Meta+,");
+  await expect(page.locator('[data-testid="settings-scene"]')).toBeVisible();
+  await page.locator('[data-settings-nav="editor"]').click();
+}
+
+async function closeSettings(page: Page) {
+  await page.keyboard.press("Escape");
+  await expect(page.locator('[data-testid="settings-scene"]')).toHaveCount(0, {
+    timeout: 3000,
+  });
+}
+
+test("设置取消勾选粗体后工具条为 12 个动作", async ({ page }) => {
+  await boot(page);
+  await openSettingsEditor(page);
+  await page
+    .locator('[data-testid="toolbar-item-toggle-format-bold"]')
+    .uncheck();
+  await page.waitForTimeout(300);
+  await closeSettings(page);
+  const bar = await openBar(page);
+  await expect(bar.locator("[data-action]")).toHaveCount(12);
+});
+
+test("设置上移一项改变工具条顺序", async ({ page }) => {
+  await boot(page);
+  await openSettingsEditor(page);
+  await page.locator('[data-testid="toolbar-item-up-format-italic"]').click();
+  await page.waitForTimeout(300);
+  await closeSettings(page);
+  const bar = await openBar(page);
+  const order = await bar
+    .locator("[data-action]")
+    .evaluateAll((els) => els.map((el) => el.getAttribute("data-action")));
+  expect(order.indexOf("format-italic")).toBeLessThan(
+    order.indexOf("format-bold"),
+  );
+});
+
+test("设置恢复默认后回到 13 个可点控件", async ({ page }) => {
+  await boot(page);
+  await openSettingsEditor(page);
+  await page
+    .locator('[data-testid="toolbar-item-toggle-format-bold"]')
+    .uncheck();
+  await page.waitForTimeout(300);
+  await page.locator('[data-testid="toolbar-item-reset"]').click();
+  await page.waitForTimeout(300);
+  await closeSettings(page);
+  const bar = await openBar(page);
+  await expect(bar.locator("[data-action]")).toHaveCount(13);
+});
+
+test("取消勾选后重启仍保持", async ({ page }) => {
+  await boot(page);
+  await openSettingsEditor(page);
+  await page
+    .locator('[data-testid="toolbar-item-toggle-format-bold"]')
+    .uncheck();
+  await page.waitForTimeout(500);
+  await page.reload({ waitUntil: "networkidle" });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 15000 });
+  await page.evaluate(() => {
+    window.__biaoyue_openFile__(
+      "/tmp/slots2.css",
+      "body { color: red; }\n.second { color: blue; }",
+      "slots2.css",
+    );
+    window.__biaoyue_store__.getState().setEditorMode("edit");
+  });
+  await page.waitForTimeout(300);
+  const bar = await openBar(page);
+  await expect(bar.locator("[data-action]")).toHaveCount(12);
+});
+
+test("证据：设置四态截图", async ({ page }) => {
+  const dir = process.env.EVIDENCE_DIR;
+  test.skip(!dir, "EVIDENCE_DIR 未设置");
+  await boot(page);
+  await openSettingsEditor(page);
+  await page.screenshot({ path: `${dir}/settings-default.png` });
+  await page
+    .locator('[data-testid="toolbar-item-toggle-format-bold"]')
+    .uncheck();
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: `${dir}/settings-unchecked-bold.png` });
+  await closeSettings(page);
+  await openBar(page);
+  await page.screenshot({ path: `${dir}/bar-12.png` });
+  await page.keyboard.press("Escape");
+  await openSettingsEditor(page);
+  await page.locator('[data-testid="toolbar-item-up-format-italic"]').click();
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: `${dir}/settings-reordered.png` });
+  await page.locator('[data-testid="toolbar-item-reset"]').click();
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: `${dir}/settings-reset.png` });
+});

@@ -13,6 +13,7 @@ import {
   saveAppConfig,
 } from "../hooks/useConfig";
 import { useEditorStore } from "../stores/editorStore";
+import { HTML_TOOLBAR_ITEMS } from "../editors/orchestration/slots";
 import {
   READER_WIDTH_MAX,
   READER_WIDTH_MIN,
@@ -554,6 +555,9 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
   const rouletteSectors = useEditorStore(
     (s) => s.config.rouletteSectors ?? null,
   );
+  const htmlToolbarItems = useEditorStore(
+    (s) => s.config.htmlToolbarItems ?? null,
+  );
   const readerSkin = useEditorStore((s) => s.config.readerSkin ?? "paper");
   const defaultSavePath = useEditorStore(
     (s) => s.config.defaultSavePath ?? null,
@@ -779,6 +783,36 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
   };
   const resetSectors = () => {
     setConfig({ rouletteSectors: null });
+    void saveAppConfig();
+  };
+
+  const activeToolbarItems: string[] =
+    htmlToolbarItems ?? HTML_TOOLBAR_ITEMS.map((item) => item.id);
+  const saveToolbarItems = (next: string[]) => {
+    setConfig({ htmlToolbarItems: next.length > 0 ? next : null });
+    void saveAppConfig();
+  };
+  const toggleToolbarItem = (id: string) => {
+    const has = activeToolbarItems.includes(id);
+    if (has && activeToolbarItems.length <= 1) return;
+    saveToolbarItems(
+      has
+        ? activeToolbarItems.filter((x) => x !== id)
+        : [...activeToolbarItems, id],
+    );
+  };
+  const moveToolbarItem = (id: string, dir: -1 | 1) => {
+    const idx = activeToolbarItems.indexOf(id);
+    const to = idx + dir;
+    if (idx < 0 || to < 0 || to >= activeToolbarItems.length) return;
+    const next = [...activeToolbarItems];
+    const tmp = next[idx];
+    next[idx] = next[to];
+    next[to] = tmp;
+    saveToolbarItems(next);
+  };
+  const resetToolbarItems = () => {
+    setConfig({ htmlToolbarItems: null });
     void saveAppConfig();
   };
 
@@ -1179,6 +1213,78 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
                   type="button"
                   onClick={resetSectors}
                   data-testid="roulette-sector-reset"
+                  className="mt-2 rounded border border-[var(--app-border)] px-3 py-1.5 text-sm text-[var(--app-text-2)] hover:bg-[var(--app-sunken)]"
+                >
+                  恢复默认
+                </button>
+              </section>
+
+              <section data-testid="settings-toolbar-items">
+                <h2 className="mb-1 text-sm font-medium text-[var(--app-text-strong)]">
+                  文字工具条
+                </h2>
+                <p className="mb-2 text-xs text-[var(--app-text-3)]">
+                  勾选显示的动作；上下移动决定从左到右的顺序。至少保留一个。
+                </p>
+                <ul className="space-y-1">
+                  {[
+                    ...activeToolbarItems,
+                    ...HTML_TOOLBAR_ITEMS.map((item) => item.id).filter(
+                      (id) => !activeToolbarItems.includes(id),
+                    ),
+                  ].map((id) => {
+                    const label =
+                      HTML_TOOLBAR_ITEMS.find((item) => item.id === id)
+                        ?.label ?? id;
+                    const included = activeToolbarItems.includes(id);
+                    const idx = activeToolbarItems.indexOf(id);
+                    return (
+                      <li
+                        key={id}
+                        data-testid={`toolbar-item-row-${id}`}
+                        className="flex items-center gap-2 text-sm"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={included}
+                          disabled={included && activeToolbarItems.length <= 1}
+                          onChange={() => toggleToolbarItem(id)}
+                          data-testid={`toolbar-item-toggle-${id}`}
+                          className="h-3.5 w-3.5"
+                        />
+                        <span className="flex-1 text-[var(--app-text-2)]">
+                          {label}
+                        </span>
+                        {included && (
+                          <>
+                            <button
+                              type="button"
+                              disabled={idx <= 0}
+                              onClick={() => moveToolbarItem(id, -1)}
+                              data-testid={`toolbar-item-up-${id}`}
+                              className="rounded border border-[var(--app-border)] px-1.5 text-xs disabled:opacity-40"
+                            >
+                              ↑
+                            </button>
+                            <button
+                              type="button"
+                              disabled={idx >= activeToolbarItems.length - 1}
+                              onClick={() => moveToolbarItem(id, 1)}
+                              data-testid={`toolbar-item-down-${id}`}
+                              className="rounded border border-[var(--app-border)] px-1.5 text-xs disabled:opacity-40"
+                            >
+                              ↓
+                            </button>
+                          </>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+                <button
+                  type="button"
+                  onClick={resetToolbarItems}
+                  data-testid="toolbar-item-reset"
                   className="mt-2 rounded border border-[var(--app-border)] px-3 py-1.5 text-sm text-[var(--app-text-2)] hover:bg-[var(--app-sunken)]"
                 >
                   恢复默认
