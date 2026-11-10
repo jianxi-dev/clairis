@@ -10,6 +10,8 @@ import { undo, redo } from "@codemirror/commands";
 import {
   alignBlock,
   blockAt,
+  expandRangeToSpans,
+  spanPairs,
   toggleRangeSpan,
   toggleWrap,
 } from "./toolbar-shared";
@@ -136,16 +138,22 @@ function adjustIndent(view: EditorView, delta: number): void {
 
 /** 清除格式：剥掉行内标记与颜色 span，保留链接。 */
 function clearFormatting(view: EditorView): void {
-  const { from, to } = view.state.selection.main;
-  if (from === to) return;
-  const stripped = selectionText(view)
+  const sel = view.state.selection.main;
+  if (sel.from === sel.to) return;
+  const { from, to } = expandRangeToSpans(
+    view.state.doc.toString(),
+    sel.from,
+    sel.to,
+  );
+  const text = view.state.sliceDoc(from, to);
+  const stripped = text
     .replace(/<span class="mdb-(?:color|bg)-[\w-]+">/g, "")
     .replace(/<span[^>]*>/g, "")
     .replace(/<\/span>/g, "")
     .replace(/<\/?u>/g, "")
     .replace(/\*\*|~~|`/g, "")
     .replace(/(^|[^*])\*(?!\*)/g, "$1");
-  if (stripped === selectionText(view)) return;
+  if (stripped === text) return;
   view.dispatch({ changes: { from, to, insert: stripped } });
 }
 
@@ -156,14 +164,21 @@ function colorAction(
 ): void {
   const prefix = kind === "font" ? "mdb-color" : "mdb-bg";
   if (!className) {
-    const { from, to } = view.state.selection.main;
-    if (from === to) return;
-    const stripped = selectionText(view)
-      .replace(new RegExp(`<span class="${prefix}-[\\w-]+">`, "g"), "")
-      .replace(/<\/span>/g, "");
-    if (stripped !== selectionText(view)) {
-      view.dispatch({ changes: { from, to, insert: stripped } });
-    }
+    const sel = view.state.selection.main;
+    if (sel.from === sel.to) return;
+    const doc = view.state.doc.toString();
+    const { from, to } = expandRangeToSpans(doc, sel.from, sel.to);
+    const targets = spanPairs(doc).filter(
+      (pair) =>
+        pair.family === prefix && pair.openFrom >= from && pair.closeTo <= to,
+    );
+    if (targets.length === 0) return;
+    view.dispatch({
+      changes: targets.flatMap((pair) => [
+        { from: pair.openFrom, to: pair.contentFrom },
+        { from: pair.closeFrom, to: pair.closeTo },
+      ]),
+    });
     return;
   }
   toggleRangeSpan(view, className, prefix);

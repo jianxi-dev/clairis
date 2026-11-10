@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "选中文字",
+      "screenshot": ".artifacts/541/state-selected.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-10T05:53:41Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "应用字色",
+      "screenshot": ".artifacts/541/state-font-color.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-10T05:53:42Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "叠加背景色",
+      "screenshot": ".artifacts/541/state-stacked.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-10T05:53:42Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "清除格式后",
+      "screenshot": ".artifacts/541/state-cleared.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-10T05:53:42Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}

@@ -225,3 +225,75 @@ export function wirePopup(
 
   return { closeMenu };
 }
+
+/** 文档中一对 `mdb-*` span 的位置（单遍括号配对，支持嵌套）。 */
+export interface SpanPair {
+  family: string;
+  variant: string;
+  openFrom: number;
+  contentFrom: number;
+  closeFrom: number;
+  closeTo: number;
+}
+
+/** 扫描全文，返回所有 `mdb-{family}-{variant}` span 的配对区间。 */
+export function spanPairs(doc: string): SpanPair[] {
+  const token = /<span class="mdb-(font|color|bg|border)-([a-z]+)">|<\/span>/g;
+  const stack: Array<{
+    family: string;
+    variant: string;
+    openFrom: number;
+    contentFrom: number;
+  }> = [];
+  const pairs: SpanPair[] = [];
+  let match: RegExpExecArray | null;
+  while ((match = token.exec(doc)) !== null) {
+    if (match[0] === "</span>") {
+      const open = stack.pop();
+      if (!open) continue;
+      pairs.push({
+        ...open,
+        closeFrom: match.index,
+        closeTo: match.index + match[0].length,
+      });
+      continue;
+    }
+    stack.push({
+      family: `mdb-${match[1]}`,
+      variant: match[2],
+      openFrom: match.index,
+      contentFrom: match.index + match[0].length,
+    });
+  }
+  return pairs;
+}
+
+/**
+ * 把选区扩到包住它的 `mdb-*` span 整对。
+ *
+ * 应用颜色后 `toggleRangeSpan` 会把选区留在标签内部，此时标签在选区之外；
+ * 清除格式/取消颜色必须先把范围扩到整对，否则正则匹配不到任何标签。
+ */
+export function expandRangeToSpans(
+  doc: string,
+  from: number,
+  to: number,
+): { from: number; to: number } {
+  const pairs = spanPairs(doc);
+  let lo = from;
+  let hi = to;
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const pair of pairs) {
+      const overlaps = pair.openFrom <= hi && pair.closeTo >= lo;
+      if (!overlaps) continue;
+      if (pair.openFrom < lo || pair.closeTo > hi) {
+        lo = Math.min(lo, pair.openFrom);
+        hi = Math.max(hi, pair.closeTo);
+        changed = true;
+      }
+    }
+  }
+  return { from: lo, to: hi };
+}

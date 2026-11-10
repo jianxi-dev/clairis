@@ -12,6 +12,8 @@ import { FONT_COLORS } from "./color-palette";
 import {
   alignBlock,
   blockAt,
+  expandRangeToSpans,
+  spanPairs,
   toggleRangeSpan,
   toggleWrap,
 } from "./toolbar-shared";
@@ -25,16 +27,22 @@ function selectionText(view: EditorView): string {
 }
 
 function clearFormatting(view: EditorView): void {
-  const { from, to } = view.state.selection.main;
-  if (from === to) return;
-  const stripped = selectionText(view)
+  const sel = view.state.selection.main;
+  if (sel.from === sel.to) return;
+  const { from, to } = expandRangeToSpans(
+    view.state.doc.toString(),
+    sel.from,
+    sel.to,
+  );
+  const text = view.state.sliceDoc(from, to);
+  const stripped = text
     .replace(/<span class="mdb-(?:color|bg)-[\w-]+">/g, "")
     .replace(/<span[^>]*>/g, "")
     .replace(/<\/span>/g, "")
     .replace(/<\/?u>/g, "")
     .replace(/\*\*|~~|`/g, "")
     .replace(/(^|[^*])\*(?!\*)/g, "$1");
-  if (stripped === selectionText(view)) return;
+  if (stripped === text) return;
   view.dispatch({ changes: { from, to, insert: stripped } });
 }
 
@@ -87,12 +95,21 @@ function applyColor(view: EditorView, className: string): void {
     toggleRangeSpan(view, className, "mdb-color");
     return;
   }
-  const stripped = selectionText(view)
-    .replace(/<span class="mdb-color-[\w-]+">/g, "")
-    .replace(/<\/span>/g, "");
-  if (stripped !== selectionText(view)) {
-    view.dispatch({ changes: { from, to, insert: stripped } });
-  }
+  const doc = view.state.doc.toString();
+  const range = expandRangeToSpans(doc, from, to);
+  const targets = spanPairs(doc).filter(
+    (pair) =>
+      pair.family === "mdb-color" &&
+      pair.openFrom >= range.from &&
+      pair.closeTo <= range.to,
+  );
+  if (targets.length === 0) return;
+  view.dispatch({
+    changes: targets.flatMap((pair) => [
+      { from: pair.openFrom, to: pair.contentFrom },
+      { from: pair.closeFrom, to: pair.closeTo },
+    ]),
+  });
 }
 
 interface BarAction {
