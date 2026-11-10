@@ -4,6 +4,11 @@ import { colorOfType, fileTypeOf, iconOfType } from "../lib/fileType";
 import { useState, useCallback, useEffect, useRef, Fragment } from "react";
 import { createPortal } from "react-dom";
 import { useStore } from "../stores";
+import {
+  isMediaMuted,
+  subscribeMediaMute,
+  toggleMediaMuted,
+} from "./Content/mediaMute";
 import { popOverlay, pushOverlay } from "../lib/overlayGate";
 import type { Tab } from "../types";
 
@@ -55,6 +60,12 @@ export default function TabBar({
   paneFocused = true,
 }: TabBarProps) {
   const tabIds = Object.keys(tabs);
+  const [mediaMuted, setMediaMutedState] = useState(isMediaMuted);
+  useEffect(() => {
+    const apply = (m: boolean) => setMediaMutedState(m);
+    apply(isMediaMuted());
+    return subscribeMediaMute(apply);
+  }, []);
 
   const stripRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{
@@ -364,6 +375,28 @@ export default function TabBar({
                 )}
                 {tab.dirty && (
                   <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />
+                )}
+                {(tabKind === "video" ||
+                  tabKind === "audio" ||
+                  tabKind === "pdf" ||
+                  tabKind === "image") && (
+                  <button
+                    type="button"
+                    data-testid={`tab-mute-${id}`}
+                    aria-pressed={mediaMuted}
+                    title={mediaMuted ? "取消静音" : "静音"}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleMediaMuted();
+                    }}
+                    onPointerDown={(e) => e.stopPropagation()}
+                    className="shrink-0 rounded px-0.5 text-[var(--app-text-3)] hover:text-[var(--app-text-2)]"
+                  >
+                    <Icon
+                      name={mediaMuted ? "volumeMute" : "volume"}
+                      size={14}
+                    />
+                  </button>
                 )}
                 <button
                   onClick={(e) => {

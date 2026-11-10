@@ -7,6 +7,8 @@ import { getActiveEditorView } from "../../editors/editorRef";
 import { useStore } from "../../stores";
 import Icon from "../Icon";
 import { iconSvg, type IconName } from "../../ui/icons";
+import { isMediaMuted, setMediaMuted, subscribeMediaMute } from "./mediaMute";
+import { mediaDirOf, readSavedMediaIndex, saveMediaIndex } from "./mediaIndex";
 
 /**
  * 媒体预览播放器（ArtPlayer 封装）
@@ -211,6 +213,7 @@ export default function VideoPlayer({
 
   const [playlist, setPlaylist] = useState<MediaEntry[]>([]);
   const [currentIndex, setCurrentIndex] = useState(-1);
+  const [webFullscreen, setWebFullscreen] = useState(false);
   const [loopMode, setLoopMode] = useState<LoopMode>("none");
   const [rate, setRate] = useState(1);
   const [frame, setFrame] = useState({
@@ -252,6 +255,15 @@ export default function VideoPlayer({
   const frameRef = useRef(frame);
   frameRef.current = frame;
   const currentIndexRef = useRef(-1);
+  const pendingIndexRef = useRef(-1);
+
+  useEffect(() => {
+    const apply = (m: boolean) => {
+      if (artRef.current) artRef.current.muted = m;
+    };
+    apply(isMediaMuted());
+    return subscribeMediaMute(apply);
+  }, []);
   const subtitlePosRef = useRef<"bottom" | "top">("bottom");
   const playlistRef = useRef<MediaEntry[]>([]);
   const subtitleRef = useRef<MediaEntry[]>([]);
@@ -392,6 +404,15 @@ export default function VideoPlayer({
         const idx = media.findIndex((i) => i.path === filePath);
         currentIndexRef.current = idx >= 0 ? idx : 0;
         setCurrentIndex(currentIndexRef.current);
+        const saved = readSavedMediaIndex();
+        if (
+          saved &&
+          saved.dir === mediaDirOf(filePath) &&
+          saved.path !== filePath
+        ) {
+          const savedIdx = media.findIndex((i) => i.path === saved.path);
+          if (savedIdx >= 0) pendingIndexRef.current = savedIdx;
+        }
       })
       .catch(() => {
         // 非 Tauri 环境或无目录访问权限：降级为仅当前文件
@@ -407,6 +428,7 @@ export default function VideoPlayer({
       const idx = ((i % list.length) + list.length) % list.length;
       currentIndexRef.current = idx;
       setCurrentIndex(idx);
+      saveMediaIndex(list[idx].path);
       applyRate(1);
       try {
         const nextUrl = mediaUrlForPath(list[idx].path);
@@ -883,6 +905,14 @@ export default function VideoPlayer({
       ],
     });
     artRef.current = art;
+    art.muted = isMediaMuted();
+    if (pendingIndexRef.current >= 0) {
+      const pending = pendingIndexRef.current;
+      pendingIndexRef.current = -1;
+      art.once("ready", () => {
+        void playIndexRef.current(pending);
+      });
+    }
 
     // 原生全屏图标线宽/尺寸与画中画不一致（#7），用自绘 fullscreen 控件替代。
     container
@@ -950,6 +980,7 @@ export default function VideoPlayer({
     art.on("fullscreenWeb", (state: boolean) => {
       setPopover(null);
       setPopoverFixed(false);
+      setWebFullscreen(state);
       syncWindowFullscreen(state);
     });
     // 浏览器原生全屏事件兜底（ArtPlayer 内部 webkit 全屏路径）
@@ -960,7 +991,7 @@ export default function VideoPlayer({
 
     art.hotkey.add("KeyF", toggleFullscreenWeb);
     art.hotkey.add("KeyM", () => {
-      art.muted = !art.muted;
+      setMediaMuted(!art.muted);
     });
 
     // 播放列表切集 / 循环模式
@@ -1422,7 +1453,7 @@ export default function VideoPlayer({
           >
             <span
               dangerouslySetInnerHTML={{
-                __html: `${loopIconSvg(loopMode)} 播放列表（${mediaItems.length}）· ${LOOP_LABEL[loopMode]}`,
+                __html: `播放列表（${mediaItems.length}）`,
               }}
             />
           </div>
@@ -1710,7 +1741,7 @@ export default function VideoPlayer({
             top: noteRect.y,
             width: noteRect.w,
             height: noteRect.h,
-            zIndex: 110,
+            zIndex: webFullscreen ? 2147483000 : 110,
             borderRadius: 8,
             background: "rgba(20,20,28,0.95)",
             backdropFilter: "blur(8px)",
