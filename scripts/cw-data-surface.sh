@@ -259,7 +259,10 @@ check_tickets() {
     fi
     declared="${declared#*数据面}"
     declared="${declared#*:}"; declared="${declared#*：}"
-    all="$all $(printf '%s' "$declared" | tr ',，、' '   ')"
+    declared="${declared//,/ }"
+    declared="${declared//，/ }"
+    declared="${declared//、/ }"
+    all="$all $declared"
   done
   for label in $REQUIRED_LABELS; do
     case " $all " in
@@ -391,6 +394,8 @@ run_selftest() {
   expect "票面缺两栏 → 违规" 1 "$SELF" tickets x --dir "$tmp/complete" --drafts "$tmp/drafts"
   printf '# 票\n\n**数据面**: 规格,存储,校验,桥接,消费,回滚\n' > "$tmp/drafts/1.md"
   expect "票面覆盖六栏 → 通过" 0 "$SELF" tickets x --dir "$tmp/complete" --drafts "$tmp/drafts"
+  printf '# 票\n\n**数据面**: 规格，存储，校验，桥接，消费，回滚\n' > "$tmp/drafts/1.md"
+  expect "全角逗号覆盖 → 通过" 0 "$SELF" tickets x --dir "$tmp/complete" --drafts "$tmp/drafts"
   expect "落地符号缺失 → 违规" 1 "$SELF" diff x --dir "$tmp/bad_path"
   expect "落地校验 → 通过" 0 "$SELF" diff x --dir "$tmp/complete"
 
