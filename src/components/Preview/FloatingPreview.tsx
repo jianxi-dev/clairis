@@ -220,6 +220,11 @@ export default function FloatingPreview({
     content: string;
   } | null>(null);
   const [actionsVisible, setActionsVisible] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
+  const [saveState, setSaveState] = useState<"idle" | "saved" | "error">(
+    "idle",
+  );
   const [dragging, setDragging] = useState(false);
   const [resizeEdge, setResizeEdge] = useState<ResizeEdge | null>(null);
   const dragOrigin = useRef({ px: 0, py: 0, ox: 0, oy: 0 });
@@ -247,7 +252,12 @@ export default function FloatingPreview({
   const needsTextContent = useMemo(() => {
     if (!previewPath) return false;
     const kind = fileTypeOf(previewPath);
-    return kind === "markdown" || kind === "text" || kind === "code";
+    return (
+      kind === "markdown" ||
+      kind === "text" ||
+      kind === "code" ||
+      kind === "html"
+    );
   }, [previewPath]);
 
   useEffect(() => {
@@ -456,6 +466,29 @@ export default function FloatingPreview({
   );
 
   const kind = previewPath ? fileTypeOf(previewPath) : "text";
+  const textEditable =
+    kind === "markdown" ||
+    kind === "text" ||
+    kind === "code" ||
+    kind === "html";
+
+  useEffect(() => {
+    if (editing) return;
+    if (loaded && loaded.path === previewPath) setDraft(loaded.content);
+  }, [loaded, previewPath, editing]);
+
+  const saveDraft = useCallback(async () => {
+    if (!previewPath || !textEditable) return;
+    if (loaded?.path === previewPath && loaded.content === draft) return;
+    try {
+      await invoke("save_file", { path: previewPath, content: draft });
+      setLoaded({ path: previewPath, content: draft });
+      setSaveState("saved");
+    } catch (e) {
+      log.warn("Preview", "保存小窗内容失败", e);
+      setSaveState("error");
+    }
+  }, [draft, loaded, previewPath, textEditable]);
 
   // 视频/音频经 media:// 播放：先注册到白名单，否则协议 404 只剩控件
   useEffect(() => {
@@ -466,6 +499,28 @@ export default function FloatingPreview({
 
   const body = useMemo(() => {
     if (!previewPath) return null;
+    if (editing && textEditable) {
+      return (
+        <textarea
+          data-testid="preview-editor"
+          value={draft}
+          autoFocus
+          spellCheck={false}
+          onChange={(e) => {
+            setDraft(e.target.value);
+            setSaveState("idle");
+          }}
+          onKeyDown={(e) => {
+            if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s") {
+              e.preventDefault();
+              void saveDraft();
+            }
+          }}
+          onBlur={() => void saveDraft()}
+          className="h-full w-full resize-none bg-transparent p-3 font-mono text-xs leading-relaxed text-[var(--app-text)] outline-none"
+        />
+      );
+    }
     if (kind === "image" || kind === "video" || kind === "audio") {
       return <MediaBody path={previewPath} kind={kind} />;
     }
@@ -497,7 +552,16 @@ export default function FloatingPreview({
         dangerouslySetInnerHTML={{ __html: html }}
       />
     );
-  }, [content, kind, previewPath, previewTitle]);
+  }, [
+    content,
+    draft,
+    editing,
+    kind,
+    previewPath,
+    previewTitle,
+    saveDraft,
+    textEditable,
+  ]);
 
   if (!preview) return null;
 
@@ -576,6 +640,31 @@ export default function FloatingPreview({
             color={pinned ? "var(--app-accent)" : undefined}
           />
         </button>
+        {textEditable && (
+          <button
+            type="button"
+            data-testid="preview-edit-toggle"
+            data-editing={editing ? "true" : "false"}
+            title={editing ? "切换到预览" : "切换到编辑"}
+            aria-label={editing ? "切换到预览" : "切换到编辑"}
+            onClick={() => {
+              setSaveState("idle");
+              if (!editing) setDraft(content);
+              setEditing((prev) => !prev);
+            }}
+            className="shrink-0 rounded p-0.5 text-[var(--app-text-3)] hover:bg-[var(--app-sunken)] hover:text-[var(--app-text-2)]"
+          >
+            <Icon name={editing ? "eye" : "pencil"} size={18} />
+          </button>
+        )}
+        {saveState !== "idle" && (
+          <span
+            data-testid="preview-save-state"
+            className="shrink-0 text-[10px] text-[var(--app-text-3)]"
+          >
+            {saveState === "saved" ? "已保存" : "保存失败"}
+          </span>
+        )}
         <button
           type="button"
           data-testid="preview-close"

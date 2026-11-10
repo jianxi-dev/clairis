@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "preview-with-toggle",
+      "screenshot": ".artifacts/571/01-preview-with-toggle.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-10T14:41:34Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "edit-mode",
+      "screenshot": ".artifacts/571/02-edit-mode.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-10T14:41:34Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "saved",
+      "screenshot": ".artifacts/571/03-saved.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-10T14:41:34Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "back-to-preview",
+      "screenshot": ".artifacts/571/04-back-to-preview.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-10T14:41:34Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}
