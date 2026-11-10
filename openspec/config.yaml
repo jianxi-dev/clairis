@@ -22,3 +22,9 @@ context: |
 #       - Always include a "Non-goals" section
 #     tasks:
 #       - Break tasks into chunks of max 2 hours
+
+rules:
+  design:
+    - 命中数据面信号（docs/agents/data-surface.md 第二节：配置/主题/图标/菜单/轮盘/开关）时，design.md 必须含「## 数据面」小节与六行表（落点|位置|载体/符号|判据），机检 ./scripts/cw-data-surface.sh new <change>
+  tasks:
+    - 数据面票的票面须含「**数据面**: 」字段并声明本票负责的落点（规格/存储/校验/桥接/消费/回滚）；无数据面写「无」

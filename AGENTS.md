@@ -33,6 +33,7 @@ Biaoyue 面向中文用户，维护者母语为中文。以下为**硬约定**�
 - **项目结构与模块地图（OmO init-deep）**：`.opencode/project-tree.md`；OmO 命令与技能在 `.opencode/`
 - **架构/产品/设计文档**：`docs/`（索引 `docs/README.md`）：产品 `docs/product/`、批准设计 `docs/design/approved/`、探索 `docs/design/explorations/`、研究 `docs/research/`、交付 `docs/delivery/`、历史 `docs/archive/`；总纲由 `docs/README.md` + `docs/architecture/overview.md` 承担
 - **设计系统（视觉数值唯一来源）**：`docs/design/system/spec.md`（图标/间距/字号/圆角/语义色/判据）、`docs/design/system/decisions.md`（append-only 部件决案台账）；单 feature 设计在 `docs/design/approved/`，只引用条款号不复制数值
+- **数据面（可配置面的落点契约）**：`docs/agents/data-surface.md`（触发信号 / 六栏表 / 票面第 8 字段 / C10 机检）；脚本 `scripts/cw-data-surface.sh`，识别信号配在 `.change-workflow.conf` 的 `DATA_SURFACE_*`
 - **知识检索（GBrain）**：agent 通过 MCP 工具 `search` / `query` / `get_page` / `code_def` / `code_refs`（共享 HTTP owner，`http://127.0.0.1:3131/mcp`）。PGLite 单写者下，同样功能的 CLI `gbrain search/query/status` 会报 `pglite_busy`；`gbrain sync` 例外，走委托可正常跑。**无常驻 autopilot**，索引刷新用 `/sync-gbrain`。配置 `~/.gbrain/config.json`。
 - **需求基线与跟踪**：产品愿景/原则/范围 `docs/product/`，交付路线图 `docs/delivery/roadmap.md`，功能规格 `openspec/specs/`，需求×实现状态一览 `docs/delivery/requirements-status.md`（旧 `CORE-REQUIREMENTS-clairis.md`/`PLAN.md`/`MVP-需求跟踪表.md` 等已 superseded/归档，不作活入口）
 - **软著资料准备**：`docs/delivery/softcopyright/`（台账/开发流程证据链规范/申请操作手册）
@@ -93,6 +94,7 @@ Biaoyue 面向中文用户，维护者母语为中文。以下为**硬约定**�
 - 实根因修复，不在每个调用点打补丁。
 - 业务边界输入必须校验。
 - **需求/功能变更必须先走 OpenSpec 闭环**（硬约束）：新增或变更需求 → `/opsx-propose` 建 change（proposal+design+tasks）；实现 → `/opsx-apply` 勾任务；完成后 → `/opsx-archive` 归档并更新 `docs/delivery/requirements-status.md`。**禁止**绕过 change 直接改 `openspec/specs/` 主规格，也禁止不归档就把需求标为已完成。
+- **数据面（可配置面）必须走落点契约**：改动触及配置字段/主题/图标/菜单/轮盘/开关时，按 `docs/agents/data-surface.md` 在 design.md 写「## 数据面」六栏表，并在 G0 阶段二、G0-POST、G1 出口分别跑 `./scripts/cw-data-surface.sh new|tickets|diff <change>`。命中信号却无六栏表 = 不得拆票。
 
 ## UI 修复后必做检查清单
 
