@@ -182,6 +182,28 @@ describe("#361 高亮块 emoji 取色器", () => {
     ]);
   });
 
+  it("类型切换后显示新类型默认图标", async () => {
+    icon().dispatchEvent(
+      new MouseEvent("mousedown", { bubbles: true, cancelable: true }),
+    );
+    await nextFrame();
+    optionByEmoji("🎯")?.dispatchEvent(
+      new MouseEvent("click", { bubbles: true, cancelable: true }),
+    );
+    expect(card().getAttribute("data-callout-emoji")).toBe("🎯");
+
+    view.dispatch({
+      changes: {
+        from: 0,
+        to: view.state.doc.length,
+        insert: "> [!TIP]\n> callout body",
+      },
+    });
+    view.requestMeasure();
+    expect(card().getAttribute("data-callout-type")).toBe("tip");
+    expect(card().getAttribute("data-callout-emoji")).toBe("💡");
+  });
+
   it("文档编辑后 widget 重建仍保留所选 emoji", async () => {
     icon().dispatchEvent(
       new MouseEvent("mousedown", { bubbles: true, cancelable: true }),

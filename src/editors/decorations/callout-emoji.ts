@@ -96,6 +96,7 @@ function applyEmoji(
   const next = emoji ?? defaultEmoji;
   const card = liveCard(view, index);
   if (!card) return;
+  if (card.getAttribute("data-callout-type") !== type) return;
   card.setAttribute("data-callout-emoji", next);
   const iconEl = card.querySelector<HTMLElement>(".cm-callout-icon");
   if (iconEl) {
