@@ -84,16 +84,17 @@ describe("SettingsView", () => {
     expect(screen.getByTestId("grid-default-mode-list")).toBeTruthy();
   });
 
-  it("阅读空间区：行宽三档与配色四项就位，点击写入配置并应用皮肤", () => {
+  it("阅读空间区：行宽四档与配色四项就位，点击写入配置并应用皮肤", () => {
     render(<SettingsView onClose={() => {}} />);
     fireEvent.click(screen.getAllByTestId("settings-nav-item")[2]);
 
     const widths = screen
       .getAllByTestId(/^reader-width-/)
       .filter((el) => el.tagName === "BUTTON");
-    expect(widths).toHaveLength(3);
+    expect(widths).toHaveLength(4);
     expect(widths.map((el) => el.textContent)).toEqual([
       "紧凑",
+      "适中",
       "标准",
       "宽松",
     ]);

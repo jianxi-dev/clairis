@@ -9,9 +9,13 @@ import { readPercentOf } from "../lib/railCards";
 
 const WIDTH_PRESETS = [
   { value: 720, label: "紧凑", bar: 14 },
-  { value: 960, label: "标准", bar: 18 },
-  { value: 1200, label: "宽松", bar: 22 },
+  { value: 960, label: "适中", bar: 17 },
+  { value: 1080, label: "标准", bar: 20 },
+  { value: 1200, label: "宽松", bar: 23 },
 ] as const;
+
+/** 宽度弹层的关闭宽限：足够让指针从按钮跨到弹层里。 */
+const WIDTH_CLOSE_MS = 200;
 
 const WIDTH_MAX = 1400;
 const WIDTH_PANEL_W = 200;
@@ -129,6 +133,31 @@ export default function StatusBar({
   const [widthRect, setWidthRect] = useState<DOMRect | null>(null);
   const widthBtnRef = useRef<HTMLButtonElement | null>(null);
   const widthPanelRef = useRef<HTMLDivElement | null>(null);
+  const widthCloseTimer = useRef<number | null>(null);
+
+  const cancelWidthClose = useCallback(() => {
+    if (widthCloseTimer.current !== null) {
+      window.clearTimeout(widthCloseTimer.current);
+      widthCloseTimer.current = null;
+    }
+  }, []);
+
+  const openWidthPanel = useCallback(() => {
+    cancelWidthClose();
+    const rect = widthBtnRef.current?.getBoundingClientRect();
+    if (rect) setWidthAnchor(rect.left + rect.width / 2);
+    setWidthOpen(true);
+  }, [cancelWidthClose]);
+
+  const scheduleWidthClose = useCallback(() => {
+    cancelWidthClose();
+    widthCloseTimer.current = window.setTimeout(() => {
+      widthCloseTimer.current = null;
+      setWidthOpen(false);
+    }, WIDTH_CLOSE_MS);
+  }, [cancelWidthClose]);
+
+  useEffect(() => () => cancelWidthClose(), [cancelWidthClose]);
 
   useEffect(() => {
     if (!widthOpen) return;
@@ -259,6 +288,8 @@ export default function StatusBar({
         <div
           className={`width-control${widthOpen ? " is-open" : ""}`}
           data-testid="width-control"
+          onPointerEnter={openWidthPanel}
+          onPointerLeave={scheduleWidthClose}
         >
           <button
             type="button"
@@ -266,6 +297,7 @@ export default function StatusBar({
             data-testid="status-width"
             title={`页面宽度 ${readerWidth}px（点击调整）`}
             onClick={(e) => {
+              cancelWidthClose();
               setWidthAnchor(e.clientX);
               setWidthOpen((v) => !v);
             }}
@@ -280,6 +312,8 @@ export default function StatusBar({
                 ref={widthPanelRef}
                 data-testid="width-panel"
                 className="width-panel"
+                onPointerEnter={cancelWidthClose}
+                onPointerLeave={scheduleWidthClose}
                 style={{
                   left: Math.min(
                     Math.max(widthAnchor - WIDTH_PANEL_W / 2, 8),
