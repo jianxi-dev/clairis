@@ -79,3 +79,116 @@ test("视频显示时左侧阅读空间展开按钮仍在最上层", async ({ pa
   await edge.click();
   await expect(page.locator('[data-testid="rail-panel"]')).toBeVisible();
 });
+
+/**
+ * 起播态与多路并行（第十二批 #539）：
+ * 播放器一律暂停打开；每格播放互不影响；多路可同时出声。
+ *
+ * 媒体桩说明：mock 桥给的 media:// 文件不存在，Chromium 无法解码真视频，
+ * 因此把 HTMLMediaElement 的 play()/paused 建模成浏览器契约（play 置
+ * __playing 并派发 play），用于断言「我们的代码是否调用了 play」——
+ * 被测对象是应用调用点，不是媒体解码本身。
+ */
+async function installMediaStub(page: Page) {
+  await page.addInitScript(() => {
+    const w = window as unknown as Record<string, any>;
+    w.__playCalls = 0;
+    HTMLMediaElement.prototype.play = function play() {
+      w.__playCalls += 1;
+      (this as unknown as Record<string, any>).__playing = true;
+      this.dispatchEvent(new Event("play"));
+      return Promise.resolve();
+    };
+    Object.defineProperty(HTMLMediaElement.prototype, "paused", {
+      configurable: true,
+      get(this: HTMLMediaElement) {
+        return !(this as unknown as Record<string, any>).__playing;
+      },
+    });
+  });
+}
+
+async function bootWithMediaStub(page: Page) {
+  await installMediaStub(page);
+  await boot(page);
+}
+
+function playCalls(page: Page): Promise<number> {
+  return page.evaluate(
+    () => (window as unknown as Record<string, any>).__playCalls as number,
+  );
+}
+
+function videoStates(page: Page) {
+  return page.locator(".art-video-player video").evaluateAll((els) =>
+    els.map((el) => ({
+      paused: (el as HTMLVideoElement).paused,
+      muted: (el as HTMLVideoElement).muted,
+      src: (el as HTMLVideoElement).src,
+    })),
+  );
+}
+
+test("打开视频为暂停态且不调用 play（含重新挂载）", async ({ page }) => {
+  await bootWithMediaStub(page);
+  await openInFocusedPane(page, "/Users/test/clip-a.mp4");
+  await page.locator(".art-video-player").first().waitFor({ timeout: 10000 });
+  await page.waitForTimeout(500);
+
+  const states = await videoStates(page);
+  expect(states).toHaveLength(1);
+  expect(states[0].paused).toBe(true);
+  expect(await playCalls(page)).toBe(0);
+
+  // 重新挂载等价于程序重启恢复工作区：关闭页签再重新打开同一视频
+  await page.evaluate(() => {
+    const store = (window as unknown as Record<string, any>).__biaoyue_store__;
+    const state = store.getState();
+    const tab = Object.values(state.tabs as Record<string, any>).find(
+      (t: any) => t.path === "/Users/test/clip-a.mp4",
+    ) as any;
+    state.closeTab(tab.id);
+  });
+  await page.waitForTimeout(200);
+  await openInFocusedPane(page, "/Users/test/clip-a.mp4");
+  await page.locator(".art-video-player").first().waitFor({ timeout: 10000 });
+  await page.waitForTimeout(500);
+
+  const again = await videoStates(page);
+  expect(again[0].paused).toBe(true);
+  expect(await playCalls(page)).toBe(0);
+});
+
+test("两栏视频各自独立播放，且都未静音", async ({ page }) => {
+  await bootWithMediaStub(page);
+  await openInFocusedPane(page, "/Users/test/clip-a.mp4");
+  await page.locator(".art-video-player").first().waitFor({ timeout: 10000 });
+
+  await page.evaluate(() => {
+    const store = (window as unknown as Record<string, any>).__biaoyue_store__;
+    store.getState().splitPane("row");
+  });
+  await openInFocusedPane(page, "/Users/test/clip-b.webm");
+  await expect(page.locator(".art-video-player")).toHaveCount(2);
+  await page.waitForTimeout(300);
+
+  const players = page.locator(".art-video-player");
+  await players
+    .nth(0)
+    .locator(".art-control-playAndPause")
+    .click({ force: true });
+  await page.waitForTimeout(100);
+  let states = await videoStates(page);
+  const pausedAfterFirst = states.map((s) => s.paused);
+  expect(pausedAfterFirst.filter((p) => p === false)).toHaveLength(1);
+
+  await players
+    .nth(1)
+    .locator(".art-control-playAndPause")
+    .click({ force: true });
+  await page.waitForTimeout(100);
+  states = await videoStates(page);
+  expect(states.every((s) => s.paused === false)).toBe(true);
+  expect(states.every((s) => s.muted === false)).toBe(true);
+  expect(states[0].src).not.toBe(states[1].src);
+});

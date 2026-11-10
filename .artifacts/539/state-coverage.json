@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "打开视频为暂停态",
+      "screenshot": ".artifacts/539/state-open-paused.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-10T05:42:28Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "两栏各一个播放器",
+      "screenshot": ".artifacts/539/state-two-panes.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-10T05:42:29Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "仅第一栏播放",
+      "screenshot": ".artifacts/539/state-first-playing.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-10T05:42:29Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "两栏同时播放且未静音",
+      "screenshot": ".artifacts/539/state-both-playing.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-10T05:42:29Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}
