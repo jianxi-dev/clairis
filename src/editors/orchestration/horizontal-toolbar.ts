@@ -18,6 +18,9 @@ import {
   toggleWrap,
 } from "./toolbar-shared";
 import { useAiEntryStore } from "../../hooks/useAiEntry";
+import { useEditorStore } from "../../stores/editorStore";
+import { executeCommand, registerCommand } from "./commands";
+import { HTML_TOOLBAR_ITEMS, resolveToolbarOrder } from "./slots";
 
 const SHOW_DELAY_MS = 90;
 
@@ -136,94 +139,41 @@ function toolButton(action: BarAction): HTMLButtonElement {
   return b;
 }
 
-function aiActions(view: EditorView): BarAction[] {
-  const run = (prompt: string) => () => {
+function registerToolbarCommands(view: EditorView): void {
+  const runAi = (prompt: string) => () => {
     const ai = useAiEntryStore.getState();
     ai.setInput(`${prompt}\n\n${selectionText(view)}`);
     ai.openOverlay();
   };
-  return [
-    {
-      id: "ai-rewrite",
-      label: "改写",
-      icon: "edit",
-      run: run("请改写以下内容："),
-    },
-    {
-      id: "ai-translate",
-      label: "翻译",
-      icon: "globe",
-      run: run("请翻译以下内容："),
-    },
-    {
-      id: "ai-polish",
-      label: "润色",
-      icon: "sparkle",
-      run: run("请润色以下内容："),
-    },
-  ];
-}
-
-function formatActions(view: EditorView): BarAction[] {
-  return [
-    {
-      id: "format-bold",
-      label: "粗体",
-      icon: "bold",
-      run: () => wrapSelection(view, "**", "**"),
-    },
-    {
-      id: "format-italic",
-      label: "斜体",
-      icon: "italic",
-      run: () => wrapSelection(view, "*", "*"),
-    },
-    {
-      id: "format-underline",
-      label: "下划线",
-      icon: "underline",
-      run: () => wrapSelection(view, "<u>", "</u>"),
-    },
-    {
-      id: "format-strike",
-      label: "删除线",
-      icon: "strike",
-      run: () => wrapSelection(view, "~~", "~~"),
-    },
-    {
-      id: "format-code",
-      label: "行内代码",
-      icon: "code",
-      run: () => wrapSelection(view, "`", "`"),
-    },
-    {
-      id: "format-link",
-      label: "链接",
-      icon: "link",
-      run: () => wrapSelection(view, "[", "](url)"),
-    },
-  ];
-}
-
-function alignActions(view: EditorView): BarAction[] {
-  return (["left", "center", "right"] as const).map((kind) => ({
-    id: `align-${kind}`,
-    label: kind === "left" ? "左对齐" : kind === "center" ? "居中" : "右对齐",
-    icon:
-      kind === "left"
-        ? ("alignLeft" as const)
-        : kind === "center"
-          ? ("alignCenter" as const)
-          : ("alignRight" as const),
-    run: () => {
-      const block = blockAt(view, view.state.selection.main.from);
-      if (block) alignBlock(view, block, kind);
-    },
-  }));
+  const wrap = (before: string, after: string) => () => {
+    wrapSelection(view, before, after);
+  };
+  const align = (kind: "left" | "center" | "right") => () => {
+    const block = blockAt(view, view.state.selection.main.from);
+    if (block) alignBlock(view, block, kind);
+  };
+  const commands: Record<string, () => void> = {
+    "ai-rewrite": runAi("请改写以下内容："),
+    "ai-translate": runAi("请翻译以下内容："),
+    "ai-polish": runAi("请润色以下内容："),
+    "format-bold": wrap("**", "**"),
+    "format-italic": wrap("*", "*"),
+    "format-underline": wrap("<u>", "</u>"),
+    "format-strike": wrap("~~", "~~"),
+    "format-code": wrap("`", "`"),
+    "format-link": wrap("[", "](url)"),
+    "align-left": align("left"),
+    "align-center": align("center"),
+    "align-right": align("right"),
+  };
+  for (const id of Object.keys(commands)) {
+    registerCommand(id, () => commands[id]());
+  }
 }
 
 export function horizontalToolbar() {
   return ViewPlugin.define((view) => {
+    registerToolbarCommands(view);
     let bar: HTMLDivElement | null = null;
     let timer = 0;
     let pointerDown = false;
@@ -236,14 +186,26 @@ export function horizontalToolbar() {
       root.setAttribute("role", "toolbar");
       root.setAttribute("aria-label", "文字工具条");
 
-      const group = (actions: BarAction[]) => {
-        for (const action of actions) root.appendChild(toolButton(action));
-      };
-      group(aiActions(view));
-      root.appendChild(separator());
-      group(formatActions(view));
-      root.appendChild(separator());
-      group(alignActions(view));
+      const order = resolveToolbarOrder(
+        useEditorStore.getState().config.htmlToolbarItems,
+      );
+      let lastGroup: string | null = null;
+      for (const id of order) {
+        const item = HTML_TOOLBAR_ITEMS.find((entry) => entry.id === id);
+        if (!item) continue;
+        if (lastGroup !== null && item.group !== lastGroup) {
+          root.appendChild(separator());
+        }
+        lastGroup = item.group;
+        root.appendChild(
+          toolButton({
+            id: item.id,
+            label: item.label,
+            icon: item.icon,
+            run: () => executeCommand(item.id, { view }),
+          }),
+        );
+      }
       root.appendChild(separator());
 
       const select = document.createElement("select");

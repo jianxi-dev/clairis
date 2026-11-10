@@ -61,6 +61,7 @@ interface RustAppConfig {
   scrollPositions: Record<string, ScrollPosition> | null;
   capabilities?: Record<string, boolean> | null;
   rouletteSectors?: string[] | null;
+  htmlToolbarItems?: string[] | null;
   paneLayout?: string | null;
   railViewSpec?: {
     layout: string | null;
@@ -148,6 +149,7 @@ export async function saveAppConfig(): Promise<void> {
     scrollPositions: useStore.getState().scrollPositions ?? null,
     capabilities: serializeCapabilities(),
     rouletteSectors: es.config.rouletteSectors ?? null,
+    htmlToolbarItems: es.config.htmlToolbarItems ?? null,
     // 读实时值：本次会话分裂/调整的比例要能持久化
     paneLayout: useStore.getState().paneLayoutJson(),
     // 阅读空间栏「设为默认」规格（layout-portal 6.1）
@@ -278,6 +280,36 @@ export function normalizeRouletteSectors(
   return out.length > 0 ? out : null;
 }
 
+const HTML_TOOLBAR_IDS = [
+  "ai-rewrite",
+  "ai-translate",
+  "ai-polish",
+  "format-bold",
+  "format-italic",
+  "format-underline",
+  "format-strike",
+  "format-code",
+  "format-link",
+  "align-left",
+  "align-center",
+  "align-right",
+] as const;
+
+export function normalizeHtmlToolbarItems(
+  raw: string[] | null | undefined,
+): string[] | null {
+  if (!Array.isArray(raw) || raw.length === 0) return null;
+  const out: string[] = [];
+  for (const id of raw) {
+    if (!HTML_TOOLBAR_IDS.some((known) => known === id)) {
+      log.warn("Config", `忽略未知工具条动作: ${id}`);
+      continue;
+    }
+    if (!out.includes(id)) out.push(id);
+  }
+  return out.length > 0 ? out : null;
+}
+
 function applyRustConfig(raw: RustAppConfig): void {
   const config: Partial<AppConfig> = {
     fontSize: raw.fontSize ?? 17,
@@ -311,6 +343,7 @@ function applyRustConfig(raw: RustAppConfig): void {
     recentFiles: raw.recentFiles ?? [],
     capabilities: raw.capabilities ?? {},
     rouletteSectors: normalizeRouletteSectors(raw.rouletteSectors),
+    htmlToolbarItems: normalizeHtmlToolbarItems(raw.htmlToolbarItems),
   };
 
   const es = useEditorStore.getState();
