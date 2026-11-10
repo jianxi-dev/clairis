@@ -86,17 +86,18 @@ test("列表循环模式播完仍接管同目录下一项", async ({ page }) => 
   const loop = page.locator(".art-control[data-name='loop']");
   await loop.click();
   await loop.click();
+  await expect(page.locator(".art-notice")).toContainText("列表循环");
 
-  const src = await page.evaluate(async () => {
+  const thumbSrc = await page.evaluate(() => {
     const v = document.querySelector(
       ".art-video-player video",
     ) as HTMLVideoElement;
+    const thumb = document.querySelector(
+      '[data-testid="video-thumb-source"]',
+    ) as HTMLVideoElement;
     v.dispatchEvent(new Event("ended"));
-    await new Promise<void>((resolve) =>
-      requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
-    );
-    return v.src;
+    return thumb.src;
   });
 
-  expect(src).toContain("ep2");
+  expect(thumbSrc).toContain("ep2");
 });
