@@ -14,6 +14,14 @@ export async function loadPdfBytes(
     };
   }
 
+  const ext = path.split(".").pop()?.toLowerCase() ?? "";
+  if (ext !== "pdf") {
+    return {
+      ok: false,
+      error: "该文件不是 PDF，已跳过 PDF 渲染",
+    };
+  }
+
   try {
     const { invoke } = await import("@tauri-apps/api/core");
     const base64 = await invoke<string>("read_file_base64", { path });

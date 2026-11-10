@@ -43,6 +43,13 @@ describe("loadPdfBytes", () => {
     });
   });
 
+  it("rejects non-pdf paths before reading bytes", async () => {
+    const result = await loadPdfBytes("/x/song.mp3");
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error).toContain("不是 PDF");
+    expect(invokeMock).not.toHaveBeenCalled();
+  });
+
   it("returns ok:false (does not throw) when invoke rejects", async () => {
     invokeMock.mockRejectedValue(new Error("boom"));
     const result = await loadPdfBytes("/c.pdf");
