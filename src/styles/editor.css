@@ -2958,6 +2958,17 @@ html[data-tab-drag="true"] body * {
   gap: 2px;
 }
 
+.capsule-row-single {
+  justify-content: flex-start;
+  max-width: min(92vw, 760px);
+  overflow-x: auto;
+  padding: 4px;
+  border: 1px solid var(--app-border);
+  border-radius: 10px;
+  background: var(--app-surface);
+  box-shadow: var(--app-shadow);
+}
+
 .capsule-row-secondary {
   opacity: 0.88;
 }
