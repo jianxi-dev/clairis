@@ -667,13 +667,12 @@ export default function VideoPlayer({
     const art = new Artplayer({
       container,
       url: initialUrl,
-      autoplay: true,
+      autoplay: false,
       autoSize: true,
       fullscreen: false,
       fullscreenWeb: true,
       pip: false,
-      // 记忆播放：显示「上次看到 mm:ss / 跳转播放」浮层（下详 ready 自动跳转）
-      autoPlayback: true,
+      autoPlayback: false,
       hotkey: true,
       lang: "zh-cn",
       theme: "#6366f1",
@@ -1019,8 +1018,8 @@ export default function VideoPlayer({
       }
     });
 
-    // 续播记忆：autoPlayback 负责存储进度 + 显示「上次看到 mm:ss」浮层；
-    // ready 后自动定位到上次位置（无需点击「跳转播放」），浮层停留数秒后自行消失
+    // 起播态：一律暂停打开。只把上次看到的位置设为起点，不自动播放——
+    // 程序重启恢复工作区时同理（否则会在用户没操作时突然出声）。
     Artplayer.AUTO_PLAYBACK_TIMEOUT = 8000;
     art.on("ready", () => {
       try {
@@ -1030,7 +1029,6 @@ export default function VideoPlayer({
         const saved = settings.times?.[initialUrl] ?? 0;
         if (saved >= RESUME_MIN_SECONDS) {
           art.currentTime = saved;
-          void art.play();
         }
       } catch {
         // 忽略

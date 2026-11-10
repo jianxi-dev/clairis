@@ -435,7 +435,7 @@ test("视频文件预览：media:// 协议直连（ArtPlayer 常驻播放器）"
     "src",
     "media://localhost/Users/test/clip.mp4",
   );
-  await expect(video).toHaveAttribute("autoplay", "");
+  await expect(video).not.toHaveAttribute("autoplay", "");
 });
 
 test("图片预览默认宽度 1180 且支持滚轮缩放", async ({ page }) => {
