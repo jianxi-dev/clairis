@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { EditorState } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
+import { floatingToolbar } from "../../editors/orchestration/floating-toolbar";
 import {
   clearCommands,
   executeCommand,
@@ -57,5 +58,27 @@ describe("命令注册表", () => {
     });
     executeCommand("ctx", { view });
     expect(seen).toBe(view);
+  });
+});
+
+describe("内置命令装配", () => {
+  it("格式扇区六项在扩展装配时注册", () => {
+    const mounted = new EditorView({
+      state: EditorState.create({ doc: "x", extensions: [floatingToolbar()] }),
+    });
+    try {
+      for (const id of [
+        "format-link",
+        "format-underline",
+        "format-italic",
+        "format-bold",
+        "format-code",
+        "format-strike",
+      ]) {
+        expect(hasCommand(id)).toBe(true);
+      }
+    } finally {
+      mounted.destroy();
+    }
   });
 });
