@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "mp3-open",
+      "screenshot": ".artifacts/607/mp3-open.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-10T18:07:43Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "mp3-player",
+      "screenshot": ".artifacts/607/mp3-player.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-10T18:07:43Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "mp3-tab",
+      "screenshot": ".artifacts/607/mp3-tab.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-10T18:07:43Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "mp3-closed",
+      "screenshot": ".artifacts/607/mp3-closed.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-10T18:07:43Z",
+      "runner": "unknown@MMBP"
+    }
+  ]
+}
