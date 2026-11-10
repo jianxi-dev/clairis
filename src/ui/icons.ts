@@ -378,7 +378,7 @@ export const ICONS: Record<IconName, IconDef> = {
   },
   timestampNote: {
     label: "时间戳笔记",
-    s: "M4 5h10v14H4z M7 9h4 M7 12h4 M7 15h2 M18 7a4 4 0 100 8 4 4 0 000-8z M18 9v2l1.5 1",
+    s: "M4 20.5l4.5-1.1L19 8.9a2.1 2.1 0 0 0-3-3L5.5 16.4 4 20.5z M14.5 7.5l2.9 2.9 M13 21h8",
   },
   keyboardHints: {
     label: "快捷键",

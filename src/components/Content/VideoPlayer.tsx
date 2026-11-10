@@ -667,12 +667,14 @@ export default function VideoPlayer({
     const art = new Artplayer({
       container,
       url: initialUrl,
-      autoplay: false,
+      autoplay: true,
       autoSize: true,
       fullscreen: false,
       fullscreenWeb: true,
       pip: false,
-      autoPlayback: false,
+      autoPlayback: true,
+      // 每格播放器独立：Artplayer 默认 mutex 会在新视频起播时暂停其他实例。
+      mutex: false,
       hotkey: true,
       lang: "zh-cn",
       theme: "#6366f1",
@@ -1018,8 +1020,7 @@ export default function VideoPlayer({
       }
     });
 
-    // 起播态：一律暂停打开。只把上次看到的位置设为起点，不自动播放——
-    // 程序重启恢复工作区时同理（否则会在用户没操作时突然出声）。
+    // 起播态：打开即播放。上次看到的位置作为起点，播放在 seek 之后发起。
     Artplayer.AUTO_PLAYBACK_TIMEOUT = 8000;
     art.on("ready", () => {
       try {
@@ -1033,7 +1034,14 @@ export default function VideoPlayer({
       } catch {
         // 忽略
       }
+      void art.play()?.catch?.(() => {});
     });
+
+    // ready 依赖媒体元数据；文件尚未元数据就绪时也发一次播放请求。
+    // 延到构造初始化之后，避免被 ArtPlayer 自己的首次 pause 覆盖。
+    window.setTimeout(() => {
+      void art.play()?.catch?.(() => {});
+    }, 0);
 
     art.on("video:error", () => {
       setError("视频加载失败（可能编码不受支持或文件不可访问）");

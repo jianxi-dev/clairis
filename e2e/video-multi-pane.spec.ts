@@ -81,8 +81,8 @@ test("视频显示时左侧阅读空间展开按钮仍在最上层", async ({ pa
 });
 
 /**
- * 起播态与多路并行（第十二批 #539）：
- * 播放器一律暂停打开；每格播放互不影响；多路可同时出声。
+ * 起播态与多路并行（第十三批 #574）：
+ * 打开视频即自动播放；每格播放互不影响；多路可同时出声。
  *
  * 媒体桩说明：mock 桥给的 media:// 文件不存在，Chromium 无法解码真视频，
  * 因此把 HTMLMediaElement 的 play()/paused 建模成浏览器契约（play 置
@@ -98,6 +98,10 @@ async function installMediaStub(page: Page) {
       (this as unknown as Record<string, any>).__playing = true;
       this.dispatchEvent(new Event("play"));
       return Promise.resolve();
+    };
+    HTMLMediaElement.prototype.pause = function pause() {
+      (this as unknown as Record<string, any>).__playing = false;
+      this.dispatchEvent(new Event("pause"));
     };
     Object.defineProperty(HTMLMediaElement.prototype, "paused", {
       configurable: true,
@@ -129,16 +133,16 @@ function videoStates(page: Page) {
   );
 }
 
-test("打开视频为暂停态且不调用 play（含重新挂载）", async ({ page }) => {
+test("打开视频即自动播放（含重新挂载）", async ({ page }) => {
   await bootWithMediaStub(page);
   await openInFocusedPane(page, "/Users/test/clip-a.mp4");
   await page.locator(".art-video-player").first().waitFor({ timeout: 10000 });
-  await page.waitForTimeout(500);
+  await page.waitForTimeout(800);
 
   const states = await videoStates(page);
   expect(states).toHaveLength(1);
-  expect(states[0].paused).toBe(true);
-  expect(await playCalls(page)).toBe(0);
+  expect(states[0].paused).toBe(false);
+  expect(await playCalls(page)).toBeGreaterThanOrEqual(1);
 
   // 重新挂载等价于程序重启恢复工作区：关闭页签再重新打开同一视频
   await page.evaluate(() => {
@@ -155,8 +159,8 @@ test("打开视频为暂停态且不调用 play（含重新挂载）", async ({ 
   await page.waitForTimeout(500);
 
   const again = await videoStates(page);
-  expect(again[0].paused).toBe(true);
-  expect(await playCalls(page)).toBe(0);
+  expect(again[0].paused).toBe(false);
+  expect(await playCalls(page)).toBeGreaterThanOrEqual(2);
 });
 
 test("两栏视频各自独立播放，且都未静音", async ({ page }) => {
@@ -173,22 +177,32 @@ test("两栏视频各自独立播放，且都未静音", async ({ page }) => {
   await page.waitForTimeout(300);
 
   const players = page.locator(".art-video-player");
-  await players
-    .nth(0)
-    .locator(".art-control-playAndPause")
-    .click({ force: true });
-  await page.waitForTimeout(100);
+  await page.waitForTimeout(400);
   let states = await videoStates(page);
-  const pausedAfterFirst = states.map((s) => s.paused);
-  expect(pausedAfterFirst.filter((p) => p === false)).toHaveLength(1);
-
-  await players
-    .nth(1)
-    .locator(".art-control-playAndPause")
-    .click({ force: true });
-  await page.waitForTimeout(100);
-  states = await videoStates(page);
   expect(states.every((s) => s.paused === false)).toBe(true);
   expect(states.every((s) => s.muted === false)).toBe(true);
+
+  // 暂停第一格：第二格继续播放，互不影响（无全局 mutex）。
+  await players
+    .nth(0)
+    .locator("video")
+    .evaluate((el) => {
+      (el as HTMLVideoElement).pause();
+    });
+  await page.waitForTimeout(150);
+  states = await videoStates(page);
+  const paused = states.map((s) => s.paused);
+  expect(paused.filter((p) => p === true)).toHaveLength(1);
+  expect(paused.filter((p) => p === false)).toHaveLength(1);
+
+  await players
+    .nth(0)
+    .locator("video")
+    .evaluate((el) => {
+      void (el as HTMLVideoElement).play();
+    });
+  await page.waitForTimeout(150);
+  states = await videoStates(page);
+  expect(states.every((s) => s.paused === false)).toBe(true);
   expect(states[0].src).not.toBe(states[1].src);
 });
