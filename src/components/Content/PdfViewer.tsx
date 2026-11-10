@@ -12,7 +12,6 @@ import type {
 } from "@embedpdf/snippet";
 import { loadPdfBytes } from "../../utils/pdfSource";
 import { isTauriEnv } from "../../utils/tauri";
-import { useStore } from "../../stores";
 
 interface PdfViewerProps {
   filePath: string;
@@ -96,9 +95,9 @@ function injectPdfUiCss(container: EmbedPdfContainer): void {
     '[data-epdf-i="page-controls"] input{background:var(--app-surface) !important;border-color:var(--app-border) !important;color:var(--app-text) !important}',
     '[data-epdf-i="page-controls"] span{color:var(--app-text-2) !important}',
     '[data-epdf-i="main-toolbar"]{background:var(--app-surface) !important;border-bottom-color:var(--app-border) !important}',
-    '[data-epdf-i="main-toolbar"]{transition:opacity .25s ease,transform .25s ease !important}',
-    '[data-epdf-i="main-toolbar"]{opacity:calc(1 - var(--pdf-chrome-idle, 0)) !important;transform:translateY(calc(var(--pdf-chrome-idle, 0) * -100%)) !important}',
-    ":host(.pdf-chrome-idle) *{pointer-events:none !important}",
+    '[data-epdf-i="main-toolbar"]{transition:opacity .2s ease,transform .2s ease !important}',
+    ':host(.pdf-chrome-hidden) [data-epdf-i="main-toolbar"]{position:absolute !important;top:0 !important;left:0 !important;right:0 !important;z-index:50 !important;opacity:0 !important;transform:translateY(-100%) !important;pointer-events:none !important}',
+    ':host(.pdf-chrome-hidden.pdf-chrome-peek) [data-epdf-i="main-toolbar"]{opacity:1 !important;transform:none !important;pointer-events:auto !important}',
   ].join("\n");
   shadow.appendChild(style);
 }
@@ -260,6 +259,7 @@ export default function PdfViewer({ filePath }: PdfViewerProps) {
   );
   const [registry, setRegistry] = useState<PluginRegistry | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const embedRef = useRef<EmbedPdfContainer | null>(null);
 
   useEffect(() => {
     if (!isTauriEnv()) return; // 非 Tauri 已在初始 state 短路为错误态
@@ -297,7 +297,23 @@ export default function PdfViewer({ filePath }: PdfViewerProps) {
   }, [filePath]);
 
   const handleInit = useCallback((container: EmbedPdfContainer) => {
+    embedRef.current = container;
     injectPdfUiCss(container);
+    container.shadowRoot?.addEventListener(
+      "dblclick",
+      (event: Event) => {
+        const target = event.target;
+        if (
+          !(target instanceof Element) ||
+          target.closest('[data-epdf-i="main-toolbar"]') === null
+        ) {
+          return;
+        }
+        setChromeHidden((prev) => !prev);
+        setChromePeek(false);
+      },
+      true,
+    );
   }, []);
 
   const handleReady = useCallback((r: PluginRegistry) => {
@@ -312,35 +328,38 @@ export default function PdfViewer({ filePath }: PdfViewerProps) {
 
   usePdfPinchZoom(registry, containerRef, state.status === "ready");
 
-  // 沉浸态 PDF 顶栏自动收起（ui-polish-batch12 7.1）：1.2s 无指针交互加
-  // pdf-chrome-idle，容器内任何指针活动解除；transform/opacity 收起，
-  // 不改变内容布局。
-  const readingMode = useStore((s) => s.readingMode);
+  // PDF 顶栏显式收起（#570）：默认占位显示；双击工具栏收起并让正文填充，
+  // 再双击固定；收起后只有指针滑入顶部 16px 热区才以悬浮栏出现。
+  const [chromeHidden, setChromeHidden] = useState(false);
+  const [chromePeek, setChromePeek] = useState(false);
+
   useEffect(() => {
-    const el = containerRef.current;
-    if (!readingMode || state.status !== "ready" || !el) {
-      el?.classList.remove("pdf-chrome-idle");
-      return;
-    }
-    let timer: number | null = null;
-    const arm = () => {
-      if (timer !== null) window.clearTimeout(timer);
-      el.classList.remove("pdf-chrome-idle");
-      timer = window.setTimeout(() => {
-        timer = null;
-        el.classList.add("pdf-chrome-idle");
-      }, 1200);
+    const el = embedRef.current;
+    if (state.status !== "ready" || !el) return;
+    el.classList.toggle("pdf-chrome-hidden", chromeHidden);
+    el.classList.toggle("pdf-chrome-peek", chromeHidden && chromePeek);
+  }, [chromeHidden, chromePeek, state.status]);
+
+  useEffect(() => {
+    const host = containerRef.current;
+    const el = embedRef.current;
+    if (state.status !== "ready" || !host || !el) return;
+
+    const onMove = (event: PointerEvent) => {
+      if (!chromeHidden) return;
+      const top = event.clientY - host.getBoundingClientRect().top;
+      if (top <= 16) setChromePeek(true);
+      else if (top > 72) setChromePeek(false);
     };
-    arm();
-    el.addEventListener("pointermove", arm);
-    el.addEventListener("pointerdown", arm);
+    const onLeave = () => setChromePeek(false);
+
+    host.addEventListener("pointermove", onMove);
+    host.addEventListener("pointerleave", onLeave);
     return () => {
-      if (timer !== null) window.clearTimeout(timer);
-      el.classList.remove("pdf-chrome-idle");
-      el.removeEventListener("pointermove", arm);
-      el.removeEventListener("pointerdown", arm);
+      host.removeEventListener("pointermove", onMove);
+      host.removeEventListener("pointerleave", onLeave);
     };
-  }, [readingMode, state.status]);
+  }, [chromeHidden, state.status]);
 
   if (state.status === "loading") {
     return (

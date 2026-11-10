@@ -104,42 +104,70 @@ test("PDF 页码区无外框，外围底色跟随主题", async ({ page }) => {
   await expect.poll(() => shadowBg(page, ".bg-bg-app")).toBe(lightAppBg);
 });
 
-test("沉浸态 PDF 顶栏 1.2s 无交互自动收起，指针活动复现", async ({ page }) => {
+function pdfChrome(page: Page) {
+  return page.evaluate(() => {
+    const host = Array.from(document.querySelectorAll("*")).find((el) =>
+      el.shadowRoot?.querySelector('[data-epdf-i="main-toolbar"]'),
+    ) as HTMLElement | undefined;
+    const bar = host?.shadowRoot?.querySelector(
+      '[data-epdf-i="main-toolbar"]',
+    ) as HTMLElement | null;
+    const pageImg = host?.shadowRoot?.querySelector("img");
+    if (!bar) return null;
+    const style = getComputedStyle(bar);
+    return {
+      opacity: style.opacity,
+      position: style.position,
+      pageTop: pageImg ? pageImg.getBoundingClientRect().top : 0,
+      barHeight: bar.getBoundingClientRect().height,
+    };
+  });
+}
+
+function dblclickToolbar(page: Page) {
+  return page.evaluate(() => {
+    const host = Array.from(document.querySelectorAll("*")).find((el) =>
+      el.shadowRoot?.querySelector('[data-epdf-i="main-toolbar"]'),
+    ) as HTMLElement | undefined;
+    const bar = host?.shadowRoot?.querySelector('[data-epdf-i="main-toolbar"]');
+    bar?.dispatchEvent(
+      new MouseEvent("dblclick", { bubbles: true, composed: true }),
+    );
+  });
+}
+
+test("PDF 顶栏默认显示，双击收起、顶部滑入悬浮、再双击固定", async ({
+  page,
+}) => {
   await installShadowProbe(page);
   await boot(page);
   await openPdf(page);
-  await page.evaluate(() => {
-    window.__biaoyue_store__.getState().setReadingMode(true);
-  });
-  await page.waitForTimeout(300);
+  await page.waitForTimeout(400);
 
-  const toolbarOpacity = () =>
-    page.evaluate(() => {
-      const bar = window.findInShadow('[data-epdf-i="main-toolbar"]');
-      if (!bar) return "missing";
-      return getComputedStyle(bar).opacity;
-    });
+  const initial = await pdfChrome(page);
+  expect(initial).not.toBeNull();
+  expect(initial!.opacity).toBe("1");
+  expect(initial!.position).not.toBe("absolute");
 
-  // 指针在预览内活动 → 顶栏可见
-  const host = page
-    .locator("div")
-    .filter({ has: page.locator("shadow=no") })
-    .first();
-  await page.mouse.move(600, 400);
-  await page.mouse.move(610, 410);
-  await page.waitForTimeout(250);
-  expect(await toolbarOpacity()).toBe("1");
+  await dblclickToolbar(page);
+  await expect.poll(async () => (await pdfChrome(page))?.opacity).toBe("0");
+  const hidden = await pdfChrome(page);
+  expect(hidden!.position).toBe("absolute");
+  expect(initial!.barHeight).toBeGreaterThanOrEqual(24);
+  expect(hidden!.pageTop).toBeLessThan(initial!.pageTop - 24);
 
-  // 指针停住 1.6s → 顶栏收起（opacity 0）
-  await page.waitForTimeout(1600);
-  expect(await toolbarOpacity()).toBe("0");
+  const hostBox = await page
+    .locator('[data-testid="pane-header"]')
+    .boundingBox();
+  const top = (hostBox?.y ?? 0) + 30;
+  await page.mouse.move(600, top + 6);
+  await expect.poll(async () => (await pdfChrome(page))?.opacity).toBe("1");
+  expect((await pdfChrome(page))!.position).toBe("absolute");
 
-  // 再活动 → 复现
-  await page.mouse.move(620, 420);
-  await page.waitForTimeout(300);
-  expect(await toolbarOpacity()).toBe("1");
+  await page.mouse.move(600, top + 320);
+  await expect.poll(async () => (await pdfChrome(page))?.opacity).toBe("0");
 
-  await page.evaluate(() => {
-    window.__biaoyue_store__.getState().setReadingMode(false);
-  });
+  await dblclickToolbar(page);
+  await expect.poll(async () => (await pdfChrome(page))?.opacity).toBe("1");
+  expect((await pdfChrome(page))!.position).not.toBe("absolute");
 });

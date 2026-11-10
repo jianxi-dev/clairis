@@ -1014,12 +1014,6 @@ body {
   border-radius: 0 0 var(--radius-8, 8px) var(--radius-8, 8px);
 }
 
-/* 沉浸态 PDF 顶栏自动收起：自定义属性穿透 EmbedPDF shadow DOM，
-   顶栏 opacity/transform 由该变量驱动（见 PdfViewer 注入的样式）。 */
-.pdf-chrome-idle {
-  --pdf-chrome-idle: 1;
-}
-
 /* 底部状态栏（G-3）：沉浸态只收拢 .app-chrome，状态栏常驻不透明。 */
 .app-status-bar {
   border-top: 1px solid var(--app-border);
