@@ -94,3 +94,50 @@ test("关闭工具条后无残留节点", async ({ page }) => {
     0,
   );
 });
+
+test("证据：四态截图", async ({ page }) => {
+  const dir = process.env.EVIDENCE_DIR;
+  test.skip(!dir, "EVIDENCE_DIR 未设置");
+  await boot(page);
+  await openBar(page);
+  await page.screenshot({ path: `${dir}/default-13.png` });
+  await page.keyboard.press("Escape");
+
+  await page.evaluate(() => {
+    window.__biaoyue_editor_store__.getState().setConfig({
+      htmlToolbarItems: [
+        "ai-rewrite",
+        "ai-translate",
+        "ai-polish",
+        "format-italic",
+        "format-underline",
+        "format-strike",
+        "format-code",
+        "format-link",
+        "align-left",
+        "align-center",
+        "align-right",
+      ],
+    });
+  });
+  await openBar(page);
+  await page.screenshot({ path: `${dir}/removed-bold-12.png` });
+  await page.keyboard.press("Escape");
+
+  await page.evaluate(() => {
+    window.__biaoyue_editor_store__
+      .getState()
+      .setConfig({ htmlToolbarItems: ["format-italic", "align-right"] });
+  });
+  await openBar(page);
+  await page.screenshot({ path: `${dir}/reordered.png` });
+  await page.keyboard.press("Escape");
+
+  await page.evaluate(() => {
+    window.__biaoyue_editor_store__
+      .getState()
+      .setConfig({ htmlToolbarItems: ["bogus"] });
+  });
+  await openBar(page);
+  await page.screenshot({ path: `${dir}/unknown-fallback-13.png` });
+});
