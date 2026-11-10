@@ -1,0 +1,32 @@
+{
+  "change": "roulette-visual-tuning",
+  "requirements": [
+    {
+      "id": "R-1",
+      "text": "视觉",
+      "anchors": [
+        {
+          "id": "A-1.1",
+          "claim": "三级在场时二层不透明度",
+          "kind": "exact",
+          "assert": "0.8",
+          "source": "用户反馈"
+        },
+        {
+          "id": "A-1.2",
+          "claim": "圆心底色不含 alpha 通道",
+          "kind": "state-machine",
+          "assert": "\"true\"",
+          "source": "用户反馈"
+        },
+        {
+          "id": "A-1.3",
+          "claim": "根环展开下级后不透明度",
+          "kind": "exact",
+          "assert": "0.7",
+          "source": "批准稿 §4.4"
+        }
+      ]
+    }
+  ]
+}

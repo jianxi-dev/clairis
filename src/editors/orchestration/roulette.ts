@@ -40,7 +40,7 @@ export const ITEM_DEG = 15;
 export const GAP_DEG = 0.35;
 
 /** 展开下级后一二层的不透明度（第九轮：0.7）。 */
-export const SUB_DIM_OPACITY = 0.7;
+export const SUB_DIM_OPACITY = 0.8;
 
 export type SectorId =
   | "smart"
