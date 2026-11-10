@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "按钮悬停胶囊提示",
+      "screenshot": ".artifacts/547/state-button-tip.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-10T08:53:07Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "移出后提示消失",
+      "screenshot": ".artifacts/547/state-tip-dismissed.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-10T08:53:07Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "轮盘扇区显示转换",
+      "screenshot": ".artifacts/547/state-roulette-tip.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-10T08:53:07Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "色条悬停显示提示",
+      "screenshot": ".artifacts/547/state-color-tip.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-10T08:53:07Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}

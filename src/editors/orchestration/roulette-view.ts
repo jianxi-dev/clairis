@@ -532,6 +532,7 @@ export function createRoulette(
     path.dataset.testid = `sector-${sector.id}`;
     path.setAttribute("role", "menuitem");
     path.setAttribute("aria-label", sector.label);
+    path.setAttribute("title", sector.label);
     path.addEventListener("pointerenter", () => {
       window.clearTimeout(closeTimer);
     });
