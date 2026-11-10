@@ -114,7 +114,7 @@ describe("SettingsView", () => {
     // 连续滑块（#274）：480–2400，实时写配置与数值展示
     const range = screen.getByTestId("reader-width-range") as HTMLInputElement;
     expect(range.min).toBe("480");
-    expect(range.max).toBe("2400");
+    expect(range.max).toBe("1400");
     expect(screen.getByTestId("reader-width-value").textContent).toBe("720px");
     fireEvent.change(range, { target: { value: "1400" } });
     expect(useEditorStore.getState().config.readerWidth).toBe(1400);

@@ -7,17 +7,16 @@ import { useEditorStore } from "../stores/editorStore";
 import { useStore } from "../stores/index";
 import { readPercentOf } from "../lib/railCards";
 
-const WIDTH_PRESETS = [
-  { value: 720, label: "紧凑", bar: 14 },
-  { value: 960, label: "适中", bar: 17 },
-  { value: 1080, label: "标准", bar: 20 },
-  { value: 1200, label: "宽松", bar: 23 },
-] as const;
+import {
+  READER_WIDTH_MAX,
+  READER_WIDTH_MIN,
+  READER_WIDTH_PRESETS,
+  READER_WIDTH_STEP,
+} from "../lib/readerWidth";
 
 /** 宽度弹层的关闭宽限：足够让指针从按钮跨到弹层里。 */
 const WIDTH_CLOSE_MS = 200;
 
-const WIDTH_MAX = 1400;
 const WIDTH_PANEL_W = 200;
 
 /** 主题点击循环次序（点击图标 = 切到下一个）。 */
@@ -295,7 +294,7 @@ export default function StatusBar({
             type="button"
             ref={widthBtnRef}
             data-testid="status-width"
-            title={`页面宽度 ${readerWidth}px（点击调整）`}
+            title={`页面宽度 ${readerWidth}px`}
             onClick={(e) => {
               cancelWidthClose();
               setWidthAnchor(e.clientX);
@@ -323,7 +322,7 @@ export default function StatusBar({
                 }}
               >
                 <div className="width-bars" data-testid="width-bars">
-                  {WIDTH_PRESETS.map((opt) => (
+                  {READER_WIDTH_PRESETS.map((opt) => (
                     <button
                       key={opt.value}
                       type="button"
@@ -342,10 +341,10 @@ export default function StatusBar({
                 <input
                   data-testid="width-slider"
                   type="range"
-                  min={480}
-                  max={WIDTH_MAX}
-                  step={20}
-                  value={readerWidth}
+                  min={READER_WIDTH_MIN}
+                  max={READER_WIDTH_MAX}
+                  step={READER_WIDTH_STEP}
+                  value={Math.min(READER_WIDTH_MAX, readerWidth)}
                   onChange={(e) => onSetReaderWidth(Number(e.target.value))}
                   className="width-slider"
                 />

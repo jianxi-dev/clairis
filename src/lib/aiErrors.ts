@@ -15,7 +15,7 @@ export interface AgentErrorLike {
 const FIELD_HINTS: Record<string, string> = {
   fontSize: "字号需要在 8–96 之间",
   readerFontSize: "阅读字号需要在 8–96 之间",
-  readerWidth: "阅读区宽度需要在 480–2400 之间",
+  readerWidth: "阅读区宽度需要在 480–1400 之间",
   sidebarLeftWidth: "左侧栏宽度需要在 0–800 之间",
   sidebarRightWidth: "右侧栏宽度需要在 0–800 之间",
   horizontalSplitRatio: "左右分栏比例需要在 0–1 之间",

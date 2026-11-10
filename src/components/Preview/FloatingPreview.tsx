@@ -643,7 +643,7 @@ export default function FloatingPreview({
             data-testid="preview-action"
             data-action="path"
             title={preview.path}
-            aria-label={`打开所在文件夹 ${parentFolderNameOf(preview.path)}`}
+            aria-label={`打开文件位置 ${parentFolderNameOf(preview.path)}`}
             onClick={() => void revealInFinder(parentPathOf(preview.path))}
             className="flex min-w-0 items-center gap-0.5 truncate rounded p-0.5 text-left text-[10px] text-[var(--app-chrome-rest)] hover:text-[var(--app-chrome-hover)]"
           >

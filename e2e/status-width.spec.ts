@@ -89,6 +89,14 @@ test("悬停即显示按钮与弹窗，移出后两者都隐藏", async ({ page 
   await expect(button).toHaveCSS("opacity", "0", { timeout: 3000 });
 });
 
+test("宽度按钮提示不带操作括号说明", async ({ page }) => {
+  await openPanel(page);
+  await expect(page.getByTestId("status-width")).toHaveAttribute(
+    "title",
+    "页面宽度 1080px",
+  );
+});
+
 test("四柱居中相接且滑块长于四柱", async ({ page }) => {
   await openPanel(page);
   const bars = page.getByTestId("width-bars");
