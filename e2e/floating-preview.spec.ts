@@ -784,5 +784,8 @@ test("阅读空间卡片路径按钮悬停无底色", async ({ page }) => {
   expect(
     await pathBtn.evaluate((el) => getComputedStyle(el).backgroundColor),
   ).toBe("rgba(0, 0, 0, 0)");
-  await expect(pathBtn).toHaveAttribute("title", /\/tmp\/fp\/doc/);
+  const tipOrTitle = await pathBtn.evaluate(
+    (el) => el.getAttribute("data-tip") ?? el.getAttribute("title"),
+  );
+  expect(tipOrTitle).toMatch(/\/tmp\/fp\/doc/);
 });
