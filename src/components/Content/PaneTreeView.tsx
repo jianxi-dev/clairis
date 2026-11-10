@@ -3,6 +3,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type CSSProperties,
@@ -313,6 +314,8 @@ function PaneHeader({
   const [notice, setNotice] = useState<string | null>(null);
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const menuButtonRef = useRef<HTMLButtonElement | null>(null);
+  const menuPanelRef = useRef<HTMLDivElement | null>(null);
   const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const exportCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hoverOpen = (): void => {
@@ -690,6 +693,7 @@ function PaneHeader({
           >
             <button
               type="button"
+              ref={menuButtonRef}
               data-testid="pane-menu-button"
               title="更多操作"
               aria-label="更多操作"
@@ -707,8 +711,11 @@ function PaneHeader({
               <div
                 data-testid="pane-menu"
                 role="menu"
-                className="absolute right-0 top-full z-50 mt-1 min-w-[132px] rounded border py-1 text-xs shadow-lg"
+                ref={menuPanelRef}
+                className="absolute top-full z-50 mt-1 min-w-[132px] rounded border py-1 text-xs shadow-lg"
                 style={{
+                  left: "50%",
+                  transform: "translateX(-50%)",
                   background: "var(--app-surface)",
                   borderColor: "var(--app-border)",
                   color: "var(--app-text-2)",
