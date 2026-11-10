@@ -27,6 +27,20 @@
       "assertion": "passed",
       "recorded_at": "2026-11-10T18:19:25Z",
       "runner": "unknown@MMBP"
+    },
+    {
+      "state": "fullscreen-note",
+      "screenshot": ".artifacts/608/fullscreen-note.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-10T19:41:35Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "playlist-restored",
+      "screenshot": ".artifacts/608/playlist-restored.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-10T19:41:35Z",
+      "runner": "unknown@MMBP"
     }
   ]
 }

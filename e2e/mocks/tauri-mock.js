@@ -314,6 +314,10 @@ function mockInvoke(cmd, args) {
       }, 250);
     });
   }
+  if (cmd === "list_media_in_dir") {
+    return window.__biaoyue_media__ || [];
+  }
+  if (cmd === "register_media_path") return null;
   if (responses[cmd]) return responses[cmd];
   console.warn("[TauriMock] unknown command:", cmd);
   return null;

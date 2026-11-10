@@ -411,7 +411,17 @@ export default function VideoPlayer({
           saved.path !== filePath
         ) {
           const savedIdx = media.findIndex((i) => i.path === saved.path);
-          if (savedIdx >= 0) pendingIndexRef.current = savedIdx;
+          if (savedIdx >= 0) {
+            pendingIndexRef.current = savedIdx;
+            // 播放列表是异步加载的：art 创建 effect 早已跑过，不会再消费 pending。
+            // 列表就绪时直接切到上次播放项（art 未就绪则留给 ready 分支）。
+            window.setTimeout(() => {
+              if (pendingIndexRef.current !== savedIdx) return;
+              if (!artRef.current) return;
+              pendingIndexRef.current = -1;
+              void playIndexRef.current(savedIdx);
+            }, 0);
+          }
         }
       })
       .catch(() => {
@@ -1735,6 +1745,7 @@ export default function VideoPlayer({
       {/* 时间戳笔记窗口：可拖动 + 可调整大小 */}
       {showNote && (
         <div
+          data-testid="timestamp-note"
           style={{
             position: "absolute",
             left: noteRect.x,
