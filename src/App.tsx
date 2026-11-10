@@ -6,6 +6,7 @@ import { isMediaKind } from "./stores/index";
 import { useEditorStore } from "./stores/editorStore";
 import { useCaptureOverlayStore } from "./stores/captureOverlay";
 import StatusBar from "./components/StatusBar";
+import TooltipLayer from "./components/TooltipLayer";
 import TemplatePicker from "./components/TemplatePicker";
 import SettingsView from "./components/SettingsView";
 import PaneTreeView from "./components/Content/PaneTreeView";
@@ -792,6 +793,7 @@ function App() {
 
   return (
     <div className={rootClass}>
+      <TooltipLayer />
       <div className="relative flex-1 flex min-w-0 overflow-hidden">
         <ReadingRail onOpenPath={handleOpenPath} />
         <div

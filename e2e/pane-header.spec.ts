@@ -308,6 +308,8 @@ test("双击页签名改名：回车提交、Esc 取消、路径不变", async (
   await expect(input).toBeVisible();
   await input.fill("新名字");
   await input.press("Enter");
+  // 胶囊提示层悬停期间把 title 暂移到 data-tip；移开指针后还原再断言
+  await page.mouse.move(10, 10);
   await expect(tab).toHaveAttribute("title", "新名字");
 
   const pathAfter = await page.evaluate(() => {
@@ -330,6 +332,7 @@ test("双击页签名改名：回车提交、Esc 取消、路径不变", async (
   await page.getByTestId("tab-title-input").fill("不该生效");
   await page.getByTestId("tab-title-input").press("Escape");
   await expect(page.getByTestId("tab-title-input")).toHaveCount(0);
+  await page.mouse.move(10, 10);
   await expect(tab).toHaveAttribute("title", "新名字");
 });
 

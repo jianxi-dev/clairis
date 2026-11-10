@@ -3062,3 +3062,30 @@ html[data-tab-drag="true"] body * {
   color: var(--app-text-2);
   font-size: 11px;
 }
+
+/* ── 全局胶囊提示（ui-polish-batch12 9.1）───────────────────────── */
+.app-tip {
+  position: fixed;
+  z-index: 100;
+  max-width: 320px;
+  padding: 4px 12px;
+  border: 1px solid var(--app-border);
+  border-radius: var(--radius-full, 999px);
+  background: var(--app-surface);
+  color: var(--app-text);
+  box-shadow: var(--app-shadow);
+  font-size: 12px;
+  line-height: 18px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+
+.app-tip--below {
+  transform: translate(-50%, 16px);
+}
+
+.app-tip--above {
+  transform: translate(-50%, calc(-100% - 8px));
+}
