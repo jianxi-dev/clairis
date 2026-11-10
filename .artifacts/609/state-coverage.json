@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "controls-default",
+      "screenshot": ".artifacts/609/controls-default.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-10T19:58:01Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "controls-compact",
+      "screenshot": ".artifacts/609/controls-compact.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-10T19:58:01Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "controls-ultra",
+      "screenshot": ".artifacts/609/controls-ultra.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-10T19:58:01Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "gesture-applied",
+      "screenshot": ".artifacts/609/gesture-applied.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-10T19:58:01Z",
+      "runner": "unknown@MMBP"
+    }
+  ]
+}

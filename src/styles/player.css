@@ -38,3 +38,73 @@
   background: transparent;
   color: inherit;
 }
+
+/* 窄宽两级降级：先压缩控件盒与间距，再缩小图标，保证全部按钮可见。 */
+.art-video-player.vp-compact .art-controls {
+  column-gap: 0;
+}
+.art-video-player.vp-compact .art-controls-right .art-control,
+.art-video-player.vp-compact .art-controls-left .art-control {
+  min-width: 28px;
+  min-height: 32px;
+  padding: 0;
+  margin: 0;
+}
+.art-video-player.vp-compact .art-controls-right {
+  padding-right: 4px;
+}
+.art-video-player.art-video-player.vp-compact
+  .art-controls-right
+  .art-control
+  .art-icon,
+.art-video-player.art-video-player.vp-compact
+  .art-controls-right
+  .art-control
+  .art-icon
+  svg,
+.art-video-player.art-video-player.vp-compact
+  .art-controls-left
+  .art-control
+  .art-icon,
+.art-video-player.art-video-player.vp-compact
+  .art-controls-left
+  .art-control
+  .art-icon
+  svg {
+  width: 18px !important;
+  height: 18px !important;
+}
+.art-video-player.vp-ultra .art-controls {
+  column-gap: 0;
+}
+.art-video-player.vp-ultra .art-controls-right .art-control,
+.art-video-player.vp-ultra .art-controls-left .art-control {
+  min-width: 20px;
+  min-height: 26px;
+  padding: 0;
+  margin: 0;
+}
+.art-video-player.vp-ultra .art-controls-right {
+  padding-right: 2px;
+}
+.art-video-player.art-video-player.vp-ultra
+  .art-controls-right
+  .art-control
+  .art-icon,
+.art-video-player.art-video-player.vp-ultra
+  .art-controls-right
+  .art-control
+  .art-icon
+  svg,
+.art-video-player.art-video-player.vp-ultra
+  .art-controls-left
+  .art-control
+  .art-icon,
+.art-video-player.art-video-player.vp-ultra
+  .art-controls-left
+  .art-control
+  .art-icon
+  svg {
+  width: 14px !important;
+  height: 14px !important;
+}

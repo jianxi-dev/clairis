@@ -254,6 +254,7 @@ export default function VideoPlayer({
   const rateRef = useRef(1);
   const frameRef = useRef(frame);
   frameRef.current = frame;
+  const applyFrameRef = useRef<(next: Partial<typeof frame>) => void>(() => {});
   const currentIndexRef = useRef(-1);
   const pendingIndexRef = useRef(-1);
 
@@ -1088,20 +1089,65 @@ export default function VideoPlayer({
       setError("视频加载失败（可能编码不受支持或文件不可访问）");
     });
 
+    // 双指上下滑动：左半调亮度、右半调音量（移动端/触控板手势）。
+    let gestureStartY = 0;
+    let gestureSide: "left" | "right" | null = null;
+    let gestureStartValue = 0;
+    const onTouchStart = (e: TouchEvent): void => {
+      if (e.touches.length !== 2) return;
+      const rect = art.template.$player.getBoundingClientRect();
+      const x = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+      gestureSide = x < rect.left + rect.width / 2 ? "left" : "right";
+      gestureStartY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+      gestureStartValue =
+        gestureSide === "left" ? frameRef.current.brightness : art.volume;
+    };
+    const onTouchMove = (e: TouchEvent): void => {
+      if (e.touches.length !== 2 || !gestureSide) return;
+      e.preventDefault();
+      const y = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+      const delta = (gestureStartY - y) / 200;
+      if (gestureSide === "left") {
+        const next = Math.max(0.3, Math.min(2, gestureStartValue + delta));
+        applyFrameRef.current({ brightness: next });
+      } else {
+        art.volume = Math.max(0, Math.min(1, gestureStartValue + delta));
+      }
+    };
+    const onTouchEnd = (): void => {
+      gestureSide = null;
+    };
+    container.addEventListener("touchstart", onTouchStart, { passive: true });
+    container.addEventListener("touchmove", onTouchMove, { passive: false });
+    container.addEventListener("touchend", onTouchEnd);
+    container.addEventListener("touchcancel", onTouchEnd);
+
     // ArtPlayer 的 autoSize 只跟随 window resize；分栏拖拽与格全屏改的是容器尺寸，
     // 不触发 window resize，画面会停在旧比例。容器自身的尺寸变化必须回到同一条重排入口。
+    const applyCompact = (): void => {
+      const w = container.clientWidth;
+      const player = art.template.$player;
+      player.classList.toggle("vp-compact", w < 720);
+      player.classList.toggle("vp-ultra", w < 560);
+    };
+    applyCompact();
     let fitRaf = 0;
     const fitObserver = new ResizeObserver(() => {
       if (fitRaf) return;
       fitRaf = window.requestAnimationFrame(() => {
         fitRaf = 0;
         art.autoSize();
+        applyCompact();
       });
     });
     fitObserver.observe(container);
 
     return () => {
       fitObserver.disconnect();
+      container.removeEventListener("touchstart", onTouchStart);
+      container.removeEventListener("touchmove", onTouchMove);
+      container.removeEventListener("touchend", onTouchEnd);
+      container.removeEventListener("touchcancel", onTouchEnd);
       if (fitRaf) window.cancelAnimationFrame(fitRaf);
       document.removeEventListener("fullscreenchange", onNativeFullscreen);
       progressEl?.removeEventListener("mousemove", onProgressMove);
@@ -1247,6 +1293,8 @@ export default function VideoPlayer({
       };
     });
   }, []);
+
+  applyFrameRef.current = applyFrame;
 
   const resetFrame = useCallback(() => {
     setFrame({ rotation: 0, zoom: 1, brightness: 1, panX: 0, panY: 0 });
