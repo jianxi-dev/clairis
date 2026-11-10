@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "块菜单展开",
+      "screenshot": ".artifacts/540/state-menu-open.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-10T05:47:40Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "类型二级面板展开",
+      "screenshot": ".artifacts/540/state-type-open.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-10T05:47:40Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "指针移出600ms后仍可见",
+      "screenshot": ".artifacts/540/state-after-leave.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-10T05:47:40Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "Esc后全部收起",
+      "screenshot": ".artifacts/540/state-escaped.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-10T05:47:40Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}
