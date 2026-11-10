@@ -21,10 +21,12 @@ import { useEditorStore } from "../../stores/editorStore";
 import {
   baseEditorExtensions,
   decorCompartment,
-  fullDecorations,
   historyCompartment,
 } from "../../editors/setup";
-import type { EditorDecorationsOptions } from "../../editors/decorations";
+import {
+  editorDecorations,
+  type EditorDecorationsOptions,
+} from "../../editors/decorations";
 import {
   slashKeymap,
   setUserSlashCommands,
@@ -86,7 +88,9 @@ const editorDecorationOptions: EditorDecorationsOptions = {
 function decorationsForMode(mode: EditorMode, kind: FileKind): Extension[] {
   if (kind !== "markdown") return [];
   if (mode === "source") return [floatingToolbar()];
-  if (mode === "edit") return fullDecorations(editorDecorationOptions);
+  if (mode === "edit") {
+    return [editorDecorations(editorDecorationOptions), floatingToolbar(true)];
+  }
   return [];
 }
 

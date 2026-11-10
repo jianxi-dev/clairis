@@ -1523,6 +1523,8 @@ export const useStore = create<AppStore>((set, get) => ({
 // Expose store for E2E testing (Tauri Mock bridge)
 if (typeof window !== "undefined") {
   (window as unknown as Record<string, unknown>).__biaoyue_store__ = useStore;
+  (window as unknown as Record<string, unknown>).__biaoyue_editor_store__ =
+    useEditorStore;
 }
 
 // Re-export capture overlay store

@@ -42,6 +42,8 @@ export interface AppConfig {
   readerWidth: number;
   /** 新建文档首次保存的默认目录；空 = 沿用系统默认 */
   defaultSavePath?: string | null;
+  /** 选区工具条形态：轮盘（默认）/ 胶囊 */
+  selectionToolbar?: "roulette" | "capsule";
   /** 阅读皮肤：paper / modern … */
   readerSkin: string;
   ollamaEndpoint: string;

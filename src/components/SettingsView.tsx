@@ -543,6 +543,9 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
   const theme = useEditorStore((s) => s.config.theme ?? "system");
   const readerFontSize = useEditorStore((s) => s.config.readerFontSize ?? 17);
   const readerWidth = useEditorStore((s) => s.config.readerWidth ?? 1080);
+  const selectionToolbar = useEditorStore(
+    (s) => s.config.selectionToolbar ?? "roulette",
+  );
   const readerSkin = useEditorStore((s) => s.config.readerSkin ?? "paper");
   const defaultSavePath = useEditorStore(
     (s) => s.config.defaultSavePath ?? null,
@@ -735,6 +738,11 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
   };
 
   const commitReaderWidth = () => {
+    void saveAppConfig();
+  };
+
+  const chooseSelectionToolbar = (mode: "roulette" | "capsule") => {
+    setConfig({ selectionToolbar: mode });
     void saveAppConfig();
   };
 
@@ -1034,6 +1042,38 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
                       </button>
                     );
                   })}
+                </div>
+              </section>
+
+              <section>
+                <h2 className="mb-1 text-sm font-medium text-[var(--app-text-strong)]">
+                  选区工具条
+                </h2>
+                <p className="mb-2 text-xs text-[var(--app-text-3)]">
+                  选中文字后出现的工具条形态。胶囊把高频动作放在靠近指针的一行。
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {(
+                    [
+                      { value: "roulette", label: "轮盘" },
+                      { value: "capsule", label: "胶囊" },
+                    ] as const
+                  ).map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      data-testid={`selection-toolbar-${option.value}`}
+                      aria-pressed={selectionToolbar === option.value}
+                      onClick={() => chooseSelectionToolbar(option.value)}
+                      className={`rounded border px-3 py-1.5 text-sm ${
+                        selectionToolbar === option.value
+                          ? "border-[var(--app-accent)] bg-[var(--app-accent-soft)] text-[var(--app-accent)]"
+                          : "border-[var(--app-border)] text-[var(--app-text-2)] hover:bg-[var(--app-sunken)]"
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
                 </div>
               </section>
 
