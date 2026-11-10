@@ -20,6 +20,7 @@ import {
   SUB_DIM_OPACITY,
   THIRD_IN,
   THIRD_OUT,
+  angleOfPoint,
   clampBoxCenter,
   fanAngles,
   polar,
@@ -109,7 +110,7 @@ export function createRoulette(
     height: String(ROULETTE_BOX),
     "aria-hidden": "true",
   });
-  const rootLayer = svgNode("g");
+  const rootLayer = svgNode("g", { class: "sr-root-layer" });
   const subLayer = svgNode("g", { class: "sr-sub-layer" });
   svg.append(rootLayer, subLayer);
 
@@ -137,6 +138,7 @@ export function createRoulette(
   let group: RouletteItem | null = null;
   let groupCenter: number | null = null;
   let hot = -1;
+  let thirdCenters: number[] = [];
   let filter: string | null = null;
   let matches: Cmd[] = [];
   let closed = false;
@@ -267,8 +269,10 @@ export function createRoulette(
       path.setAttribute("role", "menuitem");
       path.setAttribute("aria-label", item.label);
       path.addEventListener("pointerenter", () => {
-        hot = i;
-        markHot();
+        if (band === 3 || !group) {
+          hot = i;
+          markHot();
+        }
       });
       path.addEventListener("click", (e) => {
         e.preventDefault();
@@ -288,7 +292,6 @@ export function createRoulette(
       unit.dataset.band = String(band);
       unit.dataset.idx = String(i);
       unit.dataset.action = item.id;
-      unit.title = item.label;
       unit.style.left = `${polar(center, mid).x + ROULETTE_BOX / 2}px`;
       unit.style.top = `${polar(center, mid).y + ROULETTE_BOX / 2}px`;
       unit.innerHTML = iconSvg(item.icon, 15);
@@ -328,7 +331,6 @@ export function createRoulette(
           : `${kind === "font" ? "font" : "bg"}-default`;
         path.setAttribute("role", "menuitem");
         path.setAttribute("aria-label", `${color.label}`);
-        path.setAttribute("title", color.label);
         if (color.swatch) path.style.setProperty("--sw", color.swatch);
         else path.classList.add("bare");
         path.addEventListener("click", (e) => {
@@ -347,7 +349,6 @@ export function createRoulette(
         letter.textContent = color.isDefault ? "A/" : "A";
         if (color.isDefault) letter.classList.add("none");
         else letter.style.color = color.swatch;
-        letter.title = color.label;
         overlay.appendChild(letter);
       });
     };
@@ -390,14 +391,18 @@ export function createRoulette(
           def.angle,
         );
         if (group) {
+          const children = group.children ?? [];
+          thirdCenters = fanAngles(groupCenter ?? def.angle, children.length);
           drawBand(
-            group.children ?? [],
+            children,
             THIRD_IN,
             THIRD_OUT,
             3,
             1,
             groupCenter ?? def.angle,
           );
+        } else {
+          thirdCenters = [];
         }
       }
     }
@@ -415,7 +420,7 @@ export function createRoulette(
         ? base
         : base - ((list.length - 1) * ITEM_DEG) / 2 + idx * ITEM_DEG;
     group = item;
-    hot = -1;
+    hot = item.children ? Math.floor((item.children.length - 1) / 2) : -1;
     render();
   };
 
@@ -532,7 +537,6 @@ export function createRoulette(
     path.dataset.testid = `sector-${sector.id}`;
     path.setAttribute("role", "menuitem");
     path.setAttribute("aria-label", sector.label);
-    path.setAttribute("title", sector.label);
     path.addEventListener("pointerenter", () => {
       window.clearTimeout(closeTimer);
     });
@@ -548,7 +552,8 @@ export function createRoulette(
     label.dataset.sectorLabel = sector.id;
     label.style.left = `${p.x + ROULETTE_BOX / 2}px`;
     label.style.top = `${p.y + ROULETTE_BOX / 2}px`;
-    label.innerHTML = `<span class="sr-root-icon">${iconSvg(sectorIcon(sector.id), 14)}</span><span class="sr-sector-label">${sector.label}</span>`;
+    const icon = sectorIcon(sector.id);
+    label.innerHTML = `<span class="sr-root-icon" data-icon="${icon}">${iconSvg(icon, 14)}</span><span class="sr-sector-label">${sector.label}</span>`;
     label.setAttribute("aria-hidden", "true");
     labelLayer.appendChild(label);
   });
@@ -646,12 +651,43 @@ export function createRoulette(
   };
   document.addEventListener("keydown", onKey, true);
 
+  // 三层展开后：高亮跟着指针在二层上滑动同向移动（按角度就近命中）。
+  const onThirdTrack = (event: PointerEvent) => {
+    if (!group || thirdCenters.length === 0) return;
+    const rect = root.getBoundingClientRect();
+    const x = event.clientX;
+    const y = event.clientY;
+    if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+      return;
+    }
+    const center = {
+      x: rect.left + ROULETTE_BOX / 2,
+      y: rect.top + ROULETTE_BOX / 2,
+    };
+    if (Math.hypot(x - center.x, y - center.y) < FAN_IN - 6) return;
+    const angle = angleOfPoint(center, { x, y });
+    let best = hot;
+    let bestDiff = Infinity;
+    thirdCenters.forEach((mark, i) => {
+      const diff = Math.abs(((angle - mark + 540) % 360) - 180);
+      if (diff < bestDiff) {
+        bestDiff = diff;
+        best = i;
+      }
+    });
+    if (best !== hot) {
+      hot = best;
+      markHot();
+    }
+  };
+
   const onOutside = (e: PointerEvent) => {
     if (root.contains(e.target as Node)) return;
     if (actions.painter.active()) return;
     close();
   };
   document.addEventListener("pointerdown", onOutside, true);
+  document.addEventListener("pointermove", onThirdTrack, true);
 
   // 根容器 pointer-events 为 none，pointerleave 在扇格间隙会误判离开；
   // 用文档级坐标判断是否真的移出 420×420 包围盒。
@@ -686,6 +722,7 @@ export function createRoulette(
   cleanup = () => {
     document.removeEventListener("keydown", onKey, true);
     document.removeEventListener("pointerdown", onOutside, true);
+    document.removeEventListener("pointermove", onThirdTrack, true);
     document.removeEventListener("pointermove", onDocMove, true);
     root.removeEventListener("wheel", onWheel);
     window.clearTimeout(closeTimer);
@@ -737,6 +774,6 @@ function sectorIcon(id: SectorId): IconName {
     case "format":
       return "bold";
     case "color":
-      return "tune";
+      return "droplet";
   }
 }
