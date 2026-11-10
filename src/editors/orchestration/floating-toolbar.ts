@@ -28,7 +28,7 @@ import {
 import { createCapsuleToolbar, type CapsuleItem } from "./capsule-toolbar";
 import { ROOT_SECTORS, type SectorId } from "./roulette";
 import { BACKGROUND_COLORS, FONT_COLORS } from "./color-palette";
-import { registerCommand } from "./commands";
+import { executeCommand, registerCommand } from "./commands";
 
 const SHOW_DELAY_MS = 90;
 
@@ -588,26 +588,52 @@ export function floatingToolbar(allowCapsule = false) {
         id: item.id,
         label: item.label,
         icon: item.icon,
-        run: () => item.run?.(),
+        run: () => {
+          if (item.run) item.run();
+          else if (item.commandId) {
+            executeCommand(item.commandId, { view });
+          }
+        },
       });
-      return {
-        primary: [
-          toCapsule(format("format-bold")),
-          toCapsule(format("format-italic")),
-          { id: "capsule-font", label: "字色", icon: "tune", run: () => {} },
-          { id: "capsule-bg", label: "背景色", icon: "droplet", run: () => {} },
-          toCapsule(actions.clear[0]),
-        ],
-        secondary: [
-          toCapsule(format("format-underline")),
-          toCapsule(format("format-strike")),
-          toCapsule(format("format-code")),
-          toCapsule(format("format-link")),
-          toCapsule(actions.smart[0]),
-          toCapsule(actions.smart[1]),
-          toCapsule(actions.smart[2]),
-        ],
+      const items: CapsuleItem[] = [];
+      const push = (item?: RouletteItem) => {
+        if (!item) return;
+        if (item.children && item.children.length > 0) {
+          item.children.forEach(push);
+          return;
+        }
+        if (!item.run && !item.commandId) return;
+        items.push(toCapsule(item));
       };
+      for (const id of [
+        "format-bold",
+        "format-italic",
+        "format-underline",
+        "format-strike",
+        "format-code",
+        "format-link",
+      ]) {
+        push(format(id));
+      }
+      actions.smart.forEach(push);
+      actions.convert().forEach(push);
+      actions.align.forEach(push);
+      actions.history.forEach(push);
+      actions.columns.forEach(push);
+      items.push({
+        id: "capsule-font",
+        label: "字色",
+        icon: "tune",
+        run: () => {},
+      });
+      items.push({
+        id: "capsule-bg",
+        label: "背景色",
+        icon: "droplet",
+        run: () => {},
+      });
+      push(actions.clear[0]);
+      return { primary: items, secondary: [] };
     };
 
     const showCapsule = (point: { x: number; y: number }) => {

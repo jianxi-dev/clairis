@@ -52,11 +52,8 @@ export function createCapsuleToolbar(
   root.setAttribute("role", "toolbar");
   root.setAttribute("aria-label", "选区工具条");
 
-  const rows = node("div", "capsule-rows");
-  const secondaryRow = node("div", "capsule-row capsule-row-secondary");
-  const primaryRow = node("div", "capsule-row capsule-row-primary");
-  rows.append(secondaryRow, primaryRow);
-  root.appendChild(rows);
+  const row = node("div", "capsule-row capsule-row-single");
+  root.appendChild(row);
 
   const makeButton = (item: CapsuleItem, row: HTMLElement) => {
     const btn = node("button", "capsule-btn");
@@ -75,16 +72,14 @@ export function createCapsuleToolbar(
   };
 
   const paintRows = () => {
-    secondaryRow.replaceChildren();
-    primaryRow.replaceChildren();
-    for (const item of secondary) makeButton(item, secondaryRow);
-    for (const item of primary) makeButton(item, primaryRow);
+    row.replaceChildren();
+    for (const item of secondary) makeButton(item, row);
+    for (const item of primary) makeButton(item, row);
     root.classList.remove("is-palette");
   };
 
   const paintPalette = () => {
-    secondaryRow.replaceChildren();
-    primaryRow.replaceChildren();
+    row.replaceChildren();
     const draw = (
       colors: CapsulePalette["font"],
       kind: "font" | "background",
@@ -107,8 +102,8 @@ export function createCapsuleToolbar(
         row.appendChild(btn);
       }
     };
-    draw(palette.font, "font", secondaryRow);
-    draw(palette.background, "background", primaryRow);
+    draw(palette.font, "font", row);
+    draw(palette.background, "background", row);
     root.classList.add("is-palette");
   };
 
