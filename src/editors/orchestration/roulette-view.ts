@@ -1,4 +1,5 @@
 import { iconSvg, type IconName } from "../../ui/icons";
+import { executeCommand, hasCommand, type CommandContext } from "./commands";
 import { FONT_COLORS, BACKGROUND_COLORS } from "./color-palette";
 import {
   COLOR_BG_DEG,
@@ -33,6 +34,8 @@ export interface RouletteItem {
   label: string;
   icon: IconName;
   run?: () => void;
+  /** 注册表命令标识；无 `run` 时经 executeCommand 执行。 */
+  commandId?: string;
   /** 格式类动作执行后保持展开。 */
   keepOpen?: boolean;
   /** 有子项时点击进第三层。 */
@@ -93,9 +96,14 @@ function button(className: string): HTMLButtonElement {
 export function createRoulette(
   actions: RouletteActions,
   onClose: () => void,
-  options: { sectors?: readonly SectorId[] } = {},
+  options: {
+    sectors?: readonly SectorId[];
+    commandContext?: () => CommandContext | null;
+  } = {},
 ): RouletteHandle {
   const visibleSectors = options.sectors ?? ROOT_SECTORS.map((s) => s.id);
+  const isExecutable = (item: RouletteItem): boolean =>
+    !!item.run || (!!item.commandId && hasCommand(item.commandId));
   const root = el("div", "selection-roulette");
   root.dataset.testid = "selection-roulette";
   root.setAttribute("role", "menu");
@@ -179,6 +187,8 @@ export function createRoulette(
     const out: Cmd[] = [];
     const push = (items: RouletteItem[], groupLabel = "") => {
       for (const item of items) {
+        if (!isExecutable(item) && !(item.children && item.children.length > 0))
+          continue;
         out.push({ item, group: groupLabel });
         if (item.children) push(item.children, item.label);
       }
@@ -274,6 +284,7 @@ export function createRoulette(
           markHot();
         }
       });
+      if (!isExecutable(item)) path.setAttribute("aria-disabled", "true");
       path.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -281,6 +292,7 @@ export function createRoulette(
           openGroup(item);
           return;
         }
+        if (!isExecutable(item)) return;
         runLeaf(item);
       });
       subLayer.appendChild(path);
@@ -444,7 +456,14 @@ export function createRoulette(
   };
 
   const runLeaf = (item: RouletteItem) => {
-    item.run?.();
+    if (item.run) {
+      item.run();
+    } else if (item.commandId) {
+      const ctx = options.commandContext?.() ?? null;
+      if (!ctx || !executeCommand(item.commandId, ctx)) return;
+    } else {
+      return;
+    }
     if (item.keepOpen) return;
     close();
   };
@@ -459,8 +478,9 @@ export function createRoulette(
     groupCenter = null;
     hot = -1;
     if (id === "clear") {
-      actions.clear[0]?.run?.();
-      close();
+      const item = actions.clear[0];
+      if (item) runLeaf(item);
+      else close();
       return;
     }
     render();

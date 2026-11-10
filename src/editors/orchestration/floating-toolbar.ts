@@ -27,6 +27,7 @@ import {
 } from "./roulette-view";
 import { createCapsuleToolbar, type CapsuleItem } from "./capsule-toolbar";
 import { BACKGROUND_COLORS, FONT_COLORS } from "./color-palette";
+import { registerCommand } from "./commands";
 
 const SHOW_DELAY_MS = 90;
 
@@ -213,11 +214,23 @@ export function floatingToolbar(allowCapsule = false) {
     let pointerDown = false;
     let marks: Marks | null = null;
 
-    const ensure = (open: string, close: string) => {
-      const text = selectionText(view);
+    const ensureFor = (v: EditorView, open: string, close: string) => {
+      const text = selectionText(v);
       if (text.startsWith(open) && text.endsWith(close)) return;
-      toggleWrap(view, open, close);
+      toggleWrap(v, open, close);
     };
+    registerCommand("format-link", ({ view: v }) =>
+      ensureFor(v, "[", "](url)"),
+    );
+    registerCommand("format-underline", ({ view: v }) =>
+      toggleWrap(v, "<u>", "</u>"),
+    );
+    registerCommand("format-italic", ({ view: v }) => toggleWrap(v, "*", "*"));
+    registerCommand("format-bold", ({ view: v }) => toggleWrap(v, "**", "**"));
+    registerCommand("format-code", ({ view: v }) => toggleWrap(v, "`", "`"));
+    registerCommand("format-strike", ({ view: v }) =>
+      toggleWrap(v, "~~", "~~"),
+    );
 
     const takeMarks = () => {
       const text = selectionText(view);
@@ -497,42 +510,42 @@ export function floatingToolbar(allowCapsule = false) {
           label: "链接",
           icon: "link",
           keepOpen: true,
-          run: () => ensure("[", "](url)"),
+          commandId: "format-link",
         },
         {
           id: "format-underline",
           label: "下划线",
           icon: "underline",
           keepOpen: true,
-          run: () => toggleWrap(view, "<u>", "</u>"),
+          commandId: "format-underline",
         },
         {
           id: "format-italic",
           label: "斜体",
           icon: "italic",
           keepOpen: true,
-          run: () => toggleWrap(view, "*", "*"),
+          commandId: "format-italic",
         },
         {
           id: "format-bold",
           label: "加粗",
           icon: "bold",
           keepOpen: true,
-          run: () => toggleWrap(view, "**", "**"),
+          commandId: "format-bold",
         },
         {
           id: "format-code",
           label: "行内代码",
           icon: "code",
           keepOpen: true,
-          run: () => toggleWrap(view, "`", "`"),
+          commandId: "format-code",
         },
         {
           id: "format-strike",
           label: "删除线",
           icon: "strike",
           keepOpen: true,
-          run: () => toggleWrap(view, "~~", "~~"),
+          commandId: "format-strike",
         },
       ],
       color: (kind, className) => colorAction(view, kind, className),
@@ -625,9 +638,13 @@ export function floatingToolbar(allowCapsule = false) {
       if (!point) return;
       if (showCapsule(point)) return;
       if (!handle) {
-        handle = createRoulette(actions, () => {
-          handle = null;
-        });
+        handle = createRoulette(
+          actions,
+          () => {
+            handle = null;
+          },
+          { commandContext: () => ({ view }) },
+        );
         document.body.appendChild(handle.element);
       }
       handle.setCenter(point.x, point.y);
