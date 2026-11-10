@@ -1,0 +1,240 @@
+{
+  "change": "ui-polish-batch14",
+  "requirements": [
+    {
+      "id": "R-1",
+      "text": "轮盘回归",
+      "anchors": [
+        {
+          "id": "A-1.1",
+          "claim": "三层展开后根扇区计算 opacity",
+          "kind": "exact",
+          "assert": "\"0.9\"",
+          "source": "#597 第 7 项 / design D1"
+        },
+        {
+          "id": "A-1.2",
+          "claim": "NOTE 改图标后转 TIP 的卡片图标",
+          "kind": "exact",
+          "assert": "\"tip-default\"",
+          "source": "#597 第 7 项 / design D1"
+        },
+        {
+          "id": "A-1.3",
+          "claim": "关闭轮盘后 `.selection-roulette` 数量",
+          "kind": "exact",
+          "assert": "\"0\"",
+          "source": "design D1"
+        }
+      ]
+    },
+    {
+      "id": "R-2",
+      "text": "音频分流",
+      "anchors": [
+        {
+          "id": "A-2.1",
+          "claim": "打开 mp3 后 `.pdf-*` 节点数量",
+          "kind": "exact",
+          "assert": "\"0\"",
+          "source": "#597 第 2 项 / design D2"
+        },
+        {
+          "id": "A-2.2",
+          "claim": "打开 mp3 后音频控件可见",
+          "kind": "exact",
+          "assert": "\"true\"",
+          "source": "#597 第 2 项 / design D2"
+        }
+      ]
+    },
+    {
+      "id": "R-3",
+      "text": "视频播放核心",
+      "anchors": [
+        {
+          "id": "A-3.1",
+          "claim": "全屏后时间戳节点可见",
+          "kind": "exact",
+          "assert": "\"true\"",
+          "source": "#597 第 1 项 / design D3"
+        },
+        {
+          "id": "A-3.2",
+          "claim": "播放到第 2 项后重载的当前项索引",
+          "kind": "exact",
+          "assert": "\"2\"",
+          "source": "#597 第 1 项 / design D3"
+        },
+        {
+          "id": "A-3.3",
+          "claim": "播放列表顶部循环按钮数量",
+          "kind": "exact",
+          "assert": "\"0\"",
+          "source": "#597 第 5 项 / design D3"
+        },
+        {
+          "id": "A-3.4",
+          "claim": "页签喇叭点击后 audio.muted",
+          "kind": "exact",
+          "assert": "\"true\"",
+          "source": "#597 第 14 项 / design D3"
+        }
+      ]
+    },
+    {
+      "id": "R-4",
+      "text": "视频布局与手势",
+      "anchors": [
+        {
+          "id": "A-4.1",
+          "claim": "收窄到阈值后按钮溢出数量",
+          "kind": "exact",
+          "assert": "\"0\"",
+          "source": "#597 第 1 项 / design D3"
+        },
+        {
+          "id": "A-4.2",
+          "claim": "二级降级后图标尺寸小于初始值",
+          "kind": "exact",
+          "assert": "\"true\"",
+          "source": "#597 第 1 项 / design D3"
+        },
+        {
+          "id": "A-4.3",
+          "claim": "两个视频同时画中画时容器数量",
+          "kind": "exact",
+          "assert": "\"2\"",
+          "source": "#597 第 1 项 / design D3"
+        }
+      ]
+    },
+    {
+      "id": "R-5",
+      "text": "编辑导航",
+      "anchors": [
+        {
+          "id": "A-5.1",
+          "claim": "编辑后 `cmd+[` 内容回退",
+          "kind": "exact",
+          "assert": "\"true\"",
+          "source": "#597 第 3 项 / design D4"
+        },
+        {
+          "id": "A-5.2",
+          "claim": "再按 `cmd+]` 内容前进",
+          "kind": "exact",
+          "assert": "\"true\"",
+          "source": "#597 第 3 项 / design D4"
+        }
+      ]
+    },
+    {
+      "id": "R-6",
+      "text": "悬浮小窗编辑态",
+      "anchors": [
+        {
+          "id": "A-6.1",
+          "claim": "小窗编辑态源码标记片段数",
+          "kind": "exact",
+          "assert": "\"0\"",
+          "source": "#597 第 8 项 / design D4"
+        }
+      ]
+    },
+    {
+      "id": "R-7",
+      "text": "胶囊",
+      "anchors": [
+        {
+          "id": "A-7.1",
+          "claim": "胶囊容器计算 border-radius 上限",
+          "kind": "exact",
+          "assert": "\"<=12\"",
+          "source": "#597 第 9 项 / design D4"
+        },
+        {
+          "id": "A-7.2",
+          "claim": "胶囊动作项数等于轮盘可执行项数",
+          "kind": "exact",
+          "assert": "\"true\"",
+          "source": "#597 第 9 项 / design D4"
+        }
+      ]
+    },
+    {
+      "id": "R-8",
+      "text": "转换菜单与列表",
+      "anchors": [
+        {
+          "id": "A-8.1",
+          "claim": "插入 CSS 与缩进/对齐子项图标数等于项数",
+          "kind": "exact",
+          "assert": "\"true\"",
+          "source": "#597 第 10 项 / design D4"
+        },
+        {
+          "id": "A-8.2",
+          "claim": "滑出 400ms 后二级菜单节点数量",
+          "kind": "exact",
+          "assert": "\"0\"",
+          "source": "#597 第 10 项 / design D4"
+        },
+        {
+          "id": "A-8.3",
+          "claim": "点任务项后块源码前缀",
+          "kind": "exact",
+          "assert": "\"- [ ]\"",
+          "source": "#597 第 11 项 / design D4"
+        },
+        {
+          "id": "A-8.4",
+          "claim": "三块同级转有序后的编号序列",
+          "kind": "exact",
+          "assert": "\"1,2,3\"",
+          "source": "#597 第 12 项 / design D4"
+        }
+      ]
+    },
+    {
+      "id": "R-9",
+      "text": "弹窗对齐",
+      "anchors": [
+        {
+          "id": "A-9.1",
+          "claim": "弹窗中心与图标中心水平偏差上限（px）",
+          "kind": "exact",
+          "assert": "\"<=2\"",
+          "source": "#597 第 4 项 / design D5"
+        },
+        {
+          "id": "A-9.2",
+          "claim": "贴边时弹窗完整可见",
+          "kind": "exact",
+          "assert": "\"true\"",
+          "source": "#597 第 4 项 / design D5"
+        }
+      ]
+    },
+    {
+      "id": "R-10",
+      "text": "导出",
+      "anchors": [
+        {
+          "id": "A-10.1",
+          "claim": "导出菜单文本序列",
+          "kind": "exact",
+          "assert": "\"Word / .mdpkg / 图片 / PDF / HTML / ZIP\"",
+          "source": "#597 第 13 项 / design D6"
+        },
+        {
+          "id": "A-10.2",
+          "claim": "点 PDF 后生成文件",
+          "kind": "exact",
+          "assert": "\"exists\"",
+          "source": "#597 第 13 项 / design D6"
+        }
+      ]
+    }
+  ]
+}
