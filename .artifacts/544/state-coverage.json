@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "默认路径未设置",
+      "screenshot": ".artifacts/544/state-unset.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-10T08:07:30Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "选择后写入配置",
+      "screenshot": ".artifacts/544/state-set.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-10T08:07:30Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "重启后仍生效",
+      "screenshot": ".artifacts/544/state-after-reload.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-10T08:07:30Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "首次保存对话框用默认路径",
+      "screenshot": ".artifacts/544/state-first-save.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-10T08:07:30Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}

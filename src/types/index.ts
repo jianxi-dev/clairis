@@ -40,6 +40,8 @@ export interface AppConfig {
   readerFontSize: number;
   /** 阅读区正文行宽（px） */
   readerWidth: number;
+  /** 新建文档首次保存的默认目录；空 = 沿用系统默认 */
+  defaultSavePath?: string | null;
   /** 阅读皮肤：paper / modern … */
   readerSkin: string;
   ollamaEndpoint: string;

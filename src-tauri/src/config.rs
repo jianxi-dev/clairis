@@ -56,6 +56,10 @@ pub struct AppConfig {
     /// `default` + `skip_serializing_if` 让老配置仍能读、新配置不多出空字段。
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ai_view_spec: Option<AiViewSpec>,
+    /// 新建文档首次保存的默认目录（ui-polish-batch12 6.1）。
+    /// `default` + `skip_serializing_if` 让老配置仍能读、新配置不多出空字段。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub default_save_path: Option<String>,
 }
 
 /// AI 视图改写规格：布局 / 密度 / 卡片高度 / 区块颜色 / 图标标签 / 预览开关 /
@@ -153,6 +157,7 @@ impl Default for AppConfig {
             rail_view_spec: None,
             preview_settings: None,
             ai_view_spec: None,
+            default_save_path: None,
             sidebar_left_visible: Some(true),
             sidebar_right_visible: Some(false),
             sidebar_left_width: Some(220.0),
