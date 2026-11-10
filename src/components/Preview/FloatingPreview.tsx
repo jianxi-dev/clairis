@@ -26,6 +26,9 @@ import { mediaUrlForPath, resolveDocMediaHref } from "../../lib/mediaUrl";
 import { isTauriEnv } from "../../utils/tauri";
 import { pdfThumbOf } from "../../lib/pdfThumb";
 import { log } from "../../utils/log";
+import { EditorState } from "@codemirror/state";
+import { EditorView, keymap } from "@codemirror/view";
+import { createExtensions } from "../../editors/setup";
 
 /**
  * 悬浮预览窗（layout-portal 8.1）。
@@ -195,6 +198,71 @@ export function FloatingPreviewList({
         <FloatingPreview key={p.id} preview={p} onOpenPath={onOpenPath} />
       ))}
     </>
+  );
+}
+
+function PreviewRichEditor({
+  value,
+  fileKind,
+  onChange,
+  onSave,
+}: {
+  value: string;
+  fileKind: "markdown" | "html" | "text";
+  onChange: (next: string) => void;
+  onSave: () => void;
+}) {
+  const hostRef = useRef<HTMLDivElement | null>(null);
+  const initialRef = useRef(value);
+  const onChangeRef = useRef(onChange);
+  const onSaveRef = useRef(onSave);
+  onChangeRef.current = onChange;
+  onSaveRef.current = onSave;
+
+  useEffect(() => {
+    const host = hostRef.current;
+    if (!host) return;
+    const view = new EditorView({
+      parent: host,
+      state: EditorState.create({
+        doc: initialRef.current,
+        extensions: [
+          ...createExtensions(fileKind),
+          keymap.of([
+            {
+              key: "Mod-s",
+              run: () => {
+                onSaveRef.current();
+                return true;
+              },
+            },
+          ]),
+          EditorView.updateListener.of((update) => {
+            if (update.docChanged) {
+              onChangeRef.current(update.state.doc.toString());
+            }
+          }),
+          EditorView.domEventHandlers({
+            blur: () => {
+              onSaveRef.current();
+              return false;
+            },
+          }),
+        ],
+      }),
+    });
+    view.focus();
+    return () => {
+      view.destroy();
+    };
+  }, []);
+
+  return (
+    <div
+      ref={hostRef}
+      data-testid="preview-editor"
+      className="h-full w-full overflow-auto p-3 text-[var(--app-text)]"
+    />
   );
 }
 
@@ -501,23 +569,16 @@ export default function FloatingPreview({
     if (!previewPath) return null;
     if (editing && textEditable) {
       return (
-        <textarea
-          data-testid="preview-editor"
+        <PreviewRichEditor
           value={draft}
-          autoFocus
-          spellCheck={false}
-          onChange={(e) => {
-            setDraft(e.target.value);
+          fileKind={
+            kind === "html" ? "html" : kind === "text" ? "text" : "markdown"
+          }
+          onChange={(next) => {
+            setDraft(next);
             setSaveState("idle");
           }}
-          onKeyDown={(e) => {
-            if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s") {
-              e.preventDefault();
-              void saveDraft();
-            }
-          }}
-          onBlur={() => void saveDraft()}
-          className="h-full w-full resize-none bg-transparent p-3 font-mono text-xs leading-relaxed text-[var(--app-text)] outline-none"
+          onSave={() => void saveDraft()}
         />
       );
     }

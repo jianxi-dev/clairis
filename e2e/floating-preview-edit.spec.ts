@@ -55,7 +55,9 @@ test("md 小窗在钉住右侧切换预览/编辑并保存", async ({ page }) =>
   await toggle.click();
   const editor = win.locator('[data-testid="preview-editor"]');
   await expect(editor).toBeVisible();
-  await editor.fill("改过的内容");
+  await editor.locator(".cm-content").click();
+  await page.keyboard.press("Meta+a");
+  await page.keyboard.type("改过的内容");
 
   await page.keyboard.press("Meta+s");
   await expect
@@ -113,4 +115,27 @@ test("html 与文本小窗同样提供编辑切换", async ({ page }) => {
     await win.locator('[data-testid="preview-edit-toggle"]').click();
     await expect(win.locator('[data-testid="preview-editor"]')).toBeVisible();
   }
+});
+
+test("证据：小窗四态截图", async ({ page }) => {
+  const dir = process.env.EVIDENCE_DIR;
+  test.skip(!dir, "EVIDENCE_DIR 未设置");
+  const win = await openPreview(
+    page,
+    "/tmp/preview-edit.md",
+    "preview-edit.md",
+  );
+  await page.screenshot({ path: `${dir}/preview-mode.png` });
+  const toggle = win.locator('[data-testid="preview-edit-toggle"]');
+  await toggle.click();
+  await expect(
+    win.locator('[data-testid="preview-editor"] .cm-editor'),
+  ).toBeVisible();
+  await page.screenshot({ path: `${dir}/edit-mode.png` });
+  await win.locator('[data-testid="preview-editor"] .cm-content').click();
+  await page.keyboard.press("Meta+a");
+  await page.keyboard.type("# 新标题\n\n新内容。");
+  await page.screenshot({ path: `${dir}/edited.png` });
+  await toggle.click();
+  await page.screenshot({ path: `${dir}/back-to-preview.png` });
 });
