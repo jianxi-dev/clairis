@@ -59,6 +59,9 @@ pub struct AppConfig {
     /// 轮盘根扇区集合与顺序（ui-command-registry 2.1）。缺省 = 内置默认。
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub roulette_sectors: Option<Vec<String>>,
+    /// 横向工具条动作集合与顺序（ui-toolbar-slots 1.1）。缺省 = 内置默认。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub html_toolbar_items: Option<Vec<String>>,
     /// 新建文档首次保存的默认目录（ui-polish-batch12 6.1）。
     /// `default` + `skip_serializing_if` 让老配置仍能读、新配置不多出空字段。
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -161,6 +164,7 @@ impl Default for AppConfig {
             preview_settings: None,
             ai_view_spec: None,
             roulette_sectors: None,
+            html_toolbar_items: None,
             default_save_path: None,
             sidebar_left_visible: Some(true),
             sidebar_right_visible: Some(false),
@@ -523,6 +527,43 @@ pub fn validate_config(config: &AppConfig) -> Result<(), AppError> {
                 return Err(AppError::Validation {
                     context: "rouletteSectors".into(),
                     message: format!("重复扇区: {id}"),
+                });
+            }
+        }
+    }
+    if let Some(items) = &config.html_toolbar_items {
+        const ALLOWED: [&str; 12] = [
+            "ai-rewrite",
+            "ai-translate",
+            "ai-polish",
+            "format-bold",
+            "format-italic",
+            "format-underline",
+            "format-strike",
+            "format-code",
+            "format-link",
+            "align-left",
+            "align-center",
+            "align-right",
+        ];
+        if items.is_empty() || items.len() > ALLOWED.len() {
+            return Err(AppError::Validation {
+                context: "htmlToolbarItems".into(),
+                message: "长度须在 1..=12".into(),
+            });
+        }
+        let mut seen = std::collections::HashSet::new();
+        for id in items {
+            if !ALLOWED.contains(&id.as_str()) {
+                return Err(AppError::Validation {
+                    context: "htmlToolbarItems".into(),
+                    message: format!("未知动作: {id}"),
+                });
+            }
+            if !seen.insert(id.as_str()) {
+                return Err(AppError::Validation {
+                    context: "htmlToolbarItems".into(),
+                    message: format!("重复动作: {id}"),
                 });
             }
         }
@@ -1267,6 +1308,22 @@ mod tests {
             pinned_segment_scale: Some(2.0),
             ..valid
         });
+        assert!(validate_config(&config).is_err());
+    }
+
+    #[test]
+    fn html_toolbar_items_accepts_subset_and_rejects_bad_input() {
+        let mut config = AppConfig::default();
+        config.html_toolbar_items = Some(vec!["format-bold".into(), "ai-polish".into()]);
+        assert!(validate_config(&config).is_ok());
+
+        config.html_toolbar_items = Some(vec!["format-bold".into(), "nope".into()]);
+        assert!(validate_config(&config).is_err());
+
+        config.html_toolbar_items = Some(vec!["format-bold".into(), "format-bold".into()]);
+        assert!(validate_config(&config).is_err());
+
+        config.html_toolbar_items = Some(Vec::new());
         assert!(validate_config(&config).is_err());
     }
 
