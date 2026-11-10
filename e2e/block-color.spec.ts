@@ -66,14 +66,15 @@ async function openColorPanel(page: Page) {
   return panel;
 }
 
-test("指针移出父菜单后色板仍保持打开", async ({ page }) => {
+test("指针移出父菜单后色板关闭", async ({ page }) => {
   const panel = await openColorPanel(page);
 
   await page.mouse.move(20, 20);
-  await page.waitForTimeout(500);
+  await page.waitForTimeout(600);
 
-  await expect(panel).toBeVisible();
-  await page.screenshot({ path: path.join(ART, "01-keep-open.png") });
+  await expect(panel).toHaveCount(0);
+  await expect(page.locator("[data-block-flyout]")).toHaveCount(0);
+  await page.screenshot({ path: path.join(ART, "01-close-on-leave.png") });
 });
 
 test("点击菜单外部后色板关闭且不留残骸", async ({ page }) => {

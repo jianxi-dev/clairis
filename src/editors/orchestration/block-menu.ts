@@ -416,8 +416,17 @@ export function openBlockMenu(
         panelEl.appendChild(option);
       }
       view.dom.appendChild(panelEl);
-      panelEl.addEventListener("pointerenter", () => cancelPendingClose(view));
-      releaseTypeKeepOpen = keepColorPanelOpen(menuStack, view);
+      panelEl.addEventListener("pointerenter", () => {
+        cancelPendingClose(view);
+        if (!releaseTypeKeepOpen) {
+          releaseTypeKeepOpen = keepColorPanelOpen(menuStack, view);
+        }
+      });
+      panelEl.addEventListener("pointerleave", () => {
+        releaseTypeKeepOpen?.();
+        releaseTypeKeepOpen = null;
+        scheduleClose(view);
+      });
       typePanel = panelEl;
     };
 
@@ -505,9 +514,17 @@ export function openBlockMenu(
 
     view.dom.appendChild(panelEl);
     flipFlyoutIfNeeded(view, panelEl, rowRect);
-    panelEl.addEventListener("pointerenter", () => cancelPendingClose(view));
-    releaseColorKeepOpen?.();
-    releaseColorKeepOpen = keepColorPanelOpen(menuStack, view);
+    panelEl.addEventListener("pointerenter", () => {
+      cancelPendingClose(view);
+      if (!releaseColorKeepOpen) {
+        releaseColorKeepOpen = keepColorPanelOpen(menuStack, view);
+      }
+    });
+    panelEl.addEventListener("pointerleave", () => {
+      releaseColorKeepOpen?.();
+      releaseColorKeepOpen = null;
+      scheduleClose(view);
+    });
     colorPanel = panelEl;
   };
 
@@ -603,9 +620,17 @@ export function openBlockMenu(
 
     view.dom.appendChild(panelEl);
     flipFlyoutIfNeeded(view, panelEl, rowRect);
-    panelEl.addEventListener("pointerenter", () => cancelPendingClose(view));
-    releaseAlignKeepOpen?.();
-    releaseAlignKeepOpen = keepColorPanelOpen(menuStack, view);
+    panelEl.addEventListener("pointerenter", () => {
+      cancelPendingClose(view);
+      if (!releaseAlignKeepOpen) {
+        releaseAlignKeepOpen = keepColorPanelOpen(menuStack, view);
+      }
+    });
+    panelEl.addEventListener("pointerleave", () => {
+      releaseAlignKeepOpen?.();
+      releaseAlignKeepOpen = null;
+      scheduleClose(view);
+    });
     alignPanel = panelEl;
   };
 

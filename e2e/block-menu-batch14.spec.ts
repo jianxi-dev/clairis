@@ -100,3 +100,19 @@ test("证据：列表转换四态截图", async ({ page }) => {
   await page.locator(".cm-line").nth(0).click({ clickCount: 3 });
   await page.screenshot({ path: `${dir}/roulette-selected.png` });
 });
+
+test("对齐二级菜单滑出后隐藏", async ({ page }) => {
+  await boot(page, "# 标题\n\n正文。\n", "/tmp/b14-flyout.md");
+  await hoverHandle(page, 2);
+  const row = page.locator('[data-testid="block-menu-align"]');
+  await row.hover();
+  const panel = page.locator('[data-testid="block-menu-align-panel"]');
+  await expect(panel).toHaveCount(1, { timeout: 3000 });
+  await page.mouse.move(20, 20);
+  await page.waitForTimeout(600);
+  await expect(panel).toHaveCount(0);
+  const dir = process.env.EVIDENCE_DIR;
+  if (dir) {
+    await page.screenshot({ path: `${dir}/flyout-hidden.png` });
+  }
+});

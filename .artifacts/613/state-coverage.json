@@ -27,6 +27,13 @@
       "assertion": "passed",
       "recorded_at": "2026-11-10T19:16:44Z",
       "runner": "unknown@MMBP"
+    },
+    {
+      "state": "flyout-hidden",
+      "screenshot": ".artifacts/613/flyout-hidden.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-10T19:30:09Z",
+      "runner": "unknown@MMBP"
     }
   ]
 }
