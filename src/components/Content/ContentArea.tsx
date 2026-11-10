@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { EditorState, Compartment, Transaction } from "@codemirror/state";
+import {
+  EditorState,
+  Compartment,
+  Transaction,
+  type Extension,
+} from "@codemirror/state";
 import { history } from "@codemirror/commands";
 import { EditorView } from "@codemirror/view";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
@@ -71,15 +76,30 @@ const editorDecorationOptions: EditorDecorationsOptions = {
   resolveImage: (path) => resolveDocMediaHref(path, activeDocPath),
 };
 
+/**
+ * 当前模式下应装入的装饰。
+ *
+ * 编辑器容器可能在分栏/整屏/布局恢复时重建，而 `decorCompartment` 只有先
+ * 出现在 EditorState 里，之后的 `reconfigure` 才有效。创建 state 与模式切换
+ * 共用这一份定义，重建的 view 不会再退化成源码（#564）。
+ */
+function decorationsForMode(mode: EditorMode, kind: FileKind): Extension[] {
+  if (kind !== "markdown") return [];
+  if (mode === "source") return [floatingToolbar()];
+  if (mode === "edit") return fullDecorations(editorDecorationOptions);
+  return [];
+}
+
 function createLanguageExtension(kind: FileKind) {
   switch (kind) {
     case "markdown":
+      // 装饰由 `decorationsForMode` 单独装入：语言包只负责语法与输入辅助，
+      // 避免源码模式先被语言重配置塞进整套装饰再撤回。
       return [
         markdown({ base: markdownLanguage }),
         smartInput(),
         slashKeymap(),
         blockHandle(),
-        decorCompartment.of(fullDecorations(editorDecorationOptions)),
       ];
     case "html":
       return [html(), horizontalToolbar()];
@@ -252,12 +272,15 @@ export default function ContentArea({
   useEffect(() => {
     if (viewRef.current || !editorRef.current) return;
 
+    const initialKind = tab?.fileKind ?? "text";
+    currentKindRef.current = initialKind;
     const state = EditorState.create({
       doc: "",
       extensions: [
         ...baseEditorExtensions(),
         historyCompartment.of(history()),
-        langCompartment.of([]),
+        langCompartment.of(createLanguageExtension(initialKind)),
+        decorCompartment.of(decorationsForMode(editorMode, initialKind)),
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {
             const content = update.state.doc.toString();
@@ -370,26 +393,12 @@ export default function ContentArea({
   // Toggle decorations on mode change
   useEffect(() => {
     if (!viewRef.current || !tab) return;
-    // 非 markdown 一律摘掉：装饰与浮动工具条是 markdown 编辑态专属，
-    // 切到 html/text 页签时留着会把 md 工具条画到 html 源码编辑上（双条）。
-    if (tab.fileKind !== "markdown") {
-      viewRef.current.dispatch({ effects: decorCompartment.reconfigure([]) });
-      return;
-    }
-
-    if (editorMode === "source") {
-      // 源码模式保留选区轮盘（E-18：AI 三动作归轮盘），但不装 L2 装饰。
-      viewRef.current.dispatch({
-        effects: decorCompartment.reconfigure([floatingToolbar()]),
-      });
-    } else if (editorMode === "edit") {
-      viewRef.current.dispatch({
-        effects: decorCompartment.reconfigure(
-          fullDecorations(editorDecorationOptions),
-        ),
-      });
-    }
-  }, [editorMode, tab?.fileKind]);
+    viewRef.current.dispatch({
+      effects: decorCompartment.reconfigure(
+        decorationsForMode(editorMode, tab.fileKind),
+      ),
+    });
+  }, [editorMode, tab?.fileKind, editorViewState]);
 
   return (
     <div
