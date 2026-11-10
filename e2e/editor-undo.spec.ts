@@ -187,3 +187,25 @@ test("撤销不跨页签：A 编辑后切到 B，撤销不动 B 的内容", asyn
   expect(await storeContent(page, "/tmp/undo/a.md")).toContain("AAA");
   await shot(page, "05-no-cross-tab-undo");
 });
+
+test("焦点不在编辑器时快捷键仍能撤销与重做", async ({ page }) => {
+  await boot(page);
+  await openFile(page, "/tmp/undo/focus.md", "# 标题\n\n正文。");
+  await ensureEditMode(page);
+  const path = "/tmp/undo/focus.md";
+
+  const cm = page.locator(".cm-content").first();
+  await cm.click();
+  await page.keyboard.press("Control+End");
+  await page.keyboard.type("abc");
+  await expect.poll(() => storeContent(page, path)).toContain("正文。abc");
+
+  await page
+    .locator('[data-testid="status-bar"]')
+    .click({ position: { x: 40, y: 8 } });
+  await page.keyboard.press(`${MOD}+z`);
+  await expect.poll(() => storeContent(page, path)).not.toContain("abc");
+
+  await page.keyboard.press(`${MOD}+Shift+z`);
+  await expect.poll(() => storeContent(page, path)).toContain("正文。abc");
+});

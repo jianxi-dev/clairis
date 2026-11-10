@@ -27,6 +27,16 @@ export const ctrlHistoryBindings: KeyBinding[] = [
   { key: "Ctrl-y", run: redo, preventDefault: true },
 ];
 
+/** 全局撤销：焦点不在编辑器时由 App 转交。 */
+export function undoOnce(view: EditorView): boolean {
+  return undo(view);
+}
+
+/** 全局重做：焦点不在编辑器时由 App 转交。 */
+export function redoOnce(view: EditorView): boolean {
+  return redo(view);
+}
+
 export function toggleBold(view: EditorView): boolean {
   toggleFormatting(view, "**");
   return true;

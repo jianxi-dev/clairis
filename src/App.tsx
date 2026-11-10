@@ -24,7 +24,12 @@ import SelectionPill from "./components/ai/SelectionPill";
 import AiBubble from "./components/ai/AiBubble";
 import { useAiEntryStore } from "./hooks/useAiEntry";
 import { getActiveEditorView, getPanelScrollEl } from "./editors/editorRef";
-import { toggleBold, toggleItalic } from "./editors/keybindings";
+import {
+  redoOnce,
+  toggleBold,
+  toggleItalic,
+  undoOnce,
+} from "./editors/keybindings";
 import { saveAppConfig, useConfig } from "./hooks/useConfig";
 import { nextRailState, RAIL_KIND_ORDER } from "./lib/railView";
 import type { FileTypeKind } from "./lib/fileType";
@@ -595,6 +600,25 @@ function App() {
               ? "source"
               : "preview";
         store.setEditorMode(next);
+      }
+
+      // Cmd+Z / Cmd+Shift+Z：焦点不在编辑器时把撤销/重做转给活动编辑器
+      if (meta && !e.altKey && e.key.toLowerCase() === "z") {
+        const inEditor =
+          e.target instanceof Element && e.target.closest(".cm-editor");
+        if (
+          !inEditor &&
+          !isEditableTarget(e.target) &&
+          activeTab?.editorMode !== "preview"
+        ) {
+          const view = getActiveEditorView();
+          if (view) {
+            e.preventDefault();
+            if (e.shiftKey) redoOnce(view);
+            else undoOnce(view);
+            view.focus();
+          }
+        }
       }
 
       // Cmd+B: Bold
