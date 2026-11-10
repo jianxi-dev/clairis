@@ -119,6 +119,17 @@ const READER_TONES = [
   { id: "clay", label: "赭石", swatch: "#8a4b2a" },
 ] as const;
 
+const ROULETTE_SECTOR_META = [
+  { id: "smart", label: "智能" },
+  { id: "convert", label: "转换" },
+  { id: "align", label: "对齐" },
+  { id: "columns", label: "分栏" },
+  { id: "history", label: "历史" },
+  { id: "clear", label: "清格" },
+  { id: "format", label: "格式" },
+  { id: "color", label: "颜色" },
+] as const;
+
 const GRID_MODES = [
   { value: "hover", label: "悬停" },
   { value: "click", label: "点击" },
@@ -540,6 +551,9 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
   const selectionToolbar = useEditorStore(
     (s) => s.config.selectionToolbar ?? "roulette",
   );
+  const rouletteSectors = useEditorStore(
+    (s) => s.config.rouletteSectors ?? null,
+  );
   const readerSkin = useEditorStore((s) => s.config.readerSkin ?? "paper");
   const defaultSavePath = useEditorStore(
     (s) => s.config.defaultSavePath ?? null,
@@ -737,6 +751,34 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
 
   const chooseSelectionToolbar = (mode: "roulette" | "capsule") => {
     setConfig({ selectionToolbar: mode });
+    void saveAppConfig();
+  };
+
+  const activeSectors: string[] =
+    rouletteSectors ?? ROULETTE_SECTOR_META.map((m) => m.id);
+  const saveSectors = (next: string[]) => {
+    setConfig({ rouletteSectors: next.length > 0 ? next : null });
+    void saveAppConfig();
+  };
+  const toggleSector = (id: string) => {
+    const has = activeSectors.includes(id);
+    if (has && activeSectors.length <= 1) return;
+    saveSectors(
+      has ? activeSectors.filter((x) => x !== id) : [...activeSectors, id],
+    );
+  };
+  const moveSector = (id: string, dir: -1 | 1) => {
+    const idx = activeSectors.indexOf(id);
+    const to = idx + dir;
+    if (idx < 0 || to < 0 || to >= activeSectors.length) return;
+    const next = [...activeSectors];
+    const tmp = next[idx];
+    next[idx] = next[to];
+    next[to] = tmp;
+    saveSectors(next);
+  };
+  const resetSectors = () => {
+    setConfig({ rouletteSectors: null });
     void saveAppConfig();
   };
 
@@ -1069,6 +1111,78 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
                     </button>
                   ))}
                 </div>
+              </section>
+
+              <section data-testid="settings-roulette-sectors">
+                <h2 className="mb-1 text-sm font-medium text-[var(--app-text-strong)]">
+                  轮盘扇区
+                </h2>
+                <p className="mb-2 text-xs text-[var(--app-text-3)]">
+                  勾选显示的扇区；上下移动决定顺时针顺序。至少保留一个。
+                </p>
+                <ul className="space-y-1">
+                  {[
+                    ...activeSectors,
+                    ...ROULETTE_SECTOR_META.map((m) => m.id).filter(
+                      (id) => !activeSectors.includes(id),
+                    ),
+                  ].map((id) => {
+                    const label =
+                      ROULETTE_SECTOR_META.find((m) => m.id === id)?.label ??
+                      id;
+                    const included = activeSectors.includes(id);
+                    const idx = activeSectors.indexOf(id);
+                    return (
+                      <li
+                        key={id}
+                        data-testid={`roulette-sector-row-${id}`}
+                        className="flex items-center gap-2 text-sm"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={included}
+                          disabled={included && activeSectors.length <= 1}
+                          onChange={() => toggleSector(id)}
+                          data-testid={`roulette-sector-toggle-${id}`}
+                          className="h-3.5 w-3.5"
+                        />
+                        <span className="flex-1 text-[var(--app-text-2)]">
+                          {label}
+                        </span>
+                        {included && (
+                          <>
+                            <button
+                              type="button"
+                              disabled={idx <= 0}
+                              onClick={() => moveSector(id, -1)}
+                              data-testid={`roulette-sector-up-${id}`}
+                              className="rounded border border-[var(--app-border)] px-1.5 text-xs disabled:opacity-40"
+                            >
+                              ↑
+                            </button>
+                            <button
+                              type="button"
+                              disabled={idx >= activeSectors.length - 1}
+                              onClick={() => moveSector(id, 1)}
+                              data-testid={`roulette-sector-down-${id}`}
+                              className="rounded border border-[var(--app-border)] px-1.5 text-xs disabled:opacity-40"
+                            >
+                              ↓
+                            </button>
+                          </>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+                <button
+                  type="button"
+                  onClick={resetSectors}
+                  data-testid="roulette-sector-reset"
+                  className="mt-2 rounded border border-[var(--app-border)] px-3 py-1.5 text-sm text-[var(--app-text-2)] hover:bg-[var(--app-sunken)]"
+                >
+                  恢复默认
+                </button>
               </section>
 
               <section>
