@@ -68,6 +68,7 @@ export type IconName =
   | "pip"
   | "camera"
   | "tune"
+  | "droplet"
   | "layoutAuto"
   | "rotate"
   | "zoomIn"
@@ -398,6 +399,14 @@ export const ICONS: Record<IconName, IconDef> = {
       { s: "M15 4l0.8 2.7 2.7 0.8-2.7 0.8L15 11l-0.8-2.7-2.7-0.8 2.7-0.8z" },
       { s: "M20 12l0.5 1.6 1.6 0.5-1.6 0.5-0.5 1.6-0.5-1.6-1.6-0.5 1.6-0.5z" },
       { s: "M8 3l0.5 1.6 1.6 0.5-1.6 0.5L8 7.2l-0.5-1.6L5.9 5.1l1.6-0.5z" },
+    ],
+  },
+  droplet: {
+    label: "墨滴",
+    parts: [
+      {
+        s: "M12 3.5c3.2 3.9 5.5 7.2 5.5 9.9a5.5 5.5 0 1 1-11 0c0-2.7 2.3-6 5.5-9.9z",
+      },
     ],
   },
   tune: {

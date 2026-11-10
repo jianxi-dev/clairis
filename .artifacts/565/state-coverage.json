@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "wheel-open",
+      "screenshot": ".artifacts/565/01-wheel.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-10T13:26:15Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "second-layer",
+      "screenshot": ".artifacts/565/02-second-layer.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-10T13:26:15Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "third-layer",
+      "screenshot": ".artifacts/565/03-third-layer.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-10T13:26:15Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "hub-tip",
+      "screenshot": ".artifacts/565/04-hub-tip.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-10T13:26:15Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}

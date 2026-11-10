@@ -178,7 +178,7 @@ test("转换二层：段落 7 项，顺序为代码块/表格/标题/列表/高�
   ]);
 });
 
-test("标题三层 H1–H6 画在外环，二层保留并降到 0.8", async ({ page }) => {
+test("标题三层 H1–H6 画在外环，二层保留并降到 0.25", async ({ page }) => {
   await selectLine(page, 2);
   await openSector(page, "convert");
   await page
@@ -191,7 +191,7 @@ test("标题三层 H1–H6 画在外环，二层保留并降到 0.8", async ({ p
     .locator('.sr-sec[data-band="2"]')
     .first()
     .evaluate((n) => Number((n as SVGPathElement).style.opacity || "1"));
-  expect(opacity).toBeCloseTo(0.8, 5);
+  expect(opacity).toBeCloseTo(0.25, 5);
   await expect(page.locator('[data-testid="roulette-center"]')).toHaveAttribute(
     "aria-label",
     "返回",
