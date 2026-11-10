@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "hub-solid",
+      "screenshot": ".artifacts/536/01-hub.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-10T01:06:33Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "third-band2-0.8",
+      "screenshot": ".artifacts/536/02-third.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-10T01:06:34Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "root-0.7",
+      "screenshot": ".artifacts/536/03-root.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-10T01:06:34Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "painter",
+      "screenshot": ".artifacts/536/04-painter.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-10T01:06:34Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}
