@@ -25,7 +25,6 @@ import {
 import {
   HOVER_CLOSE_MS,
   HOVER_OPEN_MS,
-  HTML_IFRAME_CAP,
   RAIL_EDGE_PX,
   RAIL_MENU_MAX_HEIGHT,
   RAIL_RESIZE_HANDLE_PX,
@@ -86,22 +85,6 @@ import type { RecentFile, SearchHit } from "../../types";
 const SEARCH_DEBOUNCE_MS = 300;
 const SEARCH_LIMIT = 30;
 
-/** HTML iframe 缩略图：720×540 画布缩到 72×54（10%），超出盒的部分由外层裁切。 */
-const HTML_THUMB_BASE_W = 720;
-const HTML_THUMB_BASE_H = 540;
-const HTML_THUMB_SCALE = 0.1;
-
-/** 并发 iframe 上限的全局计数；超出后 HTML 卡片回退到 glyph 占位。 */
-let activeHtmlThumbs = 0;
-function acquireHtmlThumb(): boolean {
-  if (activeHtmlThumbs >= HTML_IFRAME_CAP) return false;
-  activeHtmlThumbs += 1;
-  return true;
-}
-function releaseHtmlThumb(): void {
-  activeHtmlThumbs = Math.max(0, activeHtmlThumbs - 1);
-}
-
 const LAYOUT_LABELS: Record<RailLayout, string> = {
   stacked: "堆叠",
   tabs: "标签",
@@ -161,29 +144,12 @@ function RailThumb({ descriptor }: { descriptor: ThumbDescriptor }) {
   const kind = descriptor.kind;
   const src = descriptor.src ?? "";
 
-  const [htmlSlot, setHtmlSlot] = useState(false);
   const [mediaReady, setMediaReady] = useState(false);
   const [pdfThumb, setPdfThumb] = useState<string | null | undefined>(() =>
     descriptor.kind === "pdf-page" && descriptor.src
       ? pdfThumbCacheGet(descriptor.src)
       : null,
   );
-  const htmlAcquiredRef = useRef(false);
-
-  useEffect(() => {
-    if (kind !== "html-page" || !isTauriEnv() || !src) return;
-    if (acquireHtmlThumb()) {
-      htmlAcquiredRef.current = true;
-      setHtmlSlot(true);
-    }
-    return () => {
-      if (htmlAcquiredRef.current) {
-        htmlAcquiredRef.current = false;
-        releaseHtmlThumb();
-      }
-    };
-  }, [kind, src]);
-
   useEffect(() => {
     if (kind !== "video-poster" || !isTauriEnv() || !src) return;
     let cancelled = false;
@@ -286,6 +252,8 @@ function RailThumb({ descriptor }: { descriptor: ThumbDescriptor }) {
   }
 
   if (kind === "html-page") {
+    // 中性占位（A-14）：确定性渲染，不伪造 HTML 页面缩略图，也没有
+    // 并发配额与加载失败导致的空白。
     return (
       <div
         data-testid="rail-thumb"
@@ -300,25 +268,6 @@ function RailThumb({ descriptor }: { descriptor: ThumbDescriptor }) {
         className="rail-thumb flex shrink-0 items-center justify-center border"
       >
         <Icon name="html" size={24} color="var(--type-html)" />
-        {htmlSlot && src && (
-          <iframe
-            sandbox="allow-scripts"
-            src={assetSrc(src)}
-            title=""
-            tabIndex={-1}
-            style={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              width: HTML_THUMB_BASE_W,
-              height: HTML_THUMB_BASE_H,
-              border: "none",
-              transform: `scale(${HTML_THUMB_SCALE})`,
-              transformOrigin: "top left",
-              pointerEvents: "none",
-            }}
-          />
-        )}
       </div>
     );
   }

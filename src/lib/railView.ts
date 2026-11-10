@@ -16,7 +16,6 @@ export const RAIL_WIDTH_PX = 240;
 /** 钉住栏右缘拖拽手柄的视觉宽度（命中区再向外扩）。 */
 export const RAIL_RESIZE_HANDLE_PX = 4;
 /** 同时渲染的 HTML iframe 缩略图上限，超出后回退到 glyph 占位。 */
-export const HTML_IFRAME_CAP = 4;
 /** 布局 / 密度 / 快照菜单的最大高度，超出滚动。 */
 export const RAIL_MENU_MAX_HEIGHT = "calc(100vh - 48px)";
 /** 指针移开后收回折叠的延迟。 */
