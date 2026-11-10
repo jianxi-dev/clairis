@@ -151,6 +151,10 @@ function mockInvoke(cmd, args) {
   if (cmd === "open_file_direct" && args && args.path) {
     return { content:"# "+args.path.split("/").pop()+"\n\n文件内容。", path:args.path, file_size:100 };
   }
+  if (cmd === "move_file" && args && args.from && args.toDir) {
+    var name = args.from.split("/").pop();
+    return args.toDir.replace(/\/$/, "") + "/" + name;
+  }
   if (!aiState.config) {
     aiState.config = JSON.parse(JSON.stringify(responses.load_config));
     aiSnapshot();

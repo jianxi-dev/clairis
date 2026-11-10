@@ -46,7 +46,6 @@ export const PANE_MENU_ITEMS: readonly PaneMenuItem[] = [
   { action: "refresh", label: "刷新", icon: "refresh" },
   { action: "locate", label: "定位", icon: "locate" },
   { action: "openFolder", label: "打开所在文件夹", icon: "folder" },
-  { action: "copyPath", label: "复制路径", icon: "copyPath" },
 ];
 
 export const EXPORT_MENU_ITEMS: readonly ExportMenuItem[] = [

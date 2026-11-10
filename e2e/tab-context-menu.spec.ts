@@ -59,7 +59,7 @@ test.describe("页签右键菜单「悬浮小窗」（ui-polish-batch8 6.1）", 
     await page.locator('[role="tab"]').first().click({ button: "right" });
 
     const items = page.locator("[data-tab-menu] > button");
-    await expect(items).toHaveCount(5);
+    await expect(items).toHaveCount(7);
     await expect(items.first()).toHaveText(/悬浮小窗/);
     expect(await items.first().locator("svg").count()).toBe(1);
 
@@ -73,5 +73,67 @@ test.describe("页签右键菜单「悬浮小窗」（ui-polish-batch8 6.1）", 
 
     await page.locator('[data-testid="preview-close"]').click();
     await expect(preview).toHaveCount(0);
+  });
+});
+
+test.describe("页签右键菜单：复制路径与移动到（ui-polish-batch12 5.1）", () => {
+  test("分隔线下方依次出现复制路径与移动到，复制路径写剪贴板", async ({
+    page,
+  }) => {
+    await boot(page);
+    await page.locator('[role="tab"]').first().click({ button: "right" });
+
+    const items = page.locator("[data-tab-menu] > button");
+    await expect(items).toHaveCount(7);
+    await expect(items.nth(3)).toHaveText(/复制路径/);
+    await expect(items.nth(4)).toHaveText(/移动到…/);
+
+    await page.evaluate(() => {
+      const w = window as unknown as Record<string, any>;
+      w.__copied = null;
+      Object.defineProperty(navigator.clipboard, "writeText", {
+        configurable: true,
+        value: (t: string) => {
+          (window as unknown as Record<string, any>).__copied = t;
+          return Promise.resolve();
+        },
+      });
+    });
+    await items.nth(3).click();
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () => (window as unknown as Record<string, any>).__copied,
+        ),
+      )
+      .toBe("/tmp/e2e-ctx.md");
+  });
+
+  test("移动到…选目录后页签路径与标题更新", async ({ page }) => {
+    await boot(page);
+    await page.locator('[role="tab"]').first().click({ button: "right" });
+    const items = page.locator("[data-tab-menu] > button");
+    await items.nth(4).click();
+
+    await expect
+      .poll(() =>
+        page.evaluate(() => {
+          const store = (window as unknown as Record<string, any>)
+            .__biaoyue_store__;
+          const state = store.getState();
+          return state.tabs[state.activeTabId]?.path ?? "";
+        }),
+      )
+      .toBe("/Users/test/e2e-ctx.md");
+    await expect
+      .poll(() =>
+        page.evaluate(() => {
+          const store = (window as unknown as Record<string, any>)
+            .__biaoyue_store__;
+          const state = store.getState();
+          return state.tabs[state.activeTabId]?.title ?? "";
+        }),
+      )
+      .toBe("e2e-ctx.md");
   });
 });
