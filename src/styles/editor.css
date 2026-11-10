@@ -2930,6 +2930,81 @@ html[data-tab-drag="true"] body * {
   color: var(--app-text-3);
 }
 
+/* ── 胶囊选区工具条（#572）────────────────────────────── */
+.app-capsule-toolbar {
+  position: fixed;
+  z-index: 3000;
+  opacity: 0;
+  transform: translateY(4px);
+  transition:
+    opacity 90ms ease,
+    transform 90ms ease;
+}
+
+.app-capsule-toolbar.is-open {
+  opacity: 1;
+  transform: none;
+}
+
+.capsule-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px;
+  border: 1px solid var(--app-border);
+  border-radius: var(--radius-full, 999px);
+  background: var(--app-surface);
+  box-shadow: var(--app-shadow);
+}
+
+.capsule-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+.capsule-row-secondary {
+  opacity: 0.88;
+}
+
+.capsule-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 26px;
+  border: 0;
+  border-radius: var(--radius-full, 999px);
+  background: transparent;
+  color: var(--app-text-2);
+  cursor: pointer;
+}
+
+.capsule-btn:hover {
+  background: var(--app-accent-soft);
+  color: var(--app-accent);
+}
+
+.capsule-swatch {
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--app-border);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.capsule-swatch.is-default {
+  background:
+    linear-gradient(
+      to top right,
+      transparent calc(50% - 1px),
+      var(--app-border) 50%,
+      transparent calc(50% + 1px)
+    ),
+    var(--app-surface);
+}
+
 .sr-filter {
   position: absolute;
   left: 106px;

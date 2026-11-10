@@ -17,6 +17,7 @@ import {
 } from "./toolbar-shared";
 import { blockConvertChanges, type BlockConvertTarget } from "./block-convert";
 import { useAiEntryStore } from "../../hooks/useAiEntry";
+import { useEditorStore } from "../../stores/editorStore";
 import { CALLOUT_EDIT_TYPES } from "../callout-types";
 import {
   createRoulette,
@@ -24,6 +25,8 @@ import {
   type RouletteHandle,
   type RouletteItem,
 } from "./roulette-view";
+import { createCapsuleToolbar, type CapsuleItem } from "./capsule-toolbar";
+import { BACKGROUND_COLORS, FONT_COLORS } from "./color-palette";
 
 const SHOW_DELAY_MS = 90;
 
@@ -200,9 +203,10 @@ const painterState: {
   marks: Marks | null;
 } = { active: false, count: 0, marks: null };
 
-export function floatingToolbar() {
+export function floatingToolbar(allowCapsule = false) {
   return ViewPlugin.define((view) => {
     let handle: RouletteHandle | null = null;
+    let capsule: ReturnType<typeof createCapsuleToolbar> | null = null;
     let showTimer = 0;
     let paintTimer = 0;
     let pointer: { x: number; y: number } | null = null;
@@ -256,12 +260,45 @@ export function floatingToolbar() {
         });
         return true;
       };
+      const paintColor = (prefix: string, className: string): boolean => {
+        if (!className) return false;
+        const sel = view.state.selection.main;
+        if (sel.from === sel.to) return false;
+        const doc = view.state.doc.toString();
+        const selected = doc.slice(sel.from, sel.to);
+        if (selected.includes(`class="${className}"`)) return false;
+        const same = new RegExp(`^<span class="(${prefix}-[\\w-]+)">`).exec(
+          selected,
+        );
+        if (same && selected.endsWith("</span>")) {
+          if (same[1] === className) return false;
+          const inner = selected.slice(same[0].length, -"</span>".length);
+          const open = `<span class="${className}">`;
+          view.dispatch({
+            changes: {
+              from: sel.from,
+              to: sel.to,
+              insert: `${open}${inner}</span>`,
+            },
+            selection: {
+              anchor: sel.from + open.length,
+              head: sel.from + open.length + inner.length,
+            },
+          });
+          return true;
+        }
+        toggleRangeSpan(view, className, prefix);
+        return true;
+      };
+
       let changed = false;
       if (m.bold) changed = paintWrap("**", "**") || changed;
       if (m.italic) changed = paintWrap("*", "*") || changed;
       if (m.underline) changed = paintWrap("<u>", "</u>") || changed;
       if (m.strike) changed = paintWrap("~~", "~~") || changed;
       if (m.code) changed = paintWrap("`", "`") || changed;
+      if (m.color) changed = paintColor("mdb-color", m.color) || changed;
+      if (m.bg) changed = paintColor("mdb-bg", m.bg) || changed;
       return changed;
     };
 
@@ -528,9 +565,65 @@ export function floatingToolbar() {
       return null;
     };
 
+    const capsuleItems = (): {
+      primary: CapsuleItem[];
+      secondary: CapsuleItem[];
+    } => {
+      const format = (id: string) => actions.format.find((i) => i.id === id)!;
+      const toCapsule = (item: RouletteItem): CapsuleItem => ({
+        id: item.id,
+        label: item.label,
+        icon: item.icon,
+        run: () => item.run?.(),
+      });
+      return {
+        primary: [
+          toCapsule(format("format-bold")),
+          toCapsule(format("format-italic")),
+          { id: "capsule-font", label: "字色", icon: "tune", run: () => {} },
+          { id: "capsule-bg", label: "背景色", icon: "droplet", run: () => {} },
+          toCapsule(actions.clear[0]),
+        ],
+        secondary: [
+          toCapsule(format("format-underline")),
+          toCapsule(format("format-strike")),
+          toCapsule(format("format-code")),
+          toCapsule(format("format-link")),
+          toCapsule(actions.smart[0]),
+          toCapsule(actions.smart[1]),
+          toCapsule(actions.smart[2]),
+        ],
+      };
+    };
+
+    const showCapsule = (point: { x: number; y: number }) => {
+      const mode = useEditorStore.getState().config.selectionToolbar;
+      if (!allowCapsule || mode !== "capsule") return false;
+      hide();
+      const { primary, secondary } = capsuleItems();
+      capsule = createCapsuleToolbar(
+        primary,
+        secondary,
+        () => {
+          capsule = null;
+        },
+        {
+          font: FONT_COLORS,
+          background: BACKGROUND_COLORS,
+          apply: (kind, className) => {
+            if (kind === "font") actions.color("font", className);
+            else actions.color("background", className);
+          },
+        },
+        point,
+      );
+      return true;
+    };
+
     const show = () => {
       const point = anchorPoint();
       if (!point) return;
+      if (showCapsule(point)) return;
       if (!handle) {
         handle = createRoulette(actions, () => {
           handle = null;
@@ -543,7 +636,8 @@ export function floatingToolbar() {
 
     /** 指针落在轮盘内部：这是操作轮盘，不是重选文字，不能改锚点。 */
     const insideWheel = (target: EventTarget | null): boolean =>
-      !!handle && target instanceof Node && handle.element.contains(target);
+      (!!handle && target instanceof Node && handle.element.contains(target)) ||
+      (!!capsule && target instanceof Node && capsule.element.contains(target));
 
     const scheduleShow = () => {
       window.clearTimeout(showTimer);
@@ -558,6 +652,10 @@ export function floatingToolbar() {
 
     const hide = () => {
       window.clearTimeout(showTimer);
+      if (capsule) {
+        capsule.destroy();
+        capsule = null;
+      }
       if (!handle) return;
       handle.destroy();
       handle = null;
@@ -613,8 +711,12 @@ export function floatingToolbar() {
             }, 120);
           }
           if (!pointerDown) scheduleShow();
-        } else if (handle) {
-          if (!painterState.active && !handle.element.matches(":hover")) {
+        } else if (handle || capsule) {
+          if (
+            !painterState.active &&
+            !handle?.element.matches(":hover") &&
+            !capsule?.element.matches(":hover")
+          ) {
             hide();
           }
         }
