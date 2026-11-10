@@ -88,3 +88,31 @@ test("分栏渲染为多列", async ({ page }) => {
   await expect(columns.locator(".cm-column").first()).toContainText("左栏内容");
   await expect(columns.locator(".cm-column").nth(1)).toContainText("右栏内容");
 });
+
+test("图标与标题之间没有空白间隔", async ({ page }) => {
+  await openDoc(
+    page,
+    "/Users/test/co-gap.md",
+    "> [!NOTE] 重要提醒\n> 记得带伞\n\n正文",
+  );
+  const card = page.locator(".cm-callout").first();
+  const metrics = await card.evaluate((el) => {
+    const icon = el.querySelector(".cm-callout-icon") as HTMLElement;
+    const title = el.querySelector(".cm-callout-title") as HTMLElement;
+    const ir = icon.getBoundingClientRect();
+    const tr = title.getBoundingClientRect();
+    return { gap: tr.left - ir.right };
+  });
+  expect(metrics.gap).toBeLessThanOrEqual(2);
+});
+
+test("空标题高亮块点击头部仍可进入标题编辑", async ({ page }) => {
+  await openDoc(page, "/Users/test/co-empty.md", "> [!NOTE]\n> 正文\n\n段落");
+  const card = page.locator(".cm-callout").first();
+  await card
+    .locator(".cm-callout-header")
+    .click({ position: { x: 60, y: 10 } });
+  await expect(
+    page.locator('[data-testid="cm-callout-title-editor"]'),
+  ).toBeVisible();
+});
