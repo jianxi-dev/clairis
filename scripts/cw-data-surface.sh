@@ -7,14 +7,15 @@
 #   ./scripts/cw-data-surface.sh tickets <change> [--drafts <草稿目录>]
 #   ./scripts/cw-data-surface.sh diff    <change>
 #   ./scripts/cw-data-surface.sh signals <change>
+#   ./scripts/cw-data-surface.sh pr      <基线ref>      # 缺陷线：diff(base..HEAD+未提交) 命中数据面路径 → 违规
 #   ./scripts/cw-data-surface.sh selftest
 #
 # 规范: docs/agents/data-surface.md（六栏契约 / 触发信号 / 票面第 8 字段）
 #
 # 退出码（对齐 cw-evidence.sh / cw-conformance.sh）:
 #   0 = 通过，或未命中数据面信号（打印 SKIP，不算失败）
-#   1 = 契约违规（缺栏/占位符/覆盖不全/实现未落地）
-#   3 = 环境缺失（change 目录不存在、草稿目录不存在）——降级，不判失败
+#   1 = 契约违规（缺栏/占位符/覆盖不全/实现未落地/pr 命中数据面路径）
+#   3 = 环境缺失（change 目录不存在、草稿目录不存在、基线 ref 无效）——降级，不判失败
 #
 # 设计说明（为什么是这三条子命令，而不是塞进 cw-tickets-check.sh）:
 #   1. 分工: 父脚本管票形态（C1-C8），本脚本管「数据面这条链是否闭合」。
@@ -31,7 +32,7 @@ EXIT_OK=0
 EXIT_VIOLATION=1
 EXIT_ENV=3
 
-SELF="$0"
+SELF="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
 ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 CONF="$ROOT/.change-workflow.conf"
 
@@ -316,7 +317,39 @@ check_diff() {
   echo "  ✅ 四栏文件与符号均已落地（规格/回滚按判据人工复核）"
 }
 
-# ---- selftest: 六个固定样本，不依赖消费仓测试基建 -------------------------
+# ---- pr: 缺陷线扫描（无 change 目录可挂信号，直接扫 diff 文件名单） ----------
+
+check_pr() {
+  local base="$1" paths p b f hit=0
+  [ -n "$base" ] || die_arg "缺少基线 ref（如 main）"
+  git rev-parse --verify "$base^{commit}" >/dev/null 2>&1 || die_env "基线不存在: $base"
+  local mb
+  mb="$(git merge-base "$base" HEAD 2>/dev/null)" || die_env "基线与 HEAD 无共同祖先: $base"
+  paths="$(conf_get DATA_SURFACE_PATHS 2>/dev/null || printf '%s' "$DEFAULT_PATHS")"
+  echo "==> 数据面 PR 扫描（$base..HEAD，含未提交改动）"
+  while IFS= read -r f; do
+    [ -n "$f" ] || continue
+    while IFS= read -r p; do
+      [ -n "$p" ] || continue
+      b="$(basename "$p")"
+      case "$f" in
+        "$p" | "*/$b")
+          echo "  ❌ 命中数据面路径: $f"
+          hit=$((hit + 1))
+          break ;;
+      esac
+    done < <(printf '%s' "$paths" | tr ',;' '\n\n')
+  done < <({ git diff --name-only "$mb" HEAD; git diff --name-only HEAD; } | sort -u)
+  if [ "$hit" -gt 0 ]; then
+    echo "  ❌ $hit 个文件命中数据面 —— 缺陷修复须走既有数据链路（docs/agents/defect-workflow.md）：" >&2
+    echo "     ① 既有链路 bug → 正常修复 + 回归测试；② 根因是该面未数据化 → 升级 change" >&2
+    echo "     禁止新增硬编码常量（新动作 id / 新扇区 / 新图标名直接写死常量数组）" >&2
+    exit "$EXIT_VIOLATION"
+  fi
+  echo "  SKIP 数据面（未命中路径信号）"
+}
+
+# ---- selftest: 固定样本，不依赖消费仓测试基建 ------------------------------
 make_fixture() { # dir kind
   local d="$1" kind="$2"
   mkdir -p "$d"
@@ -385,6 +418,32 @@ run_selftest() {
     fi
   }
 
+  expect_in() { # 在指定 cwd 下运行（pr 模式 ROOT 随 cwd 解析）
+    local name="$1" want="$2" dir="$3"; shift 3
+    set +e
+    ( cd "$dir" && "$@" ) >/dev/null 2>&1
+    rc=$?
+    set -e
+    if [ "$rc" -eq "$want" ]; then
+      echo "  ✅ ${name}（exit ${rc}）"; pass=$((pass + 1))
+    else
+      echo "  ❌ ${name}（期望 ${want}，实得 ${rc}）" >&2; fail=$((fail + 1))
+    fi
+  }
+
+  git_fix() { # dir base_or_hit ... 极简 git 夹具
+    local dir="$1" seed="$2" msg="$3"
+    git -C "$dir" init -q
+    printf '%s\n' "$seed" > "$dir/seed.txt"
+    git -C "$dir" add -A
+    git -C "$dir" -c user.email=t@t -c user.name=t commit -qm "$msg"
+  }
+  commit_more() {
+    local dir="$1" msg="$2"
+    git -C "$dir" add -A
+    git -C "$dir" -c user.email=t@t -c user.name=t commit -qm "$msg"
+  }
+
   echo "==> selftest"
   expect "无信号 → SKIP" 0 "$SELF" new x --dir "$tmp/nosignal"
   expect "六栏齐全 → 通过" 0 "$SELF" new x --dir "$tmp/complete"
@@ -398,6 +457,25 @@ run_selftest() {
   expect "全角逗号覆盖 → 通过" 0 "$SELF" tickets x --dir "$tmp/complete" --drafts "$tmp/drafts"
   expect "落地符号缺失 → 违规" 1 "$SELF" diff x --dir "$tmp/bad_path"
   expect "落地校验 → 通过" 0 "$SELF" diff x --dir "$tmp/complete"
+
+  local grepo grepo2 prbase prbase2
+  grepo="$tmp/gitrepo"
+  mkdir -p "$grepo/src/hooks"
+  git_fix "$grepo" base base
+  prbase="$(git -C "$grepo" rev-parse HEAD)"
+  printf 'hit\n' > "$grepo/src/hooks/useConfig.ts"
+  commit_more "$grepo" hit
+  expect_in "pr 命中数据面路径 → 违规" 1 "$grepo" "$SELF" pr "$prbase"
+  expect_in "pr 基线不存在 → 环境缺失" 3 "$grepo" "$SELF" pr nope
+
+  grepo2="$tmp/gitrepo2"
+  mkdir -p "$grepo2/src/hooks" "$grepo2/docs"
+  printf 'hit\n' > "$grepo2/src/hooks/useConfig.ts"
+  git_fix "$grepo2" base base
+  prbase2="$(git -C "$grepo2" rev-parse HEAD)"
+  printf 'docs\n' > "$grepo2/docs/note.md"
+  commit_more "$grepo2" docs
+  expect_in "pr 仅文档改动 → SKIP" 0 "$grepo2" "$SELF" pr "$prbase2"
 
   echo "----"
   if [ "$fail" -gt 0 ]; then
@@ -414,7 +492,7 @@ DRAFTS_OVERRIDE=""
 
 [ $# -gt 0 ] || { usage; exit 2; }
 case "$1" in
-  new|tickets|diff|signals|selftest) MODE="$1"; shift ;;
+  new|tickets|diff|signals|pr|selftest) MODE="$1"; shift ;;
   -h|--help) usage; exit 0 ;;
   *) usage >&2; exit 2 ;;
 esac
@@ -434,22 +512,27 @@ if [ "$MODE" = "selftest" ]; then
   exit 0
 fi
 
-[ -n "$CHANGE" ] || die_arg "缺少 change 名"
-CHANGE_DIR="$(changedir "$CHANGE" "$DIR_OVERRIDE")"
+[ -n "$CHANGE" ] || die_arg "缺少参数"
 
 case "$MODE" in
-  new)
-    if [ "$(has_signal "$CHANGE_DIR")" != "1" ]; then
-      echo "SKIP 数据面（未命中信号）: $CHANGE"
-      exit 0
-    fi
-    check_new "$CHANGE_DIR" "$CHANGE" ;;
-  tickets)
-    check_tickets "$CHANGE_DIR" "$CHANGE" "${DRAFTS_OVERRIDE:-$ROOT/.tickets-draft/$CHANGE}" ;;
-  diff)
-    check_diff "$CHANGE_DIR" "$CHANGE" ;;
-  signals)
-    echo "paths:    $(conf_get DATA_SURFACE_PATHS 2>/dev/null || printf '%s' "$DEFAULT_PATHS")"
-    echo "keywords: $(conf_get DATA_SURFACE_KEYWORDS 2>/dev/null || printf '%s' "$DEFAULT_KEYWORDS")"
-    echo "hit:      $(has_signal "$CHANGE_DIR")" ;;
+  pr)
+    check_pr "$CHANGE" ;;
+  *)
+    CHANGE_DIR="$(changedir "$CHANGE" "$DIR_OVERRIDE")"
+    case "$MODE" in
+      new)
+        if [ "$(has_signal "$CHANGE_DIR")" != "1" ]; then
+          echo "SKIP 数据面（未命中信号）: $CHANGE"
+          exit 0
+        fi
+        check_new "$CHANGE_DIR" "$CHANGE" ;;
+      tickets)
+        check_tickets "$CHANGE_DIR" "$CHANGE" "${DRAFTS_OVERRIDE:-$ROOT/.tickets-draft/$CHANGE}" ;;
+      diff)
+        check_diff "$CHANGE_DIR" "$CHANGE" ;;
+      signals)
+        echo "paths:    $(conf_get DATA_SURFACE_PATHS 2>/dev/null || printf '%s' "$DEFAULT_PATHS")"
+        echo "keywords: $(conf_get DATA_SURFACE_KEYWORDS 2>/dev/null || printf '%s' "$DEFAULT_KEYWORDS")"
+        echo "hit:      $(has_signal "$CHANGE_DIR")" ;;
+    esac ;;
 esac

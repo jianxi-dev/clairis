@@ -1,16 +1,15 @@
 ---
 title: 数据面落点规范（配置 / 主题 / 图标 / 菜单 / 开关）
-type: standard
+type: guide
 status: active
-scope: repo-local
-last_updated: 2026-11-10
+last_updated: 2026-11-11
 ---
 
 # 数据面落点规范
 
 > 本文是**本仓自有规范**，不在 change-workflow 工具包的受管清单内（`.change-workflow.manifest`），升级不会覆盖。上游演进路径见文末。
 >
-> 机检脚本：`scripts/cw-data-surface.sh`（`new` / `tickets` / `diff` / `selftest`）。
+> 机检脚本：`scripts/cw-data-surface.sh`（`new` / `tickets` / `diff` / `pr` / `signals` / `selftest`；`pr` 用于缺陷修复线，见 §五）。
 
 ## 一、为什么需要它
 
@@ -102,6 +101,9 @@ src/components/SettingsView.tsx             设置面板
 | G0 阶段二（propose 产出 design.md 后） | `./scripts/cw-data-surface.sh new <change>` | fix-first：回 propose 补齐六栏，不得进入拆票 |
 | G0-POST（拆票自检，紧接 `cw-tickets-check.sh`） | `./scripts/cw-data-surface.sh tickets <change>` | 就地重切票，补齐落点归属 |
 | G1 出口（code-review 之后） | `./scripts/cw-data-surface.sh diff <change>` | 未落地 → 回修，不得 commit |
+| 缺陷修复线（`defect-workflow.md` 数据面门） | `./scripts/cw-data-surface.sh pr <基线ref>` | 命中 → 修复须走既有数据链路或升级 change，禁止新增硬编码常量 |
+
+`pr` 模式针对缺陷修复：缺陷没有 change 目录可挂信号，直接对 `git diff <基线>..HEAD`（含未提交改动）的文件名单做路径交集（全路径或同名文件）。`selftest` 含 `pr` 三个用例，可在无 git 历史的消费仓自证。
 
 退出码沿用工具包约定：`0` 通过或未命中信号（打印 `SKIP`）/ `1` 契约违规 / `3` 环境缺失（change 目录或草稿缺失，降级不判失败）。
 
