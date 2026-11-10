@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "rail-panel",
+      "screenshot": ".artifacts/569/01-rail-panel.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-10T14:28:14Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "loaded-thumb",
+      "screenshot": ".artifacts/569/02-loaded-thumb.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-10T14:28:14Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "fallback-thumb",
+      "screenshot": ".artifacts/569/03-fallback-thumb.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-10T14:28:14Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "list",
+      "screenshot": ".artifacts/569/04-list.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-10T14:28:14Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}
