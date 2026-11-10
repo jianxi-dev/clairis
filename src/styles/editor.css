@@ -2799,13 +2799,13 @@ html[data-tab-drag="true"] body * {
 }
 
 .selection-roulette.sub-open .sr-sec.sr-sector {
-  opacity: 0.7;
+  opacity: 0.9;
 }
 
-/* 三层展开：整轮退到 25%，让三层成为唯一焦点。 */
+/* 三层展开：整轮退到 90%，让三层成为唯一焦点。 */
 .selection-roulette.third-open .sr-sec.sr-sector,
 .selection-roulette.third-open .sr-labels {
-  opacity: 0.25;
+  opacity: 0.9;
 }
 
 .selection-roulette.filtering .sr-sec.sr-sector {

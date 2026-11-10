@@ -36,14 +36,14 @@ test("颜色扇区使用水滴图标", async ({ page }) => {
   await expect(icon).toHaveAttribute("data-icon", "droplet");
 });
 
-test("三层展开后轮盘降到 25%，默认高亮一格并随指针同向移动", async ({
+test("三层展开后轮盘降到 90%，默认高亮一格并随指针同向移动", async ({
   page,
 }) => {
   await openWheel(page);
   await openConvertGroup(page);
 
   const rootSector = page.locator('[data-sector="convert"]');
-  await expect(rootSector).toHaveCSS("opacity", "0.25");
+  await expect(rootSector).toHaveCSS("opacity", "0.9");
   const third = page.locator('.sr-sec[data-band="3"]');
   expect(await third.count()).toBeGreaterThan(1);
   await expect(page.locator('.sr-sec[data-band="3"].hot')).toHaveCount(1);
