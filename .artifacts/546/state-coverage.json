@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "列表顶部卡片",
+      "screenshot": ".artifacts/546/state-top-cards.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-10T08:36:09Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "滚动到中部卡片",
+      "screenshot": ".artifacts/546/state-scrolled-mid.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-10T08:36:09Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "滚动到底部卡片",
+      "screenshot": ".artifacts/546/state-scrolled-bottom.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-10T08:36:10Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "无iframe且占位恒可见",
+      "screenshot": ".artifacts/546/state-scrolled-bottom.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-10T08:36:10Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}
