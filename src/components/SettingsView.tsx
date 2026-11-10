@@ -13,6 +13,12 @@ import {
   saveAppConfig,
 } from "../hooks/useConfig";
 import { useEditorStore } from "../stores/editorStore";
+import {
+  READER_WIDTH_MAX,
+  READER_WIDTH_MIN,
+  READER_WIDTH_PRESETS,
+  READER_WIDTH_STEP,
+} from "../lib/readerWidth";
 import { useStore } from "../stores/index";
 import { PROVIDERS } from "../lib/providers";
 import { formatSnapshotTime } from "../hooks/useAiEntry";
@@ -105,18 +111,6 @@ const THEME_OPTIONS = [
 ] as const;
 
 const FONT_SIZES = [15, 16, 17, 18, 19, 21] as const;
-
-const READER_WIDTH_PRESETS = [
-  { value: 720, label: "紧凑" },
-  { value: 960, label: "适中" },
-  { value: 1080, label: "标准" },
-  { value: 1200, label: "宽松" },
-] as const;
-
-/** 与 `lib/aiErrors.ts` 的校验区间一致（480–2400）。 */
-const READER_WIDTH_MIN = 480;
-const READER_WIDTH_MAX = 2400;
-const READER_WIDTH_STEP = 20;
 
 const READER_TONES = [
   { id: "paper", label: "纸墨", swatch: "#1f1d1a" },
