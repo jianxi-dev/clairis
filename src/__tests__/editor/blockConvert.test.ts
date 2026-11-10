@@ -118,3 +118,21 @@ describe("blockMenuItems", () => {
     expect(blockMenuItems({ type: "thematicBreak" })).toEqual([]);
   });
 });
+
+describe("同级列表整体转换", () => {
+  it("无序列表转有序时自动编号", () => {
+    expect(convert("- 甲\n- 乙\n- 丙", "ordered")).toBe("1. 甲\n2. 乙\n3. 丙");
+  });
+
+  it("保留同级缩进", () => {
+    expect(convert("  - 甲\n  - 乙", "ordered")).toBe("  1. 甲\n  2. 乙");
+  });
+
+  it("列表转待办整体加勾选框", () => {
+    expect(convert("- 甲\n- 乙", "todo")).toBe("- [ ] 甲\n- [ ] 乙");
+  });
+
+  it("非列表块不受影响", () => {
+    expect(convert("正文", "ordered")).toBe("1. 正文");
+  });
+});

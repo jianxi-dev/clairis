@@ -88,7 +88,8 @@ function convertItem(
   id: string,
   label: string,
   icon: RouletteItem["icon"],
-  target: BlockConvertTarget | CalloutKind,
+  target: BlockConvertTarget,
+  calloutKind?: CalloutKind,
 ): RouletteItem {
   return {
     id,
@@ -97,7 +98,7 @@ function convertItem(
     run: () => {
       const block = blockAt(view, view.state.selection.main.from);
       if (!block) return;
-      if (CALLOUTS.some((c) => c.kind === target)) {
+      if (calloutKind) {
         const text = view.state.doc.sliceString(block.from, block.to);
         const quoted = text
           .split("\n")
@@ -107,7 +108,7 @@ function convertItem(
           changes: {
             from: block.from,
             to: block.to,
-            insert: `> [!${target}]\n${quoted}`,
+            insert: `> [!${calloutKind}]\n${quoted}`,
           },
         });
         return;
@@ -406,7 +407,14 @@ export function floatingToolbar(allowCapsule = false) {
           label: "高亮",
           icon: "callout",
           children: CALLOUTS.map((c) =>
-            convertItem(view, `convert-${c.kind}`, c.label, c.icon, c.kind),
+            convertItem(
+              view,
+              `convert-callout-${c.kind}`,
+              c.label,
+              c.icon,
+              "callout",
+              c.kind,
+            ),
           ),
         });
         items.push(

@@ -56,6 +56,64 @@ const PREFIX: Record<
   quote: "> ",
 };
 
+const LIST_TARGETS: ReadonlySet<BlockConvertTarget> = new Set([
+  "ordered",
+  "bullet",
+  "todo",
+]);
+
+function indentOf(line: string): string {
+  return /^\s*/.exec(line)?.[0] ?? "";
+}
+
+function isListLine(line: string): boolean {
+  return /^\s*(?:[-*+]\s+(?:\[[ xX]\]\s+)?|\d+\.\s+)/.test(line);
+}
+
+/** 同一缩进层级的连续列表行（含当前块）——用于「同级整体转换」。 */
+function expandSiblingList(
+  doc: Text,
+  from: number,
+  to: number,
+): { from: number; to: number; lines: string[] } | null {
+  const first = doc.lineAt(from);
+  if (!isListLine(first.text)) return null;
+  const indent = indentOf(first.text);
+  let start = first.from;
+  let end = doc.lineAt(to).to;
+  let lineNo = first.number - 1;
+  while (lineNo >= 1) {
+    const line = doc.line(lineNo);
+    if (
+      line.text.trim() === "" ||
+      !isListLine(line.text) ||
+      indentOf(line.text) !== indent
+    ) {
+      break;
+    }
+    start = line.from;
+    lineNo--;
+  }
+  lineNo = doc.lineAt(to).number + 1;
+  while (lineNo <= doc.lines) {
+    const line = doc.line(lineNo);
+    if (
+      line.text.trim() === "" ||
+      !isListLine(line.text) ||
+      indentOf(line.text) !== indent
+    ) {
+      break;
+    }
+    end = line.to;
+    lineNo++;
+  }
+  return {
+    from: start,
+    to: end,
+    lines: doc.sliceString(start, end).split("\n"),
+  };
+}
+
 /** 一个行首标记：标题 / 引用 / 待办 / 无序 / 有序。只剥一层。 */
 const MARKER_RE = /^(?:#{1,6}\s+|>\s?|[-*+]\s+\[[ xX]\]\s+|[-*+]\s+|\d+\.\s+)/;
 
@@ -145,6 +203,23 @@ export function blockConvertChanges(
           ? body.map((line) => prefix + line).join("\n")
           : prefix + body.join("\n");
     return [{ from: block.from, to: block.to, insert }];
+  }
+
+  if (LIST_TARGETS.has(target)) {
+    const group = expandSiblingList(doc, block.from, block.to);
+    if (group) {
+      let n = 1;
+      const insert = group.lines
+        .map((line) => {
+          const indent = indentOf(line);
+          const body = stripBlockMarker(line.slice(indent.length));
+          if (target === "ordered") return `${indent}${n++}. ${body}`;
+          if (target === "todo") return `${indent}- [ ] ${body}`;
+          return `${indent}- ${body}`;
+        })
+        .join("\n");
+      return [{ from: group.from, to: group.to, insert }];
+    }
   }
 
   const firstLineEnd = block.from + leading.length;
