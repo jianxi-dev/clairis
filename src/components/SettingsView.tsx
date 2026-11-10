@@ -51,6 +51,7 @@ const SOURCE_LABELS: Record<ExtensionPackage["source"], string> = {
 const SECTIONS = [
   { id: "appearance", label: "外观" },
   { id: "editor", label: "编辑器" },
+  { id: "files", label: "文件" },
   { id: "reading", label: "阅读空间" },
   { id: "grid", label: "网格概览" },
   { id: "preview", label: "悬浮预览" },
@@ -543,6 +544,9 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
   const readerFontSize = useEditorStore((s) => s.config.readerFontSize ?? 17);
   const readerWidth = useEditorStore((s) => s.config.readerWidth ?? 1080);
   const readerSkin = useEditorStore((s) => s.config.readerSkin ?? "paper");
+  const defaultSavePath = useEditorStore(
+    (s) => s.config.defaultSavePath ?? null,
+  );
   const fontSize = useEditorStore((s) => s.fontSize);
   const openaiEndpoint = useEditorStore((s) => s.config.openaiEndpoint ?? "");
   const openaiModel = useEditorStore((s) => s.config.openaiModel ?? "");
@@ -705,6 +709,22 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
 
   const chooseReaderWidth = (width: number) => {
     setConfig({ readerWidth: width });
+    void saveAppConfig();
+  };
+
+  const chooseDefaultSavePath = async () => {
+    try {
+      const dir = await invoke<string>("pick_folder");
+      if (!dir) return;
+      setConfig({ defaultSavePath: dir });
+      void saveAppConfig();
+    } catch {
+      // 用户取消选择：保持原值
+    }
+  };
+
+  const clearDefaultSavePath = () => {
+    setConfig({ defaultSavePath: null });
     void saveAppConfig();
   };
 
@@ -1461,6 +1481,45 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
                 )}
               </section>
             </div>
+          )}
+
+          {active === "files" && (
+            <section>
+              <h2 className="mb-1 text-sm font-medium text-[var(--app-text-strong)]">
+                新建文档
+              </h2>
+              <p className="mb-2 text-xs text-[var(--app-text-3)]">
+                首次保存新建文档时，保存对话框将以此目录为初始位置。
+              </p>
+              <div className="flex items-center justify-between gap-2 rounded border border-[var(--app-border)] px-3 py-2">
+                <span
+                  className="truncate text-sm text-[var(--app-text)]"
+                  data-testid="default-save-path"
+                  title={defaultSavePath ?? ""}
+                >
+                  {defaultSavePath || "未设置（使用系统默认位置）"}
+                </span>
+                <span className="flex shrink-0 items-center gap-1">
+                  <button
+                    type="button"
+                    data-testid="default-save-pick"
+                    className="rounded border border-[var(--app-border)] px-2 py-1 text-xs hover:bg-[var(--app-sunken)]"
+                    onClick={() => void chooseDefaultSavePath()}
+                  >
+                    选择…
+                  </button>
+                  <button
+                    type="button"
+                    data-testid="default-save-clear"
+                    className="rounded border border-[var(--app-border)] px-2 py-1 text-xs hover:bg-[var(--app-sunken)] disabled:cursor-not-allowed disabled:opacity-45"
+                    disabled={!defaultSavePath}
+                    onClick={clearDefaultSavePath}
+                  >
+                    清除
+                  </button>
+                </span>
+              </div>
+            </section>
           )}
 
           {active === "data" && (

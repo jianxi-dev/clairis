@@ -159,9 +159,23 @@ function App() {
   );
 
   const handleSaveFile = useCallback(async () => {
-    if (!isTauri || !activeTab?.path) return;
+    if (!isTauri || !activeTab) return;
     if (isMediaKind(activeTab.fileKind)) return;
     try {
+      if (!activeTab.path) {
+        // 未落盘的新建文档：走「另存为」，对话框初始目录 = 配置的默认保存路径，
+        // 文件名预填页签标题（ui-polish-batch12 6.1）。
+        const saved = await invoke<{ path: string }>("save_as_file", {
+          content: activeTab.content,
+          defaultName: `${activeTab.title || "未命名"}.md`,
+          defaultDir: useEditorStore.getState().config.defaultSavePath ?? null,
+        });
+        if (saved?.path) {
+          useStore.getState().setTabPath(activeTab.id, saved.path);
+          useStore.getState().markClean();
+        }
+        return;
+      }
       await invoke("save_file", {
         path: activeTab.path,
         content: activeTab.content,
@@ -170,7 +184,13 @@ function App() {
     } catch (e) {
       log.error("App", "Failed to save file", e);
     }
-  }, [activeTab?.path, activeTab?.content, activeTab?.fileKind]);
+  }, [
+    activeTab?.path,
+    activeTab?.content,
+    activeTab?.fileKind,
+    activeTab?.id,
+    activeTab?.title,
+  ]);
 
   const handleNewFile = useCallback(() => {
     if (templates.length > 0) {

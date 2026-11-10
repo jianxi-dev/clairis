@@ -245,6 +245,7 @@ pub async fn save_as_file(
     app: AppHandle,
     content: String,
     default_name: Option<String>,
+    default_dir: Option<String>,
 ) -> Result<SaveResult, AppError> {
     let ext = default_name
         .as_deref()
@@ -260,6 +261,11 @@ pub async fn save_as_file(
     };
 
     let mut dialog = app.dialog().file();
+    if let Some(dir) = default_dir.as_deref() {
+        if !dir.is_empty() {
+            dialog = dialog.set_directory(dir);
+        }
+    }
     if let Some(name) = default_name.as_deref() {
         dialog = dialog.set_file_name(name);
     }

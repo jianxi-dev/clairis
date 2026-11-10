@@ -17,6 +17,7 @@ vi.mock("../../hooks/useConfig", () => ({
 const NAV_LABELS = [
   "外观",
   "编辑器",
+  "文件",
   "阅读空间",
   "网格概览",
   "悬浮预览",
@@ -43,12 +44,12 @@ afterEach(() => {
 });
 
 describe("SettingsView", () => {
-  it("渲染设置场景：10 个分区且顺序严格相等", () => {
+  it("渲染设置场景：11 个分区且顺序严格相等", () => {
     render(<SettingsView onClose={() => {}} />);
 
     expect(screen.getByTestId("settings-scene")).toBeTruthy();
     const items = screen.getAllByTestId("settings-nav-item");
-    expect(items).toHaveLength(10);
+    expect(items).toHaveLength(11);
     expect(items.map((item) => item.textContent)).toEqual(NAV_LABELS);
   });
 
@@ -64,7 +65,7 @@ describe("SettingsView", () => {
   it("阅读空间与网格概览：默认控件就位", () => {
     render(<SettingsView onClose={() => {}} />);
 
-    fireEvent.click(screen.getAllByTestId("settings-nav-item")[2]);
+    fireEvent.click(screen.getAllByTestId("settings-nav-item")[3]);
     expect(screen.getByTestId("rail-default-layout-stacked")).toBeTruthy();
     expect(screen.getByTestId("rail-default-layout-tabs")).toBeTruthy();
     expect(screen.getByTestId("rail-default-density-compact")).toBeTruthy();
@@ -72,7 +73,7 @@ describe("SettingsView", () => {
     expect(screen.getByTestId("rail-default-density-card")).toBeTruthy();
     expect(screen.getByTestId("rail-default-card-height")).toBeTruthy();
 
-    fireEvent.click(screen.getAllByTestId("settings-nav-item")[3]);
+    fireEvent.click(screen.getAllByTestId("settings-nav-item")[4]);
     expect(screen.getByTestId("grid-default-group-time")).toBeTruthy();
     expect(screen.getByTestId("grid-default-group-type")).toBeTruthy();
     expect(screen.getByTestId("grid-default-group-theme")).toBeTruthy();
@@ -86,7 +87,7 @@ describe("SettingsView", () => {
 
   it("阅读空间区：行宽四档与配色四项就位，点击写入配置并应用皮肤", () => {
     render(<SettingsView onClose={() => {}} />);
-    fireEvent.click(screen.getAllByTestId("settings-nav-item")[2]);
+    fireEvent.click(screen.getAllByTestId("settings-nav-item")[3]);
 
     const widths = screen
       .getAllByTestId(/^reader-width-/)
@@ -156,7 +157,7 @@ describe("SettingsView", () => {
     try {
       render(<SettingsView onClose={() => {}} />);
 
-      fireEvent.click(screen.getAllByTestId("settings-nav-item")[6]);
+      fireEvent.click(screen.getAllByTestId("settings-nav-item")[7]);
       expect(screen.getByTestId("extensions-disabled-note")).toBeTruthy();
       expect(
         screen.getByTestId("extensions-disabled-note").textContent,
@@ -169,7 +170,7 @@ describe("SettingsView", () => {
   it("AI 服务区：8 个提供方与 2 个规划中条目", () => {
     render(<SettingsView onClose={() => {}} />);
 
-    fireEvent.click(screen.getAllByTestId("settings-nav-item")[5]);
+    fireEvent.click(screen.getAllByTestId("settings-nav-item")[6]);
     expect(screen.getAllByTestId("ai-provider")).toHaveLength(8);
     expect(screen.getAllByTestId("ai-planned")).toHaveLength(2);
     expect(screen.getAllByTestId("ai-planned")[0].textContent).toContain(

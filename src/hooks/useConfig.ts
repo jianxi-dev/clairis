@@ -36,6 +36,7 @@ interface RustAppConfig {
   readerFontSize: number | null;
   readerWidth: number | null;
   readerSkin: string | null;
+  defaultSavePath?: string | null;
   ollamaEndpoint: string | null;
   openaiEndpoint: string | null;
   openaiModel: string | null;
@@ -124,6 +125,7 @@ export async function saveAppConfig(): Promise<void> {
     readerFontSize: es.config.readerFontSize ?? null,
     readerWidth: es.config.readerWidth ?? null,
     readerSkin: es.config.readerSkin ?? null,
+    defaultSavePath: es.config.defaultSavePath ?? null,
     ollamaEndpoint: es.config.ollamaEndpoint ?? null,
     openaiEndpoint: es.config.openaiEndpoint ?? null,
     openaiModel: es.config.openaiModel ?? null,
@@ -257,6 +259,7 @@ function applyRustConfig(raw: RustAppConfig): void {
     readerFontSize: raw.readerFontSize ?? 17,
     readerWidth: raw.readerWidth ?? 1080,
     readerSkin: raw.readerSkin ?? "paper",
+    defaultSavePath: raw.defaultSavePath ?? null,
     ollamaEndpoint: raw.ollamaEndpoint ?? "http://localhost:11434",
     openaiEndpoint: raw.openaiEndpoint ?? "https://api.openai.com",
     openaiModel: raw.openaiModel ?? "gpt-4o-mini",

@@ -22,7 +22,13 @@ window.__biaoyue_openFile__ = function(path, content, title) {
 };
 
 // ── AI entry (C4) mock state ─────────────────────────────────
+// config 持久化到 localStorage：模拟真实「配置文件在重启后仍在」，
+// 否则 reload 后 load_config 又回到默认响应，无法测持久化。
 var aiState = { config: null, snapshots: [], seq: 0 };
+try {
+  var __persisted = localStorage.getItem("__mock_config");
+  if (__persisted) { aiState.config = JSON.parse(__persisted); }
+} catch (e) { /* 忽略 */ }
 
 // ── 扩展包管理（#184）mock state ─────────────────────────────
 var extensionPackages = [
@@ -151,6 +157,10 @@ function mockInvoke(cmd, args) {
   if (cmd === "open_file_direct" && args && args.path) {
     return { content:"# "+args.path.split("/").pop()+"\n\n文件内容。", path:args.path, file_size:100 };
   }
+  if (cmd === "save_as_file") {
+    window.__lastSaveAs = args || {};
+    return { path: "/Users/test/" + ((args && args.defaultName) || "新文件.md") };
+  }
   if (cmd === "move_file" && args && args.from && args.toDir) {
     var name = args.from.split("/").pop();
     return args.toDir.replace(/\/$/, "") + "/" + name;
@@ -163,6 +173,7 @@ function mockInvoke(cmd, args) {
   if (cmd === "save_config" && args && args.config) {
     aiSnapshot();
     aiState.config = JSON.parse(JSON.stringify(args.config));
+    try { localStorage.setItem("__mock_config", JSON.stringify(aiState.config)); } catch (e) { /* 忽略 */ }
     return null;
   }
   if (cmd === "set_api_key" && args) {
