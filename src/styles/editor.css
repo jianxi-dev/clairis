@@ -2873,7 +2873,7 @@ html[data-tab-drag="true"] body * {
   justify-content: center;
   border: 1px solid var(--app-accent);
   border-radius: var(--radius-full, 999px);
-  background: var(--app-accent-soft);
+  background: color-mix(in srgb, var(--app-accent) 24%, var(--app-surface));
   color: var(--app-accent);
   box-shadow: var(--app-shadow);
   cursor: pointer;
