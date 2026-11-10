@@ -1,0 +1,57 @@
+import { test, expect, type Page } from "@playwright/test";
+
+const APP_URL = "http://localhost:1420";
+
+async function boot(page: Page): Promise<void> {
+  await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
+  await page.goto(APP_URL, { waitUntil: "networkidle" });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 15000 });
+  await page.evaluate(() => {
+    window.__biaoyue_openFile__(
+      "/tmp/sectors.md",
+      "# 标题\n\n正文。",
+      "sectors.md",
+    );
+  });
+  await page.waitForTimeout(300);
+  await page.evaluate(() => {
+    window.__biaoyue_store__.getState().setEditorMode("edit");
+  });
+}
+
+async function openWheel(page: Page) {
+  const line = page.locator(".cm-line").nth(1);
+  await line.click({ clickCount: 3 });
+  const wheel = page.locator('[data-testid="selection-roulette"]');
+  await expect(wheel).toBeVisible({ timeout: 3000 });
+  return wheel;
+}
+
+test("配置去掉 columns 后扇区数量与集合变化", async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    window.__biaoyue_editor_store__
+      .getState()
+      .setConfig({ rouletteSectors: ["smart", "format"] });
+  });
+  const wheel = await openWheel(page);
+  await expect(wheel.locator("[data-sector]")).toHaveCount(2);
+  await expect(wheel.locator('[data-sector="columns"]')).toHaveCount(0);
+});
+
+test("未知扇区被忽略", async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    window.__biaoyue_editor_store__
+      .getState()
+      .setConfig({ rouletteSectors: ["smart", "bogus"] });
+  });
+  const wheel = await openWheel(page);
+  await expect(wheel.locator("[data-sector]")).toHaveCount(1);
+});
+
+test("缺省配置保持 8 个扇区", async ({ page }) => {
+  await boot(page);
+  const wheel = await openWheel(page);
+  await expect(wheel.locator("[data-sector]")).toHaveCount(8);
+});

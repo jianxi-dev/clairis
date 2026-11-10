@@ -60,6 +60,7 @@ interface RustAppConfig {
   }> | null;
   scrollPositions: Record<string, ScrollPosition> | null;
   capabilities?: Record<string, boolean> | null;
+  rouletteSectors?: string[] | null;
   paneLayout?: string | null;
   railViewSpec?: {
     layout: string | null;
@@ -146,6 +147,7 @@ export async function saveAppConfig(): Promise<void> {
     recentFiles: useStore.getState().recentFiles,
     scrollPositions: useStore.getState().scrollPositions ?? null,
     capabilities: serializeCapabilities(),
+    rouletteSectors: es.config.rouletteSectors ?? null,
     // 读实时值：本次会话分裂/调整的比例要能持久化
     paneLayout: useStore.getState().paneLayoutJson(),
     // 阅读空间栏「设为默认」规格（layout-portal 6.1）
@@ -250,6 +252,32 @@ function normalizeRailViewSpec(
  * Map a Rust config onto the stores and the document.
  * Touches config/theme only; never rewrites editor content.
  */
+const ROULETTE_SECTOR_IDS = [
+  "smart",
+  "convert",
+  "align",
+  "columns",
+  "history",
+  "clear",
+  "format",
+  "color",
+] as const;
+
+export function normalizeRouletteSectors(
+  raw: string[] | null | undefined,
+): string[] | null {
+  if (!Array.isArray(raw) || raw.length === 0) return null;
+  const out: string[] = [];
+  for (const id of raw) {
+    if (!ROULETTE_SECTOR_IDS.some((known) => known === id)) {
+      log.warn("Config", `忽略未知轮盘扇区: ${id}`);
+      continue;
+    }
+    if (!out.includes(id)) out.push(id);
+  }
+  return out.length > 0 ? out : null;
+}
+
 function applyRustConfig(raw: RustAppConfig): void {
   const config: Partial<AppConfig> = {
     fontSize: raw.fontSize ?? 17,
@@ -282,6 +310,7 @@ function applyRustConfig(raw: RustAppConfig): void {
     verticalSplitRatio: raw.verticalSplitRatio ?? 0.5,
     recentFiles: raw.recentFiles ?? [],
     capabilities: raw.capabilities ?? {},
+    rouletteSectors: normalizeRouletteSectors(raw.rouletteSectors),
   };
 
   const es = useEditorStore.getState();

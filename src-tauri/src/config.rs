@@ -56,6 +56,9 @@ pub struct AppConfig {
     /// `default` + `skip_serializing_if` 让老配置仍能读、新配置不多出空字段。
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ai_view_spec: Option<AiViewSpec>,
+    /// 轮盘根扇区集合与顺序（ui-command-registry 2.1）。缺省 = 内置默认。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub roulette_sectors: Option<Vec<String>>,
     /// 新建文档首次保存的默认目录（ui-polish-batch12 6.1）。
     /// `default` + `skip_serializing_if` 让老配置仍能读、新配置不多出空字段。
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -157,6 +160,7 @@ impl Default for AppConfig {
             rail_view_spec: None,
             preview_settings: None,
             ai_view_spec: None,
+            roulette_sectors: None,
             default_save_path: None,
             sidebar_left_visible: Some(true),
             sidebar_right_visible: Some(false),
@@ -496,6 +500,32 @@ pub fn validate_config(config: &AppConfig) -> Result<(), AppError> {
             1.0,
             1.5,
         )?;
+    }
+    if let Some(sectors) = &config.roulette_sectors {
+        const ALLOWED: [&str; 8] = [
+            "smart", "convert", "align", "columns", "history", "clear", "format", "color",
+        ];
+        if sectors.is_empty() || sectors.len() > ALLOWED.len() {
+            return Err(AppError::Validation {
+                context: "rouletteSectors".into(),
+                message: "长度须在 1..=8".into(),
+            });
+        }
+        let mut seen = std::collections::HashSet::new();
+        for id in sectors {
+            if !ALLOWED.contains(&id.as_str()) {
+                return Err(AppError::Validation {
+                    context: "rouletteSectors".into(),
+                    message: format!("未知扇区: {id}"),
+                });
+            }
+            if !seen.insert(id.as_str()) {
+                return Err(AppError::Validation {
+                    context: "rouletteSectors".into(),
+                    message: format!("重复扇区: {id}"),
+                });
+            }
+        }
     }
     Ok(())
 }
@@ -1237,6 +1267,22 @@ mod tests {
             pinned_segment_scale: Some(2.0),
             ..valid
         });
+        assert!(validate_config(&config).is_err());
+    }
+
+    #[test]
+    fn roulette_sectors_accepts_subset_and_rejects_bad_input() {
+        let mut config = AppConfig::default();
+        config.roulette_sectors = Some(vec!["format".into(), "smart".into()]);
+        assert!(validate_config(&config).is_ok());
+
+        config.roulette_sectors = Some(vec!["format".into(), "nope".into()]);
+        assert!(validate_config(&config).is_err());
+
+        config.roulette_sectors = Some(vec!["format".into(), "format".into()]);
+        assert!(validate_config(&config).is_err());
+
+        config.roulette_sectors = Some(Vec::new());
         assert!(validate_config(&config).is_err());
     }
 }
