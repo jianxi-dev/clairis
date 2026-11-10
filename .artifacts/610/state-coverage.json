@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "typed",
+      "screenshot": ".artifacts/610/typed.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-10T18:31:24Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "undone",
+      "screenshot": ".artifacts/610/undone.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-10T18:31:24Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "redone",
+      "screenshot": ".artifacts/610/redone.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-10T18:31:24Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "input-focused",
+      "screenshot": ".artifacts/610/input-focused.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-10T18:31:24Z",
+      "runner": "unknown@MMBP"
+    }
+  ]
+}
