@@ -28,6 +28,17 @@ import {
   type EditorDecorationsOptions,
 } from "../../editors/decorations";
 import {
+  EMPTY_IMAGE_ATTRIBUTES,
+  parseImageAttributes,
+  scanImageReference,
+  writeImageAttributes,
+} from "../../editors/decorations/image";
+import {
+  blockAt,
+  deleteBlock,
+} from "../../editors/orchestration/toolbar-shared";
+import { useAiEntryStore } from "../../hooks/useAiEntry";
+import {
   slashKeymap,
   setUserSlashCommands,
   registerPickMediaFile,
@@ -42,6 +53,7 @@ import {
   setEditorView,
   setActivePanel,
   setPanelScrollEl,
+  getActiveEditorView,
 } from "../../editors/editorRef";
 import { resolveScrollTarget } from "../../utils/scrollPosition";
 import { pickMediaForDocument } from "../../lib/mediaPicker";
@@ -76,6 +88,62 @@ let activeDocPath: string | null = null;
 const editorDecorationOptions: EditorDecorationsOptions = {
   hydrateMermaid,
   resolveImage: (path) => resolveDocMediaHref(path, activeDocPath),
+  onImageAi: (path, alt) => {
+    const ai = useAiEntryStore.getState();
+    ai.setInput(`请处理图片：${path}${alt ? `（${alt}）` : ""}`);
+    ai.openOverlay();
+  },
+  onImageAlign: (from, align) => {
+    const view = getActiveEditorView();
+    if (!view) return;
+    const ref = scanImageReference(view.state.doc.toString(), from);
+    if (!ref) return;
+    const attrs =
+      ref.attrText !== null
+        ? parseImageAttributes(ref.attrText)
+        : { ...EMPTY_IMAGE_ATTRIBUTES };
+    attrs.align = align === "center" ? null : align;
+    writeImageAttributes(view, from, attrs);
+  },
+  onImageCopy: (from) => {
+    const view = getActiveEditorView();
+    if (!view) return;
+    const text = view.state.doc.toString();
+    const ref = scanImageReference(text, from);
+    if (!ref) return;
+    void navigator.clipboard?.writeText(
+      text.slice(from, ref.attrEnd ?? ref.end),
+    );
+  },
+  onImageCut: (from) => {
+    const view = getActiveEditorView();
+    if (!view) return;
+    const text = view.state.doc.toString();
+    const ref = scanImageReference(text, from);
+    if (ref) {
+      void navigator.clipboard?.writeText(
+        text.slice(from, ref.attrEnd ?? ref.end),
+      );
+    }
+    const block = blockAt(view, from);
+    if (block) deleteBlock(view, block);
+  },
+  onImageDelete: (from) => {
+    const view = getActiveEditorView();
+    if (!view) return;
+    const block = blockAt(view, from);
+    if (block) deleteBlock(view, block);
+  },
+  onImageComment: (from) => {
+    const view = getActiveEditorView();
+    if (!view) return;
+    const line = view.state.doc.lineAt(from);
+    const insert = "\n> 评论：";
+    view.dispatch({
+      changes: { from: line.to, insert },
+      selection: { anchor: line.to + insert.length },
+    });
+  },
 };
 
 /**

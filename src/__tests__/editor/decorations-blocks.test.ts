@@ -30,6 +30,10 @@ import {
   type ImageResolver,
 } from "../../editors/decorations/image";
 import { createMermaidDecorations } from "../../editors/decorations/mermaid";
+import {
+  closeImageMaximize,
+  deselectImage,
+} from "../../editors/decorations/imageToolbar";
 
 function installPolyfills(): void {
   if (typeof globalThis.requestAnimationFrame !== "function") {
@@ -78,6 +82,8 @@ describe("block decorations", () => {
   afterEach(() => {
     view?.destroy();
     parent?.remove();
+    deselectImage();
+    closeImageMaximize();
     resetDecorationGuards();
   });
 
@@ -245,7 +251,7 @@ describe("block decorations", () => {
         ".cm-image-widget",
       ) as HTMLElement | null;
       const img = widget?.querySelector("img") as HTMLElement | null;
-      expect(img?.style.clipPath).toBe("inset(0 round 4px)");
+      expect(img?.style.clipPath).toBe("inset(0 round 8px)");
       expect(widget?.style.backgroundColor).toBe("var(--app-surface)");
       expect(widget?.style.overflow).toBe("");
       expect(widget?.style.borderRadius).toBe("");
@@ -269,80 +275,114 @@ describe("block decorations", () => {
       expect(view.dom.querySelector(".cm-image-widget")).toBeNull();
     });
 
-    it("calls onImageReplace / onImageDelete / onImageLocate with the path", () => {
+    it("点击选中图片：data-selected + 4 个角点，工具条 9 按钮", () => {
+      view = createEditor("![alt text](photo.png)", {
+        resolveImage: stubResolver,
+      });
+      placeCursor(view.state.doc.length);
+
+      const widget = view.dom.querySelector(".cm-image-widget") as HTMLElement;
+      widget.click();
+
+      expect(widget.dataset.selected).toBe("true");
+      expect(widget.querySelectorAll(".cm-image-corner")).toHaveLength(4);
+      const toolbar = document.querySelector<HTMLElement>(
+        '[data-testid="img-toolbar"]',
+      );
+      expect(toolbar).not.toBeNull();
+      expect(toolbar!.querySelectorAll("button")).toHaveLength(9);
+    });
+
+    it("工具条动作按 from / path / alt 调用注入回调", () => {
       const calls: string[] = [];
       view = createEditor("![alt text](photo.png)", {
         resolveImage: stubResolver,
-        onImageReplace: (p) => calls.push(`replace:${p}`),
-        onImageDelete: (p) => calls.push(`delete:${p}`),
-        onImageLocate: (p) => calls.push(`locate:${p}`),
+        onImageAi: (path, alt) => calls.push(`ai:${path}:${alt}`),
+        onImageComment: (from) => calls.push(`comment:${from}`),
+        onImageAlign: (from, align) => calls.push(`align:${from}:${align}`),
+        onImageCut: (from) => calls.push(`cut:${from}`),
+        onImageCopy: (from) => calls.push(`copy:${from}`),
+        onImageDelete: (from) => calls.push(`delete:${from}`),
       });
       placeCursor(view.state.doc.length);
 
-      (
-        view.dom.querySelector(
-          '[data-testid="img-hover-replace"]',
-        ) as HTMLElement
-      ).click();
-      (
-        view.dom.querySelector(
-          '[data-testid="img-hover-delete"]',
-        ) as HTMLElement
-      ).click();
-      (
-        view.dom.querySelector(
-          '[data-testid="img-hover-locate"]',
-        ) as HTMLElement
-      ).click();
+      (view.dom.querySelector(".cm-image-widget") as HTMLElement).click();
+
+      const click = (testid: string): void => {
+        (
+          document.querySelector(`[data-testid="${testid}"]`) as HTMLElement
+        ).click();
+      };
+      click("img-toolbar-ai");
+      click("img-toolbar-comment");
+      click("img-toolbar-align-left");
+      click("img-toolbar-cut");
+      click("img-toolbar-copy");
+      click("img-toolbar-delete");
 
       expect(calls).toEqual([
-        "replace:photo.png",
-        "delete:photo.png",
-        "locate:photo.png",
+        "ai:photo.png:alt text",
+        "comment:0",
+        "align:0:left",
+        "cut:0",
+        "copy:0",
+        "delete:0",
       ]);
     });
 
-    it("does not throw when the hover callbacks are not injected", () => {
+    it("缺省回调的按钮禁用；裁剪固定显示后续票提示", () => {
       view = createEditor("![alt text](photo.png)", {
         resolveImage: stubResolver,
       });
       placeCursor(view.state.doc.length);
 
-      const replaceBtn = view.dom.querySelector(
-        '[data-testid="img-hover-replace"]',
-      ) as HTMLElement;
-      expect(replaceBtn).not.toBeNull();
-      expect(() => replaceBtn.click()).not.toThrow();
+      (view.dom.querySelector(".cm-image-widget") as HTMLElement).click();
+
+      const crop = document.querySelector<HTMLButtonElement>(
+        '[data-testid="img-toolbar-crop"]',
+      );
+      expect(crop?.disabled).toBe(true);
+      expect(crop?.title).toBe("裁剪（后续票实现）");
+      const copy = document.querySelector<HTMLButtonElement>(
+        '[data-testid="img-toolbar-copy"]',
+      );
+      expect(copy?.disabled).toBe(true);
     });
 
-    it("lets the editor ignore mousedown on toolbar buttons so clicks fire", () => {
-      let deleted = false;
+    it("点击外部取消选中并移除工具条", () => {
       view = createEditor("![alt text](photo.png)", {
         resolveImage: stubResolver,
-        onImageDelete: () => {
-          deleted = true;
-        },
       });
       placeCursor(view.state.doc.length);
 
-      const deleteBtn = view.dom.querySelector(
-        '[data-testid="img-hover-delete"]',
-      ) as HTMLElement;
-      const down = new MouseEvent("mousedown", {
-        bubbles: true,
-        cancelable: true,
-        button: 0,
-      });
-      deleteBtn.dispatchEvent(down);
-      expect(down.defaultPrevented).toBe(false);
+      const widget = view.dom.querySelector(".cm-image-widget") as HTMLElement;
+      widget.click();
+      expect(widget.dataset.selected).toBe("true");
 
-      deleteBtn.dispatchEvent(
-        new MouseEvent("mouseup", { bubbles: true, cancelable: true }),
-      );
-      deleteBtn.dispatchEvent(
-        new MouseEvent("click", { bubbles: true, cancelable: true }),
-      );
-      expect(deleted).toBe(true);
+      document.body.click();
+
+      expect(widget.dataset.selected).toBe("false");
+      expect(document.querySelector('[data-testid="img-toolbar"]')).toBeNull();
+    });
+
+    it("选中图片被删除后工具条自动移除", async () => {
+      view = createEditor("![alt text](photo.png)\n", {
+        resolveImage: stubResolver,
+      });
+      placeCursor(view.state.doc.length);
+
+      (view.dom.querySelector(".cm-image-widget") as HTMLElement).click();
+      expect(
+        document.querySelector('[data-testid="img-toolbar"]'),
+      ).not.toBeNull();
+
+      view.dispatch({ changes: { from: 0, to: view.state.doc.length } });
+
+      await vi.waitFor(() => {
+        expect(
+          document.querySelector('[data-testid="img-toolbar"]'),
+        ).toBeNull();
+      });
     });
 
     it("renders a video player for a video extension", () => {
