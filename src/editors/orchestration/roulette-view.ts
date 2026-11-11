@@ -69,6 +69,51 @@ interface Cmd {
   group: string;
 }
 
+export interface RouletteGroup {
+  items: RouletteItem[];
+  label: string;
+}
+
+/**
+ * 筛选树遍历：父级命中 → 展开其全部可执行后代（父级自身不重复显示）；
+ * 父级未命中 → 递归子级；叶子命中且可执行 → 收录（group 记最近父级）。
+ * 平铺过滤会把「父级命中但子级 label 不含父级名」的场景漏光，只剩死父级行。
+ */
+export function matchCommandsIn(
+  groups: readonly RouletteGroup[],
+  query: string,
+  isExecutable: (item: RouletteItem) => boolean,
+): Cmd[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return [];
+  const out: Cmd[] = [];
+  const pushDescendants = (
+    items: readonly RouletteItem[],
+    groupLabel: string,
+  ) => {
+    for (const item of items) {
+      if (item.children && item.children.length > 0) {
+        pushDescendants(item.children, item.label);
+      } else if (isExecutable(item)) {
+        out.push({ item, group: groupLabel });
+      }
+    }
+  };
+  const walk = (items: readonly RouletteItem[], groupLabel: string) => {
+    for (const item of items) {
+      const hit = item.label.toLowerCase().includes(q);
+      if (item.children && item.children.length > 0) {
+        if (hit) pushDescendants(item.children, item.label);
+        else walk(item.children, item.label);
+      } else if (hit && isExecutable(item)) {
+        out.push({ item, group: groupLabel });
+      }
+    }
+  };
+  for (const g of groups) walk(g.items, g.label);
+  return out;
+}
+
 function svgNode<K extends keyof SVGElementTagNameMap>(
   tag: K,
   attrs: Record<string, string> = {},
@@ -183,33 +228,20 @@ export function createRoulette(
     return sectorItems();
   };
 
-  const allCommands = (): Cmd[] => {
-    const out: Cmd[] = [];
-    const push = (items: RouletteItem[], groupLabel = "") => {
-      for (const item of items) {
-        if (!isExecutable(item) && !(item.children && item.children.length > 0))
-          continue;
-        out.push({ item, group: groupLabel });
-        if (item.children) push(item.children, item.label);
-      }
-    };
-    push(actions.smart, "智能");
-    push(actions.convert(), "转换");
-    push(actions.align, "对齐");
-    push(actions.columns, "分栏");
-    push(actions.history, "历史");
-    push(actions.clear, "清格");
-    push(actions.format, "格式");
-    return out;
-  };
-
-  const matchCommands = (query: string): Cmd[] => {
-    const q = query.trim().toLowerCase();
-    if (!q) return [];
-    return allCommands().filter((row) =>
-      row.item.label.toLowerCase().includes(q),
+  const matchCommands = (query: string): Cmd[] =>
+    matchCommandsIn(
+      [
+        { items: actions.smart, label: "智能" },
+        { items: actions.convert(), label: "转换" },
+        { items: actions.align, label: "对齐" },
+        { items: actions.columns, label: "分栏" },
+        { items: actions.history, label: "历史" },
+        { items: actions.clear, label: "清格" },
+        { items: actions.format, label: "格式" },
+      ],
+      query,
+      isExecutable,
     );
-  };
 
   const updateHub = () => {
     const painterActive = actions.painter.active();
