@@ -776,7 +776,6 @@ export default function VideoPlayer({
           position: "right",
           index: 44,
           html: controlSvg("image"),
-          tooltip: "画面",
           mounted: function ($control) {
             visualBtnRef.current = $control;
             $control.dataset.name = "visual";
@@ -794,7 +793,6 @@ export default function VideoPlayer({
           position: "right",
           index: 42,
           html: controlSvg("playlist"),
-          tooltip: "播放列表",
           mounted: function ($control) {
             playlistBtnRef.current = $control;
             $control.dataset.name = "playlist";
@@ -823,7 +821,6 @@ export default function VideoPlayer({
           position: "right",
           index: 50,
           html: rateControlHtml(),
-          tooltip: "播放速度",
           mounted: function ($control) {
             rateBtnRef.current = $control;
             $control.dataset.name = "rate";
@@ -856,7 +853,6 @@ export default function VideoPlayer({
           position: "right",
           index: 54,
           html: controlSvg("subtitle"),
-          tooltip: "字幕",
           mounted: function ($control) {
             subtitleBtnRef.current = $control;
             $control.dataset.name = "subtitle";
@@ -900,7 +896,6 @@ export default function VideoPlayer({
           position: "right",
           index: 80,
           html: controlSvg("keyboardHints"),
-          tooltip: "快捷键说明",
           mounted: function ($control) {
             hintsBtnRef.current = $control;
             $control.dataset.name = "hints";
