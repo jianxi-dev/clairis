@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "table-edit-default",
+      "screenshot": ".artifacts/642/table-edit-default.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-11T07:13:28Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "table-hover",
+      "screenshot": ".artifacts/642/table-hover.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-11T07:13:28Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "table-cell-active",
+      "screenshot": ".artifacts/642/table-cell-active.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-11T07:13:28Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "table-preview",
+      "screenshot": ".artifacts/642/table-preview.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-11T07:13:28Z",
+      "runner": "unknown@MMBP"
+    }
+  ]
+}

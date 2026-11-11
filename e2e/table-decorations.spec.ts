@@ -224,3 +224,77 @@ test("预览态表格同样有浅色竖分割线", async ({ page }) => {
     await last.evaluate((el) => getComputedStyle(el).borderRightWidth),
   ).toBe("0px");
 });
+
+test("表格容器不出现滚动条，编辑态与预览态均为 visible", async ({ page }) => {
+  const paragraphs = Array.from({ length: 40 }, (_, i) => `第${i}段内容`).join(
+    "\n\n",
+  );
+  await openTableDoc(
+    page,
+    "/Users/test/tbl-scroll.md",
+    `| 姓名 | 城市 |\n| --- | --- |\n| 甲 | 北京 |\n| 乙 | 上海 |\n\n${paragraphs}`,
+  );
+
+  const wrap = page.locator(".cm-table-wrap").first();
+  await expect(wrap).toBeVisible();
+  const overflow = await wrap.evaluate(
+    (el) =>
+      getComputedStyle(el).overflowX + "/" + getComputedStyle(el).overflowY,
+  );
+  expect(overflow).toBe("visible/visible");
+
+  // 滚轮穿透：指针停在表格上滚动文档，编辑器滚动位置必须前进（#642 第二条期望）。
+  const scroller = page.locator(".cm-scroller");
+  const before = await scroller.evaluate((el) => el.scrollTop);
+  await wrap.hover();
+  await page.mouse.wheel(0, 480);
+  await expect
+    .poll(async () => scroller.evaluate((el) => el.scrollTop))
+    .toBeGreaterThan(before);
+
+  const modeBtn = page.locator('[data-testid="pane-mode"]').first();
+  if ((await modeBtn.getAttribute("data-mode")) !== "preview")
+    await modeBtn.click();
+  const previewWrap = page.locator(".preview-content .table-wrap").first();
+  await expect(previewWrap).toBeVisible();
+  const previewOverflow = await previewWrap.evaluate(
+    (el) =>
+      getComputedStyle(el).overflowX + "/" + getComputedStyle(el).overflowY,
+  );
+  expect(previewOverflow).toBe("visible/visible");
+});
+
+// QG-5 证据探针（#642）：EVIDENCE_DIR 设置时采集四态截图，平时跳过。
+test("evidence: 表格四态", async ({ page }) => {
+  const dir = process.env.EVIDENCE_DIR;
+  test.skip(!dir, "EVIDENCE_DIR 未设置");
+  await openTableDoc(
+    page,
+    "/Users/test/tbl-evidence.md",
+    "| 姓名 | 城市 |\n| --- | --- |\n| 甲 | 北京 |\n| 乙 | 上海 |",
+  );
+  const wrap = page.locator(".cm-table-wrap").first();
+  await expect(wrap).toBeVisible();
+  await wrap.screenshot({ path: `${dir}/table-edit-default.png` });
+
+  await wrap.hover();
+  await wrap.screenshot({ path: `${dir}/table-hover.png` });
+
+  await page.locator('td[data-row="0"][data-col="0"]').click();
+  await expect(
+    page
+      .locator('td[data-row="0"][data-col="0"]')
+      .locator(".cm-table-cell-input"),
+  ).toBeVisible();
+  await page
+    .locator(".cm-table-wrap")
+    .first()
+    .screenshot({ path: `${dir}/table-cell-active.png` });
+
+  const modeBtn = page.locator('[data-testid="pane-mode"]').first();
+  if ((await modeBtn.getAttribute("data-mode")) !== "preview")
+    await modeBtn.click();
+  const previewTable = page.locator(".preview-content .table-wrap").first();
+  await expect(previewTable).toBeVisible();
+  await previewTable.screenshot({ path: `${dir}/table-preview.png` });
+});
