@@ -748,7 +748,6 @@
 
 /* ── 表格 ────────────────────────────────────────────── */
 .preview-content .table-wrap {
-  overflow-x: auto;
   border: 1px solid var(--reader-line);
   border-radius: var(--reader-radius-lg);
 }
@@ -757,7 +756,7 @@
   border-collapse: separate;
   border-spacing: 0;
   /* 占满纸面可用宽度，列宽仍按内容自动分配（非均分）；长内容在单元格内换行，
-     不再按不换行的自然宽度横向延展。极端不可断内容由 .table-wrap 滚动兜底。 */
+     不按不换行的自然宽度横向延展。 */
   width: 100%;
   font-size: 0.95em;
 }
@@ -1156,30 +1155,26 @@ details.callout > summary::before {
   background: var(--ink-rail-unread);
 }
 
-/* ── 滚动条（代码块 / 宽表格）────────────────────────── */
+/* ── 滚动条（代码块 / 公式块）────────────────────────── */
 .preview-content pre,
-.preview-content .table-wrap,
 .preview-content .katex-block {
   scrollbar-width: thin;
   scrollbar-color: var(--reader-line-2) transparent;
 }
 
 .preview-content pre::-webkit-scrollbar,
-.preview-content .table-wrap::-webkit-scrollbar,
 .preview-content .katex-block::-webkit-scrollbar {
   height: 8px;
   width: 8px;
 }
 
 .preview-content pre::-webkit-scrollbar-thumb,
-.preview-content .table-wrap::-webkit-scrollbar-thumb,
 .preview-content .katex-block::-webkit-scrollbar-thumb {
   background: var(--reader-line-2);
   border-radius: 999px;
 }
 
 .preview-content pre::-webkit-scrollbar-track,
-.preview-content .table-wrap::-webkit-scrollbar-track,
 .preview-content .katex-block::-webkit-scrollbar-track {
   background: transparent;
 }

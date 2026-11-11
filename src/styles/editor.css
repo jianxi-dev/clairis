@@ -1329,7 +1329,6 @@ html[data-tab-drag="true"] body * {
   position: relative;
   margin: 0.35em 0;
   padding-top: 10px;
-  overflow-x: auto;
   border: 1px solid var(--app-border);
   border-radius: var(--app-radius);
 }
