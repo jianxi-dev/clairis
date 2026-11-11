@@ -278,3 +278,56 @@ test("指针离开后 120ms 宽限期结束才收起", async ({ page }) => {
   await expect(menu).toHaveCount(0, { timeout: 2000 });
   await page.screenshot({ path: path.join(ART, "04-after-leave.png") });
 });
+
+test("图片块与高亮块的块手柄按真实块型取图标（#649）", async ({ page }) => {
+  const stateDir = path.resolve(process.cwd(), ".artifacts/650");
+  mkdirSync(stateDir, { recursive: true });
+  const doc =
+    "![图片](photo.png)\n\n> [!NOTE] 高亮标题\n> 高亮正文\n\n普通段落";
+  await openDoc(page, "/Users/test/bh-blocktypes.md", doc);
+
+  const probe = await page.evaluate((text) => {
+    const handles = Array.from(document.querySelectorAll(".cm-block-handle"));
+    return {
+      imageAt: 0,
+      calloutAt: text.indexOf("> [!NOTE]"),
+      icons: handles.map((h) => ({
+        from: Number(h.getAttribute("data-block-from")),
+        icon:
+          h
+            .querySelector(".cm-block-handle-icon svg")
+            ?.getAttribute("data-icon") ?? null,
+      })),
+    };
+  }, doc);
+
+  const iconAt = (from: number) =>
+    probe.icons.find((entry) => entry.from === from)?.icon ?? null;
+  expect(iconAt(probe.imageAt)).toBe("ImageOutlined");
+  expect(iconAt(probe.calloutAt)).toBe("CalloutOutlined");
+
+  await hoverLineLeft(page, page.locator(".cm-line").first());
+  await page.screenshot({ path: path.join(stateDir, "image-handle.png") });
+
+  await hoverLineLeft(page, page.locator(".cm-line").nth(2));
+  await page.screenshot({ path: path.join(stateDir, "callout-handle.png") });
+
+  await hoverLineLeft(page, page.locator(".cm-line").first());
+  const handle = page.locator(
+    '[data-testid="block-handle"].cm-block-handle-visible',
+  );
+  await expect(handle).toHaveCount(1, { timeout: 3000 });
+  await handle.hover();
+  const menu = page.locator('[data-testid="block-menu"]');
+  await expect(menu).toBeVisible({ timeout: 3000 });
+  await expect(page.locator('[data-testid="block-menu-grid"]')).toHaveCount(0);
+  await expect(
+    page.locator('[data-testid="block-menu-action"]'),
+  ).not.toHaveCount(0);
+  await page.screenshot({ path: path.join(stateDir, "image-block-menu.png") });
+
+  await page.mouse.move(20, 20);
+  await hoverLineLeft(page, page.locator(".cm-line").last());
+  await page.screenshot({ path: path.join(stateDir, "paragraph-handle.png") });
+  await page.screenshot({ path: path.join(ART, "05-block-type-icons.png") });
+});

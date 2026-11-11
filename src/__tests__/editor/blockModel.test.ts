@@ -28,6 +28,28 @@ describe("getBlocks", () => {
     expect(blocks[0].to).toBe(11);
   });
 
+  it("classifies a standalone image line as an image block", () => {
+    const state = makeState("![图片](photo.png)");
+    expect(getBlocks(state).map((b) => b.type)).toEqual(["image"]);
+  });
+
+  it("keeps an inline image inside text as a paragraph", () => {
+    const state = makeState("看图 ![图片](photo.png) 结束");
+    expect(getBlocks(state).map((b) => b.type)).toEqual(["paragraph"]);
+  });
+
+  it("classifies a valid callout blockquote as callout", () => {
+    const state = makeState("> [!NOTE] 标题\n> 正文");
+    expect(getBlocks(state).map((b) => b.type)).toEqual(["callout"]);
+  });
+
+  it("keeps an unknown callout type and a plain blockquote as blockquote", () => {
+    const unknown = makeState("> [!FOO] 未知\n> 正文");
+    expect(getBlocks(unknown).map((b) => b.type)).toEqual(["blockquote"]);
+    const quote = makeState("> 普通引用");
+    expect(getBlocks(quote).map((b) => b.type)).toEqual(["blockquote"]);
+  });
+
   it("identifies headings", () => {
     const state = makeState("# Title\n## Subtitle");
     const blocks = getBlocks(state);
@@ -159,13 +181,13 @@ describe("getBlocks", () => {
     expect(blocks[0].type).toBe("thematicBreak");
   });
 
-  it("identifies images", () => {
-    // Images are inline nodes in Lezer's markdown parser, not top-level blocks.
-    // A standalone image line is parsed as a paragraph containing an inline Image node.
+  it("identifies a standalone image as an image block", () => {
+    // Images are inline nodes in Lezer's markdown parser; a line that contains
+    // only the image is promoted to an image block by getBlocks (#649).
     const state = makeState("![alt](path/to.png)");
     const blocks = getBlocks(state);
     expect(blocks).toHaveLength(1);
-    expect(blocks[0].type).toBe("paragraph");
+    expect(blocks[0].type).toBe("image");
   });
 
   it("returns blocks sorted by from-position ascending", () => {

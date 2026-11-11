@@ -12,6 +12,7 @@
  */
 import type { EditorState } from "@codemirror/state";
 import { ensureSyntaxTree, syntaxTree } from "@codemirror/language";
+import { resolveCalloutType } from "./callout-types";
 
 // --- 块类型 ------------------------------------------------------------------
 
@@ -22,6 +23,7 @@ export type BlockType =
   | "paragraph"
   | "heading"
   | "blockquote"
+  | "callout"
   | "list"
   | "task"
   | "fencedCode"
@@ -107,6 +109,61 @@ function isTaskChecked(text: string): boolean {
   return /^\s*(?:[-*+]|\d+\.) \[[xX]\] /.test(text);
 }
 
+/** 高亮块首行：`> [!TYPE]`（允许最多 3 个前导空格，与 Lezer 的引用块一致）。 */
+const CALLOUT_HEAD_RE = /^\s{0,3}>\s*\[!([A-Za-z]+)\]/;
+
+/**
+ * 引用块是否其实是高亮块：首行是 `> [!TYPE]` 且类型合法。
+ *
+ * 不只看前缀：非法类型（如 `[!FOO]`）要落回普通引用块，否则手柄图标会对不上
+ * 渲染端（`callout.ts` 同样按类型表判定）。
+ */
+function isCalloutText(text: string): boolean {
+  const firstLine = text.split("\n")[0] ?? "";
+  const match = CALLOUT_HEAD_RE.exec(firstLine);
+  return match !== null && resolveCalloutType(match[1].toLowerCase()) !== null;
+}
+
+/** 遍历块子节点所需的最小结构（不直接依赖 @lezer/common）。 */
+interface BlockChildNode {
+  readonly name: string;
+  readonly from: number;
+  readonly to: number;
+  cursor(): {
+    firstChild(): boolean;
+    nextSibling(): boolean;
+    readonly node: BlockChildNode;
+  };
+}
+
+/**
+ * 段落是否只含一张图片：`![alt](path)` 独占一行。
+ *
+ * `Image` 在 @lezer/markdown 里是**行内**节点，所以独占一行的图片会被解析成
+ * `Paragraph > Image`；只看顶层节点会把它误判成段落，手柄图标也随错（#649）。
+ * 判定要求恰好一个 Image 子节点、其余子节点只有空白文本。
+ */
+function isImageOnlyParagraph(
+  node: BlockChildNode,
+  state: EditorState,
+): boolean {
+  const cursor = node.cursor();
+  if (!cursor.firstChild()) return false;
+  let imageFrom = -1;
+  let imageTo = -1;
+  do {
+    const child = cursor.node;
+    if (child.name !== "Image") continue;
+    if (imageFrom !== -1) return false;
+    imageFrom = child.from;
+    imageTo = child.to;
+  } while (cursor.nextSibling());
+  if (imageFrom === -1) return false;
+  const before = state.doc.sliceString(node.from, imageFrom).trim();
+  const after = state.doc.sliceString(imageTo, node.to).trim();
+  return before === "" && after === "";
+}
+
 // --- getBlocks ---------------------------------------------------------------
 
 /**
@@ -139,6 +196,12 @@ export function getBlocks(state: EditorState): Block[] {
       if (type === "heading") {
         const lvl = headingLevel(node.name);
         if (lvl !== null) level = lvl;
+      } else if (type === "paragraph") {
+        if (isImageOnlyParagraph(node, state)) finalType = "image";
+      } else if (type === "blockquote") {
+        if (isCalloutText(state.doc.sliceString(node.from, node.to))) {
+          finalType = "callout";
+        }
       } else if (type === "list") {
         // 进入列表检查顶层 ListItem：全部是任务项才归为 task，
         // 全部勾选才 checked = true。
