@@ -24,6 +24,7 @@ interface BridgeWindow extends Window {
 
 const PNG_DATA_URL =
   "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAL0lEQVR4nO3OIQEAAAgDMDrRiU6khRg3E/Ornr2kEhAQEBAQEBAQEBAQEBAQSAceRiXEebi0SxgAAAAASUVORK5CYII=";
+const PNG_BASE64 = PNG_DATA_URL.replace(/^data:image\/png;base64,/, "");
 
 async function openEditor(
   page: Page,
@@ -255,4 +256,56 @@ test("删除移除图片行", async ({ page }) => {
   await page.getByTestId("img-toolbar-delete").click();
   await expect.poll(() => content(page)).toBe("");
   await expect(page.getByTestId("img-toolbar")).toHaveCount(0);
+});
+
+test("粘贴剪贴板图片：导入并插入 markdown，光标落在引用之后", async ({
+  page,
+}) => {
+  await openEditor(page, "", "pasteimg", PNG_DATA_URL);
+  await page.locator(".cm-content").click();
+
+  await page.locator(".cm-content").evaluate((el, base64) => {
+    const bin = atob(base64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    const dt = new DataTransfer();
+    dt.items.add(new File([bytes], "pasted.png", { type: "image/png" }));
+    el.dispatchEvent(
+      new ClipboardEvent("paste", {
+        bubbles: true,
+        cancelable: true,
+        clipboardData: dt,
+      }),
+    );
+  }, PNG_BASE64);
+
+  await expect.poll(() => content(page)).toContain("assets/");
+  expect(await content(page)).toContain("![pasted.png](assets/pasted.png)");
+
+  // 光标落在引用之后：再敲一个字符应追加在末尾
+  await page.keyboard.type("X");
+  await expect
+    .poll(() => content(page))
+    .toBe("![pasted.png](assets/pasted.png)X");
+});
+
+test("粘贴超过 20MB 的图片：不插入并提示", async ({ page }) => {
+  await openEditor(page, "", "pastebig", PNG_DATA_URL);
+  await page.locator(".cm-content").click();
+
+  await page.locator(".cm-content").evaluate((el) => {
+    const bytes = new Uint8Array(21 * 1024 * 1024);
+    const dt = new DataTransfer();
+    dt.items.add(new File([bytes], "big.png", { type: "image/png" }));
+    el.dispatchEvent(
+      new ClipboardEvent("paste", {
+        bubbles: true,
+        cancelable: true,
+        clipboardData: dt,
+      }),
+    );
+  });
+
+  await expect(page.getByTestId("paste-notice")).toContainText("20MB");
+  expect(await content(page)).toBe("");
 });

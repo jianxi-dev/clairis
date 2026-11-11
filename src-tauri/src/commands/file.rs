@@ -553,26 +553,14 @@ pub struct ImportedMedia {
     pub name: String,
 }
 
-/// 把一张媒体文件复制到文档同级的 `assets/` 下，返回可写进 markdown 的相对名。
-///
-/// 为什么复制而不是引用原路径：markdown 里写绝对路径在这台机器能看、换台机器
-/// 就裂图；写 `assets/名字` 跟着文档走，doc 一起搬也不丢。
-///
-/// 重名不覆盖：同名但大小不同会退到 `名字-1.ext`、`名字-2.ext`；大小相同的
-/// 直接复用已有文件，重复插入同一张图不会堆出一串副本。
-fn copy_into_assets(doc_path: &str, src_path: &str) -> Result<ImportedMedia, AppError> {
-    let src = PathBuf::from(src_path);
-    let meta = fs::metadata(&src).map_err(|e| AppError::Io {
-        context: "stat media source".into(),
-        source: e,
-    })?;
-    if !meta.is_file() {
-        return Err(AppError::Io {
-            context: "media source is not a file".into(),
-            source: std::io::Error::new(std::io::ErrorKind::InvalidInput, "not a file"),
-        });
-    }
-
+/// 在文档同级的 `assets/` 里挑落点：同大小复用已有文件，否则退到 `名字-N.ext`。
+/// 返回 (绝对路径, markdown 相对名)。
+fn pick_assets_target(
+    doc_path: &str,
+    stem: &str,
+    ext: &str,
+    size: u64,
+) -> Result<(PathBuf, String), AppError> {
     let doc_dir = Path::new(doc_path)
         .parent()
         .ok_or_else(|| AppError::Io {
@@ -586,6 +574,45 @@ fn copy_into_assets(doc_path: &str, src_path: &str) -> Result<ImportedMedia, App
         source: e,
     })?;
 
+    for attempt in 0..1000u32 {
+        let candidate = if attempt == 0 {
+            format!("{stem}{ext}")
+        } else {
+            format!("{stem}-{attempt}{ext}")
+        };
+        let dest = assets.join(&candidate);
+        if dest.exists() {
+            let existing = fs::metadata(&dest).map(|m| m.len()).unwrap_or(u64::MAX);
+            if existing == size {
+                return Ok((dest, format!("assets/{candidate}")));
+            }
+            continue;
+        }
+        return Ok((dest, format!("assets/{candidate}")));
+    }
+    Err(AppError::Io {
+        context: "too many files with the same name".into(),
+        source: std::io::Error::new(std::io::ErrorKind::AlreadyExists, "duplicate"),
+    })
+}
+
+/// 把一张媒体文件复制到文档同级的 `assets/` 下，返回可写进 markdown 的相对名。
+///
+/// 为什么复制而不是引用原路径：markdown 里写绝对路径在这台机器能看、换台机器
+/// 就裂图；写 `assets/名字` 跟着文档走，doc 一起搬也不丢。
+fn copy_into_assets(doc_path: &str, src_path: &str) -> Result<ImportedMedia, AppError> {
+    let src = PathBuf::from(src_path);
+    let meta = fs::metadata(&src).map_err(|e| AppError::Io {
+        context: "stat media source".into(),
+        source: e,
+    })?;
+    if !meta.is_file() {
+        return Err(AppError::Io {
+            context: "media source is not a file".into(),
+            source: std::io::Error::new(std::io::ErrorKind::InvalidInput, "not a file"),
+        });
+    }
+
     let stem = src
         .file_stem()
         .and_then(|s| s.to_str())
@@ -597,6 +624,38 @@ fn copy_into_assets(doc_path: &str, src_path: &str) -> Result<ImportedMedia, App
         .map(|s| format!(".{s}"))
         .unwrap_or_default();
 
+    let (dest, name) = pick_assets_target(doc_path, &stem, &ext, meta.len())?;
+    fs::copy(&src, &dest).map_err(|e| AppError::Io {
+        context: "copy media into assets".into(),
+        source: e,
+    })?;
+    Ok(ImportedMedia {
+        path: dest.to_string_lossy().to_string(),
+        name,
+    })
+}
+
+/// 字节版的落点选择：同名同内容才复用。剪贴板图片没有源路径，不能只比大小——
+/// 两张不同的图恰好等长时，按大小复用会把用户的第二张图换成第一张。
+fn pick_bytes_target(
+    doc_path: &str,
+    stem: &str,
+    ext: &str,
+    bytes: &[u8],
+) -> Result<(PathBuf, String), AppError> {
+    let doc_dir = Path::new(doc_path)
+        .parent()
+        .ok_or_else(|| AppError::Io {
+            context: "document has no parent directory".into(),
+            source: std::io::Error::new(std::io::ErrorKind::InvalidInput, "no parent"),
+        })?
+        .to_path_buf();
+    let assets = doc_dir.join("assets");
+    fs::create_dir_all(&assets).map_err(|e| AppError::Io {
+        context: "create assets dir".into(),
+        source: e,
+    })?;
+
     for attempt in 0..1000u32 {
         let candidate = if attempt == 0 {
             format!("{stem}{ext}")
@@ -605,27 +664,45 @@ fn copy_into_assets(doc_path: &str, src_path: &str) -> Result<ImportedMedia, App
         };
         let dest = assets.join(&candidate);
         if dest.exists() {
-            let existing = fs::metadata(&dest).map(|m| m.len()).unwrap_or(u64::MAX);
-            if existing == meta.len() {
-                return Ok(ImportedMedia {
-                    path: dest.to_string_lossy().to_string(),
-                    name: format!("assets/{candidate}"),
-                });
+            if fs::read(&dest)
+                .map(|existing| existing == bytes)
+                .unwrap_or(false)
+            {
+                return Ok((dest, format!("assets/{candidate}")));
             }
             continue;
         }
-        fs::copy(&src, &dest).map_err(|e| AppError::Io {
-            context: "copy media into assets".into(),
-            source: e,
-        })?;
-        return Ok(ImportedMedia {
-            path: dest.to_string_lossy().to_string(),
-            name: format!("assets/{candidate}"),
-        });
+        return Ok((dest, format!("assets/{candidate}")));
     }
     Err(AppError::Io {
         context: "too many files with the same name".into(),
         source: std::io::Error::new(std::io::ErrorKind::AlreadyExists, "duplicate"),
+    })
+}
+
+/// 把前端传来的字节写入文档同级 `assets/`：剪贴板没有源路径，字节经 base64 传来。
+fn write_bytes_into_assets(
+    doc_path: &str,
+    suggested_name: &str,
+    bytes: &[u8],
+) -> Result<ImportedMedia, AppError> {
+    let src = Path::new(suggested_name);
+    let stem = src
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("asset")
+        .to_string();
+    let ext = src
+        .extension()
+        .and_then(|s| s.to_str())
+        .map(|s| format!(".{s}"))
+        .unwrap_or_default();
+
+    let (dest, name) = pick_bytes_target(doc_path, &stem, &ext, bytes)?;
+    write_bytes_atomic(&dest, bytes)?;
+    Ok(ImportedMedia {
+        path: dest.to_string_lossy().to_string(),
+        name,
     })
 }
 
@@ -640,6 +717,30 @@ pub async fn import_media_file(
             context: "import media task".into(),
             source: std::io::Error::other(e.to_string()),
         })?
+}
+
+/// 把剪贴板图片（base64 字节）写入文档同级 `assets/`，返回 markdown 相对名。
+#[tauri::command]
+pub async fn import_media_bytes(
+    doc_path: String,
+    base64: String,
+    suggested_name: String,
+) -> Result<ImportedMedia, AppError> {
+    tokio::task::spawn_blocking(move || {
+        use base64::Engine as _;
+        let bytes = base64::engine::general_purpose::STANDARD
+            .decode(base64.trim())
+            .map_err(|e| AppError::Validation {
+                context: "import media bytes".into(),
+                message: format!("base64 解码失败: {e}"),
+            })?;
+        write_bytes_into_assets(&doc_path, &suggested_name, &bytes)
+    })
+    .await
+    .map_err(|e| AppError::Io {
+        context: "import media bytes task".into(),
+        source: std::io::Error::other(e.to_string()),
+    })?
 }
 
 #[cfg(test)]
@@ -697,6 +798,100 @@ mod import_media_tests {
                 .name,
             "assets/pic-1.png"
         );
+        let _ = fs::remove_dir_all(&dir);
+    }
+}
+
+#[cfg(test)]
+mod import_media_bytes_tests {
+    use super::{import_media_bytes, write_bytes_into_assets};
+    use std::fs;
+
+    fn temp_dir(tag: &str) -> std::path::PathBuf {
+        let dir =
+            std::env::temp_dir().join(format!("biaoyue-media-bytes-{tag}-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    fn doc_in(dir: &std::path::Path) -> String {
+        let doc = dir.join("note.md");
+        fs::write(&doc, "# t").unwrap();
+        doc.to_string_lossy().into_owned()
+    }
+
+    #[test]
+    fn writes_bytes_and_returns_relative_name() {
+        let dir = temp_dir("write");
+        let doc = doc_in(&dir);
+        let got = write_bytes_into_assets(&doc, "pasted-image.png", b"PNGDATA").unwrap();
+        assert_eq!(got.name, "assets/pasted-image.png");
+        assert_eq!(
+            got.path,
+            dir.join("assets/pasted-image.png")
+                .to_string_lossy()
+                .to_string()
+        );
+        assert_eq!(
+            fs::read(dir.join("assets/pasted-image.png")).unwrap(),
+            b"PNGDATA"
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn duplicate_bytes_reuse_existing_file() {
+        let dir = temp_dir("dedupe");
+        let doc = doc_in(&dir);
+        let first = write_bytes_into_assets(&doc, "pic.png", b"AAA").unwrap();
+        let second = write_bytes_into_assets(&doc, "pic.png", b"AAA").unwrap();
+        assert_eq!(first.name, "assets/pic.png");
+        assert_eq!(second.name, "assets/pic.png");
+        assert_eq!(fs::read_dir(dir.join("assets")).unwrap().count(), 1);
+        // 同名不同字节：退位，不覆盖
+        let third = write_bytes_into_assets(&doc, "pic.png", b"BBBB").unwrap();
+        assert_eq!(third.name, "assets/pic-1.png");
+        assert_eq!(fs::read(dir.join("assets/pic.png")).unwrap(), b"AAA");
+        assert_eq!(fs::read(dir.join("assets/pic-1.png")).unwrap(), b"BBBB");
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn same_length_different_bytes_do_not_reuse() {
+        let dir = temp_dir("samelength");
+        let doc = doc_in(&dir);
+        let first = write_bytes_into_assets(&doc, "pic.png", b"AAA").unwrap();
+        let second = write_bytes_into_assets(&doc, "pic.png", b"BBB").unwrap();
+        assert_eq!(first.name, "assets/pic.png");
+        assert_eq!(second.name, "assets/pic-1.png");
+        assert_eq!(fs::read(dir.join("assets/pic.png")).unwrap(), b"AAA");
+        assert_eq!(fs::read(dir.join("assets/pic-1.png")).unwrap(), b"BBB");
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[tokio::test]
+    async fn command_decodes_base64_and_imports() {
+        let dir = temp_dir("cmd");
+        let doc = doc_in(&dir);
+        let got = import_media_bytes(doc, "UE5HREFUQQ==".into(), "pasted.png".into())
+            .await
+            .unwrap();
+        assert_eq!(got.name, "assets/pasted.png");
+        assert_eq!(fs::read(dir.join("assets/pasted.png")).unwrap(), b"PNGDATA");
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[tokio::test]
+    async fn command_rejects_invalid_base64() {
+        let dir = temp_dir("bad");
+        let doc = doc_in(&dir);
+        let err = match import_media_bytes(doc, "not base64!!".into(), "pasted.png".into()).await {
+            Ok(_) => panic!("非法 base64 应被拒绝"),
+            Err(e) => e,
+        };
+        assert!(matches!(err, crate::errors::AppError::Validation { .. }));
+        assert!(!dir.join("assets").exists());
         let _ = fs::remove_dir_all(&dir);
     }
 }
