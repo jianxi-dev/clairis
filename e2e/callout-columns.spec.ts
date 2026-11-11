@@ -89,21 +89,25 @@ test("分栏渲染为多列", async ({ page }) => {
   await expect(columns.locator(".cm-column").nth(1)).toContainText("右栏内容");
 });
 
-test("图标与标题之间没有空白间隔", async ({ page }) => {
+test("高亮块图标与标题间距为半个汉字宽", async ({ page }) => {
   await openDoc(
     page,
     "/Users/test/co-gap.md",
     "> [!NOTE] 重要提醒\n> 记得带伞\n\n正文",
   );
-  const card = page.locator(".cm-callout").first();
-  const metrics = await card.evaluate((el) => {
+  const header = page.locator(".cm-callout-header").first();
+  const metrics = await header.evaluate((el) => {
     const icon = el.querySelector(".cm-callout-icon") as HTMLElement;
     const title = el.querySelector(".cm-callout-title") as HTMLElement;
     const ir = icon.getBoundingClientRect();
     const tr = title.getBoundingClientRect();
-    return { gap: tr.left - ir.right };
+    return {
+      gap: tr.left - ir.right,
+      halfChar: parseFloat(getComputedStyle(el).fontSize) / 2,
+    };
   });
-  expect(metrics.gap).toBeLessThanOrEqual(2);
+  // gap 生效在 header 的 em 上，基准取 header 自身字号而非卡片。
+  expect(metrics.gap).toBeCloseTo(metrics.halfChar, 1);
 });
 
 test("空标题高亮块点击头部仍可进入标题编辑", async ({ page }) => {
@@ -115,4 +119,39 @@ test("空标题高亮块点击头部仍可进入标题编辑", async ({ page }) 
   await expect(
     page.locator('[data-testid="cm-callout-title-editor"]'),
   ).toBeVisible();
+});
+
+// QG-5 证据探针（#641）：EVIDENCE_DIR 设置时采集四态截图，平时跳过。
+// skip 必须写在测试体内——文件顶层 test.skip 会跳过整文件（含既有回归测试）。
+test("evidence: 高亮块四态", async ({ page }) => {
+  const dir = process.env.EVIDENCE_DIR;
+  test.skip(!dir, "EVIDENCE_DIR 未设置");
+  await openDoc(
+    page,
+    "/Users/test/co-evidence.md",
+    "> [!NOTE] 重要提醒\n> 记得带伞\n\n正文",
+  );
+  const card = page.locator(".cm-callout").first();
+
+  await expect(card).toBeVisible();
+  await card.screenshot({ path: `${dir}/callout-edit-gap.png` });
+
+  const icon = card.locator(".cm-callout-icon");
+  await icon.hover();
+  await expect(icon).toHaveCSS("background-color", "rgba(127, 127, 127, 0.18)");
+  await card.screenshot({ path: `${dir}/callout-icon-hover.png` });
+
+  await card.locator(".cm-callout-title").click();
+  await expect(
+    page.locator('[data-testid="cm-callout-title-editor"]'),
+  ).toBeVisible();
+  await card.screenshot({ path: `${dir}/callout-title-edit.png` });
+  await page.keyboard.press("Escape");
+
+  const modeBtn = page.locator('[data-testid="pane-mode"]').first();
+  if ((await modeBtn.getAttribute("data-mode")) !== "preview")
+    await modeBtn.click();
+  const previewCallout = page.locator(".preview-content .callout").first();
+  await expect(previewCallout).toBeVisible();
+  await previewCallout.screenshot({ path: `${dir}/callout-preview-mode.png` });
 });
