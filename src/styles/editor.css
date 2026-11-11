@@ -720,10 +720,104 @@ body {
   font-style: italic;
 }
 
+/* 选中态：描边 + 四角圆点（#652） */
+.cm-image-widget[data-selected="true"] {
+  outline: 2px solid var(--app-accent);
+  outline-offset: 2px;
+}
+
+.cm-image-corner {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--app-accent);
+  box-shadow: 0 0 0 1px var(--app-surface);
+  pointer-events: none;
+  z-index: 20;
+}
+
+.cm-image-corner[data-corner="tl"] {
+  top: -4px;
+  left: -4px;
+}
+
+.cm-image-corner[data-corner="tr"] {
+  top: -4px;
+  right: -4px;
+}
+
+.cm-image-corner[data-corner="bl"] {
+  bottom: -4px;
+  left: -4px;
+}
+
+.cm-image-corner[data-corner="br"] {
+  bottom: -4px;
+  right: -4px;
+}
+
+/* 工具条：fixed 浮层，translate(-50%, -100%) 让它水平居中于图片上方 */
 .cm-image-toolbar {
+  position: fixed;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 6px;
   background: var(--app-surface);
   color: var(--app-text);
   border: 1px solid var(--app-border);
+  border-radius: var(--app-radius);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transform: translate(-50%, -100%);
+}
+
+.cm-image-toolbar button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: var(--app-radius);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.cm-image-toolbar button:hover:not(:disabled) {
+  background: var(--app-sunken);
+}
+
+.cm-image-toolbar button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.cm-image-toolbar button svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* 双击放大浮层 */
+.cm-image-maximize {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.85);
+  color: var(--app-text);
+}
+
+.cm-image-maximize img {
+  max-width: 90vw;
+  max-height: 90vh;
+  object-fit: contain;
+  border-radius: var(--app-radius);
 }
 
 .cm-image-resize {

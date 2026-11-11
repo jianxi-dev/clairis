@@ -22,12 +22,23 @@ interface BridgeWindow extends Window {
   __biaoyue_store__: { getState: () => BridgeState };
 }
 
+const PNG_DATA_URL =
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAL0lEQVR4nO3OIQEAAAgDMDrRiU6khRg3E/Ornr2kEhAQEBAQEBAQEBAQEBAQSAceRiXEebi0SxgAAAAASUVORK5CYII=";
+
 async function openEditor(
   page: Page,
   doc: string,
   name: string,
+  imageSrc?: string,
 ): Promise<void> {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
+  if (imageSrc) {
+    // Chromium 解不了 asset://，换成可解码的小图，图片才有真实尺寸。
+    await page.addInitScript((src: string) => {
+      const win = window as unknown as Record<string, any>;
+      win.__TAURI_INTERNALS__.convertFileSrc = () => src;
+    }, imageSrc);
+  }
   await page.goto("/", { waitUntil: "networkidle" });
   await page.waitForSelector('[data-testid="pane-header"]', { timeout: 10000 });
   await page.evaluate(
@@ -103,4 +114,145 @@ test("拖拽改宽保留已有 height/align，只改宽度", async ({ page }) =>
   expect(final).toContain("height=120");
   expect(final).toContain("align=left");
   expect(final).not.toContain("width=200");
+});
+
+test("点击选中：data-selected + 4 个角点", async ({ page }) => {
+  await openEditor(page, "![pic](assets/pic.png)\n", "imgselect", PNG_DATA_URL);
+  const widget = page.locator(".cm-image-widget");
+  await expect(widget).toHaveCount(1);
+  await expect(widget).toHaveAttribute("data-selected", "false");
+
+  await widget.click();
+
+  await expect(widget).toHaveAttribute("data-selected", "true");
+  await expect(widget.locator(".cm-image-corner")).toHaveCount(4);
+});
+
+test("工具条 9 按钮，水平居中于图片（±2px）", async ({ page }) => {
+  await openEditor(
+    page,
+    "![pic](assets/pic.png)\n",
+    "imgtoolbar",
+    PNG_DATA_URL,
+  );
+  const widget = page.locator(".cm-image-widget");
+  await widget.click();
+
+  const toolbar = page.getByTestId("img-toolbar");
+  await expect(toolbar).toBeVisible();
+  const testids = [
+    "img-toolbar-ai",
+    "img-toolbar-crop",
+    "img-toolbar-comment",
+    "img-toolbar-align-left",
+    "img-toolbar-align-center",
+    "img-toolbar-align-right",
+    "img-toolbar-cut",
+    "img-toolbar-copy",
+    "img-toolbar-delete",
+  ];
+  for (const id of testids) {
+    await expect(page.getByTestId(id)).toHaveCount(1);
+  }
+
+  const widgetBox = (await widget.boundingBox())!;
+  const toolbarBox = (await toolbar.boundingBox())!;
+  const widgetCenter = widgetBox.x + widgetBox.width / 2;
+  const toolbarCenter = toolbarBox.x + toolbarBox.width / 2;
+  expect(Math.abs(widgetCenter - toolbarCenter)).toBeLessThanOrEqual(2);
+});
+
+test("裁剪按钮禁用并提示后续票实现", async ({ page }) => {
+  await openEditor(page, "![pic](assets/pic.png)\n", "imgcrop", PNG_DATA_URL);
+  await page.locator(".cm-image-widget").click();
+  const crop = page.getByTestId("img-toolbar-crop");
+  await expect(crop).toBeDisabled();
+  await expect(crop).toHaveAttribute("title", "裁剪（后续票实现）");
+});
+
+test("图片圆角 8px", async ({ page }) => {
+  await openEditor(page, "![pic](assets/pic.png)\n", "imgradius", PNG_DATA_URL);
+  const img = page.locator(".cm-image-widget img");
+  await expect(img).toHaveCount(1);
+  const clip = await img.evaluate((el) => getComputedStyle(el).clipPath);
+  expect(clip).toContain("8px");
+});
+
+test("双击放大：浮层出现，Esc 关闭，文档不变", async ({ page }) => {
+  const doc = "![pic](assets/pic.png)\n";
+  await openEditor(page, doc, "imgmax", PNG_DATA_URL);
+  const img = page.locator(".cm-image-widget img");
+  await img.dblclick();
+
+  await expect(page.getByTestId("img-maximize")).toHaveCount(1);
+  expect(await content(page)).toBe(doc);
+
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("img-maximize")).toHaveCount(0);
+  expect(await content(page)).toBe(doc);
+});
+
+test("点击外部取消选中", async ({ page }) => {
+  await openEditor(
+    page,
+    "![pic](assets/pic.png)\n\n第二段\n",
+    "imgdeselect",
+    PNG_DATA_URL,
+  );
+  const widget = page.locator(".cm-image-widget");
+  await widget.click();
+  await expect(widget).toHaveAttribute("data-selected", "true");
+
+  await page.mouse.click(600, 600);
+
+  await expect(widget).toHaveAttribute("data-selected", "false");
+  await expect(page.getByTestId("img-toolbar")).toHaveCount(0);
+});
+
+test("居中清除 align 属性", async ({ page }) => {
+  await openEditor(
+    page,
+    "![pic](assets/pic.png){align=left}\n",
+    "imgalign",
+    PNG_DATA_URL,
+  );
+  await page.locator(".cm-image-widget").click();
+  await page.getByTestId("img-toolbar-align-center").click();
+  await expect.poll(() => content(page)).toBe("![pic](assets/pic.png)\n");
+});
+
+test("复制把图片 markdown（含属性块）写入剪贴板", async ({ page }) => {
+  await openEditor(
+    page,
+    "![pic](assets/pic.png){width=100}\n",
+    "imgcopy",
+    PNG_DATA_URL,
+  );
+  await page.evaluate(() => {
+    const win = window as unknown as Record<string, unknown>;
+    win.__clipboard__ = [];
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: {
+        writeText: (text: string) => {
+          (win.__clipboard__ as string[]).push(text);
+          return Promise.resolve();
+        },
+      },
+    });
+  });
+  await page.locator(".cm-image-widget").click();
+  await page.getByTestId("img-toolbar-copy").click();
+  const clipped = await page.evaluate(
+    () => (window as unknown as Record<string, string[]>).__clipboard__,
+  );
+  expect(clipped).toEqual(["![pic](assets/pic.png){width=100}"]);
+});
+
+test("删除移除图片行", async ({ page }) => {
+  await openEditor(page, "![pic](assets/pic.png)\n", "imgdelete", PNG_DATA_URL);
+  await page.locator(".cm-image-widget").click();
+  await page.getByTestId("img-toolbar-delete").click();
+  await expect.poll(() => content(page)).toBe("");
+  await expect(page.getByTestId("img-toolbar")).toHaveCount(0);
 });

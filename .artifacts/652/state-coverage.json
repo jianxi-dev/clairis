@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "selected-toolbar",
+      "screenshot": ".artifacts/652/selected-toolbar.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-11T16:13:49Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "maximized",
+      "screenshot": ".artifacts/652/maximized.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-11T16:13:49Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "deselected",
+      "screenshot": ".artifacts/652/deselected.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-11T16:13:49Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "align-center",
+      "screenshot": ".artifacts/652/align-center.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-11T16:13:49Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}

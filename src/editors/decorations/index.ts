@@ -40,6 +40,10 @@ import { createHrDecorations } from "./hr";
 import { createLinkDecorations } from "./link";
 import { createImageDecorations, type ImageResolver } from "./image";
 import {
+  scheduleImageToolbarReposition,
+  setImageToolbarActions,
+} from "./imageToolbar";
+import {
   createMermaidDecorations,
   type MermaidHydrator,
   type MermaidTheme,
@@ -65,14 +69,22 @@ import { getBlocks, getBlockAt } from "../block-model";
 export interface EditorDecorationsOptions {
   /** 图片路径解析器；返回 null 时走 `[图片: path]` 文字回退。 */
   resolveImage?: ImageResolver;
-  /** 点击图片「替换」按钮。 */
-  onImageReplace?: (path: string) => void;
+  /** 工具条「AI 编辑」：prompt 引用图片路径与 alt。 */
+  onImageAi?: (path: string, alt: string) => void;
+  /** 工具条「裁剪」；缺省时按钮禁用。 */
+  onImageCrop?: (from: number) => void;
+  /** 工具条「评论」：在图片下方插入 `> 评论：` 行。 */
+  onImageComment?: (from: number) => void;
+  /** 工具条对齐：left/right 写 align，center 清除。 */
+  onImageAlign?: (from: number, align: "left" | "center" | "right") => void;
+  /** 工具条「剪切」：复制图片 markdown 后删除块。 */
+  onImageCut?: (from: number) => void;
+  /** 工具条「复制」：图片 markdown（含属性块）写入剪贴板。 */
+  onImageCopy?: (from: number) => void;
+  /** 工具条「删除」：删除图片所在块。 */
+  onImageDelete?: (from: number) => void;
   /** 拖拽图片宽度松手后持久化（`from` 是图片 markdown 起点）。 */
   onImageResize?: (from: number, width: number) => void;
-  /** 点击图片「删除」按钮。 */
-  onImageDelete?: (path: string) => void;
-  /** 点击图片「定位」按钮。 */
-  onImageLocate?: (path: string) => void;
   /** mermaid 水合器；缺省时 mermaid 块不出图，源码保持可见。 */
   hydrateMermaid?: MermaidHydrator;
   /** 交给 mermaid 水合器的主题；缺省读文档根的 `data-theme`。 */
@@ -154,10 +166,14 @@ function buildDecorationSet(
     ...createHrDecorations(docText, activeFrom, activeTo),
     ...createLinkDecorations(docText, activeFrom, activeTo),
     ...createImageDecorations(docText, options?.resolveImage, {
-      onImageReplace: options?.onImageReplace,
-      onImageResize: options?.onImageResize,
+      onImageAi: options?.onImageAi,
+      onImageCrop: options?.onImageCrop,
+      onImageComment: options?.onImageComment,
+      onImageAlign: options?.onImageAlign,
+      onImageCut: options?.onImageCut,
+      onImageCopy: options?.onImageCopy,
       onImageDelete: options?.onImageDelete,
-      onImageLocate: options?.onImageLocate,
+      onImageResize: options?.onImageResize,
     }),
     ...createMermaidDecorations(
       docText,
@@ -211,6 +227,8 @@ function createDecorationField(options?: EditorDecorationsOptions) {
         tr.effects.some((e) => e.is(rebuildAfterComposition)) ||
         tr.effects.some((e) => e.is(unfreezeRebuild))
       ) {
+        // 文档改动后选中的图片可能已消失（删除/剪切）：下一帧检查并收掉工具条。
+        if (tr.docChanged) scheduleImageToolbarReposition();
         return buildDecorationSet(tr.state, options);
       }
       return decos;
@@ -280,6 +298,15 @@ const tableFlush = ViewPlugin.fromClass(tableFlushGuard);
 export function editorDecorations(
   options?: EditorDecorationsOptions,
 ): Extension {
+  setImageToolbarActions({
+    onImageAi: options?.onImageAi,
+    onImageCrop: options?.onImageCrop,
+    onImageComment: options?.onImageComment,
+    onImageAlign: options?.onImageAlign,
+    onImageCut: options?.onImageCut,
+    onImageCopy: options?.onImageCopy,
+    onImageDelete: options?.onImageDelete,
+  });
   return [
     foldState,
     createDecorationField(options),

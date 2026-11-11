@@ -5,14 +5,22 @@
  * - video：`<video controls>` 播放器。
  * - file：文件链接卡片。
  *
- * 悬停操作（替换 / 删除 / 定位）与拖拽改宽都走注入回调：装饰模块不依赖
- * 应用层资源，回调缺省时按钮照常渲染但点击是空操作。
+ * 点击选中图片（选中态与工具条见 imageToolbar.ts），拖拽改宽与工具条动作
+ * 都走注入回调：装饰模块不依赖应用层资源。
  *
  * 围栏代码块与缩进代码块里的图片引用不出 widget。
  */
 import type { Range } from "@codemirror/state";
 import { Decoration, WidgetType, EditorView } from "@codemirror/view";
 import { stripAngleWrappers } from "../../lib/mediaUrl";
+import {
+  getSelectedImageFrom,
+  markImageWidgetSelected,
+  openImageMaximize,
+  scheduleImageToolbarReposition,
+  selectImage,
+  type ImageToolbarActions,
+} from "./imageToolbar";
 
 // --- 类型 --------------------------------------------------------------------
 
@@ -22,14 +30,11 @@ import { stripAngleWrappers } from "../../lib/mediaUrl";
 export type ImageResolver = (path: string) => string | null;
 
 /**
- * 图片 widget 的悬停操作回调，全部可选——缺省时编辑器不抛错。
+ * 图片 widget 的操作回调，全部可选——缺省时对应工具条按钮禁用。
  */
-export interface ImageCallbacks {
-  onImageReplace?: (path: string) => void;
+export interface ImageCallbacks extends ImageToolbarActions {
   /** 持久化拖拽宽度；`from` 是图片 markdown 的起点。 */
   onImageResize?: (from: number, width: number) => void;
-  onImageDelete?: (path: string) => void;
-  onImageLocate?: (path: string) => void;
 }
 
 // --- 媒体分类 ----------------------------------------------------------------
@@ -440,7 +445,7 @@ export function applyImageWidth(
 
 /**
  * 把图片引用渲染成 `<img>`（解析出 URL 时）或 `[图片: path]` 文字回退。
- * 鼠标悬停时浮出替换 / 删除 / 定位按钮。
+ * 点击选中（工具条见 imageToolbar.ts），双击放大。
  */
 class ImageWidget extends WidgetType {
   private readonly _alt: string;
@@ -448,7 +453,7 @@ class ImageWidget extends WidgetType {
   private readonly _src: string | null;
   private readonly _callbacks: ImageCallbacks;
   private readonly _width: number | null;
-  /** `!` 的文档偏移——拖拽改宽写注释时用。 */
+  /** `!` 的文档偏移——选中态、工具条动作、拖拽改宽都以它为准。 */
   private readonly _from: number;
 
   constructor(
@@ -481,6 +486,7 @@ class ImageWidget extends WidgetType {
   toDOM(): HTMLElement {
     const container = document.createElement("span");
     container.className = "cm-image-widget";
+    container.dataset.imageFrom = String(this._from);
     container.style.display = "inline-block";
     container.style.position = "relative";
     container.style.maxWidth = "100%";
@@ -502,7 +508,7 @@ class ImageWidget extends WidgetType {
         img.style.width = `${this._width}px`;
         img.setAttribute("data-width", String(this._width));
       }
-      img.style.clipPath = "inset(0 round 4px)";
+      img.style.clipPath = "inset(0 round 8px)";
       container.appendChild(img);
     } else {
       // 解析不出的图片：文字回退
@@ -512,59 +518,15 @@ class ImageWidget extends WidgetType {
       container.appendChild(fallback);
     }
 
-    // 悬停工具条：压在图片顶部内侧，鼠标从图片移到工具条不会离开容器。
-    const toolbar = document.createElement("span");
-    toolbar.className = "cm-image-toolbar";
-    toolbar.style.display = "none";
-    toolbar.style.position = "absolute";
-    toolbar.style.top = "4px";
-    toolbar.style.left = "4px";
-    toolbar.style.borderRadius = "4px";
-    toolbar.style.padding = "2px 4px";
-    toolbar.style.fontSize = "12px";
-    toolbar.style.whiteSpace = "nowrap";
-    toolbar.style.zIndex = "10";
-    toolbar.style.boxShadow = "0 2px 4px rgba(0,0,0,0.1)";
+    // 选中态按文档偏移套用：装饰重建后新 widget 也会拿到同一偏移。
+    markImageWidgetSelected(container, getSelectedImageFrom() === this._from);
 
-    const replaceBtn = document.createElement("button");
-    replaceBtn.dataset.testid = "img-hover-replace";
-    replaceBtn.textContent = "替换";
-    replaceBtn.style.marginRight = "4px";
-    replaceBtn.style.cursor = "pointer";
-    replaceBtn.style.color = "inherit";
-    replaceBtn.style.background = "transparent";
-    replaceBtn.style.border = "none";
-    replaceBtn.style.padding = "0";
-    replaceBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      this._callbacks.onImageReplace?.(this._path);
+    container.addEventListener("click", () => {
+      selectImage(this._from, this._path, this._alt);
     });
-
-    const deleteBtn = document.createElement("button");
-    deleteBtn.dataset.testid = "img-hover-delete";
-    deleteBtn.textContent = "删除";
-    deleteBtn.style.marginRight = "4px";
-    deleteBtn.style.cursor = "pointer";
-    deleteBtn.style.color = "inherit";
-    deleteBtn.style.background = "transparent";
-    deleteBtn.style.border = "none";
-    deleteBtn.style.padding = "0";
-    deleteBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      this._callbacks.onImageDelete?.(this._path);
-    });
-
-    const locateBtn = document.createElement("button");
-    locateBtn.dataset.testid = "img-hover-locate";
-    locateBtn.textContent = "定位";
-    locateBtn.style.cursor = "pointer";
-    locateBtn.style.color = "inherit";
-    locateBtn.style.background = "transparent";
-    locateBtn.style.border = "none";
-    locateBtn.style.padding = "0";
-    locateBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      this._callbacks.onImageLocate?.(this._path);
+    container.addEventListener("dblclick", (event) => {
+      event.stopPropagation();
+      openImageMaximize(this._src, this._alt);
     });
 
     // 拖拽把手：松手后把宽度持久化成属性块 `{width=N}`。
@@ -614,34 +576,10 @@ class ImageWidget extends WidgetType {
       });
     }
 
-    toolbar.appendChild(replaceBtn);
-    toolbar.appendChild(deleteBtn);
-    toolbar.appendChild(locateBtn);
-    container.appendChild(toolbar);
-
-    // 悬停显隐。mouseleave 检查 relatedTarget：移到工具条（或其子元素）上
-    // 不算离开。
-    container.addEventListener("mouseenter", () => {
-      toolbar.style.display = "block";
-    });
-    container.addEventListener("mouseleave", (e) => {
-      const related = e.relatedTarget as Node | null;
-      if (related && container.contains(related)) return;
-      toolbar.style.display = "none";
-    });
+    // 新 widget 挂载后工具条要按新 DOM 重新定位。
+    scheduleImageToolbarReposition();
 
     return container;
-  }
-
-  /**
-   * 让编辑器忽略落在工具条上的事件，按钮才能收到真实点击：CM6 的 mousedown
-   * 处理器会 preventDefault 它接管的事件，连带取消按钮的 click。
-   */
-  ignoreEvent(event: Event): boolean {
-    const target = event.target as Node | null;
-    return (
-      target instanceof Element && target.closest(".cm-image-toolbar") !== null
-    );
   }
 }
 
