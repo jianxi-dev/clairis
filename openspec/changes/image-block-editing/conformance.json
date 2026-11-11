@@ -1,0 +1,262 @@
+{
+  "change": "image-block-editing",
+  "requirements": [
+    {
+      "id": "R-1",
+      "text": "图片块与高亮块的块手柄",
+      "anchors": [
+        {
+          "id": "A-1.1",
+          "claim": "图片块手柄的图标名",
+          "kind": "exact",
+          "assert": "\"ImageOutlined\"",
+          "source": "#649 第 5 项 / design D9"
+        },
+        {
+          "id": "A-1.2",
+          "claim": "高亮块手柄的图标名",
+          "kind": "exact",
+          "assert": "\"CalloutOutlined\"",
+          "source": "#649 第 8 项 / design D9"
+        },
+        {
+          "id": "A-1.3",
+          "claim": "图片块菜单结构动作可见",
+          "kind": "exact",
+          "assert": "\"true\"",
+          "source": "#649 第 5 项 / design D9"
+        }
+      ]
+    },
+    {
+      "id": "R-2",
+      "text": "尺寸/对齐/描述载体",
+      "anchors": [
+        {
+          "id": "A-2.1",
+          "claim": "改尺寸后源码出现属性且无 HTML 注释",
+          "kind": "exact",
+          "assert": "\"true\"",
+          "source": "#649 第 1 项 / design D1"
+        },
+        {
+          "id": "A-2.2",
+          "claim": "括号路径拖宽后路径完整",
+          "kind": "exact",
+          "assert": "\"true\"",
+          "source": "真机复现 / design D2"
+        },
+        {
+          "id": "A-2.3",
+          "claim": "旧 `<!--w=220-->` 文档的渲染宽度",
+          "kind": "exact",
+          "assert": "220",
+          "source": "#649 第 1 项 / design D1"
+        }
+      ]
+    },
+    {
+      "id": "R-3",
+      "text": "选中态与工具条",
+      "anchors": [
+        {
+          "id": "A-3.1",
+          "claim": "点击后选中图片数量",
+          "kind": "exact",
+          "assert": "1",
+          "source": "截图 1 / design D4"
+        },
+        {
+          "id": "A-3.2",
+          "claim": "选中态四角圆点数量",
+          "kind": "exact",
+          "assert": "4",
+          "source": "截图 1 / design D4"
+        },
+        {
+          "id": "A-3.3",
+          "claim": "工具条按钮数量",
+          "kind": "exact",
+          "assert": "9",
+          "source": "截图 1 / #649 第 2 项"
+        },
+        {
+          "id": "A-3.4",
+          "claim": "工具条中心与图片中心水平差（px）",
+          "kind": "exact",
+          "assert": "2",
+          "source": "截图 1 / design D4"
+        },
+        {
+          "id": "A-3.5",
+          "claim": "图片圆角计算样式",
+          "kind": "exact",
+          "assert": "\"8px\"",
+          "source": "#649 第 7 项 / design-system:§5"
+        },
+        {
+          "id": "A-3.6",
+          "claim": "双击遮罩节点数 / Esc 后节点数",
+          "kind": "exact",
+          "assert": "1",
+          "source": "#649 第 6 项 / design D4"
+        }
+      ]
+    },
+    {
+      "id": "R-4",
+      "text": "四边/四角拖拽",
+      "anchors": [
+        {
+          "id": "A-4.1",
+          "claim": "选中后缩放手柄总数",
+          "kind": "exact",
+          "assert": "8",
+          "source": "#649 第 1 项 / design D5"
+        },
+        {
+          "id": "A-4.2",
+          "claim": "向右拖 120px 后图片宽度增加",
+          "kind": "exact",
+          "assert": "\"true\"",
+          "source": "#649 第 1 项 / design D5"
+        },
+        {
+          "id": "A-4.3",
+          "claim": "拖角后源码出现 height 属性",
+          "kind": "exact",
+          "assert": "\"true\"",
+          "source": "#649 第 1 项 / design D5"
+        }
+      ]
+    },
+    {
+      "id": "R-5",
+      "text": "粘贴插入",
+      "anchors": [
+        {
+          "id": "A-5.1",
+          "claim": "派发含图片的 paste 后文档图片引用数",
+          "kind": "exact",
+          "assert": "1",
+          "source": "#649 第 1 项 / design D6"
+        },
+        {
+          "id": "A-5.2",
+          "claim": "插入引用的路径前缀",
+          "kind": "exact",
+          "assert": "\"assets/\"",
+          "source": "#649 第 1 项 / design D6"
+        }
+      ]
+    },
+    {
+      "id": "R-6",
+      "text": "裁剪（无损显示裁剪）",
+      "anchors": [
+        {
+          "id": "A-6.1",
+          "claim": "裁剪确认后图片引用 src 保持不变",
+          "kind": "exact",
+          "assert": "\"true\"",
+          "source": "#649 第 3 项 / design D7"
+        },
+        {
+          "id": "A-6.2",
+          "claim": "裁剪后可见尺寸小于原图",
+          "kind": "exact",
+          "assert": "\"true\"",
+          "source": "#649 第 3 项 / design D7"
+        },
+        {
+          "id": "A-6.3",
+          "claim": "再次打开裁剪时裁剪框还原为上次矩形",
+          "kind": "exact",
+          "assert": "\"true\"",
+          "source": "用户 2026-11-11 裁定 / design D7"
+        }
+      ]
+    },
+    {
+      "id": "R-7",
+      "text": "描述行",
+      "anchors": [
+        {
+          "id": "A-7.1",
+          "claim": "空描述占位文本",
+          "kind": "exact",
+          "assert": "\"输入图片描述\"",
+          "source": "#649 第 4 项 / design D8"
+        },
+        {
+          "id": "A-7.2",
+          "claim": "输入后写回 title",
+          "kind": "exact",
+          "assert": "\"雾山\"",
+          "source": "#649 第 4 项 / design D8"
+        },
+        {
+          "id": "A-7.3",
+          "claim": "再次点击后描述行计算 display",
+          "kind": "exact",
+          "assert": "\"none\"",
+          "source": "#649 第 4 项 / design D8"
+        }
+      ]
+    },
+    {
+      "id": "R-8",
+      "text": "转换菜单",
+      "anchors": [
+        {
+          "id": "A-8.1",
+          "claim": "插入 CSS 行的图标名",
+          "kind": "exact",
+          "assert": "\"CssOutlined\"",
+          "source": "#649 第 9 项 / design D10"
+        },
+        {
+          "id": "A-8.2",
+          "claim": "对齐与缩进行 svg 数量",
+          "kind": "exact",
+          "assert": "1",
+          "source": "#649 第 9 项 / design D10"
+        },
+        {
+          "id": "A-8.3",
+          "claim": "指针滑出二级菜单后的节点数",
+          "kind": "state-machine",
+          "assert": "0",
+          "source": "#649 第 9 项 / design D10"
+        },
+        {
+          "id": "A-8.4",
+          "claim": "转为网格单元的文本长度",
+          "kind": "exact",
+          "assert": "0",
+          "source": "#649 第 10 项 / design D10"
+        }
+      ]
+    },
+    {
+      "id": "R-9",
+      "text": "高亮块头部",
+      "anchors": [
+        {
+          "id": "A-9.1",
+          "claim": "图标右缘到标题左缘间距（px）",
+          "kind": "exact",
+          "assert": "2",
+          "source": "#566 验收条件 / 真机实测 9px"
+        },
+        {
+          "id": "A-9.2",
+          "claim": "NOTE 改 emoji 后转 TIP 的卡片图标",
+          "kind": "exact",
+          "assert": "\"💡\"",
+          "source": "#566 / #617 回归"
+        }
+      ]
+    }
+  ]
+}
