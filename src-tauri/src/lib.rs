@@ -15,8 +15,8 @@ use commands::config_cmd::{
 };
 use commands::directory::{flatten_files, get_file_info, list_media_in_dir, read_directory};
 use commands::file::{
-    import_media_file, move_file, open_file, open_file_direct, pick_folder, read_file_base64,
-    reveal_in_finder, save_as_file, save_binary_as_file, save_file,
+    import_media_bytes, import_media_file, move_file, open_file, open_file_direct, pick_folder,
+    read_file_base64, reveal_in_finder, save_as_file, save_binary_as_file, save_file,
 };
 use commands::recent::list_recent_documents;
 use commands::search::search_documents;
@@ -209,6 +209,7 @@ pub fn run() {
             list_recent_documents,
             search_documents,
             import_media_file,
+            import_media_bytes,
             translate_text,
             stop_translation,
             read_directory,

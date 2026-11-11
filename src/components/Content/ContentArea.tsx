@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import {
   EditorState,
   Compartment,
@@ -42,7 +42,9 @@ import {
   slashKeymap,
   setUserSlashCommands,
   registerPickMediaFile,
+  markdownDestination,
 } from "../../editors/slash";
+import { isTauriEnv } from "../../utils/tauri";
 import { loadUserExtensions } from "../../editors/user-extensions";
 import HtmlVisualEditor from "./HtmlVisualEditor";
 import { horizontalToolbar } from "../../editors/orchestration/horizontal-toolbar";
@@ -84,6 +86,99 @@ function hydrateMermaid(
  * 找得到同级的 `assets/`。
  */
 let activeDocPath: string | null = null;
+
+/** 剪贴板图片粘贴上限：超过就不读进内存，直接提示。 */
+const PASTED_IMAGE_MAX_BYTES = 20 * 1024 * 1024;
+
+function baseNameOf(name: string): string {
+  const parts = name.split(/[\\/]/);
+  return parts[parts.length - 1] || name;
+}
+
+/** ArrayBuffer → base64：分块拼接，避免大文件一次性展开爆栈。 */
+function bufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  }
+  return btoa(binary);
+}
+
+/**
+ * 粘贴上下文：全部经 ref / 回调读取。编辑器只创建一次，闭包不能停在创建
+ * 那一刻的页签路径与模式上。
+ */
+interface PasteContext {
+  getDocPath: () => string | null;
+  isMarkdownEdit: () => boolean;
+  isViewAlive: () => boolean;
+  showNotice: (message: string) => void;
+}
+
+/**
+ * 粘贴剪贴板图片：导入文档同级 `assets/` 并插入 `![name](assets/...)`。
+ *
+ * 返回 true 表示已处理（CM6 不再走默认粘贴）。文本剪贴板、非 Tauri、非
+ * markdown 编辑态一律返回 false，交回默认行为。
+ */
+function handlePaste(
+  view: EditorView,
+  event: ClipboardEvent,
+  ctx: PasteContext,
+): boolean {
+  if (!ctx.isMarkdownEdit()) return false;
+  if (!isTauriEnv()) return false;
+  const data = event.clipboardData;
+  if (!data) return false;
+  const images: File[] = [];
+  for (let i = 0; i < data.files.length; i++) {
+    const file = data.files[i];
+    if (file.type.startsWith("image/")) images.push(file);
+  }
+  if (images.length === 0) return false;
+
+  event.preventDefault();
+  const file = images[0];
+  if (file.size > PASTED_IMAGE_MAX_BYTES) {
+    ctx.showNotice("图片超过 20MB，未插入。");
+    return true;
+  }
+  const docPath = ctx.getDocPath();
+  if (!docPath) {
+    ctx.showNotice("文档尚未保存，无法插入图片。");
+    return true;
+  }
+  const suggestedName = file.name.trim() || "pasted-image.png";
+  void file
+    .arrayBuffer()
+    .then((buffer) => bufferToBase64(buffer))
+    .then((base64) =>
+      invoke<{ path: string; name: string }>("import_media_bytes", {
+        docPath,
+        base64,
+        suggestedName,
+      }),
+    )
+    .then((imported) => {
+      if (!ctx.isViewAlive()) return;
+      const alt = baseNameOf(suggestedName);
+      const ref = `![${alt}](${markdownDestination(imported.name)})`;
+      const { from, to } = view.state.selection.main;
+      view.dispatch({
+        changes: { from, to, insert: ref },
+        selection: { anchor: from + ref.length },
+      });
+      if (images.length > 1) {
+        ctx.showNotice(`已忽略其余 ${images.length - 1} 张图片。`);
+      }
+    })
+    .catch((err: unknown) => {
+      ctx.showNotice(`图片插入失败：${String(err)}`);
+    });
+  return true;
+}
 
 const editorDecorationOptions: EditorDecorationsOptions = {
   hydrateMermaid,
@@ -216,6 +311,7 @@ export default function ContentArea({
 
   const editorRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
+  const viewDestroyedRef = useRef(false);
   const [editorViewState, setEditorViewState] = useState<EditorView | null>(
     null,
   );
@@ -228,10 +324,26 @@ export default function ContentArea({
   /** 当前页签的绝对路径：媒体导入要落在文档同级 assets/ 下。 */
   const tabPathRef = useRef<string | null>(null);
   const restoredTabRef = useRef<string | null>(null);
+  const currentModeRef = useRef<EditorMode>("preview");
+
+  // 非阻塞提示：与 PaneTreeView / ReadingRail 同构（3000ms 自动消失）。
+  const [notice, setNotice] = useState<string | null>(null);
+  const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showNotice = useCallback((message: string) => {
+    setNotice(message);
+    if (noticeTimer.current) clearTimeout(noticeTimer.current);
+    noticeTimer.current = setTimeout(() => setNotice(null), 3000);
+  }, []);
+  useEffect(() => {
+    return () => {
+      if (noticeTimer.current) clearTimeout(noticeTimer.current);
+    };
+  }, []);
 
   // Keep tab ID ref current so the updateListener closure can read it
   currentTabIdRef.current = tab?.id || null;
   tabPathRef.current = tab?.path || null;
+  currentModeRef.current = editorMode;
   activeDocPath = tab?.path || null;
 
   // 与 PreviewView 的 `.preview-content` 注入同一组变量，两个模式才会同貌。
@@ -343,6 +455,7 @@ export default function ContentArea({
   // Create EditorView once per panelId
   useEffect(() => {
     if (viewRef.current || !editorRef.current) return;
+    viewDestroyedRef.current = false;
 
     const initialKind = tab?.fileKind ?? "text";
     currentKindRef.current = initialKind;
@@ -366,6 +479,15 @@ export default function ContentArea({
         }),
         EditorView.domEventHandlers({
           focus: () => setActivePanel(panelId),
+          paste: (event, view) =>
+            handlePaste(view, event, {
+              getDocPath: () => tabPathRef.current,
+              isMarkdownEdit: () =>
+                currentKindRef.current === "markdown" &&
+                currentModeRef.current === "edit",
+              isViewAlive: () => !viewDestroyedRef.current,
+              showNotice,
+            }),
         }),
       ],
     });
@@ -386,6 +508,7 @@ export default function ContentArea({
     });
 
     return () => {
+      viewDestroyedRef.current = true;
       setEditorView(panelId, null);
       setEditorViewState(null);
       viewRef.current?.destroy();
@@ -527,6 +650,15 @@ export default function ContentArea({
           view={editorViewState}
           container={scrollContainer}
         />
+      )}
+      {notice && (
+        <div
+          role="status"
+          data-testid="paste-notice"
+          className="fixed bottom-6 left-1/2 z-[2147483000] -translate-x-1/2 rounded-full bg-gray-900/90 px-4 py-2 text-sm text-white shadow-lg dark:bg-gray-700/95"
+        >
+          {notice}
+        </div>
       )}
     </div>
   );

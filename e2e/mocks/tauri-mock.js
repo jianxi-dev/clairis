@@ -318,6 +318,38 @@ function mockInvoke(cmd, args) {
     return window.__biaoyue_media__ || [];
   }
   if (cmd === "register_media_path") return null;
+  if (cmd === "import_media_bytes" && args) {
+    // 与 Rust 侧同策略：同大小复用，否则退位 -1/-2；只记 ledger，不写真盘。
+    var suggested = args.suggestedName || "pasted-image.png";
+    var dot = suggested.lastIndexOf(".");
+    var stem = dot > 0 ? suggested.slice(0, dot) : suggested;
+    var ext = dot > 0 ? suggested.slice(dot) : "";
+    var ledger = window.__biaoyue_imported_assets__ || [];
+    var candidate = suggested;
+    var seq = 0;
+    var hit = null;
+    while (true) {
+      hit = null;
+      for (var i = 0; i < ledger.length; i++) {
+        if (ledger[i].name === candidate) { hit = ledger[i]; break; }
+      }
+      if (!hit || hit.size === args.base64.length) break;
+      seq += 1;
+      candidate = stem + "-" + seq + ext;
+    }
+    if (!hit) {
+      ledger.push({ name: candidate, size: args.base64.length });
+      window.__biaoyue_imported_assets__ = ledger;
+    }
+    window.__biaoyue_imported_media_bytes__ =
+      window.__biaoyue_imported_media_bytes__ || [];
+    window.__biaoyue_imported_media_bytes__.push({
+      docPath: args.docPath,
+      suggestedName: suggested,
+      size: args.base64.length,
+    });
+    return { path: "/Users/test/assets/" + candidate, name: "assets/" + candidate };
+  }
   if (responses[cmd]) return responses[cmd];
   console.warn("[TauriMock] unknown command:", cmd);
   return null;
