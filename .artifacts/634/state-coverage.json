@@ -1,0 +1,39 @@
+{
+  "states": [
+    {
+      "state": "主题菜单无叠加提示",
+      "screenshot": ".artifacts/634/theme-menu-no-tip.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-11T04:53:54Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "页面宽度面板无叠加提示",
+      "screenshot": ".artifacts/634/width-panel-no-tip.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-11T04:53:54Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "普通悬停1.2秒无提示",
+      "screenshot": ".artifacts/634/plain-hover-no-tip.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-11T04:53:54Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "视频浮层无原生提示",
+      "screenshot": ".artifacts/634/video-popover-no-hint.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-11T04:53:54Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "悬停满60秒出现胶囊提示",
+      "screenshot": ".artifacts/634/tip-after-60s.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-11T04:53:54Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}

@@ -75,6 +75,8 @@ test("提示只保留圆心操作说明", async ({ page }) => {
   await page.waitForTimeout(700);
   await expect(page.locator(".app-tip")).toHaveCount(0);
 
+  await page.clock.install();
   await page.locator('[data-testid="roulette-center"]').hover();
+  await page.clock.fastForward(60_000);
   await expect(page.locator(".app-tip")).toContainText("格式刷");
 });
