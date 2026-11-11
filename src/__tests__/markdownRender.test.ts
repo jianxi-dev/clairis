@@ -148,6 +148,39 @@ describe("renderMarkdown 排版细节", () => {
   });
 });
 
+describe("renderMarkdown 图片属性块", () => {
+  it("属性块宽度/高度落到 img 上且不露文本", () => {
+    const html = renderMarkdown(
+      "![pic](/a.png){width=420 height=200 align=left}",
+    );
+    expect(html).toContain('width="420"');
+    expect(html).toContain('height="200"');
+    expect(html).toContain("text-align:left");
+    expect(html).not.toContain("width=420");
+    expect(html).not.toContain("align=left");
+  });
+
+  it("旧宽度注释仍生效（向后兼容）", () => {
+    const html = renderMarkdown("![pic](/a.png)<!--w=635-->");
+    expect(html).toContain('width="635"');
+    expect(html).not.toContain("w=635");
+    expect(html).not.toContain("<!--");
+  });
+
+  it("括号路径不被截断，属性块正常应用", () => {
+    const html = renderMarkdown("![pic](assets/image%20(1).png){width=300}");
+    expect(html).toContain('width="300"');
+    expect(html).toContain("assets/image%20(1).png");
+    expect(html).not.toContain("width=300");
+  });
+
+  it("代码块里的属性块保持字面文本", () => {
+    const html = renderMarkdown("```\n![pic](/a.png){width=300}\n```");
+    expect(html).toContain("width=300");
+    expect(html).not.toContain('width="300"');
+  });
+});
+
 describe("renderMarkdown 安全", () => {
   it("剥离脚本标签与事件属性", () => {
     const html = renderMarkdown(

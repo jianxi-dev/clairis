@@ -22,7 +22,11 @@ import { createLinkDecorations } from "../../editors/decorations/link";
 import {
   classifyMedia,
   createImageDecorations,
+  parseImageAttributes,
   parseImageWidth,
+  scanImageReference,
+  serializeImageAttributes,
+  writeImageAttributes,
   type ImageResolver,
 } from "../../editors/decorations/image";
 import { createMermaidDecorations } from "../../editors/decorations/mermaid";
@@ -383,6 +387,149 @@ describe("block decorations", () => {
       const original = "Some text ![alt](photo.png) more text";
       view = createEditor(original, { resolveImage: stubResolver });
       expect(view.state.doc.toString()).toBe(original);
+    });
+  });
+
+  // --- 图片属性块 ---------------------------------------------------------
+
+  describe("image attribute block", () => {
+    it("parses width/height/align/crop and ignores unknown keys", () => {
+      expect(
+        parseImageAttributes(
+          "width=920 height=600 align=left crop=10,20,300,400",
+        ),
+      ).toEqual({
+        width: 920,
+        height: 600,
+        align: "left",
+        crop: [10, 20, 300, 400],
+      });
+      expect(parseImageAttributes("width=10 unknown=x height=20")).toEqual({
+        width: 10,
+        height: 20,
+        align: null,
+        crop: null,
+      });
+      expect(parseImageAttributes("align=diagonal crop=1,2,3")).toEqual({
+        width: null,
+        height: null,
+        align: null,
+        crop: null,
+      });
+    });
+
+    it("serializes attributes in a stable order", () => {
+      expect(
+        serializeImageAttributes({
+          width: 920,
+          height: 600,
+          align: "left",
+          crop: [10, 20, 300, 400],
+        }),
+      ).toBe("{width=920 height=600 align=left crop=10,20,300,400}");
+      expect(
+        serializeImageAttributes({
+          width: null,
+          height: null,
+          align: null,
+          crop: null,
+        }),
+      ).toBe("");
+    });
+
+    it("scans a parenthesized path without stopping at the inner paren", () => {
+      const md = "![a](assets/image%20(1).png)";
+      const ref = scanImageReference(md, 0);
+      expect(ref?.path).toBe("assets/image%20(1).png");
+      expect(ref?.end).toBe(md.length);
+      expect(ref?.attrText).toBeNull();
+    });
+
+    it("scans an angle-wrapped path with spaces and parens", () => {
+      const ref = scanImageReference("![a](<path with spaces (1).png>)", 0);
+      expect(ref?.path).toBe("path with spaces (1).png");
+      expect(ref?.title).toBeNull();
+    });
+
+    it("scans an attribute block after the closing paren", () => {
+      const md = "![a](b.png){width=920 height=600}";
+      const ref = scanImageReference(md, 0);
+      expect(ref?.end).toBe("![a](b.png)".length);
+      expect(ref?.attrText).toBe("width=920 height=600");
+      expect(ref?.attrStart).toBe("![a](b.png)".length);
+      expect(ref?.attrEnd).toBe(md.length);
+    });
+
+    it("scans an optional title before the closing paren", () => {
+      const ref = scanImageReference('![a](b.png "title")', 0);
+      expect(ref?.path).toBe("b.png");
+      expect(ref?.title).toBe("title");
+    });
+
+    it("reads a legacy comment width", () => {
+      expect(parseImageWidth("![a](b.png)<!--w=635-->", 11)).toBe(635);
+      expect(parseImageWidth("![a](b.png)", 11)).toBeNull();
+    });
+
+    it("writer replaces a legacy comment with an attribute block", () => {
+      view = createEditor("![a](b.png)<!--w=635-->");
+      placeCursor(view.state.doc.length);
+      const ok = writeImageAttributes(view, 0, {
+        width: 700,
+        height: null,
+        align: null,
+        crop: null,
+      });
+      expect(ok).toBe(true);
+      expect(view.state.doc.toString()).toBe("![a](b.png){width=700}");
+    });
+
+    it("writer preserves existing height/align/crop", () => {
+      view = createEditor("![a](b.png){width=100 height=50 align=left}");
+      placeCursor(view.state.doc.length);
+      const ok = writeImageAttributes(view, 0, {
+        width: 200,
+        height: 50,
+        align: "left",
+        crop: null,
+      });
+      expect(ok).toBe(true);
+      expect(view.state.doc.toString()).toBe(
+        "![a](b.png){width=200 height=50 align=left}",
+      );
+    });
+
+    it("widget hides the attribute block so neither is visible", () => {
+      view = createEditor("![a](photo.png){width=920}", {
+        resolveImage: stubResolver,
+      });
+      placeCursor(view.state.doc.length);
+      expect(view.dom.querySelector(".cm-image-widget")).not.toBeNull();
+      const text = view.dom.querySelector(".cm-content")?.textContent ?? "";
+      expect(text).not.toContain("width=920");
+      expect(text).not.toContain("{");
+    });
+
+    it("widget applies the attribute width to the img", () => {
+      view = createEditor("![a](photo.png){width=920}", {
+        resolveImage: stubResolver,
+      });
+      placeCursor(view.state.doc.length);
+      const img = view.dom.querySelector(".cm-image-widget img");
+      expect(img?.getAttribute("data-width")).toBe("920");
+    });
+
+    it("widget keeps a parenthesized path intact", () => {
+      const md = "![a](assets/image%20(1).png){width=920}";
+      view = createEditor(md, {
+        resolveImage: (p) =>
+          p === "assets/image%20(1).png" ? "data:image/png;base64,abc" : null,
+      });
+      placeCursor(view.state.doc.length);
+      const img = view.dom.querySelector(".cm-image-widget img");
+      expect(img?.getAttribute("src")).toBe("data:image/png;base64,abc");
+      expect(img?.getAttribute("data-width")).toBe("920");
+      expect(view.state.doc.toString()).toBe(md);
     });
   });
 

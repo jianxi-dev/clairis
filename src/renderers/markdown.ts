@@ -13,6 +13,13 @@ import {
   SANITIZE_ALLOWED_TAGS,
   isUnknownStructuralTagLine,
 } from "../editors/decorations/structuralTagPattern";
+import {
+  scanImageReference,
+  parseImageAttributes,
+  findFencedRanges,
+  isInsideRange,
+  type ImageAttributes,
+} from "../editors/decorations/image";
 
 // ── 块级 HTML 深度闭合（对齐 Obsidian 的 HTML 块行为）────────
 // marked 的 html 正则把块级标签一律吞到下一个空行，用户写
@@ -45,8 +52,11 @@ const SANITIZE_CONFIG = {
     "href",
     "src",
     "alt",
-    // 编辑态拖拽写下的图片宽度：渲染时由 span 占位带到 img 上，必须放行
+    // 编辑态拖拽写下的图片宽度/高度/对齐：渲染时由 span 占位带到 img 上，必须放行
     "data-img-width",
+    "data-img-height",
+    "data-img-align",
+    "data-img-crop",
     "width",
     "title",
     "class",
@@ -294,6 +304,74 @@ export interface RenderMarkdownOptions {
   resolveMedia?: (href: string) => string | null;
 }
 
+const LEGACY_WIDTH_COMMENT_RE = /^([ \t]*\n)?[ \t]*<!--\s*w=(\d+)\s*-->/;
+
+function legacyWidthComment(
+  text: string,
+  after: number,
+): { end: number; width: number } | null {
+  const match = LEGACY_WIDTH_COMMENT_RE.exec(text.slice(after, after + 64));
+  if (!match) return null;
+  const width = Number(match[2]);
+  if (!Number.isFinite(width)) return null;
+  return { end: after + match[0].length, width };
+}
+
+function imageAttributesCarrier(attrs: ImageAttributes): string {
+  const parts: string[] = [];
+  if (attrs.width !== null) parts.push(`data-img-width="${attrs.width}"`);
+  if (attrs.height !== null) parts.push(`data-img-height="${attrs.height}"`);
+  if (attrs.align !== null) parts.push(`data-img-align="${attrs.align}"`);
+  if (attrs.crop !== null)
+    parts.push(`data-img-crop="${attrs.crop.join(",")}"`);
+  return parts.length > 0 ? `<span ${parts.join(" ")}></span>` : "";
+}
+
+/**
+ * 把图片属性块（以及旧宽度注释）换成隐藏的 data span。括号感知：路径里的
+ * `(1)` 不会被误判成引用结尾；代码块里的引用保持原样。
+ */
+function preprocessImageAttributes(content: string): string {
+  const codeRanges = findFencedRanges(content);
+  let result = "";
+  let pos = 0;
+  while (pos < content.length) {
+    const idx = content.indexOf("![", pos);
+    if (idx < 0) {
+      result += content.slice(pos);
+      break;
+    }
+    const ref = scanImageReference(content, idx);
+    if (!ref) {
+      result += content.slice(pos, idx + 2);
+      pos = idx + 2;
+      continue;
+    }
+    if (isInsideRange(idx, codeRanges)) {
+      result += content.slice(pos, ref.end);
+      pos = ref.end;
+      continue;
+    }
+    result += content.slice(pos, ref.end);
+    const attrs =
+      ref.attrText !== null
+        ? parseImageAttributes(ref.attrText)
+        : { width: null, height: null, align: null, crop: null };
+    let cursor = ref.end;
+    if (ref.attrStart !== null && ref.attrEnd !== null) {
+      result += imageAttributesCarrier(attrs);
+      cursor = ref.attrEnd;
+    }
+    const legacy = legacyWidthComment(content, cursor);
+    if (legacy && attrs.width === null) {
+      result += `<span data-img-width="${legacy.width}"></span>`;
+    }
+    if (legacy) cursor = legacy.end;
+    pos = cursor;
+  }
+  return result;
+}
+
 export function renderMarkdown(
   content: string,
   options: RenderMarkdownOptions = {},
@@ -305,16 +383,12 @@ export function renderMarkdown(
   registerCheckboxGuard();
   resetMathStore();
 
-  // `![x](a.png)<!--w=635-->`：宽度注释是给编辑态持久化用的，直接在正文里
-  // 渲染出来会变成一行可见的注释文本。这里先换成带 data 属性的 span，等 DOM
-  // 建好再取到图片上。
-  const withWidths = content.replace(
-    /(!\[[^\]]*\]\([^)]*\))[ \t]*\n?<!--\s*w=(\d+)\s*-->/g,
-    '$1<span data-img-width="$2"></span>',
-  );
-  const body = preprocessAlignmentDivs(
-    stripStructuralTagLines(withWidths.replace(FRONTMATTER_RE, "")),
-  );
+  // `![x](a.png){width=635}` 与旧 `![x](a.png)<!--w=635-->`：属性块/注释是给
+  // 编辑态持久化用的，直接在正文里渲染出来会变成一行可见文本。这里先换成带
+  // data 属性的 span，等 DOM 建好再取到图片上。
+  const stripped = content.replace(FRONTMATTER_RE, "");
+  const withWidths = preprocessImageAttributes(stripped);
+  const body = preprocessAlignmentDivs(stripStructuralTagLines(withWidths));
   const raw = marked.parse(body, { async: false }) as string;
   const clean = DOMPurify.sanitize(raw, SANITIZE_CONFIG);
   const result = postProcess(clean);
@@ -323,31 +397,58 @@ export function renderMarkdown(
 }
 
 /**
- * 把 `[data-img-width]` 落到前一张图上，并清掉占位节点。
+ * 把 data span 上的宽度/高度/对齐落到前一张图上，并清掉占位节点。
  *
- * 宽度来自编辑态拖拽写下的 `<!--w=N-->`；预览必须尊重同一个值，否则一份
+ * 值来自编辑态写下的属性块 / 旧宽度注释；预览必须尊重同一个值，否则一份
  * 文档在两种模式下排版不一致。
  */
-function applyImageWidths(doc: Document): void {
-  doc.querySelectorAll("[data-img-width]").forEach((marker) => {
-    const width = Number(marker.getAttribute("data-img-width"));
-    let node = marker.previousElementSibling;
-    if (!node) node = marker.parentElement;
-    const img = node?.querySelector?.("img") ?? null;
-    if (img && Number.isFinite(width) && width > 0) {
-      img.setAttribute("width", String(width));
-      // 原图更宽时按容器收缩，不撑破正文
-      img.setAttribute("style", "max-width:100%;height:auto");
-    }
-    marker.remove();
-  });
+function applyImageAttributes(doc: Document): void {
+  doc
+    .querySelectorAll(
+      "[data-img-width], [data-img-height], [data-img-align], [data-img-crop]",
+    )
+    .forEach((marker) => {
+      const width = Number(marker.getAttribute("data-img-width"));
+      const height = Number(marker.getAttribute("data-img-height"));
+      const align = marker.getAttribute("data-img-align");
+      const hasWidth = Number.isFinite(width) && width > 0;
+      const hasHeight = Number.isFinite(height) && height > 0;
+      let node = marker.previousElementSibling;
+      if (!node) node = marker.parentElement;
+      const img = node?.querySelector?.("img") ?? null;
+      if (img) {
+        if (hasWidth) img.setAttribute("width", String(width));
+        if (hasHeight) img.setAttribute("height", String(height));
+        const style: string[] = [];
+        if (hasWidth || hasHeight) {
+          // 预览样式给 img 定了 `height: auto`，表现属性会被 CSS 压掉，
+          // 显式高度必须走内联样式才生效。
+          style.push("max-width:100%");
+          if (hasWidth) style.push(`width:${width}px`);
+          style.push(hasHeight ? `height:${height}px` : "height:auto");
+        }
+        if (align === "left" || align === "center" || align === "right") {
+          // 预览里 img 是 `display:block; margin-inline:auto`，对 figure 设
+          // text-align 不改变位置，对齐只能落在图片自己的外边距上。
+          if (align === "left")
+            style.push("margin-left:0", "margin-right:auto");
+          if (align === "right")
+            style.push("margin-left:auto", "margin-right:0");
+          if (align === "center") style.push("margin-inline:auto");
+          const target = img.closest("figure") ?? img.parentElement;
+          target?.setAttribute("style", `text-align:${align}`);
+        }
+        if (style.length > 0) img.setAttribute("style", style.join(";"));
+      }
+      marker.remove();
+    });
 }
 
-/** sanitize 之后的一趟 DOM 处理：Callout → 图片宽度 → 公式回填 → 链接 → 中西文间距 */
+/** sanitize 之后的一趟 DOM 处理：Callout → 图片属性 → 公式回填 → 链接 → 中西文间距 */
 function postProcess(html: string): string {
   const doc = new DOMParser().parseFromString(html, "text/html");
   convertCallouts(doc);
-  applyImageWidths(doc);
+  applyImageAttributes(doc);
   prepareDarkColors(doc);
   fillMath(doc);
   doc.querySelectorAll("a").forEach((a) => {

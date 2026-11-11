@@ -104,7 +104,314 @@ export function parseImageWidth(text: string, after: number): number | null {
 }
 
 /**
- * 写入（或改写）起点在 `from` 的图片的宽度注释，宽度夹到可接受区间。
+ * 图片属性块（Pandoc 风格）：`{width=920 height=600 align=left crop=10,20,300,400}`。
+ * 只识别这四个键，未知键静默忽略。
+ */
+export interface ImageAttributes {
+  width: number | null;
+  height: number | null;
+  align: "left" | "center" | "right" | null;
+  crop: [number, number, number, number] | null;
+}
+
+/** 全部缺省的属性。 */
+export const EMPTY_IMAGE_ATTRIBUTES: ImageAttributes = {
+  width: null,
+  height: null,
+  align: null,
+  crop: null,
+};
+
+function stripOptionalQuotes(value: string): string {
+  if (
+    value.length >= 2 &&
+    (value[0] === '"' || value[0] === "'") &&
+    value[value.length - 1] === value[0]
+  ) {
+    return value.slice(1, -1);
+  }
+  return value;
+}
+
+/** 解析属性块内容（不含大括号）。 */
+export function parseImageAttributes(text: string): ImageAttributes {
+  const attrs: ImageAttributes = { ...EMPTY_IMAGE_ATTRIBUTES };
+  for (const token of text.trim().split(/\s+/)) {
+    if (!token) continue;
+    const eq = token.indexOf("=");
+    if (eq < 0) continue;
+    const key = token.slice(0, eq).trim().toLowerCase();
+    const value = stripOptionalQuotes(token.slice(eq + 1).trim());
+    if (key === "width" || key === "height") {
+      const num = Number(value);
+      if (Number.isInteger(num) && num > 0) {
+        if (key === "width") attrs.width = num;
+        else attrs.height = num;
+      }
+    } else if (key === "align") {
+      if (value === "left" || value === "center" || value === "right") {
+        attrs.align = value;
+      }
+    } else if (key === "crop") {
+      const parts = value.split(",").map((p) => Number(p.trim()));
+      if (parts.length === 4 && parts.every((p) => Number.isInteger(p))) {
+        attrs.crop = parts as [number, number, number, number];
+      }
+    }
+  }
+  return attrs;
+}
+
+/** 把属性序列化成 `{...}`；全缺省时返回空串。 */
+export function serializeImageAttributes(attrs: ImageAttributes): string {
+  const parts: string[] = [];
+  if (attrs.width !== null) parts.push(`width=${attrs.width}`);
+  if (attrs.height !== null) parts.push(`height=${attrs.height}`);
+  if (attrs.align !== null) parts.push(`align=${attrs.align}`);
+  if (attrs.crop !== null) parts.push(`crop=${attrs.crop.join(",")}`);
+  return parts.length > 0 ? `{${parts.join(" ")}}` : "";
+}
+
+/** 扫描到的图片引用（含可选属性块）。 */
+export interface ImageReference {
+  /** `!` 的文档偏移。 */
+  start: number;
+  alt: string;
+  /** 去掉尖括号壳的路径。 */
+  path: string;
+  /** 目标原文（含尖括号壳）。 */
+  target: string;
+  title: string | null;
+  /** `![]()` 结束偏移（不含属性块）。 */
+  end: number;
+  /** 属性块内容（不含大括号），没有则 null。 */
+  attrText: string | null;
+  attrStart: number | null;
+  attrEnd: number | null;
+}
+
+function isSpaceChar(ch: string): boolean {
+  return ch === " " || ch === "\t" || ch === "\n" || ch === "\r";
+}
+
+/**
+ * 从 `start` 扫描一个图片引用。括号 / 尖括号感知：
+ * - `![a](<path with spaces (1).png>)`
+ * - `![a](assets/image%20(1).png)`
+ * - `![a](src "title"){width=920}`
+ * 目标在匹配的 `)` 处结束，属性块紧跟在 `)` 后。
+ */
+export function scanImageReference(
+  text: string,
+  start: number,
+): ImageReference | null {
+  const n = text.length;
+  let i = start;
+  if (text[i] !== "!" || text[i + 1] !== "[") return null;
+  i += 2;
+
+  // alt：允许嵌套方括号与反斜杠转义。
+  const altStart = i;
+  let bracketDepth = 0;
+  while (i < n) {
+    const ch = text[i];
+    if (ch === "\\") {
+      i += 2;
+      continue;
+    }
+    if (ch === "[") {
+      bracketDepth += 1;
+      i += 1;
+      continue;
+    }
+    if (ch === "]") {
+      if (bracketDepth === 0) break;
+      bracketDepth -= 1;
+      i += 1;
+      continue;
+    }
+    i += 1;
+  }
+  if (i >= n) return null;
+  const alt = text.slice(altStart, i);
+  i += 1;
+  if (text[i] !== "(") return null;
+  i += 1;
+  while (i < n && isSpaceChar(text[i])) i += 1;
+
+  let target = "";
+  if (text[i] === "<") {
+    const close = text.indexOf(">", i + 1);
+    if (close < 0) return null;
+    target = text.slice(i + 1, close);
+    i = close + 1;
+  } else {
+    const targetStart = i;
+    let parenDepth = 0;
+    while (i < n) {
+      const ch = text[i];
+      if (ch === "\\") {
+        i += 2;
+        continue;
+      }
+      if (ch === "(") {
+        parenDepth += 1;
+        i += 1;
+        continue;
+      }
+      if (ch === ")") {
+        if (parenDepth === 0) break;
+        parenDepth -= 1;
+        i += 1;
+        continue;
+      }
+      if (parenDepth === 0 && isSpaceChar(ch)) break;
+      i += 1;
+    }
+    target = text.slice(targetStart, i);
+  }
+  if (target === "") return null;
+
+  // 可选标题：`"..."` / `'...'` / `(...)`。
+  let title: string | null = null;
+  let j = i;
+  while (j < n && isSpaceChar(text[j])) j += 1;
+  if (text[j] === '"' || text[j] === "'") {
+    const quote = text[j];
+    let k = j + 1;
+    let t = "";
+    while (k < n && text[k] !== quote) {
+      if (text[k] === "\\") {
+        t += text[k + 1] ?? "";
+        k += 2;
+        continue;
+      }
+      t += text[k];
+      k += 1;
+    }
+    if (k >= n) return null;
+    title = t;
+    i = k + 1;
+  } else if (text[j] === "(") {
+    let k = j + 1;
+    let depth = 1;
+    let t = "";
+    while (k < n) {
+      const ch = text[k];
+      if (ch === "\\") {
+        t += text[k + 1] ?? "";
+        k += 2;
+        continue;
+      }
+      if (ch === "(") {
+        depth += 1;
+        t += ch;
+        k += 1;
+        continue;
+      }
+      if (ch === ")") {
+        depth -= 1;
+        k += 1;
+        if (depth === 0) break;
+        t += ch;
+        continue;
+      }
+      t += ch;
+      k += 1;
+    }
+    if (depth !== 0) return null;
+    title = t;
+    i = k;
+  }
+  while (i < n && isSpaceChar(text[i])) i += 1;
+  if (text[i] !== ")") return null;
+  i += 1;
+  const end = i;
+
+  let attrText: string | null = null;
+  let attrStart: number | null = null;
+  let attrEnd: number | null = null;
+  if (text[i] === "{") {
+    let depth = 0;
+    let k = i;
+    let closed = false;
+    while (k < n) {
+      const ch = text[k];
+      if (ch === "\\") {
+        k += 2;
+        continue;
+      }
+      if (ch === "{") {
+        depth += 1;
+        k += 1;
+        continue;
+      }
+      if (ch === "}") {
+        depth -= 1;
+        k += 1;
+        if (depth === 0) {
+          closed = true;
+          break;
+        }
+        continue;
+      }
+      k += 1;
+    }
+    if (closed) {
+      attrText = text.slice(i + 1, k - 1);
+      attrStart = i;
+      attrEnd = k;
+      i = k;
+    }
+  }
+
+  return {
+    start,
+    alt,
+    path: stripAngleWrappers(target),
+    target,
+    title,
+    end,
+    attrText,
+    attrStart,
+    attrEnd,
+  };
+}
+
+/**
+ * 写入（或改写）起点在 `from` 的图片的属性块。已存在的旧 `<!--w=N-->`
+ * 注释会被移除（惰性迁移），绝不把内容插进路径里。
+ */
+export function writeImageAttributes(
+  view: EditorView,
+  from: number,
+  attrs: ImageAttributes,
+): boolean {
+  const text = view.state.doc.toString();
+  const ref = scanImageReference(text, from);
+  if (!ref) return false;
+  const serialized = serializeImageAttributes(attrs);
+  const afterAttrs = ref.attrEnd ?? ref.end;
+  const commentEnd = imageWidthCommentEnd(text, afterAttrs);
+  const changes: Array<{ from: number; to: number; insert: string }> = [];
+  if (ref.attrStart !== null && ref.attrEnd !== null) {
+    changes.push({ from: ref.attrStart, to: ref.attrEnd, insert: serialized });
+    if (commentEnd !== null) {
+      changes.push({ from: ref.attrEnd, to: commentEnd, insert: "" });
+    }
+  } else {
+    const to = commentEnd ?? ref.end;
+    if (serialized !== "" || to > ref.end) {
+      changes.push({ from: ref.end, to, insert: serialized });
+    }
+  }
+  if (changes.length > 0) view.dispatch({ changes });
+  return true;
+}
+
+/**
+ * 写入（或改写）起点在 `from` 的图片的宽度，宽度夹到可接受区间。
+ * 保留已有的 height / align / crop；旧 `<!--w=N-->` 注释被替换成属性块。
  */
 export function applyImageWidth(
   view: EditorView,
@@ -114,24 +421,19 @@ export function applyImageWidth(
   const clamp = Math.round(
     Math.max(MIN_IMAGE_WIDTH, Math.min(width, MAX_IMAGE_WIDTH)),
   );
-  const rest = view.state.doc.sliceString(
-    from,
-    Math.min(from + 400, view.state.doc.length),
-  );
-  const image = /^!\[[^\]]*\]\([^)]+\)/.exec(rest);
-  if (!image) return false;
-  const imageEnd = from + image[0].length;
-  const tail = rest.slice(image[0].length);
-  const existing = /^[ \t]*<!--\s*w=\d+\s*-->/.exec(tail);
-  const insert = `<!--w=${clamp}-->`;
-  if (existing) {
-    view.dispatch({
-      changes: { from: imageEnd, to: imageEnd + existing[0].length, insert },
-    });
-    return true;
+  const text = view.state.doc.toString();
+  const ref = scanImageReference(text, from);
+  if (!ref) return false;
+  const attrs: ImageAttributes =
+    ref.attrText !== null
+      ? parseImageAttributes(ref.attrText)
+      : { ...EMPTY_IMAGE_ATTRIBUTES };
+  if (attrs.width === null) {
+    const legacy = parseImageWidth(text, ref.end);
+    if (legacy !== null) attrs.width = legacy;
   }
-  view.dispatch({ changes: { from: imageEnd, to: imageEnd, insert } });
-  return true;
+  attrs.width = clamp;
+  return writeImageAttributes(view, from, attrs);
 }
 
 // --- 图片 widget -------------------------------------------------------------
@@ -265,7 +567,7 @@ class ImageWidget extends WidgetType {
       this._callbacks.onImageLocate?.(this._path);
     });
 
-    // 拖拽把手：松手后把宽度持久化成尾随的 `<!--w=N-->` 注释（#498）。
+    // 拖拽把手：松手后把宽度持久化成属性块 `{width=N}`。
     if (this._src) {
       const handle = document.createElement("span");
       handle.className = "cm-image-resize";
@@ -411,15 +713,10 @@ class MediaWidget extends WidgetType {
 // --- 装饰构建 ----------------------------------------------------------------
 
 /**
- * 匹配 `![alt](path)`，排除代码块里的引用。
- */
-export const imageRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
-
-/**
  * 找出围栏代码块（``` 或 ~~~ 界定）与缩进代码块的行区间。
  * 返回 `[start, end)` 偏移数组。
  */
-function findFencedRanges(text: string): Array<[number, number]> {
+export function findFencedRanges(text: string): Array<[number, number]> {
   const ranges: Array<[number, number]> = [];
   const lines = text.split("\n");
   let inFence = false;
@@ -466,7 +763,10 @@ function findFencedRanges(text: string): Array<[number, number]> {
 }
 
 /** 位置是否落在任一区间内。 */
-function isInsideRange(pos: number, ranges: Array<[number, number]>): boolean {
+export function isInsideRange(
+  pos: number,
+  ranges: Array<[number, number]>,
+): boolean {
   for (const [start, end] of ranges) {
     if (pos >= start && pos < end) return true;
   }
@@ -491,43 +791,55 @@ export function createImageDecorations(
 
   const fencedRanges = findFencedRanges(docText);
 
-  imageRegex.lastIndex = 0;
+  let pos = 0;
+  while (pos < docText.length) {
+    const idx = docText.indexOf("![", pos);
+    if (idx < 0) break;
+    const ref = scanImageReference(docText, idx);
+    if (!ref) {
+      pos = idx + 2;
+      continue;
+    }
+    pos = ref.attrEnd ?? ref.end;
+    if (isInsideRange(idx, fencedRanges)) continue;
 
-  let match: RegExpExecArray | null;
-  while ((match = imageRegex.exec(docText)) !== null) {
-    const matchStart = match.index;
-
-    if (isInsideRange(matchStart, fencedRanges)) continue;
-
-    const alt = match[1];
-    // 含空格/括号的目标在 markdown 里写成 `<...>`，取出来先把壳拆掉，
-    // 否则扩展名判断会把这个 `>` 算进去（#103 后续）。
-    const path = stripAngleWrappers(match[2]);
+    const alt = ref.alt;
+    const path = ref.path;
     const kind = classifyMedia(path);
-    const from = matchStart;
-    const to = matchStart + match[0].length;
+    const from = ref.start;
+    const to = ref.end;
 
     if (kind === "image") {
       // 图片路径解析（行为不变：null → 文字回退）。
       const src = resolveFn(path);
+      const attrs =
+        ref.attrText !== null
+          ? parseImageAttributes(ref.attrText)
+          : { ...EMPTY_IMAGE_ATTRIBUTES };
+      const width = attrs.width ?? parseImageWidth(docText, to);
       decorations.push(
         Decoration.replace({
-          widget: new ImageWidget(
-            alt,
-            path,
-            src,
-            callbacksFn,
-            parseImageWidth(docText, to),
-            from,
-          ),
+          widget: new ImageWidget(alt, path, src, callbacksFn, width, from),
           inclusive: false,
         }).range(from, to),
       );
-      // 宽度注释是持久化用的，不该在正文里露出来。
-      const commentEnd = imageWidthCommentEnd(docText, to);
+      // 属性块与旧宽度注释都是持久化用的，不该在正文里露出来。
+      if (ref.attrStart !== null && ref.attrEnd !== null) {
+        decorations.push(
+          Decoration.replace({ inclusive: false }).range(
+            ref.attrStart,
+            ref.attrEnd,
+          ),
+        );
+      }
+      const afterAttrs = ref.attrEnd ?? to;
+      const commentEnd = imageWidthCommentEnd(docText, afterAttrs);
       if (commentEnd !== null) {
         decorations.push(
-          Decoration.replace({ inclusive: false }).range(to, commentEnd),
+          Decoration.replace({ inclusive: false }).range(
+            afterAttrs,
+            commentEnd,
+          ),
         );
       }
       continue;
