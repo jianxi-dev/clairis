@@ -69,6 +69,34 @@ export const BLOCK_MENU_ID_PREFIX = "block:";
 /** 颜色二级面板类名（挂在通用 flyout 类之外，供 CSS 收窄宽度）。 */
 const COLOR_PANEL_CLASS = "cm-block-menu-color-panel";
 
+/**
+ * 每个编辑视图正在打开的二级面板关闭器。
+ *
+ * 面板各自持有 keep-open 与 DOM 引用，只删 DOM 会留下未释放的钉住状态；统一
+ * 从这里调用各自的关闭函数，保证「关得掉」与「状态放得干净」是同一件事。
+ */
+const flyoutClosers = new WeakMap<EditorView, Set<() => void>>();
+
+function addFlyoutCloser(view: EditorView, close: () => void): void {
+  let set = flyoutClosers.get(view);
+  if (!set) {
+    set = new Set();
+    flyoutClosers.set(view, set);
+  }
+  set.add(close);
+}
+
+function removeFlyoutCloser(view: EditorView, close: () => void): void {
+  flyoutClosers.get(view)?.delete(close);
+}
+
+/** 关闭该视图上的全部二级面板（滚动 / 父菜单关闭 / 互斥切换共用）。 */
+export function dismissBlockFlyouts(view: EditorView): void {
+  const set = flyoutClosers.get(view);
+  if (!set) return;
+  for (const close of [...set]) close();
+}
+
 const HIDE_DELAY_MS = 150;
 
 /** 结构动作组：直接在源码上执行的块级操作。 */
@@ -285,10 +313,6 @@ export function openBlockMenu(
       cell.dataset.active = String(item.target === active);
       cell.title = item.label;
       cell.appendChild(renderIcon(item.icon));
-      const label = document.createElement("span");
-      label.className = "cm-block-menu-cell-label";
-      label.textContent = item.shortLabel ?? item.label;
-      cell.appendChild(label);
       cell.addEventListener("pointerdown", (event) => {
         event.preventDefault();
         event.stopPropagation();
@@ -372,14 +396,18 @@ export function openBlockMenu(
       releaseTypeKeepOpen = null;
       typePanel?.remove();
       typePanel = null;
+      removeFlyoutCloser(view, closeTypePanel);
     };
     const openTypePanel = (): void => {
       closeTypePanel();
+      dismissBlockFlyouts(view);
+      addFlyoutCloser(view, closeTypePanel);
       const current = calloutKeyOf(
         view.state.doc.sliceString(block.from, block.to),
       );
       const panelEl = document.createElement("div");
       panelEl.className = "cm-block-menu-flyout";
+      panelEl.classList.add("mdb-block-handle-menu");
       panelEl.dataset.testid = "block-menu-type-panel";
       panelEl.dataset.blockFlyout = "1";
       // E-14：贴在「类型」行右侧，缝隙 ≤ 8px，同一行每次打开位置一致。
@@ -464,11 +492,15 @@ export function openBlockMenu(
     releaseColorKeepOpen = null;
     colorPanel?.remove();
     colorPanel = null;
+    removeFlyoutCloser(view, closeColorPanel);
   };
   const openColorPanel = (): void => {
     closeColorPanel();
+    dismissBlockFlyouts(view);
+    addFlyoutCloser(view, closeColorPanel);
     const panelEl = document.createElement("div");
     panelEl.className = "cm-block-menu-flyout";
+    panelEl.classList.add("mdb-block-handle-menu");
     panelEl.classList.add(COLOR_PANEL_CLASS);
     panelEl.dataset.testid = "block-menu-color-panel";
     panelEl.dataset.blockFlyout = "1";
@@ -565,11 +597,15 @@ export function openBlockMenu(
     releaseAlignKeepOpen = null;
     alignPanel?.remove();
     alignPanel = null;
+    removeFlyoutCloser(view, closeAlignPanel);
   };
   const openAlignPanel = (): void => {
     closeAlignPanel();
+    dismissBlockFlyouts(view);
+    addFlyoutCloser(view, closeAlignPanel);
     const panelEl = document.createElement("div");
     panelEl.className = "cm-block-menu-flyout";
+    panelEl.classList.add("mdb-block-handle-menu");
     panelEl.dataset.testid = "block-menu-align-panel";
     panelEl.dataset.blockFlyout = "1";
     panelEl.style.width = `${MENU_WIDTH}px`;
@@ -748,9 +784,7 @@ export function openBlockMenu(
       document.removeEventListener("keydown", onKeyDown, true);
       // 外部点击 / Esc 走栈关闭时不会经过 closeBlockMenu：二级面板挂在与
       // 父面板平级的编辑器根节点上，必须在这里一并摘掉，否则色板残留。
-      document
-        .querySelectorAll<HTMLElement>("[data-block-flyout]")
-        .forEach((el) => el.remove());
+      dismissBlockFlyouts(view);
       if (panel.parentNode) panel.parentNode.removeChild(panel);
     },
   });

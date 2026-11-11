@@ -2110,11 +2110,9 @@ html[data-tab-drag="true"] body * {
 
 .cm-block-menu-cell {
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 5px;
-  height: 50px;
+  height: 40px;
   padding: 4px 2px;
   border: 0;
   border-radius: 4px;
@@ -2132,12 +2130,6 @@ html[data-tab-drag="true"] body * {
 .cm-block-menu-cell[data-active="true"] {
   background: var(--app-accent-soft);
   color: var(--app-accent);
-}
-
-.cm-block-menu-cell-label {
-  font-size: 13px;
-  line-height: 1;
-  white-space: nowrap;
 }
 
 /* 二级面板（类型等）：贴在菜单内部，自身仍受菜单位置约束。 */

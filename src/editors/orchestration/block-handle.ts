@@ -16,6 +16,7 @@ import { renderIcon, ADD_ICON_NAME } from "../icons";
 import {
   openBlockMenu,
   closeBlockMenu,
+  dismissBlockFlyouts,
   isBlockMenuOpen,
   scheduleBlockMenuClose,
 } from "./block-menu";
@@ -230,6 +231,7 @@ class BlockHandlePlugin {
   }
 
   private readonly onScroll = (): void => {
+    dismissBlockFlyouts(this.view);
     this.reposition();
   };
 

@@ -116,3 +116,85 @@ test("对齐二级菜单滑出后隐藏", async ({ page }) => {
     await page.screenshot({ path: `${dir}/flyout-hidden.png` });
   }
 });
+
+test("「转为」网格只显示图标，不显示文字（#649）", async ({ page }) => {
+  await boot(page, "# 标题\n\n正文段落\n");
+  await hoverHandle(page, 2);
+  const cells = page.locator('[data-testid="block-menu-cell"]');
+  await expect(cells).toHaveCount(10);
+  const texts = await page.evaluate(() =>
+    Array.from(
+      document.querySelectorAll('[data-testid="block-menu-cell"]'),
+    ).map((cell) => (cell.textContent ?? "").trim()),
+  );
+  expect(texts).toHaveLength(10);
+  expect(texts.filter((t) => /[\u4e00-\u9fa5]/.test(t))).toEqual([]);
+  const iconHeights = await page.evaluate(() =>
+    Array.from(
+      document.querySelectorAll('[data-testid="block-menu-cell"] svg'),
+    ).map((svg) => Math.round(svg.getBBox().height * 10) / 10),
+  );
+  expect(iconHeights).toHaveLength(10);
+  expect(iconHeights.every((h) => h > 0)).toBe(true);
+});
+
+test("对齐与缩进行及其子项图标真实有面积（#649）", async ({ page }) => {
+  await boot(page, "# 标题\n\n正文段落\n");
+  await hoverHandle(page, 2);
+  const row = page.locator('[data-testid="block-menu-align"]');
+  const rowPath = row.locator("svg path").first();
+  const rowBBox = await rowPath.evaluate((n) => {
+    const b = (n as SVGPathElement).getBBox();
+    return { w: b.width, h: b.height };
+  });
+  expect(rowBBox.w).toBeGreaterThan(0);
+  expect(rowBBox.h).toBeGreaterThan(0);
+
+  await row.hover();
+  const panel = page.locator('[data-testid="block-menu-align-panel"]');
+  await expect(panel).toBeVisible({ timeout: 2000 });
+  await expect(panel.locator("button")).toHaveCount(5);
+  const optionBoxes = await panel.evaluate((p) =>
+    Array.from(p.querySelectorAll("button svg path")).map((n) => {
+      const b = (n as SVGPathElement).getBBox();
+      return { w: Math.round(b.width), h: Math.round(b.height) };
+    }),
+  );
+  expect(optionBoxes.length).toBeGreaterThanOrEqual(5);
+  expect(optionBoxes.every((b) => b.w > 0 && b.h > 0)).toBe(true);
+});
+
+test("二级面板互斥：打开一个会收掉另一个", async ({ page }) => {
+  await boot(page, "# 标题\n\n正文段落\n");
+  await hoverHandle(page, 2);
+  await page.locator('[data-testid="block-menu-color"]').hover();
+  await expect(
+    page.locator('[data-testid="block-menu-color-panel"]'),
+  ).toHaveCount(1, { timeout: 2000 });
+  await page.locator('[data-testid="block-menu-align"]').hover();
+  await expect(
+    page.locator('[data-testid="block-menu-align-panel"]'),
+  ).toHaveCount(1, { timeout: 2000 });
+  await expect(
+    page.locator('[data-testid="block-menu-color-panel"]'),
+  ).toHaveCount(0);
+  await page.mouse.move(900, 500);
+  await expect(page.locator(".cm-block-menu-flyout")).toHaveCount(0, {
+    timeout: 2000,
+  });
+});
+
+test("滚动页面关闭二级面板，父菜单不残留（#649）", async ({ page }) => {
+  await boot(page, "# 标题\n\n正文段落\n\n" + "长文\n\n".repeat(30));
+  await hoverHandle(page, 2);
+  await page.locator('[data-testid="block-menu-align"]').hover();
+  await expect(
+    page.locator('[data-testid="block-menu-align-panel"]'),
+  ).toHaveCount(1, { timeout: 2000 });
+  await page.evaluate(() => {
+    document.querySelector(".cm-scroller")?.dispatchEvent(new Event("scroll"));
+  });
+  await expect(page.locator(".cm-block-menu-flyout")).toHaveCount(0, {
+    timeout: 2000,
+  });
+});
