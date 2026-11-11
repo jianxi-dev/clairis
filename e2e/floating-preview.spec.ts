@@ -789,3 +789,74 @@ test("阅读空间卡片路径按钮悬停无底色", async ({ page }) => {
   );
   expect(tipOrTitle).toMatch(/\/tmp\/fp\/doc/);
 });
+
+test("从栏滑向悬浮窗穿越空隙，悬浮窗不消失（#639）", async ({ page }) => {
+  await boot(page);
+  await seed(page);
+  await pinRail(page);
+
+  await hoverRowRightHalf(page, "markdown");
+  const preview = page.locator(PREVIEW);
+  await expect(preview).toBeVisible({ timeout: 3000 });
+
+  // 滑到栏与窗之间的空隙正中并停住（超过 180ms 防抖），窗必须仍在。
+  const pb = await previewBox(page);
+  const gapY = pb.y + pb.h / 2;
+  await moveThrough(
+    page,
+    [
+      { x: pb.x - 20, y: gapY },
+      { x: pb.x - 6, y: gapY },
+    ],
+    { steps: 10 },
+  );
+  await page.waitForTimeout(300);
+  await expect(preview).toBeVisible({ timeout: 1000 });
+
+  // 随后滑入窗内，悬浮窗保持显示。
+  await moveThrough(page, [{ x: pb.x + pb.w / 2, y: gapY }], { steps: 10 });
+  await expect(preview).toBeVisible({ timeout: 1000 });
+});
+
+// QG-5 证据探针（#639）：EVIDENCE_DIR 设置时采集四态截图，平时跳过。
+test("evidence: 悬浮窗滑入四态", async ({ page }) => {
+  const dir = process.env.EVIDENCE_DIR;
+  test.skip(!dir, "EVIDENCE_DIR 未设置");
+  await boot(page);
+  await seed(page);
+  await pinRail(page);
+
+  await hoverRowRightHalf(page, "markdown");
+  const preview = page.locator(PREVIEW);
+  await expect(preview).toBeVisible({ timeout: 3000 });
+  await page.screenshot({ path: `${dir}/preview-open.png` });
+
+  const pb = await previewBox(page);
+  const gapY = pb.y + pb.h / 2;
+  await moveThrough(
+    page,
+    [
+      { x: pb.x - 20, y: gapY },
+      { x: pb.x - 6, y: gapY },
+    ],
+    { steps: 10 },
+  );
+  await page.waitForTimeout(300);
+  await expect(preview).toBeVisible({ timeout: 1000 });
+  await page.screenshot({ path: `${dir}/preview-gap-hold.png` });
+
+  await moveThrough(page, [{ x: pb.x + pb.w / 2, y: gapY }], { steps: 10 });
+  await expect(preview).toBeVisible({ timeout: 1000 });
+  await page.screenshot({ path: `${dir}/preview-entered.png` });
+
+  // 空隙途中的指针可能扫过 rail 行触发重锚，远移前重测窗盒。
+  const pbNow = await previewBox(page);
+  await moveThrough(
+    page,
+    [{ x: pbNow.x + pbNow.w / 2, y: pbNow.y + pbNow.h + 120 }],
+    { steps: 12 },
+  );
+  await page.waitForTimeout(400);
+  await expect(preview).toHaveCount(0, { timeout: 2000 });
+  await page.screenshot({ path: `${dir}/preview-closed.png` });
+});
