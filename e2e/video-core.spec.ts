@@ -32,6 +32,39 @@ test("非媒体页签不出现静音按钮", async ({ page }) => {
   await expect(page.locator('[data-testid^="tab-mute-"]')).toHaveCount(0);
 });
 
+test("PDF 与图片页签不出现静音按钮", async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    window.__biaoyue_openFile__("/Users/test/doc.pdf", "", "doc.pdf");
+  });
+  await expect(
+    page
+      .locator("[data-tab-id]", { hasText: "doc.pdf" })
+      .locator('[data-testid^="tab-mute-"]'),
+  ).toHaveCount(0);
+
+  await page.evaluate(() => {
+    window.__biaoyue_openFile__("/Users/test/pic.png", "", "pic.png");
+  });
+  await expect(
+    page
+      .locator("[data-tab-id]", { hasText: "pic.png" })
+      .locator('[data-testid^="tab-mute-"]'),
+  ).toHaveCount(0);
+});
+
+test("音频页签出现静音按钮", async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    window.__biaoyue_openFile__("/Users/test/song.mp3", "", "song.mp3");
+  });
+  await expect(
+    page
+      .locator("[data-tab-id]", { hasText: "song.mp3" })
+      .locator('[data-testid^="tab-mute-"]'),
+  ).toHaveCount(1);
+});
+
 test("证据：视频四态截图", async ({ page }) => {
   const dir = process.env.EVIDENCE_DIR;
   test.skip(!dir, "EVIDENCE_DIR 未设置");

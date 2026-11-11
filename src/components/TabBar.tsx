@@ -376,10 +376,7 @@ export default function TabBar({
                 {tab.dirty && (
                   <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />
                 )}
-                {(tabKind === "video" ||
-                  tabKind === "audio" ||
-                  tabKind === "pdf" ||
-                  tabKind === "image") && (
+                {(tabKind === "video" || tabKind === "audio") && (
                   <button
                     type="button"
                     data-testid={`tab-mute-${id}`}
