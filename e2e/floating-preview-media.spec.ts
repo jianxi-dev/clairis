@@ -125,3 +125,60 @@ test("图片与 HTML 预览不预读文件内容", async ({ page }) => {
     ),
   ).toEqual([]);
 });
+
+test("视频底栏叠加显示，画面高度不被挤压（#640）", async ({ page }) => {
+  await boot(page);
+  await openPreview(page, "/tmp/fp/clip.mp4", 360, 300);
+  const media = page.locator(
+    '[data-testid="preview-media"][data-media-kind="video"]',
+  );
+  await expect(media).toBeVisible();
+  const hBefore = (await media.boundingBox())!.height;
+
+  const preview = page.locator('[data-testid="floating-preview"]');
+  const pb = (await preview.boundingBox())!;
+  await page.mouse.move(pb.x + pb.width / 2, pb.y + pb.height - 8);
+  const actions = page.locator('[data-testid="preview-actions"]');
+  await expect(actions).toBeVisible({ timeout: 2000 });
+
+  const hAfter = (await media.boundingBox())!.height;
+  expect(Math.abs(hAfter - hBefore)).toBeLessThanOrEqual(2);
+
+  const pos = await actions.evaluate((el) => getComputedStyle(el).position);
+  expect(pos).toBe("absolute");
+});
+
+// QG-5 证据探针（#640）：EVIDENCE_DIR 设置时采集四态截图，平时跳过。
+test("evidence: 视频底栏四态", async ({ page }) => {
+  const dir = process.env.EVIDENCE_DIR;
+  test.skip(!dir, "EVIDENCE_DIR 未设置");
+  await boot(page);
+  await openPreview(page, "/tmp/fp/clip.mp4", 360, 300);
+  const preview = page.locator('[data-testid="floating-preview"]');
+  const media = page.locator(
+    '[data-testid="preview-media"][data-media-kind="video"]',
+  );
+  await expect(media).toBeVisible();
+  const hBefore = (await media.boundingBox())!.height;
+  await preview.screenshot({ path: `${dir}/video-bar-hidden.png` });
+
+  const pb = (await preview.boundingBox())!;
+  await page.mouse.move(pb.x + pb.width / 2, pb.y + pb.height - 8);
+  const actions = page.locator('[data-testid="preview-actions"]');
+  await expect(actions).toBeVisible({ timeout: 2000 });
+  const hAfter = (await media.boundingBox())!.height;
+  expect(Math.abs(hAfter - hBefore)).toBeLessThanOrEqual(2);
+  await preview.screenshot({ path: `${dir}/video-bar-visible.png` });
+
+  await page
+    .locator('[data-testid="preview-action"][data-action="open"]')
+    .hover();
+  await expect(
+    page.locator('[data-testid="preview-action"][data-action="open"]'),
+  ).toBeVisible();
+  await preview.screenshot({ path: `${dir}/video-bar-hover.png` });
+
+  await page.locator('[data-testid="preview-close"]').click({ timeout: 2000 });
+  await expect(preview).toHaveCount(0, { timeout: 2000 });
+  await page.screenshot({ path: `${dir}/video-closed.png` });
+});

@@ -752,7 +752,7 @@ export default function FloatingPreview({
           data-testid="preview-actions"
           onPointerEnter={() => setActionsVisible(true)}
           onPointerLeave={() => setActionsVisible(false)}
-          className="flex shrink-0 items-center gap-0.5 border-t border-[var(--app-border)] py-1 pr-2 text-[11px]"
+          className="absolute bottom-0 left-0 right-0 z-10 flex items-center gap-0.5 border-t border-[var(--app-border)] bg-[var(--app-surface)] py-1 pr-2 text-[11px]"
           style={{ paddingLeft: 24 }}
         >
           <button
@@ -811,6 +811,9 @@ export default function FloatingPreview({
           onLostPointerCapture={() => setResizeEdge(null)}
           style={{
             position: "absolute",
+            // 底栏也是 absolute（z-10）且出现条件覆盖底边命中带：
+            // 手柄必须压在底栏之上，否则底边/角部拖拽的 pointerdown 落在底栏上。
+            zIndex: 20,
             cursor: HANDLE_CURSOR[edge],
             ...HANDLE_STYLE[edge],
           }}
