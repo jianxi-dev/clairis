@@ -1802,7 +1802,7 @@ html[data-tab-drag="true"] body * {
   position: relative;
   display: flex;
   align-items: baseline;
-  gap: 0.5em;
+  gap: 0;
 }
 
 .cm-content .cm-callout-icon {

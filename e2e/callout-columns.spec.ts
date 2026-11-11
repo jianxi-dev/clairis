@@ -89,7 +89,7 @@ test("分栏渲染为多列", async ({ page }) => {
   await expect(columns.locator(".cm-column").nth(1)).toContainText("右栏内容");
 });
 
-test("高亮块图标与标题间距为半个汉字宽", async ({ page }) => {
+test("高亮块图标与标题间距不超过 2px（#658）", async ({ page }) => {
   await openDoc(
     page,
     "/Users/test/co-gap.md",
@@ -101,13 +101,53 @@ test("高亮块图标与标题间距为半个汉字宽", async ({ page }) => {
     const title = el.querySelector(".cm-callout-title") as HTMLElement;
     const ir = icon.getBoundingClientRect();
     const tr = title.getBoundingClientRect();
+    return { gap: tr.left - ir.right };
+  });
+  expect(metrics.gap).toBeLessThanOrEqual(2);
+  expect(metrics.gap).toBeGreaterThanOrEqual(0);
+});
+
+test("无标题高亮块头部不留空白槽（#658）", async ({ page }) => {
+  await openDoc(
+    page,
+    "/Users/test/co-empty-gap.md",
+    "> [!NOTE]\n> 无标题正文\n\n段落",
+  );
+  const header = page.locator(".cm-callout-header").first();
+  const metrics = await header.evaluate((el) => {
+    const title = el.querySelector(".cm-callout-title") as HTMLElement;
     return {
-      gap: tr.left - ir.right,
-      halfChar: parseFloat(getComputedStyle(el).fontSize) / 2,
+      titleWidth: title.getBoundingClientRect().width,
+      fontSize: parseFloat(getComputedStyle(el).fontSize),
     };
   });
-  // gap 生效在 header 的 em 上，基准取 header 自身字号而非卡片。
-  expect(metrics.gap).toBeCloseTo(metrics.halfChar, 1);
+  expect(metrics.titleWidth).toBeLessThan(metrics.fontSize);
+});
+
+test("相邻同类型高亮块改图标互不影响（#658）", async ({ page }) => {
+  await openDoc(
+    page,
+    "/Users/test/co-adjacent.md",
+    "> [!NOTE] 第一个\n> 甲\n\n> [!NOTE] 第二个\n> 乙\n\n段落",
+  );
+  const cards = page.locator(".cm-callout");
+  await expect(cards).toHaveCount(2);
+  const before = await cards.nth(1).getAttribute("data-callout-emoji");
+
+  await cards.nth(0).locator(".cm-callout-icon").click();
+  const options = page.locator('[data-testid="cm-callout-emoji-option"]');
+  await expect(options.first()).toBeVisible({ timeout: 2000 });
+  const count = await options.count();
+  for (let i = 0; i < count; i += 1) {
+    const emoji = await options.nth(i).getAttribute("data-emoji");
+    if (emoji && emoji !== "📝") {
+      await options.nth(i).click();
+      break;
+    }
+  }
+  await page.waitForTimeout(200);
+  await expect(cards.nth(0).locator(".cm-callout-icon")).not.toHaveText("📝");
+  expect(await cards.nth(1).getAttribute("data-callout-emoji")).toBe(before);
 });
 
 test("空标题高亮块点击头部仍可进入标题编辑", async ({ page }) => {
