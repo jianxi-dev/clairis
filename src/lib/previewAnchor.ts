@@ -305,7 +305,7 @@ export function isThumbZoneOfBox(
 }
 
 /**
- * 是否应当安排离窗关闭：钉住 / 拖拽缩放中 / 指针仍在预览窗或 rail 均不关。
+ * 是否应当安排离窗关闭：钉住 / 拖拽缩放中 / 指针仍在预览窗或 rail（含桥接带）均不关。
  */
 export function shouldScheduleLeaveClose(input: {
   pointer: Point;
@@ -315,9 +315,33 @@ export function shouldScheduleLeaveClose(input: {
   interacting: boolean;
 }): boolean {
   if (input.pinned || input.interacting) return false;
-  if (pointInBox(input.pointer, input.previewBox)) return false;
-  if (pointInBox(input.pointer, input.railBox)) return false;
+  const tol = PREVIEW_LEAVE_BRIDGE_TOLERANCE;
+  if (pointNearBox(input.pointer, input.previewBox, tol)) return false;
+  if (pointNearBox(input.pointer, input.railBox, tol)) return false;
   return true;
+}
+
+/**
+ * 指针距盒边缘多少 px 内仍算「未离开」。
+ * 悬浮窗锚在栏右缘 + PREVIEW_GAP 的空隙上，指针滑入途中必经空隙，
+ * 无桥接带时 180ms 防抖会在滑入前就关窗（#639）。
+ * 不变量：必须大于 PREVIEW_GAP，两侧桥接带才能在整段空隙上重叠
+ * （gap=12 时 rail 带 [R,R+20] 与窗带 [R-8,R+12] 完全覆盖）；gap 调大需同步调本值。
+ */
+export const PREVIEW_LEAVE_BRIDGE_TOLERANCE = 20;
+
+export function pointNearBox(
+  p: Point,
+  b: Box | null | undefined,
+  tolerance: number,
+): boolean {
+  if (!b) return false;
+  return (
+    p.x >= b.left - tolerance &&
+    p.x <= b.left + b.width + tolerance &&
+    p.y >= b.top - tolerance &&
+    p.y <= b.top + b.height + tolerance
+  );
 }
 
 /**

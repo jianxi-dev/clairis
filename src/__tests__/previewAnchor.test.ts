@@ -375,6 +375,24 @@ describe("shouldScheduleLeaveClose（离窗关闭判定）", () => {
     expect(shouldScheduleLeaveClose(base)).toBe(true);
   });
 
+  it("指针在预览窗与 rail 之间的空隙（容差带内）→ 不关", () => {
+    // rail 右缘 240、预览窗左缘 300，12px 间隙；指针 288 距窗 12px。
+    expect(
+      shouldScheduleLeaveClose({ ...base, pointer: { x: 288, y: 200 } }),
+    ).toBe(false);
+    // 距 rail 右缘 10px 同样在桥接带内。
+    expect(
+      shouldScheduleLeaveClose({ ...base, pointer: { x: 250, y: 200 } }),
+    ).toBe(false);
+  });
+
+  it("指针超出容差带 → 安排关闭", () => {
+    // rail 桥接带止于 260，预览窗桥接带始于 280；272 在两者之间的死区。
+    expect(
+      shouldScheduleLeaveClose({ ...base, pointer: { x: 272, y: 200 } }),
+    ).toBe(true);
+  });
+
   it("钉住 / 拖拽缩放中 → 不关", () => {
     expect(shouldScheduleLeaveClose({ ...base, pinned: true })).toBe(false);
     expect(shouldScheduleLeaveClose({ ...base, interacting: true })).toBe(
