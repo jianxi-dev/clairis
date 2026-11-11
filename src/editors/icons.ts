@@ -236,17 +236,20 @@ const ICON_REGISTRY: Record<string, IconDef> = {
   // Alignment — simple rule glyphs, sized for the 18px toolbar slot.
   AlignLeftOutlined: {
     kind: "paths",
-    paths: ["M4 6h16M4 10h10M4 14h16M4 18h10"],
+    paths: ["M4 5h16v2H4zM4 9h10v2H4zM4 13h16v2H4zM4 17h10v2H4z"],
   },
   AlignCenterOutlined: {
     kind: "paths",
-    paths: ["M4 6h16M7 10h10M4 14h16M7 18h10"],
+    paths: ["M4 5h16v2H4zM7 9h10v2H7zM4 13h16v2H4zM7 17h10v2H7z"],
   },
   AlignRightOutlined: {
     kind: "paths",
-    paths: ["M4 6h16M10 10h10M4 14h16M10 18h10"],
+    paths: ["M4 5h16v2H4zM10 9h10v2H10zM4 13h16v2H4zM10 17h10v2H10z"],
   },
-  AlignClearOutlined: { kind: "paths", paths: ["M4 6h16M4 12h16M4 18h16"] },
+  AlignClearOutlined: {
+    kind: "paths",
+    paths: ["M4 5h16v2H4zM4 11h16v2H4zM4 17h16v2H4z"],
+  },
 
   // 缩进 / 反缩进 —— 线条错位 + 指向箭头，语义区别于对齐图标。
   IndentIncreaseOutlined: {
@@ -480,7 +483,7 @@ export const COMMAND_ICON_NAME: Readonly<Record<string, string>> = {
   "insert-table": "TableChartOutlined",
   "insert-callout": "CalloutOutlined",
   "insert-html": "CodeOutlined",
-  "insert-css": "CodeOutlined",
+  "insert-css": "CssOutlined",
   "code-copy": "CopyOutlined",
   "heading-1": "H1Outlined",
   "heading-2": "H2Outlined",

@@ -752,7 +752,9 @@ test("对齐与缩进入口有图标，子项图标与项数一致", async ({ pa
   }
 });
 
-test("类型二级面板：指针移出后仍保持，Esc 才收起", async ({ page }) => {
+test("类型二级面板：行内→面板不漏关，指针移远即收（#649）", async ({
+  page,
+}) => {
   await page.evaluate(() => {
     const win = window as unknown as Record<string, any>;
     win.__biaoyue_openFile__(
@@ -768,11 +770,19 @@ test("类型二级面板：指针移出后仍保持，Esc 才收起", async ({ p
   const panel = page.locator('[data-testid="block-menu-type-panel"]');
   await panel.waitFor({ timeout: 3000 });
 
-  await page.mouse.move(900, 620);
-  await page.waitForTimeout(600);
+  await panel.hover();
+  await page.waitForTimeout(300);
   await expect(panel).toBeVisible();
-  await expect(page.locator('[data-testid="block-menu"]')).toBeVisible();
 
+  await page.mouse.move(900, 620);
+  await expect(panel).toHaveCount(0, { timeout: 3000 });
+  await expect(page.locator('[data-testid="block-menu"]')).toHaveCount(0, {
+    timeout: 3000,
+  });
+
+  await hoverHandle(page, 0);
+  await page.locator('[data-testid="block-menu-type"]').hover();
+  await panel.waitFor({ timeout: 3000 });
   await page.keyboard.press("Escape");
   await expect(panel).toHaveCount(0);
   await expect(page.locator('[data-testid="block-menu"]')).toHaveCount(0);
