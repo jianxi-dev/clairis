@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "wheel-open",
+      "screenshot": ".artifacts/637/wheel-open.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-11T08:16:36Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "wheel-sector-no-tip",
+      "screenshot": ".artifacts/637/wheel-sector-no-tip.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-11T08:16:36Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "tip-visible-above-wheel",
+      "screenshot": ".artifacts/637/tip-visible-above-wheel.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-11T08:16:36Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "wheel-closed-or-tip-cleared",
+      "screenshot": ".artifacts/637/wheel-closed-or-tip-cleared.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-11T08:16:36Z",
+      "runner": "unknown@MMBP"
+    }
+  ]
+}

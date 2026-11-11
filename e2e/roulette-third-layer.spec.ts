@@ -79,4 +79,41 @@ test("提示只保留圆心操作说明", async ({ page }) => {
   await page.locator('[data-testid="roulette-center"]').hover();
   await page.clock.fastForward(60_000);
   await expect(page.locator(".app-tip")).toContainText("格式刷");
+
+  // 提示胶囊必须浮在轮盘上层，否则被盘面（z-index 3000）盖住看不见（#637）。
+  const tipZ = await page
+    .locator(".app-tip")
+    .evaluate((el) => Number(getComputedStyle(el).zIndex));
+  const wheelZ = await page
+    .locator('[data-testid="selection-roulette"]')
+    .evaluate((el) => Number(getComputedStyle(el).zIndex));
+  expect(tipZ).toBeGreaterThan(wheelZ);
+});
+
+// QG-5 证据探针（#637）：EVIDENCE_DIR 设置时采集四态截图，平时跳过。
+test("evidence: 轮盘提示四态", async ({ page }) => {
+  const dir = process.env.EVIDENCE_DIR;
+  test.skip(!dir, "EVIDENCE_DIR 未设置");
+  await openWheel(page);
+  await page
+    .locator('[data-testid="selection-roulette"]')
+    .screenshot({ path: `${dir}/wheel-open.png` });
+
+  await page.locator('[data-sector="smart"]').hover();
+  await page.waitForTimeout(700);
+  await expect(page.locator(".app-tip")).toHaveCount(0);
+  await page
+    .locator('[data-testid="selection-roulette"]')
+    .screenshot({ path: `${dir}/wheel-sector-no-tip.png` });
+
+  await page.clock.install();
+  await page.locator('[data-testid="roulette-center"]').hover();
+  await page.clock.fastForward(60_000);
+  await expect(page.locator(".app-tip")).toContainText("格式刷");
+  await page.screenshot({ path: `${dir}/tip-visible-above-wheel.png` });
+
+  await page.mouse.move(640, 400, { steps: 5 });
+  await page.clock.runFor(200);
+  await expect(page.locator(".app-tip")).toHaveCount(0);
+  await page.screenshot({ path: `${dir}/wheel-closed-or-tip-cleared.png` });
 });

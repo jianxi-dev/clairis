@@ -3151,7 +3151,8 @@ html[data-tab-drag="true"] body * {
 /* ── 全局胶囊提示（ui-polish-batch12 9.1）───────────────────────── */
 .app-tip {
   position: fixed;
-  z-index: 100;
+  /* 全仓顶层（> 轮盘 3000）：提示被任何浮层盖住即不可见（#637）。 */
+  z-index: 4000;
   max-width: 320px;
   padding: 4px 12px;
   border: 1px solid var(--app-border);
