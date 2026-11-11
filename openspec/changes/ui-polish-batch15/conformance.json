@@ -1,0 +1,281 @@
+{
+  "change": "ui-polish-batch15",
+  "requirements": [
+    {
+      "id": "R-1",
+      "text": "视频连播与旋转",
+      "anchors": [
+        {
+          "id": "A-1.1",
+          "claim": "第一个视频播完后当前播放项索引",
+          "kind": "state-machine",
+          "assert": "2",
+          "source": "#660 第 1 项 / design D1"
+        },
+        {
+          "id": "A-1.2",
+          "claim": "竖拍视频容器计算 transform 含 rotate",
+          "kind": "exact",
+          "assert": "\"true\"",
+          "source": "#660 第 1 项 / design D1"
+        },
+        {
+          "id": "A-1.3",
+          "claim": "视频可见宽度不超过容器宽度",
+          "kind": "exact",
+          "assert": "\"true\"",
+          "source": "#660 第 1 项 / design D1"
+        }
+      ]
+    },
+    {
+      "id": "R-2",
+      "text": "轮盘召唤与形态",
+      "anchors": [
+        {
+          "id": "A-2.1",
+          "claim": "选中文字后轮盘节点数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "#660 第 2 项 / design D2"
+        },
+        {
+          "id": "A-2.2",
+          "claim": "按开关快捷键后轮盘节点数",
+          "kind": "exact",
+          "assert": "1",
+          "source": "#660 第 2 项 / design D2"
+        },
+        {
+          "id": "A-2.3",
+          "claim": "默认形态为圆心时可见扇区数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "#660 第 2 项 / design D3"
+        },
+        {
+          "id": "A-2.4",
+          "claim": "双击圆心后形态切换为整盘",
+          "kind": "state-machine",
+          "assert": "\"true\"",
+          "source": "#660 第 2 项 / design D3"
+        },
+        {
+          "id": "A-2.5",
+          "claim": "中键拖动后轮盘中心坐标变化",
+          "kind": "exact",
+          "assert": "\"true\"",
+          "source": "#660 第 2 项 / design D4"
+        }
+      ]
+    },
+    {
+      "id": "R-3",
+      "text": "轮盘搜索",
+      "anchors": [
+        {
+          "id": "A-3.1",
+          "claim": "搜索结果行数上限",
+          "kind": "exact",
+          "assert": "9",
+          "source": "#660 第 2 项 / design D5"
+        },
+        {
+          "id": "A-3.2",
+          "claim": "搜索结果首行默认选中",
+          "kind": "exact",
+          "assert": "\"true\"",
+          "source": "#660 第 2 项 / design D5"
+        },
+        {
+          "id": "A-3.3",
+          "claim": "搜索结果不含层级名称行",
+          "kind": "exact",
+          "assert": "\"true\"",
+          "source": "#660 第 2 项 / design D5"
+        },
+        {
+          "id": "A-3.4",
+          "claim": "滚动后快捷键列横向坐标不变",
+          "kind": "exact",
+          "assert": "\"true\"",
+          "source": "#660 第 2 项 / design D5"
+        },
+        {
+          "id": "A-3.5",
+          "claim": "第二行显示的快捷键序号",
+          "kind": "exact",
+          "assert": "2",
+          "source": "#660 第 2 项 / design D5"
+        }
+      ]
+    },
+    {
+      "id": "R-4",
+      "text": "提示时长",
+      "anchors": [
+        {
+          "id": "A-4.1",
+          "claim": "设置 1.5 秒后配置持久值",
+          "kind": "exact",
+          "assert": "1.5",
+          "source": "#660 第 3 项 / design D6"
+        },
+        {
+          "id": "A-4.2",
+          "claim": "提示消失耗时下限（ms）",
+          "kind": "exact",
+          "assert": "1400",
+          "source": "#660 第 3 项 / design D6"
+        }
+      ]
+    },
+    {
+      "id": "R-5",
+      "text": "块对齐标记隐藏",
+      "anchors": [
+        {
+          "id": "A-5.1",
+          "claim": "编辑态可见文本包含 `:::`",
+          "kind": "exact",
+          "assert": "\"false\"",
+          "source": "#660 第 4 项 / design D7"
+        },
+        {
+          "id": "A-5.2",
+          "claim": "源码态可见文本包含 `:::`",
+          "kind": "exact",
+          "assert": "\"true\"",
+          "source": "#660 第 4 项 / design D7"
+        }
+      ]
+    },
+    {
+      "id": "R-6",
+      "text": "独立静音",
+      "anchors": [
+        {
+          "id": "A-6.1",
+          "claim": "静音第一个媒体后第二个媒体 muted",
+          "kind": "exact",
+          "assert": "\"false\"",
+          "source": "#660 第 5 项 / design D8"
+        }
+      ]
+    },
+    {
+      "id": "R-7",
+      "text": "音频淡出与同目录列表",
+      "anchors": [
+        {
+          "id": "A-7.1",
+          "claim": "静音后 100ms 仍处于播放态",
+          "kind": "exact",
+          "assert": "\"false\"",
+          "source": "#660 第 6 项（用户 2026-11-11 更正：立即停止）/ design D9"
+        },
+        {
+          "id": "A-7.2",
+          "claim": "同目录 3 个音频时列表项数",
+          "kind": "exact",
+          "assert": "3",
+          "source": "#660 第 6 项 / design D9"
+        }
+      ]
+    },
+    {
+      "id": "R-8",
+      "text": "PDF 按钮栏",
+      "anchors": [
+        {
+          "id": "A-8.1",
+          "claim": "固定隐藏后按钮栏计算 display",
+          "kind": "exact",
+          "assert": "\"none\"",
+          "source": "#660 第 7 项 / design D10"
+        },
+        {
+          "id": "A-8.2",
+          "claim": "快捷键切换后按钮栏可见",
+          "kind": "exact",
+          "assert": "\"true\"",
+          "source": "#660 第 7 项 / design D10"
+        }
+      ]
+    },
+    {
+      "id": "R-9",
+      "text": "顶栏",
+      "anchors": [
+        {
+          "id": "A-9.1",
+          "claim": "顶栏产品名文本长度",
+          "kind": "exact",
+          "assert": "0",
+          "source": "#660 第 8 项 / design D11"
+        },
+        {
+          "id": "A-9.2",
+          "claim": "未钉住时窗口按钮落在栏目页签栏区域",
+          "kind": "exact",
+          "assert": "\"true\"",
+          "source": "#660 第 8 项 / design D11"
+        },
+        {
+          "id": "A-9.3",
+          "claim": "钉住时窗口按钮落在左栏区域",
+          "kind": "exact",
+          "assert": "\"true\"",
+          "source": "#660 第 8 项 / design D11"
+        },
+        {
+          "id": "A-9.4",
+          "claim": "第一个页签左缘与目标位置偏差（px）",
+          "kind": "exact",
+          "assert": "2",
+          "source": "#660 第 8 项 / design D11"
+        },
+        {
+          "id": "A-9.5",
+          "claim": "左栏「阅读空间」文本长度",
+          "kind": "exact",
+          "assert": "0",
+          "source": "#660 第 8 项 / design D11"
+        }
+      ]
+    },
+    {
+      "id": "R-10",
+      "text": "轮盘历史与颜色二级",
+      "anchors": [
+        {
+          "id": "A-10.1",
+          "claim": "历史分组剪切按钮的索引",
+          "kind": "exact",
+          "assert": "2",
+          "source": "#660 第 9 项 / design D12"
+        },
+        {
+          "id": "A-10.2",
+          "claim": "颜色二级透明项有棋盘格或描边",
+          "kind": "exact",
+          "assert": "\"true\"",
+          "source": "#660 第 9 项 / design D12"
+        }
+      ]
+    },
+    {
+      "id": "R-11",
+      "text": "栏目更多操作菜单",
+      "anchors": [
+        {
+          "id": "A-11.1",
+          "claim": "菜单右缘越出视口像素",
+          "kind": "exact",
+          "assert": "0",
+          "source": "#660 第 10 项 / design D13"
+        }
+      ]
+    }
+  ]
+}
