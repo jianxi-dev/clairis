@@ -75,6 +75,10 @@ pub struct AppConfig {
     /// 轮盘圆心位置（ui-polish-batch15 2.1）：中键拖动后的落点，重载后保持。
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub roulette_position: Option<RoulettePosition>,
+    /// 提示信息显示时长（秒，ui-polish-batch15 4.1）：0.1–10，最多 1 位小数。
+    /// 缺省 = None，消费端按 3 秒处理。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub notice_duration: Option<f64>,
 }
 
 /// 轮盘位置（ui-polish-batch15 2.1）：中键拖动后的圆心坐标（屏内像素）。
@@ -186,6 +190,7 @@ impl Default for AppConfig {
             roulette_hotkey: None,
             roulette_form: None,
             roulette_position: None,
+            notice_duration: None,
             sidebar_left_visible: Some(true),
             sidebar_right_visible: Some(false),
             sidebar_left_width: Some(220.0),
@@ -422,6 +427,30 @@ fn check_enum(field: &str, value: Option<&str>, allowed: &[&str]) -> Result<(), 
     }
 }
 
+/// 提示时长（ui-polish-batch15 4.1）：有限数、0.1–10、最多 1 位小数。
+fn check_notice_duration(value: Option<f64>) -> Result<(), AppError> {
+    let Some(v) = value else { return Ok(()) };
+    if !v.is_finite() {
+        return Err(AppError::Validation {
+            context: "noticeDuration".into(),
+            message: "必须是有限数值".into(),
+        });
+    }
+    if !(0.1..=10.0).contains(&v) {
+        return Err(AppError::Validation {
+            context: "noticeDuration".into(),
+            message: format!("{v} 超出范围 0.1–10"),
+        });
+    }
+    if (v * 10.0 - (v * 10.0).round()).abs() > 1e-9 {
+        return Err(AppError::Validation {
+            context: "noticeDuration".into(),
+            message: format!("{v} 最多 1 位小数"),
+        });
+    }
+    Ok(())
+}
+
 pub fn validate_config(config: &AppConfig) -> Result<(), AppError> {
     check_range("fontSize", config.font_size, 8.0, 96.0)?;
     check_range("readerFontSize", config.reader_font_size, 8.0, 96.0)?;
@@ -554,6 +583,7 @@ pub fn validate_config(config: &AppConfig) -> Result<(), AppError> {
     if let Some(form) = &config.roulette_form {
         check_enum("rouletteForm", Some(form.as_str()), &["hub", "disk"])?;
     }
+    check_notice_duration(config.notice_duration)?;
     if let Some(pos) = &config.roulette_position {
         check_range("roulettePosition.x", Some(pos.x), -20000.0, 20000.0)?;
         check_range("roulettePosition.y", Some(pos.y), -20000.0, 20000.0)?;
@@ -1409,5 +1439,63 @@ mod tests {
         assert_eq!(loaded.roulette_hotkey, None);
         assert_eq!(loaded.roulette_form, None);
         assert_eq!(loaded.roulette_position, None);
+    }
+
+    #[test]
+    fn notice_duration_accepts_good_and_rejects_bad() {
+        let mut config = AppConfig::default();
+        assert_eq!(config.notice_duration, None);
+        assert!(validate_config(&config).is_ok());
+
+        for good in [0.1, 1.5, 3.0, 10.0] {
+            config.notice_duration = Some(good);
+            assert!(validate_config(&config).is_ok(), "{good} 应被接受");
+        }
+
+        for bad in [
+            0.0,
+            0.05,
+            1.55,
+            10.1,
+            f64::NAN,
+            f64::INFINITY,
+            f64::NEG_INFINITY,
+        ] {
+            config.notice_duration = Some(bad);
+            assert!(validate_config(&config).is_err(), "{bad} 应被拒绝");
+        }
+    }
+
+    #[test]
+    fn notice_duration_round_trips_and_snapshot_restores() {
+        let dir = temp_base("notice");
+        let base = dir.path();
+        write_user(base, r#"{"theme":"dark"}"#);
+        assert_eq!(load_config_at(base).unwrap().notice_duration, None);
+
+        let mut config = AppConfig::default();
+        config.notice_duration = Some(1.5);
+        save_config_at(base, &config).unwrap();
+        let user = read_user(base);
+        assert!(
+            user.contains("\"noticeDuration\": 1.5"),
+            "user 层应含 noticeDuration: {user}"
+        );
+        assert_eq!(load_config_at(base).unwrap().notice_duration, Some(1.5));
+
+        // 改成 5.0 后，最新快照仍是 1.5 保存前的状态
+        config.notice_duration = Some(5.0);
+        save_config_at(base, &config).unwrap();
+        let snapshots = list_snapshots(base).unwrap();
+        let snap = snapshots.last().unwrap().clone();
+        let restored = restore_snapshot(base, &snap).unwrap();
+        assert_eq!(restored.notice_duration, Some(1.5));
+
+        // 非法值：校验拦下，user 文件字节不变
+        let before = read_user(base);
+        config.notice_duration = Some(1.55);
+        assert!(validate_config(&config).is_err());
+        assert!(save_config_at(base, &config).is_err());
+        assert_eq!(read_user(base), before);
     }
 }

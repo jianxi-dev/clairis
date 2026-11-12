@@ -1,0 +1,36 @@
+{
+  "states": [
+    {
+      "state": "set-1-5",
+      "screenshot": ".artifacts/667/state-1-set-1-5.png",
+      "assertion": "passed",
+      "detail": "设置 1.5 秒：编辑器配置与 localStorage 持久值严格 = 1.5（A-4.1）",
+      "recorded_at": "2026-11-12T09:38:37Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "reject-invalid",
+      "screenshot": ".artifacts/667/state-2-reject-1-55.png",
+      "assertion": "passed",
+      "detail": "输入 1.55 被拒：配置保持 1.5、输入框回退显示 1.5（A-4.2；0 同理）",
+      "recorded_at": "2026-11-12T09:38:37Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "reload-keep",
+      "screenshot": ".artifacts/667/state-3-reload-keep.png",
+      "assertion": "passed",
+      "detail": "reload 后配置仍 1.5（mock 配置持久化在 localStorage.__mock_config）",
+      "recorded_at": "2026-11-12T09:38:37Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "clear-default",
+      "screenshot": ".artifacts/667/state-4-default.png",
+      "assertion": "passed",
+      "detail": "清空输入：配置 null，提示回落默认 3 秒（e2e 时序断言 ≥2800ms）",
+      "recorded_at": "2026-11-12T09:38:37Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}

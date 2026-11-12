@@ -74,6 +74,8 @@ export interface AppConfig {
   rouletteForm?: "hub" | "disk" | null;
   /** 轮盘圆心位置（px）；null/缺省 = 跟在选区旁（ui-polish-batch15 2.1） */
   roulettePosition?: { x: number; y: number } | null;
+  /** 提示信息显示时长（秒，0.1–10，1 位小数）；null/缺省 = 3 秒（ui-polish-batch15 4.1） */
+  noticeDuration?: number | null;
   /** 横向工具条动作集合与顺序；null/缺省 = 内置 12 项（ui-toolbar-slots 1.1） */
   htmlToolbarItems?: string[] | null;
   /** 工作区 pane 递归树（layout-portal 3.1）：序列化 JSON，跨重启恢复 */
