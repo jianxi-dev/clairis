@@ -1,6 +1,56 @@
 import { test, expect, type Page } from "@playwright/test";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { hostname as osHostname } from "node:os";
+import path from "node:path";
 
 const APP_URL = "http://localhost:1420";
+const ART = path.resolve(process.cwd(), ".artifacts/714");
+
+mkdirSync(ART, { recursive: true });
+
+type Assertion = "passed" | "failed" | "untested";
+interface StateRow {
+  state: string;
+  screenshot: string;
+  assertion: Assertion;
+  recorded_at: string;
+  runner: string;
+}
+const states: StateRow[] = [];
+
+async function record(
+  page: Page,
+  state: string,
+  assertion: Assertion = "passed",
+): Promise<void> {
+  const file = path.join(ART, `${state}.png`);
+  await page.screenshot({ path: file });
+  states.push({
+    state,
+    screenshot: path.relative(process.cwd(), file),
+    assertion,
+    recorded_at: new Date().toISOString(),
+    runner: `${process.env.USER ?? "unknown"}@${osHostname()}`,
+  });
+}
+
+test.afterAll(() => {
+  const byState = new Map<string, StateRow>();
+  for (const row of states) byState.set(row.state, row);
+  writeFileSync(
+    path.join(ART, "state-coverage.json"),
+    `${JSON.stringify(
+      {
+        task: "19.1",
+        change: "editor-surface-batch16",
+        issue: 714,
+        states: [...byState.values()],
+      },
+      null,
+      2,
+    )}\n`,
+  );
+});
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
@@ -28,6 +78,21 @@ async function openInactive(page: Page, path: string, content: string) {
   await editor.click();
   await page.keyboard.press("Control+End");
   return editor;
+}
+
+/** 在行的左缘 25% 召唤区里移动指针（与 block-handle.spec.ts 同法）。 */
+async function hoverLineLeft(page: Page, line: ReturnType<Page["locator"]>) {
+  const box = (await line.boundingBox())!;
+  const content = await page.evaluate(() => {
+    const rect = (
+      document.querySelector(".cm-content") as HTMLElement
+    ).getBoundingClientRect();
+    return { left: rect.left, width: rect.width };
+  });
+  await page.mouse.move(
+    Math.max(box.x, content.left + content.width * 0.1),
+    box.y + box.height / 2,
+  );
 }
 
 test("分割线渲染为装饰块", async ({ page }) => {
@@ -70,4 +135,57 @@ test("mermaid 块在非活跃时出图容器", async ({ page }) => {
   );
   await expect(page.locator(".cm-mermaid-block").first()).toBeVisible();
   await expect(page.locator(".cm-content")).not.toContainText("```mermaid");
+});
+
+test("任务方框 3px 圆角且手柄 / 插入菜单图标为方框内打勾", async ({ page }) => {
+  const editor = await openInactive(
+    page,
+    "/Users/test/bd-task-icon.md",
+    "- [ ] 任务一\n\n正文",
+  );
+  const checkbox = page.locator(".cm-task-checkbox").first();
+  await expect(checkbox).toBeVisible();
+  await expect(checkbox).toHaveCSS("border-radius", "3px");
+  await record(page, "task-row");
+
+  const line = page.locator(".cm-line").filter({ hasText: "任务一" }).first();
+  await hoverLineLeft(page, line);
+  const handle = page.locator('.cm-block-handle[data-block-from="0"]');
+  await expect(handle).toHaveClass(/cm-block-handle-visible/, {
+    timeout: 3000,
+  });
+  const handleIcon = handle.locator('svg[data-icon="TodoOutlined"]');
+  await expect(handleIcon).toBeVisible();
+  await expect(handleIcon.locator("path")).toHaveCount(2);
+  await record(page, "handle-icon");
+
+  await editor.click();
+  await page.keyboard.press("Control+End");
+  // 斜杠只在词首触发：先回到空行，再输入 `/`。
+  await page.keyboard.press("ArrowUp");
+  await page.keyboard.type("/");
+  const menu = page.locator(".mdb-slash-menu");
+  await expect(menu).toBeVisible();
+  const label = page
+    .locator(".mdb-slash-item-label")
+    .filter({ hasText: /^任务$/ });
+  await expect(label).toHaveCount(1);
+  const menuIcon = label
+    .locator("xpath=..")
+    .locator('svg[data-icon="TodoOutlined"]');
+  await expect(menuIcon).toBeVisible();
+  await expect(menuIcon.locator("path")).toHaveCount(2);
+  await record(page, "insert-menu-icon");
+
+  await page.keyboard.press("Escape");
+  await expect(menu).toHaveCount(0);
+
+  await checkbox.click();
+  await expect(checkbox).toHaveAttribute("data-checked", "true");
+  const afterContent = await checkbox.evaluate(
+    (el) => getComputedStyle(el, "::after").content,
+  );
+  expect(afterContent).not.toBe("none");
+  await expect(checkbox).toHaveCSS("border-radius", "3px");
+  await record(page, "checked");
 });
