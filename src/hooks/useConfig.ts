@@ -64,6 +64,7 @@ interface RustAppConfig {
   rouletteHotkey?: string | null;
   rouletteForm?: string | null;
   roulettePosition?: { x: number; y: number } | null;
+  noticeDuration?: number | null;
   htmlToolbarItems?: string[] | null;
   paneLayout?: string | null;
   railViewSpec?: {
@@ -155,6 +156,7 @@ export async function saveAppConfig(): Promise<void> {
     rouletteHotkey: es.config.rouletteHotkey ?? null,
     rouletteForm: es.config.rouletteForm ?? null,
     roulettePosition: es.config.roulettePosition ?? null,
+    noticeDuration: es.config.noticeDuration ?? null,
     htmlToolbarItems: es.config.htmlToolbarItems ?? null,
     // 读实时值：本次会话分裂/调整的比例要能持久化
     paneLayout: useStore.getState().paneLayoutJson(),
@@ -316,6 +318,19 @@ export function normalizeHtmlToolbarItems(
   return out.length > 0 ? out : null;
 }
 
+/**
+ * 提示时长（ui-polish-batch15 4.1）：有限数、0.1–10、1 位小数才有效，
+ * 其余（含缺失）一律回落 null，消费端按默认 3 秒处理。
+ */
+export function normalizeNoticeDuration(
+  raw: number | null | undefined,
+): number | null {
+  if (raw == null || !Number.isFinite(raw)) return null;
+  if (raw < 0.1 || raw > 10) return null;
+  if (Math.abs(raw * 10 - Math.round(raw * 10)) > 1e-9) return null;
+  return raw;
+}
+
 function applyRustConfig(raw: RustAppConfig): void {
   const config: Partial<AppConfig> = {
     fontSize: raw.fontSize ?? 17,
@@ -360,6 +375,7 @@ function applyRustConfig(raw: RustAppConfig): void {
       Number.isFinite(raw.roulettePosition.y)
         ? { x: raw.roulettePosition.x, y: raw.roulettePosition.y }
         : null,
+    noticeDuration: normalizeNoticeDuration(raw.noticeDuration),
     htmlToolbarItems: normalizeHtmlToolbarItems(raw.htmlToolbarItems),
   };
 

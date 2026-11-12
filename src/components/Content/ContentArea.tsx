@@ -374,13 +374,15 @@ export default function ContentArea({
   const restoredTabRef = useRef<string | null>(null);
   const currentModeRef = useRef<EditorMode>("preview");
 
-  // 非阻塞提示：与 PaneTreeView / ReadingRail 同构（3000ms 自动消失）。
+  // 非阻塞提示：与 PaneTreeView / ReadingRail 同构（时长可配置，缺省 3000ms）。
   const [notice, setNotice] = useState<string | null>(null);
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const showNotice = useCallback((message: string) => {
     setNotice(message);
     if (noticeTimer.current) clearTimeout(noticeTimer.current);
-    noticeTimer.current = setTimeout(() => setNotice(null), 3000);
+    const seconds = useEditorStore.getState().config.noticeDuration;
+    const duration = seconds == null ? 3000 : Math.round(seconds * 1000);
+    noticeTimer.current = setTimeout(() => setNotice(null), duration);
   }, []);
   useEffect(() => {
     return () => {

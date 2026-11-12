@@ -120,6 +120,27 @@ const THEME_OPTIONS = [
 
 const FONT_SIZES = [15, 16, 17, 18, 19, 21] as const;
 
+const NOTICE_DURATION_MIN = 0.1;
+const NOTICE_DURATION_MAX = 10;
+const NOTICE_DURATION_STEP = 0.1;
+
+type NoticeDurationParse =
+  { kind: "default" } | { kind: "valid"; value: number } | { kind: "invalid" };
+
+function parseNoticeDuration(text: string): NoticeDurationParse {
+  const trimmed = text.trim();
+  if (!trimmed) return { kind: "default" };
+  const value = Number(trimmed);
+  if (!Number.isFinite(value)) return { kind: "invalid" };
+  if (value < NOTICE_DURATION_MIN || value > NOTICE_DURATION_MAX) {
+    return { kind: "invalid" };
+  }
+  if (Math.abs(value * 10 - Math.round(value * 10)) > 1e-9) {
+    return { kind: "invalid" };
+  }
+  return { kind: "valid", value };
+}
+
 const READER_TONES = [
   { id: "paper", label: "纸墨", swatch: "#1f1d1a" },
   { id: "indigo", label: "靛青", swatch: "#2b4a7d" },
@@ -564,6 +585,13 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
   );
   const rouletteHotkey = useEditorStore((s) => s.config.rouletteHotkey ?? null);
   const rouletteForm = useEditorStore((s) => s.config.rouletteForm ?? "hub");
+  const noticeDuration = useEditorStore((s) => s.config.noticeDuration ?? null);
+  const [noticeText, setNoticeText] = useState("");
+  const [appliedDuration, setAppliedDuration] = useState<number | null>(null);
+  if (noticeDuration !== appliedDuration) {
+    setAppliedDuration(noticeDuration);
+    setNoticeText(noticeDuration == null ? "" : noticeDuration.toFixed(1));
+  }
   const htmlToolbarItems = useEditorStore(
     (s) => s.config.htmlToolbarItems ?? null,
   );
@@ -769,6 +797,22 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
 
   const chooseRouletteForm = (form: "hub" | "disk") => {
     setConfig({ rouletteForm: form });
+    void saveAppConfig();
+  };
+
+  // 提示时长：输入只改本地文本，失焦/回车才校验落盘；非法值不写配置并回退。
+  const onNoticeDurationChange = (e: ChangeEvent<HTMLInputElement>) => {
+    setNoticeText(e.target.value);
+  };
+  const commitNoticeDuration = () => {
+    const parsed = parseNoticeDuration(noticeText);
+    if (parsed.kind === "invalid") {
+      setNoticeText(noticeDuration == null ? "" : noticeDuration.toFixed(1));
+      return;
+    }
+    setConfig({
+      noticeDuration: parsed.kind === "valid" ? parsed.value : null,
+    });
     void saveAppConfig();
   };
 
@@ -1169,6 +1213,35 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
                     </button>
                   ))}
                 </div>
+              </section>
+
+              <section data-testid="settings-notice-duration-section">
+                <h2 className="mb-1 text-sm font-medium text-[var(--app-text-strong)]">
+                  提示时长
+                </h2>
+                <p className="mb-2 text-xs text-[var(--app-text-3)]">
+                  底部提示信息的显示时长（秒）。0.1–10，最多 1
+                  位小数；留空恢复默认 3 秒。
+                </p>
+                <input
+                  type="number"
+                  step={NOTICE_DURATION_STEP}
+                  min={NOTICE_DURATION_MIN}
+                  max={NOTICE_DURATION_MAX}
+                  value={noticeText}
+                  placeholder="3.0"
+                  onChange={onNoticeDurationChange}
+                  onBlur={commitNoticeDuration}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      commitNoticeDuration();
+                      e.currentTarget.blur();
+                    }
+                  }}
+                  data-testid="settings-notice-duration"
+                  className="mt-1 w-32 rounded border border-[var(--app-border)] bg-[var(--app-surface)] px-2 py-1.5 text-sm text-[var(--app-text)] outline-none focus:border-[var(--app-accent)]"
+                />
               </section>
 
               <section data-testid="settings-roulette-switch">
