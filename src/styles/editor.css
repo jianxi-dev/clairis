@@ -3237,11 +3237,11 @@ html[data-tab-drag="true"] body * {
 }
 
 .sr-filter {
+  --sr-filter-row-h: 26px;
   position: absolute;
   left: 106px;
   top: 256px;
   width: 208px;
-  max-height: 150px;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -3276,14 +3276,18 @@ html[data-tab-drag="true"] body * {
 .sr-filter-list {
   display: flex;
   flex-direction: column;
-  overflow: auto;
+  max-height: calc(9 * var(--sr-filter-row-h));
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
 }
 
 .sr-filter-row {
   display: flex;
+  flex: 0 0 auto;
   align-items: center;
   gap: 6px;
-  height: 26px;
+  height: var(--sr-filter-row-h);
   padding: 0 4px;
   border: 0;
   border-radius: var(--radius-4, 4px);
@@ -3308,10 +3312,14 @@ html[data-tab-drag="true"] body * {
   white-space: nowrap;
 }
 
-.sr-filter-group {
+/* 快捷键列固定在行右缘，不参与横向滚动。 */
+.sr-filter-shortcut {
   flex: 0 0 auto;
+  min-width: 3.5em;
+  text-align: right;
   font-size: 10px;
   color: var(--app-text-3);
+  font-variant-numeric: tabular-nums;
 }
 
 .sr-filter-empty {
