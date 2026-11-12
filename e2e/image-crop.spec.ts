@@ -173,7 +173,7 @@ test("8 个控制点：方向光标 + 裁剪角标", async ({ page }) => {
   ]);
   const probe = await handles.evaluateAll((els) =>
     els.map((el) => {
-      const mark = el.querySelector(".cm-image-crop-mark");
+      const mark = el.querySelector(".image-crop-mark");
       const markBox = mark?.getBoundingClientRect();
       return {
         cursor: getComputedStyle(el).cursor,

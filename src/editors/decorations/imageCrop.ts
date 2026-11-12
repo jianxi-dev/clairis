@@ -154,7 +154,7 @@ function mount(natW: number, natH: number, options: ImageCropOptions): void {
     span.style.cursor = HANDLE_CURSOR[handle];
     span.title = "拖动调整裁剪区域";
     const mark = document.createElement("i");
-    mark.className = "cm-image-crop-mark";
+    mark.className = "image-crop-mark";
     mark.style.cssText =
       "position:absolute; display:block; pointer-events:none;" +
       (HANDLE_MARK[handle] ?? "");
