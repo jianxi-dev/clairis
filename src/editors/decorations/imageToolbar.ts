@@ -92,6 +92,111 @@ const CORNER_POSITIONS: readonly { corner: "tl" | "tr" | "bl" | "br" }[] = [
   { corner: "br" },
 ];
 
+/** 缩放把手方位：e/w/n/s 四边中点 + 四角。 */
+export type ImageHandleKind = "e" | "w" | "n" | "s" | "ne" | "nw" | "se" | "sw";
+
+export interface ImageHandleSpec {
+  readonly handle: ImageHandleKind;
+  readonly cursor: string;
+  readonly width: boolean;
+  readonly height: boolean;
+  /** 宽度位移符号：w/nw/sw 向左拖增长 */
+  readonly signX: 1 | -1;
+  /** 高度位移符号：n/ne/nw 向上拖增长 */
+  readonly signY: 1 | -1;
+  /** 预览时用 container margin-left 钉住对边（左边缘移动） */
+  readonly offsetX: boolean;
+  /** 预览时用 container margin-top 钉住对边（上边缘移动） */
+  readonly offsetY: boolean;
+}
+
+/**
+ * 8 个缩放把手，顺序即 DOM 顺序，e 必须第一个：旧 2.1 拖拽测试通过
+   `[data-testid="cm-image-resize"]` 找它，新测试则断言 e 在最前。
+ */
+export const IMAGE_RESIZE_HANDLES: readonly ImageHandleSpec[] = [
+  {
+    handle: "e",
+    cursor: "ew-resize",
+    width: true,
+    height: false,
+    signX: 1,
+    signY: 1,
+    offsetX: false,
+    offsetY: false,
+  },
+  {
+    handle: "w",
+    cursor: "ew-resize",
+    width: true,
+    height: false,
+    signX: -1,
+    signY: 1,
+    offsetX: true,
+    offsetY: false,
+  },
+  {
+    handle: "n",
+    cursor: "ns-resize",
+    width: false,
+    height: true,
+    signX: 1,
+    signY: -1,
+    offsetX: false,
+    offsetY: true,
+  },
+  {
+    handle: "s",
+    cursor: "ns-resize",
+    width: false,
+    height: true,
+    signX: 1,
+    signY: 1,
+    offsetX: false,
+    offsetY: false,
+  },
+  {
+    handle: "ne",
+    cursor: "nesw-resize",
+    width: true,
+    height: true,
+    signX: 1,
+    signY: -1,
+    offsetX: false,
+    offsetY: true,
+  },
+  {
+    handle: "nw",
+    cursor: "nwse-resize",
+    width: true,
+    height: true,
+    signX: -1,
+    signY: -1,
+    offsetX: true,
+    offsetY: true,
+  },
+  {
+    handle: "se",
+    cursor: "nwse-resize",
+    width: true,
+    height: true,
+    signX: 1,
+    signY: 1,
+    offsetX: false,
+    offsetY: false,
+  },
+  {
+    handle: "sw",
+    cursor: "nesw-resize",
+    width: true,
+    height: true,
+    signX: -1,
+    signY: 1,
+    offsetX: true,
+    offsetY: false,
+  },
+];
+
 interface Selection {
   readonly from: number;
   readonly path: string;
@@ -133,19 +238,35 @@ export function scheduleImageToolbarReposition(): void {
   scheduleReposition();
 }
 
-/** 把选中态套到某个 widget DOM 上：data-selected + 4 个角点。 */
+/** 把选中态套到某个 widget DOM 上：data-selected + 4 个角点 + 8 个缩放把手。 */
 export function markImageWidgetSelected(
   el: HTMLElement,
   isSelected: boolean,
 ): void {
   el.dataset.selected = isSelected ? "true" : "false";
   el.querySelectorAll(".cm-image-corner").forEach((dot) => dot.remove());
+  el.querySelectorAll(".cm-image-handle").forEach((handle) => handle.remove());
   if (!isSelected) return;
   for (const { corner } of CORNER_POSITIONS) {
     const dot = document.createElement("span");
     dot.className = "cm-image-corner";
     dot.dataset.corner = corner;
     el.appendChild(dot);
+  }
+  // 文字回退（解析不出 URL）没有 <img>，不出缩放把手。
+  if (!el.querySelector("img")) return;
+  for (const { handle, cursor } of IMAGE_RESIZE_HANDLES) {
+    const span = document.createElement("span");
+    span.className = "cm-image-handle";
+    span.dataset.handle = handle;
+    span.style.cursor = cursor;
+    span.title = "拖动调整图片大小";
+    if (handle === "e") {
+      // 旧单把手类名 / testid 保留在 e 上，2.1 拖拽测试靠它锚定。
+      span.classList.add("cm-image-resize");
+      span.setAttribute("data-testid", "cm-image-resize");
+    }
+    el.appendChild(span);
   }
 }
 
