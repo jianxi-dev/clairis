@@ -304,7 +304,7 @@ export interface RenderMarkdownOptions {
   resolveMedia?: (href: string) => string | null;
 }
 
-const LEGACY_WIDTH_COMMENT_RE = /^([ \t]*\n)?[ \t]*<!--\s*w=(\d+)\s*-->/;
+const LEGACY_WIDTH_COMMENT_RE = /^([ \t]*\n)?[ \t]*<!--\s*w=(\d+)\s*(?:-->|—>)/;
 
 function legacyWidthComment(
   text: string,
