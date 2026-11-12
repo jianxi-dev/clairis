@@ -456,6 +456,7 @@
 
 /* ── 引用 ────────────────────────────────────────────── */
 .preview-content blockquote {
+  max-width: calc(var(--type-measure) + 2em + 2px);
   border-inline-start: 2px solid var(--reader-accent);
   background: var(--reader-accent-soft);
   padding: 0.7em 1em;

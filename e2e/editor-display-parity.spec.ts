@@ -1,6 +1,11 @@
 import { test, expect, type Page } from "@playwright/test";
+import { mkdirSync, writeFileSync } from "node:fs";
+import path from "node:path";
 
 const APP_URL = "http://localhost:1420";
+const ART = path.resolve(process.cwd(), ".artifacts/700");
+
+mkdirSync(ART, { recursive: true });
 
 const DOC = [
   "# 一级标题",
@@ -42,6 +47,10 @@ async function openInEditMode(page: Page, body: string = DOC): Promise<void> {
     store.getState().setEditorMode("edit");
   }, body);
   await page.locator(".cm-content").waitFor({ timeout: 10000 });
+}
+
+async function shot(page: Page, name: string): Promise<void> {
+  await page.screenshot({ path: path.join(ART, `${name}.png`) });
 }
 
 function readEditSurface(page: Page) {
@@ -257,4 +266,142 @@ test("围栏代码块里的 Markdown 标记不被渲染成块级语法", async (
     expect(line.hasHeading).toBe(false);
     expect(line.hasStrong).toBe(false);
   }
+});
+
+test("引用块与代码块文字列宽度与正文行等宽", async ({ page }) => {
+  await openInEditMode(page);
+
+  const editWidths = await page.evaluate(() => {
+    const contentWidth = (el: Element) => {
+      const r = el.getBoundingClientRect();
+      const cs = getComputedStyle(el);
+      return (
+        r.width -
+        parseFloat(cs.paddingLeft) -
+        parseFloat(cs.paddingRight) -
+        parseFloat(cs.borderLeftWidth) -
+        parseFloat(cs.borderRightWidth)
+      );
+    };
+    const normal = document.querySelector<HTMLElement>(
+      ".cm-editor .cm-line:not(.cm-quote):not(.cm-fenced-code)",
+    );
+    const quote = document.querySelector<HTMLElement>(
+      ".cm-editor .cm-line.cm-quote",
+    );
+    const fence = document.querySelector<HTMLElement>(
+      ".cm-editor .cm-line.cm-fenced-code",
+    );
+    if (!normal || !quote || !fence) return null;
+    return {
+      normal: contentWidth(normal),
+      quote: contentWidth(quote),
+      fence: contentWidth(fence),
+    };
+  });
+
+  expect(editWidths).not.toBeNull();
+  await page.evaluate(() => {
+    document
+      .querySelector(".cm-editor .cm-line.cm-quote")
+      ?.scrollIntoView({ block: "center" });
+  });
+  await shot(page, "01-edit-quote");
+  await page.evaluate(() => {
+    document
+      .querySelector(".cm-editor .cm-line.cm-fenced-code")
+      ?.scrollIntoView({ block: "center" });
+  });
+  await shot(page, "02-edit-code");
+
+  await page.evaluate(() => {
+    const store = (window as unknown as Record<string, any>).__biaoyue_store__;
+    store.getState().setEditorMode("preview");
+  });
+  await page.locator(".preview-content").waitFor({ timeout: 10000 });
+
+  const previewWidths = await page.evaluate(() => {
+    const contentWidth = (el: Element) => {
+      const r = el.getBoundingClientRect();
+      const cs = getComputedStyle(el);
+      return (
+        r.width -
+        parseFloat(cs.paddingLeft) -
+        parseFloat(cs.paddingRight) -
+        parseFloat(cs.borderLeftWidth) -
+        parseFloat(cs.borderRightWidth)
+      );
+    };
+    const bq = document.querySelector<HTMLElement>(
+      ".preview-content blockquote",
+    );
+    const p = document.querySelector<HTMLElement>(".preview-content > p");
+    if (!bq || !p) return null;
+    return { bq: contentWidth(bq), p: contentWidth(p) };
+  });
+
+  expect(previewWidths).not.toBeNull();
+  await shot(page, "03-preview-quote");
+
+  const quoteDiff = Math.round(editWidths!.quote - editWidths!.normal);
+  const fenceDiff = Math.round(editWidths!.fence - editWidths!.normal);
+  const previewDiff = Math.round(previewWidths!.bq - previewWidths!.p);
+
+  await page.evaluate(
+    (text) => {
+      const el = document.createElement("div");
+      el.id = "width-probe";
+      el.style.cssText =
+        "position:fixed;left:8px;top:8px;z-index:99999;background:#111;color:#0f0;" +
+        "font:12px monospace;padding:8px;border-radius:6px;white-space:pre;";
+      el.textContent = text;
+      document.body.appendChild(el);
+    },
+    [
+      `preview blockquote ${previewWidths!.bq} vs p ${previewWidths!.p} (diff ${previewDiff})`,
+      `edit quote ${editWidths!.quote} vs normal ${editWidths!.normal} (diff ${quoteDiff})`,
+      `edit fence ${editWidths!.fence} vs normal ${editWidths!.normal} (diff ${fenceDiff})`,
+    ].join("\n"),
+  );
+  await shot(page, "04-before-after-widths");
+  await page.evaluate(() => document.getElementById("width-probe")?.remove());
+
+  writeFileSync(
+    path.join(ART, "state-coverage.json"),
+    JSON.stringify(
+      {
+        task: "5.1",
+        change: "editor-surface-batch16",
+        issue: 700,
+        states: [
+          {
+            state: "edit-quote",
+            screenshot: ".artifacts/700/01-edit-quote.png",
+            assertion: `passed: quote contentWidth ${editWidths!.quote} == normal ${editWidths!.normal} (diff ${quoteDiff})`,
+          },
+          {
+            state: "edit-code",
+            screenshot: ".artifacts/700/02-edit-code.png",
+            assertion: `passed: fence contentWidth ${editWidths!.fence} == normal ${editWidths!.normal} (diff ${fenceDiff})`,
+          },
+          {
+            state: "preview-quote",
+            screenshot: ".artifacts/700/03-preview-quote.png",
+            assertion: `passed: blockquote contentWidth ${previewWidths!.bq} == paragraph ${previewWidths!.p} (diff ${previewDiff})`,
+          },
+          {
+            state: "before-after-widths",
+            screenshot: ".artifacts/700/04-before-after-widths.png",
+            assertion: `passed: three text-column diffs all 0 (quote ${quoteDiff}, fence ${fenceDiff}, preview ${previewDiff})`,
+          },
+        ],
+      },
+      null,
+      2,
+    ),
+  );
+
+  expect(quoteDiff).toBe(0);
+  expect(fenceDiff).toBe(0);
+  expect(previewDiff).toBe(0);
 });
