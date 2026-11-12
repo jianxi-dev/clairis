@@ -2,7 +2,7 @@
 title: 需求实现状态总览
 type: delivery
 status: accepted
-last_updated: 2026-11-09
+last_updated: 2026-11-12
 source_of_truth: supporting
 ---
 
@@ -37,7 +37,7 @@ openspec status --change <name>   # 单个变更工件完成度
 
 ## 总览统计（截至 2026-11-09）
 
-- 规格：17 域 / 157 requirement（2026-11-08 归档 design-system-governance 后）
+- 规格：17 域 / 196 requirement（2026-11-12 归档 image-block-editing 后）
 - ✅ 经 openspec 归档实现：44
 - 🟡 已实现/设计完成（未走 openspec 变更）：24
 - ⬜ 待开发：16
@@ -51,6 +51,8 @@ openspec status --change <name>   # 单个变更工件完成度
 - 外壳/编辑/阅读/文件域（`shell-editor-batch5`）：+9 需求（C-4、E-10/E-11/E-13/E-16、G-3/G-7/G-8/G-10），18/18 票合并（PR #331–#351，含 #343/#347 两个缺陷），已归档 `openspec/changes/archive/2026-11-08-shell-editor-batch5`
   - 附加入口批：PDF 卡片真首页缩略图（#317，pdfium 渲首页→dataURL，失败回退占位）、pin/pinOff 改标准图钉造型（#352，PR #353）
 - 外壳/媒体/阅读域（`shell-media-batch7`）：11/11 票合并（PR #423–#436），净 +3 requirement（+5 新增、-2 被取代），已归档 `openspec/changes/archive/2026-11-08-shell-media-batch7`
+- 编辑域（`image-block-editing`）：9/9 票合并（PR #659–#664、#677–#679、#680、#681），+2 requirement（+3 新增、-1 编号让位：E-24 改授图片块编辑）、3 条 requirement 修订（E-11 块菜单、转换菜单图标与二级面板、高亮块图标间距），已归档 `openspec/changes/archive/2026-11-12-image-block-editing`
+  - 图片块选中态/工具条/双击最大化、属性语法（width/height/align/crop）与括号路径保护、四边四角缩放、无损裁剪（裁剪浮层 + 裁剪矩形写回）、描述行（占位/提交/收起）、剪贴板粘贴图片、块菜单图标补齐与二级面板互斥、高亮块图标间距归零
 - 规格对齐（`rail-thumb-spec-sync`）：阅读空间卡片缩略图 72×54 → 64×48（`navigation` 1 条 requirement 修订，总数不变），已归档 `openspec/changes/archive/2026-11-08-rail-thumb-spec-sync`
   - 主题弹层生命周期 + 单击循环切主题、图片右键应用内菜单、chrome 前景色统一、关闭其他图标、视频容器自适应与画面变换、沉浸态隐藏状态栏/未钉住左栏与每栏独立页签条、悬浮窗图片按宽可滚 + HTML 本地直载、一键自动布局
 - 外壳/页面/编辑/阅读/文件域（`ui-polish-batch6`）：25/25 票合并（PR #394–#408），净 +5 requirement（+8 新增、-3 被取代），已归档 `openspec/changes/archive/2026-11-08-ui-polish-batch6`
@@ -206,7 +208,8 @@ openspec status --change <name>   # 单个变更工件完成度
 | E-21 | HTML 可视化编辑：区域截图 | ✅ | change `html-visual-move-capture`（归档 2026-11-07，PR #266） |
 | E-22 | HTML 可视化编辑：工具条按节点类型分化 | ✅ | change `html-toolbar-by-node-type`（归档 2026-11-07，PR #269） |
 | E-23 | 颜色面板二级保持 | ✅ | `ui-polish-batch6`（归档 2026-11-08） |
-| E-24 | 编辑态工具条归属（md 12 键 / html 只在 html 态） | ✅ | `ui-polish-batch6`（归档 2026-11-08） |
+| — | 编辑态工具条归属（md 12 键 / html 只在 html 态；编号让位） | ✅ | `ui-polish-batch6`（归档 2026-11-08） |
+| E-24 | 图片块编辑（选中态/属性语法/四边四角缩放/无损裁剪/描述行/粘贴） | ✅ | change `image-block-editing`（归档 2026-11-12，PR #680/#681） |
 | E-25 | 撤销与重做同时响应 Ctrl 与 Cmd | ✅ | `ui-polish-batch6`（归档 2026-11-08） |
 
 ### docs-governance（7）
