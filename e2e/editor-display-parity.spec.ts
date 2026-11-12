@@ -4,8 +4,10 @@ import path from "node:path";
 
 const APP_URL = "http://localhost:1420";
 const ART = path.resolve(process.cwd(), ".artifacts/700");
+const ART_701 = path.resolve(process.cwd(), ".artifacts/701");
 
 mkdirSync(ART, { recursive: true });
+mkdirSync(ART_701, { recursive: true });
 
 const DOC = [
   "# 一级标题",
@@ -51,6 +53,10 @@ async function openInEditMode(page: Page, body: string = DOC): Promise<void> {
 
 async function shot(page: Page, name: string): Promise<void> {
   await page.screenshot({ path: path.join(ART, `${name}.png`) });
+}
+
+async function shot701(page: Page, name: string): Promise<void> {
+  await page.screenshot({ path: path.join(ART_701, `${name}.png`) });
 }
 
 function readEditSurface(page: Page) {
@@ -404,4 +410,136 @@ test("引用块与代码块文字列宽度与正文行等宽", async ({ page }) 
   expect(quoteDiff).toBe(0);
   expect(fenceDiff).toBe(0);
   expect(previewDiff).toBe(0);
+});
+
+test("等宽统一：编辑态行内/围栏代码与预览 code 的 font-family 一致", async ({
+  page,
+}) => {
+  await openInEditMode(page);
+
+  const readEditFonts = () =>
+    page.evaluate(() => {
+      const body = document.querySelector<HTMLElement>(
+        ".cm-editor .cm-scroller",
+      );
+      const inline = document.querySelector<HTMLElement>(
+        ".cm-editor .cm-inline-code",
+      );
+      const fence = document.querySelector<HTMLElement>(
+        ".cm-editor .cm-line.cm-fenced-code",
+      );
+      if (!body || !inline || !fence) return null;
+      return {
+        body: getComputedStyle(body).fontFamily,
+        inline: getComputedStyle(inline).fontFamily,
+        fence: getComputedStyle(fence).fontFamily,
+      };
+    });
+
+  const editFonts = await readEditFonts();
+  expect(editFonts).not.toBeNull();
+
+  await page.evaluate(() => {
+    document
+      .querySelector(".cm-editor .cm-inline-code")
+      ?.scrollIntoView({ block: "center" });
+  });
+  await shot701(page, "01-edit-inline-code");
+
+  await page.evaluate(() => {
+    document
+      .querySelector(".cm-editor .cm-line.cm-fenced-code")
+      ?.scrollIntoView({ block: "center" });
+  });
+  await shot701(page, "02-edit-fenced-code");
+
+  await page.evaluate(() =>
+    (document.activeElement as HTMLElement | null)?.blur(),
+  );
+  const blurredFonts = await readEditFonts();
+  expect(blurredFonts).not.toBeNull();
+  expect(blurredFonts!.inline).toBe(editFonts!.inline);
+  expect(blurredFonts!.fence).toBe(editFonts!.fence);
+
+  await page.evaluate(() => {
+    const store = (window as unknown as Record<string, any>).__biaoyue_store__;
+    store.getState().setEditorMode("preview");
+  });
+  await page.locator(".preview-content").waitFor({ timeout: 10000 });
+
+  const previewFonts = await page.evaluate(() => {
+    const content = document.querySelector<HTMLElement>(".preview-content");
+    const code = document.querySelector<HTMLElement>(".preview-content code");
+    if (!content || !code) return null;
+    return {
+      body: getComputedStyle(content).fontFamily,
+      code: getComputedStyle(code).fontFamily,
+    };
+  });
+  expect(previewFonts).not.toBeNull();
+
+  await shot701(page, "03-preview-code");
+
+  await page.evaluate(
+    (text) => {
+      const el = document.createElement("div");
+      el.id = "font-probe";
+      el.style.cssText =
+        "position:fixed;left:8px;top:8px;z-index:99999;background:#111;color:#0f0;" +
+        "font:12px monospace;padding:8px;border-radius:6px;white-space:pre;";
+      el.textContent = text;
+      document.body.appendChild(el);
+    },
+    [
+      `edit body: ${editFonts!.body}`,
+      `preview body: ${previewFonts!.body}`,
+      `edit inline: ${editFonts!.inline}`,
+      `edit fence: ${editFonts!.fence}`,
+      `preview code: ${previewFonts!.code}`,
+    ].join("\n"),
+  );
+  await shot701(page, "04-font-values");
+  await page.evaluate(() => document.getElementById("font-probe")?.remove());
+
+  writeFileSync(
+    path.join(ART_701, "state-coverage.json"),
+    JSON.stringify(
+      {
+        task: "6.1",
+        change: "editor-surface-batch16",
+        issue: 701,
+        states: [
+          {
+            state: "edit-inline-code",
+            screenshot: ".artifacts/701/01-edit-inline-code.png",
+            assertion:
+              "passed: editor inline code font-family == fenced code == preview code",
+          },
+          {
+            state: "edit-fenced-code",
+            screenshot: ".artifacts/701/02-edit-fenced-code.png",
+            assertion: "passed: editor fenced code font-family == inline code",
+          },
+          {
+            state: "preview-code",
+            screenshot: ".artifacts/701/03-preview-code.png",
+            assertion:
+              "passed: preview code font-family == editor inline/fenced code",
+          },
+          {
+            state: "font-values",
+            screenshot: ".artifacts/701/04-font-values.png",
+            assertion:
+              "passed: editor body == preview body; inline == fence == preview code",
+          },
+        ],
+      },
+      null,
+      2,
+    ),
+  );
+
+  expect(editFonts!.body).toBe(previewFonts!.body);
+  expect(editFonts!.inline).toBe(editFonts!.fence);
+  expect(editFonts!.inline).toBe(previewFonts!.code);
 });
