@@ -1,6 +1,6 @@
 # reading（delta）— ui-polish-batch15
 
-## MODIFIED Requirements
+## ADDED Requirements
 
 ### Requirement: 视频连播与画面适配
 
