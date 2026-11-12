@@ -7,7 +7,12 @@
 
 import type { EditorView } from "@codemirror/view";
 
-import { defaultCommands, openInsertMenu, releaseInsertMenu } from "../slash";
+import {
+  cancelAnchorClose,
+  defaultCommands,
+  openInsertMenu,
+  releaseInsertMenu,
+} from "../slash";
 import { renderIcon } from "../icons";
 import { menuStack } from "./menu-stack";
 import { MENU_WIDTH, MENU_ROW_HEIGHT } from "./menu-metrics";
@@ -19,6 +24,7 @@ import {
 } from "./anchor";
 import { placeMenu } from "./placement";
 import { getBlocks } from "../block-model";
+import type { BlockType } from "../block-model";
 import { moveBlock } from "./block-handle";
 import {
   blockConvertChanges,
@@ -215,11 +221,15 @@ function boxRect(rect: DOMRect): AnchorRect {
  *
  * 纵向必须走 `coordsAtPos`（滚动后 DOM 坐标会漂移）；横向必须用手柄，因为菜单
  * 要贴着手柄弹出而不是压住正文（md-bundle #453）。
+ *
+ * 图片 / 表格是整块 widget，`coordsAtPos` 返回块盒而非指针行（D2）：纵向改用手柄
+ * 上下沿，让菜单贴着指针行；标题 / 段落维持原行为。
  */
 function anchorRectAt(
   view: EditorView,
   pos: number,
   handle: HTMLElement | null,
+  blockType: BlockType | "",
 ): AnchorRect {
   const clamped = Math.max(0, Math.min(pos, view.state.doc.length));
   let row: ReturnType<EditorView["coordsAtPos"]> | null = null;
@@ -231,11 +241,19 @@ function anchorRectAt(
   const rect = rectFromCoords(row, view.documentTop);
   if (!handle) return rect;
   const handleRect = handle.getBoundingClientRect();
+  const top =
+    blockType === "image" || blockType === "table" ? handleRect.top : rect.top;
+  const bottom =
+    blockType === "image" || blockType === "table"
+      ? handleRect.bottom
+      : rect.bottom;
   return {
-    ...rect,
     left: handleRect.left,
     right: handleRect.right,
+    top,
+    bottom,
     width: Math.max(0, handleRect.right - handleRect.left),
+    height: Math.max(0, bottom - top),
   };
 }
 
@@ -248,9 +266,10 @@ function positionPanel(
   panel: HTMLElement,
   anchorPos: number,
   handle: HTMLElement | null,
+  blockType: BlockType | "",
 ): void {
   const own = view.dom.getBoundingClientRect();
-  const anchor = anchorRectAt(view, anchorPos, handle);
+  const anchor = anchorRectAt(view, anchorPos, handle, blockType);
   const bounds = intersectRects(viewportRect(), boxRect(own));
   panel.style.maxHeight = `${Math.max(
     120,
@@ -285,7 +304,16 @@ export function openBlockMenu(
   panel.classList.add("mdb-block-handle-menu");
   panel.dataset.testid = "block-menu";
   panel.style.width = `${MENU_WIDTH}px`;
-  panel.addEventListener("pointerenter", () => cancelPendingClose(view));
+  // 指针回移到父面板时，slash 侧的锚点关闭计时器也要一并清掉（D1）：否则从
+  // 「在下方添加」子菜单折回父菜单后 150ms，父菜单仍会被拆掉。
+  panel.addEventListener("pointerenter", () => {
+    cancelPendingClose(view);
+    cancelAnchorClose(view);
+  });
+  panel.addEventListener("pointermove", () => {
+    cancelPendingClose(view);
+    cancelAnchorClose(view);
+  });
   panel.addEventListener("pointerleave", () => scheduleClose(view));
 
   const items = blockMenuItems(block);
@@ -761,7 +789,7 @@ export function openBlockMenu(
   panel.appendChild(addBelow);
 
   view.dom.appendChild(panel);
-  positionPanel(view, panel, anchorPos ?? block.from, handle);
+  positionPanel(view, panel, anchorPos ?? block.from, handle, block.type);
 
   // CM6 keymap 只在编辑器聚焦时触发；块菜单是 hover 召唤，焦点可能还在别处，
   // 所以自己接一个捕获阶段的 Esc（只负责本视图的块菜单层）。
