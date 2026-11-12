@@ -94,7 +94,8 @@ function clampHeight(value: number): number {
   return Math.max(MIN_IMAGE_HEIGHT, Math.min(value, MAX_IMAGE_HEIGHT));
 }
 
-const WIDTH_COMMENT_RE = /^[ \t]*<!--\s*w=(\d+)\s*-->/;
+// 结束符兼容旧数据里的全角破折号 `—>`，否则会字面泄漏成正文。
+const WIDTH_COMMENT_RE = /^[ \t]*<!--\s*w=(\d+)\s*(?:-->|—>)/;
 
 function cropEquals(
   a: [number, number, number, number] | null,
@@ -843,14 +844,14 @@ class ImageWidget extends WidgetType {
         if (spec.signX > 0) {
           r = Math.max(l + MIN_CROP_SIZE, Math.min(r + dx, natW));
         } else {
-          l = Math.max(0, Math.min(l - dx, r - MIN_CROP_SIZE));
+          l = Math.max(0, Math.min(l + dx, r - MIN_CROP_SIZE));
         }
       }
       if (spec.height) {
         if (spec.signY > 0) {
           b = Math.max(t + MIN_CROP_SIZE, Math.min(b + dy, natH));
         } else {
-          t = Math.max(0, Math.min(t - dy, b - MIN_CROP_SIZE));
+          t = Math.max(0, Math.min(t + dy, b - MIN_CROP_SIZE));
         }
       }
       return [l, t, r - l, b - t];

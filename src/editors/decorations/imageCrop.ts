@@ -89,6 +89,28 @@ const HANDLE_AXES: Record<
   sw: { x: "l", y: "b" },
 };
 
+const HANDLE_CURSOR: Record<string, string> = {
+  e: "ew-resize",
+  w: "ew-resize",
+  n: "ns-resize",
+  s: "ns-resize",
+  ne: "nesw-resize",
+  sw: "nesw-resize",
+  nw: "nwse-resize",
+  se: "nwse-resize",
+};
+
+const HANDLE_MARK: Record<string, string> = {
+  nw: "left:2px; top:2px; width:4px; height:4px; border-left:2px solid #fff; border-top:2px solid #fff;",
+  ne: "right:2px; top:2px; width:4px; height:4px; border-right:2px solid #fff; border-top:2px solid #fff;",
+  sw: "left:2px; bottom:2px; width:4px; height:4px; border-left:2px solid #fff; border-bottom:2px solid #fff;",
+  se: "right:2px; bottom:2px; width:4px; height:4px; border-right:2px solid #fff; border-bottom:2px solid #fff;",
+  n: "left:50%; top:2px; width:8px; height:2px; margin-left:-4px; background:#fff;",
+  s: "left:50%; bottom:2px; width:8px; height:2px; margin-left:-4px; background:#fff;",
+  e: "top:50%; right:2px; width:2px; height:8px; margin-top:-4px; background:#fff;",
+  w: "top:50%; left:2px; width:2px; height:8px; margin-top:-4px; background:#fff;",
+};
+
 /** 打开裁剪浮层；图片加载失败时静默不打开（无 natural 尺寸裁不了）。 */
 export function openImageCrop(options: ImageCropOptions): void {
   const probe = new Image();
@@ -129,6 +151,14 @@ function mount(natW: number, natH: number, options: ImageCropOptions): void {
     const span = document.createElement("span");
     span.className = "cm-image-handle";
     span.dataset.handle = handle;
+    span.style.cursor = HANDLE_CURSOR[handle];
+    span.title = "拖动调整裁剪区域";
+    const mark = document.createElement("i");
+    mark.className = "cm-image-crop-mark";
+    mark.style.cssText =
+      "position:absolute; display:block; pointer-events:none;" +
+      (HANDLE_MARK[handle] ?? "");
+    span.appendChild(mark);
     rectEl.appendChild(span);
   }
   stage.appendChild(rectEl);
@@ -200,30 +230,52 @@ function mount(natW: number, natH: number, options: ImageCropOptions): void {
       target instanceof Element
         ? (target.closest("[data-handle]") as HTMLElement | null)
         : null;
-    if (!handle) return;
+    if (handle) {
+      event.preventDefault();
+      event.stopPropagation();
+      const axes = HANDLE_AXES[handle.dataset.handle ?? ""];
+      if (!axes) return;
+      const startX = event.clientX;
+      const startY = event.clientY;
+      const start = { ...rect };
+      const onMove = (move: MouseEvent): void => {
+        const dx = (move.clientX - startX) / scale;
+        const dy = (move.clientY - startY) / scale;
+        let left = start.left;
+        let top = start.top;
+        let right = start.left + start.width;
+        let bottom = start.top + start.height;
+        if (axes.x === "r")
+          right = clamp(right + dx, left + MIN_CROP_SIZE, natW);
+        if (axes.x === "l") left = clamp(left + dx, 0, right - MIN_CROP_SIZE);
+        if (axes.y === "b")
+          bottom = clamp(bottom + dy, top + MIN_CROP_SIZE, natH);
+        if (axes.y === "t") top = clamp(top + dy, 0, bottom - MIN_CROP_SIZE);
+        rect.left = left;
+        rect.top = top;
+        rect.width = right - left;
+        rect.height = bottom - top;
+        applyRectStyle(rectEl, rect, scale);
+      };
+      const onUp = (): void => {
+        window.removeEventListener("mousemove", onMove);
+        window.removeEventListener("mouseup", onUp);
+      };
+      window.addEventListener("mousemove", onMove);
+      window.addEventListener("mouseup", onUp);
+      return;
+    }
+    if (!(target instanceof Element) || !rectEl.contains(target)) return;
     event.preventDefault();
     event.stopPropagation();
-    const axes = HANDLE_AXES[handle.dataset.handle ?? ""];
-    if (!axes) return;
     const startX = event.clientX;
     const startY = event.clientY;
     const start = { ...rect };
     const onMove = (move: MouseEvent): void => {
       const dx = (move.clientX - startX) / scale;
       const dy = (move.clientY - startY) / scale;
-      let left = start.left;
-      let top = start.top;
-      let right = start.left + start.width;
-      let bottom = start.top + start.height;
-      if (axes.x === "r") right = clamp(right + dx, left + MIN_CROP_SIZE, natW);
-      if (axes.x === "l") left = clamp(left - dx, 0, right - MIN_CROP_SIZE);
-      if (axes.y === "b")
-        bottom = clamp(bottom + dy, top + MIN_CROP_SIZE, natH);
-      if (axes.y === "t") top = clamp(top - dy, 0, bottom - MIN_CROP_SIZE);
-      rect.left = left;
-      rect.top = top;
-      rect.width = right - left;
-      rect.height = bottom - top;
+      rect.left = clamp(start.left + dx, 0, natW - start.width);
+      rect.top = clamp(start.top + dy, 0, natH - start.height);
       applyRectStyle(rectEl, rect, scale);
     };
     const onUp = (): void => {
