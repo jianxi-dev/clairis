@@ -75,7 +75,7 @@ export interface EditorDecorationsOptions {
   onImageAi?: (path: string, alt: string) => void;
   /** 工具条「裁剪」；缺省时按钮禁用。 */
   onImageCrop?: (from: number) => void;
-  /** 工具条「评论」：在图片下方插入 `> 评论：` 行。 */
+  /** 工具条「描述」：让选中图片的描述行进入编辑态。 */
   onImageComment?: (from: number) => void;
   /** 描述行提交：把标题写回图片 markdown 的引号段。 */
   onImageSetTitle?: (from: number, title: string) => void;

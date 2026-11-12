@@ -36,6 +36,7 @@ import {
   writeImageTitle,
 } from "../../editors/decorations/image";
 import { openImageCrop } from "../../editors/decorations/imageCrop";
+import { editSelectedImageCaption } from "../../editors/decorations/imageToolbar";
 import {
   blockAt,
   deleteBlock,
@@ -234,15 +235,8 @@ const editorDecorationOptions: EditorDecorationsOptions = {
     const block = blockAt(view, from);
     if (block) deleteBlock(view, block);
   },
-  onImageComment: (from) => {
-    const view = getActiveEditorView();
-    if (!view) return;
-    const line = view.state.doc.lineAt(from);
-    const insert = "\n> 评论：";
-    view.dispatch({
-      changes: { from: line.to, insert },
-      selection: { anchor: line.to + insert.length },
-    });
+  onImageComment: () => {
+    editSelectedImageCaption();
   },
   onImageSetTitle: (from, title) => {
     const view = getActiveEditorView();
