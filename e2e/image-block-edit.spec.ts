@@ -404,3 +404,89 @@ test("粘贴超过 20MB 的图片：不插入并提示", async ({ page }) => {
   await expect(page.getByTestId("paste-notice")).toContainText("20MB");
   expect(await content(page)).toBe("");
 });
+
+// --- 描述行（#657） -----------------------------------------------------------
+
+test("描述行占位：选中无描述图片显示「输入图片描述」", async ({ page }) => {
+  await openEditor(
+    page,
+    `![示例图片](${PNG_DATA_URL})\n`,
+    "imgcaptionempty",
+    PNG_DATA_URL,
+  );
+  await expect(page.locator(".cm-image-widget")).toHaveCount(1);
+  await page.locator(".cm-image-widget").click();
+  const caption = page.locator('[data-testid="img-caption"]');
+  await expect(caption).toHaveCount(1);
+  await expect(caption).toHaveText("输入图片描述");
+});
+
+test("描述行提交：写入源码标题并在预览态显示图注", async ({ page }) => {
+  await openEditor(
+    page,
+    `![示例图片](${PNG_DATA_URL})\n`,
+    "imgcaptionsubmit",
+    PNG_DATA_URL,
+  );
+  await page.locator(".cm-image-widget").click();
+  await page.locator('[data-testid="img-caption"]').click();
+  const input = page.locator('[data-testid="img-caption-input"]');
+  await expect(input).toHaveCount(1);
+  await input.fill("雾山");
+  await input.press("Enter");
+
+  await expect.poll(() => content(page)).toContain('"雾山"');
+  const final = await content(page);
+  expect(final).toContain(`![示例图片](${PNG_DATA_URL} "雾山")`);
+
+  // 提交后描述行回到文本态并显示标题
+  await expect(page.locator('[data-testid="img-caption"]')).toHaveText("雾山");
+  await expect(page.locator('[data-testid="img-caption-input"]')).toHaveCount(
+    0,
+  );
+
+  // 预览态出现图注
+  await page.evaluate(() => {
+    const win = window as unknown as BridgeWindow;
+    win.__biaoyue_store__.getState().setEditorMode("preview");
+  });
+  const figcaption = page.locator(".preview-content figcaption");
+  await expect(figcaption).toHaveCount(1);
+  await expect(figcaption).toHaveText("雾山");
+});
+
+test("描述行收起：再次点击 display=none，标题数据保留", async ({ page }) => {
+  await openEditor(
+    page,
+    `![示例图片](${PNG_DATA_URL} "已有描述")\n`,
+    "imgcaptioncollapse",
+    PNG_DATA_URL,
+  );
+  await page.locator(".cm-image-widget").click();
+  const caption = page.locator('[data-testid="img-caption"]');
+  await expect(caption).toHaveText("已有描述");
+  await caption.click();
+  await expect(caption).toHaveCount(1);
+  const display = await caption.evaluate((el) => getComputedStyle(el).display);
+  expect(display).toBe("none");
+  await expect.poll(() => content(page)).toContain('"已有描述"');
+});
+
+test("描述行取消：Esc 回到占位态，文档无残留改动", async ({ page }) => {
+  const doc = `![示例图片](${PNG_DATA_URL})\n`;
+  await openEditor(page, doc, "imgcaptionesc", PNG_DATA_URL);
+  await page.locator(".cm-image-widget").click();
+  await page.locator('[data-testid="img-caption"]').click();
+  const input = page.locator('[data-testid="img-caption-input"]');
+  await expect(input).toHaveCount(1);
+  await input.fill("不会被提交");
+  await input.press("Escape");
+
+  await expect(page.locator('[data-testid="img-caption"]')).toHaveText(
+    "输入图片描述",
+  );
+  await expect(page.locator('[data-testid="img-caption-input"]')).toHaveCount(
+    0,
+  );
+  expect(await content(page)).toBe(doc);
+});

@@ -13,6 +13,7 @@ export interface ImageToolbarActions {
   onImageAi?: (path: string, alt: string) => void;
   onImageCrop?: (from: number) => void;
   onImageComment?: (from: number) => void;
+  onImageSetTitle?: (from: number, title: string) => void;
   onImageAlign?: (from: number, align: ImageAlignChoice) => void;
   onImageCut?: (from: number) => void;
   onImageCopy?: (from: number) => void;
@@ -209,6 +210,10 @@ let toolbarEl: HTMLElement | null = null;
 let maximizeEl: HTMLElement | null = null;
 let maximizeKeyHandler: ((event: KeyboardEvent) => void) | null = null;
 let repositionFrame: number | null = null;
+/** 描述行「已收起」：点击带描述的描述行后置位，重新选中图片时复位。 */
+let captionCollapsed = false;
+
+const CAPTION_PLACEHOLDER = "输入图片描述";
 
 export function getSelectedImageFrom(): number | null {
   return selection?.from ?? null;
@@ -221,6 +226,7 @@ export function setImageToolbarActions(next: ImageToolbarActions): void {
 
 export function selectImage(from: number, path: string, alt: string): void {
   selection = { from, path, alt };
+  captionCollapsed = false;
   applySelection();
   ensureToolbar();
   positionToolbar();
@@ -238,7 +244,10 @@ export function scheduleImageToolbarReposition(): void {
   scheduleReposition();
 }
 
-/** 把选中态套到某个 widget DOM 上：data-selected + 4 个角点 + 8 个缩放把手。 */
+/**
+ * 把选中态套到某个 widget DOM 上：data-selected + 4 个角点 + 8 个缩放把手
+ * + 描述行。描述行随选中态增删，内容按 data-image-title 渲染。
+ */
 export function markImageWidgetSelected(
   el: HTMLElement,
   isSelected: boolean,
@@ -246,6 +255,9 @@ export function markImageWidgetSelected(
   el.dataset.selected = isSelected ? "true" : "false";
   el.querySelectorAll(".cm-image-corner").forEach((dot) => dot.remove());
   el.querySelectorAll(".cm-image-handle").forEach((handle) => handle.remove());
+  el.querySelectorAll(".cm-image-caption").forEach((caption) =>
+    caption.remove(),
+  );
   if (!isSelected) return;
   for (const { corner } of CORNER_POSITIONS) {
     const dot = document.createElement("span");
@@ -253,6 +265,7 @@ export function markImageWidgetSelected(
     dot.dataset.corner = corner;
     el.appendChild(dot);
   }
+  appendCaptionLine(el);
   // 文字回退（解析不出 URL）没有 <img>，不出缩放把手。
   if (!el.querySelector("img")) return;
   for (const { handle, cursor } of IMAGE_RESIZE_HANDLES) {
@@ -268,6 +281,77 @@ export function markImageWidgetSelected(
     }
     el.appendChild(span);
   }
+}
+
+// --- 描述行（#657） -----------------------------------------------------------
+
+/** 描述行文本态：有标题显示标题，没有显示占位文字。 */
+function setCaptionText(caption: HTMLElement, title: string): void {
+  caption.textContent = "";
+  const span = document.createElement("span");
+  span.className =
+    title === "" ? "cm-image-caption-placeholder" : "cm-image-caption-text";
+  span.textContent = title === "" ? CAPTION_PLACEHOLDER : title;
+  caption.appendChild(span);
+}
+
+/** 无标题的文本态点击进入输入；Enter 提交、Esc / blur 回退到文本态。 */
+function enterCaptionEdit(caption: HTMLElement, widgetEl: HTMLElement): void {
+  const from = Number(widgetEl.dataset.imageFrom);
+  const current = widgetEl.dataset.imageTitle ?? "";
+  caption.textContent = "";
+  const input = document.createElement("input");
+  input.type = "text";
+  input.className = "cm-image-caption-input";
+  input.dataset.testid = "img-caption-input";
+  input.value = current;
+  input.placeholder = CAPTION_PLACEHOLDER;
+  input.setAttribute("aria-label", "图片描述");
+  input.addEventListener("mousedown", (event) => event.stopPropagation());
+  input.addEventListener("keydown", (event) => {
+    event.stopPropagation();
+    if (event.key === "Enter") {
+      event.preventDefault();
+      const value = input.value.trim();
+      if (value === "" || value === current) {
+        setCaptionText(caption, widgetEl.dataset.imageTitle ?? "");
+        return;
+      }
+      actions.onImageSetTitle?.(from, value);
+    } else if (event.key === "Escape") {
+      event.preventDefault();
+      setCaptionText(caption, widgetEl.dataset.imageTitle ?? "");
+    }
+  });
+  input.addEventListener("blur", () => {
+    if (!caption.isConnected) return;
+    setCaptionText(caption, widgetEl.dataset.imageTitle ?? "");
+  });
+  caption.appendChild(input);
+  input.focus();
+}
+
+function appendCaptionLine(el: HTMLElement): void {
+  const title = el.dataset.imageTitle ?? "";
+  const caption = document.createElement("div");
+  caption.className = "cm-image-caption";
+  caption.dataset.testid = "img-caption";
+  setCaptionText(caption, title);
+  // mousedown 不冒泡：CM6 会抢焦点，输入框还没聚焦就被打掉。
+  caption.addEventListener("mousedown", (event) => event.stopPropagation());
+  caption.addEventListener("click", (event) => {
+    event.stopPropagation();
+    if (caption.querySelector("input")) return;
+    if (title === "") {
+      if (typeof actions.onImageSetTitle !== "function") return;
+      enterCaptionEdit(caption, el);
+      return;
+    }
+    caption.style.display = "none";
+    captionCollapsed = true;
+  });
+  if (captionCollapsed) caption.style.display = "none";
+  el.appendChild(caption);
 }
 
 function applySelection(): void {
