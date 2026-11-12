@@ -43,8 +43,8 @@ const BUTTON_SPECS: readonly ButtonSpec[] = [
   },
   {
     testid: "img-toolbar-comment",
-    icon: "AddCommentOutlined",
-    label: "评论",
+    icon: "TextEditOutlined",
+    label: "描述",
     action: "comment",
   },
   {
@@ -294,7 +294,10 @@ function setCaptionText(caption: HTMLElement, title: string): void {
   caption.appendChild(span);
 }
 
-/** 无标题的文本态点击进入输入；Enter 提交、Esc / blur 回退到文本态。 */
+/**
+ * 把描述行切到输入态：Enter 提交并关闭，blur 同样提交（非丢弃），Esc 取消。
+ * 已有标题时回填原值。
+ */
 function enterCaptionEdit(caption: HTMLElement, widgetEl: HTMLElement): void {
   const from = Number(widgetEl.dataset.imageFrom);
   const current = widgetEl.dataset.imageTitle ?? "";
@@ -307,27 +310,56 @@ function enterCaptionEdit(caption: HTMLElement, widgetEl: HTMLElement): void {
   input.placeholder = CAPTION_PLACEHOLDER;
   input.setAttribute("aria-label", "图片描述");
   input.addEventListener("mousedown", (event) => event.stopPropagation());
+  // Enter / Esc 会主动收尾：移除输入框触发的 blur 早于 isConnected 更新，
+  // 没有这个标志，「取消」会被 blur 的保存逻辑二次写回。
+  let finishing = false;
   input.addEventListener("keydown", (event) => {
     event.stopPropagation();
     if (event.key === "Enter") {
       event.preventDefault();
       const value = input.value.trim();
       if (value === "" || value === current) {
+        finishing = true;
         setCaptionText(caption, widgetEl.dataset.imageTitle ?? "");
         return;
       }
+      finishing = true;
       actions.onImageSetTitle?.(from, value);
     } else if (event.key === "Escape") {
       event.preventDefault();
+      finishing = true;
       setCaptionText(caption, widgetEl.dataset.imageTitle ?? "");
     }
   });
   input.addEventListener("blur", () => {
-    if (!caption.isConnected) return;
-    setCaptionText(caption, widgetEl.dataset.imageTitle ?? "");
+    if (finishing) return;
+    const value = input.value.trim();
+    if (value === "" || value === current) {
+      setCaptionText(caption, widgetEl.dataset.imageTitle ?? "");
+      return;
+    }
+    actions.onImageSetTitle?.(from, value);
   });
   caption.appendChild(input);
   input.focus();
+}
+
+/**
+ * 工具条「描述」：让当前选中图片的描述行进入编辑态。已有标题时直接打开并
+ * 回填，不走描述行的收起逻辑。
+ */
+export function editSelectedImageCaption(): void {
+  if (!selection) return;
+  const el = document.querySelector<HTMLElement>(
+    `.cm-image-widget[data-image-from="${selection.from}"]`,
+  );
+  const caption = el?.querySelector<HTMLElement>(".cm-image-caption");
+  if (!el || !caption) return;
+  if (caption.querySelector("input")) return;
+  if (typeof actions.onImageSetTitle !== "function") return;
+  caption.style.display = "";
+  captionCollapsed = false;
+  enterCaptionEdit(caption, el);
 }
 
 function appendCaptionLine(el: HTMLElement): void {
