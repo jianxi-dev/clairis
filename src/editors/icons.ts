@@ -305,6 +305,7 @@ const ICON_REGISTRY: Record<string, IconDef> = {
     kind: "paths",
     paths: [
       "M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zm0 2v14h14V5z",
+      "M10.94 16L7.07 12.04l1.23-1.23 2.64 2.64 4.75-4.75 1.23 1.23z",
     ],
   },
 

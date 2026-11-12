@@ -520,7 +520,7 @@ body {
 }
 
 /* 任务列表复选框（替换 `- [ ] ` / `- [x] ` 标记）
- * 与 reader.css 的同名控件同形：圆形、1em、阅读强调色。 */
+ * 方形（3px 圆角）、1em、阅读强调色。 */
 .cm-task-checkbox {
   display: inline-flex;
   align-items: center;
@@ -529,7 +529,7 @@ body {
   height: 1em;
   margin-inline-end: 0.6em;
   border: 1.5px solid var(--app-border-strong);
-  border-radius: 50%;
+  border-radius: 3px;
   cursor: pointer;
   vertical-align: -2px;
   transition:
