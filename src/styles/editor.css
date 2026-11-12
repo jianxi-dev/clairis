@@ -548,6 +548,9 @@ body {
 /* 引用 —— 与 reader.css 的 blockquote 同一配方：左竖线 + 底色 + 右侧圆角。
  * 连续 `>` 行是一张卡片：纵向内边距只给首/末行，中间行只留左右内边距。 */
 .cm-line.cm-quote {
+  /* 文字列与正文行等宽：+2em 补引用左右内边距，+2px 补左边框，
+   * -8px 扣除 CodeMirror `.cm-line` 基线的 6px+2px 内边距。 */
+  max-width: calc(var(--type-measure, 1080px) + 2em + 2px - 8px);
   border-inline-start: 2px solid var(--reader-accent);
   padding-inline: 1em;
   padding-block: 0;
@@ -605,6 +608,7 @@ body {
 
 /* 围栏代码块：整段是一张圆角卡片（与 reader.css 的 .code-block 同形） */
 .cm-line.cm-fenced-code {
+  max-width: calc(var(--type-measure, 1080px) + 2px);
   font-family: var(
     --type-font-mono,
     "SF Mono",
