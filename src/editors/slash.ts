@@ -472,7 +472,8 @@ const pendingAnchorCloses = new WeakMap<
   ReturnType<typeof setTimeout>
 >();
 
-function cancelAnchorClose(view: EditorView): void {
+/** 取消挂起的锚点关闭计时（块菜单面板指针回移时清掉 slash 侧计时器，D1）。 */
+export function cancelAnchorClose(view: EditorView): void {
   const pending = pendingAnchorCloses.get(view);
   if (pending === undefined) return;
   clearTimeout(pending);

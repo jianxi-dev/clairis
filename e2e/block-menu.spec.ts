@@ -824,3 +824,117 @@ test("改过的 emoji 不跟随错误类型：转 TIP 后回到 TIP 默认图标
   await expect(card).toHaveAttribute("data-callout-emoji", "💡");
   await expect(card).not.toHaveAttribute("data-callout-emoji", "🚀");
 });
+
+// ── #697：子菜单回移不消失（A-3.1）与图片 / 表格菜单跟随指针（A-3.2） ──
+
+async function menuHandleCenterDelta(page: Page): Promise<number> {
+  return page.evaluate(() => {
+    const menu = document.querySelector<HTMLElement>(
+      '[data-testid="block-menu"]',
+    )!;
+    const handle = document.querySelector<HTMLElement>(
+      '[data-testid="block-handle"].cm-block-handle-visible',
+    )!;
+    const menuRect = menu.getBoundingClientRect();
+    const handleRect = handle.getBoundingClientRect();
+    return Math.abs(
+      (menuRect.top + menuRect.bottom) / 2 -
+        (handleRect.top + handleRect.bottom) / 2,
+    );
+  });
+}
+
+test("子菜单回移父菜单：300ms 宽限内转换菜单节点数恒为 1（A-3.1）", async ({
+  page,
+}) => {
+  await hoverHandle(page, 2);
+  await page.screenshot({ path: ".artifacts/697/01-parent-menu-open.png" });
+
+  await page.locator('[data-testid="block-menu-add-below"]').hover();
+  await expect(page.locator(".mdb-slash-menu")).toBeVisible({ timeout: 3000 });
+  await page.screenshot({ path: ".artifacts/697/02-submenu-open.png" });
+
+  // 指针移回父菜单上半部（避开「在下方添加」行）
+  const menuBox = (await page
+    .locator('[data-testid="block-menu"]')
+    .boundingBox())!;
+  await page.mouse.move(menuBox.x + menuBox.width / 2, menuBox.y + 40);
+
+  const returnedAt = Date.now();
+  await expect
+    .poll(
+      async () => {
+        const count = await page.locator('[data-testid="block-menu"]').count();
+        return { count, ready: Date.now() - returnedAt >= 300 };
+      },
+      { timeout: 2000, intervals: [50] },
+    )
+    .toEqual({ count: 1, ready: true });
+  await page.screenshot({ path: ".artifacts/697/03-after-return-300ms.png" });
+});
+
+test("图片块菜单垂直中心贴手柄中心（≤2px，A-3.2）", async ({ page }) => {
+  await page.evaluate(() => {
+    const win = window as unknown as Record<string, any>;
+    win.__biaoyue_openFile__(
+      "/tmp/block-menu-image.md",
+      [
+        "上文一",
+        "",
+        "上文二",
+        "",
+        "上文三",
+        "",
+        "上文四",
+        "",
+        "![图片](data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAAB4CAIAAAA48Cq8AAABTUlEQVR4nO3SQQkAIADAQIOZxHRGtYRDkIMLsMfGXBuuG88L+JKxSBiLhLFIGIuEsUgYi4SxSBiLhLFIGIuEsUgYi4SxSBiLhLFIGIuEsUgYi4SxSBiLhLFIGIuEsUgYi4SxSBiLhLFIGIuEsUgYi4SxSBiLhLFIGIuEsUgYi4SxSBiLhLFIGIuEsUgYi4SxSBiLhLFIGIuEsUgYi4SxSBiLhLFIGIuEsUgYi4SxSBiLhLFIGIuEsUgYi4SxSBiLhLFIGIuEsUgYi4SxSBiLhLFIGIuEsUgYi4SxSBiLhLFIGIuEsUgYi4SxSBiLhLFIGIuEsUgYi4SxSBiLhLFIGIuEsUgYi4SxSBiLhLFIGIuEsUgYi4SxSBiLhLFIGIuEsUgYi4SxSBiLhLFIGIuEsUgYi4SxSBiLhLFIGIuEsUgYi4SxSBiLhLFIGIuEsUgYi4SxSBiLhLFIGIuEsUgYi4SxSBiLhLFIGIuEsUgYi4SxSBiLhLFIGIuEsUgYi4SxSBiLhLFIGIuEsUgYi4SxSBiLhLFIGIuEsUgYi4SxSBiLhLFIGIuEsUgYi4SxSBiLhLFIGIuEsUgYi4SxSBiLhLFIGIuEsUgYi4SxSBiLhLFIGIuEsUgYi4SxSBiLhLFIGIuEsUgYi4SxSBiLhLFIGIuEsUgYi4SxSBiLhLFIGIuEsUgYi4SxSBiLhLFIGIuEsUgYi4SxSBiLhLFIGIuEsUgYi4SxSBiLhLFIGIuEsUgYi4SxSBiLhLFIGIuEsUgYi4SxSBiLhLFIGIuEsUgYi4SxSBiLhLFIGIuEsUgYi4SxSBiLhLFIGIuEsUgYi4SxSBiLhLFIGIuEsUgYi4SxSBiLhLFIGIuEsUgYi4SxSBiLhLFIGIuEsUgYi4SxSBiLhLFIGIuEsUgYi4SxSBiLhLFIGIuEsUgYi4SxSBiLhLFIGIuEsUgYi4SxSBiLhLFIGIuEsUgYi4SxSBiLhLFIGIuEsUgYi4SxSBiLhLFIGIuEsUgYi4SxSBiLhLFIGIuEsUgYi4SxSBiLhLFIGIuEsUgYi4SxSBiLhLFIGIuEsUgYi4SxSBiLhLFIGIuEsUgYi4SxSBiLhLFIGIuEsUgYi4SxSBiLhLFIGIvEAUBFjSCXVB41AAAAAElFTkSuQmCC)",
+        "",
+        "下文一",
+        "",
+        "下文二",
+        "",
+      ].join("\n"),
+      "block-menu-image.md",
+    );
+    win.__biaoyue_store__.getState().setEditorMode("edit");
+  });
+  await page.locator(".cm-content").waitFor({ timeout: 5000 });
+
+  await hoverHandle(page, 8);
+  const delta = await menuHandleCenterDelta(page);
+  expect(delta).toBeLessThanOrEqual(2);
+  await page.screenshot({ path: ".artifacts/697/04-image-menu-follow.png" });
+});
+
+test("表格块菜单垂直中心贴手柄中心（≤2px，A-3.2）", async ({ page }) => {
+  await page.evaluate(() => {
+    const win = window as unknown as Record<string, any>;
+    win.__biaoyue_openFile__(
+      "/tmp/block-menu-table.md",
+      [
+        "上文一",
+        "",
+        "上文二",
+        "",
+        "上文三",
+        "",
+        "| 姓名 | 城市 |",
+        "| --- | --- |",
+        "| 甲 | 北京 |",
+        "| 乙 | 上海 |",
+        "| 丙 | 广州 |",
+        "",
+        "下文一",
+        "",
+      ].join("\n"),
+      "block-menu-table.md",
+    );
+    win.__biaoyue_store__.getState().setEditorMode("edit");
+  });
+  await page.locator(".cm-content").waitFor({ timeout: 5000 });
+
+  await hoverHandle(page, 6);
+  const delta = await menuHandleCenterDelta(page);
+  expect(delta).toBeLessThanOrEqual(2);
+  await page.screenshot({ path: ".artifacts/697/05-table-menu-follow.png" });
+});
