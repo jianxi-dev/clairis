@@ -74,6 +74,11 @@ export interface SlashCommand {
   /** 存在时，激活该行会打开 rows×cols 网格选择器。 */
   grid?: { rows: number; cols: number };
   /**
+   * 存在时，二级浮层改用横向等宽格子渲染（当前仅 `"columns"`：分栏 5 栏，
+   * design D11）。缺省仍是纵向行列表。
+   */
+  layout?: "columns";
+  /**
    * 返回替换菜单范围的变更；`text` 是模板文本。调用时文档里 `/`（以及已输入
    * 的过滤词）还在。`applyCommand` 自己替换 `[slashPos, head]`，所以返回的
    * `from`/`to` 只是提示（无过滤词时定位斜杠）。仅叶子行提供；子菜单入口不提供。
@@ -273,6 +278,7 @@ export const defaultCommands: SlashCommand[] = [
     icon: "ColumnsOutlined",
     code: "f",
     group: "常用",
+    layout: "columns",
     children: COLUMN_COUNTS.map(columnCount),
   },
   {
@@ -1363,9 +1369,25 @@ function renderFlyout(view: EditorView, state: SlashMenuState): void {
   if (!state.flyoutDom) return;
   state.flyoutDom.textContent = "";
   delete state.flyoutDom.dataset.kind;
+  // 分栏（layout: "columns"）是横向等宽格子，不是纵向行列表（design D11）。
+  const columns = state.submenuParent?.layout === "columns";
+  let host: HTMLDivElement = state.flyoutDom;
+  if (columns) {
+    state.flyoutDom.dataset.kind = "columns";
+    const wrap = document.createElement("div");
+    wrap.className = "mdb-slash-flyout-columns";
+    wrap.style.display = "grid";
+    wrap.style.gridTemplateColumns = `repeat(${state.flyoutRows.length}, 1fr)`;
+    wrap.style.gap = "2px";
+    wrap.style.padding = "4px";
+    state.flyoutDom.appendChild(wrap);
+    host = wrap;
+  }
   state.flyoutRows.forEach((cmd, i) => {
     const row = document.createElement("div");
-    row.className = "mdb-slash-flyout-item";
+    row.className = columns
+      ? "mdb-slash-flyout-item mdb-slash-flyout-cell"
+      : "mdb-slash-flyout-item";
     row.dataset.cmd = cmd.id;
     if (i === state.flyoutSelected) {
       row.setAttribute("data-selected", "true");
@@ -1412,7 +1434,7 @@ function renderFlyout(view: EditorView, state: SlashMenuState): void {
       activateRow(view, cmd);
     });
 
-    state.flyoutDom!.appendChild(row);
+    host.appendChild(row);
   });
 }
 
@@ -1650,7 +1672,18 @@ export function slashMenuApply(view: EditorView): boolean {
 export function slashMenuSubmenuEnter(view: EditorView): boolean {
   const state = menus.get(view);
   if (!state?.open || !state.dom || !isActiveLayer(view, state)) return false;
-  if (isFlyoutOpen(state)) return false;
+  if (isFlyoutOpen(state)) {
+    // 横向分栏浮层：左右键在格子间移动（竖排浮层的上下键等价）。
+    if (state.submenuParent?.layout === "columns") {
+      state.flyoutSelected = Math.min(
+        state.flyoutSelected + 1,
+        state.flyoutRows.length - 1,
+      );
+      renderFlyout(view, state);
+      return true;
+    }
+    return false;
+  }
   const cmd = state.rows[state.selected];
   if (cmd?.grid) {
     openGrid(view, cmd);
@@ -1668,6 +1701,16 @@ export function slashMenuSubmenuBack(view: EditorView): boolean {
   const state = menus.get(view);
   if (!state?.open || !state.dom || !isActiveLayer(view, state)) return false;
   if (isFlyoutOpen(state)) {
+    if (state.submenuParent?.layout === "columns") {
+      // 横向分栏：左移到头再按才收起浮层，与竖排浮层的 Left 行为一致。
+      if (state.flyoutSelected > 0) {
+        state.flyoutSelected -= 1;
+        renderFlyout(view, state);
+      } else {
+        closeFlyout(state);
+      }
+      return true;
+    }
     closeFlyout(state);
     return true;
   }

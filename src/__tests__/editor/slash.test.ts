@@ -293,7 +293,7 @@ describe("slash commands", () => {
     expect(onCells().length).toBe(12);
   });
 
-  it("the 分栏 row opens a five-option flyout that inserts a complete column div", () => {
+  it("the 分栏 row opens five horizontal cells in the flyout", () => {
     insertSlashChar(view);
     const rows = Array.from(
       view.dom.querySelectorAll<HTMLElement>(".mdb-slash-item"),
@@ -304,11 +304,68 @@ describe("slash commands", () => {
     slashMenuApply(view);
 
     expect(view.state.doc.toString()).toBe("/");
-    expect(
-      view.dom.querySelectorAll(".mdb-slash-grid-menu .mdb-slash-item").length,
-    ).toBe(17);
-    const flyoutRows = view.dom.querySelectorAll(".mdb-slash-flyout-item");
-    expect(flyoutRows.length).toBe(5);
+    const flyout = view.dom.querySelector<HTMLElement>(".mdb-slash-flyout");
+    expect(flyout).not.toBeNull();
+    expect(flyout!.dataset.kind).toBe("columns");
+    const wrap = flyout!.querySelector<HTMLElement>(
+      ".mdb-slash-flyout-columns",
+    );
+    expect(wrap).not.toBeNull();
+    expect(wrap!.style.gridTemplateColumns).toBe("repeat(5, 1fr)");
+    expect(flyout!.querySelectorAll(".mdb-slash-flyout-item").length).toBe(5);
+  });
+
+  it("hovering the 4th 分栏 cell selects only that cell", () => {
+    insertSlashChar(view);
+    const rows = Array.from(
+      view.dom.querySelectorAll<HTMLElement>(".mdb-slash-item"),
+    );
+    const colIdx = rows.findIndex((row) => row.textContent?.includes("分栏"));
+    for (let i = 0; i < colIdx; i++) slashMenuSelectNext(view);
+    slashMenuApply(view);
+
+    const flyout = view.dom.querySelector<HTMLElement>(".mdb-slash-flyout");
+    const cells = flyout!.querySelectorAll<HTMLElement>(
+      ".mdb-slash-flyout-cell",
+    );
+    expect(cells.length).toBe(5);
+
+    cells[3].dispatchEvent(new MouseEvent("mouseenter"));
+
+    const selected = flyout!.querySelectorAll<HTMLElement>(
+      '.mdb-slash-flyout-item[data-selected="true"]',
+    );
+    expect(selected.length).toBe(1);
+    expect(selected[0]).toBe(cells[3]);
+  });
+
+  it("clicking the 4th 分栏 cell inserts the col-4 fence and closes the menu", () => {
+    insertSlashChar(view);
+    const rows = Array.from(
+      view.dom.querySelectorAll<HTMLElement>(".mdb-slash-item"),
+    );
+    const colIdx = rows.findIndex((row) => row.textContent?.includes("分栏"));
+    for (let i = 0; i < colIdx; i++) slashMenuSelectNext(view);
+    slashMenuApply(view);
+
+    const cells = view.dom.querySelectorAll<HTMLElement>(
+      ".mdb-slash-flyout-cell",
+    );
+    cells[3].dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+
+    expect(view.state.doc.toString()).toBe("::: {.col-4}\n\n:::");
+    expect(view.dom.querySelector(".mdb-slash-menu")).toBeNull();
+    expect(view.dom.querySelector(".mdb-slash-flyout")).toBeNull();
+  });
+
+  it("ArrowDown/Enter in the 分栏 flyout still applies the selected cell", () => {
+    insertSlashChar(view);
+    const rows = Array.from(
+      view.dom.querySelectorAll<HTMLElement>(".mdb-slash-item"),
+    );
+    const colIdx = rows.findIndex((row) => row.textContent?.includes("分栏"));
+    for (let i = 0; i < colIdx; i++) slashMenuSelectNext(view);
+    slashMenuApply(view);
 
     slashMenuSelectNext(view); // 分栏 -> 2 栏
     slashMenuApply(view);
@@ -316,6 +373,35 @@ describe("slash commands", () => {
     expect(view.state.doc.toString()).toBe("::: {.col-2}\n\n:::");
     expect(view.dom.querySelector(".mdb-slash-menu")).toBeNull();
     expect(view.dom.querySelector(".mdb-slash-flyout")).toBeNull();
+  });
+
+  it("ArrowRight/ArrowLeft move the 分栏 selection and Left at the first cell closes", () => {
+    insertSlashChar(view);
+    const rows = Array.from(
+      view.dom.querySelectorAll<HTMLElement>(".mdb-slash-item"),
+    );
+    const colIdx = rows.findIndex((row) => row.textContent?.includes("分栏"));
+    for (let i = 0; i < colIdx; i++) slashMenuSelectNext(view);
+    slashMenuApply(view);
+
+    const selected = () =>
+      view.dom.querySelectorAll<HTMLElement>(
+        '.mdb-slash-flyout-item[data-selected="true"]',
+      );
+    expect(selected().length).toBe(1);
+
+    slashMenuSubmenuEnter(view);
+    expect(selected()[0].dataset.cmd).toBe("columns-2");
+    slashMenuSubmenuEnter(view);
+    expect(selected()[0].dataset.cmd).toBe("columns-3");
+    slashMenuSubmenuBack(view);
+    expect(selected()[0].dataset.cmd).toBe("columns-2");
+    slashMenuSubmenuBack(view);
+    expect(selected()[0].dataset.cmd).toBe("columns-1");
+    // 头格再按 Left：收起浮层，根菜单仍在。
+    slashMenuSubmenuBack(view);
+    expect(view.dom.querySelector(".mdb-slash-flyout")).toBeNull();
+    expect(view.dom.querySelector(".mdb-slash-menu")).not.toBeNull();
   });
 
   it("分栏 is reachable by pinyin because 栏 is in the PINYIN map", () => {
