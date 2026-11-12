@@ -12,6 +12,7 @@ import type {
 } from "@embedpdf/snippet";
 import { loadPdfBytes } from "../../utils/pdfSource";
 import { isTauriEnv } from "../../utils/tauri";
+import { setPdfToolbarPinToggle } from "./pdfToolbarPin";
 
 interface PdfViewerProps {
   filePath: string;
@@ -98,6 +99,7 @@ function injectPdfUiCss(container: EmbedPdfContainer): void {
     '[data-epdf-i="main-toolbar"]{transition:opacity .2s ease,transform .2s ease !important}',
     ':host(.pdf-chrome-hidden) [data-epdf-i="main-toolbar"]{position:absolute !important;top:0 !important;left:0 !important;right:0 !important;z-index:50 !important;opacity:0 !important;transform:translateY(-100%) !important;pointer-events:none !important}',
     ':host(.pdf-chrome-hidden.pdf-chrome-peek) [data-epdf-i="main-toolbar"]{opacity:1 !important;transform:none !important;pointer-events:auto !important}',
+    ':host(.pdf-chrome-pinned-hidden) [data-epdf-i="main-toolbar"]{display:none !important}',
   ].join("\n");
   shadow.appendChild(style);
 }
@@ -110,14 +112,21 @@ type PdfLoadState =
 /** 顶栏 page-controls 组件的 schema item id（与 injectPdfUiCss 的选择器对应） */
 const PAGE_NAV_ITEM_ID = "pdf-page-nav";
 
+/** 顶栏「按钮栏固定」图钉按钮的 schema item id（与 injectPdfUiCss 的选择器对应） */
+const PDF_TOOLBAR_PIN_ITEM_ID = "pdf-toolbar-pin";
+
 /**
  *  registry 就绪后的 UI 配置：
  * 1. 禁用底部 page-controls 浮层（滚动不再弹出）。
  * 2. 把 page-controls 组件（上一页/页码/下一页）挂进 main-toolbar 的 center-group。
  * 3. 覆盖 zoom:in / zoom:out 命令的 visible，移除缩放工具栏内的两个独立按钮。
+ * 4. 注册按钮栏固定开关命令，并在 main-toolbar 的 right-group 加入图钉按钮。
  * 返回一个清理函数（取消文档激活订阅）。
  */
-function configurePdfUi(registry: PluginRegistry): () => void {
+function configurePdfUi(
+  registry: PluginRegistry,
+  togglePin: () => void,
+): () => void {
   const ui = registry.getPlugin<UIPlugin>("ui")?.provides();
   const docManager = registry
     .getPlugin<DocumentManagerPlugin>("document-manager")
@@ -141,23 +150,53 @@ function configurePdfUi(registry: PluginRegistry): () => void {
     },
   );
 
-  // 顶栏加入 page-controls（上一页/页码/下一页），插在缩放工具栏之后
+  // 按钮栏固定开关（#671）：与全局快捷键 ⌘⇧D 同源，点击图钉切换固定显示 / 隐藏
+  if (commands) {
+    commands.registerCommand({
+      id: "pdf:toggle-toolbar-pin",
+      label: "固定显示 / 隐藏按钮栏",
+      icon: "eye",
+      categories: ["pdf-toolbar"],
+      action: () => togglePin(),
+    });
+  }
+
+  // 顶栏加入 page-controls（上一页/页码/下一页），插在缩放工具栏之后；
+  // 右组加入「按钮栏固定」图钉按钮
   const schema = ui.getSchema();
   const mainToolbar = schema.toolbars["main-toolbar"];
   if (mainToolbar) {
     const items = mainToolbar.items.map((item) => {
-      if (item.type !== "group" || item.id !== "center-group") return item;
-      const centerItems = [...item.items];
-      const zoomIdx = centerItems.findIndex((i) => i.id === "zoom-toolbar");
-      if (zoomIdx >= 0) {
-        centerItems.splice(zoomIdx + 1, 0, {
-          type: "custom",
-          id: PAGE_NAV_ITEM_ID,
-          componentId: "page-controls",
-          categories: ["page", "navigation"],
-        });
+      if (item.type !== "group") return item;
+      if (item.id === "center-group") {
+        const centerItems = [...item.items];
+        const zoomIdx = centerItems.findIndex((i) => i.id === "zoom-toolbar");
+        if (zoomIdx >= 0) {
+          centerItems.splice(zoomIdx + 1, 0, {
+            type: "custom",
+            id: PAGE_NAV_ITEM_ID,
+            componentId: "page-controls",
+            categories: ["page", "navigation"],
+          });
+        }
+        return { ...item, items: centerItems };
       }
-      return { ...item, items: centerItems };
+      if (item.id === "right-group") {
+        return {
+          ...item,
+          items: [
+            {
+              type: "command-button" as const,
+              id: PDF_TOOLBAR_PIN_ITEM_ID,
+              commandId: "pdf:toggle-toolbar-pin",
+              variant: "icon" as const,
+              categories: ["pdf-toolbar"],
+            },
+            ...item.items,
+          ],
+        };
+      }
+      return item;
     });
     const merged: ToolbarSchema = { ...mainToolbar, items };
     ui.mergeSchema({ toolbars: { "main-toolbar": merged } });
@@ -261,6 +300,25 @@ export default function PdfViewer({ filePath }: PdfViewerProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const embedRef = useRef<EmbedPdfContainer | null>(null);
 
+  // PDF 顶栏显式收起（#570）：默认占位显示；双击工具栏收起并让正文填充，
+  // 再双击固定；收起后只有指针滑入顶部 16px 热区才以悬浮栏出现。
+  const [chromeHidden, setChromeHidden] = useState(false);
+  const [chromePeek, setChromePeek] = useState(false);
+
+  // 按钮栏固定状态（#671）：false = 固定显示（默认），true = 固定隐藏。
+  // 视图级：切页签卸载即复位，不写配置、不写文档。
+  const [toolbarPinnedHidden, setToolbarPinnedHidden] = useState(false);
+  const toolbarPinnedHiddenRef = useRef(false);
+  const toggleToolbarPin = useCallback(() => {
+    const next = !toolbarPinnedHiddenRef.current;
+    toolbarPinnedHiddenRef.current = next;
+    setToolbarPinnedHidden(next);
+    if (next) {
+      setChromeHidden(false);
+      setChromePeek(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (!isTauriEnv()) return; // 非 Tauri 已在初始 state 短路为错误态
     let cancelled = false;
@@ -320,25 +378,25 @@ export default function PdfViewer({ filePath }: PdfViewerProps) {
     setRegistry(r);
   }, []);
 
-  // registry 就绪后配置 UI（浮层 / 顶栏页码 / 缩放按钮）
+  // registry 就绪后配置 UI（浮层 / 顶栏页码 / 缩放按钮 / 固定开关）
   useEffect(() => {
     if (!registry) return;
-    return configurePdfUi(registry);
-  }, [registry]);
+    return configurePdfUi(registry, toggleToolbarPin);
+  }, [registry, toggleToolbarPin]);
 
   usePdfPinchZoom(registry, containerRef, state.status === "ready");
 
-  // PDF 顶栏显式收起（#570）：默认占位显示；双击工具栏收起并让正文填充，
-  // 再双击固定；收起后只有指针滑入顶部 16px 热区才以悬浮栏出现。
-  const [chromeHidden, setChromeHidden] = useState(false);
-  const [chromePeek, setChromePeek] = useState(false);
+  useEffect(() => {
+    return setPdfToolbarPinToggle(filePath, toggleToolbarPin);
+  }, [filePath, toggleToolbarPin]);
 
   useEffect(() => {
     const el = embedRef.current;
     if (state.status !== "ready" || !el) return;
     el.classList.toggle("pdf-chrome-hidden", chromeHidden);
     el.classList.toggle("pdf-chrome-peek", chromeHidden && chromePeek);
-  }, [chromeHidden, chromePeek, state.status]);
+    el.classList.toggle("pdf-chrome-pinned-hidden", toolbarPinnedHidden);
+  }, [chromeHidden, chromePeek, toolbarPinnedHidden, state.status]);
 
   useEffect(() => {
     const host = containerRef.current;

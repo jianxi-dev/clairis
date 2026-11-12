@@ -10,6 +10,7 @@ import TooltipLayer from "./components/TooltipLayer";
 import TemplatePicker from "./components/TemplatePicker";
 import SettingsView from "./components/SettingsView";
 import PaneTreeView from "./components/Content/PaneTreeView";
+import { togglePdfToolbarPin } from "./components/Content/pdfToolbarPin";
 import ReadingRail from "./components/Rail/ReadingRail";
 import { FloatingPreviewList } from "./components/Preview/FloatingPreview";
 import PortalView from "./components/PortalView";
@@ -580,6 +581,15 @@ function App() {
         if (tab?.path) store.togglePinnedPath(tab.path);
       }
 
+      // Cmd+Shift+D: PDF 按钮栏固定显示 / 隐藏（仅活动 PDF 视图，视图级状态）
+      if (meta && e.shiftKey && e.key.toLowerCase() === "d") {
+        if (activeTab?.fileKind === "pdf" && activeTab.path) {
+          e.preventDefault();
+          togglePdfToolbarPin(activeTab.path);
+          return;
+        }
+      }
+
       // Cmd+Alt+Right / Cmd+Alt+Down: split the focused pane (layout-portal 3.1)
       if (meta && e.altKey && e.key === "ArrowRight") {
         e.preventDefault();
@@ -708,6 +718,8 @@ function App() {
     handleSaveFile,
     handleNewFile,
     activeTab?.editorMode,
+    activeTab?.fileKind,
+    activeTab?.path,
     readingMode,
     activeTabId,
     handleScaleDelta,

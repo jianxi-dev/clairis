@@ -198,11 +198,19 @@ export const SHORTCUTS: readonly ShortcutDef[] = [
     implemented: true,
   },
 
-  // ── 模式（1）──────────────────────────────────────────────
+  // ── 模式（2）──────────────────────────────────────────────
   {
     id: "mode-cycle",
     keys: "⌘⇧M",
     label: "循环预览 / 编辑 / 源码",
+    family: "mode",
+    implemented: true,
+  },
+  {
+    // 仅活动页签为 PDF 时生效；视图级状态，切页签即复位。
+    id: "mode-pdf-toolbar-pin",
+    keys: "⌘⇧D",
+    label: "PDF 按钮栏固定显示 / 隐藏",
     family: "mode",
     implemented: true,
   },
