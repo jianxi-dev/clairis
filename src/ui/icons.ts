@@ -109,6 +109,7 @@ export type IconName =
   | "redo"
   | "copy"
   | "trash"
+  | "scissors"
   | "brush"
   | "alignLeft"
   | "alignCenter"
@@ -554,6 +555,10 @@ export const ICONS: Record<IconName, IconDef> = {
   trash: {
     label: "删除",
     s: "M4.5 7h15 M9 7V5.2A1.2 1.2 0 0 1 10.2 4h3.6A1.2 1.2 0 0 1 15 5.2V7 M6.5 7l.8 12.2A1.4 1.4 0 0 0 8.7 20.5h6.6a1.4 1.4 0 0 0 1.4-1.3L17.5 7",
+  },
+  scissors: {
+    label: "剪切",
+    s: "M6 9a3 3 0 1 0 0-6 3 3 0 1 0 0 6z M8.12 8.12 12 12 M20 4 8.12 15.88 M6 21a3 3 0 1 0 0-6 3 3 0 1 0 0 6z M14.8 14.8 20 20",
   },
   brush: {
     label: "格式刷",

@@ -533,12 +533,6 @@ export function floatingToolbar(allowCapsule = false) {
           run: () => undo(view),
         },
         {
-          id: "history-redo",
-          label: "前进",
-          icon: "redo",
-          run: () => redo(view),
-        },
-        {
           id: "history-copy",
           label: "复制",
           icon: "copy",
@@ -547,6 +541,24 @@ export function floatingToolbar(allowCapsule = false) {
               ?.writeText(selectionText(view))
               .catch(() => {});
           },
+        },
+        {
+          id: "history-cut",
+          label: "剪切",
+          icon: "scissors",
+          run: () => {
+            void navigator.clipboard
+              ?.writeText(selectionText(view))
+              .catch(() => {});
+            const { from, to } = view.state.selection.main;
+            view.dispatch({ changes: { from, to, insert: "" } });
+          },
+        },
+        {
+          id: "history-redo",
+          label: "前进",
+          icon: "redo",
+          run: () => redo(view),
         },
         {
           id: "history-delete",
