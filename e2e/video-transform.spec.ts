@@ -26,7 +26,6 @@ async function openPlayer(page: Page): Promise<void> {
     });
     video.pause();
   }, TINY_MP4);
-  await page.waitForTimeout(200);
 }
 
 async function openVisual(page: Page): Promise<void> {
@@ -60,7 +59,8 @@ test("连续四次旋转回到 0°，缩放上限 4 倍", async ({ page }) => {
   await openPlayer(page);
   await openVisual(page);
   await page.locator(".art-control-rotate").click();
-  expect((await videoStyle(page)).transform).toContain("rotate(90deg)");
+  // 旋转方向由 #518 验收（逆时针 90°）与 #523 实现定义：首击为 270deg。
+  expect((await videoStyle(page)).transform).toContain("rotate(270deg)");
   for (let i = 0; i < 3; i += 1)
     await page.locator(".art-control-rotate").click();
   expect((await videoStyle(page)).transform).toContain("rotate(0deg)");
@@ -93,7 +93,9 @@ test("切换文件后画面状态复位", async ({ page }) => {
     const w = window as unknown as Record<string, any>;
     w.__biaoyue_openFile__("/Users/test/clip2.mp4", "", "clip2.mp4");
   });
-  await page.waitForTimeout(600);
+  await expect
+    .poll(async () => (await videoStyle(page)).transform, { timeout: 10000 })
+    .toContain("rotate(0deg)");
   const s = await videoStyle(page);
   expect(s.transform).toContain("rotate(0deg)");
   expect(s.transform).toContain("scale(1)");
