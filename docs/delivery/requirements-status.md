@@ -37,7 +37,7 @@ openspec status --change <name>   # 单个变更工件完成度
 
 ## 总览统计（截至 2026-11-09）
 
-- 规格：17 域 / 196 requirement（2026-11-12 归档 image-block-editing 后）
+- 规格：17 域 / 204 requirement（2026-11-12 归档 ui-polish-batch15 后）
 - ✅ 经 openspec 归档实现：44
 - 🟡 已实现/设计完成（未走 openspec 变更）：24
 - ⬜ 待开发：16
@@ -51,6 +51,8 @@ openspec status --change <name>   # 单个变更工件完成度
 - 外壳/编辑/阅读/文件域（`shell-editor-batch5`）：+9 需求（C-4、E-10/E-11/E-13/E-16、G-3/G-7/G-8/G-10），18/18 票合并（PR #331–#351，含 #343/#347 两个缺陷），已归档 `openspec/changes/archive/2026-11-08-shell-editor-batch5`
   - 附加入口批：PDF 卡片真首页缩略图（#317，pdfium 渲首页→dataURL，失败回退占位）、pin/pinOff 改标准图钉造型（#352，PR #353）
 - 外壳/媒体/阅读域（`shell-media-batch7`）：11/11 票合并（PR #423–#436），净 +3 requirement（+5 新增、-2 被取代），已归档 `openspec/changes/archive/2026-11-08-shell-media-batch7`
+- 外壳/页面/编辑/阅读/文件域（`ui-polish-batch15`）：11/11 票合并（PR #683–#693），净 +8 requirement（application-shell 1 / configuration 2 / editing 3 / reading 2）、2 条 requirement 修订（G-3 无品牌顶栏改为含窗口按钮落点；块对齐补编辑态隐藏围栏），已归档 `openspec/changes/archive/2026-11-12-ui-polish-batch15`
+  - 视频默认档连播下一个视频（音频不静默起播）+ 竖拍适配回归、轮盘改显式快捷键召唤（默认圆心/双击切盘/中键拖动持久化）、轮盘搜索 9 行上限与固定快捷键列、历史组补剪切与透明项棋盘格、提示时长可配（含回滚）、对齐围栏编辑态隐藏、页签喇叭按文件隔离、音频静音即时暂停、PDF 按钮栏固定显隐、顶栏去品牌与窗口按钮按钉住落点、栏目菜单边界翻转
 - 编辑域（`image-block-editing`）：9/9 票合并（PR #659–#664、#677–#679、#680、#681），+2 requirement（+3 新增、-1 编号让位：E-24 改授图片块编辑）、3 条 requirement 修订（E-11 块菜单、转换菜单图标与二级面板、高亮块图标间距），已归档 `openspec/changes/archive/2026-11-12-image-block-editing`
   - 图片块选中态/工具条/双击最大化、属性语法（width/height/align/crop）与括号路径保护、四边四角缩放、无损裁剪（裁剪浮层 + 裁剪矩形写回）、描述行（占位/提交/收起）、剪贴板粘贴图片、块菜单图标补齐与二级面板互斥、高亮块图标间距归零
 - 规格对齐（`rail-thumb-spec-sync`）：阅读空间卡片缩略图 72×54 → 64×48（`navigation` 1 条 requirement 修订，总数不变），已归档 `openspec/changes/archive/2026-11-08-rail-thumb-spec-sync`
@@ -67,7 +69,7 @@ openspec status --change <name>   # 单个变更工件完成度
 
 ## 逐域状态
 
-### reading（13）
+### reading（15）
 
 | 编号 | 需求 | 状态 | 证据 |
 |---|---|---|---|
@@ -108,13 +110,14 @@ openspec status --change <name>   # 单个变更工件完成度
 | D-14 | Capsule tooltip 移除 | 🟡 | v5.4 已实现 |
 | D-15 | 一次批量混合 prefix 录入 | ✅ | change `capture-mixed-prefix-input` |
 
-### application-shell（12）
+### application-shell（13）
 
 | 编号 | 需求 | 状态 | 证据 |
 |---|---|---|---|
 | G-1 | 移除左侧栏逻辑 | ⬜ | 设计已批 `docs/design/approved/shell-ui/` |
 | G-2 | 无右侧边栏 | ⬜ | 设计已批同上 |
-| G-3 | 无品牌顶栏（内容贴顶；原「单一顶栏」已由本变更取代） | ✅ | `ui-polish-batch6`（归档 2026-11-08） |
+| G-3 | 无品牌顶栏（内容贴顶；原「单一顶栏」已由本变更取代）；窗口按钮按左栏钉住落点、首标签避让 | ✅ | `ui-polish-batch6`（归档 2026-11-08）；`ui-polish-batch15`（归档 2026-11-12，PR #692） |
+| N-9 | 栏目更多操作菜单按视口边界翻转 | ✅ | change `ui-polish-batch15`（归档 2026-11-12，PR #693） |
 | 状态栏 | 六入口（含自动布局）/ ≤26px / 双击显隐 / 宽度面板 / 主题悬停面板 + 单击循环 | ✅ | `ui-polish-batch6`（归档 2026-11-08）；`shell-media-batch7`（归档 2026-11-08） |
 | G-5 | 正文分栏（可选） | ⬜ | 设计已批同上 |
 | B-2 | 空状态继续区分块 | 🟡 | 设计已批 `docs/design/approved/empty-state/` |
@@ -143,13 +146,17 @@ openspec status --change <name>   # 单个变更工件完成度
 | N-4 | 悬浮预览窗缩略图宽度模型 | ✅ | `ui-polish-batch6`（归档 2026-11-08） |
 | N-5 | PDF 悬浮预览隐藏缩放工具条 | ✅ | `ui-polish-batch6`（归档 2026-11-08） |
 | N-6 | 卡片缩略图高度 48（与文字不重叠） | ✅ | `ui-polish-batch6`（归档 2026-11-08） |
+| N-7 | 视频默认档连播下一个视频 + 竖拍适配 | ✅ | change `ui-polish-batch15`（归档 2026-11-12，PR #683） |
+| N-8 | PDF 按钮栏固定显示 / 隐藏与快捷键（视图级） | ✅ | change `ui-polish-batch15`（归档 2026-11-12，PR #691） |
 
-### configuration（1）
+### configuration（3）
 
 | 编号 | 需求 | 状态 | 证据 |
 |---|---|---|---|
 | CF-1…CF-5 | 配置三层/原子写/快照回滚/校验/热应用 | ✅ | 既有实现（V3 沿用） |
 | CF-6 | 阅读设置归属与设置窗自适应 | ✅ | change `reading-surface-refine`（归档 2026-11-06） |
+| CF-7 | 提示信息显示时长可配置（0.1–10 秒 / 1 位小数 / 校验回落 / 快照回滚） | ✅ | change `ui-polish-batch15`（归档 2026-11-12，PR #687） |
+| CF-8 | 轮盘开关快捷键与默认形态配置 | ✅ | change `ui-polish-batch15`（归档 2026-11-12，PR #684） |
 
 ### layout（12）
 
@@ -181,7 +188,7 @@ openspec status --change <name>   # 单个变更工件完成度
 | C-5 | 全部文件视图 | ⬜ | 依赖 B-3 |
 | C-6 | 视频预览播放器（六档倍速 / 上下集 / 截图 / 旋转缩放亮度 / 容器自适应） | ✅ | `video-preview-player`；`ui-polish-batch6`；`shell-media-batch7`（归档 2026-11-08） |
 
-### editing（9）
+### editing（12）
 
 | 编号 | 需求 | 状态 | 证据 |
 |---|---|---|---|
@@ -211,6 +218,9 @@ openspec status --change <name>   # 单个变更工件完成度
 | — | 编辑态工具条归属（md 12 键 / html 只在 html 态；编号让位） | ✅ | `ui-polish-batch6`（归档 2026-11-08） |
 | E-24 | 图片块编辑（选中态/属性语法/四边四角缩放/无损裁剪/描述行/粘贴） | ✅ | change `image-block-editing`（归档 2026-11-12，PR #680/#681） |
 | E-25 | 撤销与重做同时响应 Ctrl 与 Cmd | ✅ | `ui-polish-batch6`（归档 2026-11-08） |
+| E-26 | 轮盘召唤与动作搜索（显式入口 / 9 行上限 / 固定快捷键列） | ✅ | change `ui-polish-batch15`（归档 2026-11-12，PR #684/#685） |
+| E-27 | 音视频静音与音频收尾（按文件隔离 / 音频即时暂停） | ✅ | change `ui-polish-batch15`（归档 2026-11-12，PR #689/#690） |
+| E-28 | 轮盘历史剪切与颜色二级透明项可辨识 | ✅ | change `ui-polish-batch15`（归档 2026-11-12，PR #686） |
 
 ### docs-governance（7）
 
