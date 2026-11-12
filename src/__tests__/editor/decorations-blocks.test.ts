@@ -330,7 +330,7 @@ describe("block decorations", () => {
       ]);
     });
 
-    it("缺省回调的按钮禁用；裁剪固定显示后续票提示", () => {
+    it("缺省回调的按钮禁用（含裁剪）", () => {
       view = createEditor("![alt text](photo.png)", {
         resolveImage: stubResolver,
       });
@@ -342,7 +342,7 @@ describe("block decorations", () => {
         '[data-testid="img-toolbar-crop"]',
       );
       expect(crop?.disabled).toBe(true);
-      expect(crop?.title).toBe("裁剪（后续票实现）");
+      expect(crop?.title).toBe("裁剪");
       const copy = document.querySelector<HTMLButtonElement>(
         '[data-testid="img-toolbar-copy"]',
       );

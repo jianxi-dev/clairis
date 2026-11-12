@@ -40,7 +40,6 @@ const BUTTON_SPECS: readonly ButtonSpec[] = [
     icon: "CropOutlined",
     label: "裁剪",
     action: "crop",
-    disabledTitle: "裁剪（后续票实现）",
   },
   {
     testid: "img-toolbar-comment",

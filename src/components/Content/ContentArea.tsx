@@ -34,6 +34,7 @@ import {
   writeImageAttributes,
   writeImageTitle,
 } from "../../editors/decorations/image";
+import { openImageCrop } from "../../editors/decorations/imageCrop";
 import {
   blockAt,
   deleteBlock,
@@ -87,6 +88,8 @@ function hydrateMermaid(
  * 找得到同级的 `assets/`。
  */
 let activeDocPath: string | null = null;
+/** 模块级装饰回调用的提示出口：组件挂载后把 showNotice 接进来。 */
+let showNoticeSink: ((message: string) => void) | null = null;
 
 /** 剪贴板图片粘贴上限：超过就不读进内存，直接提示。 */
 const PASTED_IMAGE_MAX_BYTES = 20 * 1024 * 1024;
@@ -245,6 +248,45 @@ const editorDecorationOptions: EditorDecorationsOptions = {
     if (!view) return;
     writeImageTitle(view, from, title);
   },
+  onImageCrop: (from) => {
+    const view = getActiveEditorView();
+    if (!view) return;
+    const text = view.state.doc.toString();
+    const ref = scanImageReference(text, from);
+    if (!ref) return;
+    const attrs =
+      ref.attrText !== null
+        ? parseImageAttributes(ref.attrText)
+        : { ...EMPTY_IMAGE_ATTRIBUTES };
+    const src = resolveDocMediaHref(ref.path, activeDocPath);
+    if (!src) {
+      showNoticeSink?.("图片地址无法解析，暂不能裁剪");
+      return;
+    }
+    openImageCrop({
+      src,
+      crop: attrs.crop,
+      onConfirm: (rect) => {
+        const current = getActiveEditorView();
+        if (!current) return;
+        const docText = current.state.doc.toString();
+        const latest = scanImageReference(docText, from);
+        if (!latest) return;
+        const next =
+          latest.attrText !== null
+            ? parseImageAttributes(latest.attrText)
+            : { ...EMPTY_IMAGE_ATTRIBUTES };
+        if (rect) {
+          next.crop = rect;
+          next.width = null;
+          next.height = null;
+        } else {
+          next.crop = null;
+        }
+        writeImageAttributes(current, from, next);
+      },
+    });
+  },
 };
 
 /**
@@ -351,6 +393,7 @@ export default function ContentArea({
   tabPathRef.current = tab?.path || null;
   currentModeRef.current = editorMode;
   activeDocPath = tab?.path || null;
+  showNoticeSink = showNotice;
 
   // 与 PreviewView 的 `.preview-content` 注入同一组变量，两个模式才会同貌。
   const headingColors = useEditorStore((s) => s.headingColors);

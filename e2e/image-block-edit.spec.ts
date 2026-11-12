@@ -258,12 +258,18 @@ test("工具条 9 按钮，水平居中于图片（±2px）", async ({ page }) =
   expect(Math.abs(widgetCenter - toolbarCenter)).toBeLessThanOrEqual(2);
 });
 
-test("裁剪按钮禁用并提示后续票实现", async ({ page }) => {
-  await openEditor(page, "![pic](assets/pic.png)\n", "imgcrop", PNG_DATA_URL);
+test("裁剪按钮启用：打开浮层，Esc 取消无文档改动", async ({ page }) => {
+  const doc = "![pic](assets/pic.png)\n";
+  await openEditor(page, doc, "imgcrop", PNG_DATA_URL);
   await page.locator(".cm-image-widget").click();
   const crop = page.getByTestId("img-toolbar-crop");
-  await expect(crop).toBeDisabled();
-  await expect(crop).toHaveAttribute("title", "裁剪（后续票实现）");
+  await expect(crop).toBeEnabled();
+  await crop.click();
+  const overlay = page.getByTestId("img-crop-overlay");
+  await expect(overlay).toHaveCount(1);
+  await page.keyboard.press("Escape");
+  await expect(overlay).toHaveCount(0);
+  expect(await content(page)).toBe(doc);
 });
 
 test("图片圆角 8px", async ({ page }) => {
@@ -489,4 +495,113 @@ test("描述行取消：Esc 回到占位态，文档无残留改动", async ({ p
     0,
   );
   expect(await content(page)).toBe(doc);
+});
+
+// --- 无损裁剪（#656） ---------------------------------------------------------
+
+const CROP_DOC = `![示例图片](${PNG_DATA_URL})\n`;
+
+async function imgBox(page: Page): Promise<{ width: number; height: number }> {
+  return page.evaluate(() => {
+    const img = document.querySelector(".cm-image-widget img");
+    if (!img) return { width: 0, height: 0 };
+    const rect = img.getBoundingClientRect();
+    return { width: rect.width, height: rect.height };
+  });
+}
+
+async function openCropOverlay(page: Page): Promise<void> {
+  await page.locator(".cm-image-widget").click();
+  await page.getByTestId("img-toolbar-crop").click();
+  await expect(page.getByTestId("img-crop-overlay")).toHaveCount(1);
+}
+
+test("裁剪确认：地址不变、可见变小、源码出现裁剪矩形", async ({ page }) => {
+  await openEditor(page, CROP_DOC, "imgcrop1", PNG_DATA_URL);
+  const before = await imgBox(page);
+  await openCropOverlay(page);
+  await page.getByTestId("img-crop-confirm").click();
+  await expect(page.getByTestId("img-crop-overlay")).toHaveCount(0);
+
+  await expect.poll(() => content(page)).toContain("{crop=3,3,26,26}");
+  const final = await content(page);
+  expect(final.startsWith(`![示例图片](${PNG_DATA_URL}){crop=`)).toBe(true);
+  const after = await imgBox(page);
+  expect(after.width).toBe(26);
+  expect(after.height).toBe(26);
+  expect(after.width).toBeLessThan(before.width);
+});
+
+test("再次打开裁剪：矩形按上次还原，扩大后可见区域变大", async ({ page }) => {
+  await openEditor(page, CROP_DOC, "imgcrop2", PNG_DATA_URL);
+  await openCropOverlay(page);
+  await page.getByTestId("img-crop-confirm").click();
+  await expect.poll(() => content(page)).toContain("{crop=3,3,26,26}");
+
+  await openCropOverlay(page);
+  const rectStyle = await page
+    .locator(".cm-image-crop-rect")
+    .evaluate((el) => ({
+      left: el.style.left,
+      top: el.style.top,
+      width: el.style.width,
+      height: el.style.height,
+    }));
+  expect(rectStyle).toEqual({
+    left: "3px",
+    top: "3px",
+    width: "26px",
+    height: "26px",
+  });
+
+  // 拖 e 把手向右扩 30px（右缘钳在原图边界 32）
+  const handle = page.locator('.cm-image-crop-rect [data-handle="e"]');
+  const box = (await handle.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width / 2 + 30, box.y + box.height / 2, {
+    steps: 4,
+  });
+  await page.mouse.up();
+  await page.getByTestId("img-crop-confirm").click();
+  await expect(page.getByTestId("img-crop-overlay")).toHaveCount(0);
+
+  await expect.poll(() => content(page)).toContain("{crop=3,3,29,26}");
+  const after = await imgBox(page);
+  expect(after.width).toBe(29);
+  expect(after.width).toBeGreaterThan(26);
+});
+
+test("恢复整图：显示回到完整图，源码无裁剪属性", async ({ page }) => {
+  await openEditor(page, CROP_DOC, "imgcrop3", PNG_DATA_URL);
+  await openCropOverlay(page);
+  await page.getByTestId("img-crop-confirm").click();
+  await expect.poll(() => content(page)).toContain("{crop=3,3,26,26}");
+  expect((await imgBox(page)).width).toBe(26);
+
+  await openCropOverlay(page);
+  await page.getByTestId("img-crop-restore").click();
+  await expect(page.getByTestId("img-crop-overlay")).toHaveCount(0);
+  await expect.poll(() => content(page)).toBe(CROP_DOC);
+  expect((await imgBox(page)).width).toBe(32);
+});
+
+test("Esc 取消裁剪：显示与源码均无变化", async ({ page }) => {
+  await openEditor(page, CROP_DOC, "imgcrop4", PNG_DATA_URL);
+  await openCropOverlay(page);
+
+  // 拖了也不算数
+  const handle = page.locator('.cm-image-crop-rect [data-handle="e"]');
+  const box = (await handle.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width / 2 + 20, box.y + box.height / 2, {
+    steps: 4,
+  });
+  await page.mouse.up();
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("img-crop-overlay")).toHaveCount(0);
+
+  expect(await content(page)).toBe(CROP_DOC);
+  expect((await imgBox(page)).width).toBe(32);
 });

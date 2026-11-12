@@ -1,0 +1,44 @@
+{
+  "states": [
+    {
+      "state": "crop-applied",
+      "screenshot": ".artifacts/656/state-1-applied.png",
+      "assertion": "passed",
+      "detail": "默认框（居中 80%）确认：引用地址不变，可见 26×26 < 原 32×32，源码出现 {crop=3,3,26,26}（A-6.1.1）",
+      "recorded_at": "2026-11-12T03:38:12Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "reopen-restore",
+      "screenshot": ".artifacts/656/state-2-reopen.png",
+      "assertion": "passed",
+      "detail": "再次打开裁剪：矩形精确还原为上次 {3,3,26,26}（A-6.1.2 前半）",
+      "recorded_at": "2026-11-12T03:38:12Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "expand-apply",
+      "screenshot": ".artifacts/656/state-3-expanded.png",
+      "assertion": "passed",
+      "detail": "拖 e 把手扩大后确认：可见区域 29×26 > 26×26（A-6.1.2 后半）",
+      "recorded_at": "2026-11-12T03:38:12Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "cleared",
+      "screenshot": ".artifacts/656/state-4-cleared.png",
+      "assertion": "passed",
+      "detail": "恢复整图：显示回到 32×32，源码无任何裁剪属性（A-6.1.3）",
+      "recorded_at": "2026-11-12T03:38:12Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "esc-cancel",
+      "screenshot": ".artifacts/656/state-5-esc-cancel.png",
+      "assertion": "passed",
+      "detail": "拖动后 Esc：显示与源码均无变化（A-6.1.4）",
+      "recorded_at": "2026-11-12T03:38:12Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}
