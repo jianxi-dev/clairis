@@ -84,3 +84,63 @@ test("单栏点击不产生变化", async ({ page }) => {
   const after = await panes(page);
   expect(after).toEqual(before);
 });
+
+test("窗口按钮避让：未钉住留保留区，钉住页签条复位", async ({ page }) => {
+  await boot(page);
+
+  // e2e 在 Chromium 中运行，没有原生红黄绿灯；window-controls-reserve 是
+  // 原生按钮占位的等价断言，原生按钮由 OS 绘制。
+  const reserve = page.getByTestId("window-controls-reserve");
+  await expect(reserve).toHaveCount(1);
+
+  const unpinned = await page.evaluate(() => {
+    const r = document
+      .querySelector('[data-testid="window-controls-reserve"]')!
+      .getBoundingClientRect();
+    const strip = document.querySelector(".tab-strip")!.getBoundingClientRect();
+    const tab = document.querySelector('[role="tab"]')!.getBoundingClientRect();
+    return {
+      reserveWidth: r.width,
+      reserveRight: r.right,
+      stripLeft: strip.left,
+      tabLeft: tab.left,
+    };
+  });
+  expect(unpinned.reserveWidth).toBeGreaterThan(0);
+  expect(unpinned.tabLeft).toBeGreaterThanOrEqual(unpinned.reserveRight + 2);
+
+  await page.evaluate(() => {
+    const w = window as unknown as Record<string, any>;
+    w.__biaoyue_store__.getState().setRailState("pinned");
+  });
+  await expect(reserve).toHaveCount(0);
+
+  const pinned = await page.evaluate(() => {
+    const rail = document
+      .querySelector('[data-testid="rail-panel"]')!
+      .getBoundingClientRect();
+    const strip = document.querySelector(".tab-strip")!.getBoundingClientRect();
+    return { railRight: rail.right, stripLeft: strip.left };
+  });
+  expect(Math.abs(pinned.stripLeft - pinned.railRight)).toBeLessThanOrEqual(2);
+
+  await page.evaluate(() => {
+    const w = window as unknown as Record<string, any>;
+    w.__biaoyue_store__.getState().setRailState("collapsed");
+  });
+  await expect(reserve).toHaveCount(1);
+  await page.evaluate(() => {
+    const w = window as unknown as Record<string, any>;
+    w.__biaoyue_store__.getState().setRailState("pinned");
+  });
+  await expect(reserve).toHaveCount(0);
+
+  const again = await page.evaluate(() => {
+    const rail = document
+      .querySelector('[data-testid="rail-panel"]')!
+      .getBoundingClientRect();
+    const strip = document.querySelector(".tab-strip")!.getBoundingClientRect();
+    return { railRight: rail.right, stripLeft: strip.left };
+  });
+  expect(Math.abs(again.stripLeft - again.railRight)).toBeLessThanOrEqual(2);
+});
