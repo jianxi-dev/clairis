@@ -1,0 +1,377 @@
+{
+  "change": "editor-surface-batch16",
+  "requirements": [
+    {
+      "id": "R-1",
+      "text": "块宽度统一",
+      "anchors": [
+        {
+          "id": "A-1.1",
+          "claim": "预览引用块与段落文字列宽度差（px）",
+          "kind": "exact",
+          "assert": "0",
+          "source": "#695 第 6 项 / design D5"
+        },
+        {
+          "id": "A-1.2",
+          "claim": "编辑态引用块与正文行文字列宽度差（px）",
+          "kind": "exact",
+          "assert": "0",
+          "source": "#695 第 7 项 / design D5"
+        },
+        {
+          "id": "A-1.3",
+          "claim": "编辑态代码块与正文行文字列宽度差（px）",
+          "kind": "exact",
+          "assert": "0",
+          "source": "#695 第 7 项 / design D5"
+        }
+      ]
+    },
+    {
+      "id": "R-2",
+      "text": "编辑态公式与代码高亮",
+      "anchors": [
+        {
+          "id": "A-2.1",
+          "claim": "非活跃态 `.katex` 节点数",
+          "kind": "exact",
+          "assert": "2",
+          "source": "#695 第 8 项 / design D7"
+        },
+        {
+          "id": "A-2.2",
+          "claim": "js 围栏内 `.tok-keyword` 节点数下限",
+          "kind": "exact",
+          "assert": "1",
+          "source": "#695 第 8 项 / design D8"
+        },
+        {
+          "id": "A-2.3",
+          "claim": "光标进入公式块后显示源码",
+          "kind": "state-machine",
+          "assert": "进入源码态",
+          "source": "#695 第 8 项 / design D7"
+        }
+      ]
+    },
+    {
+      "id": "R-3",
+      "text": "手柄菜单稳定与拖块",
+      "anchors": [
+        {
+          "id": "A-3.1",
+          "claim": "回移父菜单 300ms 后转换菜单节点数",
+          "kind": "exact",
+          "assert": "1",
+          "source": "#695 第 1 项 / design D1"
+        },
+        {
+          "id": "A-3.2",
+          "claim": "图片菜单垂直中心与手柄中心偏差上限（px）",
+          "kind": "exact",
+          "assert": "2",
+          "source": "#695 第 2 项 / design D2"
+        },
+        {
+          "id": "A-3.3",
+          "claim": "拖拽期间插入指示线节点数",
+          "kind": "exact",
+          "assert": "1",
+          "source": "#695 第 3 项 / design D3"
+        }
+      ]
+    },
+    {
+      "id": "R-4",
+      "text": "插入菜单表格与分栏",
+      "anchors": [
+        {
+          "id": "A-4.1",
+          "claim": "指针在第 3 行第 4 列时选中格数",
+          "kind": "exact",
+          "assert": "12",
+          "source": "#695 第 10 项 / design D10"
+        },
+        {
+          "id": "A-4.2",
+          "claim": "回滑到第 1 行第 1 列时选中格数",
+          "kind": "exact",
+          "assert": "1",
+          "source": "#695 第 10 项 / design D10"
+        },
+        {
+          "id": "A-4.3",
+          "claim": "分栏横向单元数",
+          "kind": "exact",
+          "assert": "5",
+          "source": "#695 第 11 项 / design D11"
+        },
+        {
+          "id": "A-4.4",
+          "claim": "单击第 4 格插入的围栏类名",
+          "kind": "exact",
+          "assert": "\"col-4\"",
+          "source": "#695 第 11 项 / design D11"
+        }
+      ]
+    },
+    {
+      "id": "R-5",
+      "text": "图片描述",
+      "anchors": [
+        {
+          "id": "A-5.1",
+          "claim": "点描述后新增 `> 评论：` 行数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "#695 图片段第 1 项 / design D13"
+        },
+        {
+          "id": "A-5.2",
+          "claim": "重开文档后描述行文字",
+          "kind": "exact",
+          "assert": "\"示意图\"",
+          "source": "#695 图片段第 1 项 / design D13"
+        },
+        {
+          "id": "A-5.3",
+          "claim": "已有描述再点后输入框回填值",
+          "kind": "exact",
+          "assert": "\"示意图\"",
+          "source": "#695 图片段第 1 项 / design D13"
+        }
+      ]
+    },
+    {
+      "id": "R-6",
+      "text": "图片裁剪",
+      "anchors": [
+        {
+          "id": "A-6.1",
+          "claim": "编辑态可见文本含 `<!--w=`",
+          "kind": "exact",
+          "assert": "\"false\"",
+          "source": "#695 图片段第 2 项 / design D14"
+        },
+        {
+          "id": "A-6.2",
+          "claim": "图片下方空白高度上限（px）",
+          "kind": "exact",
+          "assert": "8",
+          "source": "#695 图片段第 2 项 / design D14"
+        },
+        {
+          "id": "A-6.3",
+          "claim": "拖左上角向右下时裁剪宽度",
+          "kind": "state-machine",
+          "assert": "变为更小",
+          "source": "#695 图片段第 4 项 / design D14"
+        },
+        {
+          "id": "A-6.4",
+          "claim": "显示裁剪语义的控制点数量下限",
+          "kind": "exact",
+          "assert": "6",
+          "source": "#695 图片段第 5 项 / design D14"
+        },
+        {
+          "id": "A-6.5",
+          "claim": "二次裁剪后 crop 宽度",
+          "kind": "exact",
+          "assert": "变为新矩形宽度",
+          "source": "#695 图片段第 6 项 / design D14"
+        }
+      ]
+    },
+    {
+      "id": "R-7",
+      "text": "图片对齐与锚点",
+      "anchors": [
+        {
+          "id": "A-7.1",
+          "claim": "新插入图片容器 text-align",
+          "kind": "exact",
+          "assert": "\"center\"",
+          "source": "#695 图片段第 7 项 / design D15"
+        },
+        {
+          "id": "A-7.2",
+          "claim": "居中按钮 aria-pressed",
+          "kind": "exact",
+          "assert": "\"true\"",
+          "source": "#695 图片段第 7 项 / design D15"
+        },
+        {
+          "id": "A-7.3",
+          "claim": "已裁剪图拖锚点时裁剪浮层节点数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "#695 图片段第 11 项 / design D15"
+        }
+      ]
+    },
+    {
+      "id": "R-8",
+      "text": "图片预览浮层",
+      "anchors": [
+        {
+          "id": "A-8.1",
+          "claim": "滚轮放大后 scale 下限",
+          "kind": "exact",
+          "assert": "1.1",
+          "source": "#695 图片段第 8 项 / design D16"
+        },
+        {
+          "id": "A-8.2",
+          "claim": "旋转一次后的角度",
+          "kind": "exact",
+          "assert": "90",
+          "source": "#695 图片段第 8 项 / design D16"
+        },
+        {
+          "id": "A-8.3",
+          "claim": "恢复原始尺寸后的 scale",
+          "kind": "exact",
+          "assert": "1",
+          "source": "#695 图片段第 8 项 / design D16"
+        },
+        {
+          "id": "A-8.4",
+          "claim": "点下载后下载调用次数",
+          "kind": "exact",
+          "assert": "1",
+          "source": "#695 图片段第 8 项 / design D16"
+        }
+      ]
+    },
+    {
+      "id": "R-9",
+      "text": "块菜单与任务图标",
+      "anchors": [
+        {
+          "id": "A-9.1",
+          "claim": "任务复选框 border-radius",
+          "kind": "exact",
+          "assert": "\"3px\"",
+          "source": "#695 第 12 项 / design D19"
+        },
+        {
+          "id": "A-9.2",
+          "claim": "图片块菜单文本顺序",
+          "kind": "exact",
+          "assert": "\"对齐与缩进,剪切,复制,删除\"",
+          "source": "#695 图片段第 10 项 / design D18"
+        },
+        {
+          "id": "A-9.3",
+          "claim": "图片手柄内 `svg[data-icon]` 数量",
+          "kind": "exact",
+          "assert": "1",
+          "source": "#695 图片段第 10 项 / design D18"
+        }
+      ]
+    },
+    {
+      "id": "R-10",
+      "text": "预览宽度与字体",
+      "anchors": [
+        {
+          "id": "A-10.1",
+          "claim": "预览引用块与段落文字列宽度差（px）",
+          "kind": "exact",
+          "assert": "0",
+          "source": "#695 第 6 项 / design D5"
+        },
+        {
+          "id": "A-10.2",
+          "claim": "编辑态与预览态正文 font-family 相等",
+          "kind": "exact",
+          "assert": "\"true\"",
+          "source": "#695 第 9 项 / design D6"
+        }
+      ]
+    },
+    {
+      "id": "R-11",
+      "text": "预览图片圆角",
+      "anchors": [
+        {
+          "id": "A-11.1",
+          "claim": "预览图片 border-radius",
+          "kind": "exact",
+          "assert": "\"12px\"",
+          "source": "#695 图片段第 9 项 / design D17"
+        },
+        {
+          "id": "A-11.2",
+          "claim": "上下两角半径相同",
+          "kind": "exact",
+          "assert": "\"true\"",
+          "source": "#695 图片段第 9 项 / design D17"
+        }
+      ]
+    },
+    {
+      "id": "R-12",
+      "text": "Markdown 打印",
+      "anchors": [
+        {
+          "id": "A-12.1",
+          "claim": "点打印后 window.print 调用次数",
+          "kind": "exact",
+          "assert": "1",
+          "source": "#695 第 13 项 / design D12"
+        },
+        {
+          "id": "A-12.2",
+          "claim": "打印态顶栏 display",
+          "kind": "exact",
+          "assert": "\"none\"",
+          "source": "#695 第 13 项 / design D12"
+        },
+        {
+          "id": "A-12.3",
+          "claim": "代码块 break-inside",
+          "kind": "exact",
+          "assert": "\"avoid\"",
+          "source": "#695 第 13 项 / design D12"
+        },
+        {
+          "id": "A-12.4",
+          "claim": "@page 页边距",
+          "kind": "exact",
+          "assert": "\"10mm\"",
+          "source": "#695 第 13 项 / design D12"
+        }
+      ]
+    },
+    {
+      "id": "R-13",
+      "text": "视频测试基线",
+      "anchors": [
+        {
+          "id": "A-13.1",
+          "claim": "首次点击旋转后的 transform 角度",
+          "kind": "exact",
+          "assert": "270",
+          "source": "实测 2026-11-13 / #518 AC / design Context"
+        },
+        {
+          "id": "A-13.2",
+          "claim": "连续四次点击后的 transform 角度",
+          "kind": "exact",
+          "assert": "0",
+          "source": "#518 AC / design Context"
+        },
+        {
+          "id": "A-13.3",
+          "claim": "播放列表 spec 重复 5 次失败数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "实测 2026-11-13（基线 1/5 失败）"
+        }
+      ]
+    }
+  ]
+}
