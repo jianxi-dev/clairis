@@ -1,4 +1,5 @@
 import { iconSvg, type IconName } from "../../ui/icons";
+import { isMacPlatform } from "../key-chord";
 import { executeCommand, hasCommand, type CommandContext } from "./commands";
 import { FONT_COLORS, BACKGROUND_COLORS } from "./color-palette";
 import {
@@ -81,6 +82,7 @@ export interface RouletteGroup {
  * 筛选树遍历：父级命中 → 展开其全部可执行后代（父级自身不重复显示）；
  * 父级未命中 → 递归子级；叶子命中且可执行 → 收录（group 记最近父级）。
  * 平铺过滤会把「父级命中但子级 label 不含父级名」的场景漏光，只剩死父级行。
+ * 同一 item.id 只收录一次，避免跨分组重复。
  */
 export function matchCommandsIn(
   groups: readonly RouletteGroup[],
@@ -90,6 +92,12 @@ export function matchCommandsIn(
   const q = query.trim().toLowerCase();
   if (!q) return [];
   const out: Cmd[] = [];
+  const seen = new Set<string>();
+  const push = (item: RouletteItem, groupLabel: string) => {
+    if (seen.has(item.id)) return;
+    seen.add(item.id);
+    out.push({ item, group: groupLabel });
+  };
   const pushDescendants = (
     items: readonly RouletteItem[],
     groupLabel: string,
@@ -98,7 +106,7 @@ export function matchCommandsIn(
       if (item.children && item.children.length > 0) {
         pushDescendants(item.children, item.label);
       } else if (isExecutable(item)) {
-        out.push({ item, group: groupLabel });
+        push(item, groupLabel);
       }
     }
   };
@@ -109,12 +117,16 @@ export function matchCommandsIn(
         if (hit) pushDescendants(item.children, item.label);
         else walk(item.children, item.label);
       } else if (hit && isExecutable(item)) {
-        out.push({ item, group: groupLabel });
+        push(item, groupLabel);
       }
     }
   };
   for (const g of groups) walk(g.items, g.label);
   return out;
+}
+
+function formatShortcut(n: number): string {
+  return isMacPlatform() ? `⌘${n}` : `Ctrl+${n}`;
 }
 
 function svgNode<K extends keyof SVGElementTagNameMap>(
@@ -539,6 +551,8 @@ export function createRoulette(
     matches = [];
     hot = -1;
     filterPanel.hidden = true;
+    filterList.replaceChildren();
+    filterInput.value = "";
     render();
   };
 
@@ -553,12 +567,17 @@ export function createRoulette(
     matches.forEach((row, i) => {
       const b = button("sr-filter-row");
       b.dataset.row = String(i);
+      b.dataset.action = row.item.id;
       b.innerHTML = iconSvg(row.item.icon, 15);
       const label = el("span", "sr-filter-label");
       label.textContent = row.item.label;
-      const grp = el("span", "sr-filter-group");
-      grp.textContent = row.group;
-      b.append(label, grp);
+      b.append(label);
+      const shortcut = el("span", "sr-filter-shortcut");
+      if (i < 9) {
+        shortcut.textContent = i === 0 ? "回车" : formatShortcut(i + 1);
+        shortcut.dataset.shortcut = String(i + 1);
+      }
+      b.append(shortcut);
       b.addEventListener("pointerdown", (e) => e.preventDefault());
       b.addEventListener("click", (e) => {
         e.preventDefault();
@@ -697,7 +716,18 @@ export function createRoulette(
       openFilter();
       return;
     }
-    if (filter !== null) return;
+    if (filter !== null) {
+      // 搜索面板打开时：⌘/Ctrl+2~9 直接执行对应行（首行回车在输入框内处理）。
+      if ((e.metaKey || e.ctrlKey) && /^[2-9]$/.test(e.key)) {
+        const hit = matches[Number(e.key) - 1];
+        if (hit) {
+          e.preventDefault();
+          e.stopPropagation();
+          runLeaf(hit.item);
+        }
+      }
+      return;
+    }
     // 焦点仍在编辑器时，方向键/数字/Enter 属于输入，不由轮盘劫持。
     // 只有指针在轮盘上或显式进入筛选用键盘操作。
     const target = e.target as HTMLElement | null;

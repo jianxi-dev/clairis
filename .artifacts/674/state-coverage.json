@@ -1,0 +1,36 @@
+{
+  "states": [
+    {
+      "state": "single-hot",
+      "screenshot": ".artifacts/674/state-1-single-hot.png",
+      "assertion": "passed",
+      "detail": "搜索「一级」：1 行结果、首行 hot、行内无层级名（A-3.1）",
+      "recorded_at": "2026-11-12T07:48:18Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "scroll-13",
+      "screenshot": ".artifacts/674/state-2-scroll-13.png",
+      "assertion": "passed",
+      "detail": "搜索「高亮」：13 行 > 9，列表可滚动；首行「回车」其后 ⌘2…⌘9；滚动前后快捷键列 x 坐标不变（A-3.2–A-3.5）",
+      "recorded_at": "2026-11-12T07:48:18Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "cmd2-executed",
+      "screenshot": ".artifacts/674/state-3-cmd2-executed.png",
+      "assertion": "passed",
+      "detail": "⌘2 执行第二行：文档写出「## 第一段正文」，轮盘关闭（快捷键执行通道）",
+      "recorded_at": "2026-11-12T07:48:18Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "back-to-disk",
+      "screenshot": ".artifacts/674/state-4-back-to-disk.png",
+      "assertion": "passed",
+      "detail": "Esc 关闭搜索：面板隐藏、列表清空，轮盘回到 disk 原态、无残留",
+      "recorded_at": "2026-11-12T07:48:18Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}
