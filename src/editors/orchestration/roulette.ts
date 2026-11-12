@@ -10,6 +10,9 @@
 export const ROULETTE_BOX = 420;
 export const ROULETTE_CENTER = ROULETTE_BOX / 2;
 
+/** 轮盘开关快捷键缺省值（ui-polish-batch15 2.1）。 */
+export const ROULETTE_HOTKEY_DEFAULT = "Mod+Shift+Space";
+
 /** 圆心（格式刷）半径。 */
 export const HUB_RADIUS = 31;
 

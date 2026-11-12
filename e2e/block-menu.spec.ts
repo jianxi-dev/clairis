@@ -1,6 +1,8 @@
 import { test, expect, type Page } from "@playwright/test";
 
 const APP_URL = "http://localhost:1420";
+const MOD = process.platform === "darwin" ? "Meta" : "Control";
+const HOTKEY = `${MOD}+Shift+Space`;
 const DOC = ["# 标题", "", "第一段正文", "", "第二段正文", ""].join("\n");
 
 test.beforeEach(async ({ page }) => {
@@ -568,6 +570,7 @@ test("选区工具条同样走统一落位，贴选区下方且不越视口", as
   await page.mouse.down();
   await page.mouse.move(box.x + Math.min(box.width - 3, 60), y, { steps: 6 });
   await page.mouse.up();
+  await page.keyboard.press(HOTKEY);
 
   const toolbar = page.locator('[data-testid="selection-roulette"]');
   await expect(toolbar).toBeVisible({ timeout: 3000 });

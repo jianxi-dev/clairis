@@ -68,6 +68,12 @@ export interface AppConfig {
   iconLabel?: "auto" | "text" | "icon";
   /** 轮盘根扇区集合与顺序；null/缺省 = 内置 8 项（ui-command-registry 2.1） */
   rouletteSectors?: string[] | null;
+  /** 轮盘开关快捷键；null/缺省 = Mod+Shift+Space（ui-polish-batch15 2.1） */
+  rouletteHotkey?: string | null;
+  /** 轮盘默认形态：hub 圆心 / disk 整盘；null/缺省 = hub（ui-polish-batch15 2.1） */
+  rouletteForm?: "hub" | "disk" | null;
+  /** 轮盘圆心位置（px）；null/缺省 = 跟在选区旁（ui-polish-batch15 2.1） */
+  roulettePosition?: { x: number; y: number } | null;
   /** 横向工具条动作集合与顺序；null/缺省 = 内置 12 项（ui-toolbar-slots 1.1） */
   htmlToolbarItems?: string[] | null;
   /** 工作区 pane 递归树（layout-portal 3.1）：序列化 JSON，跨重启恢复 */

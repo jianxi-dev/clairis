@@ -4,6 +4,8 @@ const APP_URL = "http://localhost:1420";
 const DOC = ["# 标题", "", "第一段正文", "", "第二段正文", ""].join("\n");
 const WHEEL = '[data-testid="selection-roulette"]';
 const FILTER_INPUT = '[data-testid="sr-filter-input"]';
+const MOD = process.platform === "darwin" ? "Meta" : "Control";
+const HOTKEY = `${MOD}+Shift+Space`;
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
@@ -19,7 +21,12 @@ test.beforeEach(async ({ page }) => {
 
 async function openFilter(page: Page) {
   await page.locator(".cm-line").nth(2).click({ clickCount: 3 });
-  await expect(page.locator(WHEEL)).toBeVisible({ timeout: 3000 });
+  await page.keyboard.press(HOTKEY);
+  const wheel = page.locator(WHEEL);
+  await expect(wheel).toBeVisible({ timeout: 3000 });
+  if ((await wheel.getAttribute("data-form")) === "hub") {
+    await wheel.locator('[data-testid="roulette-center"]').dblclick();
+  }
   await page.keyboard.press("Control+f");
   await expect(page.locator(FILTER_INPUT)).toBeVisible({ timeout: 3000 });
 }

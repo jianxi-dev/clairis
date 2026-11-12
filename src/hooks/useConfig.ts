@@ -61,6 +61,9 @@ interface RustAppConfig {
   scrollPositions: Record<string, ScrollPosition> | null;
   capabilities?: Record<string, boolean> | null;
   rouletteSectors?: string[] | null;
+  rouletteHotkey?: string | null;
+  rouletteForm?: string | null;
+  roulettePosition?: { x: number; y: number } | null;
   htmlToolbarItems?: string[] | null;
   paneLayout?: string | null;
   railViewSpec?: {
@@ -149,6 +152,9 @@ export async function saveAppConfig(): Promise<void> {
     scrollPositions: useStore.getState().scrollPositions ?? null,
     capabilities: serializeCapabilities(),
     rouletteSectors: es.config.rouletteSectors ?? null,
+    rouletteHotkey: es.config.rouletteHotkey ?? null,
+    rouletteForm: es.config.rouletteForm ?? null,
+    roulettePosition: es.config.roulettePosition ?? null,
     htmlToolbarItems: es.config.htmlToolbarItems ?? null,
     // 读实时值：本次会话分裂/调整的比例要能持久化
     paneLayout: useStore.getState().paneLayoutJson(),
@@ -343,6 +349,17 @@ function applyRustConfig(raw: RustAppConfig): void {
     recentFiles: raw.recentFiles ?? [],
     capabilities: raw.capabilities ?? {},
     rouletteSectors: normalizeRouletteSectors(raw.rouletteSectors),
+    rouletteHotkey: raw.rouletteHotkey ? raw.rouletteHotkey : null,
+    rouletteForm:
+      raw.rouletteForm === "hub" || raw.rouletteForm === "disk"
+        ? raw.rouletteForm
+        : null,
+    roulettePosition:
+      raw.roulettePosition &&
+      Number.isFinite(raw.roulettePosition.x) &&
+      Number.isFinite(raw.roulettePosition.y)
+        ? { x: raw.roulettePosition.x, y: raw.roulettePosition.y }
+        : null,
     htmlToolbarItems: normalizeHtmlToolbarItems(raw.htmlToolbarItems),
   };
 

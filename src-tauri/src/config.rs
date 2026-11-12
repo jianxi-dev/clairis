@@ -66,6 +66,23 @@ pub struct AppConfig {
     /// `default` + `skip_serializing_if` 让老配置仍能读、新配置不多出空字段。
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub default_save_path: Option<String>,
+    /// 轮盘开关快捷键（ui-polish-batch15 2.1）；缺省 = Mod+Shift+Space。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub roulette_hotkey: Option<String>,
+    /// 轮盘默认形态（ui-polish-batch15 2.1）：hub 圆心 / disk 整盘。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub roulette_form: Option<String>,
+    /// 轮盘圆心位置（ui-polish-batch15 2.1）：中键拖动后的落点，重载后保持。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub roulette_position: Option<RoulettePosition>,
+}
+
+/// 轮盘位置（ui-polish-batch15 2.1）：中键拖动后的圆心坐标（屏内像素）。
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct RoulettePosition {
+    pub x: f64,
+    pub y: f64,
 }
 
 /// AI 视图改写规格：布局 / 密度 / 卡片高度 / 区块颜色 / 图标标签 / 预览开关 /
@@ -166,6 +183,9 @@ impl Default for AppConfig {
             roulette_sectors: None,
             html_toolbar_items: None,
             default_save_path: None,
+            roulette_hotkey: None,
+            roulette_form: None,
+            roulette_position: None,
             sidebar_left_visible: Some(true),
             sidebar_right_visible: Some(false),
             sidebar_left_width: Some(220.0),
@@ -530,6 +550,13 @@ pub fn validate_config(config: &AppConfig) -> Result<(), AppError> {
                 });
             }
         }
+    }
+    if let Some(form) = &config.roulette_form {
+        check_enum("rouletteForm", Some(form.as_str()), &["hub", "disk"])?;
+    }
+    if let Some(pos) = &config.roulette_position {
+        check_range("roulettePosition.x", Some(pos.x), -20000.0, 20000.0)?;
+        check_range("roulettePosition.y", Some(pos.y), -20000.0, 20000.0)?;
     }
     if let Some(items) = &config.html_toolbar_items {
         const ALLOWED: [&str; 12] = [
@@ -1341,5 +1368,46 @@ mod tests {
 
         config.roulette_sectors = Some(Vec::new());
         assert!(validate_config(&config).is_err());
+    }
+
+    #[test]
+    fn roulette_form_and_position_accept_good_and_reject_bad() {
+        let mut config = AppConfig::default();
+        config.roulette_hotkey = Some("Mod+Shift+Space".into());
+        config.roulette_form = Some("hub".into());
+        config.roulette_position = Some(RoulettePosition { x: 120.0, y: -40.0 });
+        assert!(validate_config(&config).is_ok());
+
+        // 形态白名单：core/full 是设计稿旧名，落库只认 hub/disk
+        config.roulette_form = Some("core".into());
+        assert!(validate_config(&config).is_err());
+        config.roulette_form = Some("full".into());
+        assert!(validate_config(&config).is_err());
+
+        // 位置必须有限且夹在合法范围内
+        config.roulette_form = Some("disk".into());
+        config.roulette_position = Some(RoulettePosition {
+            x: f64::NAN,
+            y: 0.0,
+        });
+        assert!(validate_config(&config).is_err());
+        config.roulette_position = Some(RoulettePosition {
+            x: 0.0,
+            y: f64::INFINITY,
+        });
+        assert!(validate_config(&config).is_err());
+        config.roulette_position = Some(RoulettePosition { x: 99999.0, y: 0.0 });
+        assert!(validate_config(&config).is_err());
+    }
+
+    #[test]
+    fn roulette_new_fields_default_none_for_old_configs() {
+        let dir = temp_base("roulette21");
+        let base = dir.path();
+        write_user(base, r#"{"theme":"dark"}"#);
+        let loaded = load_config_at(base).unwrap();
+        assert_eq!(loaded.roulette_hotkey, None);
+        assert_eq!(loaded.roulette_form, None);
+        assert_eq!(loaded.roulette_position, None);
     }
 }

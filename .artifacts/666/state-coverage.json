@@ -1,0 +1,44 @@
+{
+  "states": [
+    {
+      "state": "no-auto-open",
+      "screenshot": ".artifacts/666/state-1-no-auto.png",
+      "assertion": "passed",
+      "detail": "选中文字后 400ms：轮盘节点数 0（A-2.1 选中不召唤）",
+      "recorded_at": "2026-11-12T06:52:41Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "hub-form",
+      "screenshot": ".artifacts/666/state-2-hub.png",
+      "assertion": "passed",
+      "detail": "按 Meta+Shift+Space：轮盘节点 1，data-form=hub，可见扇区 0",
+      "recorded_at": "2026-11-12T06:52:41Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "disk-form",
+      "screenshot": ".artifacts/666/state-3-disk.png",
+      "assertion": "passed",
+      "detail": "双击圆心：data-form=disk，8 扇区可见（cw-vision 复核环形布局）",
+      "recorded_at": "2026-11-12T06:52:41Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "middle-drag-persist",
+      "screenshot": ".artifacts/666/state-4-dragged.png",
+      "assertion": "passed",
+      "detail": "中键拖动 +90/+70：root left/top 变化，roulettePosition 写入编辑器配置",
+      "recorded_at": "2026-11-12T06:52:41Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "closed-clean",
+      "screenshot": ".artifacts/666/state-5-closed.png",
+      "assertion": "passed",
+      "detail": "再按快捷键：轮盘节点 0，无残留",
+      "recorded_at": "2026-11-12T06:52:41Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}

@@ -17,20 +17,73 @@ import {
 } from "./toolbar-shared";
 import { blockConvertChanges, type BlockConvertTarget } from "./block-convert";
 import { useAiEntryStore } from "../../hooks/useAiEntry";
+import { saveAppConfig } from "../../hooks/useConfig";
+import { isMacPlatform } from "../key-chord";
 import { useEditorStore } from "../../stores/editorStore";
+import { useStore } from "../../stores/index";
 import { CALLOUT_EDIT_TYPES } from "../callout-types";
 import {
   createRoulette,
   type RouletteActions,
+  type RouletteForm,
   type RouletteHandle,
   type RouletteItem,
 } from "./roulette-view";
 import { createCapsuleToolbar, type CapsuleItem } from "./capsule-toolbar";
-import { ROOT_SECTORS, type SectorId } from "./roulette";
 import { BACKGROUND_COLORS, FONT_COLORS } from "./color-palette";
+import {
+  ROULETTE_BOX,
+  ROULETTE_HOTKEY_DEFAULT,
+  ROOT_SECTORS,
+  type SectorId,
+} from "./roulette";
 import { executeCommand, registerCommand } from "./commands";
 
 const SHOW_DELAY_MS = 90;
+
+interface ParsedHotkey {
+  mod: boolean;
+  ctrl: boolean;
+  alt: boolean;
+  shift: boolean;
+  key: string;
+}
+
+function parseHotkey(chord: string): ParsedHotkey | null {
+  const tokens = chord
+    .split("+")
+    .map((t) => t.trim().toLowerCase())
+    .filter(Boolean);
+  if (tokens.length === 0) return null;
+  let mod = false;
+  let ctrl = false;
+  let alt = false;
+  let shift = false;
+  let key = "";
+  for (const token of tokens) {
+    if (token === "mod" || token === "meta" || token === "cmd") mod = true;
+    else if (token === "ctrl" || token === "control") ctrl = true;
+    else if (token === "alt" || token === "option") alt = true;
+    else if (token === "shift") shift = true;
+    else if (token === "space") key = " ";
+    else if (token.length === 1) key = token;
+    else return null;
+  }
+  return key ? { mod, ctrl, alt, shift, key } : null;
+}
+
+function matchesHotkey(e: KeyboardEvent, chord: string): boolean {
+  const parsed = parseHotkey(chord);
+  if (!parsed) return false;
+  const mod = isMacPlatform() ? e.metaKey : e.ctrlKey;
+  return (
+    mod === parsed.mod &&
+    e.ctrlKey === parsed.ctrl &&
+    e.altKey === parsed.alt &&
+    e.shiftKey === parsed.shift &&
+    e.key.toLowerCase() === parsed.key
+  );
+}
 
 type CalloutKind = string;
 
@@ -678,7 +731,17 @@ export function floatingToolbar(allowCapsule = false) {
     };
 
     const show = () => {
-      const point = anchorPoint();
+      const config = useEditorStore.getState().config;
+      const half = ROULETTE_BOX / 2;
+      const stored = config.roulettePosition;
+      let point: { x: number; y: number } | null = null;
+      if (stored && Number.isFinite(stored.x) && Number.isFinite(stored.y)) {
+        point = {
+          x: Math.min(Math.max(stored.x, half), window.innerWidth - half),
+          y: Math.min(Math.max(stored.y, half), window.innerHeight - half),
+        };
+      }
+      if (!point) point = anchorPoint();
       if (!point) return;
       if (showCapsule(point)) return;
       if (!handle) {
@@ -687,7 +750,21 @@ export function floatingToolbar(allowCapsule = false) {
           () => {
             handle = null;
           },
-          { commandContext: () => ({ view }), sectors: configuredSectors() },
+          {
+            commandContext: () => ({ view }),
+            sectors: configuredSectors(),
+            form: config.rouletteForm ?? "hub",
+            onMove: (x, y) => {
+              useEditorStore
+                .getState()
+                .setConfig({ roulettePosition: { x, y } });
+              void saveAppConfig();
+            },
+            onFormChange: (next: RouletteForm) => {
+              useEditorStore.getState().setConfig({ rouletteForm: next });
+              void saveAppConfig();
+            },
+          },
         );
         document.body.appendChild(handle.element);
       }
@@ -700,11 +777,15 @@ export function floatingToolbar(allowCapsule = false) {
       (!!handle && target instanceof Node && handle.element.contains(target)) ||
       (!!capsule && target instanceof Node && capsule.element.contains(target));
 
+    // 只有胶囊模式保留「选中文字即现」；轮盘只由显式快捷键召唤（ui-polish-batch15 2.1）。
     const scheduleShow = () => {
       window.clearTimeout(showTimer);
       showTimer = window.setTimeout(() => {
         if (pointerDown) return;
         if (handle?.element.matches(":hover")) return;
+        if (useEditorStore.getState().config.selectionToolbar !== "capsule") {
+          return;
+        }
         const { from, to } = view.state.selection.main;
         if (from === to) return;
         show();
@@ -747,10 +828,45 @@ export function floatingToolbar(allowCapsule = false) {
       pointer = null;
     };
 
+    // 选中文字不再自动弹轮盘：改由显式快捷键召唤（ui-polish-batch15 2.1）。
+    const isHotkeyScopeTarget = (target: HTMLElement | null): boolean => {
+      if (!target) return false;
+      if (
+        target.tagName === "INPUT" ||
+        target.tagName === "TEXTAREA" ||
+        target.tagName === "SELECT"
+      ) {
+        return true;
+      }
+      if (target.isContentEditable && !target.closest?.(".cm-editor")) {
+        return true;
+      }
+      return false;
+    };
+    const onHotkeyDown = (e: KeyboardEvent) => {
+      const es = useEditorStore.getState();
+      const activeTabId = useStore.getState().activeTabId;
+      const activeTab = activeTabId
+        ? useStore.getState().tabs[activeTabId]
+        : null;
+      if ((activeTab?.editorMode ?? "preview") !== "edit") return;
+      if (isHotkeyScopeTarget(e.target as HTMLElement | null)) return;
+      const chord = es.config.rouletteHotkey ?? ROULETTE_HOTKEY_DEFAULT;
+      if (!matchesHotkey(e, chord)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      if (handle || capsule) {
+        hide();
+        return;
+      }
+      show();
+    };
+
     document.addEventListener("pointerdown", onPointerDown, true);
     document.addEventListener("pointermove", onPointerMove, true);
     document.addEventListener("pointerup", onPointerUp, true);
     document.addEventListener("keydown", onKeyDown, true);
+    document.addEventListener("keydown", onHotkeyDown, true);
 
     return {
       update(u: ViewUpdate): void {
@@ -787,6 +903,7 @@ export function floatingToolbar(allowCapsule = false) {
         document.removeEventListener("pointermove", onPointerMove, true);
         document.removeEventListener("pointerup", onPointerUp, true);
         document.removeEventListener("keydown", onKeyDown, true);
+        document.removeEventListener("keydown", onHotkeyDown, true);
         window.clearTimeout(paintTimer);
         window.clearTimeout(showTimer);
         hide();

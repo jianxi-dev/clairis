@@ -1,6 +1,8 @@
 import { test, expect, type Page } from "@playwright/test";
 
 const ARTIFACTS = ".artifacts/217";
+const MOD = process.platform === "darwin" ? "Meta" : "Control";
+const HOTKEY = `${MOD}+Shift+Space`;
 
 const EDIT_DOC = "这是编辑态的正文段落，用来验证选区胶囊的改写翻译润色动作。";
 const PREVIEW_DOC =
@@ -83,6 +85,18 @@ function pill(page: Page) {
   return page.locator("[data-selection-pill]");
 }
 
+/** 选中文字后按开关快捷键召唤轮盘；hub 形态双击圆心切整盘。 */
+async function openMdWheel(page: Page, selector: string, start = 0, end = 6) {
+  await selectRange(page, selector, start, end);
+  await page.keyboard.press(HOTKEY);
+  const wheel = page.locator('[data-testid="selection-roulette"]');
+  await expect(wheel).toBeVisible({ timeout: 3000 });
+  if ((await wheel.getAttribute("data-form")) === "hub") {
+    await wheel.locator('[data-testid="roulette-center"]').dblclick();
+  }
+  return wheel;
+}
+
 async function pillLabels(page: Page): Promise<string[]> {
   return (await pill(page).locator("button").allInnerTexts()).map((t) =>
     t.trim(),
@@ -99,10 +113,7 @@ test.describe("选区胶囊双模式", () => {
     await setMode(page, "edit");
     await page.locator(".cm-content").waitFor({ state: "visible" });
 
-    await selectRange(page, ".cm-content", 0, 6);
-    await expect(
-      page.locator('[data-testid="selection-roulette"]'),
-    ).toBeVisible({ timeout: 5000 });
+    await openMdWheel(page, ".cm-content");
     await expect(pill(page)).toHaveCount(0);
     expect(await pillLabels(page)).toEqual([]);
   });
@@ -280,10 +291,7 @@ test.describe("选区胶囊双模式", () => {
     await openDoc(page, "/tmp/pill-theme.md", EDIT_DOC);
     await setMode(page, "edit");
     await page.locator(".cm-content").waitFor({ state: "visible" });
-    await selectRange(page, ".cm-content", 0, 6);
-    await expect(
-      page.locator('[data-testid="selection-roulette"]'),
-    ).toBeVisible();
+    await openMdWheel(page, ".cm-content");
     await expect(pill(page)).toHaveCount(0);
     await page.screenshot({
       path: `${ARTIFACTS}/01-editor-roulette-light.png`,

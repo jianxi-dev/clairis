@@ -3,6 +3,8 @@ import { test, expect, type Page } from "@playwright/test";
 const APP_URL = "http://localhost:1420";
 const DOC = ["# 标题", "", "第一段正文", "", "第二段正文", ""].join("\n");
 const WHEEL = '[data-testid="selection-roulette"]';
+const MOD = process.platform === "darwin" ? "Meta" : "Control";
+const HOTKEY = `${MOD}+Shift+Space`;
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
@@ -27,15 +29,26 @@ function content(page: Page): Promise<string> {
 async function selectLine(page: Page, index: number): Promise<void> {
   const line = page.locator(".cm-line").nth(index);
   await line.click({ clickCount: 3 });
-  await expect(page.locator(WHEEL)).toBeVisible({ timeout: 3000 });
+}
+
+/** 显式快捷键召唤轮盘；hub 形态双击圆心切整盘，返回轮盘定位器。 */
+async function openMdWheel(page: Page, index = 2) {
+  await selectLine(page, index);
+  await page.keyboard.press(HOTKEY);
+  const wheel = page.locator(WHEEL);
+  await expect(wheel).toBeVisible({ timeout: 3000 });
+  if ((await wheel.getAttribute("data-form")) === "hub") {
+    await wheel.locator('[data-testid="roulette-center"]').dblclick();
+  }
+  return wheel;
 }
 
 async function openSector(page: Page, id: string): Promise<void> {
   await page.locator(`[data-sector="${id}"]`).click({ force: true });
 }
 
-test("选中文字出现轮盘：8 扇区 + 圆心，旧横条不残留", async ({ page }) => {
-  await selectLine(page, 2);
+test("快捷键召唤轮盘：8 扇区 + 圆心，旧横条不残留", async ({ page }) => {
+  await openMdWheel(page);
   const wheel = page.locator(WHEEL);
   await expect(wheel.locator(".sr-sector")).toHaveCount(8);
   await expect(wheel.locator('[data-testid="roulette-center"]')).toHaveCount(1);
@@ -63,6 +76,7 @@ test("圆心落在鼠标落点（未夹取时偏差 ≤1px）", async ({ page })
   await page.mouse.down();
   await page.mouse.move(x + 30, y, { steps: 3 });
   await page.mouse.up();
+  await page.keyboard.press(HOTKEY);
   await expect(page.locator(WHEEL)).toBeVisible({ timeout: 3000 });
   const wheel = await page.locator(WHEEL).boundingBox();
   if (!wheel) throw new Error("轮盘不可测量");
@@ -73,19 +87,25 @@ test("圆心落在鼠标落点（未夹取时偏差 ≤1px）", async ({ page })
   expect(Math.abs(wheel.y + wheel.height / 2 - expectY)).toBeLessThanOrEqual(1);
 });
 
-test("按住拖选期间不出现，松手 90ms 后出现", async ({ page }) => {
+test("按住拖选期间不出现，松手后仍需快捷键召唤", async ({ page }) => {
   const line = await page.locator(".cm-line").nth(2).boundingBox();
   if (!line) throw new Error("行不可测量");
   await page.mouse.move(line.x + 30, line.y + line.height / 2);
   await page.mouse.down();
   await page.mouse.move(line.x + 180, line.y + line.height / 2, { steps: 6 });
+  // 拖选期间不出现
   await expect(page.locator(WHEEL)).toHaveCount(0);
   await page.mouse.up();
+  // 松手后等过旧的 90ms 延迟，仍不自动出现
+  await page.waitForTimeout(300);
+  await expect(page.locator(WHEEL)).toHaveCount(0);
+  // 按开关快捷键后才出现
+  await page.keyboard.press(HOTKEY);
   await expect(page.locator(WHEEL)).toBeVisible({ timeout: 3000 });
 });
 
 test("点击才展开：6 项扇形紧排，跨度 90°", async ({ page }) => {
-  await selectLine(page, 2);
+  await openMdWheel(page);
   await expect(page.locator(".sr-item")).toHaveCount(0);
   await openSector(page, "format");
   const items = page.locator('.sr-unit[data-band="2"]');
@@ -115,7 +135,7 @@ test("点击才展开：6 项扇形紧排，跨度 90°", async ({ page }) => {
 });
 
 test("加粗与斜体连击都写入源码且轮盘保持展开", async ({ page }) => {
-  await selectLine(page, 2);
+  await openMdWheel(page);
   await openSector(page, "format");
   await expect(page.locator('.sr-unit[data-band="2"]')).toHaveCount(6);
   await page
@@ -132,7 +152,7 @@ test("加粗与斜体连击都写入源码且轮盘保持展开", async ({ page 
 test("格式二层顺序：链接 / 下划线 / 斜体 / 加粗 / 行内代码 / 删除线", async ({
   page,
 }) => {
-  await selectLine(page, 2);
+  await openMdWheel(page);
   await openSector(page, "format");
   const ids = await page
     .locator('.sr-sec[data-band="2"]')
@@ -150,7 +170,7 @@ test("格式二层顺序：链接 / 下划线 / 斜体 / 加粗 / 行内代码 /
 });
 
 test("颜色扇区为双圈：文字色 9 格、背景色 16 格", async ({ page }) => {
-  await selectLine(page, 2);
+  await openMdWheel(page);
   await openSector(page, "color");
   await expect(page.locator(".sr-color-font")).toHaveCount(9);
   await expect(page.locator(".sr-color-bg")).toHaveCount(16);
@@ -160,7 +180,7 @@ test("颜色扇区为双圈：文字色 9 格、背景色 16 格", async ({ page
 test("转换二层：段落 7 项，顺序为代码块/表格/标题/列表/高亮/引用/分割线", async ({
   page,
 }) => {
-  await selectLine(page, 2);
+  await openMdWheel(page);
   await openSector(page, "convert");
   const ids = await page
     .locator('.sr-sec[data-band="2"]')
@@ -179,7 +199,7 @@ test("转换二层：段落 7 项，顺序为代码块/表格/标题/列表/高�
 });
 
 test("标题三层 H1–H6 画在外环，二层保留并降到 0.9", async ({ page }) => {
-  await selectLine(page, 2);
+  await openMdWheel(page);
   await openSector(page, "convert");
   await page
     .locator('.sr-sec[data-band="2"][data-action="convert-heading-group"]')
@@ -206,7 +226,7 @@ test("标题三层 H1–H6 画在外环，二层保留并降到 0.9", async ({ p
 test("高亮三层十三类：注释/信息/摘要/待办/提示/成功/问题/警告/失败/危险/Bug/示例/引用", async ({
   page,
 }) => {
-  await selectLine(page, 2);
+  await openMdWheel(page);
   await openSector(page, "convert");
   await page
     .locator('.sr-sec[data-band="2"][data-action="convert-callout-group"]')
@@ -217,28 +237,28 @@ test("高亮三层十三类：注释/信息/摘要/待办/提示/成功/问题/�
       nodes.map((n) => (n as HTMLElement).dataset.action),
     );
   expect(ids).toEqual([
-    "convert-note",
-    "convert-info",
-    "convert-abstract",
-    "convert-todo",
-    "convert-tip",
-    "convert-success",
-    "convert-question",
-    "convert-warning",
-    "convert-failure",
-    "convert-danger",
-    "convert-bug",
-    "convert-example",
-    "convert-quote",
+    "convert-callout-note",
+    "convert-callout-info",
+    "convert-callout-abstract",
+    "convert-callout-todo",
+    "convert-callout-tip",
+    "convert-callout-success",
+    "convert-callout-question",
+    "convert-callout-warning",
+    "convert-callout-failure",
+    "convert-callout-danger",
+    "convert-callout-bug",
+    "convert-callout-example",
+    "convert-callout-quote",
   ]);
   await page
-    .locator('.sr-sec[data-band="3"][data-action="convert-note"]')
+    .locator('.sr-sec[data-band="3"][data-action="convert-callout-note"]')
     .click({ force: true });
   await expect.poll(() => content(page)).toContain("> [!note]");
 });
 
 test("分栏 3 写入 ::: {.col-3}", async ({ page }) => {
-  await selectLine(page, 2);
+  await openMdWheel(page);
   await openSector(page, "columns");
   await page
     .locator('.sr-sec[data-band="2"][data-action="columns-3"]')
@@ -257,7 +277,7 @@ test("清除格式保留链接", async ({ page }) => {
     win.__biaoyue_store__.getState().setEditorMode("edit");
   });
   await page.locator(".cm-content").waitFor();
-  await selectLine(page, 0);
+  await openMdWheel(page, 0);
   await openSector(page, "clear");
   await expect.poll(() => content(page)).not.toContain("**");
   expect(await content(page)).toContain("[链接](https://a.b)");
@@ -277,7 +297,7 @@ test("格式刷：取一次格式后刷到另一段，计数为 2", async ({ pag
   });
   await page.locator(".cm-content").waitFor();
 
-  await selectLine(page, 0);
+  await openMdWheel(page, 0);
   await page.locator('[data-testid="roulette-center"]').click({ force: true });
 
   const viewport = page.viewportSize()!;
@@ -292,7 +312,7 @@ test("格式刷：取一次格式后刷到另一段，计数为 2", async ({ pag
 });
 
 test("点击根扇区不移动轮盘，指针滑入二层不消失", async ({ page }) => {
-  await selectLine(page, 2);
+  await openMdWheel(page);
   await page.waitForTimeout(200);
   const wheel = page.locator(WHEEL);
   const before = (await wheel.boundingBox())!;
@@ -309,14 +329,15 @@ test("点击根扇区不移动轮盘，指针滑入二层不消失", async ({ pa
   await expect(page.locator('.sr-sec[data-band="2"]')).toHaveCount(6);
 });
 
-test("MD 源码编辑态同样出轮盘，不出胶囊", async ({ page }) => {
+test("MD 源码编辑态选中文字不自动出轮盘，不出胶囊", async ({ page }) => {
   await page.evaluate(() => {
     const store = (window as unknown as Record<string, any>).__biaoyue_store__;
     store.getState().setEditorMode("source");
   });
   await page.locator(".cm-content").waitFor();
   await page.locator(".cm-line").nth(2).click({ clickCount: 3 });
-  await expect(page.locator(WHEEL)).toBeVisible({ timeout: 3000 });
+  await page.waitForTimeout(300);
+  await expect(page.locator(WHEEL)).toHaveCount(0);
   await expect(page.locator("[data-selection-pill]")).toHaveCount(0);
   await expect(page.locator(".cm-floating-toolbar")).toHaveCount(0);
 });
@@ -332,7 +353,7 @@ test("字色与背景色可叠加，且清除格式对已设背景生效", async
     win.__biaoyue_store__.getState().setEditorMode("edit");
   });
   await page.locator(".cm-content").waitFor();
-  await selectLine(page, 0);
+  await openMdWheel(page, 0);
   await openSector(page, "color");
   await page.locator(".sr-color-font").nth(4).click({ force: true });
   await page.locator(".sr-color-bg").nth(7).click({ force: true });
