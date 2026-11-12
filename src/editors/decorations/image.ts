@@ -576,6 +576,7 @@ class ImageWidget extends WidgetType {
   private readonly _height: number | null;
   private readonly _title: string | null;
   private readonly _crop: [number, number, number, number] | null;
+  private readonly _align: "left" | "center" | "right" | null;
   /** `!` 的文档偏移——选中态、工具条动作、拖拽改宽都以它为准。 */
   private readonly _from: number;
 
@@ -589,6 +590,7 @@ class ImageWidget extends WidgetType {
     height: number | null = null,
     title: string | null = null,
     crop: [number, number, number, number] | null = null,
+    align: "left" | "center" | "right" | null = null,
   ) {
     super();
     this._alt = alt;
@@ -600,6 +602,7 @@ class ImageWidget extends WidgetType {
     this._height = height;
     this._title = title;
     this._crop = crop;
+    this._align = align;
   }
 
   eq(other: ImageWidget): boolean {
@@ -611,6 +614,7 @@ class ImageWidget extends WidgetType {
       other._height === this._height &&
       other._title === this._title &&
       other._from === this._from &&
+      other._align === this._align &&
       cropEquals(other._crop, this._crop)
     );
   }
@@ -620,10 +624,16 @@ class ImageWidget extends WidgetType {
     container.className = "cm-image-widget";
     container.dataset.imageFrom = String(this._from);
     container.dataset.imageTitle = this._title ?? "";
-    container.style.display = "inline-block";
+    // 对齐：块级 + fit-content + auto 外边距，在行盒内左/中/右落位。
+    // 属性缺省（新插入图片）按居中渲染，但除非用户显式选择，不写回 markdown。
+    const align = this._align ?? "center";
+    container.dataset.align = align;
+    container.style.display = "block";
+    container.style.width = "fit-content";
     container.style.position = "relative";
     container.style.maxWidth = "100%";
-    container.style.verticalAlign = "middle";
+    container.style.marginInline =
+      align === "left" ? "0" : align === "right" ? "auto 0" : "auto";
     // 圆角裁在 <img> 自己的像素上（clip-path），容器不设圆角：容器
     // overflow:hidden + border-radius 会把子元素裁在深色画布上，产生深色
     // 角晕。容器只铺一层主题底色，让透明 PNG 的圆角透出纸面而不是画布。
@@ -710,10 +720,6 @@ class ImageWidget extends WidgetType {
       (candidate) => candidate.handle === handleEl.dataset.handle,
     );
     if (!spec) return;
-    if (this._crop) {
-      this.beginCropResize(event, img, spec, container);
-      return;
-    }
 
     const startX = event.clientX;
     const startY = event.clientY;
@@ -796,95 +802,6 @@ class ImageWidget extends WidgetType {
       );
     };
 
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
-  }
-
-  /**
-   * 裁剪图的把手拖拽：调整裁剪矩形本身（原图 1:1 显示，位移=原图像素）。
-   * 预览直接改 img 盒与 object-position；松手把矩形写回属性块并清掉
-   * width/height（裁剪图的显示尺寸由矩形决定，缩放属性不再适用）。
-   */
-  private beginCropResize(
-    event: MouseEvent,
-    img: HTMLImageElement,
-    spec: ImageHandleSpec,
-    container: HTMLElement,
-  ): void {
-    const [l0, t0, w0, h0] = this._crop!;
-    const natW = img.naturalWidth;
-    const natH = img.naturalHeight;
-    if (natW <= 0 || natH <= 0) return;
-    const startX = event.clientX;
-    const startY = event.clientY;
-    const original = {
-      width: img.style.width,
-      height: img.style.height,
-      objectPosition: img.style.objectPosition,
-    };
-    const applyRect = (l: number, t: number, w: number, h: number): void => {
-      img.style.width = `${w}px`;
-      img.style.height = `${h}px`;
-      img.style.objectPosition = `${-l}px ${-t}px`;
-    };
-    const restorePreview = (): void => {
-      img.style.width = original.width;
-      img.style.height = original.height;
-      img.style.objectPosition = original.objectPosition;
-    };
-    const rectFromDrag = (
-      dx: number,
-      dy: number,
-    ): [number, number, number, number] => {
-      let l = l0;
-      let t = t0;
-      let r = l0 + w0;
-      let b = t0 + h0;
-      if (spec.width) {
-        if (spec.signX > 0) {
-          r = Math.max(l + MIN_CROP_SIZE, Math.min(r + dx, natW));
-        } else {
-          l = Math.max(0, Math.min(l + dx, r - MIN_CROP_SIZE));
-        }
-      }
-      if (spec.height) {
-        if (spec.signY > 0) {
-          b = Math.max(t + MIN_CROP_SIZE, Math.min(b + dy, natH));
-        } else {
-          t = Math.max(0, Math.min(t + dy, b - MIN_CROP_SIZE));
-        }
-      }
-      return [l, t, r - l, b - t];
-    };
-    const onMove = (move: MouseEvent): void => {
-      applyRect(...rectFromDrag(move.clientX - startX, move.clientY - startY));
-    };
-    const onUp = (up: MouseEvent): void => {
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
-      const dx = up.clientX - startX;
-      const dy = up.clientY - startY;
-      if (Math.hypot(dx, dy) < 3) {
-        restorePreview();
-        return;
-      }
-      const view = EditorView.findFromDOM(container);
-      if (!view) {
-        restorePreview();
-        return;
-      }
-      const text = view.state.doc.toString();
-      const ref = scanImageReference(text, this._from);
-      if (!ref) return;
-      const attrs: ImageAttributes =
-        ref.attrText !== null
-          ? parseImageAttributes(ref.attrText)
-          : { ...EMPTY_IMAGE_ATTRIBUTES };
-      attrs.crop = rectFromDrag(dx, dy);
-      attrs.width = null;
-      attrs.height = null;
-      writeImageAttributes(view, this._from, attrs);
-    };
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
   }
@@ -1074,6 +991,7 @@ export function createImageDecorations(
             attrs.height,
             ref.title,
             attrs.crop,
+            attrs.align,
           ),
           inclusive: false,
         }).range(from, to),

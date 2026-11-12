@@ -228,6 +228,7 @@ export function selectImage(from: number, path: string, alt: string): void {
   captionCollapsed = false;
   applySelection();
   ensureToolbar();
+  updateAlignStates();
   positionToolbar();
   scheduleReposition();
 }
@@ -417,6 +418,30 @@ function removeToolbar(): void {
   toolbarEl = null;
 }
 
+const ALIGN_BUTTON_TESTIDS: Readonly<Record<string, string>> = {
+  left: "img-toolbar-align-left",
+  center: "img-toolbar-align-center",
+  right: "img-toolbar-align-right",
+};
+
+/**
+ * 按选中图片的 data-align 标注工具条对齐按钮的 active 态。容器缺省按 center
+ * 渲染，属性块被清掉后（用户选居中）仍要保持居中按钮为 true。
+ */
+function updateAlignStates(): void {
+  if (!toolbarEl || !selection) return;
+  const el = document.querySelector<HTMLElement>(
+    `.cm-image-widget[data-image-from="${selection.from}"]`,
+  );
+  const align = el?.dataset.align ?? "center";
+  for (const [key, testid] of Object.entries(ALIGN_BUTTON_TESTIDS)) {
+    const btn = toolbarEl.querySelector<HTMLButtonElement>(
+      `[data-testid="${testid}"]`,
+    );
+    btn?.setAttribute("aria-pressed", key === align ? "true" : "false");
+  }
+}
+
 function updateDisabledStates(): void {
   if (!toolbarEl) return;
   for (const spec of BUTTON_SPECS) {
@@ -506,11 +531,13 @@ function scheduleReposition(): void {
   if (repositionFrame !== null) return;
   if (typeof requestAnimationFrame !== "function") {
     positionToolbar();
+    updateAlignStates();
     return;
   }
   repositionFrame = requestAnimationFrame(() => {
     repositionFrame = null;
     positionToolbar();
+    updateAlignStates();
   });
 }
 
