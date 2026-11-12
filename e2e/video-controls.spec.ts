@@ -1,5 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
-import { readFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 const TINY_MP4 = readFileSync(
@@ -313,4 +313,115 @@ test("倍速菜单收窄到 88px，旋转按钮逆时针 90°", async ({ page })
     return video?.style.transform ?? "";
   });
   expect(rotation).toMatch(/rotate\((?:-90|270)deg\)/);
+});
+
+test("全屏下指针滑入底部显示按钮栏与浮层，画面无 letterbox", async ({
+  page,
+}) => {
+  const evidenceDir = path.resolve(process.cwd(), ".artifacts/699");
+  mkdirSync(evidenceDir, { recursive: true });
+  const shot = async (name: string): Promise<void> => {
+    await page.screenshot({ path: path.join(evidenceDir, name) });
+  };
+
+  // media:// 是 Tauri 自定义协议，mock 浏览器无处理器；重写为内置 tiny.mp4，
+  // 让视频真实播放，控制条才能按 ArtPlayer 的 3s 自动隐藏逻辑收起。
+  await page.addInitScript((b64) => {
+    const DATA = `data:video/mp4;base64,${b64}`;
+    const proto = HTMLMediaElement.prototype as unknown as Record<
+      string,
+      unknown
+    >;
+    const desc = Object.getOwnPropertyDescriptor(proto, "src");
+    if (!desc?.get || !desc.set) return;
+    Object.defineProperty(proto, "src", {
+      configurable: true,
+      get: desc.get,
+      set(this: HTMLMediaElement, value: string) {
+        const next =
+          typeof value === "string" && value.startsWith("media://")
+            ? DATA
+            : value;
+        desc.set?.call(this, next);
+      },
+    });
+  }, TINY_MP4);
+
+  await openMedia(page, "/Users/test/clip.mp4");
+
+  const player = page.locator(".art-video-player").first();
+  const rate = page.locator(".art-control[data-name='rate']");
+
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const v = document.querySelector(
+          ".art-video-player video",
+        ) as HTMLVideoElement | null;
+        return v ? !v.paused && v.readyState > 2 : false;
+      }),
+    )
+    .toBe(true, { timeout: 10000 });
+
+  await page.mouse.move(600, 400);
+  await expect(player).toHaveClass(/art-control-show/);
+  await shot("01-non-fullscreen-bar.png");
+
+  await page.locator(".art-control-fullscreen").click();
+  await expect(player).toHaveClass(/art-fullscreen-web/);
+  await page.mouse.move(600, 40);
+  await expect(player).not.toHaveClass(/art-control-show/, { timeout: 8000 });
+  await shot("02-fullscreen-before-move.png");
+
+  const viewport = { width: 900, height: 700 };
+  await page.setViewportSize(viewport);
+
+  await page.mouse.move(viewport.width / 2, viewport.height - 20);
+  await expect(player).toHaveClass(/art-control-show/);
+  await shot("03-fullscreen-after-move.png");
+
+  await rate.hover();
+  await expect(page.locator(".rate-menu")).toHaveCount(1);
+  await shot("04-popover-open.png");
+
+  const box = (await player.boundingBox())!;
+  expect(Math.abs(box.width - viewport.width)).toBeLessThanOrEqual(1);
+  expect(Math.abs(box.height - viewport.height)).toBeLessThanOrEqual(1);
+
+  writeFileSync(
+    path.join(evidenceDir, "state-coverage.json"),
+    JSON.stringify(
+      {
+        states: [
+          {
+            state: "non-fullscreen-bar",
+            screenshot: "01-non-fullscreen-bar.png",
+            assertion: "指针滑入后 .art-video-player 含 art-control-show",
+          },
+          {
+            state: "fullscreen-before-move",
+            screenshot: "02-fullscreen-before-move.png",
+            assertion: "进入网页全屏后按钮栏自动收起（无 art-control-show）",
+          },
+          {
+            state: "fullscreen-after-move",
+            screenshot: "03-fullscreen-after-move.png",
+            assertion: "resize 后指针滑入底部，按钮栏重新出现",
+          },
+          {
+            state: "popover-open",
+            screenshot: "04-popover-open.png",
+            assertion: "悬停倍速打开恰好 1 个 .rate-menu",
+          },
+          {
+            state: "no-letterbox",
+            screenshot: "03-fullscreen-after-move.png",
+            assertion: "播放器宽高均等于视口尺寸（±1px）",
+          },
+        ],
+      },
+      null,
+      2,
+    ),
+  );
 });

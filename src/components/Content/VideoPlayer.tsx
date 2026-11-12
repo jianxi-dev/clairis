@@ -1157,7 +1157,8 @@ export default function VideoPlayer({
       if (fitRaf) return;
       fitRaf = window.requestAnimationFrame(() => {
         fitRaf = 0;
-        art.autoSize();
+        // 网页全屏下 $player 固定为视口 100%，autoSize 会把它压回 letterbox，按钮区落到 $player 外。
+        if (!art.fullscreenWeb) art.autoSize();
         applyCompact();
       });
     });
