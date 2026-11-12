@@ -1,0 +1,36 @@
+{
+  "states": [
+    {
+      "state": "unpinned-reserve",
+      "screenshot": ".artifacts/672/state-1-unpinned-reserve.png",
+      "assertion": "passed",
+      "detail": "左栏未钉住：window-controls-reserve=78px，第一个页签左缘 82（与保留区右缘 78 间距 4px ≥ 2）（A-9.1–A-9.2、A-9.5）",
+      "recorded_at": "2026-11-12T16:01:04Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "pinned-reset",
+      "screenshot": ".artifacts/672/state-2-pinned-reset.png",
+      "assertion": "passed",
+      "detail": "左栏钉住：reserve=0，页签条 stripLeft=240 = 左栏右缘 240（偏差 0 ≤ 2）（A-9.3）",
+      "recorded_at": "2026-11-12T16:01:04Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "no-brand-no-title",
+      "screenshot": ".artifacts/672/state-3-no-brand-no-title.png",
+      "assertion": "passed",
+      "detail": "顶栏无产品名（headerText 无「标月」）+ 左栏无「阅读空间」文本（A-9.4）",
+      "recorded_at": "2026-11-12T16:01:04Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "toggle-stable",
+      "screenshot": ".artifacts/672/state-4-toggle-stable.png",
+      "assertion": "passed",
+      "detail": "连续切换钉住 2 次：reserve 单实例、几何仍满足，无残留错位",
+      "recorded_at": "2026-11-12T16:01:04Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}

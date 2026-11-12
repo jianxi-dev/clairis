@@ -61,6 +61,20 @@ const PaneDragContext = createContext<PaneDragStarter>(() => {});
 
 const ROOT_BAND_PX = 48;
 
+/**
+ * macOS 红黄绿灯簇避让宽度：本机实测三枚 14px 按钮、间距 9px、左起 9px，
+ * 簇右缘 69px；保留区取 78px（含 9px 右余量）。数值出处见设计台账
+ * 「macOS 红黄绿灯簇宽度 → 页签条避让保留区」。
+ */
+const WINDOW_CONTROLS_RESERVE_PX = 78;
+
+/** 窗口按钮位于窗口左上角，仅最左上那一格的页签条需要避让。 */
+function topLeftLeafId(node: PaneLayout): string {
+  let current = node;
+  while (!isLeaf(current)) current = current.children[0];
+  return current.id;
+}
+
 /** 落区指示层（layout-portal 5.1）：只做视觉反馈，pointer-events:none 不挡命中判定。 */
 function PaneDropIndicators({ overlay }: { overlay: DropOverlayState }) {
   if (typeof document === "undefined") return null;
@@ -142,6 +156,8 @@ interface PaneNodeProps {
   /** 整棵树的根就是这一个 leaf 时，它的关闭按钮不出现。 */
   rootIsLeaf: boolean;
   focusedPaneId: string;
+  /** 窗口左上角那一格的 leaf id；只有它需要为原生窗口按钮避让。 */
+  topLeftId: string;
 }
 
 function PaneNode({
@@ -150,6 +166,7 @@ function PaneNode({
   fullscreenId,
   rootIsLeaf,
   focusedPaneId,
+  topLeftId,
 }: PaneNodeProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const readingMode = useStore((s) => s.readingMode);
@@ -204,6 +221,7 @@ function PaneNode({
               showFullscreen={true}
               showClosePane={!rootIsLeaf}
               paneFocused={focusedPaneId === node.id}
+              topLeft={node.id === topLeftId}
             />
           )}
         </div>
@@ -268,6 +286,7 @@ function PaneNode({
         fullscreenId={fullscreenId}
         rootIsLeaf={rootIsLeaf}
         focusedPaneId={focusedPaneId}
+        topLeftId={topLeftId}
       />
       {fullscreenId === null && (
         <PaneDivider branch={node} containerRef={containerRef} />
@@ -279,6 +298,7 @@ function PaneNode({
         fullscreenId={fullscreenId}
         rootIsLeaf={rootIsLeaf}
         focusedPaneId={focusedPaneId}
+        topLeftId={topLeftId}
       />
     </div>
   );
@@ -292,6 +312,7 @@ function PaneHeader({
   showFullscreen,
   showClosePane,
   paneFocused,
+  topLeft,
 }: {
   leafId: string;
   tabs: string[];
@@ -300,9 +321,11 @@ function PaneHeader({
   showFullscreen: boolean;
   paneFocused: boolean;
   showClosePane: boolean;
+  topLeft: boolean;
 }) {
   const allTabs = useStore((s) => s.tabs);
   const fullscreenPaneId = useStore((s) => s.fullscreenPaneId);
+  const railPinned = useStore((s) => s.railPinned);
   const leafTabs: Record<string, Tab> = {};
   for (const id of tabs) {
     if (allTabs[id]) leafTabs[id] = allTabs[id];
@@ -633,6 +656,13 @@ function PaneHeader({
       onPointerDown={onHeaderPointerDown}
       className="app-chrome flex items-center shrink-0 border-b border-[var(--app-border)]"
     >
+      {topLeft && !railPinned && (
+        <div
+          data-testid="window-controls-reserve"
+          style={{ width: WINDOW_CONTROLS_RESERVE_PX }}
+          className="self-stretch shrink-0"
+        />
+      )}
       <div className="flex-1 min-w-0 overflow-hidden">
         <TabBar
           tabs={leafTabs}
@@ -970,6 +1000,7 @@ export default function PaneTreeView() {
   const fullscreenPaneId = useStore((s) => s.fullscreenPaneId);
   const rootIsLeaf = paneRoot.type === "leaf";
   const { startPaneDrag, overlay } = usePaneDragController();
+  const topLeftId = fullscreenPaneId ?? topLeftLeafId(paneRoot);
 
   return (
     <PaneDragContext.Provider value={startPaneDrag}>
@@ -980,6 +1011,7 @@ export default function PaneTreeView() {
           fullscreenId={fullscreenPaneId}
           rootIsLeaf={rootIsLeaf}
           focusedPaneId={focusedPaneId}
+          topLeftId={topLeftId}
         />
         <MediaPlayerHost />
       </div>

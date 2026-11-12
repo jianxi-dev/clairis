@@ -1312,10 +1312,7 @@ export default function ReadingRail({
 
   const header = (
     <div className="flex items-center gap-1 border-b border-[var(--app-border)] px-2 py-1.5">
-      <span className="mr-auto truncate text-xs font-medium text-[var(--app-text)]">
-        阅读空间
-      </span>
-      {(["stacked", "tabs"] as RailLayout[]).map((layout) => (
+      {(["stacked", "tabs"] as RailLayout[]).map((layout, index) => (
         <button
           key={layout}
           type="button"
@@ -1324,6 +1321,8 @@ export default function ReadingRail({
           aria-pressed={railLayout === layout}
           onClick={() => setRailLayout(layout)}
           className={`rounded px-1.5 py-0.5 text-[11px] ${
+            index === 0 ? "ml-auto" : ""
+          } ${
             railLayout === layout
               ? "bg-[var(--app-accent-soft)] text-[var(--app-accent)]"
               : "text-[var(--app-text-3)] hover:bg-[var(--app-sunken)]"
