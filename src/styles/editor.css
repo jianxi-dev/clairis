@@ -49,7 +49,11 @@ body {
   --reader-accent: var(--tone-accent, #3d5a8a);
   --reader-accent-soft: rgba(61, 90, 138, 0.1);
   /* --type-* 只在 reader.css 的 .preview-content 内定义，编辑态取不到；
-     这里补一份与预览等宽栈逐字相同的副本，供行内/围栏代码对齐。 */
+     这里补一份与预览等宽栈逐字相同的副本，供行内/围栏代码与 Pele 出图对齐。 */
+  --type-font-sans:
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "PingFang SC",
+    "Hiragino Sans GB", "Source Han Sans SC", "Noto Sans CJK SC",
+    "Microsoft YaHei", sans-serif;
   --type-font-mono:
     "SF Mono", "JetBrains Mono", "Fira Code", Menlo, Consolas, "PingFang SC",
     monospace;
@@ -1037,10 +1041,7 @@ body {
   --pele-surface-alt: var(--app-sunken);
   --pele-border: var(--app-border);
   --pele-accent: var(--app-accent);
-  --pele-font:
-    -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
-    "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial,
-    sans-serif;
+  --pele-font: var(--type-font-sans);
   --pele-radius: var(--app-radius);
 }
 
