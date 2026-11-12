@@ -1,0 +1,44 @@
+{
+  "states": [
+    {
+      "state": "both-unmuted",
+      "screenshot": ".artifacts/669/state-1-both-unmuted.png",
+      "assertion": "passed",
+      "detail": "两个媒体实例同时挂载（分栏）：muted 数组 = [false, false]（A-6.1 起点）",
+      "recorded_at": "2026-11-12T12:15:46Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "first-muted",
+      "screenshot": ".artifacts/669/state-2-first-muted.png",
+      "assertion": "passed",
+      "detail": "静音第一个页签：muted = [true, false]，第二个不受影响（A-6.1 核心）",
+      "recorded_at": "2026-11-12T12:15:46Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "first-unmuted",
+      "screenshot": ".artifacts/669/state-3-first-unmuted.png",
+      "assertion": "passed",
+      "detail": "取消静音：muted = [false, false]，互不影响",
+      "recorded_at": "2026-11-12T12:15:46Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "closed-no-residual",
+      "screenshot": ".artifacts/669/state-4-closed-no-residual.png",
+      "assertion": "passed",
+      "detail": "静音第一个后关闭其页签：仅剩 [false]，无残留",
+      "recorded_at": "2026-11-12T12:15:46Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "reopen-clean",
+      "screenshot": ".artifacts/669/state-5-reopen-clean.png",
+      "assertion": "passed",
+      "detail": "重开同一文件：静音记录已随页签关闭清理，仍 [false]",
+      "recorded_at": "2026-11-12T12:15:46Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}

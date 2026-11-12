@@ -259,12 +259,14 @@ export default function VideoPlayer({
   const pendingIndexRef = useRef(-1);
 
   useEffect(() => {
-    const apply = (m: boolean) => {
+    // 静音按文件路径隔离：只应用本实例文件的状态，避免串音（#669）。
+    const apply = (key: string, m: boolean) => {
+      if (key !== filePath) return;
       if (artRef.current) artRef.current.muted = m;
     };
-    apply(isMediaMuted());
+    apply(filePath, isMediaMuted(filePath));
     return subscribeMediaMute(apply);
-  }, []);
+  }, [filePath]);
   const subtitlePosRef = useRef<"bottom" | "top">("bottom");
   const playlistRef = useRef<MediaEntry[]>([]);
   const subtitleRef = useRef<MediaEntry[]>([]);
@@ -911,7 +913,7 @@ export default function VideoPlayer({
       ],
     });
     artRef.current = art;
-    art.muted = isMediaMuted();
+    art.muted = isMediaMuted(filePath);
     if (pendingIndexRef.current >= 0) {
       const pending = pendingIndexRef.current;
       pendingIndexRef.current = -1;
@@ -997,7 +999,7 @@ export default function VideoPlayer({
 
     art.hotkey.add("KeyF", toggleFullscreenWeb);
     art.hotkey.add("KeyM", () => {
-      setMediaMuted(!art.muted);
+      setMediaMuted(filePath, !art.muted);
     });
 
     // 播放列表切集 / 循环模式

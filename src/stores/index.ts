@@ -10,6 +10,7 @@ import type {
 import type { FileTypeKind } from "../lib/fileType";
 import { useEditorStore } from "./editorStore";
 import { mediaPlayer } from "../components/Content/mediaPlayerState";
+import { clearMediaMuted } from "../components/Content/mediaMute";
 import {
   DEFAULT_RAIL_VIEW_SPEC,
   nextRailState,
@@ -590,6 +591,8 @@ export const useStore = create<AppStore>((set, get) => ({
     const closedTab = state.tabs[id];
     if (closedTab?.path) {
       mediaPlayer.stop(closedTab.path);
+      // 静音状态按文件记录，页签关闭即清理，避免重开同一文件残留静音。
+      clearMediaMuted(closedTab.path);
     }
     const { [id]: _removed, ...remaining } = state.tabs;
     const leaf = leafOfTab(state.paneRoot, id);

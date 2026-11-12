@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
+  clearMediaMuted,
   isMediaMuted,
   setMediaMuted,
   subscribeMediaMute,
@@ -11,22 +12,36 @@ import {
   saveMediaIndex,
 } from "../../components/Content/mediaIndex";
 
+const EP1 = "/videos/ep1.mp4";
+const EP2 = "/videos/ep2.mp3";
+
 beforeEach(() => {
-  setMediaMuted(false);
+  clearMediaMuted(EP1);
+  clearMediaMuted(EP2);
   localStorage.clear();
 });
 
-describe("媒体静音状态", () => {
-  it("默认未静音，切换与订阅生效", () => {
-    const seen: boolean[] = [];
-    const unsubscribe = subscribeMediaMute((m) => seen.push(m));
-    expect(isMediaMuted()).toBe(false);
-    toggleMediaMuted();
-    expect(isMediaMuted()).toBe(true);
-    setMediaMuted(false);
+describe("媒体静音状态（按文件隔离）", () => {
+  it("默认未静音，切换与订阅只影响对应文件", () => {
+    const seen: Array<[string, boolean]> = [];
+    const unsubscribe = subscribeMediaMute((key, m) => seen.push([key, m]));
+    expect(isMediaMuted(EP1)).toBe(false);
+    toggleMediaMuted(EP1);
+    expect(isMediaMuted(EP1)).toBe(true);
+    expect(isMediaMuted(EP2)).toBe(false);
+    setMediaMuted(EP1, false);
     unsubscribe();
-    setMediaMuted(true);
-    expect(seen).toEqual([true, false]);
+    setMediaMuted(EP1, true);
+    expect(seen).toEqual([
+      [EP1, true],
+      [EP1, false],
+    ]);
+  });
+
+  it("清理后恢复未静音", () => {
+    setMediaMuted(EP1, true);
+    clearMediaMuted(EP1);
+    expect(isMediaMuted(EP1)).toBe(false);
   });
 });
 
