@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import { test, expect, type Page } from "@playwright/test";
 
 const APP_URL = "http://localhost:1420";
@@ -105,4 +106,58 @@ test("输入 / 后退格关闭菜单且不留残留", async ({ page }) => {
   await expect(page.locator(".mdb-slash-menu")).toHaveCount(0);
   await expect(page.locator(".mdb-slash-flyout")).toHaveCount(0);
   await expect.poll(() => storeContent(page), { timeout: 5000 }).toBe("");
+});
+
+test("表格网格滑入任意格选中左上到指针的矩形，离开再回来保留选中", async ({
+  page,
+}) => {
+  const shots = ".artifacts/705";
+  fs.mkdirSync(shots, { recursive: true });
+
+  const content = await openMarkdownForEditing(
+    page,
+    "/Users/test/slash-grid.md",
+  );
+  await page.keyboard.type("/");
+  const menu = page.locator(".mdb-slash-menu");
+  await expect(menu).toHaveCount(1);
+
+  const tableRow = menu.locator(".mdb-slash-item").filter({ hasText: "表格" });
+  await tableRow.hover();
+  const grid = page.locator(".mdb-slash-grid");
+  await expect(grid).toBeVisible();
+
+  const onCells = page.locator('.mdb-slash-grid-cell[data-on="true"]');
+  await expect(onCells).toHaveCount(1);
+  await page.screenshot({ path: `${shots}/01-grid-open.png` });
+
+  const cellAt = (r: number, c: number) =>
+    page.locator(`.mdb-slash-grid-cell[data-r="${r}"][data-c="${c}"]`);
+
+  await cellAt(3, 4).hover();
+  await expect(onCells).toHaveCount(12);
+  await page.screenshot({ path: `${shots}/02-rect-3x4.png` });
+
+  await cellAt(1, 1).hover();
+  await expect(onCells).toHaveCount(1);
+  await page.screenshot({ path: `${shots}/03-back-1x1.png` });
+
+  // 回到 3×4，然后指针离开表格行（滑到浮层标题）再滑回表格行：选中必须保留。
+  await cellAt(3, 4).hover();
+  await expect(onCells).toHaveCount(12);
+  await page.locator(".mdb-slash-grid-title").hover();
+  await tableRow.hover();
+  await expect(onCells).toHaveCount(12);
+  await page.screenshot({ path: `${shots}/04-after-reenter.png` });
+
+  // 单击第 3 行第 4 列插入 3 行 4 列表格，关闭后无残留网格。
+  await cellAt(3, 4).click();
+  await expect(page.locator(".mdb-slash-menu")).toHaveCount(0);
+  await expect(page.locator(".mdb-slash-grid")).toHaveCount(0);
+  await expect
+    .poll(() => storeContent(page), { timeout: 5000 })
+    .toContain("|  |  |  |  |");
+  const doc = await storeContent(page);
+  expect(doc.split("\n")).toHaveLength(5); // 表头 + 分隔 + 3 行正文
+  await expect(content).toBeVisible();
 });

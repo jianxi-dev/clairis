@@ -394,6 +394,13 @@ interface GridState {
   cols: number;
   hoverR: number;
   hoverC: number;
+  /** 上一次 `paint` 的矩形右下角；增量只翻转两个矩形的对称差。 */
+  paintedR: number;
+  paintedC: number;
+  /** 已排队的 rAF；关闭浮层时取消，避免帧泄漏。 */
+  frame: number | null;
+  /** 已构建的格子容器；复用它就不重建 100 格。 */
+  wrap: HTMLElement | null;
 }
 
 /** `slash`：用户输入 `/`，菜单拥有 `[slashPos, head]`，取消时必须删掉这段。
@@ -502,11 +509,21 @@ function isActiveLayer(view: EditorView, state: SlashMenuState): boolean {
   return top.element === state.dom || top.element === state.flyoutDom;
 }
 
+/** 取消网格待处理的 rAF；关闭路径共用，避免帧泄漏。 */
+function cancelGridFrame(state: SlashMenuState): void {
+  const frame = state.grid?.frame;
+  if (frame !== null && frame !== undefined) {
+    cancelAnimationFrame(frame);
+    if (state.grid) state.grid.frame = null;
+  }
+}
+
 /** 关闭菜单（根面板 + 浮层），不动文档。 */
 function closeMenu(view: EditorView): void {
   cancelAnchorClose(view);
   const state = menus.get(view);
   if (!state) return;
+  cancelGridFrame(state);
   menus.delete(view);
   if (state.dom && state.dom.parentNode) {
     state.dom.parentNode.removeChild(state.dom);
@@ -741,12 +758,23 @@ function enterGrid(
 ): void {
   const state = menus.get(view);
   if (!state?.open || !state.dom || !cmd.grid) return;
+  // 同一行的网格已打开：复用，不重建 100 格、不重置 hover。
+  if (state.grid && state.submenuParent === cmd) {
+    state.parentCell =
+      parentCell ?? state.parentCell ?? state.cells[state.selected] ?? null;
+    positionFlyout(view, state);
+    return;
+  }
   closeFlyout(state);
   state.grid = {
     rows: cmd.grid.rows,
     cols: cmd.grid.cols,
     hoverR: 1,
     hoverC: 1,
+    paintedR: 1,
+    paintedC: 1,
+    frame: null,
+    wrap: null,
   };
   state.submenuParent = cmd;
   state.parentCell = parentCell ?? state.cells[state.selected] ?? null;
@@ -760,6 +788,14 @@ function renderGrid(view: EditorView, state: SlashMenuState): void {
   if (!state.grid) return;
   const grid = state.grid;
   const flyout = ensureFlyoutDom(view, state);
+  // 网格已构建且尺寸未变时复用：不重建 100 格，也不重置 hover。
+  if (
+    grid.wrap !== null &&
+    grid.wrap.parentNode === flyout &&
+    flyout.dataset.kind === "grid"
+  ) {
+    return;
+  }
   flyout.textContent = "";
   flyout.dataset.kind = "grid";
 
@@ -776,12 +812,29 @@ function renderGrid(view: EditorView, state: SlashMenuState): void {
   const wrap = document.createElement("div");
   wrap.className = "mdb-slash-grid";
   wrap.style.gridTemplateColumns = `repeat(${grid.cols}, 18px)`;
+  grid.wrap = wrap;
 
+  /** 增量 paint：只翻转上一矩形与目标矩形对称差里的格子。 */
   const paint = (r: number, c: number): void => {
+    const prevR = grid.paintedR;
+    const prevC = grid.paintedC;
     for (const el of Array.from(wrap.children) as HTMLElement[]) {
+      const wasOn =
+        Number(el.dataset.r) <= prevR && Number(el.dataset.c) <= prevC;
       const on = Number(el.dataset.r) <= r && Number(el.dataset.c) <= c;
-      el.setAttribute("data-on", on ? "true" : "false");
+      if (wasOn !== on) el.setAttribute("data-on", on ? "true" : "false");
     }
+    grid.paintedR = r;
+    grid.paintedC = c;
+  };
+
+  /** rAF 合并：快速斜向滑动时一帧只 paint 一次。 */
+  const schedulePaint = (): void => {
+    if (grid.frame !== null) return;
+    grid.frame = requestAnimationFrame(() => {
+      grid.frame = null;
+      paint(grid.hoverR, grid.hoverC);
+    });
   };
 
   for (let r = 1; r <= grid.rows; r++) {
@@ -790,7 +843,8 @@ function renderGrid(view: EditorView, state: SlashMenuState): void {
       cell.className = "mdb-slash-grid-cell";
       cell.dataset.r = String(r);
       cell.dataset.c = String(c);
-      cell.setAttribute("data-on", r <= 1 && c <= 1 ? "true" : "false");
+      const on = r <= grid.hoverR && c <= grid.hoverC;
+      cell.setAttribute("data-on", on ? "true" : "false");
       cell.addEventListener("mouseenter", () => {
         grid.hoverR = r;
         grid.hoverC = c;
@@ -804,6 +858,31 @@ function renderGrid(view: EditorView, state: SlashMenuState): void {
       wrap.appendChild(cell);
     }
   }
+  grid.paintedR = grid.hoverR;
+  grid.paintedC = grid.hoverC;
+
+  // 指针快速斜移时 mouseenter 可能漏格：mousemove 按坐标兜底，rAF 合并。
+  wrap.addEventListener("mousemove", (e: MouseEvent) => {
+    const rect = wrap.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return;
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    if (x < 0 || y < 0 || x >= rect.width || y >= rect.height) return;
+    const c = Math.min(
+      grid.cols,
+      Math.max(1, Math.floor(x / (rect.width / grid.cols)) + 1),
+    );
+    const r = Math.min(
+      grid.rows,
+      Math.max(1, Math.floor(y / (rect.height / grid.rows)) + 1),
+    );
+    if (r === grid.hoverR && c === grid.hoverC) return;
+    grid.hoverR = r;
+    grid.hoverC = c;
+    label.textContent = `${r} \u00d7 ${c}`;
+    schedulePaint();
+  });
+
   flyout.appendChild(wrap);
 }
 
@@ -1255,6 +1334,7 @@ function ensureFlyoutDom(
 
 /** 关闭二级浮层；根列表和过滤词保持原样。 */
 function closeFlyout(state: SlashMenuState): void {
+  cancelGridFrame(state);
   if (state.flyoutDom?.parentNode) {
     state.flyoutDom.parentNode.removeChild(state.flyoutDom);
   }
