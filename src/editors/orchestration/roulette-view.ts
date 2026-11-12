@@ -138,6 +138,29 @@ function svgNode<K extends keyof SVGElementTagNameMap>(
   return el;
 }
 
+function checkerPattern(): SVGDefsElement {
+  const pattern = svgNode("pattern", {
+    id: "sr-checker",
+    width: "6",
+    height: "6",
+    patternUnits: "userSpaceOnUse",
+  });
+  pattern.append(
+    svgNode("rect", { width: "6", height: "6", class: "sr-checker-bg" }),
+    svgNode("rect", { width: "3", height: "3", class: "sr-checker-cell" }),
+    svgNode("rect", {
+      x: "3",
+      y: "3",
+      width: "3",
+      height: "3",
+      class: "sr-checker-cell",
+    }),
+  );
+  const defs = svgNode("defs");
+  defs.appendChild(pattern);
+  return defs;
+}
+
 function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
   className: string,
@@ -184,7 +207,7 @@ export function createRoulette(
   });
   const rootLayer = svgNode("g", { class: "sr-root-layer" });
   const subLayer = svgNode("g", { class: "sr-sub-layer" });
-  svg.append(rootLayer, subLayer);
+  svg.append(checkerPattern(), rootLayer, subLayer);
 
   const labelLayer = el("div", "sr-labels");
   const overlay = el("div", "sr-overlay");

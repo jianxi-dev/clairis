@@ -3046,9 +3046,17 @@ html[data-tab-drag="true"] body * {
   fill: color-mix(in srgb, var(--sw, transparent) 78%, var(--app-surface) 22%);
 }
 
+.sr-checker-bg {
+  fill: var(--app-surface);
+}
+
+.sr-checker-cell {
+  fill: var(--app-border);
+}
+
 .sr-sec.sr-color.bare {
-  fill: transparent;
-  stroke-dasharray: 2 2;
+  fill: url("#sr-checker");
+  stroke: var(--app-border-strong);
 }
 
 .sr-labels,
@@ -3147,7 +3155,7 @@ html[data-tab-drag="true"] body * {
 }
 
 .sr-color-A.none {
-  color: var(--app-text-3);
+  color: var(--app-text-2);
 }
 
 /* ── 胶囊选区工具条（#572）────────────────────────────── */

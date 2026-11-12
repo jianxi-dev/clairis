@@ -1,0 +1,36 @@
+{
+  "states": [
+    {
+      "state": "history-cut-index",
+      "screenshot": ".artifacts/675/state-1-history-cut.png",
+      "assertion": "passed",
+      "detail": "历史分组序列 [undo, copy, cut, redo, delete]，剪切索引严格 = 2（A-10.1 复制之后、前进之前）",
+      "recorded_at": "2026-11-12T08:43:24Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "cut-executed",
+      "screenshot": ".artifacts/675/state-2-cut-executed.png",
+      "assertion": "passed",
+      "detail": "剪切真实执行：剪贴板含选区文本且文档移除该段（写剪贴板 + 删选区）",
+      "recorded_at": "2026-11-12T08:43:24Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "checker-visible",
+      "screenshot": ".artifacts/675/state-3-checker.png",
+      "assertion": "passed",
+      "detail": "颜色二级透明项：SVG 棋盘格 pattern + 实线描边，标签色 text-3→text-2 提对比（cw-vision 复核可见网格纹理）",
+      "recorded_at": "2026-11-12T08:43:24Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "closed-clean",
+      "screenshot": ".artifacts/675/state-4-closed.png",
+      "assertion": "passed",
+      "detail": "Esc 关闭：轮盘节点 0，无残留",
+      "recorded_at": "2026-11-12T08:43:24Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}
