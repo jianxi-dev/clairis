@@ -413,19 +413,40 @@ function applyImageAttributes(doc: Document): void {
       const align = marker.getAttribute("data-img-align");
       const hasWidth = Number.isFinite(width) && width > 0;
       const hasHeight = Number.isFinite(height) && height > 0;
+      const cropRaw = marker.getAttribute("data-img-crop");
+      const crop =
+        cropRaw !== null
+          ? cropRaw.split(",").map((value) => Number(value))
+          : null;
+      const hasCrop =
+        crop !== null &&
+        crop.length === 4 &&
+        crop.every((value) => Number.isFinite(value) && value >= 0);
       let node = marker.previousElementSibling;
       if (!node) node = marker.parentElement;
       const img = node?.querySelector?.("img") ?? null;
       if (img) {
-        if (hasWidth) img.setAttribute("width", String(width));
-        if (hasHeight) img.setAttribute("height", String(height));
         const style: string[] = [];
-        if (hasWidth || hasHeight) {
-          // 预览样式给 img 定了 `height: auto`，表现属性会被 CSS 压掉，
-          // 显式高度必须走内联样式才生效。
-          style.push("max-width:100%");
-          if (hasWidth) style.push(`width:${width}px`);
-          style.push(hasHeight ? `height:${height}px` : "height:auto");
+        if (hasCrop) {
+          // 裁剪显示与编辑态同一套 CSS 技法：盒=裁剪矩形，object-fit:none
+          // 平移内容。width/height 缩放属性不参与（矩形就是显示尺寸）。
+          const [l, t, w, h] = crop;
+          style.push(
+            `object-fit:none`,
+            `object-position:${-l}px ${-t}px`,
+            `width:${w}px`,
+            `height:${h}px`,
+          );
+        } else {
+          if (hasWidth) img.setAttribute("width", String(width));
+          if (hasHeight) img.setAttribute("height", String(height));
+          if (hasWidth || hasHeight) {
+            // 预览样式给 img 定了 `height: auto`，表现属性会被 CSS 压掉，
+            // 显式高度必须走内联样式才生效。
+            style.push("max-width:100%");
+            if (hasWidth) style.push(`width:${width}px`);
+            style.push(hasHeight ? `height:${height}px` : "height:auto");
+          }
         }
         if (align === "left" || align === "center" || align === "right") {
           // 预览里 img 是 `display:block; margin-inline:auto`，对 figure 设

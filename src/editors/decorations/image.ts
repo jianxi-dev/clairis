@@ -83,6 +83,8 @@ export const MAX_IMAGE_WIDTH = 2000;
 /** 高度与宽度共用同一区间。 */
 export const MIN_IMAGE_HEIGHT = MIN_IMAGE_WIDTH;
 export const MAX_IMAGE_HEIGHT = MAX_IMAGE_WIDTH;
+/** 裁剪矩形单边最小值（原图像素）。 */
+export const MIN_CROP_SIZE = 8;
 
 function clampWidth(value: number): number {
   return Math.max(MIN_IMAGE_WIDTH, Math.min(value, MAX_IMAGE_WIDTH));
@@ -93,6 +95,15 @@ function clampHeight(value: number): number {
 }
 
 const WIDTH_COMMENT_RE = /^[ \t]*<!--\s*w=(\d+)\s*-->/;
+
+function cropEquals(
+  a: [number, number, number, number] | null,
+  b: [number, number, number, number] | null,
+): boolean {
+  if (a === b) return true;
+  if (a === null || b === null) return false;
+  return a.every((v, i) => v === b[i]);
+}
 
 /** 宽度注释的结束位置（含注释本身），没有则 null。编辑态要把它藏起来。 */
 export function imageWidthCommentEnd(
@@ -563,6 +574,7 @@ class ImageWidget extends WidgetType {
   private readonly _width: number | null;
   private readonly _height: number | null;
   private readonly _title: string | null;
+  private readonly _crop: [number, number, number, number] | null;
   /** `!` 的文档偏移——选中态、工具条动作、拖拽改宽都以它为准。 */
   private readonly _from: number;
 
@@ -575,6 +587,7 @@ class ImageWidget extends WidgetType {
     from = 0,
     height: number | null = null,
     title: string | null = null,
+    crop: [number, number, number, number] | null = null,
   ) {
     super();
     this._alt = alt;
@@ -585,6 +598,7 @@ class ImageWidget extends WidgetType {
     this._from = from;
     this._height = height;
     this._title = title;
+    this._crop = crop;
   }
 
   eq(other: ImageWidget): boolean {
@@ -595,7 +609,8 @@ class ImageWidget extends WidgetType {
       other._width === this._width &&
       other._height === this._height &&
       other._title === this._title &&
-      other._from === this._from
+      other._from === this._from &&
+      cropEquals(other._crop, this._crop)
     );
   }
 
@@ -621,13 +636,24 @@ class ImageWidget extends WidgetType {
       img.alt = this._alt;
       img.style.maxWidth = "100%";
       img.style.display = "block";
-      if (this._width !== null) {
-        img.style.width = `${this._width}px`;
-        img.setAttribute("data-width", String(this._width));
-      }
-      if (this._height !== null) {
-        img.style.height = `${this._height}px`;
-        img.setAttribute("data-height", String(this._height));
+      if (this._crop) {
+        // 裁剪显示：盒子=裁剪矩形（原图 1:1），object-fit:none 把内容
+        // 平移到 (left,top) 对齐盒原点。此时 width/height 缩放属性不参与
+        // 显示（裁剪矩形本身就是显示尺寸）。
+        const [l, t, w, h] = this._crop;
+        img.style.objectFit = "none";
+        img.style.objectPosition = `${-l}px ${-t}px`;
+        img.style.width = `${w}px`;
+        img.style.height = `${h}px`;
+      } else {
+        if (this._width !== null) {
+          img.style.width = `${this._width}px`;
+          img.setAttribute("data-width", String(this._width));
+        }
+        if (this._height !== null) {
+          img.style.height = `${this._height}px`;
+          img.setAttribute("data-height", String(this._height));
+        }
       }
       img.style.clipPath = "inset(0 round 8px)";
       container.appendChild(img);
@@ -683,6 +709,10 @@ class ImageWidget extends WidgetType {
       (candidate) => candidate.handle === handleEl.dataset.handle,
     );
     if (!spec) return;
+    if (this._crop) {
+      this.beginCropResize(event, img, spec, container);
+      return;
+    }
 
     const startX = event.clientX;
     const startY = event.clientY;
@@ -765,6 +795,95 @@ class ImageWidget extends WidgetType {
       );
     };
 
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  }
+
+  /**
+   * 裁剪图的把手拖拽：调整裁剪矩形本身（原图 1:1 显示，位移=原图像素）。
+   * 预览直接改 img 盒与 object-position；松手把矩形写回属性块并清掉
+   * width/height（裁剪图的显示尺寸由矩形决定，缩放属性不再适用）。
+   */
+  private beginCropResize(
+    event: MouseEvent,
+    img: HTMLImageElement,
+    spec: ImageHandleSpec,
+    container: HTMLElement,
+  ): void {
+    const [l0, t0, w0, h0] = this._crop!;
+    const natW = img.naturalWidth;
+    const natH = img.naturalHeight;
+    if (natW <= 0 || natH <= 0) return;
+    const startX = event.clientX;
+    const startY = event.clientY;
+    const original = {
+      width: img.style.width,
+      height: img.style.height,
+      objectPosition: img.style.objectPosition,
+    };
+    const applyRect = (l: number, t: number, w: number, h: number): void => {
+      img.style.width = `${w}px`;
+      img.style.height = `${h}px`;
+      img.style.objectPosition = `${-l}px ${-t}px`;
+    };
+    const restorePreview = (): void => {
+      img.style.width = original.width;
+      img.style.height = original.height;
+      img.style.objectPosition = original.objectPosition;
+    };
+    const rectFromDrag = (
+      dx: number,
+      dy: number,
+    ): [number, number, number, number] => {
+      let l = l0;
+      let t = t0;
+      let r = l0 + w0;
+      let b = t0 + h0;
+      if (spec.width) {
+        if (spec.signX > 0) {
+          r = Math.max(l + MIN_CROP_SIZE, Math.min(r + dx, natW));
+        } else {
+          l = Math.max(0, Math.min(l - dx, r - MIN_CROP_SIZE));
+        }
+      }
+      if (spec.height) {
+        if (spec.signY > 0) {
+          b = Math.max(t + MIN_CROP_SIZE, Math.min(b + dy, natH));
+        } else {
+          t = Math.max(0, Math.min(t - dy, b - MIN_CROP_SIZE));
+        }
+      }
+      return [l, t, r - l, b - t];
+    };
+    const onMove = (move: MouseEvent): void => {
+      applyRect(...rectFromDrag(move.clientX - startX, move.clientY - startY));
+    };
+    const onUp = (up: MouseEvent): void => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+      const dx = up.clientX - startX;
+      const dy = up.clientY - startY;
+      if (Math.hypot(dx, dy) < 3) {
+        restorePreview();
+        return;
+      }
+      const view = EditorView.findFromDOM(container);
+      if (!view) {
+        restorePreview();
+        return;
+      }
+      const text = view.state.doc.toString();
+      const ref = scanImageReference(text, this._from);
+      if (!ref) return;
+      const attrs: ImageAttributes =
+        ref.attrText !== null
+          ? parseImageAttributes(ref.attrText)
+          : { ...EMPTY_IMAGE_ATTRIBUTES };
+      attrs.crop = rectFromDrag(dx, dy);
+      attrs.width = null;
+      attrs.height = null;
+      writeImageAttributes(view, this._from, attrs);
+    };
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
   }
@@ -953,6 +1072,7 @@ export function createImageDecorations(
             from,
             attrs.height,
             ref.title,
+            attrs.crop,
           ),
           inclusive: false,
         }).range(from, to),
