@@ -12,12 +12,18 @@ import {
   bracketMatching,
   indentOnInput,
   syntaxHighlighting,
+  type Language,
 } from "@codemirror/language";
 import { classHighlighter } from "@lezer/highlight";
 import { drawSelection, EditorView, keymap } from "@codemirror/view";
 import { searchKeymap } from "@codemirror/search";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
 import { html } from "@codemirror/lang-html";
+import { javascript } from "@codemirror/lang-javascript";
+import { python } from "@codemirror/lang-python";
+import { css } from "@codemirror/lang-css";
+import { json } from "@codemirror/lang-json";
+import { yaml } from "@codemirror/lang-yaml";
 import type { FileKind } from "../types";
 import { editorDecorations } from "./decorations";
 import type { EditorDecorationsOptions } from "./decorations";
@@ -106,6 +112,41 @@ function commonExtensions(): Extension[] {
 }
 
 /**
+ * 围栏代码块的嵌套语言表（design D8 / #703）。
+ *
+ * `markdown({ codeLanguages })` 的回调拿到的是 info 串的第一个非空白词
+ * （lang-markdown 的 `getCodeParser` 会截掉其后的一切），返回已构造的
+ * `Language`；别名表对齐 `src/renderers/highlight.ts` 的 `LANGUAGES`，
+ * 未知语言回落纯文本。所有实例在模块作用域构造一次，避免每次解析重复分配。
+ */
+const fenceLanguageMap: Record<string, Language> = {
+  js: javascript().language,
+  mjs: javascript().language,
+  cjs: javascript().language,
+  node: javascript().language,
+  javascript: javascript().language,
+  jsx: javascript({ jsx: true }).language,
+  ts: javascript({ typescript: true }).language,
+  typescript: javascript({ typescript: true }).language,
+  tsx: javascript({ jsx: true, typescript: true }).language,
+  py: python().language,
+  python: python().language,
+  css: css().language,
+  html: html().language,
+  xml: html().language,
+  json: json().language,
+  jsonc: json().language,
+  yaml: yaml().language,
+  yml: yaml().language,
+  md: markdownLanguage,
+  markdown: markdownLanguage,
+};
+
+export function fenceCodeLanguage(info: string): Language | null {
+  return fenceLanguageMap[info.trim().toLowerCase()] ?? null;
+}
+
+/**
  * Create editor extensions based on file kind.
  */
 export function createExtensions(fileKind: FileKind): Extension[] {
@@ -119,7 +160,7 @@ export function createExtensions(fileKind: FileKind): Extension[] {
     case "markdown":
       return [
         ...base,
-        markdown({ base: markdownLanguage }),
+        markdown({ base: markdownLanguage, codeLanguages: fenceCodeLanguage }),
         smartInput(),
         // 斜杠菜单：`Prec.high` 绑定优先于 defaultKeymap，菜单关闭时全部返回 false。
         slashKeymap(),

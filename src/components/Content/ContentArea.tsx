@@ -21,6 +21,7 @@ import { useEditorStore } from "../../stores/editorStore";
 import {
   baseEditorExtensions,
   decorCompartment,
+  fenceCodeLanguage,
   historyCompartment,
 } from "../../editors/setup";
 import {
@@ -311,7 +312,7 @@ function createLanguageExtension(kind: FileKind) {
       // 装饰由 `decorationsForMode` 单独装入：语言包只负责语法与输入辅助，
       // 避免源码模式先被语言重配置塞进整套装饰再撤回。
       return [
-        markdown({ base: markdownLanguage }),
+        markdown({ base: markdownLanguage, codeLanguages: fenceCodeLanguage }),
         smartInput(),
         slashKeymap(),
         blockHandle(),
