@@ -36,11 +36,15 @@ test("重启后恢复到上次播放项", async ({ page }) => {
       "ep1.mp4",
     );
   });
-  await page.waitForTimeout(1500);
-  const src = await page.evaluate(
-    () => document.querySelector("video")?.getAttribute("src") ?? "",
-  );
-  expect(src).toContain("ep2");
+  await expect
+    .poll(
+      () =>
+        page.evaluate(
+          () => document.querySelector("video")?.getAttribute("src") ?? "",
+        ),
+      { timeout: 10000 },
+    )
+    .toContain("ep2");
   const dir = process.env.EVIDENCE_DIR;
   if (dir) {
     await page.screenshot({ path: `${dir}/playlist-restored.png` });
@@ -72,7 +76,11 @@ test("无记忆时停留在打开的文件", async ({ page }) => {
       "ep1.mp4",
     );
   });
-  await page.waitForTimeout(1500);
+  await page.locator(".art-control[data-name='playlist']").click();
+  await expect(page.getByTestId("playlist-item-name")).toHaveCount(2, {
+    timeout: 10000,
+  });
+  await page.keyboard.press("Escape");
   const src = await page.evaluate(
     () => document.querySelector("video")?.getAttribute("src") ?? "",
   );
