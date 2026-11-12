@@ -659,6 +659,7 @@ export default function ContentArea({
     >
       <div
         ref={scrollContainerRef}
+        className="content-scroll"
         style={{ flex: 1, position: "relative", overflow: "auto" }}
       >
         <div

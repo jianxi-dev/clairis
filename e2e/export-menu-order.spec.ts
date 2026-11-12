@@ -16,7 +16,7 @@ async function boot(page: Page): Promise<void> {
   await page.waitForTimeout(300);
 }
 
-test("导出菜单顺序为 Word / .mdpkg / 图片 / PDF / HTML / ZIP", async ({
+test("导出菜单顺序为 Word / .mdpkg / 图片 / PDF / HTML / ZIP / 打印", async ({
   page,
 }) => {
   await boot(page);
@@ -41,6 +41,7 @@ test("导出菜单顺序为 Word / .mdpkg / 图片 / PDF / HTML / ZIP", async ({
     "exportPdf",
     "exportHtml",
     "exportZip",
+    "print",
   ]);
 });
 

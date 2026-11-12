@@ -589,6 +589,10 @@ function PaneHeader({
     (action: ExportMenuAction) => {
       setMenuOpen(false);
       setExportOpen(false);
+      if (action === "print") {
+        window.print();
+        return;
+      }
       const tab = activeTabId ? useStore.getState().tabs[activeTabId] : null;
       if (!tab) return;
       const baseDir = dirOfTabPath(tab.path);
@@ -1065,7 +1069,7 @@ export default function PaneTreeView() {
 
   return (
     <PaneDragContext.Provider value={startPaneDrag}>
-      <div className="relative h-full w-full overflow-hidden">
+      <div className="relative h-full w-full overflow-hidden pane-tree">
         <PaneNode
           node={paneRoot}
           style={{ width: "100%", height: "100%" }}

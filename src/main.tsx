@@ -5,6 +5,7 @@ import "katex/dist/katex.min.css";
 import "./styles/tokens.css";
 import "./styles/reader.css";
 import "./styles/player.css";
+import "./styles/print.css";
 
 const rootEl = document.getElementById("root");
 if (!rootEl) {

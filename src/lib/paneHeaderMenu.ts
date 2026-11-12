@@ -32,7 +32,8 @@ export type ExportMenuAction =
   | "exportPdf"
   | "exportDocx"
   | "exportMdpkg"
-  | "exportZip";
+  | "exportZip"
+  | "print";
 
 export interface ExportMenuItem {
   action: ExportMenuAction;
@@ -55,6 +56,7 @@ export const PANE_MENU_ITEMS: readonly PaneMenuItem[] = [
 
 // 用户 2026-11-10 指定顺序：word、mdpkg、图片、pdf、html、zip。
 // PDF 导出依赖待裁定（md-bundle vendor 无 PDF API），裁定前不渲染该槽位。
+// 「打印」不走导出管线：handler 直接调 window.print()（#707）。
 export const EXPORT_MENU_ITEMS: readonly ExportMenuItem[] = [
   { action: "exportDocx", label: "Word", icon: "exportWord" },
   { action: "exportMdpkg", label: ".mdpkg", icon: "exportMdpkg" },
@@ -62,6 +64,7 @@ export const EXPORT_MENU_ITEMS: readonly ExportMenuItem[] = [
   { action: "exportPdf", label: "PDF", icon: "pdf" },
   { action: "exportHtml", label: "HTML", icon: "html" },
   { action: "exportZip", label: "ZIP", icon: "exportZip" },
+  { action: "print", label: "打印", icon: "print" },
 ];
 
 /**

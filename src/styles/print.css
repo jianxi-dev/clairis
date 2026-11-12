@@ -1,0 +1,137 @@
+/* 打印版式（#707 / D12）
+ *
+ * 主窗口专用：隐藏外壳（格头、页签、左栏、状态栏、浮层、工具条、视频控件），
+ * 把活动格的文档内容铺满 A4 纸宽并按块分页。
+ *
+ * 外壳链上的容器带固定视口高度与 overflow:hidden，不放开会把多页内容裁成
+ * 一页，所以打印态统一改为 auto + visible。
+ */
+
+@page {
+  size: A4 portrait;
+  margin: 10mm;
+}
+
+@media print {
+  /* ── 隐藏外壳 ─────────────────────────────────────────── */
+  .app-chrome,
+  .tab-strip,
+  .rail-root,
+  .status-hotzone,
+  [data-testid="status-bar"],
+  .biaoyue-outline,
+  .reading-ink,
+  .app-tip,
+  .width-panel,
+  .pane-menu,
+  .pane-export-submenu,
+  .pane-drop-overlay,
+  .pane-root-drop,
+  .html-edit-toolbar,
+  .cm-image-toolbar,
+  .cm-block-handle,
+  .cm-image-corner,
+  .cm-image-handle,
+  .cm-image-maximize,
+  .cm-toolbar-dropdown,
+  .art-controls,
+  .art-control,
+  .art-progress,
+  .art-notice,
+  .art-contextmenu,
+  .art-layer,
+  .art-modal,
+  .art-settings,
+  .art-mask,
+  .art-player-loading {
+    display: none !important;
+  }
+
+  /* 分栏时只打印聚焦格。 */
+  .pane-leaf[data-focused="false"] {
+    display: none !important;
+  }
+
+  /* ── 放开视口与滚动，让内容跨页 ─────────────────────── */
+  .app-root,
+  .app-shell,
+  .pane-tree,
+  .pane-branch,
+  .pane-leaf,
+  .content-scroll {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .app-root,
+  .app-shell {
+    display: block !important;
+  }
+
+  /* ── 纸面：白底黑字、无阴影 ─────────────────────────── */
+  html,
+  body,
+  #root,
+  .app-root,
+  .preview-shell,
+  .cm-editor {
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  .preview-content {
+    contain: none;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+    box-shadow: none !important;
+  }
+
+  .cm-editor .cm-content {
+    width: 100% !important;
+    max-width: none !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+    box-shadow: none !important;
+  }
+
+  .cm-editor .cm-line {
+    max-width: none !important;
+  }
+
+  .cm-editor .cm-scroller {
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  .preview-content,
+  .preview-content *,
+  .cm-editor,
+  .cm-editor * {
+    box-shadow: none !important;
+  }
+
+  /* ── 分页 ───────────────────────────────────────────── */
+  pre,
+  blockquote,
+  table,
+  img,
+  .mermaid-block,
+  .cm-mermaid-block {
+    break-inside: avoid;
+  }
+
+  h1 {
+    break-before: page;
+  }
+
+  h1:first-of-type {
+    break-before: auto;
+  }
+}
