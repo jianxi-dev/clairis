@@ -146,7 +146,7 @@ const ALIGN_INDENT_ITEMS: ReadonlyArray<{
 
 const closeTimers = new WeakMap<EditorView, number>();
 
-function cancelPendingClose(view: EditorView): void {
+export function cancelPendingClose(view: EditorView): void {
   const timer = closeTimers.get(view);
   if (timer !== undefined) {
     window.clearTimeout(timer);
