@@ -1,0 +1,44 @@
+{
+  "states": [
+    {
+      "state": "playing-unmuted",
+      "screenshot": ".artifacts/670/state-1-playing.png",
+      "assertion": "passed",
+      "detail": "音频播放中、未静音：{paused:false, muted:false}",
+      "recorded_at": "2026-11-12T13:08:50Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "muted-paused",
+      "screenshot": ".artifacts/670/state-2-muted-paused.png",
+      "assertion": "passed",
+      "detail": "点击静音后 100ms：{paused:true, muted:true}（A-7.1 无声音残留，同步 pause+muted）",
+      "recorded_at": "2026-11-12T13:08:50Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "unmuted-stopped",
+      "screenshot": ".artifacts/670/state-3-unmuted-stopped.png",
+      "assertion": "passed",
+      "detail": "取消静音：muted=false 且仍 paused（不自动续播，避免惊吓）",
+      "recorded_at": "2026-11-12T13:08:50Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "playlist-natural",
+      "screenshot": ".artifacts/670/state-4-playlist-natural.png",
+      "assertion": "passed",
+      "detail": "同目录 3 个音频：播放列表（3），自然序 track-1 < track-2 < track-10（A-7.2）",
+      "recorded_at": "2026-11-12T13:08:50Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "closed-clean",
+      "screenshot": ".artifacts/670/state-5-closed.png",
+      "assertion": "passed",
+      "detail": "关闭页签：播放器实例计数 0，无残留",
+      "recorded_at": "2026-11-12T13:08:50Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}
