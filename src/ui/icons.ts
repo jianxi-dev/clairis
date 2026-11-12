@@ -38,6 +38,7 @@ export type IconName =
   | "exportWord"
   | "exportZip"
   | "exportMdpkg"
+  | "print"
   | "share"
   | "splitRight"
   | "splitDown"
@@ -285,6 +286,10 @@ export const ICONS: Record<IconName, IconDef> = {
   exportMdpkg: {
     label: ".mdpkg 导出",
     s: "M12 3l8 4.5v9L12 21l-8-4.5v-9z M4 7.5l8 4.5 8-4.5 M12 12v9",
+  },
+  print: {
+    label: "打印",
+    s: "M6 9V2h12v7 M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2 M6 14h12v8H6z",
   },
   share: {
     label: "分享",

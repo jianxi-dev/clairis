@@ -835,9 +835,9 @@ function App() {
     .join(" ");
 
   return (
-    <div className={rootClass}>
+    <div className={`${rootClass} app-root`}>
       <TooltipLayer />
-      <div className="relative flex-1 flex min-w-0 overflow-hidden">
+      <div className="relative flex-1 flex min-w-0 overflow-hidden app-shell">
         <ReadingRail onOpenPath={handleOpenPath} />
         <div
           className="flex-1 min-w-0 flex overflow-hidden"
