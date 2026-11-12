@@ -59,7 +59,10 @@ export interface RouletteHandle {
   destroy: () => void;
   setCenter: (x: number, y: number) => void;
   setPainter: (active: boolean, count: number) => void;
+  getForm: () => RouletteForm;
 }
+
+export type RouletteForm = "hub" | "disk";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 const CLOSE_DELAY_MS = 400;
@@ -144,9 +147,13 @@ export function createRoulette(
   options: {
     sectors?: readonly SectorId[];
     commandContext?: () => CommandContext | null;
+    form?: RouletteForm;
+    onMove?: (x: number, y: number) => void;
+    onFormChange?: (form: RouletteForm) => void;
   } = {},
 ): RouletteHandle {
   const visibleSectors = options.sectors ?? ROOT_SECTORS.map((s) => s.id);
+  let form: RouletteForm = options.form ?? "hub";
   const isExecutable = (item: RouletteItem): boolean =>
     !!item.run || (!!item.commandId && hasCommand(item.commandId));
   const root = el("div", "selection-roulette");
@@ -187,6 +194,13 @@ export function createRoulette(
   root.append(svg, labelLayer, overlay, hub, filterPanel);
   document.body.appendChild(root);
 
+  const applyForm = () => {
+    root.dataset.form = form;
+    root.classList.toggle("form-hub", form === "hub");
+    root.classList.toggle("form-disk", form === "disk");
+  };
+  applyForm();
+
   let openSector: SectorId | null = null;
   let group: RouletteItem | null = null;
   let groupCenter: number | null = null;
@@ -197,6 +211,8 @@ export function createRoulette(
   let closed = false;
   let closeTimer = 0;
   let opened = false;
+  let center = { x: 0, y: 0 };
+  let painterArmed = false;
 
   const sectorOf = (id: SectorId) => ROOT_SECTORS.find((s) => s.id === id)!;
 
@@ -614,10 +630,22 @@ export function createRoulette(
   hub.addEventListener("click", (e) => {
     e.preventDefault();
     e.stopPropagation();
+    // 双击圆心切换形态；第一下会误触格式刷，这里回退掉。
+    if (e.detail >= 2) {
+      if (painterArmed) {
+        painterArmed = false;
+        actions.painter.toggle();
+      }
+      form = form === "hub" ? "disk" : "hub";
+      applyForm();
+      options.onFormChange?.(form);
+      return;
+    }
     if (group) {
       backOneLevel();
       return;
     }
+    painterArmed = !actions.painter.active();
     actions.painter.toggle();
     updateHub();
   });
@@ -763,6 +791,24 @@ export function createRoulette(
   };
   document.addEventListener("pointermove", onDocMove, true);
 
+  // 中键拖动：整个轮盘跟随指针，松手把圆心写回配置。
+  const onMiddleDown = (e: PointerEvent) => {
+    if (e.button !== 1) return;
+    if (!root.contains(e.target as Node)) return;
+    e.preventDefault();
+    window.addEventListener("pointermove", onMiddleMove);
+    window.addEventListener("pointerup", onMiddleUp);
+  };
+  const onMiddleMove = (e: PointerEvent) => {
+    setCenter(e.clientX, e.clientY);
+  };
+  const onMiddleUp = () => {
+    window.removeEventListener("pointermove", onMiddleMove);
+    window.removeEventListener("pointerup", onMiddleUp);
+    options.onMove?.(center.x, center.y);
+  };
+  document.addEventListener("pointerdown", onMiddleDown, true);
+
   const onWheel = (e: WheelEvent) => {
     if (filter !== null) return;
     e.preventDefault();
@@ -776,6 +822,9 @@ export function createRoulette(
     document.removeEventListener("pointerdown", onOutside, true);
     document.removeEventListener("pointermove", onThirdTrack, true);
     document.removeEventListener("pointermove", onDocMove, true);
+    document.removeEventListener("pointerdown", onMiddleDown, true);
+    window.removeEventListener("pointermove", onMiddleMove);
+    window.removeEventListener("pointerup", onMiddleUp);
     root.removeEventListener("wheel", onWheel);
     window.clearTimeout(closeTimer);
   };
@@ -791,6 +840,7 @@ export function createRoulette(
       width: window.innerWidth,
       height: window.innerHeight,
     });
+    center = centerPoint;
     root.style.left = `${centerPoint.x - ROULETTE_BOX / 2}px`;
     root.style.top = `${centerPoint.y - ROULETTE_BOX / 2}px`;
     root.dataset.centerX = String(Math.round(centerPoint.x));
@@ -806,7 +856,7 @@ export function createRoulette(
   };
 
   updateHub();
-  return { element: root, destroy, setCenter, setPainter };
+  return { element: root, destroy, setCenter, setPainter, getForm: () => form };
 }
 
 function sectorIcon(id: SectorId): IconName {

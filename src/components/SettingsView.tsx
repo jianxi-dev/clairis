@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ChangeEvent,
+} from "react";
 import { invoke } from "@tauri-apps/api/core";
 import {
   listCapabilities,
@@ -14,6 +20,7 @@ import {
 } from "../hooks/useConfig";
 import { useEditorStore } from "../stores/editorStore";
 import { HTML_TOOLBAR_ITEMS } from "../editors/orchestration/slots";
+import { ROULETTE_HOTKEY_DEFAULT } from "../editors/orchestration/roulette";
 import {
   READER_WIDTH_MAX,
   READER_WIDTH_MIN,
@@ -555,6 +562,8 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
   const rouletteSectors = useEditorStore(
     (s) => s.config.rouletteSectors ?? null,
   );
+  const rouletteHotkey = useEditorStore((s) => s.config.rouletteHotkey ?? null);
+  const rouletteForm = useEditorStore((s) => s.config.rouletteForm ?? "hub");
   const htmlToolbarItems = useEditorStore(
     (s) => s.config.htmlToolbarItems ?? null,
   );
@@ -755,6 +764,21 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
 
   const chooseSelectionToolbar = (mode: "roulette" | "capsule") => {
     setConfig({ selectionToolbar: mode });
+    void saveAppConfig();
+  };
+
+  const chooseRouletteForm = (form: "hub" | "disk") => {
+    setConfig({ rouletteForm: form });
+    void saveAppConfig();
+  };
+
+  // 快捷键输入：输入即写配置，失焦/回车才落盘；清空视为恢复默认。
+  const onRouletteHotkeyChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setConfig({ rouletteHotkey: value.trim() ? value : null });
+  };
+  const commitRouletteHotkey = () => {
+    if (!rouletteHotkey?.trim()) setConfig({ rouletteHotkey: null });
     void saveAppConfig();
   };
 
@@ -1137,6 +1161,57 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
                       onClick={() => chooseSelectionToolbar(option.value)}
                       className={`rounded border px-3 py-1.5 text-sm ${
                         selectionToolbar === option.value
+                          ? "border-[var(--app-accent)] bg-[var(--app-accent-soft)] text-[var(--app-accent)]"
+                          : "border-[var(--app-border)] text-[var(--app-text-2)] hover:bg-[var(--app-sunken)]"
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </section>
+
+              <section data-testid="settings-roulette-switch">
+                <h2 className="mb-1 text-sm font-medium text-[var(--app-text-strong)]">
+                  轮盘开关
+                </h2>
+                <p className="mb-2 text-xs text-[var(--app-text-3)]">
+                  选中文字不再自动弹出轮盘；按快捷键召唤，再按一次关闭。
+                </p>
+                <label className="mb-1 block text-xs text-[var(--app-text-3)]">
+                  开关快捷键
+                  <input
+                    type="text"
+                    value={rouletteHotkey ?? ""}
+                    placeholder={ROULETTE_HOTKEY_DEFAULT}
+                    onChange={onRouletteHotkeyChange}
+                    onBlur={commitRouletteHotkey}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        commitRouletteHotkey();
+                        e.currentTarget.blur();
+                      }
+                    }}
+                    data-testid="settings-roulette-hotkey"
+                    className="mt-1 w-full rounded border border-[var(--app-border)] bg-[var(--app-surface)] px-2 py-1.5 text-sm text-[var(--app-text)] outline-none focus:border-[var(--app-accent)]"
+                  />
+                </label>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {(
+                    [
+                      { value: "hub", label: "圆心" },
+                      { value: "disk", label: "整盘" },
+                    ] as const
+                  ).map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      data-testid={`settings-roulette-form-${option.value}`}
+                      aria-pressed={rouletteForm === option.value}
+                      onClick={() => chooseRouletteForm(option.value)}
+                      className={`rounded border px-3 py-1.5 text-sm ${
+                        rouletteForm === option.value
                           ? "border-[var(--app-accent)] bg-[var(--app-accent-soft)] text-[var(--app-accent)]"
                           : "border-[var(--app-border)] text-[var(--app-text-2)] hover:bg-[var(--app-sunken)]"
                       }`}

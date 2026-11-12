@@ -6,6 +6,8 @@ import { test, expect, type Page } from "@playwright/test";
  */
 
 const APP_URL = "http://localhost:1420";
+const MOD = process.platform === "darwin" ? "Meta" : "Control";
+const HOTKEY = `${MOD}+Shift+Space`;
 const DOC = ["# 标题", "", "第一段正文", "", "第二段正文", ""].join("\n");
 
 test.beforeEach(async ({ page }) => {
@@ -29,7 +31,7 @@ test("MD 点击块内不出现块工具条", async ({ page }) => {
   await expect(page.locator('[data-testid="block-toolbar"]')).toHaveCount(0);
 });
 
-test("MD 选中文字仍出现选区轮盘", async ({ page }) => {
+test("MD 选中文字后快捷键召唤选区轮盘，块工具条不出现", async ({ page }) => {
   const line = page.locator(".cm-line").nth(2);
   const box = (await line.boundingBox())!;
   const y = box.y + box.height / 2;
@@ -37,6 +39,7 @@ test("MD 选中文字仍出现选区轮盘", async ({ page }) => {
   await page.mouse.down();
   await page.mouse.move(box.x + 60, y, { steps: 6 });
   await page.mouse.up();
+  await page.keyboard.press(HOTKEY);
 
   await expect(
     page.locator('[data-testid="selection-roulette"]'),

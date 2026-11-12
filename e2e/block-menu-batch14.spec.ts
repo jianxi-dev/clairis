@@ -1,6 +1,8 @@
 import { test, expect, type Page } from "@playwright/test";
 
 const APP_URL = "http://localhost:1420";
+const MOD = process.platform === "darwin" ? "Meta" : "Control";
+const HOTKEY = `${MOD}+Shift+Space`;
 
 async function boot(page: Page, body: string, path = "/tmp/b14-block.md") {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
@@ -70,8 +72,12 @@ test("同级无序列表转有序自动编号", async ({ page }) => {
 test("轮盘任务项转换落为任务列表而非高亮", async ({ page }) => {
   await boot(page, "正文段落。\n", "/tmp/b14-roulette.md");
   await page.locator(".cm-line").nth(0).click({ clickCount: 3 });
+  await page.keyboard.press(HOTKEY);
   const wheel = page.locator('[data-testid="selection-roulette"]');
   await expect(wheel).toBeVisible({ timeout: 3000 });
+  if ((await wheel.getAttribute("data-form")) === "hub") {
+    await wheel.locator('[data-testid="roulette-center"]').dblclick();
+  }
   await wheel.locator('[data-sector="convert"]').click();
   await wheel
     .locator('.sr-sec[data-band="2"][data-action="convert-list-group"]')

@@ -1,6 +1,8 @@
 import { test, expect, type Page } from "@playwright/test";
 
 const APP_URL = "http://localhost:1420";
+const MOD = process.platform === "darwin" ? "Meta" : "Control";
+const HOTKEY = `${MOD}+Shift+Space`;
 const DOC = ["# 标题", "", "第一段正文", "", "第二段正文", ""].join("\n");
 
 test.beforeEach(async ({ page }) => {
@@ -26,7 +28,7 @@ function content(page: Page): Promise<string> {
   });
 }
 
-test("胶囊模式选中文字出两行工具条，轮盘不出现", async ({ page }) => {
+test("胶囊模式选中文字出单行工具条，轮盘不出现", async ({ page }) => {
   await page.locator(".cm-line").nth(2).click({ clickCount: 3 });
 
   const capsule = page.locator('[data-testid="selection-capsule"]');
@@ -34,9 +36,9 @@ test("胶囊模式选中文字出两行工具条，轮盘不出现", async ({ pa
   await expect(page.locator('[data-testid="selection-roulette"]')).toHaveCount(
     0,
   );
-  await expect(capsule.locator(".capsule-row")).toHaveCount(2);
+  await expect(capsule.locator(".capsule-row")).toHaveCount(1);
 
-  const primary = capsule.locator(".capsule-row-primary");
+  const primary = capsule.locator(".capsule-row-single");
   for (const action of [
     "format-bold",
     "format-italic",
@@ -63,6 +65,7 @@ test("胶囊按钮可直接加粗，切回轮盘后胶囊消失", async ({ page 
   });
   await page.mouse.click(8, 300);
   await page.locator(".cm-line").nth(4).click({ clickCount: 3 });
+  await page.keyboard.press(HOTKEY);
   await expect(page.locator('[data-testid="selection-roulette"]')).toBeVisible({
     timeout: 3000,
   });

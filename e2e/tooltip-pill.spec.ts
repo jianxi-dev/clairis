@@ -1,6 +1,8 @@
 import { test, expect, type Page } from "@playwright/test";
 
 const APP_URL = "http://localhost:1420";
+const MOD = process.platform === "darwin" ? "Meta" : "Control";
+const HOTKEY = `${MOD}+Shift+Space`;
 
 async function boot(page: Page): Promise<void> {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
@@ -54,8 +56,12 @@ test("轮盘扇区不再出现提示，只有圆心保留操作说明", async ({
   });
   const line = page.locator(".cm-line").nth(1);
   await line.click({ clickCount: 3 });
+  await page.keyboard.press(HOTKEY);
   const wheel = page.locator('[data-testid="selection-roulette"]');
   await expect(wheel).toBeVisible({ timeout: 3000 });
+  if ((await wheel.getAttribute("data-form")) === "hub") {
+    await wheel.locator('[data-testid="roulette-center"]').dblclick();
+  }
 
   await wheel.locator('[data-sector="convert"]').hover();
   await page.waitForTimeout(700);

@@ -2992,6 +2992,12 @@ html[data-tab-drag="true"] body * {
   transform: scale(1);
 }
 
+/* 圆心形态：只保留圆心按钮，根环与标签层不可见。 */
+.selection-roulette.form-hub .sr-root-layer,
+.selection-roulette.form-hub .sr-labels {
+  display: none;
+}
+
 .sr-svg {
   position: absolute;
   inset: 0;
