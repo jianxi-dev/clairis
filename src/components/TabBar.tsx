@@ -48,6 +48,34 @@ function paneIdAt(x: number, y: number): string | null {
   );
 }
 
+/** 页签喇叭：按文件路径独立订阅与切换，多个媒体页签互不影响（#669）。 */
+function TabMuteButton({ tabId, path }: { tabId: string; path: string }) {
+  const [muted, setMuted] = useState(() => isMediaMuted(path));
+  useEffect(() => {
+    const apply = (key: string, m: boolean) => {
+      if (key === path) setMuted(m);
+    };
+    apply(path, isMediaMuted(path));
+    return subscribeMediaMute(apply);
+  }, [path]);
+  return (
+    <button
+      type="button"
+      data-testid={`tab-mute-${tabId}`}
+      aria-pressed={muted}
+      title={muted ? "取消静音" : "静音"}
+      onClick={(e) => {
+        e.stopPropagation();
+        toggleMediaMuted(path);
+      }}
+      onPointerDown={(e) => e.stopPropagation()}
+      className="shrink-0 rounded px-0.5 text-[var(--app-text-3)] hover:text-[var(--app-text-2)]"
+    >
+      <Icon name={muted ? "volumeMute" : "volume"} size={14} />
+    </button>
+  );
+}
+
 export default function TabBar({
   tabs,
   activeTabId,
@@ -60,12 +88,6 @@ export default function TabBar({
   paneFocused = true,
 }: TabBarProps) {
   const tabIds = Object.keys(tabs);
-  const [mediaMuted, setMediaMutedState] = useState(isMediaMuted);
-  useEffect(() => {
-    const apply = (m: boolean) => setMediaMutedState(m);
-    apply(isMediaMuted());
-    return subscribeMediaMute(apply);
-  }, []);
 
   const stripRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{
@@ -376,24 +398,8 @@ export default function TabBar({
                 {tab.dirty && (
                   <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />
                 )}
-                {(tabKind === "video" || tabKind === "audio") && (
-                  <button
-                    type="button"
-                    data-testid={`tab-mute-${id}`}
-                    aria-pressed={mediaMuted}
-                    title={mediaMuted ? "取消静音" : "静音"}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleMediaMuted();
-                    }}
-                    onPointerDown={(e) => e.stopPropagation()}
-                    className="shrink-0 rounded px-0.5 text-[var(--app-text-3)] hover:text-[var(--app-text-2)]"
-                  >
-                    <Icon
-                      name={mediaMuted ? "volumeMute" : "volume"}
-                      size={14}
-                    />
-                  </button>
+                {(tabKind === "video" || tabKind === "audio") && tab.path && (
+                  <TabMuteButton tabId={id} path={tab.path} />
                 )}
                 <button
                   onClick={(e) => {
