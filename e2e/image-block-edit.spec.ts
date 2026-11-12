@@ -74,6 +74,8 @@ test("拖拽改宽：路径含括号的图片保持路径完整并写入 {width=
   await expect(page.locator(".cm-image-widget")).toHaveCount(1);
   await expect(page.locator('.cm-content img[src^="asset://"]')).toHaveCount(1);
 
+  // 缩放把手只在选中态存在（#655）。
+  await page.locator(".cm-image-widget").click();
   const handle = page.locator('[data-testid="cm-image-resize"]');
   await expect(handle).toHaveCount(1);
   const box = (await handle.boundingBox())!;
@@ -101,6 +103,7 @@ test("拖拽改宽保留已有 height/align，只改宽度", async ({ page }) =>
   );
   await expect(page.locator(".cm-image-widget")).toHaveCount(1);
 
+  await page.locator(".cm-image-widget").click();
   const handle = page.locator('[data-testid="cm-image-resize"]');
   const box = (await handle.boundingBox())!;
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
@@ -127,6 +130,98 @@ test("点击选中：data-selected + 4 个角点", async ({ page }) => {
 
   await expect(widget).toHaveAttribute("data-selected", "true");
   await expect(widget.locator(".cm-image-corner")).toHaveCount(4);
+});
+
+test("选中图片有 8 个缩放把手，e 是第一个", async ({ page }) => {
+  await openEditor(
+    page,
+    "![pic](assets/pic.png)\n",
+    "imghandles",
+    PNG_DATA_URL,
+  );
+  const widget = page.locator(".cm-image-widget");
+  await expect(widget).toHaveCount(1);
+  await expect(widget.locator(".cm-image-handle")).toHaveCount(0);
+
+  await widget.click();
+
+  await expect(widget.locator(".cm-image-handle")).toHaveCount(8);
+  const kinds = await widget.evaluate((el) =>
+    Array.from(el.querySelectorAll(".cm-image-handle")).map((node) =>
+      node.getAttribute("data-handle"),
+    ),
+  );
+  expect(kinds).toEqual(["e", "w", "n", "s", "ne", "nw", "se", "sw"]);
+  await expect(page.locator('[data-testid="cm-image-resize"]')).toHaveCount(1);
+});
+
+test("拖拽 e 右移 120px：宽度增加并写入 {width=", async ({ page }) => {
+  await openEditor(page, "![pic](assets/pic.png)\n", "imgedrag", PNG_DATA_URL);
+  const widget = page.locator(".cm-image-widget");
+  await widget.click();
+  const img = widget.locator("img");
+  const before = await img.evaluate((el) => el.getBoundingClientRect().width);
+
+  const handle = page.locator('[data-handle="e"]');
+  const box = (await handle.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width / 2 + 120, box.y + box.height / 2, {
+    steps: 8,
+  });
+  await page.mouse.up();
+
+  await expect.poll(() => content(page)).toMatch(/\{width=\d+\}/);
+  const after = await img.evaluate((el) => el.getBoundingClientRect().width);
+  expect(after).toBeGreaterThan(before);
+});
+
+test("拖拽 se：同时写入 width 与 height（保持比例）", async ({ page }) => {
+  await openEditor(page, "![pic](assets/pic.png)\n", "imgsedrag", PNG_DATA_URL);
+  const widget = page.locator(".cm-image-widget");
+  await widget.click();
+  const handle = page.locator('[data-handle="se"]');
+  const box = (await handle.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(
+    box.x + box.width / 2 + 120,
+    box.y + box.height / 2 + 120,
+    {
+      steps: 8,
+    },
+  );
+  await page.mouse.up();
+
+  await expect.poll(() => content(page)).toMatch(/\{width=\d+ height=\d+\}/);
+});
+
+test("点击把手不移动：不写文档", async ({ page }) => {
+  const doc = "![pic](assets/pic.png)\n";
+  await openEditor(page, doc, "imgclick", PNG_DATA_URL);
+  const widget = page.locator(".cm-image-widget");
+  await widget.click();
+  const handle = page.locator('[data-handle="e"]');
+  const box = (await handle.boundingBox())!;
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+
+  expect(await content(page)).toBe(doc);
+});
+
+test("取消选中：移除全部 8 个把手", async ({ page }) => {
+  await openEditor(
+    page,
+    "![pic](assets/pic.png)\n\n第二段\n",
+    "imgdeselecthandles",
+    PNG_DATA_URL,
+  );
+  const widget = page.locator(".cm-image-widget");
+  await widget.click();
+  await expect(widget.locator(".cm-image-handle")).toHaveCount(8);
+
+  await page.mouse.click(600, 600);
+
+  await expect(widget.locator(".cm-image-handle")).toHaveCount(0);
 });
 
 test("工具条 9 按钮，水平居中于图片（±2px）", async ({ page }) => {

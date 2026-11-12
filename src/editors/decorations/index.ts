@@ -83,8 +83,6 @@ export interface EditorDecorationsOptions {
   onImageCopy?: (from: number) => void;
   /** 工具条「删除」：删除图片所在块。 */
   onImageDelete?: (from: number) => void;
-  /** 拖拽图片宽度松手后持久化（`from` 是图片 markdown 起点）。 */
-  onImageResize?: (from: number, width: number) => void;
   /** mermaid 水合器；缺省时 mermaid 块不出图，源码保持可见。 */
   hydrateMermaid?: MermaidHydrator;
   /** 交给 mermaid 水合器的主题；缺省读文档根的 `data-theme`。 */
@@ -173,7 +171,6 @@ function buildDecorationSet(
       onImageCut: options?.onImageCut,
       onImageCopy: options?.onImageCopy,
       onImageDelete: options?.onImageDelete,
-      onImageResize: options?.onImageResize,
     }),
     ...createMermaidDecorations(
       docText,

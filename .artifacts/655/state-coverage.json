@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "eight-handles",
+      "screenshot": ".artifacts/655/eight-handles.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-12T00:27:35Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "drag-east",
+      "screenshot": ".artifacts/655/drag-east.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-12T00:27:35Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "drag-southeast",
+      "screenshot": ".artifacts/655/drag-southeast.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-12T00:27:35Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "deselected",
+      "screenshot": ".artifacts/655/deselected.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-12T00:27:35Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}

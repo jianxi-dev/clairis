@@ -15,10 +15,12 @@ import { Decoration, WidgetType, EditorView } from "@codemirror/view";
 import { stripAngleWrappers } from "../../lib/mediaUrl";
 import {
   getSelectedImageFrom,
+  IMAGE_RESIZE_HANDLES,
   markImageWidgetSelected,
   openImageMaximize,
   scheduleImageToolbarReposition,
   selectImage,
+  type ImageHandleSpec,
   type ImageToolbarActions,
 } from "./imageToolbar";
 
@@ -32,10 +34,7 @@ export type ImageResolver = (path: string) => string | null;
 /**
  * 图片 widget 的操作回调，全部可选——缺省时对应工具条按钮禁用。
  */
-export interface ImageCallbacks extends ImageToolbarActions {
-  /** 持久化拖拽宽度；`from` 是图片 markdown 的起点。 */
-  onImageResize?: (from: number, width: number) => void;
-}
+export type ImageCallbacks = ImageToolbarActions;
 
 // --- 媒体分类 ----------------------------------------------------------------
 
@@ -81,6 +80,17 @@ export function classifyMedia(path: string): MediaKind {
 /** 可接受的 `<!--w=N-->` 宽度范围（px）。 */
 export const MIN_IMAGE_WIDTH = 40;
 export const MAX_IMAGE_WIDTH = 2000;
+/** 高度与宽度共用同一区间。 */
+export const MIN_IMAGE_HEIGHT = MIN_IMAGE_WIDTH;
+export const MAX_IMAGE_HEIGHT = MAX_IMAGE_WIDTH;
+
+function clampWidth(value: number): number {
+  return Math.max(MIN_IMAGE_WIDTH, Math.min(value, MAX_IMAGE_WIDTH));
+}
+
+function clampHeight(value: number): number {
+  return Math.max(MIN_IMAGE_HEIGHT, Math.min(value, MAX_IMAGE_HEIGHT));
+}
 
 const WIDTH_COMMENT_RE = /^[ \t]*<!--\s*w=(\d+)\s*-->/;
 
@@ -415,17 +425,15 @@ export function writeImageAttributes(
 }
 
 /**
- * 写入（或改写）起点在 `from` 的图片的宽度，宽度夹到可接受区间。
- * 保留已有的 height / align / crop；旧 `<!--w=N-->` 注释被替换成属性块。
+ * 写入（或改写）起点在 `from` 的图片的宽高；null 表示该维不变。
+ * 保留已有的 align / crop / title；writeImageAttributes 内部只 dispatch 一次。
  */
-export function applyImageWidth(
+export function applyImageSize(
   view: EditorView,
   from: number,
-  width: number,
+  width: number | null,
+  height: number | null,
 ): boolean {
-  const clamp = Math.round(
-    Math.max(MIN_IMAGE_WIDTH, Math.min(width, MAX_IMAGE_WIDTH)),
-  );
   const text = view.state.doc.toString();
   const ref = scanImageReference(text, from);
   if (!ref) return false;
@@ -437,8 +445,47 @@ export function applyImageWidth(
     const legacy = parseImageWidth(text, ref.end);
     if (legacy !== null) attrs.width = legacy;
   }
-  attrs.width = clamp;
+  if (width !== null) attrs.width = Math.round(clampWidth(width));
+  if (height !== null) attrs.height = Math.round(clampHeight(height));
   return writeImageAttributes(view, from, attrs);
+}
+
+/** 只改宽度的便捷包装（保留旧导出）。 */
+export function applyImageWidth(
+  view: EditorView,
+  from: number,
+  width: number,
+): boolean {
+  return applyImageSize(view, from, width, null);
+}
+
+/**
+ * 按把手语义算目标尺寸。角把手用两轴中位移比例较大的一轴定缩放，另一轴按
+ * 原始宽高比推导；高度触界时从高度反推宽度，尽量保持比例。
+ */
+function computeResize(
+  spec: ImageHandleSpec,
+  startW: number,
+  startH: number,
+  ratio: number,
+  dx: number,
+  dy: number,
+): { width: number; height: number } {
+  if (spec.width && spec.height) {
+    const scaleX = (startW + spec.signX * dx) / startW;
+    const scaleY = (startH + spec.signY * dy) / startH;
+    const scale = Math.max(scaleX, scaleY);
+    let width = clampWidth(startW * scale);
+    const height = clampHeight(width / ratio);
+    if (height === MIN_IMAGE_HEIGHT || height === MAX_IMAGE_HEIGHT) {
+      width = clampWidth(height * ratio);
+    }
+    return { width, height };
+  }
+  if (spec.width) {
+    return { width: clampWidth(startW + spec.signX * dx), height: startH };
+  }
+  return { width: startW, height: clampHeight(startH + spec.signY * dy) };
 }
 
 // --- 图片 widget -------------------------------------------------------------
@@ -453,6 +500,7 @@ class ImageWidget extends WidgetType {
   private readonly _src: string | null;
   private readonly _callbacks: ImageCallbacks;
   private readonly _width: number | null;
+  private readonly _height: number | null;
   /** `!` 的文档偏移——选中态、工具条动作、拖拽改宽都以它为准。 */
   private readonly _from: number;
 
@@ -463,6 +511,7 @@ class ImageWidget extends WidgetType {
     callbacks: ImageCallbacks,
     width: number | null = null,
     from = 0,
+    height: number | null = null,
   ) {
     super();
     this._alt = alt;
@@ -471,6 +520,7 @@ class ImageWidget extends WidgetType {
     this._callbacks = callbacks;
     this._width = width;
     this._from = from;
+    this._height = height;
   }
 
   eq(other: ImageWidget): boolean {
@@ -479,6 +529,7 @@ class ImageWidget extends WidgetType {
       other._path === this._path &&
       other._src === this._src &&
       other._width === this._width &&
+      other._height === this._height &&
       other._from === this._from
     );
   }
@@ -508,6 +559,10 @@ class ImageWidget extends WidgetType {
         img.style.width = `${this._width}px`;
         img.setAttribute("data-width", String(this._width));
       }
+      if (this._height !== null) {
+        img.style.height = `${this._height}px`;
+        img.setAttribute("data-height", String(this._height));
+      }
       img.style.clipPath = "inset(0 round 8px)";
       container.appendChild(img);
     } else {
@@ -529,50 +584,19 @@ class ImageWidget extends WidgetType {
       openImageMaximize(this._src, this._alt);
     });
 
-    // 拖拽把手：松手后把宽度持久化成属性块 `{width=N}`。
+    // 8 个缩放把手由 markImageWidgetSelected 按选中态增删；容器级委托让
+    // 选中态变化重建把手后监听仍有效。
     if (this._src) {
-      const handle = document.createElement("span");
-      handle.className = "cm-image-resize";
-      handle.setAttribute("data-testid", "cm-image-resize");
-      handle.setAttribute("role", "slider");
-      handle.setAttribute("aria-label", "调整图片宽度");
-      handle.title = "拖动调整宽度";
-      container.appendChild(handle);
-
-      handle.addEventListener("mousedown", (event) => {
+      container.addEventListener("mousedown", (event) => {
+        const target = event.target;
+        const handle =
+          target instanceof Element
+            ? (target.closest("[data-handle]") as HTMLElement | null)
+            : null;
+        if (!handle) return;
         event.preventDefault();
         event.stopPropagation();
-        const img = container.querySelector("img");
-        if (!img) return;
-        const startX = event.clientX;
-        const startWidth = img.getBoundingClientRect().width;
-        const maxAllowed = container.getBoundingClientRect().width;
-        const onMove = (move: MouseEvent): void => {
-          const next = Math.max(
-            MIN_IMAGE_WIDTH,
-            Math.min(startWidth + (move.clientX - startX), maxAllowed),
-          );
-          img.style.width = `${Math.round(next)}px`;
-        };
-        const onUp = (up: MouseEvent): void => {
-          window.removeEventListener("mousemove", onMove);
-          window.removeEventListener("mouseup", onUp);
-          const raw = Math.round(startWidth + (up.clientX - startX));
-          const clamped = Math.max(
-            MIN_IMAGE_WIDTH,
-            Math.min(raw, MAX_IMAGE_WIDTH),
-          );
-          if (this._callbacks.onImageResize) {
-            this._callbacks.onImageResize(this._from, clamped);
-            return;
-          }
-          // 宿主没注入回调：直接写文档；view 从 widget 自己的 DOM 反查，
-          // 装饰构建因此不需要持有 view 引用。
-          const view = EditorView.findFromDOM(container);
-          if (view) applyImageWidth(view, this._from, clamped);
-        };
-        window.addEventListener("mousemove", onMove);
-        window.addEventListener("mouseup", onUp);
+        this.beginResize(event, handle, container);
       });
     }
 
@@ -580,6 +604,103 @@ class ImageWidget extends WidgetType {
     scheduleImageToolbarReposition();
 
     return container;
+  }
+
+  private beginResize(
+    event: MouseEvent,
+    handleEl: HTMLElement,
+    container: HTMLElement,
+  ): void {
+    const img = container.querySelector("img");
+    if (!img) return;
+    const spec = IMAGE_RESIZE_HANDLES.find(
+      (candidate) => candidate.handle === handleEl.dataset.handle,
+    );
+    if (!spec) return;
+
+    const startX = event.clientX;
+    const startY = event.clientY;
+    const startW = img.getBoundingClientRect().width;
+    const startH = img.getBoundingClientRect().height;
+    if ((spec.width && startW <= 0) || (spec.height && startH <= 0)) return;
+    const naturalW = img.naturalWidth;
+    const naturalH = img.naturalHeight;
+    // 图片未加载完时 naturalWidth/Height 为 0，退回渲染尺寸求比例。
+    const ratio =
+      naturalW > 0 && naturalH > 0
+        ? naturalW / naturalH
+        : startW > 0 && startH > 0
+          ? startW / startH
+          : 1;
+    // 预览偏移加在 container 外边距上：margin box 尺寸不变，右/下边缘钉住，
+    // 文档流不位移；松手即弃，绝不写进属性块。
+    const startMarginLeft =
+      parseFloat(window.getComputedStyle(container).marginLeft) || 0;
+    const startMarginTop =
+      parseFloat(window.getComputedStyle(container).marginTop) || 0;
+    const originalWidth = img.style.width;
+    const originalHeight = img.style.height;
+    const originalMarginLeft = container.style.marginLeft;
+    const originalMarginTop = container.style.marginTop;
+
+    const resetPreview = (): void => {
+      img.style.width = originalWidth;
+      img.style.height = originalHeight;
+      container.style.marginLeft = originalMarginLeft;
+      container.style.marginTop = originalMarginTop;
+    };
+
+    const onMove = (move: MouseEvent): void => {
+      const { width, height } = computeResize(
+        spec,
+        startW,
+        startH,
+        ratio,
+        move.clientX - startX,
+        move.clientY - startY,
+      );
+      if (spec.width) {
+        img.style.width = `${Math.round(width)}px`;
+        if (spec.offsetX) {
+          container.style.marginLeft = `${startMarginLeft + startW - width}px`;
+        }
+      }
+      if (spec.height) {
+        img.style.height = `${Math.round(height)}px`;
+        if (spec.offsetY) {
+          container.style.marginTop = `${startMarginTop + startH - height}px`;
+        }
+      }
+    };
+
+    const onUp = (up: MouseEvent): void => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+      const dx = up.clientX - startX;
+      const dy = up.clientY - startY;
+      resetPreview();
+      // 小于 3px 视为点击而非拖拽，不写文档。
+      if (Math.hypot(dx, dy) < 3) return;
+      const { width, height } = computeResize(
+        spec,
+        startW,
+        startH,
+        ratio,
+        dx,
+        dy,
+      );
+      const view = EditorView.findFromDOM(container);
+      if (!view) return;
+      applyImageSize(
+        view,
+        this._from,
+        spec.width ? Math.round(width) : null,
+        spec.height ? Math.round(height) : null,
+      );
+    };
+
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
   }
 }
 
@@ -757,7 +878,15 @@ export function createImageDecorations(
       const width = attrs.width ?? parseImageWidth(docText, to);
       decorations.push(
         Decoration.replace({
-          widget: new ImageWidget(alt, path, src, callbacksFn, width, from),
+          widget: new ImageWidget(
+            alt,
+            path,
+            src,
+            callbacksFn,
+            width,
+            from,
+            attrs.height,
+          ),
           inclusive: false,
         }).range(from, to),
       );
