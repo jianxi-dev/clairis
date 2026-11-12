@@ -233,6 +233,66 @@ describe("slash commands", () => {
     expect(view.dom.querySelector(".mdb-slash-flyout")).toBeNull();
   });
 
+  it("hovering a table cell selects exactly the top-left rectangle up to the pointer", () => {
+    insertSlashChar(view);
+    const tableRow = Array.from(
+      view.dom.querySelectorAll<HTMLElement>(".mdb-slash-item"),
+    ).find((row) => row.textContent?.includes("表格"));
+    expect(tableRow).toBeDefined();
+    tableRow!.dispatchEvent(new MouseEvent("mouseenter"));
+
+    const onCells = () =>
+      view.dom.querySelectorAll('.mdb-slash-grid-cell[data-on="true"]');
+    expect(onCells().length).toBe(1);
+
+    const cell = view.dom.querySelector<HTMLElement>(
+      '.mdb-slash-grid-cell[data-r="3"][data-c="4"]',
+    );
+    expect(cell).not.toBeNull();
+    cell!.dispatchEvent(new MouseEvent("mouseenter"));
+    expect(onCells().length).toBe(12);
+  });
+
+  it("sliding from (3,4) back to (1,1) clears the rectangle to one cell", () => {
+    insertSlashChar(view);
+    const tableRow = Array.from(
+      view.dom.querySelectorAll<HTMLElement>(".mdb-slash-item"),
+    ).find((row) => row.textContent?.includes("表格"));
+    tableRow!.dispatchEvent(new MouseEvent("mouseenter"));
+
+    const at = (r: number, c: number) =>
+      view.dom.querySelector<HTMLElement>(
+        `.mdb-slash-grid-cell[data-r="${r}"][data-c="${c}"]`,
+      )!;
+    at(3, 4).dispatchEvent(new MouseEvent("mouseenter"));
+    const onCells = () =>
+      view.dom.querySelectorAll('.mdb-slash-grid-cell[data-on="true"]');
+    expect(onCells().length).toBe(12);
+
+    at(1, 1).dispatchEvent(new MouseEvent("mouseenter"));
+    expect(onCells().length).toBe(1);
+  });
+
+  it("leaving the table row and returning preserves the previous selection", () => {
+    insertSlashChar(view);
+    const tableRow = Array.from(
+      view.dom.querySelectorAll<HTMLElement>(".mdb-slash-item"),
+    ).find((row) => row.textContent?.includes("表格"));
+    tableRow!.dispatchEvent(new MouseEvent("mouseenter"));
+
+    const cell = view.dom.querySelector<HTMLElement>(
+      '.mdb-slash-grid-cell[data-r="3"][data-c="4"]',
+    );
+    cell!.dispatchEvent(new MouseEvent("mouseenter"));
+    const onCells = () =>
+      view.dom.querySelectorAll('.mdb-slash-grid-cell[data-on="true"]');
+    expect(onCells().length).toBe(12);
+
+    // 指针从表格行滑进网格（离开该行），再滑回表格行：选中应保留。
+    tableRow!.dispatchEvent(new MouseEvent("mouseenter"));
+    expect(onCells().length).toBe(12);
+  });
+
   it("the 分栏 row opens a five-option flyout that inserts a complete column div", () => {
     insertSlashChar(view);
     const rows = Array.from(
