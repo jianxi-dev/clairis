@@ -12,7 +12,9 @@ async function boot(page: Page): Promise<void> {
   await page.waitForTimeout(300);
 }
 
-test("格头菜单中心对齐按钮图标中心", async ({ page }) => {
+test("格头菜单居中优先、越界时夹进视口（ui-polish-batch15 11.1）", async ({
+  page,
+}) => {
   await boot(page);
   const button = page.locator('[data-testid="pane-menu-button"]').first();
   await button.click();
@@ -23,9 +25,17 @@ test("格头菜单中心对齐按钮图标中心", async ({ page }) => {
   const m = await menu.boundingBox();
   if (!b || !m) throw new Error("无法测量按钮或菜单");
 
+  const vw = await page.evaluate(() => window.innerWidth);
+  const margin = 8;
   const buttonCenter = b.x + b.width / 2;
   const menuCenter = m.x + m.width / 2;
-  expect(Math.abs(buttonCenter - menuCenter)).toBeLessThanOrEqual(2);
+  // 居中放得下时中心对齐按钮；放不下时夹到视口边距处（右缘越界像素为 0）
+  const minCenter = margin + m.width / 2;
+  const maxCenter = vw - margin - m.width / 2;
+  const expectedCenter = Math.max(minCenter, Math.min(buttonCenter, maxCenter));
+  expect(Math.abs(menuCenter - expectedCenter)).toBeLessThanOrEqual(2);
+  expect(m.x).toBeGreaterThanOrEqual(0);
+  expect(m.x + m.width).toBeLessThanOrEqual(vw);
 });
 
 test("关闭菜单后无残留节点", async ({ page }) => {
