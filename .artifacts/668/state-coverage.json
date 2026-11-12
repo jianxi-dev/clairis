@@ -1,0 +1,44 @@
+{
+  "states": [
+    {
+      "state": "edit-hidden",
+      "screenshot": ".artifacts/668/state-1-edit-hidden.png",
+      "assertion": "passed",
+      "detail": "编辑态应用居中：可见行与无围栏时完全一致，`:::` 不可见（A-5.1）",
+      "recorded_at": "2026-11-12T10:59:35Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "source-visible",
+      "screenshot": ".artifacts/668/state-2-source-visible.png",
+      "assertion": "passed",
+      "detail": "源码态：`::: {.align-center}` 仍可见（cw-vision 复核）",
+      "recorded_at": "2026-11-12T10:59:35Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "preview-centered",
+      "screenshot": ".artifacts/668/state-3-preview-centered.png",
+      "assertion": "passed",
+      "detail": "预览态：`.layout-align-center` 居中渲染仍在",
+      "recorded_at": "2026-11-12T10:59:35Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "cancel-clean",
+      "screenshot": ".artifacts/668/state-4-cancel-clean.png",
+      "assertion": "passed",
+      "detail": "再点同一对齐 = 取消：源码回到原文、编辑态无残留标记与空行（A-5.2）",
+      "recorded_at": "2026-11-12T10:59:35Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "multi-fence",
+      "screenshot": ".artifacts/668/state-5-multi.png",
+      "assertion": "passed",
+      "detail": "多组围栏共存：两组都隐藏，中间正文与空行保留",
+      "recorded_at": "2026-11-12T10:59:35Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}

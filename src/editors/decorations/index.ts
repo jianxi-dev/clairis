@@ -56,6 +56,7 @@ import {
 import { createCalloutDecorations, scheduleCalloutFlush } from "./callout";
 import { createColumnsDecorations } from "./columns";
 import { createStructuralTagDecorations } from "./structuralTags";
+import { createAlignFenceDecorations } from "./alignFence";
 import { createFoldDecorations, foldState } from "./fold";
 import { editorDecorationsThemeExt } from "./theme";
 import { getBlocks, getBlockAt } from "../block-model";
@@ -186,6 +187,7 @@ function buildDecorationSet(
     ...createTableDecorations(docText, activeFrom, activeTo),
     ...createColumnsDecorations(docText),
     ...createStructuralTagDecorations(docText),
+    ...createAlignFenceDecorations(docText),
     ...createFoldDecorations(state, state.field(foldState)),
   ];
 
