@@ -48,6 +48,7 @@ import {
   type MermaidHydrator,
   type MermaidTheme,
 } from "./mermaid";
+import { createMathDecorations } from "./math";
 import {
   createTableDecorations,
   scheduleTableFlush,
@@ -153,6 +154,8 @@ function buildDecorationSet(
 ): DecorationSet {
   const docText = state.doc.toString();
   const cursorPos = state.selection.main.head;
+  const selFrom = state.selection.main.from;
+  const selTo = state.selection.main.to;
 
   const activeBlock = findActiveBlock(state, cursorPos);
   const activeFrom = activeBlock?.from ?? -1;
@@ -183,6 +186,7 @@ function buildDecorationSet(
       options?.hydrateMermaid,
       options?.mermaidTheme,
     ),
+    ...createMathDecorations(docText, selFrom, selTo),
     ...createCalloutDecorations(docText, activeFrom, activeTo),
     ...createTableDecorations(docText, activeFrom, activeTo),
     ...createColumnsDecorations(docText),
