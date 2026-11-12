@@ -48,6 +48,11 @@ body {
   /* 与 reader.css 的阅读强调色同源（引用竖线、链接） */
   --reader-accent: var(--tone-accent, #3d5a8a);
   --reader-accent-soft: rgba(61, 90, 138, 0.1);
+  /* --type-* 只在 reader.css 的 .preview-content 内定义，编辑态取不到；
+     这里补一份与预览等宽栈逐字相同的副本，供行内/围栏代码对齐。 */
+  --type-font-mono:
+    "SF Mono", "JetBrains Mono", "Fira Code", Menlo, Consolas, "PingFang SC",
+    monospace;
 }
 
 .dark .cm-editor {
@@ -575,16 +580,14 @@ body {
 .cm-quote-marker-active {
   color: var(--app-text-3);
   opacity: 0.4;
-  font-family:
-    "SF Mono", "Fira Code", "Fira Mono", "Menlo", Consolas, monospace;
+  font-family: var(--type-font-mono);
   font-size: 0.85em;
   margin-inline-end: 0.25em;
 }
 
 /* 行内代码 */
 .cm-inline-code {
-  font-family:
-    "SF Mono", "Fira Code", "Fira Mono", "Menlo", Consolas, monospace;
+  font-family: var(--type-font-mono);
   font-size: 0.88em;
   color: var(--tone-code, #a03a63);
   background: var(--app-sunken);
@@ -601,8 +604,7 @@ body {
 .cm-code-marker-active {
   color: var(--app-text-3);
   opacity: 0.4;
-  font-family:
-    "SF Mono", "Fira Code", "Fira Mono", "Menlo", Consolas, monospace;
+  font-family: var(--type-font-mono);
   font-size: 0.85em;
 }
 
