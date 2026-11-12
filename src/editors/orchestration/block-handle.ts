@@ -442,10 +442,14 @@ class BlockHandlePlugin {
       );
       el.appendChild(icon);
 
-      const grip = document.createElement("span");
-      grip.className = "cm-block-handle-grip";
-      grip.appendChild(renderIcon("DragOutlined"));
-      el.appendChild(grip);
+      // 图片块手柄只留图片图标（D18 / A-9.3：手柄内 svg[data-icon] 恰 1 个）。
+      // 拖拽监听挂在整块手柄上，去掉右段把手不改变拖块行为。
+      if (block.type !== "image") {
+        const grip = document.createElement("span");
+        grip.className = "cm-block-handle-grip";
+        grip.appendChild(renderIcon("DragOutlined"));
+        el.appendChild(grip);
+      }
     }
 
     // 滑入即显示（D2 规则 1）＋意图延迟（对齐 md-bundle 的 120ms 缓冲）：

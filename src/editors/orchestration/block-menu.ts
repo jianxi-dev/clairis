@@ -114,6 +114,16 @@ const ACTION_ROWS: ReadonlyArray<readonly [string, string, string]> = [
   ["删除块", "DeleteTrashOutlined", "delete"],
 ];
 
+/**
+ * 图片块动作组（D18 / A-9.2）：对齐与缩进由上方 alignRow 承担，这里只列
+ * 剪切 / 复制 / 删除。上移 / 下移去掉——拖拽手柄已承担移动。
+ */
+const IMAGE_ACTION_ROWS: ReadonlyArray<readonly [string, string, string]> = [
+  ["剪切", "ScissorsOutlined", "cut"],
+  ["复制", "CopyOutlined", "duplicate"],
+  ["删除", "DeleteTrashOutlined", "delete"],
+];
+
 /** 「对齐与缩进」二级：三项对齐（带图标）+ 两项缩进。顺序即用户心智顺序。 */
 const ALIGN_INDENT_ITEMS: ReadonlyArray<{
   key: string;
@@ -299,6 +309,9 @@ export function openBlockMenu(
 ): void {
   closeBlockMenu(view);
 
+  // 图片块菜单是扁平四行（D18）：无「转为」组、无颜色、无「在下方添加」。
+  const isImageBlock = block.type === "image";
+
   const panel = document.createElement("div");
   panel.className = "cm-block-menu";
   panel.classList.add("mdb-block-handle-menu");
@@ -351,9 +364,11 @@ export function openBlockMenu(
     panel.appendChild(grid);
   }
 
-  const separator = document.createElement("div");
-  separator.className = "cm-block-menu-separator";
-  panel.appendChild(separator);
+  if (!isImageBlock) {
+    const separator = document.createElement("div");
+    separator.className = "cm-block-menu-separator";
+    panel.appendChild(separator);
+  }
 
   // 结构动作组：复制 / 剪切 / 上下移 / 缩进 / 删除。都直接改源码，
   // 不做「看起来生效」的假动作（#114）。
@@ -498,106 +513,110 @@ export function openBlockMenu(
     panel.appendChild(typeRow);
   }
 
-  const colorRow = document.createElement("button");
-  colorRow.type = "button";
-  colorRow.className = "cm-block-menu-item";
-  colorRow.dataset.testid = "block-menu-color";
-  colorRow.style.height = `${MENU_ROW_HEIGHT}px`;
-  colorRow.appendChild(renderIcon("FontcolorOutlined"));
-  const colorLabel = document.createElement("span");
-  colorLabel.textContent = "颜色";
-  colorRow.appendChild(colorLabel);
-  const colorChevron = document.createElement("span");
-  colorChevron.className = "cm-block-menu-chevron";
-  colorChevron.textContent = "›";
-  colorChevron.setAttribute("aria-hidden", "true");
-  colorRow.appendChild(colorChevron);
+  if (!isImageBlock) {
+    const colorRow = document.createElement("button");
+    colorRow.type = "button";
+    colorRow.className = "cm-block-menu-item";
+    colorRow.dataset.testid = "block-menu-color";
+    colorRow.style.height = `${MENU_ROW_HEIGHT}px`;
+    colorRow.appendChild(renderIcon("FontcolorOutlined"));
+    const colorLabel = document.createElement("span");
+    colorLabel.textContent = "颜色";
+    colorRow.appendChild(colorLabel);
+    const colorChevron = document.createElement("span");
+    colorChevron.className = "cm-block-menu-chevron";
+    colorChevron.textContent = "›";
+    colorChevron.setAttribute("aria-hidden", "true");
+    colorRow.appendChild(colorChevron);
 
-  let colorPanel: HTMLElement | null = null;
-  let releaseColorKeepOpen: (() => void) | null = null;
-  const closeColorPanel = (): void => {
-    releaseColorKeepOpen?.();
-    releaseColorKeepOpen = null;
-    colorPanel?.remove();
-    colorPanel = null;
-    removeFlyoutCloser(view, closeColorPanel);
-  };
-  const openColorPanel = (): void => {
-    closeColorPanel();
-    dismissBlockFlyouts(view);
-    addFlyoutCloser(view, closeColorPanel);
-    const panelEl = document.createElement("div");
-    panelEl.className = "cm-block-menu-flyout";
-    panelEl.classList.add("mdb-block-handle-menu");
-    panelEl.classList.add(COLOR_PANEL_CLASS);
-    panelEl.dataset.testid = "block-menu-color-panel";
-    panelEl.dataset.blockFlyout = "1";
-    panelEl.style.width = `${MENU_WIDTH}px`;
-    const own = view.dom.getBoundingClientRect();
-    const rowRect = colorRow.getBoundingClientRect();
-    panelEl.style.left = `${rowRect.right - own.left + 4}px`;
-    panelEl.style.top = `${rowRect.top - own.top}px`;
-
-    const blockText = view.state.doc.sliceString(block.from, block.to);
-    const applyColor = (family: ColorFamily, className: string): void => {
-      const next = applyBlockColor(blockText, block.type, family, className);
-      closeBlockMenu(view);
-      if (next === null) return;
-      view.dispatch({
-        changes: { from: block.from, to: block.to, insert: next },
-      });
-    };
-
-    const fontRow = createColorRow("font", FONT_COLORS, (_kind, cls) =>
-      applyColor("mdb-color", cls),
-    );
-    const activeFont = blockColorOf(blockText, "mdb-color");
-    fontRow
-      .querySelectorAll<HTMLButtonElement>(".cm-color-swatch")
-      .forEach((swatch) => {
-        swatch.dataset.active = String(swatch.dataset.className === activeFont);
-      });
-    panelEl.appendChild(fontRow);
-
-    const bgRow = createColorRow(
-      "background",
-      BACKGROUND_COLORS,
-      (_kind, cls) => applyColor("mdb-bg", cls),
-    );
-    const activeBg = blockColorOf(blockText, "mdb-bg");
-    bgRow
-      .querySelectorAll<HTMLButtonElement>(".cm-color-swatch")
-      .forEach((swatch) => {
-        swatch.dataset.active = String(swatch.dataset.className === activeBg);
-      });
-    panelEl.appendChild(bgRow);
-
-    view.dom.appendChild(panelEl);
-    flipFlyoutIfNeeded(view, panelEl, rowRect);
-    panelEl.addEventListener("pointerenter", () => {
-      cancelPendingClose(view);
-      if (!releaseColorKeepOpen) {
-        releaseColorKeepOpen = keepColorPanelOpen(menuStack, view);
-      }
-    });
-    panelEl.addEventListener("pointerleave", () => {
+    let colorPanel: HTMLElement | null = null;
+    let releaseColorKeepOpen: (() => void) | null = null;
+    const closeColorPanel = (): void => {
       releaseColorKeepOpen?.();
       releaseColorKeepOpen = null;
-      scheduleClose(view);
-    });
-    colorPanel = panelEl;
-  };
+      colorPanel?.remove();
+      colorPanel = null;
+      removeFlyoutCloser(view, closeColorPanel);
+    };
+    const openColorPanel = (): void => {
+      closeColorPanel();
+      dismissBlockFlyouts(view);
+      addFlyoutCloser(view, closeColorPanel);
+      const panelEl = document.createElement("div");
+      panelEl.className = "cm-block-menu-flyout";
+      panelEl.classList.add("mdb-block-handle-menu");
+      panelEl.classList.add(COLOR_PANEL_CLASS);
+      panelEl.dataset.testid = "block-menu-color-panel";
+      panelEl.dataset.blockFlyout = "1";
+      panelEl.style.width = `${MENU_WIDTH}px`;
+      const own = view.dom.getBoundingClientRect();
+      const rowRect = colorRow.getBoundingClientRect();
+      panelEl.style.left = `${rowRect.right - own.left + 4}px`;
+      panelEl.style.top = `${rowRect.top - own.top}px`;
 
-  colorRow.addEventListener("pointerenter", () => {
-    cancelPendingClose(view);
-    openColorPanel();
-  });
-  colorRow.addEventListener("pointerdown", (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    openColorPanel();
-  });
-  panel.appendChild(colorRow);
+      const blockText = view.state.doc.sliceString(block.from, block.to);
+      const applyColor = (family: ColorFamily, className: string): void => {
+        const next = applyBlockColor(blockText, block.type, family, className);
+        closeBlockMenu(view);
+        if (next === null) return;
+        view.dispatch({
+          changes: { from: block.from, to: block.to, insert: next },
+        });
+      };
+
+      const fontRow = createColorRow("font", FONT_COLORS, (_kind, cls) =>
+        applyColor("mdb-color", cls),
+      );
+      const activeFont = blockColorOf(blockText, "mdb-color");
+      fontRow
+        .querySelectorAll<HTMLButtonElement>(".cm-color-swatch")
+        .forEach((swatch) => {
+          swatch.dataset.active = String(
+            swatch.dataset.className === activeFont,
+          );
+        });
+      panelEl.appendChild(fontRow);
+
+      const bgRow = createColorRow(
+        "background",
+        BACKGROUND_COLORS,
+        (_kind, cls) => applyColor("mdb-bg", cls),
+      );
+      const activeBg = blockColorOf(blockText, "mdb-bg");
+      bgRow
+        .querySelectorAll<HTMLButtonElement>(".cm-color-swatch")
+        .forEach((swatch) => {
+          swatch.dataset.active = String(swatch.dataset.className === activeBg);
+        });
+      panelEl.appendChild(bgRow);
+
+      view.dom.appendChild(panelEl);
+      flipFlyoutIfNeeded(view, panelEl, rowRect);
+      panelEl.addEventListener("pointerenter", () => {
+        cancelPendingClose(view);
+        if (!releaseColorKeepOpen) {
+          releaseColorKeepOpen = keepColorPanelOpen(menuStack, view);
+        }
+      });
+      panelEl.addEventListener("pointerleave", () => {
+        releaseColorKeepOpen?.();
+        releaseColorKeepOpen = null;
+        scheduleClose(view);
+      });
+      colorPanel = panelEl;
+    };
+
+    colorRow.addEventListener("pointerenter", () => {
+      cancelPendingClose(view);
+      openColorPanel();
+    });
+    colorRow.addEventListener("pointerdown", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      openColorPanel();
+    });
+    panel.appendChild(colorRow);
+  }
 
   // 对齐与缩进（#373）：两项合并成一行，二级菜单 3 对齐 + 2 缩进。
   const alignRow = document.createElement("button");
@@ -709,7 +728,9 @@ export function openBlockMenu(
   });
   panel.appendChild(alignRow);
 
-  for (const [label, icon, action] of ACTION_ROWS) {
+  for (const [label, icon, action] of isImageBlock
+    ? IMAGE_ACTION_ROWS
+    : ACTION_ROWS) {
     const row = document.createElement("button");
     row.type = "button";
     row.className = "cm-block-menu-item";
@@ -728,65 +749,67 @@ export function openBlockMenu(
     panel.appendChild(row);
   }
 
-  const addBelow = document.createElement("button");
-  addBelow.type = "button";
-  addBelow.className = "cm-block-menu-item";
-  addBelow.dataset.testid = "block-menu-add-below";
-  addBelow.style.height = `${MENU_ROW_HEIGHT}px`;
-  addBelow.appendChild(renderIcon("AddOutlined"));
-  const addLabel = document.createElement("span");
-  addLabel.textContent = "在下方添加";
-  addBelow.appendChild(addLabel);
-  // 右侧 chevron：这一行会向右展开二级面板，没有指示用户不知道可以横着走。
-  const chevron = document.createElement("span");
-  chevron.className = "cm-block-menu-chevron";
-  chevron.textContent = "›";
-  chevron.setAttribute("aria-hidden", "true");
-  addBelow.appendChild(chevron);
-  const openBelow = (): void => {
-    cancelPendingClose(view);
-    const rowRect = addBelow.getBoundingClientRect();
-    openInsertMenu(
-      view,
-      block.to,
-      defaultCommands,
-      { from: block.from, to: block.to },
-      "below",
-      {
-        left: rowRect.left,
-        right: rowRect.right,
-        top: rowRect.top,
-        bottom: rowRect.bottom,
-      },
-    );
-    // 父菜单保留、二级面板向右展开（#456）；指针跨到面板时不要收起父菜单（#480）。
-    view.dom
-      .querySelector<HTMLElement>(".mdb-slash-menu")
-      ?.addEventListener("pointerenter", () => cancelPendingClose(view));
-  };
+  if (!isImageBlock) {
+    const addBelow = document.createElement("button");
+    addBelow.type = "button";
+    addBelow.className = "cm-block-menu-item";
+    addBelow.dataset.testid = "block-menu-add-below";
+    addBelow.style.height = `${MENU_ROW_HEIGHT}px`;
+    addBelow.appendChild(renderIcon("AddOutlined"));
+    const addLabel = document.createElement("span");
+    addLabel.textContent = "在下方添加";
+    addBelow.appendChild(addLabel);
+    // 右侧 chevron：这一行会向右展开二级面板，没有指示用户不知道可以横着走。
+    const chevron = document.createElement("span");
+    chevron.className = "cm-block-menu-chevron";
+    chevron.textContent = "›";
+    chevron.setAttribute("aria-hidden", "true");
+    addBelow.appendChild(chevron);
+    const openBelow = (): void => {
+      cancelPendingClose(view);
+      const rowRect = addBelow.getBoundingClientRect();
+      openInsertMenu(
+        view,
+        block.to,
+        defaultCommands,
+        { from: block.from, to: block.to },
+        "below",
+        {
+          left: rowRect.left,
+          right: rowRect.right,
+          top: rowRect.top,
+          bottom: rowRect.bottom,
+        },
+      );
+      // 父菜单保留、二级面板向右展开（#456）；指针跨到面板时不要收起父菜单（#480）。
+      view.dom
+        .querySelector<HTMLElement>(".mdb-slash-menu")
+        ?.addEventListener("pointerenter", () => cancelPendingClose(view));
+    };
 
-  let belowTimer: number | null = null;
-  addBelow.addEventListener("pointerenter", () => {
-    cancelPendingClose(view);
-    if (belowTimer !== null) window.clearTimeout(belowTimer);
-    belowTimer = window.setTimeout(() => {
-      belowTimer = null;
+    let belowTimer: number | null = null;
+    addBelow.addEventListener("pointerenter", () => {
+      cancelPendingClose(view);
+      if (belowTimer !== null) window.clearTimeout(belowTimer);
+      belowTimer = window.setTimeout(() => {
+        belowTimer = null;
+        openBelow();
+      }, 150);
+    });
+    addBelow.addEventListener("pointerleave", () => {
+      if (belowTimer !== null) {
+        window.clearTimeout(belowTimer);
+        belowTimer = null;
+      }
+      scheduleClose(view);
+    });
+    addBelow.addEventListener("pointerdown", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
       openBelow();
-    }, 150);
-  });
-  addBelow.addEventListener("pointerleave", () => {
-    if (belowTimer !== null) {
-      window.clearTimeout(belowTimer);
-      belowTimer = null;
-    }
-    scheduleClose(view);
-  });
-  addBelow.addEventListener("pointerdown", (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    openBelow();
-  });
-  panel.appendChild(addBelow);
+    });
+    panel.appendChild(addBelow);
+  }
 
   view.dom.appendChild(panel);
   positionPanel(view, panel, anchorPos ?? block.from, handle, block.type);

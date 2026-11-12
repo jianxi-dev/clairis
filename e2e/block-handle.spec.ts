@@ -408,3 +408,131 @@ test("拖拽中按 Esc 取消：指示线消失且文档不变", async ({ page }
   await expect.poll(() => storeContent(page)).toBe(doc);
   await page.screenshot({ path: path.join(ART698, "escape-cancel.png") });
 });
+
+// ── #713 / D18：图片手柄图标与菜单结构 ────────────────────────────────
+
+const ART713 = path.resolve(process.cwd(), ".artifacts/713");
+mkdirSync(ART713, { recursive: true });
+
+/** 菜单可见行的文字（去掉 chevron），顺序即 DOM 顺序。 */
+async function menuRowLabels(page: Page): Promise<string[]> {
+  const menu = page.locator('[data-testid="block-menu"]');
+  await expect(menu).toBeVisible({ timeout: 3000 });
+  return menu.evaluate((el) =>
+    Array.from(el.querySelectorAll<HTMLElement>(".cm-block-menu-item")).map(
+      (row) => {
+        const clone = row.cloneNode(true) as HTMLElement;
+        clone
+          .querySelectorAll(".cm-block-menu-chevron")
+          .forEach((node) => node.remove());
+        return clone.textContent?.replace(/\s+/g, "") ?? "";
+      },
+    ),
+  );
+}
+
+test("图片块手柄内 svg[data-icon] 恰 1 个且为 ImageOutlined（A-9.3）", async ({
+  page,
+}) => {
+  await openDoc(
+    page,
+    "/Users/test/bh-713-image.md",
+    "![图片](photo.png)\n\n普通段落",
+  );
+
+  await hoverLineLeft(page, page.locator(".cm-line").first());
+  const handle = page.locator('.cm-block-handle[data-block-from="0"]');
+  await expect(handle).toHaveClass(/cm-block-handle-visible/, {
+    timeout: 3000,
+  });
+
+  const icons = await handle.evaluate((el) =>
+    Array.from(el.querySelectorAll("svg[data-icon]")).map((svg) =>
+      svg.getAttribute("data-icon"),
+    ),
+  );
+  expect(icons).toEqual(["ImageOutlined"]);
+  await page.screenshot({ path: path.join(ART713, "image-handle.png") });
+});
+
+test("图片块菜单可见行文本顺序恰为 对齐与缩进 / 剪切 / 复制 / 删除（A-9.2）", async ({
+  page,
+}) => {
+  await openDoc(
+    page,
+    "/Users/test/bh-713-menu.md",
+    "![图片](photo.png)\n\n普通段落",
+  );
+
+  await hoverLineLeft(page, page.locator(".cm-line").first());
+  const handle = page.locator('.cm-block-handle[data-block-from="0"]');
+  await expect(handle).toHaveClass(/cm-block-handle-visible/, {
+    timeout: 3000,
+  });
+  await handle.hover();
+
+  expect(await menuRowLabels(page)).toEqual([
+    "对齐与缩进",
+    "剪切",
+    "复制",
+    "删除",
+  ]);
+  await page.screenshot({ path: path.join(ART713, "image-menu.png") });
+
+  await page.mouse.move(20, 20);
+  await expect(page.locator('[data-testid="block-menu"]')).toHaveCount(0, {
+    timeout: 2000,
+  });
+  await page.screenshot({ path: path.join(ART713, "closed.png") });
+});
+
+test("段落与表格块菜单保持原顺序（#713 不波及其他块型）", async ({ page }) => {
+  const doc = "普通段落\n\n| 甲 | 乙 |\n| --- | --- |\n| 1 | 2 |";
+  await openDoc(page, "/Users/test/bh-713-others.md", doc);
+
+  await hoverLineLeft(page, page.locator(".cm-line").first());
+  const paragraphHandle = page.locator('.cm-block-handle[data-block-from="0"]');
+  await expect(paragraphHandle).toHaveClass(/cm-block-handle-visible/, {
+    timeout: 3000,
+  });
+  await paragraphHandle.hover();
+  expect(await menuRowLabels(page)).toEqual([
+    "颜色",
+    "对齐与缩进",
+    "复制块",
+    "剪切块",
+    "上移",
+    "下移",
+    "删除块",
+    "在下方添加",
+  ]);
+  await page.screenshot({
+    path: path.join(ART713, "paragraph-menu-unchanged.png"),
+  });
+
+  await page.mouse.move(20, 20);
+  await expect(page.locator('[data-testid="block-menu"]')).toHaveCount(0, {
+    timeout: 2000,
+  });
+
+  // 表格由 TableWidget 渲染，源码行文本被替换，按行号定位（第 3 行是表头）。
+  await hoverLineLeft(page, page.locator(".cm-line").nth(2));
+  const tableHandle = page.locator(
+    '[data-testid="block-handle"].cm-block-handle-visible',
+  );
+  await expect(tableHandle).toHaveCount(1, { timeout: 3000 });
+  await tableHandle.hover();
+  expect(await menuRowLabels(page)).toEqual([
+    "颜色",
+    "对齐与缩进",
+    "复制块",
+    "剪切块",
+    "上移",
+    "下移",
+    "删除块",
+    "在下方添加",
+  ]);
+  await page.screenshot({
+    path: path.join(ART713, "table-menu-unchanged.png"),
+  });
+});
