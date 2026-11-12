@@ -334,6 +334,9 @@ function PaneHeader({
   const isMedia = activeTab ? isMediaKind(activeTab.fileKind) : false;
 
   const [menuOpen, setMenuOpen] = useState(false);
+  const [menuPos, setMenuPos] = useState<{ left: number; top: number } | null>(
+    null,
+  );
   const [exportOpen, setExportOpen] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -414,6 +417,54 @@ function PaneHeader({
       window.removeEventListener("keydown", onKey, true);
     };
   }, [menuOpen]);
+
+  /**
+   * 栏目「更多操作」菜单落位（ui-polish-batch15 11.1）：默认中心对齐按钮；
+   * 水平方向右缘越出视口时左移、左缘越出时右移，垂直方向下方放不下时向上
+   * 展开，两轴各自独立判定并夹进 8px 边距。菜单容器（.relative）是定位基准，
+   * 视口坐标需减去容器 rect 后再写成 left/top。
+   */
+  const measureMenu = useCallback(() => {
+    const box = menuRef.current?.getBoundingClientRect();
+    const btn = menuButtonRef.current?.getBoundingClientRect();
+    const panel = menuPanelRef.current;
+    if (!box || !btn || !panel) return;
+    const margin = 8;
+    const menuW = panel.offsetWidth;
+    const menuH = panel.offsetHeight;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    // 水平：中心对齐按钮，越界则夹进视口
+    const centre = btn.left + btn.width / 2 - menuW / 2;
+    const left = Math.max(margin, Math.min(centre, vw - margin - menuW));
+    // 垂直：默认按钮下方 4px，下方放不下则翻到按钮上方 4px
+    let top = box.height + 4;
+    if (box.bottom + 4 + menuH > vh - margin) top = -menuH - 4;
+    const topViewport = Math.max(
+      margin,
+      Math.min(box.top + top, vh - margin - menuH),
+    );
+    setMenuPos({ left: left - box.left, top: topViewport - box.top });
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!menuOpen) return;
+    measureMenu();
+  }, [menuOpen, measureMenu]);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    let raf = 0;
+    const onResize = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(measureMenu);
+    };
+    window.addEventListener("resize", onResize);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("resize", onResize);
+    };
+  }, [menuOpen, measureMenu]);
 
   useEffect(
     () => () => {
@@ -757,10 +808,20 @@ function PaneHeader({
                 data-testid="pane-menu"
                 role="menu"
                 ref={menuPanelRef}
-                className="absolute top-full z-50 mt-1 min-w-[132px] rounded border py-1 text-xs shadow-lg"
+                className="absolute z-50 min-w-[132px] rounded border py-1 text-xs shadow-lg"
                 style={{
-                  left: "50%",
-                  transform: "translateX(-50%)",
+                  ...(menuPos
+                    ? {
+                        left: menuPos.left,
+                        top: menuPos.top,
+                        transform: "none",
+                      }
+                    : {
+                        left: "50%",
+                        top: "100%",
+                        marginTop: 4,
+                        transform: "translateX(-50%)",
+                      }),
                   background: "var(--app-surface)",
                   borderColor: "var(--app-border)",
                   color: "var(--app-text-2)",

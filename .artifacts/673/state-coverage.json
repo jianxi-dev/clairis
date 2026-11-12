@@ -1,0 +1,36 @@
+{
+  "states": [
+    {
+      "state": "narrow-700",
+      "screenshot": ".artifacts/673/state-1-narrow-700.png",
+      "assertion": "passed",
+      "detail": "视口 700 宽：菜单完整可见，边界 [560..692]，右缘 692 ≤ 700（8px 边距）（A-11.1）",
+      "recorded_at": "2026-11-12T16:41:38Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "resized-640",
+      "screenshot": ".artifacts/673/state-2-resized-640.png",
+      "assertion": "passed",
+      "detail": "resize 到 640：重算后 [500..632]，右缘 632 ≤ 640，无越界（A-11.2）",
+      "recorded_at": "2026-11-12T16:41:38Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "wide-1400",
+      "screenshot": ".artifacts/673/state-3-wide-1400.png",
+      "assertion": "passed",
+      "detail": "宽视口 1400：正常展开 [1260..1392]，不误翻转",
+      "recorded_at": "2026-11-12T16:41:38Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "closed-clean",
+      "screenshot": ".artifacts/673/state-4-closed-clean.png",
+      "assertion": "passed",
+      "detail": "关闭后 pane-menu 计数 0，无残留浮层（A-11.3）",
+      "recorded_at": "2026-11-12T16:41:38Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}

@@ -137,3 +137,70 @@ test.describe("页签右键菜单：复制路径与移动到（ui-polish-batch12
       .toBe("e2e-ctx.md");
   });
 });
+
+test.describe("栏目更多操作菜单按视口边界翻转（ui-polish-batch15 11.1）", () => {
+  test("收窄视口后菜单完整可见，resize 重算不越界，关闭无残留", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 700, height: 520 });
+    await boot(page);
+
+    const button = page.locator('[data-testid="pane-menu-button"]').first();
+    const menu = page.locator('[data-testid="pane-menu"]').first();
+    await button.click();
+    await expect(menu).toBeVisible();
+
+    const geometry = async () => {
+      const m = await menu.boundingBox();
+      if (!m) throw new Error("菜单不可见");
+      return {
+        left: m.x,
+        top: m.y,
+        right: m.x + m.width,
+        bottom: m.y + m.height,
+      };
+    };
+
+    let g = await geometry();
+    expect(g.right).toBeLessThanOrEqual(700);
+    expect(g.left).toBeGreaterThanOrEqual(0);
+    expect(g.top).toBeGreaterThanOrEqual(0);
+    expect(g.bottom).toBeLessThanOrEqual(520);
+
+    await page.setViewportSize({ width: 640, height: 520 });
+    await menu.hover();
+    await expect
+      .poll(async () => (await geometry()).right)
+      .toBeLessThanOrEqual(640);
+    g = await geometry();
+    expect(g.left).toBeGreaterThanOrEqual(0);
+    expect(g.top).toBeGreaterThanOrEqual(0);
+    expect(g.bottom).toBeLessThanOrEqual(520);
+
+    await page.keyboard.press("Escape");
+    await expect(menu).toHaveCount(0);
+    expect(await page.locator('[data-testid="pane-menu"]').count()).toBe(0);
+    expect(
+      await page.locator('[data-testid="pane-export-submenu"]').count(),
+    ).toBe(0);
+  });
+
+  test("宽视口不误翻转：菜单在视口内正常向下展开", async ({ page }) => {
+    await page.setViewportSize({ width: 1400, height: 900 });
+    await boot(page);
+
+    const button = page.locator('[data-testid="pane-menu-button"]').first();
+    const menu = page.locator('[data-testid="pane-menu"]').first();
+    await button.click();
+    await expect(menu).toBeVisible();
+
+    const b = await button.boundingBox();
+    const m = await menu.boundingBox();
+    if (!b || !m) throw new Error("无法测量按钮或菜单");
+    expect(m.x).toBeGreaterThanOrEqual(0);
+    expect(m.x + m.width).toBeLessThanOrEqual(1400);
+    expect(m.y).toBeGreaterThanOrEqual(0);
+    expect(m.y + m.height).toBeLessThanOrEqual(900);
+    expect(m.y).toBeGreaterThanOrEqual(b.y + b.height);
+  });
+});
