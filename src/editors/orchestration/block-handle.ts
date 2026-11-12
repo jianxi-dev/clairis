@@ -11,7 +11,12 @@
  */
 import type { EditorState, Extension } from "@codemirror/state";
 import { ViewPlugin, type EditorView, type ViewUpdate } from "@codemirror/view";
-import { getBlocks, getBlockAt, type BlockType } from "../block-model";
+import {
+  getBlocks,
+  getBlockAt,
+  type Block,
+  type BlockType,
+} from "../block-model";
 import { renderIcon, ADD_ICON_NAME } from "../icons";
 import {
   openBlockMenu,
@@ -19,6 +24,7 @@ import {
   dismissBlockFlyouts,
   isBlockMenuOpen,
   scheduleBlockMenuClose,
+  cancelPendingClose,
 } from "./block-menu";
 import {
   defaultCommands,
@@ -182,6 +188,7 @@ interface HandleEntry {
   dragging: boolean;
   startX: number;
   startY: number;
+  pointerId: number;
   onMove: (event: PointerEvent) => void;
   onUp: (event: PointerEvent) => void;
   /** 悬停意图延迟定时器：到点才开块菜单。 */
@@ -200,6 +207,7 @@ function pointerKind(type: string): PointerKind {
 class BlockHandlePlugin {
   private handles: HandleEntry[] = [];
   private frame: number | null = null;
+  private indicator: HTMLDivElement | null = null;
 
   constructor(private readonly view: EditorView) {
     if (
@@ -210,6 +218,7 @@ class BlockHandlePlugin {
     }
     view.contentDOM.addEventListener("keydown", this.onKeyDown);
     view.contentDOM.addEventListener("keyup", this.onKeyUp);
+    document.addEventListener("keydown", this.onDocumentKeyDown, true);
     // 块级 hover：指针在正文或手柄上都要能召唤手柄（只挂手柄自身会不可发现）。
     view.dom.addEventListener("pointermove", this.onDomPointerMove);
     view.dom.addEventListener("pointerleave", this.onDomPointerLeave);
@@ -245,6 +254,7 @@ class BlockHandlePlugin {
   destroy(): void {
     this.view.contentDOM.removeEventListener("keydown", this.onKeyDown);
     this.view.contentDOM.removeEventListener("keyup", this.onKeyUp);
+    document.removeEventListener("keydown", this.onDocumentKeyDown, true);
     this.view.dom.removeEventListener("pointermove", this.onDomPointerMove);
     this.view.dom.removeEventListener("pointerleave", this.onDomPointerLeave);
     this.view.scrollDOM.removeEventListener("scroll", this.onScroll);
@@ -384,6 +394,7 @@ class BlockHandlePlugin {
       handle.el.remove();
     }
     this.handles = [];
+    this.removeIndicator();
   }
 
   private addHandle(block: BlockRange, empty: boolean): void {
@@ -405,6 +416,7 @@ class BlockHandlePlugin {
       dragging: false,
       startX: 0,
       startY: 0,
+      pointerId: 0,
       onMove: () => {},
       onUp: () => {},
       menuTimer: null,
@@ -591,7 +603,20 @@ class BlockHandlePlugin {
     event.preventDefault();
     entry.gate.suppress(true);
     closeBlockMenu(this.view);
+    // 拖拽开始即清掉悬停门控 / 菜单意图 / 菜单关闭计时器：拖拽中菜单不该再冒出来。
+    for (const handle of this.handles) {
+      if (handle.timer !== null) {
+        clearTimeout(handle.timer);
+        handle.timer = null;
+      }
+      if (handle.menuTimer !== null) {
+        clearTimeout(handle.menuTimer);
+        handle.menuTimer = null;
+      }
+    }
+    cancelPendingClose(this.view);
     entry.dragging = false;
+    entry.pointerId = event.pointerId;
     entry.startX = event.clientX;
     entry.startY = event.clientY;
     try {
@@ -605,31 +630,25 @@ class BlockHandlePlugin {
   }
 
   private onDragMove(event: PointerEvent, entry: HandleEntry): void {
-    if (entry.dragging) return;
+    if (entry.dragging) {
+      this.updateIndicator(event);
+      return;
+    }
     const dx = event.clientX - entry.startX;
     const dy = event.clientY - entry.startY;
     if (Math.hypot(dx, dy) < DRAG_THRESHOLD_PX) return;
     entry.dragging = true;
     entry.el.classList.add("cm-block-handle-dragging");
     this.highlightBlock(entry.block, true);
+    this.updateIndicator(event);
   }
 
   private onDragEnd(event: PointerEvent, entry: HandleEntry): void {
-    entry.el.removeEventListener("pointermove", entry.onMove);
-    entry.el.removeEventListener("pointerup", entry.onUp);
-    entry.el.removeEventListener("pointercancel", entry.onUp);
-    if (entry.el.hasPointerCapture(event.pointerId)) {
-      try {
-        entry.el.releasePointerCapture(event.pointerId);
-      } catch {
-        // 忽略：指针已释放。
-      }
-    }
-    entry.gate.suppress(false);
-
-    if (!entry.dragging) {
+    const wasDragging = entry.dragging;
+    const cancelled = event.type === "pointercancel";
+    this.endDrag(entry);
+    if (!wasDragging) {
       // 移动不足阈值：视为点击，开菜单而不是空转。
-      entry.dragging = false;
       if (!isBlockMenuOpen(this.view)) {
         openBlockMenu(
           this.view,
@@ -640,31 +659,125 @@ class BlockHandlePlugin {
       }
       return;
     }
-    entry.dragging = false;
-    entry.el.classList.remove("cm-block-handle-dragging");
-    this.highlightBlock(entry.block, false);
-
-    let pos: number | null = null;
-    try {
-      pos = this.view.posAtCoords({
-        x: event.clientX,
-        y: event.clientY,
-      });
-    } catch {
-      pos = null;
-    }
+    if (cancelled) return;
+    const pos = this.posFromEvent(event);
     if (pos === null) return;
-
-    const blocks = getBlocks(this.view.state);
-    const targetBlock = getBlockAt(pos, blocks);
-    const target = { from: targetBlock ? targetBlock.from : pos };
+    const target = this.computeDropTarget(pos);
     const doc = this.view.state.doc.toString();
-    const next = moveBlock(doc, entry.block, target);
+    const next = moveBlock(doc, entry.block, { from: target.from });
     if (next === doc) return;
     // 单事务整篇替换：选择随变更自动映射，滚动位置不跳。
     this.view.dispatch({
       changes: { from: 0, to: doc.length, insert: next },
     });
+  }
+
+  private endDrag(entry: HandleEntry): void {
+    entry.el.removeEventListener("pointermove", entry.onMove);
+    entry.el.removeEventListener("pointerup", entry.onUp);
+    entry.el.removeEventListener("pointercancel", entry.onUp);
+    if (entry.el.hasPointerCapture(entry.pointerId)) {
+      try {
+        entry.el.releasePointerCapture(entry.pointerId);
+      } catch {
+        // 忽略：指针已释放。
+      }
+    }
+    entry.dragging = false;
+    entry.el.classList.remove("cm-block-handle-dragging");
+    this.highlightBlock(entry.block, false);
+    entry.gate.suppress(false);
+    this.removeIndicator();
+  }
+
+  private readonly onDocumentKeyDown = (event: KeyboardEvent): void => {
+    if (event.key !== "Escape") return;
+    const entry = this.handles.find((handle) => handle.dragging);
+    if (!entry) return;
+    event.preventDefault();
+    this.endDrag(entry);
+  };
+
+  private posFromEvent(event: PointerEvent): number | null {
+    try {
+      return this.view.posAtCoords({ x: event.clientX, y: event.clientY });
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * 落点：指针在块内 → 插到该块之前；落在块间空隙 / 文档末尾 → 贴前一块下沿；
+   * 指针在文档最前 → 贴第一块上沿。与 `moveBlock` 的 `target.from` 同口径。
+   */
+  private computeDropTarget(pos: number): {
+    from: number;
+    block: Block | null;
+    edge: "top" | "bottom";
+  } {
+    const blocks = getBlocks(this.view.state);
+    const targetBlock = getBlockAt(pos, blocks);
+    if (targetBlock) {
+      return { from: targetBlock.from, block: targetBlock, edge: "top" };
+    }
+    for (let i = blocks.length - 1; i >= 0; i--) {
+      if (blocks[i].to <= pos) {
+        return { from: blocks[i].to, block: blocks[i], edge: "bottom" };
+      }
+    }
+    const first = blocks[0];
+    if (first) return { from: first.from, block: first, edge: "top" };
+    return { from: pos, block: null, edge: "bottom" };
+  }
+
+  // 样式内联：新增 `cm-*` 类会触发 CSS manifest 门禁，本票不改名也不改 CSS。
+  private ensureIndicator(): HTMLDivElement {
+    if (this.indicator) return this.indicator;
+    const el = document.createElement("div");
+    el.dataset.testid = "block-insert-indicator";
+    el.style.position = "absolute";
+    el.style.height = "2px";
+    el.style.borderRadius = "1px";
+    el.style.background = "var(--app-accent)";
+    el.style.zIndex = "40";
+    el.style.pointerEvents = "none";
+    this.view.dom.appendChild(el);
+    this.indicator = el;
+    return el;
+  }
+
+  private removeIndicator(): void {
+    this.indicator?.remove();
+    this.indicator = null;
+  }
+
+  private showIndicator(block: Block | null, edge: "top" | "bottom"): void {
+    if (!block) {
+      this.removeIndicator();
+      return;
+    }
+    const base = this.view.dom.getBoundingClientRect();
+    const first = this.lineRectAt(block.from);
+    const last = this.lineRectAt(block.to);
+    if (!first || !last) {
+      this.removeIndicator();
+      return;
+    }
+    const el = this.ensureIndicator();
+    el.style.left = `${Math.round(first.left - base.left)}px`;
+    el.style.width = `${Math.round(first.width)}px`;
+    const y = edge === "top" ? first.top : last.bottom;
+    el.style.top = `${Math.round(y - base.top)}px`;
+  }
+
+  private updateIndicator(event: PointerEvent): void {
+    const pos = this.posFromEvent(event);
+    if (pos === null) {
+      this.removeIndicator();
+      return;
+    }
+    const target = this.computeDropTarget(pos);
+    this.showIndicator(target.block, target.edge);
   }
 
   /** 拖拽期间给被移动块的每一行加高亮类。 */

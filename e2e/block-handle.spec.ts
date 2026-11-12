@@ -6,6 +6,8 @@ import path from "node:path";
 const APP_URL = "http://localhost:1420";
 const ART = path.resolve(process.cwd(), ".artifacts/372");
 mkdirSync(ART, { recursive: true });
+const ART698 = path.resolve(process.cwd(), ".artifacts/698");
+mkdirSync(ART698, { recursive: true });
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
@@ -330,4 +332,79 @@ test("图片块与高亮块的块手柄按真实块型取图标（#649）", asyn
   await hoverLineLeft(page, page.locator(".cm-line").last());
   await page.screenshot({ path: path.join(stateDir, "paragraph-handle.png") });
   await page.screenshot({ path: path.join(ART, "05-block-type-icons.png") });
+});
+
+test("拖第 3 段到第 1 段上方：拖拽期间指示线恰 1 条，松手后首段是原第三段", async ({
+  page,
+}) => {
+  const doc = "第一段\n\n第二段\n\n第三段";
+  await openDoc(page, "/Users/test/bh-indicator-drop.md", doc);
+  const third = page.locator(".cm-line").filter({ hasText: "第三段" }).first();
+  await hoverLineLeft(page, third);
+  const handle = page.locator('.cm-block-handle[data-block-from="10"]');
+  await expect(handle).toHaveClass(/cm-block-handle-visible/, {
+    timeout: 3000,
+  });
+
+  const from = await handle.boundingBox();
+  const target = await page
+    .locator(".cm-line")
+    .filter({ hasText: "第一段" })
+    .first()
+    .boundingBox();
+  if (!from || !target) throw new Error("missing layout box");
+
+  await page.mouse.move(from.x + from.width - 6, from.y + from.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(from.x + from.width - 6, from.y - 20, { steps: 4 });
+  await page.mouse.move(target.x + 40, target.y + 4, { steps: 8 });
+
+  const indicator = page.locator('[data-testid="block-insert-indicator"]');
+  await expect(indicator).toHaveCount(1);
+  await expect(indicator).toBeVisible();
+  await page.screenshot({
+    path: path.join(ART698, "indicator-above-target.png"),
+  });
+
+  await page.mouse.up();
+
+  await expect
+    .poll(() => storeContent(page))
+    .toBe("第三段\n\n第一段\n\n第二段");
+  await expect(indicator).toHaveCount(0);
+  await page.screenshot({ path: path.join(ART698, "after-drop.png") });
+});
+
+test("拖拽中按 Esc 取消：指示线消失且文档不变", async ({ page }) => {
+  const doc = "第一段\n\n第二段\n\n第三段";
+  await openDoc(page, "/Users/test/bh-indicator-escape.md", doc);
+  const third = page.locator(".cm-line").filter({ hasText: "第三段" }).first();
+  await hoverLineLeft(page, third);
+  const handle = page.locator('.cm-block-handle[data-block-from="10"]');
+  await expect(handle).toHaveClass(/cm-block-handle-visible/, {
+    timeout: 3000,
+  });
+
+  const from = await handle.boundingBox();
+  const second = await page
+    .locator(".cm-line")
+    .filter({ hasText: "第二段" })
+    .first()
+    .boundingBox();
+  if (!from || !second) throw new Error("missing layout box");
+
+  await page.mouse.move(from.x + from.width - 6, from.y + from.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(from.x + from.width - 6, from.y - 20, { steps: 4 });
+  await page.mouse.move(second.x + 40, second.y + 4, { steps: 4 });
+
+  const indicator = page.locator('[data-testid="block-insert-indicator"]');
+  await expect(indicator).toHaveCount(1);
+  await page.screenshot({ path: path.join(ART698, "drag-start.png") });
+
+  await page.keyboard.press("Escape");
+
+  await expect(indicator).toHaveCount(0);
+  await expect.poll(() => storeContent(page)).toBe(doc);
+  await page.screenshot({ path: path.join(ART698, "escape-cancel.png") });
 });
