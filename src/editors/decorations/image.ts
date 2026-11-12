@@ -197,6 +197,9 @@ export interface ImageReference {
   /** 目标原文（含尖括号壳）。 */
   target: string;
   title: string | null;
+  /** 标题原文的区间（含引号），没有标题时为 null。 */
+  titleStart: number | null;
+  titleEnd: number | null;
   /** `![]()` 结束偏移（不含属性块）。 */
   end: number;
   /** 属性块内容（不含大括号），没有则 null。 */
@@ -289,6 +292,8 @@ export function scanImageReference(
 
   // 可选标题：`"..."` / `'...'` / `(...)`。
   let title: string | null = null;
+  let titleStart: number | null = null;
+  let titleEnd: number | null = null;
   let j = i;
   while (j < n && isSpaceChar(text[j])) j += 1;
   if (text[j] === '"' || text[j] === "'") {
@@ -306,6 +311,8 @@ export function scanImageReference(
     }
     if (k >= n) return null;
     title = t;
+    titleStart = j;
+    titleEnd = k + 1;
     i = k + 1;
   } else if (text[j] === "(") {
     let k = j + 1;
@@ -336,6 +343,8 @@ export function scanImageReference(
     }
     if (depth !== 0) return null;
     title = t;
+    titleStart = j;
+    titleEnd = k;
     i = k;
   }
   while (i < n && isSpaceChar(text[i])) i += 1;
@@ -386,6 +395,8 @@ export function scanImageReference(
     path: stripAngleWrappers(target),
     target,
     title,
+    titleStart,
+    titleEnd,
     end,
     attrText,
     attrStart,
@@ -459,6 +470,56 @@ export function applyImageWidth(
   return applyImageSize(view, from, width, null);
 }
 
+/** 引号壳里的转义：只处理反斜杠与双引号（写入恒用双引号壳）。 */
+function escapeImageTitle(value: string): string {
+  return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+}
+
+/**
+ * 写回起点在 `from` 的图片的标题（`![alt](path "title")` 的引号部分）。
+ * 空串移除标题；已有标题原样替换引号段；无标题时插在 `)` 前。
+ * 宽高等属性块不动。
+ */
+export function writeImageTitle(
+  view: EditorView,
+  from: number,
+  title: string,
+): boolean {
+  const text = view.state.doc.toString();
+  const ref = scanImageReference(text, from);
+  if (!ref) return false;
+  const value = title.trim();
+  const changes: Array<{ from: number; to: number; insert: string }> = [];
+  if (ref.titleStart !== null && ref.titleEnd !== null) {
+    if (value === ref.title) return true;
+    if (value === "") {
+      let start = ref.titleStart;
+      while (
+        start > ref.start &&
+        (text[start - 1] === " " || text[start - 1] === "\t")
+      ) {
+        start -= 1;
+      }
+      changes.push({ from: start, to: ref.titleEnd, insert: "" });
+    } else {
+      changes.push({
+        from: ref.titleStart,
+        to: ref.titleEnd,
+        insert: `"${escapeImageTitle(value)}"`,
+      });
+    }
+  } else {
+    if (value === "") return true;
+    changes.push({
+      from: ref.end - 1,
+      to: ref.end - 1,
+      insert: ` "${escapeImageTitle(value)}"`,
+    });
+  }
+  if (changes.length > 0) view.dispatch({ changes });
+  return true;
+}
+
 /**
  * 按把手语义算目标尺寸。角把手用两轴中位移比例较大的一轴定缩放，另一轴按
  * 原始宽高比推导；高度触界时从高度反推宽度，尽量保持比例。
@@ -501,6 +562,7 @@ class ImageWidget extends WidgetType {
   private readonly _callbacks: ImageCallbacks;
   private readonly _width: number | null;
   private readonly _height: number | null;
+  private readonly _title: string | null;
   /** `!` 的文档偏移——选中态、工具条动作、拖拽改宽都以它为准。 */
   private readonly _from: number;
 
@@ -512,6 +574,7 @@ class ImageWidget extends WidgetType {
     width: number | null = null,
     from = 0,
     height: number | null = null,
+    title: string | null = null,
   ) {
     super();
     this._alt = alt;
@@ -521,6 +584,7 @@ class ImageWidget extends WidgetType {
     this._width = width;
     this._from = from;
     this._height = height;
+    this._title = title;
   }
 
   eq(other: ImageWidget): boolean {
@@ -530,6 +594,7 @@ class ImageWidget extends WidgetType {
       other._src === this._src &&
       other._width === this._width &&
       other._height === this._height &&
+      other._title === this._title &&
       other._from === this._from
     );
   }
@@ -538,6 +603,7 @@ class ImageWidget extends WidgetType {
     const container = document.createElement("span");
     container.className = "cm-image-widget";
     container.dataset.imageFrom = String(this._from);
+    container.dataset.imageTitle = this._title ?? "";
     container.style.display = "inline-block";
     container.style.position = "relative";
     container.style.maxWidth = "100%";
@@ -886,6 +952,7 @@ export function createImageDecorations(
             width,
             from,
             attrs.height,
+            ref.title,
           ),
           inclusive: false,
         }).range(from, to),

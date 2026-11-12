@@ -32,6 +32,7 @@ import {
   parseImageAttributes,
   scanImageReference,
   writeImageAttributes,
+  writeImageTitle,
 } from "../../editors/decorations/image";
 import {
   blockAt,
@@ -238,6 +239,11 @@ const editorDecorationOptions: EditorDecorationsOptions = {
       changes: { from: line.to, insert },
       selection: { anchor: line.to + insert.length },
     });
+  },
+  onImageSetTitle: (from, title) => {
+    const view = getActiveEditorView();
+    if (!view) return;
+    writeImageTitle(view, from, title);
   },
 };
 

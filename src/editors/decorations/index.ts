@@ -75,6 +75,8 @@ export interface EditorDecorationsOptions {
   onImageCrop?: (from: number) => void;
   /** 工具条「评论」：在图片下方插入 `> 评论：` 行。 */
   onImageComment?: (from: number) => void;
+  /** 描述行提交：把标题写回图片 markdown 的引号段。 */
+  onImageSetTitle?: (from: number, title: string) => void;
   /** 工具条对齐：left/right 写 align，center 清除。 */
   onImageAlign?: (from: number, align: "left" | "center" | "right") => void;
   /** 工具条「剪切」：复制图片 markdown 后删除块。 */
@@ -167,6 +169,7 @@ function buildDecorationSet(
       onImageAi: options?.onImageAi,
       onImageCrop: options?.onImageCrop,
       onImageComment: options?.onImageComment,
+      onImageSetTitle: options?.onImageSetTitle,
       onImageAlign: options?.onImageAlign,
       onImageCut: options?.onImageCut,
       onImageCopy: options?.onImageCopy,
@@ -299,6 +302,7 @@ export function editorDecorations(
     onImageAi: options?.onImageAi,
     onImageCrop: options?.onImageCrop,
     onImageComment: options?.onImageComment,
+    onImageSetTitle: options?.onImageSetTitle,
     onImageAlign: options?.onImageAlign,
     onImageCut: options?.onImageCut,
     onImageCopy: options?.onImageCopy,
