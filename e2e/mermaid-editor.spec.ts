@@ -96,6 +96,32 @@ test("深色切换：--pele-fg 跟随 CSS 变量，svg 节点不被替换", asyn
   await expect(view.locator("svg")).toHaveCount(1);
 });
 
+test("编辑态与预览态 --pele-font 一致（design D9）", async ({ page }) => {
+  await openInEdit(page);
+  const editView = page.locator(".cm-mermaid-block .mermaid-view");
+  await expect(editView.locator("svg")).toBeVisible();
+  await expect(editView.locator("svg")).toHaveCount(1);
+  const editFont = await editView.evaluate((el) =>
+    getComputedStyle(el).getPropertyValue("--pele-font").trim(),
+  );
+
+  await page.evaluate(() => {
+    (window as unknown as Record<string, any>).__biaoyue_store__
+      .getState()
+      .setEditorMode("preview");
+  });
+  const previewView = page.locator(".preview-content .mermaid-view");
+  await expect(previewView.locator("svg")).toBeVisible();
+  await expect(previewView.locator("svg")).toHaveCount(1);
+  const previewFont = await previewView.evaluate((el) =>
+    getComputedStyle(el).getPropertyValue("--pele-font").trim(),
+  );
+
+  expect(editFont).not.toBe("");
+  expect(previewFont).not.toBe("");
+  expect(editFont).toBe(previewFont);
+});
+
 test("反复进出同一块：图表容器只有一个，svg 不叠加", async ({ page }) => {
   await openInEdit(page);
   const editor = page.locator(".cm-content");
