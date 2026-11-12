@@ -260,9 +260,17 @@ export default function VideoPlayer({
 
   useEffect(() => {
     // 静音按文件路径隔离：只应用本实例文件的状态，避免串音（#669）。
+    // 音频静音必须在同一次事件内「暂停 + 静音」（D9 / editing 规格 A-7.1）：
+    // 只写 muted 时元素仍处播放态、音频管线继续渲染（真实环境表现为静音后
+    // 仍响约 1 秒），故先 pause() 再置 muted。视频保持既有行为：只静音不暂停。
     const apply = (key: string, m: boolean) => {
       if (key !== filePath) return;
-      if (artRef.current) artRef.current.muted = m;
+      const art = artRef.current;
+      if (!art) return;
+      const entry = playlistRef.current[currentIndexRef.current];
+      const kind = entry?.kind ?? fileKindRef.current;
+      if (m && kind === "audio") art.pause();
+      art.muted = m;
     };
     apply(filePath, isMediaMuted(filePath));
     return subscribeMediaMute(apply);
@@ -398,8 +406,11 @@ export default function VideoPlayer({
     void invoke("register_media_path", { path: filePath }).catch(() => {});
     void invoke<MediaEntry[]>("list_media_in_dir", { path: filePath })
       .then((items) => {
-        const media = items.filter((i) => i.kind !== "subtitle");
-        const subs = items.filter((i) => i.kind === "subtitle");
+        // 文件名自然序：数字按数值比较（ep2 排在 ep10 前），顺序稳定可复现（D9）
+        const byName = (a: MediaEntry, b: MediaEntry) =>
+          a.name.localeCompare(b.name, undefined, { numeric: true });
+        const media = items.filter((i) => i.kind !== "subtitle").sort(byName);
+        const subs = items.filter((i) => i.kind === "subtitle").sort(byName);
         playlistRef.current = media;
         subtitleRef.current = subs;
         setPlaylist(media);
@@ -1555,6 +1566,7 @@ export default function VideoPlayer({
                 />
               </span>
               <span
+                data-testid="playlist-item-name"
                 style={{
                   flex: 1,
                   overflow: "hidden",
