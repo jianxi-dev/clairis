@@ -1046,17 +1046,28 @@ export default function VideoPlayer({
       if (btn) openPopover("rate", btn, 88);
     });
 
-    // 播完处理：只有「列表循环」才接管下一项。默认的不循环档位必须停在
-    // 当前文件 —— 否则同目录下一项（可能是音频）会被静默播起来，画面看着
-    // 已经停了，声音却要关掉页签才停。
+    // 播完处理（batch15 1.1 起：默认档连播，取代旧「默认停在当前文件」决策）：
+    // - 单集循环：ArtPlayer 内部 loop 已处理
+    // - 列表循环：环绕切下一项
+    // - 默认（不循环）：连播到下一个**视频**；下一项是音频或已在列表尾则停下
+    //   —— 音频不静默起播（旧决策的守保留），视频连播（新决策）。
     art.on("video:ended", () => {
       if (loopRef.current === "single") return; // ArtPlayer 内部 loop 已处理
       const list = playlistRef.current;
-      if (loopRef.current === "playlist" && list.length > 0) {
+      if (list.length === 0) {
+        art.pause();
+        return;
+      }
+      if (loopRef.current === "playlist") {
         void playIndex(currentIndexRef.current + 1);
         return;
       }
-      art.pause();
+      const nextIdx = currentIndexRef.current + 1;
+      if (nextIdx >= list.length || list[nextIdx].kind === "audio") {
+        art.pause();
+        return;
+      }
+      void playIndex(nextIdx);
     });
 
     // 起播态：打开即播放。上次看到的位置作为起点，播放在 seek 之后发起。

@@ -1,0 +1,44 @@
+{
+  "states": [
+    {
+      "state": "playlist-open",
+      "screenshot": ".artifacts/665/state-1-playlist.png",
+      "assertion": "passed",
+      "detail": "打开 ep1：播放列表 [ep1(video), ep2(video), song(audio)] 就位，播放器起播",
+      "recorded_at": "2026-11-12T04:11:57Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "advanced-to-next",
+      "screenshot": ".artifacts/665/state-2-advanced.png",
+      "assertion": "passed",
+      "detail": "ep1 播完（ended）→ 当前播放项切到 ep2（localStorage lastIndex=/tmp/movies/ep2.mp4）（A-1.1.1）",
+      "recorded_at": "2026-11-12T04:11:57Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "audio-guard",
+      "screenshot": ".artifacts/665/state-3-audio-guard.png",
+      "assertion": "passed",
+      "detail": "ep2 播完 → 下一项是音频，停下不起播：playing=false 且仍停在 ep2（旧决策的音频守卫保留）",
+      "recorded_at": "2026-11-12T04:11:57Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "playlist-wrapped",
+      "screenshot": ".artifacts/665/state-4-wrapped.png",
+      "assertion": "passed",
+      "detail": "列表循环档：ep2 播完环绕回 ep1（lastIndex=/tmp/movies/ep1.mp4）",
+      "recorded_at": "2026-11-12T04:11:57Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "portrait-fit",
+      "screenshot": ".artifacts/665/state-5-portrait.png",
+      "assertion": "passed",
+      "detail": "竖拍视频：播放器盒子呈竖向（w<h）且不超容器宽度；关页签后无残留 .art-video-player（A-1.1.2）",
+      "recorded_at": "2026-11-12T04:11:57Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}
