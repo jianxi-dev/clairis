@@ -1,0 +1,36 @@
+{
+  "states": [
+    {
+      "state": "default-visible",
+      "screenshot": ".artifacts/671/state-1-default-visible.png",
+      "assertion": "passed",
+      "detail": "PDF 默认：按钮栏可见（缩放/翻页/工具/最右图钉），display ≠ none",
+      "recorded_at": "2026-11-12T14:01:12Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "pinned-hidden",
+      "screenshot": ".artifacts/671/state-2-pinned-hidden.png",
+      "assertion": "passed",
+      "detail": "图钉固定隐藏：按钮栏计算 display 严格 === none（A-8.1）",
+      "recorded_at": "2026-11-12T14:01:12Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "shortcut-restored",
+      "screenshot": ".artifacts/671/state-3-shortcut-restored.png",
+      "assertion": "passed",
+      "detail": "⌘⇧D 切换（与图钉同源）：按钮栏恢复可见（A-8.2）",
+      "recorded_at": "2026-11-12T14:01:12Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "after-switch-default",
+      "screenshot": ".artifacts/671/state-4-after-switch-default.png",
+      "assertion": "passed",
+      "detail": "再固定隐藏后切换文档再回来：回默认可见，无残留（A-8.3）",
+      "recorded_at": "2026-11-12T14:01:12Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}
