@@ -99,6 +99,17 @@ body {
   max-width: 100%;
 }
 
+/* 图片对齐（D15）：widget 保持 inline-block，落位走行级 text-align——
+ * 容器若 display:block，其后的 CM6 widgetBuffer 会自成一条整行高的行盒，
+ * 图片下方多出一条空行。 */
+.cm-editor .cm-line:has(> .cm-image-widget[data-align="center"]) {
+  text-align: center;
+}
+
+.cm-editor .cm-line:has(> .cm-image-widget[data-align="right"]) {
+  text-align: right;
+}
+
 /* drawSelection 注入的 `.cm-focused > .cm-scroller > .cm-selectionLayer
  * .cm-selectionBackground` 特异性高于本文件，且 `--app-accent-soft` 太淡，
  * 编辑态选区几乎不可见；这里用 !important 压住并换成明显的强调色底。 */
