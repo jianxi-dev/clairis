@@ -42,7 +42,7 @@ async function content(page: Page): Promise<string> {
 
 const TOOLBAR = ".html-edit-toolbar";
 
-test("选中段落：给文字排版控件，不给背景/边框", async ({ page }) => {
+test("选中段落：给文字排版控件（含背景色），不给边框色", async ({ page }) => {
   const frame = await openVisual(page);
   await frame.locator("p").first().click();
 
@@ -56,8 +56,8 @@ test("选中段落：给文字排版控件，不给背景/边框", async ({ page
   await expect(bar.locator('input[aria-label="文字颜色"]')).toBeVisible();
   await expect(bar.locator('button[aria-label="AI 编辑"]')).toBeVisible();
 
-  await expect(bar.locator('input[aria-label="背景色"]')).toHaveCount(0);
-  await expect(bar.locator('button[aria-label="边框色"]')).toHaveCount(0);
+  await expect(bar.locator('input[aria-label="背景色"]')).toHaveCount(1);
+  await expect(bar.locator('input[aria-label="边框色"]')).toHaveCount(0);
 });
 
 test("选中容器：给背景/边框控件，不给粗斜体", async ({ page }) => {
@@ -72,7 +72,7 @@ test("选中容器：给背景/边框控件，不给粗斜体", async ({ page })
   const bar = page.locator(`${TOOLBAR}[data-cm-node-kind="block"]`);
   await expect(bar).toBeVisible();
   await expect(bar.locator('input[aria-label="背景色"]')).toBeVisible();
-  await expect(bar.locator('button[aria-label="边框色"]')).toBeVisible();
+  await expect(bar.locator('input[aria-label="边框色"]')).toBeVisible();
 
   await expect(bar.locator('button[aria-label="粗体"]')).toHaveCount(0);
   await expect(bar.locator('select[aria-label="字号"]')).toHaveCount(0);
@@ -121,9 +121,17 @@ test("区块加边框后真正画出来", async ({ page }) => {
     wrap!.y + wrap!.height - 20,
   );
 
-  const border = page.locator(`${TOOLBAR} button[aria-label="边框色"]`);
-  await border.click();
-  await expect(border).toHaveAttribute("aria-pressed", "true");
+  const border = page.locator(`${TOOLBAR} input[aria-label="边框色"]`);
+  // 原生 value setter 绕过 React 的 value 追踪器，否则 onChange 不触发。
+  await border.evaluate((el, value) => {
+    const setter = Object.getOwnPropertyDescriptor(
+      HTMLInputElement.prototype,
+      "value",
+    )?.set;
+    setter?.call(el, value);
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+    el.dispatchEvent(new Event("change", { bubbles: true }));
+  }, "#ff0000");
 
   const width = await frame
     .locator('[data-cm-node-id="div:0"]')

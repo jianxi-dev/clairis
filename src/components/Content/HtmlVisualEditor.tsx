@@ -446,6 +446,8 @@ export default function HtmlVisualEditor({
         sandbox="allow-scripts"
         srcDoc={srcDoc}
         title="HTML 可视化编辑"
+        // 编辑面不是按钮：悬停提示会摘掉 title，既吵又让 a11y 名字失效。
+        data-no-tip
         style={{
           width: "100%",
           height: "100%",
@@ -540,12 +542,6 @@ export default function HtmlVisualEditor({
             })
           }
           onLink={(href) => commit((prev) => applyLink(prev, selected, href))}
-          onCapture={() => {
-            setSelected(null);
-            setBox(null);
-            setCapturing(true);
-            send(commandForCaptureMode(true));
-          }}
           onRemove={() => {
             commit((prev) => applyNodeRemove(prev, selected));
             setSelected(null);
