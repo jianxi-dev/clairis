@@ -868,6 +868,12 @@ body {
   background: var(--app-sunken);
 }
 
+/* 对齐等开关的按下态：与未选中态有可测色差（D10）。 */
+.cm-image-toolbar button[aria-pressed="true"] {
+  background: var(--app-accent-soft);
+  color: var(--app-accent);
+}
+
 .cm-image-toolbar button:disabled {
   opacity: 0.4;
   cursor: not-allowed;

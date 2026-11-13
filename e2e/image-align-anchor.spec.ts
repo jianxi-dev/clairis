@@ -101,6 +101,39 @@ test("默认居中：data-align=center、左右外边距对称、居中按钮 pr
   await page.screenshot({ path: ".artifacts/710/01-default-center.png" });
 });
 
+test("对齐按下态有可测色差", async ({ page }) => {
+  await openEditor(
+    page,
+    "![pic](assets/pic.png)\n",
+    "alignPressed",
+    PNG_DATA_URL,
+  );
+  await page.locator(".cm-image-widget").click();
+
+  const center = page.getByTestId("img-toolbar-align-center");
+  const left = page.getByTestId("img-toolbar-align-left");
+  await expect(center).toHaveAttribute("aria-pressed", "true");
+  await expect(left).toHaveAttribute("aria-pressed", "false");
+
+  const backgrounds = await page.evaluate(() => {
+    const read = (testid: string) => {
+      const el = document.querySelector(`[data-testid="${testid}"]`);
+      return el ? getComputedStyle(el).backgroundColor : "";
+    };
+    return {
+      pressed: read("img-toolbar-align-center"),
+      idle: read("img-toolbar-align-left"),
+    };
+  });
+  const channelSum = (value: string) =>
+    (value.match(/\d+/g) ?? [])
+      .slice(0, 3)
+      .reduce((sum, n) => sum + Number(n), 0);
+  expect(channelSum(backgrounds.pressed)).not.toBe(
+    channelSum(backgrounds.idle),
+  );
+});
+
 test("切左对齐：仅左按钮 pressed，data-align=left，markdown 写 align=left", async ({
   page,
 }) => {

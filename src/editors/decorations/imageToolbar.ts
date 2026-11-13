@@ -731,7 +731,11 @@ function maximizeDownloadName(src: string, alt: string): string {
   return `${base}.${ext}`;
 }
 
-export function openImageMaximize(src: string | null, alt: string): void {
+export function openImageMaximize(
+  src: string | null,
+  alt: string,
+  crop?: [number, number, number, number] | null,
+): void {
   closeImageMaximize();
   const overlay = document.createElement("div");
   overlay.className = "cm-image-maximize";
@@ -745,6 +749,14 @@ export function openImageMaximize(src: string | null, alt: string): void {
     img.src = src;
     img.alt = alt;
     img.draggable = false;
+    if (crop) {
+      // 与行内裁剪显示同一坐标系：盒子=裁剪矩形，object-fit:none 平移到 (l,t)。
+      const [l, t, w, h] = crop;
+      img.style.objectFit = "none";
+      img.style.objectPosition = `${-l}px ${-t}px`;
+      img.style.width = `${w}px`;
+      img.style.height = `${h}px`;
+    }
     overlay.appendChild(img);
   } else {
     const fallback = document.createElement("span");
