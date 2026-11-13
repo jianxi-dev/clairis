@@ -34,7 +34,7 @@ Biaoyue 面向中文用户，维护者母语为中文。以下为**硬约定**�
 - **架构/产品/设计文档**：`docs/`（索引 `docs/README.md`）：产品 `docs/product/`、批准设计 `docs/design/approved/`、探索 `docs/design/explorations/`、研究 `docs/research/`、交付 `docs/delivery/`、历史 `docs/archive/`；总纲由 `docs/README.md` + `docs/architecture/overview.md` 承担
 - **设计系统（视觉数值唯一来源）**：`docs/design/system/spec.md`（图标/间距/字号/圆角/语义色/判据）、`docs/design/system/decisions.md`（append-only 部件决案台账）；单 feature 设计在 `docs/design/approved/`，只引用条款号不复制数值
 - **数据面（可配置面的落点契约）**：`docs/agents/data-surface.md`（触发信号 / 六栏表 / 票面第 8 字段 / C10 机检）；脚本 `scripts/cw-data-surface.sh`，识别信号配在 `.change-workflow.conf` 的 `DATA_SURFACE_*`
-- **知识检索（GBrain）**：agent 通过 MCP 工具 `search` / `query` / `get_page` / `code_def` / `code_refs`（共享 HTTP owner，`http://127.0.0.1:3131/mcp`）。PGLite 单写者下，同样功能的 CLI `gbrain search/query/status` 会报 `pglite_busy`；`gbrain sync` 例外，走委托可正常跑。**无常驻 autopilot**，索引刷新用 `/sync-gbrain`。配置 `~/.gbrain/config.json`。
+- **知识检索（GBrain）**：agent 通过 MCP 工具 `search` / `query` / `get_page` / `code_def` / `code_refs`（共享 HTTP owner，`http://127.0.0.1:3131/mcp`）；CLI 同功能命令（`gbrain search/query/status`）在 **postgres** 引擎下可直接跑（无单写者锁）。**无常驻 autopilot**，索引刷新用 `/sync-gbrain`。文档源同步用 `gbrain sync --source default --no-pull`（`gbrain sync --repo .` 只刷代码源与 change-workflow 源，不刷 `default`）。配置 `~/.gbrain/config.json`。
 - **需求基线与跟踪**：产品愿景/原则/范围 `docs/product/`，交付路线图 `docs/delivery/roadmap.md`，功能规格 `openspec/specs/`，需求×实现状态一览 `docs/delivery/requirements-status.md`（旧 `CORE-REQUIREMENTS-clairis.md`/`PLAN.md`/`MVP-需求跟踪表.md` 等已 superseded/归档，不作活入口）
 - **软著资料准备**：`docs/delivery/softcopyright/`（台账/开发流程证据链规范/申请操作手册）
 
@@ -118,25 +118,22 @@ Biaoyue 面向中文用户，维护者母语为中文。以下为**硬约定**�
 - 实现可见 UI 前，票面须有第七字段 `**视觉锚点**:`，值为 `design-system:§N` 或 `ledger:<部件>`（多条用 `;` 分隔，锚点内不写像素值）。它与 change 的 conformance 验收锚点（`A-<n>.<m>`）是**两个东西**：前者指规范条款，后者指本次验收断言。spec 无对应条款 = 规范缺口，先补条款再写码。**已知弱点**：C9 机检随第二个 change 落地，在此之前由 code-review 执行。
 - 单点视觉裁决落 `docs/design/system/decisions.md` 一行（append-only）；刻度级修订走 spec supersede。
 
-## GBrain Configuration（由 /setup-gbrain 配置）
+## GBrain Configuration（由 /setup-gbrain 配置；2026-11-13 实测更新）
 
-- Mode: local-shared-http（单一 owner）
-- Engine: pglite（单写者）
+- Mode: local-shared-http（共享 HTTP owner）
+- Engine: **postgres**（`postgresql://mason@127.0.0.1:5432/gbrain`；非 PGLite，无单写者锁）
+- Schema pack: gbrain-base-v2 ｜ 嵌入 ollama:qwen3-embedding:0.6b（1024 维）｜ search.mode balanced
+- 版本: 0.60.465.0（`UPGRADE_AVAILABLE 0.60.707.0`；self_upgrade.mode=notify）
 - Config file: ~/.gbrain/config.json（mode 0600）
-- Setup date: 2026-08-02
-- MCP registered: yes —— 共享 HTTP owner（launchd `com.gbrain.serve` → `gbrain serve --http`，`http://127.0.0.1:3131/mcp`）；opencode 与 pi 均以 HTTP + bearer token 连接，不再每会话各起一个 stdio serve
-- Artifacts sync: off（Step 7 选择"不需要"；GitHub 当前不可达）
-- Current repo policy: read-write（github.com/lqtdys/clairis）
-- transcript_ingest_mode: incremental
-- Last cycle: 2026-11-06 增量 sync（`gstack-code-clairis-0cb0a733`，commit `fe5d86ca`，421 页，未嵌入 0）。**无常驻 autopilot**（`launchctl list` 里没有 `com.gbrain.autopilot`；此前文档写"已常驻"是错的）。
-- PGLite 单写者约束（重要）：brain 由 launchd `com.gbrain.serve` 独占持有。
-  - `gbrain sync --source <id> --no-pull` **可用**：CLI 会委托给运行中的 owner 执行。
-  - `gbrain search/get/query/status/sources ...` 等直接开库的命令会报 `pglite_busy`。读操作请走 MCP 工具（`search` / `query` / `get_page` / `sources_status`），或先 `gbrain mcp expose --remove` 停共享服务再跑 CLI（停服务期间 agent 的 MCP 不可用）。
-  - autopilot 与共享 serve 互斥：两者都要独占 PGLite，不要同时开。
-- 客户端 token 有效期 90 天（TTL 上限 `7776000`s，无法设更长）。到期后 agent 的 gbrain 工具会返回 `invalid_token`，看起来像"又锁死了"，其实只需轮换：
+- MCP registered: yes —— launchd `com.gbrain.serve` 常驻 → `gbrain serve --http --port 3131 --surface full`，`http://127.0.0.1:3131/mcp`；opencode 与 pi 均以 HTTP + bearer token 连接，不每会话起 stdio serve
+- **读命令可用**：postgres 引擎下 `gbrain search/query/status/sources` 直接跑（无 `pglite_busy`）
+- **写页需 owner 动作**：`mode=classic`、`enabled=false`（managed persistence 未激活）——checkout 是唯一真相源，gbrain 只读。`gbrain capture` / `put_page` 会被拒（`owner_unavailable` / `unbound_source`）。落库两条路：① 写成 `<slug>.md` 进 checkout → commit → `gbrain sync --source default --no-pull`（推荐，无需授权）；② owner 在 brain 主机 `gbrain sources writer claim` + 激活 managed persistence
+- Sources（2026-11-13）：`default`（本仓文档 884 页）、`gstack-code-clairis-0cb0a733`（本仓代码 622 页，worktree pin 见根 `.gbrain-source`）、`change-workflow`（65 页）、`gstack-code-{html,md-bundle,mdpkg}-*`（其他仓代码源）。`status` 里 html / md-bundle-4a61759a 两个源 SEVERE 陈旧（11-06），与本源无关
+- **无常驻 autopilot**（`launchctl list` 无 `com.gbrain.autopilot`）；索引刷新用 `/sync-gbrain`
+- 客户端 token 有效期 90 天（当前 token 至 2026-12-06，`~/.gbrain/private/local-agents.json` 的 `expires_at` 是首签时间、不随轮换更新）。到期后 agent 的 gbrain 工具返回 `invalid_token`，轮换：
   1. `gbrain connect http://127.0.0.1:3131/mcp --harness opencode --credentials-file ~/.gbrain/private/local-agents.json --install --fresh-token`
   2. 读出 `~/.config/opencode/opencode.json` 里 `mcp.gbrain.headers.Authorization` 的 token，然后 `pi mcp add gbrain --url http://127.0.0.1:3131/mcp --header "Authorization=Bearer <token>"`
-  3. `pi mcp list` 应显示 `gbrain: connected`。注意 `~/.gbrain/private/local-agents.json` 里的 `expires_at` 是首次签发时的过期时间，不会随轮换更新，不要拿它判断有效期。
+  3. `pi mcp list` 应显示 `gbrain: connected`
 
 ## GBrain Search Guidance（configured by /sync-gbrain）
 <!-- gstack-gbrain-search-guidance:start -->
@@ -157,7 +154,7 @@ GBrain 已在本机配置并同步。当问题偏语义、或尚不确定确切�
 - "什么调用了 Y？" / "Y 依赖什么？"：`gbrain code-callers <符号>` / `gbrain code-callees <符号>`
 - "上次我们决定了什么？" / 过往计划、retro、learnings：`gbrain search "<词>" --source gstack-brain-<user>`
 
-已知确切字符串、正则、多行、glob 时仍用 Grep。代码有意义变更后跑 `/sync-gbrain` 刷新（sync 走委托，不会撞锁）。**本机无常驻 autopilot**；要装 `gbrain autopilot --install` 必须先停掉共享 HTTP serve —— PGLite 不允许两个 owner。
+已知确切字符串、正则、多行、glob 时仍用 Grep。代码有意义变更后跑 `/sync-gbrain` 刷新。**本机无常驻 autopilot**；引擎已是 postgres（无 PGLite 单写者限制），如要装 `gbrain autopilot --install` 与共享 serve 并存的可行性按当时版本确认。
 
 安全注意：`gbrain autopilot` 运行期间不要跑 `/sync-gbrain`（orchestrator 检测到活动 autopilot 会拒绝破坏性源操作，避免竞态 #1734）。注册用户仓库优先 `gbrain sources add --path <dir>`（不带 `--url`：URL 管理源可能自动 re-clone，其同步需要显式 `--allow-reclone` 选入）。
 
