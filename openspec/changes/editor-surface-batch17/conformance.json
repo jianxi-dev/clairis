@@ -418,6 +418,141 @@
           "source": "#754 第 16 条 / design D14"
         }
       ]
+    },
+    {
+      "id": "R-17",
+      "text": "页签空白双击与更多菜单",
+      "anchors": [
+        {
+          "id": "A-17.1",
+          "claim": "双击页签空白后窗口最大化状态",
+          "kind": "exact",
+          "assert": "true",
+          "source": "#754 新增第 1 条 / design D15"
+        },
+        {
+          "id": "A-17.2",
+          "claim": "再次双击后最大化状态",
+          "kind": "state-machine",
+          "assert": "变为 false",
+          "source": "#754 新增第 1 条 / design D15"
+        },
+        {
+          "id": "A-17.3",
+          "claim": "更多菜单第一项文本",
+          "kind": "exact",
+          "assert": "\"新建文件\"",
+          "source": "#754 新增第 1 条 / design D15"
+        }
+      ]
+    },
+    {
+      "id": "R-18",
+      "text": "页签右键菜单文件动作",
+      "anchors": [
+        {
+          "id": "A-18.1",
+          "claim": "菜单项索引关系",
+          "kind": "exact",
+          "assert": "idx(导出) < idx(复制路径) < idx(打开文件位置)",
+          "source": "#754 新增第 2 条 / design D16"
+        },
+        {
+          "id": "A-18.2",
+          "claim": "刷新与关闭索引关系",
+          "kind": "exact",
+          "assert": "idx(刷新) < idx(关闭)",
+          "source": "#754 新增第 2 条 / design D16"
+        },
+        {
+          "id": "A-18.3",
+          "claim": "三项各出现次数",
+          "kind": "exact",
+          "assert": "1",
+          "source": "#754 新增第 2 条 / design D16"
+        }
+      ]
+    },
+    {
+      "id": "R-19",
+      "text": "嵌入视频",
+      "anchors": [
+        {
+          "id": "A-19.1",
+          "claim": "MD 与 HTML 的 video 节点数",
+          "kind": "exact",
+          "assert": "各 1",
+          "source": "#754 新增第 3 条 / design D17"
+        },
+        {
+          "id": "A-19.2",
+          "claim": "播放后 currentTime",
+          "kind": "state-machine",
+          "assert": "变为 > 0",
+          "source": "#754 新增第 3 条 / design D17"
+        },
+        {
+          "id": "A-19.3",
+          "claim": "音量滑块 thumb 宽度（px）",
+          "kind": "exact",
+          "assert": "> 0",
+          "source": "#754 新增第 3 条 / design D17"
+        }
+      ]
+    },
+    {
+      "id": "R-20",
+      "text": "图片工具条贴边",
+      "anchors": [
+        {
+          "id": "A-20.1",
+          "claim": "工具条与视口交集宽度（px）",
+          "kind": "exact",
+          "assert": "> 0（或隐藏）",
+          "source": "#754 新增第 4 条 / design D18"
+        },
+        {
+          "id": "A-20.2",
+          "claim": "工具条右边距视口右缘（px）",
+          "kind": "exact",
+          "assert": ">= 0",
+          "source": "#754 新增第 4 条 / design D18"
+        }
+      ]
+    },
+    {
+      "id": "R-21",
+      "text": "图片内联裁剪",
+      "anchors": [
+        {
+          "id": "A-21.1",
+          "claim": "裁剪确认/取消/还原按钮数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "#754 新增第 5 条 / design D19"
+        },
+        {
+          "id": "A-21.2",
+          "claim": "显示区域与 crop 数值差（px）",
+          "kind": "exact",
+          "assert": "<= 2",
+          "source": "#754 新增第 5 条 / design D19"
+        },
+        {
+          "id": "A-21.3",
+          "claim": "图片下方空白高度上限（px）",
+          "kind": "exact",
+          "assert": "8",
+          "source": "#754 新增第 5 条 / design D19"
+        },
+        {
+          "id": "A-21.4",
+          "claim": "框拖回整图后 crop 属性",
+          "kind": "state-machine",
+          "assert": "变为不存在",
+          "source": "#754 新增第 5 条 / design D19"
+        }
+      ]
     }
   ]
 }

@@ -29,3 +29,17 @@ PDF 顶部按钮栏 SHALL 支持固定显示与固定隐藏两种状态，并 SH
 
 - **WHEN** 用户把焦点放进 PDF 视图的 shadow DOM 控件后按 `⌘⇧D`
 - **THEN** 宿主 class 含 `pdf-chrome-pinned-hidden`；再按一次后不含；快捷键总览中 `mode-pdf-toolbar-pin` 行数 SHALL 为 1
+
+### Requirement: 嵌入视频显示与播放
+
+Markdown 预览/编辑态与 HTML 预览中嵌入的视频 SHALL 正常显示并可播放；内嵌播放控件的音量与进度滑块 SHALL 可见且可拖动，SHALL NOT 被白色色块覆盖。
+
+#### Scenario: 两处视频可播放
+
+- **WHEN** 用户打开含视频链接的 Markdown 与 HTML 文档
+- **THEN** 两处 `video` 节点数 SHALL 各为 1，`controls` SHALL 为 `true`，播放后 `currentTime` SHALL 大于 0
+
+#### Scenario: 滑块可见
+
+- **WHEN** 用户查看内嵌视频控件
+- **THEN** 音量滑块 thumb 的宽度 SHALL 大于 0，且与轨道颜色有可见对比

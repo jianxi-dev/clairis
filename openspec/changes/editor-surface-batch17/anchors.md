@@ -127,3 +127,43 @@
 | A-16.1 | exact | 行首输入 `,h1` 后菜单节点数 | 1 | #754 第 16 条 / design D14 |
 | A-16.2 | exact | 源码 | "/h1" | #754 第 16 条 / design D14 |
 | A-16.3 | exact | `/h1` 删到 `/` 后列表行数 | 17 | #754 第 16 条 / design D14 |
+
+## R-17 页签空白双击与更多菜单
+
+| id | kind | claim | assert | source |
+|---|---|---|---|---|
+| A-17.1 | exact | 双击页签空白后窗口最大化状态 | true | #754 新增第 1 条 / design D15 |
+| A-17.2 | state-machine | 再次双击后最大化状态 | 变为 false | #754 新增第 1 条 / design D15 |
+| A-17.3 | exact | 更多菜单第一项文本 | "新建文件" | #754 新增第 1 条 / design D15 |
+
+## R-18 页签右键菜单文件动作
+
+| id | kind | claim | assert | source |
+|---|---|---|---|---|
+| A-18.1 | exact | 菜单项索引关系 | idx(导出) < idx(复制路径) < idx(打开文件位置) | #754 新增第 2 条 / design D16 |
+| A-18.2 | exact | 刷新与关闭索引关系 | idx(刷新) < idx(关闭) | #754 新增第 2 条 / design D16 |
+| A-18.3 | exact | 三项各出现次数 | 1 | #754 新增第 2 条 / design D16 |
+
+## R-19 嵌入视频
+
+| id | kind | claim | assert | source |
+|---|---|---|---|---|
+| A-19.1 | exact | MD 与 HTML 的 video 节点数 | 各 1 | #754 新增第 3 条 / design D17 |
+| A-19.2 | state-machine | 播放后 currentTime | 变为 > 0 | #754 新增第 3 条 / design D17 |
+| A-19.3 | exact | 音量滑块 thumb 宽度（px） | > 0 | #754 新增第 3 条 / design D17 |
+
+## R-20 图片工具条贴边
+
+| id | kind | claim | assert | source |
+|---|---|---|---|---|
+| A-20.1 | exact | 工具条与视口交集宽度（px） | > 0（或隐藏） | #754 新增第 4 条 / design D18 |
+| A-20.2 | exact | 工具条右边距视口右缘（px） | >= 0 | #754 新增第 4 条 / design D18 |
+
+## R-21 图片内联裁剪
+
+| id | kind | claim | assert | source |
+|---|---|---|---|---|
+| A-21.1 | exact | 裁剪确认/取消/还原按钮数 | 0 | #754 新增第 5 条 / design D19 |
+| A-21.2 | exact | 显示区域与 crop 数值差（px） | <= 2 | #754 新增第 5 条 / design D19 |
+| A-21.3 | exact | 图片下方空白高度上限（px） | 8 | #754 新增第 5 条 / design D19 |
+| A-21.4 | state-machine | 框拖回整图后 crop 属性 | 变为不存在 | #754 新增第 5 条 / design D19 |

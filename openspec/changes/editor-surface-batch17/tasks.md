@@ -8,7 +8,7 @@
 
 依赖：无
 
-- [ ] 1.1 页签右键菜单外点 / Esc / 失焦 / 滚动关闭
+- [x] 1.1 页签右键菜单外点 / Esc / 失焦 / 滚动关闭
   - 粒度：用户可见交付物
   - 实现：`src/components/TabBar.tsx:213-249` 把关闭监听从单条 `window click` 扩为四条来源：`document pointerdown`（capture）、`keydown Escape`、`window blur`、`window scroll/resize`（capture）；内部判定 `target.closest(".fixed.z-50")` 改为 `target.closest("[data-tab-menu]")`；菜单 DOM 已带 `data-tab-menu`（`:454`），右键 `contextmenu` 同步注册并跳过首个事件；iframe 场景以 `window blur` + 下一次 `pointerdown` 兜底。
   - 验收：打开页面右键页签打开菜单后点击菜单外部，`[data-tab-menu]` 节点数严格等于 0；按 Esc 后为 0；切换应用触发失焦后为 0；滚动正文后为 0；四种来源各往返一次后无残留菜单节点，且点击「关闭其他」仍只关闭其它页签。
@@ -20,7 +20,7 @@
 
 依赖：无
 
-- [ ] 2.1 PDF 按钮栏固定 / 隐藏快捷键在视图内生效且可发现
+- [x] 2.1 PDF 按钮栏固定 / 隐藏快捷键在视图内生效且可发现
   - 粒度：用户可见交付物
   - 实现：`src/App.tsx:584-590` 的 `⌘⇧D` 分支从 window 冒泡改为 `document` capture 阶段处理（复用 `:700-708` Cmd+I 既有 capture 写法），命中时 `preventDefault`；`src/components/Content/PdfViewer.tsx:156-202` 保留 `pdf:toggle-toolbar-pin` 注册并在固定按钮 `title` 补 `（⌘⇧D）`；`src/lib/shortcuts.ts:211-212` 条目保留，总览按 `shortcutsByFamily` 自动渲染。
   - 验收：打开页面进入 PDF 视图并把焦点放进 shadow DOM 控件，按 `⌘⇧D` 后宿主 class 含 `pdf-chrome-pinned-hidden`；再按不含；总览中 `mode-pdf-toolbar-pin` 行数严格等于 1；切换文档后宿主 class 不含 `pdf-chrome-pinned-hidden`。
@@ -56,7 +56,7 @@
 
 依赖：无
 
-- [ ] 5.1 MD 预览分栏渲染为多栏
+- [x] 5.1 MD 预览分栏渲染为多栏
   - 粒度：用户可见交付物
   - 实现：`src/renderers/markdown.ts:205` 同层新增 `preprocessColumnDivs`（识别 `^ {0,3}:::+\s*\{([^}]*)\}\s*$` 且属性含 `.col-N` 或 `cols=N`，N=1..6，配对闭围栏），在 `:391` `renderMarkdown` 中于 `preprocessAlignmentDivs` 后调用；`src/styles/reader.css:98` 后新增 `.preview-content .layout-col-N` 网格规则与窄视口单列折叠。
   - 验收：打开页面含 `::: {.col-2}` 的文档，预览态 `.preview-content .layout-col-2` 节点数严格等于 1；可见文本含 `:::` 次数为 0；两栏子项 x 差大于 0；不含 `col` 的 `:::` 围栏保持原样。
@@ -195,3 +195,64 @@
   - e2e：`e2e/slash-menu.spec.ts`（扩展）
   - 接线归属：`smart-input.ts` + `slash.ts` 内完成。
   - 数据面：无
+
+## 17. 页签空白双击与更多菜单
+
+依赖：无
+
+- [ ] 17.1 双击页签空白切换窗口全屏 / 还原；更多菜单「新建文件」置顶
+  - 粒度：用户可见交付物
+  - 实现：`src/components/TabBar.tsx` 页签栏空白区域 `onDoubleClick` 调 Tauri 窗口 `toggleMaximize`（或等价全屏 action），双击不再新建文档；`src/components/TabBar.tsx` 的「更多」下拉第一项改为「新建文件」（`data-menu-item="new-file"`），其余项顺序后移。
+  - 验收：打开页面双击页签栏空白，窗口 `isMaximized()` 严格等于 true；再双击严格等于 false；「更多」菜单第一项文本严格等于「新建文件」；取消菜单后无残留。
+  - e2e：`e2e/tab-context-menu.spec.ts`（扩展，窗口状态用 mock IPC 桥断言）
+  - 接线归属：`TabBar.tsx` + Tauri window API 内完成。
+  - 数据面：无
+
+## 18. 页签右键菜单文件动作
+
+依赖：无
+
+- [ ] 18.1 右键菜单加入导出 / 打开文件位置 / 刷新并按规定顺序
+  - 粒度：用户可见交付物
+  - 实现：`src/components/TabBar.tsx` 的 `CtxMenu` 项增加「导出」（复用现有导出菜单入口）、「打开文件位置」（复用 reveal 命令）、「刷新」（重新读取当前文件）；顺序：导出在「复制路径」上方，打开文件位置在其下方，刷新在「关闭」上方。
+  - 验收：打开页面右键页签，菜单项索引满足 `idx(导出) < idx(复制路径) < idx(打开文件位置)` 且 `idx(刷新) < idx(关闭)`；三项各出现严格等于 1 次；点导出打开导出菜单，关闭后无残留。
+  - e2e：`e2e/tab-context-menu.spec.ts`（扩展）
+  - 接线归属：`TabBar.tsx` + 既有导出/reveal action 内完成。
+  - 数据面：无
+
+## 19. 嵌入视频显示与播放
+
+依赖：无
+
+- [ ] 19.1 MD / HTML 嵌入视频正常显示播放，内嵌控件滑块可见
+  - 粒度：用户可见交付物
+  - 实现：核对 MD `MediaWidget`（`src/editors/decorations/image.ts`）与 HTML 预览 iframe 的 `<video>` 渲染路径，确保 `src` 解析到可达 URL、`controls` 存在、`preload="metadata"`；修 `src/styles/player.css` / `src/styles/editor.css` 中音量/进度控件：滑块 thumb 不得被白色粗块覆盖（thumb 宽度 > 0、颜色与轨道有对比）。
+  - 验收：打开页面含视频链接的 MD 与 HTML 文档，两处 `video` 节点数严格等于 1 且 `controls === true`；播放后 `currentTime > 0`；音量滑块可见宽度 > 0；关闭文档后无残留 video。
+  - e2e：`e2e/media-render.spec.ts`（扩展）
+  - 接线归属：`image.ts`（MD）+ HTML 预览运行时 + CSS 内完成。
+  - 数据面：无
+
+## 20. 图片工具条贴边
+
+依赖：无
+
+- [ ] 20.1 图片滑出窗口后工具条不越出视口
+  - 粒度：用户可见交付物
+  - 实现：`src/editors/decorations/imageToolbar.ts` 的 `positionToolbar` 对目标矩形做视口夹取：工具条 `left/top` 钳制在 `8px..视口-尺寸-8px`；锚点完全在视口外时隐藏工具条。
+  - 验收：打开页面把图片滚动到视口边缘外，工具条 `getBoundingClientRect()` 与视口交集非空（或不显示）；任何滚动位置下工具条右/下边不超过视口；滚回后工具条重新出现且位置正确。
+  - e2e：`e2e/image-align-anchor.spec.ts`（扩展）
+  - 接线归属：`imageToolbar.ts` 内完成。
+  - 数据面：无
+
+## 21. 图片内联裁剪
+
+依赖：无
+
+- [ ] 21.1 裁剪改为图片上直接操作，无对话框与按钮，拖回原位恢复
+  - 粒度：用户可见交付物
+  - 实现：`src/editors/decorations/imageCrop.ts` 去掉弹窗/确认/取消/还原按钮，改为在图片 widget 上覆盖裁剪框与边角 handle；`pointermove` 实时更新 `object-fit:none` + `object-position` 显示；松手写回 `crop`；拖回全图范围时移除 `crop` 属性；修正 widget 行高与下方空白（`display:block` + 容器高度=裁剪后显示高度）。
+  - 验收：打开页面点裁剪后 DOM 中确认/取消/还原按钮数严格等于 0；拖动裁剪框后显示区域与 crop 数值差 ≤ 2px；图片下方空白高度 ≤ 8px；把框拖回整图后源码 `crop` 属性不存在；Esc 取消后恢复裁剪前状态且无残留。
+  - e2e：`e2e/image-crop.spec.ts`（扩展）
+  - 接线归属：`imageCrop.ts` + `image.ts` + `editor.css` 内完成。
+  - 数据面：无
+
