@@ -624,16 +624,15 @@ class ImageWidget extends WidgetType {
     container.className = "cm-image-widget";
     container.dataset.imageFrom = String(this._from);
     container.dataset.imageTitle = this._title ?? "";
-    // 对齐：块级 + fit-content + auto 外边距，在行盒内左/中/右落位。
-    // 属性缺省（新插入图片）按居中渲染，但除非用户显式选择，不写回 markdown。
+    // 对齐：容器保持 inline-block（block 化会让其后置的 CM6 widgetBuffer
+    // 自成一条 28.9px 行盒，图下多出空行），左/中/右由行级 text-align 落位
+    // （editor.css 的 :has 规则）。属性缺省按居中渲染，不写回 markdown。
     const align = this._align ?? "center";
     container.dataset.align = align;
-    container.style.display = "block";
-    container.style.width = "fit-content";
+    container.style.display = "inline-block";
     container.style.position = "relative";
     container.style.maxWidth = "100%";
-    container.style.marginInline =
-      align === "left" ? "0" : align === "right" ? "auto 0" : "auto";
+    container.style.verticalAlign = "middle";
     // 圆角裁在 <img> 自己的像素上（clip-path），容器不设圆角：容器
     // overflow:hidden + border-radius 会把子元素裁在深色画布上，产生深色
     // 角晕。容器只铺一层主题底色，让透明 PNG 的圆角透出纸面而不是画布。

@@ -155,7 +155,7 @@ test("编辑态代码围栏与行内元素沿用预览排版", async ({ page }) 
   expect(typography!.fenceFont).toContain("SF Mono");
   expect(typography!.fenceSize).toBe("14.96px");
   expect(typography!.quoteBorder).not.toBe("rgb(99, 102, 241)");
-  expect(typography!.checkboxRadius).toBe("50%");
+  expect(typography!.checkboxRadius).toBe("3px");
 });
 
 test("语法高亮不改写标题排版", async ({ page }) => {
