@@ -16,12 +16,7 @@ import {
 import { renderIcon } from "../icons";
 import { menuStack } from "./menu-stack";
 import { MENU_WIDTH, MENU_ROW_HEIGHT } from "./menu-metrics";
-import {
-  PANEL_MAX_HEIGHT,
-  rectFromCoords,
-  intersectRects,
-  type AnchorRect,
-} from "./anchor";
+import { rectFromCoords, intersectRects, type AnchorRect } from "./anchor";
 import { placeMenu } from "./placement";
 import { getBlocks } from "../block-model";
 import type { BlockType } from "../block-model";
@@ -267,6 +262,37 @@ function anchorRectAt(
   };
 }
 
+/** 压缩后的菜单行高下限（px）。 */
+const MENU_ROW_MIN_HEIGHT = 28;
+
+/** 网格单元默认行高（px），与 editor.css 的 .cm-block-menu-cell 一致。 */
+const MENU_CELL_HEIGHT = 40;
+
+/** 把菜单压进可用高度（D11）：放得下就完整显示；放不下压缩行高（下限 28px），仍放不下才滚动。 */
+function fitPanelToHeight(panel: HTMLElement, available: number): void {
+  panel.style.maxHeight = "";
+  const natural = panel.offsetHeight;
+  if (natural <= available) return;
+  const scale = available / natural;
+  const rowHeight = Math.max(
+    MENU_ROW_MIN_HEIGHT,
+    Math.round(MENU_ROW_HEIGHT * scale),
+  );
+  const cellHeight = Math.max(
+    MENU_ROW_MIN_HEIGHT,
+    Math.round(MENU_CELL_HEIGHT * scale),
+  );
+  panel.querySelectorAll<HTMLElement>(".cm-block-menu-item").forEach((row) => {
+    row.style.height = `${rowHeight}px`;
+  });
+  panel.querySelectorAll<HTMLElement>(".cm-block-menu-cell").forEach((cell) => {
+    cell.style.height = `${cellHeight}px`;
+  });
+  if (panel.offsetHeight > available) {
+    panel.style.maxHeight = `${available}px`;
+  }
+}
+
 /**
  * 菜单摆放走 `placeMenu`（`align: "right"`）：贴手柄右侧、纵向以指针行为中心，
  * 越界按「右 → 右顶 → 左 → 左顶」取最近可用位，统一 8px 视口边距（#371）。
@@ -281,10 +307,7 @@ function positionPanel(
   const own = view.dom.getBoundingClientRect();
   const anchor = anchorRectAt(view, anchorPos, handle, blockType);
   const bounds = intersectRects(viewportRect(), boxRect(own));
-  panel.style.maxHeight = `${Math.max(
-    120,
-    Math.min(PANEL_MAX_HEIGHT, bounds.height - 16),
-  )}px`;
+  fitPanelToHeight(panel, Math.max(0, bounds.height - 16));
   const box = panel.getBoundingClientRect();
   const placement = placeMenu(
     anchor,
