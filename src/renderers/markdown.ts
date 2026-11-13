@@ -245,6 +245,77 @@ function preprocessAlignmentDivs(src: string): string {
   return result.join("\n");
 }
 
+// ── 预览分栏围栏 div（editor-surface-batch17 D5）────────────────
+// `::: {.col-N}` / `::: {cols=N}`（N=1..6）… `:::` → `<div class="layout-col-N">`，
+// 内部 markdown 递归交给 marked。非 col 围栏与未闭合围栏保持原样、不吞内容。
+
+const COL_DIV_OPEN_RE = /^ {0,3}:::+\s*\{([^}]*)\}\s*$/;
+const COL_DIV_CLOSE_RE = /^ {0,3}:::+\s*$/;
+const COL_ATTR_RE = /(?:\.col-([1-6])\b)|(?:cols\s*=\s*([1-6])\b)/;
+
+/** 该行是否是 col 分栏开围栏，是则返回栏数，否则 null。 */
+function colDivOf(line: string): number | null {
+  const open = COL_DIV_OPEN_RE.exec(line);
+  if (!open) return null;
+  const attr = COL_ATTR_RE.exec(open[1]);
+  if (!attr) return null;
+  return Number(attr[1] ?? attr[2]);
+}
+
+// 分栏 div 用占位符过渡：外层 marked 的 HTML 块分词遇到渲染后内部 HTML 里的
+// 空行会提前截断（代码块内含空行会被截坏），占位符让内部 HTML 绕过这一轮分词。
+const columnDivPlaceholders = new Map<string, string>();
+let columnPlaceholderSeq = 0;
+
+function preprocessColumnDivs(src: string): string {
+  const lines = src.split("\n");
+  const result: string[] = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const cols = colDivOf(lines[i]);
+    if (cols === null) {
+      result.push(lines[i]);
+      i += 1;
+      continue;
+    }
+
+    let depth = 1;
+    let end = -1;
+    for (let j = i + 1; j < lines.length; j += 1) {
+      if (COL_DIV_OPEN_RE.test(lines[j])) depth += 1;
+      else if (COL_DIV_CLOSE_RE.test(lines[j])) {
+        depth -= 1;
+        if (depth === 0) {
+          end = j;
+          break;
+        }
+      }
+    }
+
+    if (end === -1) {
+      result.push(lines[i]);
+      i += 1;
+      continue;
+    }
+
+    const inner = lines.slice(i + 1, end).join("\n");
+    const innerHtml = marked.parse(preprocessColumnDivs(inner), {
+      async: false,
+    }) as string;
+    columnPlaceholderSeq += 1;
+    const placeholder = `<!--biaoyue-col-${columnPlaceholderSeq}-->`;
+    columnDivPlaceholders.set(
+      placeholder,
+      `<div class="layout-col-${cols}">${innerHtml}</div>`,
+    );
+    result.push(placeholder);
+    i = end + 1;
+  }
+
+  return result.join("\n");
+}
+
 // 结构标签行清理（#255）：
 // 独占一行的未知 HTML 标签会触发 CommonMark type-7 HTML 块，从这行起
 // 一直吞到下一个空行——后面的 `## 标题`、表格行全被当成 HTML 原文，
@@ -388,8 +459,16 @@ export function renderMarkdown(
   // data 属性的 span，等 DOM 建好再取到图片上。
   const stripped = content.replace(FRONTMATTER_RE, "");
   const withWidths = preprocessImageAttributes(stripped);
-  const body = preprocessAlignmentDivs(stripStructuralTagLines(withWidths));
-  const raw = marked.parse(body, { async: false }) as string;
+  columnDivPlaceholders.clear();
+  columnPlaceholderSeq = 0;
+  const body = preprocessColumnDivs(
+    preprocessAlignmentDivs(stripStructuralTagLines(withWidths)),
+  );
+  let raw = marked.parse(body, { async: false }) as string;
+  // 从最外层占位符开始替换：外层 HTML 里嵌着内层占位符，顺序不能颠倒。
+  for (const [placeholder, html] of [...columnDivPlaceholders].reverse()) {
+    raw = raw.split(placeholder).join(html);
+  }
   const clean = DOMPurify.sanitize(raw, SANITIZE_CONFIG);
   const result = postProcess(clean);
   activeResolveMedia = null;
