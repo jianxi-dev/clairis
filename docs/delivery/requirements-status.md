@@ -37,7 +37,7 @@ openspec status --change <name>   # 单个变更工件完成度
 
 ## 总览统计（截至 2026-11-09）
 
-- 规格：17 域 / 216 requirement（2026-11-13 归档 editor-surface-batch16 后）
+- 规格：17 域 / 216 requirement（2026-11-13 归档 table-editing-polish 后；本次仅修订 E-6/E-7/E-14，无新增）
 - ✅ 经 openspec 归档实现：56
 - 🟡 已实现/设计完成（未走 openspec 变更）：24
 - ⬜ 待开发：16
