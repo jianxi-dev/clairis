@@ -154,7 +154,7 @@ function configurePdfUi(
   if (commands) {
     commands.registerCommand({
       id: "pdf:toggle-toolbar-pin",
-      label: "固定显示 / 隐藏按钮栏",
+      label: "固定显示 / 隐藏按钮栏（⌘⇧D）",
       icon: "eye",
       categories: ["pdf-toolbar"],
       action: () => togglePin(),
