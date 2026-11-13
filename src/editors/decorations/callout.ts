@@ -23,8 +23,21 @@ import {
   getCalloutEmojiOverride,
   openCalloutEmojiPicker,
 } from "./callout-emoji";
-import { attachCalloutInsertMenu } from "./callout-insert";
+import { getCalloutSlashCommands } from "./callout-insert";
 import { createContentLineElement } from "./list";
+import { renderIcon } from "../icons";
+import {
+  getSlashCommands,
+  isSlashMenuOpen,
+  openContextMenu,
+  releaseInsertMenu,
+  slashMenuApply,
+  slashMenuClose,
+  slashMenuSelectNext,
+  slashMenuSelectPrev,
+  updateSlashMenuQuery,
+  type SlashCommand,
+} from "../slash";
 
 // --- 暂存 + flush -------------------------------------------------------------
 
@@ -129,6 +142,108 @@ export function flushCalloutEdits(view: EditorView): boolean {
   return true;
 }
 
+// --- 正文斜杠菜单（#743） -----------------------------------------------------
+
+/**
+ * 高亮块正文菜单命令集：全局命令 + 高亮片段（A-4.4）。
+ *
+ * #743 评审：片段表与全局命令有 7 组同名标签（标题/任务/引用/分割线/表格/
+ * 分栏/标注）。全局命令更丰富（grid/子菜单）且同样走 context 写回，优先保留；
+ * 片段只在没有同名全局命令时补入，避免菜单出现双份。
+ */
+function getCalloutCommands(): SlashCommand[] {
+  const global = getSlashCommands();
+  const labels = new Set(global.map((cmd) => cmd.label));
+  const snippets = getCalloutSlashCommands().filter(
+    (cmd) => !labels.has(cmd.label),
+  );
+  return [...global, ...snippets];
+}
+
+/** 一个就地编辑器的斜杠菜单状态与宿主回调（按 textarea 存放）。 */
+interface CalloutMenuEntry {
+  mode: "slash" | "handle" | null;
+  slashPos: number;
+  close: () => void;
+  cancel: () => void;
+  write: (text: string) => void;
+}
+
+const calloutMenus = new WeakMap<HTMLTextAreaElement, CalloutMenuEntry>();
+const calloutMenuOpeners = new WeakMap<HTMLElement, () => void>();
+
+/** 光标前最后一个 `/` 的下标 + 1（查询锚点）；没有 `/` 时退回光标位。 */
+function slashAnchor(area: HTMLTextAreaElement): number {
+  const caret = area.selectionStart ?? area.value.length;
+  const idx = area.value.lastIndexOf("/", caret);
+  return idx >= 0 ? idx + 1 : caret;
+}
+
+/**
+ * 打开高亮块正文的统一斜杠菜单（#743）。
+ *
+ * 与分栏（#742）同构：`slashMode` 为 true 时是查询模式（`/` 保留在 textarea 内
+ * 作查询锚点，选中替换 `[slashPos - 1, caret]`，取消回滚 `/query`）；为 false 时是
+ * 「+」手柄的非查询模式（无 `/`，选中在光标处零宽插入，取消无副作用）。两种模式都
+ * 只写回 textarea，落文档仍由 blur/离开卡片的 commit 路径完成。
+ */
+export function openCalloutContextMenu(
+  view: EditorView,
+  area: HTMLTextAreaElement,
+  commands: SlashCommand[],
+  slashMode: boolean,
+): void {
+  const entry = calloutMenus.get(area);
+  if (!entry) return;
+  entry.mode = slashMode ? "slash" : "handle";
+  entry.slashPos = slashMode ? slashAnchor(area) : -1;
+  const rect = area.getBoundingClientRect();
+  openContextMenu(view, commands, {
+    anchorRect: () => {
+      const r = area.isConnected ? area.getBoundingClientRect() : rect;
+      return { left: r.left, right: r.right, top: r.top, bottom: r.bottom };
+    },
+    applyText: entry.write,
+    cancel: entry.cancel,
+  });
+}
+
+/** 内容区（正文或就地编辑器）的屏幕矩形，供「+」手柄定位。 */
+function calloutContentArea(container: HTMLElement): {
+  left: number;
+  top: number;
+  height: number;
+} {
+  const editorEl = container.querySelector<HTMLElement>(".cm-callout-editor");
+  const contentEl = container.querySelector<HTMLElement>(".cm-callout-content");
+  const anchor = editorEl ?? contentEl;
+  if (anchor) {
+    const r = anchor.getBoundingClientRect();
+    if (r.width > 0 || r.height > 0) {
+      return { left: r.left, top: r.top, height: r.height };
+    }
+  }
+  // 空正文且未在编辑：锚在头部下方、卡片内容 box 的左缘。
+  const containerRect = container.getBoundingClientRect();
+  const headerEl = container.querySelector<HTMLElement>(".cm-callout-header");
+  const style = window.getComputedStyle(container);
+  const padLeft = Number.parseFloat(style.paddingLeft) || 0;
+  const padBottom = Number.parseFloat(style.paddingBottom) || 0;
+  const borderLeft = Number.parseFloat(style.borderLeftWidth) || 0;
+  const borderBottom = Number.parseFloat(style.borderBottomWidth) || 0;
+  const headerBottom = headerEl
+    ? headerEl.getBoundingClientRect().bottom
+    : containerRect.top;
+  return {
+    left: containerRect.left + borderLeft + padLeft,
+    top: headerBottom,
+    height: Math.max(
+      0,
+      containerRect.bottom - borderBottom - padBottom - headerBottom,
+    ),
+  };
+}
+
 /**
  * 打开高亮块卡片的正文行内编辑器。CM6 可能在上次点击后重建了 widget，所以按
  * 序号从实时 DOM 解析。
@@ -137,6 +252,7 @@ function openCalloutEditor(
   view: EditorView,
   index: number,
   press?: { x: number; y: number },
+  openHandleMenu = false,
 ): void {
   // 先落定任何打开的高亮块，且要在解析 DOM 之前：flush 派发可能重建本 widget，
   // 那样会摘掉更早解析出的卡片。
@@ -149,6 +265,7 @@ function openCalloutEditor(
   ) as HTMLTextAreaElement | null;
   if (existing) {
     existing.focus();
+    if (openHandleMenu) calloutMenuOpeners.get(card)?.();
     return;
   }
 
@@ -172,10 +289,65 @@ function openCalloutEditor(
   editor.setSelectionRange(caret, caret);
 
   let composing = false;
-  // #468：卡片内 `/` 打开卡片自己的插入菜单（斜杠菜单曾落到文档、插到卡片上方）。
-  const detachInsertMenu = attachCalloutInsertMenu({ editor, card });
+  // #743：正文 `/` 与「+」手柄都走统一斜杠菜单（独立片段菜单已退役）。
+  const entry: CalloutMenuEntry = {
+    mode: null,
+    slashPos: -1,
+    close: (): void => {
+      entry.mode = null;
+      entry.slashPos = -1;
+      releaseInsertMenu(view, "context");
+    },
+    cancel: (): void => {
+      if (entry.mode === "slash" && entry.slashPos >= 0 && editor.isConnected) {
+        const end = Math.max(
+          entry.slashPos,
+          editor.selectionStart ?? editor.value.length,
+        );
+        editor.value =
+          editor.value.slice(0, entry.slashPos - 1) + editor.value.slice(end);
+        editor.setSelectionRange(entry.slashPos - 1, entry.slashPos - 1);
+        // 程序化改值要同步暂存，否则外点 flush 会把回滚前的 `/query` 写进文档。
+        markCalloutDirty(view, index, { content: editor.value });
+      }
+      entry.close();
+    },
+    write: (text: string): void => {
+      if (!editor.isConnected) {
+        entry.close();
+        return;
+      }
+      if (entry.mode === "slash" && entry.slashPos >= 0) {
+        const end = Math.max(
+          entry.slashPos,
+          editor.selectionStart ?? editor.value.length,
+        );
+        editor.value =
+          editor.value.slice(0, entry.slashPos - 1) +
+          text +
+          editor.value.slice(end);
+        const next = entry.slashPos - 1 + text.length;
+        editor.setSelectionRange(next, next);
+      } else {
+        const at = editor.selectionStart ?? editor.value.length;
+        editor.value =
+          editor.value.slice(0, at) + text + editor.value.slice(at);
+        const next = at + text.length;
+        editor.setSelectionRange(next, next);
+      }
+      // 同 cancel：程序化写回要同步暂存，外点 flush 才不会写旧值。
+      markCalloutDirty(view, index, { content: editor.value });
+      entry.close();
+    },
+  };
+  calloutMenus.set(editor, entry);
+  calloutMenuOpeners.set(card, () => {
+    openCalloutContextMenu(view, editor, getCalloutCommands(), false);
+  });
+
   const teardown = (): void => {
-    detachInsertMenu();
+    calloutMenus.delete(editor);
+    calloutMenuOpeners.delete(card);
     editor.remove();
     contentEl?.removeAttribute("hidden");
   };
@@ -188,7 +360,33 @@ function openCalloutEditor(
 
   editor.addEventListener("input", () => {
     autoGrow(editor);
+    if (composing) {
+      markCalloutDirty(view, index, { content: editor.value });
+      return;
+    }
+    if (entry.mode === "slash") {
+      // 查询模式（#743 评审）：不暂存 "/query"——否则菜单开着时外部 mousedown
+      // 的 flush 会把它写进文档（瞬态脏值）。回滚/写回时 cancel/write 会显式
+      // 暂存最终文本。
+      // 触发符被删 = 查询锚点失效，直接关菜单（无残留可回滚）。
+      if (entry.slashPos < 0 || editor.value[entry.slashPos - 1] !== "/") {
+        entry.close();
+        return;
+      }
+      // 光标退到触发符之前也算放弃查询。
+      const at = editor.selectionStart ?? editor.value.length;
+      if (at < entry.slashPos) {
+        entry.close();
+        return;
+      }
+      updateSlashMenuQuery(view, editor.value.slice(entry.slashPos, at));
+      return;
+    }
     markCalloutDirty(view, index, { content: editor.value });
+    if (entry.mode === "handle") return;
+    // 末尾 `/` 就地打开查询菜单。
+    if (!editor.value.endsWith("/")) return;
+    openCalloutContextMenu(view, editor, getCalloutCommands(), true);
   });
   editor.addEventListener("compositionstart", () => {
     composing = true;
@@ -199,6 +397,29 @@ function openCalloutEditor(
   });
   editor.addEventListener("keydown", (event) => {
     event.stopPropagation();
+    // 菜单开着：键盘驱动菜单（焦点在 textarea，CM6 keymap 不可达，#741）。
+    if (entry.mode !== null && isSlashMenuOpen(view)) {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        slashMenuApply(view);
+        return;
+      }
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        slashMenuSelectNext(view);
+        return;
+      }
+      if (event.key === "ArrowUp") {
+        event.preventDefault();
+        slashMenuSelectPrev(view);
+        return;
+      }
+      if (event.key === "Escape") {
+        event.preventDefault();
+        slashMenuClose(view);
+        return;
+      }
+    }
     if (event.key === "Escape") {
       event.preventDefault();
       clearCalloutDirty(view, index);
@@ -206,7 +427,10 @@ function openCalloutEditor(
     }
   });
   editor.addEventListener("blur", () => {
-    if (!composing) commit();
+    if (composing) return;
+    // 菜单还开着就失焦（Alt-Tab 等）：先取消回滚，绝不让 `/query` 进文档。
+    if (entry.mode !== null && isSlashMenuOpen(view)) slashMenuClose(view);
+    commit();
   });
   editor.addEventListener("mousedown", (event) => event.stopPropagation());
   // #468：空正文不能残留成一行游离的 `>`。离开卡片即落定，空提交会整段删掉正文
@@ -215,6 +439,10 @@ function openCalloutEditor(
     if (composing || !editor.isConnected) return;
     if (editor.value.trim() === "") commit();
   });
+
+  if (openHandleMenu) {
+    openCalloutContextMenu(view, editor, getCalloutCommands(), false);
+  }
 }
 
 /**
@@ -380,6 +608,8 @@ function wireExternalFlush(view: EditorView): void {
 // --- Callout widget -----------------------------------------------------------
 
 class CalloutWidget extends WidgetType {
+  private view: EditorView | null = null;
+
   constructor(
     readonly index: number,
     readonly type: string,
@@ -394,6 +624,7 @@ class CalloutWidget extends WidgetType {
   }
 
   toDOM(view?: EditorView): HTMLElement {
+    this.view = view ?? null;
     const container = document.createElement("div");
     container.className = "cm-callout";
     container.classList.add(`cm-callout-tone-${this.tone}`);
@@ -501,6 +732,7 @@ class CalloutWidget extends WidgetType {
       container.appendChild(contentEl);
     }
 
+    container.appendChild(this.buildAddHandle(view, container));
     return container;
   }
 
@@ -519,6 +751,59 @@ class CalloutWidget extends WidgetType {
 
   get estimatedHeight(): number {
     return 60;
+  }
+
+  /**
+   * 内容区「+」新增手柄（#743 / A-4.5）：贴内容区左缘外侧、纵向居中，与分栏手柄
+   * 同款形态（16×16、圆角 3px）。悬停卡片才显示；点击打开正文编辑器并以非查询
+   * 模式打开菜单。
+   */
+  private buildAddHandle(
+    view: EditorView | undefined,
+    container: HTMLElement,
+  ): HTMLElement {
+    const handle = document.createElement("div");
+    handle.className = "cm-callout-add-handle";
+    handle.setAttribute("data-testid", "cm-callout-add-handle");
+    handle.title = "新增内容";
+    handle.replaceChildren(renderIcon("AddOutlined"));
+    if (!view) return handle;
+
+    const position = (): void => {
+      const area = calloutContentArea(container);
+      const containerRect = container.getBoundingClientRect();
+      const style = window.getComputedStyle(container);
+      const borderLeft = Number.parseFloat(style.borderLeftWidth) || 0;
+      const borderTop = Number.parseFloat(style.borderTopWidth) || 0;
+      handle.style.left = `${
+        area.left - containerRect.left - borderLeft - 16
+      }px`;
+      handle.style.top = `${
+        area.top - containerRect.top - borderTop + area.height / 2
+      }px`;
+    };
+    container.addEventListener("mouseenter", position, { passive: true });
+    container.addEventListener("mousemove", position, { passive: true });
+    handle.addEventListener("mousedown", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const opener = calloutMenuOpeners.get(container);
+      if (opener) {
+        opener();
+        return;
+      }
+      openCalloutEditor(view, this.index, undefined, true);
+    });
+    return handle;
+  }
+
+  /**
+   * widget 消失（高亮块被删、模式切换拆除视图）时丢掉它拥有的上下文菜单，避免
+   * 孤儿面板浮在别的视图上。
+   */
+  destroy(): void {
+    if (!this.view) return;
+    releaseInsertMenu(this.view, "context");
   }
 }
 
