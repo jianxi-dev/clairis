@@ -10,6 +10,7 @@ import {
   toggleMediaMuted,
 } from "./Content/mediaMute";
 import { popOverlay, pushOverlay } from "../lib/overlayGate";
+import { revealInFinder } from "../lib/finder";
 import type { Tab } from "../types";
 
 interface TabBarProps {
@@ -30,6 +31,30 @@ interface TabBarProps {
 
 /** 指针移动超过该像素才算拖拽，以下视为点击切签。 */
 const DRAG_THRESHOLD_PX = 4;
+
+// 驱动兄弟组件 PaneHeader 的既有导出菜单（无共享状态，复制整套导出管线代价更大）。
+// 只派发 click：不产生 mousedown，不会命中「更多操作」的外部点击关闭。
+function openPaneExportMenu(tabEl: HTMLElement | null | undefined): void {
+  const pane = tabEl?.closest("[data-pane-id]");
+  const menuButton = pane?.querySelector<HTMLButtonElement>(
+    '[data-testid="pane-menu-button"]',
+  );
+  if (!menuButton) return;
+  menuButton.click();
+  const clickExport = (attempt: number): void => {
+    const item = pane?.querySelector<HTMLButtonElement>(
+      '[data-menu-item="export"]',
+    );
+    if (item) {
+      item.click();
+      return;
+    }
+    if (attempt < 20) {
+      window.setTimeout(() => clickExport(attempt + 1), 16);
+    }
+  };
+  window.setTimeout(() => clickExport(0), 0);
+}
 
 interface CtxMenu {
   x: number;
@@ -546,6 +571,24 @@ export default function TabBar({
             style={{ background: "var(--app-border)" }}
           />
           <button
+            data-menu-item="export"
+            className="w-full flex items-center gap-2 text-left px-3 py-1.5 hover:bg-[var(--app-sunken)] disabled:cursor-not-allowed disabled:opacity-45"
+            disabled={!tabs[menu.tabId]?.path}
+            title={
+              tabs[menu.tabId]?.path ? "导出" : "此页签尚未保存，无路径可导出"
+            }
+            onClick={() => {
+              const el = stripRef.current?.querySelector<HTMLElement>(
+                `[data-tab-id="${menu.tabId}"]`,
+              );
+              closeMenu();
+              openPaneExportMenu(el);
+            }}
+          >
+            <Icon name="export" size={18} />
+            导出
+          </button>
+          <button
             className="w-full flex items-center gap-2 text-left px-3 py-1.5 hover:bg-[var(--app-sunken)] disabled:cursor-not-allowed disabled:opacity-45"
             disabled={!tabs[menu.tabId]?.path}
             title={
@@ -565,6 +608,24 @@ export default function TabBar({
           >
             <Icon name="copyPath" size={18} />
             复制路径
+          </button>
+          <button
+            data-menu-item="reveal"
+            className="w-full flex items-center gap-2 text-left px-3 py-1.5 hover:bg-[var(--app-sunken)] disabled:cursor-not-allowed disabled:opacity-45"
+            disabled={!tabs[menu.tabId]?.path}
+            title={
+              tabs[menu.tabId]?.path
+                ? "打开文件位置"
+                : "此页签尚未保存，无路径可定位"
+            }
+            onClick={() => {
+              const path = tabs[menu.tabId]?.path;
+              closeMenu();
+              if (path) revealInFinder(path);
+            }}
+          >
+            <Icon name="locate" size={18} />
+            打开文件位置
           </button>
           <button
             className="w-full flex items-center gap-2 text-left px-3 py-1.5 hover:bg-[var(--app-sunken)] disabled:cursor-not-allowed disabled:opacity-45"
@@ -594,6 +655,39 @@ export default function TabBar({
           >
             <Icon name="locate" size={18} />
             移动到…
+          </button>
+          <button
+            data-menu-item="reload"
+            className="w-full flex items-center gap-2 text-left px-3 py-1.5 hover:bg-[var(--app-sunken)] disabled:cursor-not-allowed disabled:opacity-45"
+            disabled={!tabs[menu.tabId]?.path}
+            title={
+              tabs[menu.tabId]?.path
+                ? tabs[menu.tabId]?.dirty
+                  ? "有未保存改动，先保存再刷新"
+                  : "刷新"
+                : "此页签尚未保存，无法刷新"
+            }
+            onClick={() => {
+              const tab = tabs[menu.tabId];
+              const path = tab?.path;
+              closeMenu();
+              if (!path || tab.dirty) return;
+              void invoke<{ path: string; content: string }>(
+                "open_file_direct",
+                {
+                  path,
+                },
+              )
+                .then((result) => {
+                  useStore
+                    .getState()
+                    .refreshTabContent(menu.tabId, result.content);
+                })
+                .catch(() => undefined);
+            }}
+          >
+            <Icon name="refresh" size={18} />
+            刷新
           </button>
           <button
             className="w-full flex items-center gap-2 text-left px-3 py-1.5 hover:bg-[var(--app-sunken)]"
