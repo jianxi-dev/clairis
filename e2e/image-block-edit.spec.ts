@@ -272,12 +272,12 @@ test("裁剪按钮启用：打开浮层，Esc 取消无文档改动", async ({ p
   expect(await content(page)).toBe(doc);
 });
 
-test("图片圆角 8px", async ({ page }) => {
+test("图片圆角 12px", async ({ page }) => {
   await openEditor(page, "![pic](assets/pic.png)\n", "imgradius", PNG_DATA_URL);
   const img = page.locator(".cm-image-widget img");
   await expect(img).toHaveCount(1);
   const clip = await img.evaluate((el) => getComputedStyle(el).clipPath);
-  expect(clip).toContain("8px");
+  expect(clip).toContain("12px");
 });
 
 test("双击放大：浮层出现，Esc 关闭，文档不变", async ({ page }) => {

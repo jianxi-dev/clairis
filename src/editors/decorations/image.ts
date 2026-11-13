@@ -666,7 +666,8 @@ class ImageWidget extends WidgetType {
           img.setAttribute("data-height", String(this._height));
         }
       }
-      img.style.clipPath = "inset(0 round 8px)";
+      // 12px 必须与 reader.css 的 --reader-image-radius 保持一致（D17）。
+      img.style.clipPath = "inset(0 round 12px)";
       container.appendChild(img);
     } else {
       // 解析不出的图片：文字回退
