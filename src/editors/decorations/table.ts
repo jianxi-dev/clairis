@@ -24,7 +24,7 @@ import {
   type EditorView,
 } from "@codemirror/view";
 import {
-  defaultCommands,
+  getSlashCommands,
   openInsertMenu,
   openContextMenu,
   releaseInsertMenu,
@@ -569,8 +569,11 @@ function openCellEditor(
     // 与文档级一致：菜单全开期间不 flush 暂存文本——文档里不该出现 "/query"，
     // 写回/回滚都只动输入框（#741）。
     // 单元格语境与 anchor 菜单同款过滤：只列行内命令（GFM 单元格只有一行，
-    // 块级模板进单元格会被压平；#744 再做上下文级命令集）。
-    const inlineCommands = defaultCommands.filter((cmd) => cmd.inline === true);
+    // 块级模板进单元格会被压平）。#744 起单元格菜单 = 行内内置命令 + 单行用户
+    // 片段：snippetToCommand 已按正文单行性标注 inline，这里用同一标记收敛。
+    const inlineCommands = getSlashCommands().filter(
+      (cmd) => cmd.inline === true,
+    );
     openContextMenu(view, inlineCommands, {
       anchorRect: () => {
         const r = input.isConnected ? input.getBoundingClientRect() : rect;
@@ -943,7 +946,7 @@ class TableWidget extends WidgetType {
     openInsertMenu(
       view,
       cell.from,
-      defaultCommands,
+      getSlashCommands(),
       { from: cell.from, to: cell.to },
       "anchor",
       anchorRect,

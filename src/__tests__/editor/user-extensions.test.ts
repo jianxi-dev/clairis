@@ -28,6 +28,7 @@ describe("snippetToCommand", () => {
     expect(cmd.insert?.(EditorState.create({ doc: "" }))?.text).toBe(
       "## 本周\n\n- 完成：\n",
     );
+    expect(cmd.inline).not.toBe(true);
   });
 
   it("keywords 作为别名，缺省 icon 时省略", () => {
@@ -36,6 +37,20 @@ describe("snippetToCommand", () => {
     );
     expect(cmd.aliases).toEqual([]);
     expect(cmd.icon).toBeUndefined();
+    expect(cmd.inline).toBe(true);
+  });
+
+  it("按正文单行性标注 inline", () => {
+    expect(snippetToCommand(snippet({ body: "单行片段" })).inline).toBe(true);
+    expect(snippetToCommand(snippet({ body: "两行\n片段" })).inline).not.toBe(
+      true,
+    );
+    expect(snippetToCommand(snippet({ body: "尾部换行\n" })).inline).not.toBe(
+      true,
+    );
+    // 边界：空串是单行（无害）；CRLF 是换行。
+    expect(snippetToCommand(snippet({ body: "" })).inline).toBe(true);
+    expect(snippetToCommand(snippet({ body: "a\r\nb" })).inline).not.toBe(true);
   });
 });
 

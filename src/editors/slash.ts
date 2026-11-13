@@ -258,6 +258,9 @@ export const defaultCommands: SlashCommand[] = [
     aliases: ["media"],
     group: "常用",
     pickMedia: true,
+    // D5：单元格安全集 = 行内命令（图片/媒体引用）+ 单行片段。媒体引用同样是
+    // 单行行内引用，标 inline 让单元格菜单与图片引用并列（#744）。
+    inline: true,
   },
   {
     id: "table",

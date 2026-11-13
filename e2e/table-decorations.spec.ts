@@ -184,6 +184,10 @@ test("单元格菜单只列行内命令，选中后插进单元格而不是表�
   // 块级命令不该出现在单元格菜单里（它们进不去单元格）
   await expect(menu.locator("text=标题")).toHaveCount(0);
   await expect(menu.locator("text=表格")).toHaveCount(0);
+  await expect(menu.locator("text=分栏")).toHaveCount(0);
+  await expect(menu.locator("text=代码块")).toHaveCount(0);
+  // 行内命令在列。
+  await expect(menu.locator("text=图片引用")).toHaveCount(1);
 
   const before = await page.evaluate(() => {
     const store = (window as unknown as Record<string, any>).__biaoyue_store__;
@@ -201,6 +205,117 @@ test("单元格菜单只列行内命令，选中后插进单元格而不是表�
     return s.tabs[s.activeTabId]?.content as string;
   });
   expect(after).toBe(before);
+});
+
+test("A-3.5 单元格菜单含单行用户片段，选中后落进单元格且表格结构不变", async ({
+  page,
+}) => {
+  // 片段注入必须在应用加载前（编辑器创建时读取 list_extensions）。
+  await page.addInitScript(() => {
+    (
+      window as unknown as { __biaoyue_extensions__?: unknown }
+    ).__biaoyue_extensions__ = {
+      snippets: [
+        {
+          id: "t-snippet",
+          label: "测试片段",
+          keywords: [],
+          body: "SNIPPET-X",
+        },
+      ],
+      templates: [],
+      theme: { tokens: {}, warnings: [] },
+      warnings: [],
+    };
+  });
+  await page.reload({ waitUntil: "networkidle" });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 10000 });
+
+  await openTableDoc(
+    page,
+    "/tmp/cell-snippet.md",
+    "| A | B |\n| --- | --- |\n| a1 |  |\n",
+  );
+  const table = page.locator("table.cm-table");
+  const rowsBefore = await table.locator("tbody tr").count();
+  const colsBefore = await table.locator("thead th").count();
+
+  const cell = page.locator('td[data-row="0"][data-col="1"]');
+  await cell.click();
+  const input = page.locator('[data-testid="cm-table-cell-input"]');
+  await input.click();
+  await page.keyboard.type("/");
+  const menu = page.locator(".mdb-slash-menu");
+  await expect(menu).toBeVisible({ timeout: 3000 });
+  await expect(menu.locator("text=测试片段")).toHaveCount(1);
+
+  // 用片段 code 过滤到唯一行，回车选中（写回输入框）。
+  await page.keyboard.type("t-snippet");
+  await page.keyboard.press("Enter");
+  await expect(menu).toHaveCount(0);
+  // 再按 Enter 提交单元格，片段正文落进文档。
+  await page.keyboard.press("Enter");
+
+  await expect(cell.locator(".cm-table-cell-text")).toContainText("SNIPPET-X");
+  expect(await table.locator("tbody tr").count()).toBe(rowsBefore);
+  expect(await table.locator("thead th").count()).toBe(colsBefore);
+  // anchors R-3：源码单元格文本也含插入值（可见文本 = 源码）。
+  const source = await page.evaluate(() => {
+    const store = (window as unknown as Record<string, any>).__biaoyue_store__;
+    const st = store.getState();
+    return st.tabs[st.activeTabId]?.content as string;
+  });
+  const rowLine = source.split("\n").find((line) => line.startsWith("| a1 |"));
+  expect(rowLine).toBeDefined();
+  expect(rowLine).toContain("SNIPPET-X");
+});
+
+test("A-3.5 非空单元格：片段追加在已有文本后，表格结构不变", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    (
+      window as unknown as { __biaoyue_extensions__?: unknown }
+    ).__biaoyue_extensions__ = {
+      snippets: [
+        {
+          id: "t-snippet",
+          label: "测试片段",
+          keywords: [],
+          body: "SNIPPET-X",
+        },
+      ],
+      templates: [],
+      theme: { tokens: {}, warnings: [] },
+      warnings: [],
+    };
+  });
+  await page.reload({ waitUntil: "networkidle" });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 10000 });
+  await openTableDoc(
+    page,
+    "/tmp/cell-snippet-nonempty.md",
+    "| A | B |\n| --- | --- |\n| a1 |  |\n",
+  );
+  const table = page.locator("table.cm-table");
+  const rowsBefore = await table.locator("tbody tr").count();
+  const colsBefore = await table.locator("thead th").count();
+  const cell = page.locator('td[data-row="0"][data-col="0"]');
+  await cell.click();
+  const input = page.locator('[data-testid="cm-table-cell-input"]');
+  await input.click();
+  await expect(input).toHaveValue("a1");
+  await page.keyboard.type("/t-snippet");
+  const menu = page.locator(".mdb-slash-menu");
+  await expect(menu).toBeVisible({ timeout: 3000 });
+  await page.keyboard.press("Enter");
+  await expect(menu).toHaveCount(0);
+  await page.keyboard.press("Enter");
+  await expect(cell.locator(".cm-table-cell-text")).toContainText(
+    "a1SNIPPET-X",
+  );
+  expect(await table.locator("tbody tr").count()).toBe(rowsBefore);
+  expect(await table.locator("thead th").count()).toBe(colsBefore);
 });
 
 test("预览态表格同样有浅色竖分割线", async ({ page }) => {
