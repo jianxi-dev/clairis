@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Locator, type Page } from "@playwright/test";
 
 const APP_URL = "http://localhost:1420";
 
@@ -262,6 +262,121 @@ test("表格容器不出现滚动条，编辑态与预览态均为 visible", asy
       getComputedStyle(el).overflowX + "/" + getComputedStyle(el).overflowY,
   );
   expect(previewOverflow).toBe("visible/visible");
+});
+
+test("单元格手柄统一图标、垂直居中、在边框线外，表头无手柄（#739）", async ({
+  page,
+}) => {
+  await openTableDoc(
+    page,
+    "/tmp/cell-handle-unify.md",
+    "| 表头一 | 表头二 |\n| --- | --- |\n| 有内容 |  |\n",
+  );
+
+  const table = page.locator("table.cm-table");
+  await expect(table).toBeVisible();
+  const filled = table.locator('td[data-row="0"][data-col="0"]');
+  const empty = table.locator('td[data-row="0"][data-col="1"]');
+  await expect(filled).toBeVisible();
+  await expect(empty).toBeVisible();
+
+  const readState = async (cell: Locator) => {
+    await cell.hover();
+    const handle = cell.locator(".cm-table-cell-handle");
+    await expect
+      .poll(() => handle.evaluate((el) => getComputedStyle(el).opacity))
+      .toBe("1");
+    const cellBox = (await cell.boundingBox())!;
+    const handleBox = (await handle.boundingBox())!;
+    return {
+      handle,
+      icon: await handle.getAttribute("data-icon"),
+      svgIcon: await handle.locator("svg").getAttribute("data-icon"),
+      radius: await handle.evaluate((el) => getComputedStyle(el).borderRadius),
+      cellBox,
+      handleBox,
+    };
+  };
+
+  const emptyState = await readState(empty);
+  const filledState = await readState(filled);
+
+  // 1) 空 / 非空手柄图标统一为 DataSheetOutlined
+  expect(emptyState.icon).toBe("DataSheetOutlined");
+  expect(emptyState.svgIcon).toBe("DataSheetOutlined");
+  expect(filledState.icon).toBe(emptyState.icon);
+  expect(filledState.svgIcon).toBe(emptyState.svgIcon);
+
+  // 2) 圆角固定 3px
+  expect(emptyState.radius).toBe("3px");
+  expect(filledState.radius).toBe("3px");
+
+  // 3) 手柄纵向中心与单元格纵向中心差 ≤ 2px
+  for (const s of [emptyState, filledState]) {
+    const cellCenter = s.cellBox.y + s.cellBox.height / 2;
+    const handleCenter = s.handleBox.y + s.handleBox.height / 2;
+    expect(Math.abs(handleCenter - cellCenter)).toBeLessThanOrEqual(2);
+  }
+
+  // 4) 手柄在单元格左边框线外侧
+  for (const s of [emptyState, filledState]) {
+    expect(s.handleBox.x + s.handleBox.width).toBeLessThanOrEqual(
+      s.cellBox.x + 2,
+    );
+  }
+
+  // 5) 手柄不覆盖单元格文本（A-1.5：与 .cm-table-cell-text 矩形无交叠）
+  for (const s of [emptyState, filledState]) {
+    const textBox = await s.handle
+      .locator("xpath=ancestor::td")
+      .locator(".cm-table-cell-text")
+      .boundingBox();
+    if (textBox) {
+      const overlapX = Math.min(
+        s.handleBox.x + s.handleBox.width,
+        textBox.x + textBox.width,
+      );
+      expect(overlapX).toBeLessThanOrEqual(textBox.x);
+    }
+  }
+
+  // 5) 表头不渲染手柄
+  await table.locator("thead th").first().hover();
+  await expect(table.locator("thead th .cm-table-cell-handle")).toHaveCount(0);
+  await expect(table.locator("thead .cm-table-cell-handle")).toHaveCount(0);
+
+  // 6) 取消悬停后手柄隐藏，无残留
+  await filled.hover();
+  await expect
+    .poll(() =>
+      filled
+        .locator(".cm-table-cell-handle")
+        .evaluate((el) => getComputedStyle(el).opacity),
+    )
+    .toBe("1");
+  await page.mouse.move(8, 8);
+  await expect
+    .poll(() =>
+      filled
+        .locator(".cm-table-cell-handle")
+        .evaluate((el) => getComputedStyle(el).opacity),
+    )
+    .toBe("0");
+});
+
+test("点击单元格手柄仍打开内容菜单（#739 回归）", async ({ page }) => {
+  await openTableDoc(
+    page,
+    "/tmp/cell-handle-click.md",
+    "| 表头一 | 表头二 |\n| --- | --- |\n| 有内容 |  |\n",
+  );
+  const handle = page
+    .locator('td[data-row="0"][data-col="0"]')
+    .locator(".cm-table-cell-handle");
+  await handle.click();
+  await expect(page.locator(".mdb-slash-menu")).toBeVisible({ timeout: 3000 });
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".mdb-slash-menu")).toHaveCount(0);
 });
 
 // QG-5 证据探针（#642）：EVIDENCE_DIR 设置时采集四态截图，平时跳过。

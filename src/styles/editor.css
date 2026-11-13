@@ -1668,8 +1668,10 @@ html[data-tab-drag="true"] body * {
 
 .cm-table-cell-handle {
   position: absolute;
-  top: 2px;
-  left: 2px;
+  top: 50%;
+  /* -19px = 16px 手柄宽 + 2px 边框 + 1px 间隙：手柄整体在单元格左边框线外。 */
+  left: -19px;
+  transform: translateY(-50%);
   z-index: 6;
   display: flex;
   align-items: center;
@@ -1678,13 +1680,12 @@ html[data-tab-drag="true"] body * {
   height: 16px;
   background: var(--app-sunken);
   border: 1px solid var(--app-border);
-  border-radius: var(--app-radius);
+  border-radius: 3px;
   opacity: 0;
   cursor: pointer;
   pointer-events: auto;
 }
 
-.cm-table th:hover .cm-table-cell-handle,
 .cm-table td:hover .cm-table-cell-handle,
 .cm-table-cell-handle-active,
 .cm-table-cell-handle:hover {

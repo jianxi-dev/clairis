@@ -77,13 +77,23 @@ test.describe("单元格手柄随内容变化（#108）", () => {
       .evaluate((el) => (el as HTMLElement).dataset.icon ?? null);
   }
 
-  test("空 → 有内容：图标从 + 变成转换块", async ({ page }) => {
+  test("空 → 有内容：图标恒为表格图标，空态标记随内容变化（#739 统一后沿用 #108）", async ({
+    page,
+  }) => {
     await openMarkdownInEdit(
       page,
       "| A | B |\n| --- | --- |\n| a1 |  |\n",
       "fidelity-cell-icon",
     );
-    await expect.poll(() => handleIcon(page)).toBe("AddOutlined");
+    // #739：图标统一，空/非空都是 DataSheetOutlined。
+    await expect.poll(() => handleIcon(page)).toBe("DataSheetOutlined");
+    await expect
+      .poll(() =>
+        page
+          .locator(`${CELL} .cm-table-cell-handle`)
+          .evaluate((el) => (el as HTMLElement).dataset.cellEmpty),
+      )
+      .toBe("true");
 
     await page.locator(CELL).click();
     const input = page.locator('[data-testid="cm-table-cell-input"]');
