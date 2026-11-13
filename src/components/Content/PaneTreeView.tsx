@@ -511,6 +511,9 @@ function PaneHeader({
       const store = useStore.getState();
       const tab = activeTabId ? store.tabs[activeTabId] : null;
       switch (action) {
+        case "new-file":
+          store.newTab();
+          return;
         case "share": {
           if (!tab) return;
           const text = tab.path ? `${tab.title} ${tab.path}` : tab.content;

@@ -4,6 +4,33 @@ const APP_URL = "http://localhost:1420";
 
 async function boot(page: Page): Promise<void> {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
+  // 记录窗口最大化切换：包一层 invoke，命中 toggle_maximize 时计数。
+  await page.addInitScript(() => {
+    const w = window as unknown as {
+      __TAURI_INTERNALS__: {
+        invoke: (cmd: string, args?: unknown) => unknown;
+        metadata: Record<string, unknown>;
+      };
+      __toggleMaximizeCalls: number;
+    };
+    // getCurrentWindow() 读 metadata.currentWindow.label，mock 默认没有，补一个。
+    w.__TAURI_INTERNALS__.metadata = {
+      ...w.__TAURI_INTERNALS__.metadata,
+      currentWindow: { label: "main" },
+    };
+    w.__toggleMaximizeCalls = 0;
+    const original = w.__TAURI_INTERNALS__.invoke;
+    w.__TAURI_INTERNALS__.invoke = (cmd, args) => {
+      if (cmd === "plugin:window|toggle_maximize") {
+        w.__toggleMaximizeCalls += 1;
+        return Promise.resolve(null);
+      }
+      if (cmd === "plugin:window|is_maximized") {
+        return Promise.resolve(w.__toggleMaximizeCalls % 2 === 1);
+      }
+      return original(cmd, args);
+    };
+  });
   await page.goto(APP_URL, { waitUntil: "networkidle" });
   await page.waitForSelector('[data-testid="pane-header"]', { timeout: 15000 });
   await page.evaluate(() => {
@@ -174,12 +201,9 @@ test.describe("页签右键菜单关闭协议（editor-surface-batch17 1.1）", 
     const long = Array.from({ length: 60 }, (_, i) => `第 ${i + 1} 段。`).join(
       "\n\n",
     );
-    await page.evaluate(
-      (content) => {
-        window.__biaoyue_openFile__("/tmp/e2e-ctx-long.md", content, "long");
-      },
-      `# 长文\n\n${long}`,
-    );
+    await page.evaluate((content) => {
+      window.__biaoyue_openFile__("/tmp/e2e-ctx-long.md", content, "long");
+    }, `# 长文\n\n${long}`);
     await expect
       .poll(() => page.locator('[role="tab"]').count(), { timeout: 10000 })
       .toBeGreaterThan(0);
@@ -227,6 +251,59 @@ test.describe("页签右键菜单关闭协议（editor-surface-batch17 1.1）", 
 
     await expect(page.locator('[role="tab"]')).toHaveCount(1);
     await expect(page.locator(`[data-tab-id="${firstId}"]`)).toHaveCount(1);
+  });
+});
+
+test.describe("页签空白双击切窗口最大化（editor-surface-batch17 17.1）", () => {
+  test("双击空白切换最大化/还原，页签数量不变", async ({ page }) => {
+    await boot(page);
+    const tabsBefore = await page.locator('[role="tab"]').count();
+    const strip = page.locator(".tab-strip").first();
+    const box = await strip.boundingBox();
+    if (!box) throw new Error("页签条不可见");
+    const x = box.x + box.width - 8;
+    const y = box.y + box.height / 2;
+
+    await page.mouse.dblclick(x, y);
+    await expect
+      .poll(() =>
+        page.evaluate(() => {
+          const w = window as unknown as { __toggleMaximizeCalls: number };
+          return w.__toggleMaximizeCalls;
+        }),
+      )
+      .toBe(1);
+
+    await page.mouse.dblclick(x, y);
+    await expect
+      .poll(() =>
+        page.evaluate(() => {
+          const w = window as unknown as { __toggleMaximizeCalls: number };
+          return w.__toggleMaximizeCalls;
+        }),
+      )
+      .toBe(2);
+
+    expect(await page.locator('[role="tab"]').count()).toBe(tabsBefore);
+  });
+});
+
+test.describe("更多菜单「新建文件」置顶（editor-surface-batch17 17.1）", () => {
+  test("第一项为新建文件，点击新建页签且菜单关闭", async ({ page }) => {
+    await boot(page);
+    const tabsBefore = await page.locator('[role="tab"]').count();
+
+    await page.locator('[data-testid="pane-menu-button"]').first().click();
+    const menu = page.locator('[data-testid="pane-menu"]').first();
+    await expect(menu).toBeVisible();
+
+    const first = menu.locator("[data-menu-item]").first();
+    await expect(first).toHaveText("新建文件", { exact: true });
+    await expect(first).toHaveAttribute("data-menu-item", "new-file");
+
+    await first.click();
+    await expect(page.locator('[role="tab"]')).toHaveCount(tabsBefore + 1);
+    await expect(menu).toHaveCount(0);
   });
 });
 
