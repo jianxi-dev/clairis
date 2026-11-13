@@ -379,6 +379,161 @@ test("点击单元格手柄仍打开内容菜单（#739 回归）", async ({ pag
   await expect(page.locator(".mdb-slash-menu")).toHaveCount(0);
 });
 
+// ── #740 行列插入圆点 ──────────────────────────────────────────────────────
+// 滑入表格：列点在上边框外（n+1 个）、行点在左边框外（rows+1 个）；悬停变 +；
+// 点击气泡插入/删除；滑出隐藏。A-2.1 ~ A-2.5。
+
+test("行列插入圆点：滑入出现在表格外缘、悬停变 +、滑出隐藏（#740）", async ({
+  page,
+}) => {
+  await openTableDoc(
+    page,
+    "/tmp/table-dots-reveal.md",
+    "| A | B |\n| --- | --- |\n| 1 | 2 |\n| 3 | 4 |",
+  );
+
+  const wrap = page.locator(".cm-table-wrap").first();
+  const table = page.locator("table.cm-table").first();
+  await expect(table).toBeVisible();
+
+  const colDots = page.locator(".cm-table-hotspot-col");
+  const rowDots = page.locator(".cm-table-hotspot-row");
+  const revealed = page.locator(".cm-table-hotspot-revealed");
+  const active = page.locator(".cm-table-hotspot-active");
+
+  const tableBox = (await table.boundingBox())!;
+  expect(tableBox).not.toBeNull();
+
+  // A-2.1 / A-2.3：滑入表格 → 全部圆点出现，列点 n+1、行点 rows+1，且每个
+  // 圆点矩形与表格矩形相离（列点在上边框外、行点在左边框外，距边框 0-2px）。
+  await wrap.hover();
+  await expect(colDots).toHaveCount(3);
+  await expect(rowDots).toHaveCount(3);
+  await expect(revealed).toHaveCount(6);
+  await expect(colDots.nth(0)).toBeVisible();
+
+  for (let i = 0; i < 3; i += 1) {
+    const colBox = (await colDots.nth(i).boundingBox())!;
+    expect(colBox).not.toBeNull();
+    const colGap = tableBox.y - (colBox.y + colBox.height);
+    expect(colGap).toBeGreaterThanOrEqual(0);
+    expect(colGap).toBeLessThanOrEqual(2);
+
+    const rowBox = (await rowDots.nth(i).boundingBox())!;
+    expect(rowBox).not.toBeNull();
+    const rowGap = tableBox.x - (rowBox.x + rowBox.width);
+    expect(rowGap).toBeGreaterThanOrEqual(0);
+    expect(rowGap).toBeLessThanOrEqual(2);
+  }
+
+  // A-2.2：悬停一个圆点 → 只有它处于「+」形态（hotspot-active），其余保持小圆点。
+  await colDots.nth(1).hover();
+  await expect(active).toHaveCount(1);
+  await expect(colDots.nth(1)).toHaveClass(/cm-table-hotspot-active/);
+  await expect(colDots.nth(0)).not.toHaveClass(/cm-table-hotspot-active/);
+  await expect(rowDots.nth(0)).not.toHaveClass(/cm-table-hotspot-active/);
+
+  // 移开 → 圆点回小圆点形态。
+  await page.mouse.move(
+    tableBox.x + tableBox.width / 2,
+    tableBox.y + tableBox.height / 2,
+  );
+  await expect(active).toHaveCount(0);
+
+  // A-2.1 隐藏态：指针移出表格 → 全部圆点隐藏，无残留浮层。
+  await page.mouse.move(
+    tableBox.x + tableBox.width / 2,
+    tableBox.y + tableBox.height + 120,
+  );
+  await expect(revealed).toHaveCount(0);
+  await expect(active).toHaveCount(0);
+  await expect(page.locator(".cm-table-hotspot-bubble:visible")).toHaveCount(0);
+
+  // 取消操作（滑出、未点气泡）后源码逐字节不变。
+  const contentAfter = await page.evaluate(() => {
+    const store = (window as unknown as Record<string, any>).__biaoyue_store__;
+    const s = store.getState();
+    return s.tabs[s.activeTabId]?.content as string;
+  });
+  expect(contentAfter).toBe("| A | B |\n| --- | --- |\n| 1 | 2 |\n| 3 | 4 |");
+});
+
+test("行列插入圆点：点击气泡插入列/删除行，源码逐字节不变（#740）", async ({
+  page,
+}) => {
+  const source = ["| A | B |", "| --- | --- |", "| 1 | 2 |", "| 3 | 4 |"].join(
+    "\n",
+  );
+  await openTableDoc(page, "/tmp/table-dots-edit.md", source);
+
+  const wrap = page.locator(".cm-table-wrap").first();
+  const table = page.locator("table.cm-table").first();
+  await expect(table).toBeVisible();
+
+  const colDots = page.locator(".cm-table-hotspot-col");
+  const rowDots = page.locator(".cm-table-hotspot-row");
+
+  const readContent = () =>
+    page.evaluate(() => {
+      const store = (window as unknown as Record<string, any>)
+        .__biaoyue_store__;
+      const s = store.getState();
+      return s.tabs[s.activeTabId]?.content as string;
+    });
+
+  await wrap.hover();
+  await expect(colDots).toHaveCount(3);
+  await expect(rowDots).toHaveCount(3);
+
+  // A-2.4：点击列间圆点 → 气泡出现 → 「插入列」：列数 +1，其余字节不变。
+  await colDots.nth(1).click();
+  const colBubble = page.locator(
+    ".cm-table-hotspot-active .cm-table-hotspot-bubble",
+  );
+  await expect(colBubble).toBeVisible();
+  await expect(colBubble.locator(".cm-table-boundary-insert")).toBeVisible();
+  await colBubble.locator(".cm-table-boundary-insert").click();
+
+  await expect(table.locator("thead th")).toHaveCount(3);
+  await expect(table.locator("tbody tr")).toHaveCount(2);
+  expect(await readContent()).toBe(
+    [
+      "| A |  | B |",
+      "| --- | --- | --- |",
+      "| 1 |  | 2 |",
+      "| 3 |  | 4 |",
+    ].join("\n"),
+  );
+
+  // A-2.5：点击行间圆点 → 气泡出现 → 「删除行」：行数 -1，其余字节不变。
+  await rowDots.nth(1).click();
+  const rowBubble = page.locator(
+    ".cm-table-hotspot-active .cm-table-hotspot-bubble",
+  );
+  await expect(rowBubble).toBeVisible();
+  await expect(rowBubble.locator(".cm-table-boundary-delete")).toBeVisible();
+  await rowBubble.locator(".cm-table-boundary-delete").click();
+
+  await expect(table.locator("tbody tr")).toHaveCount(1);
+  expect(await readContent()).toBe(
+    ["| A |  | B |", "| --- | --- | --- |", "| 1 |  | 2 |"].join("\n"),
+  );
+
+  // D2 追加入口：点击尾列圆点（重建后 3 列 → 4 点，尾点 = last）→ 末尾追加一列。
+  await colDots.last().click();
+  const trailBubble = page.locator(
+    ".cm-table-hotspot-active .cm-table-hotspot-bubble",
+  );
+  await expect(trailBubble).toBeVisible();
+  await trailBubble.locator(".cm-table-boundary-insert").click();
+  await expect(table.locator("thead th")).toHaveCount(4);
+  expect(await readContent()).toBe(
+    ["| A |  | B |  |", "| --- | --- | --- | --- |", "| 1 |  | 2 |  |"].join(
+      "\n",
+    ),
+  );
+});
+
 // QG-5 证据探针（#642）：EVIDENCE_DIR 设置时采集四态截图，平时跳过。
 test("evidence: 表格四态", async ({ page }) => {
   const dir = process.env.EVIDENCE_DIR;
@@ -412,4 +567,170 @@ test("evidence: 表格四态", async ({ page }) => {
   const previewTable = page.locator(".preview-content .table-wrap").first();
   await expect(previewTable).toBeVisible();
   await previewTable.screenshot({ path: `${dir}/table-preview.png` });
+});
+
+// ── #740：行列插入圆点（上/左外缘、悬停变 +、点击插入/删除）──────────────
+
+/** 读取当前页签源码。 */
+async function getSource(page: Page): Promise<string> {
+  return page.evaluate(() => {
+    const store = (window as unknown as Record<string, any>).__biaoyue_store__;
+    const s = store.getState();
+    return s.tabs[s.activeTabId]?.content as string;
+  });
+}
+
+/** 表头单元格数。 */
+function headerCellCount(source: string): number {
+  const line = source.split("\n").find((l) => /^\s*\|.*\|\s*$/.test(l));
+  return line ? line.split("|").slice(1, -1).length : 0;
+}
+
+/** 正文行数。 */
+function bodyRowCount(source: string): number {
+  const lines = source.split("\n");
+  const sep = lines.findIndex((l) => /^\s*\|(\s*:?-+:?\s*\|)+\s*$/.test(l));
+  if (sep < 0) return 0;
+  let count = 0;
+  for (let i = sep + 1; i < lines.length; i += 1) {
+    if (/^\s*\|.*\|\s*$/.test(lines[i])) count += 1;
+    else break;
+  }
+  return count;
+}
+
+/** 打开一个 3 列 3 行带内容的表格文档。 */
+async function openBoundaryDoc(page: Page, path: string) {
+  await openTableDoc(
+    page,
+    path,
+    "| A | B | C |\n| --- | --- | --- |\n| 1 | 2 | 3 |\n| 4 | 5 | 6 |\n| 7 | 8 | 9 |",
+  );
+  const table = page.locator("table.cm-table");
+  await expect(table).toBeVisible();
+  return table;
+}
+
+test("#740 行列插入圆点：上/左外缘显示、悬停变 +、离开隐藏", async ({
+  page,
+}) => {
+  const table = await openBoundaryDoc(page, "/tmp/table-boundary-dots.md");
+  const tableBox = (await table.boundingBox())!;
+  const colSpots = page.locator(".cm-table-hotspot-col");
+  const rowSpots = page.locator(".cm-table-hotspot-row");
+  const colDots = page.locator(".cm-table-hotspot-col .cm-table-hotspot-dot");
+  const rowDots = page.locator(".cm-table-hotspot-row .cm-table-hotspot-dot");
+
+  // 3 列 + 1 = 4 个列点；3 行 + 1 = 4 个行点（含第一列前 / 尾列后、表头分隔线 /
+  // 尾行下追加）。
+  await expect(colDots).toHaveCount(4);
+  await expect(rowDots).toHaveCount(4);
+
+  // 指针在表格外时圆点隐藏。
+  await page.mouse.move(8, 8);
+  const displayOf = (loc: Locator) =>
+    loc.evaluate((el) => getComputedStyle(el).display);
+  await expect.poll(() => displayOf(colSpots.first())).toBe("none");
+  await expect.poll(() => displayOf(rowSpots.first())).toBe("none");
+
+  // 滑入表格：全部圆点显示。
+  await table.hover();
+  await expect.poll(() => displayOf(colSpots.first())).toBe("flex");
+  await expect.poll(() => displayOf(rowSpots.first())).toBe("flex");
+
+  // 1) 几何：列点在表格上边框外、行点在左边框外，差距 0–2px。
+  for (const dot of await colDots.all()) {
+    const box = (await dot.boundingBox())!;
+    expect(box.y).toBeLessThanOrEqual(tableBox.y);
+    const gap = tableBox.y - (box.y + box.height);
+    expect(gap).toBeGreaterThanOrEqual(0);
+    expect(gap).toBeLessThanOrEqual(2);
+  }
+  for (const dot of await rowDots.all()) {
+    const box = (await dot.boundingBox())!;
+    expect(box.x).toBeLessThanOrEqual(tableBox.x);
+    const gap = tableBox.x - (box.x + box.width);
+    expect(gap).toBeGreaterThanOrEqual(0);
+    expect(gap).toBeLessThanOrEqual(2);
+  }
+
+  // 2) 悬停一个列点：页面内只有一个热点进入「+」形态。
+  await colDots.nth(1).hover();
+  await expect(page.locator(".cm-table-hotspot-active")).toHaveCount(1);
+  await expect(
+    page.locator(".cm-table-hotspot-active .cm-table-hotspot-dot"),
+  ).toHaveText("＋");
+
+  // 3) 指针离开表格：圆点全部隐藏，无残留浮层。
+  await page.mouse.move(8, 8);
+  await expect.poll(() => displayOf(colSpots.first())).toBe("none");
+  await expect.poll(() => displayOf(rowSpots.first())).toBe("none");
+  await expect(page.locator(".cm-table-hotspot-active")).toHaveCount(0);
+  await expect(page.locator(".cm-table-hotspot-bubble:visible")).toHaveCount(0);
+});
+
+test("#740 点击列间圆点展开气泡并插入列", async ({ page }) => {
+  const table = await openBoundaryDoc(page, "/tmp/table-boundary-insert.md");
+  await table.hover();
+  const colSpots = page.locator(".cm-table-hotspot-col");
+  const colDots = page.locator(".cm-table-hotspot-col .cm-table-hotspot-dot");
+  await expect
+    .poll(() => colSpots.first().evaluate((el) => getComputedStyle(el).display))
+    .toBe("flex");
+
+  const before = await getSource(page);
+  expect(headerCellCount(before)).toBe(3);
+
+  await colDots.nth(1).click();
+  const insertBtn = page.locator(
+    ".cm-table-hotspot-active [data-testid='cm-table-boundary-insert']",
+  );
+  await expect(insertBtn).toBeVisible();
+  await insertBtn.click();
+
+  await expect
+    .poll(async () => headerCellCount(await getSource(page)))
+    .toBe(headerCellCount(before) + 1);
+  // 其余内容逐字节不变：原单元格文本仍在。
+  const after = await getSource(page);
+  for (const text of [
+    "A",
+    "B",
+    "C",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+  ]) {
+    expect(after).toContain(text);
+  }
+});
+
+test("#740 点击行间圆点展开气泡并删除行", async ({ page }) => {
+  const table = await openBoundaryDoc(page, "/tmp/table-boundary-delete.md");
+  await table.hover();
+  const rowSpots = page.locator(".cm-table-hotspot-row");
+  const rowDots = page.locator(".cm-table-hotspot-row .cm-table-hotspot-dot");
+  await expect
+    .poll(() => rowSpots.first().evaluate((el) => getComputedStyle(el).display))
+    .toBe("flex");
+
+  const before = await getSource(page);
+  expect(bodyRowCount(before)).toBe(3);
+
+  await rowDots.nth(1).click();
+  const deleteBtn = page.locator(
+    ".cm-table-hotspot-active [data-testid='cm-table-boundary-delete']",
+  );
+  await expect(deleteBtn).toBeVisible();
+  await deleteBtn.click();
+
+  await expect
+    .poll(async () => bodyRowCount(await getSource(page)))
+    .toBe(bodyRowCount(before) - 1);
 });

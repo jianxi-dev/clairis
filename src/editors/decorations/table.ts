@@ -51,18 +51,10 @@ const FALLBACK_ROW_HEIGHT = 32;
 const BOUNDARY_THICKNESS = 6;
 
 /**
- * 指针离行/列边界线多近（px）才显示其插入热点。与阅读端「边界线 8px 内」
- * 契约和 16px 圆点直径一致。#385a：显示是逐边界的，所以进入单元格不再一次
- * 点亮所有热点。
+ * 指针离行/列边界线多近（px）才点亮那条 2px 边界线。#740 起圆点常显，这个
+ * 距离只用于插入位置反馈，不再控制圆点显隐。
  */
 const BOUNDARY_REVEAL_DISTANCE = 8;
-
-/**
- * 尾部（追加）边界距表格边缘向内多远，量到条带中心。16px 圆点有一半保持
- * 可见而不被 wrap 裁剪，指针悬在边缘时仍落在 BOUNDARY_REVEAL_DISTANCE 内
- * （#432）。
- */
-const BOUNDARY_EDGE_INSET = 8;
 
 interface CellSpan {
   /** `-1` 表示表头行。 */
@@ -897,16 +889,16 @@ class TableWidget extends WidgetType {
       liveTableWidgets.set(view, this);
       installTablePointer(view);
       this.wireExternalFlush(view);
-      // 显示是逐边界的：离指针最近的热点出现，其余保持隐藏，离开 widget 清空
-      // （#385a）。
+      // 圆点显隐与线显隐解耦（#740）：圆点在 wrap 内全显，最近的 2px 线作插入
+      // 位置反馈，离开 widget 清空。
       this.wireBoundaryReveal(wrap, boundaries);
       // 布局在 toDOM 里同步不可用，所以下一帧测量。node 环境单测可能没有 rAF。
       if (typeof requestAnimationFrame === "function") {
         requestAnimationFrame(() =>
-          this.renderBoundaries(boundaries, wrap, table, view),
+          this.renderBoundaries(boundaries, wrap, table),
         );
       } else {
-        this.renderBoundaries(boundaries, wrap, table, view);
+        this.renderBoundaries(boundaries, wrap, table);
       }
     }
 
@@ -1123,8 +1115,12 @@ class TableWidget extends WidgetType {
   }
 
   /**
-   * 只显示指针靠近的那条边界的插入热点（#385a）。过去的 gate 一进入单元格就
-   * 点亮每个热点；期望的行为是只有悬停的行/列线。
+   * 指针在 wrap 内即显示全部插入圆点；离指针最近的那条 2px 边界线同时点亮，
+   * 作为插入位置反馈。圆点显隐与线显隐解耦（#740）：
+   *
+   * - `.cm-table-hotspot-revealed` 由 wrap 的 mouseenter / mousemove 加到**所有**
+   *   热点上、mouseleave 移除，控制圆点的 display。
+   * - `.cm-table-boundary-revealed` 挂在单条边界上，只点亮那条边界的线。
    *
    * 列边界的 x 与行边界的 y 已经作为内联偏移在元素上，所以 mousemove 只需一次
    * 容器 rect 读取，而不是每个边界一次布局读取。工作合并进一帧。
@@ -1135,10 +1131,23 @@ class TableWidget extends WidgetType {
     let pointerY = 0;
 
     const clear = (): void => {
-      for (const hotspot of boundaries.querySelectorAll(
-        ".cm-table-hotspot-revealed",
+      for (const hotspot of boundaries.querySelectorAll<HTMLElement>(
+        ".cm-table-hotspot",
       )) {
         hotspot.classList.remove("cm-table-hotspot-revealed");
+      }
+      for (const boundary of boundaries.querySelectorAll(
+        ".cm-table-boundary-revealed, .cm-table-boundary-active",
+      )) {
+        boundary.classList.remove(
+          "cm-table-boundary-revealed",
+          "cm-table-boundary-active",
+        );
+      }
+      for (const hotspot of boundaries.querySelectorAll(
+        ".cm-table-hotspot-active",
+      )) {
+        hotspot.classList.remove("cm-table-hotspot-active");
       }
     };
 
@@ -1156,64 +1165,71 @@ class TableWidget extends WidgetType {
       for (const boundary of boundaries.querySelectorAll<HTMLElement>(
         ".cm-table-boundary",
       )) {
-        const hotspot =
-          boundary.querySelector<HTMLElement>(".cm-table-hotspot");
-        if (!hotspot) continue;
         if (boundary.dataset.type === "col") {
           const dist = Math.abs(x - (parseFloat(boundary.style.left) + half));
           if (dist <= colDist) {
             colDist = dist;
-            nearCol = hotspot;
+            nearCol = boundary;
           }
         } else {
           const dist = Math.abs(y - (parseFloat(boundary.style.top) + half));
           if (dist <= rowDist) {
             rowDist = dist;
-            nearRow = hotspot;
+            nearRow = boundary;
           }
         }
       }
 
+      for (const boundary of boundaries.querySelectorAll<HTMLElement>(
+        ".cm-table-boundary",
+      )) {
+        boundary.classList.toggle(
+          "cm-table-boundary-revealed",
+          boundary === nearCol || boundary === nearRow,
+        );
+      }
+
       // 一个已显示的热点拥有一个**坐在边界线之外**的气泡；当指针在该气泡上时
       // 热点必须保持显示，否则气泡会在它能被点击前消失（#483）。一旦指针离开
-      // 气泡（例如移到另一条边界），就释放它，让「只显示最近边界」的契约仍然
-      // 成立（#385a）。
+      // 气泡（例如移到另一条边界），就释放它，让「只点亮最近边界」的契约仍然
+      // 成立。
       const activeHotspot = boundaries.querySelector<HTMLElement>(
         ".cm-table-hotspot-active",
       );
-      let activeKeepsReveal = false;
       if (activeHotspot) {
         const bubble = activeHotspot.querySelector<HTMLElement>(
           ".cm-table-hotspot-bubble",
         );
         const br = bubble?.getBoundingClientRect();
-        activeKeepsReveal =
+        const activeKeepsReveal =
           !!br &&
           pointerX >= br.left &&
           pointerX <= br.right &&
           pointerY >= br.top &&
           pointerY <= br.bottom;
-        if (
-          !activeKeepsReveal &&
-          activeHotspot !== nearCol &&
-          activeHotspot !== nearRow
-        ) {
+        const nearHotspots = new Set<HTMLElement>();
+        for (const boundary of [nearCol, nearRow]) {
+          const hotspot =
+            boundary?.querySelector<HTMLElement>(".cm-table-hotspot");
+          if (hotspot) nearHotspots.add(hotspot);
+        }
+        if (!activeKeepsReveal && !nearHotspots.has(activeHotspot)) {
           activeHotspot.classList.remove("cm-table-hotspot-active");
         }
       }
+    };
+
+    const show = (): void => {
       for (const hotspot of boundaries.querySelectorAll<HTMLElement>(
         ".cm-table-hotspot",
       )) {
-        hotspot.classList.toggle(
-          "cm-table-hotspot-revealed",
-          hotspot === nearCol ||
-            hotspot === nearRow ||
-            (hotspot === activeHotspot && activeKeepsReveal),
-        );
+        hotspot.classList.add("cm-table-hotspot-revealed");
       }
     };
 
+    wrap.addEventListener("mouseenter", show);
     wrap.addEventListener("mousemove", (event) => {
+      show();
       pointerX = event.clientX;
       pointerY = event.clientY;
       if (frame) return;
@@ -1232,12 +1248,12 @@ class TableWidget extends WidgetType {
   /**
    * 在测量后的表格上构建插入边界层。
    *
-   * 一个 `.cm-table-boundary` 条带精确坐在每条边界上：每条内部列边界一条竖条，
-   * 每个正文行顶边一条横条（F-03 几何）。条带本身 `pointer-events: none`，
-   * 所以 6px 层永远不会吞掉一次指向单元格内部的点击；只有里面的小热点圆点
-   * 接收指针，且只在指针靠近该边界时（F-04 / R-TABLE-03，#385a 起逐边界）。
-   * 每个热点在自己的序号前插入：`data-col` → addColumn(index)，`data-row` →
-   * addRow(index)。
+   * 一个 `.cm-table-boundary` 条带精确坐在每条边界上：第一列前、每两列之间、
+   * 尾列后各一条竖条；表头分隔线、每个正文行顶边、尾行下追加各一条横条
+   * （#740）。条带本身 `pointer-events: none`，所以 6px 层永远不会吞掉一次
+   * 指向单元格内部的点击；只有里面的小热点圆点接收指针，指针在 wrap 内即
+   * 全部显示（#740）。每个热点在自己的序号前插入：`data-col` →
+   * addColumn(index)，`data-row` → addRow(index)。
    *
    * 表格还没布局时回退到 `evenColumnWidths`，这样 jsdom 里这层仍带正确的序号
    * 几何。
@@ -1246,7 +1262,6 @@ class TableWidget extends WidgetType {
     container: HTMLElement,
     wrap: HTMLElement,
     table: HTMLTableElement,
-    view: EditorView,
   ): void {
     if (!container.isConnected && wrap.isConnected) return;
     container.textContent = "";
@@ -1268,7 +1283,6 @@ class TableWidget extends WidgetType {
       top: number,
       width: number,
       height: number,
-      edge = false,
     ): void => {
       const boundary = document.createElement("div");
       boundary.className = `cm-table-boundary cm-table-boundary-${kind}`;
@@ -1291,7 +1305,7 @@ class TableWidget extends WidgetType {
       boundary.appendChild(line);
 
       const hotspot = document.createElement("div");
-      hotspot.className = `cm-table-hotspot cm-table-hotspot-${kind}${edge ? " cm-table-hotspot-edge" : ""}`;
+      hotspot.className = `cm-table-hotspot cm-table-hotspot-${kind}`;
       hotspot.setAttribute("data-testid", "cm-table-hotspot");
       hotspot.dataset.type = kind;
       if (kind === "col") hotspot.dataset.col = String(index);
@@ -1367,11 +1381,11 @@ class TableWidget extends WidgetType {
         insideHotspot = false;
         scheduleDeactivate();
       });
+      // 按压不直接插入：气泡里的插入/删除键才是入口（#740）。这里只把按压隔离在
+      // widget 内，避免 CM6 把这次点按压当成文档选择。
       hotspot.addEventListener("mousedown", (event) => {
         event.preventDefault();
         event.stopPropagation();
-        if (kind === "col") this.addColumn(view, index);
-        else this.addRow(view, index);
       });
       boundary.appendChild(hotspot);
       container.appendChild(boundary);
@@ -1400,15 +1414,19 @@ class TableWidget extends WidgetType {
       }
     }
 
-    // ── 列边界：仅内部（两列之间）──────────────────────────────────────────
-    // 从 col 1 开始让热点留在表格内，所以它的圆点和气泡永不被 wrap 边缘裁剪
-    //（§7.4「两列之间」）。
-    for (let col = 1; col < this.header.length; col += 1) {
-      const fallbackLeft = fallbackWidths
-        .slice(0, col)
-        .reduce((a, b) => a + b, 0);
-      // 合并或未渲染的单元格没有 rect；把边界留在均分位置，而不是塌到前沿。
-      const x = colX[col - 1] ?? fallbackLeft;
+    // ── 列边界：第一列前、每两列之间、尾列后（n+1 条，#740）─────────────────
+    // 圆点挂在表格上边框外，x 与列边界对齐；两个端点给出「最前 / 最后追加」入口。
+    for (let col = 0; col <= this.header.length; col += 1) {
+      let x: number;
+      if (col === 0) x = 0;
+      else if (col === this.header.length) x = totalWidth;
+      else {
+        const fallbackLeft = fallbackWidths
+          .slice(0, col)
+          .reduce((a, b) => a + b, 0);
+        // 合并或未渲染的单元格没有 rect；把边界留在均分位置，而不是塌到前沿。
+        x = colX[col - 1] ?? fallbackLeft;
+      }
       addBoundary(
         "col",
         col,
@@ -1419,9 +1437,12 @@ class TableWidget extends WidgetType {
       );
     }
 
-    // ── 行边界：每个正文行的顶边 ───────────────────────────────────────────
-    for (let r = 0; r < this.rows.length; r += 1) {
-      const y = rowY[r] ?? ((r + 1) / (this.rows.length + 1)) * totalHeight;
+    // ── 行边界：表头分隔线、每个正文行顶边、尾行下追加（rows+1 条，#740）────
+    for (let r = 0; r <= this.rows.length; r += 1) {
+      const y =
+        r === this.rows.length
+          ? totalHeight
+          : (rowY[r] ?? ((r + 1) / (this.rows.length + 1)) * totalHeight);
       addBoundary(
         "row",
         r,
@@ -1432,33 +1453,15 @@ class TableWidget extends WidgetType {
       );
     }
 
-    // ── 尾部边界：在末尾追加（#432）────────────────────────────────────────
-    // 上面的循环只覆盖内部位置，而两个 add* 助手都是**在**其序号前 splice——
-    // 所以「在末尾加一行/一列」这个真实写作里最常见的表格动作没有入口。这两条
-    // 带给出入口：index === length 会 splice 到末尾。它们坐在 BOUNDARY_EDGE_INSET
-    // 以内，圆点不会被 wrap 裁剪。
-    if (this.header.length > 0) {
-      const trailingX = originX + totalWidth - BOUNDARY_EDGE_INSET - half;
-      addBoundary(
-        "col",
-        this.header.length,
-        trailingX,
-        originY,
-        BOUNDARY_THICKNESS,
-        totalHeight,
-        true,
-      );
+    // 重写（插入/删除列行）会重建边界层：此时指针若仍在 wrap 内，不会有新的
+    // mouseenter/mousemove 来点亮圆点，必须按 CSS hover 状态直接恢复（#740）。
+    if (wrap.matches(":hover")) {
+      for (const hotspot of container.querySelectorAll<HTMLElement>(
+        ".cm-table-hotspot",
+      )) {
+        hotspot.classList.add("cm-table-hotspot-revealed");
+      }
     }
-    const trailingY = originY + totalHeight - BOUNDARY_EDGE_INSET - half;
-    addBoundary(
-      "row",
-      this.rows.length,
-      originX,
-      trailingY,
-      totalWidth,
-      BOUNDARY_THICKNESS,
-      true,
-    );
   }
 
   /**
@@ -1545,10 +1548,10 @@ class TableWidget extends WidgetType {
 
     if (typeof requestAnimationFrame === "function") {
       requestAnimationFrame(() =>
-        this.renderBoundaries(boundaries, wrap, table, view),
+        this.renderBoundaries(boundaries, wrap, table),
       );
     } else {
-      this.renderBoundaries(boundaries, wrap, table, view);
+      this.renderBoundaries(boundaries, wrap, table);
     }
     return true;
   }
