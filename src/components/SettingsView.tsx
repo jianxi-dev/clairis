@@ -1220,8 +1220,7 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
                   提示时长
                 </h2>
                 <p className="mb-2 text-xs text-[var(--app-text-3)]">
-                  底部提示信息的显示时长（秒）。0.1–10，最多 1
-                  位小数；留空恢复默认 3 秒。
+                  提示信息显示时长（秒）：悬停提示与底部提示
                 </p>
                 <input
                   type="number"

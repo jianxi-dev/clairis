@@ -1,9 +1,23 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { isOverlayOpen, subscribeOverlay } from "../lib/overlayGate";
+import { useEditorStore } from "../stores/editorStore";
 
-/** 悬停满 1 分钟才提示：避免指针一滑过就弹。 */
-const TIP_DELAY_MS = 60_000;
+/** 未配置「提示时长」时的回退延迟（ms）。 */
+const TIP_DELAY_FALLBACK_MS = 400;
+
+/** 延迟上下限（ms）。 */
+const TIP_DELAY_MIN_MS = 100;
+const TIP_DELAY_MAX_MS = 10_000;
+
+/** 悬停提示延迟：取配置「提示时长」（秒），钳制 100–10000ms，未配置回退 400ms。 */
+function tipDelayMs(): number {
+  const seconds = useEditorStore.getState().config.noticeDuration;
+  if (seconds == null || !Number.isFinite(seconds))
+    return TIP_DELAY_FALLBACK_MS;
+  const ms = Math.round(seconds * 1000);
+  return Math.min(TIP_DELAY_MAX_MS, Math.max(TIP_DELAY_MIN_MS, ms));
+}
 
 /** 会弹菜单/浮层的触发按钮：提示会与浮层重复，直接跳过。 */
 const SKIP_TIP_SELECTOR = "[aria-haspopup], [aria-expanded], [data-no-tip]";
@@ -11,7 +25,7 @@ const SKIP_TIP_SELECTOR = "[aria-haspopup], [aria-expanded], [data-no-tip]";
 /**
  * 全局胶囊提示（ui-polish-batch12 9.1）。
  *
- * 事件委托捕获既有 `title` 属性：悬停满 60 秒后显示自绘胶囊，并把原生
+ * 事件委托捕获既有 `title` 属性：悬停满配置时长后显示自绘胶囊，并把原生
  * `title` 暂时摘除（避免系统矩形提示叠加）；指针离开 / 按下时还原。
  * 会弹菜单/浮层的触发按钮跳过提示——提示与浮层信息重复。
  * 约 80 处既有 `title=` 无需逐个改造。
@@ -69,7 +83,7 @@ export default function TooltipLayer() {
         timerRef.current = null;
         if (isOverlayOpen()) return;
         setTip({ text, x, y });
-      }, TIP_DELAY_MS);
+      }, tipDelayMs());
     };
 
     const onOut = (e: PointerEvent) => {
