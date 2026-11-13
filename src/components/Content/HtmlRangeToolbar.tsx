@@ -1,15 +1,61 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { SelectionRect } from "../../editors/html/bridge";
 import { useAiEntryStore } from "../../hooks/useAiEntry";
+import { renderIcon } from "../../editors/icons";
 
 const GAP = 8;
 const FONT_SIZES = [12, 14, 16, 18, 20, 24, 28, 32, 40];
-const ALIGNS: { value: string; label: string; command: string }[] = [
-  { value: "left", label: "左", command: "justifyLeft" },
-  { value: "center", label: "中", command: "justifyCenter" },
-  { value: "right", label: "右", command: "justifyRight" },
+const ALIGNS: {
+  value: string;
+  label: string;
+  command: string;
+  icon: string;
+}[] = [
+  {
+    value: "left",
+    label: "左",
+    command: "justifyLeft",
+    icon: "AlignLeftOutlined",
+  },
+  {
+    value: "center",
+    label: "中",
+    command: "justifyCenter",
+    icon: "AlignCenterOutlined",
+  },
+  {
+    value: "right",
+    label: "右",
+    command: "justifyRight",
+    icon: "AlignRightOutlined",
+  },
 ];
+const FONT_FAMILIES: { value: string; label: string }[] = [
+  { value: "serif", label: "衬线" },
+  { value: "sans-serif", label: "无衬线" },
+  { value: "monospace", label: "等宽" },
+  { value: "cursive", label: "手写" },
+  {
+    value: "system-ui, -apple-system, 'Segoe UI', sans-serif",
+    label: "系统字体",
+  },
+];
+
+/** 文字标签改图标按钮（D8）：renderIcon 返回 DOM 节点，用 ref 挂进按钮。 */
+function ToolbarIcon({ name }: { name: string }) {
+  const ref = useRef<HTMLSpanElement | null>(null);
+  useEffect(() => {
+    if (ref.current) ref.current.replaceChildren(renderIcon(name));
+  }, [name]);
+  return (
+    <span
+      ref={ref}
+      aria-hidden="true"
+      style={{ display: "inline-flex", alignItems: "center" }}
+    />
+  );
+}
 
 /**
  * HTML 文字选区工具条（第十批）：与文字节点工具条同一套外观，命令走 iframe
@@ -43,7 +89,7 @@ export default function HtmlRangeToolbar({
   const above = anchor.y - size.h - GAP;
   const top = above >= GAP ? above : anchor.y + anchor.height + GAP;
 
-  const btn = (label: string, command: string, title: string) => (
+  const btn = (icon: string, command: string, title: string) => (
     <button
       type="button"
       aria-label={title}
@@ -52,7 +98,7 @@ export default function HtmlRangeToolbar({
       onMouseDown={(e) => e.preventDefault()}
       onClick={() => onCommand(command)}
     >
-      {label}
+      <ToolbarIcon name={icon} />
     </button>
   );
 
@@ -85,9 +131,27 @@ export default function HtmlRangeToolbar({
           ai.openOverlay();
         }}
       >
-        改写
+        <ToolbarIcon name="AiEditOutlined" />
       </button>
       <span className="html-edit-toolbar__sep" />
+      <input
+        aria-label="背景色"
+        type="color"
+        defaultValue="#ffffff"
+        onChange={(e) => onCommand("hiliteColor", e.target.value)}
+      />
+      <select
+        aria-label="字体"
+        defaultValue=""
+        onChange={(e) => onCommand("fontName", e.target.value)}
+      >
+        <option value="">字体</option>
+        {FONT_FAMILIES.map((f) => (
+          <option key={f.value} value={f.value}>
+            {f.label}
+          </option>
+        ))}
+      </select>
       <select
         aria-label="字号"
         defaultValue=""
@@ -101,10 +165,10 @@ export default function HtmlRangeToolbar({
         ))}
       </select>
       <span className="html-edit-toolbar__group">
-        {btn("B", "bold", "粗体")}
-        {btn("I", "italic", "斜体")}
-        {btn("U", "underline", "下划线")}
-        {btn("S", "strikeThrough", "删除线")}
+        {btn("BoldOutlined", "bold", "粗体")}
+        {btn("ItalicOutlined", "italic", "斜体")}
+        {btn("UnderlineOutlined", "underline", "下划线")}
+        {btn("StrikethroughOutlined", "strikeThrough", "删除线")}
       </span>
       <button
         type="button"
@@ -117,7 +181,7 @@ export default function HtmlRangeToolbar({
           if (url) onCommand("createLink", url);
         }}
       >
-        链接
+        <ToolbarIcon name="GlobalLinkOutlined" />
       </button>
       <span className="html-edit-toolbar__sep" />
       <span className="html-edit-toolbar__group">
@@ -131,7 +195,7 @@ export default function HtmlRangeToolbar({
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => onCommand(item.command)}
           >
-            {item.label}
+            <ToolbarIcon name={item.icon} />
           </button>
         ))}
       </span>
@@ -150,7 +214,7 @@ export default function HtmlRangeToolbar({
         onMouseDown={(e) => e.preventDefault()}
         onClick={() => onCommand("delete")}
       >
-        删除
+        <ToolbarIcon name="DeleteTrashOutlined" />
       </button>
     </div>,
     document.body,

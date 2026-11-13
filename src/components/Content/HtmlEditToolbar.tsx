@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { SelectionRect } from "../../editors/html/bridge";
 import {
@@ -7,6 +7,7 @@ import {
   type NodeInfo,
 } from "../../editors/html/edit";
 import { useAiEntryStore } from "../../hooks/useAiEntry";
+import { renderIcon } from "../../editors/icons";
 
 /**
  * HTML 可视化编辑工具条（E-19 / E-22）。
@@ -24,12 +25,35 @@ import { useAiEntryStore } from "../../hooks/useAiEntry";
 const GAP = 8;
 /** 字号档位。固定档位而不是自由输入，见 E-19 D4。 */
 const FONT_SIZES = [12, 14, 16, 18, 20, 24, 28, 32, 40];
-const ALIGNS: { value: string; label: string }[] = [
-  { value: "left", label: "左" },
-  { value: "center", label: "中" },
-  { value: "right", label: "右" },
+const ALIGNS: { value: string; label: string; icon: string }[] = [
+  { value: "left", label: "左", icon: "AlignLeftOutlined" },
+  { value: "center", label: "中", icon: "AlignCenterOutlined" },
+  { value: "right", label: "右", icon: "AlignRightOutlined" },
 ];
-const BORDER = "1px solid rgba(0, 0, 0, 0.2)";
+const FONT_FAMILIES: { value: string; label: string }[] = [
+  { value: "serif", label: "衬线" },
+  { value: "sans-serif", label: "无衬线" },
+  { value: "monospace", label: "等宽" },
+  { value: "cursive", label: "手写" },
+  {
+    value: "system-ui, -apple-system, 'Segoe UI', sans-serif",
+    label: "系统字体",
+  },
+];
+/** 文字标签改图标按钮（D8）：renderIcon 返回 DOM 节点，用 ref 挂进按钮。 */
+function ToolbarIcon({ name }: { name: string }) {
+  const ref = useRef<HTMLSpanElement | null>(null);
+  useEffect(() => {
+    if (ref.current) ref.current.replaceChildren(renderIcon(name));
+  }, [name]);
+  return (
+    <span
+      ref={ref}
+      aria-hidden="true"
+      style={{ display: "inline-flex", alignItems: "center" }}
+    />
+  );
+}
 
 export interface HtmlEditToolbarProps {
   nodeId: string;
@@ -48,8 +72,6 @@ export interface HtmlEditToolbarProps {
   ) => void;
   /** 给节点加链接 */
   onLink: (href: string) => void;
-  /** 进入区域截图模式（E-21） */
-  onCapture: () => void;
   /** 删除选中节点（含子树） */
   onRemove: () => void;
   /** 清除选中节点的 inline 宽高，恢复原始尺寸 */
@@ -97,7 +119,6 @@ export default function HtmlEditToolbar({
   aiText,
   onPatchStyle,
   onLink,
-  onCapture,
   onRemove,
   onResetSize,
   onClose,
@@ -126,6 +147,7 @@ export default function HtmlEditToolbar({
 
   const kind = nodeKindOf(info.tag);
   const fontSize = info.style["font-size"] ?? "";
+  const fontFamily = info.style["font-family"] ?? "";
   const align = info.style["text-align"] ?? "";
   const decoration = readStyle(info.style, "text-decoration");
   const weight = Number(info.style["font-weight"] ?? 0);
@@ -133,10 +155,10 @@ export default function HtmlEditToolbar({
   const italic = info.style["font-style"] === "italic";
   const underline = decoration.split(/\s+/).includes("underline");
   const strike = decoration.includes("line-through") || info.tag === "s";
-  const hasBorder = parseFloat(readStyle(info.style, "border") || "0") > 0;
+  const borderColor = toHex(info.style["border-color"]);
 
   const toggleButton = (
-    label: string,
+    icon: string,
     active: boolean,
     onClick: () => void,
     title: string,
@@ -151,7 +173,7 @@ export default function HtmlEditToolbar({
       }
       onClick={onClick}
     >
-      {label}
+      <ToolbarIcon name={icon} />
     </button>
   );
 
@@ -189,12 +211,38 @@ export default function HtmlEditToolbar({
           ai.openOverlay();
         }}
       >
-        改写
+        <ToolbarIcon name="AiEditOutlined" />
       </button>
 
       {kind === "text" ? (
         <>
           <span className="html-edit-toolbar__sep" />
+          <input
+            aria-label="背景色"
+            type="color"
+            value={backgroundHex(info.style["background-color"])}
+            onChange={(e) =>
+              onPatchStyle(() => ({ "background-color": e.target.value }))
+            }
+          />
+          <select
+            aria-label="字体"
+            value={fontFamily}
+            onChange={(e) =>
+              onPatchStyle(() => ({ "font-family": e.target.value || null }))
+            }
+          >
+            <option value="">字体</option>
+            {fontFamily &&
+              !FONT_FAMILIES.some((f) => f.value === fontFamily) && (
+                <option value={fontFamily}>{fontFamily}</option>
+              )}
+            {FONT_FAMILIES.map((f) => (
+              <option key={f.value} value={f.value}>
+                {f.label}
+              </option>
+            ))}
+          </select>
           <select
             aria-label="字号"
             value={fontSize}
@@ -215,7 +263,7 @@ export default function HtmlEditToolbar({
 
           <span className="html-edit-toolbar__group">
             {toggleButton(
-              "B",
+              "BoldOutlined",
               bold,
               () =>
                 onPatchStyle((current) => ({
@@ -228,7 +276,7 @@ export default function HtmlEditToolbar({
               "粗体",
             )}
             {toggleButton(
-              "I",
+              "ItalicOutlined",
               italic,
               () =>
                 onPatchStyle((current) => ({
@@ -238,7 +286,7 @@ export default function HtmlEditToolbar({
               "斜体",
             )}
             {toggleButton(
-              "U",
+              "UnderlineOutlined",
               underline,
               () =>
                 onPatchStyle((current) => ({
@@ -250,7 +298,7 @@ export default function HtmlEditToolbar({
               "下划线",
             )}
             {toggleButton(
-              "S",
+              "StrikethroughOutlined",
               strike,
               () =>
                 onPatchStyle((current) => ({
@@ -273,7 +321,7 @@ export default function HtmlEditToolbar({
               if (url) onLink(url);
             }}
           >
-            链
+            <ToolbarIcon name="GlobalLinkOutlined" />
           </button>
 
           <span className="html-edit-toolbar__sep" />
@@ -297,7 +345,7 @@ export default function HtmlEditToolbar({
                   }))
                 }
               >
-                {item.label}
+                <ToolbarIcon name={item.icon} />
               </button>
             ))}
           </span>
@@ -319,18 +367,19 @@ export default function HtmlEditToolbar({
               onPatchStyle(() => ({ "background-color": e.target.value }))
             }
           />
-          {toggleButton(
-            "▢",
-            hasBorder,
-            () =>
-              onPatchStyle((current) => ({
-                border:
-                  parseFloat(readStyle(current, "border") || "0") > 0
-                    ? null
-                    : BORDER,
-              })),
-            "边框色",
-          )}
+          <input
+            aria-label="边框色"
+            type="color"
+            value={borderColor}
+            onChange={(e) =>
+              onPatchStyle((current): Record<string, string | null> => {
+                const color = e.target.value;
+                return parseFloat(readStyle(current, "border") || "0") > 0
+                  ? { "border-color": color }
+                  : { border: `1px solid ${color}`, "border-color": color };
+              })
+            }
+          />
           {(info.style.width || info.style.height) && (
             <button
               type="button"
@@ -348,21 +397,12 @@ export default function HtmlEditToolbar({
       <span className="html-edit-toolbar__sep" />
       <button
         type="button"
-        aria-label="截图"
-        title="截图：拖出要截取的区域"
-        className="html-edit-toolbar__btn"
-        onClick={onCapture}
-      >
-        截图
-      </button>
-      <button
-        type="button"
         aria-label="删除元素"
         title="删除这个元素"
         className="html-edit-toolbar__btn"
         onClick={onRemove}
       >
-        🗑
+        <ToolbarIcon name="DeleteTrashOutlined" />
       </button>
     </div>
   );
