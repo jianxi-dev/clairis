@@ -534,7 +534,6 @@ test("行列插入圆点：点击气泡插入列/删除行，源码逐字节不�
   );
 });
 
-// QG-5 证据探针（#642）：EVIDENCE_DIR 设置时采集四态截图，平时跳过。
 test("evidence: 表格四态", async ({ page }) => {
   const dir = process.env.EVIDENCE_DIR;
   test.skip(!dir, "EVIDENCE_DIR 未设置");
@@ -709,6 +708,163 @@ test("#740 点击列间圆点展开气泡并插入列", async ({ page }) => {
   ]) {
     expect(after).toContain(text);
   }
+});
+
+test("#741 单元格 / 打开上下文菜单：锚定 ≤8px、焦点留在输入框、文档无新增 /", async ({
+  page,
+}) => {
+  await openTableDoc(
+    page,
+    "/tmp/cell-context-open.md",
+    "| A | B |\n| --- | --- |\n| a1 |  |\n",
+  );
+  const cell = page.locator('td[data-row="0"][data-col="1"]');
+  const input = page.locator('[data-testid="cm-table-cell-input"]');
+  await cell.click();
+  await input.click();
+  await page.keyboard.type("/");
+  const menu = page.locator(".mdb-slash-menu");
+  await expect(menu).toBeVisible({ timeout: 3000 });
+
+  // A-3.1：菜单矩形与单元格矩形最近距离 ≤ 8px（纵向矩形间距，负值=重叠）
+  const cellBox = (await cell.boundingBox())!;
+  const menuBox = (await menu.boundingBox())!;
+  const gap = Math.max(
+    cellBox.y - (menuBox.y + menuBox.height),
+    menuBox.y - (cellBox.y + cellBox.height),
+  );
+  expect(gap).toBeLessThanOrEqual(8);
+
+  // A-3.2：焦点仍在单元格输入框
+  const focusInInput = await page.evaluate(() => {
+    const el = document.activeElement;
+    return (
+      el instanceof HTMLElement && el.dataset.testid === "cm-table-cell-input"
+    );
+  });
+  expect(focusInInput).toBe(true);
+
+  // A-3.3：文档（表格外）没有新增 "/"——菜单开着时源码逐字节不变
+  const contentWhileOpen = await page.evaluate(() => {
+    const store = (window as unknown as Record<string, any>).__biaoyue_store__;
+    const s = store.getState();
+    return s.tabs[s.activeTabId]?.content as string;
+  });
+  expect(contentWhileOpen).toBe("| A | B |\n| --- | --- |\n| a1 |  |\n");
+});
+
+test("#741 单元格 / 菜单过滤跟随输入且焦点不丢（A-3.x 过滤）", async ({
+  page,
+}) => {
+  await openTableDoc(
+    page,
+    "/tmp/cell-context-filter.md",
+    "| A | B |\n| --- | --- |\n| a1 |  |\n",
+  );
+  const cell = page.locator('td[data-row="0"][data-col="1"]');
+  const input = page.locator('[data-testid="cm-table-cell-input"]');
+  await cell.click();
+  await input.click();
+  await page.keyboard.type("/");
+  const menu = page.locator(".mdb-slash-menu");
+  await expect(menu).toBeVisible({ timeout: 3000 });
+  const before = await page.evaluate(() => {
+    const store = (window as unknown as Record<string, any>).__biaoyue_store__;
+    const s = store.getState();
+    return s.tabs[s.activeTabId]?.content as string;
+  });
+  // 输入不存在的过滤词 → 菜单过滤到空态仍打开、焦点仍在输入框
+  await page.keyboard.type("zz");
+  await expect(menu).toBeVisible();
+  const focusInInput = await page.evaluate(() => {
+    const el = document.activeElement;
+    return (
+      el instanceof HTMLElement && el.dataset.testid === "cm-table-cell-input"
+    );
+  });
+  expect(focusInInput).toBe(true);
+  // 源码依旧未变（过滤词活在输入框里，不进文档）
+  const after = await page.evaluate(() => {
+    const store = (window as unknown as Record<string, any>).__biaoyue_store__;
+    const s = store.getState();
+    return s.tabs[s.activeTabId]?.content as string;
+  });
+  expect(after).toBe(before);
+});
+
+test("#741 单元格 Esc：菜单关、输入框无 / 残留、文档逐字节不变（A-3.4）", async ({
+  page,
+}) => {
+  await openTableDoc(
+    page,
+    "/tmp/cell-context-esc.md",
+    "| A | B |\n| --- | --- |\n| a1 |  |\n",
+  );
+  const cell = page.locator('td[data-row="0"][data-col="1"]');
+  const input = page.locator('[data-testid="cm-table-cell-input"]');
+  await cell.click();
+  await input.click();
+  await page.keyboard.type("/");
+  await page.keyboard.type("图");
+  const menu = page.locator(".mdb-slash-menu");
+  await expect(menu).toBeVisible({ timeout: 3000 });
+  await page.keyboard.press("Escape");
+  await expect(menu).toHaveCount(0);
+  // 输入框仍存活（Esc 只关菜单不结束编辑）且无 "/" 残留
+  await expect(input).toHaveCount(1);
+  const inputValue = await input.inputValue();
+  expect(inputValue).not.toContain("/");
+  const content = await page.evaluate(() => {
+    const store = (window as unknown as Record<string, any>).__biaoyue_store__;
+    const s = store.getState();
+    return s.tabs[s.activeTabId]?.content as string;
+  });
+  expect(content).toBe("| A | B |\n| --- | --- |\n| a1 |  |\n");
+});
+
+test("#741 视口贴底单元格菜单完整可见（A-5.1）+ 主光标不受扰（A-5.4）", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 500 });
+  await openTableDoc(
+    page,
+    "/tmp/cell-context-bottom.md",
+    "首段。\n\n| A | B |\n| --- | --- |\n| a1 |  |\n",
+  );
+  // 表格贴近视口底部：滚动到表格处
+  const table = page.locator("table.cm-table");
+  await table.scrollIntoViewIfNeeded();
+  const cell = page.locator('td[data-row="0"][data-col="1"]');
+  const input = page.locator('[data-testid="cm-table-cell-input"]');
+  await cell.click();
+  await input.click();
+  // A-5.4：主光标选区不变——读 CM6 光标节点的样式坐标做前断言
+  const cursorStyle = await page
+    .locator(".cm-cursor")
+    .first()
+    .evaluate((el) => `${el.style.left}|${el.style.top}`);
+  await page.keyboard.type("/");
+  const menu = page.locator(".mdb-slash-menu");
+  await expect(menu).toBeVisible({ timeout: 3000 });
+  const cursorAfter = await page
+    .locator(".cm-cursor")
+    .first()
+    .evaluate((el) => `${el.style.left}|${el.style.top}`);
+  expect(cursorAfter).toBe(cursorStyle);
+  // A-5.1：菜单完整落在视口内
+  const vp = page.viewportSize()!;
+  const menuBox = (await menu.boundingBox())!;
+  expect(menuBox.y).toBeGreaterThanOrEqual(0);
+  expect(menuBox.y + menuBox.height).toBeLessThanOrEqual(vp.height);
+  expect(menuBox.x).toBeGreaterThanOrEqual(0);
+  expect(menuBox.x + menuBox.width).toBeLessThanOrEqual(vp.width);
+  // A-5.4：打开菜单不扰动文档（无 dispatch 副作用的最简代理）
+  const content = await page.evaluate(() => {
+    const store = (window as unknown as Record<string, any>).__biaoyue_store__;
+    const s = store.getState();
+    return s.tabs[s.activeTabId]?.content as string;
+  });
+  expect(content).toBe("首段。\n\n| A | B |\n| --- | --- |\n| a1 |  |\n");
 });
 
 test("#740 点击行间圆点展开气泡并删除行", async ({ page }) => {

@@ -28,12 +28,7 @@ import {
   keymap,
   type ViewUpdate,
 } from "@codemirror/view";
-import {
-  Annotation,
-  Prec,
-  type EditorState,
-  type Extension,
-} from "@codemirror/state";
+import { Prec, type EditorState, type Extension } from "@codemirror/state";
 import { CALLOUT_EDIT_TYPES } from "./callout-types";
 import { TABLE_SIZE_QUERY, filterSlashCommands } from "./slash-filter";
 import { sanitizeCellText } from "./decorations/cell-text";
@@ -414,8 +409,23 @@ interface GridState {
  * 取消时不能删字符，别处的文档变动也不能关闭它。光标离开所属单元格才关闭
  * （见 `anchorRange`）。`below`：块把手的「在下方添加」在块后零宽位置请求
  * 同一菜单；和 `anchor` 一样不拥有文本，但插入落在块下方新行，而不是行内，
- * 所以永远不做单元格净化。 */
-type SlashMenuTrigger = "slash" | "anchor" | "below";
+ * 所以永远不做单元格净化。`context`：原生输入控件（单元格 input / 分栏 /
+ * 高亮块 textarea）输入 `/` 请求同一菜单——触发文本活在**控件**里而不是文档，
+ * 过滤词由宿主驱动、写回走宿主通道、焦点全程留在控件（#741）。 */
+type SlashMenuTrigger = "slash" | "anchor" | "below" | "context";
+
+/**
+ * 内容输入上下文宿主：原生输入控件接入统一斜杠菜单的通道（#741）。
+ * 菜单侧不摸控件 DOM——过滤、写回、回滚全部由宿主实现。
+ */
+export interface SlashMenuContextHost {
+  /** 触发控件的屏幕矩形（菜单定位锚；resize 重排时菜单会重读）。 */
+  anchorRect(): { left: number; right: number; top: number; bottom: number };
+  /** 选中命令后的文本写回（宿主负责落点、净化与暂存）。菜单已先行关闭。 */
+  applyText(text: string): void;
+  /** 取消菜单（Esc / 外点 / 滚动）：宿主把控件恢复到打开前状态，不留 `/` 残留。 */
+  cancel(): void;
+}
 
 interface SlashMenuState {
   open: boolean;
@@ -428,6 +438,8 @@ interface SlashMenuState {
   anchorRange: { from: number; to: number } | null;
   /** `/` 之后输入的过滤词，从文档推导。 */
   query: string;
+  /** 内容输入上下文宿主；仅 `context` 触发非空（#741）。 */
+  contextHost: SlashMenuContextHost | null;
   selected: number;
   /** 根行（可能含子菜单入口）。 */
   commands: SlashCommand[];
@@ -561,6 +573,14 @@ function closeMenu(view: EditorView): void {
 function dismissMenu(view: EditorView): void {
   const state = menus.get(view);
   if (!state?.open) return;
+  if (state.trigger === "context") {
+    // 内容输入上下文：触发文本活在宿主控件里。菜单关闭后由宿主回滚——把控件
+    // 文本恢复到打开前状态，`/` 与过滤词一并消失（E-6 取消无残留）（#741）。
+    const host = state.contextHost;
+    closeMenu(view);
+    host?.cancel();
+    return;
+  }
   if (state.trigger !== "slash") {
     // 锚定与下方菜单不拥有文本：位置是零宽的，可能落在以 `/` 开头的单元格
     // 头部或块边界。取消不能删字符。
@@ -914,8 +934,14 @@ function openMenu(
   menu.style.width = `${MENU_WIDTH}px`;
   menu.addEventListener("mouseenter", () => cancelAnchorClose(view));
   menu.addEventListener("mouseleave", () => {
+    // context 触发的菜单由焦点宿主驱动（Esc/外点/失焦关闭），指针离开菜单
+    // 不该收它——用户打字时鼠标可能停在任意位置（#741）。
     const current = menus.get(view);
-    if (current && current.trigger !== "slash") scheduleAnchorClose(view);
+    if (
+      current &&
+      (current.trigger === "anchor" || current.trigger === "below")
+    )
+      scheduleAnchorClose(view);
   });
 
   const state: SlashMenuState = {
@@ -924,6 +950,7 @@ function openMenu(
     trigger,
     anchorRange,
     query: "",
+    contextHost: null,
     selected: 0,
     commands,
     rows: commands,
@@ -964,6 +991,37 @@ function openMenu(
 }
 
 /**
+ * 内容输入上下文触发（#741）：原生输入控件输入 `/` 后打开同一菜单。
+ *
+ * 与 `openInsertMenu` 的差别：触发文本与过滤词活在**宿主控件**里（"/" 保留在
+ * 控件内作为查询锚点），菜单不碰文档、不抢焦点、定位用宿主矩形而不是
+ * `coordsAtPos`——块级 widget 内的文档坐标返回块盒，必然错位。过滤词更新走
+ * `updateSlashMenuQuery`，取消回滚与选中写回走宿主的 `cancel` / `applyText`。
+ */
+export function openContextMenu(
+  view: EditorView,
+  commands: SlashCommand[],
+  host: SlashMenuContextHost,
+): void {
+  cancelAnchorClose(view);
+  closeMenu(view);
+  openMenu(view, 0, commands, "context", null, host.anchorRect());
+  const state = menus.get(view);
+  if (state) state.contextHost = host;
+}
+
+/**
+ * 内容输入上下文：宿主控件文本变化后由宿主调用，按新过滤词重过滤并渲染。
+ * 非 context 触发的菜单不接受宿主驱动的过滤词（文档驱动路径有自己的同步器）。
+ */
+export function updateSlashMenuQuery(view: EditorView, query: string): boolean {
+  const state = menus.get(view);
+  if (!state?.open || state.trigger !== "context") return false;
+  applyQuery(view, state, query);
+  return true;
+}
+
+/**
  * `openMenu` 的锚定版，供表格单元格与块把手的「在下方添加」使用。先拆掉任何
  * 已打开的菜单：旧面板会继续绑在这个视图上却已脱离文档。`trigger` 默认
  * `anchor`（表格单元格路径不变）；块把手传 `below`。
@@ -996,10 +1054,11 @@ export function openInsertMenu(
  */
 export function releaseInsertMenu(
   view: EditorView,
-  only?: "anchor" | "below",
+  only?: "anchor" | "below" | "context",
 ): void {
   const trigger = menus.get(view)?.trigger;
-  if (trigger !== "anchor" && trigger !== "below") return;
+  if (trigger !== "anchor" && trigger !== "below" && trigger !== "context")
+    return;
   if (only !== undefined && trigger !== only) return;
   closeMenu(view);
 }
@@ -1096,6 +1155,13 @@ function positionMenu(
   trigger: SlashMenuTrigger,
 ): void {
   try {
+    if (trigger === "context") {
+      // 上下文菜单锚定触发控件矩形：widget 内的文档坐标返回块盒，绝不能用。
+      const host = menus.get(view)?.contextHost;
+      if (!host) return;
+      positionMenuAtRect(view, menu, host.anchorRect(), "below");
+      return;
+    }
     const coords = view.coordsAtPos(
       trigger === "anchor" ? slashPos : slashPos + 1,
     );
@@ -1147,6 +1213,36 @@ export function markdownDestination(href: string): string {
 function applyCommand(view: EditorView, cmd: SlashCommand): void {
   const state = menus.get(view);
   const trigger = state?.trigger ?? "slash";
+  // 上下文触发（#741）：插入落点在宿主控件内，不经 CM6 dispatch。媒体引用
+  // 之外的命令在此解析插入文本（宿主只拿最终文本，净化规则归宿主）。
+  if (trigger === "context") {
+    const host = state?.contextHost;
+    closeMenu(view);
+    if (!host) return;
+    if (cmd.pickMedia) {
+      const pickMediaFile = pickMediaFiles.get(view);
+      if (!pickMediaFile) {
+        host.cancel();
+        return;
+      }
+      void pickMediaFile().then((picked) => {
+        if (!picked) {
+          host.cancel();
+          return;
+        }
+        host.applyText(
+          `![${picked.name}](${markdownDestination(picked.href)})`,
+        );
+      });
+      return;
+    }
+    if (!cmd.insert) {
+      host.cancel();
+      return;
+    }
+    host.applyText(cmd.insert(view.state).text);
+    return;
+  }
   // 媒体选择行委托给宿主文件选择器，而不是插入静态占位文本。选中文件名变成
   // 可编辑的 `![name](name.ext)` 引用，宿主同时把它导入为资源。
   if (cmd.pickMedia) {
@@ -1261,21 +1357,6 @@ export function insertCommandTextAt(
     scrollIntoView: true,
   });
   return true;
-}
-
-/**
- * 包含 `pos` 的表格最后一行 `|` 之后的偏移。只扫描表格自己的行，所以从单元格
- * 发起的块级插入落在表格之后，而不是拆开某一行。
- */
-function endOfTableBlock(state: EditorState, pos: number): number {
-  const doc = state.doc;
-  const isRow = (lineNumber: number): boolean =>
-    doc.line(lineNumber).text.trim().startsWith("|");
-  let first = doc.lineAt(pos).number;
-  while (first > 1 && isRow(first - 1)) first -= 1;
-  let last = doc.lineAt(pos).number;
-  while (last < doc.lines && isRow(last + 1)) last += 1;
-  return doc.line(last).to;
 }
 
 /** 激活一行：打开它的浮层或网格，或应用它的插入。 */
@@ -1503,16 +1584,6 @@ function backToRoot(view: EditorView): void {
 let slashComposing = false;
 
 /**
- * 事务注解：请求在指定位置打开斜杠菜单。
- *
- * 全角标点归一（`／` / `、` → `/`）在 transactionFilter 里挂上，smart-input
- * 的 ViewPlugin 读取后调用 `openSlashMenuAt`。用注解而不是在过滤器里直接开
- * 菜单：transactionFilter 拿不到 view，且菜单必须在事务落地后打开才能按 `/`
- * 的位置测量坐标。
- */
-export const slashMenuRequest = Annotation.define<number>();
-
-/**
  * 处理输入 `/`。在光标处打开命令菜单。菜单已打开时（连续第二个斜杠）
  * 关闭它并返回 false，让 keymap 落到默认行为——不重复开菜单，不重复插入。
  *
@@ -1520,8 +1591,6 @@ export const slashMenuRequest = Annotation.define<number>();
  * - 光标在词首（行内它之前没有内容，或紧邻的前一个字符是空白）。
  * - IME 不在组合中（直接 keymap 路径；compositionend 路径单独处理已提交的斜杠）。
  *
- * 全角 `／` 与顿号 `、` 不经过这里：它们由 `smart-input` 的
- * `fullwidthPunctuation` 先归一成 `/`，再经 `slashMenuRequest` 打开菜单。
  */
 export function insertSlashChar(
   view: EditorView,
@@ -1562,18 +1631,6 @@ export function openSlashMenuAtCursor(
 ): void {
   const head = view.state.selection.main.head;
   openMenu(view, head, commands ?? getSlashCommands());
-}
-
-/**
- * 在已经存在的 `/` 位置打开斜杠菜单（不插入字符）。供全角标点归一
- * （`／` / `、` → `/`）在事务落地后调用。
- */
-export function openSlashMenuAt(
-  view: EditorView,
-  slashPos: number,
-  commands?: SlashCommand[],
-): void {
-  openMenu(view, slashPos, commands ?? getSlashCommands());
 }
 
 /** ArrowDown：移动浮层选中，或根列表选中，向下。 */
@@ -1810,6 +1867,12 @@ const resizeReposition = ViewPlugin.define((view) => {
 
 const scrollDismiss = ViewPlugin.define((view) => {
   const onScroll = (): void => {
+    const state = menus.get(view);
+    if (state?.open && state.trigger === "context") {
+      // 滚动使控件矩形失准：与 Esc 同路径取消，宿主回滚查询文本（#741）。
+      dismissMenu(view);
+      return;
+    }
     if (menuStack.top(view) === null) return;
     menuStack.closeScope(view, "scroll");
   };
@@ -1877,9 +1940,7 @@ const slashCompositionGuard = ViewPlugin.define((view) => {
     if (target !== null && target !== document && !view.dom.contains(target))
       return;
     // 提交文本是 ASCII 斜杠时触发菜单：斜杠已由浏览器/输入法插入，这里只在
-    // 当前光标处打开菜单。全角 `／` 与顿号 `、` 不走这里——它们由 smart-input
-    // 的 fullwidthPunctuation 归一成 `/` 后经 slashMenuRequest 开菜单，
-    // 两条路径同时开会重复打开。
+    // 当前光标处打开菜单。全角标点不在本守卫范围（smart-input 只归一全角逗号）。
     if (data === "/") {
       openSlashMenuAtCursor(view);
     }
@@ -1929,6 +1990,11 @@ const outsideClickDismiss = ViewPlugin.define((view) => {
         state.flyoutDom?.contains(target) ||
         inTriggerChrome)
     ) {
+      return;
+    }
+    if (state.trigger === "context") {
+      // 外点取消与 Esc 同路径：宿主回滚 `/query`，不留残留（#741）。
+      dismissMenu(view);
       return;
     }
     if (state.trigger !== "slash") {

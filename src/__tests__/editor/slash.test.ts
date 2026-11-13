@@ -3,6 +3,8 @@ import type { EditorView } from "@codemirror/view";
 import {
   defaultCommands,
   insertSlashChar,
+  isSlashMenuOpen,
+  openContextMenu,
   openInsertMenu,
   registerPickMediaFile,
   setSlashKeyChordResolver,
@@ -14,6 +16,9 @@ import {
   slashMenuSelectPrev,
   slashMenuSubmenuBack,
   slashMenuSubmenuEnter,
+  updateSlashMenuQuery,
+  setUserSlashCommands,
+  type SlashCommand,
 } from "../../editors/slash";
 import { filterSlashCommands } from "../../editors/slash-filter";
 import { formatKeyChord } from "../../editors/key-chord";
@@ -1121,5 +1126,115 @@ describe("markdownDestination（含空格的文件名）", () => {
     expect(markdownDestination("assets/中文 名 视频.mp4")).toBe(
       "<assets/中文 名 视频.mp4>",
     );
+  });
+});
+
+describe("内容输入上下文（context 触发，#741）", () => {
+  let parent: HTMLElement;
+  let view: EditorView;
+
+  beforeEach(() => {
+    installPolyfills();
+    view = createTestEditor().view;
+    parent = view.dom.parentElement as HTMLElement;
+  });
+
+  afterEach(() => {
+    view.destroy();
+    parent.remove();
+    setSlashKeyChordResolver(null);
+    setUserSlashCommands([]);
+  });
+
+  function makeHost() {
+    const applied: string[] = [];
+    let cancelled = 0;
+    return {
+      host: {
+        anchorRect: () => ({ left: 10, right: 110, top: 10, bottom: 30 }),
+        applyText: (text: string) => {
+          applied.push(text);
+        },
+        cancel: () => {
+          cancelled += 1;
+        },
+      },
+      applied,
+      cancelCount: () => cancelled,
+    };
+  }
+
+  it("openContextMenu 打开菜单：不抢焦点、不动文档、锚定宿主矩形", () => {
+    const focusSpy = vi.spyOn(view, "focus");
+    const { host } = makeHost();
+    openContextMenu(view, defaultCommands, host);
+    expect(document.querySelectorAll(".mdb-slash-menu").length).toBe(1);
+    expect(focusSpy).not.toHaveBeenCalled();
+    expect(view.state.doc.toString()).toBe("");
+    expect(isSlashMenuOpen(view)).toBe(true);
+  });
+
+  it("updateSlashMenuQuery 推送过滤词重渲染；非 context 菜单不接受宿主过滤", () => {
+    const { host } = makeHost();
+    openContextMenu(view, defaultCommands, host);
+    expect(updateSlashMenuQuery(view, "不存在的词zzz")).toBe(true);
+    expect(updateSlashMenuQuery(view, "图")).toBe(true);
+    slashMenuClose(view);
+    insertSlashChar(view);
+    // 文档级菜单（slash 触发）有自己的文档驱动过滤，宿主推送必须被拒绝。
+    expect(updateSlashMenuQuery(view, "x")).toBe(false);
+  });
+
+  it("Enter 应用命令：宿主 applyText 收到插入文本，文档逐字节不变", () => {
+    const { host, applied } = makeHost();
+    const cmd: SlashCommand = {
+      id: "t-inline",
+      code: "t-inline",
+      label: "测试行内",
+      inline: true,
+      insert: () => ({ from: 0, to: 0, text: "T-TEXT" }),
+    };
+    openContextMenu(view, [cmd], host);
+    view.dispatch({
+      changes: { from: 0, insert: "已有内容" },
+      selection: { anchor: 4 },
+    });
+    expect(slashMenuApply(view)).toBe(true);
+    expect(applied).toEqual(["T-TEXT"]);
+    // 写回是宿主的事：文档必须与打开菜单前逐字节一致。
+    expect(view.state.doc.toString()).toBe("已有内容");
+    expect(isSlashMenuOpen(view)).toBe(false);
+  });
+
+  it("Esc → 宿主 cancel、菜单关闭、文档不变", () => {
+    const { host, cancelCount } = makeHost();
+    openContextMenu(view, defaultCommands, host);
+    expect(slashMenuClose(view)).toBe(true);
+    expect(cancelCount()).toBe(1);
+    expect(document.querySelectorAll(".mdb-slash-menu").length).toBe(0);
+    expect(view.state.doc.toString()).toBe("");
+  });
+
+  it("pickMedia：无注册选择器 → cancel（不落数据）", () => {
+    const { host, applied, cancelCount } = makeHost();
+    // 镜像 table.ts 的真实调用：context 传行内命令集（openContextMenu 不过滤，
+    // 命令集由宿主决定；#744 再做上下文级集合）。
+    openContextMenu(
+      view,
+      defaultCommands.filter((cmd) => cmd.inline === true),
+      host,
+    );
+    expect(slashMenuApply(view)).toBe(true);
+    expect(applied).toEqual([]);
+    expect(cancelCount()).toBe(1);
+    expect(isSlashMenuOpen(view)).toBe(false);
+  });
+
+  it("滚动 → cancel（scrollDismiss 的 context 路径）", () => {
+    const { host, cancelCount } = makeHost();
+    openContextMenu(view, defaultCommands, host);
+    view.scrollDOM.dispatchEvent(new Event("scroll"));
+    expect(cancelCount()).toBe(1);
+    expect(isSlashMenuOpen(view)).toBe(false);
   });
 });
