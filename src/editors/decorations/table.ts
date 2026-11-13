@@ -25,7 +25,7 @@ import {
 } from "@codemirror/view";
 import { defaultCommands, openInsertMenu, releaseInsertMenu } from "../slash";
 
-import { ADD_ICON_NAME, renderIcon } from "../icons";
+import { renderIcon } from "../icons";
 import {
   parseCellBackground,
   renderCellText,
@@ -86,17 +86,22 @@ interface TableBlock {
 // --- 纯解析助手 --------------------------------------------------------------
 
 /**
- * 把「空 / 有内容」写进单元格手柄：图标、可访问名、data-cell-empty。
+ * 把单元格手柄的状态写进去：图标、可访问名、data-cell-empty。
  *
- * 只在创建时算一次是不够的：用户在空单元格里打完字，手柄还停在「+」上
- * （#108）。updateDOM 每次刷新单元格都会调这里，按当前内容重算。
- * 内容态没变就直接返回，避免无谓重建 SVG。
+ * 图标与文案全表统一：所有非表头单元格手柄都是同一个表格图标，不再按空 /
+ * 有内容切换（#739）。图标名与 `block-handle.ts` 的 `BLOCK_ICON_NAME.table`
+ * 是同一词汇，两处必须一致；`data-cell-empty` 按 当前内容记录（#108 的
+ * 空态标记语义，e2e 断言读取）。
+ *
+ * updateDOM 每次刷新单元格都会调这里，所以签名保留 text 参数维持空态标记
+ * 的重算；图标现为常量，`dataset.icon` 相同即跳过重建。
  */
 function applyCellHandleState(handle: HTMLElement, text: string): void {
   const empty = text.trim() === "";
-  const iconName = empty ? ADD_ICON_NAME : "DataSheetOutlined";
   handle.dataset.cellEmpty = String(empty);
-  handle.title = empty ? "插入内容" : "转换块内容";
+  handle.title = "打开内容菜单";
+  // 与 block-handle.ts `BLOCK_ICON_NAME.table` 同词汇（#739 统一后）。
+  const iconName = "DataSheetOutlined";
   if (handle.dataset.icon === iconName) return;
   handle.dataset.icon = iconName;
   handle.replaceChildren(renderIcon(iconName));
@@ -825,10 +830,10 @@ class TableWidget extends WidgetType {
     // 嵌套表格、分栏、围栏代码）会被净化成单行并静默无操作，读起来像「勾了
     // 菜单项，什么也没发生」（#470）。
     // 锚到单元格里实际画出的把手，让面板总开在它旁边，而不是 `coordsAtPos`
-    // 恰好落下的位置（#492）。
+    // 恰好落下的位置（#492）。表头不渲染手柄（#739），这里只查 td。
     const handleRect = view.dom
       .querySelector<HTMLElement>(
-        `td[data-row="${row}"][data-col="${col}"] .cm-table-cell-handle, th[data-row="${row}"][data-col="${col}"] .cm-table-cell-handle`,
+        `td[data-row="${row}"][data-col="${col}"] .cm-table-cell-handle`,
       )
       ?.getBoundingClientRect();
     const anchorRect =
@@ -950,28 +955,20 @@ class TableWidget extends WidgetType {
       el.classList.add("cm-table-cell-selected");
     }
 
-    const handle = document.createElement("div");
-    // `.cm-table-cell-handle` 是接线/外部点击守卫（`slash.ts`）；`.mdb-table-cell-handle`
-    // 是公开一致性锚点（R-TABLE-04）。两者指同一个节点。
-    handle.className = "cm-table-cell-handle";
-    handle.classList.add("mdb-table-cell-handle");
-    handle.setAttribute("data-testid", "cm-table-cell-handle");
-    handle.dataset.row = String(row);
-    handle.dataset.col = String(col);
-    // 两个不同入口（#399，与参考产品一致）：空单元格提供 INSERT，有内容的单元格
-    // 提供 CONVERT（它所属块的块菜单）。两者都是真菜单，都不是占位。
-    const empty = text.trim() === "";
-    handle.dataset.cellEmpty = String(empty);
-    handle.title = empty ? "插入内容" : "转换块内容";
-    // 图标承载与标签相同的区分（#452）：空单元格用 ADD，有内容的用 CONVERT。
-    // 与块级把手同一词汇（icons.ts），不是 CSS 字形。
-    // 用路径图标而非文字字形：`kind: 'text'` 图标会把标签（¶）注入单元格的文本
-    // 内容，污染 innerText/断言（#452）。
-    // #452：有内容的单元格是表格单元格，所以用 gutter 把手在任何表格行上显示的
-    // 同一个表格图标（DataSheetOutlined）。这里用引用图标会读成「转换/引用」，
-    // 破坏共享词汇。
-    applyCellHandleState(handle, text);
-    el.appendChild(handle);
+    // 表头单元格不渲染手柄（#739）：手柄是内容菜单入口，表头没有可转换的内容块。
+    let handle: HTMLElement | null = null;
+    if (row >= 0) {
+      handle = document.createElement("div");
+      // `.cm-table-cell-handle` 是接线/外部点击守卫（`slash.ts`）；`.mdb-table-cell-handle`
+      // 是公开一致性锚点（R-TABLE-04）。两者指同一个节点。
+      handle.className = "cm-table-cell-handle";
+      handle.classList.add("mdb-table-cell-handle");
+      handle.setAttribute("data-testid", "cm-table-cell-handle");
+      handle.dataset.row = String(row);
+      handle.dataset.col = String(col);
+      applyCellHandleState(handle, text);
+      el.appendChild(handle);
+    }
 
     if (view) this.wireCell(view, el, handle, row, col);
     return el;
@@ -1025,7 +1022,7 @@ class TableWidget extends WidgetType {
   private wireCell(
     view: EditorView,
     cellEl: HTMLElement,
-    handle: HTMLElement,
+    handle: HTMLElement | null,
     row: number,
     col: number,
   ): void {
@@ -1091,12 +1088,14 @@ class TableWidget extends WidgetType {
 
     // 把手：按压打开，悬停只标记入口。仅进入就打开会在指针只是擦过把手时触发
     // 插入菜单（#385b）——最后一列最糟，它的把手贴在 wrap 边缘。
-    handle.addEventListener("mouseenter", () => {
-      handle.classList.add("cm-table-cell-handle-active");
-    });
-    handle.addEventListener("mouseleave", () => {
-      handle.classList.remove("cm-table-cell-handle-active");
-    });
+    if (handle) {
+      handle.addEventListener("mouseenter", () => {
+        handle.classList.add("cm-table-cell-handle-active");
+      });
+      handle.addEventListener("mouseleave", () => {
+        handle.classList.remove("cm-table-cell-handle-active");
+      });
+    }
     // 按压本身由 `installTablePointer` 里的委托监听器处理（#492）——这里的逐节点
     // 监听器在它可能触发时已经失效，因为 CM6 在 mousedown 期间重建了这个 widget。
   }
