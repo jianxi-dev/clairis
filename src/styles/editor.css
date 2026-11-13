@@ -1001,6 +1001,7 @@ body {
   max-height: 70vh;
   background: #000;
   border-radius: var(--app-radius);
+  color-scheme: dark;
 }
 
 .cm-media-file {
