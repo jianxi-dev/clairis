@@ -81,6 +81,28 @@ async function pinToolbar(page: Page): Promise<void> {
   await page.locator('[data-epdf-i="pdf-toolbar-pin"]').click();
 }
 
+/** 承载 PDF shadow DOM 的宿主元素 class 列表（pdf-chrome-pinned-hidden 挂在这里）。 */
+function pdfHostClass(page: Page): Promise<string> {
+  return page.evaluate(() => {
+    const walk = (root: Document | ShadowRoot): string | null => {
+      for (const el of Array.from(root.querySelectorAll("*"))) {
+        if (
+          el.shadowRoot &&
+          el.shadowRoot.querySelector('[data-epdf-i="main-toolbar"]')
+        ) {
+          return el.className;
+        }
+        if (el.shadowRoot) {
+          const nested = walk(el.shadowRoot);
+          if (nested !== null) return nested;
+        }
+      }
+      return null;
+    };
+    return walk(document) ?? "";
+  });
+}
+
 test("PDF 按钮栏固定隐藏后 display 为 none，快捷键恢复可见", async ({
   page,
 }) => {
@@ -115,4 +137,36 @@ test("切换文档后按钮栏恢复默认，无残留", async ({ page }) => {
   await openPdf(page);
 
   expect(await toolbarDisplay(page)).not.toBe("none");
+});
+
+test("⌘⇧D 在 PDF 视图内切换固定隐藏，总览含对应行（editor-surface-batch17 2.1）", async ({
+  page,
+}) => {
+  await installShadowProbe(page);
+  await boot(page);
+  await openPdf(page);
+
+  // 焦点放进 shadow DOM 控件（视图内部），模拟用户正在操作 PDF 控件
+  await page.locator('[data-epdf-i="pdf-page-nav"] input').click();
+
+  expect(await pdfHostClass(page)).not.toContain("pdf-chrome-pinned-hidden");
+
+  await page.keyboard.press("Shift+Meta+D");
+  await expect
+    .poll(() => pdfHostClass(page))
+    .toContain("pdf-chrome-pinned-hidden");
+
+  await page.keyboard.press("Shift+Meta+D");
+  await expect
+    .poll(() => pdfHostClass(page))
+    .not.toContain("pdf-chrome-pinned-hidden");
+
+  // 快捷键总览按现有注册表自动渲染
+  await page.keyboard.press("Shift+/");
+  await expect(page.locator('[data-testid="shortcut-overlay"]')).toBeVisible();
+  await expect(
+    page.locator('[data-shortcut-id="mode-pdf-toolbar-pin"]'),
+  ).toHaveCount(1);
+  await page.locator('[data-testid="shortcut-overlay-close"]').click();
+  await expect(page.locator('[data-testid="shortcut-overlay"]')).toHaveCount(0);
 });
