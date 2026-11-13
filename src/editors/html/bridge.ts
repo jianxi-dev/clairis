@@ -36,6 +36,8 @@ export interface TextSelectionMessage {
   rect: SelectionRect | null;
   /** 选区文本（截断后仅供判断非空） */
   text: string;
+  /** 选区所在块的当前对齐（left/center/right/justify），供工具条回显。 */
+  align: string;
 }
 
 /** 文字格式化后的块级节点内容（主侧回写 `content`）。 */
@@ -44,6 +46,8 @@ export interface RangeHtmlMessage {
   type: "rangeHtml";
   nodeId: string;
   html: string;
+  /** 块级样式（如对齐）改在元素自身，innerHTML 带不回来，单独上送。 */
+  blockStyle?: Record<string, string>;
 }
 
 export interface ReadyMessage {
@@ -186,6 +190,7 @@ export function parseBridgeMessage(data: unknown): BridgeMessage | null {
           type: "textSelection",
           rect: null,
           text: "",
+          align: "left",
         };
       }
       const rect = msg.rect as Record<string, unknown> | null;
@@ -200,18 +205,28 @@ export function parseBridgeMessage(data: unknown): BridgeMessage | null {
         type: "textSelection",
         rect: { x, y, width, height } as SelectionRect,
         text: msg.text,
+        align: typeof msg.align === "string" ? msg.align : "left",
       };
     }
-    case "rangeHtml":
+    case "rangeHtml": {
       if (typeof msg.nodeId !== "string" || typeof msg.html !== "string") {
         return null;
+      }
+      let blockStyle: Record<string, string> | undefined;
+      if (typeof msg.blockStyle === "object" && msg.blockStyle !== null) {
+        blockStyle = {};
+        for (const [key, value] of Object.entries(msg.blockStyle)) {
+          if (typeof value === "string") blockStyle[key] = value;
+        }
       }
       return {
         v: BRIDGE_VERSION,
         type: "rangeHtml",
         nodeId: msg.nodeId,
         html: msg.html,
+        ...(blockStyle ? { blockStyle } : {}),
       };
+    }
     case "ready":
       if (typeof msg.nodeCount !== "number") return null;
       return { v: BRIDGE_VERSION, type: "ready", nodeCount: msg.nodeCount };

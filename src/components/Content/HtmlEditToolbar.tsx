@@ -25,10 +25,11 @@ import { renderIcon } from "../../editors/icons";
 const GAP = 8;
 /** 字号档位。固定档位而不是自由输入，见 E-19 D4。 */
 const FONT_SIZES = [12, 14, 16, 18, 20, 24, 28, 32, 40];
-const ALIGNS: { value: string; label: string; icon: string }[] = [
-  { value: "left", label: "左", icon: "AlignLeftOutlined" },
-  { value: "center", label: "中", icon: "AlignCenterOutlined" },
-  { value: "right", label: "右", icon: "AlignRightOutlined" },
+const ALIGNS: { value: string; label: string }[] = [
+  { value: "left", label: "左" },
+  { value: "center", label: "中" },
+  { value: "right", label: "右" },
+  { value: "justify", label: "两端" },
 ];
 const FONT_FAMILIES: { value: string; label: string }[] = [
   { value: "serif", label: "衬线" },
@@ -148,7 +149,8 @@ export default function HtmlEditToolbar({
   const kind = nodeKindOf(info.tag);
   const fontSize = info.style["font-size"] ?? "";
   const fontFamily = info.style["font-family"] ?? "";
-  const align = info.style["text-align"] ?? "";
+  // 未设置时按默认左对齐回显：select 没有空值选项，否则会显示空白。
+  const align = info.style["text-align"] || "left";
   const decoration = readStyle(info.style, "text-decoration");
   const weight = Number(info.style["font-weight"] ?? 0);
   const bold = info.style["font-weight"] === "bold" || weight >= 600;
@@ -325,30 +327,21 @@ export default function HtmlEditToolbar({
           </button>
 
           <span className="html-edit-toolbar__sep" />
-          <span className="html-edit-toolbar__group">
+          <select
+            aria-label="对齐"
+            value={align}
+            onChange={(e) =>
+              onPatchStyle(() => ({
+                "text-align": e.target.value || null,
+              }))
+            }
+          >
             {ALIGNS.map((item) => (
-              <button
-                key={item.value}
-                type="button"
-                data-align={item.value}
-                aria-label={`${item.label}对齐`}
-                aria-pressed={align === item.value}
-                className={
-                  align === item.value
-                    ? "html-edit-toolbar__btn is-active"
-                    : "html-edit-toolbar__btn"
-                }
-                onClick={() =>
-                  onPatchStyle((current) => ({
-                    "text-align":
-                      current["text-align"] === item.value ? null : item.value,
-                  }))
-                }
-              >
-                <ToolbarIcon name={item.icon} />
-              </button>
+              <option key={item.value} value={item.value}>
+                {item.label}
+              </option>
             ))}
-          </span>
+          </select>
           <input
             aria-label="文字颜色"
             type="color"

@@ -483,15 +483,18 @@ function runtimeSource(version: number): string {
     }
     if (!Number.isFinite(left)) return;
     savedRange = range.cloneRange();
-    const sig = [Math.round(left), Math.round(top), Math.round(right), Math.round(bottom), text.length].join("|");
+    const block = blockOf(range.startContainer);
+    const rawAlign = block ? getComputedStyle(block).textAlign : "left";
+    const align = rawAlign === "start" ? "left" : rawAlign === "end" ? "right" : rawAlign;
+    const sig = [Math.round(left), Math.round(top), Math.round(right), Math.round(bottom), text.length, align].join("|");
     if (sig === lastTextReport) return;
     lastTextReport = sig;
-    const block = blockOf(range.startContainer);
     post({
       type: "textSelection",
       rect: { x: left, y: top, width: right - left, height: bottom - top },
       text: text.slice(0, 80),
       nodeId: block ? block.getAttribute("data-cm-node-id") : null,
+      align,
     });
   };
 
@@ -540,6 +543,7 @@ function runtimeSource(version: number): string {
   const applyRangeCommand = (command, value) => {
     if (!savedRange) return;
     const block = blockOf(savedRange.startContainer);
+    let blockStyle = null;
     const toggle = (prop, css) => {
       if (!unwrapStyle(prop, block)) wrapSaved(css);
     };
@@ -579,7 +583,11 @@ function runtimeSource(version: number): string {
       case "justifyRight":
       case "justifyFull":
         if (block) {
-          block.style.textAlign = command.replace("justify", "").toLowerCase();
+          block.style.textAlign =
+            command === "justifyFull"
+              ? "justify"
+              : command.replace("justify", "").toLowerCase();
+          blockStyle = { "text-align": block.style.textAlign };
         }
         break;
       case "removeFormat": {
@@ -603,6 +611,7 @@ function runtimeSource(version: number): string {
         type: "rangeHtml",
         nodeId: block.getAttribute("data-cm-node-id"),
         html: block.innerHTML,
+        ...(blockStyle ? { blockStyle } : {}),
       });
     }
     lastTextReport = "";

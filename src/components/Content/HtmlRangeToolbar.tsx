@@ -10,25 +10,26 @@ const ALIGNS: {
   value: string;
   label: string;
   command: string;
-  icon: string;
 }[] = [
   {
     value: "left",
     label: "左",
     command: "justifyLeft",
-    icon: "AlignLeftOutlined",
   },
   {
     value: "center",
     label: "中",
     command: "justifyCenter",
-    icon: "AlignCenterOutlined",
   },
   {
     value: "right",
     label: "右",
     command: "justifyRight",
-    icon: "AlignRightOutlined",
+  },
+  {
+    value: "justify",
+    label: "两端",
+    command: "justifyFull",
   },
 ];
 const FONT_FAMILIES: { value: string; label: string }[] = [
@@ -64,11 +65,13 @@ function ToolbarIcon({ name }: { name: string }) {
 export default function HtmlRangeToolbar({
   anchor,
   text,
+  align,
   onCommand,
   onClose,
 }: {
   anchor: SelectionRect;
   text: string;
+  align: string;
   onCommand: (command: string, value?: string) => void;
   onClose: () => void;
 }) {
@@ -184,21 +187,23 @@ export default function HtmlRangeToolbar({
         <ToolbarIcon name="GlobalLinkOutlined" />
       </button>
       <span className="html-edit-toolbar__sep" />
-      <span className="html-edit-toolbar__group">
+      <select
+        aria-label="对齐"
+        value={align || "left"}
+        onMouseDown={(e) => e.preventDefault()}
+        onChange={(e) => {
+          const command = ALIGNS.find(
+            (a) => a.value === e.target.value,
+          )?.command;
+          if (command) onCommand(command);
+        }}
+      >
         {ALIGNS.map((item) => (
-          <button
-            key={item.value}
-            type="button"
-            data-align={item.value}
-            aria-label={`${item.label}对齐`}
-            className="html-edit-toolbar__btn"
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={() => onCommand(item.command)}
-          >
-            <ToolbarIcon name={item.icon} />
-          </button>
+          <option key={item.value} value={item.value}>
+            {item.label}
+          </option>
         ))}
-      </span>
+      </select>
       <input
         aria-label="文字颜色"
         type="color"
