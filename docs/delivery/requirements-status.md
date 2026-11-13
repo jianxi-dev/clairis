@@ -2,7 +2,7 @@
 title: 需求实现状态总览
 type: delivery
 status: accepted
-last_updated: 2026-11-12
+last_updated: 2026-11-13
 source_of_truth: supporting
 ---
 
@@ -37,8 +37,8 @@ openspec status --change <name>   # 单个变更工件完成度
 
 ## 总览统计（截至 2026-11-09）
 
-- 规格：17 域 / 204 requirement（2026-11-12 归档 ui-polish-batch15 后）
-- ✅ 经 openspec 归档实现：44
+- 规格：17 域 / 216 requirement（2026-11-13 归档 editor-surface-batch16 后）
+- ✅ 经 openspec 归档实现：56
 - 🟡 已实现/设计完成（未走 openspec 变更）：24
 - ⬜ 待开发：16
 - 🗒 未立项（遗留散件登记）：约 16（展卷仪式 8 模块 + TODOS 安全/功能项）
@@ -55,6 +55,8 @@ openspec status --change <name>   # 单个变更工件完成度
   - 视频默认档连播下一个视频（音频不静默起播）+ 竖拍适配回归、轮盘改显式快捷键召唤（默认圆心/双击切盘/中键拖动持久化）、轮盘搜索 9 行上限与固定快捷键列、历史组补剪切与透明项棋盘格、提示时长可配（含回滚）、对齐围栏编辑态隐藏、页签喇叭按文件隔离、音频静音即时暂停、PDF 按钮栏固定显隐、顶栏去品牌与窗口按钮按钉住落点、栏目菜单边界翻转
 - 编辑域（`image-block-editing`）：9/9 票合并（PR #659–#664、#677–#679、#680、#681），+2 requirement（+3 新增、-1 编号让位：E-24 改授图片块编辑）、3 条 requirement 修订（E-11 块菜单、转换菜单图标与二级面板、高亮块图标间距），已归档 `openspec/changes/archive/2026-11-12-image-block-editing`
   - 图片块选中态/工具条/双击最大化、属性语法（width/height/align/crop）与括号路径保护、四边四角缩放、无损裁剪（裁剪浮层 + 裁剪矩形写回）、描述行（占位/提交/收起）、剪贴板粘贴图片、块菜单图标补齐与二级面板互斥、高亮块图标间距归零
+- 编辑/阅读/导出域（`editor-surface-batch16`）：19/19 票合并（PR #716–#734），+12 requirement（editing 9：E-23 块宽度、E-24 编辑态公式与代码高亮、E-25 手柄菜单稳定与拖块、E-26 插入菜单表格与分栏、E-27 图片描述、E-28 图片裁剪、E-29 图片对齐与缩放锚点、E-30 图片预览浮层、E-31 块菜单与任务图标；reading 2：A-18 预览宽度与字体、A-19 预览图片圆角；export 1：EX-7 Markdown 打印），已归档 `openspec/changes/archive/2026-11-13-editor-surface-batch16`
+  - 视频测试基线（逆时针断言、播放列表事件驱动）、手柄菜单回移不拆且图片/表格菜单贴手柄、拖块插入指示线与 Esc 取消、全屏按钮栏自动浮现、两态块宽度对齐、编辑态等宽统一、编辑态 KaTeX 公式与围栏代码高亮、Pele 两态字体同源、表格网格增量高亮保留选中、分栏 5 横向栏目、A4 打印、图片描述/裁剪/对齐/缩放锚点/预览浮层/圆角/块菜单/任务图标
 - 规格对齐（`rail-thumb-spec-sync`）：阅读空间卡片缩略图 72×54 → 64×48（`navigation` 1 条 requirement 修订，总数不变），已归档 `openspec/changes/archive/2026-11-08-rail-thumb-spec-sync`
   - 主题弹层生命周期 + 单击循环切主题、图片右键应用内菜单、chrome 前景色统一、关闭其他图标、视频容器自适应与画面变换、沉浸态隐藏状态栏/未钉住左栏与每栏独立页签条、悬浮窗图片按宽可滚 + HTML 本地直载、一键自动布局
 - 外壳/页面/编辑/阅读/文件域（`ui-polish-batch6`）：25/25 票合并（PR #394–#408），净 +5 requirement（+8 新增、-3 被取代），已归档 `openspec/changes/archive/2026-11-08-ui-polish-batch6`
