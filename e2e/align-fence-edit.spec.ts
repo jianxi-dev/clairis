@@ -13,9 +13,10 @@ test.beforeEach(async ({ page }) => {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto(APP_URL, { waitUntil: "networkidle" });
   await page.addStyleTag({
+    // 只保留空行手柄隐藏（测试专用）；隐藏态 pointer-events 已全局化到
+    // editor.css（#742），不再本地注入。
     content:
-      '.cm-block-handle[data-empty="true"] { display: none !important; }' +
-      ".cm-block-handle:not(.cm-block-handle-visible) { pointer-events: none !important; }",
+      '.cm-block-handle[data-empty="true"] { display: none !important; }',
   });
   await page.waitForSelector('[data-testid="pane-header"]', { timeout: 10000 });
   await page.evaluate((body) => {

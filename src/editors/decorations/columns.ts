@@ -12,6 +12,19 @@
  */
 import { Decoration, WidgetType, type EditorView } from "@codemirror/view";
 import type { Range } from "@codemirror/state";
+import {
+  getSlashCommands,
+  isSlashMenuOpen,
+  openContextMenu,
+  releaseInsertMenu,
+  slashMenuApply,
+  slashMenuClose,
+  slashMenuSelectNext,
+  slashMenuSelectPrev,
+  updateSlashMenuQuery,
+  type SlashCommand,
+} from "../slash";
+import { renderIcon } from "../icons";
 
 const OPEN_RE = /^ {0,3}:::\s*\{([^}]*)\}\s*$/;
 const CLOSE_RE = /^ {0,3}:::\s*$/;
@@ -65,6 +78,65 @@ function rebuildColumns(
 }
 
 /**
+ * 已打开的就地编辑器 → 以「+」手柄的非查询模式打开菜单的回调。
+ *
+ * 手柄点击时若该栏编辑器已开着，直接复用它的菜单入口，避免开第二个 textarea。
+ */
+const columnMenuOpeners = new WeakMap<HTMLElement, () => void>();
+
+/** 一个就地编辑器的斜杠菜单状态与宿主回调（按 textarea 存放）。 */
+interface ColumnMenuEntry {
+  mode: "slash" | "handle" | null;
+  slashPos: number;
+  close: () => void;
+  cancel: () => void;
+  write: (text: string) => void;
+}
+
+const columnMenus = new WeakMap<HTMLTextAreaElement, ColumnMenuEntry>();
+
+/** 光标前最后一个 `/` 的下标 + 1（查询锚点）；没有 `/` 时退回光标位。 */
+function slashAnchor(area: HTMLTextAreaElement): number {
+  const caret = area.selectionStart ?? area.value.length;
+  const idx = area.value.lastIndexOf("/", caret);
+  return idx >= 0 ? idx + 1 : caret;
+}
+
+/**
+ * 打开分栏就地编辑器的统一斜杠菜单（#742）。
+ *
+ * `slashMode` 为 true 时是查询模式：`/` 保留在 textarea 内作查询锚点，选中替换
+ * `[slashPos - 1, caret]`，取消回滚 `/query`。为 false 时是「+」手柄的非查询
+ * 模式：无 `/`，选中在光标处零宽插入，取消无副作用。两种模式都只写回 textarea，
+ * 落文档仍由 Enter/blur 的 commit 路径完成（源码唯一真相源）。
+ */
+export function openColumnContextMenu(
+  view: EditorView,
+  area: HTMLTextAreaElement,
+  commands: SlashCommand[],
+  slashMode: boolean,
+): void {
+  const entry = columnMenus.get(area);
+  if (!entry) return;
+  entry.mode = slashMode ? "slash" : "handle";
+  entry.slashPos = slashMode ? slashAnchor(area) : -1;
+  const rect = area.getBoundingClientRect();
+  openContextMenu(view, commands, {
+    anchorRect: () => {
+      const r = area.isConnected ? area.getBoundingClientRect() : rect;
+      return {
+        left: r.left,
+        right: r.right,
+        top: r.top,
+        bottom: r.bottom,
+      };
+    },
+    applyText: entry.write,
+    cancel: entry.cancel,
+  });
+}
+
+/**
  * 栏内就地编辑器（#450）。
  *
  * widget 替换了整个围栏 div，所以把 CM6 光标「放进某一栏」是不可能的：widget
@@ -77,10 +149,12 @@ function openColumnEditor(
   index: number,
   host: HTMLElement,
   initial: string,
+  openHandleMenu = false,
 ): void {
   const existing = host.querySelector<HTMLTextAreaElement>(".cm-column-editor");
   if (existing) {
     existing.focus();
+    if (openHandleMenu) columnMenuOpeners.get(host)?.();
     return;
   }
   const area = document.createElement("textarea");
@@ -93,9 +167,12 @@ function openColumnEditor(
   area.setSelectionRange(area.value.length, area.value.length);
 
   let composing = false;
+
   const teardown = (): void => {
     area.remove();
     host.removeAttribute("data-editing");
+    columnMenuOpeners.delete(host);
+    columnMenus.delete(area);
   };
   const commit = (): void => {
     if (!area.isConnected) return;
@@ -115,6 +192,56 @@ function openColumnEditor(
     });
     view.focus();
   };
+  const entry: ColumnMenuEntry = {
+    mode: null,
+    slashPos: -1,
+    close: (): void => {
+      entry.mode = null;
+      entry.slashPos = -1;
+      releaseInsertMenu(view, "context");
+    },
+    cancel: (): void => {
+      if (entry.mode === "slash" && entry.slashPos >= 0 && area.isConnected) {
+        const end = Math.max(
+          entry.slashPos,
+          area.selectionStart ?? area.value.length,
+        );
+        area.value =
+          area.value.slice(0, entry.slashPos - 1) + area.value.slice(end);
+        area.setSelectionRange(entry.slashPos - 1, entry.slashPos - 1);
+      }
+      entry.close();
+    },
+    write: (text: string): void => {
+      if (!area.isConnected) {
+        entry.close();
+        return;
+      }
+      if (entry.mode === "slash" && entry.slashPos >= 0) {
+        const end = Math.max(
+          entry.slashPos,
+          area.selectionStart ?? area.value.length,
+        );
+        area.value =
+          area.value.slice(0, entry.slashPos - 1) +
+          text +
+          area.value.slice(end);
+        const caret = entry.slashPos - 1 + text.length;
+        area.setSelectionRange(caret, caret);
+      } else {
+        const caret = area.selectionStart ?? area.value.length;
+        area.value =
+          area.value.slice(0, caret) + text + area.value.slice(caret);
+        const next = caret + text.length;
+        area.setSelectionRange(next, next);
+      }
+      entry.close();
+    },
+  };
+  columnMenus.set(area, entry);
+  columnMenuOpeners.set(host, () => {
+    openColumnContextMenu(view, area, getSlashCommands(), false);
+  });
 
   area.addEventListener("compositionstart", () => {
     composing = true;
@@ -124,6 +251,29 @@ function openColumnEditor(
   });
   area.addEventListener("keydown", (event) => {
     event.stopPropagation();
+    // 菜单开着：键盘驱动菜单（焦点在 textarea，CM6 keymap 不可达，#741）。
+    if (entry.mode !== null && isSlashMenuOpen(view)) {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        slashMenuApply(view);
+        return;
+      }
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        slashMenuSelectNext(view);
+        return;
+      }
+      if (event.key === "ArrowUp") {
+        event.preventDefault();
+        slashMenuSelectPrev(view);
+        return;
+      }
+      if (event.key === "Escape") {
+        event.preventDefault();
+        slashMenuClose(view);
+        return;
+      }
+    }
     if (event.key === "Escape") {
       event.preventDefault();
       teardown();
@@ -135,13 +285,39 @@ function openColumnEditor(
     }
   });
   area.addEventListener("blur", () => {
-    if (!composing) commit();
+    if (composing) return;
+    // 菜单还开着就失焦（Alt-Tab 等）：先取消回滚，绝不让 `/query` 进文档。
+    if (entry.mode !== null && isSlashMenuOpen(view)) slashMenuClose(view);
+    commit();
   });
   area.addEventListener("input", () => {
     area.style.height = "auto";
     area.style.height = `${area.scrollHeight}px`;
+    if (composing) return;
+    if (entry.mode === "slash") {
+      // 触发符被删 = 查询锚点失效，直接关菜单（无残留可回滚）。
+      if (entry.slashPos < 0 || area.value[entry.slashPos - 1] !== "/") {
+        entry.close();
+        return;
+      }
+      // 光标退到触发符之前也算放弃查询。
+      const caret = area.selectionStart ?? area.value.length;
+      if (caret < entry.slashPos) {
+        entry.close();
+        return;
+      }
+      updateSlashMenuQuery(view, area.value.slice(entry.slashPos, caret));
+      return;
+    }
+    if (entry.mode === "handle") return;
+    // 与单元格同款：末尾 `/` 就地打开查询菜单。
+    if (!area.value.endsWith("/")) return;
+    openColumnContextMenu(view, area, getSlashCommands(), true);
   });
   area.addEventListener("mousedown", (event) => event.stopPropagation());
+  if (openHandleMenu) {
+    openColumnContextMenu(view, area, getSlashCommands(), false);
+  }
 }
 
 /** `count` 栏的等分百分比（余数均匀摊）。 */
@@ -245,6 +421,8 @@ function withColsAttr(openLine: string, widths: number[]): string {
 }
 
 class ColumnsWidget extends WidgetType {
+  private view: EditorView | null = null;
+
   constructor(
     /** 分栏块序号——文档位移时保持稳定的键。 */
     readonly index: number,
@@ -265,6 +443,7 @@ class ColumnsWidget extends WidgetType {
   }
 
   toDOM(view?: EditorView): HTMLElement {
+    this.view = view ?? null;
     const widths = resolveWidths(this.block);
     const container = document.createElement("div");
     container.className = "cm-columns";
@@ -295,7 +474,83 @@ class ColumnsWidget extends WidgetType {
       );
     }
 
+    container.appendChild(this.buildAddHandle(view, container));
     return container;
+  }
+
+  /**
+   * 容器「+」新增手柄（A-4.5 / D7）：贴内容区左缘外侧、纵向居中，与单元格手柄
+   * 同款形态。悬停容器才显示；点击打开该栏就地编辑器并以非查询模式打开菜单，
+   * 选单落在被悬停栏的光标处。
+   */
+  private buildAddHandle(
+    view: EditorView | undefined,
+    container: HTMLElement,
+  ): HTMLElement {
+    const handle = document.createElement("div");
+    handle.className = "cm-columns-add-handle";
+    handle.setAttribute("data-testid", "cm-columns-add-handle");
+    handle.title = "新增内容";
+    handle.replaceChildren(renderIcon("AddOutlined"));
+    if (!view) return handle;
+
+    let activeCol = 0;
+    // 把手贴悬停栏正文左缘外侧：水平方向缩进容器内，避开块手柄（其右缘在容器
+    // 左边框外 4px）；垂直方向对齐该栏正文中心。
+    const position = (index: number): void => {
+      activeCol = index;
+      const body = container.querySelector<HTMLElement>(
+        `.cm-column[data-col="${index}"] .cm-column-body`,
+      );
+      if (!body) return;
+      const containerRect = container.getBoundingClientRect();
+      const bodyRect = body.getBoundingClientRect();
+      const style = window.getComputedStyle(container);
+      const borderLeft = Number.parseFloat(style.borderLeftWidth) || 0;
+      const borderTop = Number.parseFloat(style.borderTopWidth) || 0;
+      handle.style.left = `${
+        bodyRect.left - containerRect.left - borderLeft - 16
+      }px`;
+      handle.style.top = `${
+        bodyRect.top - containerRect.top - borderTop + bodyRect.height / 2
+      }px`;
+    };
+    container.addEventListener(
+      "mousemove",
+      (event) => {
+        const body = (event.target as HTMLElement | null)?.closest(
+          ".cm-column-body",
+        ) as HTMLElement | null;
+        const col = body?.closest(".cm-column") as HTMLElement | null;
+        const index = Number(col?.dataset.col ?? "0");
+        if (Number.isFinite(index)) position(index);
+      },
+      { passive: true },
+    );
+    container.addEventListener("mouseenter", () => position(0), {
+      passive: true,
+    });
+    handle.addEventListener("mousedown", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const body = container.querySelector<HTMLElement>(
+        `.cm-column[data-col="${activeCol}"] .cm-column-body`,
+      );
+      if (!body) return;
+      const opener = columnMenuOpeners.get(body);
+      if (opener) {
+        opener();
+        return;
+      }
+      const cell = this.block.cells[activeCol] ?? {
+        from: this.block.openTo,
+        to: this.block.openTo,
+        text: "",
+      };
+      body.dataset.editing = "true";
+      openColumnEditor(view, this.block.from, activeCol, body, cell.text, true);
+    });
+    return handle;
   }
 
   private buildColumn(
@@ -415,6 +670,15 @@ class ColumnsWidget extends WidgetType {
     view.dispatch({
       changes: { from: current.openFrom, to: current.openTo, insert: next },
     });
+  }
+
+  /**
+   * widget 消失（分栏被删、模式切换拆除视图）时丢掉它拥有的上下文菜单，避免
+   * 孤儿面板浮在别的视图上。
+   */
+  destroy(): void {
+    if (!this.view) return;
+    releaseInsertMenu(this.view, "context");
   }
 }
 
