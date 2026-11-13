@@ -138,6 +138,98 @@ test.describe("页签右键菜单：复制路径与移动到（ui-polish-batch12
   });
 });
 
+test.describe("页签右键菜单关闭协议（editor-surface-batch17 1.1）", () => {
+  test("外点 / Esc / 滚动后菜单节点数为 0，再打开→Esc 无残留", async ({
+    page,
+  }) => {
+    await boot(page);
+    const menu = page.locator("[data-tab-menu]");
+    const tab = page.locator('[role="tab"]').first();
+
+    // 外点关闭
+    await tab.click({ button: "right" });
+    await expect(menu).toHaveCount(1);
+    const preview = page.locator(".preview-content");
+    const box = await preview.boundingBox();
+    if (!box) throw new Error("预览内容不可见");
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+    await expect(menu).toHaveCount(0);
+
+    // Esc 关闭
+    await tab.click({ button: "right" });
+    await expect(menu).toHaveCount(1);
+    await page.keyboard.press("Escape");
+    await expect(menu).toHaveCount(0);
+
+    // 再打开 → Esc → 无残留
+    await tab.click({ button: "right" });
+    await expect(menu).toHaveCount(1);
+    await page.keyboard.press("Escape");
+    await expect(menu).toHaveCount(0);
+    await expect(menu).toHaveCount(0);
+  });
+
+  test("滚动正文后菜单关闭", async ({ page }) => {
+    await boot(page);
+    const long = Array.from({ length: 60 }, (_, i) => `第 ${i + 1} 段。`).join(
+      "\n\n",
+    );
+    await page.evaluate(
+      (content) => {
+        window.__biaoyue_openFile__("/tmp/e2e-ctx-long.md", content, "long");
+      },
+      `# 长文\n\n${long}`,
+    );
+    await expect
+      .poll(() => page.locator('[role="tab"]').count(), { timeout: 10000 })
+      .toBeGreaterThan(0);
+
+    const menu = page.locator("[data-tab-menu]");
+    await page.locator('[role="tab"]').first().click({ button: "right" });
+    await expect(menu).toHaveCount(1);
+
+    await page.locator(".preview-content").hover();
+    await page.mouse.wheel(0, 400);
+    await expect(menu).toHaveCount(0);
+  });
+
+  test("失焦后菜单关闭，回页再点无残留", async ({ page }) => {
+    await boot(page);
+    const menu = page.locator("[data-tab-menu]");
+    await page.locator('[role="tab"]').first().click({ button: "right" });
+    await expect(menu).toHaveCount(1);
+
+    // headless 无法真正切走应用，派发 blur 驱动既有失焦监听
+    await page.evaluate(() => window.dispatchEvent(new Event("blur")));
+    await expect(menu).toHaveCount(0);
+
+    await page.locator('[role="tab"]').first().click({ button: "right" });
+    await expect(menu).toHaveCount(1);
+    await page.keyboard.press("Escape");
+    await expect(menu).toHaveCount(0);
+  });
+
+  test("「关闭其他」仍只关闭其它页签", async ({ page }) => {
+    await boot(page);
+    await page.evaluate(() => {
+      window.__biaoyue_openFile__(
+        "/tmp/e2e-ctx-2.md",
+        "# 第二篇\n\n内容。",
+        "ctx2",
+      );
+    });
+    await expect(page.locator('[role="tab"]')).toHaveCount(2);
+
+    const firstTab = page.locator('[role="tab"]').first();
+    const firstId = await firstTab.getAttribute("data-tab-id");
+    await firstTab.click({ button: "right" });
+    await page.getByRole("button", { name: "关闭其他", exact: true }).click();
+
+    await expect(page.locator('[role="tab"]')).toHaveCount(1);
+    await expect(page.locator(`[data-tab-id="${firstId}"]`)).toHaveCount(1);
+  });
+});
+
 test.describe("栏目更多操作菜单按视口边界翻转（ui-polish-batch15 11.1）", () => {
   test("收窄视口后菜单完整可见，resize 重算不越界，关闭无残留", async ({
     page,

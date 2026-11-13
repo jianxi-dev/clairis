@@ -229,22 +229,40 @@ export default function TabBar({
     return () => popOverlay();
   }, [menu]);
 
-  // Close menu on any click outside the menu itself
+  // 菜单关闭协议（editor-surface-batch17 D1）：外点 / Esc / 失焦 / 滚动四条来源。
+  // 内部判定用菜单自身的 data-tab-menu 标记，而不是 .fixed.z-50 类名——
+  // 任何 z-50 浮层都会被误判成「菜单内部」。
   useEffect(() => {
     if (!menu) return;
-    const handler = (e: MouseEvent) => {
-      const target = e.target as HTMLElement;
-      // Don't close if clicking inside the context menu
-      if (target.closest(".fixed.z-50")) return;
+    const insideMenu = (target: EventTarget | null): boolean =>
+      target instanceof Element && target.closest("[data-tab-menu]") !== null;
+
+    const onPointerDown = (e: PointerEvent) => {
+      if (insideMenu(e.target)) return;
       setMenu(null);
     };
-    // Delay adding listener so the current right-click doesn't close it
-    const id = setTimeout(() => {
-      window.addEventListener("click", handler, true);
-    }, 0);
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      e.stopPropagation();
+      setMenu(null);
+    };
+    const onBlur = () => setMenu(null);
+    const onScrollOrResize = () => setMenu(null);
+
+    // 右键 contextmenu 打开菜单时，那次的 pointerdown 已先于本 effect 触发，
+    // 因此同步注册即可，不需要 setTimeout 跳过首个事件。
+    document.addEventListener("pointerdown", onPointerDown, true);
+    document.addEventListener("keydown", onKeyDown, true);
+    window.addEventListener("blur", onBlur);
+    // capture：内层滚动容器的 scroll 不冒泡，但会经过 window 捕获阶段。
+    window.addEventListener("scroll", onScrollOrResize, true);
+    window.addEventListener("resize", onScrollOrResize);
     return () => {
-      clearTimeout(id);
-      window.removeEventListener("click", handler, true);
+      document.removeEventListener("pointerdown", onPointerDown, true);
+      document.removeEventListener("keydown", onKeyDown, true);
+      window.removeEventListener("blur", onBlur);
+      window.removeEventListener("scroll", onScrollOrResize, true);
+      window.removeEventListener("resize", onScrollOrResize);
     };
   }, [menu]);
 
