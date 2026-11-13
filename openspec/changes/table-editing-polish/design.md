@@ -25,7 +25,7 @@
 - **D2 行/列插入圆点**：替换现行「边界内侧热点」形态——列点坐落上边框**外**（`top` 为负，x=相邻两列中点；含首列前与尾列后追加点，共 n+1），行点坐落左边框**外**（`left` 为负，y=相邻两行中点；含表头分隔线与尾行下追加点，共 rows+1）。默认形态小圆点（8px、`border-radius:50%`、背景边框色）；悬停圆点变为现行 "+" 图标热点（16px 白字 accent 底，即 hotspot-active 形态）；**悬停圆点即展开现行气泡**（插入/删除两键，#483 保活语义保留）——用户原文「点击进行插入行和删除行操作」的「点击」落在气泡键上；圆点按压本身只隔离不插入。离指针最近的 2px 边界线保留点亮作为插入位置反馈（继承 #385a/#432 交互，圆点显隐与线显隐解耦）。插入/删除语义沿用现有 splice 逻辑不动。滑入表格即显示全部圆点（替代现行「最近边界点亮」的圆点显隐），滑出隐藏。
 - **D3 菜单定位与裁剪**：上下文触发（cell/container）菜单定位一律用**触发控件的 `getBoundingClientRect()`**（整块 widget 的文档坐标会返回块盒，必然错位）；`applyPlacement` 夹取 bounds 统一改为 `.cm-editor` 矩形与视口的交集（与注释对齐）；`placeMenu` 翻转/夹取逻辑不变。
 - **D4 斜杠菜单内容输入上下文**：新增统一触发形态 `context`——携带 `{anchorRect, querySink, insertRange, focusHost}`：原生控件（单元格 input、分栏 textarea、高亮块 textarea）触发时构造该上下文打开**同一**菜单组件与注册表。过滤词来自控件文本（"/" 保留在控件内作为查询锚点，替代现行「删字符开菜单」）；控件 input 事件驱动 `applyQuery`；选中后以 `insertRange`（控件内 "/" 起点到光标）替换写入控件文本；Esc 关闭并回滚查询文本；焦点全程留在控件（**删除现行 `view.focus()` 抢焦点**）。CM6 文档级触发（普通正文）行为不变。
-- **D5 上下文命令安全集**：`SlashCommand` 增加 `context` 标注（`doc` | `cell` | `container`，缺省 `doc`）。过滤规则：`doc` 上下文 = 现行命令集不变；`cell` = 行内命令（图片/媒体引用）+ 用户片段（`snippetToCommand`，插入为单事务、在单元格内安全），**排除**块级命令（表格/分栏/代码块等在管道表内不合法）；`container` = 行内命令 + 用户片段 + 表格/代码块/高亮块等可安全落入容器语法的块命令。菜单项图标沿用注册表，不新增图标。e2e 的确定性插入断言用 tauri mock 既有 `list_extensions` 片段注入接缝。
+- **D5 上下文命令安全集**：命令安全集由 `SlashCommand.inline` 承载（不新增 `context` 字段）：`inline === true` 即「可安全落入单元格」。过滤规则：`doc` 上下文 = 现行命令集不变；`cell` = `inline` 命令（图片/媒体引用）+ 单行用户片段，**排除**块级命令（表格/分栏/代码块等在管道表内不合法）；`container` = 全量命令（行内 + 片段 + 表格/代码块/高亮块等可安全落入容器语法的块命令）。`snippetToCommand` 按 `!body.includes("\n")` 自动标注单行片段为 `inline`（多行片段只出现在文档级/容器级菜单）；单元格菜单改传 `getSlashCommands()`，由 `openInsertMenu` 的 anchor 过滤与单元格 input 的 inline 过滤共同收敛。菜单项图标沿用注册表，不新增图标。e2e 的确定性插入断言用 tauri mock 既有 `list_extensions` 片段注入接缝。
 - **D6 高亮块统一菜单**：callout 正文 textarea 改接统一上下文菜单（D4/D5）；`CALLOUT_SNIPPETS` 高亮片段改写为注册表命令（kind=snippet）保留能力；`callout-insert.ts` 独立菜单退役（复用统一菜单的定位/过滤/关闭）；标题 input 不加菜单（无块插入语义，见 Out of Scope）。
 - **D7 容器新增手柄**：分栏内容区与高亮块内容区各显示一个小"+"手柄（贴内容区左缘外侧、纵向居中，与单元格手柄同款形态/圆角），点击以 anchor 上下文打开同一菜单。悬停内容区才显示，滑出隐藏。
 - **D8 死代码与注释修正**：删除 `endOfTableBlock`、`slashMenuRequest`、`openSlashMenuAt`；删除 `slash.ts` 中「夹取用 .cm-editor」与实现不符的陈旧注释（由 D3 落实后注释变正确）；`smart-input.ts` 中宣称全角斜杠/顿号归一的错误注释修正为实际行为（只归一全角逗号）。
@@ -39,7 +39,7 @@
 | 存储 | src/editors/icons.ts | ICON_REGISTRY | 不新增图标条目；如实现中需新图标必须先注册再使用 |
 | 校验 | src/editors/icons.ts | hasIcon | 上下文菜单命令每项图标名必须通过 hasIcon；单测逐项断言 |
 | 桥接 | src/editors/icons.ts | renderIcon | 统一输出 20px 与 `data-icon`，未知名回退可见默认图标 |
-| 消费 | src/editors/slash.ts | defaultCommands | 上下文命令集按 context 过滤（D5），数组顺序即显示顺序 |
+| 消费 | src/editors/slash.ts | getSlashCommands | 上下文命令集按 inline 过滤（D5：cell=inline，container=全量），数组顺序即显示顺序 |
 | 回滚 | git | revert <PR> | 纯代码改动、无新数据文件；回退后手柄与菜单回到上一条款状态 |
 
 ## 3. 风险

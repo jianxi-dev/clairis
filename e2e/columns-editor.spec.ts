@@ -238,6 +238,23 @@ test("A-4.2 分栏内容区选单后插入内容落进分栏文本，其余字�
   );
 });
 
+test("A-5.3 分栏内容区菜单含块级命令「表格」（容器全量命令集）", async ({
+  page,
+}) => {
+  const source = "::: {.col-2}\n\n左\n\n右\n\n:::";
+  await openColumnsDoc(page, "/tmp/col-block-commands.md", source);
+  const body = page.locator('.cm-column[data-col="0"] .cm-column-body');
+  await body.click();
+  const area = page.locator('[data-testid="cm-column-editor"]');
+  await expect(area).toBeVisible();
+  await page.keyboard.type("/");
+  const menu = page.locator(".mdb-slash-menu");
+  await expect(menu).toBeVisible({ timeout: 3000 });
+  await expect(menu.locator("text=表格")).toHaveCount(1);
+  await page.keyboard.press("Escape");
+  await expect(menu).toHaveCount(0);
+});
+
 test("#742 回归：分栏菜单选「表格」不走主文档 dispatch（数据不损坏）", async ({
   page,
 }) => {

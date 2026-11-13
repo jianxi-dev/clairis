@@ -31,6 +31,8 @@ const SNIPPET_GROUP = "我的片段";
  * - `keywords` 作为 `aliases`，与现有拼音过滤叠加。
  * - `insert` 返回正文；`applyCommand` 用单次 `dispatch` 替换 `/query`，
  *   所以插入是单事务、可撤销。
+ * - `inline` 按正文单行性自动标注：GFM 单元格只有一行，单行片段可安全落进
+ *   单元格菜单（#744）；多行片段只出现在文档级/容器级菜单。
  */
 export function snippetToCommand(snippet: UserSnippet): SlashCommand {
   return {
@@ -40,6 +42,7 @@ export function snippetToCommand(snippet: UserSnippet): SlashCommand {
     icon: snippet.icon,
     aliases: snippet.keywords,
     group: SNIPPET_GROUP,
+    inline: !snippet.body.includes("\n"),
     insert(state) {
       const head = state.selection.main.head;
       return { from: head - 1, to: head, text: snippet.body };
