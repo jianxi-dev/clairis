@@ -19,7 +19,7 @@ import {
 } from "@codemirror/view";
 import { EditorState, type Extension, Prec } from "@codemirror/state";
 import { syntaxTree } from "@codemirror/language";
-import { isSlashMenuOpen, openSlashMenuAt } from "./slash";
+import { isSlashMenuOpen } from "./slash";
 
 // --- IME 组合守卫 ------------------------------------------------------------
 
@@ -690,7 +690,7 @@ const headingTabKeymap = keymap.of([
 
 // --- 全角标点归一 ------------------------------------------------------------
 
-/** 中文输入法下最常打错的三个：全角逗号、全角斜杠与顿号。 */
+/** 中文输入法下最常打错的全角逗号（斜杠/顿号实测不做归一）。 */
 const FULLWIDTH_TO_ASCII: Readonly<Record<string, string>> = {
   "，": ",",
 };

@@ -23,7 +23,18 @@ import {
   WidgetType,
   type EditorView,
 } from "@codemirror/view";
-import { defaultCommands, openInsertMenu, releaseInsertMenu } from "../slash";
+import {
+  defaultCommands,
+  openInsertMenu,
+  openContextMenu,
+  releaseInsertMenu,
+  slashMenuApply,
+  slashMenuClose,
+  slashMenuSelectNext,
+  slashMenuSelectPrev,
+  updateSlashMenuQuery,
+  isSlashMenuOpen,
+} from "../slash";
 
 import { renderIcon } from "../icons";
 import {
@@ -494,6 +505,10 @@ function openCellEditor(
     host.classList.remove("cm-table-cell-editing");
   };
   const commit = (): void => {
+    // 菜单还开着就失焦（Alt-Tab 等）：先取消回滚，绝不让 `/query` 进文档
+    // （#741）。外点路径已由 outsideClickDismiss 先行回滚，这里是兜底。
+    if (contextQueryStart >= 0 && isSlashMenuOpen(view)) slashMenuClose(view);
+    cancelContext();
     // CM6 在指针捕获期间重建 widget，所以 blur 落地时 input 可能已被分离。
     // 暂存文本存在按 table/row/col 的脏 map 里，所以 flush 不能依赖 input
     // 仍在 DOM 中——在这里退出会让编辑一直保持未 flush，直到某个无关的 flush
@@ -514,22 +529,110 @@ function openCellEditor(
     composing = false;
     stage();
   });
-  input.addEventListener("input", () => {
+  // 内容输入上下文（#741）："/" 保留在输入框内作查询锚点；`contextQueryStart`
+  // 是 "/" 的下标，-1 表示菜单未开。取消回滚 = 从输入框里去掉 "/query"。
+  let contextQueryStart = -1;
+  const closeContext = (): void => {
+    contextQueryStart = -1;
+    releaseInsertMenu(view, "context");
+  };
+  const cancelContext = (): void => {
+    if (contextQueryStart < 0) return;
+    // 回滚 = 去掉 "/query"（触发符一并消失，E-6 取消无残留）。
+    input.value = input.value.slice(0, contextQueryStart - 1);
+    input.setSelectionRange(contextQueryStart - 1, contextQueryStart - 1);
+    closeContext();
     stage();
-    // 行内插入入口：在末尾打 `/` 就打开锚定插入菜单（与块里输 `/` 一致）。
-    // 先把 `/` 从输入框里去掉，菜单插入的内容才不会顶着它。
-    if (composing) return;
-    if (!input.value.endsWith("/")) return;
-    input.value = input.value.slice(0, -1);
+  };
+  const writeContext = (text: string): void => {
+    if (contextQueryStart < 0) return;
+    const sanitized = sanitizeCellText(text);
+    const end = Math.max(
+      contextQueryStart,
+      input.selectionStart ?? input.value.length,
+    );
+    input.value =
+      input.value.slice(0, contextQueryStart - 1) +
+      sanitized +
+      input.value.slice(end);
+    const caret = contextQueryStart - 1 + sanitized.length;
+    input.setSelectionRange(caret, caret);
+    closeContext();
     stage();
+    input.focus();
+  };
+  const openContext = (): void => {
     const widget = liveTableWidgets.get(view);
     if (!widget) return;
-    // 不先 commit：openCellMenu 自己会 flush 暂存文本，提前 teardown 会让
-    // 输入框在菜单取锚点前消失。
-    widget.openCellMenuFor(view, row, col);
+    contextQueryStart = input.selectionStart ?? input.value.length;
+    const rect = input.getBoundingClientRect();
+    // 与文档级一致：菜单全开期间不 flush 暂存文本——文档里不该出现 "/query"，
+    // 写回/回滚都只动输入框（#741）。
+    // 单元格语境与 anchor 菜单同款过滤：只列行内命令（GFM 单元格只有一行，
+    // 块级模板进单元格会被压平；#744 再做上下文级命令集）。
+    const inlineCommands = defaultCommands.filter((cmd) => cmd.inline === true);
+    openContextMenu(view, inlineCommands, {
+      anchorRect: () => {
+        const r = input.isConnected ? input.getBoundingClientRect() : rect;
+        return {
+          left: r.left,
+          right: r.right,
+          top: r.top,
+          bottom: r.bottom,
+        };
+      },
+      applyText: writeContext,
+      cancel: cancelContext,
+    });
+  };
+  input.addEventListener("input", () => {
+    stage();
+    if (composing) return;
+    if (contextQueryStart >= 0) {
+      // 菜单开着：触发符被删 = 查询锚点失效，直接关菜单（无残留可回滚）。
+      if (input.value[contextQueryStart - 1] !== "/") {
+        closeContext();
+        return;
+      }
+      // 光标退到触发符之前也算放弃查询。
+      const caret = input.selectionStart ?? input.value.length;
+      if (caret < contextQueryStart) {
+        closeContext();
+        return;
+      }
+      updateSlashMenuQuery(view, input.value.slice(contextQueryStart, caret));
+      return;
+    }
+    // 行内插入入口：在末尾打 `/` 就地打开插入菜单（沿用旧行为——任意末尾
+    // `/` 都触发；文档级的词首判定不引入单元格，#741 评审裁决）。
+    if (!input.value.endsWith("/")) return;
+    openContext();
   });
   input.addEventListener("keydown", (event) => {
     event.stopPropagation();
+    // 上下文菜单开着：键盘驱动菜单（焦点在 input，CM6 keymap 不可达，#741）。
+    if (contextQueryStart >= 0 && isSlashMenuOpen(view)) {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        slashMenuApply(view);
+        return;
+      }
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        slashMenuSelectNext(view);
+        return;
+      }
+      if (event.key === "ArrowUp") {
+        event.preventDefault();
+        slashMenuSelectPrev(view);
+        return;
+      }
+      if (event.key === "Escape") {
+        event.preventDefault();
+        slashMenuClose(view);
+        return;
+      }
+    }
     if (event.key === "Enter") {
       event.preventDefault();
       commit();
@@ -1566,6 +1669,7 @@ class TableWidget extends WidgetType {
     // 永不因重建而丢失（#433）。
     scheduleTableFlush(this.view);
     releaseInsertMenu(this.view, "anchor");
+    releaseInsertMenu(this.view, "context");
     // 拆除运行在 CM6 update 内，所以同步 flush 会抛并丢失暂存文本。改为延后
     // （没有暂存时是 no-op）。
     scheduleTableFlush(this.view);
