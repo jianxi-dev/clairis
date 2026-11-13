@@ -127,6 +127,24 @@ test("裁剪清除旧宽度注释：可见文本无 `<!--w=` 且图片下方无�
   await page.screenshot({ path: `${ARTIFACTS}/04-after-confirm.png` });
 });
 
+test("跨行宽度注释裁剪后可见文本无 `<!--w=`", async ({ page }) => {
+  await openEditorWithLargeImage(
+    page,
+    (src) => `![示例图片](${src})\n<!--w=811—>`,
+    "crop-multiline",
+  );
+  await expect(page.locator(".cm-image-widget")).toHaveCount(1);
+
+  await openCropOverlay(page);
+  await page.getByTestId("img-crop-confirm").click();
+  await expect(page.getByTestId("img-crop-overlay")).toHaveCount(0);
+
+  await expect.soft(page.locator(".cm-content")).not.toContainText("<!--w=");
+  const final = await content(page);
+  expect.soft(final).not.toContain("<!--w=");
+  expect.soft(final).toContain("{crop=");
+});
+
 test("拖左上角向右下：裁剪框宽度变小", async ({ page }) => {
   await openEditor(page, "![pic](assets/pic.png)\n", "crop-nw", PNG_DATA_URL);
   await openCropOverlay(page);

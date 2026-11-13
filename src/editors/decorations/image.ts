@@ -94,8 +94,8 @@ function clampHeight(value: number): number {
   return Math.max(MIN_IMAGE_HEIGHT, Math.min(value, MAX_IMAGE_HEIGHT));
 }
 
-// 结束符兼容旧数据里的全角破折号 `—>`，否则会字面泄漏成正文。
-const WIDTH_COMMENT_RE = /^[ \t]*<!--\s*w=(\d+)\s*(?:-->|—>)/;
+// 结束符兼容旧数据里的全角破折号 `—>`；前导空白含换行，跨行注释才不泄漏成正文。
+const WIDTH_COMMENT_RE = /^[ \t\r\n]*<!--\s*w=(\d+)\s*(?:-->|—>)/;
 
 function cropEquals(
   a: [number, number, number, number] | null,
@@ -684,7 +684,7 @@ class ImageWidget extends WidgetType {
     });
     container.addEventListener("dblclick", (event) => {
       event.stopPropagation();
-      openImageMaximize(this._src, this._alt);
+      openImageMaximize(this._src, this._alt, this._crop);
     });
 
     // 8 个缩放把手由 markImageWidgetSelected 按选中态增删；容器级委托让
