@@ -944,54 +944,25 @@ body {
   border-color: var(--app-accent);
 }
 
-/* 裁剪浮层（#656）：暗背景 + 原图舞台 + 裁剪矩形（外部压暗）+ 动作条 */
-.cm-image-crop-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 9999;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  background: rgba(0, 0, 0, 0.85);
+/* 内联裁剪（#779）：裁剪框覆盖在图片 widget 上，8 个 handle */
+.cm-image-widget.cm-image-crop-active > .cm-image-handle,
+.cm-image-widget.cm-image-crop-active > .cm-image-corner {
+  display: none;
 }
 
-.cm-image-crop-stage {
-  position: relative;
-  overflow: hidden;
-}
-
-.cm-image-crop-stage img {
-  display: block;
-  user-select: none;
-}
-
-.cm-image-crop-rect {
+.cm-image-crop-frame {
   position: absolute;
+  left: 0;
+  top: 0;
   box-sizing: border-box;
   border: 1px solid var(--app-accent);
-  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.45);
   cursor: move;
+  touch-action: none;
+  z-index: 30;
 }
 
-.cm-image-crop-actions {
-  display: flex;
-  gap: 12px;
-}
-
-.cm-image-crop-actions button {
-  padding: 6px 18px;
-  font-size: 13px;
-  color: var(--app-text);
-  background: var(--app-surface);
-  border: 1px solid var(--app-border);
-  border-radius: var(--app-radius);
-  cursor: pointer;
-}
-
-.cm-image-crop-actions button:hover {
-  border-color: var(--app-accent);
+.cm-image-crop-frame .cm-image-handle {
+  z-index: 31;
 }
 
 /* 视频播放器 / 文件卡片 */
