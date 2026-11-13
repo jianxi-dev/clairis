@@ -37,7 +37,11 @@ async function openEditor(
     // Chromium 解不了 asset://，换成可解码的小图，图片才有真实尺寸。
     await page.addInitScript((src: string) => {
       const win = window as unknown as Record<string, any>;
-      win.__TAURI_INTERNALS__.convertFileSrc = () => src;
+      win.__convertedMediaPaths__ = [];
+      win.__TAURI_INTERNALS__.convertFileSrc = (path: string) => {
+        win.__convertedMediaPaths__.push(path);
+        return src;
+      };
     }, imageSrc);
   }
   await page.goto("/", { waitUntil: "networkidle" });
@@ -250,6 +254,22 @@ test("工具条 9 按钮，水平居中于图片（±2px）", async ({ page }) =
   for (const id of testids) {
     await expect(page.getByTestId(id)).toHaveCount(1);
   }
+  await expect(toolbar.locator("svg")).toHaveCount(9);
+  const iconWidths = await toolbar
+    .locator("svg")
+    .evaluateAll((els) => els.map((el) => el.getBoundingClientRect().width));
+  expect(iconWidths.every((width) => width > 0)).toBe(true);
+
+  // 剪切与裁剪是两个不同图形：路径数据不能相同。
+  const pathsOf = (testid: string) =>
+    page.getByTestId(testid).evaluate((el) =>
+      Array.from(el.querySelectorAll("path"))
+        .map((path) => path.getAttribute("d"))
+        .join("|"),
+    );
+  expect(await pathsOf("img-toolbar-cut")).not.toBe(
+    await pathsOf("img-toolbar-crop"),
+  );
 
   const widgetBox = (await widget.boundingBox())!;
   const toolbarBox = (await toolbar.boundingBox())!;
@@ -383,6 +403,18 @@ test("粘贴剪贴板图片：导入并插入 markdown，光标落在引用之�
   await expect.poll(() => content(page)).toContain("assets/");
   expect(await content(page)).toContain("![pasted.png](assets/pasted.png)");
 
+  // 插入后的图片走文档相对路径解析，并真实解码出尺寸。
+  const img = page.locator(".cm-image-widget img");
+  await expect(img).toHaveCount(1);
+  await expect
+    .poll(() => img.evaluate((el) => (el as HTMLImageElement).naturalWidth))
+    .toBeGreaterThan(0);
+  const converted = await page.evaluate(
+    () =>
+      (window as unknown as Record<string, string[]>).__convertedMediaPaths__,
+  );
+  expect(converted).toContain("/tmp/pasteimg/assets/pasted.png");
+
   // 光标落在引用之后：再敲一个字符应追加在末尾
   await page.keyboard.type("X");
   await expect
@@ -445,11 +477,9 @@ test("描述行提交：写入源码标题并在预览态显示图注", async ({
   const final = await content(page);
   expect(final).toContain(`![示例图片](${PNG_DATA_URL} "雾山")`);
 
-  // 提交后描述行回到文本态并显示标题
+  // 提交后描述行回到文本态并显示标题；输入框随 widget 重建后默认隐藏。
   await expect(page.locator('[data-testid="img-caption"]')).toHaveText("雾山");
-  await expect(page.locator('[data-testid="img-caption-input"]')).toHaveCount(
-    0,
-  );
+  await expect(page.locator('[data-testid="img-caption-input"]')).toBeHidden();
 
   // 预览态出现图注
   await page.evaluate(() => {
@@ -519,7 +549,7 @@ test("描述按钮：打开输入不插引用行，写入标题并重开回显",
   await expect(page.locator('[data-testid="img-caption"]')).toHaveText(
     "示意图",
   );
-  await expect(input).toHaveCount(0);
+  await expect(input).toBeHidden();
 
   // 重开文档：描述行按源码回显，{width=100} 属性块不受影响
   const saved = await content(page);
@@ -560,6 +590,53 @@ test("描述按钮：Esc 取消不写入且无残留输入", async ({ page }) =>
 
   await expect(input).toHaveCount(0);
   expect(await content(page)).toBe(doc);
+});
+
+test("描述输入框默认隐藏，点添加描述显示并可再收起；图标与文字贴合", async ({
+  page,
+}) => {
+  await openEditor(
+    page,
+    `![示例图片](${PNG_DATA_URL} "已有描述")\n`,
+    "imgcaptiontoggle",
+    PNG_DATA_URL,
+  );
+  await page.locator(".cm-image-widget").click();
+
+  const desc = page.getByTestId("img-toolbar-comment");
+  const input = page.locator('[data-testid="img-caption-input"]');
+  await expect(input).toHaveCount(1);
+  await expect(input).toBeHidden();
+  expect(await input.evaluate((el) => getComputedStyle(el).display)).toBe(
+    "none",
+  );
+
+  const iconTextGap = await desc.evaluate((el) => {
+    const icon = el.querySelector("svg")!.getBoundingClientRect();
+    const label = el
+      .querySelector(".cm-image-toolbar-label")!
+      .getBoundingClientRect();
+    return label.left - icon.right;
+  });
+  expect(iconTextGap).toBeGreaterThanOrEqual(0);
+  expect(iconTextGap).toBeLessThanOrEqual(2);
+
+  await desc.click();
+  await expect(input).toBeVisible();
+  expect(await input.evaluate((el) => getComputedStyle(el).display)).not.toBe(
+    "none",
+  );
+  await expect(input).toHaveValue("已有描述");
+
+  await desc.click();
+  await expect(input).toBeHidden();
+  expect(await input.evaluate((el) => getComputedStyle(el).display)).toBe(
+    "none",
+  );
+
+  await page.mouse.click(600, 600);
+  await expect(page.getByTestId("img-toolbar")).toHaveCount(0);
+  await expect(input).toHaveCount(0);
 });
 
 // --- 无损裁剪（#656） ---------------------------------------------------------

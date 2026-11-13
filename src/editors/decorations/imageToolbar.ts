@@ -25,6 +25,7 @@ interface ButtonSpec {
   readonly icon: string;
   readonly label: string;
   readonly action: string;
+  readonly showLabel?: boolean;
   readonly disabledTitle?: string;
 }
 
@@ -44,8 +45,9 @@ const BUTTON_SPECS: readonly ButtonSpec[] = [
   {
     testid: "img-toolbar-comment",
     icon: "TextEditOutlined",
-    label: "描述",
+    label: "添加描述",
     action: "comment",
+    showLabel: true,
   },
   {
     testid: "img-toolbar-align-left",
@@ -67,7 +69,7 @@ const BUTTON_SPECS: readonly ButtonSpec[] = [
   },
   {
     testid: "img-toolbar-cut",
-    icon: "ScissorsOutlined",
+    icon: "CutOutlined",
     label: "剪切",
     action: "cut",
   },
@@ -240,6 +242,8 @@ let maximizePinchStart: { dist: number; scale: number } | null = null;
 let maximizeDownPos: { x: number; y: number } | null = null;
 /** 描述行「已收起」：点击带描述的描述行后置位，重新选中图片时复位。 */
 let captionCollapsed = false;
+/** 工具条按下期间不把描述框的 blur 当成提交（否则点击「添加描述」会先关再开）。 */
+let toolbarInteraction = false;
 
 const CAPTION_PLACEHOLDER = "输入图片描述";
 
@@ -316,69 +320,116 @@ export function markImageWidgetSelected(
 
 // --- 描述行（#657） -----------------------------------------------------------
 
+const CAPTION_TEXT_SELECTOR =
+  ".cm-image-caption-text, .cm-image-caption-placeholder";
+
 /** 描述行文本态：有标题显示标题，没有显示占位文字。 */
 function setCaptionText(caption: HTMLElement, title: string): void {
-  caption.textContent = "";
-  const span = document.createElement("span");
+  let span = caption.querySelector<HTMLElement>(CAPTION_TEXT_SELECTOR);
+  if (!span) {
+    span = document.createElement("span");
+    caption.insertBefore(span, caption.firstChild);
+  }
   span.className =
     title === "" ? "cm-image-caption-placeholder" : "cm-image-caption-text";
   span.textContent = title === "" ? CAPTION_PLACEHOLDER : title;
-  caption.appendChild(span);
+}
+
+function captionInputOf(caption: HTMLElement): HTMLInputElement | null {
+  return caption.querySelector<HTMLInputElement>(
+    '[data-testid="img-caption-input"]',
+  );
+}
+
+function showCaptionText(caption: HTMLElement): void {
+  const span = caption.querySelector<HTMLElement>(CAPTION_TEXT_SELECTOR);
+  if (span) span.style.display = "";
 }
 
 /**
- * 把描述行切到输入态：Enter 提交并关闭，blur 同样提交（非丢弃），Esc 取消。
- * 已有标题时回填原值。
+ * 描述输入框：默认 `display:none` 挂在描述行里，点「添加描述」或占位行时
+ * 才显示。Enter 提交、blur 提交、Esc 取消；收尾后移除输入框回到文本态。
  */
-function enterCaptionEdit(caption: HTMLElement, widgetEl: HTMLElement): void {
-  const from = Number(widgetEl.dataset.imageFrom);
-  const current = widgetEl.dataset.imageTitle ?? "";
-  caption.textContent = "";
+function createCaptionInput(
+  caption: HTMLElement,
+  widgetEl: HTMLElement,
+): HTMLInputElement {
   const input = document.createElement("input");
   input.type = "text";
   input.className = "cm-image-caption-input";
   input.dataset.testid = "img-caption-input";
-  input.value = current;
+  input.style.display = "none";
   input.placeholder = CAPTION_PLACEHOLDER;
   input.setAttribute("aria-label", "图片描述");
   input.addEventListener("mousedown", (event) => event.stopPropagation());
-  // Enter / Esc 会主动收尾：移除输入框触发的 blur 早于 isConnected 更新，
-  // 没有这个标志，「取消」会被 blur 的保存逻辑二次写回。
-  let finishing = false;
+
+  const finish = (value: string): void => {
+    input.dataset.finishing = "1";
+    const from = Number(widgetEl.dataset.imageFrom);
+    const current = widgetEl.dataset.imageTitle ?? "";
+    if (value === "" || value === current) {
+      setCaptionText(caption, current);
+    } else {
+      actions.onImageSetTitle?.(from, value);
+    }
+    input.remove();
+    showCaptionText(caption);
+  };
+
   input.addEventListener("keydown", (event) => {
     event.stopPropagation();
     if (event.key === "Enter") {
       event.preventDefault();
-      const value = input.value.trim();
-      if (value === "" || value === current) {
-        finishing = true;
-        setCaptionText(caption, widgetEl.dataset.imageTitle ?? "");
-        return;
-      }
-      finishing = true;
-      actions.onImageSetTitle?.(from, value);
+      finish(input.value.trim());
     } else if (event.key === "Escape") {
       event.preventDefault();
-      finishing = true;
+      input.dataset.finishing = "1";
       setCaptionText(caption, widgetEl.dataset.imageTitle ?? "");
+      input.remove();
+      showCaptionText(caption);
     }
   });
+  // blur 也提交（非丢弃）。主动收尾 / 切换显隐时用标记跳过，避免二次写回。
   input.addEventListener("blur", () => {
-    if (finishing) return;
-    const value = input.value.trim();
-    if (value === "" || value === current) {
-      setCaptionText(caption, widgetEl.dataset.imageTitle ?? "");
+    if (toolbarInteraction) return;
+    if (input.dataset.finishing === "1" || input.dataset.closing === "1") {
       return;
     }
-    actions.onImageSetTitle?.(from, value);
+    finish(input.value.trim());
   });
   caption.appendChild(input);
+  return input;
+}
+
+function showCaptionInput(caption: HTMLElement, widgetEl: HTMLElement): void {
+  const input =
+    captionInputOf(caption) ?? createCaptionInput(caption, widgetEl);
+  const span = caption.querySelector<HTMLElement>(CAPTION_TEXT_SELECTOR);
+  if (span) span.style.display = "none";
+  delete input.dataset.closing;
+  delete input.dataset.finishing;
+  input.style.display = "";
+  input.value = widgetEl.dataset.imageTitle ?? "";
   input.focus();
+  input.select();
+}
+
+function hideCaptionInput(caption: HTMLElement, widgetEl: HTMLElement): void {
+  const input = captionInputOf(caption);
+  if (!input) return;
+  const value = input.value.trim();
+  const current = widgetEl.dataset.imageTitle ?? "";
+  input.dataset.closing = "1";
+  input.style.display = "none";
+  showCaptionText(caption);
+  if (value !== "" && value !== current) {
+    actions.onImageSetTitle?.(Number(widgetEl.dataset.imageFrom), value);
+  }
 }
 
 /**
- * 工具条「描述」：让当前选中图片的描述行进入编辑态。已有标题时直接打开并
- * 回填，不走描述行的收起逻辑。
+ * 工具条「描述」：切换描述编辑框。隐藏时打开并回填已有标题；已打开时再点
+ * 收起。已有标题时也不会走到描述行的收起逻辑。
  */
 export function editSelectedImageCaption(): void {
   if (!selection) return;
@@ -387,11 +438,15 @@ export function editSelectedImageCaption(): void {
   );
   const caption = el?.querySelector<HTMLElement>(".cm-image-caption");
   if (!el || !caption) return;
-  if (caption.querySelector("input")) return;
+  const input = captionInputOf(caption);
+  if (input && input.style.display !== "none") {
+    hideCaptionInput(caption, el);
+    return;
+  }
   if (typeof actions.onImageSetTitle !== "function") return;
   caption.style.display = "";
   captionCollapsed = false;
-  enterCaptionEdit(caption, el);
+  showCaptionInput(caption, el);
 }
 
 function appendCaptionLine(el: HTMLElement): void {
@@ -400,14 +455,16 @@ function appendCaptionLine(el: HTMLElement): void {
   caption.className = "cm-image-caption";
   caption.dataset.testid = "img-caption";
   setCaptionText(caption, title);
+  createCaptionInput(caption, el);
   // mousedown 不冒泡：CM6 会抢焦点，输入框还没聚焦就被打掉。
   caption.addEventListener("mousedown", (event) => event.stopPropagation());
   caption.addEventListener("click", (event) => {
     event.stopPropagation();
-    if (caption.querySelector("input")) return;
+    const input = captionInputOf(caption);
+    if (input && input.style.display !== "none") return;
     if (title === "") {
       if (typeof actions.onImageSetTitle !== "function") return;
-      enterCaptionEdit(caption, el);
+      showCaptionInput(caption, el);
       return;
     }
     caption.style.display = "none";
@@ -437,10 +494,26 @@ function ensureToolbar(): void {
     btn.title = spec.label;
     btn.setAttribute("aria-label", spec.label);
     btn.appendChild(renderIcon(spec.icon));
+    if (spec.showLabel) {
+      btn.classList.add("cm-image-toolbar-btn-label");
+      const label = document.createElement("span");
+      label.className = "cm-image-toolbar-label";
+      label.textContent = spec.label;
+      btn.appendChild(label);
+    }
     btn.addEventListener("click", () => runAction(spec.action));
     toolbarEl.appendChild(btn);
   }
   document.body.appendChild(toolbarEl);
+  toolbarEl.addEventListener("pointerdown", () => {
+    toolbarInteraction = true;
+    window.setTimeout(() => {
+      toolbarInteraction = false;
+    }, 0);
+  });
+  toolbarEl.addEventListener("click", () => {
+    toolbarInteraction = false;
+  });
   updateDisabledStates();
 }
 
