@@ -1004,7 +1004,10 @@ export function openContextMenu(
   host: SlashMenuContextHost,
 ): void {
   cancelAnchorClose(view);
-  closeMenu(view);
+  // 复用场景（#742 评审）：旧菜单拥有自己的文本（"/query"），必须先按取消语义
+  // 回滚；直接 closeMenu 会留下旧查询文本，随后宿主 commit 把它写进文档。
+  if (menus.get(view)?.open) dismissMenu(view);
+  else closeMenu(view);
   openMenu(view, 0, commands, "context", null, host.anchorRect());
   const state = menus.get(view);
   if (state) state.contextHost = host;
@@ -1681,6 +1684,15 @@ function applyTableSize(
   const anchored = state.trigger === "anchor";
   const below = state.trigger === "below";
   const table = buildTable(cols, rows);
+  if (state.trigger === "context") {
+    // 上下文触发（#742 评审）：网格命令也必须走宿主写回。context 的 slashPos
+    // 是占位 0，若落进下面的 dispatch 会把 from=0..head 整段替换成表格，吞掉
+    // 光标前的正文——数据损坏。
+    const host = state.contextHost;
+    closeMenu(view);
+    host?.applyText(table);
+    return;
+  }
   // 单元格内锚定：表格保持单行，不能拆开行。块下方：完整保留在独立新行。
   const text = anchored
     ? sanitizeCellText(table)

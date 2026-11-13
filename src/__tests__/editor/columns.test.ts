@@ -12,7 +12,16 @@ import {
   editorDecorations,
   resetDecorationGuards,
 } from "../../editors/decorations";
-import { createColumnsDecorations } from "../../editors/decorations/columns";
+import {
+  createColumnsDecorations,
+  openColumnContextMenu,
+} from "../../editors/decorations/columns";
+import {
+  slashKeymap,
+  slashMenuApply,
+  slashMenuClose,
+  type SlashCommand,
+} from "../../editors/slash";
 
 function installPolyfills(): void {
   if (typeof globalThis.requestAnimationFrame !== "function") {
@@ -171,5 +180,160 @@ describe("columns decoration", () => {
     await nextFrame();
 
     expect(view.state.doc.toString()).toContain("新左");
+  });
+});
+
+/**
+ * 分栏内容区斜杠上下文（#742）。
+ *
+ * 双模式：斜杠模式（textarea 里打 `/`，替换 `/query`）与把手模式（点「+」，
+ * 在光标处零宽插入）。命令集与单元格同款行内过滤，这里注入确定性命令验证写回
+ * 与 commit 落点。
+ */
+describe("columns editor slash context (#742)", () => {
+  let parent: HTMLElement;
+  let view: EditorView;
+
+  /** 已是 commit 规范形的文档：空编辑 commit 后逐字节不变。 */
+  const DOC = "::: {.col-2}\n\n左\n\n右\n\n:::";
+
+  beforeEach(() => {
+    installPolyfills();
+    resetDecorationGuards();
+    parent = document.createElement("div");
+    document.body.appendChild(parent);
+  });
+
+  afterEach(() => {
+    view?.destroy();
+    parent?.remove();
+    resetDecorationGuards();
+  });
+
+  function createEditor(doc: string): EditorView {
+    return new EditorView({
+      parent,
+      state: EditorState.create({
+        doc,
+        extensions: [markdown(), editorDecorations(), slashKeymap()],
+      }),
+    });
+  }
+
+  /** 走真实入口：按压栏正文打开就地编辑器。 */
+  function openEditor(): HTMLTextAreaElement {
+    const body = view.dom.querySelector<HTMLElement>(
+      '.cm-column[data-col="0"] .cm-column-body',
+    );
+    expect(body).not.toBeNull();
+    body?.dispatchEvent(
+      new MouseEvent("mousedown", { bubbles: true, cancelable: true }),
+    );
+    const area = view.dom.querySelector<HTMLTextAreaElement>(
+      '[data-testid="cm-column-editor"]',
+    );
+    expect(area).not.toBeNull();
+    return area as HTMLTextAreaElement;
+  }
+
+  /** 确定性行内命令：insert 固定文本，不依赖媒体选择器。 */
+  const inlineCommand: SlashCommand = {
+    id: "test-inline",
+    label: "测试行内",
+    inline: true,
+    insert: () => ({ from: 0, to: 0, text: "测试片段" }),
+  };
+
+  it("斜杠触发：输入 / 打开菜单、焦点留在 textarea、文档逐字节不变", () => {
+    view = createEditor(DOC);
+    const area = openEditor();
+    expect(area.value).toBe("左");
+
+    area.value = "左/";
+    area.setSelectionRange(2, 2);
+    area.dispatchEvent(new Event("input", { bubbles: true }));
+
+    expect(view.dom.querySelectorAll(".mdb-slash-menu")).toHaveLength(1);
+    expect(document.activeElement).toBe(area);
+    // 过滤词活在 textarea 里，文档不动。
+    expect(view.state.doc.toString()).toBe(DOC);
+  });
+
+  it("斜杠模式：applyText 替换 /query，commit 后源码含插入值、其余字节不变", () => {
+    view = createEditor(DOC);
+    const area = openEditor();
+    area.value = "左/";
+    area.setSelectionRange(2, 2);
+
+    openColumnContextMenu(view, area, [inlineCommand], true);
+    expect(slashMenuApply(view)).toBe(true);
+    expect(area.value).toBe("左测试片段");
+
+    area.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "Enter",
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
+    expect(view.state.doc.toString()).toBe(
+      "::: {.col-2}\n\n左测试片段\n\n右\n\n:::",
+    );
+  });
+
+  it("Esc 取消：textarea 回滚到打开前，无 / 残留", () => {
+    view = createEditor(DOC);
+    const area = openEditor();
+    area.value = "左/查询";
+    area.setSelectionRange(4, 4);
+
+    openColumnContextMenu(view, area, [inlineCommand], true);
+    expect(slashMenuClose(view)).toBe(true);
+    expect(area.value).toBe("左");
+    expect(area.value).not.toContain("/");
+  });
+
+  it("把手模式：applyText 在光标处零宽插入（无斜杠可替换）", () => {
+    view = createEditor(DOC);
+    const area = openEditor();
+    area.value = "左右";
+    area.setSelectionRange(1, 1);
+
+    openColumnContextMenu(view, area, [inlineCommand], false);
+    expect(slashMenuApply(view)).toBe(true);
+    expect(area.value).toBe("左测试片段右");
+
+    area.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "Enter",
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
+    expect(view.state.doc.toString()).toBe(
+      "::: {.col-2}\n\n左测试片段右\n\n右\n\n:::",
+    );
+  });
+
+  it("「+」手柄：点击打开同一菜单（把手模式），焦点留在 textarea", () => {
+    view = createEditor(DOC);
+    const handle = view.dom.querySelector<HTMLElement>(
+      ".cm-columns-add-handle",
+    );
+    expect(handle).not.toBeNull();
+    handle?.dispatchEvent(
+      new MouseEvent("mousedown", { bubbles: true, cancelable: true }),
+    );
+
+    expect(view.dom.querySelectorAll(".mdb-slash-menu")).toHaveLength(1);
+    const area = view.dom.querySelector<HTMLTextAreaElement>(
+      '[data-testid="cm-column-editor"]',
+    );
+    expect(area).not.toBeNull();
+    expect(document.activeElement).toBe(area);
+    // 把手模式无斜杠可回滚：Esc 不改 textarea。
+    expect(slashMenuClose(view)).toBe(true);
+    expect(area?.value).toBe("左");
+    expect(area?.value).not.toContain("/");
   });
 });

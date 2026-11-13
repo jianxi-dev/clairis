@@ -2150,6 +2150,7 @@ html[data-tab-drag="true"] body * {
 
 /* 分栏布局：需要边框撑住最小高度，否则空 2 栏会塌成一条细带（#470）。 */
 .cm-content .cm-columns {
+  position: relative;
   margin-block: 0.4em;
   padding: 4px 6px;
   min-height: 2.4em;
@@ -2206,6 +2207,33 @@ html[data-tab-drag="true"] body * {
   opacity: 1;
 }
 
+/* 容器「+」新增手柄（#742 / D7）：贴悬停栏正文左缘外侧、纵向居中，与单元格
+ * 手柄同款形态（16×16、圆角 3px）。悬停容器才显示；点击打开该栏就地编辑器与
+ * 菜单。left/top 由 JS 按悬停栏定位，避开块手柄（其右缘在容器左边框外 4px）。 */
+.cm-content .cm-columns-add-handle {
+  position: absolute;
+  transform: translateY(-50%);
+  /* 在 scroller 内取最上层；块手柄隐藏态的命中禁用见文件下方规则。 */
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  background: var(--app-sunken);
+  border: 1px solid var(--app-border);
+  border-radius: 3px;
+  opacity: 0;
+  cursor: pointer;
+  pointer-events: none;
+}
+
+.cm-content .cm-columns:hover .cm-columns-add-handle,
+.cm-content .cm-columns-add-handle:hover {
+  opacity: 1;
+  pointer-events: auto;
+}
+
 .cm-content .cm-column-gutter {
   flex: 0 0 12px;
   position: relative;
@@ -2255,6 +2283,12 @@ html[data-tab-drag="true"] body * {
 
 .cm-block-handle.cm-block-handle-visible {
   opacity: 1;
+}
+
+/* 隐藏态的块手柄仍拦截指针（opacity 0 不禁用命中），会挡住同位置的容器「+」
+ * 手柄等控件；未显现时一律不参与命中。 */
+.cm-block-handle:not(.cm-block-handle-visible) {
+  pointer-events: none;
 }
 
 .cm-block-handle-icon,
