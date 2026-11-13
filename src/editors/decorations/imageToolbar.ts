@@ -209,6 +209,35 @@ let toolbarEl: HTMLElement | null = null;
 let maximizeEl: HTMLElement | null = null;
 let maximizeKeyHandler: ((event: KeyboardEvent) => void) | null = null;
 let repositionFrame: number | null = null;
+
+const MAXIMIZE_MIN_SCALE = 1;
+const MAXIMIZE_MAX_SCALE = 8;
+const MAXIMIZE_WHEEL_STEP = 1.1;
+
+interface MaximizeTransform {
+  scale: number;
+  tx: number;
+  ty: number;
+  rotation: number;
+}
+
+let maximizeImg: HTMLImageElement | null = null;
+let maximizeTransform: MaximizeTransform = {
+  scale: 1,
+  tx: 0,
+  ty: 0,
+  rotation: 0,
+};
+let maximizeCleanup: (() => void) | null = null;
+const maximizePointers = new Map<number, { x: number; y: number }>();
+let maximizePanStart: {
+  px: number;
+  py: number;
+  tx: number;
+  ty: number;
+} | null = null;
+let maximizePinchStart: { dist: number; scale: number } | null = null;
+let maximizeDownPos: { x: number; y: number } | null = null;
 /** 描述行「已收起」：点击带描述的描述行后置位，重新选中图片时复位。 */
 let captionCollapsed = false;
 
@@ -541,25 +570,273 @@ function scheduleReposition(): void {
   });
 }
 
+function maximizeApplyTransform(): void {
+  if (!maximizeImg) return;
+  const { scale, tx, ty, rotation } = maximizeTransform;
+  maximizeImg.style.transform = `translate(${tx}px, ${ty}px) scale(${scale}) rotate(${rotation}deg)`;
+}
+
+/**
+ * 平移钳制：旋转后的包围盒半宽/半高就是中心可移动的上限，图像始终盖住浮层
+ * 中心，不会被拖出视野。
+ */
+function maximizeClampTranslation(): void {
+  const img = maximizeImg;
+  if (!img) return;
+  const rect = img.getBoundingClientRect();
+  const baseW = img.clientWidth || rect.width / maximizeTransform.scale;
+  const baseH = img.clientHeight || rect.height / maximizeTransform.scale;
+  const s = maximizeTransform.scale;
+  const rad = (maximizeTransform.rotation * Math.PI) / 180;
+  const c = Math.abs(Math.cos(rad));
+  const sn = Math.abs(Math.sin(rad));
+  const halfW = (baseW * s * c + baseH * s * sn) / 2;
+  const halfH = (baseW * s * sn + baseH * s * c) / 2;
+  maximizeTransform.tx = Math.min(
+    halfW,
+    Math.max(-halfW, maximizeTransform.tx),
+  );
+  maximizeTransform.ty = Math.min(
+    halfH,
+    Math.max(-halfH, maximizeTransform.ty),
+  );
+}
+
+/** 以指针处为锚点缩放：保持指针下的图像点不动。 */
+function maximizeZoom(nextScale: number, cx: number, cy: number): void {
+  const img = maximizeImg;
+  if (!img) return;
+  const prev = maximizeTransform.scale;
+  const next = Math.min(
+    MAXIMIZE_MAX_SCALE,
+    Math.max(MAXIMIZE_MIN_SCALE, nextScale),
+  );
+  if (next === prev) return;
+  const rect = img.getBoundingClientRect();
+  const vx = cx - (rect.left + rect.width / 2);
+  const vy = cy - (rect.top + rect.height / 2);
+  maximizeTransform.tx += vx * (1 - next / prev);
+  maximizeTransform.ty += vy * (1 - next / prev);
+  maximizeTransform.scale = next;
+  if (next === MAXIMIZE_MIN_SCALE) {
+    maximizeTransform.tx = 0;
+    maximizeTransform.ty = 0;
+  }
+  maximizeClampTranslation();
+  maximizeApplyTransform();
+}
+
+function maximizeOnWheel(event: WheelEvent): void {
+  event.preventDefault();
+  const factor =
+    event.deltaY < 0 ? MAXIMIZE_WHEEL_STEP : 1 / MAXIMIZE_WHEEL_STEP;
+  maximizeZoom(maximizeTransform.scale * factor, event.clientX, event.clientY);
+}
+
+function maximizeOnPointerDown(event: PointerEvent): void {
+  maximizeDownPos = { x: event.clientX, y: event.clientY };
+  if (!maximizeImg || event.target !== maximizeImg) return;
+  maximizePointers.set(event.pointerId, {
+    x: event.clientX,
+    y: event.clientY,
+  });
+  if (maximizePointers.size === 1) {
+    if (maximizeTransform.scale > MAXIMIZE_MIN_SCALE) {
+      maximizePanStart = {
+        px: event.clientX,
+        py: event.clientY,
+        tx: maximizeTransform.tx,
+        ty: maximizeTransform.ty,
+      };
+    }
+  } else if (maximizePointers.size === 2) {
+    const [a, b] = [...maximizePointers.values()];
+    maximizePinchStart = {
+      dist: Math.hypot(a.x - b.x, a.y - b.y),
+      scale: maximizeTransform.scale,
+    };
+    maximizePanStart = null;
+  }
+}
+
+function maximizeOnPointerMove(event: PointerEvent): void {
+  if (!maximizePointers.has(event.pointerId)) return;
+  maximizePointers.set(event.pointerId, {
+    x: event.clientX,
+    y: event.clientY,
+  });
+  if (maximizePointers.size === 1 && maximizePanStart) {
+    maximizeTransform.tx =
+      maximizePanStart.tx + (event.clientX - maximizePanStart.px);
+    maximizeTransform.ty =
+      maximizePanStart.ty + (event.clientY - maximizePanStart.py);
+    maximizeClampTranslation();
+    maximizeApplyTransform();
+  } else if (maximizePointers.size === 2 && maximizePinchStart) {
+    const [a, b] = [...maximizePointers.values()];
+    const dist = Math.hypot(a.x - b.x, a.y - b.y);
+    if (dist > 0 && maximizePinchStart.dist > 0) {
+      maximizeZoom(
+        maximizePinchStart.scale * (dist / maximizePinchStart.dist),
+        (a.x + b.x) / 2,
+        (a.y + b.y) / 2,
+      );
+    }
+  }
+}
+
+function maximizeOnPointerEnd(event: PointerEvent): void {
+  if (!maximizePointers.has(event.pointerId)) return;
+  maximizePointers.delete(event.pointerId);
+  if (maximizePointers.size === 1) {
+    const [p] = [...maximizePointers.values()];
+    maximizePanStart = {
+      px: p.x,
+      py: p.y,
+      tx: maximizeTransform.tx,
+      ty: maximizeTransform.ty,
+    };
+  } else {
+    maximizePanStart = null;
+  }
+  maximizePinchStart = null;
+}
+
+function maximizeControlButton(
+  testid: string,
+  label: string,
+  icon: string,
+  onClick: () => void,
+): HTMLButtonElement {
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.dataset.testid = testid;
+  btn.title = label;
+  btn.setAttribute("aria-label", label);
+  btn.style.cssText =
+    "width:36px;height:36px;display:flex;align-items:center;justify-content:center;border:none;border-radius:8px;background:rgba(255,255,255,0.14);color:inherit;cursor:pointer;";
+  btn.appendChild(renderIcon(icon));
+  btn.addEventListener("click", onClick);
+  return btn;
+}
+
+function maximizeDownloadName(src: string, alt: string): string {
+  const match = /\.(png|jpe?g|gif|webp|svg|bmp|avif)(?:[?#]|$)/i.exec(src);
+  const ext = match ? match[1].toLowerCase() : "png";
+  const base =
+    alt
+      .trim()
+      .replace(/[\\/:*?"<>|]+/g, "_")
+      .slice(0, 60) || "image";
+  return `${base}.${ext}`;
+}
+
 export function openImageMaximize(src: string | null, alt: string): void {
   closeImageMaximize();
   const overlay = document.createElement("div");
   overlay.className = "cm-image-maximize";
   overlay.dataset.testid = "img-maximize";
+  overlay.style.touchAction = "none";
+  overlay.style.userSelect = "none";
+
+  let img: HTMLImageElement | null = null;
   if (src) {
-    const img = document.createElement("img");
+    img = document.createElement("img");
     img.src = src;
     img.alt = alt;
+    img.draggable = false;
     overlay.appendChild(img);
   } else {
     const fallback = document.createElement("span");
     fallback.textContent = `[图片: ${alt}]`;
     overlay.appendChild(fallback);
   }
+  maximizeImg = img;
+  maximizeTransform = { scale: 1, tx: 0, ty: 0, rotation: 0 };
+  maximizeApplyTransform();
+
+  const controls = document.createElement("div");
+  controls.dataset.testid = "img-max-controls";
+  controls.style.cssText =
+    "position:absolute;bottom:24px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:1;";
+  controls.appendChild(
+    maximizeControlButton(
+      "img-max-rotate",
+      "旋转 90°",
+      "RotateOutlined",
+      () => {
+        maximizeTransform.rotation = (maximizeTransform.rotation + 90) % 360;
+        maximizeClampTranslation();
+        maximizeApplyTransform();
+      },
+    ),
+  );
+  controls.appendChild(
+    maximizeControlButton(
+      "img-max-download",
+      "下载原图",
+      "DownloadOutlined",
+      () => {
+        if (!src) return;
+        const a = document.createElement("a");
+        a.href = src;
+        a.download = maximizeDownloadName(src, alt);
+        a.style.display = "none";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      },
+    ),
+  );
+  controls.appendChild(
+    maximizeControlButton(
+      "img-max-reset",
+      "恢复原始尺寸",
+      "RestoreOutlined",
+      () => {
+        maximizeTransform = { scale: 1, tx: 0, ty: 0, rotation: 0 };
+        maximizeApplyTransform();
+      },
+    ),
+  );
+  controls.appendChild(
+    maximizeControlButton("img-max-close", "关闭预览", "CloseOutlined", () => {
+      closeImageMaximize();
+    }),
+  );
+  overlay.appendChild(controls);
+
   overlay.addEventListener("click", (event) => {
-    if (event.target === overlay) closeImageMaximize();
+    const down = maximizeDownPos;
+    maximizeDownPos = null;
+    if (event.target !== overlay) return;
+    // 拖动结束后 pointerup 落在浮层背景上会补一次 click；位移超过阈值不算点击。
+    if (
+      down &&
+      Math.hypot(event.clientX - down.x, event.clientY - down.y) > 4
+    ) {
+      return;
+    }
+    closeImageMaximize();
   });
-  overlay.addEventListener("dblclick", () => closeImageMaximize());
+  // 双击恢复原始尺寸（design D16），不当关闭用。
+  overlay.addEventListener("dblclick", () => {
+    maximizeTransform = { scale: 1, tx: 0, ty: 0, rotation: 0 };
+    maximizeApplyTransform();
+  });
+  overlay.addEventListener("wheel", maximizeOnWheel, { passive: false });
+  overlay.addEventListener("pointerdown", maximizeOnPointerDown);
+  document.addEventListener("pointermove", maximizeOnPointerMove);
+  document.addEventListener("pointerup", maximizeOnPointerEnd);
+  document.addEventListener("pointercancel", maximizeOnPointerEnd);
+  maximizeCleanup = () => {
+    overlay.removeEventListener("wheel", maximizeOnWheel);
+    overlay.removeEventListener("pointerdown", maximizeOnPointerDown);
+    document.removeEventListener("pointermove", maximizeOnPointerMove);
+    document.removeEventListener("pointerup", maximizeOnPointerEnd);
+    document.removeEventListener("pointercancel", maximizeOnPointerEnd);
+  };
+
   maximizeKeyHandler = (event) => {
     if (event.key !== "Escape") return;
     event.stopPropagation();
@@ -577,6 +854,16 @@ export function closeImageMaximize(): void {
     document.removeEventListener("keydown", maximizeKeyHandler, true);
     maximizeKeyHandler = null;
   }
+  if (maximizeCleanup) {
+    maximizeCleanup();
+    maximizeCleanup = null;
+  }
+  maximizeImg = null;
+  maximizeTransform = { scale: 1, tx: 0, ty: 0, rotation: 0 };
+  maximizePointers.clear();
+  maximizePanStart = null;
+  maximizePinchStart = null;
+  maximizeDownPos = null;
 }
 
 if (typeof document !== "undefined") {
