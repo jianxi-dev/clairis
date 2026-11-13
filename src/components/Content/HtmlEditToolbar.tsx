@@ -52,6 +52,8 @@ export interface HtmlEditToolbarProps {
   onCapture: () => void;
   /** 删除选中节点（含子树） */
   onRemove: () => void;
+  /** 清除选中节点的 inline 宽高，恢复原始尺寸 */
+  onResetSize: () => void;
   onClose: () => void;
 }
 
@@ -97,6 +99,7 @@ export default function HtmlEditToolbar({
   onLink,
   onCapture,
   onRemove,
+  onResetSize,
   onClose,
 }: HtmlEditToolbarProps) {
   const ref = useRef<HTMLDivElement | null>(null);
@@ -327,6 +330,17 @@ export default function HtmlEditToolbar({
                     : BORDER,
               })),
             "边框色",
+          )}
+          {(info.style.width || info.style.height) && (
+            <button
+              type="button"
+              aria-label="恢复尺寸"
+              title="清除宽高，恢复原始尺寸"
+              className="html-edit-toolbar__btn"
+              onClick={onResetSize}
+            >
+              恢复尺寸
+            </button>
           )}
         </>
       )}

@@ -31,6 +31,21 @@ import {
 import HtmlEditToolbar from "./HtmlEditToolbar";
 import HtmlRangeToolbar from "./HtmlRangeToolbar";
 
+interface ResizeGesture {
+  edge: "e" | "s" | "se" | "w";
+  pointerId: number;
+  startX: number;
+  startY: number;
+  startW: number;
+  startH: number;
+  startLeft: number;
+  startTop: number;
+  left: number;
+  top: number;
+  w: number;
+  h: number;
+}
+
 interface HtmlVisualEditorProps {
   content: string;
   filePath?: string | null;
@@ -70,15 +85,9 @@ export default function HtmlVisualEditor({
     nodeId: string;
     anchor: SelectionRect;
   } | null>(null);
-  const [resizing, setResizing] = useState<{
-    edge: "e" | "s" | "se" | "w";
-    startX: number;
-    startY: number;
-    startW: number;
-    startH: number;
-    w: number;
-    h: number;
-  } | null>(null);
+  const [resizing, setResizing] = useState<ResizeGesture | null>(null);
+  // 手势的真值：React 状态更新异步，连续 pointermove 读状态会丢帧。
+  const resizingRef = useRef<ResizeGesture | null>(null);
   // 编辑期间冻结文档：否则每敲一个字都重建 iframe，光标与编辑态一起丢。
   //
   // 用 ref 而不是 state 做判定：content 走的是外部 store，订阅回调可能在
@@ -319,66 +328,114 @@ export default function HtmlVisualEditor({
     [content, selected],
   );
 
-  useEffect(() => {
-    if (!resizing) return;
-    const onMove = (e: PointerEvent) => {
-      setResizing((prev) => {
-        if (!prev) return prev;
-        const dx = e.clientX - prev.startX;
-        const dy = e.clientY - prev.startY;
-        const w = Math.max(
-          24,
-          prev.edge === "w" ? prev.startW - dx : prev.startW + dx,
-        );
-        const h = Math.max(24, prev.startH + dy);
-        return {
-          ...prev,
-          w: prev.edge === "w" || prev.edge === "e" ? w : prev.w,
-          h: prev.edge === "s" || prev.edge === "se" ? h : prev.h,
-          ...(prev.edge === "se" ? { w, h } : null),
-        };
-      });
-    };
-    const onUp = () => {
-      setResizing((prev) => {
-        if (!prev || !selected) return null;
-        const { w, h } = prev;
-        commit((content) =>
-          applyStylePatch(content, selected, {
-            width: `${Math.round(w)}px`,
-            height: `${Math.round(h)}px`,
-          }),
-        );
-        setBox((b) =>
-          b && b.nodeId === selected
-            ? { ...b, anchor: { ...b.anchor, width: w, height: h } }
-            : b,
-        );
-        return null;
-      });
-    };
-    window.addEventListener("pointermove", onMove);
-    window.addEventListener("pointerup", onUp);
-    return () => {
-      window.removeEventListener("pointermove", onMove);
-      window.removeEventListener("pointerup", onUp);
-    };
-  }, [resizing, selected, commit]);
-
-  const startResize = (edge: "e" | "s" | "se" | "w", e: React.PointerEvent) => {
+  const beginResize = (
+    edge: ResizeGesture["edge"],
+    e: React.PointerEvent,
+  ): void => {
     if (!box) return;
     e.preventDefault();
     e.stopPropagation();
-    setResizing({
+    // 捕获指针：拖拽期间 pointermove/up 全部回到手柄，不再依赖 window
+    // 事件穿过 iframe——指针移出 iframe 时 window 收不到，拖拽就断在半路。
+    try {
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    } catch {
+      // 某些环境不支持指针捕获：监听仍挂在元素上。
+    }
+    const gesture: ResizeGesture = {
       edge,
+      pointerId: e.pointerId,
       startX: e.clientX,
       startY: e.clientY,
       startW: box.anchor.width,
       startH: box.anchor.height,
+      startLeft: box.anchor.x,
+      startTop: box.anchor.y,
+      left: box.anchor.x,
+      top: box.anchor.y,
       w: box.anchor.width,
       h: box.anchor.height,
-    });
+    };
+    resizingRef.current = gesture;
+    setResizing(gesture);
   };
+
+  const moveResize = (e: React.PointerEvent): void => {
+    const prev = resizingRef.current;
+    if (!prev || e.pointerId !== prev.pointerId) return;
+    e.preventDefault();
+    const dx = e.clientX - prev.startX;
+    const dy = e.clientY - prev.startY;
+    const nextW = Math.max(
+      24,
+      prev.edge === "w" ? prev.startW - dx : prev.startW + dx,
+    );
+    const nextH = Math.max(24, prev.startH + dy);
+    const next: ResizeGesture = {
+      ...prev,
+      w:
+        prev.edge === "e" || prev.edge === "se" || prev.edge === "w"
+          ? nextW
+          : prev.w,
+      h: prev.edge === "s" || prev.edge === "se" ? nextH : prev.h,
+      // 西侧手柄：宽度减多少，left 就右移多少，右边缘保持不动。
+      left:
+        prev.edge === "w" ? prev.startLeft + (prev.startW - nextW) : prev.left,
+    };
+    resizingRef.current = next;
+    setResizing(next);
+  };
+
+  const endResize = (e: React.PointerEvent): void => {
+    const prev = resizingRef.current;
+    if (!prev || e.pointerId !== prev.pointerId) return;
+    resizingRef.current = null;
+    setResizing(null);
+    if (!selected) return;
+    const { w, h, left, top } = prev;
+    commit((content) =>
+      applyStylePatch(content, selected, {
+        width: `${Math.round(w)}px`,
+        height: `${Math.round(h)}px`,
+        // padding/border 不再叠加到宽高上，避免「越拖越大」。
+        "box-sizing": "border-box",
+      }),
+    );
+    setBox((b) =>
+      b && b.nodeId === selected
+        ? {
+            ...b,
+            anchor: { ...b.anchor, x: left, y: top, width: w, height: h },
+          }
+        : b,
+    );
+  };
+
+  const cancelResizeGesture = useCallback((): void => {
+    if (!resizingRef.current) return;
+    resizingRef.current = null;
+    setResizing(null);
+    setBox(null);
+    setSelected(null);
+  }, []);
+
+  const cancelResize = (): void => {
+    if (!resizingRef.current) return;
+    cancelResizeGesture();
+  };
+
+  useEffect(() => {
+    const onBlur = () => cancelResizeGesture();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") cancelResizeGesture();
+    };
+    window.addEventListener("blur", onBlur);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("blur", onBlur);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [cancelResizeGesture]);
 
   return (
     <>
@@ -401,8 +458,8 @@ export default function HtmlVisualEditor({
           data-testid="html-resize-guides"
           style={{
             position: "fixed",
-            left: box.anchor.x,
-            top: box.anchor.y,
+            left: resizing?.left ?? box.anchor.x,
+            top: resizing?.top ?? box.anchor.y,
             width: resizing?.w ?? box.anchor.width,
             height: resizing?.h ?? box.anchor.height,
             border: "1px dashed var(--app-accent)",
@@ -433,7 +490,11 @@ export default function HtmlVisualEditor({
               <span
                 key={edge}
                 data-testid={`html-resize-${edge}`}
-                onPointerDown={(e) => startResize(edge, e)}
+                onPointerDown={(e) => beginResize(edge, e)}
+                onPointerMove={moveResize}
+                onPointerUp={endResize}
+                onPointerCancel={cancelResize}
+                onLostPointerCapture={cancelResize}
                 style={{
                   position: "absolute",
                   width: 8,
@@ -488,6 +549,17 @@ export default function HtmlVisualEditor({
           onRemove={() => {
             commit((prev) => applyNodeRemove(prev, selected));
             setSelected(null);
+            setBox(null);
+          }}
+          onResetSize={() => {
+            if (!selected) return;
+            commit((prev) =>
+              applyStylePatch(prev, selected, {
+                width: null,
+                height: null,
+                "box-sizing": null,
+              }),
+            );
             setBox(null);
           }}
           onClose={() => setSelected(null)}
