@@ -17,8 +17,8 @@
 | id | kind | claim | assert | source |
 |---|---|---|---|---|
 | A-2.1 | state-machine | 指针滑入表格→圆点出现，离开→隐藏 | 出现→隐藏 | #738 行列段 / design D2 |
-| A-2.2 | exact | 悬停圆点后该圆点变为「+」图标（data-icon=Add 的热点数） | 1 | #738 行列段 / design D2 |
-| A-2.3 | state-machine | 圆点矩形与表格矩形关系 | 滑入→圆点矩形在表格矩形之外（距离边框 0-2px） | #738 行列段 / design D2 |
+| A-2.2 | exact | 悬停圆点后处于「+」形态（hotspot-active，白字 accent 底）的热点数 | 1 | #738 行列段 / design D2 |
+| A-2.3 | state-machine | 圆点矩形与表格矩形关系（默认小圆点态） | 滑入→默认圆点矩形在表格矩形之外（距边框 0-2px）；悬停「+」形态以 A-2.2 计 | #738 行列段 / design D2 |
 | A-2.4 | exact | 点击列间圆点气泡「插入列」后表格列数增量 | 1 | #738 行列段 / design D2 |
 | A-2.5 | exact | 点击行间圆点气泡「删除行」后表格行数减量 | 1 | #738 行列段 / design D2 |
 

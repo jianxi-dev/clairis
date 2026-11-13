@@ -55,16 +55,16 @@
         },
         {
           "id": "A-2.2",
-          "claim": "悬停圆点后该圆点变为「+」图标（data-icon=Add 的热点数）",
+          "claim": "悬停圆点后处于「+」形态（hotspot-active，白字 accent 底）的热点数",
           "kind": "exact",
           "assert": "1",
           "source": "#738 行列段 / design D2"
         },
         {
           "id": "A-2.3",
-          "claim": "圆点矩形与表格矩形关系",
+          "claim": "圆点矩形与表格矩形关系（默认小圆点态）",
           "kind": "state-machine",
-          "assert": "滑入→圆点矩形在表格矩形之外（距离边框 0-2px）",
+          "assert": "滑入→默认圆点矩形在表格矩形之外（距边框 0-2px）；悬停「+」形态以 A-2.2 计",
           "source": "#738 行列段 / design D2"
         },
         {

@@ -1726,6 +1726,8 @@ html[data-tab-drag="true"] body * {
   transform: translateY(-50%);
 }
 
+/* 离指针最近的那条边界点亮；激活（悬停）时也点亮。 */
+.cm-table-boundary-revealed .cm-table-boundary-line,
 .cm-table-boundary-active .cm-table-boundary-line {
   background: var(--app-accent);
 }
@@ -1740,40 +1742,34 @@ html[data-tab-drag="true"] body * {
   pointer-events: auto;
 }
 
+/* 指针在 wrap 内即显示全部圆点（#740）。 */
 .cm-table-hotspot.cm-table-hotspot-revealed {
   display: flex;
 }
 
+/* 列点挂上边框外、行点挂左边框外：热点中心比表格边缘外移 6px，默认 8px 圆点
+   底边 / 右边距表格边框 1px（#740 几何）。 */
 .cm-table-hotspot-col {
-  top: 6px;
+  top: -6px;
   left: 50%;
-  transform: translateX(-50%);
+  transform: translate(-50%, -50%);
 }
 
 .cm-table-hotspot-row {
-  top: 50%;
-  left: 8px;
-  transform: translateY(-50%);
-}
-
-.cm-table-hotspot-col.cm-table-hotspot-edge {
+  left: -6px;
   top: 50%;
   transform: translate(-50%, -50%);
 }
 
-.cm-table-hotspot-row.cm-table-hotspot-edge {
-  left: 50%;
-  transform: translate(-50%, -50%);
-}
-
+/* 默认小圆点（边框色、无字形）；悬停 / 激活才是现行「+」形态（#740）。 */
 .cm-table-hotspot-dot {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
-  width: 16px;
-  height: 16px;
-  font-size: 12px;
+  width: 8px;
+  height: 8px;
+  font-size: 0;
   line-height: 1;
   color: var(--app-text-2);
   background: var(--app-sunken);
@@ -1783,6 +1779,9 @@ html[data-tab-drag="true"] body * {
 }
 
 .cm-table-hotspot-active .cm-table-hotspot-dot {
+  width: 16px;
+  height: 16px;
+  font-size: 12px;
   color: #ffffff;
   background: var(--app-accent);
   border-color: var(--app-accent);
