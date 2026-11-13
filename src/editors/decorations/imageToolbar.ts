@@ -243,6 +243,8 @@ let captionCollapsed = false;
 
 const CAPTION_PLACEHOLDER = "输入图片描述";
 
+const TOOLBAR_VIEWPORT_MARGIN = 8;
+
 export function getSelectedImageFrom(): number | null {
   return selection?.from ?? null;
 }
@@ -551,9 +553,41 @@ function positionToolbar(): void {
     deselectImage();
     return;
   }
+
+  // 先显示再测量：隐藏态的 getBoundingClientRect 全为 0，无法夹取。
+  toolbarEl.style.display = "";
   const rect = el.getBoundingClientRect();
-  toolbarEl.style.left = `${rect.left + rect.width / 2}px`;
-  toolbarEl.style.top = `${rect.top - 8}px`;
+  const toolbarRect = toolbarEl.getBoundingClientRect();
+  const viewportW = window.innerWidth;
+  const viewportH = window.innerHeight;
+  const margin = TOOLBAR_VIEWPORT_MARGIN;
+
+  // 锚点（图片）完全离开视口：隐藏工具条，滚回后重新显示。
+  if (
+    rect.bottom < 0 ||
+    rect.top > viewportH ||
+    rect.right < 0 ||
+    rect.left > viewportW
+  ) {
+    toolbarEl.style.display = "none";
+    return;
+  }
+
+  // 目标：工具条底边中点贴在图片上方 margin 处；transform 为
+  // translate(-50%, -100%)，所以 left/top 是渲染左上角偏移后的锚点。
+  const centerX = rect.left + rect.width / 2;
+  const anchorY = rect.top - margin;
+  const halfW = toolbarRect.width / 2;
+  const left = Math.min(
+    Math.max(margin + halfW, centerX),
+    viewportW - margin - halfW,
+  );
+  const top = Math.min(
+    Math.max(margin + toolbarRect.height, anchorY),
+    viewportH - margin,
+  );
+  toolbarEl.style.left = `${left}px`;
+  toolbarEl.style.top = `${top}px`;
 }
 
 function scheduleReposition(): void {
