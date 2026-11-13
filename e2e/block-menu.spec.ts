@@ -65,6 +65,37 @@ test("hover 块手柄弹出块菜单，十项转换 + 在下方添加", async ({
   );
 });
 
+test("默认视口转换菜单完整显示：可见行数等于总行数", async ({ page }) => {
+  await hoverHandle(page, 2);
+
+  const info = await page.evaluate(() => {
+    const panel = document.querySelector(
+      '[data-testid="block-menu"]',
+    ) as HTMLElement;
+    const pr = panel.getBoundingClientRect();
+    const rows = Array.from(
+      panel.querySelectorAll(
+        ".cm-block-menu-cell, .cm-block-menu-item, .cm-block-menu-group",
+      ),
+    ) as HTMLElement[];
+    const visible = rows.filter((r) => {
+      const b = r.getBoundingClientRect();
+      return b.top >= pr.top - 1 && b.bottom <= pr.bottom + 1;
+    }).length;
+    return {
+      total: rows.length,
+      visible,
+      scrollHeight: panel.scrollHeight,
+      clientHeight: panel.clientHeight,
+      maxHeight: panel.style.maxHeight,
+    };
+  });
+
+  expect(info.maxHeight).toBe("");
+  expect(info.scrollHeight).toBeLessThanOrEqual(info.clientHeight);
+  expect(info.visible).toBe(info.total);
+});
+
 test("点「一级标题」把段落转成标题，其余字节不变", async ({ page }) => {
   await hoverHandle(page, 2);
 
@@ -541,7 +572,7 @@ test("触发元素贴底时菜单完整留在视口内", async ({ page }) => {
   });
   expect(inside.top).toBeGreaterThanOrEqual(0);
   expect(inside.left).toBeGreaterThanOrEqual(0);
-  expect(inside.bottom).toBeLessThanOrEqual(inside.innerHeight);
+  expect(inside.bottom).toBeLessThanOrEqual(inside.innerHeight - 8);
   expect(inside.right).toBeLessThanOrEqual(inside.innerWidth);
   await page.screenshot({ path: ".artifacts/371/02-bottom-edge.png" });
 });
