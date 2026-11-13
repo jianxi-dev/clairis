@@ -1,0 +1,423 @@
+{
+  "change": "editor-surface-batch17",
+  "requirements": [
+    {
+      "id": "R-1",
+      "text": "页签右键菜单关闭协议",
+      "anchors": [
+        {
+          "id": "A-1.1",
+          "claim": "外点后 `[data-tab-menu]` 节点数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "#754 第 1 条 / design D1"
+        },
+        {
+          "id": "A-1.2",
+          "claim": "Esc 后 `[data-tab-menu]` 节点数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "#754 第 1 条 / design D1"
+        },
+        {
+          "id": "A-1.3",
+          "claim": "失焦→回页再点后菜单残留节点数",
+          "kind": "state-machine",
+          "assert": "0",
+          "source": "#754 第 1 条 / design D1"
+        }
+      ]
+    },
+    {
+      "id": "R-2",
+      "text": "PDF 按钮栏快捷键在视图内生效",
+      "anchors": [
+        {
+          "id": "A-2.1",
+          "claim": "⌘⇧D 后宿主 class 含 `pdf-chrome-pinned-hidden`",
+          "kind": "state-machine",
+          "assert": "\"true\"",
+          "source": "#754 第 2 条 / design D2"
+        },
+        {
+          "id": "A-2.2",
+          "claim": "再按 ⌘⇧D 后宿主 class 含 `pdf-chrome-pinned-hidden`",
+          "kind": "state-machine",
+          "assert": "\"false\"",
+          "source": "#754 第 2 条 / design D2"
+        },
+        {
+          "id": "A-2.3",
+          "claim": "总览 `mode-pdf-toolbar-pin` 行数",
+          "kind": "exact",
+          "assert": "1",
+          "source": "#754 第 2 条 / design D2"
+        }
+      ]
+    },
+    {
+      "id": "R-3",
+      "text": "悬停提示按配置时长显示",
+      "anchors": [
+        {
+          "id": "A-3.1",
+          "claim": "未配置回退延迟（ms）",
+          "kind": "exact",
+          "assert": "400",
+          "source": "#754 第 3 条 / design D3"
+        },
+        {
+          "id": "A-3.2",
+          "claim": "配置 1.0 秒时 1100ms 处 `.app-tip` 节点数",
+          "kind": "exact",
+          "assert": "1",
+          "source": "#754 第 3 条 / design D3"
+        },
+        {
+          "id": "A-3.3",
+          "claim": "移出后 `.app-tip` 节点数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "#754 第 3 条 / design D3"
+        }
+      ]
+    },
+    {
+      "id": "R-4",
+      "text": "左边栏展开与固定快捷键",
+      "anchors": [
+        {
+          "id": "A-4.1",
+          "claim": "⌘\\ 后 `railState`",
+          "kind": "state-machine",
+          "assert": "\"pinned\"",
+          "source": "#754 第 4 条 / design D4"
+        },
+        {
+          "id": "A-4.2",
+          "claim": "再按 ⌘\\ 后 `railState`",
+          "kind": "state-machine",
+          "assert": "\"collapsed\"",
+          "source": "#754 第 4 条 / design D4"
+        },
+        {
+          "id": "A-4.3",
+          "claim": "⌘⌥\\ 后 `railPinned`",
+          "kind": "state-machine",
+          "assert": "\"true\"",
+          "source": "#754 第 4 条 / design D4"
+        }
+      ]
+    },
+    {
+      "id": "R-5",
+      "text": "预览分栏渲染",
+      "anchors": [
+        {
+          "id": "A-5.1",
+          "claim": "`.preview-content .layout-col-2` 节点数",
+          "kind": "exact",
+          "assert": "1",
+          "source": "#754 第 5 条 / design D5"
+        },
+        {
+          "id": "A-5.2",
+          "claim": "可见文本含 `:::` 次数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "#754 第 5 条 / design D5"
+        },
+        {
+          "id": "A-5.3",
+          "claim": "两栏子项 x 差（px）",
+          "kind": "exact",
+          "assert": "> 0",
+          "source": "#754 第 5 条 / design D5"
+        }
+      ]
+    },
+    {
+      "id": "R-6",
+      "text": "插入 CSS 图标",
+      "anchors": [
+        {
+          "id": "A-6.1",
+          "claim": "`[data-cmd=\"insert-css\"] svg[data-icon=\"CssOutlined\"]` 节点数",
+          "kind": "exact",
+          "assert": "1",
+          "source": "#754 第 6 条 / design D6"
+        },
+        {
+          "id": "A-6.2",
+          "claim": "该 svg `getBoundingClientRect().width` 下限",
+          "kind": "exact",
+          "assert": "0",
+          "source": "#754 第 6 条 / design D6"
+        },
+        {
+          "id": "A-6.3",
+          "claim": "关闭菜单后该 svg 节点数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "#754 第 6 条 / design D6"
+        }
+      ]
+    },
+    {
+      "id": "R-7",
+      "text": "HTML 区块尺寸拖拽稳定",
+      "anchors": [
+        {
+          "id": "A-7.1",
+          "claim": "e 边拖 100px 后宽度增量（px）",
+          "kind": "exact",
+          "assert": "100±2",
+          "source": "#754 第 7 条 / design D7"
+        },
+        {
+          "id": "A-7.2",
+          "claim": "w 边拖 60px 后 guide `left` 增量（px）",
+          "kind": "exact",
+          "assert": "-60±2",
+          "source": "#754 第 7 条 / design D7"
+        },
+        {
+          "id": "A-7.3",
+          "claim": "pointercancel 后 guide 节点数；恢复尺寸后 `style.width`",
+          "kind": "state-machine",
+          "assert": "0；\"\"",
+          "source": "#754 第 7 条 / design D7"
+        }
+      ]
+    },
+    {
+      "id": "R-8",
+      "text": "HTML 工具条当前值与图标化",
+      "anchors": [
+        {
+          "id": "A-8.1",
+          "claim": "背景色控件数 / 字体族控件数",
+          "kind": "exact",
+          "assert": "1 / 1",
+          "source": "#754 第 8 条 / design D8"
+        },
+        {
+          "id": "A-8.2",
+          "claim": "字号 select `value`",
+          "kind": "exact",
+          "assert": "\"16px\"",
+          "source": "#754 第 8 条 / design D8"
+        },
+        {
+          "id": "A-8.3",
+          "claim": "截图按钮数 / 文字标签按钮数",
+          "kind": "exact",
+          "assert": "0 / 0",
+          "source": "#754 第 8 条 / design D8"
+        }
+      ]
+    },
+    {
+      "id": "R-9",
+      "text": "HTML 划选文字不出现拖拽幽灵",
+      "anchors": [
+        {
+          "id": "A-9.1",
+          "claim": "划选 10 字符后 ghost 节点数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "#754 第 9 条 / design D9"
+        },
+        {
+          "id": "A-9.2",
+          "claim": "划选后文档长度变化（字符数）",
+          "kind": "exact",
+          "assert": "0",
+          "source": "#754 第 9 条 / design D9"
+        }
+      ]
+    },
+    {
+      "id": "R-10",
+      "text": "HTML 对齐改下拉与两端对齐",
+      "anchors": [
+        {
+          "id": "A-10.1",
+          "claim": "对齐 select 数",
+          "kind": "exact",
+          "assert": "1",
+          "source": "#754 第 10 条 / design D8"
+        },
+        {
+          "id": "A-10.2",
+          "claim": "对齐选项数",
+          "kind": "exact",
+          "assert": "4",
+          "source": "#754 第 10 条 / design D8"
+        },
+        {
+          "id": "A-10.3",
+          "claim": "选两端后计算 `text-align`",
+          "kind": "exact",
+          "assert": "\"justify\"",
+          "source": "#754 第 10 条 / design D8"
+        }
+      ]
+    },
+    {
+      "id": "R-11",
+      "text": "图片宽度注释 / 对齐按下态 / 双击预览裁剪",
+      "anchors": [
+        {
+          "id": "A-11.1",
+          "claim": "跨行注释裁剪后可见文本含 `<!--w=` 次数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "#754 第 11 条 / design D10"
+        },
+        {
+          "id": "A-11.2",
+          "claim": "对齐按钮 `aria-pressed`",
+          "kind": "exact",
+          "assert": "\"true\"",
+          "source": "#754 第 11 条 / design D10"
+        },
+        {
+          "id": "A-11.3",
+          "claim": "双击预览 `img` 的 `object-position`",
+          "kind": "exact",
+          "assert": "等于裁剪偏移（无偏移样例为 \"0px 0px\"）",
+          "source": "#754 第 11 条 / design D10"
+        }
+      ]
+    },
+    {
+      "id": "R-12",
+      "text": "图片工具条图标 / 插入图片 / 剪切图标 / 描述",
+      "anchors": [
+        {
+          "id": "A-12.1",
+          "claim": "工具条 svg 数",
+          "kind": "exact",
+          "assert": "9",
+          "source": "#754 第 12 条 / design D10"
+        },
+        {
+          "id": "A-12.2",
+          "claim": "插入图片 `naturalWidth` 下限",
+          "kind": "exact",
+          "assert": "0",
+          "source": "#754 第 12 条 / design D10"
+        },
+        {
+          "id": "A-12.3",
+          "claim": "描述输入框默认 `display`；点「添加描述」后",
+          "kind": "state-machine",
+          "assert": "\"none\"；非 \"none\"",
+          "source": "#754 第 12 条 / design D10"
+        }
+      ]
+    },
+    {
+      "id": "R-13",
+      "text": "转换菜单完整显示与窗口适配",
+      "anchors": [
+        {
+          "id": "A-13.1",
+          "claim": "默认视口可见行数等于总行数",
+          "kind": "exact",
+          "assert": "\"true\"",
+          "source": "#754 第 13 条 / design D11"
+        },
+        {
+          "id": "A-13.2",
+          "claim": "320px 高视口菜单 `bottom` 上限",
+          "kind": "exact",
+          "assert": "视口高 - 8",
+          "source": "#754 第 13 条 / design D11"
+        }
+      ]
+    },
+    {
+      "id": "R-14",
+      "text": "分栏插入改 5 竖条 hover 选区",
+      "anchors": [
+        {
+          "id": "A-14.1",
+          "claim": "柱数",
+          "kind": "exact",
+          "assert": "5",
+          "source": "#754 第 14 条 / design D12"
+        },
+        {
+          "id": "A-14.2",
+          "claim": "滑到第 3 根选中数",
+          "kind": "exact",
+          "assert": "3",
+          "source": "#754 第 14 条 / design D12"
+        },
+        {
+          "id": "A-14.3",
+          "claim": "单元 `textContent`",
+          "kind": "exact",
+          "assert": "\"\"",
+          "source": "#754 第 14 条 / design D12"
+        }
+      ]
+    },
+    {
+      "id": "R-15",
+      "text": "视频块布局",
+      "anchors": [
+        {
+          "id": "A-15.1",
+          "claim": "`video.controls`",
+          "kind": "exact",
+          "assert": "\"true\"",
+          "source": "#754 第 15 条 / design D13"
+        },
+        {
+          "id": "A-15.2",
+          "claim": "容器宽 / 行宽",
+          "kind": "exact",
+          "assert": "0.667±0.02",
+          "source": "#754 第 15 条 / design D13"
+        },
+        {
+          "id": "A-15.3",
+          "claim": "块手柄 `data-icon`",
+          "kind": "exact",
+          "assert": "\"VideoOutlined\"",
+          "source": "#754 第 15 条 / design D13"
+        }
+      ]
+    },
+    {
+      "id": "R-16",
+      "text": "斜杠菜单回显与逗号触发",
+      "anchors": [
+        {
+          "id": "A-16.1",
+          "claim": "行首输入 `,h1` 后菜单节点数",
+          "kind": "exact",
+          "assert": "1",
+          "source": "#754 第 16 条 / design D14"
+        },
+        {
+          "id": "A-16.2",
+          "claim": "源码",
+          "kind": "exact",
+          "assert": "\"/h1\"",
+          "source": "#754 第 16 条 / design D14"
+        },
+        {
+          "id": "A-16.3",
+          "claim": "`/h1` 删到 `/` 后列表行数",
+          "kind": "exact",
+          "assert": "17",
+          "source": "#754 第 16 条 / design D14"
+        }
+      ]
+    }
+  ]
+}
