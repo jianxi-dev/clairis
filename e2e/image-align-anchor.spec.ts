@@ -101,6 +101,39 @@ test("默认居中：data-align=center、左右外边距对称、居中按钮 pr
   await page.screenshot({ path: ".artifacts/710/01-default-center.png" });
 });
 
+test("对齐按下态有可测色差", async ({ page }) => {
+  await openEditor(
+    page,
+    "![pic](assets/pic.png)\n",
+    "alignPressed",
+    PNG_DATA_URL,
+  );
+  await page.locator(".cm-image-widget").click();
+
+  const center = page.getByTestId("img-toolbar-align-center");
+  const left = page.getByTestId("img-toolbar-align-left");
+  await expect(center).toHaveAttribute("aria-pressed", "true");
+  await expect(left).toHaveAttribute("aria-pressed", "false");
+
+  const backgrounds = await page.evaluate(() => {
+    const read = (testid: string) => {
+      const el = document.querySelector(`[data-testid="${testid}"]`);
+      return el ? getComputedStyle(el).backgroundColor : "";
+    };
+    return {
+      pressed: read("img-toolbar-align-center"),
+      idle: read("img-toolbar-align-left"),
+    };
+  });
+  const channelSum = (value: string) =>
+    (value.match(/\d+/g) ?? [])
+      .slice(0, 3)
+      .reduce((sum, n) => sum + Number(n), 0);
+  expect(channelSum(backgrounds.pressed)).not.toBe(
+    channelSum(backgrounds.idle),
+  );
+});
+
 test("切左对齐：仅左按钮 pressed，data-align=left，markdown 写 align=left", async ({
   page,
 }) => {
@@ -188,4 +221,75 @@ test("取消选中：工具条移除，无残留 pressed", async ({ page }) => {
     page.locator('.cm-image-toolbar button[aria-pressed="true"]'),
   ).toHaveCount(0);
   await page.screenshot({ path: ".artifacts/710/04-deselected.png" });
+});
+
+interface ToolbarBox {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  display: string;
+}
+
+function toolbarBox(page: Page): Promise<ToolbarBox | null> {
+  return page.evaluate(() => {
+    const el = document.querySelector(
+      '[data-testid="img-toolbar"]',
+    ) as HTMLElement | null;
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    return {
+      x: r.x,
+      y: r.y,
+      w: r.width,
+      h: r.height,
+      display: getComputedStyle(el).display,
+    };
+  });
+}
+
+test("图片滚出视口：工具条贴边夹取，完全越界隐藏，滚回重现", async ({
+  page,
+}) => {
+  const tallDoc = `![pic](assets/pic.png)\n\n${"\n".repeat(80)}`;
+  await openEditor(page, tallDoc, "toolbarclamp", PNG_DATA_URL);
+  const widget = page.locator(".cm-image-widget");
+  await widget.click();
+  const toolbar = page.getByTestId("img-toolbar");
+  await expect(toolbar).toBeVisible();
+
+  const scroller = page.locator(".cm-scroller");
+  const viewport = page.viewportSize()!;
+  const initial = await widget.evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    return { top: r.top, bottom: r.bottom };
+  });
+
+  await scroller.evaluate((el, y) => {
+    el.scrollTop = y;
+  }, initial.top + 10);
+  await expect
+    .poll(async () => (await toolbarBox(page))?.y ?? -1)
+    .toBeGreaterThanOrEqual(0);
+  const partial = (await toolbarBox(page))!;
+  expect(partial.display).not.toBe("none");
+  expect(partial.x).toBeGreaterThanOrEqual(0);
+  expect(partial.x + partial.w).toBeLessThanOrEqual(viewport.width);
+  expect(partial.y + partial.h).toBeLessThanOrEqual(viewport.height);
+
+  await scroller.evaluate((el, y) => {
+    el.scrollTop = y;
+  }, initial.bottom + 60);
+  await expect.poll(async () => (await toolbarBox(page))?.display).toBe("none");
+
+  await scroller.evaluate((el) => {
+    el.scrollTop = 0;
+  });
+  await expect.poll(async () => (await toolbarBox(page))?.display).toBe("flex");
+  const restored = (await toolbarBox(page))!;
+  expect(restored.x + restored.w).toBeLessThanOrEqual(viewport.width);
+  expect(restored.y + restored.h).toBeLessThanOrEqual(viewport.height);
+
+  await page.mouse.click(600, 600);
+  await expect(toolbar).toHaveCount(0);
 });

@@ -11,6 +11,7 @@ import {
 } from "./Content/mediaMute";
 import { popOverlay, pushOverlay } from "../lib/overlayGate";
 import { revealInFinder } from "../lib/finder";
+import { isTauriEnv } from "../utils/tauri";
 import type { Tab } from "../types";
 
 interface TabBarProps {
@@ -321,7 +322,11 @@ export default function TabBar({
         onDoubleClick={(e) => {
           if ((e.target as HTMLElement).closest("[data-tab-id], button, input"))
             return;
-          useStore.getState().newTab();
+          // 双击空白是窗口级动作：切换最大化/还原，不再新建文档（D15）。
+          if (!isTauriEnv()) return;
+          void import("@tauri-apps/api/window")
+            .then(({ getCurrentWindow }) => getCurrentWindow().toggleMaximize())
+            .catch(() => {});
         }}
         className="tab-strip flex min-h-[26px] w-full items-center gap-1 shrink-0 select-none overflow-x-auto px-1"
         style={{

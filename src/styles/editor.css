@@ -868,6 +868,12 @@ body {
   background: var(--app-sunken);
 }
 
+/* 对齐等开关的按下态：与未选中态有可测色差（D10）。 */
+.cm-image-toolbar button[aria-pressed="true"] {
+  background: var(--app-accent-soft);
+  color: var(--app-accent);
+}
+
 .cm-image-toolbar button:disabled {
   opacity: 0.4;
   cursor: not-allowed;
@@ -876,6 +882,19 @@ body {
 .cm-image-toolbar button svg {
   width: 18px;
   height: 18px;
+}
+
+/* 带文字的动作按钮（「添加描述」）：图标与文字贴合，按钮按内容放宽。 */
+.cm-image-toolbar button.cm-image-toolbar-btn-label {
+  width: auto;
+  gap: 2px;
+  padding: 0 6px;
+}
+
+.cm-image-toolbar-label {
+  font-size: 12px;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 /* 双击放大浮层 */
@@ -938,60 +957,50 @@ body {
   border-color: var(--app-accent);
 }
 
-/* 裁剪浮层（#656）：暗背景 + 原图舞台 + 裁剪矩形（外部压暗）+ 动作条 */
-.cm-image-crop-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 9999;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  background: rgba(0, 0, 0, 0.85);
+/* 内联裁剪（#779）：裁剪框覆盖在图片 widget 上，8 个 handle */
+.cm-image-widget.cm-image-crop-active > .cm-image-handle,
+.cm-image-widget.cm-image-crop-active > .cm-image-corner {
+  display: none;
 }
 
-.cm-image-crop-stage {
-  position: relative;
-  overflow: hidden;
-}
-
-.cm-image-crop-stage img {
-  display: block;
-  user-select: none;
-}
-
-.cm-image-crop-rect {
+.cm-image-crop-frame {
   position: absolute;
+  left: 0;
+  top: 0;
   box-sizing: border-box;
   border: 1px solid var(--app-accent);
-  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.45);
   cursor: move;
+  touch-action: none;
+  z-index: 30;
 }
 
-.cm-image-crop-actions {
-  display: flex;
-  gap: 12px;
-}
-
-.cm-image-crop-actions button {
-  padding: 6px 18px;
-  font-size: 13px;
-  color: var(--app-text);
-  background: var(--app-surface);
-  border: 1px solid var(--app-border);
-  border-radius: var(--app-radius);
-  cursor: pointer;
-}
-
-.cm-image-crop-actions button:hover {
-  border-color: var(--app-accent);
+.cm-image-crop-frame .cm-image-handle {
+  z-index: 31;
 }
 
 /* 视频播放器 / 文件卡片 */
 .cm-media-widget {
   margin-inline: 0.15em;
   vertical-align: middle;
+}
+
+/* 视频块默认 2/3 宽（D13）；显式 {width=…} 由 widget 内联覆盖。 */
+.cm-media-widget[data-media-kind="video"] {
+  width: 66.67%;
+}
+
+.cm-media-widget[data-selected="true"] {
+  outline: 2px solid var(--app-accent);
+  outline-offset: 2px;
+}
+
+/* 视频对齐（D13）：与图片一致，行级 text-align 落位。 */
+.cm-editor .cm-line:has(> .cm-media-widget[data-align="center"]) {
+  text-align: center;
+}
+
+.cm-editor .cm-line:has(> .cm-media-widget[data-align="right"]) {
+  text-align: right;
 }
 
 .cm-media-widget video {
@@ -1001,6 +1010,7 @@ body {
   max-height: 70vh;
   background: #000;
   border-radius: var(--app-radius);
+  color-scheme: dark;
 }
 
 .cm-media-file {
@@ -1566,6 +1576,16 @@ html[data-tab-drag="true"] body * {
 .mdb-slash-grid-cell[data-on="true"] {
   background: var(--app-accent);
   border-color: var(--app-accent);
+}
+
+/* 分栏选区（D12）：5 根竖向柱子，填满各自轨道并明显高于表格方格。 */
+.mdb-slash-grid[data-kind="columns"] {
+  column-gap: 4px;
+}
+
+.mdb-slash-grid[data-kind="columns"] .mdb-slash-grid-cell {
+  width: 100%;
+  height: 44px;
 }
 
 /* ── 表格块装饰（cm-table-*，移植自 md-bundle） ──────────────

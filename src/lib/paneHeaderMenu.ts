@@ -8,6 +8,7 @@ import type { IconName } from "../ui/icons";
 import type { EditorMode } from "../types";
 
 export type PaneMenuAction =
+  | "new-file"
   | "export"
   | "share"
   | "splitRight"
@@ -44,6 +45,7 @@ export interface ExportMenuItem {
 }
 
 export const PANE_MENU_ITEMS: readonly PaneMenuItem[] = [
+  { action: "new-file", label: "新建文件", icon: "file" },
   { action: "export", label: "导出", icon: "export" },
   { action: "share", label: "分享", icon: "share" },
   { action: "splitRight", label: "右分", icon: "splitRight" },

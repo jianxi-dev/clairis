@@ -1,18 +1,21 @@
-/* 裁剪浮层（#656）。矩形一律用原图像素坐标（无损：原图与引用不变）。
+/* 图片内联裁剪（#779 / D19）。矩形一律用原图像素坐标（无损：原图与引用不变）。
  *
- * 打开时按已有 crop 还原；没有 crop 时给居中 80% 的默认框（确认即产生
- * 一个比原图小的可见区域）。覆盖层像素上拖拽，确认时换算回原图并取整。
- * Esc / 点背景 / 取消按钮 = 放弃（不回调）；确认写回；恢复整图 = 清空。
+ * 不再开独立浮层：裁剪框直接覆盖在图片 widget 上，拖 handle 实时改显示
+ * （object-fit:none + object-position），松手写回 crop；拖回整图范围即移除
+ * crop；Esc 取消并恢复进入裁剪前的显示。
  */
 import { MIN_CROP_SIZE } from "./image";
+import { getSelectedImageFrom } from "./imageToolbar";
 
 export interface ImageCropOptions {
-  /** 解析后的图片 URL（能加载出 natural 尺寸才有得裁）。 */
+  /** 解析后的图片 URL（只用于探测 natural 尺寸）。 */
   src: string;
   /** 已有裁剪矩形（原图像素），没有则 null。 */
   crop: [number, number, number, number] | null;
-  /** 确认回调：矩形（写回）或 null（清空）。取消不会调用。 */
+  /** 写回回调：矩形（写回）或 null（移除 crop）。取消不会调用。 */
   onConfirm: (rect: [number, number, number, number] | null) => void;
+  /** 目标图片的文档偏移；缺省取当前选中图片。 */
+  from?: number;
 }
 
 interface Rect {
@@ -22,16 +25,13 @@ interface Rect {
   height: number;
 }
 
-const STAGE_MAX_RATIO = 0.7;
+/** 框覆盖到整图 99% 以上即视为「拖回整图」，移除 crop。 */
+const FULL_IMAGE_RATIO = 0.99;
+/** 指针位移超过它才算拖动，避免单击误写 crop。 */
+const DRAG_THRESHOLD_PX = 2;
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(value, max));
-}
-
-function fitScale(natW: number, natH: number): number {
-  const maxW = window.innerWidth * STAGE_MAX_RATIO;
-  const maxH = window.innerHeight * STAGE_MAX_RATIO;
-  return Math.min(1, maxW / natW, maxH / natH);
 }
 
 function defaultRect(natW: number, natH: number): Rect {
@@ -45,34 +45,11 @@ function defaultRect(natW: number, natH: number): Rect {
   };
 }
 
-function cropToRect(crop: [number, number, number, number]): Rect {
-  return { left: crop[0], top: crop[1], width: crop[2], height: crop[3] };
-}
-
-function rectToCrop(
-  rect: Rect,
-  scale: number,
-): [number, number, number, number] {
-  return [
-    Math.round(rect.left / scale),
-    Math.round(rect.top / scale),
-    Math.round(rect.width / scale),
-    Math.round(rect.height / scale),
-  ];
-}
-
 function clampRect(rect: Rect, natW: number, natH: number): void {
   rect.left = clamp(rect.left, 0, natW - MIN_CROP_SIZE);
   rect.top = clamp(rect.top, 0, natH - MIN_CROP_SIZE);
   rect.width = clamp(rect.width, MIN_CROP_SIZE, natW - rect.left);
   rect.height = clamp(rect.height, MIN_CROP_SIZE, natH - rect.top);
-}
-
-function applyRectStyle(el: HTMLElement, rect: Rect, scale: number): void {
-  el.style.left = `${rect.left * scale}px`;
-  el.style.top = `${rect.top * scale}px`;
-  el.style.width = `${rect.width * scale}px`;
-  el.style.height = `${rect.height * scale}px`;
 }
 
 const HANDLE_AXES: Record<
@@ -111,7 +88,9 @@ const HANDLE_MARK: Record<string, string> = {
   w: "top:50%; left:2px; width:2px; height:8px; margin-top:-4px; background:#fff;",
 };
 
-/** 打开裁剪浮层；图片加载失败时静默不打开（无 natural 尺寸裁不了）。 */
+/**
+ * 打开内联裁剪。图片未加载出 natural 尺寸时静默不打开（没得分母）。
+ */
 export function openImageCrop(options: ImageCropOptions): void {
   const probe = new Image();
   probe.onload = () => {
@@ -123,30 +102,50 @@ export function openImageCrop(options: ImageCropOptions): void {
 }
 
 function mount(natW: number, natH: number, options: ImageCropOptions): void {
-  const scale = fitScale(natW, natH);
+  const from = options.from ?? getSelectedImageFrom();
+  const widget =
+    from !== null
+      ? document.querySelector<HTMLElement>(
+          `.cm-image-widget[data-image-from="${from}"]`,
+        )
+      : null;
+  const img = widget?.querySelector<HTMLImageElement>("img");
+  if (!widget || !img) return;
+
+  // 整图显示缩放：清空裁剪样式后量一次，让裁剪盒与 crop 数值同一坐标系。
+  const enterStyles = {
+    objectFit: img.style.objectFit,
+    objectPosition: img.style.objectPosition,
+    width: img.style.width,
+    height: img.style.height,
+  };
+  img.style.objectFit = "";
+  img.style.objectPosition = "";
+  img.style.width = "";
+  img.style.height = "";
+  const fullW = img.getBoundingClientRect().width;
+  img.style.objectFit = enterStyles.objectFit;
+  img.style.objectPosition = enterStyles.objectPosition;
+  img.style.width = enterStyles.width;
+  img.style.height = enterStyles.height;
+  const scale = fullW / natW;
+  if (!(scale > 0)) return;
+
   const rect: Rect = options.crop
-    ? cropToRect(options.crop)
+    ? {
+        left: options.crop[0],
+        top: options.crop[1],
+        width: options.crop[2],
+        height: options.crop[3],
+      }
     : defaultRect(natW, natH);
   clampRect(rect, natW, natH);
 
-  const overlay = document.createElement("div");
-  overlay.className = "cm-image-crop-overlay";
-  overlay.dataset.testid = "img-crop-overlay";
+  widget.classList.add("cm-image-crop-active");
 
-  const stage = document.createElement("div");
-  stage.className = "cm-image-crop-stage";
-  stage.style.width = `${natW * scale}px`;
-  stage.style.height = `${natH * scale}px`;
-
-  const img = document.createElement("img");
-  img.src = options.src;
-  img.style.width = `${natW * scale}px`;
-  img.style.height = `${natH * scale}px`;
-  stage.appendChild(img);
-
-  const rectEl = document.createElement("div");
-  rectEl.className = "cm-image-crop-rect";
-  applyRectStyle(rectEl, rect, scale);
+  const frame = document.createElement("div");
+  frame.className = "cm-image-crop-frame";
+  frame.dataset.testid = "img-crop-frame";
   for (const handle of Object.keys(HANDLE_AXES)) {
     const span = document.createElement("span");
     span.className = "cm-image-handle";
@@ -159,132 +158,132 @@ function mount(natW: number, natH: number, options: ImageCropOptions): void {
       "position:absolute; display:block; pointer-events:none;" +
       (HANDLE_MARK[handle] ?? "");
     span.appendChild(mark);
-    rectEl.appendChild(span);
+    frame.appendChild(span);
   }
-  stage.appendChild(rectEl);
-  overlay.appendChild(stage);
+  widget.appendChild(frame);
 
-  const actions = document.createElement("div");
-  actions.className = "cm-image-crop-actions";
-  for (const spec of [
-    { testid: "img-crop-restore", label: "恢复整图" },
-    { testid: "img-crop-cancel", label: "取消" },
-    { testid: "img-crop-confirm", label: "确认" },
-  ]) {
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.dataset.testid = spec.testid;
-    btn.textContent = spec.label;
-    actions.appendChild(btn);
+  const applyDisplay = (): void => {
+    img.style.objectFit = "none";
+    img.style.objectPosition = `${-rect.left * scale}px ${-rect.top * scale}px`;
+    img.style.width = `${rect.width * scale}px`;
+    img.style.height = `${rect.height * scale}px`;
+    frame.style.left = "0px";
+    frame.style.top = "0px";
+    frame.style.width = `${rect.width * scale}px`;
+    frame.style.height = `${rect.height * scale}px`;
+  };
+  applyDisplay();
+
+  interface DragState {
+    mode: "move" | "resize";
+    handle: string | null;
+    startX: number;
+    startY: number;
+    start: Rect;
+    moved: boolean;
   }
-  overlay.appendChild(actions);
+  let drag: DragState | null = null;
 
-  let keyHandler: ((event: KeyboardEvent) => void) | null = null;
-  const detach = (): void => {
-    overlay.remove();
-    if (keyHandler) {
-      document.removeEventListener("keydown", keyHandler, true);
-      keyHandler = null;
-    }
+  const cleanup = (): void => {
+    frame.remove();
+    widget.classList.remove("cm-image-crop-active");
+    document.removeEventListener("keydown", onKey, true);
   };
-  const finish = (result: [number, number, number, number] | null): void => {
-    detach();
-    options.onConfirm(result);
-  };
+
   const cancel = (): void => {
-    detach();
+    // 拖拽中 Esc：先丢掉 drag，pointerup 的 finish 就不会写回。
+    drag = null;
+    cleanup();
+    img.style.objectFit = enterStyles.objectFit;
+    img.style.objectPosition = enterStyles.objectPosition;
+    img.style.width = enterStyles.width;
+    img.style.height = enterStyles.height;
   };
 
-  for (const btn of Array.from(actions.children) as HTMLElement[]) {
-    btn.addEventListener("click", (event) => {
-      event.stopPropagation();
-      if (btn.dataset.testid === "img-crop-cancel") cancel();
-      else if (btn.dataset.testid === "img-crop-confirm")
-        finish(rectToCrop(rect, scale));
-      else finish(null);
-    });
-  }
+  const finish = (): void => {
+    if (!drag) return;
+    const { moved } = drag;
+    const end = { ...rect };
+    drag = null;
+    cleanup();
+    if (!moved) {
+      img.style.objectFit = enterStyles.objectFit;
+      img.style.objectPosition = enterStyles.objectPosition;
+      img.style.width = enterStyles.width;
+      img.style.height = enterStyles.height;
+      return;
+    }
+    if (
+      end.width >= natW * FULL_IMAGE_RATIO &&
+      end.height >= natH * FULL_IMAGE_RATIO
+    ) {
+      options.onConfirm(null);
+      return;
+    }
+    options.onConfirm([
+      Math.round(end.left),
+      Math.round(end.top),
+      Math.round(end.width),
+      Math.round(end.height),
+    ]);
+  };
 
-  keyHandler = (event) => {
+  frame.addEventListener("pointerdown", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const target = event.target as Element | null;
+    const handleEl = target?.closest("[data-handle]") as HTMLElement | null;
+    frame.setPointerCapture(event.pointerId);
+    drag = {
+      mode: handleEl ? "resize" : "move",
+      handle: handleEl?.dataset.handle ?? null,
+      startX: event.clientX,
+      startY: event.clientY,
+      start: { ...rect },
+      moved: false,
+    };
+  });
+
+  frame.addEventListener("pointermove", (event) => {
+    if (!drag) return;
+    const dxScreen = event.clientX - drag.startX;
+    const dyScreen = event.clientY - drag.startY;
+    if (Math.hypot(dxScreen, dyScreen) >= DRAG_THRESHOLD_PX) drag.moved = true;
+    const dx = dxScreen / scale;
+    const dy = dyScreen / scale;
+    if (drag.mode === "move") {
+      rect.left = clamp(drag.start.left + dx, 0, natW - drag.start.width);
+      rect.top = clamp(drag.start.top + dy, 0, natH - drag.start.height);
+    } else {
+      const axes = HANDLE_AXES[drag.handle ?? ""];
+      if (!axes) return;
+      let left = drag.start.left;
+      let top = drag.start.top;
+      let right = drag.start.left + drag.start.width;
+      let bottom = drag.start.top + drag.start.height;
+      if (axes.x === "r") right = clamp(right + dx, left + MIN_CROP_SIZE, natW);
+      if (axes.x === "l") left = clamp(left + dx, 0, right - MIN_CROP_SIZE);
+      if (axes.y === "b")
+        bottom = clamp(bottom + dy, top + MIN_CROP_SIZE, natH);
+      if (axes.y === "t") top = clamp(top + dy, 0, bottom - MIN_CROP_SIZE);
+      rect.left = left;
+      rect.top = top;
+      rect.width = right - left;
+      rect.height = bottom - top;
+    }
+    applyDisplay();
+  });
+
+  frame.addEventListener("pointerup", finish);
+  frame.addEventListener("pointercancel", cancel);
+  frame.addEventListener("click", (event) => event.stopPropagation());
+  frame.addEventListener("dblclick", (event) => event.stopPropagation());
+
+  const onKey = (event: KeyboardEvent): void => {
     if (event.key !== "Escape") return;
+    event.preventDefault();
     event.stopPropagation();
     cancel();
   };
-  document.addEventListener("keydown", keyHandler, true);
-
-  // 背景取消要求按下与抬起都在背景上：把手拖拽中途落在背景上的合成
-  // click（target=overlay）不算取消。
-  let downOnBackdrop = false;
-  overlay.addEventListener("mousedown", (event) => {
-    downOnBackdrop = event.target === overlay;
-    if (downOnBackdrop) event.preventDefault();
-  });
-  overlay.addEventListener("click", (event) => {
-    if (event.target === overlay && downOnBackdrop) cancel();
-  });
-
-  // 把手拖拽：覆盖层像素位移换算回原图像素，调整矩形边界。
-  stage.addEventListener("mousedown", (event) => {
-    const target = event.target;
-    const handle =
-      target instanceof Element
-        ? (target.closest("[data-handle]") as HTMLElement | null)
-        : null;
-    if (handle) {
-      event.preventDefault();
-      event.stopPropagation();
-      const axes = HANDLE_AXES[handle.dataset.handle ?? ""];
-      if (!axes) return;
-      const startX = event.clientX;
-      const startY = event.clientY;
-      const start = { ...rect };
-      const onMove = (move: MouseEvent): void => {
-        const dx = (move.clientX - startX) / scale;
-        const dy = (move.clientY - startY) / scale;
-        let left = start.left;
-        let top = start.top;
-        let right = start.left + start.width;
-        let bottom = start.top + start.height;
-        if (axes.x === "r")
-          right = clamp(right + dx, left + MIN_CROP_SIZE, natW);
-        if (axes.x === "l") left = clamp(left + dx, 0, right - MIN_CROP_SIZE);
-        if (axes.y === "b")
-          bottom = clamp(bottom + dy, top + MIN_CROP_SIZE, natH);
-        if (axes.y === "t") top = clamp(top + dy, 0, bottom - MIN_CROP_SIZE);
-        rect.left = left;
-        rect.top = top;
-        rect.width = right - left;
-        rect.height = bottom - top;
-        applyRectStyle(rectEl, rect, scale);
-      };
-      const onUp = (): void => {
-        window.removeEventListener("mousemove", onMove);
-        window.removeEventListener("mouseup", onUp);
-      };
-      window.addEventListener("mousemove", onMove);
-      window.addEventListener("mouseup", onUp);
-      return;
-    }
-    if (!(target instanceof Element) || !rectEl.contains(target)) return;
-    event.preventDefault();
-    event.stopPropagation();
-    const startX = event.clientX;
-    const startY = event.clientY;
-    const start = { ...rect };
-    const onMove = (move: MouseEvent): void => {
-      const dx = (move.clientX - startX) / scale;
-      const dy = (move.clientY - startY) / scale;
-      rect.left = clamp(start.left + dx, 0, natW - start.width);
-      rect.top = clamp(start.top + dy, 0, natH - start.height);
-      applyRectStyle(rectEl, rect, scale);
-    };
-    const onUp = (): void => {
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
-    };
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
-  });
-
-  document.body.appendChild(overlay);
+  document.addEventListener("keydown", onKey, true);
 }

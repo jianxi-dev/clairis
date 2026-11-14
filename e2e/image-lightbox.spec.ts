@@ -123,6 +123,24 @@ test("双击打开浮层：滚轮放大后 scale > 1", async ({ page }) => {
   await page.screenshot({ path: path.join(ART, "02-zoomed.png") });
 });
 
+test("双击预览应用裁剪：object-position 等于裁剪偏移", async ({ page }) => {
+  await openEditor(
+    page,
+    `![示例](${PNG_DATA_URL}){crop=3,3,26,26}\n`,
+    "lightbox-crop",
+    PNG_DATA_URL,
+  );
+  await openLightbox(page);
+
+  const pos = await page.evaluate(() => {
+    const img = document.querySelector(
+      '[data-testid="img-maximize"] img',
+    ) as HTMLImageElement | null;
+    return img ? img.style.objectPosition : null;
+  });
+  expect(pos).toBe("-3px -3px");
+});
+
 test("放大后拖动：平移变化且不越界", async ({ page }) => {
   await openEditor(
     page,

@@ -1,8 +1,9 @@
 import { test, expect, type Page } from "@playwright/test";
 
 /**
- * 悬停提示规则（#634）：
- * 会弹菜单/浮层的按钮不再叠加提示；其余提示悬停满 1 分钟才出现。
+ * 悬停提示规则（#634 / #763）：
+ * 会弹菜单/浮层的按钮不再叠加提示；其余提示按配置「提示时长」出现
+ * （未配置回退 400ms）。
  */
 
 async function boot(page: Page): Promise<void> {
@@ -37,10 +38,36 @@ test("页面宽度控件悬停：弹面板但不出提示", async ({ page }) => 
   await expect(page.locator(".app-tip")).toHaveCount(0);
 });
 
-test("普通 title 元素悬停 1.2 秒仍不出提示", async ({ page }) => {
+test("普通 title 元素悬停：未配置时 400ms 出现提示，移出后消失", async ({
+  page,
+}) => {
   await boot(page);
   await page.locator('[data-testid="status-lines"]').hover();
-  await page.waitForTimeout(1200);
+  await page.waitForTimeout(150);
+  await expect(page.locator(".app-tip")).toHaveCount(0);
+  await page.waitForTimeout(250);
+  await expect(page.locator(".app-tip")).toHaveCount(1);
+  await page.mouse.move(5, 5);
+  await expect(page.locator(".app-tip")).toHaveCount(0);
+});
+
+test("配置提示时长 1.0 秒：1100ms 处出现提示，移出后消失", async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    const w = window as unknown as Record<string, unknown>;
+    const store = w.__biaoyue_editor_store__ as {
+      getState: () => {
+        setConfig: (patch: { noticeDuration: number }) => void;
+      };
+    };
+    store.getState().setConfig({ noticeDuration: 1.0 });
+  });
+  await page.locator('[data-testid="status-lines"]').hover();
+  await page.waitForTimeout(900);
+  await expect(page.locator(".app-tip")).toHaveCount(0);
+  await page.waitForTimeout(200);
+  await expect(page.locator(".app-tip")).toHaveCount(1);
+  await page.mouse.move(5, 5);
   await expect(page.locator(".app-tip")).toHaveCount(0);
 });
 

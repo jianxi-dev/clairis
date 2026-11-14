@@ -1,8 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render } from "@testing-library/react";
 import TooltipLayer from "../../components/TooltipLayer";
+import { useEditorStore } from "../../stores/editorStore";
 
-const DELAY_MS = 60_000;
+const DELAY_MS = 400;
 
 function makeButton(attrs: Record<string, string>): HTMLButtonElement {
   const btn = document.createElement("button");
@@ -24,6 +25,7 @@ function tipText(): string | null {
 describe("TooltipLayer 悬停提示规则", () => {
   beforeEach(() => {
     vi.useFakeTimers();
+    useEditorStore.getState().setConfig({ noticeDuration: null });
   });
 
   afterEach(() => {
@@ -32,13 +34,47 @@ describe("TooltipLayer 悬停提示规则", () => {
     vi.useRealTimers();
   });
 
-  it("普通 title 满 60 秒才出现，59.999 秒仍不出现", () => {
+  it("普通 title 未配置时满 400ms 才出现，399ms 仍不出现", () => {
     render(<TooltipLayer />);
     const btn = makeButton({ title: "普通提示" });
     hover(btn);
 
     act(() => {
       vi.advanceTimersByTime(DELAY_MS - 1);
+    });
+    expect(tipText()).toBeNull();
+
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
+    expect(tipText()).toBe("普通提示");
+  });
+
+  it("配置 1.0 秒时满 1000ms 才出现", () => {
+    useEditorStore.getState().setConfig({ noticeDuration: 1.0 });
+    render(<TooltipLayer />);
+    const btn = makeButton({ title: "普通提示" });
+    hover(btn);
+
+    act(() => {
+      vi.advanceTimersByTime(999);
+    });
+    expect(tipText()).toBeNull();
+
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
+    expect(tipText()).toBe("普通提示");
+  });
+
+  it("配置低于 100ms 被钳制到 100ms", () => {
+    useEditorStore.getState().setConfig({ noticeDuration: 0.05 });
+    render(<TooltipLayer />);
+    const btn = makeButton({ title: "普通提示" });
+    hover(btn);
+
+    act(() => {
+      vi.advanceTimersByTime(99);
     });
     expect(tipText()).toBeNull();
 

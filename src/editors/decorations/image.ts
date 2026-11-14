@@ -94,8 +94,8 @@ function clampHeight(value: number): number {
   return Math.max(MIN_IMAGE_HEIGHT, Math.min(value, MAX_IMAGE_HEIGHT));
 }
 
-// 结束符兼容旧数据里的全角破折号 `—>`，否则会字面泄漏成正文。
-const WIDTH_COMMENT_RE = /^[ \t]*<!--\s*w=(\d+)\s*(?:-->|—>)/;
+// 结束符兼容旧数据里的全角破折号 `—>`；前导空白含换行，跨行注释才不泄漏成正文。
+const WIDTH_COMMENT_RE = /^[ \t\r\n]*<!--\s*w=(\d+)\s*(?:-->|—>)/;
 
 function cropEquals(
   a: [number, number, number, number] | null,
@@ -647,14 +647,40 @@ class ImageWidget extends WidgetType {
       img.style.maxWidth = "100%";
       img.style.display = "block";
       if (this._crop) {
-        // 裁剪显示：盒子=裁剪矩形（原图 1:1），object-fit:none 把内容
-        // 平移到 (left,top) 对齐盒原点。此时 width/height 缩放属性不参与
-        // 显示（裁剪矩形本身就是显示尺寸）。
+        // 裁剪显示：盒子=裁剪矩形，object-fit:none 把内容平移到 (left,top)
+        // 对齐盒原点。盒子尺寸按整图显示缩放换算，避免 max-width 把裁剪盒
+        // 压歪（显示区域与 crop 数值保持同一坐标系）。
         const [l, t, w, h] = this._crop;
         img.style.objectFit = "none";
         img.style.objectPosition = `${-l}px ${-t}px`;
         img.style.width = `${w}px`;
         img.style.height = `${h}px`;
+        const applyCropScale = (): void => {
+          if (!img.isConnected || img.naturalWidth <= 0) return;
+          const prev = {
+            objectFit: img.style.objectFit,
+            objectPosition: img.style.objectPosition,
+            width: img.style.width,
+            height: img.style.height,
+          };
+          img.style.objectFit = "";
+          img.style.objectPosition = "";
+          img.style.width = "";
+          img.style.height = "";
+          const fullW = img.getBoundingClientRect().width;
+          img.style.objectFit = prev.objectFit;
+          img.style.objectPosition = prev.objectPosition;
+          img.style.width = prev.width;
+          img.style.height = prev.height;
+          const scale = fullW / img.naturalWidth;
+          if (scale > 0 && scale < 1) {
+            img.style.objectPosition = `${-l * scale}px ${-t * scale}px`;
+            img.style.width = `${w * scale}px`;
+            img.style.height = `${h * scale}px`;
+          }
+        };
+        requestAnimationFrame(applyCropScale);
+        img.addEventListener("load", applyCropScale);
       } else {
         if (this._width !== null) {
           img.style.width = `${this._width}px`;
@@ -684,7 +710,7 @@ class ImageWidget extends WidgetType {
     });
     container.addEventListener("dblclick", (event) => {
       event.stopPropagation();
-      openImageMaximize(this._src, this._alt);
+      openImageMaximize(this._src, this._alt, this._crop);
     });
 
     // 8 个缩放把手由 markImageWidgetSelected 按选中态增删；容器级委托让
@@ -809,10 +835,64 @@ class ImageWidget extends WidgetType {
 
 // --- 媒体 widget（视频 / 文件） -----------------------------------------------
 
+/** 当前选中的媒体 widget 文档偏移；null 表示未选中。 */
+let selectedMediaFrom: number | null = null;
+
+/**
+ * 媒体 widget 的选中态：描边 + 8 个缩放把手（与图片共用 `IMAGE_RESIZE_HANDLES`）。
+ * 不复用图片工具条的选中态：那会连带弹出图片工具条，视频不需要。
+ */
+function markMediaWidgetSelected(el: HTMLElement, isSelected: boolean): void {
+  el.dataset.selected = isSelected ? "true" : "false";
+  el.querySelectorAll(".cm-image-handle").forEach((handle) => handle.remove());
+  if (!isSelected) return;
+  for (const { handle, cursor } of IMAGE_RESIZE_HANDLES) {
+    const span = document.createElement("span");
+    span.className = "cm-image-handle";
+    span.dataset.handle = handle;
+    span.style.cursor = cursor;
+    span.title = "拖动调整视频大小";
+    el.appendChild(span);
+  }
+}
+
+/** 视频容器（文件卡片不可缩放，不参与选中）。 */
+const SELECTABLE_MEDIA = '.cm-media-widget[data-media-kind="video"]';
+
+function selectMedia(from: number): void {
+  selectedMediaFrom = from;
+  document.querySelectorAll<HTMLElement>(SELECTABLE_MEDIA).forEach((el) => {
+    const elFrom =
+      el.dataset.mediaFrom !== undefined ? Number(el.dataset.mediaFrom) : null;
+    markMediaWidgetSelected(
+      el,
+      elFrom !== null && elFrom === selectedMediaFrom,
+    );
+  });
+}
+
+function clearMediaSelection(): void {
+  selectedMediaFrom = null;
+  document.querySelectorAll<HTMLElement>(SELECTABLE_MEDIA).forEach((el) => {
+    markMediaWidgetSelected(el, false);
+  });
+}
+
+if (typeof document !== "undefined") {
+  document.addEventListener("click", (event) => {
+    const target = event.target as Node | null;
+    if (target instanceof Element && target.closest(".cm-media-widget")) return;
+    clearMediaSelection();
+  });
+}
+
 /**
  * 非图片媒体的 widget：视频引用渲染成 `<video controls preload="metadata">`，
  * 其余渲染成文件链接卡片。`kind` 参与 `eq()`，路径改动让引用在视频与文件之间
  * 切换时 CM6 会重建 widget。
+ *
+ * 视频容器读 `align` / `width`（与图片同一属性语法）：默认 2/3 宽、居中，
+ * 选中后出 8 个把手，拖拽只改宽度（高度按视频比例）。
  */
 class MediaWidget extends WidgetType {
   constructor(
@@ -820,6 +900,9 @@ class MediaWidget extends WidgetType {
     private readonly _alt: string,
     private readonly _path: string,
     private readonly _src: string | null,
+    private readonly _from: number = 0,
+    private readonly _align: "left" | "center" | "right" | null = null,
+    private readonly _width: number | null = null,
   ) {
     super();
   }
@@ -829,7 +912,10 @@ class MediaWidget extends WidgetType {
       other._kind === this._kind &&
       other._alt === this._alt &&
       other._path === this._path &&
-      other._src === this._src
+      other._src === this._src &&
+      other._from === this._from &&
+      other._align === this._align &&
+      other._width === this._width
     );
   }
 
@@ -837,19 +923,31 @@ class MediaWidget extends WidgetType {
     const container = document.createElement("span");
     container.className = "cm-media-widget";
     container.classList.add(`cm-media-${this._kind}`);
+    container.dataset.mediaKind = this._kind;
     container.style.display = "inline-block";
     container.style.maxWidth = "100%";
     container.style.verticalAlign = "middle";
     container.style.backgroundColor = "var(--app-surface)";
+    const isVideo = this._kind === "video";
+    if (isVideo) {
+      // 与图片一致：容器保持 inline-block，左/中/右由行级 text-align 落位。
+      container.dataset.mediaFrom = String(this._from);
+      container.dataset.align = this._align ?? "center";
+      container.style.position = "relative";
+      if (this._width !== null) {
+        container.style.width = `${this._width}px`;
+        container.dataset.width = String(this._width);
+      }
+    }
 
-    if (this._kind === "video") {
+    if (isVideo) {
       const video = document.createElement("video");
       video.controls = true;
       video.preload = "metadata";
       // 用 setAttribute（不是 .src）：属性 getter 会按文档 base URL 解析，
       // 让渲染出的属性与源码路径不一致。
       video.setAttribute("src", this._src ?? this._path);
-      video.style.maxWidth = "100%";
+      video.style.width = "100%";
       video.style.display = "block";
       container.appendChild(video);
     } else {
@@ -859,7 +957,73 @@ class MediaWidget extends WidgetType {
       container.appendChild(link);
     }
 
+    if (!isVideo) return container;
+
+    markMediaWidgetSelected(container, selectedMediaFrom === this._from);
+
+    container.addEventListener("click", () => {
+      selectMedia(this._from);
+    });
+
+    container.addEventListener("mousedown", (event) => {
+      const target = event.target;
+      const handle =
+        target instanceof Element
+          ? (target.closest("[data-handle]") as HTMLElement | null)
+          : null;
+      if (!handle) return;
+      event.preventDefault();
+      event.stopPropagation();
+      this.beginResize(event, handle, container);
+    });
+
     return container;
+  }
+
+  /** 拖拽只改宽度：高度由视频比例自动跟随，写回同一 `{width=…}` 属性语法。 */
+  private beginResize(
+    event: MouseEvent,
+    handleEl: HTMLElement,
+    container: HTMLElement,
+  ): void {
+    const spec = IMAGE_RESIZE_HANDLES.find(
+      (candidate) => candidate.handle === handleEl.dataset.handle,
+    );
+    if (!spec) return;
+    const startX = event.clientX;
+    const startY = event.clientY;
+    const startW = container.getBoundingClientRect().width;
+    const startH = container.getBoundingClientRect().height;
+    if (startW <= 0) return;
+    // 上下边把手没有水平位移语义，按纵向位移换算宽度，保持只改宽度。
+    const ratio = startH > 0 ? startW / startH : 16 / 9;
+    const widthAt = (dx: number, dy: number): number =>
+      spec.width
+        ? clampWidth(startW + spec.signX * dx)
+        : clampWidth(startH > 0 ? (startH + spec.signY * dy) * ratio : startW);
+    const originalWidth = container.style.width;
+
+    const onMove = (move: MouseEvent): void => {
+      const width = widthAt(move.clientX - startX, move.clientY - startY);
+      container.style.width = `${Math.round(width)}px`;
+    };
+
+    const onUp = (up: MouseEvent): void => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+      const dx = up.clientX - startX;
+      const dy = up.clientY - startY;
+      container.style.width = originalWidth;
+      // 小于 3px 视为点击而非拖拽，不写文档。
+      if (Math.hypot(dx, dy) < 3) return;
+      const width = widthAt(dx, dy);
+      const view = EditorView.findFromDOM(container);
+      if (!view) return;
+      applyImageSize(view, this._from, Math.round(width), null);
+    };
+
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
   }
 
   /**
@@ -970,14 +1134,14 @@ export function createImageDecorations(
     const kind = classifyMedia(path);
     const from = ref.start;
     const to = ref.end;
+    const attrs =
+      ref.attrText !== null
+        ? parseImageAttributes(ref.attrText)
+        : { ...EMPTY_IMAGE_ATTRIBUTES };
 
     if (kind === "image") {
       // 图片路径解析（行为不变：null → 文字回退）。
       const src = resolveFn(path);
-      const attrs =
-        ref.attrText !== null
-          ? parseImageAttributes(ref.attrText)
-          : { ...EMPTY_IMAGE_ATTRIBUTES };
       const width = attrs.width ?? parseImageWidth(docText, to);
       decorations.push(
         Decoration.replace({
@@ -996,36 +1160,41 @@ export function createImageDecorations(
           inclusive: false,
         }).range(from, to),
       );
-      // 属性块与旧宽度注释都是持久化用的，不该在正文里露出来。
-      if (ref.attrStart !== null && ref.attrEnd !== null) {
-        decorations.push(
-          Decoration.replace({ inclusive: false }).range(
-            ref.attrStart,
-            ref.attrEnd,
+    } else {
+      // 视频复用图片解析器；解析不出时回退到原始路径，播放器仍有 src。
+      const src = kind === "video" ? (resolveFn(path) ?? path) : null;
+      decorations.push(
+        Decoration.replace({
+          widget: new MediaWidget(
+            kind,
+            alt,
+            path,
+            src,
+            from,
+            attrs.align,
+            attrs.width,
           ),
-        );
-      }
-      const afterAttrs = ref.attrEnd ?? to;
-      const commentEnd = imageWidthCommentEnd(docText, afterAttrs);
-      if (commentEnd !== null) {
-        decorations.push(
-          Decoration.replace({ inclusive: false }).range(
-            afterAttrs,
-            commentEnd,
-          ),
-        );
-      }
-      continue;
+          inclusive: false,
+        }).range(from, to),
+      );
     }
 
-    // 视频复用图片解析器；解析不出时回退到原始路径，播放器仍有 src。
-    const src = kind === "video" ? (resolveFn(path) ?? path) : null;
-    decorations.push(
-      Decoration.replace({
-        widget: new MediaWidget(kind, alt, path, src),
-        inclusive: false,
-      }).range(from, to),
-    );
+    // 属性块与旧宽度注释都是持久化用的，不该在正文里露出来。
+    if (ref.attrStart !== null && ref.attrEnd !== null) {
+      decorations.push(
+        Decoration.replace({ inclusive: false }).range(
+          ref.attrStart,
+          ref.attrEnd,
+        ),
+      );
+    }
+    const afterAttrs = ref.attrEnd ?? to;
+    const commentEnd = imageWidthCommentEnd(docText, afterAttrs);
+    if (commentEnd !== null) {
+      decorations.push(
+        Decoration.replace({ inclusive: false }).range(afterAttrs, commentEnd),
+      );
+    }
   }
 
   return decorations;
