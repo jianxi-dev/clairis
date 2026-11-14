@@ -1,5 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
 import { moveThrough } from "./helpers/ui-probe";
+import { summonAddHandle } from "./helpers/block-handle";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 
@@ -198,6 +199,7 @@ test("指针从正文分步滑入手柄即开块菜单（gate 未开也要开）
 test("空行「+」打开插入菜单", async ({ page }) => {
   await openDoc(page, "/Users/test/bh-add.md", "第一段\n\n\n第二段");
   const add = page.locator(".cm-block-handle-add").first();
+  await summonAddHandle(page, add);
   await add.hover();
   await expect(
     page.locator('.cm-block-handle[data-empty="true"]').first(),
@@ -209,6 +211,7 @@ test("空行「+」打开插入菜单", async ({ page }) => {
 test("指针滑到空行「+」即打开插入菜单，不需点击", async ({ page }) => {
   await openDoc(page, "/Users/test/bh-add-hover.md", "第一段\n\n\n第二段");
   const add = page.locator(".cm-block-handle-add").first();
+  await summonAddHandle(page, add);
   await add.hover();
 
   await expect(page.locator(".mdb-slash-menu")).toHaveCount(1, {
@@ -241,14 +244,18 @@ test("菜单跟随指针：两个空行的菜单坐标不同", async ({ page }) 
   const readTop = async () =>
     menu.evaluate((el) => (el as HTMLElement).style.top);
 
-  await page.locator(".cm-block-handle-add").nth(upper).hover();
+  const upperAdd = page.locator(".cm-block-handle-add").nth(upper);
+  await summonAddHandle(page, upperAdd);
+  await upperAdd.hover();
   await expect(menu).toHaveCount(1, { timeout: 3000 });
   const firstTop = await readTop();
 
   await page.mouse.move(20, 20);
   await expect(menu).toHaveCount(0, { timeout: 2000 });
 
-  await page.locator(".cm-block-handle-add").nth(lower).hover();
+  const lowerAdd = page.locator(".cm-block-handle-add").nth(lower);
+  await summonAddHandle(page, lowerAdd);
+  await lowerAdd.hover();
   await expect(menu).toHaveCount(1, { timeout: 3000 });
   const secondTop = await readTop();
 
@@ -259,6 +266,7 @@ test("菜单跟随指针：两个空行的菜单坐标不同", async ({ page }) 
 test("指针从「+」移进菜单，菜单不消失", async ({ page }) => {
   await openDoc(page, "/Users/test/bh-add-enter.md", "第一段\n\n\n第二段");
   const add = page.locator(".cm-block-handle-add").first();
+  await summonAddHandle(page, add);
   await add.hover();
   const menu = page.locator(".mdb-slash-menu");
   await expect(menu).toHaveCount(1, { timeout: 3000 });
@@ -272,6 +280,7 @@ test("指针从「+」移进菜单，菜单不消失", async ({ page }) => {
 test("指针离开后 120ms 宽限期结束才收起", async ({ page }) => {
   await openDoc(page, "/Users/test/bh-add-leave.md", "第一段\n\n\n第二段");
   const add = page.locator(".cm-block-handle-add").first();
+  await summonAddHandle(page, add);
   await add.hover();
   const menu = page.locator(".mdb-slash-menu");
   await expect(menu).toHaveCount(1, { timeout: 3000 });
