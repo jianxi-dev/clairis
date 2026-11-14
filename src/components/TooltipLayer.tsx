@@ -82,23 +82,28 @@ export default function TooltipLayer() {
       timerRef.current = window.setTimeout(() => {
         timerRef.current = null;
         if (isOverlayOpen()) return;
+        // 指针已离开（onDownRestore/restore 清空 currentRef）时不再补弹，
+        // 否则会在轮盘扇区上冒出上一个控件的提示且无人收（#819）。
+        if (!currentRef.current) return;
         setTip({ text, x, y });
       }, tipDelayMs());
     };
 
     const onOut = (e: PointerEvent) => {
       const target = e.target;
-      if (currentRef.current && target instanceof Element) {
-        const related = e.relatedTarget;
-        if (
-          related instanceof Element &&
-          currentRef.current.contains(related)
-        ) {
-          return;
-        }
-        restore();
-        clear();
+      if (!(target instanceof Element)) return;
+      const related = e.relatedTarget;
+      if (
+        currentRef.current &&
+        related instanceof Element &&
+        currentRef.current.contains(related)
+      ) {
+        return;
       }
+      // currentRef 可能已被 onDownRestore 清空（title 已还原）；此时仍要清掉
+      // 已排队的提示定时器，否则离开后提示会突然补弹并滞留（#819）。
+      restore();
+      clear();
     };
 
     const onDownRestore = () => {
