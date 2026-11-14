@@ -272,6 +272,11 @@ test("工具条归属：md 编辑态无 HTML 工具条，HTML 编辑态无 CM �
   });
   await page.locator(".cm-content").click();
   await page.keyboard.press("ControlOrMeta+a");
+  // 选中文字不再自动弹轮盘（ui-polish-batch15 2.1）：只由显式快捷键召唤。
+  await expect(page.locator('[data-testid="selection-roulette"]')).toHaveCount(
+    0,
+  );
+  await page.keyboard.press("ControlOrMeta+Shift+Space");
   await expect(page.locator('[data-testid="selection-roulette"]')).toHaveCount(
     1,
   );
