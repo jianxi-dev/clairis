@@ -548,12 +548,6 @@ export default function CaptureOverlay() {
     : store.collapsed
       ? panelsH
       : Math.max(60, Math.round(panelsH * store.panelRatio) - HANDLE_H / 2);
-  const historyH = IS_OVERLAY_WINDOW
-    ? 0
-    : store.collapsed
-      ? 0
-      : Math.max(60, panelsH - textareaH - HANDLE_H);
-
   // Overlay window: fill entire window, no fixed positioning
   // Main window: position: fixed with stored coordinates
   const containerStyle: React.CSSProperties = IS_OVERLAY_WINDOW

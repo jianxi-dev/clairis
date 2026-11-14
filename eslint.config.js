@@ -52,6 +52,31 @@ export default tseslint.config(
     },
   },
 
+  // 命令式集成文件：React Compiler 系规则（refs / immutability / purity /
+  // globals / preserve-manual-memoization）对 CodeMirror、ArtPlayer、iframe
+  // 等非声明式生命周期产生系统性误报（例如在渲染期读取实例 ref）。
+  // 这些文件保留 exhaustive-deps 与 set-state-in-effect 的真实告警。
+  {
+    files: [
+      "src/components/Content/HtmlVisualEditor.tsx",
+      "src/components/Content/ContentArea.tsx",
+      "src/components/Content/PreviewView.tsx",
+      "src/components/Content/VideoPlayer.tsx",
+      "src/components/Preview/FloatingPreview.tsx",
+      "src/components/StatusBar.tsx",
+      "src/components/CaptureOverlay.tsx",
+      "src/hooks/useDragResize.ts",
+      "src/hooks/useFile.ts",
+    ],
+    rules: {
+      "react-hooks/refs": "off",
+      "react-hooks/immutability": "off",
+      "react-hooks/purity": "off",
+      "react-hooks/globals": "off",
+      "react-hooks/preserve-manual-memoization": "off",
+    },
+  },
+
   // Test files: relaxed rules
   {
     files: ["**/*.test.{ts,tsx}", "**/__tests__/**"],

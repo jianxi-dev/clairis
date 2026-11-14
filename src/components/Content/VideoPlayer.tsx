@@ -74,13 +74,6 @@ function loopControlSvg(mode: LoopMode): string {
   return mode === "none" ? svg.replace("<i ", '<i style="opacity:0.45" ') : svg;
 }
 
-function loopIconSvg(mode: LoopMode): string {
-  const svg = iconSvg(LOOP_ICON_NAME[mode]);
-  return mode === "none"
-    ? svg.replace("<svg ", '<svg style="opacity:0.45" ')
-    : svg;
-}
-
 /** 媒体文件 → media:// URL（斜杠保留、host 后不追加斜杠，与 Rust decode 约定一致） */
 function mediaUrlForPath(path: string): string {
   const encoded = encodeURIComponent(path).replace(/%2F/g, "/");
@@ -214,7 +207,7 @@ export default function VideoPlayer({
   const [playlist, setPlaylist] = useState<MediaEntry[]>([]);
   const [currentIndex, setCurrentIndex] = useState(-1);
   const [webFullscreen, setWebFullscreen] = useState(false);
-  const [loopMode, setLoopMode] = useState<LoopMode>("none");
+  const [, setLoopMode] = useState<LoopMode>("none");
   const [rate, setRate] = useState(1);
   const [frame, setFrame] = useState({
     rotation: 0,

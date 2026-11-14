@@ -104,7 +104,6 @@ function commonExtensions(): Extension[] {
   return [
     EditorView.updateListener.of((update) => {
       if (update.docChanged) {
-        const content = update.state.doc.toString();
         // Content sync is handled by ContentArea's listener
       }
     }),

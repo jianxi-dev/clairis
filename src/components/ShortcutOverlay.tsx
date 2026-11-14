@@ -1,7 +1,6 @@
 import { useEffect } from "react";
 import Icon from "./Icon";
 import {
-  SHORTCUTS,
   SHORTCUT_FAMILY_LABELS,
   SHORTCUT_FAMILY_ORDER,
   shortcutsByFamily,

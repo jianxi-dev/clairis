@@ -15,7 +15,6 @@ import {
   expandRangeToSpans,
   spanPairs,
   toggleRangeSpan,
-  toggleWrap,
 } from "./toolbar-shared";
 import { useAiEntryStore } from "../../hooks/useAiEntry";
 import { useEditorStore } from "../../stores/editorStore";

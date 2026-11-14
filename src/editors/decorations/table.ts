@@ -41,7 +41,6 @@ import {
   parseCellBackground,
   renderCellText,
   sanitizeCellText,
-  stripCellBackground,
 } from "./cell-text";
 import {
   clearCellSelection,
@@ -49,7 +48,6 @@ import {
   isCellInSelection,
   setCellSelection,
   subscribeCellSelection,
-  type CellRect,
   type CellSelection,
 } from "./cell-selection";
 
@@ -385,12 +383,6 @@ function clearDirty(
 }
 
 // --- 单元格级写回（合并 / 背景）---------------------------------------------
-
-/** 从解析出的块读取某单元格的原始源码文本（`row === -1` 为表头）。 */
-function readCell(block: TableBlock, row: number, col: number): string {
-  if (row === -1) return block.header[col] ?? "";
-  return block.rows[row]?.[col] ?? "";
-}
 
 /**
  * 按存储的选区切换每个活动单元格的 `.cm-table-cell-selected`。在原始拖拽事件
