@@ -211,7 +211,10 @@ test("块手柄按真实块型取图标：mkv / mp4 都是 VideoOutlined（#823 
 }) => {
   await boot(page);
   await openDoc(page, "m823mkvhandle", "![mkv](assets/movie.mkv)\n", "edit");
-  expect(await blockHandleIcons(page, "0")).toEqual(["VideoOutlined"]);
+  expect(await blockHandleIcons(page, "0")).toEqual([
+    "VideoOutlined",
+    "DragHandleOutlined",
+  ]);
 });
 
 test("裁剪按钮进入选中态，再次点击 / Esc 退出（#823 缺陷 4）", async ({

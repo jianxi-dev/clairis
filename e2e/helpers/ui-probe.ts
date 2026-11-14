@@ -22,7 +22,7 @@ export async function moveThrough(
 }
 
 /** 探针点取 `.cm-content` 左缘的比例（D5 召唤区是左 25%，取 10% 落在区内）。 */
-const SUMMON_PROBE_RATIO = 0.1;
+export const SUMMON_PROBE_RATIO = 0.1;
 
 /**
  * 在行的左缘召唤区内移动指针（D5：块手柄只在 `.cm-content` 左缘 25% 召唤）。

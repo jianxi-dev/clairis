@@ -446,7 +446,7 @@ async function menuRowLabels(page: Page): Promise<string[]> {
   );
 }
 
-test("图片块手柄内 svg[data-icon] 恰 1 个且为 ImageOutlined（A-9.3）", async ({
+test("图片块手柄含六点拖拽把手，图标为 ImageOutlined（A-8.1）", async ({
   page,
 }) => {
   await openDoc(
@@ -466,7 +466,13 @@ test("图片块手柄内 svg[data-icon] 恰 1 个且为 ImageOutlined（A-9.3）
       svg.getAttribute("data-icon"),
     ),
   );
-  expect(icons).toEqual(["ImageOutlined"]);
+  // batch16 的「图片手柄恰 1 个 svg[data-icon]」口径被 batch19 A-8.1 取代：补齐六点拖拽。
+  expect(icons).toEqual(["ImageOutlined", "DragHandleOutlined"]);
+  const dots = await handle.evaluate((el) => {
+    const grip = el.querySelector('svg[data-icon="DragHandleOutlined"]');
+    return grip ? grip.querySelectorAll("path").length : 0;
+  });
+  expect(dots).toBe(6);
   await page.screenshot({ path: path.join(ART713, "image-handle.png") });
 });
 
