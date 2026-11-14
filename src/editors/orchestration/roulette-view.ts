@@ -353,6 +353,7 @@ export function createRoulette(
           center + ITEM_DEG / 2 - GAP_DEG,
         ),
         class: "sr-sec sr-sub",
+        title: item.label,
       });
       if (alpha < 1) path.style.opacity = String(alpha);
       path.dataset.band = String(band);
@@ -420,6 +421,7 @@ export function createRoulette(
             center + width / 2 - GAP_DEG,
           ),
           class: `sr-sec sr-color ${kind === "font" ? "sr-color-font" : "sr-color-bg"}${color.isDefault ? " is-default" : ""}`,
+          title: color.label,
         });
         path.dataset.action = color.className
           ? `${kind === "font" ? "font" : "bg"}-${color.className}`
@@ -642,6 +644,7 @@ export function createRoulette(
         sector.angle + ROOT_SECTOR_DEG / 2 - GAP_DEG,
       ),
       class: "sr-sec sr-sector",
+      title: sector.label,
     });
     path.dataset.sector = sector.id;
     path.dataset.testid = `sector-${sector.id}`;

@@ -44,7 +44,7 @@ test("悬停功能按钮出现胶囊提示，原生矩形不再出现", async ({
   expect(restored).not.toBe("");
 });
 
-test("轮盘扇区不再出现提示，只有圆心保留操作说明", async ({ page }) => {
+test("轮盘扇区悬停出现胶囊提示，圆心保留操作说明", async ({ page }) => {
   await boot(page);
   await page.evaluate(() => {
     window.__biaoyue_store__.getState().setEditorMode("edit");
@@ -59,8 +59,17 @@ test("轮盘扇区不再出现提示，只有圆心保留操作说明", async ({
   }
 
   await wheel.locator('[data-sector="convert"]').hover();
-  await page.waitForTimeout(700);
-  await expect(page.locator(".app-tip")).toHaveCount(0);
+  const tip = page.locator(".app-tip");
+  await expect(tip).toBeVisible({ timeout: 3000 });
+  await expect(tip).toContainText("转换");
+  const shape = await tip.evaluate((el) => ({
+    radius: parseFloat(getComputedStyle(el).borderRadius),
+    height: el.getBoundingClientRect().height,
+  }));
+  expect(shape.radius).toBeGreaterThanOrEqual(shape.height / 2);
+
+  await wheel.locator('[data-testid="roulette-center"]').hover();
+  await expect(tip).toContainText("格式刷", { timeout: 3000 });
 });
 
 test("右键菜单打开期间不出现悬停提示，关闭后恢复", async ({ page }) => {

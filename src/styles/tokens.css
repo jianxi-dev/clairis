@@ -43,6 +43,8 @@
   --radius-4: 4px;
   --radius-8: 8px;
   --radius-full: 999px;
+  /* 自绘悬停提示唯一外壳常量（design-system §5；batch19 A2） */
+  --tip-shell-radius: var(--radius-full);
   --app-shadow:
     0 1px 2px rgba(31, 26, 20, 0.05), 0 8px 24px rgba(31, 26, 20, 0.05);
 }
