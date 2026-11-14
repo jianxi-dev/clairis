@@ -86,7 +86,7 @@ test.describe("页签右键菜单「悬浮小窗」（ui-polish-batch8 6.1）", 
     await page.locator('[role="tab"]').first().click({ button: "right" });
 
     const items = page.locator("[data-tab-menu] > button");
-    await expect(items).toHaveCount(7);
+    await expect(items).toHaveCount(10);
     await expect(items.first()).toHaveText(/悬浮小窗/);
     expect(await items.first().locator("svg").count()).toBe(1);
 
@@ -111,9 +111,9 @@ test.describe("页签右键菜单：复制路径与移动到（ui-polish-batch12
     await page.locator('[role="tab"]').first().click({ button: "right" });
 
     const items = page.locator("[data-tab-menu] > button");
-    await expect(items).toHaveCount(7);
-    await expect(items.nth(3)).toHaveText(/复制路径/);
-    await expect(items.nth(4)).toHaveText(/移动到…/);
+    await expect(items).toHaveCount(10);
+    await expect(items.nth(4)).toHaveText(/复制路径/);
+    await expect(items.nth(6)).toHaveText(/移动到…/);
 
     await page.evaluate(() => {
       const w = window as unknown as Record<string, any>;
@@ -126,7 +126,7 @@ test.describe("页签右键菜单：复制路径与移动到（ui-polish-batch12
         },
       });
     });
-    await items.nth(3).click();
+    await items.nth(4).click();
     await expect
       .poll(() =>
         page.evaluate(
@@ -140,7 +140,7 @@ test.describe("页签右键菜单：复制路径与移动到（ui-polish-batch12
     await boot(page);
     await page.locator('[role="tab"]').first().click({ button: "right" });
     const items = page.locator("[data-tab-menu] > button");
-    await items.nth(4).click();
+    await items.nth(6).click();
 
     await expect
       .poll(() =>
@@ -162,6 +162,57 @@ test.describe("页签右键菜单：复制路径与移动到（ui-polish-batch12
         }),
       )
       .toBe("e2e-ctx.md");
+  });
+});
+
+test.describe("页签右键菜单文件动作（editor-surface-batch17 18.1）", () => {
+  test("导出 < 复制路径 < 打开文件位置，刷新 < 关闭，三项各 1 次", async ({
+    page,
+  }) => {
+    await boot(page);
+    await page.locator('[role="tab"]').first().click({ button: "right" });
+
+    const items = page.locator("[data-tab-menu] > button");
+    await expect(items).toHaveCount(10);
+    const labels = await items.allTextContents();
+    const idx = (name: string) => labels.findIndex((t) => t.trim() === name);
+    const exportIdx = idx("导出");
+    const copyIdx = idx("复制路径");
+    const revealIdx = idx("打开文件位置");
+    const reloadIdx = idx("刷新");
+    const closeIdx = idx("关闭");
+
+    expect(exportIdx).toBeGreaterThanOrEqual(0);
+    expect(revealIdx).toBeGreaterThanOrEqual(0);
+    expect(reloadIdx).toBeGreaterThanOrEqual(0);
+    expect(exportIdx).toBeLessThan(copyIdx);
+    expect(copyIdx).toBeLessThan(revealIdx);
+    expect(reloadIdx).toBeLessThan(closeIdx);
+
+    for (const name of ["导出", "打开文件位置", "刷新"]) {
+      expect(labels.filter((t) => t.trim() === name)).toHaveLength(1);
+    }
+    await expect(page.locator('[data-menu-item="export"]')).toHaveCount(1);
+    await expect(page.locator('[data-menu-item="reveal"]')).toHaveCount(1);
+    await expect(page.locator('[data-menu-item="reload"]')).toHaveCount(1);
+  });
+
+  test("点导出打开导出菜单，取消后无残留", async ({ page }) => {
+    await boot(page);
+    await page.locator('[role="tab"]').first().click({ button: "right" });
+    await page.locator('[data-menu-item="export"]').click();
+
+    await expect(
+      page.locator('[data-testid="pane-export-submenu"]'),
+    ).toHaveCount(1);
+    await expect(page.locator("[data-tab-menu]")).toHaveCount(0);
+
+    await page.keyboard.press("Escape");
+    await expect(
+      page.locator('[data-testid="pane-export-submenu"]'),
+    ).toHaveCount(0);
+    await expect(page.locator('[data-testid="pane-menu"]')).toHaveCount(0);
+    await expect(page.locator("[data-tab-menu]")).toHaveCount(0);
   });
 });
 
