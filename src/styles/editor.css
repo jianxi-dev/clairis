@@ -568,9 +568,8 @@ body {
 /* 引用 —— 与 reader.css 的 blockquote 同一配方：左竖线 + 底色 + 右侧圆角。
  * 连续 `>` 行是一张卡片：纵向内边距只给首/末行，中间行只留左右内边距。 */
 .cm-line.cm-quote {
-  /* 文字列与正文行等宽：+2em 补引用左右内边距，+2px 补左边框，
-   * -8px 扣除 CodeMirror `.cm-line` 基线的 6px+2px 内边距。 */
-  max-width: calc(var(--type-measure, 1080px) + 2em + 2px - 8px);
+  /* 卡片外沿与正文行盒同宽（E-8 / A6），三者边框彼此一致。 */
+  max-width: var(--type-measure, 1080px);
   border-inline-start: 2px solid var(--reader-accent);
   padding-inline: 1em;
   padding-block: 0;
@@ -625,7 +624,8 @@ body {
 
 /* 围栏代码块：整段是一张圆角卡片（与 reader.css 的 .code-block 同形） */
 .cm-line.cm-fenced-code {
-  max-width: calc(var(--type-measure, 1080px) + 2px);
+  /* 卡片外沿与正文行盒同宽（E-8 / A6），与引用块、mermaid 块一致。 */
+  max-width: var(--type-measure, 1080px);
   font-family: var(
     --type-font-mono,
     "SF Mono",
@@ -1024,8 +1024,11 @@ body {
 /* mermaid 块 —— 非活跃块整块换成图；未水合时保留源码框 */
 .cm-mermaid-block {
   display: block;
-  min-height: 80px;
+  /* 块 widget 默认占满纸宽；收窄到正文行盒并居中（E-8 / A6），
+   * 左右边框与代码块、引用块及正文文本块对齐。 */
+  max-width: var(--type-measure, 1080px);
   margin-block: 0.4em 0;
+  margin-inline: auto;
   padding: 1em 1.1em;
   background: var(--app-sunken);
   border: 1px solid var(--app-border);
