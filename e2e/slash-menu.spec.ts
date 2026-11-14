@@ -224,8 +224,8 @@ test("表格网格滑入任意格选中左上到指针的矩形，离开再回�
   await expect(content).toBeVisible();
 });
 
-test("分栏菜单横向 5 格，滑到第 4 格单击插入 col-4 围栏", async ({ page }) => {
-  const shots = ".artifacts/706";
+test("分栏选区 5 根竖条，滑到第 3 根单击插入 col-3 围栏", async ({ page }) => {
+  const shots = ".artifacts/769";
   fs.mkdirSync(shots, { recursive: true });
 
   const content = await openMarkdownForEditing(
@@ -237,41 +237,65 @@ test("分栏菜单横向 5 格，滑到第 4 格单击插入 col-4 围栏", asyn
   await expect(menu).toHaveCount(1);
 
   await menu.locator(".mdb-slash-item").filter({ hasText: "分栏" }).hover();
-  const flyout = page.locator(".mdb-slash-flyout");
-  await expect(flyout).toBeVisible();
-  await expect(flyout).toHaveAttribute("data-kind", "columns");
+  const grid = page.locator(".mdb-slash-grid");
+  await expect(grid).toBeVisible();
 
-  const cells = flyout.locator(".mdb-slash-flyout-cell");
+  // 柱数严格等于 5，且单元无文字标签。
+  const cells = grid.locator(".mdb-slash-grid-cell");
   await expect(cells).toHaveCount(5);
-  // 横向：5 格同一行（top 相同），不是纵向堆叠。
-  const tops = await cells.evaluateAll((els) =>
-    els.map((el) => el.getBoundingClientRect().top),
+  const texts = await cells.evaluateAll((els) =>
+    els.map((el) => el.textContent),
   );
-  for (const top of tops) expect(Math.abs(top - tops[0])).toBeLessThan(1);
-  await page.screenshot({ path: `${shots}/01-columns-5.png` });
+  for (const text of texts) expect(text).toBe("");
 
-  const selected = flyout.locator(
-    '.mdb-slash-flyout-item[data-selected="true"]',
-  );
-  await expect(selected).toHaveCount(1);
+  const onCells = grid.locator('.mdb-slash-grid-cell[data-on="true"]');
+  await expect(onCells).toHaveCount(1);
+  await page.screenshot({ path: `${shots}/01-columns-open.png` });
 
-  // 指针从左滑到第 4 格：该格高亮且仅 1 格高亮。
-  await cells.nth(3).hover();
-  await expect(selected).toHaveCount(1);
-  await expect(cells.nth(3)).toHaveAttribute("data-selected", "true");
-  await page.screenshot({ path: `${shots}/02-hover-4th.png` });
+  // 指针滑到第 3 根：选中数恰为 3。
+  await cells.nth(2).hover();
+  await expect(onCells).toHaveCount(3);
+  await page.screenshot({ path: `${shots}/02-hover-3rd.png` });
 
-  await cells.nth(3).click();
+  await cells.nth(2).click();
   await expect(page.locator(".mdb-slash-menu")).toHaveCount(0);
   await expect(page.locator(".mdb-slash-flyout")).toHaveCount(0);
+  await expect(page.locator(".mdb-slash-grid")).toHaveCount(0);
   await expect
     .poll(() => storeContent(page), { timeout: 5000 })
-    .toBe("::: {.col-4}\n\n:::");
+    .toBe("::: {.col-3}\n\n:::");
   await page.screenshot({ path: `${shots}/03-after-insert.png` });
+  await expect(content).toBeVisible();
+});
 
-  // 关闭后无残留浮层/网格。
-  await expect(page.locator(".mdb-slash-flyout")).toHaveCount(0);
+test("分栏选区键盘左右移动选中，Enter 插入 col-3 围栏", async ({ page }) => {
+  const content = await openMarkdownForEditing(
+    page,
+    "/Users/test/slash-columns-kbd.md",
+  );
+  await page.keyboard.type("/");
+  const menu = page.locator(".mdb-slash-menu");
+  await expect(menu).toHaveCount(1);
+
+  await menu.locator(".mdb-slash-item").filter({ hasText: "分栏" }).hover();
+  const grid = page.locator(".mdb-slash-grid");
+  await expect(grid).toBeVisible();
+  const onCells = grid.locator('.mdb-slash-grid-cell[data-on="true"]');
+
+  await page.keyboard.press("ArrowRight");
+  await expect(onCells).toHaveCount(2);
+  await page.keyboard.press("ArrowRight");
+  await expect(onCells).toHaveCount(3);
+  await page.keyboard.press("ArrowLeft");
+  await expect(onCells).toHaveCount(2);
+  await page.keyboard.press("ArrowRight");
+  await expect(onCells).toHaveCount(3);
+
+  await page.keyboard.press("Enter");
+  await expect(page.locator(".mdb-slash-menu")).toHaveCount(0);
   await expect(page.locator(".mdb-slash-grid")).toHaveCount(0);
-  await page.screenshot({ path: `${shots}/04-closed.png` });
+  await expect
+    .poll(() => storeContent(page), { timeout: 5000 })
+    .toBe("::: {.col-3}\n\n:::");
   await expect(content).toBeVisible();
 });

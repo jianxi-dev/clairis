@@ -1559,6 +1559,16 @@ html[data-tab-drag="true"] body * {
   border-color: var(--app-accent);
 }
 
+/* 分栏选区（D12）：5 根竖向柱子，填满各自轨道并明显高于表格方格。 */
+.mdb-slash-grid[data-kind="columns"] {
+  column-gap: 4px;
+}
+
+.mdb-slash-grid[data-kind="columns"] .mdb-slash-grid-cell {
+  width: 100%;
+  height: 44px;
+}
+
 /* ── 表格块装饰（cm-table-*，移植自 md-bundle） ──────────────
  * 表格整块被 widget 替换，源码不可见；单元格文本由 renderCellText 渲染成
  * HTML。几何（left/top/width/height）由 table.ts 在运行时写入，这里只管外观。
