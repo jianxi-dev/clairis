@@ -165,8 +165,7 @@ test("8 个类型图标渲染出的像素各不相同（不是同一个色块）
 
 test("导出二级菜单 Word/ZIP/.mdpkg 三项图标互不相同", async ({ page }) => {
   await openDoc(page, "/tmp/ic/a.md");
-  await page.locator('[data-testid="pane-menu-button"]').first().click();
-  await expect(page.locator('[data-testid="pane-menu"]')).toBeVisible();
+  await page.locator('[role="tab"]').first().click({ button: "right" });
   await page.locator('[data-menu-item="export"]').click();
   const submenu = page.locator('[data-testid="pane-export-submenu"]');
   await expect(submenu).toBeVisible();

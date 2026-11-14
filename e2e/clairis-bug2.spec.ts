@@ -120,7 +120,7 @@ test("页签关闭 × 默认透明，悬停页签后显现", async ({ page }) =>
   await shot(page, "tab-close-hover");
 });
 
-test("页签右键菜单收窄到 132px 且不再提供导出", async ({ page }) => {
+test("页签右键菜单收窄到 132px 且包含导出与打印", async ({ page }) => {
   await boot(page);
   await openFile(page, "/tmp/bug2/ctx.md");
 
@@ -134,21 +134,21 @@ test("页签右键菜单收窄到 132px 且不再提供导出", async ({ page })
   const box = await menu.boundingBox();
   expect(box).not.toBeNull();
   expect(box!.width).toBeLessThanOrEqual(150);
-  expect(await menu.innerText()).not.toContain("导出");
+  const text = await menu.innerText();
+  expect(text).toContain("导出");
+  expect(text).toContain("打印");
   await shot(page, "tab-context-menu");
 });
 
-test("格头更多 → 导出：二级菜单 5 项且 ZIP 可用", async ({ page }) => {
+test("页签右键 → 导出：子菜单 6 项且 ZIP 可用", async ({ page }) => {
   await boot(page);
   await openFile(page, "/tmp/bug2/menu.md");
 
-  await page.locator('[data-testid="pane-menu-button"]').first().click();
-  await expect(page.locator('[data-testid="pane-menu"]')).toBeVisible();
-
+  await page.locator('[role="tab"]').first().click({ button: "right" });
   await page.locator('[data-menu-item="export"]').click();
   const submenu = page.locator('[data-testid="pane-export-submenu"]');
   await expect(submenu).toBeVisible();
-  await expect(submenu.locator("[data-export-item]")).toHaveCount(5);
+  await expect(submenu.locator("[data-export-item]")).toHaveCount(6);
   await expect(
     submenu.locator('[data-export-item="exportZip"]'),
   ).not.toBeDisabled();

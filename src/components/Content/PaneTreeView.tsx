@@ -11,9 +11,8 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { invoke } from "@tauri-apps/api/core";
-import { Transaction } from "@codemirror/state";
 import { useStore, isMediaKind } from "../../stores";
-import { getEditorView, getPanelScrollEl } from "../../editors/editorRef";
+import { getPanelScrollEl } from "../../editors/editorRef";
 import { saveAppConfig } from "../../hooks/useConfig";
 import {
   usePaneDragController,
@@ -29,22 +28,8 @@ import {
   nextPaneMode,
   AI_PANE_MENU_ITEMS,
   PANE_MENU_ITEMS,
-  EXPORT_MENU_ITEMS,
   type PaneMenuAction,
-  type ExportMenuAction,
 } from "../../lib/paneHeaderMenu";
-import {
-  exportCurrentDocHtml,
-  exportMessage,
-} from "../../lib/export/exportDocument";
-import { exportPngFromMarkdown, exportPngMessage } from "../../lib/export/png";
-import { exportPdfFromMarkdown, exportPdfMessage } from "../../lib/export/pdf";
-import { exportDocxDocument, exportDocxMessage } from "../../lib/export/docx";
-import {
-  exportMdpkgFromMarkdown,
-  exportMdpkgMessage,
-} from "../../lib/export/mdpkg";
-import { exportZipFromMarkdown, exportZipMessage } from "../../lib/export/zip";
 import { log } from "../../utils/log";
 import { popOverlay, pushOverlay } from "../../lib/overlayGate";
 import type { EditorMode, Tab } from "../../types";
@@ -132,11 +117,6 @@ function PaneDropIndicators({ overlay }: { overlay: DropOverlayState }) {
   }
   if (!node) return null;
   return createPortal(node, document.body);
-}
-
-function dirOfTabPath(path: string | null): string {
-  if (!path) return "";
-  return path.slice(0, Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\")));
 }
 
 async function copyText(text: string): Promise<boolean> {
@@ -337,34 +317,19 @@ function PaneHeader({
   const [menuPos, setMenuPos] = useState<{ left: number; top: number } | null>(
     null,
   );
-  const [exportOpen, setExportOpen] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement | null>(null);
   const menuPanelRef = useRef<HTMLDivElement | null>(null);
   const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const exportCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hoverOpen = (): void => {
     if (hoverTimer.current) clearTimeout(hoverTimer.current);
     hoverTimer.current = setTimeout(() => setMenuOpen(true), 120);
   };
   const hoverClose = (): void => {
     if (hoverTimer.current) clearTimeout(hoverTimer.current);
-    hoverTimer.current = setTimeout(() => {
-      setMenuOpen(false);
-      setExportOpen(false);
-    }, 240);
-  };
-  const cancelExportClose = (): void => {
-    if (exportCloseTimer.current) {
-      clearTimeout(exportCloseTimer.current);
-      exportCloseTimer.current = null;
-    }
-  };
-  const scheduleExportClose = (): void => {
-    cancelExportClose();
-    exportCloseTimer.current = setTimeout(() => setExportOpen(false), 150);
+    hoverTimer.current = setTimeout(() => setMenuOpen(false), 240);
   };
   const startPaneDrag = useContext(PaneDragContext);
 
@@ -386,25 +351,21 @@ function PaneHeader({
   }, []);
 
   useEffect(() => {
-    if (!menuOpen && !exportOpen) return;
+    if (!menuOpen) return;
     pushOverlay();
     return () => popOverlay();
-  }, [menuOpen, exportOpen]);
+  }, [menuOpen]);
 
   useEffect(() => {
     if (!menuOpen) return;
     const onDown = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        cancelExportClose();
         setMenuOpen(false);
-        setExportOpen(false);
       }
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        cancelExportClose();
         setMenuOpen(false);
-        setExportOpen(false);
       }
     };
     const id = setTimeout(() => {
@@ -466,13 +427,6 @@ function PaneHeader({
     };
   }, [menuOpen, measureMenu]);
 
-  useEffect(
-    () => () => {
-      if (exportCloseTimer.current) clearTimeout(exportCloseTimer.current);
-    },
-    [],
-  );
-
   const captureScroll = useCallback(() => {
     const store = useStore.getState();
     const tabId = store.tabs[activeTabId ?? ""] ? activeTabId : null;
@@ -507,7 +461,6 @@ function PaneHeader({
   const runMenu = useCallback(
     (action: PaneMenuAction) => {
       setMenuOpen(false);
-      setExportOpen(false);
       const store = useStore.getState();
       const tab = activeTabId ? store.tabs[activeTabId] : null;
       switch (action) {
@@ -531,38 +484,6 @@ function PaneHeader({
         case "source":
           setMode("source");
           return;
-        case "refresh": {
-          if (!tab?.path) {
-            showNotice("此页签尚未保存，无法刷新");
-            return;
-          }
-          void invoke<{ path: string; content: string }>("open_file_direct", {
-            path: tab.path,
-          })
-            .then((result) => {
-              const store = useStore.getState();
-              const view = getEditorView(leafId);
-              if (view && view.state.doc.toString() !== result.content) {
-                view.dispatch({
-                  changes: {
-                    from: 0,
-                    to: view.state.doc.length,
-                    insert: result.content,
-                  },
-                  // 刷新是磁盘内容覆盖，不是用户编辑：与 ContentArea 的内容
-                  // 同步同一约定，不进撤销历史（#321）。
-                  annotations: Transaction.addToHistory.of(false),
-                });
-              }
-              store.refreshTabContent(tab.id, result.content);
-              showNotice("已刷新");
-            })
-            .catch((e) => {
-              log.error("PaneHeader", "刷新失败", e);
-              showNotice("刷新失败");
-            });
-          return;
-        }
         case "locate": {
           if (!tab?.path) {
             showNotice("此页签尚未保存，无路径可定位");
@@ -573,139 +494,9 @@ function PaneHeader({
           );
           return;
         }
-        case "openFolder": {
-          if (!tab?.path) {
-            showNotice("此页签尚未保存，无文件夹可打开");
-            return;
-          }
-          void invoke("reveal_in_finder", { path: tab.path }).catch((e) =>
-            log.error("PaneHeader", "打开文件夹失败", e),
-          );
-          return;
-        }
       }
     },
     [activeTabId, leafId, setMode, showNotice],
-  );
-
-  const runExport = useCallback(
-    (action: ExportMenuAction) => {
-      setMenuOpen(false);
-      setExportOpen(false);
-      if (action === "print") {
-        window.print();
-        return;
-      }
-      const tab = activeTabId ? useStore.getState().tabs[activeTabId] : null;
-      if (!tab) return;
-      const baseDir = dirOfTabPath(tab.path);
-      if (action === "exportHtml") {
-        void exportCurrentDocHtml({
-          title: tab.title,
-          markdown: tab.content,
-          baseDir,
-        }).then((result) => {
-          const message = exportMessage(result);
-          if (result.status === "error") {
-            log.error("PaneHeader", "导出 HTML 失败", result.message);
-            showNotice(message ?? "导出失败");
-          } else if (result.status === "saved") {
-            showNotice(message ?? "已导出");
-          }
-        });
-        return;
-      }
-      const run = async <R extends { status: string; message?: string }>(
-        exportFn: () => Promise<R>,
-        messageFn: (result: R) => string | null,
-        pending: string,
-        label: string,
-      ) => {
-        showNotice(pending);
-        let message: string | null = null;
-        try {
-          const result = await exportFn();
-          if (result.status === "error") {
-            log.error("PaneHeader", `${label}失败`, result.message);
-          }
-          message = messageFn(result);
-        } catch (e) {
-          log.error("PaneHeader", `${label}失败`, String(e));
-          message = `导出失败：${e instanceof Error ? e.message : String(e)}`;
-        }
-        if (message) showNotice(message);
-      };
-      if (action === "exportPng") {
-        void run(
-          () =>
-            exportPngFromMarkdown({
-              title: tab.title,
-              markdown: tab.content,
-              baseDir,
-            }),
-          exportPngMessage,
-          "正在生成图片…",
-          "导出图片",
-        );
-        return;
-      }
-      if (action === "exportPdf") {
-        void run(
-          () =>
-            exportPdfFromMarkdown({
-              title: tab.title,
-              markdown: tab.content,
-              baseDir,
-            }),
-          exportPdfMessage,
-          "正在生成 PDF…",
-          "导出 PDF",
-        );
-        return;
-      }
-      if (action === "exportDocx") {
-        void run(
-          () =>
-            exportDocxDocument({
-              title: tab.title,
-              markdown: tab.content,
-              baseDir,
-            }),
-          exportDocxMessage,
-          "正在生成 Word…",
-          "导出 Word",
-        );
-        return;
-      }
-      if (action === "exportMdpkg") {
-        void run(
-          () =>
-            exportMdpkgFromMarkdown({
-              title: tab.title,
-              markdown: tab.content,
-              baseDir,
-            }),
-          exportMdpkgMessage,
-          "正在打包 .mdpkg…",
-          "导出 .mdpkg",
-        );
-        return;
-      }
-      if (action === "exportZip") {
-        void run(
-          () =>
-            exportZipFromMarkdown({
-              title: tab.title,
-              markdown: tab.content,
-              baseDir,
-            }),
-          exportZipMessage,
-          "正在打包 ZIP…",
-          "导出 ZIP",
-        );
-      }
-    },
-    [activeTabId, showNotice],
   );
 
   return (
@@ -737,10 +528,7 @@ function PaneHeader({
           paneFocused={paneFocused}
         />
       </div>
-      <div
-        className="pane-actions"
-        data-open={menuOpen || exportOpen ? "true" : undefined}
-      >
+      <div className="pane-actions" data-open={menuOpen ? "true" : undefined}>
         {!isMedia && (
           <button
             type="button"
@@ -802,10 +590,7 @@ function PaneHeader({
               aria-label="更多操作"
               aria-haspopup="menu"
               aria-expanded={menuOpen}
-              onClick={() => {
-                setExportOpen(false);
-                setMenuOpen((v) => !v);
-              }}
+              onClick={() => setMenuOpen((v) => !v)}
               className="p-0.5 rounded text-[var(--app-chrome-rest)] hover:bg-[var(--app-sunken)] hover:text-[var(--app-chrome-hover)]"
             >
               <Icon name="more" size={18} />
@@ -835,86 +620,17 @@ function PaneHeader({
                 }}
               >
                 {PANE_MENU_ITEMS.map((item) => (
-                  <div
+                  <button
                     key={item.action}
-                    className="relative"
-                    onPointerEnter={() => {
-                      if (item.action === "export") {
-                        cancelExportClose();
-                        setExportOpen(true);
-                      }
-                    }}
-                    onPointerLeave={() => {
-                      if (item.action === "export") scheduleExportClose();
-                    }}
+                    type="button"
+                    role="menuitem"
+                    data-menu-item={item.action}
+                    onClick={() => runMenu(item.action)}
+                    className="flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-[var(--app-sunken)]"
                   >
-                    <button
-                      type="button"
-                      role="menuitem"
-                      data-menu-item={item.action}
-                      aria-haspopup={
-                        item.action === "export" ? "menu" : undefined
-                      }
-                      aria-expanded={
-                        item.action === "export" ? exportOpen : undefined
-                      }
-                      onClick={() => {
-                        if (item.action === "export") {
-                          setExportOpen(true);
-                          return;
-                        }
-                        runMenu(item.action);
-                      }}
-                      className="flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-[var(--app-sunken)]"
-                    >
-                      <Icon name={item.icon} size={18} />
-                      <span>{item.label}</span>
-                      {item.action === "export" && (
-                        <span
-                          className="ml-auto h-0 w-0 border-y-4 border-l-4 border-y-transparent border-l-[var(--app-text-3)]"
-                          aria-hidden="true"
-                        />
-                      )}
-                    </button>
-                    {item.action === "export" && exportOpen && (
-                      <>
-                        <div
-                          aria-hidden="true"
-                          className="absolute right-full top-0 h-full w-1"
-                          onPointerEnter={cancelExportClose}
-                          onPointerLeave={scheduleExportClose}
-                        />
-                        <div
-                          data-testid="pane-export-submenu"
-                          role="menu"
-                          onPointerEnter={cancelExportClose}
-                          onPointerLeave={scheduleExportClose}
-                          className="absolute right-full top-0 mr-1 min-w-[132px] rounded border py-1 text-xs shadow-lg"
-                          style={{
-                            background: "var(--app-surface)",
-                            borderColor: "var(--app-border)",
-                            color: "var(--app-text-2)",
-                          }}
-                        >
-                          {EXPORT_MENU_ITEMS.map((sub) => (
-                            <button
-                              key={sub.action}
-                              type="button"
-                              role="menuitem"
-                              data-export-item={sub.action}
-                              disabled={sub.disabled}
-                              title={sub.title}
-                              onClick={() => runExport(sub.action)}
-                              className="flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-[var(--app-sunken)] disabled:cursor-not-allowed disabled:opacity-50"
-                            >
-                              <Icon name={sub.icon} size={18} />
-                              <span>{sub.label}</span>
-                            </button>
-                          ))}
-                        </div>
-                      </>
-                    )}
-                  </div>
+                    <Icon name={item.icon} size={18} />
+                    <span>{item.label}</span>
+                  </button>
                 ))}
               </div>
             )}

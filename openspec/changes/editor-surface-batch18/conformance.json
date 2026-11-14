@@ -57,7 +57,7 @@
           "id": "A-2.4",
           "claim": "页签右键菜单项数",
           "kind": "exact",
-          "assert": "10",
+          "assert": "11",
           "source": "#805 第 1 条 / design D1"
         },
         {

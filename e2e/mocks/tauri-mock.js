@@ -159,6 +159,12 @@ function mockInvoke(cmd, args) {
   }
   if (cmd === "save_as_file") {
     window.__lastSaveAs = args || {};
+    if (args) {
+      window.__biaoyue_saved_files__.push({
+        content: args.content,
+        defaultName: args.defaultName,
+      });
+    }
     return { path: "/Users/test/" + ((args && args.defaultName) || "新文件.md") };
   }
   if (cmd === "move_file" && args && args.from && args.toDir) {
@@ -199,13 +205,6 @@ function mockInvoke(cmd, args) {
     return JSON.parse(JSON.stringify(aiState.config));
   }
   if (cmd === "run_agent_turn" && args && args.messages) return aiRunAgentTurn(args.messages);
-  if (cmd === "save_as_file" && args) {
-    window.__biaoyue_saved_files__.push({
-      content: args.content,
-      defaultName: args.defaultName,
-    });
-    return { path: "/Users/test/测试文档.html" };
-  }
   if (cmd === "save_binary_as_file" && args) {
     window.__biaoyue_saved_binaries__.push({
       base64: args.base64,

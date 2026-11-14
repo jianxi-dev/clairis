@@ -16,16 +16,21 @@ async function boot(page: Page): Promise<void> {
   await page.waitForTimeout(300);
 }
 
-test("导出菜单顺序为 Word / .mdpkg / 图片 / PDF / HTML / ZIP / 打印", async ({
+async function openExportSubmenu(page: Page): Promise<void> {
+  await page.locator('[role="tab"]').first().click({ button: "right" });
+  await page.locator('[data-menu-item="export"]').click();
+}
+
+test("页签右键菜单导出子菜单顺序为 Word / .mdpkg / 图片 / PDF / HTML / ZIP", async ({
   page,
 }) => {
   await boot(page);
   const dir = process.env.EVIDENCE_DIR;
-  await page.locator('[data-testid="pane-menu-button"]').first().click();
+  await page.locator('[role="tab"]').first().click({ button: "right" });
   if (dir) {
-    await page.screenshot({ path: `${dir}/pane-menu-open.png` });
+    await page.screenshot({ path: `${dir}/tab-menu-open.png` });
   }
-  await page.locator('[data-menu-item="export"]').first().hover();
+  await page.locator('[data-menu-item="export"]').click();
   const submenu = page.locator('[data-testid="pane-export-submenu"]');
   await expect(submenu).toBeVisible({ timeout: 3000 });
   if (dir) {
@@ -41,14 +46,13 @@ test("导出菜单顺序为 Word / .mdpkg / 图片 / PDF / HTML / ZIP / 打印",
     "exportPdf",
     "exportHtml",
     "exportZip",
-    "print",
   ]);
+  expect(order).not.toContain("print");
 });
 
 test("点击 PDF 生成 PDF 文件", async ({ page }) => {
   await boot(page);
-  await page.locator('[data-testid="pane-menu-button"]').first().click();
-  await page.locator('[data-menu-item="export"]').first().hover();
+  await openExportSubmenu(page);
   await page.locator('[data-export-item="exportPdf"]').click();
   await expect
     .poll(
@@ -72,21 +76,20 @@ test("点击 PDF 生成 PDF 文件", async ({ page }) => {
 
 test("导出菜单关闭后无残留", async ({ page }) => {
   await boot(page);
-  await page.locator('[data-testid="pane-menu-button"]').first().click();
-  await page.locator('[data-menu-item="export"]').first().hover();
+  await openExportSubmenu(page);
   await expect(page.locator('[data-testid="pane-export-submenu"]')).toHaveCount(
     1,
   );
   const dir = process.env.EVIDENCE_DIR;
   await page.keyboard.press("Escape");
-  await expect(page.locator('[data-testid="pane-menu"]')).toHaveCount(0, {
+  await expect(page.locator("[data-tab-menu]")).toHaveCount(0, {
     timeout: 3000,
   });
   if (dir) {
-    await page.screenshot({ path: `${dir}/export-closed.png` });
+    await page.screenshot({ path: `${dir}/export-closed.png}` });
   }
-  await page.locator('[data-testid="pane-menu-button"]').first().click();
-  await page.locator('[data-menu-item="export"]').first().hover();
+  await page.locator('[role="tab"]').first().click({ button: "right" });
+  await page.locator('[data-menu-item="export"]').click();
   await expect(page.locator('[data-testid="pane-export-submenu"]')).toHaveCount(
     1,
   );
