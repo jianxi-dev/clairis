@@ -84,6 +84,15 @@ function rebuildColumns(
  */
 const columnMenuOpeners = new WeakMap<HTMLElement, () => void>();
 
+/** 源码里缺失的单元格（围栏内没有对应段落）。 */
+function missingCell(block: ColumnBlock): {
+  from: number;
+  to: number;
+  text: string;
+} {
+  return { from: block.openTo, to: block.openTo, text: "" };
+}
+
 /** 一个就地编辑器的斜杠菜单状态与宿主回调（按 textarea 存放）。 */
 interface ColumnMenuEntry {
   mode: "slash" | "handle" | null;
@@ -162,6 +171,9 @@ function openColumnEditor(
   area.setAttribute("data-testid", "cm-column-editor");
   area.value = initial;
   area.rows = 1;
+  // 就地编辑器与栏正文同占一格：不摘掉静态文本会重复显示同一段文字（A-4.1）。
+  const restoreText = host.textContent ?? "";
+  host.textContent = "";
   host.appendChild(area);
   area.focus();
   area.setSelectionRange(area.value.length, area.value.length);
@@ -170,6 +182,7 @@ function openColumnEditor(
 
   const teardown = (): void => {
     area.remove();
+    host.textContent = restoreText;
     host.removeAttribute("data-editing");
     columnMenuOpeners.delete(host);
     columnMenus.delete(area);
@@ -459,11 +472,7 @@ class ColumnsWidget extends WidgetType {
       if (index > 0) {
         container.appendChild(this.buildGutter(view, index, widths));
       }
-      const cell = this.block.cells[index] ?? {
-        from: this.block.openTo,
-        to: this.block.openTo,
-        text: "",
-      };
+      const cell = this.block.cells[index] ?? missingCell(this.block);
       container.appendChild(
         this.buildColumn(
           view,
@@ -480,8 +489,9 @@ class ColumnsWidget extends WidgetType {
 
   /**
    * 容器「+」新增手柄（A-4.5 / D7）：贴内容区左缘外侧、纵向居中，与单元格手柄
-   * 同款形态。悬停容器才显示；点击打开该栏就地编辑器并以非查询模式打开菜单，
-   * 选单落在被悬停栏的光标处。
+   * 同款形态。悬停容器才显示；滑入即保持可见并打开选择菜单，移出「手柄 ∪ 菜单」
+   * 后菜单消失（A-4.3）；点击同样打开该栏就地编辑器与非查询模式菜单。
+   * 就地编辑器随滑入 / 点击打开后保持到提交或 Esc（与点击路径一致），不在移出时拆。
    */
   private buildAddHandle(
     view: EditorView | undefined,
@@ -494,7 +504,42 @@ class ColumnsWidget extends WidgetType {
     handle.replaceChildren(renderIcon("AddOutlined"));
     if (!view) return handle;
 
+    /** 指针离开手柄 / 菜单后的宽限：够指针跨过缝隙落进菜单，又不显得拖沓。 */
+    const CLOSE_DELAY_MS = 120;
     let activeCol = 0;
+    let closeTimer: number | null = null;
+
+    const cancelClose = (): void => {
+      if (closeTimer !== null) {
+        window.clearTimeout(closeTimer);
+        closeTimer = null;
+      }
+    };
+    const scheduleClose = (): void => {
+      cancelClose();
+      closeTimer = window.setTimeout(() => {
+        closeTimer = null;
+        // 编辑器已拆（Esc / 提交）时它的菜单也已消失：残留定时器不得关掉之后
+        // 在别处新开的菜单。
+        if (!container.querySelector(".cm-column-editor")) return;
+        slashMenuClose(view);
+      }, CLOSE_DELAY_MS);
+    };
+
+    const openAt = (index: number): void => {
+      const body = container.querySelector<HTMLElement>(
+        `.cm-column[data-col="${index}"] .cm-column-body`,
+      );
+      if (!body) return;
+      const cell = this.block.cells[index] ?? missingCell(this.block);
+      body.dataset.editing = "true";
+      openColumnEditor(view, this.block.from, index, body, cell.text, true);
+      // 菜单挂在 view.dom 上、不是 .cm-columns 的后代：指针移进去不能算离开手柄（A-4.3）。
+      const menu = view.dom.querySelector<HTMLElement>(".mdb-slash-menu");
+      menu?.addEventListener("pointerenter", cancelClose);
+      menu?.addEventListener("pointerleave", scheduleClose);
+    };
+
     // 把手贴悬停栏正文左缘外侧：水平方向缩进容器内，避开块手柄（其右缘在容器
     // 左边框外 4px）；垂直方向对齐该栏正文中心。
     const position = (index: number): void => {
@@ -518,11 +563,13 @@ class ColumnsWidget extends WidgetType {
     container.addEventListener(
       "mousemove",
       (event) => {
-        const body = (event.target as HTMLElement | null)?.closest(
-          ".cm-column-body",
-        ) as HTMLElement | null;
+        const target = event.target as HTMLElement | null;
+        // 只有栏正文能改 activeCol：手柄与栏间 gutter 都不属于任何栏，命中它们时
+        // 保持当前栏，否则把手会跳回第 0 栏、从指针下消失（A-4.3 根因）。
+        const body = target?.closest(".cm-column-body") as HTMLElement | null;
         const col = body?.closest(".cm-column") as HTMLElement | null;
-        const index = Number(col?.dataset.col ?? "0");
+        if (!col) return;
+        const index = Number(col.dataset.col);
         if (Number.isFinite(index)) position(index);
       },
       { passive: true },
@@ -530,25 +577,20 @@ class ColumnsWidget extends WidgetType {
     container.addEventListener("mouseenter", () => position(0), {
       passive: true,
     });
+    container.addEventListener("pointerleave", scheduleClose);
+
+    handle.addEventListener("pointerenter", () => {
+      cancelClose();
+      if (isSlashMenuOpen(view)) return;
+      openAt(activeCol);
+    });
+    handle.addEventListener("pointerleave", scheduleClose);
     handle.addEventListener("mousedown", (event) => {
       event.preventDefault();
       event.stopPropagation();
-      const body = container.querySelector<HTMLElement>(
-        `.cm-column[data-col="${activeCol}"] .cm-column-body`,
-      );
-      if (!body) return;
-      const opener = columnMenuOpeners.get(body);
-      if (opener) {
-        opener();
-        return;
-      }
-      const cell = this.block.cells[activeCol] ?? {
-        from: this.block.openTo,
-        to: this.block.openTo,
-        text: "",
-      };
-      body.dataset.editing = "true";
-      openColumnEditor(view, this.block.from, activeCol, body, cell.text, true);
+      cancelClose();
+      if (isSlashMenuOpen(view)) return;
+      openAt(activeCol);
     });
     return handle;
   }
@@ -581,21 +623,6 @@ class ColumnsWidget extends WidgetType {
       });
     }
     col.appendChild(body);
-
-    const handle = document.createElement("div");
-    handle.className = "cm-column-handle";
-    handle.setAttribute("data-testid", "column-block-handle");
-    handle.dataset.col = String(index);
-    handle.title = "选中此栏";
-    if (view) {
-      handle.addEventListener("mousedown", (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        view.dispatch({ selection: { anchor: cell.from, head: cell.to } });
-        view.focus();
-      });
-    }
-    col.appendChild(handle);
 
     return col;
   }
