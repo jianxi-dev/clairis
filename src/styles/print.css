@@ -64,15 +64,19 @@
     display: none !important;
   }
 
-  /* ── 放开视口与滚动，让内容跨页 ─────────────────────── */
+  /* ── 放开视口与滚动，让内容跨页（打印根在 body 下，父链 100%+overflow:hidden 会夹成一页）── */
   html,
   body,
   #root,
+  .app-root,
   .app-shell,
   .pane-tree,
   .pane-branch,
   .pane-leaf,
-  .content-scroll {
+  .content-scroll,
+  #biaoyue-print-root,
+  .preview-shell,
+  .preview-content {
     height: auto !important;
     min-height: 0 !important;
     max-height: none !important;
@@ -158,11 +162,54 @@
     break-inside: avoid;
   }
 
+  /* 图高超过一页时等比缩到单页内（break-inside:avoid 救不了超高块）。 */
+  .preview-content .mermaid-view svg {
+    max-height: 240mm;
+    width: auto;
+  }
+
   h1 {
     break-before: page;
   }
 
   h1:first-of-type {
     break-before: auto;
+  }
+
+  .print-video {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35em;
+    min-height: 120px;
+    padding: 1.4em 1em;
+    border: 1px solid #9a9a9a;
+    border-radius: 6px;
+    background: #f4f4f4;
+    color: #000;
+    font-size: 14px;
+    line-height: 1.4;
+    text-align: center;
+  }
+
+  .print-video-icon {
+    font-size: 26px;
+    line-height: 1;
+  }
+
+  .print-video-name {
+    font-weight: 600;
+    word-break: break-all;
+  }
+
+  .print-video-note {
+    color: #555;
+    font-size: 12px;
+  }
+
+  .print-poster {
+    max-width: 100%;
+    height: auto;
   }
 }

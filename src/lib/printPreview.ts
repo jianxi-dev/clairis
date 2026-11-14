@@ -43,6 +43,39 @@ function escapeHtml(source: string): string {
     .replace(/>/g, "&gt;");
 }
 
+/** 打印根内把 `<video>` 换成可见占位：有 poster 用图片，否则文件名 + 图标。只改打印根，不动屏幕预览。 */
+function replaceVideosWithPrintPlaceholder(root: ParentNode): void {
+  for (const video of Array.from(
+    root.querySelectorAll<HTMLVideoElement>("video"),
+  )) {
+    const src = video.getAttribute("src") ?? "";
+    const name = src.split("/").filter(Boolean).pop() || src || "视频";
+    const poster = video.getAttribute("poster");
+    if (poster) {
+      const img = document.createElement("img");
+      img.setAttribute("src", poster);
+      img.setAttribute("alt", name);
+      img.className = "print-poster";
+      video.replaceWith(img);
+      continue;
+    }
+    const box = document.createElement("div");
+    box.className = "print-video";
+    const icon = document.createElement("span");
+    icon.className = "print-video-icon";
+    icon.setAttribute("aria-hidden", "true");
+    icon.textContent = "▶";
+    const label = document.createElement("span");
+    label.className = "print-video-name";
+    label.textContent = name;
+    const note = document.createElement("span");
+    note.className = "print-video-note";
+    note.textContent = "视频在打印稿中以占位显示";
+    box.append(icon, label, note);
+    video.replaceWith(box);
+  }
+}
+
 /**
  * 把 target 的 Markdown 以预览排版输出到纸张。
  *
@@ -98,6 +131,7 @@ export function printMarkdownPreview(
   void (async () => {
     try {
       await renderAll(root);
+      replaceVideosWithPrintPlaceholder(root);
       // 等一帧让 SVG 布局落定，再进打印。
       await new Promise<void>((resolve) => {
         requestAnimationFrame(() => resolve());
