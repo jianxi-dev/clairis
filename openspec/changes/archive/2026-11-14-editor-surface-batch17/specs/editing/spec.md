@@ -109,6 +109,34 @@ MD 编辑态的视频块 SHALL 渲染为可播放的 `<video controls>`，默认
 - **WHEN** 用户在可用高度不足的视口打开转换手柄菜单
 - **THEN** 菜单底边 SHALL 不超过视口可用高度下限，图标与文字 SHALL 保持最小可读尺寸
 
+### Requirement: E-38 图片工具条贴边
+
+图片选中工具条 SHALL 始终位于视口内：定位时做 8px 边距夹取；当图片锚点完全离开视口时工具条 SHALL 隐藏，滚回后重新显示。
+
+#### Scenario: 图片滚出视口
+
+- **WHEN** 用户滚动文档使选中图片离开视口
+- **THEN** 工具条 SHALL 隐藏或与视口保持非空交集，右/下边 SHALL NOT 超出视口
+
+### Requirement: E-39 图片内联裁剪
+
+图片裁剪 SHALL 在图片上直接进行：显示裁剪框与边角手柄，拖动时实时显示裁剪结果，松手写回 `crop`；SHALL NOT 弹出独立对话框，SHALL NOT 提供确认/取消/还原按钮。把裁剪框拖回整图范围 SHALL 移除 `crop` 属性。
+
+#### Scenario: 无对话框与按钮
+
+- **WHEN** 用户点击图片工具条的裁剪
+- **THEN** 页面 SHALL NOT 出现裁剪对话框，确认/取消/还原按钮数 SHALL 严格等于 0
+
+#### Scenario: 实时裁剪与恢复
+
+- **WHEN** 用户拖动裁剪框后松手，再拖回整图范围
+- **THEN** 显示区域与 `crop` 数值差 SHALL ≤ 2px，图片下方空白高度 SHALL ≤ 8px；拖回整图后源码 `crop` 属性 SHALL 变为不存在
+
+#### Scenario: 取消恢复原状
+
+- **WHEN** 用户在裁剪中按 Esc
+- **THEN** 图片 SHALL 恢复裁剪前状态，且无残留裁剪框
+
 ## MODIFIED Requirements
 
 ### Requirement: E-11 块菜单结构与图标体系
@@ -327,7 +355,7 @@ MD 编辑态的图片 SHALL 在被点击后进入选中态：显示选中框与�
 - **WHEN** 用户从第 3 行第 4 列直接滑回第 1 行第 1 列
 - **THEN** 处于选中态的格子数 SHALL 为 1
 
-#### Scenario: 分栏竖条选择
+#### Scenario: 分栏横向选择
 
 - **WHEN** 用户展开分栏菜单并把指针从左滑到第 3 根柱子
 - **THEN** 柱子数 SHALL 为 5，选中柱子数 SHALL 为 3，单元 `textContent` SHALL 为空
@@ -427,31 +455,3 @@ MD 编辑态的图片 SHALL 在被点击后进入选中态：显示选中框与�
 
 - **WHEN** 用户点下载，再按 Esc
 - **THEN** 下载 SHALL 触发 1 次，浮层 SHALL 关闭且无残留节点
-
-### Requirement: E-38 图片工具条贴边
-
-图片选中工具条 SHALL 始终位于视口内：定位时做 8px 边距夹取；当图片锚点完全离开视口时工具条 SHALL 隐藏，滚回后重新显示。
-
-#### Scenario: 图片滚出视口
-
-- **WHEN** 用户滚动文档使选中图片离开视口
-- **THEN** 工具条 SHALL 隐藏或与视口保持非空交集，右/下边 SHALL NOT 超出视口
-
-### Requirement: E-39 图片内联裁剪
-
-图片裁剪 SHALL 在图片上直接进行：显示裁剪框与边角手柄，拖动时实时显示裁剪结果，松手写回 `crop`；SHALL NOT 弹出独立对话框，SHALL NOT 提供确认/取消/还原按钮。把裁剪框拖回整图范围 SHALL 移除 `crop` 属性。
-
-#### Scenario: 无对话框与按钮
-
-- **WHEN** 用户点击图片工具条的裁剪
-- **THEN** 页面 SHALL NOT 出现裁剪对话框，确认/取消/还原按钮数 SHALL 严格等于 0
-
-#### Scenario: 实时裁剪与恢复
-
-- **WHEN** 用户拖动裁剪框后松手，再拖回整图范围
-- **THEN** 显示区域与 `crop` 数值差 SHALL ≤ 2px，图片下方空白高度 SHALL ≤ 8px；拖回整图后源码 `crop` 属性 SHALL 变为不存在
-
-#### Scenario: 取消恢复原状
-
-- **WHEN** 用户在裁剪中按 Esc
-- **THEN** 图片 SHALL 恢复裁剪前状态，且无残留裁剪框
