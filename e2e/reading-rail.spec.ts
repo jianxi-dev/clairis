@@ -500,3 +500,68 @@ test("悬浮态可拖宽并持久化，拖动中不被收起（#274）", async (
     .toBeGreaterThan(280);
   await shot274(page, "rail-width-restored");
 });
+
+test("⌘\\ 切换左边栏可见性；⌘⌥\\ 切换固定；总览含 global-rail-pin", async ({
+  page,
+}) => {
+  await boot(page);
+  await seed(page);
+
+  const toggleState = () =>
+    page.evaluate(() => {
+      const s = (
+        window as unknown as {
+          __biaoyue_store__: {
+            getState: () => {
+              railState: string;
+              railPinned: boolean;
+              readingMode: boolean;
+            };
+          };
+        }
+      ).__biaoyue_store__.getState();
+      return {
+        railState: s.railState,
+        railPinned: s.railPinned,
+        readingMode: s.readingMode,
+      };
+    });
+
+  expect((await toggleState()).railState).toBe("collapsed");
+  const collapsedW = await bodyWidth(page);
+
+  // ⌘\ 展开为钉住：正文让出 240px；折叠态不再进入沉浸阅读
+  await page.keyboard.press("Control+\\");
+  await expect
+    .poll(toggleState)
+    .toMatchObject({ railState: "pinned", readingMode: false });
+  const pinnedW = await bodyWidth(page);
+  expect(Math.abs(collapsedW - pinnedW - 240)).toBeLessThanOrEqual(2);
+
+  // 再按 ⌘\ 收回折叠：正文恢复满宽
+  await page.keyboard.press("Control+\\");
+  await expect
+    .poll(toggleState)
+    .toMatchObject({ railState: "collapsed", readingMode: false });
+  await expect.poll(() => bodyWidth(page)).toBe(collapsedW);
+
+  // ⌘⌥\ 折叠 → 钉住；再按 → 悬停（取消固定）
+  await page.keyboard.press("Control+Alt+\\");
+  await expect
+    .poll(toggleState)
+    .toMatchObject({ railState: "pinned", railPinned: true });
+  await page.keyboard.press("Control+Alt+\\");
+  await expect
+    .poll(toggleState)
+    .toMatchObject({ railState: "hover", railPinned: false });
+
+  // 快捷键总览注册表含 global-rail-pin 行
+  await page.keyboard.press("Shift+/");
+  await expect(page.locator('[data-testid="shortcut-overlay"]')).toBeVisible();
+  await expect(
+    page.locator(
+      '[data-testid="shortcut-row"][data-shortcut-id="global-rail-pin"]',
+    ),
+  ).toHaveCount(1);
+  await shot(page, "rail-toggle-shortcuts");
+});

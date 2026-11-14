@@ -192,7 +192,7 @@ test("设置开着时 Esc 先关总览，不关下面的设置", async ({ page }
   await record(page, "20-esc-layering");
 });
 
-test("全局 9 条逐一触发均生效（严格 9 项）", async ({ page }) => {
+test("全局快捷键逐一触发均生效（严格 9 项）", async ({ page }) => {
   await boot(page);
   await page.evaluate(() => {
     (
@@ -239,20 +239,20 @@ test("全局 9 条逐一触发均生效（严格 9 项）", async ({ page }) => 
 
   await page.keyboard.press("Meta+\\");
   await expect
-    .poll(async () => (await storeState(page)).readingMode)
-    .toBe(true);
+    .poll(async () => (await storeState(page)).railState)
+    .toBe("pinned");
   observed += 1;
-  await record(page, "04-cmd-backslash-immersive");
+  await record(page, "04-cmd-backslash-rail");
   await page.evaluate(() => {
     (
       window as unknown as {
         __biaoyue_store__: {
-          getState: () => { setReadingMode: (v: boolean) => void };
+          getState: () => { setRailState: (s: string) => void };
         };
       }
     ).__biaoyue_store__
       .getState()
-      .setReadingMode(false);
+      .setRailState("collapsed");
   });
 
   await page.keyboard.press("Control+Shift+Backslash");

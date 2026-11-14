@@ -64,8 +64,8 @@ test("阅读模式：墨线随模式与沉浸态显隐", async ({ page }) => {
   await page.waitForTimeout(200);
   await expect(page.locator(".reading-ink")).toHaveCount(1);
 
-  // Cmd+\ 进入沉浸：chrome 高度收拢为 0、墨线隐藏
-  await page.keyboard.press("Meta+\\");
+  // Cmd+Shift+F 进入沉浸：chrome 高度收拢为 0、墨线隐藏
+  await page.keyboard.press("Meta+Shift+F");
   await page.waitForTimeout(500);
   await expect(page.locator(".reading-ink")).toHaveCount(0);
   const hiddenHeight = await page.evaluate(() => {
