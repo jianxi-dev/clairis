@@ -1,4 +1,36 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
+import { readFileSync } from "node:fs";
+import path from "node:path";
+
+const TINY_MP4 = readFileSync(
+  path.resolve(process.cwd(), "e2e/fixtures/tiny.mp4"),
+).toString("base64");
+const TINY_MP4_URL = "http://localhost:1420/e2e/fixtures/tiny.mp4";
+
+/** media:// / asset: 在 mock 浏览器无处理器，重写为内置 tiny.mp4 的 data URL 才能真播放。 */
+async function installRealVideo(page: Page): Promise<void> {
+  await page.addInitScript((b64) => {
+    const DATA = `data:video/mp4;base64,${b64}`;
+    const proto = HTMLMediaElement.prototype as unknown as Record<
+      string,
+      unknown
+    >;
+    const desc = Object.getOwnPropertyDescriptor(proto, "src");
+    if (!desc?.get || !desc.set) return;
+    Object.defineProperty(proto, "src", {
+      configurable: true,
+      get: desc.get,
+      set(this: HTMLMediaElement, value: string) {
+        const next =
+          typeof value === "string" &&
+          (value.startsWith("media://") || value.startsWith("asset:"))
+            ? DATA
+            : value;
+        desc.set?.call(this, next);
+      },
+    });
+  }, TINY_MP4);
+}
 
 /**
  * 媒体引用渲染（#103 的后半段）：插进去只是第一步，还得看得见。
@@ -154,4 +186,129 @@ test("文件名带空格：视频仍渲染成播放器，不退化成正文", as
   // 退化的典型症状：整段 markdown 源码变成正文
   const text = await page.locator(".preview-content").innerText();
   expect(text).not.toContain("![");
+});
+
+test("MD 嵌入视频渲染成带 controls 的 video 并可播放", async ({ page }) => {
+  await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
+  await installRealVideo(page);
+  await page.goto("/", { waitUntil: "networkidle" });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 10000 });
+  await page.evaluate(() => {
+    const win = window as unknown as Record<string, any>;
+    win.__biaoyue_openFile__(
+      "/tmp/mdv/video.md",
+      "![clip](assets/clip.mp4)\n",
+      "video.md",
+    );
+    win.__biaoyue_store__.getState().setEditorMode("preview");
+  });
+  const video = page.locator(".preview-content video");
+  await expect(video).toHaveCount(1);
+  await expect(video).toHaveJSProperty("controls", true);
+  await expect(video).toHaveAttribute("src", /media:\/\//);
+
+  await video.evaluate((el: HTMLVideoElement, url: string) => {
+    el.src = url;
+  }, TINY_MP4_URL);
+  await video.evaluate((el: HTMLVideoElement) => el.play());
+  await expect
+    .poll(() => video.evaluate((el: HTMLVideoElement) => el.currentTime), {
+      timeout: 10000,
+    })
+    .toBeGreaterThan(0);
+});
+
+test("HTML 预览 iframe 内视频渲染成带 controls 的 video", async ({ page }) => {
+  await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
+  await installRealVideo(page);
+  await page.goto("/", { waitUntil: "networkidle" });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 10000 });
+  await page.evaluate(() => {
+    const win = window as unknown as Record<string, any>;
+    const doc =
+      '<video controls preload="metadata" src="assets/clip.mp4"></video>';
+    win.__biaoyue_openFile__("/tmp/htv/video.html", doc, "video.html");
+    win.__biaoyue_store__.getState().setEditorMode("preview");
+    // mock 环境 isTauriEnv 为真，标记 dirty 才会回退 srcdoc 加载重写后的视频。
+    win.__biaoyue_store__.getState().updateContent(doc);
+  });
+  const frame = page.locator('iframe[title="HTML 预览"]');
+  await frame.waitFor({ timeout: 10000 });
+  const contentFrame = await frame
+    .elementHandle()
+    .then((h) => h?.contentFrame());
+  expect(contentFrame).not.toBeNull();
+  const video = contentFrame!.locator("video");
+  await expect(video).toHaveCount(1);
+  await expect(video).toHaveJSProperty("controls", true);
+  const src = await video.getAttribute("src");
+  expect(src).toBeTruthy();
+  expect(src).not.toBe("assets/clip.mp4");
+
+  await video.evaluate((el: HTMLVideoElement, url: string) => {
+    el.src = url;
+  }, TINY_MP4_URL);
+  await video.evaluate((el: HTMLVideoElement) => el.play());
+  await expect
+    .poll(() => video.evaluate((el: HTMLVideoElement) => el.currentTime), {
+      timeout: 10000,
+    })
+    .toBeGreaterThan(0);
+});
+
+test("视频播放器音量/进度滑块 thumb 可见且与轨道有对比", async ({ page }) => {
+  await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
+  await installRealVideo(page);
+  await page.goto("/", { waitUntil: "networkidle" });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 10000 });
+  await page.evaluate(() => {
+    const win = window as unknown as Record<string, any>;
+    win.__biaoyue_openFile__("/tmp/movies/ep1.mp4", "", "ep1.mp4");
+  });
+  const player = page.locator(".art-video-player").first();
+  await player.waitFor({ timeout: 10000 });
+
+  await page.locator(".art-control-volume").first().hover();
+  const volumeThumb = page.locator(".art-volume-indicator").first();
+  const volumeBox = await volumeThumb.boundingBox();
+  expect(volumeBox?.width ?? 0).toBeGreaterThan(0);
+  const colors = await page.evaluate(() => {
+    const thumb = document.querySelector(
+      ".art-volume-indicator",
+    ) as HTMLElement;
+    const track = document.querySelector(".art-volume-handle") as HTMLElement;
+    return {
+      thumb: getComputedStyle(thumb).backgroundColor,
+      track: getComputedStyle(track).backgroundColor,
+    };
+  });
+  expect(colors.thumb).not.toBe(colors.track);
+
+  const progressBox = await page
+    .locator(".art-progress-indicator")
+    .first()
+    .boundingBox();
+  expect(progressBox?.width ?? 0).toBeGreaterThan(0);
+
+  const video = page.locator(".art-video-player video").first();
+  await expect
+    .poll(() => video.evaluate((el: HTMLVideoElement) => el.currentTime), {
+      timeout: 10000,
+    })
+    .toBeGreaterThan(0);
+
+  const tabId = await page.evaluate(() => {
+    const store = (window as unknown as Record<string, any>).__biaoyue_store__;
+    const tab = Object.values(
+      store.getState().tabs as Record<string, any>,
+    ).find((t: any) => t.path === "/tmp/movies/ep1.mp4") as any;
+    return tab?.id ?? "";
+  });
+  expect(tabId).not.toBe("");
+  await page.evaluate((id) => {
+    const store = (window as unknown as Record<string, any>).__biaoyue_store__;
+    store.getState().closeTab(id);
+  }, tabId);
+  await expect(page.locator(".art-video-player")).toHaveCount(0);
+  await expect(page.locator("video")).toHaveCount(0);
 });
