@@ -42,6 +42,8 @@ test("关闭菜单后无残留节点", async ({ page }) => {
   await boot(page);
   await page.locator('[data-testid="pane-menu-button"]').first().click();
   await expect(page.locator('[data-testid="pane-menu"]')).toHaveCount(1);
+  // 指针先移出触发按钮，避免关闭后 hover 立刻重开（并发下 flake）。
+  await page.mouse.move(10, 10);
   await page.keyboard.press("Escape");
   await expect(page.locator('[data-testid="pane-menu"]')).toHaveCount(0, {
     timeout: 3000,

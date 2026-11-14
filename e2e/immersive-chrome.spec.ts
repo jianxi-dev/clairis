@@ -38,7 +38,23 @@ test("进入沉浸隐藏状态栏与未钉住的阅读空间，退出恢复", as
 test("沉浸态底部热区 500ms 唤出状态栏", async ({ page }) => {
   await boot(page);
   await setImmersive(page, true);
-  await expect(page.getByTestId("status-bar")).toHaveCount(0);
+  await expect
+    .poll(
+      () =>
+        page.evaluate(
+          () =>
+            (
+              window as unknown as {
+                __biaoyue_store__: { getState: () => { readingMode: boolean } };
+              }
+            ).__biaoyue_store__.getState().readingMode,
+        ),
+      { timeout: 5000 },
+    )
+    .toBe(true);
+  await expect(page.getByTestId("status-bar")).toHaveCount(0, {
+    timeout: 5000,
+  });
 
   await page.getByTestId("status-hotzone").hover();
   await expect(page.getByTestId("status-bar")).toBeVisible({ timeout: 3000 });

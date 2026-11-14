@@ -2955,7 +2955,8 @@ html[data-tab-drag="true"] body * {
 }
 
 .width-bars {
-  width: 66px;
+  /* 四档预设 × 22px = 88px；容器随档位数放宽，避免第 4 根条溢出（#829）。 */
+  width: 88px;
   display: flex;
   align-items: flex-end;
   justify-content: center;

@@ -337,8 +337,9 @@ function PaneHeader({
     (e: ReactPointerEvent) => {
       const target = e.target;
       if (!(target instanceof Element)) return;
-      if (target.closest("button, [data-tab-id], input, select, a, .tab-strip"))
-        return;
+      // 页签本体有自己的拖拽语义；空白页签条与格头留白一样是格拖拽入口
+      // （D15 只占双击：未过 4px 阈值的按下仍按点击处理）。
+      if (target.closest("button, [data-tab-id], input, select, a")) return;
       startPaneDrag(leafId, e);
     },
     [startPaneDrag, leafId],

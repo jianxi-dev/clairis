@@ -179,6 +179,10 @@ test("编辑后切回预览能看到改动，且编辑器未被重建", async ({
   });
   const frame = page.locator('iframe[title="HTML 预览"]');
   await expect(frame).toHaveCount(1);
-  const srcdoc = await frame.getAttribute("srcdoc");
-  expect(srcdoc).toContain("改过了");
+  // 预览 iframe 先挂载后写 srcdoc：并发下立即读取会拿到 null（#829）。
+  await expect
+    .poll(async () => (await frame.getAttribute("srcdoc")) ?? "", {
+      timeout: 10000,
+    })
+    .toContain("改过了");
 });

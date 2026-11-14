@@ -58,12 +58,21 @@ test.describe("页签选中态与底边（ui-polish-batch6 2.1）", () => {
     const tabs = page.locator('[role="tab"]');
     expect(await tabs.count()).toBe(2);
 
-    const colors = [];
-    for (let i = 0; i < 2; i += 1) {
-      colors.push(
-        await tabs.nth(i).evaluate((el) => window.getComputedStyle(el).color),
-      );
-    }
-    expect(new Set(colors).size).toBeGreaterThan(1);
+    await expect
+      .poll(
+        async () => {
+          const colors: string[] = [];
+          for (let i = 0; i < 2; i += 1) {
+            colors.push(
+              await tabs
+                .nth(i)
+                .evaluate((el) => window.getComputedStyle(el).color),
+            );
+          }
+          return new Set(colors).size;
+        },
+        { timeout: 5000 },
+      )
+      .toBeGreaterThan(1);
   });
 });
