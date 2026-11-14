@@ -713,12 +713,13 @@ export default function VideoPlayer({
     const art = new Artplayer({
       container,
       url: initialUrl,
-      autoplay: true,
+      // 规格 openspec/specs/file-management/spec.md:112：打开视频必须暂停态，不得自动播放。
+      autoplay: false,
       autoSize: true,
       fullscreen: false,
       fullscreenWeb: true,
       pip: false,
-      autoPlayback: true,
+      autoPlayback: false,
       // 每格播放器独立：Artplayer 默认 mutex 会在新视频起播时暂停其他实例。
       mutex: false,
       hotkey: true,
