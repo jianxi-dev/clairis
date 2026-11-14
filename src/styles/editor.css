@@ -1812,7 +1812,7 @@ html[data-tab-drag="true"] body * {
   white-space: nowrap;
   background: var(--app-sunken);
   border: 1px solid var(--app-border);
-  border-radius: 4px;
+  border-radius: var(--tip-shell-radius);
   pointer-events: auto;
 }
 
@@ -3430,7 +3430,7 @@ html[data-tab-drag="true"] body * {
   max-width: 320px;
   padding: 4px 12px;
   border: 1px solid var(--app-border);
-  border-radius: var(--radius-full, 999px);
+  border-radius: var(--tip-shell-radius);
   background: var(--app-surface);
   color: var(--app-text);
   box-shadow: var(--app-shadow);

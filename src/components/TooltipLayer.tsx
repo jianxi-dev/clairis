@@ -116,15 +116,25 @@ export default function TooltipLayer() {
       if (open) clear();
     });
 
+    const onKeyDown = (e: KeyboardEvent) => {
+      // Esc 会先移除悬停元素（轮盘 / 菜单），绕开 pointerout 留下孤儿胶囊（#819）。
+      if (e.key === "Escape") {
+        restore();
+        clear();
+      }
+    };
+
     document.addEventListener("pointerover", onOver, true);
     document.addEventListener("pointerout", onOut, true);
     document.addEventListener("pointerdown", onDownRestore, true);
+    document.addEventListener("keydown", onKeyDown, true);
     window.addEventListener("scroll", clear, true);
     window.addEventListener("blur", clear);
     return () => {
       document.removeEventListener("pointerover", onOver, true);
       document.removeEventListener("pointerout", onOut, true);
       document.removeEventListener("pointerdown", onDownRestore, true);
+      document.removeEventListener("keydown", onKeyDown, true);
       window.removeEventListener("scroll", clear, true);
       window.removeEventListener("blur", clear);
       unsubscribe();
