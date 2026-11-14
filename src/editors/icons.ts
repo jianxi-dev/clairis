@@ -259,6 +259,16 @@ const ICON_REGISTRY: Record<string, IconDef> = {
     ],
   },
 
+  // 图片描述 —— 工具条「添加描述」按钮（#840）。
+  ImageCaptionOutlined: {
+    kind: "paths",
+    paths: [
+      "M4 4h16a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm1 2v7l4-4 3 3 4-4 3 3V6zM8 9a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z",
+      "M5 16h14v2H5z",
+      "M5 19h9v2H5z",
+    ],
+  },
+
   // Crop —— 图片工具条的裁剪按钮（#652）。
   CropOutlined: {
     kind: "paths",

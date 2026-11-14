@@ -577,9 +577,9 @@ test("描述按钮：打开输入不插引用行，写入标题并重开回显",
   await expect(input).toHaveCount(1);
   await expect(input).toHaveValue("示意图");
 
-  await expect(desc.locator('svg[data-icon="TextEditOutlined"]')).toHaveCount(
-    1,
-  );
+  await expect(
+    desc.locator('svg[data-icon="ImageCaptionOutlined"]'),
+  ).toHaveCount(1);
 });
 
 test("描述按钮：Esc 取消不写入且无残留输入", async ({ page }) => {

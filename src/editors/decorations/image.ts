@@ -636,40 +636,46 @@ class ImageWidget extends WidgetType {
       img.style.maxWidth = "100%";
       img.style.display = "block";
       if (this._crop) {
-        // 裁剪显示：盒子=裁剪矩形，object-fit:none 把内容平移到 (left,top)
-        // 对齐盒原点。盒子尺寸按整图显示缩放换算，避免 max-width 把裁剪盒
-        // 压歪（显示区域与 crop 数值保持同一坐标系）。
+        // 裁剪显示：盒子=裁剪矩形，object-fit:none 把内容平移到 (left,top)。
+        // 有 width 属性时盒宽取该缩放锚点、比例锁裁剪矩形（与预览态一致，
+        // 裁剪后不自动缩小）；无 width 时按整图显示缩放换算。
         const [l, t, w, h] = this._crop;
         img.style.objectFit = "none";
         img.style.objectPosition = `${-l}px ${-t}px`;
-        img.style.width = `${w}px`;
-        img.style.height = `${h}px`;
-        const applyCropScale = (): void => {
-          if (!img.isConnected || img.naturalWidth <= 0) return;
-          const prev = {
-            objectFit: img.style.objectFit,
-            objectPosition: img.style.objectPosition,
-            width: img.style.width,
-            height: img.style.height,
+        if (this._width !== null) {
+          img.style.width = `${this._width}px`;
+          img.style.aspectRatio = `${w} / ${h}`;
+          img.style.height = "auto";
+        } else {
+          img.style.width = `${w}px`;
+          img.style.height = `${h}px`;
+          const applyCropScale = (): void => {
+            if (!img.isConnected || img.naturalWidth <= 0) return;
+            const prev = {
+              objectFit: img.style.objectFit,
+              objectPosition: img.style.objectPosition,
+              width: img.style.width,
+              height: img.style.height,
+            };
+            img.style.objectFit = "";
+            img.style.objectPosition = "";
+            img.style.width = "";
+            img.style.height = "";
+            const fullW = img.getBoundingClientRect().width;
+            img.style.objectFit = prev.objectFit;
+            img.style.objectPosition = prev.objectPosition;
+            img.style.width = prev.width;
+            img.style.height = prev.height;
+            const scale = fullW / img.naturalWidth;
+            if (scale > 0 && scale < 1) {
+              img.style.objectPosition = `${-l * scale}px ${-t * scale}px`;
+              img.style.width = `${w * scale}px`;
+              img.style.height = `${h * scale}px`;
+            }
           };
-          img.style.objectFit = "";
-          img.style.objectPosition = "";
-          img.style.width = "";
-          img.style.height = "";
-          const fullW = img.getBoundingClientRect().width;
-          img.style.objectFit = prev.objectFit;
-          img.style.objectPosition = prev.objectPosition;
-          img.style.width = prev.width;
-          img.style.height = prev.height;
-          const scale = fullW / img.naturalWidth;
-          if (scale > 0 && scale < 1) {
-            img.style.objectPosition = `${-l * scale}px ${-t * scale}px`;
-            img.style.width = `${w * scale}px`;
-            img.style.height = `${h * scale}px`;
-          }
-        };
-        requestAnimationFrame(applyCropScale);
-        img.addEventListener("load", applyCropScale);
+          requestAnimationFrame(applyCropScale);
+          img.addEventListener("load", applyCropScale);
+        }
       } else {
         if (this._width !== null) {
           img.style.width = `${this._width}px`;
