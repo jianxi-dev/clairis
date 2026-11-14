@@ -64,32 +64,45 @@ test("阅读模式：墨线随模式与沉浸态显隐", async ({ page }) => {
   await page.waitForTimeout(200);
   await expect(page.locator(".reading-ink")).toHaveCount(1);
 
-  // Cmd+Shift+F 进入沉浸：chrome 高度收拢为 0、墨线隐藏
+  // Cmd+Shift+F 进入沉浸：页签条高度收拢为 0、墨线隐藏
   await page.keyboard.press("Meta+Shift+F");
   await page.waitForTimeout(500);
   await expect(page.locator(".reading-ink")).toHaveCount(0);
   const hiddenHeight = await page.evaluate(() => {
-    const header = document.querySelector("header");
+    const header = document.querySelector('[data-testid="pane-header"]');
     return header ? Math.round(header.getBoundingClientRect().height) : -1;
   });
   expect(hiddenHeight).toBe(0);
 
-  // Shift+Cmd+T 唤出悬浮页签条（流内顶栏保持收拢）
-  await page.keyboard.press("Meta+Shift+T");
-  await page.waitForTimeout(500);
-  await expect(page.locator('[data-testid="immersive-peek-bar"]')).toHaveCount(
-    1,
-  );
+  // 沉浸态页签条按栏独立：指针进入该栏顶部 16px 热区才浮出（application-shell:341）
+  const hotzone = page.locator('[data-testid="pane-tab-hotzone"]').first();
+  const hz = (await hotzone.boundingBox())!;
+  await page.mouse.move(hz.x + hz.width / 2, hz.y + hz.height / 2);
+  await expect(page.locator('[data-immersive-peek="true"]')).toHaveCount(1);
+  // 浮层展开后页签条恢复可见高度
+  await expect
+    .poll(async () =>
+      page.evaluate(() => {
+        const header = document.querySelector(
+          '[data-immersive-peek="true"] [data-testid="pane-header"]',
+        );
+        return header ? Math.round(header.getBoundingClientRect().height) : -1;
+      }),
+    )
+    .toBeGreaterThan(0);
   // 挂载期定时器不得误收用户显式唤出的悬浮条（#343）
   await page.waitForTimeout(2500);
-  await expect(page.locator('[data-testid="immersive-peek-bar"]')).toHaveCount(
-    1,
-  );
-  const stillHidden = await page.evaluate(() => {
-    const header = document.querySelector("header");
-    return header ? Math.round(header.getBoundingClientRect().height) : -1;
-  });
-  expect(stillHidden).toBe(0);
+  await expect(page.locator('[data-immersive-peek="true"]')).toHaveCount(1);
+  await expect
+    .poll(async () =>
+      page.evaluate(() => {
+        const header = document.querySelector(
+          '[data-immersive-peek="true"] [data-testid="pane-header"]',
+        );
+        return header ? Math.round(header.getBoundingClientRect().height) : -1;
+      }),
+    )
+    .toBeGreaterThan(0);
 
   // Esc 退出沉浸：墨线恢复
   await page.keyboard.press("Escape");
