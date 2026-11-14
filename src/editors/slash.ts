@@ -66,13 +66,11 @@ export interface SlashCommand {
   group?: string;
   /** 存在时，激活该行会打开这个二级面板。 */
   children?: SlashCommand[];
-  /** 存在时，激活该行会打开 rows×cols 网格选择器。 */
-  grid?: { rows: number; cols: number };
   /**
-   * 存在时，二级浮层改用横向等宽格子渲染（当前仅 `"columns"`：分栏 5 栏，
-   * design D11）。缺省仍是纵向行列表。
+   * 存在时，激活该行会打开 rows×cols 网格选择器。`kind: "columns"` 是 1 行 × 5 列
+   * 竖向柱子选区（design D12）：单元无文字，按列高亮「第 1..i 根」。
    */
-  layout?: "columns";
+  grid?: { rows: number; cols: number; kind?: "columns" };
   /**
    * 返回替换菜单范围的变更；`text` 是模板文本。调用时文档里 `/`（以及已输入
    * 的过滤词）还在。`applyCommand` 自己替换 `[slashPos, head]`，所以返回的
@@ -160,7 +158,7 @@ function columnCount(count: number): SlashCommand {
     code: `f${count}`,
     insert(state) {
       const head = state.selection.main.head;
-      return { from: head - 1, to: head, text: `::: {.col-${count}}\n\n:::` };
+      return { from: head - 1, to: head, text: buildColumns(count) };
     },
   };
 }
@@ -276,7 +274,7 @@ export const defaultCommands: SlashCommand[] = [
     icon: "ColumnsOutlined",
     code: "f",
     group: "常用",
-    layout: "columns",
+    grid: { rows: 1, cols: 5, kind: "columns" },
     children: COLUMN_COUNTS.map(columnCount),
   },
   {
@@ -396,6 +394,8 @@ function findCodeMatch(
 interface GridState {
   rows: number;
   cols: number;
+  /** `columns` 是 1×5 竖条选区，否则是表格尺寸选择器。 */
+  kind: "table" | "columns";
   hoverR: number;
   hoverC: number;
   /** 上一次 `paint` 的矩形右下角；增量只翻转两个矩形的对称差。 */
@@ -405,6 +405,8 @@ interface GridState {
   frame: number | null;
   /** 已构建的格子容器；复用它就不重建 100 格。 */
   wrap: HTMLElement | null;
+  /** 键盘移动选中后立即重绘；`renderGrid` 重建格子时注入。 */
+  setHover: ((r: number, c: number) => void) | null;
 }
 
 /** `slash`：用户输入 `/`，菜单拥有 `[slashPos, head]`，取消时必须删掉这段。
@@ -765,6 +767,11 @@ function buildTable(cols: number, rows: number): string {
   return `${line}\n${separator}\n${body}`;
 }
 
+/** 构造 `col-count` 分栏围栏。 */
+function buildColumns(count: number): string {
+  return `::: {.col-${count}}\n\n:::`;
+}
+
 /**
  * 打开网格选择器。与 `backToRoot` 不同，这里故意不动 `rows`——根列表在选择器
  * 下方保持可浏览。
@@ -798,12 +805,14 @@ function enterGrid(
   state.grid = {
     rows: cmd.grid.rows,
     cols: cmd.grid.cols,
+    kind: cmd.grid.kind ?? "table",
     hoverR: 1,
     hoverC: 1,
     paintedR: 1,
     paintedC: 1,
     frame: null,
     wrap: null,
+    setHover: null,
   };
   state.submenuParent = cmd;
   state.parentCell = parentCell ?? state.cells[state.selected] ?? null;
@@ -828,19 +837,28 @@ function renderGrid(view: EditorView, state: SlashMenuState): void {
   flyout.textContent = "";
   flyout.dataset.kind = "grid";
 
-  const title = document.createElement("div");
-  title.className = "mdb-slash-grid-title";
-  title.textContent = "插入支持富文本的表格";
-  flyout.appendChild(title);
+  // 分栏选区（D12）只有竖条，没有表格标题与 N×M 读数。
+  const isColumns = grid.kind === "columns";
+  let label: HTMLElement | null = null;
+  if (!isColumns) {
+    const title = document.createElement("div");
+    title.className = "mdb-slash-grid-title";
+    title.textContent = "插入支持富文本的表格";
+    flyout.appendChild(title);
 
-  const label = document.createElement("div");
-  label.className = "mdb-slash-grid-label";
-  label.textContent = `${grid.hoverR} \u00d7 ${grid.hoverC}`;
-  flyout.appendChild(label);
+    label = document.createElement("div");
+    label.className = "mdb-slash-grid-label";
+    label.textContent = `${grid.hoverR} \u00d7 ${grid.hoverC}`;
+    flyout.appendChild(label);
+  }
 
   const wrap = document.createElement("div");
   wrap.className = "mdb-slash-grid";
-  wrap.style.gridTemplateColumns = `repeat(${grid.cols}, 18px)`;
+  wrap.dataset.kind = grid.kind;
+  // 竖条填满浮层宽度（浮层有 min-width），表格保持固定 18px 方格。
+  wrap.style.gridTemplateColumns = isColumns
+    ? `repeat(${grid.cols}, 1fr)`
+    : `repeat(${grid.cols}, 18px)`;
   grid.wrap = wrap;
 
   /** 增量 paint：只翻转上一矩形与目标矩形对称差里的格子。 */
@@ -855,6 +873,14 @@ function renderGrid(view: EditorView, state: SlashMenuState): void {
     }
     grid.paintedR = r;
     grid.paintedC = c;
+  };
+
+  /** 键盘移动选中：立即 paint，不等 rAF。 */
+  grid.setHover = (r: number, c: number): void => {
+    grid.hoverR = r;
+    grid.hoverC = c;
+    if (label !== null) label.textContent = `${r} \u00d7 ${c}`;
+    paint(r, c);
   };
 
   /** rAF 合并：快速斜向滑动时一帧只 paint 一次。 */
@@ -875,10 +901,7 @@ function renderGrid(view: EditorView, state: SlashMenuState): void {
       const on = r <= grid.hoverR && c <= grid.hoverC;
       cell.setAttribute("data-on", on ? "true" : "false");
       cell.addEventListener("mouseenter", () => {
-        grid.hoverR = r;
-        grid.hoverC = c;
-        label.textContent = `${r} \u00d7 ${c}`;
-        paint(r, c);
+        grid.setHover?.(r, c);
       });
       cell.addEventListener("mousedown", (e) => {
         e.preventDefault();
@@ -908,7 +931,7 @@ function renderGrid(view: EditorView, state: SlashMenuState): void {
     if (r === grid.hoverR && c === grid.hoverC) return;
     grid.hoverR = r;
     grid.hoverC = c;
-    label.textContent = `${r} \u00d7 ${c}`;
+    if (label !== null) label.textContent = `${r} \u00d7 ${c}`;
     schedulePaint();
   });
 
@@ -1353,7 +1376,9 @@ export function insertCommandTextAt(
   const raw = cmd.insert
     ? cmd.insert(view.state).text
     : cmd.grid
-      ? "|  |  |  |\n| --- | --- | --- |\n|  |  |  |\n|  |  |  |"
+      ? cmd.grid.kind === "columns"
+        ? buildColumns(1)
+        : "|  |  |  |\n| --- | --- | --- |\n|  |  |  |\n|  |  |  |"
       : cmd.children?.[0]?.insert?.(view.state).text;
   if (raw === undefined) return false;
   const text = mode === "below" ? `\n${raw}` : sanitizeCellText(raw);
@@ -1454,27 +1479,12 @@ function collapseSecondLevel(state: SlashMenuState): void {
 /** 渲染浮层行，标记键盘选中。 */
 function renderFlyout(view: EditorView, state: SlashMenuState): void {
   if (!state.flyoutDom) return;
-  state.flyoutDom.textContent = "";
-  delete state.flyoutDom.dataset.kind;
-  // 分栏（layout: "columns"）是横向等宽格子，不是纵向行列表（design D11）。
-  const columns = state.submenuParent?.layout === "columns";
-  let host: HTMLDivElement = state.flyoutDom;
-  if (columns) {
-    state.flyoutDom.dataset.kind = "columns";
-    const wrap = document.createElement("div");
-    wrap.className = "mdb-slash-flyout-columns";
-    wrap.style.display = "grid";
-    wrap.style.gridTemplateColumns = `repeat(${state.flyoutRows.length}, 1fr)`;
-    wrap.style.gap = "2px";
-    wrap.style.padding = "4px";
-    state.flyoutDom.appendChild(wrap);
-    host = wrap;
-  }
+  const flyout = state.flyoutDom;
+  flyout.textContent = "";
+  delete flyout.dataset.kind;
   state.flyoutRows.forEach((cmd, i) => {
     const row = document.createElement("div");
-    row.className = columns
-      ? "mdb-slash-flyout-item mdb-slash-flyout-cell"
-      : "mdb-slash-flyout-item";
+    row.className = "mdb-slash-flyout-item";
     row.dataset.cmd = cmd.id;
     if (i === state.flyoutSelected) {
       row.setAttribute("data-selected", "true");
@@ -1521,7 +1531,7 @@ function renderFlyout(view: EditorView, state: SlashMenuState): void {
       activateRow(view, cmd);
     });
 
-    host.appendChild(row);
+    flyout.appendChild(row);
   });
 }
 
@@ -1686,22 +1696,26 @@ function applyTableSize(
   const from = state.slashPos;
   const anchored = state.trigger === "anchor";
   const below = state.trigger === "below";
-  const table = buildTable(cols, rows);
+  const isColumns = state.grid?.kind === "columns";
+  const snippet = isColumns ? buildColumns(cols) : buildTable(cols, rows);
   if (state.trigger === "context") {
     // 上下文触发（#742 评审）：网格命令也必须走宿主写回。context 的 slashPos
     // 是占位 0，若落进下面的 dispatch 会把 from=0..head 整段替换成表格，吞掉
     // 光标前的正文——数据损坏。
     const host = state.contextHost;
     closeMenu(view);
-    host?.applyText(table);
+    host?.applyText(snippet);
     return;
   }
-  // 单元格内锚定：表格保持单行，不能拆开行。块下方：完整保留在独立新行。
+  // 单元格内锚定：表格保持单行，不能拆开行；分栏围栏是块级内容，不净化。
+  // 块下方：完整保留在独立新行。
   const text = anchored
-    ? sanitizeCellText(table)
+    ? isColumns
+      ? snippet
+      : sanitizeCellText(snippet)
     : below
-      ? `\n${table}`
-      : table;
+      ? `\n${snippet}`
+      : snippet;
   closeMenu(view);
   if (head < from && !below) return;
   view.dispatch({
@@ -1744,16 +1758,14 @@ export function slashMenuApply(view: EditorView): boolean {
 export function slashMenuSubmenuEnter(view: EditorView): boolean {
   const state = menus.get(view);
   if (!state?.open || !state.dom || !isActiveLayer(view, state)) return false;
+  if (state.grid?.kind === "columns") {
+    state.grid.setHover?.(
+      state.grid.hoverR,
+      Math.min(state.grid.hoverC + 1, state.grid.cols),
+    );
+    return true;
+  }
   if (isFlyoutOpen(state)) {
-    // 横向分栏浮层：左右键在格子间移动（竖排浮层的上下键等价）。
-    if (state.submenuParent?.layout === "columns") {
-      state.flyoutSelected = Math.min(
-        state.flyoutSelected + 1,
-        state.flyoutRows.length - 1,
-      );
-      renderFlyout(view, state);
-      return true;
-    }
     return false;
   }
   const cmd = state.rows[state.selected];
@@ -1772,17 +1784,16 @@ export function slashMenuSubmenuEnter(view: EditorView): boolean {
 export function slashMenuSubmenuBack(view: EditorView): boolean {
   const state = menus.get(view);
   if (!state?.open || !state.dom || !isActiveLayer(view, state)) return false;
-  if (isFlyoutOpen(state)) {
-    if (state.submenuParent?.layout === "columns") {
-      // 横向分栏：左移到头再按才收起浮层，与竖排浮层的 Left 行为一致。
-      if (state.flyoutSelected > 0) {
-        state.flyoutSelected -= 1;
-        renderFlyout(view, state);
-      } else {
-        closeFlyout(state);
-      }
-      return true;
+  if (state.grid?.kind === "columns") {
+    // 竖条选区：左移到第一根再按才收起浮层，与竖排浮层的 Left 行为一致。
+    if (state.grid.hoverC > 1) {
+      state.grid.setHover?.(state.grid.hoverR, state.grid.hoverC - 1);
+    } else {
+      backToRoot(view);
     }
+    return true;
+  }
+  if (isFlyoutOpen(state)) {
     closeFlyout(state);
     return true;
   }
