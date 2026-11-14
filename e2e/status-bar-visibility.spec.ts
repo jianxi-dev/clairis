@@ -84,16 +84,16 @@ test.describe("主页入口（ui-polish-batch6 6.1）", () => {
 });
 
 test.describe("页面宽度调整面板（ui-polish-batch6 6.2）", () => {
-  test("三档预设与滑块，选择后宽度同步", async ({ page }) => {
+  test("四档预设与滑块，选择后宽度同步", async ({ page }) => {
     await boot(page);
     const widthText = page.getByTestId("status-width");
     await expect(widthText).toHaveText(/^\d+px$/);
 
+    // width-control 悬停即开面板；再 click status-width 是 toggle，会把面板关掉。
     await page.getByTestId("width-control").hover();
-    await widthText.click();
     const panel = page.getByTestId("width-panel");
     await expect(panel).toBeVisible({ timeout: 3000 });
-    await expect(panel.locator("button")).toHaveCount(3);
+    await expect(panel.locator("[data-testid^=width-preset-]")).toHaveCount(4);
     await expect(page.getByTestId("width-slider")).toHaveCount(1);
 
     await page.getByTestId("width-preset-720").click();
@@ -112,7 +112,7 @@ test.describe("页面宽度调整面板（ui-polish-batch6 6.2）", () => {
     expect(panelBox.x).toBeGreaterThanOrEqual(0);
     expect(panelBox.x + panelBox.width).toBeLessThanOrEqual(1440);
     expect(Math.abs(panelBox.width - 200)).toBeLessThanOrEqual(1);
-    expect(Math.abs(barsBox.width - 66)).toBeLessThanOrEqual(1);
+    expect(Math.abs(barsBox.width - 88)).toBeLessThanOrEqual(1);
     expect(
       Math.abs(
         barsBox.x + barsBox.width / 2 - (panelBox.x + panelBox.width / 2),
@@ -120,8 +120,8 @@ test.describe("页面宽度调整面板（ui-polish-batch6 6.2）", () => {
     ).toBeLessThanOrEqual(1);
 
     const bars = panel.locator(".width-bar");
-    expect(await bars.count()).toBe(3);
-    for (let i = 0; i < 3; i += 1) {
+    expect(await bars.count()).toBe(4);
+    for (let i = 0; i < 4; i += 1) {
       const b = (await bars.nth(i).boundingBox())!;
       expect(Math.abs(b.width - 22)).toBeLessThanOrEqual(1);
     }
@@ -279,14 +279,14 @@ test.describe("主题弹层生命周期与点击循环（shell-media-batch7 1.1�
 
   test("宽度面板按 Esc 关闭", async ({ page }) => {
     await boot(page);
+    // 悬停即开；离开后再悬停可重新打开（#829）。
     await page.getByTestId("width-control").hover();
-    await page.getByTestId("status-width").click();
     const panel = page.getByTestId("width-panel");
     await expect(panel).toBeVisible({ timeout: 3000 });
     await page.keyboard.press("Escape");
     await expect(panel).toHaveCount(0);
+    await page.mouse.move(10, 10);
     await page.getByTestId("width-control").hover();
-    await page.getByTestId("status-width").click();
     await expect(panel).toBeVisible({ timeout: 3000 });
     await page.mouse.click(600, 300);
     await expect(panel).toHaveCount(0);

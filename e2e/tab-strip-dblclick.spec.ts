@@ -8,7 +8,7 @@ test.beforeEach(async ({ page }) => {
   await page.waitForSelector('[data-testid="pane-header"]', { timeout: 10000 });
 });
 
-test("双击页签条空白处新建 Markdown 页签", async ({ page }) => {
+test("双击页签条空白不新建页签，也不进重命名（D15）", async ({ page }) => {
   await page.evaluate(() => {
     (window as unknown as Record<string, any>).__biaoyue_store__
       .getState()
@@ -25,15 +25,14 @@ test("双击页签条空白处新建 Markdown 页签", async ({ page }) => {
     box.y + box.height / 2,
   );
 
-  await expect(page.locator("[data-tab-id]")).toHaveCount(1);
-  const tab = page.locator("[data-tab-id]").first();
-  await expect(tab).toContainText("未命名");
-  await expect(
-    page.locator('[data-testid="pane-mode"]').first(),
-  ).toHaveAttribute("data-mode", "edit");
+  // D15：空白双击是窗口级最大化/还原，不再新建文档；也不触发页签重命名。
+  await expect(page.locator("[data-tab-id]")).toHaveCount(0);
+  await expect(page.locator('[data-testid="tab-title-input"]')).toHaveCount(0);
 });
 
-test("已有页签时双击空白仍新建，不误触双击重命名", async ({ page }) => {
+test("已有页签时：双击空白不动页签，双击页签进重命名（D15）", async ({
+  page,
+}) => {
   await page.evaluate(() => {
     (window as unknown as Record<string, any>).__biaoyue_openFile__(
       "/tmp/tab-blank.md",
@@ -46,7 +45,10 @@ test("已有页签时双击空白仍新建，不误触双击重命名", async ({
   const strip = page.locator(".tab-strip").first();
   const box = (await strip.boundingBox())!;
   await page.mouse.dblclick(box.x + box.width - 16, box.y + box.height / 2);
-
-  await expect(page.locator("[data-tab-id]")).toHaveCount(2);
+  await expect(page.locator("[data-tab-id]")).toHaveCount(1);
   await expect(page.locator('[data-testid="tab-title-input"]')).toHaveCount(0);
+
+  // 双击页签本体才是重命名。
+  await page.locator("[data-tab-id]").first().dblclick();
+  await expect(page.locator('[data-testid="tab-title-input"]')).toHaveCount(1);
 });

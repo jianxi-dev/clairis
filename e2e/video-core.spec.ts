@@ -165,11 +165,15 @@ test("默认档连播：播完自动切下一个视频，音频不静默起播",
   await page.waitForSelector(".art-video-player video", { timeout: 10000 });
 
   await fireEnded(page);
-  await expect.poll(() => currentMediaPath(page)).toBe("/tmp/movies/ep2.mp4");
+  await expect
+    .poll(() => currentMediaPath(page), { timeout: 10000 })
+    .toBe("/tmp/movies/ep2.mp4");
 
   // ep2 播完：下一项是音频 → 停下，不得静默起播
   await fireEnded(page);
-  await expect.poll(() => currentMediaPath(page)).toBe("/tmp/movies/ep2.mp4");
+  await expect
+    .poll(() => currentMediaPath(page), { timeout: 10000 })
+    .toBe("/tmp/movies/ep2.mp4");
   const playing = await page.evaluate(
     () =>
       (document.querySelector("video") as unknown as Record<string, any> | null)

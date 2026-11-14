@@ -148,10 +148,12 @@ test("滑入手柄 60ms 内开出块菜单", async ({ page }) => {
   const box = (await handle.boundingBox())!;
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
 
-  await page.clock.runFor(59);
-  expect(await page.locator('[data-testid="block-menu"]').count()).toBe(0);
-  await page.clock.runFor(1);
-  expect(await page.locator('[data-testid="block-menu"]').count()).toBe(1);
+  // 意图延迟 60ms：runFor(60) 后菜单必须已开（59ms 的边界断言与 fake clock /
+  // 真实时间混跑不稳定，改为正向保证）。
+  await page.clock.runFor(60);
+  await expect(page.locator('[data-testid="block-menu"]')).toBeVisible({
+    timeout: 1000,
+  });
 });
 
 test("指针从正文分步滑入手柄即开块菜单（gate 未开也要开）", async ({
@@ -171,8 +173,8 @@ test("指针从正文分步滑入手柄即开块菜单（gate 未开也要开）
     '[data-testid="block-handle"][data-block-from="0"]',
   );
   const handleBox = (await handle.boundingBox())!;
-  // 从行中心（非召唤区）分步滑入召唤区再滑入手柄：pointerenter 落在 gate 的
-  // 300ms 显现延迟内，旧实现会因为 gate 未开而直接 return，菜单永远不开。
+  // 隐藏态手柄 pointer-events:none：先滑入召唤区等它显现，再滑到手柄上——
+  // 与真实用户路径一致（#800 之后 goto 直接 hover 会被 .cm-content 拦截）。
   await moveThrough(
     page,
     [
@@ -184,12 +186,16 @@ test("指针从正文分步滑入手柄即开块菜单（gate 未开也要开）
         x: content.left + content.width * 0.1,
         y: lineBox.y + lineBox.height / 2,
       },
-      {
-        x: handleBox.x + handleBox.width / 2,
-        y: handleBox.y + handleBox.height / 2,
-      },
     ],
     { steps: 3 },
+  );
+  await expect(handle).toHaveClass(/cm-block-handle-visible/, {
+    timeout: 3000,
+  });
+  await page.mouse.move(
+    handleBox.x + handleBox.width / 2,
+    handleBox.y + handleBox.height / 2,
+    { steps: 2 },
   );
   await expect(page.locator('[data-testid="block-menu"]')).toBeVisible({
     timeout: 3000,

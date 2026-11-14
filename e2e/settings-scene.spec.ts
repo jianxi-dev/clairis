@@ -75,7 +75,7 @@ function sceneOf(page: Page): Promise<string> {
   );
 }
 
-test("⌘, 打开设置场景：10 个分区、切换高亮、Esc 返回原场景", async ({
+test("⌘, 打开设置场景：11 个分区、切换高亮、Esc 返回原场景", async ({
   page,
 }) => {
   await boot(page);
@@ -95,10 +95,11 @@ test("⌘, 打开设置场景：10 个分区、切换高亮、Esc 返回原场�
   await openSettings(page);
 
   const items = page.locator('[data-testid="settings-nav-item"]');
-  await expect(items).toHaveCount(10);
+  await expect(items).toHaveCount(11);
   expect(await items.allInnerTexts()).toEqual([
     "外观",
     "编辑器",
+    "文件",
     "阅读空间",
     "网格概览",
     "悬浮预览",

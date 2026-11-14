@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { summonAddHandle } from "./helpers/block-handle";
 
 /**
  * 第十批：MD 编辑态不再出现「AI / 背景 / 边框 / 删除」块工具条。
@@ -57,6 +58,8 @@ test("空行 + 手柄悬停不弹转换菜单（#105）", async ({ page }) => {
     '[data-testid="block-handle"][data-empty="true"]',
   );
   await expect(handle.first()).toBeVisible({ timeout: 5000 });
+  // 隐藏态 pointer-events:none，先召唤再悬停（同 #800）。
+  await summonAddHandle(page, handle.first().locator(".cm-block-handle-add"));
   await handle.first().hover();
   await page.waitForTimeout(1000);
   await expect(page.locator('[data-testid="block-menu"]')).toHaveCount(0);

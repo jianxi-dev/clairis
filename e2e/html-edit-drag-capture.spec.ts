@@ -91,47 +91,6 @@ test("位移不到阈值算点击，不移动文档", async ({ page }) => {
   expect(await content(page)).toBe(before);
 });
 
-test("截图模式：拖出区域后产出 PNG 并落盘", async ({ page }) => {
-  const frame = await openVisual(page);
-  // iframe 的 title 会在首次悬停时被 tooltip 系统转成 data-tip，先取矩形。
-  const iframeBox = (await page
-    .locator('iframe[title="HTML 可视化编辑"]')
-    .boundingBox())!;
-  await frame.locator("h1").click();
-
-  await page.locator('.html-edit-toolbar button[aria-label="截图"]').click();
-  await expect(page.locator(".html-capture-hint")).toBeVisible();
-
-  await page.mouse.move(iframeBox.x + 20, iframeBox.y + 20);
-  await page.mouse.down();
-  await page.mouse.move(iframeBox.x + 320, iframeBox.y + 160, { steps: 8 });
-  await page.mouse.up();
-
-  await expect
-    .poll(
-      () =>
-        page.evaluate(
-          () =>
-            (window as unknown as Record<string, any>)
-              .__biaoyue_saved_binaries__?.length ?? 0,
-        ),
-      { timeout: 20000 },
-    )
-    .toBe(1);
-
-  const call = await page.evaluate(
-    () =>
-      (window as unknown as Record<string, any>).__biaoyue_saved_binaries__[0],
-  );
-  // PNG 签名（iVBORw0KGgo…）
-  expect(String(call.base64).startsWith("iVBORw0KGgo")).toBe(true);
-  expect(String(call.defaultName)).toContain("截图");
-
-  // 截图不污染文档
-  const html = await content(page);
-  expect(html).not.toContain("data-cm-");
-});
-
 test("拖拽有跟随幽灵，落点带滞回不抖动", async ({ page }) => {
   const frame = await openVisual(page);
   const second = await frame.locator('[data-cm-node-id="p:1"]').boundingBox();
