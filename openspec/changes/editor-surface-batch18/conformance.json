@@ -1,0 +1,182 @@
+{
+  "change": "editor-surface-batch18",
+  "requirements": [
+    {
+      "id": "R-1",
+      "text": "格头菜单只留格级动作",
+      "anchors": [
+        {
+          "id": "A-1.1",
+          "claim": "格头 ⋯ 菜单项数",
+          "kind": "exact",
+          "assert": "6",
+          "source": "#805 第 1 条 / design D1"
+        },
+        {
+          "id": "A-1.2",
+          "claim": "格头菜单中「导出」出现次数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "#805 第 1 条 / design D1"
+        },
+        {
+          "id": "A-1.3",
+          "claim": "格头菜单中「刷新」「打开文件位置」出现次数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "#805 第 1 条 / design D1"
+        }
+      ]
+    },
+    {
+      "id": "R-2",
+      "text": "文件动作在页签右键菜单内的顺序与承载",
+      "anchors": [
+        {
+          "id": "A-2.1",
+          "claim": "idx(导出) < idx(复制路径)",
+          "kind": "exact",
+          "assert": "\"true\"",
+          "source": "#805 第 1 条 / design D1"
+        },
+        {
+          "id": "A-2.2",
+          "claim": "idx(打开文件位置) > idx(复制路径)",
+          "kind": "exact",
+          "assert": "\"true\"",
+          "source": "#805 第 1 条 / design D1"
+        },
+        {
+          "id": "A-2.3",
+          "claim": "idx(刷新) < idx(关闭)",
+          "kind": "exact",
+          "assert": "\"true\"",
+          "source": "#805 第 1 条 / design D1"
+        },
+        {
+          "id": "A-2.4",
+          "claim": "页签右键菜单项数",
+          "kind": "exact",
+          "assert": "10",
+          "source": "#805 第 1 条 / design D1"
+        },
+        {
+          "id": "A-2.5",
+          "claim": "右键菜单导出子菜单项数",
+          "kind": "exact",
+          "assert": "6",
+          "source": "#805 第 1 条 / design D2"
+        },
+        {
+          "id": "A-2.6",
+          "claim": "导出子菜单中 print 项数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "#805 第 2 条 / design D3"
+        },
+        {
+          "id": "A-2.7",
+          "claim": "idx(打印) - idx(导出)",
+          "kind": "exact",
+          "assert": "1",
+          "source": "#805 第 2 条 / design D3"
+        }
+      ]
+    },
+    {
+      "id": "R-3",
+      "text": "导出族图标在右键子菜单可辨",
+      "anchors": [
+        {
+          "id": "A-3.1",
+          "claim": "Word / ZIP / .mdpkg 三项图标 `d` 去重数",
+          "kind": "exact",
+          "assert": "3",
+          "source": "#805 第 1 条 / design D2"
+        }
+      ]
+    },
+    {
+      "id": "R-4",
+      "text": "打印按预览态输出",
+      "anchors": [
+        {
+          "id": "A-4.1",
+          "claim": "点击打印后 `window.print` 调用次数",
+          "kind": "exact",
+          "assert": "1",
+          "source": "#805 第 2 条 / design D3"
+        },
+        {
+          "id": "A-4.2",
+          "claim": "打印视图中 `.cm-line` 节点数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "#805 第 2 条 / design D3"
+        },
+        {
+          "id": "A-4.3",
+          "claim": "含 mermaid 文档的打印视图中 `svg` 节点数",
+          "kind": "exact",
+          "assert": "1",
+          "source": "#805 第 2 条 / design D3"
+        },
+        {
+          "id": "A-4.4",
+          "claim": "打印媒体下应用外壳根节点计算 display",
+          "kind": "exact",
+          "assert": "\"none\"",
+          "source": "#805 第 2 条 / design D4"
+        },
+        {
+          "id": "A-4.5",
+          "claim": "打印结束后打印视图节点数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "#805 第 2 条 / design D3"
+        },
+        {
+          "id": "A-4.6",
+          "claim": "打印前后滚动容器 scrollTop 差值",
+          "kind": "exact",
+          "assert": "0",
+          "source": "#805 第 2 条 / design D3"
+        }
+      ]
+    },
+    {
+      "id": "R-5",
+      "text": "含图片文档可滚动回顶部",
+      "anchors": [
+        {
+          "id": "A-5.1",
+          "claim": "滚轮回顶后滚动容器 scrollTop",
+          "kind": "exact",
+          "assert": "0",
+          "source": "#805 第 3 条 / design D5"
+        },
+        {
+          "id": "A-5.2",
+          "claim": "回顶后首块相对容器可见",
+          "kind": "state-machine",
+          "assert": "\"true\"",
+          "source": "#805 第 3 条 / design D5"
+        },
+        {
+          "id": "A-5.3",
+          "claim": "crop 图渲染宽度 ≤ 内容容器宽度",
+          "kind": "exact",
+          "assert": "\"true\"",
+          "source": "#805 第 3 条 / design D5"
+        },
+        {
+          "id": "A-5.4",
+          "claim": "图片加载完成后仍可回到 scrollTop 0",
+          "kind": "state-machine",
+          "assert": "\"true\"",
+          "source": "#805 第 3 条 / design D5"
+        }
+      ]
+    }
+  ]
+}
