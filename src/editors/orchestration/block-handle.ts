@@ -37,6 +37,7 @@ import {
   HIDE_DELAY_MS,
   type PointerKind,
 } from "./hover-gate";
+import { menuStack } from "./menu-stack";
 import { classifyMedia, scanImageReference } from "../decorations/image";
 
 // --- 纯函数 ------------------------------------------------------------------
@@ -308,9 +309,9 @@ class BlockHandlePlugin {
     const overHandle = target?.closest?.(
       ".cm-block-handle",
     ) as HTMLElement | null;
-    // 菜单打开期间不改召唤对象（D2 不 retarget）：指针在菜单或别的块上滑动时，
-    // 不能给「菜单后面的内容」再冒出手柄。
-    if (isBlockMenuOpen(this.view) && !overHandle) return;
+    // 菜单栈打开期间进入全局禁召唤会话（D2 不 retarget）：指针在菜单或别的块上
+    // 滑动时，不能给「菜单后面的内容」再冒出手柄。栈清空后自动恢复。
+    if (menuStack.isSummonSuppressed() && !overHandle) return;
     // 标题折叠三角与块手柄共用同一召唤区（.cm-content 左缘 25%）。
     const contentRect = this.view.contentDOM.getBoundingClientRect();
     this.setSummonZone(isInSummonZone(event.clientX, contentRect));

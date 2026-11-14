@@ -134,6 +134,16 @@ export class MenuStack {
     return this.items.length;
   }
 
+  /**
+   * 全局禁召唤会话：栈内任一层打开期间返回 `true`。
+   *
+   * 手柄召唤统一读它——只要有菜单层打开，指针在下层文字上移动就不召唤新的
+   * 新增 / 转换手柄；栈清空后自动恢复。状态由栈内容派生，不会泄漏。
+   */
+  isSummonSuppressed(): boolean {
+    return this.items.length > 0;
+  }
+
   has(owner: MenuOwner, scope?: object): boolean {
     return this.items.some((item) => {
       if (scopeKey(item.entry.scope) !== scopeKey(scope)) return false;
