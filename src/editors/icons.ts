@@ -9,6 +9,8 @@
  * 纯 SSOT：不出现 emoji，图标一律是 SVG。
  */
 
+import { ICONS as UI_ICONS, type IconName as UiIconName } from "../ui/icons";
+
 const SVG_NS = "http://www.w3.org/2000/svg";
 
 /** Default rendered icon size — matches the existing 16px gutter slot. */
@@ -16,7 +18,17 @@ const ICON_SIZE_PX = "20px";
 
 type IconDef =
   | { readonly kind: "text"; readonly label: string; readonly weight?: number }
-  | { readonly kind: "paths"; readonly paths: readonly string[] };
+  | {
+      readonly kind: "paths";
+      readonly paths: readonly string[];
+      /** true 时按描边渲染（线稿图标，与 `ui/icons.ts` 的 `iconSvg` 同一条 path）。 */
+      readonly stroke?: boolean;
+    };
+
+/** 分栏 1..5 栏：直接取 `ui/icons.ts` 的描边 path，保证与选区轮盘图形同源。 */
+function columnStrokePath(name: UiIconName): string {
+  return UI_ICONS[name].s ?? "";
+}
 
 /**
  * Icon registry — the single source of truth for the `data-icon` vocabulary.
@@ -126,6 +138,31 @@ const ICON_REGISTRY: Record<string, IconDef> = {
   ColumnsOutlined: {
     kind: "paths",
     paths: ["M3.5 4.5h5v15h-5z M10.5 4.5h3v15h-3z M15.5 4.5h5v15h-5z"],
+  },
+  columns1: {
+    kind: "paths",
+    stroke: true,
+    paths: [columnStrokePath("columns1")],
+  },
+  columns2: {
+    kind: "paths",
+    stroke: true,
+    paths: [columnStrokePath("columns2")],
+  },
+  columns3: {
+    kind: "paths",
+    stroke: true,
+    paths: [columnStrokePath("columns3")],
+  },
+  columns4: {
+    kind: "paths",
+    stroke: true,
+    paths: [columnStrokePath("columns4")],
+  },
+  columns5: {
+    kind: "paths",
+    stroke: true,
+    paths: [columnStrokePath("columns5")],
   },
   TableGridOutlined: {
     kind: "paths",
@@ -687,6 +724,13 @@ export function renderIcon(name: string): SVGSVGElement {
     for (const d of def.paths) {
       const path = document.createElementNS(SVG_NS, "path");
       path.setAttribute("d", d);
+      if (def.stroke) {
+        path.setAttribute("fill", "none");
+        path.setAttribute("stroke", "currentColor");
+        path.setAttribute("stroke-width", "1.7");
+        path.setAttribute("stroke-linecap", "round");
+        path.setAttribute("stroke-linejoin", "round");
+      }
       svg.appendChild(path);
     }
   }

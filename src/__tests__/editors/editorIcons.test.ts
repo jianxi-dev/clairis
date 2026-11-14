@@ -26,9 +26,17 @@ describe("编辑器插入菜单图标（#367）", () => {
     expect(iconOf("插入 CSS")).toBe("CssOutlined");
     expect(iconOf("插入 HTML")).toBe("CodeOutlined");
     expect(iconOf("视频/文件")).toBe("VideoOutlined");
+  });
+
+  it("分栏 1~5 栏用轮盘同源图标，图形两两不同（#825）", () => {
     const columns = defaultCommands.find((c) => c.label === "分栏");
-    expect(columns?.children?.every((c) => c.icon === "ColumnsOutlined")).toBe(
-      true,
-    );
+    expect(columns?.icon).toBe("columns3");
+    expect(columns?.children?.map((c) => c.icon)).toEqual([
+      "columns1",
+      "columns2",
+      "columns3",
+      "columns4",
+      "columns5",
+    ]);
   });
 });

@@ -19,7 +19,11 @@ import {
 } from "@codemirror/view";
 import { EditorState, type Extension, Prec } from "@codemirror/state";
 import { syntaxTree } from "@codemirror/language";
-import { insertSlashChar, isSlashMenuOpen } from "./slash";
+import {
+  insertSlashChar,
+  isSlashMenuOpen,
+  openSlashMenuAtSlash,
+} from "./slash";
 
 // --- IME 组合守卫 ------------------------------------------------------------
 
@@ -619,6 +623,35 @@ const commaSlashInputHandler = EditorView.inputHandler.of(
   },
 );
 
+/**
+ * IME 组合提交逗号后的归一（#825）。
+ *
+ * 输入法在组合态内把 `,`/`，` 落进文档，`commaSlashInputHandler` 的 composing
+ * 守卫按设计放行；compositionend 时若提交位置是词首、不在受保护区且菜单未开，
+ * 就把该字符替换成 `/` 并在斜杠原位打开菜单——与直接输入 `/` 等价。
+ */
+function commitCommaSlash(view: EditorView, data: string): boolean {
+  if (data !== "," && data !== "，") return false;
+  if (isSlashMenuOpen(view)) return false;
+  const head = view.state.selection.main.head;
+  if (head < data.length) return false;
+  const from = head - data.length;
+  // 组合提交可能被归一成半角，也可能落在只接受半角的位置；只替换确实是逗号的字符。
+  const committed = view.state.sliceDoc(from, head);
+  if (committed !== "," && committed !== "，") return false;
+  const line = view.state.doc.lineAt(head);
+  const textBefore = line.text.slice(0, from - line.from);
+  if (textBefore.length > 0 && !/\s$/.test(textBefore)) return false;
+  if (inProtectedRegion(view.state, from)) return false;
+  view.dispatch({
+    changes: { from, to: head, insert: "/" },
+    selection: { anchor: head },
+    scrollIntoView: true,
+  });
+  openSlashMenuAtSlash(view, from);
+  return true;
+}
+
 // --- keymap 扩展 -------------------------------------------------------------
 
 const markdownShortcutKeymap = keymap.of([
@@ -766,8 +799,9 @@ const compositionGuardPlugin = ViewPlugin.define(() => ({}), {
     compositionstart() {
       composing = true;
     },
-    compositionend() {
+    compositionend(event: Event, view: EditorView) {
       composing = false;
+      commitCommaSlash(view, (event as CompositionEvent).data ?? "");
     },
   },
 });

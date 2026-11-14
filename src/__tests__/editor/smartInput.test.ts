@@ -678,3 +678,68 @@ describe("词首逗号归一为斜杠（#768）", () => {
     expect(editor.view.dom.querySelector(".mdb-slash-menu")).not.toBeNull();
   });
 });
+
+describe("IME 组合提交逗号归一（#825）", () => {
+  /** 组合提交：start → 组合态内落字 → end，与真实输入法顺序一致。 */
+  function imeCommit(view: EditorView, text: string): void {
+    const el = view.contentDOM;
+    el.dispatchEvent(
+      new CompositionEvent("compositionstart", { bubbles: true, data: "" }),
+    );
+    const head = view.state.selection.main.head;
+    view.dispatch({
+      changes: { from: head, insert: text },
+      selection: { anchor: head + text.length },
+      userEvent: "input.type",
+    });
+    el.dispatchEvent(
+      new CompositionEvent("compositionend", { bubbles: true, data: text }),
+    );
+  }
+
+  it("组合提交全角逗号归一为斜杠并打开菜单", () => {
+    imeCommit(editor.view, "，");
+    expect(editor.view.state.doc.toString()).toBe("/");
+    expect(editor.view.dom.querySelector(".mdb-slash-menu")).not.toBeNull();
+  });
+
+  it("组合提交半角逗号同样归一", () => {
+    imeCommit(editor.view, ",");
+    expect(editor.view.state.doc.toString()).toBe("/");
+    expect(editor.view.dom.querySelector(".mdb-slash-menu")).not.toBeNull();
+  });
+
+  it("组合提交词中逗号不归一、不打开菜单", () => {
+    editor.view.dispatch({
+      changes: { from: 0, insert: "你好" },
+      selection: { anchor: 2 },
+    });
+    imeCommit(editor.view, "，");
+    expect(editor.view.state.doc.toString()).toBe("你好,");
+    expect(editor.view.dom.querySelector(".mdb-slash-menu")).toBeNull();
+  });
+
+  it("组合提交代码块内逗号不归一", () => {
+    editor.view.dispatch({
+      changes: { from: 0, insert: "```\n\n```" },
+      selection: { anchor: 4 },
+    });
+    imeCommit(editor.view, ",");
+    expect(editor.view.state.doc.toString()).toBe("```\n,\n```");
+    expect(editor.view.dom.querySelector(".mdb-slash-menu")).toBeNull();
+  });
+
+  it("归一后 slashPos 正确：输入 f 过滤到分栏", () => {
+    imeCommit(editor.view, "，");
+    editor.view.dispatch({
+      changes: { from: 1, insert: "f" },
+      selection: { anchor: 2 },
+      userEvent: "input.type",
+    });
+    const labels = Array.from(
+      editor.view.dom.querySelectorAll(".mdb-slash-item-label"),
+    ).map((el) => el.textContent);
+    expect(labels).toContain("分栏");
+    expect(labels).toContain("1 栏");
+  });
+});
