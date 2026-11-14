@@ -32,7 +32,7 @@ import {
   undoOnce,
 } from "./editors/keybindings";
 import { saveAppConfig, useConfig } from "./hooks/useConfig";
-import { nextRailState, RAIL_KIND_ORDER } from "./lib/railView";
+import { RAIL_KIND_ORDER } from "./lib/railView";
 import type { FileTypeKind } from "./lib/fileType";
 import { log } from "./utils/log";
 import { popOverlay, pushOverlay } from "./lib/overlayGate";
@@ -502,17 +502,22 @@ function App() {
         store.closeTab(activeTabId);
       }
 
-      // Cmd+\ : 阅读空间栏（layout-portal 6.1）与沉浸阅读（A-5）共用此键。
-      // 栏已展开（钉住/悬停）时收/钉栏；折叠态时不抢键，仍是沉浸阅读切换。
+      // Cmd+Alt+\ : 固定 / 取消固定左边栏（layout-portal 6.1 / D4）。
+      // 钉住 ↔ 悬停；折叠态先展开为钉住。必须排在 ⌘\ 之前（同键，先判 alt）。
+      if (meta && e.altKey && e.key === "\\") {
+        e.preventDefault();
+        store.setRailState(store.railState === "pinned" ? "hover" : "pinned");
+        return;
+      }
+
+      // Cmd+\ : 统一切换左边栏可见性——折叠态切到钉住，钉住 / 悬停切到折叠。
+      // 不再在折叠态兼作沉浸阅读（沉浸阅读由 ⌘⇧F 专责）。
       if (meta && e.key === "\\") {
         e.preventDefault();
-        if (store.railState === "pinned" || store.railState === "hover") {
-          store.setRailState(
-            nextRailState(store.railState, { type: "toggle-key" }),
-          );
-        } else {
-          store.setReadingMode(!store.readingMode);
-        }
+        store.setRailState(
+          store.railState === "collapsed" ? "pinned" : "collapsed",
+        );
+        return;
       }
 
       // Cmd+Shift+T : Toggle chrome visibility inside immersive mode — A-5

@@ -57,7 +57,7 @@ export const SHORTCUT_FAMILY_ORDER: readonly ShortcutFamily[] = [
 ];
 
 export const SHORTCUTS: readonly ShortcutDef[] = [
-  // ── 全局（9）──────────────────────────────────────────────
+  // ── 全局（10）─────────────────────────────────────────────
   {
     id: "global-quick-open",
     keys: "⌘P",
@@ -73,7 +73,14 @@ export const SHORTCUTS: readonly ShortcutDef[] = [
     label: "阅读空间",
     family: "global",
     core: true,
-    decision: "折叠态兼作沉浸阅读",
+    decision: "折叠态不切沉浸阅读（⌘⇧F 专责）",
+    implemented: true,
+  },
+  {
+    id: "global-rail-pin",
+    keys: "⌘⌥\\",
+    label: "固定 / 取消固定左边栏",
+    family: "global",
     implemented: true,
   },
   {
