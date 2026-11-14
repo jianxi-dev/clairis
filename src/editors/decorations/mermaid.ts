@@ -10,7 +10,7 @@
  * 后代。
  */
 import type { Range } from "@codemirror/state";
-import { Decoration, WidgetType } from "@codemirror/view";
+import { Decoration, WidgetType, type EditorView } from "@codemirror/view";
 
 export type MermaidTheme = "dark" | "light";
 
@@ -28,7 +28,7 @@ function currentTheme(): MermaidTheme {
     : "light";
 }
 
-interface MermaidBlock {
+export interface MermaidBlock {
   from: number;
   to: number;
   source: string;
@@ -41,7 +41,7 @@ const FENCE_CLOSE_RE = /^( {0,3})(`{3,}|~{3,})[ \t]*$/;
  * 找出所有 ```mermaid / ~~~mermaid 块。范围按整行算：开栏行首 → 闭栏行尾
  * （`block: true` 要求范围对齐行边界）。未闭合围栏延伸到文末。
  */
-function parseMermaidBlocks(docText: string): MermaidBlock[] {
+export function parseMermaidBlocks(docText: string): MermaidBlock[] {
   const lines = docText.split("\n");
   const offsets: number[] = [];
   let acc = 0;
@@ -89,6 +89,8 @@ function parseMermaidBlocks(docText: string): MermaidBlock[] {
 class MermaidWidget extends WidgetType {
   constructor(
     private readonly _source: string,
+    private readonly _from: number,
+    private readonly _to: number,
     private readonly _hydrate: MermaidHydrator,
     private readonly _theme: MermaidTheme,
   ) {
@@ -96,12 +98,20 @@ class MermaidWidget extends WidgetType {
   }
 
   eq(other: MermaidWidget): boolean {
-    return other._source === this._source;
+    return (
+      other._source === this._source &&
+      other._from === this._from &&
+      other._to === this._to
+    );
   }
 
   toDOM(): HTMLElement {
     const container = document.createElement("div");
     container.className = "cm-mermaid-block";
+    // 手柄按块装饰的屏幕矩形锚定（design D1 / A3）：暴露围栏范围，
+    // 让块手柄能直接找到本块 widget，而不是用文档坐标反推（那会落到右边）。
+    container.dataset.mermaidFrom = String(this._from);
+    container.dataset.mermaidTo = String(this._to);
 
     const block = document.createElement("div");
     block.classList.add("mermaid-block");
@@ -118,6 +128,20 @@ class MermaidWidget extends WidgetType {
       // 忽略——源码仍然可见，块仍然可编辑
     }
     return container;
+  }
+
+  /**
+   * 偏移变化（在上方编辑）时复用同一 DOM，只刷新锚点数据集。
+   *
+   * `eq` 含 from/to，所以偏移一变就失配；若直接重建会重新水合整块图
+   * （长文档里每个 mermaid 块都闪一次）。CM6 的 `findWidget` 二论走
+   * `updateDOM`：源码相同就复用，只有源码真变了才返回 false 让 CM6 重建。
+   */
+  updateDOM(dom: HTMLElement, _view: EditorView, from: MermaidWidget): boolean {
+    if (from._source !== this._source) return false;
+    dom.dataset.mermaidFrom = String(this._from);
+    dom.dataset.mermaidTo = String(this._to);
+    return true;
   }
 
   /**
@@ -155,7 +179,13 @@ export function createMermaidDecorations(
       // 「首行 replace + 其余行 line 装饰」会与 replace 区间重叠，CM6 直接
       // 拒绝整批装饰，widget 一个都不会出现。
       Decoration.replace({
-        widget: new MermaidWidget(block.source, hydrate, resolvedTheme),
+        widget: new MermaidWidget(
+          block.source,
+          block.from,
+          block.to,
+          hydrate,
+          resolvedTheme,
+        ),
         block: true,
       }).range(block.from, block.to),
     );

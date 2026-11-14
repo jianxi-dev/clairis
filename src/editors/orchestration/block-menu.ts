@@ -256,6 +256,7 @@ function anchorRectAt(
   pos: number,
   handle: HTMLElement | null,
   blockType: BlockType | "",
+  mermaid = false,
 ): AnchorRect {
   const clamped = Math.max(0, Math.min(pos, view.state.doc.length));
   let row: ReturnType<EditorView["coordsAtPos"]> | null = null;
@@ -267,12 +268,12 @@ function anchorRectAt(
   const rect = rectFromCoords(row, view.documentTop);
   if (!handle) return rect;
   const handleRect = handle.getBoundingClientRect();
-  const top =
-    blockType === "image" || blockType === "table" ? handleRect.top : rect.top;
-  const bottom =
-    blockType === "image" || blockType === "table"
-      ? handleRect.bottom
-      : rect.bottom;
+  // mermaid 块装饰是整块 widget，纵向没有「指针行」；贴手柄才能让菜单中心
+  // 与手柄中心对齐（≤2px），否则菜单会甩到整块中部（design D1 / A3）。
+  const stickToHandle =
+    blockType === "image" || blockType === "table" || mermaid;
+  const top = stickToHandle ? handleRect.top : rect.top;
+  const bottom = stickToHandle ? handleRect.bottom : rect.bottom;
   return {
     left: handleRect.left,
     right: handleRect.right,
@@ -324,9 +325,10 @@ function positionPanel(
   anchorPos: number,
   handle: HTMLElement | null,
   blockType: BlockType | "",
+  mermaid = false,
 ): void {
   const own = view.dom.getBoundingClientRect();
-  const anchor = anchorRectAt(view, anchorPos, handle, blockType);
+  const anchor = anchorRectAt(view, anchorPos, handle, blockType, mermaid);
   const bounds = intersectRects(viewportRect(), boxRect(own));
   fitPanelToHeight(panel, Math.max(0, bounds.height - 16));
   const box = panel.getBoundingClientRect();
@@ -873,7 +875,14 @@ export function openBlockMenu(
   }
 
   view.dom.appendChild(panel);
-  positionPanel(view, panel, anchorPos ?? block.from, handle, block.type);
+  positionPanel(
+    view,
+    panel,
+    anchorPos ?? block.from,
+    handle,
+    block.type,
+    block.mermaid === true,
+  );
 
   // CM6 keymap 只在编辑器聚焦时触发；块菜单是 hover 召唤，焦点可能还在别处，
   // 所以自己接一个捕获阶段的 Esc（只负责本视图的块菜单层）。

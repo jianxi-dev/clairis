@@ -39,6 +39,7 @@ import {
 } from "./hover-gate";
 import { menuStack } from "./menu-stack";
 import { classifyMedia, scanImageReference } from "../decorations/image";
+import { parseMermaidBlocks } from "../decorations/mermaid";
 
 // --- 纯函数 ------------------------------------------------------------------
 
@@ -150,6 +151,8 @@ export function moveBlock(
 
 /** 手柄宽度（px）；用于把药丸摆在块左侧。 */
 const HANDLE_WIDTH_PX = 42;
+/** 手柄高度（px），与 editor.css 的 `.cm-block-handle` 一致。 */
+const HANDLE_HEIGHT_PX = 26;
 /** 手柄与块之间的水平间距（px）。 */
 const HANDLE_GAP_PX = 4;
 /** 按下后移动超过这个距离才算拖动，否则视为点击。 */
@@ -202,12 +205,15 @@ interface BlockRange {
   from: number;
   to: number;
   type: BlockType | "";
+  /** mermaid 围栏块：手柄锚定到块装饰的屏幕矩形，菜单贴手柄而非整块。 */
+  mermaid?: boolean;
 }
 
 interface HandleEntry {
   el: HTMLDivElement;
   block: BlockRange;
   empty: boolean;
+  mermaid: boolean;
   gate: HoverGate;
   timer: number | null;
   hovered: boolean;
@@ -224,6 +230,8 @@ interface HandleEntry {
    * 长段落/折行时不能锚在 block.from，否则手柄会跑到块顶。
    */
   anchorPos: number | null;
+  /** 指针的视口 Y：mermaid 整块 widget 用它把手柄夹在块矩形内。 */
+  anchorClientY: number | null;
 }
 
 function pointerKind(type: string): PointerKind {
@@ -273,7 +281,7 @@ class BlockHandlePlugin {
   /** 重算所有手柄位置（不重建 DOM）。 */
   private reposition(): void {
     for (const handle of this.handles) {
-      this.position(handle.el, handle.anchorPos ?? handle.block.from);
+      this.position(handle.el, handle.anchorPos ?? handle.block.from, handle);
     }
   }
 
@@ -331,15 +339,26 @@ class BlockHandlePlugin {
         });
         if (pos !== null) {
           // 空行「+」也要能被召唤：它的范围退化为于点（from === to）。
-          const hit = this.handles.find(
-            (handle) => pos >= handle.block.from && pos <= handle.block.to,
-          );
+          // 嵌套 mermaid 围栏与外层列表块重叠时，取范围最小的那个，
+          // 否则列表手柄会盖住围栏手柄（A-3.3）。
+          let hit: HandleEntry | null = null;
+          for (const handle of this.handles) {
+            if (pos < handle.block.from || pos > handle.block.to) continue;
+            if (
+              hit === null ||
+              handle.block.to - handle.block.from <
+                hit.block.to - hit.block.from
+            ) {
+              hit = handle;
+            }
+          }
           if (hit) {
             activeFrom = hit.block.from;
             hit.anchorPos = Math.min(
               Math.max(pos, hit.block.from),
               hit.block.to,
             );
+            hit.anchorClientY = event.clientY;
           }
         }
       }
@@ -396,12 +415,41 @@ class BlockHandlePlugin {
     this.clearHandles();
     const doc = this.view.state.doc;
     const blocks = getBlocks(this.view.state);
+    const docText = doc.toString();
+    // mermaid 围栏可能与顶层块范围不同：列表项内的围栏不是顶层 Lezer 块，
+    // getBlocks 看不见它，但 mermaid 装饰仍然渲染了它（A-3.1 / A-3.3）。
+    const mermaids = parseMermaidBlocks(docText);
+    const rangeKey = (from: number, to: number): string => `${from}:${to}`;
+    const mermaidKeys = new Set(
+      mermaids.map((block) => rangeKey(block.from, block.to)),
+    );
+    const blockKeys = new Set(
+      blocks.map((block) => rangeKey(block.from, block.to)),
+    );
     const covered = (pos: number): boolean =>
       blocks.some((block) => pos >= block.from && pos < block.to);
 
     for (const block of blocks) {
       this.addHandle(
-        { from: block.from, to: block.to, type: block.type },
+        {
+          from: block.from,
+          to: block.to,
+          type: block.type,
+          mermaid: mermaidKeys.has(rangeKey(block.from, block.to)),
+        },
+        false,
+      );
+    }
+    // 嵌套围栏（列表项 / 引用块内）没有对应的顶层块，单独补手柄。
+    for (const fence of mermaids) {
+      if (blockKeys.has(rangeKey(fence.from, fence.to))) continue;
+      this.addHandle(
+        {
+          from: fence.from,
+          to: fence.to,
+          type: "fencedCode",
+          mermaid: true,
+        },
         false,
       );
     }
@@ -436,6 +484,7 @@ class BlockHandlePlugin {
       el,
       block,
       empty,
+      mermaid: block.mermaid === true,
       gate: new HoverGate(),
       timer: null,
       hovered: false,
@@ -447,6 +496,7 @@ class BlockHandlePlugin {
       onUp: () => {},
       menuTimer: null,
       anchorPos: null,
+      anchorClientY: null,
     };
 
     if (empty) {
@@ -555,7 +605,7 @@ class BlockHandlePlugin {
       );
     }
 
-    this.position(el, block.from);
+    this.position(el, block.from, entry);
     this.view.dom.appendChild(el);
     this.handles.push(entry);
   }
@@ -567,29 +617,58 @@ class BlockHandlePlugin {
    * CM6 的高度图可能还没测量，`coordsAtPos` 会把所有位置算成同一行），
    * 拿不到再退回 `coordsAtPos`，最后退回 `documentTop`。
    */
-  private position(el: HTMLElement, pos: number): void {
+  private position(el: HTMLElement, pos: number, entry: HandleEntry): void {
     const base = this.view.dom.getBoundingClientRect();
-    let top = 0;
-    let left = 0;
+    let top: number | null = null;
+    let left: number | null = null;
 
-    const lineRect = this.lineRectAt(pos);
-    if (lineRect) {
-      top = lineRect.top - base.top;
-      left = lineRect.left - base.left;
-    } else {
-      try {
-        const coords = this.view.coordsAtPos(pos);
-        if (coords) {
-          top = coords.top - base.top;
-          left = coords.left - base.left;
-        }
-      } catch {
-        // 未测量：保持 0，由下一次 reposition 修正。
+    // mermaid 是整块 widget：文档坐标会解析到 widget 的右边界（指针在下半部时
+    // 更明显），手柄必须直接取块装饰的屏幕矩形（design D1 / A3）。
+    if (entry.mermaid) {
+      const widget = this.mermaidWidgetRect(entry.block.from);
+      if (widget) {
+        left = widget.left - base.left;
+        const pointerY = entry.anchorClientY ?? widget.top + widget.height / 2;
+        const clampedY = Math.max(
+          widget.top,
+          Math.min(pointerY, widget.bottom),
+        );
+        top = clampedY - base.top - HANDLE_HEIGHT_PX / 2;
       }
+    }
+
+    if (top === null || left === null) {
+      const lineRect = this.lineRectAt(pos);
+      if (lineRect) {
+        top = lineRect.top - base.top;
+        left = lineRect.left - base.left;
+      } else {
+        try {
+          const coords = this.view.coordsAtPos(pos);
+          if (coords) {
+            top = coords.top - base.top;
+            left = coords.left - base.left;
+          }
+        } catch {
+          // 未测量：保持 0，由下一次 reposition 修正。
+        }
+      }
+    }
+    if (top === null || left === null) {
+      top = 0;
+      left = 0;
     }
 
     el.style.top = `${Math.max(0, Math.round(top))}px`;
     el.style.left = `${Math.max(0, Math.round(left - HANDLE_WIDTH_PX - HANDLE_GAP_PX))}px`;
+  }
+
+  /** mermaid 块装饰 widget 的屏幕矩形；未挂载（视口外）时返回 null。 */
+  private mermaidWidgetRect(from: number): DOMRect | null {
+    const el = this.view.dom.querySelector<HTMLElement>(
+      `.cm-mermaid-block[data-mermaid-from="${from}"]`,
+    );
+    return el ? el.getBoundingClientRect() : null;
   }
 
   /** 位置所在行的几何矩形；DOM 里找不到时返回 null。 */
