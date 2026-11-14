@@ -274,20 +274,13 @@ test("围栏代码块里的 Markdown 标记不被渲染成块级语法", async (
   }
 });
 
-test("引用块与代码块文字列宽度与正文行等宽", async ({ page }) => {
+test("引用块与代码块边框与正文行盒左右对齐", async ({ page }) => {
   await openInEditMode(page);
 
-  const editWidths = await page.evaluate(() => {
-    const contentWidth = (el: Element) => {
+  const editEdges = await page.evaluate(() => {
+    const edges = (el: Element) => {
       const r = el.getBoundingClientRect();
-      const cs = getComputedStyle(el);
-      return (
-        r.width -
-        parseFloat(cs.paddingLeft) -
-        parseFloat(cs.paddingRight) -
-        parseFloat(cs.borderLeftWidth) -
-        parseFloat(cs.borderRightWidth)
-      );
+      return { left: Math.round(r.left), right: Math.round(r.right) };
     };
     const normal = document.querySelector<HTMLElement>(
       ".cm-editor .cm-line:not(.cm-quote):not(.cm-fenced-code)",
@@ -300,13 +293,13 @@ test("引用块与代码块文字列宽度与正文行等宽", async ({ page }) 
     );
     if (!normal || !quote || !fence) return null;
     return {
-      normal: contentWidth(normal),
-      quote: contentWidth(quote),
-      fence: contentWidth(fence),
+      normal: edges(normal),
+      quote: edges(quote),
+      fence: edges(fence),
     };
   });
 
-  expect(editWidths).not.toBeNull();
+  expect(editEdges).not.toBeNull();
   await page.evaluate(() => {
     document
       .querySelector(".cm-editor .cm-line.cm-quote")
@@ -349,8 +342,10 @@ test("引用块与代码块文字列宽度与正文行等宽", async ({ page }) 
   expect(previewWidths).not.toBeNull();
   await shot(page, "03-preview-quote");
 
-  const quoteDiff = Math.round(editWidths!.quote - editWidths!.normal);
-  const fenceDiff = Math.round(editWidths!.fence - editWidths!.normal);
+  const quoteLeft = editEdges!.quote.left - editEdges!.normal.left;
+  const quoteRight = editEdges!.quote.right - editEdges!.normal.right;
+  const fenceLeft = editEdges!.fence.left - editEdges!.normal.left;
+  const fenceRight = editEdges!.fence.right - editEdges!.normal.right;
   const previewDiff = Math.round(previewWidths!.bq - previewWidths!.p);
 
   await page.evaluate(
@@ -365,8 +360,8 @@ test("引用块与代码块文字列宽度与正文行等宽", async ({ page }) 
     },
     [
       `preview blockquote ${previewWidths!.bq} vs p ${previewWidths!.p} (diff ${previewDiff})`,
-      `edit quote ${editWidths!.quote} vs normal ${editWidths!.normal} (diff ${quoteDiff})`,
-      `edit fence ${editWidths!.fence} vs normal ${editWidths!.normal} (diff ${fenceDiff})`,
+      `edit quote ${editEdges!.quote.left}..${editEdges!.quote.right} vs normal ${editEdges!.normal.left}..${editEdges!.normal.right} (left ${quoteLeft}, right ${quoteRight})`,
+      `edit fence ${editEdges!.fence.left}..${editEdges!.fence.right} vs normal ${editEdges!.normal.left}..${editEdges!.normal.right} (left ${fenceLeft}, right ${fenceRight})`,
     ].join("\n"),
   );
   await shot(page, "04-before-after-widths");
@@ -383,12 +378,12 @@ test("引用块与代码块文字列宽度与正文行等宽", async ({ page }) 
           {
             state: "edit-quote",
             screenshot: ".artifacts/700/01-edit-quote.png",
-            assertion: `passed: quote contentWidth ${editWidths!.quote} == normal ${editWidths!.normal} (diff ${quoteDiff})`,
+            assertion: `passed: quote border box ${editEdges!.quote.left}..${editEdges!.quote.right} == normal ${editEdges!.normal.left}..${editEdges!.normal.right}`,
           },
           {
             state: "edit-code",
             screenshot: ".artifacts/700/02-edit-code.png",
-            assertion: `passed: fence contentWidth ${editWidths!.fence} == normal ${editWidths!.normal} (diff ${fenceDiff})`,
+            assertion: `passed: fence border box ${editEdges!.fence.left}..${editEdges!.fence.right} == normal ${editEdges!.normal.left}..${editEdges!.normal.right}`,
           },
           {
             state: "preview-quote",
@@ -398,7 +393,7 @@ test("引用块与代码块文字列宽度与正文行等宽", async ({ page }) 
           {
             state: "before-after-widths",
             screenshot: ".artifacts/700/04-before-after-widths.png",
-            assertion: `passed: three text-column diffs all 0 (quote ${quoteDiff}, fence ${fenceDiff}, preview ${previewDiff})`,
+            assertion: `passed: edit quote/fence border left+right diffs all 0 (quote ${quoteLeft}/${quoteRight}, fence ${fenceLeft}/${fenceRight}); preview ${previewDiff}`,
           },
         ],
       },
@@ -407,8 +402,10 @@ test("引用块与代码块文字列宽度与正文行等宽", async ({ page }) 
     ),
   );
 
-  expect(quoteDiff).toBe(0);
-  expect(fenceDiff).toBe(0);
+  expect(quoteLeft).toBe(0);
+  expect(quoteRight).toBe(0);
+  expect(fenceLeft).toBe(0);
+  expect(fenceRight).toBe(0);
   expect(previewDiff).toBe(0);
 });
 
