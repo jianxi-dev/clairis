@@ -518,14 +518,17 @@ class BlockHandlePlugin {
       );
       el.appendChild(icon);
 
-      // 图片块手柄只留图片图标（D18 / A-9.3：手柄内 svg[data-icon] 恰 1 个）。
-      // 拖拽监听挂在整块手柄上，去掉右段把手不改变拖块行为。
-      if (block.type !== "image") {
-        const grip = document.createElement("span");
-        grip.className = "cm-block-handle-grip";
-        grip.appendChild(renderIcon("DragOutlined"));
-        el.appendChild(grip);
-      }
+      // 右段拖拽把手：其余块用四点（DragOutlined）；图片 / 视频块用六点
+      // （DragHandleOutlined，A-8.1 与参考产品的六点拖拽一致）。拖拽监听挂在
+      // 整块手柄上，把手只是 affordance。
+      const grip = document.createElement("span");
+      grip.className = "cm-block-handle-grip";
+      grip.appendChild(
+        renderIcon(
+          block.type === "image" ? "DragHandleOutlined" : "DragOutlined",
+        ),
+      );
+      el.appendChild(grip);
     }
 
     // 滑入即显示（D2 规则 1）＋意图延迟（对齐 md-bundle 的 120ms 缓冲）：
@@ -658,9 +661,31 @@ class BlockHandlePlugin {
       top = 0;
       left = 0;
     }
+    // 图片 / 视频行满纸宽，左缘比正文列窄一个居中位；手柄改贴正文列左缘，
+    // 与标题手柄同一中心线（A-8.2）。
+    if (entry.block.type === "image") left = this.textColumnLeft(base);
 
     el.style.top = `${Math.max(0, Math.round(top))}px`;
     el.style.left = `${Math.max(0, Math.round(left - HANDLE_WIDTH_PX - HANDLE_GAP_PX))}px`;
+  }
+
+  /**
+   * 正文列左缘（px，相对 `view.dom`）。
+   *
+   * `.cm-line` 的 `max-width: var(--type-measure)` + `margin-inline: auto` 让正文行
+   * 在 `.cm-content` 内居中；图片 / 视频行被 `max-width: 100%` 覆盖，左缘落在纸边。
+   */
+  private textColumnLeft(base: DOMRect): number {
+    const content = this.view.contentDOM;
+    const rect = content.getBoundingClientRect();
+    const style = getComputedStyle(content);
+    const padLeft = parseFloat(style.paddingLeft) || 0;
+    const padRight = parseFloat(style.paddingRight) || 0;
+    const boxWidth = rect.width - padLeft - padRight;
+    const measure =
+      parseFloat(style.getPropertyValue("--type-measure")) || 1080;
+    const offset = Math.max(0, (boxWidth - measure) / 2);
+    return rect.left + padLeft + offset - base.left;
   }
 
   /** mermaid 块装饰 widget 的屏幕矩形；未挂载（视口外）时返回 null。 */

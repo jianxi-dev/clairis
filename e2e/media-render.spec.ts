@@ -397,7 +397,7 @@ test("编辑态视频块：2/3 宽居中、可播放、拖把手调宽、块手�
   );
   await expect(container.locator(".cm-image-handle")).toHaveCount(0);
 
-  // 块手柄图标严格为 VideoOutlined。
+  // 块手柄图标为 VideoOutlined + 六点拖拽（A-8.1）。
   const contentBox = await page.evaluate(() => {
     const rect = (
       document.querySelector(".cm-content") as HTMLElement
@@ -417,5 +417,5 @@ test("编辑态视频块：2/3 宽居中、可播放、拖把手调宽、块手�
       svg.getAttribute("data-icon"),
     ),
   );
-  expect(icons).toEqual(["VideoOutlined"]);
+  expect(icons).toEqual(["VideoOutlined", "DragHandleOutlined"]);
 });
