@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { ANCHOR_TOLERANCE_PX, EDITOR_ANCHORS } from "./fixtures/editor-anchors";
+import { summonAddHandle } from "./helpers/block-handle";
 import {
   boxOf,
   centerOf,
@@ -220,6 +221,8 @@ test.describe("空行「+」手柄", () => {
     await openMarkdownInEdit(page, "第一段\n\n\n第二段\n", "fidelity-plus");
     const plus = page.locator('[data-empty="true"]').first();
     await expect(plus).toHaveCount(1);
+    // 未显现的手柄 pointer-events:none，先按 D5 在左缘召唤区停留再悬停（#800）。
+    await summonAddHandle(page, plus.locator(".cm-block-handle-add"));
     await plus.hover();
     // 给意图延迟留足时间：如果监听还挂在空行手柄上，这里就会弹出转换菜单。
     await page.waitForTimeout(400);

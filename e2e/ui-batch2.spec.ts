@@ -44,7 +44,7 @@ test("分割线默认可见，且颜色走主题变量", async ({ page }) => {
   await page.screenshot({ path: path.join(ART, "divider.png") });
 });
 
-test("聚焦栏有可见内描边", async ({ page }) => {
+test("聚焦栏不绘制强调色内描边（navigation:109）", async ({ page }) => {
   await boot(page);
   await openFile(page, "/tmp/batch2/focus.md");
   await page.keyboard.press("Control+Alt+ArrowRight");
@@ -56,7 +56,8 @@ test("聚焦栏有可见内描边", async ({ page }) => {
       const shadows = await page
         .locator('[data-pane-id][data-focused="true"]')
         .evaluateAll((els) => els.map((e) => getComputedStyle(e).boxShadow));
-      return shadows.some((s) => s !== "none");
+      // 规格：聚焦语义由页签与内容表达，禁止 1.5px 强调色内描边（拖拽落区环除外）。
+      return shadows.every((s) => s === "none" || !/inset/.test(s));
     })
     .toBe(true);
   await page.screenshot({ path: path.join(ART, "focus.png") });

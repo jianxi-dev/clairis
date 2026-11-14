@@ -14,17 +14,12 @@ async function boot(page: Page): Promise<void> {
   await page.waitForTimeout(300);
 }
 
-test("悬停功能按钮满 1 分钟出现胶囊提示，原生矩形不再出现", async ({
-  page,
-}) => {
+test("悬停功能按钮出现胶囊提示，原生矩形不再出现", async ({ page }) => {
   await boot(page);
-  await page.clock.install();
   const btn = page.getByTestId("home-entry");
   await btn.hover();
   const tip = page.locator(".app-tip");
-  await page.waitForTimeout(1200);
-  await expect(tip).toHaveCount(0);
-  await page.clock.fastForward(60_000);
+  // 未配置「提示时长」时回退 400ms（TooltipLayer）；这里只验证按默认延迟出现。
   await expect(tip).toBeVisible({ timeout: 3000 });
 
   const shape = await tip.evaluate((el) => {
