@@ -25,6 +25,7 @@ import {
   type SlashCommand,
 } from "../slash";
 import { renderIcon } from "../icons";
+import { renderBlockDom } from "./block-dom";
 
 const OPEN_RE = /^ {0,3}:::\s*\{([^}]*)\}\s*$/;
 const CLOSE_RE = /^ {0,3}:::\s*$/;
@@ -172,8 +173,10 @@ function openColumnEditor(
   area.value = initial;
   area.rows = 1;
   // 就地编辑器与栏正文同占一格：不摘掉静态文本会重复显示同一段文字（A-4.1）。
-  const restoreText = host.textContent ?? "";
-  host.textContent = "";
+  // 快照子节点而不是 textContent——栏正文现在是块级渲染结果，文本还原会让
+  // Esc 取消后标题 / 列表退回源码格式。
+  const restoreNodes = Array.from(host.childNodes);
+  host.replaceChildren();
   host.appendChild(area);
   area.focus();
   area.setSelectionRange(area.value.length, area.value.length);
@@ -182,7 +185,7 @@ function openColumnEditor(
 
   const teardown = (): void => {
     area.remove();
-    host.textContent = restoreText;
+    host.replaceChildren(...restoreNodes);
     host.removeAttribute("data-editing");
     columnMenuOpeners.delete(host);
     columnMenus.delete(area);
@@ -508,6 +511,9 @@ class ColumnsWidget extends WidgetType {
     const CLOSE_DELAY_MS = 120;
     let activeCol = 0;
     let closeTimer: number | null = null;
+    /** 指针是否正压在本栏「+」上：此时容器若因开编辑器重建 hover 而补发
+     *  mouseenter，不得把把手重置回第 0 栏（A-4.3 的把手定位稳定性）。 */
+    let handleHover = false;
 
     const cancelClose = (): void => {
       if (closeTimer !== null) {
@@ -574,17 +580,25 @@ class ColumnsWidget extends WidgetType {
       },
       { passive: true },
     );
-    container.addEventListener("mouseenter", () => position(0), {
-      passive: true,
-    });
+    container.addEventListener(
+      "mouseenter",
+      () => {
+        if (!handleHover) position(0);
+      },
+      { passive: true },
+    );
     container.addEventListener("pointerleave", scheduleClose);
 
     handle.addEventListener("pointerenter", () => {
+      handleHover = true;
       cancelClose();
       if (isSlashMenuOpen(view)) return;
       openAt(activeCol);
     });
-    handle.addEventListener("pointerleave", scheduleClose);
+    handle.addEventListener("pointerleave", () => {
+      handleHover = false;
+      scheduleClose();
+    });
     handle.addEventListener("mousedown", (event) => {
       event.preventDefault();
       event.stopPropagation();
@@ -609,7 +623,7 @@ class ColumnsWidget extends WidgetType {
 
     const body = document.createElement("div");
     body.className = "cm-column-body";
-    body.textContent = cell.text;
+    body.replaceChildren(renderBlockDom(cell.text));
     if (!cell.text) body.dataset.placeholder = "输入内容…";
     // 按下就打开本栏的就地编辑器（#450）。改为选中源码范围会把光标放到块首行，
     // 输入就落到栏外。
