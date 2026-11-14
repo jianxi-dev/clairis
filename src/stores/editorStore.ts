@@ -7,7 +7,6 @@ import type {
   EditorMode,
   HeadingColors,
   TranslationState,
-  RawMarkdown,
 } from "../types";
 
 export interface EditorStore {

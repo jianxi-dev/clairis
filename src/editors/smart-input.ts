@@ -11,12 +11,7 @@
  * 也无法表达 `[` 依赖前一个字符（`!`）的上下文。
  */
 
-import {
-  EditorView,
-  keymap,
-  ViewPlugin,
-  type ViewUpdate,
-} from "@codemirror/view";
+import { EditorView, keymap, ViewPlugin } from "@codemirror/view";
 import { EditorState, type Extension, Prec } from "@codemirror/state";
 import { syntaxTree } from "@codemirror/language";
 import {
