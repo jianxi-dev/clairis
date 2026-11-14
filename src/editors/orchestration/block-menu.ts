@@ -100,6 +100,27 @@ export function dismissBlockFlyouts(view: EditorView): void {
 
 const HIDE_DELAY_MS = 150;
 
+/** 二级面板（flyout 与「在下方添加」斜杠菜单）选择器。 */
+const SECONDARY_PANEL_SEL = "[data-block-flyout], .mdb-slash-menu";
+
+/**
+ * 节点是否落在「父菜单 ∪ 二级面板」并集里。
+ *
+ * 父面板登记在菜单栈（`containsElement`）；二级面板是 view.dom 下的浮动节点，
+ * 按 DOM 包含关系判定。pointerleave 用它判断「是否真的离开了并集」，比
+ * keepOpen 标记更直接——后者依赖进入 / 离开事件的成对时序。
+ */
+function isInsideMenuUnion(
+  view: EditorView,
+  node: EventTarget | null,
+): boolean {
+  if (!(node instanceof Node)) return false;
+  if (menuStack.containsElement(node)) return true;
+  return Array.from(
+    view.dom.querySelectorAll<HTMLElement>(SECONDARY_PANEL_SEL),
+  ).some((el) => el === node || el.contains(node));
+}
+
 /** 结构动作组：直接在源码上执行的块级操作。 */
 const ACTION_ROWS: ReadonlyArray<readonly [string, string, string]> = [
   ["复制块", "CopyOutlined", "duplicate"],
@@ -350,7 +371,9 @@ export function openBlockMenu(
     cancelPendingClose(view);
     cancelAnchorClose(view);
   });
-  panel.addEventListener("pointerleave", () => scheduleClose(view));
+  panel.addEventListener("pointerleave", (event) => {
+    if (!isInsideMenuUnion(view, event.relatedTarget)) scheduleClose(view);
+  });
 
   const items = blockMenuItems(block);
   if (items.length > 0) {
@@ -516,9 +539,10 @@ export function openBlockMenu(
           releaseTypeKeepOpen = keepColorPanelOpen(menuStack, view);
         }
       });
-      panelEl.addEventListener("pointerleave", () => {
+      panelEl.addEventListener("pointerleave", (event) => {
         releaseTypeKeepOpen?.();
         releaseTypeKeepOpen = null;
+        if (isInsideMenuUnion(view, event.relatedTarget)) return;
         scheduleClose(view);
       });
       typePanel = panelEl;
@@ -621,9 +645,10 @@ export function openBlockMenu(
           releaseColorKeepOpen = keepColorPanelOpen(menuStack, view);
         }
       });
-      panelEl.addEventListener("pointerleave", () => {
+      panelEl.addEventListener("pointerleave", (event) => {
         releaseColorKeepOpen?.();
         releaseColorKeepOpen = null;
+        if (isInsideMenuUnion(view, event.relatedTarget)) return;
         scheduleClose(view);
       });
       colorPanel = panelEl;
@@ -732,9 +757,10 @@ export function openBlockMenu(
         releaseAlignKeepOpen = keepColorPanelOpen(menuStack, view);
       }
     });
-    panelEl.addEventListener("pointerleave", () => {
+    panelEl.addEventListener("pointerleave", (event) => {
       releaseAlignKeepOpen?.();
       releaseAlignKeepOpen = null;
+      if (isInsideMenuUnion(view, event.relatedTarget)) return;
       scheduleClose(view);
     });
     alignPanel = panelEl;
@@ -805,9 +831,21 @@ export function openBlockMenu(
         },
       );
       // 父菜单保留、二级面板向右展开（#456）；指针跨到面板时不要收起父菜单（#480）。
-      view.dom
-        .querySelector<HTMLElement>(".mdb-slash-menu")
-        ?.addEventListener("pointerenter", () => cancelPendingClose(view));
+      const slashMenu = view.dom.querySelector<HTMLElement>(".mdb-slash-menu");
+      if (slashMenu) {
+        slashMenu.addEventListener("pointerenter", () =>
+          cancelPendingClose(view),
+        );
+        // 斜杠菜单自身只关自己：从它直接移出并集时父菜单会变成孤儿、栈也不释放
+        // （#834）。这里按并集判定，真离开就收整栈。走 scheduleClose 而非同步关闭：
+        // pointerleave 先于本次 pointermove 触发，同步关栈会让紧随的 pointermove
+        // 立刻解除禁召唤、在同一趟移动里又召唤出手柄。
+        slashMenu.addEventListener("pointerleave", (event) => {
+          if (!isInsideMenuUnion(view, event.relatedTarget)) {
+            scheduleClose(view);
+          }
+        });
+      }
     };
 
     let belowTimer: number | null = null;
