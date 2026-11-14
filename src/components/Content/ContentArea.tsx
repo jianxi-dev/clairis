@@ -261,6 +261,7 @@ const editorDecorationOptions: EditorDecorationsOptions = {
     openImageCrop({
       src,
       crop: attrs.crop,
+      from,
       onConfirm: (rect) => {
         const current = getActiveEditorView();
         if (!current) return;
