@@ -572,6 +572,20 @@ describe("slash commands", () => {
     expect(cells().length).toBe(17);
   });
 
+  it('applyQuery("") 保留全量列表（删空查询回归）', () => {
+    insertSlashChar(view);
+    typeText("h1");
+    expect(
+      view.dom.querySelectorAll(".mdb-slash-grid-menu .mdb-slash-item").length,
+    ).toBe(0);
+    backspace();
+    backspace();
+    expect(view.state.doc.toString()).toBe("/");
+    expect(
+      view.dom.querySelectorAll(".mdb-slash-grid-menu .mdb-slash-item").length,
+    ).toBe(17);
+  });
+
   it("shows an empty state for a filter with no match, and a newline closes the menu", () => {
     insertSlashChar(view);
     typeText("zzz");

@@ -14,6 +14,7 @@ import {
   smartInput,
 } from "../../editors/smart-input";
 import { createTestEditor, type TestEditor } from "./testEditor";
+import { insertSlashChar } from "../../editors/slash";
 
 let editor: TestEditor;
 
@@ -594,5 +595,86 @@ describe("全角标点归一（E-13）", () => {
     expect(view.state.doc.toString()).toBe("");
     view.destroy();
     parent.remove();
+  });
+});
+
+describe("词首逗号归一为斜杠（#768）", () => {
+  function input(view: EditorView, text: string): void {
+    const { from, to } = view.state.selection.main;
+    const handlers = view.state.facet(EditorView.inputHandler);
+    const insert = () =>
+      view.state.update({
+        changes: { from, to, insert: text },
+        selection: { anchor: from + text.length },
+        userEvent: "input.type",
+      });
+    const handled = handlers.some((h) => h(view, from, to, text, insert));
+    if (!handled) {
+      view.dispatch({
+        changes: { from, to, insert: text },
+        selection: { anchor: from + text.length },
+        userEvent: "input.type",
+      });
+    }
+  }
+
+  it("词首半角逗号落成斜杠并打开菜单", () => {
+    input(editor.view, ",");
+    expect(editor.view.state.doc.toString()).toBe("/");
+    expect(editor.view.dom.querySelector(".mdb-slash-menu")).not.toBeNull();
+  });
+
+  it("词首全角逗号落成斜杠并打开菜单", () => {
+    input(editor.view, "，");
+    expect(editor.view.state.doc.toString()).toBe("/");
+    expect(editor.view.dom.querySelector(".mdb-slash-menu")).not.toBeNull();
+  });
+
+  it("空白后的逗号同样归一", () => {
+    editor.view.dispatch({
+      changes: { from: 0, insert: "   " },
+      selection: { anchor: 3 },
+    });
+    input(editor.view, ",");
+    expect(editor.view.state.doc.toString()).toBe("   /");
+    expect(editor.view.dom.querySelector(".mdb-slash-menu")).not.toBeNull();
+  });
+
+  it("词中半角逗号不归一、不打开菜单", () => {
+    editor.view.dispatch({
+      changes: { from: 0, insert: "你好" },
+      selection: { anchor: 2 },
+    });
+    input(editor.view, ",");
+    expect(editor.view.state.doc.toString()).toBe("你好,");
+    expect(editor.view.dom.querySelector(".mdb-slash-menu")).toBeNull();
+  });
+
+  it("词中全角逗号落成半角、不打开菜单", () => {
+    editor.view.dispatch({
+      changes: { from: 0, insert: "你好" },
+      selection: { anchor: 2 },
+    });
+    input(editor.view, "，");
+    expect(editor.view.state.doc.toString()).toBe("你好,");
+    expect(editor.view.dom.querySelector(".mdb-slash-menu")).toBeNull();
+  });
+
+  it("围栏代码块内逗号不转换", () => {
+    editor.view.dispatch({
+      changes: { from: 0, insert: "```\n\n```" },
+      selection: { anchor: 4 },
+    });
+    input(editor.view, ",");
+    expect(editor.view.state.doc.toString()).toBe("```\n,\n```");
+    expect(editor.view.dom.querySelector(".mdb-slash-menu")).toBeNull();
+  });
+
+  it("菜单已开时逗号作为查询字符不转换", () => {
+    insertSlashChar(editor.view);
+    expect(editor.view.dom.querySelector(".mdb-slash-menu")).not.toBeNull();
+    input(editor.view, ",");
+    expect(editor.view.state.doc.toString()).toBe("/,");
+    expect(editor.view.dom.querySelector(".mdb-slash-menu")).not.toBeNull();
   });
 });

@@ -19,7 +19,7 @@ import {
 } from "@codemirror/view";
 import { EditorState, type Extension, Prec } from "@codemirror/state";
 import { syntaxTree } from "@codemirror/language";
-import { isSlashMenuOpen } from "./slash";
+import { insertSlashChar, isSlashMenuOpen } from "./slash";
 
 // --- IME 组合守卫 ------------------------------------------------------------
 
@@ -608,6 +608,17 @@ const autoPairInputHandler = EditorView.inputHandler.of(
   },
 );
 
+/** 词首逗号归一为斜杠并打开菜单（#768）：菜单已开或 protected range 内不转换。 */
+const commaSlashInputHandler = EditorView.inputHandler.of(
+  (view, from, _to, text) => {
+    if (composing) return false;
+    if (text !== "," && text !== "，") return false;
+    if (isSlashMenuOpen(view)) return false;
+    if (inProtectedRegion(view.state, from)) return false;
+    return insertSlashChar(view);
+  },
+);
+
 // --- keymap 扩展 -------------------------------------------------------------
 
 const markdownShortcutKeymap = keymap.of([
@@ -771,6 +782,7 @@ export function smartInput(): Extension {
     Prec.highest(smartEnterKeymap),
     Prec.highest(smartBackspaceKeymap),
     autoPairInputHandler,
+    commaSlashInputHandler,
     ...fullwidthPunctuation(),
     Prec.high(headingTabKeymap),
     compositionGuardPlugin,

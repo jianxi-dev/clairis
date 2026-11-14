@@ -108,6 +108,68 @@ test("输入 / 后退格关闭菜单且不留残留", async ({ page }) => {
   await expect.poll(() => storeContent(page), { timeout: 5000 }).toBe("");
 });
 
+test("行首逗号归一为斜杠并打开菜单", async ({ page }) => {
+  await openMarkdownForEditing(page, "/Users/test/slash-comma.md");
+  await page.keyboard.type(",h1");
+
+  await expect(page.locator(".mdb-slash-menu")).toHaveCount(1);
+  await expect.poll(() => storeContent(page), { timeout: 5000 }).toBe("/h1");
+  await expect(page.locator(".mdb-slash-empty")).toHaveCount(1);
+});
+
+test("全角逗号同样归一为斜杠并打开菜单", async ({ page }) => {
+  await openMarkdownForEditing(page, "/Users/test/slash-comma-fullwidth.md");
+  await page.keyboard.type("，h1");
+
+  await expect(page.locator(".mdb-slash-menu")).toHaveCount(1);
+  await expect.poll(() => storeContent(page), { timeout: 5000 }).toBe("/h1");
+});
+
+test("删空查询后恢复全量 17 行", async ({ page }) => {
+  await openMarkdownForEditing(page, "/Users/test/slash-comma-backspace.md");
+  await page.keyboard.type("/h1");
+  const items = page.locator(".mdb-slash-grid-menu .mdb-slash-item");
+  await expect(items).toHaveCount(0);
+
+  await page.keyboard.press("Backspace");
+  await page.keyboard.press("Backspace");
+  await expect(items).toHaveCount(17);
+});
+
+test("代码块内逗号不转换", async ({ page }) => {
+  await page.evaluate(() => {
+    (window as unknown as Record<string, any>).__biaoyue_openFile__(
+      "/Users/test/slash-comma-code.md",
+      "```\nX\n```",
+      "slash-comma-code.md",
+    );
+  });
+  const modeBtn = page.locator('[data-testid="pane-mode"]').first();
+  if ((await modeBtn.getAttribute("data-mode")) !== "edit")
+    await modeBtn.click();
+  const content = page.locator(".cm-content");
+  await content.waitFor({ state: "visible", timeout: 10000 });
+  await content.getByText("X").click();
+  await page.keyboard.press("Home");
+  await page.keyboard.type(",");
+
+  await expect
+    .poll(() => storeContent(page), { timeout: 5000 })
+    .toBe("```\n,X\n```");
+  await expect(page.locator(".mdb-slash-menu")).toHaveCount(0);
+});
+
+test("Esc 关闭逗号归一打开的菜单且无残留", async ({ page }) => {
+  await openMarkdownForEditing(page, "/Users/test/slash-comma-esc.md");
+  await page.keyboard.type(",h1");
+  await expect(page.locator(".mdb-slash-menu")).toHaveCount(1);
+
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".mdb-slash-menu")).toHaveCount(0);
+  await expect(page.locator(".mdb-slash-flyout")).toHaveCount(0);
+  await expect.poll(() => storeContent(page), { timeout: 5000 }).toBe("");
+});
+
 test("表格网格滑入任意格选中左上到指针的矩形，离开再回来保留选中", async ({
   page,
 }) => {
