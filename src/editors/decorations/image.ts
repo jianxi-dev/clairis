@@ -12,7 +12,7 @@
  */
 import type { Range } from "@codemirror/state";
 import { Decoration, WidgetType, EditorView } from "@codemirror/view";
-import { stripAngleWrappers } from "../../lib/mediaUrl";
+import { IMAGE_EXT, stripAngleWrappers, VIDEO_EXT } from "../../lib/mediaUrl";
 import {
   getSelectedImageFrom,
   IMAGE_RESIZE_HANDLES,
@@ -44,19 +44,6 @@ export type ImageCallbacks = ImageToolbarActions;
  */
 export type MediaKind = "image" | "video" | "file";
 
-const VIDEO_EXTENSIONS = new Set(["mp4", "webm", "ogv", "mov", "m4v"]);
-const IMAGE_EXTENSIONS = new Set([
-  "png",
-  "jpg",
-  "jpeg",
-  "gif",
-  "webp",
-  "svg",
-  "avif",
-  "bmp",
-  "ico",
-]);
-
 /** 去掉 query/hash 后的小写扩展名；没有扩展名时返回空串。 */
 function extensionOf(path: string): string {
   const clean = path.split(/[?#]/)[0];
@@ -65,13 +52,15 @@ function extensionOf(path: string): string {
 }
 
 /**
- * 按扩展名分类：无扩展名或图片扩展名算图片，已知视频扩展名算视频，
- * 其余算文件。
+ * 按扩展名分类，与预览渲染器（`src/renderers/markdown.ts`）/
+ * 路径解析（`src/lib/mediaUrl.ts`）共用同一份扩展名表：两边判断不一致会让
+ * 同一引用在编辑态退化成带边框的文件卡片、在阅读态却是图片/视频
+ * （#823：`.heic/.heif` 图片、`.mkv/.avi` 视频）。无扩展名仍按图片处理。
  */
 export function classifyMedia(path: string): MediaKind {
   const ext = extensionOf(path);
-  if (ext !== "" && VIDEO_EXTENSIONS.has(ext)) return "video";
-  if (ext !== "" && !IMAGE_EXTENSIONS.has(ext)) return "file";
+  if (ext !== "" && VIDEO_EXT.has(ext)) return "video";
+  if (ext !== "" && !IMAGE_EXT.has(ext)) return "file";
   return "image";
 }
 
@@ -686,7 +675,12 @@ class ImageWidget extends WidgetType {
           img.style.width = `${this._width}px`;
           img.setAttribute("data-width", String(this._width));
         }
-        if (this._height !== null) {
+        if (this._width !== null && this._height !== null) {
+          // 宽高同给：锁死比例，max-width 夹住宽度时高度跟随缩放（#823）。
+          img.style.aspectRatio = `${this._width} / ${this._height}`;
+          img.style.height = "auto";
+          img.setAttribute("data-height", String(this._height));
+        } else if (this._height !== null) {
           img.style.height = `${this._height}px`;
           img.setAttribute("data-height", String(this._height));
         }

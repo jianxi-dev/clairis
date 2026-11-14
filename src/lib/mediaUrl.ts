@@ -14,9 +14,17 @@ import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 
 export type MediaKind = "image" | "video" | "audio" | "file";
 
-const VIDEO_EXT = new Set(["mp4", "webm", "ogv", "mov", "m4v", "mkv", "avi"]);
-const AUDIO_EXT = new Set(["mp3", "m4a", "wav", "flac", "ogg", "aac"]);
-const IMAGE_EXT = new Set([
+export const VIDEO_EXT = new Set([
+  "mp4",
+  "webm",
+  "ogv",
+  "mov",
+  "m4v",
+  "mkv",
+  "avi",
+]);
+export const AUDIO_EXT = new Set(["mp3", "m4a", "wav", "flac", "ogg", "aac"]);
+export const IMAGE_EXT = new Set([
   "png",
   "jpg",
   "jpeg",

@@ -1,0 +1,82 @@
+{
+  "task": "823-md-edit-media-blocks",
+  "states": [
+    {
+      "state": "edit-image-visible-relative-absolute-asset",
+      "screenshot": ".artifacts/823/edit-image-visible.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-14T20:20:00Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "edit-heic-visible",
+      "screenshot": ".artifacts/823/edit-heic-visible.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-14T20:20:00Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "edit-video-playing",
+      "screenshot": ".artifacts/823/edit-video-playing.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-14T20:20:00Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "crop-pressed",
+      "screenshot": ".artifacts/823/crop-pressed.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-14T20:20:00Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "caption-collapsed",
+      "screenshot": ".artifacts/823/caption-collapsed.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-14T20:20:00Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "caption-expanded",
+      "screenshot": ".artifacts/823/caption-expanded.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-14T20:20:00Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "preview-wide",
+      "screenshot": ".artifacts/823/preview-wide.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-14T20:20:00Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "preview-narrow",
+      "screenshot": ".artifacts/823/preview-narrow.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-14T20:20:00Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "before-edit-heic-mkv-file-card",
+      "screenshot": ".artifacts/823/edit-heic-mkv-file-card.png",
+      "assertion": "failed-before-fix",
+      "recorded_at": "2026-11-14T20:10:00Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "before-toolbar-comment-label",
+      "screenshot": ".artifacts/823/toolbar-comment-label.png",
+      "assertion": "failed-before-fix",
+      "recorded_at": "2026-11-14T20:10:00Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "before-preview-width-distort",
+      "screenshot": ".artifacts/823/preview-width-distort.png",
+      "assertion": "failed-before-fix",
+      "recorded_at": "2026-11-14T20:10:00Z",
+      "runner": "mason@unknown"
+    }
+  ]
+}
