@@ -13,6 +13,8 @@ export interface BlockLike {
   to: number;
   /** 空行退化手柄的 type 为空串。 */
   type: BlockType | "";
+  /** mermaid 围栏块：菜单锚点取手柄矩形，而非整块。 */
+  mermaid?: boolean;
 }
 
 export type BlockConvertTarget =
