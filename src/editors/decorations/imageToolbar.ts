@@ -43,7 +43,7 @@ const BUTTON_SPECS: readonly ButtonSpec[] = [
   },
   {
     testid: "img-toolbar-comment",
-    icon: "TextEditOutlined",
+    icon: "ImageCaptionOutlined",
     label: "添加描述",
     action: "comment",
   },
@@ -263,6 +263,7 @@ export function selectImage(from: number, path: string, alt: string): void {
   captionCollapsed = false;
   applySelection();
   ensureToolbar();
+  setCaptionActive(false);
   updateAlignStates();
   positionToolbar();
   scheduleReposition();
@@ -382,6 +383,7 @@ function createCaptionInput(
     }
     input.remove();
     showCaptionText(caption);
+    setCaptionActive(false);
   };
 
   input.addEventListener("keydown", (event) => {
@@ -395,6 +397,7 @@ function createCaptionInput(
       setCaptionText(caption, widgetEl.dataset.imageTitle ?? "");
       input.remove();
       showCaptionText(caption);
+      setCaptionActive(false);
     }
   });
   // blur 也提交（非丢弃）。主动收尾 / 切换显隐时用标记跳过，避免二次写回。
@@ -420,6 +423,7 @@ function showCaptionInput(caption: HTMLElement, widgetEl: HTMLElement): void {
   input.value = widgetEl.dataset.imageTitle ?? "";
   input.focus();
   input.select();
+  setCaptionActive(true);
 }
 
 function hideCaptionInput(caption: HTMLElement, widgetEl: HTMLElement): void {
@@ -430,6 +434,7 @@ function hideCaptionInput(caption: HTMLElement, widgetEl: HTMLElement): void {
   input.dataset.closing = "1";
   input.style.display = "none";
   showCaptionText(caption);
+  setCaptionActive(false);
   if (value !== "" && value !== current) {
     actions.onImageSetTitle?.(Number(widgetEl.dataset.imageFrom), value);
   }
@@ -552,7 +557,19 @@ function updateCropState(): void {
   const btn = toolbarEl.querySelector<HTMLButtonElement>(
     '[data-testid="img-toolbar-crop"]',
   );
-  btn?.setAttribute("aria-pressed", cropActive ? "true" : "false");
+  if (!btn) return;
+  btn.classList.toggle("is-active", cropActive);
+  btn.setAttribute("aria-pressed", cropActive ? "true" : "false");
+}
+
+/** 「添加描述」按钮选中态：与描述输入区显隐同步（默认未选中）。 */
+function setCaptionActive(active: boolean): void {
+  const btn = toolbarEl?.querySelector<HTMLButtonElement>(
+    '[data-testid="img-toolbar-comment"]',
+  );
+  if (!btn) return;
+  btn.classList.toggle("is-active", active);
+  btn.setAttribute("aria-pressed", active ? "true" : "false");
 }
 
 /** 裁剪框开关：imageCrop 在挂载 / 收尾时调用，工具条同步按下态。 */

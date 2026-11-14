@@ -282,9 +282,8 @@ const editorDecorationOptions: EditorDecorationsOptions = {
             ? parseImageAttributes(latest.attrText)
             : { ...EMPTY_IMAGE_ATTRIBUTES };
         if (rect) {
+          // 保留既有 width/height（缩放锚点），与预览态 boxW=width + aspect-ratio 对齐。
           next.crop = rect;
-          next.width = null;
-          next.height = null;
         } else {
           next.crop = null;
         }
