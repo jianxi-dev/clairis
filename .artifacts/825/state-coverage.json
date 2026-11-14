@@ -1,0 +1,26 @@
+{
+  "task": "825-slash-comma-columns",
+  "states": [
+    {
+      "state": "01-comma-ime-menu",
+      "screenshot": ".artifacts/825/01-comma-ime-menu.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-14T13:18:31.309Z",
+      "runner": "unknown@unknown"
+    },
+    {
+      "state": "02-slash-f-columns",
+      "screenshot": ".artifacts/825/02-slash-f-columns.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-14T13:18:36.482Z",
+      "runner": "unknown@unknown"
+    },
+    {
+      "state": "03-roulette-columns",
+      "screenshot": ".artifacts/825/03-roulette-columns.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-14T13:18:38.026Z",
+      "runner": "unknown@unknown"
+    }
+  ]
+}

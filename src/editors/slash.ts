@@ -154,7 +154,7 @@ function columnCount(count: number): SlashCommand {
   return {
     id: `columns-${count}`,
     label: `${count} 栏`,
-    icon: "ColumnsOutlined",
+    icon: `columns${count}`,
     code: `f${count}`,
     insert(state) {
       const head = state.selection.main.head;
@@ -271,7 +271,7 @@ export const defaultCommands: SlashCommand[] = [
   {
     id: "columns",
     label: "分栏",
-    icon: "ColumnsOutlined",
+    icon: "columns3",
     code: "f",
     group: "常用",
     grid: { rows: 1, cols: 5, kind: "columns" },
@@ -1647,6 +1647,19 @@ export function openSlashMenuAtCursor(
 ): void {
   const head = view.state.selection.main.head;
   openMenu(view, head, commands ?? getSlashCommands());
+}
+
+/**
+ * 在文档中已存在的 `/`（位于 `slashPos`）处打开菜单，不插入字符。
+ * 与 `openSlashMenuAtCursor` 的差别是 slashPos 为斜杠本身的下标，
+ * 用于触发字符已落文档的归一路径（IME 组合提交的逗号 → `/`）。
+ */
+export function openSlashMenuAtSlash(
+  view: EditorView,
+  slashPos: number,
+  commands?: SlashCommand[],
+): void {
+  openMenu(view, slashPos, commands ?? getSlashCommands());
 }
 
 /** ArrowDown：移动浮层选中，或根列表选中，向下。 */
