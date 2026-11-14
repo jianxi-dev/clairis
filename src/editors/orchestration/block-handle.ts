@@ -37,6 +37,7 @@ import {
   HIDE_DELAY_MS,
   type PointerKind,
 } from "./hover-gate";
+import { classifyMedia, scanImageReference } from "../decorations/image";
 
 // --- 纯函数 ------------------------------------------------------------------
 
@@ -54,11 +55,34 @@ const BLOCK_ICON_NAME: Record<string, string> = {
   image: "ImageOutlined",
 };
 
+const AUDIO_EXTENSIONS = new Set([
+  "mp3",
+  "wav",
+  "ogg",
+  "oga",
+  "m4a",
+  "aac",
+  "flac",
+  "opus",
+]);
+
+/** 首行图片引用的扩展名 → 手柄图标名（D13）。 */
+function imageMediaIcon(firstLine: string): string {
+  const start = firstLine.indexOf("![");
+  if (start < 0) return "ImageOutlined";
+  const ref = scanImageReference(firstLine, start);
+  if (!ref) return "ImageOutlined";
+  if (classifyMedia(ref.path) === "video") return "VideoOutlined";
+  const ext = ref.path.split(/[?#]/)[0].split(".").pop()?.toLowerCase() ?? "";
+  return AUDIO_EXTENSIONS.has(ext) ? "AudioOutlined" : "ImageOutlined";
+}
+
 /**
  * 解析块型对应的手柄图标名。
  *
  * `heading` 与 `list` 只说得出大类，具体是哪一级标题、有序还是无序要看首行：
  * 全退化成同一个拖拽把手，用户面前就是一排「文本行图标」（#104）。
+ * 图片块再按首行引用的扩展名区分视频 / 音频 / 图片（D13）。
  * 拿不到首行时退化为 `DragHandleOutlined`，不猜。
  */
 export function blockHandleIcon(type: string, firstLine = ""): string {
@@ -71,6 +95,7 @@ export function blockHandleIcon(type: string, firstLine = ""): string {
       ? "OrderListOutlined"
       : "DisorderListOutlined";
   }
+  if (type === "image") return imageMediaIcon(firstLine);
   return BLOCK_ICON_NAME[type] ?? "DragHandleOutlined";
 }
 

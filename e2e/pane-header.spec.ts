@@ -186,7 +186,7 @@ test("拖动页签换位：顺序严格等于落点；Esc 取消不留占位", a
   expect(await tabOrder(page, "main")).toEqual(order);
 });
 
-test("⋯ 菜单恰好 8 项、每项带图标、无全屏项", async ({ page }) => {
+test("⋯ 菜单恰好 9 项、每项带图标、无全屏项", async ({ page }) => {
   await boot(page);
   await openFile(page, "/tmp/ph/m.md");
 
@@ -194,10 +194,11 @@ test("⋯ 菜单恰好 8 项、每项带图标、无全屏项", async ({ page })
   const menu = page.locator('[data-testid="pane-menu"]');
   await expect(menu).toBeVisible();
   const items = menu.locator("[data-menu-item]");
-  await expect(items).toHaveCount(8);
+  await expect(items).toHaveCount(9);
 
   const labels = (await items.allInnerTexts()).map((t) => t.trim());
   expect(labels).toEqual([
+    "新建文件",
     "导出",
     "分享",
     "右分",

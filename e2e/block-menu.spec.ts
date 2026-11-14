@@ -65,6 +65,37 @@ test("hover 块手柄弹出块菜单，十项转换 + 在下方添加", async ({
   );
 });
 
+test("默认视口转换菜单完整显示：可见行数等于总行数", async ({ page }) => {
+  await hoverHandle(page, 2);
+
+  const info = await page.evaluate(() => {
+    const panel = document.querySelector(
+      '[data-testid="block-menu"]',
+    ) as HTMLElement;
+    const pr = panel.getBoundingClientRect();
+    const rows = Array.from(
+      panel.querySelectorAll(
+        ".cm-block-menu-cell, .cm-block-menu-item, .cm-block-menu-group",
+      ),
+    ) as HTMLElement[];
+    const visible = rows.filter((r) => {
+      const b = r.getBoundingClientRect();
+      return b.top >= pr.top - 1 && b.bottom <= pr.bottom + 1;
+    }).length;
+    return {
+      total: rows.length,
+      visible,
+      scrollHeight: panel.scrollHeight,
+      clientHeight: panel.clientHeight,
+      maxHeight: panel.style.maxHeight,
+    };
+  });
+
+  expect(info.maxHeight).toBe("");
+  expect(info.scrollHeight).toBeLessThanOrEqual(info.clientHeight);
+  expect(info.visible).toBe(info.total);
+});
+
 test("点「一级标题」把段落转成标题，其余字节不变", async ({ page }) => {
   await hoverHandle(page, 2);
 
@@ -541,7 +572,7 @@ test("触发元素贴底时菜单完整留在视口内", async ({ page }) => {
   });
   expect(inside.top).toBeGreaterThanOrEqual(0);
   expect(inside.left).toBeGreaterThanOrEqual(0);
-  expect(inside.bottom).toBeLessThanOrEqual(inside.innerHeight);
+  expect(inside.bottom).toBeLessThanOrEqual(inside.innerHeight - 8);
   expect(inside.right).toBeLessThanOrEqual(inside.innerWidth);
   await page.screenshot({ path: ".artifacts/371/02-bottom-edge.png" });
 });
@@ -904,6 +935,49 @@ test("图片块菜单垂直中心贴手柄中心（≤2px，A-3.2）", async ({ 
   const delta = await menuHandleCenterDelta(page);
   expect(delta).toBeLessThanOrEqual(2);
   await page.screenshot({ path: ".artifacts/697/04-image-menu-follow.png" });
+});
+
+// ── #758：空行「+」手柄菜单的「插入 CSS」图标可见 ──
+
+test("[#758] 空行「+」手柄菜单的「插入 CSS」行有可见 CssOutlined 图标", async ({
+  page,
+}) => {
+  await page.evaluate((body) => {
+    const win = window as unknown as Record<string, any>;
+    win.__biaoyue_openFile__(
+      "/tmp/insert-css-icon.md",
+      body,
+      "insert-css-icon.md",
+    );
+    win.__biaoyue_store__.getState().setEditorMode("edit");
+  }, "# 标题\n\n\n第二段正文\n");
+  await page.locator(".cm-content").waitFor({ timeout: 5000 });
+
+  const add = page.locator(".cm-block-handle-add").first();
+  const addBox = (await add.boundingBox())!;
+  await page.mouse.move(
+    addBox.x + addBox.width / 2,
+    addBox.y + addBox.height / 2,
+  );
+  await page.mouse.down();
+  await page.mouse.up();
+
+  const menu = page.locator(".mdb-slash-menu");
+  await expect(menu).toBeVisible({ timeout: 3000 });
+
+  const row = menu.locator('[data-cmd="insert-css"]');
+  await expect(row).toHaveCount(1);
+  const icon = row.locator('svg[data-icon="CssOutlined"]');
+  await expect(icon).toHaveCount(1);
+  const iconBox = await icon.boundingBox();
+  expect(iconBox).not.toBeNull();
+  expect(iconBox!.width).toBeGreaterThan(0);
+
+  await page.keyboard.press("Escape");
+  await expect(menu).toHaveCount(0);
+  await expect(
+    page.locator('[data-cmd="insert-css"] svg[data-icon="CssOutlined"]'),
+  ).toHaveCount(0);
 });
 
 test("表格块菜单垂直中心贴手柄中心（≤2px，A-3.2）", async ({ page }) => {

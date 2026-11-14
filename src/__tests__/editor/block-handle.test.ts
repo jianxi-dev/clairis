@@ -26,6 +26,26 @@ describe("blockHandleIcon", () => {
     expect(blockHandleIcon("task")).toBe("TodoOutlined");
   });
 
+  it("图片块按首行引用扩展名区分视频 / 音频 / 图片", () => {
+    expect(blockHandleIcon("image", "![clip](assets/clip.mp4)")).toBe(
+      "VideoOutlined",
+    );
+    expect(blockHandleIcon("image", "![clip](assets/clip.webm)")).toBe(
+      "VideoOutlined",
+    );
+    expect(blockHandleIcon("image", "![sound](assets/sound.mp3)")).toBe(
+      "AudioOutlined",
+    );
+    expect(blockHandleIcon("image", "![pic](assets/pic.png)")).toBe(
+      "ImageOutlined",
+    );
+    expect(blockHandleIcon("image", "![doc](assets/doc.pdf)")).toBe(
+      "ImageOutlined",
+    );
+    // 没有图片引用时退回图片图标
+    expect(blockHandleIcon("image", "纯文本")).toBe("ImageOutlined");
+  });
+
   it("标题按首行级别取 H1–H6，不退化成一个把手", () => {
     for (let level = 1; level <= 6; level += 1) {
       const firstLine = `${"#".repeat(level)} 标题`;

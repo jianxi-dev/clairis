@@ -581,14 +581,8 @@ function App() {
         if (tab?.path) store.togglePinnedPath(tab.path);
       }
 
-      // Cmd+Shift+D: PDF 按钮栏固定显示 / 隐藏（仅活动 PDF 视图，视图级状态）
-      if (meta && e.shiftKey && e.key.toLowerCase() === "d") {
-        if (activeTab?.fileKind === "pdf" && activeTab.path) {
-          e.preventDefault();
-          togglePdfToolbarPin(activeTab.path);
-          return;
-        }
-      }
+      // Cmd+Shift+D 的 ⌘⇧D 分支已移到下方 document capture 阶段（见 captureHandler）：
+      // PDF 视图是 shadow DOM，内部控件可能消费按键，window 冒泡阶段收不到。
 
       // Cmd+Alt+Right / Cmd+Alt+Down: split the focused pane (layout-portal 3.1)
       if (meta && e.altKey && e.key === "ArrowRight") {
@@ -703,6 +697,19 @@ function App() {
         e.stopPropagation();
         const view = getActiveEditorView();
         if (view) toggleItalic(view);
+      }
+      // Cmd+Shift+D: PDF 按钮栏固定显示 / 隐藏（仅活动 PDF 视图，视图级状态）。
+      // 与 Cmd+I 同阶段：PDF 视图是 shadow DOM，内部控件可能消费按键。
+      if (
+        (e.metaKey || e.ctrlKey) &&
+        e.shiftKey &&
+        e.key.toLowerCase() === "d" &&
+        activeTab?.fileKind === "pdf" &&
+        activeTab.path
+      ) {
+        e.preventDefault();
+        e.stopPropagation();
+        togglePdfToolbarPin(activeTab.path);
       }
     };
     document.addEventListener("keydown", captureHandler, { capture: true });

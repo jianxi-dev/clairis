@@ -43,8 +43,9 @@ describe("reorderLeafTabs", () => {
 });
 
 describe("⋯ 菜单定义", () => {
-  it("恰好 8 项且顺序与名称严格相等", () => {
+  it("恰好 9 项且顺序与名称严格相等", () => {
     expect(PANE_MENU_ITEMS.map((i) => i.label)).toEqual([
+      "新建文件",
       "导出",
       "分享",
       "右分",

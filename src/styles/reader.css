@@ -108,6 +108,52 @@
   text-align: right;
 }
 
+/* 预览分栏围栏 div（`::: {.col-N}` → `.layout-col-N`） */
+.preview-content .layout-col-1,
+.preview-content .layout-col-2,
+.preview-content .layout-col-3,
+.preview-content .layout-col-4,
+.preview-content .layout-col-5,
+.preview-content .layout-col-6 {
+  display: grid;
+  gap: 1.15em;
+  align-items: start;
+}
+
+.preview-content .layout-col-1 {
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+}
+
+.preview-content .layout-col-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.preview-content .layout-col-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.preview-content .layout-col-4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.preview-content .layout-col-5 {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.preview-content .layout-col-6 {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+@media (max-width: 720px) {
+  .preview-content .layout-col-2,
+  .preview-content .layout-col-3,
+  .preview-content .layout-col-4,
+  .preview-content .layout-col-5,
+  .preview-content .layout-col-6 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 /* ── 块颜色 / 边框色（mdb-* 源码 span 的预览呈现）────────── */
 .preview-content .mdb-color-red {
   color: #cf222e;

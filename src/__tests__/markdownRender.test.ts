@@ -378,3 +378,25 @@ describe("renderMarkdown 块对齐围栏 div", () => {
     expect(html).not.toContain("layout-align-center");
   });
 });
+
+describe("renderMarkdown 预览分栏围栏 div", () => {
+  it("::: {.col-2} 渲染成带 layout-col-2 的容器，内部 markdown 仍解析", () => {
+    const html = renderMarkdown("::: {.col-2}\n## 左\n\n## 右\n:::");
+    expect(html).toContain('class="layout-col-2"');
+    expect(html).toContain("<h2>左</h2>");
+    expect(html).toContain("<h2>右</h2>");
+    expect(html).not.toContain(":::");
+  });
+
+  it("cols=N 属性与 .col-N 等价", () => {
+    const html = renderMarkdown("::: {cols=3}\n左\n\n右\n\n中\n:::");
+    expect(html).toContain('class="layout-col-3"');
+    expect(html).not.toContain(":::");
+  });
+
+  it("没有闭合 ::: 的半截包裹原样留下", () => {
+    const html = renderMarkdown("::: {.col-2}\n正文");
+    expect(html).toContain(":::");
+    expect(html).not.toContain("layout-col-2");
+  });
+});

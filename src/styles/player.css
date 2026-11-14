@@ -39,6 +39,15 @@
   color: inherit;
 }
 
+.art-video-player.art-video-player {
+  --art-indicator-scale: 1;
+}
+.art-video-player .art-volume-indicator,
+.art-video-player .art-progress-indicator {
+  background-color: var(--art-theme);
+  z-index: 40;
+}
+
 /* 窄宽两级降级：先压缩控件盒与间距，再缩小图标，保证全部按钮可见。 */
 .art-video-player.vp-compact .art-controls {
   column-gap: 0;

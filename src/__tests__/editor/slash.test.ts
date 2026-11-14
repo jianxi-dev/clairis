@@ -298,7 +298,7 @@ describe("slash commands", () => {
     expect(onCells().length).toBe(12);
   });
 
-  it("the 分栏 row opens five horizontal cells in the flyout", () => {
+  it("the 分栏 row opens five vertical bars in the grid", () => {
     insertSlashChar(view);
     const rows = Array.from(
       view.dom.querySelectorAll<HTMLElement>(".mdb-slash-item"),
@@ -311,40 +311,16 @@ describe("slash commands", () => {
     expect(view.state.doc.toString()).toBe("/");
     const flyout = view.dom.querySelector<HTMLElement>(".mdb-slash-flyout");
     expect(flyout).not.toBeNull();
-    expect(flyout!.dataset.kind).toBe("columns");
-    const wrap = flyout!.querySelector<HTMLElement>(
-      ".mdb-slash-flyout-columns",
-    );
-    expect(wrap).not.toBeNull();
-    expect(wrap!.style.gridTemplateColumns).toBe("repeat(5, 1fr)");
-    expect(flyout!.querySelectorAll(".mdb-slash-flyout-item").length).toBe(5);
-  });
-
-  it("hovering the 4th 分栏 cell selects only that cell", () => {
-    insertSlashChar(view);
-    const rows = Array.from(
-      view.dom.querySelectorAll<HTMLElement>(".mdb-slash-item"),
-    );
-    const colIdx = rows.findIndex((row) => row.textContent?.includes("分栏"));
-    for (let i = 0; i < colIdx; i++) slashMenuSelectNext(view);
-    slashMenuApply(view);
-
-    const flyout = view.dom.querySelector<HTMLElement>(".mdb-slash-flyout");
-    const cells = flyout!.querySelectorAll<HTMLElement>(
-      ".mdb-slash-flyout-cell",
-    );
+    const grid = flyout!.querySelector<HTMLElement>(".mdb-slash-grid");
+    expect(grid).not.toBeNull();
+    expect(grid!.dataset.kind).toBe("columns");
+    expect(grid!.style.gridTemplateColumns).toBe("repeat(5, 1fr)");
+    const cells = flyout!.querySelectorAll<HTMLElement>(".mdb-slash-grid-cell");
     expect(cells.length).toBe(5);
-
-    cells[3].dispatchEvent(new MouseEvent("mouseenter"));
-
-    const selected = flyout!.querySelectorAll<HTMLElement>(
-      '.mdb-slash-flyout-item[data-selected="true"]',
-    );
-    expect(selected.length).toBe(1);
-    expect(selected[0]).toBe(cells[3]);
+    for (const cell of cells) expect(cell.textContent).toBe("");
   });
 
-  it("clicking the 4th 分栏 cell inserts the col-4 fence and closes the menu", () => {
+  it("hovering the 3rd 分栏 bar selects three bars", () => {
     insertSlashChar(view);
     const rows = Array.from(
       view.dom.querySelectorAll<HTMLElement>(".mdb-slash-item"),
@@ -354,16 +330,19 @@ describe("slash commands", () => {
     slashMenuApply(view);
 
     const cells = view.dom.querySelectorAll<HTMLElement>(
-      ".mdb-slash-flyout-cell",
+      ".mdb-slash-grid-cell",
     );
-    cells[3].dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+    expect(cells.length).toBe(5);
 
-    expect(view.state.doc.toString()).toBe("::: {.col-4}\n\n:::");
-    expect(view.dom.querySelector(".mdb-slash-menu")).toBeNull();
-    expect(view.dom.querySelector(".mdb-slash-flyout")).toBeNull();
+    cells[2].dispatchEvent(new MouseEvent("mouseenter"));
+
+    const onCells = view.dom.querySelectorAll<HTMLElement>(
+      '.mdb-slash-grid-cell[data-on="true"]',
+    );
+    expect(onCells.length).toBe(3);
   });
 
-  it("ArrowDown/Enter in the 分栏 flyout still applies the selected cell", () => {
+  it("clicking the 3rd 分栏 bar inserts the col-3 fence and closes the menu", () => {
     insertSlashChar(view);
     const rows = Array.from(
       view.dom.querySelectorAll<HTMLElement>(".mdb-slash-item"),
@@ -372,7 +351,26 @@ describe("slash commands", () => {
     for (let i = 0; i < colIdx; i++) slashMenuSelectNext(view);
     slashMenuApply(view);
 
-    slashMenuSelectNext(view); // 分栏 -> 2 栏
+    const cells = view.dom.querySelectorAll<HTMLElement>(
+      ".mdb-slash-grid-cell",
+    );
+    cells[2].dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+
+    expect(view.state.doc.toString()).toBe("::: {.col-3}\n\n:::");
+    expect(view.dom.querySelector(".mdb-slash-menu")).toBeNull();
+    expect(view.dom.querySelector(".mdb-slash-flyout")).toBeNull();
+  });
+
+  it("ArrowRight/Enter in the 分栏 grid applies the selected bar", () => {
+    insertSlashChar(view);
+    const rows = Array.from(
+      view.dom.querySelectorAll<HTMLElement>(".mdb-slash-item"),
+    );
+    const colIdx = rows.findIndex((row) => row.textContent?.includes("分栏"));
+    for (let i = 0; i < colIdx; i++) slashMenuSelectNext(view);
+    slashMenuApply(view);
+
+    slashMenuSubmenuEnter(view); // 1 -> 2 根
     slashMenuApply(view);
 
     expect(view.state.doc.toString()).toBe("::: {.col-2}\n\n:::");
@@ -380,7 +378,7 @@ describe("slash commands", () => {
     expect(view.dom.querySelector(".mdb-slash-flyout")).toBeNull();
   });
 
-  it("ArrowRight/ArrowLeft move the 分栏 selection and Left at the first cell closes", () => {
+  it("ArrowRight/ArrowLeft move the 分栏 selection and Left at the first bar closes", () => {
     insertSlashChar(view);
     const rows = Array.from(
       view.dom.querySelectorAll<HTMLElement>(".mdb-slash-item"),
@@ -389,21 +387,21 @@ describe("slash commands", () => {
     for (let i = 0; i < colIdx; i++) slashMenuSelectNext(view);
     slashMenuApply(view);
 
-    const selected = () =>
+    const onCells = () =>
       view.dom.querySelectorAll<HTMLElement>(
-        '.mdb-slash-flyout-item[data-selected="true"]',
+        '.mdb-slash-grid-cell[data-on="true"]',
       );
-    expect(selected().length).toBe(1);
+    expect(onCells().length).toBe(1);
 
     slashMenuSubmenuEnter(view);
-    expect(selected()[0].dataset.cmd).toBe("columns-2");
+    expect(onCells().length).toBe(2);
     slashMenuSubmenuEnter(view);
-    expect(selected()[0].dataset.cmd).toBe("columns-3");
+    expect(onCells().length).toBe(3);
     slashMenuSubmenuBack(view);
-    expect(selected()[0].dataset.cmd).toBe("columns-2");
+    expect(onCells().length).toBe(2);
     slashMenuSubmenuBack(view);
-    expect(selected()[0].dataset.cmd).toBe("columns-1");
-    // 头格再按 Left：收起浮层，根菜单仍在。
+    expect(onCells().length).toBe(1);
+    // 头根再按 Left：收起浮层，根菜单仍在。
     slashMenuSubmenuBack(view);
     expect(view.dom.querySelector(".mdb-slash-flyout")).toBeNull();
     expect(view.dom.querySelector(".mdb-slash-menu")).not.toBeNull();
@@ -570,6 +568,20 @@ describe("slash commands", () => {
     expect(cells().length).toBe(3);
     backspace(); // /
     expect(cells().length).toBe(17);
+  });
+
+  it('applyQuery("") 保留全量列表（删空查询回归）', () => {
+    insertSlashChar(view);
+    typeText("h1");
+    expect(
+      view.dom.querySelectorAll(".mdb-slash-grid-menu .mdb-slash-item").length,
+    ).toBe(0);
+    backspace();
+    backspace();
+    expect(view.state.doc.toString()).toBe("/");
+    expect(
+      view.dom.querySelectorAll(".mdb-slash-grid-menu .mdb-slash-item").length,
+    ).toBe(17);
   });
 
   it("shows an empty state for a filter with no match, and a newline closes the menu", () => {

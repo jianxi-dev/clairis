@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Frame, type Page } from "@playwright/test";
 
 /**
  * 拖拽移动（E-20）与区域截图（E-21）。
@@ -14,7 +14,7 @@ const DOC = [
   "h1{font-size:32px;margin:0;padding:8px}",
   "p{font-size:16px;margin:0;padding:24px}",
   "</style></head>",
-  "<body><h1>标题</h1><p>第一段</p><p>第二段</p></body></html>",
+  "<body><h1>标题</h1><p>第一段文字内容足够长用于划选测试</p><p>第二段</p></body></html>",
 ].join("");
 
 async function openVisual(page: Page) {
@@ -27,7 +27,14 @@ async function openVisual(page: Page) {
     win.__biaoyue_store__.getState().setEditorMode("edit");
   }, DOC);
   await expect(page.locator('iframe[title="HTML 可视化编辑"]')).toHaveCount(1);
-  return page.frameLocator('iframe[title="HTML 可视化编辑"]');
+  // tooltip 系统在 hover 时会把 iframe 的 title 转成 data-tip，按 title 选择器
+  // 在首次悬停后就失效；改用 frame 列表按 URL 取。
+  await expect
+    .poll(() => (page.frames().find((f) => f.url() === "about:srcdoc") ? 1 : 0))
+    .toBe(1);
+  const frame = page.frames().find((f) => f.url() === "about:srcdoc");
+  if (!frame) throw new Error("HTML 可视化编辑 frame 未就绪");
+  return frame as Frame;
 }
 
 async function content(page: Page): Promise<string> {
@@ -86,18 +93,18 @@ test("位移不到阈值算点击，不移动文档", async ({ page }) => {
 
 test("截图模式：拖出区域后产出 PNG 并落盘", async ({ page }) => {
   const frame = await openVisual(page);
+  // iframe 的 title 会在首次悬停时被 tooltip 系统转成 data-tip，先取矩形。
+  const iframeBox = (await page
+    .locator('iframe[title="HTML 可视化编辑"]')
+    .boundingBox())!;
   await frame.locator("h1").click();
 
   await page.locator('.html-edit-toolbar button[aria-label="截图"]').click();
   await expect(page.locator(".html-capture-hint")).toBeVisible();
 
-  const iframe = await page
-    .locator('iframe[title="HTML 可视化编辑"]')
-    .boundingBox();
-  expect(iframe).not.toBeNull();
-  await page.mouse.move(iframe!.x + 20, iframe!.y + 20);
+  await page.mouse.move(iframeBox.x + 20, iframeBox.y + 20);
   await page.mouse.down();
-  await page.mouse.move(iframe!.x + 320, iframe!.y + 160, { steps: 8 });
+  await page.mouse.move(iframeBox.x + 320, iframeBox.y + 160, { steps: 8 });
   await page.mouse.up();
 
   await expect
@@ -166,4 +173,24 @@ test("拖拽有跟随幽灵，落点带滞回不抖动", async ({ page }) => {
 
   await page.mouse.up();
   await expect(ghost).toHaveCount(0);
+});
+
+test("划选文字不出现拖拽幽灵，文档不变（A-9.1/A-9.2）", async ({ page }) => {
+  const frame = await openVisual(page);
+  const before = await content(page);
+
+  const p = frame.locator('[data-cm-node-id="p:0"]');
+  const box = (await p.boundingBox())!;
+  await page.mouse.move(box.x + 40, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + 200, box.y + box.height / 2, { steps: 12 });
+  await page.mouse.up();
+
+  await expect(frame.locator('[data-cm-internal="drag-ghost"]')).toHaveCount(0);
+  expect(await content(page)).toBe(before);
+
+  const selected = await frame
+    .locator("body")
+    .evaluate(() => window.getSelection()?.toString().length ?? 0);
+  expect(selected).toBeGreaterThanOrEqual(10);
 });

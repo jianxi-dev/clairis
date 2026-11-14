@@ -165,6 +165,14 @@ const ICON_REGISTRY: Record<string, IconDef> = {
     kind: "paths",
     paths: ["M4 6h11v12H4z M15 10l5-3v10l-5-3z"],
   },
+  AudioOutlined: {
+    kind: "paths",
+    paths: [
+      "M4 9h4l5-4v14l-5-4H4z",
+      "M16 9.5a4 4 0 010 5",
+      "M18.5 7a8 8 0 010 10",
+    ],
+  },
   ScissorsOutlined: {
     kind: "paths",
     paths: [
@@ -219,6 +227,15 @@ const ICON_REGISTRY: Record<string, IconDef> = {
     kind: "paths",
     paths: [
       "M17 15h2V7c0-1.1-.9-2-2-2H9v2h8v8zM7 17V1H5v4H1v2h4v10c0 1.1.9 2 2 2h10v4h2v-4h4v-2H7z",
+    ],
+  },
+
+  // Cut —— 图片工具条的「剪切」按钮（#767），与 CropOutlined 明显区分。
+  CutOutlined: {
+    kind: "paths",
+    paths: [
+      "M6 3h12a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zm0 2v14h12V5H6z",
+      "M8 16l8-8M16 16l-8-8",
     ],
   },
 

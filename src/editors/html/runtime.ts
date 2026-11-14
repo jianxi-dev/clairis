@@ -94,11 +94,17 @@ function runtimeSource(version: number): string {
   const DROP_HYSTERESIS = 6;
   let dragFrom = null;
   let dragEl = null;
+  let dragTextSelected = false;
   let ghost = null;
   let dropTarget = null;
   let dropLine = null;
   let dropKey = "";
   let suppressClick = false;
+
+  const hasTextSelection = () => {
+    const sel = getSelection();
+    return !!sel && !sel.isCollapsed && !!sel.toString().trim();
+  };
 
   const ensureDropLine = () => {
     if (dropLine && dropLine.isConnected) return dropLine;
@@ -171,6 +177,9 @@ function runtimeSource(version: number): string {
     if (!el) return;
     const tag = el.tagName.toLowerCase();
     if (tag === "html" || tag === "body") return;
+    // 已有文字选区时这次按压是划选，不是拖拽；dragTextSelected 让阈值判定
+    // 再兜一层（selectionchange 可能晚于越过阈值的那次 mousemove）。
+    dragTextSelected = hasTextSelection();
     dragFrom = { el: el, nodeId: el.getAttribute("data-cm-node-id"), x: e.clientX, y: e.clientY, rect: null };
   }, true);
 
@@ -178,6 +187,11 @@ function runtimeSource(version: number): string {
     if (captureMode || !dragFrom) return;
     if (!dragEl) {
       if (Math.abs(e.clientX - dragFrom.x) < DRAG_THRESHOLD && Math.abs(e.clientY - dragFrom.y) < DRAG_THRESHOLD) return;
+      // 划选优先：出现文字选区就撤销拖拽意图，白色幽灵不创建。
+      if (dragTextSelected || hasTextSelection()) {
+        dragFrom = null;
+        return;
+      }
       dragEl = dragFrom.el;
       suppressClick = true;
       makeGhost();
@@ -229,6 +243,7 @@ function runtimeSource(version: number): string {
       dragEl = null;
     }
     dragFrom = null;
+    dragTextSelected = false;
     // click 紧跟在 mouseup 后同步触发；这里放到下个任务再解，刚好吞掉它
     if (suppressClick) setTimeout(() => { suppressClick = false; }, 0);
   }, true);
@@ -468,15 +483,18 @@ function runtimeSource(version: number): string {
     }
     if (!Number.isFinite(left)) return;
     savedRange = range.cloneRange();
-    const sig = [Math.round(left), Math.round(top), Math.round(right), Math.round(bottom), text.length].join("|");
+    const block = blockOf(range.startContainer);
+    const rawAlign = block ? getComputedStyle(block).textAlign : "left";
+    const align = rawAlign === "start" ? "left" : rawAlign === "end" ? "right" : rawAlign;
+    const sig = [Math.round(left), Math.round(top), Math.round(right), Math.round(bottom), text.length, align].join("|");
     if (sig === lastTextReport) return;
     lastTextReport = sig;
-    const block = blockOf(range.startContainer);
     post({
       type: "textSelection",
       rect: { x: left, y: top, width: right - left, height: bottom - top },
       text: text.slice(0, 80),
       nodeId: block ? block.getAttribute("data-cm-node-id") : null,
+      align,
     });
   };
 
@@ -525,6 +543,7 @@ function runtimeSource(version: number): string {
   const applyRangeCommand = (command, value) => {
     if (!savedRange) return;
     const block = blockOf(savedRange.startContainer);
+    let blockStyle = null;
     const toggle = (prop, css) => {
       if (!unwrapStyle(prop, block)) wrapSaved(css);
     };
@@ -564,7 +583,11 @@ function runtimeSource(version: number): string {
       case "justifyRight":
       case "justifyFull":
         if (block) {
-          block.style.textAlign = command.replace("justify", "").toLowerCase();
+          block.style.textAlign =
+            command === "justifyFull"
+              ? "justify"
+              : command.replace("justify", "").toLowerCase();
+          blockStyle = { "text-align": block.style.textAlign };
         }
         break;
       case "removeFormat": {
@@ -588,6 +611,7 @@ function runtimeSource(version: number): string {
         type: "rangeHtml",
         nodeId: block.getAttribute("data-cm-node-id"),
         html: block.innerHTML,
+        ...(blockStyle ? { blockStyle } : {}),
       });
     }
     lastTextReport = "";
@@ -596,6 +620,11 @@ function runtimeSource(version: number): string {
 
   document.addEventListener("selectionchange", () => {
     if (editing) return;
+    if (hasTextSelection()) {
+      dragTextSelected = true;
+      // 划选先于拖拽阈值：撤销拖拽意图，白色幽灵不创建。
+      if (dragFrom && !dragEl) dragFrom = null;
+    }
     requestAnimationFrame(reportTextSelection);
   });
 
