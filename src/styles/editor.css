@@ -2167,27 +2167,10 @@ html[data-tab-drag="true"] body * {
   white-space: pre-wrap;
 }
 
-.cm-content .cm-column-handle {
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 14px;
-  height: 14px;
-  border-radius: 4px;
-  border: 1px solid var(--app-border);
-  background: var(--app-sunken);
-  opacity: 0;
-  cursor: pointer;
-  z-index: 6;
-}
-
-.cm-content .cm-column:hover .cm-column-handle {
-  opacity: 1;
-}
-
 /* 容器「+」新增手柄（#742 / D7）：贴悬停栏正文左缘外侧、纵向居中，与单元格
- * 手柄同款形态（16×16、圆角 3px）。悬停容器才显示；点击打开该栏就地编辑器与
- * 菜单。left/top 由 JS 按悬停栏定位，避开块手柄（其右缘在容器左边框外 4px）。 */
+ * 手柄同款形态（16×16、圆角 3px）。悬停容器才显示；滑入即打开该栏就地编辑器与
+ * 选择菜单，点击同样打开。left/top 由 JS 按悬停栏定位，避开块手柄（其右缘在容器
+ * 左边框外 4px）。 */
 .cm-content .cm-columns-add-handle {
   position: absolute;
   transform: translateY(-50%);
@@ -2212,6 +2195,13 @@ html[data-tab-drag="true"] body * {
   pointer-events: auto;
 }
 
+/* 菜单挂在 view.dom 上、不是 .cm-columns 的后代：指针移进菜单后容器不再 :hover，
+ * 但菜单还开着时「+」必须保持可见（A-4.3）。只抬 opacity，不抬 pointer-events——
+ * 菜单在外时手柄不该抢命中的点击。 */
+.cm-content .cm-columns:has(.cm-column-editor) .cm-columns-add-handle {
+  opacity: 1;
+}
+
 .cm-content .cm-column-gutter {
   flex: 0 0 12px;
   position: relative;
@@ -2223,9 +2213,10 @@ html[data-tab-drag="true"] body * {
   left: 50%;
   top: 0;
   bottom: 0;
-  width: 2px;
+  /* 设计系统 §3：1px 发丝线，语义固定；颜色取 §6 --app-border 边框 token（D3 / A-4.4）。 */
+  width: 1px;
   transform: translateX(-50%);
-  background: transparent;
+  background: var(--app-border);
   border-radius: 1px;
 }
 
