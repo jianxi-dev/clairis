@@ -491,7 +491,9 @@ test("描述行提交：写入源码标题并在预览态显示图注", async ({
   await expect(figcaption).toHaveText("雾山");
 });
 
-test("描述行收起：再次点击 display=none，标题数据保留", async ({ page }) => {
+test("描述行点击折叠/展开：aria-expanded 切换，标题数据保留", async ({
+  page,
+}) => {
   await openEditor(
     page,
     `![示例图片](${PNG_DATA_URL} "已有描述")\n`,
@@ -501,11 +503,14 @@ test("描述行收起：再次点击 display=none，标题数据保留", async (
   await page.locator(".cm-image-widget").click();
   const caption = page.locator('[data-testid="img-caption"]');
   await expect(caption).toHaveText("已有描述");
+  await expect(caption).toHaveAttribute("aria-expanded", "true");
   await caption.click();
-  await expect(caption).toHaveCount(1);
-  const display = await caption.evaluate((el) => getComputedStyle(el).display);
-  expect(display).toBe("none");
+  await expect(caption).toHaveAttribute("aria-expanded", "false");
+  await expect(caption).toHaveText("显示描述");
   await expect.poll(() => content(page)).toContain('"已有描述"');
+  await caption.click();
+  await expect(caption).toHaveAttribute("aria-expanded", "true");
+  await expect(caption).toHaveText("已有描述");
 });
 
 test("描述行取消：Esc 回到占位态，文档无残留改动", async ({ page }) => {
@@ -592,7 +597,7 @@ test("描述按钮：Esc 取消不写入且无残留输入", async ({ page }) =>
   expect(await content(page)).toBe(doc);
 });
 
-test("描述输入框默认隐藏，点添加描述显示并可再收起；图标与文字贴合", async ({
+test("描述输入框默认隐藏，点添加描述显示并可再收起；按钮仅图标", async ({
   page,
 }) => {
   await openEditor(
@@ -611,15 +616,10 @@ test("描述输入框默认隐藏，点添加描述显示并可再收起；图�
     "none",
   );
 
-  const iconTextGap = await desc.evaluate((el) => {
-    const icon = el.querySelector("svg")!.getBoundingClientRect();
-    const label = el
-      .querySelector(".cm-image-toolbar-label")!
-      .getBoundingClientRect();
-    return label.left - icon.right;
-  });
-  expect(iconTextGap).toBeGreaterThanOrEqual(0);
-  expect(iconTextGap).toBeLessThanOrEqual(2);
+  // 「添加描述」只留图标：无可见文字标签，aria-label / title 保留。
+  await expect(desc.locator(".cm-image-toolbar-label")).toHaveCount(0);
+  expect((await desc.innerText()).trim()).toBe("");
+  await expect(desc).toHaveAttribute("aria-label", "添加描述");
 
   await desc.click();
   await expect(input).toBeVisible();

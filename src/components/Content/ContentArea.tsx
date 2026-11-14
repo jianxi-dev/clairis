@@ -35,7 +35,11 @@ import {
   writeImageAttributes,
   writeImageTitle,
 } from "../../editors/decorations/image";
-import { openImageCrop } from "../../editors/decorations/imageCrop";
+import {
+  closeImageCrop,
+  isImageCropActive,
+  openImageCrop,
+} from "../../editors/decorations/imageCrop";
 import { editSelectedImageCaption } from "../../editors/decorations/imageToolbar";
 import {
   blockAt,
@@ -246,6 +250,11 @@ const editorDecorationOptions: EditorDecorationsOptions = {
   onImageCrop: (from) => {
     const view = getActiveEditorView();
     if (!view) return;
+    // 再点一次裁剪按钮 = 退出裁剪（#823）。
+    if (isImageCropActive()) {
+      closeImageCrop();
+      return;
+    }
     const text = view.state.doc.toString();
     const ref = scanImageReference(text, from);
     if (!ref) return;

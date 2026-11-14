@@ -5,7 +5,7 @@
  * crop；Esc 取消并恢复进入裁剪前的显示。
  */
 import { MIN_CROP_SIZE } from "./image";
-import { getSelectedImageFrom } from "./imageToolbar";
+import { getSelectedImageFrom, notifyImageCropState } from "./imageToolbar";
 
 export interface ImageCropOptions {
   /** 解析后的图片 URL（只用于探测 natural 尺寸）。 */
@@ -29,6 +29,21 @@ interface Rect {
 const FULL_IMAGE_RATIO = 0.99;
 /** 指针位移超过它才算拖动，避免单击误写 crop。 */
 const DRAG_THRESHOLD_PX = 2;
+
+/** 当前挂着的裁剪收尾函数；null 表示没有裁剪框。 */
+let activeCleanup: (() => void) | null = null;
+
+export function isImageCropActive(): boolean {
+  return activeCleanup !== null;
+}
+
+/** 关闭内联裁剪并恢复显示（再次点击工具条裁剪按钮 / 切换图片时用）。 */
+export function closeImageCrop(): void {
+  if (!activeCleanup) return;
+  const cleanup = activeCleanup;
+  activeCleanup = null;
+  cleanup();
+}
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(value, max));
@@ -92,6 +107,7 @@ const HANDLE_MARK: Record<string, string> = {
  * 打开内联裁剪。图片未加载出 natural 尺寸时静默不打开（没得分母）。
  */
 export function openImageCrop(options: ImageCropOptions): void {
+  closeImageCrop();
   const probe = new Image();
   probe.onload = () => {
     if (probe.naturalWidth <= 0 || probe.naturalHeight <= 0) return;
@@ -188,6 +204,8 @@ function mount(natW: number, natH: number, options: ImageCropOptions): void {
     frame.remove();
     widget.classList.remove("cm-image-crop-active");
     document.removeEventListener("keydown", onKey, true);
+    if (activeCleanup === cleanup) activeCleanup = null;
+    notifyImageCropState(false);
   };
 
   const cancel = (): void => {
@@ -286,4 +304,7 @@ function mount(natW: number, natH: number, options: ImageCropOptions): void {
     cancel();
   };
   document.addEventListener("keydown", onKey, true);
+
+  activeCleanup = cleanup;
+  notifyImageCropState(true);
 }

@@ -525,10 +525,15 @@ function applyImageAttributes(doc: Document): void {
           if (hasHeight) img.setAttribute("height", String(height));
           if (hasWidth || hasHeight) {
             // 预览样式给 img 定了 `height: auto`，表现属性会被 CSS 压掉，
-            // 显式高度必须走内联样式才生效。
+            // 显式高度必须走内联样式才生效。宽高同给时锁 aspect-ratio，
+            // 否则 max-width 只夹宽度、高度不变，容器变窄就拉歪（#823）。
             style.push("max-width:100%");
             if (hasWidth) style.push(`width:${width}px`);
-            style.push(hasHeight ? `height:${height}px` : "height:auto");
+            if (hasWidth && hasHeight)
+              style.push(`aspect-ratio:${width} / ${height}`);
+            style.push(
+              hasHeight && !hasWidth ? `height:${height}px` : "height:auto",
+            );
           }
         }
         if (align === "left" || align === "center" || align === "right") {

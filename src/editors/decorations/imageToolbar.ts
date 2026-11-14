@@ -25,7 +25,6 @@ interface ButtonSpec {
   readonly icon: string;
   readonly label: string;
   readonly action: string;
-  readonly showLabel?: boolean;
   readonly disabledTitle?: string;
 }
 
@@ -47,7 +46,6 @@ const BUTTON_SPECS: readonly ButtonSpec[] = [
     icon: "TextEditOutlined",
     label: "添加描述",
     action: "comment",
-    showLabel: true,
   },
   {
     testid: "img-toolbar-align-left",
@@ -69,7 +67,7 @@ const BUTTON_SPECS: readonly ButtonSpec[] = [
   },
   {
     testid: "img-toolbar-cut",
-    icon: "CutOutlined",
+    icon: "ScissorsOutlined",
     label: "剪切",
     action: "cut",
   },
@@ -240,8 +238,10 @@ let maximizePanStart: {
 } | null = null;
 let maximizePinchStart: { dist: number; scale: number } | null = null;
 let maximizeDownPos: { x: number; y: number } | null = null;
-/** 描述行「已收起」：点击带描述的描述行后置位，重新选中图片时复位。 */
+/** 描述行是否折叠：点击描述行切换，重新选中图片时复位。 */
 let captionCollapsed = false;
+/** 裁剪框是否挂着：由 imageCrop 通知，工具条据此标注裁剪按钮按下态。 */
+let cropActive = false;
 /** 工具条按下期间不把描述框的 blur 当成提交（否则点击「添加描述」会先关再开）。 */
 let toolbarInteraction = false;
 
@@ -321,18 +321,26 @@ export function markImageWidgetSelected(
 // --- 描述行（#657） -----------------------------------------------------------
 
 const CAPTION_TEXT_SELECTOR =
-  ".cm-image-caption-text, .cm-image-caption-placeholder";
+  ".cm-image-caption-text, .cm-image-caption-placeholder, .cm-image-caption-collapsed";
 
-/** 描述行文本态：有标题显示标题，没有显示占位文字。 */
+const CAPTION_COLLAPSED_TEXT = "显示描述";
+
+/** 描述行文本态：折叠态显示「显示描述」，否则有标题显示标题、没有显示占位。 */
 function setCaptionText(caption: HTMLElement, title: string): void {
   let span = caption.querySelector<HTMLElement>(CAPTION_TEXT_SELECTOR);
   if (!span) {
     span = document.createElement("span");
     caption.insertBefore(span, caption.firstChild);
   }
-  span.className =
-    title === "" ? "cm-image-caption-placeholder" : "cm-image-caption-text";
-  span.textContent = title === "" ? CAPTION_PLACEHOLDER : title;
+  if (captionCollapsed) {
+    span.className = "cm-image-caption-collapsed";
+    span.textContent = CAPTION_COLLAPSED_TEXT;
+  } else {
+    span.className =
+      title === "" ? "cm-image-caption-placeholder" : "cm-image-caption-text";
+    span.textContent = title === "" ? CAPTION_PLACEHOLDER : title;
+  }
+  caption.setAttribute("aria-expanded", captionCollapsed ? "false" : "true");
 }
 
 function captionInputOf(caption: HTMLElement): HTMLInputElement | null {
@@ -467,10 +475,9 @@ function appendCaptionLine(el: HTMLElement): void {
       showCaptionInput(caption, el);
       return;
     }
-    caption.style.display = "none";
-    captionCollapsed = true;
+    captionCollapsed = !captionCollapsed;
+    setCaptionText(caption, title);
   });
-  if (captionCollapsed) caption.style.display = "none";
   el.appendChild(caption);
 }
 
@@ -494,13 +501,6 @@ function ensureToolbar(): void {
     btn.title = spec.label;
     btn.setAttribute("aria-label", spec.label);
     btn.appendChild(renderIcon(spec.icon));
-    if (spec.showLabel) {
-      btn.classList.add("cm-image-toolbar-btn-label");
-      const label = document.createElement("span");
-      label.className = "cm-image-toolbar-label";
-      label.textContent = spec.label;
-      btn.appendChild(label);
-    }
     btn.addEventListener("click", () => runAction(spec.action));
     toolbarEl.appendChild(btn);
   }
@@ -515,6 +515,7 @@ function ensureToolbar(): void {
     toolbarInteraction = false;
   });
   updateDisabledStates();
+  updateCropState();
 }
 
 function removeToolbar(): void {
@@ -544,6 +545,20 @@ function updateAlignStates(): void {
     );
     btn?.setAttribute("aria-pressed", key === align ? "true" : "false");
   }
+}
+
+function updateCropState(): void {
+  if (!toolbarEl) return;
+  const btn = toolbarEl.querySelector<HTMLButtonElement>(
+    '[data-testid="img-toolbar-crop"]',
+  );
+  btn?.setAttribute("aria-pressed", cropActive ? "true" : "false");
+}
+
+/** 裁剪框开关：imageCrop 在挂载 / 收尾时调用，工具条同步按下态。 */
+export function notifyImageCropState(active: boolean): void {
+  cropActive = active;
+  updateCropState();
 }
 
 function updateDisabledStates(): void {

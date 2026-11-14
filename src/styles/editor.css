@@ -884,19 +884,6 @@ body {
   height: 18px;
 }
 
-/* 带文字的动作按钮（「添加描述」）：图标与文字贴合，按钮按内容放宽。 */
-.cm-image-toolbar button.cm-image-toolbar-btn-label {
-  width: auto;
-  gap: 2px;
-  padding: 0 6px;
-}
-
-.cm-image-toolbar-label {
-  font-size: 12px;
-  line-height: 1;
-  white-space: nowrap;
-}
-
 /* 双击放大浮层 */
 .cm-image-maximize {
   position: fixed;
@@ -931,6 +918,11 @@ body {
 
 .cm-image-caption-placeholder {
   opacity: 0.55;
+}
+
+.cm-image-caption-collapsed {
+  opacity: 0.55;
+  cursor: pointer;
 }
 
 .cm-image-caption-text {
