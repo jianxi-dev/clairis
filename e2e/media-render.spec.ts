@@ -312,3 +312,110 @@ test("视频播放器音量/进度滑块 thumb 可见且与轨道有对比", asy
   await expect(page.locator(".art-video-player")).toHaveCount(0);
   await expect(page.locator("video")).toHaveCount(0);
 });
+
+test("编辑态视频块：2/3 宽居中、可播放、拖把手调宽、块手柄视频图标", async ({
+  page,
+}) => {
+  await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
+  await installRealVideo(page);
+  await page.goto("/", { waitUntil: "networkidle" });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 10000 });
+  await page.evaluate(() => {
+    const win = window as unknown as Record<string, any>;
+    win.__biaoyue_openFile__(
+      "/tmp/vlayout/video.md",
+      "![clip](assets/clip.mp4)\n",
+      "video.md",
+    );
+    win.__biaoyue_store__.getState().setEditorMode("edit");
+  });
+
+  const container = page.locator(".cm-media-widget").first();
+  await expect(container).toHaveCount(1);
+  await expect(container).toHaveAttribute("data-media-kind", "video");
+  await expect(container).toHaveAttribute("data-align", "center");
+
+  // 容器宽 / 行宽 ≈ 0.667。
+  const ratio = await container.evaluate((el) => {
+    const line = el.closest(".cm-line") as HTMLElement | null;
+    return line
+      ? el.getBoundingClientRect().width / line.getBoundingClientRect().width
+      : 0;
+  });
+  expect(Math.abs(ratio - 0.667)).toBeLessThanOrEqual(0.02);
+
+  const video = container.locator("video");
+  await expect(video).toHaveJSProperty("controls", true);
+  await expect(video).toHaveAttribute("preload", "metadata");
+  // widget 用 setAttribute 写 src，绕过了 mock 的 src setter 重写；这里显式换
+  // 成 dev server 的真实 mp4，让 metadata 到位、容器有高度可点。
+  await video.evaluate((el: HTMLVideoElement, url: string) => {
+    el.src = url;
+  }, TINY_MP4_URL);
+  await expect
+    .poll(() => video.evaluate((el: HTMLVideoElement) => el.readyState), {
+      timeout: 10000,
+    })
+    .toBeGreaterThanOrEqual(1);
+
+  // 点击容器选中 → 8 个缩放把手。
+  await container.click();
+  const handles = container.locator(".cm-image-handle");
+  await expect(handles).toHaveCount(8);
+
+  // 拖 e 把手改宽。
+  const widthBefore = await container.evaluate(
+    (el) => el.getBoundingClientRect().width,
+  );
+  const eHandle = container.locator('.cm-image-handle[data-handle="e"]');
+  const handleBox = await eHandle.boundingBox();
+  expect(handleBox).not.toBeNull();
+  await page.mouse.move(
+    handleBox!.x + handleBox!.width / 2,
+    handleBox!.y + handleBox!.height / 2,
+  );
+  await page.mouse.down();
+  await page.mouse.move(
+    handleBox!.x + 80,
+    handleBox!.y + handleBox!.height / 2,
+    {
+      steps: 6,
+    },
+  );
+  await page.mouse.up();
+  const widthAfter = await container.evaluate(
+    (el) => el.getBoundingClientRect().width,
+  );
+  expect(widthAfter).not.toBe(widthBefore);
+
+  // 取消选中：点行内空白（媒体块居中，右侧留空），把手消失。
+  const line = page.locator(".cm-line").first();
+  const lineBox = (await line.boundingBox())!;
+  await page.mouse.click(
+    lineBox.x + lineBox.width - 10,
+    lineBox.y + lineBox.height / 2,
+  );
+  await expect(container.locator(".cm-image-handle")).toHaveCount(0);
+
+  // 块手柄图标严格为 VideoOutlined。
+  const contentBox = await page.evaluate(() => {
+    const rect = (
+      document.querySelector(".cm-content") as HTMLElement
+    ).getBoundingClientRect();
+    return { left: rect.left, width: rect.width };
+  });
+  await page.mouse.move(
+    Math.max(lineBox.x, contentBox.left + contentBox.width * 0.1),
+    lineBox.y + lineBox.height / 2,
+  );
+  const handle = page.locator('.cm-block-handle[data-block-from="0"]');
+  await expect(handle).toHaveClass(/cm-block-handle-visible/, {
+    timeout: 3000,
+  });
+  const icons = await handle.evaluate((el) =>
+    Array.from(el.querySelectorAll("svg[data-icon]")).map((svg) =>
+      svg.getAttribute("data-icon"),
+    ),
+  );
+  expect(icons).toEqual(["VideoOutlined"]);
+});

@@ -165,6 +165,14 @@ const ICON_REGISTRY: Record<string, IconDef> = {
     kind: "paths",
     paths: ["M4 6h11v12H4z M15 10l5-3v10l-5-3z"],
   },
+  AudioOutlined: {
+    kind: "paths",
+    paths: [
+      "M4 9h4l5-4v14l-5-4H4z",
+      "M16 9.5a4 4 0 010 5",
+      "M18.5 7a8 8 0 010 10",
+    ],
+  },
   ScissorsOutlined: {
     kind: "paths",
     paths: [

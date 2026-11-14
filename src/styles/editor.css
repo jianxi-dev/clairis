@@ -1000,6 +1000,25 @@ body {
   vertical-align: middle;
 }
 
+/* 视频块默认 2/3 宽（D13）；显式 {width=…} 由 widget 内联覆盖。 */
+.cm-media-widget[data-media-kind="video"] {
+  width: 66.67%;
+}
+
+.cm-media-widget[data-selected="true"] {
+  outline: 2px solid var(--app-accent);
+  outline-offset: 2px;
+}
+
+/* 视频对齐（D13）：与图片一致，行级 text-align 落位。 */
+.cm-editor .cm-line:has(> .cm-media-widget[data-align="center"]) {
+  text-align: center;
+}
+
+.cm-editor .cm-line:has(> .cm-media-widget[data-align="right"]) {
+  text-align: right;
+}
+
 .cm-media-widget video {
   display: block;
   width: 100%;
