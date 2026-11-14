@@ -1,0 +1,631 @@
+{
+  "change": "editor-surface-batch19",
+  "requirements": [
+    {
+      "id": "R-1",
+      "text": "A1 转换手柄二级菜单生命周期",
+      "anchors": [
+        {
+          "id": "A-1.1",
+          "claim": "二级菜单移出「父菜单 ∪ 二级面板」并集后节点数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "#833 A1 / design D1"
+        },
+        {
+          "id": "A-1.2",
+          "claim": "菜单栈打开期间下层文字新增 / 转换手柄节点数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "#833 A1 / design D1"
+        },
+        {
+          "id": "A-1.3",
+          "claim": "指针移出→菜单消失；回到并集→保持",
+          "kind": "state-machine",
+          "assert": "移出→0，回到→1",
+          "source": "#833 A1 / design D1"
+        }
+      ]
+    },
+    {
+      "id": "R-2",
+      "text": "A2 提示外壳统一胶囊",
+      "anchors": [
+        {
+          "id": "A-2.1",
+          "claim": "任一类自绘提示的计算 `border-radius` ≥ 提示高度一半",
+          "kind": "exact",
+          "assert": "\"true\"",
+          "source": "#833 A2 / design D2"
+        },
+        {
+          "id": "A-2.2",
+          "claim": "矩形外壳提示节点数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "#833 A2 / design D2"
+        }
+      ]
+    },
+    {
+      "id": "R-3",
+      "text": "A3 mermaid 手柄识别与菜单贴合",
+      "anchors": [
+        {
+          "id": "A-3.1",
+          "claim": "复现文档三处 mermaid 手柄节点总数",
+          "kind": "exact",
+          "assert": "3",
+          "source": "一手观察：复现文档 / design D1"
+        },
+        {
+          "id": "A-3.2",
+          "claim": "转换菜单垂直中心与手柄中心偏差上限（px）",
+          "kind": "exact",
+          "assert": "2",
+          "source": "#833 A3 / design D1"
+        },
+        {
+          "id": "A-3.3",
+          "claim": "「使用图标增强表现」处手柄节点数",
+          "kind": "exact",
+          "assert": "1",
+          "source": "一手观察：复现文档 / design D1"
+        }
+      ]
+    },
+    {
+      "id": "R-4",
+      "text": "A4 分栏交互修复",
+      "anchors": [
+        {
+          "id": "A-4.1",
+          "claim": "进入分栏后重复文本节点数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "#833 A4 / design D3"
+        },
+        {
+          "id": "A-4.2",
+          "claim": "栏目左上角小方框节点数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "#833 A4 / design D3（DEFAULT＝移除）"
+        },
+        {
+          "id": "A-4.3",
+          "claim": "`+` 滑入→选择菜单出现；移出→消失",
+          "kind": "state-machine",
+          "assert": "滑入→1，移出→0",
+          "source": "#833 A4 / design D3"
+        },
+        {
+          "id": "A-4.4",
+          "claim": "分栏间隔线计算 `width` 下限（px）",
+          "kind": "exact",
+          "assert": "1",
+          "source": "#833 A4 / design D3"
+        }
+      ]
+    },
+    {
+      "id": "R-5",
+      "text": "A5 单元格与分栏内外渲染一致",
+      "anchors": [
+        {
+          "id": "A-5.1",
+          "claim": "单元格 / 分栏内标题装饰节点数下限",
+          "kind": "exact",
+          "assert": "1",
+          "source": "#833 A5 / design D3"
+        },
+        {
+          "id": "A-5.2",
+          "claim": "单元格 / 分栏内可见源码标记（`**` / `##`）节点数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "#833 A5 / design D3"
+        },
+        {
+          "id": "A-5.3",
+          "claim": "同一块在编辑态与预览态走同一渲染管线",
+          "kind": "state-machine",
+          "assert": "编辑态→预览态渲染一致",
+          "source": "#833 A5 / design D3"
+        }
+      ]
+    },
+    {
+      "id": "R-6",
+      "text": "A6 编辑态边框对齐",
+      "anchors": [
+        {
+          "id": "A-6.1",
+          "claim": "代码块 / 引用块 / mermaid 与正文左边界 x 差",
+          "kind": "exact",
+          "assert": "0",
+          "source": "#833 A6 / design D4"
+        },
+        {
+          "id": "A-6.2",
+          "claim": "三类块彼此左边界 x 差",
+          "kind": "exact",
+          "assert": "0",
+          "source": "#833 A6 / design D4"
+        }
+      ]
+    },
+    {
+      "id": "R-7",
+      "text": "A7 图片工具条状态",
+      "anchors": [
+        {
+          "id": "A-7.1",
+          "claim": "点「裁剪」→按钮呈选中态",
+          "kind": "state-machine",
+          "assert": "选中态→class 存在",
+          "source": "#833 A7 / design D5"
+        },
+        {
+          "id": "A-7.2",
+          "claim": "裁剪后图片显示尺寸与裁剪矩形比例相符",
+          "kind": "exact",
+          "assert": "\"true\"",
+          "source": "#833 A7 / design D5"
+        },
+        {
+          "id": "A-7.3",
+          "claim": "「添加描述」默认描述区 `display`",
+          "kind": "exact",
+          "assert": "\"none\"",
+          "source": "#833 A7 / design D5"
+        },
+        {
+          "id": "A-7.4",
+          "claim": "「添加描述」图标 path 与旧值不同",
+          "kind": "exact",
+          "assert": "\"true\"",
+          "source": "#833 A7 / design D5"
+        }
+      ]
+    },
+    {
+      "id": "R-8",
+      "text": "A8 图片 / 视频手柄六点与对齐",
+      "anchors": [
+        {
+          "id": "A-8.1",
+          "claim": "图片 / 视频转换手柄手柄点数",
+          "kind": "exact",
+          "assert": "6",
+          "source": "#833 A8 / 截图：单元格转换手柄 / design D1"
+        },
+        {
+          "id": "A-8.2",
+          "claim": "与标题手柄纵向中心差上限（px）",
+          "kind": "exact",
+          "assert": "2",
+          "source": "#833 A8 / design D1"
+        }
+      ]
+    },
+    {
+      "id": "R-9",
+      "text": "A9 表格与单元格手柄复用全局菜单",
+      "anchors": [
+        {
+          "id": "A-9.1",
+          "claim": "滑入表格表头转换手柄节点数",
+          "kind": "exact",
+          "assert": "1",
+          "source": "截图：单元格转换手柄1-任务 / design D6"
+        },
+        {
+          "id": "A-9.2",
+          "claim": "滑入单元格转换 / 新增手柄节点数",
+          "kind": "exact",
+          "assert": "2",
+          "source": "截图：单元格新增手柄 / design D6"
+        },
+        {
+          "id": "A-9.3",
+          "claim": "单元格菜单项集与全局菜单项集相等",
+          "kind": "exact",
+          "assert": "\"true\"",
+          "source": "#833 A9 / design D6"
+        },
+        {
+          "id": "A-9.4",
+          "claim": "上缘 / 左缘行列插入热点完整（非孤立灰点）",
+          "kind": "exact",
+          "assert": "\"true\"",
+          "source": "截图：单元格转换手柄1-任务 / design D6"
+        }
+      ]
+    },
+    {
+      "id": "R-10",
+      "text": "B1 新增手柄菜单重构（基础 / 常用）",
+      "anchors": [
+        {
+          "id": "A-10.1",
+          "claim": "基础段图标数",
+          "kind": "exact",
+          "assert": "8",
+          "source": "#833 B1 / design D7"
+        },
+        {
+          "id": "A-10.2",
+          "claim": "基础段文字节点数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "#833 B1 / design D7"
+        },
+        {
+          "id": "A-10.3",
+          "claim": "常用段项数",
+          "kind": "exact",
+          "assert": "8",
+          "source": "#833 B1 / design D7"
+        },
+        {
+          "id": "A-10.4",
+          "claim": "基础段前三项可访问名顺序",
+          "kind": "exact",
+          "assert": "\"H1,H2,H3\"",
+          "source": "#833 B1 / design D7"
+        }
+      ]
+    },
+    {
+      "id": "R-11",
+      "text": "B3 分栏弹窗说明与实时栏数",
+      "anchors": [
+        {
+          "id": "A-11.1",
+          "claim": "分栏弹窗说明文字节点数",
+          "kind": "exact",
+          "assert": "1",
+          "source": "#833 B3 / design D7"
+        },
+        {
+          "id": "A-11.2",
+          "claim": "滑到第 3 根柱子时实时栏数文案",
+          "kind": "exact",
+          "assert": "\"3\"",
+          "source": "#833 B3 / design D7"
+        }
+      ]
+    },
+    {
+      "id": "R-12",
+      "text": "B2 状态栏页面宽度弹窗配色",
+      "anchors": [
+        {
+          "id": "A-12.1",
+          "claim": "选中档进度条与色块计算色相等",
+          "kind": "exact",
+          "assert": "\"true\"",
+          "source": "#833 B2 / design D8"
+        },
+        {
+          "id": "A-12.2",
+          "claim": "未选中档与选中档同色相",
+          "kind": "exact",
+          "assert": "\"true\"",
+          "source": "#833 B2 / design D8"
+        }
+      ]
+    },
+    {
+      "id": "R-13",
+      "text": "B4 页签右键菜单图标与导出 hover 二级",
+      "anchors": [
+        {
+          "id": "A-13.1",
+          "claim": "「移动到」与「打开文件位置」图标 path 去重数",
+          "kind": "exact",
+          "assert": "2",
+          "source": "#833 B4 / design D9"
+        },
+        {
+          "id": "A-13.2",
+          "claim": "hover「导出」→二级出现",
+          "kind": "state-machine",
+          "assert": "出现→1",
+          "source": "#833 B4 / design D9"
+        },
+        {
+          "id": "A-13.3",
+          "claim": "移出父项后二级节点数",
+          "kind": "exact",
+          "assert": "1",
+          "source": "#833 B4 / design D9"
+        }
+      ]
+    },
+    {
+      "id": "R-14",
+      "text": "B7 页签名下拉信息窗",
+      "anchors": [
+        {
+          "id": "A-14.1",
+          "claim": "信息窗行数",
+          "kind": "exact",
+          "assert": "3",
+          "source": "截图：文件信息 / design D9"
+        },
+        {
+          "id": "A-14.2",
+          "claim": "路径可点击层数下限",
+          "kind": "exact",
+          "assert": "1",
+          "source": "截图：文件信息 / design D9"
+        },
+        {
+          "id": "A-14.3",
+          "claim": "最近保存时间文案非空",
+          "kind": "exact",
+          "assert": "\"true\"",
+          "source": "截图：文件信息 / design D9"
+        }
+      ]
+    },
+    {
+      "id": "R-15",
+      "text": "B6 md 编辑态横向工具条回滚",
+      "anchors": [
+        {
+          "id": "A-15.1",
+          "claim": "md 编辑态横向工具条按钮集合等于回滚目标版本",
+          "kind": "exact",
+          "assert": "\"true\"",
+          "source": "#833 B6 / design D11"
+        },
+        {
+          "id": "A-15.2",
+          "claim": "HTML 可视化编辑态工具条按钮集合不变",
+          "kind": "exact",
+          "assert": "\"true\"",
+          "source": "#833 B6 / design D11"
+        }
+      ]
+    },
+    {
+      "id": "R-16",
+      "text": "B5a 插入文件内嵌渲染",
+      "anchors": [
+        {
+          "id": "A-16.1",
+          "claim": "内嵌内容节点数下限",
+          "kind": "exact",
+          "assert": "1",
+          "source": "#833 B5 / design D10"
+        },
+        {
+          "id": "A-16.2",
+          "claim": "默认高度约一屏",
+          "kind": "exact",
+          "assert": "\"true\"",
+          "source": "#833 B5 / design D10"
+        },
+        {
+          "id": "A-16.3",
+          "claim": "拖拽改高宽→显示尺寸变化",
+          "kind": "state-machine",
+          "assert": "变化→生效",
+          "source": "#833 B5 / design D10"
+        }
+      ]
+    },
+    {
+      "id": "R-17",
+      "text": "B5b 内嵌文件滚动定格与重开保持",
+      "anchors": [
+        {
+          "id": "A-17.1",
+          "claim": "滚动后滑出→定格；再次打开→保持",
+          "kind": "state-machine",
+          "assert": "定格→重开一致",
+          "source": "#833 B5 / design D10"
+        },
+        {
+          "id": "A-17.2",
+          "claim": "重开后定格位置与滑出时一致",
+          "kind": "exact",
+          "assert": "\"true\"",
+          "source": "#833 B5 / design D10"
+        }
+      ]
+    },
+    {
+      "id": "R-18",
+      "text": "B5c 内嵌文件名称态、悬浮预览与新标签页",
+      "anchors": [
+        {
+          "id": "A-18.1",
+          "claim": "名称态 hover→悬浮预览出现",
+          "kind": "state-machine",
+          "assert": "出现→1",
+          "source": "#833 B5 / design D10"
+        },
+        {
+          "id": "A-18.2",
+          "claim": "切换名称态 / 内容态节点正确",
+          "kind": "exact",
+          "assert": "\"true\"",
+          "source": "#833 B5 / design D10"
+        },
+        {
+          "id": "A-18.3",
+          "claim": "点击支持打开的链接在新标签页打开",
+          "kind": "exact",
+          "assert": "\"true\"",
+          "source": "#833 B5 / design D10"
+        }
+      ]
+    },
+    {
+      "id": "R-19",
+      "text": "C1a 标题字体配置字段与设置 UI",
+      "anchors": [
+        {
+          "id": "A-19.1",
+          "claim": "`heading_fonts` 含 6 级键",
+          "kind": "exact",
+          "assert": "\"true\"",
+          "source": "#833 C1 / design D12"
+        },
+        {
+          "id": "A-19.2",
+          "claim": "非法字体被拒绝并回落",
+          "kind": "exact",
+          "assert": "\"true\"",
+          "source": "#833 C1 / design D12"
+        },
+        {
+          "id": "A-19.3",
+          "claim": "设置面板逐级入口数",
+          "kind": "exact",
+          "assert": "6",
+          "source": "#833 C1 / design D12"
+        }
+      ]
+    },
+    {
+      "id": "R-20",
+      "text": "C1b 标题字体在编辑态与预览态应用",
+      "anchors": [
+        {
+          "id": "A-20.1",
+          "claim": "h1 计算 `font-family` 等于配置值",
+          "kind": "exact",
+          "assert": "\"true\"",
+          "source": "#833 C1 / design D12"
+        },
+        {
+          "id": "A-20.2",
+          "claim": "正文计算 `font-family` 不变",
+          "kind": "exact",
+          "assert": "\"true\"",
+          "source": "#833 C1 / design D12"
+        },
+        {
+          "id": "A-20.3",
+          "claim": "默认 h1 `font-family` 等于 `--type-font-sans`",
+          "kind": "exact",
+          "assert": "\"true\"",
+          "source": "#833 C1 / L-1 第 6 条"
+        }
+      ]
+    },
+    {
+      "id": "R-21",
+      "text": "C2 栏目页签空白处拖动窗口",
+      "anchors": [
+        {
+          "id": "A-21.1",
+          "claim": "空白处按下移动超阈值→窗口位置变化",
+          "kind": "state-machine",
+          "assert": "超阈值→拖动",
+          "source": "#833 C2 / design D13"
+        },
+        {
+          "id": "A-21.2",
+          "claim": "页签 / 按钮区域按下不触发窗口拖动",
+          "kind": "exact",
+          "assert": "\"true\"",
+          "source": "#833 C2 / design D13"
+        }
+      ]
+    },
+    {
+      "id": "R-22",
+      "text": "C3 左边栏固定隐藏 / 显示",
+      "anchors": [
+        {
+          "id": "A-22.1",
+          "claim": "固定隐藏后左侧箭头区域节点数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "#833 C3 / design D14"
+        },
+        {
+          "id": "A-22.2",
+          "claim": "隐藏态滑入→不显示；取消固定→滑入显示",
+          "kind": "state-machine",
+          "assert": "隐藏→0，取消→1",
+          "source": "#833 C3 / design D14"
+        },
+        {
+          "id": "A-22.3",
+          "claim": "设置开关写入 `rail_pin_hidden`",
+          "kind": "exact",
+          "assert": "\"true\"",
+          "source": "#833 C3 / design D14"
+        }
+      ]
+    },
+    {
+      "id": "R-23",
+      "text": "C4a 文本 / 脚本文件行号",
+      "anchors": [
+        {
+          "id": "A-23.1",
+          "claim": "非 Markdown 文本 / 脚本编辑态行号节点数下限",
+          "kind": "exact",
+          "assert": "1",
+          "source": "#833 C4 / design D15"
+        },
+        {
+          "id": "A-23.2",
+          "claim": "Markdown 编辑态行号节点数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "#833 C4 / design D15"
+        }
+      ]
+    },
+    {
+      "id": "R-24",
+      "text": "C4b 预览态语法颜色与代码块缩进",
+      "anchors": [
+        {
+          "id": "A-24.1",
+          "claim": "预览态代码块 `.tok-*` 节点数下限",
+          "kind": "exact",
+          "assert": "1",
+          "source": "#833 C4 / design D15"
+        },
+        {
+          "id": "A-24.2",
+          "claim": "代码块前导缩进保留",
+          "kind": "exact",
+          "assert": "\"true\"",
+          "source": "#833 C4 / design D15"
+        }
+      ]
+    },
+    {
+      "id": "R-25",
+      "text": "C5 颜色菜单恢复默认",
+      "anchors": [
+        {
+          "id": "A-25.1",
+          "claim": "颜色菜单「恢复默认」项存在",
+          "kind": "exact",
+          "assert": "\"true\"",
+          "source": "#833 C5 / design D16"
+        },
+        {
+          "id": "A-25.2",
+          "claim": "点击后 `mdb-color-*` 节点数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "#833 C5 / design D16"
+        }
+      ]
+    }
+  ]
+}
