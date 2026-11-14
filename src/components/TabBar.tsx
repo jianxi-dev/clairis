@@ -1,7 +1,14 @@
 import { invoke } from "@tauri-apps/api/core";
 import Icon from "./Icon";
 import { colorOfType, fileTypeOf, iconOfType } from "../lib/fileType";
-import { useState, useCallback, useEffect, useRef, Fragment } from "react";
+import {
+  useState,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  Fragment,
+} from "react";
 import { createPortal } from "react-dom";
 import { useStore } from "../stores";
 import {
@@ -11,6 +18,8 @@ import {
 } from "./Content/mediaMute";
 import { popOverlay, pushOverlay } from "../lib/overlayGate";
 import { revealInFinder } from "../lib/finder";
+import { runExportAction } from "../lib/exportActions";
+import { EXPORT_MENU_ITEMS } from "../lib/paneHeaderMenu";
 import { isTauriEnv } from "../utils/tauri";
 import type { Tab } from "../types";
 
@@ -32,30 +41,6 @@ interface TabBarProps {
 
 /** 指针移动超过该像素才算拖拽，以下视为点击切签。 */
 const DRAG_THRESHOLD_PX = 4;
-
-// 驱动兄弟组件 PaneHeader 的既有导出菜单（无共享状态，复制整套导出管线代价更大）。
-// 只派发 click：不产生 mousedown，不会命中「更多操作」的外部点击关闭。
-function openPaneExportMenu(tabEl: HTMLElement | null | undefined): void {
-  const pane = tabEl?.closest("[data-pane-id]");
-  const menuButton = pane?.querySelector<HTMLButtonElement>(
-    '[data-testid="pane-menu-button"]',
-  );
-  if (!menuButton) return;
-  menuButton.click();
-  const clickExport = (attempt: number): void => {
-    const item = pane?.querySelector<HTMLButtonElement>(
-      '[data-menu-item="export"]',
-    );
-    if (item) {
-      item.click();
-      return;
-    }
-    if (attempt < 20) {
-      window.setTimeout(() => clickExport(attempt + 1), 16);
-    }
-  };
-  window.setTimeout(() => clickExport(0), 0);
-}
 
 interface CtxMenu {
   x: number;
@@ -237,17 +222,51 @@ export default function TabBar({
   }, [dragEnabled, onReorderTabs, paneId, onMoveToPane]);
 
   const [menu, setMenu] = useState<CtxMenu | null>(null);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [submenuSide, setSubmenuSide] = useState<"left" | "right">("left");
+  const [submenuAlignTop, setSubmenuAlignTop] = useState(true);
+  const exportSubmenuRef = useRef<HTMLDivElement>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showNotice = useCallback((message: string) => {
+    setNotice(message);
+    if (noticeTimer.current) clearTimeout(noticeTimer.current);
+    noticeTimer.current = setTimeout(() => setNotice(null), 3000);
+  }, []);
+
+  useEffect(
+    () => () => {
+      if (noticeTimer.current) clearTimeout(noticeTimer.current);
+    },
+    [],
+  );
 
   const handleContextMenu = useCallback(
     (e: React.MouseEvent, tabId: string) => {
       e.preventDefault();
       e.stopPropagation();
+      setExportOpen(false);
       setMenu({ x: e.clientX, y: e.clientY, tabId });
     },
     [],
   );
 
-  const closeMenu = useCallback(() => setMenu(null), []);
+  const closeMenu = useCallback(() => {
+    setMenu(null);
+    setExportOpen(false);
+  }, []);
+
+  // 就地子菜单靠右时默认向左展开；左缘放不下则翻到右侧，下缘放不下则底对齐。
+  useLayoutEffect(() => {
+    if (!exportOpen) return;
+    const sub = exportSubmenuRef.current;
+    if (!sub) return;
+    const rect = sub.getBoundingClientRect();
+    const margin = 8;
+    setSubmenuSide(rect.left < margin ? "right" : "left");
+    setSubmenuAlignTop(rect.bottom <= window.innerHeight - margin);
+  }, [exportOpen]);
 
   useEffect(() => {
     if (!menu) return;
@@ -575,23 +594,82 @@ export default function TabBar({
             className="h-px my-1"
             style={{ background: "var(--app-border)" }}
           />
+          <div data-export-row className="relative">
+            <button
+              data-menu-item="export"
+              aria-haspopup="menu"
+              aria-expanded={exportOpen}
+              className="w-full flex items-center gap-2 text-left px-3 py-1.5 hover:bg-[var(--app-sunken)] disabled:cursor-not-allowed disabled:opacity-45"
+              disabled={!tabs[menu.tabId]?.path}
+              title={
+                tabs[menu.tabId]?.path ? "导出" : "此页签尚未保存，无路径可导出"
+              }
+              onClick={() => setExportOpen((v) => !v)}
+            >
+              <Icon name="export" size={18} />
+              导出
+              <span
+                className="ml-auto h-0 w-0 border-y-4 border-l-4 border-y-transparent border-l-[var(--app-text-3)]"
+                aria-hidden="true"
+              />
+            </button>
+            {exportOpen && (
+              <div
+                data-testid="pane-export-submenu"
+                role="menu"
+                ref={exportSubmenuRef}
+                className="absolute min-w-[132px] rounded border py-1 text-xs shadow-lg"
+                style={{
+                  ...(submenuSide === "left"
+                    ? { right: "100%", marginRight: 1 }
+                    : { left: "100%", marginLeft: 1 }),
+                  ...(submenuAlignTop ? { top: 0 } : { bottom: 0 }),
+                  background: "var(--app-surface)",
+                  borderColor: "var(--app-border)",
+                  color: "var(--app-text-2)",
+                }}
+              >
+                {EXPORT_MENU_ITEMS.map((sub) => (
+                  <button
+                    key={sub.action}
+                    type="button"
+                    role="menuitem"
+                    data-export-item={sub.action}
+                    disabled={sub.disabled}
+                    title={sub.title}
+                    onClick={() => {
+                      const tab = tabs[menu.tabId];
+                      if (!tab) return;
+                      void runExportAction(
+                        sub.action,
+                        {
+                          title: tab.title,
+                          content: tab.content,
+                          path: tab.path,
+                        },
+                        showNotice,
+                      );
+                      closeMenu();
+                    }}
+                    className="flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-[var(--app-sunken)] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <Icon name={sub.icon} size={18} />
+                    <span>{sub.label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           <button
-            data-menu-item="export"
-            className="w-full flex items-center gap-2 text-left px-3 py-1.5 hover:bg-[var(--app-sunken)] disabled:cursor-not-allowed disabled:opacity-45"
-            disabled={!tabs[menu.tabId]?.path}
-            title={
-              tabs[menu.tabId]?.path ? "导出" : "此页签尚未保存，无路径可导出"
-            }
+            data-menu-item="print"
+            className="w-full flex items-center gap-2 text-left px-3 py-1.5 hover:bg-[var(--app-sunken)]"
             onClick={() => {
-              const el = stripRef.current?.querySelector<HTMLElement>(
-                `[data-tab-id="${menu.tabId}"]`,
-              );
+              window.print();
               closeMenu();
-              openPaneExportMenu(el);
             }}
           >
-            <Icon name="export" size={18} />
-            导出
+            <Icon name="print" size={18} />
+            打印
           </button>
           <button
             className="w-full flex items-center gap-2 text-left px-3 py-1.5 hover:bg-[var(--app-sunken)] disabled:cursor-not-allowed disabled:opacity-45"
@@ -715,6 +793,16 @@ export default function TabBar({
             <Icon name="closeOthers" size={18} />
             关闭其他
           </button>
+        </div>
+      )}
+
+      {notice && (
+        <div
+          role="status"
+          data-export-notice
+          className="fixed bottom-6 left-1/2 z-[2147483000] -translate-x-1/2 rounded-full bg-gray-900/90 px-4 py-2 text-sm text-white shadow-lg dark:bg-gray-700/95"
+        >
+          {notice}
         </div>
       )}
     </>

@@ -34,8 +34,7 @@ test.describe("导出 Word", () => {
   }) => {
     await openMockFile(page);
 
-    await page.locator('[data-testid="pane-menu-button"]').first().click();
-    await expect(page.locator('[data-testid="pane-menu"]')).toBeVisible();
+    await page.locator('[role="tab"]').first().click({ button: "right" });
     await page.locator('[data-menu-item="export"]').click();
     await page.locator('[data-export-item="exportDocx"]').click();
 

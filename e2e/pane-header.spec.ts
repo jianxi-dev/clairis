@@ -186,7 +186,7 @@ test("拖动页签换位：顺序严格等于落点；Esc 取消不留占位", a
   expect(await tabOrder(page, "main")).toEqual(order);
 });
 
-test("⋯ 菜单恰好 9 项、每项带图标、无全屏项", async ({ page }) => {
+test("⋯ 菜单恰好 6 项、每项带图标、无文件级动作", async ({ page }) => {
   await boot(page);
   await openFile(page, "/tmp/ph/m.md");
 
@@ -194,19 +194,16 @@ test("⋯ 菜单恰好 9 项、每项带图标、无全屏项", async ({ page })
   const menu = page.locator('[data-testid="pane-menu"]');
   await expect(menu).toBeVisible();
   const items = menu.locator("[data-menu-item]");
-  await expect(items).toHaveCount(9);
+  await expect(items).toHaveCount(6);
 
   const labels = (await items.allInnerTexts()).map((t) => t.trim());
   expect(labels).toEqual([
     "新建文件",
-    "导出",
     "分享",
     "右分",
     "下分",
     "源码模式",
-    "刷新",
     "定位",
-    "打开文件位置",
   ]);
 
   const n = await items.count();
@@ -382,14 +379,14 @@ test("页签改名输入框宽度为 24ch", async ({ page }) => {
   );
 });
 
-test("栏目菜单刷新从磁盘重读当前文件", async ({ page }) => {
+test("页签右键刷新从磁盘重读当前文件", async ({ page }) => {
   await boot(page);
   await page.evaluate(() => {
     const win = window as unknown as Record<string, any>;
     win.__biaoyue_openFile__("/Users/test/refresh.md", "旧内容", "refresh.md");
   });
-  await page.locator('[data-testid="pane-menu-button"]').first().click();
-  await page.locator('[data-menu-item="refresh"]').click();
+  await page.locator('[role="tab"]').first().click({ button: "right" });
+  await page.locator('[data-menu-item="reload"]').click();
   await expect
     .poll(() =>
       page.evaluate(() => {

@@ -17,7 +17,7 @@
 | A-2.1 | exact | idx(导出) < idx(复制路径) | "true" | #805 第 1 条 / design D1 |
 | A-2.2 | exact | idx(打开文件位置) > idx(复制路径) | "true" | #805 第 1 条 / design D1 |
 | A-2.3 | exact | idx(刷新) < idx(关闭) | "true" | #805 第 1 条 / design D1 |
-| A-2.4 | exact | 页签右键菜单项数 | 10 | #805 第 1 条 / design D1 |
+| A-2.4 | exact | 页签右键菜单项数 | 11 | #805 第 1 条 / design D1 |
 | A-2.5 | exact | 右键菜单导出子菜单项数 | 6 | #805 第 1 条 / design D2 |
 | A-2.6 | exact | 导出子菜单中 print 项数 | 0 | #805 第 2 条 / design D3 |
 | A-2.7 | exact | idx(打印) - idx(导出) | 1 | #805 第 2 条 / design D3 |

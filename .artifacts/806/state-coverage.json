@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "tab-menu-open",
+      "screenshot": ".artifacts/806/tab-menu-open.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-14T04:08:44Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "export-submenu-open",
+      "screenshot": ".artifacts/806/export-submenu-open.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-14T04:08:44Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "pane-menu-open",
+      "screenshot": ".artifacts/806/pane-menu-open.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-14T04:08:44Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "menu-closed",
+      "screenshot": ".artifacts/806/menu-closed.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-14T04:08:44Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}

@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { moveItem, reorderLeafTabs, type PaneLayout } from "../lib/paneTree";
-import { PANE_MENU_ITEMS, nextPaneMode } from "../lib/paneHeaderMenu";
+import {
+  EXPORT_MENU_ITEMS,
+  PANE_MENU_ITEMS,
+  nextPaneMode,
+} from "../lib/paneHeaderMenu";
 
 describe("moveItem（页签拖拽换位的纯逻辑）", () => {
   it("把元素移动到目标终态下标", () => {
@@ -43,26 +47,44 @@ describe("reorderLeafTabs", () => {
 });
 
 describe("⋯ 菜单定义", () => {
-  it("恰好 9 项且顺序与名称严格相等", () => {
+  it("恰好 6 项且顺序与名称严格相等", () => {
     expect(PANE_MENU_ITEMS.map((i) => i.label)).toEqual([
       "新建文件",
-      "导出",
       "分享",
       "右分",
       "下分",
       "源码模式",
-      "刷新",
       "定位",
-      "打开文件位置",
     ]);
   });
 
-  it("每项都带图标，且不含全屏项", () => {
+  it("每项都带图标，且不含全屏项与文件级动作", () => {
     for (const item of PANE_MENU_ITEMS) {
       expect(item.icon).toBeTruthy();
     }
-    expect(PANE_MENU_ITEMS.map((i) => i.label)).not.toContain("全屏");
+    const labels = PANE_MENU_ITEMS.map((i) => i.label);
+    expect(labels).not.toContain("全屏");
+    expect(labels).not.toContain("导出");
+    expect(labels).not.toContain("刷新");
+    expect(labels).not.toContain("打开文件位置");
     expect(PANE_MENU_ITEMS.map((i) => i.icon)).not.toContain("expand");
+  });
+});
+
+describe("导出能力清单", () => {
+  it("恰好 6 项且顺序为 Word/.mdpkg/图片/PDF/HTML/ZIP", () => {
+    expect(EXPORT_MENU_ITEMS.map((i) => i.label)).toEqual([
+      "Word",
+      ".mdpkg",
+      "图片",
+      "PDF",
+      "HTML",
+      "ZIP",
+    ]);
+  });
+
+  it("不含打印（打印是同级的独立菜单项）", () => {
+    expect(EXPORT_MENU_ITEMS.map((i) => i.action)).not.toContain("print");
   });
 });
 

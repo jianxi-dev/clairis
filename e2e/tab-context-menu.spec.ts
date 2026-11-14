@@ -165,39 +165,45 @@ test.describe("页签右键菜单：复制路径与移动到（ui-polish-batch12
   });
 });
 
-test.describe("页签右键菜单文件动作（editor-surface-batch17 18.1）", () => {
-  test("导出 < 复制路径 < 打开文件位置，刷新 < 关闭，三项各 1 次", async ({
+test.describe("页签右键菜单文件动作（editor-surface-batch18 1.1）", () => {
+  test("导出 < 打印+1 < 复制路径 < 打开文件位置，刷新 < 关闭", async ({
     page,
   }) => {
     await boot(page);
     await page.locator('[role="tab"]').first().click({ button: "right" });
 
-    const items = page.locator("[data-tab-menu] > button");
-    await expect(items).toHaveCount(10);
-    const labels = await items.allTextContents();
-    const idx = (name: string) => labels.findIndex((t) => t.trim() === name);
+    const rows = page.locator(
+      "[data-tab-menu] > button, [data-tab-menu] > [data-export-row]",
+    );
+    await expect(rows).toHaveCount(11);
+    const labels = await rows.evaluateAll((els) =>
+      els.map((el) => el.textContent?.trim() ?? ""),
+    );
+    const idx = (name: string) => labels.indexOf(name);
     const exportIdx = idx("导出");
+    const printIdx = idx("打印");
     const copyIdx = idx("复制路径");
     const revealIdx = idx("打开文件位置");
     const reloadIdx = idx("刷新");
     const closeIdx = idx("关闭");
 
     expect(exportIdx).toBeGreaterThanOrEqual(0);
+    expect(printIdx).toBe(exportIdx + 1);
     expect(revealIdx).toBeGreaterThanOrEqual(0);
     expect(reloadIdx).toBeGreaterThanOrEqual(0);
     expect(exportIdx).toBeLessThan(copyIdx);
     expect(copyIdx).toBeLessThan(revealIdx);
     expect(reloadIdx).toBeLessThan(closeIdx);
 
-    for (const name of ["导出", "打开文件位置", "刷新"]) {
-      expect(labels.filter((t) => t.trim() === name)).toHaveLength(1);
+    for (const name of ["导出", "打印", "打开文件位置", "刷新"]) {
+      expect(labels.filter((t) => t === name)).toHaveLength(1);
     }
     await expect(page.locator('[data-menu-item="export"]')).toHaveCount(1);
     await expect(page.locator('[data-menu-item="reveal"]')).toHaveCount(1);
     await expect(page.locator('[data-menu-item="reload"]')).toHaveCount(1);
   });
 
-  test("点导出打开导出菜单，取消后无残留", async ({ page }) => {
+  test("点导出就地展开子菜单，Esc 后无残留", async ({ page }) => {
     await boot(page);
     await page.locator('[role="tab"]').first().click({ button: "right" });
     await page.locator('[data-menu-item="export"]').click();
@@ -205,14 +211,14 @@ test.describe("页签右键菜单文件动作（editor-surface-batch17 18.1）",
     await expect(
       page.locator('[data-testid="pane-export-submenu"]'),
     ).toHaveCount(1);
-    await expect(page.locator("[data-tab-menu]")).toHaveCount(0);
+    await expect(page.locator("[data-tab-menu]")).toHaveCount(1);
 
     await page.keyboard.press("Escape");
     await expect(
       page.locator('[data-testid="pane-export-submenu"]'),
     ).toHaveCount(0);
-    await expect(page.locator('[data-testid="pane-menu"]')).toHaveCount(0);
     await expect(page.locator("[data-tab-menu]")).toHaveCount(0);
+    await expect(page.locator('[data-testid="pane-menu"]')).toHaveCount(0);
   });
 });
 

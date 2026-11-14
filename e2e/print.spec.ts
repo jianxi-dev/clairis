@@ -95,16 +95,13 @@ async function boot(page: Page): Promise<void> {
   await page.waitForTimeout(300);
 }
 
-test("导出菜单「打印」调用 window.print 恰好一次且不产生导出文件", async ({
+test("页签右键「打印」调用 window.print 恰好一次且不产生导出文件", async ({
   page,
 }) => {
   await boot(page);
-  await page.locator('[data-testid="pane-menu-button"]').first().click();
-  await page.locator('[data-menu-item="export"]').first().hover();
-  const submenu = page.locator('[data-testid="pane-export-submenu"]');
-  await expect(submenu).toBeVisible({ timeout: 3000 });
+  await page.locator('[role="tab"]').first().click({ button: "right" });
   await record(page, "menu-with-print");
-  await page.locator('[data-export-item="print"]').click();
+  await page.locator('[data-menu-item="print"]').click();
   await expect
     .poll(
       () =>
