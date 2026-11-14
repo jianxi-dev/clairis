@@ -1,0 +1,29 @@
+{
+  "task": "824-print-pagination",
+  "states": [
+    {
+      "state": "long-doc",
+      "assertion": "passed",
+      "detail": "30 页；120 表格/120 行；root=28796px",
+      "recorded_at": "2026-11-14T13:18:32.482Z"
+    },
+    {
+      "state": "formula-mermaid",
+      "assertion": "passed",
+      "detail": "2 页；mermaid block=558px",
+      "recorded_at": "2026-11-14T13:18:35.014Z"
+    },
+    {
+      "state": "tall-mermaid",
+      "assertion": "passed",
+      "detail": "2 页；mermaid block=943px",
+      "recorded_at": "2026-11-14T13:18:37.342Z"
+    },
+    {
+      "state": "video-placeholder",
+      "assertion": "passed",
+      "detail": "占位文件名=clip.mp4",
+      "recorded_at": "2026-11-14T13:18:39.826Z"
+    }
+  ]
+}
