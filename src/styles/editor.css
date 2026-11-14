@@ -1623,8 +1623,9 @@ html[data-tab-drag="true"] body * {
   border-top: 0;
 }
 
+/* 单元格正文是块级容器：内部标题 / 列表渲染成块元素（A-5）。 */
 .cm-table-cell-text {
-  display: inline-block;
+  display: block;
   min-width: 1em;
   min-height: 1em;
   white-space: pre-wrap;

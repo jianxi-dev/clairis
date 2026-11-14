@@ -37,11 +37,8 @@ import {
 } from "../slash";
 
 import { renderIcon } from "../icons";
-import {
-  parseCellBackground,
-  renderCellText,
-  sanitizeCellText,
-} from "./cell-text";
+import { parseCellBackground, sanitizeCellText } from "./cell-text";
+import { renderBlockDom } from "./block-dom";
 import {
   clearCellSelection,
   getCellSelection,
@@ -684,7 +681,7 @@ function syncCellDom(
   const displayText = background ? background.inner : raw;
   if ((body.dataset.rawText ?? "") === displayText) return;
   body.dataset.rawText = displayText;
-  body.innerHTML = renderCellText(displayText);
+  body.replaceChildren(renderBlockDom(displayText));
 }
 
 /**
@@ -1026,14 +1023,15 @@ class TableWidget extends WidgetType {
       el.classList.add(cellBackgroundClass(background.colorClass));
     }
 
-    const body = document.createElement("span");
+    // 块级内容（标题 / 列表）需要块级容器：span 里塞 div 不是合法 HTML。
+    const body = document.createElement("div");
     body.className = "cm-table-cell-text";
     body.setAttribute("data-testid", "cm-table-cell-text");
     body.dataset.row = String(row);
     body.dataset.col = String(col);
     const displayText = background ? background.inner : text;
     body.dataset.rawText = displayText;
-    body.innerHTML = renderCellText(displayText);
+    body.replaceChildren(renderBlockDom(displayText));
     el.appendChild(body);
 
     const selection = view ? getCellSelection(view) : null;
@@ -1616,7 +1614,7 @@ class TableWidget extends WidgetType {
         const previousRaw = body.dataset.rawText ?? "";
         if (previousRaw !== displayText) {
           body.dataset.rawText = displayText;
-          body.innerHTML = renderCellText(displayText);
+          body.replaceChildren(renderBlockDom(displayText));
         }
         // 手柄图标跟着内容走：空 <-> 有内容 两态都要立刻切（#108）。
         const cellHandle = cellEl?.querySelector<HTMLElement>(
