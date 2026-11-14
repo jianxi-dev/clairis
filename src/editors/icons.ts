@@ -222,6 +222,15 @@ const ICON_REGISTRY: Record<string, IconDef> = {
     ],
   },
 
+  // Cut —— 图片工具条的「剪切」按钮（#767），与 CropOutlined 明显区分。
+  CutOutlined: {
+    kind: "paths",
+    paths: [
+      "M6 3h12a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zm0 2v14h12V5H6z",
+      "M8 16l8-8M16 16l-8-8",
+    ],
+  },
+
   // Drag handle (six dots) — default/paragraph affordance.
   DragHandleOutlined: {
     kind: "paths",
