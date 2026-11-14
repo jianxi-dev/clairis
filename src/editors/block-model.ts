@@ -137,7 +137,13 @@ interface BlockChildNode {
 }
 
 /**
- * 段落是否只含一张图片：`![alt](path)` 独占一行。
+ * 图片的属性块（`{width=…}`）与旧宽度注释（`<!--w=…-->`）是持久化用的，
+ * 不算正文；带它们的独占行仍是图片块（D13）。
+ */
+const IMAGE_TRAILING_RE = /^(?:\{[^}]*\})?(?:<!--[\s\S]*?-->)?$/;
+
+/**
+ * 段落是否只含一张图片：`![alt](path)` 独占一行（可带属性块 / 宽度注释）。
  *
  * `Image` 在 @lezer/markdown 里是**行内**节点，所以独占一行的图片会被解析成
  * `Paragraph > Image`；只看顶层节点会把它误判成段落，手柄图标也随错（#649）。
@@ -161,7 +167,7 @@ function isImageOnlyParagraph(
   if (imageFrom === -1) return false;
   const before = state.doc.sliceString(node.from, imageFrom).trim();
   const after = state.doc.sliceString(imageTo, node.to).trim();
-  return before === "" && after === "";
+  return before === "" && IMAGE_TRAILING_RE.test(after);
 }
 
 // --- getBlocks ---------------------------------------------------------------

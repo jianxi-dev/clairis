@@ -33,6 +33,16 @@ describe("getBlocks", () => {
     expect(getBlocks(state).map((b) => b.type)).toEqual(["image"]);
   });
 
+  it("keeps an image with a width attribute / comment an image block", () => {
+    for (const doc of [
+      "![图片](photo.png){width=420}",
+      "![图片](photo.png)<!--w=420-->",
+      "![clip](clip.mp4){width=420}\n",
+    ]) {
+      expect(getBlocks(makeState(doc)).map((b) => b.type)).toEqual(["image"]);
+    }
+  });
+
   it("keeps an inline image inside text as a paragraph", () => {
     const state = makeState("看图 ![图片](photo.png) 结束");
     expect(getBlocks(state).map((b) => b.type)).toEqual(["paragraph"]);

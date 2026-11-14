@@ -397,6 +397,32 @@ describe("block decorations", () => {
       expect(video?.getAttribute("src")).toBe("clip.mp4");
     });
 
+    it("视频容器带 media-kind / 默认居中 / 属性块宽度与对齐生效", () => {
+      const plain = widgetOf(
+        createImageDecorations("![clip](clip.mp4)")[0],
+      ).toDOM();
+      expect(plain.dataset.mediaKind).toBe("video");
+      expect(plain.dataset.align).toBe("center");
+      expect(plain.style.width).toBe("");
+      expect(plain.querySelector("video")?.style.width).toBe("100%");
+
+      const sized = widgetOf(
+        createImageDecorations("![clip](clip.mp4){width=420 align=left}")[0],
+      ).toDOM();
+      expect(sized.dataset.align).toBe("left");
+      expect(sized.style.width).toBe("420px");
+      expect(sized.dataset.width).toBe("420");
+    });
+
+    it("文件卡片不参与视频对齐与缩放选中", () => {
+      const dom = widgetOf(
+        createImageDecorations("![report](report.pdf)")[0],
+      ).toDOM();
+      expect(dom.dataset.mediaKind).toBe("file");
+      expect(dom.dataset.align).toBeUndefined();
+      expect(dom.dataset.mediaFrom).toBeUndefined();
+    });
+
     it("renders a file link card for a non-image, non-video extension", () => {
       const dom = widgetOf(
         createImageDecorations("![report](report.pdf)")[0],
