@@ -59,6 +59,7 @@ openspec status --change <name>   # 单个变更工件完成度
   - 视频测试基线（逆时针断言、播放列表事件驱动）、手柄菜单回移不拆且图片/表格菜单贴手柄、拖块插入指示线与 Esc 取消、全屏按钮栏自动浮现、两态块宽度对齐、编辑态等宽统一、编辑态 KaTeX 公式与围栏代码高亮、Pele 两态字体同源、表格网格增量高亮保留选中、分栏 5 横向栏目、A4 打印、图片描述/裁剪/对齐/缩放锚点/预览浮层/圆角/块菜单/任务图标
 - 编辑域（`table-editing-polish`）：6/6 票合并（PR #746–#751），3 条 requirement 修订（editing：E-6 斜杠菜单内容输入上下文与单元格手柄、E-7 行列插入圆点与上下文命令安全集、E-14 上下文菜单以控件矩形定位），无新增 requirement，已归档 `openspec/changes/archive/2026-11-13-table-editing-polish`
 - 编辑/阅读/导航/配置域（`editor-surface-batch17`）：21/21 票合并（PR #772–#797），+15 requirement / ~12 修订（editing 新增 E-32..E-39 并修订 E-11/E-19/E-20/E-22/E-24/E-26/E-27/E-28/E-29/E-30；reading 新增预览分栏与嵌入视频、修订 PDF 按钮栏；navigation 新增页签菜单关闭/左边栏快捷键/页签文件动作；application-shell 新增页签空白全屏与更多菜单；configuration 修订提示信息显示时长），已归档 `openspec/changes/archive/2026-11-14-editor-surface-batch17`
+- 编辑/阅读/导出域（`editor-surface-batch18`）：3/3 票合并（PR #810–#812），文件动作迁到页签右键菜单（导出就地 6 项子菜单、打印独立项）、打印按 Markdown 预览态输出（mermaid 成图、打印后恢复现场）、裁剪图显示盒受容器约束并按比例（修复图片文档滚动异常），已归档 `openspec/changes/archive/2026-11-14-editor-surface-batch18`
   - 单元格手柄统一图标/垂直居中/表头无手柄/圆角 3px、行列插入圆点（上/左外缘、悬停变 +、点击插入删除）、斜杠菜单内容输入上下文（单元格/分栏/高亮块就地打开、焦点保持、Esc 回滚、死代码清理）、分栏与高亮块「+」手柄、上下文命令安全集（单元格=行内+单行片段，容器=全量）
 
 - 编辑域（`table-editing-polish`）：6/6 票合并（PR #746–#751），3 条 requirement 修订（E-6 编辑内核与插入入口补上下文触发、手柄统一与表头无手柄；E-7 编排层补行列插入圆点与上下文命令集；E-14 浮层定位补触发控件矩形锚定），已归档 `openspec/changes/archive/2026-11-13-table-editing-polish`
