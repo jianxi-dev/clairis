@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { summonAddHandle } from "./helpers/block-handle";
 
 const APP_URL = "http://localhost:1420";
 const MOD = process.platform === "darwin" ? "Meta" : "Control";
@@ -663,7 +664,7 @@ test("转换菜单与新增手柄菜单同宽（差 0px）", async ({ page }) =>
   });
   await page.locator(".cm-content").waitFor({ timeout: 5000 });
   const add = page.locator(".cm-block-handle-add").first();
-  await add.hover();
+  await summonAddHandle(page, add);
   const insertWidth = await page
     .locator(".mdb-slash-menu")
     .evaluate((el) => (el as HTMLElement).offsetWidth);
