@@ -109,6 +109,7 @@ export default function HtmlVisualEditor({
   const [textSel, setTextSel] = useState<{
     anchor: SelectionRect;
     text: string;
+    align: string;
   } | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -236,12 +237,18 @@ export default function HtmlVisualEditor({
               height: msg.rect.height,
             },
             text: msg.text,
+            align: msg.align,
           });
           break;
         }
         case "rangeHtml":
           rangeDirtyRef.current = true;
-          commit((prev) => applyInnerHtml(prev, msg.nodeId, msg.html));
+          commit((prev) => {
+            const next = applyInnerHtml(prev, msg.nodeId, msg.html);
+            return msg.blockStyle
+              ? applyStylePatch(next, msg.nodeId, msg.blockStyle)
+              : next;
+          });
           break;
         case "selectionRect": {
           // iframe 报的是它自己的视口坐标，换算到主视口放这里（事件回调里读
@@ -515,6 +522,7 @@ export default function HtmlVisualEditor({
         <HtmlRangeToolbar
           anchor={textSel.anchor}
           text={textSel.text}
+          align={textSel.align}
           onCommand={(command, value) => send(commandForRange(command, value))}
           onClose={() => {
             textSelectingRef.current = false;

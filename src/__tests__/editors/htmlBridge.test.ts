@@ -116,6 +116,22 @@ describe("文字选区与回写消息（HTML 文字工具条）", () => {
       type: "textSelection",
       rect,
       text: "第一段",
+      align: "left",
+    });
+    expect(
+      parseBridgeMessage({
+        v: BRIDGE_VERSION,
+        type: "textSelection",
+        rect,
+        text: "第一段",
+        align: "justify",
+      }),
+    ).toEqual({
+      v: BRIDGE_VERSION,
+      type: "textSelection",
+      rect,
+      text: "第一段",
+      align: "justify",
     });
     expect(
       parseBridgeMessage({
@@ -129,6 +145,7 @@ describe("文字选区与回写消息（HTML 文字工具条）", () => {
       type: "textSelection",
       rect: null,
       text: "",
+      align: "left",
     });
     expect(
       parseBridgeMessage({
@@ -149,6 +166,12 @@ describe("文字选区与回写消息（HTML 文字工具条）", () => {
     };
     expect(parseBridgeMessage(ok)).toEqual(ok);
     expect(parseBridgeMessage({ ...ok, html: 3 })).toBeNull();
+    expect(
+      parseBridgeMessage({
+        ...ok,
+        blockStyle: { "text-align": "justify", bad: 42 },
+      }),
+    ).toEqual({ ...ok, blockStyle: { "text-align": "justify" } });
   });
 
   it("rangeCommand 与版本位同源", () => {

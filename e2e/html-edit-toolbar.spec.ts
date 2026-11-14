@@ -47,18 +47,73 @@ test("改字号与对齐：元素立刻变化", async ({ page }) => {
   await frame.locator("p").first().click();
 
   await page.locator(`${TOOLBAR} select[aria-label=字号]`).selectOption("24px");
-  await page.locator(`${TOOLBAR} button[data-align=center]`).click();
+  await page
+    .locator(`${TOOLBAR} select[aria-label=对齐]`)
+    .selectOption("center");
 
   const target = frame.locator('[data-cm-node-id="p:0"]');
   await expect(target).toHaveCSS("font-size", "24px");
   await expect(target).toHaveCSS("text-align", "center");
-  await expect(
-    page.locator(`${TOOLBAR} button[data-align=center]`),
-  ).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator(`${TOOLBAR} select[aria-label=对齐]`)).toHaveValue(
+    "center",
+  );
 
   const html = await content(page);
   expect(html).toContain("font-size: 24px");
   expect(html).toContain("text-align: center");
+});
+
+test("对齐下拉：四选项且两端对齐写入 justify", async ({ page }) => {
+  const frame = await openVisual(page);
+  await frame.locator("p").first().click();
+
+  const alignSelect = page.locator(`${TOOLBAR} select[aria-label=对齐]`);
+  await expect(alignSelect).toHaveCount(1);
+  const options = alignSelect.locator("option");
+  await expect(options).toHaveCount(4);
+  await expect(options.nth(0)).toHaveAttribute("value", "left");
+  await expect(options.nth(1)).toHaveAttribute("value", "center");
+  await expect(options.nth(2)).toHaveAttribute("value", "right");
+  await expect(options.nth(3)).toHaveAttribute("value", "justify");
+
+  await alignSelect.selectOption("justify");
+  const target = frame.locator('[data-cm-node-id="p:0"]');
+  await expect(target).toHaveCSS("text-align", "justify");
+
+  const html = await content(page);
+  expect(html).toContain("text-align: justify");
+});
+
+test("文字选区工具条：对齐同为四项下拉，两端对齐写入 justify", async ({
+  page,
+}) => {
+  const frame = await openVisual(page);
+  await frame
+    .locator("p")
+    .first()
+    .evaluate((el) => {
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      const selection = getSelection();
+      if (!selection) throw new Error("no selection");
+      selection.removeAllRanges();
+      selection.addRange(range);
+    });
+
+  const bar = page.locator(`${TOOLBAR}[data-cm-range-toolbar="true"]`);
+  await expect(bar).toBeVisible();
+  const alignSelect = bar.locator('select[aria-label="对齐"]');
+  await expect(alignSelect).toHaveCount(1);
+  await expect(alignSelect.locator("option")).toHaveCount(4);
+  await expect(alignSelect).toHaveValue("left");
+
+  await alignSelect.selectOption("justify");
+  await expect(frame.locator('[data-cm-node-id="p:0"]')).toHaveCSS(
+    "text-align",
+    "justify",
+  );
+  await expect(alignSelect).toHaveValue("justify");
+  expect(await content(page)).toContain("justify");
 });
 
 test("工具条不压在选中元素上", async ({ page }) => {
@@ -193,6 +248,9 @@ test.describe("HTML 工具条当前值与图标化（editor-surface-batch17 8.1�
     await expect(page.locator(TOOLBAR)).toBeVisible();
     await frame.locator("body").click({ position: { x: 400, y: 500 } });
     await expect(page.locator(TOOLBAR)).toHaveCount(0);
+    await expect(
+      page.locator(`${TOOLBAR} select[aria-label=对齐]`),
+    ).toHaveCount(0);
   });
 });
 
