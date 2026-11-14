@@ -12,6 +12,18 @@
   margin: 10mm;
 }
 
+/* 打印视图（#807 / D3）：屏幕外**可布局**地挂载——不能用 display:none，
+ * mermaid 的文本测量需要真实盒子；同时不参与命中测试、显示媒体下不可见。
+ * 打印媒体下的复位见下方 @media print。 */
+#biaoyue-print-root {
+  position: absolute;
+  left: -10000px;
+  top: 0;
+  width: 794px;
+  visibility: hidden;
+  pointer-events: none;
+}
+
 @media print {
   /* ── 隐藏外壳 ─────────────────────────────────────────── */
   .app-chrome,
@@ -53,7 +65,9 @@
   }
 
   /* ── 放开视口与滚动，让内容跨页 ─────────────────────── */
-  .app-root,
+  html,
+  body,
+  #root,
   .app-shell,
   .pane-tree,
   .pane-branch,
@@ -65,9 +79,10 @@
     overflow: visible !important;
   }
 
-  .app-root,
-  .app-shell {
-    display: block !important;
+  /* 打印视图出纸时应用整体不出纸：纸上只有 #biaoyue-print-root（D3）。
+   * 用打印标记门控，是为了让未挂打印视图的直接 Ctrl+P 仍走旧版式。 */
+  html[data-biaoyue-printing] .app-root {
+    display: none !important;
   }
 
   /* ── 纸面：白底黑字、无阴影 ─────────────────────────── */
@@ -77,6 +92,22 @@
   .app-root,
   .preview-shell,
   .cm-editor {
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  /* 打印视图回到正常流，铺满页宽；预览排版类仍在，纸上与屏幕预览同源。 */
+  #biaoyue-print-root {
+    position: static;
+    left: auto;
+    top: auto;
+    width: 100%;
+    visibility: visible;
+    pointer-events: auto;
+  }
+
+  #biaoyue-print-root,
+  #biaoyue-print-root .preview-content {
     background: #fff !important;
     color: #000 !important;
   }

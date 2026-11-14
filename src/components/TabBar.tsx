@@ -19,6 +19,7 @@ import {
 import { popOverlay, pushOverlay } from "../lib/overlayGate";
 import { revealInFinder } from "../lib/finder";
 import { runExportAction } from "../lib/exportActions";
+import { printMarkdownPreview } from "../lib/printPreview";
 import { EXPORT_MENU_ITEMS } from "../lib/paneHeaderMenu";
 import { isTauriEnv } from "../utils/tauri";
 import type { Tab } from "../types";
@@ -664,8 +665,13 @@ export default function TabBar({
             data-menu-item="print"
             className="w-full flex items-center gap-2 text-left px-3 py-1.5 hover:bg-[var(--app-sunken)]"
             onClick={() => {
-              window.print();
+              const tab = tabs[menu.tabId];
               closeMenu();
+              if (!tab) return;
+              printMarkdownPreview(
+                { content: tab.content, path: tab.path },
+                { paneId },
+              );
             }}
           >
             <Icon name="print" size={18} />
