@@ -1,0 +1,8 @@
+
+Running 4 tests using 1 worker
+
+[1/4] e2e/image-scroll-top.spec.ts:129:1 › 含裁剪图的文档滚到底部后滚轮向上可回到 scrollTop 0 且首块可见
+[2/4] e2e/image-scroll-top.spec.ts:168:1 › 滚动条路径：scrollTop 赋回 0 后首块回到视口
+[3/4] e2e/image-scroll-top.spec.ts:190:1 › 异步加载的图片完成后内容增高，仍可回到 scrollTop 0
+[4/4] e2e/image-scroll-top.spec.ts:252:1 › 裁剪图显示盒受容器宽约束且高度按裁剪矩形比例
+  4 passed (9.6s)

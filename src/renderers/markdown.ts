@@ -508,13 +508,17 @@ function applyImageAttributes(doc: Document): void {
         const style: string[] = [];
         if (hasCrop) {
           // 裁剪显示与编辑态同一套 CSS 技法：盒=裁剪矩形，object-fit:none
-          // 平移内容。width/height 缩放属性不参与（矩形就是显示尺寸）。
+          // 平移内容。必须锁宽高比：只写 width/height 时 max-width 夹住宽度、
+          // 高度不变，会得到远超容器的空白盒（#808）。
           const [l, t, w, h] = crop;
+          const boxW = hasWidth ? width : w;
           style.push(
             `object-fit:none`,
             `object-position:${-l}px ${-t}px`,
-            `width:${w}px`,
-            `height:${h}px`,
+            `aspect-ratio:${w} / ${h}`,
+            `width:${boxW}px`,
+            `max-width:100%`,
+            `height:auto`,
           );
         } else {
           if (hasWidth) img.setAttribute("width", String(width));

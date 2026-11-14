@@ -1,0 +1,54 @@
+
+Running 4 tests using 1 worker
+
+[1/4] e2e/image-scroll-top.spec.ts:186:1 › 含裁剪图的文档滚到底部后滚轮向上可回到 scrollTop 0 且首块可见
+[2/4] e2e/image-scroll-top.spec.ts:225:1 › 滚动条路径：scrollTop 赋回 0 后首块回到视口
+[3/4] e2e/image-scroll-top.spec.ts:247:1 › 异步加载的图片完成后内容增高，仍可回到 scrollTop 0
+[4/4] e2e/image-scroll-top.spec.ts:309:1 › 裁剪图显示盒受容器宽约束且高度按裁剪矩形比例
+[5/4] (retries) e2e/image-scroll-top.spec.ts:309:1 › 裁剪图显示盒受容器宽约束且高度按裁剪矩形比例 (retry #1)
+  1) e2e/image-scroll-top.spec.ts:309:1 › 裁剪图显示盒受容器宽约束且高度按裁剪矩形比例 ───────────────────────────────────
+
+    Error: expect(received).toBeCloseTo(expected, precision)
+
+    Expected: 668.5691026827012
+    Received: 3181
+
+    Expected precision:    0
+    Expected difference: < 0.5
+    Received difference:   2512.430897317299
+
+      323 |   expect(crop.box[1]).toBeGreaterThan(0);
+      324 |   // 高度必须与裁剪矩形同比例（旧写法高度恒为 3181，比例约 2.8）
+    > 325 |   expect(crop.box[1]).toBeCloseTo(crop.box[0] * CROP_RATIO, 0);
+          |                       ^
+      326 | });
+      327 |
+        at /Users/mason/ToHighs/clairis/e2e/image-scroll-top.spec.ts:325:23
+
+    Error Context: test-results/image-scroll-top-裁剪图显示盒受容器宽约束且高度按裁剪矩形比例/error-context.md
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: expect(received).toBeCloseTo(expected, precision)
+
+    Expected: 668.5691026827012
+    Received: 3181
+
+    Expected precision:    0
+    Expected difference: < 0.5
+    Received difference:   2512.430897317299
+
+      323 |   expect(crop.box[1]).toBeGreaterThan(0);
+      324 |   // 高度必须与裁剪矩形同比例（旧写法高度恒为 3181，比例约 2.8）
+    > 325 |   expect(crop.box[1]).toBeCloseTo(crop.box[0] * CROP_RATIO, 0);
+          |                       ^
+      326 | });
+      327 |
+        at /Users/mason/ToHighs/clairis/e2e/image-scroll-top.spec.ts:325:23
+
+    Error Context: test-results/image-scroll-top-裁剪图显示盒受容器宽约束且高度按裁剪矩形比例-retry1/error-context.md
+
+
+  1 failed
+    e2e/image-scroll-top.spec.ts:309:1 › 裁剪图显示盒受容器宽约束且高度按裁剪矩形比例 ────────────────────────────────────
+  3 passed (11.9s)
