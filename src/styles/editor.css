@@ -1584,6 +1584,57 @@ html[data-tab-drag="true"] body * {
   height: 44px;
 }
 
+/* ── 新增手柄菜单两段（design D7 / B1）：基础图标网格 + 常用文字行 ──
+ * 面板宽 176 / 行高 36 由 slash.ts 用 menu-metrics 常量在运行时写入。 */
+.cm-add-section-label {
+  padding: 6px 8px 2px;
+  font-size: 11px;
+  color: var(--app-text-3);
+}
+
+.cm-add-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0 2px;
+  padding: 0 5px;
+}
+
+.cm-add-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 2px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.cm-add-cell:hover {
+  background: var(--app-sunken);
+}
+
+.cm-add-cell[data-selected="true"] {
+  background: var(--app-accent-soft);
+  color: var(--app-accent);
+}
+
+.cm-add-cell svg {
+  width: 20px;
+  height: 20px;
+  flex: none;
+}
+
+.cm-add-list {
+  padding: 0 4px 4px;
+}
+
+.cm-add-list .mdb-slash-item {
+  padding: 0 8px;
+}
+
 /* ── 表格块装饰（cm-table-*，移植自 md-bundle） ──────────────
  * 表格整块被 widget 替换，源码不可见；单元格文本由 renderCellText 渲染成
  * HTML。几何（left/top/width/height）由 table.ts 在运行时写入，这里只管外观。

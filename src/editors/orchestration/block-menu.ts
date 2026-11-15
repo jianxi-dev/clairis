@@ -8,8 +8,8 @@
 import type { EditorView } from "@codemirror/view";
 
 import {
+  addHandleCommands,
   cancelAnchorClose,
-  defaultCommands,
   openInsertMenu,
   releaseInsertMenu,
 } from "../slash";
@@ -822,7 +822,7 @@ export function openBlockMenu(
       openInsertMenu(
         view,
         block.to,
-        defaultCommands,
+        addHandleCommands,
         { from: block.from, to: block.to },
         "below",
         {
