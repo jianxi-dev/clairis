@@ -190,7 +190,25 @@ test("[#824] formula-mermaid 页数完整且 mermaid 不跨页、图后内容存
   expect(m.blockH).toBeLessThanOrEqual(MERMAID_MAX_HEIGHT_PX + 60);
   expect(m.svgH).toBeLessThanOrEqual(MERMAID_MAX_HEIGHT_PX + 2);
   expect(m.text).toContain("代码高亮");
+  expect(m.text).toContain("greet");
+  expect(m.text).toContain("上课");
   expect(m.text).toContain("MD-Bundle");
+
+  const release = await page.evaluate(() => {
+    const root = document.querySelector("#biaoyue-print-root")!;
+    const code = root.querySelector(".code-block")!;
+    const katex = root.querySelector(".katex-block")!;
+    const mermaid = root.querySelector(".mermaid-block")!;
+    const cs = (el: Element) => getComputedStyle(el);
+    return {
+      codeOverflow: cs(code).overflow,
+      katexOverflowY: cs(katex).overflowY,
+      mermaidOverflowX: cs(mermaid).overflowX,
+    };
+  });
+  expect(release.codeOverflow).toBe("visible");
+  expect(release.katexOverflowY).toBe("visible");
+  expect(release.mermaidOverflowX).toBe("visible");
 
   const buf = await printPdf(page, "formula.pdf");
   const pages = pdfPageCount(buf);

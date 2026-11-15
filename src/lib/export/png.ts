@@ -14,8 +14,10 @@ import { inlineImages } from "./inlineImages";
 export const PNG_WIDTH = 1080;
 /** 栅格倍率：2x 出图，文字边缘不发虚。 */
 export const PNG_SCALE = 2;
-/** 高度上限（px）：再高 canvas 会爆内存/被浏览器拒绝，且长图已失去可读性。 */
-export const PNG_MAX_HEIGHT = 20000;
+/** 画布单边上限（**设备像素**）：canvas 尺寸 = CSS 尺寸 × PNG_SCALE，须按设备像素守卫，不可只比 CSS 像素。 */
+export const CANVAS_MAX_DEVICE_PX = 16384;
+/** 高度上限（CSS px）：= 画布上限 ÷ 倍率。 */
+export const PNG_MAX_HEIGHT = Math.floor(CANVAS_MAX_DEVICE_PX / PNG_SCALE);
 
 export const PNG_TOO_TALL_MESSAGE = "文档过长，建议导出 HTML";
 
@@ -136,6 +138,32 @@ export type MeasureHtmlHeight = (
   width: number,
 ) => Promise<number>;
 
+/** 解码等待上限（ms）：远端图片挂起时 `img.decode()` 永不 settle，须封顶，避免导出无限挂起。 */
+const IMAGE_DECODE_TIMEOUT_MS = 10000;
+
+/** 等宿主内所有 `<img>` 解码完成：未解码图片按 0 高计入会让量高偏小、随后裁切尾部。 */
+async function waitForImagesDecoded(root: ParentNode): Promise<void> {
+  const imgs = Array.from(root.querySelectorAll("img"));
+  if (imgs.length === 0) return;
+  const decoded = Promise.all(
+    imgs.map((img) =>
+      typeof img.decode === "function"
+        ? img.decode().catch(() => undefined)
+        : new Promise<void>((resolve) => {
+            if (img.complete) return resolve();
+            img.addEventListener("load", () => resolve(), { once: true });
+            img.addEventListener("error", () => resolve(), { once: true });
+          }),
+    ),
+  );
+  await Promise.race([
+    decoded,
+    new Promise<void>((resolve) => {
+      setTimeout(resolve, IMAGE_DECODE_TIMEOUT_MS);
+    }),
+  ]);
+}
+
 /**
  * 默认测量（浏览器）：把 HTML 塞进离屏 div，读 scrollHeight。
  * 导出文档的 body 有 0 边距，所以 scrollHeight 就是内容高度。
@@ -152,6 +180,7 @@ export const measureHtmlHeight: MeasureHtmlHeight = async (html, width) => {
   host.innerHTML = html;
   document.body.appendChild(host);
   try {
+    await waitForImagesDecoded(host);
     return Math.ceil(host.scrollHeight);
   } finally {
     host.remove();
