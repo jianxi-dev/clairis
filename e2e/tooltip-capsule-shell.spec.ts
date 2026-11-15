@@ -38,6 +38,29 @@ async function shellOf(locator: Locator): Promise<Shell> {
   });
 }
 
+interface Box {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+  width: number;
+  height: number;
+}
+
+async function boxOf(locator: Locator): Promise<Box> {
+  return locator.evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    return {
+      left: r.left,
+      top: r.top,
+      right: r.right,
+      bottom: r.bottom,
+      width: r.width,
+      height: r.height,
+    };
+  });
+}
+
 async function boot(page: Page, path: string, content: string): Promise<void> {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto(APP_URL, { waitUntil: "networkidle" });
@@ -180,4 +203,210 @@ test("表格行列热点气泡为胶囊，矩形外壳提示节点数为 0", asy
     return bad;
   });
   expect(rectangular).toBe(0);
+});
+
+test("带 aria-haspopup 的控件接管原生 title：弹层期间不放行原生矩形", async ({
+  page,
+}) => {
+  await boot(page, "/tmp/capsule-title.md", DOC);
+
+  const theme = page.getByTestId("theme-entry");
+  await theme.hover();
+  await expect(page.getByTestId("theme-menu")).toBeVisible({ timeout: 3000 });
+  expect(await theme.getAttribute("title")).toBeNull();
+  await expect(page.locator(".app-tip")).toHaveCount(0);
+  await shot(page, "aria-haspopup-title-taken");
+
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("theme-menu")).toHaveCount(0, {
+    timeout: 3000,
+  });
+  expect(await theme.getAttribute("title")).not.toBeNull();
+  await page.mouse.move(5, 5);
+  await expect(page.locator(".app-tip")).toHaveCount(0);
+
+  await page.evaluate(() => {
+    const store = (
+      window as unknown as {
+        __biaoyue_store__: {
+          setState: (s: Record<string, unknown>) => void;
+          getState: () => { setRailState: (s: string) => void };
+        };
+      }
+    ).__biaoyue_store__;
+    store.setState({ scene: "workspace" });
+    store.getState().setRailState("pinned");
+  });
+  const railSettings = page.getByTestId("rail-settings");
+  await expect(railSettings).toBeVisible({ timeout: 3000 });
+  await railSettings.hover();
+  const railTip = page.locator(".app-tip");
+  await expect(railTip).toBeVisible({ timeout: 3000 });
+  expect(await railSettings.getAttribute("title")).toBeNull();
+  const railShell = await shellOf(railTip);
+  expect(railShell.radius).toBeGreaterThanOrEqual(railShell.height / 2);
+  await shot(page, "rail-settings-tip");
+  await page.mouse.move(5, 5);
+  await expect(railTip).toHaveCount(0);
+});
+
+test("视口左侧、上下有余量的按钮：提示出现在上或下方位", async ({ page }) => {
+  await boot(page, "/tmp/capsule-left.md", "![图片](photo.png)\n\n普通段落");
+
+  const line = page.locator(".cm-line").first();
+  const box = (await line.boundingBox())!;
+  await page.mouse.move(box.x + 2, box.y + box.height / 2);
+  const handle = page.locator(
+    '[data-testid="block-handle"].cm-block-handle-visible',
+  );
+  await expect(handle).toHaveCount(1, { timeout: 3000 });
+  await handle.hover();
+  await expect(page.locator('[data-testid="block-menu"]')).toBeVisible({
+    timeout: 3000,
+  });
+  const row = page.locator(
+    '[data-testid="block-menu-action"][data-action="duplicate"]',
+  );
+  await row.hover();
+  const tip = page.locator(".app-tip");
+  await expect(tip).toBeVisible({ timeout: 3000 });
+
+  const cls = (await tip.getAttribute("class")) ?? "";
+  expect(cls).toMatch(/app-tip--(above|below)/);
+  expect(cls).not.toMatch(/app-tip--(left|right)/);
+  // 提示内容对应 duplicate 行（图标+文字菜单项只给快捷键），防错位/旧提示
+  await expect(tip).toContainText("⌘");
+  expect(await row.getAttribute("title")).toBeNull();
+  const shell = await shellOf(tip);
+  expect(shell.radius).toBeGreaterThanOrEqual(shell.height / 2);
+  await shot(page, "left-side-tip");
+
+  await page.mouse.move(5, 5);
+  await expect(tip).toHaveCount(0);
+});
+
+test("提示时长 1.0s 生效且状态栏按钮提示在图标正上方居中", async ({
+  page,
+}) => {
+  await boot(page, "/tmp/capsule-delay.md", DOC);
+  await page.evaluate(() => {
+    const w = window as unknown as Record<string, unknown>;
+    (
+      w.__biaoyue_editor_store__ as {
+        getState: () => { setConfig: (p: { noticeDuration: number }) => void };
+      }
+    )
+      .getState()
+      .setConfig({ noticeDuration: 1.0 });
+  });
+
+  const home = page.getByTestId("home-entry");
+  await home.hover();
+  // 用出现时刻测量代替固定 sleep：1.0s 配置下提示不得早于 ~950ms 出现。
+  const elapsed = await page.evaluate(async () => {
+    const t0 = performance.now();
+    await new Promise<void>((resolve) => {
+      const tick = () => {
+        if (document.querySelector(".app-tip")) resolve();
+        else requestAnimationFrame(tick);
+      };
+      tick();
+    });
+    return performance.now() - t0;
+  });
+  expect(elapsed, "提示早于配置时长出现").toBeGreaterThanOrEqual(900);
+  expect(elapsed, "提示远超配置时长方出现").toBeLessThan(1600);
+  const tip = page.locator(".app-tip");
+  await expect(tip).toBeVisible({ timeout: 3000 });
+
+  const cls = (await tip.getAttribute("class")) ?? "";
+  expect(cls).toContain("app-tip--above");
+  const [t, b] = await Promise.all([boxOf(tip), boxOf(home)]);
+  expect(
+    Math.abs(t.left + t.width / 2 - (b.left + b.width / 2)),
+  ).toBeLessThanOrEqual(4);
+  expect(t.bottom).toBeLessThanOrEqual(b.top + 1);
+  await shot(page, "status-bar-above");
+
+  await page.mouse.move(5, 5);
+  await expect(tip).toHaveCount(0);
+});
+
+test("[#908] data-no-tip 控件只摘原生 title，不弹自绘胶囊", async ({ page }) => {
+  await boot(page, "/tmp/capsule-no-tip.md", DOC);
+
+  const width = page.getByTestId("status-width");
+  await expect(width).toBeVisible({ timeout: 3000 });
+  const original = await width.getAttribute("title");
+  expect(original, "status-width 缺 title，用例失效").toBeTruthy();
+
+  // 宽度控件默认透明、命中区在 .width-control 上：直接 hover 按钮会被父级拦截，
+  // 用真实指针坐标进入按钮中心以触发同一条事件委托路径。
+  const widthBox = (await width.boundingBox())!;
+  await page.mouse.move(
+    widthBox.x + widthBox.width / 2,
+    widthBox.y + widthBox.height / 2,
+  );
+  await page.waitForTimeout(600);
+  expect(await width.getAttribute("title")).toBeNull();
+  await expect(page.locator(".app-tip")).toHaveCount(0);
+  await shot(page, "status-width-no-tip");
+  await page.mouse.move(5, 5);
+  await expect(page.getByTestId("width-panel")).toHaveCount(0, {
+    timeout: 3000,
+  });
+  await expect
+    .poll(() => width.getAttribute("title"), { timeout: 3000 })
+    .toBe(original);
+
+  // status-width 的宽度面板会打开 overlay，本身就能抑制提示；这里补一个
+  // 不触发浮层的 data-no-tip 按钮，确保「只摘 title、不弹胶囊」由该属性本身保证。
+  await page.evaluate(() => {
+    const btn = document.createElement("button");
+    btn.id = "e2e-data-no-tip";
+    btn.textContent = "无提示";
+    btn.title = "不应出现胶囊";
+    btn.setAttribute("data-no-tip", "");
+    // 固定定位：不能放在文档末尾，否则 hover 触发的滚动会命中「滚动还原 title」路径。
+    btn.style.cssText = "position:fixed;left:8px;top:300px;z-index:5000";
+    document.body.appendChild(btn);
+  });
+  const probe = page.locator("#e2e-data-no-tip");
+  await probe.hover();
+  await page.waitForTimeout(600);
+  expect(await probe.getAttribute("title")).toBeNull();
+  await expect(page.locator(".app-tip")).toHaveCount(0);
+
+  await page.mouse.move(5, 5);
+  await expect
+    .poll(() => probe.getAttribute("title"), { timeout: 3000 })
+    .toBe("不应出现胶囊");
+});
+
+test("[#908] 600×400 视口下贴边长提示不被视口裁切", async ({ page }) => {
+  await page.setViewportSize({ width: 600, height: 400 });
+  await boot(page, "/tmp/capsule-narrow.md", "普通段落");
+
+  const line = page.locator(".cm-line").first();
+  const box = (await line.boundingBox())!;
+  await page.mouse.move(box.x + 2, box.y + box.height / 2);
+  const handle = page.locator(
+    '[data-testid="block-handle"].cm-block-handle-visible',
+  );
+  await expect(handle).toHaveCount(1, { timeout: 3000 });
+  await handle.hover();
+  await expect(page.locator('[data-testid="block-menu"]')).toBeVisible({
+    timeout: 3000,
+  });
+  await page
+    .locator('[data-testid="block-menu-action"][data-action="duplicate"]')
+    .hover();
+  const tip = page.locator(".app-tip");
+  await expect(tip).toBeVisible({ timeout: 3000 });
+
+  const t = await boxOf(tip);
+  expect(t.left, "提示左缘越出视口").toBeGreaterThanOrEqual(-0.5);
+  expect(t.right, "提示右缘越出视口").toBeLessThanOrEqual(600.5);
+  expect(t.top, "提示上缘越出视口").toBeGreaterThanOrEqual(-0.5);
+  expect(t.bottom, "提示下缘越出视口").toBeLessThanOrEqual(400.5);
 });

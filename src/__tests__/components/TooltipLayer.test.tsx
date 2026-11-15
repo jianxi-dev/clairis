@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render } from "@testing-library/react";
 import TooltipLayer from "../../components/TooltipLayer";
+import { popOverlay, pushOverlay } from "../../lib/overlayGate";
 import { useEditorStore } from "../../stores/editorStore";
 
 const DELAY_MS = 400;
@@ -84,7 +85,7 @@ describe("TooltipLayer 悬停提示规则", () => {
     expect(tipText()).toBe("普通提示");
   });
 
-  it("菜单触发按钮不显示提示", () => {
+  it("菜单触发按钮接管 title 并显示自绘提示", () => {
     render(<TooltipLayer />);
     const btn = makeButton({ title: "更多操作", "aria-haspopup": "menu" });
     hover(btn);
@@ -92,11 +93,11 @@ describe("TooltipLayer 悬停提示规则", () => {
     act(() => {
       vi.advanceTimersByTime(DELAY_MS);
     });
-    expect(tipText()).toBeNull();
-    expect(btn.getAttribute("title")).toBe("更多操作");
+    expect(tipText()).toBe("更多操作");
+    expect(btn.getAttribute("title")).toBeNull();
   });
 
-  it("aria-expanded 与显式 data-no-tip 同样抑制提示", () => {
+  it("aria-expanded 接管 title 并显示自绘提示，data-no-tip 只摘 title 不弹提示", () => {
     render(<TooltipLayer />);
     const expanded = makeButton({
       title: "大纲",
@@ -108,13 +109,52 @@ describe("TooltipLayer 悬停提示规则", () => {
     act(() => {
       vi.advanceTimersByTime(DELAY_MS);
     });
-    expect(tipText()).toBeNull();
+    expect(tipText()).toBe("大纲");
+    expect(expanded.getAttribute("title")).toBeNull();
 
     hover(optedOut);
     act(() => {
       vi.advanceTimersByTime(DELAY_MS);
     });
     expect(tipText()).toBeNull();
+    expect(optedOut.getAttribute("title")).toBeNull();
+
+    fireEvent.pointerOut(optedOut, {
+      relatedTarget: document.body,
+      bubbles: true,
+    });
+    expect(optedOut.getAttribute("title")).toBe("页面宽度");
+  });
+
+  it("弹层打开期间接管 title 但不弹自绘提示", () => {
+    render(<TooltipLayer />);
+    pushOverlay();
+    try {
+      const btn = makeButton({ title: "更多操作", "aria-haspopup": "menu" });
+      hover(btn);
+      act(() => {
+        vi.advanceTimersByTime(DELAY_MS);
+      });
+      expect(tipText()).toBeNull();
+      expect(btn.getAttribute("title")).toBeNull();
+    } finally {
+      popOverlay();
+    }
+  });
+
+  it("嵌入式文档（iframe）的 title 是可访问名：不接管、不弹提示", () => {
+    render(<TooltipLayer />);
+    const frame = document.createElement("iframe");
+    frame.setAttribute("title", "HTML 可视化编辑");
+    frame.setAttribute("data-no-tip", "");
+    document.body.appendChild(frame);
+
+    hover(frame);
+    act(() => {
+      vi.advanceTimersByTime(DELAY_MS);
+    });
+    expect(tipText()).toBeNull();
+    expect(frame.getAttribute("title")).toBe("HTML 可视化编辑");
   });
 
   it("指针离开会在延迟到达前取消提示", () => {
@@ -127,5 +167,19 @@ describe("TooltipLayer 悬停提示规则", () => {
       vi.advanceTimersByTime(DELAY_MS);
     });
     expect(tipText()).toBeNull();
+  });
+
+  it("窗口失焦会还原 title，不留在 data-tip 上", () => {
+    render(<TooltipLayer />);
+    const btn = makeButton({ title: "普通提示" });
+    hover(btn);
+    expect(btn.getAttribute("title")).toBeNull();
+
+    act(() => {
+      fireEvent.blur(window);
+    });
+
+    expect(btn.getAttribute("title")).toBe("普通提示");
+    expect(btn.getAttribute("data-tip")).toBeNull();
   });
 });

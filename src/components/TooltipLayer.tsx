@@ -10,12 +10,20 @@ const TIP_DELAY_FALLBACK_MS = 400;
 const TIP_DELAY_MIN_MS = 100;
 const TIP_DELAY_MAX_MS = 10_000;
 
-/** 顶栏高度：触发元素顶部小于该值时向下弹，避免遮挡相邻按钮。 */
-const TIP_TOP_RESERVE = 80;
-/** 视口左右各占该比例视为侧弹区（左半放右、右半放左）。 */
-const TIP_SIDE_ZONE = 0.4;
-/** 锚点夹取边距（px）。 */
-const TIP_ANCHOR_MARGIN = 60;
+/** 提示外壳与触发元素之间的间隙（箭头尾 8px）。 */
+const TIP_GAP = 8;
+/** 提示与视口边缘的最小留白（px）。 */
+const TIP_VIEWPORT_MARGIN = 4;
+/**
+ * 嵌入式文档的 `title` 是它的无障碍名（如 HTML 可视化编辑 iframe）：
+ * 摘掉会让控件失去可访问名，提示本身也只是噪音，保持原样不接管。
+ */
+const KEEP_TITLE_SELECTOR = "iframe, object, embed";
+
+interface TipSize {
+  width: number;
+  height: number;
+}
 
 /** 弹出方位：above=提示在触发元素上方（箭头朝下），其余同理。 */
 type TipSide = "above" | "below" | "left" | "right";
@@ -55,15 +63,49 @@ function visibleLabel(el: Element): string {
   return out.trim();
 }
 
-/** 按触发元素在视口中的位置选弹出方位。 */
-function tipSideFor(el: Element): TipSide {
+/** 用与自绘胶囊同一外壳的隐藏探针量出提示尺寸，供方位判断使用。 */
+function measureTip(main: string, hint: string | null): TipSize {
+  const probe = document.createElement("div");
+  probe.className = "app-tip";
+  probe.style.visibility = "hidden";
+  probe.style.left = "-9999px";
+  probe.style.top = "0";
+  const text = document.createElement("span");
+  text.className = "app-tip__text";
+  text.textContent = main;
+  probe.append(text);
+  if (hint !== null) {
+    const hintEl = document.createElement("span");
+    hintEl.className = "app-tip__hint";
+    hintEl.textContent = hint;
+    probe.append(hintEl);
+  }
+  const arrow = document.createElement("span");
+  arrow.className = "app-tip__arrow";
+  probe.append(arrow);
+  document.body.append(probe);
+  const rect = probe.getBoundingClientRect();
+  const size = { width: rect.width, height: rect.height };
+  probe.remove();
+  return size;
+}
+
+/** 按触发元素在视口中的位置选弹出方位：优先上，其次下，都放不下才侧弹。 */
+function tipSideFor(el: Element, size: TipSize): TipSide {
   const rect = el.getBoundingClientRect();
   const cx = rect.left + rect.width / 2;
-  const w = window.innerWidth;
-  if (rect.top < TIP_TOP_RESERVE) return "below";
-  if (cx < w * TIP_SIDE_ZONE) return "right";
-  if (cx > w * (1 - TIP_SIDE_ZONE)) return "left";
-  return "above";
+  const verticalNeed = size.height + TIP_GAP;
+  if (rect.top - verticalNeed >= TIP_VIEWPORT_MARGIN) return "above";
+  if (rect.bottom + verticalNeed <= window.innerHeight - TIP_VIEWPORT_MARGIN)
+    return "below";
+  const horizontalNeed = size.width + TIP_GAP;
+  const fitsRight =
+    rect.right + horizontalNeed <= window.innerWidth - TIP_VIEWPORT_MARGIN;
+  const fitsLeft = rect.left - horizontalNeed >= TIP_VIEWPORT_MARGIN;
+  if (fitsRight && fitsLeft) return cx < window.innerWidth / 2 ? "right" : "left";
+  if (fitsRight) return "right";
+  if (fitsLeft) return "left";
+  return rect.left > window.innerWidth - rect.right ? "left" : "right";
 }
 
 /** 由触发元素推导提示内容：图标+文字只给快捷键；纯图标给名称 + 快捷键 + 用法。 */
@@ -85,19 +127,26 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
 }
 
-/** 弹出锚点：above/below 取元素上下沿水平居中，left/right 取元素左右沿垂直居中。 */
-function tipAnchorFor(el: Element, side: TipSide): { x: number; y: number } {
+/** 弹出锚点：above/below 取元素上下沿水平居中，left/right 取元素左右沿垂直居中。
+ *  夹取范围按提示自身尺寸算，否则贴边长提示会被视口裁掉一半。 */
+function tipAnchorFor(
+  el: Element,
+  side: TipSide,
+  size: TipSize,
+): { x: number; y: number } {
   const rect = el.getBoundingClientRect();
   const cx = rect.left + rect.width / 2;
   const cy = rect.top + rect.height / 2;
   if (side === "right" || side === "left") {
+    const halfH = Math.min(size.height / 2, window.innerHeight / 2);
     return {
       x: side === "right" ? rect.right : rect.left,
-      y: clamp(cy, TIP_ANCHOR_MARGIN, window.innerHeight - TIP_ANCHOR_MARGIN),
+      y: clamp(cy, halfH, window.innerHeight - halfH),
     };
   }
+  const halfW = Math.min(size.width / 2, window.innerWidth / 2);
   return {
-    x: clamp(cx, TIP_ANCHOR_MARGIN, window.innerWidth - TIP_ANCHOR_MARGIN),
+    x: clamp(cx, halfW, window.innerWidth - halfW),
     y: side === "above" ? rect.top : rect.bottom,
   };
 }
@@ -111,15 +160,14 @@ function tipDelayMs(): number {
   return Math.min(TIP_DELAY_MAX_MS, Math.max(TIP_DELAY_MIN_MS, ms));
 }
 
-/** 会弹菜单/浮层的触发按钮：提示会与浮层重复，直接跳过。 */
-const SKIP_TIP_SELECTOR = "[aria-haspopup], [aria-expanded], [data-no-tip]";
-
 /**
  * 全局胶囊提示（ui-polish-batch12 9.1）。
  *
  * 事件委托捕获既有 `title` 属性：悬停满配置时长后显示自绘胶囊，并把原生
  * `title` 暂时摘除（避免系统矩形提示叠加）；指针离开 / 按下时还原。
- * 会弹菜单/浮层的触发按钮跳过提示——提示与浮层信息重复。
+ * 带 `aria-haspopup` / `aria-expanded` / `data-no-tip` 的控件同样接管，
+ * 不再放行原生矩形；弹层打开期间只接管 title、不弹自绘胶囊。
+ * 嵌入式文档（iframe 等）例外：title 即其可访问名，保持原样。
  * 约 80 处既有 `title=` 无需逐个改造。
  */
 export default function TooltipLayer() {
@@ -134,10 +182,9 @@ export default function TooltipLayer() {
         timerRef.current = null;
       }
     };
-    const clear = () => {
+    const dismiss = () => {
       cancelTimer();
       setTip(null);
-      currentRef.current = null;
     };
     const restore = () => {
       const el = currentRef.current;
@@ -150,22 +197,38 @@ export default function TooltipLayer() {
       }
       currentRef.current = null;
     };
+    // 滚动/失焦时指针可能不再收到 pointerout，必须连带还原 title，
+    // 否则该元素会永久失去 title 且再次悬停也不再出提示。
+    const dismissAndRestore = () => {
+      restore();
+      dismiss();
+    };
+
 
     const onOver = (e: PointerEvent) => {
-      if (isOverlayOpen()) return;
       const target = e.target;
       if (!(target instanceof Element)) return;
       const el = target.closest("[title]");
       if (!el || el === currentRef.current) return;
+      if (el.matches(KEEP_TITLE_SELECTOR)) return;
       restore();
       const text = el.getAttribute("title") ?? "";
-      if (!text.trim() || el.closest(SKIP_TIP_SELECTOR)) {
+      if (!text.trim()) {
         currentRef.current = null;
         return;
       }
       currentRef.current = el;
       el.removeAttribute("title");
       el.setAttribute("data-tip", text);
+      // data-no-tip 是显式「不要提示」：只摘原生 title，不弹胶囊。
+      if (el.closest("[data-no-tip]")) {
+        dismiss();
+        return;
+      }
+      if (isOverlayOpen()) {
+        dismiss();
+        return;
+      }
       cancelTimer();
       timerRef.current = window.setTimeout(() => {
         timerRef.current = null;
@@ -175,8 +238,9 @@ export default function TooltipLayer() {
         const el = currentRef.current;
         if (!el) return;
         const content = tipContentFor(el, el.getAttribute("data-tip") ?? "");
-        const side = tipSideFor(el);
-        const { x, y } = tipAnchorFor(el, side);
+        const size = measureTip(content.main, content.hint);
+        const side = tipSideFor(el, size);
+        const { x, y } = tipAnchorFor(el, side, size);
         setTip({ ...content, side, x, y });
       }, tipDelayMs());
     };
@@ -195,24 +259,24 @@ export default function TooltipLayer() {
       // currentRef 可能已被 onDownRestore 清空（title 已还原）；此时仍要清掉
       // 已排队的提示定时器，否则离开后提示会突然补弹并滞留（#819）。
       restore();
-      clear();
+      dismiss();
     };
 
     const onDownRestore = () => {
-      // 点击瞬间还原 title：既有序列化断言（如主题循环按钮）依赖它；
-      // 胶囊保持显示，不做二次摘除。
+      // 点击瞬间还原 title：主题按钮等既有契约依赖它（跟进票 #945 处理
+      // 弹层打开期间点击会短暂还原 title 的原生矩形风险）。
       restore();
     };
 
     const unsubscribe = subscribeOverlay((open) => {
-      if (open) clear();
+      if (open) dismiss();
     });
 
     const onKeyDown = (e: KeyboardEvent) => {
       // Esc 会先移除悬停元素（轮盘 / 菜单），绕开 pointerout 留下孤儿胶囊（#819）。
       if (e.key === "Escape") {
         restore();
-        clear();
+        dismiss();
       }
     };
 
@@ -220,15 +284,16 @@ export default function TooltipLayer() {
     document.addEventListener("pointerout", onOut, true);
     document.addEventListener("pointerdown", onDownRestore, true);
     document.addEventListener("keydown", onKeyDown, true);
-    window.addEventListener("scroll", clear, true);
-    window.addEventListener("blur", clear);
+    window.addEventListener("scroll", dismissAndRestore, true);
+    window.addEventListener("blur", dismissAndRestore);
     return () => {
       document.removeEventListener("pointerover", onOver, true);
       document.removeEventListener("pointerout", onOut, true);
       document.removeEventListener("pointerdown", onDownRestore, true);
       document.removeEventListener("keydown", onKeyDown, true);
-      window.removeEventListener("scroll", clear, true);
-      window.removeEventListener("blur", clear);
+      window.removeEventListener("scroll", dismissAndRestore, true);
+      window.removeEventListener("blur", dismissAndRestore);
+      restore();
       unsubscribe();
       cancelTimer();
     };
