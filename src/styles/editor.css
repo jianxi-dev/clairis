@@ -3054,6 +3054,8 @@ html[data-tab-drag="true"] body * {
   display: flex;
   align-items: center;
   justify-content: center;
+  /* 预览帧是后出现的定位兄弟（video.relative）：不提层就会被真实画面盖住 (#905) */
+  z-index: 1;
 }
 
 /* ── HTML 可视化编辑工具条（E-19）──────────────────────────────────────
