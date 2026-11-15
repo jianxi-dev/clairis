@@ -416,7 +416,7 @@ describe("block decorations", () => {
 
     it("文件卡片不参与视频对齐与缩放选中", () => {
       const dom = widgetOf(
-        createImageDecorations("![report](report.pdf)")[0],
+        createImageDecorations("![archive](archive.zip)")[0],
       ).toDOM();
       expect(dom.dataset.mediaKind).toBe("file");
       expect(dom.dataset.align).toBeUndefined();
@@ -425,12 +425,26 @@ describe("block decorations", () => {
 
     it("renders a file link card for a non-image, non-video extension", () => {
       const dom = widgetOf(
-        createImageDecorations("![report](report.pdf)")[0],
+        createImageDecorations("![archive](archive.zip)")[0],
       ).toDOM();
       expect(dom.classList.contains("cm-media-file")).toBe(true);
       const link = dom.querySelector("a");
-      expect(link?.getAttribute("href")).toBe("report.pdf");
-      expect(link?.textContent).toBe("report");
+      expect(link?.getAttribute("href")).toBe("archive.zip");
+      expect(link?.textContent).toBe("archive");
+    });
+
+    it("pdf / md / html / 网页引用渲染为内嵌 widget，不退化成文件卡片", () => {
+      for (const [ref, kind] of [
+        ["![report](report.pdf)", "pdf"],
+        ["![note](note.md)", "md"],
+        ["![page](page.html)", "html"],
+        ["![web](https://example.com/page)", "web"],
+      ] as const) {
+        const dom = widgetOf(createImageDecorations(ref)[0]).toDOM();
+        expect(dom.classList.contains("cm-embed-widget")).toBe(true);
+        expect(dom.dataset.embedKind).toBe(kind);
+        expect(dom.querySelector(".cm-media-file")).toBeNull();
+      }
     });
 
     it("classifies media by extension, mirroring the preview renderer", () => {

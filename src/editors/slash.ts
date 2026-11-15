@@ -350,6 +350,22 @@ export const defaultCommands: SlashCommand[] = [
     label: "内嵌网页",
     icon: "BrowserOutlined",
     group: "更多小组件",
+    insert(state) {
+      const head = state.selection.main.head;
+      const input =
+        typeof window !== "undefined" && typeof window.prompt === "function"
+          ? window.prompt("内嵌网页地址", "https://")
+          : null;
+      const raw = (input ?? "").trim();
+      if (raw === "") return { from: head - 1, to: head, text: "" };
+      // 用户常省略 scheme；不补的话分类器认不出，会退化成裂图。
+      const url = /^[a-z][a-z0-9+.-]*:\/\//i.test(raw) ? raw : `https://${raw}`;
+      return {
+        from: head - 1,
+        to: head,
+        text: `![内嵌网页](${markdownDestination(url)})`,
+      };
+    },
   },
 ];
 

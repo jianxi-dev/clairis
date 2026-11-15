@@ -39,6 +39,7 @@ import { createCodeDecorations } from "./code";
 import { createHrDecorations } from "./hr";
 import { createLinkDecorations } from "./link";
 import { createImageDecorations, type ImageResolver } from "./image";
+import type { FileEmbedResolver } from "./fileEmbed";
 import {
   scheduleImageToolbarReposition,
   setImageToolbarActions,
@@ -71,6 +72,8 @@ import { getBlocks, getBlockAt } from "../block-model";
 export interface EditorDecorationsOptions {
   /** 图片路径解析器；返回 null 时走 `[图片: path]` 文字回退。 */
   resolveImage?: ImageResolver;
+  /** 内嵌文件解析器；返回可加载 URL 与本地绝对路径，缺省不出内嵌内容。 */
+  resolveEmbed?: FileEmbedResolver;
   /** 工具条「AI 编辑」：prompt 引用图片路径与 alt。 */
   onImageAi?: (path: string, alt: string) => void;
   /** 工具条「裁剪」；缺省时按钮禁用。 */
@@ -169,16 +172,21 @@ function buildDecorationSet(
     ...createCodeDecorations(docText, activeFrom, activeTo),
     ...createHrDecorations(docText, activeFrom, activeTo),
     ...createLinkDecorations(docText, activeFrom, activeTo),
-    ...createImageDecorations(docText, options?.resolveImage, {
-      onImageAi: options?.onImageAi,
-      onImageCrop: options?.onImageCrop,
-      onImageComment: options?.onImageComment,
-      onImageSetTitle: options?.onImageSetTitle,
-      onImageAlign: options?.onImageAlign,
-      onImageCut: options?.onImageCut,
-      onImageCopy: options?.onImageCopy,
-      onImageDelete: options?.onImageDelete,
-    }),
+    ...createImageDecorations(
+      docText,
+      options?.resolveImage,
+      {
+        onImageAi: options?.onImageAi,
+        onImageCrop: options?.onImageCrop,
+        onImageComment: options?.onImageComment,
+        onImageSetTitle: options?.onImageSetTitle,
+        onImageAlign: options?.onImageAlign,
+        onImageCut: options?.onImageCut,
+        onImageCopy: options?.onImageCopy,
+        onImageDelete: options?.onImageDelete,
+      },
+      options?.resolveEmbed,
+    ),
     ...createMermaidDecorations(
       docText,
       activeFrom,
