@@ -271,6 +271,7 @@ export default function VideoPlayer({
   const subtitlePosRef = useRef<"bottom" | "top">("bottom");
   const playlistRef = useRef<MediaEntry[]>([]);
   const subtitleRef = useRef<MediaEntry[]>([]);
+  const allSubsRef = useRef<MediaEntry[]>([]);
   const activeSubtitleRef = useRef("");
 
   // 控件按钮引用（浮层锚定）
@@ -404,10 +405,20 @@ export default function VideoPlayer({
           a.name.localeCompare(b.name, undefined, { numeric: true });
         const media = items.filter((i) => i.kind !== "subtitle").sort(byName);
         const subs = items.filter((i) => i.kind === "subtitle").sort(byName);
+        const stem = baseName(filePath).replace(/\.[^.]+$/, "");
+        const sameName = subs.filter((s) => s.target === stem);
         playlistRef.current = media;
-        subtitleRef.current = subs;
+        allSubsRef.current = subs;
+        subtitleRef.current = sameName;
         setPlaylist(media);
-        setSubtitleList(subs);
+        setSubtitleList(sameName);
+        const firstSub = sameName[0];
+        if (firstSub && artRef.current) {
+          void artRef.current.subtitle
+            .switch(mediaUrlForPath(firstSub.path), { name: firstSub.name })
+            .then(() => setActiveSubtitle(firstSub.name))
+            .catch(() => {});
+        }
         const idx = media.findIndex((i) => i.path === filePath);
         currentIndexRef.current = idx >= 0 ? idx : 0;
         setCurrentIndex(currentIndexRef.current);
@@ -463,9 +474,12 @@ export default function VideoPlayer({
         if (owner) {
           store.renameTab(owner.id, list[idx].name || baseName(list[idx].path));
         }
-        // 切集后自动加载对应同名字幕（若有）
+        // 切集后字幕收敛到新视频的同名集，并自动加载（若有）
         const stem = list[idx].name.replace(/\.[^.]+$/, "");
-        const sub = subtitleRef.current.find((s) => s.target === stem);
+        const cur = allSubsRef.current.filter((s) => s.target === stem);
+        subtitleRef.current = cur;
+        setSubtitleList(cur);
+        const sub = cur[0];
         if (sub) {
           void art.subtitle.switch(mediaUrlForPath(sub.path), {
             name: sub.name,
@@ -473,6 +487,7 @@ export default function VideoPlayer({
           setActiveSubtitle(sub.name);
         } else {
           setActiveSubtitle("");
+          art.subtitle.url = "";
         }
       } catch {
         // 文件损坏/不可解码：跳到下一个可播文件
@@ -1090,6 +1105,13 @@ export default function VideoPlayer({
         }
       } catch {
         // 忽略
+      }
+      const firstSub = subtitleRef.current[0];
+      if (firstSub && !activeSubtitleRef.current) {
+        void art.subtitle.switch(mediaUrlForPath(firstSub.path), {
+          name: firstSub.name,
+        });
+        setActiveSubtitle(firstSub.name);
       }
       void art.play()?.catch?.(() => {});
     });

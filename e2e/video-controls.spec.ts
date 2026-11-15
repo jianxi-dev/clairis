@@ -425,3 +425,54 @@ test("全屏下指针滑入底部显示按钮栏与浮层，画面无 letterbox"
     ),
   );
 });
+
+test("[#901] 字幕面板只列与当前视频同名的字幕", async ({ page }) => {
+  const dir = "/Users/test/sub901";
+  await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
+  await page.addInitScript((d) => {
+    const w = window as unknown as Record<string, any>;
+    const orig = w.__TAURI_INTERNALS__.invoke;
+    w.__TAURI_INTERNALS__.invoke = (cmd: string, args: unknown) => {
+      if (cmd === "list_media_in_dir") {
+        return [
+          {
+            path: `${d}/clip.mp4`,
+            name: "clip.mp4",
+            kind: "video",
+            target: "clip",
+          },
+          {
+            path: `${d}/clip.srt`,
+            name: "clip.srt",
+            kind: "subtitle",
+            target: "clip",
+          },
+          {
+            path: `${d}/other.srt`,
+            name: "other.srt",
+            kind: "subtitle",
+            target: "other",
+          },
+        ];
+      }
+      return orig(cmd, args);
+    };
+  }, dir);
+  await page.goto("/", { waitUntil: "networkidle" });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 15000 });
+  await page.evaluate((p) => {
+    const win = window as unknown as Record<string, any>;
+    win.__biaoyue_openFile__(p, "", p.split("/").pop() ?? p);
+  }, `${dir}/clip.mp4`);
+  await page.locator(".art-video-player").first().waitFor({ timeout: 10000 });
+
+  const subtitle = page.locator(".art-control[data-name='subtitle']");
+  const sbox = await subtitle.boundingBox();
+  if (!sbox) throw new Error("字幕按钮不可测量");
+  await page.mouse.move(sbox.x + sbox.width / 2, sbox.y + sbox.height / 2);
+  const menu = page.locator('div[style*="width: 230px"]').first();
+  await expect(menu).toBeVisible({ timeout: 2000 });
+
+  await expect(menu).toContainText("clip.srt");
+  await expect(menu).not.toContainText("other.srt");
+});
