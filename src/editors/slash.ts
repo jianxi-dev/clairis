@@ -1047,20 +1047,20 @@ function renderGrid(view: EditorView, state: SlashMenuState): void {
   flyout.textContent = "";
   flyout.dataset.kind = "grid";
 
-  // 分栏选区（D12）只有竖条，没有表格标题与 N×M 读数。
+  // 分栏选区（B3 / A-11.1）：顶部说明「选择栏目」+ 实时栏数读数；表格保留
+  // 标题与 N×M 读数。两类浮层共用 .mdb-slash-grid-title / .mdb-slash-grid-label。
   const isColumns = grid.kind === "columns";
-  let label: HTMLElement | null = null;
-  if (!isColumns) {
-    const title = document.createElement("div");
-    title.className = "mdb-slash-grid-title";
-    title.textContent = "插入支持富文本的表格";
-    flyout.appendChild(title);
+  const title = document.createElement("div");
+  title.className = "mdb-slash-grid-title";
+  title.textContent = isColumns ? "选择栏目" : "插入支持富文本的表格";
+  flyout.appendChild(title);
 
-    label = document.createElement("div");
-    label.className = "mdb-slash-grid-label";
-    label.textContent = `${grid.hoverR} \u00d7 ${grid.hoverC}`;
-    flyout.appendChild(label);
-  }
+  const label = document.createElement("div");
+  label.className = "mdb-slash-grid-label";
+  label.textContent = isColumns
+    ? String(grid.hoverC)
+    : `${grid.hoverR} \u00d7 ${grid.hoverC}`;
+  flyout.appendChild(label);
 
   const wrap = document.createElement("div");
   wrap.className = "mdb-slash-grid";
@@ -1089,7 +1089,7 @@ function renderGrid(view: EditorView, state: SlashMenuState): void {
   grid.setHover = (r: number, c: number): void => {
     grid.hoverR = r;
     grid.hoverC = c;
-    if (label !== null) label.textContent = `${r} \u00d7 ${c}`;
+    label.textContent = isColumns ? String(c) : `${r} \u00d7 ${c}`;
     paint(r, c);
   };
 
@@ -1141,7 +1141,7 @@ function renderGrid(view: EditorView, state: SlashMenuState): void {
     if (r === grid.hoverR && c === grid.hoverC) return;
     grid.hoverR = r;
     grid.hoverC = c;
-    if (label !== null) label.textContent = `${r} \u00d7 ${c}`;
+    label.textContent = isColumns ? String(c) : `${r} \u00d7 ${c}`;
     schedulePaint();
   });
 
