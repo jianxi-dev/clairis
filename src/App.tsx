@@ -801,9 +801,10 @@ function App() {
 
   // Persist scroll positions after each update (A-9; switch/close flushes via saveAppConfig)
   const scrollPositions = useStore((s) => s.scrollPositions);
+  const embedScrollPositions = useStore((s) => s.embedScrollPositions);
   useEffect(() => {
     scheduleSave();
-  }, [scrollPositions, scheduleSave]);
+  }, [scrollPositions, embedScrollPositions, scheduleSave]);
 
   // ── Window close: capture scroll positions and flush config before close (A-9) ──
 

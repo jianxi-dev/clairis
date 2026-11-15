@@ -215,6 +215,8 @@ interface AppStore {
   /** 页签拖拽进行中：抑制沉浸热区 2s 收起，避免拖拽被浮层卸载打断。 */
   tabDragActive: boolean;
   scrollPositions: Record<string, ScrollPosition>;
+  /** 内嵌文件滚动定格（D10 / B5b）：键 = `文档路径\u0000内嵌路径`。 */
+  embedScrollPositions: Record<string, ScrollPosition>;
   recentFiles: RecentFile[];
   /** 当前场景：门户 / 工作区 / 网格 / 设置（Layout Portal §1） */
   scene: Scene;
@@ -301,6 +303,12 @@ interface AppStore {
     contentHeight: number,
   ) => void;
   setScrollPositions: (positions: Record<string, ScrollPosition>) => void;
+  setEmbedScrollPos: (
+    key: string,
+    scrollPos: number,
+    contentHeight: number,
+  ) => void;
+  setEmbedScrollPositions: (positions: Record<string, ScrollPosition>) => void;
   markClean: () => void;
   toggleLeftSidebar: () => void;
   toggleRightSidebar: () => void;
@@ -424,6 +432,7 @@ const initialState = {
   immersivePeekPaneId: null,
   tabDragActive: false,
   scrollPositions: {} as Record<string, ScrollPosition>,
+  embedScrollPositions: {} as Record<string, ScrollPosition>,
   recentFiles: [] as RecentFile[],
   scene: "portal" as Scene,
   gridTypeFilter: null as FileTypeKind | null,
@@ -760,6 +769,20 @@ export const useStore = create<AppStore>((set, get) => ({
 
   setScrollPositions: (positions: Record<string, ScrollPosition>) => {
     set({ scrollPositions: positions });
+  },
+
+  setEmbedScrollPos: (key, scrollPos, contentHeight) => {
+    if (!key) return;
+    set((s) => ({
+      embedScrollPositions: {
+        ...s.embedScrollPositions,
+        [key]: { scrollPos, contentHeight },
+      },
+    }));
+  },
+
+  setEmbedScrollPositions: (positions: Record<string, ScrollPosition>) => {
+    set({ embedScrollPositions: positions });
   },
 
   markClean: () => {

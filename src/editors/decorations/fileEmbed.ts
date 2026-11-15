@@ -35,6 +35,8 @@ import {
 import { renderMarkdown } from "../../renderers/markdown";
 import { loadPdfBytes } from "../../utils/pdfSource";
 import { isTauriEnv } from "../../utils/tauri";
+import { resolveScrollTarget } from "../../utils/scrollPosition";
+import { useStore } from "../../stores/index";
 
 /** 可内嵌的文件类型；`web` 是外部链接页面。 */
 export type FileEmbedKind = "pdf" | "md" | "html" | "web";
@@ -47,6 +49,8 @@ export type FileEmbedKind = "pdf" | "md" | "html" | "web";
 export interface FileEmbedResolution {
   url: string | null;
   filePath: string | null;
+  /** 宿主文档绝对路径；滚动定格按文档级 view-state 键控需要它。 */
+  docPath?: string | null;
 }
 
 /** 路径解析器；返回 null 表示当前环境读不了该文件（退回占位）。 */
@@ -149,6 +153,134 @@ function clampHeight(value: number): number {
   return Math.max(MIN_IMAGE_HEIGHT, Math.min(value, MAX_IMAGE_HEIGHT));
 }
 
+// --- 滚动定格（D10 / B5b）----------------------------------------------------
+
+/**
+ * 内嵌内容的滚动面。md 由外层容器自己滚；pdf / html / 网页是 iframe 内部滚，
+ * 只有同源（本地 asset / blob）才读得到 scrollTop，跨域 iframe 拿不到。
+ */
+interface EmbedScrollSurface {
+  read(): { scrollPos: number; contentHeight: number } | null;
+  metrics(): { scrollHeight: number; clientHeight: number };
+  write(scrollPos: number): void;
+  onScroll(listener: () => void): () => void;
+  onPointerLeave(listener: () => void): () => void;
+}
+
+function domScrollSurface(el: HTMLElement): EmbedScrollSurface {
+  return {
+    read: () => ({ scrollPos: el.scrollTop, contentHeight: el.scrollHeight }),
+    metrics: () => ({
+      scrollHeight: el.scrollHeight,
+      clientHeight: el.clientHeight,
+    }),
+    write: (scrollPos) => {
+      el.scrollTop = scrollPos;
+    },
+    onScroll: (listener) => {
+      el.addEventListener("scroll", listener, { passive: true });
+      return () => el.removeEventListener("scroll", listener);
+    },
+    onPointerLeave: (listener) => {
+      el.addEventListener("pointerleave", listener);
+      return () => el.removeEventListener("pointerleave", listener);
+    },
+  };
+}
+
+function iframeScrollSurface(
+  iframe: HTMLIFrameElement,
+): EmbedScrollSurface | null {
+  try {
+    const win = iframe.contentWindow;
+    const doc = win?.document;
+    if (!win || !doc) return null;
+    const scroller = doc.scrollingElement ?? doc.documentElement;
+    return {
+      read: () => ({
+        scrollPos: scroller.scrollTop,
+        contentHeight: scroller.scrollHeight,
+      }),
+      metrics: () => ({
+        scrollHeight: scroller.scrollHeight,
+        clientHeight: iframe.clientHeight,
+      }),
+      write: (scrollPos) => win.scrollTo(0, scrollPos),
+      onScroll: (listener) => {
+        win.addEventListener("scroll", listener, { passive: true });
+        return () => win.removeEventListener("scroll", listener);
+      },
+      onPointerLeave: (listener) => {
+        doc.addEventListener("pointerleave", listener, true);
+        return () => doc.removeEventListener("pointerleave", listener, true);
+      },
+    };
+  } catch {
+    return null;
+  }
+}
+
+/** 单个内嵌 widget 的定格生命周期：指针移出即写回，内容就绪时恢复。 */
+class EmbedScrollFreeze {
+  private timer: ReturnType<typeof setTimeout> | null = null;
+  private flush: (() => void) | null = null;
+  private cleanups: Array<() => void> = [];
+
+  constructor(
+    private readonly key: string,
+    private readonly surface: EmbedScrollSurface,
+    private readonly leaveTarget: HTMLElement,
+  ) {}
+
+  attach(): void {
+    const capture = (): void => {
+      const pos = this.surface.read();
+      if (!pos || pos.contentHeight <= 0) return;
+      useStore
+        .getState()
+        .setEmbedScrollPos(this.key, pos.scrollPos, pos.contentHeight);
+    };
+    const restore = (): void => {
+      const record = useStore.getState().embedScrollPositions[this.key];
+      const metrics = this.surface.metrics();
+      const target = resolveScrollTarget(
+        record,
+        metrics.scrollHeight,
+        metrics.clientHeight,
+      );
+      if (target !== null && target > 0) this.surface.write(target);
+    };
+
+    this.leaveTarget.addEventListener("pointerleave", capture);
+    this.cleanups.push(() =>
+      this.leaveTarget.removeEventListener("pointerleave", capture),
+    );
+    this.cleanups.push(this.surface.onPointerLeave(capture));
+    this.flush = capture;
+    this.cleanups.push(
+      this.surface.onScroll(() => {
+        if (this.timer) clearTimeout(this.timer);
+        this.timer = setTimeout(capture, 400);
+      }),
+    );
+
+    if (typeof requestAnimationFrame === "function") {
+      requestAnimationFrame(restore);
+    } else {
+      restore();
+    }
+  }
+
+  destroy(): void {
+    if (this.timer) clearTimeout(this.timer);
+    // 去抖未落定的最后一次滚动在关停前补写，避免快速关页签丢定格。
+    this.flush?.();
+    this.flush = null;
+    for (const off of this.cleanups) off();
+    this.cleanups = [];
+  }
+}
+
 // --- 内容渲染 ----------------------------------------------------------------
 
 function appendFallback(body: HTMLElement, message: string): void {
@@ -163,6 +295,7 @@ function renderPdfBody(
   body: HTMLElement,
   filePath: string | null,
   title: string,
+  onReady?: () => void,
 ): void {
   if (!filePath) {
     appendFallback(body, "无法读取 PDF：文档未保存或路径无法解析");
@@ -187,11 +320,16 @@ function renderPdfBody(
     iframe.setAttribute("src", url);
     iframe.setAttribute("title", title || "内嵌 PDF");
     body.replaceChild(iframe, loading);
+    onReady?.();
   });
 }
 
 /** md：读文件内容 → 复用预览渲染管线 → 排版 HTML。 */
-function renderMarkdownBody(body: HTMLElement, filePath: string | null): void {
+function renderMarkdownBody(
+  body: HTMLElement,
+  filePath: string | null,
+  onReady?: () => void,
+): void {
   if (!filePath) {
     appendFallback(body, "无法读取内嵌 Markdown：文档未保存或路径无法解析");
     return;
@@ -217,6 +355,7 @@ function renderMarkdownBody(body: HTMLElement, filePath: string | null): void {
         resolveMedia: (href) => resolveDocMediaHref(href, filePath),
       });
       body.replaceChild(host, loading);
+      onReady?.();
     })
     .catch(() => {
       if (!body.isConnected) return;
@@ -231,6 +370,7 @@ function renderIframeBody(
   resolution: FileEmbedResolution | null,
   title: string,
   fallbackMessage: string,
+  onReady?: () => void,
 ): void {
   const url = resolution?.url ?? null;
   if (!url) {
@@ -247,6 +387,7 @@ function renderIframeBody(
   iframe.setAttribute("title", title || "内嵌页面");
   iframe.setAttribute("loading", "lazy");
   body.appendChild(iframe);
+  onReady?.();
 }
 
 // --- widget ------------------------------------------------------------------
@@ -270,6 +411,8 @@ export class FileEmbedWidget extends WidgetType {
     super();
   }
 
+  private freeze: EmbedScrollFreeze | null = null;
+
   eq(other: FileEmbedWidget): boolean {
     return (
       other._kind === this._kind &&
@@ -277,6 +420,7 @@ export class FileEmbedWidget extends WidgetType {
       other._path === this._path &&
       other._resolution?.url === this._resolution?.url &&
       other._resolution?.filePath === this._resolution?.filePath &&
+      other._resolution?.docPath === this._resolution?.docPath &&
       other._from === this._from &&
       other._align === this._align &&
       other._width === this._width &&
@@ -315,7 +459,7 @@ export class FileEmbedWidget extends WidgetType {
     const body = document.createElement("div");
     body.className = "cm-embed-body";
     frame.appendChild(body);
-    this.renderBody(body);
+    this.renderBody(body, frame);
 
     markEmbedSelected(container, selectedEmbedFrom === this._from);
 
@@ -337,14 +481,15 @@ export class FileEmbedWidget extends WidgetType {
     return container;
   }
 
-  private renderBody(body: HTMLElement): void {
+  private renderBody(body: HTMLElement, frame: HTMLElement): void {
+    const onReady = () => this.attachScrollFreeze(body, frame);
     const title = this._title ?? this._alt;
     if (this._kind === "pdf") {
-      renderPdfBody(body, this._resolution?.filePath ?? null, title);
+      renderPdfBody(body, this._resolution?.filePath ?? null, title, onReady);
       return;
     }
     if (this._kind === "md") {
-      renderMarkdownBody(body, this._resolution?.filePath ?? null);
+      renderMarkdownBody(body, this._resolution?.filePath ?? null, onReady);
       return;
     }
     if (this._kind === "html") {
@@ -353,6 +498,7 @@ export class FileEmbedWidget extends WidgetType {
         this._resolution,
         title,
         "无法加载内嵌 HTML：文档未保存或路径无法解析",
+        onReady,
       );
       return;
     }
@@ -361,7 +507,39 @@ export class FileEmbedWidget extends WidgetType {
       this._resolution,
       title,
       "无法加载内嵌网页：链接无法解析",
+      onReady,
     );
+  }
+
+  /**
+   * 接滚动定格。iframe 要等 `load` 之后才拿得到内部文档；跨域 / 插件文档
+   * （如 PDF 查看器）拿不到就静默跳过，定格不生效。
+   */
+  private attachScrollFreeze(body: HTMLElement, frame: HTMLElement): void {
+    const docPath = this._resolution?.docPath ?? null;
+    if (!docPath) return;
+    const key = `${docPath}\u0000${this._path}`;
+    const iframe = body.querySelector("iframe");
+    if (iframe) {
+      const bind = (): void => {
+        const surface = iframeScrollSurface(iframe);
+        if (!surface) return;
+        this.freeze = new EmbedScrollFreeze(key, surface, frame);
+        this.freeze.attach();
+      };
+      // load 可能已在附加监听前完成（缓存 / blob），否则定格静默不生效。
+      const doc = iframe.contentDocument;
+      if (doc && doc.readyState === "complete") bind();
+      else iframe.addEventListener("load", bind, { once: true });
+      return;
+    }
+    this.freeze = new EmbedScrollFreeze(key, domScrollSurface(body), frame);
+    this.freeze.attach();
+  }
+
+  destroy(): void {
+    this.freeze?.destroy();
+    this.freeze = null;
   }
 
   /** 默认高度约一屏：取编辑器可视高与视口高的较小值（不小于 240px）。 */

@@ -59,6 +59,7 @@ interface RustAppConfig {
     excerpt?: string;
   }> | null;
   scrollPositions: Record<string, ScrollPosition> | null;
+  embedScrollPositions: Record<string, ScrollPosition> | null;
   capabilities?: Record<string, boolean> | null;
   rouletteSectors?: string[] | null;
   rouletteHotkey?: string | null;
@@ -151,6 +152,7 @@ export async function saveAppConfig(): Promise<void> {
     // 永远不会被持久化，门户下次启动又变成空的
     recentFiles: useStore.getState().recentFiles,
     scrollPositions: useStore.getState().scrollPositions ?? null,
+    embedScrollPositions: useStore.getState().embedScrollPositions ?? null,
     capabilities: serializeCapabilities(),
     rouletteSectors: es.config.rouletteSectors ?? null,
     rouletteHotkey: es.config.rouletteHotkey ?? null,
@@ -386,6 +388,8 @@ function applyRustConfig(raw: RustAppConfig): void {
 
   // Restore scroll positions (A-9)
   useStore.getState().setScrollPositions(raw.scrollPositions ?? {});
+  // Restore embedded scroll freezes (D10 / B5b)
+  useStore.getState().setEmbedScrollPositions(raw.embedScrollPositions ?? {});
 
   // Restore sidebar state
   if (config.sidebarLeftVisible !== undefined) {
