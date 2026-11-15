@@ -1,6 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { ICONS } from "../src/ui/icons";
 
 const TINY_MP4 = readFileSync(
   path.resolve(process.cwd(), "e2e/fixtures/tiny.mp4"),
@@ -485,4 +486,18 @@ test("[#901] 字幕面板只列与当前视频同名的字幕", async ({ page })
 
   await expect(menu).toContainText("clip.srt");
   await expect(menu).not.toContainText("other.srt");
+});
+
+test("[#905] 截图控件是 camera 图形，与播放角标 play 不同形", async ({
+  page,
+}) => {
+  await openMedia(page, "/Users/test/clip.mp4");
+
+  const shotIcon = page.locator(".art-control[data-name='screenshot'] svg");
+  await expect(shotIcon).toHaveCount(1);
+  await expect(shotIcon).toHaveAttribute("data-icon", "camera");
+  const shotD =
+    (await shotIcon.locator("path").first().getAttribute("d")) ?? "";
+  expect(shotD.length, "截图图标缺形状").toBeGreaterThan(0);
+  expect(shotD, "截图与播放复用了同一条 path").not.toBe(ICONS.play.d);
 });

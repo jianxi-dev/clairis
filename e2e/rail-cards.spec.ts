@@ -1,6 +1,7 @@
 import { test, expect, type Locator, type Page } from "@playwright/test";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
+import { ICONS } from "../src/ui/icons";
 
 /**
  * 阅读空间密度与卡片（layout-portal 7.1）真实浏览器用例。
@@ -773,5 +774,25 @@ test("六个 HTML 卡片逐个滚动，缩略图显示真实首屏（#569）", a
     const box = await thumb.boundingBox();
     expect(box).not.toBeNull();
     expect(box!.height).toBeGreaterThan(0);
+  }
+});
+
+test("[#905] 视频卡片播放角标用「播放」图形，不复用截图 camera", async ({
+  page,
+}) => {
+  await boot(page);
+  await seed(page);
+  await openPinnedRail(page);
+
+  const badge = recentItem(page, "/tmp/rc/movie.mp4").locator(
+    ".rail-thumb-play svg",
+  );
+  await expect(badge).toHaveCount(1);
+  await expect(badge).toHaveAttribute("data-icon", "play");
+  const d = (await badge.locator("path").getAttribute("d")) ?? "";
+  expect(d).toBe(ICONS.play.d);
+  for (const part of ICONS.camera.parts ?? []) {
+    expect(d, "播放角标复用了截图图形").not.toBe(part.d);
+    expect(d, "播放角标复用了截图图形").not.toBe(part.s);
   }
 });

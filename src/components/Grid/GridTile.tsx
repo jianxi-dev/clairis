@@ -87,7 +87,7 @@ function GridVideoThumb({ src }: { src: string }) {
         className="absolute inset-0 flex items-center justify-center"
       >
         <span className="flex h-9 w-9 items-center justify-center rounded-full bg-black/45">
-          <Icon name="video" size={24} color="#fff" />
+          <Icon name="play" size={24} color="#fff" />
         </span>
       </div>
     </div>

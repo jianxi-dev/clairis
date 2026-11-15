@@ -1,6 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { ICONS } from "../src/ui/icons";
 
 const ART275 = path.resolve(process.cwd(), ".artifacts/275");
 mkdirSync(ART275, { recursive: true });
@@ -666,4 +667,39 @@ test("[#899] 视频网格卡片缩略图渲染真实帧载体", async ({ page })
   await expect(video).toHaveCount(1);
   await expect(video).toHaveAttribute("preload", "auto");
   await expect(tile.locator("[data-tile-play]")).toHaveCount(1);
+});
+
+test("[#905] 网格视频卡片播放角标用「播放」图形，不复用截图 camera", async ({
+  page,
+}) => {
+  await boot(page);
+  await page.evaluate(() => {
+    const w = window as unknown as {
+      __biaoyue_store__: { setState: (s: Record<string, unknown>) => void };
+    };
+    w.__biaoyue_store__.setState({
+      recentFiles: [
+        {
+          path: "/lib/movie.mp4",
+          title: "movie.mp4",
+          openedAt: new Date().toISOString(),
+          excerpt: "",
+        },
+      ],
+      scene: "workspace",
+    });
+  });
+  await enterGridWithShortcut(page);
+
+  const badge = page.locator(
+    '[data-grid-item="/lib/movie.mp4"] [data-tile-play] svg',
+  );
+  await expect(badge).toHaveCount(1);
+  await expect(badge).toHaveAttribute("data-icon", "play");
+  const d = (await badge.locator("path").getAttribute("d")) ?? "";
+  expect(d).toBe(ICONS.play.d);
+  for (const part of ICONS.camera.parts ?? []) {
+    expect(d, "播放角标复用了截图图形").not.toBe(part.d);
+    expect(d, "播放角标复用了截图图形").not.toBe(part.s);
+  }
 });
