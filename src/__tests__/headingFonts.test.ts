@@ -99,7 +99,7 @@ describe("输入解析", () => {
   });
 
   it("默认栈在输入框显示为空", () => {
-    expect(headingFontInputValue(HEADING_FONT_STACK)).toBe("");
+    expect(headingFontInputValue(HEADING_FONT_STACK)).toBe(HEADING_FONT_STACK);
     expect(headingFontInputValue("Songti SC")).toBe("Songti SC");
   });
 });

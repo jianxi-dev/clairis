@@ -19,29 +19,19 @@ const FC_LIST_CANDIDATES: [&str; 5] = [
     "fc-list",
 ];
 
-/// 无 `fc-list` 时的兜底常见字体（非「全部系统字体」）。
-const PRESET_FONT_FAMILIES: [&str; 21] = [
-    "Arial",
-    "Georgia",
-    "Heiti SC",
-    "Helvetica",
-    "Helvetica Neue",
-    "Hiragino Sans GB",
-    "Kaiti SC",
-    "Menlo",
-    "Microsoft YaHei",
+/// 无 `fc-list` 时的兜底预设：只列中英开源字体（#926）。
+/// 不硬编码任何国家/厂商专有字体；本机实际字体由 `fc-list` 枚举提供。
+const PRESET_FONT_FAMILIES: [&str; 10] = [
+    "Fira Code",
+    "IBM Plex Sans",
+    "Inter",
+    "JetBrains Mono",
+    "Noto Sans",
     "Noto Sans CJK SC",
-    "PingFang SC",
-    "SF Mono",
-    "SF Pro Text",
-    "SimHei",
-    "SimSun",
-    "Songti SC",
+    "Noto Serif CJK SC",
     "Source Han Sans SC",
-    "STHeiti",
-    "Tahoma",
-    "Times New Roman",
-    "Verdana",
+    "Source Han Serif SC",
+    "sans-serif",
 ];
 
 /// 解析 `fc-list : family` 输出：每行是一组逗号分隔的字体族。
@@ -112,5 +102,41 @@ mod tests {
         let mut sorted = fonts.families.clone();
         sorted.sort();
         assert_eq!(fonts.families, sorted);
+    }
+
+    #[test]
+    fn preset_families_contain_no_proprietary_national_fonts() {
+        let proprietary = [
+            "PingFang",
+            "Hiragino",
+            "Microsoft YaHei",
+            "SimHei",
+            "SimSun",
+            "Songti",
+            "Kaiti",
+            "Heiti",
+            "STHeiti",
+            "Arial",
+            "Helvetica",
+            "Georgia",
+            "Times New Roman",
+            "Tahoma",
+            "Verdana",
+        ];
+        for name in PRESET_FONT_FAMILIES {
+            for bad in proprietary {
+                assert!(
+                    !name.contains(bad),
+                    "预设含专有字体硬编码: {name}（命中 {bad}）"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn preset_families_include_open_source_cjk_and_latin() {
+        for want in ["Noto Sans CJK SC", "Source Han Sans SC", "Inter"] {
+            assert!(PRESET_FONT_FAMILIES.contains(&want), "缺开源预设: {want}");
+        }
     }
 }

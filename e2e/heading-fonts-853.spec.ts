@@ -90,7 +90,7 @@ async function boot(
       return orig(cmd, args);
     };
   });
-  await page.goto("http://localhost:1420", { waitUntil: "networkidle" });
+  await page.goto("http://localhost:1435", { waitUntil: "networkidle" });
   await page.waitForSelector('[data-testid="pane-header"]', { timeout: 15000 });
 }
 
@@ -124,7 +124,7 @@ test.beforeEach(async () => {
   mkdirSync(ART, { recursive: true });
 });
 
-test("设置面板含 6 个逐级入口，默认值严格等于 --type-font-sans", async ({
+test("设置面板含 6 个逐级入口，输入框显示当前默认字体（非空）", async ({
   page,
 }) => {
   await boot(page);
@@ -132,9 +132,18 @@ test("设置面板含 6 个逐级入口，默认值严格等于 --type-font-sans
   await openAppearance(page);
 
   for (const level of LEVELS) {
-    await expect(
-      page.locator(`[data-testid="heading-font-${level}"]`),
-    ).toHaveValue("");
+    const input = page.locator(`[data-testid="heading-font-${level}"]`);
+    await expect(input).toHaveValue(HEADING_FONT_STACK);
+    expect((await input.inputValue()).trim().length).toBeGreaterThan(0);
+    expect(await input.inputValue()).toContain("PingFang SC");
+  }
+
+  // 预设列表含中英开源字体（本机枚举 + 开源预设）
+  const options = await page
+    .locator("#heading-font-options option")
+    .evaluateAll((els) => els.map((e) => (e as HTMLOptionElement).value));
+  for (const want of ["Noto Sans CJK SC", "Source Han Sans SC", "Inter"]) {
+    expect(options, `预设缺开源字体 ${want}`).toContain(want);
   }
 
   // 触发一次落盘，读持久化的 headingFonts
@@ -183,7 +192,7 @@ test("非法字体被拒绝并回落默认，不落盘", async ({ page }) => {
   await h2.press("Enter");
 
   await expect(page.locator('[data-testid="heading-font-hint"]')).toBeVisible();
-  await expect(h2).toHaveValue("");
+  await expect(h2).toHaveValue(HEADING_FONT_STACK);
 
   // 触发一次无关保存：非法值不得被写进配置
   await page.locator('[data-testid="font-size-17"]').click();
@@ -231,7 +240,9 @@ test("非法配置值加载时被拒绝并回落默认栈", async ({ page }) => 
   await openSettings(page);
   await openAppearance(page);
 
-  await expect(page.locator('[data-testid="heading-font-h1"]')).toHaveValue("");
+  await expect(page.locator('[data-testid="heading-font-h1"]')).toHaveValue(
+    HEADING_FONT_STACK,
+  );
   await expect(page.locator('[data-testid="heading-font-h2"]')).toHaveValue(
     "Songti SC",
   );
