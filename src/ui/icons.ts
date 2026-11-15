@@ -18,6 +18,7 @@ export type IconName =
   | "code"
   | "audio"
   | "folder"
+  | "clock"
   | "file"
   | "close"
   | "closeOthers"
@@ -190,6 +191,10 @@ export const ICONS: Record<IconName, IconDef> = {
   folder: {
     label: "文件夹",
     s: "M3.5 7h6l2 2h9v10h-17z",
+  },
+  clock: {
+    label: "时钟",
+    s: "M12 4a8 8 0 1 1 0 16 8 8 0 1 1 0-16 M12 7.5V12l3 2",
   },
   file: {
     label: "文件",

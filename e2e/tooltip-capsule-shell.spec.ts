@@ -123,11 +123,15 @@ test("自绘悬停提示共用同一胶囊外壳（按钮 / 轮盘扇区 / 页�
   await page.keyboard.press("Escape");
   await expect(tip).toHaveCount(0, { timeout: 3000 });
 
-  // ⑤ 页签名提示
+  // ⑤ 页签名下拉信息窗（batch19 B7：页签名提示改为信息窗，仍共用同一胶囊外壳）
   const tab = page.locator("[data-tab-id]").first();
   await tab.hover();
-  await expect(tip).toBeVisible({ timeout: 3000 });
-  shells.push(await shellOf(tip));
+  const info = page.getByTestId("tab-info-popover");
+  await expect(info).toBeVisible({ timeout: 3000 });
+  shells.push(await shellOf(info));
+  await shot(page, "tab-info-popover");
+  await page.mouse.move(900, 620);
+  await expect(info).toHaveCount(0, { timeout: 3000 });
 
   // 同一类提示外壳常量严格相等；每类计算圆角均 ≥ 高度一半；矩形节点数 = 0
   const radii = shells.map((s) => s.rawRadius);
@@ -162,7 +166,7 @@ test("表格行列热点气泡为胶囊，矩形外壳提示节点数为 0", asy
   // 汇总：当前 DOM 内全部自绘提示节点，矩形数严格为 0
   const rectangular = await page.evaluate(() => {
     const nodes = document.querySelectorAll(
-      ".app-tip, .cm-table-hotspot-bubble",
+      ".app-tip, .cm-table-hotspot-bubble, .tab-info",
     );
     let bad = 0;
     for (const el of Array.from(nodes)) {
