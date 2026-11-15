@@ -595,6 +595,8 @@ export default function TabBar({
             className="h-px my-1"
             style={{ background: "var(--app-border)" }}
           />
+          {/* hover 父项即展开二级，且移出父项后保持可见（A-13.2 / A-13.3）；
+              点击只负责打开，不再切换关闭——否则 hover 刚展开就被同一次点击关掉。 */}
           <div data-export-row className="relative">
             <button
               data-menu-item="export"
@@ -605,7 +607,8 @@ export default function TabBar({
               title={
                 tabs[menu.tabId]?.path ? "导出" : "此页签尚未保存，无路径可导出"
               }
-              onClick={() => setExportOpen((v) => !v)}
+              onMouseEnter={() => setExportOpen(true)}
+              onClick={() => setExportOpen(true)}
             >
               <Icon name="export" size={18} />
               导出
@@ -717,6 +720,7 @@ export default function TabBar({
             打开文件位置
           </button>
           <button
+            data-menu-item="move"
             className="w-full flex items-center gap-2 text-left px-3 py-1.5 hover:bg-[var(--app-sunken)] disabled:cursor-not-allowed disabled:opacity-45"
             disabled={!tabs[menu.tabId]?.path}
             title={
@@ -742,7 +746,7 @@ export default function TabBar({
               })();
             }}
           >
-            <Icon name="locate" size={18} />
+            <Icon name="folder" size={18} />
             移动到…
           </button>
           <button
