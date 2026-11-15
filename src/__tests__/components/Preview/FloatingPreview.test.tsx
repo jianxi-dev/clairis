@@ -128,9 +128,10 @@ describe("FloatingPreview 媒体真实渲染", () => {
     ).toBeNull();
   });
 
-  it("视频渲染 video，src 走 media:// 且带控件", () => {
+  it("视频渲染 video，src 走 media:// 且带控件", async () => {
     openPreview("/tmp/clip.mp4");
     render(<FloatingPreview onOpenPath={async () => {}} />);
+    await act(async () => {});
     const video = document.querySelector('[data-testid="preview-media"] video');
     expect(video).not.toBeNull();
     expect(video!.getAttribute("src")).toContain("media://");

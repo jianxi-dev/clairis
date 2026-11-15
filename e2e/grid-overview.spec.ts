@@ -639,3 +639,31 @@ test("PDF 卡片不渲染悬停工具条，其他类型保持三个动作（#275
     path: path.join(ART275, "grid-md-actions.png"),
   });
 });
+
+test("[#899] 视频网格卡片缩略图渲染真实帧载体", async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    const w = window as unknown as {
+      __biaoyue_store__: { setState: (s: Record<string, unknown>) => void };
+    };
+    w.__biaoyue_store__.setState({
+      recentFiles: [
+        {
+          path: "/lib/movie.mp4",
+          title: "movie.mp4",
+          openedAt: new Date().toISOString(),
+          excerpt: "",
+        },
+      ],
+      scene: "workspace",
+    });
+  });
+  await enterGridWithShortcut(page);
+
+  const tile = page.locator('[data-grid-item="/lib/movie.mp4"]');
+  await expect(tile).toHaveCount(1);
+  const video = tile.locator("video[data-tile-video]");
+  await expect(video).toHaveCount(1);
+  await expect(video).toHaveAttribute("preload", "auto");
+  await expect(tile.locator("[data-tile-play]")).toHaveCount(1);
+});

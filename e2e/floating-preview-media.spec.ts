@@ -182,3 +182,15 @@ test("evidence: 视频底栏四态", async ({ page }) => {
   await expect(preview).toHaveCount(0, { timeout: 2000 });
   await page.screenshot({ path: `${dir}/video-closed.png` });
 });
+
+test("[#899] 视频浮层预览以取帧模式加载", async ({ page }) => {
+  await boot(page);
+  await openPreview(page, "/tmp/fp/movie.mp4");
+
+  const media = page.locator('[data-media-kind="video"]');
+  await expect(media).toBeVisible();
+  const video = media.locator("video");
+  await expect(video).toHaveCount(1);
+  await expect(video).toHaveAttribute("preload", "auto");
+  await expect(video).toHaveJSProperty("controls", true);
+});
