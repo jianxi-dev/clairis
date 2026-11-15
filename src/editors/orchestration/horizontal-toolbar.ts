@@ -173,7 +173,7 @@ function toolbarCommands(view: EditorView): Record<string, () => void> {
   };
 }
 
-export function horizontalToolbar() {
+export function horizontalToolbar(options?: { copyOnly?: boolean }) {
   return ViewPlugin.define((view) => {
     const commands = toolbarCommands(view);
     let bar: HTMLDivElement | null = null;
@@ -187,6 +187,23 @@ export function horizontalToolbar() {
       root.dataset.testid = "selection-toolbar";
       root.setAttribute("role", "toolbar");
       root.setAttribute("aria-label", "文字工具条");
+
+      if (options?.copyOnly) {
+        root.appendChild(
+          toolButton({
+            id: "copy",
+            label: "复制",
+            icon: "copy",
+            run: () => {
+              const text = selectionText(view);
+              if (text) void navigator.clipboard?.writeText(text).catch(() => {});
+            },
+          }),
+        );
+        root.addEventListener("pointerdown", (e) => e.stopPropagation());
+        document.body.appendChild(root);
+        return root;
+      }
 
       const order = resolveToolbarOrder(
         useEditorStore.getState().config.htmlToolbarItems,
@@ -316,6 +333,12 @@ export function horizontalToolbar() {
     document.addEventListener("keydown", onKey, true);
     document.addEventListener("pointerdown", onOutside, true);
 
+    // 切到预览态时编辑面被 display:none，横条挂在 body 上不会自己消失（#921）。
+    const visibility = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => !entry.isIntersecting)) hide();
+    });
+    visibility.observe(view.dom);
+
     return {
       update(u: ViewUpdate): void {
         if (!u.selectionSet) return;
@@ -330,6 +353,7 @@ export function horizontalToolbar() {
         document.removeEventListener("pointerup", onPointerUp, true);
         document.removeEventListener("keydown", onKey, true);
         document.removeEventListener("pointerdown", onOutside, true);
+        visibility.disconnect();
         window.clearTimeout(timer);
         hide();
       },
