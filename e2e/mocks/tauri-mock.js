@@ -13,6 +13,8 @@ window.__TAURI_INTERNALS__ = {
 window.__biaoyue_store__ = null;
 window.__biaoyue_saved_files__ = [];
 window.__biaoyue_saved_binaries__ = [];
+// 窗口拖动观测：mock 环境无真实窗口位移，记录 startDragging 调用次数供 e2e 断言。
+window.__dragCalls__ = 0;
 window.__biaoyue_openFile__ = function(path, content, title) {
   if (!window.__biaoyue_store__) return false;
   var store = window.__biaoyue_store__.getState();
@@ -247,6 +249,10 @@ function mockInvoke(cmd, args) {
       if (!q || hay.indexOf(q) >= 0) matched.push(cloneJson(h));
     }
     return matched;
+  }
+  if (cmd === "plugin:window|start_dragging") {
+    window.__dragCalls__ = (window.__dragCalls__ || 0) + 1;
+    return Promise.resolve(null);
   }
   if (cmd === "reveal_in_finder" && args) {
     const w = typeof window !== "undefined" ? window : globalThis;

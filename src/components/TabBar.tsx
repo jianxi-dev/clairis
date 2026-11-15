@@ -391,6 +391,46 @@ export default function TabBar({
             .then(({ getCurrentWindow }) => getCurrentWindow().toggleMaximize())
             .catch(() => {});
         }}
+        onPointerDown={(e) => {
+          if (e.button !== 0) return;
+          // 页签本体 / 按钮 / 输入框交给既有交互（切签、拖拽换位、关闭、重命名）；
+          // 只有页签条空白处才允许拖窗。
+          if ((e.target as HTMLElement).closest("[data-tab-id], button, input"))
+            return;
+          if (!isTauriEnv()) return;
+          const startX = e.clientX;
+          const startY = e.clientY;
+          let started = false;
+          const cleanup = () => {
+            window.removeEventListener("pointermove", onMove);
+            window.removeEventListener("pointerup", onUp);
+            window.removeEventListener("pointercancel", onUp);
+          };
+          function onMove(ev: PointerEvent) {
+            if (started) return;
+            // 未超阈值视为点击，不拖窗（AGENTS.md 拖拽阈值约定）。
+            if (
+              Math.hypot(ev.clientX - startX, ev.clientY - startY) <
+              DRAG_THRESHOLD_PX
+            )
+              return;
+            started = true;
+            cleanup();
+            // CRITICAL: 不要 await startDragging()——它阻塞拖拽发起，
+            // Promise 在拖拽结束时才 resolve（同 CaptureOverlay）。
+            void import("@tauri-apps/api/window")
+              .then(({ getCurrentWindow }) =>
+                getCurrentWindow().startDragging(),
+              )
+              .catch(() => {});
+          }
+          function onUp() {
+            cleanup();
+          }
+          window.addEventListener("pointermove", onMove);
+          window.addEventListener("pointerup", onUp);
+          window.addEventListener("pointercancel", onUp);
+        }}
         className="tab-strip flex min-h-[26px] w-full items-center gap-1 shrink-0 select-none overflow-x-auto px-1"
         style={{
           // 底边只由栏目头（pane-header）画一次；页签条再画一遍会叠成加深双线（#1/#23）。
