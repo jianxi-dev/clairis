@@ -27,7 +27,7 @@ import {
   cancelPendingClose,
 } from "./block-menu";
 import {
-  defaultCommands,
+  addHandleCommands,
   openInsertMenu,
   openSlashMenuAtCursor,
 } from "../slash";
@@ -569,7 +569,7 @@ class BlockHandlePlugin {
           openInsertMenu(
             this.view,
             block.from,
-            defaultCommands,
+            addHandleCommands,
             { from: block.from, to: block.from },
             "below",
             anchor,

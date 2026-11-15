@@ -42,7 +42,7 @@ import {
   type AnchorRect,
 } from "./orchestration/anchor";
 import { placeMenu } from "./orchestration/placement";
-import { MENU_WIDTH } from "./orchestration/menu-metrics";
+import { MENU_ROW_HEIGHT, MENU_WIDTH } from "./orchestration/menu-metrics";
 
 export interface SlashCommand {
   id: string;
@@ -64,6 +64,8 @@ export interface SlashCommand {
   aliases?: readonly string[];
   /** 该行在根级所属的分组标题。 */
   group?: string;
+  /** 新增手柄「基础」段单元：只渲染图标（design D7 / A-10.2）。 */
+  cell?: boolean;
   /** 存在时，激活该行会打开这个二级面板。 */
   children?: SlashCommand[];
   /**
@@ -351,6 +353,61 @@ export const defaultCommands: SlashCommand[] = [
   },
 ];
 
+/**
+ * 新增手柄「基础」段：只显示图标，顺序即 design D7 / A-10.4。
+ *
+ * A-10.1 曾误写为 8（G0 笔误），owner 已裁定以 D7 / 需求正文 / tasks 10.1
+ * 枚举的 10 项为准（代码块、链接回归本段）。
+ */
+const ADD_BASIC_ROWS: ReadonlyArray<readonly [string, string, string, string]> =
+  [
+    ["add-h1", "H1", "H1Outlined", "# "],
+    ["add-h2", "H2", "H2Outlined", "## "],
+    ["add-h3", "H3", "H3Outlined", "### "],
+    ["add-ordered", "有序列表", "OrderListOutlined", "1. "],
+    ["add-bullet", "无序列表", "DisorderListOutlined", "- "],
+    ["add-task", "任务", "TodoOutlined", "- [ ] "],
+    ["add-quote", "引用", "ReferenceOutlined", "> "],
+    ["add-divider", "分割线", "HorizontalRuleOutlined", "---"],
+    ["add-code", "代码块", "CodeblockOutlined", "```\n\n```"],
+    ["add-link", "链接", "GlobalLinkOutlined", "[链接文字](url)"],
+  ];
+
+function defaultCommandById(id: string): SlashCommand {
+  const cmd = defaultCommands.find((entry) => entry.id === id);
+  if (!cmd) throw new Error(`unknown slash command: ${id}`);
+  return cmd;
+}
+
+/**
+ * 新增手柄菜单项集（design D7 / B1）：基础（纯图标）+ 常用（图标 + 文字）。
+ * 单元格 / 分栏 / 高亮块的「新增」入口复用此列表（#847），不要另立菜单。
+ */
+export const addHandleCommands: SlashCommand[] = [
+  ...ADD_BASIC_ROWS.map(([id, label, icon, text]) => ({
+    id,
+    label,
+    icon,
+    group: "基础",
+    cell: true,
+    insert: () => ({ from: 0, to: 0, text }),
+  })),
+  { ...defaultCommandById("heading"), group: "常用" },
+  { ...defaultCommandById("callout"), label: "高亮", group: "常用" },
+  { ...defaultCommandById("columns"), group: "常用" },
+  { ...defaultCommandById("table"), group: "常用" },
+  { ...defaultCommandById("image-ref"), label: "图片", group: "常用" },
+  { ...defaultCommandById("media-ref"), label: "视频或文件", group: "常用" },
+  {
+    id: "formula",
+    label: "公式",
+    icon: "FormulaOutlined",
+    group: "常用",
+    insert: () => ({ from: 0, to: 0, text: "$$\n\n$$" }),
+  },
+  { ...defaultCommandById("embed-web"), group: "常用" },
+];
+
 // 用户片段命令（来自 `list_extensions`）。宿主在编辑器创建后加载一次并注册；
 // 菜单每次打开都读这份列表，所以后加载的命令下一次打开即出现，无需重建视图。
 let userSlashCommands: SlashCommand[] = [];
@@ -631,7 +688,7 @@ function scheduleDismiss(view: EditorView): void {
  */
 function renderMenu(view: EditorView, state: SlashMenuState): void {
   if (!state.dom) return;
-  renderRootGrid(view, state);
+  renderRoot(view, state);
   // 根列表在二级层下保持挂载，所以这次渲染重建了它的单元格——先重新锚定，
   // 否则浮层会挂在已脱离的 0x0 节点上。
   if (state.grid || isFlyoutOpen(state)) {
@@ -651,6 +708,146 @@ function renderMenu(view: EditorView, state: SlashMenuState): void {
 /** 二级浮层存在时为 true。 */
 function isFlyoutOpen(state: SlashMenuState): boolean {
   return state.submenuParent !== null && state.flyoutRows.length > 0;
+}
+
+/**
+ * 原地移动根列表选中高亮（`state.cells` 与 `rows` 下标对齐）。
+ * 悬停只改 `state.selected`，不重建单元格——重建会让停住的指针反复触发
+ * mouseenter，也会丢掉进行中的浮层锚点。
+ */
+function highlightRoot(state: SlashMenuState): void {
+  const cells = state.cells;
+  for (let i = 0; i < cells.length; i++) {
+    const el = cells[i];
+    if (!el) continue;
+    if (i === state.selected) el.setAttribute("data-selected", "true");
+    else el.removeAttribute("data-selected");
+  }
+}
+
+/** 根渲染：新增手柄（trigger=below）走两段布局，其余沿用单列列表。 */
+function renderRoot(view: EditorView, state: SlashMenuState): void {
+  if (state.trigger === "below") renderAddMenu(view, state);
+  else renderRootGrid(view, state);
+}
+
+/**
+ * 新增手柄菜单（design D7）：基础图标网格 + 常用文字行，两段同宽。
+ * 基础单元只放 `svg`，文字节点数为 0（A-10.2）；可访问名取 `title`/`aria-label`。
+ */
+function renderAddMenu(view: EditorView, state: SlashMenuState): void {
+  if (!state.dom) return;
+  state.dom.textContent = "";
+  state.cells = [];
+
+  const sections: ReadonlyArray<{
+    name: string;
+    cell: boolean;
+    rows: SlashCommand[];
+  }> = [
+    {
+      name: "基础",
+      cell: true,
+      rows: state.rows.filter((cmd) => cmd.cell === true),
+    },
+    {
+      name: "常用",
+      cell: false,
+      rows: state.rows.filter((cmd) => cmd.cell !== true),
+    },
+  ];
+
+  for (const section of sections) {
+    const label = document.createElement("div");
+    label.className = "cm-add-section-label";
+    label.textContent = section.name;
+    state.dom.appendChild(label);
+
+    const container = document.createElement("div");
+    container.className = section.cell ? "cm-add-grid" : "cm-add-list";
+    container.dataset.section = section.name;
+    for (const cmd of section.rows) {
+      const index = state.rows.indexOf(cmd);
+      if (section.cell) {
+        const cell = document.createElement("button");
+        cell.type = "button";
+        cell.className = "cm-add-cell";
+        cell.dataset.cmd = cmd.id;
+        cell.title = cmd.label;
+        cell.setAttribute("aria-label", cmd.label);
+        cell.style.height = `${MENU_ROW_HEIGHT}px`;
+        if (index === state.selected) {
+          cell.setAttribute("data-selected", "true");
+        }
+        cell.appendChild(renderIcon(cmd.icon ?? ""));
+        cell.addEventListener("mouseenter", () => {
+          state.selected = index;
+          highlightRoot(state);
+        });
+        cell.addEventListener("mousedown", (event) => {
+          event.preventDefault();
+          state.selected = index;
+          activateRow(view, cmd);
+        });
+        container.appendChild(cell);
+        state.cells[index] = cell;
+        continue;
+      }
+
+      const row = document.createElement("div");
+      row.className = "mdb-slash-item";
+      row.dataset.cmd = cmd.id;
+      row.style.height = `${MENU_ROW_HEIGHT}px`;
+      if (index === state.selected) {
+        row.setAttribute("data-selected", "true");
+      }
+      if (cmd.emoji || cmd.icon) {
+        const icon = document.createElement("span");
+        icon.className = "mdb-slash-item-icon";
+        icon.setAttribute("aria-hidden", "true");
+        if (cmd.emoji) {
+          icon.textContent = cmd.emoji;
+          icon.dataset.glyph = "emoji";
+        } else if (cmd.icon) {
+          icon.appendChild(renderIcon(cmd.icon));
+        }
+        row.appendChild(icon);
+      }
+      const text = document.createElement("span");
+      text.className = "mdb-slash-item-label";
+      text.textContent = cmd.label;
+      row.appendChild(text);
+      const hasSecondLevel =
+        Boolean(cmd.children?.length) || cmd.grid !== undefined;
+      if (hasSecondLevel || cmd.hint) {
+        const hint = document.createElement("span");
+        hint.className = "mdb-slash-item-hint";
+        hint.textContent = hasSecondLevel ? "\u25B8" : (cmd.hint ?? "");
+        row.appendChild(hint);
+      }
+      row.addEventListener("mouseenter", () => {
+        state.selected = index;
+        highlightRoot(state);
+        if (cmd.grid) {
+          enterGrid(view, cmd, row);
+          return;
+        }
+        if (cmd.children?.length) {
+          enterSubmenu(view, cmd);
+          return;
+        }
+        collapseSecondLevel(state);
+      });
+      row.addEventListener("mousedown", (event) => {
+        event.preventDefault();
+        state.selected = index;
+        activateRow(view, cmd);
+      });
+      container.appendChild(row);
+      state.cells[index] = row;
+    }
+    state.dom.appendChild(container);
+  }
 }
 
 /**
@@ -725,6 +922,7 @@ function renderRootGrid(view: EditorView, state: SlashMenuState): void {
     // 否则在停住的指针下替换 DOM 会反复触发处理器形成渲染循环。
     cell.addEventListener("mouseenter", () => {
       state.selected = i;
+      highlightRoot(state);
       if (cmd.grid) {
         enterGrid(view, cmd, cell);
         return;
@@ -1676,7 +1874,7 @@ export function slashMenuSelectNext(view: EditorView): boolean {
     return true;
   }
   state.selected = Math.min(state.selected + 1, state.rows.length - 1);
-  renderRootGrid(view, state);
+  renderRoot(view, state);
   return true;
 }
 
@@ -1691,7 +1889,7 @@ export function slashMenuSelectPrev(view: EditorView): boolean {
     return true;
   }
   state.selected = Math.max(state.selected - 1, 0);
-  renderRootGrid(view, state);
+  renderRoot(view, state);
   return true;
 }
 

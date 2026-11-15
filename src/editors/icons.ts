@@ -102,6 +102,12 @@ const ICON_REGISTRY: Record<string, IconDef> = {
     ],
   },
 
+  // 公式 —— 根号 + 变量（新增手柄「常用」段）。
+  FormulaOutlined: {
+    kind: "paths",
+    paths: ["M3 16h3l3-9 3 9", "M12 12h7", "M15 17l4-4", "M19 17l-4-4"],
+  },
+
   // Headings — bold "H1".."H6" text marks so each level is visually distinct
   // (AC: "手柄图标随块型切换" must be observable, not just attribute-different).
   H1Outlined: { kind: "text", label: "H1", weight: 700 },

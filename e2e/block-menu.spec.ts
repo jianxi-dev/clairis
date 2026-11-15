@@ -938,9 +938,11 @@ test("图片块菜单垂直中心贴手柄中心（≤2px，A-3.2）", async ({ 
   await page.screenshot({ path: ".artifacts/697/04-image-menu-follow.png" });
 });
 
-// ── #758：空行「+」手柄菜单的「插入 CSS」图标可见 ──
+// ── #758：「插入 CSS」图标可见 ──
+// B1（#842）把新增手柄菜单重构为基础 / 常用两段，「插入 CSS」从该菜单移到斜杠
+// 菜单；这里改为在斜杠菜单上守同一枚 CssOutlined 图标，回归口径不变。
 
-test("[#758] 空行「+」手柄菜单的「插入 CSS」行有可见 CssOutlined 图标", async ({
+test("[#758] 斜杠菜单的「插入 CSS」行有可见 CssOutlined 图标", async ({
   page,
 }) => {
   await page.evaluate((body) => {
@@ -953,15 +955,8 @@ test("[#758] 空行「+」手柄菜单的「插入 CSS」行有可见 CssOutline
     win.__biaoyue_store__.getState().setEditorMode("edit");
   }, "# 标题\n\n\n第二段正文\n");
   await page.locator(".cm-content").waitFor({ timeout: 5000 });
-
-  const add = page.locator(".cm-block-handle-add").first();
-  const addBox = (await add.boundingBox())!;
-  await page.mouse.move(
-    addBox.x + addBox.width / 2,
-    addBox.y + addBox.height / 2,
-  );
-  await page.mouse.down();
-  await page.mouse.up();
+  await page.locator(".cm-content").click();
+  await page.keyboard.type("/");
 
   const menu = page.locator(".mdb-slash-menu");
   await expect(menu).toBeVisible({ timeout: 3000 });
