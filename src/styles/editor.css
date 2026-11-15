@@ -4,6 +4,14 @@
 
 :root {
   --editor-font-size: 17px;
+  /* 菜单 grammar 单一数值集（#912，与 src/editors/orchestration/menu-metrics.ts 对齐）：
+     斜杠菜单 / 新增手柄菜单 / 功能块菜单共用。 */
+  --menu-width: 176px;
+  --menu-row-height: 36px;
+  --menu-font-size: 14px;
+  --menu-line-height: 21px;
+  --menu-radius: 8px;
+  --menu-shadow: 0 8px 24px rgba(31, 26, 20, 0.12);
 }
 
 * {
@@ -1636,20 +1644,20 @@ html[data-tab-drag="true"] body * {
 .mdb-slash-flyout {
   position: absolute;
   z-index: 1000;
-  min-width: 176px;
+  width: var(--menu-width);
+  min-width: var(--menu-width);
   padding: 0;
   overflow-y: auto;
-  font-size: 13px;
+  font-size: var(--menu-font-size);
   color: var(--app-text);
   background: var(--app-surface);
   border: 1px solid var(--app-border);
-  border-radius: var(--app-radius);
-  box-shadow: var(--app-shadow);
+  border-radius: var(--menu-radius);
+  box-shadow: var(--menu-shadow);
 }
 
 .mdb-slash-flyout {
   z-index: 1001;
-  min-width: 150px;
   padding: 4px 0;
 }
 
@@ -1677,10 +1685,13 @@ html[data-tab-drag="true"] body * {
   align-items: center;
   gap: 8px;
   min-width: 0;
-  padding: 6px 8px;
+  height: var(--menu-row-height);
+  padding: 0 8px;
+  font-size: var(--menu-font-size);
+  line-height: var(--menu-line-height);
   text-align: left;
   cursor: pointer;
-  border-radius: var(--app-radius);
+  border-radius: var(--menu-radius);
 }
 
 .mdb-slash-item:hover {
@@ -2609,10 +2620,10 @@ html[data-tab-drag="true"] body * {
   padding: 6px 0;
   overflow-y: auto;
   border: 1px solid var(--app-border);
-  border-radius: 8px;
+  border-radius: var(--menu-radius);
   background: var(--app-surface);
-  box-shadow: 0 8px 24px rgba(31, 26, 20, 0.12);
-  font-size: 14px;
+  box-shadow: var(--menu-shadow);
+  font-size: var(--menu-font-size);
   color: var(--app-text);
   user-select: none;
 }
@@ -2628,6 +2639,8 @@ html[data-tab-drag="true"] body * {
   align-items: center;
   gap: 8px;
   width: 100%;
+  height: var(--menu-row-height);
+  line-height: var(--menu-line-height);
   padding: 0 12px;
   border: 0;
   background: transparent;

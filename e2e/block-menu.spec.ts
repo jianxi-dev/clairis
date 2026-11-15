@@ -1008,3 +1008,75 @@ test("表格块菜单垂直中心贴手柄中心（≤2px，A-3.2）", async ({ 
   expect(delta).toBeLessThanOrEqual(2);
   await page.screenshot({ path: ".artifacts/697/05-table-menu-follow.png" });
 });
+
+test("[#912] 斜杠菜单 / 新增手柄菜单 / 二级面板 grammar 严格一致", async ({
+  page,
+}) => {
+  const measure = async (menuSel: string, rowSel: string) =>
+    page.evaluate(
+      ([m, r]) => {
+        const menu = document.querySelector(m as string) as HTMLElement;
+        const row = menu?.querySelector(r as string) as HTMLElement | null;
+        if (!menu || !row) return null;
+        const cs = getComputedStyle(menu);
+        const rs = getComputedStyle(row);
+        return {
+          width: Math.round(menu.getBoundingClientRect().width),
+          font: cs.fontSize,
+          radius: cs.borderRadius,
+          rowHeight: Math.round(row.getBoundingClientRect().height),
+          lineHeight: rs.lineHeight,
+          shadow: cs.boxShadow,
+        };
+      },
+      [menuSel, rowSel],
+    );
+
+  // 新增手柄菜单（块菜单）
+  await hoverHandle(page, 0);
+  const block = await measure(".cm-block-menu", ".cm-block-menu-item");
+  await page.keyboard.press("Escape");
+  await expect(page.locator('[data-testid="block-menu"]')).toHaveCount(0);
+
+  // 斜杠菜单 + 二级面板
+  await page.locator(".cm-line").nth(2).click();
+  await page.keyboard.press("End");
+  await page.keyboard.type(" /");
+  const slashMenu = page.locator(".mdb-slash-menu");
+  await expect(slashMenu).toBeVisible({ timeout: 3000 });
+  const slash = await measure(".mdb-slash-menu", ".mdb-slash-item");
+
+  const flyoutRow = slashMenu.locator(
+    '.mdb-slash-item:has-text("颜色"), .mdb-slash-item:has-text("分栏")',
+  ).first();
+  if (await flyoutRow.count()) {
+    await flyoutRow.hover();
+    await expect(page.locator(".mdb-slash-flyout").first()).toBeVisible({
+      timeout: 3000,
+    });
+  }
+  const flyout = await measure(
+    ".mdb-slash-flyout",
+    ".mdb-slash-flyout-item, .mdb-slash-item",
+  );
+
+  expect(block, "块菜单未打开").not.toBeNull();
+  expect(slash, "斜杠菜单未打开").not.toBeNull();
+  expect(slash!.width).toBe(176);
+  expect(block!.width).toBe(176);
+  expect(slash!.font).toBe(block!.font);
+  expect(slash!.radius).toBe(block!.radius);
+  expect(slash!.rowHeight).toBe(block!.rowHeight);
+  expect(slash!.rowHeight).toBe(36);
+  expect(slash!.lineHeight).toBe(block!.lineHeight);
+  expect(slash!.shadow).toBe(block!.shadow);
+
+  if (flyout) {
+    expect(flyout.width).toBe(176);
+    expect(flyout.font).toBe(block!.font);
+    expect(flyout.radius).toBe(block!.radius);
+    expect(flyout.rowHeight).toBe(block!.rowHeight);
+    expect(flyout.lineHeight).toBe(block!.lineHeight);
+    expect(flyout.shadow).toBe(block!.shadow);
+  }
+});
