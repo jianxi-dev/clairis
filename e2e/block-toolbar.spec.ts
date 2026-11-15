@@ -78,3 +78,41 @@ test("全角斜杠与顿号不触发命令（#318）", async ({ page }) => {
   });
   expect(text).toContain("／、");
 });
+
+test("[#921] 文本文件工具条只保留复制，编辑态与预览态一致", async ({
+  page,
+  context,
+}) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.evaluate(() => {
+    const win = window as unknown as Record<string, any>;
+    win.__biaoyue_openFile__("/tmp/921.txt", "第一行\n第二行\n第三行\n", "921.txt");
+    win.__biaoyue_store__.getState().setEditorMode("edit");
+  });
+  await page.waitForTimeout(400);
+
+  await page.locator(".cm-line").nth(1).click({ clickCount: 3 });
+  const bar = page.locator('[data-testid="selection-toolbar"]');
+  await expect(bar).toBeVisible({ timeout: 3000 });
+  await expect(bar.locator("button")).toHaveCount(1);
+  await expect(bar.locator("button")).toHaveAttribute("data-action", "copy");
+  await expect(bar.locator("button")).toHaveAttribute("title", "复制");
+  await bar.locator("button").click();
+  await expect
+    .poll(() => page.evaluate(() => navigator.clipboard.readText()))
+    .toContain("第二行");
+
+  await page.evaluate(() => {
+    const win = window as unknown as Record<string, any>;
+    win.__biaoyue_store__.getState().setEditorMode("preview");
+  });
+  await expect(bar).toBeHidden();
+
+  const copy = page.locator(".preview-content .code-copy");
+  await expect(copy).toHaveCount(1);
+  await expect(copy).toHaveText("复制");
+  await copy.click();
+  await expect
+    .poll(() => page.evaluate(() => navigator.clipboard.readText()))
+    .toContain("第一行");
+});

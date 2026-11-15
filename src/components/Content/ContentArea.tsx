@@ -371,7 +371,8 @@ function createLanguageExtension(kind: FileKind) {
     case "yaml":
       return [yaml(), horizontalToolbar()];
     default:
-      return [];
+      // 纯文本 / CSV：选区工具条只保留「复制」（#921）。
+      return [horizontalToolbar({ copyOnly: true })];
   }
 }
 
