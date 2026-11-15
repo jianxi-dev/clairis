@@ -1833,9 +1833,37 @@ html[data-tab-drag="true"] body * {
   pointer-events: auto;
 }
 
+/* 单元格新增「+」（A-9.2）：贴在单元格内左边线内侧，与左边线外的转换手柄
+   隔着边框成对；单元格正文左侧多让 6px，避免被它压住。 */
+.cm-table-cell-add {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  transform: translateY(-50%);
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  color: var(--app-text-2);
+  background: var(--app-sunken);
+  border: 1px solid var(--app-border);
+  border-radius: 3px;
+  opacity: 0;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.cm-table td .cm-table-cell-text {
+  padding-left: 6px;
+}
+
 .cm-table td:hover .cm-table-cell-handle,
+.cm-table td:hover .cm-table-cell-add,
 .cm-table-cell-handle-active,
-.cm-table-cell-handle:hover {
+.cm-table-cell-handle:hover,
+.cm-table-cell-add:hover {
   opacity: 1;
 }
 

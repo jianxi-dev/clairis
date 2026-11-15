@@ -20,6 +20,8 @@ export const EDITOR_ANCHORS = {
   menuIcon: 20,
   /** 「转为」单元数（豆包 §4.3）。 */
   convertCells: 10,
+  /** 新增手柄菜单项总数（D7：基础 10 + 常用 8），全局与单元格菜单共用（A-9.3）。 */
+  addMenuItems: 18,
   /** 状态栏页面宽度弹窗（G-12 / #843）：未选中填充不透明度上限、同色相容差。 */
   widthPanel: { unselectedFillOpacityMax: 0.45, hueToleranceDeg: 5 },
 } as const;

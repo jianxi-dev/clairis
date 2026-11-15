@@ -473,8 +473,19 @@ interface GridState {
  * 同一菜单；和 `anchor` 一样不拥有文本，但插入落在块下方新行，而不是行内，
  * 所以永远不做单元格净化。`context`：原生输入控件（单元格 input / 分栏 /
  * 高亮块 textarea）输入 `/` 请求同一菜单——触发文本活在**控件**里而不是文档，
- * 过滤词由宿主驱动、写回走宿主通道、焦点全程留在控件（#741）。 */
-type SlashMenuTrigger = "slash" | "anchor" | "below" | "context";
+ * 过滤词由宿主驱动、写回走宿主通道、焦点全程留在控件（#741）。`cell`：单元格
+ * 手柄（转换 / 新增）请求**全局新增项集**（`addHandleCommands`），两段布局与
+ * `below` 相同，但插入仍按单元格净化（复用 `anchor` 的落点，A-9.3）。 */
+type SlashMenuTrigger = "slash" | "anchor" | "below" | "context" | "cell";
+
+/**
+ * `anchor` / `cell`：都在零宽位置插入、取消不删字符，落点取锚点范围而不是
+ * 光标。二者的差别只在项集（`anchor` 筛行内、`cell` 用全局新增项集）与菜单
+ * 布局（`cell` 两段），落点语义相同，所以判定收敛到这里。
+ */
+function isAnchoredTrigger(trigger: SlashMenuTrigger | undefined): boolean {
+  return trigger === "anchor" || trigger === "cell";
+}
 
 /**
  * 内容输入上下文宿主：原生输入控件接入统一斜杠菜单的通道（#741）。
@@ -725,9 +736,10 @@ function highlightRoot(state: SlashMenuState): void {
   }
 }
 
-/** 根渲染：新增手柄（trigger=below）走两段布局，其余沿用单列列表。 */
+/** 根渲染：新增手柄（trigger=below / cell）走两段布局，其余沿用单列列表。 */
 function renderRoot(view: EditorView, state: SlashMenuState): void {
-  if (state.trigger === "below") renderAddMenu(view, state);
+  if (state.trigger === "below" || state.trigger === "cell")
+    renderAddMenu(view, state);
   else renderRootGrid(view, state);
 }
 
@@ -1163,7 +1175,9 @@ function openMenu(
     const current = menus.get(view);
     if (
       current &&
-      (current.trigger === "anchor" || current.trigger === "below")
+      (current.trigger === "anchor" ||
+        current.trigger === "below" ||
+        current.trigger === "cell")
     )
       scheduleAnchorClose(view);
   });
@@ -1251,7 +1265,8 @@ export function updateSlashMenuQuery(view: EditorView, query: string): boolean {
 /**
  * `openMenu` 的锚定版，供表格单元格与块把手的「在下方添加」使用。先拆掉任何
  * 已打开的菜单：旧面板会继续绑在这个视图上却已脱离文档。`trigger` 默认
- * `anchor`（表格单元格路径不变）；块把手传 `below`。
+ * `anchor`（单元格输入 `/` 的行内路径）；块把手传 `below`；单元格手柄传
+ * `cell`（项集不筛行内，落点仍按单元格净化）。
  */
 export function openInsertMenu(
   view: EditorView,
@@ -1281,10 +1296,15 @@ export function openInsertMenu(
  */
 export function releaseInsertMenu(
   view: EditorView,
-  only?: "anchor" | "below" | "context",
+  only?: "anchor" | "below" | "context" | "cell",
 ): void {
   const trigger = menus.get(view)?.trigger;
-  if (trigger !== "anchor" && trigger !== "below" && trigger !== "context")
+  if (
+    trigger !== "anchor" &&
+    trigger !== "below" &&
+    trigger !== "context" &&
+    trigger !== "cell"
+  )
     return;
   if (only !== undefined && trigger !== only) return;
   closeMenu(view);
@@ -1390,7 +1410,7 @@ function positionMenu(
       return;
     }
     const coords = view.coordsAtPos(
-      trigger === "anchor" ? slashPos : slashPos + 1,
+      isAnchoredTrigger(trigger) ? slashPos : slashPos + 1,
     );
     if (!coords) return;
     applyPlacement(view, menu, rectFromCoords(coords, 0));
@@ -1516,14 +1536,16 @@ function applyCommand(view: EditorView, cmd: SlashCommand): void {
     else closeMenu(view);
     return;
   }
-  const anchored = trigger === "anchor";
+  const anchored = isAnchoredTrigger(trigger);
   const below = trigger === "below";
   const head = view.state.selection.main.head;
   // `/` 加已输入过滤词是一个可替换范围；命令的 `insert` 只给替换文本。
   const from = state ? state.slashPos : head - 1;
   // 先关闭，这样即将 dispatch 的事务不会和文档变更同步插件打架。
   closeMenu(view);
-  if (head < from && !below) return;
+  // `cell` 与 `below` 一样按位置插入：手柄从不移动光标，head 可能在单元格之前，
+  // 套用 `head < from` 守卫会让点选静默无操作。
+  if (head < from && !below && trigger !== "cell") return;
   if (anchored) {
     // 菜单只会给出 `inline` 命令（见 openInsertMenu），所以这里一定插进单元格。
     // 早前把所有块级模板挪到表格下方，用户点完菜单会看到内容凭空出现在表外。
@@ -1629,7 +1651,8 @@ function ensureFlyoutDom(
     // 相同的 mouseenter/mouseleave 宽限让面板在整条「根 → 浮层 → 行」路径上存活。
     flyout.addEventListener("mouseenter", () => cancelAnchorClose(view));
     flyout.addEventListener("mouseleave", () => {
-      if (menus.get(view)?.trigger === "anchor") scheduleAnchorClose(view);
+      if (isAnchoredTrigger(menus.get(view)?.trigger))
+        scheduleAnchorClose(view);
     });
     state.flyoutDom = flyout;
   }
@@ -1905,7 +1928,7 @@ function applyTableSize(
 ): void {
   const head = view.state.selection.main.head;
   const from = state.slashPos;
-  const anchored = state.trigger === "anchor";
+  const anchored = isAnchoredTrigger(state.trigger);
   const below = state.trigger === "below";
   const isColumns = state.grid?.kind === "columns";
   const snippet = isColumns ? buildColumns(cols) : buildTable(cols, rows);
@@ -1928,7 +1951,7 @@ function applyTableSize(
       ? `\n${snippet}`
       : snippet;
   closeMenu(view);
-  if (head < from && !below) return;
+  if (head < from && !below && state.trigger !== "cell") return;
   view.dispatch({
     changes: { from, to: anchored || below ? from : head, insert: text },
     selection: { anchor: from + text.length },
@@ -2208,7 +2231,7 @@ const outsideClickDismiss = ViewPlugin.define((view) => {
     const inTriggerChrome =
       target instanceof Element &&
       target.closest(
-        ".cm-table-cell-handle, .mdb-block-handle-menu, .mdb-block-handle",
+        ".cm-table-cell-handle, .cm-table-cell-add, .mdb-block-handle-menu, .mdb-block-handle",
       ) !== null;
 
     // 块菜单可能是唯一打开的层：即使没有斜杠菜单，外部点击也要收起。
