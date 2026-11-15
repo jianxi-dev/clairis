@@ -464,6 +464,18 @@ function App() {
         return;
       }
 
+      // Cmd+Shift+X: 左边栏固定隐藏 / 取消（C3 / D14）。隐藏后箭头热区收起，滑入不唤出。
+      if (meta && e.shiftKey && e.key.toLowerCase() === "x") {
+        e.preventDefault();
+        const es = useEditorStore.getState();
+        const next = !(es.config.railPinHidden ?? false);
+        es.setConfig({ railPinHidden: next });
+        if (next) store.setRailState("collapsed");
+        void saveAppConfig();
+        return;
+      }
+
+
       // 门户/网格是覆盖层：底下的编辑器不可见，快捷键作用上去用户看不见后果
       // （⌘W 关掉隐藏页签、⌘B 改隐藏文档……）。这里只放行不触碰隐藏状态的键。
       if (store.scene !== "workspace") {
@@ -513,17 +525,6 @@ function App() {
         }
         return false;
       };
-
-      // Cmd+Shift+X: 左边栏固定隐藏 / 取消（C3 / D14）。隐藏后箭头热区收起，滑入不唤出。
-      if (meta && e.shiftKey && e.key.toLowerCase() === "x") {
-        e.preventDefault();
-        const es = useEditorStore.getState();
-        const next = !(es.config.railPinHidden ?? false);
-        es.setConfig({ railPinHidden: next });
-        if (next) store.setRailState("collapsed");
-        void saveAppConfig();
-        return;
-      }
 
       // Cmd+Alt+\ : 固定 / 取消固定左边栏（layout-portal 6.1 / D4）。
       // 钉住 ↔ 悬停；折叠态先展开为钉住。必须排在 ⌘\ 之前（同键，先判 alt）。
