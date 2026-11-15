@@ -76,6 +76,7 @@ export type IconName =
   | "zoomIn"
   | "zoomOut"
   | "speed"
+  | "width"
   | "home"
   | "heart"
   | "heartFilled"
@@ -457,6 +458,10 @@ export const ICONS: Record<IconName, IconDef> = {
   speed: {
     label: "倍速",
     s: "M4.5 18a8 8 0 1115 0 M12 14l3.6-5.6 M12 14h.01",
+  },
+  width: {
+    label: "宽度",
+    s: "M4 12h16 M4 12l3.5-3.5 M4 12l3.5 3.5 M20 12l-3.5-3.5 M20 12l-3.5 3.5",
   },
   heart: {
     label: "收藏",

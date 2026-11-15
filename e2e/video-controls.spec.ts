@@ -488,6 +488,78 @@ test("[#901] 字幕面板只列与当前视频同名的字幕", async ({ page })
   await expect(menu).not.toContainText("other.srt");
 });
 
+/** 记录窗口全屏能力调用次数（mock 环境无真实窗口，用 invoke 计数断言）。 */
+async function installFullscreenSpy(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const w = window as unknown as Record<string, any>;
+    w.__TAURI_INTERNALS__.metadata = { currentWindow: { label: "main" } };
+    w.__fsCalls = [];
+    const orig = w.__TAURI_INTERNALS__.invoke;
+    w.__TAURI_INTERNALS__.invoke = (cmd: string, args: unknown) => {
+      if (cmd === "plugin:window|set_fullscreen") w.__fsCalls.push(cmd);
+      return orig(cmd, args);
+    };
+  });
+}
+
+const fsCallCount = (page: Page): Promise<number> =>
+  page.evaluate(
+    () => (window as unknown as Record<string, number[]>).__fsCalls.length,
+  );
+
+/**
+ * #907 B9：速率左侧宽度图标弹出恰好两档（满页面宽度 / 全屏）。
+ * 满页面宽度只铺满 webview（不联动 OS 窗口），全屏再叠加窗口全屏。
+ * 修复前没有该按钮，菜单项数与全屏调用断言均失败。
+ */
+test("[#907] 宽度档菜单恰好两档并切换生效", async ({ page }) => {
+  await openMedia(page, "/Users/test/clip.mp4");
+  await installFullscreenSpy(page);
+
+  const player = page.locator(".art-video-player").first();
+  const widthBtn = page.locator(".art-control[data-name='width']");
+  await expect(widthBtn).toBeVisible();
+
+  await widthBtn.click();
+  const items = page.locator(".width-menu-item");
+  await expect(items).toHaveCount(2);
+  await expect(items).toHaveText(["满页面宽度", "全屏"]);
+
+  await items.filter({ hasText: "满页面宽度" }).click();
+  await expect(player).toHaveClass(/art-fullscreen-web/);
+  expect(await fsCallCount(page)).toBe(0);
+
+  await widthBtn.click();
+  await items.filter({ hasText: "全屏" }).click();
+  await expect(player).toHaveClass(/art-fullscreen-web/);
+  await expect.poll(() => fsCallCount(page)).toBeGreaterThanOrEqual(1);
+});
+
+/**
+ * #907 B9：右键画面菜单「全屏」SHALL 脱离文档页面、以整个计算机屏幕显示，
+ * 退出后回到原文档位置（播放器 class 还原，无残留覆盖层）。
+ * 修复前右键菜单没有「全屏」项，无法触发窗口全屏调用。
+ */
+test("[#907] 右键画面菜单「全屏」触发窗口全屏并可退出", async ({ page }) => {
+  await openMedia(page, "/Users/test/clip.mp4");
+  await installFullscreenSpy(page);
+
+  const player = page.locator(".art-video-player").first();
+  const box = (await player.boundingBox())!;
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2, {
+    button: "right",
+  });
+  await expect(page.locator(".art-contextmenus")).toBeVisible();
+  await page.locator(".art-contextmenu", { hasText: "全屏" }).first().click();
+
+  await expect(player).toHaveClass(/art-fullscreen-web/);
+  await expect.poll(() => fsCallCount(page)).toBeGreaterThanOrEqual(1);
+
+  await page.keyboard.press("Escape");
+  await expect(player).not.toHaveClass(/art-fullscreen-web/);
+  await expect.poll(() => fsCallCount(page)).toBeGreaterThanOrEqual(2);
+});
+
 test("[#905] 截图控件是 camera 图形，与播放角标 play 不同形", async ({
   page,
 }) => {
