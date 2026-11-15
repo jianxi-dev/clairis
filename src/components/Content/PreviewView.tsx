@@ -12,6 +12,7 @@ import { mediaPlayer } from "./mediaPlayerState";
 import { useEditorStore } from "../../stores/editorStore";
 import { useStore } from "../../stores";
 import { applyReaderSkin } from "../../hooks/useConfig";
+import { HEADING_LEVELS } from "../../lib/headingFonts";
 import { isTauriEnv } from "../../utils/tauri";
 import { revealInFinder } from "../../lib/finder";
 import { log } from "../../utils/log";
@@ -134,6 +135,7 @@ export default function PreviewView({
   filePath = null,
 }: PreviewViewProps) {
   const headingColors = useEditorStore((s) => s.headingColors);
+  const headingFonts = useEditorStore((s) => s.config.headingFonts);
   const readerFontSize = useEditorStore((s) => s.config.readerFontSize);
   const readerWidth = useEditorStore((s) => s.config.readerWidth);
   const readerSkin = useEditorStore((s) => s.config.readerSkin);
@@ -146,16 +148,21 @@ export default function PreviewView({
   );
 
   const headingVars = useMemo(() => {
-    if (!headingColors) return undefined;
-    return {
-      "--heading-h1": headingColors.h1,
-      "--heading-h2": headingColors.h2,
-      "--heading-h3": headingColors.h3,
-      "--heading-h4": headingColors.h4,
-      "--heading-h5": headingColors.h5,
-      "--heading-h6": headingColors.h6,
-    } as React.CSSProperties;
-  }, [headingColors]);
+    const vars: Record<string, string> = {};
+    if (headingColors) {
+      for (const level of HEADING_LEVELS) {
+        if (headingColors[level])
+          vars[`--heading-${level}`] = headingColors[level];
+      }
+    }
+    // 与 ContentArea 的 editorThemeVars 同源：默认值即 --type-font-sans 栈。
+    if (headingFonts) {
+      for (const level of HEADING_LEVELS) {
+        vars[`--heading-${level}-font`] = headingFonts[level];
+      }
+    }
+    return vars as React.CSSProperties;
+  }, [headingColors, headingFonts]);
 
   const typeVars = useMemo(() => {
     const vars: Record<string, string> = {};
