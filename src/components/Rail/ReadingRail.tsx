@@ -132,6 +132,12 @@ interface RailRowProps {
 }
 
 /**
+ * 文本卡片（无缩略图）标题右侧预留宽度（px）：避开右上进度/时间簇叠压。
+ * 簇最宽情形 ≈ 进度「100%」22px + gap 4px +「59 分钟前」44px ≈ 70px。
+ */
+const CARD_TOPRIGHT_RESERVE_PX = 88;
+
+/**
  * 卡片右侧 4:3 缩略图（64×48）。
  *
  * 图片 / MD 首图 = 真 <img>；视频 = <video> 首帧；HTML = sandbox iframe 缩略
@@ -673,8 +679,14 @@ function RailRow({
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden pr-2">
           <button
             type="button"
+            data-testid="rail-card-title"
             onClick={() => onOpen(item.path)}
             className="flex min-w-0 items-start gap-1.5 text-left"
+            style={
+              thumb
+                ? undefined
+                : { width: `calc(100% - ${CARD_TOPRIGHT_RESERVE_PX}px)` }
+            }
           >
             <Icon name={iconOfType(kind)} size={18} color={iconColor} />
             {title(

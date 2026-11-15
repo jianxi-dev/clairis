@@ -704,6 +704,32 @@ test("缩略图降到 64×48 后不与标题、摘要、动作行重叠（#392�
   expect(overlaps(thumb, actions)).toBe(false);
 });
 
+test("[#900] 无缩略图文本卡片标题不与右上进度/时间重叠", async ({ page }) => {
+  await boot(page);
+  await seed(page);
+  await openPinnedRail(page);
+
+  for (const filePath of ["/tmp/rc/plain.txt", "/tmp/rc/tasks.md"]) {
+    const card = recentItem(page, filePath);
+    await expect(card.locator('[data-testid="rail-thumb"]')).toHaveCount(0);
+
+    const title = await card
+      .locator('[data-testid="rail-card-title"]')
+      .boundingBox();
+    const topRight = await card
+      .locator('[data-testid="rail-card-topright"]')
+      .boundingBox();
+    if (!title || !topRight) throw new Error("目标元素不可测量");
+
+    const overlaps =
+      title.x < topRight.x + topRight.width &&
+      topRight.x < title.x + title.width &&
+      title.y < topRight.y + topRight.height &&
+      topRight.y < title.y + title.height;
+    expect(overlaps, filePath).toBe(false);
+  }
+});
+
 test("六个 HTML 卡片逐个滚动，缩略图显示真实首屏（#569）", async ({ page }) => {
   await boot(page);
   await page.route("https://thumbs.test/**", (route) =>
