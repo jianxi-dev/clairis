@@ -20,6 +20,8 @@ export const EDITOR_ANCHORS = {
   menuIcon: 20,
   /** 「转为」单元数（豆包 §4.3）。 */
   convertCells: 10,
+  /** 状态栏页面宽度弹窗（G-12 / #843）：未选中填充不透明度上限、同色相容差。 */
+  widthPanel: { unselectedFillOpacityMax: 0.45, hueToleranceDeg: 5 },
 } as const;
 
 /** 允许的测量误差（取整与边框造成的 1px 级偏差）。 */
