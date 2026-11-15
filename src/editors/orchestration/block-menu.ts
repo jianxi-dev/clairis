@@ -787,6 +787,9 @@ export function openBlockMenu(
     row.className = "cm-block-menu-item";
     row.dataset.testid = "block-menu-action";
     row.dataset.action = action;
+    // 只给注册表里有快捷键的动作补 title（如图标+文字的「复制」）；其余行不补，
+    // 避免提示把按钮名称再念一遍。
+    if (action === "duplicate") row.title = label;
     row.style.height = `${MENU_ROW_HEIGHT}px`;
     row.appendChild(renderIcon(icon));
     const text = document.createElement("span");
