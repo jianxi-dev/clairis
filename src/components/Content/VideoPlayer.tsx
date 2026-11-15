@@ -254,7 +254,12 @@ export default function VideoPlayer({
   const applyFrameRef = useRef<(next: Partial<typeof frame>) => void>(() => {});
   const currentIndexRef = useRef(-1);
   const pendingIndexRef = useRef(-1);
-  const playAfterLoadRef = useRef(false);
+  const clearSubtitleTrack = useCallback(() => {
+    const tpl = artRef.current?.template as unknown as
+      { $track?: HTMLTrackElement; $subtitle?: HTMLElement } | undefined;
+    tpl?.$track?.removeAttribute("src");
+    if (tpl?.$subtitle) tpl.$subtitle.innerHTML = "";
+  }, []);
 
   useEffect(() => {
     // 静音按文件路径隔离：只应用本实例文件的状态，避免串音（#669）。
@@ -472,8 +477,8 @@ export default function VideoPlayer({
           thumbVideo.src = nextUrl;
           thumbVideo.load();
         }
-        playAfterLoadRef.current = opts?.autoplay !== false;
         await art.switchUrl(nextUrl);
+        if (opts?.autoplay !== false) void art.play()?.catch?.(() => {});
         // 页签路径保持不变（仍归属原文件），仅显示名跟随当前媒体
         const store = useStore.getState();
         const owner = Object.values(store.tabs).find(
@@ -495,7 +500,7 @@ export default function VideoPlayer({
           setActiveSubtitle(sub.name);
         } else {
           setActiveSubtitle("");
-          art.subtitle.url = "";
+          clearSubtitleTrack();
         }
       } catch {
         // 文件损坏/不可解码：跳到下一个可播文件
@@ -604,7 +609,7 @@ export default function VideoPlayer({
     if (!art) return;
     if (!subPath) {
       setActiveSubtitle("");
-      art.subtitle.url = "";
+      clearSubtitleTrack();
       return;
     }
     try {
@@ -1125,10 +1130,7 @@ export default function VideoPlayer({
         });
         setActiveSubtitle(firstSub.name);
       }
-      if (playAfterLoadRef.current || fileKind === "audio") {
-        playAfterLoadRef.current = false;
-        void art.play()?.catch?.(() => {});
-      }
+      if (fileKind === "audio") void art.play()?.catch?.(() => {});
     });
 
     // 音频：元数据未就绪时补发一次播放请求；视频按 C-6 暂停态开，不补发。
@@ -1225,7 +1227,6 @@ export default function VideoPlayer({
     if (!art) return;
     if (url === lastUrlRef.current) return;
     applyRate(1);
-    playAfterLoadRef.current = false;
     const thumbVideo = thumbVideoRef.current;
     if (thumbVideo) {
       thumbVideo.src = url;
