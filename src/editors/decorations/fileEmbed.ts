@@ -37,6 +37,15 @@ import { loadPdfBytes } from "../../utils/pdfSource";
 import { isTauriEnv } from "../../utils/tauri";
 import { resolveScrollTarget } from "../../utils/scrollPosition";
 import { useStore } from "../../stores/index";
+import {
+  PREVIEW_DEFAULT_H,
+  PREVIEW_DEFAULT_W,
+  PREVIEW_LEAVE_CLOSE_MS,
+  anchorFromGrid,
+  clampPreviewSize,
+  shouldScheduleLeaveClose,
+  type Box,
+} from "../../lib/previewAnchor";
 
 /** 可内嵌的文件类型；`web` 是外部链接页面。 */
 export type FileEmbedKind = "pdf" | "md" | "html" | "web";
@@ -96,6 +105,52 @@ export function classifyFileEmbed(path: string): FileEmbedKind | null {
   if (MARKDOWN_EXT.has(ext)) return "md";
   if (HTML_EXT.has(ext)) return "html";
   return null;
+}
+
+// --- 名称态（D10 / B5c）------------------------------------------------------
+
+/** 取引用路径的末段作显示名；URL 去掉 query/hash，纯锚点回退整串。 */
+function baseNameOf(path: string): string {
+  const clean = stripAngleWrappers(path).split(/[?#]/)[0];
+  const slash = clean.lastIndexOf("/");
+  const name = slash >= 0 ? clean.slice(slash + 1) : clean;
+  return name || path;
+}
+
+/**
+ * 名称态是「只显示文件名 / 链接」的会话态：键 = `文档路径\u0000内嵌路径`，
+ * 与滚动定格同构。widget 重建（编辑触发重算装饰）后仍按键恢复。
+ */
+const embedNameStates = new Map<string, boolean>();
+
+function nameStateKey(
+  docPath: string | null | undefined,
+  path: string,
+): string {
+  return `${docPath ?? ""}\u0000${path}`;
+}
+
+/** 最近一次指针坐标：名称态离窗关闭要判断指针是否已滑入悬浮窗。 */
+const lastPointer = { x: 0, y: 0 };
+if (typeof window !== "undefined") {
+  window.addEventListener(
+    "pointermove",
+    (event) => {
+      lastPointer.x = event.clientX;
+      lastPointer.y = event.clientY;
+    },
+    { passive: true },
+  );
+}
+
+function rectToBox(rect: DOMRect | undefined): Box | null {
+  if (!rect) return null;
+  return {
+    left: rect.left,
+    top: rect.top,
+    width: rect.width,
+    height: rect.height,
+  };
 }
 
 // --- 选中态 ------------------------------------------------------------------
@@ -412,6 +467,8 @@ export class FileEmbedWidget extends WidgetType {
   }
 
   private freeze: EmbedScrollFreeze | null = null;
+  private namePreviewTimer: ReturnType<typeof setTimeout> | null = null;
+  private namePreviewId: string | null = null;
 
   eq(other: FileEmbedWidget): boolean {
     return (
@@ -460,6 +517,48 @@ export class FileEmbedWidget extends WidgetType {
     body.className = "cm-embed-body";
     frame.appendChild(body);
     this.renderBody(body, frame);
+
+    const name = document.createElement("div");
+    name.className = "cm-embed-name";
+    const nameText = document.createElement("span");
+    nameText.className = "cm-embed-name-text";
+    nameText.textContent = this.displayName();
+    name.appendChild(nameText);
+    frame.appendChild(name);
+
+    const toggle = document.createElement("button");
+    toggle.type = "button";
+    toggle.className = "cm-embed-toggle";
+    frame.appendChild(toggle);
+
+    const state = embedNameStates.get(
+      nameStateKey(this._resolution?.docPath, this._path),
+    )
+      ? "name"
+      : "content";
+    this.applyNameState(container, frame, name, toggle, state);
+
+    toggle.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const next = container.dataset.embedState === "name" ? "content" : "name";
+      embedNameStates.set(
+        nameStateKey(this._resolution?.docPath, this._path),
+        next === "name",
+      );
+      this.applyNameState(container, frame, name, toggle, next);
+    });
+    name.addEventListener("pointerenter", () => {
+      if (container.dataset.embedState !== "name") return;
+      this.openNamePreview(name);
+    });
+    name.addEventListener("pointerleave", () => {
+      if (container.dataset.embedState !== "name") return;
+      this.scheduleNamePreviewClose(name);
+    });
+    name.addEventListener("click", (event) => {
+      event.stopPropagation();
+      this.openInNewTab();
+    });
 
     markEmbedSelected(container, selectedEmbedFrom === this._from);
 
@@ -511,6 +610,112 @@ export class FileEmbedWidget extends WidgetType {
     );
   }
 
+  private displayName(): string {
+    return baseNameOf(this._path) || this._alt || this._title || "文件";
+  }
+
+  private applyNameState(
+    container: HTMLElement,
+    frame: HTMLElement,
+    name: HTMLElement,
+    toggle: HTMLButtonElement,
+    state: "name" | "content",
+  ): void {
+    const isName = state === "name";
+    container.dataset.embedState = state;
+    name.style.display = isName ? "" : "none";
+    toggle.textContent = isName ? "内容" : "名称";
+    toggle.title = isName ? "显示内容" : "只显示文件名 / 链接";
+    toggle.setAttribute("aria-label", toggle.title);
+    if (isName) {
+      frame.style.height = "auto";
+      return;
+    }
+    if (this._height !== null) {
+      frame.style.height = `${this._height}px`;
+    } else {
+      this.fitDefaultHeight(frame);
+    }
+  }
+
+  private openNamePreview(nameEl: HTMLElement): void {
+    this.clearNamePreviewTimer();
+    const filePath = this._resolution?.filePath ?? null;
+    if (!filePath) return;
+    const st = useStore.getState();
+    if (!st.previewSettings.enabled) return;
+    const rect = nameEl.getBoundingClientRect();
+    const size = clampPreviewSize({
+      w: PREVIEW_DEFAULT_W,
+      h: PREVIEW_DEFAULT_H,
+    });
+    const anchor = anchorFromGrid({
+      cardRightX: rect.right,
+      cardTopY: rect.top,
+      size,
+      viewport: { width: window.innerWidth, height: window.innerHeight },
+    });
+    st.openPreview({
+      path: filePath,
+      title: this.displayName(),
+      x: anchor.x,
+      y: anchor.y,
+      w: size.w,
+      h: size.h,
+      flippedX: anchor.flipped.x,
+      flippedY: anchor.flipped.y,
+      source: "tab",
+    });
+    this.namePreviewId = useStore.getState().preview?.id ?? null;
+  }
+
+  private scheduleNamePreviewClose(nameEl: HTMLElement): void {
+    this.clearNamePreviewTimer();
+    this.namePreviewTimer = setTimeout(() => {
+      this.namePreviewTimer = null;
+      const st = useStore.getState();
+      const p = st.preview;
+      if (!p || p.id !== this.namePreviewId || p.pinned) return;
+      const previewEl = document.querySelector(
+        '[data-testid="floating-preview"]',
+      );
+      const shouldClose = shouldScheduleLeaveClose({
+        pointer: { ...lastPointer },
+        previewBox: rectToBox(previewEl?.getBoundingClientRect()),
+        railBox: rectToBox(nameEl.getBoundingClientRect()),
+        pinned: p.pinned,
+        interacting: false,
+      });
+      if (shouldClose) st.closePreview(p.id);
+    }, PREVIEW_LEAVE_CLOSE_MS);
+  }
+
+  private clearNamePreviewTimer(): void {
+    if (this.namePreviewTimer) clearTimeout(this.namePreviewTimer);
+    this.namePreviewTimer = null;
+  }
+
+  private openInNewTab(): void {
+    const filePath = this._resolution?.filePath ?? null;
+    if (!filePath || !isTauriEnv()) return;
+    this.closeNamePreview();
+    invoke<{ content: string; path: string }>("open_file_direct", {
+      path: filePath,
+    })
+      .then((res) => {
+        useStore.getState().openFile(res.path, res.content);
+      })
+      .catch(() => {});
+  }
+
+  private closeNamePreview(): void {
+    this.clearNamePreviewTimer();
+    const st = useStore.getState();
+    const p = st.preview;
+    if (p && p.id === this.namePreviewId) st.closePreview(p.id);
+    this.namePreviewId = null;
+  }
+
   /**
    * 接滚动定格。iframe 要等 `load` 之后才拿得到内部文档；跨域 / 插件文档
    * （如 PDF 查看器）拿不到就静默跳过，定格不生效。
@@ -518,7 +723,7 @@ export class FileEmbedWidget extends WidgetType {
   private attachScrollFreeze(body: HTMLElement, frame: HTMLElement): void {
     const docPath = this._resolution?.docPath ?? null;
     if (!docPath) return;
-    const key = `${docPath}\u0000${this._path}`;
+    const key = nameStateKey(docPath, this._path);
     const iframe = body.querySelector("iframe");
     if (iframe) {
       const bind = (): void => {
