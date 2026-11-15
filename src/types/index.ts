@@ -33,9 +33,21 @@ export interface HeadingColors {
   h6: string;
 }
 
+/** 标题逐级字体（C1 / #853）：值 = CSS font-family 列表，缺省回落默认栈。 */
+export interface HeadingFonts {
+  h1: string;
+  h2: string;
+  h3: string;
+  h4: string;
+  h5: string;
+  h6: string;
+}
+
 export interface AppConfig {
   fontSize: number;
   headingColors: HeadingColors;
+  /** 标题逐级字体（H1–H6）；缺省回落 `--type-font-sans` */
+  headingFonts?: HeadingFonts;
   /** 阅读区字号，与编辑器字号解耦 */
   readerFontSize: number;
   /** 阅读区正文行宽（px） */
