@@ -31,7 +31,7 @@ async function openHtml(page: Page, mode: "edit" | "source" | "preview") {
 
 test("编辑态起 iframe，且锚点已打上", async ({ page }) => {
   await openHtml(page, "edit");
-  const frame = page.locator('iframe[title="HTML 可视化编辑"]');
+  const frame = page.locator('[data-testid="html-visual-editor"]');
   await expect(frame).toHaveCount(1);
   const srcdoc = await frame.getAttribute("srcdoc");
   expect(srcdoc).not.toBeNull();
@@ -91,7 +91,9 @@ test("可视化 ↔ 源码 切换不重建 CM6", async ({ page }) => {
       .getState()
       .setEditorMode("edit");
   });
-  await expect(page.locator('iframe[title="HTML 可视化编辑"]')).toHaveCount(1);
+  await expect(page.locator('[data-testid="html-visual-editor"]')).toHaveCount(
+    1,
+  );
   // 可视化态下 CM6 只是藏起来，仍在 DOM 里
   await expect(cm).toHaveCount(1);
   await expect(cm).toBeHidden();
@@ -117,7 +119,9 @@ test("markdown 文件的编辑态仍是 CM6，不受影响", async ({ page }) =>
     win.__biaoyue_openFile__("/tmp/ve/a.md", "# 标题\n正文", "a.md");
     win.__biaoyue_store__.getState().setEditorMode("edit");
   });
-  await expect(page.locator('iframe[title="HTML 可视化编辑"]')).toHaveCount(0);
+  await expect(page.locator('[data-testid="html-visual-editor"]')).toHaveCount(
+    0,
+  );
   await expect(page.locator(".cm-content")).toBeVisible();
 });
 
@@ -151,7 +155,9 @@ test("深底 + 外链 CDN 样式表的文档，编辑态正文可读且排版成
     win.__biaoyue_store__.getState().setEditorMode("edit");
   }, DARK_THEMED);
 
-  await expect(page.locator('iframe[title="HTML 可视化编辑"]')).toHaveCount(1);
+  await expect(page.locator('[data-testid="html-visual-editor"]')).toHaveCount(
+    1,
+  );
   await page.waitForTimeout(1200);
 
   const frame = page.frames().find((f) => f.url() === "about:srcdoc");

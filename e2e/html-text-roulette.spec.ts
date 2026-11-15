@@ -21,7 +21,7 @@ async function openVisual(page: Page) {
     win.__biaoyue_openFile__("/tmp/hr/doc.html", content, "doc.html");
     win.__biaoyue_store__.getState().setEditorMode("edit");
   }, DOC);
-  const frame = page.frameLocator('iframe[title="HTML 可视化编辑"]');
+  const frame = page.frameLocator('[data-testid="html-visual-editor"]');
   await expect(frame.locator("p").first()).toBeVisible();
   return frame;
 }

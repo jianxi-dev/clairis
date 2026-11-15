@@ -338,6 +338,22 @@ export function normalizeNoticeDuration(
   return raw;
 }
 
+/** 未配置「提示时长」时的回退延迟（ms）：tooltip 与页签信息窗共用（Q-缺陷4b 钉死 400ms）。 */
+export const NOTICE_DURATION_FALLBACK_MS = 400;
+const NOTICE_DURATION_MIN_MS = 100;
+const NOTICE_DURATION_MAX_MS = 10_000;
+
+/**
+ * 提示延迟（ms）：取配置「提示时长」（秒），钳制 100–10000ms，未配置回退 400ms。
+ * 悬停胶囊与页签信息窗共用同一回退值（单一来源）。
+ */
+export function noticeDurationMs(seconds: number | null | undefined): number {
+  if (seconds == null || !Number.isFinite(seconds))
+    return NOTICE_DURATION_FALLBACK_MS;
+  const ms = Math.round(seconds * 1000);
+  return Math.min(NOTICE_DURATION_MAX_MS, Math.max(NOTICE_DURATION_MIN_MS, ms));
+}
+
 function applyRustConfig(raw: RustAppConfig): void {
   const config: Partial<AppConfig> = {
     fontSize: raw.fontSize ?? 17,

@@ -2,18 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { isOverlayOpen, subscribeOverlay } from "../lib/overlayGate";
 import { useEditorStore } from "../stores/editorStore";
+import { noticeDurationMs } from "../hooks/useConfig";
 
-/** 未配置「提示时长」时的回退延迟（ms）。 */
-const TIP_DELAY_FALLBACK_MS = 400;
-
-/** 延迟上下限（ms）。 */
-const TIP_DELAY_MIN_MS = 100;
-const TIP_DELAY_MAX_MS = 10_000;
-
-/** 顶栏高度：触发元素顶部小于该值时向下弹，避免遮挡相邻按钮。 */
-const TIP_TOP_RESERVE = 80;
-/** 视口左右各占该比例视为侧弹区（左半放右、右半放左）。 */
-const TIP_SIDE_ZONE = 0.4;
+/** 胶囊估算高度（px）：上下内边距 8 + 行高 18 + 边框 2。 */
+const TIP_HEIGHT_ESTIMATE = 28;
+/** 箭头与触发元素之间的间距（px），与 CSS transform 的 8px 一致。 */
+const TIP_GAP = 8;
 /** 锚点夹取边距（px）。 */
 const TIP_ANCHOR_MARGIN = 60;
 
@@ -55,15 +49,20 @@ function visibleLabel(el: Element): string {
   return out.trim();
 }
 
-/** 按触发元素在视口中的位置选弹出方位。 */
+/**
+ * 按触发元素在视口中的位置选弹出方位：优先上 / 下，都放不下才侧弹。
+ * 底部状态栏按钮因此落在图标正上方。
+ */
 function tipSideFor(el: Element): TipSide {
   const rect = el.getBoundingClientRect();
-  const cx = rect.left + rect.width / 2;
-  const w = window.innerWidth;
-  if (rect.top < TIP_TOP_RESERVE) return "below";
-  if (cx < w * TIP_SIDE_ZONE) return "right";
-  if (cx > w * (1 - TIP_SIDE_ZONE)) return "left";
-  return "above";
+  const need = TIP_HEIGHT_ESTIMATE + TIP_GAP;
+  const aboveRoom = rect.top;
+  const belowRoom = window.innerHeight - rect.bottom;
+  if (aboveRoom >= need) return "above";
+  if (belowRoom >= need) return "below";
+  const leftRoom = rect.left;
+  const rightRoom = window.innerWidth - rect.right;
+  return rightRoom >= leftRoom ? "right" : "left";
 }
 
 /** 由触发元素推导提示内容：图标+文字只给快捷键；纯图标给名称 + 快捷键 + 用法。 */
@@ -102,25 +101,13 @@ function tipAnchorFor(el: Element, side: TipSide): { x: number; y: number } {
   };
 }
 
-/** 悬停提示延迟：取配置「提示时长」（秒），钳制 100–10000ms，未配置回退 400ms。 */
-function tipDelayMs(): number {
-  const seconds = useEditorStore.getState().config.noticeDuration;
-  if (seconds == null || !Number.isFinite(seconds))
-    return TIP_DELAY_FALLBACK_MS;
-  const ms = Math.round(seconds * 1000);
-  return Math.min(TIP_DELAY_MAX_MS, Math.max(TIP_DELAY_MIN_MS, ms));
-}
-
-/** 会弹菜单/浮层的触发按钮：提示会与浮层重复，直接跳过。 */
-const SKIP_TIP_SELECTOR = "[aria-haspopup], [aria-expanded], [data-no-tip]";
-
 /**
- * 全局胶囊提示（ui-polish-batch12 9.1）。
+ * 全局胶囊提示（ui-polish-batch12 9.1；batch20 C1 收敛）。
  *
  * 事件委托捕获既有 `title` 属性：悬停满配置时长后显示自绘胶囊，并把原生
- * `title` 暂时摘除（避免系统矩形提示叠加）；指针离开 / 按下时还原。
- * 会弹菜单/浮层的触发按钮跳过提示——提示与浮层信息重复。
- * 约 80 处既有 `title=` 无需逐个改造。
+ * `title` 暂时摘除（避免系统矩形提示叠加）；指针离开 / 按下 / 弹层关闭时还原。
+ * 一切带 `title` 的控件（含 `aria-haspopup` / `aria-expanded` / `data-no-tip`）
+ * 都被接管，原生矩形无处出现；弹层打开期间只摘 title、不补胶囊。
  */
 export default function TooltipLayer() {
   const [tip, setTip] = useState<TipState | null>(null);
@@ -134,10 +121,14 @@ export default function TooltipLayer() {
         timerRef.current = null;
       }
     };
-    const clear = () => {
+    // 只藏胶囊、保留 title 摘除状态：弹层打开期间不放行原生 title。
+    const hideTip = () => {
       cancelTimer();
       setTip(null);
-      currentRef.current = null;
+    };
+    const clear = () => {
+      restore();
+      hideTip();
     };
     const restore = () => {
       const el = currentRef.current;
@@ -152,20 +143,21 @@ export default function TooltipLayer() {
     };
 
     const onOver = (e: PointerEvent) => {
-      if (isOverlayOpen()) return;
       const target = e.target;
       if (!(target instanceof Element)) return;
       const el = target.closest("[title]");
       if (!el || el === currentRef.current) return;
       restore();
       const text = el.getAttribute("title") ?? "";
-      if (!text.trim() || el.closest(SKIP_TIP_SELECTOR)) {
+      if (!text.trim()) {
         currentRef.current = null;
         return;
       }
       currentRef.current = el;
       el.removeAttribute("title");
       el.setAttribute("data-tip", text);
+      // 弹层打开期间只摘原生 title、不补胶囊（提示与浮层重复）。
+      if (isOverlayOpen()) return;
       cancelTimer();
       timerRef.current = window.setTimeout(() => {
         timerRef.current = null;
@@ -178,7 +170,7 @@ export default function TooltipLayer() {
         const side = tipSideFor(el);
         const { x, y } = tipAnchorFor(el, side);
         setTip({ ...content, side, x, y });
-      }, tipDelayMs());
+      }, noticeDurationMs(useEditorStore.getState().config.noticeDuration));
     };
 
     const onOut = (e: PointerEvent) => {
@@ -194,7 +186,6 @@ export default function TooltipLayer() {
       }
       // currentRef 可能已被 onDownRestore 清空（title 已还原）；此时仍要清掉
       // 已排队的提示定时器，否则离开后提示会突然补弹并滞留（#819）。
-      restore();
       clear();
     };
 
@@ -205,15 +196,13 @@ export default function TooltipLayer() {
     };
 
     const unsubscribe = subscribeOverlay((open) => {
-      if (open) clear();
+      if (open) hideTip();
+      else restore();
     });
 
     const onKeyDown = (e: KeyboardEvent) => {
       // Esc 会先移除悬停元素（轮盘 / 菜单），绕开 pointerout 留下孤儿胶囊（#819）。
-      if (e.key === "Escape") {
-        restore();
-        clear();
-      }
+      if (e.key === "Escape") clear();
     };
 
     document.addEventListener("pointerover", onOver, true);
@@ -230,6 +219,7 @@ export default function TooltipLayer() {
       window.removeEventListener("scroll", clear, true);
       window.removeEventListener("blur", clear);
       unsubscribe();
+      restore();
       cancelTimer();
     };
   }, []);

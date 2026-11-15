@@ -72,5 +72,7 @@ test("HTML 源码编辑态不出现可视化编辑横条", async ({ page }) => {
   await page.locator(".cm-line").nth(2).click({ clickCount: 3 });
   await expect(page.locator(".cm-floating-toolbar")).toHaveCount(1);
   await expect(page.locator(".html-edit-toolbar")).toHaveCount(0);
-  await expect(page.locator('iframe[title="HTML 可视化编辑"]')).toHaveCount(0);
+  await expect(page.locator('[data-testid="html-visual-editor"]')).toHaveCount(
+    0,
+  );
 });

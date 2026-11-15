@@ -294,7 +294,6 @@ export default function StatusBar({
             type="button"
             ref={widthBtnRef}
             data-testid="status-width"
-            data-no-tip
             aria-expanded={widthOpen}
             title={`页面宽度 ${readerWidth}px`}
             onClick={(e) => {

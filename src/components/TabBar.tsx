@@ -19,6 +19,8 @@ import {
   toggleMediaMuted,
 } from "./Content/mediaMute";
 import { popOverlay, pushOverlay } from "../lib/overlayGate";
+import { noticeDurationMs } from "../hooks/useConfig";
+import { useEditorStore } from "../stores/editorStore";
 import { revealInFinder } from "../lib/finder";
 import { runExportAction } from "../lib/exportActions";
 import { printMarkdownPreview } from "../lib/printPreview";
@@ -279,7 +281,7 @@ export default function TabBar({
           tabId: id,
           rect: { left: rect.left, bottom: rect.bottom, width: rect.width },
         });
-      }, 260);
+      }, noticeDurationMs(useEditorStore.getState().config.noticeDuration));
     },
     [clearInfoTimer, tabs],
   );
