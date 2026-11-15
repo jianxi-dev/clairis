@@ -291,3 +291,32 @@ test("证据：四态截图", async ({ page }) => {
   );
   await shot(page, "no-selection");
 });
+
+test("[#916] MD 编辑态选区胶囊回滚到 12 键，不再承载轮盘全量动作", async ({
+  page,
+}) => {
+  await boot(page);
+  await openMdCapsule(page, "/tmp/916-capsule.md");
+  await selectMdLine(page);
+
+  const capsule = page.locator('[data-testid="selection-capsule"]');
+  await expect(capsule).toBeVisible({ timeout: 3000 });
+  const btns = capsule.locator("button.capsule-btn");
+  await expect(btns).toHaveCount(12);
+  await shot(page, "capsule-12-buttons");
+
+  const ids = await btns.evaluateAll((els) =>
+    els.map((e) => e.getAttribute("data-action") ?? ""),
+  );
+  expect(ids).toContain("format-bold");
+  expect(ids.some((id) => /^(align|columns|history|convert)-/.test(id))).toBe(
+    false,
+  );
+
+  // 12 键仍然可用：加粗后源码出现 ** 包裹
+  await capsule.locator('[data-action="format-bold"]').click();
+  await expect
+    .poll(() => tabContent(page, "/tmp/916-capsule.md"))
+    .toContain("**");
+  await shot(page, "capsule-bold-applied");
+});

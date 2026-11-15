@@ -42,12 +42,19 @@ test("胶囊为单行圆角矩形", async ({ page }) => {
   expect(radius).toBeLessThanOrEqual(12);
 });
 
-test("胶囊承载轮盘全量动作且高频在前", async ({ page }) => {
+test("[#916] 胶囊回滚为 12 键高项，不再承载轮盘全量动作", async ({ page }) => {
+  // supersede #581 的「承载轮盘全量动作」：batch20 D4 明确回滚到少按钮版本。
   await boot(page);
   const capsule = await openCapsule(page);
   const actions = capsule.locator(".capsule-btn[data-action]");
-  expect(await actions.count()).toBeGreaterThanOrEqual(40);
+  await expect(actions).toHaveCount(12);
   await expect(actions.first()).toHaveAttribute("data-action", "format-bold");
+  const ids = await actions.evaluateAll((els) =>
+    els.map((e) => e.getAttribute("data-action") ?? ""),
+  );
+  expect(ids.some((id) => /^(align|columns|history|convert)-/.test(id))).toBe(
+    false,
+  );
 });
 
 test("胶囊格式动作可执行", async ({ page }) => {
