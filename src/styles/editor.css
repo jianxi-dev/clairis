@@ -3489,15 +3489,81 @@ html[data-tab-drag="true"] body * {
   font-size: 12px;
   line-height: 18px;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  /* 箭头尾跨在胶囊边上（R-26），不能裁切；文本截断交给 __text。 */
+  overflow: visible;
   pointer-events: none;
 }
 
-.app-tip--below {
-  transform: translate(-50%, 16px);
+.app-tip__text {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
+.app-tip__hint {
+  display: block;
+  color: var(--app-text-2);
+  font-size: 11px;
+  line-height: 16px;
+  white-space: normal;
+}
+
+/* 箭头尾：两邻边描边的方块旋 45°；朝下=右+下、朝上=左+上、朝左=下+左、朝右=上+右。 */
+.app-tip__arrow {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: var(--app-surface);
+}
+
+/* 上弹（箭头朝下） */
 .app-tip--above {
   transform: translate(-50%, calc(-100% - 8px));
+}
+.app-tip--above .app-tip__arrow {
+  left: 50%;
+  bottom: -4px;
+  margin-left: -4px;
+  border-right: 1px solid var(--app-border);
+  border-bottom: 1px solid var(--app-border);
+  transform: rotate(45deg);
+}
+
+/* 下弹（箭头朝上） */
+.app-tip--below {
+  transform: translate(-50%, 8px);
+}
+.app-tip--below .app-tip__arrow {
+  left: 50%;
+  top: -4px;
+  margin-left: -4px;
+  border-top: 1px solid var(--app-border);
+  border-left: 1px solid var(--app-border);
+  transform: rotate(45deg);
+}
+
+/* 右弹（箭头朝左） */
+.app-tip--right {
+  transform: translate(8px, -50%);
+}
+.app-tip--right .app-tip__arrow {
+  top: 50%;
+  left: -4px;
+  margin-top: -4px;
+  border-bottom: 1px solid var(--app-border);
+  border-left: 1px solid var(--app-border);
+  transform: rotate(45deg);
+}
+
+/* 左弹（箭头朝右） */
+.app-tip--left {
+  transform: translate(calc(-100% - 8px), -50%);
+}
+.app-tip--left .app-tip__arrow {
+  top: 50%;
+  right: -4px;
+  margin-top: -4px;
+  border-top: 1px solid var(--app-border);
+  border-right: 1px solid var(--app-border);
+  transform: rotate(45deg);
 }
