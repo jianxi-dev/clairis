@@ -6,7 +6,7 @@ import {
   type Extension,
 } from "@codemirror/state";
 import { history } from "@codemirror/commands";
-import { EditorView } from "@codemirror/view";
+import { EditorView, lineNumbers } from "@codemirror/view";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
 import { html } from "@codemirror/lang-html";
 import { css } from "@codemirror/lang-css";
@@ -77,6 +77,7 @@ import ReadingProgressInk from "./ReadingProgressInk";
 import type { EditorMode, FileKind, Tab } from "../../types";
 
 const langCompartment = new Compartment();
+const lineNumbersCompartment = new Compartment();
 
 /** 编辑态 mermaid 水合：把装饰 widget 里的源码块渲染成 SVG。
  *  走适配层的静态 `render()` 路径（design D4，无 ResizeObserver）；主题由
@@ -323,6 +324,29 @@ function decorationsForMode(mode: EditorMode, kind: FileKind): Extension[] {
   return [];
 }
 
+/** 纯文本 / 脚本（代码）文件集合，与 PreviewView 的 `PLAIN_TEXT_KINDS` 同源。 */
+const LINE_NUMBER_KINDS: FileKind[] = [
+  "text",
+  "css",
+  "python",
+  "json",
+  "javascript",
+  "yaml",
+  "csv",
+];
+
+/**
+ * 行号隔层内容（#858 / design D15）。
+ *
+ * 仅纯文本 / 脚本（代码）文件的**编辑态**装行号；Markdown 编辑态遵守 E-8
+ * 「无行号槽」，永远不装。一个面板只有一个 EditorView，切页签 / 切模式时
+ * 由下方 effect `reconfigure`，不销毁重建。
+ */
+function lineNumbersForMode(mode: EditorMode, kind: FileKind): Extension[] {
+  if (mode !== "edit" || !LINE_NUMBER_KINDS.includes(kind)) return [];
+  return [lineNumbers()];
+}
+
 function createLanguageExtension(kind: FileKind) {
   switch (kind) {
     case "markdown":
@@ -541,6 +565,7 @@ export default function ContentArea({
         ...baseEditorExtensions(),
         historyCompartment.of(history()),
         langCompartment.of(createLanguageExtension(initialKind)),
+        lineNumbersCompartment.of(lineNumbersForMode(editorMode, initialKind)),
         decorCompartment.of(decorationsForMode(editorMode, initialKind)),
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {
@@ -665,9 +690,16 @@ export default function ContentArea({
   useEffect(() => {
     if (!viewRef.current || !tab) return;
     viewRef.current.dispatch({
-      effects: decorCompartment.reconfigure(
-        decorationsForMode(editorMode, tab.fileKind),
-      ),
+      effects: [
+        decorCompartment.reconfigure(
+          decorationsForMode(editorMode, tab.fileKind),
+        ),
+        // 行号按文件类型 + 模式条件装回（#858）：切页签 / 切模式都走这里，
+        // 不销毁重建 EditorView。
+        lineNumbersCompartment.reconfigure(
+          lineNumbersForMode(editorMode, tab.fileKind),
+        ),
+      ],
     });
   }, [editorMode, tab?.fileKind, editorViewState]);
 

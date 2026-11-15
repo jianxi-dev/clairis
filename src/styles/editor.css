@@ -34,7 +34,9 @@ body {
  * 同一纸宽（--type-measure-wide）、同一窄栏正文（--type-measure）、同一
  * 字号 / 行高 / 纸面底色 / 投影 / 阅读强调色。排版变量由 ContentArea 注入，
  * 与 PreviewView 同源；下面的值是变量缺失时的兜底。
- * 行号槽、折叠箭头、活动行高亮一律不装扩展，也不在这里给样式。 */
+ * 行号槽不装扩展也不给样式；折叠箭头、活动行高亮同理。例外：纯文本 / 脚本
+ * （代码）文件在编辑态由 `lineNumbersCompartment` 装回行号（#858 / D15），
+ * 样式见下方「行号槽」一节；Markdown 编辑态仍无行号槽（E-8）。 */
 .editor-area {
   font-size: var(--type-font-size, var(--editor-font-size, 17px));
   line-height: var(--type-line, 1.78);
@@ -83,6 +85,27 @@ body {
   box-shadow: var(--app-shadow);
   color: var(--app-text);
   caret-color: var(--app-accent);
+}
+
+/* ── 行号槽（#858 / D15）────────────────────────────────────
+ * 仅纯文本 / 脚本（代码）文件的编辑态由 lineNumbersCompartment 装入。纸面内的
+ * 一条低调竖槽：透明底、右侧细分隔线、三级文字色、等宽数字，不引入代码面板底色。 */
+.cm-editor .cm-scroller .cm-gutters {
+  background: transparent;
+  color: var(--app-text-3);
+  border-inline-end: 1px solid var(--app-border);
+}
+
+.cm-editor .cm-scroller .cm-gutter.cm-lineNumbers .cm-gutterElement {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 10px 0 0;
+  min-width: 2em;
+  font-family: var(--type-font-mono);
+  font-size: 0.85em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 /* 正文走窄通道（与 `.preview-content > *` 的 --type-measure 一致），
