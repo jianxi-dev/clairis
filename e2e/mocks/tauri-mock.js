@@ -349,6 +349,17 @@ function mockInvoke(cmd, args) {
     });
     return { path: "/Users/test/assets/" + candidate, name: "assets/" + candidate };
   }
+  if (cmd === "list_system_fonts") {
+    return {
+      families: [
+        "PingFang SC", "Hiragino Sans GB", "Songti SC", "Heiti SC", "STHeiti",
+        "Kaiti SC", "Arial", "Helvetica", "Times New Roman", "Georgia", "Menlo",
+        "SF Mono", "Noto Sans CJK SC", "Source Han Sans SC", "Microsoft YaHei",
+        "SimSun", "SimHei",
+      ],
+      enumerated: true,
+    };
+  }
   if (responses[cmd]) return responses[cmd];
   console.warn("[TauriMock] unknown command:", cmd);
   return null;

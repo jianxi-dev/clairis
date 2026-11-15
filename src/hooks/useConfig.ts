@@ -5,7 +5,7 @@ import { useEditorStore } from "../stores/editorStore";
 import { useStore } from "../stores/index";
 import { isTauriEnv } from "../utils/tauri";
 import { log } from "../utils/log";
-import type { AppConfig, ScrollPosition, Theme } from "../types";
+import type { AppConfig, HeadingFonts, ScrollPosition, Theme } from "../types";
 import {
   applyCapabilityConfig,
   serializeCapabilities,
@@ -28,11 +28,13 @@ import {
   normalizeViewSpec,
   type ViewSpec,
 } from "../lib/aiViewSpec";
+import { ensureHeadingFonts, normalizeHeadingFonts } from "../lib/headingFonts";
 
 /** Snake-case config from Rust, mapped to camelCase in the store. */
 interface RustAppConfig {
   fontSize: number | null;
   headingColors: Record<string, string> | null;
+  headingFonts?: HeadingFonts | null;
   readerFontSize: number | null;
   readerWidth: number | null;
   readerSkin: string | null;
@@ -129,6 +131,7 @@ export async function saveAppConfig(): Promise<void> {
     headingColors: es.headingColors
       ? ({ ...es.headingColors } as unknown as Record<string, string>)
       : null,
+    headingFonts: ensureHeadingFonts(es.config.headingFonts),
     readerFontSize: es.config.readerFontSize ?? null,
     readerWidth: es.config.readerWidth ?? null,
     readerSkin: es.config.readerSkin ?? null,
@@ -339,6 +342,7 @@ function applyRustConfig(raw: RustAppConfig): void {
     headingColors: raw.headingColors
       ? (raw.headingColors as unknown as AppConfig["headingColors"])
       : undefined,
+    headingFonts: normalizeHeadingFonts(raw.headingFonts),
     readerFontSize: raw.readerFontSize ?? 17,
     readerWidth: raw.readerWidth ?? 1080,
     readerSkin: raw.readerSkin ?? "paper",
@@ -495,6 +499,7 @@ export function useConfig() {
       es.setConfig({
         fontSize: 17,
         headingColors: undefined,
+        headingFonts: ensureHeadingFonts(null),
         readerFontSize: 17,
         readerWidth: 1080,
         readerSkin: "paper",

@@ -82,6 +82,10 @@ pub struct AppConfig {
     /// 缺省 = None，消费端按 3 秒处理。
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub notice_duration: Option<f64>,
+    /// 标题逐级字体（C1 / #853）：键 h1..h6，值 = CSS font-family 列表。
+    /// 缺省 = None，消费端回落到 `--type-font-sans`（#854 应用）。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub heading_fonts: Option<HeadingFonts>,
 }
 
 /// 轮盘位置（ui-polish-batch15 2.1）：中键拖动后的圆心坐标（屏内像素）。
@@ -194,6 +198,7 @@ impl Default for AppConfig {
             roulette_form: None,
             roulette_position: None,
             notice_duration: None,
+            heading_fonts: None,
             sidebar_left_visible: Some(true),
             sidebar_right_visible: Some(false),
             sidebar_left_width: Some(220.0),
@@ -210,6 +215,18 @@ impl Default for AppConfig {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct HeadingColors {
+    pub h1: Option<String>,
+    pub h2: Option<String>,
+    pub h3: Option<String>,
+    pub h4: Option<String>,
+    pub h5: Option<String>,
+    pub h6: Option<String>,
+}
+
+/// 标题逐级字体（C1 / #853）：H1–H6 各一个 CSS font-family 列表，缺省回落默认栈。
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct HeadingFonts {
     pub h1: Option<String>,
     pub h2: Option<String>,
     pub h3: Option<String>,
@@ -460,6 +477,54 @@ fn check_notice_duration(value: Option<f64>) -> Result<(), AppError> {
     Ok(())
 }
 
+/// 字体族（C1 / #853）：非空、无控制字符、无 CSS 结构字符、长度受限。
+/// 系统可用性无法在同步校验里真判（枚举需起子进程），由设置面板的枚举列表保证。
+fn check_font_family(field: &str, value: &str) -> Result<(), AppError> {
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
+        return Err(AppError::Validation {
+            context: field.into(),
+            message: "字体族不能为空".into(),
+        });
+    }
+    if trimmed.chars().any(|c| c.is_control()) {
+        return Err(AppError::Validation {
+            context: field.into(),
+            message: "字体族不能包含控制字符".into(),
+        });
+    }
+    if trimmed.chars().count() > 300 {
+        return Err(AppError::Validation {
+            context: field.into(),
+            message: "字体族过长（上限 300 字符）".into(),
+        });
+    }
+    if trimmed.contains(['{', '}', '<', '>', '\\', '`']) {
+        return Err(AppError::Validation {
+            context: field.into(),
+            message: "字体族含非法字符".into(),
+        });
+    }
+    Ok(())
+}
+
+fn check_heading_fonts(fonts: &Option<HeadingFonts>) -> Result<(), AppError> {
+    let Some(fonts) = fonts else { return Ok(()) };
+    for (level, value) in [
+        ("h1", &fonts.h1),
+        ("h2", &fonts.h2),
+        ("h3", &fonts.h3),
+        ("h4", &fonts.h4),
+        ("h5", &fonts.h5),
+        ("h6", &fonts.h6),
+    ] {
+        if let Some(v) = value {
+            check_font_family(&format!("headingFonts.{level}"), v)?;
+        }
+    }
+    Ok(())
+}
+
 pub fn validate_config(config: &AppConfig) -> Result<(), AppError> {
     check_range("fontSize", config.font_size, 8.0, 96.0)?;
     check_range("readerFontSize", config.reader_font_size, 8.0, 96.0)?;
@@ -593,6 +658,7 @@ pub fn validate_config(config: &AppConfig) -> Result<(), AppError> {
         check_enum("rouletteForm", Some(form.as_str()), &["hub", "disk"])?;
     }
     check_notice_duration(config.notice_duration)?;
+    check_heading_fonts(&config.heading_fonts)?;
     if let Some(pos) = &config.roulette_position {
         check_range("roulettePosition.x", Some(pos.x), -20000.0, 20000.0)?;
         check_range("roulettePosition.y", Some(pos.y), -20000.0, 20000.0)?;
@@ -1543,5 +1609,56 @@ mod tests {
         assert!(validate_config(&config).is_err());
         assert!(save_config_at(base, &config).is_err());
         assert_eq!(read_user(base), before);
+    }
+
+    #[test]
+    fn heading_fonts_round_trips_and_rejects_bad_input() {
+        let dir = temp_base("heading_fonts");
+        let base = dir.path();
+
+        // 老配置（无字段）→ None，读得进
+        write_user(base, r#"{"theme":"dark"}"#);
+        assert_eq!(load_config_at(base).unwrap().heading_fonts, None);
+
+        let mut config = AppConfig::default();
+        config.heading_fonts = Some(HeadingFonts {
+            h1: Some("PingFang SC".into()),
+            h2: None,
+            h3: None,
+            h4: None,
+            h5: None,
+            h6: None,
+        });
+        assert!(validate_config(&config).is_ok());
+        save_config_at(base, &config).unwrap();
+        let user = read_user(base);
+        assert!(
+            user.contains("headingFonts"),
+            "user 层应含 headingFonts: {user}"
+        );
+        let loaded = load_config_at(base).unwrap().heading_fonts.unwrap();
+        assert_eq!(loaded.h1.as_deref(), Some("PingFang SC"));
+        assert_eq!(loaded.h2, None);
+
+        // 空白值被拒
+        config.heading_fonts = Some(HeadingFonts {
+            h1: Some("   ".into()),
+            ..loaded.clone()
+        });
+        assert!(validate_config(&config).is_err());
+
+        // CSS 结构字符被拒
+        config.heading_fonts = Some(HeadingFonts {
+            h1: Some("Bad{Font}".into()),
+            ..loaded.clone()
+        });
+        assert!(validate_config(&config).is_err());
+
+        // 控制字符被拒
+        config.heading_fonts = Some(HeadingFonts {
+            h1: Some("A\nB".into()),
+            ..loaded
+        });
+        assert!(validate_config(&config).is_err());
     }
 }

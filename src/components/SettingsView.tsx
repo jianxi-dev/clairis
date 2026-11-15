@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type ChangeEvent,
@@ -27,6 +28,14 @@ import {
   READER_WIDTH_PRESETS,
   READER_WIDTH_STEP,
 } from "../lib/readerWidth";
+import {
+  HEADING_FONT_STACK,
+  HEADING_LEVELS,
+  ensureHeadingFonts,
+  headingFontInputValue,
+  parseHeadingFontInput,
+  type HeadingLevel,
+} from "../lib/headingFonts";
 import { useStore } from "../stores/index";
 import { PROVIDERS } from "../lib/providers";
 import { formatSnapshotTime } from "../hooks/useAiEntry";
@@ -54,6 +63,11 @@ interface ExtensionPackage {
   enabled: boolean;
   dir: string | null;
   skill: string;
+}
+
+interface SystemFontsResponse {
+  families: string[];
+  enumerated: boolean;
 }
 
 const SOURCE_LABELS: Record<ExtensionPackage["source"], string> = {
@@ -604,6 +618,26 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
   const openaiModel = useEditorStore((s) => s.config.openaiModel ?? "");
   const setConfig = useEditorStore((s) => s.setConfig);
   const setFontSize = useEditorStore((s) => s.setFontSize);
+  const headingFonts = useEditorStore((s) => s.config.headingFonts);
+  const headingFontMap = useMemo(
+    () => ensureHeadingFonts(headingFonts),
+    [headingFonts],
+  );
+  const [headingFontText, setHeadingFontText] = useState<
+    Record<HeadingLevel, string>
+  >(
+    () =>
+      Object.fromEntries(
+        HEADING_LEVELS.map((level) => [
+          level,
+          headingFontInputValue(headingFontMap[level]),
+        ]),
+      ) as Record<HeadingLevel, string>,
+  );
+  const [headingFontOptions, setHeadingFontOptions] = useState<string[] | null>(
+    null,
+  );
+  const [headingFontHint, setHeadingFontHint] = useState("");
 
   const previewSettings = useStore((s) => s.previewSettings);
   const railLayout = useStore((s) => s.railLayout);
@@ -658,6 +692,40 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
   useEffect(() => {
     rootRef.current?.focus();
   }, []);
+
+  // 本机已安装字体（C1 / #853）：枚举失败时退回结构性校验，不阻塞设置面板。
+  useEffect(() => {
+    if (!tauriEnv) return;
+    let cancelled = false;
+    invoke<SystemFontsResponse>("list_system_fonts")
+      .then((res) => {
+        if (!cancelled && res && Array.isArray(res.families)) {
+          // 预设兜底列表不代表本机字体全集，不做「系统可用性」权威判定。
+          setHeadingFontOptions(res.enumerated ? res.families : null);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setHeadingFontOptions(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [tauriEnv]);
+
+  // 配置从磁盘 / AI 改动后同步输入框显示（默认栈显示为空）。
+  const [appliedHeadingFonts, setAppliedHeadingFonts] =
+    useState(headingFontMap);
+  if (appliedHeadingFonts !== headingFontMap) {
+    setAppliedHeadingFonts(headingFontMap);
+    setHeadingFontText(
+      Object.fromEntries(
+        HEADING_LEVELS.map((level) => [
+          level,
+          headingFontInputValue(headingFontMap[level]),
+        ]),
+      ) as Record<HeadingLevel, string>,
+    );
+  }
 
   useEffect(() => {
     if (active !== "ai" || !tauriEnv) return;
@@ -735,6 +803,28 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
       "--editor-font-size",
       `${size}px`,
     );
+    void saveAppConfig();
+  };
+
+  // 标题字体（C1 / #853）：输入即改本地文本，失焦 / 回车才校验落盘；
+  // 不在本机已安装列表里的值拒绝写入并回落默认。
+  const commitHeadingFont = (level: HeadingLevel, text: string) => {
+    const parsed = parseHeadingFontInput(text, headingFontOptions);
+    if (parsed.kind === "invalid") {
+      setHeadingFontText((prev) => ({
+        ...prev,
+        [level]: headingFontInputValue(headingFontMap[level]),
+      }));
+      setHeadingFontHint("该字体不在本机已安装列表中，已回落默认。");
+      return;
+    }
+    const value = parsed.kind === "default" ? HEADING_FONT_STACK : parsed.value;
+    setConfig({ headingFonts: { ...headingFontMap, [level]: value } });
+    setHeadingFontText((prev) => ({
+      ...prev,
+      [level]: headingFontInputValue(value),
+    }));
+    setHeadingFontHint("");
     void saveAppConfig();
   };
 
@@ -1123,6 +1213,59 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
                     );
                   })}
                 </div>
+              </section>
+
+              <section data-testid="settings-heading-fonts">
+                <h2 className="mb-1 text-sm font-medium text-[var(--app-text-strong)]">
+                  标题字体
+                </h2>
+                <p className="mb-2 text-xs text-[var(--app-text-3)]">
+                  逐级选择 H1–H6 的字体，留空＝默认（--type-font-sans）。
+                </p>
+                <datalist id="heading-font-options">
+                  {(headingFontOptions ?? []).map((family) => (
+                    <option key={family} value={family} />
+                  ))}
+                </datalist>
+                <div className="grid grid-cols-2 gap-3">
+                  {HEADING_LEVELS.map((level, index) => (
+                    <label key={level} className="block">
+                      <span className="mb-1 block text-xs text-[var(--app-text-3)]">
+                        H{index + 1}
+                      </span>
+                      <input
+                        type="text"
+                        list="heading-font-options"
+                        data-testid={`heading-font-${level}`}
+                        value={headingFontText[level]}
+                        placeholder="默认（--type-font-sans）"
+                        onChange={(e) =>
+                          setHeadingFontText((prev) => ({
+                            ...prev,
+                            [level]: e.target.value,
+                          }))
+                        }
+                        onBlur={(e) => commitHeadingFont(level, e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            commitHeadingFont(level, e.currentTarget.value);
+                            e.currentTarget.blur();
+                          }
+                        }}
+                        className="w-full rounded border border-[var(--app-border)] bg-[var(--app-surface)] px-2 py-1.5 text-sm text-[var(--app-text)] outline-none focus:border-[var(--app-accent)]"
+                      />
+                    </label>
+                  ))}
+                </div>
+                {headingFontHint && (
+                  <p
+                    data-testid="heading-font-hint"
+                    className="mt-2 text-xs text-[var(--app-accent)]"
+                  >
+                    {headingFontHint}
+                  </p>
+                )}
               </section>
 
               <section data-testid="settings-icons">
