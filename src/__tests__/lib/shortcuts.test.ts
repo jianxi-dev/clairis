@@ -20,8 +20,8 @@ describe("shortcuts registry", () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it("global count 10 / core count 7", () => {
-    expect(shortcutsByFamily("global")).toHaveLength(10);
+  it("global count 11 / core count 7", () => {
+    expect(shortcutsByFamily("global")).toHaveLength(11);
     expect(coreShortcuts()).toHaveLength(7);
     expect(coreShortcuts().every((s) => s.family === "global")).toBe(true);
   });

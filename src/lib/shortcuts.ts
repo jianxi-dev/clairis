@@ -84,6 +84,13 @@ export const SHORTCUTS: readonly ShortcutDef[] = [
     implemented: true,
   },
   {
+    id: "global-rail-pin-hidden",
+    keys: "⌘⇧X",
+    label: "左边栏固定隐藏 / 取消",
+    family: "global",
+    implemented: true,
+  },
+  {
     id: "global-grid",
     keys: "⌘⇧\\",
     label: "网格概览",
