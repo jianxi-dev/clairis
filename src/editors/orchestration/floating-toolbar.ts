@@ -668,45 +668,23 @@ export function floatingToolbar(allowCapsule = false) {
           }
         },
       });
-      const items: CapsuleItem[] = [];
-      const push = (item?: RouletteItem) => {
-        if (!item) return;
-        if (item.children && item.children.length > 0) {
-          item.children.forEach(push);
-          return;
-        }
-        if (!item.run && !item.commandId) return;
-        items.push(toCapsule(item));
-      };
-      for (const id of [
-        "format-bold",
-        "format-italic",
-        "format-underline",
-        "format-strike",
-        "format-code",
-        "format-link",
-      ]) {
-        push(format(id));
-      }
-      actions.smart.forEach(push);
-      actions.convert().forEach(push);
-      actions.align.forEach(push);
-      actions.history.forEach(push);
-      actions.columns.forEach(push);
-      items.push({
-        id: "capsule-font",
-        label: "字色",
-        icon: "tune",
-        run: () => {},
-      });
-      items.push({
-        id: "capsule-bg",
-        label: "背景色",
-        icon: "droplet",
-        run: () => {},
-      });
-      push(actions.clear[0]);
-      return { primary: items, secondary: [] };
+      // 回滚到 12 键量级的上一版胶囊（#916）：不再承载轮盘全量动作。
+      // 全部放 primary 以保持声明顺序（横向条断言格式组顺序不变）。
+      const primary: CapsuleItem[] = [
+        toCapsule(format("format-bold")),
+        toCapsule(format("format-italic")),
+        toCapsule(format("format-underline")),
+        toCapsule(format("format-strike")),
+        toCapsule(format("format-code")),
+        toCapsule(format("format-link")),
+        toCapsule(actions.smart[0]),
+        toCapsule(actions.smart[1]),
+        toCapsule(actions.smart[2]),
+        { id: "capsule-font", label: "字色", icon: "tune", run: () => {} },
+        { id: "capsule-bg", label: "背景色", icon: "droplet", run: () => {} },
+        toCapsule(actions.clear[0]),
+      ];
+      return { primary, secondary: [] };
     };
 
     const showCapsule = (point: { x: number; y: number }) => {
