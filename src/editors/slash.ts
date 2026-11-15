@@ -1146,14 +1146,25 @@ function renderGrid(view: EditorView, state: SlashMenuState): void {
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
     if (x < 0 || y < 0 || x >= rect.width || y >= rect.height) return;
-    const c = Math.min(
-      grid.cols,
-      Math.max(1, Math.floor(x / (rect.width / grid.cols)) + 1),
-    );
-    const r = Math.min(
-      grid.rows,
-      Math.max(1, Math.floor(y / (rect.height / grid.rows)) + 1),
-    );
+    // 优先按真实命中的格子取行列：容器有 padding + gap，按整宽整除会在
+    // 右/下边缘多算一列一行（#912 统一行高后暴露）。
+    const hit = document
+      .elementFromPoint(e.clientX, e.clientY)
+      ?.closest(".mdb-slash-grid-cell") as HTMLElement | null;
+    const hitR = hit && wrap.contains(hit) ? Number(hit.dataset.r) : NaN;
+    const hitC = hit && wrap.contains(hit) ? Number(hit.dataset.c) : NaN;
+    const c = Number.isFinite(hitC)
+      ? hitC
+      : Math.min(
+          grid.cols,
+          Math.max(1, Math.floor(x / (rect.width / grid.cols)) + 1),
+        );
+    const r = Number.isFinite(hitR)
+      ? hitR
+      : Math.min(
+          grid.rows,
+          Math.max(1, Math.floor(y / (rect.height / grid.rows)) + 1),
+        );
     if (r === grid.hoverR && c === grid.hoverC) return;
     grid.hoverR = r;
     grid.hoverC = c;
