@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import { renderMarkdown, renderMermaid, takeDarkVars } from "../../renderers";
+import { highlightCodeBlock } from "../../renderers/highlight";
 import { resolveDocMediaHref } from "../../lib/mediaUrl";
 import {
   isCapabilityEnabled,
@@ -181,7 +182,7 @@ export default function PreviewView({
 
   const html = useMemo(() => {
     if (PLAIN_TEXT_KINDS.includes(fileKind)) {
-      return renderTextContent(content);
+      return renderTextContent(content, previewLanguageOf(filePath));
     }
     switch (fileKind) {
       case "html":
@@ -690,10 +691,29 @@ function ImagePreview({ filePath }: { filePath: string }) {
   );
 }
 
-function renderTextContent(content: string): string {
+function renderTextContent(content: string, lang?: string): string {
+  const highlighted = lang ? highlightCodeBlock(content, lang) : null;
+  if (highlighted) {
+    const label = `<div class="code-lang">${escapeHtmlText(lang ?? "")}</div>`;
+    const copy = `<button class="code-copy" type="button">复制</button>`;
+    return `<div class="code-block wide">${label}${copy}<pre><code>${highlighted}</code></pre></div>`;
+  }
   const escaped = content
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
   return `<pre style="white-space:pre-wrap;word-wrap:break-word">${escaped}</pre>`;
+}
+
+function escapeHtmlText(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+// 扩展名即 renderers/highlight.ts 的 LANGUAGES 键，表外扩展名查表失败回退纯文本。
+function previewLanguageOf(filePath: string | null | undefined): string {
+  if (!filePath) return "";
+  const name = filePath.split("/").pop() ?? filePath;
+  const dot = name.lastIndexOf(".");
+  if (dot < 0) return "";
+  return name.slice(dot + 1).toLowerCase();
 }
