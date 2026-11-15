@@ -251,7 +251,7 @@ describe("block decorations", () => {
         ".cm-image-widget",
       ) as HTMLElement | null;
       const img = widget?.querySelector("img") as HTMLElement | null;
-      expect(img?.style.clipPath).toBe("inset(0 round 12px)");
+      expect(img?.style.clipPath).toBe("inset(0 round var(--media-radius))");
       expect(widget?.style.backgroundColor).toBe("var(--app-surface)");
       expect(widget?.style.overflow).toBe("");
       expect(widget?.style.borderRadius).toBe("");

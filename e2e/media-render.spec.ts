@@ -419,3 +419,63 @@ test("编辑态视频块：2/3 宽居中、可播放、拖把手调宽、块手�
   );
   expect(icons).toEqual(["VideoOutlined", "DragHandleOutlined"]);
 });
+
+/**
+ * #906 B8：嵌入图片圆角 SHALL 与视频块一致（同一 token `--media-radius`）。
+ *
+ * 预览态比 `border-radius`，编辑态图片是 `clip-path`（圆角裁在 img 像素上），
+ * 所以比 clip-path 的 round 值与视频 `border-radius`。修复前图片 12px、
+ * 视频 6px，两条断言都会失败。
+ */
+test("图片圆角与视频块一致：预览 border-radius 与编辑 clip-path 都等于视频", async ({
+  page,
+}) => {
+  await openPreview(
+    page,
+    "![pic](assets/pic.png)\n\n![clip](assets/clip.mp4)\n",
+    "mradiuseq",
+  );
+
+  // 预览态：图片四角相同，且等于视频块。
+  const preview = await page.evaluate(() => {
+    const img = document.querySelector<HTMLElement>(".preview-content img");
+    const video = document.querySelector<HTMLElement>(".preview-content video");
+    if (!img || !video) return null;
+    const imgStyle = getComputedStyle(img);
+    return {
+      img: imgStyle.borderRadius,
+      imgCorners: [
+        imgStyle.borderTopLeftRadius,
+        imgStyle.borderTopRightRadius,
+        imgStyle.borderBottomLeftRadius,
+        imgStyle.borderBottomRightRadius,
+      ],
+      video: getComputedStyle(video).borderRadius,
+    };
+  });
+  expect(preview).not.toBeNull();
+  expect(preview!.imgCorners.every((c) => c === preview!.img)).toBe(true);
+  expect(preview!.img).toBe(preview!.video);
+
+  // 编辑态：图片 clip-path 的 round 值 = 视频 border-radius。
+  await page.evaluate(() => {
+    const win = window as unknown as Record<string, any>;
+    win.__biaoyue_store__.getState().setEditorMode("edit");
+  });
+  await page.locator(".cm-content").waitFor({ timeout: 10000 });
+  const edit = await page.evaluate(() => {
+    const img = document.querySelector<HTMLElement>(".cm-image-widget img");
+    const video = document.querySelector<HTMLElement>(".cm-media-widget video");
+    if (!img || !video) return null;
+    const clip = getComputedStyle(img).clipPath;
+    const matched = /round\s+([0-9.]+)px/.exec(clip);
+    return {
+      clip,
+      imgRadius: matched ? `${matched[1]}px` : null,
+      video: getComputedStyle(video).borderRadius,
+    };
+  });
+  expect(edit).not.toBeNull();
+  expect(edit!.imgRadius).not.toBeNull();
+  expect(edit!.imgRadius).toBe(edit!.video);
+});
