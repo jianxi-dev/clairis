@@ -1,0 +1,662 @@
+{
+  "change": "editor-surface-batch20",
+  "requirements": [
+    {
+      "id": "R-1",
+      "text": "A1 打印→PDF 内容完整性",
+      "anchors": [
+        {
+          "id": "A-1.1",
+          "claim": "打印输出 PDF 文本含 mermaid 之后「代码高亮」小节出现次数下限",
+          "kind": "exact",
+          "assert": "1",
+          "source": "#897 缺陷1 / 一手证据 Biaoyue2.pdf"
+        },
+        {
+          "id": "A-1.2",
+          "claim": "打印输出 PDF 文本含 typescript 代码块函数名 `greet` 出现次数下限",
+          "kind": "exact",
+          "assert": "1",
+          "source": "一手证据 formula-mermaid.md"
+        },
+        {
+          "id": "A-1.3",
+          "claim": "打印输出 PDF 文本含 DANGER callout 文案出现次数下限",
+          "kind": "exact",
+          "assert": "1",
+          "source": "一手证据 formula-mermaid.md"
+        },
+        {
+          "id": "A-1.4",
+          "claim": "画布高度守卫须按缩放折算为设备像素（`PNG_SCALE`×CSS 上限）",
+          "kind": "exact",
+          "assert": "1",
+          "source": "design D1"
+        }
+      ]
+    },
+    {
+      "id": "R-2",
+      "text": "B1 卡片视频缩略图与悬浮窗画面",
+      "anchors": [
+        {
+          "id": "A-2.1",
+          "claim": "网格卡片视频缩略图内取帧后 `<video>` 节点数下限",
+          "kind": "exact",
+          "assert": "1",
+          "source": "#897 缺陷2 / design D2"
+        },
+        {
+          "id": "A-2.2",
+          "claim": "缩略图取帧：`onLoadedMetadata` 后 `currentTime` > 0",
+          "kind": "state-machine",
+          "assert": "就绪→已取帧",
+          "source": "#897 缺陷2 / design D2"
+        }
+      ]
+    },
+    {
+      "id": "R-3",
+      "text": "B2 文本卡片标题不压进度",
+      "anchors": [
+        {
+          "id": "A-3.1",
+          "claim": "文本卡片标题矩形与进度文字矩形交集面积（px²）",
+          "kind": "exact",
+          "assert": "0",
+          "source": "#897 缺陷2 / design D2"
+        }
+      ]
+    },
+    {
+      "id": "R-4",
+      "text": "B3 字幕同名收敛",
+      "anchors": [
+        {
+          "id": "A-4.1",
+          "claim": "打开 `a.mp4`（同目录含 `a.srt` 与 `b.srt`）时字幕候选数",
+          "kind": "exact",
+          "assert": "1",
+          "source": "#897 缺陷3 / design D2"
+        },
+        {
+          "id": "A-4.2",
+          "claim": "初始打开同名视频自动加载的字幕文件数",
+          "kind": "exact",
+          "assert": "1",
+          "source": "#897 缺陷3 / design D2"
+        }
+      ]
+    },
+    {
+      "id": "R-5",
+      "text": "B4 重启不自动播放与单声道",
+      "anchors": [
+        {
+          "id": "A-5.1",
+          "claim": "打开/重启恢复后 `HTMLMediaElement.play` 调用计数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "#897 缺陷6 / file-management C-6"
+        },
+        {
+          "id": "A-5.2",
+          "claim": "点击播放一次后 `play` 调用计数",
+          "kind": "exact",
+          "assert": "1",
+          "source": "#897 缺陷6 / design D2"
+        },
+        {
+          "id": "A-5.3",
+          "claim": "同时输出声音的音轨数上限",
+          "kind": "exact",
+          "assert": "1",
+          "source": "#897 缺陷6 / design D2"
+        }
+      ]
+    },
+    {
+      "id": "R-6",
+      "text": "B5 MD 编辑态媒体渲染",
+      "anchors": [
+        {
+          "id": "A-6.1",
+          "claim": "MD 编辑态图片节点 `naturalWidth` 下限（px）",
+          "kind": "exact",
+          "assert": "1",
+          "source": "#897 缺陷5 / design D2"
+        },
+        {
+          "id": "A-6.2",
+          "claim": "MD 编辑态视频节点 `readyState` 下限",
+          "kind": "exact",
+          "assert": "1",
+          "source": "#897 缺陷5 / design D2"
+        },
+        {
+          "id": "A-6.3",
+          "claim": "解析失败时裂图「问号框」节点数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "#897 缺陷5 / design D2"
+        }
+      ]
+    },
+    {
+      "id": "R-7",
+      "text": "B6 进度缩略图定位与格内适配",
+      "anchors": [
+        {
+          "id": "A-7.1",
+          "claim": "缩略图浮层 top 与进度条 top 的关系（缩略图 top < 进度条 top）",
+          "kind": "exact",
+          "assert": "1",
+          "source": "#897 缺陷12 / design D2"
+        },
+        {
+          "id": "A-7.2",
+          "claim": "分栏比例改到 90% → 播放器尺寸适配格内容区",
+          "kind": "state-machine",
+          "assert": "变化→尺寸=格内容区",
+          "source": "#897 缺陷12 / design D2"
+        }
+      ]
+    },
+    {
+      "id": "R-8",
+      "text": "B7 播放图标",
+      "anchors": [
+        {
+          "id": "A-8.1",
+          "claim": "新播放图标 path 与 `camera`（截图）图标 path 不同",
+          "kind": "exact",
+          "assert": "1",
+          "source": "#897 优化3 / design D2"
+        },
+        {
+          "id": "A-8.2",
+          "claim": "卡片播放角标使用新播放图标的节点数下限",
+          "kind": "exact",
+          "assert": "1",
+          "source": "#897 优化3 / design D2"
+        }
+      ]
+    },
+    {
+      "id": "R-9",
+      "text": "B8 MD 嵌入图片圆角统一",
+      "anchors": [
+        {
+          "id": "A-9.1",
+          "claim": "编辑态图片与视频块计算 `border-radius` 之差（px）",
+          "kind": "exact",
+          "assert": "0",
+          "source": "#897 优化4 / design D2"
+        }
+      ]
+    },
+    {
+      "id": "R-10",
+      "text": "B9 嵌入视频宽度档与全屏",
+      "anchors": [
+        {
+          "id": "A-10.1",
+          "claim": "嵌入视频默认宽度 / 内容区宽度的比值（容差 ±5%）",
+          "kind": "exact",
+          "assert": "0.667",
+          "source": "#897 优化5 / design D2"
+        },
+        {
+          "id": "A-10.2",
+          "claim": "宽度档菜单项数（满页面宽度 + 全屏）",
+          "kind": "exact",
+          "assert": "2",
+          "source": "#897 优化5 / design D2"
+        },
+        {
+          "id": "A-10.3",
+          "claim": "右键「全屏」触发窗口全屏调用的次数下限",
+          "kind": "exact",
+          "assert": "1",
+          "source": "#897 优化5 / design D2"
+        }
+      ]
+    },
+    {
+      "id": "R-11",
+      "text": "C1 提示外壳与方位",
+      "anchors": [
+        {
+          "id": "A-11.1",
+          "claim": "自绘提示计算 `border-radius` ≥ 提示高度一半（任一类）",
+          "kind": "exact",
+          "assert": "1",
+          "source": "#897 缺陷4 / editing E-22"
+        },
+        {
+          "id": "A-11.2",
+          "claim": "原生矩形 `title` 提示节点数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "#897 缺陷4 / editing E-22"
+        },
+        {
+          "id": "A-11.3",
+          "claim": "全局「提示时长」设 1.0s → 1100ms 出现、1000ms 前不出现",
+          "kind": "state-machine",
+          "assert": "设置→延迟生效",
+          "source": "#897 缺陷4 / configuration"
+        },
+        {
+          "id": "A-11.4",
+          "claim": "状态栏右键入口提示水平中心与按钮中心偏差上限（px）",
+          "kind": "exact",
+          "assert": "4",
+          "source": "#897 缺陷4 / application-shell"
+        }
+      ]
+    },
+    {
+      "id": "R-12",
+      "text": "C2 悬浮窗高度",
+      "anchors": [
+        {
+          "id": "A-12.1",
+          "claim": "悬浮窗高度相对现状基线收紧（px，负增量）",
+          "kind": "exact",
+          "assert": "≤0",
+          "source": "#897 优化2 / design D3"
+        },
+        {
+          "id": "A-12.2",
+          "claim": "图标与容器上下间距上限（px，设计系统刻度）",
+          "kind": "exact",
+          "assert": "8",
+          "source": "#897 优化2 / 设计系统 §3"
+        }
+      ]
+    },
+    {
+      "id": "R-13",
+      "text": "C3 导出子菜单生命周期与菜单提示",
+      "anchors": [
+        {
+          "id": "A-13.1",
+          "claim": "指针移出「导出行 ∪ 二级面板」并集 → 子菜单节点数",
+          "kind": "state-machine",
+          "assert": "移出→0",
+          "source": "#897 缺陷7 / navigation 页签右键菜单文件动作"
+        },
+        {
+          "id": "A-13.2",
+          "claim": "菜单项悬停时原生黑矩形 `title` 节点数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "#897 缺陷7 / editing E-22"
+        }
+      ]
+    },
+    {
+      "id": "R-14",
+      "text": "C4 移动到图标与去重",
+      "anchors": [
+        {
+          "id": "A-14.1",
+          "claim": "「移动到」图标含向右箭头（path 与 locate/folder 不同）",
+          "kind": "exact",
+          "assert": "1",
+          "source": "#897 优化8 / 设计系统 §2.3"
+        },
+        {
+          "id": "A-14.2",
+          "claim": "图标去重单测通过（不同概念不复用 path）",
+          "kind": "exact",
+          "assert": "1",
+          "source": "#897 优化8 / src/__tests__/ui/icons.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "R-15",
+      "text": "C5 菜单统一 grammar",
+      "anchors": [
+        {
+          "id": "A-15.1",
+          "claim": "斜杠/新增/功能块三类菜单计算 `font-size` 相等",
+          "kind": "exact",
+          "assert": "1",
+          "source": "#897 优化10 / design D3"
+        },
+        {
+          "id": "A-15.2",
+          "claim": "菜单宽度（px）",
+          "kind": "exact",
+          "assert": "176",
+          "source": "设计决案 #497 / design D3"
+        },
+        {
+          "id": "A-15.3",
+          "claim": "菜单行高（px）",
+          "kind": "exact",
+          "assert": "36",
+          "source": "E-11 / design D3"
+        }
+      ]
+    },
+    {
+      "id": "R-16",
+      "text": "D1 标题配色编辑态生效",
+      "anchors": [
+        {
+          "id": "A-16.1",
+          "claim": "编辑态 h1 计算 `color` 等于配置/主题标题色",
+          "kind": "exact",
+          "assert": "1",
+          "source": "#897 缺陷8 / editing E-8"
+        },
+        {
+          "id": "A-16.2",
+          "claim": "编辑态正文计算 `color` 不受标题配色影响",
+          "kind": "exact",
+          "assert": "1",
+          "source": "#897 缺陷8 / editing E-8"
+        }
+      ]
+    },
+    {
+      "id": "R-17",
+      "text": "D2 预览态标题折叠触发区",
+      "anchors": [
+        {
+          "id": "A-17.1",
+          "claim": "预览态折叠按钮命中盒尺寸（px）",
+          "kind": "exact",
+          "assert": "20",
+          "source": "#897 缺陷9 / editing 标题折叠"
+        },
+        {
+          "id": "A-17.2",
+          "claim": "预览态与编辑态折叠触发区尺寸偏差上限（px）",
+          "kind": "exact",
+          "assert": "2",
+          "source": "#897 缺陷9 / editing 标题折叠"
+        }
+      ]
+    },
+    {
+      "id": "R-18",
+      "text": "D3 逗号→/ 与撤销键",
+      "anchors": [
+        {
+          "id": "A-18.1",
+          "claim": "行首输入「，」→ 文档出现「/」且菜单节点数",
+          "kind": "state-machine",
+          "assert": "输入→1",
+          "source": "#897 缺陷14 / editing E-36"
+        },
+        {
+          "id": "A-18.2",
+          "claim": "围栏代码块内输入「，」后斜杠菜单节点数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "editing E-36"
+        },
+        {
+          "id": "A-18.3",
+          "claim": "Mod-Z 一次撤销后内容变化次数",
+          "kind": "exact",
+          "assert": "1",
+          "source": "#897 缺陷14 / editing 撤销与重做快捷键"
+        }
+      ]
+    },
+    {
+      "id": "R-19",
+      "text": "D4 横向工具条回滚",
+      "anchors": [
+        {
+          "id": "A-19.1",
+          "claim": "md 编辑态选区工具条按钮数（收敛目标量级）",
+          "kind": "exact",
+          "assert": "12",
+          "source": "#897 缺陷14 / editing 编辑态工具条归属"
+        },
+        {
+          "id": "A-19.2",
+          "claim": "非 md 的 CSS 横条按钮集合不受影响",
+          "kind": "exact",
+          "assert": "1",
+          "source": "#897 缺陷14 / design D4"
+        }
+      ]
+    },
+    {
+      "id": "R-20",
+      "text": "D5 嵌套录入手柄",
+      "anchors": [
+        {
+          "id": "A-20.1",
+          "claim": "引用/单元格/分栏内可召唤转换手柄的容器数下限",
+          "kind": "exact",
+          "assert": "3",
+          "source": "#897 优化6 / design D4"
+        },
+        {
+          "id": "A-20.2",
+          "claim": "嵌套容器内可见源码标记（`**`/`##`）节点数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "#897 优化6 / design D4"
+        }
+      ]
+    },
+    {
+      "id": "R-21",
+      "text": "D6 Tab 缩进渲染与边框对齐",
+      "anchors": [
+        {
+          "id": "A-21.1",
+          "claim": "引用块 Tab 缩进后装饰仍在位且可输入",
+          "kind": "state-machine",
+          "assert": "缩进→可编辑",
+          "source": "#897 优化7 / design D4"
+        },
+        {
+          "id": "A-21.2",
+          "claim": "引用块右边界 x 与正文右边界 x 之差（px）",
+          "kind": "exact",
+          "assert": "0",
+          "source": "#897 优化7 / design D4"
+        }
+      ]
+    },
+    {
+      "id": "R-22",
+      "text": "D7 分栏/表格编号位置",
+      "anchors": [
+        {
+          "id": "A-22.1",
+          "claim": "表格读数右缘与网格最右边界线 x 之差（px）",
+          "kind": "exact",
+          "assert": "≤1",
+          "source": "#897 优化11 / design D4"
+        },
+        {
+          "id": "A-22.2",
+          "claim": "分栏读数中心与第 5 栏中心偏差（px）",
+          "kind": "exact",
+          "assert": "≤2",
+          "source": "#897 优化11 / design D4"
+        },
+        {
+          "id": "A-22.3",
+          "claim": "分栏子菜单垂直中心与触发行中心偏差（px）",
+          "kind": "exact",
+          "assert": "≤2",
+          "source": "#897 优化11 / design D4"
+        }
+      ]
+    },
+    {
+      "id": "R-23",
+      "text": "D8 文本显示格式统一",
+      "anchors": [
+        {
+          "id": "A-23.1",
+          "claim": "行号文字右缘与正文左缘间距上限（px）",
+          "kind": "exact",
+          "assert": "12",
+          "source": "#897 优化13 / editing 文本与脚本文件行号"
+        },
+        {
+          "id": "A-23.2",
+          "claim": "编辑态与预览态代码块计算 `font-family` 相等",
+          "kind": "exact",
+          "assert": "1",
+          "source": "#897 优化13 / design D4"
+        },
+        {
+          "id": "A-23.3",
+          "claim": "语法配色以 `.tok-*` 为唯一来源（新增色板数）",
+          "kind": "exact",
+          "assert": "0",
+          "source": "#897 优化13 / design D4"
+        }
+      ]
+    },
+    {
+      "id": "R-24",
+      "text": "D9 文本工具条只复制",
+      "anchors": [
+        {
+          "id": "A-24.1",
+          "claim": "文本/脚本文件工具条按钮数（编辑态）",
+          "kind": "exact",
+          "assert": "1",
+          "source": "#897 优化14 / editing 编辑态工具条归属"
+        },
+        {
+          "id": "A-24.2",
+          "claim": "文本/脚本文件工具条按钮数（预览态）",
+          "kind": "exact",
+          "assert": "1",
+          "source": "#897 优化14 / editing 编辑态工具条归属"
+        }
+      ]
+    },
+    {
+      "id": "R-25",
+      "text": "E1 页签空白拖动窗口",
+      "anchors": [
+        {
+          "id": "A-25.1",
+          "claim": "`.tab-strip` 空白计算 `cursor` 为抓取/移动语义",
+          "kind": "exact",
+          "assert": "1",
+          "source": "#897 缺陷10 / design D5"
+        },
+        {
+          "id": "A-25.2",
+          "claim": "空白拖动时栏目拖动浮层节点数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "#897 缺陷10 / design D5"
+        },
+        {
+          "id": "A-25.3",
+          "claim": "空白拖动触发窗口拖动调用次数",
+          "kind": "exact",
+          "assert": "1",
+          "source": "#897 缺陷10 / design D5"
+        }
+      ]
+    },
+    {
+      "id": "R-26",
+      "text": "E2 双击页签空白全屏",
+      "anchors": [
+        {
+          "id": "A-26.1",
+          "claim": "双击页签空白 → `isFullscreen` 翻转",
+          "kind": "state-machine",
+          "assert": "双击→true",
+          "source": "#897 缺陷13 / application-shell"
+        },
+        {
+          "id": "A-26.2",
+          "claim": "全屏权限 `allow-set-fullscreen` 就位",
+          "kind": "exact",
+          "assert": "1",
+          "source": "#897 缺陷13 / design D5"
+        }
+      ]
+    },
+    {
+      "id": "R-27",
+      "text": "E3 左边栏快捷键与网格预览冲突",
+      "anchors": [
+        {
+          "id": "A-27.1",
+          "claim": "网格概览打开时按 `⌘⇧X` → `rail_pin_hidden` 翻转",
+          "kind": "state-machine",
+          "assert": "按下→翻转",
+          "source": "#897 缺陷11 / navigation 左边栏展开与固定快捷键"
+        },
+        {
+          "id": "A-27.2",
+          "claim": "shortcuts 登记键位重复数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "#897 缺陷11 / src/lib/shortcuts.ts"
+        }
+      ]
+    },
+    {
+      "id": "R-28",
+      "text": "E4 大纲按钮/等级/拖拽",
+      "anchors": [
+        {
+          "id": "A-28.1",
+          "claim": "大纲按钮 `top` 相对现状增大（按条目高 ×2，px）",
+          "kind": "exact",
+          "assert": "≥48",
+          "source": "#897 优化9 / design D5"
+        },
+        {
+          "id": "A-28.2",
+          "claim": "大纲条目前导竖线节点数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "#897 优化9 / editing E-10"
+        },
+        {
+          "id": "A-28.3",
+          "claim": "拖动大纲条目 → 顺序变化并持久化",
+          "kind": "state-machine",
+          "assert": "拖动→顺序变",
+          "source": "#897 优化9 / design D5"
+        }
+      ]
+    },
+    {
+      "id": "R-29",
+      "text": "F1 标题字体显示与预设",
+      "anchors": [
+        {
+          "id": "A-29.1",
+          "claim": "未配置时字体输入显示当前默认字体值（非空）",
+          "kind": "exact",
+          "assert": "1",
+          "source": "#897 优化12 / configuration 标题字体逐级配置"
+        },
+        {
+          "id": "A-29.2",
+          "claim": "预设列表中国家专有字体硬编码项数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "#897 优化12 / design D6"
+        }
+      ]
+    }
+  ]
+}
