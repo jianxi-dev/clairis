@@ -18,7 +18,6 @@ import {
 } from "./toolbar-shared";
 import { useAiEntryStore } from "../../hooks/useAiEntry";
 import { useEditorStore } from "../../stores/editorStore";
-import { executeCommand, registerCommand } from "./commands";
 import { HTML_TOOLBAR_ITEMS, resolveToolbarOrder } from "./slots";
 
 const SHOW_DELAY_MS = 90;
@@ -138,7 +137,14 @@ function toolButton(action: BarAction): HTMLButtonElement {
   return b;
 }
 
-function registerToolbarCommands(view: EditorView): void {
+/**
+ * 本横条的动作闭包，只在自身视图内执行。
+ *
+ * 不注册进全局命令表：`format-*` 与选区轮盘 / 胶囊共用 id，而注册表是最后写入
+ * 生效的全局 Map；注册后其它视图会覆盖它，使 md 编辑态选区工具条的格式按钮
+ * 落到别的文档或静默失效（#849）。
+ */
+function toolbarCommands(view: EditorView): Record<string, () => void> {
   const runAi = (prompt: string) => () => {
     const ai = useAiEntryStore.getState();
     ai.setInput(`${prompt}\n\n${selectionText(view)}`);
@@ -151,7 +157,7 @@ function registerToolbarCommands(view: EditorView): void {
     const block = blockAt(view, view.state.selection.main.from);
     if (block) alignBlock(view, block, kind);
   };
-  const commands: Record<string, () => void> = {
+  return {
     "ai-rewrite": runAi("请改写以下内容："),
     "ai-translate": runAi("请翻译以下内容："),
     "ai-polish": runAi("请润色以下内容："),
@@ -165,14 +171,11 @@ function registerToolbarCommands(view: EditorView): void {
     "align-center": align("center"),
     "align-right": align("right"),
   };
-  for (const id of Object.keys(commands)) {
-    registerCommand(id, () => commands[id]());
-  }
 }
 
 export function horizontalToolbar() {
   return ViewPlugin.define((view) => {
-    registerToolbarCommands(view);
+    const commands = toolbarCommands(view);
     let bar: HTMLDivElement | null = null;
     let timer = 0;
     let pointerDown = false;
@@ -201,7 +204,7 @@ export function horizontalToolbar() {
             id: item.id,
             label: item.label,
             icon: item.icon,
-            run: () => executeCommand(item.id, { view }),
+            run: () => commands[item.id](),
           }),
         );
       }
