@@ -78,7 +78,7 @@
 
 | id | kind | claim | assert | source |
 |---|---|---|---|---|
-| A-10.1 | exact | 基础段图标数 | 8 | #833 B1 / design D7 |
+| A-10.1 | exact | 基础段图标数 = 10 | 10 | #833 B1 / design D7 |
 | A-10.2 | exact | 基础段文字节点数 | 0 | #833 B1 / design D7 |
 | A-10.3 | exact | 常用段项数 | 8 | #833 B1 / design D7 |
 | A-10.4 | exact | 基础段前三项可访问名顺序 | "H1,H2,H3" | #833 B1 / design D7 |
