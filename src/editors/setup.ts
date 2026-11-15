@@ -71,8 +71,10 @@ export function fullDecorations(
  * md-bundle 的编辑器同样只装显式扩展集）。这里只保留正文编辑真正需要的：
  * 折行、选区绘制、撤销历史、缩进、括号匹配与基础键位映射。
  *
- * 不要在这里加回 `lineNumbers()` / `foldGutter()` / `highlightActiveLine()`：
- * 编辑态的「当前块」由装饰层的 `cm-block-active` 表达，不是行号。
+ * Markdown 编辑态不要加回 `lineNumbers()` / `foldGutter()` / `highlightActiveLine()`：
+ * 它的「当前块」由装饰层的 `cm-block-active` 表达，不是行号（E-8）。非 Markdown
+ * 的纯文本 / 脚本文件例外——ContentArea 的 `lineNumbersForMode` 会按文件类型
+ * 条件装回行号（#858 / design D15），Markdown 永不装。
  */
 export function baseEditorExtensions(): Extension[] {
   return [
