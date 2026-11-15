@@ -250,9 +250,9 @@
       "anchors": [
         {
           "id": "A-10.1",
-          "claim": "基础段图标数",
+          "claim": "基础段图标数 = 10",
           "kind": "exact",
-          "assert": "8",
+          "assert": "10",
           "source": "#833 B1 / design D7"
         },
         {
