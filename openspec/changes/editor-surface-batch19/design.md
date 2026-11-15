@@ -101,7 +101,7 @@ md 编辑态选中文字的横向工具条按钮功能回滚到上一版：以 G
 | 落点 | 位置 | 载体/符号 | 判据 |
 |---|---|---|---|
 | 规格 | design-system:§2；§6 | — | 图标 / 语义色 / 字体只按设计系统条款与本设计落地，feature 稿引用条款号不复制像素值 |
-| 存储 | src-tauri/src/config.rs | heading_fonts / rail_pin_hidden | 新字段可空、缺省回落；字体族为系统可用字体，开关为布尔 |
+| 存储 | src-tauri/src/config.rs | AppConfig | AppConfig 承载三组可空字段、缺省回落：heading_fonts（H1–H6 字体族）／rail_pin_hidden（布尔）／embed_scroll_positions（文档级 view-state，键=文档路径+内嵌路径） |
 | 校验 | src-tauri/src/config.rs | validate_config | 字体族非空且系统可用；开关布尔；未知值拒绝并回落 |
 | 桥接 | src/hooks/useConfig.ts | applyRustConfig | 新字段注入 CSS 变量与设置面板；未知键忽略并聚合告警 |
 | 消费 | src/editors/orchestration/block-menu.ts | openBlockMenu | 菜单项数组顺序即显示顺序（基础 / 常用）；页签右键菜单复用同一体量与项集 |
