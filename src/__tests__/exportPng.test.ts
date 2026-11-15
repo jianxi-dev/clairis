@@ -11,6 +11,8 @@ import {
   PNG_MAX_HEIGHT,
   PNG_TOO_TALL_MESSAGE,
   PNG_WIDTH,
+  PNG_SCALE,
+  CANVAS_MAX_DEVICE_PX,
 } from "../lib/export/png";
 
 const CSS = ".preview-content { color: red; }";
@@ -314,5 +316,13 @@ describe("helpers", () => {
 
   it("returns null notice for a cancelled export", () => {
     expect(exportPngMessage({ status: "cancelled" })).toBeNull();
+  });
+});
+
+describe("画布高度守卫", () => {
+  it("按设备像素折算（CSS 上限 × 倍率 ≤ 画布上限）", () => {
+    expect(PNG_MAX_HEIGHT * PNG_SCALE).toBeLessThanOrEqual(
+      CANVAS_MAX_DEVICE_PX,
+    );
   });
 });

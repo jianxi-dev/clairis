@@ -83,6 +83,22 @@
     overflow: visible !important;
   }
 
+  /* 内容块自身的裁剪/限高（屏幕态 .code-block{overflow:hidden}、.katex-block{overflow-y:hidden}、
+   * video{max-height:70vh} 等）在打印态一并放开：break-inside:avoid 与裁剪叠加时，WebKit 会丢弃
+   * 该块之后的全部内容。Chromium 容忍，故既有打印 e2e 漏网；此处按设备无关的口径统一放开。 */
+  .preview-content .code-block,
+  .preview-content pre,
+  .preview-content .katex-block,
+  .preview-content video,
+  .preview-content img,
+  .preview-content .mermaid-block,
+  .preview-content .mermaid-view,
+  .preview-content .table-wrap,
+  .preview-content .callout {
+    overflow: visible !important;
+    max-height: none !important;
+  }
+
   /* 打印视图出纸时应用整体不出纸：纸上只有 #biaoyue-print-root（D3）。
    * 用打印标记门控，是为了让未挂打印视图的直接 Ctrl+P 仍走旧版式。 */
   html[data-biaoyue-printing] .app-root {
