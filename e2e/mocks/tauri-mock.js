@@ -360,8 +360,9 @@ function mockInvoke(cmd, args) {
       families: [
         "PingFang SC", "Hiragino Sans GB", "Songti SC", "Heiti SC", "STHeiti",
         "Kaiti SC", "Arial", "Helvetica", "Times New Roman", "Georgia", "Menlo",
-        "SF Mono", "Noto Sans CJK SC", "Source Han Sans SC", "Microsoft YaHei",
-        "SimSun", "SimHei",
+        "SF Mono", "Noto Sans CJK SC", "Source Han Sans SC", "Noto Sans",
+        "Noto Serif CJK SC", "Source Han Serif SC", "Inter", "JetBrains Mono",
+        "Fira Code", "IBM Plex Sans", "Microsoft YaHei", "SimSun", "SimHei",
       ],
       enumerated: true,
     };
