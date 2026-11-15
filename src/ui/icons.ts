@@ -18,6 +18,7 @@ export type IconName =
   | "code"
   | "audio"
   | "folder"
+  | "moveTo"
   | "clock"
   | "file"
   | "close"
@@ -192,6 +193,14 @@ export const ICONS: Record<IconName, IconDef> = {
   folder: {
     label: "文件夹",
     s: "M3.5 7h6l2 2h9v10h-17z",
+  },
+  /** 「移动到」：文件夹 + 向右箭头。不同概念不复用图标——不得复用 folder/locate 的 path。 */
+  moveTo: {
+    label: "移动到",
+    parts: [
+      { s: "M3.5 7h5l1.8 1.8h4.2v9.2h-11z" },
+      { s: "M16.5 12h4 M18.6 9.4l2.6 2.6-2.6 2.6" },
+    ],
   },
   clock: {
     label: "时钟",
