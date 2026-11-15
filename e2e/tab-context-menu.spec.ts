@@ -12,6 +12,8 @@ async function boot(page: Page): Promise<void> {
         metadata: Record<string, unknown>;
       };
       __toggleMaximizeCalls: number;
+      __setFullscreenCalls: number;
+      __fullscreen__: boolean;
     };
     // getCurrentWindow() 读 metadata.currentWindow.label，mock 默认没有，补一个。
     w.__TAURI_INTERNALS__.metadata = {
@@ -19,6 +21,8 @@ async function boot(page: Page): Promise<void> {
       currentWindow: { label: "main" },
     };
     w.__toggleMaximizeCalls = 0;
+    w.__setFullscreenCalls = 0;
+    w.__fullscreen__ = false;
     const original = w.__TAURI_INTERNALS__.invoke;
     w.__TAURI_INTERNALS__.invoke = (cmd, args) => {
       if (cmd === "plugin:window|toggle_maximize") {
@@ -27,6 +31,15 @@ async function boot(page: Page): Promise<void> {
       }
       if (cmd === "plugin:window|is_maximized") {
         return Promise.resolve(w.__toggleMaximizeCalls % 2 === 1);
+      }
+      if (cmd === "plugin:window|set_fullscreen") {
+        w.__setFullscreenCalls += 1;
+        const value = (args as { value?: boolean } | undefined)?.value;
+        if (typeof value === "boolean") w.__fullscreen__ = value;
+        return Promise.resolve(null);
+      }
+      if (cmd === "plugin:window|is_fullscreen") {
+        return Promise.resolve(w.__fullscreen__);
       }
       return original(cmd, args);
     };
@@ -311,8 +324,8 @@ test.describe("页签右键菜单关闭协议（editor-surface-batch17 1.1）", 
   });
 });
 
-test.describe("页签空白双击切窗口最大化（editor-surface-batch17 17.1）", () => {
-  test("双击空白切换最大化/还原，页签数量不变", async ({ page }) => {
+test.describe("页签空白双击切窗口全屏（editor-surface-batch20 5.2 / #923）", () => {
+  test("双击空白进入全屏、再次双击还原，页签数量不变", async ({ page }) => {
     await boot(page);
     const tabsBefore = await page.locator('[role="tab"]').count();
     const strip = page.locator(".tab-strip").first();
@@ -325,23 +338,31 @@ test.describe("页签空白双击切窗口最大化（editor-surface-batch17 17.
     await expect
       .poll(() =>
         page.evaluate(() => {
-          const w = window as unknown as { __toggleMaximizeCalls: number };
-          return w.__toggleMaximizeCalls;
+          const w = window as unknown as {
+            __setFullscreenCalls: number;
+            __fullscreen__: boolean;
+          };
+          return { calls: w.__setFullscreenCalls, fs: w.__fullscreen__ };
         }),
       )
-      .toBe(1);
+      .toEqual({ calls: 1, fs: true });
 
     await page.mouse.dblclick(x, y);
     await expect
       .poll(() =>
         page.evaluate(() => {
-          const w = window as unknown as { __toggleMaximizeCalls: number };
-          return w.__toggleMaximizeCalls;
+          const w = window as unknown as {
+            __setFullscreenCalls: number;
+            __fullscreen__: boolean;
+          };
+          return { calls: w.__setFullscreenCalls, fs: w.__fullscreen__ };
         }),
       )
-      .toBe(2);
+      .toEqual({ calls: 2, fs: false });
 
     expect(await page.locator('[role="tab"]').count()).toBe(tabsBefore);
+    // 已裁决：双击空白不再是新建文档（supersede batch17 最大化口径）
+    expect(await page.locator('[role="tab"]').count()).toBe(1);
   });
 });
 
