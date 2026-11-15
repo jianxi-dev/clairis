@@ -95,18 +95,21 @@ body {
 .cm-editor .cm-line:has(.cm-table-wrap),
 .cm-editor .cm-line:has(.cm-columns),
 .cm-editor .cm-line:has(.cm-image-widget),
-.cm-editor .cm-line:has(.cm-media-widget) {
+.cm-editor .cm-line:has(.cm-media-widget),
+.cm-editor .cm-line:has(.cm-embed-widget) {
   max-width: 100%;
 }
 
 /* 图片对齐（D15）：widget 保持 inline-block，落位走行级 text-align——
  * 容器若 display:block，其后的 CM6 widgetBuffer 会自成一条整行高的行盒，
  * 图片下方多出一条空行。 */
-.cm-editor .cm-line:has(> .cm-image-widget[data-align="center"]) {
+.cm-editor .cm-line:has(> .cm-image-widget[data-align="center"]),
+.cm-editor .cm-line:has(> .cm-embed-widget[data-align="center"]) {
   text-align: center;
 }
 
-.cm-editor .cm-line:has(> .cm-image-widget[data-align="right"]) {
+.cm-editor .cm-line:has(> .cm-image-widget[data-align="right"]),
+.cm-editor .cm-line:has(> .cm-embed-widget[data-align="right"]) {
   text-align: right;
 }
 
@@ -1020,6 +1023,65 @@ body {
   color: var(--app-accent);
   text-decoration: none;
   overflow-wrap: anywhere;
+}
+
+/* 插入文件内嵌（D10 / B5a）：pdf / md / html / 网页真实内容，默认一屏高、
+ * 内容区滚动、选中出 8 个把手改高宽。 */
+.cm-embed-widget {
+  margin-inline: 0.15em;
+  vertical-align: middle;
+}
+
+.cm-embed-widget[data-selected="true"] {
+  outline: 2px solid var(--app-accent);
+  outline-offset: 2px;
+}
+
+.cm-embed-frame {
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  height: min(100vh, 720px);
+  overflow: hidden;
+  border: 1px solid var(--app-border);
+  border-radius: var(--radius-8);
+  background: var(--app-surface);
+}
+
+.cm-embed-body {
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background: var(--app-bg);
+}
+
+.cm-embed-body .cm-embed-iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+/* 复用阅读排版；覆盖 .preview-content 的外壳值，让内嵌块自身就是纸面。 */
+.cm-embed-body .cm-embed-md {
+  min-height: 0;
+  max-width: none;
+  margin-inline: 0;
+  padding: 1em 1.1em;
+  box-shadow: none;
+  font-size: 0.95em;
+}
+
+.cm-embed-loading,
+.cm-embed-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 1em;
+  color: var(--app-text-3);
+  font-size: 12px;
+  text-align: center;
 }
 
 /* mermaid 块 —— 非活跃块整块换成图；未水合时保留源码框 */

@@ -23,6 +23,11 @@ import {
   type ImageHandleSpec,
   type ImageToolbarActions,
 } from "./imageToolbar";
+import {
+  FileEmbedWidget,
+  classifyFileEmbed,
+  type FileEmbedResolver,
+} from "./fileEmbed";
 
 // --- 类型 --------------------------------------------------------------------
 
@@ -1110,6 +1115,7 @@ export function createImageDecorations(
   docText: string,
   resolve?: ImageResolver,
   callbacks?: ImageCallbacks,
+  resolveEmbed?: FileEmbedResolver,
 ): Range<Decoration>[] {
   const decorations: Range<Decoration>[] = [];
   const resolveFn = resolve ?? (() => null);
@@ -1131,6 +1137,7 @@ export function createImageDecorations(
 
     const alt = ref.alt;
     const path = ref.path;
+    const embedKind = classifyFileEmbed(path);
     const kind = classifyMedia(path);
     const from = ref.start;
     const to = ref.end;
@@ -1139,7 +1146,25 @@ export function createImageDecorations(
         ? parseImageAttributes(ref.attrText)
         : { ...EMPTY_IMAGE_ATTRIBUTES };
 
-    if (kind === "image") {
+    if (embedKind) {
+      // 插入文件内嵌（D10 / B5a）：pdf / md / html / 网页渲染真实内容。
+      decorations.push(
+        Decoration.replace({
+          widget: new FileEmbedWidget(
+            embedKind,
+            alt,
+            path,
+            resolveEmbed?.(path) ?? null,
+            from,
+            attrs.align,
+            attrs.width,
+            attrs.height,
+            ref.title,
+          ),
+          inclusive: false,
+        }).range(from, to),
+      );
+    } else if (kind === "image") {
       // 图片路径解析（行为不变：null → 文字回退）。
       const src = resolveFn(path);
       const width = attrs.width ?? parseImageWidth(docText, to);

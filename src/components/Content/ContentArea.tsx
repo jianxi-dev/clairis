@@ -67,7 +67,8 @@ import {
 } from "../../editors/editorRef";
 import { resolveScrollTarget } from "../../utils/scrollPosition";
 import { pickMediaForDocument } from "../../lib/mediaPicker";
-import { resolveDocMediaHref } from "../../lib/mediaUrl";
+import { resolveDocMediaHref, resolveRelativeToDoc } from "../../lib/mediaUrl";
+import { buildAssetUrl } from "../../renderers";
 import { renderAllStatic } from "../../renderers/diagram/engine";
 import PreviewView from "./PreviewView";
 import OutlineMenu from "./OutlineMenu";
@@ -193,6 +194,16 @@ function handlePaste(
 const editorDecorationOptions: EditorDecorationsOptions = {
   hydrateMermaid,
   resolveImage: (path) => resolveDocMediaHref(path, activeDocPath),
+  resolveEmbed: (path) => {
+    const docPath = activeDocPath;
+    const absolute = docPath ? resolveRelativeToDoc(path, docPath) : null;
+    if (absolute) {
+      return { url: buildAssetUrl(absolute), filePath: absolute };
+    }
+    const clean = path.trim();
+    if (/^https?:\/\//i.test(clean)) return { url: clean, filePath: null };
+    return null;
+  },
   onImageAi: (path, alt) => {
     const ai = useAiEntryStore.getState();
     ai.setInput(`请处理图片：${path}${alt ? `（${alt}）` : ""}`);
