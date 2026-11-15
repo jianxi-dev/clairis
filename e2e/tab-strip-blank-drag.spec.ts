@@ -163,3 +163,39 @@ test("空白处按下（未移动）不触发窗口拖动", async ({ page }) => 
   expect(await dragCalls(page)).toBe(0);
   await shot(page, "blank-press-idle");
 });
+
+test("[#922] 空白拖动只拖窗：抓取指针、无栏目浮层、栏目顺序不变", async ({
+  page,
+}) => {
+  await boot(page);
+  await openFile(page, "/tmp/922-a.md");
+  await openFile(page, "/tmp/922-b.md");
+
+  const from = await blankPoint(page);
+  const cursor = await page.locator(".tab-strip").first().evaluate((el) => {
+    const target = document.elementFromPoint(
+      el.getBoundingClientRect().x + el.getBoundingClientRect().width - 10,
+      el.getBoundingClientRect().y + el.getBoundingClientRect().height / 2,
+    );
+    return target ? getComputedStyle(target).cursor : "";
+  });
+  expect(cursor, "页签空白缺少抓取指针").toMatch(/grab|move/);
+
+  const orderBefore = await page
+    .locator("[data-tab-id]")
+    .evaluateAll((els) => els.map((e) => e.getAttribute("data-tab-id")));
+
+  await pressMoveUp(page, from, 60, 10);
+  expect(await dragCalls(page)).toBe(1);
+  await expect(
+    page.locator(
+      '[data-testid="pane-drop-indicator"], [data-testid="root-drop-indicator"]',
+    ),
+  ).toHaveCount(0);
+
+  const orderAfter = await page
+    .locator("[data-tab-id]")
+    .evaluateAll((els) => els.map((e) => e.getAttribute("data-tab-id")));
+  expect(orderAfter).toEqual(orderBefore);
+  await shot(page, "blank-drag-no-pane-overlay");
+});
