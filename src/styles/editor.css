@@ -1471,6 +1471,8 @@ body {
 
 .tab-strip {
   min-height: 27px;
+  /* 页签条空白可拖窗：给出抓取语义（#922）。 */
+  cursor: grab;
 }
 
 /* ── 页签名下拉信息窗（batch19 B7 / R-14）：外壳复用 --tip-shell-radius ── */

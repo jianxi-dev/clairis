@@ -423,6 +423,8 @@ export default function TabBar({
           // 只有页签条空白处才允许拖窗。
           if ((e.target as HTMLElement).closest("[data-tab-id], button, input"))
             return;
+          // 空白处只做窗口拖动：阻止冒泡到 PaneHeader 的栏目拖动（#922）。
+          e.stopPropagation();
           if (!isTauriEnv()) return;
           const startX = e.clientX;
           const startY = e.clientY;
