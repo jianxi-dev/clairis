@@ -387,10 +387,13 @@ export default function TabBar({
         onDoubleClick={(e) => {
           if ((e.target as HTMLElement).closest("[data-tab-id], button, input"))
             return;
-          // 双击空白是窗口级动作：切换最大化/还原，不再新建文档（D15）。
+          // 双击空白是窗口级动作：进入/退出全屏，不再新建文档（D15 / #923）。
           if (!isTauriEnv()) return;
           void import("@tauri-apps/api/window")
-            .then(({ getCurrentWindow }) => getCurrentWindow().toggleMaximize())
+            .then(async ({ getCurrentWindow }) => {
+              const win = getCurrentWindow();
+              await win.setFullscreen(!(await win.isFullscreen()));
+            })
             .catch(() => {});
         }}
         onPointerDown={(e) => {
