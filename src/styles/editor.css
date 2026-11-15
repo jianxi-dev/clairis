@@ -1084,6 +1084,58 @@ body {
   text-align: center;
 }
 
+/* 名称态（D10 / B5c）：只显示文件名 / 链接，右上角按钮切回内容态。 */
+.cm-embed-widget[data-embed-state="name"] .cm-embed-frame {
+  min-width: 220px;
+}
+
+.cm-embed-widget[data-embed-state="name"] .cm-embed-body {
+  display: none;
+}
+
+.cm-embed-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 40px 6px 10px;
+  background: var(--app-sunken);
+  color: var(--app-text-2);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.cm-embed-name:hover {
+  color: var(--app-accent);
+}
+
+.cm-embed-name-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cm-embed-toggle {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 3;
+  height: 22px;
+  padding: 0 8px;
+  border: 1px solid var(--app-border);
+  border-radius: var(--radius-4);
+  background: var(--app-surface);
+  color: var(--app-text-3);
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.cm-embed-toggle:hover {
+  color: var(--app-accent);
+  border-color: var(--app-accent);
+}
+
 /* mermaid 块 —— 非活跃块整块换成图；未水合时保留源码框 */
 .cm-mermaid-block {
   display: block;
