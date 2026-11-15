@@ -227,7 +227,11 @@ export default function VideoPlayer({
     bottom: 0,
   });
 
-  const [thumb, setThumb] = useState<{ left: number; t: number } | null>(null);
+  const [thumb, setThumb] = useState<{
+    left: number;
+    bottom: number;
+    t: number;
+  } | null>(null);
   const thumbCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const thumbVideoRef = useRef<HTMLVideoElement | null>(null);
   const [shotNotice, setShotNotice] = useState<{
@@ -971,13 +975,17 @@ export default function VideoPlayer({
     const onProgressMove = (e: MouseEvent) => {
       if (!progressEl) return;
       const rect = progressEl.getBoundingClientRect();
-      const cr = container.getBoundingClientRect();
+      const cr = (rootRef.current ?? container).getBoundingClientRect();
       const ratio = Math.min(
         1,
         Math.max(0, (e.clientX - rect.left) / rect.width),
       );
       const t = ratio * (art.duration || 0);
-      setThumb({ left: rect.left - cr.left + ratio * rect.width, t });
+      setThumb({
+        left: rect.left - cr.left + ratio * rect.width,
+        bottom: cr.bottom - rect.top + 8,
+        t,
+      });
       if (Date.now() - lastThumbAt < 120) return;
       lastThumbAt = Date.now();
       try {
@@ -1774,7 +1782,7 @@ export default function VideoPlayer({
           style={{
             position: "absolute",
             left: Math.max(4, thumb.left - 80),
-            bottom: 64,
+            bottom: thumb.bottom,
             zIndex: 20,
             width: 160,
             borderRadius: 6,

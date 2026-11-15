@@ -240,7 +240,13 @@ test("进度条悬停显示当前位置缩略图，移开消失", async ({ page 
   const box = await progress.boundingBox();
   if (!box) throw new Error("进度条不可测量");
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-  await expect(page.locator('[data-testid="video-thumb"]')).toHaveCount(1);
+  const thumb = page.locator('[data-testid="video-thumb"]');
+  await expect(thumb).toHaveCount(1);
+  const tb = (await thumb.boundingBox())!;
+  // 缩略图底边紧贴进度条上侧（锚定进度条实际 Y，非写死偏移）
+  const gap = box.y - (tb.y + tb.height);
+  expect(gap).toBeGreaterThanOrEqual(0);
+  expect(gap).toBeLessThanOrEqual(12);
   await page.mouse.move(box.x + box.width / 2, box.y - 80);
   await expect(page.locator('[data-testid="video-thumb"]')).toHaveCount(0);
 });
