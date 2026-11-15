@@ -250,6 +250,7 @@ export default function VideoPlayer({
   const applyFrameRef = useRef<(next: Partial<typeof frame>) => void>(() => {});
   const currentIndexRef = useRef(-1);
   const pendingIndexRef = useRef(-1);
+  const playAfterLoadRef = useRef(false);
 
   useEffect(() => {
     // 静音按文件路径隔离：只应用本实例文件的状态，避免串音（#669）。
@@ -437,7 +438,7 @@ export default function VideoPlayer({
               if (pendingIndexRef.current !== savedIdx) return;
               if (!artRef.current) return;
               pendingIndexRef.current = -1;
-              void playIndexRef.current(savedIdx);
+              void playIndexRef.current(savedIdx, { autoplay: false });
             }, 0);
           }
         }
@@ -447,9 +448,11 @@ export default function VideoPlayer({
       });
   }, [filePath]);
 
-  const playIndexRef = useRef<(i: number) => void>(() => {});
+  const playIndexRef = useRef<
+    (i: number, opts?: { autoplay?: boolean }) => void
+  >(() => {});
   const playIndex = useCallback(
-    async (i: number) => {
+    async (i: number, opts?: { autoplay?: boolean }) => {
       const art = artRef.current;
       const list = playlistRef.current;
       if (!art || list.length === 0) return;
@@ -465,6 +468,7 @@ export default function VideoPlayer({
           thumbVideo.src = nextUrl;
           thumbVideo.load();
         }
+        playAfterLoadRef.current = opts?.autoplay !== false;
         await art.switchUrl(nextUrl);
         // 页签路径保持不变（仍归属原文件），仅显示名跟随当前媒体
         const store = useStore.getState();
@@ -1092,7 +1096,7 @@ export default function VideoPlayer({
       void playIndex(nextIdx);
     });
 
-    // 起播态：打开即播放。上次看到的位置作为起点，播放在 seek 之后发起。
+    // 起播态：视频按 C-6 暂停态打开（重启不自动发声）；音频保持打开即播。
     Artplayer.AUTO_PLAYBACK_TIMEOUT = 8000;
     art.on("ready", () => {
       try {
@@ -1113,14 +1117,18 @@ export default function VideoPlayer({
         });
         setActiveSubtitle(firstSub.name);
       }
-      void art.play()?.catch?.(() => {});
+      if (playAfterLoadRef.current || fileKind === "audio") {
+        playAfterLoadRef.current = false;
+        void art.play()?.catch?.(() => {});
+      }
     });
 
-    // ready 依赖媒体元数据；文件尚未元数据就绪时也发一次播放请求。
-    // 延到构造初始化之后，避免被 ArtPlayer 自己的首次 pause 覆盖。
-    window.setTimeout(() => {
-      void art.play()?.catch?.(() => {});
-    }, 0);
+    // 音频：元数据未就绪时补发一次播放请求；视频按 C-6 暂停态开，不补发。
+    if (fileKind === "audio") {
+      window.setTimeout(() => {
+        void art.play()?.catch?.(() => {});
+      }, 0);
+    }
 
     art.on("video:error", () => {
       setError("视频加载失败（可能编码不受支持或文件不可访问）");
@@ -1209,6 +1217,7 @@ export default function VideoPlayer({
     if (!art) return;
     if (url === lastUrlRef.current) return;
     applyRate(1);
+    playAfterLoadRef.current = false;
     const thumbVideo = thumbVideoRef.current;
     if (thumbVideo) {
       thumbVideo.src = url;
