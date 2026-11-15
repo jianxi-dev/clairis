@@ -1,6 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
+import { ICONS } from "../src/ui/icons";
 
 /**
  * #844 / editor-surface-batch19 13.1（B4）：
@@ -46,7 +47,7 @@ async function iconPaths(page: Page, item: string): Promise<string[]> {
 }
 
 test.describe("移动到图标与打开文件位置去重（A-13.1）", () => {
-  test("两图标 path 去重数量为 2", async ({ page }) => {
+  test("两图标不共用任何 path", async ({ page }) => {
     await boot(page);
     await openTabMenu(page);
 
@@ -55,9 +56,36 @@ test.describe("移动到图标与打开文件位置去重（A-13.1）", () => {
     expect(move.length).toBeGreaterThan(0);
     expect(reveal.length).toBeGreaterThan(0);
     expect(move.join("|")).not.toBe(reveal.join("|"));
-    expect(new Set([...move, ...reveal]).size).toBe(2);
+    for (const d of reveal) {
+      expect(move, "移动到与打开文件位置共用 path").not.toContain(d);
+    }
 
     await shot(page, "move-icon-distinct");
+  });
+
+  test("「移动到」是带右箭头的独立图形，不复用 folder/locate（#911）", async ({
+    page,
+  }) => {
+    await boot(page);
+    await openTabMenu(page);
+
+    const icon = page.locator('[data-menu-item="move"] svg');
+    await expect(icon).toHaveAttribute("data-icon", "moveTo");
+    const move = await iconPaths(page, "move");
+    expect(move.length, "移动到图标缺箭头分段").toBeGreaterThanOrEqual(2);
+
+    const folder = ICONS.folder.parts ?? [{ d: ICONS.folder.d, s: ICONS.folder.s }];
+    const locate = ICONS.locate.parts ?? [{ d: ICONS.locate.d, s: ICONS.locate.s }];
+    for (const def of [folder, locate]) {
+      for (const part of def) {
+        for (const d of [part.d, part.s]) {
+          if (!d) continue;
+          expect(move, "移动到复用了既有图标 path").not.toContain(d);
+        }
+      }
+    }
+
+    await shot(page, "move-icon-arrow");
   });
 });
 

@@ -843,7 +843,7 @@ export default function TabBar({
               })();
             }}
           >
-            <Icon name="folder" size={18} />
+            <Icon name="moveTo" size={18} />
             移动到…
           </button>
           <button

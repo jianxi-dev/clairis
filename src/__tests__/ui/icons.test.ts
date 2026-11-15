@@ -91,3 +91,32 @@ describe("播放角标与截图/视频文件型不复用图形", () => {
     expect(new Set(all).size, "不同概念复用了同一条 path").toBe(all.length);
   });
 });
+
+describe("不同概念不复用图标 path（#911）", () => {
+  it("「移动到」含向右箭头，且与 folder/locate 的 path 两两不同", () => {
+    const move = pathsOf(ICONS.moveTo);
+    expect(move.length).toBeGreaterThanOrEqual(2);
+    expect(move.join(" ")).toContain("l2.6 2.6");
+    for (const other of ["folder", "locate"] as const) {
+      for (const d of pathsOf(ICONS[other])) {
+        expect(move, `移动到复用了 ${other} 的 path`).not.toContain(d);
+      }
+    }
+  });
+
+  it("全量图标表内无两个概念共用同一套图形", () => {
+    // 规则：不同概念不得整体复用同一图标；允许共享子路径（如 zoomIn/zoomOut
+    // 共用镜片圆，靠手柄区分），但整套 path 签名必须唯一。
+    const owners = new Map<string, string[]>();
+    for (const [name, def] of Object.entries(ICONS) as Array<
+      [string, IconDef]
+    >) {
+      const signature = pathsOf(def).join("|");
+      owners.set(signature, [...(owners.get(signature) ?? []), name]);
+    }
+    const dup = [...owners.entries()]
+      .filter(([, names]) => names.length > 1)
+      .map(([sig, names]) => `${names.join("/")}: ${sig.slice(0, 40)}`);
+    expect(dup, `整体复用图标: ${dup.join(" | ")}`).toHaveLength(0);
+  });
+});
