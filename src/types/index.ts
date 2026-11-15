@@ -97,6 +97,8 @@ export interface AppConfig {
   htmlToolbarItems?: string[] | null;
   /** 工作区 pane 递归树（layout-portal 3.1）：序列化 JSON，跨重启恢复 */
   paneLayout?: string | null;
+  /** 左边栏固定隐藏（C3 / D14）：隐藏后箭头热区收起、滑入不唤出；缺省 false */
+  railPinHidden?: boolean | null;
   /** AI 视图改写规格（layout-portal 9.1）：持久化到 Rust `aiViewSpec` */
   aiViewSpec?: ViewSpec | null;
 }

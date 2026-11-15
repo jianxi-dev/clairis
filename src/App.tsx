@@ -502,11 +502,35 @@ function App() {
         store.closeTab(activeTabId);
       }
 
+      // 固定隐藏是 collapsed 的强化态：其它可见性快捷键先取消隐藏，
+      // 再按「视 hidden = collapsed」走既有语义。
+      const revealIfHidden = (): boolean => {
+        const es = useEditorStore.getState();
+        if (es.config.railPinHidden ?? false) {
+          es.setConfig({ railPinHidden: false });
+          void saveAppConfig();
+          return true;
+        }
+        return false;
+      };
+
+      // Cmd+Shift+X: 左边栏固定隐藏 / 取消（C3 / D14）。隐藏后箭头热区收起，滑入不唤出。
+      if (meta && e.shiftKey && e.key.toLowerCase() === "x") {
+        e.preventDefault();
+        const es = useEditorStore.getState();
+        const next = !(es.config.railPinHidden ?? false);
+        es.setConfig({ railPinHidden: next });
+        if (next) store.setRailState("collapsed");
+        void saveAppConfig();
+        return;
+      }
+
       // Cmd+Alt+\ : 固定 / 取消固定左边栏（layout-portal 6.1 / D4）。
       // 钉住 ↔ 悬停；折叠态先展开为钉住。必须排在 ⌘\ 之前（同键，先判 alt）。
       if (meta && e.altKey && e.key === "\\") {
         e.preventDefault();
-        store.setRailState(store.railState === "pinned" ? "hover" : "pinned");
+        const base = revealIfHidden() ? "collapsed" : store.railState;
+        store.setRailState(base === "pinned" ? "hover" : "pinned");
         return;
       }
 
@@ -514,9 +538,8 @@ function App() {
       // 不再在折叠态兼作沉浸阅读（沉浸阅读由 ⌘⇧F 专责）。
       if (meta && e.key === "\\") {
         e.preventDefault();
-        store.setRailState(
-          store.railState === "collapsed" ? "pinned" : "collapsed",
-        );
+        const base = revealIfHidden() ? "collapsed" : store.railState;
+        store.setRailState(base === "collapsed" ? "pinned" : "collapsed");
         return;
       }
 

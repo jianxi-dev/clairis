@@ -640,6 +640,7 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
   const [headingFontHint, setHeadingFontHint] = useState("");
 
   const previewSettings = useStore((s) => s.previewSettings);
+  const railPinHidden = useEditorStore((s) => s.config.railPinHidden) ?? false;
   const railLayout = useStore((s) => s.railLayout);
   const railDensity = useStore((s) => s.railDensity);
   const railCardHeight = useStore((s) => s.railCardHeight);
@@ -1619,6 +1620,35 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
 
           {active === "reading" && (
             <div className="space-y-6">
+              <section>
+                <h2 className="mb-2 text-sm font-medium text-[var(--app-text-strong)]">
+                  左边栏
+                </h2>
+                <label className="flex cursor-pointer items-start gap-2">
+                  <input
+                    type="checkbox"
+                    data-testid="rail-pin-hidden"
+                    checked={railPinHidden}
+                    onChange={(e) => {
+                      setConfig({ railPinHidden: e.target.checked });
+                      if (e.target.checked) {
+                        useStore.getState().setRailState("collapsed");
+                      }
+                      void saveAppConfig();
+                    }}
+                    className="mt-0.5"
+                  />
+                  <span>
+                    <span className="block text-sm text-[var(--app-text)]">
+                      固定隐藏左边栏
+                    </span>
+                    <span className="block text-xs text-[var(--app-text-3)]">
+                      隐藏后鼠标滑入触发区也不显示，左侧箭头彻底消失；取消固定后箭头恢复，滑入自动显示
+                    </span>
+                  </span>
+                </label>
+              </section>
+
               <section>
                 <h2 className="mb-2 text-sm font-medium text-[var(--app-text-strong)]">
                   行宽

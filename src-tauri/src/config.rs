@@ -86,6 +86,10 @@ pub struct AppConfig {
     /// 缺省 = None，消费端回落到 `--type-font-sans`（#854 应用）。
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub heading_fonts: Option<HeadingFonts>,
+    /// 左边栏固定隐藏（C3 / D14）：隐藏后箭头热区一并收起，滑入不唤出。
+    /// `default` + `skip_serializing_if` 让老配置仍能读、新配置不多出空字段。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rail_pin_hidden: Option<bool>,
 }
 
 /// 轮盘位置（ui-polish-batch15 2.1）：中键拖动后的圆心坐标（屏内像素）。
@@ -199,6 +203,7 @@ impl Default for AppConfig {
             roulette_position: None,
             notice_duration: None,
             heading_fonts: None,
+            rail_pin_hidden: None,
             sidebar_left_visible: Some(true),
             sidebar_right_visible: Some(false),
             sidebar_left_width: Some(220.0),
@@ -1369,6 +1374,29 @@ mod tests {
             card_height: Some(200.0),
         });
         assert!(validate_config(&config).is_err());
+    }
+
+    #[test]
+    fn rail_pin_hidden_round_trips_and_defaults_for_old_configs() {
+        let dir = temp_base("rail_pin_hidden");
+        let base = dir.path();
+
+        write_user(base, r#"{"theme":"dark"}"#);
+        assert_eq!(load_config_at(base).unwrap().rail_pin_hidden, None);
+
+        let mut config = AppConfig::default();
+        config.rail_pin_hidden = Some(true);
+        save_config_at(base, &config).unwrap();
+        let user = read_user(base);
+        assert!(
+            user.contains("railPinHidden"),
+            "user 层应含 railPinHidden: {user}"
+        );
+        assert_eq!(load_config_at(base).unwrap().rail_pin_hidden, Some(true));
+
+        config.rail_pin_hidden = Some(false);
+        save_config_at(base, &config).unwrap();
+        assert_eq!(load_config_at(base).unwrap().rail_pin_hidden, Some(false));
     }
 
     #[test]

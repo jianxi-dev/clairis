@@ -70,6 +70,7 @@ interface RustAppConfig {
   noticeDuration?: number | null;
   htmlToolbarItems?: string[] | null;
   paneLayout?: string | null;
+  railPinHidden?: boolean | null;
   railViewSpec?: {
     layout: string | null;
     density: string | null;
@@ -165,6 +166,7 @@ export async function saveAppConfig(): Promise<void> {
     htmlToolbarItems: es.config.htmlToolbarItems ?? null,
     // 读实时值：本次会话分裂/调整的比例要能持久化
     paneLayout: useStore.getState().paneLayoutJson(),
+    railPinHidden: es.config.railPinHidden ?? null,
     // 阅读空间栏「设为默认」规格（layout-portal 6.1）
     railViewSpec: useStore.getState().railViewSpec,
     // 悬浮预览窗双轨开关（layout-portal 8.1）
@@ -383,6 +385,7 @@ function applyRustConfig(raw: RustAppConfig): void {
         : null,
     noticeDuration: normalizeNoticeDuration(raw.noticeDuration),
     htmlToolbarItems: normalizeHtmlToolbarItems(raw.htmlToolbarItems),
+    railPinHidden: raw.railPinHidden ?? false,
   };
 
   const es = useEditorStore.getState();

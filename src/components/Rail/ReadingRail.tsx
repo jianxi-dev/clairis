@@ -799,6 +799,7 @@ export default function ReadingRail({
   const pinnedPaths = useStore((s) => s.pinnedPaths);
   const togglePinnedPath = useStore((s) => s.togglePinnedPath);
   const configLoaded = useEditorStore((s) => s.configLoaded);
+  const railPinHidden = useEditorStore((s) => s.config.railPinHidden ?? false);
 
   const setRailState = useStore((s) => s.setRailState);
   const toggleRailPin = useStore((s) => s.toggleRailPin);
@@ -1663,6 +1664,7 @@ export default function ReadingRail({
     </div>
   );
 
+  if (railPinHidden) return null;
   if (readingMode && railState !== "pinned") return null;
 
   const collapsed = (
