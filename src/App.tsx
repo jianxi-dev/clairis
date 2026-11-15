@@ -466,6 +466,8 @@ function App() {
 
       // Cmd+Shift+X: 左边栏固定隐藏 / 取消（C3 / D14）。隐藏后箭头热区收起，滑入不唤出。
       if (meta && e.shiftKey && e.key.toLowerCase() === "x") {
+        // 设置场景是覆盖层：底下 rails 不可见，静默改隐藏态用户无从察觉（对抗复审 #924 越界）。
+        if (store.scene === "settings") return;
         e.preventDefault();
         const es = useEditorStore.getState();
         const next = !(es.config.railPinHidden ?? false);
@@ -474,7 +476,6 @@ function App() {
         void saveAppConfig();
         return;
       }
-
 
       // 门户/网格是覆盖层：底下的编辑器不可见，快捷键作用上去用户看不见后果
       // （⌘W 关掉隐藏页签、⌘B 改隐藏文档……）。这里只放行不触碰隐藏状态的键。
