@@ -89,23 +89,42 @@ test.describe("移动到图标与打开文件位置去重（A-13.1）", () => {
   });
 });
 
-test.describe("导出二级 hover 展开并保持（A-13.2 / A-13.3）", () => {
-  test("hover 导出即出现二级，移出父项后仍为 1", async ({ page }) => {
+test.describe("导出二级 hover 展开与并集收起（#910 supersede A-13.3）", () => {
+  test("进入导出行出现二级；并集内保持，移出并集后收起", async ({ page }) => {
     await boot(page);
     await openTabMenu(page);
 
     const submenu = page.locator('[data-testid="pane-export-submenu"]');
-    expect(await submenu.count()).toBe(0);
+    await expect(submenu).toHaveCount(0);
 
     // 只 hover、不点击：父项一滑入就展开。
-    await page.locator('[data-menu-item="export"]').hover();
+    const exportRow = page.locator('[data-menu-item="export"]');
+    await exportRow.hover();
     await expect(submenu).toHaveCount(1);
     await shot(page, "export-submenu-open");
 
-    // 指针移出父项（落到同级「打印」上）后，已展开的二级仍保持可见。
-    await page.locator('[data-menu-item="print"]').hover();
+    // 指针进入二级面板（并集内）→ 保持
+    await submenu.locator('[role="menuitem"]').first().hover();
     await expect(submenu).toHaveCount(1);
-    await shot(page, "export-submenu-persist");
+
+    // 移出「导出行 ∪ 二级面板」并集（落到同级打印行）→ 收起
+    await page.locator('[data-menu-item="print"]').hover();
+    await expect(submenu).toHaveCount(0);
+    await shot(page, "export-submenu-closed");
+  });
+
+  test("菜单项悬停不出现原生 title 矩形（#910）", async ({ page }) => {
+    await boot(page);
+    await openTabMenu(page);
+    const item = page.locator('[data-menu-item="export"]');
+    const original = await item.getAttribute("title");
+    expect(original, "打印行缺 title，用例失效").toBeTruthy();
+
+    await item.hover();
+    await expect
+      .poll(() => item.getAttribute("title"), { timeout: 3000 })
+      .toBeNull();
+    await expect(page.locator(".app-tip")).toHaveCount(0);
   });
 
   test("点击导出仍打开二级（回归）", async ({ page }) => {

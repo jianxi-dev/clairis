@@ -228,6 +228,7 @@ export default function TabBar({
 
   const [menu, setMenu] = useState<CtxMenu | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
+  const exportCloseTimer = useRef<number | null>(null);
   const [submenuSide, setSubmenuSide] = useState<"left" | "right">("left");
   const [submenuAlignTop, setSubmenuAlignTop] = useState(true);
   const exportSubmenuRef = useRef<HTMLDivElement>(null);
@@ -299,9 +300,29 @@ export default function TabBar({
   );
 
   const closeMenu = useCallback(() => {
+    if (exportCloseTimer.current !== null) {
+      window.clearTimeout(exportCloseTimer.current);
+      exportCloseTimer.current = null;
+    }
     setMenu(null);
     setExportOpen(false);
   }, []);
+
+  // 导出子菜单收起条件 = 指针离开「导出行 ∪ 二级面板」并集（#910）。
+  // 二级是导出行 DOM 的后代（绝对定位），父级 pointerleave 即并集语义。
+  const cancelExportClose = useCallback(() => {
+    if (exportCloseTimer.current !== null) {
+      window.clearTimeout(exportCloseTimer.current);
+      exportCloseTimer.current = null;
+    }
+  }, []);
+  const scheduleExportClose = useCallback(() => {
+    cancelExportClose();
+    exportCloseTimer.current = window.setTimeout(() => {
+      exportCloseTimer.current = null;
+      setExportOpen(false);
+    }, 120);
+  }, [cancelExportClose]);
 
   // 就地子菜单靠右时默认向左展开；左缘放不下则翻到右侧，下缘放不下则底对齐。
   useLayoutEffect(() => {
@@ -697,7 +718,12 @@ export default function TabBar({
           />
           {/* hover 父项即展开二级，且移出父项后保持可见（A-13.2 / A-13.3）；
               点击只负责打开，不再切换关闭——否则 hover 刚展开就被同一次点击关掉。 */}
-          <div data-export-row className="relative">
+          <div
+            data-export-row
+            className="relative"
+            onPointerEnter={cancelExportClose}
+            onPointerLeave={scheduleExportClose}
+          >
             <button
               data-menu-item="export"
               aria-haspopup="menu"
