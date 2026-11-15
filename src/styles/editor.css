@@ -2741,6 +2741,25 @@ html[data-tab-drag="true"] body * {
   margin-top: 8px;
 }
 
+/* 「恢复默认」（D16 / C5）：与色板行同宽（100%），取设计系统语义色。 */
+.cm-block-menu-color-panel .cm-color-reset {
+  width: 100%;
+  height: 28px;
+  margin-top: 8px;
+  padding: 0 8px;
+  border: 1px solid var(--app-border);
+  border-radius: var(--radius-4);
+  background: transparent;
+  color: var(--app-text-2);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.cm-block-menu-color-panel .cm-color-reset:hover {
+  background: var(--app-sunken);
+}
+
 .cm-block-menu-chevron {
   margin-inline-start: auto;
   font-size: 15px;
