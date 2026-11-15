@@ -63,3 +63,31 @@ describe("IconDef 双字段契约", () => {
     expect(ICONS.subtitle.s).not.toBe(ICONS.keyboardHints.s);
   });
 });
+
+// IconDef 可能把子路径放在 parts 而非 d/s，去重要覆盖两种存法。
+function pathsOf(def: IconDef): string[] {
+  const parts = def.parts ?? [{ d: def.d, s: def.s }];
+  return parts.flatMap((part) =>
+    [part.d, part.s].filter((v): v is string => !!v),
+  );
+}
+
+describe("播放角标与截图/视频文件型不复用图形", () => {
+  it("播放（play）是独立实心三角，与截图（camera）无相同子路径", () => {
+    const play = pathsOf(ICONS.play);
+    const camera = pathsOf(ICONS.camera);
+    expect(play).toHaveLength(1);
+    expect(play[0].trim().length).toBeGreaterThan(0);
+    for (const d of play) {
+      expect(camera, "播放角标不得复用截图图形").not.toContain(d);
+    }
+  });
+
+  it("播放 / 截图 / 视频文件型三者两两不同形", () => {
+    const play = pathsOf(ICONS.play);
+    const camera = pathsOf(ICONS.camera);
+    const video = pathsOf(ICONS.video);
+    const all = [...play, ...camera, ...video];
+    expect(new Set(all).size, "不同概念复用了同一条 path").toBe(all.length);
+  });
+});

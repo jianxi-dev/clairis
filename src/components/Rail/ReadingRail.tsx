@@ -215,7 +215,7 @@ function RailThumb({ descriptor }: { descriptor: ThumbDescriptor }) {
         className="rail-thumb shrink-0"
       >
         <span className="rail-thumb-play">
-          <Icon name="video" size={24} color="var(--app-surface)" />
+          <Icon name="play" size={24} color="var(--app-surface)" />
         </span>
         {showVideo && mediaReady && (
           <video
