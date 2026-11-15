@@ -3040,6 +3040,10 @@ html[data-tab-drag="true"] body * {
   clip-path: polygon(0 100%, 22% 0, 100% 0, 100% 100%);
 }
 
+.width-bar.is-active {
+  background: var(--app-accent);
+}
+
 .width-bar.is-active .width-bar-fill {
   opacity: 1;
 }
@@ -3047,6 +3051,7 @@ html[data-tab-drag="true"] body * {
 .width-slider {
   width: 78%;
   align-self: center;
+  accent-color: var(--app-accent);
 }
 
 /* ── 选区轮盘（selection-roulette）────────────────────────── */
