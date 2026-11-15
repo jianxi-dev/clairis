@@ -30,9 +30,9 @@ async function openVisual(page: Page): Promise<FrameLocator> {
     win.__biaoyue_openFile__("/tmp/undo/doc.html", content, "doc.html");
     win.__biaoyue_store__.getState().setEditorMode("edit");
   }, DOC);
-  const iframe = page.locator('iframe[title="HTML 可视化编辑"]');
+  const iframe = page.locator('[data-testid="html-visual-editor"]');
   await expect(iframe).toHaveCount(1);
-  return page.frameLocator('iframe[title="HTML 可视化编辑"]');
+  return page.frameLocator('[data-testid="html-visual-editor"]');
 }
 
 function content(page: Page): Promise<string> {

@@ -205,7 +205,7 @@ test("HTML 可视化编辑态工具条按钮集合不变", async ({ page }) => {
     win.__biaoyue_store__.getState().setEditorMode("edit");
   });
   await page.waitForTimeout(700);
-  const frame = page.frameLocator('iframe[title="HTML 可视化编辑"]');
+  const frame = page.frameLocator('[data-testid="html-visual-editor"]');
   await frame.locator("p").first().click();
   const bar = page.locator('.html-edit-toolbar[data-cm-node-kind="text"]');
   await expect(bar).toBeVisible({ timeout: 3000 });
@@ -276,7 +276,7 @@ test("证据：四态截图", async ({ page }) => {
     win.__biaoyue_store__.getState().setEditorMode("edit");
   });
   await page.waitForTimeout(700);
-  const frame = page.frameLocator('iframe[title="HTML 可视化编辑"]');
+  const frame = page.frameLocator('[data-testid="html-visual-editor"]');
   await frame.locator("p").first().click();
   await expect(
     page.locator('.html-edit-toolbar[data-cm-node-kind="text"]'),

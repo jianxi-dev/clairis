@@ -26,8 +26,10 @@ async function openVisual(page: Page) {
     win.__biaoyue_openFile__("/tmp/kind/doc.html", content, "doc.html");
     win.__biaoyue_store__.getState().setEditorMode("edit");
   }, DOC);
-  await expect(page.locator('iframe[title="HTML 可视化编辑"]')).toHaveCount(1);
-  return page.frameLocator('iframe[title="HTML 可视化编辑"]');
+  await expect(page.locator('[data-testid="html-visual-editor"]')).toHaveCount(
+    1,
+  );
+  return page.frameLocator('[data-testid="html-visual-editor"]');
 }
 
 async function content(page: Page): Promise<string> {

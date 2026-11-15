@@ -25,8 +25,10 @@ async function openVisual(page: Page) {
     win.__biaoyue_openFile__("/tmp/tb/doc.html", content, "doc.html");
     win.__biaoyue_store__.getState().setEditorMode("edit");
   }, DOC);
-  await expect(page.locator('iframe[title="HTML 可视化编辑"]')).toHaveCount(1);
-  return page.frameLocator('iframe[title="HTML 可视化编辑"]');
+  await expect(page.locator('[data-testid="html-visual-editor"]')).toHaveCount(
+    1,
+  );
+  return page.frameLocator('[data-testid="html-visual-editor"]');
 }
 
 /** 取当前页签的 content——工具条的改动都折算到这里 */
@@ -183,10 +185,10 @@ test.describe("HTML 工具条当前值与图标化（editor-surface-batch17 8.1�
       win.__biaoyue_openFile__("/tmp/tb/rich.html", doc, "rich.html");
       win.__biaoyue_store__.getState().setEditorMode("edit");
     }, RICH_DOC);
-    await expect(page.locator('iframe[title="HTML 可视化编辑"]')).toHaveCount(
-      1,
-    );
-    return page.frameLocator('iframe[title="HTML 可视化编辑"]');
+    await expect(
+      page.locator('[data-testid="html-visual-editor"]'),
+    ).toHaveCount(1);
+    return page.frameLocator('[data-testid="html-visual-editor"]');
   }
 
   test("选中文字：背景色/字体族各 1，字号 value=16px，截图与文字标签 0", async ({

@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Locator, type Page } from "@playwright/test";
 
 /**
  * 悬停提示规则（#634 / #763）：
@@ -89,4 +89,88 @@ test("视频浮层按钮不再叠加 ArtPlayer 原生提示", async ({ page }) =
   await expect(playlist).not.toHaveClass(/hint--/);
   await expect(playlist).not.toHaveAttribute("aria-label", /播放列表/);
   await expect(page.locator(".app-tip")).toHaveCount(0);
+});
+
+interface Box {
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
+}
+
+async function boxOf(locator: Locator): Promise<Box> {
+  return locator.evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    return { left: r.left, right: r.right, top: r.top, bottom: r.bottom };
+  });
+}
+
+test("弹层打开期间不放行原生 title：菜单项 title 被接管", async ({ page }) => {
+  await boot(page);
+  const tab = page.locator("[data-tab-id]").first();
+  await tab.click({ button: "right" });
+  const menu = page.locator("[data-tab-menu]");
+  await expect(menu).toBeVisible();
+
+  const exportItem = menu.locator('[data-menu-item="export"]');
+  await exportItem.hover();
+  // 弹层打开期间原生 title 被摘除，系统矩形无从出现；且不补胶囊。
+  await expect(exportItem).not.toHaveAttribute("title", /.+/);
+  await expect(page.locator(".app-tip")).toHaveCount(0);
+
+  // 关闭菜单后：aria-expanded 控件同样被接管——自绘胶囊出现、原生 title 摘除。
+  await page.keyboard.press("Escape");
+  await expect(menu).toHaveCount(0);
+  const outline = page.getByTestId("outline-btn");
+  await outline.hover();
+  const tip = page.locator(".app-tip");
+  await expect(tip).toBeVisible({ timeout: 3000 });
+  await expect(tip.locator(".app-tip__text")).toHaveText("大纲");
+  await expect(outline).not.toHaveAttribute("title", /.+/);
+});
+
+test("状态栏右侧按钮提示出现在图标正上方（水平居中 ±4px）", async ({
+  page,
+}) => {
+  await boot(page);
+  const btn = page.getByTestId("home-entry");
+  await btn.hover();
+  const tip = page.locator(".app-tip");
+  await expect(tip).toBeVisible({ timeout: 3000 });
+  await expect(tip).toHaveClass(/app-tip--above/);
+
+  const [t, b] = await Promise.all([boxOf(tip), boxOf(btn)]);
+  expect(t.bottom).toBeLessThanOrEqual(b.top + 1);
+  const dx = Math.abs((t.left + t.right) / 2 - (b.left + b.right) / 2);
+  expect(dx).toBeLessThanOrEqual(4);
+});
+
+test("视口左侧控件提示优先上/下，不左右弹", async ({ page }) => {
+  await boot(page);
+  await page.getByTestId("status-lines").hover();
+  const tip = page.locator(".app-tip");
+  await expect(tip).toBeVisible({ timeout: 3000 });
+  const cls = (await tip.getAttribute("class")) ?? "";
+  expect(cls).toMatch(/app-tip--(above|below)/);
+  expect(cls).not.toMatch(/app-tip--(left|right)/);
+});
+
+test("页签信息窗响应时间跟随全局「提示时长」", async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    const w = window as unknown as Record<string, unknown>;
+    const store = w.__biaoyue_editor_store__ as {
+      getState: () => {
+        setConfig: (patch: { noticeDuration: number }) => void;
+      };
+    };
+    store.getState().setConfig({ noticeDuration: 1.0 });
+  });
+
+  const info = page.getByTestId("tab-info-popover");
+  await page.locator("[data-tab-id]").first().hover();
+  await page.waitForTimeout(900);
+  await expect(info).toHaveCount(0);
+  await page.waitForTimeout(200);
+  await expect(info).toBeVisible({ timeout: 3000 });
 });

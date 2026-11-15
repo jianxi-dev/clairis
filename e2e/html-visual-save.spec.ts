@@ -26,9 +26,9 @@ async function openVisual(page: Page) {
     },
     { p: PATH, c: DOC },
   );
-  const iframe = page.locator('iframe[title="HTML 可视化编辑"]');
+  const iframe = page.locator('[data-testid="html-visual-editor"]');
   await expect(iframe).toHaveCount(1);
-  return page.frameLocator('iframe[title="HTML 可视化编辑"]');
+  return page.frameLocator('[data-testid="html-visual-editor"]');
 }
 
 function saves(page: Page): Promise<number> {

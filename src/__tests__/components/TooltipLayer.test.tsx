@@ -84,7 +84,7 @@ describe("TooltipLayer 悬停提示规则", () => {
     expect(tipText()).toBe("普通提示");
   });
 
-  it("菜单触发按钮不显示提示", () => {
+  it("菜单触发按钮接管 title：出现自绘胶囊且原生 title 被摘除", () => {
     render(<TooltipLayer />);
     const btn = makeButton({ title: "更多操作", "aria-haspopup": "menu" });
     hover(btn);
@@ -92,11 +92,11 @@ describe("TooltipLayer 悬停提示规则", () => {
     act(() => {
       vi.advanceTimersByTime(DELAY_MS);
     });
-    expect(tipText()).toBeNull();
-    expect(btn.getAttribute("title")).toBe("更多操作");
+    expect(tipText()).toBe("更多操作");
+    expect(btn.getAttribute("title")).toBeNull();
   });
 
-  it("aria-expanded 与显式 data-no-tip 同样抑制提示", () => {
+  it("aria-expanded 与显式 data-no-tip 同样被接管（不绕过自绘）", () => {
     render(<TooltipLayer />);
     const expanded = makeButton({
       title: "大纲",
@@ -108,13 +108,15 @@ describe("TooltipLayer 悬停提示规则", () => {
     act(() => {
       vi.advanceTimersByTime(DELAY_MS);
     });
-    expect(tipText()).toBeNull();
+    expect(tipText()).toBe("大纲");
+    expect(expanded.getAttribute("title")).toBeNull();
 
     hover(optedOut);
     act(() => {
       vi.advanceTimersByTime(DELAY_MS);
     });
-    expect(tipText()).toBeNull();
+    expect(tipText()).toBe("页面宽度");
+    expect(optedOut.getAttribute("title")).toBeNull();
   });
 
   it("指针离开会在延迟到达前取消提示", () => {

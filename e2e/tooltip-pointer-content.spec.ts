@@ -219,7 +219,7 @@ test("图标+文字菜单项「复制」提示仅快捷键，箭头指向触发�
   await shot(page, "tip-shortcut-only");
 });
 
-test("顶栏按钮提示下弹、箭头朝上（方位规则回归）", async ({ page }) => {
+test("底部状态栏按钮提示上弹、箭头朝下（方位规则回归）", async ({ page }) => {
   await boot(page, "/tmp/tip-below.md", "第一段正文\n");
   const home = page.getByTestId("home-entry");
   await home.hover();
@@ -227,7 +227,7 @@ test("顶栏按钮提示下弹、箭头朝上（方位规则回归）", async ({
   await expect(tip).toBeVisible({ timeout: 3000 });
   await expect(tip.locator(".app-tip__text")).not.toBe("");
   await expectArrowToward(home);
-  await shot(page, "tip-arrow-below");
+  await shot(page, "tip-arrow-above-statusbar");
   await page.mouse.move(5, 5);
   await expect(tip).toHaveCount(0, { timeout: 3000 });
 });

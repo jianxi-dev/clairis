@@ -15,7 +15,9 @@ async function openVisual(page: Page): Promise<void> {
     win.__biaoyue_openFile__("/tmp/rz/doc.html", content, "doc.html");
     win.__biaoyue_store__.getState().setEditorMode("edit");
   }, DOC);
-  await expect(page.locator('iframe[title="HTML 可视化编辑"]')).toHaveCount(1);
+  await expect(page.locator('[data-testid="html-visual-editor"]')).toHaveCount(
+    1,
+  );
 }
 
 function content(page: Page): Promise<string> {
@@ -37,7 +39,7 @@ function visualFrame(page: Page): Frame {
 
 test("选中区块后拖右下角手柄调整宽高", async ({ page }) => {
   await openVisual(page);
-  const frame = page.frameLocator('iframe[title="HTML 可视化编辑"]');
+  const frame = page.frameLocator('[data-testid="html-visual-editor"]');
   await frame.locator("div").first().click();
 
   const handle = page.locator('[data-testid="html-resize-se"]');

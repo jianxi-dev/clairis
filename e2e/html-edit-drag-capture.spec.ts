@@ -26,7 +26,9 @@ async function openVisual(page: Page) {
     win.__biaoyue_openFile__("/tmp/dc/doc.html", content, "doc.html");
     win.__biaoyue_store__.getState().setEditorMode("edit");
   }, DOC);
-  await expect(page.locator('iframe[title="HTML 可视化编辑"]')).toHaveCount(1);
+  await expect(page.locator('[data-testid="html-visual-editor"]')).toHaveCount(
+    1,
+  );
   // tooltip 系统在 hover 时会把 iframe 的 title 转成 data-tip，按 title 选择器
   // 在首次悬停后就失效；改用 frame 列表按 URL 取。
   await expect

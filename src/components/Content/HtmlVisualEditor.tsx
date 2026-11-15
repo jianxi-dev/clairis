@@ -453,8 +453,9 @@ export default function HtmlVisualEditor({
         sandbox="allow-scripts"
         srcDoc={srcDoc}
         title="HTML 可视化编辑"
-        // 编辑面不是按钮：悬停提示会摘掉 title，既吵又让 a11y 名字失效。
-        data-no-tip
+        aria-label="HTML 可视化编辑"
+        // 稳定钩子：title 会被悬停提示系统摘除，e2e 不能按 title 选择。
+        data-testid="html-visual-editor"
         style={{
           width: "100%",
           height: "100%",
