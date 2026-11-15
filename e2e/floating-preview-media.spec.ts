@@ -1,6 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import path from "node:path";
+import { PREVIEW_DEFAULT_H } from "../src/lib/previewAnchor";
 
 const TALL_PNG =
   "data:image/png;base64," +
@@ -181,6 +182,74 @@ test("evidence: 视频底栏四态", async ({ page }) => {
   await page.locator('[data-testid="preview-close"]').click({ timeout: 2000 });
   await expect(preview).toHaveCount(0, { timeout: 2000 });
   await page.screenshot({ path: `${dir}/video-closed.png` });
+});
+
+test("[#909] 悬浮窗高度收紧、底部动作行图标上下留白 ≤ 刻度", async ({
+  page,
+}) => {
+  await boot(page);
+  await page.evaluate(() => {
+    const w = window as unknown as {
+      __biaoyue_openFile__: (p: string, c: string, t: string) => void;
+      __biaoyue_store__: {
+        getState: () => { setRailDensity: (d: string) => void };
+      };
+    };
+    for (let i = 1; i <= 4; i += 1) {
+      w.__biaoyue_openFile__(
+        `/tmp/fp/doc${i}.md`,
+        `# 文件${i}\n\n正文。`,
+        `文件${i}`,
+      );
+    }
+    w.__biaoyue_store__.getState().setRailDensity("compact");
+  });
+  await page.waitForTimeout(300);
+
+  const edge = page.locator('[data-testid="rail-edge"]');
+  if (await edge.isVisible().catch(() => false)) await edge.hover();
+  const panel = page.locator('[data-testid="rail-panel"]');
+  await panel.waitFor({ timeout: 5000 });
+  await page.locator('[data-testid="rail-pin"]').click();
+  await expect(panel).toHaveAttribute("data-rail-state", "pinned");
+
+  const row = page.locator('[data-section="recent"] [data-testid="rail-item"]');
+  const rb = (await row.first().boundingBox())!;
+  await page.mouse.move(rb.x + rb.width - 20, rb.y + rb.height / 2);
+  const preview = page.locator('[data-testid="floating-preview"]');
+  await expect(preview).toBeVisible({ timeout: 3000 });
+  await page.waitForTimeout(200);
+
+  const winBox = (await preview.boundingBox())!;
+  expect(winBox.height).toBe(PREVIEW_DEFAULT_H);
+  expect(winBox.height).toBeLessThan(300);
+
+  await page.mouse.move(
+    winBox.x + winBox.width / 2,
+    winBox.y + winBox.height - 8,
+  );
+  const actions = page.locator('[data-testid="preview-actions"]');
+  await expect(actions).toBeVisible({ timeout: 2000 });
+  await page.waitForTimeout(150);
+
+  const m = await page.evaluate(() => {
+    const bar = document.querySelector(
+      '[data-testid="preview-actions"]',
+    ) as HTMLElement;
+    const br = bar.getBoundingClientRect();
+    const btn = bar.querySelector(
+      '[data-testid="preview-action"]',
+    ) as HTMLElement;
+    const sr = btn.querySelector("svg")!.getBoundingClientRect();
+    return {
+      barH: br.height,
+      iconTop: sr.top - br.top,
+      iconBottom: br.bottom - sr.bottom,
+    };
+  });
+  expect(m.barH).toBeLessThan(28);
+  expect(m.iconTop).toBeLessThanOrEqual(6);
+  expect(m.iconBottom).toBeLessThanOrEqual(6);
 });
 
 test("[#899] 视频浮层预览以取帧模式加载", async ({ page }) => {

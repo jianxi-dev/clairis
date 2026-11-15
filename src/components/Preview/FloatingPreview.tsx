@@ -785,7 +785,7 @@ export default function FloatingPreview({
           data-testid="preview-actions"
           onPointerEnter={() => setActionsVisible(true)}
           onPointerLeave={() => setActionsVisible(false)}
-          className="absolute bottom-0 left-0 right-0 z-10 flex items-center gap-0.5 border-t border-[var(--app-border)] bg-[var(--app-surface)] py-1 pr-2 text-[11px]"
+          className="absolute bottom-0 left-0 right-0 z-10 flex items-center gap-0.5 border-t border-[var(--app-border)] bg-[var(--app-surface)] py-0.5 pr-2 text-[11px]"
           style={{ paddingLeft: 24 }}
         >
           <button

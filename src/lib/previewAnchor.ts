@@ -26,7 +26,7 @@ export const PREVIEW_LEAVE_CLOSE_MS = 180;
 
 /** 首次打开预览窗的默认尺寸（均大于最小值）。 */
 export const PREVIEW_DEFAULT_W = 320;
-export const PREVIEW_DEFAULT_H = 300;
+export const PREVIEW_DEFAULT_H = 260;
 
 /**
  * 阅读空间唤出的预览窗宽度：上一版基准宽（PREVIEW_DEFAULT_W）+ 一个卡片缩略图宽。
