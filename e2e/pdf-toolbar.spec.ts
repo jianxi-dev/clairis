@@ -133,7 +133,7 @@ test("切换文档后按钮栏恢复默认，无残留", async ({ page }) => {
     "# 标题\n\n正文。",
     "切换文档.md",
   );
-  await page.locator('[data-tab-id][title="doc.pdf"]').click();
+  await page.locator('[data-tab-id][aria-label="doc.pdf"]').click();
   await openPdf(page);
 
   expect(await toolbarDisplay(page)).not.toBe("none");

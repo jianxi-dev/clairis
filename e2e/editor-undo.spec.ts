@@ -164,7 +164,7 @@ test("撤销不跨页签：A 编辑后切到 B，撤销不动 B 的内容", asyn
   await ensureEditMode(page);
 
   // 切回 A 编辑
-  await page.locator('[data-tab-id][title="a.md"]').click();
+  await page.locator('[data-tab-id][aria-label="a.md"]').click();
   const cm = page.locator(".cm-content");
   await expect(cm).toContainText("A 内容");
   await cm.click();
@@ -174,7 +174,7 @@ test("撤销不跨页签：A 编辑后切到 B，撤销不动 B 的内容", asyn
     .toContain("AAA");
 
   // 切到 B 后撤销：B 的历史是空的，内容不该变成 A 的
-  await page.locator('[data-tab-id][title="b.md"]').click();
+  await page.locator('[data-tab-id][aria-label="b.md"]').click();
   await expect(cm).toContainText("B 内容");
   await cm.click();
   await page.keyboard.press(`${MOD}+z`);
