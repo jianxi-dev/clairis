@@ -120,7 +120,7 @@ test("拖动页签换位：顺序严格等于落点；Esc 取消不留占位", a
 
   const stripTabs = page.locator('[data-pane-id="main"] [data-tab-id]');
   const before = await tabOrder(page, "main");
-  const firstTitle = (await stripTabs.nth(0).getAttribute("title")) ?? "";
+  const firstTitle = (await stripTabs.nth(0).getAttribute("aria-label")) ?? "";
   const first = await stripTabs.nth(0).boundingBox();
   const last = await stripTabs.nth(2).boundingBox();
   if (!first || !last) throw new Error("页签不可测量");
@@ -306,9 +306,9 @@ test("双击页签名改名：回车提交、Esc 取消、路径不变", async (
   await expect(input).toBeVisible();
   await input.fill("新名字");
   await input.press("Enter");
-  // 胶囊提示层悬停期间把 title 暂移到 data-tip；移开指针后还原再断言
+  // 页签名不再挂原生 title（改为信息窗），Accessible name 用 aria-label
   await page.mouse.move(10, 10);
-  await expect(tab).toHaveAttribute("title", "新名字");
+  await expect(tab).toHaveAttribute("aria-label", "新名字");
 
   const pathAfter = await page.evaluate(() => {
     const s = (
@@ -331,7 +331,7 @@ test("双击页签名改名：回车提交、Esc 取消、路径不变", async (
   await page.getByTestId("tab-title-input").press("Escape");
   await expect(page.getByTestId("tab-title-input")).toHaveCount(0);
   await page.mouse.move(10, 10);
-  await expect(tab).toHaveAttribute("title", "新名字");
+  await expect(tab).toHaveAttribute("aria-label", "新名字");
 });
 
 test("栏目右上角图标整组默认隐藏，滑入操作区显示", async ({ page }) => {

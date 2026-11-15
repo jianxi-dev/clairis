@@ -1330,6 +1330,85 @@ body {
   min-height: 27px;
 }
 
+/* ── 页签名下拉信息窗（batch19 B7 / R-14）：外壳复用 --tip-shell-radius ── */
+.tab-info {
+  position: fixed;
+  z-index: 4000;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: min(360px, calc(100vw - 16px));
+  padding: 10px 12px;
+  border: 1px solid var(--app-border);
+  border-radius: var(--tip-shell-radius);
+  background: var(--app-surface);
+  color: var(--app-text);
+  box-shadow: var(--app-shadow);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.tab-info__row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.tab-info__type,
+.tab-info__icon {
+  flex: none;
+  color: var(--app-text-3);
+}
+
+.tab-info__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--app-text-strong);
+}
+
+.tab-info__path {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2px;
+  min-width: 0;
+  color: var(--app-accent);
+}
+
+.tab-info__seg {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.tab-info__layer {
+  padding: 0 2px;
+  border: none;
+  background: transparent;
+  color: var(--app-accent);
+  font: inherit;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.tab-info__layer:hover {
+  text-decoration: underline;
+  background: var(--app-sunken);
+}
+
+.tab-info__sep {
+  color: var(--app-text-3);
+}
+
+.tab-info__time {
+  color: var(--app-text-2);
+  white-space: nowrap;
+}
+
 html[data-tab-drag="true"] body,
 html[data-tab-drag="true"] body * {
   user-select: none !important;

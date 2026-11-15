@@ -8,9 +8,11 @@ import {
   useLayoutEffect,
   useRef,
   Fragment,
+  type MouseEvent as ReactMouseEvent,
 } from "react";
 import { createPortal } from "react-dom";
 import { useStore } from "../stores";
+import TabInfoPopover from "./TabInfoPopover";
 import {
   isMediaMuted,
   subscribeMediaMute,
@@ -243,6 +245,47 @@ export default function TabBar({
     [],
   );
 
+  // 页签名信息窗：滑入满 260ms 弹出；指针移入信息窗则取消关闭计时。
+  const [infoAnchor, setInfoAnchor] = useState<{
+    tabId: string;
+    rect: { left: number; bottom: number; width: number };
+  } | null>(null);
+  const infoTimer = useRef<number | null>(null);
+  const clearInfoTimer = useCallback(() => {
+    if (infoTimer.current !== null) {
+      window.clearTimeout(infoTimer.current);
+      infoTimer.current = null;
+    }
+  }, []);
+  const closeInfo = useCallback(() => {
+    clearInfoTimer();
+    setInfoAnchor(null);
+  }, [clearInfoTimer]);
+  const scheduleInfoClose = useCallback(() => {
+    clearInfoTimer();
+    infoTimer.current = window.setTimeout(() => setInfoAnchor(null), 160);
+  }, [clearInfoTimer]);
+  const openInfo = useCallback(
+    (e: ReactMouseEvent<HTMLElement>, id: string) => {
+      // 拖拽中不弹：跟手 ghost 已占用指针，信息窗会干扰落点判断。
+      if (dragRef.current || document.documentElement.dataset.tabDrag != null)
+        return;
+      if (!tabs[id]?.path) return;
+      clearInfoTimer();
+      const rect = e.currentTarget.getBoundingClientRect();
+      infoTimer.current = window.setTimeout(() => {
+        infoTimer.current = null;
+        setInfoAnchor({
+          tabId: id,
+          rect: { left: rect.left, bottom: rect.bottom, width: rect.width },
+        });
+      }, 260);
+    },
+    [clearInfoTimer, tabs],
+  );
+
+  useEffect(() => () => clearInfoTimer(), [clearInfoTimer]);
+
   const handleContextMenu = useCallback(
     (e: React.MouseEvent, tabId: string) => {
       e.preventDefault();
@@ -371,6 +414,7 @@ export default function TabBar({
                     suppressClickRef.current = false;
                     return;
                   }
+                  closeInfo();
                   onSwitchTab(id);
                 }}
                 onPointerDown={
@@ -412,7 +456,9 @@ export default function TabBar({
                       }
                     : null),
                 }}
-                title={tab.title}
+                aria-label={tab.title}
+                onMouseEnter={(e) => openInfo(e, id)}
+                onMouseLeave={scheduleInfoClose}
                 onContextMenu={(e) => handleContextMenu(e, id)}
                 onDoubleClick={(e) => {
                   if ((e.target as HTMLElement).closest("button, input"))
@@ -515,6 +561,15 @@ export default function TabBar({
           </div>,
           document.body,
         )}
+
+      {infoAnchor && tabs[infoAnchor.tabId] && (
+        <TabInfoPopover
+          tab={tabs[infoAnchor.tabId]}
+          anchor={infoAnchor.rect}
+          onKeepOpen={clearInfoTimer}
+          onClose={closeInfo}
+        />
+      )}
 
       {/* Context menu */}
       {menu && (
