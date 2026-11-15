@@ -68,6 +68,7 @@ import {
 import { resolveScrollTarget } from "../../utils/scrollPosition";
 import { pickMediaForDocument } from "../../lib/mediaPicker";
 import { resolveDocMediaHref, resolveRelativeToDoc } from "../../lib/mediaUrl";
+import { HEADING_LEVELS } from "../../lib/headingFonts";
 import { buildAssetUrl } from "../../renderers";
 import { renderAllStatic } from "../../renderers/diagram/engine";
 import PreviewView from "./PreviewView";
@@ -416,15 +417,22 @@ export default function ContentArea({
 
   // 与 PreviewView 的 `.preview-content` 注入同一组变量，两个模式才会同貌。
   const headingColors = useEditorStore((s) => s.headingColors);
+  const headingFonts = useEditorStore((s) => s.config.headingFonts);
   const readerFontSize = useEditorStore((s) => s.config.readerFontSize);
   const readerWidth = useEditorStore((s) => s.config.readerWidth);
 
   const editorThemeVars = useMemo(() => {
     const vars: Record<string, string> = {};
     if (headingColors) {
-      for (const level of ["h1", "h2", "h3", "h4", "h5", "h6"] as const) {
+      for (const level of HEADING_LEVELS) {
         const color = headingColors[level];
         if (color) vars[`--heading-${level}`] = color;
+      }
+    }
+    // 标题字体（#854）：默认值即 --type-font-sans 栈，CSS 里回退到该 token。
+    if (headingFonts) {
+      for (const level of HEADING_LEVELS) {
+        vars[`--heading-${level}-font`] = headingFonts[level];
       }
     }
     if (readerFontSize) vars["--type-font-size"] = `${readerFontSize}px`;
@@ -433,7 +441,7 @@ export default function ContentArea({
       vars["--type-measure-wide"] = `${Math.min(readerWidth + 120, 1400)}px`;
     }
     return vars as React.CSSProperties;
-  }, [headingColors, readerFontSize, readerWidth]);
+  }, [headingColors, headingFonts, readerFontSize, readerWidth]);
 
   // Register preview scroll container for scroll position capture
   useEffect(() => {

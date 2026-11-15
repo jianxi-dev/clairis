@@ -353,6 +353,7 @@
   font-size: 1.75em;
   font-weight: 700;
   letter-spacing: 0.01em;
+  font-family: var(--heading-h1-font, var(--type-font-sans));
   color: var(--tone-1, var(--heading-h1, var(--reader-ink-strong)));
   margin-block: 0 0.9em;
 }
@@ -361,12 +362,14 @@
   font-size: 1.4em;
   font-weight: 700;
   letter-spacing: 0.005em;
+  font-family: var(--heading-h2-font, var(--type-font-sans));
   color: var(--tone-1, var(--heading-h2, var(--reader-ink-strong)));
   margin-block: 1.9em 0.75em;
 }
 
 .preview-content h3 {
   font-size: 1.2em;
+  font-family: var(--heading-h3-font, var(--type-font-sans));
   color: var(--tone-2, var(--heading-h3, var(--reader-ink-strong)));
   line-height: 1.4;
   margin-block: 1.6em 0.6em;
@@ -374,6 +377,7 @@
 
 .preview-content h4 {
   font-size: 1.05em;
+  font-family: var(--heading-h4-font, var(--type-font-sans));
   color: var(--tone-2, var(--heading-h4, var(--reader-ink-strong)));
   line-height: 1.4;
   margin-block: 1.4em 0.5em;
@@ -381,6 +385,7 @@
 
 .preview-content h5 {
   font-size: 0.95em;
+  font-family: var(--heading-h5-font, var(--type-font-sans));
   color: var(--tone-3, var(--heading-h5, var(--reader-ink-2)));
   line-height: 1.4;
   margin-block: 1.4em 0.5em;
@@ -390,6 +395,7 @@
   font-size: 0.875em;
   font-weight: 600;
   letter-spacing: 0.04em;
+  font-family: var(--heading-h6-font, var(--type-font-sans));
   color: var(--tone-3, var(--heading-h6, var(--reader-ink-3)));
   line-height: 1.4;
   margin-block: 1.4em 0.5em;
