@@ -34,9 +34,10 @@ import {
   slashMenuSelectPrev,
   updateSlashMenuQuery,
   isSlashMenuOpen,
+  addHandleCommands,
 } from "../slash";
 
-import { renderIcon } from "../icons";
+import { renderIcon, ADD_ICON_NAME } from "../icons";
 import { parseCellBackground, sanitizeCellText } from "./cell-text";
 import { renderBlockDom } from "./block-dom";
 import {
@@ -732,10 +733,11 @@ function installTablePointer(view: EditorView): void {
         );
 
       const cellHandle = pick(".cm-table-cell-handle");
+      const cellAdd = pick(".cm-table-cell-add");
       const boundaryButton = pick(
         ".cm-table-boundary-delete, .cm-table-boundary-insert",
       );
-      if (!cellHandle && !boundaryButton) return;
+      if (!cellHandle && !cellAdd && !boundaryButton) return;
 
       event.preventDefault();
       event.stopPropagation();
@@ -764,7 +766,8 @@ function installTablePointer(view: EditorView): void {
       const cell = pick("td[data-row], th[data-row]");
       const row = Number(cell?.dataset.row ?? "-1");
       const col = Number(cell?.dataset.col ?? "-1");
-      if (cellHandle) widget.openCellMenuFor(view, row, col);
+      const anchor = cellHandle ?? cellAdd;
+      if (anchor) widget.openCellMenuFor(view, row, col, anchor);
     },
     true,
   );
@@ -883,9 +886,14 @@ class TableWidget extends WidgetType {
    * 定位路径——而不是把已填充的单元格路由到块菜单，后者的位置由 gutter 把手
    * 拥有，且在 widget 按压中重建时没有稳定锚点。
    */
-  openCellMenuFor(view: EditorView, row: number, col: number): void {
+  openCellMenuFor(
+    view: EditorView,
+    row: number,
+    col: number,
+    anchor: HTMLElement | null = null,
+  ): void {
     if (row < 0 || col < 0) return;
-    this.openCellMenu(view, row, col);
+    this.openCellMenu(view, row, col, anchor);
     // 委托的按压取消了默认焦点变化，所以把焦点还给编辑器——否则 Escape
     // 无法收起面板（#492）。
     view.focus();
@@ -907,38 +915,38 @@ class TableWidget extends WidgetType {
     this.addColumn(view, index);
   }
 
-  private openCellMenu(view: EditorView, row: number, col: number): void {
+  private openCellMenu(
+    view: EditorView,
+    row: number,
+    col: number,
+    anchor: HTMLElement | null,
+  ): void {
     flushDirtyTables(view);
     const block = this.currentBlock(view);
     const cell = block?.cells.find((c) => c.row === row && c.col === col);
     if (!cell) return;
     // 零宽锚点：菜单在单元格起点插入，锚范围是单元格正文，所以关闭菜单绝不会
-    // 吃掉单元格文本。GFM 单元格只有一行：块级命令（任务列表、高亮块、分割线、
-    // 嵌套表格、分栏、围栏代码）会被净化成单行并静默无操作，读起来像「勾了
-    // 菜单项，什么也没发生」（#470）。
-    // 锚到单元格里实际画出的把手，让面板总开在它旁边，而不是 `coordsAtPos`
-    // 恰好落下的位置（#492）。表头不渲染手柄（#739），这里只查 td。
-    const handleRect = view.dom
-      .querySelector<HTMLElement>(
-        `td[data-row="${row}"][data-col="${col}"] .cm-table-cell-handle`,
-      )
-      ?.getBoundingClientRect();
-    const anchorRect =
-      handleRect && handleRect.width > 0
+    // 吃掉单元格文本。项集直接用全局新增手柄的 `addHandleCommands`（A-9.3：
+    // 单元格菜单项集与全局菜单严格相等），不再另立一份；落点仍按单元格净化。
+    // 锚到实际画出的那个手柄（转换或新增），让面板总开在它旁边，而不是
+    // `coordsAtPos` 恰好落下的位置（#492）。
+    const anchorRect = anchor?.getBoundingClientRect();
+    const rect =
+      anchorRect && anchorRect.width > 0
         ? {
-            left: handleRect.left,
-            right: handleRect.right,
-            top: handleRect.top,
-            bottom: handleRect.bottom,
+            left: anchorRect.left,
+            right: anchorRect.right,
+            top: anchorRect.top,
+            bottom: anchorRect.bottom,
           }
         : undefined;
     openInsertMenu(
       view,
       cell.from,
-      getSlashCommands(),
+      addHandleCommands,
       { from: cell.from, to: cell.to },
-      "anchor",
-      anchorRect,
+      "cell",
+      rect,
     );
   }
 
@@ -1056,6 +1064,18 @@ class TableWidget extends WidgetType {
       handle.dataset.col = String(col);
       applyCellHandleState(handle, text);
       el.appendChild(handle);
+
+      // 单元格新增「+」（A-9.2）：与转换手柄并列，位于单元格内左边线内侧，
+      // 菜单项集与转换手柄、全局新增手柄三者相同（A-9.3）。
+      const add = document.createElement("div");
+      add.className = "cm-table-cell-add";
+      add.setAttribute("data-testid", "cm-table-cell-add");
+      add.dataset.row = String(row);
+      add.dataset.col = String(col);
+      add.title = "插入内容";
+      add.setAttribute("aria-label", "插入内容");
+      add.replaceChildren(renderIcon(ADD_ICON_NAME));
+      el.appendChild(add);
     }
 
     if (view) this.wireCell(view, el, handle, row, col);
@@ -1662,6 +1682,7 @@ class TableWidget extends WidgetType {
     // 永不因重建而丢失（#433）。
     scheduleTableFlush(this.view);
     releaseInsertMenu(this.view, "anchor");
+    releaseInsertMenu(this.view, "cell");
     releaseInsertMenu(this.view, "context");
     // 拆除运行在 CM6 update 内，所以同步 flush 会抛并丢失暂存文本。改为延后
     // （没有暂存时是 no-op）。

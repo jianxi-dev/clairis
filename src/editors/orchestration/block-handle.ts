@@ -518,14 +518,16 @@ class BlockHandlePlugin {
       );
       el.appendChild(icon);
 
-      // 右段拖拽把手：其余块用四点（DragOutlined）；图片 / 视频块用六点
-      // （DragHandleOutlined，A-8.1 与参考产品的六点拖拽一致）。拖拽监听挂在
-      // 整块手柄上，把手只是 affordance。
+      // 右段拖拽把手：其余块用四点（DragOutlined）；图片 / 视频块（A-8.1）与
+      // 表格块（A-9.1 表头转换手柄）用六点（DragHandleOutlined，与参考产品的
+      // 六点拖拽一致）。拖拽监听挂在整块手柄上，把手只是 affordance。
       const grip = document.createElement("span");
       grip.className = "cm-block-handle-grip";
       grip.appendChild(
         renderIcon(
-          block.type === "image" ? "DragHandleOutlined" : "DragOutlined",
+          block.type === "image" || block.type === "table"
+            ? "DragHandleOutlined"
+            : "DragOutlined",
         ),
       );
       el.appendChild(grip);
