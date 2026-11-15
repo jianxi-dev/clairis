@@ -73,7 +73,7 @@ function pathsOf(def: IconDef): string[] {
 }
 
 describe("播放角标与截图/视频文件型不复用图形", () => {
-  it("播放（play）是独立实心三角，与截图（camera）无相同子路径", () => {
+  it("播放（play）有一条非空图形，与截图（camera）无相同子路径", () => {
     const play = pathsOf(ICONS.play);
     const camera = pathsOf(ICONS.camera);
     expect(play).toHaveLength(1);

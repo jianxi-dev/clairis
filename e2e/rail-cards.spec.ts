@@ -784,9 +784,10 @@ test("[#905] 视频卡片播放角标用「播放」图形，不复用截图 cam
   await seed(page);
   await openPinnedRail(page);
 
-  const badge = recentItem(page, "/tmp/rc/movie.mp4").locator(
-    ".rail-thumb-play svg",
+  const thumb = recentItem(page, "/tmp/rc/movie.mp4").locator(
+    '[data-testid="rail-thumb"]',
   );
+  const badge = thumb.locator(".rail-thumb-play svg");
   await expect(badge).toHaveCount(1);
   await expect(badge).toHaveAttribute("data-icon", "play");
   const d = (await badge.locator("path").getAttribute("d")) ?? "";
@@ -795,4 +796,17 @@ test("[#905] 视频卡片播放角标用「播放」图形，不复用截图 cam
     expect(d, "播放角标复用了截图图形").not.toBe(part.d);
     expect(d, "播放角标复用了截图图形").not.toBe(part.s);
   }
+
+  // 真实画面是后出现的定位兄弟：角标必须在命中点最上层，否则等于没换
+  await expect(thumb.locator("video")).toHaveCount(1);
+  await thumb.scrollIntoViewIfNeeded();
+  const topIsBadge = await badge.evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    const x = Math.round(r.x + r.width / 2);
+    const y = Math.round(r.y + r.height / 2);
+    if (x < 0 || y < 0 || x >= innerWidth || y >= innerHeight) return false;
+    const top = document.elementFromPoint(x, y);
+    return !!top && el.contains(top);
+  });
+  expect(topIsBadge, "播放角标被真实画面盖住").toBe(true);
 });

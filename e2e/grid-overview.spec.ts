@@ -702,4 +702,15 @@ test("[#905] 网格视频卡片播放角标用「播放」图形，不复用截�
     expect(d, "播放角标复用了截图图形").not.toBe(part.d);
     expect(d, "播放角标复用了截图图形").not.toBe(part.s);
   }
+
+  // 角标落在真实画面之上（同层定位元素靠 DOM 顺序取胜，交换即被盖住）
+  const topIsBadge = await badge.evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    const top = document.elementFromPoint(
+      Math.round(r.x + r.width / 2),
+      Math.round(r.y + r.height / 2),
+    );
+    return !!top && el.contains(top);
+  });
+  expect(topIsBadge, "播放角标被真实画面盖住").toBe(true);
 });
