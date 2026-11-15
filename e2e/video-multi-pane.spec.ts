@@ -133,7 +133,7 @@ function videoStates(page: Page) {
   );
 }
 
-test("打开视频即自动播放（含重新挂载）", async ({ page }) => {
+test("打开视频为暂停态，重启恢复不自动播放（#902 / C-6）", async ({ page }) => {
   await bootWithMediaStub(page);
   await openInFocusedPane(page, "/Users/test/clip-a.mp4");
   await page.locator(".art-video-player").first().waitFor({ timeout: 10000 });
@@ -141,8 +141,8 @@ test("打开视频即自动播放（含重新挂载）", async ({ page }) => {
 
   const states = await videoStates(page);
   expect(states).toHaveLength(1);
-  expect(states[0].paused).toBe(false);
-  expect(await playCalls(page)).toBeGreaterThanOrEqual(1);
+  expect(states[0].paused).toBe(true);
+  expect(await playCalls(page)).toBe(0);
 
   // 重新挂载等价于程序重启恢复工作区：关闭页签再重新打开同一视频
   await page.evaluate(() => {
@@ -159,8 +159,8 @@ test("打开视频即自动播放（含重新挂载）", async ({ page }) => {
   await page.waitForTimeout(500);
 
   const again = await videoStates(page);
-  expect(again[0].paused).toBe(false);
-  expect(await playCalls(page)).toBeGreaterThanOrEqual(2);
+  expect(again[0].paused).toBe(true);
+  expect(await playCalls(page)).toBe(0);
 });
 
 test("两栏视频各自独立播放，且都未静音", async ({ page }) => {
@@ -178,6 +178,15 @@ test("两栏视频各自独立播放，且都未静音", async ({ page }) => {
 
   const players = page.locator(".art-video-player");
   await page.waitForTimeout(400);
+  await players
+    .nth(0)
+    .locator("video")
+    .evaluate((el) => void (el as HTMLVideoElement).play());
+  await players
+    .nth(1)
+    .locator("video")
+    .evaluate((el) => void (el as HTMLVideoElement).play());
+  await page.waitForTimeout(150);
   let states = await videoStates(page);
   expect(states.every((s) => s.paused === false)).toBe(true);
   expect(states.every((s) => s.muted === false)).toBe(true);

@@ -352,6 +352,10 @@ test("全屏下指针滑入底部显示按钮栏与浮层，画面无 letterbox"
   const player = page.locator(".art-video-player").first();
   const rate = page.locator(".art-control[data-name='rate']");
 
+  await player
+    .locator("video")
+    .evaluate((el) => void (el as HTMLVideoElement).play());
+
   await expect
     .poll(() =>
       page.evaluate(() => {
