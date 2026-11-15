@@ -159,3 +159,36 @@ test("隐藏态下 ⌘\\ 与 ⌘⌥\\ 仍恢复并固定（不破坏既有快捷
   );
   await expect.poll(() => storedRailPinHidden(page)).toBe(false);
 });
+
+test("[#924] 网格概览打开时 ⌘⇧X 仍切换固定隐藏", async ({ page }) => {
+  await boot(page);
+  await seed(page);
+  await page.keyboard.press("Control+Shift+Backslash");
+  await expect(page.locator('[data-testid="grid"]')).toBeVisible({
+    timeout: 5000,
+  });
+
+  const hidden = () =>
+    page.evaluate(
+      () =>
+        (
+          window as unknown as {
+            __biaoyue_editor_store__: {
+              getState: () => { config: { railPinHidden?: boolean } };
+            };
+          }
+        ).__biaoyue_editor_store__.getState().config.railPinHidden ?? false,
+    );
+
+  expect(await hidden()).toBe(false);
+  await page.keyboard.press("Control+Shift+X");
+  await expect.poll(hidden).toBe(true);
+  expect(
+    await page.evaluate(
+      () => (window as unknown as { __biaoyue_store__: { getState: () => { scene: string } } }).__biaoyue_store__.getState().scene,
+    ),
+  ).toBe("grid");
+
+  await page.keyboard.press("Control+Shift+X");
+  await expect.poll(hidden).toBe(false);
+});

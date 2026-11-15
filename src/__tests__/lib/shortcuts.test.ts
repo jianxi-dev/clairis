@@ -12,6 +12,7 @@ const CONTESTED_IDS = [
   "global-reading-rail",
   "global-grid",
   "global-preview-toggle",
+  "global-rail-pin-hidden",
 ];
 
 describe("shortcuts registry", () => {
@@ -28,6 +29,11 @@ describe("shortcuts registry", () => {
 
   it("typeFilter has 9 entries", () => {
     expect(shortcutsByFamily("typeFilter")).toHaveLength(9);
+  });
+
+  it("no two entries share the same key chord", () => {
+    const keys = SHORTCUTS.map((s) => s.keys);
+    expect(new Set(keys).size, "键位重复").toBe(keys.length);
   });
 
   it("every entry has family / label / keys and is implemented", () => {
@@ -50,7 +56,7 @@ describe("shortcuts registry", () => {
     }
   });
 
-  it("the four contested keys carry decisions", () => {
+  it("contested keys carry decisions", () => {
     const withDecision = SHORTCUTS.filter((s) => s.decision);
     expect(withDecision.map((s) => s.id).sort()).toEqual(
       [...CONTESTED_IDS].sort(),

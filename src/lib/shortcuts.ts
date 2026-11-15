@@ -88,6 +88,7 @@ export const SHORTCUTS: readonly ShortcutDef[] = [
     keys: "⌘⇧X",
     label: "左边栏固定隐藏 / 取消",
     family: "global",
+    decision: "网格概览/门户下同样生效，不被场景门拦截（#924）",
     implemented: true,
   },
   {
