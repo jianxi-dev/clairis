@@ -119,6 +119,22 @@ describe("TooltipLayer 悬停提示规则", () => {
     expect(optedOut.getAttribute("title")).toBeNull();
   });
 
+  it("嵌入式文档（iframe）的 title 是可访问名：不接管、不弹提示", () => {
+    render(<TooltipLayer />);
+    const frame = document.createElement("iframe");
+    frame.setAttribute("title", "HTML 可视化编辑");
+    frame.setAttribute("data-no-tip", "");
+    document.body.appendChild(frame);
+
+    hover(frame);
+    act(() => {
+      vi.advanceTimersByTime(DELAY_MS);
+    });
+
+    expect(tipText()).toBeNull();
+    expect(frame.getAttribute("title")).toBe("HTML 可视化编辑");
+  });
+
   it("指针离开会在延迟到达前取消提示", () => {
     render(<TooltipLayer />);
     const btn = makeButton({ title: "普通提示" });

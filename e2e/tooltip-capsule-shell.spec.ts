@@ -38,6 +38,13 @@ async function shellOf(locator: Locator): Promise<Shell> {
   });
 }
 
+async function boxOf(locator: Locator) {
+  return locator.evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    return { left: r.left, top: r.top, right: r.right, bottom: r.bottom };
+  });
+}
+
 async function boot(page: Page, path: string, content: string): Promise<void> {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto(APP_URL, { waitUntil: "networkidle" });
@@ -180,4 +187,34 @@ test("表格行列热点气泡为胶囊，矩形外壳提示节点数为 0", asy
     return bad;
   });
   expect(rectangular).toBe(0);
+});
+
+test("[#948] 600×400 视口下贴边宽提示不被视口裁切", async ({ page }) => {
+  await page.setViewportSize({ width: 600, height: 400 });
+  await boot(page, "/tmp/capsule-narrow.md", "普通段落");
+
+  // 贴左缘的触发元素 + 长标题：旧实现按固定 60px 夹点，320px 宽提示会左溢 ~100px
+  await page.evaluate(() => {
+    const btn = document.createElement("button");
+    btn.id = "tip-probe-left";
+    btn.type = "button";
+    btn.title = "很长很长的提示文本，用于验证贴边时的锚点夹取".repeat(4);
+    btn.textContent = "x";
+    btn.style.cssText =
+      "position:fixed;left:0;top:120px;width:24px;height:24px;z-index:5000";
+    document.body.append(btn);
+  });
+  const probe = page.locator("#tip-probe-left");
+  const box = (await probe.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+
+  const tip = page.locator(".app-tip");
+  await expect(tip).toBeVisible({ timeout: 3000 });
+  const cls = (await tip.getAttribute("class")) ?? "";
+  expect(cls).toMatch(/app-tip--(above|below)/);
+  const t = await boxOf(tip);
+  expect(t.left, "提示左缘越出视口").toBeGreaterThanOrEqual(-0.5);
+  expect(t.right, "提示右缘越出视口").toBeLessThanOrEqual(600.5);
+  expect(t.top, "提示上缘越出视口").toBeGreaterThanOrEqual(-0.5);
+  expect(t.bottom, "提示下缘越出视口").toBeLessThanOrEqual(400.5);
 });

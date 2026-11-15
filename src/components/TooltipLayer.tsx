@@ -4,12 +4,46 @@ import { isOverlayOpen, subscribeOverlay } from "../lib/overlayGate";
 import { useEditorStore } from "../stores/editorStore";
 import { noticeDurationMs } from "../hooks/useConfig";
 
-/** 胶囊估算高度（px）：上下内边距 8 + 行高 18 + 边框 2。 */
-const TIP_HEIGHT_ESTIMATE = 28;
 /** 箭头与触发元素之间的间距（px），与 CSS transform 的 8px 一致。 */
 const TIP_GAP = 8;
-/** 锚点夹取边距（px）。 */
-const TIP_ANCHOR_MARGIN = 60;
+/** 提示与视口边缘的最小留白（px）。 */
+const TIP_VIEWPORT_MARGIN = 4;
+
+/** 嵌入式文档的 `title` 是它的无障碍名（如 HTML 可视化编辑 iframe）：
+ *  摘掉会让控件失去可访问名，提示本身也只是噪音，保持原样不接管。 */
+const KEEP_TITLE_SELECTOR = "iframe, object, embed";
+
+interface TipSize {
+  width: number;
+  height: number;
+}
+
+/** 用与自绘胶囊同一外壳的隐藏探针量出真实尺寸，供方位判断与锚点夹取。 */
+function measureTip(main: string, hint: string | null): TipSize {
+  const probe = document.createElement("div");
+  probe.className = "app-tip";
+  probe.style.visibility = "hidden";
+  probe.style.left = "-9999px";
+  probe.style.top = "0";
+  const text = document.createElement("span");
+  text.className = "app-tip__text";
+  text.textContent = main;
+  probe.append(text);
+  if (hint !== null) {
+    const hintEl = document.createElement("span");
+    hintEl.className = "app-tip__hint";
+    hintEl.textContent = hint;
+    probe.append(hintEl);
+  }
+  const arrow = document.createElement("span");
+  arrow.className = "app-tip__arrow";
+  probe.append(arrow);
+  document.body.append(probe);
+  const rect = probe.getBoundingClientRect();
+  const size = { width: rect.width, height: rect.height };
+  probe.remove();
+  return size;
+}
 
 /** 弹出方位：above=提示在触发元素上方（箭头朝下），其余同理。 */
 type TipSide = "above" | "below" | "left" | "right";
@@ -53,16 +87,21 @@ function visibleLabel(el: Element): string {
  * 按触发元素在视口中的位置选弹出方位：优先上 / 下，都放不下才侧弹。
  * 底部状态栏按钮因此落在图标正上方。
  */
-function tipSideFor(el: Element): TipSide {
+function tipSideFor(el: Element, size: TipSize): TipSide {
   const rect = el.getBoundingClientRect();
-  const need = TIP_HEIGHT_ESTIMATE + TIP_GAP;
-  const aboveRoom = rect.top;
-  const belowRoom = window.innerHeight - rect.bottom;
-  if (aboveRoom >= need) return "above";
-  if (belowRoom >= need) return "below";
-  const leftRoom = rect.left;
-  const rightRoom = window.innerWidth - rect.right;
-  return rightRoom >= leftRoom ? "right" : "left";
+  const verticalNeed = size.height + TIP_GAP;
+  if (rect.top - verticalNeed >= TIP_VIEWPORT_MARGIN) return "above";
+  if (rect.bottom + verticalNeed <= window.innerHeight - TIP_VIEWPORT_MARGIN)
+    return "below";
+  const horizontalNeed = size.width + TIP_GAP;
+  const fitsRight =
+    rect.right + horizontalNeed <= window.innerWidth - TIP_VIEWPORT_MARGIN;
+  const fitsLeft = rect.left - horizontalNeed >= TIP_VIEWPORT_MARGIN;
+  if (fitsRight && fitsLeft)
+    return rect.left + rect.width / 2 < window.innerWidth / 2 ? "right" : "left";
+  if (fitsRight) return "right";
+  if (fitsLeft) return "left";
+  return rect.left > window.innerWidth - rect.right ? "left" : "right";
 }
 
 /** 由触发元素推导提示内容：图标+文字只给快捷键；纯图标给名称 + 快捷键 + 用法。 */
@@ -85,18 +124,24 @@ function clamp(value: number, min: number, max: number): number {
 }
 
 /** 弹出锚点：above/below 取元素上下沿水平居中，left/right 取元素左右沿垂直居中。 */
-function tipAnchorFor(el: Element, side: TipSide): { x: number; y: number } {
+function tipAnchorFor(
+  el: Element,
+  side: TipSide,
+  size: TipSize,
+): { x: number; y: number } {
   const rect = el.getBoundingClientRect();
   const cx = rect.left + rect.width / 2;
   const cy = rect.top + rect.height / 2;
+  const halfW = Math.min(size.width / 2, window.innerWidth / 2);
+  const halfH = Math.min(size.height / 2, window.innerHeight / 2);
   if (side === "right" || side === "left") {
     return {
       x: side === "right" ? rect.right : rect.left,
-      y: clamp(cy, TIP_ANCHOR_MARGIN, window.innerHeight - TIP_ANCHOR_MARGIN),
+      y: clamp(cy, halfH, window.innerHeight - halfH),
     };
   }
   return {
-    x: clamp(cx, TIP_ANCHOR_MARGIN, window.innerWidth - TIP_ANCHOR_MARGIN),
+    x: clamp(cx, halfW, window.innerWidth - halfW),
     y: side === "above" ? rect.top : rect.bottom,
   };
 }
@@ -147,6 +192,7 @@ export default function TooltipLayer() {
       if (!(target instanceof Element)) return;
       const el = target.closest("[title]");
       if (!el || el === currentRef.current) return;
+      if (el.matches(KEEP_TITLE_SELECTOR)) return;
       restore();
       const text = el.getAttribute("title") ?? "";
       if (!text.trim()) {
@@ -167,8 +213,9 @@ export default function TooltipLayer() {
         const el = currentRef.current;
         if (!el) return;
         const content = tipContentFor(el, el.getAttribute("data-tip") ?? "");
-        const side = tipSideFor(el);
-        const { x, y } = tipAnchorFor(el, side);
+        const size = measureTip(content.main, content.hint);
+        const side = tipSideFor(el, size);
+        const { x, y } = tipAnchorFor(el, side, size);
         setTip({ ...content, side, x, y });
       }, noticeDurationMs(useEditorStore.getState().config.noticeDuration));
     };
