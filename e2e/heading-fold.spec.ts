@@ -282,3 +282,38 @@ test("折叠三角与标题文字间距不超过 2px", async ({ page }) => {
   });
   expect(gap).toBeLessThanOrEqual(2);
 });
+
+test("[#914] 预览态折叠命中盒与编辑态一致（20×20，±2px）且未悬停时不可见", async ({
+  page,
+}) => {
+  await openDoc(page);
+  const editToggle = page.locator('[data-fold-line="1"]').first();
+  const editBox = (await editToggle.boundingBox())!;
+  expect(editBox.width).toBeGreaterThan(0);
+  expect(editBox.height).toBeGreaterThan(0);
+
+  await page.evaluate(() => {
+    const win = window as unknown as Record<string, any>;
+    win.__biaoyue_store__.getState().setEditorMode("preview");
+  });
+  await page.locator(".preview-content").waitFor({ timeout: 10000 });
+
+  const head = page.locator(".preview-heading", { hasText: "第一章" });
+  const fold = head.locator(".preview-heading-fold");
+
+  // 指针不在标题上：严格不可见（不残留可见节点）
+  await page.mouse.move(5, 5);
+  await expect(fold).toHaveCSS("opacity", "0");
+
+  await head.hover();
+  await expect(fold).toHaveCSS("opacity", "1");
+  const previewBox = (await fold.boundingBox())!;
+  expect(Math.abs(previewBox.width - editBox.width)).toBeLessThanOrEqual(2);
+  expect(Math.abs(previewBox.height - editBox.height)).toBeLessThanOrEqual(2);
+
+  // 折叠后即使指针离开仍保持可见
+  await fold.click();
+  await expect(fold).toHaveAttribute("data-folded", "true");
+  await page.mouse.move(5, 5);
+  await expect(fold).toHaveCSS("opacity", "1");
+});
