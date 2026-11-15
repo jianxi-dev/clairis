@@ -639,6 +639,46 @@ export function openBlockMenu(
         });
       panelEl.appendChild(bgRow);
 
+      // 「恢复默认」（D16 / C5）：复用 `applyBlockColor` 的清除分支清掉字色与
+      // 背景色。两族 span 可能互相嵌套，单轮单族只剥内层，故逐轮剥到稳定。
+      const resetColors = (): void => {
+        let next = blockText;
+        for (let i = 0; i < 4; i += 1) {
+          const withoutFont = applyBlockColor(
+            next,
+            block.type,
+            "mdb-color",
+            "",
+          );
+          const withoutBg = applyBlockColor(
+            withoutFont ?? next,
+            block.type,
+            "mdb-bg",
+            "",
+          );
+          const candidate = withoutBg ?? withoutFont ?? next;
+          if (candidate === next) break;
+          next = candidate;
+        }
+        closeBlockMenu(view);
+        if (next === blockText) return;
+        view.dispatch({
+          changes: { from: block.from, to: block.to, insert: next },
+        });
+      };
+
+      const resetButton = document.createElement("button");
+      resetButton.type = "button";
+      resetButton.className = "cm-color-reset";
+      resetButton.dataset.testid = "color-reset";
+      resetButton.textContent = "恢复默认";
+      resetButton.addEventListener("mousedown", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        resetColors();
+      });
+      panelEl.appendChild(resetButton);
+
       view.dom.appendChild(panelEl);
       flipFlyoutIfNeeded(view, panelEl, rowRect);
       panelEl.addEventListener("pointerenter", () => {
