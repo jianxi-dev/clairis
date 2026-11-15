@@ -36,6 +36,9 @@ pub struct AppConfig {
     pub vertical_split_ratio: Option<f64>,
     pub recent_files: Option<Vec<RecentFile>>,
     pub scroll_positions: Option<HashMap<String, ScrollPosition>>,
+    /// 内嵌文件滚动定格（D10 / B5b）：文档级 view-state，键 = `文档路径\u0000内嵌路径`。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub embed_scroll_positions: Option<HashMap<String, ScrollPosition>>,
     /// 核心能力开关：只记录被关闭的能力，缺省即全开（spec X-3）。
     pub capabilities: Option<HashMap<String, bool>>,
     /// 图标标签级别（Layout Portal §10）：auto / text / icon。
@@ -199,6 +202,7 @@ impl Default for AppConfig {
             vertical_split_ratio: Some(0.5),
             recent_files: Some(Vec::new()),
             scroll_positions: Some(HashMap::new()),
+            embed_scroll_positions: Some(HashMap::new()),
             capabilities: Some(HashMap::new()),
         }
     }
@@ -351,6 +355,7 @@ fn settings_value(config: &AppConfig) -> Result<Value, AppError> {
     if let Value::Object(map) = &mut value {
         map.remove("recentFiles");
         map.remove("scrollPositions");
+        map.remove("embedScrollPositions");
     }
     Ok(value)
 }
@@ -361,9 +366,13 @@ fn state_value(config: &AppConfig) -> Result<Value, AppError> {
     let scroll_positions =
         serde_json::to_value(config.scroll_positions.clone().unwrap_or_default())
             .map_err(|e| json_err("scrollPositions", e))?;
+    let embed_scroll_positions =
+        serde_json::to_value(config.embed_scroll_positions.clone().unwrap_or_default())
+            .map_err(|e| json_err("embedScrollPositions", e))?;
     Ok(serde_json::json!({
         "recentFiles": recent_files,
         "scrollPositions": scroll_positions,
+        "embedScrollPositions": embed_scroll_positions,
     }))
 }
 
@@ -374,7 +383,7 @@ fn effective_config(
 ) -> Result<AppConfig, AppError> {
     let mut merged = merge_json(&defaults, user.as_ref().unwrap_or(&Value::Null));
     if let (Value::Object(map), Some(Value::Object(state))) = (&mut merged, state) {
-        for key in ["recentFiles", "scrollPositions"] {
+        for key in ["recentFiles", "scrollPositions", "embedScrollPositions"] {
             if let Some(value) = state.get(key) {
                 map.insert(key.to_string(), value.clone());
             }
@@ -789,7 +798,7 @@ const SKILL_MAP: &str = r#"# Biaoyue 配置地图
 | --- | --- | --- |
 | defaults | `defaults/settings.json` | 代码默认值，首次运行生成 |
 | user | `user/settings.json` | 用户设置，`patch_config` 写这里 |
-| state | `state/state.json` | 派生状态（recentFiles / scrollPositions），不归 patch 管 |
+| state | `state/state.json` | 派生状态（recentFiles / scrollPositions / embedScrollPositions），不归 patch 管 |
 | snapshots | `snapshots/settings-*.json` | 每次写入前的 user 层副本，保留最新 10 份 |
 
 ## 可用工具
@@ -1213,6 +1222,43 @@ mod tests {
         let recent = config.recent_files.unwrap();
         assert_eq!(recent.len(), 1);
         assert_eq!(recent[0].path, "/tmp/b.md");
+    }
+
+    #[test]
+    fn embed_scroll_positions_round_trip_and_stay_out_of_user_file() {
+        let dir = temp_base("embed_freeze");
+        let base = dir.path();
+
+        // 老配置无该字段 → 默认空表，读得进。
+        write_user(base, r#"{"theme":"dark"}"#);
+        assert!(load_config_at(base)
+            .unwrap()
+            .embed_scroll_positions
+            .unwrap()
+            .is_empty());
+
+        let mut config = AppConfig::default();
+        config.embed_scroll_positions = Some(HashMap::from([(
+            "/tmp/doc.md\u{0}assets/note.md".into(),
+            ScrollPosition {
+                scroll_pos: 120.0,
+                content_height: 900.0,
+            },
+        )]));
+        save_config_at(base, &config).unwrap();
+
+        let user = read_user(base);
+        assert!(
+            !user.contains("embedScrollPositions"),
+            "user 层不应含 embedScrollPositions: {user}"
+        );
+        let state = std::fs::read_to_string(state_path(base)).unwrap();
+        assert!(state.contains("embedScrollPositions"));
+        let loaded = load_config_at(base).unwrap();
+        let table = loaded.embed_scroll_positions.unwrap();
+        let hit = table.get("/tmp/doc.md\u{0}assets/note.md").unwrap();
+        assert_eq!(hit.scroll_pos, 120.0);
+        assert_eq!(hit.content_height, 900.0);
     }
 
     #[test]

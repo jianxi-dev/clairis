@@ -45,6 +45,7 @@ describe("types", () => {
       verticalSplitRatio: 0.5,
       recentFiles: [],
       scrollPositions: {},
+      embedScrollPositions: {},
     };
     expect(config.translationProvider).toBe("ollama");
     expect(config.fontSize).toBe(17);

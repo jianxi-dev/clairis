@@ -198,10 +198,12 @@ const editorDecorationOptions: EditorDecorationsOptions = {
     const docPath = activeDocPath;
     const absolute = docPath ? resolveRelativeToDoc(path, docPath) : null;
     if (absolute) {
-      return { url: buildAssetUrl(absolute), filePath: absolute };
+      return { url: buildAssetUrl(absolute), filePath: absolute, docPath };
     }
     const clean = path.trim();
-    if (/^https?:\/\//i.test(clean)) return { url: clean, filePath: null };
+    if (/^https?:\/\//i.test(clean)) {
+      return { url: clean, filePath: null, docPath };
+    }
     return null;
   },
   onImageAi: (path, alt) => {
