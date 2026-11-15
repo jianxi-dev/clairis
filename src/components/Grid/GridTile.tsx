@@ -1,4 +1,5 @@
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import Icon from "../Icon";
 import {
   parentPathOf,
@@ -7,6 +8,8 @@ import {
   thumbDescriptorOf,
   type ThumbDescriptor,
 } from "../../lib/railCards";
+import { mediaUrlForPath } from "../../lib/mediaUrl";
+import { isTauriEnv } from "../../utils/tauri";
 import {
   colorOfType,
   fileTypeOf,
@@ -36,6 +39,61 @@ const ROW_SPAN: Record<GridTileSize, string> = {
   large: "span 2",
 };
 
+function GridVideoThumb({ src }: { src: string }) {
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    if (!isTauriEnv() || !src) return;
+    let cancelled = false;
+    setReady(false);
+    void invoke("register_media_path", { path: src })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setReady(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [src]);
+
+  const showVideo = isTauriEnv() && !!src && ready;
+  return (
+    <div
+      className="relative flex h-full w-full items-center justify-center"
+      style={{
+        background:
+          "color-mix(in srgb, var(--type-video) 26%, var(--app-surface))",
+      }}
+    >
+      {showVideo && (
+        <video
+          data-tile-video
+          src={mediaUrlForPath(src)}
+          preload="auto"
+          muted
+          playsInline
+          onLoadedMetadata={(e) => {
+            const video = e.currentTarget;
+            try {
+              video.currentTime = Math.min(0.1, video.duration || 0.1);
+            } catch {
+              /* 元数据未就绪时忽略（与阅读空间卡片取帧一致） */
+            }
+          }}
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+      )}
+      <div
+        data-tile-play
+        className="absolute inset-0 flex items-center justify-center"
+      >
+        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-black/45">
+          <Icon name="video" size={24} color="#fff" />
+        </span>
+      </div>
+    </div>
+  );
+}
+
 function ThumbBody({
   descriptor,
   item,
@@ -58,24 +116,7 @@ function ThumbBody({
       );
     }
     if (descriptor.kind === "video-poster") {
-      return (
-        <div
-          className="relative flex h-full w-full items-center justify-center"
-          style={{
-            background:
-              "color-mix(in srgb, var(--type-video) 26%, var(--app-surface))",
-          }}
-        >
-          <div
-            data-tile-play
-            className="absolute inset-0 flex items-center justify-center"
-          >
-            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-black/45">
-              <Icon name="video" size={24} color="#fff" />
-            </span>
-          </div>
-        </div>
-      );
+      return <GridVideoThumb src={descriptor.src ?? ""} />;
     }
     if (descriptor.kind === "audio-wave") {
       return (

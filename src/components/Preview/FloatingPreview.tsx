@@ -134,15 +134,7 @@ function MediaBody({ path, kind }: { path: string; kind: FileTypeKind }) {
   }
   const url = mediaUrlForPath(path);
   if (kind === "video") {
-    return (
-      <div
-        data-testid="preview-media"
-        data-media-kind="video"
-        className="flex h-full items-center justify-center bg-black"
-      >
-        <video src={url} controls className="max-h-full max-w-full" />
-      </div>
-    );
+    return <PreviewVideo url={url} path={path} />;
   }
   return (
     <div
@@ -152,6 +144,47 @@ function MediaBody({ path, kind }: { path: string; kind: FileTypeKind }) {
     >
       <Icon name="audio" size={24} className="text-[var(--app-text-3)]" />
       <audio src={url} controls className="w-full" />
+    </div>
+  );
+}
+
+function PreviewVideo({ url, path }: { url: string; path: string }) {
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    setReady(false);
+    void invoke("register_media_path", { path })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setReady(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [path]);
+
+  return (
+    <div
+      data-testid="preview-media"
+      data-media-kind="video"
+      className="flex h-full items-center justify-center bg-black"
+    >
+      {ready && (
+        <video
+          src={url}
+          controls
+          preload="auto"
+          onLoadedMetadata={(e) => {
+            const video = e.currentTarget;
+            try {
+              video.currentTime = Math.min(0.1, video.duration || 0.1);
+            } catch {
+              /* 元数据未就绪时忽略（与阅读空间卡片取帧一致） */
+            }
+          }}
+          className="max-h-full max-w-full"
+        />
+      )}
     </div>
   );
 }
