@@ -43,6 +43,9 @@
   --radius-4: 4px;
   --radius-8: 8px;
   --radius-full: 999px;
+  /* 媒体块（图片 / 视频）圆角唯一来源：预览与编辑态共用，保证二者相等（#906 B8）。
+     取值 6px 延续视频块既有圆角（预览 --reader-radius / 编辑 --app-radius 均为 6px）。 */
+  --media-radius: 6px;
   /* 自绘悬停提示唯一外壳常量（design-system §5；batch19 A2） */
   --tip-shell-radius: var(--radius-full);
   --app-shadow:

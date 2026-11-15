@@ -1,10 +1,11 @@
 import { test, expect, type Page } from "@playwright/test";
 
 /**
- * #712 / D17：预览与编辑态图片四角统一 12px。
+ * #712 / D17 / #906 B8：预览与编辑态图片四角统一，且与视频块同 token。
  *
- * 预览走 reader.css 的 `--reader-image-radius`；编辑态走 widget 内联
- * `clipPath`。两态必须一致，且取消选中后半径不变（无选中态专属样式）。
+ * 预览走 reader.css 的 `--media-radius`；编辑态走 widget 内联 `clipPath`
+ * （`var(--media-radius)`）。两态必须一致，且取消选中后半径不变（无选中态
+ * 专属样式）。
  */
 
 interface BridgeState {
@@ -26,7 +27,9 @@ const PNG_DATA_URL =
   "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAL0lEQVR4nO3OIQEAAAgDMDrRiU6khRg3E/Ornr2kEhAQEBAQEBAQEBAQEBAQSAceRiXEebi0SxgAAAAASUVORK5CYII=";
 
 const ARTIFACTS = ".artifacts/712";
-const RADIUS = "12px";
+const RADIUS = "6px";
+/** 编辑态内联 clip-path 引用的 token（与视频块同一来源）。 */
+const CLIP_TOKEN = "var(--media-radius)";
 
 async function openDoc(page: Page, name: string): Promise<void> {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
@@ -83,7 +86,7 @@ async function editClip(page: Page) {
   });
 }
 
-test("预览态：四角 border-radius 严格 12px", async ({ page }) => {
+test("预览态：四角 border-radius 严格 6px", async ({ page }) => {
   await openDoc(page, "radiusPreview");
   await setMode(page, "preview");
   await page.locator(".preview-content img").waitFor({ timeout: 10000 });
@@ -99,37 +102,39 @@ test("预览态：四角 border-radius 严格 12px", async ({ page }) => {
   await page.screenshot({ path: `${ARTIFACTS}/01-preview-corners.png` });
 });
 
-test("编辑态：widget clipPath 含 12px（内联 + 计算值）", async ({ page }) => {
+test("编辑态：widget clipPath 引用 --media-radius（内联 + 计算值 6px）", async ({
+  page,
+}) => {
   await openDoc(page, "radiusEdit");
   const img = page.locator(".cm-image-widget img");
   await img.waitFor({ timeout: 10000 });
 
   const clip = await editClip(page);
   expect(clip).not.toBeNull();
-  expect(clip!.inline).toContain("12px");
-  expect(clip!.computed).toContain("12px");
+  expect(clip!.inline).toContain(CLIP_TOKEN);
+  expect(clip!.computed).toContain(RADIUS);
 
   await page.screenshot({ path: `${ARTIFACTS}/02-edit-corners.png` });
 });
 
-test("取消选中：两态半径保持 12px", async ({ page }) => {
+test("取消选中：两态半径保持 6px", async ({ page }) => {
   await openDoc(page, "radiusDeselect");
 
   // 编辑态选中 → 取消选中，clipPath 不变。
   const widget = page.locator(".cm-image-widget");
   await widget.click();
   const selected = await editClip(page);
-  expect(selected!.inline).toContain("12px");
+  expect(selected!.inline).toContain(CLIP_TOKEN);
 
   await page.mouse.click(600, 600);
   await expect(page.getByTestId("img-toolbar")).toHaveCount(0);
 
   const deselectedEdit = await editClip(page);
-  expect(deselectedEdit!.inline).toContain("12px");
-  expect(deselectedEdit!.computed).toContain("12px");
+  expect(deselectedEdit!.inline).toContain(CLIP_TOKEN);
+  expect(deselectedEdit!.computed).toContain(RADIUS);
   await page.screenshot({ path: `${ARTIFACTS}/03-deselected-edit.png` });
 
-  // 预览态无选中概念，切过去半径仍是 12px。
+  // 预览态无选中概念，切过去半径仍是 --media-radius（6px）。
   await setMode(page, "preview");
   await page.locator(".preview-content img").waitFor({ timeout: 10000 });
   const deselectedPreview = await previewRadius(page);

@@ -33,7 +33,6 @@
   --reader-accent-soft: rgba(61, 90, 138, 0.1);
   --reader-radius: 6px;
   --reader-radius-lg: 12px;
-  --reader-image-radius: 12px;
   --reader-shadow: var(--app-shadow);
 
   /* Layer 3：排版尺度 */
@@ -857,7 +856,7 @@
   height: auto;
   display: block;
   margin-inline: auto;
-  border-radius: var(--reader-image-radius);
+  border-radius: var(--media-radius);
   box-shadow: 0 1px 3px rgba(31, 26, 20, 0.08);
 }
 
@@ -869,7 +868,7 @@
   height: auto;
   max-height: 70vh;
   margin-inline: auto;
-  border-radius: var(--reader-radius);
+  border-radius: var(--media-radius);
   background: #000;
 }
 
