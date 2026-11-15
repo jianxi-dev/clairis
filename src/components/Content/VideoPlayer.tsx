@@ -174,7 +174,11 @@ function RateDial({ rate }: { rate: number }) {
   );
 }
 
-type PopoverKind = "playlist" | "subtitle" | "hints" | "rate" | "visual" | null;
+type PopoverKind =
+  "playlist" | "subtitle" | "hints" | "rate" | "visual" | "width" | null;
+
+/** 宽度档：默认（格内）/ 满页面宽度（铺满 webview）/ 全屏（整个计算机屏幕）。 */
+type WidthMode = "default" | "page" | "fullscreen";
 
 /** 浮层锚点：相对播放器容器的偏移 */
 interface PopoverAnchor {
@@ -207,6 +211,8 @@ export default function VideoPlayer({
   const [playlist, setPlaylist] = useState<MediaEntry[]>([]);
   const [currentIndex, setCurrentIndex] = useState(-1);
   const [webFullscreen, setWebFullscreen] = useState(false);
+  const [widthMode, setWidthModeState] = useState<WidthMode>("default");
+  const skipWindowSyncRef = useRef(false);
   const [, setLoopMode] = useState<LoopMode>("none");
   const [rate, setRate] = useState(1);
   const [frame, setFrame] = useState({
@@ -720,6 +726,42 @@ export default function VideoPlayer({
     };
   }, [showNote]);
 
+  // 全屏时隐藏系统标题栏（关闭/最小化/最大化按钮）
+  const syncWindowFullscreen = useCallback((on: boolean) => {
+    const win = getCurrentWindow();
+    // setDecorations(false) 直接移除标题栏与窗口按钮（macOS 可靠路径），
+    // setFullscreen 进入原生全屏兜底；进入时先去装饰再全屏，退出时先退全屏再还原
+    const apply = on
+      ? win.setDecorations(false).then(() => win.setFullscreen(true))
+      : win.setFullscreen(false).then(() => win.setDecorations(true));
+    void apply.catch((err) => {
+      console.warn("window fullscreen sync failed", on, err);
+    });
+  }, []);
+
+  // 宽度档：满页面宽度只铺满 webview；全屏再叠加 OS 窗口全屏。
+  const applyWidthMode = useCallback(
+    (mode: WidthMode) => {
+      const player = artRef.current;
+      setWidthModeState(mode);
+      if (!player) return;
+      if (mode === "page") {
+        skipWindowSyncRef.current = true;
+        if (player.fullscreenWeb) syncWindowFullscreen(false);
+        else player.fullscreenWeb = true;
+      } else if (mode === "fullscreen") {
+        skipWindowSyncRef.current = false;
+        if (player.fullscreenWeb) syncWindowFullscreen(true);
+        else player.fullscreenWeb = true;
+      } else {
+        skipWindowSyncRef.current = false;
+        if (player.fullscreenWeb) player.fullscreenWeb = false;
+        else syncWindowFullscreen(false);
+      }
+    },
+    [syncWindowFullscreen],
+  );
+
   // 创建播放器（常驻：只创建一次，url/fileKind 变化由下方独立 effect 处理）
   /* eslint-disable react-hooks/exhaustive-deps -- 回调均 useCallback([]) 稳定、闭包只读 refs，加依赖会导致 tab 切换重建实例 */
   useEffect(() => {
@@ -748,6 +790,18 @@ export default function VideoPlayer({
       theme: "#6366f1",
       ...(initialKind === "audio" ? { poster: AUDIO_POSTER } : {}),
       moreVideoAttr: { playsInline: true },
+      // 右键画面菜单：全屏脱离文档页面，以整个计算机屏幕显示（B9）。
+      contextmenu: [
+        {
+          name: "fullscreen",
+          index: 5,
+          html: "全屏",
+          click: (contextmenu) => {
+            contextmenu.show = false;
+            applyWidthMode("fullscreen");
+          },
+        },
+      ],
       controls: [
         {
           name: "prev",
@@ -820,6 +874,23 @@ export default function VideoPlayer({
             this.proxy($control, "mouseleave", schedulePopoverClose);
             this.proxy($control, "click", () => {
               openPopover("visual", $control, 210);
+            });
+          },
+        },
+        {
+          name: "width",
+          position: "right",
+          index: 46,
+          html: controlSvg("width"),
+          tooltip: "宽度档",
+          mounted: function ($control) {
+            $control.dataset.name = "width";
+            this.proxy($control, "mouseenter", (e: Event) =>
+              openPopover("width", $control, 150, (e as MouseEvent).clientX),
+            );
+            this.proxy($control, "mouseleave", schedulePopoverClose);
+            this.proxy($control, "click", () => {
+              openPopover("width", $control, 150);
             });
           },
         },
@@ -1010,23 +1081,17 @@ export default function VideoPlayer({
     };
     art.on("dblclick", toggleFullscreenWeb);
 
-    // 全屏时隐藏系统标题栏（关闭/最小化/最大化按钮）
-    const syncWindowFullscreen = (on: boolean) => {
-      const win = getCurrentWindow();
-      // setDecorations(false) 直接移除标题栏与窗口按钮（macOS 可靠路径），
-      // setFullscreen 进入原生全屏兜底；进入时先去装饰再全屏，退出时先退全屏再还原
-      const apply = on
-        ? win.setDecorations(false).then(() => win.setFullscreen(true))
-        : win.setFullscreen(false).then(() => win.setDecorations(true));
-      void apply.catch((err) => {
-        console.warn("window fullscreen sync failed", on, err);
-      });
-    };
     art.on("fullscreenWeb", (state: boolean) => {
       setPopover(null);
       setPopoverFixed(false);
       setWebFullscreen(state);
-      syncWindowFullscreen(state);
+      // 满页面宽度档只铺满 webview，不联动 OS 窗口全屏。
+      if (skipWindowSyncRef.current) {
+        skipWindowSyncRef.current = false;
+      } else {
+        syncWindowFullscreen(state);
+      }
+      if (!state) setWidthModeState("default");
     });
     // 浏览器原生全屏事件兜底（ArtPlayer 内部 webkit 全屏路径）
     const onNativeFullscreen = () => {
@@ -1249,7 +1314,7 @@ export default function VideoPlayer({
     } else {
       art.poster = "";
     }
-    const visual = ["screenshot", "pip", "visual"];
+    const visual = ["screenshot", "pip", "visual", "width"];
     for (const name of visual) {
       const node = containerRef.current?.querySelector<HTMLElement>(
         `.art-control[data-name="${name}"]`,
@@ -1490,6 +1555,56 @@ export default function VideoPlayer({
                 {r.label}
               </span>
               {rate === r.value ? " ✓" : ""}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* 宽度档菜单（速率左侧）：满页面宽度 / 全屏，恰好两档 */}
+      {popover === "width" && (
+        <div
+          className="width-menu"
+          role="menu"
+          data-testid="width-menu"
+          style={{ ...popoverStyle, width: 150, padding: "4px 0" }}
+          onMouseEnter={cancelPopoverClose}
+          onPointerDown={cancelPopoverClose}
+          onPointerMove={cancelPopoverClose}
+          onMouseLeave={schedulePopoverClose}
+        >
+          {(
+            [
+              { mode: "page", label: "满页面宽度" },
+              { mode: "fullscreen", label: "全屏" },
+            ] as const
+          ).map((item) => (
+            <button
+              key={item.mode}
+              type="button"
+              role="menuitemradio"
+              aria-checked={widthMode === item.mode}
+              className="width-menu-item"
+              data-width-mode={item.mode}
+              onClick={() => {
+                applyWidthMode(item.mode);
+                setPopover(null);
+              }}
+              style={{
+                display: "block",
+                width: "100%",
+                padding: "7px 12px",
+                border: "none",
+                background:
+                  widthMode === item.mode ? "rgba(99,102,241,0.35)" : "none",
+                color:
+                  widthMode === item.mode ? "#fff" : "rgba(255,255,255,0.78)",
+                fontSize: 12,
+                textAlign: "left",
+                cursor: "pointer",
+              }}
+            >
+              {item.label}
+              {widthMode === item.mode ? " ✓" : ""}
             </button>
           ))}
         </div>

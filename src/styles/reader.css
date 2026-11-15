@@ -860,10 +860,11 @@
   box-shadow: 0 1px 3px rgba(31, 26, 20, 0.08);
 }
 
-/* 视频/音频：`![](clip.mp4)` 渲染成播放器，按正文宽撑开，别缩成一个小方块。 */
+/* 视频/音频：`![](clip.mp4)` 渲染成播放器。视频默认 2/3 内容区宽（B9，与编辑态
+ * `.cm-media-widget[data-media-kind="video"]` 同档），居中；音频仍撑满。 */
 .preview-content video {
   display: block;
-  width: 100%;
+  width: 66.67%;
   max-width: 100%;
   height: auto;
   max-height: 70vh;

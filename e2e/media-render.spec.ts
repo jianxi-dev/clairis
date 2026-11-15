@@ -291,6 +291,8 @@ test("视频播放器音量/进度滑块 thumb 可见且与轨道有对比", asy
   expect(progressBox?.width ?? 0).toBeGreaterThan(0);
 
   const video = page.locator(".art-video-player video").first();
+  // C-6 起视频按暂停态打开，不会自行推进；这里显式起播再断言 currentTime。
+  await video.evaluate((el: HTMLVideoElement) => el.play());
   await expect
     .poll(() => video.evaluate((el: HTMLVideoElement) => el.currentTime), {
       timeout: 10000,
@@ -418,6 +420,41 @@ test("编辑态视频块：2/3 宽居中、可播放、拖把手调宽、块手�
     ),
   );
   expect(icons).toEqual(["VideoOutlined", "DragHandleOutlined"]);
+});
+
+/**
+ * #907 B9：嵌入视频默认宽度 SHALL 为内容区宽的 2/3（容差 ±5%），
+ * 编辑态与预览态同档。修复前预览态 `.preview-content video` 是 100%，
+ * 断言失败；编辑态早已是 66.67%，作为回归基线一起断言。
+ */
+test("MD 嵌入视频默认 2/3 内容区宽（预览态与编辑态）", async ({ page }) => {
+  await openPreview(page, "![clip](assets/clip.mp4)\n", "mvidwidth");
+
+  const previewRatio = await page.evaluate(() => {
+    const fig = document.querySelector(".preview-content figure");
+    const video = document.querySelector(".preview-content video");
+    if (!fig || !video) return 0;
+    return (
+      video.getBoundingClientRect().width / fig.getBoundingClientRect().width
+    );
+  });
+  expect(Math.abs(previewRatio - 0.667)).toBeLessThanOrEqual(0.05);
+
+  await page.evaluate(() => {
+    const win = window as unknown as Record<string, any>;
+    win.__biaoyue_store__.getState().setEditorMode("edit");
+  });
+  await page.locator(".cm-content").waitFor({ timeout: 10000 });
+  const editRatio = await page
+    .locator('.cm-media-widget[data-media-kind="video"]')
+    .first()
+    .evaluate((el) => {
+      const line = el.closest(".cm-line") as HTMLElement | null;
+      return line
+        ? el.getBoundingClientRect().width / line.getBoundingClientRect().width
+        : 0;
+    });
+  expect(Math.abs(editRatio - 0.667)).toBeLessThanOrEqual(0.05);
 });
 
 /**
