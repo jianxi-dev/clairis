@@ -6,7 +6,7 @@ import {
   type Extension,
 } from "@codemirror/state";
 import { history } from "@codemirror/commands";
-import { EditorView, lineNumbers } from "@codemirror/view";
+import { EditorView, gutters, lineNumbers } from "@codemirror/view";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
 import { html } from "@codemirror/lang-html";
 import { css } from "@codemirror/lang-css";
@@ -344,7 +344,8 @@ const LINE_NUMBER_KINDS: FileKind[] = [
  */
 function lineNumbersForMode(mode: EditorMode, kind: FileKind): Extension[] {
   if (mode !== "edit" || !LINE_NUMBER_KINDS.includes(kind)) return [];
-  return [lineNumbers()];
+  // fixed:false 清掉 CM6 内联的 position:sticky，让行号槽按正文列左缘绝对定位（#920 / D8）。
+  return [gutters({ fixed: false }), lineNumbers()];
 }
 
 function createLanguageExtension(kind: FileKind) {

@@ -14,6 +14,7 @@ import { execFileSync } from "node:child_process";
 
 const APP_URL = "http://localhost:1420";
 const ART = path.resolve(process.cwd(), ".artifacts/858");
+const ART_920 = path.resolve(process.cwd(), ".artifacts/920");
 const EVIDENCE = path.resolve(process.cwd(), "scripts/cw-evidence.sh");
 
 const TXT_DOC = ["第一行纯文本", "第二行内容", "第三行收尾"].join("\n");
@@ -24,6 +25,16 @@ const JS_DOC = [
   "}",
 ].join("\n");
 const MD_DOC = "# 标题\n\n正文一段。\n";
+// #920：同一段代码，用于编辑态 / 预览态代码盒子对照。
+const CODE_DOC = [
+  "```js",
+  "const a = 1;",
+  "function add(a, b) {",
+  "  return a + b;",
+  "}",
+  "```",
+  "",
+].join("\n");
 
 function shot(page: Page, name: string): Promise<string> {
   const file = path.join(ART, `${name}.png`);
@@ -39,6 +50,31 @@ function shot(page: Page, name: string): Promise<string> {
         file,
         "--assertion",
         "passed",
+      ],
+      { stdio: "ignore" },
+    );
+    return file;
+  });
+}
+
+function shot920(
+  page: Page,
+  name: string,
+  assertion: "passed" | "failed",
+): Promise<string> {
+  const file = path.join(ART_920, `${name}.png`);
+  return page.screenshot({ path: file }).then(() => {
+    execFileSync(
+      EVIDENCE,
+      [
+        "record-state",
+        ART_920,
+        "--state",
+        name,
+        "--screenshot",
+        file,
+        "--assertion",
+        assertion,
       ],
       { stdio: "ignore" },
     );
@@ -174,4 +210,90 @@ test("切换文件 / 切换模式行号出现消失，且不 remount EditorView"
   });
   expect(probeAfterMode).toBe("same-view");
   await shot(page, "switch-mode-gutter-toggles");
+});
+
+test("A-23.3：行号紧贴正文（行号右缘与正文左缘间距 ≤12px）", async ({
+  page,
+}) => {
+  await boot(page);
+
+  await openFile(page, "/tmp/920-gap.txt", TXT_DOC);
+  await awaitGuttersAtLeastOne(page);
+
+  const gap = await page.evaluate(() => {
+    const num = document.querySelector<HTMLElement>(
+      ".cm-editor .cm-lineNumbers .cm-gutterElement",
+    );
+    const line = document.querySelector<HTMLElement>(".cm-editor .cm-line");
+    if (!num || !line) return null;
+    const numRange = document.createRange();
+    numRange.selectNodeContents(num);
+    const lineRange = document.createRange();
+    lineRange.selectNodeContents(line);
+    return (
+      lineRange.getBoundingClientRect().left -
+      numRange.getBoundingClientRect().right
+    );
+  });
+
+  expect(gap).not.toBeNull();
+  await shot920(page, "gap-after", "passed");
+  expect(gap!).toBeLessThanOrEqual(12);
+});
+
+test("A-23.4：同一段代码编辑态与预览态盒子（字体 / 背景 / 内边距）一致", async ({
+  page,
+}) => {
+  await boot(page);
+
+  await openFile(page, "/tmp/920-codebox.md", CODE_DOC);
+  await page.locator(".cm-editor .cm-line.cm-fenced-code").first().waitFor();
+
+  const editBox = await page.evaluate(() => {
+    const line = [
+      ...document.querySelectorAll<HTMLElement>(
+        ".cm-editor .cm-line.cm-fenced-code",
+      ),
+    ].find((el) => (el.textContent ?? "").includes("const a = 1;"));
+    if (!line) return null;
+    const cs = getComputedStyle(line);
+    return {
+      fontFamily: cs.fontFamily,
+      backgroundColor: cs.backgroundColor,
+      paddingTop: cs.paddingTop,
+      paddingRight: cs.paddingRight,
+      paddingBottom: cs.paddingBottom,
+      paddingLeft: cs.paddingLeft,
+    };
+  });
+  expect(editBox).not.toBeNull();
+  await shot920(page, "code-box-edit", "passed");
+
+  await setMode(page, "preview");
+  await page.locator(".preview-content .code-block").waitFor({ timeout: 10000 });
+
+  const previewBox = await page.evaluate(() => {
+    const pre = document.querySelector<HTMLElement>(
+      ".preview-content .code-block pre",
+    );
+    if (!pre) return null;
+    const cs = getComputedStyle(pre);
+    return {
+      fontFamily: cs.fontFamily,
+      backgroundColor: cs.backgroundColor,
+      paddingTop: cs.paddingTop,
+      paddingRight: cs.paddingRight,
+      paddingBottom: cs.paddingBottom,
+      paddingLeft: cs.paddingLeft,
+    };
+  });
+  expect(previewBox).not.toBeNull();
+  await shot920(page, "code-box-preview", "passed");
+
+  expect(editBox!.fontFamily).toBe(previewBox!.fontFamily);
+  expect(editBox!.backgroundColor).toBe(previewBox!.backgroundColor);
+  expect(editBox!.paddingTop).toBe(previewBox!.paddingTop);
+  expect(editBox!.paddingRight).toBe(previewBox!.paddingRight);
+  expect(editBox!.paddingBottom).toBe(previewBox!.paddingBottom);
+  expect(editBox!.paddingLeft).toBe(previewBox!.paddingLeft);
 });
