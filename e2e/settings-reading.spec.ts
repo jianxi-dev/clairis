@@ -1,9 +1,14 @@
 import { test, expect, type Page } from "@playwright/test";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
+import { execFileSync } from "node:child_process";
 
 const ART274 = path.resolve(process.cwd(), ".artifacts/274");
 mkdirSync(ART274, { recursive: true });
+
+const ART913 = path.resolve(process.cwd(), ".artifacts/913");
+const EVIDENCE913 = path.resolve(process.cwd(), "scripts/cw-evidence.sh");
+mkdirSync(ART913, { recursive: true });
 
 /**
  * 设置迁移（reading-surface-refine 5.1 / #218）真实浏览器用例。
@@ -251,4 +256,187 @@ test("行宽滑块 480–1400 连续可调，并与预设同步（#274 / #573）
   await page.screenshot({
     path: path.join(ART274, "reader-width-preset-1200.png"),
   });
+});
+
+async function openEditDoc913(page: Page): Promise<void> {
+  await page.evaluate((body) => {
+    const w = window as unknown as {
+      __biaoyue_openFile__: (p: string, c: string, t: string) => void;
+      __biaoyue_store__: {
+        getState: () => { setEditorMode: (m: string) => void };
+      };
+    };
+    w.__biaoyue_openFile__(
+      "/tmp/skin-parity.md",
+      body,
+      "skin-parity.md",
+    );
+    w.__biaoyue_store__.getState().setEditorMode("edit");
+  }, "# 一级标题\n\n正文段落，用于确认正文色不随配色变化。");
+  await expect(page.locator(".cm-heading.cm-h1")).toBeVisible();
+}
+
+async function setMode913(
+  page: Page,
+  mode: "edit" | "preview",
+): Promise<void> {
+  await page.evaluate((m) => {
+    const w = window as unknown as {
+      __biaoyue_store__: {
+        getState: () => { setEditorMode: (x: string) => void };
+      };
+    };
+    w.__biaoyue_store__.getState().setEditorMode(m);
+  }, mode);
+}
+
+async function chooseTone913(page: Page, tone: string): Promise<void> {
+  await page.keyboard.press("Meta+,");
+  await expect(page.locator('[data-testid="settings-scene"]')).toBeVisible();
+  await page.locator('[data-settings-nav="reading"]').click();
+  await page.locator(`[data-testid="reader-tone-${tone}"]`).click();
+  await page.keyboard.press("Escape");
+  await expect(page.locator('[data-testid="settings-scene"]')).toHaveCount(0);
+}
+
+async function editH1Color(page: Page): Promise<string> {
+  return page
+    .locator(".cm-heading.cm-h1")
+    .first()
+    .evaluate((el) => getComputedStyle(el).color);
+}
+
+async function editBodyColor(page: Page): Promise<string> {
+  return page
+    .locator(".cm-content .cm-line:not(:has(.cm-heading))")
+    .first()
+    .evaluate((el) => getComputedStyle(el).color);
+}
+
+async function previewH1Color(page: Page): Promise<string> {
+  return page
+    .locator(".preview-content h1")
+    .first()
+    .evaluate((el) => getComputedStyle(el).color);
+}
+
+async function previewBodyColor(page: Page): Promise<string> {
+  return page
+    .locator(".preview-content p")
+    .first()
+    .evaluate((el) => getComputedStyle(el).color);
+}
+
+function shot913(page: Page, name: string): Promise<string> {
+  return page.screenshot({ path: path.join(ART913, `${name}.png`) });
+}
+
+function record913(
+  state: string,
+  screenshot: string,
+  assertion: string,
+): void {
+  execFileSync(
+    EVIDENCE913,
+    [
+      "record-state",
+      ART913,
+      "--state",
+      state,
+      "--screenshot",
+      screenshot,
+      "--assertion",
+      assertion,
+    ],
+    { stdio: "ignore" },
+  );
+}
+
+test("配色同时驱动编辑态与预览态标题色，正文不串色（#913）", async ({
+  page,
+}) => {
+  await boot(page);
+  await openEditDoc913(page);
+
+  const paperEditH1 = await editH1Color(page);
+  const paperEditBody = await editBodyColor(page);
+  await shot913(page, "paper-edit");
+  await setMode913(page, "preview");
+  const paperPreviewH1 = await previewH1Color(page);
+  const paperPreviewBody = await previewBodyColor(page);
+  await shot913(page, "paper-preview");
+
+  await setMode913(page, "edit");
+  await chooseTone913(page, "indigo");
+  const indigoEditH1 = await editH1Color(page);
+  const indigoEditBody = await editBodyColor(page);
+  await shot913(page, "indigo-edit");
+  await setMode913(page, "preview");
+  const indigoPreviewH1 = await previewH1Color(page);
+  const indigoPreviewBody = await previewBodyColor(page);
+  await shot913(page, "indigo-preview");
+
+  await setMode913(page, "edit");
+  await chooseTone913(page, "moss");
+  const mossEditH1 = await editH1Color(page);
+  const mossEditBody = await editBodyColor(page);
+  await shot913(page, "moss-edit");
+  await setMode913(page, "preview");
+  const mossPreviewH1 = await previewH1Color(page);
+  const mossPreviewBody = await previewBodyColor(page);
+  await shot913(page, "moss-preview");
+
+  await setMode913(page, "edit");
+  await chooseTone913(page, "paper");
+  const backEditH1 = await editH1Color(page);
+  await shot913(page, "paper-back-edit");
+  await setMode913(page, "preview");
+  const backPreviewH1 = await previewH1Color(page);
+
+  const parityOk =
+    indigoEditH1 === indigoPreviewH1 &&
+    mossEditH1 === mossPreviewH1 &&
+    paperEditH1 === paperPreviewH1 &&
+    backEditH1 === backPreviewH1;
+  const verdict = parityOk ? "passed" : "failed";
+  console.log(
+    "913-measure " +
+      JSON.stringify({
+        paperEditH1,
+        paperPreviewH1,
+        paperEditBody,
+        paperPreviewBody,
+        indigoEditH1,
+        indigoPreviewH1,
+        indigoEditBody,
+        indigoPreviewBody,
+        mossEditH1,
+        mossPreviewH1,
+        mossEditBody,
+        mossPreviewBody,
+        backEditH1,
+        backPreviewH1,
+      }),
+  );
+
+  record913("paper-edit", ".artifacts/913/paper-edit.png", verdict);
+  record913("indigo-edit", ".artifacts/913/indigo-edit.png", verdict);
+  record913("indigo-preview", ".artifacts/913/indigo-preview.png", verdict);
+  record913("moss-edit", ".artifacts/913/moss-edit.png", verdict);
+  record913("moss-preview", ".artifacts/913/moss-preview.png", verdict);
+  record913("paper-back-edit", ".artifacts/913/paper-back-edit.png", verdict);
+
+  expect(indigoEditH1).toBe(indigoPreviewH1);
+  expect(mossEditH1).toBe(mossPreviewH1);
+  expect(paperEditH1).toBe(paperPreviewH1);
+  expect(paperEditH1).toBe("rgb(215, 58, 73)");
+  expect(backEditH1).toBe(paperEditH1);
+  expect(backPreviewH1).toBe(paperPreviewH1);
+  expect(indigoEditH1).not.toBe(mossEditH1);
+  expect(indigoPreviewH1).not.toBe(mossPreviewH1);
+  expect(indigoEditBody).toBe(paperEditBody);
+  expect(mossEditBody).toBe(paperEditBody);
+  expect(indigoPreviewBody).toBe(paperPreviewBody);
+  expect(mossPreviewBody).toBe(paperPreviewBody);
+  expect(indigoPreviewBody).not.toBe(indigoPreviewH1);
 });
