@@ -22,7 +22,12 @@ import {
   setFrontmatterField,
   tagColor,
   validateFieldValue,
+  cloneFieldsForPaste,
+  moveFieldBlock,
+  uniqueKey,
+  writeFrontmatterOrdered,
   type FrontmatterField,
+  type FrontmatterRowId,
   type FrontmatterType,
 } from "../../lib/frontmatter";
 import { getActiveEditorView } from "../../editors/editorRef";
@@ -52,6 +57,76 @@ const TYPE_LABEL: Record<FrontmatterType, string> = {
 };
 
 const EMPTY_OVERRIDES: Record<string, FrontmatterType> = {};
+
+/** 手柄拖拽阈值：位移小于 5px 视为点击选中，超过才进入排序（P-4）。 */
+const DRAG_THRESHOLD = 5;
+
+interface OpsBarProps {
+  count: number;
+  canPaste: boolean;
+  onCopy: () => void;
+  onCut: () => void;
+  onPaste: () => void;
+  onUp: () => void;
+  onDown: () => void;
+  onDelete: () => void;
+  onClear: () => void;
+}
+
+function OpsBar({
+  count,
+  canPaste,
+  onCopy,
+  onCut,
+  onPaste,
+  onUp,
+  onDown,
+  onDelete,
+  onClear,
+}: OpsBarProps) {
+  const btn = (
+    testId: string,
+    glyph: string,
+    label: string,
+    onClick: () => void,
+    disabled = false,
+    danger = false,
+  ) => (
+    <button
+      key={testId}
+      type="button"
+      className={`dpb-ops-btn${danger ? " dpb-ops-btn-danger" : ""}`}
+      data-testid={testId}
+      title={label}
+      aria-label={label}
+      disabled={disabled}
+      onClick={onClick}
+    >
+      {glyph}
+    </button>
+  );
+  return (
+    <div className="dpb-ops" data-testid="dpb-ops">
+      <span className="dpb-ops-count" data-testid="dpb-ops-count">
+        已选 {count} 项
+      </span>
+      {btn("dpb-ops-copy", "⧉", "复制所选字段", onCopy)}
+      {btn("dpb-ops-cut", "✂", "剪切所选字段", onCut)}
+      {btn("dpb-ops-paste", "⤵", "粘贴到所选行下方", onPaste, !canPaste)}
+      {btn("dpb-ops-up", "↑", "上移", onUp)}
+      {btn("dpb-ops-down", "↓", "下移", onDown)}
+      {btn(
+        "dpb-ops-del",
+        "🗑",
+        "删除所选字段（标题位保留）",
+        onDelete,
+        false,
+        true,
+      )}
+      {btn("dpb-ops-clear", "×", "取消选中", onClear)}
+    </div>
+  );
+}
 
 /** 类型菜单八类直选（unknown 是「?」收编态，不可选）。 */
 const PICKABLE_TYPES: readonly FrontmatterType[] = [
@@ -1023,6 +1098,37 @@ export default function DocPropertyBar({
   const previewDefault = propertyBar?.displayDefault?.preview ?? "show";
   const editDefault = propertyBar?.displayDefault?.edit ?? "show";
 
+  const [selMap, setSelMap] = useState<Record<string, FrontmatterRowId[]>>({});
+  const [clipboard, setClipboard] = useState<FrontmatterField[] | null>(null);
+  const [drop, setDrop] = useState<{ index: number; top: number } | null>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const selected = useMemo(
+    () => new Set(selMap[docKey] ?? []),
+    [selMap, docKey],
+  );
+  const selectedRef = useRef<Set<FrontmatterRowId>>(selected);
+  useEffect(() => {
+    selectedRef.current = selected;
+  }, [selected]);
+
+  const applySelection = useCallback(
+    (ids: FrontmatterRowId[]) => {
+      const next = new Set(ids);
+      selectedRef.current = next;
+      setSelMap((prev) => ({ ...prev, [docKey]: [...next] }));
+    },
+    [docKey],
+  );
+
+  const lastDocKeyRef = useRef(docKey);
+  useEffect(() => {
+    if (lastDocKeyRef.current === docKey) return;
+    lastDocKeyRef.current = docKey;
+    selectedRef.current = new Set();
+    setSelMap((prev) => ({ ...prev, [docKey]: [] }));
+    setClipboard(null);
+  }, [docKey]);
+
   // 进入预览 / 编辑模式时应用配置默认档；从源码态切回保留用户状态（P-1）。
   const lastModeRef = useRef<EditorMode | null>(null);
   const lastDefaultsRef = useRef(`${previewDefault}/${editDefault}`);
@@ -1143,6 +1249,232 @@ export default function DocPropertyBar({
   const rest = fields.filter((f) => f !== titleField && f !== tagsField);
   const editable = mode === "edit";
 
+  const titleIdx = titleField ? fields.indexOf(titleField) : -1;
+  const tagsIdx = tagsField ? fields.indexOf(tagsField) : -1;
+  const selectMode = editable && selected.size > 0;
+
+  const numericSelected = useCallback((): number[] => {
+    return [...selectedRef.current]
+      .filter((x): x is number => typeof x === "number")
+      .sort((a, b) => a - b);
+  }, []);
+
+  const commitFields = useCallback(
+    (next: FrontmatterField[], nextSel: FrontmatterRowId[]) => {
+      const result = writeFrontmatterOrdered(content, next);
+      if (result.text !== content) {
+        const view = getActiveEditorView();
+        view?.dispatch({
+          changes: { from: result.from, to: result.to, insert: result.block },
+        });
+      }
+      applySelection(nextSel);
+    },
+    [content, applySelection],
+  );
+
+  const toggleRow = useCallback(
+    (id: FrontmatterRowId) => {
+      const next = new Set(selectedRef.current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      applySelection([...next]);
+    },
+    [applySelection],
+  );
+
+  const handleSelectAll = useCallback(() => {
+    applySelection(
+      fields.map((_, i) => i).filter((i) => i !== titleIdx && i !== tagsIdx),
+    );
+  }, [fields, titleIdx, tagsIdx, applySelection]);
+
+  const handleClear = useCallback(() => applySelection([]), [applySelection]);
+
+  const handleCopy = useCallback(
+    (cut: boolean) => {
+      const nums = numericSelected();
+      const wantsTags = selectedRef.current.has("tags") && tagsIdx >= 0;
+      const idxs = wantsTags ? [...nums, tagsIdx] : nums;
+      if (idxs.length === 0) return;
+      setClipboard(cloneFieldsForPaste(fields, idxs));
+      if (!cut) return;
+      const dropSet = new Set(nums);
+      const next = fields.filter((_, i) => !dropSet.has(i));
+      if (wantsTags) {
+        const ti = next.findIndex((f) => f.key === "tags");
+        if (ti >= 0) next[ti] = { ...next[ti], value: [], display: "" };
+      }
+      commitFields(next, []);
+    },
+    [fields, tagsIdx, numericSelected, commitFields],
+  );
+
+  const handlePaste = useCallback(() => {
+    if (!clipboard || clipboard.length === 0) return;
+    const nums = numericSelected();
+    const anchor = nums.length > 0 ? Math.max(...nums) : fields.length - 1;
+    const insertAt = Math.max(0, Math.min(fields.length, anchor + 1));
+    const taken = new Set(fields.map((f) => f.key));
+    const clones = clipboard.map((f) => {
+      const key = uniqueKey(f.key, taken);
+      taken.add(key);
+      return key === f.key ? f : { ...f, key };
+    });
+    commitFields(
+      [...fields.slice(0, insertAt), ...clones, ...fields.slice(insertAt)],
+      clones.map((_, k) => insertAt + k),
+    );
+  }, [clipboard, fields, numericSelected, commitFields]);
+
+  const handleDelete = useCallback(() => {
+    const nums = numericSelected().filter((i) => i !== titleIdx);
+    const wantsTags = selectedRef.current.has("tags") && tagsIdx >= 0;
+    if (nums.length === 0 && !wantsTags) return;
+    const dropSet = new Set(nums);
+    const next = fields.filter((_, i) => !dropSet.has(i));
+    if (wantsTags) {
+      const ti = next.findIndex((f) => f.key === "tags");
+      if (ti >= 0) next[ti] = { ...next[ti], value: [], display: "" };
+    }
+    commitFields(next, []);
+  }, [fields, titleIdx, tagsIdx, numericSelected, commitFields]);
+
+  const handleMove = useCallback(
+    (delta: 1 | -1) => {
+      const nums = numericSelected();
+      if (nums.length === 0) return;
+      const min = Math.min(...nums);
+      const max = Math.max(...nums);
+      if (delta < 0 && min === 0) return;
+      if (delta > 0 && max === fields.length - 1) return;
+      const target = delta > 0 ? max + 2 : min - 1;
+      const next = moveFieldBlock(fields, nums, target);
+      const moved = nums.map((i) => fields[i]);
+      const newSel = moved.map((f) => next.indexOf(f)).filter((i) => i >= 0);
+      commitFields(next, newSel);
+    },
+    [fields, numericSelected, commitFields],
+  );
+
+  const rowIdFromEl = (el: Element): FrontmatterRowId | null => {
+    const raw = el.getAttribute("data-row-id");
+    if (raw == null) return null;
+    return raw === "tags" ? "tags" : Number(raw);
+  };
+
+  const dropRows = (): HTMLElement[] => {
+    const root = panelRef.current;
+    if (!root) return [];
+    return Array.from(
+      root.querySelectorAll<HTMLElement>("[data-row-id]"),
+    ).filter((el) => el.getAttribute("data-row-id") !== "tags");
+  };
+
+  const computeDropIndex = (clientY: number): number => {
+    const rows = dropRows();
+    if (rows.length === 0) return fields.length;
+    for (const el of rows) {
+      const r = el.getBoundingClientRect();
+      if (clientY < r.top + r.height / 2) {
+        return Number(el.getAttribute("data-row-id"));
+      }
+    }
+    return fields.length;
+  };
+
+  const dropTopFor = (index: number): number => {
+    const root = panelRef.current;
+    const rows = dropRows();
+    if (!root || rows.length === 0) return 0;
+    const panelRect = root.getBoundingClientRect();
+    const el =
+      index >= fields.length
+        ? rows[rows.length - 1]
+        : rows.find((e) => e.getAttribute("data-row-id") === String(index));
+    if (!el) return 0;
+    const r = el.getBoundingClientRect();
+    return index >= fields.length
+      ? r.bottom - panelRect.top
+      : r.top - panelRect.top;
+  };
+
+  const onHandlePointerDown = (
+    e: React.PointerEvent<HTMLSpanElement>,
+    id: FrontmatterRowId,
+  ) => {
+    if (!editable) return;
+    e.preventDefault();
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const movable = typeof id === "number";
+    let started = false;
+    let over: number | null = null;
+
+    const onMove = (ev: PointerEvent) => {
+      if (!started) {
+        if (
+          Math.abs(ev.clientY - startY) + Math.abs(ev.clientX - startX) <
+          DRAG_THRESHOLD
+        ) {
+          return;
+        }
+        if (!movable) return;
+        started = true;
+        if (!selectedRef.current.has(id)) applySelection([id]);
+      }
+      over = computeDropIndex(ev.clientY);
+      setDrop({ index: over, top: dropTopFor(over) });
+    };
+    const onUp = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      setDrop(null);
+      if (!started) {
+        toggleRow(id);
+        return;
+      }
+      if (over == null) return;
+      const nums = [...selectedRef.current]
+        .filter((x): x is number => typeof x === "number")
+        .sort((a, b) => a - b);
+      const moveIdxs = nums.includes(id as number) ? nums : [id as number];
+      const next = moveFieldBlock(fields, moveIdxs, over);
+      const moved = moveIdxs.map((i) => fields[i]);
+      const newSel = moved.map((f) => next.indexOf(f)).filter((i) => i >= 0);
+      commitFields(next, newSel);
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  };
+
+  const onPanelClickCapture = (e: React.MouseEvent) => {
+    if (!editable || selectedRef.current.size === 0) return;
+    const t = e.target as HTMLElement | null;
+    if (!t || typeof t.closest !== "function") return;
+    if (t.closest('[data-testid="dpb-row-handle"]')) return;
+    const rowEl = t.closest("[data-row-id]");
+    if (!rowEl) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const id = rowIdFromEl(rowEl);
+    if (id != null) toggleRow(id);
+  };
+
+  useEffect(() => {
+    if (!editable || selected.size === 0) return;
+    const onDocClick = (e: MouseEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (!t || typeof t.closest !== "function") return;
+      if (t.closest("[data-row-id]")) return;
+      if (t.closest('[data-testid="dpb-ops"]')) return;
+      if (t.closest('[data-testid="dpb-tools"]')) return;
+      if (selectedRef.current.size > 0) applySelection([]);
+    };
+    document.addEventListener("click", onDocClick);
+    return () => document.removeEventListener("click", onDocClick);
+  }, [editable, selected.size, applySelection]);
+
   if (hidden) {
     return (
       <div
@@ -1175,69 +1507,125 @@ export default function DocPropertyBar({
     </button>
   ) : null;
 
+  const selectAllButton = editable ? (
+    <button
+      type="button"
+      className="dpb-select-all"
+      data-testid="dpb-select-all"
+      title="全选字段（不含标题与标签）"
+      onClick={handleSelectAll}
+    >
+      ☑ 全选
+    </button>
+  ) : null;
+
+  const opsBar =
+    editable && selected.size > 0 && !collapsed ? (
+      <OpsBar
+        count={selected.size}
+        canPaste={clipboard !== null && clipboard.length > 0}
+        onCopy={() => handleCopy(false)}
+        onCut={() => handleCopy(true)}
+        onPaste={handlePaste}
+        onUp={() => handleMove(-1)}
+        onDown={() => handleMove(1)}
+        onDelete={handleDelete}
+        onClear={handleClear}
+      />
+    ) : null;
+
+  const dropLine = drop ? (
+    <span
+      className="dpb-drop-line"
+      data-testid="dpb-drop-line"
+      style={{ top: drop.top }}
+    />
+  ) : null;
+
   if (variant === "B") {
     return (
-      <div className="dpb-panel dpb-b" data-testid="dpb-b">
+      <div
+        ref={panelRef}
+        className={`dpb-panel dpb-b${selectMode ? " select-mode" : ""}`}
+        data-testid="dpb-b"
+        onClickCapture={onPanelClickCapture}
+      >
         <div className="dpb-b-head">
           <span className="dpb-b-title">文档属性</span>
           <span className="dpb-b-sub">
             {collapsed ? `已折叠 · ${fields.length} 个字段` : ""}
           </span>
-          <span className="dpb-b-tools">{collapseButton}</span>
+          <span className="dpb-b-tools" data-testid="dpb-tools">
+            {selectAllButton}
+            {collapseButton}
+          </span>
         </div>
         {!collapsed && (
           <div className="dpb-b-body">
-            {fields.map((field, i) => (
-              <div
-                className={`dpb-b-row${i === fields.length - 1 ? " dpb-b-row-last" : ""}`}
-                key={field.key}
-                data-testid="dpb-row"
-                data-key={field.key}
-                data-locked={isManagedDateKey(field.key) ? "true" : undefined}
-              >
-                <span className="dpb-b-handle">{editable ? "⠿" : ""}</span>
-                <span className="dpb-b-type" title={TYPE_LABEL[field.type]}>
-                  <TypeSelector
+            {opsBar}
+            {dropLine}
+            {fields.map((field, i) => {
+              const rowId: FrontmatterRowId = field === tagsField ? "tags" : i;
+              return (
+                <div
+                  className={`dpb-b-row${i === fields.length - 1 ? " dpb-b-row-last" : ""}${selected.has(rowId) ? " dpb-row-selected" : ""}`}
+                  key={field.key}
+                  data-testid="dpb-row"
+                  data-key={field.key}
+                  data-row-id={rowId}
+                  data-locked={isManagedDateKey(field.key) ? "true" : undefined}
+                >
+                  <span
+                    className="dpb-b-handle"
+                    data-testid="dpb-row-handle"
+                    title="点击选中（可多选）· 拖动排序"
+                    onPointerDown={(e) => onHandlePointerDown(e, rowId)}
+                  >
+                    {editable ? "⠿" : ""}
+                  </span>
+                  <span className="dpb-b-type" title={TYPE_LABEL[field.type]}>
+                    <TypeSelector
+                      field={field}
+                      editable={editable}
+                      onPick={handlePickType}
+                    />
+                  </span>
+                  <RenameLabel
                     field={field}
                     editable={editable}
-                    onPick={handlePickType}
+                    className="dpb-b-label"
+                    onSubmit={handleRename}
                   />
-                </span>
-                <RenameLabel
-                  field={field}
-                  editable={editable}
-                  className="dpb-b-label"
-                  onSubmit={handleRename}
-                />
-                <span className="dpb-b-value">
-                  {field === tagsField ? (
-                    <TagsCell
-                      field={field}
-                      editable={editable}
-                      onCommit={handleCommitField}
-                    />
-                  ) : (
-                    <FieldValue
-                      field={field}
-                      editable={editable}
-                      onCommit={handleCommitField}
-                    />
-                  )}
-                  {typeErrors[field.key] && (
-                    <span
-                      className="dpb-error"
-                      data-testid="dpb-error"
-                      role="status"
-                    >
-                      {typeErrors[field.key]}
-                    </span>
-                  )}
-                </span>
-                <span className="dpb-b-x">
-                  {isManagedDateKey(field.key) ? <LockIcon /> : null}
-                </span>
-              </div>
-            ))}
+                  <span className="dpb-b-value">
+                    {field === tagsField ? (
+                      <TagsCell
+                        field={field}
+                        editable={editable}
+                        onCommit={handleCommitField}
+                      />
+                    ) : (
+                      <FieldValue
+                        field={field}
+                        editable={editable}
+                        onCommit={handleCommitField}
+                      />
+                    )}
+                    {typeErrors[field.key] && (
+                      <span
+                        className="dpb-error"
+                        data-testid="dpb-error"
+                        role="status"
+                      >
+                        {typeErrors[field.key]}
+                      </span>
+                    )}
+                  </span>
+                  <span className="dpb-b-x">
+                    {isManagedDateKey(field.key) ? <LockIcon /> : null}
+                  </span>
+                </div>
+              );
+            })}
             <div className="dpb-b-foot">
               <span data-testid="dpb-count">{fields.length} 个字段</span>
             </div>
@@ -1248,83 +1636,136 @@ export default function DocPropertyBar({
   }
 
   return (
-    <div className="dpb-panel dpb-a" data-testid="dpb-a">
+    <div
+      ref={panelRef}
+      className={`dpb-panel dpb-a${selectMode ? " select-mode" : ""}`}
+      data-testid="dpb-a"
+      onClickCapture={onPanelClickCapture}
+    >
       <div className="dpb-a-line">
-        <span className="dpb-a-title" title={titleField?.display || undefined}>
-          {titleField?.display || "（无标题）"}
-        </span>
+        {titleField ? (
+          <span
+            className={`dpb-a-title-cell${selected.has(titleIdx) ? " dpb-row-selected" : ""}`}
+            data-row-id={titleIdx}
+          >
+            {editable && (
+              <span
+                className="dpb-row-handle dpb-row-handle-title"
+                data-testid="dpb-row-handle"
+                title="点击选中标题位"
+                onPointerDown={(e) => onHandlePointerDown(e, titleIdx)}
+              >
+                ⠿
+              </span>
+            )}
+            <span
+              className="dpb-a-title"
+              title={titleField.display || undefined}
+            >
+              {titleField.display || "（无标题）"}
+            </span>
+          </span>
+        ) : (
+          <span className="dpb-a-title">（无标题）</span>
+        )}
         <span className="dpb-a-spacer" />
-        {collapseButton}
+        <span className="dpb-a-tools" data-testid="dpb-tools">
+          {selectAllButton}
+          {collapseButton}
+        </span>
       </div>
       {collapsed ? (
         <div className="dpb-a-summary">已折叠 · {fields.length} 个字段</div>
       ) : (
-        <div className="dpb-a-meta">
-          {rest.map((field) => (
-            <span
-              className="dpb-chip"
-              key={field.key}
-              data-testid="dpb-row"
-              data-key={field.key}
-              data-locked={isManagedDateKey(field.key) ? "true" : undefined}
-            >
-              {editable && (
-                <span className="dpb-row-handle" aria-hidden="true">
-                  ⠿
-                </span>
-              )}
-              {editable && (
-                <TypeSelector
-                  field={field}
-                  editable={editable}
-                  onPick={handlePickType}
-                />
-              )}
-              <RenameLabel
-                field={field}
-                editable={editable}
-                className="dpb-k"
-                onSubmit={handleRename}
-              />
-              <FieldValue
-                field={field}
-                editable={editable && !isManagedDateKey(field.key)}
-                onCommit={handleCommitField}
-              />
-              {typeErrors[field.key] && (
+        <>
+          {opsBar}
+          {dropLine}
+          <div className="dpb-a-meta">
+            {rest.map((field) => {
+              const rowId = fields.indexOf(field);
+              return (
                 <span
-                  className="dpb-error"
-                  data-testid="dpb-error"
-                  role="status"
+                  className={`dpb-chip${selected.has(rowId) ? " dpb-row-selected" : ""}`}
+                  key={field.key}
+                  data-testid="dpb-row"
+                  data-key={field.key}
+                  data-row-id={rowId}
+                  data-locked={isManagedDateKey(field.key) ? "true" : undefined}
                 >
-                  {typeErrors[field.key]}
+                  {editable && (
+                    <span
+                      className="dpb-row-handle"
+                      data-testid="dpb-row-handle"
+                      title="点击选中（可多选）· 拖动排序"
+                      onPointerDown={(e) => onHandlePointerDown(e, rowId)}
+                    >
+                      ⠿
+                    </span>
+                  )}
+                  {editable && (
+                    <TypeSelector
+                      field={field}
+                      editable={editable}
+                      onPick={handlePickType}
+                    />
+                  )}
+                  <RenameLabel
+                    field={field}
+                    editable={editable}
+                    className="dpb-k"
+                    onSubmit={handleRename}
+                  />
+                  <FieldValue
+                    field={field}
+                    editable={editable && !isManagedDateKey(field.key)}
+                    onCommit={handleCommitField}
+                  />
+                  {typeErrors[field.key] && (
+                    <span
+                      className="dpb-error"
+                      data-testid="dpb-error"
+                      role="status"
+                    >
+                      {typeErrors[field.key]}
+                    </span>
+                  )}
+                  {isManagedDateKey(field.key) && <LockIcon />}
                 </span>
-              )}
-              {isManagedDateKey(field.key) && <LockIcon />}
-            </span>
-          ))}
-          {tagsField && (
-            <span className="dpb-chip" data-testid="dpb-row" data-key="tags">
-              {editable && (
-                <span className="dpb-row-handle" aria-hidden="true">
-                  ⠿
-                </span>
-              )}
-              {editable && <TypeIcon type="array" />}
-              <RenameLabel
-                field={tagsField}
-                editable={editable}
-                className="dpb-k"
-                onSubmit={handleRename}
-              />
-              <TagsCell
-                field={tagsField}
-                editable={editable}
-                onCommit={handleCommitField}
-              />
-            </span>
-          )}
-        </div>
+              );
+            })}
+            {tagsField && (
+              <span
+                className={`dpb-chip${selected.has("tags") ? " dpb-row-selected" : ""}`}
+                data-testid="dpb-row"
+                data-key="tags"
+                data-row-id="tags"
+              >
+                {editable && (
+                  <span
+                    className="dpb-row-handle"
+                    data-testid="dpb-row-handle"
+                    title="点击选中标签行"
+                    onPointerDown={(e) => onHandlePointerDown(e, "tags")}
+                  >
+                    ⠿
+                  </span>
+                )}
+                {editable && <TypeIcon type="array" />}
+                <RenameLabel
+                  field={tagsField}
+                  editable={editable}
+                  className="dpb-k"
+                  onSubmit={handleRename}
+                />
+                <TagsCell
+                  field={tagsField}
+                  editable={editable}
+                  onCommit={handleCommitField}
+                />
+              </span>
+            )}
+          </div>
+        </>
       )}
     </div>
   );
