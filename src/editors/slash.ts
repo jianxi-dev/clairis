@@ -1842,10 +1842,24 @@ function backToRoot(view: EditorView): void {
 }
 
 /**
- * 模块级 IME 组合守卫。由 slashKeymap 的 ViewPlugin 事件处理器写入，
- * insertSlashChar 读取以在组合期跳过。
+ * 正在组合的视图集合（#915）。组合事件会冒泡：表格单元格 / 标注标题等原生
+ * 控件的 compositionstart 也会经过 document 捕获到达这里，模块级布尔会被
+ * 一次没有 compositionend 的「外来组合」永久置真，之后 `/` 直输永远打不开
+ * 菜单。按视图存放且只认发往本视图 contentDOM 的组合。
  */
-let slashComposing = false;
+const slashComposingViews = new WeakSet<EditorView>();
+
+/** 组合守卫读取口径：WeakSet 与 CM6 自身状态取交集。
+ *  CM6 会自行补救 Safari 丢 compositionend 的情况（view.composing 复位），
+ *  以它为准解除卡死，避免本插件的状态永远大于事实。 */
+function isSlashComposing(view: EditorView): boolean {
+  if (!slashComposingViews.has(view)) return false;
+  if (!view.composing) {
+    slashComposingViews.delete(view);
+    return false;
+  }
+  return true;
+}
 
 /**
  * 处理输入 `/`。在光标处打开命令菜单。菜单已打开时（连续第二个斜杠）
@@ -1860,7 +1874,7 @@ export function insertSlashChar(
   view: EditorView,
   commands?: SlashCommand[],
 ): boolean {
-  if (slashComposing) return false;
+  if (isSlashComposing(view)) return false;
 
   const current = menus.get(view);
   if (current?.open) {
@@ -2174,7 +2188,7 @@ const scrollDismiss = ViewPlugin.define((view) => {
 const menuSyncPlugin = ViewPlugin.define((view) => ({
   update(u: ViewUpdate): void {
     const state = menus.get(u.view);
-    if (!state?.open || slashComposing) return;
+    if (!state?.open || isSlashComposing(u.view)) return;
     // 锚定与下方菜单没有输入触发符也没有过滤词。表格组件失焦时重写自己的
     // 单元格标记，块把手菜单由文档外部驱动，所以文档变更一律忽略。光标离开
     // 所属范围才关闭面板，这样焦点移走后它不会滞留。
@@ -2215,12 +2229,16 @@ const menuSyncPlugin = ViewPlugin.define((view) => ({
  * document 而不是 contentDOM 上也能捕获。
  */
 const slashCompositionGuard = ViewPlugin.define((view) => {
-  const onCompositionStart = (): void => {
-    slashComposing = true;
+  const onCompositionStart = (event: CompositionEvent): void => {
+    // 只认发往本视图 contentDOM 的组合：外来控件（含其它面板）的事件也走
+    // document 捕获到达这里，不能污染本视图的状态（#915）。
+    if ((event.target as Node | null) === view.contentDOM) {
+      slashComposingViews.add(view);
+    }
   };
   const onCompositionEnd = (event: CompositionEvent): void => {
     const data = event.data ?? "";
-    slashComposing = false;
+    slashComposingViews.delete(view);
     // 只响应提交在「本」编辑器内的组合。真实 IME 在 contentDOM（view.dom 内）
     // 派发；无关输入（例如分享昵称框）提交的斜杠不能弹出本编辑器的菜单。
     const target = event.target as Node | null;

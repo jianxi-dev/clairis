@@ -14,19 +14,30 @@
 import { EditorView, keymap, ViewPlugin } from "@codemirror/view";
 import { EditorState, type Extension, Prec } from "@codemirror/state";
 import { syntaxTree } from "@codemirror/language";
-import {
-  insertSlashChar,
-  isSlashMenuOpen,
-  openSlashMenuAtSlash,
-} from "./slash";
+import { isSlashMenuOpen, openSlashMenuAtSlash } from "./slash";
 
 // --- IME 组合守卫 ------------------------------------------------------------
 
 /**
- * 模块级组合标记。由 compositionGuardPlugin 的 DOM 事件写入，
- * 由自动配对 inputHandler 读取。IME 组合是浏览器单例，多编辑器实例安全。
+ * 正在组合的视图集合。由 compositionGuardPlugin 的 DOM 事件写入，
+ * 由自动配对与逗号归一 inputHandler 读取。
+ *
+ * 必须按视图存放且只认发往本视图 contentDOM 的组合：组合事件会冒泡，
+ * 表格单元格 / 标注标题等原生控件（以及其它面板）的 compositionstart 也会
+ * 到达这里。模块级布尔会被一次没有 compositionend 的「外来组合」永久置真，
+ * 之后所有编辑器的逗号归一与自动配对都静默失效（#915）。
  */
-let composing = false;
+const composingViews = new WeakSet<EditorView>();
+
+/** 组合守卫读取口径：WeakSet 与 CM6 自身状态取交集（同 slash.ts，#915）。 */
+function isComposing(view: EditorView): boolean {
+  if (!composingViews.has(view)) return false;
+  if (!view.composing) {
+    composingViews.delete(view);
+    return false;
+  }
+  return true;
+}
 
 // --- Markdown 快捷转换 -------------------------------------------------------
 
@@ -517,7 +528,7 @@ CLOSING_CHARS.add("]"); // 来自 '[' 配对
  */
 const autoPairInputHandler = EditorView.inputHandler.of(
   (view, from, to, text) => {
-    if (composing) return false;
+    if (isComposing(view)) return false;
     if (text.length !== 1) return false;
 
     if (CLOSING_CHARS.has(text)) {
@@ -607,14 +618,42 @@ const autoPairInputHandler = EditorView.inputHandler.of(
   },
 );
 
-/** 词首逗号归一为斜杠并打开菜单（#768）：菜单已开或 protected range 内不转换。 */
+/**
+ * 把 [from, head) 的逗号替换成 `/` 并在斜杠原位打开菜单。
+ * 直接输入与 IME 组合提交共用这一条写入路径，保证「一次输入 = 一次撤销步」。
+ */
+function replaceCommaWithSlash(
+  view: EditorView,
+  from: number,
+  head: number,
+): boolean {
+  view.dispatch({
+    changes: { from, to: head, insert: "/" },
+    selection: { anchor: from + 1 },
+    scrollIntoView: true,
+  });
+  openSlashMenuAtSlash(view, from);
+  return true;
+}
+
+/**
+ * 词首逗号归一为斜杠并打开菜单（#768）：菜单已开或 protected range 内不转换。
+ *
+ * 不委托 slash.ts 的 `insertSlashChar`：它的组合守卫是模块级状态（#915），
+ * 一次外来组合就能让本功能永久失效；逗号归一自己的守卫按视图判断即可。
+ */
 const commaSlashInputHandler = EditorView.inputHandler.of(
-  (view, from, _to, text) => {
-    if (composing) return false;
+  (view, from, to, text) => {
+    if (isComposing(view)) return false;
     if (text !== "," && text !== "，") return false;
     if (isSlashMenuOpen(view)) return false;
+    // 词首口径与斜杠插入一致：行内之前为空或以空白结尾。紧跟在非空白字符后
+    // 输入的逗号是正文标点，不能吞掉用户的字符。
+    const line = view.state.doc.lineAt(from);
+    const textBefore = line.text.slice(0, from - line.from);
+    if (textBefore.length > 0 && !/\s$/.test(textBefore)) return false;
     if (inProtectedRegion(view.state, from)) return false;
-    return insertSlashChar(view);
+    return replaceCommaWithSlash(view, from, to);
   },
 );
 
@@ -638,13 +677,7 @@ function commitCommaSlash(view: EditorView, data: string): boolean {
   const textBefore = line.text.slice(0, from - line.from);
   if (textBefore.length > 0 && !/\s$/.test(textBefore)) return false;
   if (inProtectedRegion(view.state, from)) return false;
-  view.dispatch({
-    changes: { from, to: head, insert: "/" },
-    selection: { anchor: head },
-    scrollIntoView: true,
-  });
-  openSlashMenuAtSlash(view, from);
-  return true;
+  return replaceCommaWithSlash(view, from, head);
 }
 
 // --- keymap 扩展 -------------------------------------------------------------
@@ -786,16 +819,21 @@ export function fullwidthPunctuation(): Extension[] {
 }
 
 /**
- * 通过 DOM 事件追踪 IME 组合状态的 ViewPlugin，写入模块级 `composing`，
- * 供自动配对 inputHandler 在组合期跳过。
+ * 通过 DOM 事件追踪 IME 组合状态的 ViewPlugin，写入按视图的 `composingViews`，
+ * 供输入处理器在组合期跳过。
+ *
+ * 只认目标就是本视图 contentDOM 的组合：原生控件（表格单元格 / 标注标题）
+ * 的 compositionstart 冒泡到 contentDOM 时不能污染正文编辑器的状态。
  */
 const compositionGuardPlugin = ViewPlugin.define(() => ({}), {
   eventHandlers: {
-    compositionstart() {
-      composing = true;
+    compositionstart(event: Event, view: EditorView) {
+      if (event.target === view.contentDOM) composingViews.add(view);
     },
     compositionend(event: Event, view: EditorView) {
-      composing = false;
+      composingViews.delete(view);
+      // 外来控件的提交不是本编辑器的输入，不能拿它去归一正文里的逗号。
+      if (event.target !== view.contentDOM) return;
       commitCommaSlash(view, (event as CompositionEvent).data ?? "");
     },
   },
