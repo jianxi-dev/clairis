@@ -9,12 +9,20 @@ import {
 import type { EditorView } from "@codemirror/view";
 import { EditorView as CM } from "@codemirror/view";
 import {
+  applyOutlineOrder,
   extractHeadings,
   headingsFromDom,
+  outlineHeadingId,
+  readOutlineOrder,
+  writeOutlineOrder,
   type OutlineHeading,
 } from "../../lib/outline";
+import { useStore } from "../../stores/index";
 
 type OutlineMode = "edit" | "source" | "preview";
+
+/** 拖动与点击的分界：位移不足 4px 仍按点击导航（AGENTS.md 硬约定）。 */
+const DRAG_THRESHOLD_PX = 4;
 
 interface OutlineMenuProps {
   mode: OutlineMode;
@@ -67,7 +75,32 @@ export default function OutlineMenu({
   const menuRef = useRef<HTMLDivElement>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
 
+  // 持久化键按文档路径隔离；未保存页签（path 为 null）只做会话内排序。
+  const docPath = useStore((s) => {
+    const id = s.activeTabId;
+    const tab = id ? s.tabs[id] : undefined;
+    return tab?.path ?? null;
+  });
+  const [savedOrder, setSavedOrder] = useState<string[] | null>(() =>
+    docPath ? readOutlineOrder(docPath) : null,
+  );
+  const [dragOrder, setDragOrder] = useState<OutlineHeading[] | null>(null);
+  const dragRef = useRef<{
+    pointerId: number;
+    startY: number;
+    itemHeight: number;
+    fromIndex: number;
+    order: OutlineHeading[];
+    moved: OutlineHeading;
+    active: boolean;
+  } | null>(null);
+  const suppressClickRef = useRef(false);
+
   const visible = pinned || hovering;
+
+  useEffect(() => {
+    setSavedOrder(docPath ? readOutlineOrder(docPath) : null);
+  }, [docPath]);
 
   const cancelClose = useCallback(() => {
     if (closeTimer.current !== null) {
@@ -101,10 +134,23 @@ export default function OutlineMenu({
     [mode, documentText, domHeadings],
   );
 
+  // 拖拽重排要求 key 稳定：编辑/源码用行号，预览用标题在文档中的序号。
+  const docIndex = useMemo(() => {
+    const map = new Map<OutlineHeading, number>();
+    headings.forEach((heading, index) => map.set(heading, index));
+    return map;
+  }, [headings]);
+
+  const orderedHeadings = useMemo(
+    () => applyOutlineOrder(headings, savedOrder),
+    [headings, savedOrder],
+  );
+  const shownHeadings = dragOrder ?? orderedHeadings;
+
   const currentIndex = useMemo(() => {
-    if (headings.length === 0) return -1;
+    if (shownHeadings.length === 0) return -1;
     if (mode === "preview") {
-      return headings.findIndex((heading) => {
+      return shownHeadings.findIndex((heading) => {
         if (!heading.element) return false;
         const rect = heading.element.getBoundingClientRect();
         return rect.top >= 0;
@@ -112,11 +158,13 @@ export default function OutlineMenu({
     }
     if (!view) return 0;
     const viewportFrom = view.viewport.from;
-    for (let i = headings.length - 1; i >= 0; i -= 1) {
-      if (positionOfLine(view, headings[i].line) <= viewportFrom + 1) return i;
+    for (let i = shownHeadings.length - 1; i >= 0; i -= 1) {
+      if (positionOfLine(view, shownHeadings[i].line) <= viewportFrom + 1) {
+        return i;
+      }
     }
     return 0;
-  }, [headings, mode, view]);
+  }, [shownHeadings, mode, view]);
 
   const jump = useCallback(
     (heading: OutlineHeading, index: number) => {
@@ -131,6 +179,64 @@ export default function OutlineMenu({
       if (view) scrollInEditor(view, heading.line);
     },
     [mode, view],
+  );
+
+  const onItemPointerDown = useCallback(
+    (event: React.PointerEvent<HTMLButtonElement>, index: number) => {
+      if (event.button !== 0) return;
+      const element = event.currentTarget;
+      dragRef.current = {
+        pointerId: event.pointerId,
+        startY: event.clientY,
+        itemHeight: element.getBoundingClientRect().height,
+        fromIndex: index,
+        order: shownHeadings,
+        moved: shownHeadings[index],
+        active: false,
+      };
+      suppressClickRef.current = false;
+      element.setPointerCapture(event.pointerId);
+    },
+    [shownHeadings],
+  );
+
+  const onItemPointerMove = useCallback(
+    (event: React.PointerEvent<HTMLButtonElement>) => {
+      const drag = dragRef.current;
+      if (!drag || drag.pointerId !== event.pointerId) return;
+      const deltaY = event.clientY - drag.startY;
+      if (!drag.active) {
+        if (Math.abs(deltaY) < DRAG_THRESHOLD_PX) return;
+        drag.active = true;
+        suppressClickRef.current = true;
+      }
+      const height = drag.itemHeight > 0 ? drag.itemHeight : 1;
+      const to = Math.min(
+        Math.max(drag.fromIndex + Math.round(deltaY / height), 0),
+        drag.order.length - 1,
+      );
+      const rest = drag.order.filter((heading) => heading !== drag.moved);
+      const next = rest.slice();
+      next.splice(to, 0, drag.moved);
+      if (next.every((heading, i) => heading === drag.order[i])) return;
+      drag.order = next;
+      setDragOrder(next);
+    },
+    [],
+  );
+
+  const onItemPointerUp = useCallback(
+    (event: React.PointerEvent<HTMLButtonElement>) => {
+      const drag = dragRef.current;
+      if (!drag || drag.pointerId !== event.pointerId) return;
+      dragRef.current = null;
+      if (!drag.active) return;
+      const ids = drag.order.map(outlineHeadingId);
+      if (docPath) writeOutlineOrder(docPath, ids);
+      setSavedOrder(ids);
+      setDragOrder(null);
+    },
+    [docPath],
   );
 
   useEffect(() => {
@@ -224,8 +330,14 @@ export default function OutlineMenu({
             <p className="biaoyue-outline-empty">无标题</p>
           ) : (
             <ul role="list">
-              {headings.map((heading, index) => (
-                <li key={`${heading.line}-${heading.text}-${index}`}>
+              {shownHeadings.map((heading, index) => (
+                <li
+                  key={
+                    heading.line >= 0
+                      ? `L${heading.line}`
+                      : `D${docIndex.get(heading) ?? 0}`
+                  }
+                >
                   <button
                     type="button"
                     role="menuitem"
@@ -236,9 +348,23 @@ export default function OutlineMenu({
                     style={{
                       paddingInlineStart: `${(heading.level - 1) * 12 + 10}px`,
                     }}
-                    onClick={() => jump(heading, index)}
+                    onPointerDown={(event) => onItemPointerDown(event, index)}
+                    onPointerMove={onItemPointerMove}
+                    onPointerUp={onItemPointerUp}
+                    onClick={() => {
+                      if (suppressClickRef.current) {
+                        suppressClickRef.current = false;
+                        return;
+                      }
+                      jump(heading, index);
+                    }}
                   >
-                    <span className="biaoyue-outline-bar" aria-hidden="true" />
+                    <span
+                      className="biaoyue-outline-level"
+                      data-outline-level={`H${heading.level}`}
+                    >
+                      {`H${heading.level}`}
+                    </span>
                     <span className="biaoyue-outline-text">{heading.text}</span>
                   </button>
                 </li>
