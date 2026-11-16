@@ -439,4 +439,18 @@ test("配色同时驱动编辑态与预览态标题色，正文不串色（#913�
   expect(indigoPreviewBody).toBe(paperPreviewBody);
   expect(mossPreviewBody).toBe(paperPreviewBody);
   expect(indigoPreviewBody).not.toBe(indigoPreviewH1);
+
+  // 维护者裁定（#913 方案 A，2026-11-16）：暖色主题复用亮色色板——
+  // 切暖色不改变标题色；纸墨维持配置标题色。此处钉死，防止将来误加暖色变体。
+  await setMode913(page, "edit");
+  await chooseTone913(page, "indigo");
+  await page.evaluate(() => {
+    const root = document.documentElement;
+    root.classList.add("warm");
+    root.classList.remove("dark");
+  });
+  const warmEditH1 = await editH1Color(page);
+  expect(warmEditH1, "暖色 + 靛蓝应沿用亮色色板").toBe(indigoEditH1);
+  await shot913(page, "warm-indigo-edit");
+  record913("warm-indigo-edit", ".artifacts/913/warm-indigo-edit.png", "passed");
 });
