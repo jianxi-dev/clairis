@@ -72,6 +72,7 @@ import { HEADING_LEVELS } from "../../lib/headingFonts";
 import { buildAssetUrl } from "../../renderers";
 import { renderAllStatic } from "../../renderers/diagram/engine";
 import PreviewView from "./PreviewView";
+import DocPropertyBar from "./DocPropertyBar";
 import OutlineMenu from "./OutlineMenu";
 import ReadingProgressInk from "./ReadingProgressInk";
 import type { EditorMode, FileKind, Tab } from "../../types";
@@ -715,6 +716,20 @@ export default function ContentArea({
       }}
       className="dark:bg-gray-800"
     >
+      {/* 文档属性面板：仅 markdown；三模式用 CSS display 切换，组件保持挂载
+          （切源码 / 编辑不重建，折叠等内部状态不丢）。 */}
+      {tab?.fileKind === "markdown" && (
+        <div
+          data-testid="doc-property-host"
+          style={{
+            flex: "0 0 auto",
+            padding: "12px 16px",
+            display: editorMode === "source" ? "none" : "block",
+          }}
+        >
+          <DocPropertyBar content={tab.content} mode={editorMode} />
+        </div>
+      )}
       <div
         ref={scrollContainerRef}
         className="content-scroll"

@@ -5,6 +5,7 @@ import { useStore } from "./stores/index";
 import { isMediaKind } from "./stores/index";
 import { useEditorStore } from "./stores/editorStore";
 import { useCaptureOverlayStore } from "./stores/captureOverlay";
+import { useDocPropertyPanelStore } from "./stores/docPropertyPanel";
 import StatusBar from "./components/StatusBar";
 import TooltipLayer from "./components/TooltipLayer";
 import TemplatePicker from "./components/TemplatePicker";
@@ -600,6 +601,13 @@ function App() {
       if (meta && e.shiftKey && e.key.toLowerCase() === "v") {
         e.preventDefault();
         store.togglePreviewEnabled();
+      }
+
+      // Cmd+Shift+Y: 属性面板显隐（doc-property-panel / P-2）。
+      // 只切显示状态，不改文档内容；隐藏时面板位置显示恢复提示。
+      if (meta && e.shiftKey && e.key.toLowerCase() === "y") {
+        e.preventDefault();
+        useDocPropertyPanelStore.getState().toggleHidden();
       }
 
       // Cmd+Shift+F: 沉浸阅读开关（layout-portal 15.1）
