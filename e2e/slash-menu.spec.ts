@@ -1,5 +1,5 @@
 import fs from "node:fs";
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Locator, type Page } from "@playwright/test";
 
 const APP_URL = "http://localhost:1420";
 
@@ -298,4 +298,82 @@ test("分栏选区键盘左右移动选中，Enter 插入 col-3 围栏", async (
     .poll(() => storeContent(page), { timeout: 5000 })
     .toBe("::: {.col-3}\n\n:::");
   await expect(content).toBeVisible();
+});
+
+/** 取元素边框盒，几何断言只用计算后的数字，不用「元素存在」。 */
+async function box(loc: Locator) {
+  const b = (await loc.boundingBox())!;
+  if (b === null) throw new Error("missing bounding box");
+  return b;
+}
+
+test("表格读数与说明同行且右缘对齐网格右边界（#919）", async ({ page }) => {
+  const shots = ".artifacts/919";
+  fs.mkdirSync(shots, { recursive: true });
+
+  await openMarkdownForEditing(page, "/Users/test/slash-grid-align.md");
+  await page.keyboard.type("/");
+  const menu = page.locator(".mdb-slash-menu");
+  await expect(menu).toHaveCount(1);
+
+  await menu.locator(".mdb-slash-item").filter({ hasText: "表格" }).hover();
+  const grid = page.locator(".mdb-slash-grid");
+  await expect(grid).toBeVisible();
+  const label = page.locator(".mdb-slash-grid-label");
+  const title = page.locator(".mdb-slash-grid-title");
+
+  await page.screenshot({ path: `${shots}/table-open.png` });
+  const gb = await box(grid);
+  const lb = await box(label);
+  const tb = await box(title);
+
+  // 读数与说明在同一视觉行：纵向重叠，且读数在说明右侧（不是换行/左对齐）。
+  expect(lb.y).toBeLessThan(tb.y + tb.height - 1);
+  expect(lb.y + lb.height).toBeGreaterThan(tb.y + 1);
+  expect(lb.x + lb.width / 2).toBeGreaterThan(tb.x + tb.width / 2);
+
+  // 读数右缘与网格最右边界线（网格元素右缘）差 ≤1px。
+  const delta = Math.abs(lb.x + lb.width - (gb.x + gb.width));
+  expect(delta).toBeLessThanOrEqual(1);
+
+  await page.screenshot({ path: `${shots}/02-table-aligned.png` });
+});
+
+test("分栏读数居中第 5 栏且子菜单相对触发行垂直居中（#919）", async ({
+  page,
+}) => {
+  const shots = ".artifacts/919";
+  fs.mkdirSync(shots, { recursive: true });
+
+  await openMarkdownForEditing(page, "/Users/test/slash-columns-align.md");
+  await page.keyboard.type("/");
+  const menu = page.locator(".mdb-slash-menu");
+  await expect(menu).toHaveCount(1);
+
+  const trigger = menu.locator(".mdb-slash-item").filter({ hasText: "分栏" });
+  await trigger.hover();
+  const grid = page.locator(".mdb-slash-grid");
+  await expect(grid).toBeVisible();
+  const label = page.locator(".mdb-slash-grid-label");
+  const flyout = page.locator(".mdb-slash-flyout");
+  const cells = grid.locator(".mdb-slash-grid-cell");
+  await expect(cells).toHaveCount(5);
+
+  await page.screenshot({ path: `${shots}/columns-open.png` });
+  const lb = await box(label);
+  const fb = await box(flyout);
+  const rb = await box(trigger);
+  const fifth = await box(cells.nth(4));
+
+  // 读数水平中心与第 5 根柱子中心偏差 ≤2px。
+  const labelCenter = lb.x + lb.width / 2;
+  const fifthCenter = fifth.x + fifth.width / 2;
+  expect(Math.abs(labelCenter - fifthCenter)).toBeLessThanOrEqual(2);
+
+  // 子菜单垂直中心与触发行垂直中心偏差 ≤2px。
+  const submenuCenter = fb.y + fb.height / 2;
+  const triggerCenter = rb.y + rb.height / 2;
+  expect(Math.abs(submenuCenter - triggerCenter)).toBeLessThanOrEqual(2);
+
+  await page.screenshot({ path: `${shots}/03-columns-aligned.png` });
 });

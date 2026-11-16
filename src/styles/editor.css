@@ -1777,16 +1777,39 @@ html[data-tab-drag="true"] body * {
   color: var(--app-text-3);
 }
 
-.mdb-slash-grid-title {
+/* 说明与读数同一行：表格读数右对齐网格右缘（右内边距 0），分栏读数居中第 5 栏。 */
+.mdb-slash-grid-head {
+  display: flex;
+  align-items: baseline;
+  padding: 6px 0 2px 10px;
+}
+
+.mdb-slash-grid-head[data-kind="columns"] {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  column-gap: 4px;
   padding: 6px 10px 2px;
+}
+
+.mdb-slash-grid-title {
   font-size: 12px;
   color: var(--app-text-strong);
 }
 
+.mdb-slash-grid-head[data-kind="columns"] .mdb-slash-grid-title {
+  grid-column: 1 / 5;
+}
+
 .mdb-slash-grid-label {
-  padding: 4px 10px;
+  margin-left: auto;
   font-size: 11px;
   color: var(--app-text-3);
+}
+
+.mdb-slash-grid-head[data-kind="columns"] .mdb-slash-grid-label {
+  grid-column: 5;
+  margin-left: 0;
+  text-align: center;
 }
 
 .mdb-slash-grid {
