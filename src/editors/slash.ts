@@ -1064,19 +1064,26 @@ function renderGrid(view: EditorView, state: SlashMenuState): void {
   flyout.dataset.kind = "grid";
 
   // 分栏选区（B3 / A-11.1）：顶部说明「选择栏目」+ 实时栏数读数；表格保留
-  // 标题与 N×M 读数。两类浮层共用 .mdb-slash-grid-title / .mdb-slash-grid-label。
+  // 标题与 N×M 读数。两类浮层共用 .mdb-slash-grid-head / -title / -label，
+  // 头部一行内对齐：表格读数右对齐网格右缘，分栏读数居中第 5 栏。
   const isColumns = grid.kind === "columns";
+  const head = document.createElement("div");
+  head.className = "mdb-slash-grid-head";
+  head.dataset.kind = grid.kind;
+
   const title = document.createElement("div");
   title.className = "mdb-slash-grid-title";
   title.textContent = isColumns ? "选择栏目" : "插入支持富文本的表格";
-  flyout.appendChild(title);
 
   const label = document.createElement("div");
   label.className = "mdb-slash-grid-label";
   label.textContent = isColumns
     ? String(grid.hoverC)
     : `${grid.hoverR} \u00d7 ${grid.hoverC}`;
-  flyout.appendChild(label);
+
+  head.appendChild(title);
+  head.appendChild(label);
+  flyout.appendChild(head);
 
   const wrap = document.createElement("div");
   wrap.className = "mdb-slash-grid";
@@ -1817,10 +1824,12 @@ function positionFlyout(view: EditorView, state: SlashMenuState): void {
         cellRect.left - flyoutRect.width - 4,
       );
     }
-    let topV = cellRect.top;
+    // 子菜单相对触发行上下居中（#919），再夹取进视口。
+    let topV = cellRect.top + cellRect.height / 2 - flyoutRect.height / 2;
     if (topV + flyoutRect.height > viewportH - 8) {
-      topV = Math.max(8, viewportH - 8 - flyoutRect.height);
+      topV = viewportH - 8 - flyoutRect.height;
     }
+    topV = Math.max(8, topV);
 
     flyout.style.left = `${leftV - editorRect.left}px`;
     flyout.style.top = `${topV - editorRect.top}px`;
