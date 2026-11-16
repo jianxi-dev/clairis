@@ -179,6 +179,102 @@ export function formatFrontmatterValue(
   }
 }
 
+const DATETIME_RE_FULL =
+  /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?$/;
+
+/** 公历日期合法性（拒绝 2026-02-30 这类溢出）。 */
+function isValidDateParts(y: number, m: number, d: number): boolean {
+  if (m < 1 || m > 12 || d < 1 || d > 31) return false;
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  return (
+    dt.getUTCFullYear() === y &&
+    dt.getUTCMonth() === m - 1 &&
+    dt.getUTCDate() === d
+  );
+}
+
+export type FieldValidation =
+  { ok: true; value: unknown } | { ok: false; reason: string };
+
+/**
+ * 值编辑器的类型校验（P-3）。
+ *
+ * - number：数值字面量（有限数；空串 / `abc` / `Infinity` 拒绝）；
+ * - boolean：仅 `true` / `false`（大小写不敏感）；
+ * - date：`YYYY-MM-DD` 且为真实公历日期；
+ * - datetime：`YYYY-MM-DDTHH:mm`（可带秒，空格分隔亦可）；
+ * - array：逗号 / 顿号 / 全角逗号分割，去空项，回写字符串数组；
+ * - text：任意原文（下拉白名单在 1.5 有选项配置前按 text 处理）。
+ *
+ * 返回 `ok:false` 时 `reason` 为中文提示，供值编辑器还原原值并短暂展示。
+ */
+export function validateFieldValue(
+  type: FrontmatterType,
+  raw: string,
+): FieldValidation {
+  const text = raw.trim();
+  switch (type) {
+    case "number": {
+      if (text === "") return { ok: false, reason: "数字格式不正确" };
+      const n = Number(text);
+      if (!Number.isFinite(n)) return { ok: false, reason: "数字格式不正确" };
+      return { ok: true, value: n };
+    }
+    case "boolean": {
+      const lower = text.toLowerCase();
+      if (lower === "true") return { ok: true, value: true };
+      if (lower === "false") return { ok: true, value: false };
+      return { ok: false, reason: "布尔值只能是 true 或 false" };
+    }
+    case "date": {
+      const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(text);
+      if (!m || !isValidDateParts(+m[1], +m[2], +m[3])) {
+        return { ok: false, reason: "日期格式应为 YYYY-MM-DD" };
+      }
+      return { ok: true, value: text };
+    }
+    case "datetime": {
+      const m = DATETIME_RE_FULL.exec(text);
+      if (
+        !m ||
+        !isValidDateParts(+m[1], +m[2], +m[3]) ||
+        +m[4] > 23 ||
+        +m[5] > 59 ||
+        (m[6] !== undefined && +m[6] > 59)
+      ) {
+        return { ok: false, reason: "日期时间格式不正确" };
+      }
+      return { ok: true, value: text };
+    }
+    case "array": {
+      const items = text
+        .split(/[,、，]/)
+        .map((s) => s.trim())
+        .filter((s) => s !== "");
+      return { ok: true, value: items };
+    }
+    case "text":
+    default:
+      return { ok: true, value: raw };
+  }
+}
+
+/**
+ * 单字段写回（P-9）：只改目标键的值，键序与其余字段原样传入，
+ * 自由键与注释由 `writeFrontmatter` 的 Document AST 保证不丢。
+ */
+export function setFrontmatterField(
+  doc: string,
+  key: string,
+  value: unknown,
+): FrontmatterWriteResult {
+  const parsed = parseFrontmatter(doc);
+  const fields = parsed.fields.map((f) =>
+    f.key === key ? { ...f, value } : f,
+  );
+  return writeFrontmatter(doc, fields);
+}
+
 function toFields(data: unknown): FrontmatterField[] {
   if (typeof data !== "object" || data === null || Array.isArray(data)) {
     return [];

@@ -400,3 +400,71 @@
   padding: 14px;
   text-align: center;
 }
+
+/* ── 值编辑器（P-3 / P-9）───────────────────────────────── */
+.dpb-v-clickable {
+  cursor: text;
+  border-radius: var(--radius-4);
+  padding: 0 2px;
+  margin: 0 -2px;
+}
+
+.dpb-v-clickable:hover {
+  background: var(--app-accent-soft);
+  color: var(--app-text-strong);
+}
+
+.dpb-v-clickable:focus-visible {
+  outline: 2px solid var(--app-accent);
+  outline-offset: 1px;
+}
+
+.dpb-input {
+  font: inherit;
+  font-size: 12px;
+  flex: 1 1 140px;
+  min-width: 0;
+  max-width: 340px;
+  background: var(--app-bg);
+  color: var(--app-text-strong);
+  border: 1px solid var(--app-accent);
+  border-radius: var(--radius-4);
+  padding: 2px 6px;
+  outline: none;
+}
+
+.dpb-textarea {
+  resize: vertical;
+  min-height: 54px;
+  line-height: 1.5;
+}
+
+.dpb-switch {
+  font: inherit;
+  font-size: 11px;
+  border: 1px solid var(--app-border-strong);
+  background: var(--app-sunken);
+  color: var(--app-text-2);
+  border-radius: var(--radius-full);
+  padding: 2px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.dpb-switch.dpb-switch-on {
+  background: var(--app-accent);
+  border-color: var(--app-accent);
+  color: #fff;
+}
+
+/* 错误色（design-system §6）：红只用于错误，两主题各一值。 */
+.dpb-error {
+  flex: 1 1 100%;
+  color: #a8402f;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.dark .dpb-error {
+  color: #e08b7a;
+}

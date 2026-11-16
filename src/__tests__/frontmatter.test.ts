@@ -4,7 +4,9 @@ import {
   TAG_PALETTE,
   isManagedDateKey,
   parseFrontmatter,
+  setFrontmatterField,
   tagColor,
+  validateFieldValue,
   writeFrontmatter,
   type FrontmatterField,
 } from "../lib/frontmatter";
@@ -163,6 +165,119 @@ describe("tagColor", () => {
     for (const t of after) {
       expect(tagColor(t)).toBe(before.get(t));
     }
+  });
+});
+
+describe("validateFieldValue", () => {
+  it("number：接受数值字面量，拒绝 abc / 空串 / Infinity", () => {
+    expect(validateFieldValue("number", "1234567")).toEqual({
+      ok: true,
+      value: 1234567,
+    });
+    expect(validateFieldValue("number", " -12.5 ")).toEqual({
+      ok: true,
+      value: -12.5,
+    });
+    expect(validateFieldValue("number", "abc")).toEqual({
+      ok: false,
+      reason: "数字格式不正确",
+    });
+    expect(validateFieldValue("number", "")).toEqual({
+      ok: false,
+      reason: "数字格式不正确",
+    });
+    expect(validateFieldValue("number", "Infinity")).toEqual({
+      ok: false,
+      reason: "数字格式不正确",
+    });
+  });
+
+  it("boolean：仅 true / false（大小写不敏感）", () => {
+    expect(validateFieldValue("boolean", "true")).toEqual({
+      ok: true,
+      value: true,
+    });
+    expect(validateFieldValue("boolean", "FALSE")).toEqual({
+      ok: true,
+      value: false,
+    });
+    expect(validateFieldValue("boolean", "开")).toEqual({
+      ok: false,
+      reason: "布尔值只能是 true 或 false",
+    });
+  });
+
+  it("date：YYYY-MM-DD 且为真实公历日期", () => {
+    expect(validateFieldValue("date", "2026-11-16")).toEqual({
+      ok: true,
+      value: "2026-11-16",
+    });
+    expect(validateFieldValue("date", "2026-02-30").ok).toBe(false);
+    expect(validateFieldValue("date", "2026/11/16").ok).toBe(false);
+  });
+
+  it("datetime：ISO 分隔，可带秒与空格", () => {
+    expect(validateFieldValue("datetime", "2026-11-16T10:30")).toEqual({
+      ok: true,
+      value: "2026-11-16T10:30",
+    });
+    expect(validateFieldValue("datetime", "2026-11-16 10:30:00")).toEqual({
+      ok: true,
+      value: "2026-11-16 10:30:00",
+    });
+    expect(validateFieldValue("datetime", "2026-11-16T25:00").ok).toBe(false);
+  });
+
+  it("array：逗号 / 顿号分割并去空项", () => {
+    expect(validateFieldValue("array", "甲、乙")).toEqual({
+      ok: true,
+      value: ["甲", "乙"],
+    });
+    expect(validateFieldValue("array", "甲, 乙，，")).toEqual({
+      ok: true,
+      value: ["甲", "乙"],
+    });
+  });
+
+  it("text：任意原文（含首尾空格）", () => {
+    expect(validateFieldValue("text", "anything 任意 ")).toEqual({
+      ok: true,
+      value: "anything 任意 ",
+    });
+  });
+});
+
+describe("setFrontmatterField（面板提交 API 往返）", () => {
+  it("改单字段后键序、自由键与注释保持", () => {
+    const doc = `---\ntitle: 甲\n# 注释\ncustom-note: x\ncount: 1\n---\n\n正文\n`;
+    const r = setFrontmatterField(doc, "title", "乙");
+    expect(r.text).toContain("title: 乙");
+    expect(r.text).toContain("custom-note: x");
+    expect(r.text).toContain("# 注释");
+    expect(r.text).not.toContain("title: 甲");
+    const p = parseFrontmatter(r.text);
+    expect(p.fields.map((f) => f.key)).toEqual([
+      "title",
+      "custom-note",
+      "count",
+    ]);
+    expect(p.fields[0].value).toBe("乙");
+    expect(doc.slice(0, r.from) + r.block + doc.slice(r.to)).toBe(r.text);
+  });
+
+  it("同值提交无改动，from/to 为原块范围", () => {
+    const p = parseFrontmatter(DOC);
+    const r = setFrontmatterField(DOC, "title", "测试文档");
+    expect(r.text).toBe(DOC);
+    expect(r.from).toBe(p.start);
+    expect(r.to).toBe(p.end);
+  });
+
+  it("数字字段写回为数值字面量", () => {
+    const r = setFrontmatterField(DOC, "count", 999);
+    expect(r.text).toContain("count: 999");
+    const f = parseFrontmatter(r.text).fields.find((x) => x.key === "count");
+    expect(f?.value).toBe(999);
   });
 });
 
