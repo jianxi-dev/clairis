@@ -2881,10 +2881,10 @@ html[data-tab-drag="true"] body * {
 
 /* ── 编辑器大纲浮层（移植自 md-bundle app-kit/outline/OutlineMenu.tsx） ──
  * 触发钮在内容区右上角，悬停展开、点击钉住、Esc 收起。
- * right 23px：原 46px 是为已移除的 Aa 阅读设置钮预留的空隙，现取一半。 */
+ * top 66px：#925 由 10px 下移两个条目高度（实测条目 28px）。 */
 .biaoyue-outline {
   position: absolute;
-  top: 10px;
+  top: 66px;
   right: 4px;
   z-index: 30;
 }
@@ -2989,17 +2989,12 @@ html[data-tab-drag="true"] body * {
   color: var(--app-text);
 }
 
-.biaoyue-outline-bar {
+/* 等级徽标（#925）：10px 既有字号刻度，小于条目 12px 正文。 */
+.biaoyue-outline-level {
   flex: none;
-  width: 2px;
-  height: 12px;
-  border-radius: 2px;
-  background: var(--app-border-strong);
-}
-
-.biaoyue-outline-item[data-level="1"] .biaoyue-outline-bar,
-.biaoyue-outline-item[data-current="true"] .biaoyue-outline-bar {
-  background: var(--app-accent);
+  font-size: 10px;
+  line-height: 1;
+  color: var(--app-text-3);
 }
 
 .biaoyue-outline-text {

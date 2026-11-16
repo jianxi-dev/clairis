@@ -66,3 +66,59 @@ export function headingsFromDom(container: HTMLElement): OutlineHeading[] {
   });
   return headings;
 }
+
+/** 条目身份：同级同名标题共享（#925 已知取舍）。 */
+export function outlineHeadingId(heading: OutlineHeading): string {
+  return `${heading.level}:${heading.text}`;
+}
+
+/** #925 持久化键：按文档路径隔离拖动顺序。 */
+export function outlineOrderKey(docPath: string): string {
+  return `outline-order:${docPath}`;
+}
+
+/** 读取保存的身份序列；无记录或损坏一律返回 null。 */
+export function readOutlineOrder(docPath: string): string[] | null {
+  try {
+    const raw = window.localStorage.getItem(outlineOrderKey(docPath));
+    if (raw === null) return null;
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return null;
+    if (!parsed.every((item) => typeof item === "string")) return null;
+    return parsed as string[];
+  } catch {
+    // localStorage 不可用 / JSON 损坏：视为无保存顺序。
+    return null;
+  }
+}
+
+export function writeOutlineOrder(docPath: string, order: string[]): void {
+  try {
+    window.localStorage.setItem(outlineOrderKey(docPath), JSON.stringify(order));
+  } catch {
+    // 写入失败（隐私模式 / 配额）不影响当次拖拽结果。
+  }
+}
+
+/**
+ * 按保存的身份序列排序：命中序列的按序列先后，未命中的新标题按文档顺序追加
+ * 末尾（sort 稳定）。保存序列里的旧身份在下次写入时自然清掉——写的是当前条目
+ * 的身份全集。
+ */
+export function applyOutlineOrder(
+  headings: OutlineHeading[],
+  order: readonly string[] | null,
+): OutlineHeading[] {
+  if (!order || order.length === 0) return headings;
+  const rank = new Map<string, number>();
+  for (let i = 0; i < order.length; i += 1) {
+    if (!rank.has(order[i])) rank.set(order[i], i);
+  }
+  return [...headings].sort((a, b) => {
+    const ra = rank.get(outlineHeadingId(a));
+    const rb = rank.get(outlineHeadingId(b));
+    if (ra === undefined) return rb === undefined ? 0 : 1;
+    if (rb === undefined) return -1;
+    return ra - rb;
+  });
+}

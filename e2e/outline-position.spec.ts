@@ -9,8 +9,19 @@ import path from "node:path";
 
 const APP_URL = "http://localhost:1420";
 const ART = path.resolve(process.cwd(), ".artifacts/261");
+const ART925 = path.resolve(process.cwd(), ".artifacts/925");
 
 mkdirSync(ART, { recursive: true });
+mkdirSync(ART925, { recursive: true });
+
+/**
+ * #925：大纲按钮下移约两个条目高度。
+ *
+ * 红态（改动前）实测：`.biaoyue-outline` computed top = 10px。
+ * 绿态要求 top ≥ 10 + 48 = 58px，且 ≠ 10px（确实下移，不是原地）。
+ */
+const OUTLINE_OLD_TOP_PX = 10;
+const OUTLINE_MIN_SHIFT_PX = 48;
 
 async function boot(page: Page): Promise<void> {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
@@ -58,4 +69,27 @@ test("大纲按钮 right 计算值恒为 4px（预览态与编辑态）", async 
   await expect(page.locator(".biaoyue-outline")).toBeVisible();
   expect(await readRight()).toBe("4px");
   await page.screenshot({ path: path.join(ART, "outline-edit.png") });
+});
+
+test("大纲按钮 top 相对现状下移 ≥48px（#925）", async ({ page }) => {
+  await boot(page);
+  await openMarkdown(page);
+  await page.locator('[data-testid="outline-btn"]').hover();
+
+  const readTop = () =>
+    page.locator(".biaoyue-outline").evaluate((el) => getComputedStyle(el).top);
+
+  const top = await readTop();
+  const itemHeight = await page
+    .locator('[data-testid="outline-item-0"]')
+    .evaluate((el) => el.getBoundingClientRect().height);
+  console.log(
+    `[925] outline top=${top} itemHeight=${itemHeight} 两个条目高度=${itemHeight * 2}`,
+  );
+
+  expect(parseFloat(top, 10)).toBeGreaterThanOrEqual(
+    OUTLINE_OLD_TOP_PX + OUTLINE_MIN_SHIFT_PX,
+  );
+  expect(top).not.toBe(`${OUTLINE_OLD_TOP_PX}px`);
+  await page.screenshot({ path: path.join(ART925, "outline-top-green.png") });
 });
