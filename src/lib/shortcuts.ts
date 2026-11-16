@@ -16,7 +16,10 @@ export type ShortcutFamily =
   | "navigation"
   | "card"
   | "ai"
-  | "media";
+  | "media"
+  | "local";
+
+export type ShortcutScope = "global" | "local";
 
 export interface ShortcutDef {
   id: string;
@@ -24,6 +27,10 @@ export interface ShortcutDef {
   keys: string;
   label: string;
   family: ShortcutFamily;
+  /** 作用域：global（默认，任意处生效）/ local（仅在其 context 激活时生效并优先于全局）。 */
+  scope?: ShortcutScope;
+  /** 局部键的生效上下文描述；scope 为 local 时必填。 */
+  context?: string;
   /** 设置页「核心快捷键」展示的 7 条。 */
   core?: boolean;
   /** 冲突裁定说明：仅在有旧绑定竞争时填写，总览浮层会显示。 */
@@ -41,6 +48,7 @@ export const SHORTCUT_FAMILY_LABELS: Record<ShortcutFamily, string> = {
   card: "卡片直开",
   ai: "AI / 其他",
   media: "媒体",
+  local: "局部（上下文）",
 };
 
 /** 家族展示顺序（总览浮层与设置完整列表按此顺序分组）。 */
@@ -54,6 +62,7 @@ export const SHORTCUT_FAMILY_ORDER: readonly ShortcutFamily[] = [
   "card",
   "ai",
   "media",
+  "local",
 ];
 
 export const SHORTCUTS: readonly ShortcutDef[] = [
@@ -500,6 +509,26 @@ export const SHORTCUTS: readonly ShortcutDef[] = [
     family: "media",
     implemented: true,
   },
+
+  // ── 局部（上下文激活时生效，优先于全局同名键）────────────────
+  {
+    id: "local-doc-menu-pick",
+    keys: "⌘1–9",
+    label: "文档链接菜单直选",
+    family: "local",
+    scope: "local",
+    context: "属性面板 [[ 文档菜单打开",
+    implemented: true,
+  },
+  {
+    id: "local-tag-menu-pick",
+    keys: "⌘1–9",
+    label: "标签建议菜单直选",
+    family: "local",
+    scope: "local",
+    context: "属性面板标签建议菜单打开",
+    implemented: true,
+  },
 ];
 
 /** 设置页「核心快捷键」的 7 条。 */
@@ -510,4 +539,26 @@ export function coreShortcuts(): ShortcutDef[] {
 /** 按家族取条目（总览浮层与设置完整列表共用）。 */
 export function shortcutsByFamily(family: ShortcutFamily): ShortcutDef[] {
   return SHORTCUTS.filter((s) => s.family === family);
+}
+
+const activeLocalContexts = new Set<string>();
+
+/** 激活局部键上下文（建议菜单等局部 UI 打开时调用）；返回注销函数。 */
+export function activateLocalContext(context: string): () => void {
+  activeLocalContexts.add(context);
+  return () => {
+    activeLocalContexts.delete(context);
+  };
+}
+
+export function isLocalContextActive(context: string): boolean {
+  return activeLocalContexts.has(context);
+}
+
+/** 该局部键在其上下文激活时生效（未激活或 id/context 不匹配返回 false）。 */
+export function isLocalShortcutActive(id: string, context: string): boolean {
+  if (!activeLocalContexts.has(context)) return false;
+  return SHORTCUTS.some(
+    (s) => s.id === id && s.scope === "local" && s.context === context,
+  );
 }

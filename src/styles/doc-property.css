@@ -549,6 +549,28 @@
   color: var(--app-text-3);
 }
 
+.dpb-menu-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 行尾快捷键：选中行 ⏎，其余 ⌘N（P-5） */
+.dpb-menu-key {
+  margin-left: auto;
+  color: var(--app-text-3);
+  font-size: 10px;
+}
+
+.dpb-menu-empty {
+  cursor: default;
+}
+
+.dpb-menu-empty:hover {
+  background: transparent;
+  color: var(--app-text-2);
+}
+
 /* ── 字段改名（P-6）─────────────────────────────────────── */
 .dpb-label-clickable {
   cursor: text;
@@ -578,4 +600,78 @@
 .dpb-label-cell .dpb-error {
   flex: 0 0 auto;
   width: 100%;
+}
+
+/* ── 列表链接 / 标签编辑器（P-3 / P-5）───────────────────── */
+.dpb-linklist,
+.dpb-tags-editor {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.dpb-tags-editor .dpb-tags-group {
+  gap: 5px;
+}
+
+.dpb-link-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  border: 1px solid var(--app-border);
+  background: var(--app-sunken);
+  color: var(--app-text-2);
+  border-radius: var(--radius-full);
+  font-size: 11px;
+  padding: 2px 4px 2px 9px;
+  white-space: nowrap;
+}
+
+.dpb-chip-x,
+.dpb-tag-x {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--app-text-3);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.dpb-chip-x:hover,
+.dpb-tag-x:hover {
+  color: var(--app-accent);
+  background: var(--app-accent-soft);
+}
+
+.dpb-link-input {
+  flex: 0 1 130px;
+  min-width: 90px;
+}
+
+.dpb-tag-input {
+  flex: 0 1 110px;
+  min-width: 80px;
+}
+
+.dpb-tag-name {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  cursor: text;
+}
+
+.dpb-tag-rename {
+  flex: 0 1 90px;
+  min-width: 70px;
 }
