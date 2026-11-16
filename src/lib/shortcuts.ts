@@ -529,6 +529,15 @@ export const SHORTCUTS: readonly ShortcutDef[] = [
     context: "属性面板标签建议菜单打开",
     implemented: true,
   },
+  {
+    id: "local-search-row-pick",
+    keys: "⌘1–9",
+    label: "搜索结果直选",
+    family: "local",
+    scope: "local",
+    context: "搜索浮窗打开且焦点在浮窗内",
+    implemented: true,
+  },
 ];
 
 /** 设置页「核心快捷键」的 7 条。 */

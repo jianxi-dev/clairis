@@ -160,3 +160,32 @@ export function searchScan(text: string, query: string): SearchScanHit[] {
 
   return hits;
 }
+
+/**
+ * 命中片段（结果行展示用，不改命中集合与偏移语义）。
+ *
+ * 以命中为中心、在**所在块内**向两侧各取 `radius` 字符，保留跨行；
+ * 越出块边界时补 `…`。与原型 `snippetOf` 的形态一致。
+ */
+export function searchHitSnippet(
+  text: string,
+  hit: SearchScanHit,
+  radius = 44,
+  blocks?: SearchScanBlock[],
+): string {
+  const block = (blocks ?? splitSearchBlocks(text)).find(
+    (b) => hit.from >= b.from && hit.from < b.to,
+  );
+  if (!block) return hit.context;
+  const start = Math.max(block.from, hit.from - radius);
+  const end = Math.min(block.to, hit.to + radius);
+  const prefix = start > block.from ? "…" : "";
+  const suffix = end < block.to ? "…" : "";
+  return (
+    prefix +
+    text.slice(start, hit.from) +
+    text.slice(hit.from, hit.to) +
+    text.slice(hit.to, end) +
+    suffix
+  );
+}

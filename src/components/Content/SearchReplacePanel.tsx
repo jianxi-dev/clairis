@@ -9,7 +9,14 @@ import {
   type ReactNode,
 } from "react";
 import { EditorView } from "@codemirror/view";
-import { searchScan, type SearchScanHit } from "../../lib/searchScan";
+import {
+  searchScan,
+  searchHitSnippet,
+  splitSearchBlocks,
+  type SearchScanHit,
+} from "../../lib/searchScan";
+import { digitFromCode } from "../../lib/gridKeyboard";
+import { activateLocalContext } from "../../lib/shortcuts";
 import { useSearchFloatStore } from "../../stores/searchFloat";
 import { getActiveEditorView } from "../../editors/editorRef";
 import type { EditorMode, SearchPanelDefaultPos } from "../../types";
@@ -23,6 +30,9 @@ const BLOCK_TYPE_LABELS: Record<string, string> = {
   frontmatter: "前置元数据",
   thematicBreak: "分隔线",
 };
+
+/** 与 shortcuts.ts 的 local-search-row-pick 条目一致。 */
+const LOCAL_CONTEXT = "搜索浮窗打开且焦点在浮窗内";
 
 const MIN_WIDTH = 320;
 const MIN_HEIGHT = 240;
@@ -99,17 +109,65 @@ export default function SearchReplacePanel({
   panelId,
 }: SearchReplacePanelProps) {
   const [query, setQuery] = useState("");
+  const [selected, setSelected] = useState(0);
+  const [prevQuery, setPrevQuery] = useState(query);
   const [placement, setPlacement] = useState<Placement | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const dragRef = useRef<DragState | null>(null);
   const prevOpenRef = useRef(false);
+  const rowRefs = useRef<Map<number, HTMLButtonElement>>(new Map());
 
   const close = useCallback(() => {
     useSearchFloatStore.getState().close(panelId);
   }, [panelId]);
 
   const hits = useMemo(() => searchScan(content, query), [content, query]);
+  const blocks = useMemo(() => splitSearchBlocks(content), [content]);
+  const snippets = useMemo(
+    () => hits.map((hit) => searchHitSnippet(content, hit, 44, blocks)),
+    [content, hits, blocks],
+  );
+  const safeSelected =
+    hits.length === 0 ? -1 : Math.min(selected, hits.length - 1);
+
+  if (prevQuery !== query) {
+    setPrevQuery(query);
+    setSelected(0);
+  }
+
+  const locate = useCallback((hit: SearchScanHit) => {
+    if (mode === "preview") {
+      const preview = container?.querySelector<HTMLElement>(".preview-content");
+      if (!preview) return;
+      const walker = document.createTreeWalker(preview, NodeFilter.SHOW_TEXT);
+      const needle = hit.text.toLowerCase();
+      let node = walker.nextNode();
+      while (node) {
+        if ((node.textContent ?? "").toLowerCase().includes(needle)) {
+          (node.parentElement as HTMLElement | null)?.scrollIntoView({
+            behavior: "auto",
+            block: "center",
+          });
+          return;
+        }
+        node = walker.nextNode();
+      }
+      return;
+    }
+    const view = getActiveEditorView();
+    if (!view) return;
+    view.dispatch({
+      selection: { anchor: hit.from, head: hit.to },
+      effects: EditorView.scrollIntoView(hit.from, { y: "center" }),
+    });
+    view.focus();
+  }, [mode, container]);
+
+  useEffect(() => {
+    if (!open || safeSelected < 0) return;
+    rowRefs.current.get(safeSelected)?.scrollIntoView({ block: "nearest" });
+  }, [safeSelected, open, hits.length]);
 
   useEffect(() => {
     if (open) {
@@ -131,6 +189,73 @@ export default function SearchReplacePanel({
     document.addEventListener("keydown", onKey, true);
     return () => document.removeEventListener("keydown", onKey, true);
   }, [open, close]);
+
+  // 浮窗挂载即注册局部键上下文；焦点离开浮窗或关闭即归还，避免残留占用。
+  useEffect(() => {
+    if (!open) return;
+    const root = rootRef.current;
+    let off = activateLocalContext(LOCAL_CONTEXT);
+    let active = true;
+    const onFocusOut = (event: FocusEvent) => {
+      if (!active || !root) return;
+      if (!root.contains(event.relatedTarget as Node | null)) {
+        off();
+        active = false;
+      }
+    };
+    const onFocusIn = () => {
+      if (active) return;
+      off = activateLocalContext(LOCAL_CONTEXT);
+      active = true;
+    };
+    document.addEventListener("focusout", onFocusOut);
+    document.addEventListener("focusin", onFocusIn);
+    return () => {
+      if (active) off();
+      document.removeEventListener("focusout", onFocusOut);
+      document.removeEventListener("focusin", onFocusIn);
+    };
+  }, [open]);
+
+  // 浮窗根节点 capture 拦截：⌘1~9 直达、↑↓ 换选、Enter 定位、Esc 关闭，
+  // stopPropagation 使全局「卡片直开 ⌘1–9」等 window 冒泡监听收不到。
+  useEffect(() => {
+    if (!open) return;
+    const root = rootRef.current;
+    if (!root) return;
+    const onKey = (event: KeyboardEvent) => {
+      const meta = event.metaKey || event.ctrlKey;
+      let handled = true;
+      if (event.key === "ArrowDown") {
+        if (hits.length === 0) handled = false;
+        else setSelected((s) => Math.min(hits.length - 1, s + 1));
+      } else if (event.key === "ArrowUp") {
+        if (hits.length === 0) handled = false;
+        else setSelected((s) => Math.max(0, s - 1));
+      } else if (event.key === "Enter") {
+        const hit = hits[safeSelected];
+        if (hit) locate(hit);
+        else handled = false;
+      } else if (event.key === "Escape") {
+        close();
+      } else if (meta) {
+        const digit = digitFromCode(event.code);
+        if (digit !== null && digit >= 1 && digit <= hits.length) {
+          setSelected(digit - 1);
+        } else {
+          handled = false;
+        }
+      } else {
+        handled = false;
+      }
+      if (handled) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    };
+    root.addEventListener("keydown", onKey, true);
+    return () => root.removeEventListener("keydown", onKey, true);
+  }, [open, hits, safeSelected, close, locate]);
 
   const onHandlePointerDown = (event: ReactPointerEvent<HTMLElement>) => {
     if (event.button !== 0) return;
@@ -207,34 +332,6 @@ export default function SearchReplacePanel({
     const drag = dragRef.current;
     if (!drag || drag.pointerId !== event.pointerId) return;
     dragRef.current = null;
-  };
-
-  const locate = (hit: SearchScanHit) => {
-    if (mode === "preview") {
-      const preview = container?.querySelector<HTMLElement>(".preview-content");
-      if (!preview) return;
-      const walker = document.createTreeWalker(preview, NodeFilter.SHOW_TEXT);
-      const needle = hit.text.toLowerCase();
-      let node = walker.nextNode();
-      while (node) {
-        if ((node.textContent ?? "").toLowerCase().includes(needle)) {
-          (node.parentElement as HTMLElement | null)?.scrollIntoView({
-            behavior: "auto",
-            block: "center",
-          });
-          return;
-        }
-        node = walker.nextNode();
-      }
-      return;
-    }
-    const view = getActiveEditorView();
-    if (!view) return;
-    view.dispatch({
-      selection: { anchor: hit.from, head: hit.to },
-      effects: EditorView.scrollIntoView(hit.from, { y: "center" }),
-    });
-    view.focus();
   };
 
   const style: CSSProperties = {
@@ -330,6 +427,33 @@ export default function SearchReplacePanel({
         </button>
       </div>
 
+      {hits.length > 0 && (
+        <div
+          className="search-float-dist"
+          data-testid="search-float-dist"
+          title="命中分布（点刻度跳转）"
+        >
+          {hits.map((hit, index) => (
+            <button
+              key={`dist-${hit.from}-${index}`}
+              type="button"
+              className={`search-float-dist-tick${
+                index === safeSelected ? " cur" : ""
+              }`}
+              data-testid="search-float-dist-tick"
+              data-index={index}
+              style={{ left: `${((index + 0.5) / hits.length) * 100}%` }}
+              title={`第 ${index + 1} 处 · L${hit.line}`}
+              aria-label={`第 ${index + 1} 处 · L${hit.line}`}
+              onClick={() => {
+                setSelected(index);
+                locate(hit);
+              }}
+            />
+          ))}
+        </div>
+      )}
+
       <div className="search-float-results" data-testid="search-float-results">
         {query && hits.length === 0 && (
           <p className="search-float-empty">无命中</p>
@@ -339,15 +463,36 @@ export default function SearchReplacePanel({
           <button
             key={`${hit.from}-${index}`}
             type="button"
-            className="search-float-hit"
+            className={`search-float-hit${
+              index === safeSelected ? " search-float-hit-cur" : ""
+            }`}
             data-testid="search-float-hit"
-            onClick={() => locate(hit)}
+            data-index={index}
+            ref={(el) => {
+              if (el) rowRefs.current.set(index, el);
+              else rowRefs.current.delete(index);
+            }}
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={() => {
+              setSelected(index);
+              locate(hit);
+            }}
           >
-            <span className="search-float-loc">
-              L{hit.line} · {BLOCK_TYPE_LABELS[hit.blockType] ?? "段落"}
+            <span className="search-float-main">
+              <span className="search-float-top">
+                <span className="search-float-loc">
+                  L{hit.line} · {BLOCK_TYPE_LABELS[hit.blockType] ?? "段落"}
+                </span>
+                <span className="search-float-idx">
+                  {index + 1}/{hits.length}
+                </span>
+              </span>
+              <span className="search-float-context">
+                {highlight(snippets[index] ?? hit.context, query.trim())}
+              </span>
             </span>
-            <span className="search-float-context">
-              {highlight(hit.context, query.trim())}
+            <span className="search-float-key">
+              {index === safeSelected ? "⏎" : index < 9 ? `⌘${index + 1}` : ""}
             </span>
           </button>
         ))}

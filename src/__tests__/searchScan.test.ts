@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { searchScan, splitSearchBlocks } from "../lib/searchScan";
+import {
+  searchScan,
+  searchHitSnippet,
+  splitSearchBlocks,
+} from "../lib/searchScan";
 
 /**
  * searchScan（#981 / S-2 扫描规则）：默认不分大小写的子串匹配，
@@ -68,5 +72,32 @@ describe("searchScan", () => {
     );
     expect(doc.slice(blocks[1].from, blocks[1].to)).toBe("第二块");
     expect(blocks[1].startLine).toBe(4);
+  });
+});
+
+describe("searchHitSnippet", () => {
+  it("块内窗口：短块整块返回，不越过块边界", () => {
+    const doc = "前块\n\n属性在后块";
+    const hit = searchScan(doc, "属性")[0];
+    expect(searchHitSnippet(doc, hit)).toBe("属性在后块");
+  });
+
+  it("长块截断：两侧补省略号并保留命中", () => {
+    const doc = `${"甲".repeat(100)}属性${"乙".repeat(100)}`;
+    const hit = searchScan(doc, "属性")[0];
+    const snippet = searchHitSnippet(doc, hit, 44);
+    expect(snippet.startsWith("…")).toBe(true);
+    expect(snippet.endsWith("…")).toBe(true);
+    expect(snippet).toContain("属性");
+  });
+
+  it("复用预切分块：与不传 blocks 结果一致", () => {
+    const doc = "# 属性面板\n\n这是属性面板的正文。";
+    const blocks = splitSearchBlocks(doc);
+    for (const hit of searchScan(doc, "属性")) {
+      expect(searchHitSnippet(doc, hit, 44, blocks)).toBe(
+        searchHitSnippet(doc, hit),
+      );
+    }
   });
 });
