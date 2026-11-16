@@ -356,6 +356,15 @@ function mockInvoke(cmd, args) {
     return { path: "/Users/test/assets/" + candidate, name: "assets/" + candidate };
   }
   if (cmd === "list_system_fonts") {
+    // 测试可用 window.__biaoyue_system_fonts__ = { families, enumerated } 覆盖，
+    // 用来驱动「枚举不可用 → 兜底预设」分支（#963）。
+    var fontsOverride = window.__biaoyue_system_fonts__;
+    if (fontsOverride && Array.isArray(fontsOverride.families)) {
+      return {
+        families: cloneJson(fontsOverride.families),
+        enumerated: !!fontsOverride.enumerated,
+      };
+    }
     return {
       families: [
         "PingFang SC", "Hiragino Sans GB", "Songti SC", "Heiti SC", "STHeiti",

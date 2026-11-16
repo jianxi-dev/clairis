@@ -688,6 +688,7 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
   const [headingFontOptions, setHeadingFontOptions] = useState<string[] | null>(
     null,
   );
+  const [headingFontsEnumerated, setHeadingFontsEnumerated] = useState(true);
   const [headingFontHint, setHeadingFontHint] = useState("");
 
   const previewSettings = useStore((s) => s.previewSettings);
@@ -752,12 +753,17 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
     invoke<SystemFontsResponse>("list_system_fonts")
       .then((res) => {
         if (!cancelled && res && Array.isArray(res.families)) {
-          // 预设兜底列表不代表本机字体全集，不做「系统可用性」权威判定。
-          setHeadingFontOptions(res.enumerated ? res.families : null);
+          // 兜底预设也要进 datalist（#963）；但它不是本机已安装全集，
+          // 故 enumerated=false 时校验退回结构性校验。
+          setHeadingFontOptions(res.families);
+          setHeadingFontsEnumerated(res.enumerated);
         }
       })
       .catch(() => {
-        if (!cancelled) setHeadingFontOptions(null);
+        if (!cancelled) {
+          setHeadingFontOptions(null);
+          setHeadingFontsEnumerated(true);
+        }
       });
     return () => {
       cancelled = true;
@@ -861,7 +867,10 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
   // 标题字体（C1 / #853）：输入即改本地文本，失焦 / 回车才校验落盘；
   // 不在本机已安装列表里的值拒绝写入并回落默认。
   const commitHeadingFont = (level: HeadingLevel, text: string) => {
-    const parsed = parseHeadingFontInput(text, headingFontOptions);
+    const parsed = parseHeadingFontInput(
+      text,
+      headingFontsEnumerated ? headingFontOptions : null,
+    );
     if (parsed.kind === "invalid") {
       setHeadingFontText((prev) => ({
         ...prev,
@@ -1345,7 +1354,8 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
                   标题字体
                 </h2>
                 <p className="mb-2 text-xs text-[var(--app-text-3)]">
-                  逐级选择 H1–H6 的字体，留空＝默认（--type-font-sans）。
+                  逐级设置 H1–H6
+                  的字体；输入框显示当前生效字体，清空＝默认（--type-font-sans）。
                 </p>
                 <datalist id="heading-font-options">
                   {(headingFontOptions ?? []).map((family) => (
