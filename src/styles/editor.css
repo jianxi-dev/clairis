@@ -67,6 +67,9 @@ body {
   --type-font-mono:
     "SF Mono", "JetBrains Mono", "Fira Code", Menlo, Consolas, "PingFang SC",
     monospace;
+  /* 正文列左缘（#920 / D8）：纸面左内边距 与 居中阅读栏左缘 的较大者。
+   * 行号槽右缘锚定这里，避免 .cm-content 左内边距与正文居中叠加出过大空白。 */
+  --gutter-text-left: max(2rem, calc(50% - var(--type-measure, 1080px) / 2));
 }
 
 .dark .cm-editor {
@@ -95,10 +98,16 @@ body {
   caret-color: var(--app-accent);
 }
 
-/* ── 行号槽（#858 / D15）────────────────────────────────────
+/* ── 行号槽（#858 / D15 / #920 / D8）────────────────────────────
  * 仅纯文本 / 脚本（代码）文件的编辑态由 lineNumbersCompartment 装入。纸面内的
- * 一条低调竖槽：透明底、右侧细分隔线、三级文字色、等宽数字，不引入代码面板底色。 */
+ * 一条低调竖槽：透明底、右侧细分隔线、三级文字色、等宽数字，不引入代码面板底色。
+ * 行号槽脱离 flex 流（ContentArea 用 gutters({fixed:false}) 清掉 CM6 内联
+ * sticky），右缘锚定正文列左缘，使行号紧贴正文而非贴着纸面左沿。 */
 .cm-editor .cm-scroller .cm-gutters {
+  position: absolute;
+  top: 0;
+  left: auto;
+  right: calc(100% - var(--gutter-text-left));
   background: transparent;
   color: var(--app-text-3);
   border-inline-end: 1px solid var(--app-border);
@@ -108,7 +117,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  padding: 0 10px 0 0;
+  padding: 0;
   min-width: 2em;
   font-family: var(--type-font-mono);
   font-size: 0.85em;
@@ -707,6 +716,12 @@ body {
   border-inline: 1px solid var(--app-border);
 }
 
+/* 代码行横向内边距与预览 .code-block pre 一致（#920 / D8）；纵向内边距由
+ * 围栏起止行提供，避免每行上下 padding 叠加把行距撑开。围栏起止行不收。 */
+.cm-line.cm-fenced-code:not(.cm-fenced-fence-start):not(.cm-fenced-fence-end) {
+  padding: 0 1.15em;
+}
+
 .cm-line:not(.cm-fenced-code) + .cm-line.cm-fenced-code {
   border-start-start-radius: var(--app-radius);
   border-start-end-radius: var(--app-radius);
@@ -729,13 +744,9 @@ body {
   line-height: 10px;
 }
 
+/* 活跃块：源码可见、围栏标签淡出；底色与预览一致，不再另行变淡（#920 / D8）。 */
 .cm-line.cm-fenced-code.cm-block-inactive {
   background: var(--app-sunken);
-}
-
-/* 活跃块：底色变淡，让用户看到代码结构 */
-.cm-line.cm-fenced-code.cm-block-active {
-  background: color-mix(in srgb, var(--app-sunken) 60%, transparent);
 }
 
 /* 开栏行语言名标签 */

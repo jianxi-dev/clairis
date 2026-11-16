@@ -549,6 +549,9 @@
   border: 1px solid var(--reader-line);
   border-radius: var(--reader-radius);
   overflow: hidden;
+  /* 纵向内边距落在块上，横向给 pre；与编辑态 .cm-line.cm-fenced-code
+   * 的「横向 pre / 纵向围栏」分工一致（#920 / D8）。 */
+  padding-block: 1.1em;
 }
 
 .preview-content .code-lang,
@@ -610,6 +613,13 @@
   padding: 0;
   font-size: 1em;
   color: inherit;
+}
+
+/* 代码盒子的底移到 pre，让 pre 成为与编辑态 .cm-line.cm-fenced-code 同形的
+ * 可比较盒子（#920 / D8）。 */
+.preview-content .code-block pre {
+  padding: 0 1.15em;
+  background: var(--reader-sunken);
 }
 
 /* ── 语法高亮：低饱和矿物色族（独立于品牌色，只随明暗切换） ── */
