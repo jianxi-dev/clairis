@@ -111,7 +111,7 @@ export function ensureHeadingFonts(
   return out;
 }
 
-/** 输入框显示值：默认栈显示为空（placeholder 说明），自定义值原样显示。 */
+/** 输入框显示值：恒显当前生效字体（默认栈也显式呈现），不留空。 */
 export function headingFontInputValue(value: string): string {
   // 输入框显示「当前生效字体」：默认栈也要显式呈现，不再是空白（#926）。
   return value;

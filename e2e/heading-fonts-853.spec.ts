@@ -18,6 +18,20 @@ const ART = path.resolve(process.cwd(), ".artifacts/853");
 const EVIDENCE = path.resolve(process.cwd(), "scripts/cw-evidence.sh");
 const LEVELS = ["h1", "h2", "h3", "h4", "h5", "h6"] as const;
 
+// 镜像 src-tauri/src/fonts.rs 的 PRESET_FONT_FAMILIES（#963）。
+const FALLBACK_PRESETS = [
+  "Fira Code",
+  "IBM Plex Sans",
+  "Inter",
+  "JetBrains Mono",
+  "Noto Sans",
+  "Noto Sans CJK SC",
+  "Noto Serif CJK SC",
+  "Source Han Sans SC",
+  "Source Han Serif SC",
+  "sans-serif",
+];
+
 function shot(page: Page, name: string, state: string): Promise<string> {
   const file = path.join(ART, `${name}.png`);
   return page.screenshot({ path: file }).then(() => {
@@ -138,7 +152,7 @@ test("设置面板含 6 个逐级入口，输入框显示当前默认字体（�
     expect(await input.inputValue()).toContain("PingFang SC");
   }
 
-  // 预设列表含中英开源字体（本机枚举 + 开源预设）
+  // 本机枚举路径（enumerated:true）返回的列表含开源字体；兜底路径见下方 #963 用例。
   const options = await page
     .locator("#heading-font-options option")
     .evaluateAll((els) => els.map((e) => (e as HTMLOptionElement).value));
@@ -159,6 +173,37 @@ test("设置面板含 6 个逐级入口，输入框显示当前默认字体（�
   }
 
   await shot(page, "settings-heading-fonts-6", "settings-heading-fonts-6");
+});
+
+test("枚举不可用时兜底预设仍进 datalist（#963）", async ({ page }) => {
+  await page.addInitScript((fonts) => {
+    (window as unknown as Record<string, unknown>).__biaoyue_system_fonts__ = {
+      families: fonts,
+      enumerated: false,
+    };
+  }, FALLBACK_PRESETS);
+  await boot(page);
+  await openSettings(page);
+  await openAppearance(page);
+
+  const options = await page
+    .locator("#heading-font-options option")
+    .evaluateAll((els) => els.map((e) => (e as HTMLOptionElement).value));
+  expect(options).toHaveLength(FALLBACK_PRESETS.length);
+  for (const want of FALLBACK_PRESETS) {
+    expect(options, `兜底预设缺 ${want}`).toContain(want);
+  }
+
+  // 非 enumerated：兜底表不是「本机已安装」权威列表，合法字体不得被误拒。
+  const h1 = page.locator('[data-testid="heading-font-h1"]');
+  await h1.fill("ZzzNoSuchFont909");
+  await h1.press("Enter");
+  await expect(page.locator('[data-testid="heading-font-hint"]')).toHaveCount(
+    0,
+  );
+  await expect
+    .poll(async () => (await persistedHeadingFonts(page)).h1)
+    .toBe("ZzzNoSuchFont909");
 });
 
 test("改某级字体后持久化，heading_fonts 含 6 级键", async ({ page }) => {

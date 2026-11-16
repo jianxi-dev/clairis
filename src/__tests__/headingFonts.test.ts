@@ -57,6 +57,16 @@ describe("系统可用性", () => {
     expect(isFontFamilyAllowed("ZzzNoSuchFont", [])).toBe(true);
     expect(isFontFamilyAllowed("Bad{Font}", null)).toBe(false);
   });
+
+  it("非枚举（预设兜底）时合法字体不因不在列表中而被拒", () => {
+    expect(parseHeadingFontInput("ZzzNoSuchFont", null)).toEqual({
+      kind: "valid",
+      value: "ZzzNoSuchFont",
+    });
+    expect(parseHeadingFontInput("Bad{Font}", null)).toEqual({
+      kind: "invalid",
+    });
+  });
 });
 
 describe("归一化", () => {
@@ -98,7 +108,7 @@ describe("输入解析", () => {
     });
   });
 
-  it("默认栈在输入框显示为空", () => {
+  it("输入框恒显当前生效字体（默认栈也显式呈现）", () => {
     expect(headingFontInputValue(HEADING_FONT_STACK)).toBe(HEADING_FONT_STACK);
     expect(headingFontInputValue("Songti SC")).toBe("Songti SC");
   });
