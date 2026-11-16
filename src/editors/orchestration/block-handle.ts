@@ -443,6 +443,12 @@ class BlockHandlePlugin {
     }
     // 容器块（引用 / 列表）内部的嵌套块也各自成手柄（#917）：引用块里的每一段、
     // 列表项下的结构块，hover 都能召唤转换菜单。与顶层块 / mermaid 去重。
+    // mermaid 围栏按范围重叠排除（Lezer 的 FencedCode.from 与 parseMermaidBlocks
+    // 的行首口径不一致，精确 key 会漏配 → 同一围栏双柄，widget 锚定被绕过）。
+    const overlapsMermaid = (from: number, to: number): boolean =>
+      mermaids.some(
+        (fence) => from < fence.to && to > fence.from,
+      );
     const nestedKeys = new Set<string>();
     for (const block of blocks) {
       if (block.type !== "blockquote" && block.type !== "list" && block.type !== "task") {
@@ -450,9 +456,8 @@ class BlockHandlePlugin {
       }
       for (const nested of getNestedBlocks(this.view.state, block)) {
         const key = rangeKey(nested.from, nested.to);
-        if (blockKeys.has(key) || mermaidKeys.has(key) || nestedKeys.has(key)) {
-          continue;
-        }
+        if (blockKeys.has(key) || nestedKeys.has(key)) continue;
+        if (overlapsMermaid(nested.from, nested.to)) continue;
         nestedKeys.add(key);
         this.addHandle(
           { from: nested.from, to: nested.to, type: nested.type },

@@ -307,3 +307,20 @@ describe("getNestedBlocks", () => {
     expect(getNestedBlocks(state, para)).toEqual([]);
   });
 });
+
+describe("getNestedBlocks 边界补遗", () => {
+  it("任务项首段占名额，第二段成嵌套块", () => {
+    const state = makeState("- [ ] 任务\n\n  第二段\n");
+    const [list] = getBlocks(state);
+    const nested = getNestedBlocks(state, list);
+    expect(nested.map((b) => b.type)).toEqual(["paragraph"]);
+    expect(nested[0].from).toBeGreaterThan(list.from);
+  });
+
+  it("列表项内 mermaid 围栏仍归嵌套枚举（去重在 handle 层按重叠做）", () => {
+    const state = makeState("- 条目\n\n  ```mermaid\n  graph TD\n  ```\n");
+    const [list] = getBlocks(state);
+    const nested = getNestedBlocks(state, list);
+    expect(nested.map((b) => b.type)).toEqual(["fencedCode"]);
+  });
+});

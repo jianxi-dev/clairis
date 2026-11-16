@@ -313,7 +313,12 @@ export function getNestedBlocks(
         const sub = item.node;
         if (sub.name === "ListMark") continue;
         const block = classifyBlockNode(sub, state);
-        if (block === null) continue;
+        if (block === null) {
+          // GFM 任务项的首子块是 Task 节点（含标记与文本）：它就是条目文本，
+          // 占掉首段名额，否则其后的段落会被误当首段跳过。
+          if (sub.name === "Task" && !seenBlock) seenBlock = true;
+          continue;
+        }
         if (!seenBlock && block.type === "paragraph") {
           seenBlock = true;
           continue;
