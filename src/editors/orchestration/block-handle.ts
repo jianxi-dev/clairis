@@ -14,6 +14,7 @@ import { ViewPlugin, type EditorView, type ViewUpdate } from "@codemirror/view";
 import {
   getBlocks,
   getBlockAt,
+  getNestedBlocks,
   type Block,
   type BlockType,
 } from "../block-model";
@@ -439,6 +440,25 @@ class BlockHandlePlugin {
         },
         false,
       );
+    }
+    // 容器块（引用 / 列表）内部的嵌套块也各自成手柄（#917）：引用块里的每一段、
+    // 列表项下的结构块，hover 都能召唤转换菜单。与顶层块 / mermaid 去重。
+    const nestedKeys = new Set<string>();
+    for (const block of blocks) {
+      if (block.type !== "blockquote" && block.type !== "list" && block.type !== "task") {
+        continue;
+      }
+      for (const nested of getNestedBlocks(this.view.state, block)) {
+        const key = rangeKey(nested.from, nested.to);
+        if (blockKeys.has(key) || mermaidKeys.has(key) || nestedKeys.has(key)) {
+          continue;
+        }
+        nestedKeys.add(key);
+        this.addHandle(
+          { from: nested.from, to: nested.to, type: nested.type },
+          false,
+        );
+      }
     }
     // 嵌套围栏（列表项 / 引用块内）没有对应的顶层块，单独补手柄。
     for (const fence of mermaids) {

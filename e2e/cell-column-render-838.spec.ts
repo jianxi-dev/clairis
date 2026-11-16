@@ -204,3 +204,96 @@ test("A-5.2 编辑态取消分栏就地编辑后渲染不退化（Esc 还原块�
 
   await shot(page, "column-esc-restored");
 });
+
+test("#917 引用块/单元格/分栏内均可召唤手柄，菜单与统一菜单一致", async ({
+  page,
+}) => {
+  const NESTED_DOC = [
+    "> 引用第一段",
+    ">",
+    "> ## 引用小标题",
+    "",
+    "| 表头一 | 表头二 |",
+    "| --- | --- |",
+    "| **粗体** | 普通文本 |",
+    "",
+    "::: {.col-2}",
+    "",
+    "- 栏目列表一",
+    "",
+    ":::",
+  ].join("\n");
+
+  const summonZone = async () =>
+    page.evaluate(() => {
+      const rect = (
+        document.querySelector(".cm-content") as HTMLElement
+      ).getBoundingClientRect();
+      return { left: rect.left, width: rect.width };
+    });
+
+  await openDoc(page, "/tmp/nested-handle-917.md", NESTED_DOC);
+
+  // 嵌套容器内不显示源码标记（引用走主编辑器装饰渲染）。
+  const quote = page.locator(".cm-quote").first();
+  await expect(quote).not.toContainText("##");
+  await expect(quote).not.toContainText("**");
+
+  // 引用内嵌套段落的转换手柄：hover 左缘召唤 → 手柄 → 统一菜单。
+  const quoteLine = page.locator(".cm-line", { hasText: "引用第一段" });
+  const qbox = (await quoteLine.boundingBox())!;
+  const zone = await summonZone();
+  await page.mouse.move(
+    Math.max(qbox.x, zone.left + zone.width * 0.1),
+    qbox.y + qbox.height / 2,
+  );
+  const handle = page.locator(
+    '[data-testid="block-handle"].cm-block-handle-visible',
+  );
+  await expect(handle).toHaveCount(1, { timeout: 3000 });
+  // 命中的是嵌套块而不是引用容器：文档以引用块开头，容器手柄的 from 是 0，
+  // 嵌套段手柄的 from 必然 > 0（旧实现只会给整条引用一个容器手柄）。
+  expect(Number(await handle.getAttribute("data-block-from"))).toBeGreaterThan(
+    0,
+  );
+  await handle.hover();
+  const nestedMenu = page.locator('[data-testid="block-menu"]');
+  await expect(nestedMenu).toBeVisible({ timeout: 3000 });
+  const nestedCount = await nestedMenu.locator(".cm-block-menu-item").count();
+  expect(nestedCount).toBeGreaterThan(0);
+  await page.keyboard.press("Escape");
+  await expect(nestedMenu).toHaveCount(0);
+
+  // 菜单项集 = 统一菜单：与顶层段落菜单的项数严格相等，且都含「在下方添加」。
+  await openDoc(page, "/tmp/plain-917.md", "顶层段落");
+  const plainLine = page.locator(".cm-line").first();
+  const pbox = (await plainLine.boundingBox())!;
+  const pzone = await summonZone();
+  await page.mouse.move(
+    Math.max(pbox.x, pzone.left + pzone.width * 0.1),
+    pbox.y + pbox.height / 2,
+  );
+  const plainHandle = page.locator(
+    '[data-testid="block-handle"].cm-block-handle-visible',
+  );
+  await expect(plainHandle).toHaveCount(1, { timeout: 3000 });
+  await plainHandle.hover();
+  const plainMenu = page.locator('[data-testid="block-menu"]');
+  await expect(plainMenu).toBeVisible({ timeout: 3000 });
+  const plainCount = await plainMenu.locator(".cm-block-menu-item").count();
+  expect(nestedCount).toBe(plainCount);
+  await expect(plainMenu).toContainText("在下方添加");
+
+  // 可召唤容器 ≥3：引用嵌套手柄 + 表格单元格手柄 + 分栏手柄。
+  await openDoc(page, "/tmp/nested-all-917.md", NESTED_DOC);
+  await expect(
+    page.locator('[data-testid="block-handle"]').first(),
+  ).toBeAttached();
+  await expect(
+    page.locator('[data-testid="cm-table-cell-handle"]').first(),
+  ).toBeAttached();
+  await expect(
+    page.locator('[data-testid="cm-columns-add-handle"]').first(),
+  ).toBeAttached();
+  await shot(page, "nested-handles-917");
+});
