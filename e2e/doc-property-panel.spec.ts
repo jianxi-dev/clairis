@@ -421,6 +421,116 @@ test("跨文档同名标签等色：删掉中间标签后其余标签色值不�
   }
 });
 
+const EDIT_DOC = `---
+title: 可编辑标题
+note: 一段普通备注
+count: 42
+custom-note: 自由键
+---
+
+# 正文
+`;
+
+const LONG_NOTE_DOC = `---
+title: 长文本编辑
+note: 这是一段超过四十字符的长备注内容，用来验证点击进入编辑时会自动切换为多行文本域，并且回车换行、失焦提交。
+count: 7
+---
+
+# 正文
+`;
+
+test("编辑态：点击文本值进入编辑，Enter 提交后源码 YAML 同步", async ({
+  page,
+}) => {
+  await openDoc(page, EDIT_DOC);
+  await setMode(page, "edit");
+  const row = panel(page, "A").locator('[data-key="note"]');
+  await row.locator('[data-testid="dpb-value"]').click();
+  const input = row.locator('[data-testid="dpb-input"]');
+  await expect(input).toBeVisible();
+  await input.fill("改过的备注");
+  await input.press("Enter");
+  await expect(input).toHaveCount(0);
+  await expect(row.locator('[data-testid="dpb-value"]')).toHaveText(
+    "改过的备注",
+  );
+
+  await setMode(page, "source");
+  await expect(page.locator(".cm-content").first()).toContainText(
+    "note: 改过的备注",
+  );
+});
+
+test("数字字段输入 abc 提交被拒绝：还原原值并出现提示", async ({ page }) => {
+  await openDoc(page, EDIT_DOC);
+  await setMode(page, "edit");
+  const row = panel(page, "A").locator('[data-key="count"]');
+  await row.locator('[data-testid="dpb-value"]').click();
+  const input = row.locator('[data-testid="dpb-input"]');
+  await input.fill("abc");
+  await input.press("Enter");
+  await expect(input).toHaveCount(0);
+  await expect(row.locator('[data-testid="dpb-error"]')).toContainText(
+    "数字格式不正确",
+  );
+  await expect(row.locator('[data-testid="dpb-value"]')).toHaveText("42");
+});
+
+test("修改值后 Ctrl+Z 源码回退到修改前", async ({ page }) => {
+  await openDoc(page, EDIT_DOC);
+  await setMode(page, "edit");
+  const row = panel(page, "A").locator('[data-key="note"]');
+  await row.locator('[data-testid="dpb-value"]').click();
+  const input = row.locator('[data-testid="dpb-input"]');
+  await input.fill("临时改动");
+  await input.press("Enter");
+  await expect(row.locator('[data-testid="dpb-value"]')).toHaveText("临时改动");
+
+  await page.locator(".cm-content").first().click();
+  await page.keyboard.press("Meta+Z");
+
+  await setMode(page, "source");
+  const src = page.locator(".cm-content").first();
+  await expect(src).toContainText("note: 一段普通备注");
+  await expect(src).not.toContainText("临时改动");
+});
+
+test("长文本（>40 字符）点击值出现多行文本域，Enter 换行、失焦提交", async ({
+  page,
+}) => {
+  await openDoc(page, LONG_NOTE_DOC);
+  await setMode(page, "edit");
+  const row = panel(page, "A").locator('[data-key="note"]');
+  await row.locator('[data-testid="dpb-value"]').click();
+  const box = row.locator('[data-testid="dpb-input"]');
+  await expect(box).toBeVisible();
+  await expect(box).toHaveJSProperty("tagName", "TEXTAREA");
+  await box.fill("第一行");
+  await box.press("Enter");
+  await box.type("第二行");
+  await expect(box).toHaveValue("第一行\n第二行");
+  await page.locator(".dpb-a-title").click();
+  await expect(box).toHaveCount(0);
+  await expect(row.locator('[data-testid="dpb-value"]')).toContainText(
+    "第一行",
+  );
+});
+
+test("编辑其他字段后自由键在源码中保持不变", async ({ page }) => {
+  await openDoc(page, EDIT_DOC);
+  await setMode(page, "edit");
+  const row = panel(page, "A").locator('[data-key="note"]');
+  await row.locator('[data-testid="dpb-value"]').click();
+  const input = row.locator('[data-testid="dpb-input"]');
+  await input.fill("改后备注");
+  await input.press("Enter");
+  await setMode(page, "source");
+  const src = page.locator(".cm-content").first();
+  await expect(src).toContainText("custom-note: 自由键");
+  await expect(src).toContainText("note: 改后备注");
+});
+
 test("自动托管日期只读锁定：A/B 两态均有锁定标记且无编辑入口", async ({
   page,
 }) => {

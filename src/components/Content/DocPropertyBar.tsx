@@ -1,12 +1,22 @@
-import { useEffect, useMemo, useRef } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+} from "react";
 import type { EditorMode } from "../../types";
 import {
   isManagedDateKey,
   parseFrontmatter,
+  setFrontmatterField,
   tagColor,
+  validateFieldValue,
   type FrontmatterField,
   type FrontmatterType,
 } from "../../lib/frontmatter";
+import { getActiveEditorView } from "../../editors/editorRef";
 import { useEditorStore } from "../../stores/editorStore";
 import { useDocPropertyPanelStore } from "../../stores/docPropertyPanel";
 
@@ -84,7 +94,15 @@ function TypeIcon({ type }: { type: FrontmatterType }) {
   );
 }
 
-function ValueView({ field }: { field: FrontmatterField }) {
+function ValueView({
+  field,
+  editable = false,
+  onStartEdit,
+}: {
+  field: FrontmatterField;
+  editable?: boolean;
+  onStartEdit?: () => void;
+}) {
   if (field.type === "boolean") {
     const on = Boolean(field.value);
     return (
@@ -96,12 +114,172 @@ function ValueView({ field }: { field: FrontmatterField }) {
   const long = field.display.length > 24;
   return (
     <span
-      className="dpb-v dpb-clamp2"
+      className={`dpb-v dpb-clamp2${editable ? " dpb-v-clickable" : ""}`}
       data-testid="dpb-value"
-      title={long ? field.display : undefined}
+      title={editable ? "点击编辑值" : long ? field.display : undefined}
+      role={editable ? "button" : undefined}
+      tabIndex={editable ? 0 : undefined}
+      onClick={editable ? onStartEdit : undefined}
+      onKeyDown={
+        editable
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onStartEdit?.();
+              }
+            }
+          : undefined
+      }
     >
       {field.display || "—"}
     </span>
+  );
+}
+
+/** 进入编辑时的初始文本：数字用原值（不带千分位），日期时间用 `T` 分隔。 */
+function rawForEdit(field: FrontmatterField): string {
+  const v = field.value;
+  if (v === null || v === undefined) return "";
+  switch (field.type) {
+    case "datetime":
+      return String(v).replace(" ", "T");
+    case "array":
+      return Array.isArray(v) ? v.map((x) => String(x)).join("、") : String(v);
+    default:
+      return String(v);
+  }
+}
+
+/** 单行文本超过此长度即进入多行文本域（P-3，阈值 40）。 */
+const MULTILINE_THRESHOLD = 40;
+
+interface ValueEditorProps {
+  field: FrontmatterField;
+  editable: boolean;
+  onCommit: (key: string, value: unknown) => void;
+}
+
+function ValueEditor({ field, editable, onCommit }: ValueEditorProps) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
+  const [multiline, setMultiline] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const errorTimer = useRef<number | null>(null);
+
+  const startEdit = () => {
+    if (!editable) return;
+    const raw = rawForEdit(field);
+    setDraft(raw);
+    setMultiline(field.type === "text" && raw.length > MULTILINE_THRESHOLD);
+    setError(null);
+    setEditing(true);
+  };
+
+  const cancel = () => {
+    setEditing(false);
+    setDraft(rawForEdit(field));
+    setError(null);
+  };
+
+  const showError = useCallback((reason: string) => {
+    setError(reason);
+    if (errorTimer.current !== null) window.clearTimeout(errorTimer.current);
+    errorTimer.current = window.setTimeout(() => setError(null), 1500);
+  }, []);
+
+  useEffect(
+    () => () => {
+      if (errorTimer.current !== null) window.clearTimeout(errorTimer.current);
+    },
+    [],
+  );
+
+  const commit = () => {
+    const result = validateFieldValue(field.type, draft);
+    setEditing(false);
+    if (!result.ok) {
+      setDraft(rawForEdit(field));
+      showError(result.reason);
+      return;
+    }
+    setError(null);
+    onCommit(field.key, result.value);
+  };
+
+  if (field.type === "boolean") {
+    if (!editable) return <ValueView field={field} />;
+    const on = Boolean(field.value);
+    return (
+      <button
+        type="button"
+        className={`dpb-switch${on ? " dpb-switch-on" : ""}`}
+        data-testid="dpb-value"
+        role="switch"
+        aria-checked={on}
+        title="点击切换"
+        onClick={() => onCommit(field.key, !on)}
+      >
+        {on ? "◉ 开" : "○ 关"}
+      </button>
+    );
+  }
+
+  if (editing) {
+    const shared = {
+      value: draft,
+      onChange: (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+        setDraft(e.target.value),
+      onBlur: commit,
+    };
+    if (multiline) {
+      return (
+        <textarea
+          className="dpb-input dpb-textarea"
+          data-testid="dpb-input"
+          rows={3}
+          autoFocus
+          {...shared}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") cancel();
+          }}
+        />
+      );
+    }
+    const inputType =
+      field.type === "date"
+        ? "date"
+        : field.type === "datetime"
+          ? "datetime-local"
+          : "text";
+    return (
+      <input
+        className="dpb-input"
+        data-testid="dpb-input"
+        type={inputType}
+        inputMode={field.type === "number" ? "numeric" : undefined}
+        autoFocus
+        {...shared}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            commit();
+          } else if (e.key === "Escape") {
+            cancel();
+          }
+        }}
+      />
+    );
+  }
+
+  return (
+    <>
+      <ValueView field={field} editable={editable} onStartEdit={startEdit} />
+      {error && (
+        <span className="dpb-error" data-testid="dpb-error" role="status">
+          {error}
+        </span>
+      )}
+    </>
   );
 }
 
@@ -209,6 +387,19 @@ export default function DocPropertyBar({
     setHidden(!(propertyBar?.newDocVisible ?? true));
   }, [isNewDoc, propertyBar?.newDocVisible, setHidden]);
 
+  const handleCommitField = useCallback(
+    (key: string, value: unknown) => {
+      const view = getActiveEditorView();
+      if (!view) return;
+      const result = setFrontmatterField(content, key, value);
+      if (result.text === content) return;
+      view.dispatch({
+        changes: { from: result.from, to: result.to, insert: result.block },
+      });
+    },
+    [content],
+  );
+
   const parsed = useMemo(() => parseFrontmatter(content), [content]);
   const fields = parsed.fields;
   const titleField = fields.find((f) => f.key === "title") ?? null;
@@ -278,7 +469,11 @@ export default function DocPropertyBar({
                   {field === tagsField ? (
                     <TagsValue field={field} />
                   ) : (
-                    <ValueView field={field} />
+                    <ValueEditor
+                      field={field}
+                      editable={editable && !isManagedDateKey(field.key)}
+                      onCommit={handleCommitField}
+                    />
                   )}
                 </span>
                 <span className="dpb-b-x">
@@ -323,7 +518,11 @@ export default function DocPropertyBar({
               )}
               {editable && <TypeIcon type={field.type} />}
               <span className="dpb-k">{field.key}</span>
-              <ValueView field={field} />
+              <ValueEditor
+                field={field}
+                editable={editable && !isManagedDateKey(field.key)}
+                onCommit={handleCommitField}
+              />
               {isManagedDateKey(field.key) && <LockIcon />}
             </span>
           ))}
