@@ -24,6 +24,8 @@ import type {
   PropertyBarConfig,
   PropertyBarDefaultMode,
   PropertyBarDisplayStyle,
+  SearchPanelConfig,
+  SearchPanelDefaultPos,
 } from "../types";
 import { useEditorStore } from "../stores/editorStore";
 import { HTML_TOOLBAR_ITEMS } from "../editors/orchestration/slots";
@@ -199,6 +201,12 @@ const PROPERTY_BAR_DEFAULT_OPTIONS = [
 const PROPERTY_BAR_NEW_DOC_OPTIONS = [
   { value: "show", label: "显示" },
   { value: "hide", label: "隐藏" },
+] as const;
+
+const SEARCH_PANEL_POS_OPTIONS = [
+  { value: "left", label: "左侧" },
+  { value: "center", label: "居中" },
+  { value: "right", label: "右侧" },
 ] as const;
 
 function ExtensionsSection({
@@ -624,6 +632,9 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
   const propertyBarEdit: PropertyBarDefaultMode =
     propertyBar?.displayDefault?.edit ?? "show";
   const propertyBarNewDoc = propertyBar?.newDocVisible ?? true;
+  const searchPanel = useEditorStore((s) => s.config.searchPanel);
+  const searchPanelPos: SearchPanelDefaultPos =
+    searchPanel?.defaultPos ?? "center";
   const rouletteSectors = useEditorStore(
     (s) => s.config.rouletteSectors ?? null,
   );
@@ -928,6 +939,11 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
     };
     setConfig({ propertyBar: next });
     applyPropertyBarConfig(next);
+    void saveAppConfig();
+  };
+
+  const updateSearchPanel = (patch: Partial<SearchPanelConfig>) => {
+    setConfig({ searchPanel: { defaultPos: searchPanelPos, ...patch } });
     void saveAppConfig();
   };
 
@@ -1795,6 +1811,38 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
                       })}
                     </div>
                   </div>
+                </div>
+              </section>
+
+              <section data-testid="settings-search-float">
+                <h2 className="mb-1 text-sm font-medium text-[var(--app-text-strong)]">
+                  搜索浮窗
+                </h2>
+                <p className="mb-3 text-xs text-[var(--app-text-3)]">
+                  ⌘F 浮窗的默认停靠位置；拖拽 / 缩放后的位置与尺寸会话内优先。
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {SEARCH_PANEL_POS_OPTIONS.map((option) => {
+                    const selected = searchPanelPos === option.value;
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        data-testid={`search-panel-pos-${option.value}`}
+                        aria-pressed={selected}
+                        onClick={() =>
+                          updateSearchPanel({ defaultPos: option.value })
+                        }
+                        className={`rounded border px-3 py-1.5 text-sm ${
+                          selected
+                            ? "border-[var(--app-accent)] bg-[var(--app-accent-soft)] text-[var(--app-accent)]"
+                            : "border-[var(--app-border)] text-[var(--app-text-2)] hover:bg-[var(--app-sunken)]"
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    );
+                  })}
                 </div>
               </section>
             </div>

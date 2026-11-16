@@ -16,7 +16,6 @@ import {
 } from "@codemirror/language";
 import { classHighlighter } from "@lezer/highlight";
 import { drawSelection, EditorView, keymap } from "@codemirror/view";
-import { searchKeymap } from "@codemirror/search";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
 import { html } from "@codemirror/lang-html";
 import { javascript } from "@codemirror/lang-javascript";
@@ -88,14 +87,14 @@ export function baseEditorExtensions(): Extension[] {
     // classHighlighter 只输出 `.tok-*`，与预览共用一套 token 配色；换成
     // defaultHighlightStyle 会给 `tags.heading` 加下划线与字重，压住装饰层排版。
     syntaxHighlighting(classHighlighter),
-    // searchKeymap 保留 Cmd+F 查找：basicSetup 撤掉后这是唯一还需要的面板键位。
+    // Mod-f 不在这里：Cmd/Ctrl+F 由 React 侧自研搜索浮窗接管（#981 / S-1），
+    // CM6 内置 searchKeymap 已移除，避免内置面板与浮窗同时出现。
     keymap.of([
       { key: "Mod-[", run: undo },
       { key: "Mod-]", run: redo },
       ...defaultKeymap,
       ...historyKeymap,
       ...ctrlHistoryBindings,
-      ...searchKeymap,
       indentWithTab,
     ]),
   ];

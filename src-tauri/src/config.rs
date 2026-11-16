@@ -93,6 +93,9 @@ pub struct AppConfig {
     /// 文档属性面板（doc-property-panel P-2）：显示样式 / 预览编辑默认档 / 新建默认显隐。
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub property_bar: Option<PropertyBar>,
+    /// 搜索浮窗（#981 / S-1）：默认位置。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub search_panel: Option<SearchPanel>,
 }
 
 /// 文档属性面板配置（doc-property-panel P-2）。
@@ -111,6 +114,14 @@ pub struct PropertyBar {
 pub struct PropertyBarDefault {
     pub preview: Option<String>,
     pub edit: Option<String>,
+}
+
+/// 搜索浮窗配置（#981 / S-1）：默认停靠位置。
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct SearchPanel {
+    /// left / center / right；非法值由校验拦下。
+    pub default_pos: Option<String>,
 }
 
 /// 轮盘位置（ui-polish-batch15 2.1）：中键拖动后的圆心坐标（屏内像素）。
@@ -226,6 +237,7 @@ impl Default for AppConfig {
             heading_fonts: None,
             rail_pin_hidden: None,
             property_bar: None,
+            search_panel: None,
             sidebar_left_visible: Some(true),
             sidebar_right_visible: Some(false),
             sidebar_left_width: Some(220.0),
@@ -709,6 +721,13 @@ pub fn validate_config(config: &AppConfig) -> Result<(), AppError> {
             )?;
         }
     }
+    if let Some(panel) = &config.search_panel {
+        check_enum(
+            "searchPanel.defaultPos",
+            panel.default_pos.as_deref(),
+            &["left", "center", "right"],
+        )?;
+    }
     if let Some(items) = &config.html_toolbar_items {
         const ALLOWED: [&str; 12] = [
             "ai-rewrite",
@@ -934,6 +953,7 @@ const SKILL_MAP: &str = r#"# Biaoyue 配置地图
 | `propertyBar.displayStyle` | `list` / `dual` |
 | `propertyBar.displayDefault.preview` / `.edit` | `show` / `collapse` / `hide` |
 | `propertyBar.newDocVisible` | `true` / `false` |
+| `searchPanel.defaultPos` | `left` / `center` / `right` |
 | `openaiEndpoint` / `openaiModel` | 任意字符串 |
 
 ## 禁止项
@@ -1802,6 +1822,57 @@ mod tests {
         assert_eq!(
             restored.property_bar.unwrap().display_style.as_deref(),
             Some("dual")
+        );
+    }
+
+    #[test]
+    fn search_panel_round_trips_and_rejects_bad_input() {
+        let dir = temp_base("search_panel");
+        let base = dir.path();
+
+        write_user(base, r#"{"theme":"dark"}"#);
+        assert_eq!(load_config_at(base).unwrap().search_panel, None);
+
+        let mut config = AppConfig::default();
+        config.search_panel = Some(SearchPanel {
+            default_pos: Some("right".into()),
+        });
+        assert!(validate_config(&config).is_ok());
+        save_config_at(base, &config).unwrap();
+        let user = read_user(base);
+        assert!(
+            user.contains("searchPanel"),
+            "user 层应含 searchPanel: {user}"
+        );
+        assert_eq!(
+            load_config_at(base)
+                .unwrap()
+                .search_panel
+                .unwrap()
+                .default_pos,
+            Some("right".into())
+        );
+
+        // 越界枚举被校验拦下，不落盘
+        let before = read_user(base);
+        config.search_panel = Some(SearchPanel {
+            default_pos: Some("top".into()),
+        });
+        assert!(validate_config(&config).is_err());
+        assert!(save_config_at(base, &config).is_err());
+        assert_eq!(read_user(base), before);
+
+        // 快照回滚：改成 left 保存后，恢复上一个快照回到 right
+        config.search_panel = Some(SearchPanel {
+            default_pos: Some("left".into()),
+        });
+        save_config_at(base, &config).unwrap();
+        let snapshots = list_snapshots(base).unwrap();
+        let snap = snapshots.last().unwrap().clone();
+        let restored = restore_snapshot(base, &snap).unwrap();
+        assert_eq!(
+            restored.search_panel.unwrap().default_pos,
+            Some("right".into())
         );
     }
 }

@@ -1,0 +1,158 @@
+/* 搜索浮窗（#981 / S-1）：系统浮层范式，绝对定位在当前窗格内。 */
+
+.search-float {
+  z-index: 40;
+  width: min(600px, calc(100% - 48px));
+  height: 460px;
+  flex-direction: column;
+  box-sizing: border-box;
+  overflow: hidden;
+  color: var(--app-text);
+  background: var(--app-surface);
+  border: 1px solid var(--app-border-strong);
+  border-radius: var(--radius-8);
+  box-shadow: var(--app-shadow);
+}
+
+.search-float-handle {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  height: 30px;
+  cursor: grab;
+  color: var(--app-text-3);
+  border-bottom: 1px solid var(--app-border);
+  touch-action: none;
+  user-select: none;
+}
+
+.search-float-handle:active {
+  cursor: grabbing;
+}
+
+.search-float-inputrow {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  color: var(--app-text-3);
+  border-bottom: 1px solid var(--app-border);
+}
+
+.search-float-inputrow input {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 6px 10px;
+  font-size: 13px;
+  color: var(--app-text);
+  background: var(--app-sunken);
+  border: 1px solid var(--app-border);
+  border-radius: var(--radius-8);
+  outline: none;
+}
+
+.search-float-inputrow input:focus {
+  border-color: var(--app-accent);
+}
+
+.search-float-count {
+  flex: 0 0 auto;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--app-text-3);
+  white-space: nowrap;
+}
+
+.search-float-close {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  font-size: 16px;
+  line-height: 1;
+  color: var(--app-text-3);
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-8);
+}
+
+.search-float-close:hover {
+  color: var(--app-text);
+  background: var(--app-sunken);
+}
+
+.search-float-results {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 4px;
+}
+
+.search-float-hit {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: 6px 8px;
+  text-align: left;
+  cursor: pointer;
+  color: var(--app-text);
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+}
+
+.search-float-hit:hover {
+  background: var(--app-sunken);
+}
+
+.search-float-loc {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--app-text-3);
+}
+
+.search-float-context {
+  overflow: hidden;
+  font-size: 13px;
+  color: var(--app-text-2);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.search-float-context mark {
+  padding: 0 1px;
+  color: var(--app-accent);
+  background: var(--app-accent-soft);
+  border-radius: 2px;
+}
+
+.search-float-empty {
+  padding: 16px 10px;
+  font-size: 13px;
+  text-align: center;
+  color: var(--app-text-3);
+}
+
+.search-float-resize {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 18px;
+  height: 18px;
+  cursor: nwse-resize;
+  touch-action: none;
+  background: linear-gradient(
+    135deg,
+    transparent 0 55%,
+    var(--app-border-strong) 55% 65%,
+    transparent 65% 75%,
+    var(--app-border-strong) 75% 85%,
+    transparent 85%
+  );
+}
