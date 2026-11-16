@@ -3,6 +3,7 @@ import { test, expect, type Page } from "@playwright/test";
 
 const APP_URL = "http://localhost:1420";
 const SHOTS = ".artifacts/825";
+const SHOTS915 = ".artifacts/915";
 const MOD = process.platform === "darwin" ? "Meta" : "Control";
 const HOTKEY = `${MOD}+Shift+Space`;
 
@@ -211,4 +212,126 @@ test("轮盘分栏图标对照（#825）", async ({ page }) => {
     recorded_at: new Date().toISOString(),
     runner: `${process.env.USER ?? "unknown"}@unknown`,
   });
+});
+
+test("编辑态行首直接输入全角逗号转斜杠且菜单唯一（#915）", async ({ page }) => {
+  fs.mkdirSync(SHOTS915, { recursive: true });
+  await openMarkdownForEditing(page, "/Users/test/slash-comma-direct-915.md");
+
+  await page.keyboard.type("，");
+  await expect(page.locator(".mdb-slash-menu")).toHaveCount(1);
+  await expect.poll(() => storeContent(page), { timeout: 5000 }).toBe("/");
+
+  await page.screenshot({ path: `${SHOTS915}/green-comma-direct.png` });
+});
+
+test("编辑态行首直接输入半角逗号同样转斜杠（#915）", async ({ page }) => {
+  await openMarkdownForEditing(
+    page,
+    "/Users/test/slash-comma-direct-half-915.md",
+  );
+
+  await page.keyboard.type(",");
+  await expect(page.locator(".mdb-slash-menu")).toHaveCount(1);
+  await expect.poll(() => storeContent(page), { timeout: 5000 }).toBe("/");
+});
+
+test("围栏代码块内输入全角逗号不转换、菜单为 0（#915）", async ({ page }) => {
+  fs.mkdirSync(SHOTS915, { recursive: true });
+  await page.evaluate(() => {
+    (window as unknown as Record<string, any>).__biaoyue_openFile__(
+      "/Users/test/slash-comma-fence-915.md",
+      "```\nX\n```",
+      "slash-comma-fence-915.md",
+    );
+  });
+  const modeBtn = page.locator('[data-testid="pane-mode"]').first();
+  if ((await modeBtn.getAttribute("data-mode")) !== "edit")
+    await modeBtn.click();
+  const content = page.locator(".cm-content");
+  await content.waitFor({ state: "visible", timeout: 10000 });
+  await page.locator(".cm-line").nth(1).click();
+  await page.keyboard.press("Home");
+
+  await page.keyboard.type("，");
+  await expect(page.locator(".mdb-slash-menu")).toHaveCount(0);
+  await expect
+    .poll(() => storeContent(page), { timeout: 5000 })
+    .toBe("```\n，X\n```");
+
+  await page.screenshot({ path: `${SHOTS915}/green-comma-fence.png` });
+});
+
+test("原生控件的外来组合不阻塞正文逗号归一（#915）", async ({ page }) => {
+  fs.mkdirSync(SHOTS915, { recursive: true });
+  await page.evaluate(() => {
+    (window as unknown as Record<string, any>).__biaoyue_openFile__(
+      "/Users/test/slash-comma-foreign-compose-915.md",
+      "| a | b |\n| --- | --- |\n| 甲 | 乙 |\n\n",
+      "slash-comma-foreign-compose-915.md",
+    );
+  });
+  const modeBtn = page.locator('[data-testid="pane-mode"]').first();
+  if ((await modeBtn.getAttribute("data-mode")) !== "edit")
+    await modeBtn.click();
+  const content = page.locator(".cm-content");
+  await content.waitFor({ state: "visible", timeout: 10000 });
+
+  // 单元格行内 input 起一次没有 compositionend 的组合（被放弃的 IME 组合）。
+  const cell = page.locator('td[data-row="0"][data-col="0"]');
+  await cell.click();
+  const input = cell.locator(".cm-table-cell-input");
+  await input.waitFor({ state: "visible", timeout: 5000 });
+  await page.evaluate(() => {
+    const el = document.querySelector(".cm-table-cell-input");
+    el?.dispatchEvent(
+      new CompositionEvent("compositionstart", { bubbles: true, data: "" }),
+    );
+  });
+
+  await content.click();
+  await page.keyboard.press("Control+End");
+  await page.keyboard.type("，");
+
+  await expect(page.locator(".mdb-slash-menu")).toHaveCount(1);
+  await expect
+    .poll(() => storeContent(page).then((c) => c.endsWith("/")), {
+      timeout: 5000,
+    })
+    .toBe(true);
+
+  await page.screenshot({ path: `${SHOTS915}/green-foreign-composition.png` });
+});
+
+test("#915 外来组合后直接 / 仍打开菜单（slashComposing 按视图隔离）", async ({
+  page,
+}) => {
+  await openMarkdownForEditing(page, "/Users/test/slash-after-foreign-915.md");
+
+  // 外来组合（目标不是 contentDOM）：document 捕获监听能听到它，
+  // 但不得污染本视图的 / 键路径。旧实现模块级布尔会被它永久置真，
+  // 之后按 / 只落字符、菜单不出来（红）；按视图 + 目标判断后正常弹出（绿）。
+  await page.evaluate(() => {
+    const foreign = document.querySelector(".cm-table-widget input, textarea");
+    const target = foreign ?? document.body;
+    target.dispatchEvent(
+      new CompositionEvent("compositionstart", { bubbles: true, data: "" }),
+    );
+  });
+
+  await page.keyboard.type("/");
+  const menu = page.locator(".mdb-slash-menu");
+  await expect(menu).toHaveCount(1, { timeout: 3000 });
+  await page.screenshot({ path: `${SHOTS915}/green-slash-after-foreign.png` });
+
+  // 清理：结束组合，不留悬空状态
+  await page.evaluate(() => {
+    const foreign = document.querySelector(".cm-table-widget input, textarea");
+    const target = foreign ?? document.body;
+    target.dispatchEvent(
+      new CompositionEvent("compositionend", { bubbles: true, data: "" }),
+    );
+  });
+  await page.keyboard.press("Escape");
+  await expect(menu).toHaveCount(0);
 });

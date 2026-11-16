@@ -24,7 +24,11 @@ import SnapshotPanel from "./components/ai/SnapshotPanel";
 import SelectionPill from "./components/ai/SelectionPill";
 import AiBubble from "./components/ai/AiBubble";
 import { useAiEntryStore } from "./hooks/useAiEntry";
-import { getActiveEditorView, getPanelScrollEl } from "./editors/editorRef";
+import {
+  getActiveEditorView,
+  getEditorView,
+  getPanelScrollEl,
+} from "./editors/editorRef";
 import {
   redoOnce,
   toggleBold,
@@ -652,7 +656,11 @@ function App() {
           !isEditableTarget(e.target) &&
           activeTab?.editorMode !== "preview"
         ) {
-          const view = getActiveEditorView();
+          // 目标必须是**当前聚焦格**的编辑器。`getActiveEditorView()` 返回最后
+          // 一次 CM6 聚焦的面板；分屏下点另一格的页头（focusPane 只更新
+          // focusedPaneId，不碰 CM6 焦点）后，撤销会落到上一格的文档上（#915）。
+          const view =
+            getEditorView(store.focusedPaneId) ?? getActiveEditorView();
           if (view) {
             e.preventDefault();
             if (e.shiftKey) redoOnce(view);

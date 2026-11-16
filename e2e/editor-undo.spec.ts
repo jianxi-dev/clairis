@@ -209,3 +209,159 @@ test("焦点不在编辑器时快捷键仍能撤销与重做", async ({ page }) 
   await page.keyboard.press(`${MOD}+Shift+z`);
   await expect.poll(() => storeContent(page, path)).toContain("正文。abc");
 });
+
+// 计数口径：tab.content 实际变化次数。撤销失效为 0，一次按键触发两条历史为 2。
+async function countContentChanges(
+  page: Page,
+  tabPath: string,
+): Promise<number> {
+  return page.evaluate((p) => {
+    const w = window as unknown as {
+      __biaoyue_store__: {
+        getState: () => {
+          tabs: Record<string, { path: string | null; content: string }>;
+        };
+        subscribe: (fn: () => void) => () => void;
+      };
+    };
+    const store = w.__biaoyue_store__;
+    const read = () =>
+      Object.values(store.getState().tabs).find((t) => t.path === p)?.content ??
+      "";
+    window.__undoProbe = { last: read(), count: 0 };
+    window.__undoProbeUnsub = store.subscribe(() => {
+      const next = read();
+      if (next !== window.__undoProbe.last) {
+        window.__undoProbe.last = next;
+        window.__undoProbe.count += 1;
+      }
+    });
+    return window.__undoProbe.count;
+  }, tabPath);
+}
+
+async function stopCounting(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    (
+      window as unknown as { __undoProbeUnsub?: () => void }
+    ).__undoProbeUnsub?.();
+  });
+}
+
+async function readChangeCount(page: Page): Promise<number> {
+  return page.evaluate(
+    () =>
+      (window as unknown as { __undoProbe: { count: number } }).__undoProbe
+        .count,
+  );
+}
+
+test("Mod-Z 一次撤销只产生一次内容变化（焦点在编辑器内）", async ({ page }) => {
+  await boot(page);
+  const p = "/tmp/undo/onestep-in.md";
+  await openFile(page, p, "# 标题\n\n正文。");
+  await ensureEditMode(page);
+
+  const cm = page.locator(".cm-content").first();
+  await cm.click();
+  await page.keyboard.press("Control+End");
+  await page.keyboard.type("甲乙丙");
+  await expect.poll(() => storeContent(page, p)).toContain("甲乙丙");
+
+  await countContentChanges(page, p);
+  await page.keyboard.press(`${MOD}+z`);
+  await expect.poll(() => storeContent(page, p)).not.toContain("甲乙丙");
+  expect(await readChangeCount(page)).toBe(1);
+  await page.screenshot({ path: ".artifacts/915/green-undo-one-change.png" });
+  await stopCounting(page);
+});
+
+test("Mod-Z 一次撤销只产生一次内容变化（焦点在编辑器外）", async ({ page }) => {
+  await boot(page);
+  const p = "/tmp/undo/onestep-out.md";
+  await openFile(page, p, "# 标题\n\n正文。");
+  await ensureEditMode(page);
+
+  const cm = page.locator(".cm-content").first();
+  await cm.click();
+  await page.keyboard.press("Control+End");
+  await page.keyboard.type("甲乙丙");
+  await expect.poll(() => storeContent(page, p)).toContain("甲乙丙");
+
+  await page
+    .locator('[data-testid="status-bar"]')
+    .click({ position: { x: 40, y: 8 } });
+  await countContentChanges(page, p);
+  await page.keyboard.press(`${MOD}+z`);
+  await expect.poll(() => storeContent(page, p)).not.toContain("甲乙丙");
+  expect(await readChangeCount(page)).toBe(1);
+  await page.screenshot({ path: ".artifacts/915/green-undo-outside.png" });
+  await stopCounting(page);
+});
+
+test("分屏点页头后 Mod-Z 撤销当前聚焦格的编辑器（#915）", async ({ page }) => {
+  await boot(page);
+  const A = "/tmp/undo/pane-focus-a.md";
+  const B = "/tmp/undo/pane-focus-b.md";
+
+  await openFile(page, A, "# A\n\nA 内容。");
+  await ensureEditMode(page);
+  await page.locator(".cm-content").first().click();
+  await page.keyboard.press("Control+End");
+  await page.keyboard.type("AAA");
+  await expect.poll(() => storeContent(page, A)).toContain("AAA");
+
+  // 分屏后在新格打开 B 并编辑：此时 CM6 的「最后聚焦编辑器」是 B。
+  await page.evaluate(() => {
+    (
+      window as unknown as {
+        __biaoyue_store__: {
+          getState: () => { splitPane: (d: string) => void };
+        };
+      }
+    ).__biaoyue_store__
+      .getState()
+      .splitPane("col");
+  });
+  await openFile(page, B, "# B\n\nB 内容。");
+  await page.evaluate(() => {
+    (
+      window as unknown as {
+        __biaoyue_store__: {
+          getState: () => { setEditorMode: (m: string) => void };
+        };
+      }
+    ).__biaoyue_store__
+      .getState()
+      .setEditorMode("edit");
+  });
+  const second = page.locator(".cm-content").last();
+  await second.click();
+  await page.keyboard.press("Control+End");
+  await page.keyboard.type("BBB");
+  await expect.poll(() => storeContent(page, B)).toContain("BBB");
+
+  // 回到 A 编辑，让「最后聚焦编辑器」重新停在 A；再点 B 格页头——
+  // 这只会把 focusedPaneId 切到 B，CM6 焦点仍在 A。
+  await page.locator(".cm-content").first().click();
+  await page.keyboard.press("Control+End");
+  const paneIds = await page
+    .locator("[data-pane-id]")
+    .evaluateAll((els) =>
+      els.map((el) => (el as HTMLElement).dataset.paneId ?? ""),
+    );
+  const header = page.locator(
+    `[data-pane-id="${paneIds[1]}"] [data-testid="pane-header"]`,
+  );
+  const box = (await header.boundingBox())!;
+  await page.mouse.click(box.x + box.width * 0.55, box.y + box.height / 2);
+
+  await countContentChanges(page, B);
+  await page.keyboard.press(`${MOD}+z`);
+  await expect.poll(() => storeContent(page, B)).not.toContain("BBB");
+  // A 格的编辑不能被另一格的撤销带走。
+  expect(await storeContent(page, A)).toContain("AAA");
+  expect(await readChangeCount(page)).toBe(1);
+  await page.screenshot({ path: ".artifacts/915/green-undo-focus-pane.png" });
+  await stopCounting(page);
+});
