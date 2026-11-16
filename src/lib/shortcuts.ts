@@ -133,6 +133,13 @@ export const SHORTCUTS: readonly ShortcutDef[] = [
     implemented: true,
   },
   {
+    id: "global-doc-property-toggle",
+    keys: "⌘⇧Y",
+    label: "属性面板显隐",
+    family: "global",
+    implemented: true,
+  },
+  {
     id: "global-shortcuts",
     keys: "?",
     label: "快捷键总览",

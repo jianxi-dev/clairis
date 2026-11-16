@@ -1,0 +1,257 @@
+import { test, expect, type Page } from "@playwright/test";
+
+/**
+ * 文档属性面板首通（#973 / P-1、P-10）真实浏览器用例。
+ *
+ * 走 e2e/mocks/tauri-mock.js：`__biaoyue_openFile__` 注入文档，
+ * `__biaoyue_doc_property__` 切换显示样式。断言落到计算样式与文本，
+ * 不停留在「元素存在」。
+ */
+
+const APP_URL = "http://localhost:1420";
+
+const DOC = `---
+title: 属性面板测试
+tags:
+  - 甲
+  - 乙
+count: 1234567
+published: true
+created: 2026-11-14
+updated: 2026-11-15T10:30:00
+---
+
+# 正文
+`;
+
+const LONG_DOC = `---
+title: 长值测试
+note: 这是一段很长的属性值，用来验证两行截断与悬停显示全文的能力。它必须足够长，长到在面板宽度内也无法一行放下，因而会折成三行以上，再被面板截断到两行。这里继续补充更多文字，确保总长度超过面板的可用宽度，从而触发溢出隐藏与 title 全文提示。再重复一次：这是一段很长的属性值，用来验证两行截断与悬停显示全文的能力。它必须足够长，长到在面板宽度内也无法一行放下，因而会折成三行以上，再被面板截断到两行。第三遍继续堆叠文字：两行截断、悬停全文、引擎无关的 max-height 方案，这些行为都依赖足够长的内容才能被真实浏览器验证。再补一句确保超过三行。
+---
+
+# 正文
+`;
+
+async function boot(page: Page): Promise<void> {
+  await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
+  await page.goto(APP_URL, { waitUntil: "networkidle" });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 15000 });
+}
+
+async function openDoc(page: Page, content = DOC): Promise<void> {
+  await page.evaluate(
+    (args) => {
+      (
+        window as unknown as {
+          __biaoyue_openFile__: (p: string, c: string, t?: string) => boolean;
+        }
+      ).__biaoyue_openFile__(args.path, args.content, "prop.md");
+    },
+    { path: "/Users/test/prop.md", content },
+  );
+}
+
+async function setMode(page: Page, mode: "preview" | "edit" | "source") {
+  await page.evaluate((m) => {
+    (
+      window as unknown as {
+        __biaoyue_store__: {
+          getState: () => { setEditorMode: (m: string) => void };
+        };
+      }
+    ).__biaoyue_store__
+      .getState()
+      .setEditorMode(m as "preview" | "edit" | "source");
+  }, mode);
+}
+
+async function setVariant(page: Page, variant: "A" | "B") {
+  await page.evaluate((v) => {
+    (
+      window as unknown as {
+        __biaoyue_doc_property__: {
+          getState: () => { setVariant: (v: "A" | "B") => void };
+        };
+      }
+    ).__biaoyue_doc_property__
+      .getState()
+      .setVariant(v);
+  }, variant);
+}
+
+function panel(page: Page, variant: "A" | "B") {
+  return page.locator(`[data-testid="dpb-${variant.toLowerCase()}"]`);
+}
+
+test.beforeEach(async ({ page }) => {
+  await boot(page);
+});
+
+test("预览态：A 一行条只读渲染（千分位 / 开关态 / 标签胶囊）", async ({
+  page,
+}) => {
+  await openDoc(page);
+  const a = panel(page, "A");
+  await expect(a).toBeVisible();
+
+  await expect(a.locator('[data-testid="dpb-row"]')).toHaveCount(5);
+  await expect(
+    a.locator('[data-key="count"] [data-testid="dpb-value"]'),
+  ).toHaveText("1,234,567");
+  await expect(a.locator('[data-key="published"] .dpb-bool-on')).toHaveText(
+    "◉ 开",
+  );
+  await expect(a.locator('[data-key="tags"] .dpb-tag')).toHaveCount(2);
+  await expect(a.locator('[data-key="tags"] .dpb-tag').first()).toHaveText(
+    "甲",
+  );
+
+  // 预览态没有任何编辑入口
+  await expect(a.locator('[data-testid="dpb-collapse"]')).toHaveCount(0);
+  await expect(a.locator(".dpb-row-handle")).toHaveCount(0);
+  await expect(a.locator("button")).toHaveCount(0);
+});
+
+test("三模式：源码态面板 display:none，切回编辑恢复展开", async ({ page }) => {
+  await openDoc(page);
+  await expect(panel(page, "A")).toBeVisible();
+
+  await setMode(page, "source");
+  const host = page.locator('[data-testid="doc-property-host"]');
+  await expect(host).toHaveCSS("display", "none");
+  await expect(panel(page, "A")).toBeHidden();
+  // 源码态 YAML 原文仍在编辑区
+  await expect(page.locator(".cm-content").first()).toContainText("title:");
+
+  await setMode(page, "edit");
+  await expect(host).toHaveCSS("display", "block");
+  await expect(panel(page, "A")).toBeVisible();
+  await expect(page.locator('[data-testid="dpb-collapse"]')).toBeVisible();
+});
+
+test("编辑态可折叠，折叠状态跨模式切换保留", async ({ page }) => {
+  await openDoc(page);
+  await setMode(page, "edit");
+  const a = panel(page, "A");
+  await expect(a.locator('[data-testid="dpb-row"]')).toHaveCount(5);
+
+  await page.locator('[data-testid="dpb-collapse"]').click();
+  await expect(a.locator('[data-testid="dpb-row"]')).toHaveCount(0);
+  await expect(a.locator(".dpb-a-summary")).toContainText("已折叠");
+
+  await setMode(page, "source");
+  await setMode(page, "edit");
+  await expect(a.locator('[data-testid="dpb-row"]')).toHaveCount(0);
+  await expect(a.locator(".dpb-a-summary")).toBeVisible();
+
+  await page.locator('[data-testid="dpb-collapse"]').click();
+  await expect(a.locator('[data-testid="dpb-row"]')).toHaveCount(5);
+});
+
+test("A 编辑态：手柄悬出于胶囊左外侧且不占布局，胶囊列间距 16px", async ({
+  page,
+}) => {
+  await openDoc(page);
+  await setMode(page, "edit");
+  const chips = panel(page, "A").locator(".dpb-chip");
+  await expect(chips).toHaveCount(5);
+
+  const first = chips.nth(0);
+  const second = chips.nth(1);
+  const before = await first.boundingBox();
+  const handle = first.locator(".dpb-row-handle");
+  await expect(handle).toHaveCSS("opacity", "0");
+
+  await first.hover();
+  await expect(handle).toHaveCSS("opacity", "1");
+  const after = await first.boundingBox();
+  expect(after!.width).toBe(before!.width);
+  expect(after!.x).toBe(before!.x);
+
+  const hb = await handle.boundingBox();
+  expect(hb!.x + hb!.width).toBeLessThanOrEqual(before!.x + 1);
+
+  const sb = await second.boundingBox();
+  expect(sb!.x - (before!.x + before!.width)).toBeCloseTo(16, 1);
+});
+
+test("⌘⇧Y 隐藏并显示恢复提示，再按恢复", async ({ page }) => {
+  await openDoc(page);
+  await expect(panel(page, "A")).toBeVisible();
+
+  await page.keyboard.press("Meta+Shift+Y");
+  await expect(panel(page, "A")).toHaveCount(0);
+  const note = page.locator('[data-testid="dpb-hidden-note"]');
+  await expect(note).toBeVisible();
+  await expect(note).toContainText("已隐藏，按");
+  await expect(note).toContainText("⌘⇧Y");
+
+  await page.keyboard.press("Meta+Shift+Y");
+  await expect(note).toHaveCount(0);
+  await expect(panel(page, "A")).toBeVisible();
+});
+
+test("B 精排双列：5 列网格 / 静态类型图标 / 底部统计全部字段数", async ({
+  page,
+}) => {
+  await openDoc(page);
+  await setVariant(page, "B");
+  const b = panel(page, "B");
+  await expect(b).toBeVisible();
+
+  const rows = b.locator('[data-testid="dpb-row"]');
+  await expect(rows).toHaveCount(6);
+
+  const tracks = await rows.first().evaluate((el) => {
+    const v = getComputedStyle(el).gridTemplateColumns;
+    return v.split(/\s+/).filter(Boolean);
+  });
+  expect(tracks).toHaveLength(5);
+  expect(parseFloat(tracks[0])).toBeCloseTo(16, 1);
+  expect(parseFloat(tracks[1])).toBeCloseTo(30, 1);
+  expect(parseFloat(tracks[2])).toBeCloseTo(92, 1);
+  expect(parseFloat(tracks[4])).toBeCloseTo(18, 1);
+
+  // 预览态每行都有静态类型图标（svg 或字符）
+  const iconCount = await b.locator(".dpb-b-type > *").count();
+  expect(iconCount).toBe(6);
+
+  await expect(b.locator('[data-testid="dpb-count"]')).toHaveText("6 个字段");
+});
+
+test("长值两行截断：clientHeight ≈ 2 × line-height，title 为全文", async ({
+  page,
+}) => {
+  await openDoc(page, LONG_DOC);
+  const value = panel(page, "A").locator(
+    '[data-key="note"] [data-testid="dpb-value"]',
+  );
+  await expect(value).toBeVisible();
+
+  const metrics = await value.evaluate((el) => {
+    const cs = getComputedStyle(el);
+    return {
+      maxHeight: cs.maxHeight,
+      lineHeight: cs.lineHeight,
+      clientHeight: el.clientHeight,
+      scrollHeight: el.scrollHeight,
+      overflow: cs.overflow,
+    };
+  });
+  const line = parseFloat(metrics.lineHeight);
+  expect(metrics.overflow).toBe("hidden");
+  expect(Math.abs(parseFloat(metrics.maxHeight) - 2 * line)).toBeLessThan(1);
+  expect(Math.abs(metrics.clientHeight - 2 * line)).toBeLessThan(2);
+  expect(metrics.scrollHeight).toBeGreaterThan(metrics.clientHeight);
+
+  const full = await value.getAttribute("title");
+  expect(full).toContain("用来验证两行截断");
+});
+
+test("无 frontmatter：空态引导文案", async ({ page }) => {
+  await openDoc(page, "# 只有正文\n\n没有属性。\n");
+  const empty = page.locator('[data-testid="dpb-empty"]');
+  await expect(empty).toBeVisible();
+  await expect(empty).toContainText("首次添加字段时自动创建");
+  await expect(panel(page, "A")).toHaveCount(0);
+});
