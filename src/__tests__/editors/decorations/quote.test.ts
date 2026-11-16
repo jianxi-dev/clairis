@@ -32,6 +32,20 @@ describe("quote decoration", () => {
       quoteRegex.lastIndex = 0;
       expect(quoteRegex.test(">> nested")).toBe(true); // still matched, > is at start
     });
+
+    // #918：Tab 缩进 ≤3 空格仍是引用块（CommonMark），装饰不能丢。
+    it("matches 1-3 leading spaces (Tab indent)", () => {
+      for (const indent of [" ", "  ", "   "]) {
+        quoteRegex.lastIndex = 0;
+        expect(quoteRegex.test(`${indent}> quoted`)).toBe(true);
+      }
+    });
+
+    // 4 空格是缩进代码块（CommonMark），不得再当引用。
+    it("does not match 4 leading spaces (indented code block)", () => {
+      quoteRegex.lastIndex = 0;
+      expect(quoteRegex.test("    > quoted")).toBe(false);
+    });
   });
 
   describe("CSS classes", () => {
@@ -67,6 +81,32 @@ describe("quote decoration", () => {
     it("returns empty for plain text", () => {
       const result = createQuoteDecorations("plain text");
       expect(result).toHaveLength(0);
+    });
+
+    it("leading spaces are hidden together with the marker", () => {
+      const result = createQuoteDecorations("  > quoted text\n");
+      const replace = result.find((d) => !d.value.spec.class);
+      expect(replace).toBeDefined();
+      expect(replace!.from).toBe(0);
+      expect(replace!.to).toBe(4); // "  > "
+    });
+
+    it("tags the line with the leading-space indent level", () => {
+      const two = createQuoteDecorations("  > quoted\n");
+      const lineTwo = two.find((d) =>
+        d.value.spec.class?.includes(QUOTE_CLASS),
+      );
+      expect(lineTwo!.value.spec.attributes?.["data-quote-indent"]).toBe("2");
+
+      const none = createQuoteDecorations("> quoted\n");
+      const lineNone = none.find((d) =>
+        d.value.spec.class?.includes(QUOTE_CLASS),
+      );
+      expect(lineNone!.value.spec.attributes?.["data-quote-indent"]).toBe("0");
+    });
+
+    it("indented callout head is not decorated as a quote", () => {
+      expect(createQuoteDecorations("  > [!NOTE] hi\n")).toHaveLength(0);
     });
   });
 

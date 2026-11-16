@@ -630,6 +630,31 @@ body {
   border-end-end-radius: var(--app-radius);
 }
 
+/* Tab 缩进（#918）：行装饰带 data-quote-indent="0..3"（前导空格数）。
+ * 左侧竖线随层级右移，右侧与正文严格对齐——用 margin+max-width 同步收放，
+ * 不能只加 padding（padding 只在边框内侧，推不动竖线，也会让右缘溢出）。
+ * 0 档走基础规则（居中 1080），此处只定义 1-3 档；每档 0.25em ≈ 一个空格宽。 */
+.cm-line.cm-quote[data-quote-indent="1"] {
+  margin-inline-start: calc(
+    (100% - min(100%, var(--type-measure, 1080px))) / 2 + 0.25em
+  );
+  max-width: calc(min(100%, var(--type-measure, 1080px)) - 0.25em);
+}
+
+.cm-line.cm-quote[data-quote-indent="2"] {
+  margin-inline-start: calc(
+    (100% - min(100%, var(--type-measure, 1080px))) / 2 + 0.5em
+  );
+  max-width: calc(min(100%, var(--type-measure, 1080px)) - 0.5em);
+}
+
+.cm-line.cm-quote[data-quote-indent="3"] {
+  margin-inline-start: calc(
+    (100% - min(100%, var(--type-measure, 1080px))) / 2 + 0.75em
+  );
+  max-width: calc(min(100%, var(--type-measure, 1080px)) - 0.75em);
+}
+
 /* 活跃引用块：低透明度显示 `> ` 前缀 */
 .cm-quote-marker-active {
   color: var(--app-text-3);

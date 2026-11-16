@@ -8,14 +8,16 @@ import { Decoration } from "@codemirror/view";
 import { resolveCalloutType } from "../callout-types";
 import { fencedCodeRanges } from "./code";
 
-export const quoteRegex = /^>\s?/m;
+// 行首 ≤3 空格仍是引用块（CommonMark），与 block-model 的 CALLOUT_HEAD_RE 同口径；
+// 4 空格起是缩进代码块，不再匹配。
+export const quoteRegex = /^ {0,3}>\s?/m;
 
 /**
  * 高亮块起始行（`> [!NOTE]` 之类）。高亮块自带卡片外观，若再套引用底色就会
  * 出现「卡片外套一条灰带」，所以整块跳过引用装饰。非法类型（`[!FOO]`）不算
  * 高亮块——它本来就该回落到普通引用。
  */
-const calloutStartRegex = /^>\s*\[!([^\]]+)\]/;
+const calloutStartRegex = /^ {0,3}>\s*\[!([^\]]+)\]/;
 
 function isCalloutStart(line: string): boolean {
   const match = calloutStartRegex.exec(line);
@@ -52,7 +54,7 @@ export function createQuoteDecorations(
   let pos = 0;
   let inCallout = false;
   for (const line of lines) {
-    if (!line.startsWith(">")) inCallout = false;
+    if (!quoteRegex.test(line)) inCallout = false;
     else if (isCalloutStart(line)) inCallout = true;
 
     const match = inCallout || inFence(pos) ? null : line.match(quoteRegex);
@@ -62,9 +64,15 @@ export function createQuoteDecorations(
       const isActive =
         activeFrom >= 0 && lineStart >= activeFrom && lineEnd <= activeTo;
 
-      // 行级样式（左侧竖线、灰底）
+      // 前导空格数（0-3）：行盒按层级右移，左侧竖线随缩进对齐。
+      const indentLevel = match[0].indexOf(">");
       const lineClass = `${QUOTE_CLASS} ${isActive ? BLOCK_ACTIVE_CLASS : BLOCK_INACTIVE_CLASS}`;
-      decorations.push(Decoration.line({ class: lineClass }).range(pos));
+      decorations.push(
+        Decoration.line({
+          class: lineClass,
+          attributes: { "data-quote-indent": String(indentLevel) },
+        }).range(pos),
+      );
 
       // 活跃块里以低透明度显示 `> ` 前缀；非活跃块直接替换掉。
       const markerLen = match[0].length;
