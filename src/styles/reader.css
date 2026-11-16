@@ -1282,11 +1282,13 @@ details.callout > summary::before {
 
 /* ── 阅读主题 ─────────────────────────────────────────────
  * 一套 --tone-* 同时决定标题层级 / 加粗 / 强调与链接 / 行内代码，
+ * 预览态与编辑态共用（.cm-editor-container 是编辑态标题的祖先）。
  * 切一次换整套。优先级：主题 > 编辑器标题色 > 默认墨色。
  * 「纸墨」为默认，故意不定义 --tone-*，行为与主题功能上线前一致。
  * 新增主题：这里加一个块 + SettingsView 阅读空间区的 READER_TONES 加一项。
  */
-html[data-skin="indigo"] .preview-content {
+html[data-skin="indigo"] .preview-content,
+html[data-skin="indigo"] .cm-editor-container {
   --tone-1: #26456f;
   --tone-2: #3a5f96;
   --tone-3: #5b7ba6;
@@ -1295,7 +1297,8 @@ html[data-skin="indigo"] .preview-content {
   --tone-code: #7d3f8a;
 }
 
-html.dark[data-skin="indigo"] .preview-content {
+html.dark[data-skin="indigo"] .preview-content,
+html.dark[data-skin="indigo"] .cm-editor-container {
   --tone-1: #a9c8f0;
   --tone-2: #93b6e0;
   --tone-3: #7f97c0;
@@ -1304,7 +1307,8 @@ html.dark[data-skin="indigo"] .preview-content {
   --tone-code: #d69ad0;
 }
 
-html[data-skin="moss"] .preview-content {
+html[data-skin="moss"] .preview-content,
+html[data-skin="moss"] .cm-editor-container {
   --tone-1: #2c5540;
   --tone-2: #3c7154;
   --tone-3: #5d8a70;
@@ -1313,7 +1317,8 @@ html[data-skin="moss"] .preview-content {
   --tone-code: #8a5a2a;
 }
 
-html.dark[data-skin="moss"] .preview-content {
+html.dark[data-skin="moss"] .preview-content,
+html.dark[data-skin="moss"] .cm-editor-container {
   --tone-1: #a8d8bb;
   --tone-2: #8fc7a8;
   --tone-3: #7fae95;
@@ -1322,7 +1327,8 @@ html.dark[data-skin="moss"] .preview-content {
   --tone-code: #d9b878;
 }
 
-html[data-skin="clay"] .preview-content {
+html[data-skin="clay"] .preview-content,
+html[data-skin="clay"] .cm-editor-container {
   --tone-1: #7f4222;
   --tone-2: #96603a;
   --tone-3: #8a7565;
@@ -1331,7 +1337,8 @@ html[data-skin="clay"] .preview-content {
   --tone-code: #9d3a4f;
 }
 
-html.dark[data-skin="clay"] .preview-content {
+html.dark[data-skin="clay"] .preview-content,
+html.dark[data-skin="clay"] .cm-editor-container {
   --tone-1: #e8b491;
   --tone-2: #d9a184;
   --tone-3: #bfa08f;
