@@ -96,6 +96,9 @@ pub struct AppConfig {
     /// 搜索浮窗（#981 / S-1）：默认位置。
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub search_panel: Option<SearchPanel>,
+    /// 属性模板（doc-property-panel P-7）：内置三套 + 用户自定义。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub prop_templates: Option<Vec<PropTemplate>>,
 }
 
 /// 文档属性面板配置（doc-property-panel P-2）。
@@ -122,6 +125,24 @@ pub struct PropertyBarDefault {
 pub struct SearchPanel {
     /// left / center / right；非法值由校验拦下。
     pub default_pos: Option<String>,
+}
+
+/// 属性模板（doc-property-panel P-7）：名称 + 字段集。
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct PropTemplate {
+    pub name: Option<String>,
+    pub fields: Option<Vec<PropTemplateField>>,
+}
+
+/// 属性模板字段：键名 + 类型 + 可选预设值。
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct PropTemplateField {
+    pub key: Option<String>,
+    #[serde(rename = "type")]
+    pub field_type: Option<String>,
+    pub value: Option<Value>,
 }
 
 /// 轮盘位置（ui-polish-batch15 2.1）：中键拖动后的圆心坐标（屏内像素）。
@@ -238,6 +259,7 @@ impl Default for AppConfig {
             rail_pin_hidden: None,
             property_bar: None,
             search_panel: None,
+            prop_templates: None,
             sidebar_left_visible: Some(true),
             sidebar_right_visible: Some(false),
             sidebar_left_width: Some(220.0),
@@ -728,6 +750,50 @@ pub fn validate_config(config: &AppConfig) -> Result<(), AppError> {
             &["left", "center", "right"],
         )?;
     }
+    if let Some(templates) = &config.prop_templates {
+        for template in templates {
+            if template.name.as_deref().unwrap_or("").trim().is_empty() {
+                return Err(AppError::Validation {
+                    context: "propTemplates.name".into(),
+                    message: "模板名称不能为空".into(),
+                });
+            }
+            if let Some(fields) = &template.fields {
+                for field in fields {
+                    let key = field.key.as_deref().unwrap_or("").trim();
+                    if key.is_empty() {
+                        return Err(AppError::Validation {
+                            context: "propTemplates.fields.key".into(),
+                            message: "字段名不能为空".into(),
+                        });
+                    }
+                    if key.contains([':', '#', '\r', '\n']) {
+                        return Err(AppError::Validation {
+                            context: "propTemplates.fields.key".into(),
+                            message: "字段名不能包含 : 或 # 等字符".into(),
+                        });
+                    }
+                    if let Some(field_type) = &field.field_type {
+                        check_enum(
+                            "propTemplates.fields.type",
+                            Some(field_type.as_str()),
+                            &[
+                                "text",
+                                "number",
+                                "date",
+                                "datetime",
+                                "boolean",
+                                "array",
+                                "select",
+                                "multiselect",
+                                "unknown",
+                            ],
+                        )?;
+                    }
+                }
+            }
+        }
+    }
     if let Some(items) = &config.html_toolbar_items {
         const ALLOWED: [&str; 12] = [
             "ai-rewrite",
@@ -954,6 +1020,7 @@ const SKILL_MAP: &str = r#"# Biaoyue 配置地图
 | `propertyBar.displayDefault.preview` / `.edit` | `show` / `collapse` / `hide` |
 | `propertyBar.newDocVisible` | `true` / `false` |
 | `searchPanel.defaultPos` | `left` / `center` / `right` |
+| `propTemplates` | 模板数组：`name` 非空、`fields[].key` 非空且不含 `:` `#`、`fields[].type` ∈ 八类 + `unknown` |
 | `openaiEndpoint` / `openaiModel` | 任意字符串 |
 
 ## 禁止项
@@ -1874,5 +1941,115 @@ mod tests {
             restored.search_panel.unwrap().default_pos,
             Some("right".into())
         );
+    }
+
+    #[test]
+    fn prop_templates_round_trip_validate_and_rollback() {
+        let dir = temp_base("prop_templates");
+        let base = dir.path();
+
+        write_user(base, r#"{"theme":"dark"}"#);
+        assert_eq!(load_config_at(base).unwrap().prop_templates, None);
+
+        let mut config = AppConfig::default();
+        config.prop_templates = Some(vec![
+            PropTemplate {
+                name: Some("通用".into()),
+                fields: Some(vec![
+                    PropTemplateField {
+                        key: Some("category".into()),
+                        field_type: Some("select".into()),
+                        value: Some(serde_json::json!("设计")),
+                    },
+                    PropTemplateField {
+                        key: Some("author".into()),
+                        field_type: Some("text".into()),
+                        value: None,
+                    },
+                ]),
+            },
+            PropTemplate {
+                name: Some("自定义".into()),
+                fields: Some(vec![PropTemplateField {
+                    key: Some("优先级".into()),
+                    field_type: Some("select".into()),
+                    value: Some(serde_json::json!("中")),
+                }]),
+            },
+        ]);
+        assert!(validate_config(&config).is_ok());
+        save_config_at(base, &config).unwrap();
+        let user = read_user(base);
+        assert!(
+            user.contains("propTemplates"),
+            "user 层应含 propTemplates: {user}"
+        );
+        let loaded = load_config_at(base).unwrap().prop_templates.unwrap();
+        assert_eq!(loaded.len(), 2);
+        assert_eq!(loaded[0].name.as_deref(), Some("通用"));
+        assert_eq!(
+            loaded[0].fields.as_ref().unwrap()[0].key.as_deref(),
+            Some("category")
+        );
+        assert_eq!(
+            loaded[0].fields.as_ref().unwrap()[0].field_type.as_deref(),
+            Some("select")
+        );
+
+        let before = read_user(base);
+        let bad_templates = vec![
+            PropTemplate {
+                name: Some("  ".into()),
+                fields: None,
+            },
+            PropTemplate {
+                name: Some("x".into()),
+                fields: Some(vec![PropTemplateField {
+                    key: Some("".into()),
+                    field_type: None,
+                    value: None,
+                }]),
+            },
+            PropTemplate {
+                name: Some("x".into()),
+                fields: Some(vec![PropTemplateField {
+                    key: Some("a:b".into()),
+                    field_type: None,
+                    value: None,
+                }]),
+            },
+            PropTemplate {
+                name: Some("x".into()),
+                fields: Some(vec![PropTemplateField {
+                    key: Some("a#b".into()),
+                    field_type: None,
+                    value: None,
+                }]),
+            },
+            PropTemplate {
+                name: Some("x".into()),
+                fields: Some(vec![PropTemplateField {
+                    key: Some("a".into()),
+                    field_type: Some("color".into()),
+                    value: None,
+                }]),
+            },
+        ];
+        for bad in bad_templates {
+            config.prop_templates = Some(vec![bad]);
+            assert!(validate_config(&config).is_err());
+            assert!(save_config_at(base, &config).is_err());
+            assert_eq!(read_user(base), before);
+        }
+
+        config.prop_templates = Some(vec![PropTemplate {
+            name: Some("通用".into()),
+            fields: Some(vec![]),
+        }]);
+        save_config_at(base, &config).unwrap();
+        let snapshots = list_snapshots(base).unwrap();
+        let snap = snapshots.last().unwrap().clone();
+        let restored = restore_snapshot(base, &snap).unwrap();
+        assert_eq!(restored.prop_templates.unwrap().len(), 2);
     }
 }

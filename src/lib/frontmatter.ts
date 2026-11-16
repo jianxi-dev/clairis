@@ -1,4 +1,5 @@
 import YAML from "yaml";
+import { todayStamp } from "./extensions/templates";
 
 /**
  * 文档 frontmatter 解析 / 序列化（doc-property-panel 功能一）。
@@ -157,6 +158,12 @@ export function tagColor(name: string): number {
 /** 自动托管的创建 / 修改日期键：只读、键名锁定（P-6）。 */
 export function isManagedDateKey(key: string): boolean {
   return key === "created" || key === "updated";
+}
+
+/** 新建文档默认 frontmatter（P-7）：标题占位空串 + 创建 / 修改日期。 */
+export function newDocFrontmatter(now: Date = new Date()): string {
+  const stamp = todayStamp(now);
+  return `---\ntitle: ""\ncreated: ${stamp}\nupdated: ${stamp}\n---\n`;
 }
 
 /**

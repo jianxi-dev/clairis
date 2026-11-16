@@ -374,6 +374,45 @@
   background: var(--app-accent-soft);
 }
 
+.dpb-tpl-btn {
+  font: inherit;
+  font-size: 11px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--app-text-3);
+  border-radius: var(--radius-4);
+  padding: 2px 7px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.dpb-tpl-btn:hover {
+  color: var(--app-accent);
+  background: var(--app-accent-soft);
+}
+
+.dpb-tpl-status {
+  font-size: 11px;
+  color: var(--app-text-3);
+  white-space: nowrap;
+}
+
+.dpb-title-clickable {
+  cursor: text;
+  border-radius: var(--radius-4);
+}
+
+.dpb-title-clickable:hover {
+  background: var(--app-accent-soft);
+}
+
+.dpb-title-input {
+  flex: 0 1 240px;
+  min-width: 120px;
+  font-size: 15px;
+  font-weight: 650;
+}
+
 .dpb-hidden-note {
   font-size: 11px;
   color: var(--app-text-3);

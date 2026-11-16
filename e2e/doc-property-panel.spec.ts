@@ -1202,3 +1202,178 @@ test("结构变更单事务：删除所选行后 Ctrl+Z 一次恢复", async ({ 
     .poll(async () => (await rowKeys(page, "B")).join(","))
     .toBe("title,category,author,source,note");
 });
+
+async function newDoc(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    (
+      window as unknown as {
+        __biaoyue_store__: { getState: () => { newTab: () => void } };
+      }
+    ).__biaoyue_store__
+      .getState()
+      .newTab();
+  });
+}
+
+interface ActiveTabInfo {
+  id: string;
+  title: string;
+  content: string;
+}
+
+async function activeTab(page: Page): Promise<ActiveTabInfo> {
+  return page.evaluate(() => {
+    const store = (
+      window as unknown as {
+        __biaoyue_store__: {
+          getState: () => {
+            activeTabId: string | null;
+            tabs: Record<
+              string,
+              { id: string; title: string; content: string }
+            >;
+          };
+        };
+      }
+    ).__biaoyue_store__;
+    const s = store.getState();
+    const tab = s.tabs[s.activeTabId ?? ""];
+    return { id: tab.id, title: tab.title, content: tab.content };
+  });
+}
+
+test("新建文档：默认仅标题占位 + 创建/修改日期，页签名未命名", async ({
+  page,
+}) => {
+  await newDoc(page);
+  const a = panel(page, "A");
+  await expect(a.locator('[data-testid="dpb-title"]')).toHaveText("未命名");
+  await expect(a.locator('[data-testid="dpb-row"]')).toHaveCount(2);
+  await expect(a.locator('[data-key="created"]')).toHaveCount(1);
+  await expect(a.locator('[data-key="updated"]')).toHaveCount(1);
+  expect((await activeTab(page)).title).toBe("未命名");
+
+  await setMode(page, "source");
+  const src = page.locator(".cm-content").first();
+  await expect(src).toContainText('title: ""');
+  await expect(src).toContainText("created:");
+  await expect(src).toContainText("updated:");
+});
+
+test("面板改标题 → 页签名同步，源码标题更新", async ({ page }) => {
+  await newDoc(page);
+  const a = panel(page, "A");
+  await a.locator('[data-testid="dpb-title"]').click();
+  const input = a.locator('[data-testid="dpb-title-input"]');
+  await expect(input).toBeVisible();
+  await input.fill("会议纪要");
+  await input.press("Enter");
+  await expect(input).toHaveCount(0);
+
+  const tab = await activeTab(page);
+  expect(tab.title).toBe("会议纪要");
+  expect(tab.content).toContain("会议纪要");
+  await setMode(page, "source");
+  await expect(page.locator(".cm-content").first()).toContainText("会议纪要");
+});
+
+test("双击页签重命名 → 回写文档标题字段", async ({ page }) => {
+  await newDoc(page);
+  await page.locator('[data-tab-id][aria-selected="true"]').dblclick();
+  const input = page.locator('[data-testid="tab-title-input"]');
+  await expect(input).toBeVisible();
+  await input.fill("周会记录");
+  await input.press("Enter");
+  await expect(input).toHaveCount(0);
+
+  const tab = await activeTab(page);
+  expect(tab.title).toBe("周会记录");
+  expect(tab.content).toContain("周会记录");
+});
+
+test("模板菜单：通用 / 会议记录 / 需求 三项，A/B 两态可用", async ({
+  page,
+}) => {
+  await newDoc(page);
+  const a = panel(page, "A");
+  await a.locator('[data-testid="dpb-template"]').click();
+  const menu = page.locator('[data-testid="dpb-template-menu"]');
+  await expect(menu).toBeVisible();
+  await expect(menu.locator('[data-testid="dpb-template-option"]')).toHaveCount(
+    3,
+  );
+  await expect(menu.locator('[data-name="通用"]')).toBeVisible();
+  await expect(menu.locator('[data-name="会议记录"]')).toBeVisible();
+  await expect(menu.locator('[data-name="需求"]')).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(menu).toHaveCount(0);
+
+  await setVariant(page, "B");
+  await panel(page, "B").locator('[data-testid="dpb-template"]').click();
+  await expect(page.locator('[data-testid="dpb-template-menu"]')).toBeVisible();
+});
+
+const TPL_DOC = `---
+title: 会议纪要
+status: 已定稿
+---
+
+# 正文
+`;
+
+test("套用模板只补缺失键：已有 status 不覆盖", async ({ page }) => {
+  await openDoc(page, TPL_DOC, "/Users/test/tpl.md");
+  await setMode(page, "edit");
+  const a = panel(page, "A");
+  await a.locator('[data-testid="dpb-template"]').click();
+  await page.locator('[data-name="通用"]').click();
+
+  await expect(page.locator('[data-testid="dpb-tpl-status"]')).toContainText(
+    "新增 2 个字段",
+  );
+  await expect(a.locator('[data-key="category"]')).toHaveCount(1);
+  await expect(a.locator('[data-key="author"]')).toHaveCount(1);
+  await expect(
+    a.locator('[data-key="status"] [data-testid="dpb-value"]'),
+  ).toHaveText("已定稿");
+
+  await setMode(page, "source");
+  const src = page.locator(".cm-content").first();
+  await expect(src).toContainText("status: 已定稿");
+  await expect(src).toContainText("category: 设计");
+});
+
+test("套用模板后 Ctrl+Z 一次撤销整次套用", async ({ page }) => {
+  await openDoc(page, TPL_DOC, "/Users/test/tpl.md");
+  await setMode(page, "edit");
+  const a = panel(page, "A");
+  await a.locator('[data-testid="dpb-template"]').click();
+  await page.locator('[data-name="通用"]').click();
+  await expect(a.locator('[data-key="category"]')).toHaveCount(1);
+
+  await page.locator(".cm-content").first().click();
+  await page.keyboard.press("Meta+Z");
+  await expect(a.locator('[data-key="category"]')).toHaveCount(0);
+  await expect(a.locator('[data-key="author"]')).toHaveCount(0);
+  await expect(a.locator('[data-key="status"]')).toHaveCount(1);
+
+  await setMode(page, "source");
+  const src = page.locator(".cm-content").first();
+  await expect(src).not.toContainText("category");
+  await expect(src).toContainText("status: 已定稿");
+});
+
+test("套用后源码不写任何模板标记", async ({ page }) => {
+  await openDoc(page, TPL_DOC, "/Users/test/tpl.md");
+  await setMode(page, "edit");
+  const a = panel(page, "A");
+  await a.locator('[data-testid="dpb-template"]').click();
+  await page.locator('[data-name="需求"]').click();
+  await expect(a.locator('[data-key="优先级"]')).toHaveCount(1);
+
+  await setMode(page, "source");
+  const text = (await page.locator(".cm-content").first().textContent()) ?? "";
+  expect(text).not.toContain("template");
+  expect(text).not.toContain("模板");
+  expect(text).not.toContain("tpl");
+});

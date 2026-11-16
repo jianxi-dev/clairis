@@ -68,6 +68,11 @@ import {
   type PaneSide,
 } from "../lib/paneTree";
 import { autoLayoutPanes as buildAutoLayout } from "../lib/paneAutoLayout";
+import {
+  newDocFrontmatter,
+  parseFrontmatter,
+  setFrontmatterField,
+} from "../lib/frontmatter";
 
 type SplitDirection = "horizontal" | "vertical";
 
@@ -291,6 +296,8 @@ interface AppStore {
   /** 用磁盘内容覆盖页签内容（刷新）：内容以磁盘为准，页签回到干净态。 */
   refreshTabContent: (tabId: string, content: string) => void;
   renameTab: (tabId: string, title: string) => void;
+  /** 只改页签标题，不回写文档（面板改标题的正向同步）。 */
+  setTabTitle: (tabId: string, title: string) => void;
   /** 文件在磁盘上被移动后，同步页签的路径与标题。 */
   setTabPath: (tabId: string, path: string) => void;
   setEditorMode: (mode: EditorMode) => void;
@@ -690,7 +697,35 @@ export const useStore = create<AppStore>((set, get) => ({
     const tab = tabs[tabId];
     if (!tab) return;
     const next = title.trim();
-    if (!next || next === tab.title) return;
+    if (!next) return;
+    const parsed = parseFrontmatter(tab.content);
+    const titleField = parsed.present
+      ? parsed.fields.find((f) => f.key === "title")
+      : undefined;
+    const needDoc = !!titleField && titleField.value !== next;
+    if (next === tab.title && !needDoc) return;
+    const content = needDoc
+      ? setFrontmatterField(tab.content, "title", next).text
+      : tab.content;
+    set({
+      tabs: {
+        ...tabs,
+        [tabId]: {
+          ...tab,
+          title: next,
+          content,
+          dirty: tab.dirty || content !== tab.content,
+        },
+      },
+    });
+  },
+
+  setTabTitle: (tabId: string, title: string) => {
+    const { tabs } = get();
+    const tab = tabs[tabId];
+    if (!tab) return;
+    const next = title.trim() || "未命名";
+    if (next === tab.title) return;
     set({ tabs: { ...tabs, [tabId]: { ...tab, title: next } } });
   },
 
@@ -805,12 +840,13 @@ export const useStore = create<AppStore>((set, get) => ({
   newTabWith: (title: string, content: string) => {
     const state = get();
     const id = generateId();
+    const body = content.trim() === "" ? newDocFrontmatter() : content;
     const tab: Tab = {
       id,
       title,
       path: null,
       fileKind: "markdown",
-      content,
+      content: body,
       dirty: false,
       editorMode: "edit",
       scrollPos: 0,
