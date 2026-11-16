@@ -1,13 +1,16 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
   type CSSProperties,
+  type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
+import { createPortal } from "react-dom";
 import { EditorView } from "@codemirror/view";
 import {
   searchScan,
@@ -15,6 +18,7 @@ import {
   splitSearchBlocks,
   type SearchScanHit,
 } from "../../lib/searchScan";
+import { applyReplaceChanges, buildReplaceChanges } from "../../lib/searchReplace";
 import { digitFromCode } from "../../lib/gridKeyboard";
 import { activateLocalContext } from "../../lib/shortcuts";
 import { useSearchFloatStore } from "../../stores/searchFloat";
@@ -91,6 +95,14 @@ interface DragState {
   active: boolean;
 }
 
+interface HoverAnchor {
+  index: number;
+  x: number;
+  y: number;
+  altX: number;
+  bounds: { left: number; top: number; right: number; bottom: number };
+}
+
 interface SearchReplacePanelProps {
   open: boolean;
   content: string;
@@ -112,8 +124,15 @@ export default function SearchReplacePanel({
   const [selected, setSelected] = useState(0);
   const [prevQuery, setPrevQuery] = useState(query);
   const [placement, setPlacement] = useState<Placement | null>(null);
+  const [replacement, setReplacement] = useState("");
+  const [replaceMode, setReplaceMode] = useState(false);
+  const [status, setStatus] = useState("");
+  const [hover, setHover] = useState<HoverAnchor | null>(null);
+  const [hoverPos, setHoverPos] = useState<{ x: number; y: number } | null>(null);
+  const [wasOpen, setWasOpen] = useState(open);
   const rootRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const cardRef = useRef<HTMLDivElement | null>(null);
   const dragRef = useRef<DragState | null>(null);
   const prevOpenRef = useRef(false);
   const rowRefs = useRef<Map<number, HTMLButtonElement>>(new Map());
@@ -134,6 +153,17 @@ export default function SearchReplacePanel({
   if (prevQuery !== query) {
     setPrevQuery(query);
     setSelected(0);
+  }
+
+  if (wasOpen !== open) {
+    setWasOpen(open);
+    if (!open) {
+      setReplacement("");
+      setReplaceMode(false);
+      setHover(null);
+      setHoverPos(null);
+      setStatus("");
+    }
   }
 
   const locate = useCallback((hit: SearchScanHit) => {
@@ -163,6 +193,100 @@ export default function SearchReplacePanel({
     });
     view.focus();
   }, [mode, container]);
+
+  const canReplace = mode !== "preview";
+
+  const toggleReplace = () => {
+    const next = !replaceMode;
+    setReplaceMode(next);
+    if (!next) {
+      setReplacement("");
+      setHover(null);
+      setHoverPos(null);
+    }
+  };
+
+  const replaceOne = () => {
+    const view = getActiveEditorView();
+    const hit = hits[safeSelected];
+    if (!view || !hit) return;
+    const changes = buildReplaceChanges([hit], replacement);
+    if (changes.length === 0) return;
+    const nextContent = applyReplaceChanges(content, changes);
+    const nextHits = searchScan(nextContent, query);
+    const nextFrom = hit.from + replacement.length;
+    let nextIndex = nextHits.findIndex((h) => h.from >= nextFrom);
+    if (nextIndex < 0) nextIndex = Math.max(0, nextHits.length - 1);
+    const nextHit = nextHits[nextIndex];
+    setSelected(nextHits.length > 0 ? nextIndex : 0);
+    setHover(null);
+    setHoverPos(null);
+    view.dispatch(
+      nextHit
+        ? { changes, selection: { anchor: nextHit.from, head: nextHit.to } }
+        : { changes },
+    );
+  };
+
+  const replaceAll = () => {
+    const view = getActiveEditorView();
+    if (!view || hits.length === 0) return;
+    const changes = buildReplaceChanges(hits, replacement);
+    if (changes.length === 0) return;
+    view.dispatch({ changes });
+    setSelected(0);
+    setHover(null);
+    setHoverPos(null);
+    setStatus(`已替换 ${changes.length} 处`);
+  };
+
+  const onHitMouseEnter = (event: ReactMouseEvent<HTMLElement>, index: number) => {
+    if (!replaceMode || !canReplace || !container) return;
+    const b = container.getBoundingClientRect();
+    const r = event.currentTarget.getBoundingClientRect();
+    setHoverPos(null);
+    setHover({
+      index,
+      x: r.right + 8,
+      y: r.top,
+      altX: r.left,
+      bounds: { left: b.left, top: b.top, right: b.right, bottom: b.bottom },
+    });
+  };
+
+  useEffect(() => {
+    if (!status) return;
+    const timer = setTimeout(() => setStatus(""), 2000);
+    return () => clearTimeout(timer);
+  }, [status]);
+
+  useLayoutEffect(() => {
+    if (!hover) return;
+    const card = cardRef.current;
+    if (!card) return;
+    const w = card.offsetWidth;
+    const h = card.offsetHeight;
+    const m = 8;
+    let x = hover.x + w <= hover.bounds.right - m ? hover.x : hover.altX - w;
+    if (x < hover.bounds.left + m) x = hover.bounds.left + m;
+    let y = hover.y;
+    if (y + h > hover.bounds.bottom - m) y = hover.bounds.bottom - m - h;
+    if (y < hover.bounds.top + m) y = hover.bounds.top + m;
+    setHoverPos((prev) => (prev && prev.x === x && prev.y === y ? prev : { x, y }));
+  }, [hover]);
+
+  const hoverHit = hover ? hits[hover.index] : null;
+  const hoverBlock = hoverHit
+    ? blocks.find((b) => b.index === hoverHit.blockIndex) ?? null
+    : null;
+  const hoverLocalFrom =
+    hoverHit && hoverBlock
+      ? Math.max(0, hoverHit.from - hoverBlock.from)
+      : 0;
+  const hoverLocalTo =
+    hoverHit && hoverBlock
+      ? Math.min(hoverBlock.text.length, hoverHit.to - hoverBlock.from)
+      : 0;
 
   useEffect(() => {
     if (!open || safeSelected < 0) return;
@@ -416,6 +540,21 @@ export default function SearchReplacePanel({
         <span className="search-float-count" data-testid="search-float-count">
           {query ? `${hits.length} 处` : ""}
         </span>
+        {canReplace && (
+          <button
+            type="button"
+            className={`search-float-replace-toggle${
+              replaceMode ? " on" : ""
+            }`}
+            data-testid="search-float-replace-toggle"
+            aria-label="切换替换"
+            aria-pressed={replaceMode}
+            title="切换替换"
+            onClick={toggleReplace}
+          >
+            ⇄
+          </button>
+        )}
         <button
           type="button"
           className="search-float-close"
@@ -426,6 +565,37 @@ export default function SearchReplacePanel({
           ×
         </button>
       </div>
+
+      {canReplace && replaceMode && (
+        <div
+          className="search-float-replacerow"
+          data-testid="search-float-replace-row"
+        >
+          <input
+            data-testid="search-float-replace-input"
+            type="text"
+            value={replacement}
+            placeholder="替换为…"
+            onChange={(event) => setReplacement(event.target.value)}
+          />
+          <button
+            type="button"
+            className="search-float-replace-btn"
+            data-testid="search-float-replace-one"
+            onClick={replaceOne}
+          >
+            逐个替换
+          </button>
+          <button
+            type="button"
+            className="search-float-replace-btn primary"
+            data-testid="search-float-replace-all"
+            onClick={replaceAll}
+          >
+            全部替换
+          </button>
+        </div>
+      )}
 
       {hits.length > 0 && (
         <div
@@ -473,6 +643,8 @@ export default function SearchReplacePanel({
               else rowRefs.current.delete(index);
             }}
             onMouseDown={(event) => event.preventDefault()}
+            onMouseEnter={(event) => onHitMouseEnter(event, index)}
+            onMouseLeave={() => setHover(null)}
             onClick={() => {
               setSelected(index);
               locate(hit);
@@ -490,6 +662,22 @@ export default function SearchReplacePanel({
               <span className="search-float-context">
                 {highlight(snippets[index] ?? hit.context, query.trim())}
               </span>
+              {canReplace && replaceMode && (
+                <span
+                  className="search-float-diff"
+                  data-testid="search-float-diff"
+                >
+                  <del>{hit.text}</del>
+                  {replacement && (
+                    <>
+                      <span className="search-float-diff-arrow" aria-hidden="true">
+                        →
+                      </span>
+                      <ins>{replacement}</ins>
+                    </>
+                  )}
+                </span>
+              )}
             </span>
             <span className="search-float-key">
               {index === safeSelected ? "⏎" : index < 9 ? `⌘${index + 1}` : ""}
@@ -497,6 +685,50 @@ export default function SearchReplacePanel({
           </button>
         ))}
       </div>
+
+      {status && (
+        <div
+          className="search-float-status"
+          data-testid="search-float-status"
+          role="status"
+        >
+          {status}
+        </div>
+      )}
+
+      {replaceMode &&
+        hover &&
+        hoverHit &&
+        createPortal(
+          <div
+            ref={cardRef}
+            className="search-float-hover"
+            data-testid="search-float-hover-card"
+            style={{
+              left: `${(hoverPos ?? hover).x}px`,
+              top: `${(hoverPos ?? hover).y}px`,
+            }}
+          >
+            <div className="search-float-hover-head">
+              <b>
+                L{hoverHit.line} ·{" "}
+                {BLOCK_TYPE_LABELS[hoverHit.blockType] ?? "段落"}
+              </b>
+              <span>悬浮预览</span>
+            </div>
+            <div className="search-float-hover-body">
+              {(hoverBlock?.text ?? hoverHit.context).slice(0, hoverLocalFrom)}
+              <mark>
+                {(hoverBlock?.text ?? hoverHit.context).slice(
+                  hoverLocalFrom,
+                  hoverLocalTo,
+                )}
+              </mark>
+              {(hoverBlock?.text ?? hoverHit.context).slice(hoverLocalTo)}
+            </div>
+          </div>,
+          document.body,
+        )}
 
       <div
         className="search-float-resize"

@@ -108,6 +108,12 @@ async function dragBy(
   await page.mouse.up();
 }
 
+async function editorText(page: Page): Promise<string> {
+  return page.evaluate(
+    () => document.querySelector(".cm-content")?.textContent ?? "",
+  );
+}
+
 test.beforeEach(async ({ page }) => {
   await boot(page);
   await openDoc(page);
@@ -329,4 +335,157 @@ test("21 处命中滚动后前 9 行快捷键不变", async ({ page }) => {
   }
   await expect(rows.nth(9).locator(".search-float-key")).toHaveText("⏎");
   await expect(rows.nth(10).locator(".search-float-key")).toHaveText("");
+});
+
+test("⇄ 展开替换行（替换输入框 + 逐个/全部替换），再点收起", async ({
+  page,
+}) => {
+  await page.keyboard.press("Meta+f");
+  await page.locator('[data-testid="search-float-input"]').fill("属性");
+  const float = page.locator('[data-testid="search-float"]');
+  await expect(float.locator("input")).toHaveCount(1);
+
+  await page.locator('[data-testid="search-float-replace-toggle"]').click();
+  await expect(
+    page.locator('[data-testid="search-float-replace-row"]'),
+  ).toBeVisible();
+  await expect(float.locator("input")).toHaveCount(2);
+  await expect(
+    page.locator('[data-testid="search-float-replace-one"]'),
+  ).toBeVisible();
+  await expect(
+    page.locator('[data-testid="search-float-replace-all"]'),
+  ).toBeVisible();
+
+  await page.locator('[data-testid="search-float-replace-toggle"]').click();
+  await expect(
+    page.locator('[data-testid="search-float-replace-row"]'),
+  ).toHaveCount(0);
+  await expect(float.locator("input")).toHaveCount(1);
+});
+
+test("替换模式结果行内联 diff：原词删除线、新词强调色；普通搜索无 diff", async ({
+  page,
+}) => {
+  await page.keyboard.press("Meta+f");
+  await page.locator('[data-testid="search-float-input"]').fill("属性");
+  await page.locator('[data-testid="search-float-replace-toggle"]').click();
+  await page.locator('[data-testid="search-float-replace-input"]').fill("特性");
+
+  const row = page.locator('[data-testid="search-float-hit"]').first();
+  const del = row.locator('[data-testid="search-float-diff"] del');
+  const ins = row.locator('[data-testid="search-float-diff"] ins');
+  await expect(del).toHaveText("属性");
+  await expect(ins).toHaveText("特性");
+  expect(
+    await del.evaluate((el) => getComputedStyle(el).textDecorationLine),
+  ).toContain("line-through");
+  const accent = await row
+    .locator(".search-float-loc")
+    .evaluate((el) => getComputedStyle(el).color);
+  expect(await ins.evaluate((el) => getComputedStyle(el).color)).toBe(accent);
+
+  await page.locator('[data-testid="search-float-replace-toggle"]').click();
+  await expect(page.locator('[data-testid="search-float-diff"]')).toHaveCount(0);
+});
+
+test("逐个替换当前命中后自动前进到下一处，文档文本变化", async ({
+  page,
+}) => {
+  await page.keyboard.press("Meta+f");
+  await page.locator('[data-testid="search-float-input"]').fill("属性");
+  await page.locator('[data-testid="search-float-replace-toggle"]').click();
+  await page.locator('[data-testid="search-float-replace-input"]').fill("特性");
+
+  const rows = page.locator('[data-testid="search-float-hit"]');
+  await expect(rows.nth(0).locator(".search-float-loc")).toHaveText("L1 · 标题");
+  await page.locator('[data-testid="search-float-replace-one"]').click();
+
+  await expect(page.locator('[data-testid="search-float-count"]')).toHaveText(
+    "2 处",
+  );
+  await expect(rows.nth(0).locator(".search-float-loc")).toHaveText("L3 · 段落");
+  await expect(rows.nth(0).locator(".search-float-key")).toHaveText("⏎");
+
+  await setMode(page, "source");
+  const text = await editorText(page);
+  expect(text).toContain("特性面板");
+  expect(text).not.toContain("# 属性面板");
+});
+
+test("全部替换一次事务完成并计数，Ctrl+Z 一次全部还原", async ({
+  page,
+}) => {
+  await page.keyboard.press("Meta+f");
+  await page.locator('[data-testid="search-float-input"]').fill("属性");
+  await page.locator('[data-testid="search-float-replace-toggle"]').click();
+  await page.locator('[data-testid="search-float-replace-input"]').fill("特性");
+
+  await page.locator('[data-testid="search-float-replace-all"]').click();
+  await expect(page.locator('[data-testid="search-float-status"]')).toHaveText(
+    "已替换 3 处",
+  );
+  await expect(page.locator('[data-testid="search-float-count"]')).toHaveText(
+    "0 处",
+  );
+
+  await setMode(page, "source");
+  expect(await editorText(page)).not.toContain("属性");
+
+  await page.keyboard.press("Meta+z");
+  await expect(page.locator('[data-testid="search-float-count"]')).toHaveText(
+    "3 处",
+  );
+  expect(await editorText(page)).toContain("属性面板");
+});
+
+test("替换模式悬停结果行弹全文预览卡，普通搜索不弹", async ({ page }) => {
+  await page.keyboard.press("Meta+f");
+  await page.locator('[data-testid="search-float-input"]').fill("属性");
+
+  const row = page.locator('[data-testid="search-float-hit"]').first();
+  await row.hover();
+  await expect(
+    page.locator('[data-testid="search-float-hover-card"]'),
+  ).toHaveCount(0);
+
+  await page.locator('[data-testid="search-float-replace-toggle"]').click();
+  await page.locator('[data-testid="search-float-replace-input"]').fill("特性");
+  await row.hover();
+
+  const card = page.locator('[data-testid="search-float-hover-card"]');
+  await expect(card).toBeVisible();
+  await expect(card).toContainText("L1 · 标题");
+  await expect(card).toContainText("# 属性面板");
+
+  const cardBox = await card.boundingBox();
+  const paneBox = await contentBox(page);
+  if (!cardBox) throw new Error("预览卡未布局");
+  expect(cardBox.x).toBeGreaterThanOrEqual(paneBox.x - 1);
+  expect(cardBox.y).toBeGreaterThanOrEqual(paneBox.y - 1);
+  expect(cardBox.x + cardBox.width).toBeLessThanOrEqual(
+    paneBox.x + paneBox.width + 1,
+  );
+  expect(cardBox.y + cardBox.height).toBeLessThanOrEqual(
+    paneBox.y + paneBox.height + 1,
+  );
+
+  await page.locator('[data-testid="search-float-input"]').hover();
+  await expect(card).toHaveCount(0);
+});
+
+test("预览态 ⌘F：无替换切换按钮、无替换行", async ({ page }) => {
+  await setMode(page, "preview");
+  await page.keyboard.press("Meta+f");
+  const float = page.locator('[data-testid="search-float"]');
+  await expect(float).toBeVisible();
+
+  await expect(
+    page.locator('[data-testid="search-float-replace-toggle"]'),
+  ).toHaveCount(0);
+  await page.locator('[data-testid="search-float-input"]').fill("属性");
+  await expect(float.locator("input")).toHaveCount(1);
+  await expect(
+    page.locator('[data-testid="search-float-replace-row"]'),
+  ).toHaveCount(0);
 });
