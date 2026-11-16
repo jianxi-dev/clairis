@@ -5,6 +5,7 @@
  */
 
 .dpb-panel {
+  position: relative;
   border: 1px solid var(--app-border);
   border-radius: var(--radius-8);
   background: var(--app-surface);
@@ -674,4 +675,120 @@
 .dpb-tag-rename {
   flex: 0 1 90px;
   min-width: 70px;
+}
+
+/* ── 行操作与选择模式（P-4）────────────────────────────── */
+.dpb-a-title-cell {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.dpb-row-handle-title {
+  position: absolute;
+  left: -13px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.dpb-a-title-cell:hover .dpb-row-handle-title {
+  opacity: 1;
+}
+
+.dpb-select-all {
+  font: inherit;
+  font-size: 11px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--app-text-3);
+  border-radius: var(--radius-4);
+  padding: 2px 7px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.dpb-select-all:hover {
+  color: var(--app-accent);
+  background: var(--app-accent-soft);
+}
+
+.dpb-select-mode [data-row-id] {
+  cursor: pointer;
+}
+
+.dpb-select-mode [data-row-id]:hover {
+  background: var(--app-accent-soft);
+}
+
+.dpb-row-selected {
+  background: var(--app-accent-soft) !important;
+  border-color: var(--app-accent) !important;
+}
+
+.dpb-a-title-cell.dpb-row-selected {
+  border-radius: var(--radius-4);
+}
+
+.dpb-ops {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  padding: 5px 8px;
+  margin-bottom: 8px;
+  border: 1px solid var(--app-accent);
+  border-radius: var(--radius-4);
+  background: var(--app-accent-soft);
+  font-size: 11px;
+  color: var(--app-text-2);
+}
+
+.dpb-ops-count {
+  margin-right: 2px;
+}
+
+.dpb-ops-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-4);
+  background: transparent;
+  color: var(--app-text-3);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.dpb-ops-btn:hover {
+  background: var(--app-surface);
+  color: var(--app-accent);
+}
+
+.dpb-ops-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.dpb-ops-btn:disabled:hover {
+  background: transparent;
+  color: var(--app-text-3);
+}
+
+.dpb-ops-btn-danger:hover {
+  color: #a8402f;
+}
+
+.dpb-drop-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--app-accent);
+  pointer-events: none;
+  z-index: 5;
 }

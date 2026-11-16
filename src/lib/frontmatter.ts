@@ -530,6 +530,175 @@ export function writeFrontmatter(
   return { text, from: parsed.start, to: parsed.end, block };
 }
 
+/**
+ * 按给定字段顺序写回（结构变更专用：排序 / 删除 / 粘贴 / 上下移）。
+ *
+ * 与 `writeFrontmatter` 的差异只在 AST 改写方式：本函数复用原有 Pair 节点
+ * 重排 `map.items`，因此自由键原文、注释与锚点随节点一起移动、不丢；新键
+ * 用 `new Pair` 插到指定位置。无 frontmatter 时退化为新建块（同 writeFrontmatter）。
+ */
+export function writeFrontmatterOrdered(
+  doc: string,
+  fields: FrontmatterField[],
+): FrontmatterWriteResult {
+  const parsed = parseFrontmatter(doc);
+
+  if (!parsed.present) {
+    const body =
+      fields.length > 0
+        ? YAML.stringify(
+            Object.fromEntries(fields.map((f) => [f.key, f.value])),
+          )
+        : "";
+    const block = `---\n${body}---\n`;
+    const bom = doc.startsWith("\uFEFF") ? "\uFEFF" : "";
+    const text = bom + block + doc.slice(bom.length);
+    return { text, from: bom.length, to: bom.length, block };
+  }
+
+  const unchanged =
+    parsed.fields.length === fields.length &&
+    parsed.fields.every(
+      (f, i) => f.key === fields[i].key && sameValue(f.value, fields[i].value),
+    );
+  if (unchanged) {
+    return {
+      text: doc,
+      from: parsed.start,
+      to: parsed.end,
+      block: parsed.block,
+    };
+  }
+
+  let nextInner: string;
+  try {
+    const ast = YAML.parseDocument(parsed.inner);
+    const map = ast.contents as YAML.YAMLMap | null;
+    if (!map || !Array.isArray(map.items)) throw new Error("not a map");
+    const byKey = new Map<string, YAML.Pair>();
+    for (const pair of map.items) {
+      if (!pair || typeof pair !== "object" || !("key" in pair)) continue;
+      const k = (pair as YAML.Pair).key as unknown;
+      const kv =
+        k && typeof k === "object" && "value" in k
+          ? String((k as { value: unknown }).value)
+          : String(k);
+      if (!byKey.has(kv)) byKey.set(kv, pair as YAML.Pair);
+    }
+    const items: YAML.Pair[] = [];
+    for (const f of fields) {
+      const pair = byKey.get(f.key);
+      if (pair) {
+        pair.value = f.value;
+        items.push(pair);
+      } else {
+        items.push(new YAML.Pair(f.key, f.value));
+      }
+    }
+    map.items = items;
+    nextInner = ast.toString();
+  } catch {
+    nextInner = YAML.stringify(
+      Object.fromEntries(fields.map((f) => [f.key, f.value])),
+    );
+  }
+
+  const block =
+    parsed.openLine + "\n" + nextInner + parsed.closeLine + parsed.trailing;
+  const text = doc.slice(0, parsed.start) + block + doc.slice(parsed.end);
+  return { text, from: parsed.start, to: parsed.end, block };
+}
+
+/** 行标识：字段在 `fields` 中的下标，或伪字段 `"tags"`（标签行）。 */
+export type FrontmatterRowId = number | "tags";
+
+/**
+ * 整块移动：把 `indices`（升序去重）指定的字段作为整块移动到 `targetIndex`。
+ * `targetIndex` 以**移除前**的间隙下标解释（0..fields.length）；落在被移除
+ * 块之后时自动前移块长。返回新数组，块内相对顺序保持不变。
+ */
+export function moveFieldBlock(
+  fields: readonly FrontmatterField[],
+  indices: readonly number[],
+  targetIndex: number,
+): FrontmatterField[] {
+  const idx = [
+    ...new Set(
+      indices.filter((i) => Number.isInteger(i) && i >= 0 && i < fields.length),
+    ),
+  ].sort((a, b) => a - b);
+  if (idx.length === 0) return [...fields];
+
+  const selected = new Set(idx);
+  const block = idx.map((i) => fields[i]);
+  const rest = fields.filter((_, i) => !selected.has(i));
+  const removedBefore = idx.filter((i) => i < targetIndex).length;
+  const to = Math.max(0, Math.min(rest.length, targetIndex - removedBefore));
+  return [...rest.slice(0, to), ...block, ...rest.slice(to)];
+}
+
+/**
+ * 键名去重：返回 `base`；若与 `existingKeys` 冲突则依次尝试 `base-2`、
+ * `base-3`…（P-4 粘贴键名自动追加序号）。
+ */
+export function uniqueKey(
+  base: string,
+  existingKeys: Iterable<string>,
+): string {
+  const taken = new Set(existingKeys);
+  if (!taken.has(base)) return base;
+  let n = 2;
+  while (taken.has(`${base}-${n}`)) n += 1;
+  return `${base}-${n}`;
+}
+
+/**
+ * 列表内部键名去重：保留首个原键名，后续同名按 `base`、`base-2`… 顺延。
+ */
+export function dedupeKeys<T extends { key: string }>(
+  fields: readonly T[],
+): T[] {
+  const taken = new Set<string>();
+  return fields.map((f) => {
+    const key = uniqueKey(f.key, taken);
+    taken.add(key);
+    return key === f.key ? f : { ...f, key };
+  });
+}
+
+function cloneValue(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(cloneValue);
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>).map(([k, v]) => [
+        k,
+        cloneValue(v),
+      ]),
+    );
+  }
+  return value;
+}
+
+/**
+ * 复制语义：按 `indices`（升序）取出字段并深拷贝值——数组 / 对象独立，
+ * 粘贴后修改副本不影响原字段。
+ */
+export function cloneFieldsForPaste(
+  fields: readonly FrontmatterField[],
+  indices: readonly number[],
+): FrontmatterField[] {
+  return [
+    ...new Set(
+      indices.filter((i) => Number.isInteger(i) && i >= 0 && i < fields.length),
+    ),
+  ]
+    .sort((a, b) => a - b)
+    .map((i) => {
+      const f = fields[i];
+      return { ...f, value: cloneValue(f.value) };
+    });
+}
+
 export type RenameFrontmatterResult =
   ({ ok: true } & FrontmatterWriteResult) | { ok: false; reason: string };
 

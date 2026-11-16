@@ -4,15 +4,20 @@ import {
   CANON_TYPE,
   FRONTMATTER_RE,
   TAG_PALETTE,
+  cloneFieldsForPaste,
   coerceFrontmatterValue,
+  dedupeKeys,
   isManagedDateKey,
+  moveFieldBlock,
   parseFrontmatter,
   renameFrontmatterField,
   resolveAlias,
   setFrontmatterField,
   tagColor,
+  uniqueKey,
   validateFieldValue,
   writeFrontmatter,
+  writeFrontmatterOrdered,
   type FrontmatterField,
 } from "../lib/frontmatter";
 
@@ -420,5 +425,187 @@ describe("renameFrontmatterField", () => {
   it("字段不存在 / 无 frontmatter 被拒绝", () => {
     expect(renameFrontmatterField(RENAME_DOC, "missing", "x").ok).toBe(false);
     expect(renameFrontmatterField("# 正文\n", "note", "x").ok).toBe(false);
+  });
+});
+
+describe("moveFieldBlock（整块移动）", () => {
+  const F = ["a", "b", "c", "d", "e"].map((k) => ({
+    key: k,
+    type: "text" as const,
+    value: k,
+    display: k,
+  }));
+
+  it("后移：块整体搬到目标位置，相对顺序不变", () => {
+    const out = moveFieldBlock(F, [1, 2], 4);
+    expect(out.map((f) => f.key)).toEqual(["a", "d", "b", "c", "e"]);
+  });
+
+  it("前移：块搬到数组头部", () => {
+    const out = moveFieldBlock(F, [3, 4], 0);
+    expect(out.map((f) => f.key)).toEqual(["d", "e", "a", "b", "c"]);
+  });
+
+  it("目标落在块内 / 紧邻块前缘视为未移动", () => {
+    expect(moveFieldBlock(F, [1, 2], 1).map((f) => f.key)).toEqual([
+      "a",
+      "b",
+      "c",
+      "d",
+      "e",
+    ]);
+    expect(moveFieldBlock(F, [1, 2], 2).map((f) => f.key)).toEqual([
+      "a",
+      "b",
+      "c",
+      "d",
+      "e",
+    ]);
+  });
+
+  it("边界：移到末尾与越界目标都被夹紧", () => {
+    expect(moveFieldBlock(F, [0], 99).map((f) => f.key)).toEqual([
+      "b",
+      "c",
+      "d",
+      "e",
+      "a",
+    ]);
+    expect(moveFieldBlock(F, [4], -3).map((f) => f.key)).toEqual([
+      "e",
+      "a",
+      "b",
+      "c",
+      "d",
+    ]);
+  });
+
+  it("非临近多选也按原相对顺序成组移动，重复 / 越界下标被忽略", () => {
+    const out = moveFieldBlock(F, [3, 0, 3, 99], 5);
+    expect(out.map((f) => f.key)).toEqual(["b", "c", "e", "a", "d"]);
+  });
+});
+
+describe("uniqueKey / dedupeKeys（粘贴键名去重）", () => {
+  it("无冲突保持原键名", () => {
+    expect(uniqueKey("分类", ["作者"])).toBe("分类");
+  });
+
+  it("冲突时依次追加 -2 / -3", () => {
+    expect(uniqueKey("分类", ["分类"])).toBe("分类-2");
+    expect(uniqueKey("分类", ["分类", "分类-2"])).toBe("分类-3");
+    expect(uniqueKey("分类", ["分类", "分类-2", "分类-3", "分类-4"])).toBe(
+      "分类-5",
+    );
+  });
+
+  it("列表内部去重：保留首个，后续顺延", () => {
+    const out = dedupeKeys([
+      { key: "a" },
+      { key: "a" },
+      { key: "b" },
+      { key: "a" },
+    ]);
+    expect(out.map((f) => f.key)).toEqual(["a", "a-2", "b", "a-3"]);
+  });
+});
+
+describe("cloneFieldsForPaste（复制语义）", () => {
+  const fields: FrontmatterField[] = [
+    {
+      key: "tags",
+      type: "array",
+      value: ["甲", "乙"],
+      display: "甲、乙",
+    },
+    {
+      key: "meta",
+      type: "unknown",
+      value: { nested: [1, 2] },
+      display: "x",
+    },
+    { key: "n", type: "number", value: 1, display: "1" },
+  ];
+
+  it("深拷贝：数组 / 对象独立，改副本不影响原字段", () => {
+    const out = cloneFieldsForPaste(fields, [0, 1]);
+    expect(out.map((f) => f.key)).toEqual(["tags", "meta"]);
+    (out[0].value as string[]).push("丙");
+    (out[1].value as { nested: number[] }).nested.push(3);
+    expect(fields[0].value).toEqual(["甲", "乙"]);
+    expect(fields[1].value).toEqual({ nested: [1, 2] });
+    expect(out[0].value).toEqual(["甲", "乙", "丙"]);
+  });
+
+  it("按升序取用，重复下标只取一次", () => {
+    const out = cloneFieldsForPaste(fields, [2, 0, 0]);
+    expect(out.map((f) => f.key)).toEqual(["tags", "n"]);
+  });
+});
+
+describe("writeFrontmatterOrdered（保序结构写回）", () => {
+  const ORDER_DOC = `---
+title: 测试
+# 自由键注释
+custom-note: 自由键
+count: 1
+note: x
+---
+
+# 正文
+`;
+
+  it("重排后键序更新，自由键与注释保留", () => {
+    const p = parseFrontmatter(ORDER_DOC);
+    const next = [p.fields[3], p.fields[0], p.fields[1], p.fields[2]];
+    const r = writeFrontmatterOrdered(ORDER_DOC, next);
+    const reparsed = parseFrontmatter(r.text);
+    expect(reparsed.fields.map((f) => f.key)).toEqual([
+      "note",
+      "title",
+      "custom-note",
+      "count",
+    ]);
+    expect(r.text).toContain("# 自由键注释");
+    expect(r.text).toContain("custom-note: 自由键");
+    expect(r.text).toContain("note: x");
+  });
+
+  it("删除 + 粘贴新键：新键落在指定位置，注释不丢", () => {
+    const p = parseFrontmatter(ORDER_DOC);
+    const pasted: FrontmatterField = {
+      key: "分类",
+      type: "select",
+      value: "草稿",
+      display: "草稿",
+    };
+    const next = [p.fields[0], pasted, p.fields[1], p.fields[2]];
+    const r = writeFrontmatterOrdered(ORDER_DOC, next);
+    const reparsed = parseFrontmatter(r.text);
+    expect(reparsed.fields.map((f) => f.key)).toEqual([
+      "title",
+      "分类",
+      "custom-note",
+      "count",
+    ]);
+    expect(r.text).toContain("# 自由键注释");
+    expect(r.text).not.toContain("\nnote:");
+  });
+
+  it("无改动时原样返回，from/to 为原块范围", () => {
+    const p = parseFrontmatter(ORDER_DOC);
+    const r = writeFrontmatterOrdered(ORDER_DOC, p.fields);
+    expect(r.text).toBe(ORDER_DOC);
+    expect(r.from).toBe(p.start);
+    expect(r.to).toBe(p.end);
+  });
+
+  it("无 frontmatter 时新建块", () => {
+    const r = writeFrontmatterOrdered("# 正文\n", [
+      { key: "title", type: "text", value: "新", display: "新" },
+    ]);
+    expect(r.from).toBe(0);
+    expect(r.to).toBe(0);
+    expect(r.text).toBe("---\ntitle: 新\n---\n# 正文\n");
   });
 });

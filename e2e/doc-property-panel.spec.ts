@@ -895,3 +895,310 @@ test("菜单关闭后 ⌘2 归还全局：无局部响应且工作区不变", as
   await expect(row.locator(".dpb-link-chip")).toHaveCount(1);
   expect(await sceneOf(page)).toBe("workspace");
 });
+
+const ROW_DOC = `---
+title: 行操作
+category: 草稿
+author: 张三
+source: 网络
+note: 备注
+---
+
+# 正文
+`;
+
+const ROW_DOC_TAGS = `---
+title: 行操作
+tags:
+  - 甲
+category: 草稿
+author: 张三
+---
+
+# 正文
+`;
+
+async function rowKeys(page: Page, variant: "A" | "B"): Promise<string[]> {
+  return panel(page, variant)
+    .locator('[data-testid="dpb-row"]')
+    .evaluateAll((els) => els.map((e) => e.getAttribute("data-key") ?? ""));
+}
+
+test("行手柄点击多选 / 再点取消（A 态）", async ({ page }) => {
+  await openDoc(page, ROW_DOC);
+  await setMode(page, "edit");
+  const a = panel(page, "A");
+
+  await a
+    .locator('[data-key="category"] [data-testid="dpb-row-handle"]')
+    .click();
+  await expect(a.locator('[data-testid="dpb-ops-count"]')).toHaveText(
+    "已选 1 项",
+  );
+  await expect(a.locator('[data-key="category"].dpb-row-selected')).toHaveCount(
+    1,
+  );
+
+  await a.locator('[data-key="author"] [data-testid="dpb-row-handle"]').click();
+  await expect(a.locator('[data-testid="dpb-ops-count"]')).toHaveText(
+    "已选 2 项",
+  );
+  await expect(a.locator(".dpb-chip.dpb-row-selected")).toHaveCount(2);
+
+  await a
+    .locator('[data-key="category"] [data-testid="dpb-row-handle"]')
+    .click();
+  await expect(a.locator('[data-testid="dpb-ops-count"]')).toHaveText(
+    "已选 1 项",
+  );
+  await expect(a.locator('[data-key="category"].dpb-row-selected')).toHaveCount(
+    0,
+  );
+});
+
+test("手柄拖拽：5px 内不排序，超过 5px 显示落点线并移动", async ({ page }) => {
+  await openDoc(page, ROW_DOC);
+  await setVariant(page, "B");
+  await setMode(page, "edit");
+  const b = panel(page, "B");
+  expect(await rowKeys(page, "B")).toEqual([
+    "title",
+    "category",
+    "author",
+    "source",
+    "note",
+  ]);
+
+  const handle = b.locator('[data-key="note"] [data-testid="dpb-row-handle"]');
+  const hb = (await handle.boundingBox())!;
+  const x = hb.x + hb.width / 2;
+  const y = hb.y + hb.height / 2;
+
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x, y + 3, { steps: 2 });
+  await page.mouse.up();
+  expect(await rowKeys(page, "B")).toEqual([
+    "title",
+    "category",
+    "author",
+    "source",
+    "note",
+  ]);
+
+  const hb2 = (await handle.boundingBox())!;
+  const x2 = hb2.x + hb2.width / 2;
+  const y2 = hb2.y + hb2.height / 2;
+  const cat = (await b.locator('[data-key="category"]').boundingBox())!;
+  await page.mouse.move(x2, y2);
+  await page.mouse.down();
+  await page.mouse.move(x2, cat.y + cat.height * 0.25, { steps: 6 });
+  await expect(page.locator('[data-testid="dpb-drop-line"]')).toBeVisible();
+  await page.mouse.up();
+  await expect(page.locator('[data-testid="dpb-drop-line"]')).toHaveCount(0);
+  expect(await rowKeys(page, "B")).toEqual([
+    "title",
+    "note",
+    "category",
+    "author",
+    "source",
+  ]);
+});
+
+test("选中临近三行后拖动任一行 = 整块移动且相对顺序不变", async ({ page }) => {
+  await openDoc(page, ROW_DOC);
+  await setVariant(page, "B");
+  await setMode(page, "edit");
+  const b = panel(page, "B");
+
+  for (const key of ["category", "author", "source"]) {
+    await b
+      .locator(`[data-key="${key}"] [data-testid="dpb-row-handle"]`)
+      .click();
+  }
+  await expect(b.locator('[data-testid="dpb-ops-count"]')).toHaveText(
+    "已选 3 项",
+  );
+
+  const handle = b.locator(
+    '[data-key="author"] [data-testid="dpb-row-handle"]',
+  );
+  const hb = (await handle.boundingBox())!;
+  const note = (await b.locator('[data-key="note"]').boundingBox())!;
+  await page.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(hb.x + hb.width / 2, note.y + note.height * 0.75, {
+    steps: 6,
+  });
+  await page.mouse.up();
+  expect(await rowKeys(page, "B")).toEqual([
+    "title",
+    "note",
+    "category",
+    "author",
+    "source",
+  ]);
+});
+
+test("复制两行粘贴：键名一致；目标已有同名键时自动追加序号", async ({
+  page,
+}) => {
+  await openDoc(page, ROW_DOC);
+  await setVariant(page, "B");
+  await setMode(page, "edit");
+  const b = panel(page, "B");
+
+  await b
+    .locator('[data-key="category"] [data-testid="dpb-row-handle"]')
+    .click();
+  await b.locator('[data-key="author"] [data-testid="dpb-row-handle"]').click();
+  await b.locator('[data-testid="dpb-ops-cut"]').click();
+  expect(await rowKeys(page, "B")).toEqual(["title", "source", "note"]);
+
+  await b.locator('[data-key="note"] [data-testid="dpb-row-handle"]').click();
+  await b.locator('[data-testid="dpb-ops-paste"]').click();
+  expect(await rowKeys(page, "B")).toEqual([
+    "title",
+    "source",
+    "note",
+    "category",
+    "author",
+  ]);
+
+  await b.locator('[data-testid="dpb-ops-paste"]').click();
+  expect(await rowKeys(page, "B")).toEqual([
+    "title",
+    "source",
+    "note",
+    "category",
+    "author",
+    "category-2",
+    "author-2",
+  ]);
+
+  await setMode(page, "source");
+  const src = page.locator(".cm-content").first();
+  await expect(src).toContainText("category: 草稿");
+  await expect(src).toContainText("author: 张三");
+  await expect(src).toContainText("category-2: 草稿");
+  await expect(src).toContainText("author-2: 张三");
+});
+
+test("全选排除标题位与标签行，可手动再选标题", async ({ page }) => {
+  await openDoc(page, ROW_DOC_TAGS);
+  await setVariant(page, "B");
+  await setMode(page, "edit");
+  const b = panel(page, "B");
+
+  await b.locator('[data-testid="dpb-select-all"]').click();
+  await expect(b.locator('[data-testid="dpb-ops-count"]')).toHaveText(
+    "已选 2 项",
+  );
+  await expect(b.locator('[data-key="title"].dpb-row-selected')).toHaveCount(0);
+  await expect(b.locator('[data-key="tags"].dpb-row-selected')).toHaveCount(0);
+  await expect(b.locator('[data-key="category"].dpb-row-selected')).toHaveCount(
+    1,
+  );
+  await expect(b.locator('[data-key="author"].dpb-row-selected')).toHaveCount(
+    1,
+  );
+
+  await b.locator('[data-key="title"] [data-testid="dpb-row-handle"]').click();
+  await expect(b.locator('[data-key="title"].dpb-row-selected')).toHaveCount(1);
+  await expect(b.locator('[data-testid="dpb-ops-count"]')).toHaveText(
+    "已选 3 项",
+  );
+});
+
+test("选择模式：行内点击 = 选中/取消（不进编辑），行外点击清空", async ({
+  page,
+}) => {
+  await openDoc(page, ROW_DOC);
+  await setMode(page, "edit");
+  const a = panel(page, "A");
+
+  await a
+    .locator('[data-key="category"] [data-testid="dpb-row-handle"]')
+    .click();
+  await expect(panel(page, "A")).toHaveClass(/select-mode/);
+
+  await a.locator('[data-key="author"] [data-testid="dpb-value"]').click();
+  await expect(a.locator('[data-key="author"].dpb-row-selected')).toHaveCount(
+    1,
+  );
+  await expect(a.locator('[data-testid="dpb-input"]')).toHaveCount(0);
+  await expect(
+    a.locator('[data-key="author"] [data-testid="dpb-value"]'),
+  ).toHaveText("张三");
+
+  await a.locator('[data-key="source"] [data-testid="dpb-type"]').click();
+  await expect(a.locator('[data-key="source"].dpb-row-selected')).toHaveCount(
+    1,
+  );
+  await expect(page.locator('[data-testid="dpb-type-menu"]')).toHaveCount(0);
+
+  await page.locator(".cm-content").first().click();
+  await expect(panel(page, "A")).not.toHaveClass(/select-mode/);
+  await expect(page.locator('[data-testid="dpb-ops"]')).toHaveCount(0);
+
+  await a.locator('[data-key="author"] [data-testid="dpb-value"]').click();
+  await expect(a.locator('[data-testid="dpb-input"]')).toBeVisible();
+});
+
+test("操作条：无选中不出现；选中出现且粘贴禁用；复制后可用；取消隐藏", async ({
+  page,
+}) => {
+  await openDoc(page, ROW_DOC);
+  await setVariant(page, "B");
+  await setMode(page, "edit");
+  const b = panel(page, "B");
+  await expect(page.locator('[data-testid="dpb-ops"]')).toHaveCount(0);
+
+  await b
+    .locator('[data-key="category"] [data-testid="dpb-row-handle"]')
+    .click();
+  await expect(page.locator('[data-testid="dpb-ops"]')).toBeVisible();
+  await expect(page.locator('[data-testid="dpb-ops-paste"]')).toBeDisabled();
+
+  await page.locator('[data-testid="dpb-ops-copy"]').click();
+  await expect(page.locator('[data-testid="dpb-ops-paste"]')).toBeEnabled();
+
+  await page.locator('[data-testid="dpb-ops-clear"]').click();
+  await expect(page.locator('[data-testid="dpb-ops"]')).toHaveCount(0);
+});
+
+test("删除所选字段保留标题位", async ({ page }) => {
+  await openDoc(page, ROW_DOC);
+  await setVariant(page, "B");
+  await setMode(page, "edit");
+  const b = panel(page, "B");
+
+  await b.locator('[data-testid="dpb-select-all"]').click();
+  await b.locator('[data-testid="dpb-ops-del"]').click();
+  expect(await rowKeys(page, "B")).toEqual(["title"]);
+  await expect(b.locator('[data-key="title"]')).toHaveCount(1);
+});
+
+test("结构变更单事务：删除所选行后 Ctrl+Z 一次恢复", async ({ page }) => {
+  await openDoc(page, ROW_DOC);
+  await setVariant(page, "B");
+  await setMode(page, "edit");
+  const b = panel(page, "B");
+
+  await b
+    .locator('[data-key="category"] [data-testid="dpb-row-handle"]')
+    .click();
+  await b.locator('[data-testid="dpb-ops-del"]').click();
+  expect(await rowKeys(page, "B")).toEqual([
+    "title",
+    "author",
+    "source",
+    "note",
+  ]);
+
+  await page.locator(".cm-content").first().click();
+  await page.keyboard.press("Meta+Z");
+  await expect
+    .poll(async () => (await rowKeys(page, "B")).join(","))
+    .toBe("title,category,author,source,note");
+});
