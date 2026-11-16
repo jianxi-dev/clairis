@@ -1,0 +1,1996 @@
+<!--
+title: "frontmatter 属性面板 + 搜索/替换浮窗 · UI 原型 v13"
+type: design
+status: draft
+last_updated: 2026-11-15
+source_of_truth: historical
+prototype: throwaway（一次性原型，不参与实现裁定；选型定案后迁入 approved/）
+
+问题：属性面板与搜索/替换浮窗在预览/编辑/源码三模式下「应该长什么样」？
+v7 按第七轮反馈：
+  搜索：V2 基础上去掉 Aa/ab 开关（默认不分大小写搜）；结果 9 行视口 + 行尾固定快捷键
+        （第 1 行 ⏎ 默认选中、第 2~9 行 ⌘/Ctrl+2~9、第 10 行起仅滚动）；Enter 定位选中行；
+        其余 V2 形态保留（宽 600 居中可配置、分布条、悬停预览卡、拖拽缩放）
+v9 修订（第九轮反馈）：
+  搜索：定位行只写「1/7」（去「第/处」）；快捷键 = 行 1~9 固定 ⌘1~⌘9，被选中的行改显示
+        ⏎（Enter 定位选中行）；悬停全文预览卡仅替换模式弹出（评估后收敛）。
+  属性：标签输入从已有标签建议选用；A 胶囊间距加大；长值两行截断；B 预览态列位修复；
+        操作条文字改图标并新增删除；B 标签行补图标与行尾删除。
+v10 修订（第十轮反馈）：
+  属性：字段值全类型两行截断（A/B、预览/编辑通用，滑入显示全部）；标签行加拖动手柄
+        （拖到任意字段行后，tags 数据不变）；B 预览态字段前显示静态类型图标；
+        工具按钮加图标（☑ 全选 / ▤ 模板 / ⌃ 折叠 ⌄ 展开）。
+v11 修订（第十一轮反馈）：
+  属性：标签与列表（[[）输入建议菜单支持键盘操作——↑↓ 换选、⏎ 选用选中项、
+        ⌘1~9 直选（同搜索结果操作方式，菜单行尾显示快捷键）；全选排除标题位
+        （标题/标签默认不选、可手动再选）；字段删除按钮指针改手型；B 多行文本
+        修复为两行截断；B 底部统计改为全部字段数。
+v12 修订（第十二轮反馈）：
+  属性：字段名显示 = 输入原样（中文显中文 / 英文显英文），别称表只用于类型识别；
+        B 标签行可手动选中（可与字段行一起复制/剪切/删除）；标签行图标与其他行
+        居中对齐（复用静态图标样式）；建议菜单选中行快捷键显示 ⏎、其余 ⌘1~9
+        （同搜索效果）；[[ 列表菜单行不带 [[ 前缀。
+v13 修订（第十三轮反馈）：
+  属性：**选择模式**——只要有字段被选中，整面板进入点选状态：其他字段滑入即
+        选中提示、行内选项与值均非编辑态、点击即选中/取消（A/B 统一，标题与
+        标签也可选中）；数字字段默认**千分位显示**（落盘保持原值）；修复标签
+        行点击误清空其他选中。
+  属性：tags 胶囊加标签形图标（描边 1.7）；属性模板（应用级配置，套用=只合并缺失键）；
+        外部来源文件的未识别键以 ? 类型显示、点类型图标即收编；新建默认带标题（占位）
+        设计分析见 PLAN.md「建议 E」
+所有形态共同遵守已定行为：三模式、预览只读、标签稳定哈希配色、创建/修改日期自动托管只读、
+⌘⇧Y 显隐、替换后自动跳下一处。
+运行：双击本文件，或 `open docs/design/explorations/frontmatter-search/prototype.html`。
+假设：本仓是 Tauri 单窗口桌面应用、无 URL 路由；原型以自包含 HTML 复刻外壳，
+      ?variant=（=显示样式 A/B）由 history.replaceState 维护。无构建、无依赖、状态只在内存。
+-->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>属性面板 + 搜索浮窗 · 原型 v4（一次性）</title>
+<style>
+/* ── 设计 token：誊自 src/styles/tokens.css 三主题 / docs/design/system/spec.md §6 ── */
+.app-window.light{
+  --app-accent:#6366f1; --app-accent-soft:rgba(99,102,241,.10);
+  --app-bg:#f7f7f6; --app-surface:#fbfaf8; --app-sunken:#f4f2ec;
+  --app-text:#24262b; --app-text-strong:#16181c; --app-text-2:#55595f; --app-text-3:#8b8f96;
+  --app-border:#e7e3db; --app-border-strong:#d8d3c8; --app-shadow:0 8px 24px rgba(31,26,20,.12);
+}
+.app-window.dark{
+  --app-accent:#818cf8; --app-accent-soft:rgba(129,140,248,.14);
+  --app-bg:#131316; --app-surface:#1a1b1e; --app-sunken:#22242a;
+  --app-text:#d8dade; --app-text-strong:#eceef1; --app-text-2:#a7abb3; --app-text-3:#75797f;
+  --app-border:#2e3138; --app-border-strong:#3d4149; --app-shadow:0 8px 24px rgba(0,0,0,.45);
+}
+.app-window.warm{
+  --app-accent:#0071e3; --app-accent-soft:rgba(0,113,227,.08);
+  --app-bg:#f2e9da; --app-surface:#fbf4e8; --app-sunken:#efe3d0;
+  --app-text:#3b3024; --app-text-strong:#241c12; --app-text-2:#6b5a45; --app-text-3:#96826a;
+  --app-border:#e0d2bc; --app-border-strong:#cdbca1; --app-shadow:0 8px 24px rgba(80,60,30,.14);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+  font-size:13px; background:#e9e9e7; color:#24262b; overflow:hidden;
+}
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 322px;height:100vh}
+@media(max-width:980px){.layout{grid-template-columns:1fr;overflow:auto}.proto-aside{display:none}}
+
+/* ── 应用外壳 ─────────────────────────────────────────── */
+.app-window{display:flex;flex-direction:column;min-width:0;background:var(--app-bg);color:var(--app-text);position:relative;overflow:hidden}
+.titlebar{height:40px;flex:0 0 40px;display:flex;align-items:center;gap:12px;padding:0 12px;background:var(--app-surface);border-bottom:1px solid var(--app-border)}
+.traffic{display:flex;gap:6px}
+.traffic i{width:11px;height:11px;border-radius:999px;display:block}
+.traffic i:nth-child(1){background:#ff5f57}.traffic i:nth-child(2){background:#febc2e}.traffic i:nth-child(3){background:#28c840}
+.tb-title{font-size:12px;color:var(--app-text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:260px}
+.tb-title b{color:var(--app-text-strong);font-weight:600}
+.mode-switch{margin-left:auto;display:flex;background:var(--app-sunken);border:1px solid var(--app-border);border-radius:4px;padding:2px;gap:2px}
+.mode-switch button{font:inherit;font-size:12px;color:var(--app-text-2);background:transparent;border:0;border-radius:4px;padding:4px 12px;cursor:pointer;white-space:nowrap}
+.mode-switch button.on{background:var(--app-surface);color:var(--app-text-strong);box-shadow:0 1px 2px rgba(0,0,0,.08);font-weight:600}
+.tb-hint{font-size:11px;color:var(--app-text-3);white-space:nowrap}
+
+.workspace{display:grid;grid-template-columns:196px minmax(0,1fr);flex:1;min-height:0}
+.rail{background:var(--app-sunken);border-right:1px solid var(--app-border);padding:12px 8px;overflow:auto}
+.rail h4{font-size:11px;color:var(--app-text-3);font-weight:600;letter-spacing:.04em;padding:0 8px;margin-bottom:8px}
+.rail .fitem{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:4px;font-size:12px;color:var(--app-text-2);cursor:default}
+.rail .fitem.on{background:var(--app-accent-soft);color:var(--app-accent);font-weight:600}
+.rail .fitem .dot{width:6px;height:6px;border-radius:999px;background:var(--app-border-strong);flex:0 0 6px}
+.rail .fitem.on .dot{background:var(--app-accent)}
+.rail .sep{height:1px;background:var(--app-border);margin:12px 8px}
+
+.main{display:flex;flex-direction:column;min-width:0}
+.tabbar{height:34px;flex:0 0 34px;display:flex;align-items:stretch;background:var(--app-sunken);border-bottom:1px solid var(--app-border)}
+.tabbar .tab{display:flex;align-items:center;gap:6px;padding:0 14px;font-size:12px;color:var(--app-text-2);border-right:1px solid var(--app-border)}
+.tabbar .tab.on{background:var(--app-bg);color:var(--app-text-strong);font-weight:600;border-bottom:2px solid var(--app-accent)}
+.tabbar .spacer{flex:1}
+.tabbar .tb-vis{display:flex;align-items:center;padding:0 12px;font-size:11px;color:var(--app-text-3);gap:6px}
+.kbd{font-size:10px;border:1px solid var(--app-border-strong);border-bottom-width:2px;border-radius:4px;padding:1px 5px;color:var(--app-text-2);background:var(--app-surface);white-space:nowrap}
+
+.content-area{position:relative;flex:1;min-height:0}
+.doc-scroll{position:absolute;inset:0;overflow:auto;padding:24px 40px 80px}
+.doc{max-width:720px;margin:0 auto}
+
+/* 正文排版 */
+.blk{position:relative;color:var(--app-text);line-height:1.85;margin:0 0 12px;font-size:14px}
+.blk.h1{font-size:24px;font-weight:700;color:var(--app-text-strong);line-height:1.4;margin:4px 0 20px}
+.blk.h2{font-size:18px;font-weight:650;color:var(--app-text-strong);line-height:1.5;margin:24px 0 12px}
+.blk.quote{border-left:3px solid var(--app-accent);background:var(--app-accent-soft);padding:10px 14px;border-radius:0 4px 4px 0;color:var(--app-text-2);font-size:13px}
+.blk.ul{padding-left:4px}
+.blk.ul .li{display:flex;gap:8px;margin:3px 0}
+.blk.ul .li::before{content:"•";color:var(--app-accent)}
+.blk.hr{border:0;border-top:1px solid var(--app-border);margin:24px 0}
+.blk.blk-hit{background:rgba(99,102,241,.05);border-radius:4px}
+mark{background:rgba(250,204,21,.55);color:inherit;border-radius:2px;padding:0 1px}
+mark.is-current{background:var(--app-accent);color:#fff;box-shadow:0 0 0 2px var(--app-accent-soft)}
+.source-view{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.5px;line-height:1.7;color:var(--app-text-2);white-space:pre-wrap;word-break:break-all;background:var(--app-sunken);border:1px solid var(--app-border);border-radius:8px;padding:16px}
+.src-note{font-size:11px;color:var(--app-text-3);margin-bottom:8px}
+
+/* ── 通用小控件 ───────────────────────────────────────── */
+.btn{font:inherit;font-size:12px;border:1px solid var(--app-border-strong);background:var(--app-surface);color:var(--app-text-2);border-radius:4px;padding:4px 10px;cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:var(--app-accent);color:var(--app-accent)}
+.btn.primary{background:var(--app-accent);border-color:var(--app-accent);color:#fff}
+.btn.ghost{border-color:transparent;background:transparent}
+.btn.sm{font-size:11px;padding:2px 7px}
+.iconbtn{width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;border:0;background:transparent;color:var(--app-text-3);border-radius:4px;cursor:pointer;font-size:13px;line-height:1}
+.iconbtn.danger{color:#a8402f}
+.iconbtn.danger:hover{background:rgba(168,64,47,.12)}
+.pa-tags-group{display:inline-flex;align-items:center;gap:5px}
+/* 两行截断：新版 Chromium 已将废弃的 -webkit-box 归一为 flow-root、line-clamp 失效，
+   改用 max-height = 2 × line-height 的引擎无关方案（第十一轮修复） */
+.v-clamp2{display:block;max-height:3em;line-height:1.5;overflow:hidden;word-break:break-word;white-space:normal;cursor:default}
+.row-x{cursor:pointer}
+.row-x:hover{color:#a8402f}
+.pa-chip .v.v-clamp2{max-width:300px}
+/* 选择模式（第十三轮）：有选中项时，行 hover 即选中提示、点击即选中/取消 */
+.select-mode .pa-chip, .select-mode .pa2-title, .select-mode .pb2-row, .select-mode .pa-tags-group{cursor:pointer}
+.select-mode .pa-chip:hover, .select-mode .pa2-title:hover, .select-mode .pb2-row:hover, .select-mode .pa-tags-group:hover{background:var(--app-accent-soft)}
+.iconbtn:hover{background:var(--app-accent-soft);color:var(--app-accent)}
+.field-input{font:inherit;font-size:12.5px;width:100%;max-width:340px;background:var(--app-bg);color:var(--app-text-strong);border:1px solid var(--app-accent);border-radius:4px;padding:2px 7px;outline:none}
+.prop-hidden-note{font-size:11px;color:var(--app-text-3);border:1px dashed var(--app-border-strong);border-radius:4px;padding:7px 10px;margin-bottom:24px}
+.kedit,.vedit{cursor:text;border-bottom:1px dashed transparent;border-radius:2px}
+.kedit:hover,.vedit:hover{color:var(--app-accent);border-bottom-color:var(--app-accent)}
+/* 类型选择器：字段名前的纯图标（无边框）；日期/时间用 SVG 与字母类区分（第八轮） */
+.type-ico{font:inherit;font-size:11px;font-weight:700;border:0;background:transparent;color:var(--app-text-3);padding:0 3px;cursor:pointer;line-height:1.4;white-space:nowrap}
+.type-ico:hover{color:var(--app-accent)}
+.type-ico-ro{font-size:11px;font-weight:700;color:var(--app-text-3);padding:0 3px;line-height:1.4;white-space:nowrap;cursor:default}
+.tico-svg{display:inline-block;vertical-align:-2px}
+/* 别称表配套样式已随「显示归一」取消（第十二轮：显示 = 输入原样） */
+/* 长值多行文本域（第八轮 F1） */
+.field-area{font:inherit;font-size:12.5px;width:100%;max-width:460px;min-height:56px;background:var(--app-bg);color:var(--app-text-strong);border:1px solid var(--app-accent);border-radius:4px;padding:4px 7px;outline:none;resize:vertical;line-height:1.6}
+/* 行手柄 + 行操作 */
+.row-handle{cursor:grab;color:var(--app-text-3);font-size:11px;user-select:none;padding:0 3px;letter-spacing:-1px}
+.row-handle:hover{color:var(--app-accent)}
+.pb2-row.sel,.pa-chip.sel{background:var(--app-accent-soft) !important;border-color:var(--app-accent)}
+.drop-mark{box-shadow:inset 0 2px 0 var(--app-accent)}
+.ops-bar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;background:var(--app-accent-soft);border:1px solid var(--app-accent);border-radius:6px;padding:5px 8px;margin-bottom:8px;font-size:11px;color:var(--app-text-2)}
+/* 类型菜单 / 文档链接菜单（轮盘过滤列表风格） */
+.pop-menu{position:fixed;z-index:300;display:none;min-width:130px;padding:6px;background:var(--app-surface);border:1px solid var(--app-border);border-radius:8px;box-shadow:var(--app-shadow)}
+.tm-row{display:flex;align-items:center;gap:7px;height:24px;padding:0 6px;border-radius:4px;font-size:12px;color:var(--app-text-2);cursor:pointer;white-space:nowrap}
+.tm-row:hover{background:var(--app-accent-soft);color:var(--app-accent)}
+.tm-row.cur{color:var(--app-accent);font-weight:600}
+.tm-ico{width:22px;text-align:center;font-size:10px;font-weight:600;color:var(--app-text-3)}
+.tm-key{margin-left:auto;padding-left:14px;font-size:10px;color:var(--app-text-3);font-variant-numeric:tabular-nums}
+.tm-row.cur .tm-key,.tm-row:hover .tm-key{color:var(--app-accent)}
+.tm-row:hover .tm-ico,.tm-row.cur .tm-ico{color:var(--app-accent)}
+.bool-toggle{font:inherit;font-size:11px;border:1px solid var(--app-border-strong);background:var(--app-sunken);color:var(--app-text-2);border-radius:999px;padding:2px 10px;cursor:pointer}
+.bool-toggle.on{background:var(--app-accent);border-color:var(--app-accent);color:#fff}
+.ck-row{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;color:var(--app-text);margin-right:12px;cursor:pointer}
+.doc-chip{display:inline-flex;align-items:center;gap:4px;background:var(--app-accent-soft);color:var(--app-accent);border:1px solid var(--app-accent);border-radius:4px;font-size:11px;padding:1px 7px;margin:0 6px 3px 0;white-space:nowrap}
+.doc-chip .dx{cursor:pointer;opacity:.6}
+.doc-chip .dx:hover{opacity:1}
+
+/* 标签彩色书签：色板由 JS 注入 [data-c] 规则 */
+.tag{--tag-bg:#eef0ff;--tag-fg:#4338ca;--tag-bd:#c7cbff;
+  display:inline-flex;align-items:center;gap:5px;background:var(--tag-bg);color:var(--tag-fg);
+  border:1px solid var(--tag-bd);border-radius:999px;font-size:11px;padding:2px 9px;white-space:nowrap}
+.tag .tg-x{cursor:pointer;opacity:.55;font-size:13px;line-height:1}
+.tag .tg-x:hover{opacity:1}
+.tag .tg-bullet{width:6px;height:6px;border-radius:999px;background:currentColor;opacity:.7}
+.pa-add{border:1px dashed var(--app-border-strong);background:transparent;color:var(--app-text-3);border-radius:999px;font-size:11px;padding:2px 9px;cursor:pointer}
+.pa-add:hover{color:var(--app-accent);border-color:var(--app-accent)}
+
+/* ── 显示样式 A：一行条 ───────────────────────────────── */
+.prop-a2{border:1px solid var(--app-border);border-radius:8px;background:var(--app-surface);padding:10px 14px;margin-bottom:24px}
+.pa2-line{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.pa2-title{font-size:17px;font-weight:650;color:var(--app-text-strong);min-width:0}
+.pa2-title .field-input{font-size:15px;max-width:360px}
+.pa2-spacer{flex:1}
+.pa2-tools{display:flex;gap:4px;align-items:center}
+.pa2-meta{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center;margin-top:8px;padding-top:8px;border-top:1px dashed var(--app-border)}
+.pa2-sep{width:1px;height:16px;background:var(--app-border);margin:0 3px}
+.pa2-summary{font-size:11px;color:var(--app-text-3);margin-top:7px}
+.pa-chip{display:inline-flex;align-items:center;gap:4px;background:var(--app-sunken);border:1px solid var(--app-border);border-radius:999px;font-size:11px;padding:2px 4px 2px 5px;color:var(--app-text-2);max-width:100%;position:relative}
+.pa-chip .k{color:var(--app-text-3)}
+.pa-chip .v{color:var(--app-text);font-weight:550;overflow:hidden;text-overflow:ellipsis;max-width:200px}
+/* 行手柄绝对定位在胶囊左外侧，不占布局（第八轮：消除滑入前左侧空白） */
+.pa-chip .row-handle{position:absolute;left:-13px;top:50%;transform:translateY(-50%);opacity:0;padding:0 2px}
+.pa-chip:hover .row-handle{opacity:1}
+
+/* ── 显示样式 B：精排双列 ─────────────────────────────── */
+.prop-b2{border:1px solid var(--app-border);border-radius:8px;background:var(--app-surface);margin-bottom:24px;overflow:hidden}
+.pb2-head{display:flex;align-items:center;gap:8px;padding:7px 12px;background:var(--app-sunken);border-bottom:1px solid var(--app-border)}
+.pb2-head .t{font-size:12px;font-weight:650;color:var(--app-text-strong)}
+.pb2-head .sub{font-size:11px;color:var(--app-text-3)}
+.pb2-head .tools{margin-left:auto;display:flex;gap:4px;align-items:center}
+.pb2-body{padding:3px 12px 9px}
+.pb2-row{display:grid;grid-template-columns:16px 30px 92px minmax(0,1fr) 18px;gap:6px;align-items:center;min-height:30px;padding:2px 0;border-bottom:1px solid var(--app-border)}
+.pb2-row.last{border-bottom:0}
+.pb2-label{font-size:11.5px;color:var(--app-text-3)}
+.pb2-label .field-input{max-width:92px}
+.pb2-value{font-size:12.5px;color:var(--app-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pb2-times{font-size:11px;color:var(--app-text-3);padding:7px 0 1px;border-top:1px dashed var(--app-border);display:flex;gap:16px;flex-wrap:wrap}
+
+/* ── 属性设置浮层 ─────────────────────────────────────── */
+.settings-pop{position:absolute;top:12px;right:40px;z-index:40;width:290px;background:var(--app-surface);border:1px solid var(--app-border-strong);border-radius:8px;box-shadow:var(--app-shadow);padding:12px}
+.tag-ico{flex:0 0 auto;opacity:.85}
+.settings-pop h5{font-size:12px;color:var(--app-text-strong);margin-bottom:8px}
+.settings-pop .srow{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11.5px;color:var(--app-text-2);padding:4px 0}
+.settings-pop .srow .seg{display:flex;gap:2px;flex-wrap:wrap}
+.settings-pop .srow .seg button{font:inherit;font-size:10.5px;padding:2px 7px;border:1px solid var(--app-border);background:var(--app-sunken);color:var(--app-text-2);border-radius:4px;cursor:pointer}
+.settings-pop .srow .seg button.on{background:var(--app-accent);border-color:var(--app-accent);color:#fff}
+.settings-pop .snote{font-size:10.5px;color:var(--app-text-3);line-height:1.6;border-top:1px solid var(--app-border);margin-top:8px;padding-top:8px}
+
+/* ── 居中浮条：搜索 / 替换（V2 原样回滚） ──────────── */
+.searchbar{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:30;width:min(600px,calc(100% - 48px));height:380px;
+  display:flex;flex-direction:column;
+  background:var(--app-surface);border:1px solid var(--app-border-strong);border-radius:8px;box-shadow:var(--app-shadow);overflow:hidden}
+.sb-grip{display:flex;align-items:center;gap:8px;padding:4px 8px;background:var(--app-sunken);border-bottom:1px solid var(--app-border);cursor:grab;user-select:none;font-size:11px;color:var(--app-text-3);flex:0 0 auto}
+.sb-grip:active{cursor:grabbing}
+.grip-ico{letter-spacing:2px}
+.grip-t{font-weight:600;color:var(--app-text-2)}
+.sb-resize{position:absolute;right:0;bottom:0;width:16px;height:16px;cursor:nwse-resize;background:linear-gradient(135deg,transparent 50%,var(--app-border-strong) 50%)}
+.sb-row{display:flex;align-items:center;gap:6px;padding:8px 10px;flex:0 0 auto}
+.sb-input{font:inherit;font-size:13px;flex:1;min-width:0;background:var(--app-bg);border:1px solid var(--app-border);border-radius:4px;padding:5px 9px;color:var(--app-text-strong);outline:none}
+.sb-input:focus{border-color:var(--app-accent)}
+.sb-count{font-size:11px;color:var(--app-text-3);white-space:nowrap;min-width:44px;text-align:right}
+.sb-opt{font-size:10.5px;border:1px solid var(--app-border);background:var(--app-sunken);color:var(--app-text-3);border-radius:4px;padding:3px 6px;cursor:pointer;white-space:nowrap}
+.sb-opt.on{background:var(--app-accent-soft);color:var(--app-accent);border-color:var(--app-accent)}
+.sb-replace{display:flex;align-items:center;gap:6px;padding:0 10px 8px;flex:0 0 auto}
+.sb-tabs{display:flex;align-items:center;gap:2px;padding:0 10px 8px;flex:0 0 auto}
+.sb-tab{font:inherit;font-size:11.5px;border:0;background:transparent;color:var(--app-text-3);padding:4px 10px;border-radius:4px;cursor:pointer}
+.sb-tab.on{background:var(--app-accent-soft);color:var(--app-accent);font-weight:600}
+.sb-tab .badge{font-size:9.5px;border:1px solid var(--app-border-strong);border-radius:999px;padding:0 5px;margin-left:4px;color:var(--app-text-3)}
+.sb-dist{position:relative;height:12px;flex:0 0 12px;background:var(--app-sunken);border-bottom:1px solid var(--app-border)}
+.sb-dist i{position:absolute;top:2px;width:3px;height:8px;border-radius:2px;background:var(--app-accent);opacity:.4;cursor:pointer}
+.sb-dist i.cur{opacity:1;height:10px;top:1px;box-shadow:0 0 0 2px var(--app-accent-soft)}
+.sb-results{flex:1 1 0;min-height:0;overflow:auto;border-top:1px solid var(--app-border)}
+.sb-foot{font-size:10.5px;color:var(--app-text-3);padding:5px 10px;background:var(--app-sunken);border-top:1px solid var(--app-border);display:flex;gap:12px;flex-wrap:wrap;flex:0 0 auto}
+/* A：双行结果（第八轮：定位行 + 两行上下文，行尾固定快捷键） */
+.res-a .res-row{display:flex;align-items:flex-start;gap:8px;padding:6px 12px;cursor:pointer;border-bottom:1px solid var(--app-border)}
+.res-a .res-row:hover{background:var(--app-accent-soft)}
+.res-a .res-row.on{background:var(--app-accent-soft)}
+.res-main{flex:1;min-width:0}
+.res-top{display:flex;justify-content:space-between;gap:8px;font-size:10px;color:var(--app-text-3);margin-bottom:1px}
+.res-loc{color:var(--app-accent)}
+.res-snip{display:block;max-height:3.3em;line-height:1.5;overflow:hidden;word-break:break-word;color:var(--app-text-2);font-size:11px}
+.res-key{flex:0 0 auto;align-self:center;min-width:2.4em;text-align:right;font-size:10px;color:var(--app-text-3);font-variant-numeric:tabular-nums}
+.res-row.on .res-key,.res-row:hover .res-key{color:var(--app-accent)}
+/* B：双栏列表（行号 | 上下文） */
+.res-b .res-row{display:grid;grid-template-columns:92px minmax(0,1fr);gap:10px;padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--app-border);font-size:11.5px}
+.res-b .res-row:hover,.res-b .res-row.on{background:var(--app-accent-soft)}
+.res-b .res-loc{color:var(--app-text-3);border-right:1px solid var(--app-border);padding-right:8px}
+.res-b .res-loc b{display:block;color:var(--app-accent);font-size:11px}
+.res-b .res-snip{color:var(--app-text-2);line-height:1.6}
+.sb-empty{font-size:11.5px;color:var(--app-text-3);padding:14px;text-align:center}
+
+/* 悬停位置预览卡 */
+.hover-card{position:fixed;z-index:200;max-width:440px;max-height:260px;overflow:auto;display:none;
+  border:1px solid #5a5e66;border-radius:8px;box-shadow:0 12px 32px rgba(0,0,0,.35);padding:9px 11px;font-size:12px;line-height:1.7;pointer-events:none}
+.hc-head{font-size:10.5px;margin-bottom:4px;display:flex;justify-content:space-between;gap:12px}
+.hc-head b{color:var(--app-accent)}
+.hc-body{word-break:break-word;white-space:pre-wrap}
+
+/* 语义示意面板（功能三 · 分期 · 未实现） */
+.semantic-note{flex:1 1 0;min-height:0;overflow:auto;font-size:11.5px;color:var(--app-text-2);line-height:1.7}
+.teaser-badge{display:inline-block;font-size:10px;background:var(--app-sunken);border:1px dashed var(--app-border-strong);border-radius:999px;padding:1px 8px;color:var(--app-text-3);margin-bottom:8px}
+.teaser-card{background:var(--app-sunken);border:1px solid var(--app-border);border-radius:4px;padding:8px 10px;margin-top:8px}
+.teaser-card h6{font-size:11px;color:var(--app-text-strong);margin-bottom:4px}
+.teaser-card .fm{font-family:ui-monospace,Menlo,monospace;font-size:10px;color:var(--app-text-3);white-space:pre-wrap;line-height:1.6;margin-top:6px}
+
+/* 状态栏 */
+.status-bar{height:26px;flex:0 0 26px;display:flex;align-items:center;gap:16px;padding:0 12px;background:var(--app-sunken);border-top:1px solid var(--app-border);font-size:11px;color:var(--app-text-3)}
+.status-bar .on{color:var(--app-accent);font-weight:600}
+
+/* ── 原型专用侧栏 ─────────────────────────────────────── */
+.proto-aside{background:#1c1e22;color:#d8dade;overflow:auto;padding:14px 14px 90px;font-size:12px}
+.proto-aside h2{font-size:13px;color:#fff;margin-bottom:2px}
+.proto-aside .pbadge{display:inline-block;font-size:10px;color:#f0b429;border:1px solid #7a5c14;background:rgba(240,180,41,.08);border-radius:999px;padding:1px 8px;margin-bottom:10px}
+.proto-aside .q{font-size:11.5px;color:#a7abb3;line-height:1.7;background:#26282e;border-radius:6px;padding:9px 10px;margin-bottom:12px}
+.proto-aside .q b{color:#fff}
+.proto-aside h3{font-size:11px;color:#8b8f96;letter-spacing:.05em;margin:14px 0 7px;border-bottom:1px solid #34363c;padding-bottom:5px}
+.ctl-row{display:flex;align-items:center;gap:6px;margin-bottom:7px;flex-wrap:wrap}
+.ctl-row label{font-size:11px;color:#a7abb3;min-width:64px}
+.seg2{display:flex;gap:2px;flex-wrap:wrap}
+.seg2 button{font:inherit;font-size:10.5px;background:#2c2f36;color:#a7abb3;border:1px solid #3d4149;border-radius:4px;padding:3px 8px;cursor:pointer}
+.seg2 button.on{background:#6366f1;border-color:#6366f1;color:#fff;font-weight:600}
+.state{background:#141519;border:1px solid #34363c;border-radius:6px;padding:9px 10px;font-size:11px;line-height:1.75}
+.state .srow{display:flex;gap:8px}
+.state .srow .k{color:#75797f;min-width:96px;flex:0 0 96px}
+.state .srow .v{color:#d8dade;word-break:break-all}
+.state .srow .v .hl{color:#9aa2ff}
+.state .chg{color:#f0b429}
+.decisions{font-size:10.5px;color:#a7abb3;line-height:1.8}
+.decisions div{padding:1px 0}
+.decisions .ok{color:#6ccb8f}
+
+/* ── 底部切换条（= 显示样式切换） ─────────────────────── */
+.switcher{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:100;
+  display:flex;align-items:center;gap:6px;background:#111214;color:#fff;border:1px solid #3a3d44;
+  border-radius:999px;padding:5px 6px;box-shadow:0 10px 30px rgba(0,0,0,.4)}
+.switcher button{width:28px;height:28px;border:0;background:#2a2c32;color:#fff;border-radius:999px;font-size:15px;cursor:pointer;line-height:1}
+.switcher button:hover{background:#6366f1}
+.switcher .lab{font-size:12px;padding:0 10px;white-space:nowrap;min-width:200px;text-align:center}
+.switcher .lab b{color:#9aa2ff}
+.local-key{color:#9aa2ff}
+.switcher .lab .param{font-size:10px;color:#75797f;display:block}
+</style>
+</head>
+<body>
+<div class="layout">
+  <div class="app-window light" id="appWindow"></div>
+  <aside class="proto-aside" id="protoAside"></aside>
+</div>
+<div class="switcher" id="switcherHost"></div>
+<div class="hover-card" id="hoverCard"></div>
+<div class="pop-menu" id="typeMenu"></div>
+<div class="pop-menu" id="docLinkMenu"></div>
+<div class="pop-menu" id="tplMenu"></div>
+<div class="pop-menu" id="tagMenu"></div>
+
+<script>
+"use strict";
+const IS_PROTOTYPE = true; /* 等价于 NODE_ENV 门禁：静态原型无构建，真实应用中本文件不存在 */
+
+/* 显示样式两态 */
+const VARIANTS = [
+  { key:"A", name:"一行条" },
+  { key:"B", name:"精排双列" },
+];
+
+const PALETTE = [
+  { n:"靛蓝", l:["#eef0ff","#4338ca","#c7cbff"], d:["#262a52","#aeb4ff","#3c4278"] },
+  { n:"青碧", l:["#e6f7f4","#0f766e","#b8e6de"], d:["#173b37","#7ee0d0","#256055"] },
+  { n:"琥珀", l:["#fdf2e2","#b45309","#f2d9a8"], d:["#3d2e18","#f0c074","#5c4526"] },
+  { n:"玫红", l:["#fdeaf2","#be185d","#f5c6dc"], d:["#3d1d2c","#f2a4c8","#5c2c44"] },
+  { n:"竹绿", l:["#e9f7ed","#15803d","#bfe6c9"], d:["#183625","#86d99c","#26543a"] },
+  { n:"天青", l:["#e6f4fc","#0369a1","#b9dff2"], d:["#142f40","#7fcbed","#204c66"] },
+  { n:"紫罗兰",l:["#f2ecfd","#6d28d9","#dcccf7"], d:["#2e2050","#c3a6fa","#463473"] },
+  { n:"赭石", l:["#fceee6","#9a3412","#f3cdb6"], d:["#3a2118","#f0a884","#5a3324"] },
+  { n:"石板", l:["#eef1f5","#334155","#ccd4de"], d:["#232a35","#b3bfcf","#38434f"] },
+  { n:"藤黄", l:["#fbf5df","#854d0e","#ecdfa8"], d:["#383114","#e0c96a","#564b20"] },
+];
+(function injectPalette(){
+  let css = "";
+  PALETTE.forEach((p,i)=>{
+    css += `.app-window.light .tag[data-c="${i}"],.app-window.warm .tag[data-c="${i}"]{--tag-bg:${p.l[0]};--tag-fg:${p.l[1]};--tag-bd:${p.l[2]}}\n`;
+    css += `.app-window.dark .tag[data-c="${i}"]{--tag-bg:${p.d[0]};--tag-fg:${p.d[1]};--tag-bd:${p.d[2]}}\n`;
+  });
+  const s = document.createElement("style"); s.textContent = css; document.head.appendChild(s);
+})();
+
+/* 字段类型八类 + 未识别（外部字段；第七轮）；日期/时间用 SVG（第八轮） */
+const ICON_CAL = '<svg class="tico-svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/></svg>';
+const ICON_CLOCK = '<svg class="tico-svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>';
+const TYPES = [
+  { id:"text",     icon:"Aa", label:"文本" },
+  { id:"number",   icon:"123", label:"数字" },
+  { id:"date",     icon:ICON_CAL, label:"日期" },
+  { id:"datetime", icon:ICON_CLOCK, label:"日期时间" },
+  { id:"select",   icon:"▾",  label:"下拉" },
+  { id:"multi",    icon:"☑",  label:"复选" },
+  { id:"bool",     icon:"◉",  label:"布尔" },
+  { id:"doclist",  icon:"☰",  label:"列表 · 文档链接" },
+  { id:"unknown",  icon:"?",  label:"未识别（外部字段）" },
+];
+const PICKABLE = TYPES.filter(t => t.id !== "unknown");
+/* 字段名称别称表（第八轮 F2；第十二轮修订）：仅用于**类型识别**（外部键自动识别），
+   显示一律保持用户输入原样——输入中文显示中文、输入英文显示英文，落盘即输入键名 */
+const ALIAS = { title:["标题"], tags:["标签"], category:["分类"], author:["作者"], status:["状态"], date:["日期"], createdate:["创建日期"] };
+const CANON_TYPE  = { title:"text", tags:"multi", category:"select", author:"text", status:"select", date:"date", createdate:"date" };
+function resolveAlias(key){
+  const k = String(key).trim().toLowerCase();
+  for (const c in ALIAS){
+    if (c.toLowerCase() === k || ALIAS[c].some(a => a.toLowerCase() === k)) return c;
+  }
+  return null;
+}
+const typeLabel = id => (TYPES.find(t=>t.id===id)||{}).label || id;
+const typeIcon = id => (TYPES.find(t=>t.id===id)||{}).icon || "?";
+const DOC_LIST = ["设计说明.md","架构现状.md","需求基线.md","设计系统规格.md","PLAN.md","CHANGELOG.md"];
+
+const INITIAL_DOC = [
+  { type:"h1", line:1,  text:"文档属性面板与搜索浮窗 · 设计说明" },
+  { type:"p",  line:3,  text:"标月把 md 顶端的 frontmatter 从「看不见的元数据」变成可读、可改的文档属性面板。属性面板在预览态只读，编辑态默认展开且可折叠，源码态保持原始 YAML 文本不动。" },
+  { type:"h2", line:5,  text:"一、属性面板的显示样式" },
+  { type:"p",  line:7,  text:"预览模式只负责展示：标题、标签、分类、作者、状态，以及自动托管的创建日期与修改日期。标签以彩色书签渲染，颜色由标签名稳定哈希自动分配，同名同色，用户不需要也不能手工改色。" },
+  { type:"quote", line:9, text:"彩色书签主要指 tags 的彩色展示；颜色不用改，按规则自动渲染即可。" },
+  { type:"ul", line:11, text:"类型选择器：字段名前图标，点击弹图标加文字菜单|八类类型：文本、数字、日期、日期时间、下拉、复选、布尔、列表|行操作：多选复制剪切粘贴、拖拽单行或整块排序" },
+  { type:"p",  line:14, text:"编辑模式默认展开，方便删除和添加字段；折叠后只留一行摘要。新建文档时默认只带标题、创建日期与修改日期，其余字段按需添加；⌘⇧Y 可随时切换显隐，隐藏不等于删除。" },
+  { type:"h2", line:16, text:"二、字面搜索与替换" },
+  { type:"p",  line:18, text:"Cmd/Ctrl+F 在当前编辑器窗格内弹出浮窗。结果列表随显示样式呈现：样式 A 为紧凑单行（L行号 · 块 + 上下文），样式 B 为行号与上下文双栏；命中词高亮，点击结果一键定位，悬停可预览当前位置全文。" },
+  { type:"p",  line:20, text:"大小写与整词是可选项。切换替换后出现替换输入框与「全部替换 / 逐个替换」，替换为可撤销的单事务；替换后自动跳到下一处命中。" },
+  { type:"h2", line:22, text:"三、语义搜索与一键成文（分期）" },
+  { type:"p",  line:24, text:"语义搜索借助 AI 模型对输入 prompt 做语义解析，检索当前文件内的相关内容并点击定位，还可把命中内容一键生成 MD 文档：AI 概括总结 + 命中片段汇编，带引用来源，保存到同目录。" },
+  { type:"p",  line:26, text:"模型可在设置里配置本地与远端，并指定默认优先；优先模型不可用时自动回退另一个模型。无密钥或离线时语义功能降级，字面搜索始终可用。" },
+  { type:"hr", line:28, text:"" },
+  { type:"p",  line:30, text:"核心目标：最高效便捷地找到所需。" },
+];
+const BLOCK_LABEL = { h1:"标题", h2:"小节", p:"正文", quote:"引用", ul:"列表", hr:"分隔线" };
+
+function demoProps(){
+  return [
+    { key:"title",    type:"text",     value:"文档属性面板与搜索浮窗 · 设计说明" },
+    { key:"category", type:"select",   value:"设计", options:["设计","架构","交付"] },
+    { key:"author",   type:"text",     value:"维护者" },
+    { key:"status",   type:"select",   value:"草稿", options:["草稿","评审中","已定稿"] },
+    { key:"来源",     type:"date",     value:"2026-11-15", custom:true },
+    { key:"评审时间", type:"datetime", value:"2026-11-15T14:30", custom:true },
+    { key:"复核",     type:"bool",     value:false, custom:true },
+    { key:"标签组",   type:"multi",    value:["设计","评审"], options:["设计","评审","交付","归档"], custom:true },
+    { key:"相关文档", type:"doclist",  value:["架构现状.md"], custom:true },
+    { key:"备注",     type:"text",     value:"这是一段较长的备注内容，用于验证字段值超长时的展示与编辑策略：列表中单行省略，悬停可看全文；进入编辑自动切换为多行文本域，Enter 换行、失焦提交，不丢内容。", custom:true },
+  ];
+}
+const state = {
+  variant: "A",            // 显示样式：A 一行条 | B 精排双列
+  theme: "light",
+  mode: "edit",
+  display: "expanded",
+  displayOrigin: "用户",
+  globalNewVisible: true,
+  colorRule: "hash",
+  props: demoProps(),      // props[0] 为标题位（不可删）
+  tags: ["标月","设计系统","待评审"],
+  times: { created:"2026-11-15", updated:"2026-11-15" },
+  editing: null,           /* {part:'label'|'value'|'tag', idx} */
+  sel: [],                 // 选中的字段行（索引，升序）
+  clipboard: null,         // 复制/剪切的字段数组
+  typeMenu: null,          // 类型菜单打开的字段 idx
+  docLinkQ: null,          // [[ 文档链接菜单：{idx, q}
+  tagQ: null,              // 标签输入建议：当前输入值（null = 关闭；第九轮）
+  tagSel: 0,               // 标签建议菜单键盘选中项（↑↓ 移动、Enter 选用；第十一轮）
+  docSel: 0,               // [[ 文档菜单键盘选中项（同上）
+  tagsPos: 0,              // 标签行位置：渲染在第 tagsPos 个字段行之后（第十轮，拖动手柄调整）
+  tplMenu: null,           // 属性模板菜单：{x,y}
+  settingsOpen: false,
+  searchPos: "center",     // 搜索浮窗默认位置：right | center | left（设置项；V2 居中）
+  searchPanel: { x:null, y:null, w:null, h:null },
+  search: { open:false, tab:"literal", query:"", replace:"", hitIndex:0, replaceMode:false },
+  lastAction: "初始化",
+  doc: INITIAL_DOC.map(b => ({ ...b })),
+};
+
+function fnv1a(s){
+  let h = 0x811c9dc5;
+  for (let i=0;i<s.length;i++){ h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
+  return h >>> 0;
+}
+function tagColor(name, idx){
+  const i = state.colorRule === "hash" ? fnv1a(name) % PALETTE.length : idx % PALETTE.length;
+  return { i, name: PALETTE[i].n, hash: fnv1a(name) };
+}
+
+function esc(s){ return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function escRe(s){ return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
+const MODE_LABEL = { preview:"预览", edit:"编辑", source:"源码" };
+const DISPLAY_LABEL = { expanded:"展开", collapsed:"折叠", hidden:"隐藏" };
+function todayStamp(){ const d=new Date(); const p=n=>String(n).padStart(2,"0"); return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`; }
+function isEditableTarget(t){ return t && (t.tagName==="INPUT" || t.tagName==="TEXTAREA" || t.tagName==="SELECT" || t.isContentEditable); }
+/* 标题 ↔ 页签文件名联动（第八轮） */
+function docTitle(){ const t = state.props[0]; return (t && t.value) ? t.value : "未命名"; }
+
+/* ── 搜索扫描（第七轮：去掉大小写/整词，默认搜） ─────── */
+function computeHits(){
+  const q = state.search.query;
+  if (!q) return [];
+  let re;
+  try { re = new RegExp(escRe(q), "gi"); } catch(e){ return []; }
+  const out = [];
+  state.doc.forEach((b,bi) => {
+    if (!b.text) return;
+    const r = new RegExp(re.source, re.flags);
+    let m;
+    while ((m = r.exec(b.text)) !== null){
+      if (m[0].length === 0){ r.lastIndex++; continue; }
+      out.push({ bi, line:b.line, from:m.index, to:m.index+m[0].length, text:m[0] });
+    }
+  });
+  return out;
+}
+function snippetOf(b, hit, radius){
+  const r = radius || 44;
+  const s = Math.max(0, hit.from-r), e = Math.min(b.text.length, hit.to+r);
+  return (s>0?"…":"") + esc(b.text.slice(s,hit.from)) + "<mark>" + esc(hit.text) + "</mark>" + esc(b.text.slice(hit.to,e)) + (e<b.text.length?"…":"");
+}
+
+/* ── 源码模式 YAML ────────────────────────────────────── */
+function yamlText(){
+  const L = ["---"];
+  state.props.forEach(p => {
+    let v;
+    if (p.type === "bool") v = p.value ? "true" : "false";
+    else if (p.type === "number") v = (p.value === "" || p.value == null) ? '""' : String(Number(p.value));
+    else if (p.type === "multi" || p.type === "doclist") v = `[${(p.value||[]).map(x=>`"${x}"`).join(", ")}]`;
+    else v = `"${p.value == null ? "" : p.value}"`;
+    L.push(`${p.key}: ${v}`);
+  });
+  L.push(`tags: [${state.tags.map(t=>`"${t}"`).join(", ")}]`);
+  L.push(`created: ${state.times.created}`);
+  L.push(`updated: ${state.times.updated}`);
+  L.push("---");
+  return L.join("\n");
+}
+function rawMarkdown(){
+  return state.doc.map(b => {
+    if (b.type==="hr") return "---";
+    if (b.type==="h1") return "# "+b.text;
+    if (b.type==="h2") return "## "+b.text;
+    if (b.type==="quote") return "> "+b.text;
+    if (b.type==="ul") return b.text.split("|").map(x=>"- "+x).join("\n");
+    return b.text;
+  }).join("\n\n");
+}
+
+/* ── 字段值：显示 / 编辑器（八类智能渲染） ────────────── */
+function displayValue(p){
+  if (p.type === "bool") return p.value ? "开" : "关";
+  if (p.type === "number"){
+    /* 千分位显示（第十三轮）：仅显示层格式化，落盘保持原值 */
+    if (p.value === "" || p.value == null) return "—";
+    const n = Number(p.value);
+    return isNaN(n) ? String(p.value) : n.toLocaleString("en-US");
+  }
+  if (p.type === "multi" || p.type === "doclist"){
+    const a = p.value || [];
+    return a.length ? a.join("、") : "—";
+  }
+  if (p.type === "datetime") return p.value ? String(p.value).replace("T"," ") : "—";
+  return (p.value === "" || p.value == null) ? "—" : String(p.value);
+}
+function valueEditor(p, idx){
+  if (!(state.editing && state.editing.part === "value" && state.editing.idx === idx)) return null;
+  if (p.type === "select"){
+    const opts = (p.options && p.options.length ? p.options.slice() : ["选项1"]);
+    if (p.value && !opts.includes(p.value)) opts.unshift(p.value);
+    return `<select class="field-input" id="editInput" data-commit="value" data-idx="${idx}">` +
+      opts.map(o=>`<option value="${esc(o)}" ${o===p.value?"selected":""}>${esc(o)}</option>`).join("") + `</select>`;
+  }
+  if (p.type === "bool"){
+    return `<button class="bool-toggle ${p.value?"on":""}" data-act="toggle-bool" data-idx="${idx}">${p.value?"◉ 开":"○ 关"}</button>`;
+  }
+  if (p.type === "multi"){
+    const opts = p.options || [];
+    return `<span style="display:inline-flex;flex-wrap:wrap;gap:4px 0">` + opts.map(o=>{
+      const on = (p.value||[]).includes(o);
+      return `<label class="ck-row"><input type="checkbox" data-act="toggle-multi" data-idx="${idx}" data-opt="${esc(o)}" ${on?"checked":""}>${esc(o)}</label>`;
+    }).join("") + `</span>`;
+  }
+  if (p.type === "doclist"){
+    const chips = (p.value||[]).map((d,k)=>
+      `<span class="doc-chip">[[${esc(d)}]]<span class="dx" data-act="del-doc" data-idx="${idx}" data-k="${k}" title="移除">×</span></span>`).join("");
+    return chips + `<input class="field-input" id="editInput" data-model="doclink" data-idx="${idx}" style="max-width:200px" value="[[${esc(state.docLinkQ&&state.docLinkQ.idx===idx?state.docLinkQ.q:"")}" placeholder="[[ 链接文档">`;
+  }
+  const t = p.type === "number" ? "number" : p.type === "date" ? "date" : p.type === "datetime" ? "datetime-local" : "text";
+  if (t === "text" && String(p.value || "").length > 40){
+    return `<textarea class="field-area" id="editInput" data-commit="value" data-idx="${idx}" rows="3">${esc(p.value)}</textarea>`;
+  }
+  return `<input class="field-input" id="editInput" type="${t}" data-commit="value" data-idx="${idx}" value="${esc(p.value)}">`;
+}
+function valueCell(p, idx){
+  const ed = valueEditor(p, idx);
+  if (ed) return ed;
+  const canEdit = state.mode === "edit";
+  if (p.type === "doclist"){
+    const docs = p.value || [];
+    const chips = docs.map((d,k)=>{
+      const x = canEdit ? `<span class="dx" data-act="del-doc" data-idx="${idx}" data-k="${k}" title="移除">×</span>` : "";
+      return `<span class="doc-chip">[[${esc(d)}]]${x}</span>`;
+    }).join("");
+    const many = docs.length > 2;
+    const tip = many ? ` title="${esc(docs.join("、"))}（滑入显示全部 · 两行截断）"` : "";
+    const inner = `<span class="${many ? "v-clamp2" : ""}"${tip}>${chips}${canEdit ? `<span style="color:var(--app-text-3)">＋</span>` : ""}</span>`;
+    return canEdit ? `<span class="vedit" data-act="edit-value" data-idx="${idx}" title="点击后输入 [[ 插入文档链接">${inner}</span>` : inner;
+  }
+  const disp = displayValue(p);
+  const v = esc(disp);
+  /* 双行截断（第十轮：全类型通用）——超两行隐藏，滑入 title 显示全部 */
+  const long = String(disp).length > 24;
+  const tip = long
+    ? `title="${esc(String(disp))}（滑入显示全部 · 点击编辑）"`
+    : `title="点击编辑值（类型：${typeLabel(p.type)}）"`;
+  return canEdit
+    ? `<span class="vedit${long ? " v-clamp2" : ""}" data-act="edit-value" data-idx="${idx}" ${tip}>${v}</span>`
+    : `<span${long ? ` class="v-clamp2" ${tip}` : ""}>${v}</span>`;
+}
+function labelCell(p, idx){
+  if (state.editing && state.editing.part === "label" && state.editing.idx === idx){
+    return `<input class="field-input" id="editInput" style="max-width:92px" data-commit="label" data-idx="${idx}" value="${esc(p.key)}" title="字段名即 YAML 键">`;
+  }
+  const canEdit = state.mode === "edit";
+  /* 显示 = 用户输入原样（第十二轮）：中文键显示中文、英文键显示英文；别称表只做类型识别 */
+  const disp = esc(p.key);
+  return canEdit ? `<span class="kedit" data-act="edit-label" data-idx="${idx}" title="点击改字段名（改 YAML 键）">${disp}</span>` : disp;
+}
+/* 类型选择器：字段名前图标按钮（第四轮）；B 预览态显示静态类型图标（第十轮），
+   A 预览态占位保持胶囊布局 */
+function typeIco(p, idx){
+  if (state.mode === "edit") return `<button class="type-ico" data-act="open-type-menu" data-idx="${idx}" title="${typeLabel(p.type)}（点击选择类型）">${typeIcon(p.type)}</button>`;
+  if (state.variant === "B") return `<span class="type-ico-ro" title="${typeLabel(p.type)}">${typeIcon(p.type)}</span>`;
+  return `<span></span>`;
+}
+function rowHandle(idx){
+  if (state.mode !== "edit") return `<span></span>`;
+  return `<span class="row-handle" data-row-handle data-idx="${idx}" title="点击选中（可多选）· 拖动排序">⠿</span>`;
+}
+function delBtn(idx){
+  if (state.mode !== "edit") return `<span></span>`;
+  if (idx === 0) return `<span class="row-x" style="opacity:.25;cursor:not-allowed" title="标题位不可删除">✕</span>`;
+  return `<span class="row-x" data-act="del-prop" data-idx="${idx}" title="删除字段">✕</span>`;
+}
+/* 行操作条（多选后出现；第九轮：文字改图标 + 增加删除） */
+function opsToolbar(){
+  if (state.mode !== "edit" || !state.sel.length) return "";
+  return `<div class="ops-bar">
+    <b>已选 ${state.sel.length} 项</b>
+    <button class="iconbtn" data-act="ops-copy" title="复制">⧉</button>
+    <button class="iconbtn" data-act="ops-cut" title="剪切">✂</button>
+    <button class="iconbtn" data-act="ops-paste" title="粘贴到所选行下方">⤵</button>
+    <button class="iconbtn" data-act="ops-up" title="上移">↑</button>
+    <button class="iconbtn" data-act="ops-down" title="下移">↓</button>
+    <button class="iconbtn danger" data-act="ops-del" title="删除所选字段">🗑</button>
+    <button class="iconbtn" data-act="ops-clear" title="取消选中">×</button>
+    ${state.clipboard ? `<span style="color:var(--app-text-3)">剪贴板 ${state.clipboard.length} 项</span>` : ""}
+  </div>`;
+}
+
+/* ── 标签（第七轮：胶囊加标签形图标） ────────────────── */
+const TAG_SVG = '<svg class="tag-ico" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V5a2 2 0 0 1 2-2h8l7.6 7.6a2 2 0 0 1 0 2.8Z"/><circle cx="7.5" cy="7.5" r="1" fill="currentColor" stroke="none"/></svg>';
+function tagHtml(name, idx){
+  const c = tagColor(name, idx);
+  if (state.editing && state.editing.part === "tag" && state.editing.idx === idx){
+    return `<span class="tag" data-c="${c.i}"><input class="field-input" id="editInput" data-commit="tag" data-idx="${idx}" style="width:96px" value="${esc(name)}"></span>`;
+  }
+  const canEdit = state.mode === "edit";
+  const x = canEdit ? `<span class="tg-x" data-act="del-tag" data-index="${idx}" title="删除标签">×</span>` : "";
+  const clickable = canEdit ? `data-act="rename-tag" data-index="${idx}" title="点击改名（颜色按新名字重算）"` : "";
+  return `<span class="tag" data-c="${c.i}" ${clickable}>${TAG_SVG}${esc(name)}${x}</span>`;
+}
+function tagsRow(){
+  const t = state.tags.map((n,i)=>tagHtml(n,i)).join("");
+  if (state.mode !== "edit") return t;
+  return t + `<button class="pa-add" data-act="add-tag">+ 标签</button>`;
+}
+/* 标签行拖动手柄（第十轮）：B 在标签行首列、A 在标签胶囊组前 */
+function tagsHandle(){
+  if (state.mode !== "edit") return `<span></span>`;
+  return `<span class="row-handle" data-tags-handle title="拖动调整标签行位置（放到任意字段行后）">⠿</span>`;
+}
+
+/* ── 显示样式 A：一行条 ───────────────────────────────── */
+function propA2(){
+  if (state.display === "hidden") return hiddenNote();
+  const collapsed = state.display === "collapsed";
+  const title = state.props[0];
+  const tools = `<span class="pa2-tools">
+      <button class="btn sm ghost" data-act="sel-all" title="全选字段">☑ 全选</button>
+      <button class="btn sm ghost" data-act="open-tpl-menu" title="套用属性模板">▤ 模板</button>
+      <button class="btn sm ghost" data-act="toggle-display" title="折叠 / 展开属性栏">${collapsed?"⌄ 展开":"⌃ 折叠"}</button>
+      <button class="iconbtn" data-act="toggle-settings" title="设置">⚙</button>
+    </span>`;
+  const line = `<div class="pa2-line">
+      <span class="pa2-title" data-row-idx="0">${title ? valueCell(title, 0) : "（无标题）"}</span>
+      ${state.tagsPos === 0 ? `<span class="pa-tags-group" data-act="tags-toggle">${tagsHandle()}${tagsRow()}</span>` : ""}
+      <span class="pa2-spacer"></span>
+      ${tools}
+    </div>`;
+  if (collapsed){
+    return `<div class="prop-a2">${line}
+      <div class="pa2-summary">已折叠 · ${state.tags.length} 个标签 · ${state.props.length} 个字段 · 点「展开」查看全部</div>
+    </div>`;
+  }
+  const metaChips = state.props.slice(1).map((p,i)=>metaChip(p, i+1));
+  if (state.tagsPos > 0) metaChips.splice(Math.min(state.tagsPos - 1, metaChips.length), 0, `<span class="pa-tags-group" data-act="tags-toggle">${tagsHandle()}${tagsRow()}</span>`);
+  const meta = metaChips.join("");
+  const addField = state.mode === "edit" ? `<button class="pa-add" data-act="add-custom">+ 字段</button>` : "";
+  return `<div class="prop-a2">${line}
+    ${opsToolbar()}
+    <div class="pa2-meta">
+      ${meta}${addField}
+      <span class="pa2-sep"></span>
+      <span class="pa-chip" title="自动托管 · 只读"><span class="k">🔒 创建</span><span class="v">${esc(state.times.created)}</span></span>
+      <span class="pa-chip" title="自动托管 · 只读"><span class="k">🔒 修改</span><span class="v">${esc(state.times.updated)}</span></span>
+    </div>
+  </div>`;
+}
+function metaChip(p, idx){
+  return `<span class="pa-chip ${state.sel.includes(idx)?"sel":""}" data-row-idx="${idx}" data-act="row-toggle" data-idx="${idx}">
+    ${rowHandle(idx)}${typeIco(p, idx)}
+    <span class="k">${labelCell(p, idx)}</span>
+    <span class="v">${valueCell(p, idx)}</span>
+    ${delBtn(idx)}
+  </span>`;
+}
+
+/* ── 显示样式 B：精排双列 ─────────────────────────────── */
+function propB2(){
+  if (state.display === "hidden") return hiddenNote();
+  const collapsed = state.display === "collapsed";
+  const head = `<div class="pb2-head">
+      <span class="t">文档属性</span>
+      <span class="sub">${collapsed ? "已折叠 · 点展开查看 "+state.props.length+" 个字段" : "行手柄：点击选中 / 拖动排序 · 类型图标点选 · 名称可改"}</span>
+      <span class="tools">
+        <button class="btn sm ghost" data-act="sel-all" title="全选字段">☑ 全选</button>
+        <button class="btn sm ghost" data-act="open-tpl-menu" title="套用属性模板">▤ 模板</button>
+        <button class="btn sm ghost" data-act="toggle-display" title="折叠 / 展开属性栏">${collapsed?"⌄ 展开":"⌃ 折叠"}</button>
+        <button class="iconbtn" data-act="toggle-settings" title="设置">⚙</button>
+      </span>
+    </div>`;
+  if (collapsed) return `<div class="prop-b2">${head}</div>`;
+  const rows = state.props.map((p,i)=>{
+    const row = `<div class="pb2-row ${state.sel.includes(i)?"sel":""}" data-row-idx="${i}" data-act="row-toggle" data-idx="${i}">
+        ${rowHandle(i)}
+        ${typeIco(p, i)}
+        <span class="pb2-label">${labelCell(p, i)}</span>
+        <span class="pb2-value">${valueCell(p, i)}</span>
+        ${delBtn(i)}
+      </div>`;
+    const tagsRowHtml = i === state.tagsPos
+      ? `<div class="pb2-row pb2-tags ${state.sel.includes("tags")?"sel":""}" data-act="tags-toggle">${tagsHandle()}<span class="type-ico-ro" title="标签（tags）">${TAG_SVG}</span><span class="pb2-label">标签</span>
+           <span class="pb2-value"><span style="display:flex;flex-wrap:wrap;gap:6px">${tagsRow()}</span></span>${state.mode === "edit" ? `<span class="row-x" data-act="del-tags" title="清空标签字段">✕</span>` : `<span></span>`}</div>`
+      : "";
+    return row + tagsRowHtml;
+  }).join("");
+  const addRow = state.mode === "edit"
+    ? `<div class="pb2-row last"><span></span><span></span><button class="btn sm ghost" data-act="add-custom" style="justify-self:start">+ 添加字段</button><span></span><span></span></div>`
+    : `<div class="pb2-row last"></div>`;
+  return `<div class="prop-b2">${head}
+    <div class="pb2-body">
+      ${opsToolbar()}
+      ${rows}${addRow}
+      <div class="pb2-times">
+        <span title="自动托管 · 只读">🔒 创建 ${esc(state.times.created)}</span>
+        <span title="自动托管 · 只读">🔒 修改 ${esc(state.times.updated)}</span>
+        <span style="margin-left:auto">${state.props.length} 个字段</span>
+      </div>
+    </div>
+  </div>`;
+}
+function hiddenNote(){
+  return `<div class="prop-hidden-note">frontmatter 属性栏：<b>隐藏</b> · 数据仍在文档里，未删除 · 按 <span class="kbd">⌘⇧Y</span> 或上方「显隐」恢复</div>`;
+}
+function renderProp(){
+  if (state.mode === "source") return "";
+  const inner = state.variant === "A" ? propA2() : propB2();
+  /* 选择模式（第十三轮）：有选中项时挂 select-mode，行 hover 即选中提示 */
+  return state.mode === "edit" && state.sel.length ? `<div class="select-mode">${inner}</div>` : inner;
+}
+
+/* ── 搜索浮窗（V2 基线，宽 480，默认停靠右侧） ────────── */
+const POS_STYLE = {
+  right:  "left:auto;right:14px;top:10px;transform:none",
+  center: "left:50%;right:auto;top:10px;transform:translateX(-50%)",
+  left:   "left:14px;right:auto;top:10px;transform:none",
+};
+function renderSearch(){
+  if (!state.search.open) return "";
+  const s = state.search, sp = state.searchPanel;
+  const st = [];
+  if (sp.w) st.push(`width:${sp.w}px`);
+  if (sp.h) st.push(`height:${sp.h}px`);
+  if (sp.x != null){ st.push(`left:${sp.x}px`, `top:${sp.y}px`, "right:auto", "transform:none"); }
+  else { st.push(POS_STYLE[state.searchPos] || POS_STYLE.center, "width:min(600px,calc(100% - 48px))", "height:460px"); }
+  const styleAttr = ` style="${st.join(";")}"`;
+  const grip = `<div class="sb-grip" data-drag-handle title="拖动移动位置">
+      <span class="grip-ico">⠿</span><span class="grip-t">搜索 / 替换</span>
+      <span style="font-size:10px">拖动移动 · 右下角缩放</span>
+      <span style="flex:1"></span>
+      <button class="iconbtn" data-act="close-search" title="Esc 关闭">×</button>
+    </div>`;
+  const tabs = `<div class="sb-tabs">
+      <button class="sb-tab ${s.tab==="literal"?"on":""}" data-act="tab-literal">字面搜索</button>
+      <button class="sb-tab ${s.tab==="semantic"?"on":""}" data-act="tab-semantic">语义搜索<span class="badge">分期 · 示意</span></button>
+      <span style="flex:1"></span>
+      <span style="font-size:10.5px;color:var(--app-text-3)">显示样式 ${state.variant} · 结果列表向下展开</span>
+    </div>`;
+  if (s.tab === "semantic"){
+    return `<div class="searchbar" id="searchBar"${styleAttr}>${grip}${tabs}
+      <div class="semantic-note" id="resultsMount"></div>
+      <div class="sb-foot"><span>功能三按裁定 10 分期，本期不实现 · 此处仅示意形态</span></div>
+      <div class="sb-resize" data-resize-handle title="拖动调整大小"></div>
+    </div>`;
+  }
+  return `<div class="searchbar" id="searchBar"${styleAttr}>${grip}
+    <div class="sb-row">
+      <span style="color:var(--app-text-3)">⌕</span>
+      <input class="sb-input" id="searchInput" data-model="query" placeholder="搜索当前文件…" value="${esc(s.query)}">
+      <span class="sb-count" id="hitCount">${s.query ? computeHits().length+" 处" : ""}</span>
+      <button class="sb-opt ${s.replaceMode?"on":""}" data-act="toggle-replace" title="搜索/替换切换">⇄ 替换</button>
+      <button class="iconbtn" data-act="close-search" title="Esc 关闭">×</button>
+    </div>
+    ${s.replaceMode ? `<div class="sb-replace">
+        <input class="sb-input" id="replaceInput" data-model="replace" placeholder="替换为…" value="${esc(s.replace)}">
+        <button class="btn sm" data-act="replace-one">逐个替换</button>
+        <button class="btn sm primary" data-act="replace-all">全部替换</button>
+      </div>` : ""}
+    ${tabs}
+    <div class="sb-dist" id="distMount" title="命中分布（点刻度跳转）"></div>
+    <div class="sb-results" id="resultsMount"></div>
+    <div class="sb-foot"><span>↑↓ 换选</span><span>⏎ 定位选中</span><span class="local-key">⌘1~9 直达（局部 · 浮窗内）</span><span>Esc 关闭</span></div>
+    <div class="sb-resize" data-resize-handle title="拖动调整大小"></div>
+  </div>`;
+}
+function renderDist(){
+  const m = document.getElementById("distMount");
+  if (!m) return;
+  if (state.search.tab !== "literal"){ m.innerHTML = ""; return; }
+  const hits = computeHits();
+  if (!state.search.query || !hits.length){ m.innerHTML = ""; return; }
+  const total = state.doc.length;
+  m.innerHTML = hits.map((h,i)=>{
+    const left = (((h.bi + 0.5) / total) * 100).toFixed(2);
+    return `<i class="${i===state.search.hitIndex?"cur":""}" data-act="locate" data-hit="${i}" style="left:${left}%" title="第 ${i+1} 处 · L${h.line}"></i>`;
+  }).join("");
+}
+function renderResults(){
+  const mount = document.getElementById("resultsMount");
+  if (!mount) return;
+  const s = state.search;
+  if (s.tab === "semantic"){
+    mount.className = "semantic-note";
+    mount.innerHTML = semanticTeaser();
+    return;
+  }
+  const hits = computeHits();
+  mount.className = "sb-results res-a";
+  const cnt = document.getElementById("hitCount");
+  if (cnt) cnt.textContent = s.query ? hits.length + " 处" : "";
+  if (!s.query){ mount.innerHTML = `<div class="sb-empty">输入关键词开始搜索当前文件</div>`; return; }
+  if (!hits.length){ mount.innerHTML = `<div class="sb-empty">没有找到「${esc(s.query)}」</div>`; return; }
+  /* 行尾固定快捷键（第九轮）：行 1~9 = ⌘1~⌘9；被选中的行改为显示 ⏎（Enter 定位选中行） */
+  const shortcutOf = i => i === s.hitIndex ? "⏎" : (i < 9 ? "⌘" + (i + 1) : "");
+  const rows = hits.map((h,i)=>{
+    const b = state.doc[h.bi];
+    const loc = `L${h.line} · ${BLOCK_LABEL[b.type]||"块"}`;
+    const snip = snippetOf(b, h);
+    const on = i === s.hitIndex ? "on" : "";
+    return `<div class="res-row ${on}" data-act="locate" data-hit="${i}" data-hover-hit="${i}">
+      <div class="res-main">
+        <div class="res-top"><span class="res-loc">${loc}</span><span>${i+1}/${hits.length}</span></div>
+        <div class="res-snip">${snip}</div>
+      </div>
+      <span class="res-key">${shortcutOf(i)}</span>
+    </div>`;
+  }).join("");
+  mount.innerHTML = rows;
+}
+function semanticTeaser(){
+  const hits = computeHits();
+  const q = state.search.query || "（输入 prompt）";
+  return `<span class="teaser-badge">功能三 · 分期实现 · 此处仅示意形态，未接 AI</span>
+    <div>对 prompt「<b>${esc(q)}</b>」做语义解析 → 当前文件内检索相关内容 → 展示 / 点击定位。</div>
+    <div class="teaser-card">
+      <h6>① AI 概括总结 + 命中片段汇编（裁定 9）</h6>
+      <div>文档内命中 ${hits.length} 处相关内容；每条片段带「来源文件 + 行号 / 块标题 + 可点击定位」引用。</div>
+    </div>
+    <div class="teaser-card">
+      <h6>② 一键生成 MD（保存到同目录，文件名防冲突 · 建议 D）</h6>
+      <div class="fm">---
+title: "语义摘要 · ${esc(q.slice(0,12))}"
+created: ${state.times.created}
+updated: ${state.times.updated}
+tags: [${state.tags.map(t=>`"${t}"`).join(", ")}]
+source: "当前文件.md"
+query: "${esc(q)}"
+generated_by: "semantic-search + 本地模型（默认优先）"
+---</div>
+      <div style="margin-top:6px;color:var(--app-text-3)">引用放正文，frontmatter 只存汇总级元数据；生成后打开新页签确认、可撤销；未配置 AI 时不生成空文件。</div>
+    </div>
+    <div style="margin-top:8px;color:var(--app-text-3)">模型：设置里配本地 / 远端 + 默认优先；优先不可用自动回退（裁定 7）。无密钥 / 离线降级，字面搜索始终可用。</div>`;
+}
+
+/* ── 设置浮层 ─────────────────────────────────────────── */
+function renderSettings(){
+  if (!state.settingsOpen) return "";
+  const seg = (act, opts, cur) => `<span class="seg">${opts.map(([v,l])=>`<button data-act="${act}" data-val="${v}" class="${cur===v?"on":""}">${l}</button>`).join("")}</span>`;
+  return `<div class="settings-pop" id="settingsPop">
+    <h5>设置（数据面 · 全局）</h5>
+    <div class="srow"><span>显示样式</span>${seg("variant",[["A","一行条"],["B","精排双列"]], state.variant)}</div>
+    <div class="srow"><span>搜索浮窗默认位置</span>${seg("set-searchpos",[["left","左侧"],["center","中间"],["right","右侧"]], state.searchPos)}</div>
+    <div class="srow"><span>新建默认显隐</span>${seg("set-global",[["show","显示"],["hide","隐藏"]], state.globalNewVisible?"show":"hide")}</div>
+    <div class="srow"><span>配色规则</span>${seg("set-color",[["hash","稳定哈希"],["sequential","顺序分配"]], state.colorRule)}</div>
+    <div class="srow"><span>新建默认字段</span><span style="color:var(--app-accent)">仅 标题 + 创建/修改日期</span></div>
+    <div class="srow"><span>字段类型（八类）</span><span>${TYPES.map(t=>t.icon).join(" ")}</span></div>
+    <div class="srow"><span>快捷键 · 全局</span><span>⌘F 搜索 · ⌘⇧Y 属性显隐 · ⌘K AI</span></div>
+    <div class="srow"><span>快捷键 · 局部（浮窗内）</span><span style="color:var(--app-accent)">⏎ 定位选中 · ⌘1~9 直达</span></div>
+    <div class="snote">快捷键分全局 / 局部：局部仅在其窗口激活时生效并优先于全局（⌘2~9 在浮窗内优先于卡片直开，关闭即归还）；设置快捷键页将重构为「全局 / 局部（标注生效条件）」分组。显示样式随时可切；浮窗默认位置三档。新建文档仅默认标题 + 时间，分类/作者/状态/来源按需添加。类型选择器 = 字段名前图标 + 图标文字菜单；字段名命中别称表时显示 canonical 名、落盘保留原键名。</div>
+    <div style="margin-top:8px;text-align:right"><button class="btn sm" data-act="toggle-settings">关闭</button></div>
+  </div>`;
+}
+
+/* ── 外壳渲染 ─────────────────────────────────────────── */
+function renderApp(){
+  const w = document.getElementById("appWindow");
+  w.className = "app-window " + state.theme;
+  const modeBtns = ["preview","edit","source"].map(m =>
+    `<button data-act="set-mode" data-val="${m}" class="${state.mode===m?"on":""}">${MODE_LABEL[m]}</button>`).join("");
+  w.innerHTML = `
+    <div class="titlebar">
+      <div class="traffic"><i></i><i></i><i></i></div>
+      <div class="tb-title"><b>标月</b> · ${esc(docTitle())}.md</div>
+      <div class="mode-switch">${modeBtns}</div>
+      <div class="tb-hint">原型 v13 · 三模式切换不 remount</div>
+    </div>
+    <div class="workspace">
+      <aside class="rail">
+        <h4>阅读空间</h4>
+        <div class="fitem on"><i class="dot"></i>设计说明.md</div>
+        <div class="fitem"><i class="dot"></i>架构现状.md</div>
+        <div class="fitem"><i class="dot"></i>需求基线.md</div>
+        <div class="fitem"><i class="dot"></i>设计系统规格.md</div>
+        <div class="sep"></div>
+        <h4>最近</h4>
+        <div class="fitem"><i class="dot"></i>PLAN.md</div>
+        <div class="fitem"><i class="dot"></i>CHANGELOG.md</div>
+      </aside>
+      <section class="main">
+        <div class="tabbar">
+          <div class="tab on" title="双击重命名（与标题字段联动）">${state.editTab
+            ? `<input class="field-input" id="editInput" data-commit="tabtitle" value="${esc(docTitle())}" style="width:200px">`
+            : `▤ ${esc(docTitle())}.md`}</div>
+          <div class="tab">架构现状.md</div>
+          <div class="spacer"></div>
+          <div class="tb-vis">
+            属性 <span class="kbd">${state.display==="hidden"?"已隐藏":DISPLAY_LABEL[state.display]}</span>
+            <button class="btn sm ghost" data-act="toggle-visible">⌘⇧Y 显隐</button>
+            <button class="btn sm ghost" data-act="open-search">⌘F 搜索</button>
+          </div>
+        </div>
+        <div class="content-area" id="contentArea">
+          <div class="doc-scroll" id="docScroll">
+            <div class="doc">
+              <div id="propMount"></div>
+              <div id="docMount"></div>
+            </div>
+          </div>
+          <div id="searchMount"></div>
+          ${renderSettings()}
+        </div>
+        <div class="status-bar" id="statusBar"></div>
+      </section>
+    </div>`;
+  document.getElementById("propMount").innerHTML = renderProp();
+  document.getElementById("searchMount").innerHTML = renderSearch();
+  renderDoc();
+  renderResults();
+  renderDist();
+  renderStatus();
+}
+function renderDoc(){
+  const el = document.getElementById("docMount");
+  if (!el) return;
+  if (state.mode === "source"){
+    el.innerHTML = `<div class="src-note">源码模式：frontmatter 保持原始 YAML 文本（字段名 / 类型 / 值改动的写回结果在这里核对）</div>
+      <pre class="source-view">${esc(yamlText() + "\n\n" + rawMarkdown())}</pre>`;
+    return;
+  }
+  const hits = computeHits();
+  el.innerHTML = state.doc.map((b,bi)=>{
+    if (b.type === "hr") return `<hr class="blk hr">`;
+    const hasHit = hits.some(h=>h.bi===bi);
+    const mine = hits.map((h,i)=>({...h,i})).filter(h=>h.bi===bi);
+    let inner;
+    if (!mine.length){ inner = esc(b.text); }
+    else {
+      let out = "", last = 0;
+      mine.forEach(h => {
+        out += esc(b.text.slice(last,h.from));
+        out += `<mark class="${h.i===state.search.hitIndex?"is-current":""}">${esc(h.text)}</mark>`;
+        last = h.to;
+      });
+      inner = out + esc(b.text.slice(last));
+    }
+    if (b.type === "ul"){
+      const items = inner.split("|").map(x=>`<div class="li"><span>${x}</span></div>`).join("");
+      return `<div class="blk ul ${hasHit?"blk-hit":""}">${items}</div>`;
+    }
+    const tag = { h1:"h1", h2:"h2", quote:"div", p:"p" }[b.type] || "p";
+    const cls = `blk ${b.type==="quote"?"quote":b.type} ${hasHit?"blk-hit":""}`;
+    return `<${tag} class="${cls}">${inner}</${tag}>`;
+  }).join("");
+}
+function renderStatus(){
+  const el = document.getElementById("statusBar");
+  if (!el) return;
+  const chars = state.doc.reduce((n,b)=>n+b.text.length,0);
+  el.innerHTML = `
+    <span>${chars} 字</span>
+    <span>模式 <span class="on">${MODE_LABEL[state.mode]}</span></span>
+    <span>属性 <span class="on">${DISPLAY_LABEL[state.display]}</span>${state.displayOrigin!=="用户"?`（${state.displayOrigin}）`:""}</span>
+    <span>样式 <span class="on">${state.variant} · ${VARIANTS.find(v=>v.key===state.variant).name}</span></span>
+    <span>🔒 创建/修改 自动托管</span>
+    <span style="margin-left:auto">字段 ${state.props.length} · 标签 ${state.tags.length}${state.sel.length?` · 已选 ${state.sel.length}`:""}</span>`;
+}
+
+/* ── 原型侧栏 ─────────────────────────────────────────── */
+function seg(act, opts, cur){
+  return `<span class="seg2">${opts.map(([v,l])=>`<button data-act="${act}" data-val="${v}" class="${cur===v?"on":""}">${l}</button>`).join("")}</span>`;
+}
+function renderAside(){
+  const a = document.getElementById("protoAside");
+  const s = state.search;
+  const hits = computeHits();
+  const tagLines = state.tags.map((t,i)=>{
+    const c = tagColor(t,i);
+    return `<span class="hl">${esc(t)}</span> → 0x${c.hash.toString(16)} → 色板[${c.i}] ${c.name}`;
+  }).join("<br>") || "（无）";
+  const propLines = state.props.map((p,i)=>
+    `${state.sel.includes(i)?"▣":""}${esc(p.key)}<span style="color:#75797f">[${typeIcon(p.type)}${typeLabel(p.type).split(" ")[0]}]</span>=<span class="hl">${esc(displayValue(p))}</span>`
+  ).join(" · ");
+  const sp = state.searchPanel;
+  a.innerHTML = `
+    <h2>原型控制台</h2>
+    <div class="pbadge">THROWAWAY · 一次性 · 不参与实现裁定</div>
+    <div class="q"><b>问题：</b>属性面板与搜索/替换浮窗，在预览 / 编辑 / 源码三模式下应该长什么样？<br>
+      v5 属性：类型图标<b>纯图标无边框</b>（日期 D / 日期时间 T / 列表 ☰）；<b>全选</b>按钮；列表值<b>点击即出 [[</b>；<b>单击空白取消选中</b>；行手柄多选/复制剪切粘贴/拖拽整块排序；新建默认仅 标题+时间。<br>
+      v7 搜索：去 Aa/ab（默认搜）+ 行尾固定快捷键（⏎ / ⌘2~9，第 10 行起仅滚动）；Enter 定位选中行。<br>
+      v8 搜索：结果改<b>双行</b>（L行号·块 + 两行上下文）+ 行尾快捷键保留；面板高 460。<br>
+      v8 属性：日期/时间图标换<b>日历/时钟 SVG</b>；B 标签行加图标；A 手柄移出胶囊外（无预留空白）；<b>标题 ↔ 页签联动</b>（双击页签可重命名）；长值自动切<b>多行文本域</b>；<b>字段别称表</b>（createdate→日期，显示归一、落盘保键）；快捷键分全局/局部。<br>
+      v9 搜索：定位行只写 <b>1/7</b>（去「第/处」）；快捷键 = 行 1~9 固定 <b>⌘1~⌘9</b>、<b>选中行显示 ⏎</b>（Enter 定位）；悬停全文卡<b>仅替换模式</b>弹出。<br>
+      v9 属性：标签输入<b>从已有标签建议选用</b>（改/新增都生效）；A 胶囊间距加大（手柄不再压删除键）；<b>长值两行截断</b>滑入显全部；B 预览态列位修复；操作条<b>改图标 + 🗑删除</b>；B 标签行图标 + 行尾删除。<br>
+      v10 属性：字段值<b>全类型双行截断</b>（A/B 都生效，滑入显全部）；<b>标签行加拖动手柄</b>（A/B，拖到任意字段行后）；<b>B 预览态显示类型图标</b>；工具按钮加图标（☑ 全选 / ▤ 模板 / ⌃⌄ 折叠展开）。<br>
+      v11 属性：标签 / [[ 列表建议菜单<b>键盘操作</b>（↑↓ 换选、⏎ 选用、⌘1~9 直选）；<b>全选不含标题位</b>；删除按钮点击指针；<b>B 多行文本修复两行截断</b>；底部统计 = 全部字段数。<br>
+      v12 属性：<b>字段名显示 = 输入原样</b>（中文显中文 / 英文显英文，别称表只做类型识别）；<b>B 标签行可手动选中</b>（可与字段行一起复制/剪切/删除）；建议菜单<b>选中行显示 ⏎</b>、其余 ⌘1~9；[[ 菜单行<b>不带 [[ 前缀</b>。<br>
+      v13 属性：<b>选择模式</b>——有选中项时整面板进入点选状态（滑入即选中提示、行内一切点击 = 选中/取消，A/B 统一含标题与标签）；数字<b>千分位显示</b>；修复标签行点击误清空选中。<br>
+      底部条或 <b>← →</b> 切显示样式；<b>?variant=</b> 可分享。</div>
+
+    <h3>控制</h3>
+    <div class="ctl-row"><label>显示样式</label>${seg("variant",[["A","A 一行条"],["B","B 精排双列"]], state.variant)}</div>
+    <div class="ctl-row"><label>模式</label>${seg("set-mode",[["preview","预览"],["edit","编辑"],["source","源码"]], state.mode)}</div>
+    <div class="ctl-row"><label>属性显示</label>${seg("display",[["expanded","展开"],["collapsed","折叠"],["hidden","隐藏"]], state.display)}</div>
+    <div class="ctl-row"><label>主题</label>${seg("theme",[["light","亮"],["dark","暗"],["warm","暖"]], state.theme)}</div>
+    <div class="ctl-row"><label>配色规则</label>${seg("set-color",[["hash","稳定哈希 ✅"],["sequential","顺序分配（对照）"]], state.colorRule)}</div>
+    <div class="ctl-row"><label>新建默认</label>${seg("set-global",[["show","显示"],["hide","隐藏"]], state.globalNewVisible?"show":"hide")}
+      <button class="btn sm" data-act="new-doc">新建文档</button>
+      <button class="btn sm" data-act="restore-demo">恢复示例字段</button></div>
+    <div class="ctl-row"><label>字段行操作</label>
+      <button class="btn sm" data-act="sel-all">全选</button>
+      <button class="btn sm" data-act="add-custom">+ 字段</button>
+      <button class="btn sm" data-act="ops-copy">复制选中</button>
+      <button class="btn sm" data-act="ops-cut">剪切选中</button>
+      <button class="btn sm" data-act="ops-paste">粘贴</button>
+      <button class="btn sm" data-act="ops-clear">取消选中</button></div>
+    <div class="ctl-row"><label>模板 / 外部</label>
+      <button class="btn sm" data-act="open-tpl-menu">套用模板</button>
+      <button class="btn sm" data-act="simulate-external">模拟外部文件</button></div>
+    <div class="ctl-row"><label>标签</label>
+      <button class="btn sm" data-act="add-tag">+ 标签</button>
+      <button class="btn sm" data-act="del-tag-last">− 删首位</button>
+      <button class="btn sm" data-act="toggle-settings">⚙ 设置</button></div>
+    <div class="ctl-row"><label>搜索</label>
+      <button class="btn sm" data-act="open-search">⌘F 打开</button>
+      <button class="btn sm" data-act="close-search">关闭</button>
+      <button class="btn sm" data-act="toggle-replace">⇄ 替换</button></div>
+
+    <h3>全量状态（每次操作后刷新）</h3>
+    <div class="state">
+      <div class="srow"><span class="k">显示样式</span><span class="v"><span class="hl">${state.variant} · ${VARIANTS.find(v=>v.key===state.variant).name}</span>　?variant=${state.variant}</span></div>
+      <div class="srow"><span class="k">模式 / 主题</span><span class="v">${MODE_LABEL[state.mode]} · ${state.theme}</span></div>
+      <div class="srow"><span class="k">属性显示态</span><span class="v">${DISPLAY_LABEL[state.display]}（来源：${state.displayOrigin}）</span></div>
+      <div class="srow"><span class="k">字段（键[类型]=值）</span><span class="v">${propLines}</span></div>
+      <div class="srow"><span class="k">已选 / 剪贴板</span><span class="v">${state.sel.length?state.sel.map(i=>i+1).join(",")+" 行":"（未选）"} · ${state.clipboard?state.clipboard.length+" 项":"（空）"}</span></div>
+      <div class="srow"><span class="k">自动托管 🔒</span><span class="v">created=${state.times.created} · updated=${state.times.updated}（只读，键名锁定）</span></div>
+      <div class="srow"><span class="k">标签 → 颜色</span><span class="v">${tagLines}</span></div>
+      <div class="srow"><span class="k">浮窗位置/尺寸</span><span class="v">${sp.x!=null?`x=${Math.round(sp.x)}, y=${Math.round(sp.y)}（已拖动）`:`默认${({left:"左侧",center:"中间",right:"右侧"}[state.searchPos])}`} · ${sp.w?Math.round(sp.w)+"×"+Math.round(sp.h):"默认 600×460"}</span></div>
+      <div class="srow"><span class="k">搜索</span><span class="v">${s.open?"打开":"关闭"} · ${s.tab==="literal"?"字面（默认搜）":"语义(示意)"} · query=<span class="hl">${esc(s.query)||"（空）"}</span></span></div>
+      <div class="srow"><span class="k">命中 / 当前</span><span class="v">${hits.length} 处 · 第 ${hits.length?Math.min(s.hitIndex+1,hits.length):0} 处</span></div>
+      <div class="srow"><span class="k">替换</span><span class="v">${s.replaceMode?"开":"关"} · 值=<span class="hl">${esc(s.replace)||"（空）"}</span> · 替换后自动跳下一处 ✅</span></div>
+      <div class="srow"><span class="k">最近动作</span><span class="v chg">${esc(state.lastAction)}</span></div>
+    </div>
+
+    <h3>已定行为对照（原型全部遵守）</h3>
+    <div class="decisions" id="decisionList"></div>
+
+    <h3>怎么玩（建议路径）</h3>
+    <div class="decisions">
+      <div>1. <b>编辑</b> 态：字段名前的<b>纯图标</b>点击 → 图标+文字菜单选八类（日期 D、日期时间 T、列表 ☰）；「相关文档」值区<b>点击即出 [[</b> 选文档。</div>
+      <div>2. <b>☑ 全选</b>或点<b>行手柄 ⠿</b>选中（可多选）；<b>单击空白区域</b>取消选中；拖动手柄排序，选中临近多行拖 = 整块移动；<b>标签行也有手柄</b>，拖到任意字段行后。</div>
+      <div>3. 选中后出<b>图标操作条</b>：⧉复制 ✂剪切 ⤵粘贴到所选行下方（键名自动去重）↑↓ 🗑删除 ×取消。</div>
+      <div>4. 点标签改/新增 / 列表值输入 <b>[[</b> → 建议菜单支持键盘：<b>↑↓ 换选、选中行显示 ⏎（Enter 选用）、⌘1~9 直选</b>；无匹配时 Enter 用输入值。「新建文档」只剩标题 + 创建/修改日期。</div>
+      <div>4b. 工具按钮带图标：☑ 全选（不含标题位）/ ▤ 模板 / ⌃ 折叠 ⌄ 展开 / ⚙ 设置；B 预览态每行前显示类型图标；底部统计为全部字段数；<b>B 标签行可手动选中</b>。</div>
+      <div>5. ⌘F 搜「的」→ 双行结果 + 行尾固定快捷键：行 1~9 = ⌘1~⌘9，选中行显示 ⏎（Enter 定位）；↑↓ 换选；⇄ 替换后悬停结果行看全文预览卡。</div>
+      <div>6. 「模拟外部文件」→ createdate/分类 识别为日期/下拉类型（<b>显示保持输入原样</b>）；source/priority 为 ? 待收编；「套用模板」只补缺失键。</div>
+      <div>7. <b>双击页签</b>重命名 → 标题字段联动；改标题 → 页签同步。</div>
+      <div>8. B 模式点「备注」长值 → 自动切多行文本域，Enter 换行、失焦提交；列表中长值<b>两行截断、滑入显示全部</b>；预览态切到 B 看字段列位是否正常。</div>
+      <div>9. 浮窗默认居中（设置可改左/中/右）；拖动 / 缩放；字段名改名切「源码」核对 YAML。</div>
+    </div>`;
+  const dl = document.getElementById("decisionList");
+  if (dl) dl.innerHTML = [
+    "预览只读 / 编辑默认展开可折叠 / 源码不动",
+    "显示样式 A 一行条 / B 精排双列，设置浮层可切",
+    "类型选择器 = 字段名前纯图标（无边框，Aa/123/D/T/▾/☑/◉/☰）+ 图标文字菜单（八类直选）",
+    "八类类型：文本/数字/日期/日期时间/下拉/复选/布尔/列表（点击值即出 [[ 文档链接）",
+    "字段行操作：全选、行手柄多选、图标操作条（⧉复制 ✂剪切 ⤵粘贴 ↑↓ 🗑删除 ×取消）、拖拽单行/整块排序、单击空白取消",
+    "新建文档默认仅 标题 + 创建/修改日期，其余按需添加",
+    "tags 可改名可增删、颜色不可手工改（稳定哈希自动渲染）",
+    "创建 / 修改日期自动托管、只读、键名锁定",
+    "字段名可编辑（改 YAML 键，冲突校验）",
+    "新建默认显隐 = 全局（不做模板/文件级覆盖）",
+    "⌘⇧Y 一键切换显隐，隐藏≠删除",
+    "搜索=V2 基础去开关：双行结果（定位行 1/7 + 两行上下文）+ 行尾固定快捷键 ⌘1-9、选中行显示 ⏎（Enter 定位）、分布条",
+    "悬停全文预览卡：仅替换模式显示（错替代价高）；普通搜索不弹（双行上下文已够）",
+    "浮层壳=V2：宽 600 居中（设置可改左/中/右）、可拖拽/缩放",
+    "tags 胶囊带标签形图标（描边 1.7）；B 标签行带图标 + 行尾删除；标签输入时从已有标签建议选用",
+    "长文本值默认两行截断，滑入显示全部（title 提示）；点击进入多行编辑",
+    "快捷键分全局 / 局部（生效上下文标注）；局部激活时优先于全局（⌘2-9 浮窗内）",
+    "日期/时间类型图标 = 日历 / 时钟 SVG（与字母类区分）",
+    "A 胶囊行手柄绝对定位左外侧，不占布局",
+    "标题 ↔ 页签文件名联动：标题改动同步页签，双击页签可重命名回写标题",
+    "长值：全类型默认两行截断、滑入显示全部，编辑超 40 字符自动切多行文本域（Enter 换行、失焦提交）",
+    "标签行带拖动手柄（A 胶囊组前 / B 行首列），拖到任意字段行后；B 预览态显示静态类型图标",
+    "工具按钮带图标：☑ 全选（不含标题位）/ ▤ 模板 / ⌃ 折叠 ⌄ 展开 / ⚙ 设置",
+    "建议菜单键盘操作：标签 / [[ 列表输入时 ↑↓ 换选、⏎ 选用、⌘1~9 直选（行尾显示快捷键）",
+    "字段删除按钮为点击指针；B 底部统计为全部字段数",
+    "字段别称表：仅用于类型识别（外部键自动识别），显示 = 输入原样（中文显中文 / 英文显英文），落盘即输入键名",
+    "B 标签行可手动选中（行空白/手柄点击），可与字段行一起复制 / 剪切 / 删除",
+    "建议菜单快捷键同搜索：↑↓ 换选、选中行显示 ⏎、其余 ⌘1~9；[[ 菜单行不带 [[ 前缀",
+    "选择模式：有选中项时行 hover 即选中提示、行内一切点击 = 选中/取消（A/B 统一，含标题与标签行）",
+    "数字字段千分位显示（仅显示层，落盘保持原值）",
+    "属性模板：应用级配置，套用=只合并缺失键不覆盖、单事务可撤销、文档不写模板标记",
+    "外部字段：未识别键以 ? 类型显示，点类型图标即收编（值按类型转换）",
+    "新建默认 = 标题（占位）+ 创建/修改日期；标题/默认不选中，编辑态经行手柄选中",
+    "悬停结果行 → 位置全文预览卡；替换模式 → 「原词 → 新词」diff",
+    "全部替换 / 逐个替换 + 替换后自动跳下一处",
+    "语义搜索仅当前文件、本地/远端 + 优先 + 回退（分期，示意）",
+  ].map(x=>`<div class="ok">✓ ${x}</div>`).join("");
+}
+
+/* ── 底部切换条 ───────────────────────────────────────── */
+function renderSwitcher(){
+  if (!IS_PROTOTYPE){ document.getElementById("switcherHost").style.display="none"; return; }
+  const cur = VARIANTS.find(v=>v.key===state.variant);
+  document.getElementById("switcherHost").innerHTML = `
+    <button data-act="cycle" data-delta="-1" title="上一个（←）">‹</button>
+    <div class="lab"><b>${cur.key}</b> · ${cur.name}<span class="param">显示样式 · ?variant=${cur.key} · ← → 切换</span></div>
+    <button data-act="cycle" data-delta="1" title="下一个（→）">›</button>`;
+}
+
+/* ── 焦点保持 ─────────────────────────────────────────── */
+function captureFocus(){
+  const a = document.activeElement;
+  if (!a || !a.id) return null;
+  const o = { id:a.id };
+  try { o.s=a.selectionStart; o.e=a.selectionEnd; } catch(e){}
+  return o;
+}
+function restoreFocus(f){
+  if (!f) return;
+  const el = document.getElementById(f.id);
+  if (!el) return;
+  el.focus();
+  if (f.s != null){ try { el.setSelectionRange(f.s,f.e); } catch(e){} }
+}
+function renderAll(){
+  const f = captureFocus();
+  renderApp();
+  renderAside();
+  renderSwitcher();
+  renderMenus();
+  restoreFocus(f);
+  scrollToCurrentHit();
+}
+function renderLight(){
+  renderDoc(); renderResults(); renderDist(); renderStatus(); renderAside();
+}
+function scrollToCurrentHit(){
+  const el = document.querySelector("mark.is-current");
+  if (el) el.scrollIntoView({ block:"center", behavior:"smooth" });
+}
+
+/* ── 弹出菜单：类型 / 文档链接 ────────────────────────── */
+function closeMenus(){ state.typeMenu = null; state.docLinkQ = null; state.tplMenu = null; renderMenus(); }
+function renderMenus(){
+  const tm = document.getElementById("typeMenu");
+  const dm = document.getElementById("docLinkMenu");
+  const pm = document.getElementById("tplMenu");
+  if (state.tplMenu){
+    pm.innerHTML = TEMPLATES.map((t,i)=>`<div class="tm-row" data-act="pick-template" data-tpl="${i}"><span class="tm-ico">☑</span>${esc(t.name)}<span style="margin-left:auto;color:var(--app-text-3);font-size:10px">${t.fields.length} 字段</span></div>`).join("");
+    pm.style.display = "block";
+    pm.style.left = Math.max(8, Math.min(innerWidth - 220, state.tplMenu.x)) + "px";
+    pm.style.top = Math.min(innerHeight - 200, state.tplMenu.y) + "px";
+  } else pm.style.display = "none";
+  if (state.typeMenu != null){
+    const btn = document.querySelector(`[data-act="open-type-menu"][data-idx="${state.typeMenu}"]`);
+    if (btn){
+      const p = state.props[state.typeMenu];
+      tm.innerHTML = PICKABLE.map(t=>`<div class="tm-row ${t.id===p.type?"cur":""}" data-act="pick-type" data-val="${t.id}"><span class="tm-ico">${t.icon}</span>${t.label}</div>`).join("");
+      const r = btn.getBoundingClientRect();
+      tm.style.display = "block";
+      tm.style.left = Math.max(8, r.left) + "px";
+      tm.style.top = Math.min(innerHeight - 240, r.bottom + 4) + "px";
+    } else { tm.style.display = "none"; }
+  } else tm.style.display = "none";
+  if (state.docLinkQ != null){
+    const inp = document.getElementById("editInput");
+    if (inp && state.docLinkQ.idx != null){
+      const q = (state.docLinkQ.q || "").trim();
+      const list = DOC_LIST.filter(d => !q || d.includes(q));
+      if (state.docSel >= list.length) state.docSel = 0;
+      dm.innerHTML = list.length
+        ? list.map((d,k)=>`<div class="tm-row ${k===state.docSel?"cur":""}" data-act="pick-doc" data-doc="${esc(d)}">${esc(d)}<span class="tm-key">${k===state.docSel?"⏎":"⌘"+(k+1)}</span></div>`).join("")
+        : `<div class="tm-row" style="color:var(--app-text-3)">没有匹配文档</div>`;
+      const r = inp.getBoundingClientRect();
+      dm.style.display = "block";
+      dm.style.left = Math.max(8, r.left) + "px";
+      dm.style.top = Math.min(innerHeight - 200, r.bottom + 4) + "px";
+    } else dm.style.display = "none";
+  } else dm.style.display = "none";
+  renderTagMenu();
+}
+/* 标签输入建议（第九轮；第十一轮：↑↓ 换选、Enter 选用，同搜索结果操作方式） */
+function renderTagMenu(){
+  const gm = document.getElementById("tagMenu");
+  if (!gm) return;
+  const ed = state.editing;
+  if (!ed || ed.part !== "tag" || state.tagQ == null){ gm.style.display = "none"; return; }
+  const q = String(state.tagQ).trim().toLowerCase();
+  const list = state.tags.filter(t => t.toLowerCase().includes(q)).slice(0, 8);
+  const inp = document.getElementById("editInput");
+  if (!inp){ gm.style.display = "none"; return; }
+  if (state.tagSel >= list.length) state.tagSel = 0;
+  gm.innerHTML = list.length
+    ? list.map((t,k)=>`<div class="tm-row ${k===state.tagSel?"cur":""}" data-act="pick-tag" data-val="${esc(t)}"><span class="tm-ico">${TAG_SVG}</span>${esc(t)}<span class="tm-key">${k===state.tagSel?"⏎":"⌘"+(k+1)}</span></div>`).join("")
+    : `<div class="tm-row" style="color:var(--app-text-3)">没有匹配的已有标签，Enter 用输入值新建</div>`;
+  gm.style.display = "block";
+  const r = inp.getBoundingClientRect();
+  gm.style.left = Math.max(8, r.left) + "px";
+  gm.style.top = Math.min(innerHeight - 200, r.bottom + 4) + "px";
+}
+/* 属性模板（第七轮 E4）：套用 = 只合并文档缺失的键，不覆盖已有值 */
+const TEMPLATES = [
+  { name:"通用", fields:[
+    { key:"category", type:"select", value:"设计", options:["设计","架构","交付"] },
+    { key:"author",   type:"text",   value:"" },
+    { key:"status",   type:"select", value:"草稿", options:["草稿","评审中","已定稿"] },
+  ]},
+  { name:"会议记录", fields:[
+    { key:"会议日期", type:"date", value:"" },
+    { key:"参会人",   type:"text", value:"" },
+    { key:"决议",     type:"text", value:"" },
+  ]},
+  { name:"需求", fields:[
+    { key:"status",   type:"select", value:"草稿", options:["草稿","评审中","已定稿"] },
+    { key:"优先级",   type:"select", value:"中", options:["高","中","低"] },
+    { key:"负责人",   type:"text", value:"" },
+  ]},
+];
+function applyTemplate(i){
+  const t = TEMPLATES[i]; if (!t) return;
+  let added = 0, skipped = 0;
+  t.fields.forEach(f => {
+    if (state.props.some(p => p.key === f.key)){ skipped++; return; }
+    state.props.push({ ...JSON.parse(JSON.stringify(f)), custom:true });
+    added++;
+  });
+  state.tplMenu = null;
+  state.times.updated = todayStamp();
+  state.lastAction = `套用模板「${t.name}」→ 新增 ${added} 个字段${skipped?`，跳过 ${skipped} 个已有键（不覆盖）`:""}（单事务、可撤销）`;
+  renderAll();
+}
+/* 外部来源文件：别称表用于**类型识别**（显示保持原键名，第十二轮），未命中才进「?」人工收编（E2） */
+function simulateExternal(){
+  const ext = [
+    { key:"source",   value:"网页剪藏" },
+    { key:"priority", value:"高" },
+    { key:"createdate", value:"2026-11-14" },
+    { key:"分类", value:"架构" },
+  ];
+  let added = 0, aliased = 0, unknown = 0, aliasEx = "";
+  ext.forEach(f => {
+    if (state.props.some(p => p.key === f.key)) return;
+    const canon = resolveAlias(f.key);
+    if (canon){ state.props.push({ key:f.key, type:CANON_TYPE[canon], value:f.value, custom:true }); aliased++; if (!aliasEx) aliasEx = `${f.key}→${typeLabel(CANON_TYPE[canon])}`; }
+    else { state.props.push({ key:f.key, type:"unknown", value:f.value, custom:true }); unknown++; }
+    added++;
+  });
+  state.lastAction = added
+    ? `模拟外部文件：载入 ${added} 个字段（别称识别类型 ${aliased} 个，如 ${aliasEx}，显示保持原键名；未识别 ${unknown} 个，点 ? 图标收编）`
+    : "外部字段已存在";
+  renderAll();
+}
+
+/* ── 悬停位置预览卡 ───────────────────────────────────── */
+function hideHoverCard(){
+  const c = document.getElementById("hoverCard");
+  if (c) c.style.display = "none";
+}
+function showHoverCard(i, ev){
+  const hits = computeHits();
+  const h = hits[i];
+  if (!h) return;
+  const b = state.doc[h.bi];
+  const card = document.getElementById("hoverCard");
+  const cs = getComputedStyle(document.getElementById("appWindow"));
+  card.style.background = cs.getPropertyValue("--app-surface").trim() || "#fff";
+  card.style.color = cs.getPropertyValue("--app-text").trim() || "#24262b";
+  card.style.borderColor = cs.getPropertyValue("--app-border-strong").trim() || "#999";
+  const loc = `L${h.line} · ${BLOCK_LABEL[b.type]||"块"}`;
+  const body = esc(b.text.slice(0,h.from)) + "<mark>" + esc(h.text) + "</mark>" + esc(b.text.slice(h.to));
+  card.innerHTML = `<div class="hc-head" style="color:${cs.getPropertyValue("--app-text-3").trim()}"><b>${loc}</b><span>悬浮预览 · 点击结果行定位</span></div><div class="hc-body">${body}</div>`;
+  card.style.display = "block";
+  const r = card.getBoundingClientRect();
+  let x = ev.clientX + 16, y = ev.clientY + 18;
+  if (x + r.width > innerWidth - 8) x = Math.max(8, ev.clientX - r.width - 16);
+  if (y + r.height > innerHeight - 8) y = Math.max(8, innerHeight - r.height - 8);
+  card.style.left = x + "px"; card.style.top = y + "px";
+}
+
+/* ── 浮窗拖拽 / 缩放 + 字段行 / 标签行拖拽排序 ────────── */
+let sbDrag = null, rowDrag = null, tagsDrag = null;
+document.addEventListener("pointerdown", e => {
+  const th = e.target.closest("[data-tags-handle]");
+  if (th && state.mode === "edit"){
+    tagsDrag = { sx:e.clientX, sy:e.clientY, started:false, overIdx:null };
+    e.preventDefault(); return;
+  }
+  const rh = e.target.closest("[data-row-handle]");
+  if (rh && state.mode === "edit"){
+    rowDrag = { sx:e.clientX, sy:e.clientY, idx:+rh.dataset.idx, started:false, overIdx:null };
+    e.preventDefault(); return;
+  }
+  const grip = e.target.closest("[data-drag-handle]");
+  if (grip && !e.target.closest("[data-act]")){
+    const bar = document.getElementById("searchBar");
+    const cr = document.getElementById("contentArea").getBoundingClientRect();
+    const r = bar.getBoundingClientRect();
+    sbDrag = { mode:"move", dx:e.clientX - r.left, dy:e.clientY - r.top, cr, bar };
+    e.preventDefault(); return;
+  }
+  const rz = e.target.closest("[data-resize-handle]");
+  if (rz){
+    const bar = document.getElementById("searchBar");
+    const r = bar.getBoundingClientRect();
+    sbDrag = { mode:"size", sx:e.clientX, sy:e.clientY, w:r.width, h:r.height, bar };
+    e.preventDefault();
+  }
+});
+document.addEventListener("pointermove", e => {
+  if (sbDrag){
+    if (sbDrag.mode === "move"){
+      const x = Math.min(Math.max(0, e.clientX - sbDrag.dx - sbDrag.cr.left), sbDrag.cr.width - 140);
+      const y = Math.min(Math.max(0, e.clientY - sbDrag.dy - sbDrag.cr.top), sbDrag.cr.height - 80);
+      sbDrag.bar.style.left = x + "px"; sbDrag.bar.style.top = y + "px"; sbDrag.bar.style.transform = "none";
+    } else {
+      const w = Math.min(Math.max(380, sbDrag.w + e.clientX - sbDrag.sx), 1600);
+      const h = Math.min(Math.max(240, sbDrag.h + e.clientY - sbDrag.sy), 1200);
+      sbDrag.bar.style.width = w + "px"; sbDrag.bar.style.height = h + "px";
+    }
+    return;
+  }
+  if (rowDrag){
+    if (!rowDrag.started){
+      if (Math.abs(e.clientY - rowDrag.sy) + Math.abs(e.clientX - rowDrag.sx) < 5) return;
+      rowDrag.started = true;
+      if (!state.sel.includes(rowDrag.idx)) state.sel = [rowDrag.idx];
+      renderAll();
+    }
+    const rows = [...document.querySelectorAll("[data-row-idx]")];
+    let over = state.props.length;
+    for (const rEl of rows){
+      const r = rEl.getBoundingClientRect();
+      if (e.clientY < r.top + r.height/2){ over = +rEl.dataset.rowIdx; break; }
+    }
+    rowDrag.overIdx = over;
+    rows.forEach(rEl => rEl.classList.toggle("drop-mark", +rEl.dataset.rowIdx === over));
+    return;
+  }
+  /* 标签行拖拽（第十轮）：移到任意字段行后 */
+  if (tagsDrag){
+    if (!tagsDrag.started){
+      if (Math.abs(e.clientY - tagsDrag.sy) + Math.abs(e.clientX - tagsDrag.sx) < 5) return;
+      tagsDrag.started = true;
+    }
+    const rows = [...document.querySelectorAll("[data-row-idx]")];
+    let over = state.props.length;
+    for (const rEl of rows){
+      const r = rEl.getBoundingClientRect();
+      if (e.clientY < r.top + r.height/2){ over = Math.max(0, +rEl.dataset.rowIdx); break; }
+    }
+    tagsDrag.overIdx = over;
+    rows.forEach(rEl => rEl.classList.toggle("drop-mark", +rEl.dataset.rowIdx === over));
+  }
+});
+document.addEventListener("pointerup", () => {
+  if (sbDrag){
+    if (sbDrag.mode === "move"){
+      const cr = document.getElementById("contentArea").getBoundingClientRect();
+      const r = sbDrag.bar.getBoundingClientRect();
+      state.searchPanel.x = r.left - cr.left;
+      state.searchPanel.y = r.top - cr.top;
+      state.lastAction = "浮窗已移动（会话内优先，改设置回默认）";
+    } else {
+      const r = sbDrag.bar.getBoundingClientRect();
+      state.searchPanel.w = r.width; state.searchPanel.h = r.height;
+      state.lastAction = `浮窗已调整大小 ${Math.round(r.width)}×${Math.round(r.height)}`;
+    }
+    sbDrag = null; renderAside(); return;
+  }
+  if (tagsDrag){
+    const d = tagsDrag; tagsDrag = null;
+    document.querySelectorAll("[data-row-idx].drop-mark").forEach(el => el.classList.remove("drop-mark"));
+    if (!d.started){ toggleTagsSel(); return; } /* 点手柄 = 选中/取消标签行 */
+    if (d.overIdx != null){
+      /* overIdx = 插入行号（落到该行之前）；tagsPos = 渲染在其前一行之后 */
+      const pos = Math.max(0, d.overIdx - 1);
+      if (pos !== state.tagsPos){
+        state.tagsPos = pos;
+        state.lastAction = `标签行移至第 ${pos + 1} 行后（tags 数据不变，仅显示位置）`;
+        renderAll();
+      }
+    }
+    return;
+  }
+  if (rowDrag){
+    const d = rowDrag; rowDrag = null;
+    if (!d.started){ toggleSel(d.idx); return; }
+    const b = selBlock();
+    if (b && d.overIdx != null && (d.overIdx < b.start || d.overIdx > b.end + 1)){
+      moveBlockTo(b.start, b.end - b.start + 1, d.overIdx);
+    } else { state.lastAction = "拖拽排序（位置未变）"; renderAll(); }
+  }
+});
+
+/* ── 字段行操作 ───────────────────────────────────────── */
+function toggleSel(i){
+  const k = state.sel.indexOf(i);
+  if (k >= 0) state.sel.splice(k,1); else { state.sel.push(i); state.sel.sort((x,y)=>x-y); }
+  state.lastAction = state.sel.length ? `选中字段行：${state.sel.map(n=>n+1).join(",")}（可多选 / 拖动整块）` : "取消选中";
+  renderAll();
+}
+function selBlock(){
+  const nums = state.sel.filter(x => x !== "tags");
+  if (!nums.length) return null;
+  for (let k=1;k<nums.length;k++) if (nums[k] !== nums[k-1]+1) return null;
+  return { start:nums[0], end:nums[nums.length-1] };
+}
+/* 标签行伪字段 "tags"：可与字段行一起复制/剪切/删除（第十二轮） */
+function toggleTagsSel(){
+  const k = state.sel.indexOf("tags");
+  if (k >= 0) state.sel.splice(k,1); else state.sel.push("tags");
+  state.lastAction = state.sel.includes("tags") ? "选中标签行（可与其他字段行一起复制 / 剪切 / 删除）" : "取消选中标签行";
+  renderAll();
+}
+function copySel(cut){
+  if (!state.sel.length){ state.lastAction = "先点行手柄选中字段"; renderAside(); return; }
+  const nums = state.sel.filter(x => x !== "tags");
+  state.clipboard = nums.map(i => JSON.parse(JSON.stringify(state.props[i])));
+  if (state.sel.includes("tags")) state.clipboard.push({ key:"tags", type:"multi", value:[...state.tags] });
+  if (cut){
+    [...nums].sort((a,b)=>b-a).forEach(i => state.props.splice(i,1));
+    if (state.sel.includes("tags")) state.tags = [];
+    state.sel = [];
+  }
+  state.lastAction = (cut ? "剪切 " : "复制 ") + state.clipboard.length + " 个字段到剪贴板" + (state.sel.includes("tags") ? "（含标签行）" : "");
+  renderAll();
+}
+function pasteSel(){
+  if (!state.clipboard || !state.clipboard.length){ state.lastAction = "剪贴板为空"; renderAside(); return; }
+  const nums = state.sel.filter(x => x !== "tags");
+  const at = nums.length ? nums[nums.length-1] + 1 : state.props.length;
+  const copies = state.clipboard.map(f => {
+    const c = JSON.parse(JSON.stringify(f)); c.custom = true;
+    while (state.props.some(p => p.key === c.key)) c.key += "2";
+    return c;
+  });
+  state.props.splice(at, 0, ...copies);
+  state.sel = copies.map((_,k) => at + k);
+  state.lastAction = `粘贴 ${copies.length} 个字段 → 插入到第 ${at+1} 行前（所选行下方）`;
+
+  renderAll();
+}
+/* 删除所选字段（第九轮：操作条新增删除；标题位不可删；标签行 = 清空 tags，第十二轮） */
+function delSel(){
+  const nums = state.sel.filter(x => x !== "tags" && x > 0);
+  const hasTags = state.sel.includes("tags");
+  if (!nums.length && !hasTags){ state.lastAction = "标题位不可删除"; renderAside(); return; }
+  const names = nums.map(i => state.props[i] && state.props[i].key).filter(Boolean);
+  state.props = state.props.filter((p,i) => !nums.includes(i));
+  if (hasTags) state.tags = [];
+  state.sel = [];
+  state.lastAction = `删除 ${nums.length + (hasTags?1:0)} 项（${names.join("、")}${hasTags ? (names.length?"、":"") + "标签行" : ""}）· 标题位保留`;
+  renderAll();
+}
+function moveSel(delta){
+  const b = selBlock();
+  if (!b){ state.lastAction = "先选中（临近多行可整块移动）"; renderAside(); return; }
+  const len = b.end - b.start + 1;
+  if (delta < 0 && b.start === 0) return;
+  if (delta > 0 && b.end === state.props.length - 1) return;
+  const chunk = state.props.splice(b.start, len);
+  const to = b.start + delta;
+  state.props.splice(to, 0, ...chunk);
+  state.sel = chunk.map((_,k) => to + k);
+  state.lastAction = `${delta<0?"上移":"下移"} ${len} 个字段`;
+  renderAll();
+}
+function moveBlockTo(start, len, toIdx){
+  const chunk = state.props.splice(start, len);
+  let to = toIdx > start ? toIdx - len : toIdx;
+  to = Math.max(0, Math.min(state.props.length, to));
+  state.props.splice(to, 0, ...chunk);
+  state.sel = chunk.map((_,k) => to + k);
+  state.lastAction = `拖拽排序 → 移到第 ${to+1} 行前`;
+  renderAll();
+}
+
+/* ── 动作 ─────────────────────────────────────────────── */
+function setVariant(k){
+  state.variant = k;
+  state.lastAction = "显示样式 → " + k + "（" + VARIANTS.find(v=>v.key===k).name + "）";
+  try { const u = new URL(location.href); u.searchParams.set("variant", k); history.replaceState(null,"",u); } catch(e){}
+  renderAll();
+}
+function cycle(delta){
+  const i = VARIANTS.findIndex(v=>v.key===state.variant);
+  setVariant(VARIANTS[(i+delta+VARIANTS.length)%VARIANTS.length].key);
+}
+function setMode(m){
+  state.mode = m; state.editing = null; state.sel = []; closeMenus();
+  state.lastAction = "切换模式 → " + MODE_LABEL[m] + "（状态保留，不 remount）";
+  renderAll();
+}
+function setDisplay(d, origin){
+  state.display = d; state.displayOrigin = origin || "用户";
+  state.lastAction = "属性显示态 → " + DISPLAY_LABEL[d] + "（" + state.displayOrigin + "）";
+  renderAll();
+}
+function toggleDisplay(){ setDisplay(state.display === "expanded" ? "collapsed" : "expanded"); }
+function toggleVisible(){ setDisplay(state.display === "hidden" ? "expanded" : "hidden", "⌘⇧Y"); }
+function newDoc(){
+  state.displayOrigin = "全局默认";
+  state.display = state.globalNewVisible ? "expanded" : "hidden";
+  state.props = [{ key:"title", type:"text", value:"未命名" }];
+  state.tags = []; state.sel = []; state.clipboard = null;
+  state.times = { created: todayStamp(), updated: todayStamp() };
+  state.search.query = ""; state.search.hitIndex = 0; state.search.open = false;
+  state.lastAction = "新建文档：默认仅 标题 + 创建/修改日期（分类/作者/状态/来源按需添加）";
+  renderAll();
+}
+function restoreDemo(){
+  state.props = demoProps(); state.sel = [];
+  state.tags = ["标月","设计系统","待评审"];
+  state.times = { created:"2026-11-15", updated:"2026-11-15" };
+  state.lastAction = "已恢复示例字段";
+  renderAll();
+}
+function applyType(idx, t){
+  const p = state.props[idx]; if (!p) return;
+  p.type = t;
+  if (t === "select" && !p.options) p.options = ["选项1","选项2"];
+  if (t === "multi"){ if (!p.options) p.options = ["选项1","选项2","选项3"]; if (!Array.isArray(p.value)) p.value = p.value ? [String(p.value)] : []; }
+  if (t === "doclist"){ if (!Array.isArray(p.value)) p.value = p.value ? [String(p.value)] : []; }
+  if (t === "bool") p.value = !!p.value;
+  if (Array.isArray(p.value) && t !== "multi" && t !== "doclist") p.value = p.value.join(" ");
+  state.lastAction = `字段「${p.key}」类型 → ${typeLabel(t)}（图标菜单直选）`;
+  renderAll();
+}
+function commitEdit(value){
+  const ed = state.editing;
+  if (!ed) return;
+  if (ed.part === "tabtitle"){
+    state.props[0].value = value;
+    state.lastAction = `页签重命名「${value}」→ 标题字段联动`;
+  } else if (ed.part === "tag"){
+    const old = state.tags[ed.idx];
+    state.tags[ed.idx] = value || old;
+    const c = tagColor(value || old, ed.idx);
+    state.lastAction = `标签改名「${old}」→「${value||old}」→ 颜色重算为 色板[${c.i}] ${c.name}`;
+  } else if (ed.part === "label"){
+    const p = state.props[ed.idx];
+    const nk = String(value).trim();
+    if (!nk){ state.lastAction = "字段名不能为空，已还原"; }
+    else if (nk !== p.key && state.props.some((q,i)=>i!==ed.idx && q.key===nk)){
+      state.lastAction = `字段名「${nk}」与已有键冲突，未修改`;
+    } else {
+      const old = p.key; p.key = nk;
+      state.lastAction = `字段名「${old}」→「${nk}」（YAML 键已改，切「源码」核对）`;
+    }
+  } else if (ed.part === "value"){
+    const p = state.props[ed.idx];
+    if (p.type === "number"){
+      const v = String(value).trim();
+      if (v !== "" && isNaN(Number(v))){ state.lastAction = `「${v}」不是合法数字，已还原（类型：数字）`; }
+      else { p.value = v; state.lastAction = `修改 ${p.key}（数字）→ ${v === "" ? "（空）" : v}`; }
+    } else {
+      p.value = value;
+      state.lastAction = `修改 ${p.key}（${typeLabel(p.type)}）→ ${value === "" ? "（空）" : value}`;
+    }
+  }
+  state.editing = null;
+  state.editTab = false;
+  state.tagQ = null;
+  state.times.updated = todayStamp();
+  renderAll();
+  renderTagMenu();
+}
+function addTag(){
+  state.tags.push("新标签" + (state.tags.length+1));
+  state.editing = { part:"tag", idx: state.tags.length-1 };
+  state.tagQ = ""; state.tagSel = 0;
+  state.lastAction = "新增标签：可输入关键字从已有标签里选（↑↓/⏎/⌘1-9），Enter 用输入值";
+  renderAll();
+  const el = document.getElementById("editInput"); if (el){ el.focus(); el.select(); }
+  renderTagMenu();
+}
+function delTag(i){
+  if (i == null) i = 0;
+  const removed = state.tags.splice(i,1)[0];
+  state.editing = null;
+  state.lastAction = `删除标签「${removed}」→ 其余标签颜色不变（稳定哈希）`;
+  renderAll();
+}
+function addCustom(){
+  state.props.push({ key:"字段"+(state.props.length), type:"text", value:"", custom:true });
+  state.editing = { part:"label", idx: state.props.length-1 };
+  state.lastAction = "新增字段：先改字段名，再点类型图标选类型";
+  renderAll();
+  const el = document.getElementById("editInput"); if (el){ el.focus(); el.select(); }
+}
+function openSearch(){
+  state.search.open = true;
+  state.lastAction = "打开搜索浮窗（⌘F）· 默认" + ({left:"左侧",center:"中间",right:"右侧"}[state.searchPos]) + "，可拖拽 / 缩放";
+  renderAll();
+  const el = document.getElementById("searchInput"); if (el) el.focus();
+}
+function closeSearch(){
+  state.search.open = false; hideHoverCard();
+  state.lastAction = "关闭搜索浮窗（Esc）"; renderAll();
+}
+function nextHit(delta){
+  const n = computeHits().length;
+  if (!n) return;
+  state.search.hitIndex = (state.search.hitIndex + delta + n) % n;
+  state.lastAction = "浏览命中 → 第 " + (state.search.hitIndex+1) + " 处";
+  renderLight(); scrollToCurrentHit();
+}
+function locate(i){
+  state.search.hitIndex = i;
+  hideHoverCard();
+  state.lastAction = "点击定位 → 第 " + (i+1) + " 处（滚动 + 高亮）";
+  renderLight(); scrollToCurrentHit();
+}
+function replaceOne(){
+  const hits = computeHits();
+  if (!hits.length) return;
+  const h = hits[Math.min(state.search.hitIndex, hits.length-1)];
+  const b = state.doc[h.bi];
+  b.text = b.text.slice(0,h.from) + state.search.replace + b.text.slice(h.to);
+  state.times.updated = todayStamp();
+  const after = computeHits().length;
+  state.search.hitIndex = after ? Math.min(state.search.hitIndex, after-1) : 0;
+  state.lastAction = "逐个替换 1 处 → 自动跳到下一处（剩余 " + after + " 处）· 修改日期自动刷新";
+  renderAll();
+}
+function replaceAll(){
+  const hits = computeHits();
+  if (!hits.length) return;
+  const q = state.search.query, r = state.search.replace;
+  let count = 0;
+  try {
+    const re = new RegExp(escRe(q), "gi");
+    state.doc.forEach(b => {
+      if (!b.text) return;
+      b.text = b.text.replace(re, () => { count++; return r; });
+    });
+  } catch(e){ return; }
+  state.times.updated = todayStamp(); state.search.hitIndex = 0;
+  state.lastAction = "全部替换 " + count + " 处（单事务、可撤销）· 修改日期自动刷新";
+  renderAll();
+}
+
+/* ── 事件委托 ─────────────────────────────────────────── */
+document.addEventListener("click", e => {
+  /* 选择模式（第十三轮）：有选中项时，行内一切点击 = 选中/取消选中（字段内的选项和值均为非编辑状态） */
+  if (state.mode === "edit" && state.sel.length){
+    const tagRow = e.target.closest('[data-act="tags-toggle"]');
+    const rowEl = e.target.closest("[data-row-idx]");
+    if (rowEl){ toggleSel(+rowEl.dataset.rowIdx); return; }
+    if (tagRow){ toggleTagsSel(); return; }
+  }
+  /* 单击行外空白区域 → 取消行选中（第五轮；第十三轮：标签行不算空白，点击 = 选中/取消） */
+  if (state.sel.length && !e.target.closest("[data-row-idx]") && !e.target.closest('[data-act="tags-toggle"]') && !e.target.closest(".ops-bar") && !e.target.closest('[data-act^="ops-"]')){
+    state.sel = []; renderAll();
+  }
+  if (state.typeMenu != null && !e.target.closest("#typeMenu") && !e.target.closest('[data-act="open-type-menu"]')){ state.typeMenu = null; renderMenus(); }
+  if (state.docLinkQ != null && !e.target.closest("#docLinkMenu") && !e.target.closest('[data-model="doclink"]')){ state.docLinkQ = null; renderMenus(); }
+  if (state.tplMenu && !e.target.closest("#tplMenu") && !e.target.closest('[data-act="open-tpl-menu"]')){ state.tplMenu = null; renderMenus(); }
+  if (state.tagQ != null && !e.target.closest("#tagMenu") && e.target.id !== "editInput"){ state.tagQ = null; renderTagMenu(); }
+  const el = e.target.closest("[data-act]");
+  if (!el) return;
+  const act = el.dataset.act, val = el.dataset.val, i = el.dataset.index != null ? +el.dataset.index : null;
+  const idx = el.dataset.idx != null ? +el.dataset.idx : null;
+  switch(act){
+    case "cycle": cycle(+el.dataset.delta); break;
+    case "variant": setVariant(val); break;
+    case "set-mode": setMode(val); break;
+    case "display": setDisplay(val); break;
+    case "theme": state.theme=val; state.lastAction="切换主题 → "+val+"（检查彩色书签对比度）"; renderAll(); break;
+    case "set-color": state.colorRule=val; state.lastAction="配色规则 → "+(val==="hash"?"稳定哈希（同名同色）":"顺序分配（对照：增删会漂移）"); renderAll(); break;
+    case "set-global": state.globalNewVisible = val==="show"; state.lastAction="全局「新建默认显隐」→ "+(val==="show"?"显示":"隐藏"); renderAll(); break;
+    case "set-searchpos":
+      state.searchPos = val;
+      state.searchPanel.x = null; state.searchPanel.y = null;
+      state.lastAction = "搜索浮窗默认位置 → " + ({left:"左侧",center:"中间",right:"右侧"}[val]);
+      renderAll(); break;
+    case "new-doc": newDoc(); break;
+    case "restore-demo": restoreDemo(); break;
+    case "toggle-display": toggleDisplay(); break;
+    case "toggle-visible": toggleVisible(); break;
+    case "toggle-settings": state.settingsOpen=!state.settingsOpen; state.lastAction=state.settingsOpen?"打开设置浮层":"关闭设置浮层"; renderAll(); break;
+    case "open-type-menu":
+      state.typeMenu = (state.typeMenu === idx) ? null : idx;
+      renderMenus(); break;
+    case "pick-type":
+      if (state.typeMenu != null){ applyType(state.typeMenu, val); state.typeMenu = null; }
+      break;
+    case "toggle-multi":
+      { const p = state.props[idx]; if (!p) break;
+        const o = el.dataset.opt; const a = p.value || [];
+        p.value = a.includes(o) ? a.filter(x=>x!==o) : [...a, o];
+        state.times.updated = todayStamp();
+        state.lastAction = `${p.key}（复选）→ ${p.value.join("、")||"（空）"}`;
+        renderAll(); }
+      break;
+    case "del-doc":
+      { const p = state.props[idx]; if (!p) break;
+        p.value = (p.value||[]).filter((_,k)=>k!==+el.dataset.k);
+        state.lastAction = `移除文档链接`;
+        renderAll(); }
+      break;
+    case "pick-doc":
+      { if (state.docLinkQ == null) break;
+        const p = state.props[state.docLinkQ.idx];
+        if (p){ p.value = [...(p.value||[]), el.dataset.doc];
+          state.times.updated = todayStamp();
+          state.lastAction = `${p.key}（列表）+ 链接「${el.dataset.doc}」`; }
+        state.docLinkQ = null; renderAll(); }
+      break;
+    case "edit-label":
+      if (state.mode!=="edit"){ state.lastAction="预览态只读：不能修改"; renderAside(); break; }
+      closeMenus();
+      state.editing={part:"label",idx}; state.lastAction="编辑字段名（YAML 键）"; renderAll();
+      { const x=document.getElementById("editInput"); if(x){x.focus();x.select();} }
+      break;
+    case "edit-value":
+      if (state.mode!=="edit"){ state.lastAction="预览态只读：不能修改"; renderAside(); break; }
+      closeMenus();
+      state.editing={part:"value",idx};
+      if (state.props[idx] && state.props[idx].type==="doclist") state.docLinkQ = { idx, q:"" };
+      state.lastAction="编辑值（编辑器按类型渲染）"; renderAll();
+      { const x=document.getElementById("editInput"); if(x){ if(x.focus)x.focus(); if(x.select)x.select(); } }
+      break;
+    case "rename-tag":
+      if (state.mode!=="edit"){ state.lastAction="预览态只读：标签不可改名"; renderAside(); break; }
+      state.editing={part:"tag",idx:i}; state.tagQ=""; state.tagSel=0; state.lastAction="改标签名：可输入关键字从已有标签里选（↑↓/⏎/⌘1-9）"; renderAll();
+      { const x=document.getElementById("editInput"); if(x){x.focus();x.select();} }
+      renderTagMenu();
+      break;
+    case "del-tag": delTag(i); break;
+    case "del-tag-last": delTag(0); break;
+    case "add-tag": addTag(); break;
+    case "pick-tag": state.tagQ = null; commitEdit(el.dataset.val); break;
+    case "del-tags":
+      { const n = state.tags.length; state.tags = []; state.editing = null; state.tagQ = null;
+        state.lastAction = `清空标签字段（原 ${n} 个标签）· tags 键保留为空数组`; renderAll(); }
+      break;
+    case "add-custom": addCustom(); break;
+    case "del-prop":
+      if (idx === 0){ state.lastAction="标题位不可删除"; renderAside(); break; }
+      { const p = state.props[idx]; state.props.splice(idx,1);
+        state.sel = state.sel.map(n=>n>idx?n-1:n).filter(n=>n!==idx);
+        state.editing=null;
+        state.lastAction=`删除字段「${p?p.key:""}」`; renderAll(); }
+      break;
+    case "row-toggle":
+      /* 行手柄的选中/取消由 pointerup 处理，这里只响应行空白区点击 */
+      if (!e.target.closest("[data-row-handle]") && state.mode === "edit") toggleSel(idx);
+      break;
+    case "tags-toggle":
+      /* 行手柄的选中/取消由 pointerup 处理（第十二轮：标签行可选中） */
+      if (!e.target.closest("[data-tags-handle]") && !e.target.closest(".tag") && !e.target.closest(".pa-add") && state.mode === "edit") toggleTagsSel();
+      break;
+    case "sel-all":
+      /* 全选排除标题位（idx 0）与标签行——第十一轮：默认不选标题/标签，可手动再选 */
+      state.sel = state.props.map((_,k)=>k).filter(k=>k>0);
+      state.lastAction = `全选字段（${state.sel.length} 行，标题位不含）· 标题/标签可手动再选`;
+      renderAll(); break;
+    case "open-tpl-menu":
+      state.tplMenu = state.tplMenu ? null : { x: e.clientX, y: e.clientY };
+      state.lastAction = state.tplMenu ? "打开属性模板菜单（套用 = 只合并缺失键）" : "关闭模板菜单";
+      renderAll(); break;
+    case "pick-template": applyTemplate(+el.dataset.tpl); break;
+    case "simulate-external": simulateExternal(); break;
+    case "ops-copy": copySel(false); break;
+    case "ops-cut": copySel(true); break;
+    case "ops-paste": pasteSel(); break;
+    case "ops-del": delSel(); break;
+    case "ops-up": moveSel(-1); break;
+    case "ops-down": moveSel(1); break;
+    case "ops-clear": state.sel=[]; state.lastAction="取消选中"; renderAll(); break;
+    case "toggle-bool":
+      { const p = state.props[idx]; if (!p) break;
+        p.value = !p.value; state.times.updated = todayStamp();
+        state.lastAction=`${p.key}（布尔）→ ${p.value?"开":"关"}`;
+        renderAll(); }
+      break;
+    case "open-search": openSearch(); break;
+    case "close-search": closeSearch(); break;
+    case "toggle-replace": state.search.replaceMode=!state.search.replaceMode; state.lastAction=state.search.replaceMode?"展开替换行（结果附「原词 → 新词」）":"收起替换行"; renderAll(); break;
+    case "opt-case": state.search.caseSensitive=!state.search.caseSensitive; state.lastAction="大小写敏感 "+(state.search.caseSensitive?"开":"关"); renderAll(); break;
+    case "opt-word": state.search.wholeWord=!state.search.wholeWord; state.lastAction="整词 "+(state.search.wholeWord?"开":"关"); renderAll(); break;
+    case "tab": state.search.tab=val; state.lastAction="搜索页 → "+(val==="literal"?"字面":"语义(分期示意)"); renderAll(); break;
+    case "tab-literal": state.search.tab="literal"; state.lastAction="搜索页 → 字面"; renderAll(); break;
+    case "tab-semantic": state.search.tab="semantic"; state.lastAction="搜索页 → 语义（分期示意）"; renderAll(); break;
+    case "locate": locate(+el.dataset.hit); break;
+    case "replace-one": replaceOne(); break;
+    case "replace-all": replaceAll(); break;
+  }
+});
+/* 输入：局部刷新，不重绘输入框 */
+document.addEventListener("input", e => {
+  const m = e.target.dataset.model;
+  if (m === "query"){
+    state.search.query = e.target.value; state.search.hitIndex = 0;
+    state.lastAction = "输入搜索词「" + e.target.value + "」";
+    renderLight();
+  } else if (m === "replace"){
+    state.search.replace = e.target.value;
+    state.lastAction = "输入替换值「" + e.target.value + "」";
+    renderLight();
+  } else if (m === "doclink"){
+    const v = e.target.value;
+    const k = v.lastIndexOf("[[");
+    state.docLinkQ = { idx:+e.target.dataset.idx, q: k>=0 ? v.slice(k+2) : null };
+    state.docSel = 0;
+    renderMenus();
+  } else if (e.target.id === "editInput" && e.target.dataset.commit === "tag"){
+    state.tagQ = e.target.value;
+    state.tagSel = 0;
+    renderTagMenu();
+  }
+});
+/* 提交编辑 / 键盘 */
+document.addEventListener("keydown", e => {
+  const c = e.target.dataset ? e.target.dataset.commit : null;
+  if (e.key === "Enter" && e.target.dataset.model === "doclink"){
+    e.preventDefault();
+    const q = (state.docLinkQ && state.docLinkQ.q || "").trim();
+    const list = DOC_LIST.filter(d => !q || d.includes(q));
+    const hit = list[state.docSel] || list[0];
+    if (hit){
+      const p = state.props[state.docLinkQ.idx];
+      p.value = [...(p.value||[]), hit];
+      state.docLinkQ = { idx: state.docLinkQ.idx, q: "" };
+      state.docSel = 0;
+      e.target.value = "[[";
+      state.lastAction = `${p.key}（列表）+ 链接「${hit}」`;
+      renderMenus(); renderAside();
+    }
+    return;
+  }
+  /* 建议菜单键盘操作（第十一轮）：↑↓ 换选、Enter 选用——同搜索结果操作方式 */
+  if ((e.key === "ArrowDown" || e.key === "ArrowUp") && e.target.id === "editInput" && state.editing && state.editing.part === "tag" && state.tagQ != null){
+    e.preventDefault();
+    const q = String(state.tagQ).trim().toLowerCase();
+    const list = state.tags.filter(x => x.toLowerCase().includes(q)).slice(0, 8);
+    if (list.length){
+      state.tagSel = (state.tagSel + (e.key === "ArrowDown" ? 1 : -1) + list.length) % list.length;
+      renderTagMenu();
+    }
+    return;
+  }
+  if ((e.key === "ArrowDown" || e.key === "ArrowUp") && e.target.dataset.model === "doclink"){
+    e.preventDefault();
+    const q = (state.docLinkQ && state.docLinkQ.q || "").trim();
+    const list = DOC_LIST.filter(d => !q || d.includes(q));
+    if (list.length){
+      state.docSel = (state.docSel + (e.key === "ArrowDown" ? 1 : -1) + list.length) % list.length;
+      renderMenus();
+    }
+    return;
+  }
+  if (e.key === "Enter" && e.target.dataset.commit === "tag"){
+    e.preventDefault();
+    const q = String(state.tagQ || "").trim().toLowerCase();
+    const list = state.tags.filter(x => x.toLowerCase().includes(q)).slice(0, 8);
+    commitEdit(list.length ? (list[state.tagSel] || list[0]) : e.target.value);
+    return;
+  }
+  if (e.key === "Enter" && c && e.target.tagName !== "TEXTAREA"){ e.preventDefault(); commitEdit(e.target.value); return; }
+  if (e.key === "Escape" && (c || e.target.dataset.model === "doclink")){ state.editing=null; state.docLinkQ=null; state.tagQ=null; renderAll(); renderTagMenu(); return; }
+  if (e.key === "Enter" && e.target.id === "searchInput"){ e.preventDefault(); if (computeHits().length) locate(state.search.hitIndex); return; }
+  if ((e.key === "ArrowDown" || e.key === "ArrowUp") && e.target.id === "searchInput"){ e.preventDefault(); nextHit(e.key==="ArrowDown"?1:-1); return; }
+  /* 建议菜单 ⌘/Ctrl+1~9 直选用（第十一轮，同搜索结果操作方式；浮窗打开时仍让位给搜索直达） */
+  if ((e.metaKey || e.ctrlKey) && /^[1-9]$/.test(e.key) && !state.search.open){
+    const n = +e.key - 1;
+    if (state.editing && state.editing.part === "tag" && state.tagQ != null && e.target.id === "editInput"){
+      const q = String(state.tagQ).trim().toLowerCase();
+      const list = state.tags.filter(x => x.toLowerCase().includes(q)).slice(0, 8);
+      if (n < list.length){ e.preventDefault(); commitEdit(list[n]); }
+      return;
+    }
+    if (e.target.dataset.model === "doclink"){
+      const q = (state.docLinkQ && state.docLinkQ.q || "").trim();
+      const list = DOC_LIST.filter(d => !q || d.includes(q));
+      if (n < list.length){
+        e.preventDefault();
+        const p = state.props[state.docLinkQ.idx];
+        if (p){ p.value = [...(p.value||[]), list[n]]; state.times.updated = todayStamp();
+          state.lastAction = `${p.key}（列表）+ 链接「${list[n]}」`; }
+        state.docLinkQ = null; state.docSel = 0; renderAll();
+      }
+      return;
+    }
+  }
+  /* 行尾固定快捷键：⌘/Ctrl+1~9 直达对应结果（选中行 = Enter；第九轮） */
+  if ((e.metaKey || e.ctrlKey) && /^[1-9]$/.test(e.key) && state.search.open && state.search.tab === "literal"){
+    const n = +e.key - 1;
+    if (n < computeHits().length){ e.preventDefault(); state.search.hitIndex = n; locate(n); }
+    return;
+  }
+}, true);
+document.addEventListener("change", e => {
+  const t = e.target;
+  if (t.dataset.commit){ commitEdit(t.value); return; }
+});
+/* 双击页签重命名 → 与标题字段联动（第八轮） */
+document.addEventListener("dblclick", e => {
+  if (e.target.closest(".tabbar .tab.on") && state.mode !== "preview"){
+    state.editTab = true;
+    state.editing = { part:"tabtitle" };
+    renderAll();
+    const x = document.getElementById("editInput"); if (x){ x.focus(); x.select(); }
+  }
+});
+/* 悬停预览（第九轮评估后收敛）：仅替换模式下显示——错替代价高、需要看全块再确认；
+   普通搜索不弹（双行上下文已够定位判断，点击定位零成本，浮卡反而遮挡）。 */
+document.addEventListener("mouseover", e => {
+  const row = e.target.closest("[data-hover-hit]");
+  if (row && state.search.open && state.search.tab === "literal" && state.search.replaceMode) showHoverCard(+row.dataset.hoverHit, e);
+  else hideHoverCard();
+});
+document.addEventListener("mouseout", e => {
+  if (e.target.closest && e.target.closest("[data-hover-hit]")) hideHoverCard();
+});
+/* 全局键盘 */
+document.addEventListener("keydown", e => {
+  const meta = e.metaKey || e.ctrlKey;
+  if (meta && e.shiftKey && e.key.toLowerCase() === "y"){ e.preventDefault(); toggleVisible(); return; }
+  if (meta && e.key.toLowerCase() === "f"){
+    e.preventDefault();
+    if (state.search.open) closeSearch(); else openSearch();
+    return;
+  }
+  if (e.key === "Escape"){
+    if (state.typeMenu != null || state.docLinkQ != null){ closeMenus(); return; }
+    if (state.settingsOpen){ state.settingsOpen=false; renderAll(); return; }
+    if (state.search.open){ closeSearch(); return; }
+  }
+  if ((e.key === "ArrowLeft" || e.key === "ArrowRight") && !isEditableTarget(e.target)){
+    e.preventDefault(); cycle(e.key === "ArrowRight" ? 1 : -1);
+  }
+});
+
+/* ── 启动 ─────────────────────────────────────────────── */
+(function boot(){
+  try {
+    const v = (new URL(location.href).searchParams.get("variant") || "A").toUpperCase();
+    if (VARIANTS.some(x=>x.key===v)) state.variant = v;
+  } catch(e){}
+  renderAll();
+})();
+</script>
+</body>
+</html>

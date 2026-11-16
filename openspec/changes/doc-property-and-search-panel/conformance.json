@@ -1,0 +1,347 @@
+{
+  "change": "doc-property-and-search-panel",
+  "requirements": [
+    {
+      "id": "R-1",
+      "text": "P-1 面板落位与三模式",
+      "anchors": [
+        {
+          "id": "A-1.1",
+          "claim": "三模式往返",
+          "kind": "state-machine",
+          "assert": "打开含 frontmatter 文档依次切换到 预览→编辑→源码：面板分别变为只读渲染/展开可折叠/不渲染，切回后面板数据与选中状态无残留丢失",
+          "source": "prototype#面板三模式"
+        },
+        {
+          "id": "A-1.2",
+          "claim": "面板位于内容区顶部正文上方",
+          "kind": "perceptual",
+          "assert": "打开含 frontmatter 文档，正文上方出现带字段行与标签的属性面板（B 态字段行 5 列网格 16/30/92/1fr/18px 对齐）",
+          "source": "baseline/panel-a-edit.png"
+        }
+      ]
+    },
+    {
+      "id": "R-2",
+      "text": "P-2 显示样式两态与显隐配置",
+      "anchors": [
+        {
+          "id": "A-2.1",
+          "claim": "样式切换即时生效",
+          "kind": "exact",
+          "assert": "设置把样式从 A 切换到 B：面板立即变为 B 双列形态，字段内容与顺序不变",
+          "source": "prototype#A/B两态"
+        },
+        {
+          "id": "A-2.2",
+          "claim": "⌘⇧Y 显隐",
+          "kind": "exact",
+          "assert": "按 ⌘⇧Y 面板隐藏并显示恢复提示，再按恢复；不修改文档内容",
+          "source": "决策#建议C"
+        },
+        {
+          "id": "A-2.3",
+          "claim": "B 态 5 列网格",
+          "kind": "perceptual",
+          "assert": "B 态每行 5 列网格对齐：手柄 16px / 类型 30px / 名称 92px / 值 1fr / 删除 18px",
+          "source": "baseline/panel-b-edit.png"
+        }
+      ]
+    },
+    {
+      "id": "R-3",
+      "text": "P-3 字段类型系统与智能编辑",
+      "anchors": [
+        {
+          "id": "A-3.1",
+          "claim": "数字千分位仅显示层",
+          "kind": "exact",
+          "assert": "值 1234567 显示 `1,234,567`，编辑器与 YAML 源码保持 `1234567`",
+          "source": "prototype#千分位"
+        },
+        {
+          "id": "A-3.2",
+          "claim": "类型切换编辑器随变",
+          "kind": "state-machine",
+          "assert": "字段类型从文本切换到日期：编辑器变为日期选择器，源码写回 YAML 日期字面量",
+          "source": "prototype#类型菜单"
+        },
+        {
+          "id": "A-3.3",
+          "claim": "[[ 文档链接",
+          "kind": "exact",
+          "assert": "列表字段输入 `[[` 弹文档菜单，行只显示文档名；选中文档后值列表新增 1 个「[[文档名]]」chip 且可移除（1 chip = 1 条链接）",
+          "source": "prototype#[[菜单"
+        }
+      ]
+    },
+    {
+      "id": "R-4",
+      "text": "P-4 字段行操作与选择模式",
+      "anchors": [
+        {
+          "id": "A-4.1",
+          "claim": "选择模式统一行为",
+          "kind": "state-machine",
+          "assert": "选中集非空 → 行内一切点击（值/选项/类型图标/删除键）变为选中/取消且不进编辑；单击行外空白清空选中",
+          "source": "prototype#选择模式"
+        },
+        {
+          "id": "A-4.2",
+          "claim": "粘贴键名去重",
+          "kind": "exact",
+          "assert": "复制 2 行粘贴到已有同名键处，粘贴行键名追加序号（如 `author-2`）",
+          "source": "prototype#行操作"
+        },
+        {
+          "id": "A-4.3",
+          "claim": "整块移动",
+          "kind": "state-machine",
+          "assert": "选中临近 3 行拖动任一行手柄，3 行整块迁移到落点、行内相对顺序不变",
+          "source": "prototype#拖拽排序"
+        }
+      ]
+    },
+    {
+      "id": "R-5",
+      "text": "P-5 标签彩色胶囊与建议输入",
+      "anchors": [
+        {
+          "id": "A-5.1",
+          "claim": "稳定哈希配色",
+          "kind": "exact",
+          "assert": "删除标签列表中间的 1 个标签，其余标签色值严格等于原色（哈希按名不按位）",
+          "source": "prototype#彩色胶囊"
+        },
+        {
+          "id": "A-5.2",
+          "claim": "建议菜单键盘选用",
+          "kind": "state-machine",
+          "assert": "输入关键字弹已有标签建议菜单：↑↓ 换选，选中行行尾显示 \"⏎\" 其余显示 \"⌘1~⌘9\"，⏎ 选用，无匹配 Enter 新建",
+          "source": "prototype#标签建议"
+        }
+      ]
+    },
+    {
+      "id": "R-6",
+      "text": "P-6 字段名编辑与别称识别",
+      "anchors": [
+        {
+          "id": "A-6.1",
+          "claim": "输入原样显示",
+          "kind": "exact",
+          "assert": "字段改名为 priority 后面板显示 \"priority\"，YAML 键同步为 \"priority\"（显示不含归一化改写）",
+          "source": "决策#第十二轮属1"
+        },
+        {
+          "id": "A-6.2",
+          "claim": "外部键类型识别",
+          "kind": "exact",
+          "assert": "打开含 `createdate: 2026-11-14` 的文件自动识别为日期类型（日历图标），显示名保持 `createdate` 原样",
+          "source": "prototype#别称表"
+        },
+        {
+          "id": "A-6.3",
+          "claim": "托管日期只读",
+          "kind": "state-machine",
+          "assert": "created/updated 不可编辑/改名/删除；保存正文后 updated 刷新为当日日期（格式 \"YYYY-MM-DD\"，如 \"2026-11-15\"）",
+          "source": "prototype#托管日期"
+        }
+      ]
+    },
+    {
+      "id": "R-7",
+      "text": "P-7 新建默认与属性模板",
+      "anchors": [
+        {
+          "id": "A-7.1",
+          "claim": "新建默认集",
+          "kind": "state-machine",
+          "assert": "新建文档 frontmatter 默认仅含 3 键：title（占位「未命名」）+ created + updated",
+          "source": "prototype#新建默认"
+        },
+        {
+          "id": "A-7.2",
+          "claim": "模板合并缺失键",
+          "kind": "state-machine",
+          "assert": "文档已有 `status: 已定稿` 套用含 `category`/`status: 草稿` 的模板 → 仅新增 `category`，整次套用一次撤销",
+          "source": "prototype#模板套用"
+        }
+      ]
+    },
+    {
+      "id": "R-8",
+      "text": "P-8 外部未识别字段收编",
+      "anchors": [
+        {
+          "id": "A-8.1",
+          "claim": "? 收编",
+          "kind": "state-machine",
+          "assert": "未识别键 `priority: 高` 点「?」图标选「下拉」→ 转下拉类型可编辑，原值 `高` 保留为当前选中项",
+          "source": "prototype#收编"
+        }
+      ]
+    },
+    {
+      "id": "R-9",
+      "text": "P-9 frontmatter 写回与数据无损",
+      "anchors": [
+        {
+          "id": "A-9.1",
+          "claim": "自由键不丢",
+          "kind": "exact",
+          "assert": "frontmatter 含自由键 `custom-note: x`，编辑其他字段保存后源码中该键严格等于 \"custom-note: x\"",
+          "source": "prototype#自由键"
+        },
+        {
+          "id": "A-9.2",
+          "claim": "撤销面板编辑",
+          "kind": "state-machine",
+          "assert": "修改字段值后 Ctrl+Z：源码回到修改前状态，面板随源码重新解析",
+          "source": "prototype#单事务"
+        }
+      ]
+    },
+    {
+      "id": "R-10",
+      "text": "P-10 A/B 视觉锚点",
+      "anchors": [
+        {
+          "id": "A-10.1",
+          "claim": "A 一行条形态",
+          "kind": "perceptual",
+          "assert": "A 态胶囊行 16px 列间距，行手柄悬停显示于胶囊左外侧不占布局",
+          "source": "baseline/panel-a-edit.png"
+        },
+        {
+          "id": "A-10.2",
+          "claim": "B 预览态列位",
+          "kind": "perceptual",
+          "assert": "B 预览态每行仍 5 列网格、类型图标为静态、值列左缘对齐",
+          "source": "baseline/panel-b-preview.png"
+        }
+      ]
+    },
+    {
+      "id": "R-11",
+      "text": "S-1 浮窗形态与默认位置",
+      "anchors": [
+        {
+          "id": "A-11.1",
+          "claim": "浮窗默认尺寸与位置",
+          "kind": "exact",
+          "assert": "⌘F 浮窗宽度 `min(600px, calc(100% - 48px))`、高 460、默认居中",
+          "source": "prototype#浮窗壳V2"
+        },
+        {
+          "id": "A-11.2",
+          "claim": "位置设置与拖拽记忆",
+          "kind": "state-machine",
+          "assert": "默认位置设为右侧 → ⌘F 停靠右侧；拖到新位置关闭再开回到拖后位置；改设置回到默认档（左/中/右）",
+          "source": "prototype#拖拽缩放"
+        },
+        {
+          "id": "A-11.3",
+          "claim": "浮窗壳系统范式",
+          "kind": "perceptual",
+          "assert": "surface 底、border 描边、8px 圆角、系统投影",
+          "source": "baseline/search-default.png"
+        }
+      ]
+    },
+    {
+      "id": "R-12",
+      "text": "S-2 扫描规则",
+      "anchors": [
+        {
+          "id": "A-12.1",
+          "claim": "不分大小写命中",
+          "kind": "exact",
+          "assert": "文档含「属性面板」搜「属性」所有片段均命中并高亮（序位形如 1/7）",
+          "source": "prototype#结果列表"
+        }
+      ]
+    },
+    {
+      "id": "R-13",
+      "text": "S-3 结果列表与行尾快捷键",
+      "anchors": [
+        {
+          "id": "A-13.1",
+          "claim": "双行结果与序位",
+          "kind": "exact",
+          "assert": "结果行第一行 `L行号 · 块标题` + 序位 `1/7`（不用「第/处」），第二行约两行上下文高亮截断",
+          "source": "prototype#双行结果"
+        },
+        {
+          "id": "A-13.2",
+          "claim": "行尾快捷键跟随",
+          "kind": "state-machine",
+          "assert": "↓ 两次后第 3 行显示 ⏎、第 1/2 行显示 ⌘1/⌘2；Enter 在编辑器选中第 3 处并滚动到可视区",
+          "source": "prototype#行尾快捷键"
+        },
+        {
+          "id": "A-13.3",
+          "claim": "9 行视口滚动不变",
+          "kind": "exact",
+          "assert": "21 处命中滚动查看第 10 行起，前 9 行 ⌘1~⌘9 显示不变",
+          "source": "prototype#9行视口"
+        }
+      ]
+    },
+    {
+      "id": "R-14",
+      "text": "S-4 替换与 diff 预览",
+      "anchors": [
+        {
+          "id": "A-14.1",
+          "claim": "替换后自动跳下一处",
+          "kind": "state-machine",
+          "assert": "逐个替换当前命中 → 自动前进到下一处（末尾停在末尾），整个操作一次撤销",
+          "source": "prototype#替换diff"
+        },
+        {
+          "id": "A-14.2",
+          "claim": "行内 diff 预览",
+          "kind": "exact",
+          "assert": "替换模式每条结果行内含「原词 → 新词」diff 标记（原词删除线 → 新词强调色）",
+          "source": "决策#第二轮搜1"
+        },
+        {
+          "id": "A-14.3",
+          "claim": "悬停预览仅替换模式",
+          "kind": "state-machine",
+          "assert": "替换模式悬停结果行 → 弹全文预览卡；普通搜索 → 不弹卡",
+          "source": "prototype#悬停卡"
+        },
+        {
+          "id": "A-14.4",
+          "claim": "替换态浮窗壳",
+          "kind": "perceptual",
+          "assert": "替换输入行（替换词输入 + 逐个替换/全部替换 2 按钮）与结果列表同屏呈现",
+          "source": "baseline/search-replace.png"
+        }
+      ]
+    },
+    {
+      "id": "R-15",
+      "text": "S-5 局部快捷键优先级",
+      "anchors": [
+        {
+          "id": "A-15.1",
+          "claim": "局部抢占与归还",
+          "kind": "state-machine",
+          "assert": "浮窗打开按 ⌘2 直达第 2 结果；关闭浮窗再按 ⌘2 恢复全局「卡片直开」",
+          "source": "决策#5"
+        },
+        {
+          "id": "A-15.2",
+          "claim": "scope 注册标注",
+          "kind": "exact",
+          "assert": "shortcuts.ts 浮窗局部键条目标注 `scope=\"local\"` 与生效条件「搜索浮窗打开且焦点在浮窗内」",
+          "source": "决策#5"
+        }
+      ]
+    }
+  ]
+}
