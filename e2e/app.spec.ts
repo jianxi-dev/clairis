@@ -42,7 +42,7 @@ test.describe("Biaoyue E2E", () => {
       "[data-ai-entry]",
       '[data-testid="grid-entry"]',
       '[data-testid="immersive-entry"]',
-      '[title^="当前:"]',
+      '[data-testid="theme-entry"]',
     ]) {
       await expect(page.locator(sel)).toHaveCount(1);
     }

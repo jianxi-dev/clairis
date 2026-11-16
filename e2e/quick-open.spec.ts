@@ -324,10 +324,10 @@ test("网格场景按 ⌘P 也能打开快速打开", async ({ page }) => {
 test("暗色主题下快速打开正常显示", async ({ page }) => {
   await boot(page);
   await seed(page);
-  const themeToggle = page.getByTitle(/当前:/);
+  const themeToggle = page.getByTestId("theme-entry");
   for (let i = 0; i < 5; i++) {
-    const title = await themeToggle.getAttribute("title");
-    if (title?.includes("暗色")) break;
+    const label = await themeToggle.getAttribute("aria-label");
+    if (label?.includes("暗色")) break;
     await themeToggle.click();
     await page.waitForTimeout(100);
   }

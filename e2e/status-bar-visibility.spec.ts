@@ -154,8 +154,12 @@ test.describe("主题按钮去三角与图标区分（ui-polish-batch6 18.1）",
 test.describe("主题弹层生命周期与点击循环（shell-media-batch7 1.1）", () => {
   const ORDER = ["跟随系统", "亮色", "暗色", "暖色"] as const;
 
-  async function themeTitle(page: Page): Promise<string> {
-    return (await page.getByTestId("theme-entry").getAttribute("title")) ?? "";
+  const THEME_ARIA = (label: string) => `主题：${label}（点击切换，悬停选择）`;
+
+  async function themeAria(page: Page): Promise<string> {
+    return (
+      (await page.getByTestId("theme-entry").getAttribute("aria-label")) ?? ""
+    );
   }
 
   test("指针缓慢横越间隙时面板不消失，仍可点选", async ({ page }) => {
@@ -191,17 +195,20 @@ test.describe("主题弹层生命周期与点击循环（shell-media-batch7 1.1�
   test("单击图标按固定次序循环切换主题", async ({ page }) => {
     await boot(page);
     const btn = page.getByTestId("theme-entry");
-    const initial = await themeTitle(page);
-    const start = ORDER.findIndex((label) => initial.endsWith(label));
+    const initial = await themeAria(page);
+    const start = ORDER.findIndex((label) => initial.includes(label));
     expect(start).toBeGreaterThanOrEqual(0);
 
     let expected = start;
     for (let i = 1; i <= 4; i += 1) {
       await btn.click();
       expected = (expected + 1) % ORDER.length;
-      await expect(btn).toHaveAttribute("title", `当前: ${ORDER[expected]}`);
+      await expect(btn).toHaveAttribute(
+        "aria-label",
+        THEME_ARIA(ORDER[expected]),
+      );
     }
-    await expect(btn).toHaveAttribute("title", `当前: ${ORDER[start]}`);
+    await expect(btn).toHaveAttribute("aria-label", THEME_ARIA(ORDER[start]));
   });
 
   test("面板打开时单击图标仍循环且面板保持", async ({ page }) => {
@@ -211,13 +218,34 @@ test.describe("主题弹层生命周期与点击循环（shell-media-batch7 1.1�
     const menu = page.getByTestId("theme-menu");
     await expect(menu).toBeVisible({ timeout: 3000 });
 
-    const before = await themeTitle(page);
+    const before = await themeAria(page);
     await btn.click();
-    await expect(btn).not.toHaveAttribute("title", before);
+    await expect(btn).not.toHaveAttribute("aria-label", before);
     await expect(menu).toBeVisible();
     await expect(
       menu.locator('[role="menuitemradio"][aria-checked="true"]'),
     ).toHaveCount(1);
+  });
+
+  test("弹层打开时点击触发钮不还原 title（无原生矩形，#945）", async ({
+    page,
+  }) => {
+    await boot(page);
+    const btn = page.getByTestId("theme-entry");
+    await btn.hover();
+    const menu = page.getByTestId("theme-menu");
+    await expect(menu).toBeVisible({ timeout: 3000 });
+    await expect(btn).not.toHaveAttribute("title", /.+/);
+
+    await btn.click();
+    await expect(menu).toBeVisible();
+    await page.waitForTimeout(1200);
+    expect(await btn.getAttribute("title")).toBeNull();
+    await expect(menu).toBeVisible();
+
+    await page.keyboard.press("Escape");
+    await expect(menu).toHaveCount(0);
+    await expect(btn).toHaveAttribute("title", "切换主题");
   });
 
   test("Esc 与外部点击关闭面板", async ({ page }) => {

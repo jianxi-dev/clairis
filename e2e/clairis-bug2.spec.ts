@@ -194,32 +194,44 @@ test("跨格拖拽：页签从左格搬到右格，paneRoot 同步", async ({ pa
   await shot(page, "cross-pane-drag");
 });
 
-test("主题四态：亮 / 暗 / 暖 / 跟随系统，标题与 html class 同步", async ({
+test("主题四态：亮 / 暗 / 暖 / 跟随系统，主题标签与 html class 同步", async ({
   page,
 }) => {
   await boot(page);
   await openFile(page, "/tmp/bug2/theme.md");
 
   const themeBtn = page.locator(
-    '[data-testid="status-bar"] button[title^="当前"]',
+    '[data-testid="status-bar"] button[aria-label^="主题："]',
   );
-  const title = () => themeBtn.getAttribute("title");
+  const aria = () => themeBtn.getAttribute("aria-label");
   const rootClass = () =>
     page.evaluate(() => document.documentElement.className);
 
   // 起始为跟随系统（亮色环境下 class 为空）。依次点击循环
-  // system → light → dark → warm → system，逐态断言标题与 class。
+  // system → light → dark → warm → system，逐态断言主题标签与 class。
   // light 与 system 在亮色环境下 class 同为空，故 class 序列为
   // "" → "dark" → "warm" → ""，断言精确到态而非仅断言"变了"。
   const expected = [
-    { name: "theme-light", title: "当前: 亮色", cls: "" },
-    { name: "theme-dark", title: "当前: 暗色", cls: "dark" },
-    { name: "theme-warm", title: "当前: 暖色", cls: "warm" },
-    { name: "theme-system", title: "当前: 跟随系统", cls: "" },
+    { name: "theme-light", aria: "主题：亮色（点击切换，悬停选择）", cls: "" },
+    {
+      name: "theme-dark",
+      aria: "主题：暗色（点击切换，悬停选择）",
+      cls: "dark",
+    },
+    {
+      name: "theme-warm",
+      aria: "主题：暖色（点击切换，悬停选择）",
+      cls: "warm",
+    },
+    {
+      name: "theme-system",
+      aria: "主题：跟随系统（点击切换，悬停选择）",
+      cls: "",
+    },
   ];
   for (const exp of expected) {
     await themeBtn.click();
-    await expect.poll(title, { timeout: 5000 }).toBe(exp.title);
+    await expect.poll(aria, { timeout: 5000 }).toBe(exp.aria);
     expect(await rootClass()).toBe(exp.cls);
     await page.screenshot({
       path: path.join(ART_THEME, `${exp.name}.png`),

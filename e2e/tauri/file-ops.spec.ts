@@ -108,9 +108,9 @@ test.describe("Biaoyue — Tauri Mocked", () => {
 
   test("5. dark mode toggle", async ({ page }) => {
     await openMockFile(page);
-    const btn = page.getByTitle(/当前:/);
+    const btn = page.getByTestId("theme-entry");
     for (let i = 0; i < 5; i++) {
-      const t = await btn.getAttribute("title");
+      const t = await btn.getAttribute("aria-label");
       if (t?.includes("暗色")) break;
       await btn.click();
       await page.waitForTimeout(100);
