@@ -67,11 +67,16 @@ test("未落盘页签 Cmd+S 走另存为：初始目录=默认路径，文件名
         () => (window as unknown as Record<string, any>).__lastSaveAs,
       ),
     )
-    .toEqual({
-      content: "",
-      defaultName: "未命名.md",
-      defaultDir: "/Users/test",
-    });
+    .not.toBeNull();
+  const saveAs = await page.evaluate(
+    () => (window as unknown as Record<string, any>).__lastSaveAs,
+  );
+  expect(saveAs.defaultDir).toBe("/Users/test");
+  expect(saveAs.defaultName).toBe("未命名.md");
+  // P-7：新建文档默认仅标题占位 + 自动托管的创建/修改日期，正文为空。
+  expect(saveAs.content).toMatch(
+    /^---\ntitle: ""\ncreated: \d{4}-\d{2}-\d{2}\nupdated: \d{4}-\d{2}-\d{2}\n---\n$/,
+  );
   await expect
     .poll(() =>
       page.evaluate(() => {

@@ -2,7 +2,7 @@
 title: 需求实现状态总览
 type: delivery
 status: accepted
-last_updated: 2026-11-14
+last_updated: 2026-11-17
 source_of_truth: supporting
 ---
 
@@ -230,6 +230,18 @@ openspec status --change <name>   # 单个变更工件完成度
 | E-26 | 轮盘召唤与动作搜索（显式入口 / 9 行上限 / 固定快捷键列） | ✅ | change `ui-polish-batch15`（归档 2026-11-12，PR #684/#685） |
 | E-27 | 音视频静音与音频收尾（按文件隔离 / 音频即时暂停） | ✅ | change `ui-polish-batch15`（归档 2026-11-12，PR #689/#690） |
 | E-28 | 轮盘历史剪切与颜色二级透明项可辨识 | ✅ | change `ui-polish-batch15`（归档 2026-11-12，PR #686） |
+
+### doc-property-panel（10）
+
+| 编号 | 需求 | 状态 | 证据 |
+|---|---|---|---|
+| P-1…P-10 | 文档属性面板（三模式只读渲染 / A·B 两态与显隐配置 / 八类类型与智能编辑 / 行操作与选择模式 / 标签彩色胶囊与建议输入 / 字段改名与别称识别 / 新建默认与属性模板 / 外部字段收编 / 写回与数据无损 / A·B 视觉锚点） | ✅ | change `doc-property-and-search-panel`（11/11 票合并，#984 集成验收；待 G4 归档） |
+
+### search-replace-float（5）
+
+| 编号 | 需求 | 状态 | 证据 |
+|---|---|---|---|
+| S-1…S-5 | 字面搜索/替换浮窗（⌘F 浮窗与默认位置 / 不分大小写子串扫描 / 双行结果与行尾快捷键 / 单事务替换与 diff 预览 / 局部快捷键 scope） | ✅ | change `doc-property-and-search-panel`（11/11 票合并，#984 集成验收；待 G4 归档） |
 
 ### docs-governance（7）
 

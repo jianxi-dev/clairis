@@ -116,7 +116,10 @@ test("选空白文档走默认新建", async ({ page }) => {
   await expect(picker).toHaveCount(0);
   const tab = await readActiveTab(page);
   expect(tab.title).toBe("未命名");
-  expect(tab.content).toBe("");
+  // P-7：新建文档默认仅标题占位 + 自动托管的创建/修改日期，正文为空。
+  expect(tab.content).toMatch(
+    /^---\ntitle: ""\ncreated: \d{4}-\d{2}-\d{2}\nupdated: \d{4}-\d{2}-\d{2}\n---\n$/,
+  );
 });
 
 test("无模板时不出现选择器，新建直接空白页", async ({ page }) => {
@@ -131,7 +134,10 @@ test("无模板时不出现选择器，新建直接空白页", async ({ page }) 
   await expect(page.locator('[data-testid="template-picker"]')).toHaveCount(0);
   const tab = await readActiveTab(page);
   expect(tab.title).toBe("未命名");
-  expect(tab.content).toBe("");
+  // P-7：新建文档默认仅标题占位 + 自动托管的创建/修改日期，正文为空。
+  expect(tab.content).toMatch(
+    /^---\ntitle: ""\ncreated: \d{4}-\d{2}-\d{2}\nupdated: \d{4}-\d{2}-\d{2}\n---\n$/,
+  );
 });
 
 test("首页点新建 → 进入工作区且页签为 Markdown 图标（#325）", async ({
