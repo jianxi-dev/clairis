@@ -318,6 +318,49 @@ export function validateFieldValue(
   }
 }
 
+/** 保序去重（trim、去空项）：列表值与标签的粘贴去重共用。 */
+export function dedupeValues(values: readonly string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of values) {
+    const value = raw.trim();
+    if (value === "" || seen.has(value)) continue;
+    seen.add(value);
+    out.push(value);
+  }
+  return out;
+}
+
+/** 列表链接去重（`[[文档名]]` 按整体字符串比较）。 */
+export const dedupeLinks = dedupeValues;
+
+/** 标签去重。 */
+export const dedupeTags = dedupeValues;
+
+const LINK_RE = /\[\[([^\[\]]+)\]\]/g;
+
+/**
+ * 粘贴文本 → 列表项：先抽出 `[[文档名]]` 链接，再把剩余文本按顿号 / 逗号 /
+ * 换行分割。链接保持 `[[..]]` 原样，供列表值直接追加。
+ */
+export function parseLinkListText(text: string): string[] {
+  const links = text.match(LINK_RE) ?? [];
+  const rest = text.replace(LINK_RE, " ");
+  const parts = rest
+    .split(/[,、，\r\n]+/)
+    .map((s) => s.trim())
+    .filter((s) => s !== "");
+  return [...links, ...parts];
+}
+
+/** 粘贴文本 → 标签：按顿号 / 逗号 / 换行分割。 */
+export function parseTagListText(text: string): string[] {
+  return text
+    .split(/[,、，\r\n]+/)
+    .map((s) => s.trim())
+    .filter((s) => s !== "");
+}
+
 /**
  * 类型切换时的值转换（P-3 / P-8）：把已解析的 JS 值转成目标类型。
  * 数组先还原为顿号文本再按目标类型校验；转换失败返回 `ok:false`，

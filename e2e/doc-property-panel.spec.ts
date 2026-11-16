@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { tagColor } from "../src/lib/frontmatter";
 
 /**
  * 文档属性面板首通（#973 / P-1、P-10）真实浏览器用例。
@@ -716,4 +717,181 @@ test("创建 / 修改日期键名锁定：无改名入口", async ({ page }) => 
   await expect(
     a.locator('[data-key="count"] [data-testid="dpb-label"]'),
   ).toHaveAttribute("data-renameable", "true");
+});
+
+const LINK_DOC = `---
+title: 列表链接
+related:
+  - "[[设计说明.md]]"
+tags:
+  - 甲
+---
+
+# 正文
+`;
+
+async function openLinkDocs(page: Page): Promise<void> {
+  await openDoc(page, "# 第二篇文档\n", "/Users/test/second.md");
+  await openDoc(page, LINK_DOC, "/Users/test/list.md");
+}
+
+async function sceneOf(page: Page): Promise<string> {
+  return page.evaluate(() => {
+    return (
+      window as unknown as {
+        __biaoyue_store__: { getState: () => { scene: string } };
+      }
+    ).__biaoyue_store__.getState().scene;
+  });
+}
+
+test("列表 [[ 文档菜单：行只显示文档名（无 [[ 前缀），↑↓ 换选行尾快捷键", async ({
+  page,
+}) => {
+  await openLinkDocs(page);
+  await setMode(page, "edit");
+  const row = panel(page, "A").locator('[data-key="related"]');
+  const input = row.locator('[data-testid="dpb-link-input"]');
+  await expect(input).toBeVisible();
+
+  await input.fill("[[");
+  const menu = page.locator('[data-testid="dpb-doc-menu"]');
+  await expect(menu).toBeVisible();
+  const rows = menu.locator('[data-testid="dpb-doc-menu-row"]');
+  await expect(rows).toHaveCount(2);
+  await expect(rows.nth(0).locator(".dpb-menu-label")).toHaveText("list.md");
+  await expect(rows.nth(1).locator(".dpb-menu-label")).toHaveText("second.md");
+  await expect(rows.nth(0).locator(".dpb-menu-label")).not.toContainText("[[");
+  await expect(rows.nth(0).locator(".dpb-menu-key")).toHaveText("⏎");
+  await expect(rows.nth(1).locator(".dpb-menu-key")).toHaveText("⌘2");
+
+  await page.keyboard.press("ArrowDown");
+  await expect(rows.nth(0).locator(".dpb-menu-key")).toHaveText("⌘1");
+  await expect(rows.nth(1).locator(".dpb-menu-key")).toHaveText("⏎");
+});
+
+test("列表 [[ 菜单：⏎ 选用成 chip，× 移除，源码同步", async ({ page }) => {
+  await openLinkDocs(page);
+  await setMode(page, "edit");
+  const row = panel(page, "A").locator('[data-key="related"]');
+  const input = row.locator('[data-testid="dpb-link-input"]');
+
+  await input.fill("[[");
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("Enter");
+  await expect(page.locator('[data-testid="dpb-doc-menu"]')).toHaveCount(0);
+
+  const chips = row.locator(".dpb-link-chip");
+  await expect(chips).toHaveCount(2);
+  await expect(chips.nth(1).locator(".dpb-link-chip-text")).toHaveText(
+    "[[second.md]]",
+  );
+
+  await chips.nth(1).locator('[data-testid="dpb-link-chip-x"]').click();
+  await expect(chips).toHaveCount(1);
+
+  await setMode(page, "source");
+  await expect(page.locator(".cm-content").first()).not.toContainText(
+    "[[second.md]]",
+  );
+});
+
+test("菜单打开时 ⌘2 直选第 2 项，不触发全局卡片直开", async ({ page }) => {
+  await openLinkDocs(page);
+  await setMode(page, "edit");
+  const row = panel(page, "A").locator('[data-key="related"]');
+  const input = row.locator('[data-testid="dpb-link-input"]');
+
+  await input.fill("[[");
+  await expect(page.locator('[data-testid="dpb-doc-menu"]')).toBeVisible();
+  await page.keyboard.press("Meta+2");
+  await expect(page.locator('[data-testid="dpb-doc-menu"]')).toHaveCount(0);
+
+  await expect(row.locator(".dpb-link-chip-text").last()).toHaveText(
+    "[[second.md]]",
+  );
+  expect(await sceneOf(page)).toBe("workspace");
+  await expect(panel(page, "A")).toBeVisible();
+});
+
+test("标签建议菜单：过滤 / 无匹配 Enter 新建 / 改名后颜色按新名重算 / 删除", async ({
+  page,
+}) => {
+  await openDoc(page, COLOR_DOC, "/Users/test/color.md");
+  await setMode(page, "edit");
+  const row = panel(page, "A").locator('[data-key="tags"]');
+  const input = row.locator('[data-testid="dpb-tag-input"]');
+
+  await input.fill("甲");
+  const menu = page.locator('[data-testid="dpb-tag-menu"]');
+  await expect(menu).toBeVisible();
+  await expect(menu.locator('[data-testid="dpb-tag-menu-row"]')).toHaveCount(1);
+  await expect(menu.locator(".dpb-menu-label").first()).toHaveText("甲");
+
+  await input.fill("新标签");
+  await page.keyboard.press("Enter");
+  await expect(menu).toHaveCount(0);
+  await expect(row.locator(".dpb-tag")).toHaveCount(4);
+  await expect(row.locator('[data-testid="dpb-tag-name"]').last()).toHaveText(
+    "新标签",
+  );
+
+  await row.locator('[data-testid="dpb-tag-name"]').first().click();
+  const rename = row.locator('[data-testid="dpb-tag-rename"]');
+  await expect(rename).toBeVisible();
+  await rename.fill("改名的标签");
+  await rename.press("Enter");
+  await expect(rename).toHaveCount(0);
+  const renamed = row.locator(".dpb-tag").first();
+  await expect(renamed.locator('[data-testid="dpb-tag-name"]')).toHaveText(
+    "改名的标签",
+  );
+  expect(Number(await renamed.getAttribute("data-color"))).toBe(
+    tagColor("改名的标签"),
+  );
+
+  await row.locator('[data-testid="dpb-tag-x"]').first().click();
+  await expect(row.locator(".dpb-tag")).toHaveCount(3);
+});
+
+test("B 精排双列：列表 / 标签编辑器同样可用", async ({ page }) => {
+  await openLinkDocs(page);
+  await setVariant(page, "B");
+  await setMode(page, "edit");
+  const b = panel(page, "B");
+  await expect(
+    b.locator('[data-key="related"] [data-testid="dpb-link-input"]'),
+  ).toBeVisible();
+  await expect(
+    b.locator('[data-key="tags"] [data-testid="dpb-tag-input"]'),
+  ).toBeVisible();
+
+  await b
+    .locator('[data-key="related"] [data-testid="dpb-link-input"]')
+    .fill("[[");
+  await expect(page.locator('[data-testid="dpb-doc-menu"]')).toBeVisible();
+  await expect(
+    page
+      .locator('[data-testid="dpb-doc-menu-row"]')
+      .nth(0)
+      .locator(".dpb-menu-label"),
+  ).toHaveText("list.md");
+});
+
+test("菜单关闭后 ⌘2 归还全局：无局部响应且工作区不变", async ({ page }) => {
+  await openLinkDocs(page);
+  await setMode(page, "edit");
+  const row = panel(page, "A").locator('[data-key="related"]');
+  const input = row.locator('[data-testid="dpb-link-input"]');
+
+  await input.fill("[[");
+  await expect(page.locator('[data-testid="dpb-doc-menu"]')).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.locator('[data-testid="dpb-doc-menu"]')).toHaveCount(0);
+  await expect(panel(page, "A")).toBeVisible();
+
+  await page.keyboard.press("Meta+2");
+  await expect(page.locator('[data-testid="dpb-doc-menu"]')).toHaveCount(0);
+  await expect(row.locator(".dpb-link-chip")).toHaveCount(1);
+  expect(await sceneOf(page)).toBe("workspace");
 });

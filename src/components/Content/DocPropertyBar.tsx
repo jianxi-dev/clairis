@@ -5,14 +5,19 @@ import {
   useRef,
   useState,
   type ChangeEvent,
+  type ClipboardEvent,
 } from "react";
 import { createPortal } from "react-dom";
 import type { EditorMode } from "../../types";
 import {
   isManagedDateKey,
   coerceFrontmatterValue,
+  dedupeLinks,
+  dedupeTags,
   formatFrontmatterValue,
   parseFrontmatter,
+  parseLinkListText,
+  parseTagListText,
   renameFrontmatterField,
   setFrontmatterField,
   tagColor,
@@ -23,6 +28,8 @@ import {
 import { getActiveEditorView } from "../../editors/editorRef";
 import { useEditorStore } from "../../stores/editorStore";
 import { useDocPropertyPanelStore } from "../../stores/docPropertyPanel";
+import { useStore } from "../../stores/index";
+import SuggestMenu from "./SuggestMenu";
 
 /**
  * 文档属性面板（doc-property-panel 功能一 · 首通只读）。
@@ -601,6 +608,396 @@ function TagsValue({ field }: { field: FrontmatterField }) {
   );
 }
 
+function fileNameOf(path: string | null, fallback: string): string {
+  if (path) {
+    const parts = path.split("/");
+    const last = parts[parts.length - 1];
+    if (last) return last;
+  }
+  return fallback;
+}
+
+function menuAnchorOf(el: HTMLElement | null): { x: number; y: number } | null {
+  const r = el?.getBoundingClientRect();
+  if (!r) return null;
+  return {
+    x: Math.max(8, r.left),
+    y: Math.min(window.innerHeight - 200, r.bottom + 4),
+  };
+}
+
+interface EditorProps {
+  field: FrontmatterField;
+  onCommit: (key: string, value: unknown) => void;
+}
+
+/** 列表 / 复选值编辑：`[[` 弹文档菜单、chip 可移除、粘贴去重（P-3）。 */
+function LinkListEditor({ field, onCommit }: EditorProps) {
+  const tabs = useStore((s) => s.tabs);
+  const items = Array.isArray(field.value) ? field.value.map(String) : [];
+  const [input, setInput] = useState("");
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [sel, setSel] = useState(0);
+  const [anchor, setAnchor] = useState<{ x: number; y: number } | null>(null);
+  const wrapRef = useRef<HTMLSpanElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const docNames = useMemo(() => {
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const tab of Object.values(tabs)) {
+      const name = fileNameOf(tab.path, tab.title);
+      if (name && !seen.has(name)) {
+        seen.add(name);
+        out.push(name);
+      }
+    }
+    return out.sort((a, b) => a.localeCompare(b, "zh"));
+  }, [tabs]);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const list = q
+      ? docNames.filter((d) => d.toLowerCase().includes(q))
+      : docNames;
+    return list.slice(0, 9);
+  }, [docNames, query]);
+
+  const commit = (next: string[]) => {
+    const merged = dedupeLinks(next);
+    if (
+      merged.length === items.length &&
+      merged.every((v, i) => v === items[i])
+    ) {
+      return;
+    }
+    onCommit(field.key, merged);
+  };
+
+  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setInput(value);
+    const idx = value.lastIndexOf("[[");
+    if (idx >= 0) {
+      setQuery(value.slice(idx + 2));
+      setSel(0);
+      setAnchor(menuAnchorOf(inputRef.current));
+      setMenuOpen(true);
+    } else if (menuOpen) {
+      setMenuOpen(false);
+    }
+  };
+
+  const pick = (index: number) => {
+    const name = filtered[index];
+    if (!name) return;
+    commit([...items, `[[${name}]]`]);
+    setInput("");
+    setQuery("");
+    setMenuOpen(false);
+  };
+
+  const move = (delta: 1 | -1) => {
+    setSel((s) => {
+      const n = filtered.length;
+      if (n === 0) return 0;
+      return Math.min(n - 1, Math.max(0, s + delta));
+    });
+  };
+
+  const closeMenu = () => {
+    setMenuOpen(false);
+    setInput("");
+    setQuery("");
+  };
+
+  const handleBlur = () => {
+    const raw = input.trim();
+    if (raw && !raw.includes("[[")) {
+      commit([...items, ...parseLinkListText(raw)]);
+    }
+    setInput("");
+    setMenuOpen(false);
+  };
+
+  const handlePaste = (e: ClipboardEvent<HTMLInputElement>) => {
+    const text = e.clipboardData.getData("text");
+    if (!text || (!text.includes("[[") && !/[、，,\r\n]/.test(text))) return;
+    e.preventDefault();
+    commit([...items, ...parseLinkListText(text)]);
+    setInput("");
+    setMenuOpen(false);
+  };
+
+  return (
+    <span className="dpb-linklist" ref={wrapRef}>
+      {items.map((item, i) => (
+        <span className="dpb-link-chip" key={`${item}-${i}`}>
+          <span className="dpb-link-chip-text">{item}</span>
+          <button
+            type="button"
+            className="dpb-chip-x"
+            data-testid="dpb-link-chip-x"
+            aria-label={`移除 ${item}`}
+            onClick={() => commit(items.filter((_, idx) => idx !== i))}
+          >
+            ×
+          </button>
+        </span>
+      ))}
+      <input
+        ref={inputRef}
+        className="dpb-input dpb-link-input"
+        data-testid="dpb-link-input"
+        value={input}
+        placeholder="[[ 链接文档"
+        onChange={handleChange}
+        onBlur={handleBlur}
+        onPaste={handlePaste}
+      />
+      {menuOpen && (
+        <SuggestMenu
+          rows={filtered.map((d) => ({ id: d, label: d }))}
+          selected={sel}
+          onPick={pick}
+          onMove={move}
+          onEmptyEnter={closeMenu}
+          onClose={closeMenu}
+          anchor={anchor}
+          context="属性面板 [[ 文档菜单打开"
+          hostRef={wrapRef}
+          testId="dpb-doc-menu"
+          rowTestId="dpb-doc-menu-row"
+          emptyText="没有匹配文档"
+        />
+      )}
+    </span>
+  );
+}
+
+/** 标签编辑：建议菜单、就地改名、删除、粘贴去重（P-5）。 */
+function TagEditor({ field, onCommit }: EditorProps) {
+  const tabs = useStore((s) => s.tabs);
+  const tags = Array.isArray(field.value) ? field.value.map(String) : [];
+  const [input, setInput] = useState("");
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [sel, setSel] = useState(0);
+  const [anchor, setAnchor] = useState<{ x: number; y: number } | null>(null);
+  const [renaming, setRenaming] = useState<string | null>(null);
+  const [draft, setDraft] = useState("");
+  const wrapRef = useRef<HTMLSpanElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const knownTags = useMemo(() => {
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const tab of Object.values(tabs)) {
+      const parsed = parseFrontmatter(tab.content);
+      const tagsField = parsed.fields.find(
+        (f) => f.key === "tags" && Array.isArray(f.value),
+      );
+      if (!tagsField) continue;
+      for (const value of tagsField.value as unknown[]) {
+        const name = String(value);
+        if (name && !seen.has(name)) {
+          seen.add(name);
+          out.push(name);
+        }
+      }
+    }
+    return out;
+  }, [tabs]);
+
+  const filtered = useMemo(() => {
+    const q = input.trim().toLowerCase();
+    const list = q
+      ? knownTags.filter((t) => t.toLowerCase().includes(q))
+      : knownTags;
+    return list.slice(0, 9);
+  }, [knownTags, input]);
+
+  const commit = (next: string[]) => {
+    const merged = dedupeTags(next);
+    if (
+      merged.length === tags.length &&
+      merged.every((v, i) => v === tags[i])
+    ) {
+      return;
+    }
+    onCommit(field.key, merged);
+  };
+
+  const addTag = (name: string) => {
+    const value = name.trim();
+    if (!value) return;
+    commit([...tags, value]);
+    setInput("");
+    setMenuOpen(false);
+  };
+
+  const removeTag = (name: string) => {
+    commit(tags.filter((t) => t !== name));
+  };
+
+  const commitRename = () => {
+    if (renaming === null) return;
+    const next = draft.trim();
+    const old = renaming;
+    setRenaming(null);
+    if (!next || next === old) return;
+    commit(tags.map((t) => (t === old ? next : t)));
+  };
+
+  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setInput(value);
+    setSel(0);
+    if (value) {
+      setAnchor(menuAnchorOf(inputRef.current));
+      setMenuOpen(true);
+    } else {
+      setMenuOpen(false);
+    }
+  };
+
+  const pick = (index: number) => {
+    const name = filtered[index];
+    if (name) addTag(name);
+  };
+
+  const move = (delta: 1 | -1) => {
+    setSel((s) => {
+      const n = filtered.length;
+      if (n === 0) return 0;
+      return Math.min(n - 1, Math.max(0, s + delta));
+    });
+  };
+
+  const closeMenu = () => {
+    setMenuOpen(false);
+    setInput("");
+  };
+
+  const handleBlur = () => {
+    if (input.trim()) addTag(input);
+    else {
+      setInput("");
+      setMenuOpen(false);
+    }
+  };
+
+  const handlePaste = (e: ClipboardEvent<HTMLInputElement>) => {
+    const text = e.clipboardData.getData("text");
+    if (!text || !/[、，,\r\n]/.test(text)) return;
+    e.preventDefault();
+    commit([...tags, ...parseTagListText(text)]);
+    setInput("");
+    setMenuOpen(false);
+  };
+
+  return (
+    <span className="dpb-tags-editor" ref={wrapRef}>
+      <span className="dpb-tags-group">
+        {tags.map((tag) =>
+          renaming === tag ? (
+            <input
+              key={tag}
+              className="dpb-input dpb-tag-rename"
+              data-testid="dpb-tag-rename"
+              value={draft}
+              autoFocus
+              onChange={(e) => setDraft(e.target.value)}
+              onBlur={commitRename}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  commitRename();
+                } else if (e.key === "Escape") {
+                  setRenaming(null);
+                }
+              }}
+            />
+          ) : (
+            <span className="dpb-tag" key={tag} data-color={tagColor(tag)}>
+              <TagIcon />
+              <button
+                type="button"
+                className="dpb-tag-name"
+                data-testid="dpb-tag-name"
+                title="点击改名"
+                onClick={() => {
+                  setRenaming(tag);
+                  setDraft(tag);
+                }}
+              >
+                {tag}
+              </button>
+              <button
+                type="button"
+                className="dpb-tag-x"
+                data-testid="dpb-tag-x"
+                aria-label={`删除标签 ${tag}`}
+                onClick={() => removeTag(tag)}
+              >
+                ×
+              </button>
+            </span>
+          ),
+        )}
+        <input
+          ref={inputRef}
+          className="dpb-input dpb-tag-input"
+          data-testid="dpb-tag-input"
+          value={input}
+          placeholder="+ 标签"
+          onChange={handleChange}
+          onBlur={handleBlur}
+          onPaste={handlePaste}
+        />
+      </span>
+      {menuOpen && (
+        <SuggestMenu
+          rows={filtered.map((t) => ({ id: t, label: t, icon: <TagIcon /> }))}
+          selected={sel}
+          onPick={pick}
+          onMove={move}
+          onEmptyEnter={() => addTag(input)}
+          onClose={closeMenu}
+          anchor={anchor}
+          context="属性面板标签建议菜单打开"
+          hostRef={wrapRef}
+          testId="dpb-tag-menu"
+          rowTestId="dpb-tag-menu-row"
+          emptyText="没有匹配的已有标签，Enter 用输入值新建"
+        />
+      )}
+    </span>
+  );
+}
+
+/** 值单元格：列表 / 复选走 chip 编辑器，其余走通用值编辑器。 */
+function FieldValue({
+  field,
+  editable,
+  onCommit,
+}: EditorProps & { editable: boolean }) {
+  if (editable && (field.type === "array" || field.type === "multiselect")) {
+    return <LinkListEditor field={field} onCommit={onCommit} />;
+  }
+  return <ValueEditor field={field} editable={editable} onCommit={onCommit} />;
+}
+
+/** 标签单元格：预览态只读胶囊，编辑态可增删改名。 */
+function TagsCell({
+  field,
+  editable,
+  onCommit,
+}: EditorProps & { editable: boolean }) {
+  if (!editable) return <TagsValue field={field} />;
+  return <TagEditor field={field} onCommit={onCommit} />;
+}
+
 interface DocPropertyBarProps {
   content: string;
   mode: EditorMode;
@@ -814,11 +1211,15 @@ export default function DocPropertyBar({
                 />
                 <span className="dpb-b-value">
                   {field === tagsField ? (
-                    <TagsValue field={field} />
-                  ) : (
-                    <ValueEditor
+                    <TagsCell
                       field={field}
-                      editable={editable && !isManagedDateKey(field.key)}
+                      editable={editable}
+                      onCommit={handleCommitField}
+                    />
+                  ) : (
+                    <FieldValue
+                      field={field}
+                      editable={editable}
                       onCommit={handleCommitField}
                     />
                   )}
@@ -885,7 +1286,7 @@ export default function DocPropertyBar({
                 className="dpb-k"
                 onSubmit={handleRename}
               />
-              <ValueEditor
+              <FieldValue
                 field={field}
                 editable={editable && !isManagedDateKey(field.key)}
                 onCommit={handleCommitField}
@@ -916,7 +1317,11 @@ export default function DocPropertyBar({
                 className="dpb-k"
                 onSubmit={handleRename}
               />
-              <TagsValue field={tagsField} />
+              <TagsCell
+                field={tagsField}
+                editable={editable}
+                onCommit={handleCommitField}
+              />
             </span>
           )}
         </div>
