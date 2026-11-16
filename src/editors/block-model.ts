@@ -192,60 +192,139 @@ export function getBlocks(state: EditorState): Block[] {
   if (!cursor.firstChild()) return blocks;
 
   do {
-    const node = cursor.node;
-    const type = resolveBlockType(node);
-    if (type !== null) {
-      let level: number | undefined;
-      let checked: boolean | undefined;
-      let finalType = type;
-
-      if (type === "heading") {
-        const lvl = headingLevel(node.name);
-        if (lvl !== null) level = lvl;
-      } else if (type === "paragraph") {
-        if (isImageOnlyParagraph(node, state)) finalType = "image";
-      } else if (type === "blockquote") {
-        if (isCalloutText(state.doc.sliceString(node.from, node.to))) {
-          finalType = "callout";
-        }
-      } else if (type === "list") {
-        // 进入列表检查顶层 ListItem：全部是任务项才归为 task，
-        // 全部勾选才 checked = true。
-        const listCursor = node.cursor();
-        if (listCursor.firstChild()) {
-          let allTask = true;
-          let allChecked = true;
-          let hasItems = false;
-
-          do {
-            const child = listCursor.node;
-            if (child.name === "ListItem") {
-              hasItems = true;
-              const itemText = state.doc.sliceString(child.from, child.to);
-              if (!isTaskItem(itemText)) {
-                allTask = false;
-              } else if (!isTaskChecked(itemText)) {
-                allChecked = false;
-              }
-            }
-          } while (listCursor.nextSibling());
-
-          if (hasItems && allTask) {
-            finalType = "task";
-            checked = allChecked;
-          }
-        }
+    const block = classifyBlockNode(cursor.node, state);
+    if (block !== null) {
+      // 进入列表检查顶层 ListItem：全部是任务项才归为 task，
+      // 全部勾选才 checked = true。
+      if (block.type === "list") {
+        const { finalType, checked } = listTaskState(
+          block.node as BlockChildNode,
+          state,
+        );
+        blocks.push({ ...block, type: finalType, checked });
+        continue;
       }
-
-      blocks.push({
-        from: node.from,
-        to: node.to,
-        type: finalType,
-        node,
-        level,
-        checked,
-      });
+      blocks.push(block);
     }
+  } while (cursor.nextSibling());
+
+  return blocks;
+}
+
+/**
+ * 单个 Lezer 节点 → `Block`；非块节点返回 null。
+ *
+ * 从 `getBlocks` 抽出的公共分类逻辑，顶层与嵌套枚举（`getNestedBlocks`）共用，
+ * 保证两层看到的块型一致（#917）。
+ */
+function classifyBlockNode(
+  node: BlockChildNode,
+  state: EditorState,
+): Block | null {
+  const type = resolveBlockType(node);
+  if (type === null) return null;
+  let level: number | undefined;
+  let finalType = type;
+
+  if (type === "heading") {
+    const lvl = headingLevel(node.name);
+    if (lvl !== null) level = lvl;
+  } else if (type === "paragraph") {
+    if (isImageOnlyParagraph(node, state)) finalType = "image";
+  } else if (type === "blockquote") {
+    if (isCalloutText(state.doc.sliceString(node.from, node.to))) {
+      finalType = "callout";
+    }
+  }
+
+  return {
+    from: node.from,
+    to: node.to,
+    type: finalType,
+    node,
+    level,
+  };
+}
+
+/** 列表容器的任务化判定：全部是任务项才归为 task，全部勾选才 checked = true。 */
+function listTaskState(
+  node: BlockChildNode,
+  state: EditorState,
+): { finalType: BlockType; checked?: boolean } {
+  const listCursor = node.cursor();
+  if (!listCursor.firstChild()) return { finalType: "list" };
+  let allTask = true;
+  let allChecked = true;
+  let hasItems = false;
+
+  do {
+    const child = listCursor.node;
+    if (child.name === "ListItem") {
+      hasItems = true;
+      const itemText = state.doc.sliceString(child.from, child.to);
+      if (!isTaskItem(itemText)) {
+        allTask = false;
+      } else if (!isTaskChecked(itemText)) {
+        allChecked = false;
+      }
+    }
+  } while (listCursor.nextSibling());
+
+  if (hasItems && allTask) {
+    return { finalType: "task", checked: allChecked };
+  }
+  return { finalType: "list" };
+}
+
+/**
+ * 容器块（引用块 / 列表）内部的嵌套块（#917）。
+ *
+ * - 引用块：全部直接子块（`> ` 之后的每一段都是可操作块）。
+ * - 列表：每个 ListItem 里**除首段外**的子块——首段就是条目文本本身，
+ *   已由列表容器手柄覆盖；嵌套列表 / 围栏 / 引用等结构块单独成手柄。
+ * - 高亮块（callout）不拆：卡片是一个整体，内部拆手柄会破坏卡片语义。
+ *
+ * 嵌套一层为止；更深的容器由各自的子块在下一轮编辑时自然出现。
+ */
+export function getNestedBlocks(
+  state: EditorState,
+  container: Block,
+): Block[] {
+  if (container.type !== "blockquote" && container.type !== "list" && container.type !== "task") {
+    return [];
+  }
+  const node = container.node as BlockChildNode | null;
+  if (!node || typeof node.cursor !== "function") return [];
+
+  const blocks: Block[] = [];
+  const cursor = node.cursor();
+  if (!cursor.firstChild()) return blocks;
+
+  do {
+    const child = cursor.node;
+    if (container.type === "list" || container.type === "task") {
+      if (child.name !== "ListItem") continue;
+      const item = child.cursor();
+      if (!item.firstChild()) continue;
+      // ListMark 是标记符不是块；条目里第一个块级子节点若是 Paragraph，
+      // 它就是条目文本本身（已由列表容器手柄覆盖），跳过。
+      let seenBlock = false;
+      do {
+        const sub = item.node;
+        if (sub.name === "ListMark") continue;
+        const block = classifyBlockNode(sub, state);
+        if (block === null) continue;
+        if (!seenBlock && block.type === "paragraph") {
+          seenBlock = true;
+          continue;
+        }
+        seenBlock = true;
+        blocks.push(block);
+      } while (item.nextSibling());
+      continue;
+    }
+    const block = classifyBlockNode(child, state);
+    if (block !== null) blocks.push(block);
   } while (cursor.nextSibling());
 
   return blocks;

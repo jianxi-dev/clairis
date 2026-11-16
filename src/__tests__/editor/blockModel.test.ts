@@ -7,7 +7,11 @@
 import { describe, expect, it } from "vitest";
 import { EditorState } from "@codemirror/state";
 import { markdown } from "@codemirror/lang-markdown";
-import { getBlocks, getBlockAt } from "../../editors/block-model";
+import {
+  getBlocks,
+  getBlockAt,
+  getNestedBlocks,
+} from "../../editors/block-model";
 
 function makeState(doc: string): EditorState {
   return EditorState.create({ doc, extensions: [markdown()] });
@@ -266,5 +270,40 @@ describe("getBlockAt", () => {
     const block = getBlockAt(4, blocks);
     expect(block).not.toBeNull();
     expect(block!.type).toBe("paragraph");
+  });
+});
+
+describe("getNestedBlocks", () => {
+  it("引用块的每个直接子块都成嵌套块", () => {
+    const state = makeState("> 第一段\n>\n> ## 小标题\n");
+    const [quote] = getBlocks(state);
+    expect(quote.type).toBe("blockquote");
+    const nested = getNestedBlocks(state, quote);
+    expect(nested.map((b) => b.type)).toEqual(["paragraph", "heading"]);
+    expect(nested[0].from).toBeGreaterThan(quote.from);
+    expect(nested.every((b) => b.to <= quote.to)).toBe(true);
+  });
+
+  it("列表项跳过首段，只枚举其下的结构块", () => {
+    const state = makeState(
+      "- 条目文本\n\n  ```js\n  const a = 1;\n  ```\n\n  > 嵌套引用\n",
+    );
+    const [list] = getBlocks(state);
+    expect(list.type).toBe("list");
+    const nested = getNestedBlocks(state, list);
+    expect(nested.map((b) => b.type)).toEqual(["fencedCode", "blockquote"]);
+  });
+
+  it("高亮块不拆嵌套块（卡片是一个整体）", () => {
+    const state = makeState("> [!NOTE] 标题\n> 卡片正文\n");
+    const [callout] = getBlocks(state);
+    expect(callout.type).toBe("callout");
+    expect(getNestedBlocks(state, callout)).toEqual([]);
+  });
+
+  it("非容器块返回空数组", () => {
+    const state = makeState("普通段落");
+    const [para] = getBlocks(state);
+    expect(getNestedBlocks(state, para)).toEqual([]);
   });
 });
