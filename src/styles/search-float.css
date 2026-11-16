@@ -1,6 +1,7 @@
 /* 搜索浮窗（#981 / S-1）：系统浮层范式，绝对定位在当前窗格内。 */
 
 .search-float {
+  --sf-row-h: 42px;
   z-index: 40;
   width: min(600px, calc(100% - 48px));
   height: 460px;
@@ -89,14 +90,56 @@
 
 .search-float-results {
   flex: 1 1 auto;
+  min-height: 0;
+  max-height: calc(9 * var(--sf-row-h));
   overflow-y: auto;
   padding: 4px;
 }
 
+.search-float-dist {
+  position: relative;
+  flex: 0 0 12px;
+  background: var(--app-sunken);
+  border-bottom: 1px solid var(--app-border);
+}
+
+.search-float-dist-tick {
+  position: absolute;
+  top: 0;
+  width: 12px;
+  height: 100%;
+  padding: 0;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transform: translateX(-50%);
+}
+
+.search-float-dist-tick::before {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 50%;
+  width: 3px;
+  height: 8px;
+  background: var(--app-accent);
+  border-radius: 2px;
+  opacity: 0.4;
+  transform: translateX(-50%);
+}
+
+.search-float-dist-tick.cur::before {
+  top: 1px;
+  height: 10px;
+  opacity: 1;
+  box-shadow: 0 0 0 2px var(--app-accent-soft);
+}
+
 .search-float-hit {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  flex: 0 0 auto;
+  align-items: flex-start;
+  gap: 8px;
   width: 100%;
   padding: 6px 8px;
   text-align: left;
@@ -111,18 +154,43 @@
   background: var(--app-sunken);
 }
 
-.search-float-loc {
-  font-size: 11px;
-  font-variant-numeric: tabular-nums;
+.search-float-hit-cur,
+.search-float-hit-cur:hover {
+  background: var(--app-accent-soft);
+}
+
+.search-float-main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.search-float-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 1px;
+  font-size: 10px;
   color: var(--app-text-3);
 }
 
+.search-float-loc {
+  color: var(--app-accent);
+}
+
+.search-float-idx {
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+}
+
 .search-float-context {
+  display: block;
+  max-height: 3em;
   overflow: hidden;
-  font-size: 13px;
+  font-size: 11px;
+  line-height: 1.5;
   color: var(--app-text-2);
-  white-space: nowrap;
-  text-overflow: ellipsis;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .search-float-context mark {
@@ -130,6 +198,21 @@
   color: var(--app-accent);
   background: var(--app-accent-soft);
   border-radius: 2px;
+}
+
+.search-float-key {
+  flex: 0 0 auto;
+  align-self: center;
+  min-width: 2.4em;
+  text-align: right;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  color: var(--app-text-3);
+}
+
+.search-float-hit:hover .search-float-key,
+.search-float-hit-cur .search-float-key {
+  color: var(--app-accent);
 }
 
 .search-float-empty {

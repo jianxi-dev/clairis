@@ -19,13 +19,22 @@ const DOC = `# 属性面板
 属性面板可以配置。
 `;
 
+const LONG_DOC = Array.from(
+  { length: 21 },
+  (_, i) => `第 ${i + 1} 段命中`,
+).join("\n\n");
+
 async function boot(page: Page): Promise<void> {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto(APP_URL, { waitUntil: "networkidle" });
   await page.waitForSelector('[data-testid="pane-header"]', { timeout: 15000 });
 }
 
-async function openDoc(page: Page, content = DOC): Promise<void> {
+async function openDoc(
+  page: Page,
+  content = DOC,
+  path = "/Users/test/search.md",
+): Promise<void> {
   await page.evaluate(
     (args) => {
       (
@@ -34,8 +43,18 @@ async function openDoc(page: Page, content = DOC): Promise<void> {
         }
       ).__biaoyue_openFile__(args.path, args.content, "search.md");
     },
-    { path: "/Users/test/search.md", content },
+    { path, content },
   );
+}
+
+async function sceneOf(page: Page): Promise<string> {
+  return page.evaluate(() => {
+    return (
+      window as unknown as {
+        __biaoyue_store__: { getState: () => { scene: string } };
+      }
+    ).__biaoyue_store__.getState().scene;
+  });
 }
 
 async function setMode(page: Page, mode: "preview" | "edit" | "source") {
@@ -203,4 +222,111 @@ test("右下角缩放手柄调整尺寸，会话内记忆", async ({ page }) => 
   if (!reopened) throw new Error("浮窗未布局");
   expect(near(reopened.width, resized.width, 2)).toBe(true);
   expect(near(reopened.height, resized.height, 2)).toBe(true);
+});
+
+test("双行结果：定位行 + 序位 1/N + 两行上下文高亮", async ({ page }) => {
+  await page.keyboard.press("Meta+f");
+  await page.locator('[data-testid="search-float-input"]').fill("属性");
+
+  const rows = page.locator('[data-testid="search-float-hit"]');
+  await expect(rows).toHaveCount(3);
+  const first = rows.nth(0);
+  await expect(first.locator(".search-float-loc")).toHaveText("L1 · 标题");
+  await expect(first.locator(".search-float-idx")).toHaveText("1/3");
+  await expect(first.locator(".search-float-context")).toContainText("属性");
+  await expect(first.locator(".search-float-context mark").first()).toHaveText(
+    "属性",
+  );
+  await expect(first.locator(".search-float-key")).toHaveText("⏎");
+});
+
+test("命中分布条：点击第 3 刻度跳转第 3 处", async ({ page }) => {
+  await page.keyboard.press("Meta+f");
+  await page.locator('[data-testid="search-float-input"]').fill("属性");
+
+  const ticks = page.locator('[data-testid="search-float-dist-tick"]');
+  await expect(ticks).toHaveCount(3);
+  await ticks.nth(2).click();
+
+  const rows = page.locator('[data-testid="search-float-hit"]');
+  await expect(rows.nth(2).locator(".search-float-key")).toHaveText("⏎");
+  await expect(rows.nth(0).locator(".search-float-key")).toHaveText("⌘1");
+  await expect(ticks.nth(2)).toHaveClass(/cur/);
+});
+
+test("↓↓ 换选：第 3 行 ⏎，第 1/2 行 ⌘1/⌘2", async ({ page }) => {
+  await page.keyboard.press("Meta+f");
+  await page.locator('[data-testid="search-float-input"]').fill("属性");
+
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("ArrowDown");
+
+  const rows = page.locator('[data-testid="search-float-hit"]');
+  await expect(rows.nth(0).locator(".search-float-key")).toHaveText("⌘1");
+  await expect(rows.nth(1).locator(".search-float-key")).toHaveText("⌘2");
+  await expect(rows.nth(2).locator(".search-float-key")).toHaveText("⏎");
+});
+
+test("Enter 定位选中行：编辑器出现选区", async ({ page }) => {
+  await page.keyboard.press("Meta+f");
+  await page.locator('[data-testid="search-float-input"]').fill("属性");
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("ArrowDown");
+
+  await page.keyboard.press("Enter");
+  await expect(
+    page.locator(".cm-selectionBackground").first(),
+  ).toBeVisible();
+});
+
+test("⌘2 直达第 2 项，不触发全局卡片直开", async ({ page }) => {
+  await page.keyboard.press("Meta+f");
+  await page.locator('[data-testid="search-float-input"]').fill("属性");
+
+  await page.keyboard.press("Meta+2");
+
+  const rows = page.locator('[data-testid="search-float-hit"]');
+  await expect(rows.nth(1).locator(".search-float-key")).toHaveText("⏎");
+  await expect(rows.nth(0).locator(".search-float-key")).toHaveText("⌘1");
+  expect(await sceneOf(page)).toBe("workspace");
+});
+
+test("关闭浮窗后 ⌘2 归还全局：无局部响应且工作区不变", async ({ page }) => {
+  await page.keyboard.press("Meta+f");
+  await page.locator('[data-testid="search-float-input"]').fill("属性");
+  await page.keyboard.press("Escape");
+  await expect(page.locator('[data-testid="search-float"]')).toBeHidden();
+
+  await page.keyboard.press("Meta+2");
+  await expect(page.locator('[data-testid="search-float"]')).toBeHidden();
+  expect(await sceneOf(page)).toBe("workspace");
+});
+
+test("21 处命中滚动后前 9 行快捷键不变", async ({ page }) => {
+  await openDoc(page, LONG_DOC, "/Users/test/long.md");
+  await page.keyboard.press("Meta+f");
+  await page.locator('[data-testid="search-float-input"]').fill("命中");
+
+  const rows = page.locator('[data-testid="search-float-hit"]');
+  await expect(rows).toHaveCount(21);
+  await expect(
+    page.locator('[data-testid="search-float-dist-tick"]'),
+  ).toHaveCount(21);
+
+  await page.keyboard.press("Meta+9");
+  await page.keyboard.press("ArrowDown");
+  await expect(rows.nth(9).locator(".search-float-key")).toHaveText("⏎");
+
+  const results = page.locator('[data-testid="search-float-results"]');
+  await results.evaluate((el) => {
+    el.scrollTop = el.scrollHeight;
+  });
+
+  for (let i = 0; i < 9; i++) {
+    await expect(rows.nth(i).locator(".search-float-key")).toHaveText(
+      `⌘${i + 1}`,
+    );
+  }
+  await expect(rows.nth(9).locator(".search-float-key")).toHaveText("⏎");
+  await expect(rows.nth(10).locator(".search-float-key")).toHaveText("");
 });
