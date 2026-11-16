@@ -468,3 +468,114 @@
 .dark .dpb-error {
   color: #e08b7a;
 }
+
+/* ── 类型选择器与类型菜单（P-3 / P-8）───────────────────── */
+.dpb-type-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.dpb-type {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: transparent;
+  padding: 0 2px;
+  font: inherit;
+  color: var(--app-text-3);
+  cursor: pointer;
+  line-height: 1.4;
+}
+
+.dpb-type:hover {
+  color: var(--app-accent);
+}
+
+.dpb-type-ro,
+.dpb-type-ro:hover {
+  cursor: default;
+  color: var(--app-text-3);
+}
+
+.dpb-menu {
+  position: fixed;
+  z-index: 90;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 132px;
+  padding: 4px;
+  border: 1px solid var(--app-border);
+  border-radius: var(--radius-8);
+  background: var(--app-surface);
+  box-shadow: var(--app-shadow);
+}
+
+.dpb-menu-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 5px 8px;
+  border: 0;
+  border-radius: var(--radius-4);
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  color: var(--app-text-2);
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.dpb-menu-row:hover,
+.dpb-menu-row:focus-visible {
+  background: var(--app-accent-soft);
+  color: var(--app-accent);
+}
+
+.dpb-menu-row-cur {
+  color: var(--app-accent);
+}
+
+.dpb-menu-ico {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  color: var(--app-text-3);
+}
+
+/* ── 字段改名（P-6）─────────────────────────────────────── */
+.dpb-label-clickable {
+  cursor: text;
+  border-radius: var(--radius-4);
+}
+
+.dpb-label-clickable:hover {
+  color: var(--app-text-strong);
+}
+
+.dpb-label-clickable:focus-visible {
+  outline: 2px solid var(--app-accent);
+  outline-offset: 1px;
+}
+
+.dpb-rename {
+  flex: 0 1 92px;
+  max-width: 92px;
+}
+
+.dpb-label-cell {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.dpb-label-cell .dpb-error {
+  flex: 0 0 auto;
+  width: 100%;
+}

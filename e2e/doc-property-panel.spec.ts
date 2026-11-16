@@ -560,3 +560,160 @@ test("自动托管日期只读锁定：A/B 两态均有锁定标记且无编辑�
   }
   await expect(b.locator('[data-key="count"][data-locked]')).toHaveCount(0);
 });
+
+const TYPE_DOC = `---
+title: 类型切换
+author: 2026-11-14
+---
+
+# 正文
+`;
+
+const EXTERNAL_DOC = `---
+title: 外部文件
+createdate: 2026-11-14
+---
+
+# 正文
+`;
+
+const ADOPT_DOC = `---
+title: 收编
+priority: 高
+---
+
+# 正文
+`;
+
+const RENAME_DOC = `---
+title: 改名
+note: 一段普通备注
+other: 其他
+---
+
+# 正文
+`;
+
+test("类型选择器：八类菜单直选，选「日期」后编辑器变日期并写回日期字面量", async ({
+  page,
+}) => {
+  await openDoc(page, TYPE_DOC);
+  await setMode(page, "edit");
+  const row = panel(page, "A").locator('[data-key="author"]');
+  await row.locator('[data-testid="dpb-type"]').click();
+  const menu = page.locator('[data-testid="dpb-type-menu"]');
+  await expect(menu).toBeVisible();
+  await expect(menu.locator('[data-testid="dpb-type-option"]')).toHaveCount(8);
+  await menu.locator('[data-type="date"]').click();
+  await expect(menu).toHaveCount(0);
+
+  await expect(
+    row.locator('[data-testid="dpb-type"] .dpb-ico-svg'),
+  ).toHaveCount(1);
+  await row.locator('[data-testid="dpb-value"]').click();
+  const input = row.locator('[data-testid="dpb-input"]');
+  await expect(input).toHaveJSProperty("type", "date");
+  await input.fill("2026-11-16");
+  await input.press("Enter");
+
+  await setMode(page, "source");
+  await expect(page.locator(".cm-content").first()).toContainText(
+    "author: 2026-11-16",
+  );
+});
+
+test("类型切换转换失败：保留原文并提示", async ({ page }) => {
+  await openDoc(page, ADOPT_DOC);
+  await setMode(page, "edit");
+  const row = panel(page, "A").locator('[data-key="priority"]');
+  await row.locator('[data-testid="dpb-type"]').click();
+  await page
+    .locator('[data-testid="dpb-type-menu"] [data-type="date"]')
+    .click();
+  await expect(row.locator('[data-testid="dpb-error"]')).toContainText(
+    "日期格式应为 YYYY-MM-DD",
+  );
+  await expect(row.locator('[data-testid="dpb-value"]')).toHaveText("高");
+});
+
+test("外部文件：createdate 自动识别为日期（日历图标）且显示名保持 createdate", async ({
+  page,
+}) => {
+  await openDoc(page, EXTERNAL_DOC);
+  await setVariant(page, "B");
+  const row = panel(page, "B").locator('[data-key="createdate"]');
+  await expect(row.locator(".dpb-b-type .dpb-ico-svg")).toHaveCount(1);
+  await expect(row.locator('[data-testid="dpb-label"]')).toHaveText(
+    "createdate",
+  );
+
+  await setMode(page, "edit");
+  await row.locator('[data-testid="dpb-type"]').click();
+  await expect(page.locator('[data-testid="dpb-type-menu"]')).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.locator('[data-testid="dpb-type-menu"]')).toHaveCount(0);
+});
+
+test("未识别键「?」收编：选「下拉」后原值保留为当前值", async ({ page }) => {
+  await openDoc(page, ADOPT_DOC);
+  await setMode(page, "edit");
+  const row = panel(page, "A").locator('[data-key="priority"]');
+  await expect(row.locator('[data-testid="dpb-type"] .dpb-ico')).toHaveText(
+    "?",
+  );
+  await row.locator('[data-testid="dpb-type"]').click();
+  await page
+    .locator('[data-testid="dpb-type-menu"] [data-type="select"]')
+    .click();
+  await expect(row.locator('[data-testid="dpb-type"] .dpb-ico')).toHaveText(
+    "▾",
+  );
+  await expect(row.locator('[data-testid="dpb-value"]')).toHaveText("高");
+});
+
+test("字段名就地改名：面板显示与 YAML 键同步，重名被拦截", async ({ page }) => {
+  await openDoc(page, RENAME_DOC);
+  await setMode(page, "edit");
+  const row = panel(page, "A").locator('[data-key="note"]');
+  await row.locator('[data-testid="dpb-label"]').click();
+  const input = row.locator('[data-testid="dpb-rename-input"]');
+  await expect(input).toBeVisible();
+  await input.fill("priority");
+  await input.press("Enter");
+  await expect(panel(page, "A").locator('[data-key="priority"]')).toHaveCount(
+    1,
+  );
+  await expect(
+    panel(page, "A").locator('[data-key="priority"] [data-testid="dpb-label"]'),
+  ).toHaveText("priority");
+
+  await setMode(page, "source");
+  await expect(page.locator(".cm-content").first()).toContainText(
+    "priority: 一段普通备注",
+  );
+  await setMode(page, "edit");
+
+  const other = panel(page, "A").locator('[data-key="other"]');
+  await other.locator('[data-testid="dpb-label"]').click();
+  const dup = other.locator('[data-testid="dpb-rename-input"]');
+  await dup.fill("priority");
+  await dup.press("Enter");
+  await expect(other.locator('[data-testid="dpb-error"]')).toContainText(
+    "重名",
+  );
+  await expect(other.locator('[data-testid="dpb-label"]')).toHaveText("other");
+});
+
+test("创建 / 修改日期键名锁定：无改名入口", async ({ page }) => {
+  await openDoc(page);
+  await setMode(page, "edit");
+  const a = panel(page, "A");
+  for (const key of ["created", "updated"]) {
+    const label = a.locator(`[data-key="${key}"] [data-testid="dpb-label"]`);
+    await expect(label).toHaveAttribute("data-renameable", "false");
+    await expect(label).not.toHaveAttribute("role", "button");
+  }
+  await expect(
+    a.locator('[data-key="count"] [data-testid="dpb-label"]'),
+  ).toHaveAttribute("data-renameable", "true");
+});
