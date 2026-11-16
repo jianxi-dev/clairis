@@ -117,7 +117,14 @@ test.describe("块型图标（E-7：块型图标 + 拖拽把手）", () => {
   const cases: ReadonlyArray<{ name: string; doc: string; icon: string }> = [
     { name: "H2 标题", doc: "## 标题\n", icon: "H2Outlined" },
     { name: "段落", doc: "一段正文\n", icon: "FormatParagraphOutlined" },
-    { name: "引用", doc: "> 引用一行\n", icon: "ReferenceOutlined" },
+    // #917 起引用块内每一段各成手柄，hover 引用行命中嵌套段落手柄而非引用
+    // 容器（见 e2e/cell-column-render-838.spec.ts）；容器图标 ReferenceOutlined
+    // 的映射由单测 blockHandleIcon("blockquote") 覆盖。
+    {
+      name: "引用行（嵌套段落）",
+      doc: "> 引用一行\n",
+      icon: "FormatParagraphOutlined",
+    },
     { name: "无序列表", doc: "- 一项\n", icon: "DisorderListOutlined" },
     { name: "有序列表", doc: "1. 一项\n", icon: "OrderListOutlined" },
     { name: "任务", doc: "- [ ] 一项\n", icon: "TodoOutlined" },

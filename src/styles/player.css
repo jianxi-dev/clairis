@@ -88,7 +88,8 @@
 }
 .art-video-player.vp-ultra .art-controls-right .art-control,
 .art-video-player.vp-ultra .art-controls-left .art-control {
-  min-width: 20px;
+  /* 控件条新增 width 档后按 20px 会溢出（#943）；收到 18px 让全部按钮可见。 */
+  min-width: 18px;
   min-height: 26px;
   padding: 0;
   margin: 0;
