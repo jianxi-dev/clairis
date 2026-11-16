@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef } from "react";
 import type { EditorMode } from "../../types";
 import {
+  isManagedDateKey,
   parseFrontmatter,
+  tagColor,
   type FrontmatterField,
   type FrontmatterType,
 } from "../../lib/frontmatter";
@@ -103,15 +105,63 @@ function ValueView({ field }: { field: FrontmatterField }) {
   );
 }
 
+function TagIcon() {
+  return (
+    <svg
+      className="dpb-tag-ico"
+      width="11"
+      height="11"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M20.59 13.41 12 22 2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
+      <line x1="7" y1="7" x2="7.01" y2="7" />
+    </svg>
+  );
+}
+
+function LockIcon() {
+  return (
+    <svg
+      className="dpb-lock"
+      width="10"
+      height="10"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <rect x="3" y="11" width="18" height="11" rx="2" />
+      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+    </svg>
+  );
+}
+
 function TagsValue({ field }: { field: FrontmatterField }) {
   if (!Array.isArray(field.value)) return <ValueView field={field} />;
   return (
     <span className="dpb-tags-group">
-      {field.value.map((tag, i) => (
-        <span className="dpb-tag" key={`${String(tag)}-${i}`}>
-          {String(tag)}
-        </span>
-      ))}
+      {field.value.map((tag, i) => {
+        const name = String(tag);
+        return (
+          <span
+            className="dpb-tag"
+            key={`${name}-${i}`}
+            data-color={tagColor(name)}
+          >
+            <TagIcon />
+            {name}
+          </span>
+        );
+      })}
     </span>
   );
 }
@@ -217,6 +267,7 @@ export default function DocPropertyBar({
                 key={field.key}
                 data-testid="dpb-row"
                 data-key={field.key}
+                data-locked={isManagedDateKey(field.key) ? "true" : undefined}
               >
                 <span className="dpb-b-handle">{editable ? "⠿" : ""}</span>
                 <span className="dpb-b-type" title={TYPE_LABEL[field.type]}>
@@ -230,7 +281,9 @@ export default function DocPropertyBar({
                     <ValueView field={field} />
                   )}
                 </span>
-                <span className="dpb-b-x" />
+                <span className="dpb-b-x">
+                  {isManagedDateKey(field.key) ? <LockIcon /> : null}
+                </span>
               </div>
             ))}
             <div className="dpb-b-foot">
@@ -261,6 +314,7 @@ export default function DocPropertyBar({
               key={field.key}
               data-testid="dpb-row"
               data-key={field.key}
+              data-locked={isManagedDateKey(field.key) ? "true" : undefined}
             >
               {editable && (
                 <span className="dpb-row-handle" aria-hidden="true">
@@ -270,6 +324,7 @@ export default function DocPropertyBar({
               {editable && <TypeIcon type={field.type} />}
               <span className="dpb-k">{field.key}</span>
               <ValueView field={field} />
+              {isManagedDateKey(field.key) && <LockIcon />}
             </span>
           ))}
           {tagsField && (

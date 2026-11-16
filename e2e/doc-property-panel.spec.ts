@@ -32,13 +32,38 @@ note: 这是一段很长的属性值，用来验证两行截断与悬停显示�
 # 正文
 `;
 
+const COLOR_DOC = `---
+title: 彩色标签
+tags:
+  - 甲
+  - 丁
+  - 戊
+---
+
+# 正文
+`;
+
+const COLOR_DOC_2 = `---
+title: 彩色标签（缺中间）
+tags:
+  - 甲
+  - 戊
+---
+
+# 正文
+`;
+
 async function boot(page: Page): Promise<void> {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto(APP_URL, { waitUntil: "networkidle" });
   await page.waitForSelector('[data-testid="pane-header"]', { timeout: 15000 });
 }
 
-async function openDoc(page: Page, content = DOC): Promise<void> {
+async function openDoc(
+  page: Page,
+  content = DOC,
+  path = "/Users/test/prop.md",
+): Promise<void> {
   await page.evaluate(
     (args) => {
       (
@@ -47,7 +72,7 @@ async function openDoc(page: Page, content = DOC): Promise<void> {
         }
       ).__biaoyue_openFile__(args.path, args.content, "prop.md");
     },
-    { path: "/Users/test/prop.md", content },
+    { path, content },
   );
 }
 
@@ -338,4 +363,90 @@ test("新建文档默认隐藏：恢复提示出现，⌘⇧Y 可恢复", async 
   await page.keyboard.press("Meta+Shift+Y");
   await expect(note).toHaveCount(0);
   await expect(panel(page, "A")).toBeVisible();
+});
+
+interface TagSample {
+  name: string;
+  bg: string;
+  color: string;
+}
+
+async function readTags(page: Page, variant: "A" | "B"): Promise<TagSample[]> {
+  const loc = panel(page, variant).locator('[data-key="tags"] .dpb-tag');
+  const out: TagSample[] = [];
+  const n = await loc.count();
+  for (let i = 0; i < n; i++) {
+    const el = loc.nth(i);
+    const bg = await el.evaluate(
+      (node) => getComputedStyle(node).backgroundColor,
+    );
+    out.push({
+      name: (await el.textContent()) ?? "",
+      bg,
+      color: (await el.getAttribute("data-color")) ?? "",
+    });
+  }
+  return out;
+}
+
+test("标签胶囊：哈希色板渲染，计算背景色两两不同且 A/B 同色", async ({
+  page,
+}) => {
+  await openDoc(page, COLOR_DOC);
+  const a = await readTags(page, "A");
+  expect(a.map((t) => t.name)).toEqual(["甲", "丁", "戊"]);
+  expect(new Set(a.map((t) => t.bg)).size).toBe(3);
+  for (const t of a) {
+    expect(Number(t.color)).toBeGreaterThanOrEqual(0);
+    expect(Number(t.color)).toBeLessThan(10);
+  }
+
+  await setVariant(page, "B");
+  const b = await readTags(page, "B");
+  expect(b.map((t) => t.name)).toEqual(["甲", "丁", "戊"]);
+  for (const t of b) {
+    expect(t.bg).toBe(a.find((x) => x.name === t.name)!.bg);
+  }
+});
+
+test("跨文档同名标签等色：删掉中间标签后其余标签色值不变", async ({ page }) => {
+  await openDoc(page, COLOR_DOC, "/Users/test/color1.md");
+  const first = await readTags(page, "A");
+  await openDoc(page, COLOR_DOC_2, "/Users/test/color2.md");
+  const second = await readTags(page, "A");
+  expect(second.map((t) => t.name)).toEqual(["甲", "戊"]);
+  const byName = new Map(first.map((t) => [t.name, t.bg]));
+  for (const t of second) {
+    expect(t.bg).toBe(byName.get(t.name));
+  }
+});
+
+test("自动托管日期只读锁定：A/B 两态均有锁定标记且无编辑入口", async ({
+  page,
+}) => {
+  await openDoc(page);
+  const a = panel(page, "A");
+  for (const key of ["created", "updated"]) {
+    await expect(
+      a.locator(`[data-key="${key}"][data-locked="true"]`),
+    ).toHaveCount(1);
+    await expect(a.locator(`[data-key="${key}"] .dpb-lock`)).toHaveCount(1);
+    await expect(
+      a.locator(`[data-key="${key}"] [data-testid="dpb-value"]`),
+    ).toBeVisible();
+  }
+  await expect(a.locator('[data-key="count"][data-locked]')).toHaveCount(0);
+  await expect(a.locator("button")).toHaveCount(0);
+
+  await setVariant(page, "B");
+  const b = panel(page, "B");
+  for (const key of ["created", "updated"]) {
+    await expect(
+      b.locator(`[data-key="${key}"][data-locked="true"]`),
+    ).toHaveCount(1);
+    await expect(
+      b.locator(`[data-key="${key}"] .dpb-b-x .dpb-lock`),
+    ).toHaveCount(1);
+  }
+  await expect(b.locator('[data-key="count"][data-locked]')).toHaveCount(0);
 });

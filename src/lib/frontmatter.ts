@@ -62,6 +62,89 @@ export interface FrontmatterWriteResult {
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const DATETIME_RE = /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}/;
 
+/**
+ * 标签色板（design-system §6「标签色板」唯一数值来源，10 色）。
+ *
+ * `light` / `dark` 各为 [底, 字, 描边]；暖主题沿用 light。数组下标即色板索引，
+ * `tagColor` 的返回值直接索引本表——顺序不可调整。
+ */
+export interface TagPaletteEntry {
+  name: string;
+  light: [string, string, string];
+  dark: [string, string, string];
+}
+
+export const TAG_PALETTE: readonly TagPaletteEntry[] = [
+  {
+    name: "靛蓝",
+    light: ["#eef0ff", "#4338ca", "#c7cbff"],
+    dark: ["#262a52", "#aeb4ff", "#3c4278"],
+  },
+  {
+    name: "青碧",
+    light: ["#e6f7f4", "#0f766e", "#b8e6de"],
+    dark: ["#173b37", "#7ee0d0", "#256055"],
+  },
+  {
+    name: "琥珀",
+    light: ["#fdf2e2", "#b45309", "#f2d9a8"],
+    dark: ["#3d2e18", "#f0c074", "#5c4526"],
+  },
+  {
+    name: "玫红",
+    light: ["#fdeaf2", "#be185d", "#f5c6dc"],
+    dark: ["#3d1d2c", "#f2a4c8", "#5c2c44"],
+  },
+  {
+    name: "竹绿",
+    light: ["#e9f7ed", "#15803d", "#bfe6c9"],
+    dark: ["#183625", "#86d99c", "#26543a"],
+  },
+  {
+    name: "天青",
+    light: ["#e6f4fc", "#0369a1", "#b9dff2"],
+    dark: ["#142f40", "#7fcbed", "#204c66"],
+  },
+  {
+    name: "紫罗兰",
+    light: ["#f2ecfd", "#6d28d9", "#dcccf7"],
+    dark: ["#2e2050", "#c3a6fa", "#463473"],
+  },
+  {
+    name: "赭石",
+    light: ["#fceee6", "#9a3412", "#f3cdb6"],
+    dark: ["#3a2118", "#f0a884", "#5a3324"],
+  },
+  {
+    name: "石板",
+    light: ["#eef1f5", "#334155", "#ccd4de"],
+    dark: ["#232a35", "#b3bfcf", "#38434f"],
+  },
+  {
+    name: "藤黄",
+    light: ["#fbf5df", "#854d0e", "#ecdfa8"],
+    dark: ["#383114", "#e0c96a", "#564b20"],
+  },
+];
+
+/**
+ * 标签名 → 色板索引（0..9）。FNV-1a（与定稿原型 `fnv1a` 同实现），
+ * 按名哈希、不按位置：同名同色，增删其他标签不改变既有标签的色值。
+ */
+export function tagColor(name: string): number {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < name.length; i++) {
+    h ^= name.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return h % TAG_PALETTE.length;
+}
+
+/** 自动托管的创建 / 修改日期键：只读、键名锁定（P-6）。 */
+export function isManagedDateKey(key: string): boolean {
+  return key === "created" || key === "updated";
+}
+
 export function inferFrontmatterType(value: unknown): FrontmatterType {
   if (typeof value === "number") return "number";
   if (typeof value === "boolean") return "boolean";
