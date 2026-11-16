@@ -292,12 +292,15 @@ test("裁剪按钮启用：打开裁剪框，Esc 取消无文档改动", async (
   expect(await content(page)).toBe(doc);
 });
 
-test("图片圆角 12px", async ({ page }) => {
+test("图片圆角 6px", async ({ page }) => {
   await openEditor(page, "![pic](assets/pic.png)\n", "imgradius", PNG_DATA_URL);
   const img = page.locator(".cm-image-widget img");
   await expect(img).toHaveCount(1);
   const clip = await img.evaluate((el) => getComputedStyle(el).clipPath);
-  expect(clip).toContain("12px");
+  // 圆角统一到 --media-radius（#942 / fixes #906 B8）：编辑态 clip-path 取该
+  // token，计算值 6px，与预览态、视频块一致。依据 docs/design/approved/
+  // reader-typography/spec.md:192「图片：6px 圆角」。原 12px 断言是 #734 遗留。
+  expect(clip).toContain("6px");
 });
 
 test("双击放大：浮层出现，Esc 关闭，文档不变", async ({ page }) => {

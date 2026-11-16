@@ -445,12 +445,27 @@ class BlockHandlePlugin {
     // 列表项下的结构块，hover 都能召唤转换菜单。与顶层块 / mermaid 去重。
     const nestedKeys = new Set<string>();
     for (const block of blocks) {
-      if (block.type !== "blockquote" && block.type !== "list" && block.type !== "task") {
+      if (
+        block.type !== "blockquote" &&
+        block.type !== "list" &&
+        block.type !== "task"
+      ) {
         continue;
       }
       for (const nested of getNestedBlocks(this.view.state, block)) {
         const key = rangeKey(nested.from, nested.to);
-        if (blockKeys.has(key) || mermaidKeys.has(key) || nestedKeys.has(key)) {
+        // mermaid 围栏的行首范围（parseMermaidBlocks）与列表缩进内的 Lezer
+        // FencedCode 范围相差缩进空格，全等键去重会漏；按区间包含判定，避免
+        // 嵌套手柄遮蔽下方的 mermaid 手柄（#917 回归）。
+        const inMermaid = mermaids.some(
+          (fence) => nested.from >= fence.from && nested.to <= fence.to,
+        );
+        if (
+          blockKeys.has(key) ||
+          mermaidKeys.has(key) ||
+          nestedKeys.has(key) ||
+          inMermaid
+        ) {
           continue;
         }
         nestedKeys.add(key);

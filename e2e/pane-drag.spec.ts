@@ -104,7 +104,12 @@ async function layoutJson(page: Page): Promise<string> {
   );
 }
 
-/** 在格头里找一个不属于页签/按钮的空白点（拖拽源）。 */
+/**
+ * 在格头里找一个不属于页签/按钮的空白点（拖拽源）。
+ *
+ * `.tab-strip` 空白自 #922（batch20 E1）起只拖窗口、不冒泡到格头，所以必须
+ * 排除；从左侧起扫，优先命中 topLeft 格的 `window-controls-reserve`。
+ */
 async function emptyHeaderPoint(
   page: Page,
   paneId: string,
@@ -115,14 +120,16 @@ async function emptyHeaderPoint(
   const box = await header.boundingBox();
   if (!box) throw new Error("格头不可测量");
   const y = box.y + box.height / 2;
-  for (const frac of [0.9, 0.82, 0.74, 0.66, 0.58, 0.5]) {
+  for (const frac of [0.02, 0.06, 0.1, 0.9, 0.82, 0.74, 0.66, 0.58, 0.5]) {
     const x = box.x + box.width * frac;
     const ok = await page.evaluate(
       ([px, py]) => {
         const el = document.elementFromPoint(px, py);
         return (
           !!el &&
-          !el.closest('[data-tab-id],button,input,[data-testid="pane-menu"]')
+          !el.closest(
+            '.tab-strip, [data-tab-id], button, input, [data-testid="pane-menu"]',
+          )
         );
       },
       [x, y],
