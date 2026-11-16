@@ -14,11 +14,17 @@ import {
 } from "../lib/capabilities";
 import type { PreviewSettings } from "../lib/previewAnchor";
 import {
+  applyPropertyBarConfig,
   applyReaderSkin,
   applyTheme,
   reloadAppConfig,
   saveAppConfig,
 } from "../hooks/useConfig";
+import type {
+  PropertyBarConfig,
+  PropertyBarDefaultMode,
+  PropertyBarDisplayStyle,
+} from "../types";
 import { useEditorStore } from "../stores/editorStore";
 import { HTML_TOOLBAR_ITEMS } from "../editors/orchestration/slots";
 import { ROULETTE_HOTKEY_DEFAULT } from "../editors/orchestration/roulette";
@@ -177,6 +183,22 @@ const GRID_MODES = [
   { value: "hover", label: "悬停" },
   { value: "click", label: "点击" },
   { value: "off", label: "关闭" },
+] as const;
+
+const PROPERTY_BAR_STYLE_OPTIONS = [
+  { value: "list", label: "A 一行条" },
+  { value: "dual", label: "B 精排双列" },
+] as const;
+
+const PROPERTY_BAR_DEFAULT_OPTIONS = [
+  { value: "show", label: "展开" },
+  { value: "collapse", label: "折叠" },
+  { value: "hide", label: "隐藏" },
+] as const;
+
+const PROPERTY_BAR_NEW_DOC_OPTIONS = [
+  { value: "show", label: "显示" },
+  { value: "hide", label: "隐藏" },
 ] as const;
 
 function ExtensionsSection({
@@ -594,6 +616,14 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
   const selectionToolbar = useEditorStore(
     (s) => s.config.selectionToolbar ?? "roulette",
   );
+  const propertyBar = useEditorStore((s) => s.config.propertyBar);
+  const propertyBarStyle: PropertyBarDisplayStyle =
+    propertyBar?.displayStyle ?? "list";
+  const propertyBarPreview: PropertyBarDefaultMode =
+    propertyBar?.displayDefault?.preview ?? "show";
+  const propertyBarEdit: PropertyBarDefaultMode =
+    propertyBar?.displayDefault?.edit ?? "show";
+  const propertyBarNewDoc = propertyBar?.newDocVisible ?? true;
   const rouletteSectors = useEditorStore(
     (s) => s.config.rouletteSectors ?? null,
   );
@@ -883,6 +913,21 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
 
   const chooseSelectionToolbar = (mode: "roulette" | "capsule") => {
     setConfig({ selectionToolbar: mode });
+    void saveAppConfig();
+  };
+
+  const updatePropertyBar = (patch: Partial<PropertyBarConfig>) => {
+    const next: PropertyBarConfig = {
+      displayStyle: propertyBarStyle,
+      displayDefault: {
+        preview: propertyBarPreview,
+        edit: propertyBarEdit,
+      },
+      newDocVisible: propertyBarNewDoc,
+      ...patch,
+    };
+    setConfig({ propertyBar: next });
+    applyPropertyBarConfig(next);
     void saveAppConfig();
   };
 
@@ -1614,6 +1659,143 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
                     </li>
                   ))}
                 </ul>
+              </section>
+
+              <section data-testid="settings-doc-property">
+                <h2 className="mb-1 text-sm font-medium text-[var(--app-text-strong)]">
+                  文档属性
+                </h2>
+                <p className="mb-3 text-xs text-[var(--app-text-3)]">
+                  属性面板的显示样式与默认显隐；新建文档默认为全局设置。
+                </p>
+                <div className="space-y-3">
+                  <div>
+                    <p className="mb-1 text-xs text-[var(--app-text-3)]">
+                      显示样式
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {PROPERTY_BAR_STYLE_OPTIONS.map((option) => {
+                        const selected = propertyBarStyle === option.value;
+                        return (
+                          <button
+                            key={option.value}
+                            type="button"
+                            data-testid={`property-bar-style-${option.value}`}
+                            aria-pressed={selected}
+                            onClick={() =>
+                              updatePropertyBar({ displayStyle: option.value })
+                            }
+                            className={`rounded border px-3 py-1.5 text-sm ${
+                              selected
+                                ? "border-[var(--app-accent)] bg-[var(--app-accent-soft)] text-[var(--app-accent)]"
+                                : "border-[var(--app-border)] text-[var(--app-text-2)] hover:bg-[var(--app-sunken)]"
+                            }`}
+                          >
+                            {option.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="mb-1 text-xs text-[var(--app-text-3)]">
+                      预览态默认
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {PROPERTY_BAR_DEFAULT_OPTIONS.map((option) => {
+                        const selected = propertyBarPreview === option.value;
+                        return (
+                          <button
+                            key={option.value}
+                            type="button"
+                            data-testid={`property-bar-preview-${option.value}`}
+                            aria-pressed={selected}
+                            onClick={() =>
+                              updatePropertyBar({
+                                displayDefault: {
+                                  preview: option.value,
+                                  edit: propertyBarEdit,
+                                },
+                              })
+                            }
+                            className={`rounded border px-3 py-1.5 text-sm ${
+                              selected
+                                ? "border-[var(--app-accent)] bg-[var(--app-accent-soft)] text-[var(--app-accent)]"
+                                : "border-[var(--app-border)] text-[var(--app-text-2)] hover:bg-[var(--app-sunken)]"
+                            }`}
+                          >
+                            {option.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="mb-1 text-xs text-[var(--app-text-3)]">
+                      编辑态默认
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {PROPERTY_BAR_DEFAULT_OPTIONS.map((option) => {
+                        const selected = propertyBarEdit === option.value;
+                        return (
+                          <button
+                            key={option.value}
+                            type="button"
+                            data-testid={`property-bar-edit-${option.value}`}
+                            aria-pressed={selected}
+                            onClick={() =>
+                              updatePropertyBar({
+                                displayDefault: {
+                                  preview: propertyBarPreview,
+                                  edit: option.value,
+                                },
+                              })
+                            }
+                            className={`rounded border px-3 py-1.5 text-sm ${
+                              selected
+                                ? "border-[var(--app-accent)] bg-[var(--app-accent-soft)] text-[var(--app-accent)]"
+                                : "border-[var(--app-border)] text-[var(--app-text-2)] hover:bg-[var(--app-sunken)]"
+                            }`}
+                          >
+                            {option.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="mb-1 text-xs text-[var(--app-text-3)]">
+                      新建文档默认
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {PROPERTY_BAR_NEW_DOC_OPTIONS.map((option) => {
+                        const selected =
+                          (propertyBarNewDoc ? "show" : "hide") ===
+                          option.value;
+                        return (
+                          <button
+                            key={option.value}
+                            type="button"
+                            data-testid={`property-bar-new-doc-${option.value}`}
+                            aria-pressed={selected}
+                            onClick={() =>
+                              updatePropertyBar({
+                                newDocVisible: option.value === "show",
+                              })
+                            }
+                            className={`rounded border px-3 py-1.5 text-sm ${
+                              selected
+                                ? "border-[var(--app-accent)] bg-[var(--app-accent-soft)] text-[var(--app-accent)]"
+                                : "border-[var(--app-border)] text-[var(--app-text-2)] hover:bg-[var(--app-sunken)]"
+                            }`}
+                          >
+                            {option.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
               </section>
             </div>
           )}

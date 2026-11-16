@@ -9,6 +9,7 @@ import type {
 } from "../types";
 import type { FileTypeKind } from "../lib/fileType";
 import { useEditorStore } from "./editorStore";
+import { useDocPropertyPanelStore } from "./docPropertyPanel";
 import { mediaPlayer } from "../components/Content/mediaPlayerState";
 import { clearMediaMuted } from "../components/Content/mediaMute";
 import {
@@ -834,6 +835,12 @@ export const useStore = create<AppStore>((set, get) => ({
       paneRoot,
       scene: "workspace",
     });
+    // 新建文档默认显隐（doc-property-panel P-2）：全局设置，仅作用于新建。
+    useDocPropertyPanelStore
+      .getState()
+      .setHidden(
+        !(useEditorStore.getState().config.propertyBar?.newDocVisible ?? true),
+      );
   },
 
   toggleLeftSidebar: () =>

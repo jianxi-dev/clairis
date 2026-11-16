@@ -1,11 +1,13 @@
 import { create } from "zustand";
+import type { EditorMode, PropertyBarConfig } from "../types";
+import { modeDefault } from "../lib/propertyBarConfig";
 
 /**
- * 文档属性面板 UI 状态（doc-property-panel 功能一）。
+ * 文档属性面板 UI 状态（doc-property-panel）。
  *
- * 只存「显示态」：显隐（⌘⇧Y）与显示样式（A 一行条 / B 精排双列）。
+ * 只存「显示态」：显隐（⌘⇧Y）、折叠与显示样式（A 一行条 / B 精排双列）。
  * 面板内容一律从当前页签 `content` 实时解析，绝不在这里存字段快照。
- * 显示样式后续接设置配置（1.2 票），本票先用状态承载。
+ * 显示样式与默认档由设置配置驱动（1.2），经 useConfig 桥接同步。
  */
 
 export type DocPropertyVariant = "A" | "B";
@@ -15,18 +17,33 @@ interface DocPropertyPanelStore {
   hidden: boolean;
   /** 显示样式：A 一行条 / B 精排双列。 */
   variant: DocPropertyVariant;
+  /** 折叠态：仅编辑态可折叠，预览态不渲染折叠按钮。 */
+  collapsed: boolean;
   toggleHidden: () => void;
   setHidden: (v: boolean) => void;
   setVariant: (v: DocPropertyVariant) => void;
+  setCollapsed: (v: boolean) => void;
+  /** 应用某模式的配置默认档；source 不渲染，不动状态。 */
+  applyModeDefault: (
+    mode: EditorMode,
+    cfg?: Pick<PropertyBarConfig, "displayDefault">,
+  ) => void;
 }
 
 export const useDocPropertyPanelStore = create<DocPropertyPanelStore>(
   (set) => ({
     hidden: false,
     variant: "A",
+    collapsed: false,
     toggleHidden: () => set((s) => ({ hidden: !s.hidden })),
     setHidden: (v) => set({ hidden: v }),
     setVariant: (v) => set({ variant: v }),
+    setCollapsed: (v) => set({ collapsed: v }),
+    applyModeDefault: (mode, cfg) => {
+      if (mode !== "preview" && mode !== "edit") return;
+      const d = modeDefault(cfg, mode);
+      set({ hidden: d === "hide", collapsed: d === "collapse" });
+    },
   }),
 );
 

@@ -90,6 +90,27 @@ pub struct AppConfig {
     /// `default` + `skip_serializing_if` 让老配置仍能读、新配置不多出空字段。
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub rail_pin_hidden: Option<bool>,
+    /// 文档属性面板（doc-property-panel P-2）：显示样式 / 预览编辑默认档 / 新建默认显隐。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub property_bar: Option<PropertyBar>,
+}
+
+/// 文档属性面板配置（doc-property-panel P-2）。
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct PropertyBar {
+    /// list = A 一行条，dual = B 精排双列。
+    pub display_style: Option<String>,
+    pub display_default: Option<PropertyBarDefault>,
+    pub new_doc_visible: Option<bool>,
+}
+
+/// 预览 / 编辑各自的默认显示档：show / collapse / hide。
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct PropertyBarDefault {
+    pub preview: Option<String>,
+    pub edit: Option<String>,
 }
 
 /// 轮盘位置（ui-polish-batch15 2.1）：中键拖动后的圆心坐标（屏内像素）。
@@ -204,6 +225,7 @@ impl Default for AppConfig {
             notice_duration: None,
             heading_fonts: None,
             rail_pin_hidden: None,
+            property_bar: None,
             sidebar_left_visible: Some(true),
             sidebar_right_visible: Some(false),
             sidebar_left_width: Some(220.0),
@@ -668,6 +690,25 @@ pub fn validate_config(config: &AppConfig) -> Result<(), AppError> {
         check_range("roulettePosition.x", Some(pos.x), -20000.0, 20000.0)?;
         check_range("roulettePosition.y", Some(pos.y), -20000.0, 20000.0)?;
     }
+    if let Some(bar) = &config.property_bar {
+        check_enum(
+            "propertyBar.displayStyle",
+            bar.display_style.as_deref(),
+            &["list", "dual"],
+        )?;
+        if let Some(defaults) = &bar.display_default {
+            check_enum(
+                "propertyBar.displayDefault.preview",
+                defaults.preview.as_deref(),
+                &["show", "collapse", "hide"],
+            )?;
+            check_enum(
+                "propertyBar.displayDefault.edit",
+                defaults.edit.as_deref(),
+                &["show", "collapse", "hide"],
+            )?;
+        }
+    }
     if let Some(items) = &config.html_toolbar_items {
         const ALLOWED: [&str; 12] = [
             "ai-rewrite",
@@ -890,6 +931,9 @@ const SKILL_MAP: &str = r#"# Biaoyue 配置地图
 | `theme` | `light` / `dark` / `warm` / `system` |
 | `aiConfirmDensity` | `always` / `session-silent` / `never` |
 | `readerSkin` | `paper` / `plain` |
+| `propertyBar.displayStyle` | `list` / `dual` |
+| `propertyBar.displayDefault.preview` / `.edit` | `show` / `collapse` / `hide` |
+| `propertyBar.newDocVisible` | `true` / `false` |
 | `openaiEndpoint` / `openaiModel` | 任意字符串 |
 
 ## 禁止项
@@ -1688,5 +1732,76 @@ mod tests {
             ..loaded
         });
         assert!(validate_config(&config).is_err());
+    }
+
+    #[test]
+    fn property_bar_round_trips_and_rejects_bad_input() {
+        let dir = temp_base("property_bar");
+        let base = dir.path();
+
+        // 老配置（无字段）→ None，读得进
+        write_user(base, r#"{"theme":"dark"}"#);
+        assert_eq!(load_config_at(base).unwrap().property_bar, None);
+
+        let mut config = AppConfig::default();
+        config.property_bar = Some(PropertyBar {
+            display_style: Some("dual".into()),
+            display_default: Some(PropertyBarDefault {
+                preview: Some("collapse".into()),
+                edit: Some("hide".into()),
+            }),
+            new_doc_visible: Some(false),
+        });
+        assert!(validate_config(&config).is_ok());
+        save_config_at(base, &config).unwrap();
+        let user = read_user(base);
+        assert!(
+            user.contains("propertyBar"),
+            "user 层应含 propertyBar: {user}"
+        );
+        let loaded = load_config_at(base).unwrap().property_bar.unwrap();
+        assert_eq!(loaded.display_style.as_deref(), Some("dual"));
+        assert_eq!(
+            loaded.display_default.as_ref().unwrap().preview.as_deref(),
+            Some("collapse")
+        );
+        assert_eq!(
+            loaded.display_default.as_ref().unwrap().edit.as_deref(),
+            Some("hide")
+        );
+        assert_eq!(loaded.new_doc_visible, Some(false));
+
+        // 越界枚举被校验拦下，不落盘
+        let before = read_user(base);
+        config.property_bar = Some(PropertyBar {
+            display_style: Some("stacked".into()),
+            ..loaded.clone()
+        });
+        assert!(validate_config(&config).is_err());
+        assert!(save_config_at(base, &config).is_err());
+        assert_eq!(read_user(base), before);
+
+        config.property_bar = Some(PropertyBar {
+            display_default: Some(PropertyBarDefault {
+                preview: Some("fold".into()),
+                edit: Some("show".into()),
+            }),
+            ..loaded.clone()
+        });
+        assert!(validate_config(&config).is_err());
+
+        // 快照回滚：改成 list 保存后，恢复上一个快照回到 dual
+        config.property_bar = Some(PropertyBar {
+            display_style: Some("list".into()),
+            ..loaded.clone()
+        });
+        save_config_at(base, &config).unwrap();
+        let snapshots = list_snapshots(base).unwrap();
+        let snap = snapshots.last().unwrap().clone();
+        let restored = restore_snapshot(base, &snap).unwrap();
+        assert_eq!(
+            restored.property_bar.unwrap().display_style.as_deref(),
+            Some("dual")
+        );
     }
 }

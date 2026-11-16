@@ -3,9 +3,17 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { useEditorStore } from "../stores/editorStore";
 import { useStore } from "../stores/index";
+import { useDocPropertyPanelStore } from "../stores/docPropertyPanel";
 import { isTauriEnv } from "../utils/tauri";
 import { log } from "../utils/log";
-import type { AppConfig, HeadingFonts, ScrollPosition, Theme } from "../types";
+import type {
+  AppConfig,
+  HeadingFonts,
+  PropertyBarConfig,
+  ScrollPosition,
+  Theme,
+} from "../types";
+import { normalizePropertyBar } from "../lib/propertyBarConfig";
 import {
   applyCapabilityConfig,
   serializeCapabilities,
@@ -71,6 +79,14 @@ interface RustAppConfig {
   htmlToolbarItems?: string[] | null;
   paneLayout?: string | null;
   railPinHidden?: boolean | null;
+  propertyBar?: {
+    displayStyle?: string | null;
+    displayDefault?: {
+      preview?: string | null;
+      edit?: string | null;
+    } | null;
+    newDocVisible?: boolean | null;
+  } | null;
   railViewSpec?: {
     layout: string | null;
     density: string | null;
@@ -167,6 +183,7 @@ export async function saveAppConfig(): Promise<void> {
     // 读实时值：本次会话分裂/调整的比例要能持久化
     paneLayout: useStore.getState().paneLayoutJson(),
     railPinHidden: es.config.railPinHidden ?? null,
+    propertyBar: es.config.propertyBar ?? null,
     // 阅读空间栏「设为默认」规格（layout-portal 6.1）
     railViewSpec: useStore.getState().railViewSpec,
     // 悬浮预览窗双轨开关（layout-portal 8.1）
@@ -179,6 +196,13 @@ export async function saveAppConfig(): Promise<void> {
   } catch (e) {
     log.error("Config", "Failed to save config", e);
   }
+}
+
+/** 文档属性面板样式桥接：设置改了显示样式立即换形态（字段内容与顺序不变）。 */
+export function applyPropertyBarConfig(config: PropertyBarConfig): void {
+  useDocPropertyPanelStore
+    .getState()
+    .setVariant(config.displayStyle === "dual" ? "B" : "A");
 }
 
 /**
@@ -355,6 +379,12 @@ export function noticeDurationMs(seconds: number | null | undefined): number {
 }
 
 function applyRustConfig(raw: RustAppConfig): void {
+  const { config: propertyBarConfig, warnings } = normalizePropertyBar(
+    raw.propertyBar,
+  );
+  if (warnings.length > 0) {
+    log.warn("Config", warnings.join("；"));
+  }
   const config: Partial<AppConfig> = {
     fontSize: raw.fontSize ?? 17,
     headingColors: raw.headingColors
@@ -402,12 +432,16 @@ function applyRustConfig(raw: RustAppConfig): void {
     noticeDuration: normalizeNoticeDuration(raw.noticeDuration),
     htmlToolbarItems: normalizeHtmlToolbarItems(raw.htmlToolbarItems),
     railPinHidden: raw.railPinHidden ?? false,
+    propertyBar: propertyBarConfig,
   };
 
   const es = useEditorStore.getState();
   es.setConfig(config);
   es.setFontSize(config.fontSize ?? 17);
   es.setConfigLoaded(true);
+  useDocPropertyPanelStore
+    .getState()
+    .setVariant(propertyBarConfig.displayStyle === "dual" ? "B" : "A");
 
   // Restore scroll positions (A-9)
   useStore.getState().setScrollPositions(raw.scrollPositions ?? {});

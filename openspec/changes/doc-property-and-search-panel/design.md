@@ -39,8 +39,8 @@
 | 存储 | src-tauri/src/config.rs | property_bar | `propertyBar`/`searchPanel`/`propTemplates`/`propAliasMap` 字段入 AppConfig Rust 结构，枚举白名单 |
 | 校验 | src-tauri/src/config.rs | validate_config | displayStyle ∈ {list,dual}、searchPos ∈ {left,center,right}、displayDefault ∈ {show,collapse,hide}，越界拒绝写入 |
 | 桥接 | src/hooks/useConfig.ts | propertyBar | 配置热应用：样式/默认显隐/浮窗位置生效，未知枚举忽略并聚合告警 |
-| 消费 | src/components/DocPropertyBar.tsx | useConfig | 面板按配置渲染 A/B 两态与默认显隐；SearchReplacePanel 按配置定位浮窗 |
-| 消费 | src/components/SearchReplacePanel.tsx | searchPanel | 同上（浮窗默认位置与尺寸记忆） |
+| 消费 | src/components/Content/DocPropertyBar.tsx | useEditorStore | 面板读 config.propertyBar 渲染 A/B 两态与默认显隐（1.2 已落地） |
+| 消费 | src/components/Content/SearchReplacePanel.tsx | searchPanel | 浮窗默认位置与尺寸记忆（2.1 票落地） |
 | 消费 | src/lib/shortcuts.ts | shortcuts | ⌘⇧Y 全局、搜索浮窗局部键注册，keymap 由配置/状态驱动 |
 | 回滚 | snapshots/ | restore_config_snapshot | 写前快照，一步恢复 |
 

@@ -43,6 +43,23 @@ export interface HeadingFonts {
   h6: string;
 }
 
+/** 文档属性面板显示样式：list = A 一行条，dual = B 精排双列。 */
+export type PropertyBarDisplayStyle = "list" | "dual";
+
+/** 文档属性面板默认显示档：展开 / 折叠 / 隐藏。 */
+export type PropertyBarDefaultMode = "show" | "collapse" | "hide";
+
+/** 文档属性面板配置（doc-property-panel P-2）。 */
+export interface PropertyBarConfig {
+  displayStyle: PropertyBarDisplayStyle;
+  displayDefault: {
+    preview: PropertyBarDefaultMode;
+    edit: PropertyBarDefaultMode;
+  };
+  /** 新建文档的默认显隐（全局，不做模板级 / 文件级覆盖）。 */
+  newDocVisible: boolean;
+}
+
 export interface AppConfig {
   fontSize: number;
   headingColors: HeadingColors;
@@ -101,6 +118,8 @@ export interface AppConfig {
   railPinHidden?: boolean | null;
   /** AI 视图改写规格（layout-portal 9.1）：持久化到 Rust `aiViewSpec` */
   aiViewSpec?: ViewSpec | null;
+  /** 文档属性面板（doc-property-panel P-2） */
+  propertyBar?: PropertyBarConfig;
 }
 
 export type Theme = "system" | "light" | "dark" | "warm";

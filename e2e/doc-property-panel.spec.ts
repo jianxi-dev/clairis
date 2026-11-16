@@ -255,3 +255,87 @@ test("无 frontmatter：空态引导文案", async ({ page }) => {
   await expect(empty).toContainText("首次添加字段时自动创建");
   await expect(panel(page, "A")).toHaveCount(0);
 });
+
+test("设置区：文档属性样式 A→B 切换立即生效，字段内容不变", async ({
+  page,
+}) => {
+  await openDoc(page);
+  await expect(panel(page, "A")).toBeVisible();
+
+  await page.keyboard.press("Meta+,");
+  await expect(page.locator('[data-testid="settings-scene"]')).toBeVisible();
+  await page.locator('[data-settings-nav="editor"]').click();
+
+  const section = page.locator('[data-testid="settings-doc-property"]');
+  await expect(section).toBeVisible();
+  await expect(section).toContainText("显示样式");
+  await expect(section).toContainText("预览态默认");
+  await expect(section).toContainText("编辑态默认");
+  await expect(section).toContainText("新建文档默认");
+
+  await page.locator('[data-testid="property-bar-style-dual"]').click();
+  await page.keyboard.press("Escape");
+  await expect(page.locator('[data-testid="settings-scene"]')).toHaveCount(0);
+
+  await expect(panel(page, "A")).toHaveCount(0);
+  const b = panel(page, "B");
+  await expect(b).toBeVisible();
+  await expect(b.locator('[data-testid="dpb-row"]')).toHaveCount(6);
+  await expect(
+    b.locator('[data-key="count"] [data-testid="dpb-value"]'),
+  ).toHaveText("1,234,567");
+});
+
+test("编辑态默认档：折叠与隐藏按模式生效", async ({ page }) => {
+  await openDoc(page);
+  await setMode(page, "edit");
+  const a = panel(page, "A");
+  await expect(a.locator('[data-testid="dpb-row"]')).toHaveCount(5);
+
+  await page.keyboard.press("Meta+,");
+  await page.locator('[data-settings-nav="editor"]').click();
+  await page.locator('[data-testid="property-bar-edit-collapse"]').click();
+  await page.keyboard.press("Escape");
+  await expect(page.locator('[data-testid="settings-scene"]')).toHaveCount(0);
+
+  await expect(a.locator('[data-testid="dpb-row"]')).toHaveCount(0);
+  await expect(a.locator(".dpb-a-summary")).toContainText("已折叠");
+
+  await page.keyboard.press("Meta+,");
+  await page.locator('[data-settings-nav="editor"]').click();
+  await page.locator('[data-testid="property-bar-edit-hide"]').click();
+  await page.keyboard.press("Escape");
+
+  await expect(page.locator('[data-testid="dpb-hidden-note"]')).toBeVisible();
+  await expect(a).toHaveCount(0);
+});
+
+test("新建文档默认隐藏：恢复提示出现，⌘⇧Y 可恢复", async ({ page }) => {
+  await page.keyboard.press("Meta+,");
+  await expect(page.locator('[data-testid="settings-scene"]')).toBeVisible();
+  await page.locator('[data-settings-nav="editor"]').click();
+  await page.locator('[data-testid="property-bar-new-doc-hide"]').click();
+  await page.keyboard.press("Escape");
+  await expect(page.locator('[data-testid="settings-scene"]')).toHaveCount(0);
+
+  await page.evaluate((content) => {
+    (
+      window as unknown as {
+        __biaoyue_store__: {
+          getState: () => { newTabWith: (title: string, body: string) => void };
+        };
+      }
+    ).__biaoyue_store__
+      .getState()
+      .newTabWith("未命名", content);
+  }, DOC);
+
+  const note = page.locator('[data-testid="dpb-hidden-note"]');
+  await expect(note).toBeVisible();
+  await expect(note).toContainText("⌘⇧Y");
+  await expect(panel(page, "A")).toHaveCount(0);
+
+  await page.keyboard.press("Meta+Shift+Y");
+  await expect(note).toHaveCount(0);
+  await expect(panel(page, "A")).toBeVisible();
+});
