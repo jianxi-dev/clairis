@@ -9,6 +9,8 @@ import Icon from "../Icon";
 import { iconSvg, type IconName } from "../../ui/icons";
 import { isMediaMuted, setMediaMuted, subscribeMediaMute } from "./mediaMute";
 import { mediaDirOf, readSavedMediaIndex, saveMediaIndex } from "./mediaIndex";
+import { reconcileFullscreen } from "../../lib/fullscreenReconcile";
+import { isTauriEnv } from "../../utils/tauri";
 
 /**
  * 媒体预览播放器（ArtPlayer 封装）
@@ -212,6 +214,11 @@ export default function VideoPlayer({
   const [currentIndex, setCurrentIndex] = useState(-1);
   const [webFullscreen, setWebFullscreen] = useState(false);
   const [widthMode, setWidthModeState] = useState<WidthMode>("default");
+  // 原生 resize 对账（#944）的监听闭包挂载一次，须经 ref 读最新值
+  const webFullscreenRef = useRef(false);
+  const widthModeRef = useRef<WidthMode>("default");
+  webFullscreenRef.current = webFullscreen;
+  widthModeRef.current = widthMode;
   const skipWindowSyncRef = useRef(false);
   const [, setLoopMode] = useState<LoopMode>("none");
   const [rate, setRate] = useState(1);
@@ -1282,6 +1289,73 @@ export default function VideoPlayer({
     };
   }, []);
   /* eslint-enable react-hooks/exhaustive-deps */
+
+  // 反向对账（#944）：系统级退出原生全屏（Esc / 三指手势 / Cmd+Ctrl+F）不触发
+  // fullscreenWeb 事件，网页状态残留、setDecorations(false) 遗留。订阅窗口 resize，
+  // 用 isFullscreen() 把状态拉回同步；仅在「期望原生全屏」或「原生全屏已激活」时
+  // 对账，避免把 widthMode === "page"（网页全屏但窗口非全屏）的合法态误判为漂移。
+  useEffect(() => {
+    if (!isTauriEnv()) return;
+    let win: ReturnType<typeof getCurrentWindow>;
+    try {
+      win = getCurrentWindow();
+    } catch {
+      return;
+    }
+    let unlisten: (() => void) | null = null;
+    let cancelled = false;
+    void win
+      .onResized(() => {
+        void win
+          .isFullscreen()
+          .then((native) => {
+            if (cancelled) return;
+            if (!native && widthModeRef.current !== "fullscreen") return;
+            const action = reconcileFullscreen(
+              webFullscreenRef.current,
+              native,
+            );
+            if (
+              action.webFullscreen === null &&
+              action.decorations === null &&
+              action.nativeFullscreen === null &&
+              !action.resetWidthMode
+            ) {
+              return;
+            }
+            if (action.webFullscreen !== null) {
+              // 经 ArtPlayer 既有 fullscreenWeb 路径同步状态 / 宽度档 / 装饰，不另写一套
+              const art = artRef.current;
+              if (art && art.fullscreenWeb !== action.webFullscreen) {
+                art.fullscreenWeb = action.webFullscreen;
+              }
+              webFullscreenRef.current = action.webFullscreen;
+              setWebFullscreen(action.webFullscreen);
+              const nextMode: WidthMode = action.webFullscreen
+                ? "fullscreen"
+                : "default";
+              widthModeRef.current = nextMode;
+              setWidthModeState(nextMode);
+            }
+            if (action.decorations !== null) {
+              void win.setDecorations(action.decorations).catch(() => {});
+            }
+            if (action.nativeFullscreen !== null) {
+              void win.setFullscreen(action.nativeFullscreen).catch(() => {});
+            }
+          })
+          .catch(() => {});
+      })
+      .then((fn) => {
+        if (cancelled) fn();
+        else unlisten = fn;
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+      unlisten?.();
+    };
+  }, []);
 
   // 播放源切换（媒体 tab 切换）：switchUrl 更新，不重建实例（画中画/播放状态保持）。
   // 用 lastUrlRef 记录「上次已成功切换的 url」而非镜像 prop：若镜像 prop 提前
