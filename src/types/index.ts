@@ -60,6 +60,14 @@ export interface PropertyBarConfig {
   newDocVisible: boolean;
 }
 
+/** 搜索浮窗默认位置（#981 / S-1）。 */
+export type SearchPanelDefaultPos = "left" | "center" | "right";
+
+/** 搜索浮窗配置（#981 / S-1）。 */
+export interface SearchPanelConfig {
+  defaultPos: SearchPanelDefaultPos;
+}
+
 export interface AppConfig {
   fontSize: number;
   headingColors: HeadingColors;
@@ -120,6 +128,8 @@ export interface AppConfig {
   aiViewSpec?: ViewSpec | null;
   /** 文档属性面板（doc-property-panel P-2） */
   propertyBar?: PropertyBarConfig;
+  /** 搜索浮窗（#981 / S-1） */
+  searchPanel?: SearchPanelConfig;
 }
 
 export type Theme = "system" | "light" | "dark" | "warm";

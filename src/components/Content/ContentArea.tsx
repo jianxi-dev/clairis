@@ -73,8 +73,10 @@ import { buildAssetUrl } from "../../renderers";
 import { renderAllStatic } from "../../renderers/diagram/engine";
 import PreviewView from "./PreviewView";
 import DocPropertyBar from "./DocPropertyBar";
+import SearchReplacePanel from "./SearchReplacePanel";
 import OutlineMenu from "./OutlineMenu";
 import ReadingProgressInk from "./ReadingProgressInk";
+import { useSearchFloatStore } from "../../stores/searchFloat";
 import type { EditorMode, FileKind, Tab } from "../../types";
 
 const langCompartment = new Compartment();
@@ -629,6 +631,10 @@ export default function ContentArea({
   const htmlVisual = tab?.fileKind === "html" && editorMode === "edit";
   const cmVisible = !!tab && editorMode !== "preview" && !htmlVisual;
   const tabId = tab?.id;
+  const searchFloatOpen = useSearchFloatStore((s) => s.openPaneId === panelId);
+  const searchPanelPos = useEditorStore(
+    (s) => s.config.searchPanel?.defaultPos ?? "center",
+  );
 
   // 撤销历史不跨页签（#321）：一个面板只有一个 EditorView，历史却是
   // EditorState 的一部分。切页签时清空它，否则 A 页签的编辑会让 B 页签的
@@ -780,6 +786,18 @@ export default function ContentArea({
           documentText={tab.content}
           view={editorViewState}
           container={scrollContainer}
+        />
+      )}
+      {tab && (
+        // key 跟随默认位置：改设置即重挂浮窗，拖后位置/尺寸让位给新默认。
+        <SearchReplacePanel
+          key={searchPanelPos}
+          open={searchFloatOpen}
+          content={tab.content}
+          mode={editorMode}
+          defaultPos={searchPanelPos}
+          container={scrollContainer}
+          panelId={panelId}
         />
       )}
       {notice && (

@@ -14,6 +14,7 @@ import type {
   Theme,
 } from "../types";
 import { normalizePropertyBar } from "../lib/propertyBarConfig";
+import { normalizeSearchPanel } from "../lib/searchPanelConfig";
 import {
   applyCapabilityConfig,
   serializeCapabilities,
@@ -86,6 +87,9 @@ interface RustAppConfig {
       edit?: string | null;
     } | null;
     newDocVisible?: boolean | null;
+  } | null;
+  searchPanel?: {
+    defaultPos?: string | null;
   } | null;
   railViewSpec?: {
     layout: string | null;
@@ -184,6 +188,7 @@ export async function saveAppConfig(): Promise<void> {
     paneLayout: useStore.getState().paneLayoutJson(),
     railPinHidden: es.config.railPinHidden ?? null,
     propertyBar: es.config.propertyBar ?? null,
+    searchPanel: es.config.searchPanel ?? null,
     // 阅读空间栏「设为默认」规格（layout-portal 6.1）
     railViewSpec: useStore.getState().railViewSpec,
     // 悬浮预览窗双轨开关（layout-portal 8.1）
@@ -382,8 +387,11 @@ function applyRustConfig(raw: RustAppConfig): void {
   const { config: propertyBarConfig, warnings } = normalizePropertyBar(
     raw.propertyBar,
   );
-  if (warnings.length > 0) {
-    log.warn("Config", warnings.join("；"));
+  const { config: searchPanelConfig, warnings: searchPanelWarnings } =
+    normalizeSearchPanel(raw.searchPanel);
+  const configWarnings = [...warnings, ...searchPanelWarnings];
+  if (configWarnings.length > 0) {
+    log.warn("Config", configWarnings.join("；"));
   }
   const config: Partial<AppConfig> = {
     fontSize: raw.fontSize ?? 17,
@@ -433,6 +441,7 @@ function applyRustConfig(raw: RustAppConfig): void {
     htmlToolbarItems: normalizeHtmlToolbarItems(raw.htmlToolbarItems),
     railPinHidden: raw.railPinHidden ?? false,
     propertyBar: propertyBarConfig,
+    searchPanel: searchPanelConfig,
   };
 
   const es = useEditorStore.getState();

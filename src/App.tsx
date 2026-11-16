@@ -6,6 +6,7 @@ import { isMediaKind } from "./stores/index";
 import { useEditorStore } from "./stores/editorStore";
 import { useCaptureOverlayStore } from "./stores/captureOverlay";
 import { useDocPropertyPanelStore } from "./stores/docPropertyPanel";
+import { useSearchFloatStore } from "./stores/searchFloat";
 import StatusBar from "./components/StatusBar";
 import TooltipLayer from "./components/TooltipLayer";
 import TemplatePicker from "./components/TemplatePicker";
@@ -608,6 +609,20 @@ function App() {
       if (meta && e.shiftKey && e.key.toLowerCase() === "y") {
         e.preventDefault();
         useDocPropertyPanelStore.getState().toggleHidden();
+      }
+
+      // Cmd/Ctrl+F：自研搜索浮窗（#981 / S-1）。CM6 内置 searchKeymap 已移除，
+      // 全局接管开关；仅工作区生效（设置 / 门户 / 网格没有编辑器窗格）。
+      if (
+        meta &&
+        !e.shiftKey &&
+        e.key.toLowerCase() === "f" &&
+        !e.isComposing &&
+        store.scene === "workspace"
+      ) {
+        e.preventDefault();
+        useSearchFloatStore.getState().toggle(store.focusedPaneId || "main");
+        return;
       }
 
       // Cmd+Shift+F: 沉浸阅读开关（layout-portal 15.1）
