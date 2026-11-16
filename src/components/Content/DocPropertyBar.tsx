@@ -1,10 +1,11 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import type { EditorMode } from "../../types";
 import {
   parseFrontmatter,
   type FrontmatterField,
   type FrontmatterType,
 } from "../../lib/frontmatter";
+import { useEditorStore } from "../../stores/editorStore";
 import { useDocPropertyPanelStore } from "../../stores/docPropertyPanel";
 
 /**
@@ -118,12 +119,45 @@ function TagsValue({ field }: { field: FrontmatterField }) {
 interface DocPropertyBarProps {
   content: string;
   mode: EditorMode;
+  /** 新建（未落盘）文档：默认显隐走全局 newDocVisible。 */
+  isNewDoc?: boolean;
 }
 
-export default function DocPropertyBar({ content, mode }: DocPropertyBarProps) {
+export default function DocPropertyBar({
+  content,
+  mode,
+  isNewDoc = false,
+}: DocPropertyBarProps) {
   const hidden = useDocPropertyPanelStore((s) => s.hidden);
   const variant = useDocPropertyPanelStore((s) => s.variant);
-  const [collapsed, setCollapsed] = useState(false);
+  const collapsed = useDocPropertyPanelStore((s) => s.collapsed);
+  const setCollapsed = useDocPropertyPanelStore((s) => s.setCollapsed);
+  const setHidden = useDocPropertyPanelStore((s) => s.setHidden);
+  const applyModeDefault = useDocPropertyPanelStore((s) => s.applyModeDefault);
+  const propertyBar = useEditorStore((s) => s.config.propertyBar);
+  const previewDefault = propertyBar?.displayDefault?.preview ?? "show";
+  const editDefault = propertyBar?.displayDefault?.edit ?? "show";
+
+  // 进入预览 / 编辑模式时应用配置默认档；从源码态切回保留用户状态（P-1）。
+  const lastModeRef = useRef<EditorMode | null>(null);
+  const lastDefaultsRef = useRef(`${previewDefault}/${editDefault}`);
+  useEffect(() => {
+    if (mode !== "preview" && mode !== "edit") return;
+    const defaultsKey = `${previewDefault}/${editDefault}`;
+    const defaultsChanged = lastDefaultsRef.current !== defaultsKey;
+    lastDefaultsRef.current = defaultsKey;
+    const prev = lastModeRef.current;
+    lastModeRef.current = mode;
+    if (prev !== null && prev !== "preview" && prev !== "edit") return;
+    if (prev === mode && !defaultsChanged) return;
+    applyModeDefault(mode, propertyBar);
+  }, [mode, previewDefault, editDefault, propertyBar, applyModeDefault]);
+
+  // 新建文档：默认显隐全局生效（newDocVisible）。
+  useEffect(() => {
+    if (!isNewDoc) return;
+    setHidden(!(propertyBar?.newDocVisible ?? true));
+  }, [isNewDoc, propertyBar?.newDocVisible, setHidden]);
 
   const parsed = useMemo(() => parseFrontmatter(content), [content]);
   const fields = parsed.fields;
@@ -159,7 +193,7 @@ export default function DocPropertyBar({ content, mode }: DocPropertyBarProps) {
       className="dpb-collapse"
       data-testid="dpb-collapse"
       aria-expanded={!collapsed}
-      onClick={() => setCollapsed((v) => !v)}
+      onClick={() => setCollapsed(!collapsed)}
     >
       {collapsed ? "⌄ 展开" : "⌃ 折叠"}
     </button>

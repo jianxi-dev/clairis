@@ -727,7 +727,11 @@ export default function ContentArea({
             display: editorMode === "source" ? "none" : "block",
           }}
         >
-          <DocPropertyBar content={tab.content} mode={editorMode} />
+          <DocPropertyBar
+            content={tab.content}
+            mode={editorMode}
+            isNewDoc={!tab.path}
+          />
         </div>
       )}
       <div
