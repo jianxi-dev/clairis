@@ -14,9 +14,23 @@ import YAML from "yaml";
 
 export const FRONTMATTER_RE = /^\uFEFF?---\s*\n[\s\S]*?\n---\s*(?:\n|$)/;
 
-/** 只读显示用的推断类型；仅影响图标与格式，不改写原文。 */
+/**
+ * 字段类型（P-3 八类 + 未识别）。
+ *
+ * YAML 不存类型：`text/number/date/datetime/boolean/array` 由值推断，
+ * `select/multiselect` 只能由用户判定（typeOverrides，会话态，不落盘），
+ * `unknown` = 未命中别称且值无法推断（P-8「?」）。
+ */
 export type FrontmatterType =
-  "text" | "number" | "date" | "datetime" | "boolean" | "array";
+  | "text"
+  | "number"
+  | "date"
+  | "datetime"
+  | "boolean"
+  | "array"
+  | "select"
+  | "multiselect"
+  | "unknown";
 
 export interface FrontmatterField {
   /** YAML 键名，原样保留（不改写、不翻译）。 */
@@ -145,6 +159,52 @@ export function isManagedDateKey(key: string): boolean {
   return key === "created" || key === "updated";
 }
 
+/**
+ * 别称表（P-6，应用级预设）：规范键 → 中文 / 英文别称。
+ * 仅用于类型识别，不改写显示名、不重命名 YAML 键。
+ */
+export const ALIAS: Readonly<Record<string, readonly string[]>> = {
+  title: ["标题"],
+  tags: ["标签"],
+  category: ["分类"],
+  author: ["作者"],
+  status: ["状态"],
+  date: ["日期"],
+  createdate: ["创建日期"],
+  updatedate: ["更新日期"],
+};
+
+/** 别称规范键 → 类型（与 ALIAS 的键一一对应）。 */
+export const CANON_TYPE: Readonly<Record<string, FrontmatterType>> = {
+  title: "text",
+  tags: "array",
+  category: "select",
+  author: "text",
+  status: "select",
+  date: "date",
+  createdate: "date",
+  updatedate: "date",
+};
+
+/**
+ * 命中别称表则返回对应类型，未命中返回 null（P-6：只赋类型，不改名）。
+ * 大小写不敏感，键与全部别称都要匹配。
+ */
+export function resolveAlias(key: string): FrontmatterType | null {
+  const k = key.trim().toLowerCase();
+  for (const canon of Object.keys(ALIAS)) {
+    if (canon.toLowerCase() === k) return CANON_TYPE[canon] ?? null;
+    if (ALIAS[canon].some((a) => a.toLowerCase() === k)) {
+      return CANON_TYPE[canon] ?? null;
+    }
+  }
+  return null;
+}
+
+/**
+ * 值 → 类型推断。纯字符串无法推断为具体类型（可能是文本 / 下拉），
+ * 因此返回 `unknown`，等用户收编或命中别称（P-8）。
+ */
 export function inferFrontmatterType(value: unknown): FrontmatterType {
   if (typeof value === "number") return "number";
   if (typeof value === "boolean") return "boolean";
@@ -152,9 +212,8 @@ export function inferFrontmatterType(value: unknown): FrontmatterType {
   if (typeof value === "string") {
     if (DATE_RE.test(value)) return "date";
     if (DATETIME_RE.test(value)) return "datetime";
-    return "text";
   }
-  return "text";
+  return "unknown";
 }
 
 /** 显示层格式化；空值返回空串（由 UI 决定占位符）。 */
@@ -260,6 +319,25 @@ export function validateFieldValue(
 }
 
 /**
+ * 类型切换时的值转换（P-3 / P-8）：把已解析的 JS 值转成目标类型。
+ * 数组先还原为顿号文本再按目标类型校验；转换失败返回 `ok:false`，
+ * 调用方保留原文并提示，不写回。
+ */
+export function coerceFrontmatterValue(
+  type: FrontmatterType,
+  value: unknown,
+): FieldValidation {
+  let raw: string;
+  if (value === null || value === undefined) raw = "";
+  else if (Array.isArray(value)) raw = value.map((v) => String(v)).join("、");
+  else raw = String(value);
+  if (type === "array" && Array.isArray(value)) return { ok: true, value };
+  if (type === "multiselect" && Array.isArray(value))
+    return { ok: true, value };
+  return validateFieldValue(type, raw);
+}
+
+/**
  * 单字段写回（P-9）：只改目标键的值，键序与其余字段原样传入，
  * 自由键与注释由 `writeFrontmatter` 的 Document AST 保证不丢。
  */
@@ -281,7 +359,7 @@ function toFields(data: unknown): FrontmatterField[] {
   }
   const fields: FrontmatterField[] = [];
   for (const [key, value] of Object.entries(data as Record<string, unknown>)) {
-    const type = inferFrontmatterType(value);
+    const type = resolveAlias(key) ?? inferFrontmatterType(value);
     fields.push({
       key,
       type,
@@ -407,4 +485,79 @@ export function writeFrontmatter(
     parsed.openLine + "\n" + nextInner + parsed.closeLine + parsed.trailing;
   const text = doc.slice(0, parsed.start) + block + doc.slice(parsed.end);
   return { text, from: parsed.start, to: parsed.end, block };
+}
+
+export type RenameFrontmatterResult =
+  ({ ok: true } & FrontmatterWriteResult) | { ok: false; reason: string };
+
+const RENAME_ILLEGAL_RE = /[:#\r\n]/;
+
+/**
+ * 字段改名（P-6）：改 YAML 键、保持键序位置与值，自由键 / 注释不丢。
+ * 重名或非法键名返回 `ok:false` + 中文原因；同名提交视为无改动。
+ */
+export function renameFrontmatterField(
+  doc: string,
+  fromKey: string,
+  toKey: string,
+): RenameFrontmatterResult {
+  const next = toKey.trim();
+  if (next === "") return { ok: false, reason: "字段名不能为空" };
+  if (RENAME_ILLEGAL_RE.test(next)) {
+    return { ok: false, reason: "字段名不能包含 : 或 # 等字符" };
+  }
+
+  const parsed = parseFrontmatter(doc);
+  if (!parsed.present) return { ok: false, reason: "文档没有 frontmatter" };
+
+  const idx = parsed.fields.findIndex((f) => f.key === fromKey);
+  if (idx === -1) return { ok: false, reason: "字段不存在" };
+  if (next === fromKey) {
+    return {
+      ok: true,
+      text: doc,
+      from: parsed.start,
+      to: parsed.end,
+      block: parsed.block,
+    };
+  }
+  if (parsed.fields.some((f, i) => i !== idx && f.key === next)) {
+    return { ok: false, reason: `字段名「${next}」与已有键重名` };
+  }
+
+  let nextInner: string;
+  try {
+    const ast = YAML.parseDocument(parsed.inner);
+    const map = ast.contents as YAML.YAMLMap | null;
+    let renamed = false;
+    if (map && Array.isArray(map.items)) {
+      for (const pair of map.items) {
+        const k = pair.key as unknown;
+        const kv =
+          k && typeof k === "object" && "value" in k
+            ? String((k as { value: unknown }).value)
+            : String(k);
+        if (kv !== fromKey) continue;
+        if (k && typeof k === "object" && "value" in k) {
+          (k as { value: unknown }).value = next;
+        } else {
+          pair.key = next;
+        }
+        renamed = true;
+        break;
+      }
+    }
+    if (!renamed) throw new Error("key not found in AST");
+    nextInner = ast.toString();
+  } catch {
+    const fields = parsed.fields.map((f) =>
+      f.key === fromKey ? { ...f, key: next } : f,
+    );
+    return { ok: true, ...writeFrontmatter(doc, fields) };
+  }
+
+  const block =
+    parsed.openLine + "\n" + nextInner + parsed.closeLine + parsed.trailing;
+  const text = doc.slice(0, parsed.start) + block + doc.slice(parsed.end);
+  return { ok: true, text, from: parsed.start, to: parsed.end, block };
 }

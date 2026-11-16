@@ -1,9 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
+  ALIAS,
+  CANON_TYPE,
   FRONTMATTER_RE,
   TAG_PALETTE,
+  coerceFrontmatterValue,
   isManagedDateKey,
   parseFrontmatter,
+  renameFrontmatterField,
+  resolveAlias,
   setFrontmatterField,
   tagColor,
   validateFieldValue,
@@ -54,7 +59,7 @@ describe("frontmatter parse", () => {
     expect(r.block).toBe(DOC.slice(p.start, p.end));
   });
 
-  it("类型推断", () => {
+  it("类型推断：值可推断 + 纯文本未知", () => {
     const p = parseFrontmatter(DOC);
     const m = byKey(p.fields);
     expect(m.count.type).toBe("number");
@@ -63,7 +68,18 @@ describe("frontmatter parse", () => {
     expect(m.updated.type).toBe("datetime");
     expect(m.tags.type).toBe("array");
     expect(m.title.type).toBe("text");
-    expect(m["custom-note"].type).toBe("text");
+    expect(m["custom-note"].type).toBe("unknown");
+  });
+
+  it("别称命中赋类型，显示名保持原键样", () => {
+    const doc = `---\ntitle: 外部\ncreatedate: 2026-11-14\npriority: 高\n---\n\n正文\n`;
+    const p = parseFrontmatter(doc);
+    const m = byKey(p.fields);
+    expect(m.createdate.type).toBe("date");
+    expect(m.createdate.key).toBe("createdate");
+    expect(m.title.type).toBe("text");
+    expect(m.priority.type).toBe("unknown");
+    expect(m.priority.key).toBe("priority");
   });
 
   it("显示格式：千分位 / 布尔 / 数组顿号 / 日期时间空格", () => {
@@ -287,5 +303,122 @@ describe("isManagedDateKey", () => {
     expect(isManagedDateKey("updated")).toBe(true);
     expect(isManagedDateKey("title")).toBe(false);
     expect(isManagedDateKey("createdate")).toBe(false);
+  });
+});
+
+describe("resolveAlias", () => {
+  it("规范键与中文别称命中，返回类型", () => {
+    expect(resolveAlias("title")).toBe("text");
+    expect(resolveAlias("标题")).toBe("text");
+    expect(resolveAlias("createdate")).toBe("date");
+    expect(resolveAlias("创建日期")).toBe("date");
+    expect(resolveAlias("updatedate")).toBe("date");
+    expect(resolveAlias("category")).toBe("select");
+    expect(resolveAlias("status")).toBe("select");
+    expect(resolveAlias("author")).toBe("text");
+    expect(resolveAlias("date")).toBe("date");
+  });
+
+  it("大小写不敏感，未命中返回 null", () => {
+    expect(resolveAlias("Createdate")).toBe("date");
+    expect(resolveAlias("TITLE")).toBe("text");
+    expect(resolveAlias("priority")).toBeNull();
+    expect(resolveAlias("来源")).toBeNull();
+    expect(resolveAlias("")).toBeNull();
+  });
+
+  it("ALIAS 与 CANON_TYPE 键一一对应", () => {
+    expect(Object.keys(ALIAS).sort()).toEqual(Object.keys(CANON_TYPE).sort());
+  });
+});
+
+describe("coerceFrontmatterValue", () => {
+  it("日期 / 数字 / 布尔：合法值转换成功", () => {
+    expect(coerceFrontmatterValue("date", "2026-11-14")).toEqual({
+      ok: true,
+      value: "2026-11-14",
+    });
+    expect(coerceFrontmatterValue("number", "42")).toEqual({
+      ok: true,
+      value: 42,
+    });
+    expect(coerceFrontmatterValue("boolean", "true")).toEqual({
+      ok: true,
+      value: true,
+    });
+  });
+
+  it("转换失败返回原因（高 → 日期）", () => {
+    expect(coerceFrontmatterValue("date", "高")).toEqual({
+      ok: false,
+      reason: "日期格式应为 YYYY-MM-DD",
+    });
+  });
+
+  it("下拉 / 未识别保留原文；数组转列表保持数组", () => {
+    expect(coerceFrontmatterValue("select", "高")).toEqual({
+      ok: true,
+      value: "高",
+    });
+    expect(coerceFrontmatterValue("unknown", "高")).toEqual({
+      ok: true,
+      value: "高",
+    });
+    expect(coerceFrontmatterValue("array", ["甲", "乙"])).toEqual({
+      ok: true,
+      value: ["甲", "乙"],
+    });
+    expect(coerceFrontmatterValue("text", ["甲", "乙"])).toEqual({
+      ok: true,
+      value: "甲、乙",
+    });
+  });
+});
+
+describe("renameFrontmatterField", () => {
+  const RENAME_DOC = `---\ntitle: 甲\n# 注释\nnote: 一段备注\ncount: 1\n---\n\n正文\n`;
+
+  it("改键后键序位置不变，值与注释保留", () => {
+    const r = renameFrontmatterField(RENAME_DOC, "note", "priority");
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    const p = parseFrontmatter(r.text);
+    expect(p.fields.map((f) => f.key)).toEqual(["title", "priority", "count"]);
+    expect(p.fields[1].key).toBe("priority");
+    expect(p.fields[1].value).toBe("一段备注");
+    expect(r.text).toContain("# 注释");
+    expect(r.text).not.toContain("note:");
+    expect(RENAME_DOC.slice(0, r.from) + r.block + RENAME_DOC.slice(r.to)).toBe(
+      r.text,
+    );
+  });
+
+  it("重名被拦截", () => {
+    const r = renameFrontmatterField(RENAME_DOC, "note", "count");
+    expect(r).toEqual({ ok: false, reason: "字段名「count」与已有键重名" });
+  });
+
+  it("非法键名被拒绝（空 / 含 : / 含 #）", () => {
+    expect(renameFrontmatterField(RENAME_DOC, "note", "   ")).toEqual({
+      ok: false,
+      reason: "字段名不能为空",
+    });
+    expect(renameFrontmatterField(RENAME_DOC, "note", "a:b").ok).toBe(false);
+    expect(renameFrontmatterField(RENAME_DOC, "note", "a#b").ok).toBe(false);
+  });
+
+  it("同名提交无改动", () => {
+    const p = parseFrontmatter(RENAME_DOC);
+    const r = renameFrontmatterField(RENAME_DOC, "note", "note");
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.text).toBe(RENAME_DOC);
+    expect(r.from).toBe(p.start);
+    expect(r.to).toBe(p.end);
+  });
+
+  it("字段不存在 / 无 frontmatter 被拒绝", () => {
+    expect(renameFrontmatterField(RENAME_DOC, "missing", "x").ok).toBe(false);
+    expect(renameFrontmatterField("# 正文\n", "note", "x").ok).toBe(false);
   });
 });

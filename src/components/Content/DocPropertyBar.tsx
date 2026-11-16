@@ -6,10 +6,14 @@ import {
   useState,
   type ChangeEvent,
 } from "react";
+import { createPortal } from "react-dom";
 import type { EditorMode } from "../../types";
 import {
   isManagedDateKey,
+  coerceFrontmatterValue,
+  formatFrontmatterValue,
   parseFrontmatter,
+  renameFrontmatterField,
   setFrontmatterField,
   tagColor,
   validateFieldValue,
@@ -35,7 +39,24 @@ const TYPE_LABEL: Record<FrontmatterType, string> = {
   datetime: "日期时间",
   boolean: "布尔",
   array: "列表",
+  select: "下拉",
+  multiselect: "复选",
+  unknown: "未识别",
 };
+
+const EMPTY_OVERRIDES: Record<string, FrontmatterType> = {};
+
+/** 类型菜单八类直选（unknown 是「?」收编态，不可选）。 */
+const PICKABLE_TYPES: readonly FrontmatterType[] = [
+  "text",
+  "number",
+  "date",
+  "datetime",
+  "select",
+  "multiselect",
+  "boolean",
+  "array",
+];
 
 /** 字段类型图标：日期 = 日历、日期时间 = 时钟（描边 1.7，design-system §2），其余字符。 */
 function TypeIcon({ type }: { type: FrontmatterType }) {
@@ -86,10 +107,243 @@ function TypeIcon({ type }: { type: FrontmatterType }) {
         ? "123"
         : type === "boolean"
           ? "◉"
-          : "☰";
+          : type === "select"
+            ? "▾"
+            : type === "multiselect"
+              ? "☑"
+              : type === "unknown"
+                ? "?"
+                : "☰";
   return (
     <span className="dpb-ico" aria-hidden="true">
       {text}
+    </span>
+  );
+}
+
+interface TypeSelectorProps {
+  field: FrontmatterField;
+  editable: boolean;
+  onPick: (field: FrontmatterField, next: FrontmatterType) => void;
+}
+
+/** 字段名前的纯图标类型选择器：编辑态按钮弹八类菜单，预览态静态图标。 */
+function TypeSelector({ field, editable, onPick }: TypeSelectorProps) {
+  const [open, setOpen] = useState(false);
+  const [anchor, setAnchor] = useState<{ x: number; y: number } | null>(null);
+  const wrapRef = useRef<HTMLSpanElement>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLSpanElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      const t = e.target as Node;
+      if (wrapRef.current?.contains(t)) return;
+      if (menuRef.current?.contains(t)) return;
+      setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  const toggle = () => {
+    if (!open) {
+      const r = btnRef.current?.getBoundingClientRect();
+      if (r) {
+        setAnchor({
+          x: Math.max(8, r.left),
+          y: Math.min(window.innerHeight - 240, r.bottom + 4),
+        });
+      }
+    }
+    setOpen((v) => !v);
+  };
+
+  return (
+    <span className="dpb-type-wrap" ref={wrapRef}>
+      {editable ? (
+        <button
+          ref={btnRef}
+          type="button"
+          className="dpb-type"
+          data-testid="dpb-type"
+          title={`${TYPE_LABEL[field.type]}（点击选择类型）`}
+          aria-haspopup="menu"
+          aria-expanded={open}
+          onClick={toggle}
+        >
+          <TypeIcon type={field.type} />
+        </button>
+      ) : (
+        <span className="dpb-type dpb-type-ro" title={TYPE_LABEL[field.type]}>
+          <TypeIcon type={field.type} />
+        </span>
+      )}
+      {editable &&
+        open &&
+        anchor &&
+        createPortal(
+          <span
+            ref={menuRef}
+            className="dpb-menu"
+            data-testid="dpb-type-menu"
+            role="menu"
+            aria-label="选择字段类型"
+            style={{ left: anchor.x, top: anchor.y }}
+          >
+            {PICKABLE_TYPES.map((t) => (
+              <button
+                key={t}
+                type="button"
+                role="menuitem"
+                className={`dpb-menu-row${t === field.type ? " dpb-menu-row-cur" : ""}`}
+                data-testid="dpb-type-option"
+                data-type={t}
+                aria-current={t === field.type}
+                onClick={() => {
+                  setOpen(false);
+                  onPick(field, t);
+                }}
+              >
+                <span className="dpb-menu-ico">
+                  <TypeIcon type={t} />
+                </span>
+                {TYPE_LABEL[t]}
+              </button>
+            ))}
+          </span>,
+          document.body,
+        )}
+    </span>
+  );
+}
+
+interface RenameLabelProps {
+  field: FrontmatterField;
+  editable: boolean;
+  className: string;
+  /** 返回 null 表示改名成功，否则为拦截原因。 */
+  onSubmit: (fromKey: string, toKey: string) => string | null;
+}
+
+/** 字段名就地改名（P-6）：编辑态点击变输入，Enter / 失焦提交，托管键锁定。 */
+function RenameLabel({
+  field,
+  editable,
+  className,
+  onSubmit,
+}: RenameLabelProps) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const doneRef = useRef(false);
+  const errorTimer = useRef<number | null>(null);
+
+  const locked = isManagedDateKey(field.key);
+  const renameable = editable && !locked;
+
+  const showError = useCallback((reason: string) => {
+    setError(reason);
+    if (errorTimer.current !== null) window.clearTimeout(errorTimer.current);
+    errorTimer.current = window.setTimeout(() => setError(null), 1500);
+  }, []);
+
+  useEffect(
+    () => () => {
+      if (errorTimer.current !== null) window.clearTimeout(errorTimer.current);
+    },
+    [],
+  );
+
+  const start = () => {
+    if (!renameable) return;
+    doneRef.current = false;
+    setDraft(field.key);
+    setError(null);
+    setEditing(true);
+  };
+
+  const commit = () => {
+    if (doneRef.current) return;
+    doneRef.current = true;
+    const next = draft.trim();
+    setEditing(false);
+    if (next === field.key) {
+      setError(null);
+      return;
+    }
+    if (next === "") {
+      showError("字段名不能为空");
+      return;
+    }
+    if (/[:#\r\n]/.test(next)) {
+      showError("字段名不能包含 : 或 # 等字符");
+      return;
+    }
+    const reason = onSubmit(field.key, next);
+    if (reason) showError(reason);
+  };
+
+  return (
+    <span className="dpb-label-cell">
+      {editing ? (
+        <input
+          className={`dpb-input dpb-rename ${className}`}
+          data-testid="dpb-rename-input"
+          value={draft}
+          autoFocus
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              commit();
+            } else if (e.key === "Escape") {
+              doneRef.current = true;
+              setEditing(false);
+              setError(null);
+            }
+          }}
+        />
+      ) : (
+        <span
+          className={`${className}${renameable ? " dpb-label-clickable" : ""}`}
+          data-testid="dpb-label"
+          data-renameable={renameable ? "true" : "false"}
+          title={renameable ? "点击改名" : undefined}
+          role={renameable ? "button" : undefined}
+          tabIndex={renameable ? 0 : undefined}
+          onClick={renameable ? start : undefined}
+          onKeyDown={
+            renameable
+              ? (e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    start();
+                  }
+                }
+              : undefined
+          }
+        >
+          {field.key}
+        </span>
+      )}
+      {error && (
+        <span className="dpb-error" data-testid="dpb-error" role="status">
+          {error}
+        </span>
+      )}
     </span>
   );
 }
@@ -170,7 +424,10 @@ function ValueEditor({ field, editable, onCommit }: ValueEditorProps) {
     if (!editable) return;
     const raw = rawForEdit(field);
     setDraft(raw);
-    setMultiline(field.type === "text" && raw.length > MULTILINE_THRESHOLD);
+    setMultiline(
+      (field.type === "text" || field.type === "unknown") &&
+        raw.length > MULTILINE_THRESHOLD,
+    );
     setError(null);
     setEditing(true);
   };
@@ -349,12 +606,15 @@ interface DocPropertyBarProps {
   mode: EditorMode;
   /** 新建（未落盘）文档：默认显隐走全局 newDocVisible。 */
   isNewDoc?: boolean;
+  /** 文档标识：切换文档时隔离用户判定的类型（typeOverrides 会话态）。 */
+  docKey?: string;
 }
 
 export default function DocPropertyBar({
   content,
   mode,
   isNewDoc = false,
+  docKey = "",
 }: DocPropertyBarProps) {
   const hidden = useDocPropertyPanelStore((s) => s.hidden);
   const variant = useDocPropertyPanelStore((s) => s.variant);
@@ -400,8 +660,86 @@ export default function DocPropertyBar({
     [content],
   );
 
+  const [overrideMap, setOverrideMap] = useState<
+    Record<string, Record<string, FrontmatterType>>
+  >({});
+  const [typeErrors, setTypeErrors] = useState<Record<string, string>>({});
+  const typeErrorTimer = useRef<number | null>(null);
+  const typeOverrides = overrideMap[docKey] ?? EMPTY_OVERRIDES;
+
+  useEffect(
+    () => () => {
+      if (typeErrorTimer.current !== null)
+        window.clearTimeout(typeErrorTimer.current);
+    },
+    [],
+  );
+
+  const showTypeError = useCallback((key: string, reason: string) => {
+    setTypeErrors((prev) => ({ ...prev, [key]: reason }));
+    if (typeErrorTimer.current !== null)
+      window.clearTimeout(typeErrorTimer.current);
+    typeErrorTimer.current = window.setTimeout(() => {
+      setTypeErrors((prev) => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+    }, 1500);
+  }, []);
+
+  const handlePickType = useCallback(
+    (field: FrontmatterField, next: FrontmatterType) => {
+      if (next === field.type) return;
+      setOverrideMap((prev) => {
+        const cur = prev[docKey] ?? {};
+        return { ...prev, [docKey]: { ...cur, [field.key]: next } };
+      });
+      const result = coerceFrontmatterValue(next, field.value);
+      if (!result.ok) {
+        showTypeError(field.key, result.reason);
+        return;
+      }
+      if (JSON.stringify(result.value) !== JSON.stringify(field.value)) {
+        handleCommitField(field.key, result.value);
+      }
+    },
+    [docKey, handleCommitField, showTypeError],
+  );
+
+  const handleRename = useCallback(
+    (fromKey: string, toKey: string): string | null => {
+      const result = renameFrontmatterField(content, fromKey, toKey);
+      if (!result.ok) return result.reason;
+      if (result.text !== content) {
+        const view = getActiveEditorView();
+        view?.dispatch({
+          changes: { from: result.from, to: result.to, insert: result.block },
+        });
+      }
+      setOverrideMap((prev) => {
+        const cur = prev[docKey];
+        if (!cur || !(fromKey in cur)) return prev;
+        const next = { ...cur };
+        next[toKey] = next[fromKey];
+        delete next[fromKey];
+        return { ...prev, [docKey]: next };
+      });
+      return null;
+    },
+    [content, docKey],
+  );
+
   const parsed = useMemo(() => parseFrontmatter(content), [content]);
-  const fields = parsed.fields;
+  const fields = useMemo(() => {
+    if (Object.keys(typeOverrides).length === 0) return parsed.fields;
+    return parsed.fields.map((f) => {
+      const t = typeOverrides[f.key];
+      return t && t !== f.type
+        ? { ...f, type: t, display: formatFrontmatterValue(f.value, t) }
+        : f;
+    });
+  }, [parsed, typeOverrides]);
   const titleField = fields.find((f) => f.key === "title") ?? null;
   const tagsField =
     fields.find((f) => f.key === "tags" && Array.isArray(f.value)) ?? null;
@@ -462,9 +800,18 @@ export default function DocPropertyBar({
               >
                 <span className="dpb-b-handle">{editable ? "⠿" : ""}</span>
                 <span className="dpb-b-type" title={TYPE_LABEL[field.type]}>
-                  <TypeIcon type={field.type} />
+                  <TypeSelector
+                    field={field}
+                    editable={editable}
+                    onPick={handlePickType}
+                  />
                 </span>
-                <span className="dpb-b-label">{field.key}</span>
+                <RenameLabel
+                  field={field}
+                  editable={editable}
+                  className="dpb-b-label"
+                  onSubmit={handleRename}
+                />
                 <span className="dpb-b-value">
                   {field === tagsField ? (
                     <TagsValue field={field} />
@@ -474,6 +821,15 @@ export default function DocPropertyBar({
                       editable={editable && !isManagedDateKey(field.key)}
                       onCommit={handleCommitField}
                     />
+                  )}
+                  {typeErrors[field.key] && (
+                    <span
+                      className="dpb-error"
+                      data-testid="dpb-error"
+                      role="status"
+                    >
+                      {typeErrors[field.key]}
+                    </span>
                   )}
                 </span>
                 <span className="dpb-b-x">
@@ -516,13 +872,33 @@ export default function DocPropertyBar({
                   ⠿
                 </span>
               )}
-              {editable && <TypeIcon type={field.type} />}
-              <span className="dpb-k">{field.key}</span>
+              {editable && (
+                <TypeSelector
+                  field={field}
+                  editable={editable}
+                  onPick={handlePickType}
+                />
+              )}
+              <RenameLabel
+                field={field}
+                editable={editable}
+                className="dpb-k"
+                onSubmit={handleRename}
+              />
               <ValueEditor
                 field={field}
                 editable={editable && !isManagedDateKey(field.key)}
                 onCommit={handleCommitField}
               />
+              {typeErrors[field.key] && (
+                <span
+                  className="dpb-error"
+                  data-testid="dpb-error"
+                  role="status"
+                >
+                  {typeErrors[field.key]}
+                </span>
+              )}
               {isManagedDateKey(field.key) && <LockIcon />}
             </span>
           ))}
@@ -534,7 +910,12 @@ export default function DocPropertyBar({
                 </span>
               )}
               {editable && <TypeIcon type="array" />}
-              <span className="dpb-k">{tagsField.key}</span>
+              <RenameLabel
+                field={tagsField}
+                editable={editable}
+                className="dpb-k"
+                onSubmit={handleRename}
+              />
               <TagsValue field={tagsField} />
             </span>
           )}
