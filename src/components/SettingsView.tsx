@@ -21,12 +21,18 @@ import {
   saveAppConfig,
 } from "../hooks/useConfig";
 import type {
+  PropTemplateConfig,
+  PropTemplateFieldConfig,
   PropertyBarConfig,
   PropertyBarDefaultMode,
   PropertyBarDisplayStyle,
   SearchPanelConfig,
   SearchPanelDefaultPos,
 } from "../types";
+import {
+  BUILTIN_TEMPLATE_NAMES,
+  PROP_TEMPLATE_FIELD_TYPES,
+} from "../lib/propTemplates";
 import { useEditorStore } from "../stores/editorStore";
 import { HTML_TOOLBAR_ITEMS } from "../editors/orchestration/slots";
 import { ROULETTE_HOTKEY_DEFAULT } from "../editors/orchestration/roulette";
@@ -632,6 +638,10 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
   const propertyBarEdit: PropertyBarDefaultMode =
     propertyBar?.displayDefault?.edit ?? "show";
   const propertyBarNewDoc = propertyBar?.newDocVisible ?? true;
+  const propTemplates = useEditorStore((s) => s.config.propTemplates) ?? [];
+  const [tplName, setTplName] = useState("");
+  const [tplFields, setTplFields] = useState("");
+  const [tplError, setTplError] = useState<string | null>(null);
   const searchPanel = useEditorStore((s) => s.config.searchPanel);
   const searchPanelPos: SearchPanelDefaultPos =
     searchPanel?.defaultPos ?? "center";
@@ -945,6 +955,59 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
   const updateSearchPanel = (patch: Partial<SearchPanelConfig>) => {
     setConfig({ searchPanel: { defaultPos: searchPanelPos, ...patch } });
     void saveAppConfig();
+  };
+
+  const updatePropTemplates = (next: PropTemplateConfig[]) => {
+    setConfig({ propTemplates: next });
+    void saveAppConfig();
+  };
+
+  const addPropTemplate = () => {
+    const name = tplName.trim();
+    if (!name) {
+      setTplError("模板名称不能为空");
+      return;
+    }
+    if (BUILTIN_TEMPLATE_NAMES.includes(name)) {
+      setTplError("不能覆盖内置模板");
+      return;
+    }
+    if (propTemplates.some((t) => t.name === name)) {
+      setTplError("模板名已存在");
+      return;
+    }
+    const fields: PropTemplateFieldConfig[] = [];
+    for (const line of tplFields.split("\n")) {
+      const raw = line.trim();
+      if (!raw) continue;
+      const [key, type] = raw.split(":").map((s) => s.trim());
+      if (!key) {
+        setTplError(`字段行无效：${raw}`);
+        return;
+      }
+      if (/[:#\r]/.test(key)) {
+        setTplError(`字段名不能包含 : 或 #：${key}`);
+        return;
+      }
+      const fieldType = (type ?? "text") as PropTemplateFieldConfig["type"];
+      if (!PROP_TEMPLATE_FIELD_TYPES.includes(fieldType)) {
+        setTplError(`未知字段类型：${fieldType}`);
+        return;
+      }
+      fields.push({ key, type: fieldType, value: "" });
+    }
+    if (fields.length === 0) {
+      setTplError("至少需要一个字段");
+      return;
+    }
+    updatePropTemplates([...propTemplates, { name, fields }]);
+    setTplName("");
+    setTplFields("");
+    setTplError(null);
+  };
+
+  const removePropTemplate = (name: string) => {
+    updatePropTemplates(propTemplates.filter((t) => t.name !== name));
   };
 
   const chooseRouletteForm = (form: "hub" | "disk") => {
@@ -1809,6 +1872,74 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
                           </button>
                         );
                       })}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="mb-1 text-xs text-[var(--app-text-3)]">
+                      属性模板
+                    </p>
+                    <ul className="mb-2 space-y-1">
+                      {propTemplates.map((t) => (
+                        <li
+                          key={t.name}
+                          className="flex items-center gap-2 text-xs"
+                        >
+                          <span className="font-medium text-[var(--app-text)]">
+                            {t.name}
+                          </span>
+                          <span className="text-[var(--app-text-3)]">
+                            {t.fields.map((f) => f.key).join("、")}
+                          </span>
+                          {BUILTIN_TEMPLATE_NAMES.includes(t.name) ? (
+                            <span className="text-[var(--app-text-3)]">
+                              内置
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              data-testid={`tpl-del-${t.name}`}
+                              onClick={() => removePropTemplate(t.name)}
+                              className="text-[var(--app-text-3)] hover:text-[#a8402f]"
+                            >
+                              删除
+                            </button>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                    <div className="flex flex-col gap-1">
+                      <input
+                        type="text"
+                        data-testid="tpl-new-name"
+                        value={tplName}
+                        onChange={(e) => setTplName(e.target.value)}
+                        placeholder="新模板名称"
+                        className="rounded border border-[var(--app-border)] bg-[var(--app-bg)] px-2 py-1 text-xs text-[var(--app-text)] outline-none focus:border-[var(--app-accent)]"
+                      />
+                      <textarea
+                        data-testid="tpl-new-fields"
+                        value={tplFields}
+                        onChange={(e) => setTplFields(e.target.value)}
+                        placeholder="每行一个字段：键名 或 键名:类型"
+                        rows={3}
+                        className="resize-y rounded border border-[var(--app-border)] bg-[var(--app-bg)] px-2 py-1 text-xs text-[var(--app-text)] outline-none focus:border-[var(--app-accent)]"
+                      />
+                      {tplError && (
+                        <span
+                          className="text-xs text-[#a8402f]"
+                          data-testid="tpl-error"
+                        >
+                          {tplError}
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        data-testid="tpl-add"
+                        onClick={addPropTemplate}
+                        className="self-start rounded border border-[var(--app-border)] px-3 py-1 text-xs text-[var(--app-text-2)] hover:bg-[var(--app-sunken)]"
+                      >
+                        新增模板
+                      </button>
                     </div>
                   </div>
                 </div>

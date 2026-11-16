@@ -25,7 +25,7 @@
 
 ## 2. 搜索浮窗线
 
-- [ ] 2.1 浮窗首通与形态：`src/lib/searchScan.ts` 不分大小写子串扫描（产出 `{blockIndex, line, from, to, text}`；中文/多块/零宽匹配防护单测）；`src/components/SearchReplacePanel.tsx` 浮窗壳（系统浮层范式、宽 `min(600px, calc(100% - 48px))` 高 460 默认居中）、⌘F 开/关、Esc 关闭、接管移除 CM6 `searchKeymap` 内置面板；`AppConfig.searchPanel.defaultPos`（左/中/右 + Rust 校验 + 快照回滚）+ 拖拽手柄移动 + 右下角缩放、拖后位置会话内优先、改设置回默认（原 1.5 + 4.1 + 4.2 + 5.1 searchPanel 部分 + 5.5）
+- [x] 2.1 浮窗首通与形态：`src/lib/searchScan.ts` 不分大小写子串扫描（产出 `{blockIndex, line, from, to, text}`；中文/多块/零宽匹配防护单测）；`src/components/SearchReplacePanel.tsx` 浮窗壳（系统浮层范式、宽 `min(600px, calc(100% - 48px))` 高 460 默认居中）、⌘F 开/关、Esc 关闭、接管移除 CM6 `searchKeymap` 内置面板；`AppConfig.searchPanel.defaultPos`（左/中/右 + Rust 校验 + 快照回滚）+ 拖拽手柄移动 + 右下角缩放、拖后位置会话内优先、改设置回默认（原 1.5 + 4.1 + 4.2 + 5.1 searchPanel 部分 + 5.5）
 - [ ] 2.2 结果列表与行尾快捷键：双行结果（定位 `L行号 · 块标题` + 序位 `1/7`、两行上下文高亮截断）、命中分布条（点刻度跳转）、视口 9 个结果内滚动；行尾固定快捷键（行 1~9 显示 ⌘1~⌘9、选中行显示 ⏎）、↑↓ 换选、Enter 定位选中行、⌘/Ctrl+N 直达、点击定位（选中+滚动）、滚动后前 9 行快捷键不变；复用 1.6 的 scope 机制注册浮窗局部键（context「搜索浮窗打开且焦点在浮窗内」，局部优先于全局，关闭/失焦归还——⌘2 关浮窗后恢复卡片直开）（原 4.3 + 4.4 + 4.7）
 - [ ] 2.3 替换与悬停预览：⇄ 切换替换行、行内「原词 → 新词」diff 预览、全部替换（单事务 + 计数提示）、逐个替换后自动跳下一处、可撤销；悬停全文预览卡仅替换模式显示（所在块完整内容 + 定位信息）；预览态无替换行（原 4.5 + 4.6）
 

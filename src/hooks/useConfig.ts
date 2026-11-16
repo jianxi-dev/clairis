@@ -16,6 +16,10 @@ import type {
 import { normalizePropertyBar } from "../lib/propertyBarConfig";
 import { normalizeSearchPanel } from "../lib/searchPanelConfig";
 import {
+  normalizePropTemplates,
+  type RawPropTemplate,
+} from "../lib/propTemplates";
+import {
   applyCapabilityConfig,
   serializeCapabilities,
 } from "../lib/capabilities";
@@ -91,6 +95,7 @@ interface RustAppConfig {
   searchPanel?: {
     defaultPos?: string | null;
   } | null;
+  propTemplates?: RawPropTemplate[] | null;
   railViewSpec?: {
     layout: string | null;
     density: string | null;
@@ -189,6 +194,7 @@ export async function saveAppConfig(): Promise<void> {
     railPinHidden: es.config.railPinHidden ?? null,
     propertyBar: es.config.propertyBar ?? null,
     searchPanel: es.config.searchPanel ?? null,
+    propTemplates: es.config.propTemplates ?? null,
     // 阅读空间栏「设为默认」规格（layout-portal 6.1）
     railViewSpec: useStore.getState().railViewSpec,
     // 悬浮预览窗双轨开关（layout-portal 8.1）
@@ -389,7 +395,13 @@ function applyRustConfig(raw: RustAppConfig): void {
   );
   const { config: searchPanelConfig, warnings: searchPanelWarnings } =
     normalizeSearchPanel(raw.searchPanel);
-  const configWarnings = [...warnings, ...searchPanelWarnings];
+  const { config: propTemplates, warnings: propTemplateWarnings } =
+    normalizePropTemplates(raw.propTemplates);
+  const configWarnings = [
+    ...warnings,
+    ...searchPanelWarnings,
+    ...propTemplateWarnings,
+  ];
   if (configWarnings.length > 0) {
     log.warn("Config", configWarnings.join("；"));
   }
@@ -442,6 +454,7 @@ function applyRustConfig(raw: RustAppConfig): void {
     railPinHidden: raw.railPinHidden ?? false,
     propertyBar: propertyBarConfig,
     searchPanel: searchPanelConfig,
+    propTemplates,
   };
 
   const es = useEditorStore.getState();
@@ -579,6 +592,7 @@ export function useConfig() {
         horizontalSplitRatio: 0.5,
         verticalSplitRatio: 0.5,
         recentFiles: [],
+        propTemplates: normalizePropTemplates(null).config,
       });
       es.setConfigLoaded(true);
       es.setConfigLoading(false);

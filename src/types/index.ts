@@ -1,6 +1,7 @@
 export type EditorMode = "preview" | "edit" | "source";
 
 import type { ViewSpec } from "../lib/aiViewSpec";
+import type { FrontmatterType } from "../lib/frontmatter";
 
 export type FileKind =
   | "markdown"
@@ -58,6 +59,19 @@ export interface PropertyBarConfig {
   };
   /** 新建文档的默认显隐（全局，不做模板级 / 文件级覆盖）。 */
   newDocVisible: boolean;
+}
+
+/** 属性模板字段（doc-property-panel P-7）：键 + 类型 + 可选预设值。 */
+export interface PropTemplateFieldConfig {
+  key: string;
+  type: FrontmatterType;
+  value?: unknown;
+}
+
+/** 属性模板（doc-property-panel P-7）：应用级配置，名称 + 字段集。 */
+export interface PropTemplateConfig {
+  name: string;
+  fields: PropTemplateFieldConfig[];
 }
 
 /** 搜索浮窗默认位置（#981 / S-1）。 */
@@ -128,6 +142,8 @@ export interface AppConfig {
   aiViewSpec?: ViewSpec | null;
   /** 文档属性面板（doc-property-panel P-2） */
   propertyBar?: PropertyBarConfig;
+  /** 属性模板（doc-property-panel P-7）：内置三套 + 用户自定义，按名合并 */
+  propTemplates?: PropTemplateConfig[];
   /** 搜索浮窗（#981 / S-1） */
   searchPanel?: SearchPanelConfig;
 }

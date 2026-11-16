@@ -30,6 +30,11 @@ import {
   type FrontmatterRowId,
   type FrontmatterType,
 } from "../../lib/frontmatter";
+import {
+  applyTemplate,
+  BUILTIN_PROP_TEMPLATES,
+  type PropTemplateConfig,
+} from "../../lib/propTemplates";
 import { getActiveEditorView } from "../../editors/editorRef";
 import { useEditorStore } from "../../stores/editorStore";
 import { useDocPropertyPanelStore } from "../../stores/docPropertyPanel";
@@ -1073,6 +1078,178 @@ function TagsCell({
   return <TagEditor field={field} onCommit={onCommit} />;
 }
 
+interface TemplateMenuButtonProps {
+  templates: readonly PropTemplateConfig[];
+  onApply: (template: PropTemplateConfig) => void;
+}
+
+function TemplateMenuButton({ templates, onApply }: TemplateMenuButtonProps) {
+  const [open, setOpen] = useState(false);
+  const [anchor, setAnchor] = useState<{ x: number; y: number } | null>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLSpanElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      const t = e.target as Node;
+      if (btnRef.current?.contains(t)) return;
+      if (menuRef.current?.contains(t)) return;
+      setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  const toggle = () => {
+    if (!open) {
+      const r = btnRef.current?.getBoundingClientRect();
+      if (r) {
+        setAnchor({
+          x: Math.max(8, r.left),
+          y: Math.min(window.innerHeight - 220, r.bottom + 4),
+        });
+      }
+    }
+    setOpen((v) => !v);
+  };
+
+  return (
+    <>
+      <button
+        ref={btnRef}
+        type="button"
+        className="dpb-tpl-btn"
+        data-testid="dpb-template"
+        title="套用属性模板（只补缺失键）"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={toggle}
+      >
+        ▤ 模板
+      </button>
+      {open &&
+        anchor &&
+        createPortal(
+          <span
+            ref={menuRef}
+            className="dpb-menu"
+            data-testid="dpb-template-menu"
+            role="menu"
+            aria-label="属性模板"
+            style={{ left: anchor.x, top: anchor.y }}
+          >
+            {templates.length === 0 ? (
+              <span className="dpb-menu-row dpb-menu-empty">没有可用模板</span>
+            ) : (
+              templates.map((t) => (
+                <button
+                  key={t.name}
+                  type="button"
+                  role="menuitem"
+                  className="dpb-menu-row"
+                  data-testid="dpb-template-option"
+                  data-name={t.name}
+                  onClick={() => {
+                    setOpen(false);
+                    onApply(t);
+                  }}
+                >
+                  <span className="dpb-menu-ico">▤</span>
+                  <span className="dpb-menu-label">{t.name}</span>
+                </button>
+              ))
+            )}
+          </span>,
+          document.body,
+        )}
+    </>
+  );
+}
+
+interface TitleValueProps {
+  field: FrontmatterField | null;
+  editable: boolean;
+  onCommit: (key: string, value: unknown) => void;
+}
+
+function TitleValue({ field, editable, onCommit }: TitleValueProps) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
+  const text = field?.display || "未命名";
+
+  const start = () => {
+    setDraft(field?.value == null ? "" : String(field.value));
+    setEditing(true);
+  };
+
+  const commit = () => {
+    setEditing(false);
+    const next = draft;
+    const prev = field?.value == null ? "" : String(field.value);
+    if (next === prev) return;
+    onCommit("title", next);
+  };
+
+  if (!editable) {
+    return (
+      <span className="dpb-a-title" title={field?.display || undefined}>
+        {text}
+      </span>
+    );
+  }
+
+  if (editing) {
+    return (
+      <input
+        className="dpb-input dpb-title-input"
+        data-testid="dpb-title-input"
+        value={draft}
+        autoFocus
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            commit();
+          } else if (e.key === "Escape") {
+            setEditing(false);
+          }
+        }}
+      />
+    );
+  }
+
+  return (
+    <span
+      className="dpb-a-title dpb-title-clickable"
+      data-testid="dpb-title"
+      title="点击编辑标题"
+      role="button"
+      tabIndex={0}
+      onClick={start}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          start();
+        }
+      }}
+    >
+      {text}
+    </span>
+  );
+}
+
 interface DocPropertyBarProps {
   content: string;
   mode: EditorMode;
@@ -1095,6 +1272,8 @@ export default function DocPropertyBar({
   const setHidden = useDocPropertyPanelStore((s) => s.setHidden);
   const applyModeDefault = useDocPropertyPanelStore((s) => s.applyModeDefault);
   const propertyBar = useEditorStore((s) => s.config.propertyBar);
+  const propTemplates =
+    useEditorStore((s) => s.config.propTemplates) ?? BUILTIN_PROP_TEMPLATES;
   const previewDefault = propertyBar?.displayDefault?.preview ?? "show";
   const editDefault = propertyBar?.displayDefault?.edit ?? "show";
 
@@ -1159,8 +1338,51 @@ export default function DocPropertyBar({
       view.dispatch({
         changes: { from: result.from, to: result.to, insert: result.block },
       });
+      if (key === "title" && docKey) {
+        useStore.getState().setTabTitle(docKey, String(value ?? ""));
+      }
     },
-    [content],
+    [content, docKey],
+  );
+
+  const [tplStatus, setTplStatus] = useState<string | null>(null);
+  const tplStatusTimer = useRef<number | null>(null);
+  useEffect(
+    () => () => {
+      if (tplStatusTimer.current !== null)
+        window.clearTimeout(tplStatusTimer.current);
+    },
+    [],
+  );
+  const showTplStatus = useCallback((text: string) => {
+    setTplStatus(text);
+    if (tplStatusTimer.current !== null)
+      window.clearTimeout(tplStatusTimer.current);
+    tplStatusTimer.current = window.setTimeout(() => setTplStatus(null), 3000);
+  }, []);
+
+  const handleApplyTemplate = useCallback(
+    (template: PropTemplateConfig) => {
+      const parsedNow = parseFrontmatter(content);
+      const base = parsedNow.present ? parsedNow.fields : [];
+      const { fields: next, added, skipped } = applyTemplate(base, template);
+      if (added === 0) {
+        showTplStatus(
+          `模板「${template.name}」没有新增字段（${skipped} 个键已存在）`,
+        );
+        return;
+      }
+      const result = writeFrontmatterOrdered(content, next);
+      if (result.text !== content) {
+        getActiveEditorView()?.dispatch({
+          changes: { from: result.from, to: result.to, insert: result.block },
+        });
+      }
+      showTplStatus(
+        `套用模板「${template.name}」→ 新增 ${added} 个字段${skipped ? `，跳过 ${skipped} 个已有键` : ""}`,
+      );
+    },
+    [content, showTplStatus],
   );
 
   const [overrideMap, setOverrideMap] = useState<
@@ -1244,6 +1466,9 @@ export default function DocPropertyBar({
     });
   }, [parsed, typeOverrides]);
   const titleField = fields.find((f) => f.key === "title") ?? null;
+  const titleView = titleField
+    ? { ...titleField, display: titleField.display || "未命名" }
+    : null;
   const tagsField =
     fields.find((f) => f.key === "tags" && Array.isArray(f.value)) ?? null;
   const rest = fields.filter((f) => f !== titleField && f !== tagsField);
@@ -1556,8 +1781,23 @@ export default function DocPropertyBar({
             {collapsed ? `已折叠 · ${fields.length} 个字段` : ""}
           </span>
           <span className="dpb-b-tools" data-testid="dpb-tools">
+            {editable && (
+              <TemplateMenuButton
+                templates={propTemplates}
+                onApply={handleApplyTemplate}
+              />
+            )}
             {selectAllButton}
             {collapseButton}
+            {tplStatus && (
+              <span
+                className="dpb-tpl-status"
+                data-testid="dpb-tpl-status"
+                role="status"
+              >
+                {tplStatus}
+              </span>
+            )}
           </span>
         </div>
         {!collapsed && (
@@ -1605,7 +1845,9 @@ export default function DocPropertyBar({
                       />
                     ) : (
                       <FieldValue
-                        field={field}
+                        field={
+                          field === titleField && titleView ? titleView : field
+                        }
                         editable={editable}
                         onCommit={handleCommitField}
                       />
@@ -1658,20 +1900,34 @@ export default function DocPropertyBar({
                 ⠿
               </span>
             )}
-            <span
-              className="dpb-a-title"
-              title={titleField.display || undefined}
-            >
-              {titleField.display || "（无标题）"}
-            </span>
+            <TitleValue
+              field={titleView}
+              editable={editable}
+              onCommit={handleCommitField}
+            />
           </span>
         ) : (
           <span className="dpb-a-title">（无标题）</span>
         )}
         <span className="dpb-a-spacer" />
         <span className="dpb-a-tools" data-testid="dpb-tools">
+          {editable && (
+            <TemplateMenuButton
+              templates={propTemplates}
+              onApply={handleApplyTemplate}
+            />
+          )}
           {selectAllButton}
           {collapseButton}
+          {tplStatus && (
+            <span
+              className="dpb-tpl-status"
+              data-testid="dpb-tpl-status"
+              role="status"
+            >
+              {tplStatus}
+            </span>
+          )}
         </span>
       </div>
       {collapsed ? (

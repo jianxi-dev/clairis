@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { useStore } from "../stores/index";
+import { parseFrontmatter } from "../lib/frontmatter";
 
 describe("multi-tab store", () => {
   beforeEach(() => {
@@ -114,7 +115,9 @@ describe("multi-tab store", () => {
       expect(tab.editorMode).toBe("edit");
 
       useStore.getState().setEditorMode("source");
-      expect(Object.values(useStore.getState().tabs)[0].editorMode).toBe("source");
+      expect(Object.values(useStore.getState().tabs)[0].editorMode).toBe(
+        "source",
+      );
     });
   });
 
@@ -278,5 +281,65 @@ describe("multi-tab store", () => {
       expect(state.horizontalSplitRatio).toBe(0.7); // unchanged
       expect(state.verticalSplitRatio).toBe(0.3);
     });
+  });
+});
+
+describe("新建默认与标题联动（P-7）", () => {
+  beforeEach(() => {
+    useStore.getState().reset();
+  });
+
+  it("新建空文档写入标题占位 + 创建 / 修改日期", () => {
+    useStore.getState().newTab();
+    const tab = Object.values(useStore.getState().tabs)[0];
+    expect(tab.path).toBeNull();
+    const parsed = parseFrontmatter(tab.content);
+    expect(parsed.present).toBe(true);
+    expect(parsed.fields.map((f) => f.key)).toEqual([
+      "title",
+      "created",
+      "updated",
+    ]);
+    expect(parsed.fields[0].value).toBe("");
+  });
+
+  it("新建时传入正文不覆盖", () => {
+    useStore.getState().newTabWith("笔记", "# 正文");
+    const tab = Object.values(useStore.getState().tabs)[0];
+    expect(tab.content).toBe("# 正文");
+  });
+
+  it("打开既有文档不补写 frontmatter", () => {
+    useStore.getState().openFile("/x.md", "# 只有正文");
+    const tab = Object.values(useStore.getState().tabs)[0];
+    expect(tab.content).toBe("# 只有正文");
+  });
+
+  it("页签重命名回写 frontmatter 标题；无 frontmatter 不写", () => {
+    useStore.getState().newTab();
+    const id = Object.keys(useStore.getState().tabs)[0];
+    useStore.getState().renameTab(id, "会议纪要");
+    const tab = useStore.getState().tabs[id];
+    expect(tab.title).toBe("会议纪要");
+    expect(parseFrontmatter(tab.content).fields[0].value).toBe("会议纪要");
+    expect(tab.dirty).toBe(true);
+
+    useStore.getState().openFile("/y.md", "# 无 frontmatter\n");
+    const other = Object.values(useStore.getState().tabs).find(
+      (t) => t.path === "/y.md",
+    )!;
+    useStore.getState().renameTab(other.id, "改名");
+    const tab2 = useStore.getState().tabs[other.id];
+    expect(tab2.title).toBe("改名");
+    expect(tab2.content).toBe("# 无 frontmatter\n");
+  });
+
+  it("setTabTitle 只改页签，不动内容", () => {
+    useStore.getState().newTab();
+    const id = Object.keys(useStore.getState().tabs)[0];
+    const before = useStore.getState().tabs[id].content;
+    useStore.getState().setTabTitle(id, "新页签名");
+    expect(useStore.getState().tabs[id].title).toBe("新页签名");
+    expect(useStore.getState().tabs[id].content).toBe(before);
   });
 });
