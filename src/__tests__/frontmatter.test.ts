@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   FRONTMATTER_RE,
+  TAG_PALETTE,
+  isManagedDateKey,
   parseFrontmatter,
+  tagColor,
   writeFrontmatter,
   type FrontmatterField,
 } from "../lib/frontmatter";
@@ -121,5 +124,53 @@ describe("frontmatter parse", () => {
     expect(p2.present).toBe(true);
     expect(p2.fields.map((f) => f.key)).toEqual(p.fields.map((f) => f.key));
     expect(p2.fields[2].value).toBe(999);
+  });
+});
+
+describe("tagColor", () => {
+  it("色板为 10 色，色值逐值来自 design-system §6", () => {
+    expect(TAG_PALETTE).toHaveLength(10);
+    expect(TAG_PALETTE[0].name).toBe("靛蓝");
+    expect(TAG_PALETTE[0].light).toEqual(["#eef0ff", "#4338ca", "#c7cbff"]);
+    expect(TAG_PALETTE[0].dark).toEqual(["#262a52", "#aeb4ff", "#3c4278"]);
+    expect(TAG_PALETTE[9].name).toBe("藤黄");
+    expect(TAG_PALETTE[9].light).toEqual(["#fbf5df", "#854d0e", "#ecdfa8"]);
+    expect(TAG_PALETTE[9].dark).toEqual(["#383114", "#e0c96a", "#564b20"]);
+  });
+
+  it("FNV-1a 已知向量：索引落在 0..9", () => {
+    expect(tagColor("甲")).toBe(1);
+    expect(tagColor("丁")).toBe(4);
+    expect(tagColor("戊")).toBe(5);
+    for (const n of ["甲", "丁", "戊"]) {
+      expect(tagColor(n)).toBeGreaterThanOrEqual(0);
+      expect(tagColor(n)).toBeLessThan(10);
+    }
+  });
+
+  it("同名同色，不同名分布到不同索引", () => {
+    expect(tagColor("甲")).toBe(tagColor("甲"));
+    const names = ["甲", "丁", "戊", "工作", "生活", "读书"];
+    const idx = names.map(tagColor);
+    expect(new Set(idx).size).toBeGreaterThan(1);
+  });
+
+  it("删除中间标签后，其余标签索引不漂移（按名不按位）", () => {
+    const tags = ["甲", "丁", "戊", "工作", "生活"];
+    const before = new Map(tags.map((t) => [t, tagColor(t)]));
+    const after = tags.filter((_, i) => i !== 2);
+    expect(after).toEqual(["甲", "丁", "工作", "生活"]);
+    for (const t of after) {
+      expect(tagColor(t)).toBe(before.get(t));
+    }
+  });
+});
+
+describe("isManagedDateKey", () => {
+  it("仅 created / updated 为自动托管日期键", () => {
+    expect(isManagedDateKey("created")).toBe(true);
+    expect(isManagedDateKey("updated")).toBe(true);
+    expect(isManagedDateKey("title")).toBe(false);
+    expect(isManagedDateKey("createdate")).toBe(false);
   });
 });

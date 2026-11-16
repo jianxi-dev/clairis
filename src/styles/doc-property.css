@@ -61,6 +61,7 @@
 }
 
 /* ── 标签胶囊 ───────────────────────────────────────────── */
+/* 色板数值唯一来源 design-system §6；暖主题沿用亮色（.warm 不覆盖）。 */
 .dpb-tags-group {
   display: inline-flex;
   align-items: center;
@@ -72,13 +73,127 @@
 .dpb-tag {
   display: inline-flex;
   align-items: center;
-  border: 1px solid var(--app-border);
-  background: var(--app-sunken);
-  color: var(--app-text-2);
+  gap: 4px;
+  border: 1px solid var(--dpb-tag-bd, var(--app-border));
+  background: var(--dpb-tag-bg, var(--app-sunken));
+  color: var(--dpb-tag-fg, var(--app-text-2));
   border-radius: var(--radius-full);
   font-size: 11px;
   padding: 2px 9px;
   white-space: nowrap;
+}
+
+.dpb-tag[data-color="0"] {
+  --dpb-tag-bg: #eef0ff;
+  --dpb-tag-fg: #4338ca;
+  --dpb-tag-bd: #c7cbff;
+}
+.dpb-tag[data-color="1"] {
+  --dpb-tag-bg: #e6f7f4;
+  --dpb-tag-fg: #0f766e;
+  --dpb-tag-bd: #b8e6de;
+}
+.dpb-tag[data-color="2"] {
+  --dpb-tag-bg: #fdf2e2;
+  --dpb-tag-fg: #b45309;
+  --dpb-tag-bd: #f2d9a8;
+}
+.dpb-tag[data-color="3"] {
+  --dpb-tag-bg: #fdeaf2;
+  --dpb-tag-fg: #be185d;
+  --dpb-tag-bd: #f5c6dc;
+}
+.dpb-tag[data-color="4"] {
+  --dpb-tag-bg: #e9f7ed;
+  --dpb-tag-fg: #15803d;
+  --dpb-tag-bd: #bfe6c9;
+}
+.dpb-tag[data-color="5"] {
+  --dpb-tag-bg: #e6f4fc;
+  --dpb-tag-fg: #0369a1;
+  --dpb-tag-bd: #b9dff2;
+}
+.dpb-tag[data-color="6"] {
+  --dpb-tag-bg: #f2ecfd;
+  --dpb-tag-fg: #6d28d9;
+  --dpb-tag-bd: #dcccf7;
+}
+.dpb-tag[data-color="7"] {
+  --dpb-tag-bg: #fceee6;
+  --dpb-tag-fg: #9a3412;
+  --dpb-tag-bd: #f3cdb6;
+}
+.dpb-tag[data-color="8"] {
+  --dpb-tag-bg: #eef1f5;
+  --dpb-tag-fg: #334155;
+  --dpb-tag-bd: #ccd4de;
+}
+.dpb-tag[data-color="9"] {
+  --dpb-tag-bg: #fbf5df;
+  --dpb-tag-fg: #854d0e;
+  --dpb-tag-bd: #ecdfa8;
+}
+
+.dark .dpb-tag[data-color="0"] {
+  --dpb-tag-bg: #262a52;
+  --dpb-tag-fg: #aeb4ff;
+  --dpb-tag-bd: #3c4278;
+}
+.dark .dpb-tag[data-color="1"] {
+  --dpb-tag-bg: #173b37;
+  --dpb-tag-fg: #7ee0d0;
+  --dpb-tag-bd: #256055;
+}
+.dark .dpb-tag[data-color="2"] {
+  --dpb-tag-bg: #3d2e18;
+  --dpb-tag-fg: #f0c074;
+  --dpb-tag-bd: #5c4526;
+}
+.dark .dpb-tag[data-color="3"] {
+  --dpb-tag-bg: #3d1d2c;
+  --dpb-tag-fg: #f2a4c8;
+  --dpb-tag-bd: #5c2c44;
+}
+.dark .dpb-tag[data-color="4"] {
+  --dpb-tag-bg: #183625;
+  --dpb-tag-fg: #86d99c;
+  --dpb-tag-bd: #26543a;
+}
+.dark .dpb-tag[data-color="5"] {
+  --dpb-tag-bg: #142f40;
+  --dpb-tag-fg: #7fcbed;
+  --dpb-tag-bd: #204c66;
+}
+.dark .dpb-tag[data-color="6"] {
+  --dpb-tag-bg: #2e2050;
+  --dpb-tag-fg: #c3a6fa;
+  --dpb-tag-bd: #463473;
+}
+.dark .dpb-tag[data-color="7"] {
+  --dpb-tag-bg: #3a2118;
+  --dpb-tag-fg: #f0a884;
+  --dpb-tag-bd: #5a3324;
+}
+.dark .dpb-tag[data-color="8"] {
+  --dpb-tag-bg: #232a35;
+  --dpb-tag-fg: #b3bfcf;
+  --dpb-tag-bd: #38434f;
+}
+.dark .dpb-tag[data-color="9"] {
+  --dpb-tag-bg: #383114;
+  --dpb-tag-fg: #e0c96a;
+  --dpb-tag-bd: #564b20;
+}
+
+.dpb-tag-ico {
+  flex: 0 0 auto;
+  opacity: 0.85;
+}
+
+/* 自动托管日期的只读锁定标记（A 胶囊内 / B 行尾占位） */
+.dpb-lock {
+  flex: 0 0 auto;
+  color: var(--app-text-3);
 }
 
 /* ── A 一行条 ───────────────────────────────────────────── */
