@@ -466,8 +466,11 @@ function ValueView({
   if (field.type === "boolean") {
     const on = Boolean(field.value);
     return (
-      <span className={`dpb-bool ${on ? "dpb-bool-on" : ""}`}>
-        {on ? "◉ 开" : "○ 关"}
+      <span
+        className={`dpb-bool ${on ? "dpb-bool-on" : ""}`}
+        title={on ? "已开启" : "已关闭"}
+      >
+        {on ? "◉" : "○"}
       </span>
     );
   }
@@ -579,10 +582,11 @@ function ValueEditor({ field, editable, onCommit }: ValueEditorProps) {
         data-testid="dpb-value"
         role="switch"
         aria-checked={on}
-        title="点击切换"
+        aria-label={on ? "布尔值 已开启" : "布尔值 已关闭"}
+        title={on ? "已开启" : "已关闭"}
         onClick={() => onCommit(field.key, !on)}
       >
-        {on ? "◉ 开" : "○ 关"}
+        {on ? "◉" : "○"}
       </button>
     );
   }

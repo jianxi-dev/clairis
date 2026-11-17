@@ -62,3 +62,27 @@ describe("DocPropertyBar 托管日期键只读（P-6）", () => {
     ).not.toBeNull();
   });
 });
+
+const BOOL_DOC = `---
+title: 布尔属性
+flag: true
+---
+
+# 正文
+`;
+
+describe("DocPropertyBar 布尔值图形与提示分离（#1021）", () => {
+  afterEach(() => {
+    cleanup();
+    resetPanel();
+  });
+
+  it("预览态：值内仅状态图形，状态文案在 title", () => {
+    const { container } = render(
+      <DocPropertyBar content={BOOL_DOC} mode="preview" />,
+    );
+    const value = container.querySelector('[data-key="flag"] .dpb-bool');
+    expect(value?.textContent).toBe("◉");
+    expect(value?.getAttribute("title")).toBe("已开启");
+  });
+});

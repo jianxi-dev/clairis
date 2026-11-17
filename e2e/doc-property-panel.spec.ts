@@ -158,7 +158,7 @@ test("预览态：A 一行条只读渲染（千分位 / 开关态 / 标签胶囊
     a.locator('[data-key="count"] [data-testid="dpb-value"]'),
   ).toHaveText("1,234,567");
   await expect(a.locator('[data-key="published"] .dpb-bool-on')).toHaveText(
-    "◉ 开",
+    "◉",
   );
   await expect(a.locator('[data-key="tags"] .dpb-tag')).toHaveCount(2);
   await expect(a.locator('[data-key="tags"] .dpb-tag').first()).toHaveText(
@@ -169,6 +169,38 @@ test("预览态：A 一行条只读渲染（千分位 / 开关态 / 标签胶囊
   await expect(a.locator('[data-testid="dpb-collapse"]')).toHaveCount(0);
   await expect(a.locator(".dpb-row-handle")).toHaveCount(0);
   await expect(a.locator("button")).toHaveCount(0);
+});
+
+test("布尔值：图形与提示分离，状态文案移至 title（#1021）", async ({
+  page,
+}) => {
+  await openDoc(page);
+  const a = panel(page, "A");
+
+  const boolValue = a.locator('[data-key="published"] .dpb-bool');
+  await expect(boolValue).toHaveText("◉");
+  await expect(boolValue).toHaveAttribute("title", "已开启");
+  await dpbRecord(page, "1021", "01-bool-on");
+
+  await setMode(page, "edit");
+  const switchBtn = a.locator(
+    '[data-key="published"] [data-testid="dpb-value"]',
+  );
+  await expect(switchBtn).toHaveText("◉");
+  await expect(switchBtn).toHaveAttribute("title", "已开启");
+  await expect(switchBtn).toHaveAttribute("aria-checked", "true");
+  await dpbRecord(page, "1021", "03-edit-switch-on");
+
+  await switchBtn.click();
+  await expect(switchBtn).toHaveAttribute("aria-checked", "false");
+  await expect(switchBtn).toHaveText("○");
+  await expect(switchBtn).toHaveAttribute("title", "已关闭");
+  await dpbRecord(page, "1021", "04-edit-switch-off");
+
+  await setMode(page, "preview");
+  await expect(boolValue).toHaveText("○");
+  await expect(boolValue).toHaveAttribute("title", "已关闭");
+  await dpbRecord(page, "1021", "02-bool-off");
 });
 
 test("三模式：源码态面板 display:none，切回编辑恢复展开", async ({ page }) => {
