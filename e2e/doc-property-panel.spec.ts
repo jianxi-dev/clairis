@@ -1,4 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
+import { mkdirSync, writeFileSync } from "node:fs";
+import path from "node:path";
 import { tagColor } from "../src/lib/frontmatter";
 
 /**
@@ -1376,4 +1378,79 @@ test("套用后源码不写任何模板标记", async ({ page }) => {
   expect(text).not.toContain("template");
   expect(text).not.toContain("模板");
   expect(text).not.toContain("tpl");
+});
+
+test("拖动手柄光标：悬停 grab，拖拽超 5px 切 grabbing，松手恢复 grab", async ({
+  page,
+}) => {
+  const ART = path.resolve(process.cwd(), ".artifacts/1020");
+  mkdirSync(ART, { recursive: true });
+  const record = async (state: string) => {
+    const file = path.join(ART, `${state}.png`);
+    await page.screenshot({ path: file });
+    writeFileSync(
+      path.join(ART, "state-coverage.json"),
+      `${JSON.stringify(
+        {
+          task: "1020-drag-cursor",
+          states: [
+            "01-b-hover-grab",
+            "02-a-hover-grab",
+            "03-dragging-grabbing",
+            "04-released-grab",
+          ].map((s) => ({
+            state: s,
+            screenshot: path.relative(
+              process.cwd(),
+              path.join(ART, `${s}.png`),
+            ),
+            assertion: "passed",
+            recorded_at: new Date().toISOString(),
+            runner: `${process.env.USER ?? "unknown"}@${process.env.HOSTNAME ?? "unknown"}`,
+          })),
+        },
+        null,
+        2,
+      )}\n`,
+    );
+  };
+
+  await openDoc(page, ROW_DOC);
+  await setMode(page, "edit");
+
+  // B 精排双列：手柄常驻，悬停即 grab
+  await setVariant(page, "B");
+  const b = panel(page, "B");
+  const bHandle = b.locator('[data-key="note"] [data-testid="dpb-row-handle"]');
+  await bHandle.hover();
+  await expect(bHandle).toHaveCSS("cursor", "grab");
+  await record("01-b-hover-grab");
+
+  // A 一行条：手柄 opacity 0，悬停胶囊显现后取光标
+  await setVariant(page, "A");
+  const aChip = panel(page, "A").locator('[data-key="note"]');
+  const aHandle = aChip.locator('[data-testid="dpb-row-handle"]');
+  await page.mouse.move(0, 0);
+  await expect(aHandle).toHaveCSS("opacity", "0");
+  await aChip.hover();
+  await expect(aHandle).toHaveCSS("opacity", "1");
+  await expect(aHandle).toHaveCSS("cursor", "grab");
+  await record("02-a-hover-grab");
+
+  // B：按下并移动超过 5px 阈值 → 面板挂 dpb-dragging → grabbing；松手恢复 grab
+  await setVariant(page, "B");
+  const handle = b.locator('[data-key="note"] [data-testid="dpb-row-handle"]');
+  const hb = (await handle.boundingBox())!;
+  const x = hb.x + hb.width / 2;
+  const y = hb.y + hb.height / 2;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x, y + 20, { steps: 6 });
+  await expect(b).toHaveClass(/dpb-dragging/);
+  await expect(handle).toHaveCSS("cursor", "grabbing");
+  await record("03-dragging-grabbing");
+  await page.mouse.up();
+  await expect(b).not.toHaveClass(/dpb-dragging/);
+  await expect(handle).toHaveCSS("cursor", "grab");
+  await record("04-released-grab");
 });

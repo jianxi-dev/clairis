@@ -1771,7 +1771,7 @@ export default function DocPropertyBar({
     return (
       <div
         ref={panelRef}
-        className={`dpb-panel dpb-b${selectMode ? " select-mode" : ""}`}
+        className={`dpb-panel dpb-b${selectMode ? " select-mode" : ""}${drop ? " dpb-dragging" : ""}`}
         data-testid="dpb-b"
         onClickCapture={onPanelClickCapture}
       >
@@ -1880,7 +1880,7 @@ export default function DocPropertyBar({
   return (
     <div
       ref={panelRef}
-      className={`dpb-panel dpb-a${selectMode ? " select-mode" : ""}`}
+      className={`dpb-panel dpb-a${selectMode ? " select-mode" : ""}${drop ? " dpb-dragging" : ""}`}
       data-testid="dpb-a"
       onClickCapture={onPanelClickCapture}
     >
