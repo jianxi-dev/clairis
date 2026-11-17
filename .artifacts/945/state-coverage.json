@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "悬停打开主题菜单title已摘除",
+      "screenshot": "/Users/mason/ToHighs/clairis-wt-tooltip/.artifacts/945/state-menu-open.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-17T00:22:01Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "弹层期间title保持为空",
+      "screenshot": "/Users/mason/ToHighs/clairis-wt-tooltip/.artifacts/945/state-overlay-title-null.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-17T00:22:01Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "弹层期间点击触发钮title仍为空无原生矩形",
+      "screenshot": "/Users/mason/ToHighs/clairis-wt-tooltip/.artifacts/945/state-click-keeps-null.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-17T00:22:01Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "关闭弹层后重新悬停title由TooltipLayer接管",
+      "screenshot": "/Users/mason/ToHighs/clairis-wt-tooltip/.artifacts/945/state-title-restored.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-17T00:22:01Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}
