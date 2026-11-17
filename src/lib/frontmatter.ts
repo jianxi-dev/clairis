@@ -193,19 +193,75 @@ export const CANON_TYPE: Readonly<Record<string, FrontmatterType>> = {
   updatedate: "date",
 };
 
+/** 别称映射可赋的八类类型（不含 unknown 收编态）。 */
+export const PROP_ALIAS_TYPES: readonly FrontmatterType[] = [
+  "text",
+  "number",
+  "date",
+  "datetime",
+  "boolean",
+  "array",
+  "select",
+  "multiselect",
+];
+
+/**
+ * 内置别称映射（P-6，由 ALIAS/CANON_TYPE 派生）：规范键 + 各别称 → 类型。
+ * 键统一小写，供大小写不敏感查找；应用配置未命中时回落此表。
+ */
+export const BUILTIN_ALIAS_MAP: Readonly<Record<string, FrontmatterType>> =
+  (() => {
+    const map: Record<string, FrontmatterType> = {};
+    for (const canon of Object.keys(ALIAS)) {
+      const type = CANON_TYPE[canon];
+      if (!type) continue;
+      map[canon.toLowerCase()] = type;
+      for (const alias of ALIAS[canon]) map[alias.toLowerCase()] = type;
+    }
+    return map;
+  })();
+
+/** 归一化应用配置别称映射：键 trim、丢弃非法键名与未知类型并告警。 */
+export function normalizePropAliasMap(
+  raw: Record<string, string> | null | undefined,
+): { config: Record<string, FrontmatterType>; warnings: string[] } {
+  const warnings: string[] = [];
+  const out: Record<string, FrontmatterType> = {};
+  if (!raw || typeof raw !== "object") return { config: out, warnings };
+  for (const [rawKey, rawType] of Object.entries(raw)) {
+    const key = rawKey.trim();
+    if (!key) {
+      warnings.push("忽略空键名的别称映射");
+      continue;
+    }
+    if (/[:#\r\n]/.test(key)) {
+      warnings.push(`忽略非法键名「${key}」的别称映射`);
+      continue;
+    }
+    if (!PROP_ALIAS_TYPES.includes(rawType as FrontmatterType)) {
+      warnings.push(`别称映射「${key}」未知类型 ${rawType}，已忽略`);
+      continue;
+    }
+    out[key] = rawType as FrontmatterType;
+  }
+  return { config: out, warnings };
+}
+
 /**
  * 命中别称表则返回对应类型，未命中返回 null（P-6：只赋类型，不改名）。
- * 大小写不敏感，键与全部别称都要匹配。
+ * 先查应用配置 `aliasMap`（大小写不敏感、trim 后比对），未命中回落内置表。
  */
-export function resolveAlias(key: string): FrontmatterType | null {
+export function resolveAlias(
+  key: string,
+  aliasMap?: Record<string, FrontmatterType> | null,
+): FrontmatterType | null {
   const k = key.trim().toLowerCase();
-  for (const canon of Object.keys(ALIAS)) {
-    if (canon.toLowerCase() === k) return CANON_TYPE[canon] ?? null;
-    if (ALIAS[canon].some((a) => a.toLowerCase() === k)) {
-      return CANON_TYPE[canon] ?? null;
+  if (aliasMap) {
+    for (const [name, type] of Object.entries(aliasMap)) {
+      if (name.trim().toLowerCase() === k) return type;
     }
   }
-  return null;
+  return BUILTIN_ALIAS_MAP[k] ?? null;
 }
 
 /**
@@ -403,13 +459,16 @@ export function setFrontmatterField(
   return writeFrontmatter(doc, fields);
 }
 
-function toFields(data: unknown): FrontmatterField[] {
+function toFields(
+  data: unknown,
+  aliasMap?: Record<string, FrontmatterType> | null,
+): FrontmatterField[] {
   if (typeof data !== "object" || data === null || Array.isArray(data)) {
     return [];
   }
   const fields: FrontmatterField[] = [];
   for (const [key, value] of Object.entries(data as Record<string, unknown>)) {
-    const type = resolveAlias(key) ?? inferFrontmatterType(value);
+    const type = resolveAlias(key, aliasMap) ?? inferFrontmatterType(value);
     fields.push({
       key,
       type,
@@ -420,7 +479,10 @@ function toFields(data: unknown): FrontmatterField[] {
   return fields;
 }
 
-export function parseFrontmatter(doc: string): ParsedFrontmatter {
+export function parseFrontmatter(
+  doc: string,
+  aliasMap?: Record<string, FrontmatterType> | null,
+): ParsedFrontmatter {
   const empty: ParsedFrontmatter = {
     present: false,
     block: "",
@@ -468,7 +530,7 @@ export function parseFrontmatter(doc: string): ParsedFrontmatter {
     closeLine,
     trailing,
     inner,
-    fields: toFields(data),
+    fields: toFields(data, aliasMap),
   };
 }
 

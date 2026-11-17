@@ -36,6 +36,7 @@ import {
 } from "../lib/railView";
 import { DENSITY_HEIGHT, clampCardHeight } from "../lib/railCards";
 import { normalizePreviewSettings } from "../lib/previewAnchor";
+import { normalizePropAliasMap } from "../lib/frontmatter";
 import {
   DEFAULT_VIEW_SPEC,
   normalizeViewSpec,
@@ -96,6 +97,7 @@ interface RustAppConfig {
     defaultPos?: string | null;
   } | null;
   propTemplates?: RawPropTemplate[] | null;
+  propAliasMap?: Record<string, string> | null;
   railViewSpec?: {
     layout: string | null;
     density: string | null;
@@ -195,6 +197,7 @@ export async function saveAppConfig(): Promise<void> {
     propertyBar: es.config.propertyBar ?? null,
     searchPanel: es.config.searchPanel ?? null,
     propTemplates: es.config.propTemplates ?? null,
+    propAliasMap: es.config.propAliasMap ?? null,
     // 阅读空间栏「设为默认」规格（layout-portal 6.1）
     railViewSpec: useStore.getState().railViewSpec,
     // 悬浮预览窗双轨开关（layout-portal 8.1）
@@ -397,10 +400,13 @@ function applyRustConfig(raw: RustAppConfig): void {
     normalizeSearchPanel(raw.searchPanel);
   const { config: propTemplates, warnings: propTemplateWarnings } =
     normalizePropTemplates(raw.propTemplates);
+  const { config: propAliasMap, warnings: propAliasWarnings } =
+    normalizePropAliasMap(raw.propAliasMap);
   const configWarnings = [
     ...warnings,
     ...searchPanelWarnings,
     ...propTemplateWarnings,
+    ...propAliasWarnings,
   ];
   if (configWarnings.length > 0) {
     log.warn("Config", configWarnings.join("；"));
@@ -455,6 +461,7 @@ function applyRustConfig(raw: RustAppConfig): void {
     propertyBar: propertyBarConfig,
     searchPanel: searchPanelConfig,
     propTemplates,
+    propAliasMap,
   };
 
   const es = useEditorStore.getState();
@@ -593,6 +600,7 @@ export function useConfig() {
         verticalSplitRatio: 0.5,
         recentFiles: [],
         propTemplates: normalizePropTemplates(null).config,
+        propAliasMap: normalizePropAliasMap(null).config,
       });
       es.setConfigLoaded(true);
       es.setConfigLoading(false);
