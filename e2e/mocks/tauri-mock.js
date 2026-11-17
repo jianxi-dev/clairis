@@ -157,6 +157,10 @@ function mockInvoke(cmd, args) {
     return "AAECAwQ=";
   }
   if (cmd === "open_file_direct" && args && args.path) {
+    var failPaths = window.__biaoyue_fail_open_paths__;
+    if (Array.isArray(failPaths) && failPaths.indexOf(args.path) >= 0) {
+      return Promise.reject(new Error("mock open_file_direct 失败: " + args.path));
+    }
     return { content:"# "+args.path.split("/").pop()+"\n\n文件内容。", path:args.path, file_size:100 };
   }
   if (cmd === "save_as_file") {

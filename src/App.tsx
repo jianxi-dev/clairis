@@ -799,6 +799,81 @@ function App() {
 
   // ── Drag-and-drop (Tauri v2 native event) ────────────────────
 
+  const [magicLayout, setMagicLayout] = useState(false);
+  const magicTimerRef = useRef<number | null>(null);
+
+  const runMagicLayout = useCallback(() => {
+    setMagicLayout(true);
+    if (magicTimerRef.current !== null) window.clearTimeout(magicTimerRef.current);
+    magicTimerRef.current = window.setTimeout(() => setMagicLayout(false), 1000);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (magicTimerRef.current !== null) {
+        window.clearTimeout(magicTimerRef.current);
+      }
+    };
+  }, []);
+
+  const openDroppedPaths = useCallback(
+    async (paths: string[]) => {
+      const store = useStore.getState();
+      if (store.scene === "settings") return;
+      const list = paths.filter((p) => typeof p === "string" && p.length > 0);
+      if (list.length === 0) return;
+
+      if (list.length === 1) {
+        try {
+          const result = await invoke<{
+            content: string;
+            path: string;
+            file_size: number;
+          }>("open_file_direct", { path: list[0] });
+          useStore.getState().openFile(result.path, result.content);
+          scheduleSave();
+        } catch (err) {
+          log.error("App", "Failed to open dropped file", err);
+        }
+        return;
+      }
+
+      let results: { content: string; path: string; file_size: number }[];
+      try {
+        results = await Promise.all(
+          list.map((path) =>
+            invoke<{ content: string; path: string; file_size: number }>(
+              "open_file_direct",
+              { path },
+            ),
+          ),
+        );
+      } catch (err) {
+        log.error("App", "Failed to open dropped files", err);
+        return;
+      }
+
+      const st = useStore.getState();
+      st.openFile(results[0].path, results[0].content);
+      const hostId = useStore.getState().focusedPaneId;
+      for (let i = 1; i < results.length; i += 1) {
+        st.dropFileOnPane(results[i].path, results[i].content, hostId, "right");
+      }
+      st.autoLayoutPanes();
+      runMagicLayout();
+      scheduleSave();
+    },
+    [runMagicLayout, scheduleSave],
+  );
+
+  useEffect(() => {
+    (window as unknown as Record<string, unknown>).__biaoyue_dropPaths__ =
+      openDroppedPaths;
+    return () => {
+      delete (window as unknown as Record<string, unknown>).__biaoyue_dropPaths__;
+    };
+  }, [openDroppedPaths]);
+
   useEffect(() => {
     if (!isTauri) return;
 
@@ -810,21 +885,9 @@ function App() {
         unlisten = await getCurrentWebview().onDragDropEvent((event) => {
           if (useStore.getState().scene === "settings") return;
           if (event.payload.type !== "drop") return;
-          const path = event.payload.paths[0];
-          if (!path) return;
-
-          invoke<{ content: string; path: string; file_size: number }>(
-            "open_file_direct",
-            { path },
-          )
-            .then((result) => {
-              const store = useStore.getState();
-              store.openFile(result.path, result.content);
-              scheduleSave();
-            })
-            .catch((err: unknown) =>
-              log.error("App", "Failed to open dropped file", err),
-            );
+          const paths = event.payload.paths;
+          if (!paths || paths.length === 0) return;
+          void openDroppedPaths(paths);
         });
       } catch (e) {
         log.warn("App", "Drag-drop listener unavailable", e);
@@ -834,7 +897,7 @@ function App() {
     return () => {
       unlisten?.();
     };
-  }, [scheduleSave]);
+  }, [openDroppedPaths]);
 
   // ── Split ratio persistence ──────────────────────────────────
 
@@ -909,8 +972,11 @@ function App() {
       <div className="relative flex-1 flex min-w-0 overflow-hidden app-shell">
         <ReadingRail onOpenPath={handleOpenPath} />
         <div
-          className="flex-1 min-w-0 flex overflow-hidden"
+          className={`flex-1 min-w-0 flex overflow-hidden${
+            magicLayout ? " magic-layout" : ""
+          }`}
           data-testid="workspace-body"
+          onAnimationEnd={() => setMagicLayout(false)}
         >
           <PaneTreeView />
         </div>
