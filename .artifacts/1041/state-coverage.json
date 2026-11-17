@@ -1,0 +1,33 @@
+{
+  "task": "1041",
+  "states": [
+    {
+      "state": "palette-open",
+      "screenshot": ".artifacts/1041/palette-open.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-17T19:24:45.807Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "dragging-ghost",
+      "screenshot": ".artifacts/1041/dragging-ghost.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-17T19:24:46.849Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "dropped-typed-field",
+      "screenshot": ".artifacts/1041/dropped-typed-field.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-17T19:24:46.882Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "cancelled-no-residue",
+      "screenshot": ".artifacts/1041/cancelled-no-residue.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-17T19:24:47.922Z",
+      "runner": "mason@unknown"
+    }
+  ]
+}
