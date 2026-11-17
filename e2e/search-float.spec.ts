@@ -1,4 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import path from "node:path";
 
 /**
  * 搜索浮窗首通与形态（#981 / S-1、S-2）真实浏览器用例。
@@ -798,5 +800,249 @@ test("结果行命中在行内代码内部时 mark 包裹命中子串", async ({
   const row = page.locator('[data-testid="search-float-hit"]').first();
   await expect(row.locator(".search-float-context code mark")).toHaveText(
     "代码命中",
+  );
+});
+
+/* ------------------------------------------------------------------ *
+ * #1054 外框/顶栏/状态栏同构 + 缩放贴底（A-16.1 / A-16.2 / A-16.3）
+ * ------------------------------------------------------------------ */
+
+const ART_1054 = path.resolve(process.cwd(), ".artifacts/1054");
+
+async function recordState1054(page: Page, state: string): Promise<void> {
+  mkdirSync(ART_1054, { recursive: true });
+  const file = path.join(ART_1054, `${state}.png`);
+  await page.screenshot({ path: file });
+  const manifest = path.join(ART_1054, "state-coverage.json");
+  let states: Array<Record<string, string>> = [];
+  try {
+    states = JSON.parse(readFileSync(manifest, "utf8")).states ?? [];
+  } catch {
+    states = [];
+  }
+  states = states.filter((s) => s.state !== state);
+  states.push({
+    state,
+    screenshot: path.relative(process.cwd(), file),
+    assertion: "passed",
+    recorded_at: new Date().toISOString(),
+    runner: `${process.env.USER ?? "unknown"}@${process.env.HOSTNAME ?? "unknown"}`,
+  });
+  writeFileSync(
+    manifest,
+    `${JSON.stringify({ task: "1054-search-float-chrome", states }, null, 2)}\n`,
+  );
+}
+
+async function openRailPreview(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const w = window as unknown as {
+      __biaoyue_openFile__: (p: string, c: string, t?: string) => void;
+      __biaoyue_store__: {
+        getState: () => { setRailDensity: (d: string) => void };
+      };
+    };
+    w.__biaoyue_openFile__(
+      "/tmp/fp/par.md",
+      "# 参照文档\n\n正文用于悬浮预览参照。",
+      "参照",
+    );
+    w.__biaoyue_store__.getState().setRailDensity("compact");
+  });
+  const edge = page.locator('[data-testid="rail-edge"]');
+  if (await edge.isVisible().catch(() => false)) await edge.hover();
+  const panel = page.locator('[data-testid="rail-panel"]');
+  await expect(panel).toBeVisible();
+  await page.locator('[data-testid="rail-pin"]').click();
+  await expect(panel).toHaveAttribute("data-rail-state", "pinned");
+
+  const row = page
+    .locator('[data-section="recent"] [data-testid="rail-item"]')
+    .first();
+  const b = await row.boundingBox();
+  if (!b) throw new Error("rail row 未布局");
+  await page.mouse.move(b.x + b.width - 20, b.y + b.height / 2);
+  await expect(page.locator('[data-testid="floating-preview"]')).toBeVisible({
+    timeout: 3000,
+  });
+}
+
+async function statusbarGap(
+  page: Page,
+): Promise<{ gap: number; barHeight: number; offset: number } | null> {
+  return page.locator('[data-testid="search-float"]').evaluate((el) => {
+    const barEl = el.querySelector<HTMLElement>(
+      '[data-testid="search-float-statusbar"]',
+    );
+    if (!barEl) return null;
+    const fr = el.getBoundingClientRect();
+    const br = barEl.getBoundingClientRect();
+    const bb = parseFloat(getComputedStyle(el).borderBottomWidth);
+    return {
+      gap: br.bottom - (fr.bottom - bb),
+      barHeight: br.height,
+      offset: barEl.offsetHeight,
+    };
+  });
+}
+
+test("外框/顶栏/状态栏与阅读空间文件卡片悬浮窗同构：边框 1px、圆角 8px、分隔条 1px", async ({
+  page,
+}) => {
+  await page.keyboard.press("Meta+f");
+  const float = page.locator('[data-testid="search-float"]');
+  await expect(float).toBeVisible();
+  await page.locator('[data-testid="search-float-input"]').fill("属性");
+
+  await openRailPreview(page);
+  const preview = page.locator('[data-testid="floating-preview"]');
+
+  const shellOf = async (selector: string) => {
+    const el = page.locator(selector);
+    return {
+      borderWidth: await el.evaluate((n) => getComputedStyle(n).borderTopWidth),
+      borderColor: await el.evaluate((n) => getComputedStyle(n).borderTopColor),
+      radius: await el.evaluate((n) => getComputedStyle(n).borderTopLeftRadius),
+      background: await el.evaluate((n) => getComputedStyle(n).backgroundColor),
+    };
+  };
+
+  const f = await shellOf('[data-testid="search-float"]');
+  const p = await shellOf('[data-testid="floating-preview"]');
+  expect(f.borderWidth).toBe(p.borderWidth);
+  expect(f.borderColor).toBe(p.borderColor);
+  expect(f.radius).toBe(p.radius);
+  expect(f.background).toBe(p.background);
+
+  const handle = float.locator('[data-testid="search-float-handle"]');
+  const titlebar = preview.locator('[data-testid="preview-titlebar"]');
+  const handleSep = await handle.evaluate(
+    (n) => getComputedStyle(n).borderBottomWidth,
+  );
+  const titleSep = await titlebar.evaluate(
+    (n) => getComputedStyle(n).borderBottomWidth,
+  );
+  expect(handleSep).toBe(titleSep);
+
+  const bar = page.locator('[data-testid="search-float-statusbar"]');
+  const pb = await preview.boundingBox();
+  if (!pb) throw new Error("悬浮预览未布局");
+  await page.mouse.move(pb.x + pb.width / 2, pb.y + pb.height - 4);
+  const actions = preview.locator('[data-testid="preview-actions"]');
+  await expect(actions).toBeVisible();
+  const barSep = await bar.evaluate((n) => getComputedStyle(n).borderTopWidth);
+  const actionsSep = await actions.evaluate(
+    (n) => getComputedStyle(n).borderTopWidth,
+  );
+  expect(barSep).toBe(actionsSep);
+
+  await recordState1054(page, "01-chrome-parity");
+});
+
+test("状态栏隐藏后残留占位高度为 0，悬停恢复且仍贴底", async ({ page }) => {
+  await page.keyboard.press("Meta+f");
+  const float = page.locator('[data-testid="search-float"]');
+  const bar = page.locator('[data-testid="search-float-statusbar"]');
+  await expect(bar).toBeVisible();
+
+  const shown = await statusbarGap(page);
+  expect(Math.abs(shown?.gap ?? 999)).toBeLessThanOrEqual(1);
+  expect(shown?.barHeight ?? 0).toBeGreaterThan(0);
+
+  await float.hover();
+  await page.mouse.move(2, 2);
+  await page.evaluate(() =>
+    (document.activeElement as HTMLElement | null)?.blur(),
+  );
+  await expect
+    .poll(async () => bar.evaluate((n) => getComputedStyle(n).visibility), {
+      timeout: 5000,
+    })
+    .toBe("hidden");
+
+  await expect
+    .poll(async () => (await statusbarGap(page))?.barHeight ?? -1, {
+      timeout: 5000,
+    })
+    .toBe(0);
+  const hidden = await statusbarGap(page);
+  // A-16.2：隐藏态占位高度 = 0
+  expect(hidden?.offset).toBe(0);
+  // A-16.1：隐藏后仍贴住浮窗底边
+  expect(Math.abs(hidden?.gap ?? 999)).toBeLessThanOrEqual(1);
+
+  await recordState1054(page, "02-statusbar-hidden-no-space");
+
+  await float.hover();
+  await expect
+    .poll(async () => (await statusbarGap(page))?.barHeight ?? 0, {
+      timeout: 5000,
+    })
+    .toBeGreaterThan(0);
+  const restored = await statusbarGap(page);
+  expect(Math.abs(restored?.gap ?? 999)).toBeLessThanOrEqual(1);
+});
+
+test("缩放后状态栏贴底：现状宽与减半宽两档间距 0", async ({ page }) => {
+  await page.keyboard.press("Meta+f");
+  const float = page.locator('[data-testid="search-float"]');
+  const bar = page.locator('[data-testid="search-float-statusbar"]');
+  await expect(bar).toBeVisible();
+  await page.locator('[data-testid="search-float-input"]').fill("属性");
+
+  expect(Math.abs((await statusbarGap(page))?.gap ?? 999)).toBeLessThanOrEqual(
+    1,
+  );
+
+  await dragBy(page, "search-float-resize-s", 0, 60);
+  expect(Math.abs((await statusbarGap(page))?.gap ?? 999)).toBeLessThanOrEqual(
+    1,
+  );
+
+  const box = await float.boundingBox();
+  if (!box) throw new Error("浮窗未布局");
+  const target = Math.max(320, Math.round(box.width / 2));
+  await dragBy(
+    page,
+    "search-float-resize-e",
+    target - Math.round(box.width),
+    0,
+  );
+  const half = await float.boundingBox();
+  if (!half) throw new Error("浮窗未布局");
+  expect(Math.abs(half.width - target)).toBeLessThanOrEqual(2);
+  expect(Math.abs((await statusbarGap(page))?.gap ?? 999)).toBeLessThanOrEqual(
+    1,
+  );
+
+  await recordState1054(page, "03-resized-bottom-attached");
+});
+
+test("窗口缩放后状态栏仍贴底（间距 0）", async ({ page }) => {
+  await page.keyboard.press("Meta+f");
+  const float = page.locator('[data-testid="search-float"]');
+  const bar = page.locator('[data-testid="search-float-statusbar"]');
+  await expect(bar).toBeVisible();
+  await page.locator('[data-testid="search-float-input"]').fill("属性");
+
+  const before = await float.boundingBox();
+  if (!before) throw new Error("浮窗未布局");
+
+  await page.setViewportSize({ width: 620, height: 700 });
+  await expect
+    .poll(async () => (await float.boundingBox())?.width ?? 0)
+    .toBeLessThan(before.width);
+  expect(Math.abs((await statusbarGap(page))?.gap ?? 999)).toBeLessThanOrEqual(
+    1,
+  );
+
+  await recordState1054(page, "04-window-resized-attached");
+
+  await page.setViewportSize({ width: 1200, height: 800 });
+  await expect
+    .poll(async () => (await float.boundingBox())?.width ?? 0)
+    .toBeGreaterThan(590);
+  expect(Math.abs((await statusbarGap(page))?.gap ?? 999)).toBeLessThanOrEqual(
+    1,
   );
 });

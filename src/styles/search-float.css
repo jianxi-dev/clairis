@@ -357,6 +357,8 @@
 
 .search-float-statusbar {
   flex: 0 0 auto;
+  margin-top: auto;
+  max-height: 32px;
   padding: 4px 10px;
   overflow: hidden;
   font-size: 10px;
@@ -365,12 +367,27 @@
   white-space: nowrap;
   text-overflow: ellipsis;
   border-top: 1px solid var(--app-border);
-  transition: opacity 160ms ease;
+  transition:
+    opacity 160ms ease,
+    max-height 160ms ease,
+    padding 160ms ease,
+    border-top-width 160ms ease,
+    visibility 0s linear 0s;
 }
 
 .search-float-statusbar-hidden {
+  max-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  border-top-width: 0;
   opacity: 0;
   visibility: hidden;
+  transition:
+    opacity 160ms ease,
+    max-height 160ms ease,
+    padding 160ms ease,
+    border-top-width 160ms ease,
+    visibility 0s linear 160ms;
 }
 
 .search-float-hover {

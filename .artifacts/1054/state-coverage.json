@@ -1,0 +1,33 @@
+{
+  "task": "1054-search-float-chrome",
+  "states": [
+    {
+      "state": "01-chrome-parity",
+      "screenshot": ".artifacts/1054/01-chrome-parity.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-17T22:00:08.710Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "02-statusbar-hidden-no-space",
+      "screenshot": ".artifacts/1054/02-statusbar-hidden-no-space.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-17T22:00:12.598Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "03-resized-bottom-attached",
+      "screenshot": ".artifacts/1054/03-resized-bottom-attached.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-17T22:00:13.939Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "04-window-resized-attached",
+      "screenshot": ".artifacts/1054/04-window-resized-attached.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-17T22:00:14.831Z",
+      "runner": "mason@unknown"
+    }
+  ]
+}
