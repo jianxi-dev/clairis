@@ -2344,3 +2344,52 @@ test("#1039 锁定字段：注册表锁图标 + 删除/改名入口 = 0（A/B）
     }
   }
 });
+
+test("#1043 新建字段按钮位次：B 首位 / A 末位，其余按钮相对顺序一致", async ({
+  page,
+}) => {
+  await openDoc(page, ROW_DOC, "/Users/test/add-field-order.md");
+  await setMode(page, "edit");
+
+  const orderOf = (variant: "A" | "B") =>
+    panel(page, variant)
+      .locator('[data-testid="dpb-tools"] > *')
+      .evaluateAll((els) => els.map((e) => e.getAttribute("data-testid") ?? ""));
+
+  await setVariant(page, "B");
+  const bOrder = await orderOf("B");
+  expect(bOrder[0], "B 模式添加字段应为按钮区首位").toBe("dpb-add-field");
+  await dpbRecord(page, "1043", "01-b-add-first");
+
+  await setVariant(page, "A");
+  const aOrder = await orderOf("A");
+  expect(
+    aOrder[aOrder.length - 1],
+    "A 模式添加字段应为按钮区末位",
+  ).toBe("dpb-add-field");
+  await dpbRecord(page, "1043", "02-a-add-last");
+
+  // A-5.3：剔除添加字段后，两态其余按钮序列完全一致
+  expect(aOrder.filter((t) => t !== "dpb-add-field")).toEqual(
+    bOrder.filter((t) => t !== "dpb-add-field"),
+  );
+
+  // 往返切换无残留 / 无重复节点
+  await setVariant(page, "B");
+  const bAgain = await orderOf("B");
+  expect(bAgain).toEqual(bOrder);
+  expect(bAgain.filter((t) => t === "dpb-add-field")).toHaveLength(1);
+  await dpbRecord(page, "1043", "03-b-again-first");
+
+  await setVariant(page, "A");
+  const aAgain = await orderOf("A");
+  expect(aAgain).toEqual(aOrder);
+  expect(aAgain.filter((t) => t === "dpb-add-field")).toHaveLength(1);
+  await dpbRecord(page, "1043", "04-a-again-last");
+
+  // 调色板仍锚定按钮新位置
+  await setVariant(page, "B");
+  await panel(page, "B").locator('[data-testid="dpb-add-field"]').click();
+  await expect(page.locator('[data-testid="dpb-field-palette"]')).toBeVisible();
+  await page.keyboard.press("Escape");
+});
