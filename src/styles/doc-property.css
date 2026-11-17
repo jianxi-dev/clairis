@@ -261,10 +261,17 @@
   font-size: 11px;
   letter-spacing: -1px;
   opacity: 0;
+  cursor: grab;
 }
 
 .dpb-chip:hover .dpb-row-handle {
   opacity: 1;
+}
+
+/* 拖动排序进行中：手柄光标切换为抓取态（#1020，对齐原型 cursor:grabbing） */
+.dpb-panel.dpb-dragging .dpb-row-handle,
+.dpb-panel.dpb-dragging .dpb-b-handle {
+  cursor: grabbing;
 }
 
 /* ── B 精排双列 ─────────────────────────────────────────── */
@@ -321,6 +328,7 @@
   color: var(--app-text-3);
   font-size: 11px;
   letter-spacing: -1px;
+  cursor: grab;
 }
 
 .dpb-b-type {
