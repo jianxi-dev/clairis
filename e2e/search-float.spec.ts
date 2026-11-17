@@ -615,7 +615,8 @@ test("替换模式悬停结果行弹全文预览卡，普通搜索不弹", async
   const card = page.locator('[data-testid="search-float-hover-card"]');
   await expect(card).toBeVisible();
   await expect(card).toContainText("L1 · 标题");
-  await expect(card).toContainText("# 属性面板");
+  await expect(card).toContainText("属性面板");
+  expect((await card.textContent()) ?? "").not.toContain("#");
 
   const cardBox = await card.boundingBox();
   const paneBox = await contentBox(page);
@@ -801,6 +802,136 @@ test("结果行命中在行内代码内部时 mark 包裹命中子串", async ({
   await expect(row.locator(".search-float-context code mark")).toHaveText(
     "代码命中",
   );
+});
+
+/* ------------------------------------------------------------------ *
+ * #1056 结果行与悬浮预览预览态渲染（A-18.1 / A-18.2）
+ * ------------------------------------------------------------------ */
+
+const ART_1056 = path.resolve(process.cwd(), ".artifacts/1056");
+
+async function recordState1056(page: Page, state: string): Promise<void> {
+  mkdirSync(ART_1056, { recursive: true });
+  const file = path.join(ART_1056, `${state}.png`);
+  await page.screenshot({ path: file });
+  const manifest = path.join(ART_1056, "state-coverage.json");
+  let states: Array<Record<string, string>> = [];
+  try {
+    states = JSON.parse(readFileSync(manifest, "utf8")).states ?? [];
+  } catch {
+    states = [];
+  }
+  states = states.filter((s) => s.state !== state);
+  states.push({
+    state,
+    screenshot: path.relative(process.cwd(), file),
+    assertion: "passed",
+    recorded_at: new Date().toISOString(),
+    runner: `${process.env.USER ?? "unknown"}@${process.env.HOSTNAME ?? "unknown"}`,
+  });
+  writeFileSync(
+    manifest,
+    `${JSON.stringify({ task: "1056-search-preview-render", states }, null, 2)}\n`,
+  );
+}
+
+// 整份文档必须是一个块（无空行），悬浮预览按整块渲染才能一次覆盖全部标记类型。
+const PREVIEW_DOC = [
+  "## 二级命中标题",
+  "---",
+  "```ts",
+  "const 代码命中 = 1;",
+  "```",
+  "正文 **加粗命中** 与 `行内命中` 后缀",
+].join("\n");
+
+interface MarkerCounts {
+  hash: number;
+  dash: number;
+  fence: number;
+}
+
+function countMarkers(text: string): MarkerCounts {
+  return {
+    hash: (text.match(/##/g) ?? []).length,
+    dash: (text.match(/---/g) ?? []).length,
+    fence: (text.match(/```/g) ?? []).length,
+  };
+}
+
+test("#1056 结果行与悬浮预览预览态渲染：零源码标记、保留 mark、行内语义（A-18.1/2）", async ({
+  page,
+}) => {
+  await openDoc(page, PREVIEW_DOC, "/Users/test/preview.md");
+  await setMode(page, "edit");
+  await page.keyboard.press("Meta+f");
+  await page.locator('[data-testid="search-float-input"]').fill("命中");
+  await page.locator('[data-testid="search-float-replace-toggle"]').click();
+
+  const float = page.locator('[data-testid="search-float"]');
+  const results = float.locator('[data-testid="search-float-results"]');
+  const rows = float.locator('[data-testid="search-float-hit"]');
+  await expect(rows).toHaveCount(4);
+
+  // 01 结果区：## / --- / 围栏为零，mark 保留，无块级标题
+  const resultText = (await results.textContent()) ?? "";
+  const resultMarkers = countMarkers(resultText);
+  expect(resultMarkers.hash).toBe(0);
+  expect(resultMarkers.dash).toBe(0);
+  expect(resultMarkers.fence).toBe(0);
+  expect(await results.locator("mark").count()).toBeGreaterThanOrEqual(1);
+  expect(await results.locator("h1,h2,h3,h4,h5,h6").count()).toBe(0);
+  await recordState1056(page, "01-row-rendered");
+
+  // 02 悬浮预览体：与结果行共用同一渲染契约
+  const row = rows.first();
+  await row.hover();
+  const card = page.locator('[data-testid="search-float-hover-card"]');
+  await expect(card).toBeVisible();
+  const body = card.locator(".search-float-hover-body");
+  const bodyText = (await body.textContent()) ?? "";
+  const bodyMarkers = countMarkers(bodyText);
+  expect(bodyMarkers.hash).toBe(0);
+  expect(bodyMarkers.dash).toBe(0);
+  expect(bodyMarkers.fence).toBe(0);
+  expect(await body.locator("mark").count()).toBeGreaterThanOrEqual(1);
+  expect(await body.locator("h1,h2,h3,h4,h5,h6").count()).toBe(0);
+  await recordState1056(page, "02-hover-rendered");
+
+  // 03 行内语义：加粗 / 行内代码为语义标签，代码带预览态样式
+  await expect(body.locator("b")).toHaveText("加粗命中");
+  await expect(body.locator("code")).toHaveText("行内命中");
+  const codeStyle = await body.locator("code").evaluate((el) => {
+    const cs = getComputedStyle(el);
+    return {
+      background: cs.backgroundColor,
+      borderRadius: cs.borderRadius,
+      borderTopWidth: cs.borderTopWidth,
+      fontFamily: cs.fontFamily,
+    };
+  });
+  expect(codeStyle.background).not.toBe("rgba(0, 0, 0, 0)");
+  expect(codeStyle.borderRadius).toBe("4px");
+  expect(codeStyle.borderTopWidth).toBe("1px");
+  expect(codeStyle.fontFamily).toContain("mono");
+
+  // 悬浮命中落在加粗 / 行内代码内时，mark 包裹命中子串
+  await rows.nth(2).hover();
+  await expect(body.locator("b mark")).toHaveText("命中");
+  await rows.nth(3).hover();
+  await expect(body.locator("code mark")).toHaveText("命中");
+  await recordState1056(page, "03-no-source-markers");
+
+  // 04 点击命中仍定位；关闭浮窗后无残留预览文本
+  await row.click();
+  await expect
+    .poll(async () => page.locator(".cm-selectionBackground").count())
+    .toBeGreaterThan(0);
+  await page.keyboard.press("Escape");
+  await expect(float).toBeHidden();
+  expect(await page.locator(".search-float-hover-body").count()).toBe(0);
+  expect(await editorText(page)).toContain("## 二级命中标题");
+  await recordState1056(page, "04-hit-mark-present");
 });
 
 /* ------------------------------------------------------------------ *
