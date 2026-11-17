@@ -1673,3 +1673,122 @@ test("拖动手柄光标：悬停 grab，拖拽超 5px 切 grabbing，松手恢�
   await expect(handle).toHaveCSS("cursor", "grab");
   await record("04-released-grab");
 });
+
+test("无 frontmatter 空态：添加字段自动创建 frontmatter 块并出现可改名新行", async ({
+  page,
+}) => {
+  await openDoc(
+    page,
+    "# 只有正文\n\n没有属性。\n",
+    "/Users/test/no-frontmatter.md",
+  );
+  await setMode(page, "edit");
+  const empty = page.locator('[data-testid="dpb-empty"]');
+  await expect(empty).toBeVisible();
+  await empty.locator('[data-testid="dpb-add-field"]').click();
+
+  await expect(page.locator('[data-testid="dpb-empty"]')).toHaveCount(0);
+  const a = panel(page, "A");
+  await expect(a.locator('[data-key="new-field"]')).toHaveCount(1);
+  await expect(
+    a.locator('[data-key="new-field"] [data-testid="dpb-rename-input"]'),
+  ).toBeVisible();
+
+  await setMode(page, "source");
+  const src = page.locator(".cm-content").first();
+  await expect(src).toContainText('title: ""');
+  await expect(src).toContainText("created:");
+  await expect(src).toContainText("updated:");
+  await expect(src).toContainText('new-field: ""');
+  await dpbRecord(page, "1018", "01-empty-create-block");
+});
+
+test("A 态添加字段：追加空文本行，就地改名并编辑值，一次撤销全部还原", async ({
+  page,
+}) => {
+  await openDoc(page, ROW_DOC, "/Users/test/add-field-a.md");
+  await setMode(page, "edit");
+  const a = panel(page, "A");
+  const before = await rowKeys(page, "A");
+
+  await a.locator('[data-testid="dpb-add-field"]').click();
+  await expect(a.locator('[data-key="new-field"]')).toHaveCount(1);
+  const rename = a.locator(
+    '[data-key="new-field"] [data-testid="dpb-rename-input"]',
+  );
+  await expect(rename).toBeVisible();
+  await rename.fill("author-x");
+  await rename.press("Enter");
+  await expect(a.locator('[data-key="author-x"]')).toHaveCount(1);
+
+  const value = a.locator('[data-key="author-x"] [data-testid="dpb-value"]');
+  await value.click();
+  const input = a.locator('[data-key="author-x"] [data-testid="dpb-input"]');
+  await input.fill("李四");
+  await input.press("Enter");
+  await expect(
+    a.locator('[data-key="author-x"] [data-testid="dpb-value"]'),
+  ).toHaveText("李四");
+
+  await page.locator(".cm-content").first().click();
+  await page.keyboard.press("Meta+Z");
+  await expect
+    .poll(async () => (await rowKeys(page, "A")).join(","))
+    .toBe(before.join(","));
+  await dpbRecord(page, "1018", "02-a-add-rename-undo");
+});
+
+test("B 态底部添加字段：追加空行、改名并同步源码", async ({ page }) => {
+  await openDoc(page, ROW_DOC, "/Users/test/add-field-b.md");
+  await setVariant(page, "B");
+  await setMode(page, "edit");
+  const b = panel(page, "B");
+  await expect(b.locator('[data-testid="dpb-add-field"]')).toBeVisible();
+
+  await b.locator('[data-testid="dpb-add-field"]').click();
+  await expect(b.locator('[data-key="new-field"]')).toHaveCount(1);
+  const rename = b.locator(
+    '[data-key="new-field"] [data-testid="dpb-rename-input"]',
+  );
+  await expect(rename).toBeVisible();
+  await rename.fill("author-x");
+  await rename.press("Enter");
+  await expect(b.locator('[data-key="author-x"]')).toHaveCount(1);
+
+  await setMode(page, "source");
+  const src = page.locator(".cm-content").first();
+  await expect(src).toContainText("author-x:");
+  await dpbRecord(page, "1018", "03-b-add-rename-source");
+});
+
+test("添加字段键名去重：连续添加得到 new-field 与 new-field-2", async ({
+  page,
+}) => {
+  await openDoc(page, ROW_DOC, "/Users/test/add-field-dedupe.md");
+  await setMode(page, "edit");
+  const a = panel(page, "A");
+
+  await a.locator('[data-testid="dpb-add-field"]').click();
+  await expect(a.locator('[data-key="new-field"]')).toHaveCount(1);
+  await page.keyboard.press("Escape");
+  await a.locator('[data-testid="dpb-add-field"]').click();
+  await expect(a.locator('[data-key="new-field"]')).toHaveCount(1);
+  await expect(a.locator('[data-key="new-field-2"]')).toHaveCount(1);
+  await dpbRecord(page, "1018", "04-key-dedupe");
+});
+
+test("预览态只读：空态与有 frontmatter 都不出现添加入口", async ({ page }) => {
+  await openDoc(page, ROW_DOC, "/Users/test/add-field-preview.md");
+  await expect(
+    panel(page, "A").locator('[data-testid="dpb-add-field"]'),
+  ).toHaveCount(0);
+  await setVariant(page, "B");
+  await expect(
+    panel(page, "B").locator('[data-testid="dpb-add-field"]'),
+  ).toHaveCount(0);
+
+  await openDoc(page, "# 只有正文\n", "/Users/test/add-field-preview-empty.md");
+  await expect(page.locator('[data-testid="dpb-add-field"]')).toHaveCount(0);
+  await expect(page.locator('[data-testid="dpb-empty"]')).toBeVisible();
+  await dpbRecord(page, "1018", "05-preview-no-entry");
+});
