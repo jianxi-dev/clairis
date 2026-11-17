@@ -6,6 +6,11 @@
 
 .dpb-panel {
   position: relative;
+  /* 卡片宽度 = min(宿主内容宽, 正文测量宽度)：与 .cm-line / .preview-content > *
+     的 --type-measure 同源，随窗口收缩；margin-inline 居中对齐正文列（#1040）。 */
+  width: 100%;
+  max-width: var(--type-measure, 1080px);
+  margin-inline: auto;
   border: 1px solid var(--app-border);
   border-radius: var(--radius-8);
   background: var(--app-surface);

@@ -750,6 +750,9 @@ export default function ContentArea({
         display: "flex",
         flexDirection: "column",
         position: "relative",
+        // 排版变量挂在公共祖先：属性面板与编辑区同源取 --type-measure，
+        // 面板宽度才能对齐正文测量宽度（#1040）。
+        ...editorThemeVars,
       }}
       className="dark:bg-gray-800"
     >
@@ -783,7 +786,6 @@ export default function ContentArea({
           style={{
             height: "100%",
             display: cmVisible ? "block" : "none",
-            ...editorThemeVars,
           }}
         />
         {htmlVisual && tab && (
