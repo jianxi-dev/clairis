@@ -430,3 +430,21 @@
   background: var(--app-accent-soft);
   border-radius: 2px;
 }
+
+.search-float-hover-body b {
+  font-weight: 600;
+  color: var(--app-text);
+}
+
+.search-float-hover-body i {
+  font-style: italic;
+}
+
+.search-float-hover-body code {
+  padding: 0 4px;
+  font-family: var(--type-font-mono, monospace);
+  font-size: 11px;
+  background: var(--app-sunken);
+  border: 1px solid var(--app-border);
+  border-radius: 4px;
+}

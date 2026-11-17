@@ -852,16 +852,17 @@ export default function SearchReplacePanel({
               </b>
               <span>悬浮预览</span>
             </div>
-            <div className="search-float-hover-body">
-              {(hoverBlock?.text ?? hoverHit.context).slice(0, hoverLocalFrom)}
-              <mark>
-                {(hoverBlock?.text ?? hoverHit.context).slice(
-                  hoverLocalFrom,
-                  hoverLocalTo,
-                )}
-              </mark>
-              {(hoverBlock?.text ?? hoverHit.context).slice(hoverLocalTo)}
-            </div>
+            <div
+              className="search-float-hover-body"
+              dangerouslySetInnerHTML={{
+                __html: renderInlineWithHit(
+                  hoverBlock?.text ?? hoverHit.context,
+                  hoverBlock
+                    ? { from: hoverLocalFrom, to: hoverLocalTo }
+                    : undefined,
+                ),
+              }}
+            />
           </div>,
           document.body,
         )}

@@ -28,6 +28,13 @@ const HIT_CLOSE = "\uE001";
 /** 行首块级源码符号：标题 / 引用 / 列表。片段按预览态呈现，不显示这些符号。 */
 const BLOCK_MARKER_RE = /^(?:…)?(?:#{1,6}\s+|>\s?|(?:[-*+]|\d+[.)])\s+)/;
 
+/** 独占一行的围栏代码块分隔符（``` / ~~~，可带语言信息）。 */
+const FENCE_LINE_RE = /^\s{0,3}(?:`{3,}|~{3,})/;
+
+/** 独占一行的主题分隔线（--- / *** / ___，可含空格）。 */
+const THEMATIC_BREAK_RE =
+  /^\s{0,3}(?:(?:\*[ \t]*){3,}|(?:-[ \t]*){3,}|(?:_[ \t]*){3,})$/;
+
 /** 行内语法：代码优先（吞掉内部的 * / `），再粗体，再斜体。 */
 const INLINE_RE = /`([^`]+)`|\*\*([^*\n]+)\*\*|\*([^*\n]+)\*/g;
 
@@ -46,6 +53,16 @@ function stripBlockMarkers(text: string): { text: string; map: number[] } {
   const lines = text.split("\n");
   for (let li = 0; li < lines.length; li++) {
     const line = lines[li];
+    // 围栏分隔符 / 主题分隔线整行丢弃（预览态不显示块级符号），换行位保留以维持偏移映射连续。
+    if (FENCE_LINE_RE.test(line) || THEMATIC_BREAK_RE.test(line)) {
+      for (let k = 0; k <= line.length; k++) map[orig + k] = out.length;
+      orig += line.length;
+      if (li < lines.length - 1) {
+        out += "\n";
+        orig += 1;
+      }
+      continue;
+    }
     const matched = BLOCK_MARKER_RE.exec(line)?.[0].length ?? 0;
     const contentStart = out.length;
     for (let k = 0; k <= line.length; k++) {
