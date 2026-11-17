@@ -30,8 +30,9 @@ import type {
   SearchPanelDefaultPos,
 } from "../types";
 import {
+  BUILTIN_PROP_TEMPLATES,
   BUILTIN_TEMPLATE_NAMES,
-  PROP_TEMPLATE_FIELD_TYPES,
+  normalizePropTemplates,
 } from "../lib/propTemplates";
 import { useEditorStore } from "../stores/editorStore";
 import { HTML_TOOLBAR_ITEMS } from "../editors/orchestration/slots";
@@ -214,6 +215,56 @@ const SEARCH_PANEL_POS_OPTIONS = [
   { value: "center", label: "居中" },
   { value: "right", label: "右侧" },
 ] as const;
+
+/** 模板字段可选八类（与面板 PICKABLE_TYPES 一致，不含 unknown 收编态）。 */
+const PROP_TEMPLATE_PICKABLE_TYPES = [
+  "text",
+  "number",
+  "date",
+  "datetime",
+  "select",
+  "multiselect",
+  "boolean",
+  "array",
+] as const;
+
+type PropTemplatePickableType = (typeof PROP_TEMPLATE_PICKABLE_TYPES)[number];
+
+const PROP_TEMPLATE_TYPE_LABELS: Record<PropTemplatePickableType, string> = {
+  text: "文本",
+  number: "数字",
+  date: "日期",
+  datetime: "日期时间",
+  select: "下拉",
+  multiselect: "复选",
+  boolean: "布尔",
+  array: "列表",
+};
+
+function isPickablePropTemplateType(
+  value: string,
+): value is PropTemplatePickableType {
+  return (PROP_TEMPLATE_PICKABLE_TYPES as readonly string[]).includes(value);
+}
+
+interface DraftTemplateField {
+  key: string;
+  type: PropTemplatePickableType;
+  value: string;
+}
+
+function draftFromField(field: PropTemplateFieldConfig): DraftTemplateField {
+  return {
+    key: field.key,
+    type: isPickablePropTemplateType(field.type) ? field.type : "text",
+    value:
+      typeof field.value === "string"
+        ? field.value
+        : field.value == null
+          ? ""
+          : String(field.value),
+  };
+}
 
 function ExtensionsSection({
   tauriEnv,
@@ -640,7 +691,10 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
   const propertyBarNewDoc = propertyBar?.newDocVisible ?? true;
   const propTemplates = useEditorStore((s) => s.config.propTemplates) ?? [];
   const [tplName, setTplName] = useState("");
-  const [tplFields, setTplFields] = useState("");
+  const [tplEditing, setTplEditing] = useState<string | null>(null);
+  const [tplDraft, setTplDraft] = useState<DraftTemplateField[]>([
+    { key: "", type: "text", value: "" },
+  ]);
   const [tplError, setTplError] = useState<string | null>(null);
   const searchPanel = useEditorStore((s) => s.config.searchPanel);
   const searchPanelPos: SearchPanelDefaultPos =
@@ -971,52 +1025,94 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
     void saveAppConfig();
   };
 
-  const addPropTemplate = () => {
+  const resetTemplateForm = () => {
+    setTplEditing(null);
+    setTplName("");
+    setTplDraft([{ key: "", type: "text", value: "" }]);
+    setTplError(null);
+  };
+
+  const startEditPropTemplate = (template: PropTemplateConfig) => {
+    setTplEditing(template.name);
+    setTplName(template.name);
+    setTplDraft(template.fields.map(draftFromField));
+    setTplError(null);
+  };
+
+  const updateDraftField = (
+    index: number,
+    patch: Partial<DraftTemplateField>,
+  ) => {
+    setTplDraft((prev) =>
+      prev.map((row, i) => (i === index ? { ...row, ...patch } : row)),
+    );
+  };
+
+  const addDraftField = () => {
+    setTplDraft((prev) => [...prev, { key: "", type: "text", value: "" }]);
+  };
+
+  const removeDraftField = (index: number) => {
+    setTplDraft((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const savePropTemplate = () => {
     const name = tplName.trim();
     if (!name) {
       setTplError("模板名称不能为空");
       return;
     }
-    if (BUILTIN_TEMPLATE_NAMES.includes(name)) {
-      setTplError("不能覆盖内置模板");
-      return;
-    }
-    if (propTemplates.some((t) => t.name === name)) {
-      setTplError("模板名已存在");
-      return;
-    }
-    const fields: PropTemplateFieldConfig[] = [];
-    for (const line of tplFields.split("\n")) {
-      const raw = line.trim();
-      if (!raw) continue;
-      const [key, type] = raw.split(":").map((s) => s.trim());
-      if (!key) {
-        setTplError(`字段行无效：${raw}`);
-        return;
-      }
-      if (/[:#\r]/.test(key)) {
-        setTplError(`字段名不能包含 : 或 #：${key}`);
-        return;
-      }
-      const fieldType = (type ?? "text") as PropTemplateFieldConfig["type"];
-      if (!PROP_TEMPLATE_FIELD_TYPES.includes(fieldType)) {
-        setTplError(`未知字段类型：${fieldType}`);
-        return;
-      }
-      fields.push({ key, type: fieldType, value: "" });
-    }
-    if (fields.length === 0) {
+    if (tplDraft.length === 0) {
       setTplError("至少需要一个字段");
       return;
     }
-    updatePropTemplates([...propTemplates, { name, fields }]);
-    setTplName("");
-    setTplFields("");
-    setTplError(null);
+    const fields: PropTemplateFieldConfig[] = [];
+    const seen = new Set<string>();
+    for (let i = 0; i < tplDraft.length; i += 1) {
+      const row = tplDraft[i];
+      const key = row.key.trim();
+      if (!key) {
+        setTplError(`第 ${i + 1} 行键名不能为空`);
+        return;
+      }
+      if (/[:#\r\n]/.test(key)) {
+        setTplError(`第 ${i + 1} 行键名不能包含 : 或 #`);
+        return;
+      }
+      if (seen.has(key)) {
+        setTplError(`字段名重复：${key}`);
+        return;
+      }
+      seen.add(key);
+      fields.push({ key, type: row.type, value: row.value });
+    }
+    if (tplEditing !== null) {
+      updatePropTemplates(
+        propTemplates.map((t) =>
+          t.name === tplEditing ? { name, fields } : t,
+        ),
+      );
+    } else {
+      if (propTemplates.some((t) => t.name === name)) {
+        setTplError("模板名已存在");
+        return;
+      }
+      updatePropTemplates([...propTemplates, { name, fields }]);
+    }
+    resetTemplateForm();
   };
 
   const removePropTemplate = (name: string) => {
     updatePropTemplates(propTemplates.filter((t) => t.name !== name));
+  };
+
+  // 恢复默认 = 从配置移除该内置名并落盘；再用 normalize 把内置定义合并回 store，
+  // 使模板菜单立即回落，不依赖整页刷新。
+  const restorePropTemplateDefault = (name: string) => {
+    const nextRaw = propTemplates.filter((t) => t.name !== name);
+    setConfig({ propTemplates: nextRaw });
+    void saveAppConfig();
+    setConfig({ propTemplates: normalizePropTemplates(nextRaw).config });
   };
 
   const chooseRouletteForm = (form: "hub" | "disk") => {
@@ -1889,51 +1985,143 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
                       属性模板
                     </p>
                     <ul className="mb-2 space-y-1">
-                      {propTemplates.map((t) => (
-                        <li
-                          key={t.name}
-                          className="flex items-center gap-2 text-xs"
-                        >
-                          <span className="font-medium text-[var(--app-text)]">
-                            {t.name}
-                          </span>
-                          <span className="text-[var(--app-text-3)]">
-                            {t.fields.map((f) => f.key).join("、")}
-                          </span>
-                          {BUILTIN_TEMPLATE_NAMES.includes(t.name) ? (
-                            <span className="text-[var(--app-text-3)]">
-                              内置
+                      {propTemplates.map((t) => {
+                        const builtin = BUILTIN_TEMPLATE_NAMES.includes(t.name);
+                        const overridden =
+                          builtin &&
+                          BUILTIN_PROP_TEMPLATES.some(
+                            (b) =>
+                              b.name === t.name &&
+                              JSON.stringify(b.fields) !==
+                                JSON.stringify(t.fields),
+                          );
+                        return (
+                          <li
+                            key={t.name}
+                            className="flex items-center gap-2 text-xs"
+                          >
+                            <span className="font-medium text-[var(--app-text)]">
+                              {t.name}
                             </span>
-                          ) : (
+                            <span className="text-[var(--app-text-3)]">
+                              {t.fields.map((f) => f.key).join("、")}
+                            </span>
+                            {builtin && (
+                              <span className="text-[var(--app-text-3)]">
+                                内置
+                              </span>
+                            )}
                             <button
                               type="button"
-                              data-testid={`tpl-del-${t.name}`}
-                              onClick={() => removePropTemplate(t.name)}
-                              className="text-[var(--app-text-3)] hover:text-[#a8402f]"
+                              data-testid={`tpl-edit-${t.name}`}
+                              onClick={() => startEditPropTemplate(t)}
+                              className="text-[var(--app-text-3)] hover:text-[var(--app-text)]"
                             >
-                              删除
+                              编辑
                             </button>
-                          )}
-                        </li>
-                      ))}
+                            {builtin ? (
+                              overridden && (
+                                <button
+                                  type="button"
+                                  data-testid={`tpl-restore-${t.name}`}
+                                  onClick={() =>
+                                    restorePropTemplateDefault(t.name)
+                                  }
+                                  className="text-[var(--app-text-3)] hover:text-[var(--app-text)]"
+                                >
+                                  恢复默认
+                                </button>
+                              )
+                            ) : (
+                              <button
+                                type="button"
+                                data-testid={`tpl-del-${t.name}`}
+                                onClick={() => removePropTemplate(t.name)}
+                                className="text-[var(--app-text-3)] hover:text-[#a8402f]"
+                              >
+                                删除
+                              </button>
+                            )}
+                          </li>
+                        );
+                      })}
                     </ul>
+                    {tplEditing !== null && (
+                      <p
+                        className="mb-1 text-xs text-[var(--app-text-3)]"
+                        data-testid="tpl-editing"
+                      >
+                        正在编辑「{tplEditing}」
+                      </p>
+                    )}
                     <div className="flex flex-col gap-1">
                       <input
                         type="text"
                         data-testid="tpl-new-name"
                         value={tplName}
+                        disabled={tplEditing !== null}
                         onChange={(e) => setTplName(e.target.value)}
-                        placeholder="新模板名称"
-                        className="rounded border border-[var(--app-border)] bg-[var(--app-bg)] px-2 py-1 text-xs text-[var(--app-text)] outline-none focus:border-[var(--app-accent)]"
+                        placeholder="模板名称"
+                        className="rounded border border-[var(--app-border)] bg-[var(--app-bg)] px-2 py-1 text-xs text-[var(--app-text)] outline-none focus:border-[var(--app-accent)] disabled:opacity-60"
                       />
-                      <textarea
-                        data-testid="tpl-new-fields"
-                        value={tplFields}
-                        onChange={(e) => setTplFields(e.target.value)}
-                        placeholder="每行一个字段：键名 或 键名:类型"
-                        rows={3}
-                        className="resize-y rounded border border-[var(--app-border)] bg-[var(--app-bg)] px-2 py-1 text-xs text-[var(--app-text)] outline-none focus:border-[var(--app-accent)]"
-                      />
+                      {tplDraft.map((row, index) => (
+                        <div key={index} className="flex items-center gap-1">
+                          <input
+                            type="text"
+                            data-testid={`tpl-field-key-${index}`}
+                            value={row.key}
+                            onChange={(e) =>
+                              updateDraftField(index, { key: e.target.value })
+                            }
+                            placeholder="键名"
+                            className="min-w-0 flex-1 rounded border border-[var(--app-border)] bg-[var(--app-bg)] px-2 py-1 text-xs text-[var(--app-text)] outline-none focus:border-[var(--app-accent)]"
+                          />
+                          <select
+                            data-testid={`tpl-field-type-${index}`}
+                            value={row.type}
+                            onChange={(e) => {
+                              if (isPickablePropTemplateType(e.target.value)) {
+                                updateDraftField(index, {
+                                  type: e.target.value,
+                                });
+                              }
+                            }}
+                            className="shrink-0 rounded border border-[var(--app-border)] bg-[var(--app-bg)] px-1 py-1 text-xs text-[var(--app-text)] outline-none focus:border-[var(--app-accent)]"
+                          >
+                            {PROP_TEMPLATE_PICKABLE_TYPES.map((type) => (
+                              <option key={type} value={type}>
+                                {PROP_TEMPLATE_TYPE_LABELS[type]}
+                              </option>
+                            ))}
+                          </select>
+                          <input
+                            type="text"
+                            data-testid={`tpl-field-value-${index}`}
+                            value={row.value}
+                            onChange={(e) =>
+                              updateDraftField(index, { value: e.target.value })
+                            }
+                            placeholder="预设值（可选）"
+                            className="min-w-0 flex-1 rounded border border-[var(--app-border)] bg-[var(--app-bg)] px-2 py-1 text-xs text-[var(--app-text)] outline-none focus:border-[var(--app-accent)]"
+                          />
+                          <button
+                            type="button"
+                            data-testid={`tpl-field-del-${index}`}
+                            onClick={() => removeDraftField(index)}
+                            className="shrink-0 text-xs text-[var(--app-text-3)] hover:text-[#a8402f]"
+                          >
+                            删除
+                          </button>
+                        </div>
+                      ))}
+                      <button
+                        type="button"
+                        data-testid="tpl-field-add"
+                        onClick={addDraftField}
+                        className="self-start text-xs text-[var(--app-text-3)] hover:text-[var(--app-text)]"
+                      >
+                        + 字段
+                      </button>
                       {tplError && (
                         <span
                           className="text-xs text-[#a8402f]"
@@ -1942,14 +2130,26 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
                           {tplError}
                         </span>
                       )}
-                      <button
-                        type="button"
-                        data-testid="tpl-add"
-                        onClick={addPropTemplate}
-                        className="self-start rounded border border-[var(--app-border)] px-3 py-1 text-xs text-[var(--app-text-2)] hover:bg-[var(--app-sunken)]"
-                      >
-                        新增模板
-                      </button>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          data-testid="tpl-save"
+                          onClick={savePropTemplate}
+                          className="self-start rounded border border-[var(--app-border)] px-3 py-1 text-xs text-[var(--app-text-2)] hover:bg-[var(--app-sunken)]"
+                        >
+                          {tplEditing !== null ? "保存" : "新增模板"}
+                        </button>
+                        {tplEditing !== null && (
+                          <button
+                            type="button"
+                            data-testid="tpl-cancel"
+                            onClick={resetTemplateForm}
+                            className="self-start rounded border border-[var(--app-border)] px-3 py-1 text-xs text-[var(--app-text-2)] hover:bg-[var(--app-sunken)]"
+                          >
+                            取消
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>

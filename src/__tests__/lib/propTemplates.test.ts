@@ -110,6 +110,28 @@ describe("normalizePropTemplates", () => {
     expect(config[0].fields.map((f) => f.key)).toEqual(["only"]);
   });
 
+  it("移除同名条目后回落内置定义", () => {
+    const overridden = normalizePropTemplates([
+      {
+        name: "通用",
+        fields: [{ key: "only", type: "date", value: "2026-11-17" }],
+      },
+    ]).config;
+    expect(
+      overridden.find((t) => t.name === "通用")?.fields.map((f) => f.key),
+    ).toEqual(["only"]);
+
+    const restored = normalizePropTemplates(
+      overridden.filter((t) => t.name !== "通用"),
+    ).config;
+    expect(
+      restored.find((t) => t.name === "通用")?.fields.map((f) => f.key),
+    ).toEqual(["category", "author", "status"]);
+    expect(
+      restored.find((t) => t.name === "通用")?.fields.map((f) => f.type),
+    ).toEqual(["select", "text", "select"]);
+  });
+
   it("未知类型告警并按文本处理，非法键被跳过", () => {
     const { config, warnings } = normalizePropTemplates([
       {
