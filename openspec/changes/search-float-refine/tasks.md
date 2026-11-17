@@ -42,7 +42,7 @@
 
 ## 2. 验收与交付
 
-- [ ] 2.1 集成验收与交付
+- [x] 2.1 集成验收与交付
   - **What to build**：`npm run tauri dev` 手动走查 1.1～1.3 全量关键路径（8 向缩放、拖动、选中行 ⏎、点击定位、状态栏显隐、行渲染观感，按仓库 UI 测试约定用功能说明性语言记录）；`bash scripts/verify.sh` 全绿（tsc → eslint → vitest → CSS manifest → cargo check → 两套 Playwright）；更新 `docs/delivery/requirements-status.md`。**接线归属**：验收与交付，不新增代码接线。**数据面**：无。**标签建议**：integration
   - **Acceptance criteria**：
     - 真实桌面应用内手动点一遍关键路径，1.1～1.3 各优化点与缺陷修复在 UI 上可观测成立。
