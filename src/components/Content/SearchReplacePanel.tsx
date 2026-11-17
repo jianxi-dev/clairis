@@ -82,6 +82,8 @@ function clamp(value: number, min: number, max: number): number {
 /** 结果行上下文片段半径，与 searchHitSnippet 的默认一致。 */
 const SNIPPET_RADIUS = 44;
 
+export const SEARCH_FLOAT_MAX_ROWS = 9;
+
 /** 状态栏在「指针离开 + 失焦」同时满足后的自动隐藏延迟（S-6 / D2）。 */
 const STATUS_BAR_HIDE_DELAY_MS = 2000;
 
@@ -227,6 +229,8 @@ export default function SearchReplacePanel({
   const dragRef = useRef<DragState | null>(null);
   const prevOpenRef = useRef(false);
   const rowRefs = useRef<Map<number, HTMLButtonElement>>(new Map());
+  const resultsRef = useRef<HTMLDivElement>(null);
+  const [resultsMaxHeight, setResultsMaxHeight] = useState(0);
 
   const close = useCallback(() => {
     useSearchFloatStore.getState().close(panelId);
@@ -377,6 +381,31 @@ export default function SearchReplacePanel({
       prev && prev.x === x && prev.y === y ? prev : { x, y },
     );
   }, [hover]);
+
+  useLayoutEffect(() => {
+    const results = resultsRef.current;
+    if (!results) return;
+    const measure = () => {
+      const first = results.querySelector<HTMLElement>(".search-float-hit");
+      if (!first) {
+        setResultsMaxHeight(0);
+        return;
+      }
+      const cs = getComputedStyle(results);
+      const padding = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
+      const next =
+        SEARCH_FLOAT_MAX_ROWS * first.getBoundingClientRect().height + padding;
+      setResultsMaxHeight((prev) =>
+        Math.abs(prev - next) > 0.5 ? next : prev,
+      );
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(results);
+    const first = results.querySelector<HTMLElement>(".search-float-hit");
+    if (first) observer.observe(first);
+    return () => observer.disconnect();
+  }, [open, query, content, hits, snippetHits, mode, replaceMode]);
 
   const hoverHit = hover ? hits[hover.index] : null;
   const hoverBlock = hoverHit
@@ -588,6 +617,7 @@ export default function SearchReplacePanel({
   const style: CSSProperties = {
     position: "absolute",
     display: open ? "flex" : "none",
+    ...(hits.length > SEARCH_FLOAT_MAX_ROWS ? { height: "auto" } : {}),
     ...(placement
       ? {
           left: placement.x,
@@ -749,7 +779,16 @@ export default function SearchReplacePanel({
         </div>
       )}
 
-      <div className="search-float-results" data-testid="search-float-results">
+      <div
+        ref={resultsRef}
+        className="search-float-results"
+        data-testid="search-float-results"
+        style={
+          resultsMaxHeight > 0
+            ? { maxHeight: `${resultsMaxHeight}px` }
+            : undefined
+        }
+      >
         {query && hits.length === 0 && (
           <p className="search-float-empty">无命中</p>
         )}

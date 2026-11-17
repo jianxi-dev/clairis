@@ -1291,3 +1291,118 @@ test("#1055 无命中与换词不留残留高亮", async ({ page }) => {
       .locator(".search-float-key"),
   ).toHaveText("回车");
 });
+
+/* ------------------------------------------------------------------ *
+ * #1057 结果容器 9 行上限 + 快捷键列常驻（A-19.1 / A-19.2 / A-19.3）
+ * ------------------------------------------------------------------ */
+
+const ART_1057 = path.resolve(process.cwd(), ".artifacts/1057");
+
+async function recordState1057(page: Page, state: string): Promise<void> {
+  mkdirSync(ART_1057, { recursive: true });
+  const file = path.join(ART_1057, `${state}.png`);
+  await page.screenshot({ path: file });
+  const manifest = path.join(ART_1057, "state-coverage.json");
+  let states: Array<Record<string, string>> = [];
+  try {
+    states = JSON.parse(readFileSync(manifest, "utf8")).states ?? [];
+  } catch {
+    states = [];
+  }
+  states = states.filter((s) => s.state !== state);
+  states.push({
+    state,
+    screenshot: path.relative(process.cwd(), file),
+    assertion: "passed",
+    recorded_at: new Date().toISOString(),
+    runner: `${process.env.USER ?? "unknown"}@${process.env.HOSTNAME ?? "unknown"}`,
+  });
+  writeFileSync(
+    manifest,
+    `${JSON.stringify({ task: "1057-search-results-cap", states }, null, 2)}\n`,
+  );
+}
+
+test("#1057 结果容器 9 行上限 + 滚动时快捷键列常驻 + 清空复位（A-19.1/2/3）", async ({
+  page,
+}) => {
+  await openDoc(page, LONG_DOC, "/Users/test/long.md");
+  await page.keyboard.press("Meta+f");
+  const float = page.locator('[data-testid="search-float"]');
+  await expect(float).toBeVisible();
+  await page.locator('[data-testid="search-float-input"]').fill("命中");
+
+  const results = float.locator('[data-testid="search-float-results"]');
+  const rows = float.locator('[data-testid="search-float-hit"]');
+  await expect(rows).toHaveCount(21);
+
+  const geom = await results.evaluate((el) => {
+    const cs = getComputedStyle(el);
+    const first = el.querySelector<HTMLElement>(".search-float-hit");
+    const rowH = first ? first.getBoundingClientRect().height : 0;
+    const padTop = parseFloat(cs.paddingTop);
+    const padBottom = parseFloat(cs.paddingBottom);
+    return {
+      rowH,
+      clientHeight: el.clientHeight,
+      scrollHeight: el.scrollHeight,
+      padTop,
+      padBottom,
+      boxSizing: cs.boxSizing,
+      contentBox: el.clientHeight - padTop - padBottom,
+    };
+  });
+  expect(geom.boxSizing).toBe("border-box");
+  expect(geom.rowH).toBeGreaterThan(0);
+  // A-19.1：容器内容盒高度 = 9 × 实测行高（±2px）
+  expect(Math.abs(geom.contentBox - 9 * geom.rowH)).toBeLessThanOrEqual(2);
+  // A-19.3：内容溢出，容器可滚动
+  expect(geom.scrollHeight).toBeGreaterThan(geom.clientHeight);
+  await recordState1057(page, "01-nine-rows");
+
+  // A-19.2：滚动到底部后，最后一条完整可见行的行尾快捷键仍可见。
+  await results.evaluate((el) => {
+    el.scrollTop = el.scrollHeight;
+  });
+  const lastVisibleIndex = await page.evaluate(() => {
+    const box = document.querySelector('[data-testid="search-float-results"]');
+    if (!box) return -1;
+    const rr = box.getBoundingClientRect();
+    const all = Array.from(
+      document.querySelectorAll('[data-testid="search-float-hit"]'),
+    );
+    let idx = -1;
+    all.forEach((row, i) => {
+      const b = row.getBoundingClientRect();
+      if (b.top >= rr.top - 1 && b.bottom <= rr.bottom + 1) idx = i;
+    });
+    return idx;
+  });
+  expect(lastVisibleIndex).toBeGreaterThanOrEqual(0);
+  await rows.nth(lastVisibleIndex).click();
+  const lastKey = rows.nth(lastVisibleIndex).locator(".search-float-key");
+  await expect(lastKey).toBeVisible();
+  await expect(lastKey).toHaveText("回车");
+  const keyBox = await lastKey.boundingBox();
+  const resultsBox = await results.boundingBox();
+  if (!keyBox || !resultsBox) throw new Error("快捷键列或结果区未布局");
+  expect(keyBox.x + keyBox.width).toBeLessThanOrEqual(
+    resultsBox.x + resultsBox.width + 1,
+  );
+  await recordState1057(page, "02-scrolled-bottom");
+
+  const keyStyle = await lastKey.evaluate((el) => {
+    const cs = getComputedStyle(el);
+    return { position: cs.position, right: cs.right };
+  });
+  expect(keyStyle.position).toBe("sticky");
+  expect(keyStyle.right).toBe("0px");
+  await recordState1057(page, "03-key-column-visible");
+
+  await page.locator('[data-testid="search-float-input"]').fill("");
+  await expect(float.locator(".search-float-empty")).toBeVisible();
+  await expect(rows).toHaveCount(0);
+  const scrollTop = await results.evaluate((el) => el.scrollTop);
+  expect(scrollTop).toBe(0);
+  await recordState1057(page, "04-cleared-reset");
+});
