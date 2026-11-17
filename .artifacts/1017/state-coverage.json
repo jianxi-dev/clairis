@@ -1,0 +1,33 @@
+{
+  "task": "1017-overflow",
+  "states": [
+    {
+      "state": "01-body-matrix-no-overflow",
+      "screenshot": ".artifacts/1017/01-body-matrix-no-overflow.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-17T09:49:59.136Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "02-menu-matrix-in-viewport",
+      "screenshot": ".artifacts/1017/02-menu-matrix-in-viewport.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-17T09:50:02.407Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "03-suggest-matrix-in-viewport",
+      "screenshot": ".artifacts/1017/03-suggest-matrix-in-viewport.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-17T09:50:06.824Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "04-final-panel-b-narrow",
+      "screenshot": ".artifacts/1017/04-final-panel-b-narrow.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-17T09:50:06.839Z",
+      "runner": "mason@unknown"
+    }
+  ]
+}

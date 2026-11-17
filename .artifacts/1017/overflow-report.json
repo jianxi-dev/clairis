@@ -1,0 +1,380 @@
+{
+  "issue": 1017,
+  "reproduced": false,
+  "totalOverflows": 0,
+  "scenarios": [
+    {
+      "width": 1280,
+      "variant": "A",
+      "host": {
+        "x": 0,
+        "y": 28,
+        "width": 1280,
+        "height": 147,
+        "right": 1280,
+        "bottom": 175
+      },
+      "panel": {
+        "x": 16,
+        "y": 40,
+        "width": 1248,
+        "height": 123,
+        "right": 1264,
+        "bottom": 163
+      },
+      "hostRightEdge": 1280,
+      "viewportWidth": 1280,
+      "overflows": [],
+      "menuOverflows": [
+        {
+          "menu": "type",
+          "box": null,
+          "overflows": []
+        },
+        {
+          "menu": "template",
+          "box": {
+            "x": 1096.234375,
+            "y": 80.5,
+            "width": 132,
+            "height": 98,
+            "right": 1228.234375,
+            "bottom": 178.5
+          },
+          "overflows": []
+        }
+      ],
+      "screenshot": ".artifacts/1017/A-1280.png"
+    },
+    {
+      "width": 1280,
+      "variant": "B",
+      "host": {
+        "x": 0,
+        "y": 28,
+        "width": 1280,
+        "height": 257,
+        "right": 1280,
+        "bottom": 285
+      },
+      "panel": {
+        "x": 16,
+        "y": 40,
+        "width": 1248,
+        "height": 233,
+        "right": 1264,
+        "bottom": 273
+      },
+      "hostRightEdge": 1280,
+      "viewportWidth": 1280,
+      "overflows": [],
+      "menuOverflows": [
+        {
+          "menu": "type",
+          "box": {
+            "x": 61.296875,
+            "y": 228.1875,
+            "width": 132,
+            "height": 248,
+            "right": 193.296875,
+            "bottom": 476.1875
+          },
+          "overflows": []
+        },
+        {
+          "menu": "template",
+          "box": {
+            "x": 1090.234375,
+            "y": 74.5,
+            "width": 132,
+            "height": 98,
+            "right": 1222.234375,
+            "bottom": 172.5
+          },
+          "overflows": []
+        }
+      ],
+      "screenshot": ".artifacts/1017/B-1280.png"
+    },
+    {
+      "width": 900,
+      "variant": "A",
+      "host": {
+        "x": 0,
+        "y": 28,
+        "width": 900,
+        "height": 204,
+        "right": 900,
+        "bottom": 232
+      },
+      "panel": {
+        "x": 16,
+        "y": 40,
+        "width": 868,
+        "height": 180,
+        "right": 884,
+        "bottom": 220
+      },
+      "hostRightEdge": 900,
+      "viewportWidth": 900,
+      "overflows": [],
+      "menuOverflows": [
+        {
+          "menu": "type",
+          "box": null,
+          "overflows": []
+        },
+        {
+          "menu": "template",
+          "box": {
+            "x": 716.234375,
+            "y": 80.5,
+            "width": 132,
+            "height": 98,
+            "right": 848.234375,
+            "bottom": 178.5
+          },
+          "overflows": []
+        }
+      ],
+      "screenshot": ".artifacts/1017/A-900.png"
+    },
+    {
+      "width": 900,
+      "variant": "B",
+      "host": {
+        "x": 0,
+        "y": 28,
+        "width": 900,
+        "height": 283.5,
+        "right": 900,
+        "bottom": 311.5
+      },
+      "panel": {
+        "x": 16,
+        "y": 40,
+        "width": 868,
+        "height": 259.5,
+        "right": 884,
+        "bottom": 299.5
+      },
+      "hostRightEdge": 900,
+      "viewportWidth": 900,
+      "overflows": [],
+      "menuOverflows": [
+        {
+          "menu": "type",
+          "box": {
+            "x": 61.296875,
+            "y": 254.6875,
+            "width": 132,
+            "height": 248,
+            "right": 193.296875,
+            "bottom": 502.6875
+          },
+          "overflows": []
+        },
+        {
+          "menu": "template",
+          "box": {
+            "x": 710.234375,
+            "y": 74.5,
+            "width": 132,
+            "height": 98,
+            "right": 842.234375,
+            "bottom": 172.5
+          },
+          "overflows": []
+        }
+      ],
+      "screenshot": ".artifacts/1017/B-900.png"
+    },
+    {
+      "width": 640,
+      "variant": "A",
+      "host": {
+        "x": 0,
+        "y": 28,
+        "width": 640,
+        "height": 281.5,
+        "right": 640,
+        "bottom": 309.5
+      },
+      "panel": {
+        "x": 16,
+        "y": 40,
+        "width": 608,
+        "height": 257.5,
+        "right": 624,
+        "bottom": 297.5
+      },
+      "hostRightEdge": 640,
+      "viewportWidth": 640,
+      "overflows": [],
+      "menuOverflows": [
+        {
+          "menu": "type",
+          "box": null,
+          "overflows": []
+        },
+        {
+          "menu": "template",
+          "box": {
+            "x": 101.15625,
+            "y": 114,
+            "width": 132,
+            "height": 98,
+            "right": 233.15625,
+            "bottom": 212
+          },
+          "overflows": []
+        }
+      ],
+      "screenshot": ".artifacts/1017/A-640.png"
+    },
+    {
+      "width": 640,
+      "variant": "B",
+      "host": {
+        "x": 0,
+        "y": 28,
+        "width": 640,
+        "height": 308.5,
+        "right": 640,
+        "bottom": 336.5
+      },
+      "panel": {
+        "x": 16,
+        "y": 40,
+        "width": 608,
+        "height": 284.5,
+        "right": 624,
+        "bottom": 324.5
+      },
+      "hostRightEdge": 640,
+      "viewportWidth": 640,
+      "overflows": [],
+      "menuOverflows": [
+        {
+          "menu": "type",
+          "box": {
+            "x": 61.296875,
+            "y": 279.6875,
+            "width": 132,
+            "height": 248,
+            "right": 193.296875,
+            "bottom": 527.6875
+          },
+          "overflows": []
+        },
+        {
+          "menu": "template",
+          "box": {
+            "x": 450.234375,
+            "y": 74.5,
+            "width": 132,
+            "height": 98,
+            "right": 582.234375,
+            "bottom": 172.5
+          },
+          "overflows": []
+        }
+      ],
+      "screenshot": ".artifacts/1017/B-640.png"
+    },
+    {
+      "width": 400,
+      "variant": "A",
+      "host": {
+        "x": 0,
+        "y": 28,
+        "width": 400,
+        "height": 325.5,
+        "right": 400,
+        "bottom": 353.5
+      },
+      "panel": {
+        "x": 16,
+        "y": 40,
+        "width": 368,
+        "height": 301.5,
+        "right": 384,
+        "bottom": 341.5
+      },
+      "hostRightEdge": 400,
+      "viewportWidth": 400,
+      "overflows": [],
+      "menuOverflows": [
+        {
+          "menu": "type",
+          "box": null,
+          "overflows": []
+        },
+        {
+          "menu": "template",
+          "box": {
+            "x": 216.234375,
+            "y": 114,
+            "width": 132,
+            "height": 98,
+            "right": 348.234375,
+            "bottom": 212
+          },
+          "overflows": []
+        }
+      ],
+      "screenshot": ".artifacts/1017/A-400.png"
+    },
+    {
+      "width": 400,
+      "variant": "B",
+      "host": {
+        "x": 0,
+        "y": 28,
+        "width": 400,
+        "height": 415,
+        "right": 400,
+        "bottom": 443
+      },
+      "panel": {
+        "x": 16,
+        "y": 40,
+        "width": 368,
+        "height": 391,
+        "right": 384,
+        "bottom": 431
+      },
+      "hostRightEdge": 400,
+      "viewportWidth": 400,
+      "overflows": [],
+      "menuOverflows": [
+        {
+          "menu": "type",
+          "box": {
+            "x": 61.296875,
+            "y": 380.4375,
+            "width": 132,
+            "height": 248,
+            "right": 193.296875,
+            "bottom": 628.4375
+          },
+          "overflows": []
+        },
+        {
+          "menu": "template",
+          "box": {
+            "x": 210.234375,
+            "y": 74.5,
+            "width": 132,
+            "height": 98,
+            "right": 342.234375,
+            "bottom": 172.5
+          },
+          "overflows": []
+        }
+      ],
+      "screenshot": ".artifacts/1017/B-400.png"
+    }
+  ],
+  "recorded_at": "2026-11-17T09:38:31.518Z"
+}

@@ -29,6 +29,10 @@
 
 .dpb-k {
   color: var(--app-text-3);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .dpb-ico {
@@ -214,6 +218,9 @@
   font-weight: 650;
   color: var(--app-text-strong);
   min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .dpb-a-spacer {
@@ -241,6 +248,7 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  min-width: 0;
   max-width: 100%;
   padding: 2px 5px;
   border: 1px solid var(--app-border);
@@ -281,6 +289,7 @@
 
 .dpb-b-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   padding: 7px 12px;
@@ -302,6 +311,7 @@
 .dpb-b-tools {
   margin-left: auto;
   display: flex;
+  flex-wrap: wrap;
   gap: 4px;
   align-items: center;
 }
@@ -547,6 +557,7 @@
   position: relative;
   display: inline-flex;
   align-items: center;
+  flex: 0 0 auto;
   min-width: 0;
 }
 
@@ -579,6 +590,10 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
+  /* 宽度取 max-content 且与 left 无关，否则 fixed + auto 宽度会随 left 收缩，
+     定位夹取会来回振荡。超宽内容由 max-width 兜住。 */
+  width: max-content;
+  max-width: calc(100vw - 16px);
   min-width: 132px;
   padding: 4px;
   border: 1px solid var(--app-border);
