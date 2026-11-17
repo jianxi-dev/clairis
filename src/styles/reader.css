@@ -622,6 +622,39 @@
   background: var(--reader-sunken);
 }
 
+/* 预览态行号列（#1051 / A-13）：字体 / 颜色复用编辑态行号槽 token，
+ * 右侧细分隔线，行号与分隔线间保留非零间隙。 */
+.preview-content .code-block.has-line-numbers .code-lines {
+  display: flex;
+  align-items: flex-start;
+}
+
+.preview-content .code-line-numbers {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  padding: 0 0.75em 0 1.15em;
+  border-inline-end: 1px solid var(--reader-line);
+  font-family: var(--type-font-mono);
+  font-size: 0.88em;
+  line-height: 1.65;
+  color: var(--app-text-3);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.preview-content .code-line-numbers [data-preview-line-number] {
+  display: block;
+  text-align: right;
+}
+
+.preview-content .code-block.has-line-numbers pre {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 /* ── 语法高亮：低饱和矿物色族（独立于品牌色，只随明暗切换） ── */
 .tok-keyword,
 .tok-controlKeyword,
