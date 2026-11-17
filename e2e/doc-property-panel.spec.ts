@@ -1,5 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { tagColor } from "../src/lib/frontmatter";
 
@@ -12,6 +12,37 @@ import { tagColor } from "../src/lib/frontmatter";
  */
 
 const APP_URL = "http://localhost:1420";
+
+/** 单用例证据采集：截图落 .artifacts/<dir>/ 并合并 state-coverage.json（IC-2 ≥4 态）。 */
+async function dpbRecord(
+  page: Page,
+  dir: string,
+  state: string,
+): Promise<void> {
+  const ART = path.resolve(process.cwd(), `.artifacts/${dir}`);
+  mkdirSync(ART, { recursive: true });
+  const file = path.join(ART, `${state}.png`);
+  await page.screenshot({ path: file });
+  const manifest = path.join(ART, "state-coverage.json");
+  let states: Array<Record<string, string>> = [];
+  try {
+    states = JSON.parse(readFileSync(manifest, "utf8")).states ?? [];
+  } catch {
+    states = [];
+  }
+  states = states.filter((s) => s.state !== state);
+  states.push({
+    state,
+    screenshot: path.relative(process.cwd(), file),
+    assertion: "passed",
+    recorded_at: new Date().toISOString(),
+    runner: `${process.env.USER ?? "unknown"}@${process.env.HOSTNAME ?? "unknown"}`,
+  });
+  writeFileSync(
+    manifest,
+    `${JSON.stringify({ task: dir, states }, null, 2)}\n`,
+  );
+}
 
 const DOC = `---
 title: 属性面板测试
@@ -1276,6 +1307,121 @@ test("结构变更单事务：删除所选行后 Ctrl+Z 一次恢复", async ({ 
   await expect
     .poll(async () => (await rowKeys(page, "B")).join(","))
     .toBe("title,category,author,source,note");
+});
+
+test("B 行尾删除按钮：点击删除普通字段，源码同步移除", async ({ page }) => {
+  await openDoc(page, ROW_DOC);
+  await setVariant(page, "B");
+  await setMode(page, "edit");
+  const b = panel(page, "B");
+
+  const row = b.locator('[data-key="category"]');
+  await expect(row.locator('[data-testid="dpb-row-del"]')).toHaveCount(1);
+  await row.locator('[data-testid="dpb-row-del"]').click();
+
+  expect(await rowKeys(page, "B")).toEqual([
+    "title",
+    "author",
+    "source",
+    "note",
+  ]);
+  await dpbRecord(page, "1016", "01-row-del-removed");
+  await setMode(page, "source");
+  await expect(page.locator(".cm-content").first()).not.toContainText(
+    "category:",
+  );
+});
+
+test("B 行尾删除后可 Ctrl+Z 一次恢复", async ({ page }) => {
+  await openDoc(page, ROW_DOC);
+  await setVariant(page, "B");
+  await setMode(page, "edit");
+  const b = panel(page, "B");
+
+  await b.locator('[data-key="category"] [data-testid="dpb-row-del"]').click();
+  expect(await rowKeys(page, "B")).toEqual([
+    "title",
+    "author",
+    "source",
+    "note",
+  ]);
+
+  await page.locator(".cm-content").first().click();
+  await page.keyboard.press("Meta+Z");
+  await expect
+    .poll(async () => (await rowKeys(page, "B")).join(","))
+    .toBe("title,category,author,source,note");
+  await dpbRecord(page, "1016", "02-undo-restored");
+});
+
+test("B 行尾删除按钮：托管日期 / 标题 / 标签行不渲染，普通字段渲染", async ({
+  page,
+}) => {
+  await openDoc(page);
+  await setVariant(page, "B");
+  await setMode(page, "edit");
+  const b = panel(page, "B");
+
+  for (const key of ["created", "updated"]) {
+    await expect(
+      b.locator(`[data-key="${key}"] .dpb-b-x .dpb-lock`),
+    ).toHaveCount(1);
+    await expect(
+      b.locator(`[data-key="${key}"] [data-testid="dpb-row-del"]`),
+    ).toHaveCount(0);
+  }
+  await expect(
+    b.locator('[data-key="title"] [data-testid="dpb-row-del"]'),
+  ).toHaveCount(0);
+  await expect(
+    b.locator('[data-key="tags"] [data-testid="dpb-row-del"]'),
+  ).toHaveCount(0);
+  await expect(
+    b.locator('[data-key="count"] [data-testid="dpb-row-del"]'),
+  ).toHaveCount(1);
+  await dpbRecord(page, "1016", "03-managed-row-lock-only");
+});
+
+test("选择模式：选中一行后所有行尾删除按钮隐藏", async ({ page }) => {
+  await openDoc(page, ROW_DOC);
+  await setVariant(page, "B");
+  await setMode(page, "edit");
+  const b = panel(page, "B");
+
+  await expect(
+    b.locator('[data-key="category"] [data-testid="dpb-row-del"]'),
+  ).toHaveCount(1);
+  await b
+    .locator('[data-key="category"] [data-testid="dpb-row-handle"]')
+    .click();
+  await expect(b).toHaveClass(/select-mode/);
+  await expect(b.locator('[data-testid="dpb-row-del"]')).toHaveCount(0);
+  await dpbRecord(page, "1016", "04-select-mode-hidden");
+});
+
+test("行尾删除单行：其余自由键原样保留（P-9）", async ({ page }) => {
+  await openDoc(page, ROW_DOC);
+  await setVariant(page, "B");
+  await setMode(page, "edit");
+  const b = panel(page, "B");
+
+  await b.locator('[data-key="author"] [data-testid="dpb-row-del"]').click();
+  expect(await rowKeys(page, "B")).toEqual([
+    "title",
+    "category",
+    "source",
+    "note",
+  ]);
+  await expect(
+    b.locator('[data-key="category"] [data-testid="dpb-value"]'),
+  ).toHaveText("草稿");
+  await expect(
+    b.locator('[data-key="source"] [data-testid="dpb-value"]'),
+  ).toHaveText("网络");
+  await expect(
+    b.locator('[data-key="note"] [data-testid="dpb-value"]'),
+  ).toHaveText("备注");
+  await dpbRecord(page, "1016", "05-free-keys-preserved");
 });
 
 async function newDoc(page: Page): Promise<void> {

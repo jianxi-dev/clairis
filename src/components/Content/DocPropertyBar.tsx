@@ -39,6 +39,7 @@ import { getActiveEditorView } from "../../editors/editorRef";
 import { useEditorStore } from "../../stores/editorStore";
 import { useDocPropertyPanelStore } from "../../stores/docPropertyPanel";
 import { useStore } from "../../stores/index";
+import Icon from "../Icon";
 import SuggestMenu from "./SuggestMenu";
 
 /**
@@ -1578,6 +1579,15 @@ export default function DocPropertyBar({
     commitFields(next, []);
   }, [fields, titleIdx, tagsIdx, numericSelected, commitFields]);
 
+  /** B 态行内单行删除：把该行设为唯一选中后复用批量删除，保持单事务可撤销（P-4）。 */
+  const handleDeleteRow = useCallback(
+    (id: FrontmatterRowId) => {
+      applySelection([id]);
+      handleDelete();
+    },
+    [applySelection, handleDelete],
+  );
+
   const handleMove = useCallback(
     (delta: 1 | -1) => {
       const nums = numericSelected();
@@ -1876,7 +1886,23 @@ export default function DocPropertyBar({
                     )}
                   </span>
                   <span className="dpb-b-x">
-                    {isManagedDateKey(field.key) ? <LockIcon /> : null}
+                    {isManagedDateKey(field.key) ? (
+                      <LockIcon />
+                    ) : field !== titleField &&
+                      field !== tagsField &&
+                      editable &&
+                      !selectMode ? (
+                      <button
+                        type="button"
+                        className="dpb-b-del"
+                        data-testid="dpb-row-del"
+                        title="删除该字段"
+                        aria-label={`删除字段 ${field.key}`}
+                        onClick={() => handleDeleteRow(rowId)}
+                      >
+                        <Icon name="trash" size={18} />
+                      </button>
+                    ) : null}
                   </span>
                 </div>
               );
