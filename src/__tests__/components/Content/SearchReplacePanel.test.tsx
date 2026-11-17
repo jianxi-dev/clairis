@@ -65,7 +65,7 @@ afterEach(() => {
 });
 
 describe("SearchReplacePanel 行尾快捷键渲染条件", () => {
-  it("初始选中行显示 ⏎，其余 1~9 行显示 ⌘N", () => {
+  it("初始选中行显示 回车，其余 1~9 行显示 ⌘N", () => {
     const { getByTestId } = renderPanel();
     fireEvent.change(getByTestId("search-float-input"), {
       target: { value: "属性" },
@@ -73,10 +73,10 @@ describe("SearchReplacePanel 行尾快捷键渲染条件", () => {
     const keys = Array.from(document.querySelectorAll(".search-float-key")).map(
       (el) => el.textContent,
     );
-    expect(keys).toEqual(["⏎", "⌘2", "⌘3"]);
+    expect(keys).toEqual(["回车", "⌘2", "⌘3"]);
   });
 
-  it("↑↓ 换选后 ⏎ 跟随到新的选中行，无需点击", () => {
+  it("↑↓ 换选后 回车 跟随到新的选中行，无需点击", () => {
     const { getByTestId } = renderPanel();
     const input = getByTestId("search-float-input");
     fireEvent.change(input, { target: { value: "属性" } });
@@ -85,10 +85,10 @@ describe("SearchReplacePanel 行尾快捷键渲染条件", () => {
     const keys = Array.from(document.querySelectorAll(".search-float-key")).map(
       (el) => el.textContent,
     );
-    expect(keys).toEqual(["⌘1", "⌘2", "⏎"]);
+    expect(keys).toEqual(["⌘1", "⌘2", "回车"]);
   });
 
-  it("↑ 换选后 ⏎ 跟随回上一行，无需点击", () => {
+  it("↑ 换选后 回车 跟随回上一行，无需点击", () => {
     const { getByTestId } = renderPanel();
     const input = getByTestId("search-float-input");
     fireEvent.change(input, { target: { value: "属性" } });
@@ -98,10 +98,10 @@ describe("SearchReplacePanel 行尾快捷键渲染条件", () => {
     const keys = Array.from(document.querySelectorAll(".search-float-key")).map(
       (el) => el.textContent,
     );
-    expect(keys).toEqual(["⌘1", "⏎", "⌘3"]);
+    expect(keys).toEqual(["⌘1", "回车", "⌘3"]);
   });
 
-  it("⌘N 直达该行即显示 ⏎", () => {
+  it("⌘N 直达该行即显示 回车", () => {
     const { getByTestId } = renderPanel();
     const input = getByTestId("search-float-input");
     fireEvent.change(input, { target: { value: "属性" } });
@@ -109,7 +109,7 @@ describe("SearchReplacePanel 行尾快捷键渲染条件", () => {
     const keys = Array.from(document.querySelectorAll(".search-float-key")).map(
       (el) => el.textContent,
     );
-    expect(keys).toEqual(["⌘1", "⏎", "⌘3"]);
+    expect(keys).toEqual(["⌘1", "回车", "⌘3"]);
   });
 
   it("第 10 行起无快捷键", () => {
@@ -130,7 +130,7 @@ describe("SearchReplacePanel 行尾快捷键渲染条件", () => {
       (el) => el.textContent,
     );
     expect(keys.slice(0, 9)).toEqual([
-      "⏎",
+      "回车",
       "⌘2",
       "⌘3",
       "⌘4",

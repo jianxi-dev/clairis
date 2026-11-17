@@ -814,7 +814,7 @@ export default function SearchReplacePanel({
               )}
             </span>
             <span className="search-float-key">
-              {index === safeSelected ? "⏎" : index < 9 ? `⌘${index + 1}` : ""}
+              {index === safeSelected ? "回车" : index < 9 ? `⌘${index + 1}` : ""}
             </span>
           </button>
         ))}
