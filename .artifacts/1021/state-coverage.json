@@ -1,0 +1,33 @@
+{
+  "task": "1021",
+  "states": [
+    {
+      "state": "01-bool-on",
+      "screenshot": ".artifacts/1021/01-bool-on.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-17T11:26:44.043Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "03-edit-switch-on",
+      "screenshot": ".artifacts/1021/03-edit-switch-on.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-17T11:26:44.108Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "04-edit-switch-off",
+      "screenshot": ".artifacts/1021/04-edit-switch-off.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-17T11:26:44.200Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "02-bool-off",
+      "screenshot": ".artifacts/1021/02-bool-off.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-17T11:26:44.222Z",
+      "runner": "mason@unknown"
+    }
+  ]
+}
