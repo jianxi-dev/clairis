@@ -216,6 +216,8 @@ interface TypeSelectorProps {
 
 /** 字段名前的纯图标类型选择器：编辑态按钮弹八类菜单，预览态静态图标。 */
 function TypeSelector({ field, editable, onPick }: TypeSelectorProps) {
+  // 托管日期键强制只读：类型菜单不可打开、光标不变（P-6）。
+  const enabled = editable && !isManagedDateKey(field.key);
   const [open, setOpen] = useState(false);
   const [anchor, setAnchor] = useState<{ x: number; y: number } | null>(null);
   const wrapRef = useRef<HTMLSpanElement>(null);
@@ -259,7 +261,7 @@ function TypeSelector({ field, editable, onPick }: TypeSelectorProps) {
 
   return (
     <span className="dpb-type-wrap" ref={wrapRef}>
-      {editable ? (
+      {enabled ? (
         <button
           ref={btnRef}
           type="button"
@@ -277,7 +279,7 @@ function TypeSelector({ field, editable, onPick }: TypeSelectorProps) {
           <TypeIcon type={field.type} />
         </span>
       )}
-      {editable &&
+      {enabled &&
         open &&
         anchor &&
         createPortal(
@@ -1062,10 +1064,21 @@ function FieldValue({
   editable,
   onCommit,
 }: EditorProps & { editable: boolean }) {
-  if (editable && (field.type === "array" || field.type === "multiselect")) {
+  // 托管日期键在组件内部强制只读：调用点漏传 editable 也不漂移（P-6）。
+  const effectiveEditable = editable && !isManagedDateKey(field.key);
+  if (
+    effectiveEditable &&
+    (field.type === "array" || field.type === "multiselect")
+  ) {
     return <LinkListEditor field={field} onCommit={onCommit} />;
   }
-  return <ValueEditor field={field} editable={editable} onCommit={onCommit} />;
+  return (
+    <ValueEditor
+      field={field}
+      editable={effectiveEditable}
+      onCommit={onCommit}
+    />
+  );
 }
 
 /** 标签单元格：预览态只读胶囊，编辑态可增删改名。 */
