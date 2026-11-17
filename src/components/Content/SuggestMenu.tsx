@@ -1,13 +1,13 @@
 import {
   useEffect,
   useLayoutEffect,
-  useRef,
   type ReactNode,
   type RefObject,
 } from "react";
 import { createPortal } from "react-dom";
 import { digitFromCode } from "../../lib/gridKeyboard";
 import { activateLocalContext } from "../../lib/shortcuts";
+import { useMenuPos } from "./useMenuPos";
 
 export interface SuggestRow {
   id: string;
@@ -51,7 +51,7 @@ export default function SuggestMenu({
   rowTestId,
   emptyText,
 }: SuggestMenuProps) {
-  const menuRef = useRef<HTMLSpanElement>(null);
+  const { pos, ref: menuRef } = useMenuPos(anchor);
 
   useEffect(() => {
     const off = activateLocalContext(context);
@@ -94,7 +94,7 @@ export default function SuggestMenu({
     };
     document.addEventListener("mousedown", onDown);
     return () => document.removeEventListener("mousedown", onDown);
-  }, [hostRef, onClose]);
+  }, [hostRef, menuRef, onClose]);
 
   if (!anchor) return null;
 
@@ -105,7 +105,7 @@ export default function SuggestMenu({
       data-testid={testId}
       role="menu"
       aria-label="建议"
-      style={{ left: anchor.x, top: anchor.y }}
+      style={{ left: (pos ?? anchor).x, top: (pos ?? anchor).y }}
     >
       {rows.length === 0 ? (
         <span className="dpb-menu-row dpb-menu-empty">

@@ -42,6 +42,7 @@ import { useDocPropertyPanelStore } from "../../stores/docPropertyPanel";
 import { useStore } from "../../stores/index";
 import Icon from "../Icon";
 import SuggestMenu from "./SuggestMenu";
+import { useMenuPos } from "./useMenuPos";
 
 /**
  * 文档属性面板（doc-property-panel 功能一 · 首通只读）。
@@ -227,7 +228,7 @@ function TypeSelector({ field, editable, onPick }: TypeSelectorProps) {
   const [anchor, setAnchor] = useState<{ x: number; y: number } | null>(null);
   const wrapRef = useRef<HTMLSpanElement>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
-  const menuRef = useRef<HTMLSpanElement>(null);
+  const { pos: menuPos, ref: menuRef } = useMenuPos(open ? anchor : null);
 
   useEffect(() => {
     if (!open) return;
@@ -249,7 +250,7 @@ function TypeSelector({ field, editable, onPick }: TypeSelectorProps) {
       document.removeEventListener("mousedown", onDown);
       document.removeEventListener("keydown", onKey);
     };
-  }, [open]);
+  }, [open, menuRef]);
 
   const toggle = () => {
     if (!open) {
@@ -294,7 +295,7 @@ function TypeSelector({ field, editable, onPick }: TypeSelectorProps) {
             data-testid="dpb-type-menu"
             role="menu"
             aria-label="选择字段类型"
-            style={{ left: anchor.x, top: anchor.y }}
+            style={{ left: (menuPos ?? anchor).x, top: (menuPos ?? anchor).y }}
           >
             {PICKABLE_TYPES.map((t) => (
               <button
@@ -1116,7 +1117,7 @@ function TemplateMenuButton({ templates, onApply }: TemplateMenuButtonProps) {
   const [open, setOpen] = useState(false);
   const [anchor, setAnchor] = useState<{ x: number; y: number } | null>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
-  const menuRef = useRef<HTMLSpanElement>(null);
+  const { pos: menuPos, ref: menuRef } = useMenuPos(open ? anchor : null);
 
   useEffect(() => {
     if (!open) return;
@@ -1138,7 +1139,7 @@ function TemplateMenuButton({ templates, onApply }: TemplateMenuButtonProps) {
       document.removeEventListener("mousedown", onDown);
       document.removeEventListener("keydown", onKey);
     };
-  }, [open]);
+  }, [open, menuRef]);
 
   const toggle = () => {
     if (!open) {
@@ -1176,7 +1177,7 @@ function TemplateMenuButton({ templates, onApply }: TemplateMenuButtonProps) {
             data-testid="dpb-template-menu"
             role="menu"
             aria-label="属性模板"
-            style={{ left: anchor.x, top: anchor.y }}
+            style={{ left: (menuPos ?? anchor).x, top: (menuPos ?? anchor).y }}
           >
             {templates.length === 0 ? (
               <span className="dpb-menu-row dpb-menu-empty">没有可用模板</span>
