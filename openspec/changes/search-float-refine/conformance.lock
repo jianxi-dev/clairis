@@ -1,4 +1,4 @@
 # change-workflow 制品哈希锁 v1（cw-conformance.sh lock 生成；禁止手改）
-eff6a5f0a1d64c28445f11ab86dc98229c4c638f0f62b848883bf3bd9de6f9d2  conformance.json
+1848da8cd9e0369616c4330cfb4faa5e5ca1c934b49ba4c952b9ce793e67b04f  conformance.json
 d9cae1a6d748ca26eb42108ea063d34b9f0ff93d2f4512d31606114cbfe0fc15  baseline/search-default.png
 1e110d6633b0906d12f3f443f8ee63e1187be382982d5dced29c4416bae80895  baseline/search-replace.png

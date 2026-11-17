@@ -44,6 +44,8 @@
 
 `locate()` 改用浮窗所属 panelId 的编辑器视图：编辑态用 `getEditorView(panelId)` 取所属窗格的 `EditorView` 做选区与滚动，预览态在所属窗格的预览容器（`.preview-content`）内做文本树滚动定位。
 
+**同一根因的完整覆盖（G1 复现后追认）**：复现确认缺陷机制为「浮窗编辑器解析走全局 `getActiveEditorView()`（lastActivePanel 漂移时回退 "main"）」。该机制同样影响 `replaceOne`/`replaceAll`（本窗格偏移 dispatch 到他窗格 = 内容破坏）与关闭还焦。故 D3 的落地范围为组件内**全部四处**编辑器解析统一 `getEditorView(panelId)`——替换的 dispatch 目标属浮窗窗格归属问题，不是 S-4 替换算法/事务语义的变更（`buildReplaceChanges`/`applyReplaceChanges` 与单事务/可撤销语义未动），Non-Goals 所指的「S-4 行为变更」不包含本修正。
+
 **理由**：现状 `locate()` 走全局 `getActiveEditorView()`（最近聚焦编辑器），在分栏或焦点漂移场景下会把命中定位到错误窗格，是缺陷 4（点击行不能定位）的嫌疑根因。G1 真机复现确认后按此修复。预览态同理限定在所属窗格的预览容器内，避免跨窗格滚动。
 
 ### D4 行内轻量渲染：新建轻量 renderer，不引入整块解析
