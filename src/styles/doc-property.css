@@ -536,6 +536,29 @@
   line-height: 1.5;
 }
 
+/* 日期时间：日期 + 时间两个常驻控件（原生 datetime-local 在目标引擎不可靠） */
+.dpb-datetime-pair {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1 1 200px;
+  min-width: 0;
+  max-width: 340px;
+}
+
+.dpb-datetime-pair .dpb-input {
+  min-width: 0;
+  max-width: none;
+}
+
+.dpb-datetime-pair .dpb-date {
+  flex: 1 1 0;
+}
+
+.dpb-datetime-pair .dpb-time {
+  flex: 0 0 92px;
+}
+
 .dpb-switch {
   font: inherit;
   font-size: 11px;
