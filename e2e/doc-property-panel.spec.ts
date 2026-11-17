@@ -1879,3 +1879,42 @@ test("预览态只读：空态与有 frontmatter 都不出现添加入口", asyn
   await expect(page.locator('[data-testid="dpb-empty"]')).toBeVisible();
   await dpbRecord(page, "1018", "05-preview-no-entry");
 });
+
+test("#1019 编辑态面板展开隐藏 frontmatter 整块，折叠显示一行摘要", async ({
+  page,
+}) => {
+  await openDoc(page);
+  await setMode(page, "edit");
+  const cm = page.locator(".cm-content").first();
+
+  // 展开：正文顶部不再出现 --- 源码块
+  await expect(cm).not.toContainText("title:");
+  await expect(cm).not.toContainText("---");
+  await dpbRecord(page, "1019", "01-edit-expanded-hidden");
+
+  // 折叠：恰好一行摘要占位，N = 顶层键数（DOC 为 6）
+  await page.locator('[data-testid="dpb-collapse"]').click();
+  const summary = page.locator(".cm-fmh-summary");
+  await expect(summary).toHaveCount(1);
+  await expect(summary).toHaveText("文档属性 · 6 个字段");
+  await expect(cm).not.toContainText("title:");
+  await dpbRecord(page, "1019", "02-collapsed-summary");
+});
+
+test("#1019 ⌘⇧Y 隐藏面板与切源码态均恢复完整 YAML", async ({ page }) => {
+  await openDoc(page);
+  await setMode(page, "edit");
+  const cm = page.locator(".cm-content").first();
+  await expect(cm).not.toContainText("title:");
+
+  await page.keyboard.press("Meta+Shift+Y");
+  await expect(page.locator(".cm-fmh-summary")).toHaveCount(0);
+  await expect(cm).toContainText("title:");
+  await expect(cm).toContainText("count: 1234567");
+  await dpbRecord(page, "1019", "03-panel-hidden-yaml-restored");
+
+  await setMode(page, "source");
+  await expect(cm).toContainText("title:");
+  await expect(cm).toContainText("---");
+  await dpbRecord(page, "1019", "04-source-yaml-visible");
+});

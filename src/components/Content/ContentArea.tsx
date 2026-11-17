@@ -27,6 +27,7 @@ import {
 import {
   editorDecorations,
   type EditorDecorationsOptions,
+  type FrontmatterHideOptions,
 } from "../../editors/decorations";
 import {
   EMPTY_IMAGE_ATTRIBUTES,
@@ -77,6 +78,7 @@ import SearchReplacePanel from "./SearchReplacePanel";
 import OutlineMenu from "./OutlineMenu";
 import ReadingProgressInk from "./ReadingProgressInk";
 import { useSearchFloatStore } from "../../stores/searchFloat";
+import { useDocPropertyPanelStore } from "../../stores/docPropertyPanel";
 import type { EditorMode, FileKind, Tab } from "../../types";
 
 const langCompartment = new Compartment();
@@ -318,11 +320,18 @@ const editorDecorationOptions: EditorDecorationsOptions = {
  * 出现在 EditorState 里，之后的 `reconfigure` 才有效。创建 state 与模式切换
  * 共用这一份定义，重建的 view 不会再退化成源码（#564）。
  */
-function decorationsForMode(mode: EditorMode, kind: FileKind): Extension[] {
+function decorationsForMode(
+  mode: EditorMode,
+  kind: FileKind,
+  frontmatterHide: FrontmatterHideOptions | null,
+): Extension[] {
   if (kind !== "markdown") return [];
   if (mode === "source") return [floatingToolbar()];
   if (mode === "edit") {
-    return [editorDecorations(editorDecorationOptions), floatingToolbar(true)];
+    return [
+      editorDecorations({ ...editorDecorationOptions, frontmatterHide }),
+      floatingToolbar(true),
+    ];
   }
   return [];
 }
@@ -564,6 +573,12 @@ export default function ContentArea({
 
     const initialKind = tab?.fileKind ?? "text";
     currentKindRef.current = initialKind;
+    // 面板显隐档在创建时读一次快照：模式切换 effect 随后会按响应式状态重配。
+    const panelSnapshot = useDocPropertyPanelStore.getState();
+    const initialFrontmatterHide: FrontmatterHideOptions | null =
+      editorMode === "edit" && !panelSnapshot.hidden
+        ? { hide: true, collapsed: panelSnapshot.collapsed }
+        : null;
     const state = EditorState.create({
       doc: "",
       extensions: [
@@ -571,7 +586,9 @@ export default function ContentArea({
         historyCompartment.of(history()),
         langCompartment.of(createLanguageExtension(initialKind)),
         lineNumbersCompartment.of(lineNumbersForMode(editorMode, initialKind)),
-        decorCompartment.of(decorationsForMode(editorMode, initialKind)),
+        decorCompartment.of(
+          decorationsForMode(editorMode, initialKind, initialFrontmatterHide),
+        ),
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {
             const content = update.state.doc.toString();
@@ -635,6 +652,10 @@ export default function ContentArea({
   const searchPanelPos = useEditorStore(
     (s) => s.config.searchPanel?.defaultPos ?? "center",
   );
+  // 属性面板显隐 / 折叠：随 decorCompartment 热重配 frontmatter 隐藏装饰，
+  // 不销毁重建 EditorView（折叠态跨模式保留、undo/选区不丢）。
+  const propPanelHidden = useDocPropertyPanelStore((s) => s.hidden);
+  const propPanelCollapsed = useDocPropertyPanelStore((s) => s.collapsed);
 
   // 撤销历史不跨页签（#321）：一个面板只有一个 EditorView，历史却是
   // EditorState 的一部分。切页签时清空它，否则 A 页签的编辑会让 B 页签的
@@ -698,10 +719,14 @@ export default function ContentArea({
   // Toggle decorations on mode change
   useEffect(() => {
     if (!viewRef.current || !tab) return;
+    const frontmatterHide: FrontmatterHideOptions | null =
+      editorMode === "edit" && !propPanelHidden
+        ? { hide: true, collapsed: propPanelCollapsed }
+        : null;
     viewRef.current.dispatch({
       effects: [
         decorCompartment.reconfigure(
-          decorationsForMode(editorMode, tab.fileKind),
+          decorationsForMode(editorMode, tab.fileKind, frontmatterHide),
         ),
         // 行号按文件类型 + 模式条件装回（#858）：切页签 / 切模式都走这里，
         // 不销毁重建 EditorView。
@@ -710,7 +735,13 @@ export default function ContentArea({
         ),
       ],
     });
-  }, [editorMode, tab?.fileKind, editorViewState]);
+  }, [
+    editorMode,
+    tab?.fileKind,
+    editorViewState,
+    propPanelHidden,
+    propPanelCollapsed,
+  ]);
 
   return (
     <div
