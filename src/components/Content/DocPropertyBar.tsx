@@ -2040,6 +2040,17 @@ export default function DocPropertyBar({
           </span>
           <span className="dpb-b-tools" data-testid="dpb-tools">
             {editable && (
+              <button
+                type="button"
+                className="dpb-tpl-btn"
+                data-testid="dpb-add-field"
+                title="添加字段"
+                onClick={togglePalette}
+              >
+                + 添加字段
+              </button>
+            )}
+            {editable && (
               <TemplateMenuButton
                 templates={propTemplates}
                 onApply={handleApplyTemplate}
@@ -2147,17 +2158,6 @@ export default function DocPropertyBar({
             })}
             <div className="dpb-b-foot">
               <span data-testid="dpb-count">{fields.length} 个字段</span>
-              {editable && (
-                <button
-                  type="button"
-                  className="dpb-tpl-btn"
-                  data-testid="dpb-add-field"
-                  title="添加字段"
-                  onClick={togglePalette}
-                >
-                  + 添加字段
-                </button>
-              )}
             </div>
             {paletteOverlay}
             {dragGhost}
@@ -2202,17 +2202,6 @@ export default function DocPropertyBar({
         <span className="dpb-a-spacer" />
         <span className="dpb-a-tools" data-testid="dpb-tools">
           {editable && (
-            <button
-              type="button"
-              className="dpb-tpl-btn"
-              data-testid="dpb-add-field"
-              title="添加字段"
-              onClick={togglePalette}
-            >
-              + 添加字段
-            </button>
-          )}
-          {editable && (
             <TemplateMenuButton
               templates={propTemplates}
               onApply={handleApplyTemplate}
@@ -2228,6 +2217,17 @@ export default function DocPropertyBar({
             >
               {tplStatus}
             </span>
+          )}
+          {editable && (
+            <button
+              type="button"
+              className="dpb-tpl-btn"
+              data-testid="dpb-add-field"
+              title="添加字段"
+              onClick={togglePalette}
+            >
+              + 添加字段
+            </button>
           )}
         </span>
       </div>
