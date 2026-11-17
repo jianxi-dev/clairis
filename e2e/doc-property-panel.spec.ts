@@ -739,6 +739,14 @@ createdate: 2026-11-14
 # 正文
 `;
 
+const DATETIME_DOC = `---
+title: 时间字段
+评审时间: 2026-11-15 14:30
+---
+
+# 正文
+`;
+
 const ADOPT_DOC = `---
 title: 收编
 priority: 高
@@ -782,6 +790,88 @@ test("类型选择器：八类菜单直选，选「日期」后编辑器变日�
   await expect(page.locator(".cm-content").first()).toContainText(
     "author: 2026-11-16",
   );
+});
+
+test("日期时间字段：日期 + 时间两个常驻控件，选定 14:30 写回 YAML 时间字面量", async ({
+  page,
+}) => {
+  await openDoc(page, DATETIME_DOC);
+  await setMode(page, "edit");
+  const row = panel(page, "A").locator('[data-key="评审时间"]');
+  await dpbRecord(page, "1044", "01-datetime-before");
+
+  await row.locator('[data-testid="dpb-value"]').click();
+  const dateInput = row.locator('[data-testid="dpb-input"]');
+  const timeInput = row.locator('[data-testid="dpb-time-input"]');
+  await expect(dateInput).toHaveJSProperty("type", "date");
+  await expect(timeInput).toHaveJSProperty("type", "time");
+  await expect(dateInput).toHaveValue("2026-11-15");
+  await expect(timeInput).toHaveValue("14:30");
+  const panelBox = await panel(page, "A").boundingBox();
+  for (const input of [dateInput, timeInput]) {
+    const box = await input.boundingBox();
+    expect(box).not.toBeNull();
+    expect(box!.x).toBeGreaterThanOrEqual(panelBox!.x - 1);
+    expect(box!.x + box!.width).toBeLessThanOrEqual(
+      panelBox!.x + panelBox!.width + 1,
+    );
+  }
+  await dpbRecord(page, "1044", "02-date-time-pair");
+
+  await timeInput.fill("14:30");
+  await timeInput.press("Enter");
+  await expect(timeInput).toHaveCount(0);
+  await expect(row.locator('[data-testid="dpb-value"]')).toHaveText(
+    "2026-11-15 14:30",
+  );
+  await setMode(page, "source");
+  await expect(page.locator(".cm-content").first()).toContainText(
+    "评审时间: 2026-11-15T14:30",
+  );
+  await setMode(page, "edit");
+  await dpbRecord(page, "1044", "03-time-1430");
+
+  await row.locator('[data-testid="dpb-value"]').click();
+  const cancelTime = row.locator('[data-testid="dpb-time-input"]');
+  await cancelTime.fill("15:45");
+  await page.keyboard.press("Escape");
+  await expect(row.locator('[data-testid="dpb-time-input"]')).toHaveCount(0);
+  await expect(row.locator('[data-testid="dpb-value"]')).toHaveText(
+    "2026-11-15 14:30",
+  );
+  await dpbRecord(page, "1044", "04-cancel-restored");
+
+  await setVariant(page, "B");
+  const bRow = panel(page, "B").locator('[data-key="评审时间"]');
+  await bRow.locator('[data-testid="dpb-value"]').click();
+  await expect(bRow.locator('[data-testid="dpb-input"]')).toHaveJSProperty(
+    "type",
+    "date",
+  );
+  await expect(bRow.locator('[data-testid="dpb-time-input"]')).toHaveJSProperty(
+    "type",
+    "time",
+  );
+  const bPanelBox = await panel(page, "B").boundingBox();
+  const bTimeBox = await bRow
+    .locator('[data-testid="dpb-time-input"]')
+    .boundingBox();
+  expect(bTimeBox).not.toBeNull();
+  expect(bTimeBox!.x + bTimeBox!.width).toBeLessThanOrEqual(
+    bPanelBox!.x + bPanelBox!.width + 1,
+  );
+});
+
+test("日期字段：仍只有单个日期控件，无时间输入", async ({ page }) => {
+  await openDoc(page, EXTERNAL_DOC);
+  await setMode(page, "edit");
+  const row = panel(page, "A").locator('[data-key="createdate"]');
+  await row.locator('[data-testid="dpb-value"]').click();
+  await expect(row.locator('[data-testid="dpb-input"]')).toHaveJSProperty(
+    "type",
+    "date",
+  );
+  await expect(row.locator('input[type="time"]')).toHaveCount(0);
 });
 
 test("类型切换转换失败：保留原文并提示", async ({ page }) => {

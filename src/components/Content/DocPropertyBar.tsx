@@ -520,6 +520,13 @@ function rawForEdit(field: FrontmatterField): string {
   }
 }
 
+function splitDatetime(raw: string): { date: string; time: string } {
+  const full = /^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2}(?::\d{2})?)$/.exec(raw);
+  if (full) return { date: full[1], time: full[2] };
+  const dateOnly = /^(\d{4}-\d{2}-\d{2})/.exec(raw);
+  return { date: dateOnly ? dateOnly[1] : "", time: "" };
+}
+
 /** 单行文本超过此长度即进入多行文本域（P-3，阈值 40）。 */
 const MULTILINE_THRESHOLD = 40;
 
@@ -533,8 +540,14 @@ function ValueEditor({ field, editable, onCommit }: ValueEditorProps) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
   const [multiline, setMultiline] = useState(false);
+  const [touched, setTouched] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const errorTimer = useRef<number | null>(null);
+
+  const isDatetime = field.type === "datetime";
+  const { date: datePart, time: timePart } = isDatetime
+    ? splitDatetime(draft)
+    : { date: "", time: "" };
 
   const startEdit = () => {
     if (!editable) return;
@@ -544,6 +557,7 @@ function ValueEditor({ field, editable, onCommit }: ValueEditorProps) {
       (field.type === "text" || field.type === "unknown") &&
         raw.length > MULTILINE_THRESHOLD,
     );
+    setTouched(false);
     setError(null);
     setEditing(true);
   };
@@ -551,6 +565,7 @@ function ValueEditor({ field, editable, onCommit }: ValueEditorProps) {
   const cancel = () => {
     setEditing(false);
     setDraft(rawForEdit(field));
+    setTouched(false);
     setError(null);
   };
 
@@ -568,10 +583,16 @@ function ValueEditor({ field, editable, onCommit }: ValueEditorProps) {
   );
 
   const commit = () => {
-    const result = validateFieldValue(field.type, draft);
+    const next = isDatetime
+      ? datePart
+        ? `${datePart}T${timePart || "00:00"}`
+        : ""
+      : draft;
+    const result = validateFieldValue(field.type, next);
     setEditing(false);
     if (!result.ok) {
       setDraft(rawForEdit(field));
+      setTouched(false);
       showError(result.reason);
       return;
     }
@@ -619,12 +640,58 @@ function ValueEditor({ field, editable, onCommit }: ValueEditorProps) {
         />
       );
     }
-    const inputType =
-      field.type === "date"
-        ? "date"
-        : field.type === "datetime"
-          ? "datetime-local"
-          : "text";
+    const inputType = field.type === "date" ? "date" : "text";
+    if (isDatetime) {
+      return (
+        <div
+          className="dpb-datetime-pair"
+          data-testid="dpb-datetime-pair"
+          onBlur={(e) => {
+            if (e.currentTarget.contains(e.relatedTarget as Node | null)) {
+              return;
+            }
+            if (!touched) {
+              cancel();
+              return;
+            }
+            commit();
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              commit();
+            } else if (e.key === "Escape") {
+              e.preventDefault();
+              cancel();
+            }
+          }}
+        >
+          <input
+            className="dpb-input dpb-date"
+            data-testid="dpb-input"
+            type="date"
+            value={datePart}
+            autoFocus
+            onChange={(e: ChangeEvent<HTMLInputElement>) => {
+              const date = e.target.value;
+              setDraft(date ? `${date}${timePart ? `T${timePart}` : ""}` : "");
+              setTouched(true);
+            }}
+          />
+          <input
+            className="dpb-input dpb-time"
+            data-testid="dpb-time-input"
+            type="time"
+            value={timePart ? timePart.slice(0, 5) : ""}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => {
+              const time = e.target.value;
+              setDraft(datePart ? `${datePart}${time ? `T${time}` : ""}` : "");
+              setTouched(true);
+            }}
+          />
+        </div>
+      );
+    }
     return (
       <input
         className="dpb-input"

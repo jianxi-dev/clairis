@@ -159,14 +159,14 @@
     },
     {
       "id": "R-6",
-      "text": "时间字段选择器可选时间（gated）",
+      "text": "日期时间字段可选时间",
       "anchors": [
         {
           "id": "A-6.1",
-          "claim": "日期/日期时间字段值编辑器可选择到时间分量（小时/分钟）",
+          "claim": "日期时间字段值编辑器提供独立时间控件，可选择到时间分量（小时/分钟）",
           "kind": "state-machine",
           "assert": "打开→可选时间",
-          "source": "#1038 故事4 / Open Question 2"
+          "source": "#1038 故事4 / Open Question 2 裁定（datetime 显式控件）"
         },
         {
           "id": "A-6.2",
