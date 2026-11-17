@@ -1,6 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 
 const ARTIFACTS = ".artifacts/217";
+const ARTIFACTS_1049 = ".artifacts/1049";
 const MOD = process.platform === "darwin" ? "Meta" : "Control";
 const HOTKEY = `${MOD}+Shift+Space`;
 
@@ -68,17 +69,48 @@ async function selectRange(
   );
 }
 
-/** 真实指针拖拽选区。 */
-async function dragSelect(page: Page, selector: string): Promise<void> {
+/** 真实指针拖拽选区，返回释放点坐标。 */
+async function dragSelect(
+  page: Page,
+  selector: string,
+): Promise<{ x: number; y: number }> {
   const box = await page.locator(selector).first().boundingBox();
   if (!box) throw new Error(`找不到可测量的元素：${selector}`);
   const y = box.y + box.height / 2;
+  const endX = box.x + Math.min(box.width - 4, 140);
   await page.mouse.move(box.x + 4, y);
   await page.mouse.down();
-  await page.mouse.move(box.x + Math.min(box.width - 4, 140), y, {
-    steps: 12,
-  });
+  await page.mouse.move(endX, y, { steps: 12 });
   await page.mouse.up();
+  return { x: endX, y };
+}
+
+/** 沿段落第一行拖到右缘，返回释放点坐标（用于右缘钳制）。 */
+async function dragFirstLineToRightEdge(
+  page: Page,
+  selector: string,
+): Promise<{ x: number; y: number }> {
+  const box = await page.locator(selector).first().boundingBox();
+  if (!box) throw new Error(`找不到可测量的元素：${selector}`);
+  const y = await page.evaluate((sel) => {
+    const el = document.querySelector(sel);
+    if (!el) throw new Error(`容器不存在：${sel}`);
+    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    const node = walker.nextNode() as Text | null;
+    if (!node) throw new Error("没有文本节点");
+    const range = document.createRange();
+    range.selectNodeContents(node);
+    const rects = Array.from(range.getClientRects());
+    if (rects.length === 0) throw new Error("没有行矩形");
+    const first = rects[0];
+    return first.top + first.height / 2;
+  }, selector);
+  const endX = box.x + box.width - 4;
+  await page.mouse.move(box.x + 4, y);
+  await page.mouse.down();
+  await page.mouse.move(endX, y, { steps: 12 });
+  await page.mouse.up();
+  return { x: endX, y };
 }
 
 function pill(page: Page) {
@@ -311,5 +343,82 @@ test.describe("选区胶囊双模式", () => {
 
     await page.evaluate(() => document.documentElement.classList.add("dark"));
     await page.screenshot({ path: `${ARTIFACTS}/06-reading-pill-dark.png` });
+  });
+});
+
+test.describe("选区胶囊定位：鼠标落点 + 视口钳制（#1049）", () => {
+  test.beforeEach(async ({ page }) => {
+    await bootstrap(page);
+  });
+
+  test("01 指针落点：胶囊中心对齐鼠标释放点", async ({ page }) => {
+    await openDoc(page, "/tmp/pill-1049-anchor.md", PREVIEW_DOC);
+    await setMode(page, "preview");
+    await page.locator(".preview-content").waitFor({ state: "visible" });
+
+    const release = await dragSelect(page, ".preview-content p");
+    await expect(pill(page)).toBeVisible({ timeout: 5000 });
+
+    const pillRect = await pill(page).boundingBox();
+    expect(pillRect, "胶囊未渲染").toBeTruthy();
+    const centerX = pillRect!.x + pillRect!.width / 2;
+    expect(Math.abs(centerX - release.x)).toBeLessThanOrEqual(4);
+    await page.screenshot({ path: `${ARTIFACTS_1049}/01-pointer-anchored.png` });
+  });
+
+  test("02 无指针回落：胶囊中心对齐选区中心", async ({ page }) => {
+    await openDoc(page, "/tmp/pill-1049-center.md", PREVIEW_DOC);
+    await setMode(page, "preview");
+    await page.locator(".preview-content").waitFor({ state: "visible" });
+
+    await selectRange(page, ".preview-content p", 0, 6);
+    await expect(pill(page)).toBeVisible({ timeout: 5000 });
+
+    const sel = await page.evaluate(() => {
+      const r = window.getSelection()!.getRangeAt(0).getBoundingClientRect();
+      return { left: r.left, width: r.width };
+    });
+    const centerX = sel.left + sel.width / 2;
+    const pillRect = await pill(page).boundingBox();
+    const pillCenterX = pillRect!.x + pillRect!.width / 2;
+    expect(Math.abs(pillCenterX - centerX)).toBeLessThanOrEqual(2);
+    await page.screenshot({ path: `${ARTIFACTS_1049}/02-center-fallback.png` });
+  });
+
+  test("03 右缘钳制：右缘不越视口、左缘不回穿", async ({ page }) => {
+    await page.setViewportSize({ width: 480, height: 800 });
+    await openDoc(page, "/tmp/pill-1049-clamp.md", PREVIEW_DOC);
+    await setMode(page, "preview");
+    await page.locator(".preview-content").waitFor({ state: "visible" });
+
+    const release = await dragFirstLineToRightEdge(page, ".preview-content p");
+    await expect(pill(page)).toBeVisible({ timeout: 5000 });
+
+    const vw = await page.evaluate(() => window.innerWidth);
+    const pillRect = await pill(page).boundingBox();
+    expect(pillRect!.x).toBeGreaterThanOrEqual(-0.5);
+    expect(pillRect!.x + pillRect!.width).toBeLessThanOrEqual(vw + 0.5);
+    expect(release.x + pillRect!.width / 2).toBeGreaterThan(vw);
+    // 锚点落在右缘外：钳制必须真的生效（右缘贴住视口右边界）。
+    expect(pillRect!.x + pillRect!.width).toBeGreaterThanOrEqual(vw - 1);
+    await page.screenshot({ path: `${ARTIFACTS_1049}/03-right-edge-clamped.png` });
+  });
+
+  test("04 纵向：胶囊下缘在选区上缘之上", async ({ page }) => {
+    await openDoc(page, "/tmp/pill-1049-vertical.md", PREVIEW_DOC);
+    await setMode(page, "preview");
+    await page.locator(".preview-content").waitFor({ state: "visible" });
+
+    await selectRange(page, ".preview-content p", 0, 6);
+    await expect(pill(page)).toBeVisible({ timeout: 5000 });
+
+    const selTop = await page.evaluate(
+      () => window.getSelection()!.getRangeAt(0).getBoundingClientRect().top,
+    );
+    const pillRect = await pill(page).boundingBox();
+    expect(pillRect!.y + pillRect!.height).toBeLessThanOrEqual(selTop + 0.5);
+    await page.screenshot({
+      path: `${ARTIFACTS_1049}/04-vertical-above-selection.png`,
+    });
   });
 });

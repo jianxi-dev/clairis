@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { EditorView } from "@codemirror/view";
 import { getActiveEditorView } from "../../editors/editorRef";
 import { invoke } from "@tauri-apps/api/core";
@@ -80,6 +80,23 @@ function previewRoots(): HTMLElement[] {
   return Array.from(document.querySelectorAll<HTMLElement>(".preview-content"));
 }
 
+const POINTER_ANCHOR_TOLERANCE = 24;
+
+// 横向锚点：落点在近选区范围内才对齐鼠标，否则回落选区中心（A-11.4）。
+function anchorXFor(
+  pointer: { x: number; y: number } | null,
+  rect: DOMRect,
+): number {
+  const centerX = rect.left + rect.width / 2;
+  if (!pointer) return centerX;
+  const near =
+    pointer.x >= rect.left - POINTER_ANCHOR_TOLERANCE &&
+    pointer.x <= rect.right + POINTER_ANCHOR_TOLERANCE &&
+    pointer.y >= rect.top - POINTER_ANCHOR_TOLERANCE &&
+    pointer.y <= rect.bottom + POINTER_ANCHOR_TOLERANCE;
+  return near ? pointer.x : centerX;
+}
+
 export default function SelectionPill() {
   const [pill, setPill] = useState<PillSelection | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -88,6 +105,11 @@ export default function SelectionPill() {
 
   const busyRef = useRef<string | null>(null);
   const diffRef = useRef<DiffResult | null>(null);
+  const pointerRef = useRef<{ x: number; y: number } | null>(null);
+  const dragStartRef = useRef<{ x: number; y: number } | null>(null);
+  const draggedRef = useRef(false);
+  const pillRef = useRef<HTMLDivElement | null>(null);
+  const [leftX, setLeftX] = useState(0);
 
   useEffect(() => {
     busyRef.current = busy;
@@ -96,8 +118,19 @@ export default function SelectionPill() {
     diffRef.current = diff;
   }, [diff]);
 
+  useLayoutEffect(() => {
+    if (!pill) return;
+    const el = pillRef.current;
+    if (!el) return;
+    const width = el.getBoundingClientRect().width;
+    if (width <= 0) return;
+    const half = width / 2;
+    const clamped = Math.max(half, Math.min(pill.x, window.innerWidth - half));
+    setLeftX((prev) => (Math.abs(prev - clamped) < 0.5 ? prev : clamped));
+  }, [pill]);
+
   useEffect(() => {
-    const onSelectionChange = () => {
+    const refreshPill = () => {
       if (busyRef.current || diffRef.current) {
         setPill(null);
         return;
@@ -127,12 +160,13 @@ export default function SelectionPill() {
       }
       const text = s.toString();
       if (!text.trim()) {
+        pointerRef.current = null;
         setPill(null);
         return;
       }
       const rect = s.getRangeAt(0).getBoundingClientRect();
       if (!rect || (rect.width === 0 && rect.height === 0)) return;
-      const x = rect.left + rect.width / 2;
+      const x = anchorXFor(pointerRef.current, rect);
       const y = rect.top;
 
       if (mode === "preview") {
@@ -163,22 +197,70 @@ export default function SelectionPill() {
       if (busyRef.current || diffRef.current) return;
       setPill(null);
     };
-    const onDocMouseDown = (e: MouseEvent) => {
-      if (busyRef.current || diffRef.current) return;
+    const isInsidePill = (target: EventTarget | null) => {
       const pillEl = document.querySelector<HTMLElement>(
         "[data-selection-pill]",
       );
-      if (pillEl?.contains(e.target as Node)) return;
+      return !!pillEl && !!target && pillEl.contains(target as Node);
+    };
+    const onDocMouseDown = (e: MouseEvent) => {
+      if (busyRef.current || diffRef.current) return;
+      if (isInsidePill(e.target)) return;
       setPill(null);
     };
-    document.addEventListener("selectionchange", onSelectionChange);
+    const recordPointer = (e: { clientX: number; clientY: number }) => {
+      pointerRef.current = { x: e.clientX, y: e.clientY };
+    };
+    const onDown = (e: { clientX: number; clientY: number }) => {
+      recordPointer(e);
+      dragStartRef.current = { x: e.clientX, y: e.clientY };
+      draggedRef.current = false;
+    };
+    const onMove = (e: {
+      clientX: number;
+      clientY: number;
+      buttons: number;
+    }) => {
+      if (e.buttons === 0) return;
+      recordPointer(e);
+      const start = dragStartRef.current;
+      if (start && Math.hypot(e.clientX - start.x, e.clientY - start.y) >= 3) {
+        draggedRef.current = true;
+      }
+    };
+    const onUp = (e: {
+      clientX: number;
+      clientY: number;
+      target: EventTarget | null;
+    }) => {
+      recordPointer(e);
+      const dragged = draggedRef.current;
+      dragStartRef.current = null;
+      draggedRef.current = false;
+      if (isInsidePill(e.target)) return;
+      // 仅在拖拽选区后纠正到释放点；纯点击不重算，避免把已隐藏胶囊唤回。
+      if (dragged) refreshPill();
+    };
+    document.addEventListener("selectionchange", refreshPill);
     document.addEventListener("mousedown", onDocMouseDown, true);
+    document.addEventListener("pointerdown", onDown);
+    document.addEventListener("pointermove", onMove);
+    document.addEventListener("pointerup", onUp);
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
     window.addEventListener("scroll", onHide, { capture: true });
     window.addEventListener("resize", onHide);
     window.addEventListener("keydown", onKey);
     return () => {
-      document.removeEventListener("selectionchange", onSelectionChange);
+      document.removeEventListener("selectionchange", refreshPill);
       document.removeEventListener("mousedown", onDocMouseDown, true);
+      document.removeEventListener("pointerdown", onDown);
+      document.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerup", onUp);
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
       window.removeEventListener("scroll", onHide, { capture: true });
       window.removeEventListener("resize", onHide);
       window.removeEventListener("keydown", onKey);
@@ -278,10 +360,11 @@ export default function SelectionPill() {
     <>
       {pill && pill.mode === "preview" && !busy && !diff && (
         <div
+          ref={pillRef}
           data-selection-pill
           data-selection-pill-mode={pill.mode}
-          className="fixed z-[2147482960] flex items-center gap-0.5 -translate-x-1/2 rounded-full border border-black/6 dark:border-white/10 bg-white/95 dark:bg-[#1c1c1e]/95 backdrop-blur-sm shadow-lg px-1.5 py-1"
-          style={{ left: pill.x, top: Math.max(8, pill.y - 44) }}
+          className="fixed z-[2147482960] flex w-max items-center gap-0.5 -translate-x-1/2 rounded-full border border-black/6 dark:border-white/10 bg-white/95 dark:bg-[#1c1c1e]/95 backdrop-blur-sm shadow-lg px-1.5 py-1"
+          style={{ left: leftX, top: Math.max(8, pill.y - 44) }}
         >
           {actions.map((a) => (
             <button
