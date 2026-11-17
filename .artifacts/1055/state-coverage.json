@@ -1,0 +1,33 @@
+{
+  "task": "1055-search-keyboard-nav",
+  "states": [
+    {
+      "state": "01-initial-highlight",
+      "screenshot": ".artifacts/1055/01-initial-highlight.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-17T22:17:01.254Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "02-arrow-down-second",
+      "screenshot": ".artifacts/1055/02-arrow-down-second.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-17T22:17:01.276Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "03-badge-enter",
+      "screenshot": ".artifacts/1055/03-badge-enter.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-17T22:17:01.303Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "04-enter-locates",
+      "screenshot": ".artifacts/1055/04-enter-locates.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-17T22:17:01.431Z",
+      "runner": "mason@unknown"
+    }
+  ]
+}

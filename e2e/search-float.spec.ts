@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Locator, type Page } from "@playwright/test";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
@@ -402,7 +402,7 @@ test("双行结果：定位行 + 序位 1/N + 两行上下文高亮", async ({ p
   expect(
     await first.locator(".search-float-context").textContent(),
   ).not.toContain("#");
-  await expect(first.locator(".search-float-key")).toHaveText("⏎");
+  await expect(first.locator(".search-float-key")).toHaveText("回车");
 });
 
 test("命中分布条：点击第 3 刻度跳转第 3 处", async ({ page }) => {
@@ -414,12 +414,12 @@ test("命中分布条：点击第 3 刻度跳转第 3 处", async ({ page }) => 
   await ticks.nth(2).click();
 
   const rows = page.locator('[data-testid="search-float-hit"]');
-  await expect(rows.nth(2).locator(".search-float-key")).toHaveText("⏎");
+  await expect(rows.nth(2).locator(".search-float-key")).toHaveText("回车");
   await expect(rows.nth(0).locator(".search-float-key")).toHaveText("⌘1");
   await expect(ticks.nth(2)).toHaveClass(/cur/);
 });
 
-test("↓↓ 换选：第 3 行 ⏎，第 1/2 行 ⌘1/⌘2", async ({ page }) => {
+test("↓↓ 换选：第 3 行 回车，第 1/2 行 ⌘1/⌘2", async ({ page }) => {
   await page.keyboard.press("Meta+f");
   await page.locator('[data-testid="search-float-input"]').fill("属性");
 
@@ -429,7 +429,7 @@ test("↓↓ 换选：第 3 行 ⏎，第 1/2 行 ⌘1/⌘2", async ({ page }) =
   const rows = page.locator('[data-testid="search-float-hit"]');
   await expect(rows.nth(0).locator(".search-float-key")).toHaveText("⌘1");
   await expect(rows.nth(1).locator(".search-float-key")).toHaveText("⌘2");
-  await expect(rows.nth(2).locator(".search-float-key")).toHaveText("⏎");
+  await expect(rows.nth(2).locator(".search-float-key")).toHaveText("回车");
 });
 
 test("Enter 定位选中行：编辑器出现选区", async ({ page }) => {
@@ -449,7 +449,7 @@ test("⌘2 直达第 2 项，不触发全局卡片直开", async ({ page }) => {
   await page.keyboard.press("Meta+2");
 
   const rows = page.locator('[data-testid="search-float-hit"]');
-  await expect(rows.nth(1).locator(".search-float-key")).toHaveText("⏎");
+  await expect(rows.nth(1).locator(".search-float-key")).toHaveText("回车");
   await expect(rows.nth(0).locator(".search-float-key")).toHaveText("⌘1");
   expect(await sceneOf(page)).toBe("workspace");
 });
@@ -478,7 +478,7 @@ test("21 处命中滚动后前 9 行快捷键不变", async ({ page }) => {
 
   await page.keyboard.press("Meta+9");
   await page.keyboard.press("ArrowDown");
-  await expect(rows.nth(9).locator(".search-float-key")).toHaveText("⏎");
+  await expect(rows.nth(9).locator(".search-float-key")).toHaveText("回车");
 
   const results = page.locator('[data-testid="search-float-results"]');
   await results.evaluate((el) => {
@@ -490,7 +490,7 @@ test("21 处命中滚动后前 9 行快捷键不变", async ({ page }) => {
       `⌘${i + 1}`,
     );
   }
-  await expect(rows.nth(9).locator(".search-float-key")).toHaveText("⏎");
+  await expect(rows.nth(9).locator(".search-float-key")).toHaveText("回车");
   await expect(rows.nth(10).locator(".search-float-key")).toHaveText("");
 });
 
@@ -566,7 +566,7 @@ test("逐个替换当前命中后自动前进到下一处，文档文本变化",
   await expect(rows.nth(0).locator(".search-float-loc")).toHaveText(
     "L3 · 段落",
   );
-  await expect(rows.nth(0).locator(".search-float-key")).toHaveText("⏎");
+  await expect(rows.nth(0).locator(".search-float-key")).toHaveText("回车");
 
   await setMode(page, "source");
   const text = await editorText(page);
@@ -649,7 +649,7 @@ test("预览态 ⌘F：无替换切换按钮、无替换行", async ({ page }) =
   ).toHaveCount(0);
 });
 
-test("分栏：B 格浮窗点击行定位到 B 格、A 格不动；⌘N 直达后 ⏎ 跟随并定位", async ({
+test("分栏：B 格浮窗点击行定位到 B 格、A 格不动；⌘N 直达后 回车 跟随并定位", async ({
   page,
 }) => {
   await openDoc(page, DOC_A, "/Users/test/a.md");
@@ -705,7 +705,7 @@ test("分栏：B 格浮窗点击行定位到 B 格、A 格不动；⌘N 直达�
   await float.locator('[data-testid="search-float-input"]').fill("目标命中");
   const rows = float.locator('[data-testid="search-float-hit"]');
   await expect(rows).toHaveCount(2);
-  await expect(rows.nth(0).locator(".search-float-key")).toHaveText("⏎");
+  await expect(rows.nth(0).locator(".search-float-key")).toHaveText("回车");
   await expect(rows.nth(1).locator(".search-float-key")).toHaveText("⌘2");
 
   await rows.nth(1).click();
@@ -725,7 +725,7 @@ test("分栏：B 格浮窗点击行定位到 B 格、A 格不动；⌘N 直达�
 
   await float.locator('[data-testid="search-float-input"]').click();
   await page.keyboard.press("Meta+1");
-  await expect(rows.nth(0).locator(".search-float-key")).toHaveText("⏎");
+  await expect(rows.nth(0).locator(".search-float-key")).toHaveText("回车");
   await expect(rows.nth(1).locator(".search-float-key")).toHaveText("⌘2");
 
   await page.keyboard.press("Enter");
@@ -1045,4 +1045,118 @@ test("窗口缩放后状态栏仍贴底（间距 0）", async ({ page }) => {
   expect(Math.abs((await statusbarGap(page))?.gap ?? 999)).toBeLessThanOrEqual(
     1,
   );
+});
+
+/* ------------------------------------------------------------------ *
+ * #1055 上下键选择 + 选中行徽标「回车」（A-17.1 / A-17.2 / A-17.3）
+ * ------------------------------------------------------------------ */
+
+const ART_1055 = path.resolve(process.cwd(), ".artifacts/1055");
+
+async function recordState1055(page: Page, state: string): Promise<void> {
+  mkdirSync(ART_1055, { recursive: true });
+  const file = path.join(ART_1055, `${state}.png`);
+  await page.screenshot({ path: file });
+  const manifest = path.join(ART_1055, "state-coverage.json");
+  let states: Array<Record<string, string>> = [];
+  try {
+    states = JSON.parse(readFileSync(manifest, "utf8")).states ?? [];
+  } catch {
+    states = [];
+  }
+  states = states.filter((s) => s.state !== state);
+  states.push({
+    state,
+    screenshot: path.relative(process.cwd(), file),
+    assertion: "passed",
+    recorded_at: new Date().toISOString(),
+    runner: `${process.env.USER ?? "unknown"}@${process.env.HOSTNAME ?? "unknown"}`,
+  });
+  writeFileSync(
+    manifest,
+    `${JSON.stringify({ task: "1055-search-keyboard-nav", states }, null, 2)}\n`,
+  );
+}
+
+async function highlightedRowIndex(float: Locator): Promise<number> {
+  return float.evaluate((el) => {
+    const cur = el.querySelector<HTMLElement>(".search-float-hit-cur");
+    return cur ? Number(cur.dataset.index) : -1;
+  });
+}
+
+test("#1055 上下键换选：高亮行移动、徽标严格「回车」、回车定位（A-17.1/2/3）", async ({
+  page,
+}) => {
+  await page.keyboard.press("Meta+f");
+  const float = page.locator('[data-testid="search-float"]');
+  await expect(float).toBeVisible();
+  await page.locator('[data-testid="search-float-input"]').fill("属性");
+
+  const rows = float.locator('[data-testid="search-float-hit"]');
+  await expect(rows).toHaveCount(3);
+
+  // 01 初始高亮在第 1 行；徽标严格「回车」，其余 ⌘2/⌘3
+  expect(await highlightedRowIndex(float)).toBe(0);
+  await expect(rows.nth(0)).toHaveClass(/search-float-hit-cur/);
+  await expect(rows.nth(0)).toHaveAttribute("data-index", "0");
+  await expect(rows.nth(0).locator(".search-float-key")).toHaveText("回车");
+  await expect(rows.nth(1).locator(".search-float-key")).toHaveText("⌘2");
+  await expect(rows.nth(2).locator(".search-float-key")).toHaveText("⌘3");
+  await recordState1055(page, "01-initial-highlight");
+
+  // 02 ArrowDown：高亮移到第 2 行（读 class + data-index），第 1 行回到 ⌘1
+  await page.keyboard.press("ArrowDown");
+  expect(await highlightedRowIndex(float)).toBe(1);
+  await expect(rows.nth(1)).toHaveClass(/search-float-hit-cur/);
+  await expect(rows.nth(1)).toHaveAttribute("data-index", "1");
+  await expect(rows.nth(0).locator(".search-float-key")).toHaveText("⌘1");
+  await expect(rows.nth(1).locator(".search-float-key")).toHaveText("回车");
+  await recordState1055(page, "02-arrow-down-second");
+
+  // ArrowUp 回到第 1 行
+  await page.keyboard.press("ArrowUp");
+  expect(await highlightedRowIndex(float)).toBe(0);
+  await expect(rows.nth(0).locator(".search-float-key")).toHaveText("回车");
+
+  // 03 连按两次 ArrowDown 到第 3 行，徽标严格「回车」
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("ArrowDown");
+  expect(await highlightedRowIndex(float)).toBe(2);
+  await expect(rows.nth(2)).toHaveClass(/search-float-hit-cur/);
+  await expect(rows.nth(2)).toHaveAttribute("data-index", "2");
+  await expect(rows.nth(2).locator(".search-float-key")).toHaveText("回车");
+  await expect(rows.nth(0).locator(".search-float-key")).toHaveText("⌘1");
+  await recordState1055(page, "03-badge-enter");
+
+  // 04 Enter 定位第 3 处：编辑器出现选区
+  await page.keyboard.press("Enter");
+  await expect
+    .poll(async () => page.locator(".cm-selectionBackground").count())
+    .toBeGreaterThan(0);
+  await recordState1055(page, "04-enter-locates");
+});
+
+test("#1055 无命中与换词不留残留高亮", async ({ page }) => {
+  await page.keyboard.press("Meta+f");
+  const float = page.locator('[data-testid="search-float"]');
+  await page.locator('[data-testid="search-float-input"]').fill("属性");
+  await page.keyboard.press("ArrowDown");
+  expect(await highlightedRowIndex(float)).toBe(1);
+
+  // 换成无命中的词：无结果行、无高亮
+  await page.locator('[data-testid="search-float-input"]').fill("不存在的词xyz");
+  await expect(float.locator('[data-testid="search-float-hit"]')).toHaveCount(0);
+  expect(await highlightedRowIndex(float)).toBe(-1);
+
+  // 换回有命中的词：高亮重置回第 1 行，无残留
+  await page.locator('[data-testid="search-float-input"]').fill("属性");
+  await expect(float.locator('[data-testid="search-float-hit"]')).toHaveCount(3);
+  expect(await highlightedRowIndex(float)).toBe(0);
+  await expect(
+    float
+      .locator('[data-testid="search-float-hit"]')
+      .nth(0)
+      .locator(".search-float-key"),
+  ).toHaveText("回车");
 });
