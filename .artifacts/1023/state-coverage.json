@@ -1,0 +1,33 @@
+{
+  "task": "1023",
+  "states": [
+    {
+      "state": "01-template-edited",
+      "screenshot": ".artifacts/1023/01-template-edited.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-17T13:43:54.291Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "02-template-applied-date",
+      "screenshot": ".artifacts/1023/02-template-applied-date.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-17T13:43:54.420Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "03-template-restored",
+      "screenshot": ".artifacts/1023/03-template-restored.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-17T13:43:54.510Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "04-template-applied-builtin",
+      "screenshot": ".artifacts/1023/04-template-applied-builtin.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-17T13:43:54.579Z",
+      "runner": "mason@unknown"
+    }
+  ]
+}
