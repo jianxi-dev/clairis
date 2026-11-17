@@ -2989,6 +2989,8 @@ html[data-tab-drag="true"] body * {
   box-shadow: var(--app-shadow);
   font-size: 12px;
   color: var(--app-text-2);
+  /* 面板底/标题行不拦截点击，只有条目可点（标题行是纯文字标签） */
+  pointer-events: none;
 }
 
 .biaoyue-outline-head {
@@ -3029,6 +3031,7 @@ html[data-tab-drag="true"] body * {
   font: inherit;
   text-align: left;
   cursor: pointer;
+  pointer-events: auto;
 }
 
 .biaoyue-outline-item:hover,

@@ -24,7 +24,8 @@
 .dpb-v {
   color: var(--app-text);
   font-weight: 550;
-  min-width: 0;
+  min-width: 1ch;
+  min-height: 1.5em;
 }
 
 .dpb-k {
@@ -322,7 +323,7 @@
 
 .dpb-b-row {
   display: grid;
-  grid-template-columns: 16px 30px 92px minmax(0, 1fr) 18px;
+  grid-template-columns: 16px auto 92px minmax(0, 1fr) 18px;
   gap: 6px;
   align-items: center;
   min-height: 30px;
@@ -365,8 +366,8 @@
   width: 18px;
 }
 
-/* B 行尾单行删除（A-2.3 第 5 列 = 删除 18px） */
-.dpb-b-del {
+/* 行尾单行删除：叉号，A/B 同一控件（第 5 列 18px） */
+.dpb-row-x {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -380,9 +381,17 @@
   cursor: pointer;
 }
 
-.dpb-b-del:hover {
+.dpb-row-x:hover {
   background: var(--app-surface);
   color: #a8402f;
+}
+
+.dpb-type-label {
+  margin-left: 1px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--app-text-3);
+  white-space: nowrap;
 }
 
 .dpb-b-foot {
@@ -675,7 +684,8 @@
 }
 
 .dpb-rename {
-  flex: 0 1 92px;
+  flex: 0 0 auto;
+  width: 92px;
   max-width: 92px;
 }
 

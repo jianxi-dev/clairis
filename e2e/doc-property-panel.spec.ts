@@ -87,6 +87,17 @@ tags:
 # 正文
 `;
 
+const CAPSULE_DOC = `---
+title: 胶囊测试
+score: 42
+note:
+created: 2026-11-14
+updated: 2026-11-15T10:30:00
+---
+
+# 正文
+`;
+
 async function boot(page: Page): Promise<void> {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto(APP_URL, { waitUntil: "networkidle" });
@@ -299,7 +310,7 @@ test("B 精排双列：5 列网格 / 静态类型图标 / 底部统计全部字�
   });
   expect(tracks).toHaveLength(5);
   expect(parseFloat(tracks[0])).toBeCloseTo(16, 1);
-  expect(parseFloat(tracks[1])).toBeCloseTo(30, 1);
+  expect(parseFloat(tracks[1])).toBeGreaterThan(30);
   expect(parseFloat(tracks[2])).toBeCloseTo(92, 1);
   expect(parseFloat(tracks[4])).toBeCloseTo(18, 1);
 
@@ -1917,4 +1928,136 @@ test("#1019 ⌘⇧Y 隐藏面板与切源码态均恢复完整 YAML", async ({ p
   await expect(cm).toContainText("title:");
   await expect(cm).toContainText("---");
   await dpbRecord(page, "1019", "04-source-yaml-visible");
+});
+
+test("#1039 胶囊 DOM 顺序：类型图标→类型名→字段名→值→叉号（A/B）", async ({
+  page,
+}) => {
+  await openDoc(page, CAPSULE_DOC);
+  await setMode(page, "edit");
+  for (const variant of ["A", "B"] as const) {
+    await setVariant(page, variant);
+    const row = panel(page, variant).locator('[data-key="score"]');
+    const sels = [
+      ".dpb-type",
+      ".dpb-type-label",
+      '[data-testid="dpb-label"]',
+      '[data-testid="dpb-value"]',
+      '[data-testid="dpb-row-del"]',
+    ];
+    const nodes = await row.evaluate(
+      (el, sels) => sels.map((s) => el.querySelector(s)),
+      sels,
+    );
+    for (const n of nodes) {
+      expect(n, `${variant} 胶囊缺节点`).not.toBeNull();
+    }
+    const ordered = await row.evaluate(
+      (el, sels) => {
+        const list = sels
+          .map((s) => el.querySelector(s))
+          .filter(Boolean) as Element[];
+        return list.every(
+          (n, i) =>
+            i === 0 ||
+            (list[i - 1].compareDocumentPosition(n) &
+              Node.DOCUMENT_POSITION_FOLLOWING) !==
+              0,
+        );
+      },
+      sels,
+    );
+    expect(ordered, `${variant} 胶囊 DOM 顺序`).toBe(true);
+    await expect(row.locator(".dpb-type-label")).toHaveText("数字");
+    await dpbRecord(
+      page,
+      "1039",
+      variant === "A" ? "01-capsule-a" : "02-capsule-b",
+    );
+  }
+});
+
+test("#1039 字段名输入框单行高度：长名不撑高输入框与行（A/B）", async ({
+  page,
+}) => {
+  await openDoc(page, CAPSULE_DOC);
+  await setMode(page, "edit");
+  for (const variant of ["A", "B"] as const) {
+    await setVariant(page, variant);
+    const row = panel(page, variant).locator('[data-key="score"]');
+    await row.locator('[data-testid="dpb-label"]').click();
+    const input = row.locator('[data-testid="dpb-rename-input"]');
+    await expect(input).toBeVisible();
+    const before = await input.evaluate((el) => ({
+      clientHeight: el.clientHeight,
+      scrollHeight: el.scrollHeight,
+      fontSize: parseFloat(getComputedStyle(el).fontSize),
+    }));
+    expect(before.clientHeight).toBeLessThanOrEqual(before.fontSize * 2);
+    expect(before.scrollHeight).toBeLessThanOrEqual(before.clientHeight + 1);
+    const rowBefore = (await row.boundingBox())!.height;
+    await input.fill("超长字段名".repeat(12));
+    const after = await input.evaluate((el) => el.clientHeight);
+    expect(after, "输入框高度随内容变化").toBe(before.clientHeight);
+    expect(
+      (await row.boundingBox())!.height,
+      "行高随字段名变化",
+    ).toBe(rowBefore);
+  }
+});
+
+test("#1039 空值字段值节点无 — 占位（A/B）", async ({ page }) => {
+  await openDoc(page, CAPSULE_DOC);
+  for (const variant of ["A", "B"] as const) {
+    await setVariant(page, variant);
+    const value = panel(page, variant).locator(
+      '[data-key="note"] [data-testid="dpb-value"]',
+    );
+    await expect(value).toHaveCount(1);
+    expect((await value.textContent())?.trim()).toBe("");
+    await expect(value).not.toContainText("—");
+    if (variant === "A") {
+      await dpbRecord(page, "1039", "03-empty-value-no-placeholder");
+    }
+  }
+});
+
+test("#1039 行尾删除为叉号（关闭语义）非垃圾桶（A/B）", async ({ page }) => {
+  await openDoc(page, CAPSULE_DOC);
+  await setMode(page, "edit");
+  for (const variant of ["A", "B"] as const) {
+    await setVariant(page, variant);
+    const row = panel(page, variant).locator('[data-key="score"]');
+    const del = row.locator('[data-testid="dpb-row-del"]');
+    await expect(del).toHaveCount(1);
+    await expect(del.locator("svg")).toHaveAttribute("data-icon", "close");
+    await expect(row.locator('[data-icon="trash"]')).toHaveCount(0);
+  }
+});
+
+test("#1039 锁定字段：注册表锁图标 + 删除/改名入口 = 0（A/B）", async ({
+  page,
+}) => {
+  await openDoc(page, CAPSULE_DOC);
+  await setMode(page, "edit");
+  for (const variant of ["A", "B"] as const) {
+    await setVariant(page, variant);
+    const p = panel(page, variant);
+    for (const key of ["created", "updated"]) {
+      const row = p.locator(`[data-key="${key}"]`);
+      await expect(row.locator(".dpb-lock")).toHaveCount(1);
+      await expect(row.locator('[data-icon="lock"]')).toHaveCount(1);
+      await expect(row.locator('[data-testid="dpb-row-del"]')).toHaveCount(0);
+      const label = row.locator('[data-testid="dpb-label"]');
+      await expect(label).toHaveAttribute("data-renameable", "false");
+      await expect(label).not.toHaveAttribute("role", "button");
+      await label.click();
+      await expect(
+        row.locator('[data-testid="dpb-rename-input"]'),
+      ).toHaveCount(0);
+    }
+    if (variant === "A") {
+      await dpbRecord(page, "1039", "04-locked-row");
+    }
+  }
 });

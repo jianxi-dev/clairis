@@ -269,6 +269,36 @@ export default function OutlineMenu({
     return () => document.removeEventListener("pointerdown", onDown, true);
   }, [visible]);
 
+  // 面板底/标题行 pointer-events:none 后，指针在其上不触发 mouseenter；
+  // 改用几何判定：指针在按钮或面板盒内即保留，出盒才延迟收起。
+  useEffect(() => {
+    if (!visible) return;
+    const onMove = (event: PointerEvent) => {
+      const btn = btnRef.current?.getBoundingClientRect();
+      const panel = menuRef.current?.getBoundingClientRect();
+      const { clientX: x, clientY: y } = event;
+      const inside =
+        !!(
+          btn &&
+          x >= btn.left &&
+          x <= btn.right &&
+          y >= btn.top &&
+          y <= btn.bottom
+        ) ||
+        !!(
+          panel &&
+          x >= panel.left &&
+          x <= panel.right &&
+          y >= panel.top &&
+          y <= panel.bottom
+        );
+      if (inside) cancelClose();
+      else scheduleClose();
+    };
+    document.addEventListener("pointermove", onMove);
+    return () => document.removeEventListener("pointermove", onMove);
+  }, [visible, cancelClose, scheduleClose]);
+
   const highlighted = activeIndex >= 0 ? activeIndex : currentIndex;
 
   // 没有大纲就没有入口：一个点开是「无标题」的按钮只是噪声。
