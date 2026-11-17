@@ -459,7 +459,7 @@ export default function TabBar({
           window.addEventListener("pointerup", onUp);
           window.addEventListener("pointercancel", onUp);
         }}
-        className="tab-strip flex min-h-[26px] w-full items-center gap-1 shrink-0 select-none overflow-x-auto px-1"
+        className="tab-strip flex min-h-[26px] w-full items-center gap-4 shrink-0 select-none overflow-x-auto px-1"
         style={{
           // 底边只由栏目头（pane-header）画一次；页签条再画一遍会叠成加深双线（#1/#23）。
           background: "transparent",
@@ -534,7 +534,7 @@ export default function TabBar({
                   setEditingId(id);
                   setEditValue(tab.title);
                 }}
-                className={`group flex min-w-0 items-center gap-1.5 px-2.5 py-1 text-xs cursor-pointer transition-colors whitespace-nowrap outline-none focus:outline-none focus-visible:outline-none ${
+                className={`group flex min-w-0 shrink-0 items-center gap-1.5 px-2.5 py-1 text-xs cursor-pointer transition-colors outline-none focus:outline-none focus-visible:outline-none ${
                   isActive
                     ? "tab-capsule rounded-full bg-[var(--app-accent-soft)] font-medium text-[var(--app-text-strong)]"
                     : "rounded-none bg-transparent text-[var(--app-chrome-rest)] hover:rounded-full hover:bg-[var(--app-sunken)] hover:text-[var(--app-chrome-hover)]"
@@ -575,7 +575,12 @@ export default function TabBar({
                     }}
                   />
                 ) : (
-                  <span className="max-w-44 truncate">{tab.title}</span>
+                  <span
+                    data-testid="tab-title"
+                    className="min-w-0 max-w-44 break-words line-clamp-2"
+                  >
+                    {tab.title}
+                  </span>
                 )}
                 {tab.dirty && (
                   <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />
@@ -625,7 +630,9 @@ export default function TabBar({
               color={colorOfType(ghostKind)}
               className="mr-0.5"
             />
-            <span className="max-w-44 truncate">{ghostTab.title}</span>
+            <span className="min-w-0 max-w-44 break-words line-clamp-2">
+              {ghostTab.title}
+            </span>
           </div>,
           document.body,
         )}

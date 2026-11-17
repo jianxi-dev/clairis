@@ -82,12 +82,16 @@ test("页签始终显示图标+标题，设置里不再有图标标签级别开�
   page,
 }) => {
   await openDoc(page, "/tmp/ic/note.md");
-  const tabTitle = page.locator("[data-tab-id] span.truncate").first();
+  const tabTitle = page
+    .locator('[data-tab-id] [data-testid="tab-title"]')
+    .first();
   const tabIcon = page.locator('[data-tab-id] svg[data-icon="markdown"]');
 
   await expect(tabIcon).toHaveCount(1);
   await expect(tabTitle).toHaveText("note.md");
-  await expect(page.locator("[data-tab-id] span.truncate")).toHaveCount(1);
+  await expect(
+    page.locator('[data-tab-id] [data-testid="tab-title"]'),
+  ).toHaveCount(1);
 
   await page.keyboard.press("ControlOrMeta+,");
   await expect(page.locator('[data-testid="icon-label-auto"]')).toHaveCount(0);
