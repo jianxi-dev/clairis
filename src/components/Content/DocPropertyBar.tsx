@@ -1517,6 +1517,12 @@ export default function DocPropertyBar({
   const titleIdx = titleField ? fields.indexOf(titleField) : -1;
   const tagsIdx = tagsField ? fields.indexOf(tagsField) : -1;
   const selectMode = editable && selected.size > 0;
+  const selectableIdx = useMemo(
+    () => fields.map((_, i) => i).filter((i) => i !== titleIdx && i !== tagsIdx),
+    [fields, titleIdx, tagsIdx],
+  );
+  const allSelectableSelected =
+    selectableIdx.length > 0 && selectableIdx.every((i) => selected.has(i));
 
   const numericSelected = useCallback((): number[] => {
     return [...selectedRef.current]
@@ -1581,10 +1587,8 @@ export default function DocPropertyBar({
   );
 
   const handleSelectAll = useCallback(() => {
-    applySelection(
-      fields.map((_, i) => i).filter((i) => i !== titleIdx && i !== tagsIdx),
-    );
-  }, [fields, titleIdx, tagsIdx, applySelection]);
+    applySelection(selectableIdx.filter((i) => !selectedRef.current.has(i)));
+  }, [selectableIdx, applySelection]);
 
   const handleClear = useCallback(() => applySelection([]), [applySelection]);
 
@@ -1987,10 +1991,14 @@ export default function DocPropertyBar({
       type="button"
       className="dpb-select-all"
       data-testid="dpb-select-all"
-      title="全选字段（不含标题与标签）"
+      title={
+        allSelectableSelected
+          ? "反选（不含标题与标签）"
+          : "全选（不含标题与标签）"
+      }
       onClick={handleSelectAll}
     >
-      ☑ 全选
+      {allSelectableSelected ? "反选" : "全选"}
     </button>
   ) : null;
 
