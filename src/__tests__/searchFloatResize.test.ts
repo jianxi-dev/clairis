@@ -8,9 +8,9 @@ import {
 
 const START: Rect = { x: 100, y: 100, w: 600, h: 460 };
 
-describe("searchFloatResize 包装（D1：固定最小 320×240）", () => {
-  it("最小尺寸常量为 320×240", () => {
-    expect(SEARCH_FLOAT_MIN).toEqual({ w: 320, h: 240 });
+describe("searchFloatResize 包装（D1：固定最小 280×240）", () => {
+  it("最小尺寸常量为 280×240", () => {
+    expect(SEARCH_FLOAT_MIN).toEqual({ w: 280, h: 240 });
   });
 
   it("默认 600×460 不被 previewAnchor 默认钳制（260×200）误钳", () => {
@@ -21,15 +21,15 @@ describe("searchFloatResize 包装（D1：固定最小 320×240）", () => {
     expect(resizeSearchFloat("se", START, 0, 0)).toEqual(START);
   });
 
-  it("小于最小值时严格钳到 320×240，非有限值回最小", () => {
+  it("小于最小值时严格钳到 280×240，非有限值回最小", () => {
     expect(clampSearchFloatSize({ w: 100, h: 50 })).toEqual({
-      w: 320,
+      w: 280,
       h: 240,
     });
-    expect(clampSearchFloatSize({ w: 0, h: 0 })).toEqual({ w: 320, h: 240 });
+    expect(clampSearchFloatSize({ w: 0, h: 0 })).toEqual({ w: 280, h: 240 });
     expect(
       clampSearchFloatSize({ w: Number.NaN, h: Number.POSITIVE_INFINITY }),
-    ).toEqual({ w: 320, h: 240 });
+    ).toEqual({ w: 280, h: 240 });
   });
 
   it("东边拖拽只改宽，西边拖拽改 x 且东边锚死", () => {
@@ -58,7 +58,7 @@ describe("searchFloatResize 包装（D1：固定最小 320×240）", () => {
     expect(north.y + north.h).toBe(START.y + START.h);
   });
 
-  it("每个手柄向内拖到底：对应轴钳到 320×240，绝无负尺寸", () => {
+  it("每个手柄向内拖到底：对应轴钳到 280×240，绝无负尺寸", () => {
     const shrink: Record<ResizeEdge, [number, number]> = {
       e: [-9999, 0],
       w: [9999, 0],
@@ -90,7 +90,7 @@ describe("searchFloatResize 包装（D1：固定最小 320×240）", () => {
 
   it("单边手柄只控制一个轴，对角手柄两轴同时到底", () => {
     const eastOnly = resizeSearchFloat("e", START, -9999, 0);
-    expect(eastOnly.w).toBe(320);
+    expect(eastOnly.w).toBe(280);
     expect(eastOnly.h).toBe(START.h);
 
     const southOnly = resizeSearchFloat("s", START, 0, -9999);
@@ -98,7 +98,7 @@ describe("searchFloatResize 包装（D1：固定最小 320×240）", () => {
     expect(southOnly.w).toBe(START.w);
 
     const corner = resizeSearchFloat("nw", START, 9999, 9999);
-    expect(corner.w).toBe(320);
+    expect(corner.w).toBe(280);
     expect(corner.h).toBe(240);
   });
 

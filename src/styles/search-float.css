@@ -2,7 +2,7 @@
 
 .search-float {
   z-index: 40;
-  width: min(600px, calc(100% - 48px));
+  width: min(300px, calc(100% - 48px));
   height: 460px;
   flex-direction: column;
   box-sizing: border-box;

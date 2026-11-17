@@ -176,7 +176,7 @@ test.beforeEach(async ({ page }) => {
   await setMode(page, "edit");
 });
 
-test("⌘F 打开浮窗：600×460，Esc 关闭无残留、再按重开，内置搜索面板不出现", async ({
+test("⌘F 打开浮窗：300×460，Esc 关闭无残留、再按重开，内置搜索面板不出现", async ({
   page,
 }) => {
   await page.keyboard.press("Meta+f");
@@ -185,7 +185,7 @@ test("⌘F 打开浮窗：600×460，Esc 关闭无残留、再按重开，内置
 
   const box = await float.boundingBox();
   if (!box) throw new Error("浮窗未布局");
-  expect(near(box.width, 600, 1)).toBe(true);
+  expect(near(box.width, 300, 1)).toBe(true);
   expect(near(box.height, 460, 1)).toBe(true);
 
   await expect(page.locator(".cm-panels")).toHaveCount(0);
@@ -288,7 +288,7 @@ test("拖拽手柄移动后，关闭再开保持在拖后位置", async ({ page 
   expect(near(reopened.y, after.y, 2)).toBe(true);
 });
 
-test("8 向缩放：四边与四角拖拽改变尺寸并钳到最小 320×240，会话内记忆", async ({
+test("8 向缩放：四边与四角拖拽改变尺寸并钳到最小 280×240，会话内记忆", async ({
   page,
 }) => {
   await page.keyboard.press("Meta+f");
@@ -337,11 +337,11 @@ test("8 向缩放：四边与四角拖拽改变尺寸并钳到最小 320×240，
     0,
   );
 
-  // 最小钳制：西北角向内拖到底 → 严格 320×240
+  // 最小钳制：西北角向内拖到底 → 严格 280×240
   await dragBy(page, "search-float-resize-nw", 2000, 2000);
   const clamped = await float.boundingBox();
   if (!clamped) throw new Error("浮窗未布局");
-  expect(near(clamped.width, 320, 1)).toBe(true);
+  expect(near(clamped.width, 280, 1)).toBe(true);
   expect(near(clamped.height, 240, 1)).toBe(true);
 
   await page.keyboard.press("Escape");
@@ -1114,7 +1114,7 @@ test("状态栏隐藏后残留占位高度为 0，悬停恢复且仍贴底", asy
   expect(Math.abs(restored?.gap ?? 999)).toBeLessThanOrEqual(1);
 });
 
-test("缩放后状态栏贴底：现状宽与减半宽两档间距 0", async ({ page }) => {
+test("缩放后状态栏贴底：默认 300 与缩小一档间距 0", async ({ page }) => {
   await page.keyboard.press("Meta+f");
   const float = page.locator('[data-testid="search-float"]');
   const bar = page.locator('[data-testid="search-float-statusbar"]');
@@ -1132,16 +1132,16 @@ test("缩放后状态栏贴底：现状宽与减半宽两档间距 0", async ({ 
 
   const box = await float.boundingBox();
   if (!box) throw new Error("浮窗未布局");
-  const target = Math.max(320, Math.round(box.width / 2));
+  const target = Math.max(280, Math.round(box.width / 2));
   await dragBy(
     page,
     "search-float-resize-e",
     target - Math.round(box.width),
     0,
   );
-  const half = await float.boundingBox();
-  if (!half) throw new Error("浮窗未布局");
-  expect(Math.abs(half.width - target)).toBeLessThanOrEqual(2);
+  const shrunk = await float.boundingBox();
+  if (!shrunk) throw new Error("浮窗未布局");
+  expect(Math.abs(shrunk.width - target)).toBeLessThanOrEqual(2);
   expect(Math.abs((await statusbarGap(page))?.gap ?? 999)).toBeLessThanOrEqual(
     1,
   );
@@ -1159,7 +1159,7 @@ test("窗口缩放后状态栏仍贴底（间距 0）", async ({ page }) => {
   const before = await float.boundingBox();
   if (!before) throw new Error("浮窗未布局");
 
-  await page.setViewportSize({ width: 620, height: 700 });
+  await page.setViewportSize({ width: 320, height: 700 });
   await expect
     .poll(async () => (await float.boundingBox())?.width ?? 0)
     .toBeLessThan(before.width);
@@ -1172,7 +1172,7 @@ test("窗口缩放后状态栏仍贴底（间距 0）", async ({ page }) => {
   await page.setViewportSize({ width: 1200, height: 800 });
   await expect
     .poll(async () => (await float.boundingBox())?.width ?? 0)
-    .toBeGreaterThan(590);
+    .toBeGreaterThan(290);
   expect(Math.abs((await statusbarGap(page))?.gap ?? 999)).toBeLessThanOrEqual(
     1,
   );
@@ -1405,4 +1405,139 @@ test("#1057 结果容器 9 行上限 + 滚动时快捷键列常驻 + 清空复�
   const scrollTop = await results.evaluate((el) => el.scrollTop);
   expect(scrollTop).toBe(0);
   await recordState1057(page, "04-cleared-reset");
+});
+
+/* ------------------------------------------------------------------ *
+ * #1058 搜索浮窗默认宽度减半（A-20.1 / A-20.2）
+ * ------------------------------------------------------------------ */
+
+const ART_1058 = path.resolve(process.cwd(), ".artifacts/1058");
+
+async function recordState1058(page: Page, state: string): Promise<void> {
+  mkdirSync(ART_1058, { recursive: true });
+  const file = path.join(ART_1058, `${state}.png`);
+  await page.screenshot({ path: file });
+  const manifest = path.join(ART_1058, "state-coverage.json");
+  let states: Array<Record<string, string>> = [];
+  try {
+    states = JSON.parse(readFileSync(manifest, "utf8")).states ?? [];
+  } catch {
+    states = [];
+  }
+  states = states.filter((s) => s.state !== state);
+  states.push({
+    state,
+    screenshot: path.relative(process.cwd(), file),
+    assertion: "passed",
+    recorded_at: new Date().toISOString(),
+    runner: `${process.env.USER ?? "unknown"}@${process.env.HOSTNAME ?? "unknown"}`,
+  });
+  writeFileSync(
+    manifest,
+    `${JSON.stringify({ task: "1058-search-float-half-width", states }, null, 2)}\n`,
+  );
+}
+
+const NARROW_CONTROL_SELECTOR = [
+  '[data-testid="search-float-input"]',
+  '[data-testid="search-float-count"]',
+  '[data-testid="search-float-replace-toggle"]',
+  '[data-testid="search-float-close"]',
+  '[data-testid="search-float-replace-input"]',
+  '[data-testid="search-float-replace-one"]',
+  '[data-testid="search-float-replace-all"]',
+].join(",");
+
+async function narrowLayoutProbe(page: Page) {
+  return page.evaluate((selector) => {
+    const float = document.querySelector<HTMLElement>(
+      '[data-testid="search-float"]',
+    );
+    if (!float) throw new Error("浮窗不存在");
+    const fr = float.getBoundingClientRect();
+    const controls = Array.from(
+      float.querySelectorAll<HTMLElement>(selector),
+    ).map((el) => {
+      const r = el.getBoundingClientRect();
+      return {
+        testid: el.getAttribute("data-testid"),
+        left: r.left - fr.left,
+        right: r.right - fr.right,
+      };
+    });
+    return {
+      floatWidth: fr.width,
+      innerWidth: window.innerWidth,
+      scrollWidth: document.documentElement.scrollWidth,
+      controls,
+      outside: controls.filter((c) => c.left < -0.5 || c.right > 0.5),
+    };
+  }, NARROW_CONTROL_SELECTOR);
+}
+
+test("#1058 默认宽度 300（A-20.1）", async ({ page }) => {
+  await page.keyboard.press("Meta+f");
+  const float = page.locator('[data-testid="search-float"]');
+  await expect(float).toBeVisible();
+  await page.locator('[data-testid="search-float-input"]').fill("属性");
+
+  const box = await float.boundingBox();
+  if (!box) throw new Error("浮窗未布局");
+  expect(Math.abs(box.width - 300)).toBeLessThanOrEqual(2);
+  expect(Math.abs(box.height - 460)).toBeLessThanOrEqual(1);
+  await recordState1058(page, "01-default-300");
+});
+
+test("#1058 窄视口 360：宽度受控、无横向溢出、控件不被裁剪（A-20.2）", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 360, height: 700 });
+  await page.keyboard.press("Meta+f");
+  const float = page.locator('[data-testid="search-float"]');
+  await expect(float).toBeVisible();
+  await page.locator('[data-testid="search-float-input"]').fill("属性");
+
+  const probe = await narrowLayoutProbe(page);
+  expect(probe.floatWidth).toBeLessThanOrEqual(probe.innerWidth - 32 + 1);
+  expect(probe.scrollWidth).toBeLessThanOrEqual(probe.innerWidth + 1);
+  expect(probe.outside).toEqual([]);
+  await recordState1058(page, "02-narrow-360");
+});
+
+test("#1058 窄视口 320 + 替换行：控件在浮窗内且关闭可点（A-20.2）", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 320, height: 700 });
+  await page.keyboard.press("Meta+f");
+  const float = page.locator('[data-testid="search-float"]');
+  await expect(float).toBeVisible();
+  await page.locator('[data-testid="search-float-input"]').fill("属性");
+  await page.locator('[data-testid="search-float-replace-toggle"]').click();
+  await expect(
+    page.locator('[data-testid="search-float-replace-row"]'),
+  ).toBeVisible();
+
+  const probe = await narrowLayoutProbe(page);
+  expect(probe.floatWidth).toBeLessThanOrEqual(probe.innerWidth - 32 + 1);
+  expect(probe.scrollWidth).toBeLessThanOrEqual(probe.innerWidth + 1);
+  expect(probe.outside).toEqual([]);
+  await recordState1058(page, "03-narrow-320-controls");
+
+  await page.locator('[data-testid="search-float-close"]').click();
+  await expect(float).toBeHidden();
+});
+
+test("#1058 默认 300 宽度下状态栏贴底（A-16.1 交叉复核）", async ({ page }) => {
+  await page.keyboard.press("Meta+f");
+  const float = page.locator('[data-testid="search-float"]');
+  const bar = page.locator('[data-testid="search-float-statusbar"]');
+  await expect(bar).toBeVisible();
+  await page.locator('[data-testid="search-float-input"]').fill("属性");
+
+  const box = await float.boundingBox();
+  if (!box) throw new Error("浮窗未布局");
+  expect(Math.abs(box.width - 300)).toBeLessThanOrEqual(2);
+  const gap = await statusbarGap(page);
+  expect(Math.abs(gap?.gap ?? 999)).toBeLessThanOrEqual(1);
+  await recordState1058(page, "04-statusbar-attached");
 });
