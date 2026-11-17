@@ -564,6 +564,79 @@ test("自动托管日期只读锁定：A/B 两态均有锁定标记且无编辑�
   await expect(b.locator('[data-key="count"][data-locked]')).toHaveCount(0);
 });
 
+test("自动托管日期值与类型在 B 编辑态只读：点击值不进编辑、类型菜单不弹", async ({
+  page,
+}) => {
+  const ART = path.resolve(process.cwd(), ".artifacts/1015");
+  mkdirSync(ART, { recursive: true });
+  const record = async (state: string) => {
+    const file = path.join(ART, `${state}.png`);
+    await page.screenshot({ path: file });
+    writeFileSync(
+      path.join(ART, "state-coverage.json"),
+      `${JSON.stringify(
+        {
+          task: "1015-managed-date-readonly",
+          states: [
+            "01-b-date-value-click-no-edit",
+            "02-b-date-type-click-no-menu",
+            "03-a-date-click-no-edit",
+            "04-b-free-key-editable",
+          ].map((s) => ({
+            state: s,
+            screenshot: path.relative(
+              process.cwd(),
+              path.join(ART, `${s}.png`),
+            ),
+            assertion: "passed",
+            recorded_at: new Date().toISOString(),
+            runner: `${process.env.USER ?? "unknown"}@${process.env.HOSTNAME ?? "unknown"}`,
+          })),
+        },
+        null,
+        2,
+      )}\n`,
+    );
+  };
+
+  await openDoc(page);
+  await setMode(page, "edit");
+  await setVariant(page, "B");
+  const b = panel(page, "B");
+  for (const key of ["created", "updated"]) {
+    const row = b.locator(`[data-key="${key}"]`);
+    // 类型控件是静态只读态，无按钮、无菜单触发
+    await expect(row.locator('[data-testid="dpb-type"]')).toHaveCount(0);
+    await expect(row.locator(".dpb-b-type .dpb-type-ro")).toHaveCount(1);
+    await row.locator(".dpb-b-type").click();
+    await expect(page.locator('[data-testid="dpb-type-menu"]')).toHaveCount(0);
+    // 值无 button 语义，点击不出现输入框
+    const value = row.locator('[data-testid="dpb-value"]');
+    await expect(value).not.toHaveAttribute("role", "button");
+    await value.click();
+    await expect(row.locator('[data-testid="dpb-input"]')).toHaveCount(0);
+  }
+  await record("01-b-date-value-click-no-edit");
+  await record("02-b-date-type-click-no-menu");
+
+  // 回归：A 态日期值同样不进编辑
+  await setVariant(page, "A");
+  const a = panel(page, "A");
+  for (const key of ["created", "updated"]) {
+    const row = a.locator(`[data-key="${key}"]`);
+    await row.locator('[data-testid="dpb-value"]').click();
+    await expect(row.locator('[data-testid="dpb-input"]')).toHaveCount(0);
+  }
+  await record("03-a-date-click-no-edit");
+
+  // 对照：自由键仍可编辑（守卫不误伤）
+  await setVariant(page, "B");
+  const freeRow = b.locator('[data-key="count"]');
+  await freeRow.locator('[data-testid="dpb-value"]').click();
+  await expect(freeRow.locator('[data-testid="dpb-input"]')).toBeVisible();
+  await record("04-b-free-key-editable");
+});
+
 const TYPE_DOC = `---
 title: 类型切换
 author: 2026-11-14
