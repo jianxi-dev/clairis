@@ -469,6 +469,11 @@
   text-align: center;
 }
 
+.dpb-empty-add {
+  display: block;
+  margin: 10px auto 0;
+}
+
 /* ── 值编辑器（P-3 / P-9）───────────────────────────────── */
 .dpb-v-clickable {
   cursor: text;

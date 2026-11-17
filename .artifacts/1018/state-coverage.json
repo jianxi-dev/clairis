@@ -1,0 +1,40 @@
+{
+  "task": "1018",
+  "states": [
+    {
+      "state": "01-empty-create-block",
+      "screenshot": ".artifacts/1018/01-empty-create-block.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-17T08:15:35.100Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "02-a-add-rename-undo",
+      "screenshot": ".artifacts/1018/02-a-add-rename-undo.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-17T08:15:36.352Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "03-b-add-rename-source",
+      "screenshot": ".artifacts/1018/03-b-add-rename-source.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-17T08:15:37.369Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "04-key-dedupe",
+      "screenshot": ".artifacts/1018/04-key-dedupe.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-17T08:15:38.354Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "05-preview-no-entry",
+      "screenshot": ".artifacts/1018/05-preview-no-entry.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-17T08:15:39.245Z",
+      "runner": "mason@unknown"
+    }
+  ]
+}

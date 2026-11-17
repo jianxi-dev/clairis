@@ -24,6 +24,7 @@ import {
   validateFieldValue,
   cloneFieldsForPaste,
   moveFieldBlock,
+  newDocFrontmatter,
   uniqueKey,
   writeFrontmatterOrdered,
   type FrontmatterField,
@@ -66,6 +67,9 @@ const EMPTY_OVERRIDES: Record<string, FrontmatterType> = {};
 
 /** 手柄拖拽阈值：位移小于 5px 视为点击选中，超过才进入排序（P-4）。 */
 const DRAG_THRESHOLD = 5;
+
+/** 新字段占位键名：重名时按 `new-field-2`… 顺延（P-9 首次添加自动建块）。 */
+const NEW_FIELD_KEY = "new-field";
 
 interface OpsBarProps {
   count: number;
@@ -325,6 +329,9 @@ interface RenameLabelProps {
   className: string;
   /** 返回 null 表示改名成功，否则为拦截原因。 */
   onSubmit: (fromKey: string, toKey: string) => string | null;
+  /** 等于本行键名时自动进入改名聚焦（新字段创建后就地改名）。 */
+  autoFocusKey?: string | null;
+  onAutoFocusHandled?: (key: string) => void;
 }
 
 /** 字段名就地改名（P-6）：编辑态点击变输入，Enter / 失焦提交，托管键锁定。 */
@@ -333,6 +340,8 @@ function RenameLabel({
   editable,
   className,
   onSubmit,
+  autoFocusKey = null,
+  onAutoFocusHandled,
 }: RenameLabelProps) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
@@ -356,13 +365,19 @@ function RenameLabel({
     [],
   );
 
-  const start = () => {
+  const start = useCallback(() => {
     if (!renameable) return;
     doneRef.current = false;
     setDraft(field.key);
     setError(null);
     setEditing(true);
-  };
+  }, [renameable, field.key]);
+
+  useEffect(() => {
+    if (autoFocusKey !== field.key) return;
+    start();
+    onAutoFocusHandled?.(field.key);
+  }, [autoFocusKey, field.key, start, onAutoFocusHandled]);
 
   const commit = () => {
     if (doneRef.current) return;
@@ -1294,6 +1309,7 @@ export default function DocPropertyBar({
   const [selMap, setSelMap] = useState<Record<string, FrontmatterRowId[]>>({});
   const [clipboard, setClipboard] = useState<FrontmatterField[] | null>(null);
   const [drop, setDrop] = useState<{ index: number; top: number } | null>(null);
+  const [pendingRenameKey, setPendingRenameKey] = useState<string | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const selected = useMemo(
     () => new Set(selMap[docKey] ?? []),
@@ -1511,6 +1527,40 @@ export default function DocPropertyBar({
     },
     [content, applySelection],
   );
+
+  const handleAutoFocusHandled = useCallback((key: string) => {
+    setPendingRenameKey((cur) => (cur === key ? null : cur));
+  }, []);
+
+  /** 添加字段（P-9）：空态先按 P-7 建 frontmatter 块，再追加一个空文本行。 */
+  const handleAddField = useCallback(() => {
+    if (!parsed.present) {
+      const seedText = newDocFrontmatter();
+      const seedFields = parseFrontmatter(seedText).fields;
+      const key = uniqueKey(
+        NEW_FIELD_KEY,
+        seedFields.map((f) => f.key),
+      );
+      const seeded = writeFrontmatterOrdered(seedText, [
+        ...seedFields,
+        { key, type: "text", value: "", display: "" },
+      ]);
+      getActiveEditorView()?.dispatch({
+        changes: { from: 0, to: 0, insert: seeded.text },
+      });
+      setPendingRenameKey(key);
+      return;
+    }
+    const key = uniqueKey(
+      NEW_FIELD_KEY,
+      fields.map((f) => f.key),
+    );
+    commitFields(
+      [...fields, { key, type: "text", value: "", display: "" }],
+      [],
+    );
+    setPendingRenameKey(key);
+  }, [parsed.present, fields, commitFields]);
 
   const toggleRow = useCallback(
     (id: FrontmatterRowId) => {
@@ -1739,6 +1789,17 @@ export default function DocPropertyBar({
     return (
       <div className="dpb-empty" data-testid="dpb-empty">
         暂无 frontmatter 属性 · 首次添加字段时自动创建
+        {editable && (
+          <button
+            type="button"
+            className="dpb-tpl-btn dpb-empty-add"
+            data-testid="dpb-add-field"
+            title="添加字段"
+            onClick={handleAddField}
+          >
+            + 添加字段
+          </button>
+        )}
       </div>
     );
   }
@@ -1858,6 +1919,8 @@ export default function DocPropertyBar({
                     editable={editable}
                     className="dpb-b-label"
                     onSubmit={handleRename}
+                    autoFocusKey={pendingRenameKey}
+                    onAutoFocusHandled={handleAutoFocusHandled}
                   />
                   <span className="dpb-b-value">
                     {field === tagsField ? (
@@ -1909,6 +1972,17 @@ export default function DocPropertyBar({
             })}
             <div className="dpb-b-foot">
               <span data-testid="dpb-count">{fields.length} 个字段</span>
+              {editable && (
+                <button
+                  type="button"
+                  className="dpb-tpl-btn"
+                  data-testid="dpb-add-field"
+                  title="添加字段"
+                  onClick={handleAddField}
+                >
+                  + 添加字段
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -1950,6 +2024,17 @@ export default function DocPropertyBar({
         )}
         <span className="dpb-a-spacer" />
         <span className="dpb-a-tools" data-testid="dpb-tools">
+          {editable && (
+            <button
+              type="button"
+              className="dpb-tpl-btn"
+              data-testid="dpb-add-field"
+              title="添加字段"
+              onClick={handleAddField}
+            >
+              + 添加字段
+            </button>
+          )}
           {editable && (
             <TemplateMenuButton
               templates={propTemplates}
@@ -2009,6 +2094,8 @@ export default function DocPropertyBar({
                     editable={editable}
                     className="dpb-k"
                     onSubmit={handleRename}
+                    autoFocusKey={pendingRenameKey}
+                    onAutoFocusHandled={handleAutoFocusHandled}
                   />
                   <FieldValue
                     field={field}
