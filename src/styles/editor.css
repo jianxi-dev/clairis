@@ -58,6 +58,9 @@ body {
   /* 与 reader.css 的阅读强调色同源（引用竖线、链接） */
   --reader-accent: var(--tone-accent, #3d5a8a);
   --reader-accent-soft: rgba(61, 90, 138, 0.1);
+  /* 行内代码取阅读层 token（#1047）；reader.css 只在 .preview-content 定义，编辑态需桥接 */
+  --reader-sunken: var(--app-sunken);
+  --reader-line: var(--app-border);
   /* --type-* 只在 reader.css 的 .preview-content 内定义，编辑态取不到；
      这里补一份与预览等宽栈逐字相同的副本，供行内/围栏代码与 Pele 出图对齐。 */
   --type-font-sans:
@@ -686,17 +689,21 @@ body {
 }
 
 /* 行内代码 */
-.cm-inline-code {
+.cm-inline-code,
+.cm-table code,
+.cm-columns code {
   font-family: var(--type-font-mono);
   font-size: 0.88em;
   color: var(--tone-code, #a03a63);
-  background: var(--app-sunken);
-  border: 1px solid var(--app-border);
+  background: var(--reader-sunken);
+  border: 1px solid var(--reader-line);
   border-radius: 4px;
   padding: 0.12em 0.35em;
 }
 
-.dark .cm-inline-code {
+.dark .cm-inline-code,
+.dark .cm-table code,
+.dark .cm-columns code {
   color: var(--tone-code, #e59ac0);
 }
 
