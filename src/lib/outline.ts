@@ -18,7 +18,20 @@ const FENCE_RE = /^\s{0,3}(`{3,}|~{3,})/;
 const ATX_RE = /^(#{1,6})\s+(.+?)\s*#*\s*$/;
 
 /**
- * 提取 ATX 标题（`#`–`######`），跳过围栏代码块内的所有行。
+ * frontmatter 的结束行下标（含）：首行 `---`、直到下一个 `---` / `...`。
+ * 未闭合或首行不是 `---` 一律返回 -1（那是普通分隔线，不是 frontmatter）。
+ */
+function frontmatterEnd(lines: string[]): number {
+  if (lines.length === 0 || lines[0].trim() !== "---") return -1;
+  for (let i = 1; i < lines.length; i += 1) {
+    const text = lines[i].trim();
+    if (text === "---" || text === "...") return i;
+  }
+  return -1;
+}
+
+/**
+ * 提取 ATX 标题（`#`–`######`），跳过 frontmatter 与围栏代码块内的所有行。
  *
  * 围栏按 CommonMark 认 ``` 与 ~~~；未闭合的围栏吃到文末，避免把代码里的 `#`
  * 当成标题。
@@ -27,9 +40,11 @@ export function extractHeadings(markdown: string): OutlineHeading[] {
   const lines = markdown.split("\n");
   const headings: OutlineHeading[] = [];
   let fence: { char: string; len: number } | null = null;
+  const fmEnd = frontmatterEnd(lines);
 
   for (let i = 0; i < lines.length; i += 1) {
     const line = lines[i];
+    if (fmEnd >= 0 && i <= fmEnd) continue;
     const fenceMatch = FENCE_RE.exec(line);
 
     if (fenceMatch) {
@@ -98,6 +113,82 @@ export function writeOutlineOrder(docPath: string, order: string[]): void {
   } catch {
     // 写入失败（隐私模式 / 配额）不影响当次拖拽结果。
   }
+}
+
+/**
+ * 清除某文档的持久化顺序（#1050）：正文重排后显示顺序必须跟随正文，否则
+ * 旧的保存序列会把正文顺序再排一次，出现「大纲与正文不一致」。
+ */
+export function clearOutlineOrder(docPath: string): void {
+  try {
+    window.localStorage.removeItem(outlineOrderKey(docPath));
+  } catch {
+    // 同 writeOutlineOrder：存储不可用不影响当次结果。
+  }
+}
+
+/**
+ * 被拖标题的区段在标题序列里占到哪一项（含）：向后吃到连续更深层级为止，
+ * 遇到同级或更浅层级即停。返回末尾下标（>= fromIndex）。
+ */
+export function outlineSectionRunEnd(
+  headings: OutlineHeading[],
+  fromIndex: number,
+): number {
+  if (fromIndex < 0 || fromIndex >= headings.length) return fromIndex;
+  const level = headings[fromIndex].level;
+  let end = fromIndex;
+  for (let i = fromIndex + 1; i < headings.length; i += 1) {
+    if (headings[i].level <= level) break;
+    end = i;
+  }
+  return end;
+}
+
+/**
+ * 按大纲落点重排正文（#1050）。
+ *
+ * `fromIndex` / `toIndex` 是文档顺序标题序列的下标；`toIndex` 指「移除被拖
+ * 区段后、剩余标题列表里的插入位置」。被拖标题的整个区段（其标题行到下一个
+ * 同级或更浅标题之前）随标题一起移动，子标题跟着走。
+ *
+ * 纯函数：不改 frontmatter（位于首个标题之前，属前言块），不动围栏代码；
+ * from === to / 无标题 / 越界时原样返回，尾换行契约原样保留。
+ */
+export function reorderSections(
+  markdown: string,
+  fromIndex: number,
+  toIndex: number,
+): string {
+  const headings = extractHeadings(markdown);
+  if (headings.length === 0) return markdown;
+  if (fromIndex < 0 || fromIndex >= headings.length) return markdown;
+
+  const runEnd = outlineSectionRunEnd(headings, fromIndex);
+  const runLen = runEnd - fromIndex + 1;
+  const to = Math.min(Math.max(toIndex, 0), headings.length - runLen);
+  if (fromIndex === to) return markdown;
+
+  // 尾换行不跟着最后一块走：先摘掉末尾空行，重排后再补回。
+  const trailingNewline = markdown.endsWith("\n");
+  const lines = trailingNewline
+    ? markdown.split("\n").slice(0, -1)
+    : markdown.split("\n");
+  const preamble = lines.slice(0, headings[0].line);
+
+  // 扁平切块：每块 = 一个标题行到下一个标题行之前；前言块不参与移动。
+  const blocks: string[][] = [];
+  for (let i = 0; i < headings.length; i += 1) {
+    const start = headings[i].line;
+    const end = i + 1 < headings.length ? headings[i + 1].line - 1 : lines.length - 1;
+    blocks.push(lines.slice(start, end + 1));
+  }
+
+  const moved = blocks.slice(fromIndex, runEnd + 1);
+  const rest = blocks.filter((_, index) => index < fromIndex || index > runEnd);
+  rest.splice(to, 0, ...moved);
+
+  return [...preamble, ...rest.flat()].join("\n") + (trailingNewline ? "\n" : "");
 }
 
 /**

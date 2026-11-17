@@ -3073,6 +3073,30 @@ html[data-tab-drag="true"] body * {
   white-space: nowrap;
 }
 
+/* 拖动轨迹（#1050）：ghost 跟随指针，源条目淡化以示「已被拿起」。 */
+.biaoyue-outline-item[data-dragging="true"] {
+  opacity: 0.4;
+}
+
+.biaoyue-outline-ghost {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 240px;
+  padding: 5px 12px;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  background: var(--app-surface);
+  box-shadow: var(--app-shadow);
+  font-size: 12px;
+  color: var(--app-text);
+  pointer-events: none;
+}
+
 /* ── 阅读空间竖排栏（layout-portal 6.1）────────────────────────── */
 /* 折叠边缘条严格 12px：内部图标缩到 12 像素才塞得下，不溢出。 */
 .rail-edge {
