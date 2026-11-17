@@ -1303,6 +1303,20 @@ export default function DocPropertyBar({
   const [clipboard, setClipboard] = useState<FrontmatterField[] | null>(null);
   const [drop, setDrop] = useState<{ index: number; top: number } | null>(null);
   const [pendingRenameKey, setPendingRenameKey] = useState<string | null>(null);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [paletteAnchor, setPaletteAnchor] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
+  const [ghost, setGhost] = useState<{
+    type: FrontmatterType;
+    x: number;
+    y: number;
+  } | null>(null);
+  const suppressItemClick = useRef(false);
+  const { pos: palettePos, ref: paletteRef } = useMenuPos(
+    paletteOpen ? paletteAnchor : null,
+  );
   const panelRef = useRef<HTMLDivElement>(null);
   const selected = useMemo(
     () => new Set(selMap[docKey] ?? []),
@@ -1528,35 +1542,33 @@ export default function DocPropertyBar({
     setPendingRenameKey((cur) => (cur === key ? null : cur));
   }, []);
 
-  /** 添加字段（P-9）：空态先按 P-7 建 frontmatter 块，再追加一个空文本行。 */
-  const handleAddField = useCallback(() => {
-    if (!parsed.present) {
-      const seedText = newDocFrontmatter();
-      const seedFields = parseFrontmatter(seedText, propAliasMap).fields;
+  /** 控件区插入：空态先建 frontmatter 块；指定类型空字段单事务写回，一次可撤销。 */
+  const insertField = useCallback(
+    (type: FrontmatterType, index?: number) => {
+      const base = parsed.present
+        ? fields
+        : parseFrontmatter(newDocFrontmatter(), propAliasMap).fields;
+      const at = Math.max(0, Math.min(base.length, index ?? base.length));
       const key = uniqueKey(
         NEW_FIELD_KEY,
-        seedFields.map((f) => f.key),
+        base.map((f) => f.key),
       );
-      const seeded = writeFrontmatterOrdered(seedText, [
-        ...seedFields,
-        { key, type: "text", value: "", display: "" },
-      ]);
-      getActiveEditorView()?.dispatch({
-        changes: { from: 0, to: 0, insert: seeded.text },
+      commitFields(
+        [
+          ...base.slice(0, at),
+          { key, type, value: "", display: "" },
+          ...base.slice(at),
+        ],
+        [],
+      );
+      setOverrideMap((prev) => {
+        const cur = prev[docKey] ?? {};
+        return { ...prev, [docKey]: { ...cur, [key]: type } };
       });
       setPendingRenameKey(key);
-      return;
-    }
-    const key = uniqueKey(
-      NEW_FIELD_KEY,
-      fields.map((f) => f.key),
-    );
-    commitFields(
-      [...fields, { key, type: "text", value: "", display: "" }],
-      [],
-    );
-    setPendingRenameKey(key);
-  }, [parsed.present, fields, commitFields, propAliasMap]);
+    },
+    [parsed.present, fields, propAliasMap, commitFields, docKey],
+  );
 
   const toggleRow = useCallback(
     (id: FrontmatterRowId) => {
@@ -1769,6 +1781,162 @@ export default function DocPropertyBar({
     return () => document.removeEventListener("click", onDocClick);
   }, [editable, selected.size, applySelection]);
 
+  const togglePalette = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement>) => {
+      if (!paletteOpen) {
+        const r = e.currentTarget.getBoundingClientRect();
+        setPaletteAnchor({
+          x: Math.max(8, r.left),
+          y: Math.min(window.innerHeight - 240, r.bottom + 4),
+        });
+      }
+      setPaletteOpen((v) => !v);
+    },
+    [paletteOpen],
+  );
+
+  useEffect(() => {
+    if (!paletteOpen) return;
+    const onDown = (e: MouseEvent) => {
+      const t = e.target as Element | null;
+      if (!t || typeof t.closest !== "function") return;
+      if (paletteRef.current?.contains(t)) return;
+      if (t.closest('[data-testid="dpb-add-field"]')) return;
+      setPaletteOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        setPaletteOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [paletteOpen, paletteRef]);
+
+  useEffect(() => {
+    if (hidden) setPaletteOpen(false);
+  }, [hidden]);
+
+  const hitFieldArea = (clientX: number, clientY: number): boolean => {
+    const panel = panelRef.current;
+    if (!panel) return false;
+    const el = document.elementFromPoint(clientX, clientY);
+    if (!el || typeof el.closest !== "function") return false;
+    if (!panel.contains(el)) return false;
+    if (el.closest('[data-testid="dpb-tools"]')) return false;
+    if (el.closest(".dpb-b-head")) return false;
+    if (el.closest(".dpb-b-foot")) return false;
+    if (el.closest(".dpb-ops")) return false;
+    if (el.closest(".dpb-menu")) return false;
+    if (el.closest('[data-testid="dpb-add-field"]')) return false;
+    return true;
+  };
+
+  const onPaletteItemPointerDown = (
+    e: React.PointerEvent<HTMLButtonElement>,
+    type: FrontmatterType,
+  ) => {
+    if (!editable) return;
+    const startX = e.clientX;
+    const startY = e.clientY;
+    let started = false;
+    let over: number | null = null;
+    let inside = false;
+
+    const onMove = (ev: PointerEvent) => {
+      if (!started) {
+        if (
+          Math.abs(ev.clientY - startY) + Math.abs(ev.clientX - startX) <
+          DRAG_THRESHOLD
+        ) {
+          return;
+        }
+        started = true;
+        suppressItemClick.current = true;
+        setPaletteOpen(false);
+      }
+      inside = hitFieldArea(ev.clientX, ev.clientY);
+      over = inside ? computeDropIndex(ev.clientY) : null;
+      setGhost({ type, x: ev.clientX, y: ev.clientY });
+      setDrop(over != null ? { index: over, top: dropTopFor(over) } : null);
+    };
+    const onUp = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      setGhost(null);
+      setDrop(null);
+      if (!started) return;
+      if (inside && over != null) insertField(type, over);
+      window.setTimeout(() => {
+        suppressItemClick.current = false;
+      }, 0);
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  };
+
+  const paletteOverlay =
+    paletteOpen && paletteAnchor
+      ? createPortal(
+          <span
+            ref={paletteRef}
+            className="dpb-menu dpb-palette"
+            data-testid="dpb-field-palette"
+            role="menu"
+            aria-label="添加字段控件区"
+            style={{
+              left: (palettePos ?? paletteAnchor).x,
+              top: (palettePos ?? paletteAnchor).y,
+            }}
+          >
+            {PICKABLE_TYPES.map((t) => (
+              <button
+                key={t}
+                type="button"
+                role="menuitem"
+                className="dpb-menu-row"
+                data-testid="dpb-palette-item"
+                data-type={t}
+                onPointerDown={(e) => onPaletteItemPointerDown(e, t)}
+                onClick={() => {
+                  if (suppressItemClick.current) {
+                    suppressItemClick.current = false;
+                    return;
+                  }
+                  setPaletteOpen(false);
+                  insertField(t);
+                }}
+              >
+                <span className="dpb-menu-ico">
+                  <TypeIcon type={t} />
+                </span>
+                {TYPE_LABEL[t]}
+              </button>
+            ))}
+          </span>,
+          document.body,
+        )
+      : null;
+
+  const dragGhost =
+    ghost &&
+    createPortal(
+      <span
+        className="dpb-drag-ghost"
+        data-testid="dpb-drag-ghost"
+        style={{ left: ghost.x, top: ghost.y }}
+      >
+        <TypeIcon type={ghost.type} />
+        {TYPE_LABEL[ghost.type]}
+      </span>,
+      document.body,
+    );
+
   if (hidden) {
     return (
       <div
@@ -1791,11 +1959,13 @@ export default function DocPropertyBar({
             className="dpb-tpl-btn dpb-empty-add"
             data-testid="dpb-add-field"
             title="添加字段"
-            onClick={handleAddField}
+            onClick={togglePalette}
           >
             + 添加字段
           </button>
         )}
+        {paletteOverlay}
+        {dragGhost}
       </div>
     );
   }
@@ -1975,12 +2145,14 @@ export default function DocPropertyBar({
                   className="dpb-tpl-btn"
                   data-testid="dpb-add-field"
                   title="添加字段"
-                  onClick={handleAddField}
+                  onClick={togglePalette}
                 >
                   + 添加字段
                 </button>
               )}
             </div>
+            {paletteOverlay}
+            {dragGhost}
           </div>
         )}
       </div>
@@ -2027,7 +2199,7 @@ export default function DocPropertyBar({
               className="dpb-tpl-btn"
               data-testid="dpb-add-field"
               title="添加字段"
-              onClick={handleAddField}
+              onClick={togglePalette}
             >
               + 添加字段
             </button>
@@ -2160,6 +2332,8 @@ export default function DocPropertyBar({
           </div>
         </>
       )}
+      {paletteOverlay}
+      {dragGhost}
     </div>
   );
 }

@@ -1073,6 +1073,22 @@ async function rowKeys(page: Page, variant: "A" | "B"): Promise<string[]> {
     .evaluateAll((els) => els.map((e) => e.getAttribute("data-key") ?? ""));
 }
 
+async function docText(page: Page): Promise<string> {
+  return page.evaluate(() => {
+    const s = (
+      window as unknown as {
+        __biaoyue_store__: {
+          getState: () => {
+            activeTabId: string | null;
+            tabs: Record<string, { content: string }>;
+          };
+        };
+      }
+    ).__biaoyue_store__.getState();
+    return s.tabs[s.activeTabId ?? ""]?.content ?? "";
+  });
+}
+
 test("行手柄点击多选 / 再点取消（A 态）", async ({ page }) => {
   await openDoc(page, ROW_DOC);
   await setMode(page, "edit");
@@ -1784,6 +1800,9 @@ test("无 frontmatter 空态：添加字段自动创建 frontmatter 块并出现
   const empty = page.locator('[data-testid="dpb-empty"]');
   await expect(empty).toBeVisible();
   await empty.locator('[data-testid="dpb-add-field"]').click();
+  await page
+    .locator('[data-testid="dpb-palette-item"][data-type="text"]')
+    .click();
 
   await expect(page.locator('[data-testid="dpb-empty"]')).toHaveCount(0);
   const a = panel(page, "A");
@@ -1810,6 +1829,9 @@ test("A 态添加字段：追加空文本行，就地改名并编辑值，一次
   const before = await rowKeys(page, "A");
 
   await a.locator('[data-testid="dpb-add-field"]').click();
+  await page
+    .locator('[data-testid="dpb-palette-item"][data-type="text"]')
+    .click();
   await expect(a.locator('[data-key="new-field"]')).toHaveCount(1);
   const rename = a.locator(
     '[data-key="new-field"] [data-testid="dpb-rename-input"]',
@@ -1844,6 +1866,9 @@ test("B 态底部添加字段：追加空行、改名并同步源码", async ({ 
   await expect(b.locator('[data-testid="dpb-add-field"]')).toBeVisible();
 
   await b.locator('[data-testid="dpb-add-field"]').click();
+  await page
+    .locator('[data-testid="dpb-palette-item"][data-type="text"]')
+    .click();
   await expect(b.locator('[data-key="new-field"]')).toHaveCount(1);
   const rename = b.locator(
     '[data-key="new-field"] [data-testid="dpb-rename-input"]',
@@ -1867,9 +1892,14 @@ test("添加字段键名去重：连续添加得到 new-field 与 new-field-2", 
   const a = panel(page, "A");
 
   await a.locator('[data-testid="dpb-add-field"]').click();
+  await page
+    .locator('[data-testid="dpb-palette-item"][data-type="text"]')
+    .click();
   await expect(a.locator('[data-key="new-field"]')).toHaveCount(1);
-  await page.keyboard.press("Escape");
   await a.locator('[data-testid="dpb-add-field"]').click();
+  await page
+    .locator('[data-testid="dpb-palette-item"][data-type="text"]')
+    .click();
   await expect(a.locator('[data-key="new-field"]')).toHaveCount(1);
   await expect(a.locator('[data-key="new-field-2"]')).toHaveCount(1);
   await dpbRecord(page, "1018", "04-key-dedupe");
@@ -1889,6 +1919,188 @@ test("预览态只读：空态与有 frontmatter 都不出现添加入口", asyn
   await expect(page.locator('[data-testid="dpb-add-field"]')).toHaveCount(0);
   await expect(page.locator('[data-testid="dpb-empty"]')).toBeVisible();
   await dpbRecord(page, "1018", "05-preview-no-entry");
+});
+
+test("#1041 控件区展开：点「添加字段」出现八类类型控件", async ({ page }) => {
+  await openDoc(page, ROW_DOC, "/Users/test/palette-open.md");
+  await setMode(page, "edit");
+  const a = panel(page, "A");
+
+  await a.locator('[data-testid="dpb-add-field"]').click();
+  const palette = page.locator('[data-testid="dpb-field-palette"]');
+  await expect(palette).toBeVisible();
+  await expect(palette.locator('[data-testid="dpb-palette-item"]')).toHaveCount(
+    8,
+  );
+  await expect(palette.locator('[data-type="date"]')).toBeVisible();
+  await expect(palette.locator('[data-type="text"]')).toBeVisible();
+  expect(await rowKeys(page, "A")).toEqual([
+    "category",
+    "author",
+    "source",
+    "note",
+  ]);
+  await dpbRecord(page, "1041", "palette-open");
+});
+
+test("#1041 拖入日期控件：落点插入日期类型空字段并进入改名态", async ({
+  page,
+}) => {
+  await openDoc(page, ROW_DOC, "/Users/test/palette-drop-date.md");
+  await setVariant(page, "B");
+  await setMode(page, "edit");
+  const b = panel(page, "B");
+
+  await b.locator('[data-testid="dpb-add-field"]').click();
+  const item = page.locator(
+    '[data-testid="dpb-palette-item"][data-type="date"]',
+  );
+  const ib = (await item.boundingBox())!;
+  const author = (await b.locator('[data-key="author"]').boundingBox())!;
+
+  await page.mouse.move(ib.x + ib.width / 2, ib.y + ib.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(
+    author.x + author.width / 2,
+    author.y + author.height * 0.25,
+    {
+      steps: 8,
+    },
+  );
+  await expect(page.locator('[data-testid="dpb-drag-ghost"]')).toBeVisible();
+  await dpbRecord(page, "1041", "dragging-ghost");
+  await page.mouse.up();
+
+  await expect(page.locator('[data-testid="dpb-drag-ghost"]')).toHaveCount(0);
+  expect(await rowKeys(page, "B")).toEqual([
+    "title",
+    "category",
+    "new-field",
+    "author",
+    "source",
+    "note",
+  ]);
+  const row = b.locator('[data-key="new-field"]');
+  await expect(row.locator('[data-testid="dpb-type"]')).toHaveAttribute(
+    "title",
+    "日期（点击选择类型）",
+  );
+  await expect(row.locator('[data-testid="dpb-type"] svg')).toHaveCount(1);
+  const rename = row.locator('[data-testid="dpb-rename-input"]');
+  await expect(rename).toBeVisible();
+  await expect(rename).toBeFocused();
+  await dpbRecord(page, "1041", "dropped-typed-field");
+});
+
+test("#1041 拖放取消：松手在字段区外不插入、无残留", async ({ page }) => {
+  await openDoc(page, ROW_DOC, "/Users/test/palette-cancel.md");
+  await setVariant(page, "B");
+  await setMode(page, "edit");
+  const b = panel(page, "B");
+  const beforeKeys = await rowKeys(page, "B");
+  const beforeText = await docText(page);
+
+  await b.locator('[data-testid="dpb-add-field"]').click();
+  const item = page.locator(
+    '[data-testid="dpb-palette-item"][data-type="date"]',
+  );
+  const ib = (await item.boundingBox())!;
+  const pb = (await b.boundingBox())!;
+  const outsideX = Math.max(8, pb.x - 30);
+  const outsideY = pb.y + pb.height / 2;
+
+  await page.mouse.move(ib.x + ib.width / 2, ib.y + ib.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(outsideX, outsideY, { steps: 8 });
+  await expect(page.locator('[data-testid="dpb-drag-ghost"]')).toBeVisible();
+  await page.mouse.up();
+
+  await expect(page.locator('[data-testid="dpb-drag-ghost"]')).toHaveCount(0);
+  await expect(page.locator('[data-testid="dpb-drop-line"]')).toHaveCount(0);
+  expect(await rowKeys(page, "B")).toEqual(beforeKeys);
+  expect(await docText(page)).toBe(beforeText);
+  await dpbRecord(page, "1041", "cancelled-no-residue");
+});
+
+test("#1041 插入一次撤销：Ctrl+Z 回到插入前 frontmatter（状态往返 + 文本相等）", async ({
+  page,
+}) => {
+  await openDoc(page, ROW_DOC, "/Users/test/palette-undo.md");
+  await setVariant(page, "B");
+  await setMode(page, "edit");
+  const b = panel(page, "B");
+  const beforeKeys = await rowKeys(page, "B");
+  const beforeText = await docText(page);
+
+  await b.locator('[data-testid="dpb-add-field"]').click();
+  const item = page.locator(
+    '[data-testid="dpb-palette-item"][data-type="date"]',
+  );
+  const ib = (await item.boundingBox())!;
+  const author = (await b.locator('[data-key="author"]').boundingBox())!;
+  await page.mouse.move(ib.x + ib.width / 2, ib.y + ib.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(
+    author.x + author.width / 2,
+    author.y + author.height * 0.25,
+    {
+      steps: 8,
+    },
+  );
+  await page.mouse.up();
+  expect(await rowKeys(page, "B")).toEqual([
+    "title",
+    "category",
+    "new-field",
+    "author",
+    "source",
+    "note",
+  ]);
+
+  await page.locator(".cm-content").first().click();
+  await page.keyboard.press("Meta+Z");
+  await expect
+    .poll(async () => (await rowKeys(page, "B")).join(","))
+    .toBe(beforeKeys.join(","));
+  await expect.poll(async () => await docText(page)).toBe(beforeText);
+});
+
+test("#1041 键盘可达：聚焦控件 Enter 插入对应类型", async ({ page }) => {
+  await openDoc(page, ROW_DOC, "/Users/test/palette-keyboard.md");
+  await setVariant(page, "B");
+  await setMode(page, "edit");
+  const b = panel(page, "B");
+
+  await b.locator('[data-testid="dpb-add-field"]').click();
+  const item = page.locator(
+    '[data-testid="dpb-palette-item"][data-type="select"]',
+  );
+  await item.focus();
+  await page.keyboard.press("Enter");
+
+  const row = b.locator('[data-key="new-field"]');
+  await expect(row).toHaveCount(1);
+  await expect(row.locator('[data-testid="dpb-type"]')).toHaveAttribute(
+    "title",
+    "下拉（点击选择类型）",
+  );
+});
+
+test("#1041 窄宽可视：400px 视口控件区完整落在视口内", async ({ page }) => {
+  await openDoc(page, ROW_DOC, "/Users/test/palette-narrow.md");
+  await setMode(page, "edit");
+  await page.setViewportSize({ width: 400, height: 800 });
+  await page.waitForTimeout(150);
+  const a = panel(page, "A");
+
+  await a.locator('[data-testid="dpb-add-field"]').click();
+  const box = (await page
+    .locator('[data-testid="dpb-field-palette"]')
+    .boundingBox())!;
+  expect(box.x).toBeGreaterThanOrEqual(0);
+  expect(box.x + box.width).toBeLessThanOrEqual(400 + 0.5);
+  expect(box.y + box.height).toBeLessThanOrEqual(800 + 0.5);
+  await expect(page.locator('[data-testid="dpb-palette-item"]')).toHaveCount(8);
 });
 
 test("#1019 编辑态面板展开隐藏 frontmatter 整块，折叠显示一行摘要", async ({
