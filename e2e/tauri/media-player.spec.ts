@@ -170,7 +170,9 @@ test("播放列表切集 → 页签标题同步为新文件名", async ({ page }
 
   await openFile(page, "/Users/test/clip.mp4", "");
 
-  const tabTitle = page.locator(".tab-strip [data-tab-id] span.max-w-44");
+  const tabTitle = page.locator(
+    '.tab-strip [data-tab-id] [data-testid="tab-title"]',
+  );
   await expect(tabTitle).toHaveText("clip.mp4");
 
   await page.locator(".art-video-player").hover();
