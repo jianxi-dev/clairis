@@ -34,6 +34,7 @@ import {
   BUILTIN_TEMPLATE_NAMES,
   normalizePropTemplates,
 } from "../lib/propTemplates";
+import { BUILTIN_ALIAS_MAP, type FrontmatterType } from "../lib/frontmatter";
 import { useEditorStore } from "../stores/editorStore";
 import { HTML_TOOLBAR_ITEMS } from "../editors/orchestration/slots";
 import { ROULETTE_HOTKEY_DEFAULT } from "../editors/orchestration/roulette";
@@ -264,6 +265,28 @@ function draftFromField(field: PropTemplateFieldConfig): DraftTemplateField {
           ? ""
           : String(field.value),
   };
+}
+
+interface AliasDraftRow {
+  key: string;
+  type: PropTemplatePickableType;
+}
+
+function draftFromAliasMap(
+  map: Record<string, FrontmatterType>,
+): AliasDraftRow[] {
+  return Object.entries(map)
+    .filter(([key]) => !(key.trim().toLowerCase() in BUILTIN_ALIAS_MAP))
+    .map(([key, type]) => ({
+      key,
+      type: isPickablePropTemplateType(type) ? type : "text",
+    }));
+}
+
+function aliasTypeLabel(type: FrontmatterType): string {
+  return isPickablePropTemplateType(type)
+    ? PROP_TEMPLATE_TYPE_LABELS[type]
+    : type;
 }
 
 function ExtensionsSection({
@@ -696,6 +719,10 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
     { key: "", type: "text", value: "" },
   ]);
   const [tplError, setTplError] = useState<string | null>(null);
+  const propAliasMap = useEditorStore((s) => s.config.propAliasMap) ?? {};
+  const [aliasDraft, setAliasDraft] = useState<AliasDraftRow[]>(() =>
+    draftFromAliasMap(propAliasMap),
+  );
   const searchPanel = useEditorStore((s) => s.config.searchPanel);
   const searchPanelPos: SearchPanelDefaultPos =
     searchPanel?.defaultPos ?? "center";
@@ -1114,6 +1141,65 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
     void saveAppConfig();
     setConfig({ propTemplates: normalizePropTemplates(nextRaw).config });
   };
+
+  const commitAliasMap = (rows: AliasDraftRow[]) => {
+    const map: Record<string, FrontmatterType> = {};
+    const seen = new Set<string>();
+    for (const row of rows) {
+      const key = row.key.trim();
+      if (!key || /[:#\r\n]/.test(key)) continue;
+      const lower = key.toLowerCase();
+      if (seen.has(lower)) continue;
+      seen.add(lower);
+      map[key] = row.type;
+    }
+    setConfig({ propAliasMap: map });
+    void saveAppConfig();
+  };
+
+  const editAliasRow = (index: number, patch: Partial<AliasDraftRow>) => {
+    setAliasDraft((prev) =>
+      prev.map((row, i) => (i === index ? { ...row, ...patch } : row)),
+    );
+  };
+
+  const commitAliasRow = () => {
+    commitAliasMap(aliasDraft);
+  };
+
+  const changeAliasType = (index: number, type: PropTemplatePickableType) => {
+    const next = aliasDraft.map((row, i) =>
+      i === index ? { ...row, type } : row,
+    );
+    setAliasDraft(next);
+    commitAliasMap(next);
+  };
+
+  const addAliasRow = () => {
+    setAliasDraft((prev) => [...prev, { key: "", type: "text" }]);
+  };
+
+  const removeAliasRow = (index: number) => {
+    const next = aliasDraft.filter((_, i) => i !== index);
+    setAliasDraft(next);
+    commitAliasMap(next);
+  };
+
+  const resetAliasMap = () => {
+    setAliasDraft([]);
+    commitAliasMap([]);
+  };
+
+  const aliasRowErrors = aliasDraft.map((row, index) => {
+    const key = row.key.trim();
+    if (!key) return "键名不能为空";
+    if (/[:#\r\n]/.test(key)) return "键名不能包含 : 或 #";
+    const dup = aliasDraft.some(
+      (other, i) =>
+        i !== index && other.key.trim().toLowerCase() === key.toLowerCase(),
+    );
+    return dup ? "键名重复" : null;
+  });
 
   const chooseRouletteForm = (form: "hub" | "disk") => {
     setConfig({ rouletteForm: form });
@@ -2149,6 +2235,102 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
                             取消
                           </button>
                         )}
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="mb-1 text-xs text-[var(--app-text-3)]">
+                      别称映射
+                    </p>
+                    <p className="mb-2 text-xs text-[var(--app-text-3)]">
+                      命中即自动赋予类型，不改写显示名与 YAML
+                      键；未命中回落内置。
+                    </p>
+                    <ul className="mb-2 space-y-1">
+                      {Object.entries(BUILTIN_ALIAS_MAP).map(([key, type]) => (
+                        <li
+                          key={key}
+                          className="flex items-center gap-2 text-xs"
+                          data-testid="alias-builtin-row"
+                        >
+                          <span className="font-medium text-[var(--app-text)]">
+                            {key}
+                          </span>
+                          <span className="text-[var(--app-text-3)]">
+                            {aliasTypeLabel(type)}
+                          </span>
+                          <span className="text-[var(--app-text-3)]">内置</span>
+                        </li>
+                      ))}
+                    </ul>
+                    <div className="flex flex-col gap-1">
+                      {aliasDraft.map((row, index) => (
+                        <div key={index} className="flex items-center gap-1">
+                          <input
+                            type="text"
+                            data-testid={`alias-key-${index}`}
+                            value={row.key}
+                            onChange={(e) =>
+                              editAliasRow(index, { key: e.target.value })
+                            }
+                            onBlur={commitAliasRow}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") commitAliasRow();
+                            }}
+                            placeholder="键名"
+                            className="min-w-0 flex-1 rounded border border-[var(--app-border)] bg-[var(--app-bg)] px-2 py-1 text-xs text-[var(--app-text)] outline-none focus:border-[var(--app-accent)]"
+                          />
+                          <select
+                            data-testid={`alias-type-${index}`}
+                            value={row.type}
+                            onChange={(e) => {
+                              if (isPickablePropTemplateType(e.target.value)) {
+                                changeAliasType(index, e.target.value);
+                              }
+                            }}
+                            className="shrink-0 rounded border border-[var(--app-border)] bg-[var(--app-bg)] px-1 py-1 text-xs text-[var(--app-text)] outline-none focus:border-[var(--app-accent)]"
+                          >
+                            {PROP_TEMPLATE_PICKABLE_TYPES.map((type) => (
+                              <option key={type} value={type}>
+                                {PROP_TEMPLATE_TYPE_LABELS[type]}
+                              </option>
+                            ))}
+                          </select>
+                          <button
+                            type="button"
+                            data-testid={`alias-del-${index}`}
+                            onClick={() => removeAliasRow(index)}
+                            className="shrink-0 text-xs text-[var(--app-text-3)] hover:text-[#a8402f]"
+                          >
+                            删除
+                          </button>
+                          {aliasRowErrors[index] && (
+                            <span
+                              className="text-xs text-[#a8402f]"
+                              data-testid={`alias-error-${index}`}
+                            >
+                              {aliasRowErrors[index]}
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                      <button
+                        type="button"
+                        data-testid="alias-add"
+                        onClick={addAliasRow}
+                        className="self-start text-xs text-[var(--app-text-3)] hover:text-[var(--app-text)]"
+                      >
+                        + 新增映射
+                      </button>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          data-testid="alias-reset"
+                          onClick={resetAliasMap}
+                          className="self-start rounded border border-[var(--app-border)] px-3 py-1 text-xs text-[var(--app-text-2)] hover:bg-[var(--app-sunken)]"
+                        >
+                          恢复默认
+                        </button>
                       </div>
                     </div>
                   </div>

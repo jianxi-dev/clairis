@@ -1309,6 +1309,7 @@ export default function DocPropertyBar({
   const propertyBar = useEditorStore((s) => s.config.propertyBar);
   const propTemplates =
     useEditorStore((s) => s.config.propTemplates) ?? BUILTIN_PROP_TEMPLATES;
+  const propAliasMap = useEditorStore((s) => s.config.propAliasMap);
   const previewDefault = propertyBar?.displayDefault?.preview ?? "show";
   const editDefault = propertyBar?.displayDefault?.edit ?? "show";
 
@@ -1399,7 +1400,7 @@ export default function DocPropertyBar({
 
   const handleApplyTemplate = useCallback(
     (template: PropTemplateConfig) => {
-      const parsedNow = parseFrontmatter(content);
+      const parsedNow = parseFrontmatter(content, propAliasMap);
       const base = parsedNow.present ? parsedNow.fields : [];
       const { fields: next, added, skipped } = applyTemplate(base, template);
       if (added === 0) {
@@ -1418,7 +1419,7 @@ export default function DocPropertyBar({
         `套用模板「${template.name}」→ 新增 ${added} 个字段${skipped ? `，跳过 ${skipped} 个已有键` : ""}`,
       );
     },
-    [content, showTplStatus],
+    [content, propAliasMap, showTplStatus],
   );
 
   const [overrideMap, setOverrideMap] = useState<
@@ -1491,7 +1492,10 @@ export default function DocPropertyBar({
     [content, docKey],
   );
 
-  const parsed = useMemo(() => parseFrontmatter(content), [content]);
+  const parsed = useMemo(
+    () => parseFrontmatter(content, propAliasMap),
+    [content, propAliasMap],
+  );
   const fields = useMemo(() => {
     if (Object.keys(typeOverrides).length === 0) return parsed.fields;
     return parsed.fields.map((f) => {
@@ -1542,7 +1546,7 @@ export default function DocPropertyBar({
   const handleAddField = useCallback(() => {
     if (!parsed.present) {
       const seedText = newDocFrontmatter();
-      const seedFields = parseFrontmatter(seedText).fields;
+      const seedFields = parseFrontmatter(seedText, propAliasMap).fields;
       const key = uniqueKey(
         NEW_FIELD_KEY,
         seedFields.map((f) => f.key),
@@ -1566,7 +1570,7 @@ export default function DocPropertyBar({
       [],
     );
     setPendingRenameKey(key);
-  }, [parsed.present, fields, commitFields]);
+  }, [parsed.present, fields, commitFields, propAliasMap]);
 
   const toggleRow = useCallback(
     (id: FrontmatterRowId) => {

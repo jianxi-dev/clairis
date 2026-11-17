@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   ALIAS,
+  BUILTIN_ALIAS_MAP,
   CANON_TYPE,
   FRONTMATTER_RE,
   TAG_PALETTE,
@@ -9,6 +10,7 @@ import {
   dedupeKeys,
   isManagedDateKey,
   moveFieldBlock,
+  normalizePropAliasMap,
   parseFrontmatter,
   renameFrontmatterField,
   resolveAlias,
@@ -334,6 +336,77 @@ describe("resolveAlias", () => {
 
   it("ALIAS 与 CANON_TYPE 键一一对应", () => {
     expect(Object.keys(ALIAS).sort()).toEqual(Object.keys(CANON_TYPE).sort());
+  });
+});
+
+describe("BUILTIN_ALIAS_MAP", () => {
+  it("由 ALIAS/CANON_TYPE 派生：规范键与别称同类型", () => {
+    expect(BUILTIN_ALIAS_MAP.title).toBe("text");
+    expect(BUILTIN_ALIAS_MAP["标题"]).toBe("text");
+    expect(BUILTIN_ALIAS_MAP.tags).toBe("array");
+    expect(BUILTIN_ALIAS_MAP["标签"]).toBe("array");
+    expect(BUILTIN_ALIAS_MAP.createdate).toBe("date");
+    expect(BUILTIN_ALIAS_MAP["创建日期"]).toBe("date");
+    expect(BUILTIN_ALIAS_MAP.updatedate).toBe("date");
+    expect(BUILTIN_ALIAS_MAP["更新日期"]).toBe("date");
+  });
+});
+
+describe("resolveAlias with aliasMap", () => {
+  it("应用配置优先于内置默认", () => {
+    expect(resolveAlias("customdate", { customdate: "number" })).toBe("number");
+    expect(resolveAlias("title", { title: "number" })).toBe("number");
+    expect(resolveAlias("createdate", { customdate: "number" })).toBe("date");
+  });
+
+  it("大小写不敏感、trim 后比对", () => {
+    expect(resolveAlias(" CustomDate ", { customdate: "date" })).toBe("date");
+    expect(resolveAlias("CUSTOMDATE", { CustomDate: "date" })).toBe("date");
+  });
+
+  it("未命中回落内置；空映射等同缺省", () => {
+    expect(resolveAlias("createdate", {})).toBe("date");
+    expect(resolveAlias("createdate", null)).toBe("date");
+    expect(resolveAlias("customdate", {})).toBeNull();
+  });
+});
+
+describe("parseFrontmatter with aliasMap", () => {
+  const DOC = `---\ntitle: 外部\ncustomdate: 高\ncreatedate: 2026-11-14\n---\n\n正文\n`;
+
+  it("配置命中赋类型，显示名与 YAML 键不变", () => {
+    const m = byKey(parseFrontmatter(DOC, { customdate: "date" }).fields);
+    expect(m.customdate.type).toBe("date");
+    expect(m.customdate.key).toBe("customdate");
+    expect(m.createdate.type).toBe("date");
+  });
+
+  it("恢复默认（缺省）后自定义键回落值推断", () => {
+    const withMap = byKey(parseFrontmatter(DOC, { customdate: "date" }).fields);
+    expect(withMap.customdate.type).toBe("date");
+    const without = byKey(parseFrontmatter(DOC).fields);
+    expect(without.customdate.type).toBe("unknown");
+    expect(without.createdate.type).toBe("date");
+  });
+});
+
+describe("normalizePropAliasMap", () => {
+  it("键 trim，丢弃非法键名与未知类型并告警", () => {
+    const { config, warnings } = normalizePropAliasMap({
+      " customdate ": "date",
+      "a:b": "text",
+      bad: "color",
+      "": "text",
+      ok: "number",
+    });
+    expect(config).toEqual({ customdate: "date", ok: "number" });
+    expect(warnings).toHaveLength(3);
+  });
+
+  it("缺省 / 空对象返回空映射", () => {
+    expect(normalizePropAliasMap(null).config).toEqual({});
+    expect(normalizePropAliasMap(undefined).config).toEqual({});
+    expect(normalizePropAliasMap({}).config).toEqual({});
   });
 });
 

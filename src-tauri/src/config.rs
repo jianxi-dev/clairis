@@ -99,6 +99,10 @@ pub struct AppConfig {
     /// 属性模板（doc-property-panel P-7）：内置三套 + 用户自定义。
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub prop_templates: Option<Vec<PropTemplate>>,
+    /// 字段别称映射（doc-property-panel P-6 / #1024）：键名 → 八类类型。
+    /// 缺省 = None，解析时回落内置 `BUILTIN_ALIAS_MAP`（ALIAS/CANON_TYPE）。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub prop_alias_map: Option<HashMap<String, String>>,
 }
 
 /// 文档属性面板配置（doc-property-panel P-2）。
@@ -260,6 +264,7 @@ impl Default for AppConfig {
             property_bar: None,
             search_panel: None,
             prop_templates: None,
+            prop_alias_map: None,
             sidebar_left_visible: Some(true),
             sidebar_right_visible: Some(false),
             sidebar_left_width: Some(220.0),
@@ -794,6 +799,37 @@ pub fn validate_config(config: &AppConfig) -> Result<(), AppError> {
             }
         }
     }
+    if let Some(map) = &config.prop_alias_map {
+        for (key, value) in map {
+            let key = key.trim();
+            if key.is_empty() {
+                return Err(AppError::Validation {
+                    context: "propAliasMap".into(),
+                    message: "键名不能为空".into(),
+                });
+            }
+            if key.contains([':', '#', '\r', '\n']) {
+                return Err(AppError::Validation {
+                    context: "propAliasMap".into(),
+                    message: "键名不能包含 : 或 # 等字符".into(),
+                });
+            }
+            check_enum(
+                "propAliasMap.value",
+                Some(value.as_str()),
+                &[
+                    "text",
+                    "number",
+                    "date",
+                    "datetime",
+                    "boolean",
+                    "array",
+                    "select",
+                    "multiselect",
+                ],
+            )?;
+        }
+    }
     if let Some(items) = &config.html_toolbar_items {
         const ALLOWED: [&str; 12] = [
             "ai-rewrite",
@@ -1021,6 +1057,7 @@ const SKILL_MAP: &str = r#"# Biaoyue 配置地图
 | `propertyBar.newDocVisible` | `true` / `false` |
 | `searchPanel.defaultPos` | `left` / `center` / `right` |
 | `propTemplates` | 模板数组：`name` 非空、`fields[].key` 非空且不含 `:` `#`、`fields[].type` ∈ 八类 + `unknown` |
+| `propAliasMap` | 对象：键名非空且不含 `:` `#`、值 ∈ 八类类型（不含 `unknown`）；缺省回落内置别称 |
 | `openaiEndpoint` / `openaiModel` | 任意字符串 |
 
 ## 禁止项
@@ -2051,5 +2088,60 @@ mod tests {
         let snap = snapshots.last().unwrap().clone();
         let restored = restore_snapshot(base, &snap).unwrap();
         assert_eq!(restored.prop_templates.unwrap().len(), 2);
+    }
+
+    #[test]
+    fn prop_alias_map_round_trip_validate_and_rollback() {
+        let dir = temp_base("prop_alias_map");
+        let base = dir.path();
+
+        write_user(base, r#"{"theme":"dark"}"#);
+        assert_eq!(load_config_at(base).unwrap().prop_alias_map, None);
+
+        let mut config = AppConfig::default();
+        let mut map = HashMap::new();
+        map.insert("customdate".to_string(), "date".to_string());
+        map.insert("customtags".to_string(), "array".to_string());
+        config.prop_alias_map = Some(map);
+        assert!(validate_config(&config).is_ok());
+        save_config_at(base, &config).unwrap();
+        let user = read_user(base);
+        assert!(
+            user.contains("propAliasMap"),
+            "user 层应含 propAliasMap: {user}"
+        );
+        let loaded = load_config_at(base).unwrap().prop_alias_map.unwrap();
+        assert_eq!(loaded.get("customdate").map(String::as_str), Some("date"));
+
+        let before = read_user(base);
+        let mut bad_type = HashMap::new();
+        bad_type.insert("customdate".to_string(), "color".to_string());
+        config.prop_alias_map = Some(bad_type);
+        assert!(validate_config(&config).is_err());
+        assert!(save_config_at(base, &config).is_err());
+        assert_eq!(read_user(base), before);
+
+        for key in ["", "a:b", "a#b"] {
+            let mut bad_key = HashMap::new();
+            bad_key.insert(key.to_string(), "text".to_string());
+            config.prop_alias_map = Some(bad_key);
+            assert!(validate_config(&config).is_err(), "键 {key:?} 应拒绝");
+            assert!(save_config_at(base, &config).is_err());
+            assert_eq!(read_user(base), before);
+        }
+
+        config.prop_alias_map = None;
+        save_config_at(base, &config).unwrap();
+        let snapshots = list_snapshots(base).unwrap();
+        let snap = snapshots.last().unwrap().clone();
+        let restored = restore_snapshot(base, &snap).unwrap();
+        assert_eq!(
+            restored
+                .prop_alias_map
+                .unwrap()
+                .get("customdate")
+                .map(String::as_str),
+            Some("date")
+        );
     }
 }

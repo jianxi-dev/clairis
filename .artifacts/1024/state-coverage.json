@@ -1,0 +1,33 @@
+{
+  "task": "1024",
+  "states": [
+    {
+      "state": "01-alias-added",
+      "screenshot": ".artifacts/1024/01-alias-added.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-17T14:10:40.075Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "02-alias-applied",
+      "screenshot": ".artifacts/1024/02-alias-applied.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-17T14:10:40.143Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "03-alias-reset",
+      "screenshot": ".artifacts/1024/03-alias-reset.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-17T14:10:40.235Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "04-alias-builtin-fallback",
+      "screenshot": ".artifacts/1024/04-alias-builtin-fallback.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-17T14:10:40.289Z",
+      "runner": "mason@unknown"
+    }
+  ]
+}

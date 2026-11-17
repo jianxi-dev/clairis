@@ -144,6 +144,8 @@ export interface AppConfig {
   propertyBar?: PropertyBarConfig;
   /** 属性模板（doc-property-panel P-7）：内置三套 + 用户自定义，按名合并 */
   propTemplates?: PropTemplateConfig[];
+  /** 字段别称映射（doc-property-panel P-6 / #1024）：键名 → 八类类型，缺省回落内置 */
+  propAliasMap?: Record<string, FrontmatterType>;
   /** 搜索浮窗（#981 / S-1） */
   searchPanel?: SearchPanelConfig;
 }
