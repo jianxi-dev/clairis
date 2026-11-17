@@ -161,6 +161,63 @@ export function searchScan(text: string, query: string): SearchScanHit[] {
   return hits;
 }
 
+/** 片段窗口：命中所在块内、以命中为中心向两侧各取 `radius` 字符。 */
+interface SnippetWindow {
+  block: SearchScanBlock;
+  start: number;
+  end: number;
+}
+
+function snippetWindow(
+  text: string,
+  hit: SearchScanHit,
+  radius: number,
+  blocks?: SearchScanBlock[],
+): SnippetWindow | null {
+  const block = (blocks ?? splitSearchBlocks(text)).find(
+    (b) => hit.from >= b.from && hit.from < b.to,
+  );
+  if (!block) return null;
+  return {
+    block,
+    start: Math.max(block.from, hit.from - radius),
+    end: Math.min(block.to, hit.to + radius),
+  };
+}
+
+/** 片段 + 命中区间在片段内的局部坐标。 */
+export interface SnippetWithHitRange {
+  snippet: string;
+  /** 命中区间在 `snippet` 内的字符坐标（无块时缺省）。 */
+  hit?: { from: number; to: number };
+}
+
+/**
+ * 命中片段 + 片段的命中局部坐标（结果行行内渲染用）。
+ *
+ * 与 `searchHitSnippet` 共用同一窗口计算：行内 renderer 需要片段内坐标
+ * 才能正确包裹 `<mark>`，坐标由片段构造处一并给出，避免两处换算漂移。
+ */
+export function searchHitSnippetWithRange(
+  text: string,
+  hit: SearchScanHit,
+  radius = 44,
+  blocks?: SearchScanBlock[],
+): SnippetWithHitRange {
+  const win = snippetWindow(text, hit, radius, blocks);
+  if (!win) return { snippet: hit.context };
+  const prefix = win.start > win.block.from ? "…" : "";
+  const suffix = win.end < win.block.to ? "…" : "";
+  const snippet =
+    prefix +
+    text.slice(win.start, hit.from) +
+    text.slice(hit.from, hit.to) +
+    text.slice(hit.to, win.end) +
+    suffix;
+  const from = prefix.length + (hit.from - win.start);
+  return { snippet, hit: { from, to: from + (hit.to - hit.from) } };
+}
+
 /**
  * 命中片段（结果行展示用，不改命中集合与偏移语义）。
  *
@@ -173,19 +230,5 @@ export function searchHitSnippet(
   radius = 44,
   blocks?: SearchScanBlock[],
 ): string {
-  const block = (blocks ?? splitSearchBlocks(text)).find(
-    (b) => hit.from >= b.from && hit.from < b.to,
-  );
-  if (!block) return hit.context;
-  const start = Math.max(block.from, hit.from - radius);
-  const end = Math.min(block.to, hit.to + radius);
-  const prefix = start > block.from ? "…" : "";
-  const suffix = end < block.to ? "…" : "";
-  return (
-    prefix +
-    text.slice(start, hit.from) +
-    text.slice(hit.from, hit.to) +
-    text.slice(hit.to, end) +
-    suffix
-  );
+  return searchHitSnippetWithRange(text, hit, radius, blocks).snippet;
 }

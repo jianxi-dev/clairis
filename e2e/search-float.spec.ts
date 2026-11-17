@@ -24,6 +24,10 @@ const LONG_DOC = Array.from(
   (_, i) => `第 ${i + 1} 段命中`,
 ).join("\n\n");
 
+const RICH_DOC = ["# 标题", "", "前缀 **加粗命中** 与 `代码命中` 后缀"].join(
+  "\n",
+);
+
 const DOC_A = [
   "# 文档甲",
   "",
@@ -393,6 +397,9 @@ test("双行结果：定位行 + 序位 1/N + 两行上下文高亮", async ({ p
   await expect(first.locator(".search-float-context mark").first()).toHaveText(
     "属性",
   );
+  expect(
+    await first.locator(".search-float-context").textContent(),
+  ).not.toContain("#");
   await expect(first.locator(".search-float-key")).toHaveText("⏎");
 });
 
@@ -727,4 +734,69 @@ test("分栏：B 格浮窗点击行定位到 B 格、A 格不动；⌘N 直达�
   const aAfterEnter = await paneProbe(page, main);
   expect(bAfterEnter?.selections ?? 0).toBeGreaterThan(0);
   expect(aAfterEnter?.selections ?? 0).toBe(0);
+});
+
+test("状态栏：打开即显示快捷键说明，离开失焦约 2 秒隐藏，悬停恢复", async ({
+  page,
+}) => {
+  await page.keyboard.press("Meta+f");
+  const float = page.locator('[data-testid="search-float"]');
+  const bar = page.locator('[data-testid="search-float-statusbar"]');
+  await expect(bar).toBeVisible();
+  await expect(bar).toHaveText(
+    "↑↓ 切换 · ↵ 定位选中 · ⌘1~9 直达（局部 · 浮窗内）· Esc 关闭",
+  );
+
+  // 先进入浮窗，确保移出时 pointerleave 真实发生（否则只测到失焦路径）。
+  await float.hover();
+  await page.mouse.move(2, 2);
+  await page.evaluate(() =>
+    (document.activeElement as HTMLElement | null)?.blur(),
+  );
+  await expect
+    .poll(async () => bar.evaluate((el) => getComputedStyle(el).visibility), {
+      timeout: 5000,
+    })
+    .toBe("hidden");
+
+  await float.hover();
+  await expect
+    .poll(async () => bar.evaluate((el) => getComputedStyle(el).visibility), {
+      timeout: 5000,
+    })
+    .toBe("visible");
+});
+
+test("结果行预览态渲染：加粗/行内代码语义标签，源码符号不出现，命中 mark 包裹", async ({
+  page,
+}) => {
+  await openDoc(page, RICH_DOC, "/Users/test/rich.md");
+  await page.keyboard.press("Meta+f");
+  await page.locator('[data-testid="search-float-input"]').fill("加粗命中");
+
+  const row = page.locator('[data-testid="search-float-hit"]').first();
+  const context = row.locator(".search-float-context");
+  await expect(context.locator("b mark")).toHaveText("加粗命中");
+  await expect(context.locator("code")).toHaveText("代码命中");
+  expect(
+    await context
+      .locator("code")
+      .evaluate((el) => getComputedStyle(el).backgroundColor),
+  ).not.toBe("rgba(0, 0, 0, 0)");
+
+  const text = (await context.textContent()) ?? "";
+  expect(text).not.toContain("**");
+  expect(text).not.toContain("`");
+  expect(text).not.toContain("#");
+});
+
+test("结果行命中在行内代码内部时 mark 包裹命中子串", async ({ page }) => {
+  await openDoc(page, RICH_DOC, "/Users/test/rich.md");
+  await page.keyboard.press("Meta+f");
+  await page.locator('[data-testid="search-float-input"]').fill("代码命中");
+
+  const row = page.locator('[data-testid="search-float-hit"]').first();
+  await expect(row.locator(".search-float-context code mark")).toHaveText(
+    "代码命中",
+  );
 });

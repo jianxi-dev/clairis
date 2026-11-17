@@ -8,7 +8,7 @@ import {
   beforeEach,
   afterEach,
 } from "vitest";
-import { cleanup, fireEvent, render } from "@testing-library/react";
+import { cleanup, fireEvent, render, act } from "@testing-library/react";
 
 beforeAll(() => {
   if (!Element.prototype.scrollIntoView) {
@@ -325,5 +325,149 @@ describe("SearchReplacePanel 替换与关闭还焦落到所属窗格", () => {
 
     expect(own.focus).toHaveBeenCalledTimes(1);
     expect(active.focus).not.toHaveBeenCalled();
+  });
+});
+
+describe("SearchReplacePanel 结果行预览态渲染", () => {
+  function renderContext(content: string, query: string): HTMLElement {
+    const { getByTestId } = render(
+      <SearchReplacePanel
+        open
+        content={content}
+        mode="edit"
+        defaultPos="center"
+        container={document.createElement("div")}
+        panelId="panel-b"
+      />,
+    );
+    fireEvent.change(getByTestId("search-float-input"), {
+      target: { value: query },
+    });
+    return document.querySelector(".search-float-context") as HTMLElement;
+  }
+
+  it("加粗内的命中词由 mark 包裹，片段不出现源码符号", () => {
+    const { getByTestId } = render(
+      <SearchReplacePanel
+        open
+        content={"前缀 **加粗命中** 后缀"}
+        mode="edit"
+        defaultPos="center"
+        container={document.createElement("div")}
+        panelId="panel-b"
+      />,
+    );
+    fireEvent.change(getByTestId("search-float-input"), {
+      target: { value: "加粗命中" },
+    });
+    const context = document.querySelector(
+      ".search-float-context",
+    ) as HTMLElement;
+    expect(context.querySelector("b mark")?.textContent).toBe("加粗命中");
+    expect(context.textContent).not.toContain("**");
+  });
+
+  it("行内代码内的命中词由 mark 包裹", () => {
+    const { getByTestId } = render(
+      <SearchReplacePanel
+        open
+        content={"前缀 `代码命中` 后缀"}
+        mode="edit"
+        defaultPos="center"
+        container={document.createElement("div")}
+        panelId="panel-b"
+      />,
+    );
+    fireEvent.change(getByTestId("search-float-input"), {
+      target: { value: "代码命中" },
+    });
+    const context = document.querySelector(
+      ".search-float-context",
+    ) as HTMLElement;
+    expect(context.querySelector("code mark")?.textContent).toBe("代码命中");
+    expect(context.textContent).not.toContain("`");
+  });
+
+  it("标题片段剥离 # 源码符号，命中仍高亮", () => {
+    const { getByTestId } = render(
+      <SearchReplacePanel
+        open
+        content={"# 标题命中"}
+        mode="edit"
+        defaultPos="center"
+        container={document.createElement("div")}
+        panelId="panel-b"
+      />,
+    );
+    fireEvent.change(getByTestId("search-float-input"), {
+      target: { value: "标题命中" },
+    });
+    const context = document.querySelector(
+      ".search-float-context",
+    ) as HTMLElement;
+    expect(context.textContent).not.toContain("#");
+    expect(context.querySelector("mark")?.textContent).toBe("标题命中");
+  });
+
+  it("多行列表片段逐行剥离标记，命中仍精确包裹", () => {
+    const context = renderContext("- 第一项\n- 第二项命中\n- 第三项", "命中");
+    expect(context.querySelector("mark")?.textContent).toBe("命中");
+    expect(context.textContent).not.toContain("- ");
+  });
+});
+
+describe("SearchReplacePanel 状态栏自动显隐", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("打开即显示快捷键说明", () => {
+    vi.useFakeTimers();
+    const { getByTestId } = renderPanel();
+    const bar = getByTestId("search-float-statusbar");
+    expect(bar.textContent).toBe(
+      "↑↓ 切换 · ↵ 定位选中 · ⌘1~9 直达（局部 · 浮窗内）· Esc 关闭",
+    );
+    expect(bar.className).not.toContain("search-float-statusbar-hidden");
+  });
+
+  it("指针离开且失焦约 2 秒后隐藏，悬停恢复", () => {
+    vi.useFakeTimers();
+    const { getByTestId } = renderPanel();
+    const float = getByTestId("search-float");
+    const bar = getByTestId("search-float-statusbar");
+
+    fireEvent.pointerLeave(float);
+    act(() => {
+      vi.advanceTimersByTime(2500);
+    });
+    expect(bar.className).not.toContain("search-float-statusbar-hidden");
+
+    fireEvent.focusOut(float, { relatedTarget: document.body });
+    act(() => {
+      vi.advanceTimersByTime(1999);
+    });
+    expect(bar.className).not.toContain("search-float-statusbar-hidden");
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
+    expect(bar.className).toContain("search-float-statusbar-hidden");
+
+    fireEvent.pointerEnter(float);
+    expect(bar.className).not.toContain("search-float-statusbar-hidden");
+  });
+
+  it("失焦后聚焦恢复显示并取消隐藏定时", () => {
+    vi.useFakeTimers();
+    const { getByTestId } = renderPanel();
+    const float = getByTestId("search-float");
+    const bar = getByTestId("search-float-statusbar");
+
+    fireEvent.focusOut(float, { relatedTarget: document.body });
+    fireEvent.focusIn(float);
+    act(() => {
+      vi.advanceTimersByTime(3000);
+    });
+    expect(bar.className).not.toContain("search-float-statusbar-hidden");
   });
 });

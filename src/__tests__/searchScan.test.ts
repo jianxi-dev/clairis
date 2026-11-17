@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   searchScan,
   searchHitSnippet,
+  searchHitSnippetWithRange,
   splitSearchBlocks,
 } from "../lib/searchScan";
 
@@ -99,5 +100,33 @@ describe("searchHitSnippet", () => {
         searchHitSnippet(doc, hit),
       );
     }
+  });
+});
+
+describe("searchHitSnippetWithRange", () => {
+  it("短块无省略号：局部坐标落在片段内的命中文本上", () => {
+    const doc = "前块\n\n前缀 **加粗命中** 后缀";
+    const hit = searchScan(doc, "加粗命中")[0];
+    const { snippet, hit: range } = searchHitSnippetWithRange(doc, hit);
+    expect(snippet).toBe("前缀 **加粗命中** 后缀");
+    expect(range).toBeDefined();
+    expect(snippet.slice(range!.from, range!.to)).toBe("加粗命中");
+  });
+
+  it("长块带省略号前缀：局部坐标计入省略号宽度", () => {
+    const doc = `${"甲".repeat(100)}命中${"乙".repeat(100)}`;
+    const hit = searchScan(doc, "命中")[0];
+    const { snippet, hit: range } = searchHitSnippetWithRange(doc, hit, 44);
+    expect(snippet.startsWith("…")).toBe(true);
+    expect(snippet.slice(range!.from, range!.to)).toBe("命中");
+  });
+
+  it("窗口坐标精确：省略号宽度计入局部命中坐标", () => {
+    const doc = `${"甲".repeat(60)}命中${"乙".repeat(60)}`;
+    const hit = searchScan(doc, "命中")[0];
+    const { snippet, hit: range } = searchHitSnippetWithRange(doc, hit, 44);
+    expect(snippet).toBe(`…${"甲".repeat(44)}命中${"乙".repeat(44)}…`);
+    expect(range).toEqual({ from: 45, to: 47 });
+    expect(snippet.slice(range!.from, range!.to)).toBe("命中");
   });
 });
