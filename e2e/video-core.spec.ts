@@ -1,6 +1,10 @@
 import { test, expect, type Page } from "@playwright/test";
+import { mkdirSync } from "node:fs";
+import path from "node:path";
+import { execFileSync } from "node:child_process";
 
 const APP_URL = "http://localhost:1420";
+const ART = path.resolve(process.cwd(), ".artifacts/1048");
 
 async function boot(page: Page): Promise<void> {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
@@ -269,4 +273,112 @@ test("竖拍适配：画面呈竖向且不溢出容器；关闭后无残留实�
   await tab.hover();
   await page.locator('[data-tab-id] button[title^="关闭"]').first().click();
   await expect(page.locator(".art-video-player")).toHaveCount(0);
+});
+
+function currentPlayerSrc(page: Page): Promise<string> {
+  return page
+    .locator(".art-video-player video")
+    .first()
+    .evaluate((el) => (el as HTMLVideoElement).src);
+}
+
+test("同格先后打开两个视频：源与标题跟随最近打开者（A-10.1/A-10.2）", async ({
+  page,
+}) => {
+  await installMediaStub(page);
+  await boot(page);
+
+  // A
+  await page.evaluate(() => {
+    window.__biaoyue_openFile__("/tmp/v1/a.mp4", "", "a.mp4");
+  });
+  await page.locator(".art-video-player video").first().waitFor({
+    state: "attached",
+    timeout: 10000,
+  });
+  const srcA = await currentPlayerSrc(page);
+  expect(srcA).toContain("a.mp4");
+  await expect(
+    page.locator('[data-tab-id][aria-selected="true"]'),
+  ).toContainText("a.mp4");
+
+  // B：同一格（同一 pane）打开第二个视频 → 当前格必须切到 B
+  await page.evaluate(() => {
+    window.__biaoyue_openFile__("/tmp/v1/b.mp4", "", "b.mp4");
+  });
+  await expect
+    .poll(() => currentPlayerSrc(page), { timeout: 10000 })
+    .toContain("b.mp4");
+  const srcB = await currentPlayerSrc(page);
+  expect(srcB).not.toBe(srcA);
+  await expect(
+    page.locator('[data-tab-id][aria-selected="true"]'),
+  ).toContainText("b.mp4");
+
+  // 回到 A：不得残留 B 的 URL
+  await page.evaluate(() => {
+    window.__biaoyue_openFile__("/tmp/v1/a.mp4", "", "a.mp4");
+  });
+  await expect
+    .poll(() => currentPlayerSrc(page), { timeout: 10000 })
+    .toContain("a.mp4");
+  const srcA2 = await currentPlayerSrc(page);
+  expect(srcA2).toBe(srcA);
+});
+
+test("证据：同格切换视频四态（A-10.1/A-10.2）", async ({ page }) => {
+  mkdirSync(ART, { recursive: true });
+  const shot = async (name: string) => {
+    const file = path.join(ART, `${name}.png`);
+    await page.screenshot({ path: file });
+    execFileSync(
+      path.resolve(process.cwd(), "scripts/cw-evidence.sh"),
+      [
+        "record-state",
+        ART,
+        "--state",
+        name,
+        "--screenshot",
+        file,
+        "--assertion",
+        "passed",
+      ],
+      { stdio: "ignore" },
+    );
+  };
+
+  await installMediaStub(page);
+  await boot(page);
+
+  await page.evaluate(() => {
+    window.__biaoyue_openFile__("/tmp/v1/a.mp4", "", "a.mp4");
+  });
+  await page.locator(".art-video-player video").first().waitFor({
+    state: "attached",
+    timeout: 10000,
+  });
+  const srcA = await currentPlayerSrc(page);
+  expect(srcA).toContain("a.mp4");
+  await shot("01-video-a-open");
+
+  await page.evaluate(() => {
+    window.__biaoyue_openFile__("/tmp/v1/b.mp4", "", "b.mp4");
+  });
+  await expect
+    .poll(() => currentPlayerSrc(page), { timeout: 10000 })
+    .toContain("b.mp4");
+  const srcB = await currentPlayerSrc(page);
+  await shot("02-video-b-open");
+
+  expect(srcB).not.toBe(srcA);
+  await shot("03-src-differs");
+
+  await page.evaluate(() => {
+    window.__biaoyue_openFile__("/tmp/v1/a.mp4", "", "a.mp4");
+  });
+  await expect
+    .poll(() => currentPlayerSrc(page), { timeout: 10000 })
+    .toContain("a.mp4");
+  expect(await currentPlayerSrc(page)).toBe(srcA);
+  await shot("04-reopen-no-stale");
 });

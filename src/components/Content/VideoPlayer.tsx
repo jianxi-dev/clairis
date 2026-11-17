@@ -470,6 +470,18 @@ export default function VideoPlayer({
       });
   }, [filePath]);
 
+  // Artplayer 不容忍并发 switchUrl：两处切换共用此链，targetUrlRef 供 prop effect 短路。
+  const switchChainRef = useRef<Promise<void>>(Promise.resolve());
+  const targetUrlRef = useRef(url);
+  const switchTo = useCallback((nextUrl: string): Promise<void> => {
+    targetUrlRef.current = nextUrl;
+    const art = artRef.current;
+    if (!art) return switchChainRef.current;
+    const run = switchChainRef.current.then(() => art.switchUrl(nextUrl));
+    switchChainRef.current = run.catch(() => {});
+    return run;
+  }, []);
+
   const playIndexRef = useRef<
     (i: number, opts?: { autoplay?: boolean }) => void
   >(() => {});
@@ -490,7 +502,7 @@ export default function VideoPlayer({
           thumbVideo.src = nextUrl;
           thumbVideo.load();
         }
-        await art.switchUrl(nextUrl);
+        await switchTo(nextUrl);
         if (opts?.autoplay !== false) void art.play()?.catch?.(() => {});
         // 页签路径保持不变（仍归属原文件），仅显示名跟随当前媒体
         const store = useStore.getState();
@@ -520,7 +532,7 @@ export default function VideoPlayer({
         if (list.length > 1) playIndexRef.current(idx + 1);
       }
     },
-    [applyRate],
+    [applyRate, switchTo],
   );
   useEffect(() => {
     playIndexRef.current = playIndex;
@@ -1357,27 +1369,19 @@ export default function VideoPlayer({
     };
   }, []);
 
-  // 播放源切换（媒体 tab 切换）：switchUrl 更新，不重建实例（画中画/播放状态保持）。
-  // 用 lastUrlRef 记录「上次已成功切换的 url」而非镜像 prop：若镜像 prop 提前
-  // 同步，切换 effect 的短路判断会恒真，switchUrl 永不执行（StrictMode 下更甚）。
-  const lastUrlRef = useRef(url);
+  // 播放源切换（媒体 tab 切换）：经 switchTo 更新，不重建实例（画中画/播放状态保持）。
   useEffect(() => {
     const art = artRef.current;
     if (!art) return;
-    if (url === lastUrlRef.current) return;
+    if (url === targetUrlRef.current) return;
     applyRate(1);
     const thumbVideo = thumbVideoRef.current;
     if (thumbVideo) {
       thumbVideo.src = url;
       thumbVideo.load();
     }
-    void art
-      .switchUrl(url)
-      .then(() => {
-        lastUrlRef.current = url;
-      })
-      .catch(() => {});
-  }, [url, applyRate]);
+    void switchTo(url).catch(() => {});
+  }, [url, applyRate, switchTo]);
 
   // 媒体类型切换（video ↔ audio）：更新 poster，并收起只对画面有意义的控件
   useEffect(() => {
