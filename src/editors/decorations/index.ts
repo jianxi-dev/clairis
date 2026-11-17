@@ -60,8 +60,14 @@ import { createColumnsDecorations } from "./columns";
 import { createStructuralTagDecorations } from "./structuralTags";
 import { createAlignFenceDecorations } from "./alignFence";
 import { createFoldDecorations, foldState } from "./fold";
+import {
+  createFrontmatterHideDecorations,
+  type FrontmatterHideOptions,
+} from "./frontmatterHide";
 import { editorDecorationsThemeExt } from "./theme";
 import { getBlocks, getBlockAt } from "../block-model";
+
+export type { FrontmatterHideOptions } from "./frontmatterHide";
 
 /**
  * `editorDecorations()` 的选项，全部可选。
@@ -94,6 +100,12 @@ export interface EditorDecorationsOptions {
   hydrateMermaid?: MermaidHydrator;
   /** 交给 mermaid 水合器的主题；缺省读文档根的 `data-theme`。 */
   mermaidTheme?: MermaidTheme;
+  /**
+   * 面板可见且编辑态时隐藏文档开头 frontmatter 源码块；null/缺省不隐藏。
+   * 由 ContentArea 按属性面板显隐档 + 折叠态注入，随 `decorCompartment`
+   * 热重配（不重建 EditorView）。
+   */
+  frontmatterHide?: FrontmatterHideOptions | null;
 }
 
 // --- IME 组合守卫 -------------------------------------------------------------
@@ -202,6 +214,19 @@ function buildDecorationSet(
     ...createAlignFenceDecorations(docText),
     ...createFoldDecorations(state, state.field(foldState)),
   ];
+
+  // frontmatter 隐藏是替换装饰：区间内既有装饰（如 hr 把 `---` 当分割线）
+  // 必须剔除，否则孤立的行样式会落到正文首行。
+  const fmh = createFrontmatterHideDecorations(state, options?.frontmatterHide);
+  if (fmh) {
+    const intersectsHidden = (d: Range<Decoration>): boolean =>
+      d.from === d.to
+        ? d.from >= fmh.from && d.from < fmh.to
+        : d.from < fmh.to && d.to > fmh.from;
+    const kept = all.filter((d) => !intersectsHidden(d));
+    all.length = 0;
+    all.push(...kept, ...fmh.decorations);
+  }
 
   // 按起点排序（CM6 要求）
   all.sort((a, b) => a.from - b.from || a.value.startSide - b.value.startSide);

@@ -1,0 +1,33 @@
+{
+  "task": "1019",
+  "states": [
+    {
+      "state": "01-edit-expanded-hidden",
+      "screenshot": ".artifacts/1019/01-edit-expanded-hidden.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-17T13:12:44.876Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "02-collapsed-summary",
+      "screenshot": ".artifacts/1019/02-collapsed-summary.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-17T13:12:44.975Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "03-panel-hidden-yaml-restored",
+      "screenshot": ".artifacts/1019/03-panel-hidden-yaml-restored.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-17T13:12:45.961Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "04-source-yaml-visible",
+      "screenshot": ".artifacts/1019/04-source-yaml-visible.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-17T13:12:45.993Z",
+      "runner": "mason@unknown"
+    }
+  ]
+}
