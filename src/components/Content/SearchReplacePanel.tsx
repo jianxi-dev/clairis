@@ -30,7 +30,7 @@ import {
 import { digitFromCode } from "../../lib/gridKeyboard";
 import { activateLocalContext } from "../../lib/shortcuts";
 import { useSearchFloatStore } from "../../stores/searchFloat";
-import { getActiveEditorView } from "../../editors/editorRef";
+import { getEditorView } from "../../editors/editorRef";
 import type { EditorMode, SearchPanelDefaultPos } from "../../types";
 
 const BLOCK_TYPE_LABELS: Record<string, string> = {
@@ -223,7 +223,7 @@ export default function SearchReplacePanel({
         }
         return;
       }
-      const view = getActiveEditorView();
+      const view = getEditorView(panelId);
       if (!view) return;
       view.dispatch({
         selection: { anchor: hit.from, head: hit.to },
@@ -231,7 +231,7 @@ export default function SearchReplacePanel({
       });
       view.focus();
     },
-    [mode, container],
+    [mode, container, panelId],
   );
 
   const canReplace = mode !== "preview";
@@ -247,7 +247,7 @@ export default function SearchReplacePanel({
   };
 
   const replaceOne = () => {
-    const view = getActiveEditorView();
+    const view = getEditorView(panelId);
     const hit = hits[safeSelected];
     if (!view || !hit) return;
     const changes = buildReplaceChanges([hit], replacement);
@@ -269,7 +269,7 @@ export default function SearchReplacePanel({
   };
 
   const replaceAll = () => {
-    const view = getActiveEditorView();
+    const view = getEditorView(panelId);
     if (!view || hits.length === 0) return;
     const changes = buildReplaceChanges(hits, replacement);
     if (changes.length === 0) return;
@@ -340,10 +340,10 @@ export default function SearchReplacePanel({
     if (open) {
       inputRef.current?.focus();
     } else if (prevOpenRef.current) {
-      getActiveEditorView()?.focus();
+      getEditorView(panelId)?.focus();
     }
     prevOpenRef.current = open;
-  }, [open]);
+  }, [open, panelId]);
 
   useEffect(() => {
     if (!open) return;

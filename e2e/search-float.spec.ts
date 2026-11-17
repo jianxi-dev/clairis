@@ -24,6 +24,56 @@ const LONG_DOC = Array.from(
   (_, i) => `第 ${i + 1} 段命中`,
 ).join("\n\n");
 
+const DOC_A = [
+  "# 文档甲",
+  "",
+  ...Array.from({ length: 40 }, (_, i) => `甲第 ${i + 1} 行填充`),
+].join("\n");
+
+const DOC_B = [
+  "# 文档乙",
+  "",
+  ...Array.from({ length: 40 }, (_, i) => `第 ${i + 1} 行填充`),
+  "",
+  "目标命中第一处",
+  "",
+  "目标命中第二处",
+].join("\n");
+
+async function paneIds(page: Page): Promise<{ main: string; split: string }> {
+  return page.evaluate(() => {
+    const store = (
+      window as unknown as {
+        __biaoyue_store__: {
+          getState: () => {
+            paneRoot: { type: string; id: string; children?: unknown[] };
+            focusedPaneId: string;
+          };
+        };
+      }
+    ).__biaoyue_store__;
+    const ids: string[] = [];
+    const walk = (node: { type: string; id: string; children?: unknown[] }) => {
+      if (node.type === "leaf") ids.push(node.id);
+      else (node.children ?? []).forEach((child) => walk(child as never));
+    };
+    walk(store.getState().paneRoot);
+    return { main: ids[0], split: store.getState().focusedPaneId };
+  });
+}
+
+async function paneProbe(page: Page, paneId: string) {
+  return page.evaluate((pid) => {
+    const el = document.querySelector(`[data-pane-id="${pid}"]`);
+    if (!el) return null;
+    const scroller = el.querySelector<HTMLElement>(".cm-scroller");
+    return {
+      selections: el.querySelectorAll(".cm-selectionBackground").length,
+      scrollTop: scroller ? Math.round(scroller.scrollTop) : null,
+    };
+  }, paneId);
+}
+
 async function boot(page: Page): Promise<void> {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto(APP_URL, { waitUntil: "networkidle" });
@@ -588,4 +638,93 @@ test("预览态 ⌘F：无替换切换按钮、无替换行", async ({ page }) =
   await expect(
     page.locator('[data-testid="search-float-replace-row"]'),
   ).toHaveCount(0);
+});
+
+test("分栏：B 格浮窗点击行定位到 B 格、A 格不动；⌘N 直达后 ⏎ 跟随并定位", async ({
+  page,
+}) => {
+  await openDoc(page, DOC_A, "/Users/test/a.md");
+  await setMode(page, "edit");
+
+  await page.evaluate(() => {
+    (
+      window as unknown as {
+        __biaoyue_store__: {
+          getState: () => { splitPane: (d: string) => void };
+        };
+      }
+    ).__biaoyue_store__
+      .getState()
+      .splitPane("row");
+  });
+  await openDoc(page, DOC_B, "/Users/test/b.md");
+
+  const { main, split } = await paneIds(page);
+  expect(main).toBe("main");
+  await page.evaluate((id) => {
+    (
+      window as unknown as {
+        __biaoyue_store__: {
+          getState: () => {
+            setPaneEditorMode: (id: string, m: string) => void;
+          };
+        };
+      }
+    ).__biaoyue_store__
+      .getState()
+      .setPaneEditorMode(id, "edit");
+  }, split);
+
+  await page.locator('[data-pane-id="main"] .cm-content').click();
+  await page.evaluate((id) => {
+    (
+      window as unknown as {
+        __biaoyue_store__: {
+          getState: () => { focusPane: (id: string) => void };
+        };
+      }
+    ).__biaoyue_store__
+      .getState()
+      .focusPane(id);
+  }, split);
+  await page.keyboard.press("Meta+f");
+  const float = page.locator(
+    `[data-pane-id="${split}"] [data-testid="search-float"]`,
+  );
+  await expect(float).toBeVisible();
+
+  await float.locator('[data-testid="search-float-input"]').fill("目标命中");
+  const rows = float.locator('[data-testid="search-float-hit"]');
+  await expect(rows).toHaveCount(2);
+  await expect(rows.nth(0).locator(".search-float-key")).toHaveText("⏎");
+  await expect(rows.nth(1).locator(".search-float-key")).toHaveText("⌘2");
+
+  await rows.nth(1).click();
+
+  await expect
+    .poll(async () => {
+      const b = await paneProbe(page, split);
+      return (b?.selections ?? 0) > 0 && (b?.scrollTop ?? 0) > 0;
+    })
+    .toBe(true);
+  const bAfterClick = await paneProbe(page, split);
+  const aAfterClick = await paneProbe(page, main);
+  expect(bAfterClick?.selections ?? 0).toBeGreaterThan(0);
+  expect(aAfterClick?.selections ?? 0).toBe(0);
+  expect(bAfterClick?.scrollTop ?? 0).toBeGreaterThan(0);
+  expect(aAfterClick?.scrollTop ?? 0).toBe(0);
+
+  await float.locator('[data-testid="search-float-input"]').click();
+  await page.keyboard.press("Meta+1");
+  await expect(rows.nth(0).locator(".search-float-key")).toHaveText("⏎");
+  await expect(rows.nth(1).locator(".search-float-key")).toHaveText("⌘2");
+
+  await page.keyboard.press("Enter");
+  await expect
+    .poll(async () => (await paneProbe(page, split))?.selections ?? 0)
+    .toBeGreaterThan(0);
+  const bAfterEnter = await paneProbe(page, split);
+  const aAfterEnter = await paneProbe(page, main);
+  expect(bAfterEnter?.selections ?? 0).toBeGreaterThan(0);
+  expect(aAfterEnter?.selections ?? 0).toBe(0);
 });

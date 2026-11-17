@@ -12,7 +12,7 @@
 
 ## 1. 浮窗壳线
 
-- [ ] 1.1 浮窗壳样式与 8 向缩放复用
+- [x] 1.1 浮窗壳样式与 8 向缩放复用
   - **What to build**：重构 `src/components/Content/SearchReplacePanel.tsx` 浮窗壳：复用悬浮预览窗视觉范式（surface 底、border 描边、圆角、投影，落 `src/styles/search-float.css` 对齐 `FloatingPreview` 的样式语言）；8 向缩放接线——`onPointerDown` 判定缩放方向复用 `src/lib/previewAnchor.ts` 的 `RESIZE_EDGES`，指针移动走 `resizePreview()`、尺寸钳制走 `clampPreviewSize()`，壳层封装统一包装（D1，固定传入搜索浮窗最小尺寸宽 320、高 240，默认 600×460 不被误钳）；移除右下角单一缩放手柄，标题栏拖动保持。新建/调整 `search-float-*` class 全部落 `src/styles/`（CSS manifest 通过）。**接线归属**：previewAnchor 复用为既有 API（`RESIZE_EDGES`/`resizePreview`/`clampPreviewSize`），本票仅接线调用、不导出新 API；壳样式与缩放状态归 `SearchReplacePanel` 组件。**数据面**：无。**标签建议**：ui-surface
   - **Acceptance criteria**：
     - 打开页面按 ⌘F，搜索浮窗观感与文件卡片悬浮窗一致（surface 底、border、圆角、投影，浏览器计算样式可见）。
@@ -21,7 +21,7 @@
     - 右下角旧单一缩放手柄不再单独存在（8 向缩放覆盖其能力）。
     - vitest 覆盖包装函数：默认尺寸不被默认钳制误钳、各方向缩放边界正确。
     - e2e：指针拖拽四边与四角后断言浮窗尺寸变化（浏览器可观测）。
-- [ ] 1.2 行尾快捷键与点击定位缺陷修复
+- [x] 1.2 行尾快捷键与点击定位缺陷修复
   - **What to build**：修复 S-3 两项缺陷（DQ-2：G1 真机复现先定性根因，票面假设不是结论）。**⏎ 随选中行显示**：规格目标是「行被选中（↑↓ 换选或 ⌘N 直达）即显示 ⏎，不要求点击」（S-3 delta）。静态读码显示行尾渲染条件（L682-684）已按 `safeSelected` 切换、↑↓ 也更新 `selected`——但用户实测「点击行才显示回车」，根因待定性：候选①换选更新链路在真机未生效（焦点/事件被截），候选②用户实测版本滞后，候选③渲染条件在特定命中数/滚动态下不随行。复现确认后按实际根因修复。**点击定位窗格归属修复**：`locate()` 编辑态改用 `getEditorView(panelId)` 取浮窗所属窗格的编辑器视图做选区与滚动；预览态在所属窗格的 `.preview-content` 容器内做文本树滚动定位，限定所属窗格（D3）；真机复现确认「分栏/焦点漂移定位错格」成立后落地，另发现根因则 D3 修订后再落。**接线归属**：`getEditorView(panelId)` 为既有模块级 Map API（`src/editors/editorRef.ts`），本票改调用目标；快捷键局部 scope 复用 `src/lib/shortcuts.ts` 既有 `activateLocalContext` 接线，不新增键段。**数据面**：无（见 change 六栏表）。**标签建议**：ui-surface
   - **Acceptance criteria**：
     - 打开页面按 ⌘F，按 ↓ 或 ↑ 换选结果行时，当前选中行行尾立即显示 ⏎（无需点击即出现）；其余行 1~9 显示 ⌘1~⌘9。
