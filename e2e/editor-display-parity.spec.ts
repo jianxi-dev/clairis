@@ -2,7 +2,7 @@ import { test, expect, type Page } from "@playwright/test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = process.env.APP_URL ?? "http://localhost:1420";
 const ART = path.resolve(process.cwd(), ".artifacts/700");
 const ART_701 = path.resolve(process.cwd(), ".artifacts/701");
 
@@ -539,4 +539,175 @@ test("等宽统一：编辑态行内/围栏代码与预览 code 的 font-family 
   expect(editFonts!.body).toBe(previewFonts!.body);
   expect(editFonts!.inline).toBe(editFonts!.fence);
   expect(editFonts!.inline).toBe(previewFonts!.code);
+});
+
+// ── #1047：MD 编辑态行内代码显示同预览 ─────────────────────────────
+// 编辑态行内代码有三处来源：正文 CM 装饰 .cm-inline-code、表格单元格与分栏
+// widget 内 renderCellText 渲染的 <code>。三者与预览 .preview-content code
+// 的计算底色 / 圆角 / 等宽必须逐字一致（A-9.1）。
+const ART_1047 = path.resolve(process.cwd(), ".artifacts/1047");
+mkdirSync(ART_1047, { recursive: true });
+
+async function shot1047(page: Page, name: string): Promise<void> {
+  await page.screenshot({ path: path.join(ART_1047, `${name}.png`) });
+}
+
+interface InlineCodeStyle {
+  backgroundColor: string;
+  borderRadius: string;
+  fontFamily: string;
+}
+
+function readEditInlineCode(page: Page) {
+  return page.evaluate(() => {
+    const pick = (el: Element | null): InlineCodeStyle | null => {
+      if (!el) return null;
+      const cs = getComputedStyle(el);
+      return {
+        backgroundColor: cs.backgroundColor,
+        borderRadius: cs.borderRadius,
+        fontFamily: cs.fontFamily,
+      };
+    };
+    return {
+      paragraph: pick(document.querySelector(".cm-editor .cm-inline-code")),
+      table: pick(document.querySelector(".cm-editor .cm-table code")),
+      columns: pick(document.querySelector(".cm-editor .cm-columns code")),
+    };
+  });
+}
+
+function readPreviewInlineCode(page: Page) {
+  return page.evaluate(() => {
+    const pick = (el: Element | null): InlineCodeStyle | null => {
+      if (!el) return null;
+      const cs = getComputedStyle(el);
+      return {
+        backgroundColor: cs.backgroundColor,
+        borderRadius: cs.borderRadius,
+        fontFamily: cs.fontFamily,
+      };
+    };
+    return {
+      paragraph: pick(document.querySelector(".preview-content p code")),
+      table: pick(document.querySelector(".preview-content td code")),
+      columns: pick(
+        document.querySelector(".preview-content .layout-col-2 code"),
+      ),
+    };
+  });
+}
+
+test("行内代码显示同预览：正文装饰与容器 <code> 的底色/圆角/等宽一致（#1047）", async ({
+  page,
+}) => {
+  const body = [
+    "# 标题",
+    "",
+    "这是一段 `pcode` 的正文。",
+    "",
+    "| 表头 | 表头 |",
+    "| --- | --- |",
+    "| 单元格 `tcode` | x |",
+    "",
+    "::: {.col-2}",
+    "",
+    "左 `lcode`",
+    "",
+    "右 `rcode`",
+    "",
+    ":::",
+    "",
+  ].join("\n");
+  await openInEditMode(page, body);
+
+  const editBefore = await readEditInlineCode(page);
+  expect(editBefore.paragraph).not.toBeNull();
+  expect(editBefore.table).not.toBeNull();
+  expect(editBefore.columns).not.toBeNull();
+  await shot1047(page, "01-edit-inline-code-before");
+
+  await page.evaluate(() => {
+    const store = (window as unknown as Record<string, any>).__biaoyue_store__;
+    store.getState().setEditorMode("preview");
+  });
+  await page.locator(".preview-content").waitFor({ timeout: 10000 });
+
+  const preview = await readPreviewInlineCode(page);
+  expect(preview.paragraph).not.toBeNull();
+  expect(preview.table).not.toBeNull();
+  expect(preview.columns).not.toBeNull();
+  await shot1047(page, "02-preview-inline-code");
+
+  expect(editBefore.paragraph).toEqual(preview.paragraph);
+  expect(editBefore.table).toEqual(preview.table);
+  expect(editBefore.columns).toEqual(preview.columns);
+
+  await page.evaluate(() => {
+    const store = (window as unknown as Record<string, any>).__biaoyue_store__;
+    store.getState().setEditorMode("edit");
+  });
+  await page.locator(".cm-content").waitFor({ timeout: 10000 });
+
+  await page.locator(".cm-editor .cm-line", { hasText: "pcode" }).click();
+  await expect(page.locator(".cm-editor .cm-code-marker-active")).toHaveCount(
+    2,
+  );
+  await expect(
+    page.locator(".cm-editor .cm-code-marker-active").first(),
+  ).toHaveCSS("opacity", "0.4");
+
+  await page.locator(".cm-editor .cm-line", { hasText: "标题" }).click();
+  await expect(page.locator(".cm-editor .cm-code-marker-active")).toHaveCount(
+    0,
+  );
+  const hiddenLineText = await page.evaluate(() => {
+    const line = [
+      ...document.querySelectorAll<HTMLElement>(".cm-editor .cm-line"),
+    ].find((el) => (el.textContent ?? "").includes("pcode"));
+    return line?.textContent ?? null;
+  });
+  expect(hiddenLineText).not.toContain("`");
+
+  const editAfter = await readEditInlineCode(page);
+  expect(editAfter.paragraph).toEqual(editBefore.paragraph);
+  expect(editAfter.table).toEqual(editBefore.table);
+  expect(editAfter.columns).toEqual(editBefore.columns);
+  await shot1047(page, "03-edit-inline-code-after");
+  await shot1047(page, "04-mode-switch-stable");
+
+  writeFileSync(
+    path.join(ART_1047, "state-coverage.json"),
+    JSON.stringify(
+      {
+        task: "3.1",
+        change: "editor-surface-batch21",
+        issue: 1047,
+        states: [
+          {
+            state: "edit-inline-code-before",
+            screenshot: ".artifacts/1047/01-edit-inline-code-before.png",
+            assertion: "passed",
+          },
+          {
+            state: "preview-inline-code",
+            screenshot: ".artifacts/1047/02-preview-inline-code.png",
+            assertion: "passed",
+          },
+          {
+            state: "edit-inline-code-after",
+            screenshot: ".artifacts/1047/03-edit-inline-code-after.png",
+            assertion: "passed",
+          },
+          {
+            state: "mode-switch-stable",
+            screenshot: ".artifacts/1047/04-mode-switch-stable.png",
+            assertion: "passed",
+          },
+        ],
+      },
+      null,
+      2,
+    ),
+  );
 });

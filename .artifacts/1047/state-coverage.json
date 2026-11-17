@@ -1,0 +1,27 @@
+{
+  "task": "3.1",
+  "change": "editor-surface-batch21",
+  "issue": 1047,
+  "states": [
+    {
+      "state": "edit-inline-code-before",
+      "screenshot": ".artifacts/1047/01-edit-inline-code-before.png",
+      "assertion": "passed"
+    },
+    {
+      "state": "preview-inline-code",
+      "screenshot": ".artifacts/1047/02-preview-inline-code.png",
+      "assertion": "passed"
+    },
+    {
+      "state": "edit-inline-code-after",
+      "screenshot": ".artifacts/1047/03-edit-inline-code-after.png",
+      "assertion": "passed"
+    },
+    {
+      "state": "mode-switch-stable",
+      "screenshot": ".artifacts/1047/04-mode-switch-stable.png",
+      "assertion": "passed"
+    }
+  ]
+}
