@@ -1398,6 +1398,10 @@ export default function DocPropertyBar({
     tplStatusTimer.current = window.setTimeout(() => setTplStatus(null), 3000);
   }, []);
 
+  const [overrideMap, setOverrideMap] = useState<
+    Record<string, Record<string, FrontmatterType>>
+  >({});
+
   const handleApplyTemplate = useCallback(
     (template: PropTemplateConfig) => {
       const parsedNow = parseFrontmatter(content, propAliasMap);
@@ -1415,16 +1419,22 @@ export default function DocPropertyBar({
           changes: { from: result.from, to: result.to, insert: result.block },
         });
       }
+      const baseKeys = new Set(base.map((f) => f.key));
+      setOverrideMap((prev) => {
+        const cur = prev[docKey] ?? {};
+        const merged = { ...cur };
+        for (const field of next) {
+          if (!baseKeys.has(field.key)) merged[field.key] = field.type;
+        }
+        return { ...prev, [docKey]: merged };
+      });
       showTplStatus(
         `套用模板「${template.name}」→ 新增 ${added} 个字段${skipped ? `，跳过 ${skipped} 个已有键` : ""}`,
       );
     },
-    [content, propAliasMap, showTplStatus],
+    [content, propAliasMap, showTplStatus, docKey],
   );
 
-  const [overrideMap, setOverrideMap] = useState<
-    Record<string, Record<string, FrontmatterType>>
-  >({});
   const [typeErrors, setTypeErrors] = useState<Record<string, string>>({});
   const typeErrorTimer = useRef<number | null>(null);
   const typeOverrides = overrideMap[docKey] ?? EMPTY_OVERRIDES;
@@ -1496,6 +1506,21 @@ export default function DocPropertyBar({
     () => parseFrontmatter(content, propAliasMap),
     [content, propAliasMap],
   );
+  // 撤销 / 删字段后键已不存在：剪掉失效类型覆盖，避免同键重建时被旧类型劫持（#1045）。
+  useEffect(() => {
+    if (!docKey) return;
+    setOverrideMap((prev) => {
+      const cur = prev[docKey];
+      if (!cur) return prev;
+      const present = new Set(parsed.fields.map((f) => f.key));
+      const next: Record<string, FrontmatterType> = {};
+      for (const [key, type] of Object.entries(cur)) {
+        if (present.has(key)) next[key] = type;
+      }
+      if (Object.keys(next).length === Object.keys(cur).length) return prev;
+      return { ...prev, [docKey]: next };
+    });
+  }, [docKey, parsed]);
   const fields = useMemo(() => {
     if (Object.keys(typeOverrides).length === 0) return parsed.fields;
     return parsed.fields.map((f) => {

@@ -1,0 +1,33 @@
+{
+  "task": "1045",
+  "states": [
+    {
+      "state": "01-before-apply",
+      "screenshot": ".artifacts/1045/01-before-apply.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-17T20:17:52.684Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "02-after-apply-typed",
+      "screenshot": ".artifacts/1045/02-after-apply-typed.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-17T20:17:52.750Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "03-undo-restored",
+      "screenshot": ".artifacts/1045/03-undo-restored.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-17T20:17:52.789Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "04-existing-values-untouched",
+      "screenshot": ".artifacts/1045/04-existing-values-untouched.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-17T20:17:52.927Z",
+      "runner": "mason@unknown"
+    }
+  ]
+}

@@ -70,6 +70,30 @@ async function applyTemplate(page: Page, name: string): Promise<void> {
   await page.locator(`[data-name="${name}"]`).click();
 }
 
+async function setMode(page: Page, mode: "preview" | "edit" | "source") {
+  await page.evaluate((m) => {
+    (
+      window as unknown as {
+        __biaoyue_store__: {
+          getState: () => { setEditorMode: (m: string) => void };
+        };
+      }
+    ).__biaoyue_store__
+      .getState()
+      .setEditorMode(m as "preview" | "edit" | "source");
+  }, mode);
+}
+
+async function openDoc(page: Page, content: string): Promise<void> {
+  await page.evaluate((c) => {
+    (
+      window as unknown as {
+        __biaoyue_openFile__: (p: string, c: string, t?: string) => boolean;
+      }
+    ).__biaoyue_openFile__("/Users/test/existing.md", c, "existing.md");
+  }, content);
+}
+
 test("内置模板字段类型可编辑并恢复默认（#1023）", async ({ page }) => {
   await page.setViewportSize({ width: 1100, height: 800 });
   await boot(page);
@@ -130,7 +154,7 @@ test("内置模板字段类型可编辑并恢复默认（#1023）", async ({ pag
   ).toHaveCount(0);
   await dpbRecord(page, "1023", "03-template-restored");
 
-  // 再次套用 → 回落内置定义（非日期）。
+  // 再次套用 → 回落内置定义（文本，非日期）：模板默认类型同样被保持（#1045）。
   await page.keyboard.press("Escape");
   await newDoc(page);
   await applyTemplate(page, "会议记录");
@@ -138,7 +162,107 @@ test("内置模板字段类型可编辑并恢复默认（#1023）", async ({ pag
     dateRow.locator('[data-testid="dpb-type"] .dpb-ico-svg'),
   ).toHaveCount(0);
   await expect(dateRow.locator('[data-testid="dpb-type"] .dpb-ico')).toHaveText(
-    "?",
+    "Aa",
   );
   await dpbRecord(page, "1023", "04-template-applied-builtin");
+});
+
+test("套用编辑后的内置「通用」保留模板字段类型且撤销不留残（#1045）", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1100, height: 800 });
+  await boot(page);
+  await openSettings(page);
+
+  // 把内置「通用」的 category 改日期、status 改数字：两者都命中内置别称表
+  // （category→select、status→select），可暴露「模板类型被别称改写」。
+  await page.locator('[data-testid="tpl-edit-通用"]').click();
+  await expect(page.locator('[data-testid="tpl-editing"]')).toContainText(
+    "通用",
+  );
+  await page.locator('[data-testid="tpl-field-type-0"]').selectOption("date");
+  await page.locator('[data-testid="tpl-field-value-0"]').fill("2026-11-17");
+  await page.locator('[data-testid="tpl-field-type-2"]').selectOption("number");
+  await page.locator('[data-testid="tpl-field-value-2"]').fill("7");
+  await page.locator('[data-testid="tpl-save"]').click();
+  await expect(page.locator('[data-testid="tpl-restore-通用"]')).toBeVisible();
+
+  // 覆盖层已落库：通用模板 category=date、status=number。
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const raw = localStorage.getItem("__mock_config");
+        if (!raw) return null;
+        const cfg = JSON.parse(raw) as {
+          propTemplates?: Array<{
+            name: string;
+            fields: Array<{ key: string; type: string }>;
+          }>;
+        };
+        const t = cfg.propTemplates?.find((x) => x.name === "通用");
+        const type = (k: string) =>
+          t?.fields.find((f) => f.key === k)?.type ?? "";
+        return `${type("category")}/${type("status")}`;
+      }),
+    )
+    .toBe("date/number");
+
+  // 新文档：套用前没有 category / status。
+  await page.keyboard.press("Escape");
+  await expect(page.locator('[data-testid="settings-scene"]')).toHaveCount(0);
+  await newDoc(page);
+  await expect(page.locator('[data-key="category"]')).toHaveCount(0);
+  await expect(page.locator('[data-key="status"]')).toHaveCount(0);
+  await dpbRecord(page, "1045", "01-before-apply");
+
+  // 套用「通用」→ 新增键的渲染类型严格等于模板定义（日期 / 数字）。
+  await applyTemplate(page, "通用");
+  const catRow = page.locator('[data-key="category"]');
+  const statusRow = page.locator('[data-key="status"]');
+  await expect(
+    catRow.locator('[data-testid="dpb-type"] .dpb-ico-svg'),
+  ).toHaveCount(1);
+  await expect(catRow.locator('[data-testid="dpb-type"]')).toHaveAttribute(
+    "title",
+    /日期/,
+  );
+  await expect(
+    statusRow.locator('[data-testid="dpb-type"] .dpb-ico'),
+  ).toHaveText("123");
+  await expect(statusRow.locator('[data-testid="dpb-type"]')).toHaveAttribute(
+    "title",
+    /数字/,
+  );
+  await dpbRecord(page, "1045", "02-after-apply-typed");
+
+  // 一次 Ctrl+Z 回到套用前（无 category / status）。
+  await page.locator(".cm-content").first().click();
+  await page.keyboard.press("Meta+Z");
+  await expect(page.locator('[data-key="category"]')).toHaveCount(0);
+  await expect(page.locator('[data-key="status"]')).toHaveCount(0);
+  await dpbRecord(page, "1045", "03-undo-restored");
+
+  // 撤销后再套用：仍按当前模板定义渲染，失效覆盖未劫持同键重建。
+  await applyTemplate(page, "通用");
+  await expect(
+    catRow.locator('[data-testid="dpb-type"] .dpb-ico-svg'),
+  ).toHaveCount(1);
+  await expect(
+    statusRow.locator('[data-testid="dpb-type"] .dpb-ico'),
+  ).toHaveText("123");
+
+  // 既有值不被覆盖：已有 category / status 的文档套用后值原样。
+  await openDoc(
+    page,
+    `---\ntitle: 既有值\ncategory: 自定义分类\nstatus: 已定稿\n---\n\n# 正文\n`,
+  );
+  await setMode(page, "edit");
+  await applyTemplate(page, "通用");
+  await expect(
+    page.locator('[data-key="category"] [data-testid="dpb-value"]'),
+  ).toHaveText("自定义分类");
+  await expect(
+    page.locator('[data-key="status"] [data-testid="dpb-value"]'),
+  ).toHaveText("已定稿");
+  await dpbRecord(page, "1045", "04-existing-values-untouched");
 });
