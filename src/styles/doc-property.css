@@ -355,6 +355,26 @@
   width: 18px;
 }
 
+/* B 行尾单行删除（A-2.3 第 5 列 = 删除 18px） */
+.dpb-b-del {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-4);
+  background: transparent;
+  color: var(--app-text-3);
+  cursor: pointer;
+}
+
+.dpb-b-del:hover {
+  background: var(--app-surface);
+  color: #a8402f;
+}
+
 .dpb-b-foot {
   font-size: 11px;
   color: var(--app-text-3);
