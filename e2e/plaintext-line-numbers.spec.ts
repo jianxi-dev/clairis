@@ -270,7 +270,9 @@ test("A-23.4：同一段代码编辑态与预览态盒子（字体 / 背景 / �
   await shot920(page, "code-box-edit", "passed");
 
   await setMode(page, "preview");
-  await page.locator(".preview-content .code-block").waitFor({ timeout: 10000 });
+  await page
+    .locator(".preview-content .code-block")
+    .waitFor({ timeout: 10000 });
 
   const previewBox = await page.evaluate(() => {
     const pre = document.querySelector<HTMLElement>(
@@ -296,4 +298,163 @@ test("A-23.4：同一段代码编辑态与预览态盒子（字体 / 背景 / �
   expect(editBox!.paddingRight).toBe(previewBox!.paddingRight);
   expect(editBox!.paddingBottom).toBe(previewBox!.paddingBottom);
   expect(editBox!.paddingLeft).toBe(previewBox!.paddingLeft);
+});
+
+// ── #1051 / A-13：预览态纯文本 / 脚本行号列 ─────────────────────
+// 预览 .txt / .js 出现逐行的重点行号列；字体 / 颜色严格复用编辑态行号槽 token；
+// 行号与分隔线之间保留非零间隙；Markdown 预览不引入行号节点。
+const ART_1051 = path.resolve(process.cwd(), ".artifacts/1051");
+
+function shot1051(page: Page, name: string): Promise<string> {
+  mkdirSync(ART_1051, { recursive: true });
+  const file = path.join(ART_1051, `${name}.png`);
+  return page.screenshot({ path: file }).then(() => {
+    execFileSync(
+      EVIDENCE,
+      [
+        "record-state",
+        ART_1051,
+        "--state",
+        name,
+        "--screenshot",
+        file,
+        "--assertion",
+        "passed",
+      ],
+      { stdio: "ignore" },
+    );
+    return file;
+  });
+}
+
+function previewNumberCounts(page: Page) {
+  return page.evaluate(() => ({
+    total: document.querySelectorAll("[data-preview-line-number]").length,
+    inPreview: document.querySelectorAll(
+      ".preview-content [data-preview-line-number]",
+    ).length,
+  }));
+}
+
+test("A-13.1：预览态 .txt / .js 出现逐行行号列", async ({ page }) => {
+  await boot(page);
+
+  await openFile(page, "/tmp/1051-preview.txt", TXT_DOC);
+  await setMode(page, "preview");
+  await page
+    .locator(".preview-content .code-block")
+    .waitFor({ timeout: 10000 });
+  const txt = await previewNumberCounts(page);
+  expect(txt.inPreview).toBeGreaterThanOrEqual(1);
+  expect(txt.inPreview).toBe(3);
+  await shot1051(page, "01-txt-preview-numbers");
+
+  await openFile(page, "/tmp/1051-preview.js", JS_DOC);
+  await setMode(page, "preview");
+  await page
+    .locator(".preview-content .code-block")
+    .waitFor({ timeout: 10000 });
+  const js = await previewNumberCounts(page);
+  expect(js.inPreview).toBeGreaterThanOrEqual(1);
+  expect(js.inPreview).toBe(4);
+});
+
+test("A-13.2：预览行号 font-family / 颜色与编辑态行号槽一致", async ({
+  page,
+}) => {
+  await boot(page);
+
+  await openFile(page, "/tmp/1051-parity.txt", TXT_DOC);
+  await awaitGuttersAtLeastOne(page);
+  const gutter = await page.evaluate(() => {
+    const el = document.querySelector<HTMLElement>(
+      ".cm-editor .cm-lineNumbers .cm-gutterElement",
+    );
+    if (!el) return null;
+    const cs = getComputedStyle(el);
+    return { fontFamily: cs.fontFamily, color: cs.color };
+  });
+  expect(gutter).not.toBeNull();
+
+  await setMode(page, "preview");
+  await page
+    .locator(".preview-content .code-block")
+    .waitFor({ timeout: 10000 });
+  const preview = await page.evaluate(() => {
+    const el = document.querySelector<HTMLElement>(
+      ".preview-content [data-preview-line-number]",
+    );
+    if (!el) return null;
+    const cs = getComputedStyle(el);
+    return { fontFamily: cs.fontFamily, color: cs.color };
+  });
+  expect(preview).not.toBeNull();
+  await shot1051(page, "02-editor-gutter-parity");
+
+  expect(preview!.fontFamily).toBe(gutter!.fontFamily);
+  expect(preview!.color).toBe(gutter!.color);
+});
+
+test("A-13.3：预览行号与分隔线之间存在非零间隙", async ({ page }) => {
+  await boot(page);
+
+  await openFile(page, "/tmp/1051-gap.txt", TXT_DOC);
+  await setMode(page, "preview");
+  await page
+    .locator(".preview-content .code-block")
+    .waitFor({ timeout: 10000 });
+
+  const gaps = await page.evaluate(() => {
+    const col = document.querySelector<HTMLElement>(
+      ".preview-content .code-line-numbers",
+    );
+    const num = document.querySelector<HTMLElement>(
+      ".preview-content [data-preview-line-number]",
+    );
+    if (!col || !num) return null;
+    const colRect = col.getBoundingClientRect();
+    const numRect = num.getBoundingClientRect();
+    return {
+      numberToSeparator: colRect.right - numRect.right,
+      paddingRight: getComputedStyle(col).paddingRight,
+    };
+  });
+  expect(gaps).not.toBeNull();
+  await shot1051(page, "03-gap-nonzero");
+
+  expect(gaps!.numberToSeparator).toBeGreaterThan(0);
+  expect(parseFloat(gaps!.paddingRight)).toBeGreaterThan(0);
+});
+
+test("A-13.4：Markdown 预览零行号，关闭文档后无残留", async ({ page }) => {
+  await boot(page);
+
+  await openFile(page, "/tmp/1051-preview.md", MD_DOC);
+  await setMode(page, "preview");
+  await page.locator(".preview-content").waitFor({ timeout: 10000 });
+  expect((await previewNumberCounts(page)).total).toBe(0);
+  await shot1051(page, "04-md-preview-none");
+
+  // 曾显示行号的文档关闭后，DOM 不残留行号节点。
+  await openFile(page, "/tmp/1051-close.txt", TXT_DOC);
+  await setMode(page, "preview");
+  await page
+    .locator(".preview-content .code-block")
+    .waitFor({ timeout: 10000 });
+  expect((await previewNumberCounts(page)).total).toBeGreaterThan(0);
+
+  await page.evaluate(() => {
+    const win = window as unknown as Record<string, any>;
+    const state = win.__biaoyue_store__.getState();
+    const id = Object.keys(state.tabs).find(
+      (k) => state.tabs[k].path === "/tmp/1051-close.txt",
+    );
+    if (id) state.closeTab(id);
+  });
+  await expect
+    .poll(async () => (await previewNumberCounts(page)).total, {
+      timeout: 5000,
+      intervals: [50],
+    })
+    .toBe(0);
 });

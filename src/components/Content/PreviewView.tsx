@@ -14,6 +14,7 @@ import { useEditorStore } from "../../stores/editorStore";
 import { useStore } from "../../stores";
 import { applyReaderSkin } from "../../hooks/useConfig";
 import { HEADING_LEVELS } from "../../lib/headingFonts";
+import { renderPreviewLineNumbers } from "../../lib/previewLineNumbers";
 import { isTauriEnv } from "../../utils/tauri";
 import { revealInFinder } from "../../lib/finder";
 import { log } from "../../utils/log";
@@ -692,18 +693,19 @@ function ImagePreview({ filePath }: { filePath: string }) {
 }
 
 function renderTextContent(content: string, lang?: string): string {
+  const numbers = renderPreviewLineNumbers(content);
   const highlighted = lang ? highlightCodeBlock(content, lang) : null;
   if (highlighted) {
     const label = `<div class="code-lang">${escapeHtmlText(lang ?? "")}</div>`;
     const copy = `<button class="code-copy" type="button">复制</button>`;
-    return `<div class="code-block wide">${label}${copy}<pre><code>${highlighted}</code></pre></div>`;
+    return `<div class="code-block wide has-line-numbers">${label}${copy}<div class="code-lines">${numbers}<pre><code>${highlighted}</code></pre></div></div>`;
   }
   const escaped = content
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
   // 纯文本预览也给复制按钮，与编辑态 copy-only 工具条一致（#921）。
-  return `<div class="code-block wide"><button class="code-copy" type="button">复制</button><pre style="white-space:pre-wrap;word-wrap:break-word">${escaped}</pre></div>`;
+  return `<div class="code-block wide has-line-numbers"><button class="code-copy" type="button">复制</button><div class="code-lines">${numbers}<pre style="white-space:pre-wrap;word-wrap:break-word">${escaped}</pre></div></div>`;
 }
 
 function escapeHtmlText(s: string): string {
