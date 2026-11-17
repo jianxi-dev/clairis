@@ -98,6 +98,18 @@ updated: 2026-11-15T10:30:00
 # 正文
 `;
 
+const THREE_SELECTABLE_DOC = `---
+title: 三可选字段
+tags:
+  - 甲
+score: 42
+note: 备注
+category: 草稿
+---
+
+# 正文
+`;
+
 async function boot(page: Page): Promise<void> {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto(APP_URL, { waitUntil: "networkidle" });
@@ -1273,6 +1285,65 @@ test("全选排除标题位与标签行，可手动再选标题", async ({ page 
   await expect(b.locator('[data-testid="dpb-ops-count"]')).toHaveText(
     "已选 3 项",
   );
+});
+
+test("全选/反选二态：连点两次全选→补集，文案两取值，标题/标签不参与", async ({
+  page,
+}) => {
+  await openDoc(page, THREE_SELECTABLE_DOC);
+  await setVariant(page, "B");
+  await setMode(page, "edit");
+  const b = panel(page, "B");
+  const selectAll = b.locator('[data-testid="dpb-select-all"]');
+
+  await expect(b.locator('[data-testid="dpb-ops"]')).toHaveCount(0);
+  await expect(selectAll).toHaveText("全选");
+
+  await selectAll.click();
+  await expect(b.locator('[data-testid="dpb-ops-count"]')).toHaveText(
+    "已选 3 项",
+  );
+  await expect(selectAll).toHaveText("反选");
+  await expect(b.locator('[data-key="title"].dpb-row-selected')).toHaveCount(0);
+  await expect(b.locator('[data-key="tags"].dpb-row-selected')).toHaveCount(0);
+  await expect(b.locator('[data-key="score"].dpb-row-selected')).toHaveCount(1);
+  await expect(b.locator('[data-key="note"].dpb-row-selected')).toHaveCount(1);
+  await expect(b.locator('[data-key="category"].dpb-row-selected')).toHaveCount(
+    1,
+  );
+  await dpbRecord(page, "1042", "01-selected-all");
+
+  await selectAll.click();
+  await expect(b.locator('[data-testid="dpb-ops"]')).toHaveCount(0);
+  await expect(selectAll).toHaveText("全选");
+  await expect(b.locator(".dpb-row-selected")).toHaveCount(0);
+  await dpbRecord(page, "1042", "02-inverted-empty");
+
+  await selectAll.click();
+  await expect(b.locator('[data-testid="dpb-ops-count"]')).toHaveText(
+    "已选 3 项",
+  );
+  await page.locator(".cm-content").first().click();
+  await expect(b.locator('[data-testid="dpb-ops"]')).toHaveCount(0);
+  await expect(selectAll).toHaveText("全选");
+  await expect(b.locator(".dpb-row-selected")).toHaveCount(0);
+  await dpbRecord(page, "1042", "03-cleared-after-outside-click");
+
+  await selectAll.click();
+  await b.locator('[data-key="score"] [data-testid="dpb-row-handle"]').click();
+  await expect(b.locator('[data-testid="dpb-ops-count"]')).toHaveText(
+    "已选 2 项",
+  );
+  await selectAll.click();
+  await expect(b.locator('[data-testid="dpb-ops-count"]')).toHaveText(
+    "已选 1 项",
+  );
+  await expect(b.locator('[data-key="score"].dpb-row-selected')).toHaveCount(1);
+  await expect(b.locator('[data-key="note"].dpb-row-selected')).toHaveCount(0);
+  await expect(b.locator('[data-key="category"].dpb-row-selected')).toHaveCount(
+    0,
+  );
+  await dpbRecord(page, "1042", "04-partial-invert");
 });
 
 test("选择模式：行内点击 = 选中/取消（不进编辑），行外点击清空", async ({
