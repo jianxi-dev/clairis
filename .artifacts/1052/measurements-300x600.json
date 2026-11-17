@@ -1,0 +1,36 @@
+{
+  "viewport": {
+    "width": 300,
+    "height": 600
+  },
+  "docScrollWidth": 300,
+  "bodyScrollWidth": 300,
+  "tabStrip": {
+    "left": 78,
+    "right": 216,
+    "top": 0,
+    "bottom": 27,
+    "width": 138,
+    "height": 27,
+    "overflowX": "auto",
+    "scrollWidth": 186,
+    "clientWidth": 138
+  },
+  "propertyHost": {
+    "left": 0,
+    "right": 300,
+    "top": 28,
+    "bottom": 116.5,
+    "width": 300,
+    "height": 88.5
+  },
+  "workspaceBody": {
+    "left": 0,
+    "right": 300,
+    "top": 0,
+    "bottom": 563,
+    "width": 300,
+    "height": 563
+  },
+  "rootsOver": []
+}
