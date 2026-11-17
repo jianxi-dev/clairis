@@ -1305,6 +1305,61 @@ test("操作条：无选中不出现；选中出现且粘贴禁用；复制后�
   await expect(page.locator('[data-testid="dpb-ops"]')).toHaveCount(0);
 });
 
+test("操作条七按钮为注册表 SVG 图标：无字形文本、描边 1.7（#1022）", async ({
+  page,
+}) => {
+  await openDoc(page, ROW_DOC);
+  await setVariant(page, "B");
+  await setMode(page, "edit");
+  const b = panel(page, "B");
+
+  await b
+    .locator('[data-key="category"] [data-testid="dpb-row-handle"]')
+    .click();
+  await expect(page.locator('[data-testid="dpb-ops"]')).toBeVisible();
+  await dpbRecord(page, "1022", "01-opsbar-visible");
+
+  const ops: Array<[string, string]> = [
+    ["copy", "copy"],
+    ["cut", "cut"],
+    ["paste", "paste"],
+    ["up", "arrowUp"],
+    ["down", "arrowDown"],
+    ["del", "trash"],
+    ["clear", "close"],
+  ];
+  for (const [id, icon] of ops) {
+    const btn = page.locator(`[data-testid="dpb-ops-${id}"]`);
+    await expect(btn.locator("svg")).toHaveCount(1);
+    await expect(btn.locator("svg")).toHaveAttribute("data-icon", icon);
+    expect((await btn.textContent())?.trim()).toBe("");
+    await expect(btn.locator("svg path").first()).toHaveAttribute(
+      "stroke-width",
+      "1.7",
+    );
+  }
+
+  await page.locator('[data-testid="dpb-ops-copy"]').click();
+  await expect(page.locator('[data-testid="dpb-ops-paste"]')).toBeEnabled();
+  await dpbRecord(page, "1022", "02-copy-click");
+
+  await page.locator('[data-testid="dpb-ops-del"]').click();
+  await expect(page.locator('[data-testid="dpb-ops"]')).toHaveCount(0);
+  expect(await rowKeys(page, "B")).toEqual([
+    "title",
+    "author",
+    "source",
+    "note",
+  ]);
+  await dpbRecord(page, "1022", "03-delete-selected");
+
+  await b.locator('[data-key="author"] [data-testid="dpb-row-handle"]').click();
+  await expect(page.locator('[data-testid="dpb-ops"]')).toBeVisible();
+  await page.locator('[data-testid="dpb-ops-clear"]').click();
+  await expect(page.locator('[data-testid="dpb-ops"]')).toHaveCount(0);
+  await dpbRecord(page, "1022", "04-close-clears");
+});
+
 test("删除所选字段保留标题位", async ({ page }) => {
   await openDoc(page, ROW_DOC);
   await setVariant(page, "B");

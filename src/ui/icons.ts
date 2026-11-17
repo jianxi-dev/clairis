@@ -113,6 +113,10 @@ export type IconName =
   | "redo"
   | "copy"
   | "trash"
+  | "cut"
+  | "paste"
+  | "arrowUp"
+  | "arrowDown"
   | "scissors"
   | "brush"
   | "alignLeft"
@@ -579,6 +583,22 @@ export const ICONS: Record<IconName, IconDef> = {
   trash: {
     label: "删除",
     s: "M4.5 7h15 M9 7V5.2A1.2 1.2 0 0 1 10.2 4h3.6A1.2 1.2 0 0 1 15 5.2V7 M6.5 7l.8 12.2A1.4 1.4 0 0 0 8.7 20.5h6.6a1.4 1.4 0 0 0 1.4-1.3L17.5 7",
+  },
+  cut: {
+    label: "剪下",
+    s: "M7 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 1 0 0-5z M7 13.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 1 0 0-5z M9.2 8.6 19.5 19 M19.5 5 9.2 15.4",
+  },
+  paste: {
+    label: "粘贴",
+    s: "M6.5 5h11a1.5 1.5 0 0 1 1.5 1.5v12a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 5 18.5v-12A1.5 1.5 0 0 1 6.5 5z M9 3h6v4H9z M8.5 12h7 M8.5 15.5h7",
+  },
+  arrowUp: {
+    label: "上移",
+    s: "M12 19V5 M6 11l6-6 6 6",
+  },
+  arrowDown: {
+    label: "下移",
+    s: "M12 5v14 M6 13l6 6 6-6",
   },
   scissors: {
     label: "剪切",

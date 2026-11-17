@@ -1,0 +1,33 @@
+{
+  "task": "1022",
+  "states": [
+    {
+      "state": "01-opsbar-visible",
+      "screenshot": ".artifacts/1022/01-opsbar-visible.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-17T11:54:15.090Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "02-copy-click",
+      "screenshot": ".artifacts/1022/02-copy-click.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-17T11:54:15.145Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "03-delete-selected",
+      "screenshot": ".artifacts/1022/03-delete-selected.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-17T11:54:15.186Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "04-close-clears",
+      "screenshot": ".artifacts/1022/04-close-clears.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-17T11:54:15.237Z",
+      "runner": "mason@unknown"
+    }
+  ]
+}

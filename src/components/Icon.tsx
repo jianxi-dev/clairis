@@ -15,7 +15,7 @@ interface IconProps {
  * 全站唯一图标组件（Layout Portal D9）。
  *
  * 24×24 viewBox + `fill="currentColor"`，所以颜色由外层 `color` / CSS 控制，
- * 不在这里写死；尺寸只允许 18 / 24 两档，避免出现第 N 种图标大小。
+ * 不在这里写死；尺寸只允许 14 / 18 / 24 三档，避免出现第 N 种图标大小。
  */
 export default function Icon({
   name,
