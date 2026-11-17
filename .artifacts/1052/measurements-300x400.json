@@ -1,0 +1,28 @@
+{
+  "viewport": {
+    "width": 300,
+    "height": 400
+  },
+  "docScrollWidth": 300,
+  "bodyScrollWidth": 300,
+  "paneHeader": {
+    "left": 0,
+    "right": 300,
+    "top": 0,
+    "bottom": 28,
+    "width": 300,
+    "height": 28
+  },
+  "tabStrip": {
+    "left": 78,
+    "right": 216,
+    "top": 0,
+    "bottom": 27,
+    "width": 138,
+    "height": 27,
+    "overflowX": "auto",
+    "scrollWidth": 138,
+    "clientWidth": 138
+  },
+  "rootsOver": []
+}

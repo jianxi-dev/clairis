@@ -1,0 +1,33 @@
+{
+  "task": "1052-min-width-300",
+  "states": [
+    {
+      "state": "01-300x600-shell",
+      "screenshot": ".artifacts/1052/01-300x600-shell.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-17T21:59:24.148Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "02-tabstrip-scrollable",
+      "screenshot": ".artifacts/1052/02-tabstrip-scrollable.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-17T21:59:24.229Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "03-no-horizontal-overflow",
+      "screenshot": ".artifacts/1052/03-no-horizontal-overflow.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-17T21:59:24.245Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "04-400x600-minheight",
+      "screenshot": ".artifacts/1052/04-400x600-minheight.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-17T21:59:25.263Z",
+      "runner": "mason@unknown"
+    }
+  ]
+}
