@@ -10,10 +10,13 @@ import type { EditorView } from "@codemirror/view";
 import { EditorView as CM } from "@codemirror/view";
 import {
   applyOutlineOrder,
+  clearOutlineOrder,
   extractHeadings,
   headingsFromDom,
   outlineHeadingId,
+  outlineSectionRunEnd,
   readOutlineOrder,
+  reorderSections,
   writeOutlineOrder,
   type OutlineHeading,
 } from "../../lib/outline";
@@ -85,6 +88,15 @@ export default function OutlineMenu({
     docPath ? readOutlineOrder(docPath) : null,
   );
   const [dragOrder, setDragOrder] = useState<OutlineHeading[] | null>(null);
+  const [draggingHeading, setDraggingHeading] = useState<OutlineHeading | null>(
+    null,
+  );
+  const [ghost, setGhost] = useState<{
+    text: string;
+    level: number;
+    x: number;
+    y: number;
+  } | null>(null);
   const dragRef = useRef<{
     pointerId: number;
     startY: number;
@@ -92,6 +104,7 @@ export default function OutlineMenu({
     fromIndex: number;
     order: OutlineHeading[];
     moved: OutlineHeading;
+    run: OutlineHeading[];
     active: boolean;
   } | null>(null);
   const suppressClickRef = useRef(false);
@@ -118,6 +131,19 @@ export default function OutlineMenu({
   }, [cancelClose]);
 
   useEffect(() => cancelClose, [cancelClose]);
+
+  /** 拖拽取消：清掉进行中的拖拽与轨迹，不改文档、不改显示顺序。 */
+  const cancelDrag = useCallback(() => {
+    dragRef.current = null;
+    setDragOrder(null);
+    setDraggingHeading(null);
+    setGhost(null);
+  }, []);
+
+  // 面板在拖拽期间被外部关掉（如点到面板外）时收尾，避免留下半截拖拽状态。
+  useEffect(() => {
+    if (!visible && dragRef.current?.active) cancelDrag();
+  }, [visible, cancelDrag]);
 
   // 预览的 DOM 在 commit 阶段才更新，必须在布局效果里读，避免拿到上一份文档的标题。
   useLayoutEffect(() => {
@@ -185,13 +211,16 @@ export default function OutlineMenu({
     (event: React.PointerEvent<HTMLButtonElement>, index: number) => {
       if (event.button !== 0) return;
       const element = event.currentTarget;
+      const order = shownHeadings;
+      const runEnd = outlineSectionRunEnd(order, index);
       dragRef.current = {
         pointerId: event.pointerId,
         startY: event.clientY,
         itemHeight: element.getBoundingClientRect().height,
         fromIndex: index,
-        order: shownHeadings,
-        moved: shownHeadings[index],
+        order,
+        moved: order[index],
+        run: order.slice(index, runEnd + 1),
         active: false,
       };
       suppressClickRef.current = false;
@@ -209,18 +238,26 @@ export default function OutlineMenu({
         if (Math.abs(deltaY) < DRAG_THRESHOLD_PX) return;
         drag.active = true;
         suppressClickRef.current = true;
+        setDraggingHeading(drag.moved);
       }
       const height = drag.itemHeight > 0 ? drag.itemHeight : 1;
+      const runSet = new Set(drag.run);
+      const rest = drag.order.filter((heading) => !runSet.has(heading));
       const to = Math.min(
         Math.max(drag.fromIndex + Math.round(deltaY / height), 0),
-        drag.order.length - 1,
+        rest.length,
       );
-      const rest = drag.order.filter((heading) => heading !== drag.moved);
       const next = rest.slice();
-      next.splice(to, 0, drag.moved);
+      next.splice(to, 0, ...drag.run);
       if (next.every((heading, i) => heading === drag.order[i])) return;
       drag.order = next;
       setDragOrder(next);
+      setGhost({
+        text: drag.moved.text,
+        level: drag.moved.level,
+        x: event.clientX + 12,
+        y: event.clientY + 14,
+      });
     },
     [],
   );
@@ -230,13 +267,40 @@ export default function OutlineMenu({
       const drag = dragRef.current;
       if (!drag || drag.pointerId !== event.pointerId) return;
       dragRef.current = null;
+      setGhost(null);
+      setDraggingHeading(null);
       if (!drag.active) return;
-      const ids = drag.order.map(outlineHeadingId);
+      const nextOrder = drag.order;
+      setDragOrder(null);
+
+      // 编辑/源码态：正文即真相源，一次 CM 事务重排，一次 Ctrl+Z 回退。
+      if (mode !== "preview" && view) {
+        const fromDoc = headings.indexOf(drag.moved);
+        if (fromDoc >= 0) {
+          const runLen =
+            outlineSectionRunEnd(headings, fromDoc) - fromDoc + 1;
+          const toDoc = Math.min(
+            Math.max(nextOrder.indexOf(drag.moved), 0),
+            headings.length - runLen,
+          );
+          const nextMarkdown = reorderSections(documentText, fromDoc, toDoc);
+          if (nextMarkdown !== documentText) {
+            view.dispatch({
+              changes: { from: 0, to: view.state.doc.length, insert: nextMarkdown },
+            });
+            if (docPath) clearOutlineOrder(docPath);
+            setSavedOrder(null);
+          }
+        }
+        return;
+      }
+
+      // 预览态没有可写的 CM 文档，沿用既有显示顺序持久化。
+      const ids = nextOrder.map(outlineHeadingId);
       if (docPath) writeOutlineOrder(docPath, ids);
       setSavedOrder(ids);
-      setDragOrder(null);
     },
-    [docPath],
+    [docPath, mode, view, headings, documentText],
   );
 
   useEffect(() => {
@@ -248,13 +312,18 @@ export default function OutlineMenu({
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
       event.preventDefault();
+      // 拖拽中 Esc = 取消本次拖动，不收起面板（收起会丢掉指针捕获）。
+      if (dragRef.current?.active) {
+        cancelDrag();
+        return;
+      }
       setPinned(false);
       setHovering(false);
       btnRef.current?.focus();
     };
     document.addEventListener("keydown", onKey, true);
     return () => document.removeEventListener("keydown", onKey, true);
-  }, [visible]);
+  }, [visible, cancelDrag]);
 
   useEffect(() => {
     if (!visible) return;
@@ -274,6 +343,11 @@ export default function OutlineMenu({
   useEffect(() => {
     if (!visible) return;
     const onMove = (event: PointerEvent) => {
+      // 拖拽期间指针跟着 ghost 走，可能出盒：此时不得收起，否则条目卸载、拖拽丢失。
+      if (dragRef.current?.active) {
+        cancelClose();
+        return;
+      }
       const btn = btnRef.current?.getBoundingClientRect();
       const panel = menuRef.current?.getBoundingClientRect();
       const { clientX: x, clientY: y } = event;
@@ -314,7 +388,7 @@ export default function OutlineMenu({
         setHovering(true);
       }}
       onMouseLeave={() => {
-        if (pinned) return;
+        if (pinned || dragRef.current?.active) return;
         scheduleClose();
       }}
     >
@@ -360,47 +434,76 @@ export default function OutlineMenu({
             <p className="biaoyue-outline-empty">无标题</p>
           ) : (
             <ul role="list">
-              {shownHeadings.map((heading, index) => (
-                <li
-                  key={
-                    heading.line >= 0
-                      ? `L${heading.line}`
-                      : `D${docIndex.get(heading) ?? 0}`
-                  }
-                >
-                  <button
-                    type="button"
-                    role="menuitem"
-                    className="biaoyue-outline-item"
-                    data-testid={`outline-item-${index}`}
-                    data-current={index === highlighted ? "true" : "false"}
-                    data-level={heading.level}
-                    style={{
-                      paddingInlineStart: `${(heading.level - 1) * 12 + 10}px`,
-                    }}
-                    onPointerDown={(event) => onItemPointerDown(event, index)}
-                    onPointerMove={onItemPointerMove}
-                    onPointerUp={onItemPointerUp}
-                    onClick={() => {
-                      if (suppressClickRef.current) {
-                        suppressClickRef.current = false;
-                        return;
-                      }
-                      jump(heading, index);
-                    }}
+              {shownHeadings.map((heading, index) => {
+                const showBadge =
+                  index === 0 ||
+                  shownHeadings[index - 1].level !== heading.level;
+                return (
+                  <li
+                    key={
+                      heading.line >= 0
+                        ? `L${heading.line}`
+                        : `D${docIndex.get(heading) ?? 0}`
+                    }
                   >
-                    <span
-                      className="biaoyue-outline-level"
-                      data-outline-level={`H${heading.level}`}
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="biaoyue-outline-item"
+                      data-testid={`outline-item-${index}`}
+                      data-current={index === highlighted ? "true" : "false"}
+                      data-level={heading.level}
+                      data-dragging={
+                        draggingHeading === heading ? "true" : "false"
+                      }
+                      style={{
+                        paddingInlineStart: `${(heading.level - 1) * 12 + 10}px`,
+                      }}
+                      onPointerDown={(event) => onItemPointerDown(event, index)}
+                      onPointerMove={onItemPointerMove}
+                      onPointerUp={onItemPointerUp}
+                      onPointerCancel={cancelDrag}
+                      onClick={() => {
+                        if (suppressClickRef.current) {
+                          suppressClickRef.current = false;
+                          return;
+                        }
+                        jump(heading, index);
+                      }}
                     >
-                      {`H${heading.level}`}
-                    </span>
-                    <span className="biaoyue-outline-text">{heading.text}</span>
-                  </button>
-                </li>
-              ))}
+                      {showBadge && (
+                        <span
+                          className="biaoyue-outline-level"
+                          data-outline-level={`H${heading.level}`}
+                        >
+                          {`H${heading.level}`}
+                        </span>
+                      )}
+                      <span className="biaoyue-outline-text">
+                        {heading.text}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
             </ul>
           )}
+        </div>
+      )}
+
+      {ghost && (
+        <div
+          className="biaoyue-outline-ghost"
+          data-testid="outline-ghost"
+          aria-hidden="true"
+          style={{
+            transform: `translate(${ghost.x}px, ${ghost.y}px)`,
+          }}
+        >
+          <span className="biaoyue-outline-level">
+            {`H${ghost.level}`}
+          </span>
+          <span className="biaoyue-outline-text">{ghost.text}</span>
         </div>
       )}
     </div>

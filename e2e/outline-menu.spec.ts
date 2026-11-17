@@ -1,6 +1,49 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Locator, type Page } from "@playwright/test";
+import { mkdirSync } from "node:fs";
+import path from "node:path";
+import { execFileSync } from "node:child_process";
 
 const APP_URL = "http://localhost:1420";
+const ART = path.resolve(process.cwd(), ".artifacts/1050");
+const EVIDENCE = path.resolve(process.cwd(), "scripts/cw-evidence.sh");
+
+test.beforeEach(async () => {
+  mkdirSync(ART, { recursive: true });
+});
+
+/** 写真实截图并登记到 state-coverage.json（ui-surface 证据面）。 */
+async function shot(target: Page | Locator, name: string): Promise<void> {
+  const file = path.join(ART, `${name}.png`);
+  await target.screenshot({ path: file });
+  execFileSync(
+    EVIDENCE,
+    [
+      "record-state",
+      ART,
+      "--state",
+      name,
+      "--screenshot",
+      file,
+      "--assertion",
+      "passed",
+    ],
+    { stdio: "ignore" },
+  );
+}
+
+async function readContent(page: Page): Promise<string> {
+  return page.evaluate(() => {
+    const s = (
+      window as unknown as {
+        __biaoyue_store__: { getState: () => {
+          tabs: Record<string, { content: string }>;
+          activeTabId: string;
+        } };
+      }
+    ).__biaoyue_store__.getState();
+    return s.tabs[s.activeTabId]?.content ?? "";
+  });
+}
 
 const DOC = [
   "# 第一章",
@@ -185,7 +228,7 @@ test("条目去掉前导竖线，改为 H 等级徽标（#925）", async ({ page
   await page.screenshot({ path: ".artifacts/925/outline-level-badges.png" });
 });
 
-test("拖动条目调整显示顺序并持久化（#925）", async ({ page }) => {
+test("拖动条目重排正文并清除持久化顺序（#925 → #1050）", async ({ page }) => {
   await openDoc(page, "edit");
   await page.locator('[data-testid="outline-btn"]').click();
   const menu = page.locator('[data-testid="outline-menu"]');
@@ -193,9 +236,85 @@ test("拖动条目调整显示顺序并持久化（#925）", async ({ page }) =>
 
   const items = menu.locator('[data-testid^="outline-item-"]');
   await expect(items).toHaveCount(4);
-  const before = await items.allTextContents();
   await expect(items.nth(0)).toHaveText(/第一章/);
-  await expect(items.nth(1)).toHaveText(/第一节/);
+  await expect(items.nth(3)).toHaveText(/第二节/);
+
+  // 把 第二节 拖到最前。第一章 是唯一的 H1，整篇都是它的子级，拖它无意义。
+  const box3 = await items.nth(3).boundingBox();
+  const box0 = await items.nth(0).boundingBox();
+  if (!box3 || !box0) throw new Error("大纲条目无边界");
+  const x = box3.x + box3.width / 2;
+
+  await page.mouse.move(x, box3.y + box3.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(x, box0.y + box0.height / 2 - 1, { steps: 4 });
+  await page.mouse.up();
+
+  // 松手后显示顺序 = 正文顺序。
+  await expect(items.nth(0)).toHaveText(/第二节/);
+  await expect(items.nth(1)).toHaveText(/第一章/);
+  const content = await readContent(page);
+  expect(content.indexOf("## 第二节")).toBeLessThan(content.indexOf("# 第一章"));
+
+  // 正文已同步，旧的显示顺序必须清除，否则二次排序。
+  const stored = await page.evaluate(
+    () => localStorage.getItem("outline-order:/tmp/outline.md"),
+  );
+  expect(stored).toBeNull();
+
+  // 拖完不得触发点击跳转：编辑器滚动位置保持不变。
+  const scrollTop = await page
+    .locator(".cm-scroller")
+    .evaluate((el) => el.scrollTop);
+  expect(scrollTop).toBe(0);
+});
+
+// ── #1050：轨迹 / 正文同步 / 取消 / 同级徽标 ─────────────────────
+
+const REORDER_DOC = [
+  "# 甲",
+  "",
+  "甲文。",
+  "",
+  "## 甲一",
+  "",
+  "甲一文。",
+  "",
+  "# 乙",
+  "",
+  "乙文。",
+  "",
+].join("\n");
+
+// 甲 的区段含其尾部空行（标题行到下一个同级标题前一行），移动后该空行落到文末。
+const REORDERED_DOC =
+  "# 乙\n\n乙文。\n# 甲\n\n甲文。\n\n## 甲一\n\n甲一文。\n\n";
+
+async function openReplayDoc(page: Page) {
+  await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
+  await page.goto(APP_URL, { waitUntil: "networkidle" });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 15000 });
+  await page.evaluate((body) => {
+    (window as unknown as Record<string, any>).__biaoyue_openFile__(
+      "/tmp/outline-reorder.md",
+      body,
+      "outline-reorder.md",
+    );
+    (window as unknown as Record<string, any>)
+      .__biaoyue_store__.getState()
+      .setEditorMode("edit");
+  }, REORDER_DOC);
+  await page.locator(".cm-content").waitFor({ timeout: 10000 });
+  await page.locator('[data-testid="outline-btn"]').click();
+  await expect(
+    page.locator('[data-testid="outline-menu"]'),
+  ).toBeVisible({ timeout: 3000 });
+}
+
+test("#1050 拖动出现轨迹，松手后正文与新大纲一致", async ({ page }) => {
+  await openReplayDoc(page);
+  const items = page.locator('[data-testid^="outline-item-"]');
+  await expect(items).toHaveCount(3);
 
   const box0 = await items.nth(0).boundingBox();
   const box1 = await items.nth(1).boundingBox();
@@ -205,29 +324,88 @@ test("拖动条目调整显示顺序并持久化（#925）", async ({ page }) =>
   await page.mouse.move(x, box0.y + box0.height / 2);
   await page.mouse.down();
   await page.mouse.move(x, box1.y + box1.height / 2 + 1, { steps: 4 });
+
+  // 轨迹元素在拖动期间可见。
+  await expect(page.locator('[data-testid="outline-ghost"]')).toBeVisible();
+  await shot(page, "01-drag-trail");
+
   await page.mouse.up();
 
-  await expect(items.nth(0)).toHaveText(/第一节/);
-  await expect(items.nth(1)).toHaveText(/第一章/);
-  const after = await items.allTextContents();
-  expect(after).not.toEqual(before);
+  await expect(items.nth(0)).toHaveText(/乙/);
+  await expect(items.nth(1)).toHaveText(/甲/);
+  expect(await readContent(page)).toBe(REORDERED_DOC);
+  await shot(page, "02-body-synced");
 
-  // 拖完不得触发点击跳转：编辑器滚动位置保持不变。
-  const scrollTop = await page
-    .locator(".cm-scroller")
-    .evaluate((el) => el.scrollTop);
-  expect(scrollTop).toBe(0);
+  // 一次 Ctrl+Z 回到重排前（单事务）。
+  await page.locator(".cm-content").click();
+  await page.keyboard.press("Control+z");
+  expect(await readContent(page)).toBe(REORDER_DOC);
+});
 
-  const stored = await page.evaluate(
-    () => localStorage.getItem("outline-order:/tmp/outline.md"),
+test("#1050 拖动取消（Esc）后正文与大纲回到原状", async ({ page }) => {
+  await openReplayDoc(page);
+  const items = page.locator('[data-testid^="outline-item-"]');
+
+  const box0 = await items.nth(0).boundingBox();
+  const box1 = await items.nth(1).boundingBox();
+  if (!box0 || !box1) throw new Error("大纲条目无边界");
+  const x = box0.x + box0.width / 2;
+
+  await page.mouse.move(x, box0.y + box0.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(x, box1.y + box1.height / 2 + 1, { steps: 4 });
+  await expect(page.locator('[data-testid="outline-ghost"]')).toBeVisible();
+
+  await page.keyboard.press("Escape");
+
+  await expect(page.locator('[data-testid="outline-ghost"]')).toHaveCount(0);
+  expect(await readContent(page)).toBe(REORDER_DOC);
+  await expect(items.nth(0)).toHaveText(/甲/);
+  await shot(page, "03-cancel-restores");
+});
+
+test("#1050 三个连续同级二级标题只首个含 H2 徽标，颜色为次级文字色", async ({
+  page,
+}) => {
+  const doc = ["# 题", "", "## 一", "", "## 二", "", "## 三", ""].join("\n");
+  await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
+  await page.goto(APP_URL, { waitUntil: "networkidle" });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 15000 });
+  await page.evaluate((body) => {
+    (window as unknown as Record<string, any>).__biaoyue_openFile__(
+      "/tmp/outline-badge.md",
+      body,
+      "outline-badge.md",
+    );
+    (window as unknown as Record<string, any>)
+      .__biaoyue_store__.getState()
+      .setEditorMode("edit");
+  }, doc);
+  await page.locator(".cm-content").waitFor({ timeout: 10000 });
+  await page.locator('[data-testid="outline-btn"]').click();
+  const menu = page.locator('[data-testid="outline-menu"]');
+  await expect(menu).toBeVisible();
+
+  const badges = menu.locator('[data-outline-level="H2"]');
+  await expect(badges).toHaveCount(1);
+  await expect(menu.locator('[data-testid="outline-item-1"]')).toContainText(
+    "H2",
   );
-  expect(stored).not.toBeNull();
-  expect(JSON.parse(stored as string)).toEqual([
-    "2:第一节",
-    "1:第一章",
-    "3:小节 A",
-    "2:第二节",
-  ]);
+  await expect(menu.locator('[data-testid="outline-item-2"]')).not.toContainText(
+    "H2",
+  );
 
-  await page.screenshot({ path: ".artifacts/925/outline-drag-reorder.png" });
+  // 徽标计算色严格等于次级文字 token 的解释值（用同 token 的探针元素比对）。
+  const tokenColor = await page.evaluate(() => {
+    const probe = document.createElement("span");
+    probe.style.color = "var(--app-text-3)";
+    document.body.appendChild(probe);
+    const color = getComputedStyle(probe).color;
+    probe.remove();
+    return color;
+  });
+  const badgeColor = await badges.evaluate((el) => getComputedStyle(el).color);
+  expect(badgeColor).toBe(tokenColor);
+
+  await shot(page, "04-badge-first-only");
 });
