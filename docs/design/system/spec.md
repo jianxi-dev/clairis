@@ -44,18 +44,18 @@ source_of_truth: canonical
 保留现有 `Icon` 组件 `fill="currentColor"` 契约：描边图标在 path 上写
 `fill="none" stroke="currentColor" stroke-width="1.7"`。新增概念必须同时更新 `src/ui/icons.ts` 的 `ICONS` 表，禁止组件内联一次性 SVG。
 
-### 2.3 语义分组（33 概念）
+### 2.3 语义分组（39 概念）
 
 | 组 | 概念 |
 |---|---|
 | 文件类型（8） | markdown / html / text / pdf / video / image / code / audio |
 | 导航与外观（10） | folder / file / search / grid / pin / chevronLeft / chevronRight / sun / moon / monitor |
-| 动作（10） | close / settings / expand / more / eye / pencil / export / share / locate / copyPath |
+| 动作（16） | close / settings / expand / more / eye / pencil / export / share / locate / copyPath / copy / trash / cut / paste / arrowUp / arrowDown |
 | 状态（2） | check / warning |
 | 分屏（2） | splitRight / splitDown |
 | AI（1） | sparkle |
 
-**覆盖范围（缺口）**：本表沿用 icon-system-v2 的 33 概念分组；`src/ui/icons.ts` 实现现有 **61 个键**，另有 28 个未归组——媒体控件（play / pause / prev / next / volume / volumeMute / playlist / loopNone / loopSingle / loopPlaylist / subtitle / timestampNote / keyboardHints / pip / speed / home / heart / heartFilled）、导出族（exportWord / exportZip / exportMdpkg）、其余（pinOff / collapse / sunBright / sunWarm / closeOthers / chevronDown / immersive）。本表不声称穷举；未归组的概念不是"规范缺省"，是**待归组的缺口**。
+**覆盖范围（缺口）**：本表沿用 icon-system-v2 的 33 概念分组，doc-property-refine 追加 copy / trash / cut / paste / arrowUp / arrowDown 共 39 概念；`src/ui/icons.ts` 实现现有 **115 个键**，另有 **76 个未归组**（以下为示例）——媒体控件（play / pause / prev / next / volume / volumeMute / playlist / loopNone / loopSingle / loopPlaylist / subtitle / timestampNote / keyboardHints / pip / speed / home / heart / heartFilled）、导出族（exportWord / exportZip / exportMdpkg）、其余（pinOff / collapse / sunBright / sunWarm / closeOthers / chevronDown / immersive）。本表不声称穷举；未归组的概念不是"规范缺省"，是**待归组的缺口**。
 
 ### 2.4 状态对规则
 

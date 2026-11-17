@@ -851,6 +851,10 @@
   cursor: pointer;
 }
 
+.dpb-ops-btn svg {
+  display: block;
+}
+
 .dpb-ops-btn:hover {
   background: var(--app-surface);
   color: var(--app-accent);

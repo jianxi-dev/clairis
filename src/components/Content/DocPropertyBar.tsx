@@ -41,6 +41,7 @@ import { useEditorStore } from "../../stores/editorStore";
 import { useDocPropertyPanelStore } from "../../stores/docPropertyPanel";
 import { useStore } from "../../stores/index";
 import Icon from "../Icon";
+import type { IconName } from "../../ui/icons";
 import SuggestMenu from "./SuggestMenu";
 import { useMenuPos } from "./useMenuPos";
 
@@ -97,7 +98,7 @@ function OpsBar({
 }: OpsBarProps) {
   const btn = (
     testId: string,
-    glyph: string,
+    icon: IconName,
     label: string,
     onClick: () => void,
     disabled = false,
@@ -113,7 +114,7 @@ function OpsBar({
       disabled={disabled}
       onClick={onClick}
     >
-      {glyph}
+      <Icon name={icon} size={14} />
     </button>
   );
   return (
@@ -121,20 +122,20 @@ function OpsBar({
       <span className="dpb-ops-count" data-testid="dpb-ops-count">
         已选 {count} 项
       </span>
-      {btn("dpb-ops-copy", "⧉", "复制所选字段", onCopy)}
-      {btn("dpb-ops-cut", "✂", "剪切所选字段", onCut)}
-      {btn("dpb-ops-paste", "⤵", "粘贴到所选行下方", onPaste, !canPaste)}
-      {btn("dpb-ops-up", "↑", "上移", onUp)}
-      {btn("dpb-ops-down", "↓", "下移", onDown)}
+      {btn("dpb-ops-copy", "copy", "复制所选字段", onCopy)}
+      {btn("dpb-ops-cut", "cut", "剪切所选字段", onCut)}
+      {btn("dpb-ops-paste", "paste", "粘贴到所选行下方", onPaste, !canPaste)}
+      {btn("dpb-ops-up", "arrowUp", "上移", onUp)}
+      {btn("dpb-ops-down", "arrowDown", "下移", onDown)}
       {btn(
         "dpb-ops-del",
-        "🗑",
+        "trash",
         "删除所选字段（标题位保留）",
         onDelete,
         false,
         true,
       )}
-      {btn("dpb-ops-clear", "×", "取消选中", onClear)}
+      {btn("dpb-ops-clear", "close", "取消选中", onClear)}
     </div>
   );
 }
