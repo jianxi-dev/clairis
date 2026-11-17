@@ -80,10 +80,10 @@ export function renderInlineWithHit(text: string, hit?: InlineHit): string
 | 落点 | 位置 | 载体/符号 | 判据 |
 |---|---|---|---|
 | 规格 | D1；D2；D3；D4 | —（规格行为见 delta S-1/S-3/S-6，无新增配置条款） | 快捷键说明为固定展示文案（非可配置项），S-6 场景断言其文案内容 |
-| 存储 | src-tauri/src/config.rs（本 change 不触及） | AppConfig（无新增键） | 票 diff 不触及 config.rs；状态栏显隐为组件内瞬态状态，不落盘、不持久化 |
-| 校验 | src/lib/shortcuts.ts（仅核对既有注册，不新增） | activateLocalContext（S-5 既有局部 scope） | ⌘1~9/Enter/↑↓/Esc 均为 S-5 既有注册项，本 change 不新增/不移除快捷键注册 |
-| 桥接 | src/hooks/useConfig.ts（本 change 不触及） | applyRustConfig（无改动） | 无配置热应用改动；浮窗默认位置三档沿用既有设置字段，不新增键 |
-| 消费 | src/components/Content/SearchReplacePanel.tsx | SearchReplacePanel（状态栏节点，组件内常量） | 状态栏文案为组件内常量（原型快捷键说明），不读 AppConfig、不建新数据文件 |
+| 存储 | src-tauri/src/config.rs | AppConfig | 本 change 不触及 config.rs（无新增键）；状态栏显隐为组件内瞬态状态，不落盘、不持久化 |
+| 校验 | src/lib/shortcuts.ts | activateLocalContext | 仅核对既有注册，不新增；⌘1~9/Enter/↑↓/Esc 均为 S-5 既有注册项，本 change 不新增/不移除快捷键注册 |
+| 桥接 | src/hooks/useConfig.ts | applyRustConfig | 本 change 不触及；无配置热应用改动，浮窗默认位置三档沿用既有设置字段，不新增键 |
+| 消费 | src/components/Content/SearchReplacePanel.tsx | SearchReplacePanel | 状态栏节点为组件内常量（原型快捷键说明），不读 AppConfig、不建新数据文件 |
 | 回滚 | git revert 本 change 各票 commit 即整体回退 | —（无数据写入路径） | 显隐状态为瞬态（无快照需求）；配置面零改动，回退 = revert commit，无缺省回落路径引入 |
 
 ## Risks / Trade-offs
