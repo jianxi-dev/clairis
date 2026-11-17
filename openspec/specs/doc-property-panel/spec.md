@@ -5,7 +5,7 @@ TBD - created by archiving change doc-property-and-search-panel. Update Purpose 
 ## Requirements
 ### Requirement: P-1 面板落位与三模式
 
-编辑器/预览页签内容区顶部 SHALL 渲染文档属性面板（`ContentArea` 内部、正文区上方），源码模式 SHALL NOT 渲染。预览态面板 SHALL 只读（禁用全部编辑交互）；编辑态默认展开、可折叠；面板显隐切换 SHALL NOT 修改文档内容（隐藏 ≠ 删除）。三模式切换 SHALL 使用 CSS display 切换，SHALL NOT 重建面板状态（不 remount）。
+编辑器/预览页签内容区顶部 SHALL 渲染文档属性面板（`ContentArea` 内部、正文区上方），源码模式 SHALL NOT 渲染。预览态面板 SHALL 只读（禁用全部编辑交互）；编辑态默认展开、可折叠；面板显隐切换 SHALL NOT 修改文档内容（隐藏 ≠ 删除）。三模式切换 SHALL 使用 CSS display 切换，SHALL NOT 重建面板状态（不 remount）。**面板可见且处于编辑态时，正文 SHALL 隐藏 frontmatter 源码块**：面板展开态用 CodeMirror decoration 隐藏整个 `--- ... ---` 块；面板折叠态显示一行摘要占位（如「文档属性 · N 个字段」）而不显示完整 YAML；`⌘⇧Y` 隐藏面板后 SHALL 恢复显示完整源码块。隐藏装饰 SHALL NOT 吞掉光标或选区，SHALL NOT 影响 undo 栈；源码态（YAML 必须完整可编辑）SHALL NOT 启用隐藏。
 
 #### Scenario: 预览态只读
 
@@ -16,6 +16,16 @@ TBD - created by archiving change doc-property-and-search-panel. Update Purpose 
 
 - **WHEN** 用户切换到源码模式
 - **THEN** 面板不渲染，frontmatter 以原始 YAML 文本呈现，切回编辑/预览后面板数据与选中状态恢复一致
+
+#### Scenario: 面板可见时编辑态隐藏前言块
+
+- **WHEN** 编辑态面板展开，文档含 frontmatter
+- **THEN** 正文顶部不再出现 `--- ... ---` 源码块（被 decoration 隐藏）；光标移入正文首段后落位正确，Ctrl+Z 撤销前面板编辑不串位
+
+#### Scenario: 折叠态摘要与隐藏态恢复
+
+- **WHEN** 用户折叠面板再展开、或按 `⌘⇧Y` 隐藏面板
+- **THEN** 折叠态正文仅显示一行「文档属性 · N 个字段」摘要；隐藏态恢复显示完整 `--- ... ---` 源码块
 
 ### Requirement: P-2 显示样式两态与显隐配置
 
@@ -33,12 +43,17 @@ TBD - created by archiving change doc-property-and-search-panel. Update Purpose 
 
 ### Requirement: P-3 字段类型系统与智能编辑
 
-字段 SHALL 支持八类类型：文本、数字、日期、日期时间、下拉（选项可维护）、复选（多选）、布尔、列表（`[[` 文档链接）。类型选择器 SHALL 为字段名前的无边框纯图标（日期 = 日历 SVG、日期时间 = 时钟 SVG、列表 = 列表类图标，描边 1.7px），点击弹出图标+文字菜单直选。值编辑器 SHALL 按类型智能渲染：文本框（超 40 字符自动切多行文本域）、数字框、日期选择、日期时间选择、下拉、复选组、布尔开关、`[[` 文档链接菜单。写回前 SHALL 按类型做 YAML 合法性校验（数字为数值字面量、布尔为 `true/false`、日期为 `YYYY-MM-DD`），非法输入 SHALL 还原原值并提示。
+字段 SHALL 支持八类类型：文本、数字、日期、日期时间、下拉（选项可维护）、复选（多选）、布尔、列表（`[[` 文档链接）。类型选择器 SHALL 为字段名前的无边框纯图标（日期 = 日历 SVG、日期时间 = 时钟 SVG、列表 = 列表类图标，描边 1.7px），点击弹出图标+文字菜单直选。值编辑器 SHALL 按类型智能渲染：文本框（超 40 字符自动切多行文本域）、数字框、日期选择、日期时间选择、下拉、复选组、布尔开关、`[[` 文档链接菜单。写回前 SHALL 按类型做 YAML 合法性校验（数字为数值字面量、布尔为 `true/false`、日期为 `YYYY-MM-DD`），非法输入 SHALL 还原原值并提示。**布尔字段的值内 SHALL NOT 出现「开/关」文字**：显示态与编辑态值内仅保留状态图形（true `◉` / false `○`），状态文案 SHALL 移至 `title` 提示（`已开启` / `已关闭`），编辑态 SHALL 保留 `role="switch"` 与 `aria-checked`/`aria-label` 状态语义。
 
 #### Scenario: 类型切换后编辑器随变
 
 - **WHEN** 用户把某字段类型从文本切换为日期
 - **THEN** 值编辑器变为日期选择器，切「源码」可核对该键写回为 YAML 日期字面量
+
+#### Scenario: 布尔值图形与提示分离
+
+- **WHEN** 编辑态查看布尔字段（`flag: true`）
+- **THEN** 值节点文本仅含状态图形 `◉`（不含「开」字），`title` 为「已开启」；切换为 false 后图形变 `○`、`title` 为「已关闭」，`aria-checked` 同步
 
 #### Scenario: 列表字段 [[ 文档链接
 
@@ -52,7 +67,7 @@ TBD - created by archiving change doc-property-and-search-panel. Update Purpose 
 
 ### Requirement: P-4 字段行操作与选择模式
 
-编辑态每个字段行 SHALL 带**行手柄**：点击选中（可多选、全选），拖动排序，选中临近多行后拖动 SHALL 整块移动（拖拽阈值 5px 区分点击，拖动显示落点指示线）。选中后 SHALL 出现图标操作条：复制 ⧉ / 剪切 ✂ / 粘贴 ⤵（插入所选行下方，粘贴键名自动去重）/ 上移 ↑ / 下移 ↓ / 删除 🗑 / 取消 ×。「全选」SHALL 排除标题位（标题可手动选中）。**选择模式**：存在选中项时，行内一切点击（值、选项、类型图标、删除键）SHALL 变为选中/取消切换且不进入编辑，行 hover SHALL 显示选中提示（A/B 两态统一）；单击行外空白 SHALL 清空选中。
+编辑态每个字段行 SHALL 带**行手柄**：点击选中（可多选、全选），拖动排序，选中临近多行后拖动 SHALL 整块移动（拖拽阈值 5px 区分点击，拖动显示落点指示线）。选中后 SHALL 出现图标操作条：复制 / 剪切 / 粘贴（插入所选行下方，粘贴键名自动去重）/ 上移 / 下移 / 删除 / 取消。**操作条与行内操作图标 SHALL 统一经仓库图标注册表（`src/ui/icons` 的 `iconSvg`）渲染**，SHALL NOT 使用 Unicode 字形或组件内联一次性 SVG；新增图标概念 SHALL 先补 `docs/design/system/spec.md` §2.3 条款再注册（24×24 viewBox、笔画 1.7、尺寸档 14/18/24）。**「全选」**SHALL 排除标题位（标题可手动选中）。**选择模式**：存在选中项时，行内一切点击（值、选项、类型图标、删除键）SHALL 变为选中/取消切换且不进入编辑，行 hover SHALL 显示选中提示（A/B 两态统一）；单击行外空白 SHALL 清空选中。
 
 #### Scenario: 多选复制粘贴去重
 
@@ -68,6 +83,11 @@ TBD - created by archiving change doc-property-and-search-panel. Update Purpose 
 
 - **WHEN** 用户选中临近的三行并拖动其中任一行手柄
 - **THEN** 三行作为整块移动到落点位置，行内相对顺序不变
+
+#### Scenario: 工具条图标同源
+
+- **WHEN** 编辑态选中若干字段行，操作条出现
+- **THEN** 七个按钮图标均为 `iconSvg` 渲染的 SVG（与 MD 横向工具条同一来源），按钮内无 Unicode 字形文本
 
 ### Requirement: P-5 标签彩色胶囊与建议输入
 
@@ -85,7 +105,7 @@ TBD - created by archiving change doc-property-and-search-panel. Update Purpose 
 
 ### Requirement: P-6 字段名编辑与别称识别
 
-字段名 SHALL 可就地改名（改的就是 YAML 键，冲突校验拦截重名）；显示 SHALL 为输入原样（输入中文显示中文、输入英文显示英文）。**别称表**（应用级预设，如 title/标题、createdate/创建日期）SHALL 仅用于**类型识别**：解析 frontmatter 时命中别称即自动赋予对应类型，SHALL NOT 改写字段显示名、SHALL NOT 重命名用户 YAML 键。创建/修改日期（`created`/`updated`）SHALL 自动托管、只读、键名锁定，格式复用 `todayStamp()`；`updated` 仅在内容保存时刷新。
+字段名 SHALL 可就地改名（改的就是 YAML 键，冲突校验拦截重名）；显示 SHALL 为输入原样（输入中文显示中文、输入英文显示英文）。**别称表** SHALL 为**应用级可维护配置** `AppConfig.propAliasMap`（键名 → 类型映射）：解析 frontmatter 时命中即自动赋予对应类型，SHALL NOT 改写字段显示名、SHALL NOT 重命名用户 YAML 键；未命中的键回落到内置默认集合（由 `ALIAS`/`CANON_TYPE` 常量转来的 8 组预设）。`propAliasMap` SHALL 经 Rust `validate_config` 白名单校验（值为八类类型枚举、键名合法），SHALL 支持设置区管理与热应用。创建/修改日期（`created`/`updated`）SHALL 自动托管、只读、键名锁定，格式复用 `todayStamp()`；`updated` 仅在内容保存时刷新。
 
 #### Scenario: 输入原样显示
 
@@ -97,6 +117,16 @@ TBD - created by archiving change doc-property-and-search-panel. Update Purpose 
 - **WHEN** 打开含 `createdate: 2026-11-14` 的外部文件
 - **THEN** 该键自动识别为日期类型（图标为日历 SVG），显示名保持 `createdate` 原样
 
+#### Scenario: 配置映射优先于内置默认
+
+- **WHEN** 用户在设置中新增映射 `customdate → 日期` 后打开含 `customdate: 2026-11-17` 的外部文件
+- **THEN** 该键自动识别为日期类型、显示名保持 `customdate` 原样；改配置后重新打开即生效（热应用）
+
+#### Scenario: 映射恢复默认
+
+- **WHEN** 用户点击映射区「恢复默认」
+- **THEN** 自定义映射被清空，映射表现回内置 9 组（`createdate` 等重新可识别）
+
 #### Scenario: 自动托管日期只读
 
 - **WHEN** 用户在编辑态查看创建/修改日期字段
@@ -104,12 +134,22 @@ TBD - created by archiving change doc-property-and-search-panel. Update Purpose 
 
 ### Requirement: P-7 新建默认与属性模板
 
-新建文档 SHALL 默认仅含 标题（占位「未命名」，与页签联动）+ 自动托管的创建/修改日期；分类/作者/状态/来源等 SHALL 按需添加。**属性模板** SHALL 为应用级配置（名称 + 字段集，内置通用/会议记录/需求等，设置中可管理）；入口 = 新建时选模板 + 面板「模板」按钮；**套用 SHALL 只合并文档缺失的键、不覆盖已有值**，单事务完成、可撤销，文档 SHALL NOT 写入模板标记。
+新建文档 SHALL 默认仅含 标题（占位「未命名」，与页签联动）+ 自动托管的创建/修改日期；分类/作者/状态/来源等 SHALL 按需添加。**属性模板** SHALL 为应用级配置（名称 + 字段集，内置通用/会议记录/需求等，设置中可管理）；设置中编辑模板 SHALL 提供**字段列表 UI**（每行：键名 + 类型选择器[八类直选] + 可选预设值），SHALL NOT 只有裸文本 `键名:类型` 语法。**内置模板 SHALL 可编辑**：用户改动保存为对同名内置定义的覆盖层（`AppConfig.propTemplates` 同名条目），SHALL 提供「恢复默认」入口移除覆盖层并回落内置定义。入口 = 新建时选模板 + 面板「模板」按钮；**套用 SHALL 只合并文档缺失的键、不覆盖已有值**，单事务完成、可撤销，文档 SHALL NOT 写入模板标记。
 
 #### Scenario: 模板合并缺失键
 
 - **WHEN** 文档已有 `title` 与 `status: 已定稿`，套用含 `category`、`status: 草稿` 的模板
 - **THEN** 仅新增 `category`，已有 `status: 已定稿` 保持不变，整次套用可一次撤销
+
+#### Scenario: 设置中选字段类型
+
+- **WHEN** 用户在设置中为某模板字段选择类型「日期」并保存
+- **THEN** 新文档套用该模板后该字段在面板中显示为日期类型（日历图标）
+
+#### Scenario: 内置模板编辑与恢复默认
+
+- **WHEN** 用户编辑内置模板「通用」的字段类型并保存，随后点击其「恢复默认」
+- **THEN** 保存后新文档套用按编辑结果生效；恢复后映射回内置原定义
 
 ### Requirement: P-8 外部未识别字段收编
 

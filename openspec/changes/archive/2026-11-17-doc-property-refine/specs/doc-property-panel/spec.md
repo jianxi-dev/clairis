@@ -76,14 +76,14 @@
 
 ### Requirement: P-6 字段名编辑与别称识别
 
-字段名 SHALL 可就地改名（改的就是 YAML 键，冲突校验拦截重名）；显示 SHALL 为输入原样（输入中文显示中文、输入英文显示英文）。**别称表** SHALL 为**应用级可维护配置** `AppConfig.propAliasMap`（键名 → 类型映射）：解析 frontmatter 时命中即自动赋予对应类型，SHALL NOT 改写字段显示名、SHALL NOT 重命名用户 YAML 键；未命中的键回落到内置默认集合（由 `ALIAS`/`CANON_TYPE` 常量转来的 9 组预设）。`propAliasMap` SHALL 经 Rust `validate_config` 白名单校验（值为八类类型枚举、键名合法），SHALL 支持设置区管理与热应用。创建/修改日期（`created`/`updated`）SHALL 自动托管、只读、键名锁定，格式复用 `todayStamp()`；`updated` 仅在内容保存时刷新。
+字段名 SHALL 可就地改名（改的就是 YAML 键，冲突校验拦截重名）；显示 SHALL 为输入原样（输入中文显示中文、输入英文显示英文）。**别称表** SHALL 为**应用级可维护配置** `AppConfig.propAliasMap`（键名 → 类型映射）：解析 frontmatter 时命中即自动赋予对应类型，SHALL NOT 改写字段显示名、SHALL NOT 重命名用户 YAML 键；未命中的键回落到内置默认集合（由 `ALIAS`/`CANON_TYPE` 常量转来的 8 组预设）。`propAliasMap` SHALL 经 Rust `validate_config` 白名单校验（值为八类类型枚举、键名合法），SHALL 支持设置区管理与热应用。创建/修改日期（`created`/`updated`）SHALL 自动托管、只读、键名锁定，格式复用 `todayStamp()`；`updated` 仅在内容保存时刷新。
 
 #### Scenario: 输入原样显示
 
 - **WHEN** 用户把某字段改名为英文 `priority`
 - **THEN** 面板显示 `priority`，源码中 YAML 键为 `priority`；不显示任何中文归一名
 
-#### Scenario: 外部键类型识别（内置默认）
+#### Scenario: 外部键类型识别
 
 - **WHEN** 打开含 `createdate: 2026-11-14` 的外部文件
 - **THEN** 该键自动识别为日期类型（图标为日历 SVG），显示名保持 `createdate` 原样
