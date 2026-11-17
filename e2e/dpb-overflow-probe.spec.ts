@@ -44,6 +44,43 @@ async function recordState(page: Page, state: string): Promise<void> {
 }
 const WIDTHS = [1280, 900, 640, 400];
 
+/** #1040：卡片宽度对齐正文测量宽度，四档视口各录一态。 */
+const ART_1040 = path.resolve(process.cwd(), ".artifacts/1040");
+const CARD_WIDTHS = [1280, 900, 640, 300];
+
+/** 与 recordState 同构，落点目录可指定（#1040 卡片宽度态），返回截图相对路径。 */
+async function recordStateDir(
+  page: Page,
+  dir: string,
+  state: string,
+): Promise<string> {
+  const art = path.resolve(process.cwd(), `.artifacts/${dir}`);
+  mkdirSync(art, { recursive: true });
+  const file = path.join(art, `${state}.png`);
+  await page.screenshot({ path: file });
+  const rel = path.relative(process.cwd(), file);
+  const manifest = path.join(art, "state-coverage.json");
+  let states: Array<Record<string, string>> = [];
+  try {
+    states = JSON.parse(readFileSync(manifest, "utf8")).states ?? [];
+  } catch {
+    states = [];
+  }
+  states = states.filter((s) => s.state !== state);
+  states.push({
+    state,
+    screenshot: path.relative(process.cwd(), file),
+    assertion: "passed",
+    recorded_at: new Date().toISOString(),
+    runner: `${process.env.USER ?? "unknown"}@${process.env.HOSTNAME ?? "unknown"}`,
+  });
+  writeFileSync(
+    manifest,
+    `${JSON.stringify({ task: dir, states }, null, 2)}\n`,
+  );
+  return rel;
+}
+
 const LONG_ASCII = "A".repeat(220);
 
 const SHAPES: Array<{ id: string; doc: string }> = [
@@ -463,6 +500,97 @@ test("复现矩阵：建议菜单与模板状态", async ({ page }) => {
   expect(bad, JSON.stringify(bad, null, 2)).toEqual([]);
   await recordState(page, "03-suggest-matrix-in-viewport");
   await recordState(page, "04-final-panel-b-narrow");
+});
+
+test("卡片宽度对齐正文测量宽度（1280/900/640/300 四档）", async ({ page }) => {
+  mkdirSync(ART_1040, { recursive: true });
+  const rows: Array<Record<string, unknown>> = [];
+  const doc = `---\ntitle: 卡片宽度对齐\nnote: 一个值\ncount: 1\n---\n\n# 正文\n`;
+
+  await openDoc(page, doc);
+  await setMode(page, "edit");
+  await setVariant(page, "A");
+  await expect(page.locator('[data-testid="dpb-a"]')).toBeVisible();
+
+  for (const w of CARD_WIDTHS) {
+    await page.setViewportSize({ width: w, height: 800 });
+    await page.waitForTimeout(150);
+    const m = await measure(page);
+    const info = await page.evaluate(() => {
+      const host = document.querySelector('[data-testid="doc-property-host"]');
+      const panelEl = document.querySelector(".dpb-panel");
+      if (!host || !panelEl) return null;
+      const cs = getComputedStyle(panelEl);
+      const hostCs = getComputedStyle(host);
+      const hostRect = host.getBoundingClientRect();
+      const panelRect = panelEl.getBoundingClientRect();
+      return {
+        measure: parseFloat(cs.getPropertyValue("--type-measure")) || null,
+        available:
+          hostRect.width -
+          parseFloat(hostCs.paddingLeft || "0") -
+          parseFloat(hostCs.paddingRight || "0"),
+        radius: parseFloat(cs.borderRadius || "0"),
+        panelWidth: panelRect.width,
+        panelX: panelRect.x,
+        panelRight: panelRect.right,
+        hostX: hostRect.x,
+        hostRight: hostRect.right,
+      };
+    });
+    const shotPath = await recordStateDir(page, "1040", `card-width-${w}`);
+    const v = verdict(m);
+    rows.push({
+      width: w,
+      measure: info?.measure ?? null,
+      available: info?.available ?? null,
+      expectedWidth:
+        info && info.measure != null
+          ? Math.min(info.available, info.measure)
+          : null,
+      radius: info?.radius ?? null,
+      panelWidth: info?.panelWidth ?? null,
+      panelX: info?.panelX ?? null,
+      panelRight: info?.panelRight ?? null,
+      hostX: info?.hostX ?? null,
+      hostRight: info?.hostRight ?? null,
+      docScrollWidth: m.docScrollWidth,
+      vw: m.vw,
+      screenshot: shotPath,
+      ...v,
+    });
+  }
+
+  writeFileSync(
+    path.join(ART_1040, "card-width.json"),
+    `${JSON.stringify(rows, null, 2)}\n`,
+  );
+
+  for (const r of rows) {
+    const width = r.width as number;
+    expect(r.radius, `radius@${width}`).toBeGreaterThan(0);
+    expect(r.expectedWidth, `expectedWidth@${width}`).not.toBeNull();
+    expect(
+      Math.abs((r.panelWidth as number) - (r.expectedWidth as number)),
+      `card width vs min(available, measure) @${width}: panel=${r.panelWidth} expected=${r.expectedWidth}`,
+    ).toBeLessThanOrEqual(2);
+    expect(
+      r.panelRight as number,
+      `panelRight@${width}`,
+    ).toBeLessThanOrEqual((r.hostRight as number) + 0.5);
+    expect(r.panelX as number, `panelX@${width}`).toBeGreaterThanOrEqual(
+      (r.hostX as number) - 0.5,
+    );
+    expect(
+      r.docScrollWidth as number,
+      `horizontal overflow @${width}`,
+    ).toBeLessThanOrEqual((r.vw as number) + 1);
+    expect(
+      r.panelContentOverflow,
+      `panel content overflow @${width}`,
+    ).toBe(false);
+    expect(r.overflowingCount, `overflowing elements @${width}`).toBe(0);
+  }
 });
 
 async function shot(page: Page, name: string): Promise<string> {

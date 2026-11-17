@@ -1,0 +1,33 @@
+{
+  "task": "1040",
+  "states": [
+    {
+      "state": "card-width-1280",
+      "screenshot": ".artifacts/1040/card-width-1280.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-17T18:39:22.588Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "card-width-900",
+      "screenshot": ".artifacts/1040/card-width-900.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-17T18:39:22.757Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "card-width-640",
+      "screenshot": ".artifacts/1040/card-width-640.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-17T18:39:22.937Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "card-width-300",
+      "screenshot": ".artifacts/1040/card-width-300.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-17T18:39:23.115Z",
+      "runner": "mason@unknown"
+    }
+  ]
+}
