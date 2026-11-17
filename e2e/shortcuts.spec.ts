@@ -435,10 +435,10 @@ test("tooltip 显示键位：AI 星芒 / 模式 / 阅读含键位，主题按钮
     .getAttribute("title");
   expect(readingTitle).toContain("⌘⇧F");
 
-  const themeTitle = await page
-    .locator('[title^="当前:"]')
-    .getAttribute("title");
-  expect(themeTitle).not.toContain("⌘");
+  const themeLabel = await page
+    .getByTestId("theme-entry")
+    .getAttribute("aria-label");
+  expect(themeLabel).not.toContain("⌘");
   await record(page, "17-tooltips");
 });
 

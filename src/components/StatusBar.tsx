@@ -295,7 +295,8 @@ export default function StatusBar({
             ref={widthBtnRef}
             data-testid="status-width"
             aria-expanded={widthOpen}
-            title={`页面宽度 ${readerWidth}px`}
+            aria-label={`页面宽度 ${readerWidth}px`}
+            title="页面宽度"
             onClick={(e) => {
               cancelWidthClose();
               setWidthAnchor(e.clientX);
@@ -433,7 +434,7 @@ export default function StatusBar({
             }}
             onClick={() => onSetTheme(nextThemeOf(theme))}
             className="flex items-center gap-0.5 rounded-full px-2 text-[var(--app-chrome-rest)] hover:bg-[var(--app-accent-soft)] hover:text-[var(--app-chrome-hover)]"
-            title={`当前: ${themeLabelOf(theme)}`}
+            title="切换主题"
           >
             <Icon name={iconOfTheme(theme)} size={18} />
           </button>

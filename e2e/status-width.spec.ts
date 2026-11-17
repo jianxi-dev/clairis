@@ -92,8 +92,13 @@ test("悬停即显示按钮与弹窗，移出后两者都隐藏", async ({ page 
 test("宽度按钮提示不带操作括号说明", async ({ page }) => {
   await openPanel(page);
   await expect(page.getByTestId("status-width")).toHaveAttribute(
-    "title",
+    "aria-label",
     "页面宽度 1080px",
+  );
+  await page.mouse.move(10, 10);
+  await expect(page.getByTestId("status-width")).toHaveAttribute(
+    "title",
+    "页面宽度",
   );
 });
 

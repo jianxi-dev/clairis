@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render } from "@testing-library/react";
 import TooltipLayer from "../../components/TooltipLayer";
 import { useEditorStore } from "../../stores/editorStore";
+import { popOverlay, pushOverlay } from "../../lib/overlayGate";
 
 const DELAY_MS = 400;
 
@@ -145,5 +146,19 @@ describe("TooltipLayer 悬停提示规则", () => {
       vi.advanceTimersByTime(DELAY_MS);
     });
     expect(tipText()).toBeNull();
+  });
+
+  it("弹层打开时 pointerdown 不还原 title，关闭后恢复（#945）", () => {
+    render(<TooltipLayer />);
+    pushOverlay();
+    const btn = makeButton({ title: "切换主题" });
+    hover(btn);
+    expect(btn.getAttribute("title")).toBeNull();
+
+    fireEvent.pointerDown(btn, { bubbles: true });
+    expect(btn.getAttribute("title")).toBeNull();
+
+    popOverlay();
+    expect(btn.getAttribute("title")).toBe("切换主题");
   });
 });

@@ -237,8 +237,10 @@ export default function TooltipLayer() {
     };
 
     const onDownRestore = () => {
-      // 点击瞬间还原 title：既有序列化断言（如主题循环按钮）依赖它；
-      // 胶囊保持显示，不做二次摘除。
+      // 弹层打开期间不还原 title：指针停留会触发系统原生矩形提示（#945）。
+      // 关闭弹层时由 subscribeOverlay(false) → restore() 统一还原。
+      if (isOverlayOpen()) return;
+      // 点击瞬间还原 title：既有序列化断言依赖它；胶囊保持显示，不做二次摘除。
       restore();
     };
 

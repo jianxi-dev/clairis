@@ -68,14 +68,14 @@ test("暖色主题下菜单表面跟随主题色", async ({ page }) => {
   await openFile(page, "/tmp/batch2/warm.md");
 
   const themeBtn = page.locator(
-    '[data-testid="status-bar"] button[title^="当前"]',
+    '[data-testid="status-bar"] button[aria-label^="主题："]',
   );
   for (let i = 0; i < 5; i++) {
-    if ((await themeBtn.getAttribute("title"))?.includes("暖色")) break;
+    if ((await themeBtn.getAttribute("aria-label"))?.includes("暖色")) break;
     await themeBtn.click();
     await page.waitForTimeout(120);
   }
-  await expect(themeBtn).toHaveAttribute("title", /暖色/);
+  await expect(themeBtn).toHaveAttribute("aria-label", /暖色/);
 
   await page.locator('[data-testid="pane-menu-button"]').first().hover();
   const menu = page.locator('[data-testid="pane-menu"]');
