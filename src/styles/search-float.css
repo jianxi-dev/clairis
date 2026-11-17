@@ -200,6 +200,23 @@
   border-radius: 2px;
 }
 
+.search-float-context b {
+  font-weight: 600;
+  color: var(--app-text);
+}
+
+.search-float-context i {
+  font-style: italic;
+}
+
+.search-float-context code {
+  padding: 0 4px;
+  font-family: var(--type-font-mono, monospace);
+  font-size: 10px;
+  background: var(--app-sunken);
+  border-radius: 4px;
+}
+
 .search-float-key {
   flex: 0 0 auto;
   align-self: center;
@@ -329,13 +346,31 @@
 
 .search-float-status {
   position: absolute;
-  bottom: 8px;
+  bottom: 30px;
   left: 10px;
   padding: 2px 8px;
   font-size: 11px;
   color: var(--app-accent);
   background: var(--app-accent-soft);
   border-radius: 999px;
+}
+
+.search-float-statusbar {
+  flex: 0 0 auto;
+  padding: 4px 10px;
+  overflow: hidden;
+  font-size: 10px;
+  line-height: 1.4;
+  color: var(--app-text-3);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  border-top: 1px solid var(--app-border);
+  transition: opacity 160ms ease;
+}
+
+.search-float-statusbar-hidden {
+  opacity: 0;
+  visibility: hidden;
 }
 
 .search-float-hover {

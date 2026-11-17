@@ -8,13 +8,12 @@ import {
   type CSSProperties,
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
-  type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
 import { EditorView } from "@codemirror/view";
 import {
   searchScan,
-  searchHitSnippet,
+  searchHitSnippetWithRange,
   splitSearchBlocks,
   type SearchScanHit,
 } from "../../lib/searchScan";
@@ -29,6 +28,7 @@ import {
 } from "../../lib/searchFloatResize";
 import { digitFromCode } from "../../lib/gridKeyboard";
 import { activateLocalContext } from "../../lib/shortcuts";
+import { renderInlineWithHit } from "../../renderers/inline";
 import { useSearchFloatStore } from "../../stores/searchFloat";
 import { getEditorView } from "../../editors/editorRef";
 import type { EditorMode, SearchPanelDefaultPos } from "../../types";
@@ -79,33 +79,88 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), Math.max(min, max));
 }
 
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+/** 结果行上下文片段半径，与 searchHitSnippet 的默认一致。 */
+const SNIPPET_RADIUS = 44;
+
+/** 状态栏在「指针离开 + 失焦」同时满足后的自动隐藏延迟（S-6 / D2）。 */
+const STATUS_BAR_HIDE_DELAY_MS = 2000;
+
+interface SearchFloatStatusBarProps {
+  rootRef: { current: HTMLDivElement | null };
 }
 
-function highlight(context: string, needle: string): ReactNode {
-  if (!needle) return context;
-  let matcher: RegExp;
-  try {
-    matcher = new RegExp(escapeRegExp(needle), "gi");
-  } catch {
-    return context;
-  }
-  const parts: ReactNode[] = [];
-  let last = 0;
-  let key = 0;
-  let match: RegExpExecArray | null;
-  while ((match = matcher.exec(context)) !== null) {
-    if (match[0].length === 0) {
-      matcher.lastIndex += 1;
-      continue;
+function SearchFloatStatusBar({ rootRef }: SearchFloatStatusBarProps) {
+  const [visible, setVisible] = useState(true);
+  const pointerInRef = useRef(false);
+  const focusInRef = useRef(true);
+  const hideTimerRef = useRef<number | null>(null);
+
+  const clearHideTimer = useCallback(() => {
+    if (hideTimerRef.current !== null) {
+      window.clearTimeout(hideTimerRef.current);
+      hideTimerRef.current = null;
     }
-    parts.push(context.slice(last, match.index));
-    parts.push(<mark key={key++}>{match[0]}</mark>);
-    last = match.index + match[0].length;
-  }
-  parts.push(context.slice(last));
-  return parts;
+  }, []);
+
+  const show = useCallback(() => {
+    clearHideTimer();
+    setVisible(true);
+  }, [clearHideTimer]);
+
+  const scheduleHide = useCallback(() => {
+    clearHideTimer();
+    hideTimerRef.current = window.setTimeout(() => {
+      hideTimerRef.current = null;
+      if (!pointerInRef.current && !focusInRef.current) {
+        setVisible(false);
+      }
+    }, STATUS_BAR_HIDE_DELAY_MS);
+  }, [clearHideTimer]);
+
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+    const onFocusIn = () => {
+      focusInRef.current = true;
+      show();
+    };
+    const onFocusOut = (event: FocusEvent) => {
+      if (!root.contains(event.relatedTarget as Node | null)) {
+        focusInRef.current = false;
+        scheduleHide();
+      }
+    };
+    const onPointerEnter = () => {
+      pointerInRef.current = true;
+      show();
+    };
+    const onPointerLeave = () => {
+      pointerInRef.current = false;
+      scheduleHide();
+    };
+    root.addEventListener("focusin", onFocusIn);
+    root.addEventListener("focusout", onFocusOut);
+    root.addEventListener("pointerenter", onPointerEnter);
+    root.addEventListener("pointerleave", onPointerLeave);
+    return () => {
+      clearHideTimer();
+      root.removeEventListener("focusin", onFocusIn);
+      root.removeEventListener("focusout", onFocusOut);
+      root.removeEventListener("pointerenter", onPointerEnter);
+      root.removeEventListener("pointerleave", onPointerLeave);
+    };
+  }, [rootRef, show, scheduleHide, clearHideTimer]);
+
+  return (
+    <div
+      className={`search-float-statusbar${
+        visible ? "" : " search-float-statusbar-hidden"
+      }`}
+      data-testid="search-float-statusbar"
+    >
+      ↑↓ 切换 · ↵ 定位选中 · ⌘1~9 直达（局部 · 浮窗内）· Esc 关闭
+    </div>
+  );
 }
 
 interface Placement {
@@ -179,8 +234,11 @@ export default function SearchReplacePanel({
 
   const hits = useMemo(() => searchScan(content, query), [content, query]);
   const blocks = useMemo(() => splitSearchBlocks(content), [content]);
-  const snippets = useMemo(
-    () => hits.map((hit) => searchHitSnippet(content, hit, 44, blocks)),
+  const snippetHits = useMemo(
+    () =>
+      hits.map((hit) =>
+        searchHitSnippetWithRange(content, hit, SNIPPET_RADIUS, blocks),
+      ),
     [content, hits, blocks],
   );
   const safeSelected =
@@ -726,9 +784,15 @@ export default function SearchReplacePanel({
                   {index + 1}/{hits.length}
                 </span>
               </span>
-              <span className="search-float-context">
-                {highlight(snippets[index] ?? hit.context, query.trim())}
-              </span>
+              <span
+                className="search-float-context"
+                dangerouslySetInnerHTML={{
+                  __html: renderInlineWithHit(
+                    snippetHits[index]?.snippet ?? hit.context,
+                    snippetHits[index]?.hit,
+                  ),
+                }}
+              />
               {canReplace && replaceMode && (
                 <span
                   className="search-float-diff"
@@ -755,6 +819,8 @@ export default function SearchReplacePanel({
           </button>
         ))}
       </div>
+
+      {open && <SearchFloatStatusBar rootRef={rootRef} />}
 
       {status && (
         <div
