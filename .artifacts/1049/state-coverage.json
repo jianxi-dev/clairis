@@ -1,0 +1,31 @@
+{
+  "task": "4.1",
+  "change": "editor-surface-batch21",
+  "issue": 1049,
+  "states": [
+    {
+      "state": "01-pointer-anchored",
+      "screenshot": ".artifacts/1049/01-pointer-anchored.png",
+      "assertion": "passed",
+      "probe": "预览态真实拖拽：胶囊中心 x 与鼠标释放点 x 偏差 0.0px（上限 4px）"
+    },
+    {
+      "state": "02-center-fallback",
+      "screenshot": ".artifacts/1049/02-center-fallback.png",
+      "assertion": "passed",
+      "probe": "无指针（脚本选区）：胶囊中心与选区中心偏差 0.0px"
+    },
+    {
+      "state": "03-right-edge-clamped",
+      "screenshot": ".artifacts/1049/03-right-edge-clamped.png",
+      "assertion": "passed",
+      "probe": "480×800 视口：胶囊右缘 480≤480、左缘 342≥0；未钳制右缘 513>480"
+    },
+    {
+      "state": "04-vertical-above-selection",
+      "screenshot": ".artifacts/1049/04-vertical-above-selection.png",
+      "assertion": "passed",
+      "probe": "胶囊下缘 196.4 在选区上缘 210.4 之上（相差 14.0px）"
+    }
+  ]
+}
