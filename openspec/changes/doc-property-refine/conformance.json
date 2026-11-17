@@ -1,0 +1,154 @@
+{
+  "change": "doc-property-refine",
+  "requirements": [
+    {
+      "id": "R-1",
+      "text": "布尔字段值内仅状态图形",
+      "anchors": [
+        {
+          "id": "A-1.1",
+          "claim": "布尔值节点文本不含「开/关」文字",
+          "kind": "exact",
+          "assert": "true 态值节点 `textContent` 严格等于 `◉`（长度为 1），不含字符「开」",
+          "source": "issue#1021 / 一手裁定「不要显示在值内」"
+        },
+        {
+          "id": "A-1.2",
+          "claim": "状态文案移至 title",
+          "kind": "exact",
+          "assert": "true 态值节点 `title` 严格等于 `已开启`，false 态严格等于 `已关闭`",
+          "source": "issue#1021 / 决策#2"
+        },
+        {
+          "id": "A-1.3",
+          "claim": "布尔切换两态图形与 aria 同步",
+          "kind": "state-machine",
+          "assert": "点击开关后 `aria-checked` 由 `true`→`false`，值图形由 `◉`→`○`，`title` 由 `已开启`→`已关闭`",
+          "source": "issue#1021 / 现状 DocPropertyBar.tsx:ValueEditor"
+        }
+      ]
+    },
+    {
+      "id": "R-2",
+      "text": "工具条与行内操作图标统一注册表",
+      "anchors": [
+        {
+          "id": "A-2.1",
+          "claim": "工具条七按钮均为注册表 SVG 渲染",
+          "kind": "exact",
+          "assert": "选中行后 `.dpb-ops-btn` 节点数等于 7，每个内 `<svg>` 数为 1、直接文本节点数为 0",
+          "source": "issue#1022 / 现状 DocPropertyBar.tsx:OpsBar"
+        },
+        {
+          "id": "A-2.2",
+          "claim": "与 MD 菜单同源同尺寸档",
+          "kind": "exact",
+          "assert": "工具条按钮 `svg` 的 `viewBox` 严格等于 `0 0 24 24`，渲染尺寸档为 14",
+          "source": "issue#1022 / 决策#3"
+        },
+        {
+          "id": "A-2.3",
+          "claim": "新增图标先有设计条款",
+          "kind": "exact",
+          "assert": "`docs/design/system/spec.md` §2.3 动作组含 `copy`/`cut`/`paste`/`arrowUp`/`arrowDown`/`trash` 六个概念条款",
+          "source": "决策#3 / design-system:§2.3"
+        }
+      ]
+    },
+    {
+      "id": "R-3",
+      "text": "面板可见时编辑态隐藏 frontmatter 源码块",
+      "anchors": [
+        {
+          "id": "A-3.1",
+          "claim": "展开态隐藏整块前言",
+          "kind": "state-machine",
+          "assert": "编辑态面板展开时正文首行可见文本不含子串 `---`（被 decoration 替换）；装饰范围 `[from,to)` 等于 frontmatter 块起止",
+          "source": "issue#1019 / 决策#1 / 现状 frontmatter.ts:parseFrontmatter"
+        },
+        {
+          "id": "A-3.2",
+          "claim": "折叠态一行摘要占位",
+          "kind": "exact",
+          "assert": "折叠面板后正文出现恰好 1 个摘要占位节点，其文本匹配 `文档属性 · N 个字段`（N = 实际字段数）",
+          "source": "issue#1019 / 决策#1"
+        },
+        {
+          "id": "A-3.3",
+          "claim": "隐藏态恢复完整源码块",
+          "kind": "state-machine",
+          "assert": "按 `⌘⇧Y` 隐藏面板后正文重新可见以 `---` 开头的前言块，且 YAML 文本完整可编辑",
+          "source": "issue#1019 / 决策#1 / 一手裁定「正文不要再显示」"
+        },
+        {
+          "id": "A-3.4",
+          "claim": "隐藏不吞光标且不破坏 undo",
+          "kind": "state-machine",
+          "assert": "隐藏态下点击正文首段后光标行号 ≥ 前言块行数+1；随后 Ctrl+Z 撤销前面板编辑后面板随源码重解析，首段文本与撤销前一致",
+          "source": "issue#1019 / 决策#1 / spec P-9"
+        }
+      ]
+    },
+    {
+      "id": "R-4",
+      "text": "模板字段类型 UI 与内置模板可编辑",
+      "anchors": [
+        {
+          "id": "A-4.1",
+          "claim": "字段类型选择并套用生效",
+          "kind": "state-machine",
+          "assert": "设置把内置「通用」某字段类型改为「日期」保存后，新文档套用该模板，面板中该字段类型图标为日历（`data-type=\"date\"`）",
+          "source": "issue#1023 / 决策#4"
+        },
+        {
+          "id": "A-4.2",
+          "claim": "恢复默认回落内置定义",
+          "kind": "state-machine",
+          "assert": "对内置模板点「恢复默认」后，新文档套用该模板，该字段类型回到内置原值（非「日期」）",
+          "source": "issue#1023 / 决策#4 / 现状 propTemplates.ts:normalizePropTemplates"
+        },
+        {
+          "id": "A-4.3",
+          "claim": "编辑落为同名覆盖层",
+          "kind": "exact",
+          "assert": "保存内置模板编辑后 `AppConfig.propTemplates` 含 1 条与内置同名的条目（长度与内置名一致），无重复名",
+          "source": "issue#1023 / 决策#4 / 现状 SettingsView.tsx:addPropTemplate"
+        }
+      ]
+    },
+    {
+      "id": "R-5",
+      "text": "propAliasMap 应用配置落地",
+      "anchors": [
+        {
+          "id": "A-5.1",
+          "claim": "配置映射优先并热应用",
+          "kind": "state-machine",
+          "assert": "设置新增 `customdate → 日期` 后打开含 `customdate: 2026-11-17` 外部文件，该字段 `data-type=\"date\"` 且显示名严格等于 `customdate`",
+          "source": "issue#1024 / 决策#5"
+        },
+        {
+          "id": "A-5.2",
+          "claim": "恢复默认回内置 9 组",
+          "kind": "exact",
+          "assert": "点「恢复默认」后自定义映射清空，含 `createdate: 2026-11-14` 的文件重新识别为 `data-type=\"date\"`",
+          "source": "issue#1024 / 决策#5 / 现状 frontmatter.ts:ALIAS"
+        },
+        {
+          "id": "A-5.3",
+          "claim": "Rust 白名单拒绝非法类型值",
+          "kind": "exact",
+          "assert": "`validate_config` 收到 `propAliasMap: {\"k\":\"color\"}` 返回 `Err`，错误信息含非法类型 `color`；合法八类枚举通过",
+          "source": "issue#1024 / 决策#5 / 现状 config.rs:validate_config"
+        },
+        {
+          "id": "A-5.4",
+          "claim": "合并序：配置先于内置默认",
+          "kind": "state-machine",
+          "assert": "同时存在用户映射 `date → text` 与内置 `date → date` 时，`date` 键解析为 `text`（配置覆盖内置）",
+          "source": "决策#5 / spec P-6"
+        }
+      ]
+    }
+  ]
+}
