@@ -1,0 +1,33 @@
+{
+  "task": "1058-search-float-half-width",
+  "states": [
+    {
+      "state": "01-default-300",
+      "screenshot": ".artifacts/1058/01-default-300.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-17T23:57:16.715Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "02-narrow-360",
+      "screenshot": ".artifacts/1058/02-narrow-360.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-17T23:57:17.624Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "03-narrow-320-controls",
+      "screenshot": ".artifacts/1058/03-narrow-320-controls.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-17T23:57:18.572Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "04-statusbar-attached",
+      "screenshot": ".artifacts/1058/04-statusbar-attached.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-17T23:57:19.497Z",
+      "runner": "mason@unknown"
+    }
+  ]
+}
