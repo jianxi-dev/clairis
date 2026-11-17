@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "01-before-drop",
+      "screenshot": "/Users/mason/ToHighs/clairis-wt-1046/.artifacts/1046/01-before-drop.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-17T20:36:48Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "03-animation-class-present",
+      "screenshot": "/Users/mason/ToHighs/clairis-wt-1046/.artifacts/1046/03-animation-class-present.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-17T20:36:48Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "02-after-magic-layout",
+      "screenshot": "/Users/mason/ToHighs/clairis-wt-1046/.artifacts/1046/02-after-magic-layout.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-17T20:36:49Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "04-rejected-all-or-nothing",
+      "screenshot": "/Users/mason/ToHighs/clairis-wt-1046/.artifacts/1046/04-rejected-all-or-nothing.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-17T20:36:50Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}

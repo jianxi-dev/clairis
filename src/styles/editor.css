@@ -1685,6 +1685,25 @@ html[data-tab-drag="true"] body * {
   }
 }
 
+@keyframes magicLayoutIn {
+  from {
+    opacity: 0.4;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.magic-layout .pane-leaf {
+  animation: magicLayoutIn 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .magic-layout .pane-leaf {
+    animation: none;
+  }
+}
+
 /* ── 斜杠命令菜单（mdb-slash-*，移植自 md-bundle） ──────────
  * 定位（left/top/max-height）由 slash.ts 在运行时按光标/单元格坐标写入，
  * 这里只管外观。颜色全部走 tokens.css 的语义变量，不写死 hex。 */
