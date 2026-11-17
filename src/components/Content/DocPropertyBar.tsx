@@ -219,10 +219,11 @@ interface TypeSelectorProps {
   field: FrontmatterField;
   editable: boolean;
   onPick: (field: FrontmatterField, next: FrontmatterType) => void;
+  showLabel?: boolean;
 }
 
 /** 字段名前的纯图标类型选择器：编辑态按钮弹八类菜单，预览态静态图标。 */
-function TypeSelector({ field, editable, onPick }: TypeSelectorProps) {
+function TypeSelector({ field, editable, onPick, showLabel }: TypeSelectorProps) {
   // 托管日期键强制只读：类型菜单不可打开、光标不变（P-6）。
   const enabled = editable && !isManagedDateKey(field.key);
   const [open, setOpen] = useState(false);
@@ -284,6 +285,11 @@ function TypeSelector({ field, editable, onPick }: TypeSelectorProps) {
       ) : (
         <span className="dpb-type dpb-type-ro" title={TYPE_LABEL[field.type]}>
           <TypeIcon type={field.type} />
+        </span>
+      )}
+      {showLabel && (
+        <span className="dpb-type-label" aria-hidden="true">
+          {TYPE_LABEL[field.type]}
         </span>
       )}
       {enabled &&
@@ -495,7 +501,7 @@ function ValueView({
           : undefined
       }
     >
-      {field.display || "—"}
+      {field.display}
     </span>
   );
 }
@@ -667,26 +673,6 @@ function TagIcon() {
     >
       <path d="M20.59 13.41 12 22 2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
       <line x1="7" y1="7" x2="7.01" y2="7" />
-    </svg>
-  );
-}
-
-function LockIcon() {
-  return (
-    <svg
-      className="dpb-lock"
-      width="10"
-      height="10"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.7"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <rect x="3" y="11" width="18" height="11" rx="2" />
-      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
     </svg>
   );
 }
@@ -1922,6 +1908,7 @@ export default function DocPropertyBar({
                       field={field}
                       editable={editable}
                       onPick={handlePickType}
+                      showLabel
                     />
                   </span>
                   <RenameLabel
@@ -1960,20 +1947,20 @@ export default function DocPropertyBar({
                   </span>
                   <span className="dpb-b-x">
                     {isManagedDateKey(field.key) ? (
-                      <LockIcon />
+                      <Icon name="lock" size={14} className="dpb-lock" />
                     ) : field !== titleField &&
                       field !== tagsField &&
                       editable &&
                       !selectMode ? (
                       <button
                         type="button"
-                        className="dpb-b-del"
+                        className="dpb-row-x"
                         data-testid="dpb-row-del"
                         title="删除该字段"
                         aria-label={`删除字段 ${field.key}`}
                         onClick={() => handleDeleteRow(rowId)}
                       >
-                        <Icon name="trash" size={18} />
+                        <Icon name="close" size={14} />
                       </button>
                     ) : null}
                   </span>
@@ -2097,6 +2084,7 @@ export default function DocPropertyBar({
                       field={field}
                       editable={editable}
                       onPick={handlePickType}
+                      showLabel
                     />
                   )}
                   <RenameLabel
@@ -2121,7 +2109,20 @@ export default function DocPropertyBar({
                       {typeErrors[field.key]}
                     </span>
                   )}
-                  {isManagedDateKey(field.key) && <LockIcon />}
+                  {isManagedDateKey(field.key) ? (
+                    <Icon name="lock" size={14} className="dpb-lock" />
+                  ) : editable && !selectMode ? (
+                    <button
+                      type="button"
+                      className="dpb-row-x"
+                      data-testid="dpb-row-del"
+                      title="删除该字段"
+                      aria-label={`删除字段 ${field.key}`}
+                      onClick={() => handleDeleteRow(rowId)}
+                    >
+                      <Icon name="close" size={14} />
+                    </button>
+                  ) : null}
                 </span>
               );
             })}
