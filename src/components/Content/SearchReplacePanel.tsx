@@ -18,7 +18,15 @@ import {
   splitSearchBlocks,
   type SearchScanHit,
 } from "../../lib/searchScan";
-import { applyReplaceChanges, buildReplaceChanges } from "../../lib/searchReplace";
+import {
+  applyReplaceChanges,
+  buildReplaceChanges,
+} from "../../lib/searchReplace";
+import { RESIZE_EDGES, type ResizeEdge } from "../../lib/previewAnchor";
+import {
+  SEARCH_FLOAT_MIN,
+  resizeSearchFloat,
+} from "../../lib/searchFloatResize";
 import { digitFromCode } from "../../lib/gridKeyboard";
 import { activateLocalContext } from "../../lib/shortcuts";
 import { useSearchFloatStore } from "../../stores/searchFloat";
@@ -38,10 +46,34 @@ const BLOCK_TYPE_LABELS: Record<string, string> = {
 /** 与 shortcuts.ts 的 local-search-row-pick 条目一致。 */
 const LOCAL_CONTEXT = "搜索浮窗打开且焦点在浮窗内";
 
-const MIN_WIDTH = 320;
-const MIN_HEIGHT = 240;
 const EDGE_MARGIN = 24;
 const DRAG_THRESHOLD_PX = 3;
+
+/**
+ * 8 向手柄的命中区与光标（呈现层，与 FloatingPreview 同构；
+ * 几何计算不在此处——一律走 previewAnchor 的 resizeSearchFloat）。
+ */
+const RESIZE_HANDLE_CURSOR: Record<ResizeEdge, string> = {
+  n: "ns-resize",
+  s: "ns-resize",
+  e: "ew-resize",
+  w: "ew-resize",
+  ne: "nesw-resize",
+  sw: "nesw-resize",
+  nw: "nwse-resize",
+  se: "nwse-resize",
+};
+
+const RESIZE_HANDLE_STYLE: Record<ResizeEdge, CSSProperties> = {
+  n: { top: 0, left: 12, right: 12, height: 8 },
+  s: { bottom: 0, left: 12, right: 12, height: 8 },
+  e: { right: 0, top: 12, bottom: 12, width: 8 },
+  w: { left: 0, top: 12, bottom: 12, width: 8 },
+  ne: { top: 0, right: 0, width: 16, height: 16 },
+  nw: { top: 0, left: 0, width: 16, height: 16 },
+  se: { bottom: 0, right: 0, width: 16, height: 16 },
+  sw: { bottom: 0, left: 0, width: 16, height: 16 },
+};
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), Math.max(min, max));
@@ -83,7 +115,7 @@ interface Placement {
   height: number;
 }
 
-interface DragState {
+interface DragStateBase {
   pointerId: number;
   startX: number;
   startY: number;
@@ -91,9 +123,11 @@ interface DragState {
   origY: number;
   width: number;
   height: number;
-  mode: "move" | "resize";
   active: boolean;
 }
+
+type DragState = DragStateBase &
+  ({ mode: "move"; edge: null } | { mode: "resize"; edge: ResizeEdge });
 
 interface HoverAnchor {
   index: number;
@@ -128,7 +162,9 @@ export default function SearchReplacePanel({
   const [replaceMode, setReplaceMode] = useState(false);
   const [status, setStatus] = useState("");
   const [hover, setHover] = useState<HoverAnchor | null>(null);
-  const [hoverPos, setHoverPos] = useState<{ x: number; y: number } | null>(null);
+  const [hoverPos, setHoverPos] = useState<{ x: number; y: number } | null>(
+    null,
+  );
   const [wasOpen, setWasOpen] = useState(open);
   const rootRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -166,33 +202,37 @@ export default function SearchReplacePanel({
     }
   }
 
-  const locate = useCallback((hit: SearchScanHit) => {
-    if (mode === "preview") {
-      const preview = container?.querySelector<HTMLElement>(".preview-content");
-      if (!preview) return;
-      const walker = document.createTreeWalker(preview, NodeFilter.SHOW_TEXT);
-      const needle = hit.text.toLowerCase();
-      let node = walker.nextNode();
-      while (node) {
-        if ((node.textContent ?? "").toLowerCase().includes(needle)) {
-          (node.parentElement as HTMLElement | null)?.scrollIntoView({
-            behavior: "auto",
-            block: "center",
-          });
-          return;
+  const locate = useCallback(
+    (hit: SearchScanHit) => {
+      if (mode === "preview") {
+        const preview =
+          container?.querySelector<HTMLElement>(".preview-content");
+        if (!preview) return;
+        const walker = document.createTreeWalker(preview, NodeFilter.SHOW_TEXT);
+        const needle = hit.text.toLowerCase();
+        let node = walker.nextNode();
+        while (node) {
+          if ((node.textContent ?? "").toLowerCase().includes(needle)) {
+            (node.parentElement as HTMLElement | null)?.scrollIntoView({
+              behavior: "auto",
+              block: "center",
+            });
+            return;
+          }
+          node = walker.nextNode();
         }
-        node = walker.nextNode();
+        return;
       }
-      return;
-    }
-    const view = getActiveEditorView();
-    if (!view) return;
-    view.dispatch({
-      selection: { anchor: hit.from, head: hit.to },
-      effects: EditorView.scrollIntoView(hit.from, { y: "center" }),
-    });
-    view.focus();
-  }, [mode, container]);
+      const view = getActiveEditorView();
+      if (!view) return;
+      view.dispatch({
+        selection: { anchor: hit.from, head: hit.to },
+        effects: EditorView.scrollIntoView(hit.from, { y: "center" }),
+      });
+      view.focus();
+    },
+    [mode, container],
+  );
 
   const canReplace = mode !== "preview";
 
@@ -240,7 +280,10 @@ export default function SearchReplacePanel({
     setStatus(`已替换 ${changes.length} 处`);
   };
 
-  const onHitMouseEnter = (event: ReactMouseEvent<HTMLElement>, index: number) => {
+  const onHitMouseEnter = (
+    event: ReactMouseEvent<HTMLElement>,
+    index: number,
+  ) => {
     if (!replaceMode || !canReplace || !container) return;
     const b = container.getBoundingClientRect();
     const r = event.currentTarget.getBoundingClientRect();
@@ -272,17 +315,17 @@ export default function SearchReplacePanel({
     let y = hover.y;
     if (y + h > hover.bounds.bottom - m) y = hover.bounds.bottom - m - h;
     if (y < hover.bounds.top + m) y = hover.bounds.top + m;
-    setHoverPos((prev) => (prev && prev.x === x && prev.y === y ? prev : { x, y }));
+    setHoverPos((prev) =>
+      prev && prev.x === x && prev.y === y ? prev : { x, y },
+    );
   }, [hover]);
 
   const hoverHit = hover ? hits[hover.index] : null;
   const hoverBlock = hoverHit
-    ? blocks.find((b) => b.index === hoverHit.blockIndex) ?? null
+    ? (blocks.find((b) => b.index === hoverHit.blockIndex) ?? null)
     : null;
   const hoverLocalFrom =
-    hoverHit && hoverBlock
-      ? Math.max(0, hoverHit.from - hoverBlock.from)
-      : 0;
+    hoverHit && hoverBlock ? Math.max(0, hoverHit.from - hoverBlock.from) : 0;
   const hoverLocalTo =
     hoverHit && hoverBlock
       ? Math.min(hoverBlock.text.length, hoverHit.to - hoverBlock.from)
@@ -397,12 +440,16 @@ export default function SearchReplacePanel({
       width: rootRect.width,
       height: rootRect.height,
       mode: "move",
+      edge: null,
       active: false,
     };
     event.currentTarget.setPointerCapture(event.pointerId);
   };
 
-  const onResizePointerDown = (event: ReactPointerEvent<HTMLElement>) => {
+  const onResizePointerDown = (
+    edge: ResizeEdge,
+    event: ReactPointerEvent<HTMLElement>,
+  ) => {
     if (event.button !== 0) return;
     const root = rootRef.current;
     const host = root?.offsetParent as HTMLElement | null;
@@ -418,6 +465,7 @@ export default function SearchReplacePanel({
       width: rootRect.width,
       height: rootRect.height,
       mode: "resize",
+      edge,
       active: false,
     };
     event.currentTarget.setPointerCapture(event.pointerId);
@@ -444,12 +492,33 @@ export default function SearchReplacePanel({
       });
       return;
     }
-    setPlacement({
-      x: drag.origX,
-      y: drag.origY,
-      width: clamp(drag.width + dx, MIN_WIDTH, hostRect.width),
-      height: clamp(drag.height + dy, MIN_HEIGHT, hostRect.height),
-    });
+    const rect = resizeSearchFloat(
+      drag.edge,
+      { x: drag.origX, y: drag.origY, w: drag.width, h: drag.height },
+      dx,
+      dy,
+    );
+    // host 边界钳制：先钳尺寸保持锚定边，再钳位置保持对边锚死。
+    // 南/东向：北/西边锚死（x/y 不动），尺寸上限 = host 剩余空间（不低于最小尺寸）。
+    // 北/西向：南/东边锚死——先钳位置再收回尺寸，保证对边精确不动。
+    let { x, y, w, h } = rect;
+    if (drag.edge.includes("s")) {
+      h = Math.min(h, Math.max(SEARCH_FLOAT_MIN.h, hostRect.height - y));
+    }
+    if (drag.edge.includes("e")) {
+      w = Math.min(w, Math.max(SEARCH_FLOAT_MIN.w, hostRect.width - x));
+    }
+    if (drag.edge.includes("n")) {
+      const south = y + h;
+      y = Math.max(0, y);
+      h = Math.min(h, south - y);
+    }
+    if (drag.edge.includes("w")) {
+      const east = x + w;
+      x = Math.max(0, x);
+      w = Math.min(w, east - x);
+    }
+    setPlacement({ x, y, width: w, height: h });
   };
 
   const onPointerUp = (event: ReactPointerEvent<HTMLElement>) => {
@@ -543,9 +612,7 @@ export default function SearchReplacePanel({
         {canReplace && (
           <button
             type="button"
-            className={`search-float-replace-toggle${
-              replaceMode ? " on" : ""
-            }`}
+            className={`search-float-replace-toggle${replaceMode ? " on" : ""}`}
             data-testid="search-float-replace-toggle"
             aria-label="切换替换"
             aria-pressed={replaceMode}
@@ -670,7 +737,10 @@ export default function SearchReplacePanel({
                   <del>{hit.text}</del>
                   {replacement && (
                     <>
-                      <span className="search-float-diff-arrow" aria-hidden="true">
+                      <span
+                        className="search-float-diff-arrow"
+                        aria-hidden="true"
+                      >
                         →
                       </span>
                       <ins>{replacement}</ins>
@@ -730,12 +800,19 @@ export default function SearchReplacePanel({
           document.body,
         )}
 
-      <div
-        className="search-float-resize"
-        data-testid="search-float-resize"
-        aria-hidden="true"
-        onPointerDown={onResizePointerDown}
-      />
+      {RESIZE_EDGES.map((edge) => (
+        <div
+          key={edge}
+          className="search-float-resize-handle"
+          data-testid={`search-float-resize-${edge}`}
+          aria-hidden="true"
+          onPointerDown={(event) => onResizePointerDown(edge, event)}
+          style={{
+            cursor: RESIZE_HANDLE_CURSOR[edge],
+            ...RESIZE_HANDLE_STYLE[edge],
+          }}
+        />
+      ))}
     </div>
   );
 }

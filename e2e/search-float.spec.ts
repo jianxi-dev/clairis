@@ -141,6 +141,30 @@ test("⌘F 打开浮窗：600×460，Esc 关闭无残留、再按重开，内置
   await expect(float).toBeVisible();
 });
 
+test("浮窗壳计算样式与悬浮预览窗一致：surface 底、1px 描边、8px 圆角、投影", async ({
+  page,
+}) => {
+  await page.keyboard.press("Meta+f");
+  const float = page.locator('[data-testid="search-float"]');
+  await expect(float).toBeVisible();
+
+  const shell = await float.evaluate((el) => {
+    const cs = getComputedStyle(el);
+    return {
+      backgroundColor: cs.backgroundColor,
+      borderWidth: cs.borderTopWidth,
+      borderColor: cs.borderTopColor,
+      radius: cs.borderTopLeftRadius,
+      shadow: cs.boxShadow,
+    };
+  });
+  expect(shell.borderWidth).toBe("1px");
+  expect(shell.borderColor).not.toBe("rgba(0, 0, 0, 0)");
+  expect(shell.radius).toBe("8px");
+  expect(shell.shadow).not.toBe("none");
+  expect(shell.backgroundColor).not.toBe("rgba(0, 0, 0, 0)");
+});
+
 test("输入中文关键词即时显示命中计数与结果行", async ({ page }) => {
   await page.keyboard.press("Meta+f");
   const input = page.locator('[data-testid="search-float-input"]');
@@ -208,16 +232,61 @@ test("拖拽手柄移动后，关闭再开保持在拖后位置", async ({ page 
   expect(near(reopened.y, after.y, 2)).toBe(true);
 });
 
-test("右下角缩放手柄调整尺寸，会话内记忆", async ({ page }) => {
+test("8 向缩放：四边与四角拖拽改变尺寸并钳到最小 320×240，会话内记忆", async ({
+  page,
+}) => {
   await page.keyboard.press("Meta+f");
   const float = page.locator('[data-testid="search-float"]');
   await expect(float).toBeVisible();
 
-  await dragBy(page, "search-float-resize", 60, 40);
-  const resized = await float.boundingBox();
-  if (!resized) throw new Error("浮窗未布局");
-  expect(resized.width).toBeGreaterThan(600);
-  expect(resized.height).toBeGreaterThan(460);
+  const before = await float.boundingBox();
+  if (!before) throw new Error("浮窗未布局");
+
+  // 边：东边向右拖 → 变宽，高度不变
+  await dragBy(page, "search-float-resize-e", 60, 0);
+  const afterEdge = await float.boundingBox();
+  if (!afterEdge) throw new Error("浮窗未布局");
+  expect(afterEdge.width).toBeGreaterThan(before.width);
+  expect(near(afterEdge.height, before.height, 2)).toBe(true);
+
+  // 角：东南角向右下拖 → 更宽更高
+  await dragBy(page, "search-float-resize-se", 40, 30);
+  const afterCorner = await float.boundingBox();
+  if (!afterCorner) throw new Error("浮窗未布局");
+  expect(afterCorner.width).toBeGreaterThan(afterEdge.width);
+  expect(afterCorner.height).toBeGreaterThan(afterEdge.height);
+
+  // 边：北边向上拖 → 变高，宽度不变
+  await dragBy(page, "search-float-resize-n", 0, -40);
+  const afterNorth = await float.boundingBox();
+  if (!afterNorth) throw new Error("浮窗未布局");
+  expect(afterNorth.height).toBeGreaterThan(afterCorner.height);
+  expect(near(afterNorth.width, afterCorner.width, 2)).toBe(true);
+
+  // 边：南边向下拖 → 变高
+  await dragBy(page, "search-float-resize-s", 0, 40);
+  const afterSouth = await float.boundingBox();
+  if (!afterSouth) throw new Error("浮窗未布局");
+  expect(afterSouth.height).toBeGreaterThan(afterNorth.height);
+
+  // 边：西边向左拖 → 变宽，高度不变
+  await dragBy(page, "search-float-resize-w", -60, 0);
+  const afterWest = await float.boundingBox();
+  if (!afterWest) throw new Error("浮窗未布局");
+  expect(afterWest.width).toBeGreaterThan(afterSouth.width);
+  expect(near(afterWest.height, afterSouth.height, 2)).toBe(true);
+
+  // 旧单一手柄的 testid 不应残留（精确匹配，无后缀）
+  await expect(page.locator('[data-testid="search-float-resize"]')).toHaveCount(
+    0,
+  );
+
+  // 最小钳制：西北角向内拖到底 → 严格 320×240
+  await dragBy(page, "search-float-resize-nw", 2000, 2000);
+  const clamped = await float.boundingBox();
+  if (!clamped) throw new Error("浮窗未布局");
+  expect(near(clamped.width, 320, 1)).toBe(true);
+  expect(near(clamped.height, 240, 1)).toBe(true);
 
   await page.keyboard.press("Escape");
   await expect(float).toBeHidden();
@@ -226,8 +295,39 @@ test("右下角缩放手柄调整尺寸，会话内记忆", async ({ page }) => 
 
   const reopened = await float.boundingBox();
   if (!reopened) throw new Error("浮窗未布局");
-  expect(near(reopened.width, resized.width, 2)).toBe(true);
-  expect(near(reopened.height, resized.height, 2)).toBe(true);
+  expect(near(reopened.width, clamped.width, 1)).toBe(true);
+  expect(near(reopened.height, clamped.height, 1)).toBe(true);
+});
+
+test("南边拖出窗格底部不跳变：北边锚死、南边贴底、不瞬移到顶部", async ({
+  page,
+}) => {
+  await page.keyboard.press("Meta+f");
+  const float = page.locator('[data-testid="search-float"]');
+  await expect(float).toBeVisible();
+
+  const host = await float.evaluate((el) => {
+    const r = (el.offsetParent as HTMLElement).getBoundingClientRect();
+    return { bottom: r.bottom };
+  });
+
+  // 先拖标题手柄把浮窗移到窗格下半部（距底 20px）
+  const before = await float.boundingBox();
+  if (!before) throw new Error("浮窗未布局");
+  const dy = host.bottom - 20 - before.height - before.y;
+  await dragBy(page, "search-float-handle", 0, dy);
+  const moved = await float.boundingBox();
+  if (!moved) throw new Error("浮窗未布局");
+  expect(moved.y).toBeGreaterThan(before.y);
+
+  // 南边手柄向下拖 1000px，远超窗格底部
+  await dragBy(page, "search-float-resize-s", 0, 1000);
+  const after = await float.boundingBox();
+  if (!after) throw new Error("浮窗未布局");
+
+  expect(near(after.y, moved.y, 2)).toBe(true);
+  expect(near(after.y + after.height, host.bottom, 2)).toBe(true);
+  expect(after.y).toBeGreaterThan(0);
 });
 
 test("双行结果：定位行 + 序位 1/N + 两行上下文高亮", async ({ page }) => {
@@ -280,9 +380,7 @@ test("Enter 定位选中行：编辑器出现选区", async ({ page }) => {
   await page.keyboard.press("ArrowDown");
 
   await page.keyboard.press("Enter");
-  await expect(
-    page.locator(".cm-selectionBackground").first(),
-  ).toBeVisible();
+  await expect(page.locator(".cm-selectionBackground").first()).toBeVisible();
 });
 
 test("⌘2 直达第 2 项，不触发全局卡片直开", async ({ page }) => {
@@ -386,25 +484,29 @@ test("替换模式结果行内联 diff：原词删除线、新词强调色；普
   expect(await ins.evaluate((el) => getComputedStyle(el).color)).toBe(accent);
 
   await page.locator('[data-testid="search-float-replace-toggle"]').click();
-  await expect(page.locator('[data-testid="search-float-diff"]')).toHaveCount(0);
+  await expect(page.locator('[data-testid="search-float-diff"]')).toHaveCount(
+    0,
+  );
 });
 
-test("逐个替换当前命中后自动前进到下一处，文档文本变化", async ({
-  page,
-}) => {
+test("逐个替换当前命中后自动前进到下一处，文档文本变化", async ({ page }) => {
   await page.keyboard.press("Meta+f");
   await page.locator('[data-testid="search-float-input"]').fill("属性");
   await page.locator('[data-testid="search-float-replace-toggle"]').click();
   await page.locator('[data-testid="search-float-replace-input"]').fill("特性");
 
   const rows = page.locator('[data-testid="search-float-hit"]');
-  await expect(rows.nth(0).locator(".search-float-loc")).toHaveText("L1 · 标题");
+  await expect(rows.nth(0).locator(".search-float-loc")).toHaveText(
+    "L1 · 标题",
+  );
   await page.locator('[data-testid="search-float-replace-one"]').click();
 
   await expect(page.locator('[data-testid="search-float-count"]')).toHaveText(
     "2 处",
   );
-  await expect(rows.nth(0).locator(".search-float-loc")).toHaveText("L3 · 段落");
+  await expect(rows.nth(0).locator(".search-float-loc")).toHaveText(
+    "L3 · 段落",
+  );
   await expect(rows.nth(0).locator(".search-float-key")).toHaveText("⏎");
 
   await setMode(page, "source");
@@ -413,9 +515,7 @@ test("逐个替换当前命中后自动前进到下一处，文档文本变化",
   expect(text).not.toContain("# 属性面板");
 });
 
-test("全部替换一次事务完成并计数，Ctrl+Z 一次全部还原", async ({
-  page,
-}) => {
+test("全部替换一次事务完成并计数，Ctrl+Z 一次全部还原", async ({ page }) => {
   await page.keyboard.press("Meta+f");
   await page.locator('[data-testid="search-float-input"]').fill("属性");
   await page.locator('[data-testid="search-float-replace-toggle"]').click();
