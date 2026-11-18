@@ -1,3 +1,4 @@
+import { mkdirSync } from "node:fs";
 import { test, expect, type Page } from "@playwright/test";
 
 const APP_URL = "http://localhost:1420";
@@ -360,9 +361,90 @@ test.describe("页签空白双击切窗口全屏（editor-surface-batch20 5.2 / 
       )
       .toEqual({ calls: 2, fs: false });
 
+    mkdirSync(".artifacts/1106", { recursive: true });
+    await page.screenshot({ path: ".artifacts/1106/fullscreen-off.png" });
     expect(await page.locator('[role="tab"]').count()).toBe(tabsBefore);
     // 已裁决：双击空白不再是新建文档（supersede batch17 最大化口径）
     expect(await page.locator('[role="tab"]').count()).toBe(1);
+  });
+});
+
+test.describe("双击与窗口拖动互斥（tab-title-info-surface 3.1 / #1106）", () => {
+  test("双击之间轻微位移仍切全屏，且不触发窗口拖动", async ({ page }) => {
+    await boot(page);
+    const strip = page.locator(".tab-strip").first();
+    const box = await strip.boundingBox();
+    if (!box) throw new Error("页签条不可见");
+    const x = box.x + box.width - 8;
+    const y = box.y + box.height / 2;
+
+    // 用 CDP 输入事件模拟「带 2px 手抖的双击」：第二记 press 标记 clickCount=2，
+    // 与系统发出的事件序列一致（page.mouse 的两记独立点击不会产生 dblclick）。
+    const cdp = await page.context().newCDPSession(page);
+    const press = (type: string, cx: number, cy: number, clickCount: number) =>
+      cdp.send("Input.dispatchMouseEvent", {
+        type,
+        x: cx,
+        y: cy,
+        button: "left",
+        buttons: 1,
+        clickCount,
+      });
+    await press("mousePressed", x, y, 1);
+    await press("mouseReleased", x, y, 1);
+    await press("mousePressed", x + 2, y + 1, 2);
+    await press("mouseReleased", x + 2, y + 1, 2);
+
+    await expect
+      .poll(() =>
+        page.evaluate(() => {
+          const w = window as unknown as {
+            __setFullscreenCalls: number;
+            __fullscreen__: boolean;
+            __dragCalls__?: number;
+          };
+          return {
+            calls: w.__setFullscreenCalls,
+            fs: w.__fullscreen__,
+            drags: w.__dragCalls__ ?? 0,
+          };
+        }),
+      )
+      .toEqual({ calls: 1, fs: true, drags: 0 });
+    mkdirSync(".artifacts/1106", { recursive: true });
+    await page.screenshot({ path: ".artifacts/1106/dblclick-tremor.png" });
+  });
+
+  test("位移超过阈值时拖窗，不切全屏", async ({ page }) => {
+    await boot(page);
+    const strip = page.locator(".tab-strip").first();
+    const box = await strip.boundingBox();
+    if (!box) throw new Error("页签条不可见");
+    const x = box.x + box.width - 8;
+    const y = box.y + box.height / 2;
+
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    await page.mouse.move(x + 12, y + 6, { steps: 4 });
+    await page.mouse.up();
+
+    await expect
+      .poll(() =>
+        page.evaluate(() => {
+          const w = window as unknown as {
+            __setFullscreenCalls: number;
+            __fullscreen__: boolean;
+            __dragCalls__?: number;
+          };
+          return {
+            calls: w.__setFullscreenCalls,
+            fs: w.__fullscreen__,
+            drags: w.__dragCalls__ ?? 0,
+          };
+        }),
+      )
+      .toEqual({ calls: 0, fs: false, drags: 1 });
+    await page.screenshot({ path: ".artifacts/1106/drag-no-fullscreen.png" });
   });
 });
 

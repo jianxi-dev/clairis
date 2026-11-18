@@ -46,6 +46,9 @@ interface TabBarProps {
 
 /** 指针移动超过该像素才算拖拽，以下视为点击切签。 */
 const DRAG_THRESHOLD_PX = 4;
+
+/** 双击判定窗口（ms）：窗口内的第二记按下不启动窗口拖动。 */
+const DOUBLE_CLICK_MS = 400;
 interface CtxMenu {
   x: number;
   y: number;
@@ -224,6 +227,8 @@ export default function TabBar({
       window.removeEventListener("keydown", onKey, true);
     };
   }, [dragEnabled, onReorderTabs, paneId, onMoveToPane]);
+
+  const blankDownRef = useRef<{ t: number; x: number; y: number } | null>(null);
 
   const [menu, setMenu] = useState<CtxMenu | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
@@ -425,6 +430,18 @@ export default function TabBar({
           // 空白处只做窗口拖动：阻止冒泡到 PaneHeader 的栏目拖动（#922）。
           e.stopPropagation();
           if (!isTauriEnv()) return;
+          // 双击的第二记不接管拖窗：startDragging 会把手势交给系统，dblclick 不再到达页面。
+          const now = performance.now();
+          const prev = blankDownRef.current;
+          const isSecondOfDoubleClick =
+            prev !== null &&
+            now - prev.t <= DOUBLE_CLICK_MS &&
+            Math.hypot(e.clientX - prev.x, e.clientY - prev.y) <=
+              DRAG_THRESHOLD_PX;
+          blankDownRef.current = isSecondOfDoubleClick
+            ? null
+            : { t: now, x: e.clientX, y: e.clientY };
+          if (isSecondOfDoubleClick) return;
           const startX = e.clientX;
           const startY = e.clientY;
           let started = false;
