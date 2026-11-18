@@ -76,39 +76,115 @@ pub async fn copy_file_to_clipboard(path: String) -> Result<(), AppError> {
             source: std::io::Error::new(std::io::ErrorKind::NotFound, "路径不存在或不是文件"),
         });
     }
-    copy_path(&target).await.map_err(|e| AppError::Io {
-        context: format!("copy_file_to_clipboard: {path}"),
+    copy_path(&target).map_err(|e| AppError::Io {
+        context: format!("copy_file_to_clipboard: {path}: {e}"),
         source: e,
     })
 }
 
 #[cfg(target_os = "macos")]
-async fn copy_path(target: &Path) -> std::io::Result<()> {
-    // 走 osascript 的 run 处理程序把路径当 argv 传入：避免路径里的引号 / 反斜杠
-    // 被拼进 AppleScript 源码，也避免 unsafe 绑定 AppKit。
-    let script = [
-        "on run argv",
-        "set the clipboard to (POSIX file (item 1 of argv) as alias)",
-        "end run",
-    ];
-    let mut cmd = tokio::process::Command::new("osascript");
-    for line in script {
-        cmd.arg("-e").arg(line);
+fn copy_path(target: &Path) -> std::io::Result<()> {
+    use objc::rc::autoreleasepool;
+    use objc::runtime::{Class, Object, Sel, BOOL, NO};
+    use objc::{Message, MessageArguments};
+    use std::any::Any;
+    use std::os::raw::c_char;
+    use std::ptr::null_mut;
+
+    unsafe fn send<T: Message, A: MessageArguments, R: Any>(
+        obj: *const T,
+        sel: &str,
+        args: A,
+    ) -> std::io::Result<R> {
+        objc::__send_message(obj, Sel::register(sel), args)
+            .map_err(|e| std::io::Error::other(e.to_string()))
     }
-    let output = cmd.arg(target).output().await?;
-    if output.status.success() {
+
+    // #1112: osascript 子进程写入报成功但 generalPasteboard 为空，改为进程内 NSPasteboard。
+    autoreleasepool(|| unsafe {
+        let nsstring_cls = Class::get("NSString").ok_or_else(|| {
+            std::io::Error::new(std::io::ErrorKind::NotFound, "NSString 类不可用")
+        })?;
+        let path_c = std::ffi::CString::new(target.to_string_lossy().as_bytes()).map_err(|_| {
+            std::io::Error::new(std::io::ErrorKind::InvalidInput, "路径含 NUL 字符")
+        })?;
+        let ns_path: *mut Object = send(
+            nsstring_cls as *const Class,
+            "stringWithUTF8String:",
+            (path_c.as_ptr() as *const c_char,),
+        )?;
+        if ns_path.is_null() {
+            return Err(std::io::Error::other(
+                "NSString stringWithUTF8String 返回空",
+            ));
+        }
+
+        let nsurl_cls = Class::get("NSURL")
+            .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::NotFound, "NSURL 类不可用"))?;
+        let ns_url: *mut Object = send(nsurl_cls as *const Class, "fileURLWithPath:", (ns_path,))?;
+        if ns_url.is_null() {
+            return Err(std::io::Error::other("NSURL fileURLWithPath 返回空"));
+        }
+
+        let pasteboard_cls = Class::get("NSPasteboard").ok_or_else(|| {
+            std::io::Error::new(std::io::ErrorKind::NotFound, "NSPasteboard 类不可用")
+        })?;
+        let pasteboard: *mut Object =
+            send(pasteboard_cls as *const Class, "generalPasteboard", ())?;
+        if pasteboard.is_null() {
+            return Err(std::io::Error::other(
+                "NSPasteboard generalPasteboard 返回空",
+            ));
+        }
+
+        let cleared: isize = send(pasteboard, "clearContents", ())?;
+        let _ = cleared;
+
+        let nsarray_cls = Class::get("NSArray")
+            .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::NotFound, "NSArray 类不可用"))?;
+        let objects: *mut Object =
+            send(nsarray_cls as *const Class, "arrayWithObject:", (ns_url,))?;
+        if objects.is_null() {
+            return Err(std::io::Error::other("NSArray arrayWithObject 返回空"));
+        }
+
+        let written: BOOL = send(pasteboard, "writeObjects:", (objects,))?;
+        if written == NO {
+            return Err(std::io::Error::other(
+                "NSPasteboard writeObjects 返回 false",
+            ));
+        }
+
+        let read_classes: *mut Object = send(
+            nsarray_cls as *const Class,
+            "arrayWithObject:",
+            (nsurl_cls,),
+        )?;
+        if read_classes.is_null() {
+            return Err(std::io::Error::other(
+                "NSArray arrayWithObject(NSURL) 返回空",
+            ));
+        }
+        let options: *mut Object = null_mut();
+        let read: *mut Object = send(
+            pasteboard,
+            "readObjectsForClasses:options:",
+            (read_classes, options),
+        )?;
+        let count: usize = if read.is_null() {
+            0
+        } else {
+            send(read, "count", ())?
+        };
+        if count == 0 {
+            return Err(std::io::Error::other("剪贴板读回为空"));
+        }
         Ok(())
-    } else {
-        Err(std::io::Error::other(format!(
-            "osascript 退出码 {}: {}",
-            output.status,
-            String::from_utf8_lossy(&output.stderr).trim()
-        )))
-    }
+    })
 }
 
 #[cfg(not(target_os = "macos"))]
-async fn copy_path(_target: &Path) -> std::io::Result<()> {
+fn copy_path(_target: &Path) -> std::io::Result<()> {
     Err(std::io::Error::new(
         std::io::ErrorKind::Unsupported,
         "复制文件到剪贴板目前仅支持 macOS",
@@ -561,6 +637,19 @@ mod tests {
             let p = Path::new(&name);
             assert!(!is_binary_extension(p), "doc ext {ext} must not be binary");
         }
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn copy_path_writes_file_url_to_pasteboard() {
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("clipboard-target.md");
+        fs::write(&file, b"# clipboard\n").unwrap();
+
+        let result = copy_path(&file);
+        let _ = fs::remove_file(&file);
+
+        assert!(result.is_ok(), "copy_path 失败: {result:?}");
     }
 }
 
