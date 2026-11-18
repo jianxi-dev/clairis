@@ -112,6 +112,63 @@ test("页签名信息窗：三行 + 可点击路径层 + 最近保存时间 + 8p
   expect(after[after.length - 1]).toBe("/Users/mason/Documents");
 });
 
+test("信息窗提供复制路径与复制文件两个动作（A-3.1/A-3.2/A-3.3）", async ({
+  page,
+  context,
+}) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"], {
+    origin: APP_URL,
+  });
+  await boot(page, FILE_A);
+  const tab = await activeTab(page);
+  await tab.hover();
+
+  const info = page.locator(INFO);
+  await expect(info).toBeVisible({ timeout: 3000 });
+
+  // A-3.1：路径行末尾两个复制动作
+  const copyPathBtn = info.getByTestId("tab-copy-path");
+  const copyFileBtn = info.getByTestId("tab-copy-file");
+  await expect(copyPathBtn).toHaveCount(1);
+  await expect(copyFileBtn).toHaveCount(1);
+
+  // A-3.2：复制路径 = 绝对路径
+  await copyPathBtn.click();
+  const clip = await page.evaluate(() => navigator.clipboard.readText());
+  expect(clip).toBe(FILE_A);
+  await expect(info.getByTestId("tab-copy-notice")).toHaveText("已复制路径");
+
+  // A-3.3：复制文件走原生命令，携带同一路径
+  await copyFileBtn.click();
+  const calls = await page.evaluate(
+    () =>
+      (window as unknown as { __copy_file_calls__?: string[] })
+        .__copy_file_calls__ ?? [],
+  );
+  expect(calls).toEqual([FILE_A]);
+  await expect(info.getByTestId("tab-copy-notice")).toHaveText("已复制文件");
+
+  await shot(page, "copy-actions");
+});
+
+test.describe("非 macOS 平台", () => {
+  test.use({
+    userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+  });
+
+  test("不渲染「复制文件」动作，只保留复制路径", async ({ page }) => {
+    await boot(page, FILE_A);
+    const tab = await activeTab(page);
+    await tab.hover();
+    const info = page.locator(INFO);
+    await expect(info).toBeVisible({ timeout: 3000 });
+    await expect(info.getByTestId("tab-copy-path")).toHaveCount(1);
+    await expect(info.getByTestId("tab-copy-file")).toHaveCount(0);
+    mkdirSync(".artifacts/1105", { recursive: true });
+    await page.screenshot({ path: ".artifacts/1105/non-mac.png" });
+  });
+});
+
 test("超长文件名换行且不溢出（A-2.2/A-2.3）", async ({ page }) => {
   const longName =
     "/Users/mason/Documents/tab-title-info-surface/very-long-filename-abcdefghijklmnopqrstuvwxyz.md";

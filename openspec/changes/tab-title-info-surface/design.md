@@ -47,8 +47,9 @@
 ### D3 复制动作：路径走前端，文件走原生
 
 - 「复制路径」= `navigator.clipboard.writeText(path)`，与仓内既有路径复制（预览顶栏）同法。
-- 「复制文件」= 新增 Tauri 命令 `copy_file_to_clipboard`：macOS 用 `NSPasteboard` 写入文件 URL，使 Finder / 邮件 / 聊天窗口可直接粘贴出文件。仓库已有 `cocoa` / `objc` 依赖并在窗口外观代码里用过 `msg_send!`，无新增依赖。
-- 备选：`osascript -e 'set the clipboard to POSIX file …'`（零 unsafe，但引入子进程与脚本注入面）；复制文件内容文本（语义不同，用户已明确要文件本身）。均弃用。
+- 「复制文件」= 新增 Tauri 命令 `copy_file_to_clipboard`：macOS 用 `osascript` 的 `on run argv` 处理程序把路径当 argv 传入并写入剪贴板（`POSIX file … as alias`），路径不拼进 AppleScript 源码，无注入面；零 unsafe，与 `reveal_path` 现有的 `open -R` 子进程风格一致。
+- 备选：`NSPasteboard` + `writeObjects:`（现代 `public.file-url` 口味，但要引入 `msg_send!` unsafe 绑定，且失败模式更难在本地复现）；复制文件内容文本（语义不同，用户已明确要文件本身）。均弃用。
+- 落地验证（一手输出）：`.artifacts/1105/clipboard-probe.txt` —— `clipboard info` 得到 `alias, 268`，`POSIX path of (the clipboard as «class furl»)` 回读 `/private/tmp/probe.txt`。
 - 非 macOS 平台不渲染该按钮（而不是渲染后静默失败）：失败按钮比没有按钮更糟。命令本身仍返回明确错误，便于未来补 Windows 实现。
 - 前置校验：路径不存在 → 命令返回错误、前端提示失败，不伪造成功。
 

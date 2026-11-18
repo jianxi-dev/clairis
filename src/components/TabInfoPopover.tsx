@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import Icon from "./Icon";
 import { colorOfType, fileTypeOf, iconOfType } from "../lib/fileType";
 import { revealInFinder } from "../lib/finder";
+import { canCopyFile, copyFileToClipboard } from "../lib/clipboard";
 import { getFileModified } from "../lib/fileInfo";
 import { useStore } from "../stores";
 import type { Tab } from "../types";
@@ -65,7 +66,23 @@ export default function TabInfoPopover({
 }: Props) {
   const [modified, setModified] = useState<number | null>(null);
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const noticeTimer = useRef<number | null>(null);
   const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(
+    () => () => {
+      if (noticeTimer.current !== null)
+        window.clearTimeout(noticeTimer.current);
+    },
+    [],
+  );
+
+  const flash = (text: string) => {
+    setNotice(text);
+    if (noticeTimer.current !== null) window.clearTimeout(noticeTimer.current);
+    noticeTimer.current = window.setTimeout(() => setNotice(null), 1400);
+  };
 
   useEffect(() => {
     let alive = true;
@@ -178,6 +195,50 @@ export default function TabInfoPopover({
             ))
           )}
         </span>
+        {tab.path && (
+          <span className="tab-info__copy">
+            <button
+              type="button"
+              data-testid="tab-copy-path"
+              title="复制路径"
+              aria-label="复制路径"
+              onClick={(e) => {
+                e.stopPropagation();
+                void navigator.clipboard
+                  ?.writeText(tab.path ?? "")
+                  .then(() => flash("已复制路径"))
+                  .catch(() => flash("复制失败"));
+              }}
+            >
+              <Icon name="copyPath" size={14} />
+            </button>
+            {canCopyFile() && (
+              <button
+                type="button"
+                data-testid="tab-copy-file"
+                title="复制文件"
+                aria-label="复制文件"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void copyFileToClipboard(tab.path ?? "")
+                    .then(() => flash("已复制文件"))
+                    .catch(() => flash("复制失败"));
+                }}
+              >
+                <Icon name="copy" size={14} />
+              </button>
+            )}
+          </span>
+        )}
+        {notice && (
+          <span
+            className="tab-info__notice"
+            data-testid="tab-copy-notice"
+            aria-live="polite"
+          >
+            {notice}
+          </span>
+        )}
       </div>
       <div className="tab-info__row" data-testid="tab-info-time">
         <Icon name="clock" size={14} className="tab-info__icon" />
