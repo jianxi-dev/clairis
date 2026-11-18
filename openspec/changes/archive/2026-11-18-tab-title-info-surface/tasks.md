@@ -12,7 +12,7 @@
 
 ## 1. 页签标题固定宽度 + 信息窗形态（A-1.x / A-2.x）
 
-- [ ] 1.1 [change=tab-title-info-surface/1.1] 页签标题固定 120px + 省略号；信息窗改 8px 圆角矩形并让文件名换行
+- [x] 1.1 [change=tab-title-info-surface/1.1] 页签标题固定 120px + 省略号；信息窗改 8px 圆角矩形并让文件名换行
   - 页签标题容器 SHALL 有固定最大显示宽度 120px；短于该宽度按实际长度显示，超过以省略号收尾，单行不换行
   - 页签条相邻间距 SHALL 保持 32px，本次 SHALL NOT 改动
   - 页签名信息窗外壳 SHALL 为 8px 圆角矩形，宽度 SHALL 固定 320px（视口不足时按 `100vw - 16px` 钳制）；文件名 SHALL 换行显示完整名，SHALL NOT 溢出信息窗
@@ -24,7 +24,7 @@
 
 ## 2. 信息窗复制路径 / 复制文件（A-3.x）
 
-- [ ] 2.1 [change=tab-title-info-surface/2.1] 路径行末尾加两个复制动作，复制文件走系统剪贴板
+- [x] 2.1 [change=tab-title-info-surface/2.1] 路径行末尾加两个复制动作，复制文件走系统剪贴板
   - 路径行末尾 SHALL 存在「复制路径」「复制文件」两个图标按钮
   - 点击「复制路径」SHALL 把该页签文件的绝对路径写入剪贴板
   - 点击「复制文件」SHALL 把文件本身写入系统剪贴板（macOS 访达可粘贴出文件）；路径不存在时 SHALL 报错且 SHALL NOT 写入剪贴板
@@ -37,7 +37,7 @@
 
 ## 3. 空白双击全屏稳定化 + 规范收口（A-4.x）
 
-- [ ] 3.1 [change=tab-title-info-surface/3.1] 双击与窗口拖拽互斥，全屏不再被手抖夺走
+- [x] 3.1 [change=tab-title-info-surface/3.1] 双击与窗口拖拽互斥，全屏不再被手抖夺走
   - 页签条空白的双击判定窗口内，第二记按下 SHALL NOT 启动窗口拖动
   - 位移超过 4px 时 SHALL 仍按现有拖拽语义拖窗，且 SHALL NOT 切换全屏
   - 主规格 SHALL 只保留一条「双击页签空白」定义：删除「页签栏空白双击新建文档」，全屏条款断言改为 `isFullscreen()`

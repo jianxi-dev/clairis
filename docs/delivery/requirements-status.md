@@ -63,6 +63,7 @@ openspec status --change <name>   # 单个变更工件完成度
   - 单元格手柄统一图标/垂直居中/表头无手柄/圆角 3px、行列插入圆点（上/左外缘、悬停变 +、点击插入删除）、斜杠菜单内容输入上下文（单元格/分栏/高亮块就地打开、焦点保持、Esc 回滚、死代码清理）、分栏与高亮块「+」手柄、上下文命令安全集（单元格=行内+单行片段，容器=全量）
 
 - 外壳/导航/搜索域（`editor-surface-batch22`）：2/2 票合并（PR #1086/#1087），3 条 requirement 修订，无新增 requirement（application-shell G-6 页签标题单行全显 + 页签间距 16px→32px；navigation 页签条与格头同步单行全显/间距口径；search-replace-float S-3 选中行徽标改键帽式回车图标 + 悬停更新 `activeIndex`），已归档 `openspec/changes/archive/2026-11-18-editor-surface-batch22`
+- 外壳/导航域（`tab-title-info-surface`）：3/3 票合并（PR #1108–#1110），4 条 requirement 修订、1 条删除（application-shell G-6 页签标题固定 120px + 省略号、信息窗外壳与间距口径；navigation 页签条与格头同步、信息窗改 8px 圆角固定 320px + 换行 + 复制路径/复制文件；editing E-22 为信息窗开矩形豁免；删除互斥的「页签栏空白双击新建文档」并把全屏断言改为 `isFullscreen()`），已归档 `openspec/changes/archive/2026-11-18-tab-title-info-surface`
 
 - 编辑/阅读/搜索/属性域（`editor-surface-batch23`）：4/4 票合并（PR #1094/#1095/#1096/#1097），5 条 requirement 修订，无新增 requirement（search-replace-float S-1 顶栏标题 / 关闭钮位次 / 输入框一键清空、S-3 结果区与快捷键字号 +1 档、S-6 状态栏文案去「（局部 · 浮窗内）」；editing E-10 层级标识仅悬停显示且更浅 + 拖动插入位置指示条 + 正文顺序同步；reading 预览态选区工具条拖选完成后再显示；doc-property-panel P-3 日期时间改单一面板选择器），已归档 `openspec/changes/archive/2026-11-18-editor-surface-batch23`
 
@@ -136,7 +137,7 @@ openspec status --change <name>   # 单个变更工件完成度
 | B-2 | 空状态继续区分块 | 🟡 | 设计已批 `docs/design/approved/empty-state/` |
 | B-4 | 内置示例文件释放 | 🟡 | `src-tauri/samples/` 已就位 |
 | B-5 | 空状态设计规则 | 🟡 | 设计已批 `docs/design/approved/empty-state/` |
-| G-6 | 顶栏职责与页签身份（页签标题单行全显 + 页签间距 32px） | ✅ | change `reading-surface-refine`（归档 2026-11-06）；`editor-surface-batch22`（归档 2026-11-18，PR #1086） |
+| G-6 | 顶栏职责与页签身份（页签标题固定 120px + 省略号、页签间距 32px；完整名在信息窗） | ✅ | change `reading-surface-refine`（归档 2026-11-06）；`editor-surface-batch22`（归档 2026-11-18，PR #1086）；`tab-title-info-surface`（归档 2026-11-18，PR #1108/#1109/#1110） |
 | G-7 | 图标语义与全屏可用性 | ✅ | change `reading-surface-refine`（归档 2026-11-06）；`shell-editor-batch5`（2026-11-08） |
 | G-8 | 页签拖拽轨迹与落点反馈 | ✅ | change `workspace-ux-batch4`（归档 2026-11-07，PR #278）；`shell-editor-batch5`（2026-11-08） |
 | G-9 | 页签与栏目视觉贴合主题 | ✅ | change `workspace-ux-batch4`（归档 2026-11-07，PR #281） |

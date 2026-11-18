@@ -12,7 +12,9 @@
 
 页签名鼠标滑入 SHALL 显示下拉信息窗（矩形圆角 8px、固定宽度 320px，视口不足时按 `100vw - 16px` 钳制）：① 文件名（最大字号，SHALL 换行显示完整名，SHALL NOT 以省略号截断）；② 完整路径，路径每层文件夹可单击在文件管理器中定位该层；路径行末尾 SHALL 提供「复制路径」与「复制文件」两个图标动作——前者把路径文本写入剪贴板，后者把文件本身写入系统剪贴板（非 macOS 平台 SHALL NOT 渲染该动作）；③ 最近保存时间。鼠标点按页签条空白处并移动超过阈值 SHALL 拖动窗口；未超阈值 SHALL 视为点击，SHALL NOT 触发窗口拖动。
 
-#### Scenario: 超长页签名以省略号收尾
+#### Scenario: 页签名无省略号
+
+> 场景标题沿用旧名；自本 change 起页签名在 120px 上限内 SHALL 使用省略号，完整名由信息窗承载。
 
 - **WHEN** 某页签标题的自然宽度超过 120px
 - **THEN** 该页签标题容器的计算 `max-width` SHALL 为 120px（容差 ±2px），`text-overflow` SHALL 为 `ellipsis`，`white-space` SHALL 为 `nowrap`，`-webkit-line-clamp` SHALL 为 `none`，且标题 SHALL NOT 换行
