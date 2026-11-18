@@ -461,3 +461,70 @@
   border: 1px solid var(--app-border);
   border-radius: 4px;
 }
+
+/* ── 预览态扩展构造（结果行与悬浮预览共用同一渲染契约）────────── */
+/* 链接 / 图片只呈现语义文本：结果行是 <button>，内嵌 <a> 违反内容模型，
+   且浮窗内点击会劫持 webview 导航。 */
+.search-float-context .sf-link,
+.search-float-hover-body .sf-link {
+  color: var(--app-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.search-float-context .sf-media,
+.search-float-hover-body .sf-media {
+  color: var(--app-text-3);
+  font-style: italic;
+}
+
+.search-float-context del,
+.search-float-hover-body del {
+  color: var(--app-text-3);
+}
+
+.search-float-context .sf-footnote,
+.search-float-hover-body .sf-footnote {
+  color: var(--app-accent);
+  font-size: 0.85em;
+}
+
+.search-float-context .sf-check,
+.search-float-hover-body .sf-check {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 4px;
+  border: 1px solid var(--app-text-3);
+  border-radius: 2px;
+  vertical-align: -1px;
+}
+
+.search-float-context .sf-check.on,
+.search-float-hover-body .sf-check.on {
+  background: var(--app-accent);
+  border-color: var(--app-accent);
+}
+
+.search-float-context table,
+.search-float-hover-body table {
+  border-collapse: collapse;
+  margin: 2px 0;
+  max-width: 100%;
+}
+
+.search-float-context th,
+.search-float-context td,
+.search-float-hover-body th,
+.search-float-hover-body td {
+  padding: 1px 6px;
+  border: 1px solid var(--app-border);
+  font-weight: normal;
+  text-align: left;
+}
+
+.search-float-context th,
+.search-float-hover-body th {
+  color: var(--app-text);
+  background: var(--app-sunken);
+}

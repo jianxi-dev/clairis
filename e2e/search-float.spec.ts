@@ -935,6 +935,117 @@ test("#1056 结果行与悬浮预览预览态渲染：零源码标记、保留 m
 });
 
 /* ------------------------------------------------------------------ *
+ * #1056 补漏：链接 / 图片 / 删除线 / 任务列表 / 表格（真实搜索流）
+ * 旧覆盖只测了 ## / --- / 围栏 / 加粗 / 行内代码，构造缺口在此补齐。
+ * ------------------------------------------------------------------ */
+
+test("#1056 链接与图片：结果行与悬浮预览均无源码括号，语义标签 + 命中保留", async ({
+  page,
+}) => {
+  await openDoc(
+    page,
+    "前缀 [命中的链接](https://example.com) 与 ![命中的图片](a.png) 后缀",
+    "/Users/test/link.md",
+  );
+  await setMode(page, "edit");
+  await page.keyboard.press("Meta+f");
+  const float = page.locator('[data-testid="search-float"]');
+  await page.locator('[data-testid="search-float-input"]').fill("命中");
+
+  const ctx = float
+    .locator('[data-testid="search-float-hit"]')
+    .first()
+    .locator(".search-float-context");
+  await expect(ctx.locator(".sf-link")).toHaveText("命中的链接");
+  await expect(ctx.locator(".sf-media")).toHaveText("命中的图片");
+  await expect(ctx.locator(".sf-link mark")).toHaveText("命中");
+  const rowText = (await ctx.textContent()) ?? "";
+  expect(rowText).not.toContain("[");
+  expect(rowText).not.toContain("](");
+  expect(rowText).not.toContain("!");
+
+  await page.locator('[data-testid="search-float-replace-toggle"]').click();
+  await float.locator('[data-testid="search-float-hit"]').first().hover();
+  const body = page.locator(".search-float-hover-body");
+  await expect(body.locator(".sf-link")).toHaveText("命中的链接");
+  await expect(body.locator(".sf-media")).toHaveText("命中的图片");
+  const hoverText = (await body.textContent()) ?? "";
+  expect(hoverText).not.toContain("[");
+  expect(hoverText).not.toContain("](");
+});
+
+test("#1056 删除线与任务列表：结果行与悬浮预览均无 ~~ 与 [ ] 源码符号", async ({
+  page,
+}) => {
+  await openDoc(
+    page,
+    "前缀 ~~命中的删除~~ 后缀\n\n- [ ] 命中的任务",
+    "/Users/test/inline.md",
+  );
+  await setMode(page, "edit");
+  await page.keyboard.press("Meta+f");
+  const float = page.locator('[data-testid="search-float"]');
+  await page.locator('[data-testid="search-float-input"]').fill("命中");
+  const rows = float.locator('[data-testid="search-float-hit"]');
+  await expect(rows).toHaveCount(2);
+
+  const strikeCtx = rows.nth(0).locator(".search-float-context");
+  await expect(strikeCtx.locator("del")).toHaveText("命中的删除");
+  await expect(strikeCtx.locator("del mark")).toHaveText("命中");
+  expect((await strikeCtx.textContent()) ?? "").not.toContain("~~");
+
+  const taskCtx = rows.nth(1).locator(".search-float-context");
+  await expect(taskCtx.locator(".sf-check")).toHaveCount(1);
+  expect((await taskCtx.textContent()) ?? "").not.toContain("[");
+  expect((await taskCtx.textContent()) ?? "").not.toContain("]");
+
+  await page.locator('[data-testid="search-float-replace-toggle"]').click();
+  await rows.nth(0).hover();
+  const body = page.locator(".search-float-hover-body");
+  await expect(body.locator("del")).toHaveText("命中的删除");
+  expect((await body.textContent()) ?? "").not.toContain("~~");
+
+  await rows.nth(1).hover();
+  await expect(body.locator(".sf-check")).toHaveCount(1);
+  expect((await body.textContent()) ?? "").not.toContain("[ ]");
+});
+
+test("#1056 表格：结果行与悬浮预览渲染为表格，竖线与对齐行不出现", async ({
+  page,
+}) => {
+  await openDoc(
+    page,
+    ["| 列A | 列B |", "| --- | --- |", "| 命中的单元格 | 值 |"].join("\n"),
+    "/Users/test/table.md",
+  );
+  await setMode(page, "edit");
+  await page.keyboard.press("Meta+f");
+  const float = page.locator('[data-testid="search-float"]');
+  await page.locator('[data-testid="search-float-input"]').fill("命中");
+
+  const ctx = float
+    .locator('[data-testid="search-float-hit"]')
+    .first()
+    .locator(".search-float-context");
+  await expect(ctx.locator("table")).toHaveCount(1);
+  await expect(ctx.locator("th")).toHaveCount(2);
+  await expect(ctx.locator("td mark")).toHaveText("命中");
+  const rowText = (await ctx.textContent()) ?? "";
+  expect(rowText).not.toContain("|");
+  expect(rowText).not.toContain("---");
+
+  await page.locator('[data-testid="search-float-replace-toggle"]').click();
+  await float.locator('[data-testid="search-float-hit"]').first().hover();
+  const body = page.locator(".search-float-hover-body");
+  await expect(body.locator("table")).toHaveCount(1);
+  await expect(body.locator("th")).toHaveCount(2);
+  await expect(body.locator("td mark")).toHaveText("命中");
+  const hoverText = (await body.textContent()) ?? "";
+  expect(hoverText).not.toContain("|");
+  expect(hoverText).not.toContain("---");
+});
+
+/* ------------------------------------------------------------------ *
  * #1054 外框/顶栏/状态栏同构 + 缩放贴底（A-16.1 / A-16.2 / A-16.3）
  * ------------------------------------------------------------------ */
 

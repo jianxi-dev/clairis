@@ -137,3 +137,74 @@ describe("renderInlineWithHit 块级符号命中边界", () => {
     expect(out).not.toContain("#");
   });
 });
+
+describe("renderInlineWithHit 预览态扩展构造", () => {
+  it("链接 / 图片只留语义文本，括号与 URL 不出现", () => {
+    expect(renderInlineWithHit("[命中的链接](https://example.com)")).toBe(
+      '<span class="sf-link">命中的链接</span>',
+    );
+    expect(renderInlineWithHit("![命中的图片](a.png)")).toBe(
+      '<span class="sf-media">命中的图片</span>',
+    );
+    expect(renderInlineWithHit("![](a.png)")).toBe(
+      '<span class="sf-media">图片</span>',
+    );
+  });
+
+  it("删除线 / 脚注引用按语义呈现", () => {
+    expect(renderInlineWithHit("~~命中的删除~~")).toBe("<del>命中的删除</del>");
+    expect(renderInlineWithHit("命中的脚注[^1]")).toBe(
+      '命中的脚注<sup class="sf-footnote">1</sup>',
+    );
+    expect(renderInlineWithHit("[^1]: 脚注说明")).toBe("脚注说明");
+  });
+
+  it("任务复选框剥成预览态方框，选中态填色", () => {
+    expect(renderInlineWithHit("- [ ] 命中的任务")).toBe(
+      '<span class="sf-task" aria-hidden="true"><span class="sf-check"></span></span>命中的任务',
+    );
+    expect(renderInlineWithHit("- [x] 命中的任务")).toBe(
+      '<span class="sf-task" aria-hidden="true"><span class="sf-check on"></span></span>命中的任务',
+    );
+  });
+
+  it("表格渲染为 table：对齐行丢弃、竖线消失、表头仅一行", () => {
+    const out = renderInlineWithHit(
+      ["| 列A | 列B |", "| --- | --- |", "| 命中的单元格 | 值 |"].join("\n"),
+    );
+    expect(out).toBe(
+      "<table><thead><tr><th>列A</th><th>列B</th></tr></thead>" +
+        "<tbody><tr><td>命中的单元格</td><td>值</td></tr></tbody></table>",
+    );
+    expect(out).not.toContain("|");
+    expect(out).not.toContain("---");
+  });
+
+  it("命中落进链接 / 删除线 / 表格单元格时 mark 包裹命中子串", () => {
+    expect(renderInlineWithHit("[命中的链接](u)", { from: 1, to: 3 })).toBe(
+      '<span class="sf-link"><mark>命中</mark>的链接</span>',
+    );
+    expect(renderInlineWithHit("~~命中的删除~~", { from: 2, to: 4 })).toBe(
+      "<del><mark>命中</mark>的删除</del>",
+    );
+    expect(
+      renderInlineWithHit("| 命中 | 值 |\n| --- | --- |\n| 甲 | 乙 |", {
+        from: 2,
+        to: 4,
+      }),
+    ).toContain("<th><mark>命中</mark></th>");
+  });
+
+  it("围栏内的竖线行不按表格处理", () => {
+    const out = renderInlineWithHit("```\n| a | b |\n```");
+    expect(out).not.toContain("<table>");
+    expect(out).not.toContain("```");
+  });
+
+  it("多行片段：命中落在后续行的加粗内仍包裹命中子串", () => {
+    // 第 2 行「正文 **加粗命中**」中「命中」的绝对偏移为 12..14
+    expect(
+      renderInlineWithHit("# 标题\n正文 **加粗命中**", { from: 12, to: 14 }),
+    ).toBe("标题\n正文 <b>加粗<mark>命中</mark></b>");
+  });
+});
