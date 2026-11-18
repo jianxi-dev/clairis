@@ -377,11 +377,26 @@ describe("auto-pairing via real inputHandler", () => {
     }
   }
 
-  it("* twice pairs to ** with caret between", () => {
+  it("* typed twice stays literal ** with caret after (#1012)", () => {
     input(editor.view, "*");
     input(editor.view, "*");
     expect(editor.view.state.doc.toString()).toBe("**");
-    expect(editor.view.state.selection.main.head).toBe(1);
+    expect(editor.view.state.selection.main.head).toBe(2);
+  });
+
+  it("typing **加粗** through the real inputHandler keeps the source (#1012)", () => {
+    for (const ch of ["*", "*", "加", "粗", "*", "*"]) input(editor.view, ch);
+    expect(editor.view.state.doc.toString()).toBe("**加粗**");
+    expect(editor.view.state.selection.main.head).toBe(6);
+  });
+
+  it("* still wraps a selection with **", () => {
+    editor.view.dispatch({
+      changes: { from: 0, insert: "加粗" },
+      selection: { anchor: 0, head: 2 },
+    });
+    input(editor.view, "*");
+    expect(editor.view.state.doc.toString()).toBe("**加粗**");
   });
 
   it("lone ! does not insert ![](", () => {

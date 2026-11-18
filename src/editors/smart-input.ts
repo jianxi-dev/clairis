@@ -3,7 +3,8 @@
  * 1. Markdown 快捷转换：`# ` → H1、`- ` → 列表、`1. ` → 有序列表等。
  * 2. 智能回车：列表续写/空项退出、引用续写、代码块保留缩进。
  * 3. 智能退格：行首取消列表/引用标记、标题降级。
- * 4. 自动配对：`**`、`` ` ``、`$`、`[`、`![` 包裹选区或成对插入。
+ * 4. 自动配对：选中文本后键入 `*`/`` ` ``/`$`/`[`/`![` 包裹；空选区仅
+ *    `` ` ``/`$`/`[`/`![` 成对插入，`*` 保持原文（#1012）。
  * 5. 中文标点配对：`「` → `「」`、`（` → `（）`。
  *
  * 快捷转换、回车/退格、标题 Tab 走 CM6 keymap；自动配对走
@@ -519,7 +520,7 @@ CLOSING_CHARS.add("]"); // 来自 '[' 配对
  * 自动配对的 inputHandler，在 CM6 插入前拦截输入。
  * 返回 true 表示已消费（配对已应用），false 交回默认行为。
  *
- * - `*` 仅当前一个字符也是 `*` 时配对（产生 `**│**`）。
+ * - `*` 只包裹选区；空选区不配对，连续键入 `**加粗**` 保持原文（#1012）。
  * - `[` 配对为 `]`；前一个字符是 `!` 时配对为 `](url)`（图片链接）。
  * - 其余 PAIR_CHARS 插入空对，光标居中。
  * - 有选区时用配对包裹选区。
@@ -542,30 +543,19 @@ const autoPairInputHandler = EditorView.inputHandler.of(
       }
     }
 
-    // `**`：仅当前一个字符也是 `*` 时配对
+    // `*`：只包裹选区；空选区连续键入保持原文（#1012）
     if (text === "*") {
-      const before = view.state.sliceDoc(Math.max(0, from - 1), from);
-      if (before === "*") {
-        const selected = view.state.sliceDoc(from, to);
-        if (selected) {
-          view.dispatch({
-            changes: [
-              { from, insert: "**" },
-              { from: to, insert: "**" },
-            ],
-            selection: { anchor: from + 2 + selected.length },
-            scrollIntoView: true,
-          });
-        } else {
-          view.dispatch({
-            changes: { from, to, insert: "*" },
-            selection: { anchor: from },
-            scrollIntoView: true,
-          });
-        }
-        return true;
-      }
-      return false;
+      const selected = view.state.sliceDoc(from, to);
+      if (!selected) return false;
+      view.dispatch({
+        changes: [
+          { from, insert: "**" },
+          { from: to, insert: "**" },
+        ],
+        selection: { anchor: from + 2 + selected.length },
+        scrollIntoView: true,
+      });
+      return true;
     }
 
     // `[`：配对为 `]`；前一个字符是 `!` 时配对为 `](url)`
