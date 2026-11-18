@@ -161,7 +161,7 @@ function SearchFloatStatusBar({ rootRef }: SearchFloatStatusBarProps) {
       }`}
       data-testid="search-float-statusbar"
     >
-      ↑↓ 切换 · ↵ 定位选中 · ⌘1~9 直达（局部 · 浮窗内）· Esc 关闭
+      ↑↓ 切换 · ↵ 定位选中 · ⌘1~9 直达 · Esc 关闭
     </div>
   );
 }
@@ -660,7 +660,6 @@ export default function SearchReplacePanel({
       <div
         className="search-float-handle"
         data-testid="search-float-handle"
-        aria-hidden="true"
         onPointerDown={onHandlePointerDown}
       >
         <svg
@@ -674,6 +673,18 @@ export default function SearchReplacePanel({
         >
           <path d="M8 6h8M8 12h8M8 18h8" />
         </svg>
+        <span className="search-float-title">搜索和替换</span>
+        <button
+          type="button"
+          className="search-float-close"
+          data-testid="search-float-close"
+          aria-label="关闭搜索"
+          title="关闭搜索"
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={close}
+        >
+          ×
+        </button>
       </div>
 
       <div className="search-float-inputrow">
@@ -690,14 +701,31 @@ export default function SearchReplacePanel({
           <circle cx="11" cy="11" r="7" />
           <path d="m20 20-3.5-3.5" />
         </svg>
-        <input
-          ref={inputRef}
-          data-testid="search-float-input"
-          type="text"
-          value={query}
-          placeholder="搜索当前文档"
-          onChange={(event) => setQuery(event.target.value)}
-        />
+        <div className={`search-float-inputbox${query ? " has-clear" : ""}`}>
+          <input
+            ref={inputRef}
+            data-testid="search-float-input"
+            type="text"
+            value={query}
+            placeholder="搜索当前文档"
+            onChange={(event) => setQuery(event.target.value)}
+          />
+          {query !== "" && (
+            <button
+              type="button"
+              className="search-float-clear"
+              data-testid="search-float-clear"
+              aria-label="清空关键词"
+              title="清空关键词"
+              onClick={() => {
+                setQuery("");
+                inputRef.current?.focus();
+              }}
+            >
+              <Icon name="close" size={14} />
+            </button>
+          )}
+        </div>
         <span className="search-float-count" data-testid="search-float-count">
           {query ? `${hits.length} 处` : ""}
         </span>
@@ -714,15 +742,6 @@ export default function SearchReplacePanel({
             ⇄
           </button>
         )}
-        <button
-          type="button"
-          className="search-float-close"
-          data-testid="search-float-close"
-          aria-label="关闭搜索"
-          onClick={close}
-        >
-          ×
-        </button>
       </div>
 
       {canReplace && replaceMode && (
