@@ -352,7 +352,8 @@ test("8 向缩放：四边与四角拖拽改变尺寸并钳到最小 280×240，
   const reopened = await float.boundingBox();
   if (!reopened) throw new Error("浮窗未布局");
   expect(near(reopened.width, clamped.width, 1)).toBe(true);
-  expect(near(reopened.height, clamped.height, 1)).toBe(true);
+  // #1118：高度拖拽只在本次打开周期内记忆，重开回到默认自适应高度。
+  expect(near(reopened.height, before.height, 1)).toBe(true);
 });
 
 test("南边拖出窗格底部不跳变：北边锚死、南边贴底、不瞬移到顶部", async ({
@@ -2406,4 +2407,152 @@ test("#1116 浮窗顶栏高度与文件卡片悬浮窗顶栏一致，关闭图�
   );
 
   await recordState1116(page, "04-titlebar-aligned");
+});
+
+/* ------------------------------------------------------------------ *
+ * #1118 开面板复位悬停残留 + 结果窗高度自适应（A-4.1/A-4.2/A-4.3/A-4.4）
+ * ------------------------------------------------------------------ */
+
+const ART_1118 = path.resolve(process.cwd(), ".artifacts/1118");
+
+async function recordState1118(page: Page, state: string): Promise<void> {
+  mkdirSync(ART_1118, { recursive: true });
+  const file = path.join(ART_1118, `${state}.png`);
+  await page.screenshot({ path: file });
+  const manifest = path.join(ART_1118, "state-coverage.json");
+  let states: Array<Record<string, string>> = [];
+  try {
+    states = JSON.parse(readFileSync(manifest, "utf8")).states ?? [];
+  } catch {
+    states = [];
+  }
+  states = states.filter((s) => s.state !== state);
+  states.push({
+    state,
+    screenshot: path.relative(process.cwd(), file),
+    assertion: "passed",
+    recorded_at: new Date().toISOString(),
+    runner: `${process.env.USER ?? "unknown"}@${process.env.HOSTNAME ?? "unknown"}`,
+  });
+  writeFileSync(
+    manifest,
+    `${JSON.stringify({ task: "1118-hover-reset-height-adaptive", states }, null, 2)}\n`,
+  );
+}
+
+const HEIGHT_DOC = [
+  "# 高度自适应",
+  "",
+  "属性甲",
+  "",
+  "属性乙",
+  "",
+  "属性丙",
+  "",
+  ...Array.from({ length: 12 }, (_, i) => `命中 ${i + 1}`),
+].join("\n");
+
+interface ResultsGeom {
+  rowH: number;
+  clientHeight: number;
+  contentBox: number;
+  scrollHeight: number;
+}
+
+async function resultsGeom(page: Page): Promise<ResultsGeom> {
+  return page.locator('[data-testid="search-float-results"]').evaluate((el) => {
+    const cs = getComputedStyle(el);
+    const first = el.querySelector<HTMLElement>(".search-float-hit");
+    const pad = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
+    return {
+      rowH: first ? first.getBoundingClientRect().height : 0,
+      clientHeight: el.clientHeight,
+      contentBox: el.clientHeight - pad,
+      scrollHeight: el.scrollHeight,
+    };
+  });
+}
+
+test("#1118 关开浮窗后首次悬停即出全文预览卡（A-4.1）", async ({ page }) => {
+  await page.keyboard.press("Meta+f");
+  const float = page.locator('[data-testid="search-float"]');
+  await expect(float).toBeVisible();
+  await page.locator('[data-testid="search-float-input"]').fill("属性");
+  const toggle = page.locator('[data-testid="search-float-replace-toggle"]');
+  await toggle.click();
+  const card = page.locator('[data-testid="search-float-hover-card"]');
+  await page.locator('[data-testid="search-float-hit"]').first().hover();
+  await expect(card).toBeVisible();
+
+  await page.keyboard.press("Escape");
+  await expect(float).toBeHidden();
+  await page.keyboard.press("Meta+f");
+  await expect(float).toBeVisible();
+
+  await expect(toggle).toHaveAttribute("aria-pressed", "true");
+  await page.locator('[data-testid="search-float-hit"]').first().hover();
+  await expect(card).toBeVisible();
+  await expect(card).toContainText("L1 · 标题");
+  await recordState1118(page, "01-reopen-hover-preview");
+});
+
+test("#1118 结果窗高度随命中内容自适应：3 处 3 行、12 处 9 行上限（A-4.2/A-4.4）", async ({
+  page,
+}) => {
+  await openDoc(page, HEIGHT_DOC, "/Users/test/height.md");
+  await page.keyboard.press("Meta+f");
+  const float = page.locator('[data-testid="search-float"]');
+  await expect(float).toBeVisible();
+  const input = page.locator('[data-testid="search-float-input"]');
+
+  await input.fill("属性");
+  await expect(page.locator('[data-testid="search-float-hit"]')).toHaveCount(3);
+  const few = await resultsGeom(page);
+  expect(few.rowH).toBeGreaterThan(0);
+  expect(Math.abs(few.contentBox - 3 * few.rowH)).toBeLessThanOrEqual(2);
+  await recordState1118(page, "02-few-hits-adaptive");
+
+  await input.fill("命中");
+  await expect(page.locator('[data-testid="search-float-hit"]')).toHaveCount(
+    12,
+  );
+  const many = await resultsGeom(page);
+  expect(Math.abs(many.contentBox - 9 * many.rowH)).toBeLessThanOrEqual(2);
+  expect(many.scrollHeight).toBeGreaterThan(many.clientHeight);
+  expect(many.clientHeight).toBeGreaterThan(few.clientHeight + 10);
+  await recordState1118(page, "03-many-hits-cap");
+});
+
+test("#1118 拖拽高度仅会话内记忆：同周期保持、重开回自适应（A-4.3）", async ({
+  page,
+}) => {
+  await page.keyboard.press("Meta+f");
+  const float = page.locator('[data-testid="search-float"]');
+  await expect(float).toBeVisible();
+  const input = page.locator('[data-testid="search-float-input"]');
+  await input.fill("属性");
+
+  const before = await float.boundingBox();
+  if (!before) throw new Error("浮窗未布局");
+  await dragBy(page, "search-float-resize-s", 0, 80);
+  const dragged = await float.boundingBox();
+  if (!dragged) throw new Error("浮窗未布局");
+  expect(dragged.height).toBeGreaterThan(before.height + 40);
+
+  await input.fill("特性");
+  await input.fill("属性");
+  const kept = await float.boundingBox();
+  if (!kept) throw new Error("浮窗未布局");
+  expect(near(kept.height, dragged.height, 2)).toBe(true);
+
+  await page.keyboard.press("Escape");
+  await expect(float).toBeHidden();
+  await page.keyboard.press("Meta+f");
+  await expect(float).toBeVisible();
+
+  const reopened = await float.boundingBox();
+  if (!reopened) throw new Error("浮窗未布局");
+  expect(near(reopened.height, before.height, 1)).toBe(true);
+  expect(near(reopened.width, dragged.width, 1)).toBe(true);
+  await recordState1118(page, "04-reopen-resets-height");
 });
