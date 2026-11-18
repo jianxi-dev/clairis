@@ -481,7 +481,7 @@ describe("SearchReplacePanel 状态栏自动显隐", () => {
     const { getByTestId } = renderPanel();
     const bar = getByTestId("search-float-statusbar");
     expect(bar.textContent).toBe(
-      "↑↓ 切换 · ↵ 定位选中 · ⌘1~9 直达（局部 · 浮窗内）· Esc 关闭",
+      "↑↓ 切换 · ↵ 定位选中 · ⌘1~9 直达 · Esc 关闭",
     );
     expect(bar.className).not.toContain("search-float-statusbar-hidden");
   });

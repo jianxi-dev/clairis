@@ -746,9 +746,7 @@ test("状态栏：打开即显示快捷键说明，离开失焦约 2 秒隐藏�
   const float = page.locator('[data-testid="search-float"]');
   const bar = page.locator('[data-testid="search-float-statusbar"]');
   await expect(bar).toBeVisible();
-  await expect(bar).toHaveText(
-    "↑↓ 切换 · ↵ 定位选中 · ⌘1~9 直达（局部 · 浮窗内）· Esc 关闭",
-  );
+  await expect(bar).toHaveText("↑↓ 切换 · ↵ 定位选中 · ⌘1~9 直达 · Esc 关闭");
 
   // 先进入浮窗，确保移出时 pointerleave 真实发生（否则只测到失焦路径）。
   await float.hover();
@@ -1857,6 +1855,121 @@ test("#1058 窄视口 320 + 替换行：控件在浮窗内且关闭可点（A-20
 
   await page.locator('[data-testid="search-float-close"]').click();
   await expect(float).toBeHidden();
+});
+
+/* ------------------------------------------------------------------ *
+ * #1054 重启反馈：顶栏标题 / 关闭钮位次 / 清空钮 / 状态栏文案 / 字号+1档
+ * （change editor-surface-batch23 / 任务 1.1，A-1.1…A-1.8）
+ * ------------------------------------------------------------------ */
+
+test("#1054 A-1.1/A-1.2 顶栏含「搜索和替换」文本节点，关闭钮是顶栏最后一个子节点", async ({
+  page,
+}) => {
+  await page.keyboard.press("Meta+f");
+  const float = page.locator('[data-testid="search-float"]');
+  await expect(float).toBeVisible();
+  const handle = float.locator('[data-testid="search-float-handle"]');
+
+  // A-1.1：顶栏内出现「搜索和替换」的文本节点数下限 = 1
+  const titleNodes = await handle.evaluate((el) => {
+    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    let count = 0;
+    let node = walker.nextNode();
+    while (node) {
+      if ((node.textContent ?? "").includes("搜索和替换")) count += 1;
+      node = walker.nextNode();
+    }
+    return count;
+  });
+  expect(titleNodes).toBeGreaterThanOrEqual(1);
+
+  // A-1.2：关闭钮位于顶栏最右侧，其右兄弟节点数 = 0
+  const closeInfo = await handle.evaluate((el) => {
+    const close = el.querySelector<HTMLElement>(
+      '[data-testid="search-float-close"]',
+    );
+    if (!close) return { found: false as const, rightSiblings: -1 };
+    let rightSiblings = 0;
+    let sib = close.nextElementSibling;
+    while (sib) {
+      rightSiblings += 1;
+      sib = sib.nextElementSibling;
+    }
+    return { found: true as const, rightSiblings };
+  });
+  expect(closeInfo.found).toBe(true);
+  expect(closeInfo.rightSiblings).toBe(0);
+});
+
+test("#1054 A-1.3/A-1.4 状态栏文案精确等于目标串且不含「（局部 · 浮窗内）」", async ({
+  page,
+}) => {
+  await page.keyboard.press("Meta+f");
+  const bar = page.locator('[data-testid="search-float-statusbar"]');
+  await expect(bar).toBeVisible();
+  const text = (await bar.textContent()) ?? "";
+  expect(text).not.toContain("（局部 · 浮窗内）");
+  expect(text).toBe("↑↓ 切换 · ↵ 定位选中 · ⌘1~9 直达 · Esc 关闭");
+});
+
+test("#1054 A-1.5 关键词非空出现一键清空钮，点击后清空且浮窗保持打开", async ({
+  page,
+}) => {
+  await page.keyboard.press("Meta+f");
+  const float = page.locator('[data-testid="search-float"]');
+  const input = page.locator('[data-testid="search-float-input"]');
+  const clear = page.locator('[data-testid="search-float-clear"]');
+  await expect(float).toBeVisible();
+
+  // 空关键词：无清空钮
+  await expect(clear).toHaveCount(0);
+
+  await input.fill("属性");
+  await expect(page.locator('[data-testid="search-float-count"]')).toHaveText(
+    "3 处",
+  );
+  await expect(clear).toBeVisible();
+
+  await clear.click();
+  await expect(input).toHaveValue("");
+  await expect(page.locator('[data-testid="search-float-count"]')).toHaveText(
+    "",
+  );
+  await expect(float).toBeVisible();
+  await expect(input).toBeFocused();
+  await expect(clear).toHaveCount(0);
+});
+
+test("#1054 A-1.6/A-1.7/A-1.8 结果定位行 / 上下文片段 / 快捷键徽标字号各上调一档（11/12/11px）", async ({
+  page,
+}) => {
+  await page.keyboard.press("Meta+f");
+  await page.locator('[data-testid="search-float-input"]').fill("属性");
+  const rows = page.locator('[data-testid="search-float-hit"]');
+  await expect(rows).toHaveCount(3);
+
+  const sizes = await rows.first().evaluate((row) => {
+    const read = (selector: string) => {
+      const el = row.querySelector<HTMLElement>(selector);
+      return el ? parseFloat(getComputedStyle(el).fontSize) : null;
+    };
+    return {
+      locRow: read(".search-float-top"),
+      context: read(".search-float-context"),
+      // 第 2 行为非选中行，行尾是 ⌘N 文本，量它的字号
+      key: parseFloat(
+        getComputedStyle(
+          row.parentElement!.querySelector<HTMLElement>(
+            '[data-testid="search-float-hit"][data-index="1"] .search-float-key',
+          )!,
+        ).fontSize,
+      ),
+    };
+  });
+
+  expect(sizes.locRow).toBe(11);
+  expect(sizes.context).toBe(12);
+  expect(sizes.key).toBe(11);
 });
 
 test("#1058 默认 300 宽度下状态栏贴底（A-16.1 交叉复核）", async ({ page }) => {
