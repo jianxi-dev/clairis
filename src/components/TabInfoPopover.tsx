@@ -55,7 +55,7 @@ interface Props {
  *
  * 三行：① 文件类型图标 + 文件名（最大字号）；② 文件夹图标 + 文件夹链
  * （每层可单击在文件管理器定位）；③ 时钟图标 + 最近保存时间。
- * 外壳为胶囊卡片，复用全局 `--tip-shell-radius`。
+ * 外壳为 8px 圆角矩形、固定 320px 宽（窄窗按视口钳制），完整文件名换行显示。
  */
 export default function TabInfoPopover({
   tab,

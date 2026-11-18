@@ -2,7 +2,7 @@ import { test, expect, type Page } from "@playwright/test";
 import { mkdirSync } from "fs";
 
 const APP_URL = process.env.BIAOYUE_E2E_URL ?? "http://localhost:1420";
-const ARTIFACT_DIR = ".artifacts/1053";
+const ARTIFACT_DIR = ".artifacts/1104";
 
 async function boot(page: Page): Promise<void> {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
@@ -49,12 +49,12 @@ async function readTitleStyles(page: Page): Promise<TitleStyle[]> {
   );
 }
 
-test.describe("页签标题单行全显与间距（editor-surface-batch22 1.1 / #1053）", () => {
+test.describe("页签标题固定宽度与间距（tab-title-info-surface 1.1 / #1104）", () => {
   test.beforeAll(() => {
     mkdirSync(ARTIFACT_DIR, { recursive: true });
   });
 
-  test("相邻页签间距为 32px（A-1.1）", async ({ page }) => {
+  test("相邻页签间距仍为 32px（A-1.4）", async ({ page }) => {
     await boot(page);
     await openFile(page, "/tmp/1053/alpha.md");
     await openFile(page, "/tmp/1053/beta.md");
@@ -75,45 +75,68 @@ test.describe("页签标题单行全显与间距（editor-surface-batch22 1.1 / 
     await page.screenshot({ path: `${ARTIFACT_DIR}/02-gap-32.png` });
   });
 
-  test("长页签名单行完整显示、无省略号（A-1.2/A-1.3/A-1.4）", async ({
+  test("长页签名单行省略号、短页签名按实际长度（A-1.1/A-1.2/A-1.3）", async ({
     page,
   }) => {
     await boot(page);
-    await openFile(page, "/tmp/1053/short.md");
-    await openFile(
-      page,
-      "/tmp/1053/very-long-tab-title-abcdefghijklmnopqrstuvwxyz-01.md",
+    await openFile(page, "/tmp/1104/short.md");
+    const longPath =
+      "/tmp/1104/very-long-tab-title-abcdefghijklmnopqrstuvwxyz-01.md";
+    await openFile(page, longPath);
+
+    const titles = page.locator(
+      '.tab-strip [data-tab-id] [data-testid="tab-title"]',
+    );
+    const styles = await readTitleStyles(page);
+    expect(styles.length).toBe(2);
+
+    // 上限从 token 取，不在断言里复制像素值
+    const maxWidth = await page.evaluate(() =>
+      parseFloat(
+        getComputedStyle(document.documentElement).getPropertyValue(
+          "--tab-title-max-width",
+        ),
+      ),
     );
 
-    const styles = await readTitleStyles(page);
-    expect(styles.length).toBeGreaterThan(0);
+    // A-1.1/A-1.2：长标题被上限夹住并以省略号收尾、单行不换行
+    const long = await titles.last().evaluate((el) => {
+      const cs = getComputedStyle(el);
+      return {
+        maxWidth: parseFloat(cs.maxWidth),
+        textOverflow: cs.textOverflow,
+        whiteSpace: cs.whiteSpace,
+        lineClamp: cs.webkitLineClamp,
+        renderedWidth: el.getBoundingClientRect().width,
+        clipped: el.scrollWidth > el.clientWidth + 1,
+        lines: Math.round(
+          el.getBoundingClientRect().height /
+            (parseFloat(cs.lineHeight) || el.getBoundingClientRect().height),
+        ),
+      };
+    });
+    expect(Math.abs(long.maxWidth - maxWidth)).toBeLessThanOrEqual(1);
+    expect(long.textOverflow).toBe("ellipsis");
+    expect(long.whiteSpace).toBe("nowrap");
+    expect(long.lineClamp).toBe("none");
+    expect(long.lines).toBe(1);
+    // max-width 在 inline 盒上不生效——用渲染宽度与裁切事实兜住
+    expect(long.renderedWidth).toBeLessThanOrEqual(maxWidth + 2);
+    expect(long.clipped).toBe(true);
 
-    // A-1.2：没有任何页签标题生效 text-overflow: ellipsis
-    expect(
-      styles.filter((s) => s.textOverflow === "ellipsis").length,
-    ).toBe(0);
+    // A-1.3：短标题宽度等于文本实际宽度，未被拉伸到上限
+    const short = await titles.first().evaluate((el) => ({
+      width: el.getBoundingClientRect().width,
+      textWidth: (() => {
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        return range.getBoundingClientRect().width;
+      })(),
+    }));
+    expect(Math.abs(short.width - short.textWidth)).toBeLessThanOrEqual(1);
+    expect(short.width).toBeLessThan(maxWidth);
 
-    // A-1.3：至少一个页签标题的计算 -webkit-line-clamp 为 none
-    expect(styles.filter((s) => s.lineClamp === "none").length).toBeGreaterThanOrEqual(1);
-
-    // A-1.4：至少一个页签标题的计算 white-space 为 nowrap
-    expect(
-      styles.filter((s) => s.whiteSpace === "nowrap").length,
-    ).toBeGreaterThanOrEqual(1);
-
-    // 视觉事实复核：长标题不再折成两行（行盒数为 1）
-    const lines = await page
-      .locator('.tab-strip [data-tab-id] [data-testid="tab-title"]')
-      .last()
-      .evaluate((el) => {
-        const cs = getComputedStyle(el);
-        const lh = parseFloat(cs.lineHeight);
-        const lineHeight = Number.isFinite(lh) && lh > 0 ? lh : el.getBoundingClientRect().height;
-        return Math.round(el.getBoundingClientRect().height / lineHeight);
-      });
-    expect(lines).toBe(1);
-
-    await page.screenshot({ path: `${ARTIFACT_DIR}/01-long-titles-nowrap.png` });
+    await page.screenshot({ path: `${ARTIFACT_DIR}/01-title-ellipsis.png` });
   });
 
   test("多个长页签时页签条可横向滚动（A-1.5）", async ({ page }) => {
@@ -150,7 +173,7 @@ test.describe("页签标题单行全显与间距（editor-surface-batch22 1.1 / 
     await page.screenshot({ path: `${ARTIFACT_DIR}/03-strip-scrollable.png` });
   });
 
-  test("关闭页签后间距保持 32px 且无残留省略号", async ({ page }) => {
+  test("关闭页签后间距保持 32px 且长标题仍省略", async ({ page }) => {
     await boot(page);
     await openFile(
       page,
@@ -176,9 +199,13 @@ test.describe("页签标题单行全显与间距（editor-surface-batch22 1.1 / 
     expect(gapAfter).toBe("32px");
 
     const styles = await readTitleStyles(page);
+    // 长标题在关闭其他页签后仍以省略号收尾（不会因空间变宽而回退成全显）
     expect(
       styles.filter((s) => s.textOverflow === "ellipsis").length,
-    ).toBe(0);
+    ).toBeGreaterThanOrEqual(1);
+    for (const st of styles) {
+      expect(st.lineClamp).toBe("none");
+    }
 
     await page.screenshot({
       path: `${ARTIFACT_DIR}/04-after-close-keeps-gap.png`,
