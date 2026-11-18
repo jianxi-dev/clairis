@@ -154,6 +154,8 @@ gh issue close <编号> --comment "已修复，提交 commit: xxx"
    - 严重级别判断 (P0/P1/P2/P3)
    - 模块归属
 
+   > batch 级反馈先走对账表（[feedback-alignment.md](./feedback-alignment.md)）：每条编号反馈必须有处置（做票/暂缓+理由/待补充），禁止静默丢弃；对账确认后才拆票。
+
 2. **创建 GitHub Issue**
    ```bash
    cd /Users/mason/ToHighs/clairis
