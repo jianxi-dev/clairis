@@ -65,51 +65,87 @@ afterEach(() => {
 });
 
 describe("SearchReplacePanel 行尾快捷键渲染条件", () => {
-  it("初始选中行显示 回车，其余 1~9 行显示 ⌘N", () => {
+  function badgeStates(): Array<{
+    text: string;
+    svg: number;
+    aria: string | null;
+  }> {
+    return Array.from(document.querySelectorAll(".search-float-key")).map(
+      (el) => ({
+        text: el.textContent ?? "",
+        svg: el.querySelectorAll("svg").length,
+        aria: el.getAttribute("aria-label"),
+      }),
+    );
+  }
+
+  it("初始选中行显示键帽回车图标，其余 1~9 行显示 ⌘N", () => {
     const { getByTestId } = renderPanel();
     fireEvent.change(getByTestId("search-float-input"), {
       target: { value: "属性" },
     });
-    const keys = Array.from(document.querySelectorAll(".search-float-key")).map(
-      (el) => el.textContent,
-    );
-    expect(keys).toEqual(["回车", "⌘2", "⌘3"]);
+    expect(badgeStates()).toEqual([
+      { text: "", svg: 1, aria: "回车" },
+      { text: "⌘2", svg: 0, aria: null },
+      { text: "⌘3", svg: 0, aria: null },
+    ]);
   });
 
-  it("↑↓ 换选后 回车 跟随到新的选中行，无需点击", () => {
+  it("↑↓ 换选后回车图标跟随到新的选中行，无需点击", () => {
     const { getByTestId } = renderPanel();
     const input = getByTestId("search-float-input");
     fireEvent.change(input, { target: { value: "属性" } });
     keyDown(input, { key: "ArrowDown" });
     keyDown(input, { key: "ArrowDown" });
-    const keys = Array.from(document.querySelectorAll(".search-float-key")).map(
-      (el) => el.textContent,
-    );
-    expect(keys).toEqual(["⌘1", "⌘2", "回车"]);
+    expect(badgeStates()).toEqual([
+      { text: "⌘1", svg: 0, aria: null },
+      { text: "⌘2", svg: 0, aria: null },
+      { text: "", svg: 1, aria: "回车" },
+    ]);
   });
 
-  it("↑ 换选后 回车 跟随回上一行，无需点击", () => {
+  it("↑ 换选后回车图标跟随回上一行，无需点击", () => {
     const { getByTestId } = renderPanel();
     const input = getByTestId("search-float-input");
     fireEvent.change(input, { target: { value: "属性" } });
     keyDown(input, { key: "ArrowDown" });
     keyDown(input, { key: "ArrowDown" });
     keyDown(input, { key: "ArrowUp" });
-    const keys = Array.from(document.querySelectorAll(".search-float-key")).map(
-      (el) => el.textContent,
-    );
-    expect(keys).toEqual(["⌘1", "回车", "⌘3"]);
+    expect(badgeStates()).toEqual([
+      { text: "⌘1", svg: 0, aria: null },
+      { text: "", svg: 1, aria: "回车" },
+      { text: "⌘3", svg: 0, aria: null },
+    ]);
   });
 
-  it("⌘N 直达该行即显示 回车", () => {
+  it("悬停结果行即把高亮与徽标切到该行（等价 ↑↓）", () => {
+    const { getByTestId, getAllByTestId } = renderPanel();
+    fireEvent.change(getByTestId("search-float-input"), {
+      target: { value: "属性" },
+    });
+    fireEvent.mouseEnter(getAllByTestId("search-float-hit")[1]);
+    expect(
+      getAllByTestId("search-float-hit")[1].classList.contains(
+        "search-float-hit-cur",
+      ),
+    ).toBe(true);
+    expect(badgeStates()).toEqual([
+      { text: "⌘1", svg: 0, aria: null },
+      { text: "", svg: 1, aria: "回车" },
+      { text: "⌘3", svg: 0, aria: null },
+    ]);
+  });
+
+  it("⌘N 直达该行即显示回车图标", () => {
     const { getByTestId } = renderPanel();
     const input = getByTestId("search-float-input");
     fireEvent.change(input, { target: { value: "属性" } });
     keyDown(input, { key: "2", code: "Digit2", metaKey: true });
-    const keys = Array.from(document.querySelectorAll(".search-float-key")).map(
-      (el) => el.textContent,
-    );
-    expect(keys).toEqual(["⌘1", "回车", "⌘3"]);
+    expect(badgeStates()).toEqual([
+      { text: "⌘1", svg: 0, aria: null },
+      { text: "", svg: 1, aria: "回车" },
+      { text: "⌘3", svg: 0, aria: null },
+    ]);
   });
 
   it("第 10 行起无快捷键", () => {
@@ -126,21 +162,22 @@ describe("SearchReplacePanel 行尾快捷键渲染条件", () => {
     fireEvent.change(getByTestId("search-float-input"), {
       target: { value: "命中" },
     });
-    const keys = Array.from(document.querySelectorAll(".search-float-key")).map(
-      (el) => el.textContent,
-    );
-    expect(keys.slice(0, 9)).toEqual([
-      "回车",
-      "⌘2",
-      "⌘3",
-      "⌘4",
-      "⌘5",
-      "⌘6",
-      "⌘7",
-      "⌘8",
-      "⌘9",
+    const states = badgeStates();
+    expect(states.slice(0, 9)).toEqual([
+      { text: "", svg: 1, aria: "回车" },
+      { text: "⌘2", svg: 0, aria: null },
+      { text: "⌘3", svg: 0, aria: null },
+      { text: "⌘4", svg: 0, aria: null },
+      { text: "⌘5", svg: 0, aria: null },
+      { text: "⌘6", svg: 0, aria: null },
+      { text: "⌘7", svg: 0, aria: null },
+      { text: "⌘8", svg: 0, aria: null },
+      { text: "⌘9", svg: 0, aria: null },
     ]);
-    expect(keys.slice(9)).toEqual(["", ""]);
+    expect(states.slice(9)).toEqual([
+      { text: "", svg: 0, aria: null },
+      { text: "", svg: 0, aria: null },
+    ]);
   });
 });
 
@@ -191,6 +228,24 @@ describe("SearchReplacePanel 点击定位到浮窗所属窗格", () => {
 
     expect(own.dispatch).toHaveBeenCalledTimes(1);
     expect(own.focus).toHaveBeenCalledTimes(1);
+  });
+
+  it("Enter 定位后焦点还回输入框，↑↓ 换选仍然有效", () => {
+    const own = fakeView();
+    refs.views["panel-b"] = own;
+
+    const { getByTestId } = renderPanel("panel-b");
+    const input = getByTestId("search-float-input");
+    fireEvent.change(input, { target: { value: "属性" } });
+    keyDown(input, { key: "ArrowDown" });
+    keyDown(input, { key: "Enter" });
+
+    expect(own.dispatch).toHaveBeenCalledTimes(1);
+    expect(document.activeElement).toBe(input);
+
+    keyDown(input, { key: "ArrowUp" });
+    const cur = document.querySelector(".search-float-hit-cur") as HTMLElement;
+    expect(Number(cur.dataset.index)).toBe(0);
   });
 });
 
