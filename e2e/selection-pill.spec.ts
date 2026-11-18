@@ -422,3 +422,66 @@ test.describe("选区胶囊定位：鼠标落点 + 视口钳制（#1049）", () 
     });
   });
 });
+
+test.describe("选区工具条显示时机：拖选完成后再显示（#1049 / batch23 A-3.1..A-3.3）", () => {
+  test.beforeEach(async ({ page }) => {
+    await bootstrap(page);
+  });
+
+  /** 按下并拖动，不松手；返回计划释放点坐标。 */
+  async function pressAndDrag(
+    page: Page,
+    selector: string,
+  ): Promise<{ x: number; y: number }> {
+    const box = await page.locator(selector).first().boundingBox();
+    if (!box) throw new Error(`找不到可测量的元素：${selector}`);
+    const y = box.y + box.height / 2;
+    const endX = box.x + Math.min(box.width - 4, 140);
+    await page.mouse.move(box.x + 4, y);
+    await page.mouse.down();
+    await page.mouse.move(endX, y, { steps: 12 });
+    return { x: endX, y };
+  }
+
+  test("A-3.1/A-3.2/A-3.3 拖选中不出现，松开后出现且中心对齐落点", async ({
+    page,
+  }) => {
+    await openDoc(page, "/tmp/pill-1049-timing.md", PREVIEW_DOC);
+    await setMode(page, "preview");
+    await page.locator(".preview-content").waitFor({ state: "visible" });
+
+    const release = await pressAndDrag(page, ".preview-content p");
+    // 先确认拖选确实已产生非折叠选区（排除时序侥幸），再断言胶囊为 0。
+    await page.waitForFunction(
+      () => (window.getSelection()?.toString().trim().length ?? 0) > 0,
+      null,
+      { timeout: 5000 },
+    );
+    await expect(pill(page)).toHaveCount(0);
+
+    await page.mouse.up();
+    await expect(pill(page)).toBeVisible({ timeout: 5000 });
+    const pillRect = await pill(page).boundingBox();
+    expect(pillRect, "胶囊未渲染").toBeTruthy();
+    const centerX = pillRect!.x + pillRect!.width / 2;
+    expect(Math.abs(centerX - release.x)).toBeLessThanOrEqual(4);
+  });
+
+  test("无指针选区仍出胶囊：键盘/脚本路径回落选区中心", async ({ page }) => {
+    await openDoc(page, "/tmp/pill-1049-keyboard.md", PREVIEW_DOC);
+    await setMode(page, "preview");
+    await page.locator(".preview-content").waitFor({ state: "visible" });
+
+    await selectRange(page, ".preview-content p", 0, 6);
+
+    await expect(pill(page)).toBeVisible({ timeout: 5000 });
+    const sel = await page.evaluate(() => {
+      const r = window.getSelection()!.getRangeAt(0).getBoundingClientRect();
+      return { left: r.left, width: r.width };
+    });
+    const centerX = sel.left + sel.width / 2;
+    const pillRect = await pill(page).boundingBox();
+    const pillCenterX = pillRect!.x + pillRect!.width / 2;
+    expect(Math.abs(pillCenterX - centerX)).toBeLessThanOrEqual(2);
+  });
+});

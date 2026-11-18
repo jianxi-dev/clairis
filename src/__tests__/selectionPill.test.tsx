@@ -257,3 +257,74 @@ describe("SelectionPill 无效选区与无残留", () => {
     expect(document.querySelector("[data-selection-pill]")).toBeNull();
   });
 });
+
+describe("SelectionPill 显示时机：拖选完成后再显示", () => {
+  it("按下拖动期间不渲染，松开后按落点出现", () => {
+    const p = makePreview("这是预览正文");
+    vi.mocked(window.getSelection).mockReturnValue(
+      mockSelection("这是预览正文", textNodeOf(p), textNodeOf(p)),
+    );
+    render(<SelectionPill />);
+
+    act(() => {
+      document.dispatchEvent(
+        new MouseEvent("pointerdown", { clientX: 100, clientY: 205 }),
+      );
+    });
+    fireSelectionChange();
+    expect(document.querySelector("[data-selection-pill]")).toBeNull();
+
+    act(() => {
+      document.dispatchEvent(
+        new MouseEvent("pointerup", { clientX: 180, clientY: 205 }),
+      );
+    });
+    expect(document.querySelector("[data-selection-pill]")).not.toBeNull();
+  });
+
+  it("pointercancel 复位手势状态，后续选区仍可显示", () => {
+    const p = makePreview("这是预览正文");
+    vi.mocked(window.getSelection).mockReturnValue(
+      mockSelection("这是预览正文", textNodeOf(p), textNodeOf(p)),
+    );
+    render(<SelectionPill />);
+
+    act(() => {
+      document.dispatchEvent(
+        new MouseEvent("pointerdown", { clientX: 100, clientY: 205 }),
+      );
+    });
+    act(() => {
+      document.dispatchEvent(new Event("pointercancel"));
+    });
+    fireSelectionChange();
+    expect(document.querySelector("[data-selection-pill]")).not.toBeNull();
+  });
+
+  it("Escape 后纯点击不唤回胶囊", () => {
+    const p = makePreview("这是预览正文");
+    vi.mocked(window.getSelection).mockReturnValue(
+      mockSelection("这是预览正文", textNodeOf(p), textNodeOf(p)),
+    );
+    render(<SelectionPill />);
+    fireSelectionChange();
+    expect(document.querySelector("[data-selection-pill]")).not.toBeNull();
+
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+    });
+    expect(document.querySelector("[data-selection-pill]")).toBeNull();
+
+    act(() => {
+      document.dispatchEvent(
+        new MouseEvent("pointerdown", { clientX: 100, clientY: 205 }),
+      );
+    });
+    act(() => {
+      document.dispatchEvent(
+        new MouseEvent("pointerup", { clientX: 100, clientY: 205 }),
+      );
+    });
+    expect(document.querySelector("[data-selection-pill]")).toBeNull();
+  });
+});
