@@ -36,6 +36,17 @@ function pad(n: number): string {
   return String(n).padStart(2, "0");
 }
 
+function copyFailureText(e: unknown): string {
+  if (typeof e === "string") return e;
+  if (e && typeof e === "object") {
+    const io = (e as { Io?: { context?: unknown } }).Io;
+    if (io && typeof io.context === "string" && io.context.length > 0) {
+      return io.context;
+    }
+  }
+  return "复制失败";
+}
+
 /** Unix 秒 → 「MM-DD HH:mm」（本地时区）。 */
 function formatSaved(seconds: number): string {
   const d = new Date(seconds * 1000);
@@ -222,7 +233,7 @@ export default function TabInfoPopover({
                   e.stopPropagation();
                   void copyFileToClipboard(tab.path ?? "")
                     .then(() => flash("已复制文件"))
-                    .catch(() => flash("复制失败"));
+                    .catch((e) => flash(`复制文件失败：${copyFailureText(e)}`));
                 }}
               >
                 <Icon name="copy" size={14} />
