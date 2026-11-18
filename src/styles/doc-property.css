@@ -400,12 +400,50 @@
 }
 
 .dpb-b-foot {
-  font-size: 11px;
+  font-size: var(--dpb-footer-font-size, 11px);
   color: var(--app-text-3);
   padding: 7px 0 1px;
   border-top: 1px dashed var(--app-border);
   display: flex;
   gap: 16px;
+}
+
+/* 底部 footer（design-system §7.2）：A 左日期右计数，B 右日期 */
+.dpb-a-foot {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 8px;
+  padding-top: 7px;
+  border-top: 1px dashed var(--app-border);
+  font-size: var(--dpb-footer-font-size, 11px);
+  color: var(--app-text-3);
+}
+
+.dpb-a-foot [data-testid="dpb-count"] {
+  margin-left: auto;
+}
+
+.dpb-dates {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--dpb-date-gap, 6px);
+  margin-left: auto;
+  min-width: 0;
+}
+
+.dpb-a-foot .dpb-dates {
+  margin-left: 0;
+}
+
+.dpb-date {
+  white-space: nowrap;
+}
+
+.dpb-variant-toggle {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 5px;
 }
 
 /* ── 折叠按钮 / 隐藏提示 / 空态 ─────────────────────────── */

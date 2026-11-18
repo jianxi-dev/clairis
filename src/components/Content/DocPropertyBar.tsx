@@ -11,6 +11,7 @@ import { createPortal } from "react-dom";
 import type { EditorMode } from "../../types";
 import {
   isManagedDateKey,
+  managedDateDisplay,
   coerceFrontmatterValue,
   dedupeLinks,
   dedupeTags,
@@ -1748,6 +1749,7 @@ export default function DocPropertyBar({
   const collapsed = useDocPropertyPanelStore((s) => s.collapsed);
   const setCollapsed = useDocPropertyPanelStore((s) => s.setCollapsed);
   const setHidden = useDocPropertyPanelStore((s) => s.setHidden);
+  const toggleVariant = useDocPropertyPanelStore((s) => s.toggleVariant);
   const applyModeDefault = useDocPropertyPanelStore((s) => s.applyModeDefault);
   const propertyBar = useEditorStore((s) => s.config.propertyBar);
   const propTemplates =
@@ -1828,6 +1830,16 @@ export default function DocPropertyBar({
     if (!isNewDoc) return;
     setHidden(!(propertyBar?.newDocVisible ?? true));
   }, [isNewDoc, propertyBar?.newDocVisible, setHidden]);
+
+  // 窄窗（<720px）自动胶囊：只覆盖「用户从未手动选择」的形态，且不写偏好。
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 719px)");
+    const apply = () =>
+      useDocPropertyPanelStore.getState().setNarrow(mq.matches);
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, []);
 
   const handleCommitField = useCallback(
     (key: string, value: unknown) => {
@@ -2000,7 +2012,7 @@ export default function DocPropertyBar({
       return { ...prev, [typeKey]: next };
     });
   }, [typeKey, parsed]);
-  const fields = useMemo(() => {
+  const allFields = useMemo(() => {
     if (Object.keys(typeOverrides).length === 0) return parsed.fields;
     return parsed.fields.map((f) => {
       const t = typeOverrides[f.key];
@@ -2009,6 +2021,30 @@ export default function DocPropertyBar({
         : f;
     });
   }, [parsed, typeOverrides]);
+  // 托管日期排除出可编辑列表：不渲染字段行、不计入字段数，写回时原样并回。
+  const fields = useMemo(
+    () => allFields.filter((f) => !isManagedDateKey(f.key)),
+    [allFields],
+  );
+  const managedKeysPresent = useMemo(
+    () => parsed.fields.some((f) => isManagedDateKey(f.key)),
+    [parsed.fields],
+  );
+  const managedDates = useMemo(
+    () =>
+      allFields
+        .filter((f) => isManagedDateKey(f.key))
+        .map((f) => ({
+          key: f.key,
+          label: f.key === "created" ? "创建" : "修改",
+          text: managedDateDisplay(f.value),
+        }))
+        .filter(
+          (d): d is { key: string; label: string; text: string } =>
+            d.text !== null,
+        ),
+    [allFields],
+  );
   const titleField = fields.find((f) => f.key === "title") ?? null;
   const titleView = titleField
     ? { ...titleField, display: titleField.display || "未命名" }
@@ -2038,9 +2074,31 @@ export default function DocPropertyBar({
       .sort((a, b) => a - b);
   }, []);
 
+  // 结构写回前把托管日期按原文键序并回，避免删除 / 排序把日期键丢掉。
+  const withManagedDates = useCallback(
+    (editable: FrontmatterField[]): FrontmatterField[] => {
+      if (!managedKeysPresent) return editable;
+      const byKey = new Map(editable.map((f) => [f.key, f]));
+      for (const f of allFields) {
+        if (!byKey.has(f.key) && isManagedDateKey(f.key)) byKey.set(f.key, f);
+      }
+      const out: FrontmatterField[] = [];
+      for (const orig of parsed.fields) {
+        const hit = byKey.get(orig.key);
+        if (hit) {
+          out.push(hit);
+          byKey.delete(orig.key);
+        }
+      }
+      for (const f of byKey.values()) out.push(f);
+      return out;
+    },
+    [allFields, managedKeysPresent, parsed.fields],
+  );
+
   const commitFields = useCallback(
     (next: FrontmatterField[], nextSel: FrontmatterRowId[]) => {
-      const result = writeFrontmatterOrdered(content, next);
+      const result = writeFrontmatterOrdered(content, withManagedDates(next));
       if (result.text !== content) {
         const view = getPanelEditorView(panelId);
         if (!view) {
@@ -2056,7 +2114,7 @@ export default function DocPropertyBar({
       }
       applySelection(nextSel);
     },
-    [content, applySelection, panelId],
+    [content, applySelection, panelId, withManagedDates],
   );
 
   const handleAutoFocusHandled = useCallback((key: string) => {
@@ -2551,6 +2609,37 @@ export default function DocPropertyBar({
     </button>
   ) : null;
 
+  const variantToggle = (
+    <button
+      type="button"
+      className="dpb-tpl-btn dpb-variant-toggle"
+      data-testid="dpb-variant-toggle"
+      title={variant === "A" ? "切换到胶囊形态（B）" : "切换到一行条形态（A）"}
+      aria-label="切换属性面板形态"
+      aria-pressed={variant === "B"}
+      onClick={toggleVariant}
+    >
+      <Icon name="docPropertyVariant" size={14} />
+    </button>
+  );
+
+  const managedDatesView =
+    managedDates.length > 0 ? (
+      <span className="dpb-dates" data-testid="dpb-managed-dates">
+        <Icon name="lock" size={14} className="dpb-lock" />
+        {managedDates.map((d) => (
+          <span
+            className="dpb-date"
+            data-testid="dpb-managed-date"
+            data-key={d.key}
+            key={d.key}
+          >
+            {d.label} {d.text}
+          </span>
+        ))}
+      </span>
+    ) : null;
+
   const opsBar =
     editable && selected.size > 0 && !collapsed ? (
       <OpsBar
@@ -2607,6 +2696,7 @@ export default function DocPropertyBar({
             )}
             {selectAllButton}
             {collapseButton}
+            {variantToggle}
             {tplStatus && (
               <span
                 className="dpb-tpl-status"
@@ -2710,6 +2800,7 @@ export default function DocPropertyBar({
             })}
             <div className="dpb-b-foot">
               <span data-testid="dpb-count">{fields.length} 个字段</span>
+              {managedDatesView}
             </div>
             {paletteOverlay}
             {dragGhost}
@@ -2761,6 +2852,7 @@ export default function DocPropertyBar({
           )}
           {selectAllButton}
           {collapseButton}
+          {variantToggle}
           {tplStatus && (
             <span
               className="dpb-tpl-status"
@@ -2898,6 +2990,12 @@ export default function DocPropertyBar({
             )}
           </div>
         </>
+      )}
+      {managedDatesView && (
+        <div className="dpb-a-foot">
+          {managedDatesView}
+          <span data-testid="dpb-count">{fields.length} 个字段</span>
+        </div>
       )}
       {paletteOverlay}
       {dragGhost}

@@ -91,6 +91,7 @@ export type IconName =
   | "failure"
   | "bug"
   | "example"
+  | "docPropertyVariant"
   | "convert"
   | "align"
   | "bold"
@@ -708,6 +709,10 @@ export const ICONS: Record<IconName, IconDef> = {
   example: {
     label: "示例",
     s: "M6 4h9l4 4v12H6z M15 4v4h4 M9 12h7 M9 15h5",
+  },
+  docPropertyVariant: {
+    label: "属性面板形态切换",
+    s: "M3.5 5.5h17v13h-17z M12 5.5v13 M6 9.5h3.5 M6 13h3.5 M14.5 9.5h3.5 M14.5 13h3.5",
   },
 };
 

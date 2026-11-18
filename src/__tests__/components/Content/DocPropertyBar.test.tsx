@@ -42,25 +42,44 @@ describe("DocPropertyBar 托管日期键只读（P-6）", () => {
     resetPanel();
   });
 
-  it("B 编辑态：created / updated 值不进编辑、类型菜单不弹出", () => {
+  it("B 态：created / updated 不作为字段行，只读展示在 footer 右侧", () => {
     useDocPropertyPanelStore.getState().setVariant("B");
     const { container } = render(<DocPropertyBar content={DOC} mode="edit" />);
 
     for (const key of ["created", "updated"]) {
-      const row = container.querySelector(`[data-key="${key}"]`);
-      expect(row).not.toBeNull();
-
-      const value = row!.querySelector('[data-testid="dpb-value"]');
-      expect(value?.getAttribute("role")).toBeNull();
-      fireEvent.click(value!);
-      expect(row!.querySelector('[data-testid="dpb-input"]')).toBeNull();
-
-      expect(row!.querySelector('[data-testid="dpb-type"]')).toBeNull();
-      fireEvent.click(row!.querySelector(".dpb-b-type")!);
       expect(
-        document.querySelector('[data-testid="dpb-type-menu"]'),
+        container.querySelector(`[data-testid="dpb-row"][data-key="${key}"]`),
       ).toBeNull();
     }
+    const foot = container.querySelector(".dpb-b-foot")!;
+    const dates = foot.querySelector('[data-testid="dpb-managed-dates"]');
+    expect(dates).not.toBeNull();
+    expect(foot.querySelector(".dpb-lock")).not.toBeNull();
+    expect(dates!.textContent).toContain("创建 2026-11-14");
+    expect(dates!.textContent).toContain("修改 2026-11-15");
+    expect(foot.querySelector('[data-testid="dpb-input"]')).toBeNull();
+  });
+
+  it("A 态：footer 左侧两日期与「N 个字段」同行，无输入框", () => {
+    useDocPropertyPanelStore.getState().setVariant("A");
+    const { container } = render(
+      <DocPropertyBar content={DOC} mode="preview" />,
+    );
+
+    for (const key of ["created", "updated"]) {
+      expect(
+        container.querySelector(`[data-testid="dpb-row"][data-key="${key}"]`),
+      ).toBeNull();
+    }
+    const foot = container.querySelector(".dpb-a-foot")!;
+    const dates = foot.querySelector('[data-testid="dpb-managed-dates"]')!;
+    const count = foot.querySelector('[data-testid="dpb-count"]')!;
+    expect(dates.textContent).toContain("创建 2026-11-14");
+    expect(count.textContent).toBe("2 个字段");
+    expect(
+      dates.compareDocumentPosition(count) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).not.toBe(0);
+    expect(foot.querySelector('[data-testid="dpb-input"]')).toBeNull();
   });
 
   it("B 编辑态：自由键仍可编辑、类型菜单可弹出（守卫不误伤）", () => {

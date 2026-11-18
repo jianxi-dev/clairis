@@ -3,7 +3,10 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { useEditorStore } from "../stores/editorStore";
 import { useStore } from "../stores/index";
-import { useDocPropertyPanelStore } from "../stores/docPropertyPanel";
+import {
+  normalizeDocPropertyVariant,
+  useDocPropertyPanelStore,
+} from "../stores/docPropertyPanel";
 import { isTauriEnv } from "../utils/tauri";
 import { log } from "../utils/log";
 import type {
@@ -85,6 +88,7 @@ interface RustAppConfig {
   htmlToolbarItems?: string[] | null;
   paneLayout?: string | null;
   railPinHidden?: boolean | null;
+  docPropertyVariant?: string | null;
   propertyBar?: {
     displayStyle?: string | null;
     displayDefault?: {
@@ -194,6 +198,7 @@ export async function saveAppConfig(): Promise<void> {
     // 读实时值：本次会话分裂/调整的比例要能持久化
     paneLayout: useStore.getState().paneLayoutJson(),
     railPinHidden: es.config.railPinHidden ?? null,
+    docPropertyVariant: useDocPropertyPanelStore.getState().preference ?? null,
     propertyBar: es.config.propertyBar ?? null,
     searchPanel: es.config.searchPanel ?? null,
     propTemplates: es.config.propTemplates ?? null,
@@ -470,7 +475,10 @@ function applyRustConfig(raw: RustAppConfig): void {
   es.setConfigLoaded(true);
   useDocPropertyPanelStore
     .getState()
-    .setVariant(propertyBarConfig.displayStyle === "dual" ? "B" : "A");
+    .applyLoadedPreference(
+      normalizeDocPropertyVariant(raw.docPropertyVariant),
+      propertyBarConfig.displayStyle === "dual" ? "B" : "A",
+    );
 
   // Restore scroll positions (A-9)
   useStore.getState().setScrollPositions(raw.scrollPositions ?? {});
@@ -648,6 +656,17 @@ export function useConfig() {
       saveConfig();
     }, DEBOUNCE_MS);
   }, [saveConfig]);
+
+  // AB 形态切换写全局偏好：偏好变化即落盘（首次加载的回填不算）。
+  const docPreference = useDocPropertyPanelStore((s) => s.preference);
+  const prefLoadedRef = useRef(false);
+  useEffect(() => {
+    if (!prefLoadedRef.current) {
+      prefLoadedRef.current = true;
+      return;
+    }
+    if (docPreference) scheduleSave();
+  }, [docPreference, scheduleSave]);
 
   const setTheme = useCallback(
     (theme: Theme) => {

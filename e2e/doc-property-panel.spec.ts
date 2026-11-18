@@ -176,7 +176,7 @@ test("预览态：A 一行条只读渲染（千分位 / 开关态 / 标签胶囊
   const a = panel(page, "A");
   await expect(a).toBeVisible();
 
-  await expect(a.locator('[data-testid="dpb-row"]')).toHaveCount(5);
+  await expect(a.locator('[data-testid="dpb-row"]')).toHaveCount(3);
   await expect(
     a.locator('[data-key="count"] [data-testid="dpb-value"]'),
   ).toHaveText("1,234,567");
@@ -188,10 +188,11 @@ test("预览态：A 一行条只读渲染（千分位 / 开关态 / 标签胶囊
     "甲",
   );
 
-  // 预览态没有任何编辑入口
+  // 预览态没有任何编辑入口（形态切换图标除外）
   await expect(a.locator('[data-testid="dpb-collapse"]')).toHaveCount(0);
   await expect(a.locator(".dpb-row-handle")).toHaveCount(0);
-  await expect(a.locator("button")).toHaveCount(0);
+  await expect(a.locator("button")).toHaveCount(1);
+  await expect(a.locator('[data-testid="dpb-variant-toggle"]')).toBeVisible();
 });
 
 test("布尔值：图形与提示分离，状态文案移至 title（#1021）", async ({
@@ -247,7 +248,7 @@ test("编辑态可折叠，折叠状态跨模式切换保留", async ({ page }) 
   await openDoc(page);
   await setMode(page, "edit");
   const a = panel(page, "A");
-  await expect(a.locator('[data-testid="dpb-row"]')).toHaveCount(5);
+  await expect(a.locator('[data-testid="dpb-row"]')).toHaveCount(3);
 
   await page.locator('[data-testid="dpb-collapse"]').click();
   await expect(a.locator('[data-testid="dpb-row"]')).toHaveCount(0);
@@ -259,7 +260,7 @@ test("编辑态可折叠，折叠状态跨模式切换保留", async ({ page }) 
   await expect(a.locator(".dpb-a-summary")).toBeVisible();
 
   await page.locator('[data-testid="dpb-collapse"]').click();
-  await expect(a.locator('[data-testid="dpb-row"]')).toHaveCount(5);
+  await expect(a.locator('[data-testid="dpb-row"]')).toHaveCount(3);
 });
 
 test("A 编辑态：手柄悬出于胶囊左外侧且不占布局，胶囊列间距 16px", async ({
@@ -268,7 +269,7 @@ test("A 编辑态：手柄悬出于胶囊左外侧且不占布局，胶囊列间
   await openDoc(page);
   await setMode(page, "edit");
   const chips = panel(page, "A").locator(".dpb-chip");
-  await expect(chips).toHaveCount(5);
+  await expect(chips).toHaveCount(3);
 
   const first = chips.nth(0);
   const second = chips.nth(1);
@@ -314,7 +315,7 @@ test("B 精排双列：5 列网格 / 静态类型图标 / 底部统计全部字�
   await expect(b).toBeVisible();
 
   const rows = b.locator('[data-testid="dpb-row"]');
-  await expect(rows).toHaveCount(6);
+  await expect(rows).toHaveCount(4);
 
   const tracks = await rows.first().evaluate((el) => {
     const v = getComputedStyle(el).gridTemplateColumns;
@@ -328,9 +329,9 @@ test("B 精排双列：5 列网格 / 静态类型图标 / 底部统计全部字�
 
   // 预览态每行都有静态类型图标（svg 或字符）
   const iconCount = await b.locator(".dpb-b-type > *").count();
-  expect(iconCount).toBe(6);
+  expect(iconCount).toBe(4);
 
-  await expect(b.locator('[data-testid="dpb-count"]')).toHaveText("6 个字段");
+  await expect(b.locator('[data-testid="dpb-count"]')).toHaveText("4 个字段");
 });
 
 test("长值两行截断：clientHeight ≈ 2 × line-height，title 为全文", async ({
@@ -394,7 +395,7 @@ test("设置区：文档属性样式 A→B 切换立即生效，字段内容不�
   await expect(panel(page, "A")).toHaveCount(0);
   const b = panel(page, "B");
   await expect(b).toBeVisible();
-  await expect(b.locator('[data-testid="dpb-row"]')).toHaveCount(6);
+  await expect(b.locator('[data-testid="dpb-row"]')).toHaveCount(4);
   await expect(
     b.locator('[data-key="count"] [data-testid="dpb-value"]'),
   ).toHaveText("1,234,567");
@@ -404,7 +405,7 @@ test("编辑态默认档：折叠与隐藏按模式生效", async ({ page }) => 
   await openDoc(page);
   await setMode(page, "edit");
   const a = panel(page, "A");
-  await expect(a.locator('[data-testid="dpb-row"]')).toHaveCount(5);
+  await expect(a.locator('[data-testid="dpb-row"]')).toHaveCount(3);
 
   await page.keyboard.press("Meta+,");
   await page.locator('[data-settings-nav="editor"]').click();
@@ -620,107 +621,183 @@ test("编辑其他字段后自由键在源码中保持不变", async ({ page }) 
   await expect(src).toContainText("note: 改后备注");
 });
 
-test("自动托管日期只读锁定：A/B 两态均有锁定标记且无编辑入口", async ({
+test("#1129 托管日期只读展示：A footer 左 / B 备注行右，带锁无输入框", async ({
   page,
 }) => {
   await openDoc(page);
   const a = panel(page, "A");
   for (const key of ["created", "updated"]) {
     await expect(
-      a.locator(`[data-key="${key}"][data-locked="true"]`),
-    ).toHaveCount(1);
-    await expect(a.locator(`[data-key="${key}"] .dpb-lock`)).toHaveCount(1);
-    await expect(
-      a.locator(`[data-key="${key}"] [data-testid="dpb-value"]`),
-    ).toBeVisible();
+      a.locator(`[data-testid="dpb-row"][data-key="${key}"]`),
+    ).toHaveCount(0);
   }
-  await expect(a.locator('[data-key="count"][data-locked]')).toHaveCount(0);
-  await expect(a.locator("button")).toHaveCount(0);
+  await expect(a.locator('[data-testid="dpb-count"]')).toHaveText("4 个字段");
+
+  const aFoot = a.locator(".dpb-a-foot");
+  const aDates = aFoot.locator('[data-testid="dpb-managed-dates"]');
+  await expect(aDates).toBeVisible();
+  await expect(aDates.locator(".dpb-lock")).toHaveCount(1);
+  await expect(aDates.locator('[data-testid="dpb-managed-date"]')).toHaveCount(
+    2,
+  );
+  await expect(
+    aDates.locator('[data-testid="dpb-managed-date"][data-key="created"]'),
+  ).toHaveText("创建 2026-11-14");
+  await expect(
+    aDates.locator('[data-testid="dpb-managed-date"][data-key="updated"]'),
+  ).toHaveText("修改 2026-11-15");
+  await expect(aFoot.locator("input, textarea, button")).toHaveCount(0);
+
+  const aDateBox = (await aDates.boundingBox())!;
+  const aCountBox = (await aFoot
+    .locator('[data-testid="dpb-count"]')
+    .boundingBox())!;
+  expect(aDateBox.x).toBeLessThan(aCountBox.x);
+  expect(Math.abs(aDateBox.y - aCountBox.y)).toBeLessThan(8);
+  await dpbRecord(page, "1129", "01-a-footer-dates");
 
   await setVariant(page, "B");
   const b = panel(page, "B");
-  for (const key of ["created", "updated"]) {
-    await expect(
-      b.locator(`[data-key="${key}"][data-locked="true"]`),
-    ).toHaveCount(1);
-    await expect(
-      b.locator(`[data-key="${key}"] .dpb-b-x .dpb-lock`),
-    ).toHaveCount(1);
-  }
-  await expect(b.locator('[data-key="count"][data-locked]')).toHaveCount(0);
+  const bFoot = b.locator(".dpb-b-foot");
+  const bDates = bFoot.locator('[data-testid="dpb-managed-dates"]');
+  await expect(bDates).toBeVisible();
+  await expect(bDates.locator(".dpb-lock")).toHaveCount(1);
+  await expect(bDates.locator('[data-testid="dpb-managed-date"]')).toHaveCount(
+    2,
+  );
+  await expect(bFoot.locator('[data-testid="dpb-count"]')).toHaveText(
+    "4 个字段",
+  );
+  const bDateBox = (await bDates.boundingBox())!;
+  const bCountBox = (await bFoot
+    .locator('[data-testid="dpb-count"]')
+    .boundingBox())!;
+  expect(bCountBox.x).toBeLessThan(bDateBox.x);
+  expect(Math.abs(bDateBox.y - bCountBox.y)).toBeLessThan(8);
+  await dpbRecord(page, "1129", "02-b-foot-dates");
+
+  await setMode(page, "edit");
+  await bDates.click();
+  await expect(b.locator('[data-testid="dpb-input"]')).toHaveCount(0);
+  await expect(bDates).toBeVisible();
+  await dpbRecord(page, "1129", "03-edit-readonly");
 });
 
-test("自动托管日期值与类型在 B 编辑态只读：点击值不进编辑、类型菜单不弹", async ({
+test("#1129 结构写回保留托管日期：删除普通字段后源码仍含 created / updated", async ({
   page,
 }) => {
-  const ART = path.resolve(process.cwd(), ".artifacts/1015");
-  mkdirSync(ART, { recursive: true });
-  const record = async (state: string) => {
-    const file = path.join(ART, `${state}.png`);
-    await page.screenshot({ path: file });
-    writeFileSync(
-      path.join(ART, "state-coverage.json"),
-      `${JSON.stringify(
-        {
-          task: "1015-managed-date-readonly",
-          states: [
-            "01-b-date-value-click-no-edit",
-            "02-b-date-type-click-no-menu",
-            "03-a-date-click-no-edit",
-            "04-b-free-key-editable",
-          ].map((s) => ({
-            state: s,
-            screenshot: path.relative(
-              process.cwd(),
-              path.join(ART, `${s}.png`),
-            ),
-            assertion: "passed",
-            recorded_at: new Date().toISOString(),
-            runner: `${process.env.USER ?? "unknown"}@${process.env.HOSTNAME ?? "unknown"}`,
-          })),
-        },
-        null,
-        2,
-      )}\n`,
-    );
-  };
-
   await openDoc(page);
+  await setVariant(page, "B");
   await setMode(page, "edit");
-  await setVariant(page, "B");
   const b = panel(page, "B");
-  for (const key of ["created", "updated"]) {
-    const row = b.locator(`[data-key="${key}"]`);
-    // 类型控件是静态只读态，无按钮、无菜单触发
-    await expect(row.locator('[data-testid="dpb-type"]')).toHaveCount(0);
-    await expect(row.locator(".dpb-b-type .dpb-type-ro")).toHaveCount(1);
-    await row.locator(".dpb-b-type").click();
-    await expect(page.locator('[data-testid="dpb-type-menu"]')).toHaveCount(0);
-    // 值无 button 语义，点击不出现输入框
-    const value = row.locator('[data-testid="dpb-value"]');
-    await expect(value).not.toHaveAttribute("role", "button");
-    await value.click();
-    await expect(row.locator('[data-testid="dpb-input"]')).toHaveCount(0);
-  }
-  await record("01-b-date-value-click-no-edit");
-  await record("02-b-date-type-click-no-menu");
 
-  // 回归：A 态日期值同样不进编辑
-  await setVariant(page, "A");
-  const a = panel(page, "A");
-  for (const key of ["created", "updated"]) {
-    const row = a.locator(`[data-key="${key}"]`);
-    await row.locator('[data-testid="dpb-value"]').click();
-    await expect(row.locator('[data-testid="dpb-input"]')).toHaveCount(0);
-  }
-  await record("03-a-date-click-no-edit");
+  await b.locator('[data-key="count"] [data-testid="dpb-row-del"]').click();
+  await expect(
+    b.locator('[data-testid="dpb-row"][data-key="count"]'),
+  ).toHaveCount(0);
 
-  // 对照：自由键仍可编辑（守卫不误伤）
+  await setMode(page, "source");
+  const src = page.locator(".cm-content").first();
+  await expect(src).toContainText("created: 2026-11-14");
+  await expect(src).toContainText("updated: 2026-11-15T10:30:00");
+});
+
+const PARTIAL_DATE_DOC = `---
+title: 只有创建日期
+created: 2026-11-14
+note: 备注
+---
+
+# 正文
+`;
+
+const NO_DATE_DOC = `---
+title: 无日期
+note: 备注
+---
+
+# 正文
+`;
+
+test("#1129 缺失日期键不渲染空壳，部分缺失只渲染已有项", async ({ page }) => {
+  await openDoc(page, NO_DATE_DOC, "/Users/test/no-date.md");
+  await expect(
+    panel(page, "A").locator('[data-testid="dpb-managed-dates"]'),
+  ).toHaveCount(0);
+  await expect(panel(page, "A").locator(".dpb-a-foot")).toHaveCount(0);
   await setVariant(page, "B");
-  const freeRow = b.locator('[data-key="count"]');
-  await freeRow.locator('[data-testid="dpb-value"]').click();
-  await expect(freeRow.locator('[data-testid="dpb-input"]')).toBeVisible();
-  await record("04-b-free-key-editable");
+  await expect(
+    panel(page, "B").locator('[data-testid="dpb-managed-dates"]'),
+  ).toHaveCount(0);
+  await expect(
+    panel(page, "B").locator('[data-testid="dpb-count"]'),
+  ).toHaveText("2 个字段");
+
+  await openDoc(page, PARTIAL_DATE_DOC, "/Users/test/partial-date.md");
+  await setVariant(page, "A");
+  const aDates = panel(page, "A").locator('[data-testid="dpb-managed-dates"]');
+  await expect(aDates.locator('[data-testid="dpb-managed-date"]')).toHaveCount(
+    1,
+  );
+  await expect(
+    aDates.locator('[data-testid="dpb-managed-date"][data-key="created"]'),
+  ).toHaveText("创建 2026-11-14");
+  await expect(
+    aDates.locator('[data-testid="dpb-managed-date"][data-key="updated"]'),
+  ).toHaveCount(0);
+  await dpbRecord(page, "1129", "04-partial-missing");
+});
+
+test("#1129 AB 图标切换形态并持久化；窄窗自动胶囊不覆盖用户选择", async ({
+  page,
+}) => {
+  await openDoc(page);
+  await expect(panel(page, "A")).toBeVisible();
+
+  await panel(page, "A").locator('[data-testid="dpb-variant-toggle"]').click();
+  await expect(panel(page, "A")).toHaveCount(0);
+  const b = panel(page, "B");
+  await expect(b).toBeVisible();
+  await expect(b.locator('[data-testid="dpb-variant-toggle"]')).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await dpbRecord(page, "1129", "05-toggle-b");
+
+  await expect
+    .poll(
+      () => page.evaluate(() => localStorage.getItem("__mock_config") ?? ""),
+      { timeout: 5000 },
+    )
+    .toContain('"docPropertyVariant":"B"');
+
+  await page.reload();
+  await page.waitForSelector('[data-testid="pane-header"]', {
+    timeout: 15000,
+  });
+  await openDoc(page);
+  await expect(panel(page, "B")).toBeVisible();
+  await dpbRecord(page, "1129", "06-reload-kept-b");
+
+  await page.setViewportSize({ width: 700, height: 800 });
+  await expect(panel(page, "B")).toBeVisible();
+  await page.setViewportSize({ width: 1200, height: 800 });
+  await expect(panel(page, "B")).toBeVisible();
+
+  await page.evaluate(() => localStorage.removeItem("__mock_config"));
+  await page.reload();
+  await page.waitForSelector('[data-testid="pane-header"]', {
+    timeout: 15000,
+  });
+  await openDoc(page);
+  await expect(panel(page, "A")).toBeVisible();
+
+  await page.setViewportSize({ width: 700, height: 800 });
+  await expect(panel(page, "B")).toBeVisible();
+  await dpbRecord(page, "1129", "07-narrow-auto-capsule");
+  await page.setViewportSize({ width: 1200, height: 800 });
+  await expect(panel(page, "A")).toBeVisible();
+  await dpbRecord(page, "1129", "08-wide-back-to-list");
 });
 
 const TYPE_DOC = `---
@@ -984,14 +1061,19 @@ test("字段名就地改名：面板显示与 YAML 键同步，重名被拦截",
   await expect(other.locator('[data-testid="dpb-label"]')).toHaveText("other");
 });
 
-test("创建 / 修改日期键名锁定：无改名入口", async ({ page }) => {
+test("创建 / 修改日期不作为字段行，普通字段改名入口不受影响", async ({
+  page,
+}) => {
   await openDoc(page);
   await setMode(page, "edit");
   const a = panel(page, "A");
   for (const key of ["created", "updated"]) {
-    const label = a.locator(`[data-key="${key}"] [data-testid="dpb-label"]`);
-    await expect(label).toHaveAttribute("data-renameable", "false");
-    await expect(label).not.toHaveAttribute("role", "button");
+    await expect(
+      a.locator(`[data-testid="dpb-row"][data-key="${key}"]`),
+    ).toHaveCount(0);
+    await expect(
+      a.locator(`[data-key="${key}"] [data-testid="dpb-label"]`),
+    ).toHaveCount(0);
   }
   await expect(
     a.locator('[data-key="count"] [data-testid="dpb-label"]'),
@@ -1730,7 +1812,7 @@ test("B 行尾删除后可 Ctrl+Z 一次恢复", async ({ page }) => {
   await dpbRecord(page, "1016", "02-undo-restored");
 });
 
-test("B 行尾删除按钮：托管日期 / 标题 / 标签行不渲染，普通字段渲染", async ({
+test("B 行尾删除按钮：标题 / 标签行不渲染，普通字段渲染；日期无行", async ({
   page,
 }) => {
   await openDoc(page);
@@ -1740,10 +1822,7 @@ test("B 行尾删除按钮：托管日期 / 标题 / 标签行不渲染，普通
 
   for (const key of ["created", "updated"]) {
     await expect(
-      b.locator(`[data-key="${key}"] .dpb-b-x .dpb-lock`),
-    ).toHaveCount(1);
-    await expect(
-      b.locator(`[data-key="${key}"] [data-testid="dpb-row-del"]`),
+      b.locator(`[data-testid="dpb-row"][data-key="${key}"]`),
     ).toHaveCount(0);
   }
   await expect(
@@ -1991,9 +2070,15 @@ test("新建文档：默认仅标题占位 + 创建/修改日期，页签名未�
   await newDoc(page);
   const a = panel(page, "A");
   await expect(a.locator('[data-testid="dpb-title"]')).toHaveText("未命名");
-  await expect(a.locator('[data-testid="dpb-row"]')).toHaveCount(2);
-  await expect(a.locator('[data-key="created"]')).toHaveCount(1);
-  await expect(a.locator('[data-key="updated"]')).toHaveCount(1);
+  await expect(a.locator('[data-testid="dpb-row"]')).toHaveCount(0);
+  const dates = a.locator('[data-testid="dpb-managed-dates"]');
+  await expect(dates.locator('[data-testid="dpb-managed-date"]')).toHaveCount(
+    2,
+  );
+  await expect(
+    dates.locator('[data-testid="dpb-managed-date"][data-key="created"]'),
+  ).toContainText("创建");
+  await expect(a.locator('[data-testid="dpb-count"]')).toHaveText("1 个字段");
   expect((await activeTab(page)).title).toBe("未命名");
 
   await setMode(page, "source");
@@ -2499,7 +2584,8 @@ test("#1041 窄宽可视：400px 视口控件区完整落在视口内", async ({
   await setMode(page, "edit");
   await page.setViewportSize({ width: 400, height: 800 });
   await page.waitForTimeout(150);
-  const a = panel(page, "A");
+  // 窄窗自动胶囊（#1129）：此处应只有 B 面板可见。
+  const a = page.locator('[data-testid="dpb-a"], [data-testid="dpb-b"]');
 
   await a.locator('[data-testid="dpb-add-field"]').click();
   const box = (await page
@@ -2665,7 +2751,7 @@ test("#1039 行尾删除为叉号（关闭语义）非垃圾桶（A/B）", async
   }
 });
 
-test("#1039 锁定字段：注册表锁图标 + 删除/改名入口 = 0（A/B）", async ({
+test("#1039 托管日期只读：无字段行 / 无删除改名入口，footer 带注册表锁图标（A/B）", async ({
   page,
 }) => {
   await openDoc(page, CAPSULE_DOC);
@@ -2673,19 +2759,23 @@ test("#1039 锁定字段：注册表锁图标 + 删除/改名入口 = 0（A/B）
   for (const variant of ["A", "B"] as const) {
     await setVariant(page, variant);
     const p = panel(page, variant);
+    const foot = p.locator(variant === "A" ? ".dpb-a-foot" : ".dpb-b-foot");
     for (const key of ["created", "updated"]) {
-      const row = p.locator(`[data-key="${key}"]`);
-      await expect(row.locator(".dpb-lock")).toHaveCount(1);
-      await expect(row.locator('[data-icon="lock"]')).toHaveCount(1);
-      await expect(row.locator('[data-testid="dpb-row-del"]')).toHaveCount(0);
-      const label = row.locator('[data-testid="dpb-label"]');
-      await expect(label).toHaveAttribute("data-renameable", "false");
-      await expect(label).not.toHaveAttribute("role", "button");
-      await label.click();
-      await expect(row.locator('[data-testid="dpb-rename-input"]')).toHaveCount(
-        0,
-      );
+      await expect(
+        p.locator(`[data-testid="dpb-row"][data-key="${key}"]`),
+      ).toHaveCount(0);
+      await expect(
+        p.locator(`[data-key="${key}"] [data-testid="dpb-row-del"]`),
+      ).toHaveCount(0);
+      await expect(
+        p.locator(`[data-key="${key}"] [data-testid="dpb-label"]`),
+      ).toHaveCount(0);
     }
+    await expect(foot.locator(".dpb-lock")).toHaveCount(1);
+    await expect(foot.locator('[data-icon="lock"]')).toHaveCount(1);
+    await expect(foot.locator('[data-testid="dpb-managed-date"]')).toHaveCount(
+      2,
+    );
     if (variant === "A") {
       await dpbRecord(page, "1039", "04-locked-row");
     }
