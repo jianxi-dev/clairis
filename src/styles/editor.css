@@ -1598,6 +1598,35 @@ body {
   color: var(--app-accent);
 }
 
+.tab-info__copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: auto;
+  flex: none;
+}
+
+.tab-info__copy button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-4);
+  color: var(--app-text-2);
+}
+
+.tab-info__copy button:hover {
+  background: var(--app-sunken);
+  color: var(--app-text);
+}
+
+.tab-info__notice {
+  flex: none;
+  color: var(--app-text-2);
+  font-size: 11px;
+}
+
 .tab-info__seg {
   display: inline-flex;
   align-items: center;

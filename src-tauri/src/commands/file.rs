@@ -65,6 +65,56 @@ pub(crate) fn is_supported_document(path: &Path) -> bool {
     )
 }
 
+/// 把文件本身写入系统剪贴板（macOS：文件引用，可在访达 / 邮件 / 聊天窗口粘贴）。
+/// 非 macOS 暂不支持，返回明确错误而不是静默失败。
+#[tauri::command]
+pub async fn copy_file_to_clipboard(path: String) -> Result<(), AppError> {
+    let target = PathBuf::from(&path);
+    if !target.is_file() {
+        return Err(AppError::Io {
+            context: format!("copy_file_to_clipboard: {path}"),
+            source: std::io::Error::new(std::io::ErrorKind::NotFound, "路径不存在或不是文件"),
+        });
+    }
+    copy_path(&target).await.map_err(|e| AppError::Io {
+        context: format!("copy_file_to_clipboard: {path}"),
+        source: e,
+    })
+}
+
+#[cfg(target_os = "macos")]
+async fn copy_path(target: &Path) -> std::io::Result<()> {
+    // 走 osascript 的 run 处理程序把路径当 argv 传入：避免路径里的引号 / 反斜杠
+    // 被拼进 AppleScript 源码，也避免 unsafe 绑定 AppKit。
+    let script = [
+        "on run argv",
+        "set the clipboard to (POSIX file (item 1 of argv) as alias)",
+        "end run",
+    ];
+    let mut cmd = tokio::process::Command::new("osascript");
+    for line in script {
+        cmd.arg("-e").arg(line);
+    }
+    let output = cmd.arg(target).output().await?;
+    if output.status.success() {
+        Ok(())
+    } else {
+        Err(std::io::Error::other(format!(
+            "osascript 退出码 {}: {}",
+            output.status,
+            String::from_utf8_lossy(&output.stderr).trim()
+        )))
+    }
+}
+
+#[cfg(not(target_os = "macos"))]
+async fn copy_path(_target: &Path) -> std::io::Result<()> {
+    Err(std::io::Error::new(
+        std::io::ErrorKind::Unsupported,
+        "复制文件到剪贴板目前仅支持 macOS",
+    ))
+}
+
 /// 在系统文件管理器中显示给定路径（定位）。只定位，不读取文件内容。
 #[tauri::command]
 pub async fn reveal_in_finder(path: String) -> Result<(), AppError> {

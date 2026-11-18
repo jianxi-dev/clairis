@@ -258,6 +258,12 @@ function mockInvoke(cmd, args) {
     window.__dragCalls__ = (window.__dragCalls__ || 0) + 1;
     return Promise.resolve(null);
   }
+  if (cmd === "copy_file_to_clipboard" && args) {
+    const w = typeof window !== "undefined" ? window : globalThis;
+    w.__copy_file_calls__ = w.__copy_file_calls__ || [];
+    w.__copy_file_calls__.push(args.path);
+    return null;
+  }
   if (cmd === "reveal_in_finder" && args) {
     const w = typeof window !== "undefined" ? window : globalThis;
     w.__reveal_calls__ = w.__reveal_calls__ || [];
