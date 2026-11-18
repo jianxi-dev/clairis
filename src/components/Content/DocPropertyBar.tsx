@@ -36,10 +36,7 @@ import {
   BUILTIN_PROP_TEMPLATES,
   type PropTemplateConfig,
 } from "../../lib/propTemplates";
-import {
-  readDocFieldTypes,
-  writeDocFieldTypes,
-} from "../../lib/docFieldTypes";
+import { readDocFieldTypes, writeDocFieldTypes } from "../../lib/docFieldTypes";
 import { getPanelEditorView } from "../../editors/editorRef";
 import { log } from "../../utils/log";
 import { useEditorStore } from "../../stores/editorStore";
@@ -228,7 +225,12 @@ interface TypeSelectorProps {
 }
 
 /** 字段名前的纯图标类型选择器：编辑态按钮弹八类菜单，预览态静态图标。 */
-function TypeSelector({ field, editable, onPick, showLabel }: TypeSelectorProps) {
+function TypeSelector({
+  field,
+  editable,
+  onPick,
+  showLabel,
+}: TypeSelectorProps) {
   // 托管日期键强制只读：类型菜单不可打开、光标不变（P-6）。
   const enabled = editable && !isManagedDateKey(field.key);
   const [open, setOpen] = useState(false);
@@ -535,6 +537,417 @@ function splitDatetime(raw: string): { date: string; time: string } {
 /** 单行文本超过此长度即进入多行文本域（P-3，阈值 40）。 */
 const MULTILINE_THRESHOLD = 40;
 
+const CAL_WEEKDAYS = ["一", "二", "三", "四", "五", "六", "日"];
+
+function pad2(n: number): string {
+  return String(n).padStart(2, "0");
+}
+
+function localYmd(d: Date): string {
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+
+function ymdOf(year: number, month: number, day: number): string {
+  return `${year}-${pad2(month + 1)}-${pad2(day)}`;
+}
+
+interface CalCell {
+  date: string;
+  day: number;
+}
+
+/** 周一为首列的月历格子；月份外的空位为 null。 */
+function calCells(year: number, month: number): (CalCell | null)[] {
+  const offset = (new Date(Date.UTC(year, month, 1)).getUTCDay() + 6) % 7;
+  const days = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+  const cells: (CalCell | null)[] = [];
+  for (let i = 0; i < offset; i += 1) cells.push(null);
+  for (let d = 1; d <= days; d += 1) {
+    cells.push({ date: ymdOf(year, month, d), day: d });
+  }
+  return cells;
+}
+
+function clampStep(value: number, max: number): number {
+  const span = max + 1;
+  return ((value % span) + span) % span;
+}
+
+interface TimeStepperProps {
+  label: string;
+  testId: string;
+  value: number;
+  max: number;
+  onChange: (next: number) => void;
+}
+
+/** 时分步进：上下按钮 + 可直接输入的数值框；按钮不作为 Tab 停靠点。 */
+function TimeStepper({
+  label,
+  testId,
+  value,
+  max,
+  onChange,
+}: TimeStepperProps) {
+  const parse = (raw: string) => {
+    const digits = raw.replace(/\D/g, "");
+    onChange(digits === "" ? 0 : Math.min(max, Number.parseInt(digits, 10)));
+  };
+  return (
+    <span className="dpb-dt-step">
+      <button
+        type="button"
+        className="dpb-dt-step-btn"
+        data-testid={`${testId}-up`}
+        aria-label={`${label}加一`}
+        tabIndex={-1}
+        onClick={() => onChange(clampStep(value + 1, max))}
+      >
+        ▲
+      </button>
+      <input
+        className="dpb-input dpb-dt-step-input"
+        data-testid={testId}
+        type="text"
+        inputMode="numeric"
+        aria-label={label}
+        value={pad2(value)}
+        onChange={(e) => parse(e.target.value)}
+      />
+      <button
+        type="button"
+        className="dpb-dt-step-btn"
+        data-testid={`${testId}-down`}
+        aria-label={`${label}减一`}
+        tabIndex={-1}
+        onClick={() => onChange(clampStep(value - 1, max))}
+      >
+        ▼
+      </button>
+    </span>
+  );
+}
+
+interface DatetimeEditorProps {
+  field: FrontmatterField;
+  editable: boolean;
+  onCommit: (key: string, value: unknown) => void;
+}
+
+/**
+ * 日期时间值编辑器：单一 popover 面板（月历网格 + 时分步进）。
+ * 面板内操作只改内部状态，Enter / 失焦 / 点击外部才提交（沿用 onBlur 链路）。
+ */
+function DatetimeEditor({ field, editable, onCommit }: DatetimeEditorProps) {
+  const [editing, setEditing] = useState(false);
+  const [datePart, setDatePart] = useState("");
+  const [timePart, setTimePart] = useState("00:00");
+  const [cal, setCal] = useState({ year: 0, month: 0 });
+  const [anchor, setAnchor] = useState<{ x: number; y: number } | null>(null);
+  const [touched, setTouched] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const wrapRef = useRef<HTMLSpanElement>(null);
+  const slotRef = useRef<HTMLSpanElement>(null);
+  const doneRef = useRef(false);
+  const pointerInsideRef = useRef(false);
+  const errorTimer = useRef<number | null>(null);
+  const latest = useRef({ datePart: "", timePart: "00:00", touched: false });
+  latest.current = { datePart, timePart, touched };
+  const { pos, ref: panelRef } = useMenuPos(editing && anchor ? anchor : null);
+
+  useEffect(
+    () => () => {
+      if (errorTimer.current !== null) window.clearTimeout(errorTimer.current);
+    },
+    [],
+  );
+
+  const restoreFocus = () => {
+    requestAnimationFrame(() => {
+      const el = slotRef.current?.querySelector(
+        '[data-testid="dpb-value"]',
+      ) as HTMLElement | null;
+      el?.focus();
+    });
+  };
+
+  const finish = useCallback(
+    (mode: "commit" | "cancel") => {
+      if (doneRef.current) return;
+      doneRef.current = true;
+      const { datePart: d, timePart: t, touched: tc } = latest.current;
+      setEditing(false);
+      if (mode === "cancel" || !tc) {
+        setError(null);
+        restoreFocus();
+        return;
+      }
+      const hour = Number(t.slice(0, 2)) || 0;
+      const minute = Number(t.slice(3, 5)) || 0;
+      const next = d ? `${d}T${pad2(hour)}:${pad2(minute)}` : "";
+      const result = validateFieldValue("datetime", next);
+      if (!result.ok) {
+        setError(result.reason);
+        restoreFocus();
+        return;
+      }
+      setError(null);
+      onCommit(field.key, result.value);
+      restoreFocus();
+    },
+    [field.key, onCommit],
+  );
+
+  const finishRef = useRef(finish);
+  finishRef.current = finish;
+
+  useEffect(() => {
+    if (!editing) return;
+    const onDown = (e: MouseEvent) => {
+      const t = e.target as Node | null;
+      if (t && wrapRef.current?.contains(t)) return;
+      finishRef.current(latest.current.touched ? "commit" : "cancel");
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [editing]);
+
+  const start = () => {
+    if (!editable) return;
+    const raw = rawForEdit(field);
+    let date = "";
+    let time = "00:00";
+    if (raw) {
+      const parsed = splitDatetime(raw);
+      date = parsed.date || localYmd(new Date());
+      time = parsed.time ? parsed.time.slice(0, 5) : "00:00";
+    } else {
+      const now = new Date();
+      date = localYmd(now);
+      time = `${pad2(now.getHours())}:${pad2(now.getMinutes())}`;
+    }
+    const [y, m] = date.split("-").map(Number);
+    setDatePart(date);
+    setTimePart(time);
+    setCal({ year: y, month: m - 1 });
+    setTouched(false);
+    setError(null);
+    doneRef.current = false;
+    const r = slotRef.current?.getBoundingClientRect();
+    setAnchor(
+      r
+        ? {
+            x: Math.max(8, r.left),
+            y: Math.min(window.innerHeight - 260, r.bottom + 4),
+          }
+        : null,
+    );
+    setEditing(true);
+  };
+
+  const hour = Number(timePart.slice(0, 2)) || 0;
+  const minute = Number(timePart.slice(3, 5)) || 0;
+  const cells = editing ? calCells(cal.year, cal.month) : [];
+  const focusDate =
+    datePart && datePart.startsWith(`${cal.year}-${pad2(cal.month + 1)}`)
+      ? datePart
+      : ymdOf(cal.year, cal.month, 1);
+
+  const pickDay = (date: string) => {
+    setDatePart(date);
+    setTouched(true);
+  };
+
+  const shiftMonth = (delta: number) => {
+    const d = new Date(Date.UTC(cal.year, cal.month + delta, 1));
+    setCal({ year: d.getUTCFullYear(), month: d.getUTCMonth() });
+  };
+
+  const moveDay = (deltaDays: number) => {
+    const [y, m, d] = focusDate.split("-").map(Number);
+    const next = new Date(Date.UTC(y, m - 1, d + deltaDays));
+    const date = ymdOf(
+      next.getUTCFullYear(),
+      next.getUTCMonth(),
+      next.getUTCDate(),
+    );
+    setCal({ year: next.getUTCFullYear(), month: next.getUTCMonth() });
+    setDatePart(date);
+    setTouched(true);
+    requestAnimationFrame(() => {
+      wrapRef.current
+        ?.querySelector<HTMLElement>(
+          `[data-testid="dpb-cal-day"][data-date="${date}"]`,
+        )
+        ?.focus();
+    });
+  };
+
+  const changeHour = (h: number) => {
+    setTimePart(`${pad2(h)}:${pad2(minute)}`);
+    setTouched(true);
+  };
+
+  const changeMinute = (m: number) => {
+    setTimePart(`${pad2(hour)}:${pad2(m)}`);
+    setTouched(true);
+  };
+
+  if (!editing) {
+    return (
+      <span className="dpb-value-slot" ref={slotRef}>
+        <ValueView field={field} editable={editable} onStartEdit={start} />
+        {error && (
+          <span className="dpb-error" data-testid="dpb-error" role="status">
+            {error}
+          </span>
+        )}
+      </span>
+    );
+  }
+
+  return (
+    <span className="dpb-value-slot" ref={slotRef}>
+      <span
+        ref={wrapRef}
+        className="dpb-dt-editor"
+        data-testid="dpb-datetime-editor"
+        onPointerDown={() => {
+          pointerInsideRef.current = true;
+        }}
+        onBlur={(e) => {
+          const next = e.relatedTarget as Node | null;
+          if (next && wrapRef.current?.contains(next)) return;
+          if (pointerInsideRef.current) {
+            pointerInsideRef.current = false;
+            return;
+          }
+          finishRef.current(latest.current.touched ? "commit" : "cancel");
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            finishRef.current(latest.current.touched ? "commit" : "cancel");
+          } else if (e.key === "Escape") {
+            e.preventDefault();
+            finishRef.current("cancel");
+          }
+        }}
+      >
+        <span className="dpb-dt-trigger" data-testid="dpb-datetime-trigger">
+          {datePart ? `${datePart} ${timePart}` : "选择日期时间"}
+        </span>
+        <span
+          ref={panelRef}
+          className="dpb-menu dpb-dt-panel"
+          data-testid="dpb-datetime-panel"
+          role="dialog"
+          aria-label="日期时间选择"
+          style={{
+            left: (pos ?? anchor ?? { x: 0, y: 0 }).x,
+            top: (pos ?? anchor ?? { x: 0, y: 0 }).y,
+          }}
+        >
+          <span className="dpb-dt-head">
+            <button
+              type="button"
+              className="dpb-dt-nav"
+              data-testid="dpb-cal-prev"
+              aria-label="上一月"
+              onClick={() => shiftMonth(-1)}
+            >
+              ‹
+            </button>
+            <span className="dpb-dt-title" data-testid="dpb-cal-title">
+              {cal.year}年{cal.month + 1}月
+            </span>
+            <button
+              type="button"
+              className="dpb-dt-nav"
+              data-testid="dpb-cal-next"
+              aria-label="下一月"
+              onClick={() => shiftMonth(1)}
+            >
+              ›
+            </button>
+          </span>
+          <span
+            className="dpb-dt-grid"
+            data-testid="dpb-cal-grid"
+            onKeyDown={(e) => {
+              if (e.key === "ArrowLeft") {
+                e.preventDefault();
+                moveDay(-1);
+              } else if (e.key === "ArrowRight") {
+                e.preventDefault();
+                moveDay(1);
+              } else if (e.key === "ArrowUp") {
+                e.preventDefault();
+                moveDay(-7);
+              } else if (e.key === "ArrowDown") {
+                e.preventDefault();
+                moveDay(7);
+              }
+            }}
+          >
+            {CAL_WEEKDAYS.map((w) => (
+              <span key={w} className="dpb-dt-wd">
+                {w}
+              </span>
+            ))}
+            {cells.map((cell, i) =>
+              cell === null ? (
+                <span key={`blank-${i}`} className="dpb-dt-cell dpb-dt-blank" />
+              ) : (
+                <button
+                  key={cell.date}
+                  type="button"
+                  className={`dpb-dt-cell${
+                    cell.date === datePart ? " dpb-dt-cell-sel" : ""
+                  }`}
+                  data-testid="dpb-cal-day"
+                  data-date={cell.date}
+                  aria-pressed={cell.date === datePart}
+                  autoFocus={cell.date === focusDate}
+                  tabIndex={cell.date === focusDate ? 0 : -1}
+                  onClick={() => pickDay(cell.date)}
+                >
+                  {cell.day}
+                </button>
+              ),
+            )}
+          </span>
+          <span className="dpb-dt-time">
+            <TimeStepper
+              label="小时"
+              testId="dpb-time-hour"
+              value={hour}
+              max={23}
+              onChange={changeHour}
+            />
+            <span className="dpb-dt-colon">:</span>
+            <TimeStepper
+              label="分钟"
+              testId="dpb-time-minute"
+              value={minute}
+              max={59}
+              onChange={changeMinute}
+            />
+          </span>
+          <span className="dpb-dt-hint">
+            Esc 取消 · Enter 保存 · 点击外部保存
+          </span>
+        </span>
+      </span>
+      {error && (
+        <span className="dpb-error" data-testid="dpb-error" role="status">
+          {error}
+        </span>
+      )}
+    </span>
+  );
+}
+
 interface ValueEditorProps {
   field: FrontmatterField;
   editable: boolean;
@@ -548,11 +961,6 @@ function ValueEditor({ field, editable, onCommit }: ValueEditorProps) {
   const [touched, setTouched] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const errorTimer = useRef<number | null>(null);
-
-  const isDatetime = field.type === "datetime";
-  const { date: datePart, time: timePart } = isDatetime
-    ? splitDatetime(draft)
-    : { date: "", time: "" };
 
   const startEdit = () => {
     if (!editable) return;
@@ -588,12 +996,7 @@ function ValueEditor({ field, editable, onCommit }: ValueEditorProps) {
   );
 
   const commit = () => {
-    const next = isDatetime
-      ? datePart
-        ? `${datePart}T${timePart || "00:00"}`
-        : ""
-      : draft;
-    const result = validateFieldValue(field.type, next);
+    const result = validateFieldValue(field.type, draft);
     setEditing(false);
     if (!result.ok) {
       setDraft(rawForEdit(field));
@@ -646,57 +1049,6 @@ function ValueEditor({ field, editable, onCommit }: ValueEditorProps) {
       );
     }
     const inputType = field.type === "date" ? "date" : "text";
-    if (isDatetime) {
-      return (
-        <div
-          className="dpb-datetime-pair"
-          data-testid="dpb-datetime-pair"
-          onBlur={(e) => {
-            if (e.currentTarget.contains(e.relatedTarget as Node | null)) {
-              return;
-            }
-            if (!touched) {
-              cancel();
-              return;
-            }
-            commit();
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              commit();
-            } else if (e.key === "Escape") {
-              e.preventDefault();
-              cancel();
-            }
-          }}
-        >
-          <input
-            className="dpb-input dpb-date"
-            data-testid="dpb-input"
-            type="date"
-            value={datePart}
-            autoFocus
-            onChange={(e: ChangeEvent<HTMLInputElement>) => {
-              const date = e.target.value;
-              setDraft(date ? `${date}${timePart ? `T${timePart}` : ""}` : "");
-              setTouched(true);
-            }}
-          />
-          <input
-            className="dpb-input dpb-time"
-            data-testid="dpb-time-input"
-            type="time"
-            value={timePart ? timePart.slice(0, 5) : ""}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => {
-              const time = e.target.value;
-              setDraft(datePart ? `${datePart}${time ? `T${time}` : ""}` : "");
-              setTouched(true);
-            }}
-          />
-        </div>
-      );
-    }
     return (
       <input
         className="dpb-input"
@@ -1146,6 +1498,11 @@ function FieldValue({
 }: EditorProps & { editable: boolean }) {
   // 托管日期键在组件内部强制只读：调用点漏传 editable 也不漂移（P-6）。
   const effectiveEditable = editable && !isManagedDateKey(field.key);
+  if (effectiveEditable && field.type === "datetime") {
+    return (
+      <DatetimeEditor field={field} editable={editable} onCommit={onCommit} />
+    );
+  }
   if (
     effectiveEditable &&
     (field.type === "array" || field.type === "multiselect")
@@ -1637,7 +1994,8 @@ export default function DocPropertyBar({
   const tagsIdx = tagsField ? fields.indexOf(tagsField) : -1;
   const selectMode = editable && selected.size > 0;
   const selectableIdx = useMemo(
-    () => fields.map((_, i) => i).filter((i) => i !== titleIdx && i !== tagsIdx),
+    () =>
+      fields.map((_, i) => i).filter((i) => i !== titleIdx && i !== tagsIdx),
     [fields, titleIdx, tagsIdx],
   );
   const allSelectableSelected =

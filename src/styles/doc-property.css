@@ -536,27 +536,169 @@
   line-height: 1.5;
 }
 
-/* 日期时间：日期 + 时间两个常驻控件（原生 datetime-local 在目标引擎不可靠） */
-.dpb-datetime-pair {
-  display: flex;
+/* 日期时间：单一面板选择器（#1044）；圆角 / 阴影 / 色取 design-system §5 §6 */
+.dpb-value-slot {
+  display: inline;
+  min-width: 0;
+}
+
+.dpb-dt-editor {
+  display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   flex: 1 1 200px;
   min-width: 0;
   max-width: 340px;
 }
 
-.dpb-datetime-pair .dpb-input {
+.dpb-dt-trigger {
+  font-size: 12px;
+  color: var(--app-text-strong);
+  background: var(--app-bg);
+  border: 1px solid var(--app-accent);
+  border-radius: var(--radius-4);
+  padding: 2px 6px;
+  white-space: nowrap;
+}
+
+.dpb-dt-panel {
+  min-width: 248px;
+  gap: 6px;
+  padding: 8px;
+}
+
+.dpb-dt-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.dpb-dt-nav {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-4);
+  background: transparent;
+  color: var(--app-text-3);
+  cursor: pointer;
+}
+
+.dpb-dt-nav:hover {
+  color: var(--app-accent);
+  background: var(--app-accent-soft);
+}
+
+.dpb-dt-title {
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--app-text-strong);
+}
+
+.dpb-dt-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 24px);
+  gap: 2px;
+  justify-content: center;
+}
+
+.dpb-dt-wd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 20px;
+  font-size: 11px;
+  color: var(--app-text-3);
+}
+
+.dpb-dt-cell {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 24px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius-4);
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  color: var(--app-text-2);
+  cursor: pointer;
+}
+
+.dpb-dt-cell:hover {
+  background: var(--app-accent-soft);
+  color: var(--app-text-strong);
+}
+
+.dpb-dt-cell:focus-visible {
+  outline: 2px solid var(--app-accent);
+  outline-offset: 1px;
+}
+
+.dpb-dt-cell-sel {
+  background: var(--app-accent);
+  border-color: var(--app-accent);
+  color: #fff;
+}
+
+.dpb-dt-blank {
+  pointer-events: none;
+}
+
+.dpb-dt-time {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.dpb-dt-colon {
+  font-size: 12px;
+  color: var(--app-text-3);
+}
+
+.dpb-dt-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.dpb-dt-step-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid var(--app-border-strong);
+  border-radius: var(--radius-4);
+  background: var(--app-sunken);
+  color: var(--app-text-3);
+  font-size: 9px;
+  cursor: pointer;
+}
+
+.dpb-dt-step-btn:hover {
+  color: var(--app-accent);
+  border-color: var(--app-accent);
+}
+
+.dpb-dt-step-input {
+  flex: 0 0 40px;
   min-width: 0;
   max-width: none;
+  padding: 2px;
+  text-align: center;
 }
 
-.dpb-datetime-pair .dpb-date {
-  flex: 1 1 0;
-}
-
-.dpb-datetime-pair .dpb-time {
-  flex: 0 0 92px;
+.dpb-dt-hint {
+  font-size: 11px;
+  color: var(--app-text-3);
+  text-align: center;
 }
 
 .dpb-switch {

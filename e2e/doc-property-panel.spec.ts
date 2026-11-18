@@ -792,74 +792,102 @@ test("类型选择器：八类菜单直选，选「日期」后编辑器变日�
   );
 });
 
-test("日期时间字段：日期 + 时间两个常驻控件，选定 14:30 写回 YAML 时间字面量", async ({
+test("日期时间字段：单一面板（月历 + 时分步进），组合写回 YYYY-MM-DDTHH:mm", async ({
   page,
 }) => {
   await openDoc(page, DATETIME_DOC);
   await setMode(page, "edit");
   const row = panel(page, "A").locator('[data-key="评审时间"]');
-  await dpbRecord(page, "1044", "01-datetime-before");
 
   await row.locator('[data-testid="dpb-value"]').click();
-  const dateInput = row.locator('[data-testid="dpb-input"]');
-  const timeInput = row.locator('[data-testid="dpb-time-input"]');
-  await expect(dateInput).toHaveJSProperty("type", "date");
-  await expect(timeInput).toHaveJSProperty("type", "time");
-  await expect(dateInput).toHaveValue("2026-11-15");
-  await expect(timeInput).toHaveValue("14:30");
-  const panelBox = await panel(page, "A").boundingBox();
-  for (const input of [dateInput, timeInput]) {
-    const box = await input.boundingBox();
-    expect(box).not.toBeNull();
-    expect(box!.x).toBeGreaterThanOrEqual(panelBox!.x - 1);
-    expect(box!.x + box!.width).toBeLessThanOrEqual(
-      panelBox!.x + panelBox!.width + 1,
-    );
-  }
-  await dpbRecord(page, "1044", "02-date-time-pair");
+  const editor = row.locator('[data-testid="dpb-datetime-editor"]');
+  await expect(editor).toHaveCount(1);
+  const panelEl = editor.locator('[data-testid="dpb-datetime-panel"]');
+  await expect(panelEl).toBeVisible();
+  // A-4.1：值编辑器内分离的日期 / 时间原生控件节点数 = 0
+  await expect(
+    editor.locator('input[type="date"], input[type="time"]'),
+  ).toHaveCount(0);
+  // A-4.2：单一面板内含月历网格 + 时分步进控件
+  await expect(editor.locator('[data-testid="dpb-cal-day"]')).toHaveCount(30);
+  await expect(editor.locator('[data-testid="dpb-time-hour"]')).toHaveCount(1);
+  await expect(editor.locator('[data-testid="dpb-time-minute"]')).toHaveCount(
+    1,
+  );
+  await dpbRecord(page, "1044", "01-single-panel");
 
-  await timeInput.fill("14:30");
-  await timeInput.press("Enter");
-  await expect(timeInput).toHaveCount(0);
+  // A-4.5：面板内操作只改内部状态，不提前提交（面板保持打开）
+  await editor
+    .locator('[data-testid="dpb-cal-day"][data-date="2026-11-18"]')
+    .click();
+  await editor.locator('[data-testid="dpb-time-hour"]').fill("14");
+  await editor.locator('[data-testid="dpb-time-minute"]').fill("30");
+  await expect(panelEl).toBeVisible();
+
+  // A-4.3 / A-4.4：Enter 提交组合值
+  await page.keyboard.press("Enter");
+  await expect(editor).toHaveCount(0);
   await expect(row.locator('[data-testid="dpb-value"]')).toHaveText(
-    "2026-11-15 14:30",
+    "2026-11-18 14:30",
   );
   await setMode(page, "source");
   await expect(page.locator(".cm-content").first()).toContainText(
-    "评审时间: 2026-11-15T14:30",
+    "评审时间: 2026-11-18T14:30",
   );
   await setMode(page, "edit");
-  await dpbRecord(page, "1044", "03-time-1430");
+  await dpbRecord(page, "1044", "02-commit-combined");
+});
 
+test("日期时间面板：Tab 在月历与时分间移动，Esc 取消回原值", async ({
+  page,
+}) => {
+  await openDoc(page, DATETIME_DOC);
+  await setMode(page, "edit");
+  const row = panel(page, "A").locator('[data-key="评审时间"]');
   await row.locator('[data-testid="dpb-value"]').click();
-  const cancelTime = row.locator('[data-testid="dpb-time-input"]');
-  await cancelTime.fill("15:45");
+  const editor = row.locator('[data-testid="dpb-datetime-editor"]');
+
+  await editor
+    .locator('[data-testid="dpb-cal-day"][data-date="2026-11-18"]')
+    .focus();
+  await page.keyboard.press("Tab");
+  await expect(editor.locator('[data-testid="dpb-time-hour"]')).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(editor.locator('[data-testid="dpb-time-minute"]')).toBeFocused();
+
+  await editor.locator('[data-testid="dpb-time-hour"]').fill("18");
   await page.keyboard.press("Escape");
-  await expect(row.locator('[data-testid="dpb-time-input"]')).toHaveCount(0);
+  await expect(editor).toHaveCount(0);
   await expect(row.locator('[data-testid="dpb-value"]')).toHaveText(
     "2026-11-15 14:30",
   );
-  await dpbRecord(page, "1044", "04-cancel-restored");
+  await dpbRecord(page, "1044", "03-esc-cancelled");
+});
 
-  await setVariant(page, "B");
-  const bRow = panel(page, "B").locator('[data-key="评审时间"]');
-  await bRow.locator('[data-testid="dpb-value"]').click();
-  await expect(bRow.locator('[data-testid="dpb-input"]')).toHaveJSProperty(
-    "type",
-    "date",
+test("日期时间面板：失焦（点击外部）才提交组合值", async ({ page }) => {
+  await openDoc(page, DATETIME_DOC);
+  await setMode(page, "edit");
+  const row = panel(page, "A").locator('[data-key="评审时间"]');
+  await row.locator('[data-testid="dpb-value"]').click();
+  const editor = row.locator('[data-testid="dpb-datetime-editor"]');
+  await editor
+    .locator('[data-testid="dpb-cal-day"][data-date="2026-11-18"]')
+    .click();
+  await editor.locator('[data-testid="dpb-time-hour"]').fill("09");
+  await editor.locator('[data-testid="dpb-time-minute"]').fill("05");
+  await expect(
+    editor.locator('[data-testid="dpb-datetime-panel"]'),
+  ).toBeVisible();
+  await page.locator(".cm-content").first().click();
+  await expect(editor).toHaveCount(0);
+  await expect(row.locator('[data-testid="dpb-value"]')).toHaveText(
+    "2026-11-18 09:05",
   );
-  await expect(bRow.locator('[data-testid="dpb-time-input"]')).toHaveJSProperty(
-    "type",
-    "time",
+  await setMode(page, "source");
+  await expect(page.locator(".cm-content").first()).toContainText(
+    "评审时间: 2026-11-18T09:05",
   );
-  const bPanelBox = await panel(page, "B").boundingBox();
-  const bTimeBox = await bRow
-    .locator('[data-testid="dpb-time-input"]')
-    .boundingBox();
-  expect(bTimeBox).not.toBeNull();
-  expect(bTimeBox!.x + bTimeBox!.width).toBeLessThanOrEqual(
-    bPanelBox!.x + bPanelBox!.width + 1,
-  );
+  await dpbRecord(page, "1044", "04-blur-committed");
 });
 
 test("日期字段：仍只有单个日期控件，无时间输入", async ({ page }) => {
@@ -1727,7 +1755,9 @@ test("行尾删除：真实 frontmatter 形态（数组 / 引号冒号 / 多行 
     await setMode(page, "edit");
     const p = panel(page, variant);
 
-    await p.locator('[data-key="category"] [data-testid="dpb-row-del"]').click();
+    await p
+      .locator('[data-key="category"] [data-testid="dpb-row-del"]')
+      .click();
     expect(await rowKeys(page, variant)).not.toContain("category");
     await setMode(page, "source");
     await expect(page.locator(".cm-content").first()).not.toContainText(
@@ -1746,7 +1776,9 @@ test("工具条删除：CRLF 文档选中行后删除，源码同步移除", asy
   await setMode(page, "edit");
   const b = panel(page, "B");
 
-  await b.locator('[data-key="category"] [data-testid="dpb-row-handle"]').click();
+  await b
+    .locator('[data-key="category"] [data-testid="dpb-row-handle"]')
+    .click();
   await b.locator('[data-testid="dpb-ops-del"]').click();
   expect(await rowKeys(page, "B")).toEqual(["title", "author"]);
   await setMode(page, "source");
@@ -1765,7 +1797,9 @@ test("分屏：非聚焦格行尾 / 工具条删除只改本格，另一格逐�
   await page.evaluate(() => {
     (
       window as unknown as {
-        __biaoyue_store__: { getState: () => { splitPane: (d: string) => void } };
+        __biaoyue_store__: {
+          getState: () => { splitPane: (d: string) => void };
+        };
       }
     ).__biaoyue_store__
       .getState()
@@ -1786,10 +1820,14 @@ test("分屏：非聚焦格行尾 / 工具条删除只改本格，另一格逐�
       (
         window as unknown as {
           __biaoyue_store__: {
-            getState: () => { setPaneEditorMode: (id: string, m: string) => void };
+            getState: () => {
+              setPaneEditorMode: (id: string, m: string) => void;
+            };
           };
         }
-      ).__biaoyue_store__.getState().setPaneEditorMode(pid, "edit");
+      ).__biaoyue_store__
+        .getState()
+        .setPaneEditorMode(pid, "edit");
     }, pane.id);
   }
 
@@ -1819,12 +1857,16 @@ test("分屏：非聚焦格行尾 / 工具条删除只改本格，另一格逐�
   expect(targetIdx, "找到分屏乙所在面板").toBeGreaterThanOrEqual(0);
   const target = bars.nth(targetIdx);
 
-  await target.locator('[data-key="category"] [data-testid="dpb-row-del"]').click();
+  await target
+    .locator('[data-key="category"] [data-testid="dpb-row-del"]')
+    .click();
   await expect(target.locator('[data-key="category"]')).toHaveCount(0);
   expect(await readPath("/Users/test/split-b.md")).not.toContain("category:");
   expect(await readPath("/Users/test/split-a.md")).toBe(DOC_A);
 
-  await target.locator('[data-key="author"] [data-testid="dpb-row-handle"]').click();
+  await target
+    .locator('[data-key="author"] [data-testid="dpb-row-handle"]')
+    .click();
   await target.locator('[data-testid="dpb-ops-del"]').click();
   await expect(target.locator('[data-key="author"]')).toHaveCount(0);
   expect(await readPath("/Users/test/split-b.md")).not.toContain("author:");
@@ -2471,21 +2513,18 @@ test("#1039 胶囊 DOM 顺序：类型图标→类型名→字段名→值→叉
     for (const n of nodes) {
       expect(n, `${variant} 胶囊缺节点`).not.toBeNull();
     }
-    const ordered = await row.evaluate(
-      (el, sels) => {
-        const list = sels
-          .map((s) => el.querySelector(s))
-          .filter(Boolean) as Element[];
-        return list.every(
-          (n, i) =>
-            i === 0 ||
-            (list[i - 1].compareDocumentPosition(n) &
-              Node.DOCUMENT_POSITION_FOLLOWING) !==
-              0,
-        );
-      },
-      sels,
-    );
+    const ordered = await row.evaluate((el, sels) => {
+      const list = sels
+        .map((s) => el.querySelector(s))
+        .filter(Boolean) as Element[];
+      return list.every(
+        (n, i) =>
+          i === 0 ||
+          (list[i - 1].compareDocumentPosition(n) &
+            Node.DOCUMENT_POSITION_FOLLOWING) !==
+            0,
+      );
+    }, sels);
     expect(ordered, `${variant} 胶囊 DOM 顺序`).toBe(true);
     await expect(row.locator(".dpb-type-label")).toHaveText("数字");
     await dpbRecord(
@@ -2518,10 +2557,9 @@ test("#1039 字段名输入框单行高度：长名不撑高输入框与行（A/
     await input.fill("超长字段名".repeat(12));
     const after = await input.evaluate((el) => el.clientHeight);
     expect(after, "输入框高度随内容变化").toBe(before.clientHeight);
-    expect(
-      (await row.boundingBox())!.height,
-      "行高随字段名变化",
-    ).toBe(rowBefore);
+    expect((await row.boundingBox())!.height, "行高随字段名变化").toBe(
+      rowBefore,
+    );
   }
 });
 
@@ -2571,9 +2609,9 @@ test("#1039 锁定字段：注册表锁图标 + 删除/改名入口 = 0（A/B）
       await expect(label).toHaveAttribute("data-renameable", "false");
       await expect(label).not.toHaveAttribute("role", "button");
       await label.click();
-      await expect(
-        row.locator('[data-testid="dpb-rename-input"]'),
-      ).toHaveCount(0);
+      await expect(row.locator('[data-testid="dpb-rename-input"]')).toHaveCount(
+        0,
+      );
     }
     if (variant === "A") {
       await dpbRecord(page, "1039", "04-locked-row");
@@ -2590,7 +2628,9 @@ test("#1043 新建字段按钮位次：B 首位 / A 末位，其余按钮相对�
   const orderOf = (variant: "A" | "B") =>
     panel(page, variant)
       .locator('[data-testid="dpb-tools"] > *')
-      .evaluateAll((els) => els.map((e) => e.getAttribute("data-testid") ?? ""));
+      .evaluateAll((els) =>
+        els.map((e) => e.getAttribute("data-testid") ?? ""),
+      );
 
   await setVariant(page, "B");
   const bOrder = await orderOf("B");
@@ -2599,10 +2639,9 @@ test("#1043 新建字段按钮位次：B 首位 / A 末位，其余按钮相对�
 
   await setVariant(page, "A");
   const aOrder = await orderOf("A");
-  expect(
-    aOrder[aOrder.length - 1],
-    "A 模式添加字段应为按钮区末位",
-  ).toBe("dpb-add-field");
+  expect(aOrder[aOrder.length - 1], "A 模式添加字段应为按钮区末位").toBe(
+    "dpb-add-field",
+  );
   await dpbRecord(page, "1043", "02-a-add-last");
 
   // A-5.3：剔除添加字段后，两态其余按钮序列完全一致

@@ -155,7 +155,9 @@ describe("模板字段类型跨会话保持（#1034）", () => {
         docId={PERSIST_DOC}
       />,
     );
-    fireEvent.click(first.container.querySelector('[data-testid="dpb-template"]')!);
+    fireEvent.click(
+      first.container.querySelector('[data-testid="dpb-template"]')!,
+    );
     fireEvent.click(document.querySelector('[data-name="通用"]')!);
 
     const spec = dispatchRef.current!;
@@ -195,5 +197,147 @@ describe("模板字段类型跨会话保持（#1034）", () => {
     expect(
       catRow2!.querySelector('[data-testid="dpb-type"]')!.getAttribute("title"),
     ).toContain("日期");
+  });
+});
+
+const DT_DOC = `---
+title: 时间字段
+评审时间: 2026-11-15 14:30
+---
+
+# 正文
+`;
+
+function mountDatetime() {
+  const dispatchRef: {
+    current: Array<{
+      changes: { from: number; to: number; insert: string };
+    }>;
+  } = { current: [] };
+  editorRefs.activeView = {
+    dispatch: (spec) => {
+      dispatchRef.current.push(spec);
+    },
+    focus: () => {},
+  };
+  const view = render(
+    <DocPropertyBar content={DT_DOC} mode="edit" docKey="tab-dt" />,
+  );
+  return { ...view, dispatchRef };
+}
+
+describe("DocPropertyBar 日期时间单面板（#1044）", () => {
+  afterEach(() => {
+    cleanup();
+    resetPanel();
+    localStorage.clear();
+    editorRefs.activeView = null;
+  });
+
+  it("点击值打开单一面板：无分离 date/time 输入，含月历与时分控件", () => {
+    const { container } = mountDatetime();
+    const row = container.querySelector('[data-key="评审时间"]')!;
+    fireEvent.click(row.querySelector('[data-testid="dpb-value"]')!);
+
+    const editor = row.querySelector('[data-testid="dpb-datetime-editor"]')!;
+    expect(editor).not.toBeNull();
+    expect(
+      editor.querySelector('[data-testid="dpb-datetime-panel"]'),
+    ).not.toBeNull();
+    expect(
+      editor.querySelectorAll('input[type="date"], input[type="time"]'),
+    ).toHaveLength(0);
+    expect(
+      editor.querySelectorAll('[data-testid="dpb-cal-day"]').length,
+    ).toBeGreaterThan(0);
+    expect(
+      editor.querySelector('[data-testid="dpb-time-hour"]'),
+    ).not.toBeNull();
+    expect(
+      editor.querySelector('[data-testid="dpb-time-minute"]'),
+    ).not.toBeNull();
+  });
+
+  it("面板内操作不提交；Enter 提交组合值且仅一次写回", () => {
+    const { container, dispatchRef } = mountDatetime();
+    const row = container.querySelector('[data-key="评审时间"]')!;
+    fireEvent.click(row.querySelector('[data-testid="dpb-value"]')!);
+    const editor = row.querySelector('[data-testid="dpb-datetime-editor"]')!;
+
+    fireEvent.click(
+      editor.querySelector(
+        '[data-testid="dpb-cal-day"][data-date="2026-11-18"]',
+      )!,
+    );
+    fireEvent.change(editor.querySelector('[data-testid="dpb-time-hour"]')!, {
+      target: { value: "14" },
+    });
+    fireEvent.change(editor.querySelector('[data-testid="dpb-time-minute"]')!, {
+      target: { value: "30" },
+    });
+    expect(dispatchRef.current).toHaveLength(0);
+
+    fireEvent.keyDown(editor, { key: "Enter" });
+    expect(dispatchRef.current).toHaveLength(1);
+    expect(dispatchRef.current[0].changes.insert).toContain("2026-11-18T14:30");
+    expect(row.querySelector('[data-testid="dpb-datetime-editor"]')).toBeNull();
+  });
+
+  it("Esc 取消：不写回，回到原值", () => {
+    const { container, dispatchRef } = mountDatetime();
+    const row = container.querySelector('[data-key="评审时间"]')!;
+    fireEvent.click(row.querySelector('[data-testid="dpb-value"]')!);
+    const editor = row.querySelector('[data-testid="dpb-datetime-editor"]')!;
+
+    fireEvent.click(
+      editor.querySelector(
+        '[data-testid="dpb-cal-day"][data-date="2026-11-18"]',
+      )!,
+    );
+    fireEvent.change(editor.querySelector('[data-testid="dpb-time-hour"]')!, {
+      target: { value: "18" },
+    });
+    fireEvent.keyDown(editor, { key: "Escape" });
+
+    expect(dispatchRef.current).toHaveLength(0);
+    expect(row.querySelector('[data-testid="dpb-datetime-editor"]')).toBeNull();
+    expect(row.querySelector('[data-testid="dpb-value"]')?.textContent).toBe(
+      "2026-11-15 14:30",
+    );
+  });
+
+  it("失焦且未改动则取消，不写回", () => {
+    const { container, dispatchRef } = mountDatetime();
+    const row = container.querySelector('[data-key="评审时间"]')!;
+    fireEvent.click(row.querySelector('[data-testid="dpb-value"]')!);
+    const editor = row.querySelector('[data-testid="dpb-datetime-editor"]')!;
+
+    fireEvent.blur(editor);
+
+    expect(dispatchRef.current).toHaveLength(0);
+    expect(row.querySelector('[data-testid="dpb-datetime-editor"]')).toBeNull();
+  });
+
+  it("日期字段保持仅日期控件，不出现面板或时间输入", () => {
+    const DATE_ONLY_DOC = `---
+title: 日期字段
+createdate: 2026-11-14
+---
+
+# 正文
+`;
+    editorRefs.activeView = { dispatch: () => {}, focus: () => {} };
+    const { container } = render(
+      <DocPropertyBar content={DATE_ONLY_DOC} mode="edit" docKey="tab-date" />,
+    );
+    const row = container.querySelector('[data-key="createdate"]')!;
+    fireEvent.click(row.querySelector('[data-testid="dpb-value"]')!);
+
+    expect(row.querySelector('[data-testid="dpb-input"]')).not.toBeNull();
+    expect(
+      row.querySelector('[data-testid="dpb-input"]')!.getAttribute("type"),
+    ).toBe("date");
+    expect(row.querySelector('[data-testid="dpb-datetime-editor"]')).toBeNull();
+    expect(row.querySelectorAll('input[type="time"]')).toHaveLength(0);
   });
 });
