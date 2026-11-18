@@ -828,6 +828,7 @@ export default function ContentArea({
           documentText={tab.content}
           view={editorViewState}
           container={scrollContainer}
+          panelId={panelId}
         />
       )}
       {tab && (
