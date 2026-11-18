@@ -831,9 +831,17 @@ body {
   vertical-align: middle;
 }
 
-.cm-image-fallback {
+/* 解析失败占位（#903）：虚线框 + 次要文字，明确「读不到」而非裂图 */
+.cm-media-placeholder {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  padding: 0.25em 0.5em;
+  border: 1px dashed var(--app-border);
+  border-radius: var(--radius-4);
   color: var(--app-text-2);
   font-style: italic;
+  word-break: break-all;
 }
 
 /* 选中态：描边 + 四角圆点（#652） */

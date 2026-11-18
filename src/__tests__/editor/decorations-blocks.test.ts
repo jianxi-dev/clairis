@@ -202,7 +202,7 @@ describe("block decorations", () => {
       expect(img?.getAttribute("alt")).toBe("alt text");
     });
 
-    it("falls back to `[图片: path]` when the resolver returns null", () => {
+    it("falls back to an explicit placeholder when the resolver returns null", () => {
       view = createEditor("![alt text](unknown.png)", {
         resolveImage: stubResolver,
       });
@@ -210,7 +210,11 @@ describe("block decorations", () => {
 
       const widget = view.dom.querySelector(".cm-image-widget");
       expect(widget).not.toBeNull();
+      expect(widget?.querySelector("img")).toBeNull();
       expect(widget?.textContent).toContain("[图片: unknown.png]");
+      const placeholder = widget?.querySelector(".cm-media-placeholder");
+      expect(placeholder?.getAttribute("data-testid")).toBe("media-unresolved");
+      expect(placeholder?.getAttribute("data-media-kind")).toBe("image");
     });
 
     it("falls back to text when no resolver is injected", () => {
@@ -385,8 +389,11 @@ describe("block decorations", () => {
       });
     });
 
-    it("renders a video player for a video extension", () => {
-      const decos = createImageDecorations("![clip](clip.mp4)");
+    it("renders a video player when the resolver returns a media URL", () => {
+      const decos = createImageDecorations(
+        "![clip](clip.mp4)",
+        () => "media://localhost/tmp/clip.mp4",
+      );
       expect(decos).toHaveLength(1);
       const dom = widgetOf(decos[0]).toDOM();
       expect(dom.classList.contains("cm-media-widget")).toBe(true);
@@ -394,12 +401,23 @@ describe("block decorations", () => {
       const video = dom.querySelector("video");
       expect(video?.hasAttribute("controls")).toBe(true);
       expect(video?.getAttribute("preload")).toBe("metadata");
-      expect(video?.getAttribute("src")).toBe("clip.mp4");
+      expect(video?.getAttribute("src")).toBe("media://localhost/tmp/clip.mp4");
+      expect(dom.querySelector(".cm-media-placeholder")).toBeNull();
+    });
+
+    it("解析失败：视频出显式占位，不再写原始相对路径（#903）", () => {
+      const dom = widgetOf(createImageDecorations("![clip](clip.mp4)")[0]).toDOM();
+      expect(dom.querySelector("video")).toBeNull();
+      const placeholder = dom.querySelector(".cm-media-placeholder");
+      expect(placeholder?.getAttribute("data-testid")).toBe("media-unresolved");
+      expect(placeholder?.getAttribute("data-media-kind")).toBe("video");
+      expect(placeholder?.textContent).toContain("[视频: clip.mp4]");
     });
 
     it("视频容器带 media-kind / 默认居中 / 属性块宽度与对齐生效", () => {
+      const resolve = (): string => "media://localhost/tmp/clip.mp4";
       const plain = widgetOf(
-        createImageDecorations("![clip](clip.mp4)")[0],
+        createImageDecorations("![clip](clip.mp4)", resolve)[0],
       ).toDOM();
       expect(plain.dataset.mediaKind).toBe("video");
       expect(plain.dataset.align).toBe("center");
@@ -407,7 +425,7 @@ describe("block decorations", () => {
       expect(plain.querySelector("video")?.style.width).toBe("100%");
 
       const sized = widgetOf(
-        createImageDecorations("![clip](clip.mp4){width=420 align=left}")[0],
+        createImageDecorations("![clip](clip.mp4){width=420 align=left}", resolve)[0],
       ).toDOM();
       expect(sized.dataset.align).toBe("left");
       expect(sized.style.width).toBe("420px");

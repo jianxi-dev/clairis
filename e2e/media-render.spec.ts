@@ -516,3 +516,39 @@ test("图片圆角与视频块一致：预览 border-radius 与编辑 clip-path 
   expect(edit!.imgRadius).not.toBeNull();
   expect(edit!.imgRadius).toBe(edit!.video);
 });
+
+/**
+ * #903：解析失败必须出**显式占位**，而不是裂图「问号框」。
+ *
+ * 触发方式：文档路径不带目录分量（`/note.md`）时 `resolveDocMediaHref` 返回 null，
+ * 与「未保存文档 / 非 Tauri 环境」是同一条失败分支。这里 mock 掉的是「解析失败」，
+ * 不是「协议加载失败」——**真实加载是否正常只能真机验证**（见票内真机清单），
+ * 本 spec 的 src 前缀断言同理，只证明「换过协议」，不证明「字节读到了」。
+ */
+test("解析失败：编辑态出显式占位，不再写原始相对路径", async ({ page }) => {
+  await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
+  await page.goto("/", { waitUntil: "networkidle" });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 10000 });
+  await page.evaluate(() => {
+    const win = window as unknown as Record<string, any>;
+    win.__biaoyue_openFile__(
+      "/note.md",
+      "![pic](assets/pic.png)\n\n![clip](assets/clip.mp4)\n",
+      "note.md",
+    );
+    win.__biaoyue_store__.getState().setEditorMode("edit");
+  });
+  await page.locator(".cm-content").waitFor({ timeout: 10000 });
+
+  const placeholders = page.locator(
+    '.cm-media-placeholder[data-testid="media-unresolved"]',
+  );
+  await expect(placeholders).toHaveCount(2);
+  await expect(placeholders.nth(0)).toHaveAttribute("data-media-kind", "image");
+  await expect(placeholders.nth(0)).toContainText("[图片: assets/pic.png]");
+  await expect(placeholders.nth(1)).toHaveAttribute("data-media-kind", "video");
+  await expect(placeholders.nth(1)).toContainText("[视频: assets/clip.mp4]");
+  // 回归要点：旧实现在这条分支把原始相对路径写进 src，必然 404。
+  await expect(page.locator(".cm-image-widget img")).toHaveCount(0);
+  await expect(page.locator(".cm-media-widget video")).toHaveCount(0);
+});
