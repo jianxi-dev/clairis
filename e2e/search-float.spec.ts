@@ -465,33 +465,195 @@ test("关闭浮窗后 ⌘2 归还全局：无局部响应且工作区不变", as
   expect(await sceneOf(page)).toBe("workspace");
 });
 
-test("21 处命中滚动后前 9 行快捷键不变", async ({ page }) => {
+const ART_1117 = path.resolve(process.cwd(), ".artifacts/1117");
+
+async function recordState1117(page: Page, state: string): Promise<void> {
+  mkdirSync(ART_1117, { recursive: true });
+  const file = path.join(ART_1117, `${state}.png`);
+  await page.screenshot({ path: file });
+  const manifest = path.join(ART_1117, "state-coverage.json");
+  let states: Array<Record<string, string>> = [];
+  try {
+    states = JSON.parse(readFileSync(manifest, "utf8")).states ?? [];
+  } catch {
+    states = [];
+  }
+  states = states.filter((s) => s.state !== state);
+  states.push({
+    state,
+    screenshot: path.relative(process.cwd(), file),
+    assertion: "passed",
+    recorded_at: new Date().toISOString(),
+    runner: `${process.env.USER ?? "unknown"}@${process.env.HOSTNAME ?? "unknown"}`,
+  });
+  writeFileSync(
+    manifest,
+    `${JSON.stringify({ task: "1117-search-key-rebind", states }, null, 2)}\n`,
+  );
+}
+
+async function nextFrames(page: Page, count = 2): Promise<void> {
+  await page.evaluate(
+    (n) =>
+      new Promise<void>((resolve) => {
+        let left = n;
+        const step = () => {
+          left -= 1;
+          if (left <= 0) resolve();
+          else requestAnimationFrame(step);
+        };
+        requestAnimationFrame(step);
+      }),
+    count,
+  );
+}
+
+interface KeyBindingReport {
+  firstVisible: number;
+  selected: number;
+  rows: Array<{ index: number; key: string }>;
+}
+
+async function keyBindingReport(float: Locator): Promise<KeyBindingReport> {
+  return float
+    .locator('[data-testid="search-float-results"]')
+    .evaluate((el) => {
+      const cs = getComputedStyle(el);
+      const rect = el.getBoundingClientRect();
+      const top = rect.top + parseFloat(cs.paddingTop);
+      const bottom = rect.bottom - parseFloat(cs.paddingBottom);
+      const rowEls = Array.from(
+        el.querySelectorAll<HTMLElement>('[data-testid="search-float-hit"]'),
+      );
+      let firstVisible = 0;
+      for (let i = 0; i < rowEls.length; i++) {
+        const b = rowEls[i].getBoundingClientRect();
+        if (b.top >= top - 1 && b.bottom <= bottom + 1) {
+          firstVisible = i;
+          break;
+        }
+      }
+      const cur = el.querySelector<HTMLElement>(".search-float-hit-cur");
+      return {
+        firstVisible,
+        selected: cur ? Number(cur.dataset.index) : -1,
+        rows: rowEls.map((row) => ({
+          index: Number(row.dataset.index),
+          key:
+            row.querySelector<HTMLElement>(".search-float-key")?.textContent ??
+            "",
+        })),
+      };
+    });
+}
+
+async function scrollHitRowToTop(
+  page: Page,
+  results: Locator,
+  index: number,
+): Promise<void> {
+  await results.evaluate((el, i) => {
+    const cs = getComputedStyle(el);
+    const padTop = parseFloat(cs.paddingTop) || 0;
+    const row = el.querySelectorAll<HTMLElement>(
+      '[data-testid="search-float-hit"]',
+    )[i];
+    if (!row) throw new Error(`结果行 ${i} 缺失`);
+    const delta =
+      row.getBoundingClientRect().top - el.getBoundingClientRect().top - padTop;
+    el.scrollTop = el.scrollTop + delta;
+  }, index);
+  await nextFrames(page);
+}
+
+test("#1117 ⌘1~9 滚动重绑可视前 9 行：重绑、第 10 行无键位、按键落点、键位列常驻", async ({
+  page,
+}) => {
   await openDoc(page, LONG_DOC, "/Users/test/long.md");
   await page.keyboard.press("Meta+f");
   await page.locator('[data-testid="search-float-input"]').fill("命中");
-
-  const rows = page.locator('[data-testid="search-float-hit"]');
+  const float = page.locator('[data-testid="search-float"]');
+  const results = float.locator('[data-testid="search-float-results"]');
+  const rows = float.locator('[data-testid="search-float-hit"]');
   await expect(rows).toHaveCount(21);
-  await expect(
-    page.locator('[data-testid="search-float-dist-tick"]'),
-  ).toHaveCount(21);
 
-  await page.keyboard.press("Meta+9");
-  await page.keyboard.press("ArrowDown");
-  await expectEnterBadge(rows.nth(9).locator(".search-float-key"));
+  // 态 1 初始键位：选中行 ↵，可视行按相对序号 ⌘N；第 10 行起空。
+  let report = await keyBindingReport(float);
+  expect(report.firstVisible).toBe(0);
+  expect(report.selected).toBe(0);
+  expect(report.rows[0].key).toBe("↵");
+  for (let i = 1; i < 9; i++) {
+    expect(report.rows[i].key).toBe(`⌘${i + 1}`);
+  }
+  for (let i = 9; i < 21; i++) {
+    expect(report.rows[i].key).toBe("");
+  }
+  await recordState1117(page, "01-initial-keys");
 
-  const results = page.locator('[data-testid="search-float-results"]');
+  // 态 3 第 10 行无键位：第 9 行对齐内容盒顶部后，可视第 1~9 行拿 ⌘1~⌘9，第 10 行为空。
+  await scrollHitRowToTop(page, results, 8);
+  report = await keyBindingReport(float);
+  expect(report.firstVisible).toBe(8);
+  for (let k = 0; k < 9; k++) {
+    expect(report.rows[8 + k].key).toBe(`⌘${k + 1}`);
+  }
+  expect(report.rows[17].key).toBe("");
+  await recordState1117(page, "03-no-key-from-tenth");
+
+  // 态 2 滚动后重绑：滚到底部，可视 12~20 行重新拿 ⌘1~⌘9，滚出视口的 0~11 行不再占键位。
   await results.evaluate((el) => {
     el.scrollTop = el.scrollHeight;
   });
-
-  for (let i = 0; i < 9; i++) {
-    await expect(rows.nth(i).locator(".search-float-key")).toHaveText(
-      `⌘${i + 1}`,
-    );
+  await nextFrames(page);
+  report = await keyBindingReport(float);
+  expect(report.firstVisible).toBe(12);
+  for (let k = 0; k < 9; k++) {
+    expect(report.rows[12 + k].key).toBe(`⌘${k + 1}`);
   }
-  await expectEnterBadge(rows.nth(9).locator(".search-float-key"));
-  await expect(rows.nth(10).locator(".search-float-key")).toHaveText("");
+  for (let i = 0; i < 12; i++) {
+    expect(report.rows[i].key).not.toContain("⌘");
+  }
+  await recordState1117(page, "02-rebound-after-scroll");
+
+  // 滚动后按 ⌘3 直达当时可见第 3 行（绝对索引 14），不落在已滚出视口的绝对第 3 行。
+  await page.keyboard.press("Meta+3");
+  report = await keyBindingReport(float);
+  expect(report.selected).toBe(14);
+  expect(report.firstVisible).toBe(12);
+  expect(report.rows[14].key).toBe("↵");
+  expect(report.rows[12].key).toBe("⌘1");
+  await expect(rows.nth(14)).toHaveClass(/search-float-hit-cur/);
+
+  // 态 4 键位列 sticky 常驻：强制行宽溢出后横向滚动，键位仍贴在结果区右缘内。
+  await page.addStyleTag({ content: ".search-float-hit{width:600px;}" });
+  const sticky = await results.evaluate((el) => {
+    const key = el.querySelector<HTMLElement>(
+      ".search-float-hit .search-float-key",
+    );
+    if (!key) throw new Error("键位列缺失");
+    const cs = getComputedStyle(key);
+    return { position: cs.position, right: cs.right };
+  });
+  expect(sticky.position).toBe("sticky");
+  expect(sticky.right).toBe("0px");
+
+  const assertKeyWithinResults = async () => {
+    const box = await results.boundingBox();
+    const keyBox = await rows
+      .nth(14)
+      .locator(".search-float-key")
+      .boundingBox();
+    if (!box || !keyBox) throw new Error("结果区或键位列未布局");
+    expect(keyBox.x).toBeGreaterThanOrEqual(box.x - 1);
+    expect(keyBox.x + keyBox.width).toBeLessThanOrEqual(box.x + box.width + 1);
+  };
+  await assertKeyWithinResults();
+  await results.evaluate((el) => {
+    el.scrollLeft = el.scrollWidth;
+  });
+  await nextFrames(page);
+  await assertKeyWithinResults();
+  await recordState1117(page, "04-key-column-sticky");
 });
 
 test("⇄ 展开替换行（替换输入框 + 逐个/全部替换），再点收起", async ({
