@@ -174,7 +174,6 @@ interface Placement {
   x: number;
   y: number;
   width: number;
-  height: number;
 }
 
 interface DragStateBase {
@@ -220,6 +219,8 @@ export default function SearchReplacePanel({
   const [selected, setSelected] = useState(0);
   const [prevQuery, setPrevQuery] = useState(query);
   const [placement, setPlacement] = useState<Placement | null>(null);
+  // 拖拽高度只在本次打开周期内覆盖默认高度；重开即回自适应。
+  const [sessionHeight, setSessionHeight] = useState<number | null>(null);
   const [replacement, setReplacement] = useState("");
   const [replaceMode, setReplaceMode] = useState(false);
   const [status, setStatus] = useState("");
@@ -292,11 +293,12 @@ export default function SearchReplacePanel({
 
   if (wasOpen !== open) {
     setWasOpen(open);
-    if (!open) {
-      setReplacement("");
-      setReplaceMode(false);
+    if (open) {
       setHover(null);
       setHoverPos(null);
+      setSelected(0);
+      setSessionHeight(null);
+    } else {
       setStatus("");
     }
   }
@@ -502,7 +504,9 @@ export default function SearchReplacePanel({
       const cs = getComputedStyle(results);
       const padding = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
       const next =
-        SEARCH_FLOAT_MAX_ROWS * first.getBoundingClientRect().height + padding;
+        Math.min(hits.length, SEARCH_FLOAT_MAX_ROWS) *
+          first.getBoundingClientRect().height +
+        padding;
       setResultsMaxHeight((prev) =>
         Math.abs(prev - next) > 0.5 ? next : prev,
       );
@@ -685,7 +689,6 @@ export default function SearchReplacePanel({
         x: clamp(drag.origX + dx, 0, hostRect.width - drag.width),
         y: clamp(drag.origY + dy, 0, hostRect.height - drag.height),
         width: drag.width,
-        height: drag.height,
       });
       return;
     }
@@ -715,7 +718,8 @@ export default function SearchReplacePanel({
       x = Math.max(0, x);
       w = Math.min(w, east - x);
     }
-    setPlacement({ x, y, width: w, height: h });
+    setPlacement({ x, y, width: w });
+    setSessionHeight(h);
   };
 
   const onPointerUp = (event: ReactPointerEvent<HTMLElement>) => {
@@ -727,13 +731,16 @@ export default function SearchReplacePanel({
   const style: CSSProperties = {
     position: "absolute",
     display: open ? "flex" : "none",
-    ...(hits.length > SEARCH_FLOAT_MAX_ROWS ? { height: "auto" } : {}),
+    ...(sessionHeight !== null
+      ? { height: sessionHeight }
+      : hits.length > SEARCH_FLOAT_MAX_ROWS
+        ? { height: "auto" }
+        : {}),
     ...(placement
       ? {
           left: placement.x,
           top: placement.y,
           width: placement.width,
-          height: placement.height,
           transform: "none",
         }
       : defaultPos === "center"
@@ -1023,7 +1030,8 @@ export default function SearchReplacePanel({
         </div>
       )}
 
-      {replaceMode &&
+      {open &&
+        replaceMode &&
         hover &&
         hoverHit &&
         createPortal(
