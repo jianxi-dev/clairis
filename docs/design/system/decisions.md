@@ -74,5 +74,8 @@ ledger: append-only
 | 图片工具条「添加描述」图标 | 新图标 `ImageCaptionOutlined`（图片框 + 说明行）取代 `TextEditOutlined`；采纳 | batch19 A-7.4 / #840 | 2026-11-15 |
 | 搜索徽标「回车」图标 | 新图标「键帽回车」：圆角键帽（2px 圆角）+ 返回箭头（水平线 + 向下折角箭头），24×24 viewBox、笔画 1.7、14px 密集档、`currentColor`；取代裸文本「回车」，可访问名「回车」 | editor-surface-batch22 / #1055 | 2026-11-18 |
 | 媒体解析失败占位 | `.cm-media-placeholder`：虚线框（`--app-border` / `--radius-4`）+ 斜体次要文字（`--app-text-2`）+ 原路径 `[图片: path]`/`[视频: path]`；无图标、不模仿裂图，明确「读不到」 | #903 | 2026-11-18 |
+| 搜索浮窗顶栏 | 顶栏含标题「搜索和替换」；关闭按钮位于顶栏最右侧，不排在视图切换图标之后 | editor-surface-batch23 / #1054 | 2026-11-18 |
+| 大纲插入位置指示条 | 拖动大纲时渲染插入位置指示条（落点指示条，随指针移动，松手消失），取代仅 ghost | editor-surface-batch23 / #1050 | 2026-11-18 |
+| 日期时间选择面板 | 单一 popover 面板内同时完成日期与时间选择（月历网格 + 时分步进），提交 `YYYY-MM-DDTHH:mm` | editor-surface-batch23 / #1044 | 2026-11-18 |
 
 - 2026-11-16 · doc-property-panel · 标签色板 10 色（靛蓝/青碧/琥珀/玫红/竹绿/天青/紫罗兰/赭石/石板/藤黄，亮暗各三值）誊写入 spec §6；分配规则 FNV-1a(name) % 10、同名同色、不可手工改色（来源：定稿原型 v13 PALETTE）
