@@ -16,7 +16,7 @@ source_of_truth: supporting
 
 > 涉及未提交改动、错误计划、snapshot 恢复或 `reset`/批量覆盖时，先阅读 `docs/agents/incident-uncommitted-work-loss.md`；该文档是共享工作区保护和恢复流程的唯一来源。
 
-> 缺陷处理的质量判据见 `docs/agents/quality-gates.md` §三（**DQ-1..DQ-8 缺陷处理质量门禁**）与 §二（QG-4/QG-5）；本节末尾「修复质量门禁」为缺陷场景下的强制应用。
+> 缺陷处理的质量判据见 `docs/agents/quality-gates.md` §三（**DQ-1..DQ-9 缺陷处理质量门禁**）与 §二（QG-4/QG-5）；本节末尾「修复质量门禁」为缺陷场景下的强制应用。
 
 ---
 
@@ -208,7 +208,7 @@ https://github.com/jianxi-dev/clairis/issues
 
 ---
 
-## 修复质量门禁（DQ-1..DQ-8 / QG-4 / QG-5 / C10 数据面）
+## 修复质量门禁（DQ-1..DQ-9 / QG-4 / QG-5 / C10 数据面）
 
 > 完整定义见 `docs/agents/quality-gates.md` §三。本节说明缺陷修复场景下的强制应用。
 
@@ -332,6 +332,10 @@ gh issue list --label ready-for-agent --state all --json number,state \
 
 **理由**：关闭票残留 `ready-for-agent` 会污染 `gh issue list --label ready-for-agent --state open` —— 而该查询正是 G3 自动推进（frontier）的依据。
 
+### 真机偏差类验收分级（DQ-9）
+
+**规则**：修复命中真机偏差类触发信号（字体/布局测量、持久化/生命周期、协议/原生行为、用户语义裁定、同一面被 tauri-mock 桥覆盖）时，验收须含**双路径证明或用户执行的真机检查清单**，**headless e2e 绿单独不构成关闭条件**。完整定义、触发信号、实证案例与反模式见 `docs/agents/quality-gates.md` DQ-9（含配套的「测试基础设施卫生」小节：验证前须清理 1420 端口陈旧监听，服务复用导致的假红/假绿是第一类失败模式）。
+
 ### 修复必须同时防回归
 
 修复缺陷时**必须**同时新增或扩展一条 e2e 用例或真实路径测试，**锁住该缺陷不再复现**。仅改源码不锁行为的修复不予合并（QG-2 在缺陷线的应用）。
@@ -351,4 +355,4 @@ gh issue list --label ready-for-agent --state all --json number,state \
 
 ---
 
-_最后更新：2026-11-11_
+_最后更新：2026-11-18_
