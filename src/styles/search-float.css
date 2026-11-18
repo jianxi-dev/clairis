@@ -273,22 +273,13 @@
   font-size: 11px;
   font-variant-numeric: tabular-nums;
   color: var(--app-text-3);
-  background: var(--app-surface);
+  background: transparent;
 }
 
 .search-float-hit:hover .search-float-key,
 .search-float-hit-cur .search-float-key,
 .search-float-hit-cur:hover .search-float-key {
   color: var(--app-accent);
-}
-
-.search-float-hit:hover .search-float-key {
-  background: var(--app-sunken);
-}
-
-.search-float-hit-cur .search-float-key,
-.search-float-hit-cur:hover .search-float-key {
-  background: var(--app-accent-soft);
 }
 
 .search-float-empty {

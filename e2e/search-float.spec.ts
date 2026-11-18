@@ -1008,7 +1008,7 @@ test("#1056 删除线与任务列表：结果行与悬浮预览均无 ~~ 与 [ ]
   expect((await body.textContent()) ?? "").not.toContain("[ ]");
 });
 
-test("#1056 表格：结果行与悬浮预览渲染为表格，竖线与对齐行不出现", async ({
+test("#1056/#1115 表格：结果行摘要文本化（无竖线/对齐行），悬浮预览仍为表格", async ({
   page,
 }) => {
   await openDoc(
@@ -1021,16 +1021,18 @@ test("#1056 表格：结果行与悬浮预览渲染为表格，竖线与对齐�
   const float = page.locator('[data-testid="search-float"]');
   await page.locator('[data-testid="search-float-input"]').fill("命中");
 
+  // #1115：结果行摘要改为按行拼接单元格文字，表格元素不再出现。
   const ctx = float
     .locator('[data-testid="search-float-hit"]')
     .first()
     .locator(".search-float-context");
-  await expect(ctx.locator("table")).toHaveCount(1);
-  await expect(ctx.locator("th")).toHaveCount(2);
-  await expect(ctx.locator("td mark")).toHaveText("命中");
+  await expect(ctx.locator("table")).toHaveCount(0);
+  await expect(ctx.locator("mark")).toHaveText("命中");
   const rowText = (await ctx.textContent()) ?? "";
   expect(rowText).not.toContain("|");
   expect(rowText).not.toContain("---");
+  expect(rowText.indexOf("列A")).toBeLessThan(rowText.indexOf("列B"));
+  expect(rowText.indexOf("命中的单元格")).toBeLessThan(rowText.indexOf("值"));
 
   await page.locator('[data-testid="search-float-replace-toggle"]').click();
   await float.locator('[data-testid="search-float-hit"]').first().hover();
@@ -1326,7 +1328,9 @@ async function highlightedRowIndex(float: Locator): Promise<number> {
 }
 
 async function expectEnterBadge(key: Locator): Promise<void> {
-  await expect(key.locator("svg")).toHaveCount(1);
+  // #1115：选中行行尾为 ↵ 字符，与状态栏同字符，不再是带底色键帽 svg。
+  await expect(key).toHaveText("↵");
+  await expect(key.locator("svg")).toHaveCount(0);
   await expect(key).toHaveAttribute("aria-label", "回车");
   expect((await key.textContent()) ?? "").not.toContain("回车");
 }
@@ -1985,4 +1989,96 @@ test("#1058 默认 300 宽度下状态栏贴底（A-16.1 交叉复核）", async
   const gap = await statusbarGap(page);
   expect(Math.abs(gap?.gap ?? 999)).toBeLessThanOrEqual(1);
   await recordState1058(page, "04-statusbar-attached");
+});
+
+/* ------------------------------------------------------------------ *
+ * #1115 摘要文本化 + 选中行 ↵（A-1.1 / A-1.2 / A-1.3 / A-1.4）
+ * ------------------------------------------------------------------ */
+
+const ART_1115 = path.resolve(process.cwd(), ".artifacts/1115");
+
+async function recordState1115(page: Page, state: string): Promise<void> {
+  mkdirSync(ART_1115, { recursive: true });
+  const file = path.join(ART_1115, `${state}.png`);
+  await page.screenshot({ path: file });
+}
+
+// 表格足够宽，命中行前留出 > 44 字符，摘要窗口从单元格中间起——旧实现会漏竖线。
+const TABLE_DOC = [
+  "# 表格文档",
+  "",
+  "| 姓名 | 年龄 | 城市 | 备注 |",
+  "| --- | --- | --- | --- |",
+  "| 张三 | 28 | 北京 | 工程师 |",
+  "| 李四 | 35 | 上海 | 设计师 |",
+  "| 王五 | 42 | 广州 | 产品经理 |",
+  "| 赵六 | 31 | 深圳 | 测试工程师 |",
+  "| 孙七 | 29 | 杭州 | 运维工程师 |",
+].join("\n");
+
+test("#1115 表格块摘要文本化：无竖线、单元格顺序可读、mark 落在命中上（A-1.1/A-1.3）", async ({
+  page,
+}) => {
+  await openDoc(page, TABLE_DOC, "/Users/test/table.md");
+  await setMode(page, "edit");
+  await page.keyboard.press("Meta+f");
+  await page.locator('[data-testid="search-float-input"]').fill("赵六");
+
+  const ctx = page
+    .locator('[data-testid="search-float-hit"]')
+    .first()
+    .locator(".search-float-context");
+  const text = (await ctx.textContent()) ?? "";
+  expect(text).not.toContain("|");
+  expect(text).not.toContain("---");
+  expect(text.indexOf("赵六")).toBeLessThan(text.indexOf("31"));
+  expect(text.indexOf("31")).toBeLessThan(text.indexOf("深圳"));
+  await expect(ctx.locator("mark")).toHaveText("赵六");
+  await recordState1115(page, "01-table-hit-plain-text");
+});
+
+test("#1115 普通段落摘要与高亮不受清洗影响（A-1.3）", async ({ page }) => {
+  await openDoc(page, RICH_DOC, "/Users/test/rich.md");
+  await setMode(page, "edit");
+  await page.keyboard.press("Meta+f");
+  await page.locator('[data-testid="search-float-input"]').fill("加粗命中");
+
+  const ctx = page
+    .locator('[data-testid="search-float-hit"]')
+    .first()
+    .locator(".search-float-context");
+  await expect(ctx.locator("b mark")).toHaveText("加粗命中");
+  expect(await ctx.locator("mark").count()).toBe(1);
+  expect((await ctx.textContent()) ?? "").toBe(
+    "前缀 加粗命中 与 代码命中 后缀",
+  );
+  await recordState1115(page, "02-paragraph-hit-unchanged");
+});
+
+test("#1115 选中行行尾为 ↵ 且键位列无底色（A-1.2/A-1.4）", async ({ page }) => {
+  await page.keyboard.press("Meta+f");
+  await page.locator('[data-testid="search-float-input"]').fill("属性");
+  const rows = page.locator('[data-testid="search-float-hit"]');
+  await expect(rows).toHaveCount(3);
+
+  const key = rows.nth(0).locator(".search-float-key");
+  await expect(key).toHaveText("↵");
+  await expect(key.locator("svg")).toHaveCount(0);
+  expect((await key.textContent()) ?? "").not.toContain("回车");
+  const style = await key.evaluate((el) => {
+    const cs = getComputedStyle(el);
+    return { backgroundColor: cs.backgroundColor };
+  });
+  expect(style.backgroundColor).toBe("rgba(0, 0, 0, 0)");
+  await recordState1115(page, "03-selected-row-enter-char");
+
+  await page.keyboard.press("ArrowDown");
+  await expect(rows.nth(1).locator(".search-float-key")).toHaveText("↵");
+  await expect(rows.nth(0).locator(".search-float-key")).toHaveText("⌘1");
+  const nextStyle = await rows
+    .nth(1)
+    .locator(".search-float-key")
+    .evaluate((el) => getComputedStyle(el).backgroundColor);
+  expect(nextStyle).toBe("rgba(0, 0, 0, 0)");
+  await recordState1115(page, "04-key-column-no-background");
 });

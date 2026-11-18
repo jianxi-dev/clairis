@@ -18,6 +18,10 @@ import {
   type SearchScanHit,
 } from "../../lib/searchScan";
 import {
+  isMarkdownTable,
+  plainTableSnippet,
+} from "../../lib/searchSnippetText";
+import {
   applyReplaceChanges,
   buildReplaceChanges,
 } from "../../lib/searchReplace";
@@ -245,6 +249,35 @@ export default function SearchReplacePanel({
         searchHitSnippetWithRange(content, hit, SNIPPET_RADIUS, blocks),
       ),
     [content, hits, blocks],
+  );
+  // 只有表格块在展示层文本化：命中区间经映射换算，高亮落点不变。
+  const tableBlocks = useMemo(
+    () =>
+      new Set(
+        blocks
+          .filter((block) => isMarkdownTable(block.text))
+          .map((b) => b.index),
+      ),
+    [blocks],
+  );
+  const displaySnippets = useMemo(
+    () =>
+      hits.map((hit, index) => {
+        const entry = snippetHits[index];
+        const raw = entry?.snippet ?? hit.context;
+        if (!tableBlocks.has(hit.blockIndex)) {
+          return { snippet: raw, hit: entry?.hit };
+        }
+        const plain = plainTableSnippet(raw);
+        const range = entry?.hit;
+        return {
+          snippet: plain.text,
+          hit: range
+            ? { from: plain.map[range.from], to: plain.map[range.to] }
+            : undefined,
+        };
+      }),
+    [hits, snippetHits, tableBlocks],
   );
   const safeSelected =
     hits.length === 0 ? -1 : Math.min(selected, hits.length - 1);
@@ -850,8 +883,8 @@ export default function SearchReplacePanel({
                 className="search-float-context"
                 dangerouslySetInnerHTML={{
                   __html: renderInlineWithHit(
-                    snippetHits[index]?.snippet ?? hit.context,
-                    snippetHits[index]?.hit,
+                    displaySnippets[index]?.snippet ?? hit.context,
+                    displaySnippets[index]?.hit,
                   ),
                 }}
               />
@@ -879,13 +912,7 @@ export default function SearchReplacePanel({
               className="search-float-key"
               aria-label={index === safeSelected ? "回车" : undefined}
             >
-              {index === safeSelected ? (
-                <Icon name="enterKey" size={14} />
-              ) : index < 9 ? (
-                `⌘${index + 1}`
-              ) : (
-                ""
-              )}
+              {index === safeSelected ? "↵" : index < 9 ? `⌘${index + 1}` : ""}
             </span>
           </button>
         ))}
