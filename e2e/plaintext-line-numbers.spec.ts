@@ -458,3 +458,115 @@ test("A-13.4：Markdown 预览零行号，关闭文档后无残留", async ({ pa
     })
     .toBe(0);
 });
+
+// ── #1051 补强：真实默认模式 + 真实 invoke 预览面 ─────────────────
+// 主预览不再先强制 edit：按 store.openFile 的默认模式断言（.txt→preview、
+// .js→edit），脚本文件用真实格头按钮进入 preview。悬浮预览走
+// FloatingPreview 自己的 invoke("open_file_direct") 真实读取路径，
+// 与主预览同属「文本文件预览态」，一并要求行号列。
+
+async function editorModeOf(page: Page): Promise<string | null> {
+  return page.evaluate(() => {
+    const win = window as unknown as Record<string, any>;
+    const s = win.__biaoyue_store__.getState();
+    return s.activeTabId ? s.tabs[s.activeTabId].editorMode : null;
+  });
+}
+
+async function openViaBridge(page: Page, filePath: string, body: string) {
+  await page.evaluate(
+    ([p, content]) => {
+      const win = window as unknown as Record<string, any>;
+      win.__biaoyue_openFile__(p, content, p.split("/").pop());
+    },
+    [filePath, body],
+  );
+}
+
+async function pinRail(page: Page): Promise<void> {
+  const edge = page.locator('[data-testid="rail-edge"]');
+  if (await edge.isVisible().catch(() => false)) await edge.hover();
+  const panel = page.locator('[data-testid="rail-panel"]');
+  await expect(panel).toBeVisible();
+  await page.locator('[data-testid="rail-pin"]').click();
+  await expect(panel).toHaveAttribute("data-rail-state", "pinned");
+}
+
+async function hoverRecentRow(page: Page, title: string): Promise<void> {
+  const row = page
+    .locator('[data-section="recent"] [data-testid="rail-item"]')
+    .filter({ hasText: title })
+    .first();
+  await expect(row).toBeVisible();
+  const box = (await row.boundingBox())!;
+  await page.mouse.move(
+    box.x + Math.min(box.width - 20, box.width * 0.9),
+    box.y + box.height / 2,
+  );
+  await expect(
+    page.locator('[data-testid="floating-preview"]'),
+  ).toBeVisible({ timeout: 3000 });
+}
+
+function floatingCounts(page: Page) {
+  return page.evaluate(() => {
+    const root = document.querySelector('[data-testid="floating-preview"]');
+    const doc = root?.querySelector('[data-testid="preview-doc"]');
+    return {
+      kind: doc?.getAttribute("data-doc-kind") ?? null,
+      numbers: root
+        ? root.querySelectorAll("[data-preview-line-number]").length
+        : 0,
+      block: root
+        ? root.querySelectorAll(".code-block.has-line-numbers").length
+        : 0,
+    };
+  });
+}
+
+test("A-13.5：真实默认模式直开 .txt 即 preview 且行号逐行；.js 经格头按钮入 preview", async ({
+  page,
+}) => {
+  await boot(page);
+
+  await openViaBridge(page, "/tmp/1051-default.txt", TXT_DOC);
+  expect(await editorModeOf(page)).toBe("preview");
+  await page
+    .locator(".preview-content .code-block")
+    .waitFor({ timeout: 10000 });
+  expect((await previewNumberCounts(page)).inPreview).toBe(3);
+
+  await openViaBridge(page, "/tmp/1051-default.js", JS_DOC);
+  expect(await editorModeOf(page)).toBe("edit");
+  await page.locator('[data-testid="pane-mode"]').first().click();
+  await expect.poll(() => editorModeOf(page)).toBe("preview");
+  await page
+    .locator(".preview-content .code-block")
+    .waitFor({ timeout: 10000 });
+  expect((await previewNumberCounts(page)).inPreview).toBe(4);
+});
+
+test("A-13.6：悬浮预览（真实 open_file_direct 面）文本 / 脚本出现行号列", async ({
+  page,
+}) => {
+  await boot(page);
+
+  await openViaBridge(page, "/tmp/1051-float.txt", TXT_DOC);
+  await pinRail(page);
+  await hoverRecentRow(page, "1051-float.txt");
+  const txt = await floatingCounts(page);
+  expect(txt.kind).toBe("text");
+  expect(txt.block).toBe(1);
+  expect(txt.numbers).toBeGreaterThanOrEqual(1);
+
+  await page.evaluate(() => {
+    const win = window as unknown as Record<string, any>;
+    win.__biaoyue_store__.getState().closePreview();
+  });
+  await openViaBridge(page, "/tmp/1051-float.js", JS_DOC);
+  await hoverRecentRow(page, "1051-float.js");
+  const js = await floatingCounts(page);
+  expect(js.kind).toBe("code");
+  expect(js.block).toBe(1);
+  expect(js.numbers).toBeGreaterThanOrEqual(1);
+});
