@@ -102,7 +102,7 @@ navigation 域定义标月桌面端"无侧栏"方向下的导航体系：启动�
 
 ### Requirement: 页签条与格头
 
-每格 SHALL 支持多页签：⌘T 新页签（当前格）、⌘W 关页签（最后一签关格）、拖拽排序；页签 SHALL 为类型色图标 + 标题 + ×。**页签名 SHALL 单行完整显示**：SHALL NOT 使用省略号（含 `text-overflow: ellipsis` 与 `-webkit-line-clamp` 渲染的省略号）、SHALL NOT 截断、SHALL NOT 换行（`white-space: nowrap`）；页签总宽超过页签条可用宽度时，页签条 SHALL 横向滚动。相邻页签之间的间距 SHALL 为 **32px**（容差 ±2px）。双击页签标题 SHALL 进入就地重命名（回车提交、Esc 取消、失焦提交），仅改变显示标题，SHALL NOT 改变文件路径。格头 SHALL 为页签条，右侧 SHALL 为模式图标（点击=预览↔编辑）、全屏图标、⋯ 菜单；⋯ 菜单 SHALL 恰含 6 项（新建文件/分享/右分/下分/源码模式/定位，均带图标，不含全屏）；导出、刷新、打开文件位置 SHALL NOT 出现在格头 ⋯ 菜单。
+每格 SHALL 支持多页签：⌘T 新页签（当前格）、⌘W 关页签（最后一签关格）、拖拽排序；页签 SHALL 为类型色图标 + 标题 + ×。**页签名 SHALL 有固定最大显示宽度 120px**（容差 ±2px）：短于该宽度时按实际长度显示，超过时 SHALL 以 `text-overflow: ellipsis` 收尾、单行 `white-space: nowrap`，SHALL NOT 换行；完整文件名由页签名信息窗承载（权威表述见 application-shell 域「G-6 顶栏职责与页签身份」，两处 SHALL 一致）；页签总宽超过页签条可用宽度时，页签条 SHALL 横向滚动。相邻页签之间的间距 SHALL 为 **32px**（容差 ±2px）。双击页签标题 SHALL 进入就地重命名（回车提交、Esc 取消、失焦提交），仅改变显示标题，SHALL NOT 改变文件路径。格头 SHALL 为页签条，右侧 SHALL 为模式图标（点击=预览↔编辑）、全屏图标、⋯ 菜单；⋯ 菜单 SHALL 恰含 6 项（新建文件/分享/右分/下分/源码模式/定位，均带图标，不含全屏）；导出、刷新、打开文件位置 SHALL NOT 出现在格头 ⋯ 菜单。
 
 拖拽页签期间 SHALL NOT 选中经过的正文文字：拖拽一旦超过阈值，应用 SHALL 进入全局禁选会话，拖拽结束或取消后恢复；拖拽前的既有选区 SHALL NOT 被清空，但拖拽期间 `window.getSelection().toString()` SHALL 保持为空。
 
@@ -110,12 +110,14 @@ navigation 域定义标月桌面端"无侧栏"方向下的导航体系：启动�
 
 页签右键菜单 SHALL 恰含 11 项，顺序为：悬浮小窗、向右分栏、向下分栏、导出、打印、复制路径、打开文件位置、移动到…、刷新、关闭、关闭其他；每项 SHALL 带图标。导出 SHALL 在菜单内就地展开二级项（Word/.mdpkg/图片/PDF/HTML/ZIP），点击 SHALL NOT 关闭菜单后再去格头菜单打开子菜单；打印 SHALL 为导出下方的独立项，SHALL NOT 出现在导出二级项中。点击「悬浮小窗」SHALL 以被右击页签为锚唤出与文件卡片同款的悬浮预览窗，SHALL NOT 新建第二套悬浮窗实现。
 
-页签名鼠标滑入 SHALL 显示下拉信息窗（胶囊卡片）：① 文件名（最大字号）；② 完整路径，路径每层文件夹可单击在文件管理器中定位该层；③ 最近保存时间。鼠标点按页签条空白处并移动超过阈值 SHALL 拖动窗口；未超阈值 SHALL 视为点击，SHALL NOT 触发窗口拖动。
+页签名鼠标滑入 SHALL 显示下拉信息窗（矩形圆角 8px、固定宽度 320px，视口不足时按 `100vw - 16px` 钳制）：① 文件名（最大字号，SHALL 换行显示完整名，SHALL NOT 以省略号截断）；② 完整路径，路径每层文件夹可单击在文件管理器中定位该层；路径行末尾 SHALL 提供「复制路径」与「复制文件」两个图标动作——前者把路径文本写入剪贴板，后者把文件本身写入系统剪贴板（非 macOS 平台 SHALL NOT 渲染该动作）；③ 最近保存时间。鼠标点按页签条空白处并移动超过阈值 SHALL 拖动窗口；未超阈值 SHALL 视为点击，SHALL NOT 触发窗口拖动。
 
 #### Scenario: 页签名无省略号
 
-- **WHEN** 某页签标题长度超过其可用宽度
-- **THEN** 该页签标题的计算 `text-overflow` SHALL NOT 为 `ellipsis`，`-webkit-line-clamp` SHALL 为 `none`，`white-space` SHALL 为 `nowrap`，标题 SHALL 完整显示且 SHALL NOT 换行
+> 场景标题沿用旧名；自本 change 起页签名在 120px 上限内 SHALL 使用省略号，完整名由信息窗承载。
+
+- **WHEN** 某页签标题的自然宽度超过 120px
+- **THEN** 该页签标题容器的计算 `max-width` SHALL 为 120px（容差 ±2px），`text-overflow` SHALL 为 `ellipsis`，`white-space` SHALL 为 `nowrap`，`-webkit-line-clamp` SHALL 为 `none`，且标题 SHALL NOT 换行
 
 #### Scenario: 页签间距为指针尺寸
 
@@ -193,6 +195,16 @@ navigation 域定义标月桌面端"无侧栏"方向下的导航体系：启动�
 
 - **WHEN** 用户把指针悬停在页签名上
 - **THEN** SHALL 出现含文件名、完整路径与最近保存时间的下拉信息窗；点击路径某层 SHALL 在文件管理器中定位该层
+
+#### Scenario: 信息窗为 8px 圆角矩形且文件名换行
+
+- **WHEN** 页签名信息窗展开
+- **THEN** 其计算 `border-radius` SHALL 为 8px（容差 ±1px）；文件名行的 `white-space` SHALL NOT 为 `nowrap`，超长文件名 SHALL 换行显示且 SHALL NOT 溢出信息窗
+
+#### Scenario: 信息窗复制路径与复制文件
+
+- **WHEN** 页签名信息窗展开
+- **THEN** 路径行末尾 SHALL 存在「复制路径」与「复制文件」两个图标按钮；点击「复制路径」后剪贴板文本 SHALL 等于该页签文件的绝对路径；点击「复制文件」后系统剪贴板 SHALL 含该文件的文件引用（macOS 可在访达粘贴出该文件）
 
 #### Scenario: 页签空白处拖动窗口
 

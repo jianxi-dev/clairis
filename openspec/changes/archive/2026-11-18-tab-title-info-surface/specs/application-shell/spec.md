@@ -11,7 +11,9 @@
 - **WHEN** 用户双击页签标题
 - **THEN** 输入框计算宽度 SHALL 约为 24ch，且不小于原 16ch 的 1.5 倍
 
-#### Scenario: 超长标题以省略号收尾
+#### Scenario: 页签标题单行完整显示
+
+> 场景标题沿用旧名以保持条款可追溯；自本 change 起「完整」由信息窗承载，页签本身在 120px 上限内以省略号收尾。
 
 - **WHEN** 某页签标题的自然宽度超过 120px
 - **THEN** 该页签标题容器的计算 `max-width` SHALL 为 120px（容差 ±2px），`text-overflow` SHALL 为 `ellipsis`，`white-space` SHALL 为 `nowrap`，`-webkit-line-clamp` SHALL 为 `none`，且标题 SHALL NOT 换行
