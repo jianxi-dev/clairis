@@ -1,0 +1,141 @@
+{
+  "change": "tab-title-info-surface",
+  "requirements": [
+    {
+      "id": "R-1",
+      "text": "页签标题固定宽度与省略号",
+      "anchors": [
+        {
+          "id": "A-1.1",
+          "claim": "超长页签标题容器的计算 `max-width`（px）",
+          "kind": "exact",
+          "assert": "120",
+          "source": "application-shell G-6（120px 上限）/ design D1"
+        },
+        {
+          "id": "A-1.2",
+          "claim": "超长页签标题的计算 `text-overflow` 等于 `ellipsis` 的布尔",
+          "kind": "exact",
+          "assert": "1",
+          "source": "application-shell G-6"
+        },
+        {
+          "id": "A-1.3",
+          "claim": "短标题容器渲染宽度等于文本实际宽度（未被拉伸到 120px）的布尔",
+          "kind": "exact",
+          "assert": "1",
+          "source": "application-shell G-6「短标题按实际长度显示」"
+        },
+        {
+          "id": "A-1.4",
+          "claim": "相邻页签的计算 `column-gap`（px）",
+          "kind": "exact",
+          "assert": "32",
+          "source": "application-shell G-6（间距不变）"
+        }
+      ]
+    },
+    {
+      "id": "R-2",
+      "text": "信息窗 R8 与文件名换行",
+      "anchors": [
+        {
+          "id": "A-2.1",
+          "claim": "页签名信息窗的计算 `border-radius`（px）",
+          "kind": "exact",
+          "assert": "8",
+          "source": "design-system §5 `--radius-8` / design D2"
+        },
+        {
+          "id": "A-2.2",
+          "claim": "超长文件名行计算 `white-space` 不等于 `nowrap` 的布尔",
+          "kind": "exact",
+          "assert": "1",
+          "source": "navigation「页签条与格头」信息窗条款"
+        },
+        {
+          "id": "A-2.3",
+          "claim": "信息窗文件名容器 `scrollWidth` ≤ `clientWidth`（换行不溢出）的布尔",
+          "kind": "exact",
+          "assert": "1",
+          "source": "navigation 同上"
+        },
+        {
+          "id": "A-2.4",
+          "claim": "350px 以上视口下信息窗的计算宽度（px）",
+          "kind": "exact",
+          "assert": "320",
+          "source": "navigation「页签条与格头」信息窗条款（固定宽度）/ design D2"
+        }
+      ]
+    },
+    {
+      "id": "R-3",
+      "text": "信息窗复制路径 / 复制文件",
+      "anchors": [
+        {
+          "id": "A-3.1",
+          "claim": "路径行末尾复制图标按钮数",
+          "kind": "exact",
+          "assert": "2",
+          "source": "navigation「页签条与格头」复制动作条款"
+        },
+        {
+          "id": "A-3.2",
+          "claim": "点击「复制路径」→ 剪贴板文本等于该页签文件绝对路径",
+          "kind": "state-machine",
+          "assert": "点击→路径入剪贴板",
+          "source": "navigation 同上"
+        },
+        {
+          "id": "A-3.3",
+          "claim": "点击「复制文件」→ 系统剪贴板含该文件引用（macOS 访达可粘贴）",
+          "kind": "state-machine",
+          "assert": "点击→文件入剪贴板",
+          "source": "navigation 同上 / DQ-9 真机"
+        }
+      ]
+    },
+    {
+      "id": "R-4",
+      "text": "空白双击全屏稳定化与规范收口",
+      "anchors": [
+        {
+          "id": "A-4.1",
+          "claim": "两记按下位移 ≤4px 的双击 → 全屏状态切换一次",
+          "kind": "state-machine",
+          "assert": "双击→全屏切换",
+          "source": "application-shell「页签空白双击切换窗口全屏」"
+        },
+        {
+          "id": "A-4.2",
+          "claim": "上述双击过程中 `startDragging` 调用次数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "application-shell（双击内第二记按下 SHALL NOT 启动窗口拖动）"
+        },
+        {
+          "id": "A-4.3",
+          "claim": "位移 >4px 后松开时全屏状态变化次数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "application-shell「超过阈值不触发全屏」"
+        },
+        {
+          "id": "A-4.4",
+          "claim": "主规格中「页签栏空白双击新建文档」requirement 条数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "application-shell REMOVED"
+        },
+        {
+          "id": "A-4.5",
+          "claim": "全屏条款 Scenario 中断言 `isMaximized()` 的条数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "application-shell「页签空白双击切换窗口全屏」"
+        }
+      ]
+    }
+  ]
+}
