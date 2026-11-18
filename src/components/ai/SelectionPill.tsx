@@ -108,6 +108,8 @@ export default function SelectionPill() {
   const pointerRef = useRef<{ x: number; y: number } | null>(null);
   const dragStartRef = useRef<{ x: number; y: number } | null>(null);
   const draggedRef = useRef(false);
+  const pointerActiveRef = useRef(false);
+  const changedWhileDownRef = useRef(false);
   const pillRef = useRef<HTMLDivElement | null>(null);
   const [leftX, setLeftX] = useState(0);
 
@@ -133,6 +135,11 @@ export default function SelectionPill() {
     const refreshPill = () => {
       if (busyRef.current || diffRef.current) {
         setPill(null);
+        return;
+      }
+      // 指针手势未结束前，selectionchange 只标记不渲染（松手后才显示）。
+      if (pointerActiveRef.current) {
+        changedWhileDownRef.current = true;
         return;
       }
       const s = window.getSelection();
@@ -211,10 +218,19 @@ export default function SelectionPill() {
     const recordPointer = (e: { clientX: number; clientY: number }) => {
       pointerRef.current = { x: e.clientX, y: e.clientY };
     };
-    const onDown = (e: { clientX: number; clientY: number }) => {
+    const onDown = (e: {
+      clientX: number;
+      clientY: number;
+      target: EventTarget | null;
+    }) => {
+      if (busyRef.current || diffRef.current) return;
+      if (isInsidePill(e.target)) return;
       recordPointer(e);
       dragStartRef.current = { x: e.clientX, y: e.clientY };
       draggedRef.current = false;
+      pointerActiveRef.current = true;
+      changedWhileDownRef.current = false;
+      setPill(null);
     };
     const onMove = (e: {
       clientX: number;
@@ -235,17 +251,28 @@ export default function SelectionPill() {
     }) => {
       recordPointer(e);
       const dragged = draggedRef.current;
+      const changed = changedWhileDownRef.current;
       dragStartRef.current = null;
       draggedRef.current = false;
+      pointerActiveRef.current = false;
+      changedWhileDownRef.current = false;
       if (isInsidePill(e.target)) return;
-      // 仅在拖拽选区后纠正到释放点；纯点击不重算，避免把已隐藏胶囊唤回。
-      if (dragged) refreshPill();
+      // 拖选或按压期间发生过选区变化：松手后按落点重算；纯点击不重算。
+      if (dragged || changed) refreshPill();
+    };
+    const onCancel = () => {
+      dragStartRef.current = null;
+      draggedRef.current = false;
+      pointerActiveRef.current = false;
+      changedWhileDownRef.current = false;
+      setPill(null);
     };
     document.addEventListener("selectionchange", refreshPill);
     document.addEventListener("mousedown", onDocMouseDown, true);
     document.addEventListener("pointerdown", onDown);
     document.addEventListener("pointermove", onMove);
     document.addEventListener("pointerup", onUp);
+    document.addEventListener("pointercancel", onCancel);
     document.addEventListener("mousedown", onDown);
     document.addEventListener("mousemove", onMove);
     document.addEventListener("mouseup", onUp);
@@ -258,6 +285,7 @@ export default function SelectionPill() {
       document.removeEventListener("pointerdown", onDown);
       document.removeEventListener("pointermove", onMove);
       document.removeEventListener("pointerup", onUp);
+      document.removeEventListener("pointercancel", onCancel);
       document.removeEventListener("mousedown", onDown);
       document.removeEventListener("mousemove", onMove);
       document.removeEventListener("mouseup", onUp);
