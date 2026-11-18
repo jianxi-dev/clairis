@@ -237,6 +237,8 @@ export default function SearchReplacePanel({
   const rowRefs = useRef<Map<number, HTMLButtonElement>>(new Map());
   const resultsRef = useRef<HTMLDivElement>(null);
   const [resultsMaxHeight, setResultsMaxHeight] = useState(0);
+  const [firstVisibleIndex, setFirstVisibleIndex] = useState(0);
+  const firstVisibleIndexRef = useRef(0);
 
   const close = useCallback(() => {
     useSearchFloatStore.getState().close(panelId);
@@ -331,6 +333,74 @@ export default function SearchReplacePanel({
       inputRef.current?.focus();
     },
     [mode, container, panelId],
+  );
+
+  // 结果区首个完整可见行：键位列显示与 ⌘N 直达共用这一份索引，避免两处各算导致所见与所绑不一致。
+  const syncFirstVisible = useCallback(() => {
+    const el = resultsRef.current;
+    if (!el) return;
+    const rowEls = el.querySelectorAll<HTMLElement>(".search-float-hit");
+    if (rowEls.length === 0) {
+      firstVisibleIndexRef.current = 0;
+      setFirstVisibleIndex((prev) => (prev === 0 ? prev : 0));
+      return;
+    }
+    const rect = el.getBoundingClientRect();
+    const style = getComputedStyle(el);
+    const top = rect.top + (parseFloat(style.paddingTop) || 0);
+    const bottom = rect.bottom - (parseFloat(style.paddingBottom) || 0);
+    let first = -1;
+    for (let i = 0; i < rowEls.length; i++) {
+      const r = rowEls[i].getBoundingClientRect();
+      if (r.top >= top - 1 && r.bottom <= bottom + 1) {
+        first = i;
+        break;
+      }
+    }
+    if (first < 0) {
+      // 容器内没有完整行（行高超过容器）时退化为首个越过顶部的行。
+      for (let i = 0; i < rowEls.length; i++) {
+        const r = rowEls[i].getBoundingClientRect();
+        if (r.bottom > top) {
+          first = i;
+          break;
+        }
+      }
+    }
+    if (first < 0) first = 0;
+    firstVisibleIndexRef.current = first;
+    setFirstVisibleIndex((prev) => (prev === first ? prev : first));
+  }, []);
+
+  useEffect(() => {
+    const el = resultsRef.current;
+    if (!el) return;
+    let raf = 0;
+    const schedule = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        syncFirstVisible();
+      });
+    };
+    syncFirstVisible();
+    el.addEventListener("scroll", schedule, { passive: true });
+    const observer = new ResizeObserver(schedule);
+    observer.observe(el);
+    return () => {
+      el.removeEventListener("scroll", schedule);
+      observer.disconnect();
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [syncFirstVisible, open, query, content, mode, replaceMode]);
+
+  const keyTextFor = useCallback(
+    (index: number): string => {
+      if (index === safeSelected) return "↵";
+      const rel = index - firstVisibleIndex;
+      return rel >= 0 && rel < SEARCH_FLOAT_MAX_ROWS ? `⌘${rel + 1}` : "";
+    },
+    [safeSelected, firstVisibleIndex],
   );
 
   const canReplace = mode !== "preview";
@@ -533,7 +603,9 @@ export default function SearchReplacePanel({
       } else if (meta) {
         const digit = digitFromCode(event.code);
         if (digit !== null && digit >= 1 && digit <= hits.length) {
-          setSelected(digit - 1);
+          setSelected(
+            Math.min(firstVisibleIndexRef.current + digit - 1, hits.length - 1),
+          );
         } else {
           handled = false;
         }
@@ -933,7 +1005,7 @@ export default function SearchReplacePanel({
               className="search-float-key"
               aria-label={index === safeSelected ? "回车" : undefined}
             >
-              {index === safeSelected ? "↵" : index < 9 ? `⌘${index + 1}` : ""}
+              {keyTextFor(index)}
             </span>
           </button>
         ))}
