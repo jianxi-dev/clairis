@@ -79,19 +79,19 @@ describe("SearchReplacePanel 行尾快捷键渲染条件", () => {
     );
   }
 
-  it("初始选中行显示键帽回车图标，其余 1~9 行显示 ⌘N", () => {
+  it("初始选中行显示 ↵ 字符，其余 1~9 行显示 ⌘N", () => {
     const { getByTestId } = renderPanel();
     fireEvent.change(getByTestId("search-float-input"), {
       target: { value: "属性" },
     });
     expect(badgeStates()).toEqual([
-      { text: "", svg: 1, aria: "回车" },
+      { text: "↵", svg: 0, aria: "回车" },
       { text: "⌘2", svg: 0, aria: null },
       { text: "⌘3", svg: 0, aria: null },
     ]);
   });
 
-  it("↑↓ 换选后回车图标跟随到新的选中行，无需点击", () => {
+  it("↑↓ 换选后 ↵ 跟随到新的选中行，无需点击", () => {
     const { getByTestId } = renderPanel();
     const input = getByTestId("search-float-input");
     fireEvent.change(input, { target: { value: "属性" } });
@@ -100,11 +100,11 @@ describe("SearchReplacePanel 行尾快捷键渲染条件", () => {
     expect(badgeStates()).toEqual([
       { text: "⌘1", svg: 0, aria: null },
       { text: "⌘2", svg: 0, aria: null },
-      { text: "", svg: 1, aria: "回车" },
+      { text: "↵", svg: 0, aria: "回车" },
     ]);
   });
 
-  it("↑ 换选后回车图标跟随回上一行，无需点击", () => {
+  it("↑ 换选后 ↵ 跟随回上一行，无需点击", () => {
     const { getByTestId } = renderPanel();
     const input = getByTestId("search-float-input");
     fireEvent.change(input, { target: { value: "属性" } });
@@ -113,7 +113,7 @@ describe("SearchReplacePanel 行尾快捷键渲染条件", () => {
     keyDown(input, { key: "ArrowUp" });
     expect(badgeStates()).toEqual([
       { text: "⌘1", svg: 0, aria: null },
-      { text: "", svg: 1, aria: "回车" },
+      { text: "↵", svg: 0, aria: "回车" },
       { text: "⌘3", svg: 0, aria: null },
     ]);
   });
@@ -131,19 +131,19 @@ describe("SearchReplacePanel 行尾快捷键渲染条件", () => {
     ).toBe(true);
     expect(badgeStates()).toEqual([
       { text: "⌘1", svg: 0, aria: null },
-      { text: "", svg: 1, aria: "回车" },
+      { text: "↵", svg: 0, aria: "回车" },
       { text: "⌘3", svg: 0, aria: null },
     ]);
   });
 
-  it("⌘N 直达该行即显示回车图标", () => {
+  it("⌘N 直达该行即显示 ↵", () => {
     const { getByTestId } = renderPanel();
     const input = getByTestId("search-float-input");
     fireEvent.change(input, { target: { value: "属性" } });
     keyDown(input, { key: "2", code: "Digit2", metaKey: true });
     expect(badgeStates()).toEqual([
       { text: "⌘1", svg: 0, aria: null },
-      { text: "", svg: 1, aria: "回车" },
+      { text: "↵", svg: 0, aria: "回车" },
       { text: "⌘3", svg: 0, aria: null },
     ]);
   });
@@ -164,7 +164,7 @@ describe("SearchReplacePanel 行尾快捷键渲染条件", () => {
     });
     const states = badgeStates();
     expect(states.slice(0, 9)).toEqual([
-      { text: "", svg: 1, aria: "回车" },
+      { text: "↵", svg: 0, aria: "回车" },
       { text: "⌘2", svg: 0, aria: null },
       { text: "⌘3", svg: 0, aria: null },
       { text: "⌘4", svg: 0, aria: null },
@@ -480,9 +480,7 @@ describe("SearchReplacePanel 状态栏自动显隐", () => {
     vi.useFakeTimers();
     const { getByTestId } = renderPanel();
     const bar = getByTestId("search-float-statusbar");
-    expect(bar.textContent).toBe(
-      "↑↓ 切换 · ↵ 定位选中 · ⌘1~9 直达 · Esc 关闭",
-    );
+    expect(bar.textContent).toBe("↑↓ 切换 · ↵ 定位选中 · ⌘1~9 直达 · Esc 关闭");
     expect(bar.className).not.toContain("search-float-statusbar-hidden");
   });
 
