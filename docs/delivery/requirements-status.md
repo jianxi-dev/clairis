@@ -64,6 +64,8 @@ openspec status --change <name>   # 单个变更工件完成度
 
 - 外壳/导航/搜索域（`editor-surface-batch22`）：2/2 票合并（PR #1086/#1087），3 条 requirement 修订，无新增 requirement（application-shell G-6 页签标题单行全显 + 页签间距 16px→32px；navigation 页签条与格头同步单行全显/间距口径；search-replace-float S-3 选中行徽标改键帽式回车图标 + 悬停更新 `activeIndex`），已归档 `openspec/changes/archive/2026-11-18-editor-surface-batch22`
 
+- 编辑/阅读/搜索/属性域（`editor-surface-batch23`）：4/4 票合并（PR #1094/#1095/#1096/#1097），5 条 requirement 修订，无新增 requirement（search-replace-float S-1 顶栏标题 / 关闭钮位次 / 输入框一键清空、S-3 结果区与快捷键字号 +1 档、S-6 状态栏文案去「（局部 · 浮窗内）」；editing E-10 层级标识仅悬停显示且更浅 + 拖动插入位置指示条 + 正文顺序同步；reading 预览态选区工具条拖选完成后再显示；doc-property-panel P-3 日期时间改单一面板选择器），已归档 `openspec/changes/archive/2026-11-18-editor-surface-batch23`
+
 - 编辑域（`table-editing-polish`）：6/6 票合并（PR #746–#751），3 条 requirement 修订（E-6 编辑内核与插入入口补上下文触发、手柄统一与表头无手柄；E-7 编排层补行列插入圆点与上下文命令集；E-14 浮层定位补触发控件矩形锚定），已归档 `openspec/changes/archive/2026-11-13-table-editing-polish`
   - 单元格手柄统一图标/垂直居中左边框线外/表头无手柄/圆角 3px、行列插入圆点上/左外缘悬停变 + 点击插入删除、斜杠菜单内容输入上下文（单元格/分栏/高亮块就地打开、焦点保持、Esc 回滚、定位与裁剪修正、死代码清理）、分栏与高亮块接入统一菜单 + 「+」手柄、上下文命令安全集（cell=行内+单行片段，container=全量）
 - 规格对齐（`rail-thumb-spec-sync`）：阅读空间卡片缩略图 72×54 → 64×48（`navigation` 1 条 requirement 修订，总数不变），已归档 `openspec/changes/archive/2026-11-08-rail-thumb-spec-sync`
@@ -211,7 +213,7 @@ openspec status --change <name>   # 单个变更工件完成度
 | E-7 | 编排层交互契约（块手柄 / 菜单栈 / 浮层裁剪 / 共享色板） | ✅ | change `md-orchestration`（归档 2026-11-03） |
 | E-8 | 编辑态与预览态同貌（同一张纸 / 同一套排版 / 块级组合规则） | ✅ | change `editor-preview-parity`（归档 2026-11-02） |
 | E-9 | 单元格工具条（已整体移除：无合并 / 无背景色） | ✅（移除） | change `editor-block-parity`（归档 2026-11-06；#140 实施移除） |
-| E-10 | 编辑器大纲浮层（右上角入口 / 跳转 / 跳过代码块） | ✅ | change `editor-outline`（归档 2026-11-03）；`shell-editor-batch5`（2026-11-08） |
+| E-10 | 编辑器大纲浮层（右上角入口 / 跳转 / 跳过代码块；层级标识仅悬停显示且更浅；拖动插入位置指示条 + 正文顺序同步） | ✅ | change `editor-outline`（归档 2026-11-03）；`shell-editor-batch5`（2026-11-08）；`editor-surface-batch23`（归档 2026-11-18，PR #1097） |
 | E-7 修订 | 块菜单贴手柄居中、二级面板、hover 稳定性 | ✅ | change `editor-interaction-fixes`（归档 2026-11-03） |
 | E-11 | 块菜单结构与图标体系 | ✅ | change `editor-block-parity`（归档 2026-11-06）；`shell-editor-batch5`（2026-11-08） |
 | E-12 | 单元格富文本编辑 | ✅ | change `editor-block-parity`（归档 2026-11-06） |
@@ -238,6 +240,7 @@ openspec status --change <name>   # 单个变更工件完成度
 | 编号 | 需求 | 状态 | 证据 |
 |---|---|---|---|
 | P-1…P-10 | 文档属性面板（三模式只读渲染 / A·B 两态与显隐配置 / 八类类型与智能编辑 / 行操作与选择模式 / 标签彩色胶囊与建议输入 / 字段改名与别称识别 / 新建默认与属性模板 / 外部字段收编 / 写回与数据无损 / A·B 视觉锚点） | ✅ | change `doc-property-and-search-panel`（12/12 票合并，归档 2026-11-17，主规格已同步） |
+| P-3 修订 | 日期时间字段改单一面板选择器（月历网格 + 时分步进，组合提交 `YYYY-MM-DDTHH:mm`）；YAML 校验补日期时间 | ✅ | change `editor-surface-batch23`（归档 2026-11-18，PR #1095） |
 | P-R1…P-R5 | 属性面板验收修订（布尔值图形与提示分离 / 操作条图标注册表化 / 编辑态隐藏 frontmatter 源码块 / 模板字段类型 UI 与内置可编辑 / 别名映射表 propAliasMap 应用配置） | ✅ | change `doc-property-refine`（6/6 票，PR #1031/#1032/#1033/#1035/#1036；来源票 #1019/#1021/#1022/#1023/#1024） |
 | P-D1…P-D5 | 属性面板同批缺陷修复（B 态托管日期只读 / 行尾删除按钮 / 溢出文档页边界 / 新增字段入口 / 拖拽光标） | ✅ | 缺陷批次 PR #1025/#1026/#1027/#1028/#1029（来源票 #1015/#1016/#1017/#1018/#1020） |
 
@@ -246,8 +249,8 @@ openspec status --change <name>   # 单个变更工件完成度
 | 编号 | 需求 | 状态 | 证据 |
 |---|---|---|---|
 | S-1…S-5 | 字面搜索/替换浮窗（⌘F 浮窗与默认位置 / 不分大小写子串扫描 / 双行结果与行尾快捷键 / 单事务替换与 diff 预览 / 局部快捷键 scope） | ✅ | change `doc-property-and-search-panel`（12/12 票合并，归档 2026-11-17，主规格已同步） |
-| S-1/S-3 修订 | 浮窗壳复用悬浮预览窗视觉范式与 8 向缩放；选中行即显键帽式回车图标（↑↓ 换选/直达，悬停更新 `activeIndex`）；点击定位归属所属窗格 | ✅ | change `search-float-refine`（PR #1010/#1011 合并，归档 2026-11-17，主规格已同步）；`editor-surface-batch22`（归档 2026-11-18，PR #1087） |
-| S-6 | 浮窗状态栏快捷键说明与自动显隐；结果行上下文片段预览态行内渲染（命中高亮保留） | ✅ | change `search-float-refine`（PR #1013 合并，归档 2026-11-17，主规格已同步） |
+| S-1/S-3 修订 | 浮窗壳复用悬浮预览窗视觉范式与 8 向缩放；选中行即显键帽式回车图标（↑↓ 换选/直达，悬停更新 `activeIndex`）；点击定位归属所属窗格；顶栏标题 / 关闭钮位次 / 输入框一键清空；结果区与快捷键字号 +1 档 | ✅ | change `search-float-refine`（PR #1010/#1011 合并，归档 2026-11-17，主规格已同步）；`editor-surface-batch22`（归档 2026-11-18，PR #1087）；`editor-surface-batch23`（归档 2026-11-18，PR #1096） |
+| S-6 | 浮窗状态栏快捷键说明与自动显隐；结果行上下文片段预览态行内渲染（命中高亮保留）；状态栏文案去「（局部 · 浮窗内）」 | ✅ | change `search-float-refine`（PR #1013 合并，归档 2026-11-17，主规格已同步）；`editor-surface-batch23`（归档 2026-11-18，PR #1096） |
 
 ### docs-governance（7）
 
