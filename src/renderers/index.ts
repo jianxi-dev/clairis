@@ -4,7 +4,7 @@ import { renderText } from "./text";
 
 export { renderMarkdown, takeDarkVars } from "./markdown";
 export { rewriteHtmlPaths, buildAssetUrl } from "./html";
-export { renderText } from "./text";
+export { renderText, renderTextPreview } from "./text";
 export { renderMermaid } from "./mermaid";
 
 /**

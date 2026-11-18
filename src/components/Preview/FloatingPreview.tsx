@@ -21,7 +21,7 @@ import {
 import { fileTypeOf, type FileTypeKind } from "../../lib/fileType";
 import { parentFolderNameOf, parentPathOf } from "../../lib/railCards";
 import { revealInFinder } from "../../lib/finder";
-import { buildAssetUrl, renderMarkdown, renderText } from "../../renderers";
+import { buildAssetUrl, renderMarkdown, renderTextPreview } from "../../renderers";
 import { mediaUrlForPath, resolveDocMediaHref } from "../../lib/mediaUrl";
 import { isTauriEnv } from "../../utils/tauri";
 import { pdfThumbOf } from "../../lib/pdfThumb";
@@ -637,7 +637,7 @@ export default function FloatingPreview({
         ? renderMarkdown(content, {
             resolveMedia: (href) => resolveDocMediaHref(href, previewPath),
           })
-        : renderText(content);
+        : renderTextPreview(content);
     return (
       <div
         data-testid="preview-doc"
