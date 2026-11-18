@@ -1,0 +1,94 @@
+{
+  "change": "editor-surface-batch22",
+  "requirements": [
+    {
+      "id": "R-1",
+      "text": "页签标题单行全显 + 页签间距 32px",
+      "anchors": [
+        {
+          "id": "A-1.1",
+          "claim": "相邻页签间距（px，容差 ±2）",
+          "kind": "exact",
+          "assert": "32",
+          "source": "#1053 用户反馈 / navigation 页签条与格头"
+        },
+        {
+          "id": "A-1.2",
+          "claim": "生效 `text-overflow: ellipsis` 的页签标题节点数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "#1053 / code obs TabBar"
+        },
+        {
+          "id": "A-1.3",
+          "claim": "页签标题计算 `-webkit-line-clamp` 为 `none` 的节点数下限",
+          "kind": "exact",
+          "assert": "1",
+          "source": "#1053（line-clamp 达上限仍渲染省略号）"
+        },
+        {
+          "id": "A-1.4",
+          "claim": "页签标题计算 `white-space` 为 `nowrap` 的节点数下限",
+          "kind": "exact",
+          "assert": "1",
+          "source": "#1053（单行不换行）"
+        },
+        {
+          "id": "A-1.5",
+          "claim": "页签总宽超过页签条可用宽度 → 页签条可横向滚动",
+          "kind": "state-machine",
+          "assert": "溢出→可滚动",
+          "source": "#1053 / navigation 长页签可滚动"
+        }
+      ]
+    },
+    {
+      "id": "R-2",
+      "text": "选中行徽标为回车图标 + 悬停更新 activeIndex",
+      "anchors": [
+        {
+          "id": "A-2.1",
+          "claim": "高亮 / 悬停行徽标内 svg 图标节点数下限",
+          "kind": "exact",
+          "assert": "1",
+          "source": "#1055 / design-system §2.1"
+        },
+        {
+          "id": "A-2.2",
+          "claim": "高亮 / 悬停行徽标内裸文本「回车」节点数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "#1055（要图标，不要「回车」两个字）"
+        },
+        {
+          "id": "A-2.3",
+          "claim": "徽标可访问名（`aria-label` / `title`）为「回车」的布尔",
+          "kind": "exact",
+          "assert": "1",
+          "source": "#1055 / 可访问性"
+        },
+        {
+          "id": "A-2.4",
+          "claim": "鼠标悬停结果行 k → 该行成为 `activeIndex` 高亮行且徽标显示",
+          "kind": "state-machine",
+          "assert": "悬停→选中",
+          "source": "#1055"
+        },
+        {
+          "id": "A-2.5",
+          "claim": "ArrowDown / ArrowUp → `activeIndex` 高亮行变化，徽标跟随",
+          "kind": "state-machine",
+          "assert": "按键→高亮变",
+          "source": "#1055 / search-replace-float S-3"
+        },
+        {
+          "id": "A-2.6",
+          "claim": "Enter → 打开当前高亮结果并滚动到可视区",
+          "kind": "state-machine",
+          "assert": "回车→定位命中",
+          "source": "search-replace-float S-3"
+        }
+      ]
+    }
+  ]
+}
