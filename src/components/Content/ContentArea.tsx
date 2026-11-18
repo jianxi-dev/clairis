@@ -772,6 +772,7 @@ export default function ContentArea({
             mode={editorMode}
             isNewDoc={!tab.path}
             docKey={tab.id}
+            docId={tab.path ?? tab.id}
           />
         </div>
       )}

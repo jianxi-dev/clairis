@@ -266,3 +266,74 @@ test("套用编辑后的内置「通用」保留模板字段类型且撤销不�
   ).toHaveText("已定稿");
   await dpbRecord(page, "1045", "04-existing-values-untouched");
 });
+
+test("套用编辑后的内置「通用」类型跨页面重载保持（#1034）", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1100, height: 800 });
+  await boot(page);
+  await openSettings(page);
+
+  await page.locator('[data-testid="tpl-edit-通用"]').click();
+  await expect(page.locator('[data-testid="tpl-editing"]')).toContainText(
+    "通用",
+  );
+  await page.locator('[data-testid="tpl-field-type-0"]').selectOption("date");
+  await page.locator('[data-testid="tpl-field-value-0"]').fill("2026-11-17");
+  await page.locator('[data-testid="tpl-save"]').click();
+  await expect(page.locator('[data-testid="tpl-restore-通用"]')).toBeVisible();
+
+  await page.keyboard.press("Escape");
+  await expect(page.locator('[data-testid="settings-scene"]')).toHaveCount(0);
+
+  const path = "/Users/test/persist-1034.md";
+  await page.evaluate((p) => {
+    (
+      window as unknown as {
+        __biaoyue_openFile__: (p: string, c: string, t?: string) => boolean;
+      }
+    ).__biaoyue_openFile__(p, `---\ntitle: 跨会话\n---\n\n# 正文\n`, "persist-1034.md");
+  }, path);
+  await setMode(page, "edit");
+  await applyTemplate(page, "通用");
+  const catRow = page.locator('[data-key="category"]');
+  await expect(
+    catRow.locator('[data-testid="dpb-type"] .dpb-ico-svg'),
+  ).toHaveCount(1);
+
+  const saved = await page.evaluate((p) => {
+    const store = (
+      window as unknown as {
+        __biaoyue_store__: {
+          getState: () => {
+            tabs: Record<string, { path: string | null; content: string }>;
+          };
+        };
+      }
+    ).__biaoyue_store__.getState();
+    const tab = Object.values(store.tabs).find((t) => t.path === p);
+    return tab?.content ?? "";
+  }, path);
+  expect(saved).toContain("category");
+
+  await page.reload({ waitUntil: "networkidle" });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 15000 });
+  await page.evaluate(
+    ({ p, c }) => {
+      (
+        window as unknown as {
+          __biaoyue_openFile__: (p: string, c: string, t?: string) => boolean;
+        }
+      ).__biaoyue_openFile__(p, c, "persist-1034.md");
+    },
+    { p: path, c: saved },
+  );
+  await setMode(page, "edit");
+  await expect(
+    page.locator('[data-key="category"] [data-testid="dpb-type"] .dpb-ico-svg'),
+  ).toHaveCount(1);
+  await expect(
+    page.locator('[data-key="category"] [data-testid="dpb-type"]'),
+  ).toHaveAttribute("title", /日期/);
+  await dpbRecord(page, "1034", "01-persisted-after-reload");
+});

@@ -102,3 +102,17 @@ test("任务项回车续写 checkbox", async ({ page }) => {
   const text = await storeContent(page);
   expect(text).toBe("- [ ] 第一件\n- [ ] 第二件");
 });
+
+test("键入 **加粗** 保持原文，不自动配对（#1012）", async ({ page }) => {
+  await openMarkdownForEditing(page, "/Users/test/si-bold.md");
+  await page.keyboard.type("**加粗**");
+  const text = await storeContent(page);
+  expect(text).toBe("**加粗**");
+});
+
+test("键入 *斜体* 保持原文（#1012）", async ({ page }) => {
+  await openMarkdownForEditing(page, "/Users/test/si-italic.md");
+  await page.keyboard.type("*斜体*");
+  const text = await storeContent(page);
+  expect(text).toBe("*斜体*");
+});
