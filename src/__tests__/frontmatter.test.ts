@@ -9,6 +9,7 @@ import {
   coerceFrontmatterValue,
   dedupeKeys,
   isManagedDateKey,
+  managedDateDisplay,
   moveFieldBlock,
   normalizePropAliasMap,
   parseFrontmatter,
@@ -310,6 +311,18 @@ describe("isManagedDateKey", () => {
     expect(isManagedDateKey("updated")).toBe(true);
     expect(isManagedDateKey("title")).toBe(false);
     expect(isManagedDateKey("createdate")).toBe(false);
+  });
+});
+
+describe("managedDateDisplay", () => {
+  it("截取日期部分，缺失 / 非日期返回 null（不渲染空壳）", () => {
+    expect(managedDateDisplay("2026-11-14")).toBe("2026-11-14");
+    expect(managedDateDisplay("2026-11-15T10:30:00")).toBe("2026-11-15");
+    expect(managedDateDisplay("2026-11-15 10:30")).toBe("2026-11-15");
+    expect(managedDateDisplay("")).toBeNull();
+    expect(managedDateDisplay(null)).toBeNull();
+    expect(managedDateDisplay(undefined)).toBeNull();
+    expect(managedDateDisplay("高")).toBeNull();
   });
 });
 

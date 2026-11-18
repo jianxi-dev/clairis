@@ -103,6 +103,10 @@ pub struct AppConfig {
     /// 缺省 = None，解析时回落内置 `BUILTIN_ALIAS_MAP`（ALIAS/CANON_TYPE）。
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub prop_alias_map: Option<HashMap<String, String>>,
+    /// 文档属性面板形态偏好（document-properties-inline 2.1）：A / B。
+    /// 缺省 = None，消费端按未手动选择处理（窄窗自动胶囊）。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub doc_property_variant: Option<String>,
 }
 
 /// 文档属性面板配置（doc-property-panel P-2）。
@@ -265,6 +269,7 @@ impl Default for AppConfig {
             search_panel: None,
             prop_templates: None,
             prop_alias_map: None,
+            doc_property_variant: None,
             sidebar_left_visible: Some(true),
             sidebar_right_visible: Some(false),
             sidebar_left_width: Some(220.0),
@@ -747,6 +752,9 @@ pub fn validate_config(config: &AppConfig) -> Result<(), AppError> {
                 &["show", "collapse", "hide"],
             )?;
         }
+    }
+    if let Some(variant) = &config.doc_property_variant {
+        check_enum("docPropertyVariant", Some(variant.as_str()), &["A", "B"])?;
     }
     if let Some(panel) = &config.search_panel {
         check_enum(
@@ -1927,6 +1935,38 @@ mod tests {
             restored.property_bar.unwrap().display_style.as_deref(),
             Some("dual")
         );
+    }
+
+    #[test]
+    fn doc_property_variant_round_trips_and_rejects_bad_input() {
+        let dir = temp_base("doc_property_variant");
+        let base = dir.path();
+
+        write_user(base, r#"{"theme":"dark"}"#);
+        assert_eq!(load_config_at(base).unwrap().doc_property_variant, None);
+
+        let mut config = AppConfig::default();
+        config.doc_property_variant = Some("B".into());
+        assert!(validate_config(&config).is_ok());
+        save_config_at(base, &config).unwrap();
+        let user = read_user(base);
+        assert!(
+            user.contains("docPropertyVariant"),
+            "user 层应含 docPropertyVariant: {user}"
+        );
+        assert_eq!(
+            load_config_at(base)
+                .unwrap()
+                .doc_property_variant
+                .as_deref(),
+            Some("B")
+        );
+
+        let before = read_user(base);
+        config.doc_property_variant = Some("stacked".into());
+        assert!(validate_config(&config).is_err());
+        assert!(save_config_at(base, &config).is_err());
+        assert_eq!(read_user(base), before);
     }
 
     #[test]

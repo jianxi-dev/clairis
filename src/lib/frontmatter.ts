@@ -160,6 +160,18 @@ export function isManagedDateKey(key: string): boolean {
   return key === "created" || key === "updated";
 }
 
+/**
+ * 托管日期展示值：只取 `YYYY-MM-DD` 部分（`updated` 含时间也截断）；
+ * 空值 / 非日期字面量返回 null，供 UI 缺失时不渲染空壳。
+ */
+export function managedDateDisplay(value: unknown): string | null {
+  if (value === null || value === undefined) return null;
+  const raw = String(value).trim();
+  if (!raw) return null;
+  const m = /^(\d{4}-\d{2}-\d{2})/.exec(raw);
+  return m ? m[1] : null;
+}
+
 /** 新建文档默认 frontmatter（P-7）：标题占位空串 + 创建 / 修改日期。 */
 export function newDocFrontmatter(now: Date = new Date()): string {
   const stamp = todayStamp(now);

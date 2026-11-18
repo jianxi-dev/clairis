@@ -44,7 +44,7 @@ source_of_truth: canonical
 保留现有 `Icon` 组件 `fill="currentColor"` 契约：描边图标在 path 上写
 `fill="none" stroke="currentColor" stroke-width="1.7"`。新增概念必须同时更新 `src/ui/icons.ts` 的 `ICONS` 表，禁止组件内联一次性 SVG。
 
-### 2.3 语义分组（39 概念）
+### 2.3 语义分组（40 概念）
 
 | 组 | 概念 |
 |---|---|
@@ -54,8 +54,9 @@ source_of_truth: canonical
 | 状态（2） | check / warning |
 | 分屏（2） | splitRight / splitDown |
 | AI（1） | sparkle |
+| 文档属性（1） | docPropertyVariant（A 一行条 / B 精排双列形态切换） |
 
-**覆盖范围（缺口）**：本表沿用 icon-system-v2 的 33 概念分组，doc-property-refine 追加 copy / trash / cut / paste / arrowUp / arrowDown 共 39 概念；`src/ui/icons.ts` 实现现有 **115 个键**，另有 **76 个未归组**（以下为示例）——媒体控件（play / pause / prev / next / volume / volumeMute / playlist / loopNone / loopSingle / loopPlaylist / subtitle / timestampNote / keyboardHints / pip / speed / home / heart / heartFilled）、导出族（exportWord / exportZip / exportMdpkg）、其余（pinOff / collapse / sunBright / sunWarm / closeOthers / chevronDown / immersive）。本表不声称穷举；未归组的概念不是"规范缺省"，是**待归组的缺口**。
+**覆盖范围（缺口）**：本表沿用 icon-system-v2 的 33 概念分组，doc-property-refine 追加 copy / trash / cut / paste / arrowUp / arrowDown，document-properties-inline 追加 docPropertyVariant，共 40 概念；`src/ui/icons.ts` 实现现有 **116 个键**，另有 **76 个未归组**（以下为示例）——媒体控件（play / pause / prev / next / volume / volumeMute / playlist / loopNone / loopSingle / loopPlaylist / subtitle / timestampNote / keyboardHints / pip / speed / home / heart / heartFilled）、导出族（exportWord / exportZip / exportMdpkg）、其余（pinOff / collapse / sunBright / sunWarm / closeOthers / chevronDown / immersive）。本表不声称穷举；未归组的概念不是"规范缺省"，是**待归组的缺口**。
 
 ### 2.4 状态对规则
 
@@ -174,7 +175,17 @@ source_of_truth: canonical
 
 token 缺失时组件按 `var(--sf-ctrl-height, 27px)` 回落，不静默失效。
 
-### 7.2 审美判据（L3，人工裁决，不机检）
+### 7.2 属性面板 footer 与图标密度（document-properties-inline 2.1）
+
+| 规范值 | 值 | 用途 |
+|---|---|---|
+| `--dpb-footer-font-size` | 11px | A / B 两形态底部 footer（托管日期 + 字段计数）字号，取既有标注档（§4 `--fs-11`） |
+| `--dpb-icon-size` | 14px | footer 锁图标与标题栏 AB 切换图标，取 §2.1 尺寸档的密集工具条档 |
+| `--dpb-date-gap` | 6px | footer 内日期项之间的水平间隔，取间距刻度 §3 `--space-6` |
+
+实现只引 token / 条款号，不写死像素；token 缺失时按上表数值回落。
+
+### 7.3 审美判据（L3，人工裁决，不机检）
 
 来源：`explorations/ui-philosophy/ui-design-philosophy.md` §六检验清单（该文其余数值已作废，仅此清单回收）。每个视觉决策过一遍：
 
