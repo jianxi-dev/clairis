@@ -955,7 +955,7 @@ test("字段名就地改名：面板显示与 YAML 键同步，重名被拦截",
   await openDoc(page, RENAME_DOC);
   await setMode(page, "edit");
   const row = panel(page, "A").locator('[data-key="note"]');
-  await row.locator('[data-testid="dpb-label"]').click();
+  await row.locator('[data-testid="dpb-label"]').dblclick();
   const input = row.locator('[data-testid="dpb-rename-input"]');
   await expect(input).toBeVisible();
   await input.fill("priority");
@@ -974,7 +974,7 @@ test("字段名就地改名：面板显示与 YAML 键同步，重名被拦截",
   await setMode(page, "edit");
 
   const other = panel(page, "A").locator('[data-key="other"]');
-  await other.locator('[data-testid="dpb-label"]').click();
+  await other.locator('[data-testid="dpb-label"]').dblclick();
   const dup = other.locator('[data-testid="dpb-rename-input"]');
   await dup.fill("priority");
   await dup.press("Enter");
@@ -1379,7 +1379,7 @@ test("复制两行粘贴：键名一致；目标已有同名键时自动追加�
   await expect(src).toContainText("author-2: 张三");
 });
 
-test("全选排除标题位与标签行，可手动再选标题", async ({ page }) => {
+test("全选含标签行、排除标题位，可手动再选标题", async ({ page }) => {
   await openDoc(page, ROW_DOC_TAGS);
   await setVariant(page, "B");
   await setMode(page, "edit");
@@ -1387,10 +1387,10 @@ test("全选排除标题位与标签行，可手动再选标题", async ({ page 
 
   await b.locator('[data-testid="dpb-select-all"]').click();
   await expect(b.locator('[data-testid="dpb-ops-count"]')).toHaveText(
-    "已选 2 项",
+    "已选 3 项",
   );
   await expect(b.locator('[data-key="title"].dpb-row-selected')).toHaveCount(0);
-  await expect(b.locator('[data-key="tags"].dpb-row-selected')).toHaveCount(0);
+  await expect(b.locator('[data-key="tags"].dpb-row-selected')).toHaveCount(1);
   await expect(b.locator('[data-key="category"].dpb-row-selected')).toHaveCount(
     1,
   );
@@ -1401,11 +1401,11 @@ test("全选排除标题位与标签行，可手动再选标题", async ({ page 
   await b.locator('[data-key="title"] [data-testid="dpb-row-handle"]').click();
   await expect(b.locator('[data-key="title"].dpb-row-selected')).toHaveCount(1);
   await expect(b.locator('[data-testid="dpb-ops-count"]')).toHaveText(
-    "已选 3 项",
+    "已选 4 项",
   );
 });
 
-test("全选/反选二态：连点两次全选→补集，文案两取值，标题/标签不参与", async ({
+test("全选/反选二态：连点两次全选→补集，文案两取值，标题不参与、标签纳入", async ({
   page,
 }) => {
   await openDoc(page, THREE_SELECTABLE_DOC);
@@ -1419,11 +1419,11 @@ test("全选/反选二态：连点两次全选→补集，文案两取值，标�
 
   await selectAll.click();
   await expect(b.locator('[data-testid="dpb-ops-count"]')).toHaveText(
-    "已选 3 项",
+    "已选 4 项",
   );
   await expect(selectAll).toHaveText("反选");
   await expect(b.locator('[data-key="title"].dpb-row-selected')).toHaveCount(0);
-  await expect(b.locator('[data-key="tags"].dpb-row-selected')).toHaveCount(0);
+  await expect(b.locator('[data-key="tags"].dpb-row-selected')).toHaveCount(1);
   await expect(b.locator('[data-key="score"].dpb-row-selected')).toHaveCount(1);
   await expect(b.locator('[data-key="note"].dpb-row-selected')).toHaveCount(1);
   await expect(b.locator('[data-key="category"].dpb-row-selected')).toHaveCount(
@@ -1439,7 +1439,7 @@ test("全选/反选二态：连点两次全选→补集，文案两取值，标�
 
   await selectAll.click();
   await expect(b.locator('[data-testid="dpb-ops-count"]')).toHaveText(
-    "已选 3 项",
+    "已选 4 项",
   );
   await page.locator(".cm-content").first().click();
   await expect(b.locator('[data-testid="dpb-ops"]')).toHaveCount(0);
@@ -1450,7 +1450,7 @@ test("全选/反选二态：连点两次全选→补集，文案两取值，标�
   await selectAll.click();
   await b.locator('[data-key="score"] [data-testid="dpb-row-handle"]').click();
   await expect(b.locator('[data-testid="dpb-ops-count"]')).toHaveText(
-    "已选 2 项",
+    "已选 3 项",
   );
   await selectAll.click();
   await expect(b.locator('[data-testid="dpb-ops-count"]')).toHaveText(
@@ -1461,35 +1461,37 @@ test("全选/反选二态：连点两次全选→补集，文案两取值，标�
   await expect(b.locator('[data-key="category"].dpb-row-selected')).toHaveCount(
     0,
   );
+  await expect(b.locator('[data-key="tags"].dpb-row-selected')).toHaveCount(0);
   await dpbRecord(page, "1042", "04-partial-invert");
 });
 
-test("选择模式：行内点击 = 选中/取消（不进编辑），行外点击清空", async ({
+test("选择模型（#1128）：字段名点击选中、值不参与、选择模式下不进编辑、行外清空", async ({
   page,
 }) => {
   await openDoc(page, ROW_DOC);
   await setMode(page, "edit");
   const a = panel(page, "A");
 
-  await a
-    .locator('[data-key="category"] [data-testid="dpb-row-handle"]')
-    .click();
+  await a.locator('[data-key="category"] [data-testid="dpb-label"]').click();
   await expect(panel(page, "A")).toHaveClass(/select-mode/);
+  await expect(a.locator('[data-testid="dpb-select-all"]')).toHaveText("反选");
 
   await a.locator('[data-key="author"] [data-testid="dpb-value"]').click();
   await expect(a.locator('[data-key="author"].dpb-row-selected')).toHaveCount(
-    1,
+    0,
   );
   await expect(a.locator('[data-testid="dpb-input"]')).toHaveCount(0);
   await expect(
     a.locator('[data-key="author"] [data-testid="dpb-value"]'),
   ).toHaveText("张三");
 
-  await a.locator('[data-key="source"] [data-testid="dpb-type"]').click();
+  await a.locator('[data-key="source"] [data-testid="dpb-label"]').click();
   await expect(a.locator('[data-key="source"].dpb-row-selected')).toHaveCount(
     1,
   );
-  await expect(page.locator('[data-testid="dpb-type-menu"]')).toHaveCount(0);
+  await expect(a.locator('[data-testid="dpb-ops-count"]')).toHaveText(
+    "已选 2 项",
+  );
 
   await page.locator(".cm-content").first().click();
   await expect(panel(page, "A")).not.toHaveClass(/select-mode/);
@@ -1497,6 +1499,77 @@ test("选择模式：行内点击 = 选中/取消（不进编辑），行外点�
 
   await a.locator('[data-key="author"] [data-testid="dpb-value"]').click();
   await expect(a.locator('[data-testid="dpb-input"]')).toBeVisible();
+});
+
+test("#1128 选择模型四态：0 选中全选 / 名称即反选 / 标签参与 / 反选互补", async ({
+  page,
+}) => {
+  await openDoc(page, ROW_DOC_TAGS);
+  await setVariant(page, "B");
+  await setMode(page, "edit");
+  const b = panel(page, "B");
+  const selectAll = b.locator('[data-testid="dpb-select-all"]');
+
+  await expect(selectAll).toHaveText("全选");
+  await expect(b.locator(".dpb-node-selected")).toHaveCount(0);
+  await dpbRecord(page, "1128", "01-zero-select-all");
+
+  await b.locator('[data-key="category"] [data-testid="dpb-label"]').click();
+  await expect(selectAll).toHaveText("反选");
+  await expect(b.locator('[data-testid="dpb-ops-count"]')).toHaveText(
+    "已选 1 项",
+  );
+  await expect(
+    b.locator(
+      '[data-key="category"] [data-testid="dpb-label"].dpb-node-selected',
+    ),
+  ).toHaveCount(1);
+  const labelBg = await b
+    .locator('[data-key="category"] [data-testid="dpb-label"]')
+    .evaluate((el) => getComputedStyle(el).backgroundColor);
+  const valueBg = await b
+    .locator('[data-key="category"] [data-testid="dpb-value"]')
+    .evaluate((el) => getComputedStyle(el).backgroundColor);
+  expect(valueBg).not.toBe(labelBg);
+  await expect(
+    b.locator('.dpb-node-selected [data-testid="dpb-value"]'),
+  ).toHaveCount(0);
+  await dpbRecord(page, "1128", "02-one-name-invert-ready");
+
+  await b.locator('[data-key="tags"] [data-testid="dpb-label"]').click();
+  await expect(b.locator('[data-testid="dpb-ops-count"]')).toHaveText(
+    "已选 2 项",
+  );
+  await expect(
+    b.locator('[data-key="tags"] .dpb-tag.dpb-node-selected'),
+  ).toHaveCount(1);
+
+  await selectAll.click();
+  await expect(b.locator('[data-testid="dpb-ops-count"]')).toHaveText(
+    "已选 1 项",
+  );
+  await expect(b.locator('[data-key="author"].dpb-row-selected')).toHaveCount(
+    1,
+  );
+  await expect(b.locator('[data-key="category"].dpb-row-selected')).toHaveCount(
+    0,
+  );
+  await expect(b.locator('[data-key="tags"].dpb-row-selected')).toHaveCount(0);
+  await expect(selectAll).toHaveText("反选");
+  await dpbRecord(page, "1128", "03-inverted-complement");
+
+  await b.locator('[data-key="author"] [data-testid="dpb-value"]').click();
+  await expect(b.locator('[data-testid="dpb-ops-count"]')).toHaveText(
+    "已选 1 项",
+  );
+  await b.locator('[data-testid="dpb-ops-clear"]').click();
+  await selectAll.click();
+  await expect(b.locator('[data-testid="dpb-ops-count"]')).toHaveText(
+    "已选 3 项",
+  );
+  await expect(b.locator('[data-key="tags"].dpb-row-selected')).toHaveCount(1);
+  await expect(b.locator('[data-key="title"].dpb-row-selected')).toHaveCount(0);
+  await dpbRecord(page, "1128", "04-select-all-tags-no-title");
 });
 
 test("操作条：无选中不出现；选中出现且粘贴禁用；复制后可用；取消隐藏", async ({
@@ -2543,7 +2616,7 @@ test("#1039 字段名输入框单行高度：长名不撑高输入框与行（A/
   for (const variant of ["A", "B"] as const) {
     await setVariant(page, variant);
     const row = panel(page, variant).locator('[data-key="score"]');
-    await row.locator('[data-testid="dpb-label"]').click();
+    await row.locator('[data-testid="dpb-label"]').dblclick();
     const input = row.locator('[data-testid="dpb-rename-input"]');
     await expect(input).toBeVisible();
     const before = await input.evaluate((el) => ({
