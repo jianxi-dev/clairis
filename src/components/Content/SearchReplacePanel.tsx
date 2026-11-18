@@ -29,6 +29,7 @@ import {
 import { digitFromCode } from "../../lib/gridKeyboard";
 import { activateLocalContext } from "../../lib/shortcuts";
 import { renderInlineWithHit } from "../../renderers/inline";
+import Icon from "../Icon";
 import { useSearchFloatStore } from "../../stores/searchFloat";
 import { getEditorView } from "../../editors/editorRef";
 import type { EditorMode, SearchPanelDefaultPos } from "../../types";
@@ -292,6 +293,8 @@ export default function SearchReplacePanel({
         effects: EditorView.scrollIntoView(hit.from, { y: "center" }),
       });
       view.focus();
+      // 焦点落回浮窗外会让根的 capture 键处理与局部键上下文一起失效，↑↓ 随之失灵。
+      inputRef.current?.focus();
     },
     [mode, container, panelId],
   );
@@ -346,6 +349,7 @@ export default function SearchReplacePanel({
     event: ReactMouseEvent<HTMLElement>,
     index: number,
   ) => {
+    setSelected(index);
     if (!replaceMode || !canReplace || !container) return;
     const b = container.getBoundingClientRect();
     const r = event.currentTarget.getBoundingClientRect();
@@ -852,8 +856,17 @@ export default function SearchReplacePanel({
                 </span>
               )}
             </span>
-            <span className="search-float-key">
-              {index === safeSelected ? "回车" : index < 9 ? `⌘${index + 1}` : ""}
+            <span
+              className="search-float-key"
+              aria-label={index === safeSelected ? "回车" : undefined}
+            >
+              {index === safeSelected ? (
+                <Icon name="enterKey" size={14} />
+              ) : index < 9 ? (
+                `⌘${index + 1}`
+              ) : (
+                ""
+              )}
             </span>
           </button>
         ))}

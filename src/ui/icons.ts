@@ -69,6 +69,7 @@ export type IconName =
   | "timestampNote"
   | "fullscreen"
   | "keyboardHints"
+  | "enterKey"
   | "pip"
   | "camera"
   | "tune"
@@ -409,6 +410,13 @@ export const ICONS: Record<IconName, IconDef> = {
   timestampNote: {
     label: "时间戳笔记",
     s: "M4 20.5l4.5-1.1L19 8.9a2.1 2.1 0 0 0-3-3L5.5 16.4 4 20.5z M14.5 7.5l2.9 2.9 M13 21h8",
+  },
+  enterKey: {
+    label: "回车",
+    parts: [
+      { s: "M5 6h14a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2z" },
+      { s: "M16 9v3.2a2.3 2.3 0 01-2.3 2.3H9.2 M12.9 11.9L9.2 14.5l3.7 2.6" },
+    ],
   },
   keyboardHints: {
     label: "快捷键",
