@@ -2435,6 +2435,20 @@ test("#1019 ⌘⇧Y 隐藏面板与切源码态均恢复完整 YAML", async ({ p
   await dpbRecord(page, "1019", "04-source-yaml-visible");
 });
 
+test("#1019 源码态光标留在 frontmatter 内，切回编辑态仍隐藏整块", async ({
+  page,
+}) => {
+  await openDoc(page);
+  await setMode(page, "source");
+  const cm = page.locator(".cm-content").first();
+  await cm.locator(".cm-line").nth(1).click();
+
+  await setMode(page, "edit");
+  await expect(cm).not.toContainText("title:");
+  await expect(cm).not.toContainText("---");
+  await dpbRecord(page, "1019", "05-source-caret-edit-hidden");
+});
+
 test("#1039 胶囊 DOM 顺序：类型图标→类型名→字段名→值→叉号（A/B）", async ({
   page,
 }) => {

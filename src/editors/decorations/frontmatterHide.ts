@@ -123,6 +123,18 @@ export interface FrontmatterHideResult {
   readonly decorations: Range<Decoration>[];
 }
 
+/** 激活隐藏时把落入块内的光标/选区迁到正文起点；无需迁移返回 null。 */
+export function frontmatterSelectionFix(
+  state: EditorState,
+  options?: FrontmatterHideOptions | null,
+): { anchor: number } | null {
+  if (!options || !options.hide) return null;
+  const block = findFrontmatterBlock(state.doc.toString());
+  if (!block) return null;
+  if (!frontmatterTouchesSelection(state, block)) return null;
+  return { anchor: block.bodyStart };
+}
+
 /**
  * 按当前状态生成 frontmatter 隐藏装饰；不适用时返回 null（零开销早退）。
  *
