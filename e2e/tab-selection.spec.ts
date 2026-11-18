@@ -26,19 +26,42 @@ async function openFile(page: Page, p: string): Promise<void> {
     .toBeGreaterThan(0);
 }
 
-test.describe("页签标题省略号与间距（editor-surface-batch21 4.5 / #1053）", () => {
+type TitleStyle = {
+  textOverflow: string;
+  whiteSpace: string;
+  lineClamp: string;
+};
+
+async function readTitleStyles(page: Page): Promise<TitleStyle[]> {
+  return page.evaluate(() =>
+    Array.from(
+      document.querySelectorAll<HTMLElement>(
+        '.tab-strip [data-tab-id] [data-testid="tab-title"]',
+      ),
+    ).map((el) => {
+      const cs = getComputedStyle(el);
+      return {
+        textOverflow: cs.textOverflow,
+        whiteSpace: cs.whiteSpace,
+        lineClamp: cs.webkitLineClamp,
+      };
+    }),
+  );
+}
+
+test.describe("页签标题单行全显与间距（editor-surface-batch22 1.1 / #1053）", () => {
   test.beforeAll(() => {
     mkdirSync(ARTIFACT_DIR, { recursive: true });
   });
 
-  test("相邻页签间距为 16px（A-15.1）", async ({ page }) => {
+  test("相邻页签间距为 32px（A-1.1）", async ({ page }) => {
     await boot(page);
     await openFile(page, "/tmp/1053/alpha.md");
     await openFile(page, "/tmp/1053/beta.md");
 
     const strip = page.locator(".tab-strip").first();
     const gap = await strip.evaluate((el) => getComputedStyle(el).columnGap);
-    expect(gap).toBe("16px");
+    expect(gap).toBe("32px");
 
     const delta = await page.evaluate(() => {
       const tabs = Array.from(
@@ -47,12 +70,14 @@ test.describe("页签标题省略号与间距（editor-surface-batch21 4.5 / #10
       const r = tabs.map((t) => t.getBoundingClientRect());
       return r[1].left - (r[0].left + r[0].width);
     });
-    expect(Math.abs(delta - 16)).toBeLessThanOrEqual(2);
+    expect(Math.abs(delta - 32)).toBeLessThanOrEqual(2);
 
-    await page.screenshot({ path: `${ARTIFACT_DIR}/02-gap-16.png` });
+    await page.screenshot({ path: `${ARTIFACT_DIR}/02-gap-32.png` });
   });
 
-  test("长页签名换行收缩、不再生效省略号（A-15.2）", async ({ page }) => {
+  test("长页签名单行完整显示、无省略号（A-1.2/A-1.3/A-1.4）", async ({
+    page,
+  }) => {
     await boot(page);
     await openFile(page, "/tmp/1053/short.md");
     await openFile(
@@ -60,38 +85,38 @@ test.describe("页签标题省略号与间距（editor-surface-batch21 4.5 / #10
       "/tmp/1053/very-long-tab-title-abcdefghijklmnopqrstuvwxyz-01.md",
     );
 
-    const label = await page
+    const styles = await readTitleStyles(page);
+    expect(styles.length).toBeGreaterThan(0);
+
+    // A-1.2：没有任何页签标题生效 text-overflow: ellipsis
+    expect(
+      styles.filter((s) => s.textOverflow === "ellipsis").length,
+    ).toBe(0);
+
+    // A-1.3：至少一个页签标题的计算 -webkit-line-clamp 为 none
+    expect(styles.filter((s) => s.lineClamp === "none").length).toBeGreaterThanOrEqual(1);
+
+    // A-1.4：至少一个页签标题的计算 white-space 为 nowrap
+    expect(
+      styles.filter((s) => s.whiteSpace === "nowrap").length,
+    ).toBeGreaterThanOrEqual(1);
+
+    // 视觉事实复核：长标题不再折成两行（行盒数为 1）
+    const lines = await page
       .locator('.tab-strip [data-tab-id] [data-testid="tab-title"]')
       .last()
       .evaluate((el) => {
         const cs = getComputedStyle(el);
-        const r = el.getBoundingClientRect();
-        return {
-          textOverflow: cs.textOverflow,
-          height: r.height,
-          whiteSpace: cs.whiteSpace,
-          lineClamp: cs.webkitLineClamp,
-        };
+        const lh = parseFloat(cs.lineHeight);
+        const lineHeight = Number.isFinite(lh) && lh > 0 ? lh : el.getBoundingClientRect().height;
+        return Math.round(el.getBoundingClientRect().height / lineHeight);
       });
-    expect(label.textOverflow).not.toBe("ellipsis");
-    expect(label.whiteSpace).not.toBe("nowrap");
-    expect(label.height).toBe(32);
+    expect(lines).toBe(1);
 
-    const ellipsisCount = await page.evaluate(
-      () =>
-        Array.from(
-          document.querySelectorAll<HTMLElement>(
-            '.tab-strip [data-tab-id] [data-testid="tab-title"]',
-          ),
-        ).filter((el) => getComputedStyle(el).textOverflow === "ellipsis")
-          .length,
-    );
-    expect(ellipsisCount).toBe(0);
-
-    await page.screenshot({ path: `${ARTIFACT_DIR}/01-long-titles-wrap.png` });
+    await page.screenshot({ path: `${ARTIFACT_DIR}/01-long-titles-nowrap.png` });
   });
 
-  test("多个长页签时页签条可横向滚动（A-15.3）", async ({ page }) => {
+  test("多个长页签时页签条可横向滚动（A-1.5）", async ({ page }) => {
     await boot(page);
     const long = "very-long-tab-title-abcdefghijklmnopqrstuvwxyz-";
     for (let i = 0; i < 8; i += 1) {
@@ -117,15 +142,15 @@ test.describe("页签标题省略号与间距（editor-surface-batch21 4.5 / #10
           iconBottom: icon.bottom - tab.top,
         };
       });
-    expect(boxed.tabHeight).toBe(40);
-    expect(boxed.stripHeight).toBe(40);
+    // 单行后页签高度由内容决定，此处只要求图标完整可见、不被页签条裁切。
     expect(boxed.iconTop).toBeGreaterThanOrEqual(0);
     expect(boxed.iconBottom).toBeLessThanOrEqual(boxed.tabHeight);
+    expect(boxed.iconBottom).toBeLessThanOrEqual(boxed.stripHeight);
 
     await page.screenshot({ path: `${ARTIFACT_DIR}/03-strip-scrollable.png` });
   });
 
-  test("关闭页签后间距保持 16px 且无残留省略号", async ({ page }) => {
+  test("关闭页签后间距保持 32px 且无残留省略号", async ({ page }) => {
     await boot(page);
     await openFile(
       page,
@@ -138,7 +163,7 @@ test.describe("页签标题省略号与间距（editor-surface-batch21 4.5 / #10
     const gapBefore = await strip.evaluate(
       (el) => getComputedStyle(el).columnGap,
     );
-    expect(gapBefore).toBe("16px");
+    expect(gapBefore).toBe("32px");
 
     const tabs = page.locator(".tab-strip [data-tab-id]");
     await tabs.nth(1).hover();
@@ -148,18 +173,12 @@ test.describe("页签标题省略号与间距（editor-surface-batch21 4.5 / #10
     const gapAfter = await strip.evaluate(
       (el) => getComputedStyle(el).columnGap,
     );
-    expect(gapAfter).toBe("16px");
+    expect(gapAfter).toBe("32px");
 
-    const ellipsisCount = await page.evaluate(
-      () =>
-        Array.from(
-          document.querySelectorAll<HTMLElement>(
-            '.tab-strip [data-tab-id] [data-testid="tab-title"]',
-          ),
-        ).filter((el) => getComputedStyle(el).textOverflow === "ellipsis")
-          .length,
-    );
-    expect(ellipsisCount).toBe(0);
+    const styles = await readTitleStyles(page);
+    expect(
+      styles.filter((s) => s.textOverflow === "ellipsis").length,
+    ).toBe(0);
 
     await page.screenshot({
       path: `${ARTIFACT_DIR}/04-after-close-keeps-gap.png`,

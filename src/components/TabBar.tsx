@@ -459,7 +459,7 @@ export default function TabBar({
           window.addEventListener("pointerup", onUp);
           window.addEventListener("pointercancel", onUp);
         }}
-        className="tab-strip flex min-h-[26px] w-full items-center gap-4 shrink-0 select-none overflow-x-auto px-1"
+        className="tab-strip flex min-h-[26px] w-full items-center gap-8 shrink-0 select-none overflow-x-auto px-1"
         style={{
           // 底边只由栏目头（pane-header）画一次；页签条再画一遍会叠成加深双线（#1/#23）。
           background: "transparent",
@@ -575,10 +575,7 @@ export default function TabBar({
                     }}
                   />
                 ) : (
-                  <span
-                    data-testid="tab-title"
-                    className="min-w-0 max-w-44 break-words line-clamp-2"
-                  >
+                  <span data-testid="tab-title" className="whitespace-nowrap">
                     {tab.title}
                   </span>
                 )}
