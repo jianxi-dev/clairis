@@ -40,7 +40,8 @@ import {
   readDocFieldTypes,
   writeDocFieldTypes,
 } from "../../lib/docFieldTypes";
-import { getActiveEditorView } from "../../editors/editorRef";
+import { getPanelEditorView } from "../../editors/editorRef";
+import { log } from "../../utils/log";
 import { useEditorStore } from "../../stores/editorStore";
 import { useDocPropertyPanelStore } from "../../stores/docPropertyPanel";
 import { useStore } from "../../stores/index";
@@ -1351,6 +1352,8 @@ interface DocPropertyBarProps {
   docKey?: string;
   /** 跨会话稳定的文档标识（文件路径；未落盘回退页签 id），供类型覆盖持久化。 */
   docId?: string;
+  /** 所在格 id：写回必须落在本格编辑器，分屏下不能取全局活动视图（#1016）。 */
+  panelId?: string;
 }
 
 export default function DocPropertyBar({
@@ -1359,6 +1362,7 @@ export default function DocPropertyBar({
   isNewDoc = false,
   docKey = "",
   docId = "",
+  panelId = "main",
 }: DocPropertyBarProps) {
   const hidden = useDocPropertyPanelStore((s) => s.hidden);
   const variant = useDocPropertyPanelStore((s) => s.variant);
@@ -1442,7 +1446,7 @@ export default function DocPropertyBar({
 
   const handleCommitField = useCallback(
     (key: string, value: unknown) => {
-      const view = getActiveEditorView();
+      const view = getPanelEditorView(panelId);
       if (!view) return;
       const result = setFrontmatterField(content, key, value);
       if (result.text === content) return;
@@ -1453,7 +1457,7 @@ export default function DocPropertyBar({
         useStore.getState().setTabTitle(docKey, String(value ?? ""));
       }
     },
-    [content, docKey],
+    [content, docKey, panelId],
   );
 
   const [tplStatus, setTplStatus] = useState<string | null>(null);
@@ -1505,7 +1509,7 @@ export default function DocPropertyBar({
       }
       const result = writeFrontmatterOrdered(content, next);
       if (result.text !== content) {
-        getActiveEditorView()?.dispatch({
+        getPanelEditorView(panelId)?.dispatch({
           changes: { from: result.from, to: result.to, insert: result.block },
         });
       }
@@ -1522,7 +1526,7 @@ export default function DocPropertyBar({
         `套用模板「${template.name}」→ 新增 ${added} 个字段${skipped ? `，跳过 ${skipped} 个已有键` : ""}`,
       );
     },
-    [content, propAliasMap, showTplStatus, typeKey],
+    [content, propAliasMap, showTplStatus, typeKey, panelId],
   );
 
   const [typeErrors, setTypeErrors] = useState<Record<string, string>>({});
@@ -1574,7 +1578,7 @@ export default function DocPropertyBar({
       const result = renameFrontmatterField(content, fromKey, toKey);
       if (!result.ok) return result.reason;
       if (result.text !== content) {
-        const view = getActiveEditorView();
+        const view = getPanelEditorView(panelId);
         view?.dispatch({
           changes: { from: result.from, to: result.to, insert: result.block },
         });
@@ -1589,7 +1593,7 @@ export default function DocPropertyBar({
       });
       return null;
     },
-    [content, typeKey],
+    [content, typeKey, panelId],
   );
 
   const parsed = useMemo(
@@ -1649,14 +1653,21 @@ export default function DocPropertyBar({
     (next: FrontmatterField[], nextSel: FrontmatterRowId[]) => {
       const result = writeFrontmatterOrdered(content, next);
       if (result.text !== content) {
-        const view = getActiveEditorView();
-        view?.dispatch({
-          changes: { from: result.from, to: result.to, insert: result.block },
-        });
+        const view = getPanelEditorView(panelId);
+        if (!view) {
+          log.error(
+            "DocPropertyBar",
+            `结构变更写回失败：本格编辑器未就绪（panelId=${panelId}）`,
+          );
+        } else {
+          view.dispatch({
+            changes: { from: result.from, to: result.to, insert: result.block },
+          });
+        }
       }
       applySelection(nextSel);
     },
-    [content, applySelection],
+    [content, applySelection, panelId],
   );
 
   const handleAutoFocusHandled = useCallback((key: string) => {
