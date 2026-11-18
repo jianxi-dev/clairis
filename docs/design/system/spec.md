@@ -162,7 +162,19 @@ source_of_truth: canonical
 
 **已知缺口**：错误色尚无独立 token（现值散落在 `editor.css` / `reader.css`）；`--app-accent-soft` 各主题 alpha 不同（亮 .10 / 暗 .14 / 暖 .08）。两处均在第二个 change 的 token 扩容时处理，本文件先登记，不假装已完成。
 
-## 7. 审美判据（L3，人工裁决，不机检）
+## 7. 控件密度与审美判据
+
+### 7.1 控件密度（`--sf-ctrl-height`）
+
+搜索浮窗的输入框、替换按钮与顶栏共用同一高度档；取值取自文件卡片悬浮窗（FloatingPreview）顶栏的计算高度，控件与顶栏同源，不再另立第二套高度。
+
+| 规范值 | 值 | 用途 |
+|---|---|---|
+| `--sf-ctrl-height` | 27px | 搜索 / 替换输入框、逐个 / 全部替换按钮、浮窗顶栏的统一高度 |
+
+token 缺失时组件按 `var(--sf-ctrl-height, 27px)` 回落，不静默失效。
+
+### 7.2 审美判据（L3，人工裁决，不机检）
 
 来源：`explorations/ui-philosophy/ui-design-philosophy.md` §六检验清单（该文其余数值已作废，仅此清单回收）。每个视觉决策过一遍：
 
