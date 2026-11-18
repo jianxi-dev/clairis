@@ -36,6 +36,10 @@ import {
   BUILTIN_PROP_TEMPLATES,
   type PropTemplateConfig,
 } from "../../lib/propTemplates";
+import {
+  readDocFieldTypes,
+  writeDocFieldTypes,
+} from "../../lib/docFieldTypes";
 import { getActiveEditorView } from "../../editors/editorRef";
 import { useEditorStore } from "../../stores/editorStore";
 import { useDocPropertyPanelStore } from "../../stores/docPropertyPanel";
@@ -1343,8 +1347,10 @@ interface DocPropertyBarProps {
   mode: EditorMode;
   /** 新建（未落盘）文档：默认显隐走全局 newDocVisible。 */
   isNewDoc?: boolean;
-  /** 文档标识：切换文档时隔离用户判定的类型（typeOverrides 会话态）。 */
+  /** 文档标识：切换文档时隔离用户判定的类型。 */
   docKey?: string;
+  /** 跨会话稳定的文档标识（文件路径；未落盘回退页签 id），供类型覆盖持久化。 */
+  docId?: string;
 }
 
 export default function DocPropertyBar({
@@ -1352,6 +1358,7 @@ export default function DocPropertyBar({
   mode,
   isNewDoc = false,
   docKey = "",
+  docId = "",
 }: DocPropertyBarProps) {
   const hidden = useDocPropertyPanelStore((s) => s.hidden);
   const variant = useDocPropertyPanelStore((s) => s.variant);
@@ -1465,9 +1472,25 @@ export default function DocPropertyBar({
     tplStatusTimer.current = window.setTimeout(() => setTplStatus(null), 3000);
   }, []);
 
+  const typeKey = docId || docKey;
   const [overrideMap, setOverrideMap] = useState<
     Record<string, Record<string, FrontmatterType>>
   >({});
+  const [loadedTypeKey, setLoadedTypeKey] = useState<string | null>(null);
+  if (typeKey && loadedTypeKey !== typeKey) {
+    setLoadedTypeKey(typeKey);
+    setOverrideMap((prev) => {
+      if (prev[typeKey]) return prev;
+      const stored = readDocFieldTypes(typeKey);
+      if (Object.keys(stored).length === 0) return prev;
+      return { ...prev, [typeKey]: stored };
+    });
+  }
+  useEffect(() => {
+    for (const [id, types] of Object.entries(overrideMap)) {
+      if (id) writeDocFieldTypes(id, types);
+    }
+  }, [overrideMap]);
 
   const handleApplyTemplate = useCallback(
     (template: PropTemplateConfig) => {
@@ -1488,23 +1511,23 @@ export default function DocPropertyBar({
       }
       const baseKeys = new Set(base.map((f) => f.key));
       setOverrideMap((prev) => {
-        const cur = prev[docKey] ?? {};
+        const cur = prev[typeKey] ?? {};
         const merged = { ...cur };
         for (const field of next) {
           if (!baseKeys.has(field.key)) merged[field.key] = field.type;
         }
-        return { ...prev, [docKey]: merged };
+        return { ...prev, [typeKey]: merged };
       });
       showTplStatus(
         `套用模板「${template.name}」→ 新增 ${added} 个字段${skipped ? `，跳过 ${skipped} 个已有键` : ""}`,
       );
     },
-    [content, propAliasMap, showTplStatus, docKey],
+    [content, propAliasMap, showTplStatus, typeKey],
   );
 
   const [typeErrors, setTypeErrors] = useState<Record<string, string>>({});
   const typeErrorTimer = useRef<number | null>(null);
-  const typeOverrides = overrideMap[docKey] ?? EMPTY_OVERRIDES;
+  const typeOverrides = overrideMap[typeKey] ?? EMPTY_OVERRIDES;
 
   useEffect(
     () => () => {
@@ -1531,8 +1554,8 @@ export default function DocPropertyBar({
     (field: FrontmatterField, next: FrontmatterType) => {
       if (next === field.type) return;
       setOverrideMap((prev) => {
-        const cur = prev[docKey] ?? {};
-        return { ...prev, [docKey]: { ...cur, [field.key]: next } };
+        const cur = prev[typeKey] ?? {};
+        return { ...prev, [typeKey]: { ...cur, [field.key]: next } };
       });
       const result = coerceFrontmatterValue(next, field.value);
       if (!result.ok) {
@@ -1543,7 +1566,7 @@ export default function DocPropertyBar({
         handleCommitField(field.key, result.value);
       }
     },
-    [docKey, handleCommitField, showTypeError],
+    [typeKey, handleCommitField, showTypeError],
   );
 
   const handleRename = useCallback(
@@ -1557,16 +1580,16 @@ export default function DocPropertyBar({
         });
       }
       setOverrideMap((prev) => {
-        const cur = prev[docKey];
+        const cur = prev[typeKey];
         if (!cur || !(fromKey in cur)) return prev;
         const next = { ...cur };
         next[toKey] = next[fromKey];
         delete next[fromKey];
-        return { ...prev, [docKey]: next };
+        return { ...prev, [typeKey]: next };
       });
       return null;
     },
-    [content, docKey],
+    [content, typeKey],
   );
 
   const parsed = useMemo(
@@ -1575,9 +1598,9 @@ export default function DocPropertyBar({
   );
   // 撤销 / 删字段后键已不存在：剪掉失效类型覆盖，避免同键重建时被旧类型劫持（#1045）。
   useEffect(() => {
-    if (!docKey) return;
+    if (!typeKey) return;
     setOverrideMap((prev) => {
-      const cur = prev[docKey];
+      const cur = prev[typeKey];
       if (!cur) return prev;
       const present = new Set(parsed.fields.map((f) => f.key));
       const next: Record<string, FrontmatterType> = {};
@@ -1585,9 +1608,9 @@ export default function DocPropertyBar({
         if (present.has(key)) next[key] = type;
       }
       if (Object.keys(next).length === Object.keys(cur).length) return prev;
-      return { ...prev, [docKey]: next };
+      return { ...prev, [typeKey]: next };
     });
-  }, [docKey, parsed]);
+  }, [typeKey, parsed]);
   const fields = useMemo(() => {
     if (Object.keys(typeOverrides).length === 0) return parsed.fields;
     return parsed.fields.map((f) => {
@@ -1660,12 +1683,12 @@ export default function DocPropertyBar({
         [],
       );
       setOverrideMap((prev) => {
-        const cur = prev[docKey] ?? {};
-        return { ...prev, [docKey]: { ...cur, [key]: type } };
+        const cur = prev[typeKey] ?? {};
+        return { ...prev, [typeKey]: { ...cur, [key]: type } };
       });
       setPendingRenameKey(key);
     },
-    [parsed.present, fields, propAliasMap, commitFields, docKey],
+    [parsed.present, fields, propAliasMap, commitFields, typeKey],
   );
 
   const toggleRow = useCallback(
