@@ -1,7 +1,22 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render } from "@testing-library/react";
+
+const editorRefs = vi.hoisted(() => ({
+  activeView: null as null | {
+    dispatch: (spec: {
+      changes: { from: number; to: number; insert: string };
+    }) => void;
+    focus: () => void;
+  },
+}));
+
+vi.mock("../../../editors/editorRef", () => ({
+  getActiveEditorView: () => editorRefs.activeView,
+}));
+
 import DocPropertyBar from "../../../components/Content/DocPropertyBar";
 import { useDocPropertyPanelStore } from "../../../stores/docPropertyPanel";
+import { useEditorStore } from "../../../stores/editorStore";
 
 const DOC = `---
 title: 属性面板
@@ -84,5 +99,100 @@ describe("DocPropertyBar 布尔值图形与提示分离（#1021）", () => {
     const value = container.querySelector('[data-key="flag"] .dpb-bool');
     expect(value?.textContent).toBe("◉");
     expect(value?.getAttribute("title")).toBe("已开启");
+  });
+});
+
+const PERSIST_DOC = "/Users/test/persist-doc.md";
+
+describe("模板字段类型跨会话保持（#1034）", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    editorRefs.activeView = null;
+    useEditorStore.getState().setConfig({
+      propTemplates: [
+        {
+          name: "通用",
+          fields: [
+            { key: "category", type: "date", value: "2026-11-17" },
+            { key: "author", type: "text", value: "" },
+            { key: "status", type: "number", value: "7" },
+          ],
+        },
+      ],
+    });
+  });
+
+  afterEach(() => {
+    cleanup();
+    resetPanel();
+    localStorage.clear();
+    editorRefs.activeView = null;
+    useEditorStore.getState().setConfig({
+      propTemplates: undefined,
+      propAliasMap: undefined,
+    });
+  });
+
+  it("套用后重挂载仍按模板类型渲染（持久化往返）", () => {
+    const doc = `---\ntitle: 持久化\nnote: 备注\n---\n\n# 正文\n`;
+    let content = doc;
+    const dispatchRef: {
+      current: { changes: { from: number; to: number; insert: string } } | null;
+    } = { current: null };
+    editorRefs.activeView = {
+      dispatch: (spec) => {
+        dispatchRef.current = spec;
+      },
+      focus: () => {},
+    };
+
+    const first = render(
+      <DocPropertyBar
+        content={content}
+        mode="edit"
+        docKey="tab-1"
+        docId={PERSIST_DOC}
+      />,
+    );
+    fireEvent.click(first.container.querySelector('[data-testid="dpb-template"]')!);
+    fireEvent.click(document.querySelector('[data-name="通用"]')!);
+
+    const spec = dispatchRef.current!;
+    content =
+      content.slice(0, spec.changes.from) +
+      spec.changes.insert +
+      content.slice(spec.changes.to);
+    first.rerender(
+      <DocPropertyBar
+        content={content}
+        mode="edit"
+        docKey="tab-1"
+        docId={PERSIST_DOC}
+      />,
+    );
+
+    const catRow = first.container.querySelector('[data-key="category"]');
+    expect(catRow).not.toBeNull();
+    expect(
+      catRow!.querySelector('[data-testid="dpb-type"] .dpb-ico-svg'),
+    ).not.toBeNull();
+    first.unmount();
+
+    const second = render(
+      <DocPropertyBar
+        content={content}
+        mode="edit"
+        docKey="tab-2"
+        docId={PERSIST_DOC}
+      />,
+    );
+    const catRow2 = second.container.querySelector('[data-key="category"]');
+    expect(catRow2).not.toBeNull();
+    expect(
+      catRow2!.querySelector('[data-testid="dpb-type"] .dpb-ico-svg'),
+    ).not.toBeNull();
+    expect(
+      catRow2!.querySelector('[data-testid="dpb-type"]')!.getAttribute("title"),
+    ).toContain("日期");
   });
 });
