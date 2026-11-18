@@ -607,9 +607,13 @@ export default function SearchReplacePanel({
       } else if (meta) {
         const digit = digitFromCode(event.code);
         if (digit !== null && digit >= 1 && digit <= hits.length) {
-          setSelected(
-            Math.min(firstVisibleIndexRef.current + digit - 1, hits.length - 1),
+          const target = Math.min(
+            firstVisibleIndexRef.current + digit - 1,
+            hits.length - 1,
           );
+          setSelected(target);
+          // 直达复用鼠标点击行的 locate，一步滚动 + 高亮，避免第二套定位逻辑。
+          locate(hits[target]);
         } else {
           handled = false;
         }
