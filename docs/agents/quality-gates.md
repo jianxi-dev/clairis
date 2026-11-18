@@ -9,7 +9,7 @@
 | 组 | 覆盖 | 条目 |
 |----|------|------|
 | **QG** | 变更开发与测试（change 侧） | QG-1..QG-9（§二） |
-| **DQ** | 缺陷处理（defect 侧） | DQ-1..DQ-8（§三） |
+| **DQ** | 缺陷处理（defect 侧） | DQ-1..DQ-9（§三） |
 
 ---
 
@@ -265,7 +265,7 @@ gh issue list --label bug --state all --json number --jq 'length'
 
 ---
 
-## 三、缺陷处理质量门禁（DQ-1..DQ-8）
+## 三、缺陷处理质量门禁（DQ-1..DQ-9）
 
 > 缺陷侧的核心失效模式是：**票面的「修复方向」被当作结论**，且 **triage 可被静默跳过**。
 
@@ -371,6 +371,73 @@ gh issue view <N> --json labels,comments \
 gh issue list --label ready-for-agent --state all --json number,state \
   --jq '.[] | select(.state=="CLOSED") | .number'
 # 期望：无输出（关闭票不应残留 ready-for-agent）
+```
+
+---
+
+### DQ-9 真机偏差类验收分级
+
+**规则**：缺陷修复的验收判据落在 mock / headless Chromium（Vite dev + tauri-mock 桥接 / 注入）时，与真机（Tauri WKWebView + 真实文件打开链路 + 真实字体度量）存在系统性分歧。凡修复触及**真机偏差类触发信号**的票，验收必须满足**双路径证明**，**headless e2e 绿单独不构成关闭条件**。
+
+**触发信号**（命中任一即适用本门）：
+
+| 信号 | 含义 |
+|------|------|
+| (a) 字体 / 布局测量 | 修复依赖字体度量、行高、几何尺寸的计算值（如行号、截断、溢出、多行封顶） |
+| (b) 持久化 / 生命周期 | 修复依赖跨会话 / 重启 / 重开仍成立的状态（如 localStorage、内存态、重开文档） |
+| (c) 协议 / 原生 / WKWebView 行为 | 修复依赖真实 IPC、文件分类、原生渲染或浏览器引擎特有行为 |
+| (d) 用户语义裁定 | 验收对象是用户对形态 / 语义的解释（图标 vs 文本、交互时机、可点性） |
+| (e) 同一面被 tauri-mock 桥覆盖 | 该用户面在 tauri-mock / 桥接注入下也有 e2e，mock 面与真机面可能不同源 |
+
+**关闭此类票的必备证据**：
+
+1. **双路径证明**：断言驱动的是用户实际命中的那条链（真实 invoke / 非桥接路径，或经文档确认的等价路径），**或**在票上记录**用户执行的真机检查清单**条目。
+2. **断言测对属性**：断言须落在**产生可见真相的属性**（如 `-webkit-line-clamp` / `overflow` / clamp 态、元素几何），而非**代理属性**（如只读一个与可见缺陷无关的计算样式）。
+3. **headless 绿不足以关闭**：即使 headless e2e 全绿，未附 (1) 或 (2) 者**不予关闭**。
+
+**理由**：mock / headless 与真机是两条不同链。修复在 mock 链上全绿，只能证明「在 mock 链上成立」，无法证明「用户在真机看到的行为成立」。四张重开票的共同根因就是验收判据停在了 mock / headless 层，而非用户实际命中的真机链。
+
+**实证案例**（editor-surface-batch21 重开票，四张同源指向「验收判据与真机行为脱节」这一环节，按 DQ-7 反查产出本门）：
+
+| 票号 | 判据（假绿） | 真机偏差机制 |
+|------|-------------|-------------|
+| #1053 | 断言 `text-overflow` 计算值 | 视觉截断来自 `-webkit-line-clamp`，断言口径窄于视觉事实 |
+| #1055 | exact 锚点锁死文本「回车」 | 用户本意是回车**图标**，exact 锚点把错误需求反向锁死 |
+| #1051 | 行号接线仅接入主预览 `PreviewView` | 用户实际看到的 `FloatingPreview`（真实 `invoke open_file_direct`）仍走裸 `<pre>`，mock 桥覆盖了另一条面 |
+| #1057 | 断言计算样式 `position: sticky` | 真实缺陷是横向溢出把键列推出视口，sticky 正常空转，属性断言 ≠ 用户可见行为 |
+
+**反模式清单**（命中即判验收无效）：
+
+- **mock 改写协议**：把 `asset:` / `media://` 等真实协议重写成 data URL，使 mock 链绕开真机加载分支。
+- **代理属性断言**：断言计算样式，但可见缺陷来自另一机制（clamp / overflow / 几何 / 字体度量），断言测的不是产生真相的属性。
+- **exact 锚点锁死错误需求**：用户反馈与锚点冲突时，exact 锚点对「错误的需求」同样忠实执行；此时必须**先改需求再改码**（用户反馈与锚点矛盾 = 需求变更信号，触发 Δ-change，而非按原锚点硬修）。
+
+**如何验证**：
+
+```bash
+# 关闭此类票时，票上须含真机证据。人工核查（无对应机检脚本，随 DQ-5 原始证据一并审查）：
+gh issue view <N> --json body --jq .body | grep -E "真机|双路径|invoke|WKWebView|用户执行"
+# 无输出 = 疑似仅 headless 绿，按 DQ-9 不予关闭
+```
+
+#### 测试基础设施卫生
+
+**规则**：e2e 验证依赖的 Vite dev server 是**端口 1420 的全局单例**，Playwright `webServer.reuseExistingServer: true` 会**复用已运行的实例**。因此任何验证运行前，**必须先清理 1420 上的陈旧监听**并确认其指向当前工作树，或改用独立端口 + 一次性 config（`reuseExistingServer: false`）。**由服务复用导致的假红 / 假绿是第一类失败模式**，须与产品缺陷同等归因。
+
+**理由**：端口 1420 全局唯一，而本仓并行存在多个 worktree。一旦 1420 被某个兄弟 worktree 的陈旧 dev server 占用，Playwright 会静默复用，跑出的是**旧代码**的红或绿，验证结论完全不可信。多次独立复核都栽在这一条上。
+
+**实证案例**：
+
+- 独立复核 `#1053` 时，1420 被兄弟 worktree（`clairis-wt-903`）的常驻 vite 抢占，首次运行直接 `ERR_CONNECTION_REFUSED`（假红）。
+- `#903`、`#1012` 复用 1420 旧服务后收到 0 个预期产物（假绿假象）。
+- 同一窗格二次 `openDoc`（不同 path）后 mock 的视图失效，属 mock 桥伪影而非产品缺陷。
+
+**如何验证**：
+
+```bash
+# 验证前先确认 1420 监听者归属（须是当前工作树的 vite）
+lsof -nP -iTCP:1420 -sTCP:LISTEN
+# 若指向其他 worktree → 终止该进程或改用独立端口，否则本次红/绿不可信
 ```
 
 ---
@@ -500,6 +567,7 @@ await expect(editor).not.toContainText('/')
 | DQ-6 同根因合并 | ✅ | 本条目自身即豁免条款 |
 | DQ-7 多票升级规范 | ✅ | 票数 < 3 时自然不适用 |
 | DQ-8 标签维护 | ❌ | 不可豁免 |
+| DQ-9 真机偏差类验收分级 | ✅ | 未命中任何触发信号时自然不适用 |
 
 **适用 `no-ui-impact` 的票型**：纯重构、纯库内改动、纯文档、纯基建。
 
@@ -528,6 +596,7 @@ await expect(editor).not.toContainText('/')
    | QG-6 | 0 | — | 提案合并 / 退役 | — |
    | QG-8 | — | — | 保留 | findings 未转 issue / 规格条目 |
 | QG-9 | — | — | 保留 | 票面能力否定结论无探针痕迹（如「无视觉输入」） |
+| DQ-9 | — | — | 保留 | 真机偏差类修复仅 headless 绿、无双路径 / 真机清单证据；代理属性断言冒充可见行为 |
 
    **机制层机检的 expected capture**（v1.10.0 新增，供三指标对账）：
    | 机制 | expected capture（预期捕获场景） |
@@ -562,9 +631,9 @@ await expect(editor).not.toContainText('/')
 
 | 文档 | 关系 |
 |------|------|
-| `.opencode/skills/change-workflow/SKILL.md` | **挂载点**：QG-7/QG-3 挂 G0 切片与拆票；QG-1..QG-5 挂 G1 出口；QG-6 挂 G1 循环；QG-8 挂 G4 收尾前置；**DQ-1..DQ-8 挂「缺陷处理机制」章节** |
+| `.opencode/skills/change-workflow/SKILL.md` | **挂载点**：QG-7/QG-3 挂 G0 切片与拆票；QG-1..QG-5 挂 G1 出口；QG-6 挂 G1 循环；QG-8 挂 G4 收尾前置；**DQ-1..DQ-9 挂「缺陷处理机制」章节** |
 | `docs/agents/task-tracking.md` | 票内容规范：§3 引用 QG-1/QG-3；§7 引用 QG-2/QG-4/QG-5 |
-| `docs/agents/defect-workflow.md` | 缺陷流程：修复闭环引用 DQ-1..DQ-5；关闭引用 DQ-8 |
+| `docs/agents/defect-workflow.md` | 缺陷流程：修复闭环引用 DQ-1..DQ-5；关闭引用 DQ-8、DQ-9 |
 
 **最小充分集**：
 
@@ -575,4 +644,4 @@ await expect(editor).not.toContainText('/')
 
 ---
 
-_最后更新：2026-09-20_
+_最后更新：2026-11-18_
