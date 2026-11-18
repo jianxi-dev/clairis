@@ -29,6 +29,7 @@ import {
   type EditorDecorationsOptions,
   type FrontmatterHideOptions,
 } from "../../editors/decorations";
+import { frontmatterSelectionFix } from "../../editors/decorations/frontmatterHide";
 import {
   EMPTY_IMAGE_ATTRIBUTES,
   parseImageAttributes,
@@ -723,7 +724,13 @@ export default function ContentArea({
       editorMode === "edit" && !propPanelHidden
         ? { hide: true, collapsed: propPanelCollapsed }
         : null;
+    // 与装饰重配同事务迁移光标：否则「让位」会让面板可见的编辑态一直露出源码块。
+    const selection = frontmatterSelectionFix(
+      viewRef.current.state,
+      frontmatterHide,
+    );
     viewRef.current.dispatch({
+      ...(selection ? { selection } : {}),
       effects: [
         decorCompartment.reconfigure(
           decorationsForMode(editorMode, tab.fileKind, frontmatterHide),

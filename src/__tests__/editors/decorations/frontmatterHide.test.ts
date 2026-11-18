@@ -4,6 +4,7 @@ import {
   FMH_SUMMARY_CLASS,
   createFrontmatterHideDecorations,
   findFrontmatterBlock,
+  frontmatterSelectionFix,
   frontmatterTouchesSelection,
 } from "../../../editors/decorations/frontmatterHide";
 
@@ -129,5 +130,47 @@ describe("createFrontmatterHideDecorations", () => {
     expect(
       createFrontmatterHideDecorations(state, { hide: true, collapsed: false }),
     ).toBeNull();
+  });
+});
+
+describe("frontmatterSelectionFix", () => {
+  it("未激活隐藏 / 无块返回 null", () => {
+    const state = EditorState.create({ doc: DOC, selection: { anchor: 4 } });
+    expect(frontmatterSelectionFix(state, null)).toBeNull();
+    expect(
+      frontmatterSelectionFix(state, { hide: false, collapsed: false }),
+    ).toBeNull();
+    expect(
+      frontmatterSelectionFix(
+        EditorState.create({ doc: "# 正文\n", selection: { anchor: 2 } }),
+        { hide: true, collapsed: false },
+      ),
+    ).toBeNull();
+  });
+
+  it("光标在块外不迁移", () => {
+    const block = findFrontmatterBlock(DOC)!;
+    const state = EditorState.create({
+      doc: DOC,
+      selection: { anchor: block.bodyStart },
+    });
+    expect(
+      frontmatterSelectionFix(state, { hide: true, collapsed: true }),
+    ).toBeNull();
+  });
+
+  it("光标/选区落入块内迁到正文起点", () => {
+    const block = findFrontmatterBlock(DOC)!;
+    const caret = EditorState.create({ doc: DOC, selection: { anchor: 4 } });
+    expect(
+      frontmatterSelectionFix(caret, { hide: true, collapsed: false }),
+    ).toEqual({ anchor: block.bodyStart });
+    const selection = EditorState.create({
+      doc: DOC,
+      selection: { anchor: block.blockEnd - 1, head: block.bodyStart + 1 },
+    });
+    expect(
+      frontmatterSelectionFix(selection, { hide: true, collapsed: true }),
+    ).toEqual({ anchor: block.bodyStart });
   });
 });
