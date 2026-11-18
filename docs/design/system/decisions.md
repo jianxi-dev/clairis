@@ -80,5 +80,6 @@ ledger: append-only
 | 日期时间面板尺寸 | 面板 min-width 248px、日格 24×24、头部 / 格子圆角取 `--radius-4`，浮层圆角 `--radius-8`；月历周一为首列，时分按钮不作 Tab 停靠点 | editor-surface-batch23 / #1044 | 2026-11-18 |
 | 页签标题最大显示宽度 | 120px（容差 ±2px）：短名按实际长度、超出用省略号；页签条相邻间距保持 32px 不动 | tab-title-info-surface / #1104 | 2026-11-18 |
 | 页签名信息窗 | 外壳改为 8px 圆角矩形（`--radius-8`），宽度固定 320px（`--tab-info-width`，窄窗按 `100vw - 16px` 钳制）；文件名换行显示完整名 | tab-title-info-surface / #1104 | 2026-11-18 |
+| 搜索浮窗控件密度 | 输入框 / 替换按钮 / 顶栏统一 `--sf-ctrl-height: 27px`（spec §7.1），顶栏与文件卡片悬浮窗同高；关闭图标改用 `close` 键，与悬浮窗同一套 | search-replace-refine / #1116 | 2026-11-19 |
 
 - 2026-11-16 · doc-property-panel · 标签色板 10 色（靛蓝/青碧/琥珀/玫红/竹绿/天青/紫罗兰/赭石/石板/藤黄，亮暗各三值）誊写入 spec §6；分配规则 FNV-1a(name) % 10、同名同色、不可手工改色（来源：定稿原型 v13 PALETTE）

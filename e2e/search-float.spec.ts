@@ -2082,3 +2082,166 @@ test("#1115 选中行行尾为 ↵ 且键位列无底色（A-1.2/A-1.4）", asyn
   expect(nextStyle).toBe("rgba(0, 0, 0, 0)");
   await recordState1115(page, "04-key-column-no-background");
 });
+
+/* ------------------------------------------------------------------ *
+ * #1116 替换框清除按钮 + 输入行/按钮/顶栏密度（A-2.1 / A-2.2 / D3 / D4）
+ * ------------------------------------------------------------------ */
+
+const ART_1116 = path.resolve(process.cwd(), ".artifacts/1116");
+
+async function recordState1116(page: Page, state: string): Promise<void> {
+  mkdirSync(ART_1116, { recursive: true });
+  const file = path.join(ART_1116, `${state}.png`);
+  await page.screenshot({ path: file });
+  const manifest = path.join(ART_1116, "state-coverage.json");
+  let states: Array<Record<string, string>> = [];
+  try {
+    states = JSON.parse(readFileSync(manifest, "utf8")).states ?? [];
+  } catch {
+    states = [];
+  }
+  states = states.filter((s) => s.state !== state);
+  states.push({
+    state,
+    screenshot: path.relative(process.cwd(), file),
+    assertion: "passed",
+    recorded_at: new Date().toISOString(),
+    runner: `${process.env.USER ?? "unknown"}@${process.env.HOSTNAME ?? "unknown"}`,
+  });
+  writeFileSync(
+    manifest,
+    `${JSON.stringify({ task: "1116-replace-clear-density", states }, null, 2)}\n`,
+  );
+}
+
+async function sfCtrlHeight(page: Page): Promise<number> {
+  return page.evaluate(() =>
+    parseFloat(
+      getComputedStyle(document.documentElement).getPropertyValue(
+        "--sf-ctrl-height",
+      ),
+    ),
+  );
+}
+
+test("#1116 替换框清除按钮：非空出现，点击清空且焦点留在替换框、浮窗不关（A-2.2/D3）", async ({
+  page,
+}) => {
+  await page.keyboard.press("Meta+f");
+  const float = page.locator('[data-testid="search-float"]');
+  const searchClear = page.locator('[data-testid="search-float-clear"]');
+  const replaceInput = page.locator(
+    '[data-testid="search-float-replace-input"]',
+  );
+  const clear = page.locator('[data-testid="search-float-replace-clear"]');
+  await expect(float).toBeVisible();
+  await page.locator('[data-testid="search-float-replace-toggle"]').click();
+  await expect(replaceInput).toBeVisible();
+
+  // 空替换词：无清除钮
+  await expect(clear).toHaveCount(0);
+
+  await replaceInput.fill("特性");
+  await expect(clear).toBeVisible();
+
+  // 与搜索框清除按钮外观尺寸一致（同一套 .search-float-clear）
+  await page.locator('[data-testid="search-float-input"]').fill("属性");
+  await expect(searchClear).toBeVisible();
+  const pair = await page.evaluate(() => {
+    const read = (sel: string) => {
+      const el = document.querySelector<HTMLElement>(sel);
+      if (!el) throw new Error(`${sel} 缺失`);
+      const r = el.getBoundingClientRect();
+      const cs = getComputedStyle(el);
+      return { w: r.width, h: r.height, radius: cs.borderRadius };
+    };
+    return {
+      search: read('[data-testid="search-float-clear"]'),
+      replace: read('[data-testid="search-float-replace-clear"]'),
+    };
+  });
+  expect(pair.replace.w).toBe(pair.search.w);
+  expect(pair.replace.h).toBe(pair.search.h);
+  expect(pair.replace.radius).toBe(pair.search.radius);
+  await recordState1116(page, "01-clear-visible");
+
+  await clear.click();
+  await expect(replaceInput).toHaveValue("");
+  await expect(float).toBeVisible();
+  await expect(replaceInput).toBeFocused();
+  expect(
+    await page.evaluate(
+      () => document.activeElement?.getAttribute("data-testid") ?? "",
+    ),
+  ).toBe("search-float-replace-input");
+  await expect(clear).toHaveCount(0);
+  await recordState1116(page, "02-cleared-and-focused");
+});
+
+test("#1116 两行输入框与替换按钮等高且等于 --sf-ctrl-height（A-2.1/D4）", async ({
+  page,
+}) => {
+  await page.keyboard.press("Meta+f");
+  const float = page.locator('[data-testid="search-float"]');
+  await expect(float).toBeVisible();
+  await page.locator('[data-testid="search-float-replace-toggle"]').click();
+  await expect(
+    page.locator('[data-testid="search-float-replace-row"]'),
+  ).toBeVisible();
+
+  const token = await sfCtrlHeight(page);
+  expect(token).toBeGreaterThan(0);
+
+  const heights = await page.evaluate(() => {
+    const ids = [
+      "search-float-input",
+      "search-float-replace-input",
+      "search-float-replace-one",
+      "search-float-replace-all",
+    ];
+    const out: Record<string, number> = {};
+    for (const id of ids) {
+      const el = document.querySelector<HTMLElement>(`[data-testid="${id}"]`);
+      out[id] = el ? el.getBoundingClientRect().height : -1;
+    }
+    return out;
+  });
+  for (const height of Object.values(heights)) {
+    expect(Math.abs(height - token)).toBeLessThanOrEqual(0.5);
+    expect(height).toBeGreaterThan(0);
+  }
+  await recordState1116(page, "03-controls-equal-height");
+});
+
+test("#1116 浮窗顶栏高度与文件卡片悬浮窗顶栏一致，关闭图标同一套（A-2.1/D4）", async ({
+  page,
+}) => {
+  await page.keyboard.press("Meta+f");
+  const float = page.locator('[data-testid="search-float"]');
+  await expect(float).toBeVisible();
+  await page.locator('[data-testid="search-float-input"]').fill("属性");
+
+  await openRailPreview(page);
+  const preview = page.locator('[data-testid="floating-preview"]');
+  const handleBox = await float
+    .locator('[data-testid="search-float-handle"]')
+    .boundingBox();
+  const titlebarBox = await preview
+    .locator('[data-testid="preview-titlebar"]')
+    .boundingBox();
+  if (!handleBox || !titlebarBox) throw new Error("顶栏未布局");
+  expect(Math.abs(handleBox.height - titlebarBox.height)).toBeLessThanOrEqual(
+    0.5,
+  );
+
+  const token = await sfCtrlHeight(page);
+  expect(Math.abs(handleBox.height - token)).toBeLessThanOrEqual(0.5);
+
+  const iconSize = async (selector: string) =>
+    page.locator(selector).evaluate((el) => el.getBoundingClientRect().width);
+  expect(await iconSize('[data-testid="search-float-close"] svg')).toBe(
+    await iconSize('[data-testid="preview-close"] svg'),
+  );
+
+  await recordState1116(page, "04-titlebar-aligned");
+});

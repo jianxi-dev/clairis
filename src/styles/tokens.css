@@ -52,6 +52,9 @@
   --tab-title-max-width: 120px;
   /* 页签名信息窗固定宽度；同上台账行 */
   --tab-info-width: 320px;
+  /* 搜索浮窗控件密度档（design-system §7.1）：输入框 / 替换按钮 / 顶栏共用，
+     与文件卡片悬浮窗顶栏计算高度严格相等。 */
+  --sf-ctrl-height: 27px;
   --app-shadow:
     0 1px 2px rgba(31, 26, 20, 0.05), 0 8px 24px rgba(31, 26, 20, 0.05);
 }

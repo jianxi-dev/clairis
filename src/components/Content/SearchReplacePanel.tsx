@@ -230,6 +230,7 @@ export default function SearchReplacePanel({
   const [wasOpen, setWasOpen] = useState(open);
   const rootRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const replaceInputRef = useRef<HTMLInputElement>(null);
   const cardRef = useRef<HTMLDivElement | null>(null);
   const dragRef = useRef<DragState | null>(null);
   const prevOpenRef = useRef(false);
@@ -716,7 +717,7 @@ export default function SearchReplacePanel({
           onPointerDown={(event) => event.stopPropagation()}
           onClick={close}
         >
-          ×
+          <Icon name="close" size={18} />
         </button>
       </div>
 
@@ -782,13 +783,33 @@ export default function SearchReplacePanel({
           className="search-float-replacerow"
           data-testid="search-float-replace-row"
         >
-          <input
-            data-testid="search-float-replace-input"
-            type="text"
-            value={replacement}
-            placeholder="替换为…"
-            onChange={(event) => setReplacement(event.target.value)}
-          />
+          <div
+            className={`search-float-inputbox${replacement ? " has-clear" : ""}`}
+          >
+            <input
+              ref={replaceInputRef}
+              data-testid="search-float-replace-input"
+              type="text"
+              value={replacement}
+              placeholder="替换为…"
+              onChange={(event) => setReplacement(event.target.value)}
+            />
+            {replacement !== "" && (
+              <button
+                type="button"
+                className="search-float-clear"
+                data-testid="search-float-replace-clear"
+                aria-label="清空替换词"
+                title="清空替换词"
+                onClick={() => {
+                  setReplacement("");
+                  replaceInputRef.current?.focus();
+                }}
+              >
+                <Icon name="close" size={14} />
+              </button>
+            )}
+          </div>
           <button
             type="button"
             className="search-float-replace-btn"
