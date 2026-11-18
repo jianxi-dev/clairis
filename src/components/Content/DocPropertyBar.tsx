@@ -347,9 +347,12 @@ interface RenameLabelProps {
   /** 等于本行键名时自动进入改名聚焦（新字段创建后就地改名）。 */
   autoFocusKey?: string | null;
   onAutoFocusHandled?: (key: string) => void;
+  /** 有值即把本名称单元格登记为可选中节点（#1128）。 */
+  selectId?: FrontmatterRowId | null;
+  selected?: boolean;
 }
 
-/** 字段名就地改名（P-6）：编辑态点击变输入，Enter / 失焦提交，托管键锁定。 */
+/** 字段名就地改名（P-6）：编辑态双击变输入，Enter / 失焦提交，托管键锁定。 */
 function RenameLabel({
   field,
   editable,
@@ -357,6 +360,8 @@ function RenameLabel({
   onSubmit,
   autoFocusKey = null,
   onAutoFocusHandled,
+  selectId = null,
+  selected = false,
 }: RenameLabelProps) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
@@ -416,7 +421,10 @@ function RenameLabel({
   };
 
   return (
-    <span className="dpb-label-cell">
+    <span
+      className="dpb-label-cell"
+      data-select-node={selectId != null ? String(selectId) : undefined}
+    >
       {editing ? (
         <input
           className={`dpb-input dpb-rename ${className}`}
@@ -438,13 +446,12 @@ function RenameLabel({
         />
       ) : (
         <span
-          className={`${className}${renameable ? " dpb-label-clickable" : ""}`}
+          className={`${className}${renameable ? " dpb-label-clickable" : ""}${selected ? " dpb-node-selected" : ""}`}
           data-testid="dpb-label"
           data-renameable={renameable ? "true" : "false"}
-          title={renameable ? "点击改名" : undefined}
+          title={renameable ? "双击改名" : undefined}
           role={renameable ? "button" : undefined}
           tabIndex={renameable ? 0 : undefined}
-          onClick={renameable ? start : undefined}
           onKeyDown={
             renameable
               ? (e) => {
@@ -1101,15 +1108,21 @@ function TagIcon() {
   );
 }
 
-function TagsValue({ field }: { field: FrontmatterField }) {
+function TagsValue({
+  field,
+  selected = false,
+}: {
+  field: FrontmatterField;
+  selected?: boolean;
+}) {
   if (!Array.isArray(field.value)) return <ValueView field={field} />;
   return (
-    <span className="dpb-tags-group">
+    <span className="dpb-tags-group" data-select-node="tags">
       {field.value.map((tag, i) => {
         const name = String(tag);
         return (
           <span
-            className="dpb-tag"
+            className={`dpb-tag${selected ? " dpb-node-selected" : ""}`}
             key={`${name}-${i}`}
             data-color={tagColor(name)}
           >
@@ -1291,7 +1304,11 @@ function LinkListEditor({ field, onCommit }: EditorProps) {
 }
 
 /** 标签编辑：建议菜单、就地改名、删除、粘贴去重（P-5）。 */
-function TagEditor({ field, onCommit }: EditorProps) {
+function TagEditor({
+  field,
+  onCommit,
+  selected = false,
+}: EditorProps & { selected?: boolean }) {
   const tabs = useStore((s) => s.tabs);
   const tags = Array.isArray(field.value) ? field.value.map(String) : [];
   const [input, setInput] = useState("");
@@ -1411,7 +1428,7 @@ function TagEditor({ field, onCommit }: EditorProps) {
   };
 
   return (
-    <span className="dpb-tags-editor" ref={wrapRef}>
+    <span className="dpb-tags-editor" ref={wrapRef} data-select-node="tags">
       <span className="dpb-tags-group">
         {tags.map((tag) =>
           renaming === tag ? (
@@ -1433,7 +1450,11 @@ function TagEditor({ field, onCommit }: EditorProps) {
               }}
             />
           ) : (
-            <span className="dpb-tag" key={tag} data-color={tagColor(tag)}>
+            <span
+              className={`dpb-tag${selected ? " dpb-node-selected" : ""}`}
+              key={tag}
+              data-color={tagColor(tag)}
+            >
               <TagIcon />
               <button
                 type="button"
@@ -1523,9 +1544,10 @@ function TagsCell({
   field,
   editable,
   onCommit,
-}: EditorProps & { editable: boolean }) {
-  if (!editable) return <TagsValue field={field} />;
-  return <TagEditor field={field} onCommit={onCommit} />;
+  selected = false,
+}: EditorProps & { editable: boolean; selected?: boolean }) {
+  if (!editable) return <TagsValue field={field} selected={selected} />;
+  return <TagEditor field={field} onCommit={onCommit} selected={selected} />;
 }
 
 interface TemplateMenuButtonProps {
@@ -1749,6 +1771,12 @@ export default function DocPropertyBar({
     y: number;
   } | null>(null);
   const suppressItemClick = useRef(false);
+  const lastSelectClickRef = useRef<{
+    id: FrontmatterRowId;
+    at: number;
+    x: number;
+    y: number;
+  } | null>(null);
   const { pos: palettePos, ref: paletteRef } = useMenuPos(
     paletteOpen ? paletteAnchor : null,
   );
@@ -1993,13 +2021,16 @@ export default function DocPropertyBar({
   const titleIdx = titleField ? fields.indexOf(titleField) : -1;
   const tagsIdx = tagsField ? fields.indexOf(tagsField) : -1;
   const selectMode = editable && selected.size > 0;
-  const selectableIdx = useMemo(
-    () =>
-      fields.map((_, i) => i).filter((i) => i !== titleIdx && i !== tagsIdx),
-    [fields, titleIdx, tagsIdx],
-  );
-  const allSelectableSelected =
-    selectableIdx.length > 0 && selectableIdx.every((i) => selected.has(i));
+  const hasSelection = selected.size > 0;
+  // 可选中节点 = 字段名（标题位除外）+ 标签行；值不参与选中（#1128）。
+  const selectableIds = useMemo(() => {
+    const ids: FrontmatterRowId[] = [];
+    fields.forEach((_, i) => {
+      if (i !== titleIdx && i !== tagsIdx) ids.push(i);
+    });
+    if (tagsIdx >= 0) ids.push("tags");
+    return ids;
+  }, [fields, titleIdx, tagsIdx]);
 
   const numericSelected = useCallback((): number[] => {
     return [...selectedRef.current]
@@ -2071,8 +2102,16 @@ export default function DocPropertyBar({
   );
 
   const handleSelectAll = useCallback(() => {
-    applySelection(selectableIdx.filter((i) => !selectedRef.current.has(i)));
-  }, [selectableIdx, applySelection]);
+    const cur = selectedRef.current;
+    if (cur.size === 0) {
+      applySelection(selectableIds);
+      return;
+    }
+    // 反选 = 可选中集合内反转；标题位不进入全选 / 反选，保留其手动选中态。
+    const next = selectableIds.filter((id) => !cur.has(id));
+    if (titleIdx >= 0 && cur.has(titleIdx)) next.push(titleIdx);
+    applySelection(next);
+  }, [selectableIds, titleIdx, applySelection]);
 
   const handleClear = useCallback(() => applySelection([]), [applySelection]);
 
@@ -2150,12 +2189,6 @@ export default function DocPropertyBar({
     },
     [fields, numericSelected, commitFields],
   );
-
-  const rowIdFromEl = (el: Element): FrontmatterRowId | null => {
-    const raw = el.getAttribute("data-row-id");
-    if (raw == null) return null;
-    return raw === "tags" ? "tags" : Number(raw);
-  };
 
   const dropRows = (): HTMLElement[] => {
     const root = panelRef.current;
@@ -2243,16 +2276,52 @@ export default function DocPropertyBar({
   };
 
   const onPanelClickCapture = (e: React.MouseEvent) => {
-    if (!editable || selectedRef.current.size === 0) return;
+    if (!editable) return;
     const t = e.target as HTMLElement | null;
     if (!t || typeof t.closest !== "function") return;
     if (t.closest('[data-testid="dpb-row-handle"]')) return;
-    const rowEl = t.closest("[data-row-id]");
-    if (!rowEl) return;
-    e.preventDefault();
-    e.stopPropagation();
-    const id = rowIdFromEl(rowEl);
-    if (id != null) toggleRow(id);
+    // 450ms 内原地再点 = 双击改名；操作条插入会让名称下移，故按坐标容差判定。
+    const now = e.timeStamp;
+    const last = lastSelectClickRef.current;
+    if (last) {
+      const near =
+        now - last.at < 450 &&
+        Math.hypot(e.clientX - last.x, e.clientY - last.y) < 12;
+      lastSelectClickRef.current = null;
+      if (near) {
+        e.preventDefault();
+        e.stopPropagation();
+        const key = last.id === "tags" ? tagsField?.key : fields[last.id]?.key;
+        if (key) setPendingRenameKey(key);
+        return;
+      }
+    }
+    // 可选中节点：字段名 / 标签行；点击即切换该行选择（#1128）。
+    if (!t.closest("input, textarea, button, select, a")) {
+      const node = t.closest("[data-select-node]");
+      if (node && panelRef.current?.contains(node)) {
+        const raw = node.getAttribute("data-select-node");
+        const id: FrontmatterRowId | null =
+          raw === "tags" ? "tags" : raw ? Number(raw) : null;
+        if (id != null) {
+          e.preventDefault();
+          e.stopPropagation();
+          lastSelectClickRef.current = {
+            id,
+            at: now,
+            x: e.clientX,
+            y: e.clientY,
+          };
+          toggleRow(id);
+        }
+        return;
+      }
+    }
+    // 选择模式下值区等行内点击不进入编辑（P-4）；值不参与选中（#1128）。
+    if (selectedRef.current.size > 0 && t.closest("[data-row-id]")) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
   };
 
   useEffect(() => {
@@ -2475,14 +2544,10 @@ export default function DocPropertyBar({
       type="button"
       className="dpb-select-all"
       data-testid="dpb-select-all"
-      title={
-        allSelectableSelected
-          ? "反选（不含标题与标签）"
-          : "全选（不含标题与标签）"
-      }
+      title={hasSelection ? "反选（不含标题）" : "全选（不含标题）"}
       onClick={handleSelectAll}
     >
-      {allSelectableSelected ? "反选" : "全选"}
+      {hasSelection ? "反选" : "全选"}
     </button>
   ) : null;
 
@@ -2588,6 +2653,8 @@ export default function DocPropertyBar({
                     field={field}
                     editable={editable}
                     className="dpb-b-label"
+                    selectId={rowId}
+                    selected={selected.has(rowId)}
                     onSubmit={handleRename}
                     autoFocusKey={pendingRenameKey}
                     onAutoFocusHandled={handleAutoFocusHandled}
@@ -2598,6 +2665,7 @@ export default function DocPropertyBar({
                         field={field}
                         editable={editable}
                         onCommit={handleCommitField}
+                        selected={selected.has("tags")}
                       />
                     ) : (
                       <FieldValue
@@ -2755,6 +2823,8 @@ export default function DocPropertyBar({
                     field={field}
                     editable={editable}
                     className="dpb-k"
+                    selectId={rowId}
+                    selected={selected.has(rowId)}
                     onSubmit={handleRename}
                     autoFocusKey={pendingRenameKey}
                     onAutoFocusHandled={handleAutoFocusHandled}
@@ -2812,12 +2882,17 @@ export default function DocPropertyBar({
                   field={tagsField}
                   editable={editable}
                   className="dpb-k"
+                  selectId="tags"
+                  selected={selected.has("tags")}
                   onSubmit={handleRename}
+                  autoFocusKey={pendingRenameKey}
+                  onAutoFocusHandled={handleAutoFocusHandled}
                 />
                 <TagsCell
                   field={tagsField}
                   editable={editable}
                   onCommit={handleCommitField}
+                  selected={selected.has("tags")}
                 />
               </span>
             )}

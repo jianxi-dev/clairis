@@ -988,12 +988,17 @@
   background: var(--app-accent-soft);
 }
 
-.dpb-row-selected {
+/* 选中高亮只落在字段名 / 标签节点（#1128），值单元格不染色。 */
+.dpb-node-selected {
   background: var(--app-accent-soft) !important;
   border-color: var(--app-accent) !important;
+  color: var(--app-text-strong);
+  border-radius: var(--radius-4);
 }
 
 .dpb-a-title-cell.dpb-row-selected {
+  background: var(--app-accent-soft) !important;
+  border-color: var(--app-accent) !important;
   border-radius: var(--radius-4);
 }
 
