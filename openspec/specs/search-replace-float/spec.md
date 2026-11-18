@@ -9,6 +9,8 @@ TBD - created by archiving change doc-property-and-search-panel. Update Purpose 
 
 默认宽度 SHALL 为现状的一半：由 `min(600px, calc(100% - 48px))` 改为约 `min(300px, calc(100% - 48px))`；窄窗继续按比例收缩，SHALL NOT 横向溢出。默认高度 460px；默认位置居中，SHALL 可在设置中配置为左 / 中 / 右三档；拖拽后的位置与尺寸会话内优先（改设置即回默认），位置三档与尺寸/位置会话内优先语义保持不变。预览态为只读，替换能力 SHALL 仅在编辑/源码态可用。
 
+**顶栏与输入区**：浮窗顶栏 SHALL 显示标题「搜索和替换」；关闭按钮 SHALL 位于顶栏最右侧，SHALL NOT 位于视图切换（替换 ⇄）图标之后。搜索输入框 SHALL 提供一键清空按钮，输入非空时可用，点击后 SHALL 清空关键词（不关闭浮窗）。
+
 #### Scenario: 默认位置设置
 
 - **WHEN** 用户把「搜索浮窗默认位置」设为右侧后按 ⌘F
@@ -39,6 +41,16 @@ TBD - created by archiving change doc-property-and-search-panel. Update Purpose 
 - **WHEN** 用户对比搜索浮窗与阅读空间文件卡片悬浮窗
 - **THEN** 两者的边框宽度 / 圆角 / 顶栏与状态栏计算样式 SHALL 一致（同一套视觉与显隐机制）
 
+#### Scenario: 顶栏标题与关闭按钮位次
+
+- **WHEN** 用户按 ⌘F 打开搜索浮窗
+- **THEN** 顶栏显示标题「搜索和替换」，关闭按钮位于顶栏最右侧，其后无兄弟节点
+
+#### Scenario: 输入框一键清空
+
+- **WHEN** 搜索输入非空时用户点击输入框内的一键清空按钮
+- **THEN** 关键词被清空，浮窗保持打开
+
 ### Requirement: S-2 扫描规则
 
 搜索 SHALL 为默认不分大小写的子串匹配（无「区分大小写 / 整词」开关），扫描当前文件全部块，命中结果 SHALL 含位置（行号、块类型、块内偏移）与命中文本。搜索 SHALL 为纯前端即时扫描（无 AI、无索引）。
@@ -55,6 +67,8 @@ TBD - created by archiving change doc-property-and-search-panel. Update Purpose 
 **结果容器高度上限 = 9 行**（按行高计算）：可见结果超过 9 条时，容器高度 SHALL 为 9 行（±2px），超出部分在容器内滚动查看，SHALL NOT 撑高浮窗；已显示行的快捷键不变。**行尾固定快捷键**：行 1~9 SHALL 显示 `⌘1~⌘9`，**被选中（当前命中）的行改显示键帽式回车图标**（自绘静态 path，经仓库图标注册表渲染，可访问名「回车」），SHALL NOT 渲染裸文本「回车」；快捷键列 SHALL 等宽数字右对齐，并 SHALL 以 sticky/fixed 固定在结果区右侧，容器滚动时 SHALL 始终可见、不随横向滚动移动。
 
 **键盘与指针导航**：↑↓ SHALL 移动高亮项 `activeIndex`；高亮行行尾徽标 SHALL 立即显示键帽式回车图标（无需点击该行）；**指针悬停结果行 SHALL 把 `activeIndex` 更新到该行**（与 ↑↓ 同一选择态），徽标在该行显示；Enter SHALL 打开当前高亮结果；无高亮时保持现有默认行为。`⌘/Ctrl+N` 直达第 N 行、点击定位（选中 + 滚动到可视区）保持；点击定位 SHALL 在浮窗所属窗格内执行（编辑态定位到浮窗所属 panelId 的编辑器视图，预览态在所属窗格的预览容器内滚动定位），SHALL NOT 定位到全局最近聚焦的编辑器窗格。
+
+**字号**：结果区文字（定位行与上下文片段）与行尾快捷键徽标的字号 SHALL 按 `docs/design/system/spec.md` §4 字阶各上调一档，SHALL 落在 §4 字阶集合内。
 
 #### Scenario: 选中行快捷键跟随
 
@@ -101,6 +115,11 @@ TBD - created by archiving change doc-property-and-search-panel. Update Purpose 
 - **WHEN** 替换模式下用户悬停结果行唤出全文预览卡
 - **THEN** 预览卡内容 SHALL 为 Markdown 渲染态（标题 / 摘要 / 格式可见），SHALL NOT 显示源码标记
 
+#### Scenario: 结果区与快捷键字号
+
+- **WHEN** 用户查看结果列表
+- **THEN** 结果定位行、上下文片段与行尾快捷键徽标的计算 font-size SHALL 各取 `docs/design/system/spec.md` §4 字阶中相邻的上移一档值，且落在 §4 字阶集合内
+
 ### Requirement: S-4 替换与 diff 预览
 
 替换模式 SHALL 由输入行 ⇄ 按钮切换，提供替换输入框与「全部替换 / 逐个替换」。替换模式下每条结果 SHALL 内联显示「原词 → 新词」diff 预览（删除线 → 强调色）。替换 SHALL 以 CM6 单事务执行（可撤销）；**逐个替换后 SHALL 自动跳到下一处命中**；全部替换 SHALL 一次事务完成并提示替换计数。
@@ -126,12 +145,12 @@ TBD - created by archiving change doc-property-and-search-panel. Update Purpose 
 
 ### Requirement: S-6 浮窗状态栏
 
-浮窗底部 SHALL 显示状态栏，内容为快捷键说明「↑↓ 切换 · ↵ 定位选中 · ⌘1~9 直达（局部 · 浮窗内）· Esc 关闭」。状态栏 SHALL 与阅读空间文件卡片悬浮窗的状态栏同构（同一套视觉与显隐机制）；状态栏 SHALL 贴住浮窗底边（间距 = 0），由浮窗纵向 flex 列布局保证，SHALL NOT 依赖 fixed 计算——**缩放窗口时状态栏 SHALL 仍贴住底边、不得脱离**。状态栏 SHALL 自动显隐：浮窗打开时显示；指针离开浮窗且浮窗失焦约 2 秒后自动隐藏；指针重新悬停浮窗或浮窗重新获得焦点时恢复显示；**显隐切换后 SHALL NOT 残留占位高度**。替换态下状态栏 SHALL 可选追加替换操作提示（逐个/全部替换快捷说明）。
+浮窗底部 SHALL 显示状态栏，内容为快捷键说明「↑↓ 切换 · ↵ 定位选中 · ⌘1~9 直达 · Esc 关闭」。状态栏 SHALL 与阅读空间文件卡片悬浮窗的状态栏同构（同一套视觉与显隐机制）；状态栏 SHALL 贴住浮窗底边（间距 = 0），由浮窗纵向 flex 列布局保证，SHALL NOT 依赖 fixed 计算——**缩放窗口时状态栏 SHALL 仍贴住底边、不得脱离**。状态栏 SHALL 自动显隐：浮窗打开时显示；指针离开浮窗且浮窗失焦约 2 秒后自动隐藏；指针重新悬停浮窗或浮窗重新获得焦点时恢复显示；**显隐切换后 SHALL NOT 残留占位高度**。替换态下状态栏 SHALL 可选追加替换操作提示（逐个/全部替换快捷说明）。
 
 #### Scenario: 打开即显示
 
 - **WHEN** 用户按 ⌘F 打开搜索浮窗
-- **THEN** 浮窗底部状态栏显示快捷键说明「↑↓ 切换 · ↵ 定位选中 · ⌘1~9 直达（局部 · 浮窗内）· Esc 关闭」
+- **THEN** 浮窗底部状态栏显示快捷键说明「↑↓ 切换 · ↵ 定位选中 · ⌘1~9 直达 · Esc 关闭」
 
 #### Scenario: 离开失焦自动隐藏
 
