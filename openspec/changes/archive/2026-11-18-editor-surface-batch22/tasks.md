@@ -11,7 +11,7 @@
 
 ## 1. 页签
 
-- [ ] 1.1 [change=editor-surface-batch22/1.1] 页签标题单行全显 + 页签间距 32px（复用 #1053）
+- [x] 1.1 [change=editor-surface-batch22/1.1] 页签标题单行全显 + 页签间距 32px（复用 #1053；PR #1086，已合并 b5e78a3）
   - 页签标题 SHALL 单行完整显示：SHALL NOT `text-overflow: ellipsis`、SHALL NOT 截断、SHALL NOT `-webkit-line-clamp`（含 `line-clamp`）、SHALL NOT 换行（`white-space: nowrap`）；页签总宽超过页签条可用宽度时页签条 SHALL 横向滚动
   - 相邻页签间距 SHALL 为 32px（±2px）
   - e2e：长页签标题计算 `text-overflow` ≠ `ellipsis`、`-webkit-line-clamp` = `none`、`white-space` = `nowrap`；相邻页签 `column-gap` = 32px（±2px）；页签条可横向滚动
@@ -21,7 +21,7 @@
 
 ## 2. 搜索浮窗
 
-- [ ] 2.1 [change=editor-surface-batch22/2.1] 选中行徽标改回车图标 + 悬停更新 activeIndex（复用 #1055）
+- [x] 2.1 [change=editor-surface-batch22/2.1] 选中行徽标改回车图标 + 悬停更新 activeIndex（复用 #1055；PR #1087，已合并 637f727）
   - 选中 / 悬停行行尾徽标 SHALL 为键帽式回车图标（自绘静态 path，经 `src/ui/icons.ts` 与 `src/editors/icons.ts` 注册表渲染，可访问名「回车」），SHALL NOT 为裸文本「回车」
   - 指针悬停结果行 SHALL 更新 `activeIndex` 至该行（与 ↑↓ 同一选择态），徽标在该行显示
   - 既有 ↑↓ 移动 `activeIndex`、Enter 打开当前高亮结果、9 行上限、sticky 快捷键列保持不变

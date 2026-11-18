@@ -62,6 +62,8 @@ openspec status --change <name>   # 单个变更工件完成度
 - 编辑/阅读/导出域（`editor-surface-batch18`）：3/3 票合并（PR #810–#812），文件动作迁到页签右键菜单（导出就地 6 项子菜单、打印独立项）、打印按 Markdown 预览态输出（mermaid 成图、打印后恢复现场）、裁剪图显示盒受容器约束并按比例（修复图片文档滚动异常），已归档 `openspec/changes/archive/2026-11-14-editor-surface-batch18`
   - 单元格手柄统一图标/垂直居中/表头无手柄/圆角 3px、行列插入圆点（上/左外缘、悬停变 +、点击插入删除）、斜杠菜单内容输入上下文（单元格/分栏/高亮块就地打开、焦点保持、Esc 回滚、死代码清理）、分栏与高亮块「+」手柄、上下文命令安全集（单元格=行内+单行片段，容器=全量）
 
+- 外壳/导航/搜索域（`editor-surface-batch22`）：2/2 票合并（PR #1086/#1087），3 条 requirement 修订，无新增 requirement（application-shell G-6 页签标题单行全显 + 页签间距 16px→32px；navigation 页签条与格头同步单行全显/间距口径；search-replace-float S-3 选中行徽标改键帽式回车图标 + 悬停更新 `activeIndex`），已归档 `openspec/changes/archive/2026-11-18-editor-surface-batch22`
+
 - 编辑域（`table-editing-polish`）：6/6 票合并（PR #746–#751），3 条 requirement 修订（E-6 编辑内核与插入入口补上下文触发、手柄统一与表头无手柄；E-7 编排层补行列插入圆点与上下文命令集；E-14 浮层定位补触发控件矩形锚定），已归档 `openspec/changes/archive/2026-11-13-table-editing-polish`
   - 单元格手柄统一图标/垂直居中左边框线外/表头无手柄/圆角 3px、行列插入圆点上/左外缘悬停变 + 点击插入删除、斜杠菜单内容输入上下文（单元格/分栏/高亮块就地打开、焦点保持、Esc 回滚、定位与裁剪修正、死代码清理）、分栏与高亮块接入统一菜单 + 「+」手柄、上下文命令安全集（cell=行内+单行片段，container=全量）
 - 规格对齐（`rail-thumb-spec-sync`）：阅读空间卡片缩略图 72×54 → 64×48（`navigation` 1 条 requirement 修订，总数不变），已归档 `openspec/changes/archive/2026-11-08-rail-thumb-spec-sync`
@@ -132,7 +134,7 @@ openspec status --change <name>   # 单个变更工件完成度
 | B-2 | 空状态继续区分块 | 🟡 | 设计已批 `docs/design/approved/empty-state/` |
 | B-4 | 内置示例文件释放 | 🟡 | `src-tauri/samples/` 已就位 |
 | B-5 | 空状态设计规则 | 🟡 | 设计已批 `docs/design/approved/empty-state/` |
-| G-6 | 顶栏职责与页签身份 | ✅ | change `reading-surface-refine`（归档 2026-11-06） |
+| G-6 | 顶栏职责与页签身份（页签标题单行全显 + 页签间距 32px） | ✅ | change `reading-surface-refine`（归档 2026-11-06）；`editor-surface-batch22`（归档 2026-11-18，PR #1086） |
 | G-7 | 图标语义与全屏可用性 | ✅ | change `reading-surface-refine`（归档 2026-11-06）；`shell-editor-batch5`（2026-11-08） |
 | G-8 | 页签拖拽轨迹与落点反馈 | ✅ | change `workspace-ux-batch4`（归档 2026-11-07，PR #278）；`shell-editor-batch5`（2026-11-08） |
 | G-9 | 页签与栏目视觉贴合主题 | ✅ | change `workspace-ux-batch4`（归档 2026-11-07，PR #281） |
@@ -244,7 +246,7 @@ openspec status --change <name>   # 单个变更工件完成度
 | 编号 | 需求 | 状态 | 证据 |
 |---|---|---|---|
 | S-1…S-5 | 字面搜索/替换浮窗（⌘F 浮窗与默认位置 / 不分大小写子串扫描 / 双行结果与行尾快捷键 / 单事务替换与 diff 预览 / 局部快捷键 scope） | ✅ | change `doc-property-and-search-panel`（12/12 票合并，归档 2026-11-17，主规格已同步） |
-| S-1/S-3 修订 | 浮窗壳复用悬浮预览窗视觉范式与 8 向缩放；选中行即显 ⏎（↑↓ 换选/直达）；点击定位归属所属窗格 | ✅ | change `search-float-refine`（PR #1010/#1011 合并，归档 2026-11-17，主规格已同步） |
+| S-1/S-3 修订 | 浮窗壳复用悬浮预览窗视觉范式与 8 向缩放；选中行即显键帽式回车图标（↑↓ 换选/直达，悬停更新 `activeIndex`）；点击定位归属所属窗格 | ✅ | change `search-float-refine`（PR #1010/#1011 合并，归档 2026-11-17，主规格已同步）；`editor-surface-batch22`（归档 2026-11-18，PR #1087） |
 | S-6 | 浮窗状态栏快捷键说明与自动显隐；结果行上下文片段预览态行内渲染（命中高亮保留） | ✅ | change `search-float-refine`（PR #1013 合并，归档 2026-11-17，主规格已同步） |
 
 ### docs-governance（7）

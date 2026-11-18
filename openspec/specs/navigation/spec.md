@@ -102,7 +102,7 @@ navigation 域定义标月桌面端"无侧栏"方向下的导航体系：启动�
 
 ### Requirement: 页签条与格头
 
-每格 SHALL 支持多页签：⌘T 新页签（当前格）、⌘W 关页签（最后一签关格）、拖拽排序；页签 SHALL 为类型色图标 + 标题 + ×。**页签名显示不全时 SHALL NOT 使用省略号**，SHALL 按可用宽度收缩或换行；相邻页签之间的间距 SHALL 约为一个指针尺寸（16px）。双击页签标题 SHALL 进入就地重命名（回车提交、Esc 取消、失焦提交），仅改变显示标题，SHALL NOT 改变文件路径。格头 SHALL 为页签条，右侧 SHALL 为模式图标（点击=预览↔编辑）、全屏图标、⋯ 菜单；⋯ 菜单 SHALL 恰含 6 项（新建文件/分享/右分/下分/源码模式/定位，均带图标，不含全屏）；导出、刷新、打开文件位置 SHALL NOT 出现在格头 ⋯ 菜单。
+每格 SHALL 支持多页签：⌘T 新页签（当前格）、⌘W 关页签（最后一签关格）、拖拽排序；页签 SHALL 为类型色图标 + 标题 + ×。**页签名 SHALL 单行完整显示**：SHALL NOT 使用省略号（含 `text-overflow: ellipsis` 与 `-webkit-line-clamp` 渲染的省略号）、SHALL NOT 截断、SHALL NOT 换行（`white-space: nowrap`）；页签总宽超过页签条可用宽度时，页签条 SHALL 横向滚动。相邻页签之间的间距 SHALL 为 **32px**（容差 ±2px）。双击页签标题 SHALL 进入就地重命名（回车提交、Esc 取消、失焦提交），仅改变显示标题，SHALL NOT 改变文件路径。格头 SHALL 为页签条，右侧 SHALL 为模式图标（点击=预览↔编辑）、全屏图标、⋯ 菜单；⋯ 菜单 SHALL 恰含 6 项（新建文件/分享/右分/下分/源码模式/定位，均带图标，不含全屏）；导出、刷新、打开文件位置 SHALL NOT 出现在格头 ⋯ 菜单。
 
 拖拽页签期间 SHALL NOT 选中经过的正文文字：拖拽一旦超过阈值，应用 SHALL 进入全局禁选会话，拖拽结束或取消后恢复；拖拽前的既有选区 SHALL NOT 被清空，但拖拽期间 `window.getSelection().toString()` SHALL 保持为空。
 
@@ -115,12 +115,12 @@ navigation 域定义标月桌面端"无侧栏"方向下的导航体系：启动�
 #### Scenario: 页签名无省略号
 
 - **WHEN** 某页签标题长度超过其可用宽度
-- **THEN** 该页签标题的计算 `text-overflow` SHALL NOT 为 `ellipsis`，标题 SHALL 按可用宽度收缩或换行
+- **THEN** 该页签标题的计算 `text-overflow` SHALL NOT 为 `ellipsis`，`-webkit-line-clamp` SHALL 为 `none`，`white-space` SHALL 为 `nowrap`，标题 SHALL 完整显示且 SHALL NOT 换行
 
 #### Scenario: 页签间距为指针尺寸
 
 - **WHEN** 测量相邻两个页签的间距
-- **THEN** 其间距 SHALL 约为 16px（容差 ±2px）
+- **THEN** 其间距 SHALL 为 32px（容差 ±2px）
 
 #### Scenario: 长页签可滚动
 
