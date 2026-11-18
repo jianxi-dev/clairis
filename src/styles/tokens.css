@@ -48,6 +48,10 @@
   --media-radius: 6px;
   /* 自绘悬停提示唯一外壳常量（design-system §5；batch19 A2） */
   --tip-shell-radius: var(--radius-full);
+  /* 页签标题最大显示宽度；裁决见 docs/design/system/decisions.md（tab-title-info-surface 1.1） */
+  --tab-title-max-width: 120px;
+  /* 页签名信息窗固定宽度；同上台账行 */
+  --tab-info-width: 320px;
   --app-shadow:
     0 1px 2px rgba(31, 26, 20, 0.05), 0 8px 24px rgba(31, 26, 20, 0.05);
 }

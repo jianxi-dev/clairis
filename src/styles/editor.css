@@ -1546,17 +1546,20 @@ body {
   cursor: grab;
 }
 
-/* ── 页签名下拉信息窗（batch19 B7 / R-14）：外壳复用 --tip-shell-radius ── */
+/* ── 页签名下拉信息窗（batch19 B7 / R-14）：外壳为 8px 圆角矩形（E-22 豁免）── */
 .tab-info {
   position: fixed;
   z-index: 4000;
   display: flex;
   flex-direction: column;
   gap: 6px;
-  max-width: min(360px, calc(100vw - 16px));
+  /* 固定宽度：信息窗只在悬停时出现，按内容收缩会让同一部件宽度跳动。
+     窄窗按视口钳制，保证 300px 最小窗口不横向溢出。 */
+  width: var(--tab-info-width);
+  max-width: calc(100vw - 16px);
   padding: 10px 12px;
   border: 1px solid var(--app-border);
-  border-radius: var(--tip-shell-radius);
+  border-radius: var(--radius-8);
   background: var(--app-surface);
   color: var(--app-text);
   box-shadow: var(--app-shadow);
@@ -1578,9 +1581,9 @@ body {
 }
 
 .tab-info__name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: normal;
   font-size: 14px;
   font-weight: 500;
   color: var(--app-text-strong);

@@ -83,7 +83,7 @@ async function openWheel(page: Page): Promise<void> {
   }
 }
 
-test("自绘悬停提示共用同一胶囊外壳（按钮 / 轮盘扇区 / 页签名）", async ({
+test("自绘悬停提示共用同一胶囊外壳（按钮 / 轮盘扇区），页签名信息窗为 8px 矩形豁免", async ({
   page,
 }) => {
   await boot(page, "/tmp/capsule-shell.md", DOC);
@@ -130,17 +130,26 @@ test("自绘悬停提示共用同一胶囊外壳（按钮 / 轮盘扇区 / 页�
   await page.keyboard.press("Escape");
   await expect(tip).toHaveCount(0, { timeout: 3000 });
 
-  // ⑤ 页签名下拉信息窗（batch19 B7：页签名提示改为信息窗，仍共用同一胶囊外壳）
+  // ⑤ 页签名信息窗（tab-title-info-surface 1.1 / #1104）：E-22 的唯一豁免——
+  // 8px 圆角矩形，不参与「同类提示共用胶囊常量」的相等断言
   const tab = page.locator("[data-tab-id]").first();
   await tab.hover();
   const info = page.getByTestId("tab-info-popover");
   await expect(info).toBeVisible({ timeout: 3000 });
-  shells.push(await shellOf(info));
+  const infoShell = await shellOf(info);
+  const radius8 = await page.evaluate(() =>
+    getComputedStyle(document.documentElement)
+      .getPropertyValue("--radius-8")
+      .trim(),
+  );
+  expect(infoShell.rawRadius).toBe(radius8);
+  expect(infoShell.radius).toBeLessThan(infoShell.height / 2);
   await shot(page, "tab-info-popover");
   await page.mouse.move(900, 620);
   await expect(info).toHaveCount(0, { timeout: 3000 });
 
-  // 同一类提示外壳常量严格相等；每类计算圆角均 ≥ 高度一半；矩形节点数 = 0
+  // 同一类胶囊提示外壳常量严格相等；每类计算圆角均 ≥ 高度一半；矩形节点数 = 0
+  // （页签名信息窗已在 ⑤ 单独验为 8px 矩形豁免，不进入本集合）
   const radii = shells.map((s) => s.rawRadius);
   expect(new Set(radii).size).toBe(1);
   let rectangular = 0;
@@ -172,8 +181,9 @@ test("表格行列热点气泡为胶囊，矩形外壳提示节点数为 0", asy
 
   // 汇总：当前 DOM 内全部自绘提示节点，矩形数严格为 0
   const rectangular = await page.evaluate(() => {
+    // .tab-info 是 E-22 的矩形豁免（8px 圆角），不计入「矩形外壳」违规
     const nodes = document.querySelectorAll(
-      ".app-tip, .cm-table-hotspot-bubble, .tab-info",
+      ".app-tip, .cm-table-hotspot-bubble",
     );
     let bad = 0;
     for (const el of Array.from(nodes)) {

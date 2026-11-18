@@ -46,7 +46,6 @@ interface TabBarProps {
 
 /** 指针移动超过该像素才算拖拽，以下视为点击切签。 */
 const DRAG_THRESHOLD_PX = 4;
-
 interface CtxMenu {
   x: number;
   y: number;
@@ -575,7 +574,11 @@ export default function TabBar({
                     }}
                   />
                 ) : (
-                  <span data-testid="tab-title" className="whitespace-nowrap">
+                  <span
+                    data-testid="tab-title"
+                    className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap"
+                    style={{ maxWidth: "var(--tab-title-max-width)" }}
+                  >
                     {tab.title}
                   </span>
                 )}
