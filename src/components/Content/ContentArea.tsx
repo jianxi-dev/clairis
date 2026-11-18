@@ -773,6 +773,7 @@ export default function ContentArea({
             isNewDoc={!tab.path}
             docKey={tab.id}
             docId={tab.path ?? tab.id}
+            panelId={panelId}
           />
         </div>
       )}

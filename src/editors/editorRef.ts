@@ -44,6 +44,21 @@ export function getActiveEditorView(): EditorView | null {
   return editorViews.get("main") || null;
 }
 
+/**
+ * 取指定格的编辑器视图，未注册时回退全局活动视图。
+ *
+ * 按格渲染的 UI（属性面板等）必须用本格视图提交变更：`getActiveEditorView()`
+ * 只认「最后一次获得 CM6 焦点的格」，分屏下从非聚焦格操作会把变更派发到别的
+ * 文档上（#1016：面板所在格删不掉，另一格被串写）。
+ */
+export function getPanelEditorView(panelId: string): EditorView | null {
+  if (panelId) {
+    const v = editorViews.get(panelId);
+    if (v) return v;
+  }
+  return getActiveEditorView();
+}
+
 export function setActivePanel(panelId: string) {
   lastActivePanel = panelId;
 }

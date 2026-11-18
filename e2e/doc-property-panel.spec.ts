@@ -1699,6 +1699,138 @@ test("行尾删除单行：其余自由键原样保留（P-9）", async ({ page 
   await dpbRecord(page, "1016", "05-free-keys-preserved");
 });
 
+const REALISTIC_DOC = `---
+title: 真实文档：冒号 # 引号
+tags:
+  - 甲
+  - "乙:丙"
+category: '草稿: 进行中'
+note: |
+  第一行
+  第二行
+author: 张三
+count: 42
+---
+
+# 正文
+`;
+
+const CRLF_DOC =
+  "---\r\ntitle: CRLF 文档\r\ncategory: 草稿\r\nauthor: 张三\r\n---\r\n\r\n# 正文\r\n";
+
+test("行尾删除：真实 frontmatter 形态（数组 / 引号冒号 / 多行 / 注释）A/B 均生效", async ({
+  page,
+}) => {
+  for (const variant of ["A", "B"] as const) {
+    await openDoc(page, REALISTIC_DOC, `/Users/test/realistic-${variant}.md`);
+    await setVariant(page, variant);
+    await setMode(page, "edit");
+    const p = panel(page, variant);
+
+    await p.locator('[data-key="category"] [data-testid="dpb-row-del"]').click();
+    expect(await rowKeys(page, variant)).not.toContain("category");
+    await setMode(page, "source");
+    await expect(page.locator(".cm-content").first()).not.toContainText(
+      "category:",
+    );
+    await expect(p.locator('[data-key="note"]')).toHaveCount(1);
+    await expect(
+      p.locator('[data-key="author"] [data-testid="dpb-value"]'),
+    ).toHaveText("张三");
+  }
+});
+
+test("工具条删除：CRLF 文档选中行后删除，源码同步移除", async ({ page }) => {
+  await openDoc(page, CRLF_DOC, "/Users/test/crlf.md");
+  await setVariant(page, "B");
+  await setMode(page, "edit");
+  const b = panel(page, "B");
+
+  await b.locator('[data-key="category"] [data-testid="dpb-row-handle"]').click();
+  await b.locator('[data-testid="dpb-ops-del"]').click();
+  expect(await rowKeys(page, "B")).toEqual(["title", "author"]);
+  await setMode(page, "source");
+  await expect(page.locator(".cm-content").first()).not.toContainText(
+    "category:",
+  );
+});
+
+test("分屏：非聚焦格行尾 / 工具条删除只改本格，另一格逐字不变（#1016）", async ({
+  page,
+}) => {
+  const DOC_A = `---\ntitle: 分屏甲\ncategory: 甲类\nauthor: 张三\n---\n\n# 甲\n`;
+  const DOC_B = `---\ntitle: 分屏乙\ncategory: 乙类\nauthor: 李四\n---\n\n# 乙\n`;
+
+  await openDoc(page, DOC_A, "/Users/test/split-a.md");
+  await page.evaluate(() => {
+    (
+      window as unknown as {
+        __biaoyue_store__: { getState: () => { splitPane: (d: string) => void } };
+      }
+    ).__biaoyue_store__
+      .getState()
+      .splitPane("right");
+  });
+  await openDoc(page, DOC_B, "/Users/test/split-b.md");
+  await setVariant(page, "B");
+
+  const panes = await page.locator("[data-pane-id]").evaluateAll((els) =>
+    els.map((e) => ({
+      id: e.getAttribute("data-pane-id"),
+      kind: e.getAttribute("data-pane-kind"),
+    })),
+  );
+  for (const pane of panes) {
+    if (pane.kind !== "tabs") continue;
+    await page.evaluate((pid) => {
+      (
+        window as unknown as {
+          __biaoyue_store__: {
+            getState: () => { setPaneEditorMode: (id: string, m: string) => void };
+          };
+        }
+      ).__biaoyue_store__.getState().setPaneEditorMode(pid, "edit");
+    }, pane.id);
+  }
+
+  const readPath = (path: string) =>
+    page.evaluate((p) => {
+      const s = (
+        window as unknown as {
+          __biaoyue_store__: {
+            getState: () => {
+              tabs: Record<string, { path: string; content: string }>;
+            };
+          };
+        }
+      ).__biaoyue_store__.getState();
+      const tab = Object.values(s.tabs).find((t) => t.path === p);
+      return tab?.content ?? "";
+    }, path);
+
+  await page.locator('[data-pane-id="main"] .cm-content').first().click();
+
+  const bars = page.locator('[data-testid="dpb-b"]');
+  let targetIdx = -1;
+  for (let i = 0; i < (await bars.count()); i++) {
+    const text = (await bars.nth(i).textContent()) ?? "";
+    if (text.includes("分屏乙")) targetIdx = i;
+  }
+  expect(targetIdx, "找到分屏乙所在面板").toBeGreaterThanOrEqual(0);
+  const target = bars.nth(targetIdx);
+
+  await target.locator('[data-key="category"] [data-testid="dpb-row-del"]').click();
+  await expect(target.locator('[data-key="category"]')).toHaveCount(0);
+  expect(await readPath("/Users/test/split-b.md")).not.toContain("category:");
+  expect(await readPath("/Users/test/split-a.md")).toBe(DOC_A);
+
+  await target.locator('[data-key="author"] [data-testid="dpb-row-handle"]').click();
+  await target.locator('[data-testid="dpb-ops-del"]').click();
+  await expect(target.locator('[data-key="author"]')).toHaveCount(0);
+  expect(await readPath("/Users/test/split-b.md")).not.toContain("author:");
+  expect(await readPath("/Users/test/split-a.md")).toBe(DOC_A);
+});
+
 async function newDoc(page: Page): Promise<void> {
   await page.evaluate(() => {
     (

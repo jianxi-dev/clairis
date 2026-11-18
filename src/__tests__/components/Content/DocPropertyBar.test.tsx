@@ -12,6 +12,7 @@ const editorRefs = vi.hoisted(() => ({
 
 vi.mock("../../../editors/editorRef", () => ({
   getActiveEditorView: () => editorRefs.activeView,
+  getPanelEditorView: () => editorRefs.activeView,
 }));
 
 import DocPropertyBar from "../../../components/Content/DocPropertyBar";
