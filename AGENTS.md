@@ -34,6 +34,7 @@ Biaoyue 面向中文用户，维护者母语为中文。以下为**硬约定**�
 - **架构/产品/设计文档**：`docs/`（索引 `docs/README.md`）：产品 `docs/product/`、批准设计 `docs/design/approved/`、探索 `docs/design/explorations/`、研究 `docs/research/`、交付 `docs/delivery/`、历史 `docs/archive/`；总纲由 `docs/README.md` + `docs/architecture/overview.md` 承担
 - **设计系统（视觉数值唯一来源）**：`docs/design/system/spec.md`（图标/间距/字号/圆角/语义色/判据）、`docs/design/system/decisions.md`（append-only 部件决案台账）；单 feature 设计在 `docs/design/approved/`，只引用条款号不复制数值
 - **数据面（可配置面的落点契约）**：`docs/agents/data-surface.md`（触发信号 / 六栏表 / 票面第 8 字段 / C10 机检）；脚本 `scripts/cw-data-surface.sh`，识别信号配在 `.change-workflow.conf` 的 `DATA_SURFACE_*`
+- **反馈对齐（对账表）**：用户反馈→实现的对称确认协议与写法指南 `docs/agents/feedback-alignment.md`（batch 级反馈拆票前强制对账；每条反馈必须有处置、禁止静默丢弃；grill-me 仅作开放需求升级路径；2026-11-18 裁定）
 - **知识检索（GBrain）**：agent 通过 MCP 工具 `search` / `query` / `get_page` / `code_def` / `code_refs`（共享 HTTP owner，`http://127.0.0.1:3131/mcp`）；CLI 同功能命令（`gbrain search/query/status`）在 **postgres** 引擎下可直接跑（无单写者锁）。**无常驻 autopilot**，索引刷新用 `/sync-gbrain`。文档源同步用 `gbrain sync --source default --no-pull`（`gbrain sync --repo .` 只刷代码源与 change-workflow 源，不刷 `default`）。配置 `~/.gbrain/config.json`。
 - **需求基线与跟踪**：产品愿景/原则/范围 `docs/product/`，交付路线图 `docs/delivery/roadmap.md`，功能规格 `openspec/specs/`，需求×实现状态一览 `docs/delivery/requirements-status.md`（旧 `CORE-REQUIREMENTS-clairis.md`/`PLAN.md`/`MVP-需求跟踪表.md` 等已 superseded/归档，不作活入口）
 - **软著资料准备**：`docs/delivery/softcopyright/`（台账/开发流程证据链规范/申请操作手册）
