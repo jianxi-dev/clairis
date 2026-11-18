@@ -2556,3 +2556,230 @@ test("#1118 拖拽高度仅会话内记忆：同周期保持、重开回自适�
   expect(near(reopened.width, dragged.width, 1)).toBe(true);
   await recordState1118(page, "04-reopen-resets-height");
 });
+
+/* ------------------------------------------------------------------ *
+ * #1119 ⌘N 选中即定位，一步直达（A-5.1 / A-5.2 / A-5.3 / D8）
+ * ------------------------------------------------------------------ */
+
+const ART_1119 = path.resolve(process.cwd(), ".artifacts/1119");
+
+async function recordState1119(page: Page, state: string): Promise<void> {
+  mkdirSync(ART_1119, { recursive: true });
+  const file = path.join(ART_1119, `${state}.png`);
+  await page.screenshot({ path: file });
+  const manifest = path.join(ART_1119, "state-coverage.json");
+  let states: Array<Record<string, string>> = [];
+  try {
+    states = JSON.parse(readFileSync(manifest, "utf8")).states ?? [];
+  } catch {
+    states = [];
+  }
+  states = states.filter((s) => s.state !== state);
+  states.push({
+    state,
+    screenshot: path.relative(process.cwd(), file),
+    assertion: "passed",
+    recorded_at: new Date().toISOString(),
+    runner: `${process.env.USER ?? "unknown"}@${process.env.HOSTNAME ?? "unknown"}`,
+  });
+  writeFileSync(
+    manifest,
+    `${JSON.stringify({ task: "1119-cmdn-locate", states }, null, 2)}\n`,
+  );
+}
+
+// 21 处命中，每处间隔 30 行填充：按 ⌘N 必须真实滚动编辑器，不靠视口巧合。
+const SPREAD_DOC = Array.from({ length: 21 }, (_, i) =>
+  [
+    `第 ${i + 1} 段命中`,
+    ...Array.from({ length: 30 }, (_, j) => `填充 ${j + 1}`),
+  ].join("\n"),
+).join("\n\n");
+
+test("#1119 ⌘N 一步直达：选中可见第 3 行并滚动定位高亮（A-5.1/A-5.2/A-5.3）", async ({
+  page,
+}) => {
+  await openDoc(page, SPREAD_DOC, "/Users/test/spread.md");
+  await setMode(page, "edit");
+  await page.keyboard.press("Meta+f");
+  const float = page.locator('[data-testid="search-float"]');
+  const results = float.locator('[data-testid="search-float-results"]');
+  const rows = float.locator('[data-testid="search-float-hit"]');
+  await float.locator('[data-testid="search-float-input"]').fill("命中");
+  await expect(rows).toHaveCount(21);
+
+  // 结果区滚到中段：可见第 1 行 = 绝对第 13 行（index 12），第 3 行 = index 14。
+  await results.evaluate((el) => {
+    el.scrollTop = el.scrollHeight;
+  });
+  await nextFrames(page);
+  let report = await keyBindingReport(float);
+  expect(report.firstVisible).toBe(12);
+
+  const before = await paneProbe(page, "main");
+  expect(before?.scrollTop ?? 0).toBe(0);
+  expect(before?.selections ?? 0).toBe(0);
+
+  // ⌘3：一步完成选中 + 编辑器滚动 + 高亮，无二次点击。
+  await page.keyboard.press("Meta+3");
+  report = await keyBindingReport(float);
+  expect(report.selected).toBe(14);
+  expect(report.firstVisible).toBe(12);
+  expect(report.rows[12].key).toBe("⌘1");
+  expect(report.rows[13].key).toBe("⌘2");
+  expect(report.rows[14].key).toBe("↵");
+  await expect(rows.nth(14)).toHaveClass(/search-float-hit-cur/);
+  await expect(rows.nth(14).locator(".search-float-context")).toContainText(
+    "第 15 段",
+  );
+  await recordState1119(page, "01-cmdn-selects-visible-row");
+
+  await expect
+    .poll(async () => (await paneProbe(page, "main"))?.scrollTop ?? 0)
+    .toBeGreaterThan(0);
+  const after3 = await paneProbe(page, "main");
+  expect(after3?.selections ?? 0).toBeGreaterThan(0);
+  await recordState1119(page, "02-editor-scrolls-to-hit");
+  await recordState1119(page, "03-hit-selected-highlight");
+
+  // 直达后焦点仍在浮窗输入框，↑↓ 换选不丢。
+  await expect(
+    float.locator('[data-testid="search-float-input"]'),
+  ).toBeFocused();
+  await page.keyboard.press("ArrowDown");
+  expect((await keyBindingReport(float)).selected).toBe(15);
+  await page.keyboard.press("ArrowUp");
+  expect((await keyBindingReport(float)).selected).toBe(14);
+
+  // ⌘1 回到可见第 1 行（绝对 index 12），编辑器随之滚回更靠上的命中。
+  await page.keyboard.press("Meta+1");
+  report = await keyBindingReport(float);
+  expect(report.selected).toBe(12);
+  expect(report.rows[12].key).toBe("↵");
+  await expect(rows.nth(12).locator(".search-float-context")).toContainText(
+    "第 13 段",
+  );
+  await expect
+    .poll(async () => (await paneProbe(page, "main"))?.selections ?? 0)
+    .toBeGreaterThan(0);
+  const after1 = await paneProbe(page, "main");
+  expect(after1?.scrollTop ?? 0).toBeGreaterThan(0);
+  expect(after1?.scrollTop ?? 0).toBeLessThan(after3?.scrollTop ?? 0);
+});
+
+test("#1119 分栏 ⌘N 一步定位落在浮窗所属窗格，另一格不动", async ({ page }) => {
+  await openDoc(page, DOC_A, "/Users/test/a.md");
+  await setMode(page, "edit");
+  await page.evaluate(() => {
+    (
+      window as unknown as {
+        __biaoyue_store__: {
+          getState: () => { splitPane: (d: string) => void };
+        };
+      }
+    ).__biaoyue_store__
+      .getState()
+      .splitPane("row");
+  });
+  await openDoc(page, DOC_B, "/Users/test/b.md");
+  const { main, split } = await paneIds(page);
+  expect(main).toBe("main");
+  await page.evaluate((id) => {
+    (
+      window as unknown as {
+        __biaoyue_store__: {
+          getState: () => {
+            setPaneEditorMode: (id: string, m: string) => void;
+          };
+        };
+      }
+    ).__biaoyue_store__
+      .getState()
+      .setPaneEditorMode(id, "edit");
+  }, split);
+  await page.evaluate((id) => {
+    (
+      window as unknown as {
+        __biaoyue_store__: {
+          getState: () => { focusPane: (id: string) => void };
+        };
+      }
+    ).__biaoyue_store__
+      .getState()
+      .focusPane(id);
+  }, split);
+
+  await page.keyboard.press("Meta+f");
+  const float = page.locator(
+    `[data-pane-id="${split}"] [data-testid="search-float"]`,
+  );
+  await expect(float).toBeVisible();
+  await float.locator('[data-testid="search-float-input"]').fill("目标命中");
+  const rows = float.locator('[data-testid="search-float-hit"]');
+  await expect(rows).toHaveCount(2);
+
+  // ⌘2 一步直达，不再按 Enter。
+  await page.keyboard.press("Meta+2");
+  await expect
+    .poll(async () => {
+      const b = await paneProbe(page, split);
+      return (b?.selections ?? 0) > 0 && (b?.scrollTop ?? 0) > 0;
+    })
+    .toBe(true);
+  const b = await paneProbe(page, split);
+  const a = await paneProbe(page, main);
+  expect(b?.selections ?? 0).toBeGreaterThan(0);
+  expect(a?.selections ?? 0).toBe(0);
+  expect(a?.scrollTop ?? 0).toBe(0);
+  await expect(rows.nth(1)).toHaveClass(/search-float-hit-cur/);
+});
+
+test("#1119 预览态 ⌘N 定位：滚动预览内容到命中", async ({ page }) => {
+  const previewDoc = [
+    "# 预览定位",
+    ...Array.from({ length: 40 }, (_, i) => `前言填充 ${i + 1}`),
+    "第一处命中",
+    "第二处命中",
+    "第三处命中",
+  ].join("\n\n");
+  await openDoc(page, previewDoc, "/Users/test/preview-locate.md");
+  await setMode(page, "preview");
+  await page.keyboard.press("Meta+f");
+  const float = page.locator('[data-testid="search-float"]');
+  await float.locator('[data-testid="search-float-input"]').fill("命中");
+  const rows = float.locator('[data-testid="search-float-hit"]');
+  await expect(rows).toHaveCount(3);
+
+  const scroller = page.locator('[data-pane-id="main"] .content-scroll');
+  await scroller.evaluate((el) => {
+    el.scrollTop = 0;
+  });
+  await nextFrames(page);
+  expect(await scroller.evaluate((el) => el.scrollTop)).toBe(0);
+
+  // 预览态 locate 走 .preview-content 文本节点滚动，不依赖编辑器。
+  await page.keyboard.press("Meta+2");
+  await expect
+    .poll(async () => scroller.evaluate((el) => el.scrollTop))
+    .toBeGreaterThan(0);
+  expect((await keyBindingReport(float)).selected).toBe(1);
+  expect((await keyBindingReport(float)).rows[1].key).toBe("↵");
+  await recordState1119(page, "04-preview-locate");
+});
+
+test("#1119 源码态 ⌘N 定位：编辑器滚动并高亮", async ({ page }) => {
+  await openDoc(page, SPREAD_DOC, "/Users/test/spread.md");
+  await setMode(page, "source");
+  await page.keyboard.press("Meta+f");
+  const float = page.locator('[data-testid="search-float"]');
+  await float.locator('[data-testid="search-float-input"]').fill("命中");
+  const rows = float.locator('[data-testid="search-float-hit"]');
+  await expect(rows).toHaveCount(21);
+
+  await page.keyboard.press("Meta+3");
+  await expect
+    .poll(async () => (await paneProbe(page, "main"))?.scrollTop ?? 0)
+    .toBeGreaterThan(0);
+  expect((await paneProbe(page, "main"))?.selections ?? 0).toBeGreaterThan(0);
+  expect((await keyBindingReport(float)).selected).toBe(2);
+});
