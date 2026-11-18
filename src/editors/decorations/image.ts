@@ -1,8 +1,9 @@
 /* 图片 / 媒体装饰（移植自 md-bundle packages/editor/src/decorations/image.ts）。
  *
  * `![alt](path)` 按扩展名分三类渲染：
- * - image：解析出 URL 就出 `<img>`，解析不出就退化成 `[图片: path]` 文字。
- * - video：`<video controls>` 播放器。
+ * - image：解析出 URL 就出 `<img>`，解析不出就出显式占位节点。
+ * - video：`<video controls>` 播放器；解析不出同样出占位，**不写原始相对路径**
+ *   （相对路径必然 404，只会得到裂图/问号框，#903）。
  * - file：文件链接卡片。
  *
  * 点击选中图片（选中态与工具条见 imageToolbar.ts），拖拽改宽与工具条动作
@@ -67,6 +68,29 @@ export function classifyMedia(path: string): MediaKind {
   if (ext !== "" && VIDEO_EXT.has(ext)) return "video";
   if (ext !== "" && !IMAGE_EXT.has(ext)) return "file";
   return "image";
+}
+
+// --- 解析失败占位（#903） -----------------------------------------------------
+
+/**
+ * 解析失败时挂出**显式占位**：带 testid 的样式化节点 + 原文路径。
+ *
+ * 取代旧做法（把原始相对路径直接写进 `src`/`href`）——那条路必然 404，
+ * 用户只会看到裂图「问号框」，既看不出是哪个文件，也看不出是「读不到」。
+ */
+function appendUnresolvedPlaceholder(
+  container: HTMLElement,
+  kind: "image" | "video",
+  path: string,
+): void {
+  const placeholder = document.createElement("span");
+  placeholder.className = "cm-media-placeholder";
+  placeholder.dataset.testid = "media-unresolved";
+  placeholder.dataset.mediaKind = kind;
+  const label = document.createElement("span");
+  label.textContent = `[${kind === "image" ? "图片" : "视频"}: ${path}]`;
+  placeholder.appendChild(label);
+  container.appendChild(placeholder);
 }
 
 // --- 宽度持久化（#498） -------------------------------------------------------
@@ -701,11 +725,7 @@ class ImageWidget extends WidgetType {
       img.style.clipPath = "inset(0 round var(--media-radius))";
       container.appendChild(img);
     } else {
-      // 解析不出的图片：文字回退
-      const fallback = document.createElement("span");
-      fallback.className = "cm-image-fallback";
-      fallback.textContent = `[图片: ${this._path}]`;
-      container.appendChild(fallback);
+      appendUnresolvedPlaceholder(container, "image", this._path);
     }
 
     // 选中态按文档偏移套用：装饰重建后新 widget 也会拿到同一偏移。
@@ -947,12 +967,16 @@ class MediaWidget extends WidgetType {
     }
 
     if (isVideo) {
+      if (this._src === null) {
+        appendUnresolvedPlaceholder(container, "video", this._path);
+        return container;
+      }
       const video = document.createElement("video");
       video.controls = true;
       video.preload = "metadata";
       // 用 setAttribute（不是 .src）：属性 getter 会按文档 base URL 解析，
       // 让渲染出的属性与源码路径不一致。
-      video.setAttribute("src", this._src ?? this._path);
+      video.setAttribute("src", this._src);
       video.style.width = "100%";
       video.style.display = "block";
       container.appendChild(video);
@@ -1187,8 +1211,8 @@ export function createImageDecorations(
         }).range(from, to),
       );
     } else {
-      // 视频复用图片解析器；解析不出时回退到原始路径，播放器仍有 src。
-      const src = kind === "video" ? (resolveFn(path) ?? path) : null;
+      // 视频复用图片解析器；解析不出就是 null，由 MediaWidget 出显式占位。
+      const src = kind === "video" ? resolveFn(path) : null;
       decorations.push(
         Decoration.replace({
           widget: new MediaWidget(
