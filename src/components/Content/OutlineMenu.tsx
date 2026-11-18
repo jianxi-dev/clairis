@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { Transaction } from "@codemirror/state";
 import type { EditorView } from "@codemirror/view";
 import { EditorView as CM } from "@codemirror/view";
 import {
@@ -20,6 +21,7 @@ import {
   writeOutlineOrder,
   type OutlineHeading,
 } from "../../lib/outline";
+import { getPanelEditorView } from "../../editors/editorRef";
 import { useStore } from "../../stores/index";
 
 type OutlineMode = "edit" | "source" | "preview";
@@ -35,6 +37,8 @@ interface OutlineMenuProps {
   view: EditorView | null;
   /** 当前面板容器：预览模式在其范围内取 `.preview-content` 的 h1–h6。 */
   container: HTMLElement | null;
+  /** 面板 ID：正文同步只走本格 EditorView（#1016），不用全局活动视图。 */
+  panelId?: string;
 }
 
 function positionOfLine(view: EditorView, line: number): number {
@@ -63,6 +67,7 @@ export default function OutlineMenu({
   documentText,
   view,
   container,
+  panelId,
 }: OutlineMenuProps) {
   const [pinned, setPinned] = useState(false);
   const [hovering, setHovering] = useState(false);
@@ -77,6 +82,7 @@ export default function OutlineMenu({
   const wrapRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
 
   // 持久化键按文档路径隔离；未保存页签（path 为 null）只做会话内排序。
   const docPath = useStore((s) => {
@@ -97,6 +103,8 @@ export default function OutlineMenu({
     x: number;
     y: number;
   } | null>(null);
+  /** 插入位置指示条相对 `<ul>` 内容盒的 top；null = 未拖动。 */
+  const [indicatorTop, setIndicatorTop] = useState<number | null>(null);
   const dragRef = useRef<{
     pointerId: number;
     startY: number;
@@ -138,6 +146,7 @@ export default function OutlineMenu({
     setDragOrder(null);
     setDraggingHeading(null);
     setGhost(null);
+    setIndicatorTop(null);
   }, []);
 
   // 面板在拖拽期间被外部关掉（如点到面板外）时收尾，避免留下半截拖拽状态。
@@ -249,6 +258,27 @@ export default function OutlineMenu({
       );
       const next = rest.slice();
       next.splice(to, 0, ...drag.run);
+
+      // 指示条锚在落点边界：`to` 是移除被拖区段后剩余列表里的插入下标，
+      // 对应新顺序中第 to 项的上缘（0=列表顶，rest.length=列表底）。
+      const listEl = listRef.current;
+      if (listEl) {
+        const rows = Array.from(
+          listEl.querySelectorAll<HTMLElement>(".biaoyue-outline-item"),
+        );
+        const ulRect = listEl.getBoundingClientRect();
+        let boundary = ulRect.top;
+        if (rows.length > 0) {
+          if (to <= 0) boundary = rows[0].getBoundingClientRect().top;
+          else if (to >= rows.length) {
+            boundary = rows[rows.length - 1].getBoundingClientRect().bottom;
+          } else {
+            boundary = rows[to].getBoundingClientRect().top;
+          }
+        }
+        setIndicatorTop(boundary - ulRect.top);
+      }
+
       if (next.every((heading, i) => heading === drag.order[i])) return;
       drag.order = next;
       setDragOrder(next);
@@ -269,38 +299,55 @@ export default function OutlineMenu({
       dragRef.current = null;
       setGhost(null);
       setDraggingHeading(null);
+      setIndicatorTop(null);
       if (!drag.active) return;
       const nextOrder = drag.order;
       setDragOrder(null);
 
-      // 编辑/源码态：正文即真相源，一次 CM 事务重排，一次 Ctrl+Z 回退。
-      if (mode !== "preview" && view) {
-        const fromDoc = headings.indexOf(drag.moved);
-        if (fromDoc >= 0) {
-          const runLen =
-            outlineSectionRunEnd(headings, fromDoc) - fromDoc + 1;
-          const toDoc = Math.min(
-            Math.max(nextOrder.indexOf(drag.moved), 0),
-            headings.length - runLen,
-          );
-          const nextMarkdown = reorderSections(documentText, fromDoc, toDoc);
-          if (nextMarkdown !== documentText) {
-            view.dispatch({
-              changes: { from: 0, to: view.state.doc.length, insert: nextMarkdown },
-            });
-            if (docPath) clearOutlineOrder(docPath);
-            setSavedOrder(null);
-          }
+      const fromDoc = headings.indexOf(drag.moved);
+      const runLen =
+        fromDoc >= 0 ? outlineSectionRunEnd(headings, fromDoc) - fromDoc + 1 : 0;
+      const toDoc =
+        fromDoc >= 0
+          ? Math.min(
+              Math.max(nextOrder.indexOf(drag.moved), 0),
+              headings.length - runLen,
+            )
+          : -1;
+      const nextMarkdown =
+        fromDoc >= 0 ? reorderSections(documentText, fromDoc, toDoc) : null;
+
+      // 正文同步只走本格 EditorView（#1016）：预览态默认不预热 CM，先把文档
+      // 同步到位（不进历史），再以单个 history 事务写入重排——一次 Ctrl+Z
+      // 回到重排前，而不是空文档。
+      const panelView = (panelId ? getPanelEditorView(panelId) : null) ?? view;
+      if (nextMarkdown && nextMarkdown !== documentText && panelView) {
+        const current = panelView.state.doc.toString();
+        if (current !== documentText) {
+          panelView.dispatch({
+            changes: { from: 0, to: current.length, insert: documentText },
+            annotations: Transaction.addToHistory.of(false),
+          });
         }
+        panelView.dispatch({
+          changes: {
+            from: 0,
+            to: panelView.state.doc.length,
+            insert: nextMarkdown,
+          },
+          annotations: Transaction.addToHistory.of(true),
+        });
+        if (docPath) clearOutlineOrder(docPath);
+        setSavedOrder(null);
         return;
       }
 
-      // 预览态没有可写的 CM 文档，沿用既有显示顺序持久化。
+      // 无可写视图 / 无变化：沿用既有显示顺序持久化，至少大纲内部自洽。
       const ids = nextOrder.map(outlineHeadingId);
       if (docPath) writeOutlineOrder(docPath, ids);
       setSavedOrder(ids);
     },
-    [docPath, mode, view, headings, documentText],
+    [docPath, view, panelId, headings, documentText],
   );
 
   useEffect(() => {
@@ -433,59 +480,58 @@ export default function OutlineMenu({
           {headings.length === 0 ? (
             <p className="biaoyue-outline-empty">无标题</p>
           ) : (
-            <ul role="list">
-              {shownHeadings.map((heading, index) => {
-                const showBadge =
-                  index === 0 ||
-                  shownHeadings[index - 1].level !== heading.level;
-                return (
-                  <li
-                    key={
-                      heading.line >= 0
-                        ? `L${heading.line}`
-                        : `D${docIndex.get(heading) ?? 0}`
+            <ul role="list" ref={listRef}>
+              {indicatorTop !== null && (
+                <div
+                  className="biaoyue-outline-indicator"
+                  data-testid="outline-drop-indicator"
+                  aria-hidden="true"
+                  style={{ top: `${indicatorTop}px` }}
+                />
+              )}
+              {shownHeadings.map((heading, index) => (
+                <li
+                  key={
+                    heading.line >= 0
+                      ? `L${heading.line}`
+                      : `D${docIndex.get(heading) ?? 0}`
+                  }
+                >
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="biaoyue-outline-item"
+                    data-testid={`outline-item-${index}`}
+                    data-current={index === highlighted ? "true" : "false"}
+                    data-level={heading.level}
+                    data-dragging={
+                      draggingHeading === heading ? "true" : "false"
                     }
-                  >
-                    <button
-                      type="button"
-                      role="menuitem"
-                      className="biaoyue-outline-item"
-                      data-testid={`outline-item-${index}`}
-                      data-current={index === highlighted ? "true" : "false"}
-                      data-level={heading.level}
-                      data-dragging={
-                        draggingHeading === heading ? "true" : "false"
+                    style={{
+                      paddingInlineStart: `${(heading.level - 1) * 12 + 10}px`,
+                    }}
+                    onPointerDown={(event) => onItemPointerDown(event, index)}
+                    onPointerMove={onItemPointerMove}
+                    onPointerUp={onItemPointerUp}
+                    onPointerCancel={cancelDrag}
+                    onClick={() => {
+                      if (suppressClickRef.current) {
+                        suppressClickRef.current = false;
+                        return;
                       }
-                      style={{
-                        paddingInlineStart: `${(heading.level - 1) * 12 + 10}px`,
-                      }}
-                      onPointerDown={(event) => onItemPointerDown(event, index)}
-                      onPointerMove={onItemPointerMove}
-                      onPointerUp={onItemPointerUp}
-                      onPointerCancel={cancelDrag}
-                      onClick={() => {
-                        if (suppressClickRef.current) {
-                          suppressClickRef.current = false;
-                          return;
-                        }
-                        jump(heading, index);
-                      }}
+                      jump(heading, index);
+                    }}
+                  >
+                    <span
+                      className="biaoyue-outline-level"
+                      data-outline-level={`H${heading.level}`}
                     >
-                      {showBadge && (
-                        <span
-                          className="biaoyue-outline-level"
-                          data-outline-level={`H${heading.level}`}
-                        >
-                          {`H${heading.level}`}
-                        </span>
-                      )}
-                      <span className="biaoyue-outline-text">
-                        {heading.text}
-                      </span>
-                    </button>
-                  </li>
-                );
-              })}
+                      {`H${heading.level}`}
+                    </span>
+                    <span className="biaoyue-outline-text">{heading.text}</span>
+                  </button>
+                </li>
+              ))}
             </ul>
           )}
         </div>

@@ -3074,12 +3074,38 @@ html[data-tab-drag="true"] body * {
   color: var(--app-text);
 }
 
-/* 等级徽标（#925）：10px 既有字号刻度，小于条目 12px 正文。 */
+/* 等级徽标（#925）：10px 既有字号刻度，小于条目 12px 正文。
+ * 每项都持有标识（#1050）：默认隐藏、仅悬停项显示；用 visibility 而非
+ * opacity/display，既保留占位又让「可见节点数」机检为 0。 */
 .biaoyue-outline-level {
   flex: none;
   font-size: 10px;
   line-height: 1;
   color: var(--app-text-3);
+  visibility: hidden;
+}
+
+.biaoyue-outline-item:hover .biaoyue-outline-level,
+.biaoyue-outline-ghost .biaoyue-outline-level {
+  visibility: visible;
+}
+
+/* 插入位置指示条（#1050）：绝对定位在列表内容盒内，随落点移动，松手即移除。 */
+.biaoyue-outline-panel ul {
+  position: relative;
+  margin: 0;
+  padding: 0;
+}
+
+.biaoyue-outline-indicator {
+  position: absolute;
+  left: 6px;
+  right: 12px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--app-accent);
+  pointer-events: none;
+  z-index: 1;
 }
 
 .biaoyue-outline-text {

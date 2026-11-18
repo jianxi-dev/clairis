@@ -1,31 +1,38 @@
 {
   "states": [
     {
+      "state": "04-badge-first-only",
+      "screenshot": "/Users/mason/ToHighs/clairis-wt-1050/.artifacts/1050/04-badge-first-only.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-17T21:58:59Z",
+      "runner": "mason@MMBP"
+    },
+    {
       "state": "01-drag-trail",
       "screenshot": "/Users/mason/ToHighs/clairis-wt-1050/.artifacts/1050/01-drag-trail.png",
       "assertion": "passed",
-      "recorded_at": "2026-11-17T21:58:57Z",
+      "recorded_at": "2026-11-18T06:07:25Z",
       "runner": "mason@MMBP"
     },
     {
       "state": "02-body-synced",
       "screenshot": "/Users/mason/ToHighs/clairis-wt-1050/.artifacts/1050/02-body-synced.png",
       "assertion": "passed",
-      "recorded_at": "2026-11-17T21:58:57Z",
+      "recorded_at": "2026-11-18T06:07:25Z",
       "runner": "mason@MMBP"
     },
     {
       "state": "03-cancel-restores",
       "screenshot": "/Users/mason/ToHighs/clairis-wt-1050/.artifacts/1050/03-cancel-restores.png",
       "assertion": "passed",
-      "recorded_at": "2026-11-17T21:58:58Z",
+      "recorded_at": "2026-11-18T06:07:26Z",
       "runner": "mason@MMBP"
     },
     {
-      "state": "04-badge-first-only",
-      "screenshot": "/Users/mason/ToHighs/clairis-wt-1050/.artifacts/1050/04-badge-first-only.png",
+      "state": "04-badges-hover-only",
+      "screenshot": "/Users/mason/ToHighs/clairis-wt-1050/.artifacts/1050/04-badges-hover-only.png",
       "assertion": "passed",
-      "recorded_at": "2026-11-17T21:58:59Z",
+      "recorded_at": "2026-11-18T06:07:27Z",
       "runner": "mason@MMBP"
     }
   ]

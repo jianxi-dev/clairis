@@ -327,9 +327,21 @@ test("#1050 拖动出现轨迹，松手后正文与新大纲一致", async ({ pa
 
   // 轨迹元素在拖动期间可见。
   await expect(page.locator('[data-testid="outline-ghost"]')).toBeVisible();
+  // 插入位置指示条出现并随指针移动（A-2.1）。
+  const indicator = page.locator('[data-testid="outline-drop-indicator"]');
+  await expect(indicator).toBeVisible();
+  const indicatorY = () =>
+    indicator.evaluate((el) => el.getBoundingClientRect().top);
+  const y1 = await indicatorY();
+  await page.mouse.move(x, box0.y + box0.height / 2, { steps: 4 });
+  const y2 = await indicatorY();
+  expect(y2).not.toBe(y1);
+  // 回到目标落点再松手，避免回退把重排取消。
+  await page.mouse.move(x, box1.y + box1.height / 2 + 1, { steps: 4 });
   await shot(page, "01-drag-trail");
 
   await page.mouse.up();
+  await expect(indicator).toHaveCount(0);
 
   await expect(items.nth(0)).toHaveText(/乙/);
   await expect(items.nth(1)).toHaveText(/甲/);
@@ -364,7 +376,7 @@ test("#1050 拖动取消（Esc）后正文与大纲回到原状", async ({ page 
   await shot(page, "03-cancel-restores");
 });
 
-test("#1050 三个连续同级二级标题只首个含 H2 徽标，颜色为次级文字色", async ({
+test("#1050 每项持有层级标识，仅悬停项可见且颜色更浅（A-2.3…A-2.6）", async ({
   page,
 }) => {
   const doc = ["# 题", "", "## 一", "", "## 二", "", "## 三", ""].join("\n");
@@ -386,16 +398,18 @@ test("#1050 三个连续同级二级标题只首个含 H2 徽标，颜色为次�
   const menu = page.locator('[data-testid="outline-menu"]');
   await expect(menu).toBeVisible();
 
+  // A-2.3：三个连续同级二级标题各持标识节点。
   const badges = menu.locator('[data-outline-level="H2"]');
-  await expect(badges).toHaveCount(1);
-  await expect(menu.locator('[data-testid="outline-item-1"]')).toContainText(
-    "H2",
-  );
-  await expect(menu.locator('[data-testid="outline-item-2"]')).not.toContainText(
-    "H2",
-  );
+  await expect(badges).toHaveCount(3);
 
-  // 徽标计算色严格等于次级文字 token 的解释值（用同 token 的探针元素比对）。
+  // A-2.4：非悬停项的标识不可见。
+  await expect(menu.locator("[data-outline-level]:visible")).toHaveCount(0);
+
+  // A-2.5：悬入某项后仅该项标识可见。
+  await menu.locator('[data-testid="outline-item-1"]').hover();
+  await expect(badges.nth(0)).toBeVisible();
+
+  // A-2.6：标识计算色严格等于 §6 更浅一档语义色 --app-text-3 的解释值。
   const tokenColor = await page.evaluate(() => {
     const probe = document.createElement("span");
     probe.style.color = "var(--app-text-3)";
@@ -404,8 +418,54 @@ test("#1050 三个连续同级二级标题只首个含 H2 徽标，颜色为次�
     probe.remove();
     return color;
   });
-  const badgeColor = await badges.evaluate((el) => getComputedStyle(el).color);
+  const badgeColor = await badges
+    .nth(0)
+    .evaluate((el) => getComputedStyle(el).color);
   expect(badgeColor).toBe(tokenColor);
 
-  await shot(page, "04-badge-first-only");
+  await shot(page, "04-badges-hover-only");
+});
+
+// ── #1050（batch23）：预览态正文顺序同步缺陷复现（A-2.2，先红后绿） ──
+
+test("#1050 预览态松手后正文顺序与大纲一致（缺陷复现）", async ({ page }) => {
+  await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
+  await page.goto(APP_URL, { waitUntil: "networkidle" });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 15000 });
+  await page.evaluate((body) => {
+    (window as unknown as Record<string, any>).__biaoyue_openFile__(
+      "/tmp/outline-reorder-preview.md",
+      body,
+      "outline-reorder-preview.md",
+    );
+    (window as unknown as Record<string, any>)
+      .__biaoyue_store__.getState()
+      .setEditorMode("preview");
+  }, REORDER_DOC);
+  await page.locator(".preview-content").waitFor({ timeout: 10000 });
+  await page.waitForTimeout(400);
+
+  await page.locator('[data-testid="outline-btn"]').click();
+  const menu = page.locator('[data-testid="outline-menu"]');
+  await expect(menu).toBeVisible({ timeout: 3000 });
+
+  const items = page.locator('[data-testid^="outline-item-"]');
+  await expect(items).toHaveCount(3);
+
+  const box0 = await items.nth(0).boundingBox();
+  const box1 = await items.nth(1).boundingBox();
+  if (!box0 || !box1) throw new Error("大纲条目无边界");
+  const x = box0.x + box0.width / 2;
+
+  await page.mouse.move(x, box0.y + box0.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(x, box1.y + box1.height / 2 + 1, { steps: 4 });
+  await page.mouse.up();
+
+  // 大纲显示顺序已变。
+  await expect(items.nth(0)).toHaveText(/乙/);
+
+  // 正文必须同步：乙 的标题行必须排在 甲 之前。
+  const content = await readContent(page);
+  expect(content.indexOf("# 乙")).toBeLessThan(content.indexOf("# 甲"));
 });
