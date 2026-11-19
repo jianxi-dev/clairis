@@ -828,6 +828,84 @@ test("#1129 AB 图标切换形态并持久化；窄窗自动胶囊不覆盖用�
   await dpbRecord(page, "1129", "08-wide-back-to-list");
 });
 
+test("#1147 历史污染 docPropertyVariant=B 不再短路窄窗自动胶囊", async ({
+  page,
+}) => {
+  // 预置用户实际配置：docPropertyVariant=B + displayStyle=dual（历史污染）。
+  // 加载后污染值不生效：宽窗回一行条 A，窄窗自动胶囊 B。
+  await page.evaluate(
+    (cfg) => {
+      try {
+        localStorage.setItem("__mock_config", JSON.stringify(cfg));
+      } catch {
+        /* ignore */
+      }
+    },
+    {
+      fontSize: 16,
+      headingColors: null,
+      ollamaEndpoint: "http://localhost:11434",
+      openaiEndpoint: "https://api.openai.com",
+      openaiModel: "gpt-4o-mini",
+      translationProvider: "ollama",
+      sourceLang: "en",
+      targetLang: "zh-CN",
+      theme: "system",
+      sidebarLeftVisible: true,
+      sidebarRightVisible: false,
+      sidebarLeftWidth: 220,
+      sidebarRightWidth: 320,
+      recentFiles: [],
+      propTemplates: [],
+      propAliasMap: {},
+      docPropertyVariant: "B",
+      propertyBar: {
+        displayStyle: "dual",
+        displayDefault: { preview: "show", edit: "show" },
+        newDocVisible: true,
+      },
+    },
+  );
+  await page.reload();
+  await page.waitForSelector('[data-testid="pane-header"]', {
+    timeout: 15000,
+  });
+  await openDoc(page);
+
+  await page.setViewportSize({ width: 1200, height: 800 });
+  await expect(panel(page, "A")).toBeVisible();
+  await dpbRecord(page, "1147", "01-wide-list");
+
+  await page.setViewportSize({ width: 700, height: 800 });
+  await expect(panel(page, "B")).toBeVisible();
+  await dpbRecord(page, "1147", "02-narrow-capsule");
+
+  await page.setViewportSize({ width: 1200, height: 800 });
+  await expect(panel(page, "A")).toBeVisible();
+  await dpbRecord(page, "1147", "03-wide-back");
+
+  await page.setViewportSize({ width: 700, height: 800 });
+  await expect(panel(page, "B")).toBeVisible();
+  await dpbRecord(page, "1147", "04-narrow-again");
+
+  await page.setViewportSize({ width: 1200, height: 800 });
+  await panel(page, "A").locator('[data-testid="dpb-variant-toggle"]').click();
+  await expect(panel(page, "B")).toBeVisible();
+  await expect
+    .poll(
+      () => page.evaluate(() => localStorage.getItem("__mock_config") ?? ""),
+      { timeout: 5000 },
+    )
+    .toContain('"docPropertyVariant":"B"');
+  await page.reload();
+  await page.waitForSelector('[data-testid="pane-header"]', {
+    timeout: 15000,
+  });
+  await openDoc(page);
+  await expect(panel(page, "B")).toBeVisible();
+  await dpbRecord(page, "1147", "05-manual-persisted");
+});
+
 test("#1163 形态切换图标 L/T 语义与存储兼容", async ({ page }) => {
   await openDoc(page);
   const toggleA = panel(page, "A").locator(

@@ -19,6 +19,39 @@ export function normalizeDocPropertyVariant(
   return raw === "A" || raw === "B" ? raw : null;
 }
 
+/**
+ * 显式选择标记（#1147）。
+ *
+ * `docPropertyVariant` 只能由用户点击 L/T 图标（或设置「显示样式」）写入；
+ * 历史版本 / 设置桥接曾把它当成「当前形态」直接落盘，导致用户从未手动切换
+ * 也留下 `"B"`，窄窗自动胶囊被短路。加载时仅当本标记存在才承认存储值，
+ * 否则视为未手动选择（回落默认 / 窄窗胶囊）。
+ */
+const EXPLICIT_CHOICE_KEY = "biaoyue.docPropertyVariant.explicit";
+
+/** 用户是否曾显式选择过形态（标记缺失 = 存储值不可信）。 */
+export function hasExplicitDocPropertyChoice(): boolean {
+  try {
+    return (
+      typeof window !== "undefined" &&
+      window.localStorage.getItem(EXPLICIT_CHOICE_KEY) === "1"
+    );
+  } catch {
+    return false;
+  }
+}
+
+/** 记录一次显式选择；存储不可用时静默降级（偏好仍写配置，只是下次加载不承认）。 */
+function markExplicitDocPropertyChoice(): void {
+  try {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(EXPLICIT_CHOICE_KEY, "1");
+    }
+  } catch {
+    // 隐私模式 / 配额：忽略，不影响当次切换。
+  }
+}
+
 interface DocPropertyPanelStore {
   /** 面板显隐。隐藏只改显示，不改文档内容（数据仍在 frontmatter 里）。 */
   hidden: boolean;
@@ -52,7 +85,7 @@ interface DocPropertyPanelStore {
 }
 
 export const useDocPropertyPanelStore = create<DocPropertyPanelStore>(
-  (set) => ({
+  (set, get) => ({
     hidden: false,
     variant: "A",
     preference: null,
@@ -64,20 +97,25 @@ export const useDocPropertyPanelStore = create<DocPropertyPanelStore>(
     setVariant: (v) => {
       const next = normalizeDocPropertyVariant(v);
       if (!next) return;
+      markExplicitDocPropertyChoice();
       set({ preference: next, variant: next });
     },
-    toggleVariant: () =>
-      set((s) => {
-        const next: DocPropertyVariant = s.variant === "A" ? "B" : "A";
-        return { preference: next, variant: next };
-      }),
+    toggleVariant: () => {
+      const next: DocPropertyVariant = get().variant === "A" ? "B" : "A";
+      markExplicitDocPropertyChoice();
+      set({ preference: next, variant: next });
+    },
     // 配置回填时沿用当前窄窗态：否则窄窗启动会被配置默认拉回 A。
+    // 无显式选择标记的存储值视为历史污染，不生效（#1147）。
     applyLoadedPreference: (preference, fallback) =>
-      set((s) => ({
-        preference,
-        fallback,
-        variant: preference ?? (s.narrow ? "B" : fallback),
-      })),
+      set((s) => {
+        const effective = hasExplicitDocPropertyChoice() ? preference : null;
+        return {
+          preference: effective,
+          fallback,
+          variant: effective ?? (s.narrow ? "B" : fallback),
+        };
+      }),
     setNarrow: (narrow) =>
       set((s) => ({
         narrow,

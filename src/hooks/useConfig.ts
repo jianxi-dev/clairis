@@ -473,12 +473,12 @@ function applyRustConfig(raw: RustAppConfig): void {
   es.setConfig(config);
   es.setFontSize(config.fontSize ?? 17);
   es.setConfigLoaded(true);
-  useDocPropertyPanelStore
-    .getState()
-    .applyLoadedPreference(
-      normalizeDocPropertyVariant(raw.docPropertyVariant),
-      propertyBarConfig.displayStyle === "dual" ? "B" : "A",
-    );
+  useDocPropertyPanelStore.getState().applyLoadedPreference(
+    normalizeDocPropertyVariant(raw.docPropertyVariant),
+    // docPropertyVariant 是面板形态的唯一来源；displayStyle 为 legacy 镜像，
+    // 不再驱动形态（否则历史遗留的 dual 会绕过显式偏好继续短路窄窗，#1147）。
+    "A",
+  );
 
   // Restore scroll positions (A-9)
   useStore.getState().setScrollPositions(raw.scrollPositions ?? {});
