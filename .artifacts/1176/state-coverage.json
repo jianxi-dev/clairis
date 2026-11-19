@@ -1,0 +1,33 @@
+{
+  "task": "1176-row-zebra",
+  "states": [
+    {
+      "state": "zebra-odd-even",
+      "screenshot": ".artifacts/1176/zebra-odd-even.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-19T17:38:52.278Z",
+      "runner": "unknown@unknown"
+    },
+    {
+      "state": "current-hit-overrides-stripe",
+      "screenshot": ".artifacts/1176/current-hit-overrides-stripe.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-19T17:38:52.359Z",
+      "runner": "unknown@unknown"
+    },
+    {
+      "state": "selection-kept-after-leave",
+      "screenshot": ".artifacts/1176/selection-kept-after-leave.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-19T17:38:52.384Z",
+      "runner": "unknown@unknown"
+    },
+    {
+      "state": "single-row-uses-surface",
+      "screenshot": ".artifacts/1176/single-row-uses-surface.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-19T17:38:52.408Z",
+      "runner": "unknown@unknown"
+    }
+  ]
+}
