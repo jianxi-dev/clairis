@@ -684,31 +684,37 @@ test("⇄ 展开替换行（替换输入框 + 逐个/全部替换），再点收
   await expect(float.locator("input")).toHaveCount(1);
 });
 
-test("替换模式结果行内联 diff：原词删除线、新词强调色；普通搜索无 diff", async ({
+test("替换模式结果行无内联 diff（无 del/ins），替换仍生效；普通搜索同样无 diff", async ({
   page,
 }) => {
   await page.keyboard.press("Meta+f");
   await page.locator('[data-testid="search-float-input"]').fill("属性");
+  await expect(page.locator('[data-testid="search-float-diff"]')).toHaveCount(
+    0,
+  );
+  await recordState1175(page, "normal-search-no-diff");
+
   await page.locator('[data-testid="search-float-replace-toggle"]').click();
   await page.locator('[data-testid="search-float-replace-input"]').fill("特性");
 
   const row = page.locator('[data-testid="search-float-hit"]').first();
-  const del = row.locator('[data-testid="search-float-diff"] del');
-  const ins = row.locator('[data-testid="search-float-diff"] ins');
-  await expect(del).toHaveText("属性");
-  await expect(ins).toHaveText("特性");
-  expect(
-    await del.evaluate((el) => getComputedStyle(el).textDecorationLine),
-  ).toContain("line-through");
-  const accent = await row
-    .locator(".search-float-loc")
-    .evaluate((el) => getComputedStyle(el).color);
-  expect(await ins.evaluate((el) => getComputedStyle(el).color)).toBe(accent);
+  await expect(row.locator('[data-testid="search-float-diff"]')).toHaveCount(0);
+  await expect(row.locator("del")).toHaveCount(0);
+  await expect(row.locator("ins")).toHaveCount(0);
+  await expect(row.locator(".search-float-loc")).toHaveText("L1 · 标题");
+  await expect(row.locator(".search-float-context")).toContainText("属性面板");
+  await recordState1175(page, "replace-mode-no-diff");
+  await recordState1175(page, "replace-mode-row-context");
 
-  await page.locator('[data-testid="search-float-replace-toggle"]').click();
-  await expect(page.locator('[data-testid="search-float-diff"]')).toHaveCount(
-    0,
+  await page.locator('[data-testid="search-float-replace-one"]').click();
+  await expect(page.locator('[data-testid="search-float-count"]')).toHaveText(
+    "2 处",
   );
+  await setMode(page, "source");
+  const text = await editorText(page);
+  expect(text).toContain("特性面板");
+  expect(text).not.toContain("# 属性面板");
+  await recordState1175(page, "replace-still-works");
 });
 
 test("逐个替换当前命中后自动前进到下一处，文档文本变化", async ({ page }) => {
@@ -812,6 +818,33 @@ async function recordState1174(page: Page, state: string): Promise<void> {
   writeFileSync(
     manifest,
     `${JSON.stringify({ task: "1174-preview-replace-disabled", states }, null, 2)}\n`,
+  );
+}
+
+const ART_1175 = path.resolve(process.cwd(), ".artifacts/1175");
+
+async function recordState1175(page: Page, state: string): Promise<void> {
+  mkdirSync(ART_1175, { recursive: true });
+  const file = path.join(ART_1175, `${state}.png`);
+  await page.screenshot({ path: file });
+  const manifest = path.join(ART_1175, "state-coverage.json");
+  let states: Array<Record<string, string>> = [];
+  try {
+    states = JSON.parse(readFileSync(manifest, "utf8")).states ?? [];
+  } catch {
+    states = [];
+  }
+  states = states.filter((s) => s.state !== state);
+  states.push({
+    state,
+    screenshot: path.relative(process.cwd(), file),
+    assertion: "passed",
+    recorded_at: new Date().toISOString(),
+    runner: `${process.env.USER ?? "unknown"}@${process.env.HOSTNAME ?? "unknown"}`,
+  });
+  writeFileSync(
+    manifest,
+    `${JSON.stringify({ task: "1175-remove-inline-diff", states }, null, 2)}\n`,
   );
 }
 

@@ -1,0 +1,33 @@
+{
+  "task": "1175-remove-inline-diff",
+  "states": [
+    {
+      "state": "normal-search-no-diff",
+      "screenshot": ".artifacts/1175/normal-search-no-diff.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-19T17:27:23.360Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "replace-mode-no-diff",
+      "screenshot": ".artifacts/1175/replace-mode-no-diff.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-19T17:27:23.449Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "replace-mode-row-context",
+      "screenshot": ".artifacts/1175/replace-mode-row-context.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-19T17:27:23.467Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "replace-still-works",
+      "screenshot": ".artifacts/1175/replace-still-works.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-19T17:27:23.516Z",
+      "runner": "mason@unknown"
+    }
+  ]
+}
