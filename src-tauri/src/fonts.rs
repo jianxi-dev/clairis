@@ -1,88 +1,62 @@
-//! 本机已安装字体族枚举（C1 / #853）。
-//!
-//! 口径与限制（票面要求说明，不得声称「已枚举全部系统字体」）：
-//! - macOS 优先走 fontconfig 的 `fc-list : family`。本机 fontconfig 由 Homebrew
-//!   安装（`/opt/homebrew/bin/fc-list`），因此同时探测几个常见绝对路径，避免
-//!   GUI 启动的 app 拿不到 Homebrew 的 PATH。
-//! - `fc-list` 缺失或调用失败时退回内置「常见系统字体预设列表」。预设列表只是
-//!   无外部依赖时的兜底，不代表本机字体的完整集合。
-//! - 返回值去重、按字典序排序；供设置面板做逐级选择。
+//! 本机已安装字体族枚举（#1136）：macOS 走 AppKit `NSFontManager.availableFontFamilies`。
+//! 非 macOS 返回空数组（前端降级手输）；返回值去重、按字典序排序。
 
-use std::process::Command;
+use std::collections::BTreeSet;
 
-/// `fc-list` 候选位置：Homebrew Apple Silicon / Intel、系统、MacPorts，最后按 PATH。
-const FC_LIST_CANDIDATES: [&str; 5] = [
-    "/opt/homebrew/bin/fc-list",
-    "/usr/local/bin/fc-list",
-    "/usr/bin/fc-list",
-    "/opt/local/bin/fc-list",
-    "fc-list",
-];
+/// 去重 + 排序，供命令实现与单测共用。
+fn normalize_families(names: Vec<String>) -> Vec<String> {
+    names
+        .into_iter()
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .collect()
+}
 
-/// 无 `fc-list` 时的兜底预设：只列中英开源字体（#926）。
-/// 不硬编码任何国家/厂商专有字体；本机实际字体由 `fc-list` 枚举提供。
-const PRESET_FONT_FAMILIES: [&str; 10] = [
-    "Fira Code",
-    "IBM Plex Sans",
-    "Inter",
-    "JetBrains Mono",
-    "Noto Sans",
-    "Noto Sans CJK SC",
-    "Noto Serif CJK SC",
-    "Source Han Sans SC",
-    "Source Han Serif SC",
-    "sans-serif",
-];
+#[cfg(target_os = "macos")]
+fn enumerate_native() -> Result<Vec<String>, String> {
+    use cocoa::base::id;
+    use objc::rc::autoreleasepool;
+    use objc::runtime::Class;
+    use objc::{sel, sel_impl};
+    use std::ffi::CStr;
+    use std::os::raw::c_char;
 
-/// 解析 `fc-list : family` 输出：每行是一组逗号分隔的字体族。
-fn parse_fc_list(stdout: &str) -> Vec<String> {
-    let mut set = std::collections::BTreeSet::new();
-    for line in stdout.lines() {
-        for family in line.split(',') {
-            let name = family.trim();
-            if !name.is_empty() {
-                set.insert(name.to_string());
+    autoreleasepool(|| unsafe {
+        let cls = Class::get("NSFontManager").ok_or("NSFontManager 类不可用")?;
+        let manager: id = objc::msg_send![cls, sharedFontManager];
+        if manager.is_null() {
+            return Err("NSFontManager sharedFontManager 返回空".to_string());
+        }
+        let families: id = objc::msg_send![manager, availableFontFamilies];
+        if families.is_null() {
+            return Err("availableFontFamilies 返回空".to_string());
+        }
+        let count: usize = objc::msg_send![families, count];
+        let mut names = Vec::with_capacity(count);
+        for index in 0..count {
+            let item: id = objc::msg_send![families, objectAtIndex: index];
+            if item.is_null() {
+                continue;
+            }
+            let cstr: *const c_char = objc::msg_send![item, UTF8String];
+            if let Ok(name) = CStr::from_ptr(cstr).to_str() {
+                if !name.is_empty() {
+                    names.push(name.to_string());
+                }
             }
         }
-    }
-    set.into_iter().collect()
+        Ok(normalize_families(names))
+    })
 }
 
-fn fc_list_via(binary: &str) -> Option<Vec<String>> {
-    let output = Command::new(binary).arg(":").arg("family").output().ok()?;
-    if !output.status.success() {
-        return None;
-    }
-    Some(parse_fc_list(&String::from_utf8_lossy(&output.stdout)))
+#[cfg(not(target_os = "macos"))]
+fn enumerate_native() -> Result<Vec<String>, String> {
+    Ok(Vec::new())
 }
 
-/// 设置面板用：字体列表 + 是否真枚举成功（预设兜底时 `enumerated = false`，
-/// 前端据此跳过「系统可用性」强校验，只做结构性校验）。
-#[derive(Debug, Clone, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SystemFonts {
-    pub families: Vec<String>,
-    pub enumerated: bool,
-}
-
-pub fn system_fonts() -> SystemFonts {
-    for candidate in FC_LIST_CANDIDATES {
-        if let Some(families) = fc_list_via(candidate) {
-            if !families.is_empty() {
-                return SystemFonts {
-                    families,
-                    enumerated: true,
-                };
-            }
-        }
-    }
-    SystemFonts {
-        families: PRESET_FONT_FAMILIES
-            .iter()
-            .map(|name| name.to_string())
-            .collect(),
-        enumerated: false,
-    }
+/// 设置面板用：本机字体族列表，去重排序；非 macOS 为空数组。
+pub fn list_system_fonts() -> Result<Vec<String>, String> {
+    enumerate_native()
 }
 
 #[cfg(test)]
@@ -90,53 +64,31 @@ mod tests {
     use super::*;
 
     #[test]
-    fn parses_comma_separated_families_and_dedupes() {
-        let raw = "PingFang SC,苹方-简\nPingFang SC\n, Menlo \n";
-        assert_eq!(parse_fc_list(raw), vec!["Menlo", "PingFang SC", "苹方-简"]);
-    }
-
-    #[test]
-    fn system_fonts_is_non_empty_and_sorted() {
-        let fonts = system_fonts();
-        assert!(!fonts.families.is_empty());
-        let mut sorted = fonts.families.clone();
-        sorted.sort();
-        assert_eq!(fonts.families, sorted);
-    }
-
-    #[test]
-    fn preset_families_contain_no_proprietary_national_fonts() {
-        let proprietary = [
-            "PingFang",
-            "Hiragino",
-            "Microsoft YaHei",
-            "SimHei",
-            "SimSun",
-            "Songti",
-            "Kaiti",
-            "Heiti",
-            "STHeiti",
-            "Arial",
-            "Helvetica",
-            "Georgia",
-            "Times New Roman",
-            "Tahoma",
-            "Verdana",
+    fn normalizes_dedupes_and_sorts() {
+        let raw = vec![
+            "PingFang SC".to_string(),
+            "Menlo".to_string(),
+            "PingFang SC".to_string(),
         ];
-        for name in PRESET_FONT_FAMILIES {
-            for bad in proprietary {
-                assert!(
-                    !name.contains(bad),
-                    "预设含专有字体硬编码: {name}（命中 {bad}）"
-                );
-            }
-        }
+        assert_eq!(
+            normalize_families(raw),
+            vec!["Menlo".to_string(), "PingFang SC".to_string()]
+        );
     }
 
+    #[cfg(target_os = "macos")]
     #[test]
-    fn preset_families_include_open_source_cjk_and_latin() {
-        for want in ["Noto Sans CJK SC", "Source Han Sans SC", "Inter"] {
-            assert!(PRESET_FONT_FAMILIES.contains(&want), "缺开源预设: {want}");
-        }
+    fn macos_enumeration_is_non_empty_and_sorted() {
+        let fonts = list_system_fonts().expect("macOS 字体枚举不应失败");
+        assert!(!fonts.is_empty());
+        let mut sorted = fonts.clone();
+        sorted.sort();
+        assert_eq!(fonts, sorted);
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    #[test]
+    fn non_macos_returns_empty_instead_of_error() {
+        assert_eq!(list_system_fonts().unwrap(), Vec::<String>::new());
     }
 }
