@@ -48,6 +48,7 @@ export type IconName =
   | "locate"
   | "refresh"
   | "copyPath"
+  | "copyFile"
   | "chevronLeft"
   | "chevronRight"
   | "chevronDown"
@@ -340,9 +341,18 @@ export const ICONS: Record<IconName, IconDef> = {
     label: "定位",
     s: "M12 6.8a5.2 5.2 0 100 10.4 5.2 5.2 0 000-10.4z M12 9.6a2.4 2.4 0 100 4.8 2.4 2.4 0 000-4.8z M12 2v3 M12 19v3 M2 12h3 M19 12h3",
   },
+  /** 「复制路径」：文件夹 + 斜杠（路径语义）。与 copy（复制选区）构图不同。 */
   copyPath: {
-    label: "复制",
-    s: "M5 8h10v12H5z M9 5h10v11",
+    label: "复制路径",
+    parts: [{ s: "M3 7h5l1.8 1.8h4.2v7.4H3z" }, { s: "M16.5 5.5l4 13" }],
+  },
+  /** 「复制文件」：文档 + 向右上箭头（文件语义）。与 copyPath 构图不同。 */
+  copyFile: {
+    label: "复制文件",
+    parts: [
+      { s: "M4.5 6h6.5l3 3v9.5H4.5z" },
+      { s: "M15.5 12.5L20 8 M20 8h-3 M20 8v3" },
+    ],
   },
   chevronDown: {
     label: "展开",

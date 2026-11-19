@@ -1605,6 +1605,7 @@ body {
   align-items: center;
   gap: 2px;
   flex: none;
+  margin-left: auto;
 }
 
 .tab-info__copy button {
@@ -1620,12 +1621,6 @@ body {
 .tab-info__copy button:hover {
   background: var(--app-sunken);
   color: var(--app-text);
-}
-
-.tab-info__notice {
-  flex: none;
-  color: var(--app-text-2);
-  font-size: 11px;
 }
 
 .tab-info__seg {
@@ -1656,6 +1651,21 @@ body {
 .tab-info__time {
   color: var(--app-text-2);
   white-space: nowrap;
+}
+
+.tab-info__toast {
+  position: fixed;
+  z-index: 4001;
+  transform: translateX(-50%);
+  padding: 4px 12px;
+  border-radius: var(--radius-full);
+  background: var(--app-text-strong);
+  color: var(--app-surface);
+  box-shadow: var(--app-shadow);
+  font-size: 12px;
+  line-height: 18px;
+  white-space: nowrap;
+  pointer-events: none;
 }
 
 html[data-tab-drag="true"] body,

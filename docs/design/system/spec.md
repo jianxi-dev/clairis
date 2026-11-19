@@ -44,13 +44,13 @@ source_of_truth: canonical
 保留现有 `Icon` 组件 `fill="currentColor"` 契约：描边图标在 path 上写
 `fill="none" stroke="currentColor" stroke-width="1.7"`。新增概念必须同时更新 `src/ui/icons.ts` 的 `ICONS` 表，禁止组件内联一次性 SVG。
 
-### 2.3 语义分组（40 概念）
+### 2.3 语义分组（41 概念）
 
 | 组 | 概念 |
 |---|---|
 | 文件类型（8） | markdown / html / text / pdf / video / image / code / audio |
 | 导航与外观（10） | folder / file / search / grid / pin / chevronLeft / chevronRight / sun / moon / monitor |
-| 动作（16） | close / settings / expand / more / eye / pencil / export / share / locate / copyPath / copy / trash / cut / paste / arrowUp / arrowDown |
+| 动作（17） | close / settings / expand / more / eye / pencil / export / share / locate / copyPath / copy / copyFile / trash / cut / paste / arrowUp / arrowDown |
 | 状态（2） | check / warning |
 | 分屏（2） | splitRight / splitDown |
 | AI（1） | sparkle |
@@ -58,7 +58,9 @@ source_of_truth: canonical
 
 **docPropertyVariant 图形规范**：L = List 一行条（每字段独占一行横条），T = Table 精排双列（两列网格）；图标并置两半形成排布对比，传达「同一面板的两种形态」。网格 / 笔画引用 §2.1，标题栏尺寸档引用 §7.2；具体几何见台账「文档属性 L/T 切换图标」。
 
-**覆盖范围（缺口）**：本表沿用 icon-system-v2 的 33 概念分组，doc-property-refine 追加 copy / trash / cut / paste / arrowUp / arrowDown，document-properties-inline 追加 docPropertyVariant，共 40 概念；`src/ui/icons.ts` 实现现有 **116 个键**，另有 **76 个未归组**（以下为示例）——媒体控件（play / pause / prev / next / volume / volumeMute / playlist / loopNone / loopSingle / loopPlaylist / subtitle / timestampNote / keyboardHints / pip / speed / home / heart / heartFilled）、导出族（exportWord / exportZip / exportMdpkg）、其余（pinOff / collapse / sunBright / sunWarm / closeOthers / chevronDown / immersive）。本表不声称穷举；未归组的概念不是"规范缺省"，是**待归组的缺口**。
+**copyPath / copyFile 图形规范**：copyPath = 文件夹 + 斜杠（路径语义），copyFile = 文档 + 向右上箭头（文件语义）；两图形 SHALL 可区分、SHALL NOT 复用同一构图。网格 / 笔画引用 §2.1，密集工具条档 14px；具体几何见台账「信息窗复制图标」。
+
+**覆盖范围（缺口）**：本表沿用 icon-system-v2 的 33 概念分组，doc-property-refine 追加 copy / trash / cut / paste / arrowUp / arrowDown，document-properties-inline 追加 docPropertyVariant，shell-tabs-surface 追加 copyFile，共 41 概念；`src/ui/icons.ts` 实现现有 **116 个键**，另有 **76 个未归组**（以下为示例）——媒体控件（play / pause / prev / next / volume / volumeMute / playlist / loopNone / loopSingle / loopPlaylist / subtitle / timestampNote / keyboardHints / pip / speed / home / heart / heartFilled）、导出族（exportWord / exportZip / exportMdpkg）、其余（pinOff / collapse / sunBright / sunWarm / closeOthers / chevronDown / immersive）。本表不声称穷举；未归组的概念不是"规范缺省"，是**待归组的缺口**。
 
 ### 2.4 状态对规则
 
@@ -72,6 +74,7 @@ source_of_truth: canonical
 
 - **html / code 必须靠斜杠区分**：html 带斜杠 `</>`，code 无斜杠 `<>`。
 - **export 与 share 不得共用构图**：export 是向上箭头 + 开口托盘，share 是三节点连线。
+- **copyPath 与 copyFile 不得共用构图**：copyPath 是文件夹 + 斜杠，copyFile 是文档 + 向右上箭头。
 - **可逆动作成对**（见 §2.4）。
 
 ### 2.6 注意事项

@@ -12,6 +12,7 @@ import { test, expect, type Locator, type Page } from "@playwright/test";
 
 const APP_URL = "http://localhost:1420";
 const ART = ".artifacts/1104";
+const ART_1181 = ".artifacts/1181";
 const INFO = '[data-testid="tab-info-popover"]';
 
 const FILE_A = "/Users/mason/Documents/TJProject/HSYH/费用/招待明细.md";
@@ -22,6 +23,11 @@ const DOC = ["# 标题", "", "第一段正文", "", "第二段正文", ""].join(
 async function shot(page: Page, name: string) {
   mkdirSync(ART, { recursive: true });
   await page.screenshot({ path: `${ART}/${name}.png` });
+}
+
+async function shot1181(page: Page, name: string) {
+  mkdirSync(ART_1181, { recursive: true });
+  await page.screenshot({ path: `${ART_1181}/${name}.png` });
 }
 
 async function activeTab(page: Page): Promise<Locator> {
@@ -126,17 +132,25 @@ test("信息窗提供复制路径与复制文件两个动作（A-3.1/A-3.2/A-3.3
   const info = page.locator(INFO);
   await expect(info).toBeVisible({ timeout: 3000 });
 
-  // A-3.1：路径行末尾两个复制动作
-  const copyPathBtn = info.getByTestId("tab-copy-path");
-  const copyFileBtn = info.getByTestId("tab-copy-file");
+  // A-3.1：最近保存时间行右侧两个复制动作，文件名行不再有
+  const timeRow = info.getByTestId("tab-info-time");
+  const copyPathBtn = timeRow.getByTestId("tab-copy-path");
+  const copyFileBtn = timeRow.getByTestId("tab-copy-file");
   await expect(copyPathBtn).toHaveCount(1);
   await expect(copyFileBtn).toHaveCount(1);
+  await expect(
+    info.getByTestId("tab-info-name").locator(".tab-info__copy"),
+  ).toHaveCount(0);
+  await shot1181(page, "copy-buttons-time-row");
 
-  // A-3.2：复制路径 = 绝对路径
+  // A-3.2：复制路径 = 绝对路径；成功提示为锚定触发按钮的悬浮 toast
+  const toast = page.getByTestId("tab-copy-toast");
   await copyPathBtn.click();
   const clip = await page.evaluate(() => navigator.clipboard.readText());
   expect(clip).toBe(FILE_A);
-  await expect(info.getByTestId("tab-copy-notice")).toHaveText("已复制路径");
+  await expect(toast).toHaveText("已复制路径");
+  await expect(toast).toBeVisible();
+  await shot1181(page, "toast-appear");
 
   // A-3.3：复制文件走原生命令，携带同一路径
   await copyFileBtn.click();
@@ -146,7 +160,7 @@ test("信息窗提供复制路径与复制文件两个动作（A-3.1/A-3.2/A-3.3
         .__copy_file_calls__ ?? [],
   );
   expect(calls).toEqual([FILE_A]);
-  await expect(info.getByTestId("tab-copy-notice")).toHaveText("已复制文件");
+  await expect(toast).toHaveText("已复制文件");
 
   await shot(page, "copy-actions");
 });
@@ -230,7 +244,7 @@ test("长路径换行态与无路径态", async ({ page }) => {
   await shot(page, "no-path-state");
 });
 
-test("信息窗宽度取 token 256px，复制图标在文件名之后且为弱化色（#1138 A-2.6–A-2.8）", async ({
+test("信息窗宽度取 token 256px，复制图标在时间行右侧且两图形可区分（#1181）", async ({
   page,
 }) => {
   await boot(page, FILE_A);
@@ -250,20 +264,33 @@ test("信息窗宽度取 token 256px，复制图标在文件名之后且为弱�
   const width = await info.evaluate((el) => el.getBoundingClientRect().width);
   expect(Math.abs(width - tokens.width)).toBeLessThanOrEqual(1);
 
-  // A-2.7：文件名节点之后恰有两个复制按钮（复制路径 / 复制文件）
-  const nameRow = info.getByTestId("tab-info-name");
-  const copyBtns = nameRow.locator(".tab-info__copy button");
+  // A-2.7：最近保存时间行右侧恰有两个复制按钮（复制路径 / 复制文件）
+  const timeRow = info.getByTestId("tab-info-time");
+  const copyBtns = timeRow.locator(".tab-info__copy button");
   await expect(copyBtns).toHaveCount(2);
-  const afterName = await nameRow.evaluate((row) => {
-    const name = row.querySelector(".tab-info__name");
+  const afterTime = await timeRow.evaluate((row) => {
+    const time = row.querySelector(".tab-info__time");
     const copy = row.querySelector(".tab-info__copy");
     return !!(
-      name &&
+      time &&
       copy &&
-      name.compareDocumentPosition(copy) & Node.DOCUMENT_POSITION_FOLLOWING
+      time.compareDocumentPosition(copy) & Node.DOCUMENT_POSITION_FOLLOWING
     );
   });
-  expect(afterName).toBe(true);
+  expect(afterTime).toBe(true);
+
+  const iconNames = await copyBtns.evaluateAll((els) =>
+    els.map((el) => el.querySelector("svg")?.getAttribute("data-icon")),
+  );
+  expect(iconNames).toEqual(["copyPath", "copyFile"]);
+  const pathShapes = await copyBtns.evaluateAll((els) =>
+    els.map((el) =>
+      Array.from(el.querySelectorAll("path"))
+        .map((p) => p.getAttribute("d"))
+        .join("|"),
+    ),
+  );
+  expect(pathShapes[0]).not.toBe(pathShapes[1]);
 
   // A-2.8：两个复制图标计算颜色严格等于弱化 token --app-text-3
   const expectedColor = await page.evaluate(() => {
@@ -279,6 +306,56 @@ test("信息窗宽度取 token 256px，复制图标在文件名之后且为弱�
   );
   expect(colors).toEqual([expectedColor, expectedColor]);
 
-  mkdirSync(".artifacts/1138", { recursive: true });
-  await page.screenshot({ path: ".artifacts/1138/info-copy-after-name.png" });
+  await shot1181(page, "icons-distinguishable");
+});
+
+test("复制成功 toast：出现、锚定按钮、约 2000ms 自动消失、不阻挡指针（#1181）", async ({
+  page,
+  context,
+}) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"], {
+    origin: APP_URL,
+  });
+  await boot(page, FILE_A);
+  const tab = await activeTab(page);
+  await tab.hover();
+  const info = page.locator(INFO);
+  await expect(info).toBeVisible({ timeout: 3000 });
+
+  await page.clock.install();
+  const copyPathBtn = info.getByTestId("tab-copy-path");
+  await copyPathBtn.click();
+  const toast = page.getByTestId("tab-copy-toast");
+  await expect(toast).toHaveText("已复制路径");
+  await expect(toast).toBeVisible();
+
+  const metrics = await toast.evaluate((el) => {
+    const cs = getComputedStyle(el);
+    return { radius: cs.borderRadius, pointerEvents: cs.pointerEvents };
+  });
+  expect(metrics.radius).toBe("999px");
+  expect(metrics.pointerEvents).toBe("none");
+
+  const toastRect = await toast.evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    return { left: r.left, top: r.top, width: r.width };
+  });
+  const btnRect = await copyPathBtn.evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    return { left: r.left, top: r.top, width: r.width, height: r.height };
+  });
+  expect(toastRect.top).toBeGreaterThan(btnRect.top + btnRect.height - 1);
+  expect(
+    Math.abs(
+      toastRect.left + toastRect.width / 2 - (btnRect.left + btnRect.width / 2),
+    ),
+  ).toBeLessThanOrEqual(2);
+
+  await shot1181(page, "toast-appear-timed");
+
+  await page.clock.runFor(1500);
+  await expect(toast).toBeVisible();
+  await page.clock.runFor(600);
+  await expect(toast).toHaveCount(0);
+  await shot1181(page, "toast-dismissed");
 });
