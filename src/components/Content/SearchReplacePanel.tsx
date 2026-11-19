@@ -26,6 +26,7 @@ import {
   buildReplaceChanges,
 } from "../../lib/searchReplace";
 import { RESIZE_EDGES, type ResizeEdge } from "../../lib/previewAnchor";
+import { findPreviewMatchNode } from "../../lib/previewLocate";
 import {
   SEARCH_FLOAT_MIN,
   resizeSearchFloat,
@@ -304,24 +305,14 @@ export default function SearchReplacePanel({
   }
 
   const locate = useCallback(
-    (hit: SearchScanHit) => {
+    (hit: SearchScanHit, ordinal: number) => {
       if (mode === "preview") {
         const preview =
           container?.querySelector<HTMLElement>(".preview-content");
         if (!preview) return;
-        const walker = document.createTreeWalker(preview, NodeFilter.SHOW_TEXT);
-        const needle = hit.text.toLowerCase();
-        let node = walker.nextNode();
-        while (node) {
-          if ((node.textContent ?? "").toLowerCase().includes(needle)) {
-            (node.parentElement as HTMLElement | null)?.scrollIntoView({
-              behavior: "auto",
-              block: "center",
-            });
-            return;
-          }
-          node = walker.nextNode();
-        }
+        // 按序数定位第 ordinal 处命中：与 ⌘N target / Enter / 点击的选中 index 对齐。
+        const target = findPreviewMatchNode(preview, hit.text, ordinal);
+        target?.scrollIntoView({ behavior: "auto", block: "center" });
         return;
       }
       const view = getEditorView(panelId);
@@ -600,7 +591,7 @@ export default function SearchReplacePanel({
         else setSelected((s) => Math.max(0, s - 1));
       } else if (event.key === "Enter") {
         const hit = hits[safeSelected];
-        if (hit) locate(hit);
+        if (hit) locate(hit, safeSelected);
         else handled = false;
       } else if (event.key === "Escape") {
         close();
@@ -613,7 +604,7 @@ export default function SearchReplacePanel({
           );
           setSelected(target);
           // 直达复用鼠标点击行的 locate，一步滚动 + 高亮，避免第二套定位逻辑。
-          locate(hits[target]);
+          locate(hits[target], target);
         } else {
           handled = false;
         }
@@ -932,7 +923,7 @@ export default function SearchReplacePanel({
               aria-label={`第 ${index + 1} 处 · L${hit.line}`}
               onClick={() => {
                 setSelected(index);
-                locate(hit);
+                locate(hit, index);
               }}
             />
           ))}
@@ -971,7 +962,7 @@ export default function SearchReplacePanel({
             onMouseLeave={() => setHover(null)}
             onClick={() => {
               setSelected(index);
-              locate(hit);
+              locate(hit, index);
             }}
           >
             <span className="search-float-main">
