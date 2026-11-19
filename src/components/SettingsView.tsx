@@ -1033,7 +1033,11 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
       ...patch,
     };
     setConfig({ propertyBar: next });
-    applyPropertyBarConfig(next);
+    // 仅「显示样式」变更才切换形态（写显式偏好）；默认档/显隐变更不动形态，
+    // 否则改一个无关属性面板设置也会把显示样式落进全局偏好（#1147）。
+    if (patch.displayStyle !== undefined) {
+      applyPropertyBarConfig(next);
+    }
     void saveAppConfig();
   };
 
