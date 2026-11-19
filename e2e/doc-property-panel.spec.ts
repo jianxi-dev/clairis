@@ -1605,6 +1605,7 @@ test("三元组交互：单击字段名改名、手柄选中、选中后点其�
     await effectiveBg(page, '[data-key="category"] [data-testid="dpb-value"]'),
   ).toBe(softA);
   expect(await effectiveBg(page, '[data-key="author"]')).not.toBe(softA);
+  await dpbRecord(page, "1162", "03-a-row-selected");
 
   await a.locator('[data-key="author"] [data-testid="dpb-value"]').click();
   await expect(a.locator('[data-key="author"].dpb-row-selected')).toHaveCount(
@@ -1617,6 +1618,7 @@ test("三元组交互：单击字段名改名、手柄选中、选中后点其�
   await expect(a.locator('[data-testid="dpb-ops-count"]')).toHaveText(
     "已选 2 项",
   );
+  await dpbRecord(page, "1162", "04-a-value-through");
 
   await a.locator('[data-key="source"] [data-testid="dpb-label"]').click();
   await expect(a.locator('[data-key="source"].dpb-row-selected')).toHaveCount(
@@ -1678,6 +1680,7 @@ test("#1128 选择模型四态：0 选中全选 / 选中即反选 / 标签参与
     await effectiveBg(page, '[data-key="category"] [data-testid="dpb-value"]'),
   ).toBe(soft);
   expect(await effectiveBg(page, '[data-key="author"]')).not.toBe(soft);
+  await dpbRecord(page, "1162", "01-b-row-selected");
   await dpbRecord(page, "1128", "02-one-name-invert-ready");
 
   await b.locator('[data-key="tags"] [data-testid="dpb-row-handle"]').click();
@@ -1686,6 +1689,7 @@ test("#1128 选择模型四态：0 选中全选 / 选中即反选 / 标签参与
   );
   expect(await effectiveBg(page, '[data-key="tags"]')).toBe(soft);
   expect(await effectiveBg(page, '[data-key="tags"] .dpb-tag')).not.toBe(soft);
+  await dpbRecord(page, "1162", "02-b-value-through");
 
   await selectAll.click();
   await expect(b.locator('[data-testid="dpb-ops-count"]')).toHaveText(
