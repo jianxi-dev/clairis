@@ -353,7 +353,7 @@ interface RenameLabelProps {
   selected?: boolean;
 }
 
-/** 字段名就地改名（P-6）：编辑态双击变输入，Enter / 失焦提交，托管键锁定。 */
+/** 字段名就地改名（P-6）：编辑态单击变输入，Enter / 失焦提交，托管键锁定。 */
 function RenameLabel({
   field,
   editable,
@@ -450,9 +450,10 @@ function RenameLabel({
           className={`${className}${renameable ? " dpb-label-clickable" : ""}${selected ? " dpb-node-selected" : ""}`}
           data-testid="dpb-label"
           data-renameable={renameable ? "true" : "false"}
-          title={renameable ? "双击改名" : undefined}
+          title={renameable ? "点击改名" : undefined}
           role={renameable ? "button" : undefined}
           tabIndex={renameable ? 0 : undefined}
+          onClick={renameable ? start : undefined}
           onKeyDown={
             renameable
               ? (e) => {
@@ -1773,12 +1774,6 @@ export default function DocPropertyBar({
     y: number;
   } | null>(null);
   const suppressItemClick = useRef(false);
-  const lastSelectClickRef = useRef<{
-    id: FrontmatterRowId;
-    at: number;
-    x: number;
-    y: number;
-  } | null>(null);
   const { pos: palettePos, ref: paletteRef } = useMenuPos(
     paletteOpen ? paletteAnchor : null,
   );
@@ -2248,6 +2243,12 @@ export default function DocPropertyBar({
     [fields, numericSelected, commitFields],
   );
 
+  const rowIdFromEl = (el: Element): FrontmatterRowId | null => {
+    const raw = el.getAttribute("data-row-id");
+    if (raw == null) return null;
+    return raw === "tags" ? "tags" : Number(raw);
+  };
+
   const dropRows = (): HTMLElement[] => {
     const root = panelRef.current;
     if (!root) return [];
@@ -2334,52 +2335,16 @@ export default function DocPropertyBar({
   };
 
   const onPanelClickCapture = (e: React.MouseEvent) => {
-    if (!editable) return;
+    if (!editable || selectedRef.current.size === 0) return;
     const t = e.target as HTMLElement | null;
     if (!t || typeof t.closest !== "function") return;
     if (t.closest('[data-testid="dpb-row-handle"]')) return;
-    // 450ms 内原地再点 = 双击改名；操作条插入会让名称下移，故按坐标容差判定。
-    const now = e.timeStamp;
-    const last = lastSelectClickRef.current;
-    if (last) {
-      const near =
-        now - last.at < 450 &&
-        Math.hypot(e.clientX - last.x, e.clientY - last.y) < 12;
-      lastSelectClickRef.current = null;
-      if (near) {
-        e.preventDefault();
-        e.stopPropagation();
-        const key = last.id === "tags" ? tagsField?.key : fields[last.id]?.key;
-        if (key) setPendingRenameKey(key);
-        return;
-      }
-    }
-    // 可选中节点：字段名 / 标签行；点击即切换该行选择（#1128）。
-    if (!t.closest("input, textarea, button, select, a")) {
-      const node = t.closest("[data-select-node]");
-      if (node && panelRef.current?.contains(node)) {
-        const raw = node.getAttribute("data-select-node");
-        const id: FrontmatterRowId | null =
-          raw === "tags" ? "tags" : raw ? Number(raw) : null;
-        if (id != null) {
-          e.preventDefault();
-          e.stopPropagation();
-          lastSelectClickRef.current = {
-            id,
-            at: now,
-            x: e.clientX,
-            y: e.clientY,
-          };
-          toggleRow(id);
-        }
-        return;
-      }
-    }
-    // 选择模式下值区等行内点击不进入编辑（P-4）；值不参与选中（#1128）。
-    if (selectedRef.current.size > 0 && t.closest("[data-row-id]")) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
+    const rowEl = t.closest("[data-row-id]");
+    if (!rowEl) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const id = rowIdFromEl(rowEl);
+    if (id != null) toggleRow(id);
   };
 
   useEffect(() => {
