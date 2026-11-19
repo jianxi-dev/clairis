@@ -81,11 +81,6 @@ interface ExtensionPackage {
   skill: string;
 }
 
-interface SystemFontsResponse {
-  families: string[];
-  enumerated: boolean;
-}
-
 const SOURCE_LABELS: Record<ExtensionPackage["source"], string> = {
   builtin: "内置",
   ai: "AI 生成",
@@ -827,24 +822,24 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
     rootRef.current?.focus();
   }, []);
 
-  // 本机已安装字体（C1 / #853）：枚举失败时退回结构性校验，不阻塞设置面板。
+  // 本机已安装字体（#1136）：枚举失败或空数组时降级手输并提示，不阻塞设置面板。
   useEffect(() => {
     if (!tauriEnv) return;
     let cancelled = false;
-    invoke<SystemFontsResponse>("list_system_fonts")
-      .then((res) => {
-        if (!cancelled && res && Array.isArray(res.families)) {
-          // 兜底预设也要进 datalist（#963）；但它不是本机已安装全集，
-          // 故 enumerated=false 时校验退回结构性校验。
-          setHeadingFontOptions(res.families);
-          setHeadingFontsEnumerated(res.enumerated);
+    invoke<string[]>("list_system_fonts")
+      .then((fonts) => {
+        if (cancelled || !Array.isArray(fonts)) return;
+        setHeadingFontOptions(fonts);
+        setHeadingFontsEnumerated(fonts.length > 0);
+        if (fonts.length === 0) {
+          setHeadingFontHint("字体枚举失败，请手动输入");
         }
       })
       .catch(() => {
-        if (!cancelled) {
-          setHeadingFontOptions(null);
-          setHeadingFontsEnumerated(true);
-        }
+        if (cancelled) return;
+        setHeadingFontOptions(null);
+        setHeadingFontsEnumerated(true);
+        setHeadingFontHint("字体枚举失败，请手动输入");
       });
     return () => {
       cancelled = true;

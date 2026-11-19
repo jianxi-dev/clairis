@@ -366,25 +366,22 @@ function mockInvoke(cmd, args) {
     return { path: "/Users/test/assets/" + candidate, name: "assets/" + candidate };
   }
   if (cmd === "list_system_fonts") {
-    // 测试可用 window.__biaoyue_system_fonts__ = { families, enumerated } 覆盖，
-    // 用来驱动「枚举不可用 → 兜底预设」分支（#963）。
-    var fontsOverride = window.__biaoyue_system_fonts__;
-    if (fontsOverride && Array.isArray(fontsOverride.families)) {
-      return {
-        families: cloneJson(fontsOverride.families),
-        enumerated: !!fontsOverride.enumerated,
-      };
+    // 测试可用 window.__biaoyue_system_fonts__ = string[] 覆盖；
+    // window.__biaoyue_system_fonts_error__ = true 模拟枚举失败（#1136）。
+    if (window.__biaoyue_system_fonts_error__) {
+      return Promise.reject(new Error("font enumeration failed"));
     }
-    return {
-      families: [
-        "PingFang SC", "Hiragino Sans GB", "Songti SC", "Heiti SC", "STHeiti",
-        "Kaiti SC", "Arial", "Helvetica", "Times New Roman", "Georgia", "Menlo",
-        "SF Mono", "Noto Sans CJK SC", "Source Han Sans SC", "Noto Sans",
-        "Noto Serif CJK SC", "Source Han Serif SC", "Inter", "JetBrains Mono",
-        "Fira Code", "IBM Plex Sans", "Microsoft YaHei", "SimSun", "SimHei",
-      ],
-      enumerated: true,
-    };
+    var fontsOverride = window.__biaoyue_system_fonts__;
+    if (Array.isArray(fontsOverride)) {
+      return cloneJson(fontsOverride);
+    }
+    return [
+      "PingFang SC", "Hiragino Sans GB", "Songti SC", "Heiti SC", "STHeiti",
+      "Kaiti SC", "Arial", "Helvetica", "Times New Roman", "Georgia", "Menlo",
+      "SF Mono", "Noto Sans CJK SC", "Source Han Sans SC", "Noto Sans",
+      "Noto Serif CJK SC", "Source Han Serif SC", "Inter", "JetBrains Mono",
+      "Fira Code", "IBM Plex Sans", "Microsoft YaHei", "SimSun", "SimHei",
+    ];
   }
   if (responses[cmd]) return responses[cmd];
   console.warn("[TauriMock] unknown command:", cmd);

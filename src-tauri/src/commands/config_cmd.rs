@@ -23,10 +23,10 @@ pub async fn list_config_snapshots(app: AppHandle) -> Result<Vec<String>, AppErr
     config::list_config_snapshots(&app).await
 }
 
-/// 本机已安装字体族（C1 / #853）；`enumerated=false` 表示退回预设兜底列表。
+/// 本机已安装字体族（#1136）；非 macOS 返回空数组，枚举失败返回明确错误。
 #[tauri::command]
-pub fn list_system_fonts() -> crate::fonts::SystemFonts {
-    crate::fonts::system_fonts()
+pub fn list_system_fonts() -> Result<Vec<String>, String> {
+    crate::fonts::list_system_fonts()
 }
 
 /// Restore a config snapshot; the current state is snapshotted first.
