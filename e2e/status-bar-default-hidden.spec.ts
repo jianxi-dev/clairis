@@ -7,13 +7,13 @@ import { execFileSync } from "node:child_process";
  * shell-preview-refine 1.1（#1135）状态栏默认隐藏 + 底边热区滑入滑出。
  *
  * A-1.1 启动未钉住、指针未入热区 → 可见性 0，不占布局高度
- * A-1.2 指针进入底部 8px 热区 → 临时显现（position: fixed）
+ * A-1.2 指针进入底部 16px 热区 → 临时显现（position: fixed）
  * A-1.3 指针移出热区 → 隐藏
  * A-1.4 显式钉住 → 常显；取消钉住 → 恢复默认隐藏
  */
 
 const APP_URL = "http://localhost:1420";
-const ART = path.resolve(process.cwd(), ".artifacts/1135");
+const ART = path.resolve(process.cwd(), ".artifacts/1150");
 const EVIDENCE = path.resolve(process.cwd(), "scripts/cw-evidence.sh");
 
 test.beforeEach(async () => {
@@ -63,7 +63,7 @@ test("默认隐藏：不渲染状态栏、不占布局高度", async ({ page }) 
     "fixed",
   );
   expect(await zone.evaluate((el) => el.getBoundingClientRect().height)).toBe(
-    8,
+    16,
   );
 
   await shot(page, "01-default-hidden");
@@ -90,6 +90,59 @@ test("热区滑入滑出：进入可见（fixed 悬浮）、移出隐藏、正�
   await page.mouse.move(400, 260);
   await expect(bar).toHaveCount(0, { timeout: 3000 });
   expect(Math.abs((await body.boundingBox())!.height - heightBefore)).toBe(0);
+});
+
+test("热区滑入即时显现（<100ms）、滑出即时隐藏", async ({ page }) => {
+  await boot(page);
+  const bar = page.getByTestId("status-bar");
+
+  // 页面内取样：pointerenter → 条体挂载/卸载的 performance.now() 差值。
+  await page.evaluate(() => {
+    const w = window as unknown as Record<string, any>;
+    w.__probe = { enteredAt: 0, shownAt: 0, hiddenAt: 0 };
+    const zone = document.querySelector('[data-testid="status-hotzone"]');
+    zone?.addEventListener("pointerenter", () => {
+      w.__probe.enteredAt = performance.now();
+    });
+    new MutationObserver(() => {
+      const probe = w.__probe;
+      const barEl = document.querySelector('[data-testid="status-bar"]');
+      if (probe.shownAt === 0 && barEl) probe.shownAt = performance.now();
+      else if (probe.shownAt > 0 && probe.hiddenAt === 0 && !barEl)
+        probe.hiddenAt = performance.now();
+    }).observe(document.body, { childList: true, subtree: true });
+  });
+
+  const viewport = page.viewportSize()!;
+  await page.mouse.move(viewport.width / 2, viewport.height - 40);
+  await page.mouse.move(viewport.width / 2, viewport.height - 8, { steps: 4 });
+  await page.waitForFunction(
+    () => (window as unknown as Record<string, any>).__probe.shownAt > 0,
+    null,
+    { timeout: 2000 },
+  );
+  const showLatency = await page.evaluate(() => {
+    const probe = (window as unknown as Record<string, any>).__probe;
+    return probe.shownAt - probe.enteredAt;
+  });
+  expect(showLatency).toBeLessThan(100);
+
+  await shot(page, "05-hotzone-instant-show");
+
+  await page.mouse.move(viewport.width / 2, viewport.height - 60, { steps: 4 });
+  await page.waitForFunction(
+    () => (window as unknown as Record<string, any>).__probe.hiddenAt > 0,
+    null,
+    { timeout: 2000 },
+  );
+  const hideLatency = await page.evaluate(() => {
+    const probe = (window as unknown as Record<string, any>).__probe;
+    return probe.hiddenAt - probe.shownAt;
+  });
+  expect(hideLatency).toBeLessThan(200);
+  await expect(bar).toHaveCount(0);
+
+  await shot(page, "06-hotzone-instant-hide");
 });
 
 test("钉住后常显，取消钉住恢复默认隐藏", async ({ page }) => {
