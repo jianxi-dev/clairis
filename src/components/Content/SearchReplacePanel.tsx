@@ -983,25 +983,6 @@ export default function SearchReplacePanel({
                   ),
                 }}
               />
-              {canReplace && replaceMode && (
-                <span
-                  className="search-float-diff"
-                  data-testid="search-float-diff"
-                >
-                  <del>{hit.text}</del>
-                  {replacement && (
-                    <>
-                      <span
-                        className="search-float-diff-arrow"
-                        aria-hidden="true"
-                      >
-                        →
-                      </span>
-                      <ins>{replacement}</ins>
-                    </>
-                  )}
-                </span>
-              )}
             </span>
             <span
               className="search-float-key"

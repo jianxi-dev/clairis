@@ -387,31 +387,6 @@
   border-color: transparent;
 }
 
-.search-float-diff {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-  margin-top: 2px;
-  overflow: hidden;
-  font-size: 11px;
-  white-space: nowrap;
-}
-
-.search-float-diff del {
-  color: var(--app-text-3);
-  text-decoration: line-through;
-}
-
-.search-float-diff-arrow {
-  color: var(--app-text-3);
-}
-
-.search-float-diff ins {
-  color: var(--app-accent);
-  font-weight: 600;
-  text-decoration: none;
-}
-
 .search-float-status {
   position: absolute;
   bottom: 30px;
