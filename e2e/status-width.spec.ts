@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { revealStatusBar } from "./helpers/ui-probe";
 
 const APP_URL = "http://localhost:1420";
 
@@ -9,8 +10,10 @@ async function boot(page: Page) {
   await page.evaluate(() => {
     const w = window as unknown as Record<string, any>;
     w.__biaoyue_openFile__("/tmp/width.md", "# width", "width.md");
+    w.__biaoyue_store__?.getState?.().setScene("workspace");
   });
   await page.waitForTimeout(300);
+  await revealStatusBar(page);
 }
 
 async function openPanel(page: Page) {
@@ -84,7 +87,11 @@ test("悬停即显示按钮与弹窗，移出后两者都隐藏", async ({ page 
   await expect(button).toHaveCSS("opacity", "1", { timeout: 3000 });
   await expect(panel).toBeVisible({ timeout: 3000 });
 
-  await page.mouse.move(10, 10);
+  const barBox = (await page.getByTestId("status-bar").boundingBox())!;
+  await page.mouse.move(
+    barBox.x + barBox.width / 2,
+    barBox.y + barBox.height / 2,
+  );
   await expect(panel).toHaveCount(0, { timeout: 3000 });
   await expect(button).toHaveCSS("opacity", "0", { timeout: 3000 });
 });

@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { revealStatusBar } from "./helpers/ui-probe";
 
 const APP_URL = "http://localhost:1420";
 const MOD = process.platform === "darwin" ? "Meta" : "Control";
@@ -34,6 +35,7 @@ test.describe("Biaoyue E2E", () => {
   test("2. 顶栏已移除；四个产品入口唯一且只在状态栏", async ({ page }) => {
     await expect(page.getByRole("banner")).toHaveCount(0);
 
+    await revealStatusBar(page);
     const bar = page.getByTestId("status-bar");
     await expect(bar.locator("[data-ai-entry]")).toHaveCount(1);
     await expect(bar.locator('[data-testid="grid-entry"]')).toHaveCount(1);
@@ -55,6 +57,7 @@ test.describe("Biaoyue E2E", () => {
 
   test("4. dark mode changes editor bg", async ({ page }) => {
     // 主题按钮自 #389 起是「悬停开菜单再选」，不再点击循环。
+    await revealStatusBar(page);
     await page.getByTestId("theme-entry").hover();
     await page.getByTestId("theme-option-dark").click();
     await expect(page.locator("html")).toHaveClass(/dark/);

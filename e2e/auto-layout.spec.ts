@@ -2,6 +2,7 @@ import { test, expect, type Page } from "@playwright/test";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
+import { revealStatusBar } from "./helpers/ui-probe";
 
 const ART = path.resolve(process.cwd(), ".artifacts/1046");
 const EVIDENCE = path.resolve(process.cwd(), "scripts/cw-evidence.sh");
@@ -55,6 +56,7 @@ async function boot(page: Page): Promise<void> {
     w.__biaoyue_openFile__("/tmp/al/b.md", "# B\n\n正文。", "b.md");
     w.__biaoyue_store__.getState().setScene("workspace");
   });
+  await revealStatusBar(page);
 }
 
 async function panes(page: Page) {
@@ -240,7 +242,9 @@ test("拖入 3 个文件全部打开并按既有规则布局，动效类出现�
   expect(Math.abs(right[0].x - right[1].x)).toBeLessThanOrEqual(2);
   expect(Math.abs(right[0].x - (left.x + left.w))).toBeLessThanOrEqual(6);
   expect(Math.abs(right[0].h - right[1].h)).toBeLessThanOrEqual(2);
-  expect(Math.abs(right[1].y - (right[0].y + right[0].h))).toBeLessThanOrEqual(6);
+  expect(Math.abs(right[1].y - (right[0].y + right[0].h))).toBeLessThanOrEqual(
+    6,
+  );
   expect(Math.abs(left.h - (right[0].h + right[1].h))).toBeLessThanOrEqual(6);
 
   // A-8.3：动效类在 ≤1s 内移除且无残留。
@@ -256,9 +260,8 @@ test("拖入 2 个文件其中 1 个失败时整体不打开", async ({ page }) 
   expect((await panes(page)).length).toBe(1);
 
   await page.evaluate(() => {
-    (window as unknown as Record<string, unknown>).__biaoyue_fail_open_paths__ = [
-      "/tmp/al/d.md",
-    ];
+    (window as unknown as Record<string, unknown>).__biaoyue_fail_open_paths__ =
+      ["/tmp/al/d.md"];
   });
   await dropPaths(page, ["/tmp/al/c.md", "/tmp/al/d.md"]);
 

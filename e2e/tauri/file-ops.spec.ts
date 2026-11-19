@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { revealStatusBar } from "../helpers/ui-probe";
 
 const APP_URL = "http://localhost:1420";
 
@@ -108,6 +109,7 @@ test.describe("Biaoyue — Tauri Mocked", () => {
 
   test("5. dark mode toggle", async ({ page }) => {
     await openMockFile(page);
+    await revealStatusBar(page);
     const btn = page.getByTestId("theme-entry");
     for (let i = 0; i < 5; i++) {
       const t = await btn.getAttribute("aria-label");

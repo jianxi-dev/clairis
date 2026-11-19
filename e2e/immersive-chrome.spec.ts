@@ -19,9 +19,10 @@ async function setImmersive(page: Page, on: boolean): Promise<void> {
   await page.waitForTimeout(400);
 }
 
-test("进入沉浸隐藏状态栏与未钉住的阅读空间，退出恢复", async ({ page }) => {
+test("默认隐藏态下进入沉浸收拢阅读空间，退出恢复", async ({ page }) => {
   await boot(page);
-  await expect(page.getByTestId("status-bar")).toBeVisible();
+  await expect(page.getByTestId("status-bar")).toHaveCount(0);
+  await expect(page.getByTestId("status-hotzone")).toHaveCount(1);
   await expect(page.getByTestId("rail-edge")).toHaveCount(1);
 
   await setImmersive(page, true);
@@ -31,7 +32,8 @@ test("进入沉浸隐藏状态栏与未钉住的阅读空间，退出恢复", as
   await expect(page.getByTestId("rail-panel")).toHaveCount(0);
 
   await setImmersive(page, false);
-  await expect(page.getByTestId("status-bar")).toBeVisible();
+  await expect(page.getByTestId("status-bar")).toHaveCount(0);
+  await expect(page.getByTestId("status-hotzone")).toHaveCount(1);
   await expect(page.getByTestId("rail-edge")).toHaveCount(1);
 });
 

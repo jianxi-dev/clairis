@@ -1,11 +1,17 @@
 import { test, expect, type Page } from "@playwright/test";
+import { revealStatusBar } from "./helpers/ui-probe";
 
 const APP_URL = "http://localhost:1420";
 
 async function boot(page: Page): Promise<void> {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   await page.goto(APP_URL, { waitUntil: "networkidle" });
-  await page.waitForSelector('[data-testid="status-bar"]', { timeout: 10000 });
+  await page.evaluate(() => {
+    const w = window as unknown as Record<string, any>;
+    w.__biaoyue_store__?.getState?.().setScene("workspace");
+  });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 15000 });
+  await revealStatusBar(page);
 }
 
 async function openDoc(
@@ -94,6 +100,8 @@ test("点击状态栏沉浸入口进入沉浸模式，状态栏自动隐藏、�
   expect(readingMode).toBe(true);
 
   // 规格 application-shell:339：沉浸态状态栏自动隐藏（不占位），底部热区接管。
+  // 临时显现的条体在指针移出后收起，沉浸态不保留悬浮层。
+  await page.mouse.move(400, 200);
   await expect(page.getByTestId("status-bar")).toHaveCount(0);
   await expect(page.getByTestId("status-hotzone")).toHaveCount(1);
 

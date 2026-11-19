@@ -1,6 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
+import { revealStatusBar } from "./helpers/ui-probe";
 
 /**
  * 文档撤销/重做恢复（#321 / shell-editor-batch5 4.4）。
@@ -200,6 +201,7 @@ test("焦点不在编辑器时快捷键仍能撤销与重做", async ({ page }) 
   await page.keyboard.type("abc");
   await expect.poll(() => storeContent(page, path)).toContain("正文。abc");
 
+  await revealStatusBar(page);
   await page
     .locator('[data-testid="status-bar"]')
     .click({ position: { x: 40, y: 8 } });
@@ -288,6 +290,7 @@ test("Mod-Z 一次撤销只产生一次内容变化（焦点在编辑器外）",
   await page.keyboard.type("甲乙丙");
   await expect.poll(() => storeContent(page, p)).toContain("甲乙丙");
 
+  await revealStatusBar(page);
   await page
     .locator('[data-testid="status-bar"]')
     .click({ position: { x: 40, y: 8 } });

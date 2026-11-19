@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { revealStatusBar } from "./helpers/ui-probe";
 
 async function boot(page: Page): Promise<void> {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
@@ -11,6 +12,7 @@ async function boot(page: Page): Promise<void> {
     w.__biaoyue_store__.getState().setRailState("pinned");
   });
   await page.waitForTimeout(300);
+  await revealStatusBar(page);
 }
 
 const colorOf = (page: Page, sel: string) =>

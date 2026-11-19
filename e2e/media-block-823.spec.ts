@@ -1,6 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import path from "node:path";
+import { revealStatusBar } from "./helpers/ui-probe";
 
 /**
  * MD 编辑态媒体块 8 项缺陷（#823）的浏览器可观测回归。
@@ -317,6 +318,7 @@ test("预览态阅读宽度变化时图片等比缩放（#823 缺陷 8）", asyn
   const wide = await measure();
   await page.screenshot({ path: `${ARTIFACTS}/preview-wide.png` });
 
+  await revealStatusBar(page);
   await page
     .getByTestId("status-width")
     .evaluate((el) => (el as HTMLElement).click());

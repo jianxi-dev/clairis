@@ -1,4 +1,5 @@
 import { test, expect, type Locator, type Page } from "@playwright/test";
+import { revealStatusBar } from "./helpers/ui-probe";
 
 /**
  * 悬停提示规则（#634 / #763）：
@@ -19,6 +20,7 @@ async function boot(page: Page): Promise<void> {
     );
   });
   await page.locator("[data-tab-id]").first().waitFor({ timeout: 5000 });
+  await revealStatusBar(page);
 }
 
 test("菜单触发按钮悬停：弹菜单但不出提示", async ({ page }) => {

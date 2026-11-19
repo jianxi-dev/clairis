@@ -54,7 +54,7 @@ describe("App ⌘P 拦截原生打印", () => {
 
     render(<App />);
     await waitFor(() =>
-      expect(screen.getByTestId("grid-entry")).toBeInTheDocument(),
+      expect(screen.getByTestId("status-hotzone")).toBeInTheDocument(),
     );
 
     let prevented = false;
@@ -76,7 +76,7 @@ describe("App ⌘P 拦截原生打印", () => {
   it("Ctrl+P 同样打开 quick-open", async () => {
     render(<App />);
     await waitFor(() =>
-      expect(screen.getByTestId("grid-entry")).toBeInTheDocument(),
+      expect(screen.getByTestId("status-hotzone")).toBeInTheDocument(),
     );
     fireEvent.keyDown(window, { key: "p", ctrlKey: true });
     expect(screen.getByTestId("quick-open")).toBeInTheDocument();
@@ -85,7 +85,7 @@ describe("App ⌘P 拦截原生打印", () => {
   it("输入法组合态不拦截（不打开、不 preventDefault）", async () => {
     render(<App />);
     await waitFor(() =>
-      expect(screen.getByTestId("grid-entry")).toBeInTheDocument(),
+      expect(screen.getByTestId("status-hotzone")).toBeInTheDocument(),
     );
     const event = new KeyboardEvent("keydown", {
       key: "p",
@@ -102,7 +102,7 @@ describe("App ⌘P 拦截原生打印", () => {
   it("再次按下关闭 quick-open", async () => {
     render(<App />);
     await waitFor(() =>
-      expect(screen.getByTestId("grid-entry")).toBeInTheDocument(),
+      expect(screen.getByTestId("status-hotzone")).toBeInTheDocument(),
     );
     fireEvent.keyDown(window, { key: "p", metaKey: true });
     expect(screen.getByTestId("quick-open")).toBeInTheDocument();
@@ -113,7 +113,7 @@ describe("App ⌘P 拦截原生打印", () => {
   it("⌘⇧P 仍是收藏，不打开 quick-open", async () => {
     render(<App />);
     await waitFor(() =>
-      expect(screen.getByTestId("grid-entry")).toBeInTheDocument(),
+      expect(screen.getByTestId("status-hotzone")).toBeInTheDocument(),
     );
     fireEvent.keyDown(window, { key: "p", metaKey: true, shiftKey: true });
     expect(screen.queryByTestId("quick-open")).toBeNull();
