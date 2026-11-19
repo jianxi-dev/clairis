@@ -126,7 +126,7 @@ file-management 域定义标月桌面端的文件管理基础能力：按格式�
 
 **同一格内打开不同的视频 SHALL 更新为该视频**：当前格显示的视频 URL 与标题 SHALL 等于最近一次打开的那个视频，SHALL NOT 停留在先前视频（修复「打开不同视频总是同一个」的串台缺陷）。切换视频后控制条时间戳、字幕与记忆位置 SHALL 按新视频重置。
 
-应用 SHALL 以暂停态打开视频文件：`autoplay` SHALL 关闭、`autoPlayback` SHALL 关闭；程序重启恢复工作区后 SHALL NOT 自动播放。已有观看进度 MAY 被恢复为起始位置，但 SHALL NOT 因此开始播放。任一打开/恢复路径 SHALL NOT 触发播放，点击播放后 SHALL 仅存在一路声音（SHALL NOT 出现双音轨）。
+应用 SHALL 以暂停态打开视频文件：`autoplay` SHALL 关闭、`autoPlayback` SHALL 关闭；程序重启恢复工作区后 SHALL NOT 自动播放。已有观看进度 MAY 被恢复为起始位置，但 SHALL NOT 因此开始播放。任一打开/恢复路径 SHALL NOT 触发播放，点击播放后 SHALL 仅存在一路声音（SHALL NOT 出现双音轨）。**打开完成后 SHALL 显示视频首帧画面，SHALL NOT 显示加载页或加载指示（loading spinner）**：元数据就绪后 SHALL 定位到首帧并暂停呈现（SHALL NOT 调用播放）；重启恢复路径同样 SHALL NOT 自动播放（与 batch20 task 2.4 约束共存）。**画中画 SHALL 为单文档单例**：同一文档同一时刻 SHALL 只存在一个画中画窗口；对另一个视频发起画中画 SHALL 替换当前窗口（先退出旧元素再进入新元素）；SHALL NOT 声称支持多画中画并存。
 
 多个栏目同时显示视频时，每格 SHALL 持有独立的播放器与播放状态，播放/暂停/静音 SHALL 互不影响；多个视频 SHALL 可同时输出声音（SHALL NOT 只允许一路出声，SHALL NOT 自动静音非焦点格）。
 
@@ -183,10 +183,20 @@ file-management 域定义标月桌面端的文件管理基础能力：按格式�
 - **WHEN** 用户打开一个视频文件
 - **THEN** 500ms 内 `video.paused` SHALL 为 `true`，且 SHALL NOT 自动发声
 
+#### Scenario: 打开后显示首帧画面
+
+- **WHEN** 用户打开一个视频文件并等待元数据就绪
+- **THEN** 播放器 SHALL 呈现视频首帧画面（`video.currentTime` > 0 或已绘制首帧），SHALL NOT 显示加载页或加载指示；`video.paused` SHALL 为 `true`
+
 #### Scenario: 重启不自动播放
 
 - **WHEN** 应用重启并恢复含视频的布局
-- **THEN** 恢复后的视频 SHALL 处于暂停态，SHALL NOT 自动发声
+- **THEN** 恢复后的视频 SHALL 处于暂停态，SHALL NOT 自动发声，且 SHALL 显示首帧画面
+
+#### Scenario: 单文档单画中画切换即替换
+
+- **WHEN** 视频 A 已在画中画中，用户再对视频 B 发起画中画
+- **THEN** 画中画窗口 SHALL 替换为视频 B（先退出 A 再进入 B），同一时刻 SHALL 只存在一个画中画窗口
 
 #### Scenario: 多格独立控制
 
@@ -291,12 +301,24 @@ file-management 域定义标月桌面端的文件管理基础能力：按格式�
 
 ### Requirement: 视频窄宽降级与手势
 
-系统 SHALL 在播放器宽度收窄时先压缩按钮间距、到极限再按比例缩小图标，保证全部按钮可见；双指上下滑动左半调亮度、右半调音量；多个视频各自拥有独立画中画容器。
+系统 SHALL 在播放器宽度收窄时先压缩按钮间距、到极限再按比例缩小图标，保证全部按钮可见。**触控板双指上下滑动 SHALL 调节亮度（画面左半）与音量（画面右半）**：实现 SHALL 监听无修饰键的 `wheel` 事件（触控板派发 `wheel` 而非 `touch`）；`Ctrl` / `Cmd + wheel` 的缩放语义 SHALL 保留；触屏 `touch` 通道 SHALL 保留。
 
 #### Scenario: 收窄、手势与多画中画
 
-- **WHEN** 用户把播放器收窄到阈值、执行双指手势，或同时开启两个视频画中画
-- **THEN** 按钮溢出数为 0 且图标尺寸下降；亮度/音量分别变化；两个画中画容器同时存在（A-4.1–A-4.3）
+> 场景标题沿用旧名以保持条款可追溯；自本 change 起画中画语义移入 C-6（单文档单例，切换即替换），本条款只保留宽度收窄与手势。
+
+- **WHEN** 用户把播放器收窄到阈值，或执行双指上下滑动
+- **THEN** 按钮溢出数为 0 且图标尺寸下降；亮度/音量分别变化
+
+#### Scenario: 触控板双指滑动调亮度音量
+
+- **WHEN** 用户在播放器画面左半 / 右半用触控板双指上下滑动（无修饰键）
+- **THEN** 左半 SHALL 改变亮度、右半 SHALL 改变音量
+
+#### Scenario: Ctrl 加滚轮缩放保留
+
+- **WHEN** 用户按住 `Ctrl` / `Cmd` 在播放器上滚动滚轮
+- **THEN** 缩放 SHALL 随之变化，SHALL NOT 触发亮度 / 音量调节
 
 ### Requirement: 导出菜单顺序与 PDF 导出
 
@@ -306,3 +328,4 @@ file-management 域定义标月桌面端的文件管理基础能力：按格式�
 
 - **WHEN** 用户打开导出菜单并点击 PDF
 - **THEN** 菜单文本序列与约定一致，PDF 文件生成或给出可读错误（A-10.1–A-10.2）
+
