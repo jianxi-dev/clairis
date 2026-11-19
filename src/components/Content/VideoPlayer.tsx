@@ -1302,10 +1302,12 @@ export default function VideoPlayer({
   }, []);
   /* eslint-enable react-hooks/exhaustive-deps */
 
-  // 反向对账（#944）：系统级退出原生全屏（Esc / 三指手势 / Cmd+Ctrl+F）不触发
+  // 反向对账（#944 / #1148）：系统级退出原生全屏（Esc / 三指手势 / Cmd+Ctrl+F）不触发
   // fullscreenWeb 事件，网页状态残留、setDecorations(false) 遗留。订阅窗口 resize，
   // 用 isFullscreen() 把状态拉回同步；仅在「期望原生全屏」或「原生全屏已激活」时
   // 对账，避免把 widthMode === "page"（网页全屏但窗口非全屏）的合法态误判为漂移。
+  // #1148：原生被外部进入（窗口全屏按钮 / TabBar 空白双击）时对账结果为无动作——
+  // 窗口级全屏不联动视频网页全屏，视频保持原位。
   useEffect(() => {
     if (!isTauriEnv()) return;
     let win: ReturnType<typeof getCurrentWindow>;

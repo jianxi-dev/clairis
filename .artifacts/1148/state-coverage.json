@@ -1,0 +1,40 @@
+{
+  "task": "1148",
+  "states": [
+    {
+      "state": "01-window-fullscreen-video-in-place",
+      "screenshot": ".artifacts/1148/01-window-fullscreen-video-in-place.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-19T15:53:19.915Z",
+      "runner": "unknown@unknown"
+    },
+    {
+      "state": "02-resize-only-no-fullscreen",
+      "screenshot": ".artifacts/1148/02-resize-only-no-fullscreen.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-19T15:53:20.879Z",
+      "runner": "unknown@unknown"
+    },
+    {
+      "state": "03-explicit-video-fullscreen",
+      "screenshot": ".artifacts/1148/03-explicit-video-fullscreen.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-19T15:53:21.936Z",
+      "runner": "unknown@unknown"
+    },
+    {
+      "state": "04-explicit-video-fullscreen-exit",
+      "screenshot": ".artifacts/1148/04-explicit-video-fullscreen-exit.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-19T15:53:21.986Z",
+      "runner": "unknown@unknown"
+    },
+    {
+      "state": "05-background-pane-unaffected",
+      "screenshot": ".artifacts/1148/05-background-pane-unaffected.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-19T15:53:23.036Z",
+      "runner": "unknown@unknown"
+    }
+  ]
+}
