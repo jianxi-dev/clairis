@@ -73,6 +73,17 @@ const LOOP_ICON_NAME: Record<LoopMode, IconName> = {
 // .art-icon 外壳复用 ArtPlayer 原生控件的 36px 尺寸/缩放；内层 svg 保持 22px 与原生一致。
 const PLAYER_ICON_SIZE = 22;
 
+function togglePictureInPicture(video: HTMLVideoElement): void {
+  if (document.pictureInPictureElement === video) {
+    void document.exitPictureInPicture();
+    return;
+  }
+  const pending = document.pictureInPictureElement
+    ? document.exitPictureInPicture()
+    : Promise.resolve();
+  void pending.then(() => video.requestPictureInPicture?.()).catch(() => {});
+}
+
 function controlSvg(name: IconName): string {
   return `<i class="art-icon">${iconSvg(name, PLAYER_ICON_SIZE)}</i>`;
 }
@@ -876,12 +887,7 @@ export default function VideoPlayer({
           mounted: function ($control) {
             $control.dataset.name = "pip";
             this.proxy($control, "click", () => {
-              const video = art.video;
-              if (document.pictureInPictureElement) {
-                void document.exitPictureInPicture();
-              } else {
-                void video.requestPictureInPicture?.().catch(() => {});
-              }
+              togglePictureInPicture(art.video);
             });
           },
         },
@@ -1150,12 +1156,7 @@ export default function VideoPlayer({
     art.hotkey.add("KeyT", () => openNote());
     art.hotkey.add("KeyS", () => void captureFrame());
     art.hotkey.add("KeyI", () => {
-      const video = art.video;
-      if (document.pictureInPictureElement) {
-        void document.exitPictureInPicture();
-      } else {
-        void video.requestPictureInPicture?.().catch(() => {});
-      }
+      togglePictureInPicture(art.video);
     });
     art.hotkey.add("KeyV", () => {
       const btn = visualBtnRef.current;
