@@ -23,7 +23,6 @@ import {
   setFrontmatterField,
   tagColor,
   validateFieldValue,
-  cloneFieldsForPaste,
   moveFieldBlock,
   newDocFrontmatter,
   uniqueKey,
@@ -38,6 +37,13 @@ import {
   type PropTemplateConfig,
 } from "../../lib/propTemplates";
 import { readDocFieldTypes, writeDocFieldTypes } from "../../lib/docFieldTypes";
+import {
+  decodeFieldSelection,
+  encodeFieldSelection,
+  getFieldSelection,
+  setFieldSelection,
+  type DocPropertyClipboardPayload,
+} from "../../lib/docPropertyClipboard";
 import { getPanelEditorView } from "../../editors/editorRef";
 import { log } from "../../utils/log";
 import { useEditorStore } from "../../stores/editorStore";
@@ -1760,7 +1766,8 @@ export default function DocPropertyBar({
   const editDefault = propertyBar?.displayDefault?.edit ?? "show";
 
   const [selMap, setSelMap] = useState<Record<string, FrontmatterRowId[]>>({});
-  const [clipboard, setClipboard] = useState<FrontmatterField[] | null>(null);
+  const [clipboard, setClipboard] =
+    useState<DocPropertyClipboardPayload | null>(() => getFieldSelection());
   const [drop, setDrop] = useState<{ index: number; top: number } | null>(null);
   const [pendingRenameKey, setPendingRenameKey] = useState<string | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -1802,7 +1809,8 @@ export default function DocPropertyBar({
     lastDocKeyRef.current = docKey;
     selectedRef.current = new Set();
     setSelMap((prev) => ({ ...prev, [docKey]: [] }));
-    setClipboard(null);
+    // 剪贴板是模块级单例：跨页签 / 跨文档保留，只同步镜像给本组件渲染。
+    setClipboard(getFieldSelection());
   }, [docKey]);
 
   // 进入预览 / 编辑模式时应用配置默认档；从源码态切回保留用户状态（P-1）。
@@ -2174,7 +2182,9 @@ export default function DocPropertyBar({
       const wantsTags = selectedRef.current.has("tags") && tagsIdx >= 0;
       const idxs = wantsTags ? [...nums, tagsIdx] : nums;
       if (idxs.length === 0) return;
-      setClipboard(cloneFieldsForPaste(fields, idxs));
+      const payload = encodeFieldSelection(fields, idxs);
+      setFieldSelection(payload);
+      setClipboard(payload);
       if (!cut) return;
       const dropSet = new Set(nums);
       const next = fields.filter((_, i) => !dropSet.has(i));
@@ -2188,21 +2198,30 @@ export default function DocPropertyBar({
   );
 
   const handlePaste = useCallback(() => {
-    if (!clipboard || clipboard.length === 0) return;
+    const payload = clipboard ?? getFieldSelection();
+    const clones = decodeFieldSelection(payload);
+    if (clones.length === 0) return;
     const nums = numericSelected();
     const anchor = nums.length > 0 ? Math.max(...nums) : fields.length - 1;
     const insertAt = Math.max(0, Math.min(fields.length, anchor + 1));
     const taken = new Set(fields.map((f) => f.key));
-    const clones = clipboard.map((f) => {
+    const pasted = clones.map((f) => {
       const key = uniqueKey(f.key, taken);
       taken.add(key);
       return key === f.key ? f : { ...f, key };
     });
     commitFields(
-      [...fields.slice(0, insertAt), ...clones, ...fields.slice(insertAt)],
-      clones.map((_, k) => insertAt + k),
+      [...fields.slice(0, insertAt), ...pasted, ...fields.slice(insertAt)],
+      [],
     );
-  }, [clipboard, fields, numericSelected, commitFields]);
+    // 载荷带类型：登记覆盖，避免空值回解析把 select / 布尔等降级成未识别。
+    setOverrideMap((prev) => {
+      const cur = prev[typeKey] ?? {};
+      const merged = { ...cur };
+      for (const f of pasted) merged[f.key] = f.type;
+      return { ...prev, [typeKey]: merged };
+    });
+  }, [clipboard, fields, numericSelected, commitFields, typeKey]);
 
   const handleDelete = useCallback(() => {
     const nums = numericSelected().filter((i) => i !== titleIdx);
@@ -2609,7 +2628,7 @@ export default function DocPropertyBar({
     editable && selected.size > 0 && !collapsed ? (
       <OpsBar
         count={selected.size}
-        canPaste={clipboard !== null && clipboard.length > 0}
+        canPaste={clipboard !== null && clipboard.fields.length > 0}
         onCopy={() => handleCopy(false)}
         onCut={() => handleCopy(true)}
         onPaste={handlePaste}

@@ -5,7 +5,6 @@ import {
   CANON_TYPE,
   FRONTMATTER_RE,
   TAG_PALETTE,
-  cloneFieldsForPaste,
   coerceFrontmatterValue,
   dedupeKeys,
   isManagedDateKey,
@@ -593,39 +592,6 @@ describe("uniqueKey / dedupeKeys（粘贴键名去重）", () => {
       { key: "a" },
     ]);
     expect(out.map((f) => f.key)).toEqual(["a", "a-2", "b", "a-3"]);
-  });
-});
-
-describe("cloneFieldsForPaste（复制语义）", () => {
-  const fields: FrontmatterField[] = [
-    {
-      key: "tags",
-      type: "array",
-      value: ["甲", "乙"],
-      display: "甲、乙",
-    },
-    {
-      key: "meta",
-      type: "unknown",
-      value: { nested: [1, 2] },
-      display: "x",
-    },
-    { key: "n", type: "number", value: 1, display: "1" },
-  ];
-
-  it("深拷贝：数组 / 对象独立，改副本不影响原字段", () => {
-    const out = cloneFieldsForPaste(fields, [0, 1]);
-    expect(out.map((f) => f.key)).toEqual(["tags", "meta"]);
-    (out[0].value as string[]).push("丙");
-    (out[1].value as { nested: number[] }).nested.push(3);
-    expect(fields[0].value).toEqual(["甲", "乙"]);
-    expect(fields[1].value).toEqual({ nested: [1, 2] });
-    expect(out[0].value).toEqual(["甲", "乙", "丙"]);
-  });
-
-  it("按升序取用，重复下标只取一次", () => {
-    const out = cloneFieldsForPaste(fields, [2, 0, 0]);
-    expect(out.map((f) => f.key)).toEqual(["tags", "n"]);
   });
 });
 

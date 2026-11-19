@@ -747,39 +747,6 @@ export function dedupeKeys<T extends { key: string }>(
   });
 }
 
-function cloneValue(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(cloneValue);
-  if (value && typeof value === "object") {
-    return Object.fromEntries(
-      Object.entries(value as Record<string, unknown>).map(([k, v]) => [
-        k,
-        cloneValue(v),
-      ]),
-    );
-  }
-  return value;
-}
-
-/**
- * 复制语义：按 `indices`（升序）取出字段并深拷贝值——数组 / 对象独立，
- * 粘贴后修改副本不影响原字段。
- */
-export function cloneFieldsForPaste(
-  fields: readonly FrontmatterField[],
-  indices: readonly number[],
-): FrontmatterField[] {
-  return [
-    ...new Set(
-      indices.filter((i) => Number.isInteger(i) && i >= 0 && i < fields.length),
-    ),
-  ]
-    .sort((a, b) => a - b)
-    .map((i) => {
-      const f = fields[i];
-      return { ...f, value: cloneValue(f.value) };
-    });
-}
-
 export type RenameFrontmatterResult =
   ({ ok: true } & FrontmatterWriteResult) | { ok: false; reason: string };
 
