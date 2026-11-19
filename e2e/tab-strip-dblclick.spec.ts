@@ -44,7 +44,8 @@ test("已有页签时：双击空白不动页签，双击页签进重命名（D1
 
   const strip = page.locator(".tab-strip").first();
   const box = (await strip.boundingBox())!;
-  await page.mouse.dblclick(box.x + box.width - 16, box.y + box.height / 2);
+  // 页签改为弹性伸缩后单个页签占满页签条，空白处只剩页签条自身 4px 内距。
+  await page.mouse.dblclick(box.x + box.width - 2, box.y + box.height / 2);
   await expect(page.locator("[data-tab-id]")).toHaveCount(1);
   await expect(page.locator('[data-testid="tab-title-input"]')).toHaveCount(0);
 
