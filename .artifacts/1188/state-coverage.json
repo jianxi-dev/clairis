@@ -1,0 +1,39 @@
+{
+  "states": [
+    {
+      "state": "panel-open",
+      "screenshot": "/Users/mason/ToHighs/clairis/.artifacts/1188/panel-open.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-19T19:03:37Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "localized-order",
+      "screenshot": "/Users/mason/ToHighs/clairis/.artifacts/1188/localized-order.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-19T19:03:39Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "keyboard-highlight",
+      "screenshot": "/Users/mason/ToHighs/clairis/.artifacts/1188/keyboard-highlight.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-19T19:03:40Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "selected-writes-family",
+      "screenshot": "/Users/mason/ToHighs/clairis/.artifacts/1188/selected-writes-family.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-19T19:03:40Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "warm-theme-readable",
+      "screenshot": "/Users/mason/ToHighs/clairis/.artifacts/1188/warm-theme-readable.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-19T19:03:43Z",
+      "runner": "unknown@MMBP"
+    }
+  ]
+}
