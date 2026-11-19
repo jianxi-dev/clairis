@@ -1,0 +1,33 @@
+{
+  "task": "1162",
+  "states": [
+    {
+      "state": "03-a-row-selected",
+      "screenshot": ".artifacts/1162/03-a-row-selected.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-19T12:33:18.963Z",
+      "runner": "unknown@unknown"
+    },
+    {
+      "state": "04-a-value-through",
+      "screenshot": ".artifacts/1162/04-a-value-through.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-19T12:33:18.996Z",
+      "runner": "unknown@unknown"
+    },
+    {
+      "state": "01-b-row-selected",
+      "screenshot": ".artifacts/1162/01-b-row-selected.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-19T12:33:20.062Z",
+      "runner": "unknown@unknown"
+    },
+    {
+      "state": "02-b-value-through",
+      "screenshot": ".artifacts/1162/02-b-value-through.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-19T12:33:20.112Z",
+      "runner": "unknown@unknown"
+    }
+  ]
+}
