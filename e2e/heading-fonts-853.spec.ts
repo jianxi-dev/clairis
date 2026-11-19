@@ -46,6 +46,34 @@ const SYSTEM_FONT_OPTIONS = [
   "SimHei",
 ];
 
+// 与 e2e/mocks/tauri-mock.js 的 DEFAULT_SYSTEM_FONTS localized 顺序一一对应。
+const SYSTEM_FONT_LOCALIZED = [
+  "苹方-简",
+  "冬青黑体-简",
+  "宋体-简",
+  "黑体-简",
+  "华文黑体",
+  "楷体-简",
+  "Arial",
+  "Helvetica",
+  "Times New Roman",
+  "Georgia",
+  "Menlo",
+  "SF Mono",
+  "思源黑体 SC",
+  "思源黑体 SC",
+  "Noto Sans",
+  "思源宋体 SC",
+  "思源宋体 SC",
+  "Inter",
+  "JetBrains Mono",
+  "Fira Code",
+  "IBM Plex Sans",
+  "微软雅黑",
+  "宋体",
+  "黑体",
+];
+
 function shot(page: Page, name: string, state: string): Promise<string> {
   const file = path.join(ART, `${name}.png`);
   return page.screenshot({ path: file }).then(() => {
@@ -166,10 +194,15 @@ test("设置面板含 6 个逐级入口，未配置级别显示「默认」占�
   }
 
   // mock 默认返回本机字体数组；枚举失败降级见下方用例。
-  const options = await page
-    .locator("#heading-font-options option")
-    .evaluateAll((els) => els.map((e) => (e as HTMLOptionElement).value));
-  expect(options).toEqual(SYSTEM_FONT_OPTIONS);
+  await page.locator('[data-testid="heading-font-h1"]').focus();
+  const optionLocator = page.locator(
+    '[data-testid="heading-font-options"] [role="option"]',
+  );
+  await expect(optionLocator).toHaveCount(SYSTEM_FONT_LOCALIZED.length);
+  const options = await optionLocator.evaluateAll((els) =>
+    els.map((e) => (e as HTMLElement).textContent ?? ""),
+  );
+  expect(options).toEqual(SYSTEM_FONT_LOCALIZED);
 
   // 触发一次落盘：未配置时不应写任何显式级别（不填默认栈）。
   await page.locator('[data-testid="font-size-17"]').click();
@@ -190,7 +223,10 @@ test("枚举失败降级手输并显示提示（#1136）", async ({ page }) => {
   await openSettings(page);
   await openAppearance(page);
 
-  await expect(page.locator("#heading-font-options option")).toHaveCount(0);
+  await page.locator('[data-testid="heading-font-h1"]').focus();
+  await expect(
+    page.locator('[data-testid="heading-font-options"] [role="option"]'),
+  ).toHaveCount(0);
   await expect(page.locator('[data-testid="heading-font-hint"]')).toHaveText(
     "字体枚举失败，请手动输入",
   );
@@ -274,7 +310,7 @@ test("重启后标题字体保持（持久化往返）", async ({ page }) => {
   await openSettings(page);
   await openAppearance(page);
 
-  await expect(h1).toHaveValue("Songti SC");
+  await expect(h1).toHaveValue("宋体-简");
   await expect(h3).toHaveValue("Menlo");
   await shot(page, "persisted-after-reload", "persisted-after-reload");
 });
@@ -288,7 +324,7 @@ test("非法配置值加载时被拒绝，合法值保留", async ({ page }) => 
 
   await expect(page.locator('[data-testid="heading-font-h1"]')).toHaveValue("");
   await expect(page.locator('[data-testid="heading-font-h2"]')).toHaveValue(
-    "Songti SC",
+    "宋体-简",
   );
 
   await page.locator('[data-testid="font-size-17"]').click();

@@ -41,6 +41,34 @@ const SYSTEM_FONT_OPTIONS = [
   "SimHei",
 ];
 
+// 与 e2e/mocks/tauri-mock.js 的 DEFAULT_SYSTEM_FONTS localized 顺序一一对应。
+const SYSTEM_FONT_LOCALIZED = [
+  "苹方-简",
+  "冬青黑体-简",
+  "宋体-简",
+  "黑体-简",
+  "华文黑体",
+  "楷体-简",
+  "Arial",
+  "Helvetica",
+  "Times New Roman",
+  "Georgia",
+  "Menlo",
+  "SF Mono",
+  "思源黑体 SC",
+  "思源黑体 SC",
+  "Noto Sans",
+  "思源宋体 SC",
+  "思源宋体 SC",
+  "Inter",
+  "JetBrains Mono",
+  "Fira Code",
+  "IBM Plex Sans",
+  "微软雅黑",
+  "宋体",
+  "黑体",
+];
+
 function shot(page: Page, name: string, state: string): Promise<string> {
   const file = path.join(ART, `${name}.png`);
   return page.screenshot({ path: file }).then(() => {
@@ -142,11 +170,15 @@ test("设置面板标题字体候选来自本机枚举（非空、非写死常�
   await openSettings(page);
   await openAppearance(page);
 
-  const options = await page
-    .locator("#heading-font-options option")
-    .evaluateAll((els) => els.map((e) => (e as HTMLOptionElement).value));
-  expect(options.length).toBeGreaterThan(0);
-  expect(options).toEqual(SYSTEM_FONT_OPTIONS);
+  await page.locator('[data-testid="heading-font-h1"]').focus();
+  const optionLocator = page.locator(
+    '[data-testid="heading-font-options"] [role="option"]',
+  );
+  await expect(optionLocator).toHaveCount(SYSTEM_FONT_LOCALIZED.length);
+  const options = await optionLocator.evaluateAll((els) =>
+    els.map((e) => (e as HTMLElement).textContent ?? ""),
+  );
+  expect(options).toEqual(SYSTEM_FONT_LOCALIZED);
   await shot(page, "options-enumerated", "options-enumerated");
 });
 
@@ -189,7 +221,10 @@ test("枚举失败降级手输并显示提示", async ({ page }) => {
   await openSettings(page);
   await openAppearance(page);
 
-  await expect(page.locator("#heading-font-options option")).toHaveCount(0);
+  await page.locator('[data-testid="heading-font-h3"]').focus();
+  await expect(
+    page.locator('[data-testid="heading-font-options"] [role="option"]'),
+  ).toHaveCount(0);
   await expect(page.locator('[data-testid="heading-font-hint"]')).toHaveText(
     "字体枚举失败，请手动输入",
   );

@@ -48,10 +48,9 @@ import {
 import {
   HEADING_FONT_STACK,
   HEADING_LEVELS,
-  headingFontInputValue,
-  parseHeadingFontInput,
   type HeadingLevel,
 } from "../lib/headingFonts";
+import HeadingFontField from "./HeadingFontField";
 import { useStore } from "../stores/index";
 import { PROVIDERS } from "../lib/providers";
 import { formatSnapshotTime } from "../hooks/useAiEntry";
@@ -747,17 +746,6 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
   const setFontSize = useEditorStore((s) => s.setFontSize);
   const headingFonts = useEditorStore((s) => s.config.headingFonts);
   const headingFontMap = useMemo(() => headingFonts ?? {}, [headingFonts]);
-  const [headingFontText, setHeadingFontText] = useState<
-    Record<HeadingLevel, string>
-  >(
-    () =>
-      Object.fromEntries(
-        HEADING_LEVELS.map((level) => [
-          level,
-          headingFontInputValue(headingFontMap[level]),
-        ]),
-      ) as Record<HeadingLevel, string>,
-  );
   const [headingFontOptions, setHeadingFontOptions] = useState<
     SystemFont[] | null
   >(null);
@@ -835,28 +823,13 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
       .catch(() => {
         if (cancelled) return;
         setHeadingFontOptions(null);
-        setHeadingFontsEnumerated(true);
+        setHeadingFontsEnumerated(false);
         setHeadingFontHint("字体枚举失败，请手动输入");
       });
     return () => {
       cancelled = true;
     };
   }, [tauriEnv]);
-
-  // 配置从磁盘 / AI 改动后同步输入框显示（默认栈显示为空）。
-  const [appliedHeadingFonts, setAppliedHeadingFonts] =
-    useState(headingFontMap);
-  if (appliedHeadingFonts !== headingFontMap) {
-    setAppliedHeadingFonts(headingFontMap);
-    setHeadingFontText(
-      Object.fromEntries(
-        HEADING_LEVELS.map((level) => [
-          level,
-          headingFontInputValue(headingFontMap[level]),
-        ]),
-      ) as Record<HeadingLevel, string>,
-    );
-  }
 
   useEffect(() => {
     if (active !== "ai" || !tauriEnv) return;
@@ -897,6 +870,10 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
+        // 标题字体候选面板（#1188）自建 Esc 关闭；若来源在字段 / 面板内，
+        // 交给字段处理，避免连带关闭整个设置面板。
+        const target = e.target as HTMLElement | null;
+        if (target?.closest?.('[data-testid^="heading-font-"]')) return;
         e.preventDefault();
         e.stopPropagation();
         if (dropActive) {
@@ -937,38 +914,27 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
     void saveAppConfig();
   };
 
-  // 标题字体（C1 / #853）：输入即改本地文本，失焦 / 回车才校验落盘；
-  // 不在本机已安装列表里的值拒绝写入并回落默认。清空 = 取消该级显式配置。
-  const commitHeadingFont = (level: HeadingLevel, text: string) => {
-    const parsed = parseHeadingFontInput(
-      text,
-      headingFontsEnumerated ? headingFontOptions : null,
-    );
-    if (parsed.kind === "invalid") {
-      setHeadingFontText((prev) => ({
-        ...prev,
-        [level]: headingFontInputValue(headingFontMap[level]),
-      }));
-      setHeadingFontHint("该字体不在本机已安装列表中，已回落默认。");
-      return;
-    }
+  // 标题字体（C1 / #853 / #1188）：组件已解析并校验，这里只落盘；
+  // 清空 / 默认栈 = 取消该级显式配置。非法值由组件重置并回调 onInvalid。
+  const commitHeadingFont = (
+    level: HeadingLevel,
+    family: string | undefined,
+  ) => {
     const next = { ...headingFontMap };
     const explicit =
-      parsed.kind === "valid" && parsed.value !== HEADING_FONT_STACK
-        ? parsed.value
-        : undefined;
+      family && family !== HEADING_FONT_STACK ? family : undefined;
     if (explicit) {
       next[level] = explicit;
     } else {
       delete next[level];
     }
     setConfig({ headingFonts: next });
-    setHeadingFontText((prev) => ({
-      ...prev,
-      [level]: headingFontInputValue(explicit),
-    }));
     setHeadingFontHint("");
     void saveAppConfig();
+  };
+
+  const rejectHeadingFont = () => {
+    setHeadingFontHint("该字体不在本机已安装列表中，已回落默认。");
   };
 
   const toggleCapability = (id: CapabilityId, enabled: boolean) => {
@@ -1544,40 +1510,18 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
                   逐级设置 H1–H6
                   的字体；未配置的级别显示「默认」占位，清空＝取消该级显式配置。
                 </p>
-                <datalist id="heading-font-options">
-                  {(headingFontOptions ?? []).map((font) => (
-                    <option key={font.family} value={font.family} />
-                  ))}
-                </datalist>
                 <div className="grid grid-cols-2 gap-3">
-                  {HEADING_LEVELS.map((level, index) => (
-                    <label key={level} className="block">
-                      <span className="mb-1 block text-xs text-[var(--app-text-3)]">
-                        H{index + 1}
-                      </span>
-                      <input
-                        type="text"
-                        list="heading-font-options"
-                        data-testid={`heading-font-${level}`}
-                        value={headingFontText[level]}
-                        placeholder="默认"
-                        onChange={(e) =>
-                          setHeadingFontText((prev) => ({
-                            ...prev,
-                            [level]: e.target.value,
-                          }))
-                        }
-                        onBlur={(e) => commitHeadingFont(level, e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            commitHeadingFont(level, e.currentTarget.value);
-                            e.currentTarget.blur();
-                          }
-                        }}
-                        className="w-full rounded border border-[var(--app-border)] bg-[var(--app-surface)] px-2 py-1.5 text-sm text-[var(--app-text)] outline-none focus:border-[var(--app-accent)]"
-                      />
-                    </label>
+                  {HEADING_LEVELS.map((level) => (
+                    <HeadingFontField
+                      key={level}
+                      level={level}
+                      value={headingFontMap[level]}
+                      options={headingFontOptions}
+                      enumerated={headingFontsEnumerated}
+                      placeholder="默认"
+                      onCommit={(family) => commitHeadingFont(level, family)}
+                      onInvalid={rejectHeadingFont}
+                    />
                   ))}
                 </div>
                 {headingFontHint && (
