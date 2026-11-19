@@ -2598,7 +2598,7 @@ export default function DocPropertyBar({
       type="button"
       className="dpb-tpl-btn dpb-variant-toggle"
       data-testid="dpb-variant-toggle"
-      title={variant === "A" ? "切换到胶囊形态（B）" : "切换到一行条形态（A）"}
+      title="切换到 L 一行条 / T 精排双列"
       aria-label="切换属性面板形态"
       aria-pressed={variant === "B"}
       onClick={toggleVariant}

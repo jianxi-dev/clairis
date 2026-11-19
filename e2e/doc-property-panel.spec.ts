@@ -828,6 +828,92 @@ test("#1129 AB 图标切换形态并持久化；窄窗自动胶囊不覆盖用�
   await dpbRecord(page, "1129", "08-wide-back-to-list");
 });
 
+test("#1163 形态切换图标 L/T 语义与存储兼容", async ({ page }) => {
+  await openDoc(page);
+  const toggleA = panel(page, "A").locator(
+    '[data-testid="dpb-variant-toggle"]',
+  );
+  await expect(toggleA.locator("svg")).toHaveAttribute(
+    "data-icon",
+    "docPropertyVariant",
+  );
+
+  const pathsA = toggleA.locator("svg path");
+  await expect(pathsA).toHaveCount(2);
+  const dList = await pathsA.evaluateAll((els) =>
+    els.map((e) => e.getAttribute("d")),
+  );
+  expect(dList[0]).not.toBe(dList[1]);
+  expect(dList.join(" ")).not.toBe(
+    "M3.5 5.5h17v13h-17z M12 5.5v13 M6 9.5h3.5 M6 13h3.5 M14.5 9.5h3.5 M14.5 13h3.5",
+  );
+  expect(
+    await toggleA.evaluate(
+      (el) => el.getAttribute("title") ?? el.getAttribute("data-tip") ?? "",
+    ),
+  ).toContain("L 一行条 / T 精排双列");
+  await dpbRecord(page, "1163", "01-a-icon-lt");
+
+  await page.keyboard.press("Meta+,");
+  await expect(page.locator('[data-testid="settings-scene"]')).toBeVisible();
+  await page.locator('[data-settings-nav="editor"]').click();
+  await expect(
+    page.locator('[data-testid="property-bar-style-list"]'),
+  ).toHaveText("L 一行条");
+  await expect(
+    page.locator('[data-testid="property-bar-style-dual"]'),
+  ).toHaveText("T 精排双列");
+  await dpbRecord(page, "1163", "02-settings-lt");
+  await page.keyboard.press("Escape");
+  await expect(page.locator('[data-testid="settings-scene"]')).toHaveCount(0);
+
+  await toggleA.click();
+  const b = panel(page, "B");
+  await expect(b).toBeVisible();
+  const toggleB = b.locator('[data-testid="dpb-variant-toggle"]');
+  await expect(toggleB).toHaveAttribute("aria-pressed", "true");
+  expect(
+    await toggleB.evaluate(
+      (el) => el.getAttribute("title") ?? el.getAttribute("data-tip") ?? "",
+    ),
+  ).toContain("L 一行条 / T 精排双列");
+  await expect(toggleB.locator("svg path")).toHaveCount(2);
+  await dpbRecord(page, "1163", "03-b-icon-lt");
+
+  await expect
+    .poll(
+      () => page.evaluate(() => localStorage.getItem("__mock_config") ?? ""),
+      { timeout: 5000 },
+    )
+    .toContain('"docPropertyVariant":"B"');
+  await page.reload();
+  await page.waitForSelector('[data-testid="pane-header"]', {
+    timeout: 15000,
+  });
+  await openDoc(page);
+  await expect(panel(page, "B")).toBeVisible();
+  await expect(
+    panel(page, "B").locator('[data-testid="dpb-variant-toggle"]'),
+  ).toHaveAttribute("aria-pressed", "true");
+  await dpbRecord(page, "1163", "04-reload-persisted-b");
+
+  await panel(page, "B").locator('[data-testid="dpb-variant-toggle"]').click();
+  await expect(panel(page, "A")).toBeVisible();
+  await expect
+    .poll(
+      () => page.evaluate(() => localStorage.getItem("__mock_config") ?? ""),
+      { timeout: 5000 },
+    )
+    .toContain('"docPropertyVariant":"A"');
+  await page.reload();
+  await page.waitForSelector('[data-testid="pane-header"]', {
+    timeout: 15000,
+  });
+  await openDoc(page);
+  await expect(panel(page, "A")).toBeVisible();
+  await dpbRecord(page, "1163", "05-reload-persisted-a");
+});
+
 const TYPE_DOC = `---
 title: 类型切换
 author: 2026-11-14

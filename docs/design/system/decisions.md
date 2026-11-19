@@ -86,3 +86,4 @@ ledger: append-only
 | 文档属性 AB 切换图标 | 新增概念 `docPropertyVariant`（spec §2.3）：外框 + 中缝，左右各两条横线表示一行条 / 双列；标题栏密集工具条档 14px、笔画 1.7 | document-properties-inline / #1129 | 2026-11-19 |
 | 文档属性 footer | A 底部 footer 左托管日期 + 右「N 个字段」同行；B 同一 footer 行右侧托管日期；字号 11px（spec §7.2），锁图标 14px，缺失日期键不渲染空壳 | document-properties-inline / #1129 | 2026-11-19 |
 | 页签收紧 | 页签条相邻间距保持 32px 不动（用户第一轮已裁定）；单个页签内标题右缘到关闭按钮左缘 10px → 6px（去掉 `ml-1`）；信息窗宽度 320px → 256px（spec §7.4）；复制路径 / 复制文件两图标移到文件名节点之后、颜色降为 `--app-text-3` 弱化档 | shell-preview-refine / #1138 | 2026-11-19 |
+| 文档属性 L/T 切换图标 | 取代台账「文档属性 AB 切换图标」行：`docPropertyVariant` 改为双形态对比——左半三条等宽横条（L 一行条）+ 右半外框 + 中缝 + 横缝构成的两列网格（T 精排双列）；仅展示语义改 L/T，存储值仍 `A`/`B`、`displayStyle` 仍 `list`/`dual` 不变 | doc-property-restore / #1163 | 2026-11-19 |

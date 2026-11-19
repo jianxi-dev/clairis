@@ -191,8 +191,8 @@ const GRID_MODES = [
 ] as const;
 
 const PROPERTY_BAR_STYLE_OPTIONS = [
-  { value: "list", label: "A 一行条" },
-  { value: "dual", label: "B 精排双列" },
+  { value: "list", label: "L 一行条" },
+  { value: "dual", label: "T 精排双列" },
 ] as const;
 
 const PROPERTY_BAR_DEFAULT_OPTIONS = [
