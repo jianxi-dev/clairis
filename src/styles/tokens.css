@@ -48,8 +48,8 @@
   --media-radius: 6px;
   /* 自绘悬停提示唯一外壳常量（design-system §5；batch19 A2） */
   --tip-shell-radius: var(--radius-full);
-  /* 页签标题最大显示宽度；裁决见 docs/design/system/decisions.md（tab-title-info-surface 1.1） */
-  --tab-title-max-width: 120px;
+  /* 页签最小宽度保底；裁决见 docs/design/system/decisions.md（shell-tabs-surface 1.1，spec §7.5） */
+  --tab-min-width: 96px;
   /* 页签名信息窗固定宽度；同上台账行（design-system §7.4） */
   --tab-info-width: 256px;
   /* 搜索浮窗控件密度档（design-system §7.1）：输入框 / 替换按钮 / 顶栏共用，

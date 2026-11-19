@@ -475,7 +475,7 @@ export default function TabBar({
           window.addEventListener("pointerup", onUp);
           window.addEventListener("pointercancel", onUp);
         }}
-        className="tab-strip flex min-h-[26px] w-full items-center gap-8 shrink-0 select-none overflow-x-auto px-1"
+        className="tab-strip flex min-h-[26px] w-full min-w-0 items-center gap-8 select-none overflow-x-auto px-1"
         style={{
           // 底边只由栏目头（pane-header）画一次；页签条再画一遍会叠成加深双线（#1/#23）。
           background: "transparent",
@@ -531,6 +531,7 @@ export default function TabBar({
                 aria-selected={isActive}
                 data-tab-color={typeColor}
                 style={{
+                  minWidth: "var(--tab-min-width)",
                   ...(isDragged
                     ? {
                         opacity: 0.5,
@@ -550,7 +551,7 @@ export default function TabBar({
                   setEditingId(id);
                   setEditValue(tab.title);
                 }}
-                className={`group flex min-w-0 shrink-0 items-center gap-1.5 px-2.5 py-1 text-xs cursor-pointer transition-colors outline-none focus:outline-none focus-visible:outline-none ${
+                className={`group flex min-w-0 flex-1 items-center gap-1.5 px-2.5 py-1 text-xs cursor-pointer transition-colors outline-none focus:outline-none focus-visible:outline-none ${
                   isActive
                     ? "tab-capsule rounded-full bg-[var(--app-accent-soft)] font-medium text-[var(--app-text-strong)]"
                     : "rounded-none bg-transparent text-[var(--app-chrome-rest)] hover:rounded-full hover:bg-[var(--app-sunken)] hover:text-[var(--app-chrome-hover)]"
@@ -594,7 +595,6 @@ export default function TabBar({
                   <span
                     data-testid="tab-title"
                     className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap"
-                    style={{ maxWidth: "var(--tab-title-max-width)" }}
                   >
                     {tab.title}
                   </span>

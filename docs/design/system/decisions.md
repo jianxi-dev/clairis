@@ -2,7 +2,7 @@
 title: "标月设计决案台账"
 type: design
 status: accepted
-last_updated: 2026-11-08
+last_updated: 2026-11-20
 source_of_truth: canonical
 ledger: append-only
 ---
@@ -88,3 +88,4 @@ ledger: append-only
 | 页签收紧 | 页签条相邻间距保持 32px 不动（用户第一轮已裁定）；单个页签内标题右缘到关闭按钮左缘 10px → 6px（去掉 `ml-1`）；信息窗宽度 320px → 256px（spec §7.4）；复制路径 / 复制文件两图标移到文件名节点之后、颜色降为 `--app-text-3` 弱化档 | shell-preview-refine / #1138 | 2026-11-19 |
 | 文档属性 L/T 切换图标 | 取代台账「文档属性 AB 切换图标」行：`docPropertyVariant` 改为双形态对比——左半三条等宽横条（L 一行条）+ 右半外框 + 中缝 + 横缝构成的两列网格（T 精排双列）；仅展示语义改 L/T，存储值仍 `A`/`B`、`displayStyle` 仍 `list`/`dual` 不变 | doc-property-restore / #1163 | 2026-11-19 |
 | 状态栏底边热区 | 高度 8px → 16px（设计系统 §3 `--space-16`，与顶部沉浸热区同档）；主窗口隐藏态指针进入立即显现、移出立即隐藏（去掉 500ms 计时，对齐卡片动作行），沉浸态保留 500ms 停留 | #1150 | 2026-11-20 |
+| 页签最小宽度保底 | `--tab-min-width: 96px`（spec §7.5）：页签弹性等比伸缩的下限，取代「页签标题最大显示宽度 120px」行；低于保底后页签条横向滚动，标题仍以省略号收尾 | shell-tabs-surface / #1180 | 2026-11-20 |
