@@ -1,0 +1,33 @@
+{
+  "task": "1185-pip-replace",
+  "states": [
+    {
+      "state": "01-pip-a-entered",
+      "screenshot": ".artifacts/1185/01-pip-a-entered.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-19T21:18:39.002Z",
+      "runner": "unknown@unknown"
+    },
+    {
+      "state": "02-pip-b-requested",
+      "screenshot": ".artifacts/1185/02-pip-b-requested.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-19T21:18:39.093Z",
+      "runner": "unknown@unknown"
+    },
+    {
+      "state": "03-only-one-pip-element",
+      "screenshot": ".artifacts/1185/03-only-one-pip-element.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-19T21:18:39.126Z",
+      "runner": "unknown@unknown"
+    },
+    {
+      "state": "04-exit-called-before-replace",
+      "screenshot": ".artifacts/1185/04-exit-called-before-replace.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-19T21:18:39.160Z",
+      "runner": "unknown@unknown"
+    }
+  ]
+}
