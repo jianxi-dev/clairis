@@ -91,3 +91,4 @@ ledger: append-only
 | 页签最小宽度保底 | `--tab-min-width: 96px`（spec §7.5）：页签弹性等比伸缩的下限，取代「页签标题最大显示宽度 120px」行；低于保底后页签条横向滚动，标题仍以省略号收尾 | shell-tabs-surface / #1180 | 2026-11-20 |
 | 信息窗复制图标 | `copyPath` 改为「文件夹 + 斜杠」路径语义（弃原双矩形构图，与 `copy` 复制选区区分）；新增 `copyFile`「文档 + 向右上箭头」文件语义；两图形不复用同一构图，颜色沿用 `--app-text-3` 弱化档 | shell-tabs-surface / #1181 | 2026-11-20 |
 | 信息窗复制成功提示 | 由路径后行内文本改为悬浮 toast：锚定触发按钮、圆角胶囊（`--radius-full`）、约 2000ms 自动消失、`pointer-events: none`；底色取 `--app-text-strong`、文字 `--app-surface`（反色胶囊，三主题皆可读） | shell-tabs-surface / #1181 | 2026-11-20 |
+| 页签条尾部空白 | `--tab-strip-tail: 24px`（spec §7.5）：页签弹性铺满后仍在尾部保留空白，承载空白处拖窗与双击切全屏；取代「flex 页签吃满整条」的实现 | shell-tabs-surface / #1180 | 2026-11-20 |
