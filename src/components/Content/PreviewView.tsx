@@ -160,10 +160,11 @@ export default function PreviewView({
           vars[`--heading-${level}`] = headingColors[level];
       }
     }
-    // 与 ContentArea 的 editorThemeVars 同源：默认值即 --type-font-sans 栈。
+    // 与 ContentArea 的 editorThemeVars 同源：仅显式配置注入，未配置走 CSS 回退。
     if (headingFonts) {
       for (const level of HEADING_LEVELS) {
-        vars[`--heading-${level}-font`] = headingFonts[level];
+        const font = headingFonts[level];
+        if (font) vars[`--heading-${level}-font`] = font;
       }
     }
     return vars as React.CSSProperties;

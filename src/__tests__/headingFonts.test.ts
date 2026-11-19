@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   HEADING_FONT_STACK,
   HEADING_LEVELS,
-  ensureHeadingFonts,
   headingFontInputValue,
   isFontFamilyAllowed,
   isFontFamilyStructurallyValid,
@@ -70,27 +69,26 @@ describe("系统可用性", () => {
 });
 
 describe("归一化", () => {
-  it("缺失 / 结构非法值回落默认栈，始终 6 级键", () => {
+  it("只保留结构合法且不等于默认栈的显式值（部分映射）", () => {
     const out = normalizeHeadingFonts({
       h1: "Songti SC",
       h2: "Zzz{NoSuchFont}",
+      h4: HEADING_FONT_STACK,
+      h5: "",
     });
-    expect(Object.keys(out).sort()).toEqual([
-      "h1",
-      "h2",
-      "h3",
-      "h4",
-      "h5",
-      "h6",
-    ]);
-    expect(out.h1).toBe("Songti SC");
-    expect(out.h2).toBe(HEADING_FONT_STACK);
-    expect(out.h6).toBe(HEADING_FONT_STACK);
+    expect(out).toEqual({ h1: "Songti SC" });
   });
 
-  it("null / 非对象输入回落默认栈", () => {
-    expect(normalizeHeadingFonts(null)).toEqual(ensureHeadingFonts(null));
-    expect(normalizeHeadingFonts(undefined)).toEqual(ensureHeadingFonts(null));
+  it("null / 非对象输入返回空映射", () => {
+    expect(normalizeHeadingFonts(null)).toEqual({});
+    expect(normalizeHeadingFonts(undefined)).toEqual({});
+  });
+
+  it("历史「6 级全默认栈」配置加载后等价未配置", () => {
+    const legacy = Object.fromEntries(
+      HEADING_LEVELS.map((level) => [level, HEADING_FONT_STACK]),
+    );
+    expect(normalizeHeadingFonts(legacy)).toEqual({});
   });
 });
 
@@ -108,8 +106,10 @@ describe("输入解析", () => {
     });
   });
 
-  it("输入框恒显当前生效字体（默认栈也显式呈现）", () => {
-    expect(headingFontInputValue(HEADING_FONT_STACK)).toBe(HEADING_FONT_STACK);
+  it("空值 / 默认栈显示为空串，由 placeholder 呈现「默认」", () => {
+    expect(headingFontInputValue(HEADING_FONT_STACK)).toBe("");
+    expect(headingFontInputValue("")).toBe("");
+    expect(headingFontInputValue(undefined)).toBe("");
     expect(headingFontInputValue("Songti SC")).toBe("Songti SC");
   });
 });

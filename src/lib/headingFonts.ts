@@ -75,21 +75,29 @@ export function isFontFamilyAllowed(
 }
 
 /**
- * 把 Rust 传来的原始 `headingFonts` 归一化成 6 级键控表：缺失 / 结构非法的值回落默认栈。
+ * 把 Rust 传来的原始 `headingFonts` 归一化成**显式配置**的部分映射：结构合法且不等于
+ * 默认栈的值保留；缺失 / 非法 / 等于默认栈的值丢弃（渲染层由 CSS fallback 兜底）。
  * 系统可用性不在加载路径判定（此时尚未枚举字体），由设置面板输入时校验。
  */
-export function normalizeHeadingFonts(raw: unknown): HeadingFonts {
+export function normalizeHeadingFonts(raw: unknown): Partial<HeadingFonts> {
   const record =
     raw && typeof raw === "object" ? (raw as Record<string, unknown>) : null;
   const rejected: string[] = [];
-  const out = {} as HeadingFonts;
+  const out: Partial<HeadingFonts> = {};
   for (const level of HEADING_LEVELS) {
     const value = record?.[level];
-    if (typeof value === "string" && isFontFamilyStructurallyValid(value)) {
+    if (
+      typeof value === "string" &&
+      isFontFamilyStructurallyValid(value) &&
+      value !== HEADING_FONT_STACK
+    ) {
       out[level] = value;
-    } else {
-      if (typeof value === "string" && value.trim()) rejected.push(level);
-      out[level] = HEADING_FONT_STACK;
+    } else if (
+      typeof value === "string" &&
+      value.trim() &&
+      value !== HEADING_FONT_STACK
+    ) {
+      rejected.push(level);
     }
   }
   if (rejected.length > 0) {
@@ -98,22 +106,9 @@ export function normalizeHeadingFonts(raw: unknown): HeadingFonts {
   return out;
 }
 
-/** 补全 6 级键，不做可用性判定（保存路径用，避免每次落盘重复告警）。 */
-export function ensureHeadingFonts(
-  raw: Partial<HeadingFonts> | null | undefined,
-): HeadingFonts {
-  const out = {} as HeadingFonts;
-  for (const level of HEADING_LEVELS) {
-    const value = raw?.[level];
-    out[level] =
-      typeof value === "string" && value.trim() ? value : HEADING_FONT_STACK;
-  }
-  return out;
-}
-
-/** 输入框显示值：恒显当前生效字体（默认栈也显式呈现），不留空。 */
-export function headingFontInputValue(value: string): string {
-  // 输入框显示「当前生效字体」：默认栈也要显式呈现，不再是空白（#926）。
+/** 输入框显示值：空值 / 默认栈都显示空串，由 placeholder 呈现「默认」。 */
+export function headingFontInputValue(value: string | undefined): string {
+  if (!value || value === HEADING_FONT_STACK) return "";
   return value;
 }
 
