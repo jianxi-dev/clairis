@@ -1445,7 +1445,7 @@ test("选中临近三行后拖动任一行 = 整块移动且相对顺序不变",
   ]);
 });
 
-test("复制两行粘贴：键名一致；目标已有同名键时自动追加序号", async ({
+test("#1161 复制/剪切两行粘贴：类型名一致、值一律为空；同名键追加序号", async ({
   page,
 }) => {
   await openDoc(page, ROW_DOC);
@@ -1457,6 +1457,15 @@ test("复制两行粘贴：键名一致；目标已有同名键时自动追加�
     .locator('[data-key="category"] [data-testid="dpb-row-handle"]')
     .click();
   await b.locator('[data-key="author"] [data-testid="dpb-row-handle"]').click();
+  await b.locator('[data-testid="dpb-ops-copy"]').click();
+  await expect(
+    b.locator('[data-key="category"] [data-testid="dpb-value"]'),
+  ).toHaveText("草稿");
+  await expect(
+    b.locator('[data-key="author"] [data-testid="dpb-value"]'),
+  ).toHaveText("张三");
+  await dpbRecord(page, "1161", "01-copy-keeps-source-values");
+
   await b.locator('[data-testid="dpb-ops-cut"]').click();
   expect(await rowKeys(page, "B")).toEqual(["title", "source", "note"]);
 
@@ -1469,7 +1478,15 @@ test("复制两行粘贴：键名一致；目标已有同名键时自动追加�
     "category",
     "author",
   ]);
+  await expect(
+    b.locator('[data-key="category"] [data-testid="dpb-value"]'),
+  ).toHaveText("");
+  await expect(
+    b.locator('[data-key="author"] [data-testid="dpb-value"]'),
+  ).toHaveText("");
+  await dpbRecord(page, "1161", "02-pasted-empty-values");
 
+  await b.locator('[data-key="author"] [data-testid="dpb-row-handle"]').click();
   await b.locator('[data-testid="dpb-ops-paste"]').click();
   expect(await rowKeys(page, "B")).toEqual([
     "title",
@@ -1480,13 +1497,107 @@ test("复制两行粘贴：键名一致；目标已有同名键时自动追加�
     "category-2",
     "author-2",
   ]);
+  await expect(
+    b.locator('[data-key="category-2"] [data-testid="dpb-value"]'),
+  ).toHaveText("");
+  await expect(
+    b.locator('[data-key="author-2"] [data-testid="dpb-value"]'),
+  ).toHaveText("");
+  await dpbRecord(page, "1161", "03-deduped-empty-values");
 
   await setMode(page, "source");
   const src = page.locator(".cm-content").first();
-  await expect(src).toContainText("category: 草稿");
-  await expect(src).toContainText("author: 张三");
-  await expect(src).toContainText("category-2: 草稿");
-  await expect(src).toContainText("author-2: 张三");
+  await expect(src).toContainText('category: ""');
+  await expect(src).toContainText('author: ""');
+  await expect(src).toContainText('category-2: ""');
+  await expect(src).toContainText('author-2: ""');
+});
+
+test("#1161 跨文档复制→粘贴：目标文档同类型同名字段、值为空，原文档不受影响", async ({
+  page,
+}) => {
+  const SRC_DOC = `---
+title: 来源文档
+category: 草稿
+author: 张三
+count: 7
+published: true
+---
+
+# 正文
+`;
+  const DST_DOC = `---
+title: 目标文档
+note: 已有备注
+---
+
+# 正文
+`;
+  await openDoc(page, SRC_DOC, "/Users/test/clip-src.md");
+  await setVariant(page, "B");
+  await setMode(page, "edit");
+  const src1 = panel(page, "B");
+
+  for (const key of ["category", "author", "count", "published"]) {
+    await src1
+      .locator(`[data-key="${key}"] [data-testid="dpb-row-handle"]`)
+      .click();
+  }
+  await src1.locator('[data-testid="dpb-ops-copy"]').click();
+  await dpbRecord(page, "1161", "04-cross-doc-copied");
+
+  await openDoc(page, DST_DOC, "/Users/test/clip-dst.md");
+  await setMode(page, "edit");
+  const dst = panel(page, "B");
+  await dst.locator('[data-key="note"] [data-testid="dpb-row-handle"]').click();
+  await dst.locator('[data-testid="dpb-ops-paste"]').click();
+
+  expect(await rowKeys(page, "B")).toEqual([
+    "title",
+    "note",
+    "category",
+    "author",
+    "count",
+    "published",
+  ]);
+  const typeLabels: Array<[string, string]> = [
+    ["category", "下拉"],
+    ["author", "文本"],
+    ["count", "数字"],
+    ["published", "布尔"],
+  ];
+  for (const [key, label] of typeLabels) {
+    await expect(dst.locator(`[data-key="${key}"] .dpb-type-label`)).toHaveText(
+      label,
+    );
+  }
+  await expect(
+    dst.locator('[data-key="category"] [data-testid="dpb-value"]'),
+  ).toHaveText("");
+  await expect(
+    dst.locator('[data-key="author"] [data-testid="dpb-value"]'),
+  ).toHaveText("");
+  await expect(
+    dst.locator('[data-key="count"] [data-testid="dpb-value"]'),
+  ).toHaveText("");
+  await expect(
+    dst.locator('[data-key="published"] [data-testid="dpb-value"]'),
+  ).toHaveText("○");
+  await dpbRecord(page, "1161", "05-cross-doc-pasted-empty");
+
+  await openDoc(page, SRC_DOC, "/Users/test/clip-src.md");
+  await setMode(page, "edit");
+  const src2 = panel(page, "B");
+  await expect(
+    src2.locator('[data-key="category"] [data-testid="dpb-value"]'),
+  ).toHaveText("草稿");
+  await expect(
+    src2.locator('[data-key="author"] [data-testid="dpb-value"]'),
+  ).toHaveText("张三");
+  await expect(
+    src2.locator('[data-key="count"] [data-testid="dpb-value"]'),
+  ).toHaveText("7");
+  await dpbRecord(page, "1161", "06-source-doc-unchanged");
 });
 
 test("全选含标签行、排除标题位，可手动再选标题", async ({ page }) => {

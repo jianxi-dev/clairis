@@ -1,0 +1,47 @@
+{
+  "task": "1161",
+  "states": [
+    {
+      "state": "01-copy-keeps-source-values",
+      "screenshot": ".artifacts/1161/01-copy-keeps-source-values.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-19T12:59:26.259Z",
+      "runner": "unknown@unknown"
+    },
+    {
+      "state": "02-pasted-empty-values",
+      "screenshot": ".artifacts/1161/02-pasted-empty-values.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-19T12:59:26.341Z",
+      "runner": "unknown@unknown"
+    },
+    {
+      "state": "03-deduped-empty-values",
+      "screenshot": ".artifacts/1161/03-deduped-empty-values.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-19T12:59:26.399Z",
+      "runner": "unknown@unknown"
+    },
+    {
+      "state": "04-cross-doc-copied",
+      "screenshot": ".artifacts/1161/04-cross-doc-copied.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-19T12:59:27.442Z",
+      "runner": "unknown@unknown"
+    },
+    {
+      "state": "05-cross-doc-pasted-empty",
+      "screenshot": ".artifacts/1161/05-cross-doc-pasted-empty.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-19T12:59:27.525Z",
+      "runner": "unknown@unknown"
+    },
+    {
+      "state": "06-source-doc-unchanged",
+      "screenshot": ".artifacts/1161/06-source-doc-unchanged.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-19T12:59:27.558Z",
+      "runner": "unknown@unknown"
+    }
+  ]
+}
