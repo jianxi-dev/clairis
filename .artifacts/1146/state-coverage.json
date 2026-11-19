@@ -1,0 +1,33 @@
+{
+  "task": "1146-preview-locate-ordinal",
+  "states": [
+    {
+      "state": "01-cmd5-fifth-hit",
+      "screenshot": ".artifacts/1146/01-cmd5-fifth-hit.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-19T14:43:43.340Z",
+      "runner": "unknown@unknown"
+    },
+    {
+      "state": "02-cmd9-follows",
+      "screenshot": ".artifacts/1146/02-cmd9-follows.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-19T14:43:44.375Z",
+      "runner": "unknown@unknown"
+    },
+    {
+      "state": "03-enter-third-hit",
+      "screenshot": ".artifacts/1146/03-enter-third-hit.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-19T14:43:45.397Z",
+      "runner": "unknown@unknown"
+    },
+    {
+      "state": "04-click-sixth-hit",
+      "screenshot": ".artifacts/1146/04-click-sixth-hit.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-19T14:43:45.480Z",
+      "runner": "unknown@unknown"
+    }
+  ]
+}

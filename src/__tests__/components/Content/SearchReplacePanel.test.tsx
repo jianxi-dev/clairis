@@ -250,7 +250,7 @@ describe("SearchReplacePanel 点击定位到浮窗所属窗格", () => {
 });
 
 describe("SearchReplacePanel 预览态点击定位", () => {
-  it("mode=preview 点击结果行只滚动所属 container 的命中文本节点，不动其他 container", () => {
+  it("mode=preview 点击结果行按序数滚动所属 container 的命中节点，不动其他 container", () => {
     const spy = vi.spyOn(Element.prototype, "scrollIntoView");
 
     const containerA = document.createElement("div");
@@ -258,7 +258,7 @@ describe("SearchReplacePanel 预览态点击定位", () => {
       '<div class="preview-content"><p id="a-hit">属性甲</p></div>';
     const containerB = document.createElement("div");
     containerB.innerHTML =
-      '<div class="preview-content"><p id="b-hit">属性乙</p><p>属性丙</p></div>';
+      '<div class="preview-content"><p id="b-hit">属性乙</p><p id="b-hit-2">属性丙</p></div>';
     document.body.append(containerA, containerB);
 
     try {
@@ -275,16 +275,25 @@ describe("SearchReplacePanel 预览态点击定位", () => {
       fireEvent.change(getByTestId("search-float-input"), {
         target: { value: "属性" },
       });
+
+      const targetsOf = () => {
+        const targets = spy.mock.instances as unknown as HTMLElement[];
+        return {
+          b: targets.filter((el) => containerB.contains(el)),
+          a: targets.filter((el) => containerA.contains(el)),
+        };
+      };
+
+      // 序数 0 → 第 1 处命中节点。
+      fireEvent.click(getAllByTestId("search-float-hit")[0]);
+      expect(targetsOf().b).toEqual([document.getElementById("b-hit")]);
+      expect(targetsOf().a).toEqual([]);
+
+      // 序数 1 → 第 2 处命中节点，不再恒落第一处（#1146）。
+      spy.mockClear();
       fireEvent.click(getAllByTestId("search-float-hit")[1]);
-
-      // 浮窗自身还会滚动选中结果行（面板内部节点），这里只观察预览子树，
-      // 验证预览定位恰好命中所属 container 的一个文本节点、且不碰其他 container。
-      const targets = spy.mock.instances as unknown as HTMLElement[];
-      const bTargets = targets.filter((el) => containerB.contains(el));
-      const aTargets = targets.filter((el) => containerA.contains(el));
-
-      expect(bTargets).toEqual([document.getElementById("b-hit")]);
-      expect(aTargets).toEqual([]);
+      expect(targetsOf().b).toEqual([document.getElementById("b-hit-2")]);
+      expect(targetsOf().a).toEqual([]);
     } finally {
       spy.mockRestore();
       containerA.remove();

@@ -2783,3 +2783,223 @@ test("#1119 源码态 ⌘N 定位：编辑器滚动并高亮", async ({ page }) 
   expect((await paneProbe(page, "main"))?.selections ?? 0).toBeGreaterThan(0);
   expect((await keyBindingReport(float)).selected).toBe(2);
 });
+
+/* ------------------------------------------------------------------ *
+ * #1146 预览态定位按序数落点：⌘N / Enter / 点击同走序数逻辑
+ * ------------------------------------------------------------------ */
+
+const ART_1146 = path.resolve(process.cwd(), ".artifacts/1146");
+
+async function recordState1146(page: Page, state: string): Promise<void> {
+  mkdirSync(ART_1146, { recursive: true });
+  const file = path.join(ART_1146, `${state}.png`);
+  await page.screenshot({ path: file });
+  const manifest = path.join(ART_1146, "state-coverage.json");
+  let states: Array<Record<string, string>> = [];
+  try {
+    states = JSON.parse(readFileSync(manifest, "utf8")).states ?? [];
+  } catch {
+    states = [];
+  }
+  states = states.filter((s) => s.state !== state);
+  states.push({
+    state,
+    screenshot: path.relative(process.cwd(), file),
+    assertion: "passed",
+    recorded_at: new Date().toISOString(),
+    runner: `${process.env.USER ?? "unknown"}@${process.env.HOSTNAME ?? "unknown"}`,
+  });
+  writeFileSync(
+    manifest,
+    `${JSON.stringify({ task: "1146-preview-locate-ordinal", states }, null, 2)}\n`,
+  );
+}
+
+const LOCATE_DOC = Array.from({ length: 10 }, (_, i) =>
+  [
+    `第 ${i + 1} 段命中`,
+    ...Array.from({ length: 6 }, (_, j) => `填充 ${j + 1}`),
+  ].join("\n\n"),
+).join("\n\n");
+
+const LOCATE_FILLER_DOC = [
+  "# 前言",
+  ...Array.from({ length: 40 }, (_, i) => `前言填充 ${i + 1}`),
+  ...Array.from({ length: 10 }, (_, i) => `第 ${i + 1} 段命中`),
+  ...Array.from({ length: 40 }, (_, i) => `后记填充 ${i + 1}`),
+].join("\n\n");
+
+interface PreviewHitProbe {
+  found: boolean;
+  text: string;
+  top: number;
+  bottom: number;
+  height: number;
+  scrollerTop: number;
+  scrollerBottom: number;
+  scrollerHeight: number;
+  scrollTop: number;
+}
+
+async function previewHitProbe(
+  page: Page,
+  ordinal: number,
+  needle: string,
+): Promise<PreviewHitProbe> {
+  return page.evaluate(
+    ({ ordinal, needle }) => {
+      const miss: PreviewHitProbe = {
+        found: false,
+        text: "",
+        top: 0,
+        bottom: 0,
+        height: 0,
+        scrollerTop: 0,
+        scrollerBottom: 0,
+        scrollerHeight: 0,
+        scrollTop: 0,
+      };
+      const root = document.querySelector<HTMLElement>(".preview-content");
+      const scroller = document.querySelector<HTMLElement>(".content-scroll");
+      const sr = scroller?.getBoundingClientRect() ?? null;
+      if (!root || !scroller || !sr) return miss;
+      const lower = needle.toLowerCase();
+      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+      let seen = 0;
+      let node = walker.nextNode();
+      while (node) {
+        const text = (node.textContent ?? "").toLowerCase();
+        let from = 0;
+        for (;;) {
+          const at = text.indexOf(lower, from);
+          if (at < 0) break;
+          if (seen === ordinal) {
+            const el = node.parentElement as HTMLElement | null;
+            if (!el) return miss;
+            const r = el.getBoundingClientRect();
+            return {
+              found: true,
+              text: (el.textContent ?? "").slice(0, 30),
+              top: r.top,
+              bottom: r.bottom,
+              height: r.height,
+              scrollerTop: sr.top,
+              scrollerBottom: sr.bottom,
+              scrollerHeight: sr.height,
+              scrollTop: scroller.scrollTop,
+            };
+          }
+          seen += 1;
+          from = at + lower.length;
+        }
+        node = walker.nextNode();
+      }
+      return miss;
+    },
+    { ordinal, needle },
+  );
+}
+
+function expectCenteredAtViewport(probe: PreviewHitProbe): void {
+  expect(probe.found).toBe(true);
+  const elCenter = (probe.top + probe.bottom) / 2;
+  const scCenter = (probe.scrollerTop + probe.scrollerBottom) / 2;
+  expect(Math.abs(elCenter - scCenter)).toBeLessThanOrEqual(
+    probe.height / 2 + 2,
+  );
+}
+
+test("#1146 预览态第一处命中在视口内：⌘5 落点为第 5 处命中", async ({
+  page,
+}) => {
+  await openDoc(page, LOCATE_DOC, "/Users/test/locate.md");
+  await setMode(page, "preview");
+  await page.keyboard.press("Meta+f");
+  const float = page.locator('[data-testid="search-float"]');
+  await float.locator('[data-testid="search-float-input"]').fill("命中");
+  const rows = float.locator('[data-testid="search-float-hit"]');
+  await expect(rows).toHaveCount(10);
+
+  const scroller = page.locator('[data-pane-id="main"] .content-scroll');
+  await scroller.evaluate((el) => {
+    el.scrollTop = 0;
+  });
+  await nextFrames(page);
+  expect(await scroller.evaluate((el) => el.scrollTop)).toBe(0);
+
+  // 反事实前提：第一处命中已在视口内（旧实现在此 clamp 为 0）。
+  const first = await previewHitProbe(page, 0, "命中");
+  expect(first.found).toBe(true);
+  expect(first.top).toBeGreaterThanOrEqual(first.scrollerTop - 1);
+  expect(first.bottom).toBeLessThanOrEqual(first.scrollerBottom + 1);
+
+  await page.keyboard.press("Meta+5");
+  await expect
+    .poll(async () => scroller.evaluate((el) => el.scrollTop))
+    .toBeGreaterThan(0);
+  await nextFrames(page);
+  expectCenteredAtViewport(await previewHitProbe(page, 4, "命中"));
+  expect((await keyBindingReport(float)).selected).toBe(4);
+  await recordState1146(page, "01-cmd5-fifth-hit");
+});
+
+test("#1146 带前导填充：⌘5 后再 ⌘9，落点跟随第 9 处", async ({ page }) => {
+  await openDoc(page, LOCATE_FILLER_DOC, "/Users/test/locate-filler.md");
+  await setMode(page, "preview");
+  await page.keyboard.press("Meta+f");
+  const float = page.locator('[data-testid="search-float"]');
+  await float.locator('[data-testid="search-float-input"]').fill("命中");
+  const rows = float.locator('[data-testid="search-float-hit"]');
+  await expect(rows).toHaveCount(10);
+
+  const scroller = page.locator('[data-pane-id="main"] .content-scroll');
+  await page.keyboard.press("Meta+5");
+  await expect
+    .poll(async () => scroller.evaluate((el) => el.scrollTop))
+    .toBeGreaterThan(0);
+  await nextFrames(page);
+  const top5 = await scroller.evaluate((el) => el.scrollTop);
+  expectCenteredAtViewport(await previewHitProbe(page, 4, "命中"));
+
+  await page.keyboard.press("Meta+9");
+  await expect
+    .poll(async () => scroller.evaluate((el) => el.scrollTop))
+    .toBeGreaterThan(top5);
+  await nextFrames(page);
+  expectCenteredAtViewport(await previewHitProbe(page, 8, "命中"));
+  expect((await keyBindingReport(float)).selected).toBe(8);
+  await recordState1146(page, "02-cmd9-follows");
+});
+
+test("#1146 Enter 与点击同走序数：落点随选中 / 点击变化", async ({ page }) => {
+  await openDoc(page, LOCATE_DOC, "/Users/test/locate.md");
+  await setMode(page, "preview");
+  await page.keyboard.press("Meta+f");
+  const float = page.locator('[data-testid="search-float"]');
+  await float.locator('[data-testid="search-float-input"]').fill("命中");
+  const rows = float.locator('[data-testid="search-float-hit"]');
+  await expect(rows).toHaveCount(10);
+
+  const scroller = page.locator('[data-pane-id="main"] .content-scroll');
+
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("ArrowDown");
+  expect((await keyBindingReport(float)).selected).toBe(2);
+  await page.keyboard.press("Enter");
+  await expect
+    .poll(async () => scroller.evaluate((el) => el.scrollTop))
+    .toBeGreaterThan(0);
+  await nextFrames(page);
+  const top3 = await scroller.evaluate((el) => el.scrollTop);
+  expectCenteredAtViewport(await previewHitProbe(page, 2, "命中"));
+  await recordState1146(page, "03-enter-third-hit");
+
+  await rows.nth(5).click();
+  await expect
+    .poll(async () => scroller.evaluate((el) => el.scrollTop))
+    .toBeGreaterThan(top3);
+  await nextFrames(page);
+  expect((await keyBindingReport(float)).selected).toBe(5);
+  expectCenteredAtViewport(await previewHitProbe(page, 5, "命中"));
+  await recordState1146(page, "04-click-sixth-hit");
+});
