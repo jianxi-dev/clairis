@@ -54,7 +54,9 @@ test.describe("页签标题固定宽度与间距（tab-title-info-surface 1.1 / 
     mkdirSync(ARTIFACT_DIR, { recursive: true });
   });
 
-  test("相邻页签间距仍为 32px（A-1.4）", async ({ page }) => {
+  test("相邻页签间距保持 32px，标题与关闭图标之间压缩（#1138）", async ({
+    page,
+  }) => {
     await boot(page);
     await openFile(page, "/tmp/1053/alpha.md");
     await openFile(page, "/tmp/1053/beta.md");
@@ -72,7 +74,23 @@ test.describe("页签标题固定宽度与间距（tab-title-info-surface 1.1 / 
     });
     expect(Math.abs(delta - 32)).toBeLessThanOrEqual(2);
 
-    await page.screenshot({ path: `${ARTIFACT_DIR}/02-gap-32.png` });
+    const innerGap = await page.evaluate(() => {
+      const tab = document.querySelector<HTMLElement>(
+        ".tab-strip [data-tab-id]",
+      );
+      if (!tab) return -1;
+      const title = tab.querySelector<HTMLElement>("[data-testid=tab-title]");
+      const close = tab.querySelector<HTMLElement>(
+        'button[title="关闭 (Cmd+W)"]',
+      );
+      if (!title || !close) return -1;
+      return (
+        close.getBoundingClientRect().left - title.getBoundingClientRect().right
+      );
+    });
+    expect(innerGap).toBeLessThanOrEqual(7);
+
+    await page.screenshot({ path: `${ARTIFACT_DIR}/02-tab-inner-gap.png` });
   });
 
   test("长页签名单行省略号、短页签名按实际长度（A-1.1/A-1.2/A-1.3）", async ({
@@ -173,7 +191,7 @@ test.describe("页签标题固定宽度与间距（tab-title-info-surface 1.1 / 
     await page.screenshot({ path: `${ARTIFACT_DIR}/03-strip-scrollable.png` });
   });
 
-  test("关闭页签后间距保持 32px 且长标题仍省略", async ({ page }) => {
+  test("关闭页签后页签间距保持 32px 且长标题仍省略", async ({ page }) => {
     await boot(page);
     await openFile(
       page,

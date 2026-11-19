@@ -50,8 +50,8 @@
   --tip-shell-radius: var(--radius-full);
   /* 页签标题最大显示宽度；裁决见 docs/design/system/decisions.md（tab-title-info-surface 1.1） */
   --tab-title-max-width: 120px;
-  /* 页签名信息窗固定宽度；同上台账行 */
-  --tab-info-width: 320px;
+  /* 页签名信息窗固定宽度；同上台账行（design-system §7.4） */
+  --tab-info-width: 256px;
   /* 搜索浮窗控件密度档（design-system §7.1）：输入框 / 替换按钮 / 顶栏共用，
      与文件卡片悬浮窗顶栏计算高度严格相等。 */
   --sf-ctrl-height: 27px;

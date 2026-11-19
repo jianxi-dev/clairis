@@ -23,7 +23,7 @@
 | A-2.2 | exact | 禅模式入口按钮 `aria-label` 属性字符串 | "禅模式" | application-shell 同上 / design D2 / #1134 |
 | A-2.3 | exact | 禅模式入口图标 label 字符串 | "禅模式" | application-shell 同上 / design D2 / #1134 |
 | A-2.4 | exact | 禅模式入口 `aria-keyshortcuts` 含 ⌘⇧F 的布尔 | 1 | application-shell 同上（快捷键保留） / design D2 / #1134 |
-| A-2.5 | exact | 相邻页签的计算 `column-gap`（px） | 24 | application-shell G-6 页签间距条款 / navigation「页签条与格头」 / design D3 / #1134 |
+| A-2.5 | exact | 单个页签内标题右缘到关闭按钮左缘的距离（px） | 6 | #1134「文件名和关闭图标的间距」/ design D3（相邻页签 column-gap 保持 32px，不改） |
 | A-2.6 | exact | 页签名信息窗的计算宽度（px），取 token `--tab-info-width` | 256 | navigation「页签条与格头」信息窗条款 / design-system §7.4 / design D3 / #1134 |
 | A-2.7 | exact | 文件名节点之后复制图标按钮数 | 2 | navigation「页签条与格头」复制动作条款 / design D3 / #1134 |
 | A-2.8 | exact | 复制图标计算颜色等于 `--app-text-3` 的布尔 | 1 | navigation 同上 / design-system §6 `--app-text-3` / design D3 / #1134 |

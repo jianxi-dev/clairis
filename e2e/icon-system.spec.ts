@@ -211,8 +211,8 @@ test("状态栏沉浸入口为 immersive 纯图标，顶栏不再含该入口", 
   const bar = page.getByTestId("status-bar");
   const entry = bar.locator('[data-testid="immersive-entry"]');
   await expect(entry.locator('svg[data-icon="immersive"]')).toHaveCount(1);
-  await expect(entry).toHaveAccessibleName(/沉浸阅读/);
-  await expect(entry).toHaveAttribute("title", /沉浸阅读/);
+  await expect(entry).toHaveAccessibleName(/禅模式/);
+  await expect(entry).toHaveAttribute("title", /禅模式/);
   await expect(
     page.getByRole("banner").locator('[data-testid="immersive-entry"]'),
   ).toHaveCount(0);

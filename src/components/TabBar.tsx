@@ -610,7 +610,7 @@ export default function TabBar({
                     e.stopPropagation();
                     onCloseTab(id);
                   }}
-                  className={`ml-1 px-1 rounded shrink-0 transition-opacity ${
+                  className={`px-1 rounded shrink-0 transition-opacity ${
                     alwaysShowClose
                       ? "text-[var(--app-text-3)] hover:bg-[var(--app-sunken)] hover:text-[var(--app-text-2)]"
                       : "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto focus:opacity-100 focus:pointer-events-auto text-[var(--app-text-3)] hover:bg-[var(--app-sunken)] hover:text-[var(--app-text-2)]"

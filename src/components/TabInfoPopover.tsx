@@ -65,9 +65,9 @@ interface Props {
 /**
  * 页签名下拉信息窗（editor-surface-batch19 B7 / R-14）。
  *
- * 三行：① 文件类型图标 + 文件名（最大字号）；② 文件夹图标 + 文件夹链
- * （每层可单击在文件管理器定位）；③ 时钟图标 + 最近保存时间。
- * 外壳为 8px 圆角矩形、固定 320px 宽（窄窗按视口钳制），完整文件名换行显示。
+ * 三行：① 文件类型图标 + 文件名（最大字号）+ 复制路径 / 复制文件；
+ * ② 文件夹图标 + 文件夹链（每层可单击在文件管理器定位）；③ 时钟图标 + 最近保存时间。
+ * 外壳为 8px 圆角矩形、固定 256px 宽（窄窗按视口钳制），完整文件名换行显示。
  */
 export default function TabInfoPopover({
   tab,
@@ -167,6 +167,41 @@ export default function TabInfoPopover({
           className="tab-info__type"
         />
         <span className="tab-info__name">{tab.title}</span>
+        {tab.path && (
+          <span className="tab-info__copy">
+            <button
+              type="button"
+              data-testid="tab-copy-path"
+              title="复制路径"
+              aria-label="复制路径"
+              onClick={(e) => {
+                e.stopPropagation();
+                void navigator.clipboard
+                  ?.writeText(tab.path ?? "")
+                  .then(() => flash("已复制路径"))
+                  .catch(() => flash("复制失败"));
+              }}
+            >
+              <Icon name="copyPath" size={14} />
+            </button>
+            {canCopyFile() && (
+              <button
+                type="button"
+                data-testid="tab-copy-file"
+                title="复制文件"
+                aria-label="复制文件"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void copyFileToClipboard(tab.path ?? "")
+                    .then(() => flash("已复制文件"))
+                    .catch((e) => flash(`复制文件失败：${copyFailureText(e)}`));
+                }}
+              >
+                <Icon name="copy" size={14} />
+              </button>
+            )}
+          </span>
+        )}
       </div>
       <div className="tab-info__row" data-testid="tab-info-path">
         <Icon name="folder" size={14} className="tab-info__icon" />
@@ -206,41 +241,6 @@ export default function TabInfoPopover({
             ))
           )}
         </span>
-        {tab.path && (
-          <span className="tab-info__copy">
-            <button
-              type="button"
-              data-testid="tab-copy-path"
-              title="复制路径"
-              aria-label="复制路径"
-              onClick={(e) => {
-                e.stopPropagation();
-                void navigator.clipboard
-                  ?.writeText(tab.path ?? "")
-                  .then(() => flash("已复制路径"))
-                  .catch(() => flash("复制失败"));
-              }}
-            >
-              <Icon name="copyPath" size={14} />
-            </button>
-            {canCopyFile() && (
-              <button
-                type="button"
-                data-testid="tab-copy-file"
-                title="复制文件"
-                aria-label="复制文件"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  void copyFileToClipboard(tab.path ?? "")
-                    .then(() => flash("已复制文件"))
-                    .catch((e) => flash(`复制文件失败：${copyFailureText(e)}`));
-                }}
-              >
-                <Icon name="copy" size={14} />
-              </button>
-            )}
-          </span>
-        )}
         {notice && (
           <span
             className="tab-info__notice"
