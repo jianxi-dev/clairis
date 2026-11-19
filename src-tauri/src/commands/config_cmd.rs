@@ -23,9 +23,9 @@ pub async fn list_config_snapshots(app: AppHandle) -> Result<Vec<String>, AppErr
     config::list_config_snapshots(&app).await
 }
 
-/// 本机已安装字体族（#1136）；非 macOS 返回空数组，枚举失败返回明确错误。
+/// 本机已安装字体族（#1136 / #1178，含本地化名）；非 macOS 返回空数组，枚举失败返回明确错误。
 #[tauri::command]
-pub fn list_system_fonts() -> Result<Vec<String>, String> {
+pub fn list_system_fonts() -> Result<Vec<crate::fonts::FontFamily>, String> {
     crate::fonts::list_system_fonts()
 }
 

@@ -28,6 +28,7 @@ import type {
   PropertyBarDisplayStyle,
   SearchPanelConfig,
   SearchPanelDefaultPos,
+  SystemFont,
 } from "../types";
 import {
   BUILTIN_PROP_TEMPLATES,
@@ -757,9 +758,9 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
         ]),
       ) as Record<HeadingLevel, string>,
   );
-  const [headingFontOptions, setHeadingFontOptions] = useState<string[] | null>(
-    null,
-  );
+  const [headingFontOptions, setHeadingFontOptions] = useState<
+    SystemFont[] | null
+  >(null);
   const [headingFontsEnumerated, setHeadingFontsEnumerated] = useState(true);
   const [headingFontHint, setHeadingFontHint] = useState("");
 
@@ -822,7 +823,7 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
   useEffect(() => {
     if (!tauriEnv) return;
     let cancelled = false;
-    invoke<string[]>("list_system_fonts")
+    invoke<SystemFont[]>("list_system_fonts")
       .then((fonts) => {
         if (cancelled || !Array.isArray(fonts)) return;
         setHeadingFontOptions(fonts);
@@ -1544,8 +1545,8 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
                   的字体；未配置的级别显示「默认」占位，清空＝取消该级显式配置。
                 </p>
                 <datalist id="heading-font-options">
-                  {(headingFontOptions ?? []).map((family) => (
-                    <option key={family} value={family} />
+                  {(headingFontOptions ?? []).map((font) => (
+                    <option key={font.family} value={font.family} />
                   ))}
                 </datalist>
                 <div className="grid grid-cols-2 gap-3">

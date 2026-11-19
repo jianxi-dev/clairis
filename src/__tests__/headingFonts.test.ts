@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { SystemFont } from "../types";
 import {
   HEADING_FONT_STACK,
   HEADING_LEVELS,
@@ -9,7 +10,11 @@ import {
   parseHeadingFontInput,
 } from "../lib/headingFonts";
 
-const INSTALLED = ["PingFang SC", "Songti SC", "Menlo"];
+const INSTALLED: SystemFont[] = [
+  { family: "PingFang SC", localized: "苹方-简" },
+  { family: "Songti SC", localized: "宋体-简" },
+  { family: "Menlo", localized: "Menlo" },
+];
 
 describe("标题字体默认栈", () => {
   it("六级键齐备", () => {
@@ -44,7 +49,19 @@ describe("系统可用性", () => {
   it("命中已安装列表即通过", () => {
     expect(isFontFamilyAllowed("Songti SC", INSTALLED)).toBe(true);
     expect(isFontFamilyAllowed("songti sc", INSTALLED)).toBe(true);
-    expect(isFontFamilyAllowed("Inter, sans-serif", ["Inter"])).toBe(true);
+    expect(
+      isFontFamilyAllowed("Inter, sans-serif", [
+        { family: "Inter", localized: "Inter" },
+      ]),
+    ).toBe(true);
+  });
+
+  it("按 family 或 localized 双命中（#1178）", () => {
+    expect(isFontFamilyAllowed("苹方-简", INSTALLED)).toBe(true);
+    expect(isFontFamilyAllowed("宋体-简", INSTALLED)).toBe(true);
+    expect(isFontFamilyAllowed("PingFang SC", INSTALLED)).toBe(true);
+    expect(isFontFamilyAllowed("苹方-简, sans-serif", INSTALLED)).toBe(true);
+    expect(isFontFamilyAllowed("不存在体", INSTALLED)).toBe(false);
   });
 
   it("未命中且非 generic 时拒绝", () => {

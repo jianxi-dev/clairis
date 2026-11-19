@@ -1,3 +1,4 @@
+import type { SystemFont } from "../types";
 import { log } from "../utils/log";
 
 /** md-bundle 预览态字体栈（`--type-font-sans`）；标题字体缺省值，唯一来源。 */
@@ -55,12 +56,13 @@ function familyCandidates(value: string): string[] {
 
 /**
  * 系统可用性：值整体等于默认栈时直接通过；否则至少一个非 generic 候选族要落在本机
- * 已安装列表里。`families` 为 null / 空表示枚举不可用（预设兜底），跳过该项检查，
- * 只做结构性校验——避免枚举缺失时把别的机器上的合法字体误判成非法。
+ * 已安装列表里（按 `family` 或 `localized` 双命中，大小写不敏感）。`families` 为 null /
+ * 空表示枚举不可用（预设兜底），跳过该项检查，只做结构性校验——避免枚举缺失时把别的
+ * 机器上的合法字体误判成非法。
  */
 export function isFontFamilyAllowed(
   value: string,
-  families: string[] | null,
+  families: SystemFont[] | null,
 ): boolean {
   if (value === HEADING_FONT_STACK) return true;
   if (!isFontFamilyStructurallyValid(value)) return false;
@@ -70,7 +72,14 @@ export function isFontFamilyAllowed(
     (name) => !GENERIC_FONT_KEYWORDS.has(name.toLowerCase()),
   );
   if (specific.length === 0) return true;
-  const installed = new Set(families.map((name) => name.toLowerCase()));
+  const installed = new Set<string>();
+  for (const font of families) {
+    if (typeof font.family === "string")
+      installed.add(font.family.toLowerCase());
+    if (typeof font.localized === "string") {
+      installed.add(font.localized.toLowerCase());
+    }
+  }
   return specific.some((name) => installed.has(name.toLowerCase()));
 }
 
@@ -117,7 +126,7 @@ export type HeadingFontParse =
 
 export function parseHeadingFontInput(
   text: string,
-  families: string[] | null,
+  families: SystemFont[] | null,
 ): HeadingFontParse {
   const trimmed = text.trim();
   if (!trimmed) return { kind: "default" };
