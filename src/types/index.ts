@@ -34,7 +34,7 @@ export interface HeadingColors {
   h6: string;
 }
 
-/** 标题逐级字体（C1 / #853）：值 = CSS font-family 列表，缺省回落默认栈。 */
+/** 标题逐级字体（C1 / #853）：值 = CSS font-family 列表。 */
 export interface HeadingFonts {
   h1: string;
   h2: string;
@@ -85,8 +85,8 @@ export interface SearchPanelConfig {
 export interface AppConfig {
   fontSize: number;
   headingColors: HeadingColors;
-  /** 标题逐级字体（H1–H6）；缺省回落 `--type-font-sans` */
-  headingFonts?: HeadingFonts;
+  /** 标题逐级字体（H1–H6）显式配置的部分映射；缺键 = 未配置，回落 `--type-font-sans`。 */
+  headingFonts?: Partial<HeadingFonts>;
   /** 阅读区字号，与编辑器字号解耦 */
   readerFontSize: number;
   /** 阅读区正文行宽（px） */

@@ -47,7 +47,6 @@ import {
 import {
   HEADING_FONT_STACK,
   HEADING_LEVELS,
-  ensureHeadingFonts,
   headingFontInputValue,
   parseHeadingFontInput,
   type HeadingLevel,
@@ -746,10 +745,7 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
   const setConfig = useEditorStore((s) => s.setConfig);
   const setFontSize = useEditorStore((s) => s.setFontSize);
   const headingFonts = useEditorStore((s) => s.config.headingFonts);
-  const headingFontMap = useMemo(
-    () => ensureHeadingFonts(headingFonts),
-    [headingFonts],
-  );
+  const headingFontMap = useMemo(() => headingFonts ?? {}, [headingFonts]);
   const [headingFontText, setHeadingFontText] = useState<
     Record<HeadingLevel, string>
   >(
@@ -941,7 +937,7 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
   };
 
   // 标题字体（C1 / #853）：输入即改本地文本，失焦 / 回车才校验落盘；
-  // 不在本机已安装列表里的值拒绝写入并回落默认。
+  // 不在本机已安装列表里的值拒绝写入并回落默认。清空 = 取消该级显式配置。
   const commitHeadingFont = (level: HeadingLevel, text: string) => {
     const parsed = parseHeadingFontInput(
       text,
@@ -955,11 +951,20 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
       setHeadingFontHint("该字体不在本机已安装列表中，已回落默认。");
       return;
     }
-    const value = parsed.kind === "default" ? HEADING_FONT_STACK : parsed.value;
-    setConfig({ headingFonts: { ...headingFontMap, [level]: value } });
+    const next = { ...headingFontMap };
+    const explicit =
+      parsed.kind === "valid" && parsed.value !== HEADING_FONT_STACK
+        ? parsed.value
+        : undefined;
+    if (explicit) {
+      next[level] = explicit;
+    } else {
+      delete next[level];
+    }
+    setConfig({ headingFonts: next });
     setHeadingFontText((prev) => ({
       ...prev,
-      [level]: headingFontInputValue(value),
+      [level]: headingFontInputValue(explicit),
     }));
     setHeadingFontHint("");
     void saveAppConfig();
@@ -1536,7 +1541,7 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
                 </h2>
                 <p className="mb-2 text-xs text-[var(--app-text-3)]">
                   逐级设置 H1–H6
-                  的字体；输入框显示当前生效字体，清空＝默认（--type-font-sans）。
+                  的字体；未配置的级别显示「默认」占位，清空＝取消该级显式配置。
                 </p>
                 <datalist id="heading-font-options">
                   {(headingFontOptions ?? []).map((family) => (
@@ -1554,7 +1559,7 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
                         list="heading-font-options"
                         data-testid={`heading-font-${level}`}
                         value={headingFontText[level]}
-                        placeholder="默认（--type-font-sans）"
+                        placeholder="默认"
                         onChange={(e) =>
                           setHeadingFontText((prev) => ({
                             ...prev,

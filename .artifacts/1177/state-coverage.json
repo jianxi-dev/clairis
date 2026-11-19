@@ -1,0 +1,33 @@
+{
+  "task": "1177-heading-font-default",
+  "states": [
+    {
+      "state": "unconfigured-placeholder",
+      "screenshot": ".artifacts/1177/unconfigured-placeholder.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-19T18:04:31Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "explicit-set",
+      "screenshot": ".artifacts/1177/explicit-set.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-19T18:04:33Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "persisted-after-reload",
+      "screenshot": ".artifacts/1177/persisted-after-reload.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-19T18:04:58Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "cleared-fallback",
+      "screenshot": ".artifacts/1177/cleared-fallback.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-19T18:05:00Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}

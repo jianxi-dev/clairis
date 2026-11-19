@@ -45,13 +45,13 @@ import {
   normalizeViewSpec,
   type ViewSpec,
 } from "../lib/aiViewSpec";
-import { ensureHeadingFonts, normalizeHeadingFonts } from "../lib/headingFonts";
+import { normalizeHeadingFonts } from "../lib/headingFonts";
 
 /** Snake-case config from Rust, mapped to camelCase in the store. */
 interface RustAppConfig {
   fontSize: number | null;
   headingColors: Record<string, string> | null;
-  headingFonts?: HeadingFonts | null;
+  headingFonts?: Partial<HeadingFonts> | null;
   readerFontSize: number | null;
   readerWidth: number | null;
   readerSkin: string | null;
@@ -163,7 +163,7 @@ export async function saveAppConfig(): Promise<void> {
     headingColors: es.headingColors
       ? ({ ...es.headingColors } as unknown as Record<string, string>)
       : null,
-    headingFonts: ensureHeadingFonts(es.config.headingFonts),
+    headingFonts: es.config.headingFonts ?? null,
     readerFontSize: es.config.readerFontSize ?? null,
     readerWidth: es.config.readerWidth ?? null,
     readerSkin: es.config.readerSkin ?? null,
@@ -589,7 +589,7 @@ export function useConfig() {
       es.setConfig({
         fontSize: 17,
         headingColors: undefined,
-        headingFonts: ensureHeadingFonts(null),
+        headingFonts: {},
         readerFontSize: 17,
         readerWidth: 1080,
         readerSkin: "paper",

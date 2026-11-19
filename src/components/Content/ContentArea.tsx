@@ -468,10 +468,11 @@ export default function ContentArea({
         if (color) vars[`--heading-${level}`] = color;
       }
     }
-    // 标题字体（#854）：默认值即 --type-font-sans 栈，CSS 里回退到该 token。
+    // 标题字体（#854）：仅显式配置注入；未配置的级别由 CSS 回退到 --type-font-sans。
     if (headingFonts) {
       for (const level of HEADING_LEVELS) {
-        vars[`--heading-${level}-font`] = headingFonts[level];
+        const font = headingFonts[level];
+        if (font) vars[`--heading-${level}-font`] = font;
       }
     }
     if (readerFontSize) vars["--type-font-size"] = `${readerFontSize}px`;
