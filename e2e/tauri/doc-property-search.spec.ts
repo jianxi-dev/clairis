@@ -82,8 +82,7 @@ test("搜索浮窗：⌘F 打开、输入命中、⌘2 直达、Esc 关闭", asy
 
   await page.keyboard.press("Meta+2");
   const selectedKey = rows.nth(1).locator(".search-float-key");
-  await expect(selectedKey.locator("svg")).toHaveCount(1);
-  await expect(selectedKey).toHaveText("");
+  await expect(selectedKey).toHaveText("↵");
   await expect(selectedKey).toHaveAttribute("aria-label", "回车");
   await expect(rows.nth(0).locator(".search-float-key")).toHaveText("⌘1");
 
