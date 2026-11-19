@@ -479,6 +479,34 @@ async function readTags(page: Page, variant: "A" | "B"): Promise<TagSample[]> {
   return out;
 }
 
+/** 解析 --app-accent-soft 的计算值（探针法）。 */
+async function accentSoft(page: Page): Promise<string> {
+  return page.evaluate(() => {
+    const probe = document.createElement("div");
+    probe.style.backgroundColor = "var(--app-accent-soft)";
+    document.body.appendChild(probe);
+    const v = getComputedStyle(probe).backgroundColor;
+    probe.remove();
+    return v;
+  });
+}
+
+/** 元素自身或其最近祖先的第一个非透明背景色（用户实际看到的底色）。 */
+async function effectiveBg(page: Page, sel: string): Promise<string> {
+  return page
+    .locator(sel)
+    .first()
+    .evaluate((el) => {
+      let node: Element | null = el;
+      while (node) {
+        const bg = getComputedStyle(node).backgroundColor;
+        if (bg !== "rgba(0, 0, 0, 0)" && bg !== "transparent") return bg;
+        node = node.parentElement;
+      }
+      return "rgba(0, 0, 0, 0)";
+    });
+}
+
 test("标签胶囊：哈希色板渲染，计算背景色两两不同且 A/B 同色", async ({
   page,
 }) => {
@@ -1571,6 +1599,12 @@ test("三元组交互：单击字段名改名、手柄选中、选中后点其�
   await expect(a.locator('[data-key="category"].dpb-row-selected')).toHaveCount(
     1,
   );
+  const softA = await accentSoft(page);
+  expect(await effectiveBg(page, '[data-key="category"]')).toBe(softA);
+  expect(
+    await effectiveBg(page, '[data-key="category"] [data-testid="dpb-value"]'),
+  ).toBe(softA);
+  expect(await effectiveBg(page, '[data-key="author"]')).not.toBe(softA);
 
   await a.locator('[data-key="author"] [data-testid="dpb-value"]').click();
   await expect(a.locator('[data-key="author"].dpb-row-selected')).toHaveCount(
@@ -1619,7 +1653,7 @@ test("#1128 选择模型四态：0 选中全选 / 选中即反选 / 标签参与
   const selectAll = b.locator('[data-testid="dpb-select-all"]');
 
   await expect(selectAll).toHaveText("全选");
-  await expect(b.locator(".dpb-node-selected")).toHaveCount(0);
+  await expect(b.locator(".dpb-row-selected")).toHaveCount(0);
   await dpbRecord(page, "1128", "01-zero-select-all");
 
   await b.locator('[data-key="category"] [data-testid="dpb-label"]').click();
@@ -1638,30 +1672,20 @@ test("#1128 选择模型四态：0 选中全选 / 选中即反选 / 标签参与
   await expect(b.locator('[data-testid="dpb-ops-count"]')).toHaveText(
     "已选 1 项",
   );
-  await expect(
-    b.locator(
-      '[data-key="category"] [data-testid="dpb-label"].dpb-node-selected',
-    ),
-  ).toHaveCount(1);
-  const labelBg = await b
-    .locator('[data-key="category"] [data-testid="dpb-label"]')
-    .evaluate((el) => getComputedStyle(el).backgroundColor);
-  const valueBg = await b
-    .locator('[data-key="category"] [data-testid="dpb-value"]')
-    .evaluate((el) => getComputedStyle(el).backgroundColor);
-  expect(valueBg).not.toBe(labelBg);
-  await expect(
-    b.locator('.dpb-node-selected [data-testid="dpb-value"]'),
-  ).toHaveCount(0);
+  const soft = await accentSoft(page);
+  expect(await effectiveBg(page, '[data-key="category"]')).toBe(soft);
+  expect(
+    await effectiveBg(page, '[data-key="category"] [data-testid="dpb-value"]'),
+  ).toBe(soft);
+  expect(await effectiveBg(page, '[data-key="author"]')).not.toBe(soft);
   await dpbRecord(page, "1128", "02-one-name-invert-ready");
 
   await b.locator('[data-key="tags"] [data-testid="dpb-row-handle"]').click();
   await expect(b.locator('[data-testid="dpb-ops-count"]')).toHaveText(
     "已选 2 项",
   );
-  await expect(
-    b.locator('[data-key="tags"] .dpb-tag.dpb-node-selected'),
-  ).toHaveCount(1);
+  expect(await effectiveBg(page, '[data-key="tags"]')).toBe(soft);
+  expect(await effectiveBg(page, '[data-key="tags"] .dpb-tag')).not.toBe(soft);
 
   await selectAll.click();
   await expect(b.locator('[data-testid="dpb-ops-count"]')).toHaveText(

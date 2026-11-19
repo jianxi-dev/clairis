@@ -1026,19 +1026,15 @@
   background: var(--app-accent-soft);
 }
 
-/* 选中高亮只落在字段名 / 标签节点（#1128），值单元格不染色。 */
-.dpb-node-selected {
+/* 选中高亮：行级基规则统一接管整块（含值），类挂载在行容器上。 */
+.dpb-row-selected {
   background: var(--app-accent-soft) !important;
   border-color: var(--app-accent) !important;
-  color: var(--app-text-strong);
   border-radius: var(--radius-4);
 }
 
-.dpb-a-title-cell.dpb-row-selected {
-  background: var(--app-accent-soft) !important;
-  border-color: var(--app-accent) !important;
-  border-radius: var(--radius-4);
-}
+/* .dpb-node-selected 仅作行内节点标记保留（字段名 / 标签 span），
+   不单独上色，避免小底色盖住行级背景。 */
 
 .dpb-ops {
   display: flex;
