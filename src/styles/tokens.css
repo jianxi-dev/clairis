@@ -50,6 +50,8 @@
   --tip-shell-radius: var(--radius-full);
   /* 页签最小宽度保底；裁决见 docs/design/system/decisions.md（shell-tabs-surface 1.1，spec §7.5） */
   --tab-min-width: 96px;
+  /* 页签条尾部空白（承载空白处拖窗 / 双击全屏）；spec §7.5 */
+  --tab-strip-tail: 24px;
   /* 页签名信息窗固定宽度；同上台账行（design-system §7.4） */
   --tab-info-width: 256px;
   /* 搜索浮窗控件密度档（design-system §7.1）：输入框 / 替换按钮 / 顶栏共用，

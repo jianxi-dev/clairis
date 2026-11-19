@@ -624,6 +624,12 @@ export default function TabBar({
           );
         })}
         {dragGap === tabIds.length && placeholder}
+        <span
+          aria-hidden
+          data-testid="tab-strip-tail"
+          className="h-full shrink-0"
+          style={{ width: "var(--tab-strip-tail)" }}
+        />
       </div>
 
       {ghostTab &&
