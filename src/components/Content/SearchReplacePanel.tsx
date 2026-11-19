@@ -447,7 +447,7 @@ export default function SearchReplacePanel({
     index: number,
   ) => {
     setSelected(index);
-    if (!replaceMode || !canReplace || !container) return;
+    if (!canReplace || !container) return;
     const b = container.getBoundingClientRect();
     const r = event.currentTarget.getBoundingClientRect();
     setHoverPos(null);
@@ -1026,7 +1026,6 @@ export default function SearchReplacePanel({
       )}
 
       {open &&
-        replaceMode &&
         hover &&
         hoverHit &&
         createPortal(

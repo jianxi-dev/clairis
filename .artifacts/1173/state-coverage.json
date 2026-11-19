@@ -1,0 +1,33 @@
+{
+  "task": "1173-hover-preview",
+  "states": [
+    {
+      "state": "normal-search-hover-card",
+      "screenshot": ".artifacts/1173/normal-search-hover-card.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-19T16:58:23.575Z",
+      "runner": "unknown@unknown"
+    },
+    {
+      "state": "replace-mode-hover-card",
+      "screenshot": ".artifacts/1173/replace-mode-hover-card.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-19T16:58:23.642Z",
+      "runner": "unknown@unknown"
+    },
+    {
+      "state": "hover-leave-dismissed",
+      "screenshot": ".artifacts/1173/hover-leave-dismissed.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-19T16:58:23.690Z",
+      "runner": "unknown@unknown"
+    },
+    {
+      "state": "preview-mode-no-card",
+      "screenshot": ".artifacts/1173/preview-mode-no-card.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-19T16:58:23.748Z",
+      "runner": "unknown@unknown"
+    }
+  ]
+}

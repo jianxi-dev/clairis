@@ -10,7 +10,7 @@ import path from "node:path";
  * 不停留在「元素存在」。
  */
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1422";
 
 const DOC = `# 属性面板
 
@@ -761,21 +761,41 @@ test("全部替换一次事务完成并计数，Ctrl+Z 一次全部还原", asyn
   expect(await editorText(page)).toContain("属性面板");
 });
 
-test("替换模式悬停结果行弹全文预览卡，普通搜索不弹", async ({ page }) => {
+const ART_1173 = path.resolve(process.cwd(), ".artifacts/1173");
+
+async function recordState1173(page: Page, state: string): Promise<void> {
+  mkdirSync(ART_1173, { recursive: true });
+  const file = path.join(ART_1173, `${state}.png`);
+  await page.screenshot({ path: file });
+  const manifest = path.join(ART_1173, "state-coverage.json");
+  let states: Array<Record<string, string>> = [];
+  try {
+    states = JSON.parse(readFileSync(manifest, "utf8")).states ?? [];
+  } catch {
+    states = [];
+  }
+  states = states.filter((s) => s.state !== state);
+  states.push({
+    state,
+    screenshot: path.relative(process.cwd(), file),
+    assertion: "passed",
+    recorded_at: new Date().toISOString(),
+    runner: `${process.env.USER ?? "unknown"}@${process.env.HOSTNAME ?? "unknown"}`,
+  });
+  writeFileSync(
+    manifest,
+    `${JSON.stringify({ task: "1173-hover-preview", states }, null, 2)}\n`,
+  );
+}
+
+test("普通搜索态与替换模式悬停均弹全文预览卡，预览态不弹", async ({ page }) => {
   await page.keyboard.press("Meta+f");
   await page.locator('[data-testid="search-float-input"]').fill("属性");
 
   const row = page.locator('[data-testid="search-float-hit"]').first();
-  await row.hover();
-  await expect(
-    page.locator('[data-testid="search-float-hover-card"]'),
-  ).toHaveCount(0);
-
-  await page.locator('[data-testid="search-float-replace-toggle"]').click();
-  await page.locator('[data-testid="search-float-replace-input"]').fill("特性");
-  await row.hover();
-
   const card = page.locator('[data-testid="search-float-hover-card"]');
+
+  await row.hover();
   await expect(card).toBeVisible();
   await expect(card).toContainText("L1 · 标题");
   await expect(card).toContainText("属性面板");
@@ -792,9 +812,25 @@ test("替换模式悬停结果行弹全文预览卡，普通搜索不弹", async
   expect(cardBox.y + cardBox.height).toBeLessThanOrEqual(
     paneBox.y + paneBox.height + 1,
   );
+  await recordState1173(page, "normal-search-hover-card");
+
+  await page.locator('[data-testid="search-float-replace-toggle"]').click();
+  await page.locator('[data-testid="search-float-replace-input"]').fill("特性");
+  await row.hover();
+  await expect(card).toBeVisible();
+  await recordState1173(page, "replace-mode-hover-card");
 
   await page.locator('[data-testid="search-float-input"]').hover();
   await expect(card).toHaveCount(0);
+  await recordState1173(page, "hover-leave-dismissed");
+
+  // 模式切换不关闭搜索浮窗（store 驱动），再按 ⌘F 会把它 toggle 关闭——直接切态即可。
+  await setMode(page, "preview");
+  await page.mouse.move(8, 8);
+  await expect(card).toHaveCount(0);
+  await row.hover();
+  await expect(card).toHaveCount(0);
+  await recordState1173(page, "preview-mode-no-card");
 });
 
 test("预览态 ⌘F：无替换切换按钮、无替换行", async ({ page }) => {
