@@ -67,6 +67,10 @@ openspec status --change <name>   # 单个变更工件完成度
 
 - 编辑/阅读/搜索/属性域（`editor-surface-batch23`）：4/4 票合并（PR #1094/#1095/#1096/#1097），5 条 requirement 修订，无新增 requirement（search-replace-float S-1 顶栏标题 / 关闭钮位次 / 输入框一键清空、S-3 结果区与快捷键字号 +1 档、S-6 状态栏文案去「（局部 · 浮窗内）」；editing E-10 层级标识仅悬停显示且更浅 + 拖动插入位置指示条 + 正文顺序同步；reading 预览态选区工具条拖选完成后再显示；doc-property-panel P-3 日期时间改单一面板选择器），已归档 `openspec/changes/archive/2026-11-18-editor-surface-batch23`
 
+- 搜索/替换域（`search-replace-refine`）：5/5 票合并（PR #1120–#1125），+1 requirement / 2 条修订（search-replace-float 新增「结果摘要文本化」——表格命中摘要转可读文本与序位下标映射；S-3 行尾快捷键随滚动重绑可视前 9 行、选中行显示 `↵` 字符；S-4 重开浮窗重置悬停残留、替换输入框一键清空），密度 token `--sf-ctrl-height: 27px`（design-system §7.1），已归档 `openspec/changes/archive/2026-11-18-search-replace-refine`
+- 编辑/属性域（`document-properties-inline`）：2/2 票合并（PR #1131/#1132），+2 requirement / 2 条修订（doc-property-panel 新增「托管日期只读展示」——`created`/`updated` 排除字段行、A 模式底部 footer 左 / B 模式备注行右；新增「AB 形态切换入口与窄窗自适应」——标题栏 AB 图标 + 全局偏好 `docPropertyVariant` 持久化 + 窄窗 <720px 自动胶囊且手动优先；P-2/P-4 修订：选择模式字段名+标签行可选、值不参与、全选/反选二态与反选反转），已归档 `openspec/changes/archive/2026-11-18-document-properties-inline`
+- 外壳/阅读/配置域（`shell-preview-refine`）：4/4 票合并（PR #1140–#1143），5 条 requirement 修订（application-shell 状态栏默认隐藏 + 底边 8px 热区滑入滑出 + 钉住保留、禅模式文案保留 ⌘⇧F；navigation 页签内标题↔关闭间距 ≤6px（相邻页签 32px 不变）、信息窗 `--tab-info-width` 320→256px + 复制图标移至文件名后弱化档；reading 整文件预览语法着色预算上调至 200k 字符；configuration 标题字体枚举本机字体族 + 失败降级手输），已归档 `openspec/changes/archive/2026-11-19-shell-preview-refine`
+
 - 编辑域（`table-editing-polish`）：6/6 票合并（PR #746–#751），3 条 requirement 修订（E-6 编辑内核与插入入口补上下文触发、手柄统一与表头无手柄；E-7 编排层补行列插入圆点与上下文命令集；E-14 浮层定位补触发控件矩形锚定），已归档 `openspec/changes/archive/2026-11-13-table-editing-polish`
   - 单元格手柄统一图标/垂直居中左边框线外/表头无手柄/圆角 3px、行列插入圆点上/左外缘悬停变 + 点击插入删除、斜杠菜单内容输入上下文（单元格/分栏/高亮块就地打开、焦点保持、Esc 回滚、定位与裁剪修正、死代码清理）、分栏与高亮块接入统一菜单 + 「+」手柄、上下文命令安全集（cell=行内+单行片段，container=全量）
 - 规格对齐（`rail-thumb-spec-sync`）：阅读空间卡片缩略图 72×54 → 64×48（`navigation` 1 条 requirement 修订，总数不变），已归档 `openspec/changes/archive/2026-11-08-rail-thumb-spec-sync`
