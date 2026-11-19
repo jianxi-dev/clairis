@@ -70,6 +70,8 @@ TBD - created by archiving change doc-property-and-search-panel. Update Purpose 
 
 **字号**：结果区文字（定位行与上下文片段）与行尾快捷键徽标的字号 SHALL 按 `docs/design/system/spec.md` §4 字阶各上调一档，SHALL 落在 §4 字阶集合内。
 
+**结果行斑马纹**：结果区相邻两行 SHALL 以不同背景色区分（隔行交替），奇数行与偶数行的计算背景色 SHALL 不同；交替底色 SHALL 取 `docs/design/system/spec.md` §6 语义色板既有的 surface / sunken 两档，SHALL NOT 新增色 token；悬停行与当前命中行背景 SHALL 覆盖交替底色。
+
 #### Scenario: 选中行快捷键跟随
 
 - **WHEN** 用户按 ↓ 两次使第 3 个结果成为当前命中
@@ -112,8 +114,10 @@ TBD - created by archiving change doc-property-and-search-panel. Update Purpose 
 
 #### Scenario: 悬浮全文预览为渲染态
 
-- **WHEN** 替换模式下用户悬停结果行唤出全文预览卡
+- **WHEN** 用户悬停结果行唤出全文预览卡（普通搜索态与替换模式均可）
 - **THEN** 预览卡内容 SHALL 为 Markdown 渲染态（标题 / 摘要 / 格式可见），SHALL NOT 显示源码标记
+
+> 本场景标题为归档兼容保留；语义随本 change 的「悬停全文预览放开 `replaceMode` gate」同步去掉了「替换模式下」限定，既有标题逐字不改。
 
 #### Scenario: 结果区与快捷键字号
 
@@ -130,9 +134,16 @@ TBD - created by archiving change doc-property-and-search-panel. Update Purpose 
 - **WHEN** 浮窗打开且命中多于 1 处时用户按 ⌘5
 - **THEN** 编辑器 SHALL 滚动到第 5 处命中并高亮选中该命中，一步完成，无需再点击结果行
 
+#### Scenario: 结果行交替背景色（斑马纹）
+
+- **WHEN** 结果区显示至少 2 行命中
+- **THEN** 相邻两行的计算背景色 SHALL 不同（隔行交替）；奇数行与偶数行分别取 `docs/design/system/spec.md` §6 的 surface / sunken 语义底色；悬停行与当前命中行的背景 SHALL 覆盖交替底色
+
 ### Requirement: S-4 替换与 diff 预览
 
-替换模式 SHALL 由输入行 ⇄ 按钮切换，提供替换输入框与「全部替换 / 逐个替换」。**替换输入框 SHALL 提供一键清空按钮，输入非空时可用，点击后 SHALL 清空替换词（不关闭浮窗）并保持替换输入框焦点**，行为与搜索输入框的一键清空一致。替换模式下每条结果 SHALL 内联显示「原词 → 新词」diff 预览（删除线 → 强调色）。替换 SHALL 以 CM6 单事务执行（可撤销）；**逐个替换后 SHALL 自动跳到下一处命中**；全部替换 SHALL 一次事务完成并提示替换计数。**每次打开浮窗 SHALL 重置悬停与选中残留**，替换模式下首次悬停结果行即正常唤出全文预览卡。
+替换模式 SHALL 由输入行 ⇄ 按钮切换，提供替换输入框与「全部替换 / 逐个替换」。**替换输入框 SHALL 提供一键清空按钮，输入非空时可用，点击后 SHALL 清空替换词（不关闭浮窗）并保持替换输入框焦点**，行为与搜索输入框的一键清空一致。预览态下输入行 ⇄ 按钮 SHALL 可见但呈灰置禁用态，`title` SHALL 说明「预览态不可替换」，点击 SHALL NOT 进入替换模式、SHALL NOT 出现替换输入框。替换 SHALL 以 CM6 单事务执行（可撤销）；**逐个替换后 SHALL 自动跳到下一处命中**；全部替换 SHALL 一次事务完成并提示替换计数。**每次打开浮窗 SHALL 重置悬停与选中残留**，首次悬停结果行即正常唤出全文预览卡（普通搜索态与替换模式均生效）。
+
+> 本 change 移除原「替换模式下每条结果 SHALL 内联显示『原词 → 新词』diff 预览（删除线 → 强调色）」条款：结果行不再渲染 inline diff。
 
 #### Scenario: 替换后自动跳下一处
 
@@ -142,7 +153,9 @@ TBD - created by archiving change doc-property-and-search-panel. Update Purpose 
 #### Scenario: 悬停全文预览仅替换模式
 
 - **WHEN** 用户悬停结果行
-- **THEN** 仅替换模式下浮出当前位置全文预览卡（所在块完整内容 + `L行号 · 块标题`）；普通搜索不弹卡
+- **THEN** 普通搜索态与替换模式均浮出当前位置全文预览卡（所在块完整内容 + `L行号 · 块标题`）；不再以替换模式为前置条件
+
+> 本场景标题为归档兼容保留（标题逐字不改）；断言已反向修订为「两种模式均弹卡」。
 
 #### Scenario: 替换框一键清空
 
@@ -153,6 +166,11 @@ TBD - created by archiving change doc-property-and-search-panel. Update Purpose 
 
 - **WHEN** 用户在替换模式关闭浮窗后再按 ⌘F 打开
 - **THEN** 悬停与选中残留 SHALL 被重置，首次悬停结果行即正常唤出全文预览卡，无需先切换替换态
+
+#### Scenario: 预览态替换按钮灰置禁用
+
+- **WHEN** 用户在预览态按 ⌘F 打开搜索浮窗
+- **THEN** 输入行 ⇄ 替换模式按钮 SHALL 可见但呈灰置禁用态，`title` 为「预览态不可替换」；点击后 SHALL NOT 进入替换模式、SHALL NOT 出现替换输入框
 
 ### Requirement: S-5 局部快捷键优先级
 

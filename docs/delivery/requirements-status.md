@@ -2,7 +2,7 @@
 title: 需求实现状态总览
 type: delivery
 status: accepted
-last_updated: 2026-11-17
+last_updated: 2026-11-20
 source_of_truth: supporting
 ---
 
@@ -71,6 +71,8 @@ openspec status --change <name>   # 单个变更工件完成度
 - 编辑/属性域（`document-properties-inline`）：2/2 票合并（PR #1131/#1132），+2 requirement / 2 条修订（doc-property-panel 新增「托管日期只读展示」——`created`/`updated` 排除字段行、A 模式底部 footer 左 / B 模式备注行右；新增「AB 形态切换入口与窄窗自适应」——标题栏 AB 图标 + 全局偏好 `docPropertyVariant` 持久化 + 窄窗 <720px 自动胶囊且手动优先；P-2/P-4 修订：选择模式字段名+标签行可选、值不参与、全选/反选二态与反选反转），已归档 `openspec/changes/archive/2026-11-18-document-properties-inline`
 - 外壳/阅读/配置域（`shell-preview-refine`）：4/4 票合并（PR #1140–#1143），5 条 requirement 修订（application-shell 状态栏默认隐藏 + 底边 8px 热区滑入滑出 + 钉住保留、禅模式文案保留 ⌘⇧F；navigation 页签内标题↔关闭间距 ≤6px（相邻页签 32px 不变）、信息窗 `--tab-info-width` 320→256px + 复制图标移至文件名后弱化档；reading 整文件预览语法着色预算上调至 200k 字符；configuration 标题字体枚举本机字体族 + 失败降级手输），已归档 `openspec/changes/archive/2026-11-19-shell-preview-refine`
 - 编辑/属性域（`doc-property-restore`）：5/5 票合并（PR #1167/#1169/#1171/#1189 + 收口），2 条 requirement 修订 + 7 个新增场景（doc-property-panel P-4 新增「选中整块高亮含值」「选中集复制不含值」「粘贴重建空值字段」「单击字段名进入改名」「已选中后点击其他字段切换选中」「行手柄点击选中」；P-2 新增「L/T 图标语义与存储兼容」；P-2/P-4 正文改为 L/T 展示语义 + 三元组交互 + 复制不含值语义），设计系统 §2.3 `docPropertyVariant` 改 L/T + 图形规范、decisions.md 台账行；存储值仍 `A`/`B`、`displayStyle` 仍 list/dual 不迁移，已归档 `openspec/changes/archive/2026-11-19-doc-property-restore`
+- 搜索/替换域（`search-replace-interaction`）：4/4 票合并（PR #1198/#1200/#1201/#1202），2 条 requirement 修订、无新增 requirement（search-replace-float S-3：悬停全文预览放开 `replaceMode` gate——普通搜索态与替换模式均可唤出、结果行斑马纹（奇偶行取 surface/sunken 交替，悬停与当前命中覆盖交替底色）；S-4：预览态 ⇄ 按钮可见但灰置禁用（title「预览态不可替换」）、移除结果行 inline diff），已归档 `openspec/changes/archive/2026-11-19-search-replace-interaction`
+- 搜索/替换域（`search-replace-interaction`）：4/4 票合并（PR #1198/#1200/#1201/#1202），2 条 requirement 修订、无新增 requirement（search-replace-float S-3：悬停全文预览放开 `replaceMode` gate——普通搜索态与替换模式均可唤出、结果行斑马纹（奇偶行取 surface/sunken 交替，悬停与当前命中覆盖交替底色）；S-4：预览态 ⇄ 按钮可见但灰置禁用（title「预览态不可替换」）、移除结果行 inline diff），已归档 `openspec/changes/archive/2026-11-19-search-replace-interaction`
 
 - 编辑域（`table-editing-polish`）：6/6 票合并（PR #746–#751），3 条 requirement 修订（E-6 编辑内核与插入入口补上下文触发、手柄统一与表头无手柄；E-7 编排层补行列插入圆点与上下文命令集；E-14 浮层定位补触发控件矩形锚定），已归档 `openspec/changes/archive/2026-11-13-table-editing-polish`
   - 单元格手柄统一图标/垂直居中左边框线外/表头无手柄/圆角 3px、行列插入圆点上/左外缘悬停变 + 点击插入删除、斜杠菜单内容输入上下文（单元格/分栏/高亮块就地打开、焦点保持、Esc 回滚、定位与裁剪修正、死代码清理）、分栏与高亮块接入统一菜单 + 「+」手柄、上下文命令安全集（cell=行内+单行片段，container=全量）
