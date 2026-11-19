@@ -1,0 +1,33 @@
+{
+  "task": "1174-preview-replace-disabled",
+  "states": [
+    {
+      "state": "preview-toggle-visible-disabled",
+      "screenshot": ".artifacts/1174/preview-toggle-visible-disabled.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-19T17:15:54.044Z",
+      "runner": "unknown@unknown"
+    },
+    {
+      "state": "preview-toggle-click-no-mode",
+      "screenshot": ".artifacts/1174/preview-toggle-click-no-mode.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-19T17:15:54.070Z",
+      "runner": "unknown@unknown"
+    },
+    {
+      "state": "edit-toggle-enabled",
+      "screenshot": ".artifacts/1174/edit-toggle-enabled.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-19T17:15:54.137Z",
+      "runner": "unknown@unknown"
+    },
+    {
+      "state": "edit-replace-row-opens",
+      "screenshot": ".artifacts/1174/edit-replace-row-opens.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-19T17:15:54.171Z",
+      "runner": "unknown@unknown"
+    }
+  ]
+}

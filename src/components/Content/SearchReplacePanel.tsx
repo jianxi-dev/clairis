@@ -399,6 +399,7 @@ export default function SearchReplacePanel({
   const canReplace = mode !== "preview";
 
   const toggleReplace = () => {
+    if (!canReplace) return;
     const next = !replaceMode;
     setReplaceMode(next);
     if (!next) {
@@ -837,19 +838,18 @@ export default function SearchReplacePanel({
         <span className="search-float-count" data-testid="search-float-count">
           {query ? `${hits.length} 处` : ""}
         </span>
-        {canReplace && (
-          <button
-            type="button"
-            className={`search-float-replace-toggle${replaceMode ? " on" : ""}`}
-            data-testid="search-float-replace-toggle"
-            aria-label="切换替换"
-            aria-pressed={replaceMode}
-            title="切换替换"
-            onClick={toggleReplace}
-          >
-            ⇄
-          </button>
-        )}
+        <button
+          type="button"
+          className={`search-float-replace-toggle${replaceMode ? " on" : ""}`}
+          data-testid="search-float-replace-toggle"
+          aria-label="切换替换"
+          aria-pressed={replaceMode}
+          disabled={!canReplace}
+          title={canReplace ? "切换替换" : "预览态不可替换"}
+          onClick={toggleReplace}
+        >
+          ⇄
+        </button>
       </div>
 
       {canReplace && replaceMode && (

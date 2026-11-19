@@ -788,6 +788,33 @@ async function recordState1173(page: Page, state: string): Promise<void> {
   );
 }
 
+const ART_1174 = path.resolve(process.cwd(), ".artifacts/1174");
+
+async function recordState1174(page: Page, state: string): Promise<void> {
+  mkdirSync(ART_1174, { recursive: true });
+  const file = path.join(ART_1174, `${state}.png`);
+  await page.screenshot({ path: file });
+  const manifest = path.join(ART_1174, "state-coverage.json");
+  let states: Array<Record<string, string>> = [];
+  try {
+    states = JSON.parse(readFileSync(manifest, "utf8")).states ?? [];
+  } catch {
+    states = [];
+  }
+  states = states.filter((s) => s.state !== state);
+  states.push({
+    state,
+    screenshot: path.relative(process.cwd(), file),
+    assertion: "passed",
+    recorded_at: new Date().toISOString(),
+    runner: `${process.env.USER ?? "unknown"}@${process.env.HOSTNAME ?? "unknown"}`,
+  });
+  writeFileSync(
+    manifest,
+    `${JSON.stringify({ task: "1174-preview-replace-disabled", states }, null, 2)}\n`,
+  );
+}
+
 test("普通搜索态与替换模式悬停均弹全文预览卡，预览态不弹", async ({ page }) => {
   await page.keyboard.press("Meta+f");
   await page.locator('[data-testid="search-float-input"]').fill("属性");
@@ -833,20 +860,36 @@ test("普通搜索态与替换模式悬停均弹全文预览卡，预览态不�
   await recordState1173(page, "preview-mode-no-card");
 });
 
-test("预览态 ⌘F：无替换切换按钮、无替换行", async ({ page }) => {
+test("预览态 ⌘F：替换切换按钮可见但禁用、无替换行", async ({ page }) => {
   await setMode(page, "preview");
   await page.keyboard.press("Meta+f");
   const float = page.locator('[data-testid="search-float"]');
   await expect(float).toBeVisible();
 
-  await expect(
-    page.locator('[data-testid="search-float-replace-toggle"]'),
-  ).toHaveCount(0);
-  await page.locator('[data-testid="search-float-input"]').fill("属性");
+  const toggle = page.locator('[data-testid="search-float-replace-toggle"]');
+  await expect(toggle).toBeVisible();
+  await expect(toggle).toBeDisabled();
+  await expect(toggle).toHaveAttribute("title", "预览态不可替换");
+  await recordState1174(page, "preview-toggle-visible-disabled");
+
+  await toggle.click({ force: true });
   await expect(float.locator("input")).toHaveCount(1);
   await expect(
     page.locator('[data-testid="search-float-replace-row"]'),
   ).toHaveCount(0);
+  await recordState1174(page, "preview-toggle-click-no-mode");
+
+  // 模式切换不关闭搜索浮窗（store 驱动），切回编辑态后同一浮窗的按钮转为可用。
+  await setMode(page, "edit");
+  await expect(toggle).toBeEnabled();
+  await expect(toggle).toHaveAttribute("title", "切换替换");
+  await recordState1174(page, "edit-toggle-enabled");
+
+  await toggle.click();
+  await expect(
+    page.locator('[data-testid="search-float-replace-row"]'),
+  ).toBeVisible();
+  await recordState1174(page, "edit-replace-row-opens");
 });
 
 test("分栏：B 格浮窗点击行定位到 B 格、A 格不动；⌘N 直达后 回车 跟随并定位", async ({
