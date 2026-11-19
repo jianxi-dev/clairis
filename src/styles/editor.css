@@ -105,7 +105,9 @@ body {
  * 仅纯文本 / 脚本（代码）文件的编辑态由 lineNumbersCompartment 装入。纸面内的
  * 一条低调竖槽：透明底、右侧细分隔线、三级文字色、等宽数字，不引入代码面板底色。
  * 行号槽脱离 flex 流（ContentArea 用 gutters({fixed:false}) 清掉 CM6 内联
- * sticky），右缘锚定正文列左缘，使行号紧贴正文而非贴着纸面左沿。 */
+ * sticky），右缘锚定正文列左缘，使行号紧贴正文而非贴着纸面左沿。
+ * 行号右缘与分隔线之间保留 0.75em 间隙（与预览态 .code-line-numbers 对齐，
+ * #1145：ab562cd 曾把 padding 归零导致数字紧贴分隔线）。 */
 .cm-editor .cm-scroller .cm-gutters {
   position: absolute;
   top: 0;
@@ -120,7 +122,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  padding: 0;
+  padding: 0 0.75em 0 0;
   min-width: 2em;
   font-family: var(--type-font-mono);
   font-size: 0.85em;

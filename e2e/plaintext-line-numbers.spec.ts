@@ -212,7 +212,7 @@ test("切换文件 / 切换模式行号出现消失，且不 remount EditorView"
   await shot(page, "switch-mode-gutter-toggles");
 });
 
-test("A-23.3：行号紧贴正文（行号右缘与正文左缘间距 ≤12px）", async ({
+test("A-23.3：行号槽紧贴正文（槽右缘与正文左缘间距 ≤12px）", async ({
   page,
 }) => {
   await boot(page);
@@ -220,19 +220,19 @@ test("A-23.3：行号紧贴正文（行号右缘与正文左缘间距 ≤12px）
   await openFile(page, "/tmp/920-gap.txt", TXT_DOC);
   await awaitGuttersAtLeastOne(page);
 
+  // #1145：断言口径由「数字字形右缘」改为「行号槽右缘（分隔线位置）」。
+  // 自 #1145 起，编辑态数字与分隔线之间保留 0.75em 间隙（与预览态一致），
+  // 字形右缘因此左移，旧的「字形紧贴」口径不再成立；但槽（分隔线）右缘仍贴正文。
   const gap = await page.evaluate(() => {
     const num = document.querySelector<HTMLElement>(
       ".cm-editor .cm-lineNumbers .cm-gutterElement",
     );
     const line = document.querySelector<HTMLElement>(".cm-editor .cm-line");
     if (!num || !line) return null;
-    const numRange = document.createRange();
-    numRange.selectNodeContents(num);
     const lineRange = document.createRange();
     lineRange.selectNodeContents(line);
     return (
-      lineRange.getBoundingClientRect().left -
-      numRange.getBoundingClientRect().right
+      lineRange.getBoundingClientRect().left - num.getBoundingClientRect().right
     );
   });
 
@@ -503,9 +503,9 @@ async function hoverRecentRow(page: Page, title: string): Promise<void> {
     box.x + Math.min(box.width - 20, box.width * 0.9),
     box.y + box.height / 2,
   );
-  await expect(
-    page.locator('[data-testid="floating-preview"]'),
-  ).toBeVisible({ timeout: 3000 });
+  await expect(page.locator('[data-testid="floating-preview"]')).toBeVisible({
+    timeout: 3000,
+  });
 }
 
 function floatingCounts(page: Page) {
@@ -569,4 +569,106 @@ test("A-13.6：悬浮预览（真实 open_file_direct 面）文本 / 脚本出�
   expect(js.kind).toBe("code");
   expect(js.block).toBe(1);
   expect(js.numbers).toBeGreaterThanOrEqual(1);
+});
+
+// ── #1145：编辑态行号槽间隙与预览态对齐 ─────────────────────
+// ab562cd 把 `.cm-gutterElement` 的 padding 归零，编辑态行号紧贴分隔线；
+// 预览态 `.code-line-numbers` 一直保留 0.75em。此处锁住两侧间隙一致，
+// 防止再次被归零。
+const ART_1145 = path.resolve(process.cwd(), ".artifacts/1145");
+
+function shot1145(page: Page, name: string): Promise<string> {
+  mkdirSync(ART_1145, { recursive: true });
+  const file = path.join(ART_1145, `${name}.png`);
+  return page.screenshot({ path: file }).then(() => {
+    execFileSync(
+      EVIDENCE,
+      [
+        "record-state",
+        ART_1145,
+        "--state",
+        name,
+        "--screenshot",
+        file,
+        "--assertion",
+        "passed",
+      ],
+      { stdio: "ignore" },
+    );
+    return file;
+  });
+}
+
+async function editGutterGap(page: Page) {
+  return page.evaluate(() => {
+    const el = document.querySelector<HTMLElement>(
+      ".cm-editor .cm-lineNumbers .cm-gutterElement",
+    );
+    if (!el) return null;
+    const cs = getComputedStyle(el);
+    return {
+      paddingRight: parseFloat(cs.paddingRight),
+      fontSize: parseFloat(cs.fontSize),
+    };
+  });
+}
+
+async function previewGutterGap(page: Page) {
+  return page.evaluate(() => {
+    const el = document.querySelector<HTMLElement>(
+      ".preview-content .code-line-numbers",
+    );
+    if (!el) return null;
+    return parseFloat(getComputedStyle(el).paddingRight);
+  });
+}
+
+test("A-13.7：编辑态行号槽间隙 ≈ 0.75em 且与预览态一致（#1145）", async ({
+  page,
+}) => {
+  await boot(page);
+
+  await openFile(page, "/tmp/1145-gutter.txt", TXT_DOC);
+  await awaitGuttersAtLeastOne(page);
+  const edit = await editGutterGap(page);
+  expect(edit).not.toBeNull();
+  await shot1145(page, "01-edit-gutter-gap");
+
+  await setMode(page, "preview");
+  await page
+    .locator(".preview-content .code-block")
+    .waitFor({ timeout: 10000 });
+  const preview = await previewGutterGap(page);
+  expect(preview).not.toBeNull();
+  await shot1145(page, "02-preview-gutter-gap");
+
+  // 编辑态 = 0.75em × 编辑态字号（14.45px → ≈10.84px）
+  expect(
+    Math.abs(edit!.paddingRight - 0.75 * edit!.fontSize),
+  ).toBeLessThanOrEqual(2);
+  // 与预览态绝对值对齐（两侧字号 0.85em / 0.88em，差 <1px）
+  expect(Math.abs(edit!.paddingRight - preview!)).toBeLessThanOrEqual(2);
+});
+
+test("A-13.8：脚本文件编辑态行号槽间隙同样保留（#1145）", async ({ page }) => {
+  await boot(page);
+
+  await openFile(page, "/tmp/1145-gutter.js", JS_DOC);
+  await awaitGuttersAtLeastOne(page);
+  const edit = await editGutterGap(page);
+  expect(edit).not.toBeNull();
+  await shot1145(page, "03-edit-gutter-gap-js");
+
+  await setMode(page, "preview");
+  await page
+    .locator(".preview-content .code-block")
+    .waitFor({ timeout: 10000 });
+  const preview = await previewGutterGap(page);
+  expect(preview).not.toBeNull();
+  await shot1145(page, "04-preview-gutter-gap-js");
+
+  expect(
+    Math.abs(edit!.paddingRight - 0.75 * edit!.fontSize),
+  ).toBeLessThanOrEqual(2);
+  expect(Math.abs(edit!.paddingRight - preview!)).toBeLessThanOrEqual(2);
 });
