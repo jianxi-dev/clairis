@@ -89,3 +89,5 @@ ledger: append-only
 | 文档属性 L/T 切换图标 | 取代台账「文档属性 AB 切换图标」行：`docPropertyVariant` 改为双形态对比——左半三条等宽横条（L 一行条）+ 右半外框 + 中缝 + 横缝构成的两列网格（T 精排双列）；仅展示语义改 L/T，存储值仍 `A`/`B`、`displayStyle` 仍 `list`/`dual` 不变 | doc-property-restore / #1163 | 2026-11-19 |
 | 状态栏底边热区 | 高度 8px → 16px（设计系统 §3 `--space-16`，与顶部沉浸热区同档）；主窗口隐藏态指针进入立即显现、移出立即隐藏（去掉 500ms 计时，对齐卡片动作行），沉浸态保留 500ms 停留 | #1150 | 2026-11-20 |
 | 页签最小宽度保底 | `--tab-min-width: 96px`（spec §7.5）：页签弹性等比伸缩的下限，取代「页签标题最大显示宽度 120px」行；低于保底后页签条横向滚动，标题仍以省略号收尾 | shell-tabs-surface / #1180 | 2026-11-20 |
+| 信息窗复制图标 | `copyPath` 改为「文件夹 + 斜杠」路径语义（弃原双矩形构图，与 `copy` 复制选区区分）；新增 `copyFile`「文档 + 向右上箭头」文件语义；两图形不复用同一构图，颜色沿用 `--app-text-3` 弱化档 | shell-tabs-surface / #1181 | 2026-11-20 |
+| 信息窗复制成功提示 | 由路径后行内文本改为悬浮 toast：锚定触发按钮、圆角胶囊（`--radius-full`）、约 2000ms 自动消失、`pointer-events: none`；底色取 `--app-text-strong`、文字 `--app-surface`（反色胶囊，三主题皆可读） | shell-tabs-surface / #1181 | 2026-11-20 |

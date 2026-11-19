@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "copy-buttons-time-row",
+      "screenshot": "/Users/mason/ToHighs/clairis/.artifacts/1181/copy-buttons-time-row.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-19T20:07:59Z",
+      "runner": "mason@MMBP.local"
+    },
+    {
+      "state": "icons-distinguishable",
+      "screenshot": "/Users/mason/ToHighs/clairis/.artifacts/1181/icons-distinguishable.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-19T20:07:59Z",
+      "runner": "mason@MMBP.local"
+    },
+    {
+      "state": "toast-appear",
+      "screenshot": "/Users/mason/ToHighs/clairis/.artifacts/1181/toast-appear.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-19T20:07:59Z",
+      "runner": "mason@MMBP.local"
+    },
+    {
+      "state": "toast-dismissed",
+      "screenshot": "/Users/mason/ToHighs/clairis/.artifacts/1181/toast-dismissed.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-19T20:07:59Z",
+      "runner": "mason@MMBP.local"
+    }
+  ]
+}

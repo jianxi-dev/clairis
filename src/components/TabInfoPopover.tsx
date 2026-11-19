@@ -12,6 +12,8 @@ import type { Tab } from "../types";
 const POPOVER_GAP = 6;
 /** 视口边缘留白（px）。 */
 const VIEWPORT_MARGIN = 8;
+/** 复制成功 toast 的自动消失时长（ms）。 */
+const TOAST_MS = 2000;
 
 interface PathLayer {
   name: string;
@@ -65,8 +67,9 @@ interface Props {
 /**
  * 页签名下拉信息窗（editor-surface-batch19 B7 / R-14）。
  *
- * 三行：① 文件类型图标 + 文件名（最大字号）+ 复制路径 / 复制文件；
- * ② 文件夹图标 + 文件夹链（每层可单击在文件管理器定位）；③ 时钟图标 + 最近保存时间。
+ * 三行：① 文件类型图标 + 文件名（最大字号）；
+ * ② 文件夹图标 + 文件夹链（每层可单击在文件管理器定位）；
+ * ③ 时钟图标 + 最近保存时间 + 复制路径 / 复制文件（两图标位于本行右侧）。
  * 外壳为 8px 圆角矩形、固定 256px 宽（窄窗按视口钳制），完整文件名换行显示。
  */
 export default function TabInfoPopover({
@@ -77,22 +80,25 @@ export default function TabInfoPopover({
 }: Props) {
   const [modified, setModified] = useState<number | null>(null);
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
-  const noticeTimer = useRef<number | null>(null);
+  const [toast, setToast] = useState<{
+    text: string;
+    x: number;
+    y: number;
+  } | null>(null);
+  const toastTimer = useRef<number | null>(null);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(
     () => () => {
-      if (noticeTimer.current !== null)
-        window.clearTimeout(noticeTimer.current);
+      if (toastTimer.current !== null) window.clearTimeout(toastTimer.current);
     },
     [],
   );
 
-  const flash = (text: string) => {
-    setNotice(text);
-    if (noticeTimer.current !== null) window.clearTimeout(noticeTimer.current);
-    noticeTimer.current = window.setTimeout(() => setNotice(null), 1400);
+  const flash = (text: string, anchor: DOMRect) => {
+    setToast({ text, x: anchor.left + anchor.width / 2, y: anchor.bottom + 6 });
+    if (toastTimer.current !== null) window.clearTimeout(toastTimer.current);
+    toastTimer.current = window.setTimeout(() => setToast(null), TOAST_MS);
   };
 
   useEffect(() => {
@@ -141,121 +147,141 @@ export default function TabInfoPopover({
         ? `最近保存: ${formatSaved(new Date(openedAt).getTime() / 1000)}`
         : "最近保存: 未知";
 
-  return createPortal(
-    <div
-      ref={ref}
-      data-testid="tab-info-popover"
-      className="tab-info"
-      style={
-        pos
-          ? { left: pos.x, top: pos.y }
-          : {
-              left: anchor.left,
-              top: anchor.bottom + POPOVER_GAP,
-              visibility: "hidden",
-            }
-      }
-      onMouseEnter={onKeepOpen}
-      onMouseLeave={onClose}
-      role="tooltip"
-    >
-      <div className="tab-info__row" data-testid="tab-info-name">
-        <Icon
-          name={iconOfType(kind)}
-          size={18}
-          color={colorOfType(kind)}
-          className="tab-info__type"
-        />
-        <span className="tab-info__name">{tab.title}</span>
-        {tab.path && (
-          <span className="tab-info__copy">
-            <button
-              type="button"
-              data-testid="tab-copy-path"
-              title="复制路径"
-              aria-label="复制路径"
-              onClick={(e) => {
-                e.stopPropagation();
-                void navigator.clipboard
-                  ?.writeText(tab.path ?? "")
-                  .then(() => flash("已复制路径"))
-                  .catch(() => flash("复制失败"));
-              }}
-            >
-              <Icon name="copyPath" size={14} />
-            </button>
-            {canCopyFile() && (
-              <button
-                type="button"
-                data-testid="tab-copy-file"
-                title="复制文件"
-                aria-label="复制文件"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  void copyFileToClipboard(tab.path ?? "")
-                    .then(() => flash("已复制文件"))
-                    .catch((e) => flash(`复制文件失败：${copyFailureText(e)}`));
-                }}
-              >
-                <Icon name="copy" size={14} />
-              </button>
-            )}
-          </span>
-        )}
-      </div>
-      <div className="tab-info__row" data-testid="tab-info-path">
-        <Icon name="folder" size={14} className="tab-info__icon" />
-        <span className="tab-info__path">
-          {layers.length === 0 ? (
-            <button
-              type="button"
-              className="tab-info__layer"
-              data-path-layer="/"
-              onClick={() => {
-                revealInFinder("/");
-                onClose();
-              }}
-            >
-              /
-            </button>
-          ) : (
-            layers.map((layer, i) => (
-              <span className="tab-info__seg" key={layer.full}>
-                {i > 0 && (
-                  <span className="tab-info__sep" aria-hidden="true">
-                    ›
-                  </span>
-                )}
+  return (
+    <>
+      {createPortal(
+        <div
+          ref={ref}
+          data-testid="tab-info-popover"
+          className="tab-info"
+          style={
+            pos
+              ? { left: pos.x, top: pos.y }
+              : {
+                  left: anchor.left,
+                  top: anchor.bottom + POPOVER_GAP,
+                  visibility: "hidden",
+                }
+          }
+          onMouseEnter={onKeepOpen}
+          onMouseLeave={onClose}
+          role="tooltip"
+        >
+          <div className="tab-info__row" data-testid="tab-info-name">
+            <Icon
+              name={iconOfType(kind)}
+              size={18}
+              color={colorOfType(kind)}
+              className="tab-info__type"
+            />
+            <span className="tab-info__name">{tab.title}</span>
+          </div>
+          <div className="tab-info__row" data-testid="tab-info-path">
+            <Icon name="folder" size={14} className="tab-info__icon" />
+            <span className="tab-info__path">
+              {layers.length === 0 ? (
                 <button
                   type="button"
                   className="tab-info__layer"
-                  data-path-layer={layer.full}
+                  data-path-layer="/"
                   onClick={() => {
-                    revealInFinder(layer.full);
+                    revealInFinder("/");
                     onClose();
                   }}
                 >
-                  {layer.name}
+                  /
                 </button>
+              ) : (
+                layers.map((layer, i) => (
+                  <span className="tab-info__seg" key={layer.full}>
+                    {i > 0 && (
+                      <span className="tab-info__sep" aria-hidden="true">
+                        ›
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      className="tab-info__layer"
+                      data-path-layer={layer.full}
+                      onClick={() => {
+                        revealInFinder(layer.full);
+                        onClose();
+                      }}
+                    >
+                      {layer.name}
+                    </button>
+                  </span>
+                ))
+              )}
+            </span>
+          </div>
+          <div className="tab-info__row" data-testid="tab-info-time">
+            <Icon name="clock" size={14} className="tab-info__icon" />
+            <span className="tab-info__time">{savedText}</span>
+            {tab.path && (
+              <span className="tab-info__copy">
+                <button
+                  type="button"
+                  data-testid="tab-copy-path"
+                  title="复制路径"
+                  aria-label="复制路径"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const btn = e.currentTarget;
+                    void navigator.clipboard
+                      ?.writeText(tab.path ?? "")
+                      .then(() =>
+                        flash("已复制路径", btn.getBoundingClientRect()),
+                      )
+                      .catch(() =>
+                        flash("复制失败", btn.getBoundingClientRect()),
+                      );
+                  }}
+                >
+                  <Icon name="copyPath" size={14} />
+                </button>
+                {canCopyFile() && (
+                  <button
+                    type="button"
+                    data-testid="tab-copy-file"
+                    title="复制文件"
+                    aria-label="复制文件"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const btn = e.currentTarget;
+                      void copyFileToClipboard(tab.path ?? "")
+                        .then(() =>
+                          flash("已复制文件", btn.getBoundingClientRect()),
+                        )
+                        .catch((e) =>
+                          flash(
+                            `复制文件失败：${copyFailureText(e)}`,
+                            btn.getBoundingClientRect(),
+                          ),
+                        );
+                    }}
+                  >
+                    <Icon name="copyFile" size={14} />
+                  </button>
+                )}
               </span>
-            ))
-          )}
-        </span>
-        {notice && (
-          <span
-            className="tab-info__notice"
-            data-testid="tab-copy-notice"
-            aria-live="polite"
+            )}
+          </div>
+        </div>,
+        document.body,
+      )}
+      {toast &&
+        createPortal(
+          <div
+            className="tab-info__toast"
+            data-testid="tab-copy-toast"
+            role="status"
+            style={{ left: toast.x, top: toast.y }}
           >
-            {notice}
-          </span>
+            {toast.text}
+          </div>,
+          document.body,
         )}
-      </div>
-      <div className="tab-info__row" data-testid="tab-info-time">
-        <Icon name="clock" size={14} className="tab-info__icon" />
-        <span className="tab-info__time">{savedText}</span>
-      </div>
-    </div>,
-    document.body,
+    </>
   );
 }
