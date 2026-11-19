@@ -717,6 +717,32 @@ test("替换模式结果行无内联 diff（无 del/ins），替换仍生效；�
   await recordState1175(page, "replace-still-works");
 });
 
+test("结果行交替背景色：相邻行不同、当前命中覆盖交替底色", async ({ page }) => {
+  await page.keyboard.press("Meta+f");
+  await page.locator('[data-testid="search-float-input"]').fill("属性");
+  const rows = page.locator('[data-testid="search-float-hit"]');
+  await expect(rows).toHaveCount(3);
+
+  const bg = (i: number) =>
+    rows.nth(i).evaluate((el) => getComputedStyle(el).backgroundColor);
+  const b0 = await bg(0);
+  const b1 = await bg(1);
+  expect(b0).not.toBe(b1);
+  await recordState1176(page, "zebra-odd-even");
+
+  await rows.nth(1).hover();
+  expect(await bg(1)).not.toBe(b1);
+  await recordState1176(page, "current-hit-overrides-stripe");
+
+  await page.mouse.move(8, 8);
+  await expect(rows.nth(1).locator(".search-float-key")).toHaveText("↵");
+  await recordState1176(page, "selection-kept-after-leave");
+
+  await page.locator('[data-testid="search-float-input"]').fill("第二段");
+  await expect(rows).toHaveCount(1);
+  await recordState1176(page, "single-row-uses-surface");
+});
+
 test("逐个替换当前命中后自动前进到下一处，文档文本变化", async ({ page }) => {
   await page.keyboard.press("Meta+f");
   await page.locator('[data-testid="search-float-input"]').fill("属性");
@@ -845,6 +871,33 @@ async function recordState1175(page: Page, state: string): Promise<void> {
   writeFileSync(
     manifest,
     `${JSON.stringify({ task: "1175-remove-inline-diff", states }, null, 2)}\n`,
+  );
+}
+
+const ART_1176 = path.resolve(process.cwd(), ".artifacts/1176");
+
+async function recordState1176(page: Page, state: string): Promise<void> {
+  mkdirSync(ART_1176, { recursive: true });
+  const file = path.join(ART_1176, `${state}.png`);
+  await page.screenshot({ path: file });
+  const manifest = path.join(ART_1176, "state-coverage.json");
+  let states: Array<Record<string, string>> = [];
+  try {
+    states = JSON.parse(readFileSync(manifest, "utf8")).states ?? [];
+  } catch {
+    states = [];
+  }
+  states = states.filter((s) => s.state !== state);
+  states.push({
+    state,
+    screenshot: path.relative(process.cwd(), file),
+    assertion: "passed",
+    recorded_at: new Date().toISOString(),
+    runner: `${process.env.USER ?? "unknown"}@${process.env.HOSTNAME ?? "unknown"}`,
+  });
+  writeFileSync(
+    manifest,
+    `${JSON.stringify({ task: "1176-row-zebra", states }, null, 2)}\n`,
   );
 }
 

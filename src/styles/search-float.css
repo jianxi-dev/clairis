@@ -196,12 +196,22 @@
   border-radius: 6px;
 }
 
+/* 结果行斑马纹：奇行 surface、偶行 sunken，靠源码顺序让悬停 / 选中覆盖。 */
+.search-float-hit:nth-child(odd) {
+  background: var(--app-surface);
+}
+
+.search-float-hit:nth-child(even) {
+  background: var(--app-sunken);
+}
+
 .search-float-hit:hover {
   background: var(--app-sunken);
 }
 
-.search-float-hit-cur,
-.search-float-hit-cur:hover {
+/* :nth-child 与单类同优先级（0,2,0），选中行须写成双类才能压过交替底色。 */
+.search-float-hit.search-float-hit-cur,
+.search-float-hit.search-float-hit-cur:hover {
   background: var(--app-accent-soft);
 }
 
