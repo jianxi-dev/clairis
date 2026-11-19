@@ -94,7 +94,7 @@ application-shell 域定义标月桌面端的整体界面布局决策与空状�
 
 页签标题 SHALL 在双击后进入行内改名；输入框宽度 SHALL 为原宽度的 1.5 倍（`24ch`），回车提交、Esc 取消，路径 SHALL 不变。
 
-**页签标题显示与间距**：单个页签标题 SHALL 有固定最大显示宽度 **120px**（容差 ±2px）——短于该宽度时 SHALL 按实际文本长度显示，超过时 SHALL 以 `text-overflow: ellipsis` 收尾、单行 `white-space: nowrap`，SHALL NOT 换行，SHALL NOT 使用 `-webkit-line-clamp`。完整文件名 SHALL 在页签名信息窗内换行可读（见 navigation 域「页签条与格头」）。页签总宽超过页签条可用宽度时，页签条 SHALL 横向滚动，SHALL NOT 压缩页签到不可读或溢出容器。相邻页签之间的间距 SHALL 为 **32px**（容差 ±2px）。
+**页签标题显示与间距**：单个页签标题 SHALL 有固定最大显示宽度 **120px**（容差 ±2px）——短于该宽度时 SHALL 按实际文本长度显示，超过时 SHALL 以 `text-overflow: ellipsis` 收尾、单行 `white-space: nowrap`，SHALL NOT 换行，SHALL NOT 使用 `-webkit-line-clamp`。完整文件名 SHALL 在页签名信息窗内换行可读（见 navigation 域「页签条与格头」）。页签总宽超过页签条可用宽度时，页签条 SHALL 横向滚动，SHALL NOT 压缩页签到不可读或溢出容器。相邻页签之间的间距 SHALL 为 **32px**（容差 ±2px）；单个页签内标题右缘到关闭按钮左缘的水平间距 SHALL 不超过 **6px**。
 
 #### Scenario: 改名输入框加长
 
@@ -119,6 +119,8 @@ application-shell 域定义标月桌面端的整体界面布局决策与空状�
 - **THEN** 页签条 SHALL 可横向滚动，SHALL NOT 压缩到不可读或溢出容器
 
 #### Scenario: 页签间距 32px
+
+> 场景标题沿用旧名以保持条款可追溯；相邻页签间距保持 32px 不变，本 change 压缩的是单个页签内标题与关闭按钮之间的间距。
 
 - **WHEN** 测量相邻两个页签的间距
 - **THEN** 其间距 SHALL 为 32px（容差 ±2px）
@@ -292,7 +294,7 @@ application-shell 域定义标月桌面端的整体界面布局决策与空状�
 
 ### Requirement: 状态栏（含主页入口 / 自动布局入口 / 宽度面板 / 主题面板）
 
-应用外壳 SHALL 在窗口底部常驻一条状态栏。状态栏右侧 SHALL 依次排放 主页 / 自动布局 / 网格概览 / AI / 主题切换 / 沉浸入口 六个图标。状态栏高度 SHALL 紧凑（默认字号下计算高度不超过 26px）。双击状态栏空白处 SHALL 切换显隐；隐藏态 SHALL 在指针滑入窗口底部热区 0.5 秒内显现，指针移出后 SHALL 立即隐藏。
+应用外壳 SHALL 在窗口底部保留一条状态栏。状态栏右侧 SHALL 依次排放 主页 / 自动布局 / 网格概览 / AI / 主题切换 / 禅模式入口 六个图标。状态栏高度 SHALL 紧凑（默认字号下计算高度不超过 26px）。**状态栏默认 SHALL 处于隐藏态**；用户显式钉住后 SHALL 常显，显式取消钉住后 SHALL 恢复默认隐藏。隐藏态 SHALL 在指针进入窗口底部 8px 热区时临时显现，指针移出后 SHALL 立即隐藏。
 
 隐藏态或沉浸态下临时显现的状态栏 SHALL 以悬浮层（`position: fixed`）覆盖在内容之上，SHALL NOT 参与流式布局、SHALL NOT 改变正文容器高度；滑入与滑出 SHALL NOT 引起正文位移。
 
@@ -304,10 +306,17 @@ application-shell 域定义标月桌面端的整体界面布局决策与空状�
 
 主页入口 SHALL 回到程序启动时的页面。自动布局入口的按钮 SHALL 紧邻主页图标右侧，其行为见 `navigation` 的「一键自动布局栏目」。
 
+**禅模式入口**：状态栏最右侧的沉浸入口 SHALL 以「禅模式」为显示名：按钮 `title` SHALL 为「禅模式（⌘⇧F）」，`aria-label` SHALL 为「禅模式」，图标 label SHALL 为「禅模式」；`aria-keyshortcuts` 与快捷键 ⌘⇧F SHALL 保持不变。
+
 #### Scenario: 状态栏常驻且含六图标
 
-- **WHEN** 应用处于任何非沉浸状态
-- **THEN** 窗口底部 SHALL 显示状态栏，其右侧 SHALL 含 主页 / 自动布局 / 网格概览 / AI / 主题 / 沉浸 六个图标
+> 场景标题沿用旧名以保持条款可追溯；自本 change 起「常驻」的默认形态为隐藏态，六图标仅在钉住或底边热区唤出时可见。
+
+- **WHEN** 应用处于任何非沉浸状态且用户未钉住状态栏、指针未进入底边热区
+- **THEN** 窗口底部 SHALL NOT 显示状态栏
+
+- **AND WHEN** 用户进入底边热区或显式钉住状态栏
+- **THEN** 窗口底部 SHALL 显示状态栏，其右侧 SHALL 含 主页 / 自动布局 / 网格概览 / AI / 主题 / 禅模式 六个图标
 
 #### Scenario: 主题入口不含下拉三角
 
@@ -378,6 +387,22 @@ application-shell 域定义标月桌面端的整体界面布局决策与空状�
 
 - **WHEN** 用户点击状态栏的主页图标
 - **THEN** 应用 SHALL 回到程序启动时显示的页面
+
+#### Scenario: 底边热区滑入滑出
+
+- **WHEN** 状态栏处于默认隐藏态，用户把指针移入窗口底部 8px 热区
+- **THEN** 状态栏 SHALL 临时显现；指针移出热区后 SHALL 隐藏
+
+- **AND WHEN** 用户显式钉住状态栏
+- **THEN** 状态栏 SHALL 常显且不受热区逻辑影响
+
+#### Scenario: 禅模式入口文案
+
+- **WHEN** 用户查看状态栏禅模式入口
+- **THEN** 按钮 `title` SHALL 为「禅模式（⌘⇧F）」，`aria-label` SHALL 为「禅模式」，图标 label SHALL 为「禅模式」，`aria-keyshortcuts` SHALL 含 ⌘⇧F
+
+- **AND WHEN** 用户按下 ⌘⇧F
+- **THEN** 应用 SHALL 切换禅模式，快捷键行为 SHALL 与改动前一致
 
 ### Requirement: G-10 沉浸模式的 chrome 收纳与按栏页签条
 
