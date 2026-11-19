@@ -501,14 +501,14 @@ export default function StatusBar({
           type="button"
           data-testid="immersive-entry"
           aria-pressed={readingMode}
-          aria-label="沉浸阅读"
+          aria-label="禅模式"
           onClick={() => onSetReadingMode(!readingMode)}
           className={`rounded-full px-2 py-0.5 ${
             readingMode
               ? "bg-[var(--app-accent-soft)] text-[var(--app-accent)]"
               : "text-[var(--app-chrome-rest)] hover:bg-[var(--app-accent-soft)] hover:text-[var(--app-chrome-hover)]"
           }`}
-          title="沉浸阅读（⌘⇧F）"
+          title="禅模式（⌘⇧F）"
         >
           <Icon name="immersive" size={18} />
         </button>

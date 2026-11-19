@@ -309,6 +309,6 @@ test.describe("外壳顶栏与沉浸入口（ui-polish-batch6 1.1）", () => {
     expect(textNodes).toBe(0);
 
     const label = await btn.getAttribute("aria-label");
-    expect(label ?? "").toContain("沉浸阅读");
+    expect(label ?? "").toContain("禅模式");
   });
 });

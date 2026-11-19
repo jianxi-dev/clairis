@@ -79,6 +79,20 @@ test("状态栏右侧六入口顺序为 主页 / 自动布局 / 网格 / AI / �
   expect(widthBeforeHome).toBe(true);
 });
 
+test("禅模式入口文案统一：title / aria-label / 图标 label（#1138 A-2.1–A-2.3）", async ({
+  page,
+}) => {
+  await boot(page);
+  const entry = page.getByTestId("immersive-entry");
+  await expect(entry).toHaveAttribute("title", "禅模式（⌘⇧F）");
+  await expect(entry).toHaveAttribute("aria-label", "禅模式");
+
+  // 图标 label 的唯一消费面是设置 → 外观 → 图标抽屉
+  await page.keyboard.press("ControlOrMeta+,");
+  const immersiveEntry = page.locator('[data-icon-entry="immersive"]');
+  await expect(immersiveEntry).toContainText("禅模式");
+});
+
 test("点击状态栏沉浸入口进入沉浸模式，状态栏自动隐藏、底部热区出现", async ({
   page,
 }) => {

@@ -69,10 +69,10 @@
         },
         {
           "id": "A-2.5",
-          "claim": "相邻页签的计算 `column-gap`（px）",
+          "claim": "单个页签内标题右缘到关闭按钮左缘的距离（px）",
           "kind": "exact",
-          "assert": "24",
-          "source": "application-shell G-6 页签间距条款 / navigation「页签条与格头」 / design D3 / #1134"
+          "assert": "6",
+          "source": "#1134「文件名和关闭图标的间距」/ design D3（相邻页签 column-gap 保持 32px，不改）"
         },
         {
           "id": "A-2.6",

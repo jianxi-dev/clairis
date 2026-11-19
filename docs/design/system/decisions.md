@@ -85,3 +85,4 @@ ledger: append-only
 - 2026-11-16 · doc-property-panel · 标签色板 10 色（靛蓝/青碧/琥珀/玫红/竹绿/天青/紫罗兰/赭石/石板/藤黄，亮暗各三值）誊写入 spec §6；分配规则 FNV-1a(name) % 10、同名同色、不可手工改色（来源：定稿原型 v13 PALETTE）
 | 文档属性 AB 切换图标 | 新增概念 `docPropertyVariant`（spec §2.3）：外框 + 中缝，左右各两条横线表示一行条 / 双列；标题栏密集工具条档 14px、笔画 1.7 | document-properties-inline / #1129 | 2026-11-19 |
 | 文档属性 footer | A 底部 footer 左托管日期 + 右「N 个字段」同行；B 同一 footer 行右侧托管日期；字号 11px（spec §7.2），锁图标 14px，缺失日期键不渲染空壳 | document-properties-inline / #1129 | 2026-11-19 |
+| 页签收紧 | 页签条相邻间距保持 32px 不动（用户第一轮已裁定）；单个页签内标题右缘到关闭按钮左缘 10px → 6px（去掉 `ml-1`）；信息窗宽度 320px → 256px（spec §7.4）；复制路径 / 复制文件两图标移到文件名节点之后、颜色降为 `--app-text-3` 弱化档 | shell-preview-refine / #1138 | 2026-11-19 |

@@ -6,8 +6,8 @@ import { test, expect, type Locator, type Page } from "@playwright/test";
  *
  * 锚点：A-14.1 信息窗行数 = 3；A-14.2 可点击路径层数 ≥ 1（点击在文件管理器定位）；
  *       A-14.3 最近保存时间文案非空。
- * tab-title-info-surface 1.1 / #1104 起：外壳为 8px 圆角矩形、固定 320px 宽，
- * 完整文件名换行显示（A-2.1…A-2.4）。
+ * tab-title-info-surface 1.1 / #1104 起：外壳为 8px 圆角矩形、宽度取 token
+ * `--tab-info-width`（#1138 起 256px），完整文件名换行显示（A-2.1…A-2.4）。
  */
 
 const APP_URL = "http://localhost:1420";
@@ -70,7 +70,7 @@ test("页签名信息窗：三行 + 可点击路径层 + 最近保存时间 + 8p
   const time = (await info.getByTestId("tab-info-time").innerText()).trim();
   expect(time).toMatch(/^最近保存: .+$/);
 
-  // A-2.1/A-2.4：外壳为 8px 圆角矩形、固定 320px 宽（设计系统 §5 浮层档）
+  // A-2.1/A-2.4：外壳为 8px 圆角矩形、宽度取 token --tab-info-width（设计系统 §5 浮层档）
   const shell = await info.evaluate((el) => {
     const cs = getComputedStyle(el);
     const rect = el.getBoundingClientRect();
@@ -228,4 +228,57 @@ test("长路径换行态与无路径态", async ({ page }) => {
   await page.clock.fastForward(600);
   await expect(page.locator(INFO)).toHaveCount(0);
   await shot(page, "no-path-state");
+});
+
+test("信息窗宽度取 token 256px，复制图标在文件名之后且为弱化色（#1138 A-2.6–A-2.8）", async ({
+  page,
+}) => {
+  await boot(page, FILE_A);
+  const tab = await activeTab(page);
+  await tab.hover();
+
+  const info = page.locator(INFO);
+  await expect(info).toBeVisible({ timeout: 3000 });
+
+  const tokens = await page.evaluate(() => {
+    const cs = getComputedStyle(document.documentElement);
+    return { width: parseFloat(cs.getPropertyValue("--tab-info-width")) };
+  });
+  expect(tokens.width).toBe(256);
+
+  // A-2.6：计算宽度严格等于 token 当前值，不含硬编码像素
+  const width = await info.evaluate((el) => el.getBoundingClientRect().width);
+  expect(Math.abs(width - tokens.width)).toBeLessThanOrEqual(1);
+
+  // A-2.7：文件名节点之后恰有两个复制按钮（复制路径 / 复制文件）
+  const nameRow = info.getByTestId("tab-info-name");
+  const copyBtns = nameRow.locator(".tab-info__copy button");
+  await expect(copyBtns).toHaveCount(2);
+  const afterName = await nameRow.evaluate((row) => {
+    const name = row.querySelector(".tab-info__name");
+    const copy = row.querySelector(".tab-info__copy");
+    return !!(
+      name &&
+      copy &&
+      name.compareDocumentPosition(copy) & Node.DOCUMENT_POSITION_FOLLOWING
+    );
+  });
+  expect(afterName).toBe(true);
+
+  // A-2.8：两个复制图标计算颜色严格等于弱化 token --app-text-3
+  const expectedColor = await page.evaluate(() => {
+    const probe = document.createElement("div");
+    probe.style.color = "var(--app-text-3)";
+    document.body.appendChild(probe);
+    const color = getComputedStyle(probe).color;
+    probe.remove();
+    return color;
+  });
+  const colors = await copyBtns.evaluateAll((els) =>
+    els.map((el) => getComputedStyle(el).color),
+  );
+  expect(colors).toEqual([expectedColor, expectedColor]);
+
+  mkdirSync(".artifacts/1138", { recursive: true });
+  await page.screenshot({ path: ".artifacts/1138/info-copy-after-name.png" });
 });
