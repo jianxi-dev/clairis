@@ -1,0 +1,169 @@
+{
+  "change": "shell-preview-refine",
+  "requirements": [
+    {
+      "id": "R-1",
+      "text": "状态栏默认隐藏与底边热区滑入滑出",
+      "anchors": [
+        {
+          "id": "A-1.1",
+          "claim": "应用启动且未钉住、指针未入热区时状态栏渲染可见性的布尔",
+          "kind": "exact",
+          "assert": "0",
+          "source": "application-shell「状态栏（含主页入口 / 自动布局入口 / 宽度面板 / 主题面板）」默认隐藏条款 / design D1"
+        },
+        {
+          "id": "A-1.2",
+          "claim": "指针进入窗口底部 8px 热区后状态栏渲染可见性的布尔",
+          "kind": "exact",
+          "assert": "1",
+          "source": "application-shell 同上 / design D1"
+        },
+        {
+          "id": "A-1.3",
+          "claim": "指针移出底边热区后状态栏渲染可见性的布尔",
+          "kind": "exact",
+          "assert": "0",
+          "source": "application-shell 同上 / design D1"
+        },
+        {
+          "id": "A-1.4",
+          "claim": "用户显式钉住状态栏后状态栏渲染可见性的布尔",
+          "kind": "exact",
+          "assert": "1",
+          "source": "application-shell 同上（钉住开关语义不变） / design D1 / #1134"
+        }
+      ]
+    },
+    {
+      "id": "R-2",
+      "text": "禅模式文案 + 页签收紧（2.1）",
+      "anchors": [
+        {
+          "id": "A-2.1",
+          "claim": "禅模式入口按钮 `title` 属性字符串",
+          "kind": "exact",
+          "assert": "\"禅模式（⌘⇧F）\"",
+          "source": "application-shell「状态栏（含主页入口 / 自动布局入口 / 宽度面板 / 主题面板）」禅模式入口条款 / design D2 / #1134"
+        },
+        {
+          "id": "A-2.2",
+          "claim": "禅模式入口按钮 `aria-label` 属性字符串",
+          "kind": "exact",
+          "assert": "\"禅模式\"",
+          "source": "application-shell 同上 / design D2 / #1134"
+        },
+        {
+          "id": "A-2.3",
+          "claim": "禅模式入口图标 label 字符串",
+          "kind": "exact",
+          "assert": "\"禅模式\"",
+          "source": "application-shell 同上 / design D2 / #1134"
+        },
+        {
+          "id": "A-2.4",
+          "claim": "禅模式入口 `aria-keyshortcuts` 含 ⌘⇧F 的布尔",
+          "kind": "exact",
+          "assert": "1",
+          "source": "application-shell 同上（快捷键保留） / design D2 / #1134"
+        },
+        {
+          "id": "A-2.5",
+          "claim": "相邻页签的计算 `column-gap`（px）",
+          "kind": "exact",
+          "assert": "24",
+          "source": "application-shell G-6 页签间距条款 / navigation「页签条与格头」 / design D3 / #1134"
+        },
+        {
+          "id": "A-2.6",
+          "claim": "页签名信息窗的计算宽度（px），取 token `--tab-info-width`",
+          "kind": "exact",
+          "assert": "256",
+          "source": "navigation「页签条与格头」信息窗条款 / design-system §7.4 / design D3 / #1134"
+        },
+        {
+          "id": "A-2.7",
+          "claim": "文件名节点之后复制图标按钮数",
+          "kind": "exact",
+          "assert": "2",
+          "source": "navigation「页签条与格头」复制动作条款 / design D3 / #1134"
+        },
+        {
+          "id": "A-2.8",
+          "claim": "复制图标计算颜色等于 `--app-text-3` 的布尔",
+          "kind": "exact",
+          "assert": "1",
+          "source": "navigation 同上 / design-system §6 `--app-text-3` / design D3 / #1134"
+        }
+      ]
+    },
+    {
+      "id": "R-3",
+      "text": "脚本文件整文件预览高亮",
+      "anchors": [
+        {
+          "id": "A-3.1",
+          "claim": "预览态打开 `.js` 文件的 `.tok-*` 节点数",
+          "kind": "exact",
+          "assert": "≥1",
+          "source": "reading「文本与脚本预览语法」整文件预览条款 / design D4 / #1134"
+        },
+        {
+          "id": "A-3.2",
+          "claim": "预览态打开 `.ts` 文件的 `.tok-*` 节点数",
+          "kind": "exact",
+          "assert": "≥1",
+          "source": "reading 同上 / highlight.ts LANGUAGES 表 / design D4"
+        },
+        {
+          "id": "A-3.3",
+          "claim": "预览态打开 `.py` 文件的 `.tok-*` 节点数",
+          "kind": "exact",
+          "assert": "≥1",
+          "source": "reading 同上 / highlight.ts LANGUAGES 表 / design D4"
+        },
+        {
+          "id": "A-3.4",
+          "claim": "预览态打开未知扩展名文件的 `.tok-*` 节点数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "reading 同上回退条款 / design D4"
+        }
+      ]
+    },
+    {
+      "id": "R-4",
+      "text": "标题字体本机枚举",
+      "anchors": [
+        {
+          "id": "A-4.1",
+          "claim": "`list_fonts` 命令注册进 `invoke_handler` 的布尔",
+          "kind": "exact",
+          "assert": "1",
+          "source": "configuration「标题字体逐级配置」候选来源条款 / design D5 / #1134"
+        },
+        {
+          "id": "A-4.2",
+          "claim": "设置面板标题字体 `datalist` 候选节点数",
+          "kind": "exact",
+          "assert": "≥1",
+          "source": "configuration 同上 / design D5"
+        },
+        {
+          "id": "A-4.3",
+          "claim": "用户从候选中选择字体 → `heading_fonts` 配置持久化（含所选级别键且值为该字体）",
+          "kind": "state-machine",
+          "assert": "选择→配置落盘",
+          "source": "configuration 同上「逐级配置持久化」 / design D5"
+        },
+        {
+          "id": "A-4.4",
+          "claim": "枚举命令失败 → 输入框可手输且枚举失败提示可见",
+          "kind": "state-machine",
+          "assert": "失败→降级可手输",
+          "source": "configuration 同上「枚举失败降级手输」 / design D5"
+        }
+      ]
+    }
+  ]
+}
