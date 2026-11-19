@@ -18,7 +18,7 @@
 
 ## 1. 垂直切片
 
-- [ ] 1.1 **页签弹性等比伸缩 + 最小宽度保底**
+- [x] 1.1 **页签弹性等比伸缩 + 最小宽度保底**
   - 用户做完后能：拖窄窗格时，多个页签的宽度一起同比缩小（不再只有右侧被裁切），间距保持 32px、互不覆盖、不溢出；继续拖窄到保底后页签条可横向滚动。
   - 先补设计系统：`docs/design/system/spec.md` 新增 §7.5 定义 token `--tab-min-width`；`docs/design/system/decisions.md` append 一行取代 `:81` 的 120px 行。
   - `src/styles/tokens.css`：新增 `--tab-min-width`，删除 `--tab-title-max-width`。
@@ -33,7 +33,7 @@
   - 视觉锚点：design-system:§7.5。
   - 数据面：规格,消费
 
-- [ ] 1.2 **信息窗复制图标换位 + 图形可区分 + 悬浮 toast**
+- [x] 1.2 **信息窗复制图标换位 + 图形可区分 + 悬浮 toast**
   - 用户做完后能：悬停页签名，两个复制图标在「最近保存时间」行右侧且一眼可辨；点击复制后按钮旁浮出胶囊提示、约 2 秒自动消失，路径行内不再出现成功文本。
   - 先补设计系统：`docs/design/system/spec.md` §2.3 动作组更新 `copyPath`（路径语义图形）并新增 `copyFile`（文件语义图形）；`docs/design/system/decisions.md` append 图形台账。
   - `src/ui/icons.ts`：`copyPath` 图形改为「斜杠 + 文件夹」；新增 `copyFile` = 「文档 + 向右上箭头」；`copy` 不动。
@@ -50,7 +50,7 @@
 
 ## 2. 验收与交付
 
-- [ ] 2.1 **集成验收与交付**
+- [x] 2.1 **集成验收与交付**
   - 用户做完后能：页签等比伸缩与信息窗复制动作在真机桌面上一起可观测成立，既有页签 / 信息窗行为不回归。
   - `npm run tauri dev` 手动走查全量关键路径（多页签拖窄等比收缩、保底后滚动、信息窗两图标位置与区分度、复制 toast 出现与消失），按仓库 UI 约定用功能说明性语言记录；`bash scripts/verify.sh` 全绿（tsc → eslint → vitest → CSS manifest → cargo check → 两套 Playwright）；数据面机检 `diff` 收口；更新 `docs/delivery/requirements-status.md`；G4 归档。
   - 涉及文件：`docs/delivery/requirements-status.md`（无 src 改动）。
