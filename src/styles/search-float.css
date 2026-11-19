@@ -325,6 +325,16 @@
   background: var(--app-accent-soft);
 }
 
+.search-float-replace-toggle:disabled {
+  color: var(--app-text-3);
+  cursor: not-allowed;
+}
+
+.search-float-replace-toggle:disabled:hover {
+  color: var(--app-text-3);
+  background: transparent;
+}
+
 .search-float-replacerow {
   display: flex;
   flex: 0 0 auto;
