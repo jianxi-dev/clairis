@@ -1,0 +1,39 @@
+{
+  "states": [
+    {
+      "state": "left-wheel-brightness",
+      "screenshot": ".artifacts/1149/left-wheel-brightness.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-19T16:10:55Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "right-wheel-volume",
+      "screenshot": ".artifacts/1149/right-wheel-volume.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-19T16:10:55Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "ctrl-wheel-zoom-only",
+      "screenshot": ".artifacts/1149/ctrl-wheel-zoom-only.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-19T16:10:55Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "no-modifier-wheel-no-zoom",
+      "screenshot": ".artifacts/1149/no-modifier-wheel-no-zoom.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-19T16:10:55Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "touch-gesture-still-works",
+      "screenshot": ".artifacts/1149/touch-gesture-still-works.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-19T16:10:56Z",
+      "runner": "unknown@MMBP"
+    }
+  ]
+}

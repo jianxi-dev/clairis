@@ -8,6 +8,12 @@ import { useStore } from "../../stores";
 import Icon from "../Icon";
 import { iconSvg, type IconName } from "../../ui/icons";
 import { isMediaMuted, setMediaMuted, subscribeMediaMute } from "./mediaMute";
+import {
+  clampBrightness,
+  clampVolume,
+  wheelGestureSide,
+  wheelGestureStep,
+} from "./videoGesture";
 import { mediaDirOf, readSavedMediaIndex, saveMediaIndex } from "./mediaIndex";
 import { reconcileFullscreen } from "../../lib/fullscreenReconcile";
 import { isTauriEnv } from "../../utils/tauri";
@@ -1524,9 +1530,30 @@ export default function VideoPlayer({
       if (scale) applyFrame({ zoom: startZoom * scale });
     };
     const onWheel = (e: WheelEvent) => {
-      if (!(e.ctrlKey || e.metaKey)) return;
+      // Ctrl/Cmd+wheel 是捏合缩放（macOS 触控板捏合也走这里），语义保持不变。
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        applyFrame({
+          zoom: frameRef.current.zoom * (e.deltaY < 0 ? 1.1 : 0.9),
+        });
+        return;
+      }
+      // 无修饰键 wheel = 触控板双指上下滑动（#1149）：左半调亮度、右半调音量。
+      // 亮度走函数式 setState 累积，避免连续事件间读到过期的 frameRef。
+      const step = wheelGestureStep(e.deltaY, e.deltaMode);
+      if (step === 0) return;
       e.preventDefault();
-      applyFrame({ zoom: frameRef.current.zoom * (e.deltaY < 0 ? 1.1 : 0.9) });
+      const rect = el.getBoundingClientRect();
+      if (wheelGestureSide(rect, e.clientX) === "left") {
+        setFrame((prev) => ({
+          ...prev,
+          brightness: clampBrightness(prev.brightness + step),
+        }));
+      } else {
+        const art = artRef.current;
+        if (!art) return;
+        art.volume = clampVolume(art.volume + step);
+      }
     };
     el.addEventListener("gesturestart", onStart);
     el.addEventListener("gesturechange", onChange);
