@@ -78,6 +78,9 @@ function kindFromDigitCode(code: string): FileTypeKind | null | undefined {
   return n === 0 ? null : RAIL_KIND_ORDER[n - 1];
 }
 
+/** 底边热区高度，与 editor.css 的 .status-hotzone 同源（设计系统 §3 `--space-16`）。 */
+const STATUS_HOTZONE_HEIGHT = 16;
+
 function App() {
   const activeTabId = useStore((s) => s.activeTabId);
   const tabs = useStore((s) => s.tabs);
@@ -1015,12 +1018,28 @@ function App() {
           data-testid="status-hotzone"
           className="status-hotzone"
           onPointerEnter={() => {
-            statusPeekTimer.current = window.setTimeout(() => {
+            const markHover = () => {
               // 条体在指针原地挂载时 pointerenter 未必派发；按最后已知纵坐标补记 hover。
               statusBarHoverRef.current =
-                lastPointerYRef.current >= window.innerHeight - 8;
-              setStatusBarPeek(true);
-            }, 500);
+                lastPointerYRef.current >=
+                window.innerHeight - STATUS_HOTZONE_HEIGHT;
+            };
+            if (readingMode) {
+              // 沉浸态保留 500ms 停留（spec：停留 500ms 后临时显现），避免阅读时误触。
+              statusPeekTimer.current = window.setTimeout(() => {
+                statusPeekTimer.current = null;
+                markHover();
+                setStatusBarPeek(true);
+              }, 500);
+              return;
+            }
+            // 主窗口隐藏态：滑入立即显现，与卡片悬浮动作行一致。
+            if (statusPeekTimer.current !== null) {
+              window.clearTimeout(statusPeekTimer.current);
+              statusPeekTimer.current = null;
+            }
+            markHover();
+            setStatusBarPeek(true);
           }}
           onPointerLeave={() => {
             if (statusPeekTimer.current !== null) {

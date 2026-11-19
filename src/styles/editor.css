@@ -1504,13 +1504,13 @@ body {
   height: 18px;
 }
 
-/* 状态栏隐藏后的底部热区：只在指针进入时计时显形，不占布局高度。 */
+/* 状态栏隐藏后的底部热区：主窗口滑入即显现，不占布局高度（沉浸态仍计时，见 App.tsx）。 */
 .status-hotzone {
   position: fixed;
   left: 0;
   right: 0;
   bottom: 0;
-  height: 8px;
+  height: var(--space-16, 16px);
   z-index: 40;
 }
 
