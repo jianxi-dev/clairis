@@ -1032,7 +1032,7 @@ test("字段名就地改名：面板显示与 YAML 键同步，重名被拦截",
   await openDoc(page, RENAME_DOC);
   await setMode(page, "edit");
   const row = panel(page, "A").locator('[data-key="note"]');
-  await row.locator('[data-testid="dpb-label"]').dblclick();
+  await row.locator('[data-testid="dpb-label"]').click();
   const input = row.locator('[data-testid="dpb-rename-input"]');
   await expect(input).toBeVisible();
   await input.fill("priority");
@@ -1051,7 +1051,7 @@ test("字段名就地改名：面板显示与 YAML 键同步，重名被拦截",
   await setMode(page, "edit");
 
   const other = panel(page, "A").locator('[data-key="other"]');
-  await other.locator('[data-testid="dpb-label"]').dblclick();
+  await other.locator('[data-testid="dpb-label"]').click();
   const dup = other.locator('[data-testid="dpb-rename-input"]');
   await dup.fill("priority");
   await dup.press("Enter");
@@ -1547,7 +1547,7 @@ test("全选/反选二态：连点两次全选→补集，文案两取值，标�
   await dpbRecord(page, "1042", "04-partial-invert");
 });
 
-test("选择模型（#1128）：字段名点击选中、值不参与、选择模式下不进编辑、行外清空", async ({
+test("三元组交互：单击字段名改名、手柄选中、选中后点其他字段任意位置切换选中", async ({
   page,
 }) => {
   await openDoc(page, ROW_DOC);
@@ -1555,21 +1555,47 @@ test("选择模型（#1128）：字段名点击选中、值不参与、选择模
   const a = panel(page, "A");
 
   await a.locator('[data-key="category"] [data-testid="dpb-label"]').click();
+  const rename = a.locator(
+    '[data-key="category"] [data-testid="dpb-rename-input"]',
+  );
+  await expect(rename).toBeVisible();
+  await expect(panel(page, "A")).not.toHaveClass(/select-mode/);
+  await rename.press("Escape");
+  await expect(rename).toHaveCount(0);
+
+  await a
+    .locator('[data-key="category"] [data-testid="dpb-row-handle"]')
+    .click();
   await expect(panel(page, "A")).toHaveClass(/select-mode/);
   await expect(a.locator('[data-testid="dpb-select-all"]')).toHaveText("反选");
+  await expect(a.locator('[data-key="category"].dpb-row-selected')).toHaveCount(
+    1,
+  );
 
   await a.locator('[data-key="author"] [data-testid="dpb-value"]').click();
   await expect(a.locator('[data-key="author"].dpb-row-selected')).toHaveCount(
-    0,
+    1,
   );
   await expect(a.locator('[data-testid="dpb-input"]')).toHaveCount(0);
   await expect(
     a.locator('[data-key="author"] [data-testid="dpb-value"]'),
   ).toHaveText("张三");
+  await expect(a.locator('[data-testid="dpb-ops-count"]')).toHaveText(
+    "已选 2 项",
+  );
 
   await a.locator('[data-key="source"] [data-testid="dpb-label"]').click();
   await expect(a.locator('[data-key="source"].dpb-row-selected')).toHaveCount(
     1,
+  );
+  await expect(a.locator('[data-testid="dpb-rename-input"]')).toHaveCount(0);
+  await expect(a.locator('[data-testid="dpb-ops-count"]')).toHaveText(
+    "已选 3 项",
+  );
+
+  await a.locator('[data-key="source"] [data-testid="dpb-value"]').click();
+  await expect(a.locator('[data-key="source"].dpb-row-selected')).toHaveCount(
+    0,
   );
   await expect(a.locator('[data-testid="dpb-ops-count"]')).toHaveText(
     "已选 2 项",
@@ -1583,7 +1609,7 @@ test("选择模型（#1128）：字段名点击选中、值不参与、选择模
   await expect(a.locator('[data-testid="dpb-input"]')).toBeVisible();
 });
 
-test("#1128 选择模型四态：0 选中全选 / 名称即反选 / 标签参与 / 反选互补", async ({
+test("#1128 选择模型四态：0 选中全选 / 选中即反选 / 标签参与 / 反选互补", async ({
   page,
 }) => {
   await openDoc(page, ROW_DOC_TAGS);
@@ -1597,6 +1623,17 @@ test("#1128 选择模型四态：0 选中全选 / 名称即反选 / 标签参与
   await dpbRecord(page, "1128", "01-zero-select-all");
 
   await b.locator('[data-key="category"] [data-testid="dpb-label"]').click();
+  const rename = b.locator(
+    '[data-key="category"] [data-testid="dpb-rename-input"]',
+  );
+  await expect(rename).toBeVisible();
+  await expect(b.locator('[data-testid="dpb-ops"]')).toHaveCount(0);
+  await rename.press("Escape");
+  await expect(rename).toHaveCount(0);
+
+  await b
+    .locator('[data-key="category"] [data-testid="dpb-row-handle"]')
+    .click();
   await expect(selectAll).toHaveText("反选");
   await expect(b.locator('[data-testid="dpb-ops-count"]')).toHaveText(
     "已选 1 项",
@@ -1618,7 +1655,7 @@ test("#1128 选择模型四态：0 选中全选 / 名称即反选 / 标签参与
   ).toHaveCount(0);
   await dpbRecord(page, "1128", "02-one-name-invert-ready");
 
-  await b.locator('[data-key="tags"] [data-testid="dpb-label"]').click();
+  await b.locator('[data-key="tags"] [data-testid="dpb-row-handle"]').click();
   await expect(b.locator('[data-testid="dpb-ops-count"]')).toHaveText(
     "已选 2 项",
   );
@@ -1641,10 +1678,9 @@ test("#1128 选择模型四态：0 选中全选 / 名称即反选 / 标签参与
   await dpbRecord(page, "1128", "03-inverted-complement");
 
   await b.locator('[data-key="author"] [data-testid="dpb-value"]').click();
-  await expect(b.locator('[data-testid="dpb-ops-count"]')).toHaveText(
-    "已选 1 项",
-  );
-  await b.locator('[data-testid="dpb-ops-clear"]').click();
+  await expect(b.locator('[data-testid="dpb-ops"]')).toHaveCount(0);
+  await expect(selectAll).toHaveText("全选");
+
   await selectAll.click();
   await expect(b.locator('[data-testid="dpb-ops-count"]')).toHaveText(
     "已选 3 项",
@@ -2702,7 +2738,7 @@ test("#1039 字段名输入框单行高度：长名不撑高输入框与行（A/
   for (const variant of ["A", "B"] as const) {
     await setVariant(page, variant);
     const row = panel(page, variant).locator('[data-key="score"]');
-    await row.locator('[data-testid="dpb-label"]').dblclick();
+    await row.locator('[data-testid="dpb-label"]').click();
     const input = row.locator('[data-testid="dpb-rename-input"]');
     await expect(input).toBeVisible();
     const before = await input.evaluate((el) => ({
