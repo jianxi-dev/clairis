@@ -99,7 +99,7 @@ test("热区滑入即时显现（<100ms）、滑出即时隐藏", async ({ page 
   // 页面内取样：pointerenter → 条体挂载/卸载的 performance.now() 差值。
   await page.evaluate(() => {
     const w = window as unknown as Record<string, any>;
-    w.__probe = { enteredAt: 0, shownAt: 0, hiddenAt: 0 };
+    w.__probe = { enteredAt: 0, shownAt: 0, leftAt: 0, hiddenAt: 0 };
     const zone = document.querySelector('[data-testid="status-hotzone"]');
     zone?.addEventListener("pointerenter", () => {
       w.__probe.enteredAt = performance.now();
@@ -107,9 +107,14 @@ test("热区滑入即时显现（<100ms）、滑出即时隐藏", async ({ page 
     new MutationObserver(() => {
       const probe = w.__probe;
       const barEl = document.querySelector('[data-testid="status-bar"]');
-      if (probe.shownAt === 0 && barEl) probe.shownAt = performance.now();
-      else if (probe.shownAt > 0 && probe.hiddenAt === 0 && !barEl)
+      if (probe.shownAt === 0 && barEl) {
+        probe.shownAt = performance.now();
+        barEl.addEventListener("pointerleave", () => {
+          probe.leftAt = performance.now();
+        });
+      } else if (probe.shownAt > 0 && probe.hiddenAt === 0 && !barEl) {
         probe.hiddenAt = performance.now();
+      }
     }).observe(document.body, { childList: true, subtree: true });
   });
 
@@ -137,9 +142,9 @@ test("热区滑入即时显现（<100ms）、滑出即时隐藏", async ({ page 
   );
   const hideLatency = await page.evaluate(() => {
     const probe = (window as unknown as Record<string, any>).__probe;
-    return probe.hiddenAt - probe.shownAt;
+    return probe.hiddenAt - probe.leftAt;
   });
-  expect(hideLatency).toBeLessThan(200);
+  expect(hideLatency).toBeLessThan(100);
   await expect(bar).toHaveCount(0);
 
   await shot(page, "06-hotzone-instant-hide");
@@ -160,6 +165,9 @@ test("钉住后常显，取消钉住恢复默认隐藏", async ({ page }) => {
   await shot(page, "03-pinned-visible");
 
   await bar.locator("span").first().dblclick();
+  // 取消钉住后指针仍落在热区里，会按「指针在热区即显现」立即 peek；
+  // 移出热区后应恢复默认隐藏，以此验证钉住已解除。
+  await page.mouse.move(400, 200);
   await expect(bar).toHaveCount(0);
   await expect(page.getByTestId("status-hotzone")).toHaveCount(1);
 
