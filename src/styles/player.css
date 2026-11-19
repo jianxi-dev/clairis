@@ -48,6 +48,11 @@
   z-index: 40;
 }
 
+/* 首帧呈现（C-6）：隐藏 ArtPlayer 原生加载菊花，打开即见首帧画面。 */
+.art-video-player .art-loading {
+  display: none !important;
+}
+
 /* 窄宽两级降级：先压缩控件盒与间距，再缩小图标，保证全部按钮可见。 */
 .art-video-player.vp-compact .art-controls {
   column-gap: 0;

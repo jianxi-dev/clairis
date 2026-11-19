@@ -1208,7 +1208,11 @@ export default function VideoPlayer({
         ) as { times?: Record<string, number> };
         const saved = settings.times?.[initialUrl] ?? 0;
         if (saved >= RESUME_MIN_SECONDS) {
+          // 记忆位置：仅 seek，不播放（C-6）。
           art.currentTime = saved;
+        } else if (fileKind !== "audio") {
+          // 首帧呈现（C-6）：seek 到极小正值强制首帧解码绘制，保持暂停态。
+          art.currentTime = 0.01;
         }
       } catch {
         // 忽略
@@ -1220,7 +1224,12 @@ export default function VideoPlayer({
         });
         setActiveSubtitle(firstSub.name);
       }
-      if (fileKind === "audio") void art.play()?.catch?.(() => {});
+      if (fileKind === "audio") {
+        void art.play()?.catch?.(() => {});
+      } else if (art.playing) {
+        // 打开路径不触发播放：确保暂停（C-6），且避免无谓的 pause 提示。
+        art.pause();
+      }
     });
 
     // 音频：元数据未就绪时补发一次播放请求；视频按 C-6 暂停态开，不补发。

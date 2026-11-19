@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "first-frame-visible",
+      "screenshot": ".artifacts/1183/01-first-frame-visible.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-19T21:07:53Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "no-loading-indicator",
+      "screenshot": ".artifacts/1183/02-no-loading-indicator.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-19T21:07:53Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "paused-no-autoplay",
+      "screenshot": ".artifacts/1183/03-paused-no-autoplay.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-19T21:07:53Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "restored-first-frame-paused",
+      "screenshot": ".artifacts/1183/04-restored-first-frame-paused.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-19T21:07:53Z",
+      "runner": "unknown@MMBP"
+    }
+  ]
+}
