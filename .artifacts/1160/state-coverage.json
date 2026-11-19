@@ -1,0 +1,33 @@
+{
+  "task": "1160",
+  "states": [
+    {
+      "state": "01-click-rename",
+      "screenshot": ".artifacts/1160/01-click-rename.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-19T14:16:29.204Z",
+      "runner": "unknown@unknown"
+    },
+    {
+      "state": "02-selected-row-switch",
+      "screenshot": ".artifacts/1160/02-selected-row-switch.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-19T14:16:30.235Z",
+      "runner": "unknown@unknown"
+    },
+    {
+      "state": "03-select-all",
+      "screenshot": ".artifacts/1160/03-select-all.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-19T14:16:31.200Z",
+      "runner": "unknown@unknown"
+    },
+    {
+      "state": "04-invert",
+      "screenshot": ".artifacts/1160/04-invert.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-19T14:16:31.234Z",
+      "runner": "unknown@unknown"
+    }
+  ]
+}
