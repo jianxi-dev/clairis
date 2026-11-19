@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import { renderMarkdown, renderMermaid, takeDarkVars } from "../../renderers";
-import { highlightCodeBlock } from "../../renderers/highlight";
+import {
+  highlightCodeBlock,
+  MAX_PREVIEW_HIGHLIGHT_CHARS,
+} from "../../renderers/highlight";
 import { resolveDocMediaHref } from "../../lib/mediaUrl";
 import {
   isCapabilityEnabled,
@@ -694,7 +697,9 @@ function ImagePreview({ filePath }: { filePath: string }) {
 
 function renderTextContent(content: string, lang?: string): string {
   const numbers = renderPreviewLineNumbers(content);
-  const highlighted = lang ? highlightCodeBlock(content, lang) : null;
+  const highlighted = lang
+    ? highlightCodeBlock(content, lang, MAX_PREVIEW_HIGHLIGHT_CHARS)
+    : null;
   if (highlighted) {
     const label = `<div class="code-lang">${escapeHtmlText(lang ?? "")}</div>`;
     const copy = `<button class="code-copy" type="button">复制</button>`;

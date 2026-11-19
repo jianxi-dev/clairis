@@ -12,7 +12,7 @@
 
 ## 1. 状态栏默认隐藏 + 底边热区滑入滑出（A-1.1–A-1.4）
 
-- [ ] 1.1 [change=shell-preview-refine/1.1] 状态栏默认隐藏，底边热区滑入滑出，钉住开关语义不变
+- [x] 1.1 [change=shell-preview-refine/1.1] 状态栏默认隐藏，底边热区滑入滑出，钉住开关语义不变
   - 状态栏初始状态 SHALL 为隐藏（不占位、不渲染）；用户显式钉住后 SHALL 常显，取消钉住后 SHALL 恢复默认隐藏
   - 指针进入窗口底部 8px 热区 SHALL 使状态栏临时滑入显现；指针移出热区 SHALL 滑出隐藏
   - 隐藏态临时显现的状态栏 SHALL 以 `position: fixed` 悬浮层覆盖内容，SHALL NOT 改变正文容器高度，滑入滑出 SHALL NOT 引起正文位移
@@ -23,14 +23,14 @@
   - **数据面**: 无
   - **验收锚点**: A-1.1、A-1.2、A-1.3、A-1.4
 
-## 2. 禅模式文案 + 页签间距压缩 + 信息窗收窄 + 复制图标移位弱化（A-2.1–A-2.8）
+## 2. 禅模式文案 + 页签内间距压缩 + 信息窗收窄 + 复制图标移位弱化（A-2.1–A-2.8）
 
-- [ ] 2.1 [change=shell-preview-refine/2.1] 禅模式文案统一，页签间距压缩、信息窗收窄、复制图标移到文件名后并弱化
+- [x] 2.1 [change=shell-preview-refine/2.1] 禅模式文案统一，页签内间距压缩、信息窗收窄、复制图标移到文件名后并弱化
   - 禅模式入口三处文案（`title` / `aria-label` / 图标 label）SHALL 统一为「禅模式」，`title` SHALL 为「禅模式（⌘⇧F）」，`aria-keyshortcuts` 与 ⌘⇧F 快捷键行为 SHALL 不变
-  - 相邻页签间距 SHALL 从 32px 压缩至 24px（容差 ±2px）
+  - 相邻页签间距 SHALL 保持 32px（容差 ±2px）；单个页签内标题右缘到关闭按钮左缘 SHALL ≤ 6px
   - 页签名信息窗宽度 SHALL 取 token `--tab-info-width`，其值 SHALL 更新为 256px（视口不足按 `100vw - 16px` 钳制不变）
   - 复制路径与复制文件两个图标 SHALL 移到文件名节点之后，颜色 SHALL 使用 `--app-text-3` 弱化档
-  - e2e：禅模式入口 `title` =「禅模式（⌘⇧F）」、`aria-label` =「禅模式」；相邻页签计算 `column-gap` = 24px；信息窗计算宽度 = `--tab-info-width` 当前值（256px）；文件名节点之后存在两个复制图标按钮且计算颜色 = `--app-text-3`
+  - e2e：禅模式入口 `title` =「禅模式（⌘⇧F）」、`aria-label` =「禅模式」；相邻页签计算 `column-gap` = 32px；单个页签内标题右缘到关闭按钮左缘 ≤ 6px；信息窗计算宽度 = `--tab-info-width` 当前值（256px）；文件名节点之后存在两个复制图标按钮且计算颜色 = `--app-text-3`
   - **真机清单（DQ-9）**：布局测量类，headless 绿单独不构成关闭——`npm run tauri dev` 悬停长文件名页签，核对信息窗宽度观感、复制图标位置与弱化色、禅模式入口文案
   - QG-3 接线：本票改 `src/components/StatusBar.tsx` 与 `src/ui/icons.ts` 文案、`src/components/TabBar.tsx` 页签间距、`src/components/TabInfoPopover.tsx` 复制图标位置与颜色、`src/styles/tokens.css` `--tab-info-width` 与 `docs/design/system/spec.md` §7.4 条款，无新增导出 API
   - **数据面**: 规格,存储,回滚

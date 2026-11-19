@@ -2,7 +2,7 @@
 
 ### Requirement: 页签条与格头
 
-每格 SHALL 支持多页签：⌘T 新页签（当前格）、⌘W 关页签（最后一签关格）、拖拽排序；页签 SHALL 为类型色图标 + 标题 + ×。**页签名 SHALL 有固定最大显示宽度 120px**（容差 ±2px）：短于该宽度时按实际长度显示，超过时 SHALL 以 `text-overflow: ellipsis` 收尾、单行 `white-space: nowrap`，SHALL NOT 换行；完整文件名由页签名信息窗承载（权威表述见 application-shell 域「G-6 顶栏职责与页签身份」，两处 SHALL 一致）；页签总宽超过页签条可用宽度时，页签条 SHALL 横向滚动。相邻页签之间的间距 SHALL 为 **24px**（容差 ±2px）。双击页签标题 SHALL 进入就地重命名（回车提交、Esc 取消、失焦提交），仅改变显示标题，SHALL NOT 改变文件路径。格头 SHALL 为页签条，右侧 SHALL 为模式图标（点击=预览↔编辑）、全屏图标、⋯ 菜单；⋯ 菜单 SHALL 恰含 6 项（新建文件/分享/右分/下分/源码模式/定位，均带图标，不含全屏）；导出、刷新、打开文件位置 SHALL NOT 出现在格头 ⋯ 菜单。
+每格 SHALL 支持多页签：⌘T 新页签（当前格）、⌘W 关页签（最后一签关格）、拖拽排序；页签 SHALL 为类型色图标 + 标题 + ×。**页签名 SHALL 有固定最大显示宽度 120px**（容差 ±2px）：短于该宽度时按实际长度显示，超过时 SHALL 以 `text-overflow: ellipsis` 收尾、单行 `white-space: nowrap`，SHALL NOT 换行；完整文件名由页签名信息窗承载（权威表述见 application-shell 域「G-6 顶栏职责与页签身份」，两处 SHALL 一致）；页签总宽超过页签条可用宽度时，页签条 SHALL 横向滚动。相邻页签之间的间距 SHALL 为 **32px**（容差 ±2px）；单个页签内标题右缘到关闭按钮左缘的水平间距 SHALL 不超过 **6px**。双击页签标题 SHALL 进入就地重命名（回车提交、Esc 取消、失焦提交），仅改变显示标题，SHALL NOT 改变文件路径。格头 SHALL 为页签条，右侧 SHALL 为模式图标（点击=预览↔编辑）、全屏图标、⋯ 菜单；⋯ 菜单 SHALL 恰含 6 项（新建文件/分享/右分/下分/源码模式/定位，均带图标，不含全屏）；导出、刷新、打开文件位置 SHALL NOT 出现在格头 ⋯ 菜单。
 
 拖拽页签期间 SHALL NOT 选中经过的正文文字：拖拽一旦超过阈值，应用 SHALL 进入全局禁选会话，拖拽结束或取消后恢复；拖拽前的既有选区 SHALL NOT 被清空，但拖拽期间 `window.getSelection().toString()` SHALL 保持为空。
 
@@ -22,7 +22,7 @@
 #### Scenario: 页签间距为指针尺寸
 
 - **WHEN** 测量相邻两个页签的间距
-- **THEN** 其间距 SHALL 为 24px（容差 ±2px）
+- **THEN** 其间距 SHALL 为 32px（容差 ±2px）
 
 #### Scenario: 长页签可滚动
 

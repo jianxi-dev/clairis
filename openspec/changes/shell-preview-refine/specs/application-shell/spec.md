@@ -4,7 +4,7 @@
 
 页签标题 SHALL 在双击后进入行内改名；输入框宽度 SHALL 为原宽度的 1.5 倍（`24ch`），回车提交、Esc 取消，路径 SHALL 不变。
 
-**页签标题显示与间距**：单个页签标题 SHALL 有固定最大显示宽度 **120px**（容差 ±2px）——短于该宽度时 SHALL 按实际文本长度显示，超过时 SHALL 以 `text-overflow: ellipsis` 收尾、单行 `white-space: nowrap`，SHALL NOT 换行，SHALL NOT 使用 `-webkit-line-clamp`。完整文件名 SHALL 在页签名信息窗内换行可读（见 navigation 域「页签条与格头」）。页签总宽超过页签条可用宽度时，页签条 SHALL 横向滚动，SHALL NOT 压缩页签到不可读或溢出容器。相邻页签之间的间距 SHALL 为 **24px**（容差 ±2px）。
+**页签标题显示与间距**：单个页签标题 SHALL 有固定最大显示宽度 **120px**（容差 ±2px）——短于该宽度时 SHALL 按实际文本长度显示，超过时 SHALL 以 `text-overflow: ellipsis` 收尾、单行 `white-space: nowrap`，SHALL NOT 换行，SHALL NOT 使用 `-webkit-line-clamp`。完整文件名 SHALL 在页签名信息窗内换行可读（见 navigation 域「页签条与格头」）。页签总宽超过页签条可用宽度时，页签条 SHALL 横向滚动，SHALL NOT 压缩页签到不可读或溢出容器。相邻页签之间的间距 SHALL 为 **32px**（容差 ±2px）；单个页签内标题右缘到关闭按钮左缘的水平间距 SHALL 不超过 **6px**。
 
 #### Scenario: 改名输入框加长
 
@@ -30,10 +30,10 @@
 
 #### Scenario: 页签间距 32px
 
-> 场景标题沿用旧名以保持条款可追溯；自本 change 起页签间距 SHALL 由 32px 压缩为 24px。
+> 场景标题沿用旧名以保持条款可追溯；相邻页签间距保持 32px 不变，本 change 压缩的是单个页签内标题与关闭按钮之间的间距。
 
 - **WHEN** 测量相邻两个页签的间距
-- **THEN** 其间距 SHALL 为 24px（容差 ±2px）
+- **THEN** 其间距 SHALL 为 32px（容差 ±2px）
 
 ### Requirement: 状态栏（含主页入口 / 自动布局入口 / 宽度面板 / 主题面板）
 
