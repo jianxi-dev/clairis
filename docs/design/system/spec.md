@@ -54,7 +54,9 @@ source_of_truth: canonical
 | 状态（2） | check / warning |
 | 分屏（2） | splitRight / splitDown |
 | AI（1） | sparkle |
-| 文档属性（1） | docPropertyVariant（A 一行条 / B 精排双列形态切换） |
+| 文档属性（1） | docPropertyVariant（L 一行条 / T 精排双列形态切换） |
+
+**docPropertyVariant 图形规范**：L = List 一行条（每字段独占一行横条），T = Table 精排双列（两列网格）；图标并置两半形成排布对比，传达「同一面板的两种形态」。网格 / 笔画引用 §2.1，标题栏尺寸档引用 §7.2；具体几何见台账「文档属性 L/T 切换图标」。
 
 **覆盖范围（缺口）**：本表沿用 icon-system-v2 的 33 概念分组，doc-property-refine 追加 copy / trash / cut / paste / arrowUp / arrowDown，document-properties-inline 追加 docPropertyVariant，共 40 概念；`src/ui/icons.ts` 实现现有 **116 个键**，另有 **76 个未归组**（以下为示例）——媒体控件（play / pause / prev / next / volume / volumeMute / playlist / loopNone / loopSingle / loopPlaylist / subtitle / timestampNote / keyboardHints / pip / speed / home / heart / heartFilled）、导出族（exportWord / exportZip / exportMdpkg）、其余（pinOff / collapse / sunBright / sunWarm / closeOthers / chevronDown / immersive）。本表不声称穷举；未归组的概念不是"规范缺省"，是**待归组的缺口**。
 
@@ -180,7 +182,7 @@ token 缺失时组件按 `var(--sf-ctrl-height, 27px)` 回落，不静默失效�
 | 规范值 | 值 | 用途 |
 |---|---|---|
 | `--dpb-footer-font-size` | 11px | A / B 两形态底部 footer（托管日期 + 字段计数）字号，取既有标注档（§4 `--fs-11`） |
-| `--dpb-icon-size` | 14px | footer 锁图标与标题栏 AB 切换图标，取 §2.1 尺寸档的密集工具条档 |
+| `--dpb-icon-size` | 14px | footer 锁图标与标题栏 L/T 切换图标，取 §2.1 尺寸档的密集工具条档 |
 | `--dpb-date-gap` | 6px | footer 内日期项之间的水平间隔，取间距刻度 §3 `--space-6` |
 
 实现只引 token / 条款号，不写死像素；token 缺失时按上表数值回落。

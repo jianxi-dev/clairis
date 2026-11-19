@@ -711,8 +711,11 @@ export const ICONS: Record<IconName, IconDef> = {
     s: "M6 4h9l4 4v12H6z M15 4v4h4 M9 12h7 M9 15h5",
   },
   docPropertyVariant: {
-    label: "属性面板形态切换",
-    s: "M3.5 5.5h17v13h-17z M12 5.5v13 M6 9.5h3.5 M6 13h3.5 M14.5 9.5h3.5 M14.5 13h3.5",
+    label: "属性面板形态切换（L 一行条 / T 精排双列）",
+    parts: [
+      { s: "M3.5 7.5h7 M3.5 12h7 M3.5 16.5h7" },
+      { s: "M13.5 5.5h7v13h-7z M17 5.5v13 M13.5 12h7" },
+    ],
   },
 };
 
