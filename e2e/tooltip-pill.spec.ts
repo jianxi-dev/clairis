@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { revealStatusBar } from "./helpers/ui-probe";
 
 const APP_URL = "http://localhost:1420";
 const MOD = process.platform === "darwin" ? "Meta" : "Control";
@@ -12,6 +13,7 @@ async function boot(page: Page): Promise<void> {
     window.__biaoyue_openFile__("/tmp/tip.md", "# 标题\n\n正文。", "tip.md");
   });
   await page.waitForTimeout(300);
+  await revealStatusBar(page);
 }
 
 test("悬停功能按钮出现胶囊提示，原生矩形不再出现", async ({ page }) => {
@@ -38,7 +40,11 @@ test("悬停功能按钮出现胶囊提示，原生矩形不再出现", async ({
   const btnTitle = await btn.getAttribute("title");
   expect(btnTitle).toBeNull();
 
-  await page.mouse.move(10, 10);
+  const barBox = (await page.getByTestId("status-bar").boundingBox())!;
+  await page.mouse.move(
+    barBox.x + barBox.width / 2,
+    barBox.y + barBox.height / 2,
+  );
   await expect(tip).toHaveCount(0, { timeout: 3000 });
   const restored = await btn.getAttribute("title");
   expect(restored).not.toBe("");

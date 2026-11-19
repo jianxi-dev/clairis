@@ -1,6 +1,7 @@
 import { test, expect, type Page, type Locator } from "@playwright/test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { revealStatusBar } from "./helpers/ui-probe";
 
 /**
  * 打印入口与打印版式（#707 / D12）真实浏览器用例。
@@ -128,6 +129,9 @@ test("打印态隐藏顶栏/页签/状态栏并对代码块与表格应用 break
   page,
 }) => {
   await boot(page);
+  await revealStatusBar(page);
+  // 打印媒体会重排外壳并触发 hover 重算，临时显现的条体会被收起；钉住后再验打印隐藏。
+  await page.getByTestId("status-bar").locator("span").first().dblclick();
   await page.emulateMedia({ media: "print" });
   await page.waitForTimeout(150);
 

@@ -1,5 +1,6 @@
 import { mkdirSync } from "node:fs";
 import { test, expect, type Locator, type Page } from "@playwright/test";
+import { revealStatusBar } from "./helpers/ui-probe";
 
 async function shot(page: Page, name: string) {
   mkdirSync(".artifacts/835", { recursive: true });
@@ -87,6 +88,7 @@ test("自绘悬停提示共用同一胶囊外壳（按钮 / 轮盘扇区），�
   page,
 }) => {
   await boot(page, "/tmp/capsule-shell.md", DOC);
+  await revealStatusBar(page);
   const tip = page.locator(".app-tip");
   const shells: Shell[] = [];
 

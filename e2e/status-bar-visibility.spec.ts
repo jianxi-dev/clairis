@@ -1,5 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
-import { moveThrough } from "./helpers/ui-probe";
+import { moveThrough, revealStatusBar } from "./helpers/ui-probe";
 
 const APP_URL = "http://localhost:1420";
 
@@ -16,18 +16,18 @@ async function boot(page: Page): Promise<void> {
 test.describe("状态栏高度与显隐（ui-polish-batch6 4.1）", () => {
   test("状态栏高度不超过 26px", async ({ page }) => {
     await boot(page);
+    await revealStatusBar(page);
     const height = await page
       .getByTestId("status-bar")
       .evaluate((el) => el.getBoundingClientRect().height);
     expect(height).toBeLessThanOrEqual(26);
   });
 
-  test("双击隐藏，指针进入底部热区 500ms 内显现，移出后隐藏", async ({
+  test("默认隐藏，指针进入底部热区 500ms 内显现，移出后隐藏", async ({
     page,
   }) => {
     await boot(page);
     const bar = page.getByTestId("status-bar");
-    await bar.locator("span").first().dblclick();
     await expect(bar).toHaveCount(0);
 
     const zone = page.getByTestId("status-hotzone");
@@ -63,6 +63,7 @@ test.describe("状态栏高度与显隐（ui-polish-batch6 4.1）", () => {
 test.describe("主题下拉弹窗（ui-polish-batch6 5.1）", () => {
   test("悬停弹出四项，点击暗色后切换并关闭", async ({ page }) => {
     await boot(page);
+    await revealStatusBar(page);
     await page.getByTestId("theme-entry").hover();
 
     const menu = page.getByTestId("theme-menu");
@@ -78,6 +79,7 @@ test.describe("主题下拉弹窗（ui-polish-batch6 5.1）", () => {
 test.describe("主页入口（ui-polish-batch6 6.1）", () => {
   test("点击主页回到启动页", async ({ page }) => {
     await boot(page);
+    await revealStatusBar(page);
     await page.getByTestId("home-entry").click();
     await expect(page.getByTestId("portal")).toBeVisible({ timeout: 5000 });
   });
@@ -86,6 +88,7 @@ test.describe("主页入口（ui-polish-batch6 6.1）", () => {
 test.describe("页面宽度调整面板（ui-polish-batch6 6.2）", () => {
   test("四档预设与滑块，选择后宽度同步", async ({ page }) => {
     await boot(page);
+    await revealStatusBar(page);
     const widthText = page.getByTestId("status-width");
     await expect(widthText).toHaveText(/^\d+px$/);
 
@@ -134,6 +137,7 @@ test.describe("页面宽度调整面板（ui-polish-batch6 6.2）", () => {
 test.describe("主题按钮去三角与图标区分（ui-polish-batch6 18.1）", () => {
   test("按钮只有一个图标；亮色与暖色图形不同", async ({ page }) => {
     await boot(page);
+    await revealStatusBar(page);
     const btn = page.getByTestId("theme-entry");
     await expect(btn.locator("svg")).toHaveCount(1);
 
@@ -164,6 +168,7 @@ test.describe("主题弹层生命周期与点击循环（shell-media-batch7 1.1�
 
   test("指针缓慢横越间隙时面板不消失，仍可点选", async ({ page }) => {
     await boot(page);
+    await revealStatusBar(page);
     const btn = page.getByTestId("theme-entry");
     await btn.hover();
     const menu = page.getByTestId("theme-menu");
@@ -194,6 +199,7 @@ test.describe("主题弹层生命周期与点击循环（shell-media-batch7 1.1�
 
   test("单击图标按固定次序循环切换主题", async ({ page }) => {
     await boot(page);
+    await revealStatusBar(page);
     const btn = page.getByTestId("theme-entry");
     const initial = await themeAria(page);
     const start = ORDER.findIndex((label) => initial.includes(label));
@@ -213,6 +219,7 @@ test.describe("主题弹层生命周期与点击循环（shell-media-batch7 1.1�
 
   test("面板打开时单击图标仍循环且面板保持", async ({ page }) => {
     await boot(page);
+    await revealStatusBar(page);
     const btn = page.getByTestId("theme-entry");
     await btn.hover();
     const menu = page.getByTestId("theme-menu");
@@ -231,6 +238,7 @@ test.describe("主题弹层生命周期与点击循环（shell-media-batch7 1.1�
     page,
   }) => {
     await boot(page);
+    await revealStatusBar(page);
     const btn = page.getByTestId("theme-entry");
     await btn.hover();
     const menu = page.getByTestId("theme-menu");
@@ -250,6 +258,7 @@ test.describe("主题弹层生命周期与点击循环（shell-media-batch7 1.1�
 
   test("Esc 与外部点击关闭面板", async ({ page }) => {
     await boot(page);
+    await revealStatusBar(page);
     const menu = page.getByTestId("theme-menu");
     await page.getByTestId("theme-entry").hover();
     await expect(menu).toBeVisible({ timeout: 3000 });
@@ -257,6 +266,7 @@ test.describe("主题弹层生命周期与点击循环（shell-media-batch7 1.1�
     await expect(menu).toHaveCount(0);
 
     await page.mouse.move(600, 300);
+    await revealStatusBar(page);
     await page.getByTestId("theme-entry").hover();
     await expect(menu).toBeVisible({ timeout: 3000 });
     await page.mouse.click(600, 300);
@@ -267,6 +277,7 @@ test.describe("主题弹层生命周期与点击循环（shell-media-batch7 1.1�
     page,
   }) => {
     await boot(page);
+    await revealStatusBar(page);
     const btn = page.getByTestId("theme-entry");
     await expect(btn).toHaveAttribute("aria-haspopup", "menu");
     await expect(btn).toHaveAttribute("aria-expanded", "false");
@@ -284,12 +295,9 @@ test.describe("主题弹层生命周期与点击循环（shell-media-batch7 1.1�
 
   test("状态栏隐藏后经底部热区唤出，移向面板时面板不丢", async ({ page }) => {
     await boot(page);
+    await revealStatusBar(page);
     const bar = page.getByTestId("status-bar");
-    await bar.locator("span").first().dblclick();
-    await expect(bar).toHaveCount(0);
-
-    await page.getByTestId("status-hotzone").hover();
-    await expect(bar).toBeVisible({ timeout: 3000 });
+    await expect(bar).toBeVisible();
     await page.getByTestId("theme-entry").hover();
     const menu = page.getByTestId("theme-menu");
     await expect(menu).toBeVisible({ timeout: 3000 });
@@ -307,6 +315,7 @@ test.describe("主题弹层生命周期与点击循环（shell-media-batch7 1.1�
 
   test("宽度面板按 Esc 关闭", async ({ page }) => {
     await boot(page);
+    await revealStatusBar(page);
     // 悬停即开；离开后再悬停可重新打开（#829）。
     await page.getByTestId("width-control").hover();
     const panel = page.getByTestId("width-panel");
@@ -314,6 +323,7 @@ test.describe("主题弹层生命周期与点击循环（shell-media-batch7 1.1�
     await page.keyboard.press("Escape");
     await expect(panel).toHaveCount(0);
     await page.mouse.move(10, 10);
+    await revealStatusBar(page);
     await page.getByTestId("width-control").hover();
     await expect(panel).toBeVisible({ timeout: 3000 });
     await page.mouse.click(600, 300);
@@ -326,12 +336,9 @@ test.describe("弹层生命周期回归（评审修正）", () => {
     page,
   }) => {
     await boot(page);
+    await revealStatusBar(page);
     const bar = page.getByTestId("status-bar");
-    await bar.locator("span").first().dblclick();
-    await expect(bar).toHaveCount(0);
-
-    await page.getByTestId("status-hotzone").hover();
-    await expect(bar).toBeVisible({ timeout: 3000 });
+    await expect(bar).toBeVisible();
 
     await page.getByTestId("theme-entry").hover();
     await expect(page.getByTestId("theme-menu")).toBeVisible({
@@ -353,6 +360,7 @@ test.describe("弹层生命周期回归（评审修正）", () => {
 
   test("从面板移回触发器后，面板不应自行关闭", async ({ page }) => {
     await boot(page);
+    await revealStatusBar(page);
     const btn = page.getByTestId("theme-entry");
     await btn.hover();
     const menu = page.getByTestId("theme-menu");
@@ -378,6 +386,7 @@ test.describe("弹层生命周期回归（评审修正）", () => {
 
   test("Esc 只关闭弹层，不触发全局退出沉浸", async ({ page }) => {
     await boot(page);
+    await revealStatusBar(page);
     await page.evaluate(() => {
       window.__biaoyue_store__?.getState?.().setReadingMode(true);
     });
@@ -403,6 +412,7 @@ test.describe("弹层生命周期回归（评审修正）", () => {
 
   test("键盘可打开面板、方向键移动、Esc 归还焦点", async ({ page }) => {
     await boot(page);
+    await revealStatusBar(page);
     const btn = page.getByTestId("theme-entry");
     await btn.focus();
     await page.keyboard.press("ArrowDown");
@@ -431,6 +441,7 @@ test.describe("弹层生命周期回归（评审修正）", () => {
 
   test("主题面板右缘不超出视口", async ({ page }) => {
     await boot(page);
+    await revealStatusBar(page);
     await page.getByTestId("theme-entry").hover();
     const menu = page.getByTestId("theme-menu");
     await expect(menu).toBeVisible({ timeout: 3000 });

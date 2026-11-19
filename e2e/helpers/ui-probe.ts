@@ -1,4 +1,4 @@
-import type { Locator, Page } from "@playwright/test";
+import { expect, type Locator, type Page } from "@playwright/test";
 
 /**
  * 真实指针路径。
@@ -86,6 +86,34 @@ export async function boxOf(
         y: Math.round(rect.y),
       };
     });
+}
+
+/**
+ * 默认隐藏态下唤出状态栏：先落回隐藏态，再从底边热区临时显形；钉住态直接落点。
+ */
+export async function revealStatusBar(page: Page): Promise<void> {
+  const bar = page.getByTestId("status-bar");
+  // 先移出条体，等既有的瞬时显形规则收起，避免「半途卸载」与随后唤出交错。
+  await page.mouse.move(10, 10);
+  await page.waitForFunction(
+    () => {
+      const el = document.querySelector('[data-testid="status-bar"]');
+      if (el && getComputedStyle(el).position !== "fixed") return true;
+      return Boolean(document.querySelector('[data-testid="status-hotzone"]'));
+    },
+    null,
+    { timeout: 5000 },
+  );
+  const pinned = await page.evaluate(() => {
+    const el = document.querySelector('[data-testid="status-bar"]');
+    return Boolean(el) && getComputedStyle(el as Element).position !== "fixed";
+  });
+  if (!pinned) await page.getByTestId("status-hotzone").hover();
+  await expect(bar).toBeVisible({ timeout: 3000 });
+  const box = (await bar.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, {
+    steps: 3,
+  });
 }
 
 /** 读计算样式（可见性/尺寸类断言必须看计算值，不能只看元素存在）。 */

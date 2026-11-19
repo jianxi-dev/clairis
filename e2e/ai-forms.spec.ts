@@ -1,6 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
+import { revealStatusBar } from "./helpers/ui-probe";
 
 /**
  * AI 两形态（layout-portal 9.1）真实浏览器用例。
@@ -72,6 +73,7 @@ async function shot(page: Page, name: string): Promise<void> {
 }
 
 async function openBubble(page: Page): Promise<void> {
+  await revealStatusBar(page);
   await page.locator("[data-ai-entry]").click();
   await expect(page.locator("[data-ai-bubble]")).toBeVisible();
 }
@@ -81,6 +83,7 @@ test("顶栏星芒是全站唯一 AI 入口；小窗默认 285×260 距右下 16
 }) => {
   await boot(page);
   await openFile(page, "/tmp/ai/a.md");
+  await revealStatusBar(page);
 
   await expect(page.locator("[data-ai-entry]")).toHaveCount(1);
   await openBubble(page);

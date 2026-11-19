@@ -94,11 +94,32 @@ function App() {
   const { setTheme, scheduleSave } = useConfig();
   const theme = useEditorStore((s) => s.config.theme ?? "system");
   const scene = useStore((s) => s.scene);
-  const [statusBarHidden, setStatusBarHidden] = useState(false);
+  const [statusBarHidden, setStatusBarHidden] = useState(true);
   const [statusBarPeek, setStatusBarPeek] = useState(false);
   const [statusBarPopupOpen, setStatusBarPopupOpen] = useState(false);
   const statusBarHoverRef = useRef(false);
   const statusPeekTimer = useRef<number | null>(null);
+  const lastPointerYRef = useRef(0);
+
+  useEffect(() => {
+    const onMove = (e: PointerEvent) => {
+      lastPointerYRef.current = e.clientY;
+    };
+    window.addEventListener("pointermove", onMove);
+    return () => window.removeEventListener("pointermove", onMove);
+  }, []);
+
+  // 条体在指针原地挂载时可能收不到 pointerenter/leave；瞬现已开时按纵坐标兜底收起。
+  useEffect(() => {
+    if (!statusBarPeek) return;
+    const onMove = (e: PointerEvent) => {
+      if (!statusBarPopupOpen && e.clientY < window.innerHeight - 32) {
+        setStatusBarPeek(false);
+      }
+    };
+    window.addEventListener("pointermove", onMove);
+    return () => window.removeEventListener("pointermove", onMove);
+  }, [statusBarPeek, statusBarPopupOpen]);
 
   const statusBarPopupGate = useRef(false);
   const handleStatusBarPopupOpen = useCallback(
@@ -804,8 +825,12 @@ function App() {
 
   const runMagicLayout = useCallback(() => {
     setMagicLayout(true);
-    if (magicTimerRef.current !== null) window.clearTimeout(magicTimerRef.current);
-    magicTimerRef.current = window.setTimeout(() => setMagicLayout(false), 1000);
+    if (magicTimerRef.current !== null)
+      window.clearTimeout(magicTimerRef.current);
+    magicTimerRef.current = window.setTimeout(
+      () => setMagicLayout(false),
+      1000,
+    );
   }, []);
 
   useEffect(() => {
@@ -870,7 +895,8 @@ function App() {
     (window as unknown as Record<string, unknown>).__biaoyue_dropPaths__ =
       openDroppedPaths;
     return () => {
-      delete (window as unknown as Record<string, unknown>).__biaoyue_dropPaths__;
+      delete (window as unknown as Record<string, unknown>)
+        .__biaoyue_dropPaths__;
     };
   }, [openDroppedPaths]);
 
@@ -989,10 +1015,12 @@ function App() {
           data-testid="status-hotzone"
           className="status-hotzone"
           onPointerEnter={() => {
-            statusPeekTimer.current = window.setTimeout(
-              () => setStatusBarPeek(true),
-              500,
-            );
+            statusPeekTimer.current = window.setTimeout(() => {
+              // 条体在指针原地挂载时 pointerenter 未必派发；按最后已知纵坐标补记 hover。
+              statusBarHoverRef.current =
+                lastPointerYRef.current >= window.innerHeight - 8;
+              setStatusBarPeek(true);
+            }, 500);
           }}
           onPointerLeave={() => {
             if (statusPeekTimer.current !== null) {

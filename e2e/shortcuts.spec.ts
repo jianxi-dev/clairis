@@ -2,6 +2,7 @@ import { test, expect, type Page } from "@playwright/test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { SHORTCUTS } from "../src/lib/shortcuts";
+import { revealStatusBar } from "./helpers/ui-probe";
 
 /**
  * 快捷键家族与总览（layout-portal 15.1 / #185）真实浏览器用例。
@@ -421,6 +422,7 @@ test("tooltip 显示键位：AI 星芒 / 模式 / 阅读含键位，主题按钮
     ).__biaoyue_openFile__("/lib/tip.md", "# 标题\n\n正文。", "tip.md");
   });
 
+  await revealStatusBar(page);
   const aiTitle = await page.locator("[data-ai-entry]").getAttribute("title");
   expect(aiTitle).toContain("⌘⇧A");
 

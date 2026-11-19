@@ -2,7 +2,7 @@ import { test, expect, type Locator, type Page } from "@playwright/test";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
-import { moveThrough } from "./helpers/ui-probe";
+import { moveThrough, revealStatusBar } from "./helpers/ui-probe";
 import { EDITOR_ANCHORS } from "./fixtures/editor-anchors";
 
 /**
@@ -33,6 +33,7 @@ async function boot(page: Page) {
     w.__biaoyue_openFile__("/tmp/width.md", "# width", "width.md");
   });
   await page.waitForTimeout(300);
+  await revealStatusBar(page);
 }
 
 /**

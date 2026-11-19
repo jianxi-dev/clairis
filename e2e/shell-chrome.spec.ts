@@ -1,6 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { revealStatusBar } from "./helpers/ui-probe";
 
 const APP_URL = "http://localhost:1420";
 
@@ -295,6 +296,7 @@ test.describe("外壳顶栏与沉浸入口（ui-polish-batch6 1.1）", () => {
   });
 
   test("沉浸入口只留图标且保留可访问名", async ({ page }) => {
+    await revealStatusBar(page);
     const btn = page.getByTestId("immersive-entry");
     await expect(btn).toBeVisible();
 

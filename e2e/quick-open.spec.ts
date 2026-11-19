@@ -1,6 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { revealStatusBar } from "./helpers/ui-probe";
 
 /**
  * 快速打开（reading-surface-refine 6.1 / #219）真实浏览器用例。
@@ -264,6 +265,7 @@ test("⌘⇧\\ 与顶栏入口仍打开网格（回归）", async ({ page }) => 
       .setScene("workspace");
   });
 
+  await revealStatusBar(page);
   await page.locator('[data-testid="grid-entry"]').click();
   await expect(page.locator('[data-testid="grid"]')).toBeVisible();
   await record(page, "04-grid-regression");
@@ -324,6 +326,7 @@ test("网格场景按 ⌘P 也能打开快速打开", async ({ page }) => {
 test("暗色主题下快速打开正常显示", async ({ page }) => {
   await boot(page);
   await seed(page);
+  await revealStatusBar(page);
   const themeToggle = page.getByTestId("theme-entry");
   for (let i = 0; i < 5; i++) {
     const label = await themeToggle.getAttribute("aria-label");

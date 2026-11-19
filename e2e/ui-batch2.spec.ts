@@ -1,6 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
+import { revealStatusBar } from "./helpers/ui-probe";
 
 const APP_URL = "http://localhost:1420";
 const ART = path.resolve(process.cwd(), ".artifacts/250");
@@ -66,6 +67,7 @@ test("聚焦栏不绘制强调色内描边（navigation:109）", async ({ page }
 test("暖色主题下菜单表面跟随主题色", async ({ page }) => {
   await boot(page);
   await openFile(page, "/tmp/batch2/warm.md");
+  await revealStatusBar(page);
 
   const themeBtn = page.locator(
     '[data-testid="status-bar"] button[aria-label^="主题："]',

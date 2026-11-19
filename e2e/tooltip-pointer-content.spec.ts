@@ -1,5 +1,6 @@
 import { mkdirSync } from "node:fs";
 import { test, expect, type Locator, type Page } from "@playwright/test";
+import { revealStatusBar } from "./helpers/ui-probe";
 
 /**
  * editor-surface-batch19 / R-26（#871）：提示胶囊指向气泡与内容规则。
@@ -221,6 +222,7 @@ test("图标+文字菜单项「复制」提示仅快捷键，箭头指向触发�
 
 test("底部状态栏按钮提示上弹、箭头朝下（方位规则回归）", async ({ page }) => {
   await boot(page, "/tmp/tip-below.md", "第一段正文\n");
+  await revealStatusBar(page);
   const home = page.getByTestId("home-entry");
   await home.hover();
   const tip = page.locator(".app-tip");

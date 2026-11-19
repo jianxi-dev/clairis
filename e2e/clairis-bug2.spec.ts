@@ -1,6 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
+import { revealStatusBar } from "./helpers/ui-probe";
 
 /**
  * clairis-bug2（#242/#244）格头与页签交互验收：
@@ -199,6 +200,7 @@ test("主题四态：亮 / 暗 / 暖 / 跟随系统，主题标签与 html class
 }) => {
   await boot(page);
   await openFile(page, "/tmp/bug2/theme.md");
+  await revealStatusBar(page);
 
   const themeBtn = page.locator(
     '[data-testid="status-bar"] button[aria-label^="主题："]',

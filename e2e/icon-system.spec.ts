@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { revealStatusBar } from "./helpers/ui-probe";
 
 /**
  * 图标体系与类型色（layout-portal 1.1 / #171）。
@@ -31,6 +32,7 @@ async function openDoc(page: Page, path: string, content = "# 标题\n正文") {
     },
     { p: path, c: content },
   );
+  await revealStatusBar(page);
 }
 
 test("页签图标：同一类型同形状、颜色严格等于类型色", async ({ page }) => {
