@@ -1,0 +1,5 @@
+# cargo test fonts —— 排序键 / 去重 / 回落 相关用例
+test fonts::tests::localized_falls_back_to_family_when_empty ... ok
+test fonts::tests::dedupes_by_family ... ok
+test fonts::tests::sorts_cjk_first_then_by_localized ... ok
+test fonts::tests::macos_enumeration_is_non_empty_and_cjk_first ... ok

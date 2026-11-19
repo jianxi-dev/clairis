@@ -126,6 +126,35 @@ function aiRunAgentTurn(messages) {
   return { text: "收到。", turns: 1, tool_calls: [] };
 }
 
+// 本机字体枚举 mock（#1178 起返回 {family, localized} 对象数组）。
+// family 顺序镜像既有 e2e 常量（heading-fonts-853/1136），localized 为中文系统对照。
+var DEFAULT_SYSTEM_FONTS = [
+  { family: "PingFang SC", localized: "苹方-简" },
+  { family: "Hiragino Sans GB", localized: "冬青黑体-简" },
+  { family: "Songti SC", localized: "宋体-简" },
+  { family: "Heiti SC", localized: "黑体-简" },
+  { family: "STHeiti", localized: "华文黑体" },
+  { family: "Kaiti SC", localized: "楷体-简" },
+  { family: "Arial", localized: "Arial" },
+  { family: "Helvetica", localized: "Helvetica" },
+  { family: "Times New Roman", localized: "Times New Roman" },
+  { family: "Georgia", localized: "Georgia" },
+  { family: "Menlo", localized: "Menlo" },
+  { family: "SF Mono", localized: "SF Mono" },
+  { family: "Noto Sans CJK SC", localized: "思源黑体 SC" },
+  { family: "Source Han Sans SC", localized: "思源黑体 SC" },
+  { family: "Noto Sans", localized: "Noto Sans" },
+  { family: "Noto Serif CJK SC", localized: "思源宋体 SC" },
+  { family: "Source Han Serif SC", localized: "思源宋体 SC" },
+  { family: "Inter", localized: "Inter" },
+  { family: "JetBrains Mono", localized: "JetBrains Mono" },
+  { family: "Fira Code", localized: "Fira Code" },
+  { family: "IBM Plex Sans", localized: "IBM Plex Sans" },
+  { family: "Microsoft YaHei", localized: "微软雅黑" },
+  { family: "SimSun", localized: "宋体" },
+  { family: "SimHei", localized: "黑体" },
+];
+
 function mockInvoke(cmd, args) {
   var responses = {
     load_config: { fontSize:16, headingColors:null, ollamaEndpoint:"http://localhost:11434", openaiEndpoint:"https://api.openai.com", openaiModel:"gpt-4o-mini", translationProvider:"ollama", sourceLang:"en", targetLang:"zh-CN", theme:"system", sidebarLeftVisible:true, sidebarRightVisible:false, sidebarLeftWidth:220, sidebarRightWidth:320, recentFiles:[
@@ -366,22 +395,23 @@ function mockInvoke(cmd, args) {
     return { path: "/Users/test/assets/" + candidate, name: "assets/" + candidate };
   }
   if (cmd === "list_system_fonts") {
-    // 测试可用 window.__biaoyue_system_fonts__ = string[] 覆盖；
+    // 测试可用 window.__biaoyue_system_fonts__ = SystemFont[] 覆盖（对象数组；
+    // 兼容旧的 string[]，自动补 localized = family）；
     // window.__biaoyue_system_fonts_error__ = true 模拟枚举失败（#1136）。
     if (window.__biaoyue_system_fonts_error__) {
       return Promise.reject(new Error("font enumeration failed"));
     }
     var fontsOverride = window.__biaoyue_system_fonts__;
     if (Array.isArray(fontsOverride)) {
-      return cloneJson(fontsOverride);
+      return cloneJson(
+        fontsOverride.map(function (font) {
+          return typeof font === "string"
+            ? { family: font, localized: font }
+            : font;
+        }),
+      );
     }
-    return [
-      "PingFang SC", "Hiragino Sans GB", "Songti SC", "Heiti SC", "STHeiti",
-      "Kaiti SC", "Arial", "Helvetica", "Times New Roman", "Georgia", "Menlo",
-      "SF Mono", "Noto Sans CJK SC", "Source Han Sans SC", "Noto Sans",
-      "Noto Serif CJK SC", "Source Han Serif SC", "Inter", "JetBrains Mono",
-      "Fira Code", "IBM Plex Sans", "Microsoft YaHei", "SimSun", "SimHei",
-    ];
+    return cloneJson(DEFAULT_SYSTEM_FONTS);
   }
   if (responses[cmd]) return responses[cmd];
   console.warn("[TauriMock] unknown command:", cmd);

@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "rust-unit-green",
+      "screenshot": ".artifacts/1178/cargo-test.log",
+      "assertion": "passed",
+      "recorded_at": "2026-11-19T18:27:59Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "cjk-first-sort",
+      "screenshot": ".artifacts/1178/sort-result.log",
+      "assertion": "passed",
+      "recorded_at": "2026-11-19T18:27:59Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "mock-object-array-consumed",
+      "screenshot": ".artifacts/1178/mock-object-array.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-19T18:27:59Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "ts-typecheck-green",
+      "screenshot": ".artifacts/1178/tsc.log",
+      "assertion": "passed",
+      "recorded_at": "2026-11-19T18:27:59Z",
+      "runner": "unknown@MMBP"
+    }
+  ]
+}

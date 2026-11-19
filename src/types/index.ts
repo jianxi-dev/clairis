@@ -44,6 +44,12 @@ export interface HeadingFonts {
   h6: string;
 }
 
+/** 本机字体族（#1178）：family = 原始族名（写盘值），localized = 本地化显示名。 */
+export interface SystemFont {
+  family: string;
+  localized: string;
+}
+
 /** 文档属性面板显示样式：list = A 一行条，dual = B 精排双列。 */
 export type PropertyBarDisplayStyle = "list" | "dual";
 
