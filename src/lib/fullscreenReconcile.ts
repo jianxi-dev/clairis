@@ -1,10 +1,14 @@
 /**
- * 全屏状态对账（#944）。
+ * 全屏状态对账（#944 / #1148）。
  *
  * 背景：`VideoPlayer` 的网页全屏（ArtPlayer `fullscreenWeb`）与 Tauri 窗口原生全屏
  * （`isFullscreen()`）是两套状态。既有同步只走「网页 → 窗口」单向
  * （`syncWindowFullscreen`），系统级退出原生全屏（Esc / 三指手势 / Cmd+Ctrl+F）
  * 不触发任何网页事件，于是网页状态残留、`setDecorations(false)` 遗留。
+ *
+ * #1148：窗口原生全屏是**窗口级**动作（窗口全屏按钮 / TabBar 空白双击），
+ * 不得反向驱动视频网页全屏。故本模块只处理「网页残留 true 而原生已退出」
+ * 的反向复位，不再把「原生已进入」对账成网页全屏。
  *
  * 本模块只做纯决策：给出目标状态与需要执行的副作用，不碰窗口 API，
  * 由调用方按返回值动作。状态一致时全部返回 `null` / `false`，
@@ -23,7 +27,7 @@ export interface FullscreenReconcileResult {
   resetWidthMode: boolean;
 }
 
-/** 无动作（两态一致）。 */
+/** 无动作（两态一致，或窗口级全屏进入不联动视频）。 */
 const IDLE: FullscreenReconcileResult = {
   webFullscreen: null,
   decorations: null,
@@ -34,10 +38,11 @@ const IDLE: FullscreenReconcileResult = {
 /**
  * 计算网页全屏与原生全屏的同步动作。
  *
- * 四组合：
+ * 组合：
  * - `(true, true)` / `(false, false)`：已同步 → 无动作。
+ * - `(false, true)`：原生被外部进入（窗口全屏按钮 / TabBar 空白双击）→ 只做窗口级
+ *   全屏，视频保持原位、不获得网页全屏（#1148）→ 无动作。
  * - `(true, false)`：原生已被系统级退出而网页残留 → 复位网页状态、恢复装饰、复位宽度档。
- * - `(false, true)`：原生已被外部进入（窗口全屏按钮 / TabBar 空白双击）→ 补齐网页状态、去装饰。
  *
  * 注意：「网页全屏 true + 原生全屏 false」也是 `widthMode === "page"` 的合法设计态，
  * 调用方须先排除该档位再调用本函数，否则会把 page 档误判为漂移。
@@ -58,11 +63,7 @@ export function reconcileFullscreen(
       resetWidthMode: true,
     };
   }
-  // 原生全屏已进入（外部入口）：补齐网页状态。
-  return {
-    webFullscreen: true,
-    decorations: false,
-    nativeFullscreen: null,
-    resetWidthMode: false,
-  };
+  // 原生全屏已被外部进入（窗口全屏按钮 / TabBar 空白双击）：窗口级全屏不联动
+  // 视频网页全屏（#1148）——视频保持原位，既不补网页状态也不动装饰。
+  return IDLE;
 }

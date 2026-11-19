@@ -9,8 +9,9 @@ import { reconcileFullscreen } from "../../lib/fullscreenReconcile";
  *
  * 合法态：同真（整屏全屏）、同假（普通窗口）、以及「网页全屏 + 窗口非全屏」
  * （widthMode === "page"，由调用方在墙外排除，不属本纯函数职责）。
- * 漂移态：网页残留 true 而原生已退出（系统级 Esc / 手势 / Cmd+Ctrl+F），
- * 或原生已进入而网页未跟上（窗口全屏按钮 / TabBar 空白双击）。
+ * 漂移态：网页残留 true 而原生已退出（系统级 Esc / 手势 / Cmd+Ctrl+F）。
+ * #1148：原生被外部进入（窗口全屏按钮 / TabBar 空白双击）只做窗口级全屏，
+ * 不再对账成网页全屏（视频保持原位）。
  */
 describe("reconcileFullscreen 全屏状态对账", () => {
   it("同真：整屏全屏已同步，无需任何动作", () => {
@@ -41,10 +42,10 @@ describe("reconcileFullscreen 全屏状态对账", () => {
     });
   });
 
-  it("网页 false / 原生 true：外部进入原生全屏 → 补齐网页状态 + 去装饰", () => {
+  it("网页 false / 原生 true：外部进入原生全屏只做窗口级全屏，不联动视频（#1148）", () => {
     expect(reconcileFullscreen(false, true)).toEqual({
-      webFullscreen: true,
-      decorations: false,
+      webFullscreen: null,
+      decorations: null,
       // 原生已激活，不重复调用 setFullscreen
       nativeFullscreen: null,
       resetWidthMode: false,
