@@ -38,7 +38,7 @@
 
 ## 3. 脚本类文件整文件预览接入高亮（A-3.x）
 
-- [ ] 3.1 [change=shell-preview-refine/3.1] 整文件预览按扩展名查 LANGUAGES 表渲染语法颜色，未知扩展名回退纯文本
+- [x] 3.1 [change=shell-preview-refine/3.1] 整文件预览按扩展名查 LANGUAGES 表渲染语法颜色，未知扩展名回退纯文本
   - `.js` / `.ts` / `.py` 等命中 LANGUAGES 表的扩展名，其整文件预览 SHALL 渲染语法颜色（`.tok-*` 节点数 ≥1）
   - 未命中 LANGUAGES 表的扩展名 SHALL 回退纯文本渲染，SHALL NOT 渲染语法颜色
   - 高亮渲染 SHALL 复用 `src/renderers/highlight.ts` 的 LANGUAGES 表与 `highlightCodeBlock`，SHALL NOT 新写高亮器
@@ -50,7 +50,7 @@
 
 ## 4. 标题字体可选择（A-4.x）
 
-- [ ] 4.1 [change=shell-preview-refine/4.1] 本机字体枚举填充标题字体候选，选择写入 H1–H6，枚举失败降级手输
+- [x] 4.1 [change=shell-preview-refine/4.1] 本机字体枚举填充标题字体候选，选择写入 H1–H6，枚举失败降级手输
   - 新增 Rust 命令 `list_fonts`，SHALL 返回本机已安装字体族列表；命令 SHALL 在 `invoke_handler` 注册并附单测
   - 设置面板加载时 SHALL 调用 `list_fonts` 填充标题字体 `datalist` 候选，候选 SHALL 非空且来自枚举结果，SHALL NOT 是写死常量数组
   - 用户从候选中选择字体 SHALL 写入对应 H1–H6 的 `heading_fonts` 配置并持久化；枚举失败时 SHALL 降级为可手输并显示提示
