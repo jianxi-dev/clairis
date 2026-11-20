@@ -2145,7 +2145,15 @@ export default function DocPropertyBar({
         propAliasMap,
       )?.key;
       if (titleKey && key === titleKey && docKey) {
-        useStore.getState().setTabTitle(docKey, String(value ?? ""));
+        // 页签标题保留原扩展名（面板只显示/编辑主名，#1263）。
+        const tab = useStore.getState().tabs[docKey];
+        const ext = tab ? splitStemExt(tab.title).ext : "";
+        useStore
+          .getState()
+          .setTabTitle(
+            docKey,
+            joinStemExt(String(value ?? "") || "未命名", ext),
+          );
       }
     },
     [content, docKey, panelId, propAliasMap],

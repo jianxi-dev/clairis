@@ -3119,6 +3119,23 @@ test("#1263 页签改名只改主名、扩展名只读；面板标题不显示�
   );
   await page.keyboard.press("Escape");
   await dpbRecord(page, "1263", "04-reopen-stem");
+
+  await setMode(page, "edit");
+  const title = panel(page, "A").locator('[data-testid="dpb-title"]');
+  await title.click();
+  const titleInput = panel(page, "A").locator(
+    '[data-testid="dpb-title-input"]',
+  );
+  await titleInput.fill("面板改名");
+  await titleInput.press("Enter");
+  await expect(
+    page.locator('[data-tab-id][aria-selected="true"]'),
+  ).toHaveAttribute("aria-label", "面板改名.md");
+  const tab2 = await activeTab(page);
+  expect(tab2.title).toBe("面板改名.md");
+  expect(tab2.content).toContain("title: 面板改名");
+  expect(tab2.content).not.toContain("title: 面板改名.md");
+  await dpbRecord(page, "1263", "05-panel-sync-keeps-ext");
 });
 
 test("双击页签重命名 → 属性面板标题字段同步（#1232）", async ({ page }) => {
