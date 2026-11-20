@@ -329,7 +329,7 @@ test("编辑态：滚动正文时属性块随内容移出视口（不固定）",
 test("预览态：属性块在正文标题之前且只读", async ({ page }) => {
   await openDoc(page);
   await setMode(page, "preview");
-  const block = page.locator(".content-scroll > .doc-property-embed-preview");
+  const block = page.locator(".preview-content > .doc-property-embed-preview");
   await expect(block).toHaveCount(1);
   await expect(block.locator('[data-testid="dpb-a"]')).toBeVisible();
 
@@ -337,7 +337,9 @@ test("预览态：属性块在正文标题之前且只读", async ({ page }) => 
     .locator(".content-scroll")
     .first()
     .evaluate((el) => {
-      const b = el.querySelector(":scope > .doc-property-embed-preview");
+      const b = el.querySelector(
+        ".preview-content > .doc-property-embed-preview",
+      );
       const h1 = el.querySelector(".preview-content h1");
       if (!b || !h1) return false;
       return (
@@ -350,6 +352,83 @@ test("预览态：属性块在正文标题之前且只读", async ({ page }) => 
   await expect(block.locator('[data-testid="dpb-input"]')).toHaveCount(0);
   await expect(block.locator('[data-testid="dpb-collapse"]')).toHaveCount(0);
   await dpbRecord(page, "1215", "03-preview-top-readonly");
+});
+
+test("预览态：属性块宿主与预览纸面同宽同底（A/B 两态，#1243）", async ({
+  page,
+}) => {
+  await openDoc(page);
+  await setMode(page, "preview");
+  for (const variant of ["A", "B"] as const) {
+    await setVariant(page, variant);
+    await page.waitForTimeout(150);
+    const m = await page.evaluate(() => {
+      const host = document.querySelector<HTMLElement>(
+        '[data-testid="doc-property-host"]',
+      );
+      const paper = document.querySelector<HTMLElement>(".preview-content");
+      if (!host || !paper) return null;
+      const h = host.getBoundingClientRect();
+      const p = paper.getBoundingClientRect();
+      return {
+        insidePaper: paper.contains(host),
+        hostLeft: h.left,
+        hostWidth: h.width,
+        paperLeft: p.left,
+        paperWidth: p.width,
+        hostBg: getComputedStyle(host).backgroundColor,
+        paperBg: getComputedStyle(paper).backgroundColor,
+      };
+    });
+    expect(m).not.toBeNull();
+    expect(m!.insidePaper).toBe(true);
+    expect(Math.abs(m!.hostLeft - m!.paperLeft)).toBeLessThanOrEqual(1);
+    expect(Math.abs(m!.hostWidth - m!.paperWidth)).toBeLessThanOrEqual(1);
+    expect(m!.hostBg).toBe(m!.paperBg);
+    await dpbRecord(
+      page,
+      "1243",
+      variant === "A"
+        ? "01-preview-paper-aligned-a"
+        : "02-preview-paper-aligned-b",
+    );
+  }
+});
+
+test("编辑态：属性块面板宽度等于正文列（A/B 两态，#1243）", async ({
+  page,
+}) => {
+  await openDoc(page);
+  await setMode(page, "edit");
+  for (const variant of ["A", "B"] as const) {
+    await setVariant(page, variant);
+    await page.waitForTimeout(150);
+    const m = await page.evaluate(() => {
+      const panel = document.querySelector<HTMLElement>(
+        ".cm-content > .cm-dpb-embed .dpb-panel",
+      );
+      const line = document.querySelector<HTMLElement>(
+        ".cm-content > .cm-line",
+      );
+      if (!panel || !line) return null;
+      return {
+        panelW: panel.getBoundingClientRect().width,
+        lineW: line.getBoundingClientRect().width,
+        panelBg: getComputedStyle(panel).backgroundColor,
+        contentBg: getComputedStyle(
+          document.querySelector<HTMLElement>(".cm-content")!,
+        ).backgroundColor,
+      };
+    });
+    expect(m).not.toBeNull();
+    expect(Math.abs(m!.panelW - m!.lineW)).toBeLessThanOrEqual(2);
+    expect(m!.panelBg).toBe(m!.contentBg);
+    await dpbRecord(
+      page,
+      "1243",
+      variant === "A" ? "03-edit-width-a" : "04-edit-width-b",
+    );
+  }
 });
 
 test("源码态：不渲染属性块，YAML 完整可见", async ({ page }) => {
@@ -524,14 +603,14 @@ test("预览态：属性卡片与正文段落同轴（左右缘对齐，#1227）
 }) => {
   await openDoc(page);
   await setMode(page, "preview");
-  const block = page.locator(".content-scroll > .doc-property-embed-preview");
+  const block = page.locator(".preview-content > .doc-property-embed-preview");
   await expect(block).toBeVisible();
   await expect(page.locator(".preview-content h1")).toBeVisible();
   const align = await page.evaluate(() => {
     const card = document.querySelector<HTMLElement>(
       ".doc-property-embed-preview .dpb-panel",
     );
-    const p = document.querySelector<HTMLElement>(".preview-content > p");
+    const p = document.querySelector<HTMLElement>(".preview-prose > p");
     if (!card || !p) return null;
     const c = card.getBoundingClientRect();
     const r = p.getBoundingClientRect();

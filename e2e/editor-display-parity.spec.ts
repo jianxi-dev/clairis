@@ -334,7 +334,7 @@ test("引用块与代码块边框与正文行盒左右对齐", async ({ page }) 
     const bq = document.querySelector<HTMLElement>(
       ".preview-content blockquote",
     );
-    const p = document.querySelector<HTMLElement>(".preview-content > p");
+    const p = document.querySelector<HTMLElement>(".preview-prose > p");
     if (!bq || !p) return null;
     return { bq: contentWidth(bq), p: contentWidth(p) };
   });

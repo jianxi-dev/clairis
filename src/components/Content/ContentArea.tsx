@@ -870,19 +870,21 @@ export default function ContentArea({
             }}
           />
         )}
-        {showPreviewPropertyBlock && (
-          <div
-            className="doc-property-embed-preview"
-            data-testid="doc-property-host"
-          >
-            {renderPropertyBar()}
-          </div>
-        )}
         {editorMode === "preview" && tab && (
           <PreviewView
             content={tab.content}
             fileKind={tab.fileKind}
             filePath={tab.path}
+            leading={
+              showPreviewPropertyBlock ? (
+                <div
+                  className="doc-property-embed-preview"
+                  data-testid="doc-property-host"
+                >
+                  {renderPropertyBar()}
+                </div>
+              ) : null
+            }
           />
         )}
         {editorMode === "preview" && tab && !readingMode && (

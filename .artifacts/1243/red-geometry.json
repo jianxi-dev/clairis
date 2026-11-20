@@ -1,0 +1,54 @@
+{
+  "preview-A": {
+    "insidePaper": false,
+    "hostLeft": 0,
+    "hostWidth": 1200,
+    "paperLeft": 0,
+    "paperWidth": 1200,
+    "hostBg": "rgba(0, 0, 0, 0)",
+    "paperBg": "rgb(251, 250, 248)",
+    "panel": {
+      "left": 60,
+      "width": 1080
+    },
+    "p": {
+      "left": 60,
+      "width": 1080
+    }
+  },
+  "preview-B": {
+    "insidePaper": false,
+    "hostLeft": 0,
+    "hostWidth": 1200,
+    "paperLeft": 0,
+    "paperWidth": 1200,
+    "hostBg": "rgba(0, 0, 0, 0)",
+    "paperBg": "rgb(251, 250, 248)",
+    "panel": {
+      "left": 60,
+      "width": 1080
+    },
+    "p": {
+      "left": 60,
+      "width": 1080
+    }
+  },
+  "edit-A": {
+    "panelW": 1080,
+    "lineW": 1080,
+    "embedW": 1136,
+    "contentW": 1200,
+    "contentPadding": "40px 32px 96px",
+    "contentBg": "rgb(251, 250, 248)",
+    "panelBg": "rgb(251, 250, 248)"
+  },
+  "edit-B": {
+    "panelW": 1080,
+    "lineW": 1080,
+    "embedW": 1136,
+    "contentW": 1200,
+    "contentPadding": "40px 32px 96px",
+    "contentBg": "rgb(251, 250, 248)",
+    "panelBg": "rgb(251, 250, 248)"
+  }
+}
