@@ -29,7 +29,14 @@ import {
   type EditorDecorationsOptions,
   type FrontmatterHideOptions,
 } from "../../editors/decorations";
-import { frontmatterSelectionFix } from "../../editors/decorations/frontmatterHide";
+import {
+  findFrontmatterBlock,
+  frontmatterSelectionFix,
+} from "../../editors/decorations/frontmatterHide";
+import {
+  getDocPropertyEmbedHost,
+  setDocPropertyEmbedHostListener,
+} from "../../editors/decorations/docPropertyEmbed";
 import {
   EMPTY_IMAGE_ATTRIBUTES,
   parseImageAttributes,
@@ -73,6 +80,7 @@ import { resolveDocMediaHref, resolveRelativeToDoc } from "../../lib/mediaUrl";
 import { HEADING_LEVELS } from "../../lib/headingFonts";
 import { buildAssetUrl } from "../../renderers";
 import { renderAllStatic } from "../../renderers/diagram/engine";
+import { createPortal } from "react-dom";
 import PreviewView from "./PreviewView";
 import DocPropertyBar from "./DocPropertyBar";
 import SearchReplacePanel from "./SearchReplacePanel";
@@ -659,6 +667,37 @@ export default function ContentArea({
   const propPanelHidden = useDocPropertyPanelStore((s) => s.hidden);
   const propPanelCollapsed = useDocPropertyPanelStore((s) => s.collapsed);
 
+  // 含 frontmatter 的 markdown 文档把属性块嵌进正文流；无 frontmatter 的
+  // 文档（或面板隐藏时）退回内容区上方的固定宿主。
+  const markdownKind = tab?.fileKind === "markdown";
+  const frontmatterPresent = useMemo(
+    () =>
+      markdownKind ? findFrontmatterBlock(tab?.content ?? "") !== null : false,
+    [markdownKind, tab?.content],
+  );
+  // 嵌入态：编辑态 + 含 frontmatter + 面板可见且展开。此时属性块由 frontmatter
+  // 块的 replace 型块 widget 承载（高度进 CM6 高度图，坐标不偏移），固定宿主让位。
+  const embedActive =
+    markdownKind &&
+    editorMode === "edit" &&
+    frontmatterPresent &&
+    !propPanelHidden &&
+    !propPanelCollapsed;
+  const [embedHost, setEmbedHost] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    setDocPropertyEmbedHostListener((el) => setEmbedHost(el));
+    setEmbedHost(getDocPropertyEmbedHost());
+    return () => setDocPropertyEmbedHostListener(null);
+  }, []);
+
+  useEffect(() => {
+    const view = viewRef.current;
+    if (!embedHost || !view) return;
+    const ro = new ResizeObserver(() => view.requestMeasure());
+    ro.observe(embedHost);
+    return () => ro.disconnect();
+  }, [embedHost]);
+
   // 撤销历史不跨页签（#321）：一个面板只有一个 EditorView，历史却是
   // EditorState 的一部分。切页签时清空它，否则 A 页签的编辑会让 B 页签的
   // 一次 Ctrl+Z 把 B 的内容退回成 A 的内容。`reconfigure([])` 摘掉 history
@@ -721,9 +760,15 @@ export default function ContentArea({
   // Toggle decorations on mode change
   useEffect(() => {
     if (!viewRef.current || !tab) return;
+    // embedPanel 只在展开态被读取；无 frontmatter 时 createFrontmatterHideDecorations
+    // 早退为 null，不会建 widget，因此这里可以无条件置真。
     const frontmatterHide: FrontmatterHideOptions | null =
       editorMode === "edit" && !propPanelHidden
-        ? { hide: true, collapsed: propPanelCollapsed }
+        ? {
+            hide: true,
+            collapsed: propPanelCollapsed,
+            embedPanel: !propPanelCollapsed,
+          }
         : null;
     // 与装饰重配同事务迁移光标：否则「让位」会让面板可见的编辑态一直露出源码块。
     const selection = frontmatterSelectionFix(
@@ -751,6 +796,26 @@ export default function ContentArea({
     propPanelCollapsed,
   ]);
 
+  const renderPropertyBar = () => (
+    <DocPropertyBar
+      content={tab?.content ?? ""}
+      mode={editorMode}
+      isNewDoc={!tab?.path}
+      docKey={tab?.id ?? ""}
+      docId={tab?.path ?? tab?.id ?? ""}
+      panelId={panelId}
+    />
+  );
+  const showPreviewPropertyBlock =
+    markdownKind &&
+    editorMode === "preview" &&
+    frontmatterPresent &&
+    !propPanelHidden;
+  // 固定宿主：嵌入态与预览内容流块都不渲染它；源码态仍挂载（display:none），
+  // 与既有「源码态面板 display:none」断言一致。
+  const showFixedPropertyHost =
+    markdownKind && !embedActive && !showPreviewPropertyBlock;
+
   return (
     <div
       style={{
@@ -764,9 +829,7 @@ export default function ContentArea({
       }}
       className="dark:bg-gray-800"
     >
-      {/* 文档属性面板：仅 markdown；三模式用 CSS display 切换，组件保持挂载
-          （切源码 / 编辑不重建，折叠等内部状态不丢）。 */}
-      {tab?.fileKind === "markdown" && (
+      {markdownKind && showFixedPropertyHost && (
         <div
           data-testid="doc-property-host"
           style={{
@@ -775,14 +838,7 @@ export default function ContentArea({
             display: editorMode === "source" ? "none" : "block",
           }}
         >
-          <DocPropertyBar
-            content={tab.content}
-            mode={editorMode}
-            isNewDoc={!tab.path}
-            docKey={tab.id}
-            docId={tab.path ?? tab.id}
-            panelId={panelId}
-          />
+          {renderPropertyBar()}
         </div>
       )}
       <div
@@ -812,6 +868,14 @@ export default function ContentArea({
             }}
           />
         )}
+        {showPreviewPropertyBlock && (
+          <div
+            className="doc-property-embed-preview"
+            data-testid="doc-property-host"
+          >
+            {renderPropertyBar()}
+          </div>
+        )}
         {editorMode === "preview" && tab && (
           <PreviewView
             content={tab.content}
@@ -823,6 +887,7 @@ export default function ContentArea({
           <ReadingProgressInk scrollEl={scrollContainer} />
         )}
       </div>
+      {embedHost && embedActive && createPortal(renderPropertyBar(), embedHost)}
       {tab?.fileKind === "markdown" && (
         <OutlineMenu
           mode={editorMode}

@@ -557,6 +557,8 @@
 .dpb-input {
   font: inherit;
   font-size: 12px;
+  /* 宿主 .cm-content 的 line-height 1.78 会撑高单行输入框，显式收口。 */
+  line-height: 1.4;
   flex: 1 1 140px;
   min-width: 0;
   max-width: 340px;
@@ -1129,4 +1131,17 @@
   white-space: nowrap;
   pointer-events: none;
   transform: translate(-50%, -50%);
+}
+
+/* ── 嵌入正文流（#1157，方案 1）────────────────────────────────────
+ * 编辑态：replace 型块 widget 宿主占据 frontmatter 块的原位，宽度随正文列；
+ * 面板自身 max-width 取 --type-measure（见 .dpb-panel）。 */
+.cm-dpb-embed {
+  width: 100%;
+  padding: 12px 0 4px;
+}
+
+.doc-property-embed-preview {
+  width: 100%;
+  padding: 12px 0 0;
 }

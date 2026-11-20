@@ -1,0 +1,82 @@
+{
+  "task": "1215",
+  "states": [
+    {
+      "state": "00-hover-first-body-block",
+      "screenshot": ".artifacts/1215/00-hover-first-body-block.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-20T01:22:11.220Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "01-edit-first-block",
+      "screenshot": ".artifacts/1215/01-edit-first-block.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-20T01:22:12.457Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "07-no-frontmatter-fixed-host",
+      "screenshot": ".artifacts/1215/07-no-frontmatter-fixed-host.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-20T01:22:13.405Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "08-collapsed-summary",
+      "screenshot": ".artifacts/1215/08-collapsed-summary.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-20T01:22:14.491Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "10-focus-retained",
+      "screenshot": ".artifacts/1215/10-focus-retained.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-20T01:22:15.599Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "11-transition-to-embed",
+      "screenshot": ".artifacts/1215/11-transition-to-embed.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-20T01:22:16.531Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "02-edit-scrolled-away",
+      "screenshot": ".artifacts/1215/02-edit-scrolled-away.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-20T01:22:17.526Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "03-preview-top-readonly",
+      "screenshot": ".artifacts/1215/03-preview-top-readonly.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-20T01:22:18.407Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "04-source-yaml-visible",
+      "screenshot": ".artifacts/1215/04-source-yaml-visible.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-20T01:22:19.507Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "05-hidden-note",
+      "screenshot": ".artifacts/1215/05-hidden-note.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-20T01:22:20.590Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "06-restored",
+      "screenshot": ".artifacts/1215/06-restored.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-20T01:22:20.633Z",
+      "runner": "mason@unknown"
+    }
+  ]
+}
