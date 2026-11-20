@@ -1,0 +1,99 @@
+npm warn Unknown user config "electron_mirror". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+[WebServer] npm warn Unknown env config "electron-mirror". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+[WebServer] npm warn Unknown user config "electron_mirror". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+Running 3 tests using 1 worker
+
+[1/3] e2e/doc-property-panel.spec.ts:1897:1 › #1246 A 态拖拽：右下落点显示行内竖条（x 在相邻胶囊之间，高约等于行高）
+  1) e2e/doc-property-panel.spec.ts:1897:1 › #1246 A 态拖拽：右下落点显示行内竖条（x 在相邻胶囊之间，高约等于行高） ──────────────
+
+    Error: expect(locator).toHaveAttribute(expected) failed
+
+    Locator:  locator('[data-testid="dpb-drop-line"]')
+    Expected: "v"
+    Received: ""
+    Timeout:  5000ms
+
+    Call log:
+      - Expect "toHaveAttribute" with timeout 5000ms
+      - waiting for locator('[data-testid="dpb-drop-line"]')
+        14 × locator resolved to <span class="dpb-drop-line" data-testid="dpb-drop-line"></span>
+           - unexpected value "null"
+
+
+      1921 |   const line = page.locator('[data-testid="dpb-drop-line"]');
+      1922 |   await expect(line).toBeVisible();
+    > 1923 |   await expect(line).toHaveAttribute("data-orientation", "v");
+           |                      ^
+      1924 |   const lineBox = (await line.boundingBox())!;
+      1925 |   const sourceBox = (await a.locator('[data-key="source"]').boundingBox())!;
+      1926 |   const noteBox = (await a.locator('[data-key="note"]').boundingBox())!;
+        at /Users/mason/ToHighs/clairis/e2e/doc-property-panel.spec.ts:1923:22
+
+    Error Context: test-results/doc-property-panel--1246-A-态拖拽：右下落点显示行内竖条（x-在相邻胶囊之间，高约等于行高）/error-context.md
+
+
+[2/3] e2e/doc-property-panel.spec.ts:1940:1 › #1246 A 态拖拽：拖到换行视觉行行首，竖条贴该行左缘胶囊
+  2) e2e/doc-property-panel.spec.ts:1940:1 › #1246 A 态拖拽：拖到换行视觉行行首，竖条贴该行左缘胶囊 ───────────────────────
+
+    Error: expect(locator).toHaveAttribute(expected) failed
+
+    Locator:  locator('[data-testid="dpb-drop-line"]')
+    Expected: "v"
+    Received: ""
+    Timeout:  5000ms
+
+    Call log:
+      - Expect "toHaveAttribute" with timeout 5000ms
+      - waiting for locator('[data-testid="dpb-drop-line"]')
+        14 × locator resolved to <span class="dpb-drop-line" data-testid="dpb-drop-line"></span>
+           - unexpected value "null"
+
+
+      1969 |   const line = page.locator('[data-testid="dpb-drop-line"]');
+      1970 |   await expect(line).toBeVisible();
+    > 1971 |   await expect(line).toHaveAttribute("data-orientation", "v");
+           |                      ^
+      1972 |   const lineBox = (await line.boundingBox())!;
+      1973 |   expect(Math.abs(lineBox.x - leftChip.x)).toBeLessThanOrEqual(2);
+      1974 |   expect(Math.abs(lineBox.height - rowSpan(targetRow))).toBeLessThanOrEqual(2);
+        at /Users/mason/ToHighs/clairis/e2e/doc-property-panel.spec.ts:1971:22
+
+    Error Context: test-results/doc-property-panel--1246-A-态拖拽：拖到换行视觉行行首，竖条贴该行左缘胶囊/error-context.md
+
+
+[3/3] e2e/doc-property-panel.spec.ts:1984:1 › #1246 B 态拖拽：落点线保持整宽横线（data-orientation=h）
+  3) e2e/doc-property-panel.spec.ts:1984:1 › #1246 B 态拖拽：落点线保持整宽横线（data-orientation=h） ─────────────
+
+    Error: expect(locator).toHaveAttribute(expected) failed
+
+    Locator:  locator('[data-testid="dpb-drop-line"]')
+    Expected: "h"
+    Received: ""
+    Timeout:  5000ms
+
+    Call log:
+      - Expect "toHaveAttribute" with timeout 5000ms
+      - waiting for locator('[data-testid="dpb-drop-line"]')
+        14 × locator resolved to <span class="dpb-drop-line" data-testid="dpb-drop-line"></span>
+           - unexpected value "null"
+
+
+      2006 |   const line = page.locator('[data-testid="dpb-drop-line"]');
+      2007 |   await expect(line).toBeVisible();
+    > 2008 |   await expect(line).toHaveAttribute("data-orientation", "h");
+           |                      ^
+      2009 |   const lineBox = (await line.boundingBox())!;
+      2010 |   const panelBox = (await b.boundingBox())!;
+      2011 |   expect(lineBox.width).toBeGreaterThanOrEqual(panelBox.width - 4);
+        at /Users/mason/ToHighs/clairis/e2e/doc-property-panel.spec.ts:2008:22
+
+    Error Context: test-results/doc-property-panel--1246-B-态拖拽：落点线保持整宽横线（data-orientation-h）/error-context.md
+
+
+  3 failed
+    e2e/doc-property-panel.spec.ts:1897:1 › #1246 A 态拖拽：右下落点显示行内竖条（x 在相邻胶囊之间，高约等于行高） ───────────────
+    e2e/doc-property-panel.spec.ts:1940:1 › #1246 A 态拖拽：拖到换行视觉行行首，竖条贴该行左缘胶囊 ────────────────────────
+    e2e/doc-property-panel.spec.ts:1984:1 › #1246 B 态拖拽：落点线保持整宽横线（data-orientation=h） ──────────────
