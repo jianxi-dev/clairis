@@ -1522,6 +1522,19 @@ async function docText(page: Page): Promise<string> {
   });
 }
 
+/** 持久化 frontmatter 的键序（含标题位），用于断言拖拽后的真实字段顺序。 */
+async function frontmatterKeys(page: Page): Promise<string[]> {
+  const text = await docText(page);
+  const block = text.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+  if (!block) return [];
+  const keys: string[] = [];
+  for (const line of block[1].split(/\r?\n/)) {
+    const m = line.match(/^(\S[^:\n]*):/);
+    if (m) keys.push(m[1].trim());
+  }
+  return keys;
+}
+
 test("行手柄点击多选 / 再点取消（A 态）", async ({ page }) => {
   await openDoc(page, ROW_DOC);
   await setMode(page, "edit");
@@ -1635,6 +1648,136 @@ test("选中临近三行后拖动任一行 = 整块移动且相对顺序不变",
     "category",
     "author",
     "source",
+  ]);
+});
+
+test("#1229 A 态拖拽：拖到中间胶囊落在目标位置（不追加到末尾）", async ({
+  page,
+}) => {
+  await openDoc(page, ROW_DOC, "/Users/test/drag-middle-a.md");
+  await setVariant(page, "A");
+  await setMode(page, "edit");
+  const a = panel(page, "A");
+  expect(await rowKeys(page, "A")).toEqual([
+    "category",
+    "author",
+    "source",
+    "note",
+  ]);
+
+  const chip = a.locator('[data-key="category"]');
+  await chip.hover();
+  const handle = chip.locator('[data-testid="dpb-row-handle"]');
+  const hb = (await handle.boundingBox())!;
+  await page.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2 - 12, {
+    steps: 3,
+  });
+  const target = (await a.locator('[data-key="source"]').boundingBox())!;
+  await page.mouse.move(
+    target.x + target.width * 0.75,
+    target.y + target.height * 0.75,
+    { steps: 8 },
+  );
+  await expect(page.locator('[data-testid="dpb-drop-line"]')).toBeVisible();
+  await dpbRecord(page, "1229", "edit-A-drag-middle");
+  await page.mouse.up();
+  await dpbRecord(page, "1229", "edit-A-drag-middle-result");
+
+  expect(await rowKeys(page, "A")).toEqual([
+    "author",
+    "source",
+    "category",
+    "note",
+  ]);
+  expect(await frontmatterKeys(page)).toEqual([
+    "title",
+    "author",
+    "source",
+    "category",
+    "note",
+  ]);
+});
+
+test("#1229 A 态多选整块拖到中间位置（不追加到末尾）", async ({ page }) => {
+  await openDoc(page, ROW_DOC, "/Users/test/drag-block-a.md");
+  await setVariant(page, "A");
+  await setMode(page, "edit");
+  const a = panel(page, "A");
+
+  for (const key of ["category", "author"]) {
+    await a
+      .locator(`[data-key="${key}"] [data-testid="dpb-row-handle"]`)
+      .click();
+  }
+  await expect(a.locator('[data-testid="dpb-ops-count"]')).toHaveText(
+    "已选 2 项",
+  );
+
+  const chip = a.locator('[data-key="category"]');
+  await chip.hover();
+  const handle = chip.locator('[data-testid="dpb-row-handle"]');
+  const hb = (await handle.boundingBox())!;
+  await page.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2 - 12, {
+    steps: 3,
+  });
+  const target = (await a.locator('[data-key="source"]').boundingBox())!;
+  await page.mouse.move(
+    target.x + target.width * 0.75,
+    target.y + target.height * 0.75,
+    { steps: 8 },
+  );
+  await dpbRecord(page, "1229", "edit-A-block-move");
+  await page.mouse.up();
+
+  expect(await rowKeys(page, "A")).toEqual([
+    "source",
+    "category",
+    "author",
+    "note",
+  ]);
+});
+
+test("#1229 B 态拖拽：行 1 拖到行 3 落点 = [f2,f3,f1,f4,f5]", async ({
+  page,
+}) => {
+  await openDoc(page, ROW_DOC, "/Users/test/drag-middle-b.md");
+  await setVariant(page, "B");
+  await setMode(page, "edit");
+  const b = panel(page, "B");
+  expect(await rowKeys(page, "B")).toEqual([
+    "title",
+    "category",
+    "author",
+    "source",
+    "note",
+  ]);
+
+  const handle = b.locator('[data-key="title"] [data-testid="dpb-row-handle"]');
+  const hb = (await handle.boundingBox())!;
+  await page.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2 - 12, {
+    steps: 3,
+  });
+  const target = (await b.locator('[data-key="author"]').boundingBox())!;
+  await page.mouse.move(
+    target.x + target.width / 2,
+    target.y + target.height * 0.75,
+    { steps: 8 },
+  );
+  await dpbRecord(page, "1229", "edit-B-drag-middle");
+  await page.mouse.up();
+
+  expect(await rowKeys(page, "B")).toEqual([
+    "category",
+    "author",
+    "title",
+    "source",
+    "note",
   ]);
 });
 
