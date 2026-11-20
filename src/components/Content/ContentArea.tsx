@@ -33,10 +33,7 @@ import {
   findFrontmatterBlock,
   frontmatterSelectionFix,
 } from "../../editors/decorations/frontmatterHide";
-import {
-  getDocPropertyEmbedHost,
-  setDocPropertyEmbedHostListener,
-} from "../../editors/decorations/docPropertyEmbed";
+import { DPB_EMBED_CLASS } from "../../editors/decorations/docPropertyEmbed";
 import {
   EMPTY_IMAGE_ATTRIBUTES,
   parseImageAttributes,
@@ -587,7 +584,7 @@ export default function ContentArea({
     const panelSnapshot = useDocPropertyPanelStore.getState();
     const initialFrontmatterHide: FrontmatterHideOptions | null =
       editorMode === "edit" && !panelSnapshot.hidden
-        ? { hide: true, collapsed: panelSnapshot.collapsed }
+        ? { hide: true, embedPanel: true }
         : null;
     const state = EditorState.create({
       doc: "",
@@ -675,20 +672,29 @@ export default function ContentArea({
       markdownKind ? findFrontmatterBlock(tab?.content ?? "") !== null : false,
     [markdownKind, tab?.content],
   );
-  // 嵌入态：编辑态 + 含 frontmatter + 面板可见且展开。此时属性块由 frontmatter
-  // 块的 replace 型块 widget 承载（高度进 CM6 高度图，坐标不偏移），固定宿主让位。
+  // 嵌入态：编辑态 + 含 frontmatter + 面板可见（折叠态同嵌入，折叠条随正文滚动）。
+  // 此时属性块由 frontmatter 块的 replace 型块 widget 承载（高度进 CM6 高度图，
+  // 坐标不偏移），固定宿主让位。
   const embedActive =
     markdownKind &&
     editorMode === "edit" &&
     frontmatterPresent &&
-    !propPanelHidden &&
-    !propPanelCollapsed;
+    !propPanelHidden;
   const [embedHost, setEmbedHost] = useState<HTMLElement | null>(null);
+  // 宿主按本格自查：分屏下模块级单槽会被另一格的 effect 覆盖（#1226）。widget
+  // DOM 在 CM 更新期间创建，故在 rAF 里查本格 EditorView DOM。
   useEffect(() => {
-    setDocPropertyEmbedHostListener((el) => setEmbedHost(el));
-    setEmbedHost(getDocPropertyEmbedHost());
-    return () => setDocPropertyEmbedHostListener(null);
-  }, []);
+    const view = viewRef.current;
+    if (!view) return;
+    const frame = requestAnimationFrame(() => {
+      setEmbedHost(
+        embedActive
+          ? view.dom.querySelector<HTMLElement>(`.${DPB_EMBED_CLASS}`)
+          : null,
+      );
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [embedActive, propPanelCollapsed, tab?.id, editorViewState]);
 
   useEffect(() => {
     const view = viewRef.current;
@@ -760,15 +766,11 @@ export default function ContentArea({
   // Toggle decorations on mode change
   useEffect(() => {
     if (!viewRef.current || !tab) return;
-    // embedPanel 只在展开态被读取；无 frontmatter 时 createFrontmatterHideDecorations
-    // 早退为 null，不会建 widget，因此这里可以无条件置真。
+    // 无 frontmatter 时 createFrontmatterHideDecorations 早退为 null，不会建
+    // widget，因此这里可以无条件置真；折叠呈现由 DocPropertyBar 依 store 决定。
     const frontmatterHide: FrontmatterHideOptions | null =
       editorMode === "edit" && !propPanelHidden
-        ? {
-            hide: true,
-            collapsed: propPanelCollapsed,
-            embedPanel: !propPanelCollapsed,
-          }
+        ? { hide: true, embedPanel: true }
         : null;
     // 与装饰重配同事务迁移光标：否则「让位」会让面板可见的编辑态一直露出源码块。
     const selection = frontmatterSelectionFix(

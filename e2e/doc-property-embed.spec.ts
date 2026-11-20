@@ -183,7 +183,7 @@ test("编辑态：无 frontmatter 的文档保持内容区上方固定宿主", a
   await dpbRecord(page, "1215", "07-no-frontmatter-fixed-host");
 });
 
-test("编辑态：折叠后正文以一行摘要占位，面板收起为折叠摘要", async ({
+test("编辑态：折叠后折叠条嵌入正文流（无摘要标签），展开恢复卡片", async ({
   page,
 }) => {
   await openDoc(page);
@@ -191,14 +191,70 @@ test("编辑态：折叠后正文以一行摘要占位，面板收起为折叠�
   await expect(page.locator(".cm-content > .cm-dpb-embed")).toHaveCount(1);
 
   await page.locator('[data-testid="dpb-collapse"]').click();
-  // 正文里的嵌入宿主撤下，frontmatter 块由一行摘要占位。
-  await expect(page.locator(".cm-content > .cm-dpb-embed")).toHaveCount(0);
-  await expect(page.locator(".cm-fmh-summary")).toHaveCount(1);
-  // 面板回到固定宿主并显示折叠摘要（口径与面板用例一致）。
-  const a = page.locator('[data-testid="dpb-a"]');
+  // 折叠条随正文流滚动；正文不再出现「文档属性 · N 个字段」摘要标签。
+  await expect(page.locator(".cm-content > .cm-dpb-embed")).toHaveCount(1);
+  await expect(page.locator(".cm-fmh-summary")).toHaveCount(0);
+  const a = page.locator('.cm-dpb-embed [data-testid="dpb-a"]');
   await expect(a).toBeVisible();
   await expect(a.locator(".dpb-a-summary")).toContainText("已折叠");
-  await dpbRecord(page, "1215", "08-collapsed-summary");
+  await dpbRecord(page, "1226", "01-collapsed-bar-in-body");
+
+  await page.locator('.cm-dpb-embed [data-testid="dpb-collapse"]').click();
+  await expect(a.locator(".dpb-a-summary")).toHaveCount(0);
+  await expect(a.locator(".dpb-a-meta")).toBeVisible();
+  await expect(
+    page.locator('.cm-dpb-embed [data-testid="dpb-row"]'),
+  ).toHaveCount(2);
+  await dpbRecord(page, "1226", "02-expanded-restored");
+});
+
+test("双窗格：两格各渲染一份属性嵌入（宿主按格自查，#1226）", async ({
+  page,
+}) => {
+  const DOC_A = `---\ntitle: 分屏甲\ntags:\n  - 甲\n---\n\n# 甲\n`;
+  const DOC_B = `---\ntitle: 分屏乙\ntags:\n  - 乙\n---\n\n# 乙\n`;
+  await openDoc(page, DOC_A, "split-embed-a.md");
+  await page.evaluate(() => {
+    (
+      window as unknown as {
+        __biaoyue_store__: {
+          getState: () => { splitPane: (d: string) => void };
+        };
+      }
+    ).__biaoyue_store__
+      .getState()
+      .splitPane("right");
+  });
+  await openDoc(page, DOC_B, "split-embed-b.md");
+
+  const paneIds = await page
+    .locator("[data-pane-id][data-pane-kind='tabs']")
+    .evaluateAll((els) => els.map((e) => e.getAttribute("data-pane-id")!));
+  expect(paneIds).toHaveLength(2);
+  for (const id of paneIds) {
+    await page.evaluate((pid) => {
+      (
+        window as unknown as {
+          __biaoyue_store__: {
+            getState: () => {
+              setPaneEditorMode: (id: string, m: string) => void;
+            };
+          };
+        }
+      ).__biaoyue_store__
+        .getState()
+        .setPaneEditorMode(pid, "edit");
+    }, id);
+  }
+
+  for (const id of paneIds) {
+    const pane = page.locator(`[data-pane-id="${id}"]`);
+    await expect(pane.locator(".cm-content > .cm-dpb-embed")).toHaveCount(1);
+    await expect(
+      pane.locator('.cm-dpb-embed [data-testid="dpb-a"]'),
+    ).toHaveCount(1);
+  }
+  await dpbRecord(page, "1226", "03-dual-pane-both-embed");
 });
 
 test("编辑态：键入标签提交后焦点保留（widget DOM 复用，不随写回重建）", async ({
@@ -320,6 +376,7 @@ test("⌘⇧Y 隐藏并恢复正文流内的属性块", async ({ page }) => {
   await expect(page.locator('[data-testid="dpb-a"]')).toHaveCount(0);
   await expect(page.locator('[data-testid="dpb-hidden-note"]')).toBeVisible();
   await dpbRecord(page, "1215", "05-hidden-note");
+  await dpbRecord(page, "1226", "04-hidden-note");
 
   await page.keyboard.press("Meta+Shift+Y");
   await expect(embed).toHaveCount(1);

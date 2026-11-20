@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { EditorState } from "@codemirror/state";
 import {
-  FMH_SUMMARY_CLASS,
   createFrontmatterHideDecorations,
   findFrontmatterBlock,
   frontmatterSelectionFix,
@@ -85,21 +84,16 @@ describe("createFrontmatterHideDecorations", () => {
   it("选项缺省 / hide:false 不产生装饰", () => {
     const state = EditorState.create({ doc: DOC });
     expect(createFrontmatterHideDecorations(state)).toBeNull();
-    expect(
-      createFrontmatterHideDecorations(state, { hide: false, collapsed: true }),
-    ).toBeNull();
+    expect(createFrontmatterHideDecorations(state, { hide: false })).toBeNull();
   });
 
-  it("展开态：整块替换到正文起点", () => {
+  it("非 embed：整块替换到正文起点（无 widget）", () => {
     const state = EditorState.create({
       doc: DOC,
       selection: { anchor: DOC.length },
     });
     const block = findFrontmatterBlock(DOC)!;
-    const result = createFrontmatterHideDecorations(state, {
-      hide: true,
-      collapsed: false,
-    })!;
+    const result = createFrontmatterHideDecorations(state, { hide: true })!;
     expect(result.from).toBe(0);
     expect(result.to).toBe(block.bodyStart);
     const replace = result.decorations.find((d) => !d.value.spec.widget);
@@ -107,7 +101,7 @@ describe("createFrontmatterHideDecorations", () => {
     expect(replace!.to).toBe(block.bodyStart);
   });
 
-  it("折叠态：替换闭合行以上并插入一行摘要 widget（N = 顶层键数）", () => {
+  it("embedPanel：整块替换为属性面板宿主块 widget（展开/折叠同一宿主）", () => {
     const state = EditorState.create({
       doc: DOC,
       selection: { anchor: DOC.length },
@@ -115,20 +109,24 @@ describe("createFrontmatterHideDecorations", () => {
     const block = findFrontmatterBlock(DOC)!;
     const result = createFrontmatterHideDecorations(state, {
       hide: true,
-      collapsed: true,
+      embedPanel: true,
     })!;
-    expect(result.to).toBe(block.blockEnd);
+    expect(result.from).toBe(0);
+    expect(result.to).toBe(block.bodyStart);
     const widget = result.decorations.find((d) => d.value.spec.widget);
     expect(widget).toBeDefined();
+    expect(widget!.value.spec.block).toBe(true);
+    expect(widget!.from).toBe(0);
+    expect(widget!.to).toBe(block.bodyStart);
     const el = widget!.value.spec.widget!.toDOM();
-    expect(el.className).toBe(FMH_SUMMARY_CLASS);
-    expect(el.textContent).toBe("文档属性 · 3 个字段");
+    expect(el.className).toBe("cm-dpb-embed");
+    expect(el.dataset.testid).toBe("doc-property-host");
   });
 
   it("光标落入块内时不隐藏（防编辑盲区）", () => {
     const state = EditorState.create({ doc: DOC, selection: { anchor: 4 } });
     expect(
-      createFrontmatterHideDecorations(state, { hide: true, collapsed: false }),
+      createFrontmatterHideDecorations(state, { hide: true, embedPanel: true }),
     ).toBeNull();
   });
 });
@@ -137,13 +135,11 @@ describe("frontmatterSelectionFix", () => {
   it("未激活隐藏 / 无块返回 null", () => {
     const state = EditorState.create({ doc: DOC, selection: { anchor: 4 } });
     expect(frontmatterSelectionFix(state, null)).toBeNull();
-    expect(
-      frontmatterSelectionFix(state, { hide: false, collapsed: false }),
-    ).toBeNull();
+    expect(frontmatterSelectionFix(state, { hide: false })).toBeNull();
     expect(
       frontmatterSelectionFix(
         EditorState.create({ doc: "# 正文\n", selection: { anchor: 2 } }),
-        { hide: true, collapsed: false },
+        { hide: true },
       ),
     ).toBeNull();
   });
@@ -154,23 +150,21 @@ describe("frontmatterSelectionFix", () => {
       doc: DOC,
       selection: { anchor: block.bodyStart },
     });
-    expect(
-      frontmatterSelectionFix(state, { hide: true, collapsed: true }),
-    ).toBeNull();
+    expect(frontmatterSelectionFix(state, { hide: true })).toBeNull();
   });
 
   it("光标/选区落入块内迁到正文起点", () => {
     const block = findFrontmatterBlock(DOC)!;
     const caret = EditorState.create({ doc: DOC, selection: { anchor: 4 } });
-    expect(
-      frontmatterSelectionFix(caret, { hide: true, collapsed: false }),
-    ).toEqual({ anchor: block.bodyStart });
+    expect(frontmatterSelectionFix(caret, { hide: true })).toEqual({
+      anchor: block.bodyStart,
+    });
     const selection = EditorState.create({
       doc: DOC,
       selection: { anchor: block.blockEnd - 1, head: block.bodyStart + 1 },
     });
-    expect(
-      frontmatterSelectionFix(selection, { hide: true, collapsed: true }),
-    ).toEqual({ anchor: block.bodyStart });
+    expect(frontmatterSelectionFix(selection, { hide: true })).toEqual({
+      anchor: block.bodyStart,
+    });
   });
 });

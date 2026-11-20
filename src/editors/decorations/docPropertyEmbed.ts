@@ -6,7 +6,12 @@
  * `DocPropertyBar` 渲染进 widget 宿主，属性块随正文滚动、位于正文首块。
  *
  * 无 frontmatter 的文档不装本 widget：属性块维持内容区上方的固定宿主。
- * 折叠态走 frontmatter-hide 的一行摘要占位，也不装本 widget。
+ * 折叠态与展开态共用同一 widget 宿主，折叠呈现（折叠条）由 `DocPropertyBar`
+ * 依面板 store 决定，正文不再另渲染摘要标签。
+ *
+ * 宿主解析：分屏下每格 `ContentArea` 在装饰重配后（rAF）查询**本格**
+ * `EditorView.dom` 内的 `.cm-dpb-embed` 作为 portal 宿主；不走模块级单槽——
+ * 多格各自 effect 注册会互相覆盖，导致其中一格宿主为 null 不渲染（#1226）。
  *
  * 事件：`ignoreEvent` / `ignoreMutation` 均放行——面板内的点击、输入、菜单由
  * React 处理，不进编辑器事务，也不触发 CM6 的文档变更检测。
@@ -15,21 +20,6 @@ import { WidgetType } from "@codemirror/view";
 
 /** 块宿主 class（CSS manifest 要求 `cm-` 前缀并在 src/styles 落规则）。 */
 export const DPB_EMBED_CLASS = "cm-dpb-embed";
-
-/** 宿主交接：widget 创建 / 销毁时把 DOM 交给 React portal。 */
-type HostListener = (el: HTMLElement | null) => void;
-let hostListener: HostListener | null = null;
-/** 当前存活宿主：reconfigure 时新旧 widget 交替，只允许「当前那个」清空。 */
-let currentHost: HTMLElement | null = null;
-
-export function setDocPropertyEmbedHostListener(fn: HostListener | null): void {
-  hostListener = fn;
-}
-
-/** 当前已存在的宿主（editor 先于 React effect 创建时补发一次）。 */
-export function getDocPropertyEmbedHost(): HTMLElement | null {
-  return currentHost;
-}
 
 export class DocPropertyEmbedWidget extends WidgetType {
   eq(): boolean {
@@ -41,15 +31,7 @@ export class DocPropertyEmbedWidget extends WidgetType {
     const el = document.createElement("div");
     el.className = DPB_EMBED_CLASS;
     el.dataset.testid = "doc-property-host";
-    currentHost = el;
-    hostListener?.(el);
     return el;
-  }
-
-  destroy(dom: HTMLElement): void {
-    if (currentHost !== dom) return;
-    currentHost = null;
-    hostListener?.(null);
   }
 
   ignoreEvent(): boolean {
