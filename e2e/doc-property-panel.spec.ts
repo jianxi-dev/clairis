@@ -1136,10 +1136,15 @@ test("类型选择器：八类菜单直选，选「日期」后编辑器变日�
     row.locator('[data-testid="dpb-type"] .dpb-ico-svg'),
   ).toHaveCount(1);
   await row.locator('[data-testid="dpb-value"]').click();
-  const input = row.locator('[data-testid="dpb-input"]');
-  await expect(input).toHaveJSProperty("type", "date");
-  await input.fill("2026-11-16");
-  await input.press("Enter");
+  const editor = row.locator('[data-testid="dpb-datetime-editor"]');
+  await expect(editor).toHaveCount(1);
+  await expect(
+    row.locator('input[type="date"],input[type="time"]'),
+  ).toHaveCount(0);
+  await editor
+    .locator('[data-testid="dpb-cal-day"][data-date="2026-11-16"]')
+    .click();
+  await page.keyboard.press("Enter");
 
   await setMode(page, "source");
   await expect(page.locator(".cm-content").first()).toContainText(
@@ -1299,16 +1304,42 @@ test("日期时间面板：失焦（点击外部）才提交组合值", async ({
   await dpbRecord(page, "1044", "04-blur-committed");
 });
 
-test("日期字段：仍只有单个日期控件，无时间输入", async ({ page }) => {
+test("日期字段：自绘面板仅日期，无时分；月/年可切，展示格式紧凑（#1259）", async ({
+  page,
+}) => {
   await openDoc(page, EXTERNAL_DOC);
   await setMode(page, "edit");
   const row = panel(page, "A").locator('[data-key="createdate"]');
   await row.locator('[data-testid="dpb-value"]').click();
-  await expect(row.locator('[data-testid="dpb-input"]')).toHaveJSProperty(
-    "type",
-    "date",
+  const editor = row.locator('[data-testid="dpb-datetime-editor"]');
+  await expect(editor).toHaveCount(1);
+  await expect(
+    row.locator('input[type="date"],input[type="time"]'),
+  ).toHaveCount(0);
+  await expect(editor.locator('[data-testid="dpb-time-hour"]')).toHaveCount(0);
+  await expect(editor.locator('[data-testid="dpb-cal-today"]')).toHaveCount(1);
+  await dpbRecord(page, "1259", "01-date-panel");
+
+  await editor.locator('[data-testid="dpb-cal-month"]').click();
+  await expect(
+    editor.locator('[data-testid="dpb-cal-month-cell"]'),
+  ).toHaveCount(12);
+  await dpbRecord(page, "1259", "02-month-view");
+
+  await editor.locator('[data-testid="dpb-cal-year"]').click();
+  await expect(editor.locator('[data-testid="dpb-cal-year-cell"]')).toHaveCount(
+    12,
   );
-  await expect(row.locator('input[type="time"]')).toHaveCount(0);
+  await dpbRecord(page, "1259", "03-year-view");
+
+  await page.keyboard.press("Escape");
+  await openDoc(page, DATETIME_DOC);
+  await setMode(page, "edit");
+  const dt = panel(page, "A").locator('[data-key="评审时间"]');
+  await expect(dt.locator('[data-testid="dpb-value"]')).toHaveText(
+    "2026-11-15 14:30",
+  );
+  await dpbRecord(page, "1259", "04-datetime-compact");
 });
 
 test("类型切换转换失败：保留原文并提示", async ({ page }) => {

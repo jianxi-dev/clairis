@@ -98,7 +98,7 @@ describe("frontmatter parse", () => {
     expect(m.count.display).toBe("1,234,567");
     expect(m.published.display).toBe("开");
     expect(m.tags.display).toBe("甲、乙");
-    expect(m.updated.display).toBe("2026-11-15 10:30:00");
+    expect(m.updated.display).toBe("2026-11-15 10:30");
   });
 
   it("BOM 兼容", () => {

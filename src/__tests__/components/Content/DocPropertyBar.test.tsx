@@ -452,7 +452,7 @@ describe("DocPropertyBar 日期时间单面板（#1044）", () => {
     ).toBeTruthy();
   });
 
-  it("日期字段保持仅日期控件，不出现面板或时间输入", () => {
+  it("日期字段用同一自绘面板（仅日期），可切月/年视图", () => {
     const DATE_ONLY_DOC = `---
 title: 日期字段
 createdate: 2026-11-14
@@ -467,12 +467,71 @@ createdate: 2026-11-14
     const row = container.querySelector('[data-key="createdate"]')!;
     fireEvent.click(row.querySelector('[data-testid="dpb-value"]')!);
 
-    expect(row.querySelector('[data-testid="dpb-input"]')).not.toBeNull();
+    const editor = row.querySelector('[data-testid="dpb-datetime-editor"]')!;
+    expect(editor).not.toBeNull();
     expect(
-      row.querySelector('[data-testid="dpb-input"]')!.getAttribute("type"),
-    ).toBe("date");
-    expect(row.querySelector('[data-testid="dpb-datetime-editor"]')).toBeNull();
-    expect(row.querySelectorAll('input[type="time"]')).toHaveLength(0);
+      row.querySelectorAll('input[type="date"],input[type="time"]'),
+    ).toHaveLength(0);
+    expect(editor.querySelector('[data-testid="dpb-time-hour"]')).toBeNull();
+    expect(
+      editor.querySelector('[data-testid="dpb-cal-month"]'),
+    ).not.toBeNull();
+
+    fireEvent.click(editor.querySelector('[data-testid="dpb-cal-month"]')!);
+    expect(
+      editor.querySelectorAll('[data-testid="dpb-cal-month-cell"]'),
+    ).toHaveLength(12);
+
+    fireEvent.click(
+      editor.querySelectorAll('[data-testid="dpb-cal-month-cell"]')[0]!,
+    );
+    expect(editor.querySelector('[data-testid="dpb-cal-grid"]')).not.toBeNull();
+
+    fireEvent.click(editor.querySelector('[data-testid="dpb-cal-year"]')!);
+    expect(
+      editor.querySelectorAll('[data-testid="dpb-cal-year-cell"]'),
+    ).toHaveLength(12);
+    fireEvent.click(
+      editor.querySelectorAll('[data-testid="dpb-cal-year-cell"]')[5]!,
+    );
+    expect(
+      editor.querySelectorAll('[data-testid="dpb-cal-month-cell"]'),
+    ).toHaveLength(12);
+  });
+
+  it("日期字段 Enter 提交 YYYY-MM-DD", () => {
+    const DATE_ONLY_DOC = `---
+title: 日期字段
+createdate: 2026-11-14
+---
+
+# 正文
+`;
+    const dispatchRef: {
+      current: Array<{
+        changes: { from: number; to: number; insert: string };
+      }>;
+    } = { current: [] };
+    editorRefs.activeView = {
+      dispatch: (spec) => dispatchRef.current.push(spec),
+      focus: () => {},
+    };
+    const { container } = render(
+      <DocPropertyBar content={DATE_ONLY_DOC} mode="edit" docKey="tab-date" />,
+    );
+    const row = container.querySelector('[data-key="createdate"]')!;
+    fireEvent.click(row.querySelector('[data-testid="dpb-value"]')!);
+    const editor = row.querySelector('[data-testid="dpb-datetime-editor"]')!;
+    const day = editor.querySelector<HTMLElement>(
+      '[data-testid="dpb-cal-day"][data-date="2026-11-15"]',
+    )!;
+    fireEvent.click(day);
+    fireEvent.keyDown(editor, { key: "Enter" });
+
+    expect(dispatchRef.current).toHaveLength(1);
+    expect(dispatchRef.current[0].changes.insert).toContain(
+      "createdate: 2026-11-15",
+    );
   });
 });
 

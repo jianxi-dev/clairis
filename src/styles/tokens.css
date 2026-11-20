@@ -57,6 +57,11 @@
   --tab-info-width: 256px;
   /* 页签最大宽度上限，与页签名信息窗同宽（spec §7.5）；页签不伸展，宽度按内容自适应 */
   --tab-max-width: var(--tab-info-width);
+  /* 文档属性日期选择器密度（design-system §7.6）；组件与样式只引用这些 token */
+  --dpb-cal-width: 300px;
+  --dpb-cal-cell: 32px;
+  --dpb-cal-nav: 28px;
+  --dpb-cal-gap: 8px;
   /* 搜索浮窗控件密度档（design-system §7.1）：输入框 / 替换按钮 / 顶栏共用，
      与文件卡片悬浮窗顶栏计算高度严格相等。 */
   --sf-ctrl-height: 27px;

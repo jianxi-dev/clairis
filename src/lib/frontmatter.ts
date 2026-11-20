@@ -392,8 +392,15 @@ export function formatFrontmatterValue(
       return value ? "开" : "关";
     case "array":
       return toListValue(value).join("、");
-    case "datetime":
-      return String(value).replace("T", " ");
+    case "datetime": {
+      const raw = String(value).trim();
+      const m = /^(\d{4}-\d{2}-\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?/.exec(
+        raw,
+      );
+      if (!m) return raw;
+      const sec = m[4] && m[4] !== "00" ? `:${m[4]}` : "";
+      return `${m[1]} ${m[2]}:${m[3]}${sec}`;
+    }
     default:
       return String(value);
   }
