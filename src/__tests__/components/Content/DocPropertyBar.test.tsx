@@ -340,6 +340,32 @@ describe("DocPropertyBar 日期时间单面板（#1044）", () => {
     expect(row.querySelector('[data-testid="dpb-datetime-editor"]')).toBeNull();
   });
 
+  it("时/分输入框内 Tab 被面板拦截：焦点留在面板内且不写回", () => {
+    const { container, dispatchRef } = mountDatetime();
+    const row = container.querySelector('[data-key="评审时间"]')!;
+    fireEvent.click(row.querySelector('[data-testid="dpb-value"]')!);
+    const editor = row.querySelector('[data-testid="dpb-datetime-editor"]')!;
+    const panel = editor.querySelector('[data-testid="dpb-datetime-panel"]')!;
+    const minute = editor.querySelector<HTMLElement>(
+      '[data-testid="dpb-time-minute"]',
+    )!;
+
+    minute.focus();
+    expect(document.activeElement).toBe(minute);
+
+    const tabEvent = new KeyboardEvent("keydown", {
+      key: "Tab",
+      bubbles: true,
+      cancelable: true,
+    });
+    minute.dispatchEvent(tabEvent);
+
+    expect(tabEvent.defaultPrevented).toBe(true);
+    expect(document.activeElement).not.toBe(minute);
+    expect(panel.contains(document.activeElement)).toBe(true);
+    expect(dispatchRef.current).toHaveLength(0);
+  });
+
   it("日期字段保持仅日期控件，不出现面板或时间输入", () => {
     const DATE_ONLY_DOC = `---
 title: 日期字段

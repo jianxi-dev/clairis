@@ -1219,6 +1219,45 @@ test("日期时间面板：Tab 在月历与时分间移动，Esc 取消回原值
   await dpbRecord(page, "1044", "03-esc-cancelled");
 });
 
+test("日期时间面板：分输入框按 Tab 焦点留在面板内，正文首字符仍为 ---", async ({
+  page,
+}) => {
+  await openDoc(page, DATETIME_DOC);
+  await setMode(page, "edit");
+  const row = panel(page, "A").locator('[data-key="评审时间"]');
+  await row.locator('[data-testid="dpb-value"]').click();
+  const editor = row.locator('[data-testid="dpb-datetime-editor"]');
+  const panelEl = editor.locator('[data-testid="dpb-datetime-panel"]');
+  await expect(panelEl).toBeVisible();
+
+  await editor.locator('[data-testid="dpb-time-minute"]').focus();
+  await page.keyboard.press("Tab");
+
+  await expect(panelEl).toBeVisible();
+  const state = await page.evaluate(() => {
+    const active = document.activeElement as HTMLElement | null;
+    const panel = document.querySelector('[data-testid="dpb-datetime-panel"]');
+    const store = (
+      window as unknown as {
+        __biaoyue_store__: {
+          getState: () => {
+            tabs: Record<string, { content: string }>;
+            activeTabId: string;
+          };
+        };
+      }
+    ).__biaoyue_store__.getState();
+    const content = store.tabs[store.activeTabId]?.content ?? "";
+    return {
+      inPanel: panel ? panel.contains(active) : false,
+      first: content.slice(0, 1),
+    };
+  });
+  expect(state.inPanel).toBe(true);
+  expect(state.first).toBe("-");
+  await dpbRecord(page, "1257", "01-tab-stays-in-panel");
+});
+
 test("日期时间面板：失焦（点击外部）才提交组合值", async ({ page }) => {
   await openDoc(page, DATETIME_DOC);
   await setMode(page, "edit");
