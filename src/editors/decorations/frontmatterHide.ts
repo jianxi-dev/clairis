@@ -14,6 +14,7 @@
 import type { EditorState, Range } from "@codemirror/state";
 import { Decoration, WidgetType } from "@codemirror/view";
 import { FRONTMATTER_RE, parseFrontmatter } from "../../lib/frontmatter";
+import { docPropertyEmbedWidget } from "./docPropertyEmbed";
 
 /** 摘要占位节点 class（CSS manifest 要求 `cm-` 前缀并在 src/styles 落规则）。 */
 export const FMH_SUMMARY_CLASS = "cm-fmh-summary";
@@ -24,6 +25,11 @@ export interface FrontmatterHideOptions {
   hide: boolean;
   /** 折叠态：以一行摘要代替整块；仅在 `hide` 为 true 时生效。 */
   collapsed: boolean;
+  /**
+   * 展开态：把隐藏的整块替换为属性面板宿主（replace 型块 widget）。
+   * 仅在 `hide` 为 true 且非折叠时生效；无 frontmatter 的文档不注入。
+   */
+  embedPanel?: boolean;
 }
 
 /** 文档开头 frontmatter 块的三个关键偏移。 */
@@ -142,7 +148,8 @@ export function frontmatterSelectionFix(
  * - 无 frontmatter / 空块（正则不命中）→ null。
  * - 选区落入块内 → null（临时显示完整块，防编辑盲区）。
  * - 折叠态：隐藏闭合行以上部分 + 在块首插入一行摘要 widget。
- * - 展开态：从块首隐藏到正文起点（含块后空行）。
+ * - 展开态：从块首隐藏到正文起点（含块后空行）；`embedPanel` 时替换为
+ *   属性面板宿主块 widget（高度进高度图，坐标不偏移）。
  */
 export function createFrontmatterHideDecorations(
   state: EditorState,
@@ -166,6 +173,19 @@ export function createFrontmatterHideDecorations(
           widget: new FrontmatterSummaryWidget(count),
           side: -1,
         }).range(block.start),
+      ],
+    };
+  }
+
+  if (options.embedPanel) {
+    return {
+      from: block.start,
+      to: block.bodyStart,
+      decorations: [
+        Decoration.replace({
+          widget: docPropertyEmbedWidget(),
+          block: true,
+        }).range(block.start, block.bodyStart),
       ],
     };
   }

@@ -76,6 +76,15 @@ const TYPE_LABEL: Record<FrontmatterType, string> = {
 
 const EMPTY_OVERRIDES: Record<string, FrontmatterType> = {};
 
+let lastAppliedMode: EditorMode | null = null;
+let lastAppliedDefaultsKey = "";
+let lastNewDocDefault: { key: string; visible: boolean } = {
+  key: "",
+  visible: true,
+};
+/** 新字段就地改名焦点：跨宿主重挂载（固定宿主 ↔ 正文流 widget）保留。 */
+const pendingRenameByDoc = new Map<string, string | null>();
+
 /** 手柄拖拽阈值：位移小于 5px 视为点击选中，超过才进入排序（P-4）。 */
 const DRAG_THRESHOLD = 5;
 
@@ -1769,7 +1778,16 @@ export default function DocPropertyBar({
   const [clipboard, setClipboard] =
     useState<DocPropertyClipboardPayload | null>(() => getFieldSelection());
   const [drop, setDrop] = useState<{ index: number; top: number } | null>(null);
-  const [pendingRenameKey, setPendingRenameKey] = useState<string | null>(null);
+  const [pendingRenameKey, setPendingRenameKeyState] = useState<string | null>(
+    () => pendingRenameByDoc.get(docKey) ?? null,
+  );
+  const setPendingRenameKey = useCallback(
+    (key: string | null) => {
+      pendingRenameByDoc.set(docKey, key);
+      setPendingRenameKeyState(key);
+    },
+    [docKey],
+  );
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [paletteAnchor, setPaletteAnchor] = useState<{
     x: number;
@@ -1814,25 +1832,33 @@ export default function DocPropertyBar({
   }, [docKey]);
 
   // 进入预览 / 编辑模式时应用配置默认档；从源码态切回保留用户状态（P-1）。
-  const lastModeRef = useRef<EditorMode | null>(null);
-  const lastDefaultsRef = useRef(`${previewDefault}/${editDefault}`);
+  // 面板会因宿主切换（固定宿主 ↔ 正文流 widget）重挂载，模式记忆必须跨重挂载，
+  // 故提升到模块作用域（#1157）。
   useEffect(() => {
     if (mode !== "preview" && mode !== "edit") return;
     const defaultsKey = `${previewDefault}/${editDefault}`;
-    const defaultsChanged = lastDefaultsRef.current !== defaultsKey;
-    lastDefaultsRef.current = defaultsKey;
-    const prev = lastModeRef.current;
-    lastModeRef.current = mode;
+    const defaultsChanged = lastAppliedDefaultsKey !== defaultsKey;
+    lastAppliedDefaultsKey = defaultsKey;
+    const prev = lastAppliedMode;
+    lastAppliedMode = mode;
     if (prev !== null && prev !== "preview" && prev !== "edit") return;
     if (prev === mode && !defaultsChanged) return;
     applyModeDefault(mode, propertyBar);
   }, [mode, previewDefault, editDefault, propertyBar, applyModeDefault]);
 
-  // 新建文档：默认显隐全局生效（newDocVisible）。
+  // 新建文档默认显隐（newDocVisible）；跨宿主重挂载只认首次，避免恢复被重置。
   useEffect(() => {
     if (!isNewDoc) return;
-    setHidden(!(propertyBar?.newDocVisible ?? true));
-  }, [isNewDoc, propertyBar?.newDocVisible, setHidden]);
+    const visible = propertyBar?.newDocVisible ?? true;
+    if (
+      lastNewDocDefault.key === docKey &&
+      lastNewDocDefault.visible === visible
+    ) {
+      return;
+    }
+    lastNewDocDefault = { key: docKey, visible };
+    setHidden(!visible);
+  }, [isNewDoc, propertyBar?.newDocVisible, setHidden, docKey]);
 
   // 窄窗（<720px）自动胶囊：只覆盖「用户从未手动选择」的形态，且不写偏好。
   useEffect(() => {
@@ -2120,9 +2146,12 @@ export default function DocPropertyBar({
     [content, applySelection, panelId, withManagedDates],
   );
 
-  const handleAutoFocusHandled = useCallback((key: string) => {
-    setPendingRenameKey((cur) => (cur === key ? null : cur));
-  }, []);
+  const handleAutoFocusHandled = useCallback(
+    (key: string) => {
+      if (pendingRenameByDoc.get(docKey) === key) setPendingRenameKey(null);
+    },
+    [docKey, setPendingRenameKey],
+  );
 
   /** 控件区插入：空态先建 frontmatter 块；指定类型空字段单事务写回，一次可撤销。 */
   const insertField = useCallback(
@@ -2149,7 +2178,14 @@ export default function DocPropertyBar({
       });
       setPendingRenameKey(key);
     },
-    [parsed.present, fields, propAliasMap, commitFields, typeKey],
+    [
+      parsed.present,
+      fields,
+      propAliasMap,
+      commitFields,
+      typeKey,
+      setPendingRenameKey,
+    ],
   );
 
   const toggleRow = useCallback(
