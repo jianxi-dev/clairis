@@ -63,7 +63,7 @@ describe("DocPropertyBar 托管日期键只读（P-6）", () => {
     expect(foot.querySelector('[data-testid="dpb-input"]')).toBeNull();
   });
 
-  it("A 态：footer 左侧两日期与「N 个字段」同行，无输入框", () => {
+  it("A 态：footer 计数在左、两日期在右，无输入框（与 B 同序）", () => {
     useDocPropertyPanelStore.getState().setVariant("A");
     const { container } = render(
       <DocPropertyBar content={DOC} mode="preview" />,
@@ -80,9 +80,10 @@ describe("DocPropertyBar 托管日期键只读（P-6）", () => {
     expect(dates.textContent).toContain("创建 2026-11-14");
     expect(count.textContent).toBe("2 个字段");
     expect(
-      dates.compareDocumentPosition(count) & Node.DOCUMENT_POSITION_FOLLOWING,
+      count.compareDocumentPosition(dates) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).not.toBe(0);
     expect(foot.querySelector('[data-testid="dpb-input"]')).toBeNull();
+    expect(foot.querySelector(".dpb-lock")!.getAttribute("width")).toBe("12");
   });
 
   it("B 编辑态：自由键仍可编辑、类型菜单可弹出（守卫不误伤）", () => {

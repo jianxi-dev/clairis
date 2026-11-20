@@ -93,6 +93,7 @@ export type IconName =
   | "bug"
   | "example"
   | "docPropertyVariant"
+  | "selectAll"
   | "convert"
   | "align"
   | "bold"
@@ -723,9 +724,15 @@ export const ICONS: Record<IconName, IconDef> = {
   docPropertyVariant: {
     label: "属性面板形态切换（L 一行条 / T 精排双列）",
     parts: [
-      { s: "M3.5 7h6 M3.5 12h4.5 M3.5 17h3" },
-      { s: "M12 5.5h3v13h-3z M17.5 5.5h3v13h-3z" },
+      // L 形：左侧竖笔 + 底横向右伸出
+      { s: "M5 5v14 M5 19h13" },
+      // T 形：顶横左右伸出 + 居中竖笔
+      { s: "M5 5h14 M12 5v14" },
     ],
+  },
+  selectAll: {
+    label: "全选",
+    s: "M4.5 4.5h15v15h-15z M8 12l3 3 5.5-6",
   },
 };
 
@@ -759,4 +766,4 @@ export function iconSvg(name: IconName, size = 22): string {
 }
 
 /** 两档尺寸：密集列表 18px，主操作 24px。 */
-export type IconSize = 14 | 18 | 24;
+export type IconSize = 12 | 14 | 18 | 24;
