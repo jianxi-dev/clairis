@@ -1507,6 +1507,65 @@ test("菜单打开时 ⌘2 直选第 2 项，不触发全局卡片直开", async
   await expect(panel(page, "A")).toBeVisible();
 });
 
+test("外部 frontmatter 兜底：模板占位可识别、常见键不再未识别（#1258）", async ({
+  page,
+}) => {
+  const templater = `---\n\ncreated: {{date}} {{time}}\ntags: ["模板", "IT"]\nbook_title: \nauthor: \nread_date: {{date:YYYY-MM}}\nrating: \nstatus: 阅读中\n\n---\n\n# 标题\n`;
+  await openDoc(page, templater);
+  await setMode(page, "edit");
+  await setVariant(page, "B");
+  const b = panel(page, "B");
+  await expect(b.locator('[data-testid="dpb-row"]')).toHaveCount(6);
+  await expect(b.locator('[data-key="book_title"]')).toHaveCount(1);
+  await dpbRecord(page, "1258", "01-templater-rows");
+
+  const mdpkg = `---\ntype: guide\ntitle: 指南\ncaptured_at: 2026-09-01T00:56:05.946Z\ncaptured_via: capture-cli\ningested_via: put_page\ningested_at: 2026-09-01T00:56:09.822Z\nsource_kind: put_page\n---\n\n# 正文\n`;
+  await openDoc(page, mdpkg, "/Users/test/mdpkg.md");
+  await setMode(page, "edit");
+  await setVariant(page, "B");
+  const b2 = panel(page, "B");
+  await expect(b2.locator('[data-testid="dpb-row"]')).toHaveCount(7);
+  await expect(
+    b2.locator('[data-key="type"] [data-testid="dpb-type"]'),
+  ).toHaveAttribute("title", /下拉/);
+  await expect(
+    b2.locator('[data-key="captured_at"] [data-testid="dpb-type"]'),
+  ).toHaveAttribute("title", /日期时间/);
+  await expect(
+    b2.locator('[data-testid="dpb-type"]', { hasText: "?" }),
+  ).toHaveCount(0);
+  await dpbRecord(page, "1258", "02-mdpkg-types");
+
+  await openDoc(page, templater);
+  await setMode(page, "edit");
+  await setVariant(page, "B");
+  const row = panel(page, "B").locator('[data-key="book_title"]');
+  await row.locator('[data-testid="dpb-value"]').click();
+  await row.locator('[data-testid="dpb-input"]').fill("读书");
+  await row.locator('[data-testid="dpb-input"]').press("Enter");
+  const content = await page.evaluate(() => {
+    const st = (
+      window as unknown as {
+        __biaoyue_store__: {
+          getState: () => {
+            tabs: Record<string, { content: string }>;
+            activeTabId: string;
+          };
+        };
+      }
+    ).__biaoyue_store__.getState();
+    return st.tabs[st.activeTabId]?.content ?? "";
+  });
+  expect(content).toContain("created: {{date}} {{time}}");
+  expect(content).toContain("read_date: {{date:YYYY-MM}}");
+  expect(content).toContain("book_title: 读书");
+  await dpbRecord(page, "1258", "03-edit-preserves-template");
+
+  await setMode(page, "source");
+  await expect(page.locator(".cm-content")).toContainText("{{date}} {{time}}");
+  await dpbRecord(page, "1258", "04-source-preserved");
+});
+
 test("tags 字符串不崩溃并按单元素标签渲染，编辑后写回列表（#1256）", async ({
   page,
 }) => {

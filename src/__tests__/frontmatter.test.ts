@@ -296,6 +296,98 @@ describe("validateFieldValue", () => {
   });
 });
 
+describe("外部文档兜底解析（#1258）", () => {
+  const OBSIDIAN = `---\n\ncreated: {{date}} {{time}}\ntags: ["模板", "IT", "学习", "出版", "思维工具"]\nbook_title: \nauthor: \nread_date: {{date:YYYY-MM}}\nrating: \nstatus: 阅读中\n\n---\n\n# 标题\n`;
+
+  it("Obsidian 模板：整块 YAML 失败仍逐条识别全部字段", () => {
+    const p = parseFrontmatter(OBSIDIAN);
+    expect(p.present).toBe(true);
+    expect(p.yamlValid).toBe(false);
+    expect(p.fields.map((f) => f.key)).toEqual([
+      "created",
+      "tags",
+      "book_title",
+      "author",
+      "read_date",
+      "rating",
+      "status",
+    ]);
+    const m = byKey(p.fields);
+    expect(m.created.value).toBe("{{date}} {{time}}");
+    expect(m.created.type).toBe("text");
+    expect(m.tags.type).toBe("array");
+    expect(m.book_title.type).toBe("text");
+    expect(m.read_date.type).toBe("text");
+    expect(m.status.type).toBe("select");
+  });
+
+  it("mdpkg 常见键识别：type / source_kind / *_via / *_at", () => {
+    const doc = `---\ntype: guide\ntitle: t\ncaptured_at: 2026-09-01T00:56:05.946Z\ncaptured_via: capture-cli\ningested_via: put_page\ningested_at: 2026-09-01T00:56:09.822Z\nsource_kind: put_page\n---\n\n正文\n`;
+    const p = parseFrontmatter(doc);
+    expect(p.yamlValid).toBe(true);
+    const m = byKey(p.fields);
+    expect(m.type.type).toBe("select");
+    expect(m.source_kind.type).toBe("select");
+    expect(m.captured_via.type).toBe("text");
+    expect(m.ingested_via.type).toBe("text");
+    expect(m.captured_at.type).toBe("datetime");
+    expect(m.ingested_at.type).toBe("datetime");
+  });
+
+  it("空值字段默认 text，不再落 unknown", () => {
+    const doc = `---\nbook_title: \nauthor:\n---\n\n正文\n`;
+    const m = byKey(parseFrontmatter(doc).fields);
+    expect(m.book_title.type).toBe("text");
+    expect(m.author.type).toBe("text");
+  });
+
+  it("不可解析块编辑：只改写目标行，其余字节不变", () => {
+    const p = parseFrontmatter(OBSIDIAN);
+    const fields = p.fields.map((f) =>
+      f.key === "status" ? { ...f, value: "已完成" } : f,
+    );
+    const r = writeFrontmatter(OBSIDIAN, fields);
+    expect(r.text).toContain("created: {{date}} {{time}}");
+    expect(r.text).toContain("# 标题");
+    expect(r.text).toContain("status: 已完成");
+    const before = OBSIDIAN.split("\n").filter((l) => !l.startsWith("status:"));
+    const after = r.text.split("\n").filter((l) => !l.startsWith("status:"));
+    expect(after).toEqual(before);
+  });
+
+  it("编辑键时保留其后的注释与空行", () => {
+    const doc = `---\ncreated: {{date}} {{time}}\nstatus: 阅读中\n# 我的注释\n\nbook_title: x\n---\n\n正文\n`;
+    const p = parseFrontmatter(doc);
+    expect(p.yamlValid).toBe(false);
+    const fields = p.fields.map((f) =>
+      f.key === "status" ? { ...f, value: "已完成" } : f,
+    );
+    const r = writeFrontmatter(doc, fields);
+    expect(r.text).toContain("# 我的注释");
+    expect(r.text).toContain("\n\nbook_title: x");
+    expect(r.text).toContain("status: 已完成");
+  });
+
+  it("CRLF 行尾的坏块也能识别字段", () => {
+    const doc = `---\r\ncreated: {{date}} {{time}}\r\nstatus: 阅读中\r\n---\r\n\r\n正文\r\n`;
+    const p = parseFrontmatter(doc);
+    expect(p.present).toBe(true);
+    expect(p.yamlValid).toBe(false);
+    expect(p.fields.map((f) => f.key)).toEqual(["created", "status"]);
+  });
+
+  it("不可解析块改名：位置保持且旧键消失", () => {
+    const p = parseFrontmatter(OBSIDIAN);
+    const fields = p.fields.map((f) =>
+      f.key === "status" ? { ...f, key: "state" } : f,
+    );
+    const r = writeFrontmatter(OBSIDIAN, fields);
+    expect(r.text).toContain("state: 阅读中");
+    expect(r.text).not.toContain("status:");
+    expect(r.text.indexOf("state:")).toBeGreaterThan(r.text.indexOf("rating:"));
+  });
+});
+
 describe("setFrontmatterField（面板提交 API 往返）", () => {
   it("改单字段后键序、自由键与注释保持", () => {
     const doc = `---\ntitle: 甲\n# 注释\ncustom-note: x\ncount: 1\n---\n\n正文\n`;

@@ -59,6 +59,8 @@ export interface ParsedFrontmatter {
   trailing: string;
   /** 首尾 `---` 之间的 YAML 正文（保留尾部换行）。 */
   inner: string;
+  /** 整块是否能被 YAML 完整解析；false 时字段来自逐条兜底扫描。 */
+  yamlValid: boolean;
   /** 键序数组即唯一顺序真相（面板行序、写回顺序都以此为准）。 */
   fields: FrontmatterField[];
 }
@@ -225,6 +227,15 @@ export const ALIAS: Readonly<Record<string, readonly string[]>> = {
   date: ["日期"],
   createdate: ["创建日期"],
   updatedate: ["更新日期"],
+  type: ["类型"],
+  sourcekind: ["source_kind", "来源类型"],
+  capturedvia: ["captured_via", "捕获方式"],
+  ingestedvia: ["ingested_via", "入库方式"],
+  capturedat: ["captured_at", "捕获时间"],
+  ingestedat: ["ingested_at", "入库时间"],
+  readdate: ["read_date", "阅读日期"],
+  rating: ["评分"],
+  booktitle: ["book_title", "书名"],
 };
 
 /** 别称规范键 → 类型（与 ALIAS 的键一一对应）。 */
@@ -237,6 +248,15 @@ export const CANON_TYPE: Readonly<Record<string, FrontmatterType>> = {
   date: "date",
   createdate: "date",
   updatedate: "date",
+  type: "select",
+  sourcekind: "select",
+  capturedvia: "text",
+  ingestedvia: "text",
+  capturedat: "datetime",
+  ingestedat: "datetime",
+  readdate: "date",
+  rating: "number",
+  booktitle: "text",
 };
 
 /** 别称映射可赋的八类类型（不含 unknown 收编态）。 */
@@ -546,7 +566,9 @@ function toFields(
   }
   const fields: FrontmatterField[] = [];
   for (const [key, value] of Object.entries(data as Record<string, unknown>)) {
-    const type = resolveAlias(key, aliasMap) ?? inferFrontmatterType(value);
+    const alias = resolveAlias(key, aliasMap);
+    const empty = value === null || value === undefined || value === "";
+    const type = alias ?? (empty ? "text" : inferFrontmatterType(value));
     fields.push({
       key,
       type,
@@ -555,6 +577,147 @@ function toFields(
     });
   }
   return fields;
+}
+
+interface LooseEntry {
+  key: string;
+  start: number;
+  lines: string[];
+}
+
+/** 逐行扫描顶层键（行首非空白、非 `#`、含冒号），保持源文件顺序。 */
+function scanTopLevelEntries(inner: string): LooseEntry[] {
+  const lines = inner.match(/[^\n]*\n|[^\n]+$/g) ?? [];
+  const out: LooseEntry[] = [];
+  let cur: LooseEntry | null = null;
+  for (let i = 0; i < lines.length; i++) {
+    const bare = lines[i].replace(/\r?\n$/, "");
+    const m = /^([^\s#-][^:]*):(.*)$/.exec(bare);
+    if (m) {
+      cur = { key: m[1].trim(), start: i, lines: [lines[i]] };
+      out.push(cur);
+    } else if (cur) {
+      cur.lines.push(lines[i]);
+    }
+  }
+  return out;
+}
+
+/** 单条顶层键求值：整组 YAML 解析优先，失败则把冒号后原文按文本保留。 */
+function parseLooseEntry(entry: LooseEntry): {
+  value: unknown;
+  parsed: boolean;
+} {
+  const text = entry.lines.join("");
+  const raw0 = text.slice(text.indexOf(":") + 1).trim();
+  // Templater / 占位语法（`{{...}}`）不当 YAML 解，避免被当成映射键。
+  if (raw0.includes("{{")) {
+    return {
+      value: raw0.replace(/^(['"])([\s\S]*)\1$/, "$2"),
+      parsed: false,
+    };
+  }
+  try {
+    const parsed = YAML.parse(text);
+    if (
+      parsed &&
+      typeof parsed === "object" &&
+      !Array.isArray(parsed) &&
+      entry.key in (parsed as Record<string, unknown>)
+    ) {
+      return {
+        value: (parsed as Record<string, unknown>)[entry.key],
+        parsed: true,
+      };
+    }
+  } catch {
+    // 落到原文保留
+  }
+  const raw = raw0;
+  return {
+    value: raw === "" ? null : raw.replace(/^(['"])([\s\S]*)\1$/, "$2"),
+    parsed: false,
+  };
+}
+
+function parseLooseEntryValue(entry: LooseEntry): unknown {
+  return parseLooseEntry(entry).value;
+}
+
+/**
+ * 整块 YAML 失败时的兜底字段解析：单条失败不影响其他键（#1258）。
+ */
+export function parseLooseFields(
+  inner: string,
+  aliasMap?: Record<string, FrontmatterType> | null,
+): FrontmatterField[] {
+  const fields: FrontmatterField[] = [];
+  for (const entry of scanTopLevelEntries(inner)) {
+    const { value, parsed } = parseLooseEntry(entry);
+    const alias = resolveAlias(entry.key, aliasMap);
+    const empty = value === null || value === undefined || value === "";
+    const type = parsed
+      ? (alias ?? (empty ? "text" : inferFrontmatterType(value)))
+      : "text";
+    fields.push({
+      key: entry.key,
+      type,
+      value,
+      display: formatFrontmatterValue(value, type),
+    });
+  }
+  return fields;
+}
+
+/** 行级写回：只替换目标键的连续行块，其余字节原样保留（#1258）。 */
+/** 取条目文本末尾连续的空行 / 注释行（值续行之外的人工痕迹）。 */
+function trailingTrivia(text: string): string {
+  const lines = text.match(/[^\n]*\n|[^\n]+$/g) ?? [];
+  let i = lines.length;
+  while (i > 1 && /^[ \t]*(#.*)?\r?\n?$/.test(lines[i - 1])) i--;
+  return lines.slice(i).join("");
+}
+
+function writeLooseFrontmatter(
+  doc: string,
+  parsed: ParsedFrontmatter,
+  fields: FrontmatterField[],
+): FrontmatterWriteResult {
+  const lines = parsed.inner.match(/[^\n]*\n|[^\n]+$/g) ?? [];
+  const entries = scanTopLevelEntries(parsed.inner);
+  const firstStart = entries.length > 0 ? entries[0].start : lines.length;
+  const preamble = lines.slice(0, firstStart).join("");
+  const byKey = new Map<string, { text: string; value: unknown }>();
+  for (const entry of entries) {
+    if (byKey.has(entry.key)) continue;
+    byKey.set(entry.key, {
+      text: entry.lines.join(""),
+      value: parseLooseEntryValue(entry),
+    });
+  }
+  let inner = preamble;
+  for (const field of fields) {
+    const original = byKey.get(field.key);
+    if (original && sameValue(original.value, field.value)) {
+      inner += original.text;
+    } else {
+      // 替换值行，但保留该键后方挂着的空行 / 注释行（不被静默删除）。
+      inner += YAML.stringify({ [field.key]: field.value });
+      if (original) inner += trailingTrivia(original.text);
+    }
+  }
+  // 原块尾部的空行（闭合 --- 之前）随最后一个键一起保留。
+  if (/\n[ \t]*\n$/.test(parsed.inner) && !/\n[ \t]*\n$/.test(inner)) {
+    inner += "\n";
+  }
+  const block =
+    parsed.openLine + "\n" + inner + parsed.closeLine + parsed.trailing;
+  return {
+    text: doc.slice(0, parsed.start) + block + doc.slice(parsed.end),
+    from: parsed.start,
+    to: parsed.end,
+    block,
+  };
 }
 
 export function parseFrontmatter(
@@ -570,6 +733,7 @@ export function parseFrontmatter(
     closeLine: "",
     trailing: "",
     inner: "",
+    yamlValid: false,
     fields: [],
   };
   const match = FRONTMATTER_RE.exec(doc);
@@ -591,11 +755,15 @@ export function parseFrontmatter(
   const closeLine = trailing ? tail.slice(0, -1) : tail;
 
   let data: unknown = null;
+  let yamlValid = true;
   if (inner.trim()) {
     try {
       data = YAML.parse(inner);
     } catch {
       data = null;
+    }
+    if (typeof data !== "object" || data === null || Array.isArray(data)) {
+      yamlValid = false;
     }
   }
 
@@ -608,7 +776,10 @@ export function parseFrontmatter(
     closeLine,
     trailing,
     inner,
-    fields: toFields(data, aliasMap),
+    yamlValid,
+    fields: yamlValid
+      ? toFields(data, aliasMap)
+      : parseLooseFields(inner, aliasMap),
   };
 }
 
@@ -654,6 +825,8 @@ export function writeFrontmatter(
       block: parsed.block,
     };
   }
+
+  if (!parsed.yamlValid) return writeLooseFrontmatter(doc, parsed, fields);
 
   // 畸形 YAML 不阻断写回：解析失败时退化为整块重建。
   let nextInner: string;
@@ -716,6 +889,8 @@ export function writeFrontmatterOrdered(
       block: parsed.block,
     };
   }
+
+  if (!parsed.yamlValid) return writeLooseFrontmatter(doc, parsed, fields);
 
   let nextInner: string;
   try {
