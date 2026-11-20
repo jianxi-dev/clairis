@@ -917,13 +917,9 @@ test("#1163 形态切换图标 L/T 语义与存储兼容", async ({ page }) => {
   );
 
   const pathsA = toggleA.locator("svg path");
-  await expect(pathsA).toHaveCount(2);
-  const dList = await pathsA.evaluateAll((els) =>
-    els.map((e) => e.getAttribute("d")),
-  );
-  expect(dList[0]).not.toBe(dList[1]);
-  expect(dList.join(" ")).not.toBe(
-    "M3.5 5.5h17v13h-17z M12 5.5v13 M6 9.5h3.5 M6 13h3.5 M14.5 9.5h3.5 M14.5 13h3.5",
+  await expect(pathsA).toHaveCount(1);
+  expect(await pathsA.first().getAttribute("d")).toBe(
+    "M3.5 7h6 M3.5 12h4.5 M3.5 17h3",
   );
   expect(
     await toggleA.evaluate(
@@ -955,7 +951,7 @@ test("#1163 形态切换图标 L/T 语义与存储兼容", async ({ page }) => {
       (el) => el.getAttribute("title") ?? el.getAttribute("data-tip") ?? "",
     ),
   ).toContain("L 一行条 / T 精排双列");
-  await expect(toggleB.locator("svg path")).toHaveCount(2);
+  await expect(toggleB.locator("svg path")).toHaveCount(1);
   await dpbRecord(page, "1163", "03-b-icon-lt");
 
   await expect
@@ -1003,22 +999,83 @@ test("#1228 形态切换图标换形（L 行条 / T 双列卡）", async ({ page
   );
 
   const pathsA = toggleA.locator("svg path");
-  await expect(pathsA).toHaveCount(2);
-  const dList = await pathsA.evaluateAll((els) =>
-    els.map((e) => e.getAttribute("d")),
+  await expect(pathsA).toHaveCount(1);
+  expect(await pathsA.first().getAttribute("d")).toBe(
+    "M3.5 7h6 M3.5 12h4.5 M3.5 17h3",
   );
-  expect(dList[0]).not.toBe(dList[1]);
-  expect(dList[0]).toBe("M3.5 7h6 M3.5 12h4.5 M3.5 17h3");
-  expect(dList[1]).toBe("M12 5.5h3v13h-3z M17.5 5.5h3v13h-3z");
   await dpbRecord(page, "1228", "01-a-icon-lt");
 
   await toggleA.click();
   const b = panel(page, "B");
   await expect(b).toBeVisible();
   const toggleB = b.locator('[data-testid="dpb-variant-toggle"]');
-  await expect(toggleB.locator("svg path")).toHaveCount(2);
+  await expect(toggleB.locator("svg path")).toHaveCount(1);
+  expect(await toggleB.locator("svg path").first().getAttribute("d")).toBe(
+    "M12 5.5h3v13h-3z M17.5 5.5h3v13h-3z",
+  );
   await expect(toggleB).toHaveAttribute("aria-pressed", "true");
   await dpbRecord(page, "1228", "02-b-icon-lt");
+});
+
+test("#1242 形态切换图标按当前态显示对应形态（L 三横线 / T 双竖栏）", async ({
+  page,
+}) => {
+  await openDoc(page);
+  const toggleA = panel(page, "A").locator(
+    '[data-testid="dpb-variant-toggle"]',
+  );
+  await expect(toggleA.locator("svg")).toHaveAttribute(
+    "data-icon",
+    "docPropertyVariant",
+  );
+
+  const pathsA = toggleA.locator("svg path");
+  await expect(pathsA).toHaveCount(1);
+  const dA = await pathsA.first().getAttribute("d");
+  expect(dA).toBe("M3.5 7h6 M3.5 12h4.5 M3.5 17h3");
+  await dpbRecord(page, "1242", "01-a-icon-l");
+
+  await toggleA.click();
+  const b = panel(page, "B");
+  await expect(b).toBeVisible();
+  const toggleB = b.locator('[data-testid="dpb-variant-toggle"]');
+  await expect(toggleB).toHaveAttribute("aria-pressed", "true");
+
+  const pathsB = toggleB.locator("svg path");
+  await expect(pathsB).toHaveCount(1);
+  const dB = await pathsB.first().getAttribute("d");
+  expect(dB).toBe("M12 5.5h3v13h-3z M17.5 5.5h3v13h-3z");
+  expect(dB).not.toBe(dA);
+  await dpbRecord(page, "1242", "02-b-icon-t");
+
+  await expect
+    .poll(
+      () => page.evaluate(() => localStorage.getItem("__mock_config") ?? ""),
+      { timeout: 5000 },
+    )
+    .toContain('"docPropertyVariant":"B"');
+
+  await page.reload();
+  await page.waitForSelector('[data-testid="pane-header"]', {
+    timeout: 15000,
+  });
+  await openDoc(page);
+  await expect(panel(page, "B")).toBeVisible();
+  const toggleB2 = panel(page, "B").locator(
+    '[data-testid="dpb-variant-toggle"]',
+  );
+  await expect(toggleB2.locator("svg path")).toHaveCount(1);
+  expect(await toggleB2.locator("svg path").first().getAttribute("d")).toBe(dB);
+  await dpbRecord(page, "1242", "03-reload-b-icon-t");
+
+  await toggleB2.click();
+  await expect(panel(page, "A")).toBeVisible();
+  const toggleA2 = panel(page, "A").locator(
+    '[data-testid="dpb-variant-toggle"]',
+  );
+  await expect(toggleA2.locator("svg path")).toHaveCount(1);
+  expect(await toggleA2.locator("svg path").first().getAttribute("d")).toBe(dA);
+  await dpbRecord(page, "1242", "04-back-a-icon-l");
 });
 
 const TYPE_DOC = `---

@@ -2692,7 +2692,11 @@ export default function DocPropertyBar({
       aria-pressed={variant === "B"}
       onClick={toggleVariant}
     >
-      <Icon name="docPropertyVariant" size={14} />
+      <Icon
+        name="docPropertyVariant"
+        size={14}
+        part={variant === "B" ? 1 : 0}
+      />
     </button>
   );
 

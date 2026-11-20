@@ -9,6 +9,8 @@ interface IconProps {
   className?: string;
   /** 供 e2e 与图标抽屉定位 */
   title?: string;
+  /** 多段图标只渲染指定段；缺省渲染全部段 */
+  part?: number;
 }
 
 /**
@@ -23,9 +25,11 @@ export default function Icon({
   color,
   className = "",
   title,
+  part,
 }: IconProps) {
   const def = ICONS[name];
-  const parts = def.parts ?? [{ d: def.d, s: def.s, dash: def.dash }];
+  const allParts = def.parts ?? [{ d: def.d, s: def.s, dash: def.dash }];
+  const parts = part === undefined ? allParts : allParts.slice(part, part + 1);
   return (
     <svg
       width={size}

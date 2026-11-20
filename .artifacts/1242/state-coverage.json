@@ -1,0 +1,33 @@
+{
+  "task": "1242",
+  "states": [
+    {
+      "state": "01-a-icon-l",
+      "screenshot": ".artifacts/1242/01-a-icon-l.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-20T12:05:10.178Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "02-b-icon-t",
+      "screenshot": ".artifacts/1242/02-b-icon-t.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-20T12:05:10.290Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "03-reload-b-icon-t",
+      "screenshot": ".artifacts/1242/03-reload-b-icon-t.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-20T12:05:11.338Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "04-back-a-icon-l",
+      "screenshot": ".artifacts/1242/04-back-a-icon-l.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-20T12:05:11.374Z",
+      "runner": "mason@unknown"
+    }
+  ]
+}

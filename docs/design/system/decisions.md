@@ -95,3 +95,4 @@ ledger: append-only
 | 文档属性块间距与预览列对齐 | 属性块下方间距 = 一个正文行高（`--type-line` × 正文字号），由布局 margin 提供、不依赖可被删除的文档空行；编辑态间距落在卡片 `.dpb-panel` 的 margin 上（宿主自身 margin 不被 CM6 高度图计入，会使 `posAtCoords` 偏移）；预览块容器与 `.preview-content` 同 max-width / 同横向内距，卡片边缘与正文段落同轴 | surface-refine-1120 / #1227 | 2026-11-20 |
 | 文档属性 L/T 切换图标换形 | 取代台账「文档属性 L/T 切换图标」行的图形：L 改为三条左对齐不等长横线（6 / 4.5 / 3，行条），T 改为两个并排竖栏矩形（各 3×13、间距 2.5，双列卡）；去掉原 L 的等宽三线与 T 的外框 + 中缝 + 横缝网格。`parts` 两段结构、`label`、title / aria-label、存储值 `A`/`B` 均不变 | surface-refine-1120 / #1228 | 2026-11-20 |
 | 页签不伸展 + 最大宽度上限 | 页签改 `flex: 0 1 auto` 不伸展、宽度按内容自适应；新增 `--tab-max-width: var(--tab-info-width)`（256px）上限；保底改 `min(96px, max-content)`，短名按实际宽度、不被撑到 96px；取代 #1180 的 flex-grow 铺满口径（尾部 `--tab-strip-tail` 保留） | #1231 | 2026-11-20 |
+| 文档属性 L/T 切换图标按当前态显形 | 取代台账「文档属性 L/T 切换图标换形」行的静态双面板对比口径：切换按钮改为按当前形态只画对应单形态图形——A 态仅 L 三横线、B 态仅 T 双竖栏；`parts` 两段结构保留，由 `Icon` 的 `part` 选择器取用（缺省仍渲染全部段）；`label`、title / aria-label、存储值 `A`/`B` 不变 | #1242 | 2026-11-20 |
