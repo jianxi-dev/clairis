@@ -406,6 +406,14 @@
   border-top: 1px dashed var(--app-border);
   display: flex;
   gap: 16px;
+  align-items: center;
+  opacity: var(--dpb-meta-opacity, 0.72);
+  transition: opacity 0.15s;
+}
+
+/* 计数左缘对齐字段类型图标：B 行首有 16px 手柄列 + 6px 间距 */
+.dpb-b-foot [data-testid="dpb-count"] {
+  padding-left: 22px;
 }
 
 /* 底部 footer（design-system §7.2）：A 左日期右计数，B 右日期 */
@@ -418,10 +426,19 @@
   border-top: 1px dashed var(--app-border);
   font-size: var(--dpb-footer-font-size, 11px);
   color: var(--app-text-3);
+  opacity: var(--dpb-meta-opacity, 0.72);
+  transition: opacity 0.15s;
+}
+
+.dpb-a-foot:hover,
+.dpb-a-foot:focus-within,
+.dpb-b-foot:hover,
+.dpb-b-foot:focus-within {
+  opacity: 1;
 }
 
 .dpb-a-foot [data-testid="dpb-count"] {
-  margin-left: auto;
+  margin-left: 0;
 }
 
 .dpb-dates {
@@ -430,6 +447,17 @@
   gap: var(--dpb-date-gap, 6px);
   margin-left: auto;
   min-width: 0;
+}
+
+/* 折叠条：默认淡出，滑入/聚焦显现；只改透明度，不引起正文回流 */
+.dpb-panel.dpb-collapsed {
+  opacity: var(--dpb-collapsed-opacity, 0.35);
+  transition: opacity 0.18s;
+}
+
+.dpb-panel.dpb-collapsed:hover,
+.dpb-panel.dpb-collapsed:focus-within {
+  opacity: 1;
 }
 
 .dpb-a-foot .dpb-dates {
@@ -443,12 +471,19 @@
 .dpb-variant-toggle {
   display: inline-flex;
   align-items: center;
-  padding: 2px 5px;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
 }
 
 /* ── 折叠按钮 / 隐藏提示 / 空态 ─────────────────────────── */
 .dpb-collapse {
   font: inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 22px;
   font-size: 11px;
   border: 1px solid transparent;
   background: transparent;
@@ -1058,6 +1093,11 @@
 
 .dpb-select-all {
   font: inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 22px;
   font-size: 11px;
   border: 1px solid transparent;
   background: transparent;

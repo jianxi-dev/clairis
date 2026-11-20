@@ -62,6 +62,10 @@
   --dpb-cal-cell: 32px;
   --dpb-cal-nav: 28px;
   --dpb-cal-gap: 8px;
+  /* 文档属性 footer 弱化与折叠条淡出（spec §7.2 / §7.6） */
+  --dpb-meta-opacity: 0.72;
+  --dpb-collapsed-opacity: 0.35;
+  --dpb-lock-size: 12px;
   /* 搜索浮窗控件密度档（design-system §7.1）：输入框 / 替换按钮 / 顶栏共用，
      与文件卡片悬浮窗顶栏计算高度严格相等。 */
   --sf-ctrl-height: 27px;

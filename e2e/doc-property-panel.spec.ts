@@ -649,7 +649,7 @@ test("编辑其他字段后自由键在源码中保持不变", async ({ page }) 
   await expect(src).toContainText("note: 改后备注");
 });
 
-test("#1129 托管日期只读展示：A footer 左 / B 备注行右，带锁无输入框", async ({
+test("#1129 托管日期只读展示：A/B footer 均为计数在左、日期在右，带锁无输入框", async ({
   page,
 }) => {
   await openDoc(page);
@@ -680,7 +680,7 @@ test("#1129 托管日期只读展示：A footer 左 / B 备注行右，带锁无
   const aCountBox = (await aFoot
     .locator('[data-testid="dpb-count"]')
     .boundingBox())!;
-  expect(aDateBox.x).toBeLessThan(aCountBox.x);
+  expect(aCountBox.x).toBeLessThan(aDateBox.x);
   expect(Math.abs(aDateBox.y - aCountBox.y)).toBeLessThan(8);
   await dpbRecord(page, "1129", "01-a-footer-dates");
 
@@ -752,7 +752,10 @@ test("#1129 缺失日期键不渲染空壳，部分缺失只渲染已有项", as
   await expect(
     panel(page, "A").locator('[data-testid="dpb-managed-dates"]'),
   ).toHaveCount(0);
-  await expect(panel(page, "A").locator(".dpb-a-foot")).toHaveCount(0);
+  await expect(panel(page, "A").locator(".dpb-a-foot")).toHaveCount(1);
+  await expect(
+    panel(page, "A").locator('[data-testid="dpb-count"]'),
+  ).toHaveText("2 个字段");
   await setVariant(page, "B");
   await expect(
     panel(page, "B").locator('[data-testid="dpb-managed-dates"]'),
@@ -918,9 +921,7 @@ test("#1163 形态切换图标 L/T 语义与存储兼容", async ({ page }) => {
 
   const pathsA = toggleA.locator("svg path");
   await expect(pathsA).toHaveCount(1);
-  expect(await pathsA.first().getAttribute("d")).toBe(
-    "M3.5 7h6 M3.5 12h4.5 M3.5 17h3",
-  );
+  expect(await pathsA.first().getAttribute("d")).toBe("M5 5v14 M5 19h13");
   expect(
     await toggleA.evaluate(
       (el) => el.getAttribute("title") ?? el.getAttribute("data-tip") ?? "",
@@ -1000,9 +1001,7 @@ test("#1228 形态切换图标换形（L 行条 / T 双列卡）", async ({ page
 
   const pathsA = toggleA.locator("svg path");
   await expect(pathsA).toHaveCount(1);
-  expect(await pathsA.first().getAttribute("d")).toBe(
-    "M3.5 7h6 M3.5 12h4.5 M3.5 17h3",
-  );
+  expect(await pathsA.first().getAttribute("d")).toBe("M5 5v14 M5 19h13");
   await dpbRecord(page, "1228", "01-a-icon-lt");
 
   await toggleA.click();
@@ -1011,7 +1010,7 @@ test("#1228 形态切换图标换形（L 行条 / T 双列卡）", async ({ page
   const toggleB = b.locator('[data-testid="dpb-variant-toggle"]');
   await expect(toggleB.locator("svg path")).toHaveCount(1);
   expect(await toggleB.locator("svg path").first().getAttribute("d")).toBe(
-    "M12 5.5h3v13h-3z M17.5 5.5h3v13h-3z",
+    "M5 5h14 M12 5v14",
   );
   await expect(toggleB).toHaveAttribute("aria-pressed", "true");
   await dpbRecord(page, "1228", "02-b-icon-lt");
@@ -1032,7 +1031,7 @@ test("#1242 形态切换图标按当前态显示对应形态（L 三横线 / T �
   const pathsA = toggleA.locator("svg path");
   await expect(pathsA).toHaveCount(1);
   const dA = await pathsA.first().getAttribute("d");
-  expect(dA).toBe("M3.5 7h6 M3.5 12h4.5 M3.5 17h3");
+  expect(dA).toBe("M5 5v14 M5 19h13");
   await dpbRecord(page, "1242", "01-a-icon-l");
 
   await toggleA.click();
@@ -1044,7 +1043,7 @@ test("#1242 形态切换图标按当前态显示对应形态（L 三横线 / T �
   const pathsB = toggleB.locator("svg path");
   await expect(pathsB).toHaveCount(1);
   const dB = await pathsB.first().getAttribute("d");
-  expect(dB).toBe("M12 5.5h3v13h-3z M17.5 5.5h3v13h-3z");
+  expect(dB).toBe("M5 5h14 M12 5v14");
   expect(dB).not.toBe(dA);
   await dpbRecord(page, "1242", "02-b-icon-t");
 
@@ -3805,7 +3804,69 @@ test("#1039 托管日期只读：无字段行 / 无删除改名入口，footer �
   }
 });
 
-test("#1043 新建字段按钮位次：B 首位 / A 末位，其余按钮相对顺序一致", async ({
+test("#1260 头部按钮居中、footer 顺序/对齐/弱化、L-T 图标、全选图标、折叠条淡出", async ({
+  page,
+}) => {
+  const doc = `---\ntitle: 头部\nstatus: 阅读中\ncreated: 2026-11-14\nupdated: 2026-11-15\n---\n\n# 正文\n`;
+  await openDoc(page, doc, "/Users/test/chrome.md");
+  await setMode(page, "edit");
+  await setVariant(page, "B");
+  const b = panel(page, "B");
+  const dateEl = b.locator('[data-testid="dpb-managed-dates"]');
+  const countEl = b.locator('[data-testid="dpb-count"]');
+  await expect(dateEl).toHaveCount(1);
+  await expect(countEl).toHaveText("2 个字段");
+  const order = await b
+    .locator(".dpb-b-foot > *")
+    .evaluateAll((els) => els.map((e) => e.getAttribute("data-testid") ?? ""));
+  expect(order[0]).toBe("dpb-count");
+  const countLeft = await countEl.evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    return r.left + parseFloat(getComputedStyle(el).paddingLeft || "0");
+  });
+  const typeBox = (await b
+    .locator('[data-key="status"] [data-testid="dpb-type"]')
+    .boundingBox())!;
+  expect(Math.abs(countLeft - typeBox.x)).toBeLessThanOrEqual(2);
+  const lock = b.locator(".dpb-lock").first();
+  expect(await lock.getAttribute("width")).toBe("12");
+
+  const tools = b.locator('[data-testid="dpb-tools"]');
+  const centers = await tools.locator("button, svg").evaluateAll((els) =>
+    els
+      .filter((e) => e.tagName === "BUTTON")
+      .map((e) => {
+        const r = e.getBoundingClientRect();
+        return r.top + r.height / 2;
+      }),
+  );
+  expect(Math.max(...centers) - Math.min(...centers)).toBeLessThanOrEqual(1);
+  await expect(tools.locator('[data-testid="dpb-select-all"] svg')).toHaveCount(
+    1,
+  );
+  await dpbRecord(page, "1260", "01-b-chrome");
+
+  await setVariant(page, "A");
+  const a = panel(page, "A");
+  const aOrder = await a
+    .locator(".dpb-a-foot > *")
+    .evaluateAll((els) => els.map((e) => e.getAttribute("data-testid") ?? ""));
+  expect(aOrder[0]).toBe("dpb-count");
+  await dpbRecord(page, "1260", "02-a-footer-order");
+
+  await a.locator('[data-testid="dpb-collapse"]').click();
+  await page.mouse.move(4, 4);
+  await page.evaluate(() => (document.activeElement as HTMLElement)?.blur());
+  const opacity = () =>
+    a.evaluate((el) => Number(getComputedStyle(el).opacity));
+  await expect.poll(opacity, { timeout: 3000 }).toBeLessThan(0.5);
+  await dpbRecord(page, "1260", "03-collapsed-faded");
+  await a.hover({ position: { x: 10, y: 10 } });
+  await expect.poll(opacity, { timeout: 3000 }).toBeGreaterThan(0.9);
+  await dpbRecord(page, "1260", "04-collapsed-hover");
+});
+
+test("#1043 新建字段按钮位次：A/B 均为首位，按钮顺序一致（#1260 改规格）", async ({
   page,
 }) => {
   await openDoc(page, ROW_DOC, "/Users/test/add-field-order.md");
@@ -3825,15 +3886,11 @@ test("#1043 新建字段按钮位次：B 首位 / A 末位，其余按钮相对�
 
   await setVariant(page, "A");
   const aOrder = await orderOf("A");
-  expect(aOrder[aOrder.length - 1], "A 模式添加字段应为按钮区末位").toBe(
-    "dpb-add-field",
-  );
-  await dpbRecord(page, "1043", "02-a-add-last");
+  expect(aOrder[0], "A 模式添加字段应为按钮区首位").toBe("dpb-add-field");
+  await dpbRecord(page, "1043", "02-a-add-first");
 
-  // A-5.3：剔除添加字段后，两态其余按钮序列完全一致
-  expect(aOrder.filter((t) => t !== "dpb-add-field")).toEqual(
-    bOrder.filter((t) => t !== "dpb-add-field"),
-  );
+  // A-5.2：两态按钮顺序完全一致
+  expect(aOrder).toEqual(bOrder);
 
   // 往返切换无残留 / 无重复节点
   await setVariant(page, "B");

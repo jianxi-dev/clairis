@@ -2954,6 +2954,7 @@ export default function DocPropertyBar({
       title={hasSelection ? "反选（不含标题）" : "全选（不含标题）"}
       onClick={handleSelectAll}
     >
+      <Icon name="selectAll" size={14} />
       {hasSelection ? "反选" : "全选"}
     </button>
   ) : null;
@@ -2979,7 +2980,7 @@ export default function DocPropertyBar({
   const managedDatesView =
     managedDates.length > 0 ? (
       <span className="dpb-dates" data-testid="dpb-managed-dates">
-        <Icon name="lock" size={14} className="dpb-lock" />
+        <Icon name="lock" size={12} className="dpb-lock" />
         {managedDates.map((d) => (
           <span
             className="dpb-date"
@@ -3025,7 +3026,7 @@ export default function DocPropertyBar({
     return (
       <div
         ref={panelRef}
-        className={`dpb-panel dpb-b${selectMode ? " select-mode" : ""}${drop ? " dpb-dragging" : ""}`}
+        className={`dpb-panel dpb-b${selectMode ? " select-mode" : ""}${drop ? " dpb-dragging" : ""}${collapsed ? " dpb-collapsed" : ""}`}
         data-testid="dpb-b"
         onClickCapture={onPanelClickCapture}
       >
@@ -3136,7 +3137,7 @@ export default function DocPropertyBar({
                   </span>
                   <span className="dpb-b-x">
                     {isManagedDateKey(field.key) ? (
-                      <Icon name="lock" size={14} className="dpb-lock" />
+                      <Icon name="lock" size={12} className="dpb-lock" />
                     ) : field !== titleField &&
                       field !== tagsField &&
                       editable &&
@@ -3156,7 +3157,7 @@ export default function DocPropertyBar({
                 </div>
               );
             })}
-            <div className="dpb-b-foot">
+            <div className="dpb-b-foot" data-testid="dpb-foot">
               <span data-testid="dpb-count">{fields.length} 个字段</span>
               {managedDatesView}
             </div>
@@ -3171,7 +3172,7 @@ export default function DocPropertyBar({
   return (
     <div
       ref={panelRef}
-      className={`dpb-panel dpb-a${selectMode ? " select-mode" : ""}${drop ? " dpb-dragging" : ""}`}
+      className={`dpb-panel dpb-a${selectMode ? " select-mode" : ""}${drop ? " dpb-dragging" : ""}${collapsed ? " dpb-collapsed" : ""}`}
       data-testid="dpb-a"
       onClickCapture={onPanelClickCapture}
     >
@@ -3203,6 +3204,17 @@ export default function DocPropertyBar({
         <span className="dpb-a-spacer" />
         <span className="dpb-a-tools" data-testid="dpb-tools">
           {editable && (
+            <button
+              type="button"
+              className="dpb-tpl-btn"
+              data-testid="dpb-add-field"
+              title="添加字段"
+              onClick={togglePalette}
+            >
+              + 添加字段
+            </button>
+          )}
+          {editable && (
             <TemplateMenuButton
               templates={propTemplates}
               onApply={handleApplyTemplate}
@@ -3219,17 +3231,6 @@ export default function DocPropertyBar({
             >
               {tplStatus}
             </span>
-          )}
-          {editable && (
-            <button
-              type="button"
-              className="dpb-tpl-btn"
-              data-testid="dpb-add-field"
-              title="添加字段"
-              onClick={togglePalette}
-            >
-              + 添加字段
-            </button>
           )}
         </span>
       </div>
@@ -3294,7 +3295,7 @@ export default function DocPropertyBar({
                     </span>
                   )}
                   {isManagedDateKey(field.key) ? (
-                    <Icon name="lock" size={14} className="dpb-lock" />
+                    <Icon name="lock" size={12} className="dpb-lock" />
                   ) : editable && !selectMode ? (
                     <button
                       type="button"
@@ -3349,12 +3350,10 @@ export default function DocPropertyBar({
           </div>
         </>
       )}
-      {managedDatesView && (
-        <div className="dpb-a-foot">
-          {managedDatesView}
-          <span data-testid="dpb-count">{fields.length} 个字段</span>
-        </div>
-      )}
+      <div className="dpb-a-foot" data-testid="dpb-foot">
+        <span data-testid="dpb-count">{fields.length} 个字段</span>
+        {managedDatesView}
+      </div>
       {paletteOverlay}
       {dragGhost}
     </div>

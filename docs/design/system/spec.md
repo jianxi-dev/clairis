@@ -54,9 +54,11 @@ source_of_truth: canonical
 | 状态（2） | check / warning |
 | 分屏（2） | splitRight / splitDown |
 | AI（1） | sparkle |
-| 文档属性（1） | docPropertyVariant（L 一行条 / T 精排双列形态切换） |
+| 文档属性（2） | docPropertyVariant（L 一行条 / T 精排双列形态切换） / selectAll（全选） |
 
-**docPropertyVariant 图形规范**：L = List 一行条（每字段独占一行横条），T = Table 精排双列（两列网格）；图标并置两半形成排布对比，传达「同一面板的两种形态」。网格 / 笔画引用 §2.1，标题栏尺寸档引用 §7.2；具体几何见台账「文档属性 L/T 切换图标」。
+**docPropertyVariant 图形规范**：字形语义——L = 左侧竖笔 + 底横向右伸出的 L 形（List 一行条），T = 顶横左右伸出 + 居中竖笔的 T 形（Table 精排双列）；按当前形态只绘制对应单形态，由 `parts` 两段 + `part` 选择器取用。网格 / 笔画引用 §2.1，标题栏尺寸档引用 §7.2；具体几何见台账最新「文档属性 L/T 切换图标（L/T 字形）」行。
+
+**selectAll 图形规范**：方形复选框外框 + 勾（与纯勾 check 区分），24×24 viewBox、描边 1.7、密集档 14px；几何见台账「文档属性全选按钮」。
 
 **copyPath / copyFile 图形规范**：copyPath = 文件夹 + 斜杠（路径语义），copyFile = 文档 + 向右上箭头（文件语义）；两图形 SHALL 可区分、SHALL NOT 复用同一构图。网格 / 笔画引用 §2.1，密集工具条档 14px；具体几何见台账「信息窗复制图标」。
 
@@ -185,8 +187,11 @@ token 缺失时组件按 `var(--sf-ctrl-height, 27px)` 回落，不静默失效�
 | 规范值 | 值 | 用途 |
 |---|---|---|
 | `--dpb-footer-font-size` | 11px | A / B 两形态底部 footer（托管日期 + 字段计数）字号，取既有标注档（§4 `--fs-11`） |
-| `--dpb-icon-size` | 14px | footer 锁图标与标题栏 L/T 切换图标，取 §2.1 尺寸档的密集工具条档 |
+| `--dpb-icon-size` | 14px | 标题栏 L/T 切换图标与操作按钮图标，取 §2.1 尺寸档的密集工具条档 |
 | `--dpb-date-gap` | 6px | footer 内日期项之间的水平间隔，取间距刻度 §3 `--space-6` |
+| `--dpb-lock-size` | 12px | footer 托管日期锁图标；比密集档小一号，弱化存在感 |
+| `--dpb-meta-opacity` | 0.72 | footer 日期与计数的默认不透明度；footer 悬停/聚焦恢复 1 |
+| `--dpb-collapsed-opacity` | 0.35 | 折叠条默认不透明度；滑入/聚焦恢复 1，只改透明度不改布局 |
 
 实现只引 token / 条款号，不写死像素；token 缺失时按上表数值回落。
 
