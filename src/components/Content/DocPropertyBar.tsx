@@ -690,14 +690,26 @@ function moveDtFocus(panel: HTMLElement, forward: boolean): void {
       ? stops[(index + 1) % stops.length]
       : stops[(index - 1 + stops.length) % stops.length];
   } else {
-    const after = active
+    const following = active
       ? stops.find(
           (el) =>
             active.compareDocumentPosition(el) &
             Node.DOCUMENT_POSITION_FOLLOWING,
         )
       : undefined;
-    next = after ?? (forward ? stops[0] : stops[stops.length - 1]);
+    const preceding = active
+      ? stops
+          .slice()
+          .reverse()
+          .find(
+            (el) =>
+              el.compareDocumentPosition(active) &
+              Node.DOCUMENT_POSITION_FOLLOWING,
+          )
+      : undefined;
+    next = forward
+      ? (following ?? stops[0])
+      : (preceding ?? stops[stops.length - 1]);
   }
   next.focus();
 }
