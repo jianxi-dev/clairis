@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { useStore } from "./stores/index";
+import { defaultSaveName } from "./lib/pathName";
 import { isMediaKind } from "./stores/index";
 import { useEditorStore } from "./stores/editorStore";
 import { useCaptureOverlayStore } from "./stores/captureOverlay";
@@ -211,7 +212,7 @@ function App() {
         // 文件名预填页签标题（ui-polish-batch12 6.1）。
         const saved = await invoke<{ path: string }>("save_as_file", {
           content: activeTab.content,
-          defaultName: `${activeTab.title || "未命名"}.md`,
+          defaultName: defaultSaveName(activeTab.title || "未命名"),
           defaultDir: useEditorStore.getState().config.defaultSavePath ?? null,
         });
         if (saved?.path) {

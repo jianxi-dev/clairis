@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import Icon from "./Icon";
 import { colorOfType, fileTypeOf, iconOfType } from "../lib/fileType";
+import { joinStemExt, splitStemExt } from "../lib/pathName";
 import {
   useState,
   useCallback,
@@ -134,7 +135,10 @@ export default function TabBar({
         setEditingId(null);
         return;
       }
-      useStore.getState().renameTab(id, editValue.trim() || fallback);
+      const { stem, ext } = splitStemExt(fallback);
+      useStore
+        .getState()
+        .renameTab(id, joinStemExt(editValue.trim() || stem, ext));
       setEditingId(null);
     },
     [editValue],
@@ -554,7 +558,7 @@ export default function TabBar({
                   if ((e.target as HTMLElement).closest("button, input"))
                     return;
                   setEditingId(id);
-                  setEditValue(tab.title);
+                  setEditValue(splitStemExt(tab.title).stem);
                 }}
                 className={`group flex min-w-0 flex-[0_1_auto] items-center gap-1.5 px-2.5 py-1 text-xs cursor-pointer transition-colors outline-none focus:outline-none focus-visible:outline-none ${
                   isActive
@@ -569,33 +573,43 @@ export default function TabBar({
                   className="mr-0.5"
                 />
                 {editingId === id ? (
-                  <input
-                    data-testid="tab-title-input"
-                    autoFocus
-                    value={editValue}
-                    onChange={(e) => setEditValue(e.target.value)}
-                    onClick={(e) => e.stopPropagation()}
-                    onPointerDown={(e) => e.stopPropagation()}
-                    onDoubleClick={(e) => e.stopPropagation()}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        commitRename(id, tab.title);
-                      } else if (e.key === "Escape") {
-                        e.preventDefault();
-                        cancelRenameRef.current = true;
-                        setEditingId(null);
-                      }
-                    }}
-                    onBlur={() => commitRename(id, tab.title)}
-                    className="w-32 min-w-0 rounded border bg-transparent px-1 text-xs outline-none"
-                    style={{
-                      width: "24ch",
-                      minWidth: "12ch",
-                      borderColor: "var(--app-border)",
-                      color: "var(--app-text)",
-                    }}
-                  />
+                  <span className="inline-flex min-w-0 items-center gap-0.5">
+                    <input
+                      data-testid="tab-title-input"
+                      autoFocus
+                      value={editValue}
+                      onChange={(e) => setEditValue(e.target.value)}
+                      onClick={(e) => e.stopPropagation()}
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onDoubleClick={(e) => e.stopPropagation()}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          commitRename(id, tab.title);
+                        } else if (e.key === "Escape") {
+                          e.preventDefault();
+                          cancelRenameRef.current = true;
+                          setEditingId(null);
+                        }
+                      }}
+                      onBlur={() => commitRename(id, tab.title)}
+                      className="w-32 min-w-0 rounded border bg-transparent px-1 text-xs outline-none"
+                      style={{
+                        width: "24ch",
+                        minWidth: "12ch",
+                        borderColor: "var(--app-border)",
+                        color: "var(--app-text)",
+                      }}
+                    />
+                    {splitStemExt(tab.title).ext && (
+                      <span
+                        data-testid="tab-ext"
+                        className="select-none text-[var(--app-text-3)]"
+                      >
+                        {splitStemExt(tab.title).ext}
+                      </span>
+                    )}
+                  </span>
                 ) : (
                   <span
                     data-testid="tab-title"

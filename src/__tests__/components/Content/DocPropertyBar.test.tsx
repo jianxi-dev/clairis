@@ -249,6 +249,20 @@ function mountDatetime() {
   return { ...view, dispatchRef };
 }
 
+describe("DocPropertyBar 标题扩展名（#1263）", () => {
+  afterEach(() => {
+    cleanup();
+    resetPanel();
+    localStorage.clear();
+  });
+
+  it("标题字段显示不含文档扩展名", () => {
+    const doc = `---\ntitle: 笔记.md\n---\n\n正文\n`;
+    const { container } = render(<DocPropertyBar content={doc} mode="edit" />);
+    expect(container.querySelector(".dpb-a-title")!.textContent).toBe("笔记");
+  });
+});
+
 describe("DocPropertyBar 列表值容错（#1256）", () => {
   afterEach(() => {
     cleanup();

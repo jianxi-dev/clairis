@@ -74,6 +74,7 @@ import {
   parseFrontmatter,
   setFrontmatterField,
 } from "../lib/frontmatter";
+import { splitStemExt } from "../lib/pathName";
 
 type SplitDirection = "horizontal" | "vertical";
 
@@ -706,10 +707,11 @@ export const useStore = create<AppStore>((set, get) => ({
           useEditorStore.getState().config.propAliasMap,
         )
       : undefined;
-    const needDoc = !!titleField && titleField.value !== next;
+    const stem = splitStemExt(next).stem;
+    const needDoc = !!titleField && titleField.value !== stem;
     if (next === tab.title && !needDoc) return;
     const content = needDoc
-      ? setFrontmatterField(tab.content, titleField.key, next).text
+      ? setFrontmatterField(tab.content, titleField.key, stem).text
       : tab.content;
     set({
       tabs: {

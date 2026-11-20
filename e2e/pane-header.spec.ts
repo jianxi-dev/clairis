@@ -308,7 +308,7 @@ test("双击页签名改名：回车提交、Esc 取消、路径不变", async (
   await input.press("Enter");
   // 页签名不再挂原生 title（改为信息窗），Accessible name 用 aria-label
   await page.mouse.move(10, 10);
-  await expect(tab).toHaveAttribute("aria-label", "新名字");
+  await expect(tab).toHaveAttribute("aria-label", "新名字.md");
 
   const pathAfter = await page.evaluate(() => {
     const s = (
@@ -331,7 +331,7 @@ test("双击页签名改名：回车提交、Esc 取消、路径不变", async (
   await page.getByTestId("tab-title-input").press("Escape");
   await expect(page.getByTestId("tab-title-input")).toHaveCount(0);
   await page.mouse.move(10, 10);
-  await expect(tab).toHaveAttribute("aria-label", "新名字");
+  await expect(tab).toHaveAttribute("aria-label", "新名字.md");
 });
 
 test("栏目右上角图标整组默认隐藏，滑入操作区显示", async ({ page }) => {
