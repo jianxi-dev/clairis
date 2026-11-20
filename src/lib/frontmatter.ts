@@ -277,6 +277,28 @@ export function resolveAlias(
 }
 
 /**
+ * 定位标题字段（P-8 收编 / #1232）：规范键 `title` 优先，其次内置别称
+ * （`ALIAS.title`，如「标题」）或用户在 `propAliasMap` 里登记为标题类型的别称。
+ *
+ * 不用 `resolveAlias(key) === CANON_TYPE.title` 直接判定：该函数返回「类型」，
+ * `title` 与 `author` 同为 `text`，会把普通文本字段误认为标题。
+ */
+export function findTitleField(
+  fields: readonly FrontmatterField[],
+  aliasMap?: Record<string, FrontmatterType> | null,
+): FrontmatterField | undefined {
+  const bare = fields.find((f) => f.key === "title");
+  if (bare) return bare;
+  const aliases = new Set<string>(ALIAS.title);
+  if (aliasMap) {
+    for (const [key, type] of Object.entries(aliasMap)) {
+      if (type === CANON_TYPE.title) aliases.add(key.trim());
+    }
+  }
+  return fields.find((f) => aliases.has(f.key));
+}
+
+/**
  * 值 → 类型推断。纯字符串无法推断为具体类型（可能是文本 / 下拉），
  * 因此返回 `unknown`，等用户收编或命中别称（P-8）。
  */

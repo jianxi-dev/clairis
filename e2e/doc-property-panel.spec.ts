@@ -2630,6 +2630,59 @@ test("双击页签重命名 → 回写文档标题字段", async ({ page }) => {
   expect(tab.content).toContain("周会记录");
 });
 
+test("双击页签重命名 → 属性面板标题字段同步（#1232）", async ({ page }) => {
+  await openDoc(page, DOC, "/Users/test/rename-sync.md");
+  await setMode(page, "edit");
+  const a = panel(page, "A");
+  await expect(a.locator('[data-testid="dpb-title"]')).toHaveText(
+    "属性面板测试",
+  );
+
+  await page.locator('[data-tab-id][aria-selected="true"]').dblclick();
+  const input = page.locator('[data-testid="tab-title-input"]');
+  await expect(input).toBeVisible();
+  await input.fill("周会记录");
+  await input.press("Enter");
+  await expect(input).toHaveCount(0);
+
+  await expect(a.locator('[data-testid="dpb-title"]')).toHaveText("周会记录");
+  await expect.poll(async () => docText(page)).toContain("title: 周会记录");
+  const tab = await activeTab(page);
+  expect(tab.title).toBe("周会记录");
+  await dpbRecord(page, "1232", "01-literal-title-synced");
+});
+
+test("双击页签重命名 → 别称标题键（标题）同步（#1232）", async ({ page }) => {
+  await openDoc(
+    page,
+    `---\n标题: 原中文名\ntags:\n  - 甲\n---\n\n# 正文\n`,
+    "/Users/test/rename-alias.md",
+  );
+  await setMode(page, "edit");
+  const a = panel(page, "A");
+  await expect(a.locator('[data-testid="dpb-title"]')).toHaveText("原中文名");
+  await dpbRecord(page, "1232", "02-alias-before");
+
+  await page.locator('[data-tab-id][aria-selected="true"]').dblclick();
+  const input = page.locator('[data-testid="tab-title-input"]');
+  await expect(input).toBeVisible();
+  await input.fill("新中文名");
+  await input.press("Enter");
+  await expect(input).toHaveCount(0);
+
+  await expect(a.locator('[data-testid="dpb-title"]')).toHaveText("新中文名");
+  await expect.poll(async () => docText(page)).toContain("标题: 新中文名");
+  const tab = await activeTab(page);
+  expect(tab.title).toBe("新中文名");
+  await dpbRecord(page, "1232", "03-alias-after");
+
+  await setMode(page, "source");
+  await expect(page.locator(".cm-content").first()).toContainText(
+    "标题: 新中文名",
+  );
+  await dpbRecord(page, "1232", "04-alias-source");
+});
+
 test("模板菜单：通用 / 会议记录 / 需求 三项，A/B 两态可用", async ({
   page,
 }) => {

@@ -69,6 +69,7 @@ import {
 } from "../lib/paneTree";
 import { autoLayoutPanes as buildAutoLayout } from "../lib/paneAutoLayout";
 import {
+  findTitleField,
   newDocFrontmatter,
   parseFrontmatter,
   setFrontmatterField,
@@ -700,12 +701,15 @@ export const useStore = create<AppStore>((set, get) => ({
     if (!next) return;
     const parsed = parseFrontmatter(tab.content);
     const titleField = parsed.present
-      ? parsed.fields.find((f) => f.key === "title")
+      ? findTitleField(
+          parsed.fields,
+          useEditorStore.getState().config.propAliasMap,
+        )
       : undefined;
     const needDoc = !!titleField && titleField.value !== next;
     if (next === tab.title && !needDoc) return;
     const content = needDoc
-      ? setFrontmatterField(tab.content, "title", next).text
+      ? setFrontmatterField(tab.content, titleField.key, next).text
       : tab.content;
     set({
       tabs: {
