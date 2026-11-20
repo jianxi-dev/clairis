@@ -347,6 +347,16 @@ export function inferFrontmatterType(value: unknown): FrontmatterType {
   return "unknown";
 }
 
+/**
+ * 列表值归一：数组逐项转字符串；空值返回空数组；标量按单元素列表。
+ * 用于「键声明为列表、实际值是字符串」的容错（#1256：tags: "#"）。
+ */
+export function toListValue(value: unknown): string[] {
+  if (value === null || value === undefined || value === "") return [];
+  if (Array.isArray(value)) return value.map((v) => String(v));
+  return [String(value)];
+}
+
 /** 显示层格式化；空值返回空串（由 UI 决定占位符）。 */
 export function formatFrontmatterValue(
   value: unknown,
@@ -361,7 +371,7 @@ export function formatFrontmatterValue(
     case "boolean":
       return value ? "开" : "关";
     case "array":
-      return (value as unknown[]).map((v) => String(v)).join("、");
+      return toListValue(value).join("、");
     case "datetime":
       return String(value).replace("T", " ");
     default:

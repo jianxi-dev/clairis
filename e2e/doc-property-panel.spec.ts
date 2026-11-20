@@ -1507,6 +1507,51 @@ test("菜单打开时 ⌘2 直选第 2 项，不触发全局卡片直开", async
   await expect(panel(page, "A")).toBeVisible();
 });
 
+test("tags 字符串不崩溃并按单元素标签渲染，编辑后写回列表（#1256）", async ({
+  page,
+}) => {
+  const doc = `---\ntitle: 列表容错\ntags: "#"\n---\n\n# 正文\n`;
+  await openDoc(page, doc);
+  await setMode(page, "edit");
+  const row = panel(page, "A").locator('[data-key="tags"]');
+  await expect(row.locator(".dpb-tag")).toHaveCount(1);
+  await expect(row.locator(".dpb-tag").first()).toContainText("#");
+  await dpbRecord(page, "1256", "01-open-single-tag");
+
+  const input = row.locator('[data-testid="dpb-tag-input"]');
+  await input.fill("补充");
+  await input.press("Enter");
+  await expect(row.locator(".dpb-tag")).toHaveCount(2);
+  await dpbRecord(page, "1256", "02-add-tag");
+
+  const content = await page.evaluate(() => {
+    const st = (
+      window as unknown as {
+        __biaoyue_store__: {
+          getState: () => {
+            tabs: Record<string, { content: string }>;
+            activeTabId: string;
+          };
+        };
+      }
+    ).__biaoyue_store__.getState();
+    return st.tabs[st.activeTabId]?.content ?? "";
+  });
+  expect(content).not.toContain('tags: "#"');
+  expect(content).toContain('- "#"');
+
+  await setMode(page, "source");
+  await expect(page.locator(".cm-content")).toContainText('- "#"');
+  await dpbRecord(page, "1256", "03-source-yaml-list");
+
+  await setMode(page, "edit");
+  await expect(
+    panel(page, "A").locator('[data-key="tags"] .dpb-tag'),
+  ).toHaveCount(2);
+  await expect(page.locator('[data-testid="dpb-error"]')).toHaveCount(0);
+  await dpbRecord(page, "1256", "04-back-edit-no-error");
+});
+
 test("标签建议菜单：过滤 / 无匹配 Enter 新建 / 改名后颜色按新名重算 / 删除", async ({
   page,
 }) => {

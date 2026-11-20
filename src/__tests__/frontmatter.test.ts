@@ -8,6 +8,7 @@ import {
   coerceFrontmatterValue,
   dedupeKeys,
   findTitleField,
+  formatFrontmatterValue,
   isManagedDateKey,
   managedDateDisplay,
   mergeManagedDates,
@@ -18,6 +19,7 @@ import {
   resolveAlias,
   setFrontmatterField,
   tagColor,
+  toListValue,
   uniqueKey,
   validateFieldValue,
   writeFrontmatter,
@@ -151,6 +153,28 @@ describe("frontmatter parse", () => {
     expect(p2.present).toBe(true);
     expect(p2.fields.map((f) => f.key)).toEqual(p.fields.map((f) => f.key));
     expect(p2.fields[2].value).toBe(999);
+  });
+});
+
+describe("列表值容错（#1256）", () => {
+  it("字符串 tags 按单元素列表展示且不抛错", () => {
+    const doc = `---\ntitle: t\ntags: "#"\n---\n\n正文\n`;
+    const fields = parseFrontmatter(doc).fields;
+    const tags = fields.find((f) => f.key === "tags")!;
+    expect(tags.type).toBe("array");
+    expect(tags.display).toBe("#");
+    expect(toListValue(tags.value)).toEqual(["#"]);
+  });
+
+  it("toListValue：数组逐项转字符串 / 空值空数组 / 标量单元素", () => {
+    expect(toListValue(["a", 1])).toEqual(["a", "1"]);
+    expect(toListValue(null)).toEqual([]);
+    expect(toListValue("")).toEqual([]);
+    expect(toListValue("#")).toEqual(["#"]);
+  });
+
+  it("formatFrontmatterValue 对非数组的 array 类型不抛错", () => {
+    expect(formatFrontmatterValue("#", "array")).toBe("#");
   });
 });
 
