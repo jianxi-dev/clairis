@@ -24,6 +24,7 @@ import {
   renameFrontmatterField,
   setFrontmatterField,
   tagColor,
+  toListValue,
   validateFieldValue,
   moveFieldBlock,
   newDocFrontmatter,
@@ -1253,10 +1254,11 @@ function TagsValue({
   field: FrontmatterField;
   selected?: boolean;
 }) {
-  if (!Array.isArray(field.value)) return <ValueView field={field} />;
+  const tags = toListValue(field.value);
+  if (tags.length === 0) return <ValueView field={field} />;
   return (
     <span className="dpb-tags-group" data-select-node="tags">
-      {field.value.map((tag, i) => {
+      {tags.map((tag, i) => {
         const name = String(tag);
         return (
           <span
@@ -1299,7 +1301,7 @@ interface EditorProps {
 /** 列表 / 复选值编辑：`[[` 弹文档菜单、chip 可移除、粘贴去重（P-3）。 */
 function LinkListEditor({ field, onCommit }: EditorProps) {
   const tabs = useStore((s) => s.tabs);
-  const items = Array.isArray(field.value) ? field.value.map(String) : [];
+  const items = toListValue(field.value);
   const [input, setInput] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -1448,7 +1450,7 @@ function TagEditor({
   selected = false,
 }: EditorProps & { selected?: boolean }) {
   const tabs = useStore((s) => s.tabs);
-  const tags = Array.isArray(field.value) ? field.value.map(String) : [];
+  const tags = toListValue(field.value);
   const [input, setInput] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
   const [sel, setSel] = useState(0);
@@ -1463,11 +1465,9 @@ function TagEditor({
     const out: string[] = [];
     for (const tab of Object.values(tabs)) {
       const parsed = parseFrontmatter(tab.content);
-      const tagsField = parsed.fields.find(
-        (f) => f.key === "tags" && Array.isArray(f.value),
-      );
+      const tagsField = parsed.fields.find((f) => f.key === "tags");
       if (!tagsField) continue;
-      for (const value of tagsField.value as unknown[]) {
+      for (const value of toListValue(tagsField.value)) {
         const name = String(value);
         if (name && !seen.has(name)) {
           seen.add(name);
@@ -2199,8 +2199,7 @@ export default function DocPropertyBar({
   const titleView = titleField
     ? { ...titleField, display: titleField.display || "未命名" }
     : null;
-  const tagsField =
-    fields.find((f) => f.key === "tags" && Array.isArray(f.value)) ?? null;
+  const tagsField = fields.find((f) => f.key === "tags") ?? null;
   const rest = fields.filter((f) => f !== titleField && f !== tagsField);
   const editable = mode === "edit";
 

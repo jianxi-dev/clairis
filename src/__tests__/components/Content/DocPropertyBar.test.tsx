@@ -248,6 +248,23 @@ function mountDatetime() {
   return { ...view, dispatchRef };
 }
 
+describe("DocPropertyBar 列表值容错（#1256）", () => {
+  afterEach(() => {
+    cleanup();
+    resetPanel();
+    localStorage.clear();
+  });
+
+  it("tags 为字符串时按单元素标签渲染且不抛错", () => {
+    const doc = `---\ntitle: 容错\ntags: "#"\n---\n\n正文\n`;
+    const { container } = render(<DocPropertyBar content={doc} mode="edit" />);
+    const row = container.querySelector('[data-key="tags"]');
+    expect(row).not.toBeNull();
+    expect(row!.querySelectorAll(".dpb-tag")).toHaveLength(1);
+    expect(row!.querySelector(".dpb-tag")!.textContent).toContain("#");
+  });
+});
+
 describe("DocPropertyBar 日期时间单面板（#1044）", () => {
   afterEach(() => {
     cleanup();
