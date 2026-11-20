@@ -355,6 +355,27 @@ describe("外部文档兜底解析（#1258）", () => {
     expect(after).toEqual(before);
   });
 
+  it("编辑键时保留其后的注释与空行", () => {
+    const doc = `---\ncreated: {{date}} {{time}}\nstatus: 阅读中\n# 我的注释\n\nbook_title: x\n---\n\n正文\n`;
+    const p = parseFrontmatter(doc);
+    expect(p.yamlValid).toBe(false);
+    const fields = p.fields.map((f) =>
+      f.key === "status" ? { ...f, value: "已完成" } : f,
+    );
+    const r = writeFrontmatter(doc, fields);
+    expect(r.text).toContain("# 我的注释");
+    expect(r.text).toContain("\n\nbook_title: x");
+    expect(r.text).toContain("status: 已完成");
+  });
+
+  it("CRLF 行尾的坏块也能识别字段", () => {
+    const doc = `---\r\ncreated: {{date}} {{time}}\r\nstatus: 阅读中\r\n---\r\n\r\n正文\r\n`;
+    const p = parseFrontmatter(doc);
+    expect(p.present).toBe(true);
+    expect(p.yamlValid).toBe(false);
+    expect(p.fields.map((f) => f.key)).toEqual(["created", "status"]);
+  });
+
   it("不可解析块改名：位置保持且旧键消失", () => {
     const p = parseFrontmatter(OBSIDIAN);
     const fields = p.fields.map((f) =>

@@ -591,7 +591,7 @@ function scanTopLevelEntries(inner: string): LooseEntry[] {
   const out: LooseEntry[] = [];
   let cur: LooseEntry | null = null;
   for (let i = 0; i < lines.length; i++) {
-    const bare = lines[i].replace(/\n$/, "");
+    const bare = lines[i].replace(/\r?\n$/, "");
     const m = /^([^\s#-][^:]*):(.*)$/.exec(bare);
     if (m) {
       cur = { key: m[1].trim(), start: i, lines: [lines[i]] };
@@ -670,6 +670,14 @@ export function parseLooseFields(
 }
 
 /** 行级写回：只替换目标键的连续行块，其余字节原样保留（#1258）。 */
+/** 取条目文本末尾连续的空行 / 注释行（值续行之外的人工痕迹）。 */
+function trailingTrivia(text: string): string {
+  const lines = text.match(/[^\n]*\n|[^\n]+$/g) ?? [];
+  let i = lines.length;
+  while (i > 1 && /^[ \t]*(#.*)?\r?\n?$/.test(lines[i - 1])) i--;
+  return lines.slice(i).join("");
+}
+
 function writeLooseFrontmatter(
   doc: string,
   parsed: ParsedFrontmatter,
@@ -693,7 +701,9 @@ function writeLooseFrontmatter(
     if (original && sameValue(original.value, field.value)) {
       inner += original.text;
     } else {
+      // 替换值行，但保留该键后方挂着的空行 / 注释行（不被静默删除）。
       inner += YAML.stringify({ [field.key]: field.value });
+      if (original) inner += trailingTrivia(original.text);
     }
   }
   // 原块尾部的空行（闭合 --- 之前）随最后一个键一起保留。
