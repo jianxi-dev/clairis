@@ -1229,6 +1229,7 @@ test("日期时间面板：分输入框按 Tab 焦点留在面板内，正文首
   const editor = row.locator('[data-testid="dpb-datetime-editor"]');
   const panelEl = editor.locator('[data-testid="dpb-datetime-panel"]');
   await expect(panelEl).toBeVisible();
+  await dpbRecord(page, "1257", "01-panel-open");
 
   await editor.locator('[data-testid="dpb-time-minute"]').focus();
   await page.keyboard.press("Tab");
@@ -1255,7 +1256,21 @@ test("日期时间面板：分输入框按 Tab 焦点留在面板内，正文首
   });
   expect(state.inPanel).toBe(true);
   expect(state.first).toBe("-");
-  await dpbRecord(page, "1257", "01-tab-stays-in-panel");
+  await dpbRecord(page, "1257", "02-tab-stays-in-panel");
+
+  await editor.locator('[data-testid="dpb-time-minute"]').fill("58");
+  await page.keyboard.press("Enter");
+  await expect(panelEl).toHaveCount(0);
+  await expect(row.locator('[data-testid="dpb-value"]')).toContainText("14:58");
+  await dpbRecord(page, "1257", "03-enter-commits");
+
+  await row.locator('[data-testid="dpb-value"]').click();
+  await expect(panelEl).toBeVisible();
+  await editor.locator('[data-testid="dpb-time-minute"]').focus();
+  await page.keyboard.press("Escape");
+  await expect(panelEl).toHaveCount(0);
+  await expect(row.locator('[data-testid="dpb-value"]')).toContainText("14:58");
+  await dpbRecord(page, "1257", "04-esc-cancels");
 });
 
 test("日期时间面板：失焦（点击外部）才提交组合值", async ({ page }) => {
