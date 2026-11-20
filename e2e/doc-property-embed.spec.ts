@@ -385,6 +385,53 @@ test("⌘⇧Y 隐藏并恢复正文流内的属性块", async ({ page }) => {
   await dpbRecord(page, "1215", "06-restored");
 });
 
+test("双击揭示 frontmatter 后单击恢复：属性块重新挂到新宿主（#1244）", async ({
+  page,
+}) => {
+  await openDoc(page);
+  await setMode(page, "edit");
+  const embed = page.locator(".cm-content > .cm-dpb-embed");
+  await expect(embed).toHaveCount(1);
+  await expect(embed.locator(".dpb-panel")).toHaveCount(1);
+  await dpbRecord(page, "1244", "00-initial-embed");
+
+  // 双击属性块上沿外侧（编辑区顶部内边距）：选中 frontmatter 组 → 隐藏撤销、
+  // 源码揭示。这是既有契约（选区落入块内不隐藏，防编辑盲区），此处只复现。
+  const point = await page.evaluate(() => {
+    const content = document
+      .querySelector(".cm-content")!
+      .getBoundingClientRect();
+    const embed = document
+      .querySelector(".cm-dpb-embed")!
+      .getBoundingClientRect();
+    return { x: content.x + 200, y: embed.y - 8 };
+  });
+  await page.mouse.dblclick(point.x, point.y);
+  await expect(embed).toHaveCount(0);
+  await expect(page.locator(".cm-content > .cm-line").first()).toHaveText(
+    "---",
+  );
+  await dpbRecord(page, "1244", "01-revealed-source");
+
+  // 单击同一位置：光标落回块起点 → 隐藏恢复、widget DOM 重建。宿主若仍指向
+  // 被销毁的旧节点，portal 会渲染进 detached 节点 → 属性块不可见（#1244）。
+  await page.mouse.click(point.x, point.y);
+  await expect(embed).toHaveCount(1);
+  await expect(embed.locator(".dpb-panel")).toHaveCount(1);
+  await expect(embed.locator('[data-testid="dpb-a"]')).toBeVisible();
+  await expect(page.locator(".cm-content > .cm-line").first()).not.toHaveText(
+    "---",
+  );
+  await dpbRecord(page, "1244", "02-recovered-host");
+
+  // 恢复后面板仍可交互（折叠条在嵌入宿主内）。
+  await embed.locator('[data-testid="dpb-collapse"]').click();
+  await expect(
+    embed.locator('[data-testid="dpb-a"] .dpb-a-summary'),
+  ).toContainText("已折叠");
+  await dpbRecord(page, "1244", "03-recovered-interactive");
+});
+
 test("宽度：属性块与正文测量列同宽（A/B 两态）", async ({ page }) => {
   await openDoc(page);
   await setMode(page, "edit");
