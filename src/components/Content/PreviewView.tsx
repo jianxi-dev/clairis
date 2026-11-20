@@ -404,7 +404,10 @@ function decoratePreviewHeadings(root: HTMLElement | null): void {
   if (!root) return;
   const content = root.querySelector<HTMLElement>(".preview-content");
   if (!content) return;
-  const nodes = Array.from(content.children) as HTMLElement[];
+  // #1252：#1243 起正文包在 .preview-prose 内，标题不再是 .preview-content 的直接子节点。
+  const scope =
+    content.querySelector<HTMLElement>(":scope > .preview-prose") ?? content;
+  const nodes = Array.from(scope.children) as HTMLElement[];
   const headings = nodes.filter((el) => /^H[1-6]$/.test(el.tagName));
   for (const heading of headings) {
     if (heading.querySelector(":scope > .preview-heading-fold")) continue;
