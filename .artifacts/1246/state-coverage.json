@@ -1,0 +1,47 @@
+{
+  "task": "1246",
+  "states": [
+    {
+      "state": "edit-A-vertical-gap",
+      "screenshot": ".artifacts/1246/edit-A-vertical-gap.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-20T13:50:02.118Z",
+      "runner": "unknown@unknown"
+    },
+    {
+      "state": "edit-A-vertical-gap-result",
+      "screenshot": ".artifacts/1246/edit-A-vertical-gap-result.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-20T13:50:02.141Z",
+      "runner": "unknown@unknown"
+    },
+    {
+      "state": "edit-A-row-start",
+      "screenshot": ".artifacts/1246/edit-A-row-start.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-20T13:50:03.259Z",
+      "runner": "unknown@unknown"
+    },
+    {
+      "state": "edit-A-row-start-result",
+      "screenshot": ".artifacts/1246/edit-A-row-start-result.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-20T13:50:03.284Z",
+      "runner": "unknown@unknown"
+    },
+    {
+      "state": "edit-B-horizontal",
+      "screenshot": ".artifacts/1246/edit-B-horizontal.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-20T13:50:04.377Z",
+      "runner": "unknown@unknown"
+    },
+    {
+      "state": "edit-B-horizontal-result",
+      "screenshot": ".artifacts/1246/edit-B-horizontal-result.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-20T13:50:04.400Z",
+      "runner": "unknown@unknown"
+    }
+  ]
+}

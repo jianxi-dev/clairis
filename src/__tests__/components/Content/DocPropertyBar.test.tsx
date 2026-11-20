@@ -15,7 +15,10 @@ vi.mock("../../../editors/editorRef", () => ({
   getPanelEditorView: () => editorRefs.activeView,
 }));
 
-import DocPropertyBar from "../../../components/Content/DocPropertyBar";
+import DocPropertyBar, {
+  aDropIndicator,
+  type DropRowBox,
+} from "../../../components/Content/DocPropertyBar";
 import { useDocPropertyPanelStore } from "../../../stores/docPropertyPanel";
 import { useEditorStore } from "../../../stores/editorStore";
 
@@ -358,5 +361,56 @@ createdate: 2026-11-14
     ).toBe("date");
     expect(row.querySelector('[data-testid="dpb-datetime-editor"]')).toBeNull();
     expect(row.querySelectorAll('input[type="time"]')).toHaveLength(0);
+  });
+});
+
+describe("aDropIndicator（A 态竖向落点条几何）", () => {
+  const rows: DropRowBox[] = [
+    { id: 0, left: 14, top: 10, width: 100, height: 26 },
+    { id: 1, left: 14, top: 50, width: 120, height: 26 },
+    { id: 2, left: 150, top: 50, width: 120, height: 26 },
+    { id: 3, left: 286, top: 50, width: 120, height: 26 },
+    { id: 4, left: 14, top: 82, width: 120, height: 26 },
+    { id: 5, left: 150, top: 82, width: 120, height: 26 },
+  ];
+
+  it("行内 gap：x 落在相邻两胶囊之间，覆盖整行高", () => {
+    expect(aDropIndicator(2, rows, 6)).toEqual({
+      left: (134 + 150) / 2,
+      top: 50,
+      height: 26,
+    });
+  });
+
+  it("行首 gap：竖条贴该行左缘胶囊", () => {
+    expect(aDropIndicator(1, rows, 6)).toEqual({
+      left: 14,
+      top: 50,
+      height: 26,
+    });
+  });
+
+  it("换行行首：取目标视觉行的左缘与行高", () => {
+    expect(aDropIndicator(4, rows, 6)).toEqual({
+      left: 14,
+      top: 82,
+      height: 26,
+    });
+  });
+
+  it("追加到末尾：竖条贴末行末胶囊右缘", () => {
+    expect(aDropIndicator(6, rows, 6)).toEqual({
+      left: 270,
+      top: 82,
+      height: 26,
+    });
+  });
+
+  it("标题位单独成行：竖条贴标题左缘", () => {
+    expect(aDropIndicator(0, rows, 6)).toEqual({
+      left: 14,
+      top: 10,
+      height: 26,
+    });
   });
 });

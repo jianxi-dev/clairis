@@ -1105,6 +1105,12 @@
   z-index: 5;
 }
 
+/* A 态行内竖条：横向位置与行高由内联样式给定，此处只把整宽横线收敛为 2px 竖线 */
+.dpb-drop-line[data-orientation="v"] {
+  right: auto;
+  width: 2px;
+}
+
 /* ── 添加字段控件区（#1041）─────────────────────────────── */
 .dpb-palette {
   max-height: calc(100vh - 16px);

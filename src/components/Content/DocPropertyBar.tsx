@@ -93,6 +93,79 @@ const DRAG_THRESHOLD = 5;
 /** 新字段占位键名：重名时按 `new-field-2`… 顺延（P-9 首次添加自动建块）。 */
 const NEW_FIELD_KEY = "new-field";
 
+/** 落点指示条几何（相对面板 padding box，单位 px）。 */
+interface DropIndicatorGeom {
+  orientation: "h" | "v";
+  top: number;
+  left: number | null;
+  height: number | null;
+}
+
+type DropIndicator = DropIndicatorGeom & { index: number };
+
+/** A 态行盒（相对面板），用于推导竖向指示条位置。 */
+export interface DropRowBox {
+  id: number;
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
+/**
+ * A 态竖向指示条：把 `computeDropIndex` 的 gap index 映射到目标视觉行上的
+ * 竖条几何——x 落在相邻两胶囊之间（行首贴左缘），y/height 覆盖整行高。
+ * 纯函数，行盒由调用方从 DOM 量取。
+ */
+export function aDropIndicator(
+  index: number,
+  rows: DropRowBox[],
+  fieldsLength: number,
+): { left: number; top: number; height: number } {
+  if (rows.length === 0) return { left: 0, top: 0, height: 0 };
+  // 与 computeDropIndex 同判据：中心 Y 相差 ≤2px 视为同一视觉行。
+  const groups: {
+    top: number;
+    bottom: number;
+    center: number;
+    chips: DropRowBox[];
+  }[] = [];
+  for (const el of rows) {
+    const cy = el.top + el.height / 2;
+    const g = groups.find((v) => Math.abs(v.center - cy) <= 2);
+    if (g) {
+      g.top = Math.min(g.top, el.top);
+      g.bottom = Math.max(g.bottom, el.top + el.height);
+      g.chips.push(el);
+    } else {
+      groups.push({
+        top: el.top,
+        bottom: el.top + el.height,
+        center: cy,
+        chips: [el],
+      });
+    }
+  }
+  groups.sort((a, b) => a.top - b.top);
+  const group =
+    groups.find((g) => g.chips.some((c) => c.id === index)) ??
+    groups[groups.length - 1];
+  const chips = [...group.chips].sort((a, b) => a.left - b.left);
+  const span = {
+    top: group.top,
+    height: group.bottom - group.top,
+  };
+  if (index >= fieldsLength) {
+    const last = chips[chips.length - 1];
+    return { left: last.left + last.width, ...span };
+  }
+  const pos = chips.findIndex((c) => c.id === index);
+  if (pos <= 0) return { left: chips[0].left, ...span };
+  const prev = chips[pos - 1];
+  const cur = chips[pos];
+  return { left: (prev.left + prev.width + cur.left) / 2, ...span };
+}
+
 interface OpsBarProps {
   count: number;
   canPaste: boolean;
@@ -1779,7 +1852,7 @@ export default function DocPropertyBar({
   const [selMap, setSelMap] = useState<Record<string, FrontmatterRowId[]>>({});
   const [clipboard, setClipboard] =
     useState<DocPropertyClipboardPayload | null>(() => getFieldSelection());
-  const [drop, setDrop] = useState<{ index: number; top: number } | null>(null);
+  const [drop, setDrop] = useState<DropIndicator | null>(null);
   const [pendingRenameKey, setPendingRenameKeyState] = useState<string | null>(
     () => pendingRenameByDoc.get(docKey) ?? null,
   );
@@ -2375,6 +2448,44 @@ export default function DocPropertyBar({
       : r.top - panelRect.top;
   };
 
+  const dropIndicatorFor = (index: number): DropIndicator => {
+    if (variant === "B") {
+      return {
+        index,
+        orientation: "h",
+        top: dropTopFor(index),
+        left: null,
+        height: null,
+      };
+    }
+    const root = panelRef.current;
+    const rowsEls = dropRows();
+    if (!root || rowsEls.length === 0) {
+      return { index, orientation: "v", top: 0, left: 0, height: 0 };
+    }
+    const panelRect = root.getBoundingClientRect();
+    const originX = panelRect.left + root.clientLeft;
+    const originY = panelRect.top + root.clientTop;
+    const boxes: DropRowBox[] = rowsEls.map((el) => {
+      const r = el.getBoundingClientRect();
+      return {
+        id: Number(el.getAttribute("data-row-id")),
+        left: r.left - originX,
+        top: r.top - originY,
+        width: r.width,
+        height: r.height,
+      };
+    });
+    const g = aDropIndicator(index, boxes, fields.length);
+    return {
+      index,
+      orientation: "v",
+      top: g.top,
+      left: g.left,
+      height: g.height,
+    };
+  };
+
   const onHandlePointerDown = (
     e: React.PointerEvent<HTMLSpanElement>,
     id: FrontmatterRowId,
@@ -2400,7 +2511,7 @@ export default function DocPropertyBar({
         if (!selectedRef.current.has(id)) applySelection([id]);
       }
       over = computeDropIndex(ev.clientX, ev.clientY);
-      setDrop({ index: over, top: dropTopFor(over) });
+      setDrop(dropIndicatorFor(over));
     };
     const onUp = () => {
       window.removeEventListener("pointermove", onMove);
@@ -2533,7 +2644,7 @@ export default function DocPropertyBar({
       inside = hitFieldArea(ev.clientX, ev.clientY);
       over = inside ? computeDropIndex(ev.clientX, ev.clientY) : null;
       setGhost({ type, x: ev.clientX, y: ev.clientY });
-      setDrop(over != null ? { index: over, top: dropTopFor(over) } : null);
+      setDrop(over != null ? dropIndicatorFor(over) : null);
     };
     const onUp = () => {
       window.removeEventListener("pointermove", onMove);
@@ -2718,7 +2829,12 @@ export default function DocPropertyBar({
     <span
       className="dpb-drop-line"
       data-testid="dpb-drop-line"
-      style={{ top: drop.top }}
+      data-orientation={drop.orientation}
+      style={
+        drop.orientation === "v"
+          ? { top: drop.top, left: drop.left ?? 0, height: drop.height ?? 0 }
+          : { top: drop.top }
+      }
     />
   ) : null;
 

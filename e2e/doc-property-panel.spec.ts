@@ -1557,10 +1557,76 @@ author: 张三
 # 正文
 `;
 
+const WRAP_DOC = `---
+title: 换行测试
+alpha: 甲甲甲
+bravo: 乙乙乙
+charlie: 丙丙丙
+delta: 丁丁丁
+echo: 戊戊戊
+foxtrot: 己己己
+golf: 庚庚庚
+hotel: 辛辛辛
+india: 壬壬壬
+juliet: 癸癸癸
+kilo: 子子子
+lima: 丑丑丑
+---
+
+# 正文
+`;
+
 async function rowKeys(page: Page, variant: "A" | "B"): Promise<string[]> {
   return panel(page, variant)
     .locator('[data-testid="dpb-row"]')
     .evaluateAll((els) => els.map((e) => e.getAttribute("data-key") ?? ""));
+}
+
+type ChipBox = {
+  key: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
+async function chipBoxes(page: Page, variant: "A" | "B"): Promise<ChipBox[]> {
+  return panel(page, variant)
+    .locator('[data-testid="dpb-row"]')
+    .evaluateAll((els) =>
+      els.map((e) => {
+        const r = e.getBoundingClientRect();
+        return {
+          key: e.getAttribute("data-key") ?? "",
+          x: r.x,
+          y: r.y,
+          width: r.width,
+          height: r.height,
+        };
+      }),
+    );
+}
+
+/** 按视觉行分组（中心 Y 相差 ≤2px），与 computeDropIndex 同判据。 */
+function groupVisualRows(boxes: ChipBox[]): ChipBox[][] {
+  const groups: ChipBox[][] = [];
+  for (const b of boxes) {
+    const cy = b.y + b.height / 2;
+    const g = groups.find(
+      (gr) => Math.abs(gr[0].y + gr[0].height / 2 - cy) <= 2,
+    );
+    if (g) g.push(b);
+    else groups.push([b]);
+  }
+  groups.sort((a, b) => a[0].y - b[0].y);
+  return groups;
+}
+
+function rowSpan(row: ChipBox[]): number {
+  return (
+    Math.max(...row.map((b) => b.y + b.height)) -
+    Math.min(...row.map((b) => b.y))
+  );
 }
 
 async function docText(page: Page): Promise<string> {
@@ -1829,6 +1895,143 @@ test("#1229 B 态拖拽：行 1 拖到行 3 落点 = [f2,f3,f1,f4,f5]", async ({
   await dpbRecord(page, "1229", "edit-B-drag-middle");
   await page.mouse.up();
 
+  expect(await rowKeys(page, "B")).toEqual([
+    "category",
+    "author",
+    "title",
+    "source",
+    "note",
+  ]);
+});
+
+test("#1246 A 态拖拽：右下落点显示行内竖条（x 在相邻胶囊之间，高约等于行高）", async ({
+  page,
+}) => {
+  await openDoc(page, ROW_DOC, "/Users/test/drag-vertical-a.md");
+  await setVariant(page, "A");
+  await setMode(page, "edit");
+  const a = panel(page, "A");
+
+  const chip = a.locator('[data-key="category"]');
+  await chip.hover();
+  const handle = chip.locator('[data-testid="dpb-row-handle"]');
+  const hb = (await handle.boundingBox())!;
+  await page.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2 - 12, {
+    steps: 3,
+  });
+  // 拖起即选中：删除按钮隐藏、操作条出现，布局重排，按选中后的真实盒形定位。
+  const sourceBox = (await a.locator('[data-key="source"]').boundingBox())!;
+  const noteBox = (await a.locator('[data-key="note"]').boundingBox())!;
+  await page.mouse.move(
+    sourceBox.x + sourceBox.width * 0.75,
+    sourceBox.y + sourceBox.height * 0.75,
+    { steps: 8 },
+  );
+
+  const line = page.locator('[data-testid="dpb-drop-line"]');
+  await expect(line).toBeVisible();
+  await expect(line).toHaveAttribute("data-orientation", "v");
+  const lineBox = (await line.boundingBox())!;
+  expect(lineBox.x).toBeGreaterThan(sourceBox.x + sourceBox.width);
+  expect(lineBox.x).toBeLessThan(noteBox.x);
+  expect(
+    Math.abs(lineBox.height - rowSpan([sourceBox, noteBox])),
+  ).toBeLessThanOrEqual(2);
+  await dpbRecord(page, "1246", "edit-A-vertical-gap");
+
+  await page.mouse.up();
+  await dpbRecord(page, "1246", "edit-A-vertical-gap-result");
+  expect(await rowKeys(page, "A")).toEqual([
+    "author",
+    "source",
+    "category",
+    "note",
+  ]);
+});
+
+test("#1246 A 态拖拽：拖到换行视觉行行首，竖条贴该行左缘胶囊", async ({
+  page,
+}) => {
+  await openDoc(page, WRAP_DOC, "/Users/test/drag-row-start.md");
+  await setVariant(page, "A");
+  await setMode(page, "edit");
+  const a = panel(page, "A");
+
+  const before = await rowKeys(page, "A");
+  const chip = a.locator(`[data-key="${before[0]}"]`);
+  await chip.hover();
+  const handle = chip.locator('[data-testid="dpb-row-handle"]');
+  const hb = (await handle.boundingBox())!;
+  await page.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2 - 12, {
+    steps: 3,
+  });
+  // 拖起即选中触发布局重排，按选中后的真实视觉行取「换行行首」目标。
+  const groups = groupVisualRows(await chipBoxes(page, "A"));
+  expect(groups.length).toBeGreaterThanOrEqual(2);
+  const targetRow = groups[groups.length - 1];
+  const leftChip = targetRow[0];
+  await page.mouse.move(
+    leftChip.x + leftChip.width * 0.1,
+    leftChip.y + leftChip.height / 2,
+    { steps: 8 },
+  );
+
+  const line = page.locator('[data-testid="dpb-drop-line"]');
+  await expect(line).toBeVisible();
+  await expect(line).toHaveAttribute("data-orientation", "v");
+  const lineBox = (await line.boundingBox())!;
+  expect(Math.abs(lineBox.x - leftChip.x)).toBeLessThanOrEqual(2);
+  expect(Math.abs(lineBox.height - rowSpan(targetRow))).toBeLessThanOrEqual(2);
+  await dpbRecord(page, "1246", "edit-A-row-start");
+
+  await page.mouse.up();
+  await dpbRecord(page, "1246", "edit-A-row-start-result");
+  const moved = before[0];
+  const expected = [...before];
+  expected.splice(expected.indexOf(moved), 1);
+  expected.splice(expected.indexOf(leftChip.key), 0, moved);
+  expect(await rowKeys(page, "A")).toEqual(expected);
+});
+
+test("#1246 B 态拖拽：落点线保持整宽横线（data-orientation=h）", async ({
+  page,
+}) => {
+  await openDoc(page, ROW_DOC, "/Users/test/drag-horizontal-b.md");
+  await setVariant(page, "B");
+  await setMode(page, "edit");
+  const b = panel(page, "B");
+
+  const handle = b.locator('[data-key="title"] [data-testid="dpb-row-handle"]');
+  const hb = (await handle.boundingBox())!;
+  await page.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2 - 12, {
+    steps: 3,
+  });
+  const target = (await b.locator('[data-key="author"]').boundingBox())!;
+  await page.mouse.move(
+    target.x + target.width / 2,
+    target.y + target.height * 0.75,
+    { steps: 8 },
+  );
+
+  const line = page.locator('[data-testid="dpb-drop-line"]');
+  await expect(line).toBeVisible();
+  await expect(line).toHaveAttribute("data-orientation", "h");
+  const lineBox = (await line.boundingBox())!;
+  const panelBox = (await b.boundingBox())!;
+  expect(lineBox.width).toBeGreaterThanOrEqual(panelBox.width - 4);
+  expect(Math.abs(lineBox.x - panelBox.x)).toBeLessThanOrEqual(4);
+  const sourceBox = (await b.locator('[data-key="source"]').boundingBox())!;
+  expect(Math.abs(lineBox.y - sourceBox.y)).toBeLessThanOrEqual(2);
+  await dpbRecord(page, "1246", "edit-B-horizontal");
+
+  await page.mouse.up();
+  await dpbRecord(page, "1246", "edit-B-horizontal-result");
   expect(await rowKeys(page, "B")).toEqual([
     "category",
     "author",
