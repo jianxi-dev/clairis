@@ -5,7 +5,7 @@ import path from "node:path";
 /**
  * #1148：窗口原生全屏（TabBar 空白双击）不得反向驱动视频网页全屏。
  *
- * 窗口级全屏只做窗口全屏，视频保持原位；用户显式入口（双击视频 / 全屏按钮）
+ * 窗口级全屏只做窗口全屏，视频保持原位；用户显式入口（双击视频 / F 键）
  * 仍进网页全屏，退出方向不变。后台格（MediaPlayerHost 常驻）同样不被带动。
  *
  * mock 补桩（仅测试侧 initScript，不改 src / 不改 mock 本体）：
@@ -212,7 +212,7 @@ test("对照：仅窗口 resize、原生未全屏 → 视频不网页全屏", as
   await record(page, "02-resize-only-no-fullscreen");
 });
 
-test("用户显式入口保留：双击视频进网页全屏，再点全屏按钮退出", async ({
+test("用户显式入口保留：双击视频进网页全屏，再按 F 键退出", async ({
   page,
 }) => {
   await boot(page);
@@ -228,7 +228,8 @@ test("用户显式入口保留：双击视频进网页全屏，再点全屏按�
     .toBeGreaterThanOrEqual(1);
   await record(page, "03-explicit-video-fullscreen");
 
-  await page.locator('.art-control[data-name="fullscreen"]').click();
+  // #1230：独立页签无全屏按钮，退出走 F 键显式入口（双击进入时 isFocus 已置）。
+  await page.keyboard.press("f");
   await expect(player).not.toHaveClass(/art-fullscreen-web/);
   await record(page, "04-explicit-video-fullscreen-exit");
 });

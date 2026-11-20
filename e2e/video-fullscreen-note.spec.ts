@@ -58,7 +58,9 @@ test("全屏后时间戳窗口仍可见且层级在播放器之上", async ({ pa
   await page.locator('.art-control[data-name="note"]').click();
   const note = page.locator('[data-testid="timestamp-note"]');
   await expect(note).toBeVisible({ timeout: 3000 });
-  await page.locator('.art-control[data-name="fullscreen"]').click();
+  // #1230：独立页签无全屏按钮，显式入口改 F 键（先点击置 isFocus）。
+  await page.locator(".art-video-player").first().click();
+  await page.keyboard.press("f");
   await page.waitForTimeout(500);
   await expect(note).toBeVisible();
   const z = await note.evaluate((el) => Number(getComputedStyle(el).zIndex));
