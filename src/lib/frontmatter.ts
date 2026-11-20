@@ -172,6 +172,40 @@ export function managedDateDisplay(value: unknown): string | null {
   return m ? m[1] : null;
 }
 
+/**
+ * 结构写回前把托管日期并回可编辑列表（#1245）。
+ *
+ * `editable` 的顺序即用户排好的行序，必须原样保留；本函数只补回其中缺失的
+ * 托管日期字段，位置取其在原文中后续仍存在的第一个键之前（没有则追加），
+ * 因此既不会把拖拽 / 中位插入后的顺序还原，也不会丢键或重复。
+ */
+export function mergeManagedDates(
+  editable: readonly FrontmatterField[],
+  parsedFields: readonly FrontmatterField[],
+  allFields: readonly FrontmatterField[],
+): FrontmatterField[] {
+  const out = [...editable];
+  const present = new Set(out.map((f) => f.key));
+  const byKey = new Map(allFields.map((f) => [f.key, f]));
+  for (let i = 0; i < parsedFields.length; i++) {
+    const orig = parsedFields[i];
+    if (!isManagedDateKey(orig.key) || present.has(orig.key)) continue;
+    const field = byKey.get(orig.key) ?? orig;
+    let at = -1;
+    for (let j = i + 1; j < parsedFields.length; j++) {
+      const idx = out.findIndex((f) => f.key === parsedFields[j].key);
+      if (idx >= 0) {
+        at = idx;
+        break;
+      }
+    }
+    if (at < 0) out.push(field);
+    else out.splice(at, 0, field);
+    present.add(orig.key);
+  }
+  return out;
+}
+
 /** 新建文档默认 frontmatter（P-7）：标题占位空串 + 创建 / 修改日期。 */
 export function newDocFrontmatter(now: Date = new Date()): string {
   const stamp = todayStamp(now);

@@ -1,0 +1,92 @@
+npm warn Unknown user config "electron_mirror". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+[WebServer] npm warn Unknown env config "electron-mirror". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+[WebServer] npm warn Unknown user config "electron_mirror". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+Running 3 tests using 1 worker
+FFF
+
+  1) e2e/doc-property-panel.spec.ts:3422:1 › #1245 托管日期文档 B 态拖拽：顺序改动不再被抹掉 ──────────────────────────
+
+    Error: expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 1
+
+      Array [
+        "title",
+        "category",
+    -   "source",
+        "author",
+    +   "source",
+        "note",
+      ]
+
+      3449 |   await expect(page.locator('[data-testid="dpb-drop-line"]')).toHaveCount(0);
+      3450 |
+    > 3451 |   expect(await rowKeys(page, "B")).toEqual([
+           |                                    ^
+      3452 |     "title",
+      3453 |     "category",
+      3454 |     "source",
+        at /Users/mason/ToHighs/clairis/e2e/doc-property-panel.spec.ts:3451:36
+
+    Error Context: test-results/doc-property-panel--1245-托管日期文档-B-态拖拽：顺序改动不再被抹掉/error-context.md
+
+  2) e2e/doc-property-panel.spec.ts:3464:1 › #1245 托管日期文档 A 态拖拽：中间落点顺序改动不再被抹掉 ──────────────────────
+
+    Error: expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 1
+
+      Array [
+        "category",
+        "author",
+    -   "note",
+        "source",
+    +   "note",
+      ]
+
+      3495 |   await page.mouse.up();
+      3496 |
+    > 3497 |   expect(await rowKeys(page, "A")).toEqual([
+           |                                    ^
+      3498 |     "category",
+      3499 |     "author",
+      3500 |     "note",
+        at /Users/mason/ToHighs/clairis/e2e/doc-property-panel.spec.ts:3497:36
+
+    Error Context: test-results/doc-property-panel--1245-托管日期文档-A-态拖拽：中间落点顺序改动不再被抹掉/error-context.md
+
+  3) e2e/doc-property-panel.spec.ts:3509:1 › #1245 托管日期文档调色板：拖到中间行插入而非追加到末尾 ────────────────────────
+
+    Error: expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 1
+
+      Array [
+        "title",
+        "category",
+    -   "new-field",
+        "author",
+        "source",
+        "note",
+    +   "new-field",
+      ]
+
+      3532 |   await page.mouse.up();
+      3533 |
+    > 3534 |   expect(await rowKeys(page, "B")).toEqual([
+           |                                    ^
+      3535 |     "title",
+      3536 |     "category",
+      3537 |     "new-field",
+        at /Users/mason/ToHighs/clairis/e2e/doc-property-panel.spec.ts:3534:36
+
+    Error Context: test-results/doc-property-panel--1245-托管日期文档调色板：拖到中间行插入而非追加到末尾/error-context.md
+
+  3 failed
+    e2e/doc-property-panel.spec.ts:3422:1 › #1245 托管日期文档 B 态拖拽：顺序改动不再被抹掉 ───────────────────────────
+    e2e/doc-property-panel.spec.ts:3464:1 › #1245 托管日期文档 A 态拖拽：中间落点顺序改动不再被抹掉 ───────────────────────
+    e2e/doc-property-panel.spec.ts:3509:1 › #1245 托管日期文档调色板：拖到中间行插入而非追加到末尾 ─────────────────────────

@@ -10,6 +10,7 @@ import {
   findTitleField,
   isManagedDateKey,
   managedDateDisplay,
+  mergeManagedDates,
   moveFieldBlock,
   normalizePropAliasMap,
   parseFrontmatter,
@@ -691,5 +692,95 @@ note: x
     expect(r.from).toBe(0);
     expect(r.to).toBe(0);
     expect(r.text).toBe("---\ntitle: 新\n---\n# 正文\n");
+  });
+});
+
+describe("mergeManagedDates（托管日期并回，#1245）", () => {
+  const f = (key: string): FrontmatterField => ({
+    key,
+    type: "text",
+    value: key,
+    display: key,
+  });
+  const parsed = [
+    "title",
+    "category",
+    "created",
+    "author",
+    "updated",
+    "source",
+    "note",
+  ].map(f);
+  const all = parsed.map((x) => ({ ...x }));
+
+  it("保留传入顺序，缺失的托管日期按原文相对位置补回", () => {
+    const editable = [
+      f("note"),
+      f("title"),
+      f("category"),
+      f("author"),
+      f("source"),
+    ];
+    expect(mergeManagedDates(editable, parsed, all).map((x) => x.key)).toEqual([
+      "note",
+      "title",
+      "category",
+      "created",
+      "author",
+      "updated",
+      "source",
+    ]);
+  });
+
+  it("created 始终排在 updated 之前", () => {
+    const editable = [
+      f("title"),
+      f("category"),
+      f("author"),
+      f("source"),
+      f("note"),
+    ];
+    expect(mergeManagedDates(editable, parsed, all).map((x) => x.key)).toEqual([
+      "title",
+      "category",
+      "created",
+      "author",
+      "updated",
+      "source",
+      "note",
+    ]);
+  });
+
+  it("已在列表中的托管日期不重复补入", () => {
+    const editable = [
+      f("title"),
+      f("created"),
+      f("category"),
+      f("author"),
+      f("updated"),
+      f("source"),
+      f("note"),
+    ];
+    expect(mergeManagedDates(editable, parsed, all).map((x) => x.key)).toEqual(
+      editable.map((x) => x.key),
+    );
+  });
+
+  it("无后续键时追加到末尾", () => {
+    const tail = ["title", "category", "created", "updated"].map(f);
+    expect(
+      mergeManagedDates([f("category"), f("title")], tail, tail).map(
+        (x) => x.key,
+      ),
+    ).toEqual(["category", "title", "created", "updated"]);
+  });
+
+  it("无托管日期时原样返回传入顺序", () => {
+    const plain = ["b", "a", "c"].map(f);
+    expect(mergeManagedDates([f("c"), f("a"), f("b")], plain, plain)).toEqual([
+      f("c"),
+      f("a"),
+      f("b"),
+    ]);
   });
 });

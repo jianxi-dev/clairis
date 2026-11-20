@@ -1,0 +1,47 @@
+{
+  "task": "1245",
+  "states": [
+    {
+      "state": "01-b-managed-drag-over",
+      "screenshot": ".artifacts/1245/01-b-managed-drag-over.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-20T12:28:04.413Z",
+      "runner": "unknown@unknown"
+    },
+    {
+      "state": "02-b-managed-drag-result",
+      "screenshot": ".artifacts/1245/02-b-managed-drag-result.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-20T12:28:04.449Z",
+      "runner": "unknown@unknown"
+    },
+    {
+      "state": "03-a-managed-drag-over",
+      "screenshot": ".artifacts/1245/03-a-managed-drag-over.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-20T12:28:06.267Z",
+      "runner": "unknown@unknown"
+    },
+    {
+      "state": "04-a-managed-drag-result",
+      "screenshot": ".artifacts/1245/04-a-managed-drag-result.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-20T12:28:06.300Z",
+      "runner": "unknown@unknown"
+    },
+    {
+      "state": "05-palette-middle-over",
+      "screenshot": ".artifacts/1245/05-palette-middle-over.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-20T12:28:07.500Z",
+      "runner": "unknown@unknown"
+    },
+    {
+      "state": "06-palette-middle-result",
+      "screenshot": ".artifacts/1245/06-palette-middle-result.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-20T12:28:07.532Z",
+      "runner": "unknown@unknown"
+    }
+  ]
+}
