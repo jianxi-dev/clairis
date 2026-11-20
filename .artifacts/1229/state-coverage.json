@@ -1,0 +1,33 @@
+{
+  "task": "1229",
+  "states": [
+    {
+      "state": "edit-A-drag-middle",
+      "screenshot": ".artifacts/1229/edit-A-drag-middle.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-20T06:35:52.329Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "edit-A-drag-middle-result",
+      "screenshot": ".artifacts/1229/edit-A-drag-middle-result.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-20T06:35:52.356Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "edit-A-block-move",
+      "screenshot": ".artifacts/1229/edit-A-block-move.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-20T06:35:53.465Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "edit-B-drag-middle",
+      "screenshot": ".artifacts/1229/edit-B-drag-middle.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-20T06:35:54.558Z",
+      "runner": "mason@unknown"
+    }
+  ]
+}

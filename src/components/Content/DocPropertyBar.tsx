@@ -2312,14 +2312,62 @@ export default function DocPropertyBar({
     ).filter((el) => el.getAttribute("data-row-id") !== "tags");
   };
 
-  const computeDropIndex = (clientY: number): number => {
+  const computeDropIndex = (clientX: number, clientY: number): number => {
     const rows = dropRows();
     if (rows.length === 0) return fields.length;
+    if (variant === "B") {
+      for (const el of rows) {
+        const r = el.getBoundingClientRect();
+        if (clientY < r.top + r.height / 2) {
+          return Number(el.getAttribute("data-row-id"));
+        }
+      }
+      return fields.length;
+    }
+    // A 态胶囊换行：DOM 顺序不等于垂直顺序，按视觉行（centerY）分组，
+    // 行内再用水平中线区分 before / after。
+    const groups: {
+      top: number;
+      bottom: number;
+      center: number;
+      chips: { id: number; cx: number }[];
+    }[] = [];
     for (const el of rows) {
       const r = el.getBoundingClientRect();
-      if (clientY < r.top + r.height / 2) {
-        return Number(el.getAttribute("data-row-id"));
+      const cy = r.top + r.height / 2;
+      const g = groups.find((v) => Math.abs(v.center - cy) <= 2);
+      if (g) {
+        g.top = Math.min(g.top, r.top);
+        g.bottom = Math.max(g.bottom, r.bottom);
+        g.chips.push({
+          id: Number(el.getAttribute("data-row-id")),
+          cx: r.left + r.width / 2,
+        });
+      } else {
+        groups.push({
+          top: r.top,
+          bottom: r.bottom,
+          center: cy,
+          chips: [
+            {
+              id: Number(el.getAttribute("data-row-id")),
+              cx: r.left + r.width / 2,
+            },
+          ],
+        });
       }
+    }
+    groups.sort((a, b) => a.top - b.top);
+    for (let i = 0; i < groups.length; i++) {
+      const g = groups[i];
+      if (clientY < g.top) return Math.min(...g.chips.map((c) => c.id));
+      if (clientY > g.bottom) continue;
+      const chips = [...g.chips].sort((a, b) => a.cx - b.cx);
+      for (const c of chips) {
+        if (clientX < c.cx) return c.id;
+      }
+      const next = groups[i + 1];
+      return next ? Math.min(...next.chips.map((c) => c.id)) : fields.length;
     }
     return fields.length;
   };
@@ -2364,7 +2412,7 @@ export default function DocPropertyBar({
         started = true;
         if (!selectedRef.current.has(id)) applySelection([id]);
       }
-      over = computeDropIndex(ev.clientY);
+      over = computeDropIndex(ev.clientX, ev.clientY);
       setDrop({ index: over, top: dropTopFor(over) });
     };
     const onUp = () => {
@@ -2496,7 +2544,7 @@ export default function DocPropertyBar({
         setPaletteOpen(false);
       }
       inside = hitFieldArea(ev.clientX, ev.clientY);
-      over = inside ? computeDropIndex(ev.clientY) : null;
+      over = inside ? computeDropIndex(ev.clientX, ev.clientY) : null;
       setGhost({ type, x: ev.clientX, y: ev.clientY });
       setDrop(over != null ? { index: over, top: dropTopFor(over) } : null);
     };
