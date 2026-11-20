@@ -6,6 +6,7 @@
 
 .dpb-panel {
   position: relative;
+  font-size: var(--type-font-size, var(--editor-font-size, 17px));
   /* 卡片宽度 = min(宿主内容宽, 正文测量宽度)：与 .cm-line / .preview-content > *
      的 --type-measure 同源，随窗口收缩；margin-inline 居中对齐正文列（#1040）。 */
   width: 100%;
@@ -266,12 +267,12 @@
   gap: 4px;
   min-width: 0;
   max-width: 100%;
-  padding: 2px 5px;
+  padding: 2px 6px;
   border: 1px solid var(--app-border);
   border-radius: var(--radius-full);
   background: var(--app-sunken);
   color: var(--app-text-2);
-  font-size: 11px;
+  font-size: 1em;
 }
 
 /* 手柄绝对定位在胶囊左外侧、不占布局；悬停才显示（编辑态才渲染） */
@@ -341,9 +342,10 @@
   grid-template-columns: 16px auto 92px minmax(0, 1fr) 18px;
   gap: 6px;
   align-items: center;
-  min-height: 30px;
-  padding: 2px 0;
+  min-height: var(--dpb-row-min-height, 2em);
+  padding: 1px 0;
   border-bottom: 1px solid var(--app-border);
+  font-size: var(--dpb-field-font-size, 1em);
 }
 
 .dpb-b-row-last {
@@ -364,7 +366,7 @@
 }
 
 .dpb-b-label {
-  font-size: 11.5px;
+  font-size: 1em;
   color: var(--app-text-3);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -373,7 +375,7 @@
 
 .dpb-b-value {
   min-width: 0;
-  font-size: 12.5px;
+  font-size: 1em;
   color: var(--app-text);
 }
 
@@ -383,6 +385,8 @@
 
 /* 行尾单行删除：叉号，A/B 同一控件（第 5 列 18px） */
 .dpb-row-x {
+  opacity: 0;
+  transition: opacity 0.12s;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -401,12 +405,13 @@
   color: #a8402f;
 }
 
-.dpb-type-label {
-  margin-left: 1px;
-  font-size: 11px;
-  line-height: 1.4;
-  color: var(--app-text-3);
-  white-space: nowrap;
+/* 删除叉号默认隐藏：行悬停、行内聚焦或行选中时显现（占位宽度不变） */
+.dpb-b-row:hover .dpb-row-x,
+.dpb-b-row:focus-within .dpb-row-x,
+.dpb-chip:hover .dpb-row-x,
+.dpb-chip:focus-within .dpb-row-x,
+.dpb-row-selected .dpb-row-x {
+  opacity: 1;
 }
 
 .dpb-b-foot {
@@ -601,7 +606,7 @@
 
 .dpb-input {
   font: inherit;
-  font-size: 12px;
+  font-size: 1em;
   /* 宿主 .cm-content 的 line-height 1.78 会撑高单行输入框，显式收口。 */
   line-height: 1.4;
   flex: 1 1 140px;
@@ -619,6 +624,15 @@
   resize: vertical;
   min-height: 54px;
   line-height: 1.5;
+}
+
+/* 文本类值输入填满本行；数字等特殊格式保留内在宽度（#1261） */
+.dpb-input[data-field-type="text"],
+.dpb-input[data-field-type="unknown"],
+.dpb-input[data-field-type="text"].dpb-textarea {
+  flex: 1 1 auto;
+  width: 100%;
+  max-width: none;
 }
 
 /* 日期时间：单一面板选择器（#1044）；圆角 / 阴影 / 色取 design-system §5 §6 */

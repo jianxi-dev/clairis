@@ -313,16 +313,10 @@ interface TypeSelectorProps {
   field: FrontmatterField;
   editable: boolean;
   onPick: (field: FrontmatterField, next: FrontmatterType) => void;
-  showLabel?: boolean;
 }
 
 /** 字段名前的纯图标类型选择器：编辑态按钮弹八类菜单，预览态静态图标。 */
-function TypeSelector({
-  field,
-  editable,
-  onPick,
-  showLabel,
-}: TypeSelectorProps) {
+function TypeSelector({ field, editable, onPick }: TypeSelectorProps) {
   // 托管日期键强制只读：类型菜单不可打开、光标不变（P-6）。
   const enabled = editable && !isManagedDateKey(field.key);
   const [open, setOpen] = useState(false);
@@ -384,11 +378,6 @@ function TypeSelector({
       ) : (
         <span className="dpb-type dpb-type-ro" title={TYPE_LABEL[field.type]}>
           <TypeIcon type={field.type} />
-        </span>
-      )}
-      {showLabel && (
-        <span className="dpb-type-label" aria-hidden="true">
-          {TYPE_LABEL[field.type]}
         </span>
       )}
       {enabled &&
@@ -1320,6 +1309,7 @@ function ValueEditor({ field, editable, onCommit }: ValueEditorProps) {
         <textarea
           className="dpb-input dpb-textarea"
           data-testid="dpb-input"
+          data-field-type={field.type}
           rows={3}
           autoFocus
           {...shared}
@@ -1334,6 +1324,7 @@ function ValueEditor({ field, editable, onCommit }: ValueEditorProps) {
       <input
         className="dpb-input"
         data-testid="dpb-input"
+        data-field-type={field.type}
         type={inputType}
         inputMode={field.type === "number" ? "numeric" : undefined}
         autoFocus
@@ -3095,7 +3086,6 @@ export default function DocPropertyBar({
                       field={field}
                       editable={editable}
                       onPick={handlePickType}
-                      showLabel
                     />
                   </span>
                   <RenameLabel
@@ -3267,7 +3257,6 @@ export default function DocPropertyBar({
                       field={field}
                       editable={editable}
                       onPick={handlePickType}
-                      showLabel
                     />
                   )}
                   <RenameLabel
