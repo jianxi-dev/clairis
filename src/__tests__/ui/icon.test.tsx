@@ -54,6 +54,17 @@ describe("Icon 描边渲染", () => {
     expect(paths[1].getAttribute("stroke-dasharray")).toBe("2 2");
   });
 
+  it("part 选择器只渲染指定段，缺省仍渲染全部段", () => {
+    const { container } = render(<Icon name="docPropertyVariant" part={1} />);
+    const paths = container.querySelectorAll("path");
+    expect(paths.length).toBe(1);
+    expect(paths[0].getAttribute("d")).toBe(
+      "M12 5.5h3v13h-3z M17.5 5.5h3v13h-3z",
+    );
+    const all = render(<Icon name="docPropertyVariant" />).container;
+    expect(all.querySelectorAll("path").length).toBe(2);
+  });
+
   it("expand 与 collapse 的 d 不相等", () => {
     const expand = render(<Icon name="expand" />)
       .container.querySelector("path")!
