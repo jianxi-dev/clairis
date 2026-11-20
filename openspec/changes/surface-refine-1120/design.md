@@ -13,7 +13,7 @@
 
 ## 2. 间距与预览对齐（P-1）
 
-- `.cm-dpb-embed { margin-bottom: <1 个正文行高> }`（布局间距，非文档空行——用户明确空行可被删除）；预览块 `.doc-property-embed-preview` 同步。
+- `.cm-dpb-embed { margin-bottom: <1 个正文行高> }`（布局间距，非文档空行——用户明确空行可被删除）；预览块 `.doc-property-embed-preview` 同步。**实现约束**：编辑态间距落在 `.cm-dpb-embed .dpb-panel` 的 `margin-bottom` 上，而非宿主自身——CM6 按宿主 border-box 量高，宿主的 margin 不计入高度图，会让 `posAtCoords` 偏移、块手柄召唤失灵。
 - 预览列对齐：预览块容器 padding-inline 与 `.preview-content` 列一致（读其 computed 样式取同源 padding/measure），卡片与段落同轴。
 
 ## 3. 拖拽插入位置（P-4 缺陷 #D4）

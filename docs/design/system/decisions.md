@@ -92,3 +92,4 @@ ledger: append-only
 | 信息窗复制图标 | `copyPath` 改为「文件夹 + 斜杠」路径语义（弃原双矩形构图，与 `copy` 复制选区区分）；新增 `copyFile`「文档 + 向右上箭头」文件语义；两图形不复用同一构图，颜色沿用 `--app-text-3` 弱化档 | shell-tabs-surface / #1181 | 2026-11-20 |
 | 信息窗复制成功提示 | 由路径后行内文本改为悬浮 toast：锚定触发按钮、圆角胶囊（`--radius-full`）、约 2000ms 自动消失、`pointer-events: none`；底色取 `--app-text-strong`、文字 `--app-surface`（反色胶囊，三主题皆可读） | shell-tabs-surface / #1181 | 2026-11-20 |
 | 页签条尾部空白 | `--tab-strip-tail: 24px`（spec §7.5）：页签弹性铺满后仍在尾部保留空白，承载空白处拖窗与双击切全屏；取代「flex 页签吃满整条」的实现 | shell-tabs-surface / #1180 | 2026-11-20 |
+| 文档属性块间距与预览列对齐 | 属性块下方间距 = 一个正文行高（`--type-line` × 正文字号），由布局 margin 提供、不依赖可被删除的文档空行；编辑态间距落在卡片 `.dpb-panel` 的 margin 上（宿主自身 margin 不被 CM6 高度图计入，会使 `posAtCoords` 偏移）；预览块容器与 `.preview-content` 同 max-width / 同横向内距，卡片边缘与正文段落同轴 | surface-refine-1120 / #1227 | 2026-11-20 |
