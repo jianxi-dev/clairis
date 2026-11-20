@@ -323,7 +323,8 @@ test("B 精排双列：5 列网格 / 静态类型图标 / 底部统计全部字�
   });
   expect(tracks).toHaveLength(5);
   expect(parseFloat(tracks[0])).toBeCloseTo(16, 1);
-  expect(parseFloat(tracks[1])).toBeGreaterThan(30);
+  // 类型列已去掉文字，只剩图标宽度（#1261）
+  expect(parseFloat(tracks[1])).toBeGreaterThanOrEqual(16);
   expect(parseFloat(tracks[2])).toBeCloseTo(92, 1);
   expect(parseFloat(tracks[4])).toBeCloseTo(18, 1);
 
@@ -2351,9 +2352,13 @@ note: 已有备注
     ["published", "布尔"],
   ];
   for (const [key, label] of typeLabels) {
-    await expect(dst.locator(`[data-key="${key}"] .dpb-type-label`)).toHaveText(
-      label,
-    );
+    // 行内类型文字已移除，改由图标 title 承载类型语义（#1261）
+    await expect(
+      dst.locator(`[data-key="${key}"] [data-testid="dpb-type"]`),
+    ).toHaveAttribute("title", new RegExp(label));
+    await expect(
+      dst.locator(`[data-key="${key}"] .dpb-type-label`),
+    ).toHaveCount(0);
   }
   await expect(
     dst.locator('[data-key="category"] [data-testid="dpb-value"]'),
@@ -3732,7 +3737,7 @@ test("#1019 源码态光标留在 frontmatter 内，切回编辑态仍隐藏整�
   await dpbRecord(page, "1019", "05-source-caret-edit-hidden");
 });
 
-test("#1039 胶囊 DOM 顺序：类型图标→类型名→字段名→值→叉号（A/B）", async ({
+test("#1039 胶囊 DOM 顺序：类型图标→字段名→值→叉号（A/B，类型文字已移除）", async ({
   page,
 }) => {
   await openDoc(page, CAPSULE_DOC);
@@ -3742,7 +3747,6 @@ test("#1039 胶囊 DOM 顺序：类型图标→类型名→字段名→值→叉
     const row = panel(page, variant).locator('[data-key="score"]');
     const sels = [
       ".dpb-type",
-      ".dpb-type-label",
       '[data-testid="dpb-label"]',
       '[data-testid="dpb-value"]',
       '[data-testid="dpb-row-del"]',
@@ -3767,7 +3771,11 @@ test("#1039 胶囊 DOM 顺序：类型图标→类型名→字段名→值→叉
       );
     }, sels);
     expect(ordered, `${variant} 胶囊 DOM 顺序`).toBe(true);
-    await expect(row.locator(".dpb-type-label")).toHaveText("数字");
+    await expect(row.locator(".dpb-type-label")).toHaveCount(0);
+    await expect(row.locator('[data-testid="dpb-type"]')).toHaveAttribute(
+      "title",
+      /数字/,
+    );
     await dpbRecord(
       page,
       "1039",
@@ -3933,6 +3941,77 @@ test("#1260 头部按钮居中、footer 顺序/对齐/弱化、L-T 图标、全�
   await a.hover({ position: { x: 10, y: 10 } });
   await expect.poll(opacity, { timeout: 3000 }).toBeGreaterThan(0.9);
   await dpbRecord(page, "1260", "04-collapsed-hover");
+});
+
+test("#1261 字段行：去类型文字、垂直居中、文本值满行、字号随正文、删除悬停", async ({
+  page,
+}) => {
+  const doc = `---\ntitle: 行布局\nnote: 文本值\ncount: 42\n---\n\n# 正文\n`;
+  await openDoc(page, doc, "/Users/test/row-layout.md");
+  await setMode(page, "edit");
+  await setVariant(page, "A");
+  const a = panel(page, "A");
+  await expect(a.locator(".dpb-type-label")).toHaveCount(0);
+  await dpbRecord(page, "1261", "01-no-type-text");
+
+  const center = async (loc: ReturnType<typeof a.locator>) => {
+    const b = (await loc.boundingBox())!;
+    return b.y + b.height / 2;
+  };
+  const chip = a.locator('[data-key="note"]');
+  const centers = await Promise.all([
+    center(chip.locator(".dpb-type")),
+    center(chip.locator('[data-testid="dpb-label"]')),
+    center(chip.locator('[data-testid="dpb-value"]')),
+  ]);
+  expect(Math.max(...centers) - Math.min(...centers)).toBeLessThanOrEqual(1);
+  await dpbRecord(page, "1261", "02-centered");
+
+  const fontOf = (loc: ReturnType<typeof a.locator>) =>
+    loc.evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
+  const nameSize = await fontOf(chip.locator('[data-testid="dpb-label"]'));
+  const valueSize = await fontOf(chip.locator('[data-testid="dpb-value"]'));
+  expect(nameSize).toBe(valueSize);
+  const titleSize = await fontOf(a.locator(".dpb-a-title"));
+  await page.keyboard.press("Meta+-");
+  await expect
+    .poll(() => fontOf(chip.locator('[data-testid="dpb-label"]')), {
+      timeout: 3000,
+    })
+    .toBeLessThan(nameSize);
+  expect(await fontOf(chip.locator('[data-testid="dpb-value"]'))).toBe(
+    await fontOf(chip.locator('[data-testid="dpb-label"]')),
+  );
+  expect(await fontOf(a.locator(".dpb-a-title"))).toBe(titleSize);
+  await dpbRecord(page, "1261", "03-font-sync");
+
+  await setVariant(page, "B");
+  const b = panel(page, "B");
+  const noteRow = b.locator('[data-key="note"]');
+  await noteRow.locator('[data-testid="dpb-value"]').click();
+  const input = noteRow.locator('[data-testid="dpb-input"]');
+  const inputBox = (await input.boundingBox())!;
+  const cellBox = (await noteRow.locator(".dpb-b-value").boundingBox())!;
+  expect(Math.abs(inputBox.width - cellBox.width)).toBeLessThanOrEqual(2);
+  await page.keyboard.press("Escape");
+
+  const countRow = b.locator('[data-key="count"]');
+  await countRow.locator('[data-testid="dpb-value"]').click();
+  const numBox = (await countRow
+    .locator('[data-testid="dpb-input"]')
+    .boundingBox())!;
+  const numCell = (await countRow.locator(".dpb-b-value").boundingBox())!;
+  expect(numBox.width).toBeLessThan(numCell.width - 20);
+  await page.keyboard.press("Escape");
+
+  const del = noteRow.locator('[data-testid="dpb-row-del"]');
+  const opacity = () =>
+    del.evaluate((el) => Number(getComputedStyle(el).opacity));
+  await page.mouse.move(4, 4);
+  await expect.poll(opacity, { timeout: 2000 }).toBe(0);
+  await noteRow.hover();
+  await expect.poll(opacity, { timeout: 2000 }).toBe(1);
+  await dpbRecord(page, "1261", "04-delete-hover");
 });
 
 test("#1043 新建字段按钮位次：A/B 均为首位，按钮顺序一致（#1260 改规格）", async ({
