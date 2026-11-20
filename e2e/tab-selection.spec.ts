@@ -2,7 +2,13 @@ import { test, expect, type Page } from "@playwright/test";
 import { mkdirSync } from "fs";
 
 const APP_URL = process.env.BIAOYUE_E2E_URL ?? "http://localhost:1420";
-const ARTIFACT_DIR = ".artifacts/1180";
+const ARTIFACT_DIR = ".artifacts/1231";
+
+/**
+ * 等长标题页签的宽度容差。激活页签走 `font-medium`（字重更宽），
+ * 同字符数的标题文本会宽出几像素；等比收缩的断言按此容差判定「等宽」。
+ */
+const EQUAL_WIDTH_TOLERANCE = 8;
 
 async function boot(page: Page): Promise<void> {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
@@ -49,7 +55,74 @@ async function readTitleStyles(page: Page): Promise<TitleStyle[]> {
   );
 }
 
-test.describe("页签弹性伸缩与间距（tab-title-info-surface / shell-tabs-surface 1.1）", () => {
+/** 页签条整体度量：页签宽/左右缘、容器宽、滚动宽、尾部空白宽、上下限 token。 */
+type StripMetrics = {
+  clientWidth: number;
+  scrollWidth: number;
+  widths: number[];
+  lefts: number[];
+  rights: number[];
+  gap: string;
+  tailWidth: number;
+  tabMinWidth: number;
+  tabMaxWidth: number;
+};
+
+async function readStrip(page: Page): Promise<StripMetrics> {
+  return page.evaluate(() => {
+    const strip = document.querySelector<HTMLElement>(".tab-strip")!;
+    const cs = getComputedStyle(document.documentElement);
+    const rects = Array.from(
+      document.querySelectorAll<HTMLElement>(".tab-strip [data-tab-id]"),
+    ).map((t) => t.getBoundingClientRect());
+    const tail = document.querySelector<HTMLElement>(
+      '[data-testid="tab-strip-tail"]',
+    );
+    // --tab-max-width 引用 --tab-info-width；直接读解析后的计算值，
+    // 老浏览器若回退成 var() 文本则回退到 --tab-info-width。
+    const rawMax = cs.getPropertyValue("--tab-max-width").trim();
+    const tabMaxWidth = rawMax.endsWith("px")
+      ? parseFloat(rawMax)
+      : parseFloat(cs.getPropertyValue("--tab-info-width"));
+    return {
+      clientWidth: strip.clientWidth,
+      scrollWidth: strip.scrollWidth,
+      widths: rects.map((r) => r.width),
+      lefts: rects.map((r) => r.left),
+      rights: rects.map((r) => r.right),
+      gap: getComputedStyle(strip).columnGap,
+      tailWidth: tail ? tail.getBoundingClientRect().width : 0,
+      tabMinWidth: parseFloat(cs.getPropertyValue("--tab-min-width")),
+      tabMaxWidth,
+    };
+  });
+}
+
+/** 页签宽度 vs 标题文本实际宽度（用于证明「不伸展」）。 */
+async function readTabVsText(
+  page: Page,
+  index: number,
+): Promise<{ tabWidth: number; textWidth: number }> {
+  return page
+    .locator(".tab-strip [data-tab-id]")
+    .nth(index)
+    .evaluate((el) => {
+      const title = el.querySelector<HTMLElement>('[data-testid="tab-title"]')!;
+      const range = document.createRange();
+      range.selectNodeContents(title);
+      return {
+        tabWidth: el.getBoundingClientRect().width,
+        textWidth: range.getBoundingClientRect().width,
+      };
+    });
+}
+
+/** 宽度极差（最大值 - 最小值），用于「等宽」判定。 */
+function spread(widths: number[]): number {
+  return Math.max(...widths) - Math.min(...widths);
+}
+
+test.describe("页签弹性伸缩与间距（tab-title-info-surface / shell-tabs-surface 1.1 / #1231）", () => {
   test.beforeAll(() => {
     mkdirSync(ARTIFACT_DIR, { recursive: true });
   });
@@ -93,15 +166,15 @@ test.describe("页签弹性伸缩与间距（tab-title-info-surface / shell-tabs
     await page.screenshot({ path: `${ARTIFACT_DIR}/02-tab-inner-gap.png` });
   });
 
-  test("长标题省略号收尾、短标题随伸缩拉伸（A-1.1/A-1.2/A-1.3）", async ({
+  test("长标题省略号收尾、短标题按实际宽度显示（A-1.1/A-1.2/A-1.3 / #1231）", async ({
     page,
   }) => {
     // 收窄视口，让长标题确实超过分配宽度（弹性布局下没有固定上限可依赖）
     await page.setViewportSize({ width: 900, height: 800 });
     await boot(page);
-    await openFile(page, "/tmp/1180/short.md");
+    await openFile(page, "/tmp/1231/short.md");
     const longPath =
-      "/tmp/1180/very-long-tab-title-abcdefghijklmnopqrstuvwxyz-0123456789-abcdefghijklmnopqrstuvwxyz-9876543210.md";
+      "/tmp/1231/very-long-tab-title-abcdefghijklmnopqrstuvwxyz-0123456789-abcdefghijklmnopqrstuvwxyz-9876543210.md";
     await openFile(page, longPath);
 
     const titles = page.locator(
@@ -130,29 +203,16 @@ test.describe("页签弹性伸缩与间距（tab-title-info-surface / shell-tabs
     expect(long.lines).toBe(1);
     expect(long.clipped).toBe(true);
 
-    // A-1.3：短标题所在页签随伸缩拉伸——页签宽度大于标题文本实际宽度
-    const short = await page
-      .locator(".tab-strip [data-tab-id]")
-      .first()
-      .evaluate((el) => {
-        const title = el.querySelector<HTMLElement>(
-          '[data-testid="tab-title"]',
-        );
-        const range = document.createRange();
-        range.selectNodeContents(title!);
-        return {
-          tabWidth: el.getBoundingClientRect().width,
-          textWidth: range.getBoundingClientRect().width,
-        };
-      });
-    expect(short.tabWidth).toBeGreaterThan(short.textWidth + 8);
+    // A-1.3（#1231 反转 #1180 的「短标题随伸缩拉伸」）：短标题页签不伸展，
+    // 宽度贴合内容（图标 + 文本 + 关闭钮 + 内距），并明显窄于顶到上限的长页签。
+    const short = await readTabVsText(page, 0);
+    expect(short.tabWidth).toBeLessThanOrEqual(short.textWidth + 80);
 
-    const widths = await page.evaluate(() =>
-      Array.from(
-        document.querySelectorAll<HTMLElement>(".tab-strip [data-tab-id]"),
-      ).map((el) => el.getBoundingClientRect().width),
-    );
-    expect(Math.abs(widths[0] - widths[1])).toBeLessThanOrEqual(1);
+    const m = await readStrip(page);
+    expect(m.widths[0]).toBeLessThan(m.widths[1]);
+    // 长页签被 --tab-max-width 上限钳住（内容远超 256px）
+    expect(Math.abs(m.widths[1] - m.tabMaxWidth)).toBeLessThanOrEqual(1);
+    expect(m.widths[0]).toBeLessThan(m.tabMaxWidth);
 
     await page.screenshot({ path: `${ARTIFACT_DIR}/01-title-ellipsis.png` });
   });
@@ -180,12 +240,10 @@ test.describe("页签弹性伸缩与间距（tab-title-info-surface / shell-tabs
         strip.evaluate((el) => el.scrollWidth <= el.clientWidth + 1),
       )
       .toBe(true);
-    const wideWidths = await page.evaluate(() =>
-      Array.from(
-        document.querySelectorAll<HTMLElement>(".tab-strip [data-tab-id]"),
-      ).map((el) => el.getBoundingClientRect().width),
-    );
-    for (const w of wideWidths) {
+    const wide = await readStrip(page);
+    for (const w of wide.widths) {
+      // 长标题页签先被 --tab-max-width 钳住，再随可用宽度收缩；始终不超上限
+      expect(w).toBeLessThanOrEqual(wide.tabMaxWidth + 1);
       expect(w).toBeGreaterThan(minWidth + 8);
     }
 
@@ -198,6 +256,7 @@ test.describe("页签弹性伸缩与间距（tab-title-info-surface / shell-tabs
         document.querySelectorAll<HTMLElement>(".tab-strip [data-tab-id]"),
       ).map((el) => el.getBoundingClientRect().width),
     );
+    // 长标题的 max-content > 96px，保底仍为 96px
     for (const w of narrowWidths) {
       expect(Math.abs(w - minWidth)).toBeLessThanOrEqual(1);
     }
@@ -225,40 +284,29 @@ test.describe("页签弹性伸缩与间距（tab-title-info-surface / shell-tabs
     });
   });
 
-  test("窗格变窄时多页签等比收缩、无覆盖、无溢出（shell-tabs-surface 1.1）", async ({
+  test("页签不伸展：宽视口受上限约束、窄视口等比收缩（shell-tabs-surface 1.1 / #1231）", async ({
     page,
   }) => {
     await boot(page);
     for (let i = 0; i < 4; i += 1) {
-      await openFile(page, `/tmp/1180/tab-${i}.md`);
+      await openFile(page, `/tmp/1231/tab-0${i}-abcdefghijklmn.md`);
     }
 
-    const strip = page.locator(".tab-strip").first();
-    const read = () =>
-      page.evaluate(() => {
-        const el = document.querySelector<HTMLElement>(".tab-strip");
-        const rects = Array.from(
-          document.querySelectorAll<HTMLElement>(".tab-strip [data-tab-id]"),
-        ).map((t) => t.getBoundingClientRect());
-        return {
-          gap: getComputedStyle(el!).columnGap,
-          clientWidth: el!.clientWidth,
-          scrollWidth: el!.scrollWidth,
-          widths: rects.map((r) => r.width),
-          lefts: rects.map((r) => r.left),
-          rights: rects.map((r) => r.right),
-        };
-      });
-
     await page.setViewportSize({ width: 1400, height: 800 });
-    const wide = await read();
+    const wide = await readStrip(page);
+    // 宽视口：页签不伸展，宽度 ≤ --tab-max-width 上限
+    for (const w of wide.widths) {
+      expect(w).toBeLessThanOrEqual(wide.tabMaxWidth + 1);
+    }
+    // 总宽不溢出，且尾部空白区仍在（不随页签伸缩被吃掉）
     expect(wide.scrollWidth).toBeLessThanOrEqual(wide.clientWidth + 1);
-    expect(new Set(wide.widths.map((w) => Math.round(w))).size).toBe(1);
-    await page.screenshot({ path: `${ARTIFACT_DIR}/04-wide-stretch.png` });
+    expect(wide.tailWidth).toBeGreaterThan(0);
+    await page.screenshot({ path: `${ARTIFACT_DIR}/04-wide-no-stretch.png` });
 
     await page.setViewportSize({ width: 900, height: 800 });
-    const narrow = await read();
-    expect(new Set(narrow.widths.map((w) => Math.round(w))).size).toBe(1);
+    const narrow = await readStrip(page);
+    // 等比收缩：等长标题页签收缩到近似等宽（激活页签 font-medium 有几像素差）
+    expect(spread(narrow.widths)).toBeLessThanOrEqual(EQUAL_WIDTH_TOLERANCE);
     expect(narrow.widths[0]).toBeLessThan(wide.widths[0]);
     expect(narrow.gap).toBe("32px");
     for (let i = 1; i < narrow.lefts.length; i += 1) {
@@ -269,6 +317,72 @@ test.describe("页签弹性伸缩与间距（tab-title-info-surface / shell-tabs
     expect(narrow.scrollWidth).toBeLessThanOrEqual(narrow.clientWidth + 1);
     await page.screenshot({
       path: `${ARTIFACT_DIR}/05-narrow-equal-shrink.png`,
+    });
+  });
+
+  test("单个短名页签不铺满页签条（#1231）", async ({ page }) => {
+    await page.setViewportSize({ width: 1200, height: 800 });
+    await boot(page);
+    await openFile(page, "/tmp/1231/a");
+
+    const m = await readStrip(page);
+    const short = await readTabVsText(page, 0);
+    // 不铺满：页签右缘之后仍有尾部空白区
+    expect(m.widths[0]).toBeLessThan(m.clientWidth - m.tailWidth);
+    // 不伸展：页签宽度贴合内容，明显小于 96px 保底（短名按实际宽度）
+    expect(short.tabWidth).toBeLessThanOrEqual(short.textWidth + 80);
+    expect(m.widths[0]).toBeLessThan(m.tabMinWidth);
+
+    await page.screenshot({ path: `${ARTIFACT_DIR}/06-single-short-tab.png` });
+  });
+
+  test("短名按实际宽度显示：短名页签窄于长名页签（#1231）", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1200, height: 800 });
+    await boot(page);
+    await openFile(page, "/tmp/1231/a");
+    await openFile(
+      page,
+      "/tmp/1231/abcdefghijklmnopqrstuvwxyz-0123456789-abcd.md",
+    );
+
+    const m = await readStrip(page);
+    expect(m.widths.length).toBe(2);
+    expect(m.widths[0]).toBeLessThan(m.widths[1]);
+    // 短名页签低于 96px 保底（未被撑到保底）
+    expect(m.widths[0]).toBeLessThan(m.tabMinWidth);
+    // 长名页签顶到 --tab-max-width 上限
+    expect(Math.abs(m.widths[1] - m.tabMaxWidth)).toBeLessThanOrEqual(1);
+
+    await page.screenshot({ path: `${ARTIFACT_DIR}/07-short-vs-long.png` });
+  });
+
+  test("两个等长页签在窄视口等比收缩到等宽（#1231）", async ({ page }) => {
+    await boot(page);
+    await openFile(page, "/tmp/1231/same-length-name-aaaa.md");
+    await openFile(page, "/tmp/1231/same-length-name-bbbb.md");
+
+    await page.setViewportSize({ width: 1400, height: 800 });
+    const wide = await readStrip(page);
+    expect(spread(wide.widths)).toBeLessThanOrEqual(EQUAL_WIDTH_TOLERANCE);
+    expect(wide.scrollWidth).toBeLessThanOrEqual(wide.clientWidth + 1);
+
+    await page.setViewportSize({ width: 560, height: 800 });
+    const narrow = await readStrip(page);
+    // 等比收缩：两页签仍近似等宽，且窄于宽视口下的内容宽
+    expect(spread(narrow.widths)).toBeLessThanOrEqual(EQUAL_WIDTH_TOLERANCE);
+    expect(narrow.widths[0]).toBeLessThan(wide.widths[0]);
+    expect(narrow.widths[0]).toBeGreaterThanOrEqual(narrow.tabMinWidth - 1);
+    expect(narrow.scrollWidth).toBeLessThanOrEqual(narrow.clientWidth + 1);
+    for (let i = 1; i < narrow.lefts.length; i += 1) {
+      expect(narrow.lefts[i]).toBeGreaterThanOrEqual(
+        narrow.rights[i - 1] - 0.5,
+      );
+    }
+
+    await page.screenshot({
+      path: `${ARTIFACT_DIR}/08-two-tabs-equal-shrink.png`,
     });
   });
 
@@ -307,7 +421,7 @@ test.describe("页签弹性伸缩与间距（tab-title-info-surface / shell-tabs
     }
 
     await page.screenshot({
-      path: `${ARTIFACT_DIR}/04-after-close-keeps-gap.png`,
+      path: `${ARTIFACT_DIR}/09-after-close-keeps-gap.png`,
     });
   });
 });
