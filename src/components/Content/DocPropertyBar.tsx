@@ -15,6 +15,7 @@ import {
   coerceFrontmatterValue,
   dedupeLinks,
   dedupeTags,
+  findTitleField,
   formatFrontmatterValue,
   parseFrontmatter,
   parseLinkListText,
@@ -1687,7 +1688,7 @@ function TitleValue({ field, editable, onCommit }: TitleValueProps) {
     const next = draft;
     const prev = field?.value == null ? "" : String(field.value);
     if (next === prev) return;
-    onCommit("title", next);
+    onCommit(field?.key ?? "title", next);
   };
 
   if (!editable) {
@@ -1879,11 +1880,15 @@ export default function DocPropertyBar({
       view.dispatch({
         changes: { from: result.from, to: result.to, insert: result.block },
       });
-      if (key === "title" && docKey) {
+      const titleKey = findTitleField(
+        parseFrontmatter(content, propAliasMap).fields,
+        propAliasMap,
+      )?.key;
+      if (titleKey && key === titleKey && docKey) {
         useStore.getState().setTabTitle(docKey, String(value ?? ""));
       }
     },
-    [content, docKey, panelId],
+    [content, docKey, panelId, propAliasMap],
   );
 
   const [tplStatus, setTplStatus] = useState<string | null>(null);
@@ -2074,7 +2079,7 @@ export default function DocPropertyBar({
         ),
     [allFields],
   );
-  const titleField = fields.find((f) => f.key === "title") ?? null;
+  const titleField = findTitleField(fields, propAliasMap) ?? null;
   const titleView = titleField
     ? { ...titleField, display: titleField.display || "未命名" }
     : null;

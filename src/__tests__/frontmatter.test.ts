@@ -7,6 +7,7 @@ import {
   TAG_PALETTE,
   coerceFrontmatterValue,
   dedupeKeys,
+  findTitleField,
   isManagedDateKey,
   managedDateDisplay,
   moveFieldBlock,
@@ -399,6 +400,37 @@ describe("parseFrontmatter with aliasMap", () => {
     const without = byKey(parseFrontmatter(DOC).fields);
     expect(without.customdate.type).toBe("unknown");
     expect(without.createdate.type).toBe("date");
+  });
+});
+
+describe("findTitleField（标题键识别 #1232）", () => {
+  it("优先规范键 title，即使同时存在别称", () => {
+    const fields = parseFrontmatter(
+      "---\ntitle: 规范\n标题: 别称\n---\n",
+    ).fields;
+    expect(findTitleField(fields)?.key).toBe("title");
+  });
+
+  it("无规范键时命中内置别称「标题」", () => {
+    const fields = parseFrontmatter(
+      "---\n标题: 别称\nauthor: 甲\n---\n",
+    ).fields;
+    expect(findTitleField(fields)?.key).toBe("标题");
+  });
+
+  it("未登记时 author 不误判（同为 text）", () => {
+    const fields = parseFrontmatter("---\nauthor: 甲\n---\n").fields;
+    expect(findTitleField(fields)).toBeUndefined();
+  });
+
+  it("用户把某键登记为标题类型别名时按登记识别", () => {
+    const fields = parseFrontmatter("---\n名称: 别名\n---\n").fields;
+    expect(findTitleField(fields, { 名称: "text" })?.key).toBe("名称");
+  });
+
+  it("无标题字段返回 undefined", () => {
+    const fields = parseFrontmatter("---\ntags:\n  - 甲\n---\n").fields;
+    expect(findTitleField(fields)).toBeUndefined();
   });
 });
 
