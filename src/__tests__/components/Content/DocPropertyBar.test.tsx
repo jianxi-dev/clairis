@@ -340,6 +340,101 @@ describe("DocPropertyBar 日期时间单面板（#1044）", () => {
     expect(row.querySelector('[data-testid="dpb-datetime-editor"]')).toBeNull();
   });
 
+  it("时/分输入框内 Tab 被面板拦截：焦点留在面板内且不写回", () => {
+    const { container, dispatchRef } = mountDatetime();
+    const row = container.querySelector('[data-key="评审时间"]')!;
+    fireEvent.click(row.querySelector('[data-testid="dpb-value"]')!);
+    const editor = row.querySelector('[data-testid="dpb-datetime-editor"]')!;
+    const panel = editor.querySelector('[data-testid="dpb-datetime-panel"]')!;
+    const minute = editor.querySelector<HTMLElement>(
+      '[data-testid="dpb-time-minute"]',
+    )!;
+
+    minute.focus();
+    expect(document.activeElement).toBe(minute);
+
+    const tabEvent = new KeyboardEvent("keydown", {
+      key: "Tab",
+      bubbles: true,
+      cancelable: true,
+    });
+    minute.dispatchEvent(tabEvent);
+
+    expect(tabEvent.defaultPrevented).toBe(true);
+    expect(document.activeElement).not.toBe(minute);
+    expect(panel.contains(document.activeElement)).toBe(true);
+    expect(dispatchRef.current).toHaveLength(0);
+  });
+
+  it("时/分输入框内 Shift+Tab 向面板内上一个停靠点移动", () => {
+    const { container, dispatchRef } = mountDatetime();
+    const row = container.querySelector('[data-key="评审时间"]')!;
+    fireEvent.click(row.querySelector('[data-testid="dpb-value"]')!);
+    const editor = row.querySelector('[data-testid="dpb-datetime-editor"]')!;
+    const panel = editor.querySelector('[data-testid="dpb-datetime-panel"]')!;
+    const minute = editor.querySelector<HTMLElement>(
+      '[data-testid="dpb-time-minute"]',
+    )!;
+
+    minute.focus();
+    const ev = new KeyboardEvent("keydown", {
+      key: "Tab",
+      shiftKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+    minute.dispatchEvent(ev);
+
+    expect(ev.defaultPrevented).toBe(true);
+    expect(panel.contains(document.activeElement)).toBe(true);
+    expect(document.activeElement).not.toBe(minute);
+    expect(dispatchRef.current).toHaveLength(0);
+  });
+
+  it("从 tabindex=-1 的日历格起跳时 Tab 方向正确", () => {
+    const { container } = mountDatetime();
+    const row = container.querySelector('[data-key="评审时间"]')!;
+    fireEvent.click(row.querySelector('[data-testid="dpb-value"]')!);
+    const editor = row.querySelector('[data-testid="dpb-datetime-editor"]')!;
+    const panel = editor.querySelector('[data-testid="dpb-datetime-panel"]')!;
+    const cells = Array.from(
+      panel.querySelectorAll<HTMLElement>("[data-date]"),
+    );
+    const cell = cells.find((c) => c.getAttribute("aria-pressed") !== "true")!;
+    expect(cell).toBeTruthy();
+
+    cell.focus();
+    const back = new KeyboardEvent("keydown", {
+      key: "Tab",
+      shiftKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+    cell.dispatchEvent(back);
+    const prev = document.activeElement as HTMLElement;
+    expect(back.defaultPrevented).toBe(true);
+    expect(panel.contains(prev)).toBe(true);
+    expect(prev).not.toBe(cell);
+    expect(
+      prev.compareDocumentPosition(cell) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+
+    cell.focus();
+    const fwd = new KeyboardEvent("keydown", {
+      key: "Tab",
+      bubbles: true,
+      cancelable: true,
+    });
+    cell.dispatchEvent(fwd);
+    const next = document.activeElement as HTMLElement;
+    expect(fwd.defaultPrevented).toBe(true);
+    expect(panel.contains(next)).toBe(true);
+    expect(next).not.toBe(cell);
+    expect(
+      cell.compareDocumentPosition(next) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
   it("日期字段保持仅日期控件，不出现面板或时间输入", () => {
     const DATE_ONLY_DOC = `---
 title: 日期字段

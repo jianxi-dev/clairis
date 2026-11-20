@@ -672,6 +672,48 @@ function clampStep(value: number, max: number): number {
   return ((value % span) + span) % span;
 }
 
+// Tab 停靠点排除 `tabindex="-1"`：步进按钮与非当前日历格是 roving tabindex。
+const DPB_DT_FOCUSABLE =
+  'button:not([disabled]):not([tabindex="-1"]), input:not([disabled]):not([tabindex="-1"])';
+
+// 面板内 Tab 到边界回绕，不逃逸到编辑器（#1257：Tab 被 CM6 当缩进写入正文）。
+function moveDtFocus(panel: HTMLElement, forward: boolean): void {
+  const stops = Array.from(
+    panel.querySelectorAll<HTMLElement>(DPB_DT_FOCUSABLE),
+  );
+  if (stops.length === 0) return;
+  const active = document.activeElement as HTMLElement | null;
+  const index = active ? stops.indexOf(active) : -1;
+  let next: HTMLElement;
+  if (index !== -1) {
+    next = forward
+      ? stops[(index + 1) % stops.length]
+      : stops[(index - 1 + stops.length) % stops.length];
+  } else {
+    const following = active
+      ? stops.find(
+          (el) =>
+            active.compareDocumentPosition(el) &
+            Node.DOCUMENT_POSITION_FOLLOWING,
+        )
+      : undefined;
+    const preceding = active
+      ? stops
+          .slice()
+          .reverse()
+          .find(
+            (el) =>
+              el.compareDocumentPosition(active) &
+              Node.DOCUMENT_POSITION_FOLLOWING,
+          )
+      : undefined;
+    next = forward
+      ? (following ?? stops[0])
+      : (preceding ?? stops[stops.length - 1]);
+  }
+  next.focus();
+}
+
 interface TimeStepperProps {
   label: string;
   testId: string;
@@ -930,6 +972,10 @@ function DatetimeEditor({ field, editable, onCommit }: DatetimeEditorProps) {
           } else if (e.key === "Escape") {
             e.preventDefault();
             finishRef.current("cancel");
+          } else if (e.key === "Tab") {
+            e.preventDefault();
+            e.stopPropagation();
+            if (panelRef.current) moveDtFocus(panelRef.current, !e.shiftKey);
           }
         }}
       >
