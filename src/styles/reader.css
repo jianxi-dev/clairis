@@ -94,6 +94,23 @@
   max-width: var(--type-measure-wide);
 }
 
+/* 纸内首块的正文包装：包装自身不套窄通道（否则 .wide 被裁），窄通道下移到
+ * 子元素；导出 / 打印无此包装，仍走上面的直子规则。 */
+.preview-content > .preview-prose {
+  max-width: none;
+  margin-block: 0;
+}
+
+.preview-prose > * {
+  max-width: var(--type-measure);
+  margin-inline: auto !important;
+  margin-block: 0 1.15em;
+}
+
+.preview-prose > .wide {
+  max-width: var(--type-measure-wide);
+}
+
 /* 块对齐围栏 div（`::: {.align-*}` → `.layout-align-*`） */
 .preview-content .layout-align-left {
   text-align: left;
@@ -332,6 +349,14 @@
 }
 
 .preview-content > :last-child {
+  margin-bottom: 0;
+}
+
+.preview-prose > :first-child {
+  margin-top: 0;
+}
+
+.preview-prose > :last-child {
   margin-bottom: 0;
 }
 

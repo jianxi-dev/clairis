@@ -1151,14 +1151,15 @@
   );
 }
 
-.doc-property-embed-preview {
-  width: 100%;
-  /* #1227：与 .preview-content 同 max-width / 同横向内距，卡片与段落同轴。 */
-  max-width: var(--type-measure-wide, 1200px);
-  margin-inline: auto;
-  padding: 12px 2rem 0;
+/* 负外边距抵掉纸面横向内距：宿主外框与纸面同宽，卡片与正文列同轴（#1243）。 */
+.preview-content > .doc-property-embed-preview {
+  width: auto;
+  max-width: none;
+  margin-inline: -2rem !important;
   margin-bottom: calc(
     var(--type-line, 1.78) *
       var(--type-font-size, var(--editor-font-size, 17px))
   );
+  padding: 0 2rem;
+  background: var(--reader-paper);
 }

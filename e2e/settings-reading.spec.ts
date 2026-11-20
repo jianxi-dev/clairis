@@ -126,7 +126,7 @@ test("设置阅读空间区：行宽/配色/字号可改并持久化生效", asy
   await expect(page.locator('[data-testid="settings-scene"]')).toHaveCount(0);
 
   const paraWidth = await page
-    .locator(".preview-content > p")
+    .locator(".preview-prose > p")
     .first()
     .evaluate((el) => getComputedStyle(el).maxWidth);
   expect(paraWidth).toBe("720px");
@@ -241,7 +241,7 @@ test("行宽滑块 480–1400 连续可调，并与预设同步（#274 / #573）
   await expect
     .poll(() =>
       page
-        .locator(".preview-content > p")
+        .locator(".preview-prose > p")
         .first()
         .evaluate((el) => getComputedStyle(el).maxWidth),
     )
@@ -266,20 +266,13 @@ async function openEditDoc913(page: Page): Promise<void> {
         getState: () => { setEditorMode: (m: string) => void };
       };
     };
-    w.__biaoyue_openFile__(
-      "/tmp/skin-parity.md",
-      body,
-      "skin-parity.md",
-    );
+    w.__biaoyue_openFile__("/tmp/skin-parity.md", body, "skin-parity.md");
     w.__biaoyue_store__.getState().setEditorMode("edit");
   }, "# 一级标题\n\n正文段落，用于确认正文色不随配色变化。");
   await expect(page.locator(".cm-heading.cm-h1")).toBeVisible();
 }
 
-async function setMode913(
-  page: Page,
-  mode: "edit" | "preview",
-): Promise<void> {
+async function setMode913(page: Page, mode: "edit" | "preview"): Promise<void> {
   await page.evaluate((m) => {
     const w = window as unknown as {
       __biaoyue_store__: {
@@ -322,7 +315,7 @@ async function previewH1Color(page: Page): Promise<string> {
 
 async function previewBodyColor(page: Page): Promise<string> {
   return page
-    .locator(".preview-content p")
+    .locator(".preview-prose > p")
     .first()
     .evaluate((el) => getComputedStyle(el).color);
 }
@@ -331,11 +324,7 @@ function shot913(page: Page, name: string): Promise<string> {
   return page.screenshot({ path: path.join(ART913, `${name}.png`) });
 }
 
-function record913(
-  state: string,
-  screenshot: string,
-  assertion: string,
-): void {
+function record913(state: string, screenshot: string, assertion: string): void {
   execFileSync(
     EVIDENCE913,
     [
@@ -452,5 +441,9 @@ test("配色同时驱动编辑态与预览态标题色，正文不串色（#913�
   const warmEditH1 = await editH1Color(page);
   expect(warmEditH1, "暖色 + 靛蓝应沿用亮色色板").toBe(indigoEditH1);
   await shot913(page, "warm-indigo-edit");
-  record913("warm-indigo-edit", ".artifacts/913/warm-indigo-edit.png", "passed");
+  record913(
+    "warm-indigo-edit",
+    ".artifacts/913/warm-indigo-edit.png",
+    "passed",
+  );
 });

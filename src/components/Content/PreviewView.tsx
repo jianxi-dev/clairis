@@ -28,6 +28,7 @@ interface PreviewViewProps {
   content?: string;
   fileKind?: FileKind;
   filePath?: string | null;
+  leading?: React.ReactNode;
 }
 
 const PLAIN_TEXT_KINDS: FileKind[] = [
@@ -138,6 +139,7 @@ export default function PreviewView({
   content = "",
   fileKind = "markdown",
   filePath = null,
+  leading,
 }: PreviewViewProps) {
   const headingColors = useEditorStore((s) => s.headingColors);
   const headingFonts = useEditorStore((s) => s.config.headingFonts);
@@ -254,6 +256,7 @@ export default function PreviewView({
       html={html}
       headingVars={headingVars}
       typeVars={typeVars}
+      leading={leading}
     />
   );
 }
@@ -452,10 +455,12 @@ function ZoomablePreview({
   html,
   headingVars,
   typeVars,
+  leading,
 }: {
   html: string | null;
   headingVars: React.CSSProperties | undefined;
   typeVars: React.CSSProperties;
+  leading?: React.ReactNode;
 }) {
   const { zoom, onWheel, onDoubleClick, bindGesture } = usePreviewZoom();
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -502,11 +507,13 @@ function ZoomablePreview({
       onClick={onClick}
     >
       {darkVarsCss && <style>{darkVarsCss}</style>}
-      <div
-        className="preview-content"
-        style={{ ...typeVars, ...headingVars }}
-        dangerouslySetInnerHTML={{ __html: html ?? "" }}
-      />
+      <div className="preview-content" style={{ ...typeVars, ...headingVars }}>
+        {leading}
+        <div
+          className="preview-prose"
+          dangerouslySetInnerHTML={{ __html: html ?? "" }}
+        />
+      </div>
     </div>
   );
 }

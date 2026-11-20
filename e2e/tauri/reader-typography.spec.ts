@@ -94,7 +94,7 @@ test("预览排版：容器尺度按设计 token 生效", async ({ page }) => {
   expect(box.fontFamily).toContain("PingFang SC");
 
   const paraWidth = await page
-    .locator(".preview-content > p")
+    .locator(".preview-prose > p")
     .first()
     .evaluate((el) => getComputedStyle(el).maxWidth);
   expect(paraWidth).toBe("1080px");
@@ -269,7 +269,7 @@ test("预览排版：阅读设置可改字号与行宽", async ({ page }) => {
   expect(fontSize).toBe("19px");
 
   const width = await page
-    .locator(".preview-content > p")
+    .locator(".preview-prose > p")
     .first()
     .evaluate((el) => getComputedStyle(el).maxWidth);
   expect(width).toBe("720px");
@@ -295,7 +295,7 @@ test("预览排版：纸宽撑满可用宽度，且随窗口与行宽设置变�
       const cs = getComputedStyle(pc);
       const shell = pc.parentElement as HTMLElement;
       const p = document.querySelector(
-        ".preview-content > p",
+        ".preview-prose > p",
       ) as HTMLElement | null;
       return {
         shellW: Math.round(shell.getBoundingClientRect().width),
