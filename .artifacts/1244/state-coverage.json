@@ -1,0 +1,33 @@
+{
+  "task": "1244",
+  "states": [
+    {
+      "state": "00-initial-embed",
+      "screenshot": ".artifacts/1244/00-initial-embed.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-20T13:17:44.851Z",
+      "runner": "unknown@unknown"
+    },
+    {
+      "state": "01-revealed-source",
+      "screenshot": ".artifacts/1244/01-revealed-source.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-20T13:17:44.994Z",
+      "runner": "unknown@unknown"
+    },
+    {
+      "state": "02-recovered-host",
+      "screenshot": ".artifacts/1244/02-recovered-host.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-20T13:17:45.194Z",
+      "runner": "unknown@unknown"
+    },
+    {
+      "state": "03-recovered-interactive",
+      "screenshot": ".artifacts/1244/03-recovered-interactive.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-20T13:17:45.253Z",
+      "runner": "unknown@unknown"
+    }
+  ]
+}

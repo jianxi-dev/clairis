@@ -683,17 +683,27 @@ export default function ContentArea({
   const [embedHost, setEmbedHost] = useState<HTMLElement | null>(null);
   // 宿主按本格自查：分屏下模块级单槽会被另一格的 effect 覆盖（#1226）。widget
   // DOM 在 CM 更新期间创建，故在 rAF 里查本格 EditorView DOM。
+  //
+  // 装饰翻转（选区落入 frontmatter → 隐藏撤销、widget DOM 销毁；选区移出 →
+  // 隐藏恢复、widget DOM 重建）不改变上面任一依赖，旧宿主被 detach 后 portal
+  // 仍渲染进去 → 属性块不可见（#1244）。用 MutationObserver 跟踪本格 widget 增删，
+  // 重建后重新挂到新宿主；identity 比较避免 portal 自身改动触发循环。
   useEffect(() => {
     const view = viewRef.current;
     if (!view) return;
-    const frame = requestAnimationFrame(() => {
-      setEmbedHost(
-        embedActive
-          ? view.dom.querySelector<HTMLElement>(`.${DPB_EMBED_CLASS}`)
-          : null,
-      );
-    });
-    return () => cancelAnimationFrame(frame);
+    const requery = () => {
+      const next = embedActive
+        ? view.dom.querySelector<HTMLElement>(`.${DPB_EMBED_CLASS}`)
+        : null;
+      setEmbedHost((prev) => (prev === next ? prev : next));
+    };
+    const frame = requestAnimationFrame(requery);
+    const observer = new MutationObserver(requery);
+    observer.observe(view.contentDOM, { childList: true, subtree: true });
+    return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+    };
   }, [embedActive, propPanelCollapsed, tab?.id, editorViewState]);
 
   useEffect(() => {
