@@ -325,6 +325,7 @@ test("B 精排双列：5 列网格 / 静态类型图标 / 底部统计全部字�
   expect(parseFloat(tracks[0])).toBeCloseTo(16, 1);
   // 类型列已去掉文字，只剩图标宽度（#1261）
   expect(parseFloat(tracks[1])).toBeGreaterThanOrEqual(16);
+  expect(parseFloat(tracks[1])).toBeLessThan(30);
   expect(parseFloat(tracks[2])).toBeCloseTo(92, 1);
   expect(parseFloat(tracks[4])).toBeCloseTo(18, 1);
 
