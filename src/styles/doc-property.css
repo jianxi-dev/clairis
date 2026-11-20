@@ -1141,7 +1141,24 @@
   padding: 12px 0 4px;
 }
 
+.cm-dpb-embed .dpb-panel {
+  /* #1227：下方间距 = 一个正文行高，由布局 margin 提供（不依赖可被删除的文档
+     空行）。间距落在卡片上而非宿主上：CM6 按宿主 border-box 量高，宿主的 margin
+     不计入高度图，会让 posAtCoords 偏移、块手柄召唤失灵。 */
+  margin-bottom: calc(
+    var(--type-line, 1.78) *
+      var(--type-font-size, var(--editor-font-size, 17px))
+  );
+}
+
 .doc-property-embed-preview {
   width: 100%;
-  padding: 12px 0 0;
+  /* #1227：与 .preview-content 同 max-width / 同横向内距，卡片与段落同轴。 */
+  max-width: var(--type-measure-wide, 1200px);
+  margin-inline: auto;
+  padding: 12px 2rem 0;
+  margin-bottom: calc(
+    var(--type-line, 1.78) *
+      var(--type-font-size, var(--editor-font-size, 17px))
+  );
 }

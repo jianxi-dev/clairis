@@ -445,3 +445,105 @@ test("窄窗：属性块不横向溢出", async ({ page }) => {
   expect(b.scroll).toBeLessThanOrEqual(b.client + 1);
   await dpbRecord(page, "1217", "04-narrow-b-no-overflow");
 });
+
+test("编辑态：属性块下方间距 ≈ 一个正文行高，且不依赖文档空行（#1227）", async ({
+  page,
+}) => {
+  const measure = () =>
+    page.evaluate(() => {
+      const card = document.querySelector<HTMLElement>(
+        ".cm-content > .cm-dpb-embed .dpb-panel",
+      );
+      const line = document.querySelector<HTMLElement>(
+        ".cm-content > .cm-line",
+      );
+      const content = document.querySelector<HTMLElement>(".cm-content");
+      if (!card || !line || !content) return null;
+      const c = card.getBoundingClientRect();
+      const l = line.getBoundingClientRect();
+      // 正文行高取 .cm-content 计算值（标题行有独立行高，不能拿首行高度当行高）。
+      const lineHeight = parseFloat(getComputedStyle(content).lineHeight);
+      return { gap: l.top - c.bottom, lineHeight };
+    });
+
+  await openDoc(page);
+  await setMode(page, "edit");
+  await expect(page.locator(".cm-content > .cm-dpb-embed")).toBeVisible();
+  const withBlank = await measure();
+  expect(withBlank).not.toBeNull();
+  expect(withBlank!.gap).toBeGreaterThanOrEqual(withBlank!.lineHeight - 2);
+  expect(withBlank!.gap).toBeLessThanOrEqual(withBlank!.lineHeight + 6);
+  await dpbRecord(page, "1227", "01-edit-gap-one-line");
+
+  // 删掉 frontmatter 后的空行：间距不变（来自 margin，不来自空行）。
+  const NO_BLANK = EMBED_DOC.replace("---\n\n# 正文标题", "---\n# 正文标题");
+  await page.evaluate((content) => {
+    (
+      window as unknown as {
+        __biaoyue_store__: {
+          getState: () => { updateContent: (c: string) => void };
+        };
+      }
+    ).__biaoyue_store__
+      .getState()
+      .updateContent(content);
+  }, NO_BLANK);
+  await expect(page.locator(".cm-content > .cm-dpb-embed")).toBeVisible();
+  const noBlank = await measure();
+  expect(noBlank).not.toBeNull();
+  expect(noBlank!.gap).toBeGreaterThanOrEqual(noBlank!.lineHeight - 2);
+  expect(noBlank!.gap).toBeLessThanOrEqual(noBlank!.lineHeight + 6);
+  await dpbRecord(page, "1227", "02-edit-gap-no-blank-line");
+});
+
+test("编辑态：折叠条下方间距同样 ≈ 一个正文行高（#1227）", async ({ page }) => {
+  await openDoc(page);
+  await setMode(page, "edit");
+  await page.locator('[data-testid="dpb-collapse"]').click();
+  await expect(page.locator(".cm-content > .cm-dpb-embed")).toBeVisible();
+  const m = await page.evaluate(() => {
+    const card = document.querySelector<HTMLElement>(
+      ".cm-content > .cm-dpb-embed .dpb-panel",
+    );
+    const line = document.querySelector<HTMLElement>(".cm-content > .cm-line");
+    const content = document.querySelector<HTMLElement>(".cm-content");
+    if (!card || !line || !content) return null;
+    const c = card.getBoundingClientRect();
+    const l = line.getBoundingClientRect();
+    const lineHeight = parseFloat(getComputedStyle(content).lineHeight);
+    return { gap: l.top - c.bottom, lineHeight };
+  });
+  expect(m).not.toBeNull();
+  expect(m!.gap).toBeGreaterThanOrEqual(m!.lineHeight - 2);
+  expect(m!.gap).toBeLessThanOrEqual(m!.lineHeight + 6);
+  await dpbRecord(page, "1227", "03-collapsed-gap-one-line");
+});
+
+test("预览态：属性卡片与正文段落同轴（左右缘对齐，#1227）", async ({
+  page,
+}) => {
+  await openDoc(page);
+  await setMode(page, "preview");
+  const block = page.locator(".content-scroll > .doc-property-embed-preview");
+  await expect(block).toBeVisible();
+  await expect(page.locator(".preview-content h1")).toBeVisible();
+  const align = await page.evaluate(() => {
+    const card = document.querySelector<HTMLElement>(
+      ".doc-property-embed-preview .dpb-panel",
+    );
+    const p = document.querySelector<HTMLElement>(".preview-content > p");
+    if (!card || !p) return null;
+    const c = card.getBoundingClientRect();
+    const r = p.getBoundingClientRect();
+    return {
+      cardLeft: c.left,
+      cardRight: c.right,
+      pLeft: r.left,
+      pRight: r.right,
+    };
+  });
+  expect(align).not.toBeNull();
+  expect(Math.abs(align!.cardLeft - align!.pLeft)).toBeLessThanOrEqual(2);
+  expect(Math.abs(align!.cardRight - align!.pRight)).toBeLessThanOrEqual(2);
+  await dpbRecord(page, "1227", "04-preview-column-aligned");
+});
