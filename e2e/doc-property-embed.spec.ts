@@ -193,3 +193,68 @@ test("⌘⇧Y 隐藏并恢复正文流内的属性块", async ({ page }) => {
   await expect(page.locator('[data-testid="dpb-hidden-note"]')).toHaveCount(0);
   await dpbRecord(page, "1215", "06-restored");
 });
+
+test("宽度：属性块与正文测量列同宽（A/B 两态）", async ({ page }) => {
+  await openDoc(page);
+  await setMode(page, "edit");
+  for (const variant of ["A", "B"] as const) {
+    await page.evaluate((v) => {
+      (window as any).__biaoyue_doc_property__.getState().setVariant(v);
+    }, variant);
+    await page.waitForTimeout(150);
+    const panel = page
+      .locator(".cm-content > .cm-dpb-embed")
+      .locator(".dpb-panel");
+    await expect(panel).toHaveCount(1);
+    const boxes = await page.evaluate(() => {
+      const p = document.querySelector<HTMLElement>(
+        ".cm-content > .cm-dpb-embed .dpb-panel",
+      );
+      const line = document.querySelector<HTMLElement>(
+        ".cm-content > .cm-line",
+      );
+      if (!p || !line) return null;
+      return {
+        panelW: p.getBoundingClientRect().width,
+        lineW: line.getBoundingClientRect().width,
+      };
+    });
+    expect(boxes).not.toBeNull();
+    expect(Math.abs(boxes!.panelW - boxes!.lineW)).toBeLessThanOrEqual(2);
+    await dpbRecord(
+      page,
+      "1217",
+      variant === "A" ? "01-a-width-aligned" : "02-b-width-aligned",
+    );
+  }
+});
+
+test("窄窗：属性块不横向溢出", async ({ page }) => {
+  await page.setViewportSize({ width: 640, height: 800 });
+  await openDoc(page);
+  await setMode(page, "edit");
+  const panel = page
+    .locator(".cm-content > .cm-dpb-embed")
+    .locator(".dpb-panel");
+  await expect(panel).toBeVisible();
+  const overflow = await page.evaluate(() => {
+    const p = document.querySelector<HTMLElement>(
+      ".cm-content > .cm-dpb-embed .dpb-panel",
+    )!;
+    return { scroll: p.scrollWidth, client: p.clientWidth };
+  });
+  expect(overflow.scroll).toBeLessThanOrEqual(overflow.client + 1);
+  await dpbRecord(page, "1217", "03-narrow-no-overflow");
+  await page.evaluate(() => {
+    (window as any).__biaoyue_doc_property__.getState().setVariant("B");
+  });
+  await page.waitForTimeout(200);
+  const b = await page.evaluate(() => {
+    const p = document.querySelector<HTMLElement>(
+      ".cm-content > .cm-dpb-embed .dpb-panel",
+    )!;
+    return { scroll: p.scrollWidth, client: p.clientWidth };
+  });
+  expect(b.scroll).toBeLessThanOrEqual(b.client + 1);
+  await dpbRecord(page, "1217", "04-narrow-b-no-overflow");
+});
