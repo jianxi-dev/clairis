@@ -723,8 +723,8 @@ export const ICONS: Record<IconName, IconDef> = {
   docPropertyVariant: {
     label: "属性面板形态切换（L 一行条 / T 精排双列）",
     parts: [
-      { s: "M3.5 7.5h7 M3.5 12h7 M3.5 16.5h7" },
-      { s: "M13.5 5.5h7v13h-7z M17 5.5v13 M13.5 12h7" },
+      { s: "M3.5 7h6 M3.5 12h4.5 M3.5 17h3" },
+      { s: "M12 5.5h3v13h-3z M17.5 5.5h3v13h-3z" },
     ],
   },
 };

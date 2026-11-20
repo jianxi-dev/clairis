@@ -1,0 +1,19 @@
+{
+  "task": "1228",
+  "states": [
+    {
+      "state": "01-a-icon-lt",
+      "screenshot": ".artifacts/1228/01-a-icon-lt.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-20T05:17:17.284Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "02-b-icon-lt",
+      "screenshot": ".artifacts/1228/02-b-icon-lt.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-20T05:17:17.362Z",
+      "runner": "mason@unknown"
+    }
+  ]
+}

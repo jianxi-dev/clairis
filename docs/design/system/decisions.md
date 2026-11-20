@@ -93,3 +93,4 @@ ledger: append-only
 | 信息窗复制成功提示 | 由路径后行内文本改为悬浮 toast：锚定触发按钮、圆角胶囊（`--radius-full`）、约 2000ms 自动消失、`pointer-events: none`；底色取 `--app-text-strong`、文字 `--app-surface`（反色胶囊，三主题皆可读） | shell-tabs-surface / #1181 | 2026-11-20 |
 | 页签条尾部空白 | `--tab-strip-tail: 24px`（spec §7.5）：页签弹性铺满后仍在尾部保留空白，承载空白处拖窗与双击切全屏；取代「flex 页签吃满整条」的实现 | shell-tabs-surface / #1180 | 2026-11-20 |
 | 文档属性块间距与预览列对齐 | 属性块下方间距 = 一个正文行高（`--type-line` × 正文字号），由布局 margin 提供、不依赖可被删除的文档空行；编辑态间距落在卡片 `.dpb-panel` 的 margin 上（宿主自身 margin 不被 CM6 高度图计入，会使 `posAtCoords` 偏移）；预览块容器与 `.preview-content` 同 max-width / 同横向内距，卡片边缘与正文段落同轴 | surface-refine-1120 / #1227 | 2026-11-20 |
+| 文档属性 L/T 切换图标换形 | 取代台账「文档属性 L/T 切换图标」行的图形：L 改为三条左对齐不等长横线（6 / 4.5 / 3，行条），T 改为两个并排竖栏矩形（各 3×13、间距 2.5，双列卡）；去掉原 L 的等宽三线与 T 的外框 + 中缝 + 横缝网格。`parts` 两段结构、`label`、title / aria-label、存储值 `A`/`B` 均不变 | surface-refine-1120 / #1228 | 2026-11-20 |

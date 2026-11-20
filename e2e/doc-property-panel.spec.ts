@@ -992,6 +992,35 @@ test("#1163 形态切换图标 L/T 语义与存储兼容", async ({ page }) => {
   await dpbRecord(page, "1163", "05-reload-persisted-a");
 });
 
+test("#1228 形态切换图标换形（L 行条 / T 双列卡）", async ({ page }) => {
+  await openDoc(page);
+  const toggleA = panel(page, "A").locator(
+    '[data-testid="dpb-variant-toggle"]',
+  );
+  await expect(toggleA.locator("svg")).toHaveAttribute(
+    "data-icon",
+    "docPropertyVariant",
+  );
+
+  const pathsA = toggleA.locator("svg path");
+  await expect(pathsA).toHaveCount(2);
+  const dList = await pathsA.evaluateAll((els) =>
+    els.map((e) => e.getAttribute("d")),
+  );
+  expect(dList[0]).not.toBe(dList[1]);
+  expect(dList[0]).toBe("M3.5 7h6 M3.5 12h4.5 M3.5 17h3");
+  expect(dList[1]).toBe("M12 5.5h3v13h-3z M17.5 5.5h3v13h-3z");
+  await dpbRecord(page, "1228", "01-a-icon-lt");
+
+  await toggleA.click();
+  const b = panel(page, "B");
+  await expect(b).toBeVisible();
+  const toggleB = b.locator('[data-testid="dpb-variant-toggle"]');
+  await expect(toggleB.locator("svg path")).toHaveCount(2);
+  await expect(toggleB).toHaveAttribute("aria-pressed", "true");
+  await dpbRecord(page, "1228", "02-b-icon-lt");
+});
+
 const TYPE_DOC = `---
 title: 类型切换
 author: 2026-11-14
