@@ -59,3 +59,28 @@
 
 - e2e：`doc-property-embed.spec.ts`——编辑态块在正文首块（`.cm-content` 首个块级子节点）、滚动后块移出视口、预览态块在标题之前、源码态无块、A/B 切换后块宽不变、`⌘⇧Y` 隐藏恢复。
 - 回归：既有 `doc-property-panel.spec.ts`（90 例）与 `frontmatter-*` 全绿。
+
+## 方案修订（2026-11-20，G0 重开）
+
+**A 案（插入型块 widget）已实证不可行并被回退**（#1221）：块 widget 插在 pos 0 后，
+CM6 的 `posAtCoords` 不把其高度计入该行块，指针/点击整体下移一个块高，块手柄与
+光标落点错行。`requestMeasure` / 空 dispatch / ResizeObserver / estimatedHeight /
+ignoreMutation 均无效。
+
+**采纳方案 1：replace 型块 widget 承载属性块（仅限含 frontmatter 的文档）**
+
+- 既有 `frontmatterHide` 装饰已在编辑态把 `--- … ---` 整块 `replace` 掉（展开态）
+  或替换为一行摘要（折叠态）。把该 replace 的 widget 换成属性块 UI 宿主：
+  replace 型块 widget 的高度由 CM6 正常测量并计入高度图（math / mermaid 已长期验证）。
+- 无 frontmatter 的文档：属性块维持「内容区上方固定宿主」的现有渲染（不引入新回归）；
+  用户在该面板添加首个字段后 frontmatter 生成，随即变为嵌入形态。
+- 折叠态：replace 为一行摘要（现状），不渲染完整面板——与 P-1「折叠态一行摘要」一致。
+- 预览态：维持本 change 已实现的「预览内容流顶部」块（不涉及 CM6 坐标）。
+- 源码态：不渲染。
+
+**验收门槛（必须由测试证明）**：
+1. 含 frontmatter 文档：悬停正文第一段，`block-handle[data-block-from]` 指向正文首块
+   （不是下一段），且手柄可见——即 `posAtCoords` 不再偏移；
+2. `e2e/block-handle.spec.ts`、`e2e/block-decorations.spec.ts`、`e2e/doc-property-panel.spec.ts`
+   全绿；
+3. 折叠/展开、A/B 切换后高度重测正确（滚动不跳）。
