@@ -781,10 +781,13 @@ interface DatetimeEditorProps {
  * 面板内操作只改内部状态，Enter / 失焦 / 点击外部才提交（沿用 onBlur 链路）。
  */
 function DatetimeEditor({ field, editable, onCommit }: DatetimeEditorProps) {
+  const dateOnly = field.type === "date";
   const [editing, setEditing] = useState(false);
   const [datePart, setDatePart] = useState("");
   const [timePart, setTimePart] = useState("00:00");
   const [cal, setCal] = useState({ year: 0, month: 0 });
+  const [view, setView] = useState<"day" | "month" | "year">("day");
+  const [yearPage, setYearPage] = useState(0);
   const [anchor, setAnchor] = useState<{ x: number; y: number } | null>(null);
   const [touched, setTouched] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -824,6 +827,18 @@ function DatetimeEditor({ field, editable, onCommit }: DatetimeEditorProps) {
         restoreFocus();
         return;
       }
+      if (dateOnly) {
+        const result = validateFieldValue("date", d);
+        if (!result.ok) {
+          setError(result.reason);
+          restoreFocus();
+          return;
+        }
+        setError(null);
+        onCommit(field.key, result.value);
+        restoreFocus();
+        return;
+      }
       const hour = Number(t.slice(0, 2)) || 0;
       const minute = Number(t.slice(3, 5)) || 0;
       const next = d ? `${d}T${pad2(hour)}:${pad2(minute)}` : "";
@@ -837,7 +852,7 @@ function DatetimeEditor({ field, editable, onCommit }: DatetimeEditorProps) {
       onCommit(field.key, result.value);
       restoreFocus();
     },
-    [field.key, onCommit],
+    [dateOnly, field.key, onCommit],
   );
 
   const finishRef = useRef(finish);
@@ -872,6 +887,8 @@ function DatetimeEditor({ field, editable, onCommit }: DatetimeEditorProps) {
     setDatePart(date);
     setTimePart(time);
     setCal({ year: y, month: m - 1 });
+    setYearPage(Math.floor(y / 12) * 12);
+    setView("day");
     setTouched(false);
     setError(null);
     doneRef.current = false;
@@ -880,7 +897,7 @@ function DatetimeEditor({ field, editable, onCommit }: DatetimeEditorProps) {
       r
         ? {
             x: Math.max(8, r.left),
-            y: Math.min(window.innerHeight - 260, r.bottom + 4),
+            y: Math.min(window.innerHeight - 360, r.bottom + 4),
           }
         : null,
     );
@@ -903,6 +920,12 @@ function DatetimeEditor({ field, editable, onCommit }: DatetimeEditorProps) {
   const shiftMonth = (delta: number) => {
     const d = new Date(Date.UTC(cal.year, cal.month + delta, 1));
     setCal({ year: d.getUTCFullYear(), month: d.getUTCMonth() });
+  };
+
+  const shiftPeriod = (delta: number) => {
+    if (view === "day") shiftMonth(delta);
+    else if (view === "month") setCal({ ...cal, year: cal.year + delta });
+    else setYearPage(yearPage + delta * 12);
   };
 
   const moveDay = (deltaDays: number) => {
@@ -932,6 +955,19 @@ function DatetimeEditor({ field, editable, onCommit }: DatetimeEditorProps) {
 
   const changeMinute = (m: number) => {
     setTimePart(`${pad2(hour)}:${pad2(m)}`);
+    setTouched(true);
+  };
+
+  const pickToday = () => {
+    const now = new Date();
+    const date = localYmd(now);
+    setDatePart(date);
+    if (!dateOnly) {
+      setTimePart(`${pad2(now.getHours())}:${pad2(now.getMinutes())}`);
+    }
+    setCal({ year: now.getFullYear(), month: now.getMonth() });
+    setYearPage(Math.floor(now.getFullYear() / 12) * 12);
+    setView("day");
     setTouched(true);
   };
 
@@ -981,14 +1017,20 @@ function DatetimeEditor({ field, editable, onCommit }: DatetimeEditorProps) {
         }}
       >
         <span className="dpb-dt-trigger" data-testid="dpb-datetime-trigger">
-          {datePart ? `${datePart} ${timePart}` : "选择日期时间"}
+          {datePart
+            ? dateOnly
+              ? datePart
+              : `${datePart} ${timePart}`
+            : dateOnly
+              ? "选择日期"
+              : "选择日期时间"}
         </span>
         <span
           ref={panelRef}
           className="dpb-menu dpb-dt-panel"
           data-testid="dpb-datetime-panel"
           role="dialog"
-          aria-label="日期时间选择"
+          aria-label={dateOnly ? "日期选择" : "日期时间选择"}
           style={{
             left: (pos ?? anchor ?? { x: 0, y: 0 }).x,
             top: (pos ?? anchor ?? { x: 0, y: 0 }).y,
@@ -999,89 +1041,179 @@ function DatetimeEditor({ field, editable, onCommit }: DatetimeEditorProps) {
               type="button"
               className="dpb-dt-nav"
               data-testid="dpb-cal-prev"
-              aria-label="上一月"
-              onClick={() => shiftMonth(-1)}
+              aria-label={
+                view === "day"
+                  ? "上一月"
+                  : view === "month"
+                    ? "上一年"
+                    : "上一页"
+              }
+              onClick={() => shiftPeriod(-1)}
             >
               ‹
             </button>
-            <span className="dpb-dt-title" data-testid="dpb-cal-title">
-              {cal.year}年{cal.month + 1}月
+            <span className="dpb-dt-head-mid">
+              <button
+                type="button"
+                className="dpb-dt-title-btn"
+                data-testid="dpb-cal-year"
+                onClick={() => setView("year")}
+              >
+                {view === "year" ? `${yearPage}–${yearPage + 11}` : cal.year}年
+              </button>
+              {view !== "year" && (
+                <button
+                  type="button"
+                  className="dpb-dt-title-btn"
+                  data-testid="dpb-cal-month"
+                  onClick={() => setView("month")}
+                >
+                  {cal.month + 1}月
+                </button>
+              )}
             </span>
             <button
               type="button"
               className="dpb-dt-nav"
               data-testid="dpb-cal-next"
-              aria-label="下一月"
-              onClick={() => shiftMonth(1)}
+              aria-label={
+                view === "day"
+                  ? "下一月"
+                  : view === "month"
+                    ? "下一年"
+                    : "下一页"
+              }
+              onClick={() => shiftPeriod(1)}
             >
               ›
             </button>
           </span>
-          <span
-            className="dpb-dt-grid"
-            data-testid="dpb-cal-grid"
-            onKeyDown={(e) => {
-              if (e.key === "ArrowLeft") {
-                e.preventDefault();
-                moveDay(-1);
-              } else if (e.key === "ArrowRight") {
-                e.preventDefault();
-                moveDay(1);
-              } else if (e.key === "ArrowUp") {
-                e.preventDefault();
-                moveDay(-7);
-              } else if (e.key === "ArrowDown") {
-                e.preventDefault();
-                moveDay(7);
-              }
-            }}
-          >
-            {CAL_WEEKDAYS.map((w) => (
-              <span key={w} className="dpb-dt-wd">
-                {w}
-              </span>
-            ))}
-            {cells.map((cell, i) =>
-              cell === null ? (
-                <span key={`blank-${i}`} className="dpb-dt-cell dpb-dt-blank" />
-              ) : (
+          {view === "day" ? (
+            <span
+              className="dpb-dt-grid"
+              data-testid="dpb-cal-grid"
+              onKeyDown={(e) => {
+                if (e.key === "ArrowLeft") {
+                  e.preventDefault();
+                  moveDay(-1);
+                } else if (e.key === "ArrowRight") {
+                  e.preventDefault();
+                  moveDay(1);
+                } else if (e.key === "ArrowUp") {
+                  e.preventDefault();
+                  moveDay(-7);
+                } else if (e.key === "ArrowDown") {
+                  e.preventDefault();
+                  moveDay(7);
+                }
+              }}
+            >
+              {CAL_WEEKDAYS.map((w) => (
+                <span key={w} className="dpb-dt-wd">
+                  {w}
+                </span>
+              ))}
+              {cells.map((cell, i) =>
+                cell === null ? (
+                  <span
+                    key={`blank-${i}`}
+                    className="dpb-dt-cell dpb-dt-blank"
+                  />
+                ) : (
+                  <button
+                    key={cell.date}
+                    type="button"
+                    className={`dpb-dt-cell${
+                      cell.date === datePart ? " dpb-dt-cell-sel" : ""
+                    }`}
+                    data-testid="dpb-cal-day"
+                    data-date={cell.date}
+                    aria-pressed={cell.date === datePart}
+                    autoFocus={cell.date === focusDate}
+                    tabIndex={cell.date === focusDate ? 0 : -1}
+                    onClick={() => pickDay(cell.date)}
+                  >
+                    {cell.day}
+                  </button>
+                ),
+              )}
+            </span>
+          ) : view === "month" ? (
+            <span className="dpb-dt-views" data-testid="dpb-cal-months">
+              {Array.from({ length: 12 }, (_, i) => (
                 <button
-                  key={cell.date}
+                  key={i}
                   type="button"
                   className={`dpb-dt-cell${
-                    cell.date === datePart ? " dpb-dt-cell-sel" : ""
+                    i === cal.month ? " dpb-dt-cell-sel" : ""
                   }`}
-                  data-testid="dpb-cal-day"
-                  data-date={cell.date}
-                  aria-pressed={cell.date === datePart}
-                  autoFocus={cell.date === focusDate}
-                  tabIndex={cell.date === focusDate ? 0 : -1}
-                  onClick={() => pickDay(cell.date)}
+                  data-testid="dpb-cal-month-cell"
+                  aria-pressed={i === cal.month}
+                  onClick={() => {
+                    setCal({ year: cal.year, month: i });
+                    setView("day");
+                  }}
                 >
-                  {cell.day}
+                  {i + 1}月
                 </button>
-              ),
-            )}
-          </span>
-          <span className="dpb-dt-time">
-            <TimeStepper
-              label="小时"
-              testId="dpb-time-hour"
-              value={hour}
-              max={23}
-              onChange={changeHour}
-            />
-            <span className="dpb-dt-colon">:</span>
-            <TimeStepper
-              label="分钟"
-              testId="dpb-time-minute"
-              value={minute}
-              max={59}
-              onChange={changeMinute}
-            />
-          </span>
-          <span className="dpb-dt-hint">
-            Esc 取消 · Enter 保存 · 点击外部保存
+              ))}
+            </span>
+          ) : (
+            <span className="dpb-dt-views" data-testid="dpb-cal-years">
+              {Array.from({ length: 12 }, (_, i) => {
+                const y = yearPage + i;
+                return (
+                  <button
+                    key={y}
+                    type="button"
+                    className={`dpb-dt-cell${
+                      y === cal.year ? " dpb-dt-cell-sel" : ""
+                    }`}
+                    data-testid="dpb-cal-year-cell"
+                    aria-pressed={y === cal.year}
+                    onClick={() => {
+                      setCal({ year: y, month: cal.month });
+                      setYearPage(Math.floor(y / 12) * 12);
+                      setView("month");
+                    }}
+                  >
+                    {y}
+                  </button>
+                );
+              })}
+            </span>
+          )}
+          {!dateOnly && (
+            <span className="dpb-dt-time">
+              <TimeStepper
+                label="小时"
+                testId="dpb-time-hour"
+                value={hour}
+                max={23}
+                onChange={changeHour}
+              />
+              <span className="dpb-dt-colon">:</span>
+              <TimeStepper
+                label="分钟"
+                testId="dpb-time-minute"
+                value={minute}
+                max={59}
+                onChange={changeMinute}
+              />
+            </span>
+          )}
+          <span className="dpb-dt-foot">
+            <button
+              type="button"
+              className="dpb-dt-today"
+              data-testid="dpb-cal-today"
+              onClick={pickToday}
+            >
+              今天
+            </button>
+            <span className="dpb-dt-hint">
+              Esc 取消 · Enter 保存 · 点击外部保存
+            </span>
           </span>
         </span>
       </span>
@@ -1657,7 +1789,10 @@ function FieldValue({
 }: EditorProps & { editable: boolean }) {
   // 托管日期键在组件内部强制只读：调用点漏传 editable 也不漂移（P-6）。
   const effectiveEditable = editable && !isManagedDateKey(field.key);
-  if (effectiveEditable && field.type === "datetime") {
+  if (
+    effectiveEditable &&
+    (field.type === "datetime" || field.type === "date")
+  ) {
     return (
       <DatetimeEditor field={field} editable={editable} onCommit={onCommit} />
     );
