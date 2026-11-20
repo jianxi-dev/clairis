@@ -1,33 +1,29 @@
 /* frontmatter 源码块隐藏（doc-property-panel / #1019）。
  *
  * 面板可见且处于编辑态时，文档开头的 `--- ... ---` 块由属性面板演示，正文
- * 不再重复显示源码：整块用无 widget 的 `Decoration.replace` 隐藏；面板折叠
- * 时改为一行摘要占位「文档属性 · N 个字段」。面板隐藏（⌘⇧Y）或源码态时不
- * 装配本装饰，完整 YAML 恢复可见。
+ * 不再重复显示源码：整块用 `Decoration.replace` 隐藏，并在 `embedPanel` 时
+ * 替换为属性面板宿主块 widget——展开态与折叠态共用该宿主，折叠呈现（折叠条）
+ * 由 `DocPropertyBar` 决定。面板隐藏（⌘⇧Y）或源码态时不装配本装饰，完整
+ * YAML 恢复可见。
  *
  * 光标安全：选区/光标与块区间相交时不隐藏（防编辑盲区），移出后由 StateField
  * 重建恢复。隐藏是纯视图装饰——不改文档内容、不进 undo 栈。
  *
- * 区间口径复用 `src/lib/frontmatter.ts` 的 `FRONTMATTER_RE` 与 `parseFrontmatter`，
- * 与预览剥离、面板解析同一判定，避免「面板隐藏了但预览没剥掉」这类不一致。
+ * 区间口径复用 `src/lib/frontmatter.ts` 的 `FRONTMATTER_RE`，与预览剥离、面板
+ * 解析同一判定，避免「面板隐藏了但预览没剥掉」这类不一致。
  */
 import type { EditorState, Range } from "@codemirror/state";
-import { Decoration, WidgetType } from "@codemirror/view";
-import { FRONTMATTER_RE, parseFrontmatter } from "../../lib/frontmatter";
+import { Decoration } from "@codemirror/view";
+import { FRONTMATTER_RE } from "../../lib/frontmatter";
 import { docPropertyEmbedWidget } from "./docPropertyEmbed";
 
-/** 摘要占位节点 class（CSS manifest 要求 `cm-` 前缀并在 src/styles 落规则）。 */
-export const FMH_SUMMARY_CLASS = "cm-fmh-summary";
-
-/** 面板显隐档 + 折叠态；`null` / 缺省表示不隐藏。 */
+/** 面板显隐档；`null` / 缺省表示不隐藏。 */
 export interface FrontmatterHideOptions {
   /** 面板可见且编辑态：隐藏整块。 */
   hide: boolean;
-  /** 折叠态：以一行摘要代替整块；仅在 `hide` 为 true 时生效。 */
-  collapsed: boolean;
   /**
-   * 展开态：把隐藏的整块替换为属性面板宿主（replace 型块 widget）。
-   * 仅在 `hide` 为 true 且非折叠时生效；无 frontmatter 的文档不注入。
+   * 把隐藏的整块替换为属性面板宿主（replace 型块 widget）。
+   * 展开态与折叠态同一宿主；无 frontmatter 的文档不注入。
    */
   embedPanel?: boolean;
 }
@@ -102,25 +98,6 @@ export function frontmatterTouchesSelection(
   return false;
 }
 
-/** 折叠态摘要占位。 */
-class FrontmatterSummaryWidget extends WidgetType {
-  constructor(private readonly count: number) {
-    super();
-  }
-
-  eq(other: FrontmatterSummaryWidget): boolean {
-    return other.count === this.count;
-  }
-
-  toDOM(): HTMLElement {
-    const el = document.createElement("span");
-    el.className = FMH_SUMMARY_CLASS;
-    el.setAttribute("role", "note");
-    el.textContent = `文档属性 · ${this.count} 个字段`;
-    return el;
-  }
-}
-
 export interface FrontmatterHideResult {
   /** 被隐藏/占位的起点。 */
   readonly from: number;
@@ -147,9 +124,8 @@ export function frontmatterSelectionFix(
  * - 面板隐藏 / 非编辑态（`options` 为 null 或 `hide:false`）→ null。
  * - 无 frontmatter / 空块（正则不命中）→ null。
  * - 选区落入块内 → null（临时显示完整块，防编辑盲区）。
- * - 折叠态：隐藏闭合行以上部分 + 在块首插入一行摘要 widget。
- * - 展开态：从块首隐藏到正文起点（含块后空行）；`embedPanel` 时替换为
- *   属性面板宿主块 widget（高度进高度图，坐标不偏移）。
+ * - `embedPanel`：从块首隐藏到正文起点（含块后空行），替换为属性面板宿主块
+ *   widget（高度进高度图，坐标不偏移）；否则仅隐藏整块。
  */
 export function createFrontmatterHideDecorations(
   state: EditorState,
@@ -161,21 +137,6 @@ export function createFrontmatterHideDecorations(
   const block = findFrontmatterBlock(text);
   if (!block) return null;
   if (frontmatterTouchesSelection(state, block)) return null;
-
-  if (options.collapsed) {
-    const count = parseFrontmatter(text).fields.length;
-    return {
-      from: block.start,
-      to: block.blockEnd,
-      decorations: [
-        Decoration.replace({}).range(block.start, block.blockEnd),
-        Decoration.widget({
-          widget: new FrontmatterSummaryWidget(count),
-          side: -1,
-        }).range(block.start),
-      ],
-    };
-  }
 
   if (options.embedPanel) {
     return {

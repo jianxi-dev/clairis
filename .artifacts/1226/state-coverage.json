@@ -1,0 +1,33 @@
+{
+  "task": "1226",
+  "states": [
+    {
+      "state": "01-collapsed-bar-in-body",
+      "screenshot": ".artifacts/1226/01-collapsed-bar-in-body.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-20T03:35:37.782Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "02-expanded-restored",
+      "screenshot": ".artifacts/1226/02-expanded-restored.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-20T03:35:37.898Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "03-dual-pane-both-embed",
+      "screenshot": ".artifacts/1226/03-dual-pane-both-embed.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-20T03:35:39.319Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "04-hidden-note",
+      "screenshot": ".artifacts/1226/04-hidden-note.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-20T03:35:46.586Z",
+      "runner": "mason@unknown"
+    }
+  ]
+}

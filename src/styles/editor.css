@@ -314,18 +314,6 @@ body {
   transform: rotate(0deg);
 }
 
-/* frontmatter 折叠摘要占位（#1019）：面板折叠时正文以一行摘要代替源码块 */
-.cm-fmh-summary {
-  display: inline-block;
-  padding: 2px 8px;
-  border: 1px dashed var(--app-border-strong);
-  border-radius: var(--radius-4);
-  background: var(--app-sunken);
-  color: var(--app-text-3);
-  font-size: 12px;
-  line-height: 1.5;
-}
-
 /* 行内强调 */
 .cm-strikethrough {
   text-decoration: line-through;

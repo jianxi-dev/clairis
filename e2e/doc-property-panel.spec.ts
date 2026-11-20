@@ -2936,7 +2936,7 @@ test("#1041 窄宽可视：400px 视口控件区完整落在视口内", async ({
   await expect(page.locator('[data-testid="dpb-palette-item"]')).toHaveCount(8);
 });
 
-test("#1019 编辑态面板展开隐藏 frontmatter 整块，折叠显示一行摘要", async ({
+test("#1019 编辑态面板展开隐藏 frontmatter 整块，折叠在正文流内呈现折叠条", async ({
   page,
 }) => {
   await openDoc(page);
@@ -2948,13 +2948,23 @@ test("#1019 编辑态面板展开隐藏 frontmatter 整块，折叠显示一行�
   await expect(cm).not.toContainText("---");
   await dpbRecord(page, "1019", "01-edit-expanded-hidden");
 
-  // 折叠：恰好一行摘要占位，N = 顶层键数（DOC 为 6）
+  // 折叠：折叠条位于正文流内（原 frontmatter 位置），正文不再出现摘要标签
   await page.locator('[data-testid="dpb-collapse"]').click();
-  const summary = page.locator(".cm-fmh-summary");
-  await expect(summary).toHaveCount(1);
-  await expect(summary).toHaveText("文档属性 · 6 个字段");
+  await expect(page.locator(".cm-content > .cm-dpb-embed")).toHaveCount(1);
+  await expect(page.locator(".cm-fmh-summary")).toHaveCount(0);
   await expect(cm).not.toContainText("title:");
-  await dpbRecord(page, "1019", "02-collapsed-summary");
+  await expect(
+    page.locator('.cm-dpb-embed [data-testid="dpb-a"] .dpb-a-summary'),
+  ).toContainText("已折叠");
+  await dpbRecord(page, "1019", "02-collapsed-bar-in-body");
+
+  // 展开：回到完整卡片
+  await page.locator('[data-testid="dpb-collapse"]').click();
+  await expect(
+    page.locator('.cm-dpb-embed [data-testid="dpb-a"] .dpb-a-summary'),
+  ).toHaveCount(0);
+  await expect(cm).not.toContainText("title:");
+  await dpbRecord(page, "1019", "03-expanded-restored");
 });
 
 test("#1019 ⌘⇧Y 隐藏面板与切源码态均恢复完整 YAML", async ({ page }) => {
