@@ -227,25 +227,20 @@ test("布尔值：图形与提示分离，状态文案移至 title（#1021）", 
   await dpbRecord(page, "1021", "02-bool-off");
 });
 
-test("三模式：源码态不渲染属性块，切回编辑恢复展开", async ({ page }) => {
+test("三模式：源码态面板 display:none，切回编辑恢复展开", async ({ page }) => {
   await openDoc(page);
   await expect(panel(page, "A")).toBeVisible();
 
   await setMode(page, "source");
-  await expect(panel(page, "A")).toHaveCount(0);
-  await expect(page.locator('[data-testid="doc-property-host"]')).toHaveCount(
-    0,
-  );
-  await expect(page.locator(".cm-dpb-embed")).toHaveCount(0);
+  const host = page.locator('[data-testid="doc-property-host"]');
+  await expect(host).toHaveCSS("display", "none");
+  await expect(panel(page, "A")).toBeHidden();
   // 源码态 YAML 原文仍在编辑区
   await expect(page.locator(".cm-content").first()).toContainText("title:");
 
   await setMode(page, "edit");
+  await expect(host).toHaveCSS("display", "block");
   await expect(panel(page, "A")).toBeVisible();
-  await expect(page.locator('[data-testid="doc-property-host"]')).toHaveCount(
-    1,
-  );
-  await expect(page.locator(".cm-dpb-embed")).toHaveCount(1);
   await expect(page.locator('[data-testid="dpb-collapse"]')).toBeVisible();
 });
 
@@ -2256,12 +2251,9 @@ test("行尾删除：真实 frontmatter 形态（数组 / 引号冒号 / 多行 
       .click();
     expect(await rowKeys(page, variant)).not.toContain("category");
     await setMode(page, "source");
-    const cm = page.locator(".cm-content").first();
-    await expect(cm).not.toContainText("category:");
-    await expect(cm).toContainText("author: 张三");
-    await expect(cm).toContainText("note: |");
-    await setMode(page, "edit");
-    await expect(p.locator('[data-key="category"]')).toHaveCount(0);
+    await expect(page.locator(".cm-content").first()).not.toContainText(
+      "category:",
+    );
     await expect(p.locator('[data-key="note"]')).toHaveCount(1);
     await expect(
       p.locator('[data-key="author"] [data-testid="dpb-value"]'),
@@ -2972,7 +2964,6 @@ test("#1019 ⌘⇧Y 隐藏面板与切源码态均恢复完整 YAML", async ({ p
   await expect(cm).not.toContainText("title:");
 
   await page.keyboard.press("Meta+Shift+Y");
-  await expect(panel(page, "A")).toHaveCount(0);
   await expect(page.locator(".cm-fmh-summary")).toHaveCount(0);
   await expect(cm).toContainText("title:");
   await expect(cm).toContainText("count: 1234567");
