@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useEffect,
   useLayoutEffect,
   type ReactNode,
@@ -51,7 +52,14 @@ export default function SuggestMenu({
   rowTestId,
   emptyText,
 }: SuggestMenuProps) {
-  const { pos, ref: menuRef } = useMenuPos(anchor);
+  const boundsOf = useCallback(
+    () =>
+      (hostRef.current?.closest(
+        '[data-testid="doc-property-host"]',
+      ) as HTMLElement | null) ?? null,
+    [hostRef],
+  );
+  const { pos, ref: menuRef } = useMenuPos(anchor, boundsOf);
 
   useEffect(() => {
     const off = activateLocalContext(context);
