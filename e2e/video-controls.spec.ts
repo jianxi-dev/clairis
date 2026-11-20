@@ -60,9 +60,7 @@ async function withRealVideo(page: Page): Promise<void> {
   await page.waitForTimeout(200);
 }
 
-test("控制条顺序：上下集夹住播放键，截图→画中画→全屏自绘按钮", async ({
-  page,
-}) => {
+test("控制条顺序：上下集夹住播放键，截图→画中画", async ({ page }) => {
   await openMedia(page, "/Users/test/clip.mp4");
 
   const left = await page
@@ -86,9 +84,32 @@ test("控制条顺序：上下集夹住播放键，截图→画中画→全屏�
   expect(at(right, "art-control-screenshot")).toBeLessThan(
     at(right, "art-control-pip"),
   );
-  expect(at(right, "art-control-pip")).toBeLessThan(
-    at(right, "art-control-fullscreen"),
-  );
+});
+
+/**
+ * #1230：独立视频页签是 standalone 上下文，控制条 SHALL NOT 出现「满页面宽度」
+ * 与「全屏」两个图标——两项能力只提供给 MD 内嵌视频上下文。
+ * 快捷键不变：F 仍可进出网页全屏并联动窗口全屏。
+ */
+test("[#1230] 独立视频页签不显示宽度/全屏图标，F 快捷键仍生效", async ({
+  page,
+}) => {
+  await openMedia(page, "/Users/test/clip.mp4");
+  await installFullscreenSpy(page);
+
+  await expect(page.locator(".art-control[data-name='width']")).toHaveCount(0);
+  await expect(
+    page.locator(".art-control[data-name='fullscreen']"),
+  ).toHaveCount(0);
+
+  const player = page.locator(".art-video-player").first();
+  // ArtPlayer 仅在点击命中容器后置 isFocus，快捷键才会响应
+  await player.click();
+  await page.keyboard.press("f");
+  await expect(player).toHaveClass(/art-fullscreen-web/);
+  await expect.poll(() => fsCallCount(page)).toBeGreaterThanOrEqual(1);
+  await page.keyboard.press("f");
+  await expect(player).not.toHaveClass(/art-fullscreen-web/);
 });
 
 test("截图直接写剪贴板并弹胶囊提示，不调用另存为", async ({ page }) => {
@@ -255,11 +276,12 @@ test("进度条悬停显示当前位置缩略图，移开消失", async ({ page 
 test("全屏态仍有二级菜单", async ({ page }) => {
   await openMedia(page, "/Users/test/clip.mp4");
   await withRealVideo(page);
-  await page.locator(".art-control-fullscreen").click();
+  await page.locator(".art-video-player").first().click();
+  await page.keyboard.press("f");
   await page.waitForTimeout(300);
   await page.locator(".art-control[data-name='rate']").hover();
   await expect(page.locator(".rate-menu")).toHaveCount(1);
-  await page.locator(".art-control-fullscreen").click();
+  await page.keyboard.press("f");
 });
 
 test("二级菜单 hover 显隐且以鼠标为中心，快捷键浮层 168px", async ({
@@ -378,7 +400,20 @@ test("全屏下指针滑入底部显示按钮栏与浮层，画面无 letterbox"
   await expect(player).toHaveClass(/art-control-show/);
   await shot("01-non-fullscreen-bar.png");
 
-  await page.locator(".art-control-fullscreen").click();
+  // 点击置 isFocus 会顺带暂停播放；空格恢复播放，控制条才会按 3s 自动隐藏
+  await player.click();
+  await page.keyboard.press(" ");
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const v = document.querySelector(
+          ".art-video-player video",
+        ) as HTMLVideoElement | null;
+        return v ? !v.paused && v.readyState > 2 : false;
+      }),
+    )
+    .toBe(true, { timeout: 10000 });
+  await page.keyboard.press("f");
   await expect(player).toHaveClass(/art-fullscreen-web/);
   await page.mouse.move(600, 40);
   await expect(player).not.toHaveClass(/art-control-show/, { timeout: 8000 });
@@ -506,59 +541,6 @@ const fsCallCount = (page: Page): Promise<number> =>
   page.evaluate(
     () => (window as unknown as Record<string, number[]>).__fsCalls.length,
   );
-
-/**
- * #907 B9：速率左侧宽度图标弹出恰好两档（满页面宽度 / 全屏）。
- * 满页面宽度只铺满 webview（不联动 OS 窗口），全屏再叠加窗口全屏。
- * 修复前没有该按钮，菜单项数与全屏调用断言均失败。
- */
-test("[#907] 宽度档菜单恰好两档并切换生效", async ({ page }) => {
-  await openMedia(page, "/Users/test/clip.mp4");
-  await installFullscreenSpy(page);
-
-  const player = page.locator(".art-video-player").first();
-  const widthBtn = page.locator(".art-control[data-name='width']");
-  await expect(widthBtn).toBeVisible();
-
-  await widthBtn.click();
-  const items = page.locator(".width-menu-item");
-  await expect(items).toHaveCount(2);
-  await expect(items).toHaveText(["满页面宽度", "全屏"]);
-
-  await items.filter({ hasText: "满页面宽度" }).click();
-  await expect(player).toHaveClass(/art-fullscreen-web/);
-  expect(await fsCallCount(page)).toBe(0);
-
-  await widthBtn.click();
-  await items.filter({ hasText: "全屏" }).click();
-  await expect(player).toHaveClass(/art-fullscreen-web/);
-  await expect.poll(() => fsCallCount(page)).toBeGreaterThanOrEqual(1);
-});
-
-/**
- * #907 B9：右键画面菜单「全屏」SHALL 脱离文档页面、以整个计算机屏幕显示，
- * 退出后回到原文档位置（播放器 class 还原，无残留覆盖层）。
- * 修复前右键菜单没有「全屏」项，无法触发窗口全屏调用。
- */
-test("[#907] 右键画面菜单「全屏」触发窗口全屏并可退出", async ({ page }) => {
-  await openMedia(page, "/Users/test/clip.mp4");
-  await installFullscreenSpy(page);
-
-  const player = page.locator(".art-video-player").first();
-  const box = (await player.boundingBox())!;
-  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2, {
-    button: "right",
-  });
-  await expect(page.locator(".art-contextmenus")).toBeVisible();
-  await page.locator(".art-contextmenu", { hasText: "全屏" }).first().click();
-
-  await expect(player).toHaveClass(/art-fullscreen-web/);
-  await expect.poll(() => fsCallCount(page)).toBeGreaterThanOrEqual(1);
-
-  await page.keyboard.press("Escape");
-  await expect(player).not.toHaveClass(/art-fullscreen-web/);
-  await expect.poll(() => fsCallCount(page)).toBeGreaterThanOrEqual(2);
-});
 
 test("[#905] 截图控件是 camera 图形，与播放角标 play 不同形", async ({
   page,

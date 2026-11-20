@@ -53,6 +53,8 @@ interface VideoPlayerProps {
   url: string;
   /** 文件类型：video / audio（audio 显示频谱图） */
   fileKind?: "video" | "audio";
+  /** MD 内嵌视频上下文：仅此上下文提供「满页面宽度 / 全屏」两项能力 */
+  embedded?: boolean;
 }
 
 type LoopMode = "none" | "single" | "playlist";
@@ -209,6 +211,7 @@ export default function VideoPlayer({
   filePath,
   url,
   fileKind = "video",
+  embedded = false,
 }: VideoPlayerProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -226,6 +229,10 @@ export default function VideoPlayer({
   useEffect(() => {
     fileKindRef.current = fileKind;
   }, [fileKind]);
+  const embeddedRef = useRef(embedded);
+  useEffect(() => {
+    embeddedRef.current = embedded;
+  }, [embedded]);
 
   const [playlist, setPlaylist] = useState<MediaEntry[]>([]);
   const [currentIndex, setCurrentIndex] = useState(-1);
@@ -826,18 +833,20 @@ export default function VideoPlayer({
       theme: "#6366f1",
       ...(initialKind === "audio" ? { poster: AUDIO_POSTER } : {}),
       moreVideoAttr: { playsInline: true },
-      // 右键画面菜单：全屏脱离文档页面，以整个计算机屏幕显示（B9）。
-      contextmenu: [
-        {
-          name: "fullscreen",
-          index: 5,
-          html: "全屏",
-          click: (contextmenu) => {
-            contextmenu.show = false;
-            applyWidthMode("fullscreen");
-          },
-        },
-      ],
+      // 右键画面菜单：全屏脱离文档页面，以整个计算机屏幕显示（B9）。仅内嵌上下文提供。
+      contextmenu: embeddedRef.current
+        ? [
+            {
+              name: "fullscreen",
+              index: 5,
+              html: "全屏",
+              click: (contextmenu: { show: boolean }) => {
+                contextmenu.show = false;
+                applyWidthMode("fullscreen");
+              },
+            },
+          ]
+        : [],
       controls: [
         {
           name: "prev",
@@ -908,23 +917,32 @@ export default function VideoPlayer({
             });
           },
         },
-        {
-          name: "width",
-          position: "right",
-          index: 46,
-          html: controlSvg("width"),
-          tooltip: "宽度档",
-          mounted: function ($control) {
-            $control.dataset.name = "width";
-            this.proxy($control, "mouseenter", (e: Event) =>
-              openPopover("width", $control, 150, (e as MouseEvent).clientX),
-            );
-            this.proxy($control, "mouseleave", schedulePopoverClose);
-            this.proxy($control, "click", () => {
-              openPopover("width", $control, 150);
-            });
-          },
-        },
+        ...(embeddedRef.current
+          ? [
+              {
+                name: "width",
+                position: "right",
+                index: 46,
+                html: controlSvg("width"),
+                tooltip: "宽度档",
+                mounted: function (this: Artplayer, $control: HTMLElement) {
+                  $control.dataset.name = "width";
+                  this.proxy($control, "mouseenter", (e: Event) =>
+                    openPopover(
+                      "width",
+                      $control,
+                      150,
+                      (e as MouseEvent).clientX,
+                    ),
+                  );
+                  this.proxy($control, "mouseleave", schedulePopoverClose);
+                  this.proxy($control, "click", () => {
+                    openPopover("width", $control, 150);
+                  });
+                },
+              },
+            ]
+          : []),
         {
           name: "playlist",
           position: "right",
@@ -1013,21 +1031,25 @@ export default function VideoPlayer({
             this.proxy($control, "click", () => openNote());
           },
         },
-        {
-          name: "fullscreen",
-          position: "right",
-          index: 78,
-          html: controlSvg("fullscreen"),
-          tooltip: "全屏",
-          mounted: function ($control) {
-            $control.dataset.name = "fullscreen";
-            this.proxy($control, "click", () => {
-              const player = artRef.current;
-              if (!player) return;
-              player.fullscreenWeb = !player.fullscreenWeb;
-            });
-          },
-        },
+        ...(embeddedRef.current
+          ? [
+              {
+                name: "fullscreen",
+                position: "right",
+                index: 78,
+                html: controlSvg("fullscreen"),
+                tooltip: "全屏",
+                mounted: function (this: Artplayer, $control: HTMLElement) {
+                  $control.dataset.name = "fullscreen";
+                  this.proxy($control, "click", () => {
+                    const player = artRef.current;
+                    if (!player) return;
+                    player.fullscreenWeb = !player.fullscreenWeb;
+                  });
+                },
+              },
+            ]
+          : []),
         {
           name: "hints",
           position: "right",

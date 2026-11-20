@@ -1,0 +1,47 @@
+{
+  "task": "1230",
+  "states": [
+    {
+      "state": "unit-default-controls-absent",
+      "screenshot": ".artifacts/1230/green-unit.txt",
+      "assertion": "embedded 默认/false 不注册 width 与 fullscreen 控件",
+      "recorded_at": "2026-11-20T07:13:24.000Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "unit-embedded-controls-present",
+      "screenshot": ".artifacts/1230/green-unit.txt",
+      "assertion": "embedded=true 注册 width 与 fullscreen 控件，宽度档恰好两档",
+      "recorded_at": "2026-11-20T07:13:24.000Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "e2e-standalone-no-width-fullscreen-icons",
+      "screenshot": ".artifacts/1230/green-e2e-video-controls.txt",
+      "assertion": "独立视频页签（openMedia）控制条无 width/fullscreen 图标",
+      "recorded_at": "2026-11-20T07:13:30.000Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "e2e-f-shortcut-fullscreen-works",
+      "screenshot": ".artifacts/1230/green-e2e-video-controls.txt",
+      "assertion": "独立页签 F 快捷键仍可进出网页全屏并联动窗口全屏",
+      "recorded_at": "2026-11-20T07:13:30.000Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "e2e-media-render-native-video-regression",
+      "screenshot": ".artifacts/1230/green-e2e-media-render.txt",
+      "assertion": "MD 内嵌原生 video 渲染回归 16/16 通过",
+      "recorded_at": "2026-11-20T07:13:35.000Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "red-before-gating",
+      "screenshot": ".artifacts/1230/red-unit.txt",
+      "assertion": "实现前默认/false 两项断言失败（2 failed | 3 passed）",
+      "recorded_at": "2026-11-20T07:05:09.000Z",
+      "runner": "mason@unknown"
+    }
+  ]
+}

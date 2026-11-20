@@ -122,10 +122,12 @@ function PaneMediaPlayer({
 
   return (
     <div ref={hostRef} style={style} data-media-pane={paneId ?? undefined}>
+      {/* 独立媒体页签 = standalone 上下文注入点：embedded=false；未来 MD 内嵌挂载传 true */}
       <VideoPlayer
         filePath={source.filePath}
         url={source.url}
         fileKind={source.fileKind}
+        embedded={false}
       />
     </div>
   );
