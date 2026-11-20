@@ -334,6 +334,16 @@ describe("新建默认与标题联动（P-7）", () => {
     expect(tab2.content).toBe("# 无 frontmatter\n");
   });
 
+  it("页签重命名保留扩展名，frontmatter 标题只写主名（#1263）", () => {
+    useStore.getState().openFile("/n.md", "---\ntitle: 旧\n---\n");
+    const id = Object.keys(useStore.getState().tabs)[0];
+    useStore.getState().renameTab(id, "新名.md");
+    const tab = useStore.getState().tabs[id];
+    expect(tab.title).toBe("新名.md");
+    expect(parseFrontmatter(tab.content).fields[0].value).toBe("新名");
+    expect(tab.path).toBe("/n.md");
+  });
+
   it("页签重命名回写别称标题键（标题）", () => {
     useStore.getState().openFile("/z.md", "---\n标题: 旧名\n---\n");
     const id = Object.keys(useStore.getState().tabs)[0];

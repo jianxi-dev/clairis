@@ -3000,6 +3000,7 @@ interface ActiveTabInfo {
   id: string;
   title: string;
   content: string;
+  path?: string;
 }
 
 async function activeTab(page: Page): Promise<ActiveTabInfo> {
@@ -3011,7 +3012,7 @@ async function activeTab(page: Page): Promise<ActiveTabInfo> {
             activeTabId: string | null;
             tabs: Record<
               string,
-              { id: string; title: string; content: string }
+              { id: string; title: string; content: string; path?: string }
             >;
           };
         };
@@ -3019,7 +3020,12 @@ async function activeTab(page: Page): Promise<ActiveTabInfo> {
     ).__biaoyue_store__;
     const s = store.getState();
     const tab = s.tabs[s.activeTabId ?? ""];
-    return { id: tab.id, title: tab.title, content: tab.content };
+    return {
+      id: tab.id,
+      title: tab.title,
+      content: tab.content,
+      path: tab.path,
+    };
   });
 }
 
@@ -3078,6 +3084,43 @@ test("双击页签重命名 → 回写文档标题字段", async ({ page }) => {
   expect(tab.content).toContain("周会记录");
 });
 
+test("#1263 页签改名只改主名、扩展名只读；面板标题不显示扩展名", async ({
+  page,
+}) => {
+  await openDoc(
+    page,
+    `---\ntitle: 笔记.md\n---\n\n# 正文\n`,
+    "/Users/test/note.md",
+  );
+  await setMode(page, "edit");
+  await expect(
+    panel(page, "A").locator('[data-testid="dpb-title"]'),
+  ).toHaveText("笔记");
+  await dpbRecord(page, "1263", "01-panel-title-no-ext");
+
+  await page.locator('[data-tab-id][aria-selected="true"]').dblclick();
+  const input = page.locator('[data-testid="tab-title-input"]');
+  await expect(input).toHaveValue("note");
+  await expect(page.locator('[data-testid="tab-ext"]')).toHaveText(".md");
+  await dpbRecord(page, "1263", "02-rename-stem-only");
+
+  await input.fill("改名");
+  await input.press("Enter");
+  const tab = await activeTab(page);
+  expect(tab.title).toBe("改名.md");
+  expect(tab.path).toBe("/Users/test/note.md");
+  expect(tab.content).toContain("title: 改名");
+  expect(tab.content).not.toContain("title: 改名.md");
+  await dpbRecord(page, "1263", "03-commit-keeps-ext");
+
+  await page.locator('[data-tab-id][aria-selected="true"]').dblclick();
+  await expect(page.locator('[data-testid="tab-title-input"]')).toHaveValue(
+    "改名",
+  );
+  await page.keyboard.press("Escape");
+  await dpbRecord(page, "1263", "04-reopen-stem");
+});
+
 test("双击页签重命名 → 属性面板标题字段同步（#1232）", async ({ page }) => {
   await openDoc(page, DOC, "/Users/test/rename-sync.md");
   await setMode(page, "edit");
@@ -3096,7 +3139,7 @@ test("双击页签重命名 → 属性面板标题字段同步（#1232）", asyn
   await expect(a.locator('[data-testid="dpb-title"]')).toHaveText("周会记录");
   await expect.poll(async () => docText(page)).toContain("title: 周会记录");
   const tab = await activeTab(page);
-  expect(tab.title).toBe("周会记录");
+  expect(tab.title).toBe("周会记录.md");
   await dpbRecord(page, "1232", "01-literal-title-synced");
 });
 
@@ -3121,7 +3164,7 @@ test("双击页签重命名 → 别称标题键（标题）同步（#1232）", a
   await expect(a.locator('[data-testid="dpb-title"]')).toHaveText("新中文名");
   await expect.poll(async () => docText(page)).toContain("标题: 新中文名");
   const tab = await activeTab(page);
-  expect(tab.title).toBe("新中文名");
+  expect(tab.title).toBe("新中文名.md");
   await dpbRecord(page, "1232", "03-alias-after");
 
   await setMode(page, "source");

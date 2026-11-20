@@ -8,6 +8,7 @@ import {
   type ClipboardEvent,
 } from "react";
 import { createPortal } from "react-dom";
+import { joinStemExt, splitStemExt, stripDocExt } from "../../lib/pathName";
 import type { EditorMode } from "../../types";
 import {
   isManagedDateKey,
@@ -1937,14 +1938,15 @@ function TitleValue({ field, editable, onCommit }: TitleValueProps) {
   const text = field?.display || "未命名";
 
   const start = () => {
-    setDraft(field?.value == null ? "" : String(field.value));
+    const raw = field?.value == null ? "" : String(field.value);
+    setDraft(stripDocExt(raw));
     setEditing(true);
   };
 
   const commit = () => {
     setEditing(false);
     const next = draft;
-    const prev = field?.value == null ? "" : String(field.value);
+    const prev = stripDocExt(field?.value == null ? "" : String(field.value));
     if (next === prev) return;
     onCommit(field?.key ?? "title", next);
   };
@@ -2335,7 +2337,12 @@ export default function DocPropertyBar({
   );
   const titleField = findTitleField(fields, propAliasMap) ?? null;
   const titleView = titleField
-    ? { ...titleField, display: titleField.display || "未命名" }
+    ? {
+        ...titleField,
+        display: titleField.display
+          ? stripDocExt(titleField.display)
+          : "未命名",
+      }
     : null;
   const tagsField = fields.find((f) => f.key === "tags") ?? null;
   const rest = fields.filter((f) => f !== titleField && f !== tagsField);
