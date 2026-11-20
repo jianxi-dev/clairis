@@ -3832,14 +3832,13 @@ test("#1260 头部按钮居中、footer 顺序/对齐/弱化、L-T 图标、全�
   expect(await lock.getAttribute("width")).toBe("12");
 
   const tools = b.locator('[data-testid="dpb-tools"]');
-  const centers = await tools.locator("button, svg").evaluateAll((els) =>
-    els
-      .filter((e) => e.tagName === "BUTTON")
-      .map((e) => {
-        const r = e.getBoundingClientRect();
-        return r.top + r.height / 2;
-      }),
+  const centers = await tools.locator("button").evaluateAll((els) =>
+    els.map((e) => {
+      const r = e.getBoundingClientRect();
+      return r.top + r.height / 2;
+    }),
   );
+  expect(centers.length).toBeGreaterThan(0);
   expect(Math.max(...centers) - Math.min(...centers)).toBeLessThanOrEqual(1);
   await expect(tools.locator('[data-testid="dpb-select-all"] svg')).toHaveCount(
     1,
@@ -3852,6 +3851,15 @@ test("#1260 头部按钮居中、footer 顺序/对齐/弱化、L-T 图标、全�
     .locator(".dpb-a-foot > *")
     .evaluateAll((els) => els.map((e) => e.getAttribute("data-testid") ?? ""));
   expect(aOrder[0]).toBe("dpb-count");
+  const aTools = a.locator('[data-testid="dpb-tools"]');
+  const aCenters = await aTools.locator("button").evaluateAll((els) =>
+    els.map((e) => {
+      const r = e.getBoundingClientRect();
+      return r.top + r.height / 2;
+    }),
+  );
+  expect(aCenters.length).toBeGreaterThan(0);
+  expect(Math.max(...aCenters) - Math.min(...aCenters)).toBeLessThanOrEqual(1);
   await dpbRecord(page, "1260", "02-a-footer-order");
 
   await a.locator('[data-testid="dpb-collapse"]').click();

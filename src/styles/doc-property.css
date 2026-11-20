@@ -204,6 +204,8 @@
 /* 自动托管日期的只读锁定标记（A 胶囊内 / B 行尾占位） */
 .dpb-lock {
   flex: 0 0 auto;
+  width: var(--dpb-lock-size, 12px);
+  height: var(--dpb-lock-size, 12px);
   color: var(--app-text-3);
 }
 
@@ -217,6 +219,14 @@
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+/* A 工具栏与 B 同构：flex 居中，消除 inline 基线导致的 2-3px 错位（#1260） */
+.dpb-a-tools {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
 }
 
 .dpb-a-title {
@@ -416,7 +426,7 @@
   padding-left: 22px;
 }
 
-/* 底部 footer（design-system §7.2）：A 左日期右计数，B 右日期 */
+/* 底部 footer（design-system §7.2）：两态均为计数在左、托管日期在右 */
 .dpb-a-foot {
   display: flex;
   align-items: center;
@@ -461,7 +471,7 @@
 }
 
 .dpb-a-foot .dpb-dates {
-  margin-left: 0;
+  margin-left: auto;
 }
 
 .dpb-date {
