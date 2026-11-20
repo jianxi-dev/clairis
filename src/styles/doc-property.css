@@ -601,7 +601,7 @@
   white-space: nowrap;
 }
 
-.dpb-dt-panel {
+.dpb-menu.dpb-dt-panel {
   width: var(--dpb-cal-width, 300px);
   gap: var(--dpb-cal-gap, 8px);
   padding: 10px;

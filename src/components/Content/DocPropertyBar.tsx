@@ -1057,7 +1057,10 @@ function DatetimeEditor({ field, editable, onCommit }: DatetimeEditorProps) {
                 type="button"
                 className="dpb-dt-title-btn"
                 data-testid="dpb-cal-year"
-                onClick={() => setView("year")}
+                onClick={() => {
+                  setYearPage(Math.floor(cal.year / 12) * 12);
+                  setView("year");
+                }}
               >
                 {view === "year" ? `${yearPage}–${yearPage + 11}` : cal.year}年
               </button>
