@@ -3350,10 +3350,12 @@ export default function DocPropertyBar({
           </div>
         </>
       )}
-      <div className="dpb-a-foot" data-testid="dpb-foot">
-        <span data-testid="dpb-count">{fields.length} 个字段</span>
-        {managedDatesView}
-      </div>
+      {!collapsed && (
+        <div className="dpb-a-foot" data-testid="dpb-foot">
+          <span data-testid="dpb-count">{fields.length} 个字段</span>
+          {managedDatesView}
+        </div>
+      )}
       {paletteOverlay}
       {dragGhost}
     </div>

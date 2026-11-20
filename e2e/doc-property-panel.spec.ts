@@ -3857,6 +3857,7 @@ test("#1260 头部按钮居中、footer 顺序/对齐/弱化、L-T 图标、全�
   await a.locator('[data-testid="dpb-collapse"]').click();
   await page.mouse.move(4, 4);
   await page.evaluate(() => (document.activeElement as HTMLElement)?.blur());
+  await expect(a.getByText(/个字段/)).toHaveCount(1);
   const opacity = () =>
     a.evaluate((el) => Number(getComputedStyle(el).opacity));
   await expect.poll(opacity, { timeout: 3000 }).toBeLessThan(0.5);
