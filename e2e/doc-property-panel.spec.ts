@@ -2641,6 +2641,44 @@ test("操作条：无选中不出现；选中出现且粘贴禁用；复制后�
   await expect(page.locator('[data-testid="dpb-ops"]')).toHaveCount(0);
 });
 
+test("#1262 选中操作条为中性表面色，不与选中行同色", async ({ page }) => {
+  await openDoc(page, ROW_DOC);
+  await setVariant(page, "B");
+  await setMode(page, "edit");
+  const b = panel(page, "B");
+  const row = b.locator('[data-key="category"]');
+  await row.locator('[data-testid="dpb-row-handle"]').click();
+  const ops = page.locator('[data-testid="dpb-ops"]');
+  await expect(ops).toBeVisible();
+  const opsBg = await ops.evaluate(
+    (el) => getComputedStyle(el).backgroundColor,
+  );
+  const rowBg = await row.evaluate(
+    (el) => getComputedStyle(el).backgroundColor,
+  );
+  const accentSoft = await page.evaluate(() =>
+    getComputedStyle(document.documentElement)
+      .getPropertyValue("--app-accent-soft")
+      .trim(),
+  );
+  expect(opsBg).not.toBe(rowBg);
+  expect(opsBg).not.toContain("99, 102, 241");
+  expect(accentSoft.length).toBeGreaterThan(0);
+  await dpbRecord(page, "1262", "01-ops-neutral");
+
+  await page.locator('[data-testid="dpb-ops-copy"]').click();
+  await expect(page.locator('[data-testid="dpb-ops-paste"]')).toBeEnabled();
+  await dpbRecord(page, "1262", "02-copy-click");
+
+  await page.locator('[data-testid="dpb-ops-del"]').click();
+  await expect(b.locator('[data-key="category"]')).toHaveCount(0);
+  await dpbRecord(page, "1262", "03-delete-selected");
+
+  await page.mouse.click(4, 4);
+  await expect(ops).toHaveCount(0);
+  await dpbRecord(page, "1262", "04-cleared");
+});
+
 test("操作条七按钮为注册表 SVG 图标：无字形文本、描边 1.7（#1022）", async ({
   page,
 }) => {

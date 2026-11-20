@@ -1168,9 +1168,10 @@
   flex-wrap: wrap;
   padding: 5px 8px;
   margin-bottom: 8px;
-  border: 1px solid var(--app-accent);
+  /* 中性表面色：不与选中行同色（#1262） */
+  border: 1px solid var(--app-border);
   border-radius: var(--radius-4);
-  background: var(--app-accent-soft);
+  background: var(--app-surface);
   font-size: 11px;
   color: var(--app-text-2);
 }
