@@ -73,6 +73,7 @@ import { resolveDocMediaHref, resolveRelativeToDoc } from "../../lib/mediaUrl";
 import { HEADING_LEVELS } from "../../lib/headingFonts";
 import { buildAssetUrl } from "../../renderers";
 import { renderAllStatic } from "../../renderers/diagram/engine";
+import { createPortal } from "react-dom";
 import PreviewView from "./PreviewView";
 import DocPropertyBar from "./DocPropertyBar";
 import SearchReplacePanel from "./SearchReplacePanel";
@@ -80,6 +81,11 @@ import OutlineMenu from "./OutlineMenu";
 import ReadingProgressInk from "./ReadingProgressInk";
 import { useSearchFloatStore } from "../../stores/searchFloat";
 import { useDocPropertyPanelStore } from "../../stores/docPropertyPanel";
+import {
+  docPropertyEmbed,
+  getDocPropertyEmbedHost,
+  setDocPropertyEmbedHostListener,
+} from "../../editors/decorations/docPropertyEmbed";
 import type { EditorMode, FileKind, Tab } from "../../types";
 
 const langCompartment = new Compartment();
@@ -325,12 +331,15 @@ function decorationsForMode(
   mode: EditorMode,
   kind: FileKind,
   frontmatterHide: FrontmatterHideOptions | null,
+  embedPropertyBlock = false,
 ): Extension[] {
   if (kind !== "markdown") return [];
   if (mode === "source") return [floatingToolbar()];
   if (mode === "edit") {
     return [
       editorDecorations({ ...editorDecorationOptions, frontmatterHide }),
+      // 属性块作为正文流首块（#1157）：面板可见时随正文滚动。
+      ...(embedPropertyBlock ? [docPropertyEmbed()] : []),
       floatingToolbar(true),
     ];
   }
@@ -589,7 +598,12 @@ export default function ContentArea({
         langCompartment.of(createLanguageExtension(initialKind)),
         lineNumbersCompartment.of(lineNumbersForMode(editorMode, initialKind)),
         decorCompartment.of(
-          decorationsForMode(editorMode, initialKind, initialFrontmatterHide),
+          decorationsForMode(
+            editorMode,
+            initialKind,
+            initialFrontmatterHide,
+            initialFrontmatterHide !== null,
+          ),
         ),
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {
@@ -658,6 +672,15 @@ export default function ContentArea({
   // 不销毁重建 EditorView（折叠态跨模式保留、undo/选区不丢）。
   const propPanelHidden = useDocPropertyPanelStore((s) => s.hidden);
   const propPanelCollapsed = useDocPropertyPanelStore((s) => s.collapsed);
+
+  /** 编辑态属性块宿主：由 CM6 块 widget 创建，portal 把面板渲染进去（#1157）。 */
+  const [embedHost, setEmbedHost] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    setDocPropertyEmbedHostListener((el) => setEmbedHost(el));
+    // 编辑器可能先于本 effect 创建，widget 已建好宿主：补发一次。
+    setEmbedHost(getDocPropertyEmbedHost());
+    return () => setDocPropertyEmbedHostListener(null);
+  }, []);
 
   // 撤销历史不跨页签（#321）：一个面板只有一个 EditorView，历史却是
   // EditorState 的一部分。切页签时清空它，否则 A 页签的编辑会让 B 页签的
@@ -734,7 +757,12 @@ export default function ContentArea({
       ...(selection ? { selection } : {}),
       effects: [
         decorCompartment.reconfigure(
-          decorationsForMode(editorMode, tab.fileKind, frontmatterHide),
+          decorationsForMode(
+            editorMode,
+            tab.fileKind,
+            frontmatterHide,
+            frontmatterHide !== null,
+          ),
         ),
         // 行号按文件类型 + 模式条件装回（#858）：切页签 / 切模式都走这里，
         // 不销毁重建 EditorView。
@@ -764,27 +792,25 @@ export default function ContentArea({
       }}
       className="dark:bg-gray-800"
     >
-      {/* 文档属性面板：仅 markdown；三模式用 CSS display 切换，组件保持挂载
-          （切源码 / 编辑不重建，折叠等内部状态不丢）。 */}
-      {tab?.fileKind === "markdown" && (
-        <div
-          data-testid="doc-property-host"
-          style={{
-            flex: "0 0 auto",
-            padding: "12px 16px",
-            display: editorMode === "source" ? "none" : "block",
-          }}
-        >
-          <DocPropertyBar
-            content={tab.content}
-            mode={editorMode}
-            isNewDoc={!tab.path}
-            docKey={tab.id}
-            docId={tab.path ?? tab.id}
-            panelId={panelId}
-          />
-        </div>
-      )}
+      {/* 隐藏态恢复提示：组件仍需挂载（内部渲染「按 ⌘⇧Y 恢复」），
+          且不再占用正文流（#1157 嵌入后由 widget 负责可见态）。 */}
+      {tab?.fileKind === "markdown" &&
+        propPanelHidden &&
+        editorMode !== "source" && (
+          <div
+            className="doc-property-embed-note"
+            data-testid="doc-property-note-host"
+          >
+            <DocPropertyBar
+              content={tab.content}
+              mode={editorMode}
+              isNewDoc={!tab.path}
+              docKey={tab.id}
+              docId={tab.path ?? tab.id}
+              panelId={panelId}
+            />
+          </div>
+        )}
       <div
         ref={scrollContainerRef}
         className="content-scroll"
@@ -812,6 +838,23 @@ export default function ContentArea({
             }}
           />
         )}
+        {editorMode === "preview" &&
+          tab?.fileKind === "markdown" &&
+          !propPanelHidden && (
+            <div
+              className="doc-property-embed-preview"
+              data-testid="doc-property-host"
+            >
+              <DocPropertyBar
+                content={tab.content}
+                mode={editorMode}
+                isNewDoc={!tab.path}
+                docKey={tab.id}
+                docId={tab.path ?? tab.id}
+                panelId={panelId}
+              />
+            </div>
+          )}
         {editorMode === "preview" && tab && (
           <PreviewView
             content={tab.content}
@@ -823,6 +866,20 @@ export default function ContentArea({
           <ReadingProgressInk scrollEl={scrollContainer} />
         )}
       </div>
+      {/* 编辑态：属性块在正文流内（CM6 块 widget 提供的宿主），随正文滚动。 */}
+      {embedHost &&
+        tab?.fileKind === "markdown" &&
+        createPortal(
+          <DocPropertyBar
+            content={tab.content}
+            mode={editorMode}
+            isNewDoc={!tab.path}
+            docKey={tab.id}
+            docId={tab.path ?? tab.id}
+            panelId={panelId}
+          />,
+          embedHost,
+        )}
       {tab?.fileKind === "markdown" && (
         <OutlineMenu
           mode={editorMode}

@@ -1,0 +1,47 @@
+{
+  "task": "1215",
+  "states": [
+    {
+      "state": "01-edit-first-block",
+      "screenshot": ".artifacts/1215/01-edit-first-block.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-19T23:57:08.226Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "02-edit-scrolled-away",
+      "screenshot": ".artifacts/1215/02-edit-scrolled-away.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-19T23:57:09.337Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "03-preview-top-readonly",
+      "screenshot": ".artifacts/1215/03-preview-top-readonly.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-19T23:57:10.369Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "04-source-yaml-visible",
+      "screenshot": ".artifacts/1215/04-source-yaml-visible.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-19T23:57:11.394Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "05-hidden-note",
+      "screenshot": ".artifacts/1215/05-hidden-note.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-19T23:57:12.504Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "06-restored",
+      "screenshot": ".artifacts/1215/06-restored.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-19T23:57:12.561Z",
+      "runner": "mason@unknown"
+    }
+  ]
+}
