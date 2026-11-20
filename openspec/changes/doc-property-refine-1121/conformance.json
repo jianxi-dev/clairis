@@ -1,0 +1,284 @@
+{
+  "change": "doc-property-refine-1121",
+  "requirements": [
+    {
+      "id": "R-1",
+      "text": "tags 字符串崩溃修复（tasks 1.1）",
+      "anchors": [
+        {
+          "id": "A-1.1",
+          "claim": "打开含 `tags: \"#\"` 文档后属性窗格抛错次数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "#1254 bug 报告（tags: \"#\"） / design D3"
+        },
+        {
+          "id": "A-1.2",
+          "claim": "`tags: \"#\"` 归一为单元素列表后的列表项数",
+          "kind": "exact",
+          "assert": "1",
+          "source": "design D3"
+        },
+        {
+          "id": "A-1.3",
+          "claim": "首次编辑该字段后 YAML 值由字符串变为列表",
+          "kind": "state-machine",
+          "assert": "编辑→`[\"#\"]`",
+          "source": "design D3"
+        }
+      ]
+    },
+    {
+      "id": "R-2",
+      "text": "时间输入框 Tab 键修复（tasks 1.2）",
+      "anchors": [
+        {
+          "id": "A-2.1",
+          "claim": "光标在时/分输入框按 Tab 后文档首字符仍为 `-` 且属性面板不消失",
+          "kind": "state-machine",
+          "assert": "按 Tab→首字符 `-`",
+          "source": "#1254 时间tab键问题.png / design D11"
+        },
+        {
+          "id": "A-2.2",
+          "claim": "面板内 Tab 触发 `setFrontmatterField` 的调用次数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "design D11"
+        },
+        {
+          "id": "A-2.3",
+          "claim": "Tab 的焦点落点在面板内下一控件（非正文）",
+          "kind": "state-machine",
+          "assert": "Tab→面板内焦点",
+          "source": "design D11"
+        }
+      ]
+    },
+    {
+      "id": "R-3",
+      "text": "frontmatter 容错解析与识别扩展（tasks 2.1）",
+      "anchors": [
+        {
+          "id": "A-3.1",
+          "claim": "含 `{{date}}` 模板占位文档兜底解析出的顶层字段数下限",
+          "kind": "exact",
+          "assert": "6",
+          "source": "#1254 读书笔记模版截图.png / design D1"
+        },
+        {
+          "id": "A-3.2",
+          "claim": "空值且未命中别称的字段识别类型",
+          "kind": "exact",
+          "assert": "\"text\"",
+          "source": "#1254 mdpkg文档截图.png / design D2"
+        },
+        {
+          "id": "A-3.3",
+          "claim": "内置别称表新增条目数",
+          "kind": "exact",
+          "assert": "9",
+          "source": "design D2"
+        },
+        {
+          "id": "A-3.4",
+          "claim": "编辑整块不可解析文档的一个键后，未改动键的原始字节保持不变",
+          "kind": "state-machine",
+          "assert": "编辑→其余字节不变",
+          "source": "design D1"
+        }
+      ]
+    },
+    {
+      "id": "R-4",
+      "text": "日期/日期时间选择器改版（tasks 3.1）",
+      "anchors": [
+        {
+          "id": "A-4.1",
+          "claim": "日期字段的原生 `<input type=\"date\">` 节点数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "#1254 日期窗口.png / design D8"
+        },
+        {
+          "id": "A-4.2",
+          "claim": "点击标题「月」进入月网格后的月格数",
+          "kind": "exact",
+          "assert": "12",
+          "source": "design D8"
+        },
+        {
+          "id": "A-4.3",
+          "claim": "秒为 00 的日期时间展示格式",
+          "kind": "exact",
+          "assert": "\"YYYY-MM-DD HH:mm\"",
+          "source": "#1254 时间窗口.png / design D8"
+        },
+        {
+          "id": "A-4.4",
+          "claim": "日期字段提交值格式",
+          "kind": "exact",
+          "assert": "\"YYYY-MM-DD\"",
+          "source": "design D8"
+        }
+      ]
+    },
+    {
+      "id": "R-5",
+      "text": "面板头部/footer/图标（tasks 4.1）",
+      "anchors": [
+        {
+          "id": "A-5.1",
+          "claim": "A/B 两态 footer 中「计数」相对「日期」的 DOM 顺序",
+          "kind": "exact",
+          "assert": "计数索引 0、日期索引 1",
+          "source": "design D4"
+        },
+        {
+          "id": "A-5.2",
+          "claim": "A/B 右侧按钮顺序中「添加字段」的索引",
+          "kind": "exact",
+          "assert": "0",
+          "source": "design D4"
+        },
+        {
+          "id": "A-5.3",
+          "claim": "计数左缘与字段类型图标左缘的水平偏差上限（px）",
+          "kind": "exact",
+          "assert": "2",
+          "source": "design D4"
+        },
+        {
+          "id": "A-5.4",
+          "claim": "锁图标渲染尺寸上限（px，小于其他面板图标一档）",
+          "kind": "exact",
+          "assert": "12",
+          "source": "design D7"
+        },
+        {
+          "id": "A-5.5",
+          "claim": "A（L）与 B（T）形态切换图标 path 不同",
+          "kind": "exact",
+          "assert": "1",
+          "source": "design D5"
+        },
+        {
+          "id": "A-5.6",
+          "claim": "「全选」按钮的全选图标节点数下限",
+          "kind": "exact",
+          "assert": "1",
+          "source": "design D5"
+        }
+      ]
+    },
+    {
+      "id": "R-6",
+      "text": "字段行（tasks 5.1）",
+      "anchors": [
+        {
+          "id": "A-6.1",
+          "claim": "删除叉号默认 `opacity`",
+          "kind": "exact",
+          "assert": "0",
+          "source": "design D7"
+        },
+        {
+          "id": "A-6.2",
+          "claim": "行悬停/聚焦/选中后删除叉号 `opacity`",
+          "kind": "state-machine",
+          "assert": "悬停→1",
+          "source": "design D7"
+        },
+        {
+          "id": "A-6.3",
+          "claim": "字段名与值计算字号相等（随正文同步）",
+          "kind": "exact",
+          "assert": "1",
+          "source": "design D6"
+        },
+        {
+          "id": "A-6.4",
+          "claim": "行内字段类型文字节点数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "#1254 A模式字段文字位置图.png / design D6"
+        },
+        {
+          "id": "A-6.5",
+          "claim": "类型图标、字段名、值包围盒垂直中心两两偏差上限（px）",
+          "kind": "exact",
+          "assert": "1",
+          "source": "design D6"
+        },
+        {
+          "id": "A-6.6",
+          "claim": "文本/多行/列表/标签值编辑器填满本行的宽度差上限（px）",
+          "kind": "exact",
+          "assert": "0",
+          "source": "design D6"
+        }
+      ]
+    },
+    {
+      "id": "R-7",
+      "text": "选中操作条去色（tasks 6.1）",
+      "anchors": [
+        {
+          "id": "A-7.1",
+          "claim": "操作条背景色与选中行高亮色不同",
+          "kind": "exact",
+          "assert": "1",
+          "source": "design D7"
+        },
+        {
+          "id": "A-7.2",
+          "claim": "操作条图标经 `iconSvg` 渲染的 SVG 节点数",
+          "kind": "exact",
+          "assert": "7",
+          "source": "design D4"
+        },
+        {
+          "id": "A-7.3",
+          "claim": "操作条内 Unicode 字形文本节点数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "design D4"
+        }
+      ]
+    },
+    {
+      "id": "R-8",
+      "text": "改名锁扩展名（tasks 7.1）",
+      "anchors": [
+        {
+          "id": "A-8.1",
+          "claim": "页签改名提交后标题仍以原扩展名结尾",
+          "kind": "state-machine",
+          "assert": "提交→`.md`",
+          "source": "design D9"
+        },
+        {
+          "id": "A-8.2",
+          "claim": "改名输入框内出现扩展名（`.md`）的次数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "design D9"
+        },
+        {
+          "id": "A-8.3",
+          "claim": "另存为预填名以 `.md.md` 结尾的次数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "design D9"
+        },
+        {
+          "id": "A-8.4",
+          "claim": "属性面板标题字段显示值以 `.md` 结尾的次数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "design D9"
+        }
+      ]
+    }
+  ]
+}
