@@ -12,6 +12,7 @@ import type { EditorMode } from "../../types";
 import {
   isManagedDateKey,
   managedDateDisplay,
+  mergeManagedDates,
   coerceFrontmatterValue,
   dedupeLinks,
   dedupeTags,
@@ -2060,10 +2061,6 @@ export default function DocPropertyBar({
     () => allFields.filter((f) => !isManagedDateKey(f.key)),
     [allFields],
   );
-  const managedKeysPresent = useMemo(
-    () => parsed.fields.some((f) => isManagedDateKey(f.key)),
-    [parsed.fields],
-  );
   const managedDates = useMemo(
     () =>
       allFields
@@ -2108,26 +2105,11 @@ export default function DocPropertyBar({
       .sort((a, b) => a - b);
   }, []);
 
-  // 结构写回前把托管日期按原文键序并回，避免删除 / 排序把日期键丢掉。
+  // 结构写回前把托管日期并回用户排好的行序，只补缺失项、不还原顺序。
   const withManagedDates = useCallback(
-    (editable: FrontmatterField[]): FrontmatterField[] => {
-      if (!managedKeysPresent) return editable;
-      const byKey = new Map(editable.map((f) => [f.key, f]));
-      for (const f of allFields) {
-        if (!byKey.has(f.key) && isManagedDateKey(f.key)) byKey.set(f.key, f);
-      }
-      const out: FrontmatterField[] = [];
-      for (const orig of parsed.fields) {
-        const hit = byKey.get(orig.key);
-        if (hit) {
-          out.push(hit);
-          byKey.delete(orig.key);
-        }
-      }
-      for (const f of byKey.values()) out.push(f);
-      return out;
-    },
-    [allFields, managedKeysPresent, parsed.fields],
+    (editable: FrontmatterField[]): FrontmatterField[] =>
+      mergeManagedDates(editable, parsed.fields, allFields),
+    [allFields, parsed.fields],
   );
 
   const commitFields = useCallback(

@@ -3462,3 +3462,144 @@ test("#1043 新建字段按钮位次：B 首位 / A 末位，其余按钮相对�
   await expect(page.locator('[data-testid="dpb-field-palette"]')).toBeVisible();
   await page.keyboard.press("Escape");
 });
+
+const ROW_DOC_MANAGED = `---
+title: 行操作
+category: 草稿
+author: 张三
+source: 网络
+note: 备注
+created: 2026-11-17
+updated: 2026-11-17
+---
+
+# 正文
+`;
+
+test("#1245 托管日期文档 B 态拖拽：顺序改动不再被抹掉", async ({ page }) => {
+  await openDoc(page, ROW_DOC_MANAGED, "/Users/test/managed-drag-b.md");
+  await setVariant(page, "B");
+  await setMode(page, "edit");
+  const b = panel(page, "B");
+  expect(await rowKeys(page, "B")).toEqual([
+    "title",
+    "category",
+    "author",
+    "source",
+    "note",
+  ]);
+
+  const handle = b.locator(
+    '[data-key="source"] [data-testid="dpb-row-handle"]',
+  );
+  const hb = (await handle.boundingBox())!;
+  await page.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2 - 12, {
+    steps: 3,
+  });
+  const cat = (await b.locator('[data-key="category"]').boundingBox())!;
+  await page.mouse.move(cat.x + cat.width / 2, cat.y + cat.height * 0.75, {
+    steps: 8,
+  });
+  await expect(page.locator('[data-testid="dpb-drop-line"]')).toBeVisible();
+  await dpbRecord(page, "1245", "01-b-managed-drag-over");
+  await page.mouse.up();
+  await expect(page.locator('[data-testid="dpb-drop-line"]')).toHaveCount(0);
+
+  expect(await rowKeys(page, "B")).toEqual([
+    "title",
+    "category",
+    "source",
+    "author",
+    "note",
+  ]);
+  await expect
+    .poll(async () => (await frontmatterKeys(page)).join(","))
+    .toBe("title,category,source,author,note,created,updated");
+  await dpbRecord(page, "1245", "02-b-managed-drag-result");
+});
+
+test("#1245 托管日期文档 A 态拖拽：中间落点顺序改动不再被抹掉", async ({
+  page,
+}) => {
+  await openDoc(page, ROW_DOC_MANAGED, "/Users/test/managed-drag-a.md");
+  await setVariant(page, "A");
+  await setMode(page, "edit");
+  const a = panel(page, "A");
+  expect(await rowKeys(page, "A")).toEqual([
+    "category",
+    "author",
+    "source",
+    "note",
+  ]);
+
+  const chip = a.locator('[data-key="note"]');
+  await chip.hover();
+  const handle = chip.locator('[data-testid="dpb-row-handle"]');
+  const hb = (await handle.boundingBox())!;
+  await page.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2 - 12, {
+    steps: 3,
+  });
+  const author = (await a.locator('[data-key="author"]').boundingBox())!;
+  await page.mouse.move(
+    author.x + author.width * 0.75,
+    author.y + author.height * 0.75,
+    { steps: 8 },
+  );
+  await expect(page.locator('[data-testid="dpb-drop-line"]')).toBeVisible();
+  await dpbRecord(page, "1245", "03-a-managed-drag-over");
+  await page.mouse.up();
+
+  expect(await rowKeys(page, "A")).toEqual([
+    "category",
+    "author",
+    "note",
+    "source",
+  ]);
+  await expect
+    .poll(async () => (await frontmatterKeys(page)).join(","))
+    .toBe("title,category,author,note,source,created,updated");
+  await dpbRecord(page, "1245", "04-a-managed-drag-result");
+});
+
+test("#1245 托管日期文档调色板：拖到中间行插入而非追加到末尾", async ({
+  page,
+}) => {
+  await openDoc(page, ROW_DOC_MANAGED, "/Users/test/managed-palette-middle.md");
+  await setVariant(page, "B");
+  await setMode(page, "edit");
+  const b = panel(page, "B");
+
+  await b.locator('[data-testid="dpb-add-field"]').click();
+  const item = page.locator(
+    '[data-testid="dpb-palette-item"][data-type="date"]',
+  );
+  const ib = (await item.boundingBox())!;
+  const author = (await b.locator('[data-key="author"]').boundingBox())!;
+  await page.mouse.move(ib.x + ib.width / 2, ib.y + ib.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(
+    author.x + author.width / 2,
+    author.y + author.height * 0.25,
+    { steps: 8 },
+  );
+  await expect(page.locator('[data-testid="dpb-drag-ghost"]')).toBeVisible();
+  await dpbRecord(page, "1245", "05-palette-middle-over");
+  await page.mouse.up();
+
+  expect(await rowKeys(page, "B")).toEqual([
+    "title",
+    "category",
+    "new-field",
+    "author",
+    "source",
+    "note",
+  ]);
+  await expect
+    .poll(async () => (await frontmatterKeys(page)).join(","))
+    .toBe("title,category,new-field,author,source,note,created,updated");
+  await dpbRecord(page, "1245", "06-palette-middle-result");
+});
