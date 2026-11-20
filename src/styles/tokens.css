@@ -48,12 +48,15 @@
   --media-radius: 6px;
   /* 自绘悬停提示唯一外壳常量（design-system §5；batch19 A2） */
   --tip-shell-radius: var(--radius-full);
-  /* 页签最小宽度保底；裁决见 docs/design/system/decisions.md（shell-tabs-surface 1.1，spec §7.5） */
+  /* 页签最小宽度保底；裁决见 docs/design/system/decisions.md（shell-tabs-surface 1.1，spec §7.5）。
+     保底语义为 min(96px, 内容宽)——短名按实际宽度，不被撑到 96px。 */
   --tab-min-width: 96px;
   /* 页签条尾部空白（承载空白处拖窗 / 双击全屏）；spec §7.5 */
   --tab-strip-tail: 24px;
   /* 页签名信息窗固定宽度；同上台账行（design-system §7.4） */
   --tab-info-width: 256px;
+  /* 页签最大宽度上限，与页签名信息窗同宽（spec §7.5）；页签不伸展，宽度按内容自适应 */
+  --tab-max-width: var(--tab-info-width);
   /* 搜索浮窗控件密度档（design-system §7.1）：输入框 / 替换按钮 / 顶栏共用，
      与文件卡片悬浮窗顶栏计算高度严格相等。 */
   --sf-ctrl-height: 27px;

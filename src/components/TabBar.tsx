@@ -531,7 +531,12 @@ export default function TabBar({
                 aria-selected={isActive}
                 data-tab-color={typeColor}
                 style={{
-                  minWidth: "var(--tab-min-width)",
+                  // 不伸展（flex: 0 1 auto）：宽度按内容自适应，上限 --tab-max-width。
+                  // 保底 = min(96px, 内容宽)：短名按实际宽度，不被撑到 96px（G-6 / #1231）。
+                  // min() 不接受 max-content 关键字（各引擎均丢弃），用 calc-size() 表达同一语义。
+                  minWidth:
+                    "calc-size(max-content, min(var(--tab-min-width), size))",
+                  maxWidth: "var(--tab-max-width)",
                   ...(isDragged
                     ? {
                         opacity: 0.5,
@@ -551,7 +556,7 @@ export default function TabBar({
                   setEditingId(id);
                   setEditValue(tab.title);
                 }}
-                className={`group flex min-w-0 flex-1 items-center gap-1.5 px-2.5 py-1 text-xs cursor-pointer transition-colors outline-none focus:outline-none focus-visible:outline-none ${
+                className={`group flex min-w-0 flex-[0_1_auto] items-center gap-1.5 px-2.5 py-1 text-xs cursor-pointer transition-colors outline-none focus:outline-none focus-visible:outline-none ${
                   isActive
                     ? "tab-capsule rounded-full bg-[var(--app-accent-soft)] font-medium text-[var(--app-text-strong)]"
                     : "rounded-none bg-transparent text-[var(--app-chrome-rest)] hover:rounded-full hover:bg-[var(--app-sunken)] hover:text-[var(--app-chrome-hover)]"

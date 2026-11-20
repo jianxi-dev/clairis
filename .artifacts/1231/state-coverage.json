@@ -1,0 +1,47 @@
+{
+  "task": "1231",
+  "states": [
+    {
+      "state": "single-short-tab-no-stretch",
+      "screenshot": ".artifacts/1231/06-single-short-tab.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-20T07:58:08.000Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "short-vs-long-actual-width",
+      "screenshot": ".artifacts/1231/07-short-vs-long.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-20T07:58:08.000Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "wide-no-stretch-under-max-width",
+      "screenshot": ".artifacts/1231/04-wide-no-stretch.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-20T07:58:08.000Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "narrow-equal-shrink",
+      "screenshot": ".artifacts/1231/05-narrow-equal-shrink.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-20T07:58:08.000Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "two-tabs-equal-shrink",
+      "screenshot": ".artifacts/1231/08-two-tabs-equal-shrink.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-20T07:58:08.000Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "min-width-floor-scroll",
+      "screenshot": ".artifacts/1231/03-strip-min-width-scroll.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-20T07:58:08.000Z",
+      "runner": "mason@unknown"
+    }
+  ]
+}
