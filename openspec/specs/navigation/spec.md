@@ -102,7 +102,7 @@ navigation 域定义标月桌面端"无侧栏"方向下的导航体系：启动�
 
 ### Requirement: 页签条与格头
 
-每格 SHALL 支持多页签：⌘T 新页签（当前格）、⌘W 关页签（最后一签关格）、拖拽排序；页签 SHALL 为类型色图标 + 标题 + ×。**页签 SHALL 弹性布局**：页签 SHALL NOT 主动伸展填满页签条（SHALL NOT 使用 `flex-grow: 1` 铺满整条）——单页签与短标题页签 SHALL 按内容实际宽度显示；页签宽度 SHALL 以**最大宽度**为上限（取 `--tab-max-width`，与页签信息窗 `--tab-info-width` 同宽）；多页签超出页签条可用宽度时 SHALL 按可用宽度等比收缩（flex 分配），收缩下限为 `min(96px, 页签内容宽)`（**最小宽度保底**仅约束收缩，SHALL NOT 把短标题页签撑到保底宽）；标题在伸缩后的可用宽度内仍 SHALL 以 `text-overflow: ellipsis` 收尾、单行 `white-space: nowrap`，SHALL NOT 换行；仅当页签条可用宽度不足以容纳全部页签的最小宽度保底时，页签条 SHALL 横向滚动，SHALL NOT 压缩到不可读或溢出容器。完整文件名由页签名信息窗承载（权威表述见 application-shell 域「G-6 顶栏职责与页签身份」，两处 SHALL 一致）。相邻页签之间的间距 SHALL 为 **32px**（容差 ±2px）；单个页签内标题右缘到关闭按钮左缘的水平间距 SHALL 不超过 **6px**。双击页签标题 SHALL 进入就地重命名（回车提交、Esc 取消、失焦提交），仅改变显示标题，SHALL NOT 改变文件路径。格头 SHALL 为页签条，右侧 SHALL 为模式图标（点击=预览↔编辑）、全屏图标、⋯ 菜单；⋯ 菜单 SHALL 恰含 6 项（新建文件/分享/右分/下分/源码模式/定位，均带图标，不含全屏）；导出、刷新、打开文件位置 SHALL NOT 出现在格头 ⋯ 菜单。
+每格 SHALL 支持多页签：⌘T 新页签（当前格）、⌘W 关页签（最后一签关格）、拖拽排序；页签 SHALL 为类型色图标 + 标题 + ×。**页签 SHALL 弹性布局**：页签 SHALL NOT 主动伸展填满页签条（SHALL NOT 使用 `flex-grow: 1` 铺满整条）——单页签与短标题页签 SHALL 按内容实际宽度显示；页签宽度 SHALL 以**最大宽度**为上限（取 `--tab-max-width`，与页签信息窗 `--tab-info-width` 同宽）；多页签超出页签条可用宽度时 SHALL 按可用宽度等比收缩（flex 分配），收缩下限为 `min(96px, 页签内容宽)`（**最小宽度保底**仅约束收缩，SHALL NOT 把短标题页签撑到保底宽）；标题在伸缩后的可用宽度内仍 SHALL 以 `text-overflow: ellipsis` 收尾、单行 `white-space: nowrap`，SHALL NOT 换行；仅当页签条可用宽度不足以容纳全部页签的最小宽度保底时，页签条 SHALL 横向滚动，SHALL NOT 压缩到不可读或溢出容器。完整文件名由页签名信息窗承载（权威表述见 application-shell 域「G-6 顶栏职责与页签身份」，两处 SHALL 一致）。相邻页签之间的间距 SHALL 为 **32px**（容差 ±2px）；单个页签内标题右缘到关闭按钮左缘的水平间距 SHALL 不超过 **6px**。双击页签标题 SHALL 进入就地重命名（回车提交、Esc 取消、失焦提交），输入框只承载文件主名，扩展名 SHALL 以只读后缀呈现且 SHALL NOT 可编辑，提交时 SHALL 把原扩展名接回；仅改变显示标题与 frontmatter 标题，SHALL NOT 改变文件路径。格头 SHALL 为页签条，右侧 SHALL 为模式图标（点击=预览↔编辑）、全屏图标、⋯ 菜单；⋯ 菜单 SHALL 恰含 6 项（新建文件/分享/右分/下分/源码模式/定位，均带图标，不含全屏）；导出、刷新、打开文件位置 SHALL NOT 出现在格头 ⋯ 菜单。
 
 拖拽页签期间 SHALL NOT 选中经过的正文文字：拖拽一旦超过阈值，应用 SHALL 进入全局禁选会话，拖拽结束或取消后恢复；拖拽前的既有选区 SHALL NOT 被清空，但拖拽期间 `window.getSelection().toString()` SHALL 保持为空。
 
@@ -239,6 +239,11 @@ navigation 域定义标月桌面端"无侧栏"方向下的导航体系：启动�
 
 - **WHEN** 页签条内只有一个页签
 - **THEN** 页签 SHALL 以其内容宽度（不超过 `--tab-max-width`）显示，页签条剩余空间 SHALL 保持为空白拖窗区，SHALL NOT 被页签铺满
+
+#### Scenario: 扩展名不可编辑
+
+- **WHEN** 用户双击页签标题进入就地重命名输入态
+- **THEN** 输入框 SHALL 只承载文件主名，扩展名 SHALL 以只读后缀呈现且 SHALL NOT 可编辑；提交后页签标题 SHALL 仍以原扩展名（`.md` / `.markdown` / `.txt`）结尾，文件路径 SHALL 不变
 
 ### Requirement: 拖拽换位与四向落区
 

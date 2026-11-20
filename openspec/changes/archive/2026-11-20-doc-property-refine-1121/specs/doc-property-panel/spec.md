@@ -260,6 +260,11 @@
 - **WHEN** 用户分别在 B 模式与 A 模式查看标题右侧按钮区
 - **THEN** 两态按钮顺序 SHALL 均为「添加字段 → 模板 → 全选 → 折叠 → 形态切换」，添加字段按钮索引 SHALL 为 0
 
+#### Scenario: 新建字段按钮位次
+
+- **WHEN** 用户分别在 B 模式与 A 模式查看标题右侧按钮区
+- **THEN** 两态新建字段按钮索引 SHALL 均为 0（原「A 模式末位」口径已废止）
+
 #### Scenario: footer 顺序两态一致
 
 - **WHEN** 用户分别在 A / B 两态查看面板底部 footer
@@ -283,6 +288,16 @@
 ### Requirement: 托管日期只读展示
 
 托管日期（`created` / `updated`）SHALL 经 `isManagedDateKey` 从可编辑字段列表排除，SHALL NOT 作为字段行渲染。两日期 SHALL 以**只读形式**展示，带锁图标、SHALL NOT 出现输入框、SHALL NOT 可点击编辑。**A 一行条模式与 B 精排双列模式的 footer SHALL 一致：计数在左、托管日期在右，计数恒显示**（日期存在才追加）。**锁图标尺寸 SHALL 小于其他面板图标一档**。日期与计数 SHALL 使用更浅一档颜色；**计数默认低对比，footer 悬停或聚焦时 SHALL 恢复可读对比**。日期值 SHALL 取自 frontmatter，保存时由既有逻辑维护，SHALL NOT 新引入文件系统时间读取；frontmatter 缺失对应键时 SHALL NOT 渲染空壳。
+
+#### Scenario: A 模式 footer 左侧只读日期
+
+- **WHEN** 用户在 A 一行条模式查看含 `created` / `updated` 的文档
+- **THEN** 底部 footer SHALL 显示「计数在左、创建/修改日期在右」，带锁图标，无可编辑输入框（原「日期在左」口径已废止）
+
+#### Scenario: B 模式备注行右侧只读日期
+
+- **WHEN** 用户在 B 精排双列模式查看含 `created` / `updated` 的文档
+- **THEN** 备注行 SHALL 显示两日期在右、计数在左，带锁图标，无可编辑输入框
 
 #### Scenario: footer 两态一致且计数恒显示
 

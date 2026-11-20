@@ -77,6 +77,7 @@ openspec status --change <name>   # 单个变更工件完成度
 - 文件管理/视频域（`video-playback-refine`）：3/3 票（#1183 首帧 + #1185 PiP 语义 + #1149 已交付的手势迁移），2 条 requirement 修订（file-management C-6：打开显示首帧、不显示加载指示；画中画单文档单例、**切换即替换**（验证发现原实现只退出不替换，已修）；B9 嵌入视频条款补手势与单例语义），已归档 `openspec/changes/archive/2026-11-19-video-playback-refine`
 - 文档属性域（`doc-property-embed`，#1157）：3/3 票（#1215 编辑态嵌入 + #1216 预览态顶部 + #1217 宽度收口，#1223 菜单钳制回归修复），1 条 requirement 修订（doc-property-panel P-1：含 frontmatter 文档属性块以 replace 型块 widget 嵌入正文流首块、随内容滚动；无 frontmatter 维持固定宿主；预览态渲染于预览流顶部；源码态不渲染），已归档 `openspec/changes/archive/2026-11-20-doc-property-embed`。过程记录：插入型块 widget 方案因 CM6 posAtCoords 不计块高致坐标偏移被回退（#1221），改用 replace 型块 widget 后通过悬停门槛
 - 阅读/属性/导航域（`surface-refine-1120`，#1225）：5/5 票合并（PR #1237 拖拽中位插入 / #1238 视频控制条按上下文 / #1239 页签最大宽度 / #1240 标题字段同步 + 本收口），3 条 requirement 修订（doc-property-panel P-1：折叠态经同一嵌入宿主呈现折叠条、正文 SHALL NOT 出现摘要标签、编辑态固定宿主仅无 frontmatter、块下间距由布局 margin 提供且预览列同轴；navigation 页签条：不伸展 + `--tab-max-width`=256px 弹性上限 + 保底 `min(96px, 内容宽)`；application-shell G-6 同步该语义），design-system §7.5 增 `--tab-max-width` 条款与保底语义修订 + decisions 台账 3 行（间距对齐 / L/T 图形 / 页签不伸展），归档 `openspec/changes/archive/2026-11-20-surface-refine-1120`。协同：file-management C-6 在 batch20 delta 增补一句（独立页签控制条不显示「全屏 / 满页面宽度」图标，能力仅 MD 内嵌视频上下文），batch20 不归档。验收期发现并修复：2.1 移除独立页签全屏按钮后两条旧 e2e 仍点击该按钮（改 F 键显式入口，等强替换）
+- 编辑/属性域（`doc-property-refine-1121`，#1254）：8/8 票合并（PR #1265 时间面板 Tab / #1266 tags 字符串崩溃 / #1267 frontmatter 兜底解析 / #1268 日期选择器 / #1269 头部 footer 与图标 / #1270 字段行 / #1271 改名锁扩展名），新增 1 条 requirement（frontmatter 解析容错与外部文档适配），修订 6 条（doc-property-panel P-3/P-4/P-6/P-10/托管日期只读展示 + navigation 页签条改名锁扩展名），设计系统 §2.3/§7.2/§7.6 与 decisions.md 台账同步；归档 `openspec/changes/archive/2026-11-20-doc-property-refine-1121`
 - 编辑/外壳域（`surface-refine-1120`，#1225）：4/4 实施票 + 收口（#1229 拖拽插入位置 / #1230 视频控制条上下文 / #1231 页签最大宽度 / #1232 标题字段同步，PR #1237–#1240），3 条 requirement 修订（doc-property-panel P-1：折叠态经同一 replace 块 widget 嵌入正文流、移除 fmh-summary 正文虚线摘要、多窗格按窗格自查宿主、编辑态间距落 `.dpb-panel` margin、预览块与正文列同轴；navigation「页签条与格头」+ application-shell G-6：页签不伸展 + `--tab-max-width`=`--tab-info-width`（256px）上限 + 保底 `min(96px, 内容宽)`），另 video 控制条按上下文显隐（batch20 C-6 delta 协同增补一句：独立页签 SHALL NOT 显示全屏/宽度图标，能力仅 MD 内嵌上下文）；设计系统 §7.5 与 decisions.md 台账同步，已归档 `openspec/changes/archive/2026-11-20-surface-refine-1120`。验收期修复：2 个视频全屏 e2e（fullscreen-note / window-fullscreen-unlink）按 #1230 新契约改 F 键显式入口
 
 - 编辑域（`table-editing-polish`）：6/6 票合并（PR #746–#751），3 条 requirement 修订（E-6 编辑内核与插入入口补上下文触发、手柄统一与表头无手柄；E-7 编排层补行列插入圆点与上下文命令集；E-14 浮层定位补触发控件矩形锚定），已归档 `openspec/changes/archive/2026-11-13-table-editing-polish`
@@ -248,11 +249,12 @@ openspec status --change <name>   # 单个变更工件完成度
 | E-27 | 音视频静音与音频收尾（按文件隔离 / 音频即时暂停） | ✅ | change `ui-polish-batch15`（归档 2026-11-12，PR #689/#690） |
 | E-28 | 轮盘历史剪切与颜色二级透明项可辨识 | ✅ | change `ui-polish-batch15`（归档 2026-11-12，PR #686） |
 
-### doc-property-panel（10）
+### doc-property-panel（11）
 
 | 编号 | 需求 | 状态 | 证据 |
 |---|---|---|---|
 | P-1…P-10 | 文档属性面板（三模式只读渲染 / A·B 两态与显隐配置 / 八类类型与智能编辑 / 行操作与选择模式 / 标签彩色胶囊与建议输入 / 字段改名与别称识别 / 新建默认与属性模板 / 外部字段收编 / 写回与数据无损 / A·B 视觉锚点） | ✅ | change `doc-property-and-search-panel`（12/12 票合并，归档 2026-11-17，主规格已同步） |
+| P-3/P-4/P-6/P-10 修订 + 解析容错 | 文档属性精修：字段行去类型文字/垂直居中/字号跟随正文/删除悬停、footer 与按钮顺序统一、L/T 字形与全选图标、日期选择器改版（日期字段自绘、年月可切）、外部 frontmatter 兜底解析与别称扩展、列表值容错、改名锁扩展名 | ✅ | change `doc-property-refine-1121`（8/8 票，PR #1265–#1271，归档 `openspec/changes/archive/2026-11-20-doc-property-refine-1121`） |
 | P-3 修订 | 日期时间字段改单一面板选择器（月历网格 + 时分步进，组合提交 `YYYY-MM-DDTHH:mm`）；YAML 校验补日期时间 | ✅ | change `editor-surface-batch23`（归档 2026-11-18，PR #1095） |
 | P-R1…P-R5 | 属性面板验收修订（布尔值图形与提示分离 / 操作条图标注册表化 / 编辑态隐藏 frontmatter 源码块 / 模板字段类型 UI 与内置可编辑 / 别名映射表 propAliasMap 应用配置） | ✅ | change `doc-property-refine`（6/6 票，PR #1031/#1032/#1033/#1035/#1036；来源票 #1019/#1021/#1022/#1023/#1024） |
 | P-D1…P-D5 | 属性面板同批缺陷修复（B 态托管日期只读 / 行尾删除按钮 / 溢出文档页边界 / 新增字段入口 / 拖拽光标） | ✅ | 缺陷批次 PR #1025/#1026/#1027/#1028/#1029（来源票 #1015/#1016/#1017/#1018/#1020） |
