@@ -39,11 +39,13 @@ describe("Icon 描边渲染", () => {
     );
   });
 
-  it("尺寸只允许 18 / 24 两档", () => {
+  it("尺寸档位 12 / 14 / 18 / 24", () => {
     const { container } = render(<Icon name="close" size={24} />);
     const svg = container.querySelector("svg")!;
     expect(svg.getAttribute("width")).toBe("24");
     expect(svg.getAttribute("height")).toBe("24");
+    const small = render(<Icon name="lock" size={12} />).container;
+    expect(small.querySelector("svg")!.getAttribute("width")).toBe("12");
   });
 
   it("parts 多段渲染：实线格 + 虚线格", () => {
@@ -58,9 +60,7 @@ describe("Icon 描边渲染", () => {
     const { container } = render(<Icon name="docPropertyVariant" part={1} />);
     const paths = container.querySelectorAll("path");
     expect(paths.length).toBe(1);
-    expect(paths[0].getAttribute("d")).toBe(
-      "M12 5.5h3v13h-3z M17.5 5.5h3v13h-3z",
-    );
+    expect(paths[0].getAttribute("d")).toBe("M5 5h14 M12 5v14");
     const all = render(<Icon name="docPropertyVariant" />).container;
     expect(all.querySelectorAll("path").length).toBe(2);
   });
