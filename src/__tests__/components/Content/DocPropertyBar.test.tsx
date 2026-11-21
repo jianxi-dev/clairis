@@ -86,6 +86,25 @@ describe("DocPropertyBar 托管日期键只读（P-6）", () => {
     expect(foot.querySelector(".dpb-lock")!.getAttribute("width")).toBe("12");
   });
 
+  it("托管日期：编辑态无文本输入，双击不出现日期面板", () => {
+    useDocPropertyPanelStore.getState().setVariant("A");
+    const { container } = render(<DocPropertyBar content={DOC} mode="edit" />);
+    const dates = container.querySelector('[data-testid="dpb-managed-dates"]')!;
+    expect(dates.querySelectorAll("input")).toHaveLength(0);
+    const created = dates.querySelector(
+      '[data-testid="dpb-managed-date"][data-key="created"]',
+    )!;
+
+    fireEvent.pointerDown(created, { clientX: 10, clientY: 10 });
+    fireEvent.doubleClick(created);
+    fireEvent.pointerDown(created, { clientX: 10, clientY: 10 });
+
+    expect(
+      container.querySelector('[data-testid="dpb-datetime-editor"]'),
+    ).toBeNull();
+    expect(dates.textContent).toContain("创建 2026-11-14");
+  });
+
   it("B 编辑态：自由键仍可编辑、类型菜单可弹出（守卫不误伤）", () => {
     useDocPropertyPanelStore.getState().setVariant("B");
     const { container } = render(<DocPropertyBar content={DOC} mode="edit" />);
@@ -340,6 +359,52 @@ describe("DocPropertyBar 日期时间单面板（#1044）", () => {
     expect(
       editor.querySelector('[data-testid="dpb-time-minute"]'),
     ).not.toBeNull();
+  });
+
+  it("双击日期时间值区：打开面板并聚焦小时输入，不写回", () => {
+    const { container, dispatchRef } = mountDatetime();
+    const row = container.querySelector('[data-key="评审时间"]')!;
+    const value = row.querySelector('[data-testid="dpb-value"]')!;
+    fireEvent.pointerDown(value, { clientX: 100, clientY: 50 });
+    fireEvent.click(value);
+    const editor = row.querySelector('[data-testid="dpb-datetime-editor"]')!;
+    const text = editor.querySelector('[data-testid="dpb-datetime-input"]')!;
+
+    fireEvent.pointerDown(text, { clientX: 100, clientY: 50 });
+
+    expect(document.activeElement).toBe(
+      editor.querySelector('[data-testid="dpb-time-hour"]'),
+    );
+    expect(dispatchRef.current).toHaveLength(0);
+    expect(
+      row.querySelector('[data-testid="dpb-datetime-editor"]'),
+    ).not.toBeNull();
+  });
+
+  it("值区输入框按 Tab 进入面板，不写回正文", () => {
+    const { container, dispatchRef } = mountDatetime();
+    const row = container.querySelector('[data-key="评审时间"]')!;
+    fireEvent.click(row.querySelector('[data-testid="dpb-value"]')!);
+    const editor = row.querySelector('[data-testid="dpb-datetime-editor"]')!;
+    const panel = editor.querySelector<HTMLElement>(
+      '[data-testid="dpb-datetime-panel"]',
+    )!;
+    const text = editor.querySelector<HTMLInputElement>(
+      '[data-testid="dpb-datetime-input"]',
+    )!;
+    text.focus();
+
+    const ev = new KeyboardEvent("keydown", {
+      key: "Tab",
+      bubbles: true,
+      cancelable: true,
+    });
+    text.dispatchEvent(ev);
+
+    expect(ev.defaultPrevented).toBe(true);
+    expect(document.activeElement).not.toBe(text);
+    expect(panel.contains(document.activeElement)).toBe(true);
+    expect(dispatchRef.current).toHaveLength(0);
   });
 
   it("值区直接键入并 Enter：按归一化结果写回一次", () => {
@@ -656,6 +721,27 @@ createdate: 2026-11-14
       /createdate: \d{4}-\d{2}-\d{2}/,
     );
     expect(row.querySelector('[data-testid="dpb-datetime-editor"]')).toBeNull();
+  });
+
+  it("双击日期值区：面板打开并聚焦选中日格，不写回", () => {
+    const { container, dispatchRef } = mountDateOnly();
+    const row = container.querySelector('[data-key="createdate"]')!;
+    const value = row.querySelector('[data-testid="dpb-value"]')!;
+    fireEvent.pointerDown(value, { clientX: 120, clientY: 40 });
+    fireEvent.click(value);
+    const editor = row.querySelector('[data-testid="dpb-datetime-editor"]')!;
+    const text = editor.querySelector<HTMLInputElement>(
+      '[data-testid="dpb-datetime-input"]',
+    )!;
+
+    fireEvent.pointerDown(text, { clientX: 120, clientY: 40 });
+
+    expect(document.activeElement).toBe(
+      editor.querySelector(
+        '[data-testid="dpb-cal-day"][data-date="2026-11-14"]',
+      ),
+    );
+    expect(dispatchRef.current).toHaveLength(0);
   });
 
   it("日期字段值区可直接键入并归一化 / 至 -", () => {

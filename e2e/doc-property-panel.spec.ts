@@ -173,6 +173,17 @@ function panel(page: Page, variant: "A" | "B") {
   return page.locator(`[data-testid="dpb-${variant.toLowerCase()}"]`);
 }
 
+async function doubleClickAt(page: Page, target: Locator): Promise<void> {
+  const box = (await target.boundingBox())!;
+  const x = box.x + box.width / 2;
+  const y = box.y + box.height / 2;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.up();
+  await page.mouse.down();
+  await page.mouse.up();
+}
+
 test.beforeEach(async ({ page }) => {
   await boot(page);
 });
@@ -1352,6 +1363,100 @@ test("日期字段：单击日格立即写回并关闭，仅一次；日期时�
   await expect(
     dtEditor.locator('[data-testid="dpb-datetime-input"]'),
   ).toHaveValue("2026-11-18T14:30");
+});
+
+test("双击日期时间值区：聚焦小时输入且不写回", async ({ page }) => {
+  await openDoc(page, DATETIME_DOC);
+  await setMode(page, "edit");
+  const row = panel(page, "A").locator('[data-key="评审时间"]');
+  await doubleClickAt(page, row.locator('[data-testid="dpb-value"]'));
+
+  const editor = row.locator('[data-testid="dpb-datetime-editor"]');
+  await expect(editor).toHaveCount(1);
+  await expect(editor.locator('[data-testid="dpb-time-hour"]')).toBeFocused();
+
+  await setMode(page, "source");
+  await expect(page.locator(".cm-content").first()).toContainText(
+    "评审时间: 2026-11-15 14:30",
+  );
+});
+
+test("双击日期值区：聚焦选中日格且不写回", async ({ page }) => {
+  await openDoc(page, EXTERNAL_DOC);
+  await setMode(page, "edit");
+  const row = panel(page, "A").locator('[data-key="createdate"]');
+  await doubleClickAt(page, row.locator('[data-testid="dpb-value"]'));
+
+  const editor = row.locator('[data-testid="dpb-datetime-editor"]');
+  await expect(editor).toHaveCount(1);
+  await expect(
+    editor.locator('[data-testid="dpb-cal-day"][data-date="2026-11-14"]'),
+  ).toBeFocused();
+
+  await setMode(page, "source");
+  await expect(page.locator(".cm-content").first()).toContainText(
+    "createdate: 2026-11-14",
+  );
+});
+
+test("值区输入框 Tab 进入面板，正文首字符仍为 -", async ({ page }) => {
+  await openDoc(page, DATETIME_DOC);
+  await setMode(page, "edit");
+  const row = panel(page, "A").locator('[data-key="评审时间"]');
+  await row.locator('[data-testid="dpb-value"]').click();
+  const editor = row.locator('[data-testid="dpb-datetime-editor"]');
+  const panelEl = editor.locator('[data-testid="dpb-datetime-panel"]');
+  const input = editor.locator('[data-testid="dpb-datetime-input"]');
+  await input.focus();
+  await page.keyboard.press("Tab");
+
+  const state = await page.evaluate(() => {
+    const active = document.activeElement as HTMLElement | null;
+    const panelNode = document.querySelector(
+      '[data-testid="dpb-datetime-panel"]',
+    );
+    const store = (
+      window as unknown as {
+        __biaoyue_store__: {
+          getState: () => {
+            tabs: Record<string, { content: string }>;
+            activeTabId: string;
+          };
+        };
+      }
+    ).__biaoyue_store__.getState();
+    const content = store.tabs[store.activeTabId]?.content ?? "";
+    return {
+      inPanel: panelNode ? panelNode.contains(active) : false,
+      first: content.slice(0, 1),
+    };
+  });
+  expect(state.inPanel).toBe(true);
+  expect(state.first).toBe("-");
+  await expect(panelEl).toBeVisible();
+
+  await page.keyboard.press("Escape");
+  await expect(editor).toHaveCount(0);
+  await expect(row.locator('[data-testid="dpb-value"]')).toHaveText(
+    "2026-11-15 14:30",
+  );
+});
+
+test("托管日期：编辑态无输入，双击不出现日期面板", async ({ page }) => {
+  await openDoc(page, DOC);
+  await setMode(page, "edit");
+  const dates = panel(page, "A").locator('[data-testid="dpb-managed-dates"]');
+  await expect(dates).toHaveCount(1);
+  await expect(dates.locator("input, textarea")).toHaveCount(0);
+  const created = dates.locator(
+    '[data-testid="dpb-managed-date"][data-key="created"]',
+  );
+  await doubleClickAt(page, created);
+
+  await expect(
+    panel(page, "A").locator('[data-testid="dpb-datetime-editor"]'),
+  ).toHaveCount(0);
+  await expect(created).toContainText("创建 2026-11-14");
 });
 
 test("日期时间字段：单一面板（月历 + 时分步进），组合写回 YYYY-MM-DDTHH:mm", async ({
