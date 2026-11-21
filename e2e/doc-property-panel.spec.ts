@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Locator, type Page } from "@playwright/test";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { tagColor } from "../src/lib/frontmatter";
@@ -4657,4 +4657,61 @@ test("O5 footer 收敛：垂直内距收窄 + 预览计数胶囊、编辑态纯�
   const paFootBox = (await paFoot.boundingBox())!;
   expect(Math.abs(paCountBox.x - paFootBox.x)).toBeLessThanOrEqual(1);
   await dpbRecord(page, "o5", "04-a-preview-pill");
+});
+
+test("O8 日期选择器底部提示：默认透明，footer 行悬停 / 聚焦显现，高度不变", async ({
+  page,
+}) => {
+  const openPanel = async (doc: string, key: string, path: string) => {
+    await openDoc(page, doc, path);
+    await setMode(page, "edit");
+    const row = panel(page, "A").locator(`[data-key="${key}"]`);
+    await row.locator('[data-testid="dpb-value"]').click();
+    const editor = row.locator('[data-testid="dpb-datetime-editor"]');
+    await expect(editor).toHaveCount(1);
+    return editor;
+  };
+
+  const assertHint = async (editor: Locator, dir: string) => {
+    const foot = editor.locator(".dpb-dt-foot");
+    const hint = foot.locator(".dpb-dt-hint");
+    await expect(hint).toHaveCount(1);
+    await expect(hint).toContainText("Esc 取消 · Enter 保存 · 点击外部保存");
+    await page.mouse.move(4, 4);
+
+    const opacity = () =>
+      hint.evaluate((el) => Number(getComputedStyle(el).opacity));
+    const height = async () => (await foot.boundingBox())!.height;
+
+    await expect.poll(opacity, { timeout: 2000 }).toBe(0);
+    const h = await height();
+
+    await foot.hover();
+    await expect.poll(opacity, { timeout: 2000 }).toBe(1);
+    expect(await height()).toBe(h);
+
+    await page.mouse.move(4, 4);
+    await expect.poll(opacity, { timeout: 2000 }).toBe(0);
+
+    // footer 内元素获焦（:focus-within）→ 显现；不 blur（blur 会触发面板失焦关闭）
+    await foot.locator('[data-testid="dpb-cal-today"]').focus();
+    await expect.poll(opacity, { timeout: 2000 }).toBe(1);
+    await dpbRecord(page, "o8", dir);
+  };
+
+  const dateEditor = await openPanel(
+    EXTERNAL_DOC,
+    "createdate",
+    "/Users/test/o8-date.md",
+  );
+  await assertHint(dateEditor, "01-date-hint");
+  await page.keyboard.press("Escape");
+
+  const dtEditor = await openPanel(
+    DATETIME_DOC,
+    "评审时间",
+    "/Users/test/o8-dt.md",
+  );
+  await assertHint(dtEditor, "02-datetime-hint");
+  await page.keyboard.press("Escape");
 });
