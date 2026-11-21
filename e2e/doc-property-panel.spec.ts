@@ -1520,12 +1520,12 @@ test("外部文件：createdate 自动识别为日期（日历图标）且显示
   await expect(page.locator('[data-testid="dpb-type-menu"]')).toHaveCount(0);
 });
 
-test("未识别键「?」收编：选「下拉」后原值保留为当前值", async ({ page }) => {
+test("纯字符串默认文本：改选「下拉」后原值保留", async ({ page }) => {
   await openDoc(page, ADOPT_DOC);
   await setMode(page, "edit");
   const row = panel(page, "A").locator('[data-key="priority"]');
   await expect(row.locator('[data-testid="dpb-type"] .dpb-ico')).toHaveText(
-    "?",
+    "Aa",
   );
   await row.locator('[data-testid="dpb-type"]').click();
   await page
