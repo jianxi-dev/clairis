@@ -37,6 +37,7 @@ export type IconName =
   | "more"
   | "eye"
   | "pencil"
+  | "plus"
   | "export"
   | "exportWord"
   | "exportZip"
@@ -294,6 +295,10 @@ export const ICONS: Record<IconName, IconDef> = {
   eye: {
     label: "预览",
     s: "M2.5 12c2.2-3.4 5.6-5.4 9.5-5.4s7.3 2 9.5 5.4c-2.2 3.4-5.6 5.4-9.5 5.4s-7.3-2-9.5-5.4z M12 9.4a2.6 2.6 0 100 5.2 2.6 2.6 0 000-5.2z",
+  },
+  plus: {
+    label: "添加",
+    s: "M12 5v14 M5 12h14",
   },
   pencil: {
     label: "编辑",

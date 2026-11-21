@@ -100,7 +100,7 @@ test.describe("页签右键菜单「悬浮小窗」（ui-polish-batch8 6.1）", 
     await page.locator('[role="tab"]').first().click({ button: "right" });
 
     const items = page.locator("[data-tab-menu] > button");
-    await expect(items).toHaveCount(10);
+    await expect(items).toHaveCount(11);
     await expect(items.first()).toHaveText(/悬浮小窗/);
     expect(await items.first().locator("svg").count()).toBe(1);
 
@@ -125,9 +125,9 @@ test.describe("页签右键菜单：复制路径与移动到（ui-polish-batch12
     await page.locator('[role="tab"]').first().click({ button: "right" });
 
     const items = page.locator("[data-tab-menu] > button");
-    await expect(items).toHaveCount(10);
-    await expect(items.nth(4)).toHaveText(/复制路径/);
-    await expect(items.nth(6)).toHaveText(/移动到…/);
+    await expect(items).toHaveCount(11);
+    await expect(items.nth(5)).toHaveText(/复制路径/);
+    await expect(items.nth(7)).toHaveText(/移动到…/);
 
     await page.evaluate(() => {
       const w = window as unknown as Record<string, any>;
@@ -189,7 +189,7 @@ test.describe("页签右键菜单文件动作（editor-surface-batch18 1.1）", 
     const rows = page.locator(
       "[data-tab-menu] > button, [data-tab-menu] > [data-export-row]",
     );
-    await expect(rows).toHaveCount(11);
+    await expect(rows).toHaveCount(12);
     const labels = await rows.evaluateAll((els) =>
       els.map((el) => el.textContent?.trim() ?? ""),
     );

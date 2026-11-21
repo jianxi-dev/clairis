@@ -74,8 +74,12 @@ test.describe("移动到图标与打开文件位置去重（A-13.1）", () => {
     const move = await iconPaths(page, "move");
     expect(move.length, "移动到图标缺箭头分段").toBeGreaterThanOrEqual(2);
 
-    const folder = ICONS.folder.parts ?? [{ d: ICONS.folder.d, s: ICONS.folder.s }];
-    const locate = ICONS.locate.parts ?? [{ d: ICONS.locate.d, s: ICONS.locate.s }];
+    const folder = ICONS.folder.parts ?? [
+      { d: ICONS.folder.d, s: ICONS.folder.s },
+    ];
+    const locate = ICONS.locate.parts ?? [
+      { d: ICONS.locate.d, s: ICONS.locate.s },
+    ];
     for (const def of [folder, locate]) {
       for (const part of def) {
         for (const d of [part.d, part.s]) {
@@ -138,14 +142,14 @@ test.describe("导出二级 hover 展开与并集收起（#910 supersede A-13.3�
 });
 
 test.describe("菜单整体仍就绪", () => {
-  test("右键菜单打开且顶层 11 行", async ({ page }) => {
+  test("右键菜单打开且顶层 12 行", async ({ page }) => {
     await boot(page);
     await openTabMenu(page);
     await expect(
       page.locator(
         "[data-tab-menu] > button, [data-tab-menu] > [data-export-row]",
       ),
-    ).toHaveCount(11);
+    ).toHaveCount(12);
     await shot(page, "menu-open");
   });
 });
