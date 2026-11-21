@@ -354,8 +354,8 @@ export function findTitleField(
 }
 
 /**
- * 值 → 类型推断。纯字符串无法推断为具体类型（可能是文本 / 下拉），
- * 因此返回 `unknown`，等用户收编或命中别称（P-8）。
+ * 值 → 类型推断。字符串在日期 / 日期时间之后回退 `text`（纯字符串即文本）；
+ * `unknown` 仅保留给非字符串且不可推断的值（如对象）。
  */
 export function inferFrontmatterType(value: unknown): FrontmatterType {
   if (typeof value === "number") return "number";
@@ -364,6 +364,7 @@ export function inferFrontmatterType(value: unknown): FrontmatterType {
   if (typeof value === "string") {
     if (DATE_RE.test(value)) return "date";
     if (DATETIME_RE.test(value)) return "datetime";
+    return "text";
   }
   return "unknown";
 }
