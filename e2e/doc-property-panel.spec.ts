@@ -365,6 +365,49 @@ test("长值两行截断：clientHeight ≈ 2 × line-height，title 为全文",
   expect(full).toContain("用来验证两行截断");
 });
 
+test("B1b 截断值 title 全文：A 胶囊与 B 两行一致，短值/空值口径", async ({
+  page,
+}) => {
+  await openDoc(page, LONG_DOC);
+  for (const variant of ["A", "B"] as const) {
+    await setVariant(page, variant);
+    const value = panel(page, variant).locator(
+      '[data-key="note"] [data-testid="dpb-value"]',
+    );
+    await expect(value).toBeVisible();
+    const text = (await value.textContent()) ?? "";
+    expect(text.length).toBeGreaterThan(24);
+    expect(await value.getAttribute("title")).toBe(text);
+    const clamp = await value.evaluate((el) => ({
+      clientHeight: el.clientHeight,
+      scrollHeight: el.scrollHeight,
+    }));
+    expect(clamp.scrollHeight).toBeGreaterThan(clamp.clientHeight);
+  }
+  await dpbRecord(page, "1285", "01-long-title-full");
+
+  await openDoc(page, ROW_DOC, "/Users/test/b1b-short.md");
+  for (const variant of ["A", "B"] as const) {
+    await setVariant(page, variant);
+    const value = panel(page, variant).locator(
+      '[data-key="category"] [data-testid="dpb-value"]',
+    );
+    await expect(value).toHaveText("草稿");
+    expect(await value.getAttribute("title")).toBe("草稿");
+  }
+
+  await openDoc(page, CAPSULE_DOC, "/Users/test/b1b-empty.md");
+  for (const variant of ["A", "B"] as const) {
+    await setVariant(page, variant);
+    const value = panel(page, variant).locator(
+      '[data-key="note"] [data-testid="dpb-value"]',
+    );
+    await expect(value).toHaveCount(1);
+    expect((await value.textContent())?.trim()).toBe("");
+    expect(await value.getAttribute("title")).toBeNull();
+  }
+});
+
 test("无 frontmatter：空态引导文案", async ({ page }) => {
   await openDoc(page, "# 只有正文\n\n没有属性。\n");
   const empty = page.locator('[data-testid="dpb-empty"]');

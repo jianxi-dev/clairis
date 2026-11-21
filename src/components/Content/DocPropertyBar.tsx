@@ -578,12 +578,11 @@ function ValueView({
       </span>
     );
   }
-  const long = field.display.length > 24;
   return (
     <span
       className={`dpb-v dpb-clamp2${editable ? " dpb-v-clickable" : ""}`}
       data-testid="dpb-value"
-      title={editable ? "点击编辑值" : long ? field.display : undefined}
+      title={field.display || undefined}
       role={editable ? "button" : undefined}
       tabIndex={editable ? 0 : undefined}
       onClick={editable ? onStartEdit : undefined}
