@@ -896,6 +896,15 @@
   font-size: 11px;
   color: var(--app-text-3);
   text-align: center;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+
+/* 底部提示悬停 / 聚焦显现（O8）：触发面为整条 footer 行，只改透明度不改高度 */
+.dpb-dt-foot:hover .dpb-dt-hint,
+.dpb-dt-foot:focus-within .dpb-dt-hint,
+.dpb-dt-hint:focus-visible {
+  opacity: 1;
 }
 
 .dpb-switch {
