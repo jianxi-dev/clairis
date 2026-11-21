@@ -617,10 +617,17 @@ function rawForEdit(field: FrontmatterField): string {
 }
 
 function splitDatetime(raw: string): { date: string; time: string } {
-  const full = /^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2}(?::\d{2})?)$/.exec(raw);
-  if (full) return { date: full[1], time: full[2] };
-  const dateOnly = /^(\d{4}-\d{2}-\d{2})/.exec(raw);
-  return { date: dateOnly ? dateOnly[1] : "", time: "" };
+  const text = raw.trim();
+  const full =
+    /^(\d{4})[-/](\d{2})[-/](\d{2})[T ](\d{2}:\d{2}(?::\d{2})?)$/.exec(text);
+  if (full) {
+    return { date: `${full[1]}-${full[2]}-${full[3]}`, time: full[4] };
+  }
+  const dateOnly = /^(\d{4})[-/](\d{2})[-/](\d{2})/.exec(text);
+  return {
+    date: dateOnly ? `${dateOnly[1]}-${dateOnly[2]}-${dateOnly[3]}` : "",
+    time: "",
+  };
 }
 
 /** 单行文本超过此长度即进入多行文本域（P-3，阈值 40）。 */
@@ -774,8 +781,7 @@ interface DatetimeEditorProps {
 function DatetimeEditor({ field, editable, onCommit }: DatetimeEditorProps) {
   const dateOnly = field.type === "date";
   const [editing, setEditing] = useState(false);
-  const [datePart, setDatePart] = useState("");
-  const [timePart, setTimePart] = useState("00:00");
+  const [draft, setDraft] = useState("");
   const [cal, setCal] = useState({ year: 0, month: 0 });
   const [view, setView] = useState<"day" | "month" | "year">("day");
   const [yearPage, setYearPage] = useState(0);
@@ -784,11 +790,15 @@ function DatetimeEditor({ field, editable, onCommit }: DatetimeEditorProps) {
   const [error, setError] = useState<string | null>(null);
   const wrapRef = useRef<HTMLSpanElement>(null);
   const slotRef = useRef<HTMLSpanElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const doneRef = useRef(false);
   const pointerInsideRef = useRef(false);
   const errorTimer = useRef<number | null>(null);
-  const latest = useRef({ datePart: "", timePart: "00:00", touched: false });
-  latest.current = { datePart, timePart, touched };
+  const latest = useRef({ draft: "", touched: false });
+  latest.current = { draft, touched };
+  const parsedDraft = splitDatetime(draft);
+  const datePart = parsedDraft.date;
+  const timePart = parsedDraft.time ? parsedDraft.time.slice(0, 5) : "00:00";
   const { pos, ref: panelRef } = useMenuPos(editing && anchor ? anchor : null);
 
   useEffect(
@@ -811,29 +821,17 @@ function DatetimeEditor({ field, editable, onCommit }: DatetimeEditorProps) {
     (mode: "commit" | "cancel") => {
       if (doneRef.current) return;
       doneRef.current = true;
-      const { datePart: d, timePart: t, touched: tc } = latest.current;
+      const { draft: nextDraft, touched: tc } = latest.current;
       setEditing(false);
       if (mode === "cancel" || !tc) {
         setError(null);
         restoreFocus();
         return;
       }
-      if (dateOnly) {
-        const result = validateFieldValue("date", d);
-        if (!result.ok) {
-          setError(result.reason);
-          restoreFocus();
-          return;
-        }
-        setError(null);
-        onCommit(field.key, result.value);
-        restoreFocus();
-        return;
-      }
-      const hour = Number(t.slice(0, 2)) || 0;
-      const minute = Number(t.slice(3, 5)) || 0;
-      const next = d ? `${d}T${pad2(hour)}:${pad2(minute)}` : "";
-      const result = validateFieldValue("datetime", next);
+      const result = validateFieldValue(
+        dateOnly ? "date" : "datetime",
+        nextDraft,
+      );
       if (!result.ok) {
         setError(result.reason);
         restoreFocus();
@@ -850,6 +848,10 @@ function DatetimeEditor({ field, editable, onCommit }: DatetimeEditorProps) {
   finishRef.current = finish;
 
   useEffect(() => {
+    if (editing) inputRef.current?.focus();
+  }, [editing]);
+
+  useEffect(() => {
     if (!editing) return;
     const onDown = (e: MouseEvent) => {
       const t = e.target as Node | null;
@@ -863,20 +865,10 @@ function DatetimeEditor({ field, editable, onCommit }: DatetimeEditorProps) {
   const start = () => {
     if (!editable) return;
     const raw = rawForEdit(field);
-    let date = "";
-    let time = "00:00";
-    if (raw) {
-      const parsed = splitDatetime(raw);
-      date = parsed.date || localYmd(new Date());
-      time = parsed.time ? parsed.time.slice(0, 5) : "00:00";
-    } else {
-      const now = new Date();
-      date = localYmd(now);
-      time = `${pad2(now.getHours())}:${pad2(now.getMinutes())}`;
-    }
+    const parsed = splitDatetime(raw);
+    const date = parsed.date || localYmd(new Date());
     const [y, m] = date.split("-").map(Number);
-    setDatePart(date);
-    setTimePart(time);
+    setDraft(raw);
     setCal({ year: y, month: m - 1 });
     setYearPage(Math.floor(y / 12) * 12);
     setView("day");
@@ -904,7 +896,7 @@ function DatetimeEditor({ field, editable, onCommit }: DatetimeEditorProps) {
       : ymdOf(cal.year, cal.month, 1);
 
   const pickDay = (date: string) => {
-    setDatePart(date);
+    setDraft(dateOnly ? date : `${date}T${timePart}`);
     setTouched(true);
   };
 
@@ -919,6 +911,9 @@ function DatetimeEditor({ field, editable, onCommit }: DatetimeEditorProps) {
     else setYearPage(yearPage + delta * 12);
   };
 
+  const composeDraft = (date: string, time: string) =>
+    dateOnly ? date : `${date}T${time}`;
+
   const moveDay = (deltaDays: number) => {
     const [y, m, d] = focusDate.split("-").map(Number);
     const next = new Date(Date.UTC(y, m - 1, d + deltaDays));
@@ -928,7 +923,7 @@ function DatetimeEditor({ field, editable, onCommit }: DatetimeEditorProps) {
       next.getUTCDate(),
     );
     setCal({ year: next.getUTCFullYear(), month: next.getUTCMonth() });
-    setDatePart(date);
+    setDraft(composeDraft(date, timePart));
     setTouched(true);
     requestAnimationFrame(() => {
       wrapRef.current
@@ -940,22 +935,23 @@ function DatetimeEditor({ field, editable, onCommit }: DatetimeEditorProps) {
   };
 
   const changeHour = (h: number) => {
-    setTimePart(`${pad2(h)}:${pad2(minute)}`);
+    const date = datePart || localYmd(new Date());
+    setDraft(composeDraft(date, `${pad2(h)}:${pad2(minute)}`));
     setTouched(true);
   };
 
   const changeMinute = (m: number) => {
-    setTimePart(`${pad2(hour)}:${pad2(m)}`);
+    const date = datePart || localYmd(new Date());
+    setDraft(composeDraft(date, `${pad2(hour)}:${pad2(m)}`));
     setTouched(true);
   };
 
   const pickToday = () => {
     const now = new Date();
     const date = localYmd(now);
-    setDatePart(date);
-    if (!dateOnly) {
-      setTimePart(`${pad2(now.getHours())}:${pad2(now.getMinutes())}`);
-    }
+    setDraft(
+      composeDraft(date, `${pad2(now.getHours())}:${pad2(now.getMinutes())}`),
+    );
     setCal({ year: now.getFullYear(), month: now.getMonth() });
     setYearPage(Math.floor(now.getFullYear() / 12) * 12);
     setView("day");
@@ -985,8 +981,10 @@ function DatetimeEditor({ field, editable, onCommit }: DatetimeEditorProps) {
           pointerInsideRef.current = true;
         }}
         onBlur={(e) => {
+          const wrap = wrapRef.current;
+          if (!wrap) return;
           const next = e.relatedTarget as Node | null;
-          if (next && wrapRef.current?.contains(next)) return;
+          if (next && wrap.contains(next)) return;
           if (pointerInsideRef.current) {
             pointerInsideRef.current = false;
             return;
@@ -1007,15 +1005,19 @@ function DatetimeEditor({ field, editable, onCommit }: DatetimeEditorProps) {
           }
         }}
       >
-        <span className="dpb-dt-trigger" data-testid="dpb-datetime-trigger">
-          {datePart
-            ? dateOnly
-              ? datePart
-              : `${datePart} ${timePart}`
-            : dateOnly
-              ? "选择日期"
-              : "选择日期时间"}
-        </span>
+        <input
+          ref={inputRef}
+          className="dpb-input dpb-dt-input"
+          data-testid="dpb-datetime-input"
+          type="text"
+          aria-label={dateOnly ? "日期" : "日期时间"}
+          placeholder={dateOnly ? "选择日期" : "选择日期时间"}
+          value={draft}
+          onChange={(e) => {
+            setDraft(e.target.value);
+            setTouched(true);
+          }}
+        />
         <span
           ref={panelRef}
           className="dpb-menu dpb-dt-panel"

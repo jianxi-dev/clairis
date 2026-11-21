@@ -677,6 +677,25 @@
   white-space: nowrap;
 }
 
+/* 可编辑值区：沿用触发器盒模型，宽度随内容而非撑满本行（D1 / D7）。 */
+.dpb-dt-input {
+  flex: 0 1 auto;
+  width: auto;
+  min-width: 8ch;
+  max-width: 100%;
+  font-size: 12px;
+  line-height: 1.4;
+  padding: 2px 6px;
+  background: var(--app-bg);
+  border: 1px solid var(--app-accent);
+  border-radius: var(--radius-4);
+  color: var(--app-text-strong);
+}
+
+.dpb-dt-input::placeholder {
+  color: var(--app-text-2);
+}
+
 .dpb-menu.dpb-dt-panel {
   width: var(--dpb-cal-width, 300px);
   gap: var(--dpb-cal-gap, 8px);

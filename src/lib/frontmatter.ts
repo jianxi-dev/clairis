@@ -408,8 +408,8 @@ export function formatFrontmatterValue(
   }
 }
 
-const DATETIME_RE_FULL =
-  /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?$/;
+const DATETIME_RE_INPUT =
+  /^(\d{4})[-/](\d{2})[-/](\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2}))?)?$/;
 
 /** 公历日期合法性（拒绝 2026-02-30 这类溢出）。 */
 function isValidDateParts(y: number, m: number, d: number): boolean {
@@ -430,8 +430,8 @@ export type FieldValidation =
  *
  * - number：数值字面量（有限数；空串 / `abc` / `Infinity` 拒绝）；
  * - boolean：仅 `true` / `false`（大小写不敏感）；
- * - date：`YYYY-MM-DD` 且为真实公历日期；
- * - datetime：`YYYY-MM-DDTHH:mm`（可带秒，空格分隔亦可）；
+ * - date：`YYYY-MM-DD`（`YYYY/MM/DD` 容错归一化）且为真实公历日期；空串合法；
+ * - datetime：`YYYY-MM-DDTHH:mm`（`/` 与空格、可选秒容错，归一化为 `T`）；空串合法；
  * - array：逗号 / 顿号 / 全角逗号分割，去空项，回写字符串数组；
  * - text：任意原文（下拉白名单在 1.5 有选项配置前按 text 处理）。
  *
@@ -456,24 +456,34 @@ export function validateFieldValue(
       return { ok: false, reason: "布尔值只能是 true 或 false" };
     }
     case "date": {
-      const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(text);
+      // 空输入是合法空值：写回 `""`，不补今天、不渲染占位横线（D5）。
+      if (text === "") return { ok: true, value: "" };
+      // 接受 `YYYY-MM-DD` 与粘贴容错的 `YYYY/MM/DD`，统一归一化为 `-`。
+      const m = /^(\d{4})[-/](\d{2})[-/](\d{2})$/.exec(text);
       if (!m || !isValidDateParts(+m[1], +m[2], +m[3])) {
         return { ok: false, reason: "日期格式应为 YYYY-MM-DD" };
       }
-      return { ok: true, value: text };
+      return { ok: true, value: `${m[1]}-${m[2]}-${m[3]}` };
     }
     case "datetime": {
-      const m = DATETIME_RE_FULL.exec(text);
+      if (text === "") return { ok: true, value: "" };
+      // 日期部分接受 `-` / `/`；分隔符接受 `T` 或空格；秒可选。
+      const m = DATETIME_RE_INPUT.exec(text);
       if (
         !m ||
         !isValidDateParts(+m[1], +m[2], +m[3]) ||
-        +m[4] > 23 ||
-        +m[5] > 59 ||
+        (m[4] !== undefined && (+m[4] > 23 || +m[5] > 59)) ||
         (m[6] !== undefined && +m[6] > 59)
       ) {
         return { ok: false, reason: "日期时间格式不正确" };
       }
-      return { ok: true, value: text };
+      const hour = m[4] ?? "00";
+      const minute = m[5] ?? "00";
+      const second = m[6] && m[6] !== "00" ? `:${m[6]}` : "";
+      return {
+        ok: true,
+        value: `${m[1]}-${m[2]}-${m[3]}T${hour}:${minute}${second}`,
+      };
     }
     case "array": {
       const items = text
