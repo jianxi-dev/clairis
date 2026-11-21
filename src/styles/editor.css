@@ -1636,6 +1636,32 @@ body {
   color: var(--app-text-3);
 }
 
+.tab-info__fields-toggle {
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--app-accent);
+  font: inherit;
+  cursor: pointer;
+  border-radius: var(--radius-4);
+}
+
+.tab-info__fields-toggle:hover {
+  text-decoration: underline;
+}
+
+.tab-info__fields-count {
+  color: var(--app-text-2);
+  white-space: nowrap;
+}
+
+.tab-info__fields-kbd {
+  margin-left: auto;
+  color: var(--app-text-3);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
 .tab-info__time {
   color: var(--app-text-2);
   white-space: nowrap;

@@ -63,8 +63,8 @@ test("页签名信息窗：三行 + 可点击路径层 + 最近保存时间 + 8p
   const info = page.locator(INFO);
   await expect(info).toBeVisible({ timeout: 3000 });
 
-  // A-14.1：三行（文件名 / 路径 / 时间）
-  await expect(info.locator("[data-testid^='tab-info-']")).toHaveCount(3);
+  // A-14.1 + P-11：四行——文件名 / 路径 / 字段显隐 / 时间
+  await expect(info.locator(".tab-info__row")).toHaveCount(4);
   await expect(info.getByTestId("tab-info-name")).toContainText("招待明细.md");
 
   // A-14.2：文件夹链每层可点击，层数 = 路径目录层数
@@ -116,6 +116,56 @@ test("页签名信息窗：三行 + 可点击路径层 + 最近保存时间 + 8p
   );
   expect(after.length).toBe(before.length + 1);
   expect(after[after.length - 1]).toBe("/Users/mason/Documents");
+});
+
+test("字段显隐行仅活动页签渲染，点击不关闭信息窗（#1314 / P-11）", async ({
+  page,
+}) => {
+  await boot(page, FILE_A);
+  const info = page.locator(INFO);
+  const firstTab = page.locator("[data-tab-id]").filter({
+    hasText: "招待明细",
+  });
+  await (await activeTab(page)).hover();
+  await expect(info).toBeVisible({ timeout: 3000 });
+
+  const row = info.getByTestId("tab-info-fields");
+  await expect(row).toBeVisible();
+  const toggle = row.getByTestId("tab-info-fields-toggle");
+  await expect(toggle).toHaveText("隐藏字段");
+  await expect(row).toContainText("0 个字段");
+  await expect(row).toContainText("⌘⇧Y");
+  await shot(page, "tab-info-fields-row");
+
+  // 打开第二个文件使其成为活动页签；悬停非活动的第一个页签 → 不渲染显隐行
+  await page.evaluate(
+    ([p, c]) => {
+      const w = window as unknown as Record<string, unknown>;
+      (w.__biaoyue_openFile__ as (a: string, b: string, t: string) => void)(
+        p,
+        c,
+        "文件名.md",
+      );
+    },
+    [FILE_B, DOC],
+  );
+  await page.mouse.move(900, 620);
+  await expect(info).toHaveCount(0, { timeout: 3000 });
+
+  await firstTab.first().hover();
+  await expect(info).toBeVisible({ timeout: 3000 });
+  await expect(info.getByTestId("tab-info-fields")).toHaveCount(0);
+
+  // 活动页签（第二个）显示显隐行；点击只切换标签文案，不关闭信息窗
+  const secondTab = page.locator("[data-tab-id]").filter({ hasText: "文件名" });
+  await page.mouse.move(900, 620);
+  await expect(info).toHaveCount(0, { timeout: 3000 });
+  await secondTab.first().hover();
+  await expect(info).toBeVisible({ timeout: 3000 });
+  await expect(toggle).toHaveText("隐藏字段");
+  await toggle.click();
+  await expect(info).toBeVisible();
+  await expect(toggle).toHaveText("显示字段");
 });
 
 test("信息窗提供复制路径与复制文件两个动作（A-3.1/A-3.2/A-3.3）", async ({
@@ -217,7 +267,7 @@ test("长路径换行态与无路径态", async ({ page }) => {
   await tab.hover();
   const info = page.locator(INFO);
   await expect(info).toBeVisible({ timeout: 3000 });
-  await expect(info.locator("[data-testid^='tab-info-']")).toHaveCount(3);
+  await expect(info.locator(".tab-info__row")).toHaveCount(4);
   // 长路径换行：信息窗高度明显大于单行三行态
   const height = await info.evaluate((el) => el.getBoundingClientRect().height);
   expect(height).toBeGreaterThan(90);

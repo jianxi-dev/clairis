@@ -585,14 +585,6 @@
   font-weight: 650;
 }
 
-.dpb-hidden-note {
-  font-size: 11px;
-  color: var(--app-text-3);
-  border: 1px dashed var(--app-border-strong);
-  border-radius: var(--radius-4);
-  padding: 7px 10px;
-}
-
 .dpb-kbd {
   font-size: 10px;
   border: 1px solid var(--app-border-strong);

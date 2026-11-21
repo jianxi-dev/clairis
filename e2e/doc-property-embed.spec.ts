@@ -461,9 +461,12 @@ test("⌘⇧Y 隐藏并恢复正文流内的属性块", async ({ page }) => {
   await page.keyboard.press("Meta+Shift+Y");
   await expect(embed).toHaveCount(0);
   await expect(page.locator('[data-testid="dpb-a"]')).toHaveCount(0);
-  await expect(page.locator('[data-testid="dpb-hidden-note"]')).toBeVisible();
-  await dpbRecord(page, "1215", "05-hidden-note");
-  await dpbRecord(page, "1226", "04-hidden-note");
+  await expect(page.locator('[data-testid="dpb-hidden-note"]')).toHaveCount(0);
+  await expect(page.locator(".cm-content").first()).not.toContainText(
+    "title: 嵌入测试",
+  );
+  await dpbRecord(page, "1215", "05-hidden-no-note");
+  await dpbRecord(page, "1226", "04-hidden-no-note");
 
   await page.keyboard.press("Meta+Shift+Y");
   await expect(embed).toHaveCount(1);

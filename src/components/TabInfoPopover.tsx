@@ -1,11 +1,13 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Icon from "./Icon";
 import { colorOfType, fileTypeOf, iconOfType } from "../lib/fileType";
 import { revealInFinder } from "../lib/finder";
 import { canCopyFile, copyFileToClipboard } from "../lib/clipboard";
 import { getFileModified } from "../lib/fileInfo";
+import { isManagedDateKey, parseFrontmatter } from "../lib/frontmatter";
 import { useStore } from "../stores";
+import { useDocPropertyPanelStore } from "../stores/docPropertyPanel";
 import type { Tab } from "../types";
 
 /** 信息窗与页签名之间的间距（px）。 */
@@ -147,6 +149,18 @@ export default function TabInfoPopover({
         ? `最近保存: ${formatSaved(new Date(openedAt).getTime() / 1000)}`
         : "最近保存: 未知";
 
+  const isActiveTab = useStore((s) => s.activeTabId === tab.id);
+  const panelHidden = useDocPropertyPanelStore((s) => s.hidden);
+  const togglePanelHidden = useDocPropertyPanelStore((s) => s.toggleHidden);
+  // 与面板 footer 同源：不做别名/类型映射、沿用托管日期排除，计数严格一致。
+  const fieldCount = useMemo(
+    () =>
+      parseFrontmatter(tab.content).fields.filter(
+        (f) => !isManagedDateKey(f.key),
+      ).length,
+    [tab.content],
+  );
+
   return (
     <>
       {createPortal(
@@ -215,6 +229,22 @@ export default function TabInfoPopover({
               )}
             </span>
           </div>
+          {isActiveTab && (
+            <div className="tab-info__row" data-testid="tab-info-fields">
+              <button
+                type="button"
+                className="tab-info__fields-toggle"
+                data-testid="tab-info-fields-toggle"
+                onClick={togglePanelHidden}
+              >
+                {panelHidden ? "显示字段" : "隐藏字段"}
+              </button>
+              <span className="tab-info__fields-count">
+                {fieldCount} 个字段
+              </span>
+              <span className="tab-info__fields-kbd">⌘⇧Y</span>
+            </div>
+          )}
           <div className="tab-info__row" data-testid="tab-info-time">
             <Icon name="clock" size={14} className="tab-info__icon" />
             <span className="tab-info__time">{savedText}</span>
