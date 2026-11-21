@@ -18,13 +18,13 @@ count: 3
 `;
 
 describe("findFrontmatterBlock", () => {
-  it("定位块起止，bodyStart 跳过尾随空行", () => {
+  it("定位块起止，bodyStart 停在围栏换行后（不吞空行）", () => {
     const block = findFrontmatterBlock(DOC);
     expect(block).not.toBeNull();
     expect(DOC.slice(block!.start, block!.blockEnd)).toBe(
       `---\ntitle: 甲\ntags:\n  - 乙\ncount: 3\n---`,
     );
-    expect(DOC[block!.bodyStart]).toBe("#");
+    expect(DOC[block!.bodyStart]).toBe("\n");
   });
 
   it("无 frontmatter / 空块返回 null", () => {

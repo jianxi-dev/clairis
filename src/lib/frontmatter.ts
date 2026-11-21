@@ -13,7 +13,8 @@ import { todayStamp } from "./extensions/templates";
  * 「往返一致」是结构保证，而不是重新拼字符串。
  */
 
-export const FRONTMATTER_RE = /^\uFEFF?---\s*\n[\s\S]*?\n---\s*(?:\n|$)/;
+export const FRONTMATTER_RE =
+  /^\uFEFF?[ \t]*---[ \t]*\r?\n[\s\S]*?\r?\n---[ \t]*(?:\r?\n|$)/;
 
 /**
  * 字段类型（P-3 八类 + 未识别）。
@@ -718,7 +719,11 @@ function writeLooseFrontmatter(
     inner += "\n";
   }
   const block =
-    parsed.openLine + "\n" + inner + parsed.closeLine + parsed.trailing;
+    normalizeOpenLine(parsed.openLine) +
+    "\n" +
+    inner +
+    parsed.closeLine +
+    parsed.trailing;
   return {
     text: doc.slice(0, parsed.start) + block + doc.slice(parsed.end),
     from: parsed.start,
@@ -790,6 +795,14 @@ export function parseFrontmatter(
   };
 }
 
+/**
+ * 写回时把 opening fence 归位到第 0 列：容忍历史文件前导空格/Tab，
+ * 首次编辑即修复（#1277）。BOM 保留。
+ */
+function normalizeOpenLine(openLine: string): string {
+  return openLine.replace(/^(\uFEFF?)[ \t]+/, "$1");
+}
+
 function sameValue(a: unknown, b: unknown): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
 }
@@ -852,7 +865,11 @@ export function writeFrontmatter(
   }
 
   const block =
-    parsed.openLine + "\n" + nextInner + parsed.closeLine + parsed.trailing;
+    normalizeOpenLine(parsed.openLine) +
+    "\n" +
+    nextInner +
+    parsed.closeLine +
+    parsed.trailing;
   const text = doc.slice(0, parsed.start) + block + doc.slice(parsed.end);
   return { text, from: parsed.start, to: parsed.end, block };
 }
@@ -933,7 +950,11 @@ export function writeFrontmatterOrdered(
   }
 
   const block =
-    parsed.openLine + "\n" + nextInner + parsed.closeLine + parsed.trailing;
+    normalizeOpenLine(parsed.openLine) +
+    "\n" +
+    nextInner +
+    parsed.closeLine +
+    parsed.trailing;
   const text = doc.slice(0, parsed.start) + block + doc.slice(parsed.end);
   return { text, from: parsed.start, to: parsed.end, block };
 }
@@ -1065,7 +1086,11 @@ export function renameFrontmatterField(
   }
 
   const block =
-    parsed.openLine + "\n" + nextInner + parsed.closeLine + parsed.trailing;
+    normalizeOpenLine(parsed.openLine) +
+    "\n" +
+    nextInner +
+    parsed.closeLine +
+    parsed.trailing;
   const text = doc.slice(0, parsed.start) + block + doc.slice(parsed.end);
   return { ok: true, text, from: parsed.start, to: parsed.end, block };
 }

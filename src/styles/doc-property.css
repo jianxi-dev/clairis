@@ -386,7 +386,6 @@
 /* 行尾单行删除：叉号，A/B 同一控件（第 5 列 18px） */
 .dpb-row-x {
   opacity: 0;
-  pointer-events: none;
   transition: opacity 0.12s;
   display: inline-flex;
   align-items: center;
@@ -412,13 +411,6 @@
 .dpb-chip:hover .dpb-row-x,
 .dpb-chip:focus-within .dpb-row-x {
   opacity: 1;
-  pointer-events: auto;
-}
-
-/* 键盘可达：焦点落到叉号本身时也保持可见 */
-.dpb-row-x:focus-visible {
-  opacity: 1;
-  pointer-events: auto;
 }
 
 .dpb-b-foot {

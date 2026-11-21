@@ -3128,6 +3128,90 @@ test("双击页签重命名 → 回写文档标题字段", async ({ page }) => {
   expect(tab.content).toContain("周会记录");
 });
 
+test("#1276 块后空行不并入属性块：首行回车下移、正文输入不破坏 frontmatter", async ({
+  page,
+}) => {
+  const doc =
+    `---\ntitle: 空行\ncreated: 2026-11-21\nupdated: 2026-11-21\n---\n` +
+    "\n".repeat(3) +
+    `首行正文\n第二行\n`;
+  await openDoc(page, doc, "/tmp/blank-body.md");
+  await setMode(page, "edit");
+  const line = page.locator(".cm-line", { hasText: "首行正文" }).first();
+  await line.scrollIntoViewIfNeeded();
+  const box = (await line.boundingBox())!;
+  await page.mouse.click(box.x + 2, box.y + box.height / 2);
+  await page.keyboard.type("X");
+  await expect
+    .poll(async () => (await docText(page)).includes("X首行正文"), {
+      timeout: 3000,
+    })
+    .toBe(true);
+  await page.keyboard.press("Backspace");
+  await page.keyboard.press("Home");
+  const before = await docText(page);
+  const linesBefore = before.split("首行正文")[0].split("\n").length;
+  await page.keyboard.press("Enter");
+  await expect
+    .poll(
+      async () => (await docText(page)).split("首行正文")[0].split("\n").length,
+      { timeout: 3000 },
+    )
+    .toBe(linesBefore + 1);
+  await dpbRecord(page, "1276", "01-enter-moves-down");
+
+  await page.keyboard.type("补充");
+  const text = await docText(page);
+  expect(text.split("首行正文")[0].split("\n").length).toBe(linesBefore + 1);
+  expect(text).toContain("补充");
+  expect(text.startsWith("---\n")).toBe(true);
+  await dpbRecord(page, "1276", "02-body-typed");
+
+  await setMode(page, "preview");
+  await expect(page.locator("body")).not.toContainText("应用错误");
+  await expect(page.locator("body")).toContainText("补充");
+  await dpbRecord(page, "1276", "03-preview-no-error");
+
+  await setMode(page, "edit");
+  await expect(
+    panel(page, "A").locator('[data-testid="dpb-title"]'),
+  ).toHaveText("空行");
+  await dpbRecord(page, "1276", "04-back-edit-intact");
+});
+
+test("#1277 frontmatter 前导空格：属性可显示，首次编辑归位", async ({
+  page,
+}) => {
+  const doc = `  ---\ntitle: 空格\n---\n\n正文\n`;
+  await openDoc(page, doc, "/tmp/lead-space.md");
+  await setMode(page, "edit");
+  await expect(
+    panel(page, "A").locator('[data-testid="dpb-title"]'),
+  ).toHaveText("空格");
+  await dpbRecord(page, "1277", "01-panel-visible");
+
+  await panel(page, "A").locator('[data-testid="dpb-title"]').click();
+  const input = panel(page, "A").locator('[data-testid="dpb-title-input"]');
+  await input.fill("修复");
+  await input.press("Enter");
+  const text = await docText(page);
+  expect(text.startsWith("---\n")).toBe(true);
+  expect(text).toContain("title: 修复");
+  await dpbRecord(page, "1277", "02-healed");
+
+  await setMode(page, "source");
+  await expect(page.locator(".cm-content").first()).toContainText(
+    "title: 修复",
+  );
+  await dpbRecord(page, "1277", "03-source-healed");
+
+  await setMode(page, "edit");
+  await expect(
+    panel(page, "A").locator('[data-testid="dpb-title"]'),
+  ).toHaveText("修复");
+  await dpbRecord(page, "1277", "04-still-ok");
+});
+
 test("#1263 页签改名只改主名、扩展名只读；面板标题不显示扩展名", async ({
   page,
 }) => {
