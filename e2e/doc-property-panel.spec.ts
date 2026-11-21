@@ -5844,3 +5844,167 @@ test("#1312 密度：胶囊高度 / 计数默认隐藏 / 布尔开关高度", as
   ).toBeCloseTo(boolToken, 1);
   await dpbRecord(page, "1312", "05-edit-switch-height");
 });
+
+const SELECT_A_DOC = `---
+title: 下拉甲
+category: 草稿
+---
+
+# 正文
+`;
+
+const SELECT_B_DOC = `---
+title: 下拉乙
+category: 已发布
+---
+
+# 正文
+`;
+
+async function openSelectPair(page: Page): Promise<void> {
+  await openDoc(page, SELECT_B_DOC, "/Users/test/select-b.md");
+  await openDoc(page, SELECT_A_DOC, "/Users/test/select-a.md");
+}
+
+test("#1316 下拉：值区打开选项菜单，含他页签同键值且当前值 aria-checked", async ({
+  page,
+}) => {
+  await openSelectPair(page);
+  await setMode(page, "edit");
+  const row = panel(page, "A").locator('[data-key="category"]');
+  await row.locator('[data-testid="dpb-value"]').click();
+  const menu = page.locator('[data-testid="dpb-select-menu"]');
+  await expect(menu).toBeVisible();
+  await expect(menu.locator('[data-testid="dpb-select-menu-row"]')).toHaveCount(
+    2,
+  );
+  await expect(
+    menu.locator('[data-testid="dpb-select-menu-row"][data-value="草稿"]'),
+  ).toHaveAttribute("aria-checked", "true");
+  await expect(
+    menu.locator('[data-testid="dpb-select-menu-row"][data-value="已发布"]'),
+  ).toHaveAttribute("aria-checked", "false");
+  await dpbRecord(page, "1316", "01-select-menu-open");
+  await page.keyboard.press("Escape");
+  await expect(menu).toHaveCount(0);
+});
+
+test("#1316 下拉：选已有值写回 YAML 精确值并关闭菜单", async ({ page }) => {
+  await openSelectPair(page);
+  await setMode(page, "edit");
+  const row = panel(page, "A").locator('[data-key="category"]');
+  await row.locator('[data-testid="dpb-value"]').click();
+  const menu = page.locator('[data-testid="dpb-select-menu"]');
+  await menu
+    .locator('[data-testid="dpb-select-menu-row"][data-value="已发布"]')
+    .click();
+  await expect(menu).toHaveCount(0);
+  await expect(row.locator('[data-testid="dpb-value"]')).toHaveText("已发布");
+  await dpbRecord(page, "1316", "02-select-picked");
+  await setMode(page, "source");
+  await expect(page.locator(".cm-content").first()).toContainText(
+    "category: 已发布",
+  );
+});
+
+test("#1316 下拉：底部输入行新增值写回并重开成为行", async ({ page }) => {
+  await openDoc(page, SELECT_A_DOC, "/Users/test/select-a.md");
+  await setMode(page, "edit");
+  const row = panel(page, "A").locator('[data-key="category"]');
+  await row.locator('[data-testid="dpb-value"]').click();
+  const add = page.locator('[data-testid="dpb-select-menu-add"]');
+  await add.fill("归档");
+  await add.press("Enter");
+  await expect(page.locator('[data-testid="dpb-select-menu"]')).toHaveCount(0);
+  await setMode(page, "source");
+  await expect(page.locator(".cm-content").first()).toContainText(
+    "category: 归档",
+  );
+  await setMode(page, "edit");
+  await row.locator('[data-testid="dpb-value"]').click();
+  const menu = page.locator('[data-testid="dpb-select-menu"]');
+  await expect(
+    menu.locator('[data-testid="dpb-select-menu-row"][data-value="归档"]'),
+  ).toHaveCount(1);
+  await dpbRecord(page, "1316", "03-select-new-option");
+  await page.keyboard.press("Escape");
+});
+
+test("#1316 复选：选项菜单切换选中并保留菜单，可连续切换", async ({ page }) => {
+  const msA = `---\ntitle: 复选甲\nchecks:\n  - 甲\n  - 乙\n---\n\n# 正文\n`;
+  const msB = `---\ntitle: 复选乙\nchecks:\n  - 丙\n---\n\n# 正文\n`;
+  await openDoc(page, msB, "/Users/test/ms-b.md");
+  await openDoc(page, msA, "/Users/test/ms-a.md");
+  await setMode(page, "edit");
+  const row = panel(page, "A").locator('[data-key="checks"]');
+  await row.locator('[data-testid="dpb-type"]').click();
+  await page
+    .locator('[data-testid="dpb-type-menu"] [data-type="multiselect"]')
+    .click();
+
+  await clickChipValue(page, row.locator('[data-testid="dpb-chip-value"]'));
+  await row.locator('[data-testid="dpb-opt-menu-btn"]').click();
+  const menu = page.locator('[data-testid="dpb-ms-menu"]');
+  await expect(menu).toBeVisible();
+  await expect(menu.locator('[data-testid="dpb-ms-menu-row"]')).toHaveCount(3);
+  await expect(
+    menu.locator('[data-testid="dpb-ms-menu-row"][data-value="甲"]'),
+  ).toHaveAttribute("aria-checked", "true");
+  await expect(
+    menu.locator('[data-testid="dpb-ms-menu-row"][data-value="丙"]'),
+  ).toHaveAttribute("aria-checked", "false");
+
+  await menu
+    .locator('[data-testid="dpb-ms-menu-row"][data-value="丙"]')
+    .click();
+  await expect(menu).toBeVisible();
+  await expect(row.locator(".dpb-opt-chip")).toHaveCount(3);
+  await expect(
+    menu.locator('[data-testid="dpb-ms-menu-row"][data-value="丙"]'),
+  ).toHaveAttribute("aria-checked", "true");
+  await dpbRecord(page, "1316", "04-multiselect-added");
+
+  await menu
+    .locator('[data-testid="dpb-ms-menu-row"][data-value="甲"]')
+    .click();
+  await expect(menu).toBeVisible();
+  await expect(row.locator(".dpb-opt-chip")).toHaveCount(2);
+  await dpbRecord(page, "1316", "05-multiselect-toggle-off");
+  await page.keyboard.press("Escape");
+  await expect(menu).toHaveCount(0);
+});
+
+test("#1316 下拉选项不新增持久化键与设置项", async ({ page }) => {
+  await openDoc(page, SELECT_A_DOC, "/Users/test/select-a.md");
+  await setMode(page, "edit");
+
+  const readConfigKeys = () =>
+    page.evaluate(() => {
+      const raw = localStorage.getItem("__mock_config");
+      return raw ? Object.keys(JSON.parse(raw)).sort() : [];
+    });
+  const before = await readConfigKeys();
+
+  const settingsText = async (): Promise<string> => {
+    await page.keyboard.press("Meta+,");
+    await page.locator('[data-settings-nav="editor"]').click();
+    const text = await page
+      .locator('[data-testid="settings-doc-property"]')
+      .innerText();
+    await page.keyboard.press("Escape");
+    return text;
+  };
+  const settingsBefore = await settingsText();
+
+  const row = panel(page, "A").locator('[data-key="category"]');
+  await row.locator('[data-testid="dpb-value"]').click();
+  await page.locator('[data-testid="dpb-select-menu-add"]').fill("归档");
+  await page.locator('[data-testid="dpb-select-menu-add"]').press("Enter");
+  await expect(row.locator('[data-testid="dpb-value"]')).toHaveText("归档");
+
+  const after = await readConfigKeys();
+  expect(after).toEqual(before);
+  expect(after.filter((k) => /option/i.test(k))).toEqual([]);
+  expect(await settingsText()).toBe(settingsBefore);
+  await dpbRecord(page, "1316", "06-no-persist");
+});

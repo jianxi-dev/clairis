@@ -1240,6 +1240,61 @@
   min-width: 80px;
 }
 
+/* ── 下拉 / 复选选项菜单（D9 / #1316）───────────────────── */
+.dpb-select {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+}
+
+.dpb-select-caret {
+  color: var(--app-text-3);
+  font-size: 10px;
+  line-height: 1;
+}
+
+.dpb-option-on .dpb-menu-label {
+  color: var(--app-accent);
+  font-weight: 500;
+}
+
+.dpb-menu-add {
+  display: flex;
+  width: 100%;
+  padding-top: 4px;
+  margin-top: 2px;
+  border-top: 1px solid var(--app-border);
+}
+
+.dpb-menu-add-input {
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+}
+
+.dpb-opt-afford {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--app-text-3);
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: var(--radius-4);
+}
+
+.dpb-opt-afford:hover,
+.dpb-opt-afford[aria-expanded="true"] {
+  color: var(--app-accent);
+  background: var(--app-accent-soft);
+}
+
 .dpb-tag-name {
   padding: 0;
   border: 0;

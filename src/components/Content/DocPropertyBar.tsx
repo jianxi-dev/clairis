@@ -9,8 +9,10 @@ import {
   type ClipboardEvent,
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
+  type RefObject,
 } from "react";
 import { createPortal } from "react-dom";
+import { activateLocalContext } from "../../lib/shortcuts";
 import { joinStemExt, splitStemExt, stripDocExt } from "../../lib/pathName";
 import type { EditorMode } from "../../types";
 import {
@@ -199,6 +201,27 @@ export function chipDragTarget(boxes: ChipBox[], x: number, y: number): number {
     if (Math.abs(y - cy) <= 2 && x < c.left + c.width / 2) return i;
   }
   return order.length;
+}
+
+/**
+ * 同键选项聚合：已打开页签 frontmatter 中同键值去重（保序）后并入本字段自身值。
+ * 下拉 / 复选菜单的行集唯一来源，不读配置、不落盘（D9 / #1316）。纯函数便于单测。
+ */
+export function collectFieldOptions(
+  tabs: readonly { content: string }[],
+  key: string,
+  self: readonly string[] = [],
+): string[] {
+  const raw: string[] = [];
+  for (const tab of tabs) {
+    const field = parseFrontmatter(tab.content).fields.find(
+      (f) => f.key === key,
+    );
+    if (!field) continue;
+    raw.push(...toListValue(field.value));
+  }
+  raw.push(...self);
+  return dedupeValues(raw);
 }
 
 interface OpsBarProps {
@@ -1907,13 +1930,188 @@ function LinkListEditor({ field, onCommit }: EditorProps) {
   );
 }
 
+interface OptionMenuProps {
+  anchor: { x: number; y: number } | null;
+  options: string[];
+  checked: ReadonlySet<string>;
+  multiple: boolean;
+  hostRef: RefObject<HTMLElement | null>;
+  onPickRow: (value: string) => void;
+  onAdd: (value: string) => void;
+  onClose: () => void;
+  testId: string;
+  label: string;
+}
+
+/**
+ * 选项菜单（下拉 / 复选同构）：行集由调用方从页签 frontmatter 聚合，
+ * 当前值 / 已选值 aria-checked；底部新增值输入行。多选时点击行只切换不关闭。
+ */
+function OptionMenu({
+  anchor,
+  options,
+  checked,
+  multiple,
+  hostRef,
+  onPickRow,
+  onAdd,
+  onClose,
+  testId,
+  label,
+}: OptionMenuProps) {
+  const boundsOf = useCallback(
+    () =>
+      (hostRef.current?.closest(
+        '[data-testid="doc-property-host"]',
+      ) as HTMLElement | null) ?? null,
+    [hostRef],
+  );
+  const { pos, ref: menuRef } = useMenuPos(anchor, boundsOf);
+  const [draft, setDraft] = useState("");
+  const [sel, setSel] = useState(0);
+  const prevAnchorRef = useRef<typeof anchor>(null);
+
+  useEffect(() => {
+    if (!anchor) return;
+    const off = activateLocalContext(`属性面板${label}`);
+    return off;
+  }, [anchor, label]);
+
+  useEffect(() => {
+    if (!anchor || prevAnchorRef.current === anchor) return;
+    prevAnchorRef.current = anchor;
+    const idx = options.findIndex((o) => checked.has(o));
+    setSel(idx >= 0 ? idx : 0);
+  }, [anchor, options, checked]);
+
+  const activeSel =
+    options.length === 0 ? 0 : Math.min(sel, options.length - 1);
+
+  useLayoutEffect(() => {
+    const host = hostRef.current;
+    if (!host) return;
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      // 行内输入框（按需输入）自行处理按键，避免菜单拦截 Enter 添加。
+      if (
+        target &&
+        target !== host &&
+        (target.tagName === "INPUT" || target.tagName === "TEXTAREA")
+      ) {
+        return;
+      }
+      let handled = true;
+      if (e.key === "ArrowDown") {
+        setSel((s) => Math.min(options.length - 1, s + 1));
+      } else if (e.key === "ArrowUp") {
+        setSel((s) => Math.max(0, s - 1));
+      } else if (e.key === "Enter") {
+        const value = options[activeSel];
+        if (value !== undefined) onPickRow(value);
+        else handled = false;
+      } else if (e.key === "Escape") onClose();
+      else handled = false;
+      if (handled) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+    host.addEventListener("keydown", onKey, { capture: true });
+    return () => host.removeEventListener("keydown", onKey, { capture: true });
+  }, [hostRef, options, activeSel, onPickRow, onClose]);
+
+  useLayoutEffect(() => {
+    const onDown = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (hostRef.current?.contains(target)) return;
+      if (menuRef.current?.contains(target)) return;
+      onClose();
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [hostRef, menuRef, onClose]);
+
+  if (!anchor) return null;
+
+  return createPortal(
+    <span
+      ref={menuRef}
+      className="dpb-menu dpb-option-menu"
+      data-testid={testId}
+      role="menu"
+      aria-label={label}
+      style={{ left: (pos ?? anchor).x, top: (pos ?? anchor).y }}
+    >
+      {options.length === 0 ? (
+        <span className="dpb-menu-empty">没有已有选项</span>
+      ) : (
+        options.map((opt, i) => {
+          const on = checked.has(opt);
+          return (
+            <button
+              key={opt}
+              type="button"
+              role={multiple ? "menuitemcheckbox" : "menuitemradio"}
+              aria-checked={on}
+              className={`dpb-menu-row${i === activeSel ? " dpb-menu-row-cur" : ""}${on ? " dpb-option-on" : ""}`}
+              data-testid={`${testId}-row`}
+              data-value={opt}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => onPickRow(opt)}
+            >
+              <span className="dpb-menu-ico">
+                {on ? (multiple ? "✓" : "●") : ""}
+              </span>
+              <span className="dpb-menu-label">{opt}</span>
+            </button>
+          );
+        })
+      )}
+      <span className="dpb-menu-add">
+        <input
+          className="dpb-input dpb-menu-add-input"
+          data-testid={`${testId}-add`}
+          value={draft}
+          placeholder="+ 新增选项，Enter 添加"
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              e.stopPropagation();
+              const value = draft.trim();
+              if (value) {
+                onAdd(value);
+                setDraft("");
+              }
+            } else if (e.key === "Escape") {
+              e.preventDefault();
+              e.stopPropagation();
+              onClose();
+            }
+          }}
+        />
+      </span>
+    </span>,
+    document.body,
+  );
+}
+
 /** 复选值编辑（multiselect）：自由文本 chip，按需输入、可删除 / 拖动排序（P-3 / D7）。 */
 function MultiselectEditor({ field, onCommit }: EditorProps) {
+  const tabs = useStore((s) => s.tabs);
   const items = toListValue(field.value);
   const [editing, setEditing] = useState(false);
   const [input, setInput] = useState("");
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [anchor, setAnchor] = useState<{ x: number; y: number } | null>(null);
   const wrapRef = useRef<HTMLSpanElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const caretRef = useRef<HTMLButtonElement>(null);
+
+  const options = useMemo(
+    () => collectFieldOptions(Object.values(tabs), field.key, items),
+    [tabs, field.key, items],
+  );
 
   const commit = (next: string[]) => {
     const merged = dedupeValues(next);
@@ -1935,6 +2133,7 @@ function MultiselectEditor({ field, onCommit }: EditorProps) {
   const exitEdit = () => {
     setEditing(false);
     setInput("");
+    setMenuOpen(false);
   };
 
   const addItem = () => {
@@ -1943,6 +2142,27 @@ function MultiselectEditor({ field, onCommit }: EditorProps) {
     commit([...items, value]);
     setInput("");
     inputRef.current?.focus();
+  };
+
+  const toggleOption = (value: string) => {
+    const next = items.includes(value)
+      ? items.filter((v) => v !== value)
+      : [...items, value];
+    commit(next);
+    caretRef.current?.focus();
+  };
+
+  const openMenu = () => {
+    const r =
+      caretRef.current?.getBoundingClientRect() ??
+      wrapRef.current?.getBoundingClientRect();
+    if (r) {
+      setAnchor({
+        x: Math.max(8, r.left),
+        y: Math.min(window.innerHeight - 240, r.bottom + 4),
+      });
+    }
+    setMenuOpen(true);
   };
 
   const renderChips = () =>
@@ -1979,7 +2199,9 @@ function MultiselectEditor({ field, onCommit }: EditorProps) {
             placeholder="+ 选项"
             autoFocus
             onChange={(e) => setInput(e.target.value)}
-            onBlur={() => {
+            onBlur={(e) => {
+              const next = e.relatedTarget as Node | null;
+              if (next && wrapRef.current?.contains(next)) return;
               if (input.trim()) addItem();
               exitEdit();
             }}
@@ -1993,6 +2215,19 @@ function MultiselectEditor({ field, onCommit }: EditorProps) {
               }
             }}
           />
+          <button
+            ref={caretRef}
+            type="button"
+            className="dpb-opt-afford"
+            data-testid="dpb-opt-menu-btn"
+            title="选择已有选项"
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => (menuOpen ? setMenuOpen(false) : openMenu())}
+          >
+            ▾
+          </button>
         </>
       ) : (
         <ChipValueArea
@@ -2001,6 +2236,20 @@ function MultiselectEditor({ field, onCommit }: EditorProps) {
         >
           {renderChips()}
         </ChipValueArea>
+      )}
+      {menuOpen && anchor && (
+        <OptionMenu
+          anchor={anchor}
+          options={options}
+          checked={new Set(items)}
+          multiple
+          hostRef={wrapRef}
+          onPickRow={toggleOption}
+          onAdd={(value) => commit([...items, value])}
+          onClose={() => setMenuOpen(false)}
+          testId="dpb-ms-menu"
+          label="复选选项"
+        />
       )}
     </span>
   );
@@ -2244,7 +2493,84 @@ function TagEditor({
   );
 }
 
-/** 值单元格：列表 / 复选走 chip 编辑器，其余走通用值编辑器。 */
+/**
+ * 下拉值编辑（select）：点击值区打开选项菜单，行集 = 同键已有值 + 底部新增行；
+ * 当前值高亮，不回落自由文本框（D9 / #1316）。
+ */
+function SelectEditor({
+  field,
+  editable,
+  onCommit,
+}: EditorProps & { editable: boolean }) {
+  const tabs = useStore((s) => s.tabs);
+  const [open, setOpen] = useState(false);
+  const [anchor, setAnchor] = useState<{ x: number; y: number } | null>(null);
+  const wrapRef = useRef<HTMLSpanElement>(null);
+  const slotRef = useRef<HTMLSpanElement>(null);
+
+  const options = useMemo(
+    () =>
+      collectFieldOptions(
+        Object.values(tabs),
+        field.key,
+        toListValue(field.value),
+      ),
+    [tabs, field.key, field.value],
+  );
+  const checked = useMemo(
+    () => new Set(toListValue(field.value)),
+    [field.value],
+  );
+
+  const openMenu = () => {
+    if (!editable) return;
+    const r = slotRef.current?.getBoundingClientRect();
+    if (r) {
+      setAnchor({
+        x: Math.max(8, r.left),
+        y: Math.min(window.innerHeight - 240, r.bottom + 4),
+      });
+    }
+    setOpen(true);
+  };
+
+  const pick = (value: string) => {
+    onCommit(field.key, value);
+    setOpen(false);
+    requestAnimationFrame(() => {
+      slotRef.current
+        ?.querySelector<HTMLElement>('[data-testid="dpb-value"]')
+        ?.focus();
+    });
+  };
+
+  return (
+    <span className="dpb-select" ref={wrapRef}>
+      <span className="dpb-value-slot" ref={slotRef}>
+        <ValueView field={field} editable={editable} onStartEdit={openMenu} />
+      </span>
+      <span className="dpb-select-caret" aria-hidden="true">
+        ▾
+      </span>
+      {open && anchor && (
+        <OptionMenu
+          anchor={anchor}
+          options={options}
+          checked={checked}
+          multiple={false}
+          hostRef={wrapRef}
+          onPickRow={pick}
+          onAdd={pick}
+          onClose={() => setOpen(false)}
+          testId="dpb-select-menu"
+          label="下拉选项"
+        />
+      )}
+    </span>
+  );
+}
+
+/** 值单元格：列表 / 复选 / 下拉走专用编辑器，其余走通用值编辑器。 */
 function FieldValue({
   field,
   editable,
@@ -2262,6 +2588,15 @@ function FieldValue({
   }
   if (effectiveEditable && field.type === "array") {
     return <LinkListEditor field={field} onCommit={onCommit} />;
+  }
+  if (effectiveEditable && field.type === "select") {
+    return (
+      <SelectEditor
+        field={field}
+        editable={effectiveEditable}
+        onCommit={onCommit}
+      />
+    );
   }
   if (effectiveEditable && field.type === "multiselect") {
     return <MultiselectEditor field={field} onCommit={onCommit} />;
