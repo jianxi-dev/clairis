@@ -22,6 +22,7 @@ import {
 import { popOverlay, pushOverlay } from "../lib/overlayGate";
 import { noticeDurationMs } from "../hooks/useConfig";
 import { useEditorStore } from "../stores/editorStore";
+import { useDocPropertyPanelStore } from "../stores/docPropertyPanel";
 import { revealInFinder } from "../lib/finder";
 import { runExportAction } from "../lib/exportActions";
 import { printMarkdownPreview } from "../lib/printPreview";
@@ -767,6 +768,17 @@ export default function TabBar({
             className="h-px my-1"
             style={{ background: "var(--app-border)" }}
           />
+          <button
+            data-menu-item="add-field"
+            className="w-full flex items-center gap-2 text-left px-3 py-1.5 hover:bg-[var(--app-sunken)]"
+            onClick={() => {
+              useDocPropertyPanelStore.getState().requestPalette(menu.tabId);
+              closeMenu();
+            }}
+          >
+            <Icon name="plus" size={18} />
+            添加字段
+          </button>
           {/* hover 父项即展开二级，且移出父项后保持可见（A-13.2 / A-13.3）；
               点击只负责打开，不再切换关闭——否则 hover 刚展开就被同一次点击关掉。 */}
           <div

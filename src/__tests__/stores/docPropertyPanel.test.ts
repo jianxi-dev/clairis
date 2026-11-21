@@ -13,6 +13,7 @@ describe("docPropertyVariant 全局偏好状态机", () => {
       fallback: "A",
       narrow: false,
       variant: "A",
+      paletteRequest: null,
     });
   });
 
@@ -78,6 +79,30 @@ describe("docPropertyVariant 全局偏好状态机", () => {
     useDocPropertyPanelStore.getState().setVariant("stacked" as unknown as "A");
     expect(useDocPropertyPanelStore.getState().variant).toBe("B");
     expect(useDocPropertyPanelStore.getState().preference).toBe("B");
+  });
+
+  it("paletteRequest：请求写入 docKey 与递增 seq", () => {
+    const { requestPalette } = useDocPropertyPanelStore.getState();
+    requestPalette("tab-a");
+    const first = useDocPropertyPanelStore.getState().paletteRequest;
+    expect(first?.docKey).toBe("tab-a");
+    requestPalette("tab-b");
+    const second = useDocPropertyPanelStore.getState().paletteRequest;
+    expect(second?.docKey).toBe("tab-b");
+    expect(second?.seq).toBeGreaterThan(first?.seq ?? 0);
+  });
+
+  it("paletteRequest：消费只清匹配 seq，陈旧 seq 不动当前请求", () => {
+    const { requestPalette, consumePaletteRequest } =
+      useDocPropertyPanelStore.getState();
+    requestPalette("tab-a");
+    const first = useDocPropertyPanelStore.getState().paletteRequest!;
+    requestPalette("tab-b");
+    const second = useDocPropertyPanelStore.getState().paletteRequest!;
+    consumePaletteRequest(first.seq);
+    expect(useDocPropertyPanelStore.getState().paletteRequest).toEqual(second);
+    consumePaletteRequest(second.seq);
+    expect(useDocPropertyPanelStore.getState().paletteRequest).toBeNull();
   });
 
   it("toggle 在 A / B 间切换并写偏好", () => {

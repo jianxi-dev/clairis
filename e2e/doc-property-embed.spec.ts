@@ -179,7 +179,8 @@ test("编辑态：无 frontmatter 的文档保持内容区上方固定宿主", a
     (el) => el.closest(".content-scroll") !== null,
   );
   expect(insideScroll).toBe(false);
-  await expect(page.locator('[data-testid="dpb-empty"]')).toBeVisible();
+  await expect(page.locator('[data-testid="dpb-empty"]')).toHaveCount(0);
+  await expect(page.locator('[data-testid="dpb-a"]')).toBeVisible();
   await dpbRecord(page, "1215", "07-no-frontmatter-fixed-host");
 });
 
@@ -284,7 +285,8 @@ test("无 frontmatter 文档：添加首字段后转为嵌入形态且面板保�
   await openDoc(page, NO_FRONTMATTER_DOC, "plain.md");
   await setMode(page, "edit");
   await expect(page.locator(".cm-dpb-embed")).toHaveCount(0);
-  await expect(page.locator('[data-testid="dpb-empty"]')).toBeVisible();
+  await expect(page.locator('[data-testid="dpb-empty"]')).toHaveCount(0);
+  await expect(page.locator('[data-testid="dpb-a"]')).toBeVisible();
 
   await page.locator('[data-testid="dpb-add-field"]').click();
   await page

@@ -43,14 +43,14 @@ async function openTabMenu(page: Page): Promise<void> {
   await expect(page.locator("[data-tab-menu]")).toHaveCount(1);
 }
 
-test.describe("页签右键菜单：11 项与顺序", () => {
-  test("顶层恰好 11 项，导出 < 打印+1 < 复制路径 < 打开文件位置，刷新 < 关闭", async ({
+test.describe("页签右键菜单：12 项与顺序", () => {
+  test("顶层恰好 12 项，导出 < 打印+1 < 复制路径 < 打开文件位置，刷新 < 关闭", async ({
     page,
   }) => {
     await boot(page);
     await openTabMenu(page);
 
-    await expect(menuRows(page)).toHaveCount(11);
+    await expect(menuRows(page)).toHaveCount(12);
 
     const labels = await menuRows(page).evaluateAll((els) =>
       els.map((el) => el.textContent?.trim() ?? ""),
@@ -59,6 +59,7 @@ test.describe("页签右键菜单：11 项与顺序", () => {
       "悬浮小窗",
       "向右分栏",
       "向下分栏",
+      "添加字段",
       "导出",
       "打印",
       "复制路径",
