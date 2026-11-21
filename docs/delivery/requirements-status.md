@@ -2,7 +2,7 @@
 title: 需求实现状态总览
 type: delivery
 status: accepted
-last_updated: 2026-11-20
+last_updated: 2026-11-21
 source_of_truth: supporting
 ---
 
@@ -258,6 +258,7 @@ openspec status --change <name>   # 单个变更工件完成度
 | P-3 修订 | 日期时间字段改单一面板选择器（月历网格 + 时分步进，组合提交 `YYYY-MM-DDTHH:mm`）；YAML 校验补日期时间 | ✅ | change `editor-surface-batch23`（归档 2026-11-18，PR #1095） |
 | P-R1…P-R5 | 属性面板验收修订（布尔值图形与提示分离 / 操作条图标注册表化 / 编辑态隐藏 frontmatter 源码块 / 模板字段类型 UI 与内置可编辑 / 别名映射表 propAliasMap 应用配置） | ✅ | change `doc-property-refine`（6/6 票，PR #1031/#1032/#1033/#1035/#1036；来源票 #1019/#1021/#1022/#1023/#1024） |
 | P-D1…P-D5 | 属性面板同批缺陷修复（B 态托管日期只读 / 行尾删除按钮 / 溢出文档页边界 / 新增字段入口 / 拖拽光标） | ✅ | 缺陷批次 PR #1025/#1026/#1027/#1028/#1029（来源票 #1015/#1016/#1017/#1018/#1020） |
+| P-3 / 托管日期修订 | 日期与日期时间值区可编辑：直接键入/粘贴归一化（`/` 容错、可选秒）、空输入写回空值、非法回退提示、日期日格单击即提交并关闭、双击值区聚焦时分/日格、一次提交；托管日期仍无输入/粘贴/双击入口 | ✅ | change `doc-property-datetime-entry`（3/3 票，PR #1305/#1307/#1309，归档 `openspec/changes/archive/2026-11-21-doc-property-datetime-entry`） |
 
 ### search-replace-float（6）
 
