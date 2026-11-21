@@ -231,6 +231,13 @@ export default function TabInfoPopover({
           </div>
           {isActiveTab && (
             <div className="tab-info__row" data-testid="tab-info-fields">
+              <span
+                className="tab-info__icon"
+                data-testid="tab-info-fields-icon"
+                aria-hidden="true"
+              >
+                <Icon name={panelHidden ? "eye" : "eyeOff"} size={14} />
+              </span>
               <button
                 type="button"
                 className="tab-info__fields-toggle"

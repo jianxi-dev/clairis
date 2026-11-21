@@ -66,3 +66,11 @@
   - 验收要点：拖动排序后选中集不变且 `.dpb-ops` 节点数 = 0；单击手柄后 `.dpb-ops` 节点数 = 1；工具条中心与标题行中心水平偏差 ≤ 2px。
   - e2e：拖动断言无 `.dpb-ops`、单击断言有；量取工具条与标题行中心偏差。
   - **数据面**: 无
+
+## 9. 信息窗
+
+- [ ] 9.1 信息窗显隐行图标
+  - 交付物：`src/ui/icons.ts` 注册与既有 `eye` 成对的 `eyeOff`；`src/components/TabInfoPopover.tsx` 显隐行按钮前置状态图标——面板可见（按钮「隐藏字段」）用 `eyeOff`，面板隐藏（按钮「显示字段」）用 `eye`；`src/styles/editor.css` 行内图标尺寸与颜色。
+  - 验收要点：行首图标存在且经注册表渲染（无内联一次性 SVG）；图标随状态切换（eye ⇄ eyeOff）并与按钮文案同步；计数与 `⌘⇧Y` 说明不受影响。
+  - e2e：断言 `[data-testid="tab-info-fields-icon"]` 的 `data-icon` 在可见态为 `eyeOff`、隐藏态为 `eye`；点击切换后同步变化。
+  - **数据面**: 消费
