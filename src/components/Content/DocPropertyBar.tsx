@@ -2020,6 +2020,10 @@ export default function DocPropertyBar({
   const setHidden = useDocPropertyPanelStore((s) => s.setHidden);
   const toggleVariant = useDocPropertyPanelStore((s) => s.toggleVariant);
   const applyModeDefault = useDocPropertyPanelStore((s) => s.applyModeDefault);
+  const paletteRequest = useDocPropertyPanelStore((s) => s.paletteRequest);
+  const consumePaletteRequest = useDocPropertyPanelStore(
+    (s) => s.consumePaletteRequest,
+  );
   const propertyBar = useEditorStore((s) => s.config.propertyBar);
   const propTemplates =
     useEditorStore((s) => s.config.propTemplates) ?? BUILTIN_PROP_TEMPLATES;
@@ -2056,6 +2060,7 @@ export default function DocPropertyBar({
     paletteOpen ? paletteAnchor : null,
   );
   const panelRef = useRef<HTMLDivElement>(null);
+  const addFieldRef = useRef<HTMLButtonElement>(null);
   const selected = useMemo(
     () => new Set(selMap[docKey] ?? []),
     [selMap, docKey],
@@ -2789,6 +2794,27 @@ export default function DocPropertyBar({
     };
   }, [paletteOpen, paletteRef]);
 
+  // 页签右键菜单「添加字段」：仅本面板文档匹配时开板，锚定本面板添加按钮。
+  // 预览态 / 隐藏态不响应也不消费，请求保留到条件满足（如切回编辑态）。
+  useEffect(() => {
+    if (!paletteRequest || paletteRequest.docKey !== docKey) return;
+    if (!editable || hidden) return;
+    const btn =
+      addFieldRef.current ??
+      panelRef.current?.querySelector<HTMLElement>(
+        '[data-testid="dpb-add-field"]',
+      );
+    const r =
+      btn?.getBoundingClientRect() ?? panelRef.current?.getBoundingClientRect();
+    if (!r) return;
+    setPaletteAnchor({
+      x: Math.max(8, r.left),
+      y: Math.min(window.innerHeight - 240, r.bottom + 4),
+    });
+    setPaletteOpen(true);
+    consumePaletteRequest(paletteRequest.seq);
+  }, [paletteRequest, docKey, editable, hidden, consumePaletteRequest]);
+
   useEffect(() => {
     if (hidden) setPaletteOpen(false);
   }, [hidden]);
@@ -2920,27 +2946,6 @@ export default function DocPropertyBar({
     );
   }
 
-  if (!parsed.present) {
-    return (
-      <div className="dpb-empty" data-testid="dpb-empty">
-        暂无 frontmatter 属性 · 首次添加字段时自动创建
-        {editable && (
-          <button
-            type="button"
-            className="dpb-tpl-btn dpb-empty-add"
-            data-testid="dpb-add-field"
-            title="添加字段"
-            onClick={togglePalette}
-          >
-            + 添加字段
-          </button>
-        )}
-        {paletteOverlay}
-        {dragGhost}
-      </div>
-    );
-  }
-
   const collapseButton = editable ? (
     <button
       type="button"
@@ -3047,6 +3052,7 @@ export default function DocPropertyBar({
               <button
                 type="button"
                 className="dpb-tpl-btn"
+                ref={addFieldRef}
                 data-testid="dpb-add-field"
                 title="添加字段"
                 onClick={togglePalette}
@@ -3218,6 +3224,7 @@ export default function DocPropertyBar({
             <button
               type="button"
               className="dpb-tpl-btn"
+              ref={addFieldRef}
               data-testid="dpb-add-field"
               title="添加字段"
               onClick={togglePalette}

@@ -494,12 +494,46 @@ test("B1b 截断值 title 全文：A 胶囊与 B 两行一致，短值/空值口
   }
 });
 
-test("无 frontmatter：空态引导文案", async ({ page }) => {
-  await openDoc(page, "# 只有正文\n\n没有属性。\n");
-  const empty = page.locator('[data-testid="dpb-empty"]');
-  await expect(empty).toBeVisible();
-  await expect(empty).toContainText("首次添加字段时自动创建");
-  await expect(panel(page, "A")).toHaveCount(0);
+test("O7 无 frontmatter：不渲染空态，页签右键「添加字段」打开调色板并 Esc 收起", async ({
+  page,
+}) => {
+  await openDoc(
+    page,
+    "# 只有正文\n\n没有属性。\n",
+    "/Users/test/o7-no-frontmatter.md",
+  );
+  await expect(page.locator('[data-testid="dpb-empty"]')).toHaveCount(0);
+  await expect(panel(page, "A")).toBeVisible();
+  await setMode(page, "edit");
+
+  const tabId = await page.evaluate(() => {
+    const s = (
+      window as unknown as {
+        __biaoyue_store__: { getState: () => { activeTabId: string | null } };
+      }
+    ).__biaoyue_store__.getState();
+    return s.activeTabId ?? "";
+  });
+  const tab = page.locator(`[data-tab-id="${tabId}"]`);
+  await expect(tab).toHaveCount(1);
+  await tab.click({ button: "right" });
+
+  const menu = page.locator("[data-tab-menu]");
+  await expect(menu).toHaveCount(1);
+  const item = menu.locator('[data-menu-item="add-field"]');
+  await expect(item).toHaveText(/添加字段/);
+  await item.click();
+  await expect(menu).toHaveCount(0);
+
+  const palette = page.locator('[data-testid="dpb-field-palette"]');
+  await expect(palette).toBeVisible();
+  await expect(palette.locator('[data-testid="dpb-palette-item"]')).toHaveCount(
+    8,
+  );
+
+  await page.keyboard.press("Escape");
+  await expect(palette).toHaveCount(0);
+  await dpbRecord(page, "o7", "01-no-frontmatter-tab-menu-palette");
 });
 
 test("设置区：文档属性样式 A→B 切换立即生效，字段内容不变", async ({
@@ -3173,6 +3207,90 @@ test("分屏：非聚焦格行尾 / 工具条删除只改本格，另一格逐�
   expect(await readPath("/Users/test/split-a.md")).toBe(DOC_A);
 });
 
+test("O7 分屏：右键页签「添加字段」只打开被右键页签文档的调色板", async ({
+  page,
+}) => {
+  const DOC_A = `---\ntitle: 分屏甲\nnote: 甲备注\n---\n\n# 甲\n`;
+  const DOC_B = `---\ntitle: 分屏乙\nnote: 乙备注\n---\n\n# 乙\n`;
+  await openDoc(page, DOC_A, "/Users/test/o7-split-a.md");
+  await page.evaluate(() => {
+    (
+      window as unknown as {
+        __biaoyue_store__: {
+          getState: () => { splitPane: (d: string) => void };
+        };
+      }
+    ).__biaoyue_store__
+      .getState()
+      .splitPane("right");
+  });
+  await openDoc(page, DOC_B, "/Users/test/o7-split-b.md");
+
+  const panes = await page.locator("[data-pane-id]").evaluateAll((els) =>
+    els.map((e) => ({
+      id: e.getAttribute("data-pane-id"),
+      kind: e.getAttribute("data-pane-kind"),
+    })),
+  );
+  for (const pane of panes) {
+    if (pane.kind !== "tabs") continue;
+    await page.evaluate((pid) => {
+      (
+        window as unknown as {
+          __biaoyue_store__: {
+            getState: () => {
+              setPaneEditorMode: (id: string, m: string) => void;
+            };
+          };
+        }
+      ).__biaoyue_store__
+        .getState()
+        .setPaneEditorMode(pid, "edit");
+    }, pane.id);
+  }
+
+  const tabB = await page.evaluate((p) => {
+    const s = (
+      window as unknown as {
+        __biaoyue_store__: {
+          getState: () => {
+            tabs: Record<string, { id: string; path?: string }>;
+          };
+        };
+      }
+    ).__biaoyue_store__.getState();
+    const tab = Object.values(s.tabs).find((t) => t.path === p);
+    return tab?.id ?? "";
+  }, "/Users/test/o7-split-b.md");
+  expect(tabB).not.toBe("");
+
+  const tabEl = page.locator(`[data-tab-id="${tabB}"]`);
+  const paneId = await tabEl.evaluate((el) =>
+    el.closest("[data-pane-id]")?.getAttribute("data-pane-id"),
+  );
+  expect(paneId).toBeTruthy();
+
+  await tabEl.click({ button: "right" });
+  const menu = page.locator("[data-tab-menu]");
+  await expect(menu).toHaveCount(1);
+  await menu.locator('[data-menu-item="add-field"]').click();
+  await expect(menu).toHaveCount(0);
+
+  const palettes = page.locator('[data-testid="dpb-field-palette"]');
+  await expect(palettes).toHaveCount(1);
+  const paneAdd = page.locator(
+    `[data-pane-id="${paneId}"] [data-testid="dpb-add-field"]`,
+  );
+  const addBox = (await paneAdd.boundingBox())!;
+  const paletteBox = (await palettes.boundingBox())!;
+  expect(Math.abs(paletteBox.x - addBox.x)).toBeLessThanOrEqual(2);
+  expect(paletteBox.y).toBeGreaterThanOrEqual(addBox.y);
+
+  await page.keyboard.press("Escape");
+  await expect(palettes).toHaveCount(0);
+  await dpbRecord(page, "o7", "02-split-pane-isolation");
+});
+
 async function newDoc(page: Page): Promise<void> {
   await page.evaluate(() => {
     (
@@ -3632,8 +3750,7 @@ test("拖动手柄光标：悬停 grab，拖拽超 5px 切 grabbing，松手恢�
   await expect(handle).toHaveCSS("cursor", "grab");
   await record("04-released-grab");
 });
-
-test("无 frontmatter 空态：添加字段自动创建 frontmatter 块并出现可改名新行", async ({
+test("无 frontmatter：添加字段自动创建 frontmatter 块并出现可改名新行", async ({
   page,
 }) => {
   await openDoc(
@@ -3642,15 +3759,14 @@ test("无 frontmatter 空态：添加字段自动创建 frontmatter 块并出现
     "/Users/test/no-frontmatter.md",
   );
   await setMode(page, "edit");
-  const empty = page.locator('[data-testid="dpb-empty"]');
-  await expect(empty).toBeVisible();
-  await empty.locator('[data-testid="dpb-add-field"]').click();
+  await expect(page.locator('[data-testid="dpb-empty"]')).toHaveCount(0);
+
+  const a = panel(page, "A");
+  await a.locator('[data-testid="dpb-add-field"]').click();
   await page
     .locator('[data-testid="dpb-palette-item"][data-type="text"]')
     .click();
 
-  await expect(page.locator('[data-testid="dpb-empty"]')).toHaveCount(0);
-  const a = panel(page, "A");
   await expect(a.locator('[data-key="new-field"]')).toHaveCount(1);
   await expect(
     a.locator('[data-key="new-field"] [data-testid="dpb-rename-input"]'),
@@ -3762,7 +3878,8 @@ test("预览态只读：空态与有 frontmatter 都不出现添加入口", asyn
 
   await openDoc(page, "# 只有正文\n", "/Users/test/add-field-preview-empty.md");
   await expect(page.locator('[data-testid="dpb-add-field"]')).toHaveCount(0);
-  await expect(page.locator('[data-testid="dpb-empty"]')).toBeVisible();
+  await expect(page.locator('[data-testid="dpb-empty"]')).toHaveCount(0);
+  await expect(panel(page, "B")).toBeVisible();
   await dpbRecord(page, "1018", "05-preview-no-entry");
 });
 
