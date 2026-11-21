@@ -1177,6 +1177,22 @@ test("日期时间字段：单一面板（月历 + 时分步进），组合写�
   );
   await dpbRecord(page, "1044", "01-single-panel");
 
+  // A-4.6：WebKit 下步进组不被 input 固有宽度撑开，时分输入保持在面板内
+  const panelBox = (await panelEl.boundingBox())!;
+  const hourBox = (await editor
+    .locator('[data-testid="dpb-time-hour"]')
+    .boundingBox())!;
+  const minuteBox = (await editor
+    .locator('[data-testid="dpb-time-minute"]')
+    .boundingBox())!;
+  const stepBox = (await editor.locator(".dpb-dt-step").first().boundingBox())!;
+  expect(hourBox.x).toBeGreaterThanOrEqual(panelBox.x);
+  expect(minuteBox.x + minuteBox.width).toBeLessThanOrEqual(
+    panelBox.x + panelBox.width,
+  );
+  expect(minuteBox.x - (hourBox.x + hourBox.width)).toBeLessThan(60);
+  expect(stepBox.width).toBeLessThan(70);
+
   // A-4.5：面板内操作只改内部状态，不提前提交（面板保持打开）
   await editor
     .locator('[data-testid="dpb-cal-day"][data-date="2026-11-18"]')

@@ -788,10 +788,14 @@
   color: var(--app-text-3);
 }
 
+/* WKWebView/WebKit 会把内部 <input size=20> 的固有宽度计入 flex item 的
+   max-content，把本组撑到 ~230px（Chromium 不受影响）；固定 56px = 40 输入 + 2 gap + 14 箭头。 */
 .dpb-dt-step {
   display: inline-flex;
   align-items: center;
   gap: 2px;
+  flex: 0 0 56px;
+  width: 56px;
 }
 
 /* 箭头竖排贴输入框右侧：时分两组之间只隔冒号，数值不再被两个 28px
@@ -825,6 +829,7 @@
 
 .dpb-dt-step-input {
   flex: 0 0 40px;
+  width: 40px;
   min-width: 0;
   max-width: none;
   padding: 2px;
