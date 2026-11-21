@@ -6,6 +6,7 @@ import {
   useState,
   type ChangeEvent,
   type ClipboardEvent,
+  type PointerEvent as ReactPointerEvent,
 } from "react";
 import { createPortal } from "react-dom";
 import { joinStemExt, splitStemExt, stripDocExt } from "../../lib/pathName";
@@ -673,6 +674,9 @@ function clampStep(value: number, max: number): number {
 const DPB_DT_FOCUSABLE =
   'button:not([disabled]):not([tabindex="-1"]), input:not([disabled]):not([tabindex="-1"])';
 
+const DBLCLICK_MS = 300;
+const DBLCLICK_PX = 6;
+
 // 面板内 Tab 到边界回绕，不逃逸到编辑器（#1257：Tab 被 CM6 当缩进写入正文）。
 function moveDtFocus(panel: HTMLElement, forward: boolean): void {
   const stops = Array.from(
@@ -791,8 +795,10 @@ function DatetimeEditor({ field, editable, onCommit }: DatetimeEditorProps) {
   const wrapRef = useRef<HTMLSpanElement>(null);
   const slotRef = useRef<HTMLSpanElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const skipInputFocusRef = useRef(false);
   const doneRef = useRef(false);
   const pointerInsideRef = useRef(false);
+  const lastDownRef = useRef<{ t: number; x: number; y: number } | null>(null);
   const errorTimer = useRef<number | null>(null);
   const latest = useRef({ draft: "", touched: false });
   latest.current = { draft, touched };
@@ -848,7 +854,12 @@ function DatetimeEditor({ field, editable, onCommit }: DatetimeEditorProps) {
   finishRef.current = finish;
 
   useEffect(() => {
-    if (editing) inputRef.current?.focus();
+    if (!editing) return;
+    if (skipInputFocusRef.current) {
+      skipInputFocusRef.current = false;
+      return;
+    }
+    inputRef.current?.focus();
   }, [editing]);
 
   useEffect(() => {
@@ -875,6 +886,7 @@ function DatetimeEditor({ field, editable, onCommit }: DatetimeEditorProps) {
     setTouched(false);
     setError(null);
     doneRef.current = false;
+    skipInputFocusRef.current = false;
     const r = slotRef.current?.getBoundingClientRect();
     setAnchor(
       r
@@ -885,6 +897,47 @@ function DatetimeEditor({ field, editable, onCommit }: DatetimeEditorProps) {
         : null,
     );
     setEditing(true);
+  };
+
+  const focusPicker = () => {
+    skipInputFocusRef.current = true;
+    const panel = panelRef.current;
+    if (!panel) return;
+    if (dateOnly) {
+      const selected = datePart
+        ? panel.querySelector<HTMLElement>(
+            `[data-testid="dpb-cal-day"][data-date="${datePart}"]`,
+          )
+        : null;
+      const target =
+        selected ??
+        panel.querySelector<HTMLElement>('[data-testid="dpb-cal-day"]');
+      target?.focus();
+      return;
+    }
+    panel.querySelector<HTMLElement>('[data-testid="dpb-time-hour"]')?.focus();
+  };
+
+  const onSlotPointerDown = (e: ReactPointerEvent<HTMLSpanElement>) => {
+    const target = e.target as Node | null;
+    if (target && panelRef.current?.contains(target)) {
+      lastDownRef.current = null;
+      return;
+    }
+    const now = Date.now();
+    const prev = lastDownRef.current;
+    lastDownRef.current = { t: now, x: e.clientX, y: e.clientY };
+    if (
+      editing &&
+      prev &&
+      now - prev.t <= DBLCLICK_MS &&
+      Math.abs(e.clientX - prev.x) <= DBLCLICK_PX &&
+      Math.abs(e.clientY - prev.y) <= DBLCLICK_PX
+    ) {
+      e.preventDefault();
+      skipInputFocusRef.current = true;
+      focusPicker();
+    }
   };
 
   const hour = Number(timePart.slice(0, 2)) || 0;
@@ -979,7 +1032,11 @@ function DatetimeEditor({ field, editable, onCommit }: DatetimeEditorProps) {
 
   if (!editing) {
     return (
-      <span className="dpb-value-slot" ref={slotRef}>
+      <span
+        className="dpb-value-slot"
+        ref={slotRef}
+        onPointerDown={onSlotPointerDown}
+      >
         <ValueView field={field} editable={editable} onStartEdit={start} />
         {error && (
           <span className="dpb-error" data-testid="dpb-error" role="status">
@@ -991,7 +1048,11 @@ function DatetimeEditor({ field, editable, onCommit }: DatetimeEditorProps) {
   }
 
   return (
-    <span className="dpb-value-slot" ref={slotRef}>
+    <span
+      className="dpb-value-slot"
+      ref={slotRef}
+      onPointerDown={onSlotPointerDown}
+    >
       <span
         ref={wrapRef}
         className="dpb-dt-editor"
@@ -1032,6 +1093,9 @@ function DatetimeEditor({ field, editable, onCommit }: DatetimeEditorProps) {
           aria-label={dateOnly ? "日期" : "日期时间"}
           placeholder={dateOnly ? "选择日期" : "选择日期时间"}
           value={draft}
+          style={{
+            width: `${Math.max(draft.length, dateOnly ? 10 : 16)}ch`,
+          }}
           onChange={(e) => {
             setDraft(e.target.value);
             setTouched(true);
