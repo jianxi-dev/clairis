@@ -1,6 +1,7 @@
 import { marked } from "marked";
 import DOMPurify from "dompurify";
 import { mediaKindOf } from "../lib/mediaUrl";
+import { FRONTMATTER_RE } from "../lib/frontmatter";
 import { highlightCodeBlock } from "./highlight";
 import {
   mathBlockExtension,
@@ -192,8 +193,7 @@ function registerCheckboxGuard(): void {
 
 // 文档开头的 YAML frontmatter：Obsidian 阅读视图默认隐藏，不参与渲染。
 // 剥离后 `---` 不会再被 marked 解析成 hr、`tags:` 解析成标题。
-// \uFEFF? 容忍 BOM 前缀（Obsidian 文件常带）。
-const FRONTMATTER_RE = /^\uFEFF?---\s*\n[\s\S]*?\n---\s*(?:\n|$)/;
+// 正则复用 lib/frontmatter：与面板解析同源，含 BOM 与前导空格容忍（#1277）。
 
 // ── 块对齐围栏 div（shell-editor-batch5 D16）────────────────
 // `::: {.align-left|center|right}` … `:::` → `<div class="layout-align-*">`，
