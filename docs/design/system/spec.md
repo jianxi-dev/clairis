@@ -194,6 +194,7 @@ token 缺失时组件按 `var(--sf-ctrl-height, 27px)` 回落，不静默失效�
 | `--dpb-collapsed-opacity` | 0.35 | 折叠条默认不透明度；滑入/聚焦恢复 1，只改透明度不改布局 |
 | `--dpb-field-font-size` | 1em | 字段名与值的字号；相对面板根（`--type-font-size` / `--editor-font-size`），随正文字号同步 |
 | `--dpb-row-min-height` | 2em | 字段行最小高度；按 em 计，字号变化时同比缩放 |
+| `--dpb-label-max-width` | 16em | B 标签列宽度上限（相对字段字号）；标签列随内容增长到该上限，值列让位，超出才省略号 |
 
 实现只引 token / 条款号，不写死像素；token 缺失时按上表数值回落。
 
