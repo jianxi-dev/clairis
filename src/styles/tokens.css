@@ -64,7 +64,7 @@
   --dpb-cal-gap: 8px;
   /* 文档属性 footer 弱化与折叠条淡出（spec §7.2 / §7.6） */
   --dpb-meta-opacity: 0.72;
-  --dpb-collapsed-opacity: 0.35;
+  --dpb-collapsed-opacity: 0;
   --dpb-lock-size: 12px;
   /* 字段行字号随正文（1em 相对面板根字号），行高按 em 同比缩放（spec §7.2） */
   --dpb-field-font-size: 1em;

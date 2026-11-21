@@ -4550,3 +4550,36 @@ test("O3 控件悬停显隐：标签叉号 / 形态切换 / 折叠按钮默认�
   await expect.poll(() => opacityOf(variant), { timeout: 2000 }).toBe(0);
   await dpbRecord(page, "o3", "01-hover-reveal");
 });
+
+test("O4 折叠全透明：折叠态计算 opacity 0，悬停 / 聚焦恢复 1，高度不变", async ({
+  page,
+}) => {
+  const doc = `---\ntitle: 折叠透明\nstatus: 阅读中\n---\n\n# 正文\n`;
+  await openDoc(page, doc, "/Users/test/o4-collapsed.md");
+  await setMode(page, "edit");
+  await setVariant(page, "B");
+  const b = panel(page, "B");
+  await b.locator('[data-testid="dpb-collapse"]').click();
+  await expect(b.locator(".dpb-b-body")).toHaveCount(0);
+  await page.mouse.move(4, 4);
+  await page.evaluate(() => (document.activeElement as HTMLElement)?.blur());
+
+  const opacity = () =>
+    b.evaluate((el) => Number(getComputedStyle(el).opacity));
+  const height = async () => (await b.boundingBox())!.height;
+
+  await expect.poll(opacity, { timeout: 2000 }).toBe(0);
+  const collapsedHeight = await height();
+
+  await b.hover();
+  await expect.poll(opacity, { timeout: 2000 }).toBe(1);
+  expect(await height()).toBe(collapsedHeight);
+
+  await page.mouse.move(4, 4);
+  await expect.poll(opacity, { timeout: 2000 }).toBe(0);
+
+  await b.locator('[data-testid="dpb-collapse"]').focus();
+  await expect.poll(opacity, { timeout: 2000 }).toBe(1);
+  await page.evaluate(() => (document.activeElement as HTMLElement)?.blur());
+  await dpbRecord(page, "o4", "01-collapsed-transparent");
+});
