@@ -727,16 +727,6 @@ function TimeStepper({
   };
   return (
     <span className="dpb-dt-step">
-      <button
-        type="button"
-        className="dpb-dt-step-btn"
-        data-testid={`${testId}-up`}
-        aria-label={`${label}加一`}
-        tabIndex={-1}
-        onClick={() => onChange(clampStep(value + 1, max))}
-      >
-        ▲
-      </button>
       <input
         className="dpb-input dpb-dt-step-input"
         data-testid={testId}
@@ -746,16 +736,28 @@ function TimeStepper({
         value={pad2(value)}
         onChange={(e) => parse(e.target.value)}
       />
-      <button
-        type="button"
-        className="dpb-dt-step-btn"
-        data-testid={`${testId}-down`}
-        aria-label={`${label}减一`}
-        tabIndex={-1}
-        onClick={() => onChange(clampStep(value - 1, max))}
-      >
-        ▼
-      </button>
+      <span className="dpb-dt-step-arrows">
+        <button
+          type="button"
+          className="dpb-dt-step-btn"
+          data-testid={`${testId}-up`}
+          aria-label={`${label}加一`}
+          tabIndex={-1}
+          onClick={() => onChange(clampStep(value + 1, max))}
+        >
+          ▲
+        </button>
+        <button
+          type="button"
+          className="dpb-dt-step-btn"
+          data-testid={`${testId}-down`}
+          aria-label={`${label}减一`}
+          tabIndex={-1}
+          onClick={() => onChange(clampStep(value - 1, max))}
+        >
+          ▼
+        </button>
+      </span>
     </span>
   );
 }

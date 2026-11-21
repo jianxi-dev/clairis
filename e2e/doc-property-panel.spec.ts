@@ -3205,6 +3205,13 @@ test("#1277 frontmatter 前导空格：属性可显示，首次编辑归位", as
   );
   await dpbRecord(page, "1277", "03-source-healed");
 
+  await setMode(page, "preview");
+  const preview = page.locator(".preview-content").first();
+  await expect(preview).toContainText("正文");
+  await expect(preview).not.toContainText("title:");
+  await expect(preview).not.toContainText("created:");
+  await dpbRecord(page, "1277", "05-preview-no-yaml");
+
   await setMode(page, "edit");
   await expect(
     panel(page, "A").locator('[data-testid="dpb-title"]'),

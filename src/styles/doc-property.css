@@ -794,18 +794,27 @@
   gap: 2px;
 }
 
+/* 箭头竖排贴输入框右侧：时分两组之间只隔冒号，数值不再被两个 28px
+   按钮撑开（O2 验收：时/分间距过远）。 */
+.dpb-dt-step-arrows {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0;
+}
+
 .dpb-dt-step-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: var(--dpb-cal-nav, 28px);
-  height: var(--dpb-cal-nav, 28px);
+  width: 14px;
+  height: 13px;
   padding: 0;
-  border: 1px solid var(--app-border-strong);
-  border-radius: var(--radius-4);
-  background: var(--app-sunken);
+  border: 0;
+  border-radius: 2px;
+  background: transparent;
   color: var(--app-text-3);
-  font-size: 9px;
+  font-size: 6px;
+  line-height: 1;
   cursor: pointer;
 }
 
@@ -815,7 +824,7 @@
 }
 
 .dpb-dt-step-input {
-  flex: 0 0 44px;
+  flex: 0 0 40px;
   min-width: 0;
   max-width: none;
   padding: 2px;
