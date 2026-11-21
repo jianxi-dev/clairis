@@ -249,6 +249,30 @@ function mountDatetime() {
   return { ...view, dispatchRef };
 }
 
+const DATE_ONLY_DOC = `---
+title: 日期字段
+createdate: 2026-11-14
+---
+
+# 正文
+`;
+
+function mountDateOnly() {
+  const dispatchRef: {
+    current: Array<{
+      changes: { from: number; to: number; insert: string };
+    }>;
+  } = { current: [] };
+  editorRefs.activeView = {
+    dispatch: (spec) => dispatchRef.current.push(spec),
+    focus: () => {},
+  };
+  const view = render(
+    <DocPropertyBar content={DATE_ONLY_DOC} mode="edit" docKey="tab-date" />,
+  );
+  return { ...view, dispatchRef };
+}
+
 describe("DocPropertyBar 标题扩展名（#1263）", () => {
   afterEach(() => {
     cleanup();
@@ -301,6 +325,12 @@ describe("DocPropertyBar 日期时间单面板（#1044）", () => {
     expect(
       editor.querySelectorAll('input[type="date"], input[type="time"]'),
     ).toHaveLength(0);
+    const text = editor.querySelector<HTMLInputElement>(
+      '[data-testid="dpb-datetime-input"]',
+    );
+    expect(text).not.toBeNull();
+    expect(text!.type).toBe("text");
+    expect(text!.value).toBe("2026-11-15T14:30");
     expect(
       editor.querySelectorAll('[data-testid="dpb-cal-day"]').length,
     ).toBeGreaterThan(0);
@@ -310,6 +340,63 @@ describe("DocPropertyBar 日期时间单面板（#1044）", () => {
     expect(
       editor.querySelector('[data-testid="dpb-time-minute"]'),
     ).not.toBeNull();
+  });
+
+  it("值区直接键入并 Enter：按归一化结果写回一次", () => {
+    const { container, dispatchRef } = mountDatetime();
+    const row = container.querySelector('[data-key="评审时间"]')!;
+    fireEvent.click(row.querySelector('[data-testid="dpb-value"]')!);
+    const editor = row.querySelector('[data-testid="dpb-datetime-editor"]')!;
+    const text = editor.querySelector<HTMLInputElement>(
+      '[data-testid="dpb-datetime-input"]',
+    )!;
+
+    fireEvent.change(text, { target: { value: "2026/11/18 09:05" } });
+    fireEvent.keyDown(editor, { key: "Enter" });
+
+    expect(dispatchRef.current).toHaveLength(1);
+    expect(dispatchRef.current[0].changes.insert).toContain(
+      "评审时间: 2026-11-18T09:05",
+    );
+    expect(row.querySelector('[data-testid="dpb-datetime-editor"]')).toBeNull();
+  });
+
+  it("清空值区提交为空字符串，不补今天", () => {
+    const { container, dispatchRef } = mountDatetime();
+    const row = container.querySelector('[data-key="评审时间"]')!;
+    fireEvent.click(row.querySelector('[data-testid="dpb-value"]')!);
+    const editor = row.querySelector('[data-testid="dpb-datetime-editor"]')!;
+    const text = editor.querySelector<HTMLInputElement>(
+      '[data-testid="dpb-datetime-input"]',
+    )!;
+
+    fireEvent.change(text, { target: { value: "" } });
+    fireEvent.keyDown(editor, { key: "Enter" });
+
+    expect(dispatchRef.current).toHaveLength(1);
+    expect(dispatchRef.current[0].changes.insert).toContain('评审时间: ""');
+  });
+
+  it("非法输入：不写回、还原原值并提示", () => {
+    const { container, dispatchRef } = mountDatetime();
+    const row = container.querySelector('[data-key="评审时间"]')!;
+    fireEvent.click(row.querySelector('[data-testid="dpb-value"]')!);
+    const editor = row.querySelector('[data-testid="dpb-datetime-editor"]')!;
+    const text = editor.querySelector<HTMLInputElement>(
+      '[data-testid="dpb-datetime-input"]',
+    )!;
+
+    fireEvent.change(text, { target: { value: "abc" } });
+    fireEvent.keyDown(editor, { key: "Enter" });
+
+    expect(dispatchRef.current).toHaveLength(0);
+    expect(row.querySelector('[data-testid="dpb-datetime-editor"]')).toBeNull();
+    expect(row.querySelector('[data-testid="dpb-error"]')!.textContent).toBe(
+      "日期时间格式不正确",
+    );
+    expect(row.querySelector('[data-testid="dpb-value"]')!.textContent).toBe(
+      "2026-11-15 14:30",
+    );
   });
 
   it("面板内操作不提交；Enter 提交组合值且仅一次写回", () => {
@@ -515,25 +602,7 @@ createdate: 2026-11-14
   });
 
   it("日期字段 Enter 提交 YYYY-MM-DD", () => {
-    const DATE_ONLY_DOC = `---
-title: 日期字段
-createdate: 2026-11-14
----
-
-# 正文
-`;
-    const dispatchRef: {
-      current: Array<{
-        changes: { from: number; to: number; insert: string };
-      }>;
-    } = { current: [] };
-    editorRefs.activeView = {
-      dispatch: (spec) => dispatchRef.current.push(spec),
-      focus: () => {},
-    };
-    const { container } = render(
-      <DocPropertyBar content={DATE_ONLY_DOC} mode="edit" docKey="tab-date" />,
-    );
+    const { container, dispatchRef } = mountDateOnly();
     const row = container.querySelector('[data-key="createdate"]')!;
     fireEvent.click(row.querySelector('[data-testid="dpb-value"]')!);
     const editor = row.querySelector('[data-testid="dpb-datetime-editor"]')!;
@@ -547,6 +616,40 @@ createdate: 2026-11-14
     expect(dispatchRef.current[0].changes.insert).toContain(
       "createdate: 2026-11-15",
     );
+  });
+
+  it("日期字段值区可直接键入并归一化 / 至 -", () => {
+    const { container, dispatchRef } = mountDateOnly();
+    const row = container.querySelector('[data-key="createdate"]')!;
+    fireEvent.click(row.querySelector('[data-testid="dpb-value"]')!);
+    const editor = row.querySelector('[data-testid="dpb-datetime-editor"]')!;
+    const text = editor.querySelector<HTMLInputElement>(
+      '[data-testid="dpb-datetime-input"]',
+    )!;
+
+    fireEvent.change(text, { target: { value: "2026/11/18" } });
+    fireEvent.keyDown(editor, { key: "Enter" });
+
+    expect(dispatchRef.current).toHaveLength(1);
+    expect(dispatchRef.current[0].changes.insert).toContain(
+      "createdate: 2026-11-18",
+    );
+  });
+
+  it("日期字段清空提交为空字符串", () => {
+    const { container, dispatchRef } = mountDateOnly();
+    const row = container.querySelector('[data-key="createdate"]')!;
+    fireEvent.click(row.querySelector('[data-testid="dpb-value"]')!);
+    const editor = row.querySelector('[data-testid="dpb-datetime-editor"]')!;
+    const text = editor.querySelector<HTMLInputElement>(
+      '[data-testid="dpb-datetime-input"]',
+    )!;
+
+    fireEvent.change(text, { target: { value: "" } });
+    fireEvent.keyDown(editor, { key: "Enter" });
+
+    expect(dispatchRef.current).toHaveLength(1);
+    expect(dispatchRef.current[0].changes.insert).toContain('createdate: ""');
   });
 });
 

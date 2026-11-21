@@ -1522,6 +1522,123 @@ test("日期字段：自绘面板仅日期，无时分；月/年可切，展示�
   await dpbRecord(page, "1259", "04-datetime-compact");
 });
 
+test("日期字段：值区直接键入 2026/11/18，归一化为 2026-11-18", async ({
+  page,
+}) => {
+  await openDoc(page, EXTERNAL_DOC);
+  await setMode(page, "edit");
+  const row = panel(page, "A").locator('[data-key="createdate"]');
+  await row.locator('[data-testid="dpb-value"]').click();
+  const input = row.locator('[data-testid="dpb-datetime-input"]');
+  await expect(input).toHaveCount(1);
+  expect(await input.getAttribute("type")).toBe("text");
+  await input.fill("2026/11/18");
+  await input.press("Enter");
+
+  await expect(row.locator('[data-testid="dpb-datetime-editor"]')).toHaveCount(
+    0,
+  );
+  await expect(row.locator('[data-testid="dpb-value"]')).toHaveText(
+    "2026-11-18",
+  );
+  await setMode(page, "source");
+  await expect(page.locator(".cm-content").first()).toContainText(
+    "createdate: 2026-11-18",
+  );
+});
+
+test("日期时间字段：值区键入 2026-11-18 14:30，归一化为 T 并存秒省略", async ({
+  page,
+}) => {
+  await openDoc(page, DATETIME_DOC);
+  await setMode(page, "edit");
+  const row = panel(page, "A").locator('[data-key="评审时间"]');
+  await row.locator('[data-testid="dpb-value"]').click();
+  const input = row.locator('[data-testid="dpb-datetime-input"]');
+  await expect(input).toHaveCount(1);
+  await input.fill("2026-11-18 14:30");
+  await input.press("Enter");
+
+  await expect(row.locator('[data-testid="dpb-datetime-editor"]')).toHaveCount(
+    0,
+  );
+  await expect(row.locator('[data-testid="dpb-value"]')).toHaveText(
+    "2026-11-18 14:30",
+  );
+  await setMode(page, "source");
+  await expect(page.locator(".cm-content").first()).toContainText(
+    "评审时间: 2026-11-18T14:30",
+  );
+  await setMode(page, "edit");
+});
+
+test("日期时间字段：粘贴 2026/11/18 09:05 归一化为 2026-11-18T09:05", async ({
+  page,
+}) => {
+  await openDoc(page, DATETIME_DOC);
+  await setMode(page, "edit");
+  const row = panel(page, "A").locator('[data-key="评审时间"]');
+  await row.locator('[data-testid="dpb-value"]').click();
+  const input = row.locator('[data-testid="dpb-datetime-input"]');
+  await input.fill("2026/11/18 09:05");
+  await input.press("Enter");
+
+  await expect(row.locator('[data-testid="dpb-datetime-editor"]')).toHaveCount(
+    0,
+  );
+  await expect(row.locator('[data-testid="dpb-value"]')).toHaveText(
+    "2026-11-18 09:05",
+  );
+  await setMode(page, "source");
+  await expect(page.locator(".cm-content").first()).toContainText(
+    "评审时间: 2026-11-18T09:05",
+  );
+  await setMode(page, "edit");
+});
+
+test("日期字段：清空提交为空字符串，不回退今天", async ({ page }) => {
+  await openDoc(page, EXTERNAL_DOC);
+  await setMode(page, "edit");
+  const row = panel(page, "A").locator('[data-key="createdate"]');
+  await row.locator('[data-testid="dpb-value"]').click();
+  const input = row.locator('[data-testid="dpb-datetime-input"]');
+  await input.fill("");
+  await input.press("Enter");
+
+  await expect(row.locator('[data-testid="dpb-datetime-editor"]')).toHaveCount(
+    0,
+  );
+  await expect(row.locator('[data-testid="dpb-value"]')).toHaveText("");
+  await setMode(page, "source");
+  await expect(page.locator(".cm-content").first()).toContainText(
+    'createdate: ""',
+  );
+});
+
+test("日期字段：非法输入回退原值并提示", async ({ page }) => {
+  await openDoc(page, EXTERNAL_DOC);
+  await setMode(page, "edit");
+  const row = panel(page, "A").locator('[data-key="createdate"]');
+  await row.locator('[data-testid="dpb-value"]').click();
+  const input = row.locator('[data-testid="dpb-datetime-input"]');
+  await input.fill("abc");
+  await input.press("Enter");
+
+  await expect(row.locator('[data-testid="dpb-datetime-editor"]')).toHaveCount(
+    0,
+  );
+  await expect(row.locator('[data-testid="dpb-error"]')).toContainText(
+    "日期格式应为 YYYY-MM-DD",
+  );
+  await expect(row.locator('[data-testid="dpb-value"]')).toHaveText(
+    "2026-11-14",
+  );
+  await setMode(page, "source");
+  await expect(page.locator(".cm-content").first()).toContainText(
+    "createdate: 2026-11-14",
+  );
+});
+
 test("类型切换转换失败：保留原文并提示", async ({ page }) => {
   await openDoc(page, ADOPT_DOC);
   await setMode(page, "edit");

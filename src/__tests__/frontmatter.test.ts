@@ -258,23 +258,47 @@ describe("validateFieldValue", () => {
     });
   });
 
-  it("date：YYYY-MM-DD 且为真实公历日期", () => {
+  it("date：YYYY-MM-DD / YYYY/MM/DD 归一化，空值合法", () => {
     expect(validateFieldValue("date", "2026-11-16")).toEqual({
       ok: true,
       value: "2026-11-16",
     });
+    expect(validateFieldValue("date", "2026/11/16")).toEqual({
+      ok: true,
+      value: "2026-11-16",
+    });
+    expect(validateFieldValue("date", " 2026/11/16 ")).toEqual({
+      ok: true,
+      value: "2026-11-16",
+    });
+    expect(validateFieldValue("date", "")).toEqual({ ok: true, value: "" });
     expect(validateFieldValue("date", "2026-02-30").ok).toBe(false);
-    expect(validateFieldValue("date", "2026/11/16").ok).toBe(false);
   });
 
-  it("datetime：ISO 分隔，可带秒与空格", () => {
+  it("datetime：ISO / 空格 / 斜杠归一化为 T，可选秒，空值合法", () => {
     expect(validateFieldValue("datetime", "2026-11-16T10:30")).toEqual({
+      ok: true,
+      value: "2026-11-16T10:30",
+    });
+    expect(validateFieldValue("datetime", "2026-11-16 10:30")).toEqual({
       ok: true,
       value: "2026-11-16T10:30",
     });
     expect(validateFieldValue("datetime", "2026-11-16 10:30:00")).toEqual({
       ok: true,
-      value: "2026-11-16 10:30:00",
+      value: "2026-11-16T10:30",
+    });
+    expect(validateFieldValue("datetime", "2026-11-16T10:30:45")).toEqual({
+      ok: true,
+      value: "2026-11-16T10:30:45",
+    });
+    expect(validateFieldValue("datetime", "2026/11/16 09:05")).toEqual({
+      ok: true,
+      value: "2026-11-16T09:05",
+    });
+    expect(validateFieldValue("datetime", "")).toEqual({
+      ok: true,
+      value: "",
     });
     expect(validateFieldValue("datetime", "2026-11-16T25:00").ok).toBe(false);
   });
