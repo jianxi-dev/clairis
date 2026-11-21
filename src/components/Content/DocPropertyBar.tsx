@@ -2527,6 +2527,7 @@ export default function DocPropertyBar({
     paletteOpen ? paletteAnchor : null,
   );
   const panelRef = useRef<HTMLDivElement>(null);
+  const bBodyRef = useRef<HTMLDivElement>(null);
   const addFieldRef = useRef<HTMLButtonElement>(null);
   const selected = useMemo(
     () => new Set(selMap[docKey] ?? []),
@@ -2818,6 +2819,39 @@ export default function DocPropertyBar({
   const tagsField = fields.find((f) => f.key === "tags") ?? null;
   const rest = fields.filter((f) => f !== titleField && f !== tagsField);
   const editable = mode === "edit";
+
+  // B 标签列整列对齐（D3）：量取面板内最长实际名称，超过 8em 基准时统一加宽；
+  // ResizeObserver 兜底正文字号 / 窗口宽度变化引起的重排。
+  useLayoutEffect(() => {
+    const body = bBodyRef.current;
+    if (!body || variant !== "B" || collapsed) return;
+    const measure = () => {
+      let max = 0;
+      body
+        .querySelectorAll<HTMLElement>(
+          '[data-testid="dpb-row"] [data-testid="dpb-label"]',
+        )
+        .forEach((el) => {
+          // 轨道被撑宽后标签会被拉伸，scrollWidth 恒等于轨道宽；
+          // 临时按 max-content 量自然内容宽再还原，避免测量回音。
+          const prev = el.style.width;
+          el.style.width = "max-content";
+          const natural = el.getBoundingClientRect().width;
+          el.style.width = prev;
+          if (natural > max) max = natural;
+        });
+      const base = parseFloat(getComputedStyle(body).fontSize) * 8;
+      if (max > base) {
+        body.style.setProperty("--dpb-label-col", `${max}px`);
+      } else {
+        body.style.removeProperty("--dpb-label-col");
+      }
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(body);
+    return () => observer.disconnect();
+  }, [variant, collapsed, fields]);
 
   const titleIdx = titleField ? fields.indexOf(titleField) : -1;
   const tagsIdx = tagsField ? fields.indexOf(tagsField) : -1;
@@ -3536,7 +3570,7 @@ export default function DocPropertyBar({
           {opsBar}
         </div>
         {!collapsed && (
-          <div className="dpb-b-body">
+          <div className="dpb-b-body" ref={bBodyRef}>
             {dropLine}
             {fields.map((field, i) => {
               const rowId: FrontmatterRowId = field === tagsField ? "tags" : i;
