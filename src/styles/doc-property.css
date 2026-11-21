@@ -216,6 +216,7 @@
 }
 
 .dpb-a-line {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -305,6 +306,7 @@
 }
 
 .dpb-b-head {
+  position: relative;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -1255,16 +1257,22 @@
    不单独上色，避免小底色盖住行级背景。 */
 
 .dpb-ops {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 5;
   display: flex;
   align-items: center;
   gap: 4px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  max-width: calc(100% - 32px);
   padding: 5px 8px;
-  margin-bottom: 8px;
   /* 中性表面色：不与选中行同色（#1262） */
   border: 1px solid var(--app-border);
-  border-radius: var(--radius-4);
+  border-radius: var(--radius-full);
   background: var(--app-surface);
+  box-shadow: var(--app-shadow);
   font-size: 11px;
   color: var(--app-text-2);
 }
