@@ -57,12 +57,17 @@
 
 /* ── 布尔开关态 ─────────────────────────────────────────── */
 .dpb-bool {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--dpb-bool-height);
   font-size: 11px;
+  line-height: 1;
   border: 1px solid var(--app-border-strong);
   background: var(--app-sunken);
   color: var(--app-text-2);
   border-radius: var(--radius-full);
-  padding: 2px 10px;
+  padding: 0 10px;
   white-space: nowrap;
 }
 
@@ -262,12 +267,38 @@
   gap: 4px;
   min-width: 0;
   max-width: 100%;
-  padding: 2px 6px;
+  min-height: var(--dpb-chip-height);
+  /* 不继承正文 1.78：紧凑行盒把单行胶囊收口到 --dpb-chip-height，两行截断仍可增高。 */
+  line-height: 1.15;
+  padding: 1px 6px;
   border: 1px solid var(--app-border);
   border-radius: var(--radius-full);
   background: var(--app-sunken);
   color: var(--app-text-2);
   font-size: 1em;
+}
+
+/* 胶囊内子项统一走紧凑行盒，避免内部 1.5em 行高 / 输入框把 token 高度顶破。 */
+.dpb-chip .dpb-v,
+.dpb-chip .dpb-clamp2 {
+  line-height: 1.15;
+}
+
+.dpb-chip .dpb-v {
+  min-height: 0;
+}
+
+.dpb-chip .dpb-clamp2 {
+  max-height: 2.3em;
+}
+
+.dpb-chip .dpb-type,
+.dpb-chip .dpb-input {
+  line-height: 1.15;
+}
+
+.dpb-chip .dpb-chip-edit {
+  min-height: 0;
 }
 
 /* 手柄绝对定位在胶囊左外侧、不占布局；悬停才显示（编辑态才渲染） */
@@ -331,10 +362,9 @@
 .dpb-b-row {
   display: grid;
   /* 标签列基准 --dpb-label-width；组件量到更长名称时用 --dpb-label-col 覆盖 */
-  grid-template-columns: 16px auto max(
-      var(--dpb-label-width, 8em),
-      var(--dpb-label-col, 0px)
-    ) minmax(0, 1fr) 18px;
+  grid-template-columns:
+    16px auto max(var(--dpb-label-width, 8em), var(--dpb-label-col, 0px))
+    minmax(0, 1fr) 18px;
   gap: 6px;
   align-items: center;
   min-height: var(--dpb-row-min-height, 2em);
@@ -442,9 +472,10 @@
 }
 
 .dpb-b-foot {
+  height: var(--dpb-footer-height);
   font-size: var(--dpb-footer-font-size, 11px);
+  line-height: 1;
   color: var(--app-text-3);
-  padding: var(--space-4, 4px) 0 var(--space-2, 2px);
   border-top: 1px dashed var(--app-border);
   display: flex;
   gap: 16px;
@@ -463,10 +494,11 @@
   display: flex;
   align-items: center;
   gap: 16px;
+  height: var(--dpb-footer-height);
   margin-top: var(--space-4, 4px);
-  padding-top: var(--space-4, 4px);
   border-top: 1px dashed var(--app-border);
   font-size: var(--dpb-footer-font-size, 11px);
+  line-height: 1;
   color: var(--app-text-3);
   opacity: var(--dpb-meta-opacity, 0.72);
   transition: opacity 0.15s;
@@ -483,15 +515,15 @@
   margin-left: 0;
 }
 
-/* 预览态字段计数胶囊（O5）：描边 + 全圆角 + 下沉底，左缘对齐面板内容左缘；
-   编辑态不挂 .dpb-count-pill，保持纯文本。 */
-.dpb-a-foot [data-testid="dpb-count"].dpb-count-pill,
-.dpb-b-foot [data-testid="dpb-count"].dpb-count-pill {
-  margin-left: 0;
-  padding: 1px 8px;
-  border: 1px solid var(--app-border);
-  border-radius: var(--radius-full);
-  background: var(--app-sunken);
+/* 计数默认隐藏：仅指针进入文字自身或获焦时显现；两态一致、无胶囊外观。 */
+[data-testid="dpb-count"] {
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+
+[data-testid="dpb-count"]:hover,
+[data-testid="dpb-count"]:focus-visible {
+  opacity: 1;
 }
 
 .dpb-dates {
@@ -952,13 +984,18 @@
 }
 
 .dpb-switch {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--dpb-bool-height);
   font: inherit;
   font-size: 11px;
+  line-height: 1;
   border: 1px solid var(--app-border-strong);
   background: var(--app-sunken);
   color: var(--app-text-2);
   border-radius: var(--radius-full);
-  padding: 2px 10px;
+  padding: 0 10px;
   cursor: pointer;
   white-space: nowrap;
 }
