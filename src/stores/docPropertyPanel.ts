@@ -12,6 +12,21 @@ import { modeDefault } from "../lib/propertyBarConfig";
 
 export type DocPropertyVariant = "A" | "B";
 
+/**
+ * 添加字段调色板的跨组件请求（O7）。
+ *
+ * 页签右键菜单只持页签 id，面板持文档 key；两者通过本会话态握手：
+ * 菜单 `requestPalette(docKey)`，匹配的面板消费后清空。`seq` 单调递增，
+ * 消费必须带 seq，避免陈旧面板把更新的请求清掉。不落盘。
+ */
+export interface DocPropertyPaletteRequest {
+  docKey: string;
+  seq: number;
+}
+
+/** 请求序号：模块级单调计数，不进 store 状态（无需被订阅）。 */
+let paletteSeq = 0;
+
 /** 全局偏好取值归一化：仅 A / B 有效，其余（含缺失）视为未手动选择。 */
 export function normalizeDocPropertyVariant(
   raw: unknown,
@@ -65,6 +80,8 @@ interface DocPropertyPanelStore {
   narrow: boolean;
   /** 折叠态：仅编辑态可折叠，预览态不渲染折叠按钮。 */
   collapsed: boolean;
+  /** 添加字段调色板的跨组件请求；会话态，不落盘。 */
+  paletteRequest: DocPropertyPaletteRequest | null;
   toggleHidden: () => void;
   setHidden: (v: boolean) => void;
   /** 手动选择形态：写偏好并立即生效（AB 图标 / 设置共用）。 */
@@ -77,6 +94,10 @@ interface DocPropertyPanelStore {
   ) => void;
   setNarrow: (narrow: boolean) => void;
   setCollapsed: (v: boolean) => void;
+  /** 请求打开某文档的字段调色板（页签右键菜单）。 */
+  requestPalette: (docKey: string) => void;
+  /** 消费请求：仅当 seq 匹配当前请求时清空，避免陈旧面板清掉新请求。 */
+  consumePaletteRequest: (seq: number) => void;
   /** 应用某模式的配置默认档；source 不渲染，不动状态。 */
   applyModeDefault: (
     mode: EditorMode,
@@ -92,6 +113,16 @@ export const useDocPropertyPanelStore = create<DocPropertyPanelStore>(
     fallback: "A",
     narrow: false,
     collapsed: false,
+    paletteRequest: null,
+    requestPalette: (docKey) => {
+      paletteSeq += 1;
+      const seq = paletteSeq;
+      set({ paletteRequest: { docKey, seq } });
+    },
+    consumePaletteRequest: (seq) =>
+      set((s) =>
+        s.paletteRequest?.seq === seq ? { paletteRequest: null } : {},
+      ),
     toggleHidden: () => set((s) => ({ hidden: !s.hidden })),
     setHidden: (v) => set({ hidden: v }),
     setVariant: (v) => {
