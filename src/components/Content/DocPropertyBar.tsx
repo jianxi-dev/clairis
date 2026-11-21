@@ -702,9 +702,10 @@ function clampStep(value: number, max: number): number {
   return ((value % span) + span) % span;
 }
 
-// Tab 停靠点排除 `tabindex="-1"`：步进按钮与非当前日历格是 roving tabindex。
+// Tab 停靠点排除 `tabindex="-1"`：滚轮行与非当前日历格是 roving tabindex。
+// 滚轮列（role=listbox）与底部提示是 tabindex=0 的非 button/input 元素，单独纳入。
 const DPB_DT_FOCUSABLE =
-  'button:not([disabled]):not([tabindex="-1"]), input:not([disabled]):not([tabindex="-1"])';
+  'button:not([disabled]):not([tabindex="-1"]), input:not([disabled]):not([tabindex="-1"]), [tabindex="0"]:not(button):not(input)';
 
 const DBLCLICK_MS = 300;
 const DBLCLICK_PX = 6;
@@ -747,7 +748,7 @@ function moveDtFocus(panel: HTMLElement, forward: boolean): void {
   next.focus();
 }
 
-interface TimeStepperProps {
+interface TimeWheelProps {
   label: string;
   testId: string;
   value: number;
@@ -755,51 +756,116 @@ interface TimeStepperProps {
   onChange: (next: number) => void;
 }
 
-/** 时分步进：上下按钮 + 可直接输入的数值框；按钮不作为 Tab 停靠点。 */
-function TimeStepper({
-  label,
-  testId,
-  value,
-  max,
-  onChange,
-}: TimeStepperProps) {
-  const parse = (raw: string) => {
-    const digits = raw.replace(/\D/g, "");
-    onChange(digits === "" ? 0 : Math.min(max, Number.parseInt(digits, 10)));
-  };
+/** 时分滚轮列：滚动吸附、点击行选中、方向键增减；行不作为 Tab 停靠点。 */
+function TimeWheel({ label, testId, value, max, onChange }: TimeWheelProps) {
+  const scrollRef = useRef<HTMLSpanElement>(null);
+  const valueRef = useRef(value);
+  const lastValueRef = useRef(value);
+  const suppressRef = useRef(false);
+  const scrollTimer = useRef<number | null>(null);
+
+  useEffect(
+    () => () => {
+      if (scrollTimer.current !== null)
+        window.clearTimeout(scrollTimer.current);
+    },
+    [],
+  );
+
+  const alignTo = useCallback((next: number) => {
+    const el = scrollRef.current;
+    if (!el || el.clientHeight === 0) return;
+    const item = el.querySelectorAll<HTMLElement>("[data-dpb-wheel-item]")[
+      next
+    ];
+    if (!item) return;
+    const top = item.offsetTop - (el.clientHeight - item.offsetHeight) / 2;
+    suppressRef.current = true;
+    el.scrollTo({ top: Math.max(0, top), behavior: "auto" });
+    window.setTimeout(() => {
+      suppressRef.current = false;
+    }, 80);
+  }, []);
+
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => alignTo(valueRef.current));
+    return () => cancelAnimationFrame(raf);
+  }, [alignTo]);
+
+  useEffect(() => {
+    valueRef.current = value;
+    if (lastValueRef.current === value) return;
+    lastValueRef.current = value;
+    if (suppressRef.current) return;
+    alignTo(value);
+  }, [value, alignTo]);
+
+  const commitNearest = useCallback(() => {
+    if (suppressRef.current) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    const items = Array.from(
+      el.querySelectorAll<HTMLElement>("[data-dpb-wheel-item]"),
+    );
+    if (items.length === 0) return;
+    const center = el.scrollTop + el.clientHeight / 2;
+    let best = valueRef.current;
+    let bestDist = Number.POSITIVE_INFINITY;
+    items.forEach((item, index) => {
+      const mid = item.offsetTop + item.offsetHeight / 2;
+      const dist = Math.abs(mid - center);
+      if (dist < bestDist) {
+        bestDist = dist;
+        best = index;
+      }
+    });
+    if (best !== valueRef.current) {
+      lastValueRef.current = best;
+      onChange(best);
+    }
+  }, [onChange]);
+
   return (
-    <span className="dpb-dt-step">
-      <input
-        className="dpb-input dpb-dt-step-input"
-        data-testid={testId}
-        type="text"
-        inputMode="numeric"
-        aria-label={label}
-        value={pad2(value)}
-        onChange={(e) => parse(e.target.value)}
-      />
-      <span className="dpb-dt-step-arrows">
+    <span
+      ref={scrollRef}
+      className="dpb-dt-wheel"
+      data-testid={testId}
+      role="listbox"
+      aria-label={label}
+      tabIndex={0}
+      onScroll={() => {
+        if (suppressRef.current) return;
+        if (scrollTimer.current !== null)
+          window.clearTimeout(scrollTimer.current);
+        scrollTimer.current = window.setTimeout(commitNearest, 90);
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "ArrowDown" || e.key === "ArrowRight") {
+          e.preventDefault();
+          onChange(clampStep(value + 1, max));
+        } else if (e.key === "ArrowUp" || e.key === "ArrowLeft") {
+          e.preventDefault();
+          onChange(clampStep(value - 1, max));
+        }
+      }}
+    >
+      {Array.from({ length: max + 1 }, (_, i) => (
         <button
+          key={i}
           type="button"
-          className="dpb-dt-step-btn"
-          data-testid={`${testId}-up`}
-          aria-label={`${label}加一`}
           tabIndex={-1}
-          onClick={() => onChange(clampStep(value + 1, max))}
+          data-dpb-wheel-item=""
+          data-testid={`${testId}-item`}
+          data-value={pad2(i)}
+          className={`dpb-dt-wheel-item${
+            i === value ? " dpb-dt-wheel-sel" : ""
+          }`}
+          aria-selected={i === value}
+          onClick={() => onChange(i)}
         >
-          ▲
+          {pad2(i)}
         </button>
-        <button
-          type="button"
-          className="dpb-dt-step-btn"
-          data-testid={`${testId}-down`}
-          aria-label={`${label}减一`}
-          tabIndex={-1}
-          onClick={() => onChange(clampStep(value - 1, max))}
-        >
-          ▼
-        </button>
-      </span>
+      ))}
     </span>
   );
 }
@@ -811,7 +877,7 @@ interface DatetimeEditorProps {
 }
 
 /**
- * 日期时间值编辑器：单一 popover 面板（月历网格 + 时分步进）。
+ * 日期时间值编辑器：单一 popover 面板（月历网格 + 时分滚轮）。
  * 面板内操作只改内部状态，Enter / 失焦 / 点击外部才提交（沿用 onBlur 链路）。
  */
 function DatetimeEditor({ field, editable, onCommit }: DatetimeEditorProps) {
@@ -908,10 +974,16 @@ function DatetimeEditor({ field, editable, onCommit }: DatetimeEditorProps) {
   const start = () => {
     if (!editable) return;
     const raw = rawForEdit(field);
+    const now = new Date();
     const parsed = splitDatetime(raw);
-    const date = parsed.date || localYmd(new Date());
+    const date = parsed.date || localYmd(now);
     const [y, m] = date.split("-").map(Number);
-    setDraft(raw);
+    const initialDraft =
+      raw ||
+      (dateOnly
+        ? date
+        : `${date}T${pad2(now.getHours())}:${pad2(now.getMinutes())}`);
+    setDraft(initialDraft);
     setCal({ year: y, month: m - 1 });
     setYearPage(Math.floor(y / 12) * 12);
     setView("day");
@@ -1062,6 +1134,13 @@ function DatetimeEditor({ field, editable, onCommit }: DatetimeEditorProps) {
     setTouched(true);
   };
 
+  const clearNow = () => {
+    latest.current = { draft: "", touched: true };
+    setDraft("");
+    setTouched(true);
+    finishRef.current("commit");
+  };
+
   if (!editing) {
     return (
       <span
@@ -1123,7 +1202,7 @@ function DatetimeEditor({ field, editable, onCommit }: DatetimeEditorProps) {
           data-testid="dpb-datetime-input"
           type="text"
           aria-label={dateOnly ? "日期" : "日期时间"}
-          placeholder={dateOnly ? "选择日期" : "选择日期时间"}
+          placeholder={dateOnly ? "YYYY-MM-DD" : "YYYY-MM-DD HH:mm"}
           value={draft}
           style={{
             width: `${Math.max(draft.length, dateOnly ? 10 : 16)}ch`,
@@ -1144,185 +1223,201 @@ function DatetimeEditor({ field, editable, onCommit }: DatetimeEditorProps) {
             top: (pos ?? anchor ?? { x: 0, y: 0 }).y,
           }}
         >
-          <span className="dpb-dt-head">
-            <button
-              type="button"
-              className="dpb-dt-nav"
-              data-testid="dpb-cal-prev"
-              aria-label={
-                view === "day"
-                  ? "上一月"
-                  : view === "month"
-                    ? "上一年"
-                    : "上一页"
-              }
-              onClick={() => shiftPeriod(-1)}
-            >
-              ‹
-            </button>
-            <span className="dpb-dt-head-mid">
-              <button
-                type="button"
-                className="dpb-dt-title-btn"
-                data-testid="dpb-cal-year"
-                onClick={() => {
-                  setYearPage(Math.floor(cal.year / 12) * 12);
-                  setView("year");
-                }}
-              >
-                {view === "year" ? `${yearPage}–${yearPage + 11}` : cal.year}年
-              </button>
-              {view !== "year" && (
+          <span className="dpb-dt-main">
+            <span className="dpb-dt-cal-col">
+              <span className="dpb-dt-head">
                 <button
                   type="button"
-                  className="dpb-dt-title-btn"
-                  data-testid="dpb-cal-month"
-                  onClick={() => setView("month")}
+                  className="dpb-dt-nav"
+                  data-testid="dpb-cal-prev"
+                  aria-label={
+                    view === "day"
+                      ? "上一月"
+                      : view === "month"
+                        ? "上一年"
+                        : "上一页"
+                  }
+                  onClick={() => shiftPeriod(-1)}
                 >
-                  {cal.month + 1}月
+                  ‹
                 </button>
-              )}
-            </span>
-            <button
-              type="button"
-              className="dpb-dt-nav"
-              data-testid="dpb-cal-next"
-              aria-label={
-                view === "day"
-                  ? "下一月"
-                  : view === "month"
-                    ? "下一年"
-                    : "下一页"
-              }
-              onClick={() => shiftPeriod(1)}
-            >
-              ›
-            </button>
-          </span>
-          {view === "day" ? (
-            <span
-              className="dpb-dt-grid"
-              data-testid="dpb-cal-grid"
-              onKeyDown={(e) => {
-                if (e.key === "ArrowLeft") {
-                  e.preventDefault();
-                  moveDay(-1);
-                } else if (e.key === "ArrowRight") {
-                  e.preventDefault();
-                  moveDay(1);
-                } else if (e.key === "ArrowUp") {
-                  e.preventDefault();
-                  moveDay(-7);
-                } else if (e.key === "ArrowDown") {
-                  e.preventDefault();
-                  moveDay(7);
-                }
-              }}
-            >
-              {CAL_WEEKDAYS.map((w) => (
-                <span key={w} className="dpb-dt-wd">
-                  {w}
-                </span>
-              ))}
-              {cells.map((cell, i) =>
-                cell === null ? (
-                  <span
-                    key={`blank-${i}`}
-                    className="dpb-dt-cell dpb-dt-blank"
-                  />
-                ) : (
+                <span className="dpb-dt-head-mid">
                   <button
-                    key={cell.date}
                     type="button"
-                    className={`dpb-dt-cell${
-                      cell.date === datePart ? " dpb-dt-cell-sel" : ""
-                    }`}
-                    data-testid="dpb-cal-day"
-                    data-date={cell.date}
-                    aria-pressed={cell.date === datePart}
-                    autoFocus={cell.date === focusDate}
-                    tabIndex={cell.date === focusDate ? 0 : -1}
-                    onClick={() => pickDay(cell.date)}
-                  >
-                    {cell.day}
-                  </button>
-                ),
-              )}
-            </span>
-          ) : view === "month" ? (
-            <span className="dpb-dt-views" data-testid="dpb-cal-months">
-              {Array.from({ length: 12 }, (_, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  className={`dpb-dt-cell${
-                    i === cal.month ? " dpb-dt-cell-sel" : ""
-                  }`}
-                  data-testid="dpb-cal-month-cell"
-                  aria-pressed={i === cal.month}
-                  onClick={() => {
-                    setCal({ year: cal.year, month: i });
-                    setView("day");
-                  }}
-                >
-                  {i + 1}月
-                </button>
-              ))}
-            </span>
-          ) : (
-            <span className="dpb-dt-views" data-testid="dpb-cal-years">
-              {Array.from({ length: 12 }, (_, i) => {
-                const y = yearPage + i;
-                return (
-                  <button
-                    key={y}
-                    type="button"
-                    className={`dpb-dt-cell${
-                      y === cal.year ? " dpb-dt-cell-sel" : ""
-                    }`}
-                    data-testid="dpb-cal-year-cell"
-                    aria-pressed={y === cal.year}
+                    className="dpb-dt-title-btn"
+                    data-testid="dpb-cal-year"
                     onClick={() => {
-                      setCal({ year: y, month: cal.month });
-                      setYearPage(Math.floor(y / 12) * 12);
-                      setView("month");
+                      setYearPage(Math.floor(cal.year / 12) * 12);
+                      setView("year");
                     }}
                   >
-                    {y}
+                    {view === "year"
+                      ? `${yearPage}–${yearPage + 11}`
+                      : cal.year}
+                    年
                   </button>
-                );
-              })}
+                  {view !== "year" && (
+                    <button
+                      type="button"
+                      className="dpb-dt-title-btn"
+                      data-testid="dpb-cal-month"
+                      onClick={() => setView("month")}
+                    >
+                      {cal.month + 1}月
+                    </button>
+                  )}
+                </span>
+                <button
+                  type="button"
+                  className="dpb-dt-nav"
+                  data-testid="dpb-cal-next"
+                  aria-label={
+                    view === "day"
+                      ? "下一月"
+                      : view === "month"
+                        ? "下一年"
+                        : "下一页"
+                  }
+                  onClick={() => shiftPeriod(1)}
+                >
+                  ›
+                </button>
+              </span>
+              {view === "day" ? (
+                <span
+                  className="dpb-dt-grid"
+                  data-testid="dpb-cal-grid"
+                  onKeyDown={(e) => {
+                    if (e.key === "ArrowLeft") {
+                      e.preventDefault();
+                      moveDay(-1);
+                    } else if (e.key === "ArrowRight") {
+                      e.preventDefault();
+                      moveDay(1);
+                    } else if (e.key === "ArrowUp") {
+                      e.preventDefault();
+                      moveDay(-7);
+                    } else if (e.key === "ArrowDown") {
+                      e.preventDefault();
+                      moveDay(7);
+                    }
+                  }}
+                >
+                  {CAL_WEEKDAYS.map((w) => (
+                    <span key={w} className="dpb-dt-wd">
+                      {w}
+                    </span>
+                  ))}
+                  {cells.map((cell, i) =>
+                    cell === null ? (
+                      <span
+                        key={`blank-${i}`}
+                        className="dpb-dt-cell dpb-dt-blank"
+                      />
+                    ) : (
+                      <button
+                        key={cell.date}
+                        type="button"
+                        className={`dpb-dt-cell${
+                          cell.date === datePart ? " dpb-dt-cell-sel" : ""
+                        }`}
+                        data-testid="dpb-cal-day"
+                        data-date={cell.date}
+                        aria-pressed={cell.date === datePart}
+                        autoFocus={cell.date === focusDate}
+                        tabIndex={cell.date === focusDate ? 0 : -1}
+                        onClick={() => pickDay(cell.date)}
+                      >
+                        {cell.day}
+                      </button>
+                    ),
+                  )}
+                </span>
+              ) : view === "month" ? (
+                <span className="dpb-dt-views" data-testid="dpb-cal-months">
+                  {Array.from({ length: 12 }, (_, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      className={`dpb-dt-cell${
+                        i === cal.month ? " dpb-dt-cell-sel" : ""
+                      }`}
+                      data-testid="dpb-cal-month-cell"
+                      aria-pressed={i === cal.month}
+                      onClick={() => {
+                        setCal({ year: cal.year, month: i });
+                        setView("day");
+                      }}
+                    >
+                      {i + 1}月
+                    </button>
+                  ))}
+                </span>
+              ) : (
+                <span className="dpb-dt-views" data-testid="dpb-cal-years">
+                  {Array.from({ length: 12 }, (_, i) => {
+                    const y = yearPage + i;
+                    return (
+                      <button
+                        key={y}
+                        type="button"
+                        className={`dpb-dt-cell${
+                          y === cal.year ? " dpb-dt-cell-sel" : ""
+                        }`}
+                        data-testid="dpb-cal-year-cell"
+                        aria-pressed={y === cal.year}
+                        onClick={() => {
+                          setCal({ year: y, month: cal.month });
+                          setYearPage(Math.floor(y / 12) * 12);
+                          setView("month");
+                        }}
+                      >
+                        {y}
+                      </button>
+                    );
+                  })}
+                </span>
+              )}
             </span>
-          )}
-          {!dateOnly && (
-            <span className="dpb-dt-time">
-              <TimeStepper
-                label="小时"
-                testId="dpb-time-hour"
-                value={hour}
-                max={23}
-                onChange={changeHour}
-              />
-              <span className="dpb-dt-colon">:</span>
-              <TimeStepper
-                label="分钟"
-                testId="dpb-time-minute"
-                value={minute}
-                max={59}
-                onChange={changeMinute}
-              />
-            </span>
-          )}
+            {!dateOnly && (
+              <span className="dpb-dt-time">
+                <TimeWheel
+                  label="小时"
+                  testId="dpb-time-hour"
+                  value={hour}
+                  max={23}
+                  onChange={changeHour}
+                />
+                <TimeWheel
+                  label="分钟"
+                  testId="dpb-time-minute"
+                  value={minute}
+                  max={59}
+                  onChange={changeMinute}
+                />
+              </span>
+            )}
+          </span>
           <span className="dpb-dt-foot">
-            <button
-              type="button"
-              className="dpb-dt-today"
-              data-testid="dpb-cal-today"
-              onClick={pickToday}
-            >
-              今天
-            </button>
-            <span className="dpb-dt-hint">
+            <span className="dpb-dt-foot-btns">
+              <button
+                type="button"
+                className="dpb-dt-today"
+                data-testid="dpb-cal-today"
+                onClick={pickToday}
+              >
+                今天
+              </button>
+              <button
+                type="button"
+                className="dpb-dt-today dpb-dt-clear"
+                data-testid="dpb-dt-clear"
+                onClick={clearNow}
+              >
+                清除
+              </button>
+            </span>
+            <span className="dpb-dt-hint" tabIndex={0}>
               Esc 取消 · Enter 保存 · 点击外部保存
             </span>
           </span>

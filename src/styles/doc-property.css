@@ -697,11 +697,25 @@
 }
 
 .dpb-menu.dpb-dt-panel {
-  width: var(--dpb-cal-width, 300px);
+  width: max-content;
+  max-width: calc(100vw - 16px);
   gap: var(--dpb-cal-gap, 8px);
   padding: 10px;
   max-height: none;
   overflow: visible;
+}
+
+.dpb-dt-main {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--dpb-cal-gap, 8px);
+}
+
+.dpb-dt-cal-col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dpb-cal-gap, 8px);
+  width: var(--dpb-cal-width, 300px);
 }
 
 .dpb-dt-head {
@@ -817,69 +831,78 @@
 }
 
 .dpb-dt-time {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  width: var(--dpb-cal-wheels, 76px);
+  flex: 0 0 auto;
+}
+
+.dpb-dt-wheel {
+  display: block;
+  height: calc(var(--dpb-cal-cell, 32px) * 5);
+  overflow-y: auto;
+  scroll-snap-type: y mandatory;
+  scrollbar-width: none;
+  border: 1px solid var(--app-border);
+  border-radius: var(--radius-4);
+  background: var(--app-sunken);
+  outline: none;
+}
+
+.dpb-dt-wheel::-webkit-scrollbar {
+  display: none;
+}
+
+.dpb-dt-wheel::before,
+.dpb-dt-wheel::after {
+  content: "";
+  display: block;
+  height: calc(var(--dpb-cal-cell, 32px) * 2);
+}
+
+.dpb-dt-wheel:focus-visible {
+  outline: 2px solid var(--app-accent);
+  outline-offset: 1px;
+}
+
+.dpb-dt-wheel-item {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-}
-
-.dpb-dt-colon {
-  font-size: 12px;
-  color: var(--app-text-3);
-}
-
-/* WKWebView/WebKit 会把内部 <input size=20> 的固有宽度计入 flex item 的
-   max-content，把本组撑到 ~230px（Chromium 不受影响）；固定 56px = 40 输入 + 2 gap + 14 箭头。 */
-.dpb-dt-step {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  flex: 0 0 56px;
-  width: 56px;
-}
-
-/* 箭头竖排贴输入框右侧：时分两组之间只隔冒号，数值不再被两个 28px
-   按钮撑开（O2 验收：时/分间距过远）。 */
-.dpb-dt-step-arrows {
-  display: inline-flex;
-  flex-direction: column;
-  gap: 0;
-}
-
-.dpb-dt-step-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 14px;
-  height: 13px;
+  width: 100%;
+  height: var(--dpb-cal-cell, 32px);
   padding: 0;
   border: 0;
-  border-radius: 2px;
   background: transparent;
-  color: var(--app-text-3);
-  font-size: 6px;
-  line-height: 1;
+  font: inherit;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--app-text-2);
   cursor: pointer;
+  scroll-snap-align: center;
 }
 
-.dpb-dt-step-btn:hover {
+.dpb-dt-wheel-item:hover {
+  color: var(--app-text-strong);
+}
+
+.dpb-dt-wheel-sel {
   color: var(--app-accent);
-  border-color: var(--app-accent);
-}
-
-.dpb-dt-step-input {
-  flex: 0 0 40px;
-  width: 40px;
-  min-width: 0;
-  max-width: none;
-  padding: 2px;
-  text-align: center;
+  font-weight: 700;
+  background: var(--app-accent-soft);
 }
 
 .dpb-dt-foot {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: var(--dpb-cal-gap, 8px);
+}
+
+.dpb-dt-foot-btns {
+  display: inline-flex;
+  align-items: center;
   gap: var(--dpb-cal-gap, 8px);
 }
 
@@ -902,14 +925,14 @@
 .dpb-dt-hint {
   font-size: 11px;
   color: var(--app-text-3);
-  text-align: center;
+  text-align: right;
+  white-space: nowrap;
   opacity: 0;
   transition: opacity 0.12s;
 }
 
-/* 底部提示悬停 / 聚焦显现（O8）：触发面为整条 footer 行，只改透明度不改高度 */
-.dpb-dt-foot:hover .dpb-dt-hint,
-.dpb-dt-foot:focus-within .dpb-dt-hint,
+/* 底部提示只在指针进入提示文字自身或该文字获焦时显现；footer 其他区域悬停不触发。 */
+.dpb-dt-hint:hover,
 .dpb-dt-hint:focus-visible {
   opacity: 1;
 }
