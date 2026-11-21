@@ -315,20 +315,42 @@ test("A 编辑态：手柄悬出于胶囊左外侧且不占布局，胶囊列间
   expect(sb!.x - (before!.x + before!.width)).toBeCloseTo(16, 1);
 });
 
-test("⌘⇧Y 隐藏并显示恢复提示，再按恢复", async ({ page }) => {
+test("⌘⇧Y 隐藏后不渲染源码与提示条，信息窗显隐行可恢复", async ({ page }) => {
   await openDoc(page);
-  await expect(panel(page, "A")).toBeVisible();
+  await setMode(page, "edit");
+  const a = panel(page, "A");
+  await expect(a).toBeVisible();
+  await expect(page.locator(".cm-content > .cm-dpb-embed")).toHaveCount(1);
 
   await page.keyboard.press("Meta+Shift+Y");
-  await expect(panel(page, "A")).toHaveCount(0);
-  const note = page.locator('[data-testid="dpb-hidden-note"]');
-  await expect(note).toBeVisible();
-  await expect(note).toContainText("已隐藏，按");
-  await expect(note).toContainText("⌘⇧Y");
+  await expect(a).toHaveCount(0);
+  await expect(page.locator('[data-testid="dpb-hidden-note"]')).toHaveCount(0);
+  const content = page.locator(".cm-content").first();
+  await expect(content).not.toContainText("title: 属性面板测试");
+  await expect(content).not.toContainText("published: true");
+  await dpbRecord(page, "1314", "hidden-no-source");
+  await dpbRecord(page, "1314", "hidden-no-note");
 
-  await page.keyboard.press("Meta+Shift+Y");
-  await expect(note).toHaveCount(0);
-  await expect(panel(page, "A")).toBeVisible();
+  const tab = page.locator('[data-tab-id][aria-selected="true"]').first();
+  await tab.hover();
+  const info = page.getByTestId("tab-info-popover");
+  await expect(info).toBeVisible({ timeout: 3000 });
+  const row = info.getByTestId("tab-info-fields");
+  await expect(row).toBeVisible();
+  const toggle = row.getByTestId("tab-info-fields-toggle");
+  await expect(toggle).toHaveText("显示字段");
+  await expect(row).toContainText("4 个字段");
+  await expect(row).toContainText("⌘⇧Y");
+  await dpbRecord(page, "1314", "info-row-visible");
+
+  await toggle.click();
+  await expect(info).toBeVisible();
+  await expect(toggle).toHaveText("隐藏字段");
+  await expect(a).toBeVisible();
+  await expect(a.locator('[data-testid="dpb-count"]')).toHaveText("4 个字段");
+  await expect(page.locator('[data-testid="dpb-hidden-note"]')).toHaveCount(0);
+  await expect(content).not.toContainText("title: 属性面板测试");
+  await dpbRecord(page, "1314", "restored-by-info-row");
 });
 
 test("B 精排双列：5 列网格 / 静态类型图标 / 底部统计全部字段数", async ({
@@ -603,11 +625,11 @@ test("编辑态默认档：折叠与隐藏按模式生效", async ({ page }) => 
   await page.locator('[data-testid="property-bar-edit-hide"]').click();
   await page.keyboard.press("Escape");
 
-  await expect(page.locator('[data-testid="dpb-hidden-note"]')).toBeVisible();
+  await expect(page.locator('[data-testid="dpb-hidden-note"]')).toHaveCount(0);
   await expect(a).toHaveCount(0);
 });
 
-test("新建文档默认隐藏：恢复提示出现，⌘⇧Y 可恢复", async ({ page }) => {
+test("新建文档默认隐藏：不渲染提示条，⌘⇧Y 可恢复", async ({ page }) => {
   await page.keyboard.press("Meta+,");
   await expect(page.locator('[data-testid="settings-scene"]')).toBeVisible();
   await page.locator('[data-settings-nav="editor"]').click();
@@ -628,8 +650,7 @@ test("新建文档默认隐藏：恢复提示出现，⌘⇧Y 可恢复", async 
   }, DOC);
 
   const note = page.locator('[data-testid="dpb-hidden-note"]');
-  await expect(note).toBeVisible();
-  await expect(note).toContainText("⌘⇧Y");
+  await expect(note).toHaveCount(0);
   await expect(panel(page, "A")).toHaveCount(0);
 
   await page.keyboard.press("Meta+Shift+Y");
@@ -4628,7 +4649,7 @@ test("#1019 编辑态面板展开隐藏 frontmatter 整块，折叠在正文流�
   await dpbRecord(page, "1019", "03-expanded-restored");
 });
 
-test("#1019 ⌘⇧Y 隐藏面板与切源码态均恢复完整 YAML", async ({ page }) => {
+test("#1019 ⌘⇧Y 隐藏面板不恢复 YAML，切源码态完整可见", async ({ page }) => {
   await openDoc(page);
   await setMode(page, "edit");
   const cm = page.locator(".cm-content").first();
@@ -4636,9 +4657,10 @@ test("#1019 ⌘⇧Y 隐藏面板与切源码态均恢复完整 YAML", async ({ p
 
   await page.keyboard.press("Meta+Shift+Y");
   await expect(page.locator(".cm-fmh-summary")).toHaveCount(0);
-  await expect(cm).toContainText("title:");
-  await expect(cm).toContainText("count: 1234567");
-  await dpbRecord(page, "1019", "03-panel-hidden-yaml-restored");
+  await expect(page.locator('[data-testid="dpb-hidden-note"]')).toHaveCount(0);
+  await expect(cm).not.toContainText("title:");
+  await expect(cm).not.toContainText("count: 1234567");
+  await dpbRecord(page, "1019", "03-panel-hidden-yaml-still-hidden");
 
   await setMode(page, "source");
   await expect(cm).toContainText("title:");

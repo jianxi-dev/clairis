@@ -2575,13 +2575,12 @@ export default function DocPropertyBar({
   useEffect(() => {
     if (!isNewDoc) return;
     const visible = propertyBar?.newDocVisible ?? true;
-    if (
-      lastNewDocDefault.key === docKey &&
-      lastNewDocDefault.visible === visible
-    ) {
-      return;
-    }
+    const known = lastNewDocDefault;
     lastNewDocDefault = { key: docKey, visible };
+    // 新文档首次挂载：store 创建文档时已按 newDocVisible 设定显隐，保留当前态
+    // （隐藏态无宿主，首次挂载可能发生在用户手动恢复之后，不能再按默认值覆盖）。
+    if (known.key !== docKey) return;
+    if (known.visible === visible) return;
     setHidden(!visible);
   }, [isNewDoc, propertyBar?.newDocVisible, setHidden, docKey]);
 
@@ -3401,17 +3400,7 @@ export default function DocPropertyBar({
       document.body,
     );
 
-  if (hidden) {
-    return (
-      <div
-        className="dpb-hidden-note"
-        data-testid="dpb-hidden-note"
-        role="status"
-      >
-        已隐藏，按 <span className="dpb-kbd">⌘⇧Y</span> 恢复
-      </div>
-    );
-  }
+  if (hidden) return null;
 
   const collapseButton = editable ? (
     <button

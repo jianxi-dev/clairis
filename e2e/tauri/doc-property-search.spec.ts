@@ -62,7 +62,7 @@ test("属性面板：编辑态渲染字段行，⌘⇧Y 隐藏并恢复", async 
 
   await page.keyboard.press("Meta+Shift+Y");
   await expect(a).toHaveCount(0);
-  await expect(page.locator('[data-testid="dpb-hidden-note"]')).toBeVisible();
+  await expect(page.locator('[data-testid="dpb-hidden-note"]')).toHaveCount(0);
 
   await page.keyboard.press("Meta+Shift+Y");
   await expect(a).toBeVisible();

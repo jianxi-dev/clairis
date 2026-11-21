@@ -581,10 +581,11 @@ export default function ContentArea({
     const initialKind = tab?.fileKind ?? "text";
     currentKindRef.current = initialKind;
     // 面板显隐档在创建时读一次快照：模式切换 effect 随后会按响应式状态重配。
+    // 编辑态始终隐藏 frontmatter 源码；面板隐藏时只去掉 widget 宿主（D5）。
     const panelSnapshot = useDocPropertyPanelStore.getState();
     const initialFrontmatterHide: FrontmatterHideOptions | null =
-      editorMode === "edit" && !panelSnapshot.hidden
-        ? { hide: true, embedPanel: true }
+      editorMode === "edit"
+        ? { hide: true, embedPanel: !panelSnapshot.hidden }
         : null;
     const state = EditorState.create({
       doc: "",
@@ -778,9 +779,10 @@ export default function ContentArea({
     if (!viewRef.current || !tab) return;
     // 无 frontmatter 时 createFrontmatterHideDecorations 早退为 null，不会建
     // widget，因此这里可以无条件置真；折叠呈现由 DocPropertyBar 依 store 决定。
+    // 隐藏态仍须 hide:true 以移除源码，只是不装配 widget 宿主（D5）。
     const frontmatterHide: FrontmatterHideOptions | null =
-      editorMode === "edit" && !propPanelHidden
-        ? { hide: true, embedPanel: true }
+      editorMode === "edit"
+        ? { hide: true, embedPanel: !propPanelHidden }
         : null;
     // 与装饰重配同事务迁移光标：否则「让位」会让面板可见的编辑态一直露出源码块。
     const selection = frontmatterSelectionFix(
@@ -824,9 +826,12 @@ export default function ContentArea({
     frontmatterPresent &&
     !propPanelHidden;
   // 固定宿主：嵌入态与预览内容流块都不渲染它；源码态仍挂载（display:none），
-  // 与既有「源码态面板 display:none」断言一致。
+  // 与既有「源码态面板 display:none」断言一致。隐藏态无任何宿主（D5）。
   const showFixedPropertyHost =
-    markdownKind && !embedActive && !showPreviewPropertyBlock;
+    markdownKind &&
+    !embedActive &&
+    !showPreviewPropertyBlock &&
+    !propPanelHidden;
 
   return (
     <div
