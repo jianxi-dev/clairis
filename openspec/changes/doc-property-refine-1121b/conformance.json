@@ -1,0 +1,221 @@
+{
+  "change": "doc-property-refine-1121b",
+  "requirements": [
+    {
+      "id": "R-1",
+      "text": "密度（tasks 1.1）",
+      "anchors": [
+        {
+          "id": "A-1.1",
+          "claim": "A 胶囊计算高度",
+          "kind": "exact",
+          "assert": "\"var(--dpb-chip-height)\"",
+          "source": "#1311 / design D1"
+        },
+        {
+          "id": "A-1.2",
+          "claim": "布尔开关计算高度",
+          "kind": "exact",
+          "assert": "\"var(--dpb-bool-height)\"",
+          "source": "#1311 / design D1"
+        },
+        {
+          "id": "A-1.3",
+          "claim": "指针进入 `[data-testid=\"dpb-count\"]` 自身区域前后计数 opacity",
+          "kind": "state-machine",
+          "assert": "进入前 0 → 进入后 1",
+          "source": "#1311 / design D2"
+        }
+      ]
+    },
+    {
+      "id": "R-2",
+      "text": "B 列对齐 + A 空值宽度（tasks 2.1）",
+      "anchors": [
+        {
+          "id": "A-2.1",
+          "claim": "B 名称列计算宽度",
+          "kind": "exact",
+          "assert": "\"var(--dpb-label-width)\"",
+          "source": "#1311 / design D3"
+        },
+        {
+          "id": "A-2.2",
+          "claim": "名称超 8 汉字字段的省略号截断出现次数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "#1311 / design D3"
+        },
+        {
+          "id": "A-2.3",
+          "claim": "A 模式空值输入区计算宽度",
+          "kind": "exact",
+          "assert": "≥ 200px",
+          "source": "#1311 / design D4"
+        }
+      ]
+    },
+    {
+      "id": "R-3",
+      "text": "隐藏语义 + 页签信息窗入口（tasks 3.1）",
+      "anchors": [
+        {
+          "id": "A-3.1",
+          "claim": "按 ⌘⇧Y 隐藏后源码 `---` 节点可见性",
+          "kind": "state-machine",
+          "assert": "隐藏→不可见",
+          "source": "#1311 / design D5"
+        },
+        {
+          "id": "A-3.2",
+          "claim": "隐藏态下 `.dpb-hidden-note` 节点数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "#1311 / design D5"
+        },
+        {
+          "id": "A-3.3",
+          "claim": "信息窗点击「显示字段」后属性面板渲染",
+          "kind": "state-machine",
+          "assert": "点击→面板出现",
+          "source": "#1311 / design D6"
+        }
+      ]
+    },
+    {
+      "id": "R-4",
+      "text": "chip 输入统一（tasks 4.1）",
+      "anchors": [
+        {
+          "id": "A-4.1",
+          "claim": "非编辑态 chip 输入框节点数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "#1311 / design D7"
+        },
+        {
+          "id": "A-4.2",
+          "claim": "点击值区进入编辑态后输入框节点数",
+          "kind": "state-machine",
+          "assert": "点击→1",
+          "source": "#1311 / design D7"
+        },
+        {
+          "id": "A-4.3",
+          "claim": "连续两次 Enter 提交后的 chip 数与输入框焦点",
+          "kind": "state-machine",
+          "assert": "2 个 chip 且输入框仍聚焦",
+          "source": "#1311 / design D7"
+        }
+      ]
+    },
+    {
+      "id": "R-5",
+      "text": "下拉选项（tasks 5.1）",
+      "anchors": [
+        {
+          "id": "A-5.1",
+          "claim": "打开 select 值区后选项菜单与当前值高亮",
+          "kind": "state-machine",
+          "assert": "打开→菜单出现且当前行高亮",
+          "source": "#1311 / design D9"
+        },
+        {
+          "id": "A-5.2",
+          "claim": "选择已有值后 YAML 该键写回值",
+          "kind": "state-machine",
+          "assert": "选择→写回所选值",
+          "source": "#1311 / design D9"
+        },
+        {
+          "id": "A-5.3",
+          "claim": "新增值行提交后 YAML 出现新值",
+          "kind": "state-machine",
+          "assert": "提交→新值写回",
+          "source": "#1311 / design D9"
+        }
+      ]
+    },
+    {
+      "id": "R-6",
+      "text": "折叠三角（tasks 6.1）",
+      "anchors": [
+        {
+          "id": "A-6.1",
+          "claim": "折叠三角相对标题文本的水平位置",
+          "kind": "exact",
+          "assert": "\"三角 x < 标题 x\"",
+          "source": "#1311 / design D10"
+        },
+        {
+          "id": "A-6.2",
+          "claim": "折叠态下字段行节点数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "#1311 / design D10"
+        },
+        {
+          "id": "A-6.3",
+          "claim": "标题行 hover 前后折叠三角 opacity",
+          "kind": "state-machine",
+          "assert": "0 → 1",
+          "source": "#1311 / design D10"
+        }
+      ]
+    },
+    {
+      "id": "R-7",
+      "text": "日期 / 日期时间（tasks 7.1）",
+      "anchors": [
+        {
+          "id": "A-7.1",
+          "claim": "日期 / 日期时间值区 placeholder",
+          "kind": "exact",
+          "assert": "\"YYYY-MM-DD\" / \"YYYY-MM-DD HH:mm\"",
+          "source": "#1311 / design D10"
+        },
+        {
+          "id": "A-7.2",
+          "claim": "空字段打开面板后时 / 分预置值",
+          "kind": "state-machine",
+          "assert": "= 当前时刻（非 00:00）",
+          "source": "#1311 / design D10"
+        },
+        {
+          "id": "A-7.3",
+          "claim": "滚轮列滚动 / 点击「清除」后 YAML 值",
+          "kind": "state-machine",
+          "assert": "滚动→值变化；清除→空值",
+          "source": "#1311 / design D10"
+        }
+      ]
+    },
+    {
+      "id": "R-8",
+      "text": "手柄与工具条（tasks 8.1）",
+      "anchors": [
+        {
+          "id": "A-8.1",
+          "claim": "拖动手柄完成排序后 `.dpb-ops` 节点数",
+          "kind": "state-machine",
+          "assert": "拖动→0",
+          "source": "#1311 / design D10"
+        },
+        {
+          "id": "A-8.2",
+          "claim": "单击手柄后 `.dpb-ops` 节点数",
+          "kind": "state-machine",
+          "assert": "单击→1",
+          "source": "#1311 / design D10"
+        },
+        {
+          "id": "A-8.3",
+          "claim": "工具条中心与标题行中心水平偏差",
+          "kind": "exact",
+          "assert": "≤ 2px",
+          "source": "#1311 / design D10"
+        }
+      ]
+    }
+  ]
+}
