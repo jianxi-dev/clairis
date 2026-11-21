@@ -4161,7 +4161,13 @@ test("#1261 字段行：去类型文字、垂直居中、文本值满行、字�
   const nameSize = await fontOf(chip.locator('[data-testid="dpb-label"]'));
   const valueSize = await fontOf(chip.locator('[data-testid="dpb-value"]'));
   expect(nameSize).toBe(valueSize);
+  expect(
+    await chip
+      .locator('[data-testid="dpb-value"]')
+      .evaluate((el) => getComputedStyle(el).fontWeight),
+  ).toBe("400");
   const titleSize = await fontOf(a.locator(".dpb-a-title"));
+  expect(titleSize).toBe(17);
   await page.keyboard.press("Meta+-");
   await expect
     .poll(() => fontOf(chip.locator('[data-testid="dpb-label"]')), {
@@ -4177,6 +4183,18 @@ test("#1261 字段行：去类型文字、垂直居中、文本值满行、字�
   await setVariant(page, "B");
   const b = panel(page, "B");
   const noteRow = b.locator('[data-key="note"]');
+  const bNameSize = await noteRow
+    .locator('[data-testid="dpb-label"]')
+    .evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
+  const bValueSize = await noteRow
+    .locator('[data-testid="dpb-value"]')
+    .evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
+  expect(bNameSize).toBe(bValueSize);
+  expect(
+    await noteRow
+      .locator('[data-testid="dpb-value"]')
+      .evaluate((el) => getComputedStyle(el).fontWeight),
+  ).toBe("400");
   await noteRow.locator('[data-testid="dpb-value"]').click();
   const input = noteRow.locator('[data-testid="dpb-input"]');
   const inputBox = (await input.boundingBox())!;

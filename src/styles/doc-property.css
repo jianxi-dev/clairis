@@ -29,7 +29,6 @@
 
 .dpb-v {
   color: var(--app-text);
-  font-weight: 550;
   min-width: 1ch;
   min-height: 1.5em;
 }
