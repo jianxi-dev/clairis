@@ -184,6 +184,12 @@ async function doubleClickAt(page: Page, target: Locator): Promise<void> {
   await page.mouse.up();
 }
 
+/** 点击 chip 值区右侧留白进入编辑态（chip 本体可能被胶囊占满）。 */
+async function clickChipValue(page: Page, target: Locator): Promise<void> {
+  const box = (await target.boundingBox())!;
+  await page.mouse.click(box.x + box.width - 4, box.y + box.height / 2);
+}
+
 test.beforeEach(async ({ page }) => {
   await boot(page);
 });
@@ -1915,6 +1921,8 @@ test("列表 [[ 文档菜单：行只显示文档名（无 [[ 前缀），↑↓
   await openLinkDocs(page);
   await setMode(page, "edit");
   const row = panel(page, "A").locator('[data-key="related"]');
+  await expect(row.locator('[data-testid="dpb-link-input"]')).toHaveCount(0);
+  await clickChipValue(page, row.locator('[data-testid="dpb-chip-value"]'));
   const input = row.locator('[data-testid="dpb-link-input"]');
   await expect(input).toBeVisible();
 
@@ -1938,11 +1946,14 @@ test("列表 [[ 菜单：⏎ 选用成 chip，× 移除，源码同步", async (
   await openLinkDocs(page);
   await setMode(page, "edit");
   const row = panel(page, "A").locator('[data-key="related"]');
+  await clickChipValue(page, row.locator('[data-testid="dpb-chip-value"]'));
   const input = row.locator('[data-testid="dpb-link-input"]');
 
   await input.fill("[[");
   await page.keyboard.press("ArrowDown");
   await page.keyboard.press("Enter");
+  await expect(page.locator('[data-testid="dpb-doc-menu"]')).toBeVisible();
+  await page.keyboard.press("Escape");
   await expect(page.locator('[data-testid="dpb-doc-menu"]')).toHaveCount(0);
 
   const chips = row.locator(".dpb-link-chip");
@@ -1964,11 +1975,14 @@ test("菜单打开时 ⌘2 直选第 2 项，不触发全局卡片直开", async
   await openLinkDocs(page);
   await setMode(page, "edit");
   const row = panel(page, "A").locator('[data-key="related"]');
+  await clickChipValue(page, row.locator('[data-testid="dpb-chip-value"]'));
   const input = row.locator('[data-testid="dpb-link-input"]');
 
   await input.fill("[[");
   await expect(page.locator('[data-testid="dpb-doc-menu"]')).toBeVisible();
   await page.keyboard.press("Meta+2");
+  await expect(page.locator('[data-testid="dpb-doc-menu"]')).toBeVisible();
+  await page.keyboard.press("Escape");
   await expect(page.locator('[data-testid="dpb-doc-menu"]')).toHaveCount(0);
 
   await expect(row.locator(".dpb-link-chip-text").last()).toHaveText(
@@ -2048,6 +2062,7 @@ test("tags 字符串不崩溃并按单元素标签渲染，编辑后写回列表
   await expect(row.locator(".dpb-tag").first()).toContainText("#");
   await dpbRecord(page, "1256", "01-open-single-tag");
 
+  await clickChipValue(page, row.locator('[data-testid="dpb-chip-value"]'));
   const input = row.locator('[data-testid="dpb-tag-input"]');
   await input.fill("补充");
   await input.press("Enter");
@@ -2088,22 +2103,28 @@ test("标签建议菜单：过滤 / 无匹配 Enter 新建 / 改名后颜色按�
   await openDoc(page, COLOR_DOC, "/Users/test/color.md");
   await setMode(page, "edit");
   const row = panel(page, "A").locator('[data-key="tags"]');
+  await expect(row.locator('[data-testid="dpb-tag-input"]')).toHaveCount(0);
+  await clickChipValue(page, row.locator('[data-testid="dpb-chip-value"]'));
   const input = row.locator('[data-testid="dpb-tag-input"]');
+  await expect(input).toBeFocused();
 
-  await input.fill("甲");
   const menu = page.locator('[data-testid="dpb-tag-menu"]');
   await expect(menu).toBeVisible();
+  await expect(menu.locator('[data-testid="dpb-tag-menu-row"]')).toHaveCount(3);
+
+  await input.fill("甲");
   await expect(menu.locator('[data-testid="dpb-tag-menu-row"]')).toHaveCount(1);
   await expect(menu.locator(".dpb-menu-label").first()).toHaveText("甲");
 
   await input.fill("新标签");
   await page.keyboard.press("Enter");
-  await expect(menu).toHaveCount(0);
+  await expect(menu).toBeVisible();
   await expect(row.locator(".dpb-tag")).toHaveCount(4);
   await expect(row.locator('[data-testid="dpb-tag-name"]').last()).toHaveText(
     "新标签",
   );
 
+  await page.keyboard.press("Escape");
   await row.locator('[data-testid="dpb-tag-name"]').first().click();
   const rename = row.locator('[data-testid="dpb-tag-rename"]');
   await expect(rename).toBeVisible();
@@ -2127,16 +2148,12 @@ test("B 精排双列：列表 / 标签编辑器同样可用", async ({ page }) =
   await setVariant(page, "B");
   await setMode(page, "edit");
   const b = panel(page, "B");
-  await expect(
-    b.locator('[data-key="related"] [data-testid="dpb-link-input"]'),
-  ).toBeVisible();
-  await expect(
-    b.locator('[data-key="tags"] [data-testid="dpb-tag-input"]'),
-  ).toBeVisible();
+  const related = b.locator('[data-key="related"]');
+  const tagsRow = b.locator('[data-key="tags"]');
+  await clickChipValue(page, related.locator('[data-testid="dpb-chip-value"]'));
+  await expect(related.locator('[data-testid="dpb-link-input"]')).toBeVisible();
 
-  await b
-    .locator('[data-key="related"] [data-testid="dpb-link-input"]')
-    .fill("[[");
+  await related.locator('[data-testid="dpb-link-input"]').fill("[[");
   await expect(page.locator('[data-testid="dpb-doc-menu"]')).toBeVisible();
   await expect(
     page
@@ -2144,12 +2161,16 @@ test("B 精排双列：列表 / 标签编辑器同样可用", async ({ page }) =
       .nth(0)
       .locator(".dpb-menu-label"),
   ).toHaveText("list.md");
+
+  await clickChipValue(page, tagsRow.locator('[data-testid="dpb-chip-value"]'));
+  await expect(tagsRow.locator('[data-testid="dpb-tag-input"]')).toBeVisible();
 });
 
 test("菜单关闭后 ⌘2 归还全局：无局部响应且工作区不变", async ({ page }) => {
   await openLinkDocs(page);
   await setMode(page, "edit");
   const row = panel(page, "A").locator('[data-key="related"]');
+  await clickChipValue(page, row.locator('[data-testid="dpb-chip-value"]'));
   const input = row.locator('[data-testid="dpb-link-input"]');
 
   await input.fill("[[");
@@ -2162,6 +2183,135 @@ test("菜单关闭后 ⌘2 归还全局：无局部响应且工作区不变", as
   await expect(page.locator('[data-testid="dpb-doc-menu"]')).toHaveCount(0);
   await expect(row.locator(".dpb-link-chip")).toHaveCount(1);
   expect(await sceneOf(page)).toBe("workspace");
+});
+
+test("chip input：复选按需输入（非编辑态 0 → 点击 1，placeholder 无 [[）", async ({
+  page,
+}) => {
+  const doc = `---\ntitle: 复选输入\nchecks: []\n---\n\n# 正文\n`;
+  await openDoc(page, doc);
+  await setMode(page, "edit");
+  const row = panel(page, "A").locator('[data-key="checks"]');
+  await row.locator('[data-testid="dpb-type"]').click();
+  await page
+    .locator('[data-testid="dpb-type-menu"] [data-type="multiselect"]')
+    .click();
+
+  await expect(row.locator('[data-testid="dpb-ms-input"]')).toHaveCount(0);
+  await dpbRecord(page, "1315", "01-read-no-input");
+  await clickChipValue(page, row.locator('[data-testid="dpb-chip-value"]'));
+  const input = row.locator('[data-testid="dpb-ms-input"]');
+  await expect(input).toHaveCount(1);
+  await expect(input).toBeFocused();
+  expect(await input.getAttribute("placeholder")).not.toContain("[[");
+  await dpbRecord(page, "1315", "02-edit-input-open");
+});
+
+test("chip input：Enter 连续提交保留聚焦，Esc 退出并隐藏输入框", async ({
+  page,
+}) => {
+  const doc = `---\ntitle: 复选输入\nchecks: []\n---\n\n# 正文\n`;
+  await openDoc(page, doc);
+  await setMode(page, "edit");
+  const row = panel(page, "A").locator('[data-key="checks"]');
+  await row.locator('[data-testid="dpb-type"]').click();
+  await page
+    .locator('[data-testid="dpb-type-menu"] [data-type="multiselect"]')
+    .click();
+
+  await clickChipValue(page, row.locator('[data-testid="dpb-chip-value"]'));
+  const input = row.locator('[data-testid="dpb-ms-input"]');
+  await input.fill("乙");
+  await input.press("Enter");
+  await input.fill("丙");
+  await input.press("Enter");
+  await expect(row.locator(".dpb-opt-chip")).toHaveCount(2);
+  await expect(input).toBeFocused();
+  await dpbRecord(page, "1315", "03-two-chips-focused");
+
+  await page.keyboard.press("Escape");
+  await expect(row.locator('[data-testid="dpb-ms-input"]')).toHaveCount(0);
+  await dpbRecord(page, "1315", "04-esc-closed");
+});
+
+test("chip input：列表非编辑态无常驻 [[ 链接文档 输入框，胶囊宽度随内容", async ({
+  page,
+}) => {
+  await openLinkDocs(page);
+  await setMode(page, "edit");
+  const row = panel(page, "A").locator('[data-key="related"]');
+  await expect(row.locator('[data-testid="dpb-link-input"]')).toHaveCount(0);
+  const listBox = (await row.locator(".dpb-linklist").boundingBox())!;
+  const lastBox = (await row.locator(".dpb-link-chip").last().boundingBox())!;
+  expect(listBox.x + listBox.width - (lastBox.x + lastBox.width)).toBeLessThan(
+    20,
+  );
+
+  await clickChipValue(page, row.locator('[data-testid="dpb-chip-value"]'));
+  await expect(row.locator('[data-testid="dpb-link-input"]')).toHaveCount(1);
+});
+
+test("chip input：标签点击即列全部已知标签（无需输入），Esc 退出", async ({
+  page,
+}) => {
+  await openDoc(page, COLOR_DOC, "/Users/test/color.md");
+  await setMode(page, "edit");
+  const row = panel(page, "A").locator('[data-key="tags"]');
+  await expect(row.locator('[data-testid="dpb-tag-input"]')).toHaveCount(0);
+  await clickChipValue(page, row.locator('[data-testid="dpb-chip-value"]'));
+  const input = row.locator('[data-testid="dpb-tag-input"]');
+  await expect(input).toBeFocused();
+  const menu = page.locator('[data-testid="dpb-tag-menu"]');
+  await expect(menu).toBeVisible();
+  await expect(menu.locator('[data-testid="dpb-tag-menu-row"]')).toHaveCount(3);
+  await dpbRecord(page, "1315", "05-tags-all-listed");
+
+  await page.keyboard.press("Escape");
+  await expect(row.locator('[data-testid="dpb-tag-input"]')).toHaveCount(0);
+});
+
+test("chip input：标签胶囊拖动排序写回 YAML 顺序", async ({ page }) => {
+  const doc = `---\ntitle: 拖动排序\ntags:\n  - 甲\n  - 乙\n  - 丙\n---\n\n# 正文\n`;
+  await openDoc(page, doc);
+  await setMode(page, "edit");
+  const row = panel(page, "A").locator('[data-key="tags"]');
+  const chips = row.locator(".dpb-tag");
+  await expect(chips).toHaveCount(3);
+  const first = (await chips.nth(0).boundingBox())!;
+  const third = (await chips.nth(2).boundingBox())!;
+  await page.mouse.move(first.x + 6, first.y + first.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(third.x + third.width - 4, third.y + third.height / 2, {
+    steps: 8,
+  });
+  await page.mouse.up();
+
+  await expect(row.locator('[data-testid="dpb-tag-name"]').nth(0)).toHaveText(
+    "乙",
+  );
+  await expect(row.locator('[data-testid="dpb-tag-name"]').nth(2)).toHaveText(
+    "甲",
+  );
+
+  const content = await page.evaluate(() => {
+    const st = (
+      window as unknown as {
+        __biaoyue_store__: {
+          getState: () => {
+            tabs: Record<string, { content: string }>;
+            activeTabId: string;
+          };
+        };
+      }
+    ).__biaoyue_store__.getState();
+    return st.tabs[st.activeTabId]?.content ?? "";
+  });
+  const yi = content.indexOf("乙");
+  const bing = content.indexOf("丙");
+  const jia = content.indexOf("甲");
+  expect(yi).toBeGreaterThan(-1);
+  expect(yi).toBeLessThan(bing);
+  expect(bing).toBeLessThan(jia);
 });
 
 const ROW_DOC = `---

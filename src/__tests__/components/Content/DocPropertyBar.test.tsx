@@ -17,6 +17,8 @@ vi.mock("../../../editors/editorRef", () => ({
 
 import DocPropertyBar, {
   aDropIndicator,
+  chipDragTarget,
+  type ChipBox,
   type DropRowBox,
 } from "../../../components/Content/DocPropertyBar";
 import { useDocPropertyPanelStore } from "../../../stores/docPropertyPanel";
@@ -827,5 +829,35 @@ describe("aDropIndicator（A 态竖向落点条几何）", () => {
       top: 10,
       height: 26,
     });
+  });
+});
+
+describe("chipDragTarget（chip 拖动落点）", () => {
+  const box = (
+    index: number,
+    left: number,
+    top: number,
+    width = 40,
+    height = 20,
+  ): ChipBox => ({ index, left, top, width, height });
+
+  it("同一行：指针落在 chip 左半 → 插到它前面；越过末位 → 末尾", () => {
+    const boxes = [box(0, 0, 0), box(1, 50, 0), box(2, 100, 0)];
+    expect(chipDragTarget(boxes, 60, 10)).toBe(1);
+    expect(chipDragTarget(boxes, 200, 10)).toBe(3);
+  });
+
+  it("指针在上方行之上 → 插到行首", () => {
+    const boxes = [box(0, 0, 0), box(1, 50, 0), box(2, 0, 40)];
+    expect(chipDragTarget(boxes, 60, -10)).toBe(0);
+  });
+
+  it("换行：指针落在第二行 → 插到第二行行首", () => {
+    const boxes = [box(0, 0, 0), box(1, 50, 0), box(2, 0, 40), box(3, 50, 40)];
+    expect(chipDragTarget(boxes, 10, 50)).toBe(2);
+  });
+
+  it("空列表返回 0", () => {
+    expect(chipDragTarget([], 10, 10)).toBe(0);
   });
 });
