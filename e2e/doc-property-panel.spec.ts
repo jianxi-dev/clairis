@@ -5602,7 +5602,7 @@ test("O4 折叠全透明：折叠态计算 opacity 0，悬停 / 聚焦恢复 1�
   await dpbRecord(page, "o4", "01-collapsed-transparent");
 });
 
-test("O5 footer 收敛：垂直内距收窄 + 预览计数胶囊、编辑态纯文本", async ({
+test("O5 footer 收敛：垂直内距收窄 + 两态计数纯文本无胶囊", async ({
   page,
 }) => {
   const doc = `---\ntitle: footer 收敛\nstatus: 阅读中\ncreated: 2026-11-14\nupdated: 2026-11-15\n---\n\n# 正文\n`;
@@ -5643,38 +5643,43 @@ test("O5 footer 收敛：垂直内距收窄 + 预览计数胶囊、编辑态纯�
   const pb = panel(page, "B");
   const pbFoot = pb.locator(".dpb-b-foot");
   const pbCount = pbFoot.locator('[data-testid="dpb-count"]');
-  const pbRadius = await pbCount.evaluate((el) =>
-    parseFloat(getComputedStyle(el).borderTopLeftRadius),
-  );
-  const pbBg = await pbCount.evaluate(
-    (el) => getComputedStyle(el).backgroundColor,
-  );
-  expect(pbRadius).toBeGreaterThan(0);
-  expect(pbBg).not.toBe("rgba(0, 0, 0, 0)");
-  expect(pbBg).not.toBe("transparent");
+  expect(
+    await pbCount.evaluate((el) => getComputedStyle(el).borderTopWidth),
+  ).toBe("0px");
+  expect(
+    await pbCount.evaluate((el) => getComputedStyle(el).backgroundColor),
+  ).toBe("rgba(0, 0, 0, 0)");
   expect(
     await pbCount.evaluate((el) =>
-      parseFloat(getComputedStyle(el).borderTopWidth),
+      parseFloat(getComputedStyle(el).borderTopLeftRadius),
     ),
-  ).toBeGreaterThan(0);
+  ).toBe(0);
+  await page.mouse.move(4, 4);
+  await expect
+    .poll(
+      () => pbCount.evaluate((el) => Number(getComputedStyle(el).opacity)),
+      { timeout: 2000 },
+    )
+    .toBe(0);
   const pbCountBox = (await pbCount.boundingBox())!;
   const pbFootBox = (await pbFoot.boundingBox())!;
   expect(Math.abs(pbCountBox.x - pbFootBox.x)).toBeLessThanOrEqual(1);
-  await dpbRecord(page, "o5", "03-b-preview-pill");
+  await dpbRecord(page, "o5", "03-b-preview-plain");
 
   await setVariant(page, "A");
   const pa = panel(page, "A");
   const paFoot = pa.locator(".dpb-a-foot");
   const paCount = paFoot.locator('[data-testid="dpb-count"]');
   expect(
-    await paCount.evaluate((el) =>
-      parseFloat(getComputedStyle(el).borderTopLeftRadius),
-    ),
-  ).toBeGreaterThan(0);
+    await paCount.evaluate((el) => getComputedStyle(el).borderTopWidth),
+  ).toBe("0px");
+  expect(
+    await paCount.evaluate((el) => getComputedStyle(el).backgroundColor),
+  ).toBe("rgba(0, 0, 0, 0)");
   const paCountBox = (await paCount.boundingBox())!;
   const paFootBox = (await paFoot.boundingBox())!;
   expect(Math.abs(paCountBox.x - paFootBox.x)).toBeLessThanOrEqual(1);
-  await dpbRecord(page, "o5", "04-a-preview-pill");
+  await dpbRecord(page, "o5", "04-a-preview-plain");
 });
 
 test("O8 日期选择器底部提示：默认透明，仅提示文字自身 hover / 获焦显现，高度不变", async ({
@@ -5737,4 +5742,105 @@ test("O8 日期选择器底部提示：默认透明，仅提示文字自身 hove
   );
   await assertHint(dtEditor, "02-datetime-hint");
   await page.keyboard.press("Escape");
+});
+
+test("#1312 密度：胶囊高度 / 计数默认隐藏 / 布尔开关高度", async ({ page }) => {
+  // 宽视口把面板左缘移出左侧悬浮 rail 覆盖区，避免 hover 被 rail 拦截。
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await openDoc(page);
+  const a = panel(page, "A");
+  await expect(a).toBeVisible();
+
+  const tokenPx = (name: string) =>
+    page.evaluate(
+      (n) =>
+        parseFloat(
+          getComputedStyle(document.documentElement).getPropertyValue(n),
+        ),
+      name,
+    );
+
+  // (a) A 胶囊单行计算高度 == --dpb-chip-height
+  const chipToken = await tokenPx("--dpb-chip-height");
+  const chip = a.locator('[data-key="count"]');
+  expect(
+    await chip.evaluate((el) => el.getBoundingClientRect().height),
+  ).toBeCloseTo(chipToken, 1);
+
+  // (g) 预览态布尔显示高度 == --dpb-bool-height
+  const boolToken = await tokenPx("--dpb-bool-height");
+  const bool = a.locator('[data-key="published"] .dpb-bool');
+  expect(
+    await bool.evaluate((el) => el.getBoundingClientRect().height),
+  ).toBeCloseTo(boolToken, 1);
+
+  // (b) 指针不在计数文字上 -> opacity 0
+  const count = a.locator('[data-testid="dpb-count"]');
+  const countOpacity = () =>
+    count.evaluate((el) => Number(getComputedStyle(el).opacity));
+  await page.mouse.move(4, 4);
+  await expect.poll(countOpacity, { timeout: 2000 }).toBe(0);
+  await dpbRecord(page, "1312", "01-count-hidden");
+
+  // (c) 悬停 footer 行（托管日期区，非计数文字）-> 仍 0
+  await a.locator('[data-testid="dpb-managed-dates"]').hover();
+  await expect.poll(countOpacity, { timeout: 2000 }).toBe(0);
+  await dpbRecord(page, "1312", "02-footer-hover-still-hidden");
+
+  // (d) 悬停计数文字自身 -> 1
+  await count.hover();
+  await expect.poll(countOpacity, { timeout: 2000 }).toBe(1);
+  await dpbRecord(page, "1312", "03-count-hover-visible");
+
+  // (f) footer 行高 == token，显隐前后不变
+  const footToken = await tokenPx("--dpb-footer-height");
+  const foot = a.locator(".dpb-a-foot");
+  const footHeight = async () => (await foot.boundingBox())!.height;
+  const stableHeight = await footHeight();
+  expect(stableHeight).toBeCloseTo(footToken, 1);
+  await page.mouse.move(4, 4);
+  await expect.poll(countOpacity, { timeout: 2000 }).toBe(0);
+  expect(await footHeight()).toBe(stableHeight);
+  await count.hover();
+  await expect.poll(countOpacity, { timeout: 2000 }).toBe(1);
+  expect(await footHeight()).toBe(stableHeight);
+  await dpbRecord(page, "1312", "04-footer-height-stable");
+
+  // (e) 预览态计数无胶囊外观：无描边、无底色、无内距
+  const pillMetrics = await count.evaluate((el) => {
+    const cs = getComputedStyle(el);
+    return {
+      border: cs.borderTopWidth,
+      bg: cs.backgroundColor,
+      pad: cs.paddingTop,
+    };
+  });
+  expect(pillMetrics.border).toBe("0px");
+  expect(pillMetrics.bg).toBe("rgba(0, 0, 0, 0)");
+  expect(pillMetrics.pad).toBe("0px");
+
+  // B 态 footer 行高同为 token；计数同样默认隐藏
+  await setVariant(page, "B");
+  const b = panel(page, "B");
+  const bFoot = b.locator(".dpb-b-foot");
+  expect(
+    await bFoot.evaluate((el) => el.getBoundingClientRect().height),
+  ).toBeCloseTo(footToken, 1);
+  const bCount = b.locator('[data-testid="dpb-count"]');
+  await page.mouse.move(4, 4);
+  await expect
+    .poll(() => bCount.evaluate((el) => Number(getComputedStyle(el).opacity)), {
+      timeout: 2000,
+    })
+    .toBe(0);
+
+  // (g) 编辑态开关：高度 == token 且保留 switch 语义
+  await setMode(page, "edit");
+  const sw = b.locator('[data-key="published"] [data-testid="dpb-value"]');
+  await expect(sw).toHaveAttribute("role", "switch");
+  await expect(sw).toHaveAttribute("aria-checked", "true");
+  expect(
+    await sw.evaluate((el) => el.getBoundingClientRect().height),
+  ).toBeCloseTo(boolToken, 1);
+  await dpbRecord(page, "1312", "05-edit-switch-height");
 });

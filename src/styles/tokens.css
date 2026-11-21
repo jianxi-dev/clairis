@@ -73,6 +73,10 @@
   --dpb-label-max-width: 16em;
   /* B 标签列基准宽度（spec §7.2）：8 个汉字；超长按面板内最长实际名称整列加宽 */
   --dpb-label-width: 8em;
+  /* 密度档（spec §7.2）：A 胶囊高度 / footer 行高 / 布尔开关高度；组件只消费不写死 */
+  --dpb-chip-height: 24px;
+  --dpb-footer-height: 14px;
+  --dpb-bool-height: 19px;
   /* 搜索浮窗控件密度档（design-system §7.1）：输入框 / 替换按钮 / 顶栏共用，
      与文件卡片悬浮窗顶栏计算高度严格相等。 */
   --sf-ctrl-height: 27px;
