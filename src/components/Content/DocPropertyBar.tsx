@@ -1,12 +1,14 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
   type ChangeEvent,
   type ClipboardEvent,
   type PointerEvent as ReactPointerEvent,
+  type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
 import { joinStemExt, splitStemExt, stripDocExt } from "../../lib/pathName";
@@ -18,6 +20,7 @@ import {
   coerceFrontmatterValue,
   dedupeLinks,
   dedupeTags,
+  dedupeValues,
   findTitleField,
   formatFrontmatterValue,
   parseFrontmatter,
@@ -167,6 +170,35 @@ export function aDropIndicator(
   const prev = chips[pos - 1];
   const cur = chips[pos];
   return { left: (prev.left + prev.width + cur.left) / 2, ...span };
+}
+
+export interface ChipBox {
+  index: number;
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
+/** 视觉行分组（中心 Y ≤2px）后的阅读顺序插入位置，0..boxes.length。 */
+export function chipDragTarget(boxes: ChipBox[], x: number, y: number): number {
+  if (boxes.length === 0) return 0;
+  const rows: { center: number; chips: ChipBox[] }[] = [];
+  for (const b of boxes) {
+    const cy = b.top + b.height / 2;
+    const row = rows.find((r) => Math.abs(r.center - cy) <= 2);
+    if (row) row.chips.push(b);
+    else rows.push({ center: cy, chips: [b] });
+  }
+  rows.sort((a, b) => a.center - b.center);
+  const order = rows.flatMap((r) => r.chips.sort((a, b) => a.left - b.left));
+  for (let i = 0; i < order.length; i += 1) {
+    const c = order[i];
+    const cy = c.top + c.height / 2;
+    if (y < cy - 2) return i;
+    if (Math.abs(y - cy) <= 2 && x < c.left + c.width / 2) return i;
+  }
+  return order.length;
 }
 
 interface OpsBarProps {
@@ -1511,10 +1543,99 @@ interface EditorProps {
   onCommit: (key: string, value: unknown) => void;
 }
 
-/** 列表 / 复选值编辑：`[[` 弹文档菜单、chip 可移除、粘贴去重（P-3）。 */
+/** chip 拖动排序：5px 阈值；删除 / 改名按钮不启动拖动（P-5 / D7）。 */
+function useChipReorder(items: string[], onCommit: (next: string[]) => void) {
+  return useCallback(
+    (from: number) => (e: ReactPointerEvent<HTMLElement>) => {
+      if (e.button !== 0) return;
+      const target = e.target as HTMLElement | null;
+      if (target?.closest(".dpb-chip-x, .dpb-tag-x, .dpb-tag-name")) return;
+      const host = target?.closest("[data-dpb-chips]") as HTMLElement | null;
+      if (!host) return;
+      const boxes: ChipBox[] = Array.from(
+        host.querySelectorAll<HTMLElement>("[data-chip-index]"),
+      ).map((el) => {
+        const r = el.getBoundingClientRect();
+        return {
+          index: Number(el.getAttribute("data-chip-index")),
+          left: r.left,
+          top: r.top,
+          width: r.width,
+          height: r.height,
+        };
+      });
+      const startX = e.clientX;
+      const startY = e.clientY;
+      let started = false;
+      let pos = from;
+
+      const onMove = (ev: PointerEvent) => {
+        if (!started) {
+          if (
+            Math.abs(ev.clientX - startX) + Math.abs(ev.clientY - startY) <
+            DRAG_THRESHOLD
+          ) {
+            return;
+          }
+          started = true;
+        }
+        pos = chipDragTarget(boxes, ev.clientX, ev.clientY);
+      };
+      const onUp = () => {
+        window.removeEventListener("pointermove", onMove);
+        window.removeEventListener("pointerup", onUp);
+        if (!started || pos === from) return;
+        const next = items.filter((_, i) => i !== from);
+        next.splice(pos > from ? pos - 1 : pos, 0, items[from]);
+        onCommit(next);
+      };
+      window.addEventListener("pointermove", onMove);
+      window.addEventListener("pointerup", onUp);
+    },
+    [items, onCommit],
+  );
+}
+
+/** 非编辑态的 chip 值区：点击 / Enter / Space 进入编辑态（D7）。 */
+function ChipValueArea({
+  guardSelector,
+  onStartEdit,
+  children,
+}: {
+  guardSelector: string;
+  onStartEdit: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <span
+      className="dpb-chip-edit"
+      data-testid="dpb-chip-value"
+      role="button"
+      tabIndex={0}
+      title="点击编辑"
+      onClick={(e) => {
+        if ((e.target as HTMLElement).closest(guardSelector)) return;
+        onStartEdit();
+      }}
+      onKeyDown={(e) => {
+        // 子控件（改名输入 / 胶囊按钮）自身处理 Enter / Space，避免冒泡成「进入编辑态」
+        if (e.currentTarget !== e.target) return;
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onStartEdit();
+        }
+      }}
+    >
+      {children}
+    </span>
+  );
+}
+
+/** 列表值编辑（array）：`[[` 弹文档菜单、chip 可移除 / 拖动排序、按需输入（P-3 / D7）。 */
 function LinkListEditor({ field, onCommit }: EditorProps) {
   const tabs = useStore((s) => s.tabs);
   const items = toListValue(field.value);
+  const [editing, setEditing] = useState(false);
   const [input, setInput] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -1522,6 +1643,19 @@ function LinkListEditor({ field, onCommit }: EditorProps) {
   const [anchor, setAnchor] = useState<{ x: number; y: number } | null>(null);
   const wrapRef = useRef<HTMLSpanElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const commit = (next: string[]) => {
+    const merged = dedupeLinks(next);
+    if (
+      merged.length === items.length &&
+      merged.every((v, i) => v === items[i])
+    ) {
+      return;
+    }
+    onCommit(field.key, merged);
+  };
+
+  const reorder = useChipReorder(items, commit);
 
   const docNames = useMemo(() => {
     const seen = new Set<string>();
@@ -1544,16 +1678,37 @@ function LinkListEditor({ field, onCommit }: EditorProps) {
     return list.slice(0, 9);
   }, [docNames, query]);
 
-  const commit = (next: string[]) => {
-    const merged = dedupeLinks(next);
-    if (
-      merged.length === items.length &&
-      merged.every((v, i) => v === items[i])
-    ) {
-      return;
-    }
-    onCommit(field.key, merged);
+  useLayoutEffect(() => {
+    if (editing) inputRef.current?.focus();
+  }, [editing]);
+
+  const exitEdit = () => {
+    setEditing(false);
+    setInput("");
+    setQuery("");
+    setMenuOpen(false);
   };
+
+  const renderChips = () =>
+    items.map((item, i) => (
+      <span
+        className="dpb-link-chip"
+        key={`${item}-${i}`}
+        data-chip-index={i}
+        onPointerDown={reorder(i)}
+      >
+        <span className="dpb-link-chip-text">{item}</span>
+        <button
+          type="button"
+          className="dpb-chip-x"
+          data-testid="dpb-link-chip-x"
+          aria-label={`移除 ${item}`}
+          onClick={() => commit(items.filter((_, idx) => idx !== i))}
+        >
+          ×
+        </button>
+      </span>
+    ));
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -1575,7 +1730,10 @@ function LinkListEditor({ field, onCommit }: EditorProps) {
     commit([...items, `[[${name}]]`]);
     setInput("");
     setQuery("");
-    setMenuOpen(false);
+    setSel(0);
+    setAnchor(menuAnchorOf(inputRef.current));
+    setMenuOpen(true);
+    inputRef.current?.focus();
   };
 
   const move = (delta: 1 | -1) => {
@@ -1586,19 +1744,12 @@ function LinkListEditor({ field, onCommit }: EditorProps) {
     });
   };
 
-  const closeMenu = () => {
-    setMenuOpen(false);
-    setInput("");
-    setQuery("");
-  };
-
   const handleBlur = () => {
     const raw = input.trim();
     if (raw && !raw.includes("[[")) {
       commit([...items, ...parseLinkListText(raw)]);
     }
-    setInput("");
-    setMenuOpen(false);
+    exitEdit();
   };
 
   const handlePaste = (e: ClipboardEvent<HTMLInputElement>) => {
@@ -1611,39 +1762,44 @@ function LinkListEditor({ field, onCommit }: EditorProps) {
   };
 
   return (
-    <span className="dpb-linklist" ref={wrapRef}>
-      {items.map((item, i) => (
-        <span className="dpb-link-chip" key={`${item}-${i}`}>
-          <span className="dpb-link-chip-text">{item}</span>
-          <button
-            type="button"
-            className="dpb-chip-x"
-            data-testid="dpb-link-chip-x"
-            aria-label={`移除 ${item}`}
-            onClick={() => commit(items.filter((_, idx) => idx !== i))}
-          >
-            ×
-          </button>
-        </span>
-      ))}
-      <input
-        ref={inputRef}
-        className="dpb-input dpb-link-input"
-        data-testid="dpb-link-input"
-        value={input}
-        placeholder="[[ 链接文档"
-        onChange={handleChange}
-        onBlur={handleBlur}
-        onPaste={handlePaste}
-      />
+    <span className="dpb-linklist" ref={wrapRef} data-dpb-chips>
+      {editing ? (
+        <>
+          {renderChips()}
+          <input
+            ref={inputRef}
+            className="dpb-input dpb-link-input"
+            data-testid="dpb-link-input"
+            value={input}
+            placeholder="[[ 链接文档"
+            autoFocus
+            onChange={handleChange}
+            onBlur={handleBlur}
+            onPaste={handlePaste}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                e.preventDefault();
+                exitEdit();
+              }
+            }}
+          />
+        </>
+      ) : (
+        <ChipValueArea
+          guardSelector=".dpb-chip-x, .dpb-tag-x, .dpb-tag-name, .dpb-tag-rename"
+          onStartEdit={() => setEditing(true)}
+        >
+          {renderChips()}
+        </ChipValueArea>
+      )}
       {menuOpen && (
         <SuggestMenu
           rows={filtered.map((d) => ({ id: d, label: d }))}
           selected={sel}
           onPick={pick}
           onMove={move}
-          onEmptyEnter={closeMenu}
-          onClose={closeMenu}
+          onEmptyEnter={exitEdit}
+          onClose={exitEdit}
           anchor={anchor}
           context="属性面板 [[ 文档菜单打开"
           hostRef={wrapRef}
@@ -1656,7 +1812,106 @@ function LinkListEditor({ field, onCommit }: EditorProps) {
   );
 }
 
-/** 标签编辑：建议菜单、就地改名、删除、粘贴去重（P-5）。 */
+/** 复选值编辑（multiselect）：自由文本 chip，按需输入、可删除 / 拖动排序（P-3 / D7）。 */
+function MultiselectEditor({ field, onCommit }: EditorProps) {
+  const items = toListValue(field.value);
+  const [editing, setEditing] = useState(false);
+  const [input, setInput] = useState("");
+  const wrapRef = useRef<HTMLSpanElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const commit = (next: string[]) => {
+    const merged = dedupeValues(next);
+    if (
+      merged.length === items.length &&
+      merged.every((v, i) => v === items[i])
+    ) {
+      return;
+    }
+    onCommit(field.key, merged);
+  };
+
+  const reorder = useChipReorder(items, commit);
+
+  useLayoutEffect(() => {
+    if (editing) inputRef.current?.focus();
+  }, [editing]);
+
+  const exitEdit = () => {
+    setEditing(false);
+    setInput("");
+  };
+
+  const addItem = () => {
+    const value = input.trim();
+    if (!value) return;
+    commit([...items, value]);
+    setInput("");
+    inputRef.current?.focus();
+  };
+
+  const renderChips = () =>
+    items.map((item, i) => (
+      <span
+        className="dpb-opt-chip"
+        key={`${item}-${i}`}
+        data-chip-index={i}
+        onPointerDown={reorder(i)}
+      >
+        <span className="dpb-opt-chip-text">{item}</span>
+        <button
+          type="button"
+          className="dpb-chip-x"
+          data-testid="dpb-opt-chip-x"
+          aria-label={`移除 ${item}`}
+          onClick={() => commit(items.filter((_, idx) => idx !== i))}
+        >
+          ×
+        </button>
+      </span>
+    ));
+
+  return (
+    <span className="dpb-optlist" ref={wrapRef} data-dpb-chips>
+      {editing ? (
+        <>
+          {renderChips()}
+          <input
+            ref={inputRef}
+            className="dpb-input dpb-ms-input"
+            data-testid="dpb-ms-input"
+            value={input}
+            placeholder="+ 选项"
+            autoFocus
+            onChange={(e) => setInput(e.target.value)}
+            onBlur={() => {
+              if (input.trim()) addItem();
+              exitEdit();
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                addItem();
+              } else if (e.key === "Escape") {
+                e.preventDefault();
+                exitEdit();
+              }
+            }}
+          />
+        </>
+      ) : (
+        <ChipValueArea
+          guardSelector=".dpb-chip-x, .dpb-tag-x, .dpb-tag-name, .dpb-tag-rename"
+          onStartEdit={() => setEditing(true)}
+        >
+          {renderChips()}
+        </ChipValueArea>
+      )}
+    </span>
+  );
+}
+
+/** 标签编辑：聚焦即列全部已知标签、就地改名、删除、拖动排序、按需输入（P-5 / D8）。 */
 function TagEditor({
   field,
   onCommit,
@@ -1664,6 +1919,7 @@ function TagEditor({
 }: EditorProps & { selected?: boolean }) {
   const tabs = useStore((s) => s.tabs);
   const tags = toListValue(field.value);
+  const [editing, setEditing] = useState(false);
   const [input, setInput] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
   const [sel, setSel] = useState(0);
@@ -1693,10 +1949,8 @@ function TagEditor({
 
   const filtered = useMemo(() => {
     const q = input.trim().toLowerCase();
-    const list = q
-      ? knownTags.filter((t) => t.toLowerCase().includes(q))
-      : knownTags;
-    return list.slice(0, 9);
+    // P-5：聚焦即列全部已知标签，长列表由菜单自身滚动承载（不截断）。
+    return q ? knownTags.filter((t) => t.toLowerCase().includes(q)) : knownTags;
   }, [knownTags, input]);
 
   const commit = (next: string[]) => {
@@ -1710,12 +1964,31 @@ function TagEditor({
     onCommit(field.key, merged);
   };
 
+  const reorder = useChipReorder(tags, commit);
+
+  useLayoutEffect(() => {
+    if (!editing) return;
+    inputRef.current?.focus();
+    setAnchor(menuAnchorOf(inputRef.current));
+    setSel(0);
+    setMenuOpen(true);
+  }, [editing]);
+
+  const exitEdit = () => {
+    setEditing(false);
+    setInput("");
+    setMenuOpen(false);
+  };
+
   const addTag = (name: string) => {
     const value = name.trim();
     if (!value) return;
     commit([...tags, value]);
     setInput("");
-    setMenuOpen(false);
+    setSel(0);
+    setAnchor(menuAnchorOf(inputRef.current));
+    setMenuOpen(true);
+    inputRef.current?.focus();
   };
 
   const removeTag = (name: string) => {
@@ -1731,16 +2004,66 @@ function TagEditor({
     commit(tags.map((t) => (t === old ? next : t)));
   };
 
+  const renderChips = () =>
+    tags.map((tag, i) =>
+      renaming === tag ? (
+        <input
+          key={`${tag}-${i}`}
+          className="dpb-input dpb-tag-rename"
+          data-testid="dpb-tag-rename"
+          value={draft}
+          autoFocus
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={commitRename}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              commitRename();
+            } else if (e.key === "Escape") {
+              setRenaming(null);
+            }
+          }}
+        />
+      ) : (
+        <span
+          className={`dpb-tag${selected ? " dpb-node-selected" : ""}`}
+          key={`${tag}-${i}`}
+          data-color={tagColor(tag)}
+          data-chip-index={i}
+          onPointerDown={reorder(i)}
+        >
+          <TagIcon />
+          <button
+            type="button"
+            className="dpb-tag-name"
+            data-testid="dpb-tag-name"
+            title="点击改名"
+            onClick={() => {
+              setRenaming(tag);
+              setDraft(tag);
+            }}
+          >
+            {tag}
+          </button>
+          <button
+            type="button"
+            className="dpb-tag-x"
+            data-testid="dpb-tag-x"
+            aria-label={`删除标签 ${tag}`}
+            onClick={() => removeTag(tag)}
+          >
+            ×
+          </button>
+        </span>
+      ),
+    );
+
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setInput(value);
     setSel(0);
-    if (value) {
-      setAnchor(menuAnchorOf(inputRef.current));
-      setMenuOpen(true);
-    } else {
-      setMenuOpen(false);
-    }
+    setAnchor(menuAnchorOf(inputRef.current));
+    setMenuOpen(true);
   };
 
   const pick = (index: number) => {
@@ -1756,17 +2079,9 @@ function TagEditor({
     });
   };
 
-  const closeMenu = () => {
-    setMenuOpen(false);
-    setInput("");
-  };
-
   const handleBlur = () => {
     if (input.trim()) addTag(input);
-    else {
-      setInput("");
-      setMenuOpen(false);
-    }
+    exitEdit();
   };
 
   const handlePaste = (e: ClipboardEvent<HTMLInputElement>) => {
@@ -1779,69 +2094,41 @@ function TagEditor({
   };
 
   return (
-    <span className="dpb-tags-editor" ref={wrapRef} data-select-node="tags">
-      <span className="dpb-tags-group">
-        {tags.map((tag) =>
-          renaming === tag ? (
-            <input
-              key={tag}
-              className="dpb-input dpb-tag-rename"
-              data-testid="dpb-tag-rename"
-              value={draft}
-              autoFocus
-              onChange={(e) => setDraft(e.target.value)}
-              onBlur={commitRename}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  commitRename();
-                } else if (e.key === "Escape") {
-                  setRenaming(null);
-                }
-              }}
-            />
-          ) : (
-            <span
-              className={`dpb-tag${selected ? " dpb-node-selected" : ""}`}
-              key={tag}
-              data-color={tagColor(tag)}
-            >
-              <TagIcon />
-              <button
-                type="button"
-                className="dpb-tag-name"
-                data-testid="dpb-tag-name"
-                title="点击改名"
-                onClick={() => {
-                  setRenaming(tag);
-                  setDraft(tag);
-                }}
-              >
-                {tag}
-              </button>
-              <button
-                type="button"
-                className="dpb-tag-x"
-                data-testid="dpb-tag-x"
-                aria-label={`删除标签 ${tag}`}
-                onClick={() => removeTag(tag)}
-              >
-                ×
-              </button>
-            </span>
-          ),
-        )}
-        <input
-          ref={inputRef}
-          className="dpb-input dpb-tag-input"
-          data-testid="dpb-tag-input"
-          value={input}
-          placeholder="+ 标签"
-          onChange={handleChange}
-          onBlur={handleBlur}
-          onPaste={handlePaste}
-        />
-      </span>
+    <span
+      className="dpb-tags-editor"
+      ref={wrapRef}
+      data-select-node="tags"
+      data-dpb-chips
+    >
+      {editing ? (
+        <>
+          <span className="dpb-tags-group">{renderChips()}</span>
+          <input
+            ref={inputRef}
+            className="dpb-input dpb-tag-input"
+            data-testid="dpb-tag-input"
+            value={input}
+            placeholder="+ 标签"
+            autoFocus
+            onChange={handleChange}
+            onBlur={handleBlur}
+            onPaste={handlePaste}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                e.preventDefault();
+                exitEdit();
+              }
+            }}
+          />
+        </>
+      ) : (
+        <ChipValueArea
+          guardSelector=".dpb-chip-x, .dpb-tag-x, .dpb-tag-name, .dpb-tag-rename"
+          onStartEdit={() => setEditing(true)}
+        >
+          <span className="dpb-tags-group">{renderChips()}</span>
+        </ChipValueArea>
+      )}
       {menuOpen && (
         <SuggestMenu
           rows={filtered.map((t) => ({ id: t, label: t, icon: <TagIcon /> }))}
@@ -1849,7 +2136,7 @@ function TagEditor({
           onPick={pick}
           onMove={move}
           onEmptyEnter={() => addTag(input)}
-          onClose={closeMenu}
+          onClose={exitEdit}
           anchor={anchor}
           context="属性面板标签建议菜单打开"
           hostRef={wrapRef}
@@ -1878,11 +2165,11 @@ function FieldValue({
       <DatetimeEditor field={field} editable={editable} onCommit={onCommit} />
     );
   }
-  if (
-    effectiveEditable &&
-    (field.type === "array" || field.type === "multiselect")
-  ) {
+  if (effectiveEditable && field.type === "array") {
     return <LinkListEditor field={field} onCommit={onCommit} />;
+  }
+  if (effectiveEditable && field.type === "multiselect") {
+    return <MultiselectEditor field={field} onCommit={onCommit} />;
   }
   return (
     <ValueEditor

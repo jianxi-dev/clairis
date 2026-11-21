@@ -411,8 +411,15 @@ test("复现矩阵：建议菜单与模板状态", async ({ page }) => {
       await page.setViewportSize({ width: w, height: 800 });
       await page.waitForTimeout(120);
 
+      const tagValue = panel.locator(
+        '[data-key="tags"] [data-testid="dpb-chip-value"]',
+      );
+      const tagValueBox = (await tagValue.boundingBox())!;
+      await page.mouse.click(
+        tagValueBox.x + tagValueBox.width - 4,
+        tagValueBox.y + tagValueBox.height / 2,
+      );
       const tagInput = panel.locator('[data-testid="dpb-tag-input"]').first();
-      await tagInput.click();
       await tagInput.fill("标");
       await expect(page.locator('[data-testid="dpb-tag-menu"]')).toBeVisible();
       const tagBox = (await page
@@ -432,11 +439,17 @@ test("复现矩阵：建议菜单与模板状态", async ({ page }) => {
         screenshot: await shot(page, `menu-tag-${variant}-${w}.png`),
       });
       await page.keyboard.press("Escape");
-      await tagInput.blur();
       await page.waitForTimeout(80);
 
+      const linkValue = panel.locator(
+        '[data-key="links"] [data-testid="dpb-chip-value"]',
+      );
+      const linkValueBox = (await linkValue.boundingBox())!;
+      await page.mouse.click(
+        linkValueBox.x + linkValueBox.width - 4,
+        linkValueBox.y + linkValueBox.height / 2,
+      );
       const linkInput = panel.locator('[data-testid="dpb-link-input"]').first();
-      await linkInput.click();
       await linkInput.fill("[[");
       await expect(page.locator('[data-testid="dpb-doc-menu"]')).toBeVisible();
       const docBox = (await page
@@ -455,7 +468,6 @@ test("复现矩阵：建议菜单与模板状态", async ({ page }) => {
         screenshot: await shot(page, `menu-doc-${variant}-${w}.png`),
       });
       await page.keyboard.press("Escape");
-      await linkInput.blur();
       await page.waitForTimeout(80);
 
       // 套用模板后的状态文案（长模板名场景的近似）
@@ -574,10 +586,9 @@ test("卡片宽度对齐正文测量宽度（1280/900/640/300 四档）", async 
       Math.abs((r.panelWidth as number) - (r.expectedWidth as number)),
       `card width vs min(available, measure) @${width}: panel=${r.panelWidth} expected=${r.expectedWidth}`,
     ).toBeLessThanOrEqual(2);
-    expect(
-      r.panelRight as number,
-      `panelRight@${width}`,
-    ).toBeLessThanOrEqual((r.hostRight as number) + 0.5);
+    expect(r.panelRight as number, `panelRight@${width}`).toBeLessThanOrEqual(
+      (r.hostRight as number) + 0.5,
+    );
     expect(r.panelX as number, `panelX@${width}`).toBeGreaterThanOrEqual(
       (r.hostX as number) - 0.5,
     );
@@ -585,10 +596,9 @@ test("卡片宽度对齐正文测量宽度（1280/900/640/300 四档）", async 
       r.docScrollWidth as number,
       `horizontal overflow @${width}`,
     ).toBeLessThanOrEqual((r.vw as number) + 1);
-    expect(
-      r.panelContentOverflow,
-      `panel content overflow @${width}`,
-    ).toBe(false);
+    expect(r.panelContentOverflow, `panel content overflow @${width}`).toBe(
+      false,
+    );
     expect(r.overflowingCount, `overflowing elements @${width}`).toBe(0);
   }
 });

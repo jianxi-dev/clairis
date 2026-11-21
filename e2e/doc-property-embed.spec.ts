@@ -263,9 +263,15 @@ test("编辑态：键入标签提交后焦点保留（widget DOM 复用，不随
 }) => {
   await openDoc(page);
   await setMode(page, "edit");
+  const tagValue = page.locator('.cm-dpb-embed [data-testid="dpb-chip-value"]');
+  await expect(tagValue).toBeVisible();
+  const valueBox = (await tagValue.boundingBox())!;
+  await page.mouse.click(
+    valueBox.x + valueBox.width - 4,
+    valueBox.y + valueBox.height / 2,
+  );
   const tagInput = page.locator('.cm-dpb-embed [data-testid="dpb-tag-input"]');
-  await expect(tagInput).toBeVisible();
-  await tagInput.click();
+  await expect(tagInput).toBeFocused();
   await tagInput.fill("新标签");
   // Enter 提交 → frontmatter 写回 → 文档变更 → 装饰重建。
   await tagInput.press("Enter");
