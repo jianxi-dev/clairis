@@ -4583,3 +4583,78 @@ test("O4 折叠全透明：折叠态计算 opacity 0，悬停 / 聚焦恢复 1�
   await page.evaluate(() => (document.activeElement as HTMLElement)?.blur());
   await dpbRecord(page, "o4", "01-collapsed-transparent");
 });
+
+test("O5 footer 收敛：垂直内距收窄 + 预览计数胶囊、编辑态纯文本", async ({
+  page,
+}) => {
+  const doc = `---\ntitle: footer 收敛\nstatus: 阅读中\ncreated: 2026-11-14\nupdated: 2026-11-15\n---\n\n# 正文\n`;
+  await openDoc(page, doc, "/Users/test/o5-footer.md");
+
+  await setMode(page, "edit");
+  await setVariant(page, "B");
+  const b = panel(page, "B");
+  const bFoot = b.locator(".dpb-b-foot");
+  const bCount = bFoot.locator('[data-testid="dpb-count"]');
+  expect(
+    await bFoot.evaluate((el) => parseFloat(getComputedStyle(el).paddingTop)),
+  ).toBeLessThanOrEqual(4);
+  expect(
+    await bCount.evaluate((el) => getComputedStyle(el).borderTopWidth),
+  ).toBe("0px");
+  const bCountBox = (await bCount.boundingBox())!;
+  const bDateBox = (await bFoot
+    .locator('[data-testid="dpb-managed-dates"]')
+    .boundingBox())!;
+  expect(bCountBox.x).toBeLessThan(bDateBox.x);
+  await dpbRecord(page, "o5", "01-b-edit-plain");
+
+  await setVariant(page, "A");
+  const a = panel(page, "A");
+  const aFoot = a.locator(".dpb-a-foot");
+  const aCount = aFoot.locator('[data-testid="dpb-count"]');
+  expect(
+    await aFoot.evaluate((el) => parseFloat(getComputedStyle(el).marginTop)),
+  ).toBeLessThanOrEqual(4);
+  expect(
+    await aCount.evaluate((el) => getComputedStyle(el).borderTopWidth),
+  ).toBe("0px");
+  await dpbRecord(page, "o5", "02-a-edit-plain");
+
+  await setMode(page, "preview");
+  await setVariant(page, "B");
+  const pb = panel(page, "B");
+  const pbFoot = pb.locator(".dpb-b-foot");
+  const pbCount = pbFoot.locator('[data-testid="dpb-count"]');
+  const pbRadius = await pbCount.evaluate((el) =>
+    parseFloat(getComputedStyle(el).borderTopLeftRadius),
+  );
+  const pbBg = await pbCount.evaluate(
+    (el) => getComputedStyle(el).backgroundColor,
+  );
+  expect(pbRadius).toBeGreaterThan(0);
+  expect(pbBg).not.toBe("rgba(0, 0, 0, 0)");
+  expect(pbBg).not.toBe("transparent");
+  expect(
+    await pbCount.evaluate((el) =>
+      parseFloat(getComputedStyle(el).borderTopWidth),
+    ),
+  ).toBeGreaterThan(0);
+  const pbCountBox = (await pbCount.boundingBox())!;
+  const pbFootBox = (await pbFoot.boundingBox())!;
+  expect(Math.abs(pbCountBox.x - pbFootBox.x)).toBeLessThanOrEqual(1);
+  await dpbRecord(page, "o5", "03-b-preview-pill");
+
+  await setVariant(page, "A");
+  const pa = panel(page, "A");
+  const paFoot = pa.locator(".dpb-a-foot");
+  const paCount = paFoot.locator('[data-testid="dpb-count"]');
+  expect(
+    await paCount.evaluate((el) =>
+      parseFloat(getComputedStyle(el).borderTopLeftRadius),
+    ),
+  ).toBeGreaterThan(0);
+  const paCountBox = (await paCount.boundingBox())!;
+  const paFootBox = (await paFoot.boundingBox())!;
+  expect(Math.abs(paCountBox.x - paFootBox.x)).toBeLessThanOrEqual(1);
+  await dpbRecord(page, "o5", "04-a-preview-pill");
+});
