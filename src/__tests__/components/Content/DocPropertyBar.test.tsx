@@ -18,6 +18,7 @@ vi.mock("../../../editors/editorRef", () => ({
 import DocPropertyBar, {
   aDropIndicator,
   chipDragTarget,
+  collectFieldOptions,
   type ChipBox,
   type DropRowBox,
 } from "../../../components/Content/DocPropertyBar";
@@ -865,5 +866,38 @@ describe("chipDragTarget（chip 拖动落点）", () => {
 
   it("空列表返回 0", () => {
     expect(chipDragTarget([], 10, 10)).toBe(0);
+  });
+});
+
+describe("collectFieldOptions（#1316 同键选项聚合）", () => {
+  it("聚合多页签同键值并保序去重，再并入本字段自身值", () => {
+    const tabs = [
+      { content: "---\ntitle: A\npriority: 高\n---\n" },
+      { content: "---\ntitle: B\npriority: 低\n---\n" },
+      { content: "---\ntitle: C\nother: 无关\n---\n" },
+    ];
+    expect(collectFieldOptions(tabs, "priority")).toEqual(["高", "低"]);
+    expect(collectFieldOptions(tabs, "priority", ["中"])).toEqual([
+      "高",
+      "低",
+      "中",
+    ]);
+  });
+
+  it("数组值展开为多行，重复项与空值剔除", () => {
+    const tabs = [
+      { content: "---\ntitle: A\nchecks: [甲, 乙]\n---\n" },
+      { content: "---\ntitle: B\nchecks: [乙, 丙]\n---\n" },
+    ];
+    expect(collectFieldOptions(tabs, "checks")).toEqual(["甲", "乙", "丙"]);
+  });
+
+  it("无 frontmatter / 无同键时只回本字段自身值", () => {
+    expect(
+      collectFieldOptions([{ content: "# 无 frontmatter\n" }], "k"),
+    ).toEqual([]);
+    expect(
+      collectFieldOptions([{ content: "---\nx: 1\n---\n" }], "k", ["自身"]),
+    ).toEqual(["自身"]);
   });
 });
