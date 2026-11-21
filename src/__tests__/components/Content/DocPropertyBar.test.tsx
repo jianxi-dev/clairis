@@ -424,6 +424,28 @@ describe("DocPropertyBar 日期时间单面板（#1044）", () => {
     expect(row.querySelector('[data-testid="dpb-datetime-editor"]')).toBeNull();
   });
 
+  it("日期时间字段点日格只改草稿，面板保持打开", () => {
+    const { container, dispatchRef } = mountDatetime();
+    const row = container.querySelector('[data-key="评审时间"]')!;
+    fireEvent.click(row.querySelector('[data-testid="dpb-value"]')!);
+    const editor = row.querySelector('[data-testid="dpb-datetime-editor"]')!;
+
+    fireEvent.click(
+      editor.querySelector(
+        '[data-testid="dpb-cal-day"][data-date="2026-11-18"]',
+      )!,
+    );
+
+    expect(dispatchRef.current).toHaveLength(0);
+    expect(
+      row.querySelector('[data-testid="dpb-datetime-editor"]'),
+    ).not.toBeNull();
+    expect(
+      row.querySelector<HTMLInputElement>('[data-testid="dpb-datetime-input"]')!
+        .value,
+    ).toBe("2026-11-18T14:30");
+  });
+
   it("Esc 取消：不写回，回到原值", () => {
     const { container, dispatchRef } = mountDatetime();
     const row = container.querySelector('[data-key="评审时间"]')!;
@@ -601,7 +623,7 @@ createdate: 2026-11-14
     ).toHaveLength(12);
   });
 
-  it("日期字段 Enter 提交 YYYY-MM-DD", () => {
+  it("日期字段单击日格立即提交并关闭，仅一次写回", () => {
     const { container, dispatchRef } = mountDateOnly();
     const row = container.querySelector('[data-key="createdate"]')!;
     fireEvent.click(row.querySelector('[data-testid="dpb-value"]')!);
@@ -610,12 +632,30 @@ createdate: 2026-11-14
       '[data-testid="dpb-cal-day"][data-date="2026-11-15"]',
     )!;
     fireEvent.click(day);
-    fireEvent.keyDown(editor, { key: "Enter" });
 
     expect(dispatchRef.current).toHaveLength(1);
     expect(dispatchRef.current[0].changes.insert).toContain(
       "createdate: 2026-11-15",
     );
+    expect(row.querySelector('[data-testid="dpb-datetime-editor"]')).toBeNull();
+
+    fireEvent.blur(row);
+    fireEvent.mouseDown(document.body);
+    expect(dispatchRef.current).toHaveLength(1);
+  });
+
+  it("日期字段点「今天」立即提交并关闭", () => {
+    const { container, dispatchRef } = mountDateOnly();
+    const row = container.querySelector('[data-key="createdate"]')!;
+    fireEvent.click(row.querySelector('[data-testid="dpb-value"]')!);
+    const editor = row.querySelector('[data-testid="dpb-datetime-editor"]')!;
+    fireEvent.click(editor.querySelector('[data-testid="dpb-cal-today"]')!);
+
+    expect(dispatchRef.current).toHaveLength(1);
+    expect(dispatchRef.current[0].changes.insert).toMatch(
+      /createdate: \d{4}-\d{2}-\d{2}/,
+    );
+    expect(row.querySelector('[data-testid="dpb-datetime-editor"]')).toBeNull();
   });
 
   it("日期字段值区可直接键入并归一化 / 至 -", () => {

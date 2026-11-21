@@ -895,8 +895,24 @@ function DatetimeEditor({ field, editable, onCommit }: DatetimeEditorProps) {
       ? datePart
       : ymdOf(cal.year, cal.month, 1);
 
+  const composeDraft = (date: string, time: string) =>
+    dateOnly ? date : `${date}T${time}`;
+
+  // 日期字段的显式选择（日格 / 今天）立即提交：先写同步快照，再走唯一出口，
+  // 让随后的 blur / 外部 pointerdown 读到新值且被 doneRef 挡住（D4）。
+  const commitNow = (value: string) => {
+    latest.current = { draft: value, touched: true };
+    setDraft(value);
+    setTouched(true);
+    finishRef.current("commit");
+  };
+
   const pickDay = (date: string) => {
-    setDraft(dateOnly ? date : `${date}T${timePart}`);
+    if (dateOnly) {
+      commitNow(date);
+      return;
+    }
+    setDraft(`${date}T${timePart}`);
     setTouched(true);
   };
 
@@ -910,9 +926,6 @@ function DatetimeEditor({ field, editable, onCommit }: DatetimeEditorProps) {
     else if (view === "month") setCal({ ...cal, year: cal.year + delta });
     else setYearPage(yearPage + delta * 12);
   };
-
-  const composeDraft = (date: string, time: string) =>
-    dateOnly ? date : `${date}T${time}`;
 
   const moveDay = (deltaDays: number) => {
     const [y, m, d] = focusDate.split("-").map(Number);
@@ -949,9 +962,15 @@ function DatetimeEditor({ field, editable, onCommit }: DatetimeEditorProps) {
   const pickToday = () => {
     const now = new Date();
     const date = localYmd(now);
-    setDraft(
-      composeDraft(date, `${pad2(now.getHours())}:${pad2(now.getMinutes())}`),
+    const value = composeDraft(
+      date,
+      `${pad2(now.getHours())}:${pad2(now.getMinutes())}`,
     );
+    if (dateOnly) {
+      commitNow(value);
+      return;
+    }
+    setDraft(value);
     setCal({ year: now.getFullYear(), month: now.getMonth() });
     setYearPage(Math.floor(now.getFullYear() / 12) * 12);
     setView("day");
