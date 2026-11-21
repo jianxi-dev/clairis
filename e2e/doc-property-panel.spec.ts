@@ -4493,3 +4493,60 @@ test("#1245 托管日期文档调色板：拖到中间行插入而非追加到�
     .toBe("title,category,new-field,author,source,note,created,updated");
   await dpbRecord(page, "1245", "06-palette-middle-result");
 });
+
+test("O3 控件悬停显隐：标签叉号 / 形态切换 / 折叠按钮默认透明，悬停或聚焦显现", async ({
+  page,
+}) => {
+  const doc = `---\ntitle: 悬停显隐\ntags:\n  - 甲\nstatus: 阅读中\n---\n\n# 正文\n`;
+  await openDoc(page, doc, "/Users/test/o3-reveal.md");
+  await setMode(page, "edit");
+  await setVariant(page, "B");
+  const b = panel(page, "B");
+  await page.mouse.move(4, 4);
+  await page.evaluate(() => (document.activeElement as HTMLElement)?.blur());
+
+  const opacityOf = (loc: ReturnType<typeof b.locator>) =>
+    loc.evaluate((el) => Number(getComputedStyle(el).opacity));
+  const widthOf = async (loc: ReturnType<typeof b.locator>) =>
+    (await loc.boundingBox())!.width;
+
+  const tag = b.locator(".dpb-tag").first();
+  const tagX = b.locator('[data-testid="dpb-tag-x"]').first();
+  const variant = b.locator('[data-testid="dpb-variant-toggle"]');
+  const collapse = b.locator('[data-testid="dpb-collapse"]');
+
+  await expect.poll(() => opacityOf(tagX), { timeout: 2000 }).toBe(0);
+  await expect.poll(() => opacityOf(variant), { timeout: 2000 }).toBe(0);
+  await expect.poll(() => opacityOf(collapse), { timeout: 2000 }).toBe(0);
+
+  const tagXWidth = await widthOf(tagX);
+  const variantWidth = await widthOf(variant);
+  const collapseWidth = await widthOf(collapse);
+
+  await tag.hover();
+  await expect.poll(() => opacityOf(tagX), { timeout: 2000 }).toBe(1);
+  expect(await widthOf(tagX)).toBe(tagXWidth);
+  await page.mouse.move(4, 4);
+  await expect.poll(() => opacityOf(tagX), { timeout: 2000 }).toBe(0);
+
+  await b.hover();
+  await expect.poll(() => opacityOf(variant), { timeout: 2000 }).toBe(1);
+  await expect.poll(() => opacityOf(collapse), { timeout: 2000 }).toBe(1);
+  expect(await widthOf(variant)).toBe(variantWidth);
+  expect(await widthOf(collapse)).toBe(collapseWidth);
+  await page.mouse.move(4, 4);
+  await expect.poll(() => opacityOf(variant), { timeout: 2000 }).toBe(0);
+  await expect.poll(() => opacityOf(collapse), { timeout: 2000 }).toBe(0);
+
+  await tagX.focus();
+  await expect.poll(() => opacityOf(tagX), { timeout: 2000 }).toBe(1);
+  await page.evaluate(() => (document.activeElement as HTMLElement)?.blur());
+  await expect.poll(() => opacityOf(tagX), { timeout: 2000 }).toBe(0);
+
+  await variant.focus();
+  await expect.poll(() => opacityOf(variant), { timeout: 2000 }).toBe(1);
+  await expect.poll(() => opacityOf(collapse), { timeout: 2000 }).toBe(1);
+  await page.evaluate(() => (document.activeElement as HTMLElement)?.blur());
+  await expect.poll(() => opacityOf(variant), { timeout: 2000 }).toBe(0);
+  await dpbRecord(page, "o3", "01-hover-reveal");
+});
