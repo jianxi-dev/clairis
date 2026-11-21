@@ -1,3 +1,11 @@
+---
+title: "Markdown Frontmatter 功能价值分析（v3）"
+type: research
+source_of_truth: historical
+status: draft
+last_updated: 2026-11-22
+---
+
 # Markdown Frontmatter 功能价值分析（v3，含 Codex 评审修订）
 
 > 状态：2026-11-22 生成 v2 后经 Codex 独立评审（裁决 REVISE，16 条发现），按评审修正为 v3。
