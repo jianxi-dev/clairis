@@ -140,7 +140,8 @@ export type IconName =
   | "columns3"
   | "columns4"
   | "columns5"
-  | "divider";
+  | "divider"
+  | "foldTriangle";
 
 export interface IconPart {
   d?: string;
@@ -738,6 +739,11 @@ export const ICONS: Record<IconName, IconDef> = {
   selectAll: {
     label: "全选",
     s: "M4.5 4.5h15v15h-15z M8 12l3 3 5.5-6",
+  },
+  /** 折叠三角（D10）：右指=折叠、下指=展开；形状对齐标题折叠 M7 4 L14.5 10 L7 16 Z，放大到 24 网格。 */
+  foldTriangle: {
+    label: "折叠三角",
+    d: "M8 5 L17 12 L8 19 Z",
   },
 };
 

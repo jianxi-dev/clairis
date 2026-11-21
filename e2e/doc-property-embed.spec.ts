@@ -191,16 +191,20 @@ test("编辑态：折叠后折叠条嵌入正文流（无摘要标签），展�
   await setMode(page, "edit");
   await expect(page.locator(".cm-content > .cm-dpb-embed")).toHaveCount(1);
 
-  await page.locator('[data-testid="dpb-collapse"]').click();
+  await page.locator('[data-testid="dpb-fold-triangle"]').click();
   // 折叠条随正文流滚动；正文不再出现「文档属性 · N 个字段」摘要标签。
   await expect(page.locator(".cm-content > .cm-dpb-embed")).toHaveCount(1);
   await expect(page.locator(".cm-fmh-summary")).toHaveCount(0);
   const a = page.locator('.cm-dpb-embed [data-testid="dpb-a"]');
   await expect(a).toBeVisible();
-  await expect(a.locator(".dpb-a-summary")).toContainText("已折叠");
+  await expect(a.locator(".dpb-a-summary")).toHaveCount(0);
+  await expect(a.locator('[data-testid="dpb-fold-triangle"]')).toHaveAttribute(
+    "aria-expanded",
+    "false",
+  );
   await dpbRecord(page, "1226", "01-collapsed-bar-in-body");
 
-  await page.locator('.cm-dpb-embed [data-testid="dpb-collapse"]').click();
+  await page.locator('.cm-dpb-embed [data-testid="dpb-fold-triangle"]').click();
   await expect(a.locator(".dpb-a-summary")).toHaveCount(0);
   await expect(a.locator(".dpb-a-meta")).toBeVisible();
   await expect(
@@ -358,7 +362,9 @@ test("预览态：属性块在正文标题之前且只读", async ({ page }) => 
 
   await block.locator('[data-key="count"] [data-testid="dpb-value"]').click();
   await expect(block.locator('[data-testid="dpb-input"]')).toHaveCount(0);
-  await expect(block.locator('[data-testid="dpb-collapse"]')).toHaveCount(0);
+  await expect(block.locator('[data-testid="dpb-fold-triangle"]')).toHaveCount(
+    0,
+  );
   await dpbRecord(page, "1215", "03-preview-top-readonly");
 });
 
@@ -515,10 +521,13 @@ test("双击揭示 frontmatter 后单击恢复：属性块重新挂到新宿主�
   await dpbRecord(page, "1244", "02-recovered-host");
 
   // 恢复后面板仍可交互（折叠条在嵌入宿主内）。
-  await embed.locator('[data-testid="dpb-collapse"]').click();
+  await embed.locator('[data-testid="dpb-fold-triangle"]').click();
   await expect(
     embed.locator('[data-testid="dpb-a"] .dpb-a-summary'),
-  ).toContainText("已折叠");
+  ).toHaveCount(0);
+  await expect(
+    embed.locator('[data-testid="dpb-a"] [data-testid="dpb-fold-triangle"]'),
+  ).toHaveAttribute("aria-expanded", "false");
   await dpbRecord(page, "1244", "03-recovered-interactive");
 });
 
@@ -636,7 +645,7 @@ test("编辑态：属性块下方间距 ≈ 一个正文行高，且不依赖文
 test("编辑态：折叠条下方间距同样 ≈ 一个正文行高（#1227）", async ({ page }) => {
   await openDoc(page);
   await setMode(page, "edit");
-  await page.locator('[data-testid="dpb-collapse"]').click();
+  await page.locator('[data-testid="dpb-fold-triangle"]').click();
   await expect(page.locator(".cm-content > .cm-dpb-embed")).toBeVisible();
   const m = await page.evaluate(() => {
     const card = document.querySelector<HTMLElement>(

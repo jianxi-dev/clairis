@@ -3401,15 +3401,17 @@ export default function DocPropertyBar({
 
   if (hidden) return null;
 
-  const collapseButton = editable ? (
+  const foldTriangle = editable ? (
     <button
       type="button"
-      className="dpb-collapse"
-      data-testid="dpb-collapse"
+      className="dpb-fold-triangle"
+      data-testid="dpb-fold-triangle"
       aria-expanded={!collapsed}
+      aria-label={collapsed ? "展开" : "折叠"}
+      title={collapsed ? "展开" : "折叠"}
       onClick={() => setCollapsed(!collapsed)}
     >
-      {collapsed ? "⌄ 展开" : "⌃ 折叠"}
+      <Icon name="foldTriangle" size={14} className="dpb-fold-triangle-icon" />
     </button>
   ) : null;
 
@@ -3498,10 +3500,8 @@ export default function DocPropertyBar({
         onClickCapture={onPanelClickCapture}
       >
         <div className="dpb-b-head">
+          {foldTriangle}
           <span className="dpb-b-title">文档属性</span>
-          <span className="dpb-b-sub">
-            {collapsed ? `已折叠 · ${fields.length} 个字段` : ""}
-          </span>
           <span className="dpb-b-tools" data-testid="dpb-tools">
             {editable && (
               <button
@@ -3522,7 +3522,6 @@ export default function DocPropertyBar({
               />
             )}
             {selectAllButton}
-            {collapseButton}
             {variantToggle}
             {tplStatus && (
               <span
@@ -3649,6 +3648,7 @@ export default function DocPropertyBar({
       onClickCapture={onPanelClickCapture}
     >
       <div className="dpb-a-line">
+        {foldTriangle}
         {titleField ? (
           <span
             className={`dpb-a-title-cell${selected.has(titleIdx) ? " dpb-row-selected" : ""}`}
@@ -3694,7 +3694,6 @@ export default function DocPropertyBar({
             />
           )}
           {selectAllButton}
-          {collapseButton}
           {variantToggle}
           {tplStatus && (
             <span
@@ -3708,9 +3707,7 @@ export default function DocPropertyBar({
         </span>
         {opsBar}
       </div>
-      {collapsed ? (
-        <div className="dpb-a-summary">已折叠 · {fields.length} 个字段</div>
-      ) : (
+      {!collapsed && (
         <>
           {dropLine}
           <div className="dpb-a-meta">
