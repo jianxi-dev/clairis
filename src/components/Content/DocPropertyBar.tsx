@@ -3164,7 +3164,12 @@ export default function DocPropertyBar({
               );
             })}
             <div className="dpb-b-foot" data-testid="dpb-foot">
-              <span data-testid="dpb-count">{fields.length} 个字段</span>
+              <span
+                className={editable ? undefined : "dpb-count-pill"}
+                data-testid="dpb-count"
+              >
+                {fields.length} 个字段
+              </span>
               {managedDatesView}
             </div>
             {paletteOverlay}
@@ -3357,7 +3362,12 @@ export default function DocPropertyBar({
       )}
       {!collapsed && (
         <div className="dpb-a-foot" data-testid="dpb-foot">
-          <span data-testid="dpb-count">{fields.length} 个字段</span>
+          <span
+            className={editable ? undefined : "dpb-count-pill"}
+            data-testid="dpb-count"
+          >
+            {fields.length} 个字段
+          </span>
           {managedDatesView}
         </div>
       )}

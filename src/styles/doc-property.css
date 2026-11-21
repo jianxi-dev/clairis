@@ -438,7 +438,7 @@
 .dpb-b-foot {
   font-size: var(--dpb-footer-font-size, 11px);
   color: var(--app-text-3);
-  padding: 7px 0 1px;
+  padding: var(--space-4, 4px) 0 var(--space-2, 2px);
   border-top: 1px dashed var(--app-border);
   display: flex;
   gap: 16px;
@@ -457,8 +457,8 @@
   display: flex;
   align-items: center;
   gap: 16px;
-  margin-top: 8px;
-  padding-top: 7px;
+  margin-top: var(--space-4, 4px);
+  padding-top: var(--space-4, 4px);
   border-top: 1px dashed var(--app-border);
   font-size: var(--dpb-footer-font-size, 11px);
   color: var(--app-text-3);
@@ -475,6 +475,17 @@
 
 .dpb-a-foot [data-testid="dpb-count"] {
   margin-left: 0;
+}
+
+/* 预览态字段计数胶囊（O5）：描边 + 全圆角 + 下沉底，左缘对齐面板内容左缘；
+   编辑态不挂 .dpb-count-pill，保持纯文本。 */
+.dpb-a-foot [data-testid="dpb-count"].dpb-count-pill,
+.dpb-b-foot [data-testid="dpb-count"].dpb-count-pill {
+  margin-left: 0;
+  padding: 1px 8px;
+  border: 1px solid var(--app-border);
+  border-radius: var(--radius-full);
+  background: var(--app-sunken);
 }
 
 .dpb-dates {
