@@ -3169,7 +3169,6 @@ export default function DocPropertyBar({
         }
         if (!movable) return;
         started = true;
-        if (!selectedRef.current.has(id)) applySelection([id]);
       }
       over = computeDropIndex(ev.clientX, ev.clientY);
       setDrop(dropIndicatorFor(over));
@@ -3535,10 +3534,10 @@ export default function DocPropertyBar({
               </span>
             )}
           </span>
+          {opsBar}
         </div>
         {!collapsed && (
           <div className="dpb-b-body">
-            {opsBar}
             {dropLine}
             {fields.map((field, i) => {
               const rowId: FrontmatterRowId = field === tagsField ? "tags" : i;
@@ -3707,12 +3706,12 @@ export default function DocPropertyBar({
             </span>
           )}
         </span>
+        {opsBar}
       </div>
       {collapsed ? (
         <div className="dpb-a-summary">已折叠 · {fields.length} 个字段</div>
       ) : (
         <>
-          {opsBar}
           {dropLine}
           <div className="dpb-a-meta">
             {rest.map((field) => {

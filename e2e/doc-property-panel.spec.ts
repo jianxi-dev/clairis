@@ -2695,6 +2695,133 @@ test("选中临近三行后拖动任一行 = 整块移动且相对顺序不变",
   ]);
 });
 
+test("#1319 拖动手柄排序：不显示工具条、选中集不变", async ({ page }) => {
+  await openDoc(page, ROW_DOC);
+  await setVariant(page, "B");
+  await setMode(page, "edit");
+  const b = panel(page, "B");
+  await expect(b.locator('[data-testid="dpb-ops"]')).toHaveCount(0);
+  await dpbRecord(page, "1319", "01-no-selection");
+
+  const handle = b.locator('[data-key="note"] [data-testid="dpb-row-handle"]');
+  const hb = (await handle.boundingBox())!;
+  const cat = (await b.locator('[data-key="category"]').boundingBox())!;
+  await page.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(hb.x + hb.width / 2, cat.y + cat.height * 0.25, {
+    steps: 6,
+  });
+  await page.mouse.up();
+
+  expect(await rowKeys(page, "B")).toEqual([
+    "title",
+    "note",
+    "category",
+    "author",
+    "source",
+  ]);
+  await expect(b.locator('[data-testid="dpb-ops"]')).toHaveCount(0);
+  await expect(b.locator(".dpb-row-selected")).toHaveCount(0);
+  await dpbRecord(page, "1319", "02-drag-no-bar");
+});
+
+test("#1319 单击手柄：工具条落标题行水平居中、全圆角胶囊", async ({ page }) => {
+  await openDoc(page, ROW_DOC);
+  await setVariant(page, "B");
+  await setMode(page, "edit");
+  const b = panel(page, "B");
+
+  await b
+    .locator('[data-key="category"] [data-testid="dpb-row-handle"]')
+    .click();
+  const ops = b.locator('[data-testid="dpb-ops"]');
+  await expect(ops).toHaveCount(1);
+  await expect(b.locator('[data-testid="dpb-ops-count"]')).toHaveText(
+    "已选 1 项",
+  );
+
+  const head = b.locator(".dpb-b-head");
+  await expect(head.locator('[data-testid="dpb-ops"]')).toHaveCount(1);
+  await expect(b.locator('.dpb-b-body [data-testid="dpb-ops"]')).toHaveCount(0);
+
+  const opsBox = (await ops.boundingBox())!;
+  const headBox = (await head.boundingBox())!;
+  const opsCenter = opsBox.x + opsBox.width / 2;
+  const headCenter = headBox.x + headBox.width / 2;
+  expect(Math.abs(opsCenter - headCenter)).toBeLessThanOrEqual(2);
+
+  const radius = await ops.evaluate((el) =>
+    parseFloat(getComputedStyle(el).borderTopLeftRadius),
+  );
+  expect(radius).toBeGreaterThanOrEqual(999);
+  await dpbRecord(page, "1319", "03-click-bar-centered");
+});
+
+test("#1319 A 态：工具条在标题行内、复制不丢选中", async ({ page }) => {
+  await openDoc(page, ROW_DOC);
+  await setMode(page, "edit");
+  const a = panel(page, "A");
+
+  await a
+    .locator('[data-key="category"] [data-testid="dpb-row-handle"]')
+    .click();
+  const ops = a.locator('[data-testid="dpb-ops"]');
+  await expect(ops).toHaveCount(1);
+  await expect(a.locator(".dpb-a-line [data-testid='dpb-ops']")).toHaveCount(1);
+  await expect(a.locator(".dpb-a-meta [data-testid='dpb-ops']")).toHaveCount(0);
+
+  await a.locator('[data-testid="dpb-ops-copy"]').click();
+  await expect(ops).toHaveCount(1);
+  await expect(a.locator('[data-testid="dpb-ops-count"]')).toHaveText(
+    "已选 1 项",
+  );
+  await expect(a.locator('[data-key="category"].dpb-row-selected')).toHaveCount(
+    1,
+  );
+  await dpbRecord(page, "1319", "04-a-copy-keeps-selection");
+});
+
+test("#1319 已选多行拖动手柄：整块移动且选中集不变", async ({ page }) => {
+  await openDoc(page, ROW_DOC);
+  await setVariant(page, "B");
+  await setMode(page, "edit");
+  const b = panel(page, "B");
+
+  for (const key of ["category", "author", "source"]) {
+    await b
+      .locator(`[data-key="${key}"] [data-testid="dpb-row-handle"]`)
+      .click();
+  }
+  await expect(b.locator('[data-testid="dpb-ops-count"]')).toHaveText(
+    "已选 3 项",
+  );
+
+  const handle = b.locator(
+    '[data-key="author"] [data-testid="dpb-row-handle"]',
+  );
+  const hb = (await handle.boundingBox())!;
+  const note = (await b.locator('[data-key="note"]').boundingBox())!;
+  await page.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(hb.x + hb.width / 2, note.y + note.height * 0.75, {
+    steps: 6,
+  });
+  await page.mouse.up();
+
+  expect(await rowKeys(page, "B")).toEqual([
+    "title",
+    "note",
+    "category",
+    "author",
+    "source",
+  ]);
+  await expect(b.locator(".dpb-row-selected")).toHaveCount(3);
+  await expect(b.locator('[data-testid="dpb-ops-count"]')).toHaveText(
+    "已选 3 项",
+  );
+  await dpbRecord(page, "1319", "05-multiselect-block-move");
+});
+
 test("#1229 A 态拖拽：拖到中间胶囊落在目标位置（不追加到末尾）", async ({
   page,
 }) => {
