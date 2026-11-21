@@ -191,7 +191,7 @@ token 缺失时组件按 `var(--sf-ctrl-height, 27px)` 回落，不静默失效�
 | `--dpb-date-gap` | 6px | footer 内日期项之间的水平间隔，取间距刻度 §3 `--space-6` |
 | `--dpb-lock-size` | 12px | footer 托管日期锁图标；比密集档小一号，弱化存在感 |
 | `--dpb-meta-opacity` | 0.72 | footer 日期与计数的默认不透明度；footer 悬停/聚焦恢复 1 |
-| `--dpb-collapsed-opacity` | 0.35 | 折叠条默认不透明度；滑入/聚焦恢复 1，只改透明度不改布局 |
+| `--dpb-collapsed-opacity` | 0 | 折叠条默认完全透明；滑入/聚焦恢复 1，只改透明度不改布局 |
 | `--dpb-field-font-size` | 1em | 字段名与值的字号；相对面板根（`--type-font-size` / `--editor-font-size`），随正文字号同步 |
 | `--dpb-row-min-height` | 2em | 字段行最小高度；按 em 计，字号变化时同比缩放 |
 | `--dpb-label-max-width` | 16em | B 标签列宽度上限（相对字段字号）；标签列随内容增长到该上限，值列让位，超出才省略号 |

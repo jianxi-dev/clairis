@@ -103,3 +103,4 @@ ledger: append-only
 | 文档属性字段行 | 行内不再渲染类型文字（类型仅图标 + title）；类型图标/字段名/值垂直居中；文本类值输入填满本行（数字等特殊格式保留内在宽度）；字段名/值字号 `1em` 跟随正文（面板标题固定 17px）；行高 `2em`；删除叉号默认 opacity 0，行悬停/聚焦/选中显现 | doc-property-refine-1121 / #1261 | 2026-11-21 |
 | 文档属性时分步进器 | 时分步进按钮从输入框两侧横排 28px 改为输入框右侧竖排 14×13，输入框 40px；时/分两组之间仅隔冒号（实测输入框间距 76px→32px），修正「时分隔得太远」；翻页按钮仍 28px | doc-property-acceptance / O2 | 2026-11-21 |
 | 文档属性标签列上限 | 新增 `--dpb-label-max-width: 16em`（spec §7.2）：B 标签列改 `minmax(0, max-content)` 并加该上限，长名在 cap 内完整、超 cap 才省略号，值列 `minmax(0,1fr)` 让位；A 胶囊 `.dpb-k` 同上限、`.dpb-v` 改 `min-width: 0`；列间不画竖线 | doc-property-acceptance-2 / O1 | 2026-11-21 |
+| 文档属性折叠条全透明 | 取代台账「文档属性 footer 与折叠条」行的折叠透明度：`--dpb-collapsed-opacity` 由 0.35 改为 0（spec §7.2），折叠态完全透明、悬停 / 聚焦恢复 1，只改透明度不改高度 | doc-property-acceptance-2 / O4 | 2026-11-21 |
