@@ -140,7 +140,7 @@ test.describe("页签右键菜单：复制路径与移动到（ui-polish-batch12
         },
       });
     });
-    await items.nth(4).click();
+    await items.nth(5).click();
     await expect
       .poll(() =>
         page.evaluate(
@@ -154,7 +154,7 @@ test.describe("页签右键菜单：复制路径与移动到（ui-polish-batch12
     await boot(page);
     await page.locator('[role="tab"]').first().click({ button: "right" });
     const items = page.locator("[data-tab-menu] > button");
-    await items.nth(6).click();
+    await items.nth(7).click();
 
     await expect
       .poll(() =>
