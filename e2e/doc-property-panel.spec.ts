@@ -1308,12 +1308,50 @@ test("类型选择器：八类菜单直选，选「日期」后编辑器变日�
   await editor
     .locator('[data-testid="dpb-cal-day"][data-date="2026-11-16"]')
     .click();
-  await page.keyboard.press("Enter");
+  await expect(editor).toHaveCount(0);
 
   await setMode(page, "source");
   await expect(page.locator(".cm-content").first()).toContainText(
     "author: 2026-11-16",
   );
+});
+
+test("日期字段：单击日格立即写回并关闭，仅一次；日期时间日格不关闭", async ({
+  page,
+}) => {
+  await openDoc(page, EXTERNAL_DOC);
+  await setMode(page, "edit");
+  const row = panel(page, "A").locator('[data-key="createdate"]');
+  await row.locator('[data-testid="dpb-value"]').click();
+  const dateEditor = row.locator('[data-testid="dpb-datetime-editor"]');
+  await expect(dateEditor).toHaveCount(1);
+  await dateEditor
+    .locator('[data-testid="dpb-cal-day"][data-date="2026-11-20"]')
+    .click();
+  await expect(dateEditor).toHaveCount(0);
+  await expect(row.locator('[data-testid="dpb-value"]')).toHaveText(
+    "2026-11-20",
+  );
+  await setMode(page, "source");
+  await expect(page.locator(".cm-content").first()).toContainText(
+    "createdate: 2026-11-20",
+  );
+
+  await openDoc(page, DATETIME_DOC);
+  await setMode(page, "edit");
+  const dt = panel(page, "A").locator('[data-key="评审时间"]');
+  await dt.locator('[data-testid="dpb-value"]').click();
+  const dtEditor = dt.locator('[data-testid="dpb-datetime-editor"]');
+  await dtEditor
+    .locator('[data-testid="dpb-cal-day"][data-date="2026-11-18"]')
+    .click();
+  await expect(dtEditor).toHaveCount(1);
+  await expect(
+    dtEditor.locator('[data-testid="dpb-datetime-panel"]'),
+  ).toBeVisible();
+  await expect(
+    dtEditor.locator('[data-testid="dpb-datetime-input"]'),
+  ).toHaveValue("2026-11-18T14:30");
 });
 
 test("日期时间字段：单一面板（月历 + 时分步进），组合写回 YYYY-MM-DDTHH:mm", async ({
