@@ -29,13 +29,14 @@
 
 .dpb-v {
   color: var(--app-text);
-  min-width: 1ch;
+  min-width: 0;
   min-height: 1.5em;
 }
 
 .dpb-k {
   color: var(--app-text-3);
   min-width: 0;
+  max-width: var(--dpb-label-max-width, 16em);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -338,7 +339,7 @@
 
 .dpb-b-row {
   display: grid;
-  grid-template-columns: 16px auto 92px minmax(0, 1fr) 18px;
+  grid-template-columns: 16px auto minmax(0, max-content) minmax(0, 1fr) 18px;
   gap: 6px;
   align-items: center;
   min-height: var(--dpb-row-min-height, 2em);
@@ -367,6 +368,7 @@
 .dpb-b-label {
   font-size: 1em;
   color: var(--app-text-3);
+  max-width: var(--dpb-label-max-width, 16em);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

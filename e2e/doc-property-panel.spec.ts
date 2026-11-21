@@ -66,6 +66,14 @@ note: 这是一段很长的属性值，用来验证两行截断与悬停显示�
 # 正文
 `;
 
+const LONG_NAME_DOC = `---
+title: 长字段名
+这是一个很长的字段名称: 值
+---
+
+# 正文
+`;
+
 const COLOR_DOC = `---
 title: 彩色标签
 tags:
@@ -326,7 +334,8 @@ test("B 精排双列：5 列网格 / 静态类型图标 / 底部统计全部字�
   // 类型列已去掉文字，只剩图标宽度（#1261）
   expect(parseFloat(tracks[1])).toBeGreaterThanOrEqual(16);
   expect(parseFloat(tracks[1])).toBeLessThan(30);
-  expect(parseFloat(tracks[2])).toBeCloseTo(92, 1);
+  const shortLabelTrack = parseFloat(tracks[2]);
+  expect(shortLabelTrack).toBeGreaterThan(0);
   expect(parseFloat(tracks[4])).toBeCloseTo(18, 1);
 
   // 预览态每行都有静态类型图标（svg 或字符）
@@ -334,6 +343,83 @@ test("B 精排双列：5 列网格 / 静态类型图标 / 底部统计全部字�
   expect(iconCount).toBe(4);
 
   await expect(b.locator('[data-testid="dpb-count"]')).toHaveText("4 个字段");
+
+  await openDoc(page, LONG_NAME_DOC, "/Users/test/o1-label-track.md");
+  await setVariant(page, "B");
+  const longTracks = await panel(page, "B")
+    .locator('[data-key="这是一个很长的字段名称"]')
+    .evaluate((el) =>
+      getComputedStyle(el)
+        .gridTemplateColumns.split(/\s+/)
+        .filter(Boolean)
+        .map((v) => parseFloat(v)),
+    );
+  expect(longTracks[2]).toBeGreaterThan(shortLabelTrack);
+  expect(longTracks[3]).toBeGreaterThan(0);
+});
+
+test("O1 长字段名：B 标签列自适应完整显示、无竖线，A 胶囊同优先级", async ({
+  page,
+}) => {
+  await openDoc(page, LONG_NAME_DOC, "/Users/test/o1-long-name.md");
+
+  await setVariant(page, "B");
+  const b = panel(page, "B");
+  const row = b.locator('[data-key="这是一个很长的字段名称"]');
+  await expect(row).toHaveCount(1);
+
+  const label = row.locator('[data-testid="dpb-label"]');
+  const labelMetrics = await label.evaluate((el) => ({
+    scrollWidth: el.scrollWidth,
+    clientWidth: el.clientWidth,
+    fontSize: parseFloat(getComputedStyle(el).fontSize),
+  }));
+  expect(labelMetrics.scrollWidth).toBeLessThanOrEqual(
+    labelMetrics.clientWidth,
+  );
+  const labelBox = (await label.boundingBox())!;
+  expect(labelBox.width).toBeLessThanOrEqual(labelMetrics.fontSize * 16 + 1);
+
+  const geo = await row.evaluate((el) => {
+    const cs = getComputedStyle(el);
+    return {
+      tracks: cs.gridTemplateColumns
+        .split(/\s+/)
+        .filter(Boolean)
+        .map(parseFloat),
+      rowBorderLeft: parseFloat(cs.borderLeftWidth),
+      rowBorderRight: parseFloat(cs.borderRightWidth),
+      cells: Array.from(el.children).map((c) => {
+        const s = getComputedStyle(c);
+        return {
+          bl: parseFloat(s.borderLeftWidth),
+          br: parseFloat(s.borderRightWidth),
+        };
+      }),
+    };
+  });
+  expect(geo.rowBorderLeft).toBe(0);
+  expect(geo.rowBorderRight).toBe(0);
+  for (const c of geo.cells) {
+    expect(c.bl).toBe(0);
+    expect(c.br).toBe(0);
+  }
+  expect(geo.tracks[3]).toBeGreaterThan(0);
+
+  await setVariant(page, "A");
+  const chip = panel(page, "A").locator('[data-key="这是一个很长的字段名称"]');
+  await expect(chip).toHaveCount(1);
+  const aLabel = chip.locator('[data-testid="dpb-label"]');
+  const aMetrics = await aLabel.evaluate((el) => ({
+    scrollWidth: el.scrollWidth,
+    clientWidth: el.clientWidth,
+    fontSize: parseFloat(getComputedStyle(el).fontSize),
+  }));
+  expect(aMetrics.scrollWidth).toBeLessThanOrEqual(aMetrics.clientWidth);
+  expect(aMetrics.clientWidth).toBeLessThanOrEqual(aMetrics.fontSize * 16 + 1);
+  expect(
+    (await chip.locator('[data-testid="dpb-value"]').boundingBox())!.width,
+  ).toBeGreaterThan(0);
 });
 
 test("长值两行截断：clientHeight ≈ 2 × line-height，title 为全文", async ({

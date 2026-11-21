@@ -69,6 +69,8 @@
   /* 字段行字号随正文（1em 相对面板根字号），行高按 em 同比缩放（spec §7.2） */
   --dpb-field-font-size: 1em;
   --dpb-row-min-height: 2em;
+  /* B 标签列上限（spec §7.2）：标签列随内容自适应，超 cap 才省略号，值列让位 */
+  --dpb-label-max-width: 16em;
   /* 搜索浮窗控件密度档（design-system §7.1）：输入框 / 替换按钮 / 顶栏共用，
      与文件卡片悬浮窗顶栏计算高度严格相等。 */
   --sf-ctrl-height: 27px;
