@@ -477,12 +477,16 @@ describe("DocPropertyBar 日期时间单面板（#1044）", () => {
         '[data-testid="dpb-cal-day"][data-date="2026-11-18"]',
       )!,
     );
-    fireEvent.change(editor.querySelector('[data-testid="dpb-time-hour"]')!, {
-      target: { value: "14" },
-    });
-    fireEvent.change(editor.querySelector('[data-testid="dpb-time-minute"]')!, {
-      target: { value: "30" },
-    });
+    fireEvent.click(
+      editor.querySelector(
+        '[data-testid="dpb-time-hour-item"][data-value="14"]',
+      )!,
+    );
+    fireEvent.click(
+      editor.querySelector(
+        '[data-testid="dpb-time-minute-item"][data-value="30"]',
+      )!,
+    );
     expect(dispatchRef.current).toHaveLength(0);
 
     fireEvent.keyDown(editor, { key: "Enter" });
@@ -524,9 +528,11 @@ describe("DocPropertyBar 日期时间单面板（#1044）", () => {
         '[data-testid="dpb-cal-day"][data-date="2026-11-18"]',
       )!,
     );
-    fireEvent.change(editor.querySelector('[data-testid="dpb-time-hour"]')!, {
-      target: { value: "18" },
-    });
+    fireEvent.click(
+      editor.querySelector(
+        '[data-testid="dpb-time-hour-item"][data-value="18"]',
+      )!,
+    );
     fireEvent.keyDown(editor, { key: "Escape" });
 
     expect(dispatchRef.current).toHaveLength(0);

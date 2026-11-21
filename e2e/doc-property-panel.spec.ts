@@ -1283,6 +1283,14 @@ title: 时间字段
 # 正文
 `;
 
+const EMPTY_DATETIME_DOC = `---
+title: 空时间
+会议: ""
+---
+
+# 正文
+`;
+
 const ADOPT_DOC = `---
 title: 收编
 priority: 高
@@ -1465,7 +1473,7 @@ test("托管日期：编辑态无输入，双击不出现日期面板", async ({
   await expect(created).toContainText("创建 2026-11-14");
 });
 
-test("日期时间字段：单一面板（月历 + 时分步进），组合写回 YYYY-MM-DDTHH:mm", async ({
+test("日期时间字段：单一面板（月历 + 时分滚轮），组合写回 YYYY-MM-DDTHH:mm", async ({
   page,
 }) => {
   await openDoc(page, DATETIME_DOC);
@@ -1481,7 +1489,7 @@ test("日期时间字段：单一面板（月历 + 时分步进），组合写�
   await expect(
     editor.locator('input[type="date"], input[type="time"]'),
   ).toHaveCount(0);
-  // A-4.2：单一面板内含月历网格 + 时分步进控件
+  // A-4.2：单一面板内含月历网格 + 时分滚轮列
   await expect(editor.locator('[data-testid="dpb-cal-day"]')).toHaveCount(30);
   await expect(editor.locator('[data-testid="dpb-time-hour"]')).toHaveCount(1);
   await expect(editor.locator('[data-testid="dpb-time-minute"]')).toHaveCount(
@@ -1489,28 +1497,33 @@ test("日期时间字段：单一面板（月历 + 时分步进），组合写�
   );
   await dpbRecord(page, "1044", "01-single-panel");
 
-  // A-4.6：WebKit 下步进组不被 input 固有宽度撑开，时分输入保持在面板内
+  // A-4.6：时分滚轮列紧邻日历右侧，且不超出面板
   const panelBox = (await panelEl.boundingBox())!;
+  const gridBox = (await editor
+    .locator('[data-testid="dpb-cal-grid"]')
+    .boundingBox())!;
   const hourBox = (await editor
     .locator('[data-testid="dpb-time-hour"]')
     .boundingBox())!;
   const minuteBox = (await editor
     .locator('[data-testid="dpb-time-minute"]')
     .boundingBox())!;
-  const stepBox = (await editor.locator(".dpb-dt-step").first().boundingBox())!;
-  expect(hourBox.x).toBeGreaterThanOrEqual(panelBox.x);
+  expect(hourBox.x).toBeGreaterThanOrEqual(gridBox.x + gridBox.width);
+  expect(minuteBox.x).toBeGreaterThan(hourBox.x);
   expect(minuteBox.x + minuteBox.width).toBeLessThanOrEqual(
     panelBox.x + panelBox.width,
   );
-  expect(minuteBox.x - (hourBox.x + hourBox.width)).toBeLessThan(60);
-  expect(stepBox.width).toBeLessThan(70);
 
   // A-4.5：面板内操作只改内部状态，不提前提交（面板保持打开）
   await editor
     .locator('[data-testid="dpb-cal-day"][data-date="2026-11-18"]')
     .click();
-  await editor.locator('[data-testid="dpb-time-hour"]').fill("14");
-  await editor.locator('[data-testid="dpb-time-minute"]').fill("30");
+  await editor
+    .locator('[data-testid="dpb-time-hour-item"][data-value="14"]')
+    .click();
+  await editor
+    .locator('[data-testid="dpb-time-minute-item"][data-value="30"]')
+    .click();
   await expect(panelEl).toBeVisible();
 
   // A-4.3 / A-4.4：Enter 提交组合值
@@ -1544,7 +1557,9 @@ test("日期时间面板：Tab 在月历与时分间移动，Esc 取消回原值
   await page.keyboard.press("Tab");
   await expect(editor.locator('[data-testid="dpb-time-minute"]')).toBeFocused();
 
-  await editor.locator('[data-testid="dpb-time-hour"]').fill("18");
+  await editor
+    .locator('[data-testid="dpb-time-hour-item"][data-value="18"]')
+    .click();
   await page.keyboard.press("Escape");
   await expect(editor).toHaveCount(0);
   await expect(row.locator('[data-testid="dpb-value"]')).toHaveText(
@@ -1553,7 +1568,7 @@ test("日期时间面板：Tab 在月历与时分间移动，Esc 取消回原值
   await dpbRecord(page, "1044", "03-esc-cancelled");
 });
 
-test("日期时间面板：分输入框按 Tab 焦点留在面板内，正文首字符仍为 ---", async ({
+test("日期时间面板：分滚轮按 Tab 焦点留在面板内，正文首字符仍为 ---", async ({
   page,
 }) => {
   await openDoc(page, DATETIME_DOC);
@@ -1592,7 +1607,9 @@ test("日期时间面板：分输入框按 Tab 焦点留在面板内，正文首
   expect(state.first).toBe("-");
   await dpbRecord(page, "1257", "02-tab-stays-in-panel");
 
-  await editor.locator('[data-testid="dpb-time-minute"]').fill("58");
+  await editor
+    .locator('[data-testid="dpb-time-minute-item"][data-value="58"]')
+    .click();
   await page.keyboard.press("Enter");
   await expect(panelEl).toHaveCount(0);
   await expect(row.locator('[data-testid="dpb-value"]')).toContainText("14:58");
@@ -1616,8 +1633,12 @@ test("日期时间面板：失焦（点击外部）才提交组合值", async ({
   await editor
     .locator('[data-testid="dpb-cal-day"][data-date="2026-11-18"]')
     .click();
-  await editor.locator('[data-testid="dpb-time-hour"]').fill("09");
-  await editor.locator('[data-testid="dpb-time-minute"]').fill("05");
+  await editor
+    .locator('[data-testid="dpb-time-hour-item"][data-value="09"]')
+    .click();
+  await editor
+    .locator('[data-testid="dpb-time-minute-item"][data-value="05"]')
+    .click();
   await expect(
     editor.locator('[data-testid="dpb-datetime-panel"]'),
   ).toBeVisible();
@@ -1633,6 +1654,103 @@ test("日期时间面板：失焦（点击外部）才提交组合值", async ({
   await dpbRecord(page, "1044", "04-blur-committed");
 });
 
+test("#1318 日期时间：占位格式、空值预置当前、滚轮、清除、提示触发面", async ({
+  page,
+}) => {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  await openDoc(page, EMPTY_DATETIME_DOC, "/Users/test/1318-empty.md");
+  await setMode(page, "edit");
+  const row = panel(page, "A").locator('[data-key="会议"]');
+  await row.locator('[data-testid="dpb-type"]').click();
+  await page
+    .locator('[data-testid="dpb-type-menu"] [data-type="datetime"]')
+    .click();
+
+  await row.locator('[data-testid="dpb-value"]').click();
+  const editor = row.locator('[data-testid="dpb-datetime-editor"]');
+  const input = editor.locator('[data-testid="dpb-datetime-input"]');
+  await expect(editor).toHaveCount(1);
+  await expect(input).toHaveAttribute("placeholder", "YYYY-MM-DD HH:mm");
+
+  const prefilled = await input.inputValue();
+  const [day, clock] = prefilled.split("T");
+  const [ph, pm] = clock.split(":").map(Number);
+  expect(
+    Math.abs(new Date(`${day}T${clock}:00`).getTime() - Date.now()),
+  ).toBeLessThan(120000);
+  await expect(
+    editor.locator('[data-testid="dpb-time-hour-item"].dpb-dt-wheel-sel'),
+  ).toHaveText(pad(ph));
+  await expect(
+    editor.locator('[data-testid="dpb-time-minute-item"].dpb-dt-wheel-sel'),
+  ).toHaveText(pad(pm));
+  await dpbRecord(page, "1318", "empty-open-default-now");
+
+  const gridBox = (await editor
+    .locator('[data-testid="dpb-cal-grid"]')
+    .boundingBox())!;
+  const hourWheel = editor.locator('[data-testid="dpb-time-hour"]');
+  const hourBox = (await hourWheel.boundingBox())!;
+  expect(hourBox.x).toBeGreaterThanOrEqual(gridBox.x + gridBox.width);
+
+  await hourWheel.hover();
+  await page.mouse.wheel(0, ph < 23 ? 32 : -32);
+  await expect
+    .poll(
+      async () => Number((await input.inputValue()).split("T")[1].slice(0, 2)),
+      { timeout: 3000 },
+    )
+    .not.toBe(ph);
+  const scrolled = await input.inputValue();
+  await dpbRecord(page, "1318", "wheels-scrolled");
+
+  await page.keyboard.press("Enter");
+  await expect(editor).toHaveCount(0);
+  await setMode(page, "source");
+  await expect(page.locator(".cm-content").first()).toContainText("会议:");
+  await expect(page.locator(".cm-content").first()).toContainText(scrolled);
+  await setMode(page, "edit");
+
+  await row.locator('[data-testid="dpb-value"]').click();
+  const editor2 = row.locator('[data-testid="dpb-datetime-editor"]');
+  const input2 = editor2.locator('[data-testid="dpb-datetime-input"]');
+  await editor2.locator('[data-testid="dpb-time-hour"]').focus();
+  const hourBeforeArrow = (await input2.inputValue()).slice(11, 13);
+  await page.keyboard.press("ArrowDown");
+  await expect
+    .poll(async () => (await input2.inputValue()).slice(11, 13))
+    .not.toBe(hourBeforeArrow);
+  const foot = editor2.locator(".dpb-dt-foot");
+  const hint = foot.locator(".dpb-dt-hint");
+  const opacity = () =>
+    hint.evaluate((el) => Number(getComputedStyle(el).opacity));
+  await page.mouse.move(4, 4);
+  await expect.poll(opacity, { timeout: 2000 }).toBe(0);
+  await dpbRecord(page, "1318", "hint-hidden-by-default");
+  const footHeight = (await foot.boundingBox())!.height;
+  const hintBox = (await hint.boundingBox())!;
+  await page.mouse.move(hintBox.x - 12, hintBox.y + hintBox.height / 2);
+  await expect.poll(opacity, { timeout: 2000 }).toBe(0);
+  await hint.hover();
+  await expect.poll(opacity, { timeout: 2000 }).toBe(1);
+  expect((await foot.boundingBox())!.height).toBe(footHeight);
+  await dpbRecord(page, "1318", "hint-on-hover");
+
+  await page.mouse.move(4, 4);
+  await foot.locator('[data-testid="dpb-cal-today"]').focus();
+  await page.keyboard.press("Tab");
+  await page.keyboard.press("Tab");
+  await expect.poll(opacity, { timeout: 2000 }).toBe(1);
+
+  await editor2.locator('[data-testid="dpb-dt-clear"]').click();
+  await expect(editor2).toHaveCount(0);
+  await expect(row.locator('[data-testid="dpb-value"]')).toHaveText("");
+  await setMode(page, "source");
+  await expect(page.locator(".cm-content").first()).toContainText('会议: ""');
+  await setMode(page, "edit");
+  await dpbRecord(page, "1318", "cleared");
+});
+
 test("日期字段：自绘面板仅日期，无时分；月/年可切，展示格式紧凑（#1259）", async ({
   page,
 }) => {
@@ -1645,6 +1763,9 @@ test("日期字段：自绘面板仅日期，无时分；月/年可切，展示�
   await expect(
     row.locator('input[type="date"],input[type="time"]'),
   ).toHaveCount(0);
+  await expect(
+    editor.locator('[data-testid="dpb-datetime-input"]'),
+  ).toHaveAttribute("placeholder", "YYYY-MM-DD");
   await expect(editor.locator('[data-testid="dpb-time-hour"]')).toHaveCount(0);
   await expect(editor.locator('[data-testid="dpb-cal-today"]')).toHaveCount(1);
   await dpbRecord(page, "1259", "01-date-panel");
@@ -5186,7 +5307,7 @@ test("O5 footer 收敛：垂直内距收窄 + 预览计数胶囊、编辑态纯�
   await dpbRecord(page, "o5", "04-a-preview-pill");
 });
 
-test("O8 日期选择器底部提示：默认透明，footer 行悬停 / 聚焦显现，高度不变", async ({
+test("O8 日期选择器底部提示：默认透明，仅提示文字自身 hover / 获焦显现，高度不变", async ({
   page,
 }) => {
   const openPanel = async (doc: string, key: string, path: string) => {
@@ -5213,15 +5334,20 @@ test("O8 日期选择器底部提示：默认透明，footer 行悬停 / 聚焦�
     await expect.poll(opacity, { timeout: 2000 }).toBe(0);
     const h = await height();
 
-    await foot.hover();
+    const hintBox = (await hint.boundingBox())!;
+    await page.mouse.move(hintBox.x - 12, hintBox.y + hintBox.height / 2);
+    await expect.poll(opacity, { timeout: 2000 }).toBe(0);
+
+    await hint.hover();
     await expect.poll(opacity, { timeout: 2000 }).toBe(1);
     expect(await height()).toBe(h);
 
     await page.mouse.move(4, 4);
     await expect.poll(opacity, { timeout: 2000 }).toBe(0);
 
-    // footer 内元素获焦（:focus-within）→ 显现；不 blur（blur 会触发面板失焦关闭）
     await foot.locator('[data-testid="dpb-cal-today"]').focus();
+    await page.keyboard.press("Tab");
+    await page.keyboard.press("Tab");
     await expect.poll(opacity, { timeout: 2000 }).toBe(1);
     await dpbRecord(page, "o8", dir);
   };
