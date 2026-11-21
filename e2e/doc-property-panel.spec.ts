@@ -557,6 +557,123 @@ test("O1 长字段名：B 标签列自适应完整显示、无竖线，A 胶囊�
   ).toBeGreaterThan(0);
 });
 
+test("#1313 B 标签列 8 字基准 + 整列对齐 + 长名全显；A 空值输入 ≥200px", async ({
+  page,
+}) => {
+  const rowValueX = (root: Locator) =>
+    root.locator('[data-testid="dpb-row"]').evaluateAll((rows) =>
+      rows.map((r) => {
+        const v = r.querySelector<HTMLElement>(".dpb-b-value");
+        return v ? v.getBoundingClientRect().x : Number.NaN;
+      }),
+    );
+  const labelMetrics = (loc: Locator) =>
+    loc.evaluate((el) => {
+      const cs = getComputedStyle(el);
+      return {
+        clientWidth: el.clientWidth,
+        scrollWidth: el.scrollWidth,
+        width: parseFloat(cs.width),
+        fontSize: parseFloat(cs.fontSize),
+        textAlign: cs.textAlign,
+        textOverflow: cs.textOverflow,
+        overflow: cs.overflow,
+      };
+    });
+
+  await openDoc(page);
+  await setMode(page, "edit");
+  await setVariant(page, "B");
+  const b = panel(page, "B");
+  await expect(b).toBeVisible();
+  await expect(b.locator('[data-testid="dpb-row"]')).toHaveCount(4);
+
+  // (b) 全部名称 ≤8 字时名称列严格取 token（8em），左对齐且不省略
+  const base = await labelMetrics(
+    b.locator('[data-key="count"] [data-testid="dpb-label"]'),
+  );
+  expect(base.textAlign).toBe("left");
+  expect(base.textOverflow).not.toBe("ellipsis");
+  expect(base.overflow).not.toBe("hidden");
+  expect(base.width).toBeCloseTo(base.fontSize * 8, 0);
+
+  // (a) 所有行值列左缘 x 相同（含混合类型图标）
+  const xs = await rowValueX(b);
+  for (const x of xs) expect(Math.abs(x - xs[0])).toBeLessThanOrEqual(1);
+  const shortValueX = xs[0];
+  await dpbRecord(page, "1313", "01-baseline-8em-aligned");
+
+  // (c) 长名完整显示、整列加宽，所有值列一起右移且仍对齐
+  await openDoc(page, LONG_NAME_DOC, "/Users/test/1313-long.md");
+  await setVariant(page, "B");
+  const longRow = b.locator('[data-key="这是一个很长的字段名称"]');
+  await expect(longRow).toHaveCount(1);
+  const longLabel = longRow.locator('[data-testid="dpb-label"]');
+  await expect(longLabel).toHaveText("这是一个很长的字段名称");
+  const longMeta = await labelMetrics(longLabel);
+  expect(longMeta.textOverflow).not.toBe("ellipsis");
+  expect(longMeta.overflow).not.toBe("hidden");
+  expect(longMeta.scrollWidth).toBeLessThanOrEqual(longMeta.clientWidth);
+  expect(longMeta.clientWidth).toBeGreaterThan(longMeta.fontSize * 8 + 1);
+  const longXs = await rowValueX(b);
+  expect(longXs.length).toBe(2);
+  for (const x of longXs)
+    expect(Math.abs(x - longXs[0])).toBeLessThanOrEqual(1);
+  expect(longXs[0]).toBeGreaterThan(shortValueX + 1);
+  await dpbRecord(page, "1313", "02-long-label-widens-all");
+
+  // (d) A 空值文本字段点击后输入区 ≥200px，Esc 取消后输入框消失
+  await openDoc(page, CAPSULE_DOC, "/Users/test/1313-empty.md");
+  await setMode(page, "edit");
+  await setVariant(page, "A");
+  const a = panel(page, "A");
+  const noteRow = a.locator('[data-key="note"]');
+  await expect(noteRow).toHaveCount(1);
+  await noteRow.locator('[data-testid="dpb-value"]').click({ force: true });
+  const input = noteRow.locator('[data-testid="dpb-input"]');
+  await expect(input).toBeVisible();
+  const inputWidth = await input.evaluate(
+    (el) => el.getBoundingClientRect().width,
+  );
+  expect(inputWidth).toBeGreaterThanOrEqual(200);
+  await dpbRecord(page, "1313", "03-a-empty-input-200");
+  await page.keyboard.press("Escape");
+  await expect(noteRow.locator('[data-testid="dpb-input"]')).toHaveCount(0);
+
+  // (e) 改名变长 → 整列重测右移；改回短名 → 回到 8em 基准
+  await openDoc(page);
+  await setMode(page, "edit");
+  await setVariant(page, "B");
+  const beforeX = (await rowValueX(b))[0];
+  await b.locator('[data-key="count"] [data-testid="dpb-label"]').click();
+  const rename = b.locator(
+    '[data-key="count"] [data-testid="dpb-rename-input"]',
+  );
+  await expect(rename).toBeVisible();
+  await rename.fill("一个非常长的字段名称");
+  await rename.press("Enter");
+  await expect(b.locator('[data-key="一个非常长的字段名称"]')).toHaveCount(1);
+  const widenedXs = await rowValueX(b);
+  for (const x of widenedXs)
+    expect(Math.abs(x - widenedXs[0])).toBeLessThanOrEqual(1);
+  expect(widenedXs[0]).toBeGreaterThan(beforeX + 1);
+  await dpbRecord(page, "1313", "04-renamed-wide");
+
+  await b
+    .locator('[data-key="一个非常长的字段名称"] [data-testid="dpb-label"]')
+    .click();
+  const renameBack = b.locator(
+    '[data-key="一个非常长的字段名称"] [data-testid="dpb-rename-input"]',
+  );
+  await expect(renameBack).toBeVisible();
+  await renameBack.fill("count");
+  await renameBack.press("Enter");
+  await expect(b.locator('[data-key="count"]')).toHaveCount(1);
+  const restoredXs = await rowValueX(b);
+  expect(Math.abs(restoredXs[0] - beforeX)).toBeLessThanOrEqual(1);
+  await dpbRecord(page, "1313", "05-renamed-back");
+});
+
 test("长值两行截断：clientHeight ≈ 2 × line-height，title 为全文", async ({
   page,
 }) => {

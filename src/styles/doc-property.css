@@ -330,7 +330,11 @@
 
 .dpb-b-row {
   display: grid;
-  grid-template-columns: 16px auto minmax(0, max-content) minmax(0, 1fr) 18px;
+  /* 标签列基准 --dpb-label-width；组件量到更长名称时用 --dpb-label-col 覆盖 */
+  grid-template-columns: 16px auto max(
+      var(--dpb-label-width, 8em),
+      var(--dpb-label-col, 0px)
+    ) minmax(0, 1fr) 18px;
   gap: 6px;
   align-items: center;
   min-height: var(--dpb-row-min-height, 2em);
@@ -350,18 +354,22 @@
   cursor: grab;
 }
 
+/* 类型图标同宽是值列左缘对齐的前提：auto 轨道会随 Aa / 123 / ◉ 等字形宽度漂移；
+   图标左对齐以保持既有左缘（footer 计数与其对齐）。 */
 .dpb-b-type {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
+  width: 26px;
 }
 
 .dpb-b-label {
   font-size: 1em;
   color: var(--app-text-3);
-  max-width: var(--dpb-label-max-width, 16em);
-  overflow: hidden;
-  text-overflow: ellipsis;
+  text-align: left;
+  max-width: none;
+  overflow: visible;
+  text-overflow: clip;
   white-space: nowrap;
 }
 
@@ -369,6 +377,7 @@
   min-width: 0;
   font-size: 1em;
   color: var(--app-text);
+  text-align: left;
 }
 
 .dpb-b-x {
@@ -649,6 +658,12 @@
   flex: 1 1 auto;
   width: 100%;
   max-width: none;
+}
+
+/* A 一行条空值文本字段的最小可点宽度（D4 / P-4）；只作用于 A 胶囊，不动标题与 chip 列表输入 */
+.dpb-a .dpb-chip .dpb-input[data-field-type="text"],
+.dpb-a .dpb-chip .dpb-input[data-field-type="unknown"] {
+  min-width: 200px;
 }
 
 /* 日期时间：单一面板选择器（#1044）；圆角 / 阴影 / 色取 design-system §5 §6 */
