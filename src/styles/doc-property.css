@@ -414,6 +414,27 @@
   opacity: 1;
 }
 
+/* 控件悬停显隐（O3）：标签叉号 / 形态切换 / 折叠按钮默认透明，
+   悬停父容器或聚焦时显现。只改透明度，占位宽度不变（无 display:none）。 */
+.dpb-tag-x,
+.dpb-variant-toggle,
+.dpb-collapse {
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+
+.dpb-tag:hover .dpb-tag-x,
+.dpb-tag:focus-within .dpb-tag-x,
+.dpb-tag-x:focus-visible,
+.dpb-panel:hover .dpb-variant-toggle,
+.dpb-panel:focus-within .dpb-variant-toggle,
+.dpb-panel:hover .dpb-collapse,
+.dpb-panel:focus-within .dpb-collapse,
+.dpb-variant-toggle:focus-visible,
+.dpb-collapse:focus-visible {
+  opacity: 1;
+}
+
 .dpb-b-foot {
   font-size: var(--dpb-footer-font-size, 11px);
   color: var(--app-text-3);
