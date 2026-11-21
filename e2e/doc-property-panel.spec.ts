@@ -214,7 +214,7 @@ test("预览态：A 一行条只读渲染（千分位 / 开关态 / 标签胶囊
   );
 
   // 预览态没有任何编辑入口（形态切换图标除外）
-  await expect(a.locator('[data-testid="dpb-collapse"]')).toHaveCount(0);
+  await expect(a.locator('[data-testid="dpb-fold-triangle"]')).toHaveCount(0);
   await expect(a.locator(".dpb-row-handle")).toHaveCount(0);
   await expect(a.locator("button")).toHaveCount(1);
   await expect(a.locator('[data-testid="dpb-variant-toggle"]')).toBeVisible();
@@ -266,7 +266,9 @@ test("三模式：源码态面板 display:none，切回编辑恢复展开", asyn
   await setMode(page, "edit");
   await expect(host).toHaveCSS("display", "block");
   await expect(panel(page, "A")).toBeVisible();
-  await expect(page.locator('[data-testid="dpb-collapse"]')).toBeVisible();
+  await expect(
+    page.locator('[data-testid="dpb-fold-triangle"]'),
+  ).toHaveAttribute("aria-expanded", "true");
 });
 
 test("编辑态可折叠，折叠状态跨模式切换保留", async ({ page }) => {
@@ -275,17 +277,111 @@ test("编辑态可折叠，折叠状态跨模式切换保留", async ({ page }) 
   const a = panel(page, "A");
   await expect(a.locator('[data-testid="dpb-row"]')).toHaveCount(3);
 
-  await page.locator('[data-testid="dpb-collapse"]').click();
+  await page.locator('[data-testid="dpb-fold-triangle"]').click();
   await expect(a.locator('[data-testid="dpb-row"]')).toHaveCount(0);
-  await expect(a.locator(".dpb-a-summary")).toContainText("已折叠");
+  await expect(a.locator(".dpb-a-summary")).toHaveCount(0);
 
   await setMode(page, "source");
   await setMode(page, "edit");
   await expect(a.locator('[data-testid="dpb-row"]')).toHaveCount(0);
-  await expect(a.locator(".dpb-a-summary")).toBeVisible();
+  await expect(a.locator(".dpb-a-summary")).toHaveCount(0);
 
-  await page.locator('[data-testid="dpb-collapse"]').click();
+  await page.locator('[data-testid="dpb-fold-triangle"]').click();
   await expect(a.locator('[data-testid="dpb-row"]')).toHaveCount(3);
+});
+
+test("#1317 折叠三角：标题行内倒三角取代右侧文字按钮", async ({ page }) => {
+  const doc = `---\ntitle: 折叠三角\nstatus: 阅读中\nnote: 备注\n---\n\n# 正文\n`;
+  await openDoc(page, doc, "/Users/test/fold-triangle.md");
+  await setMode(page, "edit");
+
+  const toolOrder = (tools: Locator) =>
+    tools
+      .locator("button")
+      .evaluateAll((els) =>
+        els.map((e) => e.getAttribute("data-testid") ?? ""),
+      );
+  const iconAngle = (loc: Locator) =>
+    loc.evaluate((el) => {
+      const t = getComputedStyle(el).transform;
+      if (t === "none") return 0;
+      const m = new DOMMatrixReadOnly(t);
+      return Math.round((Math.atan2(m.b, m.a) * 180) / Math.PI);
+    });
+
+  // B：三角在「文档属性」文本左侧，工具条无折叠按钮
+  await setVariant(page, "B");
+  const b = panel(page, "B");
+  const bTri = b.locator('[data-testid="dpb-fold-triangle"]');
+  await expect(bTri).toHaveAttribute("aria-expanded", "true");
+  // 展开 = 下指（90°）
+  await expect
+    .poll(() => iconAngle(bTri.locator(".dpb-fold-triangle-icon")))
+    .toBe(90);
+  expect((await bTri.boundingBox())!.x).toBeLessThan(
+    (await b.locator(".dpb-b-title").boundingBox())!.x,
+  );
+  expect(await toolOrder(b.locator('[data-testid="dpb-tools"]'))).toEqual([
+    "dpb-add-field",
+    "dpb-template",
+    "dpb-select-all",
+    "dpb-variant-toggle",
+  ]);
+  await dpbRecord(page, "1317", "01-b-triangle-before-title");
+
+  // B 折叠：字段行 0、无「已折叠」文案
+  await bTri.click();
+  await expect(b.locator('[data-testid="dpb-row"]')).toHaveCount(0);
+  await expect(b.locator(".dpb-b-sub")).toHaveCount(0);
+  await expect(bTri).toHaveAttribute("aria-expanded", "false");
+  // 折叠 = 右指（0°）
+  await expect
+    .poll(() => iconAngle(bTri.locator(".dpb-fold-triangle-icon")))
+    .toBe(0);
+  await dpbRecord(page, "1317", "02-b-collapsed-title-only");
+
+  // B 展开：字段行恢复
+  await bTri.click();
+  await expect(b.locator('[data-testid="dpb-row"]')).toHaveCount(3);
+  await dpbRecord(page, "1317", "03-b-expanded-restored");
+
+  // A：三角在文档名称左侧，工具条无折叠按钮
+  await setVariant(page, "A");
+  const a = panel(page, "A");
+  const aTri = a.locator('[data-testid="dpb-fold-triangle"]');
+  await expect(aTri).toHaveAttribute("aria-expanded", "true");
+  expect((await aTri.boundingBox())!.x).toBeLessThan(
+    (await a.locator(".dpb-a-title").boundingBox())!.x,
+  );
+  expect(await toolOrder(a.locator('[data-testid="dpb-tools"]'))).toEqual([
+    "dpb-add-field",
+    "dpb-template",
+    "dpb-select-all",
+    "dpb-variant-toggle",
+  ]);
+
+  // A 折叠：字段行 0、无摘要、无 footer 计数
+  await aTri.click();
+  await expect(a.locator('[data-testid="dpb-row"]')).toHaveCount(0);
+  await expect(a.locator(".dpb-a-summary")).toHaveCount(0);
+  await expect(a.locator('[data-testid="dpb-count"]')).toHaveCount(0);
+  await dpbRecord(page, "1317", "04-a-collapsed-title-only");
+
+  // 悬停显隐：默认 0，标题行悬停 1，折叠态保持 1
+  await aTri.click();
+  await page.mouse.move(4, 4);
+  await page.evaluate(() => (document.activeElement as HTMLElement)?.blur());
+  const opacityOf = () =>
+    aTri.evaluate((el) => Number(getComputedStyle(el).opacity));
+  await expect.poll(opacityOf, { timeout: 2000 }).toBe(0);
+  await a.locator(".dpb-a-line").hover();
+  await expect.poll(opacityOf, { timeout: 2000 }).toBe(1);
+  // 面板内非标题行：三角重新隐没（鼠标留在面板内，避开左侧 rail 悬浮层）
+  await a.locator(".dpb-a-meta").hover();
+  await expect.poll(opacityOf, { timeout: 2000 }).toBe(0);
+  await aTri.click();
+  await expect.poll(opacityOf, { timeout: 2000 }).toBe(1);
+  await dpbRecord(page, "1317", "05-a-collapsed-triangle-visible");
 });
 
 test("A 编辑态：手柄悬出于胶囊左外侧且不占布局，胶囊列间距 16px", async ({
@@ -618,7 +714,11 @@ test("编辑态默认档：折叠与隐藏按模式生效", async ({ page }) => 
   await expect(page.locator('[data-testid="settings-scene"]')).toHaveCount(0);
 
   await expect(a.locator('[data-testid="dpb-row"]')).toHaveCount(0);
-  await expect(a.locator(".dpb-a-summary")).toContainText("已折叠");
+  await expect(a.locator(".dpb-a-summary")).toHaveCount(0);
+  await expect(a.locator('[data-testid="dpb-fold-triangle"]')).toHaveAttribute(
+    "aria-expanded",
+    "false",
+  );
 
   await page.keyboard.press("Meta+,");
   await page.locator('[data-settings-nav="editor"]').click();
@@ -4758,17 +4858,17 @@ test("#1019 编辑态面板展开隐藏 frontmatter 整块，折叠在正文流�
   await dpbRecord(page, "1019", "01-edit-expanded-hidden");
 
   // 折叠：折叠条位于正文流内（原 frontmatter 位置），正文不再出现摘要标签
-  await page.locator('[data-testid="dpb-collapse"]').click();
+  await page.locator('[data-testid="dpb-fold-triangle"]').click();
   await expect(page.locator(".cm-content > .cm-dpb-embed")).toHaveCount(1);
   await expect(page.locator(".cm-fmh-summary")).toHaveCount(0);
   await expect(cm).not.toContainText("title:");
   await expect(
     page.locator('.cm-dpb-embed [data-testid="dpb-a"] .dpb-a-summary'),
-  ).toContainText("已折叠");
+  ).toHaveCount(0);
   await dpbRecord(page, "1019", "02-collapsed-bar-in-body");
 
   // 展开：回到完整卡片
-  await page.locator('[data-testid="dpb-collapse"]').click();
+  await page.locator('[data-testid="dpb-fold-triangle"]').click();
   await expect(
     page.locator('.cm-dpb-embed [data-testid="dpb-a"] .dpb-a-summary'),
   ).toHaveCount(0);
@@ -5002,10 +5102,14 @@ test("#1260 头部按钮居中、footer 顺序/对齐/弱化、L-T 图标、全�
   expect(Math.max(...aCenters) - Math.min(...aCenters)).toBeLessThanOrEqual(1);
   await dpbRecord(page, "1260", "02-a-footer-order");
 
-  await a.locator('[data-testid="dpb-collapse"]').click();
+  await a.locator('[data-testid="dpb-fold-triangle"]').click();
   await page.mouse.move(4, 4);
   await page.evaluate(() => (document.activeElement as HTMLElement)?.blur());
-  await expect(a.getByText(/个字段/)).toHaveCount(1);
+  await expect(a.locator(".dpb-a-summary")).toHaveCount(0);
+  await expect(a.locator('[data-testid="dpb-fold-triangle"]')).toHaveAttribute(
+    "aria-expanded",
+    "false",
+  );
   const opacity = () =>
     a.evaluate((el) => Number(getComputedStyle(el).opacity));
   await expect.poll(opacity, { timeout: 3000 }).toBeLessThan(0.5);
@@ -5291,7 +5395,7 @@ test("#1245 托管日期文档调色板：拖到中间行插入而非追加到�
   await dpbRecord(page, "1245", "06-palette-middle-result");
 });
 
-test("O3 控件悬停显隐：标签叉号 / 形态切换 / 折叠按钮默认透明，悬停或聚焦显现", async ({
+test("O3 控件悬停显隐：标签叉号 / 形态切换 / 折叠三角默认透明，悬停或聚焦显现", async ({
   page,
 }) => {
   const doc = `---\ntitle: 悬停显隐\ntags:\n  - 甲\nstatus: 阅读中\n---\n\n# 正文\n`;
@@ -5310,15 +5414,15 @@ test("O3 控件悬停显隐：标签叉号 / 形态切换 / 折叠按钮默认�
   const tag = b.locator(".dpb-tag").first();
   const tagX = b.locator('[data-testid="dpb-tag-x"]').first();
   const variant = b.locator('[data-testid="dpb-variant-toggle"]');
-  const collapse = b.locator('[data-testid="dpb-collapse"]');
+  const triangle = b.locator('[data-testid="dpb-fold-triangle"]');
 
   await expect.poll(() => opacityOf(tagX), { timeout: 2000 }).toBe(0);
   await expect.poll(() => opacityOf(variant), { timeout: 2000 }).toBe(0);
-  await expect.poll(() => opacityOf(collapse), { timeout: 2000 }).toBe(0);
+  await expect.poll(() => opacityOf(triangle), { timeout: 2000 }).toBe(0);
 
   const tagXWidth = await widthOf(tagX);
   const variantWidth = await widthOf(variant);
-  const collapseWidth = await widthOf(collapse);
+  const triangleWidth = await widthOf(triangle);
 
   await tag.hover();
   await expect.poll(() => opacityOf(tagX), { timeout: 2000 }).toBe(1);
@@ -5326,14 +5430,14 @@ test("O3 控件悬停显隐：标签叉号 / 形态切换 / 折叠按钮默认�
   await page.mouse.move(4, 4);
   await expect.poll(() => opacityOf(tagX), { timeout: 2000 }).toBe(0);
 
-  await b.hover();
+  await b.locator(".dpb-b-head").hover();
   await expect.poll(() => opacityOf(variant), { timeout: 2000 }).toBe(1);
-  await expect.poll(() => opacityOf(collapse), { timeout: 2000 }).toBe(1);
+  await expect.poll(() => opacityOf(triangle), { timeout: 2000 }).toBe(1);
   expect(await widthOf(variant)).toBe(variantWidth);
-  expect(await widthOf(collapse)).toBe(collapseWidth);
+  expect(await widthOf(triangle)).toBe(triangleWidth);
   await page.mouse.move(4, 4);
   await expect.poll(() => opacityOf(variant), { timeout: 2000 }).toBe(0);
-  await expect.poll(() => opacityOf(collapse), { timeout: 2000 }).toBe(0);
+  await expect.poll(() => opacityOf(triangle), { timeout: 2000 }).toBe(0);
 
   await tagX.focus();
   await expect.poll(() => opacityOf(tagX), { timeout: 2000 }).toBe(1);
@@ -5342,7 +5446,7 @@ test("O3 控件悬停显隐：标签叉号 / 形态切换 / 折叠按钮默认�
 
   await variant.focus();
   await expect.poll(() => opacityOf(variant), { timeout: 2000 }).toBe(1);
-  await expect.poll(() => opacityOf(collapse), { timeout: 2000 }).toBe(1);
+  await expect.poll(() => opacityOf(triangle), { timeout: 2000 }).toBe(1);
   await page.evaluate(() => (document.activeElement as HTMLElement)?.blur());
   await expect.poll(() => opacityOf(variant), { timeout: 2000 }).toBe(0);
   await dpbRecord(page, "o3", "01-hover-reveal");
@@ -5356,7 +5460,7 @@ test("O4 折叠全透明：折叠态计算 opacity 0，悬停 / 聚焦恢复 1�
   await setMode(page, "edit");
   await setVariant(page, "B");
   const b = panel(page, "B");
-  await b.locator('[data-testid="dpb-collapse"]').click();
+  await b.locator('[data-testid="dpb-fold-triangle"]').click();
   await expect(b.locator(".dpb-b-body")).toHaveCount(0);
   await page.mouse.move(4, 4);
   await page.evaluate(() => (document.activeElement as HTMLElement)?.blur());
@@ -5375,7 +5479,7 @@ test("O4 折叠全透明：折叠态计算 opacity 0，悬停 / 聚焦恢复 1�
   await page.mouse.move(4, 4);
   await expect.poll(opacity, { timeout: 2000 }).toBe(0);
 
-  await b.locator('[data-testid="dpb-collapse"]').focus();
+  await b.locator('[data-testid="dpb-fold-triangle"]').focus();
   await expect.poll(opacity, { timeout: 2000 }).toBe(1);
   await page.evaluate(() => (document.activeElement as HTMLElement)?.blur());
   await dpbRecord(page, "o4", "01-collapsed-transparent");

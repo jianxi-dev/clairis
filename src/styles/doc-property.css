@@ -245,12 +245,6 @@
   flex: 1;
 }
 
-.dpb-a-summary {
-  font-size: 11px;
-  color: var(--app-text-3);
-  margin-top: 7px;
-}
-
 .dpb-a-meta {
   display: flex;
   flex-wrap: wrap;
@@ -320,11 +314,6 @@
   font-size: 12px;
   font-weight: 650;
   color: var(--app-text-strong);
-}
-
-.dpb-b-sub {
-  font-size: 11px;
-  color: var(--app-text-3);
 }
 
 .dpb-b-tools {
@@ -416,11 +405,11 @@
   opacity: 1;
 }
 
-/* 控件悬停显隐（O3）：标签叉号 / 形态切换 / 折叠按钮默认透明，
+/* 控件悬停显隐（O3）：标签叉号 / 形态切换 / 折叠三角默认透明，
    悬停父容器或聚焦时显现。只改透明度，占位宽度不变（无 display:none）。 */
 .dpb-tag-x,
 .dpb-variant-toggle,
-.dpb-collapse {
+.dpb-fold-triangle {
   opacity: 0;
   transition: opacity 0.12s;
 }
@@ -430,10 +419,16 @@
 .dpb-tag-x:focus-visible,
 .dpb-panel:hover .dpb-variant-toggle,
 .dpb-panel:focus-within .dpb-variant-toggle,
-.dpb-panel:hover .dpb-collapse,
-.dpb-panel:focus-within .dpb-collapse,
-.dpb-variant-toggle:focus-visible,
-.dpb-collapse:focus-visible {
+.dpb-b-head:hover .dpb-fold-triangle,
+.dpb-a-line:hover .dpb-fold-triangle,
+.dpb-panel:focus-within .dpb-fold-triangle,
+.dpb-fold-triangle:focus-visible,
+.dpb-variant-toggle:focus-visible {
+  opacity: 1;
+}
+
+/* 折叠态三角保持可见（D10） */
+.dpb-panel.dpb-collapsed .dpb-fold-triangle {
   opacity: 1;
 }
 
@@ -526,26 +521,36 @@
   padding: 0;
 }
 
-/* ── 折叠按钮 / 隐藏提示 / 空态 ─────────────────────────── */
-.dpb-collapse {
+/* ── 折叠三角 / 隐藏提示 / 空态 ─────────────────────────── */
+.dpb-fold-triangle {
   font: inherit;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 22px;
-  font-size: 11px;
-  border: 1px solid transparent;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-4);
   background: transparent;
   color: var(--app-text-3);
-  border-radius: var(--radius-4);
-  padding: 2px 7px;
   cursor: pointer;
-  white-space: nowrap;
+  flex: 0 0 auto;
 }
 
-.dpb-collapse:hover {
+.dpb-fold-triangle:hover {
   color: var(--app-accent);
   background: var(--app-accent-soft);
+}
+
+.dpb-fold-triangle-icon {
+  display: block;
+  transform: rotate(0deg);
+  transition: transform 120ms ease-out;
+}
+
+.dpb-fold-triangle[aria-expanded="true"] .dpb-fold-triangle-icon {
+  transform: rotate(90deg);
 }
 
 .dpb-tpl-btn {
