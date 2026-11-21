@@ -485,7 +485,7 @@
 
 ### Requirement: P-11 页签信息窗字段显隐入口
 
-页签信息窗 SHALL 在路径行下方新增字段显隐行：文案为「隐藏字段」或「显示字段」（随当前态切换）+「N 个字段」+ 快捷键说明 `⌘⇧Y`。点击 SHALL 切换属性面板显隐（复用 `docPropertyPanel.hidden`，SHALL NOT 新增持久化键）。`N` SHALL 与属性面板 footer 的字段计数同源（同一解析结果），SHALL NOT 单独维护计数。该行 SHALL 仅在该信息窗所属页签为当前活动页签时渲染；非活动页签 SHALL NOT 渲染该行（避免改变当前文档的显隐）。隐藏态下 SHALL NOT 在文档顶部渲染恢复提示条（见 P-1）。
+页签信息窗 SHALL 在路径行下方新增字段显隐行：文案为「隐藏字段」或「显示字段」（随当前态切换）+「N 个字段」+ 快捷键说明 `⌘⇧Y`。点击 SHALL 切换属性面板显隐（复用 `docPropertyPanel.hidden`，SHALL NOT 新增持久化键）。`N` SHALL 与属性面板 footer 的字段计数同源（同一解析结果），SHALL NOT 单独维护计数。显隐行 SHALL 在按钮前置状态图标：面板可见（按钮「隐藏字段」）SHALL 使用 `eyeOff`，面板隐藏（按钮「显示字段」）SHALL 使用 `eye`；两图标 SHALL 经 `src/ui/icons.ts` 注册表渲染并成对存在（可逆动作成对），SHALL NOT 内联一次性 SVG。该行 SHALL 仅在该信息窗所属页签为当前活动页签时渲染；非活动页签 SHALL NOT 渲染该行（避免改变当前文档的显隐）。隐藏态下 SHALL NOT 在文档顶部渲染恢复提示条（见 P-1）。
 
 #### Scenario: 隐藏后从信息窗恢复
 

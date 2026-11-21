@@ -65,3 +65,11 @@
 | A-8.1 | state-machine | 拖动手柄完成排序后 `.dpb-ops` 节点数 | 拖动→0 | #1311 / design D10 |
 | A-8.2 | state-machine | 单击手柄后 `.dpb-ops` 节点数 | 单击→1 | #1311 / design D10 |
 | A-8.3 | exact | 工具条中心与标题行中心水平偏差 | ≤ 2px | #1311 / design D10 |
+
+## R-9 信息窗显隐行图标（tasks 9.1）
+
+| id | kind | claim | assert | source |
+|---|---|---|---|---|
+| A-9.1 | exact | 面板可见时显隐行图标的 `data-icon` | "eyeOff" | #1311 补充（2026-11-21） / design D11 |
+| A-9.2 | exact | 面板隐藏时显隐行图标的 `data-icon` | "eye" | #1311 补充 / design D11 |
+| A-9.3 | state-machine | 点击显隐切换后图标与按钮文案的同步 | 点击→图标与文案同时切换 | #1311 补充 / design D11 |

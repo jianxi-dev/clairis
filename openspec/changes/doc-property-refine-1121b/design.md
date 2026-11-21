@@ -57,6 +57,10 @@ A 模式空值字段的输入区默认 `min-width` 取 200px（或 16ch，取较
 - **日期 / 日期时间**：值区占位符显示格式 `YYYY-MM-DD` / `YYYY-MM-DD HH:mm`；空字段打开面板时预置当天日期与当前时刻（不是 00:00）；时间选择改为日历右侧的滚轮列（时 + 分，scroll-snap，选中行高亮），日期面板保持仅月历；面板 footer 增加「清除」按钮，点击写回空值并关闭；`.dpb-dt-hint` 的触发面收窄到提示文字自身 hover 或获得键盘焦点，不再是整条 footer 行。
 - **手柄与工具条**：单击行手柄才选中并显示 `.dpb-ops`；拖动排序走原落点逻辑，但不调用 `applySelection`、不改变选中集、不弹工具条。`.dpb-ops` 从 body 顶部一行改为悬浮在标题行水平居中的胶囊（全圆角、中性表面色）。
 
+### D11 信息窗显隐行图标
+
+显隐行按钮前置状态图标，复用图标注册表的成对概念（§2.4 可逆动作成对）：面板可见（按钮「隐藏字段」）渲染 `eyeOff`，面板隐藏（按钮「显示字段」）渲染 `eye`；图标经 `src/ui/icons.ts` 渲染，不内联一次性 SVG。图标只做状态指示，不新增点击区，不改计数与 `⌘⇧Y` 说明。
+
 ## 数据面
 
 | 落点 | 位置 | 载体/符号 | 判据 |
@@ -65,7 +69,7 @@ A 模式空值字段的输入区默认 `min-width` 取 200px（或 16ch，取较
 | 存储 | src/styles/tokens.css | --dpb-chip-height | 唯一数值定义处，组件不写死像素 |
 | 校验 | src/styles/doc-property.css | dpb-chip | 组件只消费变量，回退值不得成为第二真相源 |
 | 桥接 | src/components/Content/DocPropertyBar.tsx | dpb-label-width | 列宽读变量，超长时整列一起加宽 |
-| 消费 | src/ui/icons.ts | foldTriangle | 折叠三角走注册表，不得内联一次性 SVG |
+| 消费 | src/ui/icons.ts | foldTriangle, eyeOff | 折叠三角与信息窗显隐图标走注册表，不得内联一次性 SVG |
 | 回滚 | src/editors/decorations/frontmatterHide.ts | createFrontmatterHideDecorations | 隐藏语义单一出口，回滚只切 hide 分支并回落到显示态 |
 
 ## 规格冲突（Δ 清单）

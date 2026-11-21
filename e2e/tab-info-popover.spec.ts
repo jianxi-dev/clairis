@@ -1,4 +1,5 @@
-import { mkdirSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import path from "node:path";
 import { test, expect, type Locator, type Page } from "@playwright/test";
 
 /**
@@ -28,6 +29,33 @@ async function shot(page: Page, name: string) {
 async function shot1181(page: Page, name: string) {
   mkdirSync(ART_1181, { recursive: true });
   await page.screenshot({ path: `${ART_1181}/${name}.png` });
+}
+
+/** #1329 证据采集：截图落 .artifacts/1329/ 并合并 state-coverage.json。 */
+async function recordState(page: Page, state: string): Promise<void> {
+  const ART = path.resolve(process.cwd(), ".artifacts/1329");
+  mkdirSync(ART, { recursive: true });
+  const file = path.join(ART, `${state}.png`);
+  await page.screenshot({ path: file });
+  const manifest = path.join(ART, "state-coverage.json");
+  let states: Array<Record<string, string>> = [];
+  try {
+    states = JSON.parse(readFileSync(manifest, "utf8")).states ?? [];
+  } catch {
+    states = [];
+  }
+  states = states.filter((s) => s.state !== state);
+  states.push({
+    state,
+    screenshot: path.relative(process.cwd(), file),
+    assertion: "passed",
+    recorded_at: new Date().toISOString(),
+    runner: `${process.env.USER ?? "unknown"}@${process.env.HOSTNAME ?? "unknown"}`,
+  });
+  writeFileSync(
+    manifest,
+    `${JSON.stringify({ task: "1329", states }, null, 2)}\n`,
+  );
 }
 
 async function activeTab(page: Page): Promise<Locator> {
@@ -166,6 +194,72 @@ test("字段显隐行仅活动页签渲染，点击不关闭信息窗（#1314 / 
   await toggle.click();
   await expect(info).toBeVisible();
   await expect(toggle).toHaveText("显示字段");
+});
+
+test("字段显隐行前置状态图标随面板同步切换，无内联 SVG（#1329 / D11）", async ({
+  page,
+}) => {
+  await boot(page, FILE_A);
+  const info = page.locator(INFO);
+  await (await activeTab(page)).hover();
+  await expect(info).toBeVisible({ timeout: 3000 });
+
+  const row = info.getByTestId("tab-info-fields");
+  const toggle = row.getByTestId("tab-info-fields-toggle");
+  const icon = row.getByTestId("tab-info-fields-icon");
+
+  // A-9.1：面板可见 → 按钮「隐藏字段」+ eyeOff；计数与快捷键说明仍在
+  await expect(toggle).toHaveText("隐藏字段");
+  await expect(icon.locator("svg[data-icon]")).toHaveAttribute(
+    "data-icon",
+    "eyeOff",
+  );
+  await expect(row).toContainText("0 个字段");
+  await expect(row).toContainText("⌘⇧Y");
+  await expect(row.locator("svg:not([data-icon])")).toHaveCount(0);
+  await recordState(page, "visible-row");
+
+  // A-9.2/A-9.3：点击后文案变「显示字段」、图标同步切到 eye
+  await toggle.click();
+  await expect(toggle).toHaveText("显示字段");
+  await expect(icon.locator("svg[data-icon]")).toHaveAttribute(
+    "data-icon",
+    "eye",
+  );
+  await expect(row.locator("svg:not([data-icon])")).toHaveCount(0);
+  await recordState(page, "hidden-state-eye");
+
+  // A-9.3：再次点击回到 eyeOff，切换不含残留旧图标
+  await toggle.click();
+  await expect(toggle).toHaveText("隐藏字段");
+  await expect(icon.locator("svg[data-icon]")).toHaveAttribute(
+    "data-icon",
+    "eyeOff",
+  );
+  await expect(row.locator("svg:not([data-icon])")).toHaveCount(0);
+  await recordState(page, "restored-row");
+
+  // 第四态：非活动页签不渲染显隐行（P-11 活动页签限定）
+  await page.evaluate(
+    ([p, c]) => {
+      const w = window as unknown as Record<string, unknown>;
+      (w.__biaoyue_openFile__ as (a: string, b: string, t: string) => void)(
+        p,
+        c,
+        "第二篇.md",
+      );
+    },
+    [FILE_B, DOC],
+  );
+  await page.mouse.move(900, 620);
+  await expect(info).toHaveCount(0, { timeout: 3000 });
+  const firstTab = page.locator("[data-tab-id]").filter({
+    hasText: "招待明细",
+  });
+  await firstTab.first().hover();
+  await expect(info).toBeVisible({ timeout: 3000 });
+  await expect(info.getByTestId("tab-info-fields")).toHaveCount(0);
+  await recordState(page, "inactive-tab-row-absent");
 });
 
 test("信息窗提供复制路径与复制文件两个动作（A-3.1/A-3.2/A-3.3）", async ({

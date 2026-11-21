@@ -216,6 +216,33 @@
           "source": "#1311 / design D10"
         }
       ]
+    },
+    {
+      "id": "R-9",
+      "text": "信息窗显隐行图标（tasks 9.1）",
+      "anchors": [
+        {
+          "id": "A-9.1",
+          "claim": "面板可见时显隐行图标的 `data-icon`",
+          "kind": "exact",
+          "assert": "\"eyeOff\"",
+          "source": "#1311 补充（2026-11-21） / design D11"
+        },
+        {
+          "id": "A-9.2",
+          "claim": "面板隐藏时显隐行图标的 `data-icon`",
+          "kind": "exact",
+          "assert": "\"eye\"",
+          "source": "#1311 补充 / design D11"
+        },
+        {
+          "id": "A-9.3",
+          "claim": "点击显隐切换后图标与按钮文案的同步",
+          "kind": "state-machine",
+          "assert": "点击→图标与文案同时切换",
+          "source": "#1311 补充 / design D11"
+        }
+      ]
     }
   ]
 }
