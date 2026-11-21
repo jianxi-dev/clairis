@@ -10,6 +10,7 @@ import {
   dedupeKeys,
   findTitleField,
   formatFrontmatterValue,
+  inferFrontmatterType,
   isManagedDateKey,
   managedDateDisplay,
   mergeManagedDates,
@@ -71,7 +72,7 @@ describe("frontmatter parse", () => {
     expect(r.block).toBe(DOC.slice(p.start, p.end));
   });
 
-  it("类型推断：值可推断 + 纯文本未知", () => {
+  it("类型推断：值可推断 + 纯文本 text", () => {
     const p = parseFrontmatter(DOC);
     const m = byKey(p.fields);
     expect(m.count.type).toBe("number");
@@ -80,7 +81,7 @@ describe("frontmatter parse", () => {
     expect(m.updated.type).toBe("datetime");
     expect(m.tags.type).toBe("array");
     expect(m.title.type).toBe("text");
-    expect(m["custom-note"].type).toBe("unknown");
+    expect(m["custom-note"].type).toBe("text");
   });
 
   it("别称命中赋类型，显示名保持原键样", () => {
@@ -90,7 +91,7 @@ describe("frontmatter parse", () => {
     expect(m.createdate.type).toBe("date");
     expect(m.createdate.key).toBe("createdate");
     expect(m.title.type).toBe("text");
-    expect(m.priority.type).toBe("unknown");
+    expect(m.priority.type).toBe("text");
     expect(m.priority.key).toBe("priority");
   });
 
@@ -543,7 +544,7 @@ describe("parseFrontmatter with aliasMap", () => {
     const withMap = byKey(parseFrontmatter(DOC, { customdate: "date" }).fields);
     expect(withMap.customdate.type).toBe("date");
     const without = byKey(parseFrontmatter(DOC).fields);
-    expect(without.customdate.type).toBe("unknown");
+    expect(without.customdate.type).toBe("text");
     expect(without.createdate.type).toBe("date");
   });
 });
@@ -596,6 +597,27 @@ describe("normalizePropAliasMap", () => {
     expect(normalizePropAliasMap(null).config).toEqual({});
     expect(normalizePropAliasMap(undefined).config).toEqual({});
     expect(normalizePropAliasMap({}).config).toEqual({});
+  });
+});
+
+describe("inferFrontmatterType", () => {
+  it("纯字符串回退 text（含中文、空串与数字串）", () => {
+    expect(inferFrontmatterType("hello")).toBe("text");
+    expect(inferFrontmatterType("高")).toBe("text");
+    expect(inferFrontmatterType("")).toBe("text");
+    expect(inferFrontmatterType("42")).toBe("text");
+  });
+
+  it("日期 / 日期时间 / 数字 / 布尔 / 数组行为不变", () => {
+    expect(inferFrontmatterType("2026-11-14")).toBe("date");
+    expect(inferFrontmatterType("2026-11-15T10:30:00")).toBe("datetime");
+    expect(inferFrontmatterType(42)).toBe("number");
+    expect(inferFrontmatterType(true)).toBe("boolean");
+    expect(inferFrontmatterType(["甲", "乙"])).toBe("array");
+  });
+
+  it("非字符串不可推断值仍为 unknown", () => {
+    expect(inferFrontmatterType({ a: 1 })).toBe("unknown");
   });
 });
 
