@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { findFrontmatterBlock } from "../editors/decorations/frontmatterHide";
 import {
   ALIAS,
   BUILTIN_ALIAS_MAP,
@@ -385,6 +386,33 @@ describe("外部文档兜底解析（#1258）", () => {
     expect(r.text).toContain("state: 阅读中");
     expect(r.text).not.toContain("status:");
     expect(r.text.indexOf("state:")).toBeGreaterThan(r.text.indexOf("rating:"));
+  });
+});
+
+describe("frontmatter 块边界（#1276 / #1277）", () => {
+  it("闭合围栏后的空行不并入块", () => {
+    const doc = `---\ntitle: t\n---\n\n\n\n# 正文\n`;
+    const p = parseFrontmatter(doc);
+    expect(p.present).toBe(true);
+    expect(doc.slice(p.start, p.end)).toBe("---\ntitle: t\n---\n");
+  });
+
+  it("findFrontmatterBlock.bodyStart 只到围栏换行后，不跳过空行", () => {
+    const doc = `---\ntitle: t\n---\n\n\n# 正文\n`;
+    const block = findFrontmatterBlock(doc)!;
+    expect(block.bodyStart).toBe(doc.lastIndexOf("\n---") + 5);
+  });
+
+  it("opening fence 前有空格/Tab 仍可解析，首次写回归位并保留正文", () => {
+    const doc = `  \t---\ntitle: t\n---\n\n正文\n`;
+    const p = parseFrontmatter(doc);
+    expect(p.present).toBe(true);
+    expect(p.fields[0].key).toBe("title");
+    const r = setFrontmatterField(doc, "title", "修复");
+    expect(r.text.startsWith("---\n")).toBe(true);
+    expect(r.text).toContain("title: 修复");
+    expect(r.text).toContain("正文");
+    expect(r.text).not.toContain("  \t---");
   });
 });
 

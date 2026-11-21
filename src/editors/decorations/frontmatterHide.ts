@@ -49,7 +49,12 @@ export function findFrontmatterBlock(text: string): FrontmatterBlock | null {
   // 正则锚定在文首且含 `[\s\S]*?`：先做两次原生预检，避免无闭合围栏的
   // 大文档在每次输入时整篇扫描。
   const bom = text.charCodeAt(0) === 0xfeff ? 1 : 0;
-  if (!text.startsWith("---", bom) || text.indexOf("\n---", bom) === -1) {
+  const lead = /^[ \t]*/.exec(text.slice(bom))?.[0].length ?? 0;
+  const fenceAt = bom + lead;
+  if (
+    !text.startsWith("---", fenceAt) ||
+    text.indexOf("\n---", fenceAt) === -1
+  ) {
     return null;
   }
   const match = FRONTMATTER_RE.exec(text);
@@ -64,10 +69,10 @@ export function findFrontmatterBlock(text: string): FrontmatterBlock | null {
     const nl = text.indexOf("\n", lineStart);
     const lineEnd = nl === -1 ? text.length : nl;
     if (text.slice(lineStart, lineEnd).trimEnd() === "---") {
+      // 只前进到闭合围栏行的换行之后；块后空行属于正文，不能被块 widget 吞掉
+      // （否则首行回车不重排，且 resolveBlock 可能返回 null，#1276）。
       let bodyStart = lineEnd;
       if (bodyStart < text.length && text[bodyStart] === "\n") bodyStart += 1;
-      while (bodyStart < text.length && text[bodyStart] === "\n")
-        bodyStart += 1;
       return { start, blockEnd: lineEnd, bodyStart };
     }
     if (nl === -1) return null;
