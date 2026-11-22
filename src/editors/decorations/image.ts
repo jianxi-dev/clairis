@@ -664,46 +664,79 @@ class ImageWidget extends WidgetType {
       img.alt = this._alt;
       img.style.maxWidth = "100%";
       img.style.display = "block";
+      let mounted: HTMLElement = img;
+      // 圆角承载元素：默认 img；无 width 裁剪路径下 img 被 transform: scale
+      // 缩放，圆角得放在显示域的窗口上，否则有效半径 = token × scale。
+      let roundHost: HTMLElement = img;
       if (this._crop) {
-        // 裁剪显示：盒子=裁剪矩形，object-fit:none 把内容平移到 (left,top)。
-        // 有 width 属性时盒宽取该缩放锚点、比例锁裁剪矩形（与预览态一致，
-        // 裁剪后不自动缩小）；无 width 时按整图显示缩放换算。
+        // 裁剪显示（#1349 / E-44）：无 width 属性时用窗口 overflow:hidden +
+        // img 取原图矩形尺寸 + transform: scale(scale)，img 显示尺寸严格等于
+        // 裁剪矩形 × scale，与裁剪框预览同一套坐标系。
         const [l, t, w, h] = this._crop;
-        img.style.objectFit = "none";
-        img.style.objectPosition = `${-l}px ${-t}px`;
         if (this._width !== null) {
+          // width 属性是可见部分显示宽：img 即盒，锁比例让 maxWidth 夹持时
+          // 高度跟随（既有缩放锚点语义，#840 A-7.2）。
+          img.style.objectFit = "none";
+          img.style.objectPosition = `${-l}px ${-t}px`;
           img.style.width = `${this._width}px`;
           img.style.aspectRatio = `${w} / ${h}`;
           img.style.height = "auto";
         } else {
+          const win = document.createElement("span");
+          win.className = "image-crop-window";
+          win.style.overflow = "hidden";
+          win.style.display = "inline-block";
+          win.style.position = "relative";
+          win.style.maxWidth = "100%";
+          img.style.position = "absolute";
+          img.style.left = "0px";
+          img.style.top = "0px";
+          img.style.maxWidth = "none";
+          img.style.objectFit = "none";
+          img.style.objectPosition = `${-l}px ${-t}px`;
           img.style.width = `${w}px`;
           img.style.height = `${h}px`;
+          img.style.transformOrigin = "0 0";
+          win.appendChild(img);
           const applyCropScale = (): void => {
             if (!img.isConnected || img.naturalWidth <= 0) return;
+            const prevDisplay = win.style.display;
             const prev = {
-              objectFit: img.style.objectFit,
-              objectPosition: img.style.objectPosition,
               width: img.style.width,
               height: img.style.height,
+              transform: img.style.transform,
+              maxWidth: img.style.maxWidth,
+              position: img.style.position,
+              objectFit: img.style.objectFit,
+              objectPosition: img.style.objectPosition,
             };
-            img.style.objectFit = "";
-            img.style.objectPosition = "";
+            win.style.display = "contents";
             img.style.width = "";
             img.style.height = "";
+            img.style.transform = "";
+            img.style.maxWidth = "100%";
+            img.style.position = "";
+            img.style.objectFit = "";
+            img.style.objectPosition = "";
             const fullW = img.getBoundingClientRect().width;
-            img.style.objectFit = prev.objectFit;
-            img.style.objectPosition = prev.objectPosition;
+            win.style.display = prevDisplay;
             img.style.width = prev.width;
             img.style.height = prev.height;
+            img.style.transform = prev.transform;
+            img.style.maxWidth = prev.maxWidth;
+            img.style.position = prev.position;
+            img.style.objectFit = prev.objectFit;
+            img.style.objectPosition = prev.objectPosition;
             const scale = fullW / img.naturalWidth;
-            if (scale > 0 && scale < 1) {
-              img.style.objectPosition = `${-l * scale}px ${-t * scale}px`;
-              img.style.width = `${w * scale}px`;
-              img.style.height = `${h * scale}px`;
-            }
+            if (!(scale > 0)) return;
+            win.style.width = `${w * scale}px`;
+            win.style.height = `${h * scale}px`;
+            img.style.transform = `scale(${scale})`;
           };
           requestAnimationFrame(applyCropScale);
           img.addEventListener("load", applyCropScale);
+          mounted = win;
+          roundHost = win;
         }
       } else {
         if (this._width !== null) {
@@ -721,9 +754,16 @@ class ImageWidget extends WidgetType {
         }
       }
       // 圆角取 --media-radius：与视频块（editor.css / reader.css）同一 token，
-      // 预览态与编辑态不会对各自为政（#906 B8）。
-      img.style.clipPath = "inset(0 round var(--media-radius))";
-      container.appendChild(img);
+      // 预览态与编辑态不会对各自为政（#906 B8）。无 width 裁剪路径下 img 被
+      // scale 缩放，圆角必须落在显示域承载（wrapper）上，否则被同倍缩小。
+      const CLIP_ROUNDED = "inset(0 round var(--media-radius))";
+      if (roundHost === img) {
+        img.style.clipPath = CLIP_ROUNDED;
+      } else {
+        img.style.clipPath = "none";
+        roundHost.style.clipPath = CLIP_ROUNDED;
+      }
+      container.appendChild(mounted);
     } else {
       appendUnresolvedPlaceholder(container, "image", this._path);
     }

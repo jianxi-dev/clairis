@@ -1,0 +1,61 @@
+{
+  "states": [
+    {
+      "state": "01-crop-open",
+      "screenshot": ".artifacts/1349/01-crop-open.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-22T13:17:01Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "02-crop-drag",
+      "screenshot": ".artifacts/1349/02-crop-drag.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-22T13:17:01Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "03-crop-saved",
+      "screenshot": ".artifacts/1349/03-crop-saved.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-22T13:17:01Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "07-crop-save-button",
+      "screenshot": ".artifacts/1349/07-crop-save-button.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-22T13:17:03Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "04-crop-loading-gate",
+      "screenshot": ".artifacts/1349/04-crop-loading-gate.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-22T13:17:08Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "08-crop-after-load",
+      "screenshot": ".artifacts/1349/08-crop-after-load.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-22T13:17:10Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "05-crop-rebuilt-save",
+      "screenshot": ".artifacts/1349/05-crop-rebuilt-save.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-22T13:17:12Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "06-crop-esc-clear",
+      "screenshot": ".artifacts/1349/06-crop-esc-clear.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-22T13:17:13Z",
+      "runner": "unknown@MMBP"
+    }
+  ],
+  "task": "1349-crop-coordinate"
+}
