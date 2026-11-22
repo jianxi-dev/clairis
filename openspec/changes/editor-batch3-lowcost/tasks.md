@@ -42,7 +42,7 @@
   - e2e：`e2e/math-edit.spec.ts`（浮层往返 + display 判定 + 占位）
   - **数据面**: 无
 
-- [ ] 2.2 `[change=editor-batch3-lowcost/2.2]` 附件卡 + 音频（T3）
+- [x] 2.2 `[change=editor-batch3-lowcost/2.2]` 附件卡 + 音频（T3）
   - `src/editors/decorations/image.ts` 的 `MediaWidget` file 分支改附件卡：11 类类型图标（类型色）、文件名、大小（Tauri metadata 格式化）、点击系统打开
   - `src-tauri/src/commands/file.rs` 新增 `open_file_external`（macOS `open`、Windows `explorer`、Linux `xdg-open`），与 `reveal_path` 同构；`lib.rs` 的 `generate_handler` 注册
   - `MediaWidget` 已把非图片归为 `file`，`classifyFileEmbed` 对本地音频返回 null，音频现在落进裸链接卡；在 `MediaWidget` 增加音频分支（或 `classifyMedia` 增加 `"audio"`），渲染 `<audio controls>`；不改 `classifyFileEmbed` 的 http(s) 分支；pdf/md/html/web 保持内嵌

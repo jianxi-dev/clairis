@@ -1,0 +1,10 @@
+{
+  "task": "2.2",
+  "states": [
+    { "state": "open-card", "screenshot": "e2e/media-attachment.spec.ts:44", "assertion": "passed" },
+    { "state": "click-open", "screenshot": "e2e/media-attachment.spec.ts:65", "assertion": "passed" },
+    { "state": "audio", "screenshot": "e2e/media-attachment.spec.ts:78", "assertion": "passed" },
+    { "state": "embedded-docs", "screenshot": "e2e/media-attachment.spec.ts:90", "assertion": "passed" },
+    { "state": "no-copy", "screenshot": "e2e/media-attachment.spec.ts:100", "assertion": "passed" }
+  ]
+}
