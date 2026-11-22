@@ -1,0 +1,40 @@
+{
+  "states": [
+    {
+      "state": "default",
+      "screenshot": ".artifacts/1353/01-default.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-22T08:45:03Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "typing",
+      "screenshot": ".artifacts/1353/02-typing.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-22T08:45:03Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "convert-insert",
+      "screenshot": ".artifacts/1353/03-convert-insert.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-22T08:45:04Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "hover",
+      "screenshot": ".artifacts/1353/04-hover.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-22T08:45:05Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "scrolled-out",
+      "screenshot": ".artifacts/1353/05-scrolled-out.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-22T08:45:05Z",
+      "runner": "unknown@MMBP"
+    }
+  ],
+  "task": "1353-handle-incremental"
+}
