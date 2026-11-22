@@ -1,0 +1,9 @@
+{
+  "task": "2.1",
+  "states": [
+    { "state": "overlay-open", "screenshot": "e2e/math-edit.spec.ts:37", "assertion": "passed" },
+    { "state": "outside-commit", "screenshot": "e2e/math-edit.spec.ts:90", "assertion": "passed" },
+    { "state": "display", "screenshot": "e2e/math-edit.spec.ts:105", "assertion": "passed" },
+    { "state": "placeholder", "screenshot": "e2e/math-edit.spec.ts:115", "assertion": "passed" }
+  ]
+}

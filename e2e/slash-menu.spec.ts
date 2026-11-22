@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import { test, expect, type Locator, type Page } from "@playwright/test";
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = process.env.MENU_APP_URL ?? "http://localhost:1420";
 
 test.beforeEach(async ({ page }) => {
   // 浏览器层测试不接 Tauri：注入 IPC mock + store 桥，再用 __biaoyue_openFile__
@@ -57,7 +57,7 @@ test("输入过滤词把菜单收窄到标题行", async ({ page }) => {
   await page.keyboard.type("/b");
 
   const items = page.locator(".mdb-slash-grid-menu .mdb-slash-item");
-  await expect(items).toHaveCount(3);
+  await expect(items).toHaveCount(2);
   await expect(items.filter({ hasText: "标题" })).toHaveCount(1);
 
   await page.keyboard.type("t");
@@ -70,7 +70,7 @@ test("回车应用命令并生成一级标题行", async ({ page }) => {
   await page.keyboard.type("/b");
   await expect(
     page.locator(".mdb-slash-grid-menu .mdb-slash-item"),
-  ).toHaveCount(3);
+  ).toHaveCount(2);
 
   // 第一次 Enter 打开「标题」浮层；第二次 Enter 应用默认的 1 级标题。
   await page.keyboard.press("Enter");

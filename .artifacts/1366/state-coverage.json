@@ -1,0 +1,9 @@
+{
+  "task": "3.1",
+  "states": [
+    { "state": "1440-5col", "screenshot": "e2e/grid-responsive.spec.ts:70", "assertion": "passed" },
+    { "state": "1024-4col", "screenshot": "e2e/grid-responsive.spec.ts:70", "assertion": "passed" },
+    { "state": "800-3col", "screenshot": "e2e/grid-responsive.spec.ts:70", "assertion": "passed" },
+    { "state": "300-1col", "screenshot": "e2e/grid-responsive.spec.ts:70", "assertion": "passed" }
+  ]
+}
