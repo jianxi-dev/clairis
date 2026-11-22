@@ -245,6 +245,56 @@ async fn reveal_path(target: &Path) -> std::io::Result<()> {
     }
 }
 
+/// 用系统默认应用打开文件（不读取内容）。平台分支与 `reveal_path` 同构：
+/// macOS `open`、Windows `explorer`、Linux `xdg-open`。
+#[tauri::command]
+pub async fn open_file_external(path: String) -> Result<(), AppError> {
+    let target = PathBuf::from(&path);
+    open_path_external(&target).await.map_err(|e| AppError::Io {
+        context: format!("open_file_external: {path}"),
+        source: e,
+    })
+}
+
+#[cfg(target_os = "macos")]
+async fn open_path_external(target: &Path) -> std::io::Result<()> {
+    let status = tokio::process::Command::new("open")
+        .arg(target)
+        .status()
+        .await?;
+    if status.success() {
+        Ok(())
+    } else {
+        Err(std::io::Error::other(format!("open 退出码 {status}")))
+    }
+}
+
+#[cfg(target_os = "windows")]
+async fn open_path_external(target: &Path) -> std::io::Result<()> {
+    let status = tokio::process::Command::new("explorer")
+        .arg(target)
+        .status()
+        .await?;
+    if status.success() {
+        Ok(())
+    } else {
+        Err(std::io::Error::other(format!("explorer 退出码 {status}")))
+    }
+}
+
+#[cfg(all(unix, not(target_os = "macos")))]
+async fn open_path_external(target: &Path) -> std::io::Result<()> {
+    let status = tokio::process::Command::new("xdg-open")
+        .arg(target)
+        .status()
+        .await?;
+    if status.success() {
+        Ok(())
+    } else {
+        Err(std::io::Error::other(format!("xdg-open 退出码 {status}")))
+    }
+}
+
 /// Open a file via system dialog and read its contents.
 #[tauri::command]
 pub async fn open_file(app: AppHandle) -> Result<FileResult, AppError> {

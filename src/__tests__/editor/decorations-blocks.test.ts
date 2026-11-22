@@ -441,14 +441,19 @@ describe("block decorations", () => {
       expect(dom.dataset.mediaFrom).toBeUndefined();
     });
 
-    it("renders a file link card for a non-image, non-video extension", () => {
+    it("renders an attachment card for a non-image, non-video extension", () => {
       const dom = widgetOf(
         createImageDecorations("![archive](archive.zip)")[0],
       ).toDOM();
       expect(dom.classList.contains("cm-media-file")).toBe(true);
-      const link = dom.querySelector("a");
-      expect(link?.getAttribute("href")).toBe("archive.zip");
-      expect(link?.textContent).toBe("archive");
+      expect(dom.dataset.testid).toBe("media-attachment");
+      expect(dom.querySelector("a")).toBeNull();
+      const icon = dom.querySelector("svg[data-icon]");
+      expect(icon?.getAttribute("data-icon")).toBe("text");
+      const name = dom.querySelector('[data-testid="media-attachment-name"]');
+      expect(name?.textContent).toBe("archive.zip");
+      const size = dom.querySelector('[data-testid="media-attachment-size"]');
+      expect(size).not.toBeNull();
     });
 
     it("pdf / md / html / 网页引用渲染为内嵌 widget，不退化成文件卡片", () => {
@@ -468,6 +473,8 @@ describe("block decorations", () => {
     it("classifies media by extension, mirroring the preview renderer", () => {
       expect(classifyMedia("clip.mp4")).toBe("video");
       expect(classifyMedia("clip.webm")).toBe("video");
+      expect(classifyMedia("song.mp3")).toBe("audio");
+      expect(classifyMedia("song.m4a")).toBe("audio");
       expect(classifyMedia("report.pdf")).toBe("file");
       expect(classifyMedia("archive.zip?v=2")).toBe("file");
       expect(classifyMedia("x.png")).toBe("image");

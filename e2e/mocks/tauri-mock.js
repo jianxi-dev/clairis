@@ -299,6 +299,19 @@ function mockInvoke(cmd, args) {
     w.__reveal_calls__.push(args.path);
     return null;
   }
+  if (cmd === "open_file_external" && args) {
+    const w = typeof window !== "undefined" ? window : globalThis;
+    w.__open_external_calls__ = w.__open_external_calls__ || [];
+    w.__open_external_calls__.push(args.path);
+    return null;
+  }
+  if (cmd === "get_file_info" && args && args.path) {
+    // 大小按路径注入（window.__biaoyue_file_sizes__），未注入时回落 350B。
+    const sizes = window.__biaoyue_file_sizes__;
+    const size =
+      sizes && typeof sizes[args.path] === "number" ? sizes[args.path] : 350;
+    return { path: args.path, size: size, is_dir: false, modified: 1719000000 };
+  }
   if (cmd === "list_extension_packages") return cloneJson(extensionPackages);
   if (cmd === "import_extension_package" && args && args.path) {
     var base = String(args.path).split("/").pop() || "extension";
