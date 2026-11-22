@@ -120,6 +120,28 @@ function generatePaneId(): string {
   return generateLeafId();
 }
 
+/**
+ * 内容写入的唯一收口：内容真变了才推修订号 + 记写入者。
+ *
+ * 没变的写入直接返回原对象——否则每次 effect 回写都会把修订号推高，订阅者白跑
+ * 一遍同步（订阅 `tab.content` 的组件也会跟着重渲染）。
+ */
+function withTabContent(
+  tab: Tab,
+  content: string,
+  writer: string,
+  dirty: boolean,
+): Tab {
+  if (tab.content === content) return tab;
+  return {
+    ...tab,
+    content,
+    dirty,
+    contentRevision: (tab.contentRevision ?? 0) + 1,
+    lastWriter: writer,
+  };
+}
+
 const TEXT_EXTENSIONS: Record<string, FileKind> = {
   md: "markdown",
   markdown: "markdown",
@@ -293,10 +315,18 @@ interface AppStore {
   newTabWith: (title: string, content: string) => void;
   switchTab: (id: string) => void;
   closeTab: (id: string) => void;
-  updateContent: (content: string) => void;
-  updateTabContent: (tabId: string, content: string) => void;
+  /**
+   * `writer` = 写入者面板 id 或 `"external"`；省略按 `"external"` 处理。
+   * 返回写入后的 `contentRevision`（内容未变时即原值），供写入方登记「已应用」。
+   */
+  updateContent: (content: string, writer?: string) => number;
+  updateTabContent: (tabId: string, content: string, writer?: string) => number;
   /** 用磁盘内容覆盖页签内容（刷新）：内容以磁盘为准，页签回到干净态。 */
-  refreshTabContent: (tabId: string, content: string) => void;
+  refreshTabContent: (
+    tabId: string,
+    content: string,
+    writer?: string,
+  ) => number;
   renameTab: (tabId: string, title: string) => void;
   /** 只改页签标题，不回写文档（面板改标题的正向同步）。 */
   setTabTitle: (tabId: string, title: string) => void;
@@ -505,11 +535,7 @@ export const useStore = create<AppStore>((set, get) => ({
       set({
         tabs: {
           ...state.tabs,
-          [existing.id]: {
-            ...existing,
-            content,
-            dirty: false,
-          },
+          [existing.id]: withTabContent(existing, content, "external", false),
         },
         activeTabId: existing.id,
         focusedPaneId: hostLeaf?.id ?? state.focusedPaneId,
@@ -550,6 +576,8 @@ export const useStore = create<AppStore>((set, get) => ({
       editorMode: defaultEditorMode,
       scrollPos: 0,
       contentHeight: 0,
+      contentRevision: 0,
+      lastWriter: "external",
     };
 
     // 新页签只落普通栏：AI 停靠栏不接收文件页签（#453）
@@ -654,44 +682,35 @@ export const useStore = create<AppStore>((set, get) => ({
     set({ tabs: remaining, activeTabId, paneRoot, focusedPaneId });
   },
 
-  updateContent: (content: string) => {
+  updateContent: (content, writer = "external") => {
     const state = get();
     const { activeTabId, tabs } = state;
-    if (!activeTabId) return;
+    if (!activeTabId) return 0;
 
     const tab = tabs[activeTabId];
-    if (!tab) return;
+    if (!tab) return 0;
 
-    set({
-      tabs: {
-        ...tabs,
-        [activeTabId]: { ...tab, content, dirty: true },
-      },
-    });
+    const next = withTabContent(tab, content, writer, true);
+    set({ tabs: { ...tabs, [activeTabId]: next } });
+    return next.contentRevision ?? 0;
   },
 
-  updateTabContent: (tabId: string, content: string) => {
+  updateTabContent: (tabId, content, writer = "external") => {
     const { tabs } = get();
     const tab = tabs[tabId];
-    if (!tab) return;
-    set({
-      tabs: {
-        ...tabs,
-        [tabId]: { ...tab, content, dirty: true },
-      },
-    });
+    if (!tab) return 0;
+    const next = withTabContent(tab, content, writer, true);
+    set({ tabs: { ...tabs, [tabId]: next } });
+    return next.contentRevision ?? 0;
   },
 
-  refreshTabContent: (tabId: string, content: string) => {
+  refreshTabContent: (tabId, content, writer = "external") => {
     const { tabs } = get();
     const tab = tabs[tabId];
-    if (!tab) return;
-    set({
-      tabs: {
-        ...tabs,
-        [tabId]: { ...tab, content, dirty: false },
-      },
-    });
+    if (!tab) return 0;
+    const next = withTabContent(tab, content, writer, false);
+    set({ tabs: { ...tabs, [tabId]: next } });
+    return next.contentRevision ?? 0;
   },
 
   renameTab: (tabId: string, title: string) => {
@@ -717,10 +736,14 @@ export const useStore = create<AppStore>((set, get) => ({
       tabs: {
         ...tabs,
         [tabId]: {
-          ...tab,
+          // 别称键标题改写走同一协议：内容变了要推修订号，写入者是「外部」
+          ...withTabContent(
+            tab,
+            content,
+            "external",
+            tab.dirty || content !== tab.content,
+          ),
           title: next,
-          content,
-          dirty: tab.dirty || content !== tab.content,
         },
       },
     });
@@ -857,6 +880,8 @@ export const useStore = create<AppStore>((set, get) => ({
       editorMode: "edit",
       scrollPos: 0,
       contentHeight: 0,
+      contentRevision: 0,
+      lastWriter: "external",
     };
     const hostLeaf = tabsHostLeaf(
       state.paneRoot,

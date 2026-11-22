@@ -5,7 +5,7 @@ import {
   Transaction,
   type Extension,
 } from "@codemirror/state";
-import { history } from "@codemirror/commands";
+import { history, isolateHistory } from "@codemirror/commands";
 import { EditorView, gutters, lineNumbers } from "@codemirror/view";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
 import { html } from "@codemirror/lang-html";
@@ -70,7 +70,11 @@ import {
   setActivePanel,
   setPanelScrollEl,
   getActiveEditorView,
+  getEditorView,
+  getLastAppliedRevision,
+  setLastAppliedRevision,
 } from "../../editors/editorRef";
+import { diffContent } from "../../lib/syncDiff";
 import { resolveScrollTarget } from "../../utils/scrollPosition";
 import { pickMediaForDocument } from "../../lib/mediaPicker";
 import { resolveDocMediaHref, resolveRelativeToDoc } from "../../lib/mediaUrl";
@@ -435,6 +439,8 @@ export default function ContentArea({
   const tabPathRef = useRef<string | null>(null);
   const restoredTabRef = useRef<string | null>(null);
   const currentModeRef = useRef<EditorMode>("preview");
+  /** 本面板最近一次写进 store 的修订号（回声判定用，见 updateListener）。 */
+  const lastWrittenRevisionRef = useRef(0);
 
   // 非阻塞提示：与 PaneTreeView / ReadingRail 同构（时长可配置，缺省 3000ms）。
   const [notice, setNotice] = useState<string | null>(null);
@@ -601,11 +607,12 @@ export default function ContentArea({
           if (update.docChanged) {
             const content = update.state.doc.toString();
             const tabId = currentTabIdRef.current;
-            if (tabId) {
-              useStore.getState().updateTabContent(tabId, content);
-            } else {
-              useStore.getState().updateContent(content);
-            }
+            const revision = tabId
+              ? useStore.getState().updateTabContent(tabId, content, panelId)
+              : useStore.getState().updateContent(content, panelId);
+            // 本面板刚写出去的修订号：同步 effect 见到它要当成回声跳过，否则
+            // 同一份内容被自己再灌一遍（分屏同页签时会互相覆盖）。
+            lastWrittenRevisionRef.current = revision;
           }
         }),
         EditorView.domEventHandlers({
@@ -728,25 +735,60 @@ export default function ContentArea({
 
   // Sync tab content → editor
   useEffect(() => {
-    if (!viewRef.current || !tab) return;
+    const view = viewRef.current;
+    if (!view || !tab) return;
     // 预览态不预热编辑器：把整篇文档 dispatch 进 CM6 会同步跑一遍语法解析，
     // 大 HTML 首屏被它拖慢；初始 dispatch 还会把页签标脏，让 HTML 预览从
     // asset 直载退回禁脚本的 srcdoc。首次切到编辑/源码时再同步（#276）。
     if (!cmVisible) return;
 
-    const current = viewRef.current.state.doc.toString();
-    if (current !== tab.content) {
-      viewRef.current.dispatch({
-        changes: { from: 0, to: current.length, insert: tab.content },
+    // 应用前校验视图归属：分屏同页签时另一格的 ContentArea 也可能持有本格
+    // panelId 的注册，归属不符说明这份 view 已不是本格在用的那个。
+    if (getEditorView(panelId) !== view) return;
+
+    const revision = tab.contentRevision ?? 0;
+    const applied = getLastAppliedRevision(view, tab.id);
+
+    // 本面板刚写出去的那一份：回声。标记后跳过，内容不会被自己重灌。
+    // 只在「本页签已装载过」时判定——刚切过来的页签不能凭修订号认领回声。
+    if (
+      applied !== null &&
+      tab.lastWriter === panelId &&
+      revision === lastWrittenRevisionRef.current
+    ) {
+      setLastAppliedRevision(view, tab.id, revision);
+      return;
+    }
+    // 已应用过同修订号或更新的内容：陈旧回灌，跳过（否则旧快照倒灌覆盖新输入）。
+    if (applied !== null && revision <= applied) return;
+
+    const current = view.state.doc.toString();
+    // 最小 diff：只覆盖真正变化的区间。首次装载 / 空文档 → 目标文档时前缀与
+    // 后缀都是 0，自然退化成整篇灌入，这正是唯一允许整篇替换的时机。
+    const diff = diffContent(current, tab.content);
+    if (diff) {
+      const docLength = current.length;
+      view.dispatch({
+        changes: {
+          from: Math.min(diff.from, docLength),
+          to: Math.min(diff.to, docLength),
+          insert: diff.insert,
+        },
         // 内容同步不是用户编辑，不能进历史：否则一次 Ctrl+Z 会退回同步前的
-        // 空文档，把整篇正文清空且无法恢复（#321）。
-        annotations: Transaction.addToHistory.of(false),
+        // 空文档，把整篇正文清空且无法恢复（#321）。`isolateHistory` 先于
+        // `addToHistory === false` 的早退执行，把这次程序回灌与相邻的用户
+        // 编辑分组切断（design D2 / D5）。
+        annotations: [
+          Transaction.addToHistory.of(false),
+          isolateHistory.of("before"),
+        ],
       });
     }
+    setLastAppliedRevision(view, tab.id, revision);
 
     if (tab.fileKind !== currentKindRef.current) {
       currentKindRef.current = tab.fileKind;
-      viewRef.current.dispatch({
+      view.dispatch({
         effects: langCompartment.reconfigure(
           createLanguageExtension(tab.fileKind),
         ),
@@ -754,8 +796,14 @@ export default function ContentArea({
     }
     // `tab.content` 也要跟进：可视化编辑不经过 CM6，改完切到源码时必须把新内容
     // dispatch 进去，否则源码里还是打开时的旧文档，再一敲字就把编辑结果覆盖回去。
-    // CM 自己触发的更新在这里是 no-op（current === tab.content）。
-  }, [tab?.id, tab?.fileKind, tab?.content, cmVisible]);
+  }, [
+    tab?.id,
+    tab?.fileKind,
+    tab?.content,
+    tab?.contentRevision,
+    tab?.lastWriter,
+    cmVisible,
+  ]);
 
   /**
    * 从预览切回编辑时强制重测视口。
@@ -880,7 +928,9 @@ export default function ContentArea({
               const store = useStore.getState();
               const prev = store.tabs[tab.id]?.content ?? "";
               const next = updater(prev);
-              store.updateTabContent(tab.id, next);
+              // 可视化回写不是面板输入：写入者记 "external"，源码面板才会把它
+              // 当成外部变化灌进来（否则本格回声跳过，切回源码还是旧内容）。
+              store.updateTabContent(tab.id, next, "external");
               return next;
             }}
           />

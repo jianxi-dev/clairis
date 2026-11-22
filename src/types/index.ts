@@ -221,6 +221,20 @@ export interface Tab {
   editorMode: EditorMode;
   scrollPos: number;
   contentHeight: number;
+  /**
+   * 内容修订号（单调递增，每次内容写入 +1）。
+   *
+   * 回灌同步靠它判定「这条变化是不是本面板自己写出去的」：本面板写出的修订号
+   * 记在 EditorView 的 `lastAppliedRevision`，读到自己那一份就跳过，避免回声
+   * 把自己刚敲的字再灌一遍（双面板同页签时会互相覆盖）。持久化 / 恢复的页签
+   * 没有这个字段，回落 0（视为「尚未有过写入」）。
+   */
+  contentRevision?: number;
+  /**
+   * 最后一次写内容的归属：面板 id（`panelId`）或 `"external"`（标题改写、
+   * 可视化回写、磁盘刷新等非编辑器来源）。同上，缺省 `"external"`。
+   */
+  lastWriter?: string;
 }
 
 export type RawMarkdown = string;
