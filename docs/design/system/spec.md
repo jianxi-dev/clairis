@@ -130,7 +130,17 @@ source_of_truth: canonical
 | `--radius-full` | 999px | 胶囊、圆形 |
 | `--app-radius` | 6px | **存量**，不新增使用 |
 
-阴影：**现存矛盾，不假装只有一处**。`src/styles/*.css` 共 20 处 `box-shadow` 声明——6 处纯 token（`--app-shadow` ×5、`--reader-shadow` ×1）、4 处 inset 描边混用 `--app-accent`、10 处纯字面量（6 种，如 `0 4px 12px rgba(0,0,0,.18)` ×3、`0 8px 24px rgba(31,26,20,.12)` ×2）。规则：**新代码一律用 `--app-shadow`**；存量字面量登记为待收敛，不追溯，下次触及该组件时改引 token。
+阴影：**5 档具名 token**（editor-batch3-lowcost D3/D4，亮值取 Quiet `theme.rs:245-300` 阶梯）。三主题（`:root` / `.dark` / `.warm`）键集合一致；`.dark` 取同一几何、alpha ×3 上限 0.6；`.warm` 沿用亮值。
+
+| 名称 | 值（亮 / 暖） | 用途 |
+|---|---|---|
+| `--shadow-menu` | `0 1px 3px rgba(0,0,0,.05), 0 8px 24px rgba(0,0,0,.10)` | 菜单、右键菜单 |
+| `--shadow-panel` | `0 1px 4px rgba(0,0,0,.05), 0 12px 32px rgba(0,0,0,.12)` | 浮动预览、浮动工具条、popovers |
+| `--shadow-dialog` | `0 2px 8px rgba(0,0,0,.06), 0 24px 64px rgba(0,0,0,.16)` | 对话框 |
+| `--shadow-card` | `0 8px 22px -2px rgba(0,0,0,.035)` | 卡片 |
+| `--shadow-button` | `0 1px 1.5px rgba(0,0,0,.05)` | 按钮 |
+
+规则：**新代码一律用 5 档 `--shadow-*`**；存量字面量登记为待收敛，不追溯，下次触及该组件时改引 token。暗色草稿由 `scripts/theme-mirror.mjs` 从 `tokens.css` 生成（OKLab 亮度镜像 `1.137 − 0.907·L`），人只做校对。
 
 ## 6. 语义色
 

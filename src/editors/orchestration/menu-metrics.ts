@@ -20,5 +20,5 @@ export const MENU_LINE_HEIGHT = 21;
 /** 圆角（px）：与 --menu-radius 对齐。 */
 export const MENU_RADIUS = 8;
 
-/** 阴影：与 --menu-shadow 对齐。 */
-export const MENU_SHADOW = "0 8px 24px rgba(31, 26, 20, 0.12)";
+/** 阴影：指向主题 token（design-system §5；editor-batch3-lowcost D3）。 */
+export const MENU_SHADOW = "var(--shadow-menu)";
