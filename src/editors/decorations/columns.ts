@@ -11,7 +11,7 @@
  * 宽度写回源码，作为首行围栏上的 `cols:` 百分比属性。
  */
 import { Decoration, WidgetType, type EditorView } from "@codemirror/view";
-import type { Range } from "@codemirror/state";
+import { StateEffect, type Range } from "@codemirror/state";
 import {
   getSlashCommands,
   isSlashMenuOpen,
@@ -34,13 +34,15 @@ const COLS_ATTR_RE = /(?:^|\s)cols:([0-9]+(?:,[0-9]+)*)(?=[\s}]|$)/;
 
 const MIN_COLUMN_PERCENT = 10;
 
-interface ColumnBlock {
+export interface ColumnBlock {
   /** 整个围栏 div 的范围，含标记。 */
   from: number;
   to: number;
   /** 首行围栏的范围，用于改写 `cols:`。 */
   openFrom: number;
   openTo: number;
+  /** 首行围栏原文（`::: {.col-N cols:…}`）——内容匹配的锚点。 */
+  openText: string;
   count: number;
   /** 百分比宽度；源码没声明时为 null（等分）。 */
   widths: number[] | null;
@@ -159,6 +161,7 @@ function openColumnEditor(
   index: number,
   host: HTMLElement,
   initial: string,
+  key: ColumnContentKey,
   openHandleMenu = false,
 ): void {
   const existing = host.querySelector<HTMLTextAreaElement>(".cm-column-editor");
@@ -181,22 +184,57 @@ function openColumnEditor(
   area.focus();
   area.setSelectionRange(area.value.length, area.value.length);
 
-  let composing = false;
+  const slotKey = slotKeyOf(key, index);
+  openColumnEditors.set(slotKey, { view, area, index });
+  const currentHost = (): HTMLElement => area.parentElement ?? host;
 
-  const teardown = (): void => {
+  let composing = false;
+  let closed = false;
+
+  const closeEditor = (refresh: boolean): void => {
+    if (closed) return;
+    closed = true;
+    const live = currentHost();
     area.remove();
-    host.replaceChildren(...restoreNodes);
-    host.removeAttribute("data-editing");
+    live.replaceChildren(...restoreNodes);
+    live.removeAttribute("data-editing");
+    columnMenuOpeners.delete(live);
     columnMenuOpeners.delete(host);
     columnMenus.delete(area);
+    if (openColumnEditors.get(slotKey)?.area === area) {
+      openColumnEditors.delete(slotKey);
+    }
+    if (refresh && !columnsRebuildFrozen()) refreshColumns(view);
+  };
+  // 匹配失败兜底：把 textarea 文本按块级渲染回填宿主（不丢字、不退纯文本），
+  // 不强制刷新——刷新会用文档内容盖掉刚回填的文本。
+  const restoreFallback = (): void => {
+    if (closed) return;
+    closed = true;
+    const text = area.value;
+    const live = currentHost();
+    live.replaceChildren(renderBlockDom(text));
+    area.remove();
+    live.removeAttribute("data-editing");
+    columnMenuOpeners.delete(live);
+    columnMenuOpeners.delete(host);
+    columnMenus.delete(area);
+    if (openColumnEditors.get(slotKey)?.area === area) {
+      openColumnEditors.delete(slotKey);
+    }
+    showColumnToast("未能定位分栏，已把文本保留在该栏");
+    view.focus();
   };
   const commit = (): void => {
-    if (!area.isConnected) return;
+    if (closed || !area.isConnected) return;
     const value = area.value.trim();
-    teardown();
     const docText = view.state.doc.toString();
-    const block = parseColumns(docText).find((b) => b.from === blockFrom);
-    if (!block) return;
+    const block = findColumnBlockByContent(docText, key, blockFrom);
+    if (!block) {
+      restoreFallback();
+      return;
+    }
+    closeEditor(false);
     const cells = Array.from({ length: block.count }, (_, i) =>
       (block.cells[i]?.text ?? "").trim(),
     );
@@ -206,6 +244,9 @@ function openColumnEditor(
     view.dispatch({
       changes: { from: block.from, to: block.to, insert: next },
     });
+    if (block.from !== blockFrom) {
+      showColumnToast("分栏位置已变化，内容已保留");
+    }
     view.focus();
   };
   const entry: ColumnMenuEntry = {
@@ -292,7 +333,7 @@ function openColumnEditor(
     }
     if (event.key === "Escape") {
       event.preventDefault();
-      teardown();
+      closeEditor(true);
       return;
     }
     if (event.key === "Enter" && !event.shiftKey) {
@@ -301,7 +342,7 @@ function openColumnEditor(
     }
   });
   area.addEventListener("blur", () => {
-    if (composing) return;
+    if (composing || blurSuppressed) return;
     // 菜单还开着就失焦（Alt-Tab 等）：先取消回滚，绝不让 `/query` 进文档。
     if (entry.mode !== null && isSlashMenuOpen(view)) slashMenuClose(view);
     commit();
@@ -413,6 +454,7 @@ function parseColumns(docText: string): ColumnBlock[] {
       to: offsets[j] + lines[j].length,
       openFrom: offsets[i],
       openTo: offsets[i] + lines[i].length,
+      openText: lines[i],
       count: Number(colMatch[1]),
       widths,
       cells: splitCells(inner, contentFrom),
@@ -420,6 +462,138 @@ function parseColumns(docText: string): ColumnBlock[] {
     i = j + 1;
   }
   return blocks;
+}
+
+/**
+ * 分栏块的内容键：文档位移后定位目标栏的稳定指纹。
+ *
+ * 不用 `from` 偏移（会随编辑漂移），用首行围栏原文 + 列数 + 各栏内容。首行
+ * 已含 `cols:` 属性串，因此属性串歧义时内容仍能区分同属性的两个分栏块。
+ */
+export interface ColumnContentKey {
+  readonly openLine: string;
+  readonly count: number;
+  readonly cells: readonly string[];
+}
+
+/** 取一个分栏块的内容键。 */
+export function columnContentKey(block: ColumnBlock): ColumnContentKey {
+  return {
+    openLine: block.openText,
+    count: block.count,
+    cells: block.cells.map((cell) => cell.text.trim()),
+  };
+}
+
+function contentKeyEquals(a: ColumnContentKey, b: ColumnContentKey): boolean {
+  return (
+    a.openLine === b.openLine &&
+    a.count === b.count &&
+    a.cells.length === b.cells.length &&
+    a.cells.every((cell, i) => cell === b.cells[i])
+  );
+}
+
+/**
+ * 按内容键在文档里定位分栏块。
+ *
+ * 命中多个（同文重复块）时取 `from` 离 `nearFrom` 最近者；零命中返回 null，
+ * 由调用方走兜底（回填宿主 + toast），绝不静默丢字。
+ */
+export function findColumnBlockByContent(
+  docText: string,
+  key: ColumnContentKey,
+  nearFrom: number,
+): ColumnBlock | null {
+  const matches = parseColumns(docText).filter((block) =>
+    contentKeyEquals(columnContentKey(block), key),
+  );
+  if (matches.length === 0) return null;
+  return matches.reduce((best, block) =>
+    Math.abs(block.from - nearFrom) < Math.abs(best.from - nearFrom)
+      ? block
+      : best,
+  );
+}
+
+// --- 就地编辑器打开期间的 widget 冻结 ----------------------------------------
+
+/** 关闭编辑器后强制重建分栏 widget，清掉冻结期的旧 DOM。 */
+export const columnsRefresh = StateEffect.define<void>();
+
+interface OpenColumnEditor {
+  view: EditorView;
+  area: HTMLTextAreaElement;
+  index: number;
+}
+
+/**
+ * 打开中的就地编辑器，按「首行围栏 + 列数 + 栏序号」登记。
+ *
+ * 位移引发的 widget 重建会造出新 host，按这个槽位键把原 textarea 挪回去，
+ * 输入框因此不丢、窗口始终唯一。条目按视图归属，避免串扰其他编辑器实例。
+ */
+const openColumnEditors = new Map<string, OpenColumnEditor>();
+
+function slotKeyOf(key: ColumnContentKey, index: number): string {
+  return `${key.openLine}\u0000${key.count}\u0000${index}`;
+}
+
+function pruneOpenEditors(): void {
+  for (const [slotKey, entry] of openColumnEditors) {
+    if (!entry.area.isConnected) openColumnEditors.delete(slotKey);
+  }
+}
+
+export function columnsRebuildFrozen(): boolean {
+  pruneOpenEditors();
+  return openColumnEditors.size > 0;
+}
+
+/**
+ * 文档在编辑器打开期间位移时，CM6 会重建 / 移动 widget DOM，持有焦点的
+ * textarea 被动态 blur。标记这次 blur 为「非用户离开」，下一帧把焦点还回
+ * 重挂后的输入框。
+ */
+let blurSuppressed = false;
+
+export function noteColumnDocChanged(): void {
+  if (!columnsRebuildFrozen()) return;
+  blurSuppressed = true;
+  requestAnimationFrame(() => {
+    blurSuppressed = false;
+    const area =
+      document.querySelector<HTMLTextAreaElement>(".cm-column-editor");
+    area?.focus();
+  });
+}
+
+/** 强制重建分栏 widget（编辑器关闭后调用）。 */
+export function refreshColumns(view: EditorView): void {
+  view.dispatch({ effects: columnsRefresh.of(undefined) });
+}
+
+const COLUMN_TOAST_CLASS = "column-commit-toast";
+
+/**
+ * 可见提示：同一时刻只保留一条，避免成功/兜底连续触发时堆叠。
+ */
+function showColumnToast(message: string): void {
+  document
+    .querySelectorAll(`.${COLUMN_TOAST_CLASS}`)
+    .forEach((el) => el.remove());
+  const el = document.createElement("div");
+  el.className = COLUMN_TOAST_CLASS;
+  el.setAttribute("role", "status");
+  el.textContent = message;
+  el.style.cssText =
+    "position:fixed;left:50%;bottom:32px;transform:translateX(-50%);" +
+    "z-index:2000;padding:8px 14px;border-radius:8px;pointer-events:none;" +
+    "background:var(--app-surface);color:var(--app-text);" +
+    "border:1px solid var(--app-border);" +
+    "box-shadow:0 4px 16px rgba(0,0,0,0.18);font-size:13px;";
+  document.body.appendChild(el);
+  window.setTimeout(() => el.remove(), 2600);
 }
 
 /** 改写围栏 div 首行上的 `cols:` 属性。 */
@@ -448,9 +622,12 @@ class ColumnsWidget extends WidgetType {
   }
 
   eq(other: ColumnsWidget): boolean {
+    // 编辑器打开期间冻结本 widget 的销毁/重建：保留持有 textarea 的旧 DOM，
+    // 否则位移引发的重建会摘掉输入框（双活 / 丢字）。
+    if (columnsRebuildFrozen()) return true;
     return (
-      this.index === other.index &&
       this.block.count === other.block.count &&
+      this.block.openText === other.block.openText &&
       JSON.stringify(resolveWidths(this.block)) ===
         JSON.stringify(resolveWidths(other.block)) &&
       JSON.stringify(this.block.cells.map((c) => c.text)) ===
@@ -539,7 +716,15 @@ class ColumnsWidget extends WidgetType {
       if (!body) return;
       const cell = this.block.cells[index] ?? missingCell(this.block);
       body.dataset.editing = "true";
-      openColumnEditor(view, this.block.from, index, body, cell.text, true);
+      openColumnEditor(
+        view,
+        this.block.from,
+        index,
+        body,
+        cell.text,
+        columnContentKey(this.block),
+        true,
+      );
       // 菜单挂在 view.dom 上、不是 .cm-columns 的后代：指针移进去不能算离开手柄（A-4.3）。
       const menu = view.dom.querySelector<HTMLElement>(".mdb-slash-menu");
       menu?.addEventListener("pointerenter", cancelClose);
@@ -625,6 +810,19 @@ class ColumnsWidget extends WidgetType {
     body.className = "cm-column-body";
     body.replaceChildren(renderBlockDom(cell.text));
     if (!cell.text) body.dataset.placeholder = "输入内容…";
+    // 位移重建出的新 host：把原输入框挪回来，保证窗口唯一且不丢输入。
+    const open =
+      view &&
+      openColumnEditors.get(slotKeyOf(columnContentKey(this.block), index));
+    if (open && open.view === view) {
+      body.replaceChildren(open.area);
+      body.dataset.editing = "true";
+      if (view) {
+        columnMenuOpeners.set(body, () => {
+          openColumnContextMenu(view, open.area, getSlashCommands(), false);
+        });
+      }
+    }
     // 按下就打开本栏的就地编辑器（#450）。改为选中源码范围会把光标放到块首行，
     // 输入就落到栏外。
     if (view) {
@@ -633,7 +831,14 @@ class ColumnsWidget extends WidgetType {
         event.preventDefault();
         event.stopPropagation();
         body.dataset.editing = "true";
-        openColumnEditor(view, blockFrom, index, body, cell.text);
+        openColumnEditor(
+          view,
+          blockFrom,
+          index,
+          body,
+          cell.text,
+          columnContentKey(this.block),
+        );
       });
     }
     col.appendChild(body);

@@ -1,0 +1,33 @@
+{
+  "task": "1352-columns-commit-freeze",
+  "states": [
+    {
+      "state": "offset-shift-save",
+      "screenshot": ".artifacts/1352/offset-shift-save.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-22T16:39:24Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "fallback-toast",
+      "screenshot": ".artifacts/1352/fallback-toast.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-22T16:39:26Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "single-editor",
+      "screenshot": ".artifacts/1352/single-editor.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-22T16:39:27Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "esc-cancel",
+      "screenshot": ".artifacts/1352/esc-cancel.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-22T16:39:28Z",
+      "runner": "unknown@MMBP"
+    }
+  ]
+}
