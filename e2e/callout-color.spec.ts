@@ -138,11 +138,15 @@ test("改色写回磁盘，重开后颜色仍在", async ({ page }) => {
   await panel.locator('[data-class-name="mdb-border-green"]').click();
   await expect.poll(() => storeContent(page)).toContain("border=green");
 
-  const saved = await page.evaluate((p) => {
-    return (window as unknown as Record<string, any>).__saved_files__?.[p] as
-      | string
-      | undefined;
+  await page.waitForFunction((p) => {
+    const w = window as unknown as Record<string, any>;
+    return (w.__saved_files__?.[p] ?? "").includes("border=green");
   }, PATH);
+  const saved = await page.evaluate(
+    (p) =>
+      (window as unknown as Record<string, any>).__saved_files__?.[p] as string,
+    PATH,
+  );
   expect(saved).toContain("border=green");
 
   await page.evaluate(
