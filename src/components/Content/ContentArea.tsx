@@ -77,6 +77,7 @@ import {
 import { diffContent } from "../../lib/syncDiff";
 import {
   cancelContentSync,
+  cancelContentSyncForPanel,
   flushTabContent,
   scheduleContentSync,
 } from "../../editors/contentSync";
@@ -671,13 +672,11 @@ export default function ContentArea({
 
     return () => {
       viewDestroyedRef.current = true;
-      // 卸载前把本页签的 live 全文落 store，再注销节流登记（视图即将销毁，
-      // 之后不能再从它取内容）。
+      // 卸载前把本面板当前页签的 live 全文落 store，再按 panelId 注销全部登记
+      //（视图即将销毁，且条目指向的是这个共享视图，之后不能再从它取内容）。
       const tabId = currentTabIdRef.current;
-      if (tabId) {
-        flushTabContent(tabId);
-        cancelContentSync(tabId);
-      }
+      if (tabId) flushTabContent(tabId);
+      cancelContentSyncForPanel(panelId);
       setEditorView(panelId, null);
       setEditorViewState(null);
       viewRef.current?.destroy();
@@ -762,10 +761,13 @@ export default function ContentArea({
     if (!view || !tabId) return;
     view.dispatch({ effects: historyCompartment.reconfigure([]) });
     view.dispatch({ effects: historyCompartment.reconfigure(history()) });
-    // 切页签 / 卸载时：先把旧页签的待写内容落 store，再把视图交给新页签复用。
-    // cleanup 捕获的是切走前的 tabId，正好是「 outgoing 页签」。
+    // 切页签 / 卸载时：先把旧页签的待写内容落 store，再注销它的登记，然后把视图
+    // 交给新页签复用。cleanup 捕获的是切走前的 tabId，正好是「outgoing 页签」。
     return () => {
+      // 卸载：create-view cleanup 已 flush + 按 panelId 全清，且视图即将销毁。
+      if (viewDestroyedRef.current) return;
       flushTabContent(tabId);
+      cancelContentSync(tabId);
     };
   }, [tabId]);
 

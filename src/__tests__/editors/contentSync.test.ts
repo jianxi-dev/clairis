@@ -5,6 +5,7 @@ import {
   CONTENT_SYNC_DEBOUNCE_MS,
   CONTENT_SYNC_MAX_DELAY_MS,
   cancelContentSync,
+  cancelContentSyncForPanel,
   flushAllContent,
   flushTabContent,
   scheduleContentSync,
@@ -153,8 +154,73 @@ describe("内容节流调度", () => {
     expect(useStore.getState().tabs[tabId].content).toBe("起点甲");
     expect(useStore.getState().tabs[secondId].content).toBe("第二篇乙");
 
+    cancelContentSync(secondId);
     view2.destroy();
     parent2.remove();
+  });
+
+  it("cancelContentSyncForPanel 只注销本面板条目，保留其他面板", () => {
+    useStore.getState().openFile("/r/panel-second.md", "第二篇");
+    const secondId = Object.keys(useStore.getState().tabs).find(
+      (id) => id !== tabId,
+    )!;
+
+    const parent2 = document.createElement("div");
+    document.body.appendChild(parent2);
+    const view2 = new EditorView({
+      parent: parent2,
+      state: EditorState.create({ doc: "第二篇" }),
+    });
+
+    typeChar(view, "甲");
+    scheduleContentSync(view, tabId, "main");
+    typeChar(view2, "乙");
+    scheduleContentSync(view2, secondId, "split");
+
+    cancelContentSyncForPanel("main");
+
+    // main 的条目已注销：前进到截止也不写。
+    vi.advanceTimersByTime(
+      CONTENT_SYNC_DEBOUNCE_MS + CONTENT_SYNC_MAX_DELAY_MS,
+    );
+    expect(useStore.getState().tabs[tabId].contentRevision).toBe(0);
+    // split 的条目仍在：截止照常收敛。
+    expect(useStore.getState().tabs[secondId].content).toBe("第二篇乙");
+
+    cancelContentSync(secondId);
+    view2.destroy();
+    parent2.remove();
+  });
+
+  it("切页签后旧页签登记注销：共享视图不会被 flushAllContent 串写", () => {
+    // 一个面板只有一个 EditorView，A / B 两个页签复用同一 view。
+    useStore.getState().openFile("/r/shared-b.md", "B 的正文");
+    const bId = Object.keys(useStore.getState().tabs).find(
+      (id) => id !== tabId,
+    )!;
+
+    // 在 A 上键入并挂起节流（未收敛）。
+    typeChar(view, "A 的新内容");
+    scheduleContentSync(view, tabId, "main");
+    expect(useStore.getState().tabs[tabId].content).toBe("起点");
+
+    // 模拟切页签：flush A 并注销 A 的登记。
+    flushTabContent(tabId);
+    cancelContentSync(tabId);
+    expect(useStore.getState().tabs[tabId].content).toBe("起点A 的新内容");
+
+    // 同一 view 现在显示 B 的内容，并登记 B。
+    view.dispatch({
+      changes: { from: 0, to: view.state.doc.length, insert: "B 的正文" },
+    });
+    scheduleContentSync(view, bId, "main");
+
+    // 回归：flushAllContent 只写 B；A 不得被共享 view 的当前文本覆盖。
+    flushAllContent();
+    expect(useStore.getState().tabs[tabId].content).toBe("起点A 的新内容");
+    expect(useStore.getState().tabs[bId].content).toBe("B 的正文");
+
+    cancelContentSync(bId);
   });
 
   it("cancelContentSync（卸载路径）注销后不再写", () => {

@@ -121,3 +121,20 @@ export function cancelContentSync(tabId: string): void {
   clearTimer(entry.deadlineTimer);
   entries.delete(tabId);
 }
+
+/**
+ * 注销某个面板的所有登记（面板卸载用）。
+ *
+ * 一个面板只有一个 EditorView、被多个页签复用：切页签时旧页签的登记若只是留着，
+ * 条目仍指向这个共享视图（此刻已显示新页签），之后 `flushAllContent` 或
+ * `flushTabContent(旧页签)` 会把新页签的文本写进旧页签。故卸载时按 panelId 全清，
+ * 只碰本面板的条目，不动同页签在另一面板的登记。
+ */
+export function cancelContentSyncForPanel(panelId: string): void {
+  for (const [tabId, entry] of entries) {
+    if (entry.panelId !== panelId) continue;
+    clearTimer(entry.debounceTimer);
+    clearTimer(entry.deadlineTimer);
+    entries.delete(tabId);
+  }
+}
