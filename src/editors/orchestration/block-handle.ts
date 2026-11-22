@@ -188,12 +188,22 @@ function trimNewlines(text: string): string {
   return text.replace(/^\n+/, "").replace(/\n+$/, "");
 }
 
+function leadingNewlines(text: string): number {
+  return /^\n+/.exec(text)?.[0].length ?? 0;
+}
+
+function trailingNewlines(text: string): number {
+  return /\n+$/.exec(text)?.[0].length ?? 0;
+}
+
 /**
  * 把 `doc.slice(block.from, block.to)` 移动到 `target.from` 之前。
  *
  * - 目标落在被移动块内（含块首）时返回原文，不产生事务。
  * - 块为空 / 文档为空时返回原文。
- * - 移动后块与块之间用单个空行相接（Markdown 文档约定），其余内容逐字保留。
+ * - 只规范化被移动块自身与两侧接缝：未移动块之间的多空行、块尾空格、
+ *   文末换行等其余字节逐字保留，不再整段 `trimNewlines` + `join("\n\n")`。
+ * - 行分隔符按 `\n` 处理（与编辑器一致）；CRLF 规范化不在本票范围。
  */
 export function moveBlock(
   doc: string,
@@ -205,22 +215,40 @@ export function moveBlock(
   if (to <= from) return doc;
   if (target.from >= from && target.from < to) return doc;
 
-  const moved = doc.slice(from, to);
-  const rest = doc.slice(0, from) + doc.slice(to);
-  // 目标原本在块之后时，切掉块后它的偏移左移了一个块长。
-  const shifted = target.from > from ? target.from - (to - from) : target.from;
-  const insertAt = Math.max(0, Math.min(shifted, rest.length));
-
-  const before = trimNewlines(rest.slice(0, insertAt));
-  const after = trimNewlines(rest.slice(insertAt));
-  const body = trimNewlines(moved);
+  const body = trimNewlines(doc.slice(from, to));
   if (body.length === 0) return doc;
 
+  // 移除被移动块：优先带走它后面的分隔换行；块在文末时带走前面的。
+  const prefix = doc.slice(0, from);
+  const suffix = doc.slice(to);
+  const suffixNewlines = leadingNewlines(suffix);
+  const prefixNewlines = suffixNewlines > 0 ? 0 : trailingNewlines(prefix);
+  const rest =
+    suffixNewlines > 0
+      ? prefix + suffix.slice(suffixNewlines)
+      : prefix.slice(0, prefix.length - prefixNewlines) + suffix;
+
+  // 目标偏移映射进 rest：落在被移除区间内的目标贴到接缝。
+  const regionStart = from - prefixNewlines;
+  const regionEnd = to + suffixNewlines;
+  const removedLen = regionEnd - regionStart;
+  let shifted: number;
+  if (target.from < regionStart) shifted = target.from;
+  else if (target.from >= regionEnd) shifted = target.from - removedLen;
+  else shifted = regionStart;
+  const insertAt = Math.max(0, Math.min(shifted, rest.length));
+
+  // 插入点只规整接缝：去掉 insertAt 两侧的换行串，用单个空行相接。
+  const before = rest.slice(0, insertAt).replace(/\n+$/, "");
+  const after = rest.slice(insertAt).replace(/^\n+/, "");
+  // 移到文末时，文档原有的末尾换行串挪到被移动块之后，不吞掉。
+  const atEnd = insertAt >= rest.length;
+  const tail = atEnd ? (/\n+$/.exec(rest)?.[0] ?? "") : "";
   const parts: string[] = [];
   if (before.length > 0) parts.push(before);
   parts.push(body);
   if (after.length > 0) parts.push(after);
-  return parts.join("\n\n");
+  return parts.join("\n\n") + tail;
 }
 
 // --- ViewPlugin --------------------------------------------------------------

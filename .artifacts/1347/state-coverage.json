@@ -1,0 +1,33 @@
+{
+  "task": "1347-move-block-local",
+  "states": [
+    {
+      "state": "before-drag",
+      "screenshot": ".artifacts/1347/01-before-drag.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-22T10:33:14Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "after-drop",
+      "screenshot": ".artifacts/1347/02-after-drop.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-22T10:33:16Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "undo",
+      "screenshot": ".artifacts/1347/03-undo.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-22T10:33:16Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "special-whitespace",
+      "screenshot": ".artifacts/1347/04-special-whitespace.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-22T10:33:18Z",
+      "runner": "unknown@MMBP"
+    }
+  ]
+}

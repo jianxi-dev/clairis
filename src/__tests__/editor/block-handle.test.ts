@@ -201,6 +201,24 @@ describe("moveBlock", () => {
       "three\n\none\ntwo",
     );
   });
+
+  it("局部重排：只动被移动块与接缝，未移动部分逐字节保留", () => {
+    // A 与 B 之间多空行、C 块尾双空格、文档末尾换行；移动中间的 B 到最前。
+    const doc = "A\n\n\n\nB\n\nC  \n";
+    const result = moveBlock(doc, { from: 5, to: 6 }, { from: 0 });
+    expect(result).toBe("B\n\nA\n\n\n\nC  \n");
+    // 未移动块文本 + 块间多空行 + 块尾双空格 + 文末换行，逐字节等于操作前。
+    expect(result.slice(result.indexOf("A"))).toBe("A\n\n\n\nC  \n");
+    expect(result).toContain("A\n\n\n\nC  ");
+    expect(result.endsWith("C  \n")).toBe(true);
+  });
+
+  it("局部重排：移动首块到末尾，文末换行保留到新文档末尾", () => {
+    const doc = "A\n\nB\n\n\n\nC  \n";
+    const result = moveBlock(doc, { from: 0, to: 1 }, { from: doc.length });
+    expect(result).toBe("B\n\n\n\nC  \n\nA\n");
+    expect(result).toContain("B\n\n\n\nC  ");
+  });
 });
 
 describe("handleKey", () => {
