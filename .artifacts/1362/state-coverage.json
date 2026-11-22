@@ -1,0 +1,9 @@
+{
+  "task": "1.2",
+  "states": [
+    { "state": "three-colors", "screenshot": "e2e/callout-color.spec.ts:66", "assertion": "passed" },
+    { "state": "type-change", "screenshot": "e2e/callout-color.spec.ts:100", "assertion": "passed" },
+    { "state": "one-undo", "screenshot": "e2e/callout-color.spec.ts:115", "assertion": "passed" },
+    { "state": "reload", "screenshot": "e2e/callout-color.spec.ts:160", "assertion": "passed" }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "task": "1.1",
+  "states": [
+    { "state": "light-menu", "screenshot": "e2e/theme-shadow.spec.ts:68", "assertion": "passed" },
+    { "state": "dark-menu", "screenshot": "e2e/theme-shadow.spec.ts:84", "assertion": "passed" },
+    { "state": "warm-menu", "screenshot": "e2e/theme-shadow.spec.ts:89", "assertion": "passed" },
+    { "state": "restore", "screenshot": "e2e/theme-shadow.spec.ts:94", "assertion": "passed" }
+  ]
+}

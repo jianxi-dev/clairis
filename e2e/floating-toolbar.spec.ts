@@ -1,6 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = process.env.MENU_APP_URL ?? "http://localhost:1420";
 const DOC = ["# 标题", "", "第一段正文", "", "第二段正文", ""].join("\n");
 const WHEEL = '[data-testid="selection-roulette"]';
 const MOD = process.platform === "darwin" ? "Meta" : "Control";
@@ -223,7 +223,7 @@ test("标题三层 H1–H6 画在外环，二层保留并降到 0.9", async ({ p
   await expect.poll(() => content(page)).toMatch(/###### 第一段正文/);
 });
 
-test("高亮三层十三类：注释/信息/摘要/待办/提示/成功/问题/警告/失败/危险/Bug/示例/引用", async ({
+test("高亮三层十四类：注释/信息/摘要/待办/提示/成功/问题/警告/失败/危险/Bug/示例/引用/纯高亮", async ({
   page,
 }) => {
   await openMdWheel(page);
@@ -250,6 +250,7 @@ test("高亮三层十三类：注释/信息/摘要/待办/提示/成功/问题/�
     "convert-callout-bug",
     "convert-callout-example",
     "convert-callout-quote",
+    "convert-callout-highlight",
   ]);
   await page
     .locator('.sr-sec[data-band="3"][data-action="convert-callout-note"]')
