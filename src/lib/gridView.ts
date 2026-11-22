@@ -206,6 +206,26 @@ export function tileSizeOf(
   return "small";
 }
 
+/** 宫格行距（列数公式与渲染共用，避免两处漂移）。 */
+export const GRID_GAP = 16;
+
+/**
+ * 列数（确定性公式，`avail` 为 `[data-grid-grid]` 内容宽，非视口宽）：
+ * - `avail <= 0`（未测量到）→ 回落 4 列。
+ * - `wide = floor((avail + gap) / (200 + gap))`；`wide >= 4` 走宽档
+ *   `n = min(8, max(4, floor((avail + gap) / (240 + gap))))`，
+ *   否则走窄档 `n = min(3, max(1, floor((avail + gap) / (160 + gap))))`。
+ * 例：1440 → 5；1024 → 4；800 → 3。
+ */
+export function gridColumns(avail: number, gap: number = GRID_GAP): number {
+  if (!Number.isFinite(avail) || avail <= 0) return 4;
+  const wide = Math.floor((avail + gap) / (200 + gap));
+  if (wide >= 4) {
+    return Math.min(8, Math.max(4, Math.floor((avail + gap) / (240 + gap))));
+  }
+  return Math.min(3, Math.max(1, Math.floor((avail + gap) / (160 + gap))));
+}
+
 export interface GridFilter {
   /** 严格类型过滤；null = 全部。 */
   type: FileTypeKind | null;

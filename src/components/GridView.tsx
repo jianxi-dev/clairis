@@ -7,7 +7,9 @@ import { parentPathOf, readPercentOf, relativeDate } from "../lib/railCards";
 import { revealInFinder } from "../lib/finder";
 import { fileDragHandlers } from "../hooks/fileDrag";
 import {
+  GRID_GAP,
   filterGridItems,
+  gridColumns,
   groupGridItems,
   sortGridItems,
   tileSizeOf,
@@ -99,6 +101,27 @@ export default function GridView({
   const visible = useMemo(() => groups.flatMap((g) => g.items), [groups]);
   const continuePath = recentFiles[0]?.path ?? null;
   const listMode = viewSpec.gridMode === "list";
+  const gridShown = !listMode && visible.length > 0;
+
+  const gridRef = useRef<HTMLDivElement>(null);
+  const [gridAvail, setGridAvail] = useState(0);
+
+  // 列数由 [data-grid-grid] 内容宽驱动；ResizeObserver 跟随容器本身，
+  // 避免视口宽与容器宽不一致。同一个值重复 set 会被 React 忽略，不产生循环。
+  useEffect(() => {
+    const el = gridRef.current;
+    if (!el) {
+      setGridAvail(0);
+      return;
+    }
+    const measure = () => setGridAvail(el.clientWidth);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [gridShown, groups]);
+
+  const columns = gridColumns(gridAvail);
 
   // 进入即选中第一张卡：不聚焦搜索框，只在当前选中不在列表里时兜底重选
   useEffect(() => {
@@ -574,7 +597,7 @@ export default function GridView({
         </p>
       ) : (
         <div className="space-y-4 p-4">
-          {groups.map((g) => (
+          {groups.map((g, groupIndex) => (
             <section key={g.key} data-grid-group={g.key}>
               {g.label !== "" && (
                 <h2
@@ -591,12 +614,13 @@ export default function GridView({
               ) : (
                 <div
                   data-grid-grid
+                  ref={groupIndex === 0 ? gridRef : undefined}
                   style={{
                     display: "grid",
-                    gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+                    gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
                     gridAutoRows: "168px",
                     gridAutoFlow: "dense",
-                    gap: "12px",
+                    gap: `${GRID_GAP}px`,
                   }}
                 >
                   {g.items.map(renderTile)}

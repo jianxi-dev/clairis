@@ -68,7 +68,7 @@
 
 ## 3. 外壳
 
-- [ ] 3.1 `[change=editor-batch3-lowcost/3.1]` 宫格响应式（T5）
+- [x] 3.1 `[change=editor-batch3-lowcost/3.1]` 宫格响应式（T5）
   - **Blocked by**: 1.1
   - `src/components/GridView.tsx`：`avail` 取 `[data-grid-grid]` 容器内容宽（非视口宽），`gap = 16`；列数改为 `wide = floor((avail + gap) / (200 + gap))`，`wide >= 4` 时 `n = min(8, max(4, floor((avail + gap) / (240 + gap))))`，否则 `n = min(3, max(1, floor((avail + gap) / (160 + gap))))`；保留 `gridAutoRows: 168px` 与 dense flow
   - `src/components/Grid/GridTile.tsx`：hover 从 `−translate-y-0.5 + shadow-md` 改为 3px 中性 7% 外环（`color-mix`）；保留 1×1 / 2×1 / 2×2 跨度

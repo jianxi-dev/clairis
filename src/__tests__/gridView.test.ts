@@ -4,6 +4,7 @@ import {
   GRID_TIME_BUCKET_LABELS,
   GRID_TIME_BUCKET_ORDER,
   filterGridItems,
+  gridColumns,
   groupGridItems,
   sortGridItems,
   tileSizeOf,
@@ -192,6 +193,38 @@ describe("gridView —— tile 尺寸", () => {
         continuePath: null,
       }),
     ).toBe("small");
+  });
+});
+
+describe("gridView —— 响应式列数", () => {
+  it("未测量到宽度（0 / 负 / NaN）回落 4 列", () => {
+    expect(gridColumns(0)).toBe(4);
+    expect(gridColumns(-10)).toBe(4);
+    expect(gridColumns(Number.NaN)).toBe(4);
+  });
+
+  it("用户确认的三档：1440 → 5、1024 → 4、800 → 3", () => {
+    expect(gridColumns(1440)).toBe(5);
+    expect(gridColumns(1024)).toBe(4);
+    expect(gridColumns(800)).toBe(3);
+  });
+
+  it("宽档：下限 4、上限 8", () => {
+    expect(gridColumns(900)).toBe(4);
+    expect(gridColumns(2000)).toBe(7);
+    expect(gridColumns(3000)).toBe(8);
+  });
+
+  it("窄档：下限 1、上限 3", () => {
+    expect(gridColumns(1)).toBe(1);
+    expect(gridColumns(300)).toBe(1);
+    expect(gridColumns(500)).toBe(2);
+    expect(gridColumns(700)).toBe(3);
+  });
+
+  it("gap 可注入，默认 16", () => {
+    expect(gridColumns(1440, 16)).toBe(5);
+    expect(gridColumns(1440, 12)).toBe(5);
   });
 });
 
