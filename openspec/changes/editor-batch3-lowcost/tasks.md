@@ -17,7 +17,7 @@
   - e2e：`e2e/theme-shadow.spec.ts`（计算样式 + 三主题往返）
   - **数据面**: 规格,存储,回滚
 
-- [ ] 1.2 `[change=editor-batch3-lowcost/1.2]` 高亮块三色 + 名称统一（T1）
+- [x] 1.2 `[change=editor-batch3-lowcost/1.2]` 高亮块三色 + 名称统一（T1）
   - `src/editors/callout-types.ts` 新增第 14 预设 `HIGHLIGHT`（标签「纯高亮」、emoji 🖍️、默认 `bg=yellow border=yellow text=none`）；13 类型标签不变；斜杠根「标注」改为「高亮」
   - `src/editors/decorations/callout.ts` 扩展首行解析支持 `{bg=… border=… text=…}`（折叠标记之后、标题之前，顺序无关，未知色名忽略）；属性在类型转换/折叠切换时保留；旧 `> [!NOTE]` 字符不变
   - `src/editors/orchestration/color-palette.ts` 复用 `createColorRow`：字体颜色 9（`FONT_COLORS`）、边框颜色 16（`BORDER_COLORS`）、填充颜色 16（`BACKGROUND_COLORS`）+ 恢复默认；点已选色清除

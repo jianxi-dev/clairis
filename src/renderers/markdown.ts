@@ -21,6 +21,7 @@ import {
   isInsideRange,
   type ImageAttributes,
 } from "../editors/decorations/image";
+import { calloutCssVars, parseCalloutAttrs } from "../editors/callout-attrs";
 
 // ── 块级 HTML 深度闭合（对齐 Obsidian 的 HTML 块行为）────────
 // marked 的 html 正则把块级标签一律吞到下一个空行，用户写
@@ -573,7 +574,7 @@ function postProcess(html: string): string {
 // ── Callout ────────────────────────────────────────────
 // 类型名对齐 Obsidian：允许字母数字与 -_/.; 等符号，且 [! 后、
 // ] 前可带空白（如 [!TL;DR]、[! TL]、[!NOTE ]），大小写不敏感。
-const CALLOUT_HEAD = /^\[!\s*([^\]\r\n]+?)\s*\]([+-]?)/;
+const CALLOUT_HEAD = /^\[!\s*([^\]\r\n]+?)\s*\]([+-]?)(\{[^}]*\})?/;
 
 const CALLOUT_LABELS: Record<string, string> = {
   note: "注释",
@@ -598,6 +599,7 @@ const CALLOUT_LABELS: Record<string, string> = {
   example: "示例",
   quote: "引用",
   cite: "引述",
+  highlight: "纯高亮",
 };
 
 function convertCallouts(doc: Document): void {
@@ -614,6 +616,7 @@ function convertCallouts(doc: Document): void {
 
     const type = m[1].toLowerCase();
     const fold = m[2];
+    const attrs = parseCalloutAttrs(m[3] ?? "");
     const rest = first.innerHTML.slice(m[0].length);
 
     // 首行是标题（到第一个 <br> 或换行符为止），其余是正文
@@ -634,6 +637,10 @@ function convertCallouts(doc: Document): void {
     el.className = "callout";
     el.setAttribute("data-callout", type);
     if (fold === "+") el.setAttribute("open", "");
+    const vars = calloutCssVars(attrs);
+    if (vars.bg) el.style.setProperty("--callout-bg", vars.bg);
+    if (vars.border) el.style.setProperty("--callout-border", vars.border);
+    if (vars.text) el.style.setProperty("--callout-text", vars.text);
 
     const titleEl = doc.createElement(fold ? "summary" : "div");
     if (!fold) titleEl.className = "callout-title";

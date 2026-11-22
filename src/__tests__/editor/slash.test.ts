@@ -150,13 +150,13 @@ describe("slash commands", () => {
 
   it("applying the callout command opens the type flyout and inserts the chosen type", () => {
     insertSlashChar(view);
-    // 行按分组渲染；按标签找 标注，不依赖固定下标。
+    // 行按分组渲染；按标签找 高亮，不依赖固定下标。
     const rowIndex = Array.from(
       view.dom.querySelectorAll<HTMLElement>(".mdb-slash-item"),
-    ).findIndex((row) => row.textContent?.includes("标注"));
+    ).findIndex((row) => row.textContent?.includes("高亮"));
     for (let i = 0; i < rowIndex; i++) slashMenuSelectNext(view);
     slashMenuApply(view);
-    // 标注是类型浮层入口：第一个子项是 注释（note）。
+    // 高亮是类型浮层入口：第一个子项是 注释（note）。
     expect(view.dom.querySelector(".mdb-slash-flyout")).not.toBeNull();
     expect(slashMenuApply(view)).toBe(true);
     const doc = view.state.doc.toString();
@@ -166,7 +166,7 @@ describe("slash commands", () => {
 
   it("labels the callout slash command in Chinese without a markdown hint", () => {
     const callout = defaultCommands.find((c) => c.id === "callout");
-    expect(callout?.label).toBe("标注");
+    expect(callout?.label).toBe("高亮");
     // 提示不再回显 markdown 源符号。
     expect(callout?.hint).toBeUndefined();
   });
@@ -550,13 +550,12 @@ describe("slash commands", () => {
     typeText("b");
     expect(view.state.doc.toString()).toBe("/b");
     expect(view.dom.querySelector(".mdb-slash-menu")).not.toBeNull();
-    // 标题 / 表格 / 标注 都匹配拼音首字母 b。
-    expect(cells().length).toBe(3);
+    // 标题 / 表格 匹配拼音首字母 b（高亮 = gaoliang，不匹配）。
+    expect(cells().length).toBe(2);
     expect(Array.from(cells()).map((cell) => cell.textContent?.trim())).toEqual(
       expect.arrayContaining([
         expect.stringContaining("标题"),
         expect.stringContaining("表格"),
-        expect.stringContaining("标注"),
       ]),
     );
 
@@ -565,7 +564,7 @@ describe("slash commands", () => {
     expect(cells()[0].textContent).toContain("标题");
 
     backspace(); // /b
-    expect(cells().length).toBe(3);
+    expect(cells().length).toBe(2);
     backspace(); // /
     expect(cells().length).toBe(17);
   });
@@ -613,14 +612,14 @@ describe("slash commands", () => {
 
   it("Enter applies the selected filtered opener row and its chosen type", () => {
     insertSlashChar(view);
-    typeText("bz"); // 只剩 标注
+    typeText("gl"); // 只剩 高亮
     expect(
       view.dom.querySelectorAll(".mdb-slash-grid-menu .mdb-slash-item").length,
     ).toBe(1);
 
     expect(slashMenuApply(view)).toBe(true); // 打开类型浮层
-    // 13 个编辑端类型——与块菜单渲染的同一集合。
-    expect(view.dom.querySelectorAll(".mdb-slash-flyout-item").length).toBe(13);
+    // 14 个编辑端类型——与块菜单渲染的同一集合。
+    expect(view.dom.querySelectorAll(".mdb-slash-flyout-item").length).toBe(14);
     expect(slashMenuApply(view)).toBe(true); // 应用 注释（note）
     expect(view.state.doc.toString()).toBe("> [!NOTE]\n> ");
   });

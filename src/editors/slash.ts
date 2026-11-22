@@ -281,7 +281,7 @@ export const defaultCommands: SlashCommand[] = [
   },
   {
     id: "callout",
-    label: "标注",
+    label: "高亮",
     icon: "CalloutOutlined",
     code: "n",
     group: "常用",

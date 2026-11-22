@@ -57,6 +57,8 @@ const PINYIN: Record<string, string> = {
   功: "gong",
   警: "jing",
   告: "gao",
+  高: "gao",
+  亮: "liang",
   危: "wei",
   险: "xian",
   错: "cuo",

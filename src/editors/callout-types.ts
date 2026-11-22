@@ -49,6 +49,8 @@ export const CALLOUT_EDIT_TYPES: readonly CalloutEditType[] = [
   { key: "bug", label: "Bug", emoji: "🐛", tone: "red" },
   { key: "example", label: "示例", emoji: "📝", tone: "gray" },
   { key: "quote", label: "引用", emoji: "💬", tone: "muted" },
+  // 第 14 类：无语义的「纯高亮」，默认黄底黄边（editor-batch3-lowcost D1）。
+  { key: "highlight", label: "纯高亮", emoji: "🖍️", tone: "yellow" },
 ];
 
 /** 解析后的展示信息，来源不限编辑集或渲染别名表。 */

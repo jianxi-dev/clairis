@@ -56,7 +56,7 @@ export const CALLOUT_SNIPPETS: readonly CalloutInsertSnippet[] = [
   { id: "image", label: "图片", icon: "ImageOutlined", snippet: "![](url)" },
   {
     id: "callout",
-    label: "标注",
+    label: "高亮",
     icon: "CalloutOutlined",
     snippet: "> [!NOTE]\n> ",
   },

@@ -2397,6 +2397,11 @@ html[data-tab-drag="true"] body * {
   --callout-soft: rgba(139, 143, 150, 0.08);
 }
 
+.cm-content .cm-callout.cm-callout-tone-yellow {
+  --callout-color: #8a6d00;
+  --callout-soft: rgba(240, 182, 34, 0.1);
+}
+
 .dark .cm-content .cm-callout.cm-callout-tone-blue {
   --callout-color: #8ab4e8;
   --callout-soft: rgba(138, 180, 232, 0.1);
@@ -2437,16 +2442,24 @@ html[data-tab-drag="true"] body * {
   --callout-soft: rgba(139, 144, 153, 0.1);
 }
 
+.dark .cm-content .cm-callout.cm-callout-tone-yellow {
+  --callout-color: #e6c14a;
+  --callout-soft: rgba(230, 193, 74, 0.12);
+}
+
 /* 卡片本体：左侧竖条 + 底色 + 圆角，与 reader.css 的 .callout 对齐。 */
 .cm-content .cm-callout {
   display: block;
   position: relative;
   padding: 0.75em 1em;
   margin-block: 0.4em 0;
-  border-inline-start: 3px solid var(--callout-color, var(--app-accent));
-  background-color: var(--callout-soft, var(--app-accent-soft));
+  border-inline-start: 3px solid var(
+    --callout-border,
+    var(--callout-color, var(--app-accent))
+  );
+  background-color: var(--callout-bg, var(--callout-soft, var(--app-accent-soft)));
   border-radius: var(--app-radius);
-  color: var(--app-text);
+  color: var(--callout-text, var(--app-text));
 }
 
 /* 无标题卡片的空标题槽不占宽；点击头部空白即进入标题编辑（#451 / #566）。 */
@@ -2567,7 +2580,7 @@ html[data-tab-drag="true"] body * {
 }
 
 .cm-content .cm-callout-content {
-  color: var(--app-text-2);
+  color: var(--callout-text, var(--app-text-2));
   font-size: 0.92em;
   white-space: pre-wrap;
   margin-top: 0.35em;
@@ -2928,6 +2941,16 @@ html[data-tab-drag="true"] body * {
 
 .cm-block-menu-color-panel .cm-color-row + .cm-color-row {
   margin-top: 8px;
+}
+
+/* 高亮块三色面板的行标签（字体 / 边框 / 填充）。 */
+.cm-block-menu-color-panel.cm-callout-color-panel .cm-color-row-label {
+  font-size: 11px;
+  color: var(--app-text-2);
+}
+
+.cm-block-menu-color-panel.cm-callout-color-panel .cm-color-row {
+  margin-top: 2px;
 }
 
 /* 「恢复默认」（D16 / C5）：与色板行同宽（100%），取设计系统语义色。 */

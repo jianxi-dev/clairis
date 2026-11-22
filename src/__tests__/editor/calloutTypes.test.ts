@@ -1,7 +1,7 @@
 /**
  * #361 (change editor-fidelity-2 / 2.6) — deduped editor callout type set.
  *
- * Pins R-CALLOUT-01: exactly thirteen editor types with a unique label each,
+ * Pins R-CALLOUT-01: exactly fourteen editor types with a unique label each,
  * rendered by the block-handle type flyout. Also pins the resolver fallback so
  * renderer-only parse aliases (hint/caution/summary/…) still decorate.
  */
@@ -26,6 +26,7 @@ const EXPECTED_LABELS = [
   "Bug",
   "示例",
   "引用",
+  "纯高亮",
 ];
 
 const EXPECTED_KEYS = [
@@ -42,20 +43,21 @@ const EXPECTED_KEYS = [
   "bug",
   "example",
   "quote",
+  "highlight",
 ];
 
 describe("#361 CALLOUT_EDIT_TYPES", () => {
-  it("has exactly thirteen entries", () => {
-    expect(CALLOUT_EDIT_TYPES).toHaveLength(13);
+  it("has exactly fourteen entries", () => {
+    expect(CALLOUT_EDIT_TYPES).toHaveLength(14);
   });
 
-  it("labels the thirteen types in conformance order with no duplicate", () => {
+  it("labels the fourteen types in conformance order with no duplicate", () => {
     const labels = CALLOUT_EDIT_TYPES.map((t) => t.label);
     expect(labels).toEqual(EXPECTED_LABELS);
-    expect(new Set(labels).size).toBe(13);
+    expect(new Set(labels).size).toBe(14);
   });
 
-  it("keys the thirteen types exactly (renderer-compatible tokens)", () => {
+  it("keys the fourteen types exactly (renderer-compatible tokens)", () => {
     expect(CALLOUT_EDIT_TYPES.map((t) => t.key)).toEqual(EXPECTED_KEYS);
   });
 
@@ -92,6 +94,11 @@ describe("#361 resolveCalloutType", () => {
       label: "问题",
       tone: "teal",
       icon: "❓",
+    });
+    expect(resolveCalloutType("highlight")).toEqual({
+      label: "纯高亮",
+      tone: "yellow",
+      icon: "🖍️",
     });
   });
 

@@ -20,6 +20,11 @@ import { Decoration, WidgetType, type EditorView } from "@codemirror/view";
 import type { Range } from "@codemirror/state";
 import { resolveCalloutType } from "../callout-types";
 import {
+  calloutCssVars,
+  parseCalloutAttrs,
+  type CalloutAttrs,
+} from "../callout-attrs";
+import {
   getCalloutEmojiOverride,
   openCalloutEmojiPicker,
 } from "./callout-emoji";
@@ -39,6 +44,12 @@ import {
   updateSlashMenuQuery,
   type SlashCommand,
 } from "../slash";
+
+export {
+  parseCalloutAttrs,
+  serializeCalloutAttrs,
+  setCalloutAttrs,
+} from "../callout-attrs";
 
 // --- 暂存 + flush -------------------------------------------------------------
 
@@ -99,7 +110,7 @@ function buildCalloutMarkdown(
   // 回到只有徽标的头部。
   const title = (draft.title ?? block.title).trim();
   const content = draft.content ?? block.content;
-  const head = `> [!${block.type.toUpperCase()}]${block.fold}${title ? ` ${title}` : ""}`;
+  const head = `> [!${block.type.toUpperCase()}]${block.fold}${block.attrsRaw}${title ? ` ${title}` : ""}`;
   const lines =
     content === ""
       ? []
@@ -620,6 +631,7 @@ class CalloutWidget extends WidgetType {
     readonly title: string,
     readonly content: string,
     readonly fold: "+" | "-" | "",
+    readonly attrs: CalloutAttrs = {},
   ) {
     super();
   }
@@ -630,6 +642,11 @@ class CalloutWidget extends WidgetType {
     container.className = "cm-callout";
     container.classList.add(`cm-callout-tone-${this.tone}`);
     if (this.fold) container.setAttribute("data-fold", this.fold);
+    const vars = calloutCssVars(this.attrs);
+    if (vars.bg) container.style.setProperty("--callout-bg", vars.bg);
+    if (vars.border)
+      container.style.setProperty("--callout-border", vars.border);
+    if (vars.text) container.style.setProperty("--callout-text", vars.text);
     const emoji =
       (view
         ? getCalloutEmojiOverride(view, this.index, this.type)
@@ -758,7 +775,10 @@ class CalloutWidget extends WidgetType {
       this.icon === other.icon &&
       this.title === other.title &&
       this.content === other.content &&
-      this.fold === other.fold
+      this.fold === other.fold &&
+      this.attrs.bg === other.attrs.bg &&
+      this.attrs.border === other.attrs.border &&
+      this.attrs.text === other.attrs.text
     );
   }
 
@@ -823,10 +843,12 @@ class CalloutWidget extends WidgetType {
 // --- Callout 解析 -------------------------------------------------------------
 
 /**
- * 匹配高亮块首行的正则：`> [!TYPE][+-] 可选标题`。
- * 捕获：(1) 类型（大小写不敏感）、(2) 折叠指示（+/-/空）、(3) 可选标题。
+ * 匹配高亮块首行的正则：`> [!TYPE][+-]?{属性块}? 可选标题`。
+ * 捕获：(1) 类型（大小写不敏感）、(2) 折叠指示（+/-/空）、(3) 属性块（含 `{}`）、
+ * (4) 可选标题。
  */
-const CALLOUT_OPEN_RE = /^>\s*\[!([A-Za-z]+)\]([+-]?)\s*(.*)$/;
+const CALLOUT_OPEN_RE =
+  /^>\s*\[!([A-Za-z]+)\]([+-]?)(\{[^}]*\})?\s*(.*)$/;
 
 /** 匹配续行：`> 可选内容`。 */
 const CALLOUT_LINE_RE = /^>\s?(.*)$/;
@@ -838,6 +860,8 @@ interface CalloutBlock {
   title: string;
   content: string;
   fold: "+" | "-" | "";
+  attrs: CalloutAttrs;
+  attrsRaw: string;
 }
 
 function findCalloutBlocks(docText: string): CalloutBlock[] {
@@ -850,7 +874,9 @@ function findCalloutBlocks(docText: string): CalloutBlock[] {
     if (openMatch) {
       const type = openMatch[1].toLowerCase();
       const fold = (openMatch[2] as "+" | "-") || "";
-      const title = openMatch[3].trim();
+      const attrsRaw = openMatch[3] ?? "";
+      const attrs = parseCalloutAttrs(attrsRaw);
+      const title = openMatch[4].trim();
 
       const typeInfo = resolveCalloutType(type);
       if (!typeInfo) {
@@ -897,6 +923,8 @@ function findCalloutBlocks(docText: string): CalloutBlock[] {
         title,
         content: contentLines.join("\n"),
         fold,
+        attrs,
+        attrsRaw,
       });
 
       i = j;
@@ -936,6 +964,7 @@ export function createCalloutDecorations(
           block.title,
           block.content,
           block.fold,
+          block.attrs,
         ),
         inclusive: true,
       }).range(block.from, block.to),
