@@ -12,8 +12,11 @@ import {
   handleKeysFor,
   isInSummonZone,
   moveBlock,
+  shouldShowTrailingAdd,
+  trailingAddChanges,
   SUMMON_ZONE_RATIO,
 } from "../../editors/orchestration/block-handle";
+import { hasIcon } from "../../editors/icons";
 
 describe("blockHandleIcon", () => {
   it("映射表格 / 列表 / 高亮 / 代码 / 图片 / 引用 / 段落 / 分割线 / 任务", () => {
@@ -64,10 +67,54 @@ describe("blockHandleIcon", () => {
     expect(blockHandleIcon("list", "- 无序项")).toBe("DisorderListOutlined");
   });
 
+  it("htmlBlock / yamlFrontMatter 有明确图标，不再回退拖拽把手", () => {
+    expect(blockHandleIcon("htmlBlock")).toBe("CodeOutlined");
+    expect(blockHandleIcon("yamlFrontMatter")).toBe("HeaderRowOutlined");
+  });
+
+  it("补齐的图标名都是已注册图标（hasIcon）", () => {
+    for (const type of ["htmlBlock", "yamlFrontMatter"]) {
+      expect(hasIcon(blockHandleIcon(type)), type).toBe(true);
+    }
+  });
+
   it("仍无对应图标的块型退化为拖拽把手", () => {
-    for (const type of ["htmlBlock", "yamlFrontMatter", "", "unknown"]) {
+    for (const type of ["", "unknown"]) {
       expect(blockHandleIcon(type)).toBe("DragHandleOutlined");
     }
+  });
+});
+
+describe("shouldShowTrailingAdd", () => {
+  it("文档末尾非空时显示文末「+」入口", () => {
+    expect(shouldShowTrailingAdd("第一段")).toBe(true);
+    expect(shouldShowTrailingAdd("第一段\n\n第二段")).toBe(true);
+  });
+
+  it("空文档 / 末尾空行不重复出入口", () => {
+    expect(shouldShowTrailingAdd("")).toBe(false);
+    expect(shouldShowTrailingAdd("第一段\n")).toBe(false);
+    expect(shouldShowTrailingAdd("第一段\n\n")).toBe(false);
+  });
+});
+
+describe("trailingAddChanges", () => {
+  it("在文末补一个空段并把光标放进新空段", () => {
+    expect(trailingAddChanges("第一段")).toEqual({
+      from: 3,
+      to: 3,
+      insert: "\n\n",
+      cursor: 5,
+    });
+  });
+
+  it("多段文档同样只补一个空段", () => {
+    expect(trailingAddChanges("A\n\nB")).toEqual({
+      from: 4,
+      to: 4,
+      insert: "\n\n",
+      cursor: 6,
+    });
   });
 });
 
@@ -203,6 +250,28 @@ describe("handleKeysFor", () => {
         { type: "paragraph", firstLine: "乙" },
       ])[1],
     );
+  });
+
+  it("trailing 键可区分于普通块与空行手柄", () => {
+    const keys = handleKeysFor([
+      { type: "paragraph", firstLine: "第一段" },
+      { type: "", firstLine: "", kind: "empty" },
+      { type: "", firstLine: "", kind: "trailing" },
+    ]);
+    expect(keys[2]).toBe("2:trailing:AddOutlined");
+    expect(keys[2]).not.toBe(keys[1]);
+  });
+
+  it("纯输入不改变 trailing 键（不触发重建）", () => {
+    const before = handleKeysFor([
+      { type: "paragraph", firstLine: "第一段" },
+      { type: "", firstLine: "", kind: "trailing" },
+    ]);
+    const after = handleKeysFor([
+      { type: "paragraph", firstLine: "第一段连续输入十个字" },
+      { type: "", firstLine: "", kind: "trailing" },
+    ]);
+    expect(after).toEqual(before);
   });
 });
 

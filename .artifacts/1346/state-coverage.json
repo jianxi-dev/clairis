@@ -1,0 +1,68 @@
+{
+  "states": [
+    {
+      "state": "icon-map",
+      "screenshot": ".artifacts/1346/01-icon-map.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-22T09:46:00Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "html-yaml-icon",
+      "screenshot": ".artifacts/1346/02-html-yaml-icon.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-22T09:46:01Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "trailing-visible",
+      "screenshot": ".artifacts/1346/03-trailing-visible.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-22T09:46:02Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "trailing-clicked",
+      "screenshot": ".artifacts/1346/04-trailing-clicked.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-22T09:46:02Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "trailing-undone",
+      "screenshot": ".artifacts/1346/05-trailing-undone.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-22T09:46:02Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "trailing-cursor",
+      "screenshot": ".artifacts/1346/09-trailing-cursor.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-22T09:46:04Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "trailing-dedup",
+      "screenshot": ".artifacts/1346/06-trailing-dedup.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-22T09:46:05Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "trailing-bottom",
+      "screenshot": ".artifacts/1346/07-trailing-bottom.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-22T09:46:06Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "trailing-scrolled-out",
+      "screenshot": ".artifacts/1346/08-trailing-scrolled-out.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-22T09:46:06Z",
+      "runner": "unknown@MMBP"
+    }
+  ],
+  "task": "1346-handle-icons-add"
+}
