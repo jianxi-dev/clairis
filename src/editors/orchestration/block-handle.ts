@@ -102,6 +102,41 @@ export function blockHandleIcon(type: string, firstLine = ""): string {
   return BLOCK_ICON_NAME[type] ?? "DragHandleOutlined";
 }
 
+/** 对账键的输入：块型 + 块首行文本（图标由首行解析）。 */
+export interface HandleKeyEntry {
+  readonly type: string;
+  readonly firstLine: string;
+}
+
+/** 对账键：顶层块序号 + 块型 + 解析出的图标名。 */
+export function handleKey(index: number, type: string, icon: string): string {
+  return `${index}:${type}:${icon}`;
+}
+
+/** 按手柄枚举顺序计算对账键；纯函数，与 DOM 无关。 */
+export function handleKeysFor(entries: readonly HandleKeyEntry[]): string[] {
+  return entries.map((entry, index) =>
+    handleKey(index, entry.type, blockHandleIcon(entry.type, entry.firstLine)),
+  );
+}
+
+/**
+ * 首个需要重建的手柄下标；键逐位一致且数量相同（纯内容输入）时返回 -1。
+ *
+ * 命中差异后，即使其后的键相同也一并重建：插入 / 删除会让其后序号位移，
+ * 重建是正确上界，避免漏换 DOM 标识。
+ */
+export function firstRebuildIndex(
+  prev: readonly string[],
+  next: readonly string[],
+): number {
+  const shared = Math.min(prev.length, next.length);
+  for (let i = 0; i < shared; i += 1) {
+    if (prev[i] !== next[i]) return i;
+  }
+  return prev.length === next.length ? -1 : shared;
+}
+
 /** 取块首行文本：标题级别与有序/无序只能从内容判定。 */
 function firstLineOf(state: EditorState, from: number, to: number): string {
   const text = state.doc.sliceString(from, Math.min(to, state.doc.length));
@@ -210,6 +245,103 @@ interface BlockRange {
   mermaid?: boolean;
 }
 
+interface HandleSpec {
+  block: BlockRange;
+  empty: boolean;
+}
+
+/** 行盒是否落在滚动视口内（高度为 0 或完全在视口外都算不可见）。 */
+function isRectInViewport(rect: DOMRect, viewport: DOMRect): boolean {
+  return (
+    rect.height > 0 && rect.bottom > viewport.top && rect.top < viewport.bottom
+  );
+}
+
+/**
+ * 枚举全部手柄的块范围（顶层块 → 容器嵌套块 → 独立 mermaid 围栏 → 空行「+」）。
+ *
+ * 与 DOM 无关，供增量对账按同一顺序计算键；顺序必须与渲染顺序一致。
+ */
+function collectHandleSpecs(state: EditorState): HandleSpec[] {
+  const specs: HandleSpec[] = [];
+  const doc = state.doc;
+  const blocks = getBlocks(state);
+  const docText = doc.toString();
+  const mermaids = parseMermaidBlocks(docText);
+  const rangeKey = (from: number, to: number): string => `${from}:${to}`;
+  const mermaidKeys = new Set(
+    mermaids.map((block) => rangeKey(block.from, block.to)),
+  );
+  const blockKeys = new Set(
+    blocks.map((block) => rangeKey(block.from, block.to)),
+  );
+  const covered = (pos: number): boolean =>
+    blocks.some((block) => pos >= block.from && pos < block.to);
+
+  for (const block of blocks) {
+    specs.push({
+      block: {
+        from: block.from,
+        to: block.to,
+        type: block.type,
+        mermaid: mermaidKeys.has(rangeKey(block.from, block.to)),
+      },
+      empty: false,
+    });
+  }
+  const nestedKeys = new Set<string>();
+  for (const block of blocks) {
+    if (
+      block.type !== "blockquote" &&
+      block.type !== "list" &&
+      block.type !== "task"
+    ) {
+      continue;
+    }
+    for (const nested of getNestedBlocks(state, block)) {
+      const key = rangeKey(nested.from, nested.to);
+      const inMermaid = mermaids.some(
+        (fence) => nested.from >= fence.from && nested.to <= fence.to,
+      );
+      if (
+        blockKeys.has(key) ||
+        mermaidKeys.has(key) ||
+        nestedKeys.has(key) ||
+        inMermaid
+      ) {
+        continue;
+      }
+      nestedKeys.add(key);
+      specs.push({
+        block: { from: nested.from, to: nested.to, type: nested.type },
+        empty: false,
+      });
+    }
+  }
+  for (const fence of mermaids) {
+    if (blockKeys.has(rangeKey(fence.from, fence.to))) continue;
+    specs.push({
+      block: {
+        from: fence.from,
+        to: fence.to,
+        type: "fencedCode",
+        mermaid: true,
+      },
+      empty: false,
+    });
+  }
+  for (let n = 1; n <= doc.lines; n++) {
+    const line = doc.line(n);
+    if (line.text.trim() !== "") continue;
+    if (covered(line.from)) continue;
+    specs.push({
+      block: { from: line.from, to: line.to, type: "" },
+      empty: true,
+    });
+  }
+  return specs;
+}
+
 interface HandleEntry {
   el: HTMLDivElement;
   block: BlockRange;
@@ -227,8 +359,8 @@ interface HandleEntry {
   /** 悬停意图延迟定时器：到点才开块菜单。 */
   menuTimer: number | null;
   /**
-   * 手柄纵向锚点：跟随指针所在的可视行（对齐 md-bundle 的 showHandleAt）。
-   * 长段落/折行时不能锚在 block.from，否则手柄会跑到块顶。
+   * 指针所在可视行：仅用于块菜单 / 拖拽落点的锚定。
+   * 手柄纵向位置固定取块首行行盒（D1），不随指针行移动。
    */
   anchorPos: number | null;
   /** 指针的视口 Y：mermaid 整块 widget 用它把手柄夹在块矩形内。 */
@@ -241,6 +373,7 @@ function pointerKind(type: string): PointerKind {
 
 class BlockHandlePlugin {
   private handles: HandleEntry[] = [];
+  private keys: string[] = [];
   private frame: number | null = null;
   private indicator: HTMLDivElement | null = null;
 
@@ -258,17 +391,13 @@ class BlockHandlePlugin {
     view.dom.addEventListener("pointermove", this.onDomPointerMove);
     view.dom.addEventListener("pointerleave", this.onDomPointerLeave);
     view.scrollDOM.addEventListener("scroll", this.onScroll, { passive: true });
-    this.build();
-    // 首次 build 发生在 view 尚未测量时，coordsAtPos 会返回 null；下一帧再定位。
-    this.frame = requestAnimationFrame(() => {
-      this.frame = null;
-      this.reposition();
-    });
+    this.reconcile();
+    this.scheduleReposition();
   }
 
   update(update: ViewUpdate): void {
     if (update.docChanged) {
-      this.build();
+      this.reconcile();
       return;
     }
     if (update.geometryChanged || update.viewportChanged) this.reposition();
@@ -282,8 +411,22 @@ class BlockHandlePlugin {
   /** 重算所有手柄位置（不重建 DOM）。 */
   private reposition(): void {
     for (const handle of this.handles) {
-      this.position(handle.el, handle.anchorPos ?? handle.block.from, handle);
+      this.position(handle.el, handle);
     }
+  }
+
+  /**
+   * 延迟到下一帧再定位。
+   *
+   * CM6 的 `updatePlugins` 先于 `docView.update`：对账时读行盒可能还是旧
+   * doc 的 tile（`domAtPos` 抛 "No tile"），需等 doc 视图更新后再测一次。
+   */
+  private scheduleReposition(): void {
+    if (this.frame !== null) return;
+    this.frame = requestAnimationFrame(() => {
+      this.frame = null;
+      this.reposition();
+    });
   }
 
   destroy(): void {
@@ -412,89 +555,69 @@ class BlockHandlePlugin {
 
   // --- 构建 / 定位 ----------------------------------------------------------
 
-  private build(): void {
-    this.clearHandles();
-    const doc = this.view.state.doc;
-    const blocks = getBlocks(this.view.state);
-    const docText = doc.toString();
-    // mermaid 围栏可能与顶层块范围不同：列表项内的围栏不是顶层 Lezer 块，
-    // getBlocks 看不见它，但 mermaid 装饰仍然渲染了它（A-3.1 / A-3.3）。
-    const mermaids = parseMermaidBlocks(docText);
-    const rangeKey = (from: number, to: number): string => `${from}:${to}`;
-    const mermaidKeys = new Set(
-      mermaids.map((block) => rangeKey(block.from, block.to)),
+  /**
+   * 按对账键增量同步手柄：键不变只重算几何；从首个差异起重建其后手柄。
+   */
+  private reconcile(): void {
+    const state = this.view.state;
+    const specs = collectHandleSpecs(state);
+    const keys = handleKeysFor(
+      specs.map((spec) => ({
+        type: spec.block.type,
+        firstLine: firstLineOf(state, spec.block.from, spec.block.to),
+      })),
     );
-    const blockKeys = new Set(
-      blocks.map((block) => rangeKey(block.from, block.to)),
-    );
-    const covered = (pos: number): boolean =>
-      blocks.some((block) => pos >= block.from && pos < block.to);
+    const from = firstRebuildIndex(this.keys, keys);
+    if (from === -1) {
+      for (let i = 0; i < specs.length; i += 1) {
+        const entry = this.handles[i];
+        entry.block = specs[i].block;
+        entry.empty = specs[i].empty;
+        entry.mermaid = specs[i].block.mermaid === true;
+        this.syncHandleBlock(entry);
+        this.resetHover(entry);
+      }
+      this.keys = keys;
+      this.scheduleReposition();
+      return;
+    }
+    for (let i = 0; i < from; i += 1) this.resetHover(this.handles[i]);
+    for (let i = this.handles.length - 1; i >= from; i -= 1) {
+      const handle = this.handles[i];
+      if (handle.timer !== null) clearTimeout(handle.timer);
+      handle.el.remove();
+    }
+    this.handles.length = from;
+    for (let i = from; i < specs.length; i += 1) {
+      this.addHandle(specs[i].block, specs[i].empty, keys[i]);
+    }
+    this.keys = keys;
+    this.scheduleReposition();
+  }
 
-    for (const block of blocks) {
-      this.addHandle(
-        {
-          from: block.from,
-          to: block.to,
-          type: block.type,
-          mermaid: mermaidKeys.has(rangeKey(block.from, block.to)),
-        },
-        false,
-      );
+  private syncHandleBlock(entry: HandleEntry): void {
+    entry.el.dataset.blockFrom = String(entry.block.from);
+    entry.el.dataset.blockTo = String(entry.block.to);
+  }
+
+  /**
+   * 文档变化后旧块的 hover 状态失效：清掉可见类与门控待办，
+   * 否则指针未动时旧手柄仍挂着 visible，新块的手柄被抢先命中。
+   */
+  private resetHover(entry: HandleEntry): void {
+    if (entry.timer !== null) {
+      clearTimeout(entry.timer);
+      entry.timer = null;
     }
-    // 容器块（引用 / 列表）内部的嵌套块也各自成手柄（#917）：引用块里的每一段、
-    // 列表项下的结构块，hover 都能召唤转换菜单。与顶层块 / mermaid 去重。
-    const nestedKeys = new Set<string>();
-    for (const block of blocks) {
-      if (
-        block.type !== "blockquote" &&
-        block.type !== "list" &&
-        block.type !== "task"
-      ) {
-        continue;
-      }
-      for (const nested of getNestedBlocks(this.view.state, block)) {
-        const key = rangeKey(nested.from, nested.to);
-        // mermaid 围栏的行首范围（parseMermaidBlocks）与列表缩进内的 Lezer
-        // FencedCode 范围相差缩进空格，全等键去重会漏；按区间包含判定，避免
-        // 嵌套手柄遮蔽下方的 mermaid 手柄（#917 回归）。
-        const inMermaid = mermaids.some(
-          (fence) => nested.from >= fence.from && nested.to <= fence.to,
-        );
-        if (
-          blockKeys.has(key) ||
-          mermaidKeys.has(key) ||
-          nestedKeys.has(key) ||
-          inMermaid
-        ) {
-          continue;
-        }
-        nestedKeys.add(key);
-        this.addHandle(
-          { from: nested.from, to: nested.to, type: nested.type },
-          false,
-        );
-      }
+    if (entry.menuTimer !== null) {
+      clearTimeout(entry.menuTimer);
+      entry.menuTimer = null;
     }
-    // 嵌套围栏（列表项 / 引用块内）没有对应的顶层块，单独补手柄。
-    for (const fence of mermaids) {
-      if (blockKeys.has(rangeKey(fence.from, fence.to))) continue;
-      this.addHandle(
-        {
-          from: fence.from,
-          to: fence.to,
-          type: "fencedCode",
-          mermaid: true,
-        },
-        false,
-      );
-    }
-    // 空行退化为单段「+」：不被任何块覆盖的空行才是插入入口。
-    for (let n = 1; n <= doc.lines; n++) {
-      const line = doc.line(n);
-      if (line.text.trim() !== "") continue;
-      if (covered(line.from)) continue;
-      this.addHandle({ from: line.from, to: line.to, type: "" }, true);
-    }
+    entry.hovered = false;
+    entry.anchorPos = null;
+    entry.anchorClientY = null;
+    entry.gate.cancel();
+    entry.el.classList.remove("cm-block-handle-visible");
   }
 
   private clearHandles(): void {
@@ -506,13 +629,14 @@ class BlockHandlePlugin {
     this.removeIndicator();
   }
 
-  private addHandle(block: BlockRange, empty: boolean): void {
+  private addHandle(block: BlockRange, empty: boolean, key: string): void {
     const el = document.createElement("div");
     el.className = "cm-block-handle";
     el.classList.add("mdb-block-handle");
     el.setAttribute("data-testid", "block-handle");
     el.dataset.blockFrom = String(block.from);
     el.dataset.blockTo = String(block.to);
+    el.dataset.handleKey = key;
     if (empty) el.dataset.empty = "true";
 
     const entry: HandleEntry = {
@@ -584,7 +708,13 @@ class BlockHandlePlugin {
           entry.menuTimer = null;
           if (entry.dragging) return;
           if (isBlockMenuOpen(this.view)) return;
-          openBlockMenu(this.view, block, entry.anchorPos ?? block.from, el);
+          // 读 entry.block 而非闭包捕获的 block：复用手柄时对账会更新块范围。
+          openBlockMenu(
+            this.view,
+            entry.block,
+            entry.anchorPos ?? entry.block.from,
+            el,
+          );
         }, MENU_INTENT_DELAY_MS);
       });
     } else {
@@ -605,9 +735,9 @@ class BlockHandlePlugin {
           if (isBlockMenuOpen(this.view)) return;
           openInsertMenu(
             this.view,
-            block.from,
+            entry.block.from,
             addHandleCommands,
-            { from: block.from, to: block.from },
+            { from: entry.block.from, to: entry.block.from },
             "below",
             anchor,
           );
@@ -645,65 +775,59 @@ class BlockHandlePlugin {
       );
     }
 
-    this.position(el, block.from, entry);
+    this.position(el, entry);
     this.view.dom.appendChild(el);
     this.handles.push(entry);
   }
 
   /**
-   * 药丸绝对定位在块左侧。
+   * 药丸绝对定位在块首行行盒左侧；块不可见 / 行盒取不到时隐藏手柄。
    *
-   * 先用 DOM 行元素拿几何（浏览器里比 `coordsAtPos` 稳：可见容器刚显示时
-   * CM6 的高度图可能还没测量，`coordsAtPos` 会把所有位置算成同一行），
-   * 拿不到再退回 `coordsAtPos`，最后退回 `documentTop`。
+   * 行盒是用户真实所见的位置，比高度图推算稳定；不再用 `coordsAtPos` 兜底
+   * 猜测，取不到就不渲染（D1）。
    */
-  private position(el: HTMLElement, pos: number, entry: HandleEntry): void {
+  private position(el: HTMLElement, entry: HandleEntry): void {
     const base = this.view.dom.getBoundingClientRect();
-    let top: number | null = null;
-    let left: number | null = null;
+    const viewport = this.view.scrollDOM.getBoundingClientRect();
 
-    // mermaid 是整块 widget：文档坐标会解析到 widget 的右边界（指针在下半部时
-    // 更明显），手柄必须直接取块装饰的屏幕矩形（design D1 / A3）。
     if (entry.mermaid) {
       const widget = this.mermaidWidgetRect(entry.block.from);
-      if (widget) {
-        left = widget.left - base.left;
-        const pointerY = entry.anchorClientY ?? widget.top + widget.height / 2;
-        const clampedY = Math.max(
-          widget.top,
-          Math.min(pointerY, widget.bottom),
-        );
-        top = clampedY - base.top - HANDLE_HEIGHT_PX / 2;
+      if (!widget || !isRectInViewport(widget, viewport)) {
+        this.hideHandle(el);
+        return;
       }
+      const left = widget.left - base.left;
+      const pointerY = entry.anchorClientY ?? widget.top + widget.height / 2;
+      const clampedY = Math.max(widget.top, Math.min(pointerY, widget.bottom));
+      const top = clampedY - base.top - HANDLE_HEIGHT_PX / 2;
+      this.showHandle(el);
+      el.style.top = `${Math.max(0, Math.round(top))}px`;
+      el.style.left = `${Math.max(0, Math.round(left - HANDLE_WIDTH_PX - HANDLE_GAP_PX))}px`;
+      return;
     }
 
-    if (top === null || left === null) {
-      const lineRect = this.lineRectAt(pos);
-      if (lineRect) {
-        top = lineRect.top - base.top;
-        left = lineRect.left - base.left;
-      } else {
-        try {
-          const coords = this.view.coordsAtPos(pos);
-          if (coords) {
-            top = coords.top - base.top;
-            left = coords.left - base.left;
-          }
-        } catch {
-          // 未测量：保持 0，由下一次 reposition 修正。
-        }
-      }
+    const lineRect = this.lineRectAt(entry.block.from);
+    if (!lineRect || !isRectInViewport(lineRect, viewport)) {
+      this.hideHandle(el);
+      return;
     }
-    if (top === null || left === null) {
-      top = 0;
-      left = 0;
-    }
+    let left = lineRect.left - base.left;
     // 图片 / 视频行满纸宽，左缘比正文列窄一个居中位；手柄改贴正文列左缘，
     // 与标题手柄同一中心线（A-8.2）。
     if (entry.block.type === "image") left = this.textColumnLeft(base);
 
-    el.style.top = `${Math.max(0, Math.round(top))}px`;
+    this.showHandle(el);
+    el.style.top = `${Math.max(0, Math.round(lineRect.top - base.top))}px`;
     el.style.left = `${Math.max(0, Math.round(left - HANDLE_WIDTH_PX - HANDLE_GAP_PX))}px`;
+  }
+
+  private hideHandle(el: HTMLElement): void {
+    el.classList.remove("cm-block-handle-visible");
+    el.style.display = "none";
+  }
+
+  private showHandle(el: HTMLElement): void {
+    el.style.display = "";
   }
 
   /**
@@ -733,14 +857,15 @@ class BlockHandlePlugin {
     return el ? el.getBoundingClientRect() : null;
   }
 
-  /** 位置所在行的几何矩形；DOM 里找不到时返回 null。 */
+  /** 位置所在行的几何矩形；DOM 里找不到时返回 null（块不可见 / 未测量）。 */
   private lineRectAt(pos: number): DOMRect | null {
     try {
       const found = this.view.domAtPos(pos);
       let node: Node | null = found.node;
       if (node && node.nodeType === Node.TEXT_NODE) node = node.parentElement;
-      const element = node as Element | null;
-      const line = element?.closest?.(".cm-line") as HTMLElement | null;
+      const line = (node as Element | null)?.closest?.(
+        ".cm-line",
+      ) as HTMLElement | null;
       return line ? line.getBoundingClientRect() : null;
     } catch {
       return null;
