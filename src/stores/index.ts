@@ -132,7 +132,12 @@ function withTabContent(
   writer: string,
   dirty: boolean,
 ): Tab {
-  if (tab.content === content) return tab;
+  if (tab.content === content) {
+    // 内容没变仍要落 dirty 标志：refreshTabContent（磁盘内容 == 内存内容）
+    // 与重开同内容文件都必须把页签带回干净态；但内容真没变时不推修订号、
+    // 不记写入者（否则订阅者白跑）。
+    return tab.dirty === dirty ? tab : { ...tab, dirty };
+  }
   return {
     ...tab,
     content,

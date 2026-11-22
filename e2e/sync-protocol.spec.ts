@@ -155,6 +155,7 @@ test("双面板同页签：A 连续输入 5 次后 B 与 A 严格相等", async 
   const p = "/tmp/1335/mirror.md";
   await openFile(page, p, "# 标题\n\n第一段。\n");
   await ensureEditMode(page);
+  await page.screenshot({ path: path.join(ART, "single-pane-edit.png") });
 
   await injectSameTabTwoPanes(page);
 
@@ -167,10 +168,7 @@ test("双面板同页签：A 连续输入 5 次后 B 与 A 严格相等", async 
 
   await cmA.click();
   await page.keyboard.press("Control+End");
-  for (const ch of ["1", "2", "3", "4", "5"]) {
-    await page.keyboard.type(ch);
-    await page.waitForTimeout(80);
-  }
+  await page.keyboard.type("12345", { delay: 80 });
   await expect.poll(() => storeContent(page, p)).toContain("12345");
 
   const textA = await cmA.evaluate((el) => el.textContent ?? "");
@@ -225,6 +223,7 @@ test("外部回灌后一次撤销不清空正文，且回灌不进历史", async
   // 回灌内容已进 store，也被同步 effect 灌进了编辑器
   await expect.poll(() => storeContent(page, p)).toBe(next);
   await expect(cm).toContainText("外部回灌的句子");
+  await page.screenshot({ path: path.join(ART, "external-applied.png") });
 
   // 一次撤销：回灌不进历史 → 正文不被清空，回灌内容也不被退掉
   await cm.click();
@@ -233,5 +232,5 @@ test("外部回灌后一次撤销不清空正文，且回灌不进历史", async
   expect(after.length).toBeGreaterThanOrEqual(1);
   expect(after).toContain("外部回灌的句子");
   expect(await storeContent(page, p)).toBe(next);
-  await page.screenshot({ path: path.join(ART, "external-undo.png") });
+  await page.screenshot({ path: path.join(ART, "undo-after-external.png") });
 });

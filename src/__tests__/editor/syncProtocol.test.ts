@@ -167,6 +167,21 @@ describe("回灌事务不进历史", () => {
     expect(v.state.doc.toString()).toContain("可视化改写后的内容");
   });
 
+  it("先输入再回灌：一次撤销只退用户输入，正文保留回灌内容", () => {
+    const v = createView("起点");
+    v.dispatch({
+      changes: { from: v.state.doc.length, insert: "用户" },
+      userEvent: "input",
+    });
+    expect(v.state.doc.toString()).toBe("起点用户");
+    applySync(v, "起点用户，外部回灌。");
+    undo(v);
+    const doc = v.state.doc.toString();
+    expect(doc.length).toBeGreaterThanOrEqual(1);
+    expect(doc).toContain("外部回灌");
+    expect(doc).not.toBe("");
+  });
+
   it("回灌与用户编辑的分组被切断：先回灌再输入，撤销只退输入", () => {
     const v = createView("起点");
     applySync(v, "回灌后");
