@@ -4,7 +4,8 @@
  * - image：解析出 URL 就出 `<img>`，解析不出就出显式占位节点。
  * - video：`<video controls>` 播放器；解析不出同样出占位，**不写原始相对路径**
  *   （相对路径必然 404，只会得到裂图/问号框，#903）。
- * - file：文件链接卡片。
+ * - audio：`<audio controls>` 播放器，与视频同走 media://。
+ * - file：附件卡（类型图标 + 文件名 + 大小，点击系统打开）。
  *
  * 点击选中图片（选中态与工具条见 imageToolbar.ts），拖拽改宽与工具条动作
  * 都走注入回调：装饰模块不依赖应用层资源。
@@ -13,7 +14,17 @@
  */
 import type { Range } from "@codemirror/state";
 import { Decoration, WidgetType, EditorView } from "@codemirror/view";
-import { IMAGE_EXT, stripAngleWrappers, VIDEO_EXT } from "../../lib/mediaUrl";
+import { invoke } from "@tauri-apps/api/core";
+import {
+  AUDIO_EXT,
+  IMAGE_EXT,
+  stripAngleWrappers,
+  VIDEO_EXT,
+} from "../../lib/mediaUrl";
+import { colorOfType, fileTypeOf, iconOfType } from "../../lib/fileType";
+import { formatFileSize } from "../../lib/fileSize";
+import { isTauriEnv } from "../../utils/tauri";
+import { ICONS } from "../../ui/icons";
 import {
   getSelectedImageFrom,
   IMAGE_RESIZE_HANDLES,
@@ -45,10 +56,10 @@ export type ImageCallbacks = ImageToolbarActions;
 // --- 媒体分类 ----------------------------------------------------------------
 
 /**
- * `![alt](path)` 的三种渲染形态。与预览渲染器（`src/renderers/markdown.ts`）
+ * `![alt](path)` 的四种渲染形态。与预览渲染器（`src/renderers/markdown.ts`）
  * 的图片规则保持一致，保证编辑态与阅读态对同一扩展名的判断相同。
  */
-export type MediaKind = "image" | "video" | "file";
+export type MediaKind = "image" | "video" | "audio" | "file";
 
 /** 去掉 query/hash 后的小写扩展名；没有扩展名时返回空串。 */
 function extensionOf(path: string): string {
@@ -66,6 +77,7 @@ function extensionOf(path: string): string {
 export function classifyMedia(path: string): MediaKind {
   const ext = extensionOf(path);
   if (ext !== "" && VIDEO_EXT.has(ext)) return "video";
+  if (ext !== "" && AUDIO_EXT.has(ext)) return "audio";
   if (ext !== "" && !IMAGE_EXT.has(ext)) return "file";
   return "image";
 }
@@ -78,9 +90,15 @@ export function classifyMedia(path: string): MediaKind {
  * 取代旧做法（把原始相对路径直接写进 `src`/`href`）——那条路必然 404，
  * 用户只会看到裂图「问号框」，既看不出是哪个文件，也看不出是「读不到」。
  */
+const MEDIA_KIND_LABEL: Record<"image" | "video" | "audio", string> = {
+  image: "图片",
+  video: "视频",
+  audio: "音频",
+};
+
 function appendUnresolvedPlaceholder(
   container: HTMLElement,
-  kind: "image" | "video",
+  kind: "image" | "video" | "audio",
   path: string,
 ): void {
   const placeholder = document.createElement("span");
@@ -88,7 +106,7 @@ function appendUnresolvedPlaceholder(
   placeholder.dataset.testid = "media-unresolved";
   placeholder.dataset.mediaKind = kind;
   const label = document.createElement("span");
-  label.textContent = `[${kind === "image" ? "图片" : "视频"}: ${path}]`;
+  label.textContent = `[${MEDIA_KIND_LABEL[kind]}: ${path}]`;
   placeholder.appendChild(label);
   container.appendChild(placeholder);
 }
@@ -952,23 +970,63 @@ if (typeof document !== "undefined") {
   });
 }
 
+// --- 附件卡 -------------------------------------------------------------------
+
+const SVG_NS = "http://www.w3.org/2000/svg";
+
+/** 用 `ui/icons` 的类型图标渲染 SVG，颜色走 `--type-*`（与 `Icon` 组件同源）。 */
+function appendFileTypeIcon(host: HTMLElement, path: string): void {
+  const kind = fileTypeOf(path);
+  const def = ICONS[iconOfType(kind)];
+  const svg = document.createElementNS(SVG_NS, "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("data-icon", kind);
+  svg.setAttribute("aria-hidden", "true");
+  svg.style.width = "18px";
+  svg.style.height = "18px";
+  svg.style.flexShrink = "0";
+  svg.style.display = "block";
+  svg.style.color = colorOfType(kind);
+  const parts = def.parts ?? [{ d: def.d, s: def.s, dash: def.dash }];
+  for (const part of parts) {
+    if (part.s) {
+      const stroke = document.createElementNS(SVG_NS, "path");
+      stroke.setAttribute("d", part.s);
+      stroke.setAttribute("fill", "none");
+      stroke.setAttribute("stroke", "currentColor");
+      stroke.setAttribute("stroke-width", "1.7");
+      stroke.setAttribute("stroke-linecap", "round");
+      stroke.setAttribute("stroke-linejoin", "round");
+      if (part.dash) stroke.setAttribute("stroke-dasharray", part.dash);
+      svg.appendChild(stroke);
+    }
+    if (part.d) {
+      const fill = document.createElementNS(SVG_NS, "path");
+      fill.setAttribute("d", part.d);
+      svg.appendChild(fill);
+    }
+  }
+  host.appendChild(svg);
+}
+
 /**
- * 非图片媒体的 widget：视频引用渲染成 `<video controls preload="metadata">`，
- * 其余渲染成文件链接卡片。`kind` 参与 `eq()`，路径改动让引用在视频与文件之间
- * 切换时 CM6 会重建 widget。
+ * 非图片媒体的 widget：视频/音频引用渲染成 `<video>/<audio controls>`，
+ * 其余渲染成附件卡。`kind` 参与 `eq()`，路径改动让引用在几种形态间切换时
+ * CM6 会重建 widget。
  *
  * 视频容器读 `align` / `width`（与图片同一属性语法）：默认 2/3 宽、居中，
  * 选中后出 8 个把手，拖拽只改宽度（高度按视频比例）。
  */
 class MediaWidget extends WidgetType {
   constructor(
-    private readonly _kind: "video" | "file",
+    private readonly _kind: "video" | "audio" | "file",
     private readonly _alt: string,
     private readonly _path: string,
     private readonly _src: string | null,
     private readonly _from: number = 0,
     private readonly _align: "left" | "center" | "right" | null = null,
     private readonly _width: number | null = null,
+    private readonly _filePath: string | null = null,
   ) {
     super();
   }
@@ -990,11 +1048,13 @@ class MediaWidget extends WidgetType {
     container.className = "cm-media-widget";
     container.classList.add(`cm-media-${this._kind}`);
     container.dataset.mediaKind = this._kind;
-    container.style.display = "inline-block";
     container.style.maxWidth = "100%";
     container.style.verticalAlign = "middle";
     container.style.backgroundColor = "var(--app-surface)";
     const isVideo = this._kind === "video";
+    const isAudio = this._kind === "audio";
+    // 附件卡的盒模型交给 `.cm-media-file`（inline-flex），行内联块会盖掉它。
+    if (this._kind !== "file") container.style.display = "inline-block";
     if (isVideo) {
       // 与图片一致：容器保持 inline-block，左/中/右由行级 text-align 落位。
       container.dataset.mediaFrom = String(this._from);
@@ -1006,25 +1066,26 @@ class MediaWidget extends WidgetType {
       }
     }
 
-    if (isVideo) {
+    if (isVideo || isAudio) {
       if (this._src === null) {
-        appendUnresolvedPlaceholder(container, "video", this._path);
+        appendUnresolvedPlaceholder(container, this._kind, this._path);
         return container;
       }
-      const video = document.createElement("video");
-      video.controls = true;
-      video.preload = "metadata";
+      const media =
+        this._kind === "video"
+          ? document.createElement("video")
+          : document.createElement("audio");
+      media.controls = true;
+      media.preload = "metadata";
       // 用 setAttribute（不是 .src）：属性 getter 会按文档 base URL 解析，
       // 让渲染出的属性与源码路径不一致。
-      video.setAttribute("src", this._src);
-      video.style.width = "100%";
-      video.style.display = "block";
-      container.appendChild(video);
+      media.setAttribute("src", this._src);
+      media.style.width = "100%";
+      media.style.display = "block";
+      container.appendChild(media);
+      if (isAudio) container.style.width = "100%";
     } else {
-      const link = document.createElement("a");
-      link.setAttribute("href", this._path);
-      link.textContent = this._alt !== "" ? this._alt : this._path;
-      container.appendChild(link);
+      this.renderAttachmentCard(container);
     }
 
     if (!isVideo) return container;
@@ -1048,6 +1109,62 @@ class MediaWidget extends WidgetType {
     });
 
     return container;
+  }
+
+  private displayName(): string {
+    const clean = this._path.split(/[?#]/)[0];
+    const slash = clean.lastIndexOf("/");
+    return (slash >= 0 ? clean.slice(slash + 1) : clean) || this._alt;
+  }
+
+  private renderAttachmentCard(container: HTMLElement): void {
+    container.dataset.testid = "media-attachment";
+    container.title = this._alt !== "" ? this._alt : this._path;
+    container.style.cursor = "pointer";
+    container.style.gap = "0.5em";
+
+    const icon = document.createElement("span");
+    icon.style.display = "inline-flex";
+    icon.style.flexShrink = "0";
+    appendFileTypeIcon(icon, this._path);
+
+    const meta = document.createElement("span");
+    meta.style.display = "flex";
+    meta.style.flexDirection = "column";
+    meta.style.minWidth = "0";
+    meta.style.gap = "1px";
+    const name = document.createElement("span");
+    name.dataset.testid = "media-attachment-name";
+    name.style.overflow = "hidden";
+    name.style.textOverflow = "ellipsis";
+    name.style.whiteSpace = "nowrap";
+    name.style.maxWidth = "100%";
+    name.textContent = this.displayName();
+    const size = document.createElement("span");
+    size.dataset.testid = "media-attachment-size";
+    size.style.color = "var(--app-text-3)";
+    size.style.fontSize = "12px";
+    meta.appendChild(name);
+    meta.appendChild(size);
+
+    container.appendChild(icon);
+    container.appendChild(meta);
+
+    container.addEventListener("click", () => {
+      if (!this._filePath) return;
+      void invoke("open_file_external", { path: this._filePath }).catch(() => {});
+    });
+
+    if (!this._filePath || !isTauriEnv()) return;
+    invoke<{ size?: number }>("get_file_info", { path: this._filePath })
+      .then((info) => {
+        if (!size.isConnected) return;
+        size.textContent =
+          typeof info?.size === "number" ? formatFileSize(info.size) : "";
+      })
+      .catch(() => {
+        if (size.isConnected) size.textContent = "";
+      });
   }
 
   /** 拖拽只改宽度：高度由视频比例自动跟随，写回同一 `{width=…}` 属性语法。 */
@@ -1097,12 +1214,15 @@ class MediaWidget extends WidgetType {
   }
 
   /**
-   * 播放器与链接保留原生行为（点击必须落到控件上）；点卡片空白处交回 CM6
-   * 放光标。CM6 只在 `ignoreEvent` 返回 false 时把事件当编辑器自己的。
+   * 播放器保留原生行为（点击必须落到控件上）；点卡片空白处交回 CM6 放光标。
+   * CM6 只在 `ignoreEvent` 返回 false 时把事件当编辑器自己的。
    */
   ignoreEvent(event: Event): boolean {
     const target = event.target as Node | null;
-    return target instanceof Element && target.closest("video, a") !== null;
+    return (
+      target instanceof Element &&
+      target.closest("video, audio, a") !== null
+    );
   }
 }
 
@@ -1251,8 +1371,11 @@ export function createImageDecorations(
         }).range(from, to),
       );
     } else {
-      // 视频复用图片解析器；解析不出就是 null，由 MediaWidget 出显式占位。
-      const src = kind === "video" ? resolveFn(path) : null;
+      // 视频/音频复用图片解析器；解析不出就是 null，由 MediaWidget 出显式占位。
+      // 附件卡要拿绝对路径做系统打开与文件大小，复用内嵌解析器的 filePath。
+      const src = kind === "video" || kind === "audio" ? resolveFn(path) : null;
+      const filePath =
+        kind === "file" ? (resolveEmbed?.(path)?.filePath ?? null) : null;
       decorations.push(
         Decoration.replace({
           widget: new MediaWidget(
@@ -1263,6 +1386,7 @@ export function createImageDecorations(
             from,
             attrs.align,
             attrs.width,
+            filePath,
           ),
           inclusive: false,
         }).range(from, to),
