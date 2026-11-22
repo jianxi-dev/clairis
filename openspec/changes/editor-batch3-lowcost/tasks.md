@@ -53,7 +53,7 @@
   - e2e：`e2e/media-attachment.spec.ts`（卡片计算样式 + 打开调用计数 + 音频节点）
   - **数据面**: 无
 
-- [ ] 2.3 `[change=editor-batch3-lowcost/2.3]` 菜单与浮窗统一（T4）
+- [x] 2.3 `[change=editor-batch3-lowcost/2.3]` 菜单与浮窗统一（T4）
   - **Blocked by**: 1.1、1.2
   - 6 组件范围：`src/components/ContextMenu.tsx`、`src/editors/slash.ts`、`src/editors/orchestration/{block-menu.ts,floating-toolbar.ts,horizontal-toolbar.ts,roulette-view.ts}`
   - 菜单级：面板 r12 / 行 r6 / 行高 32 / 内距 6 / 行 inset 5 / `--shadow-menu` / hover 中性黑 4.5% / 快捷键列 12px 灰 / 键盘 ↑↓ 与 hover 同一高亮 / 右键菜单无动画

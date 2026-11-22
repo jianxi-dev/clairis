@@ -1,7 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import { summonAddHandle } from "./helpers/block-handle";
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = process.env.MENU_APP_URL ?? "http://localhost:1420";
 const MOD = process.platform === "darwin" ? "Meta" : "Control";
 const HOTKEY = `${MOD}+Shift+Space`;
 const ROW_INSET = 5;
