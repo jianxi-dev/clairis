@@ -26,6 +26,7 @@ import { useDocPropertyPanelStore } from "../stores/docPropertyPanel";
 import { revealInFinder } from "../lib/finder";
 import { runExportAction } from "../lib/exportActions";
 import { printMarkdownPreview } from "../lib/printPreview";
+import { flushTabContent } from "../editors/contentSync";
 import { EXPORT_MENU_ITEMS } from "../lib/paneHeaderMenu";
 import { isTauriEnv } from "../utils/tauri";
 import type { Tab } from "../types";
@@ -137,6 +138,8 @@ export default function TabBar({
         return;
       }
       const { stem, ext } = splitStemExt(fallback);
+      // 改名要回写 frontmatter 标题，先 flush 让 renameTab 读到 live 全文。
+      flushTabContent(id);
       useStore
         .getState()
         .renameTab(id, joinStemExt(editValue.trim() || stem, ext));
@@ -831,7 +834,8 @@ export default function TabBar({
                     disabled={sub.disabled}
                     title={sub.title}
                     onClick={() => {
-                      const tab = tabs[menu.tabId];
+                      flushTabContent(menu.tabId);
+                      const tab = useStore.getState().tabs[menu.tabId];
                       if (!tab) return;
                       void runExportAction(
                         sub.action,
@@ -857,7 +861,8 @@ export default function TabBar({
             data-menu-item="print"
             className="w-full flex items-center gap-2 text-left px-3 py-1.5 hover:bg-[var(--app-sunken)]"
             onClick={() => {
-              const tab = tabs[menu.tabId];
+              flushTabContent(menu.tabId);
+              const tab = useStore.getState().tabs[menu.tabId];
               closeMenu();
               if (!tab) return;
               printMarkdownPreview(
@@ -961,6 +966,8 @@ export default function TabBar({
                 },
               )
                 .then((result) => {
+                  // 刷新以磁盘内容为准；先 flush 保证基准是 live 全文。
+                  flushTabContent(menu.tabId);
                   useStore
                     .getState()
                     .refreshTabContent(menu.tabId, result.content, "external");

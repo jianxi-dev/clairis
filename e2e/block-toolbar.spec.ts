@@ -71,12 +71,17 @@ test("全角斜杠与顿号不触发命令（#318）", async ({ page }) => {
   await page.keyboard.type("／");
   await page.keyboard.type("、");
   await expect(page.locator('[data-testid="slash-menu"]')).toHaveCount(0);
-  const text = await page.evaluate(() => {
-    const store = (window as unknown as Record<string, any>).__biaoyue_store__;
-    const state = store.getState();
-    return state.tabs[state.activeTabId]?.content ?? "";
-  });
-  expect(text).toContain("／、");
+  // 内容快照走 300ms 防抖（ADR 0003），store 收敛需要轮询。
+  await expect
+    .poll(async () =>
+      page.evaluate(() => {
+        const store = (window as unknown as Record<string, any>)
+          .__biaoyue_store__;
+        const state = store.getState();
+        return state.tabs[state.activeTabId]?.content ?? "";
+      }),
+    )
+    .toContain("／、");
 });
 
 test("[#921] 文本文件工具条只保留复制，编辑态与预览态一致", async ({
@@ -86,7 +91,11 @@ test("[#921] 文本文件工具条只保留复制，编辑态与预览态一致"
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await page.evaluate(() => {
     const win = window as unknown as Record<string, any>;
-    win.__biaoyue_openFile__("/tmp/921.txt", "第一行\n第二行\n第三行\n", "921.txt");
+    win.__biaoyue_openFile__(
+      "/tmp/921.txt",
+      "第一行\n第二行\n第三行\n",
+      "921.txt",
+    );
     win.__biaoyue_store__.getState().setEditorMode("edit");
   });
   await page.waitForTimeout(400);

@@ -319,7 +319,10 @@ test("Tab 缩进后引用块装饰仍在位、可编辑、手柄可召唤", asyn
   await page.keyboard.press("End");
   await page.keyboard.type("追加");
   await expect(quotes).toHaveCount(2);
-  expect((await readDoc(page)).split("\n")[0]).toBe("  > 引用第一行追加");
+  // 内容快照走 300ms 防抖（ADR 0003），store 收敛需要轮询。
+  await expect
+    .poll(async () => (await readDoc(page)).split("\n")[0])
+    .toBe("  > 引用第一行追加");
   await record918(page, "tab1-editable");
 });
 

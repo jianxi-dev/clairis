@@ -55,6 +55,7 @@ import {
   type DocPropertyClipboardPayload,
 } from "../../lib/docPropertyClipboard";
 import { getPanelEditorView } from "../../editors/editorRef";
+import { flushTabContent } from "../../editors/contentSync";
 import { log } from "../../utils/log";
 import { useEditorStore } from "../../stores/editorStore";
 import { useDocPropertyPanelStore } from "../../stores/docPropertyPanel";
@@ -2934,13 +2935,18 @@ export default function DocPropertyBar({
     (key: string, value: unknown) => {
       const view = getPanelEditorView(panelId);
       if (!view) return;
-      const result = setFrontmatterField(content, key, value);
-      if (result.text === content) return;
+      // 节流期间 store 快照滞后；先 flush，再基于 fresh 快照算写回区间。
+      if (docKey) flushTabContent(docKey);
+      const base = docKey
+        ? (useStore.getState().tabs[docKey]?.content ?? content)
+        : content;
+      const result = setFrontmatterField(base, key, value);
+      if (result.text === base) return;
       view.dispatch({
         changes: { from: result.from, to: result.to, insert: result.block },
       });
       const titleKey = findTitleField(
-        parseFrontmatter(content, propAliasMap).fields,
+        parseFrontmatter(base, propAliasMap).fields,
         propAliasMap,
       )?.key;
       if (titleKey && key === titleKey && docKey) {
@@ -3217,23 +3223,29 @@ export default function DocPropertyBar({
 
   const commitFields = useCallback(
     (next: FrontmatterField[], nextSel: FrontmatterRowId[]) => {
-      const result = writeFrontmatterOrdered(content, withManagedDates(next));
-      if (result.text !== content) {
-        const view = getPanelEditorView(panelId);
-        if (!view) {
-          log.error(
-            "DocPropertyBar",
-            `结构变更写回失败：本格编辑器未就绪（panelId=${panelId}）`,
-          );
-        } else {
-          view.dispatch({
-            changes: { from: result.from, to: result.to, insert: result.block },
-          });
-        }
+      const view = getPanelEditorView(panelId);
+      if (!view) {
+        log.error(
+          "DocPropertyBar",
+          `结构变更写回失败：本格编辑器未就绪（panelId=${panelId}）`,
+        );
+        applySelection(nextSel);
+        return;
+      }
+      // 先 flush，再基于 fresh 快照算写回区间（节流期间 content prop 可能滞后）。
+      if (docKey) flushTabContent(docKey);
+      const base = docKey
+        ? (useStore.getState().tabs[docKey]?.content ?? content)
+        : content;
+      const result = writeFrontmatterOrdered(base, withManagedDates(next));
+      if (result.text !== base) {
+        view.dispatch({
+          changes: { from: result.from, to: result.to, insert: result.block },
+        });
       }
       applySelection(nextSel);
     },
-    [content, applySelection, panelId, withManagedDates],
+    [content, docKey, panelId, withManagedDates, applySelection],
   );
 
   const handleAutoFocusHandled = useCallback(

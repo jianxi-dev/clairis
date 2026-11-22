@@ -40,8 +40,7 @@ test("列表项回车自动续写", async ({ page }) => {
   await page.keyboard.press("Enter");
   await page.keyboard.type("第二项");
 
-  const text = await storeContent(page);
-  expect(text).toBe("- 第一项\n- 第二项");
+  await expect.poll(() => storeContent(page)).toBe("- 第一项\n- 第二项");
 });
 
 test("有序列表回车自动递增", async ({ page }) => {
@@ -50,8 +49,7 @@ test("有序列表回车自动递增", async ({ page }) => {
   await page.keyboard.press("Enter");
   await page.keyboard.type("第二项");
 
-  const text = await storeContent(page);
-  expect(text).toBe("1. 第一项\n2. 第二项");
+  await expect.poll(() => storeContent(page)).toBe("1. 第一项\n2. 第二项");
 });
 
 test("空列表项回车退出列表", async ({ page }) => {
@@ -90,8 +88,7 @@ test("围栏代码块内保留全角", async ({ page }) => {
   await page.keyboard.type("```");
   await page.keyboard.press("Enter");
   await page.keyboard.type("，");
-  const text = await storeContent(page);
-  expect(text).toContain("，");
+  await expect.poll(() => storeContent(page)).toContain("，");
 });
 
 test("任务项回车续写 checkbox", async ({ page }) => {
@@ -99,20 +96,19 @@ test("任务项回车续写 checkbox", async ({ page }) => {
   await page.keyboard.type("- [ ] 第一件");
   await page.keyboard.press("Enter");
   await page.keyboard.type("第二件");
-  const text = await storeContent(page);
-  expect(text).toBe("- [ ] 第一件\n- [ ] 第二件");
+  await expect
+    .poll(() => storeContent(page))
+    .toBe("- [ ] 第一件\n- [ ] 第二件");
 });
 
 test("键入 **加粗** 保持原文，不自动配对（#1012）", async ({ page }) => {
   await openMarkdownForEditing(page, "/Users/test/si-bold.md");
   await page.keyboard.type("**加粗**");
-  const text = await storeContent(page);
-  expect(text).toBe("**加粗**");
+  await expect.poll(() => storeContent(page)).toBe("**加粗**");
 });
 
 test("键入 *斜体* 保持原文（#1012）", async ({ page }) => {
   await openMarkdownForEditing(page, "/Users/test/si-italic.md");
   await page.keyboard.type("*斜体*");
-  const text = await storeContent(page);
-  expect(text).toBe("*斜体*");
+  await expect.poll(() => storeContent(page)).toBe("*斜体*");
 });

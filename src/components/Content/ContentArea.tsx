@@ -75,6 +75,11 @@ import {
   setLastAppliedRevision,
 } from "../../editors/editorRef";
 import { diffContent } from "../../lib/syncDiff";
+import {
+  cancelContentSync,
+  flushTabContent,
+  scheduleContentSync,
+} from "../../editors/contentSync";
 import { resolveScrollTarget } from "../../utils/scrollPosition";
 import { pickMediaForDocument } from "../../lib/mediaPicker";
 import { resolveDocMediaHref, resolveRelativeToDoc } from "../../lib/mediaUrl";
@@ -604,16 +609,35 @@ export default function ContentArea({
           decorationsForMode(editorMode, initialKind, initialFrontmatterHide),
         ),
         EditorView.updateListener.of((update) => {
-          if (update.docChanged) {
-            const content = update.state.doc.toString();
-            const tabId = currentTabIdRef.current;
-            const revision = tabId
-              ? useStore.getState().updateTabContent(tabId, content, panelId)
-              : useStore.getState().updateContent(content, panelId);
+          if (!update.docChanged) return;
+          const tabId = currentTabIdRef.current;
+          const view = viewRef.current;
+          if (!tabId || !view) return;
+          // 1.1 的镜像回灌带 `addToHistory === false`：那是 store → 本视图的程序
+          // 事务，不是用户输入。若把它当输入，镜像面板会标脏并回声，互相覆盖。
+          const programmatic = update.transactions.some(
+            (tr) => tr.annotation(Transaction.addToHistory) === false,
+          );
+          if (programmatic) return;
+          // 首键立即标脏（自动保存 / 状态栏读它），内容快照交给节流调度。
+          useStore.getState().markTabDirty(tabId);
+          scheduleContentSync(view, tabId, panelId, (revision) => {
             // 本面板刚写出去的修订号：同步 effect 见到它要当成回声跳过，否则
             // 同一份内容被自己再灌一遍（分屏同页签时会互相覆盖）。
             lastWrittenRevisionRef.current = revision;
-          }
+          });
+          // 只有逐字键入（CM6 标 `input.type` / `input.paste` / `input.drop`）
+          // 走 300ms 防抖；块转换 / 图片属性 / frontmatter 提交 / 大纲重排 /
+          // 回车与缩进这类**离散**编辑立即落 store，否则属性面板、预览、大纲
+          // 会在节流窗口里显示旧内容。
+          const typing = update.transactions.some((tr) => {
+            const event = tr.annotation(Transaction.userEvent);
+            return (
+              typeof event === "string" &&
+              /^input\.(type|paste|drop)/.test(event)
+            );
+          });
+          if (!typing) flushTabContent(tabId);
         }),
         EditorView.domEventHandlers({
           focus: () => setActivePanel(panelId),
@@ -647,6 +671,13 @@ export default function ContentArea({
 
     return () => {
       viewDestroyedRef.current = true;
+      // 卸载前把本页签的 live 全文落 store，再注销节流登记（视图即将销毁，
+      // 之后不能再从它取内容）。
+      const tabId = currentTabIdRef.current;
+      if (tabId) {
+        flushTabContent(tabId);
+        cancelContentSync(tabId);
+      }
       setEditorView(panelId, null);
       setEditorViewState(null);
       viewRef.current?.destroy();
@@ -731,7 +762,19 @@ export default function ContentArea({
     if (!view || !tabId) return;
     view.dispatch({ effects: historyCompartment.reconfigure([]) });
     view.dispatch({ effects: historyCompartment.reconfigure(history()) });
+    // 切页签 / 卸载时：先把旧页签的待写内容落 store，再把视图交给新页签复用。
+    // cleanup 捕获的是切走前的 tabId，正好是「 outgoing 页签」。
+    return () => {
+      flushTabContent(tabId);
+    };
   }, [tabId]);
+
+  // 进入预览（cmVisible 转 false）时视图即将隐藏，先 flush，避免快照停在节流窗口。
+  useEffect(() => {
+    if (cmVisible) return;
+    const id = currentTabIdRef.current;
+    if (id) flushTabContent(id);
+  }, [cmVisible]);
 
   // Sync tab content → editor
   useEffect(() => {
@@ -924,13 +967,15 @@ export default function ContentArea({
             content={tab.content}
             filePath={tab.path}
             onContentChange={(updater) => {
+              // 可视化回写前先把节流窗口里待写的源码内容落 store，否则基准是旧快照，
+              // 可视化编辑会覆盖掉刚敲的字。
+              flushTabContent(tab.id);
               // 以 store 里的最新值为基准求值，而不是渲染期的 tab.content
-              const store = useStore.getState();
-              const prev = store.tabs[tab.id]?.content ?? "";
+              const prev = useStore.getState().tabs[tab.id]?.content ?? "";
               const next = updater(prev);
               // 可视化回写不是面板输入：写入者记 "external"，源码面板才会把它
               // 当成外部变化灌进来（否则本格回声跳过，切回源码还是旧内容）。
-              store.updateTabContent(tab.id, next, "external");
+              useStore.getState().updateTabContent(tab.id, next, "external");
               return next;
             }}
           />
