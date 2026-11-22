@@ -39,9 +39,13 @@
   --app-border-strong: #d8d3c8;
 
   --app-radius: 6px;
-  /* 设计系统 §5 圆角刻度（此前只以 fallback 形式散落在 editor.css） */
+  /* 设计系统 §5 圆角刻度（此前只以 fallback 形式散落在 editor.css）。
+     菜单行 --radius-6 / 菜单与浮窗面板 --radius-12；--radius-4 / --radius-8
+     保留给控件与卡片。 */
   --radius-4: 4px;
+  --radius-6: 6px;
   --radius-8: 8px;
+  --radius-12: 12px;
   --radius-full: 999px;
   /* 媒体块（图片 / 视频）圆角唯一来源：预览与编辑态共用，保证二者相等（#906 B8）。
      取值 6px 延续视频块既有圆角（预览 --reader-radius / 编辑 --app-radius 均为 6px）。 */

@@ -685,7 +685,7 @@ export default function FloatingPreview({
         minWidth: preview.narrow ? PREVIEW_RAIL_NARROW_MIN_W : PREVIEW_MIN_W,
         minHeight: PREVIEW_MIN_H,
       }}
-      className="flex flex-col overflow-hidden rounded-lg border border-[var(--app-border)] bg-[var(--app-surface)] shadow-2xl"
+      className="flex flex-col overflow-hidden rounded-[var(--radius-12)] border border-[var(--app-border)] bg-[var(--app-surface)] [box-shadow:var(--shadow-panel)]"
       onPointerMove={(e) => {
         const el = previewRef.current;
         if (!el) return;

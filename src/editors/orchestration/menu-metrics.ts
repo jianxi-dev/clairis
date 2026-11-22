@@ -9,7 +9,7 @@
 export const MENU_WIDTH = 176;
 
 /** 菜单行高（px）。 */
-export const MENU_ROW_HEIGHT = 36;
+export const MENU_ROW_HEIGHT = 32;
 
 /** 字号（px）：三类菜单统一（与 editor.css 的 --menu-font-size 对齐，#912）。 */
 export const MENU_FONT_SIZE = 14;
@@ -17,8 +17,11 @@ export const MENU_FONT_SIZE = 14;
 /** 行内容行高（px）：与 --menu-line-height 对齐。 */
 export const MENU_LINE_HEIGHT = 21;
 
-/** 圆角（px）：与 --menu-radius 对齐。 */
-export const MENU_RADIUS = 8;
+/** 面板圆角（px）：与 --menu-radius 对齐。 */
+export const MENU_RADIUS = 12;
+
+/** 行圆角（px）：与 --menu-row-radius 对齐。 */
+export const MENU_ROW_RADIUS = 6;
 
 /** 阴影：指向主题 token（design-system §5；editor-batch3-lowcost D3）。 */
 export const MENU_SHADOW = "var(--shadow-menu)";

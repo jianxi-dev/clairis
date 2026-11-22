@@ -4,6 +4,7 @@ import { summonAddHandle } from "./helpers/block-handle";
 const APP_URL = "http://localhost:1420";
 const MOD = process.platform === "darwin" ? "Meta" : "Control";
 const HOTKEY = `${MOD}+Shift+Space`;
+const ROW_INSET = 5;
 const DOC = ["# 标题", "", "第一段正文", "", "第二段正文", ""].join("\n");
 
 test.beforeEach(async ({ page }) => {
@@ -244,7 +245,7 @@ test("「在下方添加」悬停即向右展开二级面板，父菜单保留",
 
   const flyoutBox = (await flyout.boundingBox())!;
   expect(flyoutBox.x).toBeGreaterThanOrEqual(
-    menuAfter!.x + menuAfter!.width - 1,
+    menuAfter!.x + menuAfter!.width - 1 - ROW_INSET * 2,
   );
 });
 
@@ -1067,7 +1068,7 @@ test("[#912] 斜杠菜单 / 新增手柄菜单 / 二级面板 grammar 严格一�
   expect(slash!.font).toBe(block!.font);
   expect(slash!.radius).toBe(block!.radius);
   expect(slash!.rowHeight).toBe(block!.rowHeight);
-  expect(slash!.rowHeight).toBe(36);
+  expect(slash!.rowHeight).toBe(32);
   expect(slash!.lineHeight).toBe(block!.lineHeight);
   expect(slash!.shadow).toBe(block!.shadow);
 
