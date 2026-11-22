@@ -25,6 +25,7 @@ import {
 } from "./callout-emoji";
 import { getCalloutSlashCommands } from "./callout-insert";
 import { createContentLineElement } from "./list";
+import { computeOrderedNumbers } from "../list-number";
 import { renderIcon } from "../icons";
 import {
   getSlashCommands,
@@ -726,8 +727,20 @@ class CalloutWidget extends WidgetType {
       contentEl.className = "cm-callout-content";
       // 逐行渲染而不是一个文本节点：widget 不能带 CM6 装饰，所以列表行在这里
       // 带上编辑器的列表类，保证卡片内 WYSIWYG（#382）。
-      for (const line of this.content.split("\n")) {
-        contentEl.appendChild(createContentLineElement(line));
+      const contentLines = this.content.split("\n");
+      const orderedNumbers = new Map(
+        computeOrderedNumbers(contentLines).map((entry) => [
+          entry.line,
+          entry.number,
+        ]),
+      );
+      for (let index = 0; index < contentLines.length; index += 1) {
+        contentEl.appendChild(
+          createContentLineElement(
+            contentLines[index],
+            orderedNumbers.get(index + 1),
+          ),
+        );
       }
       container.appendChild(contentEl);
     }

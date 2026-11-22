@@ -18,6 +18,7 @@ import { syntaxTree } from "@codemirror/language";
 import { isSlashMenuOpen, openSlashMenuAtSlash } from "./slash";
 import { structureTransaction } from "./structure-history";
 import { emptyItemEnterAction } from "./list-indent";
+import { orderedNumberSync } from "./list-number";
 
 // --- IME 组合守卫 ------------------------------------------------------------
 
@@ -903,5 +904,6 @@ export function smartInput(): Extension {
     ...fullwidthPunctuation(),
     Prec.high(headingTabKeymap),
     compositionGuardPlugin,
+    orderedNumberSync(),
   ];
 }
