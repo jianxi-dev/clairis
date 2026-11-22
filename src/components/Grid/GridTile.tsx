@@ -251,7 +251,7 @@ export default function GridTile({
         outline: selected ? "2px solid var(--app-accent)" : undefined,
         outlineOffset: selected ? "-2px" : undefined,
       }}
-      className="group relative flex cursor-pointer flex-col overflow-hidden rounded-lg border border-[var(--app-border)] bg-[var(--app-surface)] hover:-translate-y-0.5 hover:shadow-md"
+      className="group relative flex cursor-pointer flex-col overflow-hidden rounded-lg border border-[var(--app-border)] bg-[var(--app-surface)] hover:shadow-[0_0_0_3px_color-mix(in_srgb,var(--app-text)_7%,transparent)]"
     >
       {number !== undefined && (
         <span

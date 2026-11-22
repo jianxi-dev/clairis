@@ -310,7 +310,7 @@ test("tile 三型：2×2 / 2×1 / 1×1 跨度、2px 类型色顶条、4:3 缩略
   const lb = (await large.boundingBox())!;
   const mb = (await medium.boundingBox())!;
   const sb = (await small.boundingBox())!;
-  const gap = 12;
+  const gap = 16;
   // 跨度：大 = 2 列 × 2 行；中 = 2 列 × 1 行；小 = 1 × 1
   expect(Math.abs(lb.width - (2 * sb.width + gap))).toBeLessThanOrEqual(2);
   expect(Math.abs(lb.height - (2 * sb.height + gap))).toBeLessThanOrEqual(2);
@@ -584,7 +584,9 @@ test("收藏筛选：仅收藏只剩该条并计数 1 项，切回全部恢复 7
   await expect(page.locator('[data-testid="grid-count"]')).toHaveText("7 项");
 });
 
-test("hover 操作区：显形、tile 抬起，打开动作进入工作区", async ({ page }) => {
+test("hover 操作区：显形、3px 中性环（不上浮），打开动作进入工作区", async ({
+  page,
+}) => {
   await boot(page);
   await seed(page);
   await enterGridWithShortcut(page);
@@ -598,7 +600,10 @@ test("hover 操作区：显形、tile 抬起，打开动作进入工作区", asy
     .toBe("1");
   await expect
     .poll(() => tile.evaluate((el) => getComputedStyle(el).transform))
-    .not.toBe("none");
+    .toBe("none");
+  await expect
+    .poll(() => tile.evaluate((el) => getComputedStyle(el).boxShadow))
+    .toContain("3px");
   await record(page, "11-hover-actions");
 
   await tile.locator('[data-tile-action="open"]').click();
