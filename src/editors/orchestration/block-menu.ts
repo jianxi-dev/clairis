@@ -46,9 +46,18 @@ import {
 import { toggleBlockAlignmentText } from "./block-alignment";
 import {
   BACKGROUND_COLORS,
+  BORDER_COLORS,
   FONT_COLORS,
   createColorRow,
+  type ColorKind,
+  type ColorSwatch,
 } from "./color-palette";
+import {
+  attrNameFromClassName,
+  getCalloutAttrs,
+  setCalloutAttrs,
+} from "../callout-attrs";
+import { structureTransaction } from "../structure-history";
 
 /** 二级面板默认在触发行右侧；越界时翻到左侧（E-7 / E-11）。 */
 function flipFlyoutIfNeeded(
@@ -602,68 +611,130 @@ export function openBlockMenu(
       panelEl.style.top = `${rowRect.top - own.top}px`;
 
       const blockText = view.state.doc.sliceString(block.from, block.to);
-      const applyColor = (family: ColorFamily, className: string): void => {
-        const next = applyBlockColor(blockText, block.type, family, className);
-        closeBlockMenu(view);
-        if (next === null) return;
-        view.dispatch({
-          changes: { from: block.from, to: block.to, insert: next },
-        });
-      };
+      let resetColors: () => void;
 
-      const fontRow = createColorRow("font", FONT_COLORS, (_kind, cls) =>
-        applyColor("mdb-color", cls),
-      );
-      const activeFont = blockColorOf(blockText, "mdb-color");
-      fontRow
-        .querySelectorAll<HTMLButtonElement>(".cm-color-swatch")
-        .forEach((swatch) => {
-          swatch.dataset.active = String(
-            swatch.dataset.className === activeFont,
+      if (block.type === "callout") {
+        panelEl.classList.add("cm-callout-color-panel");
+        const attrs = getCalloutAttrs(blockText);
+        const applyCalloutColor = (kind: ColorKind, className: string): void => {
+          const key = kind === "font" ? "text" : kind === "border" ? "border" : "bg";
+          const name = attrNameFromClassName(key, className);
+          const nextAttrs: {
+            bg?: string;
+            border?: string;
+            text?: string;
+          } = { ...attrs };
+          if (name === "" || attrs[key] === name) delete nextAttrs[key];
+          else nextAttrs[key] = name;
+          const next = setCalloutAttrs(blockText, nextAttrs);
+          closeBlockMenu(view);
+          if (next === blockText) return;
+          view.dispatch(
+            structureTransaction({
+              changes: { from: block.from, to: block.to, insert: next },
+            }),
           );
-        });
-      panelEl.appendChild(fontRow);
+        };
+        const addRow = (
+          label: string,
+          kind: ColorKind,
+          colors: readonly ColorSwatch[],
+          active: string,
+        ): void => {
+          const labelEl = document.createElement("div");
+          labelEl.className = "cm-color-row-label";
+          labelEl.textContent = label;
+          panelEl.appendChild(labelEl);
+          const rowEl = createColorRow(kind, colors, applyCalloutColor);
+          rowEl
+            .querySelectorAll<HTMLButtonElement>(".cm-color-swatch")
+            .forEach((swatch) => {
+              swatch.dataset.active = String(
+                swatch.dataset.className === active,
+              );
+            });
+          panelEl.appendChild(rowEl);
+        };
+        addRow("字体颜色", "font", FONT_COLORS, attrs.text ?? "");
+        addRow("边框颜色", "border", BORDER_COLORS, attrs.border ?? "");
+        addRow("填充颜色", "background", BACKGROUND_COLORS, attrs.bg ?? "");
 
-      const bgRow = createColorRow(
-        "background",
-        BACKGROUND_COLORS,
-        (_kind, cls) => applyColor("mdb-bg", cls),
-      );
-      const activeBg = blockColorOf(blockText, "mdb-bg");
-      bgRow
-        .querySelectorAll<HTMLButtonElement>(".cm-color-swatch")
-        .forEach((swatch) => {
-          swatch.dataset.active = String(swatch.dataset.className === activeBg);
-        });
-      panelEl.appendChild(bgRow);
+        resetColors = (): void => {
+          const next = setCalloutAttrs(blockText, {});
+          closeBlockMenu(view);
+          if (next === blockText) return;
+          view.dispatch(
+            structureTransaction({
+              changes: { from: block.from, to: block.to, insert: next },
+            }),
+          );
+        };
+      } else {
+        const applyColor = (family: ColorFamily, className: string): void => {
+          const next = applyBlockColor(blockText, block.type, family, className);
+          closeBlockMenu(view);
+          if (next === null) return;
+          view.dispatch({
+            changes: { from: block.from, to: block.to, insert: next },
+          });
+        };
 
-      // 「恢复默认」（D16 / C5）：复用 `applyBlockColor` 的清除分支清掉字色与
-      // 背景色。两族 span 可能互相嵌套，单轮单族只剥内层，故逐轮剥到稳定。
-      const resetColors = (): void => {
-        let next = blockText;
-        for (let i = 0; i < 4; i += 1) {
-          const withoutFont = applyBlockColor(
-            next,
-            block.type,
-            "mdb-color",
-            "",
-          );
-          const withoutBg = applyBlockColor(
-            withoutFont ?? next,
-            block.type,
-            "mdb-bg",
-            "",
-          );
-          const candidate = withoutBg ?? withoutFont ?? next;
-          if (candidate === next) break;
-          next = candidate;
-        }
-        closeBlockMenu(view);
-        if (next === blockText) return;
-        view.dispatch({
-          changes: { from: block.from, to: block.to, insert: next },
-        });
-      };
+        const fontRow = createColorRow("font", FONT_COLORS, (_kind, cls) =>
+          applyColor("mdb-color", cls),
+        );
+        const activeFont = blockColorOf(blockText, "mdb-color");
+        fontRow
+          .querySelectorAll<HTMLButtonElement>(".cm-color-swatch")
+          .forEach((swatch) => {
+            swatch.dataset.active = String(
+              swatch.dataset.className === activeFont,
+            );
+          });
+        panelEl.appendChild(fontRow);
+
+        const bgRow = createColorRow(
+          "background",
+          BACKGROUND_COLORS,
+          (_kind, cls) => applyColor("mdb-bg", cls),
+        );
+        const activeBg = blockColorOf(blockText, "mdb-bg");
+        bgRow
+          .querySelectorAll<HTMLButtonElement>(".cm-color-swatch")
+          .forEach((swatch) => {
+            swatch.dataset.active = String(
+              swatch.dataset.className === activeBg,
+            );
+          });
+        panelEl.appendChild(bgRow);
+
+        // 「恢复默认」（D16 / C5）：复用 `applyBlockColor` 的清除分支清掉字色与
+        // 背景色。两族 span 可能互相嵌套，单轮单族只剥内层，故逐轮剥到稳定。
+        resetColors = (): void => {
+          let next = blockText;
+          for (let i = 0; i < 4; i += 1) {
+            const withoutFont = applyBlockColor(
+              next,
+              block.type,
+              "mdb-color",
+              "",
+            );
+            const withoutBg = applyBlockColor(
+              withoutFont ?? next,
+              block.type,
+              "mdb-bg",
+              "",
+            );
+            const candidate = withoutBg ?? withoutFont ?? next;
+            if (candidate === next) break;
+            next = candidate;
+          }
+          closeBlockMenu(view);
+          if (next === blockText) return;
+          view.dispatch({
+            changes: { from: block.from, to: block.to, insert: next },
+          });
+        };
+      }
 
       const resetButton = document.createElement("button");
       resetButton.type = "button";

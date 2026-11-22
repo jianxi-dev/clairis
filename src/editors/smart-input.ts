@@ -92,17 +92,18 @@ export function handleMarkdownShortcut(view: EditorView): boolean {
     return true;
   }
 
-  // Callout 折叠：`> [!tip]-` / `> [!tip]+` / `> [!NOTE]-` 等。
+  // Callout 折叠：`> [!tip]-` / `> [!tip]+` / `> [!NOTE]-` 等，属性块原样保留。
   // 带不带尾随空格都匹配（keydown 时空格尚未插入）。
   const calloutFoldMatch = textBeforeCursor.match(
-    /^> \[!([a-zA-Z]+)\]([+-]) ?$/,
+    /^> \[!([a-zA-Z]+)\]([+-])(\{[^}]*\})? ?$/,
   );
   if (calloutFoldMatch) {
     const type = calloutFoldMatch[1];
     const foldState = calloutFoldMatch[2];
+    const attrs = calloutFoldMatch[3] ?? "";
     const from = line.from;
     const to = view.state.selection.main.head;
-    const replacement = `> [!${type}]${foldState}\n> `;
+    const replacement = `> [!${type}]${foldState}${attrs}\n> `;
     view.dispatch({
       changes: { from, to, insert: replacement },
       selection: { anchor: from + replacement.length },

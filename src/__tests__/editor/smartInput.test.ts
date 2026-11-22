@@ -107,6 +107,14 @@ describe("markdown shortcuts", () => {
     expect(handleMarkdownShortcut(editor.view)).toBe(true);
     expect(editor.view.state.doc.toString()).toBe("> [!tip]+\n> ");
   });
+
+  it("preserves the attribute block when folding a callout", () => {
+    type("> [!NOTE]+{bg=green border=red} ");
+    expect(handleMarkdownShortcut(editor.view)).toBe(true);
+    expect(editor.view.state.doc.toString()).toBe(
+      "> [!NOTE]+{bg=green border=red}\n> ",
+    );
+  });
 });
 
 describe("heading promote/demote", () => {

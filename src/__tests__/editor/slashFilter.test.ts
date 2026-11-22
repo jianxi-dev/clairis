@@ -46,7 +46,7 @@ const defaultCommands: readonly FixtureRow[] = [
       { id: "col-5", label: "5 栏", code: "f5" },
     ],
   },
-  { id: "callout", label: "标注", code: "n", children: calloutChildren },
+  { id: "callout", label: "高亮", code: "n", children: calloutChildren },
   { id: "dashboard", label: "数据看板", code: "b" },
   { id: "html", label: "插入 HTML", code: "H" },
   { id: "css", label: "插入 CSS", code: "C" },
@@ -79,7 +79,7 @@ describe("filterSlashCommands", () => {
       "视频/文件",
       "表格",
       "分栏",
-      "标注",
+      "高亮",
       "数据看板",
       "插入 HTML",
       "插入 CSS",
@@ -112,9 +112,9 @@ describe("filterSlashCommands", () => {
     expect(filterSlashCommands(defaultCommands, "fl3")).toEqual([]);
   });
 
-  it("declares the thirteen editor callout types as second-level options", () => {
+  it("declares the fourteen editor callout types as second-level options", () => {
     const children = row("callout").children ?? [];
-    expect(children).toHaveLength(13);
+    expect(children).toHaveLength(14);
     expect(children.map((c) => c.label)).toEqual([
       "注释",
       "信息",
@@ -129,6 +129,7 @@ describe("filterSlashCommands", () => {
       "Bug",
       "示例",
       "引用",
+      "纯高亮",
     ]);
     expect(
       children.map(
@@ -149,6 +150,7 @@ describe("filterSlashCommands", () => {
       "🐛",
       "📝",
       "💬",
+      "🖍️",
     ]);
   });
 
@@ -176,7 +178,7 @@ describe("filterSlashCommands", () => {
 
   it("keeps the callout parent and surfaces its styles for the parent code", () => {
     const rows = labels(filterSlashCommands(defaultCommands, "n"));
-    expect(rows[0]).toBe("标注");
+    expect(rows[0]).toBe("高亮");
     expect(rows.slice(1)).toEqual(calloutChildren.map((child) => child.label));
   });
 

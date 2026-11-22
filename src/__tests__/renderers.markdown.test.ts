@@ -35,3 +35,29 @@ describe("renderMarkdown — GFM 任务列表 & sanitize", () => {
     expect(html).toContain("safe");
   });
 });
+
+describe("renderMarkdown — callout 三色属性", () => {
+  it("把首行属性块写成卡片 CSS 变量", () => {
+    const html = renderMarkdown(
+      "> [!NOTE]{bg=green border=red text=gray} 标题\n> 正文",
+    );
+    expect(html).toContain(
+      "--callout-bg: color-mix(in srgb, #419e34 10%, transparent)",
+    );
+    expect(html).toContain("--callout-border: #f0000e");
+    expect(html).toContain("--callout-text: #8b8f96");
+  });
+
+  it("纯高亮类型带标签", () => {
+    const html = renderMarkdown("> [!HIGHLIGHT]");
+    expect(html).toContain('data-callout="highlight"');
+    expect(html).toContain("纯高亮");
+  });
+
+  it("旧语法不产生属性变量", () => {
+    const html = renderMarkdown("> [!NOTE] 标题");
+    expect(html).not.toContain("--callout-bg");
+    expect(html).not.toContain("--callout-border");
+    expect(html).not.toContain("--callout-text");
+  });
+});
