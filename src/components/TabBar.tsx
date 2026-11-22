@@ -963,7 +963,7 @@ export default function TabBar({
                 .then((result) => {
                   useStore
                     .getState()
-                    .refreshTabContent(menu.tabId, result.content);
+                    .refreshTabContent(menu.tabId, result.content, "external");
                 })
                 .catch(() => undefined);
             }}
