@@ -35,10 +35,12 @@ async function readContent(page: Page): Promise<string> {
   return page.evaluate(() => {
     const s = (
       window as unknown as {
-        __biaoyue_store__: { getState: () => {
-          tabs: Record<string, { content: string }>;
-          activeTabId: string;
-        } };
+        __biaoyue_store__: {
+          getState: () => {
+            tabs: Record<string, { content: string }>;
+            activeTabId: string;
+          };
+        };
       }
     ).__biaoyue_store__.getState();
     return s.tabs[s.activeTabId]?.content ?? "";
@@ -217,7 +219,10 @@ test("条目去掉前导竖线，改为 H 等级徽标（#925）", async ({ page
     .evaluate((el) => {
       const cs = getComputedStyle(el);
       const before = getComputedStyle(el, "::before");
-      return { borderLeftWidth: cs.borderLeftWidth, beforeContent: before.content };
+      return {
+        borderLeftWidth: cs.borderLeftWidth,
+        beforeContent: before.content,
+      };
     });
   console.log(
     `[925] item borderLeftWidth=${style.borderLeftWidth} ::before content=${style.beforeContent}`,
@@ -254,11 +259,13 @@ test("拖动条目重排正文并清除持久化顺序（#925 → #1050）", asy
   await expect(items.nth(0)).toHaveText(/第二节/);
   await expect(items.nth(1)).toHaveText(/第一章/);
   const content = await readContent(page);
-  expect(content.indexOf("## 第二节")).toBeLessThan(content.indexOf("# 第一章"));
+  expect(content.indexOf("## 第二节")).toBeLessThan(
+    content.indexOf("# 第一章"),
+  );
 
   // 正文已同步，旧的显示顺序必须清除，否则二次排序。
-  const stored = await page.evaluate(
-    () => localStorage.getItem("outline-order:/tmp/outline.md"),
+  const stored = await page.evaluate(() =>
+    localStorage.getItem("outline-order:/tmp/outline.md"),
   );
   expect(stored).toBeNull();
 
@@ -300,15 +307,15 @@ async function openReplayDoc(page: Page) {
       body,
       "outline-reorder.md",
     );
-    (window as unknown as Record<string, any>)
-      .__biaoyue_store__.getState()
+    (window as unknown as Record<string, any>).__biaoyue_store__
+      .getState()
       .setEditorMode("edit");
   }, REORDER_DOC);
   await page.locator(".cm-content").waitFor({ timeout: 10000 });
   await page.locator('[data-testid="outline-btn"]').click();
-  await expect(
-    page.locator('[data-testid="outline-menu"]'),
-  ).toBeVisible({ timeout: 3000 });
+  await expect(page.locator('[data-testid="outline-menu"]')).toBeVisible({
+    timeout: 3000,
+  });
 }
 
 test("#1050 拖动出现轨迹，松手后正文与新大纲一致", async ({ page }) => {
@@ -345,13 +352,14 @@ test("#1050 拖动出现轨迹，松手后正文与新大纲一致", async ({ pa
 
   await expect(items.nth(0)).toHaveText(/乙/);
   await expect(items.nth(1)).toHaveText(/甲/);
-  expect(await readContent(page)).toBe(REORDERED_DOC);
+  // 内容快照走 300ms 防抖（ADR 0003），store 收敛需要轮询。
+  await expect.poll(() => readContent(page)).toBe(REORDERED_DOC);
   await shot(page, "02-body-synced");
 
   // 一次 Ctrl+Z 回到重排前（单事务）。
   await page.locator(".cm-content").click();
   await page.keyboard.press("Control+z");
-  expect(await readContent(page)).toBe(REORDER_DOC);
+  await expect.poll(() => readContent(page)).toBe(REORDER_DOC);
 });
 
 test("#1050 拖动取消（Esc）后正文与大纲回到原状", async ({ page }) => {
@@ -389,8 +397,8 @@ test("#1050 每项持有层级标识，仅悬停项可见且颜色更浅（A-2.3
       body,
       "outline-badge.md",
     );
-    (window as unknown as Record<string, any>)
-      .__biaoyue_store__.getState()
+    (window as unknown as Record<string, any>).__biaoyue_store__
+      .getState()
       .setEditorMode("edit");
   }, doc);
   await page.locator(".cm-content").waitFor({ timeout: 10000 });
@@ -438,8 +446,8 @@ test("#1050 预览态松手后正文顺序与大纲一致（缺陷复现）", as
       body,
       "outline-reorder-preview.md",
     );
-    (window as unknown as Record<string, any>)
-      .__biaoyue_store__.getState()
+    (window as unknown as Record<string, any>).__biaoyue_store__
+      .getState()
       .setEditorMode("preview");
   }, REORDER_DOC);
   await page.locator(".preview-content").waitFor({ timeout: 10000 });

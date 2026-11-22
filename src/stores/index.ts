@@ -326,6 +326,13 @@ interface AppStore {
    */
   updateContent: (content: string, writer?: string) => number;
   updateTabContent: (tabId: string, content: string, writer?: string) => number;
+  /**
+   * 首键立即把页签标脏，但不碰内容 / 修订号 / 写入者。
+   *
+   * 节流期间 store 快照滞后于 live 视图（ADR 0003），`dirty` 是唯一需要「立即」
+   * 的信号：自动保存与状态栏都读它。已是脏页签时返回原对象，避免无谓重渲染。
+   */
+  markTabDirty: (tabId: string) => void;
   /** 用磁盘内容覆盖页签内容（刷新）：内容以磁盘为准，页签回到干净态。 */
   refreshTabContent: (
     tabId: string,
@@ -716,6 +723,14 @@ export const useStore = create<AppStore>((set, get) => ({
     const next = withTabContent(tab, content, writer, false);
     set({ tabs: { ...tabs, [tabId]: next } });
     return next.contentRevision ?? 0;
+  },
+
+  markTabDirty: (tabId) => {
+    const { tabs } = get();
+    const tab = tabs[tabId];
+    // 已经脏：返回原对象，不触发订阅者（与 withTabContent 的等值早退同源）。
+    if (!tab || tab.dirty) return;
+    set({ tabs: { ...tabs, [tabId]: { ...tab, dirty: true } } });
   },
 
   renameTab: (tabId: string, title: string) => {

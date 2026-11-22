@@ -4320,6 +4320,12 @@ test("#1276 块后空行不并入属性块：首行回车下移、正文输入�
   await dpbRecord(page, "1276", "01-enter-moves-down");
 
   await page.keyboard.type("补充");
+  // 内容快照走 300ms 防抖（ADR 0003），store 收敛需要轮询。
+  await expect
+    .poll(async () => (await docText(page)).includes("补充"), {
+      timeout: 3000,
+    })
+    .toBe(true);
   const text = await docText(page);
   expect(text.split("首行正文")[0].split("\n").length).toBe(linesBefore + 1);
   expect(text).toContain("补充");

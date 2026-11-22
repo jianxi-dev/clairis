@@ -39,6 +39,7 @@ import {
   undoOnce,
 } from "./editors/keybindings";
 import { saveAppConfig, useConfig } from "./hooks/useConfig";
+import { flushAllContent, flushTabContent } from "./editors/contentSync";
 import { RAIL_KIND_ORDER } from "./lib/railView";
 import type { FileTypeKind } from "./lib/fileType";
 import { log } from "./utils/log";
@@ -206,36 +207,35 @@ function App() {
   const handleSaveFile = useCallback(async () => {
     if (!isTauri || !activeTab) return;
     if (isMediaKind(activeTab.fileKind)) return;
+    const tabId = activeTab.id;
+    // 保存一律先 flush：节流窗口内 store 快照滞后于 live 视图，直接读会存到旧文。
+    flushTabContent(tabId);
+    const fresh = useStore.getState().tabs[tabId];
+    if (!fresh) return;
     try {
-      if (!activeTab.path) {
+      if (!fresh.path) {
         // 未落盘的新建文档：走「另存为」，对话框初始目录 = 配置的默认保存路径，
         // 文件名预填页签标题（ui-polish-batch12 6.1）。
         const saved = await invoke<{ path: string }>("save_as_file", {
-          content: activeTab.content,
-          defaultName: defaultSaveName(activeTab.title || "未命名"),
+          content: fresh.content,
+          defaultName: defaultSaveName(fresh.title || "未命名"),
           defaultDir: useEditorStore.getState().config.defaultSavePath ?? null,
         });
         if (saved?.path) {
-          useStore.getState().setTabPath(activeTab.id, saved.path);
+          useStore.getState().setTabPath(tabId, saved.path);
           useStore.getState().markClean();
         }
         return;
       }
       await invoke("save_file", {
-        path: activeTab.path,
-        content: activeTab.content,
+        path: fresh.path,
+        content: fresh.content,
       });
       useStore.getState().markClean();
     } catch (e) {
       log.error("App", "Failed to save file", e);
     }
-  }, [
-    activeTab?.path,
-    activeTab?.content,
-    activeTab?.fileKind,
-    activeTab?.id,
-    activeTab?.title,
-  ]);
+  }, [activeTab?.id, activeTab?.fileKind]);
 
   const handleNewFile = useCallback(() => {
     if (templates.length > 0) {
@@ -338,11 +338,16 @@ function App() {
   useEffect(() => {
     if (!activeTab?.dirty || !activeTab?.path) return;
     if (isMediaKind(activeTab.fileKind)) return;
+    const tabId = activeTab.id;
     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
 
     autoSaveTimerRef.current = setTimeout(() => {
-      if (!isTauri || !activeTab?.path) return;
-      invoke("save_file", { path: activeTab.path, content: activeTab.content })
+      if (!isTauri) return;
+      // 自动保存是最容易丢字的地方：定时器到点时快照可能还停在节流窗口里。
+      flushTabContent(tabId);
+      const fresh = useStore.getState().tabs[tabId];
+      if (!fresh?.path) return;
+      invoke("save_file", { path: fresh.path, content: fresh.content })
         .then(() => useStore.getState().markClean())
         .catch((e: unknown) => log.error("App", "Auto-save failed", e));
     }, 2000);
@@ -355,6 +360,7 @@ function App() {
     activeTab?.content,
     activeTab?.path,
     activeTab?.fileKind,
+    activeTab?.id,
   ]);
 
   // ── Keyboard shortcuts ───────────────────────────────────────
@@ -966,6 +972,8 @@ function App() {
         const win = getCurrentWindow();
         unlisten = await win.onCloseRequested(async (event) => {
           event.preventDefault();
+          // 关窗前把所有页签的待写内容落 store，再持久化配置。
+          flushAllContent();
           const store = useStore.getState();
           const capture = (panelId: string, tabId: string | null) => {
             if (!tabId) return;
