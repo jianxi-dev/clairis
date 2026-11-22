@@ -49,7 +49,7 @@ export const CALLOUT_SNIPPETS: readonly CalloutInsertSnippet[] = [
   {
     id: "table",
     label: "表格",
-    icon: "TableChartOutlined",
+    icon: "TableGridOutlined",
     snippet: "\n| A | B |\n| --- | --- |\n|   |   |\n",
   },
   { id: "link", label: "链接", icon: "GlobalLinkOutlined", snippet: "[](url)" },

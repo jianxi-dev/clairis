@@ -383,7 +383,7 @@ const ADD_BASIC_ROWS: ReadonlyArray<readonly [string, string, string, string]> =
     ["add-ordered", "有序列表", "OrderListOutlined", "1. "],
     ["add-bullet", "无序列表", "DisorderListOutlined", "- "],
     ["add-task", "任务", "TodoOutlined", "- [ ] "],
-    ["add-quote", "引用", "ReferenceOutlined", "> "],
+    ["add-quote", "引用", "FormatQuoteOutlined", "> "],
     ["add-divider", "分割线", "HorizontalRuleOutlined", "---"],
     ["add-code", "代码块", "CodeblockOutlined", "```\n\n```"],
     ["add-link", "链接", "GlobalLinkOutlined", "[链接文字](url)"],

@@ -13,8 +13,8 @@ import { ICONS as UI_ICONS, type IconName as UiIconName } from "../ui/icons";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 
-/** Default rendered icon size — matches the existing 16px gutter slot. */
-const ICON_SIZE_PX = "20px";
+/** 渲染尺寸：设计系统 §2.1 常规档 18px（2026-11-03 的 20px 放大档由 E-47 收敛）。 */
+const ICON_SIZE_PX = "18px";
 
 type IconDef =
   | { readonly kind: "text"; readonly label: string; readonly weight?: number }
@@ -607,7 +607,7 @@ export const COMMAND_ICON_NAME: Readonly<Record<string, string>> = {
   "insert-task-list": "TodoOutlined",
   "insert-quote": "FormatQuoteOutlined",
   "insert-code-block": "CodeblockOutlined",
-  "insert-table": "TableChartOutlined",
+  "insert-table": "TableGridOutlined",
   "insert-callout": "CalloutOutlined",
   "insert-html": "CodeOutlined",
   "insert-css": "CssOutlined",
@@ -668,10 +668,10 @@ export const COMMAND_ICON_NAME: Readonly<Record<string, string>> = {
   "turn-into-paragraph": "FormatParagraphOutlined",
   "turn-into-list": "DisorderListOutlined",
   "turn-into-task": "TodoOutlined",
-  "turn-into-quote": "ReferenceOutlined",
+  "turn-into-quote": "FormatQuoteOutlined",
   "turn-into-code": "CodeblockOutlined",
   "turn-into-callout": "CalloutOutlined",
-  "turn-into-table": "TableChartOutlined",
+  "turn-into-table": "TableGridOutlined",
   delete: "DeleteTrashOutlined",
   duplicate: "CopyOutlined",
   "move-up": "ArrowUpwardOutlined",
@@ -786,7 +786,7 @@ export const CONVERT_ICON_NAME: Record<string, string> = {
   bullet: "DisorderListOutlined",
   todo: "TodoOutlined",
   code: "CodeblockOutlined",
-  quote: "ReferenceOutlined",
+  quote: "FormatQuoteOutlined",
   callout: "CalloutOutlined",
 };
 

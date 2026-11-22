@@ -86,8 +86,8 @@ test.describe("单元格手柄随内容变化（#108）", () => {
       "| A | B |\n| --- | --- |\n| a1 |  |\n",
       "fidelity-cell-icon",
     );
-    // #739：图标统一，空/非空都是 DataSheetOutlined。
-    await expect.poll(() => handleIcon(page)).toBe("DataSheetOutlined");
+    // #739：图标统一，空/非空都是 TableGridOutlined。
+    await expect.poll(() => handleIcon(page)).toBe("TableGridOutlined");
     await expect
       .poll(() =>
         page
@@ -102,7 +102,7 @@ test.describe("单元格手柄随内容变化（#108）", () => {
     await page.keyboard.type("新内容");
     await page.keyboard.press("Enter");
 
-    await expect.poll(() => handleIcon(page)).toBe("DataSheetOutlined");
+    await expect.poll(() => handleIcon(page)).toBe("TableGridOutlined");
     await expect
       .poll(() =>
         page
@@ -118,7 +118,7 @@ test.describe("块型图标（E-7：块型图标 + 拖拽把手）", () => {
     { name: "H2 标题", doc: "## 标题\n", icon: "H2Outlined" },
     { name: "段落", doc: "一段正文\n", icon: "FormatParagraphOutlined" },
     // #917 起引用块内每一段各成手柄，hover 引用行命中嵌套段落手柄而非引用
-    // 容器（见 e2e/cell-column-render-838.spec.ts）；容器图标 ReferenceOutlined
+    // 容器（见 e2e/cell-column-render-838.spec.ts）；容器图标 FormatQuoteOutlined
     // 的映射由单测 blockHandleIcon("blockquote") 覆盖。
     {
       name: "引用行（嵌套段落）",
@@ -288,7 +288,9 @@ test.describe("块菜单几何与图标", () => {
     }
   });
 
-  test("菜单图标渲染 20px（放大一档，2026-11-03）", async ({ page }) => {
+  test("菜单图标渲染 18px（设计系统 §2 常规档，E-47 收敛）", async ({
+    page,
+  }) => {
     const width = await page
       .locator('[data-testid="block-menu-cell"] svg')
       .first()
