@@ -416,9 +416,9 @@ test("单元格手柄统一图标、垂直居中、在边框线外，表头无�
   const emptyState = await readState(empty);
   const filledState = await readState(filled);
 
-  // 1) 空 / 非空手柄图标统一为 DataSheetOutlined
-  expect(emptyState.icon).toBe("DataSheetOutlined");
-  expect(emptyState.svgIcon).toBe("DataSheetOutlined");
+  // 1) 空 / 非空手柄图标统一为 TableGridOutlined
+  expect(emptyState.icon).toBe("TableGridOutlined");
+  expect(emptyState.svgIcon).toBe("TableGridOutlined");
   expect(filledState.icon).toBe(emptyState.icon);
   expect(filledState.svgIcon).toBe(emptyState.svgIcon);
 

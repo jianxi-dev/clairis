@@ -16,8 +16,8 @@ export const EDITOR_ANCHORS = {
   handle: { width: 42, height: 26 },
   /** 块菜单（E-7；豆包 §2.3）。 */
   menu: { width: 176, rowHeight: 36 },
-  /** 菜单行内图标渲染尺寸（豆包 §2.2）。 */
-  menuIcon: 20,
+  /** 菜单行内图标渲染尺寸（设计系统 §2.1 常规档；E-47 由 20px 收敛）。 */
+  menuIcon: 18,
   /** 「转为」单元数（豆包 §4.3）。 */
   convertCells: 10,
   /** 新增手柄菜单项总数（D7：基础 10 + 常用 8），全局与单元格菜单共用（A-9.3）。 */

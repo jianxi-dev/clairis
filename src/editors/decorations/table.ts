@@ -100,7 +100,7 @@ function applyCellHandleState(handle: HTMLElement, text: string): void {
   handle.dataset.cellEmpty = String(empty);
   handle.title = "打开内容菜单";
   // 与 block-handle.ts `BLOCK_ICON_NAME.table` 同词汇（#739 统一后）。
-  const iconName = "DataSheetOutlined";
+  const iconName = "TableGridOutlined";
   if (handle.dataset.icon === iconName) return;
   handle.dataset.icon = iconName;
   handle.replaceChildren(renderIcon(iconName));

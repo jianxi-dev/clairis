@@ -129,7 +129,7 @@ test("A-9.1 滑入表头：转换手柄节点数 = 1（表格图标 + 六点拖�
   const handle = visible.first();
   await expect(handle.locator(".cm-block-handle-icon svg")).toHaveAttribute(
     "data-icon",
-    "DataSheetOutlined",
+    "TableGridOutlined",
   );
   await expect(handle.locator(".cm-block-handle-grip svg")).toHaveAttribute(
     "data-icon",

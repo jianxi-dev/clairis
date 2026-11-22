@@ -20,13 +20,13 @@ import { hasIcon } from "../../editors/icons";
 
 describe("blockHandleIcon", () => {
   it("映射表格 / 列表 / 高亮 / 代码 / 图片 / 引用 / 段落 / 分割线 / 任务", () => {
-    expect(blockHandleIcon("table")).toBe("DataSheetOutlined");
+    expect(blockHandleIcon("table")).toBe("TableGridOutlined");
     expect(blockHandleIcon("list")).toBe("DisorderListOutlined");
     expect(blockHandleIcon("callout")).toBe("CalloutOutlined");
     expect(blockHandleIcon("fencedCode")).toBe("CodeblockOutlined");
     expect(blockHandleIcon("codeBlock")).toBe("CodeblockOutlined");
     expect(blockHandleIcon("image")).toBe("ImageOutlined");
-    expect(blockHandleIcon("blockquote")).toBe("ReferenceOutlined");
+    expect(blockHandleIcon("blockquote")).toBe("FormatQuoteOutlined");
     expect(blockHandleIcon("paragraph")).toBe("FormatParagraphOutlined");
     expect(blockHandleIcon("thematicBreak")).toBe("DividerOutlined");
     expect(blockHandleIcon("task")).toBe("TodoOutlined");

@@ -304,7 +304,7 @@ const ALL_ITEMS: readonly BlockMenuItem[] = [
   { target: "bullet", label: "无序", icon: "DisorderListOutlined" },
   { target: "todo", label: "待办", icon: "TodoOutlined" },
   { target: "code", label: "代码", icon: "CodeblockOutlined" },
-  { target: "quote", label: "引用", icon: "ReferenceOutlined" },
+  { target: "quote", label: "引用", icon: "FormatQuoteOutlined" },
   { target: "callout", label: "高亮", icon: "CalloutOutlined" },
 ];
 

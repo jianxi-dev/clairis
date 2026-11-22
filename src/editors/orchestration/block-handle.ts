@@ -50,11 +50,11 @@ import { parseMermaidBlocks } from "../decorations/mermaid";
 
 /** 块型 → 手柄图标名（D6 验收锚点）。 */
 const BLOCK_ICON_NAME: Record<string, string> = {
-  table: "DataSheetOutlined",
+  table: "TableGridOutlined",
   list: "DisorderListOutlined",
   task: "TodoOutlined",
   callout: "CalloutOutlined",
-  blockquote: "ReferenceOutlined",
+  blockquote: "FormatQuoteOutlined",
   paragraph: "FormatParagraphOutlined",
   thematicBreak: "DividerOutlined",
   fencedCode: "CodeblockOutlined",
