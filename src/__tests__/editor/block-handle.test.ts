@@ -7,6 +7,9 @@
 import { describe, expect, it } from "vitest";
 import {
   blockHandleIcon,
+  firstRebuildIndex,
+  handleKey,
+  handleKeysFor,
   isInSummonZone,
   moveBlock,
   SUMMON_ZONE_RATIO,
@@ -150,5 +153,91 @@ describe("moveBlock", () => {
     expect(moveBlock(doc, { from: 9, to: 14 }, { from: 0 })).toBe(
       "three\n\none\ntwo",
     );
+  });
+});
+
+describe("handleKey", () => {
+  it("由序号 + 块型 + 图标名组成", () => {
+    expect(handleKey(0, "paragraph", "FormatParagraphOutlined")).toBe(
+      "0:paragraph:FormatParagraphOutlined",
+    );
+    expect(handleKey(2, "heading", "H1Outlined")).toBe("2:heading:H1Outlined");
+  });
+});
+
+describe("handleKeysFor", () => {
+  it("纯内容输入 / 删除不改变 key（段落图标与首行文本无关）", () => {
+    const before = handleKeysFor([
+      { type: "paragraph", firstLine: "第一段" },
+      { type: "paragraph", firstLine: "第二段" },
+    ]);
+    const after = handleKeysFor([
+      { type: "paragraph", firstLine: "第一段连续输入十个字" },
+      { type: "paragraph", firstLine: "第二段删掉几个字" },
+    ]);
+    expect(after).toEqual(before);
+  });
+
+  it("块型变化改变 key（段落 → 标题）", () => {
+    const before = handleKeysFor([{ type: "paragraph", firstLine: "标题" }]);
+    const after = handleKeysFor([{ type: "heading", firstLine: "# 标题" }]);
+    expect(after).not.toEqual(before);
+  });
+
+  it("标题级别 / 列表有序无序 / 图片媒体类型参与 key", () => {
+    expect(handleKeysFor([{ type: "heading", firstLine: "# 甲" }])).not.toEqual(
+      handleKeysFor([{ type: "heading", firstLine: "## 甲" }]),
+    );
+    expect(handleKeysFor([{ type: "list", firstLine: "- 甲" }])).not.toEqual(
+      handleKeysFor([{ type: "list", firstLine: "1. 甲" }]),
+    );
+    expect(
+      handleKeysFor([{ type: "image", firstLine: "![a](a.png)" }]),
+    ).not.toEqual(handleKeysFor([{ type: "image", firstLine: "![a](a.mp4)" }]));
+  });
+
+  it("序号参与 key：同型同图标的不同块不共用 key", () => {
+    expect(handleKeysFor([{ type: "paragraph", firstLine: "甲" }])[0]).not.toBe(
+      handleKeysFor([
+        { type: "paragraph", firstLine: "甲" },
+        { type: "paragraph", firstLine: "乙" },
+      ])[1],
+    );
+  });
+});
+
+describe("firstRebuildIndex", () => {
+  const keys = (...list: string[]) => list;
+
+  it("键逐位一致且数量相同返回 -1（纯输入只重算几何）", () => {
+    expect(firstRebuildIndex(keys("a", "b", "c"), keys("a", "b", "c"))).toBe(
+      -1,
+    );
+  });
+
+  it("插入：返回插入位置，其后重建", () => {
+    expect(
+      firstRebuildIndex(keys("a", "b", "c"), keys("a", "x", "b", "c")),
+    ).toBe(1);
+  });
+
+  it("删除：返回删除位置", () => {
+    expect(firstRebuildIndex(keys("a", "b", "c"), keys("a", "c"))).toBe(1);
+  });
+
+  it("块型变化：返回该块位置", () => {
+    expect(firstRebuildIndex(keys("a", "b", "c"), keys("a", "B", "c"))).toBe(1);
+  });
+
+  it("尾部追加：返回旧长度", () => {
+    expect(firstRebuildIndex(keys("a", "b"), keys("a", "b", "c"))).toBe(2);
+  });
+
+  it("尾部删除：返回新长度", () => {
+    expect(firstRebuildIndex(keys("a", "b", "c"), keys("a", "b"))).toBe(2);
+  });
+
+  it("空 → 有：从 0 重建", () => {
+    expect(firstRebuildIndex(keys(), keys("a"))).toBe(0);
   });
 });
