@@ -50,6 +50,7 @@ import {
   type MermaidTheme,
 } from "./mermaid";
 import { createMathDecorations } from "./math";
+import { mathEditor } from "../orchestration/math-editor";
 import {
   createTableDecorations,
   scheduleTableFlush,
@@ -350,6 +351,7 @@ export function editorDecorations(
   return [
     foldState,
     createDecorationField(options),
+    mathEditor(),
     compositionGuard.extension,
     tableFlush.extension,
     tableCellSelectionPainter(),

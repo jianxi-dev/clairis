@@ -21,8 +21,8 @@
  */
 import type { Range } from "@codemirror/state";
 import { Decoration, WidgetType } from "@codemirror/view";
-import katex from "katex";
 import { isCapabilityEnabled } from "../../lib/capabilities";
+import { isDisplayMath, renderMathHtml } from "../../lib/math";
 import { fencedCodeRanges } from "./code";
 
 interface MathRange {
@@ -42,24 +42,6 @@ const BLOCK_CLOSE_RE = /\$\$[ \t]*$/;
  * 空行内公式（`$$` 由块级解析负责）。
  */
 const INLINE_RE = /(?<![\w\\])\$(?!\s)([^$\n]+?)(?<!\s)\$(?![\w])/g;
-
-function escapeHtml(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-}
-
-function renderTex(tex: string, displayMode: boolean): string {
-  try {
-    return katex.renderToString(tex, {
-      displayMode,
-      throwOnError: false,
-      output: "html",
-      strict: false,
-    });
-  } catch {
-    // throwOnError:false 时 KaTeX 自己兜底；这里再兜一层，渲染失败不能击穿编辑器。
-    return `<span class="katex-error">${escapeHtml(tex)}</span>`;
-  }
-}
 
 /** 块级公式：开栏行首 → 闭栏行尾（单行块到本行尾）。未闭合延伸到文末。 */
 function parseBlockMath(docText: string): MathRange[] {
@@ -137,26 +119,36 @@ class MathWidget extends WidgetType {
   constructor(
     private readonly _tex: string,
     private readonly _displayMode: boolean,
+    private readonly _from: number,
+    private readonly _to: number,
   ) {
     super();
   }
 
   eq(other: MathWidget): boolean {
-    return other._tex === this._tex && other._displayMode === this._displayMode;
+    return (
+      other._tex === this._tex &&
+      other._displayMode === this._displayMode &&
+      other._from === this._from &&
+      other._to === this._to
+    );
   }
 
   toDOM(): HTMLElement {
     const el = document.createElement(this._displayMode ? "div" : "span");
-    el.innerHTML = renderTex(this._tex, this._displayMode);
+    // 点击浮层（orchestration/math-editor）按这两个属性定位公式源。
+    el.dataset.mathFrom = String(this._from);
+    el.dataset.mathTo = String(this._to);
+    el.innerHTML = renderMathHtml(this._tex, this._displayMode);
     return el;
   }
 
   /**
-   * 点击交回 CM6，让光标进入公式、原始定界符重新显示。CM6 只在
-   * `ignoreEvent` 返回 false 时把事件当编辑器自己的，所以这里返回 false。
+   * 点击不再交回 CM6（那会让光标进入公式、原始定界符重新显示）：本票改为
+   * 点击唤起源码浮层，由 orchestration/math-editor 的捕获监听接管。
    */
   ignoreEvent(): boolean {
-    return false;
+    return true;
   }
 }
 
@@ -187,7 +179,8 @@ export function createMathDecorations(
       ? selFrom <= r.to && selTo >= r.from
       : selFrom < r.to && selTo > r.from;
     if (active) continue;
-    const widget = new MathWidget(r.tex, r.displayMode);
+    const displayMode = r.displayMode || isDisplayMath(r.tex);
+    const widget = new MathWidget(r.tex, displayMode, r.from, r.to);
     result.push(
       r.displayMode
         ? Decoration.replace({ widget, block: true }).range(r.from, r.to)

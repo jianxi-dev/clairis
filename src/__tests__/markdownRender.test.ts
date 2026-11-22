@@ -107,9 +107,11 @@ describe("renderMarkdown 公式", () => {
     expect(html).not.toContain("katex");
   });
 
-  it("公式语法错误时回退为错误提示而非抛异常", () => {
+  it("公式语法错误时回退为无效占位而非抛异常", () => {
     const html = renderMarkdown("$\\frac{1}{$");
-    expect(html).toContain("katex");
+    expect(html).toContain("无效公式");
+    expect(html).not.toContain("katex-error");
+    expect(html).not.toContain("katex");
   });
 });
 
