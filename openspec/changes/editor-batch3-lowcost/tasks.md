@@ -6,7 +6,7 @@
 
 ## 1. 视觉地基与高亮
 
-- [ ] 1.1 `[change=editor-batch3-lowcost/1.1]` 主题阴影 token 化（T0）
+- [x] 1.1 `[change=editor-batch3-lowcost/1.1]` 主题阴影 token 化（T0）
   - `src/styles/tokens.css` 新增 `--shadow-menu` / `--shadow-panel` / `--shadow-dialog` / `--shadow-card` / `--shadow-button`，三主题（`:root`/`.dark`/`.warm`）齐备；暗色 alpha ×3 上限 0.6
   - 新增 `scripts/theme-mirror.mjs`：OKLab 镜像 `1.137 − 0.907·L`，chroma ≥ 0.14 保持 L 0.62–0.86，从 `tokens.css` 生成 `.dark` 草稿
   - 新增 vitest：断言三主题 `--shadow-*` 键集合一致

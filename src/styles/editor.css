@@ -3454,7 +3454,7 @@ html[data-tab-drag="true"] body * {
   border: 1px solid var(--app-border);
   border-radius: 10px;
   background: var(--app-surface);
-  box-shadow: 0 8px 24px rgb(0 0 0 / 0.18);
+  box-shadow: var(--shadow-menu);
 }
 
 .context-menu-item {

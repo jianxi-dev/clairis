@@ -82,6 +82,17 @@
   --sf-ctrl-height: 27px;
   --app-shadow:
     0 1px 2px rgba(31, 26, 20, 0.05), 0 8px 24px rgba(31, 26, 20, 0.05);
+
+  /* 主题阴影 5 档（design-system §5；editor-batch3-lowcost D3）。
+     亮值取 Quiet theme.rs:245-300 阶梯；暗色同几何、alpha ×3 上限 0.6，
+     暖色沿用亮值。新代码一律用这 5 档，存量字面量下次触及组件时改引。 */
+  --shadow-menu: 0 1px 3px rgba(0, 0, 0, 0.05), 0 8px 24px rgba(0, 0, 0, 0.1);
+  --shadow-panel:
+    0 1px 4px rgba(0, 0, 0, 0.05), 0 12px 32px rgba(0, 0, 0, 0.12);
+  --shadow-dialog:
+    0 2px 8px rgba(0, 0, 0, 0.06), 0 24px 64px rgba(0, 0, 0, 0.16);
+  --shadow-card: 0 8px 22px -2px rgba(0, 0, 0, 0.035);
+  --shadow-button: 0 1px 1.5px rgba(0, 0, 0, 0.05);
 }
 
 .dark {
@@ -104,6 +115,15 @@
 
   --app-border: #2e3138;
   --app-border-strong: #3d4149;
+
+  /* 阴影暗色：同一几何、alpha ×3 上限 0.6（design-system §5）。 */
+  --shadow-menu: 0 1px 3px rgba(0, 0, 0, 0.15), 0 8px 24px rgba(0, 0, 0, 0.3);
+  --shadow-panel:
+    0 1px 4px rgba(0, 0, 0, 0.15), 0 12px 32px rgba(0, 0, 0, 0.36);
+  --shadow-dialog:
+    0 2px 8px rgba(0, 0, 0, 0.18), 0 24px 64px rgba(0, 0, 0, 0.48);
+  --shadow-card: 0 8px 22px -2px rgba(0, 0, 0, 0.105);
+  --shadow-button: 0 1px 1.5px rgba(0, 0, 0, 0.15);
 }
 
 /* 暖色（Layout Portal §8 外观区第三主题）：独立暖纸面，不与 dark 叠加。 */
@@ -127,6 +147,15 @@
 
   --app-border: #e0d2bc;
   --app-border-strong: #cdbca1;
+
+  /* 暖色沿用亮值（design-system §5）。 */
+  --shadow-menu: 0 1px 3px rgba(0, 0, 0, 0.05), 0 8px 24px rgba(0, 0, 0, 0.1);
+  --shadow-panel:
+    0 1px 4px rgba(0, 0, 0, 0.05), 0 12px 32px rgba(0, 0, 0, 0.12);
+  --shadow-dialog:
+    0 2px 8px rgba(0, 0, 0, 0.06), 0 24px 64px rgba(0, 0, 0, 0.16);
+  --shadow-card: 0 8px 22px -2px rgba(0, 0, 0, 0.035);
+  --shadow-button: 0 1px 1.5px rgba(0, 0, 0, 0.05);
 }
 
 /* ── 旧工具类 → 语义色兼容层（#249） ─────────────────────────────
