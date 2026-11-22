@@ -196,6 +196,50 @@ describe("smart enter", () => {
   });
 });
 
+describe("空项回车三态", () => {
+  it("有子项的空项退一层，列表项数不变", () => {
+    editor.view.dispatch({
+      changes: { from: 0, insert: "  - \n    - 孙" },
+      selection: { anchor: 4 },
+    });
+    expect(smartEnter(editor.view)).toBe(true);
+    expect(editor.view.state.doc.toString()).toBe("- \n    - 孙");
+  });
+
+  it("首层有子项的空项退出列表，子项留在原位", () => {
+    editor.view.dispatch({
+      changes: { from: 0, insert: "- \n  - 子" },
+      selection: { anchor: 2 },
+    });
+    expect(smartEnter(editor.view)).toBe(true);
+    expect(editor.view.state.doc.toString()).toBe("\n  - 子");
+  });
+
+  it("无子项的空项退出列表成为段落", () => {
+    editor.view.dispatch({
+      changes: { from: 0, insert: "- \n- 兄弟" },
+      selection: { anchor: 2 },
+    });
+    expect(smartEnter(editor.view)).toBe(true);
+    expect(editor.view.state.doc.toString()).toBe("\n- 兄弟");
+  });
+
+  it("有子项的空任务项同样退一层", () => {
+    editor.view.dispatch({
+      changes: { from: 0, insert: "  - [ ] \n    - 孙" },
+      selection: { anchor: 8 },
+    });
+    expect(smartEnter(editor.view)).toBe(true);
+    expect(editor.view.state.doc.toString()).toBe("- [ ] \n    - 孙");
+  });
+
+  it("非空项续写同级新项（既有行为）", () => {
+    type("- 甲");
+    expect(smartEnter(editor.view)).toBe(true);
+    expect(editor.view.state.doc.toString()).toBe("- 甲\n- ");
+  });
+});
+
 describe("任务项回车（#106）", () => {
   it("续写未勾选的任务项", () => {
     type("- [ ] 第一件");

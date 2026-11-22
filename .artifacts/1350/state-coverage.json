@@ -1,0 +1,54 @@
+{
+  "task": "1350-list-indent-exit",
+  "states": [
+    {
+      "state": "tab-depth5",
+      "screenshot": ".artifacts/1350/01-tab-depth5.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-22T14:07:04Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "depth6-cap",
+      "screenshot": ".artifacts/1350/02-depth6-cap.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-22T14:07:04Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "outdent",
+      "screenshot": ".artifacts/1350/03-shift-tab-outdent.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-22T14:07:06Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "plain-shift-tab-unchanged",
+      "screenshot": ".artifacts/1350/04-plain-shift-tab.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-22T14:07:07Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "empty-child-outdent",
+      "screenshot": ".artifacts/1350/05-empty-child-outdent.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-22T14:07:10Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "exit-list",
+      "screenshot": ".artifacts/1350/06-empty-exit-list.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-22T14:07:12Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "top-level-empty-exit",
+      "screenshot": ".artifacts/1350/07-top-level-empty-exit.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-22T14:07:15Z",
+      "runner": "unknown@MMBP"
+    }
+  ]
+}

@@ -558,6 +558,18 @@ body {
   padding-inline-start: 6em;
 }
 
+.cm-line.cm-list-depth-4 {
+  padding-inline-start: 7.5em;
+}
+
+.cm-line.cm-list-depth-5 {
+  padding-inline-start: 9em;
+}
+
+.cm-line.cm-list-depth-6 {
+  padding-inline-start: 10.5em;
+}
+
 .cm-line.cm-list:not(.cm-list-ordered):not(.cm-task-done):not(
     .cm-task-pending
   )::before {
