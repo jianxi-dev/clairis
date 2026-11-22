@@ -5,8 +5,6 @@ import {
   taskListRegex,
   LIST_CLASS,
   LIST_ORDERED_CLASS,
-  LIST_MARKER_CLASS,
-  LIST_MARKER_ACTIVE_CLASS,
   TASK_DONE_CLASS,
   TASK_PENDING_CLASS,
   TASK_CHECKBOX_CLASS,
@@ -191,23 +189,28 @@ describe("list decoration", () => {
       expect(replace!.to).toBe(2);
     });
 
-    it("renders the ordered marker as a mark, never replaced", () => {
+    it("renders the ordered marker as a computed widget", () => {
       const result = createListDecorations("1. first", 0, 8);
-      const marker = result.find((d) =>
-        d.value.spec.class?.includes(LIST_MARKER_CLASS),
-      );
+      const marker = result.find((d) => d.value.spec.widget);
       expect(marker).toBeDefined();
       expect(marker!.from).toBe(0);
       expect(marker!.to).toBe(3);
-      expect(marker!.value.spec.class).toContain(LIST_MARKER_ACTIVE_CLASS);
+      expect(marker!.value.spec.widget.text).toBe("1. ");
+      expect(marker!.value.spec.widget.active).toBe(true);
     });
 
-    it("keeps the ordered marker plain when inactive", () => {
+    it("显示同级连续序号的计算值，而非源码字面量", () => {
+      const result = createListDecorations("1. first\n1. second");
+      const texts = result
+        .filter((d) => d.value.spec.widget)
+        .map((d) => d.value.spec.widget.text);
+      expect(texts).toEqual(["1. ", "2. "]);
+    });
+
+    it("keeps the ordered marker widget inactive when the block is inactive", () => {
       const result = createListDecorations("1. first");
-      const marker = result.find((d) =>
-        d.value.spec.class?.includes(LIST_MARKER_CLASS),
-      );
-      expect(marker?.value.spec.class).not.toContain(LIST_MARKER_ACTIVE_CLASS);
+      const marker = result.find((d) => d.value.spec.widget);
+      expect(marker?.value.spec.widget.active).toBe(false);
     });
 
     it("applies cm-list-ordered to ordered lines only (#176)", () => {

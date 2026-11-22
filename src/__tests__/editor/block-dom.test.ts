@@ -42,6 +42,12 @@ describe("renderBlockDom", () => {
     expect(el.textContent).not.toContain("[ ]");
   });
 
+  it("有序列表显示同级连续序号的计算值，而非源码字面量", () => {
+    const el = renderBlockDom("1. 甲\n1. 乙");
+    const markers = Array.from(el.querySelectorAll(".cm-list-marker"));
+    expect(markers.map((m) => m.textContent)).toEqual(["1. ", "2. "]);
+  });
+
   it("行内 markdown 交给单元格行内渲染器（粗体 / 行内代码）", () => {
     const el = renderBlockDom("**粗体** 与 `代码`");
     expect(el.querySelector("strong")).not.toBeNull();

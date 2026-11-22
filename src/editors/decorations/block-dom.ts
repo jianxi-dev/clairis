@@ -21,6 +21,7 @@
  */
 import { HEADING_CLASS, headingRegex } from "./heading";
 import { classifyListLine, createContentLineElement } from "./list";
+import { computeOrderedNumbers } from "../list-number";
 import { renderCellText } from "./cell-text";
 
 /**
@@ -33,14 +34,20 @@ import { renderCellText } from "./cell-text";
 export function renderBlockDom(text: string): HTMLElement {
   const container = document.createElement("div");
   if (text === "") return container;
-  for (const line of text.split("\n")) {
-    container.appendChild(renderBlockLine(line));
+  const lines = text.split("\n");
+  const orderedNumbers = new Map(
+    computeOrderedNumbers(lines).map((entry) => [entry.line, entry.number]),
+  );
+  for (let index = 0; index < lines.length; index += 1) {
+    container.appendChild(
+      renderBlockLine(lines[index], orderedNumbers.get(index + 1)),
+    );
   }
   return container;
 }
 
 /** 一行源码 → 一个块级元素。 */
-function renderBlockLine(line: string): HTMLElement {
+function renderBlockLine(line: string, orderedNumber?: number): HTMLElement {
   // headingRegex 是 /gm 全局正则，复用前重置 lastIndex（与 heading.ts 同）。
   headingRegex.lastIndex = 0;
   const heading = headingRegex.exec(line);
@@ -53,7 +60,7 @@ function renderBlockLine(line: string): HTMLElement {
   }
 
   if (classifyListLine(line).kind !== "plain") {
-    return renderListLine(line);
+    return renderListLine(line, orderedNumber);
   }
 
   const el = document.createElement("div");
@@ -66,8 +73,8 @@ function renderBlockLine(line: string): HTMLElement {
  * 列表行：复用 `createContentLineElement` 的结构（项目符号 / 有序序号 / 任务
  * 复选框），再把尾部的原始文本节点换成行内渲染，使 `- **粗**` 里的 `**` 不残留。
  */
-function renderListLine(line: string): HTMLElement {
-  const el = createContentLineElement(line);
+function renderListLine(line: string, orderedNumber?: number): HTMLElement {
+  const el = createContentLineElement(line, orderedNumber);
   const last = el.lastChild;
   if (last && last.nodeType === Node.TEXT_NODE) {
     const raw = last.textContent ?? "";

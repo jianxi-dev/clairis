@@ -1,0 +1,33 @@
+{
+  "task": "1351-list-number-sync",
+  "states": [
+    {
+      "state": "insert-middle",
+      "screenshot": ".artifacts/1351/01-insert-middle.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-22T15:29:52Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "delete-middle",
+      "screenshot": ".artifacts/1351/02-delete-middle.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-22T15:29:53Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "indent-split",
+      "screenshot": ".artifacts/1351/03-indent-split.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-22T15:29:54Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "mixed-list",
+      "screenshot": ".artifacts/1351/04-mixed-list.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-22T15:29:56Z",
+      "runner": "unknown@MMBP"
+    }
+  ]
+}

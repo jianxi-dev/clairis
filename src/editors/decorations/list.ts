@@ -2,7 +2,8 @@
  *
  * - 无序列表：`- ` 两态都隐藏，项目符号由 CSS `::before` 画（活跃块里同时显示
  *   原始标记会出现两个符号，#235）。
- * - 有序列表：`1. ` 是语义内容，永不替换；活跃块里以低透明度显示。
+ * - 有序列表：`1. ` 显示同级连续序号的计算值（源码字面量由 orderedNumberSync
+ *   同步成同一数字）；活跃块里以低透明度显示。
  * - 任务列表：标记被替换成可点击复选框，点击把 `[ ]` / `[x]` 写回源码。
  *
  * 引用里的列表（`> - item`）同样识别：标记范围跳过 `> ` 前缀（那部分由
@@ -11,11 +12,15 @@
 import type { Range } from "@codemirror/state";
 import { Decoration, WidgetType, type EditorView } from "@codemirror/view";
 import { fencedCodeRanges } from "./code";
+import { classifyListLine, computeOrderedNumbers } from "../list-number";
 
-const blockquotePrefixRegex = /^(?:>[ \t]?)+/;
-export const unorderedListRegex = /^[-*+]\s/;
-export const orderedListRegex = /^\d+\.\s/;
-export const taskListRegex = /^- \[([ xX])\]\s/;
+export {
+  classifyListLine,
+  unorderedListRegex,
+  orderedListRegex,
+  taskListRegex,
+} from "../list-number";
+export type { ListLineInfo } from "../list-number";
 
 export const LIST_CLASS = "cm-list";
 export const LIST_ORDERED_CLASS = "cm-list-ordered";
@@ -48,56 +53,6 @@ export const TASK_PENDING_CLASS = "cm-task-pending";
 export const TASK_CHECKBOX_CLASS = "cm-task-checkbox";
 export const BLOCK_ACTIVE_CLASS = "cm-block-active";
 export const BLOCK_INACTIVE_CLASS = "cm-block-inactive";
-
-/** 一行的列表种类，以及标记占用的偏移。 */
-export interface ListLineInfo {
-  kind: "task" | "unordered" | "ordered" | "plain";
-  /** 行首引用前缀（`> `）长度，没有则为 0。 */
-  prefixLen: number;
-  /** 前缀之后的行首缩进长度（嵌套层级用）。 */
-  indentLen: number;
-  /** 嵌套深度 0–6（两空格一层）。 */
-  depth: number;
-  /** 缩进之后的标记长度（`- `、`1. `、`- [x] `），普通行为 0。 */
-  markerLen: number;
-  /** 任务行：复选框是否勾选。 */
-  checked: boolean;
-}
-
-/**
- * 把一行源码归类为列表项，容忍引用前缀。
- *
- * 装饰与高亮块正文渲染共用这一份规则，引用里（或高亮块 widget 里）的列表
- * 因此与顶层列表行为一致，不会各自漂移。
- */
-export function classifyListLine(line: string): ListLineInfo {
-  const prefixLen = line.match(blockquotePrefixRegex)?.[0].length ?? 0;
-  const afterPrefix = line.slice(prefixLen);
-  const indentLen = afterPrefix.match(/^[ \t]*/)?.[0].length ?? 0;
-  const depth = Math.min(6, Math.floor(indentLen / 2));
-  const body = afterPrefix.slice(indentLen);
-
-  const base = { prefixLen, indentLen, depth, checked: false };
-
-  const task = taskListRegex.exec(body);
-  if (task) {
-    return {
-      ...base,
-      kind: "task",
-      markerLen: task[0].length,
-      checked: task[1].toLowerCase() === "x",
-    };
-  }
-  const unordered = unorderedListRegex.exec(body);
-  if (unordered) {
-    return { ...base, kind: "unordered", markerLen: unordered[0].length };
-  }
-  const ordered = orderedListRegex.exec(body);
-  if (ordered) {
-    return { ...base, kind: "ordered", markerLen: ordered[0].length };
-  }
-  return { ...base, kind: "plain", markerLen: 0 };
-}
 
 /**
  * 替换 `- [ ] ` / `- [x] ` 标记的可点击复选框。切换时把 `[ ]` / `[x]`
@@ -147,6 +102,34 @@ class TaskCheckboxWidget extends WidgetType {
 }
 
 /**
+ * 有序序号 widget：显示计算值，源码字面量被隐藏。
+ *
+ * 计算值来自 `computeOrderedNumbers`（同级连续段内 1 起），源码字面量由
+ * `orderedNumberSync` 同步成同一数字，所以显示、源码与预览三者一致。
+ */
+class OrderedMarkerWidget extends WidgetType {
+  constructor(
+    readonly text: string,
+    readonly active: boolean,
+  ) {
+    super();
+  }
+
+  toDOM(): HTMLElement {
+    const span = document.createElement("span");
+    span.className = this.active
+      ? `${LIST_MARKER_CLASS} ${LIST_MARKER_ACTIVE_CLASS}`
+      : LIST_MARKER_CLASS;
+    span.textContent = this.text;
+    return span;
+  }
+
+  eq(other: OrderedMarkerWidget): boolean {
+    return this.text === other.text && this.active === other.active;
+  }
+}
+
+/**
  * 为整篇文档生成列表装饰。
  *
  * @param text 全文。
@@ -163,6 +146,12 @@ export function createListDecorations(
   const inFence = (pos: number): boolean =>
     fences.some((range) => pos >= range.from && pos <= range.to);
   const lines = text.split("\n");
+  const orderedNumbers = new Map(
+    computeOrderedNumbers(lines, inFence).map((entry) => [
+      entry.lineStart,
+      entry.number,
+    ]),
+  );
 
   let pos = 0;
   for (const line of lines) {
@@ -200,14 +189,11 @@ export function createListDecorations(
         }).range(pos),
       );
     } else if (info.kind === "ordered" && info.markerLen > 0) {
-      const markerClass = isActive
-        ? `${LIST_MARKER_CLASS} ${LIST_MARKER_ACTIVE_CLASS}`
-        : LIST_MARKER_CLASS;
+      const number = orderedNumbers.get(lineStart) ?? 1;
       decorations.push(
-        Decoration.mark({ class: markerClass }).range(
-          markerFrom,
-          markerFrom + info.markerLen,
-        ),
+        Decoration.replace({
+          widget: new OrderedMarkerWidget(`${number}. `, isActive),
+        }).range(markerFrom, markerFrom + info.markerLen),
       );
       decorations.push(
         Decoration.line({
@@ -230,7 +216,10 @@ export function createListDecorations(
  * `cm-list-ordered` / `cm-list-marker` / 任务类，所以高亮块里的列表与独立
  * 成行的列表读起来一致（#382）。
  */
-export function createContentLineElement(line: string): HTMLElement {
+export function createContentLineElement(
+  line: string,
+  orderedNumber?: number,
+): HTMLElement {
   const el = document.createElement("div");
   el.className = "cm-callout-line";
   const info = classifyListLine(line);
@@ -254,7 +243,10 @@ export function createContentLineElement(line: string): HTMLElement {
   if (info.kind === "ordered") {
     const marker = document.createElement("span");
     marker.className = LIST_MARKER_CLASS;
-    marker.textContent = body.slice(0, info.markerLen);
+    marker.textContent =
+      orderedNumber === undefined
+        ? body.slice(0, info.markerLen)
+        : `${orderedNumber}. `;
     el.appendChild(marker);
   }
   el.appendChild(document.createTextNode(body.slice(info.markerLen)));
