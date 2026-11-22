@@ -6,7 +6,7 @@
 
 ## 1. 同步与节流
 
-- [ ] 1.1 回灌收口（ContentArea 同步 effect + stores 修订号/写入者 + 标题改写/可视化回写路径）
+- [x] 1.1 回灌收口（ContentArea 同步 effect + stores 修订号/写入者 + 标题改写/可视化回写路径）
   - store 每页签新增 `contentRevision`（单调递增）与 `lastWriter`（面板 id 或 `"external"`）；每个 EditorView 记 `lastAppliedRevision`
   - ContentArea 同步 effect 仅在页签首次装载/可见性首次置真时整篇灌入；同一页签后续变化按写入者归属判定：`lastWriter === 本面板` 的回声跳过，其余变化按公共前后缀裁剪最小 diff 应用，事务附 `annotations: [Transaction.addToHistory.of(false), isolateHistory.of("before")]`；应用前校验 view 归属（`getEditorView(panelId)` 与 ref 一致）并 clamp 位置
   - 标题改写与可视化回写路径走同一同步协议，不产生旧闭包全文覆盖
@@ -14,7 +14,7 @@
   - e2e：双面板同页签镜像、外部回灌后一次撤销不清空正文
   - **数据面**: 无
 
-- [ ] 1.2 输入节流与 dirty（Blocked by 1.1）
+- [x] 1.2 输入节流与 dirty（Blocked by 1.1）
   - 按 ADR 0003 落地 store 内容快照 300ms 防抖，并新增 2000ms 截止（截止值记入 ADR 0012）；`dirty` 首键立即置位
   - 新增 `flushTabContent(tabId)`，从 live `EditorView.state.doc` 取全文写 store
   - 保存、另存为、导出（PDF/HTML/PNG/docx/mdpkg）、打印、切页签、进入预览、组件卸载、窗口关闭、外部回灌前强制 flush；保存/导出/打印一律先调 flush 再读快照
@@ -24,14 +24,14 @@
 
 ## 2. 键位与历史
 
-- [ ] 2.1 键位纠偏
+- [x] 2.1 键位纠偏
   - 删除 `src/editors/setup.ts` 中 `{ key: "Mod-[", run: undo }` 与 `{ key: "Mod-]", run: redo }` 两条
   - 保留 `historyKeymap` + `ctrlHistoryBindings` 负责 `Mod-Z`/`Ctrl-Z`，不动撤销/重做主键位
   - AC：有序列表按 `Mod-[` 后减少的缩进级数为 1；键位表中 `Mod-[` 绑定 undo 的条目数为 0
   - e2e：有序列表按 `Mod-[` 减少一级缩进且内容不回退
   - **数据面**: 无
 
-- [ ] 2.2 结构命令历史分组 + 三原则 ADR + 不变量测试
+- [x] 2.2 结构命令历史分组 + 三原则 ADR + 不变量测试
   - 新增 `src/editors/structure-history.ts` 的 `structureTransaction(spec)`，附加 `userEvent: "app.structure"` + `isolateHistory.of("full")`
   - 接入 `smart-input.ts` 的标题升降、列表缩进、智能回车、智能退格与 `block-convert.ts`；不接入拖拽重排 `block-handle.ts` 的 `moveBlock`
   - 三原则写入 `docs/architecture/decisions/0012-editor-history-boundaries.md`（含 frontmatter），并同步 `docs/architecture/decisions/README.md` 索引到 0001–0012
