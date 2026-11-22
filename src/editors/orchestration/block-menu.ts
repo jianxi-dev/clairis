@@ -22,9 +22,9 @@ import { getBlocks } from "../block-model";
 import type { BlockType } from "../block-model";
 import { moveBlock } from "./block-handle";
 import {
-  blockConvertChanges,
   blockMenuItems,
   currentConvertTarget,
+  dispatchBlockConvert,
   type BlockConvertTarget,
   type BlockLike,
 } from "./block-convert";
@@ -219,10 +219,8 @@ function applyConvert(
   block: BlockLike,
   target: BlockConvertTarget,
 ): void {
-  const changes = blockConvertChanges(view.state.doc, block, target);
   closeBlockMenu(view);
-  if (changes.length === 0) return;
-  view.dispatch({ changes, scrollIntoView: true });
+  dispatchBlockConvert(view, block, target);
 }
 
 function viewportRect(): AnchorRect {

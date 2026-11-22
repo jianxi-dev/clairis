@@ -5,7 +5,9 @@
  */
 
 import type { Text } from "@codemirror/state";
+import type { EditorView } from "@codemirror/view";
 import type { BlockType } from "../block-model";
+import { structureTransaction } from "../structure-history";
 
 /** 菜单只需要这三样：块范围与块型。 */
 export interface BlockLike {
@@ -232,6 +234,22 @@ export function blockConvertChanges(
       insert: convertLine(leading, target),
     },
   ];
+}
+
+/**
+ * 把块转换的变更作为结构命令 dispatch：事务带 `userEvent: "app.structure"` 与
+ * `isolateHistory.of("full")`，一次转换一个 undo 步（design D5 / ADR 0012）。
+ * 已是目标类型（changes 为空）时不产生事务。
+ */
+export function dispatchBlockConvert(
+  view: EditorView,
+  block: { from: number; to: number },
+  target: BlockConvertTarget,
+  scrollIntoView = true,
+): void {
+  const changes = blockConvertChanges(view.state.doc, block, target);
+  if (changes.length === 0) return;
+  view.dispatch(structureTransaction({ changes, scrollIntoView }));
 }
 
 /**

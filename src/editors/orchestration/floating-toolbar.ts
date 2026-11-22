@@ -15,7 +15,8 @@ import {
   toggleRangeSpan,
   toggleWrap,
 } from "./toolbar-shared";
-import { blockConvertChanges, type BlockConvertTarget } from "./block-convert";
+import { dispatchBlockConvert, type BlockConvertTarget } from "./block-convert";
+import { structureTransaction } from "../structure-history";
 import { useAiEntryStore } from "../../hooks/useAiEntry";
 import { saveAppConfig } from "../../hooks/useConfig";
 import { isMacPlatform } from "../key-chord";
@@ -157,21 +158,18 @@ function convertItem(
           .split("\n")
           .map((line) => `> ${line.replace(/^>\s?/, "")}`)
           .join("\n");
-        view.dispatch({
-          changes: {
-            from: block.from,
-            to: block.to,
-            insert: `> [!${calloutKind}]\n${quoted}`,
-          },
-        });
+        view.dispatch(
+          structureTransaction({
+            changes: {
+              from: block.from,
+              to: block.to,
+              insert: `> [!${calloutKind}]\n${quoted}`,
+            },
+          }),
+        );
         return;
       }
-      const changes = blockConvertChanges(
-        view.state.doc,
-        block,
-        target as BlockConvertTarget,
-      );
-      if (changes.length > 0) view.dispatch({ changes });
+      dispatchBlockConvert(view, block, target as BlockConvertTarget, false);
     },
   };
 }

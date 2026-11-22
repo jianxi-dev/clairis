@@ -16,6 +16,7 @@ import { EditorView, keymap, ViewPlugin } from "@codemirror/view";
 import { EditorState, type Extension, Prec } from "@codemirror/state";
 import { syntaxTree } from "@codemirror/language";
 import { isSlashMenuOpen, openSlashMenuAtSlash } from "./slash";
+import { structureTransaction } from "./structure-history";
 
 // --- IME 组合守卫 ------------------------------------------------------------
 
@@ -177,10 +178,12 @@ export function demoteHeading(view: EditorView): boolean {
   // 空行（标记已被快捷输入剥掉）时 from 与 line.to 相同，必须夹取，否则 RangeError。
   const to = Math.min(from + currentLevel + 1, line.to);
 
-  view.dispatch({
-    changes: { from, to, insert: newMarker },
-    scrollIntoView: true,
-  });
+  view.dispatch(
+    structureTransaction({
+      changes: { from, to, insert: newMarker },
+      scrollIntoView: true,
+    }),
+  );
   headingLevels.set(view, newLevel);
   return true;
 }
@@ -217,10 +220,12 @@ function promoteHeadingOnLine(
     targetLine.from + targetLine.text.length,
   );
 
-  view.dispatch({
-    changes: { from, to, insert: newMarker },
-    scrollIntoView: true,
-  });
+  view.dispatch(
+    structureTransaction({
+      changes: { from, to, insert: newMarker },
+      scrollIntoView: true,
+    }),
+  );
   headingLevels.set(view, newLevel);
   return true;
 }
@@ -253,21 +258,25 @@ export function smartEnter(view: EditorView): boolean {
     const [, indent, marker, , content] = taskMatch;
 
     if (content.trim() === "") {
-      view.dispatch({
-        changes: [{ from: line.from, to: line.to, insert: "" }],
-        selection: { anchor: line.from + indent.length },
-        scrollIntoView: true,
-      });
+      view.dispatch(
+        structureTransaction({
+          changes: [{ from: line.from, to: line.to, insert: "" }],
+          selection: { anchor: line.from + indent.length },
+          scrollIntoView: true,
+        }),
+      );
       return true;
     }
 
     // 新项一律未勾选：勾选态属于「这一件事做完了」，不该被续写继承。
     const insert = `\n${indent}${marker} [ ] `;
-    view.dispatch({
-      changes: { from: main.head, insert },
-      selection: { anchor: main.head + insert.length },
-      scrollIntoView: true,
-    });
+    view.dispatch(
+      structureTransaction({
+        changes: { from: main.head, insert },
+        selection: { anchor: main.head + insert.length },
+        scrollIntoView: true,
+      }),
+    );
     return true;
   }
 
@@ -276,11 +285,13 @@ export function smartEnter(view: EditorView): boolean {
     const [, indent, marker, content] = listMatch;
 
     if (content.trim() === "") {
-      view.dispatch({
-        changes: [{ from: line.from, to: line.to, insert: "" }],
-        selection: { anchor: line.from + indent.length },
-        scrollIntoView: true,
-      });
+      view.dispatch(
+        structureTransaction({
+          changes: [{ from: line.from, to: line.to, insert: "" }],
+          selection: { anchor: line.from + indent.length },
+          scrollIntoView: true,
+        }),
+      );
       return true;
     }
 
@@ -288,11 +299,13 @@ export function smartEnter(view: EditorView): boolean {
       ? `${parseInt(marker) + 1}. `
       : `${marker} `;
     const insert = `\n${indent}${newMarker}`;
-    view.dispatch({
-      changes: { from: main.head, insert },
-      selection: { anchor: main.head + insert.length },
-      scrollIntoView: true,
-    });
+    view.dispatch(
+      structureTransaction({
+        changes: { from: main.head, insert },
+        selection: { anchor: main.head + insert.length },
+        scrollIntoView: true,
+      }),
+    );
     return true;
   }
 
@@ -301,20 +314,24 @@ export function smartEnter(view: EditorView): boolean {
     const [, indent, markers, content] = quoteMatch;
 
     if (content.trim() === "") {
-      view.dispatch({
-        changes: [{ from: line.from, to: line.to, insert: "" }],
-        selection: { anchor: line.from + indent.length },
-        scrollIntoView: true,
-      });
+      view.dispatch(
+        structureTransaction({
+          changes: [{ from: line.from, to: line.to, insert: "" }],
+          selection: { anchor: line.from + indent.length },
+          scrollIntoView: true,
+        }),
+      );
       return true;
     }
 
     const insert = `\n${indent}${markers} `;
-    view.dispatch({
-      changes: { from: main.head, insert },
-      selection: { anchor: main.head + insert.length },
-      scrollIntoView: true,
-    });
+    view.dispatch(
+      structureTransaction({
+        changes: { from: main.head, insert },
+        selection: { anchor: main.head + insert.length },
+        scrollIntoView: true,
+      }),
+    );
     return true;
   }
 
@@ -322,11 +339,13 @@ export function smartEnter(view: EditorView): boolean {
   if (codeMatch && isInsideCodeBlock(view.state, main.head)) {
     const [, indent] = codeMatch;
     const insert = `\n${indent}`;
-    view.dispatch({
-      changes: { from: main.head, insert },
-      selection: { anchor: main.head + insert.length },
-      scrollIntoView: true,
-    });
+    view.dispatch(
+      structureTransaction({
+        changes: { from: main.head, insert },
+        selection: { anchor: main.head + insert.length },
+        scrollIntoView: true,
+      }),
+    );
     return true;
   }
 
@@ -369,33 +388,39 @@ export function smartBackspace(view: EditorView): boolean {
   if (headingLevel !== null && cursorInLine === 0) {
     const newLevel = headingLevel - 1;
     const insert = newLevel > 0 ? `${"#".repeat(newLevel)} ` : "";
-    view.dispatch({
-      changes: { from: line.from, to: line.from + headingLevel + 1, insert },
-      selection: { anchor: line.from + insert.length },
-      scrollIntoView: true,
-    });
+    view.dispatch(
+      structureTransaction({
+        changes: { from: line.from, to: line.from + headingLevel + 1, insert },
+        selection: { anchor: line.from + insert.length },
+        scrollIntoView: true,
+      }),
+    );
     return true;
   }
 
   const listMatch = lineText.match(/^(\s*)([-*+]|\d+\.)\s$/);
   if (listMatch && cursorInLine === lineText.length) {
     const [, indent] = listMatch;
-    view.dispatch({
-      changes: { from: line.from, to: line.to, insert: indent },
-      selection: { anchor: line.from + indent.length },
-      scrollIntoView: true,
-    });
+    view.dispatch(
+      structureTransaction({
+        changes: { from: line.from, to: line.to, insert: indent },
+        selection: { anchor: line.from + indent.length },
+        scrollIntoView: true,
+      }),
+    );
     return true;
   }
 
   const quoteMatch = lineText.match(/^(\s*)>\s?$/);
   if (quoteMatch && cursorInLine === lineText.length) {
     const [, indent] = quoteMatch;
-    view.dispatch({
-      changes: { from: line.from, to: line.to, insert: indent },
-      selection: { anchor: line.from + indent.length },
-      scrollIntoView: true,
-    });
+    view.dispatch(
+      structureTransaction({
+        changes: { from: line.from, to: line.to, insert: indent },
+        selection: { anchor: line.from + indent.length },
+        scrollIntoView: true,
+      }),
+    );
     return true;
   }
 
@@ -708,11 +733,13 @@ function indentList(view: EditorView): boolean {
   const from = line.from + leadingWhitespace.length;
   const indent = "  "; // 缩进单位 = 两个空格
 
-  view.dispatch({
-    changes: { from, insert: indent },
-    selection: { anchor: from + indent.length },
-    scrollIntoView: true,
-  });
+  view.dispatch(
+    structureTransaction({
+      changes: { from, insert: indent },
+      selection: { anchor: from + indent.length },
+      scrollIntoView: true,
+    }),
+  );
   return true;
 }
 
@@ -731,11 +758,13 @@ function outdentList(view: EditorView): boolean {
   const from = line.from;
   const to = line.from + indentToRemove.length;
 
-  view.dispatch({
-    changes: { from, to, insert: "" },
-    selection: { anchor: from },
-    scrollIntoView: true,
-  });
+  view.dispatch(
+    structureTransaction({
+      changes: { from, to, insert: "" },
+      selection: { anchor: from },
+      scrollIntoView: true,
+    }),
+  );
   return true;
 }
 
