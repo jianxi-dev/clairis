@@ -166,6 +166,7 @@ function openColumnEditor(
 ): void {
   const existing = host.querySelector<HTMLTextAreaElement>(".cm-column-editor");
   if (existing) {
+    activeColumnArea = existing;
     existing.focus();
     if (openHandleMenu) columnMenuOpeners.get(host)?.();
     return;
@@ -181,6 +182,7 @@ function openColumnEditor(
   const restoreNodes = Array.from(host.childNodes);
   host.replaceChildren();
   host.appendChild(area);
+  activeColumnArea = area;
   area.focus();
   area.setSelectionRange(area.value.length, area.value.length);
 
@@ -204,6 +206,7 @@ function openColumnEditor(
     if (openColumnEditors.get(slotKey)?.area === area) {
       openColumnEditors.delete(slotKey);
     }
+    if (activeColumnArea === area) activeColumnArea = null;
     if (refresh && !columnsRebuildFrozen()) refreshColumns(view);
   };
   // 匹配失败兜底：把 textarea 文本按块级渲染回填宿主（不丢字、不退纯文本），
@@ -222,6 +225,7 @@ function openColumnEditor(
     if (openColumnEditors.get(slotKey)?.area === area) {
       openColumnEditors.delete(slotKey);
     }
+    if (activeColumnArea === area) activeColumnArea = null;
     showColumnToast("未能定位分栏，已把文本保留在该栏");
     view.focus();
   };
@@ -557,14 +561,19 @@ export function columnsRebuildFrozen(): boolean {
  */
 let blurSuppressed = false;
 
+/**
+ * 当前持有焦点的分栏输入框。
+ *
+ * 不用 `document.querySelector` 全局查找：多面板并存时会抢走别的视图的输入框。
+ */
+let activeColumnArea: HTMLTextAreaElement | null = null;
+
 export function noteColumnDocChanged(): void {
   if (!columnsRebuildFrozen()) return;
   blurSuppressed = true;
   requestAnimationFrame(() => {
     blurSuppressed = false;
-    const area =
-      document.querySelector<HTMLTextAreaElement>(".cm-column-editor");
-    area?.focus();
+    if (activeColumnArea?.isConnected) activeColumnArea.focus();
   });
 }
 
@@ -586,12 +595,7 @@ function showColumnToast(message: string): void {
   el.className = COLUMN_TOAST_CLASS;
   el.setAttribute("role", "status");
   el.textContent = message;
-  el.style.cssText =
-    "position:fixed;left:50%;bottom:32px;transform:translateX(-50%);" +
-    "z-index:2000;padding:8px 14px;border-radius:8px;pointer-events:none;" +
-    "background:var(--app-surface);color:var(--app-text);" +
-    "border:1px solid var(--app-border);" +
-    "box-shadow:0 4px 16px rgba(0,0,0,0.18);font-size:13px;";
+  // 视觉值全部在 editor.css 的 .column-commit-toast 规则里（设计系统 token）。
   document.body.appendChild(el);
   window.setTimeout(() => el.remove(), 2600);
 }

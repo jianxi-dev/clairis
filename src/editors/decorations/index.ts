@@ -282,11 +282,15 @@ function createDecorationField(options?: EditorDecorationsOptions) {
         // 输入框的 DOM；否则位移引发的重建会摘掉 textarea。
         if (tr.docChanged && columnsRebuildFrozen()) {
           noteColumnDocChanged();
-          lastColumns = lastColumns.map((range) => ({
-            ...range,
-            from: tr.changes.mapPos(range.from, 1),
-            to: tr.changes.mapPos(range.to, 1),
-          }));
+          lastColumns = lastColumns
+            .map((range) => ({
+              ...range,
+              from: tr.changes.mapPos(range.from, 1),
+              to: tr.changes.mapPos(range.to, 1),
+            }))
+            // 整块被删/折叠时映射会塌成 from >= to：丢弃该冻结范围，避免空区间
+            // widget 与 blur 吞掉导致的静默丢字。
+            .filter((range) => range.from < range.to);
           return buildDecorationSet(tr.state, options, lastColumns);
         }
         lastColumns = createColumnsDecorations(tr.state.doc.toString());

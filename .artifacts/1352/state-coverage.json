@@ -5,28 +5,28 @@
       "state": "offset-shift-save",
       "screenshot": ".artifacts/1352/offset-shift-save.png",
       "assertion": "passed",
-      "recorded_at": "2026-11-22T16:39:24Z",
+      "recorded_at": "2026-11-22T16:49:36Z",
       "runner": "unknown@MMBP"
     },
     {
       "state": "fallback-toast",
       "screenshot": ".artifacts/1352/fallback-toast.png",
       "assertion": "passed",
-      "recorded_at": "2026-11-22T16:39:26Z",
+      "recorded_at": "2026-11-22T16:49:37Z",
       "runner": "unknown@MMBP"
     },
     {
       "state": "single-editor",
       "screenshot": ".artifacts/1352/single-editor.png",
       "assertion": "passed",
-      "recorded_at": "2026-11-22T16:39:27Z",
+      "recorded_at": "2026-11-22T16:49:38Z",
       "runner": "unknown@MMBP"
     },
     {
       "state": "esc-cancel",
       "screenshot": ".artifacts/1352/esc-cancel.png",
       "assertion": "passed",
-      "recorded_at": "2026-11-22T16:39:28Z",
+      "recorded_at": "2026-11-22T16:49:39Z",
       "runner": "unknown@MMBP"
     }
   ]
