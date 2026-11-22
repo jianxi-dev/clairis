@@ -14,7 +14,7 @@ mkdirSync(ART275, { recursive: true });
  * `.artifacts/180/`，收尾写 state-coverage.json（≥6 passed）。
  */
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = process.env.GRID_APP_URL ?? "http://localhost:1420";
 const ART = path.resolve(process.cwd(), ".artifacts/180");
 
 mkdirSync(ART, { recursive: true });
