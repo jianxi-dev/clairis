@@ -57,7 +57,12 @@ import {
   tableCellSelectionPainter,
 } from "./table";
 import { createCalloutDecorations, scheduleCalloutFlush } from "./callout";
-import { createColumnsDecorations } from "./columns";
+import {
+  columnsRebuildFrozen,
+  columnsRefresh,
+  createColumnsDecorations,
+  noteColumnDocChanged,
+} from "./columns";
 import { createStructuralTagDecorations } from "./structuralTags";
 import { createAlignFenceDecorations } from "./alignFence";
 import { createFoldDecorations, foldState } from "./fold";
@@ -167,6 +172,7 @@ function findActiveBlock(
 function buildDecorationSet(
   state: EditorState,
   options?: EditorDecorationsOptions,
+  columnsRanges?: Range<Decoration>[],
 ): DecorationSet {
   const docText = state.doc.toString();
   const cursorPos = state.selection.main.head;
@@ -210,7 +216,7 @@ function buildDecorationSet(
     ...createMathDecorations(docText, selFrom, selTo),
     ...createCalloutDecorations(docText, activeFrom, activeTo),
     ...createTableDecorations(docText, activeFrom, activeTo),
-    ...createColumnsDecorations(docText),
+    ...(columnsRanges ?? createColumnsDecorations(docText)),
     ...createStructuralTagDecorations(docText),
     ...createAlignFenceDecorations(docText),
     ...createFoldDecorations(state, state.field(foldState)),
@@ -242,9 +248,11 @@ function buildDecorationSet(
  * 不同编辑器可以带不同选项。
  */
 function createDecorationField(options?: EditorDecorationsOptions) {
+  let lastColumns: Range<Decoration>[] = [];
   return StateField.define<DecorationSet>({
     create(state) {
-      return buildDecorationSet(state, options);
+      lastColumns = createColumnsDecorations(state.doc.toString());
+      return buildDecorationSet(state, options, lastColumns);
     },
     update(decos, tr) {
       // IME 组合期间文档变更跳过重算：中间组合文本会让装饰反复增删、闪烁。
@@ -265,11 +273,28 @@ function createDecorationField(options?: EditorDecorationsOptions) {
         tr.selection ||
         foldChanged ||
         tr.effects.some((e) => e.is(rebuildAfterComposition)) ||
-        tr.effects.some((e) => e.is(unfreezeRebuild))
+        tr.effects.some((e) => e.is(unfreezeRebuild)) ||
+        tr.effects.some((e) => e.is(columnsRefresh))
       ) {
         // 文档改动后选中的图片可能已消失（删除/剪切）：下一帧检查并收掉工具条。
         if (tr.docChanged) scheduleImageToolbarReposition();
-        return buildDecorationSet(tr.state, options);
+        // 分栏编辑器打开期间：沿用同一批 widget 实例（仅映射范围），保住持有
+        // 输入框的 DOM；否则位移引发的重建会摘掉 textarea。
+        if (tr.docChanged && columnsRebuildFrozen()) {
+          noteColumnDocChanged();
+          lastColumns = lastColumns
+            .map((range) => ({
+              ...range,
+              from: tr.changes.mapPos(range.from, 1),
+              to: tr.changes.mapPos(range.to, 1),
+            }))
+            // 整块被删/折叠时映射会塌成 from >= to：丢弃该冻结范围，避免空区间
+            // widget 与 blur 吞掉导致的静默丢字。
+            .filter((range) => range.from < range.to);
+          return buildDecorationSet(tr.state, options, lastColumns);
+        }
+        lastColumns = createColumnsDecorations(tr.state.doc.toString());
+        return buildDecorationSet(tr.state, options, lastColumns);
       }
       return decos;
     },

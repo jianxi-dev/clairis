@@ -2453,11 +2453,12 @@ html[data-tab-drag="true"] body * {
   position: relative;
   padding: 0.75em 1em;
   margin-block: 0.4em 0;
-  border-inline-start: 3px solid var(
-    --callout-border,
-    var(--callout-color, var(--app-accent))
+  border-inline-start: 3px solid
+    var(--callout-border, var(--callout-color, var(--app-accent)));
+  background-color: var(
+    --callout-bg,
+    var(--callout-soft, var(--app-accent-soft))
   );
-  background-color: var(--callout-bg, var(--callout-soft, var(--app-accent-soft)));
   border-radius: var(--app-radius);
   color: var(--callout-text, var(--app-text));
 }
@@ -2699,6 +2700,24 @@ html[data-tab-drag="true"] body * {
 .cm-content .cm-columns-add-handle:hover {
   opacity: 1;
   pointer-events: auto;
+}
+
+/* 分栏提交提示（body 级浮层，非 .cm-content 后代）：定位 + 间距字号走相对单位，
+ * 圆角/阴影/颜色取设计系统 token。TS 只建元素与写文案，不写内联样式。 */
+.column-commit-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 2rem;
+  transform: translateX(-50%);
+  z-index: 2000;
+  padding: 0.5rem 0.875rem;
+  border: 1px solid var(--app-border);
+  border-radius: var(--radius-8);
+  background: var(--app-surface);
+  color: var(--app-text);
+  box-shadow: var(--shadow-menu);
+  font-size: 0.8125rem;
+  pointer-events: none;
 }
 
 /* 菜单挂在 view.dom 上、不是 .cm-columns 的后代：指针移进菜单后容器不再 :hover，
