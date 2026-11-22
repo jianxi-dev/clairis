@@ -9,7 +9,11 @@
  * 松手用 `moveBlock` 算出新文档，单次 `dispatch` 整篇替换（选择自动映射，光标不跳）。
  * 纯函数（`blockHandleIcon` / `moveBlock`）不碰 DOM，由单测钉死。
  */
-import type { EditorState, Extension } from "@codemirror/state";
+import {
+  Transaction,
+  type EditorState,
+  type Extension,
+} from "@codemirror/state";
 import { ViewPlugin, type EditorView, type ViewUpdate } from "@codemirror/view";
 import {
   getBlocks,
@@ -56,6 +60,8 @@ const BLOCK_ICON_NAME: Record<string, string> = {
   fencedCode: "CodeblockOutlined",
   codeBlock: "CodeblockOutlined",
   image: "ImageOutlined",
+  htmlBlock: "CodeOutlined",
+  yamlFrontMatter: "HeaderRowOutlined",
 };
 
 const AUDIO_EXTENSIONS = new Set([
@@ -102,10 +108,14 @@ export function blockHandleIcon(type: string, firstLine = ""): string {
   return BLOCK_ICON_NAME[type] ?? "DragHandleOutlined";
 }
 
+/** 手柄形态：普通块 / 空行「+」/ 文末「+」。 */
+export type HandleKind = "block" | "empty" | "trailing";
+
 /** 对账键的输入：块型 + 块首行文本（图标由首行解析）。 */
 export interface HandleKeyEntry {
   readonly type: string;
   readonly firstLine: string;
+  readonly kind?: HandleKind;
 }
 
 /** 对账键：顶层块序号 + 块型 + 解析出的图标名。 */
@@ -116,8 +126,38 @@ export function handleKey(index: number, type: string, icon: string): string {
 /** 按手柄枚举顺序计算对账键；纯函数，与 DOM 无关。 */
 export function handleKeysFor(entries: readonly HandleKeyEntry[]): string[] {
   return entries.map((entry, index) =>
-    handleKey(index, entry.type, blockHandleIcon(entry.type, entry.firstLine)),
+    entry.kind === "trailing"
+      ? handleKey(index, "trailing", ADD_ICON_NAME)
+      : handleKey(
+          index,
+          entry.type,
+          blockHandleIcon(entry.type, entry.firstLine),
+        ),
   );
+}
+
+/**
+ * 文末「+」入口的去重判定：文档最后一行非空（非空且不以换行结尾）才追加。
+ *
+ * 末尾空行已由空行「+」手柄覆盖，此时不重复出入口；纯输入不改变判定。
+ */
+export function shouldShowTrailingAdd(docText: string): boolean {
+  return docText.length > 0 && !docText.endsWith("\n");
+}
+
+/** 文末插入空段的事务：在末尾补一个空段（`"\n\n"`），光标落进新空段。 */
+export function trailingAddChanges(docText: string): {
+  readonly from: number;
+  readonly to: number;
+  readonly insert: string;
+  readonly cursor: number;
+} {
+  return {
+    from: docText.length,
+    to: docText.length,
+    insert: "\n\n",
+    cursor: docText.length + 2,
+  };
 }
 
 /**
@@ -248,6 +288,7 @@ interface BlockRange {
 interface HandleSpec {
   block: BlockRange;
   empty: boolean;
+  kind: HandleKind;
 }
 
 /** 行盒是否落在滚动视口内（高度为 0 或完全在视口外都算不可见）。 */
@@ -287,6 +328,7 @@ function collectHandleSpecs(state: EditorState): HandleSpec[] {
         mermaid: mermaidKeys.has(rangeKey(block.from, block.to)),
       },
       empty: false,
+      kind: "block",
     });
   }
   const nestedKeys = new Set<string>();
@@ -315,6 +357,7 @@ function collectHandleSpecs(state: EditorState): HandleSpec[] {
       specs.push({
         block: { from: nested.from, to: nested.to, type: nested.type },
         empty: false,
+        kind: "block",
       });
     }
   }
@@ -328,6 +371,7 @@ function collectHandleSpecs(state: EditorState): HandleSpec[] {
         mermaid: true,
       },
       empty: false,
+      kind: "block",
     });
   }
   for (let n = 1; n <= doc.lines; n++) {
@@ -337,6 +381,16 @@ function collectHandleSpecs(state: EditorState): HandleSpec[] {
     specs.push({
       block: { from: line.from, to: line.to, type: "" },
       empty: true,
+      kind: "empty",
+    });
+  }
+  // 文末「+」：只在最后一行非空时追加，避免与文末空行「+」重复。
+  // block 用文档末尾零宽点，既作锚点又不与任何块手柄的 data-block-from 冲突。
+  if (shouldShowTrailingAdd(docText)) {
+    specs.push({
+      block: { from: doc.length, to: doc.length, type: "" },
+      empty: false,
+      kind: "trailing",
     });
   }
   return specs;
@@ -346,6 +400,7 @@ interface HandleEntry {
   el: HTMLDivElement;
   block: BlockRange;
   empty: boolean;
+  kind: HandleKind;
   mermaid: boolean;
   gate: HoverGate;
   timer: number | null;
@@ -487,6 +542,8 @@ class BlockHandlePlugin {
           // 否则列表手柄会盖住围栏手柄（A-3.3）。
           let hit: HandleEntry | null = null;
           for (const handle of this.handles) {
+            // 文末「+」常显、不需 hover 召唤；零宽锚点会抢「行尾」命中。
+            if (handle.kind === "trailing") continue;
             if (pos < handle.block.from || pos > handle.block.to) continue;
             if (
               hit === null ||
@@ -531,7 +588,7 @@ class BlockHandlePlugin {
     }
   };
 
-  // --- 键盘抑制（D5：输入中一律隐藏） ---------------------------------------
+  // --- 键盘抑制（D5：输入中一律隐藏；文末 trailing 入口除外：它是固定入口，不遮挡正文）
 
   private readonly onKeyDown = (): void => {
     this.hideAll();
@@ -565,6 +622,7 @@ class BlockHandlePlugin {
       specs.map((spec) => ({
         type: spec.block.type,
         firstLine: firstLineOf(state, spec.block.from, spec.block.to),
+        kind: spec.kind,
       })),
     );
     const from = firstRebuildIndex(this.keys, keys);
@@ -573,6 +631,7 @@ class BlockHandlePlugin {
         const entry = this.handles[i];
         entry.block = specs[i].block;
         entry.empty = specs[i].empty;
+        entry.kind = specs[i].kind;
         entry.mermaid = specs[i].block.mermaid === true;
         this.syncHandleBlock(entry);
         this.resetHover(entry);
@@ -589,7 +648,7 @@ class BlockHandlePlugin {
     }
     this.handles.length = from;
     for (let i = from; i < specs.length; i += 1) {
-      this.addHandle(specs[i].block, specs[i].empty, keys[i]);
+      this.addHandle(specs[i].block, specs[i].kind, keys[i]);
     }
     this.keys = keys;
     this.scheduleReposition();
@@ -629,7 +688,7 @@ class BlockHandlePlugin {
     this.removeIndicator();
   }
 
-  private addHandle(block: BlockRange, empty: boolean, key: string): void {
+  private addHandle(block: BlockRange, kind: HandleKind, key: string): void {
     const el = document.createElement("div");
     el.className = "cm-block-handle";
     el.classList.add("mdb-block-handle");
@@ -637,12 +696,14 @@ class BlockHandlePlugin {
     el.dataset.blockFrom = String(block.from);
     el.dataset.blockTo = String(block.to);
     el.dataset.handleKey = key;
-    if (empty) el.dataset.empty = "true";
+    if (kind === "empty") el.dataset.empty = "true";
+    if (kind === "trailing") el.dataset.trailing = "true";
 
     const entry: HandleEntry = {
       el,
       block,
-      empty,
+      empty: kind === "empty",
+      kind,
       mermaid: block.mermaid === true,
       gate: new HoverGate(),
       timer: null,
@@ -658,12 +719,20 @@ class BlockHandlePlugin {
       anchorClientY: null,
     };
 
-    if (empty) {
+    if (kind === "empty" || kind === "trailing") {
       const add = document.createElement("span");
       add.className = "cm-block-handle-add";
-      add.setAttribute("aria-label", "在下方添加");
+      add.setAttribute(
+        "aria-label",
+        kind === "empty" ? "在下方添加" : "在文末添加",
+      );
       add.appendChild(renderIcon(ADD_ICON_NAME));
       el.appendChild(add);
+      if (kind === "trailing") {
+        // 文末入口常显（不走 hover 门控的 visible 类，避免扰动既有 visible 计数）。
+        el.style.opacity = "1";
+        el.style.pointerEvents = "auto";
+      }
     } else {
       const icon = document.createElement("span");
       icon.className = "cm-block-handle-icon";
@@ -700,7 +769,7 @@ class BlockHandlePlugin {
     //
     // 不要求 gate 已开：指针从正文滑入手柄时，gate 可能还在 300ms 显现延迟
     // 里，而 pointerenter 只触发一次；加了 gate 前置条件菜单就永远不会开。
-    if (!empty) {
+    if (kind === "block") {
       el.addEventListener("pointerenter", () => {
         if (entry.dragging) return;
         if (entry.menuTimer !== null) window.clearTimeout(entry.menuTimer);
@@ -717,7 +786,7 @@ class BlockHandlePlugin {
           );
         }, MENU_INTENT_DELAY_MS);
       });
-    } else {
+    } else if (kind === "empty") {
       // 空行「+」滑入即开插入菜单（不必先点一下），锚点取指针位置（#372）。
       el.addEventListener("pointerenter", (event) => {
         if (entry.dragging) return;
@@ -750,22 +819,29 @@ class BlockHandlePlugin {
         }, MENU_INTENT_DELAY_MS);
       });
     }
-    el.addEventListener("pointerleave", () => {
-      if (entry.menuTimer !== null) {
-        window.clearTimeout(entry.menuTimer);
-        entry.menuTimer = null;
-      }
-      if (entry.dragging) return;
-      if (empty) {
-        scheduleAddMenuClose(this.view);
-        return;
-      }
-      scheduleBlockMenuClose(this.view);
-    });
+    // trailing 永不开菜单（点击直接落空段），不挂关闭监听，省掉无用的定时器。
+    if (kind !== "trailing") {
+      el.addEventListener("pointerleave", () => {
+        if (entry.menuTimer !== null) {
+          window.clearTimeout(entry.menuTimer);
+          entry.menuTimer = null;
+        }
+        if (entry.dragging) return;
+        if (kind === "empty") {
+          scheduleAddMenuClose(this.view);
+          return;
+        }
+        scheduleBlockMenuClose(this.view);
+      });
+    }
 
-    if (empty) {
+    if (kind === "empty") {
       el.addEventListener("pointerdown", (event) =>
         this.onAddPointerDown(event, entry),
+      );
+    } else if (kind === "trailing") {
+      el.addEventListener("pointerdown", (event) =>
+        this.onTrailingPointerDown(event),
       );
     } else {
       entry.onMove = (event) => this.onDragMove(event, entry);
@@ -803,6 +879,22 @@ class BlockHandlePlugin {
       this.showHandle(el);
       el.style.top = `${Math.max(0, Math.round(top))}px`;
       el.style.left = `${Math.max(0, Math.round(left - HANDLE_WIDTH_PX - HANDLE_GAP_PX))}px`;
+      return;
+    }
+
+    // 文末「+」：贴末行行盒下沿，水平对齐正文列左缘（不占块首行行盒）。
+    if (entry.kind === "trailing") {
+      const lineRect = this.lineRectAt(entry.block.from);
+      if (!lineRect || !isRectInViewport(lineRect, viewport)) {
+        this.hideHandle(el);
+        return;
+      }
+      this.showHandle(el);
+      el.style.top = `${Math.max(0, Math.round(lineRect.bottom - base.top))}px`;
+      el.style.left = `${Math.max(
+        0,
+        Math.round(this.textColumnLeft(base) - HANDLE_WIDTH_PX - HANDLE_GAP_PX),
+      )}px`;
       return;
     }
 
@@ -1102,6 +1194,22 @@ class BlockHandlePlugin {
     this.view.dispatch({ selection: { anchor: entry.block.from } });
     this.view.focus();
     openSlashMenuAtCursor(this.view);
+  }
+
+  // 文末「+」点击即落一个空段（不开插入菜单）；单事务 + userEvent 标注，
+  // 一次撤销整体还原。
+  private onTrailingPointerDown(event: PointerEvent): void {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const doc = this.view.state.doc.toString();
+    const changes = trailingAddChanges(doc);
+    this.view.dispatch({
+      changes: { from: changes.from, to: changes.to, insert: changes.insert },
+      selection: { anchor: changes.cursor },
+      annotations: Transaction.userEvent.of("click"),
+    });
+    this.view.focus();
   }
 }
 
