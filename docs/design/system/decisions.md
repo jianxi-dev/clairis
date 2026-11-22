@@ -104,3 +104,5 @@ ledger: append-only
 | 文档属性时分步进器 | 时分步进按钮从输入框两侧横排 28px 改为输入框右侧竖排 14×13，输入框 40px；时/分两组之间仅隔冒号（实测输入框间距 76px→32px），修正「时分隔得太远」；翻页按钮仍 28px | doc-property-acceptance / O2 | 2026-11-21 |
 | 文档属性标签列上限 | 新增 `--dpb-label-max-width: 16em`（spec §7.2）：B 标签列改 `minmax(0, max-content)` 并加该上限，长名在 cap 内完整、超 cap 才省略号，值列 `minmax(0,1fr)` 让位；A 胶囊 `.dpb-k` 同上限、`.dpb-v` 改 `min-width: 0`；列间不画竖线 | doc-property-acceptance-2 / O1 | 2026-11-21 |
 | 文档属性折叠条全透明 | 取代台账「文档属性 footer 与折叠条」行的折叠透明度：`--dpb-collapsed-opacity` 由 0.35 改为 0（spec §7.2），折叠态完全透明、悬停 / 聚焦恢复 1，只改透明度不改高度 | doc-property-acceptance-2 / O4 | 2026-11-21 |
+| 表格块图标=网格语义 | 表格块手柄与块菜单图标弃 `TableChartOutlined`（图表语义），改用本仓自有网格 SVG 条目；笔画与尺寸按 spec §2 收敛（≤6 笔画、14/18/24 档） | editor-interaction-batch2 / #1348 | 2026-11-22 |
+| 引用块图标统一 | 引用块在手柄、块菜单与命令映射中统一为 `FormatQuoteOutlined`，弃用 `ReferenceOutlined` 混用；旧条目保留注册但不再被引用语义消费 | editor-interaction-batch2 / #1348 | 2026-11-22 |
