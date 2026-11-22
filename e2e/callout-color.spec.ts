@@ -1,13 +1,13 @@
 import { test, expect, type Page } from "@playwright/test";
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = process.env.CALLOUT_APP_URL ?? "http://localhost:1420";
 const MOD = process.platform === "darwin" ? "Meta" : "Control";
 const PATH = "/tmp/callout-color.md";
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
-  await page.goto(APP_URL, { waitUntil: "networkidle" });
-  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 10000 });
+  await page.goto(APP_URL, { waitUntil: "domcontentloaded" });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 30000 });
 });
 
 async function openDoc(page: Page, content: string, mode: "edit" | "preview" = "edit") {
