@@ -304,7 +304,6 @@ const editorDecorationOptions: EditorDecorationsOptions = {
       return;
     }
     openImageCrop({
-      src,
       crop: attrs.crop,
       from,
       onConfirm: (rect) => {
