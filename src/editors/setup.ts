@@ -5,8 +5,6 @@ import {
   history,
   historyKeymap,
   indentWithTab,
-  redo,
-  undo,
 } from "@codemirror/commands";
 import {
   bracketMatching,
@@ -89,9 +87,9 @@ export function baseEditorExtensions(): Extension[] {
     syntaxHighlighting(classHighlighter),
     // Mod-f 不在这里：Cmd/Ctrl+F 由 React 侧自研搜索浮窗接管（#981 / S-1），
     // CM6 内置 searchKeymap 已移除，避免内置面板与浮窗同时出现。
+    // Mod-[ / Mod-] 刻意不绑：交给 defaultKeymap 的 indentLess / indentMore（D4 / E-41），
+    // 撤销/重做只走下面的 historyKeymap + ctrlHistoryBindings。
     keymap.of([
-      { key: "Mod-[", run: undo },
-      { key: "Mod-]", run: redo },
       ...defaultKeymap,
       ...historyKeymap,
       ...ctrlHistoryBindings,
