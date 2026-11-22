@@ -27,18 +27,17 @@ async function content(page: Page): Promise<string> {
   });
 }
 
-test("cmd+[ 后退、cmd+] 前进", async ({ page }) => {
+test("cmd+[ 不再触发撤销（D4 键位纠偏）", async ({ page }) => {
   await boot(page);
   await page.locator(".cm-line").nth(1).click();
   await page.keyboard.press("End");
   await page.keyboard.type("X");
   await expect.poll(() => content(page)).toContain("X");
 
+  // Mod-[ 已交回 defaultKeymap 的缩进语义，不再撤销正文。
+  const before = await content(page);
   await page.keyboard.press("Meta+[");
-  await expect.poll(() => content(page)).not.toContain("X");
-
-  await page.keyboard.press("Meta+]");
-  await expect.poll(() => content(page)).toContain("X");
+  await expect.poll(() => content(page)).toBe(before);
 });
 
 test("输入框聚焦时不劫持 cmd+[", async ({ page }) => {
@@ -67,10 +66,10 @@ test("证据：历史四态截图", async ({ page }) => {
   await page.keyboard.type("X");
   await page.waitForTimeout(400);
   await page.screenshot({ path: `${dir}/typed.png` });
-  await page.keyboard.press("Meta+[");
+  await page.keyboard.press("Meta+z");
   await page.waitForTimeout(400);
   await page.screenshot({ path: `${dir}/undone.png` });
-  await page.keyboard.press("Meta+]");
+  await page.keyboard.press("Meta+Shift+z");
   await page.waitForTimeout(400);
   await page.screenshot({ path: `${dir}/redone.png` });
   await page.evaluate(() => {
