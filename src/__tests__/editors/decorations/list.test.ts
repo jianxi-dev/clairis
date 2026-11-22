@@ -12,8 +12,11 @@ import {
   TASK_CHECKBOX_CLASS,
   BLOCK_ACTIVE_CLASS,
   BLOCK_INACTIVE_CLASS,
+  LIST_DEPTH_5_CLASS,
+  LIST_DEPTH_6_CLASS,
   classifyListLine,
   createListDecorations,
+  listDepthClass,
 } from "../../../editors/decorations/list";
 
 describe("list decoration", () => {
@@ -141,6 +144,27 @@ describe("list decoration", () => {
 
     it("classifies plain text", () => {
       expect(classifyListLine("plain").kind).toBe("plain");
+    });
+
+    it("深度支持到 6 层并封顶（两空格一层）", () => {
+      expect(classifyListLine("          - item").depth).toBe(5);
+      expect(classifyListLine("            - item").depth).toBe(6);
+      expect(classifyListLine("              - item").depth).toBe(6);
+    });
+
+    it("listDepthClass 返回对应类，0 与越界为空串", () => {
+      expect(listDepthClass(0)).toBe("");
+      expect(listDepthClass(5)).toBe(LIST_DEPTH_5_CLASS);
+      expect(listDepthClass(6)).toBe(LIST_DEPTH_6_CLASS);
+      expect(listDepthClass(7)).toBe("");
+    });
+  });
+
+  describe("深度 4–6 装饰类", () => {
+    it("12 空格缩进的列表行带 cm-list-depth-6", () => {
+      const result = createListDecorations("            - deep\n");
+      const line = result.find((d) => d.value.spec.class?.includes(LIST_CLASS));
+      expect(line?.value.spec.class).toContain(LIST_DEPTH_6_CLASS);
     });
   });
 

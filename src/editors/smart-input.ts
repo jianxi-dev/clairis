@@ -17,6 +17,7 @@ import { EditorState, type Extension, Prec } from "@codemirror/state";
 import { syntaxTree } from "@codemirror/language";
 import { isSlashMenuOpen, openSlashMenuAtSlash } from "./slash";
 import { structureTransaction } from "./structure-history";
+import { emptyItemEnterAction } from "./list-indent";
 
 // --- IME 组合守卫 ------------------------------------------------------------
 
@@ -232,9 +233,48 @@ function promoteHeadingOnLine(
 
 // --- 智能回车 ----------------------------------------------------------------
 
+function followingLines(state: EditorState, lineNumber: number): string[] {
+  const lines: string[] = [];
+  for (let n = lineNumber + 1; n <= state.doc.lines; n += 1) {
+    lines.push(state.doc.line(n).text);
+  }
+  return lines;
+}
+
+/** 空列表项回车：有子项且未到底 → 退一层；否则退出列表成为段落。 */
+function handleEmptyListItem(
+  view: EditorView,
+  line: { from: number; to: number; text: string; number: number },
+  indentLen: number,
+): boolean {
+  const action = emptyItemEnterAction(
+    indentLen,
+    followingLines(view.state, line.number),
+  );
+  if (action === "outdent") {
+    const remove = Math.min(2, indentLen);
+    view.dispatch(
+      structureTransaction({
+        changes: { from: line.from, to: line.from + remove, insert: "" },
+        selection: { anchor: line.from + line.text.length - remove },
+        scrollIntoView: true,
+      }),
+    );
+    return true;
+  }
+  view.dispatch(
+    structureTransaction({
+      changes: [{ from: line.from, to: line.to, insert: "" }],
+      selection: { anchor: line.from },
+      scrollIntoView: true,
+    }),
+  );
+  return true;
+}
+
 /**
  * 智能回车：
- * - 列表内：续写标记（有序列表自增），空项则退出
+ * - 列表内：非空续写同级标记（有序自增）；空项按三态退出（退一层 / 退出列表）
  * - 引用内：续写引用标记
  * - 代码块内：保留缩进
  * - 其余：交回默认行为
@@ -258,14 +298,7 @@ export function smartEnter(view: EditorView): boolean {
     const [, indent, marker, , content] = taskMatch;
 
     if (content.trim() === "") {
-      view.dispatch(
-        structureTransaction({
-          changes: [{ from: line.from, to: line.to, insert: "" }],
-          selection: { anchor: line.from + indent.length },
-          scrollIntoView: true,
-        }),
-      );
-      return true;
+      return handleEmptyListItem(view, line, indent.length);
     }
 
     // 新项一律未勾选：勾选态属于「这一件事做完了」，不该被续写继承。
@@ -285,14 +318,7 @@ export function smartEnter(view: EditorView): boolean {
     const [, indent, marker, content] = listMatch;
 
     if (content.trim() === "") {
-      view.dispatch(
-        structureTransaction({
-          changes: [{ from: line.from, to: line.to, insert: "" }],
-          selection: { anchor: line.from + indent.length },
-          scrollIntoView: true,
-        }),
-      );
-      return true;
+      return handleEmptyListItem(view, line, indent.length);
     }
 
     const newMarker = /^\d+\./.test(marker)
@@ -720,7 +746,7 @@ const smartBackspaceKeymap = keymap.of([
 
 /**
  * Tab：列表项缩进一级（2 空格）。匹配 bullet（-, *, +）、有序（1.）与任务列表。
- * 非列表行返回 false。
+ * 深度上限 6（12 空格）后不再增加；非列表行返回 false。
  */
 function indentList(view: EditorView): boolean {
   const line = view.state.doc.lineAt(view.state.selection.main.head);
@@ -730,6 +756,8 @@ function indentList(view: EditorView): boolean {
   if (!listMatch) return false;
 
   const [, leadingWhitespace] = listMatch;
+  // 已到上限：消费掉 Tab，避免默认 indentWithTab 再插一层。
+  if (leadingWhitespace.length >= 12) return true;
   const from = line.from + leadingWhitespace.length;
   const indent = "  "; // 缩进单位 = 两个空格
 
@@ -745,14 +773,17 @@ function indentList(view: EditorView): boolean {
 
 /**
  * Shift+Tab：缩进列表项减少一级。匹配 1-2 个空格或一个 tab 后跟列表标记。
- * 顶层列表或非列表行返回 false。
+ * 顶层列表项消费掉按键（不再下探默认 indentLess）；非列表行返回 false。
  */
 function outdentList(view: EditorView): boolean {
   const line = view.state.doc.lineAt(view.state.selection.main.head);
   const lineText = line.text;
 
   const outdentMatch = lineText.match(/^(\t| {1,2})(?=\s*([-*+]|\d+\.)\s)/);
-  if (!outdentMatch) return false;
+  if (!outdentMatch) {
+    // 首层列表项：消费 Shift-Tab，避免默认 indentLess 误伤。
+    return /^(\s*)([-*+]|\d+\.)\s/.test(lineText);
+  }
 
   const indentToRemove = outdentMatch[1];
   const from = line.from;

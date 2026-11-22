@@ -22,6 +22,25 @@ export const LIST_ORDERED_CLASS = "cm-list-ordered";
 export const LIST_DEPTH_1_CLASS = "cm-list-depth-1";
 export const LIST_DEPTH_2_CLASS = "cm-list-depth-2";
 export const LIST_DEPTH_3_CLASS = "cm-list-depth-3";
+export const LIST_DEPTH_4_CLASS = "cm-list-depth-4";
+export const LIST_DEPTH_5_CLASS = "cm-list-depth-5";
+export const LIST_DEPTH_6_CLASS = "cm-list-depth-6";
+
+/** 深度 0–6 的装饰类表；下标即 depth，0 为空串。 */
+const LIST_DEPTH_CLASSES: readonly string[] = [
+  "",
+  LIST_DEPTH_1_CLASS,
+  LIST_DEPTH_2_CLASS,
+  LIST_DEPTH_3_CLASS,
+  LIST_DEPTH_4_CLASS,
+  LIST_DEPTH_5_CLASS,
+  LIST_DEPTH_6_CLASS,
+];
+
+/** 深度对应的装饰类（0 或越界返回空串）。 */
+export function listDepthClass(depth: number): string {
+  return LIST_DEPTH_CLASSES[depth] ?? "";
+}
 export const LIST_MARKER_CLASS = "cm-list-marker";
 export const LIST_MARKER_ACTIVE_CLASS = "cm-list-marker-active";
 export const TASK_DONE_CLASS = "cm-task-done";
@@ -37,7 +56,7 @@ export interface ListLineInfo {
   prefixLen: number;
   /** 前缀之后的行首缩进长度（嵌套层级用）。 */
   indentLen: number;
-  /** 嵌套深度 0–3（两空格一层）。 */
+  /** 嵌套深度 0–6（两空格一层）。 */
   depth: number;
   /** 缩进之后的标记长度（`- `、`1. `、`- [x] `），普通行为 0。 */
   markerLen: number;
@@ -55,7 +74,7 @@ export function classifyListLine(line: string): ListLineInfo {
   const prefixLen = line.match(blockquotePrefixRegex)?.[0].length ?? 0;
   const afterPrefix = line.slice(prefixLen);
   const indentLen = afterPrefix.match(/^[ \t]*/)?.[0].length ?? 0;
-  const depth = Math.min(3, Math.floor(indentLen / 2));
+  const depth = Math.min(6, Math.floor(indentLen / 2));
   const body = afterPrefix.slice(indentLen);
 
   const base = { prefixLen, indentLen, depth, checked: false };
@@ -159,14 +178,7 @@ export function createListDecorations(
       continue;
     }
     const markerFrom = pos + info.prefixLen + info.indentLen;
-    const depthClass =
-      info.depth === 1
-        ? LIST_DEPTH_1_CLASS
-        : info.depth === 2
-          ? LIST_DEPTH_2_CLASS
-          : info.depth >= 3
-            ? LIST_DEPTH_3_CLASS
-            : "";
+    const depthClass = listDepthClass(info.depth);
 
     if (info.kind === "task" && info.markerLen > 0) {
       const bracketFrom =
