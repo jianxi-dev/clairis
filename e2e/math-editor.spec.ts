@@ -53,14 +53,14 @@ test("非活跃公式出 KaTeX，光标进入块级显示源码，离开恢复�
     path: ".artifacts/702/01-inline-block-rendered.png",
   });
 
-  // 状态 2：光标进入块级公式 → 块级 widget 撤掉、原始 $$ 源码可见，行内仍渲染。
+  // 状态 2：点击块级公式 → 唤起源码浮层（点击不再直接揭示源码）。
   await page.locator(".cm-content .katex-display").click();
-  await expect(katex).toHaveCount(1);
-  await expect(editor).toContainText("$$");
+  await expect(page.locator('[data-testid="math-editor"]')).toHaveCount(1);
   await page.screenshot({ path: ".artifacts/702/02-cursor-inside-source.png" });
 
-  // 状态 3：光标回到正文行 → 块级恢复渲染，无残留 / 无重复 widget。
-  await editor.getByText("正文").click();
+  // 状态 3：Esc 提交后块级恢复渲染，无残留 / 无重复 widget。
+  await page.keyboard.press("Escape");
+  await expect(page.locator('[data-testid="math-editor"]')).toHaveCount(0);
   await expect(katex).toHaveCount(2);
   await expect(editor).not.toContainText("$$");
   await page.screenshot({ path: ".artifacts/702/03-cursor-out-restored.png" });
