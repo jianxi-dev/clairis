@@ -31,7 +31,7 @@
 
 ## 2. 编辑体验
 
-- [ ] 2.1 `[change=editor-batch3-lowcost/2.1]` 公式编辑四件套（T2）
+- [x] 2.1 `[change=editor-batch3-lowcost/2.1]` 公式编辑四件套（T2）
   - `src/editors/decorations/math.ts`：点击公式打开锚定下方的源码浮层（全选现有源码、实时 KaTeX 预览，复用 orchestration 锚定），Esc/外点提交、光标回落公式后
   - 键入闭合 `$…$` / `$$…$$` 立即渲染（保留货币守卫）；先核实 `smart-input.ts` 现状，只补缺口
   - display 判定：tex 含换行 / `\tag` / `\begin{equation|align|gather|split|alignat|CD}` 为块；`\begin{align*}` 不是块；`renderers/math.ts` 与装饰两处一致

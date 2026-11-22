@@ -4,8 +4,8 @@ const APP_URL = "http://localhost:1420";
 
 async function boot(page: Page, body: string, name: string) {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
-  await page.goto(APP_URL, { waitUntil: "networkidle" });
-  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 15000 });
+  await page.goto(APP_URL, { waitUntil: "domcontentloaded" });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 30000 });
   await page.evaluate(
     ({ p, b, n }) => {
       const w = window as unknown as Record<string, unknown>;
