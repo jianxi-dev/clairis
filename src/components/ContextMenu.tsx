@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import Icon from "./Icon";
 import type { IconName } from "../ui/icons";
 import { popOverlay, pushOverlay } from "../lib/overlayGate";
+import { MENU_ROW_HEIGHT } from "../editors/orchestration/menu-metrics";
 
 export interface ContextMenuItem {
   label: string;
@@ -20,7 +21,7 @@ interface ContextMenuProps {
 }
 
 const MENU_W = 180;
-const ITEM_H = 30;
+const ITEM_H = MENU_ROW_HEIGHT;
 
 export default function ContextMenu({
   x,

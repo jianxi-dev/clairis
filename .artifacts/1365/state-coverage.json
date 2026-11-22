@@ -1,0 +1,9 @@
+{
+  "task": "2.3",
+  "states": [
+    { "state": "open-context-menu", "screenshot": "e2e/menu-floating.spec.ts:109", "assertion": "passed" },
+    { "state": "slash-menu", "screenshot": "e2e/menu-floating.spec.ts:140", "assertion": "passed" },
+    { "state": "hover-keyboard", "screenshot": "e2e/menu-floating.spec.ts:168", "assertion": "passed" },
+    { "state": "floating-preview", "screenshot": "e2e/menu-floating.spec.ts:206", "assertion": "passed" }
+  ]
+}

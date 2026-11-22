@@ -125,8 +125,10 @@ source_of_truth: canonical
 
 | 名称 | 值 | 用途 |
 |---|---|---|
-| `--radius-4` | 4px | 控件、按钮、菜单行（基准） |
-| `--radius-8` | 8px | 卡片、浮层、弹窗 |
+| `--radius-4` | 4px | 控件、按钮 |
+| `--radius-6` | 6px | 菜单行 |
+| `--radius-8` | 8px | 卡片 |
+| `--radius-12` | 12px | 菜单 / 浮窗面板 |
 | `--radius-full` | 999px | 胶囊、圆形 |
 | `--app-radius` | 6px | **存量**，不新增使用 |
 
