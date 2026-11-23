@@ -4,16 +4,16 @@
  * widget 上，拖 handle 实时改显示，松手不退出；拖回整图范围即移除 crop；
  * Esc 取消并恢复进入裁剪前的显示。
  *
- * 单一显示坐标系：进入时清空裁剪样式量一次整图显示宽度 fullW，得到唯一
- * scale；框选、拖动、保存都在「显示矩形（CSS px）」这一套坐标里进行，写回
- * 只把显示矩形换算成原图矩形一次（imageRectFromDisplay）。显示用窗口
- * （overflow:hidden）+ 原图矩形尺寸的 img + transform: scale(scale)，使 img
- * 元素的显示尺寸严格等于显示矩形。
+ * 单一显示坐标系：进入时以「进入前可见显示矩形」为基准求唯一 scale，框选、
+ * 拖动、保存都在「显示矩形（CSS px）」这一套坐标里进行，写回只把显示矩形
+ * 换算成原图矩形一次（imageRectFromDisplay）。显示用窗口（overflow:hidden）
+ * + 原图矩形尺寸的 img + transform: scale(scale)。窗口按整图尺寸展开，可见
+ * 内容保持进入前的尺寸与位置，裁剪框与可见矩形四边重合。
  *
  * 加载门：等页面 img 的 complete / load，2s 超时给出可见提示，绝不静默返回。
  * 常驻与收尾：进入裁剪后裁剪框一直挂着，拖动边界只改显示、不退出；只有主动
- * 确认（双击裁剪框 / 工具条「裁剪」按钮）才写回并退出，Esc / pointercancel /
- * 点框外取消。未拖动就确认视同取消，不写出默认裁剪。
+ * 确认（双击裁剪框 / 工具条「裁剪」按钮 / 点框外）才写回并退出，Esc /
+ * pointercancel 取消。未拖动就确认视同取消，不写出默认裁剪。
  */
 import { MIN_CROP_SIZE } from "./image";
 import { renderIcon } from "../icons";
@@ -92,17 +92,6 @@ function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(value, max));
 }
 
-function defaultRect(natW: number, natH: number): Rect {
-  const width = Math.max(MIN_CROP_SIZE, Math.round(natW * 0.8));
-  const height = Math.max(MIN_CROP_SIZE, Math.round(natH * 0.8));
-  return {
-    left: Math.round((natW - width) / 2),
-    top: Math.round((natH - height) / 2),
-    width,
-    height,
-  };
-}
-
 function clampRect(rect: Rect, natW: number, natH: number): void {
   rect.left = clamp(rect.left, 0, natW - MIN_CROP_SIZE);
   rect.top = clamp(rect.top, 0, natH - MIN_CROP_SIZE);
@@ -138,43 +127,6 @@ function showCropToast(message: string): void {
     "box-shadow:0 4px 16px rgba(0,0,0,0.18);font-size:13px;";
   document.body.appendChild(el);
   window.setTimeout(() => el.remove(), 2600);
-}
-
-/** 清空裁剪样式后量整图显示宽度（唯一 scale 的来源）。 */
-function measureFullWidth(img: HTMLImageElement): number {
-  const parent = img.parentElement;
-  const parentIsWindow = parent?.classList.contains(WINDOW_CLASS) ?? false;
-  const prevParentDisplay = parent?.style.display ?? "";
-  const prev = {
-    width: img.style.width,
-    height: img.style.height,
-    maxWidth: img.style.maxWidth,
-    position: img.style.position,
-    objectFit: img.style.objectFit,
-    objectPosition: img.style.objectPosition,
-    transform: img.style.transform,
-    transformOrigin: img.style.transformOrigin,
-  };
-  if (parentIsWindow && parent) parent.style.display = "contents";
-  img.style.width = "";
-  img.style.height = "";
-  img.style.maxWidth = "100%";
-  img.style.position = "";
-  img.style.objectFit = "";
-  img.style.objectPosition = "";
-  img.style.transform = "";
-  img.style.transformOrigin = "";
-  const fullW = img.getBoundingClientRect().width;
-  if (parentIsWindow && parent) parent.style.display = prevParentDisplay;
-  img.style.width = prev.width;
-  img.style.height = prev.height;
-  img.style.maxWidth = prev.maxWidth;
-  img.style.position = prev.position;
-  img.style.objectFit = prev.objectFit;
-  img.style.objectPosition = prev.objectPosition;
-  img.style.transform = prev.transform;
-  img.style.transformOrigin = prev.transformOrigin;
-  return fullW;
 }
 
 /**
@@ -234,9 +186,19 @@ function mount(
 ): void {
   const natW = img.naturalWidth;
   const natH = img.naturalHeight;
-  const fullW = measureFullWidth(img);
 
-  // 原图坐标下的初始矩形（用于求唯一 scale）。
+  // 进入前的可见显示矩形（CSS px）：图片实际按 {width=…} 或既有 crop 显示，
+  // 清空样式量到的「整图容器宽」并不是它。以进入前的可见尺寸为基准，进入裁剪
+  // 不改变可见内容的尺寸与位置（#1409）。
+  const enterRect = img.getBoundingClientRect();
+  const enterW = enterRect.width;
+  const enterH = enterRect.height;
+  if (!(enterW > 0) || !(enterH > 0)) {
+    showCropToast("图片尚未加载完成，暂不能裁剪");
+    return;
+  }
+
+  // 裁剪基准（原图像素）：既有 crop 优先；没有则取整图。
   const base: Rect = options.crop
     ? {
         left: options.crop[0],
@@ -244,15 +206,18 @@ function mount(
         width: options.crop[2],
         height: options.crop[3],
       }
-    : defaultRect(natW, natH);
+    : { left: 0, top: 0, width: natW, height: natH };
   clampRect(base, natW, natH);
 
-  // 唯一 scale：清空裁剪样式后的整图显示宽 / 原图宽。
-  const scale = fullW / natW;
+  // 唯一 scale：进入前可见宽 / 可见内容对应的原图宽。既有 crop 时可见内容就是
+  // crop 矩形（宽 base.width），不能按 enterW/natW 换算——那只适用于无 crop 的
+  // 整图显示。可见内容在裁剪态与进入前严格同尺寸。
+  const scale = enterW / base.width;
   if (!(scale > 0)) {
     showCropToast("图片尚未加载完成，暂不能裁剪");
     return;
   }
+  const fullW = natW * scale;
   const fullH = natH * scale;
   // 显示坐标系下的裁剪矩形。
   const rect: Rect = displayRectFromImageRect(base, scale);
@@ -280,7 +245,9 @@ function mount(
     ? { width: existingWindow.style.width, height: existingWindow.style.height }
     : null;
 
-  // 窗口：控制布局尺寸并裁剪溢出；img 以原图矩形尺寸 + transform 缩放。
+  // 窗口：布局盒 = 可见内容（rect），不撑大 widget、不引发重排；overflow:hidden
+  // 把图像裁在框内，框外不溢出到正文。img 以原图矩形尺寸 + transform 缩放，并
+  // 平移到裁剪起点，使框内正是裁剪内容；拖边向外时长大窗口即露出新纳入的内容。
   let win: HTMLSpanElement;
   let restoreWindow: () => void;
   if (existingWindow) {
@@ -338,17 +305,18 @@ function mount(
 
   const applyDisplay = (): void => {
     img.style.position = "absolute";
-    img.style.left = "0px";
-    img.style.top = "0px";
+    img.style.left = `${-rect.left}px`;
+    img.style.top = `${-rect.top}px`;
     img.style.maxWidth = "none";
     img.style.objectFit = "none";
-    img.style.objectPosition = `${-rect.left / scale}px ${-rect.top / scale}px`;
-    img.style.width = `${rect.width / scale}px`;
-    img.style.height = `${rect.height / scale}px`;
+    img.style.objectPosition = "0px 0px";
+    img.style.width = `${natW}px`;
+    img.style.height = `${natH}px`;
     img.style.transform = `scale(${scale})`;
     img.style.transformOrigin = "0 0";
     win.style.width = `${rect.width}px`;
     win.style.height = `${rect.height}px`;
+    // 裁剪框与可见内容重合：框就落在窗口布局盒上。
     frame.style.left = "0px";
     frame.style.top = "0px";
     frame.style.width = `${rect.width}px`;
@@ -418,13 +386,14 @@ function mount(
     options.onConfirm([end.left, end.top, end.width, end.height]);
   };
 
+  // 点框外 = 确认收尾（未改动即不写回，与工具条「裁剪」按钮同语义）；Esc 才取消。
   const onOutsideClick = (event: MouseEvent): void => {
     const target = event.target as Element | null;
     if (!target) return;
     if (target.closest(".cm-image-widget")) return;
     if (target.closest('[data-testid="img-toolbar"]')) return;
     if (target.closest('[data-testid="img-maximize"]')) return;
-    cancel();
+    confirm();
   };
 
   frame.addEventListener("pointerdown", (event) => {

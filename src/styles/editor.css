@@ -857,6 +857,12 @@ body {
   outline-offset: 2px;
 }
 
+/* 裁剪态以裁剪框为唯一边界：关闭选中 outline，否则 inline-block 行盒的
+ * descender 余量会在裁剪框下方多出一条边框与空隙（#1409 底部空隙成因之一）。 */
+.cm-image-widget.cm-image-crop-active {
+  outline: none;
+}
+
 .cm-image-corner {
   position: absolute;
   width: 8px;
