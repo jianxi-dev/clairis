@@ -5,28 +5,28 @@
       "state": "multi-line-handle-per-line",
       "screenshot": ".artifacts/1388/01-multi-line-handle-per-line.png",
       "assertion": "passed",
-      "recorded_at": "2026-11-23T07:24:37Z",
+      "recorded_at": "2026-11-23T07:27:02Z",
       "runner": "unknown@MMBP"
     },
     {
       "state": "scroll-follow",
       "screenshot": ".artifacts/1388/02-scroll-follow.png",
       "assertion": "passed",
-      "recorded_at": "2026-11-23T07:24:38Z",
+      "recorded_at": "2026-11-23T07:27:03Z",
       "runner": "unknown@MMBP"
     },
     {
       "state": "typing-no-rebuild",
       "screenshot": ".artifacts/1388/03-typing-no-rebuild.png",
       "assertion": "passed",
-      "recorded_at": "2026-11-23T07:24:40Z",
+      "recorded_at": "2026-11-23T07:27:06Z",
       "runner": "unknown@MMBP"
     },
     {
       "state": "table-code-block-level-only",
       "screenshot": ".artifacts/1388/04-table-code-block-level-only.png",
       "assertion": "passed",
-      "recorded_at": "2026-11-23T07:24:42Z",
+      "recorded_at": "2026-11-23T07:27:07Z",
       "runner": "unknown@MMBP"
     }
   ]
