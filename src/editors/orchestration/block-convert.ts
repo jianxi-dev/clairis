@@ -8,6 +8,7 @@ import type { Text } from "@codemirror/state";
 import type { EditorView } from "@codemirror/view";
 import type { BlockType } from "../block-model";
 import { structureTransaction } from "../structure-history";
+import { classifyListLine } from "../list-number";
 
 /** 菜单只需要这三样：块范围与块型。 */
 export interface BlockLike {
@@ -248,6 +249,152 @@ export function dispatchBlockConvert(
   scrollIntoView = true,
 ): void {
   const changes = blockConvertChanges(view.state.doc, block, target);
+  if (changes.length === 0) return;
+  view.dispatch(structureTransaction({ changes, scrollIntoView }));
+}
+
+/** 行范围（文档偏移，`to` 不含）。 */
+export interface LineRange {
+  from: number;
+  to: number;
+}
+
+/**
+ * 行子树区间：列表行 → 自身 + 嵌套更深的连续子级；非列表行 → 仅自身。
+ *
+ * 子级按缩进判定：紧随其后、缩进严格更深的列表行属于该子树；同缩进（兄弟）
+ * 或更浅（上级 / 无关行）立即停止，空行与非列表行也停止。
+ */
+export function lineSubtreeRange(
+  doc: Text,
+  from: number,
+  to: number,
+): { from: number; to: number; lines: string[] } {
+  const startPos = Math.max(0, Math.min(from, doc.length));
+  const endPos = Math.max(startPos, Math.min(to, doc.length));
+  const first = doc.lineAt(startPos);
+  const last = doc.lineAt(endPos);
+  const rootIndent = indentOf(first.text);
+  let endNumber = last.number;
+  if (isListLine(first.text)) {
+    for (let lineNo = last.number + 1; lineNo <= doc.lines; lineNo += 1) {
+      const line = doc.line(lineNo);
+      if (line.text.trim() === "" || !isListLine(line.text)) break;
+      if (indentOf(line.text).length <= rootIndent.length) break;
+      endNumber = lineNo;
+    }
+  }
+  const start = first.from;
+  const end = doc.line(endNumber).to;
+  return {
+    from: start,
+    to: end,
+    lines: doc.sliceString(start, end).split("\n"),
+  };
+}
+
+/**
+ * 把子树行重排成目标列表标记。
+ *
+ * 有序编号按层级独立计数（与 `list-number.ts` 的 `computeOrderedNumbers` 同口径：
+ * 同深度连续段内从 1 起，回到更浅层级时重置更深计数），所以 2 层无序转有序后
+ * 2 级从 1 起连续；无序 / 待办不按层级计数，只换标记。
+ */
+function renumberSubtreeLines(
+  lines: string[],
+  target: BlockConvertTarget,
+): string {
+  const counters = new Map<number, number>();
+  return lines
+    .map((line) => {
+      const info = classifyListLine(line);
+      const indent = line.slice(
+        info.prefixLen,
+        info.prefixLen + info.indentLen,
+      );
+      const body = line.slice(info.prefixLen + info.indentLen + info.markerLen);
+      if (target === "ordered") {
+        const n = (counters.get(info.depth) ?? 0) + 1;
+        counters.set(info.depth, n);
+        for (const depth of [...counters.keys()]) {
+          if (depth > info.depth) counters.set(depth, 0);
+        }
+        return `${indent}${n}. ${body}`;
+      }
+      if (target === "todo") return `${indent}- [ ] ${body}`;
+      return `${indent}- ${body}`;
+    })
+    .join("\n");
+}
+
+/**
+ * 列表转高亮：在列表外套 callout 首行，列表行保持原标记与缩进。
+ *
+ * 与 `toQuote` 同层：每行补 `> ` 前缀（已带 `>` 的剥掉再补），列表标记不变。
+ */
+export function wrapListInCallout(lines: string[], kind = "NOTE"): string {
+  return `> [!${kind}]\n${toQuote(lines)}`;
+}
+
+export interface LineConvertOptions {
+  /** 高亮类型 key（`target === "callout"` 时使用，默认 `NOTE`）。 */
+  calloutKind?: string;
+}
+
+/**
+ * 行手柄触发的转换：上级行联同其子树一起转换，末级行只转当前行。
+ *
+ * - 列表行：子树区间内按目标重排（有序按层级计数，见 `renumberSubtreeLines`）；
+ *   转高亮走 `wrapListInCallout`，列表标记保留。
+ * - 非列表行：子树退化为该行自身，走既有 `blockConvertChanges`。
+ */
+export function convertLineWithChildren(
+  doc: Text,
+  line: LineRange,
+  target: BlockConvertTarget,
+  options: LineConvertOptions = {},
+): BlockChange[] {
+  const subtree = lineSubtreeRange(doc, line.from, line.to);
+  const first = subtree.lines[0] ?? "";
+  if (target === "callout") {
+    if (/^>\s*\[!/.test(first)) return [];
+    return [
+      {
+        from: subtree.from,
+        to: subtree.to,
+        insert: wrapListInCallout(subtree.lines, options.calloutKind ?? "NOTE"),
+      },
+    ];
+  }
+  if (!isListLine(first)) {
+    return blockConvertChanges(doc, subtree, target);
+  }
+  if (LIST_TARGETS.has(target)) {
+    return [
+      {
+        from: subtree.from,
+        to: subtree.to,
+        insert: renumberSubtreeLines(subtree.lines, target),
+      },
+    ];
+  }
+  return blockConvertChanges(doc, subtree, target);
+}
+
+/**
+ * 行转换的结构命令 dispatch：与 `dispatchBlockConvert` 同走 `structureTransaction`，
+ * 一次转换一个 undo 步。
+ */
+export function dispatchLineConvert(
+  view: EditorView,
+  line: LineRange,
+  target: BlockConvertTarget,
+  options: LineConvertOptions & { scrollIntoView?: boolean } = {},
+): void {
+  const { calloutKind, scrollIntoView = true } = options;
+  const changes = convertLineWithChildren(view.state.doc, line, target, {
+    calloutKind,
+  });
   if (changes.length === 0) return;
   view.dispatch(structureTransaction({ changes, scrollIntoView }));
 }

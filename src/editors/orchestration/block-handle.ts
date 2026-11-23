@@ -44,6 +44,7 @@ import {
   type PointerKind,
 } from "./hover-gate";
 import { menuStack } from "./menu-stack";
+import type { LineRange } from "./block-convert";
 import { classifyMedia, scanImageReference } from "../decorations/image";
 import { parseMermaidBlocks } from "../decorations/mermaid";
 
@@ -550,6 +551,11 @@ function pointerKind(type: string): PointerKind {
   return type === "mouse" ? "mouse" : type === "pen" ? "pen" : "touch";
 }
 
+function lineRangeOf(entry: HandleEntry): LineRange | undefined {
+  if (entry.lineFrom === null || entry.lineTo === null) return undefined;
+  return { from: entry.lineFrom, to: entry.lineTo };
+}
+
 class BlockHandlePlugin {
   private handles: HandleEntry[] = [];
   private keys: string[] = [];
@@ -941,6 +947,7 @@ class BlockHandlePlugin {
             entry.block,
             entry.anchorPos ?? entry.block.from,
             el,
+            lineRangeOf(entry),
           );
         }, MENU_INTENT_DELAY_MS);
       });
@@ -1199,6 +1206,7 @@ class BlockHandlePlugin {
           entry.block,
           entry.anchorPos ?? entry.block.from,
           entry.el,
+          lineRangeOf(entry),
         );
       }
       return;

@@ -25,8 +25,10 @@ import {
   blockMenuItems,
   currentConvertTarget,
   dispatchBlockConvert,
+  dispatchLineConvert,
   type BlockConvertTarget,
   type BlockLike,
+  type LineRange,
 } from "./block-convert";
 import {
   calloutKeyOf,
@@ -227,9 +229,12 @@ function applyConvert(
   view: EditorView,
   block: BlockLike,
   target: BlockConvertTarget,
+  line?: LineRange,
 ): void {
   closeBlockMenu(view);
-  dispatchBlockConvert(view, block, target);
+  // 行手柄触发走层级联动语义（上级联同子树、末级只转当前行）；块级手柄维持整块转换。
+  if (line) dispatchLineConvert(view, line, target);
+  else dispatchBlockConvert(view, block, target);
 }
 
 function viewportRect(): AnchorRect {
@@ -359,6 +364,7 @@ export function openBlockMenu(
   block: BlockLike,
   anchorPos: number | null = null,
   handle: HTMLElement | null = null,
+  line?: LineRange,
 ): void {
   closeBlockMenu(view);
 
@@ -412,7 +418,7 @@ export function openBlockMenu(
       cell.addEventListener("pointerdown", (event) => {
         event.preventDefault();
         event.stopPropagation();
-        applyConvert(view, block, item.target);
+        applyConvert(view, block, item.target, line);
       });
       grid.appendChild(cell);
     }
@@ -616,8 +622,12 @@ export function openBlockMenu(
       if (block.type === "callout") {
         panelEl.classList.add("cm-callout-color-panel");
         const attrs = getCalloutAttrs(blockText);
-        const applyCalloutColor = (kind: ColorKind, className: string): void => {
-          const key = kind === "font" ? "text" : kind === "border" ? "border" : "bg";
+        const applyCalloutColor = (
+          kind: ColorKind,
+          className: string,
+        ): void => {
+          const key =
+            kind === "font" ? "text" : kind === "border" ? "border" : "bg";
           const name = attrNameFromClassName(key, className);
           const nextAttrs: {
             bg?: string;
@@ -671,7 +681,12 @@ export function openBlockMenu(
         };
       } else {
         const applyColor = (family: ColorFamily, className: string): void => {
-          const next = applyBlockColor(blockText, block.type, family, className);
+          const next = applyBlockColor(
+            blockText,
+            block.type,
+            family,
+            className,
+          );
           closeBlockMenu(view);
           if (next === null) return;
           view.dispatch({

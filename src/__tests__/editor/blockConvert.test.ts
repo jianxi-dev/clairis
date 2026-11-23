@@ -1,11 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { Text } from "@codemirror/state";
+import { EditorState, Text } from "@codemirror/state";
+import { EditorView } from "@codemirror/view";
+import { undo } from "@codemirror/commands";
 import {
   blockConvertChanges,
   blockMenuItems,
   convertLine,
+  convertLineWithChildren,
+  dispatchLineConvert,
+  lineSubtreeRange,
   stripBlockMarker,
+  wrapListInCallout,
 } from "../../editors/orchestration/block-convert";
+import { createExtensions } from "../../editors/setup";
 
 function doc(text: string): Text {
   return Text.of(text.split("\n"));
@@ -134,5 +141,130 @@ describe("同级列表整体转换", () => {
 
   it("非列表块不受影响", () => {
     expect(convert("正文", "ordered")).toBe("1. 正文");
+  });
+});
+
+function convertLineText(
+  text: string,
+  lineNumber: number,
+  target: Parameters<typeof convertLineWithChildren>[2],
+  options?: Parameters<typeof convertLineWithChildren>[3],
+): string {
+  const state = doc(text);
+  const line = state.line(lineNumber);
+  const changes = convertLineWithChildren(
+    state,
+    { from: line.from, to: line.to },
+    target,
+    options,
+  );
+  let out = text;
+  for (const change of [...changes].sort((a, b) => b.from - a.from)) {
+    out = out.slice(0, change.from) + change.insert + out.slice(change.to);
+  }
+  return out;
+}
+
+describe("lineSubtreeRange", () => {
+  it("列表行取自身 + 嵌套更深的连续子级", () => {
+    const state = doc("- 甲\n  - 甲一\n  - 甲二\n- 乙\n  - 乙一");
+    expect(lineSubtreeRange(state, 0, 3)).toEqual({
+      from: 0,
+      to: 17,
+      lines: ["- 甲", "  - 甲一", "  - 甲二"],
+    });
+  });
+
+  it("同缩进兄弟与更浅行立即停止", () => {
+    const state = doc("- 甲\n- 乙\n  - 乙一");
+    expect(lineSubtreeRange(state, 0, 3).lines).toEqual(["- 甲"]);
+    expect(lineSubtreeRange(state, 4, 7).lines).toEqual(["- 乙", "  - 乙一"]);
+  });
+
+  it("叶子行只取自身；非列表行也只取自身", () => {
+    const state = doc("- 甲\n  - 甲一\n  - 甲二\n- 乙");
+    expect(lineSubtreeRange(state, 4, 10).lines).toEqual(["  - 甲一"]);
+    const para = doc("正文\n第二行");
+    expect(lineSubtreeRange(para, 0, 2)).toEqual({
+      from: 0,
+      to: 2,
+      lines: ["正文"],
+    });
+  });
+});
+
+describe("convertLineWithChildren", () => {
+  it("上级行联动子树：2 层无序转有序，2 级从 1 起连续", () => {
+    const text = "- 甲\n  - 甲一\n  - 甲二\n- 乙\n  - 乙一";
+    expect(convertLineText(text, 1, "ordered")).toBe(
+      "1. 甲\n  1. 甲一\n  2. 甲二\n- 乙\n  - 乙一",
+    );
+  });
+
+  it("末级行只转当前行：兄弟与上级零变化", () => {
+    const text = "- 甲\n  - 甲一\n  - 甲二\n- 乙";
+    expect(convertLineText(text, 2, "ordered")).toBe(
+      "- 甲\n  1. 甲一\n  - 甲二\n- 乙",
+    );
+  });
+
+  it("子树转待办 / 无序保留层级缩进", () => {
+    const text = "- 甲\n  - 甲一\n- 乙";
+    expect(convertLineText(text, 1, "todo")).toBe(
+      "- [ ] 甲\n  - [ ] 甲一\n- 乙",
+    );
+    expect(convertLineText(text, 1, "bullet")).toBe("- 甲\n  - 甲一\n- 乙");
+  });
+
+  it("非列表行退化为该行自身的块转换", () => {
+    expect(convertLineText("正文\n第二行", 2, "h1")).toBe("正文\n# 第二行");
+  });
+
+  it("列表转高亮：外套 callout，列表标记与缩进保留", () => {
+    const text = "- 甲\n  - 甲一\n- 乙";
+    expect(convertLineText(text, 1, "callout")).toBe(
+      "> [!NOTE]\n> - 甲\n>   - 甲一\n- 乙",
+    );
+    expect(convertLineText(text, 1, "callout", { calloutKind: "tip" })).toBe(
+      "> [!tip]\n> - 甲\n>   - 甲一\n- 乙",
+    );
+  });
+});
+
+describe("wrapListInCallout", () => {
+  it("每行补 > 前缀，列表标记不变", () => {
+    expect(wrapListInCallout(["- 甲", "  - 甲一"])).toBe(
+      "> [!NOTE]\n> - 甲\n>   - 甲一",
+    );
+    expect(wrapListInCallout(["1. 甲", "2. 乙"], "info")).toBe(
+      "> [!info]\n> 1. 甲\n> 2. 乙",
+    );
+  });
+});
+
+describe("dispatchLineConvert 撤销一步", () => {
+  it("一次转换一个 undo 步（structureTransaction）", () => {
+    const parent = document.createElement("div");
+    document.body.appendChild(parent);
+    const view = new EditorView({
+      parent,
+      state: EditorState.create({
+        doc: "- 甲\n  - 甲一\n  - 甲二\n- 乙",
+        extensions: createExtensions("markdown"),
+      }),
+    });
+    try {
+      const start = view.state.doc.toString();
+      const line = view.state.doc.line(1);
+      dispatchLineConvert(view, { from: line.from, to: line.to }, "ordered");
+      expect(view.state.doc.toString()).toBe(
+        "1. 甲\n  1. 甲一\n  2. 甲二\n- 乙",
+      );
+      expect(undo(view)).toBe(true);
+      expect(view.state.doc.toString()).toBe(start);
+    } finally {
+      view.destroy();
+      parent.remove();
+    }
   });
 });

@@ -59,14 +59,14 @@ async function hoverHandle(page: Page, lineIndex: number) {
   });
 }
 
-test("同级无序列表转有序自动编号", async ({ page }) => {
+test("行手柄转有序：末级行只转当前行，兄弟不变", async ({ page }) => {
   await boot(page, ["- 甲", "- 乙", "- 丙", ""].join("\n"));
   await hoverHandle(page, 0);
   await page
     .locator('[data-testid="block-menu-cell"][data-target="ordered"]')
     .click();
   const content = await storeContent(page);
-  expect(content).toContain("1. 甲\n2. 乙\n3. 丙");
+  expect(content).toContain("1. 甲\n- 乙\n- 丙");
 });
 
 test("轮盘任务项转换落为任务列表而非高亮", async ({ page }) => {
