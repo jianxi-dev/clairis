@@ -41,6 +41,8 @@ import { createLinkDecorations } from "./link";
 import { createImageDecorations, type ImageResolver } from "./image";
 import type { FileEmbedResolver } from "./fileEmbed";
 import {
+  getSelectedImageFrom,
+  moveImageSelection,
   scheduleImageToolbarReposition,
   setImageToolbarActions,
 } from "./imageToolbar";
@@ -277,7 +279,19 @@ function createDecorationField(options?: EditorDecorationsOptions) {
         tr.effects.some((e) => e.is(columnsRefresh))
       ) {
         // 文档改动后选中的图片可能已消失（删除/剪切）：下一帧检查并收掉工具条。
-        if (tr.docChanged) scheduleImageToolbarReposition();
+        // 但纯文本输入每键都重定位会让工具条与图片抖动（#1320）——先按变更把
+        // 选中偏移映射到新文档，只有偏移真的动了才重定位。
+        if (tr.docChanged) {
+          const selectedFrom = getSelectedImageFrom();
+          if (selectedFrom !== null) {
+            moveImageSelection(
+              tr.changes.mapPos(selectedFrom, 1),
+              tr.state.doc,
+            );
+          } else {
+            scheduleImageToolbarReposition();
+          }
+        }
         // 分栏编辑器打开期间：沿用同一批 widget 实例（仅映射范围），保住持有
         // 输入框的 DOM；否则位移引发的重建会摘掉 textarea。
         if (tr.docChanged && columnsRebuildFrozen()) {

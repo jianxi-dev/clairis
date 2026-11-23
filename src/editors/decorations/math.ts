@@ -20,7 +20,7 @@
  * - 围栏代码块内的 $$ / $ 不参与解析（复用 code.ts 的 fencedCodeRanges）。
  */
 import type { Range } from "@codemirror/state";
-import { Decoration, WidgetType } from "@codemirror/view";
+import { Decoration, EditorView, WidgetType } from "@codemirror/view";
 import { isCapabilityEnabled } from "../../lib/capabilities";
 import { isDisplayMath, renderMathHtml } from "../../lib/math";
 import { fencedCodeRanges } from "./code";
@@ -126,12 +126,7 @@ class MathWidget extends WidgetType {
   }
 
   eq(other: MathWidget): boolean {
-    return (
-      other._tex === this._tex &&
-      other._displayMode === this._displayMode &&
-      other._from === this._from &&
-      other._to === this._to
-    );
+    return other._tex === this._tex && other._displayMode === this._displayMode;
   }
 
   toDOM(): HTMLElement {
@@ -141,6 +136,19 @@ class MathWidget extends WidgetType {
     el.dataset.mathTo = String(this._to);
     el.innerHTML = renderMathHtml(this._tex, this._displayMode);
     return el;
+  }
+
+  /**
+   * 偏移漂移（上方键入）时复用同一 DOM，只刷新锚点数据集（#1320）。
+   * `_from`/`_to` 不进 `eq`，否则每次输入都重建并重渲染 KaTeX。
+   */
+  updateDOM(dom: HTMLElement, _view: EditorView, from: MathWidget): boolean {
+    if (from._tex !== this._tex || from._displayMode !== this._displayMode) {
+      return false;
+    }
+    dom.dataset.mathFrom = String(this._from);
+    dom.dataset.mathTo = String(this._to);
+    return true;
   }
 
   /**

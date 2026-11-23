@@ -294,6 +294,32 @@ export function scheduleImageToolbarReposition(): void {
 }
 
 /**
+ * 选中图片的文档偏移漂移了（上方键入 / 撤销）：把选中态迁到新偏移。
+ *
+ * 只在偏移真的变化时调用——纯文本输入每键都触发一次全量重定位会让工具条
+ * 与图片在 WKWebView 上抖动（#1320）。
+ */
+export function moveImageSelection(
+  nextFrom: number,
+  nextDoc: { sliceString: (from: number, to: number) => string },
+): void {
+  if (!selection) return;
+  // 判据是「映射后的偏移还落在图片引用上吗」，不是「偏移动了吗」——
+  // 删除整块时 mapPos(0) 仍是 0，但图片已经不在文档里了。用事务的新文档
+  // 判定，模块级 imageView 此刻还是旧 state。
+  const stillInDoc = nextDoc.sliceString(nextFrom, nextFrom + 2) === "![";
+  if (!stillInDoc) {
+    deselectImage();
+    return;
+  }
+  if (nextFrom === selection.from) return;
+  selection = { ...selection, from: nextFrom };
+  applySelection();
+  positionToolbar();
+  scheduleReposition();
+}
+
+/**
  * 把选中态套到某个 widget DOM 上：data-selected + 4 个角点 + 8 个缩放把手
  * + 描述行。描述行随选中态增删，内容按 data-image-title 渲染。
  */
