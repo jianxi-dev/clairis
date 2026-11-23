@@ -125,7 +125,7 @@ test("段落转标题再插新段：仅受影响块及其后手柄被替换", as
   const headingKey = await page
     .locator(`[data-block-from="${affectedFrom}"]`)
     .getAttribute("data-handle-key");
-  expect(headingKey).toBe(`${affectedIndex}:heading:H1Outlined`);
+  expect(headingKey).toBe(`${affectedIndex}:heading:H1Outlined:line:3`);
 
   await shot(page, "03-convert-insert", "convert-insert");
 });
