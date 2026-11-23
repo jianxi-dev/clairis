@@ -32,6 +32,7 @@ import {
   openImageMaximize,
   scheduleImageToolbarReposition,
   selectImage,
+  setImageView,
   type ImageHandleSpec,
   type ImageToolbarActions,
 } from "./imageToolbar";
@@ -655,7 +656,8 @@ class ImageWidget extends WidgetType {
     );
   }
 
-  toDOM(): HTMLElement {
+  toDOM(view: EditorView): HTMLElement {
+    setImageView(view);
     const container = document.createElement("span");
     container.className = "cm-image-widget";
     container.dataset.imageFrom = String(this._from);
@@ -790,6 +792,8 @@ class ImageWidget extends WidgetType {
     markImageWidgetSelected(container, getSelectedImageFrom() === this._from);
 
     container.addEventListener("click", () => {
+      const view = EditorView.findFromDOM(container);
+      if (view) setImageView(view);
       selectImage(this._from, this._path, this._alt);
     });
     container.addEventListener("dblclick", (event) => {
@@ -1152,7 +1156,9 @@ class MediaWidget extends WidgetType {
 
     container.addEventListener("click", () => {
       if (!this._filePath) return;
-      void invoke("open_file_external", { path: this._filePath }).catch(() => {});
+      void invoke("open_file_external", { path: this._filePath }).catch(
+        () => {},
+      );
     });
 
     if (!this._filePath || !isTauriEnv()) return;
@@ -1220,8 +1226,7 @@ class MediaWidget extends WidgetType {
   ignoreEvent(event: Event): boolean {
     const target = event.target as Node | null;
     return (
-      target instanceof Element &&
-      target.closest("video, audio, a") !== null
+      target instanceof Element && target.closest("video, audio, a") !== null
     );
   }
 }

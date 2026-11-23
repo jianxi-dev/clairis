@@ -5,6 +5,7 @@
  * 选中态按文档偏移存放在模块级：装饰每次重建都会换新 widget DOM，新 widget
  * 的 toDOM 会按偏移重新套用选中态，工具条再按新 DOM 重新定位。
  */
+import type { EditorView } from "@codemirror/view";
 import { renderIcon } from "../icons";
 
 export type ImageAlignChoice = "left" | "center" | "right";
@@ -240,8 +241,12 @@ let maximizePinchStart: { dist: number; scale: number } | null = null;
 let maximizeDownPos: { x: number; y: number } | null = null;
 /** 描述行是否折叠：点击描述行切换，重新选中图片时复位。 */
 let captionCollapsed = false;
+/** 描述区是否由工具条按钮显式打开；裁剪态强制隐藏，退出后恢复。 */
+let captionVisible = false;
 /** 裁剪框是否挂着：由 imageCrop 通知，工具条据此标注裁剪按钮按下态。 */
 let cropActive = false;
+/** 当前编辑器视图：仅用于判断选中的图片是否仍在文档里（区分滚出视口与删除）。 */
+let imageView: EditorView | null = null;
 /** 工具条按下期间不把描述框的 blur 当成提交（否则点击「添加描述」会先关再开）。 */
 let toolbarInteraction = false;
 
@@ -253,6 +258,10 @@ export function getSelectedImageFrom(): number | null {
   return selection?.from ?? null;
 }
 
+export function setImageView(view: EditorView | null): void {
+  imageView = view;
+}
+
 export function setImageToolbarActions(next: ImageToolbarActions): void {
   actions = next;
   updateDisabledStates();
@@ -261,8 +270,10 @@ export function setImageToolbarActions(next: ImageToolbarActions): void {
 export function selectImage(from: number, path: string, alt: string): void {
   selection = { from, path, alt };
   captionCollapsed = false;
+  captionVisible = false;
   applySelection();
   ensureToolbar();
+  setEditActive(true);
   setCaptionActive(false);
   updateAlignStates();
   positionToolbar();
@@ -272,7 +283,9 @@ export function selectImage(from: number, path: string, alt: string): void {
 export function deselectImage(): void {
   if (!selection) return;
   selection = null;
+  captionVisible = false;
   applySelection();
+  setEditActive(false);
   removeToolbar();
 }
 
@@ -301,7 +314,8 @@ export function markImageWidgetSelected(
     dot.dataset.corner = corner;
     el.appendChild(dot);
   }
-  appendCaptionLine(el);
+  const caption = appendCaptionLine(el);
+  applyCaptionVisibility(caption);
   // 文字回退（解析不出 URL）没有 <img>，不出缩放把手。
   if (!el.querySelector("img")) return;
   for (const { handle, cursor } of IMAGE_RESIZE_HANDLES) {
@@ -383,7 +397,8 @@ function createCaptionInput(
     }
     input.remove();
     showCaptionText(caption);
-    setCaptionActive(false);
+    setCaptionActive(captionVisible);
+    applyCaptionVisibility(caption);
   };
 
   input.addEventListener("keydown", (event) => {
@@ -397,7 +412,8 @@ function createCaptionInput(
       setCaptionText(caption, widgetEl.dataset.imageTitle ?? "");
       input.remove();
       showCaptionText(caption);
-      setCaptionActive(false);
+      setCaptionActive(captionVisible);
+      applyCaptionVisibility(caption);
     }
   });
   // blur 也提交（非丢弃）。主动收尾 / 切换显隐时用标记跳过，避免二次写回。
@@ -424,6 +440,7 @@ function showCaptionInput(caption: HTMLElement, widgetEl: HTMLElement): void {
   input.focus();
   input.select();
   setCaptionActive(true);
+  applyCaptionVisibility(caption);
 }
 
 function hideCaptionInput(caption: HTMLElement, widgetEl: HTMLElement): void {
@@ -435,14 +452,15 @@ function hideCaptionInput(caption: HTMLElement, widgetEl: HTMLElement): void {
   input.style.display = "none";
   showCaptionText(caption);
   setCaptionActive(false);
+  applyCaptionVisibility(caption);
   if (value !== "" && value !== current) {
     actions.onImageSetTitle?.(Number(widgetEl.dataset.imageFrom), value);
   }
 }
 
 /**
- * 工具条「描述」：切换描述编辑框。隐藏时打开并回填已有标题；已打开时再点
- * 收起。已有标题时也不会走到描述行的收起逻辑。
+ * 工具条「描述」：切换描述区显隐。默认隐藏；打开时回填已有标题并进入编辑，
+ * 再点收起。
  */
 export function editSelectedImageCaption(): void {
   if (!selection) return;
@@ -451,18 +469,18 @@ export function editSelectedImageCaption(): void {
   );
   const caption = el?.querySelector<HTMLElement>(".cm-image-caption");
   if (!el || !caption) return;
-  const input = captionInputOf(caption);
-  if (input && input.style.display !== "none") {
+  captionVisible = !captionVisible;
+  setCaptionActive(captionVisible);
+  if (!captionVisible) {
     hideCaptionInput(caption, el);
     return;
   }
   if (typeof actions.onImageSetTitle !== "function") return;
-  caption.style.display = "";
   captionCollapsed = false;
   showCaptionInput(caption, el);
 }
 
-function appendCaptionLine(el: HTMLElement): void {
+function appendCaptionLine(el: HTMLElement): HTMLElement {
   const title = el.dataset.imageTitle ?? "";
   const caption = document.createElement("div");
   caption.className = "cm-image-caption";
@@ -484,6 +502,7 @@ function appendCaptionLine(el: HTMLElement): void {
     setCaptionText(caption, title);
   });
   el.appendChild(caption);
+  return caption;
 }
 
 function applySelection(): void {
@@ -572,10 +591,36 @@ function setCaptionActive(active: boolean): void {
   btn.setAttribute("aria-pressed", active ? "true" : "false");
 }
 
-/** 裁剪框开关：imageCrop 在挂载 / 收尾时调用，工具条同步按下态。 */
+/** 「AI 编辑」按钮选中态：图片进入编辑态（被选中）时高亮。 */
+function setEditActive(active: boolean): void {
+  const btn = toolbarEl?.querySelector<HTMLButtonElement>(
+    '[data-testid="img-toolbar-ai"]',
+  );
+  if (!btn) return;
+  btn.classList.toggle("is-active", active);
+  btn.setAttribute("aria-pressed", active ? "true" : "false");
+}
+
+/** 描述区实际显隐：按钮打开且不在裁剪态。 */
+function captionDisplayed(): boolean {
+  return captionVisible && !cropActive;
+}
+
+function applyCaptionVisibility(caption: HTMLElement): void {
+  caption.style.display = captionDisplayed() ? "" : "none";
+}
+
+/** 裁剪框开关：imageCrop 在挂载 / 收尾时调用，工具条同步按下态并强制隐藏描述区。 */
 export function notifyImageCropState(active: boolean): void {
   cropActive = active;
   updateCropState();
+  const el = selection
+    ? document.querySelector<HTMLElement>(
+        `.cm-image-widget[data-image-from="${selection.from}"]`,
+      )
+    : null;
+  const caption = el?.querySelector<HTMLElement>(".cm-image-caption");
+  if (caption) applyCaptionVisibility(caption);
 }
 
 function updateDisabledStates(): void {
@@ -648,13 +693,27 @@ function runAction(action: string): void {
   }
 }
 
+function selectedImageStillInDoc(): boolean {
+  if (!imageView || !selection) return false;
+  const doc = imageView.state.doc.toString();
+  return (
+    doc.charAt(selection.from) === "!" && doc.charAt(selection.from + 1) === "["
+  );
+}
+
 function positionToolbar(): void {
   if (!toolbarEl || !selection) return;
   const el = document.querySelector<HTMLElement>(
     `.cm-image-widget[data-image-from="${selection.from}"]`,
   );
   if (!el) {
-    // 选中的图片已随文档改动消失（删除 / 剪切）：选中态与工具条一起收掉。
+    // 图片仍在文档里：只是滚出视口被 CM6 卸载了 widget——收起工具条但保留
+    // 选中，滚回时由 widget 的 toDOM 重新套选中态。只有文档里也不再有
+    // 该图片（删除 / 剪切）才收掉选中态。
+    if (selectedImageStillInDoc()) {
+      toolbarEl.style.display = "none";
+      return;
+    }
     deselectImage();
     return;
   }

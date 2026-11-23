@@ -470,7 +470,7 @@ test("描述行提交：写入源码标题并在预览态显示图注", async ({
     PNG_DATA_URL,
   );
   await page.locator(".cm-image-widget").click();
-  await page.locator('[data-testid="img-caption"]').click();
+  await page.getByTestId("img-toolbar-comment").click();
   const input = page.locator('[data-testid="img-caption-input"]');
   await expect(input).toHaveCount(1);
   await input.fill("雾山");
@@ -505,6 +505,8 @@ test("描述行点击折叠/展开：aria-expanded 切换，标题数据保留",
   );
   await page.locator(".cm-image-widget").click();
   const caption = page.locator('[data-testid="img-caption"]');
+  await page.getByTestId("img-toolbar-comment").click();
+  await page.locator('[data-testid="img-caption-input"]').press("Escape");
   await expect(caption).toHaveText("已有描述");
   await expect(caption).toHaveAttribute("aria-expanded", "true");
   await caption.click();
@@ -520,7 +522,7 @@ test("描述行取消：Esc 回到占位态，文档无残留改动", async ({ p
   const doc = `![示例图片](${PNG_DATA_URL})\n`;
   await openEditor(page, doc, "imgcaptionesc", PNG_DATA_URL);
   await page.locator(".cm-image-widget").click();
-  await page.locator('[data-testid="img-caption"]').click();
+  await page.getByTestId("img-toolbar-comment").click();
   const input = page.locator('[data-testid="img-caption-input"]');
   await expect(input).toHaveCount(1);
   await input.fill("不会被提交");
