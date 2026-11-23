@@ -20,6 +20,8 @@ import {
   ROOT_SECTORS,
   ROULETTE_BOX,
   SUB_DIM_OPACITY,
+  FOURTH_IN,
+  FOURTH_OUT,
   THIRD_IN,
   THIRD_OUT,
   angleOfPoint,
@@ -239,8 +241,11 @@ export function createRoulette(
   let openSector: SectorId | null = null;
   let group: RouletteItem | null = null;
   let groupCenter: number | null = null;
+  let subGroup: RouletteItem | null = null;
+  let subGroupCenter: number | null = null;
   let hot = -1;
   let thirdCenters: number[] = [];
+  let fourthCenters: number[] = [];
   let filter: string | null = null;
   let matches: Cmd[] = [];
   let closed = false;
@@ -275,9 +280,12 @@ export function createRoulette(
 
   const currentItems = (): RouletteItem[] => {
     if (filter !== null) return matches.map((m) => m.item);
+    if (subGroup) return subGroup.children ?? [];
     if (group) return group.children ?? [];
     return sectorItems();
   };
+
+  const deepestBand = (): 2 | 3 | 4 => (subGroup ? 4 : group ? 3 : 2);
 
   const matchCommands = (query: string): Cmd[] =>
     matchCommandsIn(
@@ -320,8 +328,7 @@ export function createRoulette(
       .forEach((p) => {
         const idx = Number(p.dataset.idx);
         const band = Number(p.dataset.band);
-        const active =
-          idx === hot && (band === 3 ? !!group : !group) && filter === null;
+        const active = idx === hot && band === deepestBand() && filter === null;
         p.classList.toggle("hot", active);
       });
     filterList
@@ -338,13 +345,14 @@ export function createRoulette(
     items: RouletteItem[],
     rIn: number,
     rOut: number,
-    band: 2 | 3,
+    band: 2 | 3 | 4,
     alpha: number,
     centerAngle: number,
   ) => {
     const angles = fanAngles(centerAngle, items.length);
     items.forEach((item, i) => {
       const center = angles[i];
+      const hasChildren = !!item.children && item.children.length > 0;
       const path = svgNode("path", {
         d: sectorPath(
           rIn,
@@ -359,21 +367,28 @@ export function createRoulette(
       path.dataset.band = String(band);
       path.dataset.idx = String(i);
       path.dataset.action = item.id;
-      path.dataset.testid = (band === 3 ? "l3-slot-" : "sub-slot-") + String(i);
+      path.dataset.testid =
+        (band === 4 ? "l4-slot-" : band === 3 ? "l3-slot-" : "sub-slot-") +
+        String(i);
       path.setAttribute("role", "menuitem");
       path.setAttribute("aria-label", item.label);
       path.addEventListener("pointerenter", () => {
-        if (band === 3 || !group) {
+        if (band === deepestBand()) {
           hot = i;
           markHot();
         }
       });
-      if (!isExecutable(item)) path.setAttribute("aria-disabled", "true");
+      if (!hasChildren && !isExecutable(item))
+        path.setAttribute("aria-disabled", "true");
       path.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
-        if (item.children && item.children.length > 0 && band === 2) {
+        if (hasChildren && band === 2) {
           openGroup(item);
+          return;
+        }
+        if (hasChildren && band === 3) {
+          openSubGroup(item);
           return;
         }
         if (!isExecutable(item)) return;
@@ -391,7 +406,7 @@ export function createRoulette(
       unit.style.left = `${polar(center, mid).x + ROULETTE_BOX / 2}px`;
       unit.style.top = `${polar(center, mid).y + ROULETTE_BOX / 2}px`;
       unit.innerHTML = iconSvg(item.icon, 15);
-      if (item.children && band === 2) {
+      if (hasChildren && band !== 4) {
         const caret = el("span", "sr-unit-caret");
         caret.textContent = "›";
         unit.appendChild(caret);
@@ -489,17 +504,36 @@ export function createRoulette(
         );
         if (group) {
           const children = group.children ?? [];
-          thirdCenters = fanAngles(groupCenter ?? def.angle, children.length);
+          const center = groupCenter ?? def.angle;
+          thirdCenters = fanAngles(center, children.length);
           drawBand(
             children,
             THIRD_IN,
             THIRD_OUT,
             3,
-            1,
-            groupCenter ?? def.angle,
+            subGroup ? SUB_DIM_OPACITY : 1,
+            center,
           );
+          if (subGroup) {
+            const subChildren = subGroup.children ?? [];
+            fourthCenters = fanAngles(
+              subGroupCenter ?? center,
+              subChildren.length,
+            );
+            drawBand(
+              subChildren,
+              FOURTH_IN,
+              FOURTH_OUT,
+              4,
+              1,
+              subGroupCenter ?? center,
+            );
+          } else {
+            fourthCenters = [];
+          }
         } else {
           thirdCenters = [];
+          fourthCenters = [];
         }
       }
     }
@@ -517,13 +551,51 @@ export function createRoulette(
         ? base
         : base - ((list.length - 1) * ITEM_DEG) / 2 + idx * ITEM_DEG;
     group = item;
+    subGroup = null;
+    subGroupCenter = null;
     hot = item.children ? Math.floor((item.children.length - 1) / 2) : -1;
     render();
+  };
+
+  const openSubGroup = (item: RouletteItem) => {
+    if (!item.children || !group) return;
+    const siblings = group.children ?? [];
+    const idx = siblings.indexOf(item);
+    const base = groupCenter ?? (openSector ? sectorOf(openSector).angle : 0);
+    subGroupCenter =
+      idx < 0 || siblings.length <= 1
+        ? base
+        : base - ((siblings.length - 1) * ITEM_DEG) / 2 + idx * ITEM_DEG;
+    subGroup = item;
+    hot = Math.floor((item.children.length - 1) / 2);
+    render();
+  };
+
+  const activateItem = (item: RouletteItem) => {
+    if (item.children && item.children.length > 0) {
+      if (group && !subGroup) {
+        openSubGroup(item);
+        return;
+      }
+      if (!group) {
+        openGroup(item);
+        return;
+      }
+      return;
+    }
+    runLeaf(item);
   };
 
   const backOneLevel = () => {
     if (filter !== null) {
       closeFilter();
+      return;
+    }
+    if (subGroup) {
+      subGroup = null;
+      subGroupCenter = null;
+      hot = -1;
+      render();
       return;
     }
     if (group) {
@@ -561,6 +633,8 @@ export function createRoulette(
     openSector = id;
     group = null;
     groupCenter = null;
+    subGroup = null;
+    subGroupCenter = null;
     hot = -1;
     if (id === "clear") {
       const item = actions.clear[0];
@@ -781,7 +855,7 @@ export function createRoulette(
       const item = items[hot >= 0 ? hot : 0];
       if (item) {
         e.preventDefault();
-        runLeaf(item);
+        activateItem(item);
       }
     }
   };
@@ -789,7 +863,8 @@ export function createRoulette(
 
   // 三层展开后：高亮跟着指针在二层上滑动同向移动（按角度就近命中）。
   const onThirdTrack = (event: PointerEvent) => {
-    if (!group || thirdCenters.length === 0) return;
+    const centers = subGroup ? fourthCenters : thirdCenters;
+    if (!group || centers.length === 0) return;
     const rect = root.getBoundingClientRect();
     const x = event.clientX;
     const y = event.clientY;
@@ -804,7 +879,7 @@ export function createRoulette(
     const angle = angleOfPoint(center, { x, y });
     let best = hot;
     let bestDiff = Infinity;
-    thirdCenters.forEach((mark, i) => {
+    centers.forEach((mark, i) => {
       const diff = Math.abs(((angle - mark + 540) % 360) - 180);
       if (diff < bestDiff) {
         bestDiff = diff;
