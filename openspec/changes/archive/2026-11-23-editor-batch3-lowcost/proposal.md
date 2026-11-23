@@ -21,7 +21,7 @@
 
 ### Modified Capabilities
 
-- `editing`：新增 E-42 高亮块三色、E-43 公式编辑体验、E-44 附件卡与音频。
+- `editing`：新增 E-48 高亮块三色、E-49 公式编辑体验、E-50 附件卡与音频。
 - `application-shell`：新增菜单/浮窗圆角阴影语法、首页宫格响应式要求。
 
 ## Impact
