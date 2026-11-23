@@ -1,7 +1,7 @@
 /* 图片内联裁剪（#779 / D19；坐标系与保存可靠性 #1349 / E-44）。
  *
  * 矩形一律用原图像素坐标（无损：原图与引用不变）。裁剪框直接覆盖在图片
- * widget 上，拖 handle 实时改显示，松手写回 crop；拖回整图范围即移除 crop；
+ * widget 上，拖 handle 实时改显示，松手不退出；拖回整图范围即移除 crop；
  * Esc 取消并恢复进入裁剪前的显示。
  *
  * 单一显示坐标系：进入时清空裁剪样式量一次整图显示宽度 fullW，得到唯一
@@ -11,20 +11,18 @@
  * 元素的显示尺寸严格等于显示矩形。
  *
  * 加载门：等页面 img 的 complete / load，2s 超时给出可见提示，绝不静默返回。
- * 保存双入口：显式「保存」按钮 + window 级 pointerup（装饰重建销毁裁剪框后
- * 仍兜底），两路经同一状态机去重，只写一次；Esc 取消不写回并清理全部监听。
+ * 常驻与收尾：进入裁剪后裁剪框一直挂着，拖动边界只改显示、不退出；只有主动
+ * 确认（双击裁剪框 / 工具条「裁剪」按钮）才写回并退出，Esc / pointercancel /
+ * 点框外取消。未拖动就确认视同取消，不写出默认裁剪。
  */
 import { MIN_CROP_SIZE } from "./image";
+import { renderIcon } from "../icons";
 import { getSelectedImageFrom, notifyImageCropState } from "./imageToolbar";
 import {
-  cancelCropSession,
   displayRectFromImageRect,
   FULL_IMAGE_RATIO,
   imageRectFromDisplay,
   isFullImageRect,
-  resolveCropTrigger,
-  type CropSessionStatus,
-  type CropTrigger,
 } from "./imageCropMath";
 
 export interface ImageCropOptions {
@@ -43,28 +41,51 @@ interface Rect {
   height: number;
 }
 
-/** 指针位移超过它才算拖动，避免单击误写 crop。 */
-const DRAG_THRESHOLD_PX = 2;
 /** 加载门超时：2s 内图片未加载完成则放弃并提示。 */
 const LOAD_TIMEOUT_MS = 2000;
 
 const WINDOW_CLASS = "image-crop-window";
 const TOAST_CLASS = "image-crop-toast";
-const SAVE_BUTTON_TESTID = "img-crop-save";
+
+/** 四角括号把手统一用裁剪图标（A-4.4：与工具条裁剪按钮同一键名）。 */
+const HANDLE_ICON = "CropOutlined";
+/** 角标命中区边长（px）：四角与四边一致，明显可点。 */
+const HANDLE_HIT_SIZE = 18;
+/** 角标图标显示尺寸（px）。 */
+const HANDLE_ICON_SIZE = 20;
+/** 每个角标的旋转角：让裁剪括号的开口朝向框内。 */
+const CORNER_ROTATE: Record<string, string> = {
+  nw: "0deg",
+  ne: "90deg",
+  se: "180deg",
+  sw: "270deg",
+};
+const CORNERS: readonly string[] = ["nw", "ne", "se", "sw"];
 
 /** 当前挂着的裁剪收尾函数；null 表示没有裁剪框。 */
 let activeCleanup: (() => void) | null = null;
+/** 当前挂着的确认函数：工具条「裁剪」按钮在裁剪态下改为确认收尾。 */
+let activeConfirm: (() => void) | null = null;
 
 export function isImageCropActive(): boolean {
   return activeCleanup !== null;
 }
 
-/** 关闭内联裁剪并恢复显示（再次点击工具条裁剪按钮 / 切换图片时用）。 */
+/** 关闭内联裁剪并恢复显示（切换图片 / 重开裁剪前清场）。 */
 export function closeImageCrop(): void {
   if (!activeCleanup) return;
   const cleanup = activeCleanup;
   activeCleanup = null;
+  activeConfirm = null;
   cleanup();
+}
+
+/** 工具条「裁剪」按钮在裁剪态下改为确认：写回当前矩形并退出。 */
+export function confirmImageCrop(): void {
+  if (!activeConfirm) return;
+  const confirm = activeConfirm;
+  activeConfirm = null;
+  confirm();
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -285,38 +306,32 @@ function mount(
   frame.className = "cm-image-crop-frame";
   frame.dataset.testid = "img-crop-frame";
 
-  const saveBtn = document.createElement("button");
-  saveBtn.type = "button";
-  saveBtn.className = "image-crop-save";
-  saveBtn.dataset.testid = SAVE_BUTTON_TESTID;
-  saveBtn.title = "保存裁剪";
-  saveBtn.setAttribute("aria-label", "保存裁剪");
-  saveBtn.textContent = "保存";
-  saveBtn.style.cssText =
-    "position:absolute;top:100%;right:0;margin-top:4px;z-index:2;" +
-    "padding:2px 8px;font-size:12px;line-height:1.5;color:var(--app-text);" +
-    "background:var(--app-surface);border:1px solid var(--app-border);" +
-    "border-radius:6px;cursor:pointer;";
-  saveBtn.addEventListener("pointerdown", (event) => event.stopPropagation());
-  saveBtn.addEventListener("click", (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    requestFinish("save");
-  });
-  frame.appendChild(saveBtn);
-
   for (const handle of Object.keys(HANDLE_AXES)) {
     const span = document.createElement("span");
     span.className = "cm-image-handle";
     span.dataset.handle = handle;
     span.style.cursor = HANDLE_CURSOR[handle];
+    span.style.width = `${HANDLE_HIT_SIZE}px`;
+    span.style.height = `${HANDLE_HIT_SIZE}px`;
     span.title = "拖动调整裁剪区域";
-    const mark = document.createElement("i");
-    mark.className = "image-crop-mark";
-    mark.style.cssText =
-      "position:absolute; display:block; pointer-events:none;" +
-      (HANDLE_MARK[handle] ?? "");
-    span.appendChild(mark);
+    if (CORNERS.includes(handle)) {
+      const icon = renderIcon(HANDLE_ICON);
+      icon.style.width = `${HANDLE_ICON_SIZE}px`;
+      icon.style.height = `${HANDLE_ICON_SIZE}px`;
+      icon.style.position = "absolute";
+      icon.style.left = "50%";
+      icon.style.top = "50%";
+      icon.style.color = "#fff";
+      icon.style.transform = `translate(-50%, -50%) rotate(${CORNER_ROTATE[handle]})`;
+      span.appendChild(icon);
+    } else {
+      const mark = document.createElement("i");
+      mark.className = "image-crop-mark";
+      mark.style.cssText =
+        "position:absolute; display:block; pointer-events:none;" +
+        (HANDLE_MARK[handle] ?? "");
+      span.appendChild(mark);
+    }
     frame.appendChild(span);
   }
   widget.appendChild(frame);
@@ -347,10 +362,9 @@ function mount(
     startX: number;
     startY: number;
     start: Rect;
-    moved: boolean;
   }
   let drag: DragState | null = null;
-  let session: CropSessionStatus = "open";
+  const baseDisplay: Rect = { ...rect };
 
   const restoreDisplay = (): void => {
     img.style.width = enterImgStyles.width;
@@ -370,51 +384,47 @@ function mount(
     }
   };
 
-  const onWindowPointerUp = (): void => {
-    // 只有拖拽中松手才收尾；点击工具条等无关 pointerup 不关裁剪。
-    if (!drag) return;
-    requestFinish("pointerup");
-  };
-
   const cleanup = (): void => {
     frame.remove();
     widget.classList.remove("cm-image-crop-active");
     document.removeEventListener("keydown", onKey, true);
-    window.removeEventListener("pointerup", onWindowPointerUp);
+    document.removeEventListener("click", onOutsideClick, true);
     restoreWindow();
     restoreDisplay();
     if (activeCleanup === cleanup) activeCleanup = null;
+    if (activeConfirm === confirm) activeConfirm = null;
     notifyImageCropState(false);
   };
 
   const cancel = (): void => {
-    session = cancelCropSession(session).status;
-    // 拖拽中 Esc：先丢掉 drag，pointerup 的收尾就不会写回。
     drag = null;
     cleanup();
   };
 
-  const requestFinish = (trigger: CropTrigger): void => {
-    const result = resolveCropTrigger(session, trigger);
-    if (!result.write) return;
-    if (trigger !== "save" && !drag) return;
-    const shouldWrite = trigger === "save" || (drag?.moved ?? false);
-    if (!shouldWrite) {
-      // 未拖动的松手：不写回，恢复进入前显示。
-      session = "cancelled";
-      drag = null;
-      cleanup();
-      return;
-    }
-    session = result.status;
+  const confirm = (): void => {
+    const changed =
+      rect.left !== baseDisplay.left ||
+      rect.top !== baseDisplay.top ||
+      rect.width !== baseDisplay.width ||
+      rect.height !== baseDisplay.height;
     const end = imageRectFromDisplay(rect, scale);
     drag = null;
     cleanup();
+    if (!changed) return;
     if (isFullImageRect(end, natW, natH, FULL_IMAGE_RATIO)) {
       options.onConfirm(null);
       return;
     }
     options.onConfirm([end.left, end.top, end.width, end.height]);
+  };
+
+  const onOutsideClick = (event: MouseEvent): void => {
+    const target = event.target as Element | null;
+    if (!target) return;
+    if (target.closest(".cm-image-widget")) return;
+    if (target.closest('[data-testid="img-toolbar"]')) return;
+    if (target.closest('[data-testid="img-maximize"]')) return;
+    cancel();
   };
 
   frame.addEventListener("pointerdown", (event) => {
@@ -429,7 +439,6 @@ function mount(
       startX: event.clientX,
       startY: event.clientY,
       start: { ...rect },
-      moved: false,
     };
   });
 
@@ -437,7 +446,6 @@ function mount(
     if (!drag) return;
     const dxScreen = event.clientX - drag.startX;
     const dyScreen = event.clientY - drag.startY;
-    if (Math.hypot(dxScreen, dyScreen) >= DRAG_THRESHOLD_PX) drag.moved = true;
     if (drag.mode === "move") {
       rect.left = clamp(
         drag.start.left + dxScreen,
@@ -475,11 +483,17 @@ function mount(
     applyDisplay();
   });
 
-  frame.addEventListener("pointerup", () => requestFinish("pointerup"));
+  // 拖动只改显示，不收尾；裁剪框保持到主动确认或取消（常驻）。
+  frame.addEventListener("pointerup", () => {
+    drag = null;
+  });
   frame.addEventListener("pointercancel", cancel);
   frame.addEventListener("click", (event) => event.stopPropagation());
-  frame.addEventListener("dblclick", (event) => event.stopPropagation());
-  window.addEventListener("pointerup", onWindowPointerUp);
+  frame.addEventListener("dblclick", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    confirm();
+  });
 
   const onKey = (event: KeyboardEvent): void => {
     if (event.key !== "Escape") return;
@@ -488,8 +502,10 @@ function mount(
     cancel();
   };
   document.addEventListener("keydown", onKey, true);
+  document.addEventListener("click", onOutsideClick, true);
 
   activeCleanup = cleanup;
+  activeConfirm = confirm;
   notifyImageCropState(true);
 }
 
@@ -519,12 +535,8 @@ const HANDLE_CURSOR: Record<string, string> = {
 };
 
 const HANDLE_MARK: Record<string, string> = {
-  nw: "left:2px; top:2px; width:4px; height:4px; border-left:2px solid #fff; border-top:2px solid #fff;",
-  ne: "right:2px; top:2px; width:4px; height:4px; border-right:2px solid #fff; border-top:2px solid #fff;",
-  sw: "left:2px; bottom:2px; width:4px; height:4px; border-left:2px solid #fff; border-bottom:2px solid #fff;",
-  se: "right:2px; bottom:2px; width:4px; height:4px; border-right:2px solid #fff; border-bottom:2px solid #fff;",
-  n: "left:50%; top:2px; width:8px; height:2px; margin-left:-4px; background:#fff;",
-  s: "left:50%; bottom:2px; width:8px; height:2px; margin-left:-4px; background:#fff;",
-  e: "top:50%; right:2px; width:2px; height:8px; margin-top:-4px; background:#fff;",
-  w: "top:50%; left:2px; width:2px; height:8px; margin-top:-4px; background:#fff;",
+  n: "left:50%; top:2px; width:16px; height:3px; margin-left:-8px; background:#fff;",
+  s: "left:50%; bottom:2px; width:16px; height:3px; margin-left:-8px; background:#fff;",
+  e: "top:50%; right:2px; width:3px; height:16px; margin-top:-8px; background:#fff;",
+  w: "top:50%; left:2px; width:3px; height:16px; margin-top:-8px; background:#fff;",
 };

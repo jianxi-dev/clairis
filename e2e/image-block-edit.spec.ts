@@ -682,11 +682,17 @@ async function dragHandle(
   await page.mouse.up();
 }
 
-test("裁剪拖动：地址不变、可见变小、源码出现裁剪矩形", async ({ page }) => {
+test("裁剪拖动：地址不变、裁剪态常驻，双击确认后源码出现裁剪矩形", async ({
+  page,
+}) => {
   await openEditor(page, CROP_DOC, "imgcrop1", PNG_DATA_URL);
   const before = await imgBox(page);
   await openCropFrame(page);
   await dragHandle(page, "nw", 4, 4);
+  // 单次拖动不退出裁剪态（A-4.2）。
+  await expect(page.getByTestId("img-crop-frame")).toHaveCount(1);
+
+  await page.getByTestId("img-crop-frame").dblclick();
   await expect(page.getByTestId("img-crop-frame")).toHaveCount(0);
 
   const final = await content(page);
@@ -701,6 +707,7 @@ test("再次打开裁剪：矩形按上次还原，扩大后可见区域变大",
   await openEditor(page, CROP_DOC, "imgcrop2", PNG_DATA_URL);
   await openCropFrame(page);
   await dragHandle(page, "e", 2, 0);
+  await page.getByTestId("img-crop-frame").dblclick();
   await expect.poll(() => content(page)).toContain("{crop=");
 
   const first = await imgBox(page);
@@ -710,6 +717,7 @@ test("再次打开裁剪：矩形按上次还原，扩大后可见区域变大",
   expect(Math.abs(frameBox.height - first.height)).toBeLessThanOrEqual(2);
 
   await dragHandle(page, "e", 2, 0);
+  await page.getByTestId("img-crop-frame").dblclick();
   await expect(page.getByTestId("img-crop-frame")).toHaveCount(0);
   const second = await imgBox(page);
   expect(second.width).toBeGreaterThan(first.width);
@@ -719,11 +727,13 @@ test("恢复整图：显示回到完整图，源码无裁剪属性", async ({ pa
   await openEditor(page, CROP_DOC, "imgcrop3", PNG_DATA_URL);
   await openCropFrame(page);
   await dragHandle(page, "nw", -20, -20);
+  await page.getByTestId("img-crop-frame").dblclick();
   await expect.poll(() => content(page)).toContain("{crop=");
   expect((await imgBox(page)).width).toBeLessThan(32);
 
   await openCropFrame(page);
   await dragHandle(page, "se", 40, 40);
+  await page.getByTestId("img-crop-frame").dblclick();
   await expect.poll(() => content(page)).toBe(CROP_DOC);
   expect((await imgBox(page)).width).toBe(32);
 });

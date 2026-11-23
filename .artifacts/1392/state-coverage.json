@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "corner-icon-enlarged",
+      "screenshot": ".artifacts/1392/01-corner-icon-enlarged.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-23T12:19:51Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "crop-persist-after-drag",
+      "screenshot": ".artifacts/1392/02-crop-persist-after-drag.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-23T12:19:54Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "no-save-text",
+      "screenshot": ".artifacts/1392/03-no-save-text.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-23T12:19:57Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "esc-cancel-no-source-change",
+      "screenshot": ".artifacts/1392/04-esc-cancel-no-source-change.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-23T12:20:00Z",
+      "runner": "unknown@MMBP"
+    }
+  ]
+}

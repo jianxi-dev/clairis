@@ -1,8 +1,8 @@
 /* 图片裁剪坐标系纯函数（#1349 / E-44）。
  *
  * 裁剪框、拖动与写回共用一套显示坐标系：显示矩形 = 原图矩形 × scale，
- * 写回 = 显示矩形 ÷ scale（只换算一次）。这里只放不依赖 DOM 的换算、
- * 整图阈值与保存/取消状态机，供 imageCrop.ts 与单测共用。
+ * 写回 = 显示矩形 ÷ scale（只换算一次）。这里只放不依赖 DOM 的换算与
+ * 整图阈值，供 imageCrop.ts 与单测共用。
  */
 
 /** 原图像素矩形（crop 值，整数）。 */
@@ -65,36 +65,4 @@ export function isFullImageRect(
   ratio: number = FULL_IMAGE_RATIO,
 ): boolean {
   return rect.width >= natW * ratio && rect.height >= natH * ratio;
-}
-
-/** 裁剪会话状态：open 进行中 / saved 已写回 / cancelled 已取消。 */
-export type CropSessionStatus = "open" | "saved" | "cancelled";
-
-/** 写回触发来源：显式保存按钮 / window pointerup（装饰重建销毁裁剪框后仍兜底）。 */
-export type CropTrigger = "save" | "pointerup";
-
-export interface CropResolveResult {
-  status: CropSessionStatus;
-  /** 本次是否应写回源码（幂等：只有 open 态的第一次触发为 true）。 */
-  write: boolean;
-}
-
-/**
- * 触发裁剪收尾。只有 open 态的第一次触发会写回，随后状态转 saved；
- * saved / cancelled 态的重复触发一律不写（幂等守卫）。
- */
-export function resolveCropTrigger(
-  status: CropSessionStatus,
-  _trigger: CropTrigger,
-): CropResolveResult {
-  if (status !== "open") return { status, write: false };
-  return { status: "saved", write: true };
-}
-
-/** Esc 取消：open → cancelled，不写回；终态不可再变。 */
-export function cancelCropSession(
-  status: CropSessionStatus,
-): CropResolveResult {
-  if (status !== "open") return { status, write: false };
-  return { status: "cancelled", write: false };
 }

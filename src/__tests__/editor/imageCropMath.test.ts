@@ -2,17 +2,13 @@
  * 图片裁剪坐标系纯函数测试（#1349 / E-44）。
  *
  * 裁剪框、拖动与写回共用一套显示坐标系：显示矩形 = 原图矩形 × scale，
- * 写回 = 显示矩形 ÷ scale（只换算一次）。这里钉死换算、整图阈值与
- * 保存/取消状态机（幂等：两路触发只写一次，Esc 后不再写）。
+ * 写回 = 显示矩形 ÷ scale（只换算一次）。这里钉死换算与整图阈值。
  */
 import { describe, expect, it } from "vitest";
 import {
-  cancelCropSession,
   displayRectFromImageRect,
   imageRectFromDisplay,
   isFullImageRect,
-  resolveCropTrigger,
-  type CropSessionStatus,
 } from "../../editors/decorations/imageCropMath";
 
 describe("显示矩形 ↔ 原图矩形换算", () => {
@@ -107,51 +103,5 @@ describe("整图阈值判定", () => {
         0.9,
       ),
     ).toBe(false);
-  });
-});
-
-describe("保存/取消状态机（幂等）", () => {
-  const triggers = ["save", "pointerup"] as const;
-
-  it("open 态下任意触发只写一次，随后转为 saved", () => {
-    for (const trigger of triggers) {
-      const first = resolveCropTrigger("open", trigger);
-      expect(first).toEqual({ status: "saved", write: true });
-      expect(resolveCropTrigger(first.status, trigger)).toEqual({
-        status: "saved",
-        write: false,
-      });
-    }
-  });
-
-  it("saved 态下重复触发（含取消）不再写回", () => {
-    const saved: CropSessionStatus = "saved";
-    for (const trigger of triggers) {
-      expect(resolveCropTrigger(saved, trigger)).toEqual({
-        status: "saved",
-        write: false,
-      });
-    }
-    expect(cancelCropSession(saved)).toEqual({
-      status: "saved",
-      write: false,
-    });
-  });
-
-  it("Esc 取消后状态为 cancelled，任何触发都不写回", () => {
-    expect(cancelCropSession("open")).toEqual({
-      status: "cancelled",
-      write: false,
-    });
-    for (const trigger of triggers) {
-      expect(resolveCropTrigger("cancelled", trigger)).toEqual({
-        status: "cancelled",
-        write: false,
-      });
-    }
-    expect(cancelCropSession("cancelled")).toEqual({
-      status: "cancelled",
-      write: false,
-    });
   });
 });
