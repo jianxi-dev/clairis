@@ -2930,7 +2930,7 @@ html[data-tab-drag="true"] body * {
   height: 40px;
   padding: 4px 2px;
   border: 0;
-  border-radius: 4px;
+  border-radius: var(--menu-row-radius);
   background: transparent;
   color: inherit;
   font: inherit;
@@ -3041,6 +3041,47 @@ html[data-tab-drag="true"] body * {
   height: 1px;
   margin: 4px var(--menu-inset);
   background: var(--app-border);
+}
+
+/* 菜单行快捷键区（块菜单 / 浮条 / 轮盘筛选 / 页签右键菜单共用）。
+ * 各消费点只加上下文尺寸与对齐，字形统一在这里；无键位时元素留白。 */
+.cm-menu-kbd {
+  flex: none;
+  font-family:
+    var(--type-font-mono, ui-monospace), SFMono-Regular, Menlo, monospace;
+  font-variant-numeric: tabular-nums;
+  color: var(--app-text-3);
+  white-space: nowrap;
+}
+
+.cm-block-menu-item .cm-menu-kbd {
+  margin-inline-start: auto;
+  font-size: 11px;
+}
+
+.capsule-btn .cm-menu-kbd,
+.cm-callout-bar-btn .cm-menu-kbd {
+  margin-inline-start: 1px;
+  font-size: 10px;
+}
+
+.sr-filter-row .cm-menu-kbd {
+  min-width: 3.5em;
+  text-align: right;
+  font-size: 10px;
+}
+
+.tab-context-menu {
+  border-radius: var(--menu-radius);
+}
+
+.tab-context-menu button {
+  border-radius: var(--menu-row-radius);
+}
+
+.tab-context-menu .cm-menu-kbd {
+  margin-inline-start: auto;
+  font-size: 10px;
 }
 
 /* ── 浮动工具条（选区工具条 / 块工具条，shell-editor-batch5 D16） ── */
@@ -3619,7 +3660,7 @@ html[data-tab-drag="true"] body * {
   min-width: 132px;
   padding: 4px;
   border: 1px solid var(--app-border);
-  border-radius: 10px;
+  border-radius: var(--menu-radius);
   background: var(--app-surface);
   box-shadow: 0 8px 24px rgb(0 0 0 / 0.18);
 }
@@ -3630,7 +3671,7 @@ html[data-tab-drag="true"] body * {
   gap: 8px;
   width: 100%;
   padding: 5px 8px;
-  border-radius: 6px;
+  border-radius: var(--menu-row-radius);
   font-size: 12px;
   color: var(--app-text-2);
 }
@@ -3999,8 +4040,10 @@ html[data-tab-drag="true"] body * {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
+  gap: 2px;
+  min-width: 28px;
   height: 26px;
+  padding: 0 4px;
   border: 0;
   border-radius: var(--radius-full, 999px);
   background: transparent;
@@ -4086,7 +4129,7 @@ html[data-tab-drag="true"] body * {
   height: var(--sr-filter-row-h);
   padding: 0 4px;
   border: 0;
-  border-radius: var(--radius-4, 4px);
+  border-radius: var(--menu-row-radius);
   background: transparent;
   color: var(--app-text-2);
   font-size: 12px;

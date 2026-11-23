@@ -14,6 +14,7 @@ import {
   releaseInsertMenu,
 } from "../slash";
 import { renderIcon } from "../icons";
+import { menuShortcut } from "../../lib/menu-shortcuts";
 import { menuStack } from "./menu-stack";
 import { MENU_WIDTH, MENU_ROW_HEIGHT } from "./menu-metrics";
 import { rectFromCoords, intersectRects, type AnchorRect } from "./anchor";
@@ -879,6 +880,10 @@ export function openBlockMenu(
     const text = document.createElement("span");
     text.textContent = label;
     row.appendChild(text);
+    const kbd = document.createElement("span");
+    kbd.className = "cm-menu-kbd";
+    kbd.textContent = menuShortcut(action, label);
+    row.appendChild(kbd);
     row.addEventListener("pointerdown", (event) => {
       event.preventDefault();
       event.stopPropagation();

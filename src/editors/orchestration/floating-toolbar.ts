@@ -31,6 +31,7 @@ import {
   resetCalloutColors,
 } from "./callout-color-panel";
 import { renderIcon } from "../icons";
+import { menuShortcut } from "../../lib/menu-shortcuts";
 import {
   createRoulette,
   type RouletteActions,
@@ -293,6 +294,10 @@ function createCalloutBar(
   typeButton.title = "高亮类型";
   typeButton.setAttribute("aria-label", "高亮类型");
   typeButton.appendChild(renderIcon("CalloutOutlined"));
+  const typeKbd = document.createElement("span");
+  typeKbd.className = "cm-menu-kbd";
+  typeKbd.textContent = menuShortcut("callout-type");
+  typeButton.appendChild(typeKbd);
 
   const colorButton = document.createElement("button");
   colorButton.type = "button";
@@ -301,6 +306,10 @@ function createCalloutBar(
   colorButton.title = "颜色";
   colorButton.setAttribute("aria-label", "颜色");
   colorButton.appendChild(renderIcon("FontcolorOutlined"));
+  const colorKbd = document.createElement("span");
+  colorKbd.className = "cm-menu-kbd";
+  colorKbd.textContent = menuShortcut("callout-color");
+  colorButton.appendChild(colorKbd);
   element.append(typeButton, colorButton);
 
   const openTypePopup = (): void => {

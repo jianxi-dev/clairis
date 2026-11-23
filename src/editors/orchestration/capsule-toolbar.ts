@@ -6,6 +6,7 @@
  * 丢失编辑器选区。
  */
 import { iconSvg, type IconName } from "../../ui/icons";
+import { menuShortcut } from "../../lib/menu-shortcuts";
 
 export interface CapsuleItem {
   id: string;
@@ -62,6 +63,9 @@ export function createCapsuleToolbar(
     btn.title = item.label;
     btn.setAttribute("aria-label", item.label);
     btn.innerHTML = iconSvg(item.icon, 16);
+    const kbd = node("span", "cm-menu-kbd");
+    kbd.textContent = menuShortcut(item.id, item.label);
+    btn.appendChild(kbd);
     btn.addEventListener("pointerdown", (e) => e.preventDefault());
     btn.addEventListener("click", (e) => {
       e.preventDefault();

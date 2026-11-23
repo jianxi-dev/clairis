@@ -671,7 +671,7 @@ export function createRoulette(
       const label = el("span", "sr-filter-label");
       label.textContent = row.item.label;
       b.append(label);
-      const shortcut = el("span", "sr-filter-shortcut");
+      const shortcut = el("span", "sr-filter-shortcut cm-menu-kbd");
       if (i < 9) {
         shortcut.textContent = i === 0 ? "回车" : formatShortcut(i + 1);
         shortcut.dataset.shortcut = String(i + 1);

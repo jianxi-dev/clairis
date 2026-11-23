@@ -28,6 +28,7 @@ import { runExportAction } from "../lib/exportActions";
 import { printMarkdownPreview } from "../lib/printPreview";
 import { flushTabContent } from "../editors/contentSync";
 import { EXPORT_MENU_ITEMS } from "../lib/paneHeaderMenu";
+import { menuShortcut } from "../lib/menu-shortcuts";
 import { isTauriEnv } from "../utils/tauri";
 import type { Tab } from "../types";
 
@@ -413,6 +414,10 @@ export default function TabBar({
       : "markdown"
     : "text";
 
+  const kbd = (action: string) => (
+    <span className="cm-menu-kbd">{menuShortcut(action)}</span>
+  );
+
   return (
     <>
       <div
@@ -696,7 +701,7 @@ export default function TabBar({
       {menu && (
         <div
           data-tab-menu
-          className="fixed z-50 w-[132px] rounded border py-1 text-xs shadow-lg"
+          className="tab-context-menu fixed z-50 w-[132px] border py-1 text-xs shadow-lg"
           style={{
             left: menu.x,
             top: menu.y,
@@ -745,6 +750,7 @@ export default function TabBar({
           >
             <Icon name="pip" size={18} />
             悬浮小窗
+            {kbd("previewTab")}
           </button>
           <button
             className="w-full flex items-center gap-2 text-left px-3 py-1.5 hover:bg-[var(--app-sunken)]"
@@ -756,6 +762,7 @@ export default function TabBar({
           >
             <Icon name="splitRight" size={18} />
             向右分栏
+            {kbd("splitRight")}
           </button>
           <button
             className="w-full flex items-center gap-2 text-left px-3 py-1.5 hover:bg-[var(--app-sunken)]"
@@ -766,6 +773,7 @@ export default function TabBar({
           >
             <Icon name="splitDown" size={18} />
             向下分栏
+            {kbd("splitDown")}
           </button>
           <div
             className="h-px my-1"
@@ -781,6 +789,7 @@ export default function TabBar({
           >
             <Icon name="plus" size={18} />
             添加字段
+            {kbd("addField")}
           </button>
           {/* hover 父项即展开二级，且移出父项后保持可见（A-13.2 / A-13.3）；
               点击只负责打开，不再切换关闭——否则 hover 刚展开就被同一次点击关掉。 */}
@@ -804,6 +813,7 @@ export default function TabBar({
             >
               <Icon name="export" size={18} />
               导出
+              {kbd("export")}
               <span
                 className="ml-auto h-0 w-0 border-y-4 border-l-4 border-y-transparent border-l-[var(--app-text-3)]"
                 aria-hidden="true"
@@ -814,7 +824,7 @@ export default function TabBar({
                 data-testid="pane-export-submenu"
                 role="menu"
                 ref={exportSubmenuRef}
-                className="absolute min-w-[132px] rounded border py-1 text-xs shadow-lg"
+                className="tab-context-menu absolute min-w-[132px] border py-1 text-xs shadow-lg"
                 style={{
                   ...(submenuSide === "left"
                     ? { right: "100%", marginRight: 1 }
@@ -852,6 +862,7 @@ export default function TabBar({
                   >
                     <Icon name={sub.icon} size={18} />
                     <span>{sub.label}</span>
+                    {kbd(sub.action)}
                   </button>
                 ))}
               </div>
@@ -873,6 +884,7 @@ export default function TabBar({
           >
             <Icon name="print" size={18} />
             打印
+            {kbd("print")}
           </button>
           <button
             className="w-full flex items-center gap-2 text-left px-3 py-1.5 hover:bg-[var(--app-sunken)] disabled:cursor-not-allowed disabled:opacity-45"
@@ -894,6 +906,7 @@ export default function TabBar({
           >
             <Icon name="copyPath" size={18} />
             复制路径
+            {kbd("copyPath")}
           </button>
           <button
             data-menu-item="reveal"
@@ -912,6 +925,7 @@ export default function TabBar({
           >
             <Icon name="locate" size={18} />
             打开文件位置
+            {kbd("reveal")}
           </button>
           <button
             data-menu-item="move"
@@ -942,6 +956,7 @@ export default function TabBar({
           >
             <Icon name="moveTo" size={18} />
             移动到…
+            {kbd("moveTo")}
           </button>
           <button
             data-menu-item="reload"
@@ -977,6 +992,7 @@ export default function TabBar({
           >
             <Icon name="refresh" size={18} />
             刷新
+            {kbd("reload")}
           </button>
           <button
             className="w-full flex items-center gap-2 text-left px-3 py-1.5 hover:bg-[var(--app-sunken)]"
@@ -987,6 +1003,7 @@ export default function TabBar({
           >
             <Icon name="close" size={18} />
             关闭
+            {kbd("closeTab")}
           </button>
           <button
             className="w-full flex items-center gap-2 text-left px-3 py-1.5 hover:bg-[var(--app-sunken)]"
@@ -998,6 +1015,7 @@ export default function TabBar({
           >
             <Icon name="closeOthers" size={18} />
             关闭其他
+            {kbd("closeOthers")}
           </button>
         </div>
       )}
