@@ -223,16 +223,21 @@ test("标题三层 H1–H6 画在外环，二层保留并降到 0.9", async ({ p
   await expect.poll(() => content(page)).toMatch(/###### 第一段正文/);
 });
 
-test("高亮三层十四类：注释/信息/摘要/待办/提示/成功/问题/警告/失败/危险/Bug/示例/引用/纯高亮", async ({
-  page,
-}) => {
+test("高亮组顶部「高亮类型」单行展开十四类（含纯高亮）", async ({ page }) => {
   await openMdWheel(page);
   await openSector(page, "convert");
   await page
     .locator('.sr-sec[data-band="2"][data-action="convert-callout-group"]')
     .click({ force: true });
+  const typeRow = page.locator(
+    '.sr-sec[data-band="3"][data-action="convert-callout-type"]',
+  );
+  await expect(typeRow).toHaveCount(1);
+  await expect(typeRow).toHaveAttribute("aria-label", "高亮类型");
+  await typeRow.click({ force: true });
+
   const ids = await page
-    .locator('.sr-sec[data-band="3"]')
+    .locator('.sr-sec[data-band="4"]')
     .evaluateAll((nodes) =>
       nodes.map((n) => (n as HTMLElement).dataset.action),
     );
@@ -253,7 +258,7 @@ test("高亮三层十四类：注释/信息/摘要/待办/提示/成功/问题/�
     "convert-callout-highlight",
   ]);
   await page
-    .locator('.sr-sec[data-band="3"][data-action="convert-callout-note"]')
+    .locator('.sr-sec[data-band="4"][data-action="convert-callout-note"]')
     .click({ force: true });
   await expect.poll(() => content(page)).toContain("> [!note]");
 });

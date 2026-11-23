@@ -62,7 +62,7 @@ test("结果列表最多 9 行且可滚动，快捷键列横向坐标固定", as
 
   const list = page.locator(FILTER_LIST);
   const rows = page.locator(ROW);
-  await expect(rows).toHaveCount(13);
+  await expect(rows).toHaveCount(14);
 
   const ids = await rows.evaluateAll((els) =>
     els.map((el) => el.getAttribute("data-action")),

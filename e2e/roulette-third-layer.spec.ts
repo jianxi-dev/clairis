@@ -31,7 +31,7 @@ async function openWheel(page: Page) {
 async function openConvertGroup(page: Page) {
   await page.locator('[data-sector="convert"]').click({ force: true });
   await page
-    .locator('path[data-band="2"][data-action="convert-callout-group"]')
+    .locator('path[data-band="2"][data-action="convert-heading-group"]')
     .click({
       force: true,
     });

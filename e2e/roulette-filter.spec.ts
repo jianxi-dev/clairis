@@ -38,7 +38,7 @@ test("搜索上级名称展开其全部子层级动作，父级不重复显示",
   await openFilter(page);
   await page.locator(FILTER_INPUT).fill("高亮");
 
-  await expect(page.locator(`${WHEEL} .sr-filter-row`)).toHaveCount(13);
+  await expect(page.locator(`${WHEEL} .sr-filter-row`)).toHaveCount(14);
   await expect(rowLabels(page).filter({ hasText: "注释" })).toHaveCount(1);
   await expect(rowLabels(page).filter({ hasText: "引用" })).toHaveCount(1);
   await expect(rowLabels(page).filter({ hasText: "警告" })).toHaveCount(1);
@@ -72,7 +72,7 @@ test("evidence: 轮盘筛选四态", async ({ page }) => {
     .screenshot({ path: `${dir}/filter-open-empty.png` });
 
   await page.locator(FILTER_INPUT).fill("高亮");
-  await expect(page.locator(`${WHEEL} .sr-filter-row`)).toHaveCount(13);
+  await expect(page.locator(`${WHEEL} .sr-filter-row`)).toHaveCount(14);
   await page
     .locator(WHEEL)
     .screenshot({ path: `${dir}/filter-parent-query.png` });

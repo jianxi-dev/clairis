@@ -30,6 +30,10 @@ export const FAN_OUT = 122;
 export const THIRD_IN = 126;
 export const THIRD_OUT = 152;
 
+/** 四级：三层外环（「高亮类型」父行展开出的类型列表）。 */
+export const FOURTH_IN = 156;
+export const FOURTH_OUT = 182;
+
 /** 颜色：内圈文字色 / 外圈背景色。 */
 export const COLOR_FONT_IN = 90;
 export const COLOR_FONT_OUT = 106;

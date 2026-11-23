@@ -16,12 +16,21 @@ import {
   toggleWrap,
 } from "./toolbar-shared";
 import { dispatchLineConvert, type BlockConvertTarget } from "./block-convert";
+import { calloutKeyOf, changeCalloutType } from "./block-actions";
 import { useAiEntryStore } from "../../hooks/useAiEntry";
 import { saveAppConfig } from "../../hooks/useConfig";
 import { isMacPlatform } from "../key-chord";
 import { useEditorStore } from "../../stores/editorStore";
 import { useStore } from "../../stores/index";
 import { CALLOUT_EDIT_TYPES } from "../callout-types";
+import { getCalloutAttrs } from "../callout-attrs";
+import { structureTransaction } from "../structure-history";
+import {
+  applyCalloutColorToBlock,
+  buildCalloutColorPanel,
+  resetCalloutColors,
+} from "./callout-color-panel";
+import { renderIcon } from "../icons";
 import {
   createRoulette,
   type RouletteActions,
@@ -244,10 +253,149 @@ const painterState: {
   marks: Marks | null;
 } = { active: false, count: 0, marks: null };
 
+interface CalloutBarHandle {
+  element: HTMLDivElement;
+  anchor: HTMLElement;
+  destroy: () => void;
+}
+
+/** 卡片内已自有行为的控件（emoji / 编辑区 / 添加手柄）不触发浮条。 */
+function isCalloutControl(target: HTMLElement | null): boolean {
+  return (
+    !!target &&
+    !!target.closest(
+      ".cm-callout-icon, .cm-callout-editor, .cm-callout-add-handle, input, textarea",
+    )
+  );
+}
+
+function createCalloutBar(
+  view: EditorView,
+  block: { from: number; to: number },
+  anchor: HTMLElement,
+): CalloutBarHandle {
+  const element = document.createElement("div");
+  element.className = "cm-callout-bar";
+  element.dataset.testid = "callout-color-bar";
+  element.setAttribute("role", "toolbar");
+  element.setAttribute("aria-label", "高亮块工具条");
+
+  let popup: HTMLElement | null = null;
+  const closePopup = (): void => {
+    popup?.remove();
+    popup = null;
+  };
+
+  const typeButton = document.createElement("button");
+  typeButton.type = "button";
+  typeButton.className = "cm-callout-bar-btn";
+  typeButton.dataset.testid = "callout-type-entry";
+  typeButton.title = "高亮类型";
+  typeButton.setAttribute("aria-label", "高亮类型");
+  typeButton.appendChild(renderIcon("CalloutOutlined"));
+
+  const colorButton = document.createElement("button");
+  colorButton.type = "button";
+  colorButton.className = "cm-callout-bar-btn";
+  colorButton.dataset.testid = "callout-color-entry";
+  colorButton.title = "颜色";
+  colorButton.setAttribute("aria-label", "颜色");
+  colorButton.appendChild(renderIcon("FontcolorOutlined"));
+  element.append(typeButton, colorButton);
+
+  const openTypePopup = (): void => {
+    closePopup();
+    const list = document.createElement("div");
+    list.className = "cm-callout-type-pop";
+    list.dataset.testid = "callout-type-pop";
+    for (const type of CALLOUT_EDIT_TYPES) {
+      const option = document.createElement("button");
+      option.type = "button";
+      option.className = "cm-callout-type-option";
+      option.dataset.testid = "callout-type-option";
+      option.dataset.typeKey = type.key;
+      option.textContent = `${type.emoji} ${type.label}`;
+      option.addEventListener("pointerdown", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const rest = view.state.doc.sliceString(block.from, block.to);
+        const next = changeCalloutType(rest, type.key);
+        closePopup();
+        if (next === rest) return;
+        view.dispatch(
+          structureTransaction({
+            changes: { from: block.from, to: block.to, insert: next },
+          }),
+        );
+      });
+      list.appendChild(option);
+    }
+    element.appendChild(list);
+    popup = list;
+  };
+
+  const openColorPopup = (): void => {
+    closePopup();
+    const wrap = document.createElement("div");
+    wrap.className = "cm-callout-color-pop";
+    wrap.dataset.testid = "callout-color-panel";
+    wrap.appendChild(
+      buildCalloutColorPanel({
+        active: getCalloutAttrs(
+          view.state.doc.sliceString(block.from, block.to),
+        ),
+        onPick: (key, className) => {
+          applyCalloutColorToBlock(view, block.from, block.to, key, className);
+          closePopup();
+        },
+        onReset: () => {
+          resetCalloutColors(view, block.from, block.to);
+          closePopup();
+        },
+      }),
+    );
+    element.appendChild(wrap);
+    popup = wrap;
+  };
+
+  typeButton.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (popup) closePopup();
+    else openTypePopup();
+  });
+  colorButton.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (popup) closePopup();
+    else openColorPopup();
+  });
+
+  const destroy = (): void => {
+    document.removeEventListener("keydown", onKeyDown, true);
+    window.removeEventListener("scroll", onScroll, true);
+    element.remove();
+  };
+  const onKeyDown = (event: KeyboardEvent): void => {
+    if (event.key !== "Escape") return;
+    destroy();
+  };
+  const onScroll = (event: Event): void => {
+    // 面板自身滚动（类型列表较长）不算离开；编辑器滚动才收浮条。
+    if (event.target instanceof Node && element.contains(event.target)) return;
+    destroy();
+  };
+  document.addEventListener("keydown", onKeyDown, true);
+  window.addEventListener("scroll", onScroll, true);
+
+  return { element, anchor, destroy };
+}
+
 export function floatingToolbar(allowCapsule = false) {
   return ViewPlugin.define((view) => {
     let handle: RouletteHandle | null = null;
     let capsule: ReturnType<typeof createCapsuleToolbar> | null = null;
+    let calloutBar: CalloutBarHandle | null = null;
     let showTimer = 0;
     let paintTimer = 0;
     let pointer: { x: number; y: number } | null = null;
@@ -444,16 +592,23 @@ export function floatingToolbar(allowCapsule = false) {
           id: "convert-callout-group",
           label: "高亮",
           icon: "callout",
-          children: CALLOUTS.map((c) =>
-            convertItem(
-              view,
-              `convert-callout-${c.kind}`,
-              c.label,
-              c.icon,
-              "callout",
-              c.kind,
-            ),
-          ),
+          children: [
+            {
+              id: "convert-callout-type",
+              label: "高亮类型",
+              icon: "callout",
+              children: CALLOUTS.map((c) =>
+                convertItem(
+                  view,
+                  `convert-callout-${c.kind}`,
+                  c.label,
+                  c.icon,
+                  "callout",
+                  c.kind,
+                ),
+              ),
+            },
+          ],
         });
         items.push(
           convertItem(view, "convert-quote", "引用", "quote", "quote"),
@@ -778,10 +933,57 @@ export function floatingToolbar(allowCapsule = false) {
       handle = null;
     };
 
+    const hideCalloutBar = (): void => {
+      calloutBar?.destroy();
+      calloutBar = null;
+    };
+
+    const showCalloutBar = (card: HTMLElement): void => {
+      const pos = view.posAtDOM(card, 0);
+      const block = blockAt(view, pos);
+      if (!block) return;
+      if (
+        calloutKeyOf(view.state.doc.sliceString(block.from, block.to)) === null
+      ) {
+        return;
+      }
+      hideCalloutBar();
+      const rect = card.getBoundingClientRect();
+      const bar = createCalloutBar(
+        view,
+        { from: block.from, to: block.to },
+        card,
+      );
+      document.body.appendChild(bar.element);
+      const barRect = bar.element.getBoundingClientRect();
+      const gap = 6;
+      const left = Math.max(
+        8,
+        Math.min(rect.left, window.innerWidth - barRect.width - 8),
+      );
+      const above = rect.top - barRect.height - gap;
+      const top = above < 8 ? rect.bottom + gap : above;
+      bar.element.style.left = `${left}px`;
+      bar.element.style.top = `${top}px`;
+      calloutBar = bar;
+    };
+
     const onPointerDown = (e: PointerEvent) => {
+      if (
+        calloutBar &&
+        !(e.target instanceof Node && calloutBar.element.contains(e.target))
+      ) {
+        hideCalloutBar();
+      }
       if (insideWheel(e.target)) return;
       pointerDown = true;
       window.clearTimeout(showTimer);
+      const target = e.target;
+      if (!(target instanceof HTMLElement)) return;
+      const card = target.closest(".cm-callout");
+      if (card instanceof HTMLElement && !isCalloutControl(target)) {
+        showCalloutBar(card);
+      }
     };
     const onPointerMove = (e: PointerEvent) => {
       if (!pointerDown || insideWheel(e.target)) return;
@@ -845,6 +1047,9 @@ export function floatingToolbar(allowCapsule = false) {
 
     return {
       update(u: ViewUpdate): void {
+        if (calloutBar && (!calloutBar.anchor.isConnected || u.docChanged)) {
+          hideCalloutBar();
+        }
         if (!u.selectionSet) return;
         const { from, to } = u.state.selection.main;
         if (from !== to) {
@@ -881,6 +1086,7 @@ export function floatingToolbar(allowCapsule = false) {
         document.removeEventListener("keydown", onHotkeyDown, true);
         window.clearTimeout(paintTimer);
         window.clearTimeout(showTimer);
+        hideCalloutBar();
         hide();
       },
     };
