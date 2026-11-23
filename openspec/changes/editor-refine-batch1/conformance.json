@@ -1,0 +1,270 @@
+{
+  "change": "editor-refine-batch1",
+  "requirements": [
+    {
+      "id": "R-1",
+      "text": "行手柄渲染与跟行走",
+      "anchors": [
+        {
+          "id": "A-1.1",
+          "claim": "指针移入多行文本行块 → 每个可视文本行各出现一个手柄并随该行滚动",
+          "kind": "state-machine",
+          "assert": "手柄数=可视文本行数；行盒上沿偏差 ≤1px",
+          "source": "spec delta 豆包式行手柄层级联动转换 Scenario 每行一个手柄并跟行走 / E-42 Scenario 输入后手柄贴住对应行且不重建 / D1"
+        },
+        {
+          "id": "A-1.2",
+          "claim": "多行文本行块连续输入前后手柄根节点 DOM 标识变化数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "E-42 Scenario 输入后手柄贴住对应行且不重建 / 一手观察 block-handle.ts:446"
+        },
+        {
+          "id": "A-1.3",
+          "claim": "表格与代码块产生的行级手柄数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "spec delta 豆包式行手柄层级联动转换 Scenario 非文本行块不产生行手柄 / D1"
+        },
+        {
+          "id": "A-1.4",
+          "claim": "表格与代码块保留的块级手柄数",
+          "kind": "exact",
+          "assert": "1",
+          "source": "spec delta 豆包式行手柄层级联动转换 Scenario 非文本行块不产生行手柄（仍按块显示手柄） / E-42 修改 requirement 正文"
+        }
+      ]
+    },
+    {
+      "id": "R-2",
+      "text": "层级联动转换与列表外套高亮",
+      "anchors": [
+        {
+          "id": "A-2.1",
+          "claim": "对两层无序列表的上级行触发「转为有序」→ 上级与下级一起转换、子级按自身层级编号规则排号",
+          "kind": "state-machine",
+          "assert": "1 级与 2 级均有序；2 级编号从 1 起连续",
+          "source": "spec delta 豆包式行手柄层级联动转换 Scenario 上级联动下级一起转换 / D1 / 对账 #5"
+        },
+        {
+          "id": "A-2.2",
+          "claim": "对无子级的末级行触发转换后其兄弟行与上级行的结构差异数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "spec delta 豆包式行手柄层级联动转换 Scenario 末级行只转当前行 / D1"
+        },
+        {
+          "id": "A-2.3",
+          "claim": "对有序或无序列表触发「转为高亮」→ 列表外套 callout、列表行保持原标记与结构",
+          "kind": "state-machine",
+          "assert": "列表标记保留数=原行数；外层 callout 数 1",
+          "source": "spec delta 豆包式行手柄层级联动转换 Scenario 列表转高亮保留列表格式 / D1 `wrapListInCallout`"
+        }
+      ]
+    },
+    {
+      "id": "R-3",
+      "text": "图片编辑态",
+      "anchors": [
+        {
+          "id": "A-3.1",
+          "claim": "进入图片编辑态后编辑按钮选中态与未选中态的计算样式色差",
+          "kind": "exact",
+          "assert": "色差 > 0",
+          "source": "spec delta 图片编辑 Quiet 对标 Scenario 编辑图标选中态 / D2"
+        },
+        {
+          "id": "A-3.2",
+          "claim": "编辑态图片渲染宽度与进入编辑前宽度的差",
+          "kind": "exact",
+          "assert": "0",
+          "source": "spec delta 图片编辑 Quiet 对标 Scenario 编辑态图片不缩小 / D2"
+        },
+        {
+          "id": "A-3.3",
+          "claim": "描述区默认隐藏 → 点击工具条描述按钮切换显隐 → 进入裁剪态强制隐藏",
+          "kind": "state-machine",
+          "assert": "默认隐藏；点击后显隐切换；裁剪态隐藏",
+          "source": "spec delta 图片编辑 Quiet 对标 Scenario 描述区默认隐藏与裁剪态强制隐藏 / D2"
+        },
+        {
+          "id": "A-3.4",
+          "claim": "打开含多张图片的文档逐张召唤时的手柄缺失数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "spec delta 图片编辑 Quiet 对标 Scenario 图片手柄不缺失 / D2 / 一手观察 image.ts:270"
+        }
+      ]
+    },
+    {
+      "id": "R-4",
+      "text": "裁剪态",
+      "anchors": [
+        {
+          "id": "A-4.1",
+          "claim": "进入裁剪态后角标尺寸与既有默认值的比较",
+          "kind": "exact",
+          "assert": "大于既有默认值（命中区同步增大）",
+          "source": "spec delta 图片编辑 Quiet 对标 Scenario 裁剪角标加大与拖动柄图标 / D3"
+        },
+        {
+          "id": "A-4.2",
+          "claim": "进入裁剪态后拖动裁剪边界一次 → 裁剪态保持、不弹回普通选中态",
+          "kind": "state-machine",
+          "assert": "裁剪态保持",
+          "source": "spec delta 图片编辑 Quiet 对标 Scenario 裁剪态常驻 / D3"
+        },
+        {
+          "id": "A-4.3",
+          "claim": "裁剪区下方「保存」文字出现数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "spec delta 图片编辑 Quiet 对标 Scenario 裁剪区下方无保存文字 / D3"
+        },
+        {
+          "id": "A-4.4",
+          "claim": "裁剪拖动柄图标与裁剪样式图标的键名关系",
+          "kind": "exact",
+          "assert": "键名相同",
+          "source": "spec delta 图片编辑 Quiet 对标 Scenario 裁剪角标加大与拖动柄图标 / D3 / 一手观察 imageCrop.ts:510"
+        }
+      ]
+    },
+    {
+      "id": "R-5",
+      "text": "高亮块调色入口与高亮类型行",
+      "anchors": [
+        {
+          "id": "A-5.1",
+          "claim": "点击高亮块 → 上方浮条出现颜色图标 → 点开三色面板",
+          "kind": "state-machine",
+          "assert": "颜色图标出现数 1；面板行数 4（填充 / 边框 / 文字 / 恢复默认）",
+          "source": "spec delta 高亮块调色入口与高亮类型行 Scenario 点击高亮块出现颜色入口 / D4"
+        },
+        {
+          "id": "A-5.2",
+          "claim": "在颜色面板改动填充色后按一次撤销 → 三色属性还原",
+          "kind": "state-machine",
+          "assert": "填充 / 边框 / 文字三属性均还原为改色前值",
+          "source": "spec delta 高亮块调色入口与高亮类型行 Scenario 改色为一步撤销 / D4"
+        },
+        {
+          "id": "A-5.3",
+          "claim": "标注类子菜单「高亮类型」行的位置与展开项内容",
+          "kind": "exact",
+          "assert": "位于顶部第 1 行；展开项含「纯高亮」",
+          "source": "spec delta 高亮块调色入口与高亮类型行 Scenario 高亮类型行位于顶部且含纯高亮 / D4"
+        }
+      ]
+    },
+    {
+      "id": "R-6",
+      "text": "菜单快捷键区与圆角统一",
+      "anchors": [
+        {
+          "id": "A-6.1",
+          "claim": "块菜单 / 浮条 / 轮盘 / 文件名右键菜单每行右侧 kbd 样式快捷键区出现数",
+          "kind": "exact",
+          "assert": "每行 1",
+          "source": "spec delta 菜单快捷键列与圆角统一 Scenario 菜单行显示可见快捷键区 / D5"
+        },
+        {
+          "id": "A-6.2",
+          "claim": "无快捷键动作行右侧的占位文字数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "spec delta 菜单快捷键列与圆角统一 Scenario 菜单行显示可见快捷键区 / D5"
+        },
+        {
+          "id": "A-6.3",
+          "claim": "文件名右键菜单容器计算圆角与块菜单容器计算圆角的差",
+          "kind": "exact",
+          "assert": "0（等于 `--menu-radius` 12px）",
+          "source": "spec delta 菜单快捷键列与圆角统一 Scenario 文件名右键菜单圆角与其它菜单一致 / D5 / 一手观察 editor.css:13"
+        },
+        {
+          "id": "A-6.4",
+          "claim": "菜单行计算圆角与行圆角 token 的差",
+          "kind": "exact",
+          "assert": "0（等于 `--menu-row-radius` 6px）",
+          "source": "spec delta 菜单快捷键列与圆角统一 Scenario 文件名右键菜单圆角与其它菜单一致 / D5 / 一手观察 editor.css:14"
+        }
+      ]
+    },
+    {
+      "id": "R-7",
+      "text": "附件手柄图标与手柄位置统一",
+      "anchors": [
+        {
+          "id": "A-7.1",
+          "claim": "附件块手柄 `data-icon` 与图片图标的关系",
+          "kind": "exact",
+          "assert": "严格不相等",
+          "source": "spec delta E-42 Scenario 附件手柄图标按扩展名 / D6"
+        },
+        {
+          "id": "A-7.2",
+          "claim": "表格与高亮块手柄垂直中心与块渲染矩形垂直中心的偏差",
+          "kind": "exact",
+          "assert": "≤2px",
+          "source": "spec delta E-42 Scenario 表格与高亮块手柄垂直居中 / D6"
+        },
+        {
+          "id": "A-7.3",
+          "claim": "有序列表与无序列表手柄 `data-icon` 的关系",
+          "kind": "exact",
+          "assert": "严格不相等",
+          "source": "spec delta E-42 Scenario 有序列表手柄图标可区分 / D6"
+        },
+        {
+          "id": "A-7.4",
+          "claim": "`htmlBlock` 与 `yamlFrontMatter` 回落默认拖拽图标的条目数",
+          "kind": "exact",
+          "assert": "0（均有明确图标条目）",
+          "source": "spec delta E-42 修改 requirement 正文 / D6 / 一手观察 icons.ts `ICON_REGISTRY`"
+        }
+      ]
+    },
+    {
+      "id": "R-8",
+      "text": "附件卡多格式",
+      "anchors": [
+        {
+          "id": "A-8.1",
+          "claim": "md 附件展开高度与上限的关系",
+          "kind": "exact",
+          "assert": "≤600px",
+          "source": "spec delta E-50 Scenario md 附件默认展开与尺寸上限 / D7 / 对账 #8 ①"
+        },
+        {
+          "id": "A-8.2",
+          "claim": "md 附件内容超出上限 → 内部滚动且底缘渐隐提示截断",
+          "kind": "state-machine",
+          "assert": "可内部滚动；底缘渐隐出现",
+          "source": "spec delta E-50 Scenario md 附件默认展开与尺寸上限 / D7"
+        },
+        {
+          "id": "A-8.3",
+          "claim": "选中 md 或 docx 附件打开样式调整面板 → 对齐与宽度可调",
+          "kind": "state-machine",
+          "assert": "对齐与宽度调整后附件呈现变化",
+          "source": "spec delta E-50 Scenario md 与 docx 样式调整面板 / D7"
+        },
+        {
+          "id": "A-8.4",
+          "claim": "选中 docx 附件调整显示位置 → 对齐随之变化",
+          "kind": "state-machine",
+          "assert": "对齐随之变化",
+          "source": "spec delta E-50 Scenario docx 显示位置调整 / D7"
+        },
+        {
+          "id": "A-8.5",
+          "claim": "附件引用行首加前导空格后整块退化为源码的次数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "spec delta E-50 Scenario 前导空格不退化 / D7"
+        }
+      ]
+    }
+  ]
+}
