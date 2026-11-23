@@ -647,6 +647,7 @@ test("描述输入框默认隐藏，点添加描述显示并可再收起；按�
 // --- 无损裁剪（#656） ---------------------------------------------------------
 
 const CROP_DOC = `![示例图片](${PNG_DATA_URL})\n`;
+const CROP_DOC_PRESET = `![示例图片](${PNG_DATA_URL}){crop=2,2,26,26}\n`;
 
 async function imgBox(page: Page): Promise<{ width: number; height: number }> {
   return page.evaluate(() => {
@@ -704,7 +705,7 @@ test("裁剪拖动：地址不变、裁剪态常驻，双击确认后源码出�
 });
 
 test("再次打开裁剪：矩形按上次还原，扩大后可见区域变大", async ({ page }) => {
-  await openEditor(page, CROP_DOC, "imgcrop2", PNG_DATA_URL);
+  await openEditor(page, CROP_DOC_PRESET, "imgcrop2", PNG_DATA_URL);
   await openCropFrame(page);
   await dragHandle(page, "e", 2, 0);
   await page.getByTestId("img-crop-frame").dblclick();
@@ -724,7 +725,7 @@ test("再次打开裁剪：矩形按上次还原，扩大后可见区域变大",
 });
 
 test("恢复整图：显示回到完整图，源码无裁剪属性", async ({ page }) => {
-  await openEditor(page, CROP_DOC, "imgcrop3", PNG_DATA_URL);
+  await openEditor(page, CROP_DOC_PRESET, "imgcrop3", PNG_DATA_URL);
   await openCropFrame(page);
   await dragHandle(page, "nw", -20, -20);
   await page.getByTestId("img-crop-frame").dblclick();
