@@ -246,7 +246,7 @@ export function dispatchBlockConvert(
   view: EditorView,
   block: { from: number; to: number },
   target: BlockConvertTarget,
-  scrollIntoView = true,
+  scrollIntoView = false,
 ): void {
   const changes = blockConvertChanges(view.state.doc, block, target);
   if (changes.length === 0) return;
@@ -391,7 +391,7 @@ export function dispatchLineConvert(
   target: BlockConvertTarget,
   options: LineConvertOptions & { scrollIntoView?: boolean } = {},
 ): void {
-  const { calloutKind, scrollIntoView = true } = options;
+  const { calloutKind, scrollIntoView = false } = options;
   const changes = convertLineWithChildren(view.state.doc, line, target, {
     calloutKind,
   });
