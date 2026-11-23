@@ -667,6 +667,11 @@ export class FileEmbedWidget extends WidgetType {
   private namePreviewId: string | null = null;
   private clampObserver: ResizeObserver | null = null;
 
+  /**
+   * 只比较业务内容，不比较 `_from`：上方键入会让偏移漂移，放进 `eq` 会令
+   * 下游每个内嵌 widget 重建（iframe / pdf 重载，#1320）。偏移由 `updateDOM`
+   * 就地刷新锚点。
+   */
   eq(other: FileEmbedWidget): boolean {
     return (
       other._kind === this._kind &&
@@ -675,12 +680,31 @@ export class FileEmbedWidget extends WidgetType {
       other._resolution?.url === this._resolution?.url &&
       other._resolution?.filePath === this._resolution?.filePath &&
       other._resolution?.docPath === this._resolution?.docPath &&
-      other._from === this._from &&
       other._align === this._align &&
       other._width === this._width &&
       other._height === this._height &&
       other._title === this._title
     );
+  }
+
+  updateDOM(dom: HTMLElement, _view: EditorView, from: FileEmbedWidget): boolean {
+    if (
+      from._kind !== this._kind ||
+      from._alt !== this._alt ||
+      from._path !== this._path ||
+      from._resolution?.url !== this._resolution?.url ||
+      from._resolution?.filePath !== this._resolution?.filePath ||
+      from._resolution?.docPath !== this._resolution?.docPath ||
+      from._align !== this._align ||
+      from._width !== this._width ||
+      from._height !== this._height ||
+      from._title !== this._title
+    ) {
+      return false;
+    }
+    dom.dataset.embedFrom = String(this._from);
+    markEmbedSelected(dom, selectedEmbedFrom === this._from);
+    return true;
   }
 
   toDOM(): HTMLElement {

@@ -98,11 +98,7 @@ class MermaidWidget extends WidgetType {
   }
 
   eq(other: MermaidWidget): boolean {
-    return (
-      other._source === this._source &&
-      other._from === this._from &&
-      other._to === this._to
-    );
+    return other._source === this._source;
   }
 
   toDOM(): HTMLElement {
@@ -133,8 +129,8 @@ class MermaidWidget extends WidgetType {
   /**
    * 偏移变化（在上方编辑）时复用同一 DOM，只刷新锚点数据集。
    *
-   * `eq` 含 from/to，所以偏移一变就失配；若直接重建会重新水合整块图
-   * （长文档里每个 mermaid 块都闪一次）。CM6 的 `findWidget` 二论走
+   * `eq` 只比源码，偏移漂移不再失配；若直接重建会重新水合整块图
+   * （长文档里每个 mermaid 块都闪一次，#1320）。CM6 的 `findWidget` 二论走
    * `updateDOM`：源码相同就复用，只有源码真变了才返回 false 让 CM6 重建。
    */
   updateDOM(dom: HTMLElement, _view: EditorView, from: MermaidWidget): boolean {

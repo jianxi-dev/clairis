@@ -645,6 +645,14 @@ class ImageWidget extends WidgetType {
     this._align = align;
   }
 
+  /**
+   * 只比较**业务内容**，不比较 `_from`。
+   *
+   * `_from` 是 `!` 的文档偏移，上方任何键入都会让它漂移。把它放进 `eq`
+   * 会让下游每个图片 widget 在每次输入时失配 → CM6 丢弃旧 DOM、重建新
+   * DOM（`img.src` 重设、裁剪 rAF、工具条重定位全跑一遍），表现为「下方
+   * 内容抖动 / 闪没」（#1320）。偏移变化由 `updateDOM` 就地刷新锚点。
+   */
   eq(other: ImageWidget): boolean {
     return (
       other._alt === this._alt &&
@@ -653,10 +661,35 @@ class ImageWidget extends WidgetType {
       other._width === this._width &&
       other._height === this._height &&
       other._title === this._title &&
-      other._from === this._from &&
       other._align === this._align &&
       cropEquals(other._crop, this._crop)
     );
+  }
+
+  /**
+   * 偏移漂移（在上方编辑）时复用同一 DOM，只刷新锚点数据集与选中态。
+   *
+   * CM6 的 `findWidget` 二论：`eq` 为真且旧 DOM 仍挂在本装饰范围时走这里。
+   * 内容真变了（`eq` 假）才返回 false 让 CM6 重建。
+   */
+  updateDOM(dom: HTMLElement, _view: EditorView, from: ImageWidget): boolean {
+    if (
+      from._alt !== this._alt ||
+      from._path !== this._path ||
+      from._src !== this._src ||
+      from._width !== this._width ||
+      from._height !== this._height ||
+      from._title !== this._title ||
+      from._align !== this._align ||
+      !cropEquals(from._crop, this._crop)
+    ) {
+      return false;
+    }
+    dom.dataset.imageFrom = String(this._from);
+    dom.dataset.imageTitle = this._title ?? "";
+    // 选中态按新偏移重套：把手 / 角点 / 描述行都要跟上新位置。
+    markImageWidgetSelected(dom, getSelectedImageFrom() === this._from);
+    return true;
   }
 
   toDOM(view: EditorView): HTMLElement {
@@ -1038,16 +1071,41 @@ class MediaWidget extends WidgetType {
     super();
   }
 
+  /**
+   * 只比较业务内容，不比较 `_from`：偏移漂移由 `updateDOM` 就地刷新锚点，
+   * 否则上方键入会让每个媒体 widget 重建（#1320）。
+   */
   eq(other: MediaWidget): boolean {
     return (
       other._kind === this._kind &&
       other._alt === this._alt &&
       other._path === this._path &&
       other._src === this._src &&
-      other._from === this._from &&
       other._align === this._align &&
       other._width === this._width
     );
+  }
+
+  updateDOM(dom: HTMLElement, _view: EditorView, from: MediaWidget): boolean {
+    if (
+      from._kind !== this._kind ||
+      from._alt !== this._alt ||
+      from._path !== this._path ||
+      from._src !== this._src ||
+      from._align !== this._align ||
+      from._width !== this._width
+    ) {
+      return false;
+    }
+    dom.dataset.mediaFrom = String(this._from);
+    if (this._kind === "video") {
+      dom.dataset.align = this._align ?? "center";
+      markMediaWidgetSelected(dom, selectedMediaFrom === this._from);
+    } else if (this._kind === "file") {
+      dom.dataset.align = this._align ?? "left";
+      dom.dataset.selected = isEmbedSelected(this._from) ? "true" : "false";
+    }
+    return true;
   }
 
   toDOM(): HTMLElement {
