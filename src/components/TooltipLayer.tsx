@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { isOverlayOpen, subscribeOverlay } from "../lib/overlayGate";
+import { ACTION_TIPS } from "../lib/action-tips";
 import { useEditorStore } from "../stores/editorStore";
 import { noticeDurationMs } from "../hooks/useConfig";
 
@@ -56,14 +57,6 @@ interface TipState {
   y: number;
 }
 
-/** 动作 id → 提示元数据；键位显示口径 `⌘ + X` 见 R-26 锚点 A-26.2/A-26.3。 */
-const TIP_META: Readonly<
-  Record<string, { shortcut: string; markdown?: string }>
-> = {
-  "format-underline": { shortcut: "⌘ + U", markdown: "~文本~ 空格" },
-  duplicate: { shortcut: "⌘ + C" },
-};
-
 /** 元素自身的可见文字（跳过 SVG 图标与 aria-hidden 节点）。 */
 function visibleLabel(el: Element): string {
   let out = "";
@@ -98,7 +91,9 @@ function tipSideFor(el: Element, size: TipSize): TipSide {
     rect.right + horizontalNeed <= window.innerWidth - TIP_VIEWPORT_MARGIN;
   const fitsLeft = rect.left - horizontalNeed >= TIP_VIEWPORT_MARGIN;
   if (fitsRight && fitsLeft)
-    return rect.left + rect.width / 2 < window.innerWidth / 2 ? "right" : "left";
+    return rect.left + rect.width / 2 < window.innerWidth / 2
+      ? "right"
+      : "left";
   if (fitsRight) return "right";
   if (fitsLeft) return "left";
   return rect.left > window.innerWidth - rect.right ? "left" : "right";
@@ -109,7 +104,7 @@ function tipContentFor(
   el: Element,
   name: string,
 ): { main: string; hint: string | null } {
-  const meta = TIP_META[el.getAttribute("data-action") ?? ""];
+  const meta = ACTION_TIPS[el.getAttribute("data-action") ?? ""];
   if (!meta) return { main: name, hint: null };
   if (visibleLabel(el) !== "") return { main: meta.shortcut, hint: null };
   return {
