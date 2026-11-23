@@ -27,24 +27,24 @@
 |---|---|---|---|---|
 | A-3.1 | exact | 进入图片编辑态后编辑按钮选中态与未选中态的计算样式色差 | 色差 > 0 | spec delta 图片编辑 Quiet 对标 Scenario 编辑图标选中态 / D2 |
 | A-3.2 | exact | 编辑态图片渲染宽度与进入编辑前宽度的差 | 0 | spec delta 图片编辑 Quiet 对标 Scenario 编辑态图片不缩小 / D2 |
-| A-3.3 | state-machine | 描述区默认隐藏 → 点击工具条描述按钮切换显隐 → 进入裁剪态强制隐藏 | 默认隐藏；点击后显隐切换；裁剪态隐藏 | spec delta 图片编辑 Quiet 对标 Scenario 描述区默认隐藏与裁剪态强制隐藏 / D2 |
+| A-3.3 | state-machine | 描述区默认隐藏 → 点击工具条描述按钮切换显隐 → 进入裁剪态强制隐藏 | 默认隐藏 → 点击后显隐切换 → 裁剪态强制隐藏 | spec delta 图片编辑 Quiet 对标 Scenario 描述区默认隐藏与裁剪态强制隐藏 / D2 |
 | A-3.4 | exact | 打开含多张图片的文档逐张召唤时的手柄缺失数 | 0 | spec delta 图片编辑 Quiet 对标 Scenario 图片手柄不缺失 / D2 / 一手观察 image.ts:270 |
 
 ## R-4 裁剪态
 
 | id | kind | claim | assert | source |
 |---|---|---|---|---|
-| A-4.1 | exact | 进入裁剪态后角标尺寸与既有默认值的比较 | 大于既有默认值（命中区同步增大） | spec delta 图片编辑 Quiet 对标 Scenario 裁剪角标加大与拖动柄图标 / D3 |
-| A-4.2 | state-machine | 进入裁剪态后拖动裁剪边界一次 → 裁剪态保持、不弹回普通选中态 | 裁剪态保持 | spec delta 图片编辑 Quiet 对标 Scenario 裁剪态常驻 / D3 |
+| A-4.1 | exact | 进入裁剪态后角标尺寸与既有默认值的比较 | 角标尺寸增大 > 0，命中区同步增大 | spec delta 图片编辑 Quiet 对标 Scenario 裁剪角标加大与拖动柄图标 / D3 |
+| A-4.2 | state-machine | 进入裁剪态后拖动裁剪边界一次 → 裁剪态保持、不弹回普通选中态 | 拖动 1 次后裁剪态保持 → 不弹回普通选中态 | spec delta 图片编辑 Quiet 对标 Scenario 裁剪态常驻 / D3 |
 | A-4.3 | exact | 裁剪区下方「保存」文字出现数 | 0 | spec delta 图片编辑 Quiet 对标 Scenario 裁剪区下方无保存文字 / D3 |
-| A-4.4 | exact | 裁剪拖动柄图标与裁剪样式图标的键名关系 | 键名相同 | spec delta 图片编辑 Quiet 对标 Scenario 裁剪角标加大与拖动柄图标 / D3 / 一手观察 imageCrop.ts:510 |
+| A-4.4 | exact | 裁剪拖动柄图标与裁剪样式图标的键名关系 | 键名相同（差 0） | spec delta 图片编辑 Quiet 对标 Scenario 裁剪角标加大与拖动柄图标 / D3 / 一手观察 imageCrop.ts:510 |
 
 ## R-5 高亮块调色入口与高亮类型行
 
 | id | kind | claim | assert | source |
 |---|---|---|---|---|
 | A-5.1 | state-machine | 点击高亮块 → 上方浮条出现颜色图标 → 点开三色面板 | 颜色图标出现数 1；面板行数 4（填充 / 边框 / 文字 / 恢复默认） | spec delta 高亮块调色入口与高亮类型行 Scenario 点击高亮块出现颜色入口 / D4 |
-| A-5.2 | state-machine | 在颜色面板改动填充色后按一次撤销 → 三色属性还原 | 填充 / 边框 / 文字三属性均还原为改色前值 | spec delta 高亮块调色入口与高亮类型行 Scenario 改色为一步撤销 / D4 |
+| A-5.2 | state-machine | 在颜色面板改动填充色后按一次撤销 → 三色属性还原 | 撤销 1 步 → 3 属性还原为改色前值 | spec delta 高亮块调色入口与高亮类型行 Scenario 改色为一步撤销 / D4 |
 | A-5.3 | exact | 标注类子菜单「高亮类型」行的位置与展开项内容 | 位于顶部第 1 行；展开项含「纯高亮」 | spec delta 高亮块调色入口与高亮类型行 Scenario 高亮类型行位于顶部且含纯高亮 / D4 |
 
 ## R-6 菜单快捷键区与圆角统一
@@ -60,9 +60,9 @@
 
 | id | kind | claim | assert | source |
 |---|---|---|---|---|
-| A-7.1 | exact | 附件块手柄 `data-icon` 与图片图标的关系 | 严格不相等 | spec delta E-42 Scenario 附件手柄图标按扩展名 / D6 |
+| A-7.1 | exact | 附件块手柄 `data-icon` 与图片图标的关系 | 两者 data-icon 不同（相同数 0） | spec delta E-42 Scenario 附件手柄图标按扩展名 / D6 |
 | A-7.2 | exact | 表格与高亮块手柄垂直中心与块渲染矩形垂直中心的偏差 | ≤2px | spec delta E-42 Scenario 表格与高亮块手柄垂直居中 / D6 |
-| A-7.3 | exact | 有序列表与无序列表手柄 `data-icon` 的关系 | 严格不相等 | spec delta E-42 Scenario 有序列表手柄图标可区分 / D6 |
+| A-7.3 | exact | 有序列表与无序列表手柄 `data-icon` 的关系 | 两者 data-icon 不同（相同数 0） | spec delta E-42 Scenario 有序列表手柄图标可区分 / D6 |
 | A-7.4 | exact | `htmlBlock` 与 `yamlFrontMatter` 回落默认拖拽图标的条目数 | 0（均有明确图标条目） | spec delta E-42 修改 requirement 正文 / D6 / 一手观察 icons.ts `ICON_REGISTRY` |
 
 ## R-8 附件卡多格式
@@ -70,7 +70,7 @@
 | id | kind | claim | assert | source |
 |---|---|---|---|---|
 | A-8.1 | exact | md 附件展开高度与上限的关系 | ≤600px | spec delta E-50 Scenario md 附件默认展开与尺寸上限 / D7 / 对账 #8 ① |
-| A-8.2 | state-machine | md 附件内容超出上限 → 内部滚动且底缘渐隐提示截断 | 可内部滚动；底缘渐隐出现 | spec delta E-50 Scenario md 附件默认展开与尺寸上限 / D7 |
-| A-8.3 | state-machine | 选中 md 或 docx 附件打开样式调整面板 → 对齐与宽度可调 | 对齐与宽度调整后附件呈现变化 | spec delta E-50 Scenario md 与 docx 样式调整面板 / D7 |
-| A-8.4 | state-machine | 选中 docx 附件调整显示位置 → 对齐随之变化 | 对齐随之变化 | spec delta E-50 Scenario docx 显示位置调整 / D7 |
+| A-8.2 | state-machine | md 附件内容超出上限 → 内部滚动且底缘渐隐提示截断 | 超出 600px → 内部滚动；底缘渐隐出现 | spec delta E-50 Scenario md 附件默认展开与尺寸上限 / D7 |
+| A-8.3 | state-machine | 选中 md 或 docx 附件打开样式调整面板 → 对齐与宽度可调 | 各调整 1 次 → 对齐与宽度呈现变化 | spec delta E-50 Scenario md 与 docx 样式调整面板 / D7 |
+| A-8.4 | state-machine | 选中 docx 附件调整显示位置 → 对齐随之变化 | 调整 1 次 → 对齐随之变化 | spec delta E-50 Scenario docx 显示位置调整 / D7 |
 | A-8.5 | exact | 附件引用行首加前导空格后整块退化为源码的次数 | 0 | spec delta E-50 Scenario 前导空格不退化 / D7 |
