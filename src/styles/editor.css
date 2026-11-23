@@ -1075,8 +1075,52 @@ body {
   z-index: 30;
 }
 
+/* 裁剪把手：命中区尺寸见 imageCrop.ts（18px），四角为裁剪图标，四边为加粗短柄 */
 .cm-image-crop-frame .cm-image-handle {
   z-index: 31;
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
+}
+
+.cm-image-crop-frame .cm-image-handle[data-handle="e"] {
+  right: -9px;
+}
+
+.cm-image-crop-frame .cm-image-handle[data-handle="w"] {
+  left: -9px;
+}
+
+.cm-image-crop-frame .cm-image-handle[data-handle="n"] {
+  top: -9px;
+}
+
+.cm-image-crop-frame .cm-image-handle[data-handle="s"] {
+  bottom: -9px;
+}
+
+.cm-image-crop-frame .cm-image-handle[data-handle="ne"] {
+  top: -9px;
+  right: -9px;
+}
+
+.cm-image-crop-frame .cm-image-handle[data-handle="nw"] {
+  top: -9px;
+  left: -9px;
+}
+
+.cm-image-crop-frame .cm-image-handle[data-handle="se"] {
+  bottom: -9px;
+  right: -9px;
+}
+
+.cm-image-crop-frame .cm-image-handle[data-handle="sw"] {
+  bottom: -9px;
+  left: -9px;
+}
+
+.cm-image-crop-frame .cm-image-handle svg {
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.55));
 }
 
 /* 视频播放器 / 文件卡片 */

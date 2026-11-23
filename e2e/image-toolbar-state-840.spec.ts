@@ -166,6 +166,7 @@ test("A-7.2 裁剪后比例与裁剪矩形相符且不自动缩小", async ({ pa
   await page.getByTestId("img-toolbar-crop").click();
   await expect(page.getByTestId("img-crop-frame")).toHaveCount(1);
   await dragHandle(page, "e", -100, 0);
+  await page.getByTestId("img-crop-frame").dblclick();
   await expect(page.getByTestId("img-crop-frame")).toHaveCount(0);
 
   const final = await content(page);

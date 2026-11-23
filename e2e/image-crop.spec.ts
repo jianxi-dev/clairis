@@ -1,10 +1,10 @@
 import { test, expect, type Page } from "@playwright/test";
 
 /**
- * 图片内联裁剪（#779 / change editor-surface-batch17 21.1）：
- * 裁剪框覆盖在图片 widget 上，无对话框与确认/取消/还原按钮；拖 handle 实时
- * 改显示（object-fit:none + object-position），松手写回 crop；拖回整图移除
- * crop；Esc 取消并恢复裁剪前状态。
+ * 图片内联裁剪（#779；常驻与确认收尾 #1392）：
+ * 裁剪框覆盖在图片 widget 上，无对话框与「保存」文字；拖 handle 实时改显示
+ * （object-fit:none + object-position），松手不退出；双击确认写回 crop，
+ * 拖回整图移除 crop；Esc 取消并恢复裁剪前状态。
  */
 
 interface BridgeState {
@@ -149,6 +149,8 @@ test("裁剪清除旧宽度注释：可见文本无 `<!--w=` 且图片下方无�
   await openCropFrame(page);
   await page.screenshot({ path: `${ARTIFACTS}/01-crop-open.png` });
   await dragHandle(page, "e", 20, 0);
+  await expect(page.getByTestId("img-crop-frame")).toHaveCount(1);
+  await page.getByTestId("img-crop-frame").dblclick();
   await expect(page.getByTestId("img-crop-frame")).toHaveCount(0);
 
   await expect.soft(page.locator(".cm-content")).not.toContainText("<!--w=");
@@ -171,6 +173,7 @@ test("跨行宽度注释裁剪后可见文本无 `<!--w=`", async ({ page }) => 
 
   await openCropFrame(page);
   await dragHandle(page, "e", 20, 0);
+  await page.getByTestId("img-crop-frame").dblclick();
   await expect(page.getByTestId("img-crop-frame")).toHaveCount(0);
 
   await expect.soft(page.locator(".cm-content")).not.toContainText("<!--w=");
@@ -202,6 +205,7 @@ test("拖动裁剪框：显示区域与 crop 数值一致且下方空白 ≤8px"
   await openEditor(page, "![pic](assets/pic.png)\n", "crop-geom", PNG_DATA_URL);
   await openCropFrame(page);
   await dragHandle(page, "e", 3, 0);
+  await page.getByTestId("img-crop-frame").dblclick();
   await expect(page.getByTestId("img-crop-frame")).toHaveCount(0);
 
   const final = await content(page);
@@ -227,6 +231,7 @@ test("拖左上角向右下：裁剪框宽度变小", async ({ page }) => {
   await openEditor(page, "![pic](assets/pic.png)\n", "crop-nw", PNG_DATA_URL);
   await openCropFrame(page);
   await dragHandle(page, "nw", 10, 10);
+  await page.getByTestId("img-crop-frame").dblclick();
   await expect(page.getByTestId("img-crop-frame")).toHaveCount(0);
 
   const final = await content(page);
@@ -261,18 +266,20 @@ test("8 个控制点：方向光标 + 裁剪角标", async ({ page }) => {
     els.map((el) => {
       const mark = el.querySelector(".image-crop-mark");
       const markBox = mark?.getBoundingClientRect();
+      const icon = el.querySelector("svg[data-icon]");
       return {
         cursor: getComputedStyle(el).cursor,
-        hasMark: mark !== null,
-        markSize:
-          markBox && markBox.width > 0 && markBox.height > 0 ? true : false,
+        hasMark:
+          markBox !== undefined && markBox.width > 0 && markBox.height > 0,
+        iconKey: icon?.getAttribute("data-icon") ?? null,
       };
     }),
   );
-  const semantic = probe.filter(
-    (p) => directional.has(p.cursor) && p.hasMark && p.markSize,
-  );
-  expect(semantic.length).toBeGreaterThanOrEqual(6);
+  // 四角为裁剪图标，四边为可见短柄；方向光标覆盖全部 8 个控制点。
+  expect(probe.filter((p) => p.iconKey === "CropOutlined")).toHaveLength(4);
+  expect(
+    probe.filter((p) => directional.has(p.cursor) && p.hasMark),
+  ).toHaveLength(4);
 });
 
 test("拖裁剪框本体：crop 值随矩形移动", async ({ page }) => {
@@ -286,6 +293,8 @@ test("拖裁剪框本体：crop 值随矩形移动", async ({ page }) => {
   await page.mouse.down();
   await page.mouse.move(cx + 4, cy + 4, { steps: 4 });
   await page.mouse.up();
+  await expect(page.getByTestId("img-crop-frame")).toHaveCount(1);
+  await page.getByTestId("img-crop-frame").dblclick();
   await expect(page.getByTestId("img-crop-frame")).toHaveCount(0);
 
   const final = await content(page);
@@ -307,10 +316,12 @@ test("拖回整图：crop 属性移除", async ({ page }) => {
 
   await openCropFrame(page);
   await dragHandle(page, "nw", -20, -20);
+  await page.getByTestId("img-crop-frame").dblclick();
   await expect.poll(() => content(page)).toContain("{crop=");
 
   await openCropFrame(page);
   await dragHandle(page, "se", 40, 40);
+  await page.getByTestId("img-crop-frame").dblclick();
   await expect.poll(() => content(page)).toBe(doc);
   await expect(page.getByTestId("img-crop-frame")).toHaveCount(0);
 

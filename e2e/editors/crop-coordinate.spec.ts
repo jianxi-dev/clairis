@@ -4,11 +4,11 @@ import path from "node:path";
 import { execFileSync } from "node:child_process";
 
 /**
- * 图片裁剪坐标系 + 加载门 + 保存双入口（#1349 / E-44 / change editor-interaction-batch2 6.1）。
+ * 图片裁剪坐标系 + 加载门 + 确认收尾（#1349 / E-44；常驻语义 #1392）。
  *
- * 单一显示坐标系：框选、拖动、保存都在显示矩形（CSS px）里进行，写回只换算
- * 一次。加载门：图片未加载完给出可见提示且不静默返回。保存双入口：显式保存
- * 按钮 + window 级 pointerup（裁剪框被装饰重建销毁后仍兜底），Esc 取消不写回。
+ * 单一显示坐标系：框选、拖动、写回都在显示矩形（CSS px）里进行，写回只换算
+ * 一次。加载门：图片未加载完给出可见提示且不静默返回。裁剪态常驻：拖动只改
+ * 显示，双击或工具条「裁剪」按钮确认写回，Esc 取消不写回。
  */
 
 const ART = ".artifacts/1349";
@@ -170,11 +170,13 @@ test("裁剪缩放不跳变：保存前后图片显示宽度严格相等且框�
     { steps: 4 },
   );
   const during = await imgBox(page);
-  const frameBox = (await page.getByTestId("img-crop-frame").boundingBox())!;
   await shot(page, "02-crop-drag");
 
-  // window 级 pointerup 入口保存。
+  // 松手只结束拖动，裁剪态保持（常驻）；双击才确认写回。
   await page.mouse.up();
+  await expect(page.getByTestId("img-crop-frame")).toHaveCount(1);
+  const frameBox = (await page.getByTestId("img-crop-frame").boundingBox())!;
+  await page.getByTestId("img-crop-frame").dblclick();
   await expect(page.getByTestId("img-crop-frame")).toHaveCount(0);
   await shot(page, "03-crop-saved");
 
@@ -205,18 +207,27 @@ test("裁剪缩放不跳变：保存前后图片显示宽度严格相等且框�
   expect(natural.h).toBe(1400);
 });
 
-test("保存按钮入口：显式点击保存写回裁剪矩形", async ({ page }) => {
-  await openEditor(page, "![pic](@SRC@)\n", "crop-save-button");
+test("确认入口：拖动后双击写回裁剪矩形", async ({ page }) => {
+  await openEditor(page, "![pic](@SRC@)\n", "crop-confirm-dblclick");
   await openCrop(page);
-  await page.getByTestId("img-crop-save").click();
+  await dragHandle(page, "nw", 40, 30);
+  await page.mouse.up();
+  await page.getByTestId("img-crop-frame").dblclick();
   await expect(page.getByTestId("img-crop-frame")).toHaveCount(0);
 
   const final = await content(page);
   const match = /\{crop=(\d+),(\d+),(\d+),(\d+)\}/.exec(final);
   expect(match).not.toBeNull();
-  // 默认 80% 居中矩形（2000×1400 → 1600×1120 @ (200,140)）。
-  expect(match!.slice(1).map(Number)).toEqual([200, 140, 1600, 1120]);
-  await shot(page, "07-crop-save-button");
+  await shot(page, "07-crop-confirm-dblclick");
+});
+
+test("未改动就确认：视同取消，不写出默认裁剪", async ({ page }) => {
+  await openEditor(page, "![pic](@SRC@)\n", "crop-confirm-unchanged");
+  const doc = await content(page);
+  await openCrop(page);
+  await page.getByTestId("img-crop-frame").dblclick();
+  await expect(page.getByTestId("img-crop-frame")).toHaveCount(0);
+  expect(await content(page)).toBe(doc);
 });
 
 test("加载门：图片未加载完给出可见提示且不静默返回", async ({ page }) => {
@@ -282,19 +293,14 @@ test("加载门：延迟加载完成后可正常进入裁剪", async ({ page }) 
   await shot(page, "08-crop-after-load");
 });
 
-test("保存不随裁剪框销毁丢失：装饰重建后再松手仍写回", async ({ page }) => {
-  await openEditor(page, "![pic](@SRC@)\n", "crop-rebuild");
+test("裁剪态下切换预览再回编辑：裁剪框销毁、不写回、无残留", async ({
+  page,
+}) => {
+  await openEditor(page, "![pic](@SRC@)\n", "crop-mode-switch");
+  const doc = await content(page);
   await openCrop(page);
+  await dragHandle(page, "e", 30, 0);
 
-  const el = page.locator('.cm-image-crop-frame [data-handle="e"]');
-  const box = (await el.boundingBox())!;
-  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-  await page.mouse.down();
-  await page.mouse.move(box.x + box.width / 2 + 30, box.y + box.height / 2, {
-    steps: 3,
-  });
-
-  // 触发一次装饰重建：切到预览再切回编辑，裁剪框随 widget 销毁。
   await page.evaluate(() => {
     const win = window as unknown as BridgeWindow;
     win.__biaoyue_store__.getState().setEditorMode("preview");
@@ -312,12 +318,9 @@ test("保存不随裁剪框销毁丢失：装饰重建后再松手仍写回", as
     return !!img && img.complete && img.naturalWidth > 0;
   });
 
-  await page.mouse.up();
-  await expect.poll(() => content(page)).toContain("{crop=");
-  const final = await content(page);
-  const match = /\{crop=(\d+),(\d+),(\d+),(\d+)\}/.exec(final);
-  expect(match).not.toBeNull();
-  await shot(page, "05-crop-rebuilt-save");
+  await expect(page.getByTestId("img-crop-frame")).toHaveCount(0);
+  expect(await content(page)).toBe(doc);
+  await shot(page, "05-crop-mode-switch");
 });
 
 test("Esc 取消：无残留裁剪框、无窗口、源码不含 crop", async ({ page }) => {
@@ -401,4 +404,16 @@ test("工具条再点退出：恢复显示、不写回、widget 不塌陷", asyn
   expect(restored.position).not.toBe("absolute");
   expect(restored.transform).toBe("none");
   expect(restored.widgetHeight).toBeGreaterThan(0);
+});
+
+test("工具条确认入口：拖动后点「裁剪」按钮写回并退出", async ({ page }) => {
+  await openEditor(page, "![pic](@SRC@)\n", "crop-toolbar-confirm");
+  await openCrop(page);
+  await dragHandle(page, "nw", 40, 30);
+  await page.mouse.up();
+  await page.getByTestId("img-toolbar-crop").click();
+  await expect(page.getByTestId("img-crop-frame")).toHaveCount(0);
+
+  const match = /\{crop=(\d+),(\d+),(\d+),(\d+)\}/.exec(await content(page));
+  expect(match).not.toBeNull();
 });

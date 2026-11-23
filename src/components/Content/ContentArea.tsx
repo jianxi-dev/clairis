@@ -42,7 +42,7 @@ import {
   writeImageTitle,
 } from "../../editors/decorations/image";
 import {
-  closeImageCrop,
+  confirmImageCrop,
   isImageCropActive,
   openImageCrop,
 } from "../../editors/decorations/imageCrop";
@@ -286,9 +286,9 @@ const editorDecorationOptions: EditorDecorationsOptions = {
   onImageCrop: (from) => {
     const view = getActiveEditorView();
     if (!view) return;
-    // 再点一次裁剪按钮 = 退出裁剪（#823）。
+    // 再点一次裁剪按钮 = 确认当前矩形并退出裁剪（未拖动视同取消）。
     if (isImageCropActive()) {
-      closeImageCrop();
+      confirmImageCrop();
       return;
     }
     const text = view.state.doc.toString();
