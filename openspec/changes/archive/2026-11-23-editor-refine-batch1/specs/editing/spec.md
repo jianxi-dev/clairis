@@ -114,10 +114,10 @@
 
 每个块型 SHALL 映射到唯一的手柄图标：既有 `blockHandleIcon` / `BLOCK_ICON_NAME` 已按 heading 级别取 H1–H6、按有序 / 无序取**可区分**的有序编号图标与无序图标（有序 SHALL NOT 退化为无序图标）、按图片首行扩展名取 Video/Audio/Image；附件块 SHALL 按引用扩展名映射为附件类图标，SHALL NOT 沿用图片图标；本批 SHALL 为 `htmlBlock` 与 `yamlFrontMatter` 补齐明确条目，使其不再回退默认拖拽图标。表格与高亮块的手柄 SHALL 位于块左侧垂直居中，SHALL NOT 落在左上角。文档末尾 SHALL 提供不落盘的「+」入口，点击插入空段落并聚焦；该入口 SHALL NOT 写入文档、SHALL NOT 进入撤销历史。
 
-#### Scenario: 输入后手柄贴住对应行且不重建
+#### Scenario: 输入后手柄贴住块首行且不重建
 
 - **WHEN** 用户在一个多行文本行块中连续输入若干字符
-- **THEN** 行手柄矩形上沿与该所在行行盒上沿的垂直偏差 SHALL ≤ 1px，且手柄根节点的 DOM 标识在输入前后保持不变
+- **THEN** 手柄矩形上沿与其所属行行盒上沿的垂直偏差 SHALL ≤ 1px（行手柄贴所在行、块级手柄贴块首行），且手柄根节点的 DOM 标识在输入前后保持不变
 
 #### Scenario: 块型变化只重建受影响手柄
 
