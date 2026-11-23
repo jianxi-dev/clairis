@@ -105,26 +105,19 @@ async function hoverLeftZone(page: Page, y: number): Promise<void> {
   await page.waitForTimeout(420);
 }
 
-test("编辑按钮进入编辑态呈选中态，与未选中态有可测色差", async ({ page }) => {
+test("AI 按钮默认不选中（#1410 产品决定：选中不再高亮 AI）", async ({
+  page,
+}) => {
   await openDoc(page, `![甲](${IMG}){width=600}\n`, "quiet-edit-selected");
   await page.locator(".cm-image-widget").click();
   const toolbar = page.getByTestId("img-toolbar");
   await expect(toolbar).toBeVisible();
 
   const edit = page.getByTestId("img-toolbar-ai");
-  await expect(edit).toHaveClass(/is-active/);
-  await expect(edit).toHaveAttribute("aria-pressed", "true");
+  await expect(edit).not.toHaveClass(/is-active/);
+  await expect(edit).toHaveAttribute("aria-pressed", "false");
 
-  const activeBg = await edit.evaluate(
-    (el) => getComputedStyle(el).backgroundColor,
-  );
-  const inactiveBg = await page
-    .getByTestId("img-toolbar-cut")
-    .evaluate((el) => getComputedStyle(el).backgroundColor);
-  expect(activeBg).not.toBe(inactiveBg);
-  await shot(page, "01-edit-btn-active-state", "edit-btn-active-state");
-
-  // 取消选中后工具条整体收起，编辑按钮不再呈选中态。
+  // 取消选中后工具条整体收起。
   await page.mouse.click(600, 600);
   await expect(toolbar).toHaveCount(0);
 });

@@ -211,7 +211,7 @@ let maximizeEl: HTMLElement | null = null;
 let maximizeKeyHandler: ((event: KeyboardEvent) => void) | null = null;
 let repositionFrame: number | null = null;
 
-const MAXIMIZE_MIN_SCALE = 1;
+const MAXIMIZE_MIN_SCALE = 0.5;
 const MAXIMIZE_MAX_SCALE = 8;
 const MAXIMIZE_WHEEL_STEP = 1.1;
 
@@ -273,7 +273,7 @@ export function selectImage(from: number, path: string, alt: string): void {
   captionVisible = false;
   applySelection();
   ensureToolbar();
-  setEditActive(true);
+  setEditActive(false);
   setCaptionActive(false);
   updateAlignStates();
   positionToolbar();
@@ -591,7 +591,7 @@ function setCaptionActive(active: boolean): void {
   btn.setAttribute("aria-pressed", active ? "true" : "false");
 }
 
-/** 「AI 编辑」按钮选中态：图片进入编辑态（被选中）时高亮。 */
+/** 「AI 编辑」按钮选中态：默认不选中，仅由显式调用决定。 */
 function setEditActive(active: boolean): void {
   const btn = toolbarEl?.querySelector<HTMLButtonElement>(
     '[data-testid="img-toolbar-ai"]',
@@ -912,7 +912,7 @@ function maximizeControlButton(
   btn.title = label;
   btn.setAttribute("aria-label", label);
   btn.style.cssText =
-    "width:36px;height:36px;display:flex;align-items:center;justify-content:center;border:none;border-radius:8px;background:rgba(255,255,255,0.14);color:inherit;cursor:pointer;";
+    "width:36px;height:36px;display:flex;align-items:center;justify-content:center;border:1px solid var(--app-border);border-radius:var(--app-radius);background:var(--app-surface);color:inherit;cursor:pointer;";
   btn.appendChild(renderIcon(icon));
   btn.addEventListener("click", onClick);
   return btn;
@@ -968,7 +968,7 @@ export function openImageMaximize(
   const controls = document.createElement("div");
   controls.dataset.testid = "img-max-controls";
   controls.style.cssText =
-    "position:absolute;bottom:24px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:1;";
+    "position:absolute;bottom:24px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:2;padding:6px;border:1px solid var(--app-border);border-radius:var(--app-radius);background:var(--app-surface);box-shadow:var(--app-shadow);";
   controls.appendChild(
     maximizeControlButton(
       "img-max-rotate",
