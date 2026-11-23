@@ -45,11 +45,35 @@ describe("blockHandleIcon", () => {
     expect(blockHandleIcon("image", "![pic](assets/pic.png)")).toBe(
       "ImageOutlined",
     );
-    expect(blockHandleIcon("image", "![doc](assets/doc.pdf)")).toBe(
-      "ImageOutlined",
-    );
     // 没有图片引用时退回图片图标
     expect(blockHandleIcon("image", "纯文本")).toBe("ImageOutlined");
+  });
+
+  it("附件块按首行引用扩展名取附件类图标，不沿用图片图标", () => {
+    expect(blockHandleIcon("image", "![doc](assets/spec.pdf)")).toBe(
+      "FilePdfOutlined",
+    );
+    expect(blockHandleIcon("image", "![doc](assets/notes.md)")).toBe(
+      "FileMarkdownOutlined",
+    );
+    expect(blockHandleIcon("image", "![doc](assets/report.docx)")).toBe(
+      "FileWordOutlined",
+    );
+    expect(blockHandleIcon("image", "![doc](assets/bundle.zip)")).toBe(
+      "FileZipOutlined",
+    );
+    // 认不出的扩展名回落通用附件图标，仍不等于图片图标
+    expect(blockHandleIcon("image", "![doc](assets/blob.xyz)")).toBe(
+      "FileOutlined",
+    );
+    expect(blockHandleIcon("image", "![doc](assets/blob.xyz)")).not.toBe(
+      "ImageOutlined",
+    );
+    // file 类型走同一映射
+    expect(blockHandleIcon("file", "![doc](assets/spec.pdf)")).toBe(
+      "FilePdfOutlined",
+    );
+    expect(blockHandleIcon("file", "纯文本")).toBe("FileOutlined");
   });
 
   it("标题按首行级别取 H1–H6，不退化成一个把手", () => {
@@ -65,6 +89,14 @@ describe("blockHandleIcon", () => {
     expect(blockHandleIcon("list", "1. 第一项")).toBe("OrderListOutlined");
     expect(blockHandleIcon("list", "  12. 缩进项")).toBe("OrderListOutlined");
     expect(blockHandleIcon("list", "- 无序项")).toBe("DisorderListOutlined");
+  });
+
+  it("有序列表的 ')' 分隔符同样判为有序，不退化成无序", () => {
+    expect(blockHandleIcon("list", "1) 第一项")).toBe("OrderListOutlined");
+    expect(blockHandleIcon("list", "  12) 缩进项")).toBe("OrderListOutlined");
+    expect(blockHandleIcon("list", "1) 第一项")).not.toBe(
+      blockHandleIcon("list", "- 无序项"),
+    );
   });
 
   it("htmlBlock / yamlFrontMatter 有明确图标，不再回退拖拽把手", () => {
