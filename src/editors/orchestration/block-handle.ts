@@ -66,26 +66,43 @@ const BLOCK_ICON_NAME: Record<string, string> = {
   yamlFrontMatter: "HeaderRowOutlined",
 };
 
-const AUDIO_EXTENSIONS = new Set([
-  "mp3",
-  "wav",
-  "ogg",
-  "oga",
-  "m4a",
-  "aac",
-  "flac",
-  "opus",
-]);
-
 /** 首行图片引用的扩展名 → 手柄图标名（D13）。 */
 function imageMediaIcon(firstLine: string): string {
   const start = firstLine.indexOf("![");
   if (start < 0) return "ImageOutlined";
   const ref = scanImageReference(firstLine, start);
   if (!ref) return "ImageOutlined";
-  if (classifyMedia(ref.path) === "video") return "VideoOutlined";
+  const kind = classifyMedia(ref.path);
+  if (kind === "video") return "VideoOutlined";
+  if (kind === "audio") return "AudioOutlined";
+  if (kind === "file") return fileMediaIcon(firstLine);
+  return "ImageOutlined";
+}
+
+/** 附件引用的扩展名 → 手柄图标名（D6：附件不再沿用图片图标）。 */
+const FILE_ICON_BY_EXT: Record<string, string> = {
+  md: "FileMarkdownOutlined",
+  markdown: "FileMarkdownOutlined",
+  mdx: "FileMarkdownOutlined",
+  pdf: "FilePdfOutlined",
+  doc: "FileWordOutlined",
+  docx: "FileWordOutlined",
+  zip: "FileZipOutlined",
+  txt: "FileTextOutlined",
+  log: "FileTextOutlined",
+  html: "FileHtmlOutlined",
+  htm: "FileHtmlOutlined",
+};
+
+const FILE_ICON_DEFAULT = "FileOutlined";
+
+function fileMediaIcon(firstLine: string): string {
+  const start = firstLine.indexOf("![");
+  if (start < 0) return FILE_ICON_DEFAULT;
+  const ref = scanImageReference(firstLine, start);
+  if (!ref) return FILE_ICON_DEFAULT;
   const ext = ref.path.split(/[?#]/)[0].split(".").pop()?.toLowerCase() ?? "";
-  return AUDIO_EXTENSIONS.has(ext) ? "AudioOutlined" : "ImageOutlined";
+  return FILE_ICON_BY_EXT[ext] ?? FILE_ICON_DEFAULT;
 }
 
 /**
@@ -93,7 +110,7 @@ function imageMediaIcon(firstLine: string): string {
  *
  * `heading` 与 `list` 只说得出大类，具体是哪一级标题、有序还是无序要看首行：
  * 全退化成同一个拖拽把手，用户面前就是一排「文本行图标」（#104）。
- * 图片块再按首行引用的扩展名区分视频 / 音频 / 图片（D13）。
+ * 图片块再按首行引用的扩展名区分视频 / 音频 / 图片 / 附件（D13 / D6）。
  * 拿不到首行时退化为 `DragHandleOutlined`，不猜。
  */
 export function blockHandleIcon(type: string, firstLine = ""): string {
@@ -102,11 +119,12 @@ export function blockHandleIcon(type: string, firstLine = ""): string {
     return level ? `H${level}Outlined` : "DragHandleOutlined";
   }
   if (type === "list") {
-    return /^\s*\d+\./.test(firstLine)
+    return /^\s*\d+[.)](?:\s|$)/.test(firstLine)
       ? "OrderListOutlined"
       : "DisorderListOutlined";
   }
   if (type === "image") return imageMediaIcon(firstLine);
+  if (type === "file") return fileMediaIcon(firstLine);
   return BLOCK_ICON_NAME[type] ?? "DragHandleOutlined";
 }
 
@@ -333,6 +351,17 @@ const TEXT_LINE_TYPES = new Set([
   "task",
   "blockquote",
 ]);
+
+/**
+ * 块级手柄按「块渲染矩形」垂直居中的块型 → 容器选择器（D6）。
+ *
+ * 表格 / 高亮块整块被 widget 替换，块首行行盒比卡片高得多（表格的行盒还含
+ * 单元格手柄的缓冲），贴行首会落到卡片左上角；改贴卡片矩形中心。
+ */
+const WIDGET_SELECTOR: Record<string, string> = {
+  table: ".cm-table-wrap",
+  callout: ".cm-callout",
+};
 
 function isTextLineType(type: string): boolean {
   return TEXT_LINE_TYPES.has(type);
@@ -1061,6 +1090,26 @@ class BlockHandlePlugin {
       return;
     }
 
+    // 表格 / 高亮块：贴块渲染矩形的垂直中心（D6），不落块首行行盒左上角。
+    if (entry.kind === "block" && WIDGET_SELECTOR[entry.block.type]) {
+      const widget = this.blockWidgetRect(entry.block);
+      if (widget) {
+        if (!isRectInViewport(widget, viewport)) {
+          this.hideHandle(el);
+          return;
+        }
+        this.showHandle(el);
+        const top =
+          widget.top + widget.height / 2 - base.top - HANDLE_HEIGHT_PX / 2;
+        el.style.top = `${Math.max(0, Math.round(top))}px`;
+        el.style.left = `${Math.max(
+          0,
+          Math.round(widget.left - base.left - HANDLE_WIDTH_PX - HANDLE_GAP_PX),
+        )}px`;
+        return;
+      }
+    }
+
     const lineRect = this.lineRectAt(entry.lineFrom ?? entry.block.from);
     if (!lineRect || !isRectInViewport(lineRect, viewport)) {
       this.hideHandle(el);
@@ -1112,19 +1161,33 @@ class BlockHandlePlugin {
     return el ? el.getBoundingClientRect() : null;
   }
 
-  /** 位置所在行的几何矩形；DOM 里找不到时返回 null（块不可见 / 未测量）。 */
-  private lineRectAt(pos: number): DOMRect | null {
+  /** 位置所在行的 DOM 元素；找不到时返回 null（块不可见 / 未测量）。 */
+  private lineElAt(pos: number): HTMLElement | null {
     try {
       const found = this.view.domAtPos(pos);
       let node: Node | null = found.node;
       if (node && node.nodeType === Node.TEXT_NODE) node = node.parentElement;
-      const line = (node as Element | null)?.closest?.(
+      return (node as Element | null)?.closest?.(
         ".cm-line",
       ) as HTMLElement | null;
-      return line ? line.getBoundingClientRect() : null;
     } catch {
       return null;
     }
+  }
+
+  /** 位置所在行的几何矩形；DOM 里找不到时返回 null（块不可见 / 未测量）。 */
+  private lineRectAt(pos: number): DOMRect | null {
+    const line = this.lineElAt(pos);
+    return line ? line.getBoundingClientRect() : null;
+  }
+
+  /** 块渲染矩形的屏幕坐标（表格 / 高亮块卡片）；未挂载时返回 null。 */
+  private blockWidgetRect(block: BlockRange): DOMRect | null {
+    const selector = WIDGET_SELECTOR[block.type];
+    if (!selector) return null;
+    const line = this.lineElAt(block.from);
+    const el = line?.querySelector<HTMLElement>(selector) ?? null;
+    return el ? el.getBoundingClientRect() : null;
   }
 
   // --- hover 门控 -----------------------------------------------------------

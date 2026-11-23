@@ -216,6 +216,42 @@ const ICON_REGISTRY: Record<string, IconDef> = {
       "M18.5 7a8 8 0 010 10",
     ],
   },
+
+  FileMarkdownOutlined: {
+    kind: "paths",
+    stroke: true,
+    paths: [UI_ICONS.markdown.s ?? ""],
+  },
+  FilePdfOutlined: {
+    kind: "paths",
+    stroke: true,
+    paths: [UI_ICONS.pdf.s ?? ""],
+  },
+  FileWordOutlined: {
+    kind: "paths",
+    stroke: true,
+    paths: [UI_ICONS.exportWord.s ?? ""],
+  },
+  FileZipOutlined: {
+    kind: "paths",
+    stroke: true,
+    paths: [UI_ICONS.exportZip.s ?? ""],
+  },
+  FileTextOutlined: {
+    kind: "paths",
+    stroke: true,
+    paths: [UI_ICONS.text.s ?? ""],
+  },
+  FileHtmlOutlined: {
+    kind: "paths",
+    stroke: true,
+    paths: [UI_ICONS.html.s ?? ""],
+  },
+  FileOutlined: {
+    kind: "paths",
+    stroke: true,
+    paths: [UI_ICONS.file.s ?? ""],
+  },
   ScissorsOutlined: {
     kind: "paths",
     paths: [
