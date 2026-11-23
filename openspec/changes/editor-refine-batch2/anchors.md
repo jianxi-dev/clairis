@@ -19,7 +19,7 @@
 | id | kind | claim | assert | source |
 |---|---|---|---|---|
 | A-2.1 | exact | 颜色面板色块内含文本 `A` 的节点数 | 0 | #1406 反馈4d / 纯高亮的颜色图标及效果.png |
-| A-2.2 | exact | 色块容器计算 `justify-content` | center | #1406 反馈4d |
+| A-2.2 | exact | 色块容器计算 `justify-content` | 严格等于 "center" | #1406 反馈4d |
 | A-2.3 | exact | 高亮块工具条 `data-testid="callout-type-entry"` 节点数 | 0 | #1406 反馈4d / design D2 |
 | A-2.4 | state-machine | NOTE 块填充改红后切换 TIP → 填充色相仍为红 | 切换→色相延续 | #1406 反馈4e |
 | A-2.5 | exact | 六色板色相与豆包截图一致的色数 | 6 | 纯高亮的颜色图标及效果.png |

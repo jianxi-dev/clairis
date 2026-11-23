@@ -71,7 +71,7 @@
           "id": "A-2.2",
           "claim": "色块容器计算 `justify-content`",
           "kind": "exact",
-          "assert": "center",
+          "assert": "严格等于 \"center\"",
           "source": "#1406 反馈4d"
         },
         {
