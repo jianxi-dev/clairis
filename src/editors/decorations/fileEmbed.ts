@@ -16,13 +16,18 @@
  */
 import { EditorView, WidgetType } from "@codemirror/view";
 import { invoke } from "@tauri-apps/api/core";
+import { renderIcon } from "../icons";
 import { IMAGE_RESIZE_HANDLES } from "./imageToolbar";
 import {
   applyImageSize,
+  EMPTY_IMAGE_ATTRIBUTES,
   MAX_IMAGE_HEIGHT,
   MAX_IMAGE_WIDTH,
   MIN_IMAGE_HEIGHT,
   MIN_IMAGE_WIDTH,
+  parseImageAttributes,
+  scanImageReference,
+  writeImageAttributes,
 } from "./image";
 import {
   AUDIO_EXT,
@@ -158,12 +163,16 @@ function rectToBox(rect: DOMRect | undefined): Box | null {
 /** 当前选中的内嵌 widget 文档偏移；null 表示未选中。 */
 let selectedEmbedFrom: number | null = null;
 
-const SELECTABLE_EMBED = ".cm-embed-widget";
+/** docx 等附件卡走 MediaWidget，选择态与内嵌 widget 共用同一偏移键。 */
+const SELECTABLE_EMBED =
+  ".cm-embed-widget, .cm-media-widget[data-media-kind='file']";
 
 function markEmbedSelected(el: HTMLElement, isSelected: boolean): void {
   el.dataset.selected = isSelected ? "true" : "false";
   el.querySelectorAll(".cm-image-handle").forEach((handle) => handle.remove());
   if (!isSelected) return;
+  // 附件卡尺寸走样式面板，不出缩放把手（卡片本身很小，把手会盖住内容）。
+  if (el.classList.contains("cm-media-widget")) return;
   for (const { handle, cursor } of IMAGE_RESIZE_HANDLES) {
     const span = document.createElement("span");
     span.className = "cm-image-handle";
@@ -174,13 +183,19 @@ function markEmbedSelected(el: HTMLElement, isSelected: boolean): void {
   }
 }
 
-function selectEmbed(from: number): void {
+export function selectEmbed(from: number): void {
   selectedEmbedFrom = from;
   document.querySelectorAll<HTMLElement>(SELECTABLE_EMBED).forEach((el) => {
-    const elFrom =
-      el.dataset.embedFrom !== undefined ? Number(el.dataset.embedFrom) : null;
+    const raw = el.dataset.embedFrom ?? el.dataset.mediaFrom;
+    const elFrom = raw !== undefined ? Number(raw) : null;
     markEmbedSelected(el, elFrom !== null && elFrom === selectedEmbedFrom);
   });
+  const selected = selectedEmbedEl();
+  const kind = selected?.dataset.embedKind;
+  if (kind === "md" || selected?.classList.contains("cm-media-widget")) {
+    ensureEmbedPanel();
+    scheduleEmbedPanelReposition();
+  }
 }
 
 function clearEmbedSelection(): void {
@@ -188,14 +203,195 @@ function clearEmbedSelection(): void {
   document.querySelectorAll<HTMLElement>(SELECTABLE_EMBED).forEach((el) => {
     markEmbedSelected(el, false);
   });
+  removeEmbedPanel();
+}
+
+export function isEmbedSelected(from: number): boolean {
+  return selectedEmbedFrom === from;
+}
+
+// --- 样式面板（md / docx）----------------------------------------------------
+
+type EmbedAlign = "left" | "center" | "right";
+
+const EMBED_WIDTH_STEP = 60;
+
+let embedPanelEl: HTMLElement | null = null;
+let embedRepositionFrame: number | null = null;
+
+function selectedEmbedEl(): HTMLElement | null {
+  if (selectedEmbedFrom === null) return null;
+  return (
+    document.querySelector<HTMLElement>(
+      `.cm-embed-widget[data-embed-from="${selectedEmbedFrom}"]`,
+    ) ??
+    document.querySelector<HTMLElement>(
+      `.cm-media-widget[data-media-from="${selectedEmbedFrom}"]`,
+    )
+  );
+}
+
+function ensureEmbedPanel(): HTMLElement {
+  if (embedPanelEl) return embedPanelEl;
+  const panel = document.createElement("div");
+  panel.className = "cm-embed-panel";
+  panel.dataset.testid = "embed-panel";
+
+  const aligns: ReadonlyArray<{
+    key: EmbedAlign;
+    icon: string;
+    label: string;
+  }> = [
+    { key: "left", icon: "AlignLeftOutlined", label: "左对齐" },
+    { key: "center", icon: "AlignCenterOutlined", label: "居中" },
+    { key: "right", icon: "AlignRightOutlined", label: "右对齐" },
+  ];
+  for (const item of aligns) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.dataset.testid = `embed-panel-align-${item.key}`;
+    btn.title = item.label;
+    btn.setAttribute("aria-label", item.label);
+    btn.appendChild(renderIcon(item.icon));
+    btn.addEventListener("click", () => alignSelectedEmbed(item.key));
+    panel.appendChild(btn);
+  }
+
+  const sep = document.createElement("span");
+  sep.className = "cm-embed-panel-sep";
+  panel.appendChild(sep);
+
+  const narrow = document.createElement("button");
+  narrow.type = "button";
+  narrow.dataset.testid = "embed-panel-width-dec";
+  narrow.textContent = "-";
+  narrow.title = "变窄";
+  narrow.setAttribute("aria-label", "变窄");
+  narrow.addEventListener("click", () => resizeSelectedEmbed(-1));
+  panel.appendChild(narrow);
+
+  const wide = document.createElement("button");
+  wide.type = "button";
+  wide.dataset.testid = "embed-panel-width-inc";
+  wide.textContent = "+";
+  wide.title = "变宽";
+  wide.setAttribute("aria-label", "变宽");
+  wide.addEventListener("click", () => resizeSelectedEmbed(1));
+  panel.appendChild(wide);
+
+  document.body.appendChild(panel);
+  embedPanelEl = panel;
+  updateEmbedPanelAlign();
+  return panel;
+}
+
+function removeEmbedPanel(): void {
+  embedPanelEl?.remove();
+  embedPanelEl = null;
+}
+
+function updateEmbedPanelAlign(): void {
+  if (!embedPanelEl) return;
+  const el = selectedEmbedEl();
+  const align = (el?.dataset.align as EmbedAlign | undefined) ?? "center";
+  for (const key of ["left", "center", "right"] as const) {
+    const btn = embedPanelEl.querySelector<HTMLButtonElement>(
+      `[data-testid="embed-panel-align-${key}"]`,
+    );
+    btn?.setAttribute("aria-pressed", key === align ? "true" : "false");
+  }
+}
+
+function alignSelectedEmbed(align: EmbedAlign): void {
+  const from = selectedEmbedFrom;
+  const el = from === null ? null : selectedEmbedEl();
+  const view = el ? EditorView.findFromDOM(el) : null;
+  if (from === null || !view) return;
+  const ref = scanImageReference(view.state.doc.toString(), from);
+  if (!ref) return;
+  const attrs =
+    ref.attrText !== null
+      ? parseImageAttributes(ref.attrText)
+      : { ...EMPTY_IMAGE_ATTRIBUTES };
+  attrs.align = align === "center" ? null : align;
+  writeImageAttributes(view, from, attrs);
+}
+
+function resizeSelectedEmbed(dir: 1 | -1): void {
+  const from = selectedEmbedFrom;
+  const el = from === null ? null : selectedEmbedEl();
+  const view = el ? EditorView.findFromDOM(el) : null;
+  if (from === null || !el || !view) return;
+  const current = el.getBoundingClientRect().width;
+  if (!(current > 0)) return;
+  applyImageSize(
+    view,
+    from,
+    Math.round(current + dir * EMBED_WIDTH_STEP),
+    null,
+  );
+}
+
+function positionEmbedPanel(): void {
+  if (!embedPanelEl) return;
+  const el = selectedEmbedEl();
+  if (!el) {
+    embedPanelEl.style.display = "none";
+    return;
+  }
+  const rect = el.getBoundingClientRect();
+  if (
+    rect.bottom < 0 ||
+    rect.top > window.innerHeight ||
+    rect.right < 0 ||
+    rect.left > window.innerWidth
+  ) {
+    embedPanelEl.style.display = "none";
+    return;
+  }
+  embedPanelEl.style.display = "";
+  const panelRect = embedPanelEl.getBoundingClientRect();
+  const margin = 8;
+  const centerX = rect.left + rect.width / 2;
+  const anchorY = rect.top - margin;
+  const halfW = panelRect.width / 2;
+  const left = Math.min(
+    Math.max(margin + halfW, centerX),
+    window.innerWidth - margin - halfW,
+  );
+  const top = Math.min(
+    Math.max(margin + panelRect.height, anchorY),
+    window.innerHeight - margin,
+  );
+  embedPanelEl.style.left = `${left}px`;
+  embedPanelEl.style.top = `${top}px`;
+  updateEmbedPanelAlign();
+}
+
+export function scheduleEmbedPanelReposition(): void {
+  if (embedRepositionFrame !== null) return;
+  if (typeof requestAnimationFrame === "function") {
+    embedRepositionFrame = requestAnimationFrame(() => {
+      embedRepositionFrame = null;
+      positionEmbedPanel();
+    });
+  } else {
+    positionEmbedPanel();
+  }
 }
 
 if (typeof document !== "undefined") {
   document.addEventListener("click", (event) => {
     const target = event.target as Node | null;
-    if (target instanceof Element && target.closest(".cm-embed-widget")) return;
+    if (target instanceof Element) {
+      if (target.closest(".cm-embed-widget")) return;
+      if (target.closest(".cm-media-widget")) return;
+      if (target.closest('[data-testid="embed-panel"]')) return;
+    }
     clearEmbedSelection();
   });
+  document.addEventListener("scroll", scheduleEmbedPanelReposition, true);
+  window.addEventListener("resize", scheduleEmbedPanelReposition);
 }
 
 // --- 尺寸 --------------------------------------------------------------------
@@ -469,6 +665,7 @@ export class FileEmbedWidget extends WidgetType {
   private freeze: EmbedScrollFreeze | null = null;
   private namePreviewTimer: ReturnType<typeof setTimeout> | null = null;
   private namePreviewId: string | null = null;
+  private clampObserver: ResizeObserver | null = null;
 
   eq(other: FileEmbedWidget): boolean {
     return (
@@ -497,6 +694,8 @@ export class FileEmbedWidget extends WidgetType {
     container.style.position = "relative";
     container.style.maxWidth = "100%";
     container.style.verticalAlign = "middle";
+    const mdAuto = this._kind === "md" && this._height === null;
+    if (mdAuto) container.dataset.mdAuto = "true";
     if (this._width !== null) {
       container.style.width = `${this._width}px`;
       container.dataset.width = String(this._width);
@@ -508,7 +707,7 @@ export class FileEmbedWidget extends WidgetType {
     if (this._height !== null) {
       frame.style.height = `${this._height}px`;
       container.dataset.height = String(this._height);
-    } else {
+    } else if (!mdAuto) {
       this.fitDefaultHeight(frame);
     }
     container.appendChild(frame);
@@ -577,11 +776,20 @@ export class FileEmbedWidget extends WidgetType {
       this.beginResize(event, handle, container, frame);
     });
 
+    scheduleEmbedPanelReposition();
     return container;
   }
 
   private renderBody(body: HTMLElement, frame: HTMLElement): void {
-    const onReady = () => this.attachScrollFreeze(body, frame);
+    const onReady = () => {
+      this.attachScrollFreeze(body, frame);
+      this.syncClampState(body);
+      if (typeof requestAnimationFrame === "function") {
+        requestAnimationFrame(() => {
+          if (body.isConnected) this.syncClampState(body);
+        });
+      }
+    };
     const title = this._title ?? this._alt;
     if (this._kind === "pdf") {
       renderPdfBody(body, this._resolution?.filePath ?? null, title, onReady);
@@ -633,7 +841,7 @@ export class FileEmbedWidget extends WidgetType {
     }
     if (this._height !== null) {
       frame.style.height = `${this._height}px`;
-    } else {
+    } else if (this._kind !== "md") {
       this.fitDefaultHeight(frame);
     }
   }
@@ -745,6 +953,21 @@ export class FileEmbedWidget extends WidgetType {
   destroy(): void {
     this.freeze?.destroy();
     this.freeze = null;
+    this.clampObserver?.disconnect();
+    this.clampObserver = null;
+  }
+
+  /** md 自适应高度：内容超出可视面时给 body 加底缘渐隐（mask）。 */
+  private syncClampState(body: HTMLElement): void {
+    if (this._kind !== "md" || this._height !== null) return;
+    const widget = body.closest<HTMLElement>(".cm-embed-widget");
+    if (!widget) return;
+    const clamped = body.scrollHeight > body.clientHeight + 1;
+    widget.dataset.clamped = clamped ? "true" : "false";
+    if (this.clampObserver === null && typeof ResizeObserver !== "undefined") {
+      this.clampObserver = new ResizeObserver(() => this.syncClampState(body));
+      this.clampObserver.observe(body);
+    }
   }
 
   /** 默认高度约一屏：取编辑器可视高与视口高的较小值（不小于 240px）。 */
