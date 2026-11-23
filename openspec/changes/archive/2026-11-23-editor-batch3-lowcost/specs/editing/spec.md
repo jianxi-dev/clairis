@@ -1,6 +1,6 @@
 ## ADDED Requirements
 
-### Requirement: E-42 高亮块三色
+### Requirement: E-48 高亮块三色
 
 高亮块（callout）首行 SHALL 支持可选颜色属性 `{bg=<色名> border=<色名> text=<色名>}`，位于折叠标记之后、标题之前。属性顺序 SHALL 无关；未知色名 SHALL 被忽略并回落到该类型色调；未提供颜色的块 SHALL 回落到类型 tone。全部 13 个语义类型 SHALL 共享同一颜色编辑能力。颜色面板 SHALL 提供字体颜色（默认 + 8）、边框颜色（无 + 15）、填充颜色（无 + 15）三行与「恢复默认」，点击已选颜色 SHALL 清除该项。一次改色 SHALL 为一步撤销。块族名 SHALL 统一为「高亮」，并新增第 14 预设「纯高亮」。`text` 只作用于标题与正文，SHALL NOT 作用于链接、行内代码与 emoji；填充 SHALL 为软色。
 
@@ -24,7 +24,7 @@
 - **WHEN** 通过斜杠菜单选择「纯高亮」
 - **THEN** 预设标签 SHALL 严格等于「纯高亮」，默认颜色为黄底黄边，且页面 SHALL NOT 出现字符级 `==text==` 高亮渲染
 
-### Requirement: E-43 公式编辑体验
+### Requirement: E-49 公式编辑体验
 
 点击公式 SHALL 打开锚定在下方的源码浮层，并实时渲染 KaTeX 预览；Esc 或点击外部 SHALL 提交且正文无定界符残留。键入闭合的 `$…$` SHALL 立即渲染。display 判定 SHALL 在 tex 含换行、含 `\tag` 或以 `\begin{equation|align|gather|split|alignat|CD}` 开头时为块级；`\begin{align*}` SHALL NOT 视为块级。空公式 SHALL 显示「添加 LaTeX 公式」占位；渲染失败 SHALL 显示「无效公式」与警告图标，且无渲染残渣。
 
@@ -43,7 +43,7 @@
 - **WHEN** 公式源码为空，或 KaTeX 渲染失败
 - **THEN** 分别 SHALL 显示「添加 LaTeX 公式」与「无效公式」（占位文本数为 1），且页面不含 `.katex-error` 或半渲染残渣
 
-### Requirement: E-44 附件卡与音频
+### Requirement: E-50 附件卡与音频
 
 非图片媒体文件引用 SHALL 渲染为附件卡，含类型图标、文件名与非空大小文本；点击附件卡 SHALL 用系统默认程序打开。音频引用 SHALL 渲染为 `<audio controls>`。pdf / md / html / web SHALL 保持内嵌 `fileEmbed`。本要求 SHALL NOT 引入把附件复制进库的行为。
 
