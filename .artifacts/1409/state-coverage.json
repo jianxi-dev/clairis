@@ -1,0 +1,46 @@
+{
+  "states": [
+    {
+      "state": "before-crop",
+      "screenshot": ".artifacts/1409/01-before-crop.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-23T21:41:10Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "crop-frame",
+      "screenshot": ".artifacts/1409/02-crop-frame.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-23T21:41:10Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "outside-saved",
+      "screenshot": ".artifacts/1409/03-outside-saved.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-23T21:41:13Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "cropped-before",
+      "screenshot": ".artifacts/1409/05-cropped-before.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-23T21:41:15Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "cropped-enter-stable",
+      "screenshot": ".artifacts/1409/06-cropped-frame.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-23T21:41:15Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "esc-cancel",
+      "screenshot": ".artifacts/1409/04-esc-cancel.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-23T21:41:16Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}

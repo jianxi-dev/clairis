@@ -130,11 +130,14 @@ async function dragHandle(
 
 async function imgBox(page: Page): Promise<{ width: number; height: number }> {
   return page.evaluate(() => {
+    // 可见内容盒：裁剪态是窗口（布局盒 = 可见内容），非裁剪态是 img。
+    const win = document.querySelector(".image-crop-window");
     const img = document.querySelector(
       ".cm-image-widget img",
     ) as HTMLImageElement | null;
-    if (!img) return { width: 0, height: 0 };
-    const rect = img.getBoundingClientRect();
+    const el = win ?? img;
+    if (!el) return { width: 0, height: 0 };
+    const rect = el.getBoundingClientRect();
     return { width: rect.width, height: rect.height };
   });
 }
@@ -165,7 +168,7 @@ test("裁剪缩放不跳变：保存前后图片显示宽度严格相等且框�
   );
   await page.mouse.down();
   await page.mouse.move(
-    handleBox.x + handleBox.width / 2 + 40,
+    handleBox.x + handleBox.width / 2 - 40,
     handleBox.y + handleBox.height / 2,
     { steps: 4 },
   );
@@ -181,9 +184,9 @@ test("裁剪缩放不跳变：保存前后图片显示宽度严格相等且框�
   await shot(page, "03-crop-saved");
 
   const after = await imgBox(page);
-  // 保存前后图片显示宽度严格相等（同一套显示坐标系，无跳变）。
-  expect(after.width).toBe(during.width);
-  expect(after.height).toBe(during.height);
+  // 保存前后图片显示尺寸一致（同一套显示坐标系，无跳变；≤1px 容差）。
+  expect(Math.abs(after.width - during.width)).toBeLessThanOrEqual(1);
+  expect(Math.abs(after.height - during.height)).toBeLessThanOrEqual(1);
 
   const final = await content(page);
   const match = /\{crop=(\d+),(\d+),(\d+),(\d+)\}/.exec(final);

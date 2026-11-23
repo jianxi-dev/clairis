@@ -141,7 +141,7 @@ test("裁剪清除旧宽度注释：可见文本无 `<!--w=` 且图片下方无�
 }) => {
   await openEditorWithLargeImage(
     page,
-    (src) => `![示例图片](${src})<!--w=811—>`,
+    (src) => `![示例图片](${src}){crop=200,140,1600,1120}<!--w=811—>`,
     "crop-leak",
   );
   await expect(page.locator(".cm-image-widget")).toHaveCount(1);
@@ -166,7 +166,7 @@ test("裁剪清除旧宽度注释：可见文本无 `<!--w=` 且图片下方无�
 test("跨行宽度注释裁剪后可见文本无 `<!--w=`", async ({ page }) => {
   await openEditorWithLargeImage(
     page,
-    (src) => `![示例图片](${src})\n<!--w=811—>`,
+    (src) => `![示例图片](${src}){crop=200,140,1600,1120}\n<!--w=811—>`,
     "crop-multiline",
   );
   await expect(page.locator(".cm-image-widget")).toHaveCount(1);
@@ -202,7 +202,12 @@ test("点裁剪后：无确认/取消/还原按钮与对话框", async ({ page }
 test("拖动裁剪框：显示区域与 crop 数值一致且下方空白 ≤8px", async ({
   page,
 }) => {
-  await openEditor(page, "![pic](assets/pic.png)\n", "crop-geom", PNG_DATA_URL);
+  await openEditor(
+    page,
+    "![pic](assets/pic.png){crop=2,2,26,26}\n",
+    "crop-geom",
+    PNG_DATA_URL,
+  );
   await openCropFrame(page);
   await dragHandle(page, "e", 3, 0);
   await page.getByTestId("img-crop-frame").dblclick();
@@ -228,9 +233,13 @@ test("拖动裁剪框：显示区域与 crop 数值一致且下方空白 ≤8px"
 });
 
 test("拖左上角向右下：裁剪框宽度变小", async ({ page }) => {
-  await openEditor(page, "![pic](assets/pic.png)\n", "crop-nw", PNG_DATA_URL);
+  await openEditorWithLargeImage(
+    page,
+    (src) => `![pic](${src}){crop=200,140,1600,1120}\n`,
+    "crop-nw",
+  );
   await openCropFrame(page);
-  await dragHandle(page, "nw", 10, 10);
+  await dragHandle(page, "nw", 30, 30);
   await page.getByTestId("img-crop-frame").dblclick();
   await expect(page.getByTestId("img-crop-frame")).toHaveCount(0);
 
@@ -238,10 +247,10 @@ test("拖左上角向右下：裁剪框宽度变小", async ({ page }) => {
   const match = /\{crop=(\d+),(\d+),(\d+),(\d+)\}/.exec(final);
   expect(match).not.toBeNull();
   const [l, t, w, h] = match!.slice(1).map(Number);
-  expect(w).toBe(16);
-  expect(h).toBe(16);
-  expect(l).toBe(13);
-  expect(t).toBe(13);
+  expect(w).toBe(1547);
+  expect(h).toBe(1067);
+  expect(l).toBe(253);
+  expect(t).toBe(193);
 });
 
 test("8 个控制点：方向光标 + 裁剪角标", async ({ page }) => {
@@ -283,7 +292,11 @@ test("8 个控制点：方向光标 + 裁剪角标", async ({ page }) => {
 });
 
 test("拖裁剪框本体：crop 值随矩形移动", async ({ page }) => {
-  await openEditor(page, "![pic](assets/pic.png)\n", "crop-body", PNG_DATA_URL);
+  await openEditorWithLargeImage(
+    page,
+    (src) => `![pic](${src}){crop=200,140,1600,1120}\n`,
+    "crop-body",
+  );
   await openCropFrame(page);
   const frame = page.getByTestId("img-crop-frame");
   const before = (await frame.boundingBox())!;
@@ -301,17 +314,17 @@ test("拖裁剪框本体：crop 值随矩形移动", async ({ page }) => {
   const match = /\{crop=(\d+),(\d+),(\d+),(\d+)\}/.exec(final);
   expect(match).not.toBeNull();
   const [l, t, w, h] = match!.slice(1).map(Number);
-  // 默认 (3,3,26,26)：本体拖动只移位、不改尺寸（指针取整容 1px）。
-  expect(l).toBeGreaterThan(3);
-  expect(l).toBeLessThanOrEqual(7);
-  expect(t).toBeGreaterThan(3);
-  expect(t).toBeLessThanOrEqual(7);
-  expect(w).toBe(26);
-  expect(h).toBe(26);
+  // 预设 (200,140,1600,1120)：本体拖动只移位、不改尺寸（指针取整容 1px）。
+  expect(l).toBeGreaterThanOrEqual(200);
+  expect(l).toBeLessThanOrEqual(210);
+  expect(t).toBeGreaterThanOrEqual(140);
+  expect(t).toBeLessThanOrEqual(150);
+  expect(w).toBe(1600);
+  expect(h).toBe(1120);
 });
 
 test("拖回整图：crop 属性移除", async ({ page }) => {
-  const doc = "![pic](assets/pic.png)\n";
+  const doc = "![pic](assets/pic.png){crop=2,2,26,26}\n";
   await openEditor(page, doc, "crop-full", PNG_DATA_URL);
 
   await openCropFrame(page);
@@ -322,7 +335,7 @@ test("拖回整图：crop 属性移除", async ({ page }) => {
   await openCropFrame(page);
   await dragHandle(page, "se", 40, 40);
   await page.getByTestId("img-crop-frame").dblclick();
-  await expect.poll(() => content(page)).toBe(doc);
+  await expect.poll(() => content(page)).toBe("![pic](assets/pic.png)\n");
   await expect(page.getByTestId("img-crop-frame")).toHaveCount(0);
 
   const after = await imgBox(page);
@@ -331,7 +344,7 @@ test("拖回整图：crop 属性移除", async ({ page }) => {
 });
 
 test("Esc 取消裁剪：无残留且文档不变", async ({ page }) => {
-  const doc = "![pic](assets/pic.png)\n";
+  const doc = "![pic](assets/pic.png){crop=2,2,26,26}\n";
   await openEditor(page, doc, "crop-esc", PNG_DATA_URL);
   await openCropFrame(page);
 
@@ -347,6 +360,6 @@ test("Esc 取消裁剪：无残留且文档不变", async ({ page }) => {
   await expect(page.getByTestId("img-crop-frame")).toHaveCount(0);
   expect(await content(page)).toBe(doc);
   const after = await imgBox(page);
-  expect(after.width).toBe(32);
-  expect(after.height).toBe(32);
+  expect(after.width).toBe(26);
+  expect(after.height).toBe(26);
 });

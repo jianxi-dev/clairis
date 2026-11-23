@@ -159,7 +159,7 @@ test("裁剪区下方无「保存」文字，确认走双击/工具条（A-4.3�
   expect(await frame.locator("text=保存").count()).toBe(0);
   await shot(page, "03-no-save-text", "no-save-text");
 
-  await dragHandle(page, "e", 8, 0);
+  await dragHandle(page, "e", -8, 0);
   await frame.dblclick();
   await expect(frame).toHaveCount(0);
   expect(await content(page)).toMatch(/\{[^}]*crop=\d+,\d+,\d+,\d+\}/);
