@@ -270,12 +270,17 @@ describe("block decorations", () => {
       expect(view.dom.querySelector(".cm-image-widget")).toBeNull();
     });
 
-    it("does not create a widget for images inside indented code", () => {
+    it("前导空格不影响媒体引用渲染，真缩进代码仍抑制", () => {
       view = createEditor("    ![alt text](photo.png)", {
         resolveImage: stubResolver,
       });
       placeCursor(view.state.doc.length);
+      expect(view.dom.querySelector(".cm-image-widget")).not.toBeNull();
 
+      view = createEditor("    const x = ![alt text](photo.png)", {
+        resolveImage: stubResolver,
+      });
+      placeCursor(view.state.doc.length);
       expect(view.dom.querySelector(".cm-image-widget")).toBeNull();
     });
 
@@ -406,7 +411,9 @@ describe("block decorations", () => {
     });
 
     it("解析失败：视频出显式占位，不再写原始相对路径（#903）", () => {
-      const dom = widgetOf(createImageDecorations("![clip](clip.mp4)")[0]).toDOM();
+      const dom = widgetOf(
+        createImageDecorations("![clip](clip.mp4)")[0],
+      ).toDOM();
       expect(dom.querySelector("video")).toBeNull();
       const placeholder = dom.querySelector(".cm-media-placeholder");
       expect(placeholder?.getAttribute("data-testid")).toBe("media-unresolved");
@@ -425,20 +432,32 @@ describe("block decorations", () => {
       expect(plain.querySelector("video")?.style.width).toBe("100%");
 
       const sized = widgetOf(
-        createImageDecorations("![clip](clip.mp4){width=420 align=left}", resolve)[0],
+        createImageDecorations(
+          "![clip](clip.mp4){width=420 align=left}",
+          resolve,
+        )[0],
       ).toDOM();
       expect(sized.dataset.align).toBe("left");
       expect(sized.style.width).toBe("420px");
       expect(sized.dataset.width).toBe("420");
     });
 
-    it("文件卡片不参与视频对齐与缩放选中", () => {
+    it("文件卡片接入样式面板：media-from / 默认左对齐 / 宽度生效", () => {
       const dom = widgetOf(
         createImageDecorations("![archive](archive.zip)")[0],
       ).toDOM();
       expect(dom.dataset.mediaKind).toBe("file");
-      expect(dom.dataset.align).toBeUndefined();
-      expect(dom.dataset.mediaFrom).toBeUndefined();
+      expect(dom.dataset.mediaFrom).toBe("0");
+      expect(dom.dataset.align).toBe("left");
+
+      const sized = widgetOf(
+        createImageDecorations(
+          "![archive](archive.zip){width=420 align=right}",
+        )[0],
+      ).toDOM();
+      expect(sized.dataset.align).toBe("right");
+      expect(sized.style.width).toBe("420px");
+      expect(sized.dataset.width).toBe("420");
     });
 
     it("renders an attachment card for a non-image, non-video extension", () => {

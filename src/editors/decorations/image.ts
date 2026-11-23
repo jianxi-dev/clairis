@@ -39,6 +39,9 @@ import {
 import {
   FileEmbedWidget,
   classifyFileEmbed,
+  isEmbedSelected,
+  scheduleEmbedPanelReposition,
+  selectEmbed,
   type FileEmbedResolver,
 } from "./fileEmbed";
 
@@ -1068,6 +1071,14 @@ class MediaWidget extends WidgetType {
         container.style.width = `${this._width}px`;
         container.dataset.width = String(this._width);
       }
+    } else if (this._kind === "file") {
+      // docx 等附件卡：默认左对齐，位置 / 宽度走样式面板（见 fileEmbed）。
+      container.dataset.mediaFrom = String(this._from);
+      container.dataset.align = this._align ?? "left";
+      if (this._width !== null) {
+        container.style.width = `${this._width}px`;
+        container.dataset.width = String(this._width);
+      }
     }
 
     if (isVideo || isAudio) {
@@ -1090,6 +1101,17 @@ class MediaWidget extends WidgetType {
       if (isAudio) container.style.width = "100%";
     } else {
       this.renderAttachmentCard(container);
+    }
+
+    if (this._kind === "file") {
+      container.dataset.selected = isEmbedSelected(this._from)
+        ? "true"
+        : "false";
+      container.addEventListener("click", () => {
+        selectEmbed(this._from);
+      });
+      scheduleEmbedPanelReposition();
+      return container;
     }
 
     if (!isVideo) return container;
@@ -1236,8 +1258,14 @@ class MediaWidget extends WidgetType {
 /**
  * 找出围栏代码块（``` 或 ~~~ 界定）与缩进代码块的行区间。
  * 返回 `[start, end)` 偏移数组。
+ *
+ * `exemptIndentedMedia`：编辑态传 true——整行以媒体引用开头时不当缩进代码，
+ * 否则附件引用行首加空格会整块退化成源码（E-50）。预览态不传，保持既有语义。
  */
-export function findFencedRanges(text: string): Array<[number, number]> {
+export function findFencedRanges(
+  text: string,
+  exemptIndentedMedia = false,
+): Array<[number, number]> {
   const ranges: Array<[number, number]> = [];
   const lines = text.split("\n");
   let inFence = false;
@@ -1267,7 +1295,9 @@ export function findFencedRanges(text: string): Array<[number, number]> {
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     const lineStart = i === 0 ? 0 : lines.slice(0, i).join("\n").length + 1;
-    const isIndented = /^\s{4}|\t/.test(line);
+    const isIndented =
+      /^\s{4}|\t/.test(line) &&
+      !(exemptIndentedMedia && /^[ \t]*!\[/.test(line));
 
     if (isIndented && indentedStart === -1) {
       indentedStart = lineStart;
@@ -1311,7 +1341,7 @@ export function createImageDecorations(
   const resolveFn = resolve ?? (() => null);
   const callbacksFn = callbacks ?? {};
 
-  const fencedRanges = findFencedRanges(docText);
+  const fencedRanges = findFencedRanges(docText, true);
 
   let pos = 0;
   while (pos < docText.length) {

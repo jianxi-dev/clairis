@@ -152,12 +152,14 @@ body {
  * 容器若 display:block，其后的 CM6 widgetBuffer 会自成一条整行高的行盒，
  * 图片下方多出一条空行。 */
 .cm-editor .cm-line:has(> .cm-image-widget[data-align="center"]),
-.cm-editor .cm-line:has(> .cm-embed-widget[data-align="center"]) {
+.cm-editor .cm-line:has(> .cm-embed-widget[data-align="center"]),
+.cm-editor .cm-line:has(> .cm-media-widget[data-align="center"]) {
   text-align: center;
 }
 
 .cm-editor .cm-line:has(> .cm-image-widget[data-align="right"]),
-.cm-editor .cm-line:has(> .cm-embed-widget[data-align="right"]) {
+.cm-editor .cm-line:has(> .cm-embed-widget[data-align="right"]),
+.cm-editor .cm-line:has(> .cm-media-widget[data-align="right"]) {
   text-align: right;
 }
 
@@ -1283,6 +1285,99 @@ body {
 .cm-embed-toggle:hover {
   color: var(--app-accent);
   border-color: var(--app-accent);
+}
+
+/* md 附件默认展开：宽度与正文文本块同宽（同一 --type-measure），高度随内容、
+ * 上限 600px，超出由 body 内部滚动并在底缘渐隐提示截断。 */
+.cm-embed-widget[data-md-auto="true"] {
+  width: min(100%, var(--type-measure, 1080px));
+  margin-inline: 0;
+}
+
+.cm-embed-widget[data-md-auto="true"] .cm-embed-frame {
+  display: flex;
+  flex-direction: column;
+  height: auto;
+  max-height: 600px;
+}
+
+.cm-embed-widget[data-md-auto="true"] .cm-embed-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+.cm-embed-widget[data-clamped="true"] .cm-embed-body {
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    #000 calc(100% - 28px),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    #000 calc(100% - 28px),
+    transparent 100%
+  );
+}
+
+/* 附件样式面板（md / docx）：结构同图片工具条，挂 body fixed。 */
+.cm-embed-panel {
+  position: fixed;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 6px;
+  background: var(--app-surface);
+  color: var(--app-text);
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transform: translate(-50%, -100%);
+}
+
+.cm-embed-panel button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: var(--app-radius);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+}
+
+.cm-embed-panel button:hover {
+  background: var(--app-sunken);
+}
+
+.cm-embed-panel button[aria-pressed="true"] {
+  background: var(--app-accent-soft);
+  color: var(--app-accent);
+}
+
+.cm-embed-panel button svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+
+.cm-embed-panel-sep {
+  width: 1px;
+  height: 18px;
+  margin: 0 2px;
+  background: var(--app-border);
+}
+
+/* docx 附件卡选中态：尺寸走面板，不画出内嵌的缩放把手。 */
+.cm-media-widget[data-selected="true"] {
+  outline: 2px solid var(--app-accent);
+  outline-offset: 2px;
 }
 
 /* mermaid 块 —— 非活跃块整块换成图；未水合时保留源码框 */
