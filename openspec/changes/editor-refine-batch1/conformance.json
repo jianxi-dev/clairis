@@ -84,7 +84,7 @@
           "id": "A-3.3",
           "claim": "描述区默认隐藏 → 点击工具条描述按钮切换显隐 → 进入裁剪态强制隐藏",
           "kind": "state-machine",
-          "assert": "默认隐藏；点击后显隐切换；裁剪态隐藏",
+          "assert": "默认隐藏 → 点击后显隐切换 → 裁剪态强制隐藏",
           "source": "spec delta 图片编辑 Quiet 对标 Scenario 描述区默认隐藏与裁剪态强制隐藏 / D2"
         },
         {
@@ -104,14 +104,14 @@
           "id": "A-4.1",
           "claim": "进入裁剪态后角标尺寸与既有默认值的比较",
           "kind": "exact",
-          "assert": "大于既有默认值（命中区同步增大）",
+          "assert": "角标尺寸增大 > 0，命中区同步增大",
           "source": "spec delta 图片编辑 Quiet 对标 Scenario 裁剪角标加大与拖动柄图标 / D3"
         },
         {
           "id": "A-4.2",
           "claim": "进入裁剪态后拖动裁剪边界一次 → 裁剪态保持、不弹回普通选中态",
           "kind": "state-machine",
-          "assert": "裁剪态保持",
+          "assert": "拖动 1 次后裁剪态保持 → 不弹回普通选中态",
           "source": "spec delta 图片编辑 Quiet 对标 Scenario 裁剪态常驻 / D3"
         },
         {
@@ -125,7 +125,7 @@
           "id": "A-4.4",
           "claim": "裁剪拖动柄图标与裁剪样式图标的键名关系",
           "kind": "exact",
-          "assert": "键名相同",
+          "assert": "键名相同（差 0）",
           "source": "spec delta 图片编辑 Quiet 对标 Scenario 裁剪角标加大与拖动柄图标 / D3 / 一手观察 imageCrop.ts:510"
         }
       ]
@@ -145,7 +145,7 @@
           "id": "A-5.2",
           "claim": "在颜色面板改动填充色后按一次撤销 → 三色属性还原",
           "kind": "state-machine",
-          "assert": "填充 / 边框 / 文字三属性均还原为改色前值",
+          "assert": "撤销 1 步 → 3 属性还原为改色前值",
           "source": "spec delta 高亮块调色入口与高亮类型行 Scenario 改色为一步撤销 / D4"
         },
         {
@@ -199,7 +199,7 @@
           "id": "A-7.1",
           "claim": "附件块手柄 `data-icon` 与图片图标的关系",
           "kind": "exact",
-          "assert": "严格不相等",
+          "assert": "两者 data-icon 不同（相同数 0）",
           "source": "spec delta E-42 Scenario 附件手柄图标按扩展名 / D6"
         },
         {
@@ -213,7 +213,7 @@
           "id": "A-7.3",
           "claim": "有序列表与无序列表手柄 `data-icon` 的关系",
           "kind": "exact",
-          "assert": "严格不相等",
+          "assert": "两者 data-icon 不同（相同数 0）",
           "source": "spec delta E-42 Scenario 有序列表手柄图标可区分 / D6"
         },
         {
@@ -240,21 +240,21 @@
           "id": "A-8.2",
           "claim": "md 附件内容超出上限 → 内部滚动且底缘渐隐提示截断",
           "kind": "state-machine",
-          "assert": "可内部滚动；底缘渐隐出现",
+          "assert": "超出 600px → 内部滚动；底缘渐隐出现",
           "source": "spec delta E-50 Scenario md 附件默认展开与尺寸上限 / D7"
         },
         {
           "id": "A-8.3",
           "claim": "选中 md 或 docx 附件打开样式调整面板 → 对齐与宽度可调",
           "kind": "state-machine",
-          "assert": "对齐与宽度调整后附件呈现变化",
+          "assert": "各调整 1 次 → 对齐与宽度呈现变化",
           "source": "spec delta E-50 Scenario md 与 docx 样式调整面板 / D7"
         },
         {
           "id": "A-8.4",
           "claim": "选中 docx 附件调整显示位置 → 对齐随之变化",
           "kind": "state-machine",
-          "assert": "对齐随之变化",
+          "assert": "调整 1 次 → 对齐随之变化",
           "source": "spec delta E-50 Scenario docx 显示位置调整 / D7"
         },
         {
