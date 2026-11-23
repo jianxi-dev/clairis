@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "parent-subtree-linked",
+      "screenshot": ".artifacts/1389/01-parent-subtree-linked.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-23T08:00:40Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "leaf-line-only",
+      "screenshot": ".artifacts/1389/02-leaf-line-only.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-23T08:00:42Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "list-wrap-callout-keep-marker",
+      "screenshot": ".artifacts/1389/03-list-wrap-callout-keep-marker.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-23T08:00:45Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "one-undo-step-restore",
+      "screenshot": ".artifacts/1389/04-one-undo-step-restore.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-23T08:00:45Z",
+      "runner": "unknown@MMBP"
+    }
+  ]
+}

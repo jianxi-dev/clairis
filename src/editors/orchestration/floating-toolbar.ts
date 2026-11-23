@@ -15,8 +15,7 @@ import {
   toggleRangeSpan,
   toggleWrap,
 } from "./toolbar-shared";
-import { dispatchBlockConvert, type BlockConvertTarget } from "./block-convert";
-import { structureTransaction } from "../structure-history";
+import { dispatchLineConvert, type BlockConvertTarget } from "./block-convert";
 import { useAiEntryStore } from "../../hooks/useAiEntry";
 import { saveAppConfig } from "../../hooks/useConfig";
 import { isMacPlatform } from "../key-chord";
@@ -150,26 +149,14 @@ function convertItem(
     label,
     icon,
     run: () => {
-      const block = blockAt(view, view.state.selection.main.from);
-      if (!block) return;
-      if (calloutKind) {
-        const text = view.state.doc.sliceString(block.from, block.to);
-        const quoted = text
-          .split("\n")
-          .map((line) => `> ${line.replace(/^>\s?/, "")}`)
-          .join("\n");
-        view.dispatch(
-          structureTransaction({
-            changes: {
-              from: block.from,
-              to: block.to,
-              insert: `> [!${calloutKind}]\n${quoted}`,
-            },
-          }),
-        );
-        return;
-      }
-      dispatchBlockConvert(view, block, target as BlockConvertTarget, false);
+      const pos = view.state.selection.main.from;
+      const line = view.state.doc.lineAt(pos);
+      dispatchLineConvert(
+        view,
+        { from: line.from, to: line.to },
+        target as BlockConvertTarget,
+        { calloutKind, scrollIntoView: false },
+      );
     },
   };
 }
