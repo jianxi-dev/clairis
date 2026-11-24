@@ -485,6 +485,14 @@ const ICON_REGISTRY: Record<string, IconDef> = {
     ],
   },
 
+  // 字体色块 / 轮盘色条的形象图标：色块 + 荧光笔笔尖（#1413 / D2）。
+  // 与 `ui/icons.ts` 的 `highlighter` 同源，两套表都要注册，避免编辑器内缺图。
+  HighlighterOutlined: {
+    kind: "paths",
+    stroke: true,
+    paths: [UI_ICONS.highlighter.s ?? ""],
+  },
+
   // Font colour — a bold "A" the selection toolbar tints per swatch (W5 / #328).
   FormatColorTextOutlined: { kind: "text", label: "A", weight: 700 },
 

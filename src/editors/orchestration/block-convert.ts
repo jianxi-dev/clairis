@@ -185,11 +185,12 @@ export function blockConvertChanges(
 
   if (target === "callout") {
     if (/^>\s*\[!/.test(leading)) return [];
+    const fill = options.keepFill ? `{bg=${options.keepFill}}` : "";
     return [
       {
         from: block.from,
         to: block.to,
-        insert: `> [!${(options.calloutKind ?? "NOTE").toUpperCase()}]\n${toQuote(lines)}`,
+        insert: `> [!${(options.calloutKind ?? "NOTE").toUpperCase()}]${fill}\n${toQuote(lines)}`,
       },
     ];
   }
@@ -253,6 +254,7 @@ export function dispatchBlockConvert(
   const { calloutKind, scrollIntoView = false } = options;
   const changes = blockConvertChanges(view.state.doc, block, target, {
     calloutKind,
+    keepFill: options.keepFill,
   });
   if (changes.length === 0) return;
   view.dispatch(structureTransaction({ changes, scrollIntoView }));
@@ -337,13 +339,23 @@ function renumberSubtreeLines(
  *
  * 与 `toQuote` 同层：每行补 `> ` 前缀（已带 `>` 的剥掉再补），列表标记不变。
  */
-export function wrapListInCallout(lines: string[], kind = "NOTE"): string {
-  return `> [!${kind}]\n${toQuote(lines)}`;
+export function wrapListInCallout(
+  lines: string[],
+  kind = "NOTE",
+  keepFill = "",
+): string {
+  const fill = keepFill ? `{bg=${keepFill}}` : "";
+  return `> [!${kind}]${fill}\n${toQuote(lines)}`;
 }
 
 export interface LineConvertOptions {
   /** 高亮类型 key（`target === "callout"` 时使用，默认 `NOTE`）。 */
   calloutKind?: string;
+  /**
+   * 转换后写入首行的填充色名（`bg=…`）。空串表示不写。
+   * 供「切换标注类型保留色相」用（#1413 / D2）。
+   */
+  keepFill?: string;
 }
 
 /**
@@ -367,7 +379,11 @@ export function convertLineWithChildren(
       {
         from: subtree.from,
         to: subtree.to,
-        insert: wrapListInCallout(subtree.lines, options.calloutKind ?? "NOTE"),
+        insert: wrapListInCallout(
+          subtree.lines,
+          options.calloutKind ?? "NOTE",
+          options.keepFill ?? "",
+        ),
       },
     ];
   }
@@ -399,6 +415,7 @@ export function dispatchLineConvert(
   const { calloutKind, scrollIntoView = false } = options;
   const changes = convertLineWithChildren(view.state.doc, line, target, {
     calloutKind,
+    keepFill: options.keepFill,
   });
   if (changes.length === 0) return;
   view.dispatch(structureTransaction({ changes, scrollIntoView }));

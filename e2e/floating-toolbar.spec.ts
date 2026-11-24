@@ -174,7 +174,7 @@ test("颜色扇区为双圈：文字色 9 格、背景色 16 格", async ({ page
   await openSector(page, "color");
   await expect(page.locator(".sr-color-font")).toHaveCount(9);
   await expect(page.locator(".sr-color-bg")).toHaveCount(16);
-  await expect(page.locator(".sr-color-A")).toHaveCount(9);
+  await expect(page.locator(".sr-color-mark")).toHaveCount(9);
 });
 
 test("转换二层：段落 8 项，顺序为代码块/表格/标题/列表/高亮/标注/引用/分割线", async ({

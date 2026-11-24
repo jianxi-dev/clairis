@@ -4,10 +4,12 @@
  * 块菜单、块工具条、文字工具条都从这里取，标签与色值不再各写一套。
  * 写入语法沿用现有 `<span class="mdb-color-*">` / `<span class="mdb-bg-*">`。
  *
- * 观感对齐 md-bundle `color-palette.ts`：字体色画成着色「A」字形，背景色画成
- * 实色块（不再是偏淡的浅色块）。色板只是选择器，实际应用的高亮仍走
- * `.cm-bg-*` / `.mdb-bg-*` 的半透明规则，保证深底可读。
+ * 字体色画成「色块 + 荧光笔笔尖」形象图标（#1413 / D2），背景色画成实色块。
+ * 色板只是选择器，实际应用的高亮仍走 `.cm-bg-*` / `.mdb-bg-*` 的半透明规则，
+ * 保证深底可读。
  */
+
+import { renderIcon } from "../icons";
 
 export interface ColorSwatch {
   /** 展示名（中文）。 */
@@ -76,6 +78,8 @@ export const COLOR_ROW_CLASS = "cm-color-row";
 export const COLOR_SWATCH_CLASS = "cm-color-swatch";
 /** 默认 / 无 项的斜线类名。 */
 export const COLOR_SWATCH_DEFAULT_CLASS = "cm-color-swatch-default";
+/** 字体色块内的形象图标容器类名。 */
+export const COLOR_SWATCH_ICON_CLASS = "cm-color-swatch-icon";
 
 /**
  * 构建一个色板行。
@@ -83,7 +87,8 @@ export const COLOR_SWATCH_DEFAULT_CLASS = "cm-color-swatch-default";
  * `onPick` 收到 `(kind, className)`；`className` 为空表示清除该属性。
  * 默认项画成带斜线的透明块（`.cm-color-swatch-default`）。
  *
- * 渲染观感对齐 md-bundle：字体色为着色「A」字形，背景 / 边框色为实色块。
+ * 字体色块为「色块 + 荧光笔笔尖」形象图标（`.cm-color-swatch-icon`），
+ * 背景 / 边框色为实色块。
  */
 export function createColorRow(
   kind: ColorKind,
@@ -104,16 +109,16 @@ export function createColorRow(
     swatch.setAttribute("aria-label", color.label);
     if (color.isDefault) swatch.classList.add(COLOR_SWATCH_DEFAULT_CLASS);
 
-    if (kind === "font" && !color.isDefault) {
-      // 字体色：着色「A」字形（md-bundle 观感），不是实心色块。
+    if (kind === "font") {
       swatch.style.display = "flex";
       swatch.style.alignItems = "center";
       swatch.style.justifyContent = "center";
-      const glyph = document.createElement("span");
-      glyph.className = "cm-color-swatch-glyph";
-      glyph.textContent = "A";
-      glyph.style.color = color.swatch;
-      swatch.appendChild(glyph);
+      const icon = document.createElement("span");
+      icon.className = COLOR_SWATCH_ICON_CLASS;
+      icon.setAttribute("aria-hidden", "true");
+      icon.appendChild(renderIcon("HighlighterOutlined"));
+      if (!color.isDefault) icon.style.color = color.swatch;
+      swatch.appendChild(icon);
     } else if (!color.isDefault) {
       // 背景 / 边框色：实色块。
       swatch.style.background = color.swatch;
@@ -143,4 +148,83 @@ export function createColorPaletteRows(
   root.appendChild(createColorRow("font", FONT_COLORS, onPick));
   root.appendChild(createColorRow("background", BACKGROUND_COLORS, onPick));
   return root;
+}
+
+/** `#rrggbb` → 色相角（0..360）；非 hex 输入返回 null。 */
+function hueOf(hex: string): number | null {
+  const m = /^#([0-9a-fA-F]{6})$/.exec(hex.trim());
+  if (!m) return null;
+  const n = Number.parseInt(m[1], 16);
+  const r = ((n >> 16) & 255) / 255;
+  const g = ((n >> 8) & 255) / 255;
+  const b = (n & 255) / 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const d = max - min;
+  if (d === 0) return null;
+  let h: number;
+  if (max === r) h = ((g - b) / d) % 6;
+  else if (max === g) h = (b - r) / d + 2;
+  else h = (r - g) / d + 4;
+  return ((h * 60) + 360) % 360;
+}
+
+/** 色相环距离（0..180）。 */
+function hueDistance(a: number, b: number): number {
+  const d = Math.abs(a - b) % 360;
+  return d > 180 ? 360 - d : d;
+}
+
+/** 标注类型 tone → 填充色板色名（#1413 / D2）。 */
+const TONE_BG_NAME: Readonly<Record<string, string>> = {
+  blue: "blue",
+  green: "green",
+  purple: "purple",
+  orange: "orange",
+  red: "red",
+  teal: "cyan",
+  gray: "gray",
+  muted: "gray",
+  yellow: "yellow",
+};
+
+const BG_SWATCH_BY_NAME = new Map(
+  BACKGROUND_COLORS.filter((color) => !color.isDefault).map((color) => [
+    color.className.replace(/^mdb-bg-/, ""),
+    color.swatch,
+  ]),
+);
+
+/**
+ * 切换标注类型时把当前填充色的色相映射到目标类型的可用色板（#1413 / D2）。
+ *
+ * 同色相（容差 20°）优先取目标类型的默认色名；无同色相时取色板中色相最近者；
+ * 仍无可用色（空板 / 无法解析色相）回落目标类型默认色。纯函数，无 DOM 依赖。
+ */
+export function mapHueToType(
+  currentColor: string,
+  targetTone: string,
+): string {
+  const fallback = TONE_BG_NAME[targetTone] ?? "";
+  const targetHex = BG_SWATCH_BY_NAME.get(fallback);
+  const currentHue = hueOf(currentColor);
+  if (currentHue === null || !targetHex) return fallback;
+
+  const targetHue = hueOf(targetHex);
+  if (targetHue !== null && hueDistance(currentHue, targetHue) <= 20) {
+    return fallback;
+  }
+
+  let best = fallback;
+  let bestDistance = Number.POSITIVE_INFINITY;
+  for (const [name, hex] of BG_SWATCH_BY_NAME) {
+    const hue = hueOf(hex);
+    if (hue === null) continue;
+    const distance = hueDistance(currentHue, hue);
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      best = name;
+    }
+  }
+  return best;
 }

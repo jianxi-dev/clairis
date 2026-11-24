@@ -53,8 +53,9 @@ import {
   BACKGROUND_COLORS,
   FONT_COLORS,
   createColorRow,
+  mapHueToType,
 } from "./color-palette";
-import { getCalloutAttrs } from "../callout-attrs";
+import { getCalloutAttrs, setCalloutAttrs } from "../callout-attrs";
 import {
   CALLOUT_COLOR_PANEL_CLASS,
   applyCalloutColorToBlock,
@@ -566,9 +567,22 @@ export function openBlockMenu(
     view.dispatch({ changes: { from: 0, to: docText.length, insert: next } });
   };
 
-  // 类型（仅高亮块）：直接把 `[!note]` 换成 `[!tip]`，块内正文不动。
+  // 类型（仅标注块）：直接把 `[!note]` 换成 `[!tip]`，块内正文不动。
+  // 纯高亮（`[!highlight]`）不显示类型行（#1413 / D2）。
   const blockText = view.state.doc.sliceString(block.from, block.to);
-  if (calloutKeyOf(blockText) !== null) {
+  const blockCalloutKey = calloutKeyOf(blockText);
+  const blockAttrs = getCalloutAttrs(blockText);
+  const blockFillHex = (blockAttrs.bg ?? blockAttrs.border)
+    ? BACKGROUND_COLORS.find(
+        (color) =>
+          color.className ===
+          `mdb-bg-${blockAttrs.bg ?? blockAttrs.border ?? ""}`,
+      )?.swatch
+    : undefined;
+  if (
+    blockCalloutKey !== null &&
+    CALLOUT_ANNOTATION_TYPES.some((type) => type.key === blockCalloutKey)
+  ) {
     const typeRow = document.createElement("button");
     typeRow.type = "button";
     typeRow.className = "cm-block-menu-item";
@@ -632,8 +646,14 @@ export function openBlockMenu(
           const next = changeCalloutType(rest, type.key);
           closeBlockMenu(view);
           if (next === rest) return;
+          const fill = blockFillHex
+            ? mapHueToType(blockFillHex, type.tone)
+            : "";
+          const withFill = fill
+            ? setCalloutAttrs(next, { ...getCalloutAttrs(next), bg: fill })
+            : next;
           view.dispatch({
-            changes: { from: block.from, to: block.to, insert: next },
+            changes: { from: block.from, to: block.to, insert: withFill },
           });
         });
         panelEl.appendChild(option);

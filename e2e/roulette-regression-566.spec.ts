@@ -133,7 +133,7 @@ test("颜色二级透明项：棋盘格可辨识、标签文字可读", async ({
     return color;
   });
   const labelColor = await wheel
-    .locator(".sr-color-A.none")
+    .locator(".sr-color-mark.none")
     .evaluate((el) => getComputedStyle(el).color);
   expect(labelColor).toBe(expected);
 });
