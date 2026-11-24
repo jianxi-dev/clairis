@@ -1,0 +1,18 @@
+=== GREEN: final code, HEAD 6ac7960f + working tree ===
+--- unit ---
+
+ Test Files  1 passed (1)
+      Tests  4 passed (4)
+   Start at  23:59:03
+   Duration  715ms (transform 55ms, setup 74ms, import 34ms, tests 9ms, environment 510ms)
+
+--- e2e ---
+Running 4 tests using 1 worker
+····
+  4 passed (8.6s)
+--- tsc ---
+npm warn Unknown user config "electron_mirror". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+tsc: no errors
+--- npm test ---
+ Test Files  168 passed (168)
+      Tests  2164 passed (2164)

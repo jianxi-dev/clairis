@@ -20,6 +20,7 @@
 3. 未覆盖的状态必须在票面标 `untested` 并写明原因；PR 里没有这条说明 → 不允许合并。
 4. hover 类断言**禁止**一步 `locator.hover()` 到底：指针路径必须分步，关键过渡区（浮层与触发器之间的空隙）必须停顿。用 `e2e/helpers/ui-probe.ts` 的 `moveThrough`。
 5. 数值锚点只从 `e2e/fixtures/editor-anchors.ts` 取，spec 里不写魔法数字。
+6. **图标变更必须在字形层断言，不能只断言 `data-icon` 名**。`data-icon` 是代理属性：图标名不同≠字形不同形（#1433 旧有序图标与无序同形却名不同）。字形层断言两处：单测 `src/__tests__/editor/icon-glyphs.test.ts`（路径 SSOT 同源 + 左缘标记列形状签名）、e2e `e2e/editors/ordered-list-icon.spec.ts`（真实渲染栅格化 + 带签名）。新增 / 修改图标时同步维护这两处。
 
 ## 矩阵
 
@@ -31,7 +32,7 @@
 |---|---|---|---|
 | 指针在正文块内 | 手柄淡入，锚在指针所在行 | ✅ `block-menu.spec.ts` / `ui-fidelity.spec.ts` | — |
 | 手柄本体尺寸 | 42×26 药丸 | ✅ `ui-fidelity.spec.ts` | — |
-| 块型 → 图标 | 标题 H1–H6 / 引用 / 分割线 / 有序·无序 / 任务 / 代码 各自图标 | ✅ `ui-fidelity.spec.ts` | — |
+| 块型 → 图标 | 标题 H1–H6 / 引用 / 分割线 / 有序·无序 / 任务 / 代码 各自图标 | ✅ `ui-fidelity.spec.ts`；**字形层** `editors/ordered-list-icon.spec.ts`（#1433） | — |
 | 空行「+」悬停 | 不弹转换菜单 | ✅ `ui-fidelity.spec.ts` | — |
 | 空行「+」点击 | 打开插入菜单，光标落该行 | ✅ `block-menu.spec.ts` | — |
 | 拖拽 ≥4px | 整块高亮 + 松手重排 | ✅ `block-menu.spec.ts` | — |

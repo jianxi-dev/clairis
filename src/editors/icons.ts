@@ -396,12 +396,11 @@ const ICON_REGISTRY: Record<string, IconDef> = {
   // Paragraph / text block — pilcrow.
   TextOutlined: { kind: "text", label: "¶", weight: 700 },
 
-  // Ordered list — numbered list marker.
+  // Ordered list — numbered list marker; same source as ui/icons `ordered`.
   OrderListOutlined: {
     kind: "paths",
-    paths: [
-      "M5 5h14v2H5zm0 5h14v2H5zm0 5h14v2H5zM3 5v2h1v-2zm0 5v2h1v-2zm0 5v2h1v-2z",
-    ],
+    stroke: true,
+    paths: [UI_ICONS.ordered.s ?? ""],
   },
 
   // Unordered (disorder) list — bullet list marker.
