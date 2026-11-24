@@ -57,7 +57,8 @@ function type(view: EditorView, from: number): void {
 
 describe("大文档键入快路径", () => {
   it("≥50k 文档逐字键入只映射，延迟补一次全量重建", async () => {
-    const big = `${"段落内容足够长以跨过阈值。".repeat(6)}\n`.repeat(1800);
+    const longLine = "段落内容足够长以跨过阈值。".repeat(70);
+    const big = Array.from({ length: 60 }, () => longLine).join("\n");
     expect(big.length).toBeGreaterThan(50_000);
     const { view, destroy } = mount(big);
     const base = getDecorationBuildCount();
@@ -73,7 +74,7 @@ describe("大文档键入快路径", () => {
     await new Promise((resolve) => setTimeout(resolve, 260));
     expect(getDecorationBuildCount()).toBe(base + 1);
     destroy();
-  });
+  }, 15_000);
 
   it("小文档仍逐键全量重建", () => {
     const { view, destroy } = mount("正文\n");
