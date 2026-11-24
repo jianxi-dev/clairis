@@ -485,9 +485,10 @@ test("点击单元格手柄仍打开内容菜单（#739 回归）", async ({ pag
     "/tmp/cell-handle-click.md",
     "| 表头一 | 表头二 |\n| --- | --- |\n| 有内容 |  |\n",
   );
-  const handle = page
-    .locator('td[data-row="0"][data-col="0"]')
-    .locator(".cm-table-cell-handle");
+  const cell = page.locator('td[data-row="0"][data-col="0"]');
+  // #1320-B：手柄只在表格悬停态可交互（不可见带不再吞空白点击），先悬停显现再点。
+  await cell.hover();
+  const handle = cell.locator(".cm-table-cell-handle");
   await handle.click();
   await expect(page.locator(".mdb-slash-menu")).toBeVisible({ timeout: 3000 });
   await page.keyboard.press("Escape");

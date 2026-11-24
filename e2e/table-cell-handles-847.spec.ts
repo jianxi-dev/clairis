@@ -185,6 +185,8 @@ test("A-9.3 单元格菜单项集与全局菜单项集严格相等", async ({ pa
 
   // 单元格转换手柄菜单。
   const cell = page.locator('td[data-row="0"][data-col="0"]');
+  // #1320-B：手柄只在表格悬停态可交互（不可见带不再吞空白点击），先悬停显现再点。
+  await cell.hover();
   await cell.locator(".cm-table-cell-handle").click();
   const cellMenu = page.locator(".mdb-slash-menu");
   await expect(cellMenu).toHaveCount(1, { timeout: 3000 });

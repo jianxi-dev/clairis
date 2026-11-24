@@ -18,28 +18,56 @@
       "state": "before-typing",
       "screenshot": ".artifacts/1320/01-before-typing.png",
       "assertion": "passed",
-      "recorded_at": "2026-11-23T22:44:13Z",
+      "recorded_at": "2026-11-24T06:30:45Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "blank-left-cursor",
+      "screenshot": ".artifacts/1320/07-blank-left-cursor.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-24T06:30:45Z",
       "runner": "mason@MMBP"
     },
     {
       "state": "after-typing",
       "screenshot": ".artifacts/1320/02-after-typing.png",
       "assertion": "passed",
-      "recorded_at": "2026-11-23T22:44:14Z",
+      "recorded_at": "2026-11-24T06:30:45Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "blank-above-cursor",
+      "screenshot": ".artifacts/1320/07b-blank-above-cursor.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-24T06:30:47Z",
       "runner": "mason@MMBP"
     },
     {
       "state": "before-blank-click",
       "screenshot": ".artifacts/1320/03-before-blank-click.png",
       "assertion": "passed",
-      "recorded_at": "2026-11-23T22:44:16Z",
+      "recorded_at": "2026-11-24T06:30:48Z",
       "runner": "mason@MMBP"
     },
     {
       "state": "after-blank-click",
       "screenshot": ".artifacts/1320/04-after-blank-click.png",
       "assertion": "passed",
-      "recorded_at": "2026-11-23T22:44:16Z",
+      "recorded_at": "2026-11-24T06:30:48Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "hover-handle-click",
+      "screenshot": ".artifacts/1320/08-hover-handle-click.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-24T06:30:49Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "cell-click",
+      "screenshot": ".artifacts/1320/09-cell-click.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-24T06:30:51Z",
       "runner": "mason@MMBP"
     }
   ]
