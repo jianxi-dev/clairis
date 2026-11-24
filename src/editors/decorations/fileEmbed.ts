@@ -437,7 +437,10 @@ function alignSelectedEmbed(align: EmbedAlign): void {
     ref.attrText !== null
       ? parseImageAttributes(ref.attrText)
       : { ...EMPTY_IMAGE_ATTRIBUTES };
-  attrs.align = align === "center" ? null : align;
+  // 内嵌 / 附件卡的默认对齐是 left（`MediaWidget` / `FileEmbedWidget` 的
+  // `?? "left"`），center 必须显式写回：写成 null 会被序列化成空属性块，
+  // 装饰重建后 data-align 回落 left，面板「居中」看起来没生效（#1411）。
+  attrs.align = align;
   writeImageAttributes(view, from, attrs);
 }
 
