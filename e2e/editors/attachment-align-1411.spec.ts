@@ -247,29 +247,31 @@ test("预览态：同一引用居中渲染，切回编辑态对齐保持且无�
     const w = window as unknown as BridgeWindow;
     w.__biaoyue_store__.getState().setEditorMode("preview");
   });
+  // #1415 起非图片引用在预览态是卡片（不再渲染 <img>）：对齐落在 figure 的
+  // text-align，卡片本体是 inline-flex。
   const figure = page.locator(".preview-content figure");
   await expect(figure).toHaveCount(1);
   await expect(figure).toHaveAttribute("style", /text-align:center/);
-  const img = figure.locator("img");
-  await expect(img).toHaveAttribute("style", /margin-inline:auto/);
+  const cardInPreview = figure.locator(".preview-embed-attachment");
+  await expect(cardInPreview).toHaveCount(1);
 
   const preview = await page.evaluate(() => {
     const fig = document.querySelector<HTMLElement>(".preview-content figure");
-    const image = fig?.querySelector("img");
-    if (!fig || !image) return null;
+    const card = fig?.querySelector<HTMLElement>(".preview-embed-attachment");
+    if (!fig || !card) return null;
     const f = fig.getBoundingClientRect();
-    const r = image.getBoundingClientRect();
+    const r = card.getBoundingClientRect();
     return {
       figLeft: f.left,
       figRight: f.right,
-      imgLeft: r.left,
-      imgRight: r.right,
+      cardLeft: r.left,
+      cardWidth: r.width,
     };
   });
   expect(preview).not.toBeNull();
   const expectedPreviewLeft =
-    preview!.figLeft + (preview!.figRight - preview!.figLeft - (preview!.imgRight - preview!.imgLeft)) / 2;
-  expect(Math.abs(preview!.imgLeft - expectedPreviewLeft)).toBeLessThanOrEqual(2);
+    preview!.figLeft + (preview!.figRight - preview!.figLeft - preview!.cardWidth) / 2;
+  expect(Math.abs(preview!.cardLeft - expectedPreviewLeft)).toBeLessThanOrEqual(2);
 
   await shot(page, "03-preview", "preview-centered");
 
