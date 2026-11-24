@@ -9,6 +9,7 @@ import type { EditorView } from "@codemirror/view";
 import type { BlockType } from "../block-model";
 import { structureTransaction } from "../structure-history";
 import { classifyListLine } from "../list-number";
+import { CALLOUT_ANNOTATION_TYPES } from "../callout-types";
 
 /** 菜单只需要这三样：块范围与块型。 */
 export interface BlockLike {
@@ -151,6 +152,7 @@ export function blockConvertChanges(
   doc: Text,
   block: { from: number; to: number },
   target: BlockConvertTarget,
+  options: LineConvertOptions = {},
 ): BlockChange[] {
   const text = doc.sliceString(block.from, block.to);
   if (text === "") return [];
@@ -187,7 +189,7 @@ export function blockConvertChanges(
       {
         from: block.from,
         to: block.to,
-        insert: `> [!NOTE]\n${toQuote(lines)}`,
+        insert: `> [!${(options.calloutKind ?? "NOTE").toUpperCase()}]\n${toQuote(lines)}`,
       },
     ];
   }
@@ -246,9 +248,12 @@ export function dispatchBlockConvert(
   view: EditorView,
   block: { from: number; to: number },
   target: BlockConvertTarget,
-  scrollIntoView = false,
+  options: LineConvertOptions & { scrollIntoView?: boolean } = {},
 ): void {
-  const changes = blockConvertChanges(view.state.doc, block, target);
+  const { calloutKind, scrollIntoView = false } = options;
+  const changes = blockConvertChanges(view.state.doc, block, target, {
+    calloutKind,
+  });
   if (changes.length === 0) return;
   view.dispatch(structureTransaction({ changes, scrollIntoView }));
 }
@@ -439,9 +444,13 @@ export interface BlockMenuItem {
   icon: string;
   /** 网格单元里的短标签：236px / 5 列只有约 44px 宽，四字标题会压到邻格。 */
   shortLabel?: string;
+  /** 有子项时该格是「标注」展开层（13 类语义 callout），不直接转换。 */
+  children?: readonly BlockMenuItem[];
+  /** `target === "callout"` 时的具体类型 key（默认 NOTE）。 */
+  calloutKind?: string;
 }
 
-/** 菜单十项（design D6：236px / 行高 32px / 按块型裁剪）。 */
+/** 菜单九项（design D6：236px / 行高 32px / 按块型裁剪）。 */
 const ALL_ITEMS: readonly BlockMenuItem[] = [
   { target: "paragraph", label: "正文", icon: "TextOutlined" },
   { target: "h1", label: "一级标题", shortLabel: "一级", icon: "H1Outlined" },
@@ -452,8 +461,38 @@ const ALL_ITEMS: readonly BlockMenuItem[] = [
   { target: "todo", label: "待办", icon: "TodoOutlined" },
   { target: "code", label: "代码", icon: "CodeblockOutlined" },
   { target: "quote", label: "引用", icon: "FormatQuoteOutlined" },
-  { target: "callout", label: "高亮", icon: "CalloutOutlined" },
 ];
+
+/**
+ * 「高亮」= 纯高亮块（`cm-callout-mark` 分支），直落 `> [!highlight]`。
+ * 「标注」= 13 类语义 callout，展开 `CALLOUT_ANNOTATION_TYPES`（D1 / R-1）。
+ */
+export const CALLOUT_MARK_ITEM: BlockMenuItem = {
+  target: "callout",
+  label: "高亮",
+  icon: "CalloutOutlined",
+};
+
+export function calloutAnnotationItems(): BlockMenuItem[] {
+  return CALLOUT_ANNOTATION_TYPES.map((type) => ({
+    target: "callout" as const,
+    label: type.label,
+    icon: "CalloutOutlined",
+    calloutKind: type.key,
+  }));
+}
+
+export function calloutMenuItems(): BlockMenuItem[] {
+  return [
+    CALLOUT_MARK_ITEM,
+    {
+      target: "callout",
+      label: "标注",
+      icon: "CalloutOutlined",
+      children: calloutAnnotationItems(),
+    },
+  ];
+}
 
 /** 不可转换的块型：只保留「在下方添加」。 */
 const NON_CONVERTIBLE = new Set([
@@ -464,13 +503,16 @@ const NON_CONVERTIBLE = new Set([
   "yamlFrontMatter",
 ]);
 
-/** 按块型裁剪后的菜单项。 */
+/** 按块型裁剪后的菜单项（末尾固定「高亮」「标注」两项）。 */
 export function blockMenuItems(
   block: Pick<BlockLike, "type">,
 ): BlockMenuItem[] {
   if (NON_CONVERTIBLE.has(block.type)) return [];
   if (block.type === "fencedCode" || block.type === "codeBlock") {
-    return ALL_ITEMS.filter((item) => item.target !== "code");
+    return [
+      ...ALL_ITEMS.filter((item) => item.target !== "code"),
+      ...calloutMenuItems(),
+    ];
   }
-  return [...ALL_ITEMS];
+  return [...ALL_ITEMS, ...calloutMenuItems()];
 }

@@ -636,11 +636,20 @@ class CalloutWidget extends WidgetType {
     super();
   }
 
+  /**
+   * 纯高亮（`[!highlight]`）：与 13 类语义标注分家，走无标题栏的荧光笔分支。
+   * 仍解析为 callout、仍写 `> [!highlight]`，只是渲染不套卡片头。
+   */
+  private get isMark(): boolean {
+    return this.type === "highlight";
+  }
+
   toDOM(view?: EditorView): HTMLElement {
     this.view = view ?? null;
     const container = document.createElement("div");
     container.className = "cm-callout";
     container.classList.add(`cm-callout-tone-${this.tone}`);
+    if (this.isMark) container.classList.add("cm-callout-mark");
     if (this.fold) container.setAttribute("data-fold", this.fold);
     const vars = calloutCssVars(this.attrs);
     if (vars.bg) container.style.setProperty("--callout-bg", vars.bg);
@@ -703,41 +712,44 @@ class CalloutWidget extends WidgetType {
       });
     }
 
-    const header = document.createElement("div");
-    header.className = "cm-callout-header";
+    // 纯高亮没有标题栏：emoji / 标题 / 折叠按钮都不建，内容直接进 content。
+    if (!this.isMark) {
+      const header = document.createElement("div");
+      header.className = "cm-callout-header";
 
-    const iconEl = document.createElement("span");
-    iconEl.className = "cm-callout-icon";
-    iconEl.setAttribute("data-testid", "cm-callout-emoji-btn");
-    iconEl.setAttribute("data-callout-emoji", emoji);
-    iconEl.setAttribute("role", "button");
-    iconEl.setAttribute("tabindex", "0");
-    iconEl.setAttribute("aria-label", "更改 emoji");
-    iconEl.title = "更改 emoji";
-    iconEl.textContent = emoji;
-    if (view) {
-      const index = this.index;
-      const defaultEmoji = this.icon;
-      // 与鼠标路径的键盘等价；焦点留在（重建后的）卡片上。
-      iconEl.addEventListener("keydown", (event) => {
-        if (event.key !== "Enter" && event.key !== " ") return;
-        event.preventDefault();
-        event.stopPropagation();
-        flushCalloutEdits(view);
-        openCalloutEmojiPicker(view, index, defaultEmoji, this.type);
-      });
+      const iconEl = document.createElement("span");
+      iconEl.className = "cm-callout-icon";
+      iconEl.setAttribute("data-testid", "cm-callout-emoji-btn");
+      iconEl.setAttribute("data-callout-emoji", emoji);
+      iconEl.setAttribute("role", "button");
+      iconEl.setAttribute("tabindex", "0");
+      iconEl.setAttribute("aria-label", "更改 emoji");
+      iconEl.title = "更改 emoji";
+      iconEl.textContent = emoji;
+      if (view) {
+        const index = this.index;
+        const defaultEmoji = this.icon;
+        // 与鼠标路径的键盘等价；焦点留在（重建后的）卡片上。
+        iconEl.addEventListener("keydown", (event) => {
+          if (event.key !== "Enter" && event.key !== " ") return;
+          event.preventDefault();
+          event.stopPropagation();
+          flushCalloutEdits(view);
+          openCalloutEmojiPicker(view, index, defaultEmoji, this.type);
+        });
+      }
+      header.appendChild(iconEl);
+
+      // #468：头部只显示前置 emoji。类型徽标与「添加标题」占位是用户要求移除的
+      // 重复装饰；标题槽仍是空的（可点）元素，让标题保持可达（#451）且不印任何文字。
+      const titleEl = document.createElement("span");
+      titleEl.className = "cm-callout-title";
+      if (this.title) titleEl.textContent = this.title;
+      if (!this.title) titleEl.setAttribute("data-callout-empty-title", "true");
+      header.appendChild(titleEl);
+
+      container.appendChild(header);
     }
-    header.appendChild(iconEl);
-
-    // #468：头部只显示前置 emoji。类型徽标与「添加标题」占位是用户要求移除的
-    // 重复装饰；标题槽仍是空的（可点）元素，让标题保持可达（#451）且不印任何文字。
-    const titleEl = document.createElement("span");
-    titleEl.className = "cm-callout-title";
-    if (this.title) titleEl.textContent = this.title;
-    if (!this.title) titleEl.setAttribute("data-callout-empty-title", "true");
-    header.appendChild(titleEl);
-
-    container.appendChild(header);
 
     if (this.content) {
       const contentEl = document.createElement("div");

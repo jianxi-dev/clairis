@@ -173,13 +173,17 @@ test("改色写回磁盘，重开后颜色仍在", async ({ page }) => {
     .toBe("rgb(65, 158, 52)");
 });
 
-test("类型浮层含「纯高亮」预设", async ({ page }) => {
-  await openDoc(page, DOC);
-  await hoverHandle(page, 0);
-  await page.locator('[data-testid="block-menu-type"]').hover();
-  const option = page.locator('[data-type-key="highlight"]');
-  await expect(option).toBeVisible();
-  await expect(option).toContainText("纯高亮");
+test("纯高亮块无标题栏且无左边框", async ({ page }) => {
+  await openDoc(page, "> [!highlight] 高亮标题\n> 正文");
+  const card = page.locator(".cm-callout").first();
+  await expect(card).toBeVisible();
+  await expect(card).toHaveClass(/cm-callout-mark/);
+  await expect(card.locator(".cm-callout-header")).toHaveCount(0);
+  await expect
+    .poll(async () =>
+      card.evaluate((el) => getComputedStyle(el).borderInlineStartWidth),
+    )
+    .toBe("0px");
 });
 
 test("不做字符级 ==text== 高亮渲染", async ({ page }) => {

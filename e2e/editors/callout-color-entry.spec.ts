@@ -100,7 +100,7 @@ test("改填充色写回首行并可一步撤销", async ({ page }) => {
   await shot(page, "03-one-undo-restore", "one-undo-restore");
 });
 
-test("高亮类型行在浮条顶部且含纯高亮，选择即转换", async ({ page }) => {
+test("浮条「标注」行展开 13 类语义 callout，选择即转换", async ({ page }) => {
   await openCallout(page);
   const bar = page.locator('[data-testid="callout-color-bar"]');
   await expect(bar.locator(".cm-callout-bar-btn").first()).toHaveAttribute(
@@ -111,13 +111,16 @@ test("高亮类型行在浮条顶部且含纯高亮，选择即转换", async ({
   await page.locator('[data-testid="callout-type-entry"]').click();
   const pop = page.locator('[data-testid="callout-type-pop"]');
   await expect(pop).toBeVisible();
-  const highlight = pop.locator('[data-type-key="highlight"]');
-  await expect(highlight).toContainText("纯高亮");
-  await highlight.scrollIntoViewIfNeeded();
+  const options = pop.locator('[data-testid="callout-type-option"]');
+  await expect(options).toHaveCount(13);
+  await expect(pop.locator('[data-type-key="highlight"]')).toHaveCount(0);
+  const tip = pop.locator('[data-type-key="tip"]');
+  await expect(tip).toContainText("提示");
+  await tip.scrollIntoViewIfNeeded();
   await shot(page, "04-callout-type-row-top", "callout-type-row-top");
-  await highlight.click();
+  await tip.click();
 
   await expect
     .poll(() => storeContent(page))
-    .toBe("> [!highlight] 标题\n> 正文");
+    .toBe("> [!tip] 标题\n> 正文");
 });

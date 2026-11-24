@@ -2607,6 +2607,15 @@ html[data-tab-drag="true"] body * {
   display: inline-block;
 }
 
+/* 纯高亮（editor-refine-batch2 D1 / R-1）：与 13 类语义标注分家——无左边框、
+ * 圆角取卡片 token --radius-8、底色走荧光笔半透明叠底（--callout-bg 由六色板
+ * 写入，缺省回落 yellow tone 的软色）。覆盖上面 .cm-callout 的通用 3px 左边框。 */
+.cm-content .cm-callout.cm-callout-mark {
+  border-inline-start: 0;
+  border-radius: var(--radius-8);
+  background-color: var(--callout-bg, var(--callout-soft, var(--app-accent-soft)));
+}
+
 .cm-content .cm-callout-header {
   position: relative;
   display: flex;

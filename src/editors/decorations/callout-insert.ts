@@ -58,7 +58,7 @@ export const CALLOUT_SNIPPETS: readonly CalloutInsertSnippet[] = [
     id: "callout",
     label: "高亮",
     icon: "CalloutOutlined",
-    snippet: "> [!NOTE]\n> ",
+    snippet: "> [!highlight]\n> ",
   },
   {
     id: "columns",

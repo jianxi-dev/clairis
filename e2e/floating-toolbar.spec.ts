@@ -177,7 +177,7 @@ test("颜色扇区为双圈：文字色 9 格、背景色 16 格", async ({ page
   await expect(page.locator(".sr-color-A")).toHaveCount(9);
 });
 
-test("转换二层：段落 7 项，顺序为代码块/表格/标题/列表/高亮/引用/分割线", async ({
+test("转换二层：段落 8 项，顺序为代码块/表格/标题/列表/高亮/标注/引用/分割线", async ({
   page,
 }) => {
   await openMdWheel(page);
@@ -192,6 +192,7 @@ test("转换二层：段落 7 项，顺序为代码块/表格/标题/列表/高�
     "convert-table",
     "convert-heading-group",
     "convert-list-group",
+    "convert-callout-mark",
     "convert-callout-group",
     "convert-quote",
     "convert-divider",
@@ -206,7 +207,7 @@ test("标题三层 H1–H6 画在外环，二层保留并降到 0.9", async ({ p
     .click({ force: true });
 
   await expect(page.locator('.sr-sec[data-band="3"]')).toHaveCount(6);
-  await expect(page.locator('.sr-sec[data-band="2"]')).toHaveCount(7);
+  await expect(page.locator('.sr-sec[data-band="2"]')).toHaveCount(8);
   const opacity = await page
     .locator('.sr-sec[data-band="2"]')
     .first()
@@ -223,17 +224,39 @@ test("标题三层 H1–H6 画在外环，二层保留并降到 0.9", async ({ p
   await expect.poll(() => content(page)).toMatch(/###### 第一段正文/);
 });
 
-test("高亮组顶部「高亮类型」单行展开十四类（含纯高亮）", async ({ page }) => {
+test("「高亮」直落纯高亮块，「标注」展开十三类语义 callout", async ({
+  page,
+}) => {
   await openMdWheel(page);
   await openSector(page, "convert");
   await page
-    .locator('.sr-sec[data-band="2"][data-action="convert-callout-group"]')
+    .locator('.sr-sec[data-band="2"][data-action="convert-callout-mark"]')
     .click({ force: true });
+  await expect.poll(() => content(page)).toContain("> [!highlight]");
+
+  // 重新打开干净文档：上一条已把段落转成 callout，再转 NOTE 会被幂等分支吞掉。
+  await page.evaluate(() => {
+    const win = window as unknown as Record<string, any>;
+    win.__biaoyue_openFile__(
+      "/tmp/roulette-mark-2.md",
+      ["# 标题", "", "第一段正文", "", "第二段正文", ""].join("\n"),
+      "roulette-mark-2.md",
+    );
+    win.__biaoyue_store__.getState().setEditorMode("edit");
+  });
+  await page.locator(".cm-content").waitFor({ timeout: 10000 });
+  await openMdWheel(page);
+  await openSector(page, "convert");
+  const group = page.locator(
+    '.sr-sec[data-band="2"][data-action="convert-callout-group"]',
+  );
+  await expect(group).toHaveCount(1);
+  await group.click({ force: true });
   const typeRow = page.locator(
     '.sr-sec[data-band="3"][data-action="convert-callout-type"]',
   );
   await expect(typeRow).toHaveCount(1);
-  await expect(typeRow).toHaveAttribute("aria-label", "高亮类型");
+  await expect(typeRow).toHaveAttribute("aria-label", "标注类型");
   await typeRow.click({ force: true });
 
   const ids = await page
@@ -255,7 +278,6 @@ test("高亮组顶部「高亮类型」单行展开十四类（含纯高亮）",
     "convert-callout-bug",
     "convert-callout-example",
     "convert-callout-quote",
-    "convert-callout-highlight",
   ]);
   await page
     .locator('.sr-sec[data-band="4"][data-action="convert-callout-note"]')

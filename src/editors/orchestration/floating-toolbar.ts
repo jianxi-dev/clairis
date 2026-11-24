@@ -22,7 +22,7 @@ import { saveAppConfig } from "../../hooks/useConfig";
 import { isMacPlatform } from "../key-chord";
 import { useEditorStore } from "../../stores/editorStore";
 import { useStore } from "../../stores/index";
-import { CALLOUT_EDIT_TYPES } from "../callout-types";
+import { CALLOUT_ANNOTATION_TYPES } from "../callout-types";
 import { getCalloutAttrs } from "../callout-attrs";
 import { structureTransaction } from "../structure-history";
 import {
@@ -117,7 +117,7 @@ const CALLOUTS: ReadonlyArray<{
   kind: CalloutKind;
   label: string;
   icon: RouletteItem["icon"];
-}> = CALLOUT_EDIT_TYPES.map((type) => ({
+}> = CALLOUT_ANNOTATION_TYPES.map((type) => ({
   kind: type.key,
   label: type.label,
   icon: CALLOUT_ICONS[type.key] ?? "callout",
@@ -291,8 +291,8 @@ function createCalloutBar(
   typeButton.type = "button";
   typeButton.className = "cm-callout-bar-btn";
   typeButton.dataset.testid = "callout-type-entry";
-  typeButton.title = "高亮类型";
-  typeButton.setAttribute("aria-label", "高亮类型");
+  typeButton.title = "标注";
+  typeButton.setAttribute("aria-label", "标注");
   typeButton.appendChild(renderIcon("CalloutOutlined"));
   const typeKbd = document.createElement("span");
   typeKbd.className = "cm-menu-kbd";
@@ -317,7 +317,7 @@ function createCalloutBar(
     const list = document.createElement("div");
     list.className = "cm-callout-type-pop";
     list.dataset.testid = "callout-type-pop";
-    for (const type of CALLOUT_EDIT_TYPES) {
+    for (const type of CALLOUT_ANNOTATION_TYPES) {
       const option = document.createElement("button");
       option.type = "button";
       option.className = "cm-callout-type-option";
@@ -597,14 +597,17 @@ export function floatingToolbar(allowCapsule = false) {
             convertItem(view, "convert-todo", "待办", "todo", "todo"),
           ],
         });
+        items.push(
+          convertItem(view, "convert-callout-mark", "高亮", "callout", "callout", "highlight"),
+        );
         items.push({
           id: "convert-callout-group",
-          label: "高亮",
+          label: "标注",
           icon: "callout",
           children: [
             {
               id: "convert-callout-type",
-              label: "高亮类型",
+              label: "标注类型",
               icon: "callout",
               children: CALLOUTS.map((c) =>
                 convertItem(
