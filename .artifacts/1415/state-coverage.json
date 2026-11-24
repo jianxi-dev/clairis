@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "typography-parity",
+      "screenshot": ".artifacts/1415/01-typography.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-24T12:09:41Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "preview-md",
+      "screenshot": ".artifacts/1415/02-preview-md.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-24T12:09:41Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "preview-iframe",
+      "screenshot": ".artifacts/1415/03-preview-iframe.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-24T12:09:41Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "preview-attachment",
+      "screenshot": ".artifacts/1415/04-preview-attachment.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-24T12:09:41Z",
+      "runner": "unknown@MMBP"
+    }
+  ]
+}

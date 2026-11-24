@@ -1232,14 +1232,24 @@ body {
   border: 0;
 }
 
-/* 复用阅读排版；覆盖 .preview-content 的外壳值，让内嵌块自身就是纸面。 */
+/* 内嵌 md 与独立预览同排版：字号 / 行高与 .preview-content 同源（reader.css
+ * 的 --type-font-size / --type-line），段距交给 .preview-content > * 既有规则，
+ * 不再覆盖。外壳值（min-height / max-width / margin / shadow）由 .cm-embed-body
+ * 自己承担，这里只留纸面内边距。 */
 .cm-embed-body .cm-embed-md {
   min-height: 0;
   max-width: none;
   margin-inline: 0;
   padding: 1em 1.1em;
   box-shadow: none;
-  font-size: 0.95em;
+  font-size: var(--type-font-size, 17px);
+  line-height: var(--type-line, 1.78);
+}
+
+/* 段距与预览同源（reader.css .preview-content > * 的 0 1.15em）：该规则在
+ * 编辑态不生效（--type-* 域同源缺失，#1415 取证），这里显式补齐。 */
+.cm-embed-body .cm-embed-md > * {
+  margin-block: 0 1.15em;
 }
 
 .cm-embed-loading,

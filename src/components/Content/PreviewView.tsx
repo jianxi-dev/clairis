@@ -257,6 +257,7 @@ export default function PreviewView({
       headingVars={headingVars}
       typeVars={typeVars}
       leading={leading}
+      filePath={filePath}
     />
   );
 }
@@ -454,16 +455,53 @@ function decoratePreviewHeadings(root: HTMLElement | null): void {
   }
 }
 
+/**
+ * 预览态内嵌 md 卡：渲染器只出容器，这里读文件内容并用同一 `renderMarkdown`
+ * 管线填充（与编辑态 `.cm-embed-md` 同排版）。读不到就留容器，不伪造内容。
+ */
+async function hydratePreviewEmbeds(
+  root: HTMLElement,
+  docPath: string | null,
+): Promise<void> {
+  const hosts = Array.from(
+    root.querySelectorAll<HTMLElement>(".preview-embed-md[data-embed-path]"),
+  );
+  if (hosts.length === 0) return;
+  if (!isTauriEnv()) {
+    for (const host of hosts)
+      host.textContent = "无法读取内嵌 Markdown：需在 Tauri 桌面环境中运行";
+    return;
+  }
+  for (const host of hosts) {
+    const embedPath = host.dataset.embedPath;
+    if (!embedPath) continue;
+    try {
+      const res = await invoke<{ content: string; path: string }>(
+        "open_file_direct",
+        { path: embedPath },
+      );
+      if (!host.isConnected) return;
+      host.innerHTML = renderMarkdown(res.content, {
+        resolveMedia: (href) => resolveDocMediaHref(href, res.path ?? docPath),
+      });
+    } catch {
+      if (host.isConnected) host.textContent = "无法读取内嵌 Markdown";
+    }
+  }
+}
+
 function ZoomablePreview({
   html,
   headingVars,
   typeVars,
   leading,
+  filePath,
 }: {
   html: string | null;
   headingVars: React.CSSProperties | undefined;
   typeVars: React.CSSProperties;
   leading?: React.ReactNode;
+  filePath?: string | null;
 }) {
   const { zoom, onWheel, onDoubleClick, bindGesture } = usePreviewZoom();
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -485,7 +523,8 @@ function ZoomablePreview({
     // 深浅色切换由 CSS 变量跟随（design D5），不重渲；源码仍留在 DOM 里可重复渲染
     void renderMermaid(el);
     decoratePreviewHeadings(el);
-  }, [html]);
+    void hydratePreviewEmbeds(el, filePath ?? null);
+  }, [html, filePath]);
 
   // 代码块复制按钮：事件委托，避免给每个代码块单独挂监听
   const onClick = useCallback((e: React.MouseEvent) => {
