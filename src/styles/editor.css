@@ -2318,11 +2318,13 @@ html[data-tab-drag="true"] body * {
   border-radius: 3px;
   opacity: 0;
   cursor: pointer;
-  pointer-events: auto;
+  /* 隐藏态不接收指针：手柄带（单元格左边框外 19px）会吞掉表格左侧正文空白的
+     点击（#1320 症状 B）。只有单元格悬停 / 手柄自身悬停 / 激活时才恢复命中。 */
+  pointer-events: none;
 }
 
 /* 单元格新增「+」（A-9.2）：贴在单元格内左边线内侧，与左边线外的转换手柄
-   隔着边框成对；单元格正文左侧多让 6px，避免被它压住。 */
+    隔着边框成对；单元格正文左侧多让 6px，避免被它压住。 */
 .cm-table-cell-add {
   position: absolute;
   top: 50%;
@@ -2340,19 +2342,24 @@ html[data-tab-drag="true"] body * {
   border-radius: 3px;
   opacity: 0;
   cursor: pointer;
-  pointer-events: auto;
+  /* 同上：隐藏态不接收指针（#1320 症状 B）。 */
+  pointer-events: none;
 }
 
 .cm-table td .cm-table-cell-text {
   padding-left: 6px;
 }
 
-.cm-table td:hover .cm-table-cell-handle,
-.cm-table td:hover .cm-table-cell-add,
+/* 悬停态恢复命中：wrap 指针进入（`data-pe-on`，由 table.ts 的 wrap mouseenter
+   置位，等价于整表可见悬停态）/ 手柄自身悬停 / 激活（菜单锚定）。手柄带在单元格
+   左边框外 19px，`td:hover` 不足以覆盖移向手柄的指针，故走 wrap 级状态。 */
+.cm-table-wrap[data-pe-on="1"] .cm-table-cell-handle,
+.cm-table-wrap[data-pe-on="1"] .cm-table-cell-add,
 .cm-table-cell-handle-active,
 .cm-table-cell-handle:hover,
 .cm-table-cell-add:hover {
   opacity: 1;
+  pointer-events: auto;
 }
 
 .cm-table-boundaries {
@@ -2402,12 +2409,15 @@ html[data-tab-drag="true"] body * {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  pointer-events: auto;
+  /* 隐藏态不接收指针：行热点中心在 wrap 左缘外 6px，会吞掉表格左侧正文空白的
+     点击（#1320 症状 B）。只在圆点显现（指针已在 wrap 内）时才恢复命中。 */
+  pointer-events: none;
 }
 
 /* 指针在 wrap 内即显示全部圆点（#740）。 */
 .cm-table-hotspot.cm-table-hotspot-revealed {
   display: flex;
+  pointer-events: auto;
 }
 
 /* 列点挂上边框外、行点挂左边框外：热点中心比表格边缘外移 6px，默认 8px 圆点

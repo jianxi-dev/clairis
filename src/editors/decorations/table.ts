@@ -1246,7 +1246,19 @@ class TableWidget extends WidgetType {
     let pointerX = 0;
     let pointerY = 0;
 
+    // 单元格手柄 / 「+」的可交互态跟随 wrap 悬停（#1320 症状 B）：手柄带在
+    // 单元格左边框外 19px，`td:hover` 在指针移出 td 到手柄上时就失效，纯 CSS
+    // 无法让显现后的手柄保持命中。这里与热点同一机制：wrap 指针进入即置
+    // `data-pe-on`，CSS 据此恢复手柄命中；离开即移除。
+    const setPeOn = (): void => {
+      wrap.dataset.peOn = "1";
+    };
+    const clearPeOn = (): void => {
+      delete wrap.dataset.peOn;
+    };
+
     const clear = (): void => {
+      clearPeOn();
       for (const hotspot of boundaries.querySelectorAll<HTMLElement>(
         ".cm-table-hotspot",
       )) {
@@ -1343,8 +1355,12 @@ class TableWidget extends WidgetType {
       }
     };
 
-    wrap.addEventListener("mouseenter", show);
+    wrap.addEventListener("mouseenter", () => {
+      setPeOn();
+      show();
+    });
     wrap.addEventListener("mousemove", (event) => {
+      setPeOn();
       show();
       pointerX = event.clientX;
       pointerY = event.clientY;
@@ -1571,7 +1587,9 @@ class TableWidget extends WidgetType {
 
     // 重写（插入/删除列行）会重建边界层：此时指针若仍在 wrap 内，不会有新的
     // mouseenter/mousemove 来点亮圆点，必须按 CSS hover 状态直接恢复（#740）。
+    // 同一状态下也要恢复手柄命中（#1320-B），否则重建后手柄带会短暂吞点击。
     if (wrap.matches(":hover")) {
+      wrap.dataset.peOn = "1";
       for (const hotspot of container.querySelectorAll<HTMLElement>(
         ".cm-table-hotspot",
       )) {
