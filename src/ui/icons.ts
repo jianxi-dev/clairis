@@ -126,6 +126,7 @@ export type IconName =
   | "arrowDown"
   | "scissors"
   | "brush"
+  | "highlighter"
   | "alignLeft"
   | "alignCenter"
   | "alignRight"
@@ -644,6 +645,10 @@ export const ICONS: Record<IconName, IconDef> = {
   brush: {
     label: "格式刷",
     s: "M15.5 4.5 10 10l4 4 5.5-5.5a2.8 2.8 0 0 0-4-4z M10 10c-2 0-3.4 1.4-3.4 3.4 0 1.6-1 2.4-2.6 3 2.6 1.6 6.6 1.4 8-1.4",
+  },
+  highlighter: {
+    label: "荧光笔",
+    s: "M9.5 4.5h5v3h-5z M10.5 7.5 5 18l1.6 1.5L14 12.5 M13.5 7.5 19 18l-1.6 1.5L10 12.5",
   },
   alignLeft: {
     label: "左对齐",

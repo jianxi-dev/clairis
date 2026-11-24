@@ -339,6 +339,21 @@ test("普通块没有「类型」入口", async ({ page }) => {
   await expect(page.locator('[data-testid="block-menu-type"]')).toHaveCount(0);
 });
 
+test("纯高亮块没有「类型」入口（#1413 / D2）", async ({ page }) => {
+  await page.evaluate(() => {
+    const win = window as unknown as Record<string, any>;
+    win.__biaoyue_openFile__(
+      "/tmp/block-highlight.md",
+      "> [!highlight] 高亮标题\n> 正文一行\n",
+      "block-highlight.md",
+    );
+    win.__biaoyue_store__.getState().setEditorMode("edit");
+  });
+  await page.locator(".cm-content").waitFor({ timeout: 5000 });
+  await hoverHandle(page, 0);
+  await expect(page.locator('[data-testid="block-menu-type"]')).toHaveCount(0);
+});
+
 test("颜色行打开二级面板，含字体色与背景色双行", async ({ page }) => {
   await hoverHandle(page, 2);
 

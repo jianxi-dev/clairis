@@ -381,12 +381,17 @@ body {
     var(--app-surface);
 }
 
-/* 字体色块里的「A」字形（md-bundle 观感：着色字形而非实心块）。 */
-.cm-color-swatch-glyph {
-  font-size: 13px;
-  font-weight: 700;
-  line-height: 1;
+/* 字体色块里的「色块 + 荧光笔笔尖」形象图标（#1413 / D2）。 */
+.cm-color-swatch-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   pointer-events: none;
+}
+
+.cm-color-swatch-icon svg {
+  width: 13px;
+  height: 13px;
 }
 
 /* 共享双色板容器（块工具条 / 文字工具条弹层）。 */
@@ -4093,16 +4098,13 @@ html[data-tab-drag="true"] body * {
   line-height: 1;
 }
 
-.sr-color-A {
+.sr-color-mark {
   position: absolute;
-  font-size: 13px;
-  font-weight: 700;
-  line-height: 1;
   pointer-events: none;
   color: var(--app-text);
 }
 
-.sr-color-A.none {
+.sr-color-mark.none {
   color: var(--app-text-2);
 }
 

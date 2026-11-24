@@ -91,19 +91,23 @@ describe("createColorRow", () => {
     expect(picks).toEqual(["mdb-color-red", ""]);
   });
 
-  it("字体色块渲染着色「A」字形，背景色块渲染实色底", () => {
+  it("字体色块渲染形象图标（无字母 A），背景色块渲染实色底", () => {
     const fontRow = createColorRow("font", FONT_COLORS, () => {});
     const fontSwatch =
       fontRow.querySelectorAll<HTMLButtonElement>(".cm-color-swatch")[1];
-    expect(
-      fontSwatch.querySelector(".cm-color-swatch-glyph")?.textContent,
-    ).toBe("A");
+    expect(fontSwatch.querySelector(".cm-color-swatch-glyph")).toBeNull();
+    const icon = fontSwatch.querySelector(".cm-color-swatch-icon");
+    expect(icon).not.toBeNull();
+    expect(icon?.querySelector("svg")).not.toBeNull();
+    expect(icon?.querySelector("svg")?.getAttribute("data-icon")).toBe(
+      "HighlighterOutlined",
+    );
 
     const bgRow = createColorRow("background", BACKGROUND_COLORS, () => {});
     const bgSwatch =
       bgRow.querySelectorAll<HTMLButtonElement>(".cm-color-swatch")[1];
     expect(bgSwatch.style.background).toBe("rgb(240, 0, 14)");
-    expect(bgSwatch.querySelector(".cm-color-swatch-glyph")).toBeNull();
+    expect(bgSwatch.querySelector(".cm-color-swatch-icon")).toBeNull();
   });
 });
 

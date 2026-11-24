@@ -16,7 +16,7 @@ import {
   toggleWrap,
 } from "./toolbar-shared";
 import { dispatchLineConvert, type BlockConvertTarget } from "./block-convert";
-import { calloutKeyOf, changeCalloutType } from "./block-actions";
+import { calloutKeyOf } from "./block-actions";
 import { useAiEntryStore } from "../../hooks/useAiEntry";
 import { saveAppConfig } from "../../hooks/useConfig";
 import { isMacPlatform } from "../key-chord";
@@ -24,7 +24,6 @@ import { useEditorStore } from "../../stores/editorStore";
 import { useStore } from "../../stores/index";
 import { CALLOUT_ANNOTATION_TYPES } from "../callout-types";
 import { getCalloutAttrs } from "../callout-attrs";
-import { structureTransaction } from "../structure-history";
 import {
   applyCalloutColorToBlock,
   buildCalloutColorPanel,
@@ -40,7 +39,11 @@ import {
   type RouletteItem,
 } from "./roulette-view";
 import { createCapsuleToolbar, type CapsuleItem } from "./capsule-toolbar";
-import { BACKGROUND_COLORS, FONT_COLORS } from "./color-palette";
+import {
+  BACKGROUND_COLORS,
+  FONT_COLORS,
+  mapHueToType,
+} from "./color-palette";
 import {
   ROULETTE_BOX,
   ROULETTE_HOTKEY_DEFAULT,
@@ -161,11 +164,29 @@ function convertItem(
     run: () => {
       const pos = view.state.selection.main.from;
       const line = view.state.doc.lineAt(pos);
+      const block = blockTextOf(view);
+      const attrs = block ? getCalloutAttrs(block.text) : {};
+      const bgName = attrs.bg ?? attrs.border ?? "";
+      const bgHex = bgName
+        ? BACKGROUND_COLORS.find(
+            (color) => color.className === `mdb-bg-${bgName}`,
+          )?.swatch
+        : undefined;
+      const tone =
+        calloutKind === "highlight"
+          ? "yellow"
+          : CALLOUT_ANNOTATION_TYPES.find((type) => type.key === calloutKind)
+              ?.tone ?? "";
+      const mapped = bgHex ? mapHueToType(bgHex, tone) : "";
       dispatchLineConvert(
         view,
         { from: line.from, to: line.to },
         target as BlockConvertTarget,
-        { calloutKind, scrollIntoView: false },
+        {
+          calloutKind,
+          scrollIntoView: false,
+          keepFill: mapped,
+        },
       );
     },
   };
@@ -287,18 +308,6 @@ function createCalloutBar(
     popup = null;
   };
 
-  const typeButton = document.createElement("button");
-  typeButton.type = "button";
-  typeButton.className = "cm-callout-bar-btn";
-  typeButton.dataset.testid = "callout-type-entry";
-  typeButton.title = "标注";
-  typeButton.setAttribute("aria-label", "标注");
-  typeButton.appendChild(renderIcon("CalloutOutlined"));
-  const typeKbd = document.createElement("span");
-  typeKbd.className = "cm-menu-kbd";
-  typeKbd.textContent = menuShortcut("callout-type");
-  typeButton.appendChild(typeKbd);
-
   const colorButton = document.createElement("button");
   colorButton.type = "button";
   colorButton.className = "cm-callout-bar-btn";
@@ -310,38 +319,7 @@ function createCalloutBar(
   colorKbd.className = "cm-menu-kbd";
   colorKbd.textContent = menuShortcut("callout-color");
   colorButton.appendChild(colorKbd);
-  element.append(typeButton, colorButton);
-
-  const openTypePopup = (): void => {
-    closePopup();
-    const list = document.createElement("div");
-    list.className = "cm-callout-type-pop";
-    list.dataset.testid = "callout-type-pop";
-    for (const type of CALLOUT_ANNOTATION_TYPES) {
-      const option = document.createElement("button");
-      option.type = "button";
-      option.className = "cm-callout-type-option";
-      option.dataset.testid = "callout-type-option";
-      option.dataset.typeKey = type.key;
-      option.textContent = `${type.emoji} ${type.label}`;
-      option.addEventListener("pointerdown", (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        const rest = view.state.doc.sliceString(block.from, block.to);
-        const next = changeCalloutType(rest, type.key);
-        closePopup();
-        if (next === rest) return;
-        view.dispatch(
-          structureTransaction({
-            changes: { from: block.from, to: block.to, insert: next },
-          }),
-        );
-      });
-      list.appendChild(option);
-    }
-    element.appendChild(list);
-    popup = list;
-  };
+  element.append(colorButton);
 
   const openColorPopup = (): void => {
     closePopup();
@@ -367,12 +345,6 @@ function createCalloutBar(
     popup = wrap;
   };
 
-  typeButton.addEventListener("click", (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    if (popup) closePopup();
-    else openTypePopup();
-  });
   colorButton.addEventListener("click", (event) => {
     event.preventDefault();
     event.stopPropagation();

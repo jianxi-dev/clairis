@@ -423,7 +423,7 @@ export function createRoulette(
       rOut: number,
       width: number,
       kind: "font" | "background",
-      withLetter: boolean,
+      withIcon: boolean,
     ) => {
       const angles = fanAngles(centerAngle, colors.length, width);
       colors.forEach((color, i) => {
@@ -452,16 +452,16 @@ export function createRoulette(
         });
         subLayer.appendChild(path);
 
-        if (!withLetter) return;
+        if (!withIcon) return;
         const p = polar(center, (rIn + rOut) / 2);
-        const letter = el("div", "sr-color-A");
-        letter.style.left = `${p.x + ROULETTE_BOX / 2}px`;
-        letter.style.top = `${p.y + ROULETTE_BOX / 2}px`;
-        letter.style.transform = `translate(-50%, -50%) rotate(${center}deg)`;
-        letter.textContent = color.isDefault ? "A/" : "A";
-        if (color.isDefault) letter.classList.add("none");
-        else letter.style.color = color.swatch;
-        overlay.appendChild(letter);
+        const mark = el("div", "sr-color-mark");
+        mark.style.left = `${p.x + ROULETTE_BOX / 2}px`;
+        mark.style.top = `${p.y + ROULETTE_BOX / 2}px`;
+        mark.style.transform = `translate(-50%, -50%) rotate(${center}deg)`;
+        if (color.isDefault) mark.classList.add("none");
+        else mark.style.color = color.swatch;
+        mark.innerHTML = iconSvg("highlighter", 12);
+        overlay.appendChild(mark);
       });
     };
     draw(

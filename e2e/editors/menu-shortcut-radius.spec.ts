@@ -173,12 +173,10 @@ test.describe("菜单行快捷键区（editor-refine-batch1 5.1）", () => {
     await expect(bar).toBeVisible();
 
     const buttons = bar.locator(".cm-callout-bar-btn");
-    await expect(buttons).toHaveCount(2);
-    for (let i = 0; i < 2; i += 1) {
-      const kbd = buttons.nth(i).locator(".cm-menu-kbd");
-      await expect(kbd).toHaveCount(1);
-      await expect(kbd).toHaveText("");
-    }
+    await expect(buttons).toHaveCount(1);
+    const kbd = buttons.nth(0).locator(".cm-menu-kbd");
+    await expect(kbd).toHaveCount(1);
+    await expect(kbd).toHaveText("");
   });
 
   test("轮盘筛选行沿用同一 kbd 字形且每行有键位", async ({ page }) => {
