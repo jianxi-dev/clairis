@@ -914,6 +914,58 @@
   background: var(--reader-accent-soft);
 }
 
+/* ── 内嵌文件（md / pdf / html / 网页 / 附件）─────────────
+ * 渲染器对非图片引用不再出裂图：md 是内容容器（由 PreviewView 读文件填充），
+ * pdf / html / 网页是 iframe，zip 等是附件卡。排版与编辑态 .cm-embed-* 同源。 */
+.preview-content .preview-embed-md {
+  font-size: var(--type-font-size);
+  line-height: var(--type-line);
+}
+
+.preview-content .preview-embed-iframe {
+  display: block;
+  width: 100%;
+  height: min(100vh, 720px);
+  border: 1px solid var(--reader-line);
+  border-radius: var(--reader-radius);
+  background: var(--reader-paper);
+}
+
+.preview-content .preview-embed-attachment {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+  max-width: 100%;
+  padding: 0.5em 0.8em;
+  border: 1px solid var(--reader-line);
+  border-radius: var(--reader-radius);
+  background: var(--reader-sunken);
+}
+
+.preview-content .preview-embed-attachment .preview-embed-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.preview-content .preview-embed-attachment .preview-embed-icon svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+
+.preview-content .preview-embed-attachment .preview-embed-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.preview-content .preview-embed-attachment .preview-embed-open {
+  color: var(--reader-accent);
+  text-decoration: none;
+  flex-shrink: 0;
+}
+
 /* ── 图片 ────────────────────────────────────────────── */
 .preview-content figure {
   text-align: center;

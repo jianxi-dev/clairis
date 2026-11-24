@@ -22,6 +22,9 @@ import {
   type ImageAttributes,
 } from "../editors/decorations/image";
 import { calloutCssVars, parseCalloutAttrs } from "../editors/callout-attrs";
+import { classifyFileEmbed } from "../editors/decorations/fileEmbed";
+import { fileTypeOf, iconOfType, colorOfType } from "../lib/fileType";
+import { isTauriEnv } from "../utils/tauri";
 
 // ── 块级 HTML 深度闭合（对齐 Obsidian 的 HTML 块行为）────────
 // marked 的 html 正则把块级标签一律吞到下一个空行，用户写
@@ -79,6 +82,13 @@ const SANITIZE_CONFIG = {
     "dir",
     "data-math",
     "data-callout",
+    // 内嵌容器：md 卡 / iframe 占位 / 附件卡
+    "data-embed-kind",
+    "data-embed-path",
+    "data-embed-name",
+    "data-embed-src",
+    "data-embed-title",
+    "data-icon",
   ],
   ALLOW_DATA_ATTR: false,
   ADD_ATTR: ["target", "controls", "preload", "playsinline"],
@@ -166,6 +176,29 @@ marked.use({
         // `![](clip.mp4)` 在预览里是播放器，不是一张裂图。
         const tag = kind === "video" ? "video" : "audio";
         return `<figure class="wide"><${tag} controls preload="metadata" src="${src}"></${tag}>${caption}</figure>`;
+      }
+      // 非图片引用不再退化成裂图：md / pdf / html / 网页 / 附件卡各有形态。
+      const embed = classifyFileEmbed(href);
+      if (embed === "md") {
+        // 内容由调用方（PreviewView）读文件后填充，这里先出可见容器。
+        return `<div class="preview-embed-md wide" data-embed-kind="md" data-embed-path="${escapeHtml(href)}" data-embed-name="${alt}"></div>${caption ? `<figcaption>${escapeHtml(title ?? "")}</figcaption>` : ""}`;
+      }
+      if (embed === "pdf" || embed === "html" || embed === "web") {
+        // iframe 不进 DOMPurify 白名单（「禁止 iframe」既有安全契约），
+        // 先出占位 div，postProcess 在 sanitize 之后换成真 iframe。
+        const url = resolved && resolved !== href ? resolved : href;
+        return `<div class="preview-embed-iframe wide" data-embed-src="${escapeHtml(url)}" data-embed-title="${alt}"></div>${caption}`;
+      }
+      if (kind === "file") {
+        // zip 等本地附件：图标 + 文件名 + 打开链接，不出 <img>。
+        const name = alt || baseNameOfHref(href);
+        const type = fileTypeOf(href);
+        const open = isTauriEnv()
+          ? `<a class="preview-embed-open" href="${escapeHtml(resolved)}" target="_blank" rel="noopener">打开</a>`
+          : "";
+        return `<div class="preview-embed-attachment wide" data-embed-kind="file" data-embed-path="${escapeHtml(href)}">` +
+          `<span class="preview-embed-icon" data-icon="${iconOfType(type)}" style="color:${colorOfType(type)}"></span>` +
+          `<span class="preview-embed-name">${escapeHtml(name)}</span>${open}</div>${caption}`;
       }
       return `<figure class="wide"><img src="${src}" alt="${alt}" />${caption}</figure>`;
     },
@@ -554,6 +587,31 @@ function applyImageAttributes(doc: Document): void {
     });
 }
 
+/** 取引用路径末段作显示名；URL 去掉 query/hash。 */
+function baseNameOfHref(href: string): string {
+  const clean = href.split(/[?#]/)[0];
+  const slash = clean.lastIndexOf("/");
+  return slash >= 0 ? clean.slice(slash + 1) : clean;
+}
+
+/**
+ * 把 iframe 占位 div 换成真 iframe（sanitize 之后，故不进 DOMPurify 白名单）。
+ * sandbox 与 fileEmbed 的 iframe 同口径：脚本 / 同源 / 弹窗。
+ */
+function hydrateEmbedIframes(doc: Document): void {
+  doc.querySelectorAll<HTMLElement>(".preview-embed-iframe[data-embed-src]").forEach((el) => {
+    const src = el.dataset.embedSrc;
+    if (!src) return;
+    const iframe = doc.createElement("iframe");
+    iframe.className = "preview-embed-iframe wide";
+    iframe.setAttribute("src", src);
+    iframe.setAttribute("title", el.dataset.embedTitle || "内嵌页面");
+    iframe.setAttribute("sandbox", "allow-scripts allow-same-origin allow-popups");
+    iframe.setAttribute("loading", "lazy");
+    el.replaceWith(iframe);
+  });
+}
+
 /** sanitize 之后的一趟 DOM 处理：Callout → 图片属性 → 公式回填 → 链接 → 中西文间距 */
 function postProcess(html: string): string {
   const doc = new DOMParser().parseFromString(html, "text/html");
@@ -561,6 +619,7 @@ function postProcess(html: string): string {
   applyImageAttributes(doc);
   prepareDarkColors(doc);
   fillMath(doc);
+  hydrateEmbedIframes(doc);
   doc.querySelectorAll("a").forEach((a) => {
     if (!a.getAttribute("target")) a.setAttribute("target", "_blank");
   });
