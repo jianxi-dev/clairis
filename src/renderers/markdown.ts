@@ -181,13 +181,13 @@ marked.use({
       const embed = classifyFileEmbed(href);
       if (embed === "md") {
         // 内容由调用方（PreviewView）读文件后填充，这里先出可见容器。
-        return `<div class="preview-embed-md wide" data-embed-kind="md" data-embed-path="${escapeHtml(href)}" data-embed-name="${alt}"></div>${caption ? `<figcaption>${escapeHtml(title ?? "")}</figcaption>` : ""}`;
+        return `<figure class="wide"><div class="preview-embed-md" data-embed-kind="md" data-embed-path="${escapeHtml(href)}" data-embed-name="${alt}"></div>${caption ? `<figcaption>${escapeHtml(title ?? "")}</figcaption>` : ""}</figure>`;
       }
       if (embed === "pdf" || embed === "html" || embed === "web") {
         // iframe 不进 DOMPurify 白名单（「禁止 iframe」既有安全契约），
         // 先出占位 div，postProcess 在 sanitize 之后换成真 iframe。
         const url = resolved && resolved !== href ? resolved : href;
-        return `<div class="preview-embed-iframe wide" data-embed-src="${escapeHtml(url)}" data-embed-title="${alt}"></div>${caption}`;
+        return `<figure class="wide"><div class="preview-embed-iframe" data-embed-src="${escapeHtml(url)}" data-embed-title="${alt}"></div>${caption}</figure>`;
       }
       if (kind === "file") {
         // zip 等本地附件：图标 + 文件名 + 打开链接，不出 <img>。
@@ -196,9 +196,9 @@ marked.use({
         const open = isTauriEnv()
           ? `<a class="preview-embed-open" href="${escapeHtml(resolved)}" target="_blank" rel="noopener">打开</a>`
           : "";
-        return `<div class="preview-embed-attachment wide" data-embed-kind="file" data-embed-path="${escapeHtml(href)}">` +
+        return `<figure class="wide"><div class="preview-embed-attachment" data-embed-kind="file" data-embed-path="${escapeHtml(href)}">` +
           `<span class="preview-embed-icon" data-icon="${iconOfType(type)}" style="color:${colorOfType(type)}"></span>` +
-          `<span class="preview-embed-name">${escapeHtml(name)}</span>${open}</div>${caption}`;
+          `<span class="preview-embed-name">${escapeHtml(name)}</span>${open}</div>${caption}</figure>`;
       }
       return `<figure class="wide"><img src="${src}" alt="${alt}" />${caption}</figure>`;
     },
@@ -582,6 +582,23 @@ function applyImageAttributes(doc: Document): void {
           target?.setAttribute("style", `text-align:${align}`);
         }
         if (style.length > 0) img.setAttribute("style", style.join(";"));
+      } else {
+        // 非图片引用（#1415 起的 md / iframe / 附件卡）：没有 img，对齐落在
+        // 容器的父级 text-align 上（附件卡是 inline-flex）。md/iframe 是整宽
+        // 块，text-align 无副作用。
+        const card =
+          node?.querySelector?.(
+            ".preview-embed-md, .preview-embed-iframe, .preview-embed-attachment",
+          ) ??
+          (node?.matches?.(
+            ".preview-embed-md, .preview-embed-iframe, .preview-embed-attachment",
+          )
+            ? node
+            : null);
+        if (card && (align === "left" || align === "center" || align === "right")) {
+          const host = card.parentElement ?? card;
+          host.setAttribute("style", `text-align:${align}`);
+        }
       }
       marker.remove();
     });
