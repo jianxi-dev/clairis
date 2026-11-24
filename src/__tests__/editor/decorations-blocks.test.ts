@@ -29,6 +29,10 @@ import {
   writeImageAttributes,
   type ImageResolver,
 } from "../../editors/decorations/image";
+import {
+  embedDescriptionOf,
+  migrateLegacyEmbedState,
+} from "../../editors/decorations/fileEmbed";
 import { createMermaidDecorations } from "../../editors/decorations/mermaid";
 import {
   closeImageMaximize,
@@ -487,6 +491,37 @@ describe("block decorations", () => {
         expect(dom.dataset.embedKind).toBe(kind);
         expect(dom.querySelector(".cm-media-file")).toBeNull();
       }
+    });
+
+    it("旧两态值迁移到三态：name → card、content → embed、未知 → embed", () => {
+      expect(migrateLegacyEmbedState("name")).toBe("card");
+      expect(migrateLegacyEmbedState("content")).toBe("embed");
+      expect(migrateLegacyEmbedState("card")).toBe("embed");
+      expect(migrateLegacyEmbedState("")).toBe("embed");
+    });
+
+    it("描述副标题取值：alt → title → 类型描述；全空返回类型描述", () => {
+      expect(embedDescriptionOf("md", "会议记录", null)).toBe("会议记录");
+      expect(embedDescriptionOf("pdf", "", "年度报告")).toBe("年度报告");
+      expect(embedDescriptionOf("md", "", null)).toBe("Markdown 文档");
+      expect(embedDescriptionOf("pdf", "", null)).toBe("PDF 文档");
+      expect(embedDescriptionOf("html", "", null)).toBe("HTML 页面");
+      expect(embedDescriptionOf("web", "", null)).toBe("网页");
+    });
+
+    it("内嵌 widget 头部：类型图标 + 文件名主标题 + 描述副标题", () => {
+      const dom = widgetOf(
+        createImageDecorations('![记录](note.md)')[0],
+      ).toDOM();
+      expect(dom.querySelector(".cm-embed-name svg[data-icon]")).not.toBeNull();
+      expect(dom.querySelector(".cm-embed-name-text")?.textContent).toBe(
+        "note.md",
+      );
+      expect(dom.querySelector(".cm-embed-name-desc")?.textContent).toBe(
+        "记录",
+      );
+      expect(dom.dataset.embedState).toBe("embed");
+      expect(dom.dataset.embedPath).toBe("note.md");
     });
 
     it("classifies media by extension, mirroring the preview renderer", () => {

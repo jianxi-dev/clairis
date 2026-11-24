@@ -1246,23 +1246,26 @@ body {
   text-align: center;
 }
 
-/* 名称态（D10 / B5c）：只显示文件名 / 链接，右上角按钮切回内容态。 */
-.cm-embed-widget[data-embed-state="name"] .cm-embed-frame {
+/* 三态（editor-refine-batch2 D3）：card 只显头部 / preview 限高 / embed 全尺寸。 */
+.cm-embed-widget[data-embed-state="card"] .cm-embed-body {
+  display: none;
+}
+
+.cm-embed-widget[data-embed-state="card"] .cm-embed-frame {
   min-width: 220px;
 }
 
-.cm-embed-widget[data-embed-state="name"] .cm-embed-body {
-  display: none;
+.cm-embed-widget[data-embed-state="preview"] .cm-embed-body {
+  max-height: 320px;
 }
 
 .cm-embed-name {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 40px 6px 10px;
+  gap: 8px;
+  padding: 10px 12px;
   background: var(--app-sunken);
   color: var(--app-text-2);
-  font-size: 12px;
   cursor: pointer;
 }
 
@@ -1270,32 +1273,37 @@ body {
   color: var(--app-accent);
 }
 
+.cm-embed-name svg {
+  flex-shrink: 0;
+  display: block;
+}
+
+.cm-embed-name-meta {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 1px;
+}
+
 .cm-embed-name-text {
   min-width: 0;
   overflow: hidden;
+  color: var(--app-text-strong);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.3;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.cm-embed-toggle {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  z-index: 3;
-  height: 22px;
-  padding: 0 8px;
-  border: 1px solid var(--app-border);
-  border-radius: var(--radius-4);
-  background: var(--app-surface);
+.cm-embed-name-desc {
+  min-width: 0;
+  overflow: hidden;
   color: var(--app-text-3);
-  font-size: 11px;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.cm-embed-toggle:hover {
-  color: var(--app-accent);
-  border-color: var(--app-accent);
+  font-size: 12px;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* md 附件默认展开：宽度与正文文本块同宽（同一 --type-measure），高度随内容、
