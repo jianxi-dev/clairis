@@ -288,7 +288,8 @@ function mount(
       icon.style.position = "absolute";
       icon.style.left = "50%";
       icon.style.top = "50%";
-      icon.style.color = "#fff";
+      // 颜色跟随主题（浅底深标 / 暗底浅标），见 editor.css 的
+      // `.cm-image-crop-frame .cm-image-handle svg`；不在这里写死。
       icon.style.transform = `translate(-50%, -50%) rotate(${CORNER_ROTATE[handle]})`;
       span.appendChild(icon);
     } else {
@@ -504,8 +505,8 @@ const HANDLE_CURSOR: Record<string, string> = {
 };
 
 const HANDLE_MARK: Record<string, string> = {
-  n: "left:50%; top:2px; width:16px; height:3px; margin-left:-8px; background:#fff;",
-  s: "left:50%; bottom:2px; width:16px; height:3px; margin-left:-8px; background:#fff;",
-  e: "top:50%; right:2px; width:3px; height:16px; margin-top:-8px; background:#fff;",
-  w: "top:50%; left:2px; width:3px; height:16px; margin-top:-8px; background:#fff;",
+  n: "left:50%; top:2px; width:16px; height:3px; margin-left:-8px;",
+  s: "left:50%; bottom:2px; width:16px; height:3px; margin-left:-8px;",
+  e: "top:50%; right:2px; width:3px; height:16px; margin-top:-8px;",
+  w: "top:50%; left:2px; width:3px; height:16px; margin-top:-8px;",
 };
