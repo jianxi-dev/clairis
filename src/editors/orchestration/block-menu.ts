@@ -60,6 +60,8 @@ import {
   CALLOUT_COLOR_PANEL_CLASS,
   applyCalloutColorToBlock,
   buildCalloutColorPanel,
+  buildHighlightColorPanel,
+  randomHighlightColors,
   resetCalloutColors,
 } from "./callout-color-panel";
 
@@ -280,7 +282,8 @@ function openConvertFlyout(
     const icon = document.createElement("span");
     icon.className = "cm-block-menu-flyout-icon";
     icon.setAttribute("aria-hidden", "true");
-    icon.appendChild(renderIcon(child.icon));
+    if (child.emoji) icon.textContent = child.emoji;
+    else icon.appendChild(renderIcon(child.icon));
     option.appendChild(icon);
     const text = document.createElement("span");
     text.textContent = child.label;
@@ -572,13 +575,14 @@ export function openBlockMenu(
   const blockText = view.state.doc.sliceString(block.from, block.to);
   const blockCalloutKey = calloutKeyOf(blockText);
   const blockAttrs = getCalloutAttrs(blockText);
-  const blockFillHex = (blockAttrs.bg ?? blockAttrs.border)
-    ? BACKGROUND_COLORS.find(
-        (color) =>
-          color.className ===
-          `mdb-bg-${blockAttrs.bg ?? blockAttrs.border ?? ""}`,
-      )?.swatch
-    : undefined;
+  const blockFillHex =
+    (blockAttrs.bg ?? blockAttrs.border)
+      ? BACKGROUND_COLORS.find(
+          (color) =>
+            color.className ===
+            `mdb-bg-${blockAttrs.bg ?? blockAttrs.border ?? ""}`,
+        )?.swatch
+      : undefined;
   if (
     blockCalloutKey !== null &&
     CALLOUT_ANNOTATION_TYPES.some((type) => type.key === blockCalloutKey)
@@ -721,7 +725,9 @@ export function openBlockMenu(
       panelEl.classList.add(COLOR_PANEL_CLASS);
       panelEl.dataset.testid = "block-menu-color-panel";
       panelEl.dataset.blockFlyout = "1";
-      panelEl.style.width = `${MENU_WIDTH}px`;
+      panelEl.style.width = `${
+        blockCalloutKey === "highlight" ? 216 : MENU_WIDTH
+      }px`;
       const own = view.dom.getBoundingClientRect();
       const rowRect = colorRow.getBoundingClientRect();
       panelEl.style.left = `${rowRect.right - own.left + 4}px`;
@@ -733,25 +739,52 @@ export function openBlockMenu(
         // 高亮块三色面板：与「点击高亮块」浮条共用同一份构建 / 换算 / 写回，
         // 见 callout-color-panel.ts（D4）。
         panelEl.classList.add(CALLOUT_COLOR_PANEL_CLASS);
-        panelEl.appendChild(
-          buildCalloutColorPanel({
-            active: getCalloutAttrs(blockText),
-            onPick: (key, className) => {
-              closeBlockMenu(view);
-              applyCalloutColorToBlock(
-                view,
-                block.from,
-                block.to,
-                key,
-                className,
-              );
-            },
-            onReset: () => {
-              closeBlockMenu(view);
-              resetCalloutColors(view, block.from, block.to);
-            },
-          }),
-        );
+        const active = getCalloutAttrs(blockText);
+        if (blockCalloutKey === "highlight") {
+          panelEl.appendChild(
+            buildHighlightColorPanel({
+              active,
+              onPick: (key, className) => {
+                closeBlockMenu(view);
+                applyCalloutColorToBlock(
+                  view,
+                  block.from,
+                  block.to,
+                  key,
+                  className,
+                );
+              },
+              onRandom: () => {
+                closeBlockMenu(view);
+                randomHighlightColors(view, block.from, block.to);
+              },
+              onReset: () => {
+                closeBlockMenu(view);
+                resetCalloutColors(view, block.from, block.to);
+              },
+            }),
+          );
+        } else {
+          panelEl.appendChild(
+            buildCalloutColorPanel({
+              active,
+              onPick: (key, className) => {
+                closeBlockMenu(view);
+                applyCalloutColorToBlock(
+                  view,
+                  block.from,
+                  block.to,
+                  key,
+                  className,
+                );
+              },
+              onReset: () => {
+                closeBlockMenu(view);
+                resetCalloutColors(view, block.from, block.to);
+              },
+            }),
+          );
+        }
       } else {
         const applyColor = (family: ColorFamily, className: string): void => {
           const next = applyBlockColor(

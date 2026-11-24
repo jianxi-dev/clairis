@@ -2,7 +2,11 @@ import { test, expect, type Page } from "@playwright/test";
 import { execFileSync } from "node:child_process";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
-import { hoverLineLeft, moveThrough, openMarkdownInEdit } from "../helpers/ui-probe";
+import {
+  hoverLineLeft,
+  moveThrough,
+  openMarkdownInEdit,
+} from "../helpers/ui-probe";
 
 const ART = ".artifacts/1416";
 const EVIDENCE = path.resolve(process.cwd(), "scripts/cw-evidence.sh");
@@ -75,9 +79,7 @@ test("斜杠菜单常用段只有「高亮」「标注」两项，无第三项",
   await page.keyboard.type("/");
   const menu = page.locator(".mdb-slash-menu");
   await expect(menu).toBeVisible({ timeout: 3000 });
-  const labels = await menu
-    .locator(".mdb-slash-item-label")
-    .allTextContents();
+  const labels = await menu.locator(".mdb-slash-item-label").allTextContents();
   expect(labels.filter((t) => t === "高亮" || t === "标注")).toEqual([
     "高亮",
     "标注",
@@ -87,7 +89,7 @@ test("斜杠菜单常用段只有「高亮」「标注」两项，无第三项",
   await shot(page, "01-menu-two-items", "menu-two-items");
 });
 
-test("「高亮」插入后无左边框、无标题栏、圆角 8px", async ({ page }) => {
+test("「高亮」插入后无左边框、无标题栏、圆角 4px", async ({ page }) => {
   await openDoc(page, "第一段正文\n", "mark-split-insert");
   await page.locator(".cm-content").click();
   await page.keyboard.press("Control+End");
@@ -108,7 +110,7 @@ test("「高亮」插入后无左边框、无标题栏、圆角 8px", async ({ p
     .toBe("0px");
   await expect
     .poll(async () => card.evaluate((el) => getComputedStyle(el).borderRadius))
-    .toBe("8px");
+    .toBe("4px");
   await shot(page, "02-highlight-inserted", "highlight-inserted");
 });
 

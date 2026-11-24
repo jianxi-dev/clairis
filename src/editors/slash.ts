@@ -29,10 +29,7 @@ import {
   type ViewUpdate,
 } from "@codemirror/view";
 import { Prec, type EditorState, type Extension } from "@codemirror/state";
-import {
-  CALLOUT_ANNOTATION_TYPES,
-  CALLOUT_EDIT_TYPES,
-} from "./callout-types";
+import { CALLOUT_ANNOTATION_TYPES, CALLOUT_EDIT_TYPES } from "./callout-types";
 import { TABLE_SIZE_QUERY, filterSlashCommands } from "./slash-filter";
 import { sanitizeCellText } from "./decorations/cell-text";
 import { renderIcon } from "./icons";
@@ -424,7 +421,7 @@ export const addHandleCommands: SlashCommand[] = [
     insert: () => ({ from: 0, to: 0, text }),
   })),
   { ...defaultCommandById("heading"), group: "常用" },
-  { ...defaultCommandById("callout"), label: "高亮", group: "常用" },
+  { ...defaultCommandById("callout"), label: "标注", group: "常用" },
   { ...defaultCommandById("columns"), group: "常用" },
   { ...defaultCommandById("table"), group: "常用" },
   { ...defaultCommandById("image-ref"), label: "图片", group: "常用" },

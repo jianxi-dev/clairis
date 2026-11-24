@@ -177,10 +177,12 @@ test("A-7.2 裁剪后比例与裁剪矩形相符且不自动缩小", async ({ pa
 
   // 显示盒比例 = 裁剪矩形比例。
   expect(Math.abs(after.ratio - w / h)).toBeLessThanOrEqual(0.02);
-  // 宽度锚点保留：裁剪后盒宽仍等于原 width 锚点（未被裁剪盒的整图缩放取代）。
-  expect(Math.abs(after.width - before.width)).toBeLessThanOrEqual(1);
-  // width 属性不被清空（缩放锚点持久化）。
-  expect(final).toContain("width=1200");
+  // 裁剪掉右侧 100px：可见盒宽按预览同比例缩小 100px，内容缩放不变。
+  expect(Math.abs(before.width - after.width - 100)).toBeLessThanOrEqual(2);
+  // width 属性跟进为可见裁剪宽（二次裁剪的缩放基准），不再保留旧全图宽。
+  const widthAttr = /\bwidth=(\d+)/.exec(final);
+  expect(widthAttr).not.toBeNull();
+  expect(Math.abs(Number(widthAttr![1]) - after.width)).toBeLessThanOrEqual(2);
   await shot(page, "02-crop-no-shrink");
 });
 

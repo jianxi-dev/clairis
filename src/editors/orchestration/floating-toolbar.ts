@@ -27,7 +27,10 @@ import { getCalloutAttrs } from "../callout-attrs";
 import {
   applyCalloutColorToBlock,
   buildCalloutColorPanel,
+  buildHighlightColorPanel,
+  randomHighlightColors,
   resetCalloutColors,
+  type CalloutColorKey,
 } from "./callout-color-panel";
 import { renderIcon } from "../icons";
 import { menuShortcut } from "../../lib/menu-shortcuts";
@@ -39,11 +42,7 @@ import {
   type RouletteItem,
 } from "./roulette-view";
 import { createCapsuleToolbar, type CapsuleItem } from "./capsule-toolbar";
-import {
-  BACKGROUND_COLORS,
-  FONT_COLORS,
-  mapHueToType,
-} from "./color-palette";
+import { BACKGROUND_COLORS, FONT_COLORS, mapHueToType } from "./color-palette";
 import {
   ROULETTE_BOX,
   ROULETTE_HOTKEY_DEFAULT,
@@ -175,8 +174,8 @@ function convertItem(
       const tone =
         calloutKind === "highlight"
           ? "yellow"
-          : CALLOUT_ANNOTATION_TYPES.find((type) => type.key === calloutKind)
-              ?.tone ?? "";
+          : (CALLOUT_ANNOTATION_TYPES.find((type) => type.key === calloutKind)
+              ?.tone ?? "");
       const mapped = bgHex ? mapHueToType(bgHex, tone) : "";
       dispatchLineConvert(
         view,
@@ -295,12 +294,13 @@ function createCalloutBar(
   view: EditorView,
   block: { from: number; to: number },
   anchor: HTMLElement,
+  mark = false,
 ): CalloutBarHandle {
   const element = document.createElement("div");
   element.className = "cm-callout-bar";
   element.dataset.testid = "callout-color-bar";
   element.setAttribute("role", "toolbar");
-  element.setAttribute("aria-label", "高亮块工具条");
+  element.setAttribute("aria-label", mark ? "纯高亮工具条" : "高亮块工具条");
 
   let popup: HTMLElement | null = null;
   const closePopup = (): void => {
@@ -314,7 +314,9 @@ function createCalloutBar(
   colorButton.dataset.testid = "callout-color-entry";
   colorButton.title = "颜色";
   colorButton.setAttribute("aria-label", "颜色");
-  colorButton.appendChild(renderIcon("FontcolorOutlined"));
+  colorButton.appendChild(
+    renderIcon(mark ? "HighlighterOutlined" : "FontcolorOutlined"),
+  );
   const colorKbd = document.createElement("span");
   colorKbd.className = "cm-menu-kbd";
   colorKbd.textContent = menuShortcut("callout-color");
@@ -324,27 +326,44 @@ function createCalloutBar(
   const openColorPopup = (): void => {
     closePopup();
     const wrap = document.createElement("div");
-    wrap.className = "cm-callout-color-pop";
+    wrap.className = mark
+      ? "cm-callout-color-pop cm-callout-color-pop-mark"
+      : "cm-callout-color-pop";
     wrap.dataset.testid = "callout-color-panel";
+    const active = getCalloutAttrs(
+      view.state.doc.sliceString(block.from, block.to),
+    );
+    const onPick = (key: CalloutColorKey, className: string): void => {
+      applyCalloutColorToBlock(view, block.from, block.to, key, className);
+      closePopup();
+    };
+    const onReset = (): void => {
+      resetCalloutColors(view, block.from, block.to);
+      closePopup();
+    };
     wrap.appendChild(
-      buildCalloutColorPanel({
-        active: getCalloutAttrs(
-          view.state.doc.sliceString(block.from, block.to),
-        ),
-        onPick: (key, className) => {
-          applyCalloutColorToBlock(view, block.from, block.to, key, className);
-          closePopup();
-        },
-        onReset: () => {
-          resetCalloutColors(view, block.from, block.to);
-          closePopup();
-        },
-      }),
+      mark
+        ? buildHighlightColorPanel({
+            active,
+            onPick,
+            onReset,
+            onRandom: () => {
+              randomHighlightColors(view, block.from, block.to);
+              closePopup();
+            },
+          })
+        : buildCalloutColorPanel({ active, onPick, onReset }),
     );
     element.appendChild(wrap);
     popup = wrap;
   };
 
+  colorButton.addEventListener("mousedown", (event) => {
+    // 保持正文焦点：点击工具条不应让卡片内编辑器 blur 触发 flush 重建，
+    // 否则这次 click 会落在被销毁的按钮上（#1437）。
+    event.preventDefault();
+    event.stopPropagation();
+  });
   colorButton.addEventListener("click", (event) => {
     event.preventDefault();
     event.stopPropagation();
@@ -362,8 +381,10 @@ function createCalloutBar(
     destroy();
   };
   const onScroll = (event: Event): void => {
-    // 面板自身滚动（类型列表较长）不算离开；编辑器滚动才收浮条。
+    // 面板自身滚动（类型列表较长）不算离开；只有编辑器自身滚动才收浮条。
+    // 点击按钮时浏览器可能把 fixed 浮条滚进视口，document 滚动不能误杀浮条。
     if (event.target instanceof Node && element.contains(event.target)) return;
+    if (event.target !== view.scrollDOM) return;
     destroy();
   };
   document.addEventListener("keydown", onKeyDown, true);
@@ -570,7 +591,14 @@ export function floatingToolbar(allowCapsule = false) {
           ],
         });
         items.push(
-          convertItem(view, "convert-callout-mark", "高亮", "callout", "callout", "highlight"),
+          convertItem(
+            view,
+            "convert-callout-mark",
+            "高亮",
+            "highlighter",
+            "callout",
+            "highlight",
+          ),
         );
         items.push({
           id: "convert-callout-group",
@@ -926,24 +954,28 @@ export function floatingToolbar(allowCapsule = false) {
       const pos = view.posAtDOM(card, 0);
       const block = blockAt(view, pos);
       if (!block) return;
-      if (
-        calloutKeyOf(view.state.doc.sliceString(block.from, block.to)) === null
-      ) {
-        return;
-      }
+      const key = calloutKeyOf(
+        view.state.doc.sliceString(block.from, block.to),
+      );
+      if (key === null) return;
       hideCalloutBar();
       const rect = card.getBoundingClientRect();
+      const mark = key === "highlight";
       const bar = createCalloutBar(
         view,
         { from: block.from, to: block.to },
         card,
+        mark,
       );
       document.body.appendChild(bar.element);
       const barRect = bar.element.getBoundingClientRect();
       const gap = 6;
+      const preferredLeft = mark
+        ? rect.left + (rect.width - barRect.width) / 2
+        : rect.left;
       const left = Math.max(
         8,
-        Math.min(rect.left, window.innerWidth - barRect.width - 8),
+        Math.min(preferredLeft, window.innerWidth - barRect.width - 8),
       );
       const above = rect.top - barRect.height - gap;
       const top = above < 8 ? rect.bottom + gap : above;

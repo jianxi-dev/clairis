@@ -725,36 +725,39 @@ class ImageWidget extends WidgetType {
       // 缩放，圆角得放在显示域的窗口上，否则有效半径 = token × scale。
       let roundHost: HTMLElement = img;
       if (this._crop) {
-        // 裁剪显示（#1349 / E-44）：无 width 属性时用窗口 overflow:hidden +
-        // img 取原图矩形尺寸 + transform: scale(scale)，img 显示尺寸严格等于
-        // 裁剪矩形 × scale，与裁剪框预览同一套坐标系。
+        // 裁剪显示（#1349 / E-44）：外盒 = 可见裁剪显示尺寸，内图取裁剪矩形
+        // 自然尺寸再用 transform 整图缩放。width 属性是「可见裁剪宽」，直接
+        // 给出 scale；缺失时量整图当前显示宽度再换算（旧文档兼容）。
         const [l, t, w, h] = this._crop;
-        if (this._width !== null) {
-          // width 属性是可见部分显示宽：img 即盒，锁比例让 maxWidth 夹持时
-          // 高度跟随（既有缩放锚点语义，#840 A-7.2）。
-          img.style.objectFit = "none";
-          img.style.objectPosition = `${-l}px ${-t}px`;
-          img.style.width = `${this._width}px`;
-          img.style.aspectRatio = `${w} / ${h}`;
-          img.style.height = "auto";
+        const win = document.createElement("span");
+        win.className = "image-crop-window";
+        win.style.overflow = "hidden";
+        win.style.display = "inline-block";
+        win.style.position = "relative";
+        win.style.maxWidth = "100%";
+        img.style.position = "absolute";
+        img.style.left = "0px";
+        img.style.top = "0px";
+        img.style.maxWidth = "none";
+        img.style.objectFit = "none";
+        img.style.objectPosition = `${-l}px ${-t}px`;
+        img.style.width = `${w}px`;
+        img.style.height = `${h}px`;
+        img.style.transformOrigin = "0 0";
+        win.appendChild(img);
+
+        const applyCropScale = (scale: number): void => {
+          if (!(scale > 0)) return;
+          win.style.width = `${w * scale}px`;
+          win.style.height = `${h * scale}px`;
+          img.style.transform = `scale(${scale})`;
+        };
+
+        if (this._width !== null && this._width > 0) {
+          // width 是可见裁剪显示宽：scale 由它与裁剪矩形自然宽求得。
+          applyCropScale(this._width / w);
         } else {
-          const win = document.createElement("span");
-          win.className = "image-crop-window";
-          win.style.overflow = "hidden";
-          win.style.display = "inline-block";
-          win.style.position = "relative";
-          win.style.maxWidth = "100%";
-          img.style.position = "absolute";
-          img.style.left = "0px";
-          img.style.top = "0px";
-          img.style.maxWidth = "none";
-          img.style.objectFit = "none";
-          img.style.objectPosition = `${-l}px ${-t}px`;
-          img.style.width = `${w}px`;
-          img.style.height = `${h}px`;
-          img.style.transformOrigin = "0 0";
-          win.appendChild(img);
-          const applyCropScale = (): void => {
+          const measureCropScale = (): void => {
             if (!img.isConnected || img.naturalWidth <= 0) return;
             const prevDisplay = win.style.display;
             const prev = {
@@ -783,17 +786,13 @@ class ImageWidget extends WidgetType {
             img.style.position = prev.position;
             img.style.objectFit = prev.objectFit;
             img.style.objectPosition = prev.objectPosition;
-            const scale = fullW / img.naturalWidth;
-            if (!(scale > 0)) return;
-            win.style.width = `${w * scale}px`;
-            win.style.height = `${h * scale}px`;
-            img.style.transform = `scale(${scale})`;
+            applyCropScale(fullW / img.naturalWidth);
           };
-          requestAnimationFrame(applyCropScale);
-          img.addEventListener("load", applyCropScale);
-          mounted = win;
-          roundHost = win;
+          requestAnimationFrame(measureCropScale);
+          img.addEventListener("load", measureCropScale);
         }
+        mounted = win;
+        roundHost = win;
       } else {
         if (this._width !== null) {
           img.style.width = `${this._width}px`;

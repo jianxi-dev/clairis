@@ -102,7 +102,10 @@ export function getCalloutAttrs(blockText: string): CalloutAttrs {
  *
  * 属性全空时移除属性块（旧 `> [!NOTE]` 逐字节不变）。只动首行。
  */
-export function setCalloutAttrs(blockText: string, attrs: CalloutAttrs): string {
+export function setCalloutAttrs(
+  blockText: string,
+  attrs: CalloutAttrs,
+): string {
   const lines = blockText.split("\n");
   const match = FIRST_LINE_RE.exec(lines[0] ?? "");
   if (!match) return blockText;
@@ -138,6 +141,18 @@ export function calloutCssVars(attrs: CalloutAttrs): CalloutCssVars {
   const vars: { bg?: string; border?: string; text?: string } = {};
   const bg = attrs.bg ? BG_SWATCH.get(attrs.bg) : undefined;
   if (bg) vars.bg = softColor(bg);
+  const border = attrs.border ? BG_SWATCH.get(attrs.border) : undefined;
+  if (border) vars.border = border;
+  const text = attrs.text ? TEXT_SWATCH.get(attrs.text) : undefined;
+  if (text) vars.text = text;
+  return vars;
+}
+
+/** 纯高亮渲染：填充用更强叠底（38%），无属性时由 CSS 回落 tone。 */
+export function highlightCssVars(attrs: CalloutAttrs): CalloutCssVars {
+  const vars: { bg?: string; border?: string; text?: string } = {};
+  const bg = attrs.bg ? BG_SWATCH.get(attrs.bg) : undefined;
+  if (bg) vars.bg = `color-mix(in srgb, ${bg} 38%, transparent)`;
   const border = attrs.border ? BG_SWATCH.get(attrs.border) : undefined;
   if (border) vars.border = border;
   const text = attrs.text ? TEXT_SWATCH.get(attrs.text) : undefined;

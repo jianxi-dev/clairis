@@ -156,7 +156,7 @@ test("裁剪清除旧宽度注释：可见文本无 `<!--w=` 且图片下方无�
   await expect.soft(page.locator(".cm-content")).not.toContainText("<!--w=");
   const final = await content(page);
   expect.soft(final).not.toContain("<!--w=");
-  expect.soft(final).toContain("{crop=");
+  expect.soft(final).toContain("crop=");
 
   const blank = await blankBelow(page);
   expect(blank).toBeLessThanOrEqual(8);
@@ -179,7 +179,7 @@ test("跨行宽度注释裁剪后可见文本无 `<!--w=`", async ({ page }) => 
   await expect.soft(page.locator(".cm-content")).not.toContainText("<!--w=");
   const final = await content(page);
   expect.soft(final).not.toContain("<!--w=");
-  expect.soft(final).toContain("{crop=");
+  expect.soft(final).toContain("crop=");
 });
 
 test("点裁剪后：无确认/取消/还原按钮与对话框", async ({ page }) => {
@@ -214,7 +214,7 @@ test("拖动裁剪框：显示区域与 crop 数值一致且下方空白 ≤8px"
   await expect(page.getByTestId("img-crop-frame")).toHaveCount(0);
 
   const final = await content(page);
-  const match = /\{crop=(\d+),(\d+),(\d+),(\d+)\}/.exec(final);
+  const match = /\bcrop=(\d+),(\d+),(\d+),(\d+)/.exec(final);
   expect(match).not.toBeNull();
   const [l, t, w, h] = match!.slice(1).map(Number);
   const after = await imgBox(page);
@@ -244,7 +244,7 @@ test("拖左上角向右下：裁剪框宽度变小", async ({ page }) => {
   await expect(page.getByTestId("img-crop-frame")).toHaveCount(0);
 
   const final = await content(page);
-  const match = /\{crop=(\d+),(\d+),(\d+),(\d+)\}/.exec(final);
+  const match = /\bcrop=(\d+),(\d+),(\d+),(\d+)/.exec(final);
   expect(match).not.toBeNull();
   const [l, t, w, h] = match!.slice(1).map(Number);
   expect(w).toBe(1547);
@@ -311,7 +311,7 @@ test("拖裁剪框本体：crop 值随矩形移动", async ({ page }) => {
   await expect(page.getByTestId("img-crop-frame")).toHaveCount(0);
 
   const final = await content(page);
-  const match = /\{crop=(\d+),(\d+),(\d+),(\d+)\}/.exec(final);
+  const match = /\bcrop=(\d+),(\d+),(\d+),(\d+)/.exec(final);
   expect(match).not.toBeNull();
   const [l, t, w, h] = match!.slice(1).map(Number);
   // 预设 (200,140,1600,1120)：本体拖动只移位、不改尺寸（指针取整容 1px）。
@@ -330,12 +330,14 @@ test("拖回整图：crop 属性移除", async ({ page }) => {
   await openCropFrame(page);
   await dragHandle(page, "nw", -20, -20);
   await page.getByTestId("img-crop-frame").dblclick();
-  await expect.poll(() => content(page)).toContain("{crop=");
+  await expect.poll(() => content(page)).toContain("crop=");
 
   await openCropFrame(page);
   await dragHandle(page, "se", 40, 40);
   await page.getByTestId("img-crop-frame").dblclick();
-  await expect.poll(() => content(page)).toBe("![pic](assets/pic.png)\n");
+  await expect.poll(() => content(page)).not.toContain("crop=");
+  const restored = await content(page);
+  expect(restored).toMatch(/^!\[pic\]\(assets\/pic\.png\)/);
   await expect(page.getByTestId("img-crop-frame")).toHaveCount(0);
 
   const after = await imgBox(page);

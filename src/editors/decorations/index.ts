@@ -23,13 +23,19 @@
  * `cell-selection` + `cell-toolbar`）与两个容器模块（`callout` + `columns`）。
  * `EditorDecorationsOptions` 已留出扩展位，后续加字段不需要改函数签名。
  */
-import type { Extension, EditorState, Range } from "@codemirror/state";
+import type {
+  Extension,
+  EditorState,
+  Range,
+  Transaction,
+} from "@codemirror/state";
 import { StateEffect, StateField } from "@codemirror/state";
 import {
   Decoration,
   EditorView,
   ViewPlugin,
   type DecorationSet,
+  type ViewUpdate,
 } from "@codemirror/view";
 import { createHeadingDecorations } from "./heading";
 import { createBoldItalicDecorations } from "./boldItalic";
@@ -138,10 +144,45 @@ const rebuildAfterComposition = StateEffect.define<void>();
  */
 let frozen = false;
 
+/** 全量构建次数——性能门禁的机读指标（仅测试消费）。 */
+let decorationBuildCount = 0;
+
+export function getDecorationBuildCount(): number {
+  return decorationBuildCount;
+}
+
 /**
  * 冻结解除时派发的 effect，强制补建。
  */
 const unfreezeRebuild = StateEffect.define<void>();
+
+// --- 大文档键入快路径 ---------------------------------------------------------
+
+/** 超过该字符数的文档，逐字键入走「映射 + 延迟重建」而非每键全量重算。 */
+const LARGE_DOC_CHARS = 50_000;
+
+/** 最后一次键入后补一次全量重建的延迟（ms）。 */
+const LAZY_REBUILD_MS = 180;
+
+/**
+ * 走了快路径的事务。伴生 ViewPlugin 据此判断该不该安排一次延迟重建；
+ * 用 WeakSet 按事务实例登记，多编辑器实例互不干扰。
+ */
+const lazyTypedTransactions = new WeakSet<Transaction>();
+
+/**
+ * 普通逐字键入：行数不变，用户事件是 `input.type`。
+ *
+ * 行数/结构变化必须立即全量重建（标题、列表、围栏、callout 的范围都可能变），
+ * 只有同一行内的打字可以安全地用映射保持装饰有效。
+ */
+function isPlainTyping(tr: Transaction): boolean {
+  return (
+    tr.docChanged &&
+    tr.newDoc.lines === tr.startState.doc.lines &&
+    tr.isUserEvent("input.type")
+  );
+}
 
 // --- 装饰构建 ----------------------------------------------------------------
 
@@ -240,6 +281,7 @@ function buildDecorationSet(
   // 按起点排序（CM6 要求）
   all.sort((a, b) => a.from - b.from || a.value.startSide - b.value.startSide);
 
+  decorationBuildCount += 1;
   return Decoration.set(all, true);
 }
 
@@ -257,14 +299,21 @@ function createDecorationField(options?: EditorDecorationsOptions) {
       return buildDecorationSet(state, options, lastColumns);
     },
     update(decos, tr) {
-      // IME 组合期间文档变更跳过重算：中间组合文本会让装饰反复增删、闪烁。
-      if (composing && tr.docChanged) return decos;
+      // IME 组合期间文档变更不做全量重建（中间态会让装饰反复增删、闪烁），
+      // 但必须按 changes 映射：返回旧范围会让视图 tile 树与文档错位并崩溃。
+      if (composing && tr.docChanged) return decos.map(tr.changes);
 
       // 冻结（pointerdown）只跳过「纯选区」事务：延迟重建正是避免点击移动
       // 光标时活跃块揭示重排的手段。文档变更绝不能返回旧 DecorationSet——
       // 它的范围是按旧文档算的，套到新文本上会让可见层落后于源码
       // （「格式删不掉」，#226）。
       if (frozen && tr.selection && !tr.docChanged) return decos;
+
+      // 大文档逐字键入：映射保持装饰有效，由伴生插件延迟补一次全量重建。
+      if (tr.startState.doc.length >= LARGE_DOC_CHARS && isPlainTyping(tr)) {
+        lazyTypedTransactions.add(tr);
+        return decos.map(tr.changes);
+      }
 
       // 文档/选区变化、折叠切换、组合结束、冻结解除时重建。
       const foldChanged =
@@ -328,7 +377,27 @@ function createDecorationField(options?: EditorDecorationsOptions) {
  * 冻结：pointerdown 时置 `frozen = true` 并在 100ms 后清除，避免点击引起光标
  * 移动 + 装饰揭示时的重排。
  */
-const compositionGuard = ViewPlugin.define(() => ({}), {
+class CompositionGuard {
+  private timer = 0;
+
+  constructor(private readonly view: EditorView) {}
+
+  update(u: ViewUpdate): void {
+    if (!u.docChanged) return;
+    if (!u.transactions.some((tr) => lazyTypedTransactions.has(tr))) return;
+    window.clearTimeout(this.timer);
+    this.timer = window.setTimeout(() => {
+      this.timer = 0;
+      this.view.dispatch({ effects: rebuildAfterComposition.of(undefined) });
+    }, LAZY_REBUILD_MS);
+  }
+
+  destroy(): void {
+    window.clearTimeout(this.timer);
+  }
+}
+
+const compositionGuard = ViewPlugin.fromClass(CompositionGuard, {
   eventHandlers: {
     compositionstart() {
       composing = true;
@@ -402,4 +471,5 @@ export function editorDecorations(
 export function resetDecorationGuards(): void {
   composing = false;
   frozen = false;
+  decorationBuildCount = 0;
 }

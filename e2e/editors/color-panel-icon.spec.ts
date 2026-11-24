@@ -2,10 +2,7 @@ import { test, expect, type Page } from "@playwright/test";
 import { execFileSync } from "node:child_process";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
-import {
-  hoverLineLeft,
-  openMarkdownInEdit,
-} from "../helpers/ui-probe";
+import { hoverLineLeft, openMarkdownInEdit } from "../helpers/ui-probe";
 
 const ART = ".artifacts/1413";
 const EVIDENCE = path.resolve(process.cwd(), "scripts/cw-evidence.sh");
@@ -61,25 +58,21 @@ async function openColorPanel(page: Page): Promise<void> {
   ).toBeVisible();
 }
 
-test("颜色面板：色块内无字母 A，图标为 SVG", async ({ page }) => {
+test("颜色面板：字体色块恢复字母 A 字形", async ({ page }) => {
   await openColorPanel(page);
   const panel = page.locator('[data-testid="callout-color-panel"]');
-  const withLetterA = await panel
-    .locator(".cm-color-swatch")
-    .evaluateAll((nodes) =>
-      nodes.filter((n) => (n.textContent ?? "").trim() === "A").length,
-    );
-  expect(withLetterA).toBe(0);
-  await shot(page, "01-panel-icons", "panel-icons");
-
   const fontRow = panel.locator('.cm-color-row[data-kind="font"]').first();
   const icons = fontRow.locator(".cm-color-swatch-icon svg");
   await expect(icons).toHaveCount(9);
   const dataIcons = await icons.evaluateAll((nodes) =>
     nodes.map((n) => n.getAttribute("data-icon")),
   );
-  expect(new Set(dataIcons)).toEqual(new Set(["HighlighterOutlined"]));
-  await shot(page, "02-no-letter-a", "no-letter-a");
+  expect(new Set(dataIcons)).toEqual(new Set(["FormatColorTextOutlined"]));
+  const glyphs = await icons.evaluateAll((nodes) =>
+    nodes.map((n) => (n.textContent ?? "").trim()),
+  );
+  expect(glyphs.every((text) => text === "A")).toBe(true);
+  await shot(page, "01-panel-icons", "panel-icons");
 });
 
 test("色块容器 justify-content 为 center", async ({ page }) => {
@@ -97,9 +90,9 @@ test("色块容器 justify-content 为 center", async ({ page }) => {
 test("高亮块工具条无类型切换入口", async ({ page }) => {
   await openCallout(page, HIGHLIGHT);
   const bar = page.locator('[data-testid="callout-color-bar"]');
-  await expect(
-    bar.locator('[data-testid="callout-type-entry"]'),
-  ).toHaveCount(0);
+  await expect(bar.locator('[data-testid="callout-type-entry"]')).toHaveCount(
+    0,
+  );
   await expect(bar.locator(".cm-callout-bar-btn")).toHaveCount(1);
   await shot(page, "03-no-type-entry", "no-type-entry");
 });
@@ -111,13 +104,13 @@ test("NOTE 改红填充后切 TIP，填充色相仍为红；Esc 后无残留激�
   await page.locator('[data-testid="callout-color-entry"]').click();
   const panel = page.locator('[data-testid="callout-color-panel"]');
   await panel.locator('[data-class-name="mdb-bg-red"]').click();
-  await expect.poll(() => storeContent(page)).toBe(
-    "> [!NOTE]{bg=red} 标题\n> 正文",
-  );
+  await expect
+    .poll(() => storeContent(page))
+    .toBe("> [!NOTE]{bg=red} 标题\n> 正文");
 
   const card = page.locator(".cm-callout").first();
-  const redBefore = await card.evaluate(
-    (el) => getComputedStyle(el).getPropertyValue("--callout-bg").trim(),
+  const redBefore = await card.evaluate((el) =>
+    getComputedStyle(el).getPropertyValue("--callout-bg").trim(),
   );
   expect(redBefore).toContain("color-mix");
 
@@ -135,11 +128,11 @@ test("NOTE 改红填充后切 TIP，填充色相仍为红；Esc 后无残留激�
   await typePanel.waitFor({ timeout: 3000 });
   await typePanel.locator('[data-type-key="tip"]').click();
 
-  await expect.poll(() => storeContent(page)).toBe(
-    "> [!TIP]{bg=red} 标题\n> 正文",
-  );
-  const bgAfter = await card.evaluate(
-    (el) => getComputedStyle(el).getPropertyValue("--callout-bg").trim(),
+  await expect
+    .poll(() => storeContent(page))
+    .toBe("> [!TIP]{bg=red} 标题\n> 正文");
+  const bgAfter = await card.evaluate((el) =>
+    getComputedStyle(el).getPropertyValue("--callout-bg").trim(),
   );
   expect(bgAfter).toBe(redBefore);
   await shot(page, "04-hue-preserved", "hue-preserved");

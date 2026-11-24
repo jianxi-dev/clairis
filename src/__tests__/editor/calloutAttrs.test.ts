@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   attrNameFromClassName,
   calloutCssVars,
+  highlightCssVars,
   getCalloutAttrs,
   parseCalloutAttrs,
   serializeCalloutAttrs,
@@ -11,9 +12,11 @@ import { changeCalloutType } from "../../editors/orchestration/block-actions";
 
 describe("parseCalloutAttrs", () => {
   it("parses the three known colors", () => {
-    expect(
-      parseCalloutAttrs("{bg=green border=red text=gray}"),
-    ).toEqual({ bg: "green", border: "red", text: "gray" });
+    expect(parseCalloutAttrs("{bg=green border=red text=gray}")).toEqual({
+      bg: "green",
+      border: "red",
+      text: "gray",
+    });
   });
 
   it("is order-independent and accepts bare content", () => {
@@ -54,15 +57,15 @@ describe("serializeCalloutAttrs", () => {
 
 describe("setCalloutAttrs", () => {
   it("writes the attribute block after the fold marker", () => {
-    expect(
-      setCalloutAttrs("> [!NOTE]+ 标题\n> 正文", { bg: "green" }),
-    ).toBe("> [!NOTE]+{bg=green} 标题\n> 正文");
+    expect(setCalloutAttrs("> [!NOTE]+ 标题\n> 正文", { bg: "green" })).toBe(
+      "> [!NOTE]+{bg=green} 标题\n> 正文",
+    );
   });
 
   it("replaces an existing block and keeps the title", () => {
-    expect(
-      setCalloutAttrs("> [!NOTE]{bg=green} 标题", { border: "red" }),
-    ).toBe("> [!NOTE]{border=red} 标题");
+    expect(setCalloutAttrs("> [!NOTE]{bg=green} 标题", { border: "red" })).toBe(
+      "> [!NOTE]{border=red} 标题",
+    );
   });
 
   it("removes the block when every color is cleared", () => {
@@ -80,7 +83,10 @@ describe("setCalloutAttrs", () => {
   it("preserves type and fold when the type changes", () => {
     const doc = "> [!NOTE]{bg=green border=red text=gray}+\n> 正文";
     expect(changeCalloutType(doc, "tip")).toBe(
-      "> [!tip]{bg=green border=red text=gray}+\n> 正文",
+      "> [!TIP]{bg=green border=red text=gray}+\n> 正文",
+    );
+    expect(changeCalloutType("> [!note]\n> 正文", "tip")).toBe(
+      "> [!tip]\n> 正文",
     );
   });
 });
@@ -107,5 +113,18 @@ describe("attrNameFromClassName", () => {
     expect(attrNameFromClassName("text", "mdb-color-gray")).toBe("gray");
     expect(attrNameFromClassName("bg", "")).toBe("");
     expect(attrNameFromClassName("text", "mdb-bg-green")).toBe("");
+  });
+});
+
+describe("纯高亮渲染变量", () => {
+  it("填充用 38% 叠底，边框/文字走实色", () => {
+    const vars = highlightCssVars({
+      bg: "red",
+      border: "darkred",
+      text: "gray",
+    });
+    expect(vars.bg).toContain("38%");
+    expect(vars.border).toBe("#b34444");
+    expect(vars.text).toBe("#8b8f96");
   });
 });

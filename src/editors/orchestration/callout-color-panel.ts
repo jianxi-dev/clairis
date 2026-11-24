@@ -9,10 +9,15 @@ import {
   BACKGROUND_COLORS,
   BORDER_COLORS,
   FONT_COLORS,
+  HIGHLIGHT_BORDER_COLORS,
+  HIGHLIGHT_COLORS,
+  HIGHLIGHT_DARK_FILLS,
+  HIGHLIGHT_LIGHT_FILLS,
   createColorRow,
   type ColorKind,
   type ColorSwatch,
 } from "./color-palette";
+import { renderIcon } from "../icons";
 import {
   attrNameFromClassName,
   getCalloutAttrs,
@@ -76,6 +81,39 @@ export function applyCalloutColorToBlock(
   return true;
 }
 
+/**
+ * 纯高亮随机：取一个与当前色相不同的家族，同时写浅填充与深边框。
+ * 一次事务 = 一步撤销；`text` 保持不变。
+ */
+export function pickHighlightFamily(
+  attrs: CalloutAttrs,
+  rand: () => number = Math.random,
+): (typeof HIGHLIGHT_COLORS)[number] {
+  const currentKey = HIGHLIGHT_COLORS.find(
+    (family) => family.light === attrs.bg || family.dark === attrs.border,
+  )?.key;
+  const pool = HIGHLIGHT_COLORS.filter((family) => family.key !== currentKey);
+  return pool[Math.floor(rand() * pool.length)] ?? HIGHLIGHT_COLORS[0];
+}
+
+export function randomHighlightColors(
+  view: EditorView,
+  from: number,
+  to: number,
+): boolean {
+  const current = view.state.doc.sliceString(from, to);
+  const attrs = getCalloutAttrs(current);
+  const family = pickHighlightFamily(attrs);
+  const next = setCalloutAttrs(current, {
+    ...attrs,
+    bg: family.light,
+    border: family.dark,
+  });
+  if (next === current) return false;
+  view.dispatch(structureTransaction({ changes: { from, to, insert: next } }));
+  return true;
+}
+
 /** 「恢复默认」：清空首行三色属性；一次事务 = 一步撤销。 */
 export function resetCalloutColors(
   view: EditorView,
@@ -128,6 +166,86 @@ export function buildCalloutColorPanel(args: {
   addRow("字体颜色", "font", FONT_COLORS, active.text ?? "");
   addRow("边框颜色", "border", BORDER_COLORS, active.border ?? "");
   addRow("填充颜色", "background", BACKGROUND_COLORS, active.bg ?? "");
+
+  const resetButton = document.createElement("button");
+  resetButton.type = "button";
+  resetButton.className = "cm-color-reset";
+  resetButton.dataset.testid = "color-reset";
+  resetButton.textContent = "恢复默认";
+  resetButton.addEventListener("mousedown", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    onReset();
+  });
+  root.appendChild(resetButton);
+
+  return root;
+}
+
+/**
+ * 纯高亮的独立颜色面板（#1437）：字体色（字母 A）/ 边框 / 浅填充 / 深填充，
+ * 右上「随机」，底部「恢复默认」。色系与标注的 15 色板分开。
+ */
+export function buildHighlightColorPanel(args: {
+  active: CalloutAttrs;
+  onPick: (key: CalloutColorKey, className: string) => void;
+  onReset: () => void;
+  onRandom: () => void;
+}): HTMLElement {
+  const { active, onPick, onReset, onRandom } = args;
+  const root = document.createElement("div");
+  root.className = `${CALLOUT_COLOR_PANEL_CLASS} cm-highlight-color-panel`;
+
+  const head = document.createElement("div");
+  head.className = "cm-color-panel-head";
+  const headLabel = document.createElement("span");
+  headLabel.className = "cm-color-row-label";
+  headLabel.textContent = "字体颜色";
+  head.appendChild(headLabel);
+  const randomButton = document.createElement("button");
+  randomButton.type = "button";
+  randomButton.className = "cm-color-random";
+  randomButton.dataset.testid = "color-random";
+  randomButton.title = "随机切换边框与填充（同色系）";
+  randomButton.appendChild(renderIcon("RotateOutlined"));
+  const randomText = document.createElement("span");
+  randomText.textContent = "随机";
+  randomButton.appendChild(randomText);
+  randomButton.addEventListener("mousedown", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    onRandom();
+  });
+  head.appendChild(randomButton);
+  root.appendChild(head);
+
+  const addRow = (
+    label: string | null,
+    kind: ColorKind,
+    colors: readonly ColorSwatch[],
+    activeName: string,
+  ): void => {
+    if (label !== null) {
+      const labelEl = document.createElement("div");
+      labelEl.className = "cm-color-row-label";
+      labelEl.textContent = label;
+      root.appendChild(labelEl);
+    }
+    const rowEl = createColorRow(kind, colors, (pickedKind, className) =>
+      onPick(KEY_OF_KIND[pickedKind], className),
+    );
+    rowEl
+      .querySelectorAll<HTMLButtonElement>(".cm-color-swatch")
+      .forEach((swatch) => {
+        swatch.dataset.active = String(swatch.dataset.className === activeName);
+      });
+    root.appendChild(rowEl);
+  };
+
+  addRow(null, "font", FONT_COLORS, active.text ?? "");
+  addRow("边框颜色", "border", HIGHLIGHT_BORDER_COLORS, active.border ?? "");
+  addRow("填充颜色", "background", HIGHLIGHT_LIGHT_FILLS, active.bg ?? "");
+  addRow(null, "background", HIGHLIGHT_DARK_FILLS, active.bg ?? "");
 
   const resetButton = document.createElement("button");
   resetButton.type = "button";

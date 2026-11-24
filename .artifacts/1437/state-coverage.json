@@ -1,0 +1,39 @@
+{
+  "states": [
+    {
+      "state": "纯高亮与标注视觉分家",
+      "screenshot": ".artifacts/1437/01-mark-vs-note.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-24T18:23:03Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "随机同时换边框与填充",
+      "screenshot": ".artifacts/1437/02-random-pair.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-24T18:23:03Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "工具条居中且为荧光笔",
+      "screenshot": ".artifacts/1437/04-bar-centered.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-24T18:23:03Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "裁剪确认前后区域一致",
+      "screenshot": ".artifacts/1437/06-crop-confirmed.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-24T18:23:03Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "IME 组合输入后内容完整",
+      "screenshot": ".artifacts/1437/07-ime-after.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-24T18:23:03Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}

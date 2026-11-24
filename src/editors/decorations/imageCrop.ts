@@ -28,8 +28,16 @@ import {
 export interface ImageCropOptions {
   /** 已有裁剪矩形（原图像素），没有则 null。 */
   crop: [number, number, number, number] | null;
-  /** 写回回调：矩形（写回）或 null（移除 crop）。取消不会调用。 */
-  onConfirm: (rect: [number, number, number, number] | null) => void;
+  /** 写回回调：原图矩形（null = 移除 crop）与最终显示尺寸。取消不会调用。 */
+  onConfirm: (
+    rect: [number, number, number, number] | null,
+    display: {
+      width: number;
+      height: number;
+      fullWidth: number;
+      fullHeight: number;
+    },
+  ) => void;
   /** 目标图片的文档偏移；缺省取当前选中图片。 */
   from?: number;
 }
@@ -380,11 +388,17 @@ function mount(
     drag = null;
     cleanup();
     if (!changed) return;
+    const display = {
+      width: rect.width,
+      height: rect.height,
+      fullWidth: natW * scale,
+      fullHeight: natH * scale,
+    };
     if (isFullImageRect(end, natW, natH, FULL_IMAGE_RATIO)) {
-      options.onConfirm(null);
+      options.onConfirm(null, display);
       return;
     }
-    options.onConfirm([end.left, end.top, end.width, end.height]);
+    options.onConfirm([end.left, end.top, end.width, end.height], display);
   };
 
   // 点框外 = 确认收尾（未改动即不写回，与工具条「裁剪」按钮同语义）；Esc 才取消。

@@ -2652,9 +2652,15 @@ html[data-tab-drag="true"] body * {
  * 圆角取卡片 token --radius-8、底色走荧光笔半透明叠底（--callout-bg 由六色板
  * 写入，缺省回落 yellow tone 的软色）。覆盖上面 .cm-callout 的通用 3px 左边框。 */
 .cm-content .cm-callout.cm-callout-mark {
-  border-inline-start: 0;
-  border-radius: var(--radius-8);
-  background-color: var(--callout-bg, var(--callout-soft, var(--app-accent-soft)));
+  border: 1px solid var(--callout-border, transparent);
+  border-inline-start-width: 0;
+  border-radius: 4px;
+  padding: 0.2em 0.45em;
+  margin-block: 0.15em 0;
+  background-color: var(
+    --callout-bg,
+    color-mix(in srgb, var(--callout-color) 30%, transparent)
+  );
 }
 
 .cm-content .cm-callout-header {
@@ -3405,6 +3411,44 @@ html[data-tab-drag="true"] body * {
 .cm-callout-color-pop .cm-color-row-label {
   font-size: 11px;
   color: var(--app-text-2);
+}
+
+.cm-callout-color-pop-mark {
+  width: 216px;
+}
+
+.cm-color-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.cm-color-random {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 20px;
+  padding: 0 6px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--app-accent);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.cm-color-random:hover {
+  background: var(--menu-hover);
+}
+
+.cm-color-random svg {
+  width: 12px;
+  height: 12px;
+}
+
+.cm-highlight-color-panel .cm-color-row {
+  max-width: 216px;
 }
 
 .cm-callout-color-pop .cm-color-reset {
