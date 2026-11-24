@@ -127,20 +127,20 @@ test("「转为」网格只显示图标，不显示文字（#649）", async ({ p
   await boot(page, "# 标题\n\n正文段落\n");
   await hoverHandle(page, 2);
   const cells = page.locator('[data-testid="block-menu-cell"]');
-  await expect(cells).toHaveCount(10);
+  await expect(cells).toHaveCount(11);
   const texts = await page.evaluate(() =>
     Array.from(
       document.querySelectorAll('[data-testid="block-menu-cell"]'),
     ).map((cell) => (cell.textContent ?? "").trim()),
   );
-  expect(texts).toHaveLength(10);
+  expect(texts).toHaveLength(11);
   expect(texts.filter((t) => /[\u4e00-\u9fa5]/.test(t))).toEqual([]);
   const iconHeights = await page.evaluate(() =>
     Array.from(
       document.querySelectorAll('[data-testid="block-menu-cell"] svg'),
     ).map((svg) => Math.round(svg.getBBox().height * 10) / 10),
   );
-  expect(iconHeights).toHaveLength(10);
+  expect(iconHeights).toHaveLength(11);
   expect(iconHeights.every((h) => h > 0)).toBe(true);
 });
 

@@ -54,11 +54,11 @@ async function hoverHandle(page: Page, lineIndex: number) {
   });
 }
 
-test("hover 块手柄弹出块菜单，十项转换 + 在下方添加", async ({ page }) => {
+test("hover 块手柄弹出块菜单，十一项转换 + 在下方添加", async ({ page }) => {
   await hoverHandle(page, 0);
 
   const items = page.locator('[data-testid="block-menu-cell"]');
-  await expect(items).toHaveCount(10);
+  await expect(items).toHaveCount(11);
   await expect(
     page.locator('[data-testid="block-menu-add-below"]'),
   ).toBeVisible();
@@ -691,7 +691,7 @@ test("转换网格前两行（标题 / 无序列表）间距小于下方结构�
       '[data-testid="block-menu-action"]',
     ) as HTMLElement;
     const actionTop = action.getBoundingClientRect().top;
-    const secondRowBottom = rects[9].bottom;
+    const secondRowBottom = rects[10].bottom;
     return {
       rowPitch,
       toAction: actionTop - secondRowBottom,

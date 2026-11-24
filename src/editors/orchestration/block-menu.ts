@@ -21,6 +21,7 @@ import { rectFromCoords, intersectRects, type AnchorRect } from "./anchor";
 import { placeMenu } from "./placement";
 import { getBlocks } from "../block-model";
 import type { BlockType } from "../block-model";
+import { blockAt } from "./toolbar-shared";
 import { moveBlock } from "./block-handle";
 import {
   blockMenuItems,
@@ -29,6 +30,7 @@ import {
   dispatchLineConvert,
   type BlockConvertTarget,
   type BlockLike,
+  type BlockMenuItem,
   type LineRange,
 } from "./block-convert";
 import {
@@ -39,7 +41,7 @@ import {
   indentBlock,
   outdentBlock,
 } from "./block-actions";
-import { CALLOUT_EDIT_TYPES } from "../callout-types";
+import { CALLOUT_ANNOTATION_TYPES } from "../callout-types";
 import {
   applyBlockColor,
   blockColorOf,
@@ -229,11 +231,83 @@ function applyConvert(
   block: BlockLike,
   target: BlockConvertTarget,
   line?: LineRange,
+  calloutKind?: string,
 ): void {
   closeBlockMenu(view);
   // 行手柄触发走层级联动语义（上级联同子树、末级只转当前行）；块级手柄维持整块转换。
-  if (line) dispatchLineConvert(view, line, target);
-  else dispatchBlockConvert(view, block, target);
+  if (line) dispatchLineConvert(view, line, target, { calloutKind });
+  else dispatchBlockConvert(view, block, target, { calloutKind });
+}
+
+/** 「标注」子层选中一类语义 callout：按 key 转换（默认 NOTE 由转换层兜底）。 */
+function dispatchCalloutConvert(
+  view: EditorView,
+  block: BlockLike,
+  calloutKind: string,
+  line?: LineRange,
+): void {
+  applyConvert(view, block, "callout", line, calloutKind);
+}
+
+/**
+ * 「标注」格的二级浮层：13 类语义 callout，形态与「类型」行面板一致。
+ * 挂在 view.dom（不被父菜单 overflow 裁掉），选中即转换并关菜单。
+ */
+function openConvertFlyout(
+  view: EditorView,
+  cell: HTMLButtonElement,
+  children: readonly BlockMenuItem[],
+): void {
+  dismissBlockFlyouts(view);
+  const block = blockAt(view, view.state.selection.main.from);
+  if (!block) return;
+  const panelEl = document.createElement("div");
+  panelEl.className = "cm-block-menu-flyout";
+  panelEl.classList.add("mdb-block-handle-menu");
+  panelEl.dataset.testid = "block-menu-convert-flyout";
+  panelEl.dataset.blockFlyout = "1";
+  const own = view.dom.getBoundingClientRect();
+  const cellRect = cell.getBoundingClientRect();
+  panelEl.style.left = `${cellRect.right - own.left + 4}px`;
+  panelEl.style.top = `${cellRect.top - own.top}px`;
+  for (const child of children) {
+    const option = document.createElement("button");
+    option.type = "button";
+    option.className = "cm-block-menu-flyout-item";
+    option.dataset.testid = "block-menu-convert-option";
+    option.dataset.typeKey = child.calloutKind ?? "";
+    const icon = document.createElement("span");
+    icon.className = "cm-block-menu-flyout-icon";
+    icon.setAttribute("aria-hidden", "true");
+    icon.appendChild(renderIcon(child.icon));
+    option.appendChild(icon);
+    const text = document.createElement("span");
+    text.textContent = child.label;
+    option.appendChild(text);
+    option.addEventListener("pointerdown", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      closeBlockMenu(view);
+      dispatchCalloutConvert(
+        view,
+        block,
+        child.calloutKind ?? "NOTE",
+        undefined,
+      );
+    });
+    panelEl.appendChild(option);
+  }
+  view.dom.appendChild(panelEl);
+  const close = (): void => {
+    panelEl.remove();
+    removeFlyoutCloser(view, close);
+  };
+  addFlyoutCloser(view, close);
+  panelEl.addEventListener("pointerenter", () => cancelPendingClose(view));
+  panelEl.addEventListener("pointerleave", (event) => {
+    if (isInsideMenuUnion(view, event.relatedTarget)) return;
+    scheduleClose(view);
+  });
 }
 
 function viewportRect(): AnchorRect {
@@ -414,11 +488,29 @@ export function openBlockMenu(
       cell.dataset.active = String(item.target === active);
       cell.title = item.label;
       cell.appendChild(renderIcon(item.icon));
-      cell.addEventListener("pointerdown", (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        applyConvert(view, block, item.target, line);
-      });
+      if (item.children?.length) {
+        // 「标注」格：展开 13 类语义 callout 子层，不直接转换。
+        cell.dataset.hasChildren = "true";
+        cell.addEventListener("pointerenter", () => {
+          cancelPendingClose(view);
+          openConvertFlyout(view, cell, item.children ?? []);
+        });
+        cell.addEventListener("pointerdown", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          openConvertFlyout(view, cell, item.children ?? []);
+        });
+      } else {
+        cell.addEventListener("pointerdown", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          if (item.calloutKind) {
+            dispatchCalloutConvert(view, block, item.calloutKind, line);
+          } else {
+            applyConvert(view, block, item.target, line);
+          }
+        });
+      }
       grid.appendChild(cell);
     }
     panel.appendChild(grid);
@@ -519,7 +611,7 @@ export function openBlockMenu(
       const own = view.dom.getBoundingClientRect();
       panelEl.style.left = `${rowRect.right - own.left + 4}px`;
       panelEl.style.top = `${rowRect.top - own.top}px`;
-      for (const type of CALLOUT_EDIT_TYPES) {
+      for (const type of CALLOUT_ANNOTATION_TYPES) {
         const option = document.createElement("button");
         option.type = "button";
         option.className = "cm-block-menu-flyout-item";

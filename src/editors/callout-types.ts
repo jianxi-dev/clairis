@@ -30,12 +30,13 @@ export interface CalloutEditType {
 }
 
 /**
- * 十三个编辑类型，按 R-CALLOUT-01 的标签顺序：
+ * 十三个语义标注类型，按 R-CALLOUT-01 的标签顺序：
  * 注释 信息 摘要 待办 提示 成功 问题 警告 失败 危险 Bug 示例 引用。
  *
- * 顺序有意义：类型浮层自上而下按此顺序渲染。
+ * 顺序有意义：类型浮层自上而下按此顺序渲染。「标注」子菜单只展开这 13 类
+ * （editor-refine-batch2 D1 / R-1）。
  */
-export const CALLOUT_EDIT_TYPES: readonly CalloutEditType[] = [
+export const CALLOUT_ANNOTATION_TYPES: readonly CalloutEditType[] = [
   { key: "note", label: "注释", emoji: "📝", tone: "blue" },
   { key: "info", label: "信息", emoji: "ℹ️", tone: "blue" },
   { key: "abstract", label: "摘要", emoji: "📋", tone: "purple" },
@@ -49,8 +50,26 @@ export const CALLOUT_EDIT_TYPES: readonly CalloutEditType[] = [
   { key: "bug", label: "Bug", emoji: "🐛", tone: "red" },
   { key: "example", label: "示例", emoji: "📝", tone: "gray" },
   { key: "quote", label: "引用", emoji: "💬", tone: "muted" },
-  // 第 14 类：无语义的「纯高亮」，默认黄底黄边（editor-batch3-lowcost D1）。
+];
+
+/**
+ * 纯高亮（无语义标注）：与 13 类语义 callout 分家，走 `cm-callout-mark`
+ * 专用渲染分支（无标题栏、无左边框、荧光笔底色）。仍写 `> [!highlight]`。
+ */
+export const CALLOUT_MARK_TYPES: readonly CalloutEditType[] = [
   { key: "highlight", label: "纯高亮", emoji: "🖍️", tone: "yellow" },
+];
+
+/**
+ * 编辑展示集 = 纯高亮 + 13 类语义标注（并集）。
+ *
+ * 保留给渲染别名与既有消费方（`resolveCalloutType`、块菜单「类型」行等）：
+ * 菜单不再直接展开本表，而是「高亮」直落 + 「标注」展开
+ * `CALLOUT_ANNOTATION_TYPES`。
+ */
+export const CALLOUT_EDIT_TYPES: readonly CalloutEditType[] = [
+  ...CALLOUT_ANNOTATION_TYPES,
+  ...CALLOUT_MARK_TYPES,
 ];
 
 /** 解析后的展示信息，来源不限编辑集或渲染别名表。 */

@@ -98,7 +98,7 @@ describe("slash commands", () => {
     expect(grid).not.toBeNull();
     expect(
       view.dom.querySelectorAll(".mdb-slash-grid-menu .mdb-slash-item").length,
-    ).toBe(17);
+    ).toBe(18);
   });
 
   it("positions the menu relative to the editor origin, not the viewport (issue #203)", () => {
@@ -131,7 +131,7 @@ describe("slash commands", () => {
     expect(view.state.doc.toString()).toBe("/");
     expect(
       view.dom.querySelectorAll(".mdb-slash-grid-menu .mdb-slash-item").length,
-    ).toBe(17);
+    ).toBe(18);
 
     const flyout = view.dom.querySelector(".mdb-slash-flyout");
     expect(flyout).not.toBeNull();
@@ -148,27 +148,42 @@ describe("slash commands", () => {
     expect(view.state.selection.main.head).toBe(view.state.doc.length);
   });
 
-  it("applying the callout command opens the type flyout and inserts the chosen type", () => {
+  it("applying the 高亮 command inserts a pure highlight block directly", () => {
     insertSlashChar(view);
-    // 行按分组渲染；按标签找 高亮，不依赖固定下标。
+    // 「高亮」是叶子行：直接落 `> [!highlight]`，不展开浮层。
     const rowIndex = Array.from(
       view.dom.querySelectorAll<HTMLElement>(".mdb-slash-item"),
     ).findIndex((row) => row.textContent?.includes("高亮"));
     for (let i = 0; i < rowIndex; i++) slashMenuSelectNext(view);
     slashMenuApply(view);
-    // 高亮是类型浮层入口：第一个子项是 注释（note）。
+    expect(view.dom.querySelector(".mdb-slash-flyout")).toBeNull();
+    expect(view.state.doc.toString()).toBe("> [!highlight]\n> ");
+  });
+
+  it("applying the 标注 command opens the 13-type flyout and inserts the chosen type", () => {
+    insertSlashChar(view);
+    const rowIndex = Array.from(
+      view.dom.querySelectorAll<HTMLElement>(".mdb-slash-item"),
+    ).findIndex((row) => row.textContent?.includes("标注"));
+    for (let i = 0; i < rowIndex; i++) slashMenuSelectNext(view);
+    slashMenuApply(view);
+    // 标注是类型浮层入口：13 类语义 callout，第一个子项是 注释（note）。
     expect(view.dom.querySelector(".mdb-slash-flyout")).not.toBeNull();
+    expect(view.dom.querySelectorAll(".mdb-slash-flyout-item").length).toBe(13);
     expect(slashMenuApply(view)).toBe(true);
     const doc = view.state.doc.toString();
     expect(doc).toContain("> [!NOTE]");
     expect(doc).toMatch(/^> \[!NOTE\]\n> $/);
   });
 
-  it("labels the callout slash command in Chinese without a markdown hint", () => {
-    const callout = defaultCommands.find((c) => c.id === "callout");
-    expect(callout?.label).toBe("高亮");
+  it("labels the callout slash commands in Chinese without a markdown hint", () => {
+    const mark = defaultCommands.find((c) => c.id === "callout-mark");
+    expect(mark?.label).toBe("高亮");
+    const annotation = defaultCommands.find((c) => c.id === "callout");
+    expect(annotation?.label).toBe("标注");
     // 提示不再回显 markdown 源符号。
-    expect(callout?.hint).toBeUndefined();
+    expect(mark?.hint).toBeUndefined();
+    expect(annotation?.hint).toBeUndefined();
   });
 
   it("the table row opens an N × M grid and inserts a GFM table on pick", () => {
@@ -208,7 +223,7 @@ describe("slash commands", () => {
 
     expect(
       view.dom.querySelectorAll(".mdb-slash-grid-menu .mdb-slash-item").length,
-    ).toBe(17);
+    ).toBe(18);
     const flyout = view.dom.querySelector(".mdb-slash-flyout");
     expect(flyout).not.toBeNull();
     expect(flyout!.querySelectorAll(".mdb-slash-grid-cell").length).toBe(100);
@@ -550,12 +565,13 @@ describe("slash commands", () => {
     typeText("b");
     expect(view.state.doc.toString()).toBe("/b");
     expect(view.dom.querySelector(".mdb-slash-menu")).not.toBeNull();
-    // 标题 / 表格 匹配拼音首字母 b（高亮 = gaoliang，不匹配）。
-    expect(cells().length).toBe(2);
+    // 标题 / 表格 / 标注 匹配拼音首字母 b（高亮 = gaoliang，不匹配）。
+    expect(cells().length).toBe(3);
     expect(Array.from(cells()).map((cell) => cell.textContent?.trim())).toEqual(
       expect.arrayContaining([
         expect.stringContaining("标题"),
         expect.stringContaining("表格"),
+        expect.stringContaining("标注"),
       ]),
     );
 
@@ -564,9 +580,9 @@ describe("slash commands", () => {
     expect(cells()[0].textContent).toContain("标题");
 
     backspace(); // /b
-    expect(cells().length).toBe(2);
+    expect(cells().length).toBe(3);
     backspace(); // /
-    expect(cells().length).toBe(17);
+    expect(cells().length).toBe(18);
   });
 
   it('applyQuery("") 保留全量列表（删空查询回归）', () => {
@@ -580,7 +596,7 @@ describe("slash commands", () => {
     expect(view.state.doc.toString()).toBe("/");
     expect(
       view.dom.querySelectorAll(".mdb-slash-grid-menu .mdb-slash-item").length,
-    ).toBe(17);
+    ).toBe(18);
   });
 
   it("shows an empty state for a filter with no match, and a newline closes the menu", () => {
@@ -612,16 +628,26 @@ describe("slash commands", () => {
 
   it("Enter applies the selected filtered opener row and its chosen type", () => {
     insertSlashChar(view);
-    typeText("gl"); // 只剩 高亮
+    typeText("bz"); // 只剩 标注
     expect(
       view.dom.querySelectorAll(".mdb-slash-grid-menu .mdb-slash-item").length,
     ).toBe(1);
 
     expect(slashMenuApply(view)).toBe(true); // 打开类型浮层
-    // 14 个编辑端类型——与块菜单渲染的同一集合。
-    expect(view.dom.querySelectorAll(".mdb-slash-flyout-item").length).toBe(14);
+    // 13 类语义标注——与块菜单「标注」子层渲染的同一集合。
+    expect(view.dom.querySelectorAll(".mdb-slash-flyout-item").length).toBe(13);
     expect(slashMenuApply(view)).toBe(true); // 应用 注释（note）
     expect(view.state.doc.toString()).toBe("> [!NOTE]\n> ");
+  });
+
+  it("filtering /gl keeps only the 高亮 leaf and inserts a pure highlight block", () => {
+    insertSlashChar(view);
+    typeText("gl");
+    expect(
+      view.dom.querySelectorAll(".mdb-slash-grid-menu .mdb-slash-item").length,
+    ).toBe(1);
+    expect(slashMenuApply(view)).toBe(true);
+    expect(view.state.doc.toString()).toBe("> [!highlight]\n> ");
   });
 
   it("ArrowRight opens the flyout and ArrowLeft closes it while the root grid stays", () => {
@@ -632,13 +658,13 @@ describe("slash commands", () => {
     expect(view.dom.querySelectorAll(".mdb-slash-flyout-item").length).toBe(6);
     expect(
       view.dom.querySelectorAll(".mdb-slash-grid-menu .mdb-slash-item").length,
-    ).toBe(17);
+    ).toBe(18);
 
     expect(slashMenuSubmenuBack(view)).toBe(true);
     expect(view.dom.querySelector(".mdb-slash-flyout")).toBeNull();
     expect(
       view.dom.querySelectorAll(".mdb-slash-grid-menu .mdb-slash-item").length,
-    ).toBe(17);
+    ).toBe(18);
     expect(view.state.doc.toString()).toBe("/");
   });
 
@@ -737,8 +763,8 @@ describe("slash commands", () => {
 });
 
 describe("insert menu catalog", () => {
-  it("groups the 17 root rows into the seven categories, in order", () => {
-    expect(defaultCommands).toHaveLength(17);
+  it("groups the 18 root rows into the seven categories, in order", () => {
+    expect(defaultCommands).toHaveLength(18);
     const seen: string[] = [];
     for (const cmd of defaultCommands) {
       if (cmd.group && !seen.includes(cmd.group)) seen.push(cmd.group);

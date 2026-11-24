@@ -57,7 +57,7 @@ test("输入过滤词把菜单收窄到标题行", async ({ page }) => {
   await page.keyboard.type("/b");
 
   const items = page.locator(".mdb-slash-grid-menu .mdb-slash-item");
-  await expect(items).toHaveCount(2);
+  await expect(items).toHaveCount(3);
   await expect(items.filter({ hasText: "标题" })).toHaveCount(1);
 
   await page.keyboard.type("t");
@@ -70,7 +70,7 @@ test("回车应用命令并生成一级标题行", async ({ page }) => {
   await page.keyboard.type("/b");
   await expect(
     page.locator(".mdb-slash-grid-menu .mdb-slash-item"),
-  ).toHaveCount(2);
+  ).toHaveCount(3);
 
   // 第一次 Enter 打开「标题」浮层；第二次 Enter 应用默认的 1 级标题。
   await page.keyboard.press("Enter");
@@ -125,7 +125,7 @@ test("全角逗号同样归一为斜杠并打开菜单", async ({ page }) => {
   await expect.poll(() => storeContent(page), { timeout: 5000 }).toBe("/h1");
 });
 
-test("删空查询后恢复全量 17 行", async ({ page }) => {
+test("删空查询后恢复全量 18 行", async ({ page }) => {
   await openMarkdownForEditing(page, "/Users/test/slash-comma-backspace.md");
   await page.keyboard.type("/h1");
   const items = page.locator(".mdb-slash-grid-menu .mdb-slash-item");
@@ -133,7 +133,7 @@ test("删空查询后恢复全量 17 行", async ({ page }) => {
 
   await page.keyboard.press("Backspace");
   await page.keyboard.press("Backspace");
-  await expect(items).toHaveCount(17);
+  await expect(items).toHaveCount(18);
 });
 
 test("代码块内逗号不转换", async ({ page }) => {
@@ -277,11 +277,14 @@ test("分栏选区键盘左右移动选中，Enter 插入 col-3 围栏", async (
   const menu = page.locator(".mdb-slash-menu");
   await expect(menu).toHaveCount(1);
 
-  await menu.locator(".mdb-slash-item").filter({ hasText: "分栏" }).hover();
+  const row = menu.locator(".mdb-slash-item").filter({ hasText: "分栏" });
+  await row.hover();
   const grid = page.locator(".mdb-slash-grid");
   await expect(grid).toBeVisible();
   const onCells = grid.locator('.mdb-slash-grid-cell[data-on="true"]');
 
+  // 悬停打开网格时选中态落在第 1 根（hoverC=1）；右键一根根右移到第 3 根。
+  await expect(onCells).toHaveCount(1);
   await page.keyboard.press("ArrowRight");
   await expect(onCells).toHaveCount(2);
   await page.keyboard.press("ArrowRight");

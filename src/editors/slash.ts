@@ -29,7 +29,10 @@ import {
   type ViewUpdate,
 } from "@codemirror/view";
 import { Prec, type EditorState, type Extension } from "@codemirror/state";
-import { CALLOUT_EDIT_TYPES } from "./callout-types";
+import {
+  CALLOUT_ANNOTATION_TYPES,
+  CALLOUT_EDIT_TYPES,
+} from "./callout-types";
 import { TABLE_SIZE_QUERY, filterSlashCommands } from "./slash-filter";
 import { sanitizeCellText } from "./decorations/cell-text";
 import { renderIcon } from "./icons";
@@ -280,12 +283,24 @@ export const defaultCommands: SlashCommand[] = [
     children: COLUMN_COUNTS.map(columnCount),
   },
   {
-    id: "callout",
+    // 「高亮」= 纯高亮块（`cm-callout-mark` 分支）：直落 `> [!highlight]`。
+    id: "callout-mark",
     label: "高亮",
     icon: "CalloutOutlined",
     code: "n",
     group: "常用",
-    children: CALLOUT_EDIT_TYPES.map(calloutType),
+    insert(state) {
+      const head = state.selection.main.head;
+      return { from: head - 1, to: head, text: "> [!highlight]\n> " };
+    },
+  },
+  {
+    // 「标注」= 13 类语义 callout，展开 CALLOUT_ANNOTATION_TYPES。
+    id: "callout",
+    label: "标注",
+    icon: "CalloutOutlined",
+    group: "常用",
+    children: CALLOUT_ANNOTATION_TYPES.map(calloutType),
     insert(state) {
       const head = state.selection.main.head;
       return { from: head - 1, to: head, text: "> [!NOTE]\n> " };

@@ -104,15 +104,18 @@ test("末级行转为有序：只转当前行，兄弟与上级零变化，一�
   await expect.poll(() => content(page)).toBe(doc);
 });
 
-test("列表转为高亮：外套 callout、列表标记与缩进保留，一步撤销还原", async ({
+test("列表转为标注：外套 [!note]、列表标记与缩进保留，一步撤销还原", async ({
   page,
 }) => {
   const doc = ["- 甲", "  - 甲一", "- 乙"].join("\n");
   await openMarkdownInEdit(page, doc, "line-convert-callout");
   await openLineMenu(page, 0);
-  await clickCell(page, "callout");
+  await page
+    .locator('[data-testid="block-menu-cell"][data-target="callout"][data-has-children="true"]')
+    .click();
+  await page.locator('[data-testid="block-menu-convert-option"]').first().click();
 
-  const converted = ["> [!NOTE]", "> - 甲", ">   - 甲一", "- 乙"].join("\n");
+  const converted = ["> [!NOTE]", "> - 甲", ">   - 甲一", "> - 乙"].join("\n");
   await expect.poll(() => content(page)).toBe(converted);
   await shot(
     page,

@@ -110,13 +110,37 @@ describe("blockConvertChanges", () => {
 });
 
 describe("blockMenuItems", () => {
-  it("普通段落给出十项", () => {
-    expect(blockMenuItems({ type: "paragraph" })).toHaveLength(10);
+  it("普通段落给出十一项（九项通用 + 高亮 / 标注）", () => {
+    expect(blockMenuItems({ type: "paragraph" })).toHaveLength(11);
+  });
+
+  it("末尾固定「高亮」「标注」两项，标注展开 13 类语义 callout", () => {
+    const items = blockMenuItems({ type: "paragraph" });
+    const mark = items.find((i) => i.label === "高亮");
+    const annotation = items.find((i) => i.label === "标注");
+    expect(mark?.target).toBe("callout");
+    expect(mark?.children).toBeUndefined();
+    expect(annotation?.children).toHaveLength(13);
+    expect(annotation?.children?.map((c) => c.calloutKind)).toEqual([
+      "note",
+      "info",
+      "abstract",
+      "todo",
+      "tip",
+      "success",
+      "question",
+      "warning",
+      "failure",
+      "danger",
+      "bug",
+      "example",
+      "quote",
+    ]);
   });
 
   it("代码块隐藏「代码」项", () => {
     const items = blockMenuItems({ type: "fencedCode" });
-    expect(items).toHaveLength(9);
+    expect(items).toHaveLength(10);
     expect(items.some((i) => i.target === "code")).toBe(false);
   });
 
