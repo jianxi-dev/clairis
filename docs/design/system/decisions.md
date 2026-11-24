@@ -108,3 +108,4 @@ ledger: append-only
 | 引用块图标统一 | 引用块在手柄、块菜单与命令映射中统一为 `FormatQuoteOutlined`，弃用 `ReferenceOutlined` 混用；旧条目保留注册但不再被引用语义消费 | editor-interaction-batch2 / #1348 | 2026-11-22 |
 | 编辑器图标渲染尺寸 | 全局 `ICON_SIZE_PX` 20px→18px，回归 spec §2.1 常规档；20px 为 #133「菜单放大一档」搭车值、无台账授权，本行作废该放大 | editor-interaction-batch2 / #1348 | 2026-11-22 |
 | 菜单/浮窗阴影 token 化 + 两级圆角 | 5 档 `--shadow-*`（menu/panel/dialog/card/button）入 spec §5，暗色同几何 alpha ×3 上限 0.6、`.warm` 沿用亮值；菜单行 `--radius-6` / 面板 `--radius-12` | editor-batch3-lowcost D3/D4 / #1361 | 2026-11-22 |
+| 有序列表图标统一 | `OrderListOutlined` 弃用手绘「三条横线 + 三个相同小方块」（与无序同形），改用 `ui/icons` 的 `ordered` 编号字形（描边 1.7）；手柄 / 块菜单 / 斜杠菜单 / 转换网格同源；旧条目保留注册但不再被引用语义消费 | #1433 | 2026-11-24 |
