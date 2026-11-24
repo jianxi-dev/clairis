@@ -34,6 +34,36 @@
 
 转换手柄菜单中「高亮」SHALL 使用荧光笔图标、「标注」SHALL 使用 callout 图标，二者图标 SHALL 不同；「标注」展开的 13 类类型 SHALL 复用新增菜单的同一份图标（emoji）。新增手柄菜单中的标注项标签 SHALL 为「标注」，SHALL NOT 为「高亮」。
 
+#### Scenario: 纯高亮无边框无标题栏
+
+- **WHEN** 通过斜杠菜单选择「高亮」插入块
+- **THEN** 块计算 `border-inline-start-width` SHALL 为 `0px`，块内 `.cm-callout-header` 节点数 SHALL 为 0，`border-top-width` SHALL 为 `1px`，`border-radius` SHALL 为 `4px`，页面 SHALL NOT 出现字符级 `==text==` 高亮渲染
+
+#### Scenario: 菜单两项收敛
+
+- **WHEN** 用户打开斜杠菜单「常用」段、块菜单「转为」网格、转换手柄「高亮」组或选区轮盘「转换 → 高亮」三层
+- **THEN** 四处 SHALL 只出现「高亮」与「标注」两项，SHALL NOT 出现第三项；选「标注」SHALL 展开 13 个语义类型
+
+#### Scenario: 旧语法保持不变
+
+- **WHEN** 打开含 `> [!NOTE] 标题` 的文档
+- **THEN** 渲染结果 SHALL 与本要求引入前字符差异数为 0，不出现属性块，仍归入「标注」
+
+#### Scenario: 三色属性渲染
+
+- **WHEN** 打开含 `> [!NOTE]{bg=green border=red text=gray} 标题` 的文档
+- **THEN** 卡片背景 SHALL 为 green 的软色（`color-mix` ~10%），边框与文字色 SHALL 分别等于 red / gray 调色板 token，属性顺序改变后结果不变
+
+#### Scenario: 类型转换保留属性与一步撤销
+
+- **WHEN** 把 `{bg=green border=red text=gray}` 的 NOTE 块类型改为 TIP，随后按一次 ⌘Z
+- **THEN** 属性块与折叠标记 SHALL 原样保留，撤销 SHALL 只回退最后一次操作，改色前状态完全还原
+
+#### Scenario: 纯高亮预设
+
+- **WHEN** 通过斜杠菜单选择「高亮」
+- **THEN** 插入块 SHALL 为 `> [!highlight]`，无左边框与标题栏、1px 全边框、底色为荧光笔半透明黄；页面 SHALL NOT 出现字符级 `==text==` 高亮渲染
+
 #### Scenario: 纯高亮与标注视觉不同
 
 - **WHEN** 打开同时含 `> [!highlight]` 与 `> [!NOTE]` 的文档
