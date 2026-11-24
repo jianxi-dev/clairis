@@ -262,7 +262,8 @@ function openConvertFlyout(
   const block = blockAt(view, view.state.selection.main.from);
   if (!block) return;
   const panelEl = document.createElement("div");
-  panelEl.className = "cm-block-menu-flyout mdb-block-handle-menu";
+  panelEl.className = "cm-block-menu-flyout";
+  panelEl.classList.add("mdb-block-handle-menu");
   panelEl.dataset.testid = "block-menu-convert-flyout";
   panelEl.dataset.blockFlyout = "1";
   const own = view.dom.getBoundingClientRect();

@@ -3070,6 +3070,15 @@ html[data-tab-drag="true"] body * {
   font-size: var(--menu-font-size);
 }
 
+.cm-block-menu-flyout-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 18px;
+  height: 18px;
+}
+
 .cm-block-menu-flyout-item {
   display: flex;
   align-items: center;
