@@ -459,6 +459,8 @@ export interface BlockMenuItem {
   target: BlockConvertTarget;
   label: string;
   icon: string;
+  /** 展开层优先渲染的 emoji（与新增菜单同一份类型图标）。 */
+  emoji?: string;
   /** 网格单元里的短标签：236px / 5 列只有约 44px 宽，四字标题会压到邻格。 */
   shortLabel?: string;
   /** 有子项时该格是「标注」展开层（13 类语义 callout），不直接转换。 */
@@ -487,7 +489,7 @@ const ALL_ITEMS: readonly BlockMenuItem[] = [
 export const CALLOUT_MARK_ITEM: BlockMenuItem = {
   target: "callout",
   label: "高亮",
-  icon: "CalloutOutlined",
+  icon: "HighlighterOutlined",
 };
 
 export function calloutAnnotationItems(): BlockMenuItem[] {
@@ -495,6 +497,7 @@ export function calloutAnnotationItems(): BlockMenuItem[] {
     target: "callout" as const,
     label: type.label,
     icon: "CalloutOutlined",
+    emoji: type.emoji,
     calloutKind: type.key,
   }));
 }

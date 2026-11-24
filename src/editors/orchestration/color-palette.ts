@@ -4,7 +4,7 @@
  * 块菜单、块工具条、文字工具条都从这里取，标签与色值不再各写一套。
  * 写入语法沿用现有 `<span class="mdb-color-*">` / `<span class="mdb-bg-*">`。
  *
- * 字体色画成「色块 + 荧光笔笔尖」形象图标（#1413 / D2），背景色画成实色块。
+ * 字体色画成字母 A 字形（#1437 恢复 #1423 之前的字形），背景色画成实色块。
  * 色板只是选择器，实际应用的高亮仍走 `.cm-bg-*` / `.mdb-bg-*` 的半透明规则，
  * 保证深底可读。
  */
@@ -87,8 +87,7 @@ export const COLOR_SWATCH_ICON_CLASS = "cm-color-swatch-icon";
  * `onPick` 收到 `(kind, className)`；`className` 为空表示清除该属性。
  * 默认项画成带斜线的透明块（`.cm-color-swatch-default`）。
  *
- * 字体色块为「色块 + 荧光笔笔尖」形象图标（`.cm-color-swatch-icon`），
- * 背景 / 边框色为实色块。
+ * 字体色块为字母 A 字形（`.cm-color-swatch-icon`），背景 / 边框色为实色块。
  */
 export function createColorRow(
   kind: ColorKind,
@@ -116,7 +115,7 @@ export function createColorRow(
       const icon = document.createElement("span");
       icon.className = COLOR_SWATCH_ICON_CLASS;
       icon.setAttribute("aria-hidden", "true");
-      icon.appendChild(renderIcon("HighlighterOutlined"));
+      icon.appendChild(renderIcon("FormatColorTextOutlined"));
       if (!color.isDefault) icon.style.color = color.swatch;
       swatch.appendChild(icon);
     } else if (!color.isDefault) {
@@ -166,7 +165,7 @@ function hueOf(hex: string): number | null {
   if (max === r) h = ((g - b) / d) % 6;
   else if (max === g) h = (b - r) / d + 2;
   else h = (r - g) / d + 4;
-  return ((h * 60) + 360) % 360;
+  return (h * 60 + 360) % 360;
 }
 
 /** 色相环距离（0..180）。 */
@@ -201,10 +200,7 @@ const BG_SWATCH_BY_NAME = new Map(
  * 同色相（容差 20°）优先取目标类型的默认色名；无同色相时取色板中色相最近者；
  * 仍无可用色（空板 / 无法解析色相）回落目标类型默认色。纯函数，无 DOM 依赖。
  */
-export function mapHueToType(
-  currentColor: string,
-  targetTone: string,
-): string {
+export function mapHueToType(currentColor: string, targetTone: string): string {
   const fallback = TONE_BG_NAME[targetTone] ?? "";
   const targetHex = BG_SWATCH_BY_NAME.get(fallback);
   const currentHue = hueOf(currentColor);
@@ -228,3 +224,76 @@ export function mapHueToType(
   }
   return best;
 }
+
+// --- 纯高亮独立色系（#1437） -------------------------------------------------
+
+/** 一个高亮色相：浅填充 + 同色系深边框。 */
+export interface HighlightColorFamily {
+  readonly key: string;
+  readonly label: string;
+  /** 浅档填充色名（`mdb-bg-*` 后缀）。 */
+  readonly light: string;
+  /** 同色系深档（边框色名 / 深填充色名）。 */
+  readonly dark: string;
+}
+
+/** 纯高亮的 7 个色相（豆包高亮色系，与标注的 15 色板独立）。 */
+export const HIGHLIGHT_COLORS: readonly HighlightColorFamily[] = [
+  { key: "red", label: "红", light: "red", dark: "darkred" },
+  { key: "orange", label: "橙", light: "orange", dark: "brown" },
+  { key: "yellow", label: "黄", light: "yellow", dark: "olive" },
+  { key: "green", label: "绿", light: "green", dark: "darkgreen" },
+  { key: "blue", label: "蓝", light: "blue", dark: "navy" },
+  { key: "purple", label: "紫", light: "purple", dark: "indigo" },
+  { key: "gray", label: "灰", light: "gray", dark: "slate" },
+];
+
+const BG_BY_NAME = new Map(
+  BACKGROUND_COLORS.map((color) => [
+    color.className.replace(/^mdb-bg-/, ""),
+    color,
+  ]),
+);
+const BORDER_BY_NAME = new Map(
+  BORDER_COLORS.map((color) => [
+    color.className.replace(/^mdb-border-/, ""),
+    color,
+  ]),
+);
+
+function fillOf(name: string): ColorSwatch {
+  return (
+    BG_BY_NAME.get(name) ?? {
+      label: name,
+      className: `mdb-bg-${name}`,
+      swatch: "",
+    }
+  );
+}
+
+function borderOf(name: string): ColorSwatch {
+  return (
+    BORDER_BY_NAME.get(name) ?? {
+      label: name,
+      className: `mdb-border-${name}`,
+      swatch: "",
+    }
+  );
+}
+
+/** 填充颜色：浅档一行 + 深档一行（首格均为「无」）。 */
+export const HIGHLIGHT_LIGHT_FILLS: readonly ColorSwatch[] = [
+  BACKGROUND_COLORS[0],
+  ...HIGHLIGHT_COLORS.map((family) => fillOf(family.light)),
+];
+
+export const HIGHLIGHT_DARK_FILLS: readonly ColorSwatch[] = [
+  BACKGROUND_COLORS[0],
+  ...HIGHLIGHT_COLORS.map((family) => fillOf(family.dark)),
+];
+
+/** 边框颜色：与深档填充同值。 */
+export const HIGHLIGHT_BORDER_COLORS: readonly ColorSwatch[] = [
+  BORDER_COLORS[0],
+  ...HIGHLIGHT_COLORS.map((family) => borderOf(family.dark)),
+];

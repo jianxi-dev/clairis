@@ -27,7 +27,7 @@ const BASIC_LABELS = [
 ];
 const COMMON_LABELS = [
   "标题",
-  "高亮",
+  "标注",
   "分栏",
   "表格",
   "图片",

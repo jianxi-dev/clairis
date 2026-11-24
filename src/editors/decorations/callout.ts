@@ -21,6 +21,7 @@ import type { Range } from "@codemirror/state";
 import { resolveCalloutType } from "../callout-types";
 import {
   calloutCssVars,
+  highlightCssVars,
   parseCalloutAttrs,
   type CalloutAttrs,
 } from "../callout-attrs";
@@ -110,7 +111,7 @@ function buildCalloutMarkdown(
   // 回到只有徽标的头部。
   const title = (draft.title ?? block.title).trim();
   const content = draft.content ?? block.content;
-  const head = `> [!${block.type.toUpperCase()}]${block.fold}${block.attrsRaw}${title ? ` ${title}` : ""}`;
+  const head = `> [!${block.typeRaw}]${block.fold}${block.attrsRaw}${title ? ` ${title}` : ""}`;
   const lines =
     content === ""
       ? []
@@ -651,7 +652,9 @@ class CalloutWidget extends WidgetType {
     container.classList.add(`cm-callout-tone-${this.tone}`);
     if (this.isMark) container.classList.add("cm-callout-mark");
     if (this.fold) container.setAttribute("data-fold", this.fold);
-    const vars = calloutCssVars(this.attrs);
+    const vars = this.isMark
+      ? highlightCssVars(this.attrs)
+      : calloutCssVars(this.attrs);
     if (vars.bg) container.style.setProperty("--callout-bg", vars.bg);
     if (vars.border)
       container.style.setProperty("--callout-border", vars.border);
@@ -859,8 +862,7 @@ class CalloutWidget extends WidgetType {
  * 捕获：(1) 类型（大小写不敏感）、(2) 折叠指示（+/-/空）、(3) 属性块（含 `{}`）、
  * (4) 可选标题。
  */
-const CALLOUT_OPEN_RE =
-  /^>\s*\[!([A-Za-z]+)\]([+-]?)(\{[^}]*\})?\s*(.*)$/;
+const CALLOUT_OPEN_RE = /^>\s*\[!([A-Za-z]+)\]([+-]?)(\{[^}]*\})?\s*(.*)$/;
 
 /** 匹配续行：`> 可选内容`。 */
 const CALLOUT_LINE_RE = /^>\s?(.*)$/;
@@ -869,6 +871,8 @@ interface CalloutBlock {
   from: number;
   to: number;
   type: string;
+  /** 源码里的原始大小写 token，写回时原样保留（避免打开卡片就改写文档）。 */
+  typeRaw: string;
   title: string;
   content: string;
   fold: "+" | "-" | "";
@@ -879,12 +883,19 @@ interface CalloutBlock {
 function findCalloutBlocks(docText: string): CalloutBlock[] {
   const blocks: CalloutBlock[] = [];
   const lines = docText.split("\n");
+  const lineStarts = new Array<number>(lines.length);
+  let offset = 0;
+  for (let index = 0; index < lines.length; index += 1) {
+    lineStarts[index] = offset;
+    offset += lines[index].length + 1;
+  }
 
   let i = 0;
   while (i < lines.length) {
     const openMatch = CALLOUT_OPEN_RE.exec(lines[i]);
     if (openMatch) {
-      const type = openMatch[1].toLowerCase();
+      const typeRaw = openMatch[1];
+      const type = typeRaw.toLowerCase();
       const fold = (openMatch[2] as "+" | "-") || "";
       const attrsRaw = openMatch[3] ?? "";
       const attrs = parseCalloutAttrs(attrsRaw);
@@ -896,10 +907,7 @@ function findCalloutBlocks(docText: string): CalloutBlock[] {
         continue;
       }
 
-      let from = 0;
-      for (let j = 0; j < i; j++) {
-        from += lines[j].length + 1;
-      }
+      const from = lineStarts[i];
 
       const contentLines: string[] = [];
       let j = i + 1;
@@ -922,16 +930,13 @@ function findCalloutBlocks(docText: string): CalloutBlock[] {
         }
       }
 
-      let to = from;
-      for (let k = i; k < j; k++) {
-        to += lines[k].length;
-        if (k < j - 1) to += 1;
-      }
+      const to = lineStarts[j - 1] + lines[j - 1].length;
 
       blocks.push({
         from,
         to,
         type,
+        typeRaw,
         title,
         content: contentLines.join("\n"),
         fold,

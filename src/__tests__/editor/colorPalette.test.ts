@@ -91,7 +91,7 @@ describe("createColorRow", () => {
     expect(picks).toEqual(["mdb-color-red", ""]);
   });
 
-  it("字体色块渲染形象图标（无字母 A），背景色块渲染实色底", () => {
+  it("字体色块渲染字母 A 字形，背景色块渲染实色底", () => {
     const fontRow = createColorRow("font", FONT_COLORS, () => {});
     const fontSwatch =
       fontRow.querySelectorAll<HTMLButtonElement>(".cm-color-swatch")[1];
@@ -100,7 +100,7 @@ describe("createColorRow", () => {
     expect(icon).not.toBeNull();
     expect(icon?.querySelector("svg")).not.toBeNull();
     expect(icon?.querySelector("svg")?.getAttribute("data-icon")).toBe(
-      "HighlighterOutlined",
+      "FormatColorTextOutlined",
     );
 
     const bgRow = createColorRow("background", BACKGROUND_COLORS, () => {});

@@ -64,7 +64,13 @@ export function outdentBlock(blockText: string): string {
 export function changeCalloutType(blockText: string, nextKey: string): string {
   const match = /^(>[ \t]*)\[![^\]\r\n]*\]/m.exec(blockText);
   if (!match) return blockText;
-  return blockText.replace(/\[![^\]\r\n]*\]/, `[!${nextKey}]`);
+  const raw = /\[!([^\]\r\n]*)\]/.exec(blockText)?.[1] ?? "";
+  const upper =
+    raw.length > 0 && raw === raw.toUpperCase() && raw !== raw.toLowerCase();
+  return blockText.replace(
+    /\[![^\]\r\n]*\]/,
+    `[!${upper ? nextKey.toUpperCase() : nextKey}]`,
+  );
 }
 
 /** 块首行是不是高亮块标记；块菜单据此决定要不要显示「类型」。 */

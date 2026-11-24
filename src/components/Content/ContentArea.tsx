@@ -306,7 +306,7 @@ const editorDecorationOptions: EditorDecorationsOptions = {
     openImageCrop({
       crop: attrs.crop,
       from,
-      onConfirm: (rect) => {
+      onConfirm: (rect, display) => {
         const current = getActiveEditorView();
         if (!current) return;
         const docText = current.state.doc.toString();
@@ -317,10 +317,23 @@ const editorDecorationOptions: EditorDecorationsOptions = {
             ? parseImageAttributes(latest.attrText)
             : { ...EMPTY_IMAGE_ATTRIBUTES };
         if (rect) {
-          // 保留既有 width/height（缩放锚点），与预览态 boxW=width + aspect-ratio 对齐。
+          // 已有 width/height 锚点：跟进为可见裁剪显示尺寸，二次裁剪与确认
+          // 使用同一缩放。纯自动尺寸的图片不写宽高，渲染走整图测量路径。
           next.crop = rect;
+          if (attrs.width !== null) {
+            next.width = Math.max(1, Math.round(display.width));
+          }
+          if (attrs.height !== null) {
+            next.height = Math.max(1, Math.round(display.height));
+          }
         } else {
           next.crop = null;
+          if (attrs.width !== null) {
+            next.width = Math.max(1, Math.round(display.fullWidth));
+          }
+          if (attrs.height !== null) {
+            next.height = Math.max(1, Math.round(display.fullHeight));
+          }
         }
         writeImageAttributes(current, from, next);
       },

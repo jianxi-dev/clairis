@@ -10,7 +10,11 @@ test.beforeEach(async ({ page }) => {
   await page.waitForSelector('[data-testid="pane-header"]', { timeout: 30000 });
 });
 
-async function openDoc(page: Page, content: string, mode: "edit" | "preview" = "edit") {
+async function openDoc(
+  page: Page,
+  content: string,
+  mode: "edit" | "preview" = "edit",
+) {
   await page.evaluate(
     ({ p, c }) => {
       (window as unknown as Record<string, any>).__biaoyue_openFile__(
@@ -75,7 +79,8 @@ test("三色属性渲染为卡片计算色（填充软色、边框 / 文字实�
 
   const expectedBg = await page.evaluate(() => {
     const probe = document.createElement("div");
-    probe.style.backgroundColor = "color-mix(in srgb, #419e34 10%, transparent)";
+    probe.style.backgroundColor =
+      "color-mix(in srgb, #419e34 10%, transparent)";
     document.body.appendChild(probe);
     const value = getComputedStyle(probe).backgroundColor;
     probe.remove();
@@ -108,9 +113,9 @@ test("类型转换保留属性块与折叠标记", async ({ page }) => {
   await page.locator('[data-testid="block-menu-type"]').hover();
   await page.locator('[data-type-key="tip"]').click();
 
-  await expect.poll(() => storeContent(page)).toBe(
-    "> [!tip]+{bg=green border=red text=gray} 标题\n> 正文",
-  );
+  await expect
+    .poll(() => storeContent(page))
+    .toBe("> [!TIP]+{bg=green border=red text=gray} 标题\n> 正文");
 });
 
 test("一次改色一步撤销", async ({ page }) => {

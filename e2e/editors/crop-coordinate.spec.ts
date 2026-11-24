@@ -189,7 +189,7 @@ test("裁剪缩放不跳变：保存前后图片显示宽度严格相等且框�
   expect(Math.abs(after.height - during.height)).toBeLessThanOrEqual(1);
 
   const final = await content(page);
-  const match = /\{crop=(\d+),(\d+),(\d+),(\d+)\}/.exec(final);
+  const match = /\bcrop=(\d+),(\d+),(\d+),(\d+)/.exec(final);
   expect(match).not.toBeNull();
   const [l, t, w, h] = match!.slice(1).map(Number);
   // 裁剪框矩形与 crop 值一一对应（显示尺寸 = crop × scale）。
@@ -219,7 +219,7 @@ test("确认入口：拖动后双击写回裁剪矩形", async ({ page }) => {
   await expect(page.getByTestId("img-crop-frame")).toHaveCount(0);
 
   const final = await content(page);
-  const match = /\{crop=(\d+),(\d+),(\d+),(\d+)\}/.exec(final);
+  const match = /\bcrop=(\d+),(\d+),(\d+),(\d+)/.exec(final);
   expect(match).not.toBeNull();
   await shot(page, "07-crop-confirm-dblclick");
 });
@@ -417,6 +417,6 @@ test("工具条确认入口：拖动后点「裁剪」按钮写回并退出", as
   await page.getByTestId("img-toolbar-crop").click();
   await expect(page.getByTestId("img-crop-frame")).toHaveCount(0);
 
-  const match = /\{crop=(\d+),(\d+),(\d+),(\d+)\}/.exec(await content(page));
+  const match = /\bcrop=(\d+),(\d+),(\d+),(\d+)/.exec(await content(page));
   expect(match).not.toBeNull();
 });
