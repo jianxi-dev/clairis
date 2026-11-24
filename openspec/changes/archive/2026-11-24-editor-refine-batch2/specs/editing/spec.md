@@ -33,6 +33,21 @@
 - **WHEN** 打开含 `> [!NOTE] 标题` 的文档
 - **THEN** 渲染结果 SHALL 与本要求引入前字符差异数为 0，不出现属性块，颜色仍为类型 tone，块归入「标注」
 
+#### Scenario: 三色属性渲染
+
+- **WHEN** 打开含 `> [!NOTE]{bg=green border=red text=gray} 标题` 的文档
+- **THEN** 卡片计算样式的背景 SHALL 为 green 的软色（`color-mix` ~10%），边框与文字色 SHALL 分别等于 red / gray 调色板 token，属性顺序改变后结果不变
+
+#### Scenario: 类型转换保留属性与一步撤销
+
+- **WHEN** 把 `{bg=green border=red text=gray}` 的 NOTE 块类型改为 TIP，随后按一次 ⌘Z
+- **THEN** 属性块与折叠标记 SHALL 原样保留，撤销 SHALL 只回退最后一次改色，改色前状态完全还原
+
+#### Scenario: 纯高亮预设
+
+- **WHEN** 通过斜杠菜单选择「高亮」
+- **THEN** 插入块 SHALL 为 `> [!highlight]`，无左右边框与标题栏、底色为荧光笔半透明黄；页面 SHALL NOT 出现字符级 `==text==` 高亮渲染
+
 ### Requirement: E-50 附件卡与音频
 
 非图片媒体文件引用 SHALL 渲染为附件卡，含类型图标、文件名与非空大小文本；点击附件卡 SHALL 用系统默认程序打开。音频引用 SHALL 渲染为 `<audio controls>`。pdf / md / html / web SHALL 保持内嵌 `fileEmbed`；其中 md 附件 SHALL 默认展开，宽度与正文同宽，高度随内容自适应且上限 600px，超出部分 SHALL 内部滚动并于底缘渐隐提示截断。md / docx 附件 SHALL 提供样式调整面板（对齐 + 宽度）；docx 附件 SHALL 提供显示位置（对齐）调整。附件引用行首出现前导空格时 SHALL NOT 使整块退化为源码。本要求 SHALL NOT 引入把附件复制进库的行为。
@@ -90,6 +105,16 @@
 
 - **WHEN** 打开含 md 附件引用的文档
 - **THEN** md 附件 SHALL 默认展开，宽度 SHALL 与正文文本块同宽；高度 SHALL 随内容自适应且不超过 600px，超出部分 SHALL 可内部滚动，底缘 SHALL 有渐隐提示
+
+#### Scenario: md 与 docx 样式调整面板
+
+- **WHEN** 用户选中 md 或 docx 附件并打开样式调整面板
+- **THEN** 面板 SHALL 提供对齐（左 / 中 / 右）与三态切换；宽度调整 SHALL 只由拖边框完成，面板 SHALL NOT 含 +/- 按钮
+
+#### Scenario: docx 显示位置调整
+
+- **WHEN** 用户选中 docx 附件并调整显示位置
+- **THEN** 附件对齐 SHALL 随之变化，写回 `align` 属性并在预览态保持一致
 
 #### Scenario: 前导空格不退化
 
