@@ -1015,7 +1015,7 @@ if (typeof document !== "undefined") {
 const SVG_NS = "http://www.w3.org/2000/svg";
 
 /** 用 `ui/icons` 的类型图标渲染 SVG，颜色走 `--type-*`（与 `Icon` 组件同源）。 */
-function appendFileTypeIcon(host: HTMLElement, path: string): void {
+export function appendFileTypeIcon(host: HTMLElement, path: string): void {
   const kind = fileTypeOf(path);
   const def = ICONS[iconOfType(kind)];
   const svg = document.createElementNS(SVG_NS, "svg");

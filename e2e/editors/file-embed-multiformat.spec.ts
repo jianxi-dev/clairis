@@ -119,7 +119,7 @@ test("md 默认展开：渲染真实内容、宽度与正文文本块同宽", as
   const widget = page.locator('.cm-embed-widget[data-embed-kind="md"]');
   await expect(widget).toHaveCount(1);
   await expect(widget.locator(".cm-embed-md h1")).toHaveText("内嵌标题");
-  await expect(widget).toHaveAttribute("data-embed-state", "content");
+  await expect(widget).toHaveAttribute("data-embed-state", "embed");
 
   const widths = await page.evaluate(() => {
     const line = Array.from(
@@ -205,7 +205,9 @@ test("前导空格不退化：无空格 / 2 空格 / 4 空格都保持内嵌或�
   }
 });
 
-test("选中 md 打开样式面板：对齐与宽度可调，取消后无残留", async ({ page }) => {
+test("选中 md 打开样式面板：对齐可调 + 三态切换，取消后无残留", async ({
+  page,
+}) => {
   await openDoc(page, "/tmp/e1395/panel-md.md", `![note](${MD_PATH})\n`);
   const widget = page.locator('.cm-embed-widget[data-embed-kind="md"]');
   await expect(widget.locator(".cm-embed-md h1")).toHaveText("内嵌标题");
@@ -217,17 +219,23 @@ test("选中 md 打开样式面板：对齐与宽度可调，取消后无残留"
   await expect(
     page.locator('[data-testid="embed-panel-align-center"]'),
   ).toHaveAttribute("aria-pressed", "true");
+  await expect(
+    page.locator('[data-testid="embed-panel-state-embed"]'),
+  ).toHaveAttribute("aria-pressed", "true");
 
-  const baseW = (await frameMetrics(page)).frameW;
   await page.locator('[data-testid="embed-panel-align-right"]').click();
   await expect(widget).toHaveAttribute("data-align", "right");
   await expect.poll(() => activeContent(page)).toContain("align=right");
 
-  await page.locator('[data-testid="embed-panel-width-inc"]').click();
+  await page.locator('[data-testid="embed-panel-state-card"]').click();
+  await expect(widget).toHaveAttribute("data-embed-state", "card");
   await expect
-    .poll(async () => (await frameMetrics(page)).frameW)
-    .toBeGreaterThan(baseW + 30);
-  expect(await activeContent(page)).toContain("width=");
+    .poll(async () =>
+      widget
+        .locator(".cm-embed-body")
+        .evaluate((el) => getComputedStyle(el).display),
+    )
+    .toBe("none");
 
   await page.locator('[data-testid="pane-header"]').click();
   await expect(page.locator('[data-testid="embed-panel"]')).toHaveCount(0);
@@ -240,7 +248,7 @@ test("选中 md 打开样式面板：对齐与宽度可调，取消后无残留"
   );
 });
 
-test("选中 docx 卡片打开样式面板：显示位置与宽度可调，取消后无残留", async ({
+test("选中 docx 卡片打开样式面板：对齐可调，取消后无残留", async ({
   page,
 }) => {
   await openDoc(page, "/tmp/e1395/panel-docx.md", "![cv](assets/cv.docx)\n");
@@ -254,16 +262,9 @@ test("选中 docx 卡片打开样式面板：显示位置与宽度可调，取�
   await expect(card).toHaveAttribute("data-selected", "true");
   await expect(card.locator(".cm-image-handle")).toHaveCount(0);
 
-  const baseW = await card.evaluate((el) => el.getBoundingClientRect().width);
   await page.locator('[data-testid="embed-panel-align-right"]').click();
   await expect(card).toHaveAttribute("data-align", "right");
   await expect.poll(() => activeContent(page)).toContain("align=right");
-
-  await page.locator('[data-testid="embed-panel-width-inc"]').click();
-  await expect
-    .poll(async () => card.evaluate((el) => el.getBoundingClientRect().width))
-    .toBeGreaterThan(baseW + 30);
-  expect(await activeContent(page)).toContain("width=");
   await shot(page, "04-docx-card-panel", "docx-card-panel");
 
   await page.locator('[data-testid="pane-header"]').click();

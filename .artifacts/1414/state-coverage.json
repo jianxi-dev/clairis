@@ -1,0 +1,46 @@
+{
+  "states": [
+    {
+      "state": "toolbar-seven",
+      "screenshot": ".artifacts/1414/04-toolbar-seven.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-24T02:12:37Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "card-state",
+      "screenshot": ".artifacts/1414/01-card.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-24T02:12:38Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "preview-state",
+      "screenshot": ".artifacts/1414/02-preview.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-24T02:12:39Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "embed-state",
+      "screenshot": ".artifacts/1414/03-embed.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-24T02:12:40Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "roundtrip-card",
+      "screenshot": ".artifacts/1414/06-roundtrip-card.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-24T02:12:42Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "resized",
+      "screenshot": ".artifacts/1414/05-resized.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-24T02:12:43Z",
+      "runner": "unknown@MMBP"
+    }
+  ]
+}

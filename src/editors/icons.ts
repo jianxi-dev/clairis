@@ -609,6 +609,11 @@ const ICON_REGISTRY: Record<string, IconDef> = {
     kind: "paths",
     paths: ["M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"],
   },
+  ExpandOutlined: {
+    kind: "paths",
+    stroke: true,
+    paths: ["M4 9V4h5 M15 4h5v5 M4 15v5h5 M15 20h5v-5"],
+  },
   RestoreOutlined: {
     kind: "paths",
     paths: [

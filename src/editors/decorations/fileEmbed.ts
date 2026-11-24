@@ -29,6 +29,7 @@ import {
   scanImageReference,
   writeImageAttributes,
 } from "./image";
+import { appendFileTypeIcon } from "./image";
 import {
   AUDIO_EXT,
   IMAGE_EXT,
@@ -54,6 +55,9 @@ import {
 
 /** 可内嵌的文件类型；`web` 是外部链接页面。 */
 export type FileEmbedKind = "pdf" | "md" | "html" | "web";
+
+/** preview 态内容高度上限（px）；embed 态不设上限（走属性高度 / 默认一屏）。 */
+export const PREVIEW_HEIGHT = 320;
 
 /**
  * 宿主注入的解析结果：
@@ -112,7 +116,7 @@ export function classifyFileEmbed(path: string): FileEmbedKind | null {
   return null;
 }
 
-// --- 名称态（D10 / B5c）------------------------------------------------------
+// --- 三态（D10 / B5c → editor-refine-batch2 D3）------------------------------
 
 /** 取引用路径的末段作显示名；URL 去掉 query/hash，纯锚点回退整串。 */
 function baseNameOf(path: string): string {
@@ -123,16 +127,65 @@ function baseNameOf(path: string): string {
 }
 
 /**
- * 名称态是「只显示文件名 / 链接」的会话态：键 = `文档路径\u0000内嵌路径`，
- * 与滚动定格同构。widget 重建（编辑触发重算装饰）后仍按键恢复。
+ * 三态：`card` 只显头部 / `preview` 头部 + 限高内容 / `embed` 全尺寸内容。
+ * 取代旧的 `name | content` 两态。
  */
-const embedNameStates = new Map<string, boolean>();
+export type EmbedCardState = "card" | "preview" | "embed";
+
+/** 旧两态值 → 三态：`name`（只显文件名）→ `card`；`content`（显内容）→ `embed`。 */
+export function migrateLegacyEmbedState(value: string): EmbedCardState {
+  if (value === "name") return "card";
+  if (value === "content") return "embed";
+  return "embed";
+}
+
+/**
+ * 三态是会话态：键 = `文档路径\u0000内嵌路径`，与滚动定格同构。widget 重建
+ * （编辑触发重算装饰）后仍按键恢复。
+ */
+const embedNameStates = new Map<string, EmbedCardState>();
 
 function nameStateKey(
   docPath: string | null | undefined,
   path: string,
 ): string {
   return `${docPath ?? ""}\u0000${path}`;
+}
+
+function readEmbedState(
+  docPath: string | null | undefined,
+  path: string,
+): EmbedCardState {
+  return (
+    embedNameStates.get(nameStateKey(docPath, path)) ?? "embed"
+  );
+}
+
+function writeEmbedState(
+  docPath: string | null | undefined,
+  path: string,
+  state: EmbedCardState,
+): void {
+  embedNameStates.set(nameStateKey(docPath, path), state);
+}
+
+/**
+ * 描述副标题取值：`_alt` → `_title` → 文件类型描述。按 D3 的回落链恒有值，
+ * 调用方总会渲染副标题。纯函数，单测覆盖各分支。
+ */
+export function embedDescriptionOf(
+  kind: FileEmbedKind,
+  alt: string,
+  title: string | null,
+): string {
+  const cleanAlt = alt.trim();
+  if (cleanAlt) return cleanAlt;
+  const cleanTitle = title?.trim() ?? "";
+  if (cleanTitle) return cleanTitle;
+  if (kind === "pdf") return "PDF 文档";
+  if (kind === "md") return "Markdown 文档";
+  if (kind === "html") return "HTML 页面";
+  return "网页";
 }
 
 /** 最近一次指针坐标：名称态离窗关闭要判断指针是否已滑入悬浮窗。 */
@@ -214,8 +267,6 @@ export function isEmbedSelected(from: number): boolean {
 
 type EmbedAlign = "left" | "center" | "right";
 
-const EMBED_WIDTH_STEP = 60;
-
 let embedPanelEl: HTMLElement | null = null;
 let embedRepositionFrame: number | null = null;
 
@@ -236,6 +287,19 @@ function ensureEmbedPanel(): HTMLElement {
   const panel = document.createElement("div");
   panel.className = "cm-embed-panel";
   panel.dataset.testid = "embed-panel";
+
+  const expand = document.createElement("button");
+  expand.type = "button";
+  expand.dataset.testid = "embed-panel-expand";
+  expand.title = "展开全屏";
+  expand.setAttribute("aria-label", "展开全屏");
+  expand.appendChild(renderIcon("ExpandOutlined"));
+  expand.addEventListener("click", () => openSelectedEmbedExternally());
+  panel.appendChild(expand);
+
+  const sepExpand = document.createElement("span");
+  sepExpand.className = "cm-embed-panel-sep";
+  panel.appendChild(sepExpand);
 
   const aligns: ReadonlyArray<{
     key: EmbedAlign;
@@ -261,28 +325,38 @@ function ensureEmbedPanel(): HTMLElement {
   sep.className = "cm-embed-panel-sep";
   panel.appendChild(sep);
 
-  const narrow = document.createElement("button");
-  narrow.type = "button";
-  narrow.dataset.testid = "embed-panel-width-dec";
-  narrow.textContent = "-";
-  narrow.title = "变窄";
-  narrow.setAttribute("aria-label", "变窄");
-  narrow.addEventListener("click", () => resizeSelectedEmbed(-1));
-  panel.appendChild(narrow);
-
-  const wide = document.createElement("button");
-  wide.type = "button";
-  wide.dataset.testid = "embed-panel-width-inc";
-  wide.textContent = "+";
-  wide.title = "变宽";
-  wide.setAttribute("aria-label", "变宽");
-  wide.addEventListener("click", () => resizeSelectedEmbed(1));
-  panel.appendChild(wide);
+  const modes: ReadonlyArray<{
+    key: EmbedCardState;
+    label: string;
+  }> = [
+    { key: "card", label: "卡片" },
+    { key: "preview", label: "预览" },
+    { key: "embed", label: "嵌入" },
+  ];
+  for (const item of modes) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.dataset.testid = `embed-panel-state-${item.key}`;
+    btn.title = item.label;
+    btn.setAttribute("aria-label", item.label);
+    btn.textContent = item.label;
+    btn.addEventListener("click", () => setEmbedCardState(item.key));
+    panel.appendChild(btn);
+  }
 
   document.body.appendChild(panel);
   embedPanelEl = panel;
   updateEmbedPanelAlign();
+  updateEmbedPanelState();
   return panel;
+}
+
+/** 工具条「展开全屏」：复用既有系统打开路径（open_file_external）。 */
+function openSelectedEmbedExternally(): void {
+  const el = selectedEmbedEl();
+  const filePath = el?.dataset.embedPath ?? null;
+  if (!filePath) return;
+  void invoke("open_file_external", { path: filePath }).catch(() => {});
 }
 
 function removeEmbedPanel(): void {
@@ -300,6 +374,56 @@ function updateEmbedPanelAlign(): void {
     );
     btn?.setAttribute("aria-pressed", key === align ? "true" : "false");
   }
+  updateEmbedPanelState();
+}
+
+function updateEmbedPanelState(): void {
+  if (!embedPanelEl) return;
+  const el = selectedEmbedEl();
+  const state = (el?.dataset.embedState as EmbedCardState | undefined) ?? "embed";
+  for (const key of ["card", "preview", "embed"] as const) {
+    const btn = embedPanelEl.querySelector<HTMLButtonElement>(
+      `[data-testid="embed-panel-state-${key}"]`,
+    );
+    btn?.setAttribute("aria-pressed", key === state ? "true" : "false");
+  }
+}
+
+/** 工具条三态切换：写会话态 + 就地套用到选中 widget（不重建，保留滚动定格）。 */
+function setEmbedCardState(state: EmbedCardState): void {
+  const el = selectedEmbedEl();
+  if (!el) return;
+  const path = el.dataset.embedPath;
+  if (path) writeEmbedState(el.dataset.embedDocPath || null, path, state);
+  el.dataset.embedState = state;
+  applyCardStateToDOM(el, state);
+  updateEmbedPanelState();
+}
+
+/**
+ * 三态到 DOM 的纯映射：card 隐藏 body、preview 限高、embed 全尺寸。
+ * 高度只在非 card 态落内联值，避免 card 态残留高度影响头部布局。
+ */
+function applyCardStateToDOM(el: HTMLElement, state: EmbedCardState): void {
+  const body = el.querySelector<HTMLElement>(".cm-embed-body");
+  const frame = el.querySelector<HTMLElement>(".cm-embed-frame");
+  const name = el.querySelector<HTMLElement>(".cm-embed-name");
+  if (name) name.style.display = state === "embed" ? "none" : "";
+  if (!body || !frame) return;
+  if (state === "card") {
+    body.style.display = "none";
+    frame.style.height = "auto";
+    return;
+  }
+  body.style.display = "";
+  const height = el.dataset.height;
+  if (height) {
+    frame.style.height = `${height}px`;
+  } else if (state === "preview") {
+    frame.style.height = `${PREVIEW_HEIGHT}px`;
+  } else {
+    frame.style.height = "";
+  }
 }
 
 function alignSelectedEmbed(align: EmbedAlign): void {
@@ -315,21 +439,6 @@ function alignSelectedEmbed(align: EmbedAlign): void {
       : { ...EMPTY_IMAGE_ATTRIBUTES };
   attrs.align = align === "center" ? null : align;
   writeImageAttributes(view, from, attrs);
-}
-
-function resizeSelectedEmbed(dir: 1 | -1): void {
-  const from = selectedEmbedFrom;
-  const el = from === null ? null : selectedEmbedEl();
-  const view = el ? EditorView.findFromDOM(el) : null;
-  if (from === null || !el || !view) return;
-  const current = el.getBoundingClientRect().width;
-  if (!(current > 0)) return;
-  applyImageSize(
-    view,
-    from,
-    Math.round(current + dir * EMBED_WIDTH_STEP),
-    null,
-  );
 }
 
 function positionEmbedPanel(): void {
@@ -703,6 +812,13 @@ export class FileEmbedWidget extends WidgetType {
       return false;
     }
     dom.dataset.embedFrom = String(this._from);
+    dom.dataset.embedPath = this._path;
+    if (this._resolution?.docPath) {
+      dom.dataset.embedDocPath = this._resolution.docPath;
+    }
+    const state = readEmbedState(this._resolution?.docPath, this._path);
+    dom.dataset.embedState = state;
+    applyCardStateToDOM(dom, state);
     markEmbedSelected(dom, selectedEmbedFrom === this._from);
     return true;
   }
@@ -743,39 +859,35 @@ export class FileEmbedWidget extends WidgetType {
 
     const name = document.createElement("div");
     name.className = "cm-embed-name";
+    appendFileTypeIcon(name, this._path);
+    const meta = document.createElement("span");
+    meta.className = "cm-embed-name-meta";
     const nameText = document.createElement("span");
     nameText.className = "cm-embed-name-text";
     nameText.textContent = this.displayName();
-    name.appendChild(nameText);
+    meta.appendChild(nameText);
+    const description = embedDescriptionOf(this._kind, this._alt, this._title);
+    const desc = document.createElement("span");
+    desc.className = "cm-embed-name-desc";
+    desc.textContent = description;
+    meta.appendChild(desc);
+    name.appendChild(meta);
     frame.appendChild(name);
 
-    const toggle = document.createElement("button");
-    toggle.type = "button";
-    toggle.className = "cm-embed-toggle";
-    frame.appendChild(toggle);
+    container.dataset.embedPath = this._path;
+    if (this._resolution?.docPath) {
+      container.dataset.embedDocPath = this._resolution.docPath;
+    }
 
-    const state = embedNameStates.get(
-      nameStateKey(this._resolution?.docPath, this._path),
-    )
-      ? "name"
-      : "content";
-    this.applyNameState(container, frame, name, toggle, state);
+    const state = readEmbedState(this._resolution?.docPath, this._path);
+    this.applyNameState(container, frame, name, state);
 
-    toggle.addEventListener("click", (event) => {
-      event.stopPropagation();
-      const next = container.dataset.embedState === "name" ? "content" : "name";
-      embedNameStates.set(
-        nameStateKey(this._resolution?.docPath, this._path),
-        next === "name",
-      );
-      this.applyNameState(container, frame, name, toggle, next);
-    });
     name.addEventListener("pointerenter", () => {
-      if (container.dataset.embedState !== "name") return;
+      if (container.dataset.embedState !== "card") return;
       this.openNamePreview(name);
     });
     name.addEventListener("pointerleave", () => {
-      if (container.dataset.embedState !== "name") return;
+      if (container.dataset.embedState !== "card") return;
       this.scheduleNamePreviewClose(name);
     });
     name.addEventListener("click", (event) => {
@@ -850,19 +962,11 @@ export class FileEmbedWidget extends WidgetType {
     container: HTMLElement,
     frame: HTMLElement,
     name: HTMLElement,
-    toggle: HTMLButtonElement,
-    state: "name" | "content",
+    state: EmbedCardState,
   ): void {
-    const isName = state === "name";
     container.dataset.embedState = state;
-    name.style.display = isName ? "" : "none";
-    toggle.textContent = isName ? "内容" : "名称";
-    toggle.title = isName ? "显示内容" : "只显示文件名 / 链接";
-    toggle.setAttribute("aria-label", toggle.title);
-    if (isName) {
-      frame.style.height = "auto";
-      return;
-    }
+    applyCardStateToDOM(container, state);
+    if (state !== "embed") return;
     if (this._height !== null) {
       frame.style.height = `${this._height}px`;
     } else if (this._kind !== "md") {

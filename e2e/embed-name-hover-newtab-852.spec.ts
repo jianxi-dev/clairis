@@ -120,12 +120,12 @@ async function moveAway(page: Page): Promise<void> {
   await page.mouse.move(8, 8);
 }
 
-test("名称态 / 内容态切换后节点形态可区分", async ({ page }) => {
+test("三态切换后节点形态可区分（embed / card）", async ({ page }) => {
   await openDoc(page, "![note](assets/note.md)\n", "doc.md");
   const widget = page.locator('.cm-embed-widget[data-embed-kind="md"]');
   await expect(widget.locator(".cm-embed-md")).toHaveCount(1);
 
-  await expect(widget).toHaveAttribute("data-embed-state", "content");
+  await expect(widget).toHaveAttribute("data-embed-state", "embed");
   await expect(widget.locator(".cm-embed-name")).toBeHidden();
   await expect(widget.locator(".cm-embed-body")).toBeVisible();
   const contentH = await widget
@@ -133,8 +133,9 @@ test("名称态 / 内容态切换后节点形态可区分", async ({ page }) => 
     .evaluate((el) => el.getBoundingClientRect().height);
   await shot(page, "01-content-state", "content-state");
 
-  await widget.locator(".cm-embed-toggle").click();
-  await expect(widget).toHaveAttribute("data-embed-state", "name");
+  await widget.click();
+  await page.locator('[data-testid="embed-panel-state-card"]').click();
+  await expect(widget).toHaveAttribute("data-embed-state", "card");
   await expect(widget.locator(".cm-embed-name")).toBeVisible();
   await expect(widget.locator(".cm-embed-name-text")).toHaveText("note.md");
   await expect(widget.locator(".cm-embed-body")).toBeHidden();
@@ -144,17 +145,18 @@ test("名称态 / 内容态切换后节点形态可区分", async ({ page }) => 
   expect(nameH).toBeLessThan(contentH);
   await shot(page, "02-name-state", "name-state");
 
-  await widget.locator(".cm-embed-toggle").click();
-  await expect(widget).toHaveAttribute("data-embed-state", "content");
+  await page.locator('[data-testid="embed-panel-state-embed"]').click();
+  await expect(widget).toHaveAttribute("data-embed-state", "embed");
   await expect(widget.locator(".cm-embed-body")).toBeVisible();
   await expect(widget.locator(".cm-embed-name")).toBeHidden();
 });
 
-test("名称态滑入弹出悬浮预览，滑出关闭", async ({ page }) => {
+test("卡片态滑入弹出悬浮预览，滑出关闭", async ({ page }) => {
   await openDoc(page, "![note](assets/note.md)\n", "doc.md");
   const widget = page.locator('.cm-embed-widget[data-embed-kind="md"]');
-  await widget.locator(".cm-embed-toggle").click();
-  await expect(widget).toHaveAttribute("data-embed-state", "name");
+  await widget.click();
+  await page.locator('[data-testid="embed-panel-state-card"]').click();
+  await expect(widget).toHaveAttribute("data-embed-state", "card");
 
   await widget.locator(".cm-embed-name-text").hover();
   const preview = page.locator('[data-testid="floating-preview"]');
@@ -171,11 +173,12 @@ test("名称态滑入弹出悬浮预览，滑出关闭", async ({ page }) => {
     .toBe(0);
 });
 
-test("点击名称态链接在新标签页打开", async ({ page }) => {
+test("点击卡片态链接在新标签页打开", async ({ page }) => {
   await openDoc(page, "![note](assets/note.md)\n", "doc.md");
   const widget = page.locator('.cm-embed-widget[data-embed-kind="md"]');
-  await widget.locator(".cm-embed-toggle").click();
-  await expect(widget).toHaveAttribute("data-embed-state", "name");
+  await widget.click();
+  await page.locator('[data-testid="embed-panel-state-card"]').click();
+  await expect(widget).toHaveAttribute("data-embed-state", "card");
 
   const before = await tabCount(page);
   await widget.locator(".cm-embed-name-text").click();
