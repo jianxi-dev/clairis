@@ -1,0 +1,25 @@
+{
+  "states": [
+    {
+      "state": "light-handles",
+      "screenshot": ".artifacts/1408/01-light-handles.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-24T03:22:32Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "dark-handles",
+      "screenshot": ".artifacts/1408/02-dark-handles.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-24T03:22:34Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "no-blue-frame",
+      "screenshot": ".artifacts/1408/03-no-blue-frame.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-24T03:22:35Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}

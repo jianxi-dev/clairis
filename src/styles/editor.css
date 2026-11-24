@@ -1082,7 +1082,8 @@ body {
   left: 0;
   top: 0;
   box-sizing: border-box;
-  border: 1px solid var(--app-accent);
+  /* 边界辨识交给 4 角标 + 4 边柄（#1408）：整圈蓝框与角标重复且抢眼。 */
+  border: 0;
   cursor: move;
   touch-action: none;
   z-index: 30;
@@ -1132,8 +1133,15 @@ body {
   left: -9px;
 }
 
+/* 角标与边柄颜色跟随主题：浅底深标、暗底浅标（#1408）。
+ * 阴影保留——浅底图上深色角标靠投影与图像分离，暗底图上同理。 */
 .cm-image-crop-frame .cm-image-handle svg {
+  color: var(--app-text);
   filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.55));
+}
+
+.cm-image-crop-frame .image-crop-mark {
+  background: var(--app-text);
 }
 
 /* 视频播放器 / 文件卡片 */
