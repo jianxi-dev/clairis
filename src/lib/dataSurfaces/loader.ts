@@ -37,7 +37,12 @@ function toItem(raw: unknown): ToolbarSlotItem | null {
   if (typeof label !== "string") return null;
   if (typeof icon !== "string") return null;
   if (typeof group !== "string" || !GROUPS.has(group)) return null;
-  return { id, label, icon: icon as ToolbarSlotItem["icon"], group: group as ToolbarSlotItem["group"] };
+  return {
+    id,
+    label,
+    icon: icon as ToolbarSlotItem["icon"],
+    group: group as ToolbarSlotItem["group"],
+  };
 }
 
 /** 从 `load_surfaces` 返回值里取单面；形状不对返回 null。 */

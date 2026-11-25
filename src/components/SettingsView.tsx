@@ -1786,9 +1786,9 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
                 <ul className="space-y-1">
                   {[
                     ...activeToolbarItems,
-                    ...surfaceToolbarItems.map((item) => item.id).filter(
-                      (id) => !activeToolbarItems.includes(id),
-                    ),
+                    ...surfaceToolbarItems
+                      .map((item) => item.id)
+                      .filter((id) => !activeToolbarItems.includes(id)),
                   ].map((id) => {
                     const label =
                       surfaceToolbarItems.find((item) => item.id === id)

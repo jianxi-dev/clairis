@@ -270,7 +270,9 @@ function App() {
         if (cancelled) fn();
         else unlisten = fn;
       })
-      .catch((e) => log.warn("App", "surfaces-changed listener unavailable", e));
+      .catch((e) =>
+        log.warn("App", "surfaces-changed listener unavailable", e),
+      );
     return () => {
       cancelled = true;
       unlisten?.();

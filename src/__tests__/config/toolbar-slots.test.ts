@@ -24,7 +24,7 @@ function defaultPayload(): SurfacePayload {
 }
 
 describe("数据面归一化（html-toolbar）", () => {
-  it("默认态：无覆盖即返回内嵌默认 12 项", () => {
+  it("默认态：无覆盖即返回内嵌默认全集", () => {
     const result = normalizeSurface(defaultPayload(), null);
     expect(result.items.map((i) => i.id)).toEqual([
       "ai-rewrite",
@@ -44,19 +44,24 @@ describe("数据面归一化（html-toolbar）", () => {
   });
 
   it("覆盖态：保留覆盖顺序并过滤未知 id，聚合一条告警", () => {
-    const result = normalizeSurface(
-      defaultPayload(),
-      ["format-bold", "nope", "format-italic"],
-    );
-    expect(result.items.map((i) => i.id)).toEqual(["format-bold", "format-italic"]);
+    const result = normalizeSurface(defaultPayload(), [
+      "format-bold",
+      "nope",
+      "format-italic",
+    ]);
+    expect(result.items.map((i) => i.id)).toEqual([
+      "format-bold",
+      "format-italic",
+    ]);
     expect(result.warnings).toHaveLength(1);
     expect(result.warnings[0]).toContain("nope");
   });
 
   it("空覆盖 / 全非法覆盖回落默认", () => {
-    expect(normalizeSurface(defaultPayload(), []).items).toHaveLength(12);
+    const defaults = defaultPayload().items.length;
+    expect(normalizeSurface(defaultPayload(), []).items).toHaveLength(defaults);
     const allBad = normalizeSurface(defaultPayload(), ["a", "b"]);
-    expect(allBad.items).toHaveLength(12);
+    expect(allBad.items).toHaveLength(defaults);
     expect(allBad.warnings).toHaveLength(1);
   });
 
@@ -71,8 +76,9 @@ describe("数据面归一化（html-toolbar）", () => {
 });
 
 describe("默认文件 ↔ TS 类型对账", () => {
-  it("默认文件 12 项形状与 ToolbarSlotItem 对齐", () => {
+  it("默认文件项数形状与 ToolbarSlotItem 对齐", () => {
     const items = defaultSurface.items as ToolbarSlotItem[];
+    // 12 = 回归红线：默认集合项数契约（与 Rust 校验上限一致）
     expect(items).toHaveLength(12);
     for (const item of items) {
       expect(typeof item.id).toBe("string");
@@ -83,7 +89,9 @@ describe("默认文件 ↔ TS 类型对账", () => {
   });
 
   it("默认文件 id 集合与既有内置顺序一致（回归红线）", () => {
-    expect((defaultSurface.items as ToolbarSlotItem[]).map((i) => i.id)).toEqual([
+    expect(
+      (defaultSurface.items as ToolbarSlotItem[]).map((i) => i.id),
+    ).toEqual([
       "ai-rewrite",
       "ai-translate",
       "ai-polish",

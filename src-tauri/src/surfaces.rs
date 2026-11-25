@@ -81,9 +81,7 @@ fn parse_default_json(raw: &str) -> Option<Vec<SurfaceItem>> {
 /// 内嵌默认集合（编译期常量）。
 pub fn embedded_defaults(id: SurfaceId) -> Vec<SurfaceItem> {
     match id {
-        SurfaceId::HtmlToolbar => {
-            parse_default_json(SURFACE_DEFAULTS).unwrap_or_default()
-        }
+        SurfaceId::HtmlToolbar => parse_default_json(SURFACE_DEFAULTS).unwrap_or_default(),
     }
 }
 
@@ -122,9 +120,9 @@ pub fn materialize(id: SurfaceId, base: &Path) -> Vec<SurfaceItem> {
 
 /// 同目录临时文件 → fsync → rename（与 config.rs 的 atomic_write 同语义）。
 fn atomic_write(path: &Path, data: &[u8]) -> std::io::Result<()> {
-    let dir = path.parent().ok_or_else(|| {
-        std::io::Error::other("数据面路径无父目录")
-    })?;
+    let dir = path
+        .parent()
+        .ok_or_else(|| std::io::Error::other("数据面路径无父目录"))?;
     let nanos = SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_nanos())
@@ -293,6 +291,7 @@ mod tests {
         let dir = temp_base("materialize");
         let base = dir.path();
         let items = materialize(SurfaceId::HtmlToolbar, base);
+        // 12 = 回归红线：默认集合的项数契约（与 config.rs 校验上限一致）
         assert_eq!(items.len(), 12);
         let path = surface_file_path(base, SurfaceId::HtmlToolbar);
         assert!(path.exists());
@@ -332,17 +331,23 @@ mod tests {
         assert_eq!(ids, vec!["format-bold", "format-italic"]);
         assert_eq!(loaded.warnings.len(), 1);
         assert!(loaded.warnings[0].contains("nope"));
-        assert_eq!(defaults.len(), 12);
+        assert_eq!(
+            defaults.len(),
+            embedded_defaults(SurfaceId::HtmlToolbar).len()
+        );
     }
 
     #[test]
-    fn 合并_空覆盖回落默认12项() {
+    fn 合并_空覆盖回落默认() {
         let dir = temp_base("empty");
         let base = dir.path();
         let defaults = materialize(SurfaceId::HtmlToolbar, base);
         write_user(base, r#"{"htmlToolbarItems":[]}"#);
         let loaded = load_surface(SurfaceId::HtmlToolbar, base);
-        assert_eq!(loaded.items.len(), 12);
+        assert_eq!(
+            loaded.items.len(),
+            embedded_defaults(SurfaceId::HtmlToolbar).len()
+        );
         assert_eq!(loaded.items, defaults);
     }
 
@@ -366,10 +371,25 @@ mod tests {
         std::fs::write(&path, "not-json").unwrap();
         let items = materialize(SurfaceId::HtmlToolbar, base);
         assert_eq!(items, embedded_defaults(SurfaceId::HtmlToolbar));
-        assert_eq!(items.len(), 12);
+        assert_eq!(items.len(), embedded_defaults(SurfaceId::HtmlToolbar).len());
         // 损坏文件被重建为合法 JSON
         let raw = std::fs::read_to_string(&path).unwrap();
         assert!(parse_default_json(&raw).is_some());
+    }
+
+    #[test]
+    fn 内嵌默认_id集合与config校验白名单对账() {
+        let defaults = embedded_defaults(SurfaceId::HtmlToolbar);
+        let ids: std::collections::HashSet<&str> =
+            defaults.iter().map(|item| item.id.as_str()).collect();
+        let allowed: std::collections::HashSet<&str> = crate::config::HTML_TOOLBAR_ALLOWED_IDS
+            .iter()
+            .copied()
+            .collect();
+        assert_eq!(
+            ids, allowed,
+            "内嵌默认源与 config 校验白名单必须逐 id 一致（唯一源对账）"
+        );
     }
 
     #[test]

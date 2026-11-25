@@ -504,6 +504,23 @@ fn migrate_legacy(base: &Path) -> Result<bool, AppError> {
 
 // ── 校验（design §D5）────────────────────────────────────────
 
+/// 横向工具条合法动作 id（与 `resources/html-toolbar.default.json` 唯一默认源对账，
+/// 由 surfaces.rs 测试锁定两处一致）。
+pub(crate) const HTML_TOOLBAR_ALLOWED_IDS: [&str; 12] = [
+    "ai-rewrite",
+    "ai-translate",
+    "ai-polish",
+    "format-bold",
+    "format-italic",
+    "format-underline",
+    "format-strike",
+    "format-code",
+    "format-link",
+    "align-left",
+    "align-center",
+    "align-right",
+];
+
 fn check_range(field: &str, value: Option<f64>, min: f64, max: f64) -> Result<(), AppError> {
     match value {
         Some(v) if !(min..=max).contains(&v) => Err(AppError::Validation {
@@ -839,21 +856,7 @@ pub fn validate_config(config: &AppConfig) -> Result<(), AppError> {
         }
     }
     if let Some(items) = &config.html_toolbar_items {
-        const ALLOWED: [&str; 12] = [
-            "ai-rewrite",
-            "ai-translate",
-            "ai-polish",
-            "format-bold",
-            "format-italic",
-            "format-underline",
-            "format-strike",
-            "format-code",
-            "format-link",
-            "align-left",
-            "align-center",
-            "align-right",
-        ];
-        if items.is_empty() || items.len() > ALLOWED.len() {
+        if items.is_empty() || items.len() > HTML_TOOLBAR_ALLOWED_IDS.len() {
             return Err(AppError::Validation {
                 context: "htmlToolbarItems".into(),
                 message: "长度须在 1..=12".into(),
@@ -861,7 +864,7 @@ pub fn validate_config(config: &AppConfig) -> Result<(), AppError> {
         }
         let mut seen = std::collections::HashSet::new();
         for id in items {
-            if !ALLOWED.contains(&id.as_str()) {
+            if !HTML_TOOLBAR_ALLOWED_IDS.contains(&id.as_str()) {
                 return Err(AppError::Validation {
                     context: "htmlToolbarItems".into(),
                     message: format!("未知动作: {id}"),

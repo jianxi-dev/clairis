@@ -32,7 +32,9 @@ describe("数据面 store", () => {
 
   it("启动加载后按 id 缓存有效集合", () => {
     setSurfaces([payload()]);
-    expect(getSurfaceItems("html-toolbar")).toHaveLength(12);
+    expect(getSurfaceItems("html-toolbar")).toHaveLength(
+      defaultSurface.items.length,
+    );
     expect(getSurfaceWarnings("html-toolbar")).toEqual([]);
   });
 
@@ -53,7 +55,10 @@ describe("数据面 store", () => {
   });
 
   it("事件载荷带告警时透传", () => {
-    applySurfacePayload("html-toolbar", payload({ warnings: ["未知动作: nope"] }));
+    applySurfacePayload(
+      "html-toolbar",
+      payload({ warnings: ["未知动作: nope"] }),
+    );
     expect(getSurfaceWarnings("html-toolbar")).toEqual(["未知动作: nope"]);
   });
 });

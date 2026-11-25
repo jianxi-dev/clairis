@@ -12,13 +12,10 @@ import { normalizeSurface } from "./loader";
 
 /** 面 id → 最近一次归一化结果。 */
 const surfaces = new Map<string, NormalizedSurface>();
-/** 面 id → 原始 payload（重载时重新归一化需要默认项）。 */
-const payloads = new Map<string, SurfacePayload>();
 
 /** 批量写入面（启动加载用）。 */
 export function setSurfaces(list: SurfacePayload[]): void {
   for (const surface of list) {
-    payloads.set(surface.id, surface);
     surfaces.set(surface.id, normalizeSurface(surface, null));
   }
 }
@@ -35,14 +32,12 @@ export function getSurfaceWarnings(id: string): string[] {
 
 /** 用新的默认 payload 重新归一化某面（事件到达只重载对应面）。 */
 export function applySurfacePayload(id: string, surface: SurfacePayload): void {
-  payloads.set(id, surface);
   surfaces.set(id, normalizeSurface(surface, null));
 }
 
 /** 清空缓存（测试隔离用）。 */
 export function resetSurfaces(): void {
   surfaces.clear();
-  payloads.clear();
 }
 
 /** 重新加载某面：走一次 `load_surfaces` 后只更新对应面。 */

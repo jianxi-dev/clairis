@@ -197,7 +197,8 @@ export function horizontalToolbar(options?: { copyOnly?: boolean }) {
             icon: "copy",
             run: () => {
               const text = selectionText(view);
-              if (text) void navigator.clipboard?.writeText(text).catch(() => {});
+              if (text)
+                void navigator.clipboard?.writeText(text).catch(() => {});
             },
           }),
         );
