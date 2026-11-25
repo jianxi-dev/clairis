@@ -667,15 +667,28 @@ test("裁剪会话内点击图片旁的行：光标不落位、视口零位移�
   await expect(page.getByTestId("img-crop-frame")).toHaveCount(1);
   await page.waitForTimeout(150);
 
-  const before = await page.evaluate(
-    () => document.querySelector(".cm-scroller")!.scrollTop,
-  );
-  // 双击确认的第一下落在图片旁的行上（真机 -344 跳变的触发点）。
+  const before = await page.evaluate(() => ({
+    top: document.querySelector(".cm-scroller")!.scrollTop,
+    sel: (
+      document.querySelector(".cm-editor") as HTMLElement & {
+        cmView?: { view?: { state: { selection: { main: { anchor: number } } } } };
+      }
+    ).cmView?.view?.state.selection.main.anchor ?? -1,
+  }));
+  // 双击确认的第一下落在图片旁的行上（真机 -344/+138 跳变的触发点）。
   const widgetBox = (await page.locator(".cm-image-widget").first().boundingBox())!;
   await page.mouse.click(widgetBox.x - 18, widgetBox.y + widgetBox.height / 2);
   await page.waitForTimeout(120);
-  const after = await page.evaluate(
-    () => document.querySelector(".cm-scroller")!.scrollTop,
-  );
-  expect(Math.abs(after - before)).toBeLessThanOrEqual(2);
+  const after = await page.evaluate(() => ({
+    top: document.querySelector(".cm-scroller")!.scrollTop,
+    sel: (
+      document.querySelector(".cm-editor") as HTMLElement & {
+        cmView?: { view?: { state: { selection: { main: { anchor: number } } } } };
+      }
+    ).cmView?.view?.state.selection.main.anchor ?? -1,
+  }));
+  expect(Math.abs(after.top - before.top)).toBeLessThanOrEqual(2);
+  // 框外点击不落光标：preventDefault 拦不住 CM6 的 mousedown 处理（真机日志
+  // sel 860→829），必须截断传播。
+  expect(after.sel).toBe(before.sel);
 });

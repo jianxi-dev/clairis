@@ -478,12 +478,14 @@ function mount(
     document.removeEventListener("click", onOutsideClick, true);
     restoreWindow();
     restoreDisplay();
-    // WKWebView 的旧图层缓存只会在该子树重绘后被丢弃：visibility 切换
-    // 不改变布局（盒子尺寸保留），但强制整块重绘。
-    if (widget.isConnected) {
-      widget.style.visibility = "hidden";
+    // WKWebView 的旧图层缓存只会在该子树重新栅格化后被丢弃：visibility 切换
+    // 与 1px 滚动回弹都不重绘内容瓦片（滚动只改合成位置）。filter 变更强制
+    // GPU 重新栅格化整个子树，这是唯一在真机上有效的重绘锤子。
+    const win = widget.querySelector<HTMLElement>(".image-crop-window");
+    if (win && win.isConnected) {
+      win.style.filter = "blur(0px)";
       requestAnimationFrame(() => {
-        if (widget.isConnected) widget.style.visibility = "";
+        if (win.isConnected) win.style.filter = "";
       });
     }
     if (scroller) {
@@ -685,21 +687,24 @@ function mount(
   // WebKit 不回填。判定用「与上一次观测相比：高度变小 且 滚动位置同时变小」
   // 这一夹取签名，不依赖一次性「用户滚过」标志（用户中途滚动一次就再也不会
   // 触发，正是大跳漏网的原因）。
-  // 会话内按下全局拦默认：双击确认的第一下常落在图片旁的行上（目标 cm-line），
-  // 光标随即落进图片块，WebKit 原生 caret 揭示滚动把视口拽走（真机日志：
-  // mousedown:cm-line 后 -344/-518 收敛到同一位置，无任何 scrollTop 赋值）。
-  // 会话期间除输入框与工具条外一律 preventDefault，光标不再落位。
+  // 会话内按下：框外一律拦截（preventDefault + stopPropagation）。真机日志：
+  // 双击确认的第一下落在图片旁的行上（mousedown:cm-line），preventDefault 拦不住
+  // CM6 自己的 mousedown 处理——它照样设选区（sel 860→829）、聚焦并把块滚进
+  // 视口（-344/-518/+138 全是这一签名）。截断传播让 CM6 根本收不到这次按下；
+  // 会话是模态的：框外点击本来就不该改选区。click/dblclick 事件不受影响，
+  // 双击确认仍按原路径触发。
   const suppressCaret = (event: Event): void => {
     const target = event.target as Element | null;
     if (!target) return;
     if (
       target.closest(
-        "input, textarea, [contenteditable='true'], [data-testid^='img-']",
+        "input, textarea, [contenteditable='true'], [data-testid^='img-'], .cm-image-widget, .cm-scroller",
       )
     ) {
       return;
     }
     event.preventDefault();
+    event.stopPropagation();
   };
   document.addEventListener("mousedown", suppressCaret, true);
 
