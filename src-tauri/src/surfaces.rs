@@ -597,15 +597,11 @@ fn merge_map_surface(
         .collect();
     let mut rejected: Vec<String> = Vec::new();
     let mut merged: std::collections::HashMap<String, Value> = std::collections::HashMap::new();
+    // 默认集合外的新概念键：整条定义追加到有效集合尾部（DS-6 用户故事 9）。
+    let mut appended: Vec<Value> = Vec::new();
     for (key, value) in entries {
-        if !known.contains(key.as_str()) {
-            if !rejected.contains(key) {
-                rejected.push(key.clone());
-            }
-            continue;
-        }
-        // 覆盖定义本身缺 path 组（d/s/parts 全缺）→ 拒绝该键（回落默认 path），
-        // 与「默认文件含非法项」同语义（DS-4）。
+        // 定义必须自带 path 组（d/s 非空，或 parts 至少一段非空）——否则拒绝并
+        // 聚合告警（DS-4）。已有键的覆盖也走同一校验：缺 path 的覆盖无意义。
         let over_has_path = value
             .get("d")
             .and_then(|v| v.as_str())
@@ -639,11 +635,29 @@ fn merge_map_surface(
             }
             continue;
         }
-        if !merged.contains_key(key) {
-            merged.insert(key.clone(), value.clone());
+        if known.contains(key.as_str()) {
+            if !merged.contains_key(key) {
+                merged.insert(key.clone(), value.clone());
+            }
+        } else if !merged.contains_key(key) {
+            // 新概念键：label 缺失/为空也拒绝（面项契约要求非空 label）。
+            let label_ok = value
+                .get("label")
+                .and_then(|v| v.as_str())
+                .map(|s| !s.is_empty())
+                .unwrap_or(false);
+            if !label_ok {
+                if !rejected.contains(key) {
+                    rejected.push(key.clone());
+                }
+                continue;
+            }
+            let mut item = value.as_object().cloned().unwrap_or_default();
+            item.insert("key".into(), Value::String(key.clone()));
+            appended.push(Value::Object(item));
         }
     }
-    if merged.is_empty() {
+    if merged.is_empty() && appended.is_empty() {
         let mut warnings = Vec::new();
         if !rejected.is_empty() {
             warnings.push(format!(
@@ -658,7 +672,7 @@ fn merge_map_surface(
             warnings,
         };
     }
-    let items: Vec<Value> = defaults
+    let mut items: Vec<Value> = defaults
         .iter()
         .map(|item| {
             let key = item.get("key").and_then(|v| v.as_str()).unwrap_or("");
@@ -682,6 +696,7 @@ fn merge_map_surface(
             }
         })
         .collect();
+    items.extend(appended);
     let mut warnings = Vec::new();
     if !rejected.is_empty() {
         warnings.push(format!(
@@ -696,7 +711,6 @@ fn merge_map_surface(
         warnings,
     }
 }
-
 /// 加载单个面：物化默认 ← 用户覆盖。
 pub fn load_surface(spec: &SurfaceSpec, base: &Path) -> SurfaceLoad {
     let defaults = materialize(spec, base);
@@ -1361,12 +1375,12 @@ mod tests {
     }
 
     #[test]
-    fn icons_覆盖_未知概念键过滤并聚合告警() {
+    fn icons_覆盖_非法定义过滤并聚合告警() {
         let dir = temp_base("icons_unknown");
         let base = dir.path();
         write_icons_user(
             base,
-            r#"{"items":{"nope":{"label":"X","s":"M0 0"},"close":{"label":"关","s":"M1 1"}}}"#,
+            r#"{"items":{"nope":{"label":"X"},"close":{"label":"关","s":"M1 1"}}}"#,
         );
         let loaded = load_surface(icons_spec(), base);
         assert_eq!(loaded.warnings.len(), 1);
@@ -1461,18 +1475,93 @@ mod tests {
     }
 
     #[test]
-    fn icons_新增概念键可被菜单icon字段引用() {
-        // 面层只保证形状：未知概念键在覆盖里被过滤并告警，不静默新增。
+    fn icons_覆盖_新增合法概念键追加到有效集合尾部() {
         let dir = temp_base("icons_new_key");
         let base = dir.path();
+        let defaults = materialize(icons_spec(), base);
         write_icons_user(
             base,
             r#"{"items":{"brandNew":{"label":"新图标","s":"M2 2 L22 22"}}}"#,
         );
         let loaded = load_surface(icons_spec(), base);
+        assert_eq!(loaded.warnings, Vec::<String>::new(), "合法定义不应告警");
+        assert_eq!(loaded.items.len(), defaults.len() + 1);
+        let appended = loaded.items.last().expect("新键应追加在尾部");
+        assert_eq!(
+            appended.get("key").and_then(|v| v.as_str()),
+            Some("brandNew")
+        );
+        assert_eq!(
+            appended.get("label").and_then(|v| v.as_str()),
+            Some("新图标")
+        );
+        assert_eq!(
+            appended.get("s").and_then(|v| v.as_str()),
+            Some("M2 2 L22 22")
+        );
+    }
+
+    #[test]
+    fn icons_覆盖_新增键缺label被拒绝并聚合告警() {
+        let dir = temp_base("icons_new_key_nolabel");
+        let base = dir.path();
+        let defaults = materialize(icons_spec(), base);
+        write_icons_user(base, r#"{"items":{"brandNew":{"s":"M2 2 L22 22"}}}"#);
+        let loaded = load_surface(icons_spec(), base);
         assert_eq!(loaded.warnings.len(), 1);
         assert!(loaded.warnings[0].contains("brandNew"));
+        assert_eq!(loaded.items.len(), defaults.len(), "非法新键不应追加");
         assert!(!icon_keys(&loaded.items).contains(&"brandNew"));
+    }
+
+    #[test]
+    fn icons_覆盖_新增键缺path组被拒绝并聚合告警() {
+        let dir = temp_base("icons_new_key_nopath");
+        let base = dir.path();
+        let defaults = materialize(icons_spec(), base);
+        write_icons_user(base, r#"{"items":{"brandNew":{"label":"新图标"}}}"#);
+        let loaded = load_surface(icons_spec(), base);
+        assert_eq!(loaded.warnings.len(), 1);
+        assert!(loaded.warnings[0].contains("brandNew"));
+        assert_eq!(loaded.items.len(), defaults.len());
+        assert!(!icon_keys(&loaded.items).contains(&"brandNew"));
+    }
+
+    #[test]
+    fn icons_覆盖_新键与已有键深合并共存() {
+        let dir = temp_base("icons_new_and_merge");
+        let base = dir.path();
+        write_icons_user(
+            base,
+            r#"{"items":{
+                "close":{"label":"关窗","s":"M1 1 L23 23"},
+                "brandNew":{"label":"新图标","parts":[{"s":"M2 2 L22 22"},{"d":"M4 4h2v2H4z"}]}
+            }}"#,
+        );
+        let loaded = load_surface(icons_spec(), base);
+        assert_eq!(loaded.warnings, Vec::<String>::new());
+        let close = loaded
+            .items
+            .iter()
+            .find(|i| i.get("key").and_then(|v| v.as_str()) == Some("close"))
+            .unwrap();
+        assert_eq!(close.get("label").and_then(|v| v.as_str()), Some("关窗"));
+        assert_eq!(close.get("s").and_then(|v| v.as_str()), Some("M1 1 L23 23"));
+        let brand = loaded
+            .items
+            .iter()
+            .find(|i| i.get("key").and_then(|v| v.as_str()) == Some("brandNew"))
+            .unwrap();
+        let parts = brand.get("parts").and_then(|v| v.as_array()).unwrap();
+        assert_eq!(parts.len(), 2);
+        assert_eq!(
+            parts[0].get("s").and_then(|v| v.as_str()),
+            Some("M2 2 L22 22")
+        );
+        assert_eq!(
+            parts[1].get("d").and_then(|v| v.as_str()),
+            Some("M4 4h2v2H4z")
+        );
     }
 
     // ── 注册表 ────────────────────────────────────────────────

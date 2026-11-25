@@ -1,6 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, beforeEach } from "vitest";
 import { render } from "@testing-library/react";
 import Icon from "../../components/Icon";
+import { resetSurfaces, setSurfaces } from "../../lib/dataSurfaces/store";
+import type { SurfacePayload } from "../../lib/dataSurfaces/loader";
 
 /**
  * Icon 描边渲染（icon-system-v3-redraw 1.2）。
@@ -9,6 +11,8 @@ import Icon from "../../components/Icon";
  * `d` 字段保持实心；svg 根永远保留 fill，否则 e2e 的类型色断言会失效。
  */
 describe("Icon 描边渲染", () => {
+  beforeEach(() => resetSurfaces());
+
   it("s 字段渲染 fill=none + stroke=currentColor + stroke-width=1.7", () => {
     const { container } = render(<Icon name="close" />);
     const paths = container.querySelectorAll("path");
@@ -63,6 +67,25 @@ describe("Icon 描边渲染", () => {
     expect(paths[0].getAttribute("d")).toBe("M5 5h14 M12 5v14");
     const all = render(<Icon name="docPropertyVariant" />).container;
     expect(all.querySelectorAll("path").length).toBe(2);
+  });
+
+  it("面含新增概念键时按面渲染（字形层）", () => {
+    const payload: SurfacePayload = {
+      id: "icons",
+      items: [{ key: "brandNew", label: "新图标", s: "M2 2 L22 22" }],
+      warnings: [],
+    };
+    setSurfaces([payload]);
+    const { container } = render(<Icon name="brandNew" />);
+    const path = container.querySelector("path")!;
+    expect(path.getAttribute("d")).toBe("M2 2 L22 22");
+    expect(path.getAttribute("stroke")).toBe("currentColor");
+  });
+
+  it("两面都缺该概念键时渲染 null（不崩溃、不渲染空 svg）", () => {
+    const { container } = render(<Icon name="notAnywhere" />);
+    expect(container.firstChild).toBeNull();
+    expect(container.querySelector("svg")).toBeNull();
   });
 
   it("expand 与 collapse 的 d 不相等", () => {

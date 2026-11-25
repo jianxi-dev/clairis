@@ -16,6 +16,13 @@ const DEFAULT_ICONS = JSON.parse(
   ),
 ).items as Record<string, unknown>[];
 
+const DEFAULT_MENU_ITEMS = JSON.parse(
+  readFileSync(
+    resolve(REPO_ROOT, "src-tauri/src/resources/menus.default.json"),
+    "utf8",
+  ),
+).items as Record<string, unknown>[];
+
 // mock 的图标默认集合必须与仓库内 JSON 默认源逐项一致（单一真相源对账）。
 test("mock 默认集合与 icons.default.json 对账", () => {
   const mockSource = readFileSync(
@@ -28,13 +35,23 @@ test("mock 默认集合与 icons.default.json 对账", () => {
   expect(mockItems).toEqual(DEFAULT_ICONS);
 });
 
-async function boot(page: Page, iconOverride: Record<string, unknown> | null = null) {
+async function boot(
+  page: Page,
+  iconOverride: Record<string, unknown> | null = null,
+  menuOverride: unknown[] | null = null,
+) {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
   if (iconOverride !== null) {
     await page.addInitScript((items) => {
       (window as unknown as Record<string, unknown>).__biaoyue_icon_items__ =
         items;
     }, iconOverride);
+  }
+  if (menuOverride !== null) {
+    await page.addInitScript((items) => {
+      (window as unknown as Record<string, unknown>).__biaoyue_menu_items__ =
+        items;
+    }, menuOverride);
   }
   await page.goto(APP_URL, { waitUntil: "networkidle" });
   await page.waitForSelector('[data-testid="pane-header"]', { timeout: 15000 });
@@ -109,13 +126,38 @@ test.describe("图标面（icons）", () => {
     await page.screenshot({ path: `${ART}/04-fallback-default.png` });
   });
 
-  test("未知概念键不静默新增（回落默认集合，无新条目）", async ({ page }) => {
-    await boot(page, { brandNew: { label: "新图标", s: "M0 0" } });
-    const drawer = await openDrawer(page);
-    await expect(drawer.locator("[data-icon-entry]")).toHaveCount(
-      DEFAULT_ICONS.length,
+  test("新增概念键：用户定义合法新键即可被菜单项 icon 字段引用并渲染（字形层）", async ({
+    page,
+  }) => {
+    const newPath = "M2 2 L22 22 M22 2 L2 22";
+    const menuWithNewIcon = DEFAULT_MENU_ITEMS.map((item: Record<string, unknown>) =>
+      item.id === "pane-locate"
+        ? { ...item, icon: "brandNew", label: "新图标定位" }
+        : item,
     );
-    await page.screenshot({ path: `${ART}/05-unknown-key.png` });
+    await boot(
+      page,
+      { brandNew: { label: "新图标", s: newPath } },
+      menuWithNewIcon,
+    );
+    await page.locator('[data-testid="pane-menu-button"]').first().click();
+    const item = page.locator('[data-menu-item="locate"]').first();
+    await expect(item).toBeVisible();
+    // 新键的 label 由图标面提供（菜单项文案严格等于新名称）
+    await expect(item).toContainText("新图标定位");
+    // 字形层：新键渲染出用户提供的 path（不只断言 data-icon 名）
+    const d = await item
+      .locator('svg[data-icon="brandNew"] path')
+      .first()
+      .getAttribute("d");
+    expect(d).toBe(newPath);
+    // label 消费端：设置图标抽屉列出新键，并显示面提供的 label
+    await page.keyboard.press("Escape");
+    const drawer = await openDrawer(page);
+    const entry = drawer.locator('[data-icon-entry="brandNew"]');
+    await expect(entry).toBeVisible();
+    await expect(entry).toContainText("新图标");
+    await page.screenshot({ path: `${ART}/05-new-key.png` });
   });
 
   test("菜单项图标消费图标面：换路径后格头菜单字形同步（字形层）", async ({

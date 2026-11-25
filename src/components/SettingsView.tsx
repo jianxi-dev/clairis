@@ -37,7 +37,7 @@ import {
 } from "../lib/propTemplates";
 import { BUILTIN_ALIAS_MAP, type FrontmatterType } from "../lib/frontmatter";
 import { useEditorStore } from "../stores/editorStore";
-import { getIconSpec, getSurfaceItems } from "../lib/dataSurfaces/store";
+import { getSurfaceItems } from "../lib/dataSurfaces/store";
 import type { ToolbarSlotItem } from "../editors/orchestration/slots";
 import { ROULETTE_HOTKEY_DEFAULT } from "../editors/orchestration/roulette";
 import {
@@ -57,7 +57,7 @@ import { PROVIDERS } from "../lib/providers";
 import { formatSnapshotTime } from "../hooks/useAiEntry";
 import { isTauriEnv } from "../utils/tauri";
 import Icon from "./Icon";
-import { ICONS, ICON_NAMES } from "../ui/icons";
+
 import {
   SHORTCUT_FAMILY_LABELS,
   SHORTCUT_FAMILY_ORDER,
@@ -102,11 +102,6 @@ const SECTIONS = [
 ] as const;
 
 type SectionId = (typeof SECTIONS)[number]["id"];
-
-/** 图标显示名：面数据优先，缺失回落 `ICONS` 默认 label（DS-6）。 */
-function iconLabel(name: (typeof ICON_NAMES)[number]): string {
-  return getIconSpec(name)?.label ?? ICONS[name].label;
-}
 
 const RAIL_LAYOUT_OPTIONS = [
   { value: "stacked", label: "堆叠" },
@@ -1238,6 +1233,8 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
   };
 
   const surfaceToolbarItems = getSurfaceItems<ToolbarSlotItem>("html-toolbar");
+  // 图标抽屉列「面数据的概念键集合」：默认键 + 用户新增键（DS-6），label 取面数据。
+  const iconEntries = getSurfaceItems<{ key: string; label: string }>("icons");
   const activeToolbarItems: string[] =
     htmlToolbarItems ?? surfaceToolbarItems.map((item) => item.id);
   const saveToolbarItems = (next: string[]) => {
@@ -1552,14 +1549,14 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
                   data-testid="icon-drawer"
                   className="grid max-h-56 grid-cols-2 gap-1.5 overflow-auto rounded border border-[var(--app-border)] p-2"
                 >
-                  {ICON_NAMES.map((name) => (
+                  {iconEntries.map(({ key, label }) => (
                     <div
-                      key={name}
-                      data-icon-entry={name}
+                      key={key}
+                      data-icon-entry={key}
                       className="flex items-center gap-1.5 text-xs text-[var(--app-text-2)]"
                     >
-                      <Icon name={name} size={18} />
-                      <span className="truncate">{iconLabel(name)}</span>
+                      <Icon name={key} size={18} />
+                      <span className="truncate">{label}</span>
                       <span className="ml-auto shrink-0 text-[10px] text-[var(--app-text-3)]">
                         18/24
                       </span>

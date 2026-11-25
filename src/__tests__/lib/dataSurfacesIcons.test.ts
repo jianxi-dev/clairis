@@ -138,6 +138,23 @@ describe("图标面（icons）", () => {
     });
   });
 
+  it("新增概念键：面里含默认集合外的键时可查到", () => {
+    const withNew: SurfacePayload = {
+      id: "icons",
+      items: [
+        ...(defaultIcons.items as Record<string, unknown>[]),
+        { key: "brandNew", label: "新图标", s: "M2 2 L22 22" },
+      ] as SurfacePayload["items"],
+      warnings: [],
+    };
+    setSurfaces([withNew]);
+    expect(getIconSpec("brandNew")).toEqual({
+      key: "brandNew",
+      label: "新图标",
+      s: "M2 2 L22 22",
+    });
+  });
+
   it("parseSurfaces 把 icons 面解析成 IconSpec", () => {
     const parsed = parseSurfaces([
       { id: "icons", items: defaultIcons.items, warnings: [] },

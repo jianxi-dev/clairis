@@ -124,10 +124,25 @@ function iconItems() {
   var override = window.__biaoyue_icon_items__;
   if (override && typeof override === "object" && !Array.isArray(override)) {
     var out = cloneJson(DEFAULT_ICON_ITEMS);
-    for (var i = 0; i < out.length; i++) {
-      var key = out[i].key;
-      if (Object.prototype.hasOwnProperty.call(override, key)) {
-        out[i] = Object.assign({}, out[i], override[key]);
+    for (var key in override) {
+      if (!Object.prototype.hasOwnProperty.call(override, key)) continue;
+      var def = override[key];
+      if (!def || typeof def !== "object") continue;
+      var hit = -1;
+      for (var i = 0; i < out.length; i++) {
+        if (out[i].key === key) { hit = i; break; }
+      }
+      if (hit >= 0) {
+        out[hit] = Object.assign({}, out[hit], def);
+      } else if (def.label && (def.s || def.d || def.parts)) {
+        // 新增概念键：整条定义追加（与 Rust merge_map_surface 同语义）
+        var item = { key: key };
+        if (def.label) item.label = def.label;
+        if (def.d) item.d = def.d;
+        if (def.s) item.s = def.s;
+        if (def.dash) item.dash = def.dash;
+        if (def.parts) item.parts = cloneJson(def.parts);
+        out.push(item);
       }
     }
     return out;
