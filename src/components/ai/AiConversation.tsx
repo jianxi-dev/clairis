@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useAiEntryStore, type AiForm } from "../../hooks/useAiEntry";
-import { SPEC_PRESETS } from "../../lib/aiViewSpec";
+import { getMenuItems } from "../../lib/dataSurfaces/store";
 
 /**
  * AI 对话正文（layout-portal 9.1）——小窗与停靠窗格共用同一份。
@@ -161,19 +161,21 @@ export default function AiConversation({ form }: { form: AiForm }) {
             role="menu"
             className="absolute bottom-full left-2 z-10 mb-1 w-44 rounded border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-700 dark:bg-gray-800"
           >
-            {SPEC_PRESETS.map((preset) => (
+            {getMenuItems("ai-float-presets").map((item) => (
               <button
-                key={preset.id}
+                key={item.id}
                 type="button"
                 role="menuitem"
-                data-ai-preset={preset.id}
+                data-ai-preset={item.action.slice("preset:".length)}
                 onClick={() => {
                   setPresetOpen(false);
-                  useAiEntryStore.getState().requestApplyPreset(preset.id);
+                  useAiEntryStore
+                    .getState()
+                    .requestApplyPreset(item.action.slice("preset:".length));
                 }}
                 className="block w-full px-3 py-1.5 text-left text-xs hover:bg-gray-100 dark:hover:bg-gray-700"
               >
-                {preset.label}
+                {item.label}
               </button>
             ))}
           </div>

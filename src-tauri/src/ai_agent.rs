@@ -231,7 +231,7 @@ pub fn tool_schemas() -> Vec<Value> {
                     "properties": {
                         "id": {
                             "type": "string",
-                            "description": "数据面 id，当前已登记: html-toolbar"
+                            "description": "数据面 id，当前已登记: html-toolbar, menus"
                         }
                     },
                     "required": ["id"],
@@ -243,13 +243,13 @@ pub fn tool_schemas() -> Vec<Value> {
             "type": "function",
             "function": {
                 "name": "patch_data_surface",
-                "description": "改写已登记数据面的用户覆盖集合（整体替换语义）。id 必须是已登记数据面（当前仅 html-toolbar）。patch 形如 {\"items\":[\"format-bold\",...]}，写入走校验+快照+原子写，只作用于 user 覆盖层，不改默认源文件。",
+                "description": "改写已登记数据面的用户覆盖集合（整体替换语义）。id 必须是已登记数据面（当前已登记: html-toolbar, menus）。patch 形如 {\"items\":[\"format-bold\",...]}，写入走校验+快照+原子写，只作用于 user 覆盖层，不改默认源文件。",
                 "parameters": {
                     "type": "object",
                     "properties": {
                         "id": {
                             "type": "string",
-                            "description": "数据面 id，当前已登记: html-toolbar"
+                            "description": "数据面 id，当前已登记: html-toolbar, menus"
                         },
                         "patch": {
                             "type": "object",
@@ -275,6 +275,45 @@ fn tool_err(err: &AgentError) -> String {
 /// 面 id 白名单：未登记 id 返回 None（调用方转结构化错误，零写入）。
 fn parse_surface_id(id: &str) -> Option<&'static crate::surfaces::SurfaceSpec> {
     find_surface(id)
+}
+
+/// 写菜单面用户覆盖：未知 id 拒绝（不落盘），写前快照 + 原子写 `user/menus.json`。
+fn write_menu_override(base: &Path, ids: &[String]) -> Result<(), AppError> {
+    let spec = find_surface("menus").ok_or_else(|| AppError::Validation {
+        context: "id".into(),
+        message: "数据面未登记: menus".into(),
+    })?;
+    let defaults = crate::surfaces::embedded_defaults_json(spec);
+    let known: std::collections::HashSet<&str> = defaults
+        .iter()
+        .filter_map(|item| item.get("id")?.as_str())
+        .collect();
+    let mut unknown: Vec<&str> = Vec::new();
+    for id in ids {
+        if !known.contains(id.as_str()) && !unknown.contains(&id.as_str()) {
+            unknown.push(id.as_str());
+        }
+    }
+    if !unknown.is_empty() {
+        return Err(AppError::Validation {
+            context: "items".into(),
+            message: format!("未知菜单动作: {}", unknown.join(", ")),
+        });
+    }
+    crate::config::snapshot_user(base)?;
+    let path = base.join("user").join("menus.json");
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| AppError::Io {
+            context: "patch_data_surface".into(),
+            source: e,
+        })?;
+    }
+    let payload = json!({ "id": "menus", "items": ids });
+    let data = serde_json::to_vec_pretty(&payload).map_err(|e| AppError::Serialization {
+        context: "patch_data_surface".into(),
+        source: e,
+    })?;
+    crate::config::atomic_write(&path, &data)
 }
 
 /// 执行一个工具调用。任何失败都转成结构化 JSON 字符串（`{ok:false,error}`），
@@ -320,13 +359,13 @@ pub fn dispatch_tool(base: &Path, name: &str, args: &Value) -> Result<String, Ag
             let Some(surface_id) = parse_surface_id(id) else {
                 return Ok(tool_err(&AgentError::validation(
                     "id",
-                    format!("数据面未登记: {id}（当前已登记: html-toolbar）"),
+                    format!("数据面未登记: {id}（当前已登记: html-toolbar, menus）"),
                 )));
             };
             let loaded = load_surface(surface_id, base);
             let value = json!({
                 "effective": loaded.items,
-                "defaults": embedded_defaults(surface_id),
+                "defaults": crate::surfaces::embedded_defaults_json(surface_id),
                 "warnings": loaded.warnings,
             });
             Ok(tool_ok(value))
@@ -338,7 +377,7 @@ pub fn dispatch_tool(base: &Path, name: &str, args: &Value) -> Result<String, Ag
             let Some(surface_id) = parse_surface_id(id) else {
                 return Ok(tool_err(&AgentError::validation(
                     "id",
-                    format!("数据面未登记: {id}（当前已登记: html-toolbar）"),
+                    format!("数据面未登记: {id}（当前已登记: html-toolbar, menus）"),
                 )));
             };
             let Some(patch) = args.get("patch") else {
@@ -367,10 +406,19 @@ pub fn dispatch_tool(base: &Path, name: &str, args: &Value) -> Result<String, Ag
                     "items 数组元素必须都是字符串",
                 )));
             }
-            // 复用 T1 写边界：未知 id 被 HTML_TOOLBAR_ALLOWED_IDS 拒绝，快照+原子写
-            let config_patch = json!({ "htmlToolbarItems": ids });
-            match apply_patch_at(base, &config_patch) {
-                Ok(_) => {
+            // 写边界按面分派：html-toolbar 走既有 settings 字段（D9 兼容），
+            // menus 写独立 user 覆盖文件（D4）。两者都走「校验 → 快照 → 原子写」。
+            let written = match surface_id.shape {
+                crate::surfaces::SurfaceShape::Toolbar => {
+                    let config_patch = json!({ "htmlToolbarItems": ids });
+                    apply_patch_at(base, &config_patch).map(|_| ())
+                }
+                crate::surfaces::SurfaceShape::Menu => {
+                    write_menu_override(base, &ids)
+                }
+            };
+            match written {
+                Ok(()) => {
                     let loaded = load_surface(surface_id, base);
                     let value = json!({
                         "effective": loaded.items,
@@ -902,10 +950,66 @@ mod tests {
     }
 
     #[test]
+    fn patch_data_surface_menus_writes_override_file() {
+        let dir = temp_base("patch_menus");
+        let base = dir.path();
+        let raw = dispatch_tool(
+            base,
+            "patch_data_surface",
+            &json!({ "id": "menus", "patch": { "items": ["pane-source", "pane-new-file"] } }),
+        )
+        .unwrap();
+        let parsed: Value = serde_json::from_str(&raw).unwrap();
+        assert_eq!(parsed["ok"], json!(true), "got {raw}");
+        let ids: Vec<&str> = parsed["result"]["effective"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|v| v["id"].as_str().unwrap())
+            .collect();
+        assert_eq!(ids, vec!["pane-source", "pane-new-file"]);
+        let override_path = base.join("user").join("menus.json");
+        let written = std::fs::read_to_string(&override_path).unwrap();
+        let value: Value = serde_json::from_str(&written).unwrap();
+        let items: Vec<&str> = value["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|v| v.as_str().unwrap())
+            .collect();
+        assert_eq!(items, vec!["pane-source", "pane-new-file"]);
+    }
+
+    #[test]
+    fn patch_data_surface_menus_rejects_unknown_id_without_write() {
+        let dir = temp_base("patch_menus_bad");
+        let base = dir.path();
+        let raw = dispatch_tool(
+            base,
+            "patch_data_surface",
+            &json!({ "id": "menus", "patch": { "items": ["nope"] } }),
+        )
+        .unwrap();
+        let parsed: Value = serde_json::from_str(&raw).unwrap();
+        assert_eq!(parsed["ok"], json!(false), "got {raw}");
+        assert!(
+            parsed["error"]["message"]
+                .as_str()
+                .unwrap()
+                .contains("nope"),
+            "got {raw}"
+        );
+        assert!(
+            !base.join("user").join("menus.json").exists(),
+            "未知动作不应落盘"
+        );
+    }
+
+    #[test]
     fn read_data_surface_rejects_unregistered_id_without_write() {
         let dir = temp_base("read_bad_surface");
         let base = dir.path();
-        let raw = dispatch_tool(base, "read_data_surface", &json!({ "id": "menus" })).unwrap();
+        let raw = dispatch_tool(base, "read_data_surface", &json!({ "id": "icons" })).unwrap();
         let parsed: Value = serde_json::from_str(&raw).unwrap();
         assert_eq!(parsed["ok"], json!(false), "got {raw}");
         assert!(
@@ -925,7 +1029,7 @@ mod tests {
         let raw = dispatch_tool(
             base,
             "patch_data_surface",
-            &json!({ "id": "menus", "patch": { "items": ["format-bold"] } }),
+            &json!({ "id": "icons", "patch": { "items": ["format-bold"] } }),
         )
         .unwrap();
         let parsed: Value = serde_json::from_str(&raw).unwrap();

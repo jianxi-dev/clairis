@@ -27,7 +27,8 @@ import { revealInFinder } from "../lib/finder";
 import { runExportAction } from "../lib/exportActions";
 import { printMarkdownPreview } from "../lib/printPreview";
 import { flushTabContent } from "../editors/contentSync";
-import { EXPORT_MENU_ITEMS } from "../lib/paneHeaderMenu";
+import { getMenuItems } from "../lib/dataSurfaces/store";
+import type { ExportMenuAction } from "../lib/paneHeaderMenu";
 import { menuShortcut } from "../lib/menu-shortcuts";
 import { isTauriEnv } from "../utils/tauri";
 import type { Tab } from "../types";
@@ -50,6 +51,17 @@ interface TabBarProps {
 
 /** 指针移动超过该像素才算拖拽，以下视为点击切签。 */
 const DRAG_THRESHOLD_PX = 4;
+
+/** 页签右键菜单中依赖「页签已保存（有路径）」的动作。 */
+const PATH_GATED = new Set([
+  "previewTab",
+  "export",
+  "print",
+  "copyPath",
+  "reveal",
+  "moveTo",
+  "reload",
+]);
 
 /** 双击判定窗口（ms）：窗口内的第二记按下不启动窗口拖动。 */
 const DOUBLE_CLICK_MS = 400;
@@ -414,6 +426,110 @@ export default function TabBar({
       : "markdown"
     : "text";
 
+  const tabMenuItems = getMenuItems("tab-context");
+  const exportMenuItems = getMenuItems("export-submenu");
+
+  const runTabAction = useCallback(
+    (action: string) => {
+      if (!menu) return false;
+      const tab = tabs[menu.tabId];
+      const path = tab?.path;
+      switch (action) {
+        case "previewTab": {
+          if (!tab || !path) return false;
+          const el = stripRef.current?.querySelector<HTMLElement>(
+            `[data-tab-id="${menu.tabId}"]`,
+          );
+          if (!el) return false;
+          const rect = el.getBoundingClientRect();
+          const w = 320;
+          const h = 360;
+          useStore.getState().openPreview({
+            path,
+            title: tab.title,
+            x: Math.max(8, Math.min(rect.right + 12, window.innerWidth - w - 8)),
+            y: Math.max(8, Math.min(rect.top, window.innerHeight - h - 8)),
+            w,
+            h,
+            flippedX: false,
+            flippedY: false,
+            source: "tab",
+          });
+          return true;
+        }
+        case "splitRight":
+          useStore.getState().splitPaneWithTab("row", menu.tabId);
+          return true;
+        case "splitDown":
+          useStore.getState().splitPaneWithTab("col", menu.tabId);
+          return true;
+        case "addField":
+          useDocPropertyPanelStore.getState().requestPalette(menu.tabId);
+          return true;
+        case "print": {
+          if (!tab) return false;
+          flushTabContent(menu.tabId);
+          printMarkdownPreview(
+            { content: tab.content, path: tab.path },
+            { paneId },
+          );
+          return true;
+        }
+        case "copyPath":
+          if (path) {
+            void navigator.clipboard.writeText(path).catch(() => undefined);
+          }
+          return true;
+        case "reveal":
+          if (path) revealInFinder(path);
+          return true;
+        case "moveTo": {
+          if (!path) return false;
+          void (async () => {
+            try {
+              const dir = await invoke<string>("pick_folder");
+              if (!dir) return;
+              const next = await invoke<string>("move_file", {
+                from: path,
+                toDir: dir,
+              });
+              useStore.getState().setTabPath(menu.tabId, next);
+            } catch {
+              // 取消选择或移动失败：保持原路径不变
+            }
+          })();
+          return true;
+        }
+        case "reload": {
+          if (!path || tab?.dirty) return false;
+          void invoke<{ path: string; content: string }>("open_file_direct", {
+            path,
+          })
+            .then((result) => {
+              // 刷新以磁盘内容为准；先 flush 保证基准是 live 全文。
+              flushTabContent(menu.tabId);
+              useStore
+                .getState()
+                .refreshTabContent(menu.tabId, result.content, "external");
+            })
+            .catch(() => undefined);
+          return true;
+        }
+        case "closeTab":
+          onCloseTab(menu.tabId);
+          return true;
+        case "closeOthers":
+          Object.keys(tabs)
+            .filter((id) => id !== menu.tabId)
+            .forEach((id) => onCloseTab(id));
+          return true;
+        default:
+          return false;
+      }
+    },
+    [menu, onCloseTab, paneId, tabs],
+  );
+
   const kbd = (action: string) => (
     <span className="cm-menu-kbd">{menuShortcut(action)}</span>
   );
@@ -697,7 +813,8 @@ export default function TabBar({
         />
       )}
 
-      {/* Context menu */}
+      {/* Context menu：项集合 / 顺序 / 启停 / 文案均来自菜单面（tab-context 组），
+          代码只按 action 分派动作（D2 混合面）。分隔线位置由数据顺序决定。 */}
       {menu && (
         <div
           data-tab-menu
@@ -710,313 +827,115 @@ export default function TabBar({
             color: "var(--app-text-2)",
           }}
         >
-          <button
-            className="w-full flex items-center gap-2 text-left px-3 py-1.5 hover:bg-[var(--app-sunken)] disabled:cursor-not-allowed disabled:opacity-45"
-            disabled={!tabs[menu.tabId]?.path}
-            title={
-              tabs[menu.tabId]?.path
-                ? "悬浮小窗"
-                : "此页签尚未保存，无路径可预览"
-            }
-            onClick={() => {
-              const tab = tabs[menu.tabId];
-              const path = tab?.path;
-              const el = stripRef.current?.querySelector<HTMLElement>(
-                `[data-tab-id="${menu.tabId}"]`,
-              );
-              if (!path || !el) {
-                closeMenu();
-                return;
-              }
-              const rect = el.getBoundingClientRect();
-              const w = 320;
-              const h = 360;
-              useStore.getState().openPreview({
-                path,
-                title: tab.title,
-                x: Math.max(
-                  8,
-                  Math.min(rect.right + 12, window.innerWidth - w - 8),
-                ),
-                y: Math.max(8, Math.min(rect.top, window.innerHeight - h - 8)),
-                w,
-                h,
-                flippedX: false,
-                flippedY: false,
-                source: "tab",
-              });
-              closeMenu();
-            }}
-          >
-            <Icon name="pip" size={18} />
-            悬浮小窗
-            {kbd("previewTab")}
-          </button>
-          <button
-            className="w-full flex items-center gap-2 text-left px-3 py-1.5 hover:bg-[var(--app-sunken)]"
-            onClick={() => {
-              // 右键分栏 = 把当前文件分到那边，而不是新建一个空栏（#272）。
-              useStore.getState().splitPaneWithTab("row", menu.tabId);
-              closeMenu();
-            }}
-          >
-            <Icon name="splitRight" size={18} />
-            向右分栏
-            {kbd("splitRight")}
-          </button>
-          <button
-            className="w-full flex items-center gap-2 text-left px-3 py-1.5 hover:bg-[var(--app-sunken)]"
-            onClick={() => {
-              useStore.getState().splitPaneWithTab("col", menu.tabId);
-              closeMenu();
-            }}
-          >
-            <Icon name="splitDown" size={18} />
-            向下分栏
-            {kbd("splitDown")}
-          </button>
-          <div
-            className="h-px my-1"
-            style={{ background: "var(--app-border)" }}
-          />
-          <button
-            data-menu-item="add-field"
-            className="w-full flex items-center gap-2 text-left px-3 py-1.5 hover:bg-[var(--app-sunken)]"
-            onClick={() => {
-              useDocPropertyPanelStore.getState().requestPalette(menu.tabId);
-              closeMenu();
-            }}
-          >
-            <Icon name="plus" size={18} />
-            添加字段
-            {kbd("addField")}
-          </button>
-          {/* hover 父项即展开二级，且移出父项后保持可见（A-13.2 / A-13.3）；
-              点击只负责打开，不再切换关闭——否则 hover 刚展开就被同一次点击关掉。 */}
-          <div
-            data-export-row
-            className="relative"
-            onPointerEnter={cancelExportClose}
-            onPointerLeave={scheduleExportClose}
-          >
-            <button
-              data-menu-item="export"
-              aria-haspopup="menu"
-              aria-expanded={exportOpen}
-              className="w-full flex items-center gap-2 text-left px-3 py-1.5 hover:bg-[var(--app-sunken)] disabled:cursor-not-allowed disabled:opacity-45"
-              disabled={!tabs[menu.tabId]?.path}
-              title={
-                tabs[menu.tabId]?.path ? "导出" : "此页签尚未保存，无路径可导出"
-              }
-              onMouseEnter={() => setExportOpen(true)}
-              onClick={() => setExportOpen(true)}
-            >
-              <Icon name="export" size={18} />
-              导出
-              {kbd("export")}
-              <span
-                className="ml-auto h-0 w-0 border-y-4 border-l-4 border-y-transparent border-l-[var(--app-text-3)]"
-                aria-hidden="true"
-              />
-            </button>
-            {exportOpen && (
-              <div
-                data-testid="pane-export-submenu"
-                role="menu"
-                ref={exportSubmenuRef}
-                className="tab-context-menu absolute min-w-[132px] border py-1 text-xs shadow-lg"
-                style={{
-                  ...(submenuSide === "left"
-                    ? { right: "100%", marginRight: 1 }
-                    : { left: "100%", marginLeft: 1 }),
-                  ...(submenuAlignTop ? { top: 0 } : { bottom: 0 }),
-                  background: "var(--app-surface)",
-                  borderColor: "var(--app-border)",
-                  color: "var(--app-text-2)",
-                }}
-              >
-                {EXPORT_MENU_ITEMS.map((sub) => (
+          {tabMenuItems.map((item) => {
+            if (item.action === "export") {
+              return (
+                <div
+                  key={item.id}
+                  data-export-row
+                  className="relative"
+                  onPointerEnter={cancelExportClose}
+                  onPointerLeave={scheduleExportClose}
+                >
                   <button
-                    key={sub.action}
-                    type="button"
-                    role="menuitem"
-                    data-export-item={sub.action}
-                    disabled={sub.disabled}
-                    title={sub.title}
-                    onClick={() => {
-                      flushTabContent(menu.tabId);
-                      const tab = useStore.getState().tabs[menu.tabId];
-                      if (!tab) return;
-                      void runExportAction(
-                        sub.action,
-                        {
-                          title: tab.title,
-                          content: tab.content,
-                          path: tab.path,
-                        },
-                        showNotice,
-                      );
-                      closeMenu();
-                    }}
-                    className="flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-[var(--app-sunken)] disabled:cursor-not-allowed disabled:opacity-50"
+                    data-menu-item="export"
+                    aria-haspopup="menu"
+                    aria-expanded={exportOpen}
+                    className="w-full flex items-center gap-2 text-left px-3 py-1.5 hover:bg-[var(--app-sunken)] disabled:cursor-not-allowed disabled:opacity-45"
+                    disabled={!tabs[menu.tabId]?.path}
+                    title={
+                      tabs[menu.tabId]?.path
+                        ? item.label
+                        : "此页签尚未保存，无路径可导出"
+                    }
+                    onMouseEnter={() => setExportOpen(true)}
+                    onClick={() => setExportOpen(true)}
                   >
-                    <Icon name={sub.icon} size={18} />
-                    <span>{sub.label}</span>
-                    {kbd(sub.action)}
+                    <Icon name={item.icon} size={18} />
+                    {item.label}
+                    {kbd(item.action)}
+                    <span
+                      className="ml-auto h-0 w-0 border-y-4 border-l-4 border-y-transparent border-l-[var(--app-text-3)]"
+                      aria-hidden="true"
+                    />
                   </button>
-                ))}
-              </div>
-            )}
-          </div>
-          <button
-            data-menu-item="print"
-            className="w-full flex items-center gap-2 text-left px-3 py-1.5 hover:bg-[var(--app-sunken)]"
-            onClick={() => {
-              flushTabContent(menu.tabId);
-              const tab = useStore.getState().tabs[menu.tabId];
-              closeMenu();
-              if (!tab) return;
-              printMarkdownPreview(
-                { content: tab.content, path: tab.path },
-                { paneId },
+                  {exportOpen && (
+                    <div
+                      data-testid="pane-export-submenu"
+                      role="menu"
+                      ref={exportSubmenuRef}
+                      className="tab-context-menu absolute min-w-[132px] border py-1 text-xs shadow-lg"
+                      style={{
+                        ...(submenuSide === "left"
+                          ? { right: "100%", marginRight: 1 }
+                          : { left: "100%", marginLeft: 1 }),
+                        ...(submenuAlignTop ? { top: 0 } : { bottom: 0 }),
+                        background: "var(--app-surface)",
+                        borderColor: "var(--app-border)",
+                        color: "var(--app-text-2)",
+                      }}
+                    >
+                      {exportMenuItems.map((sub) => (
+                        <button
+                          key={sub.id}
+                          type="button"
+                          role="menuitem"
+                          data-export-item={sub.action}
+                          onClick={() => {
+                            flushTabContent(menu.tabId);
+                            const tab = useStore.getState().tabs[menu.tabId];
+                            if (!tab) return;
+                            void runExportAction(
+                              sub.action as ExportMenuAction,
+                              {
+                                title: tab.title,
+                                content: tab.content,
+                                path: tab.path,
+                              },
+                              showNotice,
+                            );
+                            closeMenu();
+                          }}
+                          className="flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-[var(--app-sunken)] disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          <Icon name={sub.icon} size={18} />
+                          <span>{sub.label}</span>
+                          {kbd(sub.action)}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               );
-            }}
-          >
-            <Icon name="print" size={18} />
-            打印
-            {kbd("print")}
-          </button>
-          <button
-            className="w-full flex items-center gap-2 text-left px-3 py-1.5 hover:bg-[var(--app-sunken)] disabled:cursor-not-allowed disabled:opacity-45"
-            disabled={!tabs[menu.tabId]?.path}
-            title={
-              tabs[menu.tabId]?.path
-                ? "复制路径"
-                : "此页签尚未保存，无路径可复制"
             }
-            onClick={() => {
-              const path = tabs[menu.tabId]?.path;
-              if (!path) {
-                closeMenu();
-                return;
-              }
-              void navigator.clipboard.writeText(path).catch(() => undefined);
-              closeMenu();
-            }}
-          >
-            <Icon name="copyPath" size={18} />
-            复制路径
-            {kbd("copyPath")}
-          </button>
-          <button
-            data-menu-item="reveal"
-            className="w-full flex items-center gap-2 text-left px-3 py-1.5 hover:bg-[var(--app-sunken)] disabled:cursor-not-allowed disabled:opacity-45"
-            disabled={!tabs[menu.tabId]?.path}
-            title={
-              tabs[menu.tabId]?.path
-                ? "打开文件位置"
-                : "此页签尚未保存，无路径可定位"
-            }
-            onClick={() => {
-              const path = tabs[menu.tabId]?.path;
-              closeMenu();
-              if (path) revealInFinder(path);
-            }}
-          >
-            <Icon name="locate" size={18} />
-            打开文件位置
-            {kbd("reveal")}
-          </button>
-          <button
-            data-menu-item="move"
-            className="w-full flex items-center gap-2 text-left px-3 py-1.5 hover:bg-[var(--app-sunken)] disabled:cursor-not-allowed disabled:opacity-45"
-            disabled={!tabs[menu.tabId]?.path}
-            title={
-              tabs[menu.tabId]?.path ? "移动到…" : "此页签尚未保存，无法移动"
-            }
-            onClick={() => {
-              const tab = tabs[menu.tabId];
-              const path = tab?.path;
-              closeMenu();
-              if (!path) return;
-              void (async () => {
-                try {
-                  const dir = await invoke<string>("pick_folder");
-                  if (!dir) return;
-                  const next = await invoke<string>("move_file", {
-                    from: path,
-                    toDir: dir,
-                  });
-                  useStore.getState().setTabPath(menu.tabId, next);
-                } catch {
-                  // 取消选择或移动失败：保持原路径不变
-                }
-              })();
-            }}
-          >
-            <Icon name="moveTo" size={18} />
-            移动到…
-            {kbd("moveTo")}
-          </button>
-          <button
-            data-menu-item="reload"
-            className="w-full flex items-center gap-2 text-left px-3 py-1.5 hover:bg-[var(--app-sunken)] disabled:cursor-not-allowed disabled:opacity-45"
-            disabled={!tabs[menu.tabId]?.path}
-            title={
-              tabs[menu.tabId]?.path
-                ? tabs[menu.tabId]?.dirty
-                  ? "有未保存改动，先保存再刷新"
-                  : "刷新"
-                : "此页签尚未保存，无法刷新"
-            }
-            onClick={() => {
-              const tab = tabs[menu.tabId];
-              const path = tab?.path;
-              closeMenu();
-              if (!path || tab.dirty) return;
-              void invoke<{ path: string; content: string }>(
-                "open_file_direct",
-                {
-                  path,
-                },
-              )
-                .then((result) => {
-                  // 刷新以磁盘内容为准；先 flush 保证基准是 live 全文。
-                  flushTabContent(menu.tabId);
-                  useStore
-                    .getState()
-                    .refreshTabContent(menu.tabId, result.content, "external");
-                })
-                .catch(() => undefined);
-            }}
-          >
-            <Icon name="refresh" size={18} />
-            刷新
-            {kbd("reload")}
-          </button>
-          <button
-            className="w-full flex items-center gap-2 text-left px-3 py-1.5 hover:bg-[var(--app-sunken)]"
-            onClick={() => {
-              onCloseTab(menu.tabId);
-              closeMenu();
-            }}
-          >
-            <Icon name="close" size={18} />
-            关闭
-            {kbd("closeTab")}
-          </button>
-          <button
-            className="w-full flex items-center gap-2 text-left px-3 py-1.5 hover:bg-[var(--app-sunken)]"
-            onClick={() => {
-              const ids = Object.keys(tabs).filter((id) => id !== menu.tabId);
-              ids.forEach((id) => onCloseTab(id));
-              closeMenu();
-            }}
-          >
-            <Icon name="closeOthers" size={18} />
-            关闭其他
-            {kbd("closeOthers")}
-          </button>
+            const needsPath = PATH_GATED.has(item.action);
+            const showDivider = item.action === "addField";
+            return (
+              <Fragment key={item.id}>
+                {showDivider && (
+                  <div
+                    className="h-px my-1"
+                    style={{ background: "var(--app-border)" }}
+                  />
+                )}
+                <button
+                  data-menu-item={item.action}
+                  className="w-full flex items-center gap-2 text-left px-3 py-1.5 hover:bg-[var(--app-sunken)] disabled:cursor-not-allowed disabled:opacity-45"
+                  disabled={needsPath && !tabs[menu.tabId]?.path}
+                  title={needsPath && !tabs[menu.tabId]?.path
+                    ? "此页签尚未保存，无路径可用"
+                    : item.label}
+                  onClick={() => {
+                    if (runTabAction(item.action)) closeMenu();
+                  }}
+                >
+                  <Icon name={item.icon} size={18} />
+                  {item.label}
+                  {kbd(item.action)}
+                </button>
+              </Fragment>
+            );
+          })}
         </div>
       )}
 

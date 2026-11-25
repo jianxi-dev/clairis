@@ -1,10 +1,18 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, resolve } from "node:path";
 import { moveItem, reorderLeafTabs, type PaneLayout } from "../lib/paneTree";
-import {
-  EXPORT_MENU_ITEMS,
-  PANE_MENU_ITEMS,
-  nextPaneMode,
-} from "../lib/paneHeaderMenu";
+import { nextPaneMode } from "../lib/paneHeaderMenu";
+import { toMenuItem, type MenuItem } from "../lib/dataSurfaces/loader";
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+const defaultMenus = JSON.parse(
+  readFileSync(
+    resolve(HERE, "../../src-tauri/src/resources/menus.default.json"),
+    "utf8",
+  ),
+);
 
 describe("moveItem（页签拖拽换位的纯逻辑）", () => {
   it("把元素移动到目标终态下标", () => {
@@ -46,9 +54,15 @@ describe("reorderLeafTabs", () => {
   });
 });
 
-describe("⋯ 菜单定义", () => {
+describe("格头 ⋯ 菜单（数据面默认源对账）", () => {
+  const paneItems = () =>
+    (defaultMenus.items as unknown[])
+      .map((raw) => toMenuItem(raw))
+      .filter((i): i is MenuItem => i !== null && i.group === "pane-header")
+      .sort((a, b) => a.order - b.order);
+
   it("恰好 6 项且顺序与名称严格相等", () => {
-    expect(PANE_MENU_ITEMS.map((i) => i.label)).toEqual([
+    expect(paneItems().map((i) => i.label)).toEqual([
       "新建文件",
       "分享",
       "右分",
@@ -59,21 +73,27 @@ describe("⋯ 菜单定义", () => {
   });
 
   it("每项都带图标，且不含全屏项与文件级动作", () => {
-    for (const item of PANE_MENU_ITEMS) {
+    for (const item of paneItems()) {
       expect(item.icon).toBeTruthy();
     }
-    const labels = PANE_MENU_ITEMS.map((i) => i.label);
+    const labels = paneItems().map((i) => i.label);
     expect(labels).not.toContain("全屏");
     expect(labels).not.toContain("导出");
     expect(labels).not.toContain("刷新");
     expect(labels).not.toContain("打开文件位置");
-    expect(PANE_MENU_ITEMS.map((i) => i.icon)).not.toContain("expand");
+    expect(paneItems().map((i) => i.icon)).not.toContain("expand");
   });
 });
 
-describe("导出能力清单", () => {
+describe("导出能力清单（数据面默认源对账）", () => {
+  const exportItems = () =>
+    (defaultMenus.items as unknown[])
+      .map((raw) => toMenuItem(raw))
+      .filter((i): i is MenuItem => i !== null && i.group === "export-submenu")
+      .sort((a, b) => a.order - b.order);
+
   it("恰好 6 项且顺序为 Word/.mdpkg/图片/PDF/HTML/ZIP", () => {
-    expect(EXPORT_MENU_ITEMS.map((i) => i.label)).toEqual([
+    expect(exportItems().map((i) => i.label)).toEqual([
       "Word",
       ".mdpkg",
       "图片",
@@ -84,7 +104,7 @@ describe("导出能力清单", () => {
   });
 
   it("不含打印（打印是同级的独立菜单项）", () => {
-    expect(EXPORT_MENU_ITEMS.map((i) => i.action)).not.toContain("print");
+    expect(exportItems().map((i) => i.action)).not.toContain("print");
   });
 });
 

@@ -418,7 +418,9 @@ export function normalizeHtmlToolbarItems(
   raw: string[] | null | undefined,
 ): string[] | null {
   if (!Array.isArray(raw) || raw.length === 0) return null;
-  const known = new Set(getSurfaceItems("html-toolbar").map((item) => item.id));
+  const known = new Set(
+    getSurfaceItems<{ id: string }>("html-toolbar").map((item) => item.id),
+  );
   const out: string[] = [];
   for (const id of raw) {
     if (!known.has(id)) {

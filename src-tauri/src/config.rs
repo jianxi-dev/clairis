@@ -354,7 +354,7 @@ fn json_err(context: &str, source: serde_json::Error) -> AppError {
 
 /// 同目录临时文件 → fsync → rename。任一步失败都删除临时文件并返回错误，
 /// 目标文件保持写入前的字节不变（rename 是原子替换）。
-fn atomic_write(path: &Path, data: &[u8]) -> Result<(), AppError> {
+pub(crate) fn atomic_write(path: &Path, data: &[u8]) -> Result<(), AppError> {
     let dir = path
         .parent()
         .ok_or_else(|| io_err("atomic write", std::io::Error::other("path has no parent")))?;
@@ -900,7 +900,7 @@ fn is_safe_snapshot_name(name: &str) -> bool {
 }
 
 /// 把当前 user 层复制进 snapshots/。user 层不存在时跳过。
-fn snapshot_user(base: &Path) -> Result<(), AppError> {
+pub(crate) fn snapshot_user(base: &Path) -> Result<(), AppError> {
     let source = user_path(base);
     if !source.exists() {
         return Ok(());

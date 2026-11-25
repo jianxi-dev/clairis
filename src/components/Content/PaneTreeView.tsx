@@ -24,12 +24,8 @@ import {
   MIN_PANE_PX,
   type PaneLayout,
 } from "../../lib/paneTree";
-import {
-  nextPaneMode,
-  AI_PANE_MENU_ITEMS,
-  PANE_MENU_ITEMS,
-  type PaneMenuAction,
-} from "../../lib/paneHeaderMenu";
+import { nextPaneMode, type PaneMenuAction } from "../../lib/paneHeaderMenu";
+import { getMenuItems, type MenuItem } from "../../lib/dataSurfaces/store";
 import { log } from "../../utils/log";
 import { popOverlay, pushOverlay } from "../../lib/overlayGate";
 import type { EditorMode, Tab } from "../../types";
@@ -369,9 +365,11 @@ function PaneHeader({
         setMenuOpen(false);
       }
     };
+    // keydown 立即注册：Escape 不能落在延迟窗口里丢掉；
+    // 只有 mousedown 需要延后一拍，避免打开菜单的那次点击立即把它关掉。
+    window.addEventListener("keydown", onKey, true);
     const id = setTimeout(() => {
       window.addEventListener("mousedown", onDown, true);
-      window.addEventListener("keydown", onKey, true);
     }, 0);
     return () => {
       clearTimeout(id);
@@ -620,13 +618,13 @@ function PaneHeader({
                   color: "var(--app-text-2)",
                 }}
               >
-                {PANE_MENU_ITEMS.map((item) => (
+                {getMenuItems("pane-header").map((item: MenuItem) => (
                   <button
-                    key={item.action}
+                    key={item.id}
                     type="button"
                     role="menuitem"
                     data-menu-item={item.action}
-                    onClick={() => runMenu(item.action)}
+                    onClick={() => runMenu(item.action as PaneMenuAction)}
                     className="flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-[var(--app-sunken)]"
                   >
                     <Icon name={item.icon} size={18} />
@@ -728,13 +726,13 @@ function AiPaneHeader({ leafId }: { leafId: string }) {
               role="menu"
               className="absolute right-0 top-full z-50 mt-1 min-w-[150px] rounded border border-[var(--app-border)] bg-[var(--app-surface)] py-1 text-xs shadow-lg"
             >
-              {AI_PANE_MENU_ITEMS.map((item) => (
+              {getMenuItems("ai-pane").map((item: MenuItem) => (
                 <button
-                  key={item.action}
+                  key={item.id}
                   type="button"
                   role="menuitem"
                   data-ai-menu-item={item.action}
-                  onClick={() => run(item.action)}
+                  onClick={() => run(item.action as PaneMenuAction)}
                   className="flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-[var(--app-sunken)]"
                 >
                   <Icon name={item.icon} size={18} />

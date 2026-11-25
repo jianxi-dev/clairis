@@ -18,7 +18,7 @@ import {
 } from "./toolbar-shared";
 import { useAiEntryStore } from "../../hooks/useAiEntry";
 import { useEditorStore } from "../../stores/editorStore";
-import { resolveToolbarOrder } from "./slots";
+import { resolveToolbarOrder, type ToolbarSlotItem } from "./slots";
 import { getSurfaceItems } from "../../lib/dataSurfaces/store";
 
 const SHOW_DELAY_MS = 90;
@@ -207,7 +207,7 @@ export function horizontalToolbar(options?: { copyOnly?: boolean }) {
         return root;
       }
 
-      const items = getSurfaceItems("html-toolbar");
+      const items = getSurfaceItems<ToolbarSlotItem>("html-toolbar");
       const order = resolveToolbarOrder(
         useEditorStore.getState().config.htmlToolbarItems,
         items,

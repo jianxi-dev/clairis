@@ -22,6 +22,7 @@ import { isTauriEnv } from "../../utils/tauri";
 import { revealInFinder } from "../../lib/finder";
 import { log } from "../../utils/log";
 import ContextMenu, { type ContextMenuItem } from "../ContextMenu";
+import { getMenuItems, type MenuItem } from "../../lib/dataSurfaces/store";
 import type { FileKind } from "../../types";
 
 interface PreviewViewProps {
@@ -590,50 +591,48 @@ function ImagePreview({ filePath }: { filePath: string }) {
 
   const closeCtxMenu = useCallback(() => setCtxMenu(null), []);
 
-  const contextItems = useMemo<ContextMenuItem[]>(() => {
-    const name = filePath.split("/").pop() || "image.png";
-    return [
-      {
-        label: "打开所在文件夹",
-        icon: "folder",
-        onSelect: () => revealInFinder(filePath),
-      },
-      {
-        label: "另存为…",
-        icon: "export",
-        onSelect: () => {
+  const runPreviewAction = useCallback(
+    (action: string, path: string) => {
+      const name = path.split("/").pop() || "image.png";
+      switch (action) {
+        case "openFolder":
+          revealInFinder(path);
+          return true;
+        case "saveAs":
           void (async () => {
             try {
-              const base64 = await invoke<string>("read_file_base64", {
-                path: filePath,
-              });
-              await invoke("save_binary_as_file", {
-                base64,
-                defaultName: name,
-              });
+              const base64 = await invoke<string>("read_file_base64", { path });
+              await invoke("save_binary_as_file", { base64, defaultName: name });
             } catch (err) {
               log.warn("ImagePreview", "另存为失败", err);
             }
           })();
-        },
-      },
-      {
-        label: "复制文件路径",
-        icon: "copyPath",
-        onSelect: () => {
-          void navigator.clipboard?.writeText(filePath).catch(() => {});
-        },
-      },
-      {
-        label: "关闭预览",
-        icon: "close",
-        onSelect: () => {
+          return true;
+        case "copyPath":
+          void navigator.clipboard?.writeText(path).catch(() => {});
+          return true;
+        case "closePreview": {
           const st = useStore.getState();
           if (st.activeTabId) st.closeTab(st.activeTabId);
-        },
+          return true;
+        }
+        default:
+          return false;
+      }
+    },
+    [],
+  );
+
+  const contextItems = useMemo<ContextMenuItem[]>(() => {
+    const actions = getMenuItems("preview-context");
+    return actions.map((item: MenuItem) => ({
+      label: item.label,
+      icon: item.icon,
+      onSelect: () => {
+        runPreviewAction(item.action, filePath);
       },
-    ];
-  }, [filePath]);
+    }));
+  }, [filePath, runPreviewAction]);
 
   zoomRef.current = zoom;
 

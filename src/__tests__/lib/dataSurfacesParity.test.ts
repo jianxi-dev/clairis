@@ -12,7 +12,7 @@ const RUST_SURFACES = resolve(
 
 function rustTableIds(): string[] {
   const source = readFileSync(RUST_SURFACES, "utf8");
-  const block = source.match(/^pub static SURFACES:[^=]*=\s*&\[([\s\S]*?)\n\}\];/m);
+  const block = source.match(/^pub static SURFACES:[\s\S]*?=\s*&\[([\s\S]*?)\n\s*\];/m);
   expect(block, "应在 surfaces.rs 找到 SURFACES 登记表块").not.toBeNull();
   const ids = [...block![1].matchAll(/^\s*id:\s*"([^"]+)"/gm)].map((m) => m[1]);
   expect(ids.length, "SURFACES 表块内应解析出至少一个 id").toBeGreaterThan(0);
