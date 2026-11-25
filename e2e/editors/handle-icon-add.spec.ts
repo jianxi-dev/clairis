@@ -163,7 +163,10 @@ test("文末「+」点击落空段，一次撤销完全还原", async ({ page })
   await expect.poll(() => storeContent(page)).toBe(`${orig}\n\n`);
   await shot(page, "04-trailing-clicked", "trailing-clicked");
 
-  await page.keyboard.press("Meta+z");
+  // CM 的 Mod 在 macOS 是 Meta、linux/win 是 Ctrl；CI(ubuntu) 按 Meta 按不触发撤销。
+  await page.keyboard.press(
+    process.platform === "darwin" ? "Meta+z" : "Control+z",
+  );
   await expect.poll(() => storeContent(page)).toBe(orig);
   await shot(page, "05-trailing-undone", "trailing-undone");
 });
