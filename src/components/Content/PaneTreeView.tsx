@@ -365,9 +365,11 @@ function PaneHeader({
         setMenuOpen(false);
       }
     };
+    // keydown 立即注册：Escape 不能落在延迟窗口里丢掉；
+    // 只有 mousedown 需要延后一拍，避免打开菜单的那次点击立即把它关掉。
+    window.addEventListener("keydown", onKey, true);
     const id = setTimeout(() => {
       window.addEventListener("mousedown", onDown, true);
-      window.addEventListener("keydown", onKey, true);
     }, 0);
     return () => {
       clearTimeout(id);
