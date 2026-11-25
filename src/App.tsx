@@ -87,6 +87,7 @@ function kindFromDigitCode(code: string): FileTypeKind | null | undefined {
 const STATUS_HOTZONE_HEIGHT = 16;
 
 function App() {
+  installCropJumpProbe();
   const activeTabId = useStore((s) => s.activeTabId);
   const tabs = useStore((s) => s.tabs);
   const activeTab = activeTabId ? tabs[activeTabId] : null;
