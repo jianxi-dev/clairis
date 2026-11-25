@@ -896,6 +896,21 @@ class ImageWidget extends WidgetType {
     // 选中态按文档偏移套用：装饰重建后新 widget 也会拿到同一偏移。
     markImageWidgetSelected(container, getSelectedImageFrom() === this._from);
 
+    // 图片 widget 上的 mousedown 不再下传编辑器：否则浏览器会设置文本光标，
+    // CM6 再把光标滚进视口——真机表现为点击/拖动图片时整篇跳动
+    // （日志：1686 → 1168，docHeight 不变，光标 788 → 901）。
+    // 输入类元素（题注输入框）例外，它们需要正常的聚焦与光标。
+    container.addEventListener("mousedown", (event) => {
+      const target = event.target;
+      if (
+        target instanceof Element &&
+        target.closest("input, textarea, [contenteditable='true']")
+      ) {
+        return;
+      }
+      event.preventDefault();
+    });
+
     container.addEventListener("click", () => {
       const view = EditorView.findFromDOM(container);
       if (view) setImageView(view);
