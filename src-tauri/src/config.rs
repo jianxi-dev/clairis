@@ -1015,7 +1015,19 @@ fn nested_defaults() -> Value {
         "roulettePosition": { "x": null, "y": null },
         "propTemplates": [],
         "propAliasMap": {},
-        "capabilities": {}
+        "capabilities": {},
+        // 以下 skip_serializing_if = "Option::is_none" 的顶层字段不会出现在
+        // AppConfig::default() 的序列化结果里，需在此显式登记形状（design §D1）。
+        // 新增此类字段时必须同步登记，否则补丁边界会把合法键误判为未知键。
+        "htmlToolbarItems": [],
+        "rouletteSectors": [],
+        "defaultSavePath": null,
+        "rouletteHotkey": null,
+        "rouletteForm": null,
+        "noticeDuration": null,
+        "railPinHidden": null,
+        "iconLabel": null,
+        "paneLayout": null
     })
 }
 
@@ -1149,6 +1161,8 @@ const SKILL_MAP: &str = r#"# Biaoyue 配置地图
 - `read_config`：返回合并后的有效配置。
 - `patch_config`：`{"patch": {...}}`，深合并进 user 层，写入前校验并生成快照；非法值不落盘。
 - `list_snapshots`：返回快照文件名，最旧在前。
+- `read_data_surface`：`{"id": "html-toolbar"}`，返回数据面的 `{effective, defaults, warnings}` 三段。
+- `patch_data_surface`：`{"id": "html-toolbar", "patch": {"items": [...]}}`，整体替换用户覆盖集合，写入前校验并生成快照。
 
 ## 可改键与取值范围（camelCase）
 
@@ -1169,6 +1183,20 @@ const SKILL_MAP: &str = r#"# Biaoyue 配置地图
 | `propTemplates` | 模板数组：`name` 非空、`fields[].key` 非空且不含 `:` `#`、`fields[].type` ∈ 八类 + `unknown` |
 | `propAliasMap` | 对象：键名非空且不含 `:` `#`、值 ∈ 八类类型（不含 `unknown`）；缺省回落内置别称 |
 | `openaiEndpoint` / `openaiModel` | 任意字符串 |
+
+## 数据面（html-toolbar）
+
+横向工具条的按钮集合与顺序是**数据面**：默认集合的唯一来源是仓库内
+`resources/html-toolbar.default.json`（首次运行物化到
+`defaults/surfaces/html-toolbar.json`，不可手改，损坏自动回落内嵌默认）；
+用户覆盖写在 `user/settings.json` 的 `htmlToolbarItems` 字段。有效集合 =
+默认 ← 用户覆盖，未知 id 会被过滤并聚合为一条告警。
+
+用 `patch_data_surface` 改写覆盖集合（整体替换语义，只写 user 层，不动默认文件）：
+
+```json
+{ "id": "html-toolbar", "patch": { "items": ["format-bold", "format-italic"] } }
+```
 
 ## 禁止项
 
@@ -2456,5 +2484,32 @@ mod tests {
             loaded.recent_files.unwrap()[0].path,
             "返回值应含 state 层读取结果"
         );
+    }
+
+    #[test]
+    fn patch_accepts_skip_serializing_option_keys() {
+        // bug #1472：skip_serializing_if 字段不进 default 序列化，曾缺失于补丁边界。
+        // 值均取自 validate_config 的合法取值。
+        let cases: [(&str, Value); 8] = [
+            ("rouletteSectors", serde_json::json!(["format"])),
+            ("defaultSavePath", serde_json::json!("/tmp/docs")),
+            ("rouletteHotkey", serde_json::json!("Mod+Shift+Space")),
+            ("rouletteForm", serde_json::json!("hub")),
+            ("noticeDuration", serde_json::json!(3.0)),
+            ("railPinHidden", serde_json::json!(true)),
+            ("iconLabel", serde_json::json!("auto")),
+            ("paneLayout", serde_json::json!("{\"left\":true}")),
+        ];
+        for (key, value) in cases {
+            let dir = temp_base(&format!("patch_skip_{key}"));
+            let base = dir.path();
+            write_user(base, r#"{"theme":"light"}"#);
+
+            let patched = apply_patch_at(base, &serde_json::json!({ key: value.clone() }));
+
+            assert!(patched.is_ok(), "{key} 应被补丁边界接受: {patched:?}");
+            let user: Value = serde_json::from_str(&read_user(base)).unwrap();
+            assert_eq!(user[key], value, "{key} 应写入 user 层");
+        }
     }
 }
