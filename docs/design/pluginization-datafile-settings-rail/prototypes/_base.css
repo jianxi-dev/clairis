@@ -1,0 +1,124 @@
+/* 标月设计系统 token —— 原型视觉基础（引用条款号，不复制像素值于方案，此处为原型实现用）
+ * 来源：docs/design/system/spec.md
+ * 间距 §3 / 字号 §4 / 圆角 §5 / 语义色 §6 / 图标 §2
+ */
+
+:root {
+  /* 间距刻度 §3 */
+  --space-2: 2px;
+  --space-4: 4px;
+  --space-6: 6px;
+  --space-8: 8px;
+  --space-10: 10px;
+  --space-12: 12px;
+  --space-16: 16px;
+  --space-24: 24px;
+
+  /* 字号阶梯 §4 */
+  --fs-11: 11px;
+  --fs-12: 12px;
+  --fs-13: 13px;
+  --fs-14: 14px;
+
+  /* 圆角与阴影 §5 */
+  --radius-4: 4px; /* 控件、按钮、菜单行 */
+  --radius-8: 8px; /* 卡片、浮层、弹窗 */
+  --radius-full: 999px;
+  --app-shadow: 0 8px 24px rgba(31, 26, 20, 0.12);
+
+  /* 语义色 §6（亮色） */
+  --app-accent: #6366f1;
+  --app-bg: #f7f7f6;
+  --app-surface: #fbfaf8;
+  --app-sunken: #f4f2ec;
+  --app-text: #24262b;
+  --app-text-strong: #16181c;
+  --app-text-2: #55595f;
+  --app-text-3: #8b8f96;
+  --app-border: #e7e3db;
+  --app-border-strong: #d8d3c8;
+
+  /* 类型色 §6（识别标志，三主题不换色） */
+  --type-markdown: #6366f1;
+  --type-html: #f59e0b;
+  --type-text: #64748b;
+  --type-pdf: #ef4444;
+  --type-video: #a855f7;
+  --type-image: #10b981;
+  --type-code: #06b6d4;
+  --type-audio: #ec4899;
+
+  /* 错误/危险 §6（红色只用于错误） */
+  --danger: #a8402f;
+
+  /* 键位样式 §4.6 规范缺口：暂用临时 kbd 样式，条款待补 */
+  --kbd-bg: #f4f2ec;
+  --kbd-border: #d8d3c8;
+  --kbd-text: #24262b;
+}
+
+/* 暗色主题 */
+.dark {
+  --app-accent: #818cf8;
+  --app-bg: #131316;
+  --app-surface: #1a1b1e;
+  --app-sunken: #22242a;
+  --app-text: #d8dade;
+  --app-text-strong: #eceef1;
+  --app-text-2: #a7abb3;
+  --app-text-3: #75797f;
+  --app-border: #2e3138;
+  --app-border-strong: #3d4149;
+  --danger: #e08b7a;
+  --kbd-bg: #22242a;
+  --kbd-border: #3d4149;
+  --kbd-text: #d8dade;
+}
+
+/* 键位样式（规范缺口，临时） */
+kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: var(--fs-12);
+  background: var(--kbd-bg);
+  border: 1px solid var(--kbd-border);
+  border-radius: var(--radius-4);
+  color: var(--kbd-text);
+  line-height: 1;
+}
+
+kbd + kbd {
+  margin-left: var(--space-2);
+}
+
+/* 通用卡片 */
+.card {
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  border-radius: var(--radius-8);
+  box-shadow: var(--app-shadow);
+}
+
+/* 通用按钮 */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-6) var(--space-12);
+  font-size: var(--fs-13);
+  color: var(--app-text);
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  border-radius: var(--radius-4);
+  cursor: pointer;
+}
+.btn-primary {
+  color: #fff;
+  background: var(--app-accent);
+  border-color: var(--app-accent);
+}

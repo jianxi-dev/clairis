@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>标月 · 设置浮窗原型</title>
+<style>
+/* 标月设计系统 token（内联，引用 docs/design/system/spec.md 条款）
+   间距 §3 / 字号 §4 / 圆角 §5 / 语义色 §6 / 键位 §4.6 规范缺口（临时） */
+:root{
+  --space-2:2px;--space-4:4px;--space-6:6px;--space-8:8px;--space-10:10px;
+  --space-12:12px;--space-16:16px;--space-24:24px;
+  --fs-11:11px;--fs-12:12px;--fs-13:13px;--fs-14:14px;
+  --radius-4:4px;--radius-8:8px;--radius-full:999px;
+  --app-shadow:0 12px 36px rgba(31,26,20,.18),0 4px 12px rgba(31,26,20,.10);
+  --app-accent:#6366f1;--app-bg:#eceae5;--app-surface:#fbfaf8;--app-sunken:#f4f2ec;
+  --app-text:#24262b;--app-text-strong:#16181c;--app-text-2:#55595f;--app-text-3:#8b8f96;
+  --app-border:#e7e3db;--app-border-strong:#d8d3c8;
+  --danger:#a8402f;
+  --kbd-bg:#f4f2ec;--kbd-border:#d8d3c8;--kbd-text:#24262b;
+  --accent-soft:rgba(99,102,241,.10);
+}
+.dark{
+  --app-accent:#818cf8;--app-bg:#0e0e11;--app-surface:#1a1b1e;--app-sunken:#22242a;
+  --app-text:#d8dade;--app-text-strong:#eceef1;--app-text-2:#a7abb3;--app-text-3:#75797f;
+  --app-border:#2e3138;--app-border-strong:#3d4149;
+  --danger:#e08b7a;
+  --kbd-bg:#22242a;--kbd-border:#3d4149;--kbd-text:#d8dade;
+  --accent-soft:rgba(129,140,248,.14);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:-apple-system,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+  font-size:var(--fs-14);color:var(--app-text);background:var(--app-bg);
+  min-height:100vh;overflow:hidden;
+  /* 模拟桌面：带细网格纹理，暗示主窗口工作区 */
+  background-image:linear-gradient(var(--app-border) 1px,transparent 1px),linear-gradient(90deg,var(--app-border) 1px,transparent 1px);
+  background-size:32px 32px;background-position:-1px -1px;
+}
+/* 桌面提示条 */
+.desk-hint{
+  position:fixed;top:16px;left:50%;transform:translateX(-50%);
+  font-size:var(--fs-12);color:var(--app-text-3);background:var(--app-surface);
+  border:1px solid var(--app-border);border-radius:var(--radius-full);
+  padding:6px 14px;box-shadow:var(--app-shadow);z-index:5;
+}
+/* ===== 设置浮窗 ===== */
+.win{
+  position:absolute;top:96px;left:120px;width:760px;height:540px;
+  background:var(--app-surface);border:1px solid var(--app-border-strong);
+  border-radius:var(--radius-8);box-shadow:var(--app-shadow);
+  display:flex;flex-direction:column;overflow:hidden;z-index:10;
+  user-select:none;
+}
+.win.dragging{box-shadow:0 20px 50px rgba(31,26,20,.28);}
+.win-bar{
+  display:flex;align-items:center;gap:var(--space-12);
+  height:44px;padding:0 var(--space-12);background:var(--app-sunken);
+  border-bottom:1px solid var(--app-border);cursor:move;flex-shrink:0;
+}
+.win-title{font-size:var(--fs-13);font-weight:600;color:var(--app-text-strong);display:flex;align-items:center;gap:var(--space-6)}
+.win-title .dot{width:8px;height:8px;border-radius:var(--radius-full);background:var(--app-accent)}
+.win-tools{margin-left:auto;display:flex;align-items:center;gap:var(--space-6)}
+.iconbtn{
+  width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;
+  border:1px solid transparent;border-radius:var(--radius-4);background:transparent;
+  color:var(--app-text-2);cursor:pointer;font-size:14px;line-height:1;
+}
+.iconbtn:hover{background:var(--app-surface);border-color:var(--app-border);color:var(--app-text-strong)}
+.iconbtn.close:hover{color:var(--danger)}
+.win-body{flex:1;display:flex;min-height:0}
+/* 左导航 */
+.nav{width:168px;flex-shrink:0;background:var(--app-sunken);border-right:1px solid var(--app-border);padding:var(--space-8) var(--space-6);overflow-y:auto}
+.nav-item{
+  display:flex;align-items:center;gap:var(--space-8);padding:8px var(--space-10);
+  border-radius:var(--radius-4);cursor:pointer;color:var(--app-text-2);
+  font-size:var(--fs-13);margin-bottom:2px;
+}
+.nav-item .ni{width:18px;text-align:center;font-size:14px;opacity:.7}
+.nav-item:hover{background:var(--app-surface);color:var(--app-text)}
+.nav-item.active{background:var(--accent-soft);color:var(--app-accent);font-weight:600}
+.nav-item.active .ni{opacity:1}
+.nav-sec{font-size:var(--fs-11);color:var(--app-text-3);padding:10px var(--space-10) 4px;letter-spacing:.04em}
+/* 右内容 */
+.content{flex:1;overflow-y:auto;padding:var(--space-16) var(--space-20)}
+.panel{display:none;animation:fade .18s ease}
+.panel.active{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.panel h2{font-size:var(--fs-14);color:var(--app-text-strong);margin-bottom:var(--space-12);display:flex;align-items:center;gap:var(--space-8)}
+.panel h2 .tag{font-size:var(--fs-11);font-weight:400;color:var(--app-text-3);background:var(--app-sunken);border:1px solid var(--app-border);border-radius:var(--radius-full);padding:2px 8px}
+.section-label{font-size:var(--fs-12);color:var(--app-text-3);font-weight:600;margin:var(--space-16) 0 var(--space-8);letter-spacing:.03em}
+.section-label:first-child{margin-top:0}
+/* 核心高频快捷键 */
+.core-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:var(--space-8)}
+.core-card{
+  display:flex;align-items:center;gap:var(--space-12);padding:var(--space-12);
+  background:var(--accent-soft);border:1px solid color-mix(in srgb,var(--app-accent) 30%,transparent);
+  border-radius:var(--radius-8);
+}
+.core-card .keys{display:flex;gap:var(--space-4);flex-shrink:0}
+.core-card .info{flex:1;min-width:0}
+.core-card .fn{font-size:var(--fs-13);font-weight:600;color:var(--app-text-strong)}
+.core-card .use{font-size:var(--fs-12);color:var(--app-text-2);margin-top:2px;line-height:1.4}
+/* 规则卡 */
+.rule-list{display:flex;flex-direction:column;gap:var(--space-8)}
+.rule{
+  display:flex;align-items:center;gap:var(--space-12);padding:var(--space-10) var(--space-12);
+  background:var(--app-surface);border:1px solid var(--app-border);border-radius:var(--radius-8);
+}
+.rule .badge{font-size:var(--fs-12);font-weight:600;color:var(--app-accent);background:var(--accent-soft);border-radius:var(--radius-4);padding:4px 10px;white-space:nowrap}
+.rule .desc{font-size:var(--fs-13);color:var(--app-text-2)}
+.rule .ex{margin-left:auto;display:flex;gap:var(--space-4);align-items:center}
+/* 全局/局部 */
+.scope-cols{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-12)}
+.scope-col{background:var(--app-surface);border:1px solid var(--app-border);border-radius:var(--radius-8);padding:var(--space-12);overflow:hidden}
+.scope-col h3{font-size:var(--fs-13);color:var(--app-text-strong);margin-bottom:var(--space-8);display:flex;align-items:center;gap:var(--space-6)}
+.scope-col h3 .pill{font-size:var(--fs-11);font-weight:400;padding:2px 8px;border-radius:var(--radius-full);background:var(--app-sunken);color:var(--app-text-3)}
+.scope-col.global h3 .pill{background:var(--accent-soft);color:var(--app-accent)}
+.scope-row{display:flex;align-items:center;justify-content:space-between;padding:6px 0;font-size:var(--fs-13);border-bottom:1px dashed var(--app-border)}
+.scope-row:last-child{border-bottom:none}
+.scope-row .ctx{font-size:var(--fs-11);color:var(--app-text-3);margin-top:2px}
+/* 可重映射 */
+.remap-box{background:var(--app-surface);border:1px solid var(--app-border);border-radius:var(--radius-8);padding:var(--space-12)}
+.remap-item{display:flex;align-items:center;gap:var(--space-12);padding:var(--space-8) 0;border-bottom:1px solid var(--app-border)}
+.remap-item:last-child{border-bottom:none}
+.remap-item .label{flex:1}
+.remap-item .label .t{font-size:var(--fs-13);color:var(--app-text-strong)}
+.remap-item .label .d{font-size:var(--fs-12);color:var(--app-text-3);margin-top:2px}
+.btn-sm{padding:5px 12px;font-size:var(--fs-12);border-radius:var(--radius-4);border:1px solid var(--app-border);background:var(--app-surface);color:var(--app-text);cursor:pointer}
+.btn-sm:hover{border-color:var(--app-border-strong)}
+.btn-sm.disabled{opacity:.5;cursor:not-allowed}
+.dep-note{margin-top:var(--space-10);font-size:var(--fs-12);color:var(--app-text-3);background:var(--app-sunken);border:1px dashed var(--app-border-strong);border-radius:var(--radius-4);padding:var(--space-8) var(--space-12);line-height:1.5}
+/* 通用设置行 */
+.set-row{display:flex;align-items:center;justify-content:space-between;padding:var(--space-10) 0;border-bottom:1px solid var(--app-border)}
+.set-row:last-child{border-bottom:none}
+.set-row .lab{font-size:var(--fs-13)}
+.set-row .lab .sub{font-size:var(--fs-12);color:var(--app-text-3);margin-top:2px}
+.switch{width:36px;height:20px;border-radius:var(--radius-full);background:var(--app-border-strong);position:relative;cursor:pointer;transition:background .15s;flex-shrink:0}
+.switch::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:var(--radius-full);background:#fff;transition:left .15s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.switch.on{background:var(--app-accent)}
+.switch.on::after{left:18px}
+.sel{padding:5px 10px;font-size:var(--fs-12);border-radius:var(--radius-4);border:1px solid var(--app-border);background:var(--app-surface);color:var(--app-text)}
+/* 插件/数据文件清单 */
+.plugin-card{background:var(--app-surface);border:1px solid var(--app-border);border-radius:var(--radius-8);padding:var(--space-12);margin-bottom:var(--space-8)}
+.plugin-card .pc-head{display:flex;align-items:center;gap:var(--space-8);margin-bottom:var(--space-6)}
+.plugin-card .pc-name{font-size:var(--fs-13);font-weight:600;color:var(--app-text-strong)}
+.plugin-card .pc-meta{font-size:var(--fs-11);color:var(--app-text-3);margin-left:auto}
+.plugin-card .pc-desc{font-size:var(--fs-12);color:var(--app-text-2);line-height:1.5}
+.tier-badge{font-size:var(--fs-11);padding:2px 8px;border-radius:var(--radius-4);font-weight:600}
+.tier-a{background:var(--accent-soft);color:var(--app-accent)}
+.tier-b{background:rgba(245,158,11,.12);color:#b45309}
+/* 数据文件表 */
+.df-table{width:100%;border-collapse:collapse;font-size:var(--fs-12)}
+.df-table th,.df-table td{padding:var(--space-8);text-align:left;border-bottom:1px solid var(--app-border)}
+.df-table th{color:var(--app-text-3);font-weight:600;font-size:var(--fs-11)}
+.df-table td{color:var(--app-text-2)}
+.df-table code{font-family:ui-monospace,Menlo,monospace;background:var(--app-sunken);padding:1px 5px;border-radius:3px;font-size:var(--fs-11)}
+/* kbd */
+kbd{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 6px;font-family:ui-monospace,"SF Mono",Menlo,monospace;font-size:var(--fs-12);background:var(--kbd-bg);border:1px solid var(--kbd-border);border-radius:var(--radius-4);color:var(--kbd-text);line-height:1}
+kbd+kbd{margin-left:var(--space-2)}
+.mod{opacity:.55;font-size:var(--fs-11)}
+/* 折叠态 */
+.win.collapsed{height:auto}
+.win.collapsed .win-body{display:none}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--app-text-strong);color:var(--app-surface);padding:8px 16px;border-radius:var(--radius-4);font-size:var(--fs-12);opacity:0;transition:.2s;pointer-events:none;z-index:50}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.win-hint{position:absolute;bottom:-30px;left:0;font-size:var(--fs-11);color:var(--app-text-3);opacity:.7}
+</style>
+</head>
+<body>
+<div class="desk-hint">标月 · 设置独立浮窗原型（可拖动标题栏、折叠、切换分类与主题）</div>
+
+<div class="win" id="win">
+  <div class="win-bar" id="bar">
+    <div class="win-title"><span class="dot"></span>设置</div>
+    <div class="win-tools">
+      <button class="iconbtn" id="themeBtn" title="切换主题">◐</button>
+      <button class="iconbtn" id="collapseBtn" title="折叠/展开">—</button>
+      <button class="iconbtn close" id="closeBtn" title="关闭">✕</button>
+    </div>
+  </div>
+  <div class="win-body">
+    <nav class="nav" id="nav">
+      <div class="nav-sec">快捷键</div>
+      <div class="nav-item active" data-p="shortcuts"><span class="ni">⌘</span>快捷键</div>
+      <div class="nav-sec">能力与数据</div>
+      <div class="nav-item" data-p="plugins"><span class="ni">⧉</span>插件</div>
+      <div class="nav-item" data-p="datafile"><span class="ni">{}</span>数据文件</div>
+      <div class="nav-sec">编辑与阅读</div>
+      <div class="nav-item" data-p="editor"><span class="ni">✎</span>编辑器</div>
+      <div class="nav-item" data-p="reading"><span class="ni">☰</span>阅读</div>
+      <div class="nav-item" data-p="view"><span class="ni">▦</span>视图</div>
+      <div class="nav-sec">其他</div>
+      <div class="nav-item" data-p="ai"><span class="ni">✦</span>AI</div>
+      <div class="nav-item" data-p="general"><span class="ni">⚙</span>通用</div>
+      <div class="nav-item" data-p="about"><span class="ni">ℹ</span>关于</div>
+    </nav>
+    <div class="content">
+
+      <!-- 快捷键（核心） -->
+      <div class="panel active" id="p-shortcuts">
+        <h2>快捷键 <span class="tag">shortcuts.ts 注册表为唯一真相源</span></h2>
+
+        <div class="section-label">核心高频 · 最该记住的少数几条</div>
+        <div class="core-grid">
+          <div class="core-card"><div class="keys"><kbd class="mod">⌘</kbd><kbd>P</kbd></div><div class="info"><div class="fn">快速打开</div><div class="use">全局搜索并打开任意文档</div></div></div>
+          <div class="core-card"><div class="keys"><kbd class="mod">⌘</kbd><kbd>\</kbd></div><div class="info"><div class="fn">阅读空间</div><div class="use">打开阅读空间主界面</div></div></div>
+          <div class="core-card"><div class="keys"><kbd class="mod">⌘</kbd><kbd class="mod">⇧</kbd><kbd>\</kbd></div><div class="info"><div class="fn">网格概览</div><div class="use">切换到网格概览视图</div></div></div>
+          <div class="core-card"><div class="keys"><kbd class="mod">⌘</kbd><kbd>K</kbd></div><div class="info"><div class="fn">AI 快捷浮层</div><div class="use">唤起 AI 会话浮层</div></div></div>
+          <div class="core-card"><div class="keys"><kbd class="mod">⌘</kbd><kbd class="mod">⇧</kbd><kbd>A</kbd></div><div class="info"><div class="fn">AI 动作</div><div class="use">注册表定义的高频 AI 动作</div></div></div>
+          <div class="core-card"><div class="keys"><kbd class="mod">⌘</kbd><kbd>,</kbd></div><div class="info"><div class="fn">设置</div><div class="use">打开本设置浮窗</div></div></div>
+          <div class="core-card"><div class="keys"><kbd>?</kbd></div><div class="info"><div class="fn">快捷键总览</div><div class="use">打开应用内快捷键总览浮层</div></div></div>
+        </div>
+
+        <div class="section-label">规则技巧 · 理解编排逻辑，推导记忆</div>
+        <div class="rule-list">
+          <div class="rule"><span class="badge">单 ⌘ 高频</span><span class="desc">最常用的动作用单个 ⌘</span><span class="ex"><kbd class="mod">⌘</kbd><kbd>P</kbd></span></div>
+          <div class="rule"><span class="badge">⌘⇧ 二级</span><span class="desc">次级动作用 ⌘⇧ 组合</span><span class="ex"><kbd class="mod">⌘</kbd><kbd class="mod">⇧</kbd><kbd>\</kbd></span></div>
+          <div class="rule"><span class="badge">⌘⌥ 分栏/空间</span><span class="desc">涉及空间布局的用 ⌘⌥</span><span class="ex"><kbd class="mod">⌘</kbd><kbd class="mod">⌥</kbd><kbd>\</kbd></span></div>
+          <div class="rule"><span class="badge">⌥ 过滤</span><span class="desc">过滤类动作用 ⌥ 前缀</span><span class="ex"><kbd class="mod">⌥</kbd><kbd>类型</kbd></span></div>
+          <div class="rule"><span class="badge">不用三修饰键</span><span class="desc">避免三修饰键，降低记忆与冲突</span><span class="ex">—</span></div>
+        </div>
+
+        <div class="section-label">全局与局部 · 区分生效范围</div>
+        <div class="scope-cols">
+          <div class="scope-col global">
+            <h3>全局 <span class="pill">任意上下文生效</span></h3>
+            <div class="scope-row"><span><kbd class="mod">⌘</kbd><kbd>P</kbd></span><span>快速打开</span></div>
+            <div class="scope-row"><span><kbd class="mod">⌘</kbd><kbd>\</kbd></span><span>阅读空间</span></div>
+            <div class="scope-row"><span><kbd>?</kbd></span><span>快捷键总览</span></div>
+            <div class="scope-row"><span><kbd class="mod">⌥</kbd><kbd>类型</kbd></span><span>类型过滤</span></div>
+            <div class="scope-row"><span><kbd class="mod">⌘</kbd><kbd>1–9</kbd></span><span>工作区切换</span></div>
+          </div>
+          <div class="scope-col">
+            <h3>局部 <span class="pill">特定上下文生效</span></h3>
+            <div class="scope-row"><span><kbd class="mod">⌘</kbd><kbd>1–9</kbd></span><span>网格卡片切换<div class="ctx">网格概览上下文</div></span></div>
+            <div class="scope-row"><span><kbd class="mod">⌘</kbd><kbd>←</kbd><kbd>→</kbd></span><span>媒体播放控制<div class="ctx">播放器聚焦时</div></span></div>
+            <div class="scope-row"><span><kbd class="mod">⌘</kbd><kbd>F</kbd></span><span>面板内查找<div class="ctx">搜索浮窗内</div></span></div>
+          </div>
+        </div>
+
+        <div class="section-label">可重新调整 · 可重映射范围</div>
+        <div class="remap-box">
+          <div class="remap-item">
+            <div class="label"><div class="t">应用级快捷键重映射</div><div class="d">有键位绑定的应用级快捷键（SHORTCUTS 中已实现条目）</div></div>
+            <button class="btn-sm disabled" data-toast="依赖键位数据文件化，暂未开放">修改</button>
+          </div>
+          <div class="remap-item">
+            <div class="label"><div class="t">编辑器内格式键位</div><div class="d">加粗 / 斜体等 CM6 键位（keybindings.ts）</div></div>
+            <button class="btn-sm disabled" data-toast="依赖键位文件化纳入可改范围，暂未开放">修改</button>
+          </div>
+          <div class="remap-item">
+            <div class="label"><div class="t">编辑器核心 / 渲染管线</div><div class="d">运行时键位，不向用户开放，避免破坏核心行为</div></div>
+            <button class="btn-sm" style="opacity:.4" disabled>不可改</button>
+          </div>
+          <div class="dep-note">⚠ 依赖说明：当前 SHORTCUTS 是编译期常量，按键分发由 App.tsx 硬编码。不把按键分发改成读键位数据文件，重映射永不生效。重映射依赖第 1 项 B1 键位数据文件化 + 分发层重接线。</div>
+        </div>
+      </div>
+
+      <!-- 插件 -->
+      <div class="panel" id="p-plugins">
+        <h2>插件 <span class="tag">对接第 1 项能力提取</span></h2>
+        <div class="section-label">A 档 · 已具备插件化形态</div>
+        <div class="plugin-card">
+          <div class="pc-head"><span class="tier-badge tier-a">A1</span><span class="pc-name">扩展包</span><span class="pc-meta">注册型 · 已存在</span></div>
+          <div class="pc-desc">已文件化的扩展目录（含 manifest）。manifest 字段名待统一，加载管线为同步一次性加载、无热重载。</div>
+          <div style="margin-top:10px"><div class="switch on"></div></div>
+        </div>
+        <div class="plugin-card">
+          <div class="pc-head"><span class="tier-badge tier-a">A2</span><span class="pc-name">技能映射</span><span class="pc-meta">技能型 · 已落地</span></div>
+          <div class="pc-desc">SKILL_MAP 把 AGENT 能力声明化，SKILL.md 注入 AGENT 上下文。</div>
+          <div style="margin-top:10px"><div class="switch on"></div></div>
+        </div>
+        <div class="section-label">B 档 · 可进一步插件化</div>
+        <div class="plugin-card">
+          <div class="pc-head"><span class="tier-badge tier-b">B2</span><span class="pc-name">轮盘扇区</span><span class="pc-meta">配置型 · 待纳入体系</span></div>
+          <div class="pc-desc">rouletteSectors 已文件化在 settings.json，默认集合 ROOT_SECTORS 是常量，可插件化自定义。</div>
+          <div style="margin-top:10px"><div class="switch"></div></div>
+        </div>
+        <div class="plugin-card">
+          <div class="pc-head"><span class="tier-badge tier-b">B3</span><span class="pc-name">工具条按钮</span><span class="pc-meta">配置型 · 待纳入体系</span></div>
+          <div class="pc-desc">htmlToolbarItems 已文件化在 settings.json，设置页可编辑，仅需统一纳入插件体系登记。</div>
+          <div style="margin-top:10px"><div class="switch"></div></div>
+        </div>
+      </div>
+
+      <!-- 数据文件 -->
+      <div class="panel" id="p-datafile">
+        <h2>数据文件 <span class="tag">对接第 2 项数据文件化</span></h2>
+        <div class="section-label">可配置数据文件清单</div>
+        <table class="df-table">
+          <thead><tr><th>文件</th><th>形态</th><th>AGENT 可改</th><th>生效/校验</th></tr></thead>
+          <tbody>
+            <tr><td><code>settings.json</code></td><td>map 型 · 逐键深合并</td><td>是（patch_config）</td><td>热重载（watcher）</td></tr>
+            <tr><td><code>keybindings.json</code></td><td>map 型 · 逐键覆盖</td><td>规划（依赖分发重接线）</td><td>重启/重接线生效</td></tr>
+            <tr><td><code>icons.json</code></td><td>map 型</td><td>是</td><td>重启生效</td></tr>
+            <tr><td><code>state/state.json</code></td><td>派生态 · 只读</td><td>否（建议只读）</td><td>运行时派生</td></tr>
+            <tr><td><code>snapshots/</code></td><td>快照</td><td>否（系统生成）</td><td>回滚用</td></tr>
+          </tbody>
+        </table>
+        <div class="section-label">AGENT 写入说明</div>
+        <div class="dep-note">AGENT 经文件读写工具（含路径白名单 / schema 校验 / 写前预览 / 回滚）直接修改上述文件；SKILL_MAP 作为 AGENT 可见性载体，登记可改文件与字段含义。密钥不文件化（ADR 0005）。</div>
+      </div>
+
+      <!-- 编辑器 -->
+      <div class="panel" id="p-editor">
+        <h2>编辑器</h2>
+        <div class="set-row"><div class="lab">字号<div class="sub">编辑器正文默认字号</div></div><select class="sel"><option>14px</option><option>15px</option><option>16px</option></select></div>
+        <div class="set-row"><div class="lab">选区工具条<div class="sub">选中文本时浮动工具条</div></div><div class="switch on"></div></div>
+        <div class="set-row"><div class="lab">轮盘<div class="sub">快捷操作轮盘扇区</div></div><div class="switch on"></div></div>
+        <div class="set-row"><div class="lab">HTML 工具条<div class="sub">HTML 编辑工具条</div></div><div class="switch on"></div></div>
+        <div class="set-row"><div class="lab">属性栏<div class="sub">文档属性展示</div></div><div class="switch on"></div></div>
+        <div class="set-row"><div class="lab">模板<div class="sub">新建文档模板</div></div><select class="sel"><option>默认模板</option><option>Markdown</option></select></div>
+      </div>
+
+      <!-- 阅读 -->
+      <div class="panel" id="p-reading">
+        <h2>阅读</h2>
+        <div class="set-row"><div class="lab">字体<div class="sub">阅读正文字体</div></div><select class="sel"><option>系统默认</option><option>衬线</option></select></div>
+        <div class="set-row"><div class="lab">字号<div class="sub">阅读正文字号</div></div><select class="sel"><option>16px</option><option>18px</option></select></div>
+        <div class="set-row"><div class="lab">行高<div class="sub">阅读行高</div></div><select class="sel"><option>1.6</option><option>1.8</option></select></div>
+        <div class="set-row"><div class="lab">主题<div class="sub">阅读主题</div></div><select class="sel"><option>跟随应用</option><option>护眼</option></select></div>
+        <div class="set-row"><div class="lab">阅读模式<div class="sub">沉浸式阅读</div></div><div class="switch"></div></div>
+      </div>
+
+      <!-- 视图 -->
+      <div class="panel" id="p-view">
+        <h2>视图</h2>
+        <div class="set-row"><div class="lab">视图规格<div class="sub">分栏与布局规格</div></div><select class="sel"><option>单栏</option><option>双栏</option></select></div>
+        <div class="set-row"><div class="lab">分栏<div class="sub">默认分栏数</div></div><select class="sel"><option>1</option><option>2</option></select></div>
+        <div class="set-row"><div class="lab">网格概览<div class="sub">网格卡片配置</div></div><div class="switch on"></div></div>
+        <div class="set-row"><div class="lab">悬浮预览<div class="sub">悬浮卡片预览</div></div><div class="switch on"></div></div>
+        <div class="set-row"><div class="lab">外观<div class="sub">界面样式</div></div><select class="sel"><option>跟随系统</option><option>亮色</option><option>暗色</option></select></div>
+      </div>
+
+      <!-- AI -->
+      <div class="panel" id="p-ai">
+        <h2>AI</h2>
+        <div class="set-row"><div class="lab">模型<div class="sub">默认 AI 模型</div></div><select class="sel"><option>deepseek-flash</option></select></div>
+        <div class="set-row"><div class="lab">提供方<div class="sub">模型提供方</div></div><select class="sel"><option>自定义</option></select></div>
+        <div class="set-row"><div class="lab">连接<div class="sub">API 连接配置</div></div><span style="color:var(--app-text-3);font-size:var(--fs-12)">密钥存 OS keyring，不文件化</span></div>
+        <div class="set-row"><div class="lab">风格<div class="sub">AI 回复风格</div></div><select class="sel"><option>简洁</option><option>详细</option></select></div>
+        <div class="set-row"><div class="lab">会话<div class="sub">会话管理</div></div><div class="switch on"></div></div>
+      </div>
+
+      <!-- 通用 -->
+      <div class="panel" id="p-general">
+        <h2>通用</h2>
+        <div class="set-row"><div class="lab">文件偏好<div class="sub">文件打开默认行为</div></div><div class="switch on"></div></div>
+        <div class="set-row"><div class="lab">默认新建格式<div class="sub">新建文档默认格式<span style="color:var(--app-text-3)">（规划能力）</span></div></div><select class="sel"><option>Markdown</option></select></div>
+        <div class="set-row"><div class="lab">自动保存<div class="sub">编辑内容自动保存<span style="color:var(--app-text-3)">（规划能力）</span></div></div><div class="switch"></div></div>
+        <div class="set-row"><div class="lab">捕获浮层<div class="sub">快速捕获浮层<span style="color:var(--app-text-3)">（规划能力）</span></div></div><div class="switch on"></div></div>
+      </div>
+
+      <!-- 关于 -->
+      <div class="panel" id="p-about">
+        <h2>关于</h2>
+        <div class="set-row"><div class="lab">版本<div class="sub">标月当前版本</div></div><span style="color:var(--app-text-3);font-size:var(--fs-12)">原型演示</span></div>
+        <div class="set-row"><div class="lab">快捷键总览<div class="sub">打开应用内快捷键总览浮层</div></div><button class="btn-sm" data-toast="快捷键总览浮层（? 键打开，与本设置浮窗不同）">查看</button></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const win=document.getElementById('win'),bar=document.getElementById('bar');
+// 分类切换
+document.getElementById('nav').addEventListener('click',e=>{
+  const it=e.target.closest('.nav-item');if(!it)return;
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  it.classList.add('active');
+  const p=it.dataset.p;
+  document.querySelectorAll('.panel').forEach(pl=>pl.classList.remove('active'));
+  document.getElementById('p-'+p).classList.add('active');
+});
+// 主题切换
+document.getElementById('themeBtn').addEventListener('click',()=>{
+  document.body.classList.toggle('dark');
+});
+// 折叠
+document.getElementById('collapseBtn').addEventListener('click',()=>{
+  win.classList.toggle('collapsed');
+});
+// 关闭提示
+document.getElementById('closeBtn').addEventListener('click',()=>{
+  toast('浮窗关闭后位置会被记忆，再次打开 ⌘, 还原');
+});
+// 开关
+document.body.addEventListener('click',e=>{
+  if(e.target.classList.contains('switch')){e.target.classList.toggle('on');}
+  const b=e.target.closest('.btn-sm[data-toast]');
+  if(b){toast(b.dataset.toast);}
+});
+// toast
+let tt;
+function toast(msg){
+  const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');
+  clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('show'),1800);
+}
+// 拖动（带 3px 阈值，区分点击与拖动）
+let drag=false,sx=0,sy=0,ox=0,oy=0,moved=false;
+bar.addEventListener('mousedown',e=>{
+  if(e.target.closest('.iconbtn'))return;
+  drag=true;moved=false;
+  const r=win.getBoundingClientRect();
+  ox=r.left;oy=r.top;sx=e.clientX;sy=e.clientY;
+  win.classList.add('dragging');
+});
+document.addEventListener('mousemove',e=>{
+  if(!drag)return;
+  const dx=e.clientX-sx,dy=e.clientY-sy;
+  if(Math.abs(dx)>3||Math.abs(dy)>3)moved=true;
+  if(moved){
+    win.style.left=(ox+dx)+'px';
+    win.style.top=(oy+dy)+'px';
+  }
+});
+document.addEventListener('mouseup',()=>{
+  drag=false;win.classList.remove('dragging');
+});
+</script>
+</body>
+</html>
