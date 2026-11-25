@@ -4,10 +4,11 @@
  * widget 上，拖 handle 实时改显示，松手不退出；拖回整图范围即移除 crop；
  * Esc 取消并恢复进入裁剪前的显示。
  *
- * 单一显示坐标系：进入时以「进入前可见显示矩形」为基准求唯一 scale，框选、
+ * 逐轴显示坐标系：进入时以「进入前可见显示矩形」为基准求 (sx, sy)——声明了
+ * width/height 的图片可能被非等比拉伸，必须逐轴换算才能所见即所得。框选、
  * 拖动、保存都在「显示矩形（CSS px）」这一套坐标里进行，写回只把显示矩形
  * 换算成原图矩形一次（imageRectFromDisplay）。显示用窗口（overflow:hidden）
- * + 原图矩形尺寸的 img + transform: scale(scale)。窗口按整图尺寸展开，可见
+ * + 原图矩形尺寸的 img + transform: scale(sx, sy)。窗口按整图尺寸展开，可见
  * 内容保持进入前的尺寸与位置，裁剪框与可见矩形四边重合。
  *
  * 加载门：等页面 img 的 complete / load，2s 超时给出可见提示，绝不静默返回。
@@ -23,6 +24,7 @@ import {
   FULL_IMAGE_RATIO,
   imageRectFromDisplay,
   isFullImageRect,
+  type Scale2D,
 } from "./imageCropMath";
 
 export interface ImageCropOptions {
@@ -112,13 +114,14 @@ function clampDisplayRect(
   rect: Rect,
   fullW: number,
   fullH: number,
-  scale: number,
+  scale: Scale2D,
 ): void {
-  const min = MIN_CROP_SIZE * scale;
-  rect.left = clamp(rect.left, 0, Math.max(0, fullW - min));
-  rect.top = clamp(rect.top, 0, Math.max(0, fullH - min));
-  rect.width = clamp(rect.width, min, fullW - rect.left);
-  rect.height = clamp(rect.height, min, fullH - rect.top);
+  const minX = MIN_CROP_SIZE * scale.x;
+  const minY = MIN_CROP_SIZE * scale.y;
+  rect.left = clamp(rect.left, 0, Math.max(0, fullW - minX));
+  rect.top = clamp(rect.top, 0, Math.max(0, fullH - minY));
+  rect.width = clamp(rect.width, minX, fullW - rect.left);
+  rect.height = clamp(rect.height, minY, fullH - rect.top);
 }
 
 /** 可见提示（非 console、不阻塞交互）。 */
@@ -217,16 +220,17 @@ function mount(
     : { left: 0, top: 0, width: natW, height: natH };
   clampRect(base, natW, natH);
 
-  // 唯一 scale：进入前可见宽 / 可见内容对应的原图宽。既有 crop 时可见内容就是
-  // crop 矩形（宽 base.width），不能按 enterW/natW 换算——那只适用于无 crop 的
-  // 整图显示。可见内容在裁剪态与进入前严格同尺寸。
-  const scale = enterW / base.width;
-  if (!(scale > 0)) {
+  // 逐轴 scale：进入前可见宽(高) / 可见内容对应的原图宽(高)。既有 crop 时可见
+  // 内容就是 crop 矩形，不能按 enterW/natW 换算——那只适用于无 crop 的整图显示。
+  // 声明了 width/height 的图片被非等比拉伸，sy 必须独立求出，否则进入裁剪的
+  // 瞬间显示高度会从「声明比」跳回「自然比」（#1453 跟进：第 2 张图压缩）。
+  const scale: Scale2D = { x: enterW / base.width, y: enterH / base.height };
+  if (!(scale.x > 0) || !(scale.y > 0)) {
     showCropToast("图片尚未加载完成，暂不能裁剪");
     return;
   }
-  const fullW = natW * scale;
-  const fullH = natH * scale;
+  const fullW = natW * scale.x;
+  const fullH = natH * scale.y;
   // 显示坐标系下的裁剪矩形。
   const rect: Rect = displayRectFromImageRect(base, scale);
   clampDisplayRect(rect, fullW, fullH, scale);
@@ -321,16 +325,17 @@ function mount(
     img.style.objectPosition = "0px 0px";
     img.style.width = `${natW}px`;
     img.style.height = `${natH}px`;
-    img.style.transform = `scale(${scale})`;
+    img.style.transform = `scale(${scale.x}, ${scale.y})`;
     img.style.transformOrigin = "0 0";
     win.style.width = `${rect.width}px`;
     win.style.height = `${rect.height}px`;
+    const cropKey = imageRectFromDisplay(rect, scale);
     cropDisplayCache.set(
       cropDisplayKey(img.getAttribute("src"), [
-        Math.round(rect.left / scale),
-        Math.round(rect.top / scale),
-        Math.round(rect.width / scale),
-        Math.round(rect.height / scale),
+        cropKey.left,
+        cropKey.top,
+        cropKey.width,
+        cropKey.height,
       ]),
       { width: rect.width, height: rect.height },
     );
@@ -400,8 +405,8 @@ function mount(
     const display = {
       width: rect.width,
       height: rect.height,
-      fullWidth: natW * scale,
-      fullHeight: natH * scale,
+      fullWidth: natW * scale.x,
+      fullHeight: natH * scale.y,
     };
     if (isFullImageRect(end, natW, natH, FULL_IMAGE_RATIO)) {
       options.onConfirm(null, display);
@@ -453,15 +458,16 @@ function mount(
     } else {
       const axes = HANDLE_AXES[drag.handle ?? ""];
       if (!axes) return;
-      const min = MIN_CROP_SIZE * scale;
+      const minX = MIN_CROP_SIZE * scale.x;
+      const minY = MIN_CROP_SIZE * scale.y;
       let left = drag.start.left;
       let top = drag.start.top;
       let right = drag.start.left + drag.start.width;
       let bottom = drag.start.top + drag.start.height;
-      if (axes.x === "r") right = clamp(right + dxScreen, left + min, fullW);
-      if (axes.x === "l") left = clamp(left + dxScreen, 0, right - min);
-      if (axes.y === "b") bottom = clamp(bottom + dyScreen, top + min, fullH);
-      if (axes.y === "t") top = clamp(top + dyScreen, 0, bottom - min);
+      if (axes.x === "r") right = clamp(right + dxScreen, left + minX, fullW);
+      if (axes.x === "l") left = clamp(left + dxScreen, 0, right - minX);
+      if (axes.y === "b") bottom = clamp(bottom + dyScreen, top + minY, fullH);
+      if (axes.y === "t") top = clamp(top + dyScreen, 0, bottom - minY);
       rect.left = left;
       rect.top = top;
       rect.width = right - left;
@@ -469,10 +475,10 @@ function mount(
     }
     // 显示矩形与写回矩形同源：取整到原图像素再换算回显示，保存前后严格一致。
     const snapped = imageRectFromDisplay(rect, scale);
-    rect.left = snapped.left * scale;
-    rect.top = snapped.top * scale;
-    rect.width = snapped.width * scale;
-    rect.height = snapped.height * scale;
+    rect.left = snapped.left * scale.x;
+    rect.top = snapped.top * scale.y;
+    rect.width = snapped.width * scale.x;
+    rect.height = snapped.height * scale.y;
     applyDisplay();
   });
 

@@ -125,7 +125,7 @@ test("带 width 的图片裁剪确认后显示区域与预览一致", async ({ p
     const img = document.querySelector<HTMLImageElement>(
       ".cm-image-widget img",
     )!;
-    const scale = /scale\(([\d.]+)\)/.exec(img.style.transform);
+    const scale = /scale\(([\d.]+)[, ]/.exec(img.style.transform);
     return {
       objectFit: getComputedStyle(img).objectFit,
       objectPosition: img.style.objectPosition,
@@ -237,6 +237,95 @@ test("无 width 图片：进入裁剪不撑高，确认不跳滚动且缩放不�
   ).toBeLessThanOrEqual(2);
 
   // 确认前后缩放一致：写入的 width = 预览框宽；win 渲染宽 = width。
+  await expect.poll(() => content(page)).toContain("crop=");
+  const final = await content(page);
+  const widthAttr = /\bwidth=(\d+)/.exec(final);
+  expect(widthAttr).not.toBeNull();
+  expect(Math.abs(Number(widthAttr![1]) - preview!.width)).toBeLessThanOrEqual(
+    2,
+  );
+  const winBox = await boxOf(page, ".image-crop-window");
+  expect(Math.abs(winBox.width - preview!.width)).toBeLessThanOrEqual(2);
+});
+
+test("声明 width+height 且比例非自然比：进入裁剪不压缩，确认零位移", async ({
+  page,
+}) => {
+  await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
+  await page.goto("/", { waitUntil: "networkidle" });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 10000 });
+  const src = await page.evaluate(() => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 2000;
+    canvas.height = 1200; // 自然比 0.6
+    const ctx = canvas.getContext("2d")!;
+    ctx.fillStyle = "#336699";
+    ctx.fillRect(0, 0, 2000, 1200);
+    return canvas.toDataURL("image/png");
+  });
+  await page.evaluate(
+    ({ src }) => {
+      const win = window as unknown as BridgeWindow;
+      const doc = `第一段。\n\n![图](${src}){width=600 height=500}\n\n结尾。\n`;
+      win.__biaoyue_openFile__(
+        "/tmp/crop-declared/crop-declared.md",
+        doc,
+        "declared.md",
+      );
+      win.__biaoyue_store__.getState().setEditorMode("edit");
+    },
+    { src },
+  );
+  await page.locator(".cm-content").waitFor({ timeout: 10000 });
+  await page.waitForFunction(() => {
+    const img = document.querySelector(
+      ".cm-image-widget img",
+    ) as HTMLImageElement;
+    return img && img.complete && img.naturalWidth > 0;
+  });
+
+  const state = () =>
+    page.evaluate(() => {
+      const scroller = document.querySelector(".cm-scroller") as HTMLElement;
+      const widget = document.querySelector(".cm-image-widget") as HTMLElement;
+      const rect = widget.getBoundingClientRect();
+      return {
+        scrollTop: Math.round(scroller.scrollTop),
+        docH: Math.round(scroller.scrollHeight),
+        widgetDocTop: Math.round(rect.top + scroller.scrollTop),
+        widgetH: Math.round(rect.height),
+      };
+    });
+
+  const before = await state();
+
+  await page.locator(".cm-image-widget").click();
+  await page.getByTestId("img-toolbar-crop").click();
+  await expect(page.getByTestId("img-crop-frame")).toHaveCount(1);
+  await page.waitForTimeout(100);
+  const inCrop = await state();
+  // 进入裁剪：显示高度保持声明值，不被压回自然比。
+  expect(Math.abs(inCrop.widgetH - before.widgetH)).toBeLessThanOrEqual(1);
+  expect(inCrop.docH).toBe(before.docH);
+
+  await dragHandle(page, "nw", 120, 80);
+  const preview = await page.locator(".cm-image-crop-frame").boundingBox();
+  await page.getByTestId("img-crop-frame").dblclick();
+  await expect(page.getByTestId("img-crop-frame")).toHaveCount(0);
+  await page.waitForTimeout(120);
+  const after = await state();
+
+  // 确认 = 预览：widget 变为裁剪框尺寸（裁剪合法缩小），位置与滚动不动。
+  expect(Math.abs(after.scrollTop - inCrop.scrollTop)).toBeLessThanOrEqual(2);
+  expect(
+    Math.abs(after.widgetDocTop - inCrop.widgetDocTop),
+  ).toBeLessThanOrEqual(2);
+  expect(Math.abs(after.widgetH - preview!.height)).toBeLessThanOrEqual(2);
+  expect(after.docH).toBe(
+    inCrop.docH - (inCrop.widgetH - Math.round(preview!.height)),
+  );
+
+  // 写回 = 可见裁剪显示尺寸；窗口渲染宽 = 写入 width。
   await expect.poll(() => content(page)).toContain("crop=");
   const final = await content(page);
   const widthAttr = /\bwidth=(\d+)/.exec(final);
