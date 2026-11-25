@@ -139,6 +139,25 @@ pub(crate) fn user_override_path(base: &Path, spec: &SurfaceSpec) -> PathBuf {
     }
 }
 
+/// 面级快照目录：`snapshots/surfaces/<id>/`。
+fn surface_snapshots_dir(base: &Path, id: &str) -> PathBuf {
+    base.join("snapshots").join("surfaces").join(id)
+}
+
+/// 面级快照的完整路径（供回滚读取）。
+pub(crate) fn surface_snapshot_path(base: &Path, id: &str, name: &str) -> PathBuf {
+    surface_snapshots_dir(base, id).join(name)
+}
+
+/// 面级快照名：`<timestamp>.json`，timestamp 与 `config::snapshot_name` 同格式
+/// （`%Y-%m-%dT%H-%M-%S-%6fZ`），字典序即时间序，可枚举可回滚。
+fn surface_snapshot_name() -> String {
+    let stamp = chrono::Utc::now()
+        .format("%Y-%m-%dT%H-%M-%S-%6fZ")
+        .to_string();
+    format!("{stamp}.json")
+}
+
 /// 面级快照：把当前用户覆盖文件复制进 `snapshots/surfaces/<id>/`（保留最新 10 份）。
 /// 新面的覆盖独立于 `user/settings.json`，`config::snapshot_user` 拍不到，
 /// AI 写面前的回滚依赖本快照（AI-5「写前快照、一步回滚」）。
@@ -148,20 +167,11 @@ pub(crate) fn snapshot_surface(base: &Path, spec: &SurfaceSpec) -> std::io::Resu
     if !source.exists() {
         return Ok(());
     }
-    let dir = base.join("snapshots").join("surfaces").join(spec.id);
+    let dir = surface_snapshots_dir(base, spec.id);
     std::fs::create_dir_all(&dir)?;
-    let nanos = SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_nanos())
-        .unwrap_or_default();
-    let target = dir.join(format!("{}-{nanos}-{}.json", spec.id, std::process::id()));
+    let target = dir.join(surface_snapshot_name());
     std::fs::copy(&source, &target)?;
-    let mut names: Vec<String> = std::fs::read_dir(&dir)?
-        .filter_map(|e| e.ok())
-        .map(|e| e.file_name().to_string_lossy().into_owned())
-        .filter(|n| n.starts_with(&format!("{}-", spec.id)) && n.ends_with(".json"))
-        .collect();
-    names.sort();
+    let mut names = list_surface_snapshots(base, spec.id)?;
     for stale in names
         .iter()
         .take(names.len().saturating_sub(SURFACE_SNAPSHOT_LIMIT))
@@ -171,8 +181,33 @@ pub(crate) fn snapshot_surface(base: &Path, spec: &SurfaceSpec) -> std::io::Resu
     Ok(())
 }
 
+/// 列出某面的快照名，按时间升序（最旧在前）。目录不存在返回空列表。
+pub(crate) fn list_surface_snapshots(base: &Path, id: &str) -> std::io::Result<Vec<String>> {
+    let dir = surface_snapshots_dir(base, id);
+    let entries = match std::fs::read_dir(&dir) {
+        Ok(entries) => entries,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
+        Err(e) => return Err(e),
+    };
+    let mut names: Vec<String> = entries
+        .filter_map(|e| e.ok())
+        .map(|e| e.file_name().to_string_lossy().into_owned())
+        .filter(|n| is_surface_snapshot_name(n))
+        .collect();
+    names.sort();
+    Ok(names)
+}
+
+/// 快照名只接受 `<timestamp>.json`，拒绝路径穿越与其他前缀。
+fn is_surface_snapshot_name(name: &str) -> bool {
+    name.ends_with(".json")
+        && name
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '.' | '_' | ':'))
+}
+
 /// 每个面的覆盖快照保留最新 10 份（与 `config::SNAPSHOT_LIMIT` 同额）。
-const SURFACE_SNAPSHOT_LIMIT: usize = 10;
+pub(crate) const SURFACE_SNAPSHOT_LIMIT: usize = 10;
 
 // ── 形状校验（DS-4）────────────────────────────────────────────
 
@@ -1987,26 +2022,24 @@ mod tests {
         std::fs::create_dir_all(path.parent().unwrap()).unwrap();
         std::fs::write(&path, r#"{"items":["format-bold"]}"#).unwrap();
         snapshot_surface(base, spec).unwrap();
+        std::thread::sleep(std::time::Duration::from_millis(2));
         snapshot_surface(base, spec).unwrap();
-        let dir = base.join("snapshots").join("surfaces").join("capsules");
-        let names: Vec<String> = std::fs::read_dir(&dir)
-            .unwrap()
-            .filter_map(|e| e.ok())
-            .map(|e| e.file_name().to_string_lossy().into_owned())
-            .collect();
+        let names = list_surface_snapshots(base, "capsules").unwrap();
         assert_eq!(names.len(), 2, "每次写前各拍一份: {names:?}");
+        let dir = base.join("snapshots").join("surfaces").join("capsules");
         let content = std::fs::read_to_string(dir.join(&names[0])).unwrap();
         assert!(content.contains("format-bold"), "快照应保存写前旧值");
+        // 快照名确定性可枚举：字典序即时间序
+        let mut sorted = names.clone();
+        sorted.sort();
+        assert_eq!(names, sorted, "list_surface_snapshots 应返回时间升序");
 
         // 限量：写到超过 10 份后只留最新 10 份
         for _ in 0..12 {
+            std::thread::sleep(std::time::Duration::from_millis(1));
             snapshot_surface(base, spec).unwrap();
         }
-        let names: Vec<String> = std::fs::read_dir(&dir)
-            .unwrap()
-            .filter_map(|e| e.ok())
-            .map(|e| e.file_name().to_string_lossy().into_owned())
-            .collect();
+        let names = list_surface_snapshots(base, "capsules").unwrap();
         assert_eq!(names.len(), SURFACE_SNAPSHOT_LIMIT, "快照限量 10 份");
     }
 }

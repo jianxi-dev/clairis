@@ -5,7 +5,7 @@ use std::pin::Pin;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
-use crate::config::{apply_patch_at, list_snapshots, load_config_at};
+use crate::config::{apply_patch_at, list_snapshots, load_config_at, restore_surface_snapshot};
 use crate::errors::AppError;
 use crate::surfaces::{find_surface, load_surface};
 
@@ -224,6 +224,28 @@ pub fn tool_schemas() -> Vec<Value> {
         json!({
             "type": "function",
             "function": {
+                "name": "restore_surface_snapshot",
+                "description": "回滚某个数据面的用户覆盖（只写 user/<id>.json，不动默认文件）。省略 name 时回滚该面最新快照；恢复前会再拍一份，因此恢复本身也可回滚。",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "id": {
+                            "type": "string",
+                            "description": "数据面 id，当前已登记: html-toolbar, menus, icons, capsules"
+                        },
+                        "name": {
+                            "type": "string",
+                            "description": "可选快照名；省略则用该面最新一份"
+                        }
+                    },
+                    "required": ["id"],
+                    "additionalProperties": false
+                }
+            }
+        }),
+        json!({
+            "type": "function",
+            "function": {
                 "name": "read_data_surface",
                 "description": "读取已登记数据面的有效集合。返回 {effective, defaults, warnings} 三段：有效集合（默认←用户覆盖合并后）、默认集合、告警列表。",
                 "parameters": {
@@ -433,6 +455,24 @@ pub fn dispatch_tool(base: &Path, name: &str, args: &Value) -> Result<String, Ag
             Ok(names) => Ok(tool_ok(json!(names))),
             Err(e) => Ok(tool_err(&AgentError::from_app(name, e))),
         },
+        "restore_surface_snapshot" => {
+            let Some(id) = args.get("id").and_then(|v| v.as_str()) else {
+                return Ok(tool_err(&AgentError::validation("id", "缺少 id 参数")));
+            };
+            let snapshot = args.get("name").and_then(|v| v.as_str());
+            match restore_surface_snapshot(base, id, snapshot) {
+                Ok(()) => {
+                    let spec = find_surface(id).expect("登记校验已过");
+                    let loaded = load_surface(spec, base);
+                    let value = json!({
+                        "effective": loaded.items,
+                        "warnings": loaded.warnings,
+                    });
+                    Ok(tool_ok(value))
+                }
+                Err(e) => Ok(tool_err(&AgentError::from_app(name, e))),
+            }
+        }
         "read_data_surface" => {
             let Some(id) = args.get("id").and_then(|v| v.as_str()) else {
                 return Ok(tool_err(&AgentError::validation("id", "缺少 id 参数")));
@@ -964,7 +1004,7 @@ mod tests {
     }
 
     #[test]
-    fn tool_schemas_cover_five_tools() {
+    fn tool_schemas_cover_six_tools() {
         let names: Vec<String> = tool_schemas()
             .iter()
             .map(|s| s["function"]["name"].as_str().unwrap().to_string())
@@ -975,6 +1015,7 @@ mod tests {
                 "read_config",
                 "patch_config",
                 "list_snapshots",
+                "restore_surface_snapshot",
                 "read_data_surface",
                 "patch_data_surface",
             ]
@@ -1548,6 +1589,196 @@ mod tests {
         let parsed: Value = serde_json::from_str(&raw).unwrap();
         assert_eq!(parsed["ok"], json!(false), "patch 含多余键应拒绝: {raw}");
         assert!(!base.join("user").exists(), "全非法补丁不应产生任何写入");
+    }
+
+    // ── 回滚：面级覆盖写可经 restore 一步回滚 ──────────────────
+
+    fn effective_ids(base: &Path, id: &str) -> Vec<String> {
+        let spec = find_surface(id).expect("面必登记");
+        load_surface(spec, base)
+            .items
+            .iter()
+            .filter_map(|item| item.get("id")?.as_str().map(str::to_string))
+            .collect()
+    }
+
+    fn effective_keys(base: &Path, id: &str) -> Vec<String> {
+        let spec = find_surface(id).expect("面必登记");
+        load_surface(spec, base)
+            .items
+            .iter()
+            .filter_map(|item| item.get("key")?.as_str().map(str::to_string))
+            .collect()
+    }
+
+    #[test]
+    fn restore_menus_snapshot_rolls_back_effective_set_and_bytes() {
+        let dir = temp_base("restore_menus");
+        let base = dir.path();
+        // 写前状态：两项覆盖
+        write_surface_user(
+            base,
+            "menus",
+            r#"{"items":["pane-source","pane-new-file"]}"#,
+        );
+        let before_bytes = std::fs::read(base.join("user").join("menus.json")).unwrap();
+        let before_ids = effective_ids(base, "menus");
+        assert_eq!(before_ids, vec!["pane-source", "pane-new-file"]);
+
+        let raw = dispatch_tool(
+            base,
+            "patch_data_surface",
+            &json!({ "id": "menus", "patch": { "items": ["pane-locate","pane-share","pane-split-right","pane-split-down"] } }),
+        )
+        .unwrap();
+        let parsed: Value = serde_json::from_str(&raw).unwrap();
+        assert_eq!(parsed["ok"], json!(true), "got {raw}");
+        assert_eq!(effective_ids(base, "menus").len(), 4, "补丁后应为 4 项");
+
+        let raw =
+            dispatch_tool(base, "restore_surface_snapshot", &json!({ "id": "menus" })).unwrap();
+        let parsed: Value = serde_json::from_str(&raw).unwrap();
+        assert_eq!(parsed["ok"], json!(true), "回滚应成功: {raw}");
+        assert_eq!(
+            std::fs::read(base.join("user").join("menus.json")).unwrap(),
+            before_bytes,
+            "回滚后 user 覆盖应回到写前字节"
+        );
+        assert_eq!(
+            effective_ids(base, "menus"),
+            before_ids,
+            "回滚后有效集合应等于写前状态"
+        );
+        // 默认文件不受影响
+        assert!(defaults_path(base, "menus").exists());
+    }
+
+    #[test]
+    fn restore_icons_snapshot_rolls_back_map_merge() {
+        let dir = temp_base("restore_icons");
+        let base = dir.path();
+        write_surface_user(
+            base,
+            "icons",
+            r#"{"items":{"close":{"label":"关闭窗口","s":"M1 1 L23 23"}}}"#,
+        );
+        let before_bytes = std::fs::read(base.join("user").join("icons.json")).unwrap();
+        let before_keys = effective_keys(base, "icons");
+        let before_close_label = load_surface(find_surface("icons").unwrap(), base)
+            .items
+            .iter()
+            .find(|i| i["key"] == json!("close"))
+            .unwrap()["label"]
+            .clone();
+
+        let raw = dispatch_tool(
+            base,
+            "patch_data_surface",
+            &json!({ "id": "icons", "patch": { "items": { "markdown": { "label": "MD", "s": "M7 4h10" }, "brandNew": { "label": "新", "s": "M2 2" } } } }),
+        )
+        .unwrap();
+        let parsed: Value = serde_json::from_str(&raw).unwrap();
+        assert_eq!(parsed["ok"], json!(true), "got {raw}");
+        assert_eq!(effective_keys(base, "icons").len(), before_keys.len() + 1);
+
+        let raw =
+            dispatch_tool(base, "restore_surface_snapshot", &json!({ "id": "icons" })).unwrap();
+        let parsed: Value = serde_json::from_str(&raw).unwrap();
+        assert_eq!(parsed["ok"], json!(true), "回滚应成功: {raw}");
+        assert_eq!(
+            std::fs::read(base.join("user").join("icons.json")).unwrap(),
+            before_bytes,
+            "回滚后 user 覆盖应回到写前字节"
+        );
+        assert_eq!(
+            effective_keys(base, "icons"),
+            before_keys,
+            "回滚后有效集合应等于写前状态"
+        );
+        let restored_label = load_surface(find_surface("icons").unwrap(), base)
+            .items
+            .iter()
+            .find(|i| i["key"] == json!("close"))
+            .unwrap()["label"]
+            .clone();
+        assert_eq!(restored_label, before_close_label, "回滚后 label 应还原");
+    }
+
+    #[test]
+    fn restore_without_snapshot_is_structured_error_and_writes_nothing() {
+        let dir = temp_base("restore_none");
+        let base = dir.path();
+        let raw = dispatch_tool(
+            base,
+            "restore_surface_snapshot",
+            &json!({ "id": "capsules" }),
+        )
+        .unwrap();
+        let parsed: Value = serde_json::from_str(&raw).unwrap();
+        assert_eq!(parsed["ok"], json!(false), "got {raw}");
+        assert_eq!(parsed["error"]["kind"], json!("validation"), "got {raw}");
+        assert!(
+            parsed["error"]["message"]
+                .as_str()
+                .unwrap()
+                .contains("没有可用快照"),
+            "got {raw}"
+        );
+        assert!(!base.join("user").exists(), "无快照回滚不应产生任何写入");
+    }
+
+    #[test]
+    fn restore_rejects_unregistered_surface() {
+        let dir = temp_base("restore_bad_id");
+        let base = dir.path();
+        let raw = dispatch_tool(
+            base,
+            "restore_surface_snapshot",
+            &json!({ "id": "keybindings" }),
+        )
+        .unwrap();
+        let parsed: Value = serde_json::from_str(&raw).unwrap();
+        assert_eq!(parsed["ok"], json!(false), "got {raw}");
+        assert!(
+            parsed["error"]["message"]
+                .as_str()
+                .unwrap()
+                .contains("未登记"),
+            "got {raw}"
+        );
+    }
+
+    #[test]
+    fn restore_is_itself_reversible() {
+        let dir = temp_base("restore_twice");
+        let base = dir.path();
+        write_surface_user(base, "capsules", r#"{"items":["format-bold"]}"#);
+        dispatch_tool(
+            base,
+            "patch_data_surface",
+            &json!({ "id": "capsules", "patch": { "items": ["format-italic","capsule-bg"] } }),
+        )
+        .unwrap();
+        // 第一次回滚 → format-bold
+        dispatch_tool(
+            base,
+            "restore_surface_snapshot",
+            &json!({ "id": "capsules" }),
+        )
+        .unwrap();
+        assert_eq!(effective_ids(base, "capsules"), vec!["format-bold"]);
+        // 第二次回滚 → 回到补丁后的两项（恢复本身被快照）
+        dispatch_tool(
+            base,
+            "restore_surface_snapshot",
+            &json!({ "id": "capsules" }),
+        )
+        .unwrap();
+        assert_eq!(
+            effective_ids(base, "capsules"),
+            vec!["format-italic", "capsule-bg"],
+            "恢复本身也应可再回滚"
+        );
     }
 
     #[tokio::test]

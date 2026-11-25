@@ -1161,6 +1161,7 @@ const SKILL_MAP: &str = r#"# Biaoyue 配置地图
 - `read_config`：返回合并后的有效配置。
 - `patch_config`：`{"patch": {...}}`，深合并进 user 层，写入前校验并生成快照；非法值不落盘。
 - `list_snapshots`：返回快照文件名，最旧在前。
+- `restore_surface_snapshot`：`{"id": "menus"}`（可带 `name`），回滚该面最新快照的覆盖；只写 `user/<id>.json`，不动默认文件。
 - `read_data_surface`：`{"id": "menus"}`，返回数据面的 `{effective, defaults, warnings}` 三段。
 - `patch_data_surface`：`{"id": "menus", "patch": {"items": [...]}}`，改写用户覆盖集合，写入前校验并生成快照。list 型面（`html-toolbar` / `menus` / `capsules`）`items` 是 id 字符串数组，整体替换；`icons` 面 `items` 是「概念键 → 定义」对象，逐键深合并（接受默认集合外的新概念键）。
 
@@ -1197,8 +1198,11 @@ const SKILL_MAP: &str = r#"# Biaoyue 配置地图
 | `icons` | 图标（概念键/label/d?/s?/dash?/parts?） | `user/icons.json` 的 `items` 对象 | `{"items":{"close":{"label":"关窗","s":"M1 1"}}}` 逐键深合并，接受新概念键 |
 | `capsules` | 胶囊按钮（id/label/icon/order） | `user/capsules.json` 的 `items` 数组 | `{"items":["format-bold",...]}` 整体替换 |
 
-用 `patch_data_surface` 改写覆盖集合（只写 user 层，不动默认文件；写前快照可经
-`restore_config_snapshot` 一步回滚）：
+用 `patch_data_surface` 改写覆盖集合（只写 user 层，不动默认文件；写前自动快照）：
+
+- `menus` 回滚：`restore_surface_snapshot({"id": "menus"})` → `user/menus.json` 回到写前状态。
+- `icons` 回滚：`restore_surface_snapshot({"id": "icons"})` → `user/icons.json` 回到写前状态。
+- `capsules` 回滚：`restore_surface_snapshot({"id": "capsules"})` → `user/capsules.json` 回到写前状态。
 
 ```json
 { "id": "menus", "patch": { "items": ["pane-new-file", "pane-share", "pane-source"] } }
@@ -1265,6 +1269,63 @@ pub async fn list_config_snapshots(app: &AppHandle) -> Result<Vec<String>, AppEr
 
 pub async fn restore_config_snapshot(app: &AppHandle, name: &str) -> Result<AppConfig, AppError> {
     restore_snapshot(&config_base(app), name)
+}
+
+/// 回滚某个数据面的用户覆盖：把该面最新（或指定）快照的字节经原子写覆盖
+/// `user/<id>.json`，只动用户覆盖层，绝不写 defaults 物化文件。
+/// 恢复前先给当前覆盖再拍一份快照，因此「恢复」本身也可再回滚。
+pub fn restore_surface_snapshot(base: &Path, id: &str, name: Option<&str>) -> Result<(), AppError> {
+    let spec = crate::surfaces::find_surface(id).ok_or_else(|| AppError::Validation {
+        context: "surface".into(),
+        message: format!("数据面未登记: {id}"),
+    })?;
+    let mut names =
+        crate::surfaces::list_surface_snapshots(base, id).map_err(|e| AppError::Io {
+            context: "restore_surface_snapshot".into(),
+            source: e,
+        })?;
+    if names.is_empty() {
+        return Err(AppError::Validation {
+            context: "snapshot".into(),
+            message: format!("数据面 {id} 没有可用快照"),
+        });
+    }
+    let chosen = match name {
+        Some(name) => {
+            if !names.iter().any(|n| n == name) {
+                return Err(AppError::Validation {
+                    context: "snapshot".into(),
+                    message: format!("数据面 {id} 无快照 {name}"),
+                });
+            }
+            name.to_string()
+        }
+        None => names.pop().expect("非空已判"),
+    };
+    let data =
+        std::fs::read(crate::surfaces::surface_snapshot_path(base, id, &chosen)).map_err(|e| {
+            AppError::Io {
+                context: "restore_surface_snapshot".into(),
+                source: e,
+            }
+        })?;
+    // 先确认快照可解析，避免把坏内容写进 user 层。
+    serde_json::from_slice::<Value>(&data).map_err(|e| AppError::Serialization {
+        context: "snapshot".into(),
+        source: e,
+    })?;
+    crate::surfaces::snapshot_surface(base, spec).map_err(|e| AppError::Io {
+        context: "restore_surface_snapshot".into(),
+        source: e,
+    })?;
+    let path = crate::surfaces::user_override_path(base, spec);
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| AppError::Io {
+            context: "restore_surface_snapshot".into(),
+            source: e,
+        })?;
+    }
+    atomic_write(&path, &data)
 }
 
 /// 轮询 `user/settings.json` 的 (mtime, len)，变化时发 `config-changed`。

@@ -13,7 +13,7 @@ mod validation;
 use commands::ai_agent_cmd::run_agent_turn;
 use commands::config_cmd::{
     delete_api_key, get_api_key, list_config_snapshots, list_extensions, list_system_fonts,
-    load_config, restore_config_snapshot, save_config, set_api_key,
+    load_config, restore_config_snapshot, restore_surface_snapshot, save_config, set_api_key,
 };
 use commands::directory::{flatten_files, get_file_info, list_media_in_dir, read_directory};
 use commands::file::{
@@ -233,6 +233,7 @@ pub fn run() {
             save_config,
             list_config_snapshots,
             restore_config_snapshot,
+            restore_surface_snapshot,
             list_system_fonts,
             list_extensions,
             list_extension_packages,
