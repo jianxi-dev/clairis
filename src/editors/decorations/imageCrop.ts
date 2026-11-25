@@ -585,36 +585,24 @@ const HANDLE_AXES: Record<
   sw: { x: "l", y: "b" },
 };
 
-/** 裁剪指针的括号几何：角 = 单个 L，边 = 两端各一个 L，读起来像「裁」。 */
-const CROP_CURSOR_BRACKETS: Record<string, readonly string[]> = {
-  nw: ["M9.5 3.5 H3.5 V9.5"],
-  ne: ["M14.5 3.5 H20.5 V9.5"],
-  se: ["M20.5 14.5 V20.5 H14.5"],
-  sw: ["M3.5 14.5 V20.5 H9.5"],
-  e: ["M14.5 3.5 H20.5 V9.5", "M20.5 14.5 V20.5 H14.5"],
-  w: ["M9.5 3.5 H3.5 V9.5", "M3.5 14.5 V20.5 H9.5"],
-  n: ["M9.5 3.5 H3.5 V9.5", "M14.5 3.5 H20.5 V9.5"],
-  s: ["M3.5 14.5 V20.5 H9.5", "M20.5 14.5 V20.5 H14.5"],
-};
-
 /**
- * 裁剪专用指针（24×24、热点居中）：白描边 + 黑括号，浅底深底都可见。
- * 与图片缩放的双箭头指针（ew/nwse/ns-resize）明显不同，避免「调比例」与
- * 「改裁剪」两种拖拽混淆。
+ * 裁剪专用指针：按用户示例定为单一「裁剪角」字形——直角括号（垂直臂向上、
+ * 水平臂向左，顶点在右下）。24×24、热点落在顶点（15,15），白描边 + 黑主色，
+ * 浅底深底都可见。8 个控制点统一用这一个字形：形状传达「这是裁剪」，方向
+ * 由控制点在框上的位置传达；与图片缩放的双箭头（ew/nwse/ns-resize）可辨。
  */
-function cropCursor(handle: string): string {
-  const paths = CROP_CURSOR_BRACKETS[handle];
-  if (!paths) return "crosshair";
-  const halo = paths
-    .map((d) => `<path d='${d}' stroke='%23fff' stroke-width='4.5'/>`)
-    .join("");
-  const ink = paths
-    .map((d) => `<path d='${d}' stroke='%23000' stroke-width='1.6'/>`)
-    .join("");
+const CROP_CURSOR_PATH = "M15 5 V15 H5";
+const CROP_CURSOR_HOTSPOT = "15 15";
+
+function cropCursor(_handle: string): string {
+  void _handle;
   const svg =
     "<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' " +
-    `fill='none' stroke-linecap='round' stroke-linejoin='round'>${halo}${ink}</svg>`;
-  return `url("data:image/svg+xml;charset=utf-8,${svg}") 12 12, crosshair`;
+    "fill='none' stroke-linecap='square' stroke-linejoin='miter'>" +
+    `<path d='${CROP_CURSOR_PATH}' stroke='%23fff' stroke-width='4.5'/>` +
+    `<path d='${CROP_CURSOR_PATH}' stroke='%23000' stroke-width='2'/>` +
+    "</svg>";
+  return `url("data:image/svg+xml;charset=utf-8,${svg}") ${CROP_CURSOR_HOTSPOT}, crosshair`;
 }
 
 const HANDLE_MARK: Record<string, string> = {
