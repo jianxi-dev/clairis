@@ -117,14 +117,14 @@ describe("attrNameFromClassName", () => {
 });
 
 describe("纯高亮渲染变量", () => {
-  it("填充用 38% 叠底，边框/文字走实色", () => {
+  it("填充用 38% 叠底，边框/文字各走自己的色板", () => {
     const vars = highlightCssVars({
       bg: "red",
       border: "darkred",
       text: "gray",
     });
     expect(vars.bg).toContain("38%");
-    expect(vars.border).toBe("#b34444");
-    expect(vars.text).toBe("#8b8f96");
+    expect(vars.border).toBe("#9e3836");
+    expect(vars.text).toBe("#757575");
   });
 });

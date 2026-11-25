@@ -40,7 +40,7 @@ describe("纯高亮随机与面板", () => {
     expect(pickHighlightFamily({ bg: "red" }, () => 0)).toMatchObject({
       key: "orange",
       light: "orange",
-      dark: "brown",
+      dark: "darkorange",
     });
     expect(
       pickHighlightFamily({ bg: "darkgreen", border: "darkgreen" }, () => 0),
@@ -59,12 +59,30 @@ describe("纯高亮随机与面板", () => {
     const fontIcons = root.querySelectorAll(
       '.cm-color-row[data-kind="font"] .cm-color-swatch-icon svg',
     );
-    expect(fontIcons).toHaveLength(9);
+    expect(fontIcons).toHaveLength(8);
     expect(fontIcons[0].getAttribute("data-icon")).toBe(
       "FormatColorTextOutlined",
     );
     expect(
       root.querySelectorAll('.cm-color-row[data-kind="background"]').length,
     ).toBe(2);
+  });
+
+  it("四行各 8 格（字体/边框/填充深/填充中）", () => {
+    const root = buildHighlightColorPanel({
+      active: {},
+      onPick: () => {},
+      onReset: () => {},
+      onRandom: () => {},
+    });
+    const count = (sel: string): number =>
+      root.querySelectorAll(`${sel} .cm-color-swatch`).length;
+    expect(count('.cm-color-row[data-kind="font"]')).toBe(8);
+    expect(count('.cm-color-row[data-kind="border"]')).toBe(8);
+    const bgRows = root.querySelectorAll('.cm-color-row[data-kind="background"]');
+    expect(bgRows).toHaveLength(2);
+    for (const row of bgRows) {
+      expect(row.querySelectorAll(".cm-color-swatch")).toHaveLength(8);
+    }
   });
 });
