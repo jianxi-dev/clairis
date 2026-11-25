@@ -586,23 +586,42 @@ const HANDLE_AXES: Record<
 };
 
 /**
- * 裁剪专用指针：按用户示例定为单一「裁剪角」字形——直角括号（垂直臂向上、
- * 水平臂向左，顶点在右下）。24×24、热点落在顶点（15,15），白描边 + 黑主色，
- * 浅底深底都可见。8 个控制点统一用这一个字形：形状传达「这是裁剪」，方向
- * 由控制点在框上的位置传达；与图片缩放的双箭头（ew/nwse/ns-resize）可辨。
+ * 裁剪专用指针（按用户示例定稿）：
+ * - 四角 = 直角括号，各自朝向（nw=⌜、ne=⌝、se=﹂、sw=⌞），顶点为热点；
+ * - 四边 = 「⊥」形（与边平行的粗条 + 指向框内的短杆，即示例的 T 形旋转），
+ *   热点落在粗条中点（抓的就是这条边）。
+ * 24×24、白描边 + 黑主色，深浅底可见；与图片缩放的方向箭头（ew/nwse/ns-resize）
+ * 形状家族不同，不会混淆。
  */
-const CROP_CURSOR_PATH = "M15 5 V15 H5";
-const CROP_CURSOR_HOTSPOT = "15 15";
+interface CropCursorGlyph {
+  readonly d: readonly string[];
+  readonly hotspot: string;
+}
 
-function cropCursor(_handle: string): string {
-  void _handle;
+const CROP_CURSOR_GLYPHS: Record<string, CropCursorGlyph> = {
+  nw: { d: ["M9 19 V9 H19"], hotspot: "9 9" },
+  ne: { d: ["M15 19 V9 H5"], hotspot: "15 9" },
+  se: { d: ["M15 5 V15 H5"], hotspot: "15 15" },
+  sw: { d: ["M9 5 V15 H19"], hotspot: "9 15" },
+  w: { d: ["M8 5 V19", "M8 12 H18"], hotspot: "8 12" },
+  e: { d: ["M16 5 V19", "M16 12 H6"], hotspot: "16 12" },
+  n: { d: ["M5 8 H19", "M12 8 V18"], hotspot: "12 8" },
+  s: { d: ["M5 16 H19", "M12 16 V6"], hotspot: "12 16" },
+};
+
+function cropCursor(handle: string): string {
+  const glyph = CROP_CURSOR_GLYPHS[handle];
+  if (!glyph) return "crosshair";
+  const strokes = (color: string, width: number): string =>
+    glyph.d
+      .map((d) => `<path d='${d}' stroke='${color}' stroke-width='${width}'/>`)
+      .join("");
   const svg =
     "<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' " +
     "fill='none' stroke-linecap='square' stroke-linejoin='miter'>" +
-    `<path d='${CROP_CURSOR_PATH}' stroke='%23fff' stroke-width='4.5'/>` +
-    `<path d='${CROP_CURSOR_PATH}' stroke='%23000' stroke-width='2'/>` +
+    `${strokes("%23fff", 4.5)}${strokes("%23000", 2)}` +
     "</svg>";
-  return `url("data:image/svg+xml;charset=utf-8,${svg}") ${CROP_CURSOR_HOTSPOT}, crosshair`;
+  return `url("data:image/svg+xml;charset=utf-8,${svg}") ${glyph.hotspot}, crosshair`;
 }
 
 const HANDLE_MARK: Record<string, string> = {
