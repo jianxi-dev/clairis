@@ -79,14 +79,9 @@ shape_sample_item() {
   esac
 }
 
-# 形状 → 该形状在 surfaces.rs 的默认文件名（default_file 字段值）。
-shape_default_file() {
-  case "$1" in
-    menu-item) printf 'menus.json' ;;
-    icon) printf 'icons.json' ;;
-    capsule) printf 'capsules.json' ;;
-    toolbar) printf 'html-toolbar.json' ;;
-  esac
+# 面 id → 默认文件名（default_file 字段值）：per-surface，恒等于 `<id>.json`。
+surface_default_file() {
+  printf '%s.json' "$1"
 }
 
 shape_validator_name() {
@@ -162,7 +157,7 @@ render_default_json() {
 render_registration() {
   local id="$1" shape="$2"
   printf '    SurfaceSpec {\n        id: "%s",\n        default_file: "%s",\n        shape: SurfaceShape::%s,\n    },\n' \
-    "$id" "$(shape_default_file "$shape")" "$(shape_variant "$shape")"
+    "$id" "$(surface_default_file "$id")" "$(shape_variant "$shape")"
 }
 
 # 六栏表模板（落点值严格等于 REQUIRED_LABELS，逐行由该变量驱动）。
@@ -311,6 +306,12 @@ run_selftest() {
     echo "  ✅ 六栏表已追加"; pass=$((pass + 1))
   else
     echo "  ❌ 六栏表未追加" >&2; fail=$((fail + 1))
+  fi
+  if grep -qF 'default_file: "demo.json"' "$tmp/repo/src-tauri/src/surfaces.rs" \
+    && ! grep -qE 'default_file: "(menus|icons|capsules|html-toolbar)\.json"' "$tmp/repo/src-tauri/src/surfaces.rs"; then
+    echo "  ✅ 登记行 default_file 按面 id 生成"; pass=$((pass + 1))
+  else
+    echo "  ❌ 登记行 default_file 未按面 id 生成（混入既有面文件名）" >&2; fail=$((fail + 1))
   fi
 
   # 2. 形状解析：模板 JSON 合法且含示例项字段
