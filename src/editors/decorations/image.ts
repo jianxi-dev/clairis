@@ -622,6 +622,26 @@ export function cropDisplayKey(
 }
 
 /**
+ * 点图片 / 进出裁剪时的视口护栏：把滚动位置钉回交互前的值。
+ * 图片是就地编辑对象，点它不该改变视口；CM6 的选区同步与全局滚动补偿都会
+ * 在这一帧把文档整体滚一下。
+ */
+function pinWidgetScroll(el: HTMLElement): void {
+  const scroller = el.closest(".cm-scroller") as HTMLElement | null;
+  if (!scroller) return;
+  const top = scroller.scrollTop;
+  const pin = (): void => {
+    if (!scroller.isConnected) return;
+    if (Math.abs(scroller.scrollTop - top) < 0.5) return;
+    scroller.scrollTop = top;
+  };
+  requestAnimationFrame(() => {
+    pin();
+    requestAnimationFrame(pin);
+  });
+}
+
+/**
  * 把图片引用渲染成 `<img>`（解析出 URL 时）或 `[图片: path]` 文字回退。
  * 点击选中（工具条见 imageToolbar.ts），双击放大。
  */
@@ -877,6 +897,9 @@ class ImageWidget extends WidgetType {
       const view = EditorView.findFromDOM(container);
       if (view) setImageView(view);
       selectImage(this._from, this._path, this._alt);
+      // 点图片不移动视口：选中图片会让编辑器的光标落到该行行首，CM6 顺手
+      // 把光标滚进视口，整篇文档跳一屏（#1453 复测「第一次裁剪跳到顶部」）。
+      pinWidgetScroll(container);
     });
     container.addEventListener("dblclick", (event) => {
       event.stopPropagation();

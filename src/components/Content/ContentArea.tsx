@@ -42,8 +42,10 @@ import {
   writeImageTitle,
 } from "../../editors/decorations/image";
 import {
+  closeImageCrop,
   confirmImageCrop,
   isImageCropActive,
+  isImageCropActiveFor,
   openImageCrop,
 } from "../../editors/decorations/imageCrop";
 import { editSelectedImageCaption } from "../../editors/decorations/imageToolbar";
@@ -286,11 +288,14 @@ const editorDecorationOptions: EditorDecorationsOptions = {
   onImageCrop: (from) => {
     const view = getActiveEditorView();
     if (!view) return;
-    // 再点一次裁剪按钮 = 确认当前矩形并退出裁剪（未拖动视同取消）。
-    if (isImageCropActive()) {
+    // 同一张图再点裁剪 = 确认当前矩形并退出（未拖动视同取消）；
+    // 别的图上还挂着裁剪框时先收掉（不写回），再给这张开——否则点击会落到
+    // 「确认那张旧框」上，表现为第二张图点了没有任何反应。
+    if (isImageCropActiveFor(from)) {
       confirmImageCrop();
       return;
     }
+    if (isImageCropActive()) closeImageCrop();
     const text = view.state.doc.toString();
     const ref = scanImageReference(text, from);
     if (!ref) return;
