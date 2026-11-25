@@ -986,10 +986,112 @@ pub fn save_config_at(base: &Path, config: &AppConfig) -> Result<(), AppError> {
     Ok(())
 }
 
-/// 把 JSON 合并补丁打进 user 层，复用 C2 的校验 / 快照 / 原子写语义。
+/// 对象型字段的默认形状：`AppConfig::default()` 里这些字段是 `None`（序列化为
+/// `null`），无法直接下钻，故显式给出其结构体键集供补丁边界递归校验（design §D1）。
+/// 约定：静态结构字段给键形状；自由键容器（`HashMap`）给 `{}`，空形状 =
+/// 该层键名不校验（值类型由 `from_value::<AppConfig>` 把关）。
+fn nested_defaults() -> Value {
+    serde_json::json!({
+        "headingColors": { "h1": null, "h2": null, "h3": null, "h4": null, "h5": null, "h6": null },
+        "headingFonts": { "h1": null, "h2": null, "h3": null, "h4": null, "h5": null, "h6": null },
+        "propertyBar": {
+            "displayStyle": null,
+            "displayDefault": { "preview": null, "edit": null },
+            "newDocVisible": null
+        },
+        "searchPanel": { "defaultPos": null },
+        "railViewSpec": { "layout": null, "density": null, "cardHeight": null },
+        "previewSettings": { "railHover": null, "gridMode": null, "enabled": null },
+        "aiViewSpec": {
+            "railLayout": null, "railDensity": null, "railCardHeight": null,
+            "blockColors": null, "iconLabel": null, "previewEnabled": null,
+            "railPinnedWidth": null, "gridMode": null, "gridGrouping": null,
+            "gridSort": null, "unreadOnly": null, "themeGroups": null,
+            "pinnedAndRecentOnly": null, "pinnedSegmentScale": null
+        },
+        "roulettePosition": { "x": null, "y": null },
+        "propTemplates": [],
+        "propAliasMap": {},
+        "capabilities": {}
+    })
+}
+
+/// 补丁写边界已知键集：从 `AppConfig::default()` 序列化结果派生，对象值递归收集，
+/// 新增字段自动纳入（design §D1）。顶层额外排除 state 专属键。
+fn known_config_keys() -> &'static serde_json::Map<String, Value> {
+    static KEYS: std::sync::OnceLock<serde_json::Map<String, Value>> = std::sync::OnceLock::new();
+    KEYS.get_or_init(|| {
+        let mut value = serde_json::to_value(AppConfig::default()).expect("序列化默认配置");
+        if let Value::Object(map) = &mut value {
+            for key in STATE_ONLY_KEYS {
+                map.remove(*key);
+            }
+            if let Value::Object(nested) = nested_defaults() {
+                for (key, shape) in nested {
+                    match map.get(&key) {
+                        Some(Value::Null) | None => {
+                            map.insert(key, shape);
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
+        match value {
+            Value::Object(map) => map,
+            _ => serde_json::Map::new(),
+        }
+    })
+}
+
+/// 派生状态键：由应用维护，补丁边界一律拒绝（design §D1）。
+const STATE_ONLY_KEYS: &[&str] = &["recentFiles", "scrollPositions", "embedScrollPositions"];
+
+/// 补丁写边界校验（design §D1）：补丁键必须落在已知键集的对应层级内，
+/// 未知键返回列出完整键路径的结构化错误；state 专属键单独拒绝。
+fn validate_patch_keys(patch: &Value) -> Result<(), AppError> {
+    fn walk(
+        value: &Value,
+        level: &serde_json::Map<String, Value>,
+        path: &mut Vec<String>,
+    ) -> Result<(), AppError> {
+        let Value::Object(map) = value else {
+            return Ok(());
+        };
+        if level.is_empty() {
+            return Ok(());
+        }
+        for (key, child) in map {
+            if STATE_ONLY_KEYS.contains(&key.as_str()) {
+                return Err(AppError::Validation {
+                    context: "patch".into(),
+                    message: format!(
+                        "{key} 是派生状态，由应用维护，不归补丁管（state/state.json）"
+                    ),
+                });
+            }
+            let mut full = path.clone();
+            full.push(key.clone());
+            let known = level.get(key).ok_or_else(|| AppError::Validation {
+                context: "patch".into(),
+                message: format!("未知配置键 {}", full.join(".")),
+            })?;
+            if let Some(next) = child.is_object().then(|| known.as_object()).flatten() {
+                walk(child, next, &mut full)?;
+            }
+        }
+        Ok(())
+    }
+
+    walk(patch, known_config_keys(), &mut Vec::new())
+}
+
+/// 把 JSON 合并补丁打进 user 层，复用既有校验 / 快照 / 原子写语义。
 ///
-/// 顺序：读 user（缺失按 `{}`）→ `merge_json` 深合并 → 反序列化 → 校验 →
-/// 快照当前 user → 原子写 user + state。任一步失败都不落盘；返回新的有效配置。
+/// 顺序：写边界校验 → 读 user（缺失按 `{}`）→ `merge_json` 深合并 → 反序列化
+/// 校验（仅校验，不写盘）→ 快照当前 user → 原子写**合并后的 user 层**。
+/// 不写 state 层（派生状态由应用维护），也不把代码默认值固化进 user 层；
+/// 返回 `load_config_at` 的真实有效配置（含 state 读取结果）。
 pub fn apply_patch_at(base: &Path, patch: &Value) -> Result<AppConfig, AppError> {
     if !patch.is_object() {
         return Err(AppError::Validation {
@@ -997,21 +1099,18 @@ pub fn apply_patch_at(base: &Path, patch: &Value) -> Result<AppConfig, AppError>
             message: "补丁必须是 JSON 对象".into(),
         });
     }
+    validate_patch_keys(patch)?;
     ensure_defaults(base)?;
     migrate_legacy(base)?;
     let current_user = read_json_or_quarantine(&user_path(base)).unwrap_or(Value::Null);
     let merged = merge_json(&current_user, patch);
     let config: AppConfig =
-        serde_json::from_value(merged).map_err(|e| json_err("patched config", e))?;
+        serde_json::from_value(merged.clone()).map_err(|e| json_err("patched config", e))?;
     validate_config(&config)?;
 
     snapshot_user(base)?;
-    let user = serde_json::to_vec_pretty(&settings_value(&config)?)
-        .map_err(|e| json_err("user config", e))?;
-    let state =
-        serde_json::to_vec_pretty(&state_value(&config)?).map_err(|e| json_err("state", e))?;
+    let user = serde_json::to_vec_pretty(&merged).map_err(|e| json_err("user config", e))?;
     atomic_write(&user_path(base), &user)?;
-    atomic_write(&state_path(base), &state)?;
     prune_snapshots(base)?;
 
     load_config_at(base)
@@ -2182,6 +2281,177 @@ mod tests {
                 .get("customdate")
                 .map(String::as_str),
             Some("date")
+        );
+    }
+
+    // ── 补丁写边界与 state 保护（CF-7 / design §D1 §D2）──────────────
+
+    fn write_state(base: &Path, json: &str) {
+        let path = state_path(base);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(&path, json).unwrap();
+    }
+
+    fn read_state(base: &Path) -> String {
+        std::fs::read_to_string(state_path(base)).unwrap()
+    }
+
+    #[test]
+    fn patch_keeps_state_file_byte_identical() {
+        let dir = temp_base("patch_state");
+        let base = dir.path();
+        write_user(base, r#"{"theme":"light"}"#);
+        let state_json = r#"{"recentFiles":[{"path":"/tmp/a.md","title":"a.md","openedAt":"2026-01-01T00:00:00Z"}],"scrollPositions":{}}"#;
+        write_state(base, state_json);
+        let before = read_state(base);
+
+        let patched = apply_patch_at(base, &serde_json::json!({ "theme": "dark" })).unwrap();
+
+        assert_eq!(read_state(base), before, "state 层应逐字节不变");
+        let recent = patched.recent_files.expect("返回值应含 recentFiles");
+        assert_eq!(recent.len(), 1);
+        assert_eq!(recent[0].path, "/tmp/a.md");
+    }
+
+    #[test]
+    fn patch_rejects_unknown_top_level_key_without_writing() {
+        let dir = temp_base("patch_unknown_top");
+        let base = dir.path();
+        write_user(base, r#"{"theme":"light"}"#);
+        let before = read_user(base);
+
+        let err = apply_patch_at(base, &serde_json::json!({ "fontSizeX": 20 })).unwrap_err();
+
+        assert!(matches!(err, AppError::Validation { .. }), "got {err:?}");
+        assert_eq!(read_user(base), before, "未知顶层键不应落盘");
+    }
+
+    #[test]
+    fn patch_rejects_nested_unknown_key_with_full_path() {
+        let dir = temp_base("patch_unknown_nested");
+        let base = dir.path();
+        write_user(base, r#"{"theme":"light"}"#);
+        let before = read_user(base);
+
+        let err = apply_patch_at(
+            base,
+            &serde_json::json!({ "propertyBar": { "unknownField": 1 } }),
+        )
+        .unwrap_err();
+
+        assert!(matches!(err, AppError::Validation { .. }), "got {err:?}");
+        let message = format!("{err:?}");
+        assert!(
+            message.contains("propertyBar.unknownField"),
+            "错误应列出完整键路径: {message}"
+        );
+        assert_eq!(read_user(base), before, "嵌套未知键不应落盘");
+    }
+
+    #[test]
+    fn patch_rejects_state_only_key_and_keeps_state() {
+        let dir = temp_base("patch_state_key");
+        let base = dir.path();
+        write_user(base, r#"{"theme":"light"}"#);
+        write_state(base, r#"{"recentFiles":[],"scrollPositions":{}}"#);
+        let state_before = read_state(base);
+
+        let err = apply_patch_at(base, &serde_json::json!({ "recentFiles": [] })).unwrap_err();
+
+        assert!(matches!(err, AppError::Validation { .. }), "got {err:?}");
+        assert_eq!(read_state(base), state_before, "state 键不应落盘");
+    }
+
+    #[test]
+    fn patch_writes_only_diff_into_user_layer() {
+        let dir = temp_base("patch_diff");
+        let base = dir.path();
+        write_user(base, r#"{"theme":"light"}"#);
+
+        apply_patch_at(base, &serde_json::json!({ "fontSize": 20.0 })).unwrap();
+
+        let user: Value = serde_json::from_str(&read_user(base)).unwrap();
+        let keys: std::collections::HashSet<&str> = user
+            .as_object()
+            .unwrap()
+            .keys()
+            .map(String::as_str)
+            .collect();
+        let mut expected = std::collections::HashSet::new();
+        expected.insert("theme");
+        expected.insert("fontSize");
+        assert_eq!(keys, expected, "user 层应恰含原键与补丁键: {user}");
+    }
+
+    #[test]
+    fn load_config_at_tolerates_unknown_keys_in_user_layer() {
+        let dir = temp_base("patch_legacy_unknown");
+        let base = dir.path();
+        write_user(base, r#"{"theme":"dark","legacyUnknownKey":123}"#);
+
+        let config = load_config_at(base);
+
+        assert!(config.is_ok(), "未知键应可加载: {config:?}");
+        assert_eq!(config.unwrap().theme.as_deref(), Some("dark"));
+    }
+
+    #[test]
+    fn patch_allows_free_form_map_keys() {
+        let dir = temp_base("patch_free_form");
+        let base = dir.path();
+        write_user(base, r#"{"theme":"light"}"#);
+
+        apply_patch_at(
+            base,
+            &serde_json::json!({
+                "capabilities": { "mermaid": false },
+                "propAliasMap": { "作者": "text" }
+            }),
+        )
+        .unwrap();
+
+        let user: Value = serde_json::from_str(&read_user(base)).unwrap();
+        assert_eq!(user["capabilities"]["mermaid"], serde_json::json!(false));
+        assert_eq!(user["propAliasMap"]["作者"], serde_json::json!("text"));
+    }
+
+    #[test]
+    fn patch_state_key_error_is_specific() {
+        let dir = temp_base("patch_state_specific");
+        let base = dir.path();
+        write_user(base, r#"{"theme":"light"}"#);
+
+        let err = apply_patch_at(base, &serde_json::json!({ "recentFiles": [] })).unwrap_err();
+
+        let AppError::Validation { message, .. } = err else {
+            panic!("应为校验错误，got {err:?}");
+        };
+        assert!(message.contains("派生状态"), "应给出专属报错: {message}");
+        assert!(
+            !message.contains("未知配置键"),
+            "不应是通用未知键报错: {message}"
+        );
+    }
+
+    #[test]
+    fn patch_return_matches_load_config_at() {
+        let dir = temp_base("patch_return");
+        let base = dir.path();
+        write_user(base, r#"{"theme":"light"}"#);
+        write_state(
+            base,
+            r#"{"recentFiles":[{"path":"/tmp/c.md","title":"c.md","openedAt":"2026-01-03T00:00:00Z"}],"scrollPositions":{}}"#,
+        );
+
+        let patched = apply_patch_at(base, &serde_json::json!({ "theme": "warm" })).unwrap();
+        let loaded = load_config_at(base).unwrap();
+
+        assert_eq!(patched.theme, loaded.theme);
+        assert_eq!(patched.font_size, loaded.font_size);
+        assert_eq!(
+            patched.recent_files.unwrap()[0].path,
+            loaded.recent_files.unwrap()[0].path,
+            "返回值应含 state 层读取结果"
         );
     }
 }
