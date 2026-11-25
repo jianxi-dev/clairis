@@ -225,75 +225,80 @@ export function mapHueToType(currentColor: string, targetTone: string): string {
   return best;
 }
 
-// --- 纯高亮独立色系（#1437） -------------------------------------------------
+// --- 高亮 24 格独立色板（editor-surface-batch22 / design D1） ----------------
+//
+// 高亮块专用四组色板，与标注的 `FONT_COLORS` / `BACKGROUND_COLORS` /
+// `BORDER_COLORS` 完全分开：后三者同时供标注面板与块级颜色行复用，直接改会
+// 连带改标注与块颜色。色值取自豆包高亮截图逐格采样（对账表 §3.2）。
+//
+// className 走 `hl-*` 前缀，与 `mdb-*`（标注 / 块颜色 span）区分：
+// - `hl-color-*`   字体色
+// - `hl-border-*`  边框色
+// - `hl-fill-*`    填充色（深档 `dark*` / 中档 `gray|lightgray|*`）
+// `callout-attrs.ts` 的 `attrNameFromClassName` 同时解析两套前缀。
 
-/** 一个高亮色相：浅填充 + 同色系深边框。 */
+/** 字体色：默认 + 灰/红/橙/黄/绿/蓝/紫（8 格，顺序与豆包一致）。 */
+export const HIGHLIGHT_FONT_COLORS: readonly ColorSwatch[] = [
+  { label: "默认", className: "", swatch: "#ebebeb", isDefault: true },
+  { label: "灰色", className: "hl-color-gray", swatch: "#757575" },
+  { label: "红色", className: "hl-color-red", swatch: "#fa7873" },
+  { label: "橙色", className: "hl-color-orange", swatch: "#f5a54a" },
+  { label: "黄色", className: "hl-color-yellow", swatch: "#fcd456" },
+  { label: "绿色", className: "hl-color-green", swatch: "#6dd162" },
+  { label: "蓝色", className: "hl-color-blue", swatch: "#71a0ff" },
+  { label: "紫色", className: "hl-color-purple", swatch: "#a472fc" },
+];
+
+/** 边框色：无（斜线）+ 灰/红/橙/黄/绿/蓝/紫（8 格）。 */
+export const HIGHLIGHT_BORDER_COLORS: readonly ColorSwatch[] = [
+  { label: "无", className: "", swatch: "", isDefault: true },
+  { label: "灰色", className: "hl-border-gray", swatch: "#434343" },
+  { label: "红色", className: "hl-border-red", swatch: "#9e3836" },
+  { label: "橙色", className: "hl-border-orange", swatch: "#bd7017" },
+  { label: "黄色", className: "hl-border-yellow", swatch: "#c7b302" },
+  { label: "绿色", className: "hl-border-green", swatch: "#339428" },
+  { label: "蓝色", className: "hl-border-blue", swatch: "#2951a3" },
+  { label: "紫色", className: "hl-border-purple", swatch: "#6532bd" },
+];
+
+/** 填充深档：无（斜线）+ 深灰/暗红/暗橙/暗黄/暗绿/暗蓝/暗紫（8 格）。 */
+export const HIGHLIGHT_FILL_DEEP: readonly ColorSwatch[] = [
+  { label: "无", className: "", swatch: "", isDefault: true },
+  { label: "深灰", className: "hl-fill-darkgray", swatch: "#2b2b2b" },
+  { label: "暗红", className: "hl-fill-darkred", swatch: "#4a1d1b" },
+  { label: "暗橙", className: "hl-fill-darkorange", swatch: "#57330a" },
+  { label: "暗黄", className: "hl-fill-darkyellow", swatch: "#5c5514" },
+  { label: "暗绿", className: "hl-fill-darkgreen", swatch: "#1f471b" },
+  { label: "暗蓝", className: "hl-fill-darkblue", swatch: "#192a4c" },
+  { label: "暗紫", className: "hl-fill-darkpurple", swatch: "#361d61" },
+];
+
+/** 填充中档：灰/灰/红/橙/黄/绿/蓝/紫（8 格，无默认项）。 */
+export const HIGHLIGHT_FILL_MID: readonly ColorSwatch[] = [
+  { label: "灰色", className: "hl-fill-gray", swatch: "#363636" },
+  { label: "浅灰", className: "hl-fill-lightgray", swatch: "#3c3c3c" },
+  { label: "红色", className: "hl-fill-red", swatch: "#6b2827" },
+  { label: "橙色", className: "hl-fill-orange", swatch: "#845117" },
+  { label: "黄色", className: "hl-fill-yellow", swatch: "#877b10" },
+  { label: "绿色", className: "hl-fill-green", swatch: "#296b22" },
+  { label: "蓝色", className: "hl-fill-blue", swatch: "#213e78" },
+  { label: "紫色", className: "hl-fill-purple", swatch: "#4d2691" },
+];
+
 export interface HighlightColorFamily {
   readonly key: string;
   readonly label: string;
-  /** 浅档填充色名（`mdb-bg-*` 后缀）。 */
   readonly light: string;
-  /** 同色系深档（边框色名 / 深填充色名）。 */
   readonly dark: string;
+  readonly border: string;
 }
 
-/** 纯高亮的 7 个色相（豆包高亮色系，与标注的 15 色板独立）。 */
 export const HIGHLIGHT_COLORS: readonly HighlightColorFamily[] = [
-  { key: "red", label: "红", light: "red", dark: "darkred" },
-  { key: "orange", label: "橙", light: "orange", dark: "brown" },
-  { key: "yellow", label: "黄", light: "yellow", dark: "olive" },
-  { key: "green", label: "绿", light: "green", dark: "darkgreen" },
-  { key: "blue", label: "蓝", light: "blue", dark: "navy" },
-  { key: "purple", label: "紫", light: "purple", dark: "indigo" },
-  { key: "gray", label: "灰", light: "gray", dark: "slate" },
-];
-
-const BG_BY_NAME = new Map(
-  BACKGROUND_COLORS.map((color) => [
-    color.className.replace(/^mdb-bg-/, ""),
-    color,
-  ]),
-);
-const BORDER_BY_NAME = new Map(
-  BORDER_COLORS.map((color) => [
-    color.className.replace(/^mdb-border-/, ""),
-    color,
-  ]),
-);
-
-function fillOf(name: string): ColorSwatch {
-  return (
-    BG_BY_NAME.get(name) ?? {
-      label: name,
-      className: `mdb-bg-${name}`,
-      swatch: "",
-    }
-  );
-}
-
-function borderOf(name: string): ColorSwatch {
-  return (
-    BORDER_BY_NAME.get(name) ?? {
-      label: name,
-      className: `mdb-border-${name}`,
-      swatch: "",
-    }
-  );
-}
-
-/** 填充颜色：浅档一行 + 深档一行（首格均为「无」）。 */
-export const HIGHLIGHT_LIGHT_FILLS: readonly ColorSwatch[] = [
-  BACKGROUND_COLORS[0],
-  ...HIGHLIGHT_COLORS.map((family) => fillOf(family.light)),
-];
-
-export const HIGHLIGHT_DARK_FILLS: readonly ColorSwatch[] = [
-  BACKGROUND_COLORS[0],
-  ...HIGHLIGHT_COLORS.map((family) => fillOf(family.dark)),
-];
-
-/** 边框颜色：与深档填充同值。 */
-export const HIGHLIGHT_BORDER_COLORS: readonly ColorSwatch[] = [
-  BORDER_COLORS[0],
-  ...HIGHLIGHT_COLORS.map((family) => borderOf(family.dark)),
+  { key: "red", label: "红", light: "red", dark: "darkred", border: "red" },
+  { key: "orange", label: "橙", light: "orange", dark: "darkorange", border: "orange" },
+  { key: "yellow", label: "黄", light: "yellow", dark: "darkyellow", border: "yellow" },
+  { key: "green", label: "绿", light: "green", dark: "darkgreen", border: "green" },
+  { key: "blue", label: "蓝", light: "blue", dark: "darkblue", border: "blue" },
+  { key: "purple", label: "紫", light: "purple", dark: "darkpurple", border: "purple" },
+  { key: "gray", label: "灰", light: "gray", dark: "darkgray", border: "gray" },
 ];

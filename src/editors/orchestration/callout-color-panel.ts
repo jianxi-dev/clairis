@@ -11,8 +11,9 @@ import {
   FONT_COLORS,
   HIGHLIGHT_BORDER_COLORS,
   HIGHLIGHT_COLORS,
-  HIGHLIGHT_DARK_FILLS,
-  HIGHLIGHT_LIGHT_FILLS,
+  HIGHLIGHT_FILL_DEEP,
+  HIGHLIGHT_FILL_MID,
+  HIGHLIGHT_FONT_COLORS,
   createColorRow,
   type ColorKind,
   type ColorSwatch,
@@ -107,7 +108,7 @@ export function randomHighlightColors(
   const next = setCalloutAttrs(current, {
     ...attrs,
     bg: family.light,
-    border: family.dark,
+    border: family.border,
   });
   if (next === current) return false;
   view.dispatch(structureTransaction({ changes: { from, to, insert: next } }));
@@ -125,6 +126,31 @@ export function resetCalloutColors(
   if (next === current) return false;
   view.dispatch(structureTransaction({ changes: { from, to, insert: next } }));
   return true;
+}
+
+/**
+ * 把面板的裸色名（存储值，如 `yellow` / `darkred`）换算成该行的 className，
+ * 供 `data-active` 比对。
+ *
+ * 旧文档存的是裸名（`text=yellow`），新色板的 swatch `dataset.className` 是
+ * `hl-color-yellow`；直接比会全不命中（旧文档打开面板无选中态）。这里按色板的
+ * className 反查：先直接拼 `hl-*` 前缀，再对旧名走 `attrNameFromClassName`
+ * 兼容（旧名可能不在新板内，此时回落到旧 `mdb-*` 前缀）。
+ */
+function activeClassNameOf(
+  kind: ColorKind,
+  name: string,
+  colors: readonly ColorSwatch[],
+): string {
+  if (name === "") return "";
+  const attrKey = kind === "font" ? "text" : kind === "background" ? "bg" : "border";
+  const hit = colors.find(
+    (color) =>
+      color.className !== "" &&
+      attrNameFromClassName(attrKey, color.className) === name,
+  );
+  if (hit) return hit.className;
+  return "";
 }
 
 /**
@@ -155,10 +181,11 @@ export function buildCalloutColorPanel(args: {
     const rowEl = createColorRow(kind, colors, (pickedKind, className) =>
       onPick(KEY_OF_KIND[pickedKind], className),
     );
+    const activeClass = activeClassNameOf(kind, activeName, colors);
     rowEl
       .querySelectorAll<HTMLButtonElement>(".cm-color-swatch")
       .forEach((swatch) => {
-        swatch.dataset.active = String(swatch.dataset.className === activeName);
+        swatch.dataset.active = String(swatch.dataset.className === activeClass);
       });
     root.appendChild(rowEl);
   };
@@ -234,18 +261,19 @@ export function buildHighlightColorPanel(args: {
     const rowEl = createColorRow(kind, colors, (pickedKind, className) =>
       onPick(KEY_OF_KIND[pickedKind], className),
     );
+    const activeClass = activeClassNameOf(kind, activeName, colors);
     rowEl
       .querySelectorAll<HTMLButtonElement>(".cm-color-swatch")
       .forEach((swatch) => {
-        swatch.dataset.active = String(swatch.dataset.className === activeName);
+        swatch.dataset.active = String(swatch.dataset.className === activeClass);
       });
     root.appendChild(rowEl);
   };
 
-  addRow(null, "font", FONT_COLORS, active.text ?? "");
+  addRow(null, "font", HIGHLIGHT_FONT_COLORS, active.text ?? "");
   addRow("边框颜色", "border", HIGHLIGHT_BORDER_COLORS, active.border ?? "");
-  addRow("填充颜色", "background", HIGHLIGHT_LIGHT_FILLS, active.bg ?? "");
-  addRow(null, "background", HIGHLIGHT_DARK_FILLS, active.bg ?? "");
+  addRow("填充颜色", "background", HIGHLIGHT_FILL_DEEP, active.bg ?? "");
+  addRow(null, "background", HIGHLIGHT_FILL_MID, active.bg ?? "");
 
   const resetButton = document.createElement("button");
   resetButton.type = "button";

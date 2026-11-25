@@ -6,7 +6,14 @@
  * 色名取自统一色板（`orchestration/color-palette.ts`）的类名后缀，不另立色值：
  * 存储写 `bg=green`，不写 CSS / hex。未知色名与 `none` 一律忽略（回落类型 tone）。
  */
-import { BACKGROUND_COLORS, FONT_COLORS } from "./orchestration/color-palette";
+import {
+  BACKGROUND_COLORS,
+  FONT_COLORS,
+  HIGHLIGHT_BORDER_COLORS,
+  HIGHLIGHT_FILL_DEEP,
+  HIGHLIGHT_FILL_MID,
+  HIGHLIGHT_FONT_COLORS,
+} from "./orchestration/color-palette";
 
 /** 解析后的高亮块三色属性；缺省项表示「未设色，回落类型 tone」。 */
 export interface CalloutAttrs {
@@ -32,6 +39,40 @@ const TEXT_NAMES: ReadonlySet<string> = new Set(
   ),
 );
 
+/** 高亮填充色板（深档 + 中档）的后缀集合。 */
+const HIGHLIGHT_FILL_NAMES: ReadonlySet<string> = new Set(
+  [...HIGHLIGHT_FILL_DEEP, ...HIGHLIGHT_FILL_MID]
+    .filter((color) => !color.isDefault)
+    .map((color) => color.className.replace(/^hl-fill-/, "")),
+);
+
+/** 高亮边框色板的后缀集合。 */
+const HIGHLIGHT_BORDER_NAMES: ReadonlySet<string> = new Set(
+  HIGHLIGHT_BORDER_COLORS.filter((color) => !color.isDefault).map((color) =>
+    color.className.replace(/^hl-border-/, ""),
+  ),
+);
+
+/** 高亮字体色板的后缀集合。 */
+const HIGHLIGHT_TEXT_NAMES: ReadonlySet<string> = new Set(
+  HIGHLIGHT_FONT_COLORS.filter((color) => !color.isDefault).map((color) =>
+    color.className.replace(/^hl-color-/, ""),
+  ),
+);
+
+const BG_NAME_SET: ReadonlySet<string> = new Set([
+  ...BG_NAMES,
+  ...HIGHLIGHT_FILL_NAMES,
+]);
+const BORDER_NAME_SET: ReadonlySet<string> = new Set([
+  ...BG_NAMES,
+  ...HIGHLIGHT_BORDER_NAMES,
+]);
+const TEXT_NAME_SET: ReadonlySet<string> = new Set([
+  ...TEXT_NAMES,
+  ...HIGHLIGHT_TEXT_NAMES,
+]);
+
 const BG_SWATCH = new Map(
   BACKGROUND_COLORS.filter((color) => !color.isDefault).map((color) => [
     color.className.replace(/^mdb-bg-/, ""),
@@ -46,11 +87,11 @@ const TEXT_SWATCH = new Map(
   ]),
 );
 
-/** 面板类名前缀 → 属性键。 */
+/** 面板类名前缀 → 属性键（`mdb-*` 标注板 + `hl-*` 高亮板）。 */
 const ATTR_PREFIX = {
-  bg: "mdb-bg-",
-  border: "mdb-border-",
-  text: "mdb-color-",
+  bg: ["mdb-bg-", "hl-fill-"],
+  border: ["mdb-border-", "hl-border-"],
+  text: ["mdb-color-", "hl-color-"],
 } as const;
 
 /**
@@ -70,9 +111,10 @@ export function parseCalloutAttrs(raw: string): CalloutAttrs {
     const key = token.slice(0, eq);
     const value = token.slice(eq + 1).toLowerCase();
     if (value === "" || value === "none") continue;
-    if (key === "bg" && BG_NAMES.has(value)) attrs.bg = value;
-    else if (key === "border" && BG_NAMES.has(value)) attrs.border = value;
-    else if (key === "text" && TEXT_NAMES.has(value)) attrs.text = value;
+    if (key === "bg" && BG_NAME_SET.has(value)) attrs.bg = value;
+    else if (key === "border" && BORDER_NAME_SET.has(value))
+      attrs.border = value;
+    else if (key === "text" && TEXT_NAME_SET.has(value)) attrs.text = value;
   }
   return attrs;
 }
@@ -120,8 +162,10 @@ export function attrNameFromClassName(
   key: keyof typeof ATTR_PREFIX,
   className: string,
 ): string {
-  const prefix = ATTR_PREFIX[key];
-  return className.startsWith(prefix) ? className.slice(prefix.length) : "";
+  for (const prefix of ATTR_PREFIX[key]) {
+    if (className.startsWith(prefix)) return className.slice(prefix.length);
+  }
+  return "";
 }
 
 /** 填充软色：与既有 tone soft 同量级（~10% tint），不是实块。 */
@@ -148,14 +192,84 @@ export function calloutCssVars(attrs: CalloutAttrs): CalloutCssVars {
   return vars;
 }
 
+/** 高亮填充色名 → 色值（深档 + 中档）。 */
+const HIGHLIGHT_FILL_SWATCH = new Map(
+  [...HIGHLIGHT_FILL_DEEP, ...HIGHLIGHT_FILL_MID]
+    .filter((color) => !color.isDefault)
+    .map((color) => [color.className.replace(/^hl-fill-/, ""), color.swatch]),
+);
+
+/** 高亮边框色名 → 色值。 */
+const HIGHLIGHT_BORDER_SWATCH = new Map(
+  HIGHLIGHT_BORDER_COLORS.filter((color) => !color.isDefault).map((color) => [
+    color.className.replace(/^hl-border-/, ""),
+    color.swatch,
+  ]),
+);
+
+/** 高亮字体色名 → 色值。 */
+const HIGHLIGHT_TEXT_SWATCH = new Map(
+  HIGHLIGHT_FONT_COLORS.filter((color) => !color.isDefault).map((color) => [
+    color.className.replace(/^hl-color-/, ""),
+    color.swatch,
+  ]),
+);
+
+/**
+ * 旧色名 → 高亮新色名（editor-surface-batch22 兼容映射）。
+ *
+ * 旧文档用 `bg=darkred` / `border=olive` / `text=orange` 等旧标注色名；高亮
+ * 色板换成独立 24 格后，部分旧名不在新板内。这里把**新板缺失**的旧名映射到
+ * 视觉最接近的新名，保证旧文档仍渲染出颜色。新板已有的同名色（`gray` / `red`
+ * / `darkred` 等）不经过此表，按原名直查，保留旧文档的明暗语义。
+ *
+ * 填充 / 边框分别维护：同一旧名在两表的最佳落点不同（如 `darkred` 作填充
+ * 保留暗红 `darkred`，作边框落到 `red`）。
+ */
+const FILL_LEGACY_ALIAS: Readonly<Record<string, string>> = {
+  cyan: "blue",
+  brown: "darkorange",
+  olive: "darkyellow",
+  navy: "darkblue",
+  indigo: "darkpurple",
+  slate: "darkgray",
+};
+
+const BORDER_LEGACY_ALIAS: Readonly<Record<string, string>> = {
+  darkred: "red",
+  cyan: "blue",
+  brown: "orange",
+  olive: "yellow",
+  navy: "blue",
+  indigo: "purple",
+  slate: "gray",
+  darkgreen: "green",
+};
+
+const TEXT_LEGACY_ALIAS: Readonly<Record<string, string>> = {
+  cyan: "blue",
+};
+
+function resolveHighlightFill(name: string): string | undefined {
+  return HIGHLIGHT_FILL_SWATCH.get(FILL_LEGACY_ALIAS[name] ?? name);
+}
+
+function resolveHighlightBorder(name: string): string | undefined {
+  return HIGHLIGHT_BORDER_SWATCH.get(BORDER_LEGACY_ALIAS[name] ?? name);
+}
+
+function resolveHighlightText(name: string): string | undefined {
+  return HIGHLIGHT_TEXT_SWATCH.get(TEXT_LEGACY_ALIAS[name] ?? name);
+}
+
 /** 纯高亮渲染：填充用更强叠底（38%），无属性时由 CSS 回落 tone。 */
 export function highlightCssVars(attrs: CalloutAttrs): CalloutCssVars {
   const vars: { bg?: string; border?: string; text?: string } = {};
-  const bg = attrs.bg ? BG_SWATCH.get(attrs.bg) : undefined;
+  const bg = attrs.bg ? resolveHighlightFill(attrs.bg) : undefined;
   if (bg) vars.bg = `color-mix(in srgb, ${bg} 38%, transparent)`;
-  const border = attrs.border ? BG_SWATCH.get(attrs.border) : undefined;
+  const border = attrs.border ? resolveHighlightBorder(attrs.border) : undefined;
   if (border) vars.border = border;
-  const text = attrs.text ? TEXT_SWATCH.get(attrs.text) : undefined;
+  const text = attrs.text ? resolveHighlightText(attrs.text) : undefined;
   if (text) vars.text = text;
   return vars;
 }
