@@ -7,6 +7,7 @@ use serde_json::{json, Value};
 
 use crate::config::{apply_patch_at, list_snapshots, load_config_at};
 use crate::errors::AppError;
+use crate::surfaces::{embedded_defaults, load_surface, SurfaceId};
 
 pub const MAX_TURNS: usize = 8;
 pub const MAX_REPEATED_TOOL_ERRORS: usize = 3;
@@ -220,6 +221,46 @@ pub fn tool_schemas() -> Vec<Value> {
                 "parameters": { "type": "object", "properties": {}, "additionalProperties": false }
             }
         }),
+        json!({
+            "type": "function",
+            "function": {
+                "name": "read_data_surface",
+                "description": "读取已登记数据面的有效集合。返回 {effective, defaults, warnings} 三段：有效集合（默认←用户覆盖合并后）、默认集合、告警列表。",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "id": {
+                            "type": "string",
+                            "description": "数据面 id，当前已登记: html-toolbar"
+                        }
+                    },
+                    "required": ["id"],
+                    "additionalProperties": false
+                }
+            }
+        }),
+        json!({
+            "type": "function",
+            "function": {
+                "name": "patch_data_surface",
+                "description": "改写已登记数据面的用户覆盖集合（整体替换语义）。id 必须是已登记数据面（当前仅 html-toolbar）。patch 形如 {\"items\":[\"format-bold\",...]}，写入走校验+快照+原子写，只作用于 user 覆盖层，不改默认源文件。",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "id": {
+                            "type": "string",
+                            "description": "数据面 id，当前已登记: html-toolbar"
+                        },
+                        "patch": {
+                            "type": "object",
+                            "description": "面补丁，恰含 items 数组键，例如 {\"items\":[\"format-bold\",\"format-italic\"]}"
+                        }
+                    },
+                    "required": ["id", "patch"],
+                    "additionalProperties": false
+                }
+            }
+        }),
     ]
 }
 
@@ -229,6 +270,14 @@ fn tool_ok(value: Value) -> String {
 
 fn tool_err(err: &AgentError) -> String {
     json!({ "ok": false, "error": err }).to_string()
+}
+
+/// 面 id 白名单：未登记 id 返回 None（调用方转结构化错误，零写入）。
+fn parse_surface_id(id: &str) -> Option<SurfaceId> {
+    match id {
+        "html-toolbar" => Some(SurfaceId::HtmlToolbar),
+        _ => None,
+    }
 }
 
 /// 执行一个工具调用。任何失败都转成结构化 JSON 字符串（`{ok:false,error}`），
@@ -267,6 +316,74 @@ pub fn dispatch_tool(base: &Path, name: &str, args: &Value) -> Result<String, Ag
             Ok(names) => Ok(tool_ok(json!(names))),
             Err(e) => Ok(tool_err(&AgentError::from_app(name, e))),
         },
+        "read_data_surface" => {
+            let Some(id) = args.get("id").and_then(|v| v.as_str()) else {
+                return Ok(tool_err(&AgentError::validation("id", "缺少 id 参数")));
+            };
+            let Some(surface_id) = parse_surface_id(id) else {
+                return Ok(tool_err(&AgentError::validation(
+                    "id",
+                    format!("数据面未登记: {id}（当前已登记: html-toolbar）"),
+                )));
+            };
+            let loaded = load_surface(surface_id, base);
+            let value = json!({
+                "effective": loaded.items,
+                "defaults": embedded_defaults(surface_id),
+                "warnings": loaded.warnings,
+            });
+            Ok(tool_ok(value))
+        }
+        "patch_data_surface" => {
+            let Some(id) = args.get("id").and_then(|v| v.as_str()) else {
+                return Ok(tool_err(&AgentError::validation("id", "缺少 id 参数")));
+            };
+            let Some(surface_id) = parse_surface_id(id) else {
+                return Ok(tool_err(&AgentError::validation(
+                    "id",
+                    format!("数据面未登记: {id}（当前已登记: html-toolbar）"),
+                )));
+            };
+            let Some(patch) = args.get("patch") else {
+                return Ok(tool_err(&AgentError::validation(
+                    "patch",
+                    "缺少 patch 参数",
+                )));
+            };
+            // 本变更单面契约：patch 必须是对象且恰含 items 数组键
+            let items = match patch.get("items").and_then(|v| v.as_array()) {
+                Some(items) if patch.as_object().map(|m| m.len() == 1).unwrap_or(false) => items,
+                _ => {
+                    return Ok(tool_err(&AgentError::validation(
+                        "patch",
+                        "patch 必须是对象且恰含 items 数组键，例如 {\"items\":[\"format-bold\"]}",
+                    )));
+                }
+            };
+            let ids: Vec<String> = items
+                .iter()
+                .filter_map(|v| v.as_str().map(str::to_string))
+                .collect();
+            if ids.len() != items.len() {
+                return Ok(tool_err(&AgentError::validation(
+                    "patch",
+                    "items 数组元素必须都是字符串",
+                )));
+            }
+            // 复用 T1 写边界：未知 id 被 HTML_TOOLBAR_ALLOWED_IDS 拒绝，快照+原子写
+            let config_patch = json!({ "htmlToolbarItems": ids });
+            match apply_patch_at(base, &config_patch) {
+                Ok(_) => {
+                    let loaded = load_surface(surface_id, base);
+                    let value = json!({
+                        "effective": loaded.items,
+                        "warnings": loaded.warnings,
+                    });
+                    Ok(tool_ok(value))
+                }
+                Err(e) => Ok(tool_err(&AgentError::from_app(name, e))),
+            }
+        }
         other => Ok(tool_err(&AgentError::tool(
             other,
             format!("未知工具 {other}"),
@@ -700,12 +817,154 @@ mod tests {
     }
 
     #[test]
-    fn tool_schemas_cover_three_tools() {
+    fn tool_schemas_cover_five_tools() {
         let names: Vec<String> = tool_schemas()
             .iter()
             .map(|s| s["function"]["name"].as_str().unwrap().to_string())
             .collect();
-        assert_eq!(names, vec!["read_config", "patch_config", "list_snapshots"]);
+        assert_eq!(
+            names,
+            vec![
+                "read_config",
+                "patch_config",
+                "list_snapshots",
+                "read_data_surface",
+                "patch_data_surface",
+            ]
+        );
+    }
+
+    #[test]
+    fn read_data_surface_returns_three_sections() {
+        let dir = temp_base("read_surface");
+        let base = dir.path();
+        let raw =
+            dispatch_tool(base, "read_data_surface", &json!({ "id": "html-toolbar" })).unwrap();
+        let parsed: Value = serde_json::from_str(&raw).unwrap();
+        assert_eq!(parsed["ok"], json!(true), "got {raw}");
+        let result = &parsed["result"];
+        // A-6.1：恰含 effective / defaults / warnings 三段
+        let obj = result.as_object().expect("result 应为对象");
+        let mut keys: Vec<&str> = obj.keys().map(|s| s.as_str()).collect();
+        keys.sort();
+        assert_eq!(keys, vec!["defaults", "effective", "warnings"]);
+        assert_eq!(result["effective"].as_array().unwrap().len(), 12);
+        assert_eq!(result["defaults"].as_array().unwrap().len(), 12);
+        assert!(result["warnings"].as_array().unwrap().is_empty());
+    }
+
+    #[test]
+    fn patch_data_surface_updates_override_and_snapshots() {
+        let dir = temp_base("patch_surface");
+        let base = dir.path();
+        std::fs::create_dir_all(user_path(base).parent().unwrap()).unwrap();
+        std::fs::write(user_path(base), r#"{"theme":"light"}"#).unwrap();
+        let defaults_path = base
+            .join("defaults")
+            .join("surfaces")
+            .join("html-toolbar.json");
+        let before_defaults = {
+            // 先触发物化，拿到默认文件字节
+            let _ = crate::surfaces::materialize(crate::surfaces::SurfaceId::HtmlToolbar, base);
+            std::fs::read(&defaults_path).unwrap()
+        };
+        let before_snapshots = list_snapshots(base).unwrap();
+
+        let raw = dispatch_tool(
+            base,
+            "patch_data_surface",
+            &json!({ "id": "html-toolbar", "patch": { "items": ["format-bold", "format-italic"] } }),
+        )
+        .unwrap();
+        let parsed: Value = serde_json::from_str(&raw).unwrap();
+        assert_eq!(parsed["ok"], json!(true), "got {raw}");
+        let effective = parsed["result"]["effective"].as_array().unwrap();
+        let ids: Vec<&str> = effective
+            .iter()
+            .map(|v| v["id"].as_str().unwrap())
+            .collect();
+        assert_eq!(ids, vec!["format-bold", "format-italic"]);
+
+        // A-6.2：写前产生快照
+        let after_snapshots = list_snapshots(base).unwrap();
+        assert_eq!(
+            after_snapshots.len(),
+            before_snapshots.len() + 1,
+            "patch 前应产生一份快照"
+        );
+
+        // A-6.4：defaults 物化文件逐字节不变
+        let after_defaults = std::fs::read(&defaults_path).unwrap();
+        assert_eq!(
+            before_defaults, after_defaults,
+            "AI 不得触碰 defaults 物化文件"
+        );
+    }
+
+    #[test]
+    fn read_data_surface_rejects_unregistered_id_without_write() {
+        let dir = temp_base("read_bad_surface");
+        let base = dir.path();
+        let raw = dispatch_tool(base, "read_data_surface", &json!({ "id": "menus" })).unwrap();
+        let parsed: Value = serde_json::from_str(&raw).unwrap();
+        assert_eq!(parsed["ok"], json!(false), "got {raw}");
+        assert!(
+            parsed["error"]["message"]
+                .as_str()
+                .unwrap()
+                .contains("未登记"),
+            "got {raw}"
+        );
+        assert!(!user_path(base).exists(), "未登记 id 不应产生任何写入");
+    }
+
+    #[test]
+    fn patch_data_surface_rejects_unregistered_id_without_write() {
+        let dir = temp_base("bad_surface_id");
+        let base = dir.path();
+        let raw = dispatch_tool(
+            base,
+            "patch_data_surface",
+            &json!({ "id": "menus", "patch": { "items": ["format-bold"] } }),
+        )
+        .unwrap();
+        let parsed: Value = serde_json::from_str(&raw).unwrap();
+        assert_eq!(parsed["ok"], json!(false), "got {raw}");
+        assert!(
+            parsed["error"]["message"]
+                .as_str()
+                .unwrap()
+                .contains("未登记"),
+            "got {raw}"
+        );
+        // 零写入：user 层不存在
+        assert!(!user_path(base).exists(), "未登记 id 不应产生任何写入");
+    }
+
+    #[test]
+    fn patch_data_surface_rejects_unknown_item_id() {
+        let dir = temp_base("bad_item_id");
+        let base = dir.path();
+        std::fs::create_dir_all(user_path(base).parent().unwrap()).unwrap();
+        std::fs::write(user_path(base), r#"{"theme":"light"}"#).unwrap();
+        let before = read_user(base);
+
+        let raw = dispatch_tool(
+            base,
+            "patch_data_surface",
+            &json!({ "id": "html-toolbar", "patch": { "items": ["format-bold", "nope"] } }),
+        )
+        .unwrap();
+        let parsed: Value = serde_json::from_str(&raw).unwrap();
+        assert_eq!(parsed["ok"], json!(false), "got {raw}");
+        assert!(
+            parsed["error"]["message"]
+                .as_str()
+                .unwrap()
+                .contains("nope"),
+            "got {raw}"
+        );
+        assert_eq!(read_user(base), before, "未知动作不应落盘");
     }
 
     #[tokio::test]
