@@ -49,4 +49,4 @@ source_of_truth: supporting
 
 ## 六、与对账表的衔接
 
-批量反馈先走对账表（[feedback-alignment.md](./feedback-alignment.md)）：复述 + 候选 + 处置列，本模板四要素用于候选终态的具体化；用户反馈与既有裁决冲突时按 DQ-9 反模式走 Δ-change。
+批量反馈先走对账表（[feedback-alignment.md](./feedback-alignment.md)）：按功能模块归组 + 复述 + 候选 + 冲突/疑点 + 处置列，本模板四要素用于候选终态的具体化；用户反馈与既有裁决冲突时按 DQ-9 反模式走 Δ-change，并在对账表冲突列写明依据。

@@ -31,6 +31,7 @@
 #      C7 规模钩子  ← QG-6 集成 checkpoint: 票数 ≥6 必须有集成 checkpoint 声明
 #      C8 粒度重叠  ← QG-7 纵向切片: 粒度角色声明 + 票间 What 不得重复切同一片
 #      C11 输入对账 ← feedback-alignment 规范: spec issue 须有 `## 输入对账` 表
+#          七列（#/功能模块/用户原话/理解/歧义/冲突/处置）；列按表头名定位，五列旧表兼容
 #                    （或显式豁免），且处置列无「待确认」——防「拆票对象是误读的规格」
 #
 #   3. 为什么重叠阈值是 80（OVERLAP_THRESHOLD_PCT=80）:
@@ -67,7 +68,8 @@
 #
 #   7. 为什么 C11 判结构不判语义、且有生效日期门:
 #      对账表治的是「用户原话被静默误读」，语义覆盖只能人读判——机器判语义会
-#      制造假红/假绿。故 C11 只保证三件事: 段存在、表是五列、处置列非空且没有
+#      制造假红/假绿。故 C11 只保证结构: 段存在、表头含「处置」且≥五列、
+#      功能模块与处置列非空且同模块行相邻、冲突/疑点列非空（无则填 —）、没有
 #      遗留「待确认」（外加「确认：」行或显式豁免）。另设 createdAt >=
 #      INPUT_ALIGNMENT_SINCE 生效日期门: 本检查落地前的 change 没有这张表是历史
 #      事实，追溯判红只会让门禁被绕过，故只对新 change 生效。
@@ -1008,18 +1010,42 @@ if len(data) < 2:
 def cells(line):
     return [c.strip() for c in line.strip().strip("|").split("|")]
 
-if len(cells(data[0])) < 5:
-    print("BAD_TABLE:表头不足五列"); sys.exit(0)
+def clean(s):
+    return s.strip("*_` ")
 
-unconfirmed = []
+# 列按表头名定位：五列旧表（2026-11-23 前）继续兼容，七列新表多做模块与冲突列校验。
+header = cells(data[0])
+if len(header) < 5:
+    print("BAD_TABLE:表头不足五列"); sys.exit(0)
+if "处置" not in header:
+    print("BAD_TABLE:表头缺「处置」列"); sys.exit(0)
+col = {n: i for i, n in enumerate(header)}
+i_disp = col["处置"]
+i_mod = col.get("功能模块")
+i_conf = next((i for n, i in col.items() if n.startswith("冲突")), None)
+
+EMPTY = {"", "—", "-", "——", "N/A", "无"}
+unconfirmed, last_mod, closed_mods = [], None, []
 for line in data[1:]:
     c = cells(line)
-    if len(c) < 5:
-        print("BAD_TABLE:数据行列数不足"); sys.exit(0)
-    disp = c[4].strip("*_` ")
+    if len(c) < len(header):
+        print("BAD_TABLE:数据行列数少于表头（%s）" % c[0]); sys.exit(0)
+    if i_mod is not None:
+        mod = clean(c[i_mod])
+        if mod in EMPTY:
+            print("BAD_TABLE:功能模块列为空（%s）" % c[0]); sys.exit(0)
+        if mod != last_mod:
+            if mod in closed_mods:
+                print("BAD_TABLE:同模块行未相邻（「%s」第 %s 行后又被拆开）" % (mod, c[0])); sys.exit(0)
+            if last_mod:
+                closed_mods.append(last_mod)
+            last_mod = mod
+    if i_conf is not None and clean(c[i_conf]) == "":
+        print("BAD_TABLE:冲突/疑点列为空（%s，无冲突请填 —）" % c[0]); sys.exit(0)
+    disp = clean(c[i_disp])
     if not disp:
         print("BAD_TABLE:处置列为空"); sys.exit(0)
-    if disp.startswith("待确认"):
+    if disp.startswith("待确认") or disp.startswith("需你裁决"):
         unconfirmed.append(c[0])
     if disp.startswith("暂缓") and len(disp) < 6:
         print("BAD_TABLE:暂缓缺理由（%s）" % c[0]); sys.exit(0)
@@ -1035,7 +1061,7 @@ PY
     OK_EXEMPT)   echo "  ✅ #${spec} 已显式豁免输入对账" ;;
     MISSING)     add_violation "- [C11] #${spec} 缺 \`## 输入对账\` 段，也无 \`输入对账豁免: <理由>\`"; viol=1 ;;
     BAD_EXEMPT)  add_violation "- [C11] #${spec} 的 \`输入对账豁免\` 缺理由"; viol=1 ;;
-    UNCONFIRMED) add_violation "- [C11] #${spec} 对账表含 \`待确认\` 处置或缺 \`确认：\` 行（未确认不得拆票）"; viol=1 ;;
+    UNCONFIRMED) add_violation "- [C11] #${spec} 对账表含 \`待确认\`/\`需你裁决\` 处置或缺 \`确认：\` 行（未确认不得拆票）"; viol=1 ;;
     BAD_TABLE:*) add_violation "- [C11] #${spec} 对账表结构不合格（${verdict#BAD_TABLE:}）"; viol=1 ;;
     *)           add_violation "- [C11] #${spec} 输入对账解析失败（${verdict}）"; viol=1 ;;
   esac
