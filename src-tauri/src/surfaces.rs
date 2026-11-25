@@ -128,7 +128,8 @@ fn surface_file_path(base: &Path, spec: &SurfaceSpec) -> PathBuf {
 }
 
 /// 用户覆盖文件：新面各自独立 `user/<id>.json`（D4），不再塞 `settings.json`。
-fn user_override_path(base: &Path, spec: &SurfaceSpec) -> PathBuf {
+/// `pub(crate)` 供 `ai_agent` 写边界复用同一路径解析（不硬编码文件名）。
+pub(crate) fn user_override_path(base: &Path, spec: &SurfaceSpec) -> PathBuf {
     match spec.shape {
         // html-toolbar 沿用既有 settings 字段（D9 兼容，既有设置页行为不变）。
         SurfaceShape::Toolbar => base.join("user").join("settings.json"),
@@ -137,6 +138,41 @@ fn user_override_path(base: &Path, spec: &SurfaceSpec) -> PathBuf {
         SurfaceShape::Capsule => base.join("user").join("capsules.json"),
     }
 }
+
+/// 面级快照：把当前用户覆盖文件复制进 `snapshots/surfaces/<id>/`（保留最新 10 份）。
+/// 新面的覆盖独立于 `user/settings.json`，`config::snapshot_user` 拍不到，
+/// AI 写面前的回滚依赖本快照（AI-5「写前快照、一步回滚」）。
+/// `pub(crate)` 供 `ai_agent` 写边界调用。覆盖文件不存在时不动（首写无旧值可拍）。
+pub(crate) fn snapshot_surface(base: &Path, spec: &SurfaceSpec) -> std::io::Result<()> {
+    let source = user_override_path(base, spec);
+    if !source.exists() {
+        return Ok(());
+    }
+    let dir = base.join("snapshots").join("surfaces").join(spec.id);
+    std::fs::create_dir_all(&dir)?;
+    let nanos = SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_nanos())
+        .unwrap_or_default();
+    let target = dir.join(format!("{}-{nanos}-{}.json", spec.id, std::process::id()));
+    std::fs::copy(&source, &target)?;
+    let mut names: Vec<String> = std::fs::read_dir(&dir)?
+        .filter_map(|e| e.ok())
+        .map(|e| e.file_name().to_string_lossy().into_owned())
+        .filter(|n| n.starts_with(&format!("{}-", spec.id)) && n.ends_with(".json"))
+        .collect();
+    names.sort();
+    for stale in names
+        .iter()
+        .take(names.len().saturating_sub(SURFACE_SNAPSHOT_LIMIT))
+    {
+        let _ = std::fs::remove_file(dir.join(stale));
+    }
+    Ok(())
+}
+
+/// 每个面的覆盖快照保留最新 10 份（与 `config::SNAPSHOT_LIMIT` 同额）。
+const SURFACE_SNAPSHOT_LIMIT: usize = 10;
 
 // ── 形状校验（DS-4）────────────────────────────────────────────
 
@@ -327,7 +363,8 @@ const CAPSULE_ALLOWED_IDS: &[&str] = &[
 ];
 
 /// 校验单个胶囊项：缺字段 / 类型错 / 未知 id → None。
-fn validate_capsule_item(entry: &Value) -> Option<CapsuleSpec> {
+/// `pub` 供 `ai_agent` 写边界复用同一校验。
+pub fn validate_capsule_item(entry: &Value) -> Option<CapsuleSpec> {
     let obj = entry.as_object()?;
     let id = obj.get("id")?.as_str()?;
     if id.is_empty() || !CAPSULE_ALLOWED_IDS.contains(&id) {
@@ -1679,9 +1716,16 @@ mod tests {
         let clear = section("clear");
         let mut ids: Vec<String> = Vec::new();
         ids.extend(
-            ["format-bold", "format-italic", "format-underline", "format-strike", "format-code", "format-link"]
-                .iter()
-                .map(|s| s.to_string()),
+            [
+                "format-bold",
+                "format-italic",
+                "format-underline",
+                "format-strike",
+                "format-code",
+                "format-link",
+            ]
+            .iter()
+            .map(|s| s.to_string()),
         );
         ids.extend(smart);
         ids.push("capsule-font".into());
@@ -1710,10 +1754,7 @@ mod tests {
     fn capsules_内嵌默认_12项且与TS_capsuleItems逐项一致() {
         let items = embedded_defaults_json(capsules_spec());
         assert_eq!(items.len(), 12, "胶囊默认集合必须恰 12 项（回归红线）");
-        let ids: Vec<&str> = items
-            .iter()
-            .filter_map(|i| i.get("id")?.as_str())
-            .collect();
+        let ids: Vec<&str> = items.iter().filter_map(|i| i.get("id")?.as_str()).collect();
         let ts_ids = ts_capsule_ids();
         assert_eq!(
             ids,
@@ -1771,10 +1812,7 @@ mod tests {
             .iter()
             .find(|i| i.get("id").and_then(|v| v.as_str()) == Some("format-bold"))
             .expect("format-bold 必在有效集合");
-        assert_eq!(
-            bold.get("label").and_then(|v| v.as_str()),
-            Some("加粗文字")
-        );
+        assert_eq!(bold.get("label").and_then(|v| v.as_str()), Some("加粗文字"));
     }
 
     #[test]
@@ -1783,7 +1821,10 @@ mod tests {
         let base = dir.path();
         write_capsules_user(base, r#"{"items":["format-bold","nope","format-italic"]}"#);
         let loaded = load_surface(capsules_spec(), base);
-        assert_eq!(item_ids(&loaded.items), vec!["format-bold", "format-italic"]);
+        assert_eq!(
+            item_ids(&loaded.items),
+            vec!["format-bold", "format-italic"]
+        );
         assert_eq!(loaded.warnings.len(), 1);
         assert!(loaded.warnings[0].contains("nope"));
     }
@@ -1927,5 +1968,45 @@ mod tests {
         std::fs::write(&path, r#"{"id":"html-toolbar","items":[]}"#).unwrap();
         let second = fingerprint(&path);
         assert_ne!(first, second);
+    }
+
+    #[test]
+    fn 面级快照_覆盖缺失不建目录_存在则留旧值并限量() {
+        let dir = temp_base("surface_snapshot");
+        let base = dir.path();
+        let spec = find_surface("capsules").expect("capsules 必登记");
+        // 覆盖缺失：不建目录、不报错（首写无旧值可拍）
+        snapshot_surface(base, spec).unwrap();
+        assert!(!base
+            .join("snapshots")
+            .join("surfaces")
+            .join("capsules")
+            .exists());
+
+        let path = user_override_path(base, spec);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(&path, r#"{"items":["format-bold"]}"#).unwrap();
+        snapshot_surface(base, spec).unwrap();
+        snapshot_surface(base, spec).unwrap();
+        let dir = base.join("snapshots").join("surfaces").join("capsules");
+        let names: Vec<String> = std::fs::read_dir(&dir)
+            .unwrap()
+            .filter_map(|e| e.ok())
+            .map(|e| e.file_name().to_string_lossy().into_owned())
+            .collect();
+        assert_eq!(names.len(), 2, "每次写前各拍一份: {names:?}");
+        let content = std::fs::read_to_string(dir.join(&names[0])).unwrap();
+        assert!(content.contains("format-bold"), "快照应保存写前旧值");
+
+        // 限量：写到超过 10 份后只留最新 10 份
+        for _ in 0..12 {
+            snapshot_surface(base, spec).unwrap();
+        }
+        let names: Vec<String> = std::fs::read_dir(&dir)
+            .unwrap()
+            .filter_map(|e| e.ok())
+            .map(|e| e.file_name().to_string_lossy().into_owned())
+            .collect();
+        assert_eq!(names.len(), SURFACE_SNAPSHOT_LIMIT, "快照限量 10 份");
     }
 }
