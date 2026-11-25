@@ -528,3 +528,78 @@ test("裁完图一写回后再点图二裁剪：应正常出框（复用 widget 
   });
   expect(frameOwner).toBe("乙");
 });
+
+test("带题注图片确认裁剪后：DOM 中不留任何裁剪/选中标识", async ({ page }) => {
+  // 真实文档的图二带题注（"索拉卡到付件"），题注行是残留的主要嫌疑。
+  await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
+  await page.goto("/", { waitUntil: "networkidle" });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 10000 });
+  const dataUrl = await page.evaluate(PNG_DATA_URL_2000x1400);
+  const base64 = dataUrl.split(",")[1];
+  await page.route("**/test-assets/titled.png", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "image/png",
+      body: Buffer.from(base64, "base64"),
+    }),
+  );
+  const src = `${new URL(page.url()).origin}/test-assets/titled.png`;
+  const doc = [
+    para(3),
+    `![甲](${src}){width=500}`,
+    para(3),
+    `![乙](${src} "索拉卡到付件"){width=620 height=380}`,
+    para(5),
+  ].join("\n\n");
+  await page.evaluate((doc) => {
+    const win = window as unknown as BridgeWindow;
+    win.__biaoyue_openFile__("/tmp/crop-session/titled.md", doc, "titled.md");
+    win.__biaoyue_store__.getState().setEditorMode("edit");
+  }, doc);
+  await page.locator(".cm-content").waitFor();
+
+  await centerImage(page, "乙");
+  await page.locator('.cm-image-widget img[alt="乙"]').click();
+  await page.getByTestId("img-toolbar-crop").click();
+  await expect(page.getByTestId("img-crop-frame")).toHaveCount(1);
+  const box = (await page
+    .locator('.cm-image-crop-frame [data-handle="se"]')
+    .boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x - 100, box.y - 60, { steps: 6 });
+  await page.mouse.up();
+  await page.getByTestId("img-crop-frame").dblclick();
+  await expect(page.getByTestId("img-crop-frame")).toHaveCount(0);
+  await page.waitForTimeout(250);
+
+  const inventory = await page.evaluate(() => {
+    const sel = [
+      ".cm-image-crop-frame",
+      ".cm-image-crop-active",
+      ".image-crop-window",
+      ".cm-image-handle",
+      ".cm-image-corner",
+      ".image-crop-mark",
+      ".cm-image-caption",
+      "[data-selected='true']",
+    ].join(",");
+    return [...document.querySelectorAll(sel)].map((el) => {
+      const r = el.getBoundingClientRect();
+      return {
+        cls: (el as HTMLElement).className?.toString().slice(0, 60),
+        w: Math.round(r.width),
+        h: Math.round(r.height),
+        visible: r.width > 0 && r.height > 0,
+        style: (el as HTMLElement).getAttribute("style")?.slice(0, 80) ?? "",
+      };
+    });
+  });
+  // 允许合法的裁剪窗口（.image-crop-window 是裁剪显示的承载盒），其余一律不得残留。
+  const leftovers = inventory.filter(
+    (e) => !e.cls.includes("image-crop-window"),
+  );
+  expect(leftovers).toEqual([]);
+  // 裁剪窗口本身不应该有可见描边类装饰。
+  expect(await page.locator(".cm-image-crop-active").count()).toBe(0);
+});

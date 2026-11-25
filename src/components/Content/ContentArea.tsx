@@ -368,6 +368,17 @@ const editorDecorationOptions: EditorDecorationsOptions = {
         // 裁剪是一次完成型操作：收工即退出选中态，收掉缩放把手/角点/描述行，
         // 避免被误认为「遗留的裁剪标识」。
         deselectImage();
+        // WKWebView 会把刚移除的裁剪图层 / 旧裁剪像素留成鬼影（「隐约残留」）：
+        // 让 widget 重新合成一次，冲掉缓存图层。
+        const host = document.querySelector<HTMLElement>(
+          `.cm-image-widget[data-image-from="${from}"]`,
+        );
+        if (host) {
+          host.style.transform = "translateZ(0)";
+          requestAnimationFrame(() => {
+            host.style.transform = "";
+          });
+        }
       },
     });
   },
