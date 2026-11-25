@@ -42,6 +42,7 @@ import {
   type RouletteItem,
 } from "./roulette-view";
 import { createCapsuleToolbar, type CapsuleItem } from "./capsule-toolbar";
+import { getCapsuleItems } from "../../lib/dataSurfaces/store";
 import { BACKGROUND_COLORS, FONT_COLORS, mapHueToType } from "./color-palette";
 import {
   ROULETTE_BOX,
@@ -808,34 +809,24 @@ export function floatingToolbar(allowCapsule = false) {
       primary: CapsuleItem[];
       secondary: CapsuleItem[];
     } => {
-      const format = (id: string) => actions.format.find((i) => i.id === id)!;
-      const toCapsule = (item: RouletteItem): CapsuleItem => ({
+      // 按钮集与顺序来自胶囊面（DS-7）；`run` 由代码侧按 id 分派。
+      const byId = new Map<string, RouletteItem>([
+        ...actions.smart,
+        ...actions.clear,
+        ...actions.format,
+      ].map((item) => [item.id, item]));
+      const runOf = (id: string): (() => void) => {
+        if (id === "capsule-font" || id === "capsule-bg") return () => {};
+        const item = byId.get(id);
+        if (item?.run) return () => item.run!();
+        return () => executeCommand(id, { view });
+      };
+      const primary: CapsuleItem[] = getCapsuleItems().map((item) => ({
         id: item.id,
         label: item.label,
         icon: item.icon,
-        run: () => {
-          if (item.run) item.run();
-          else if (item.commandId) {
-            executeCommand(item.commandId, { view });
-          }
-        },
-      });
-      // 回滚到 12 键量级的上一版胶囊（#916）：不再承载轮盘全量动作。
-      // 全部放 primary 以保持声明顺序（横向条断言格式组顺序不变）。
-      const primary: CapsuleItem[] = [
-        toCapsule(format("format-bold")),
-        toCapsule(format("format-italic")),
-        toCapsule(format("format-underline")),
-        toCapsule(format("format-strike")),
-        toCapsule(format("format-code")),
-        toCapsule(format("format-link")),
-        toCapsule(actions.smart[0]),
-        toCapsule(actions.smart[1]),
-        toCapsule(actions.smart[2]),
-        { id: "capsule-font", label: "字色", icon: "tune", run: () => {} },
-        { id: "capsule-bg", label: "背景色", icon: "droplet", run: () => {} },
-        toCapsule(actions.clear[0]),
-      ];
+        run: runOf(item.id),
+      }));
       return { primary, secondary: [] };
     };
 

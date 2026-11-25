@@ -150,6 +150,19 @@ function iconItems() {
   return cloneJson(DEFAULT_ICON_ITEMS);
 }
 
+// ── 数据面（capsules）mock state ─────────────────────────────
+// 默认集合与 src-tauri/src/resources/capsules.default.json 逐项一致；
+// 测试用 window.__biaoyue_capsule_items__ 覆盖默认项（list 型整体替换）。
+var DEFAULT_CAPSULE_ITEMS = [{"id": "format-bold", "label": "加粗", "icon": "bold", "order": 1}, {"id": "format-italic", "label": "斜体", "icon": "italic", "order": 2}, {"id": "format-underline", "label": "下划线", "icon": "underline", "order": 3}, {"id": "format-strike", "label": "删除线", "icon": "strike", "order": 4}, {"id": "format-code", "label": "行内代码", "icon": "code", "order": 5}, {"id": "format-link", "label": "链接", "icon": "link", "order": 6}, {"id": "ai-rewrite", "label": "改写", "icon": "edit", "order": 7}, {"id": "ai-translate", "label": "翻译", "icon": "globe", "order": 8}, {"id": "ai-polish", "label": "润色", "icon": "sparkle", "order": 9}, {"id": "capsule-font", "label": "字色", "icon": "tune", "order": 10}, {"id": "capsule-bg", "label": "背景色", "icon": "droplet", "order": 11}, {"id": "clear-format", "label": "清除格式", "icon": "brush", "order": 12}];
+
+
+function capsuleItems() {
+  var override = window.__biaoyue_capsule_items__;
+  return Array.isArray(override)
+    ? cloneJson(override)
+    : cloneJson(DEFAULT_CAPSULE_ITEMS);
+}
+
 // ── 扩展包管理（#184）mock state ─────────────────────────────
 var extensionPackages = [
   {
@@ -506,6 +519,7 @@ function mockInvoke(cmd, args) {
       { id: "html-toolbar", items: surfaceItems(), warnings: [] },
       { id: "menus", items: menuItems(), warnings: [] },
       { id: "icons", items: iconItems(), warnings: [] },
+      { id: "capsules", items: capsuleItems(), warnings: [] },
     ];
   }
   if (cmd === "list_extensions") {
