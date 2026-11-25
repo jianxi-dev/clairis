@@ -490,6 +490,7 @@ export const CALLOUT_MARK_ITEM: BlockMenuItem = {
   target: "callout",
   label: "高亮",
   icon: "HighlighterOutlined",
+  calloutKind: "highlight",
 };
 
 export function calloutAnnotationItems(): BlockMenuItem[] {
