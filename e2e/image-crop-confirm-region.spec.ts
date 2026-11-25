@@ -102,11 +102,11 @@ test("带 width 的图片裁剪确认后显示区域与预览一致", async ({ p
   await dragHandle(page, "nw", 180, 120);
   const preview = await boxOf(page, ".cm-image-crop-frame");
   expect(preview.width).toBeLessThan(590);
-  await page.screenshot({ path: ".artifacts/1437/05-crop-preview.png" });
+  await page.screenshot({ path: ".artifacts/1453/01-width-preview.png" });
 
   await page.getByTestId("img-crop-frame").dblclick();
   await expect(page.getByTestId("img-crop-frame")).toHaveCount(0);
-  await page.screenshot({ path: ".artifacts/1437/06-crop-confirmed.png" });
+  await page.screenshot({ path: ".artifacts/1453/02-width-confirmed.png" });
 
   const win = await boxOf(page, ".image-crop-window");
   expect(Math.abs(win.width / preview.width - 1)).toBeLessThanOrEqual(0.02);
@@ -212,6 +212,7 @@ test("无 width 图片：进入裁剪不撑高，确认不跳滚动且缩放不�
   await expect(page.getByTestId("img-crop-frame")).toHaveCount(1);
   await page.waitForTimeout(100);
   const inCrop = await state();
+  await page.screenshot({ path: ".artifacts/1453/03-noattr-enter.png" });
   // 进入裁剪：widget 高度不变（裁剪框不扩大显示区域）。
   expect(
     Math.abs(inCrop.widgetHeight - before.widgetHeight),
@@ -226,6 +227,7 @@ test("无 width 图片：进入裁剪不撑高，确认不跳滚动且缩放不�
   await expect(page.getByTestId("img-crop-frame")).toHaveCount(0);
   await page.waitForTimeout(120);
   const after = await state();
+  await page.screenshot({ path: ".artifacts/1453/04-noattr-confirmed.png" });
 
   // 确认不改变滚动位置（CM6 scroll anchoring 不吃过渡帧高度差）。
   // 与进入裁剪后（inCrop）对比：点击图片本身的光标 reveal 滚动是既有行为。
