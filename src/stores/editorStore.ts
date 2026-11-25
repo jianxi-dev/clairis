@@ -58,7 +58,8 @@ export interface EditorStore {
   reset: () => void;
 }
 
-const DEFAULT_HEADING_COLORS: HeadingColors = {
+/** 默认标题色板（H1–H6）：未配置时的回退值，导出供重载路径与测试引用。 */
+export const DEFAULT_HEADING_COLORS: HeadingColors = {
   h1: "#d73a49",
   h2: "#6f42c1",
   h3: "#005cc5",

@@ -1,7 +1,7 @@
 import { useEffect, useCallback, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { useEditorStore } from "../stores/editorStore";
+import { DEFAULT_HEADING_COLORS, useEditorStore } from "../stores/editorStore";
 import { useStore } from "../stores/index";
 import {
   normalizeDocPropertyVariant,
@@ -11,6 +11,7 @@ import { isTauriEnv } from "../utils/tauri";
 import { log } from "../utils/log";
 import type {
   AppConfig,
+  HeadingColors,
   HeadingFonts,
   PropertyBarConfig,
   ScrollPosition,
@@ -384,7 +385,11 @@ export function noticeDurationMs(seconds: number | null | undefined): number {
   return Math.min(NOTICE_DURATION_MAX_MS, Math.max(NOTICE_DURATION_MIN_MS, ms));
 }
 
-function applyRustConfig(raw: RustAppConfig): void {
+/**
+ * 把 Rust 配置映射到各 store 与 document。
+ * 导出仅供测试与 reload 路径使用（模块外不直接调用）。
+ */
+export function applyRustConfig(raw: RustAppConfig): void {
   const { config: propertyBarConfig, warnings } = normalizePropertyBar(
     raw.propertyBar,
   );
@@ -458,6 +463,13 @@ function applyRustConfig(raw: RustAppConfig): void {
 
   const es = useEditorStore.getState();
   es.setConfig(config);
+  // 桥接修复（bug #1482）：消费链（PreviewView / ContentArea）读顶层
+  // s.headingColors，而 setConfig 只合并 config 子对象，重载路径必须同步
+  // setHeadingColors，否则写盘成功的补丁在 UI 上永远不生效。
+  es.setHeadingColors(
+    (config.headingColors as HeadingColors | undefined) ??
+      DEFAULT_HEADING_COLORS,
+  );
   es.setFontSize(config.fontSize ?? 17);
   es.setConfigLoaded(true);
   useDocPropertyPanelStore.getState().applyLoadedPreference(
