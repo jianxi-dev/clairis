@@ -684,15 +684,18 @@ class ImageWidget extends WidgetType {
   }
 
   /**
-   * 只比较**业务内容**，不比较 `_from`。
+   * 比较内容 + 文档偏移。
    *
-   * `_from` 是 `!` 的文档偏移，上方任何键入都会让它漂移。把它放进 `eq`
-   * 会让下游每个图片 widget 在每次输入时失配 → CM6 丢弃旧 DOM、重建新
-   * DOM（`img.src` 重设、裁剪 rAF、工具条重定位全跑一遍），表现为「下方
-   * 内容抖动 / 闪没」（#1320）。偏移变化由 `updateDOM` 就地刷新锚点。
+   * CM6 的复用是两段式：`compare()`（= `eq`）为真时**整块复用、不调
+   * `updateDOM`**；只有 `eq` 为假才走 `updateDOM`。偏移若被排除在 `eq`
+   * 之外，上方编辑导致漂移后 DOM 会被直接复用、`data-image-from` 永远停在
+   * 旧值——点击选中/裁剪会指到别的行（#1456 复测）。纳入 `_from` 后，漂移
+   * 命中 `updateDOM` 分支：只刷新 dataset，不重建 DOM（#1320 的抖动由
+   * `updateDOM` 的实现保证不重建，而不是靠 `eq` 放过偏移）。
    */
   eq(other: ImageWidget): boolean {
     return (
+      other._from === this._from &&
       other._alt === this._alt &&
       other._path === this._path &&
       other._src === this._src &&
@@ -896,7 +899,15 @@ class ImageWidget extends WidgetType {
     container.addEventListener("click", () => {
       const view = EditorView.findFromDOM(container);
       if (view) setImageView(view);
-      selectImage(this._from, this._path, this._alt);
+      // 偏移必须从 DOM 现读：widget 内容未变时 CM6 会复用同一份 DOM
+      // （updateDOM 只刷新 dataset），闭包里的 this._from 会随上方编辑漂移，
+      // 选中/裁剪会指到别的行（#1456 复测「第二张图点裁剪没反应」）。
+      const liveFrom = Number(container.dataset.imageFrom);
+      selectImage(
+        Number.isFinite(liveFrom) ? liveFrom : this._from,
+        this._path,
+        this._alt,
+      );
       // 点图片不移动视口：选中图片会让编辑器的光标落到该行行首，CM6 顺手
       // 把光标滚进视口，整篇文档跳一屏（#1453 复测「第一次裁剪跳到顶部」）。
       pinWidgetScroll(container);
@@ -1013,9 +1024,11 @@ class ImageWidget extends WidgetType {
       );
       const view = EditorView.findFromDOM(container);
       if (!view) return;
+      // 同点击选中：写回位置用 DOM 上的实时偏移，避免复用 DOM 时写到旧位置。
+      const liveFrom = Number(container.dataset.imageFrom);
       applyImageSize(
         view,
-        this._from,
+        Number.isFinite(liveFrom) ? liveFrom : this._from,
         spec.width ? Math.round(width) : null,
         spec.height ? Math.round(height) : null,
       );

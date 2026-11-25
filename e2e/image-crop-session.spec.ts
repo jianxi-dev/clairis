@@ -481,3 +481,50 @@ test("内容塌陷导致的滚动夹取会被补回（真机塌陷签名）", as
   await page.waitForTimeout(400);
   expect(Math.abs((await scrollNow()) - guarded)).toBeLessThanOrEqual(2);
 });
+
+test("裁完图一写回后再点图二裁剪：应正常出框（复用 widget 的偏移新鲜度）", async ({
+  page,
+}) => {
+  await openTwoImages(page);
+  await centerImage(page, "甲");
+
+  // 图一：进入裁剪 → 向内拖 → 确认（文档变长，图二偏移漂移）。
+  await page.locator('.cm-image-widget img[alt="甲"]').click();
+  await page.getByTestId("img-toolbar-crop").click();
+  await expect(page.getByTestId("img-crop-frame")).toHaveCount(1);
+  const box = (await page
+    .locator('.cm-image-crop-frame [data-handle="se"]')
+    .boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x - 120, box.y - 80, { steps: 6 });
+  await page.mouse.up();
+  await page.getByTestId("img-crop-frame").dblclick();
+  await expect(page.getByTestId("img-crop-frame")).toHaveCount(0);
+  await page.waitForTimeout(200);
+  expect(await content(page)).toContain("crop=");
+
+  // 图二：点击 → 裁剪按钮 → 必须在图二上出框。
+  await centerImage(page, "乙");
+  await page.locator('.cm-image-widget img[alt="乙"]').click();
+  await page.waitForTimeout(120);
+  const selected = await page.evaluate(() => {
+    const el = document.querySelector(".cm-image-widget[data-selected='true']");
+    const img = el?.querySelector("img");
+    return {
+      alt: img?.getAttribute("alt") ?? null,
+      from: (el as HTMLElement | undefined)?.dataset.imageFrom ?? null,
+    };
+  });
+  expect(selected.alt).toBe("乙");
+
+  await page.getByTestId("img-toolbar-crop").click();
+  await page.waitForTimeout(150);
+  await expect(page.getByTestId("img-crop-frame")).toHaveCount(1);
+  const frameOwner = await page.evaluate(() => {
+    const frame = document.querySelector(".cm-image-crop-frame");
+    const widget = frame?.closest(".cm-image-widget") as HTMLElement | null;
+    return widget?.querySelector("img")?.getAttribute("alt") ?? null;
+  });
+  expect(frameOwner).toBe("乙");
+});
