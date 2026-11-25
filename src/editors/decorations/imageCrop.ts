@@ -15,7 +15,7 @@
  * 确认（双击裁剪框 / 工具条「裁剪」按钮 / 点框外）才写回并退出，Esc /
  * pointercancel 取消。未拖动就确认视同取消，不写出默认裁剪。
  */
-import { MIN_CROP_SIZE } from "./image";
+import { MIN_CROP_SIZE, cropDisplayCache, cropDisplayKey } from "./image";
 import { renderIcon } from "../icons";
 import { getSelectedImageFrom, notifyImageCropState } from "./imageToolbar";
 import {
@@ -265,7 +265,7 @@ function mount(
     win = document.createElement("span");
     win.className = WINDOW_CLASS;
     win.style.overflow = "hidden";
-    win.style.display = "inline-block";
+    win.style.display = "block";
     win.style.position = "relative";
     win.style.maxWidth = "100%";
     img.replaceWith(win);
@@ -325,6 +325,15 @@ function mount(
     img.style.transformOrigin = "0 0";
     win.style.width = `${rect.width}px`;
     win.style.height = `${rect.height}px`;
+    cropDisplayCache.set(
+      cropDisplayKey(img.getAttribute("src"), [
+        Math.round(rect.left / scale),
+        Math.round(rect.top / scale),
+        Math.round(rect.width / scale),
+        Math.round(rect.height / scale),
+      ]),
+      { width: rect.width, height: rect.height },
+    );
     // 裁剪框与可见内容重合：框就落在窗口布局盒上。
     frame.style.left = "0px";
     frame.style.top = "0px";

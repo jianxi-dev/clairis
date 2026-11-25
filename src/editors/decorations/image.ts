@@ -604,6 +604,24 @@ function computeResize(
 // --- 图片 widget -------------------------------------------------------------
 
 /**
+ * 裁剪显示尺寸缓存：键 = src|crop。无 width 锚点的裁剪图在 toDOM 时拿不到
+ * naturalWidth（img 尚未解码），没有缓存就只能先渲染无尺寸窗口等 rAF 测量——
+ * 那个过渡帧会让 CM6 的 scroll anchoring 把高度差补偿进 scrollTop（#1437）。
+ * 首次测量 / 进入裁剪后写入缓存，重建时同步套用，布局零过渡。
+ */
+export const cropDisplayCache = new Map<
+  string,
+  { width: number; height: number }
+>();
+
+export function cropDisplayKey(
+  src: string | null,
+  crop: [number, number, number, number],
+): string {
+  return `${src ?? ""}|${crop.join(",")}`;
+}
+
+/**
  * 把图片引用渲染成 `<img>`（解析出 URL 时）或 `[图片: path]` 文字回退。
  * 点击选中（工具条见 imageToolbar.ts），双击放大。
  */
@@ -732,7 +750,7 @@ class ImageWidget extends WidgetType {
         const win = document.createElement("span");
         win.className = "image-crop-window";
         win.style.overflow = "hidden";
-        win.style.display = "inline-block";
+        win.style.display = "block";
         win.style.position = "relative";
         win.style.maxWidth = "100%";
         img.style.position = "absolute";
@@ -748,48 +766,75 @@ class ImageWidget extends WidgetType {
 
         const applyCropScale = (scale: number): void => {
           if (!(scale > 0)) return;
-          win.style.width = `${w * scale}px`;
-          win.style.height = `${h * scale}px`;
           img.style.transform = `scale(${scale})`;
+          img.style.visibility = "visible";
+        };
+
+        const key = cropDisplayKey(this._src, this._crop);
+        const recordCropDisplay = (width: number, height: number): void => {
+          cropDisplayCache.set(key, { width, height });
         };
 
         if (this._width !== null && this._width > 0) {
-          // width 是可见裁剪显示宽：scale 由它与裁剪矩形自然宽求得。
+          // width 是可见裁剪显示宽：窗口尺寸由它直接给出，缩放同步应用——
+          // 首帧度量时布局就是最终值。
+          win.style.width = `${this._width}px`;
+          win.style.height = `${(this._width * h) / w}px`;
           applyCropScale(this._width / w);
         } else {
-          const measureCropScale = (): void => {
-            if (!img.isConnected || img.naturalWidth <= 0) return;
-            const prevDisplay = win.style.display;
-            const prev = {
-              width: img.style.width,
-              height: img.style.height,
-              transform: img.style.transform,
-              maxWidth: img.style.maxWidth,
-              position: img.style.position,
-              objectFit: img.style.objectFit,
-              objectPosition: img.style.objectPosition,
+          const cached = cropDisplayCache.get(key);
+          if (cached) {
+            // 重建（确认 / 装饰重建）：同步套用上次显示尺寸，无过渡帧。
+            win.style.width = `${cached.width}px`;
+            win.style.height = `${cached.height}px`;
+            applyCropScale(cached.width / w);
+          } else {
+            // 首次渲染且图片未解码：先隐藏内容，等 rAF 用整图显示宽求 scale，
+            // 量完即写缓存；此后同一 crop 的重建都走上面的同步分支。
+            img.style.visibility = "hidden";
+            const measureCropScale = (): void => {
+              if (!img.isConnected || img.naturalWidth <= 0) return;
+              const prevDisplay = win.style.display;
+              const prev = {
+                width: img.style.width,
+                height: img.style.height,
+                transform: img.style.transform,
+                maxWidth: img.style.maxWidth,
+                position: img.style.position,
+                objectFit: img.style.objectFit,
+                objectPosition: img.style.objectPosition,
+                visibility: img.style.visibility,
+              };
+              win.style.display = "contents";
+              img.style.width = "";
+              img.style.height = "";
+              img.style.transform = "";
+              img.style.maxWidth = "100%";
+              img.style.position = "";
+              img.style.objectFit = "";
+              img.style.objectPosition = "";
+              const fullW = img.getBoundingClientRect().width;
+              win.style.display = prevDisplay;
+              img.style.width = prev.width;
+              img.style.height = prev.height;
+              img.style.transform = prev.transform;
+              img.style.maxWidth = prev.maxWidth;
+              img.style.position = prev.position;
+              img.style.objectFit = prev.objectFit;
+              img.style.objectPosition = prev.objectPosition;
+              img.style.visibility = prev.visibility;
+              const scale = fullW / img.naturalWidth;
+              if (!(scale > 0)) return;
+              const winWidth = w * scale;
+              const winHeight = h * scale;
+              win.style.width = `${winWidth}px`;
+              win.style.height = `${winHeight}px`;
+              applyCropScale(scale);
+              recordCropDisplay(winWidth, winHeight);
             };
-            win.style.display = "contents";
-            img.style.width = "";
-            img.style.height = "";
-            img.style.transform = "";
-            img.style.maxWidth = "100%";
-            img.style.position = "";
-            img.style.objectFit = "";
-            img.style.objectPosition = "";
-            const fullW = img.getBoundingClientRect().width;
-            win.style.display = prevDisplay;
-            img.style.width = prev.width;
-            img.style.height = prev.height;
-            img.style.transform = prev.transform;
-            img.style.maxWidth = prev.maxWidth;
-            img.style.position = prev.position;
-            img.style.objectFit = prev.objectFit;
-            img.style.objectPosition = prev.objectPosition;
-            applyCropScale(fullW / img.naturalWidth);
-          };
-          requestAnimationFrame(measureCropScale);
-          img.addEventListener("load", measureCropScale);
+            requestAnimationFrame(measureCropScale);
+            img.addEventListener("load", measureCropScale);
+          }
         }
         mounted = win;
         roundHost = win;
