@@ -18,14 +18,14 @@
 |---|---|---|---|---|
 | A-2.1 | state-machine | 菜单面覆盖含缺 `action` 的项 → 有效集合 | 该项被过滤，告警恰 1 条含该项 id | D2 / DS-4 |
 | A-2.2 | exact | 图标面覆盖某概念键缺 `d`/`s`/`parts` 全部 path 字段 → 该概念键 | 回落默认 path，告警恰 1 条 | D2 / IconDef 一手证据 |
-| A-2.3 | state-machine | 形状非法项不影响其余合法项 | 其余合法项正常生效（有效集合非空） | D2 / DS-4 |
+| A-2.3 | state-machine | 形状非法项不影响其余合法项 | 其余合法项全部保留（有效集合项数 ≥ 1） | D2 / DS-4 |
 
 ## R-3 菜单面（DS-5）
 
 | id | kind | claim | assert | source |
 |---|---|---|---|---|
-| A-3.1 | exact | 覆盖把格头菜单某项 label 改为「查看源码」→ 格头 ⋯ 菜单该项显示 | 「查看源码」，不含「源码模式」 | DS-5 / paneHeaderMenu.ts:45 现值基准 |
-| A-3.2 | state-machine | 覆盖调整页签右键顺序并停用某项 → 页签右键菜单 | 按新顺序渲染，被停用项不出现 | DS-5 / TabBar.tsx:701 现行为基准 |
+| A-3.1 | exact | 覆盖把格头菜单某项 label 改为「查看源码」→ 格头 ⋯ 菜单该项显示 | 严格等于「查看源码」，「源码模式」出现次数 0 | DS-5 / paneHeaderMenu.ts:45 现值基准 |
+| A-3.2 | state-machine | 覆盖调整页签右键顺序并停用某项 → 页签右键菜单 | 顺序与覆盖一致（差 0 项），被停用项数 0 | DS-5 / TabBar.tsx:701 现行为基准 |
 | A-3.3 | state-machine | 六处消费端同源：外部修改 menus.json → 六处 | 1 秒内全部呈现新有效集合 | DS-5 / DS-8 |
 | A-3.4 | exact | 菜单默认集合项数 | 与既有六处内置项并集逐项一致（差 0 处） | D3 / 三表+右键+预设菜单一手证据 |
 
@@ -33,17 +33,17 @@
 
 | id | kind | claim | assert | source |
 |---|---|---|---|---|
-| A-4.1 | exact | 覆盖某概念键 label → 依赖该 label 的界面显示 | 新名称，不含旧名称 | DS-6 / Icon.tsx 消费一手证据 |
-| A-4.2 | state-machine | 覆盖替换某概念键 `s` 路径 → 该概念键渲染 | 使用新路径（SVG path `d` 属性变化） | DS-6 |
-| A-4.3 | state-machine | 覆盖新增概念键并定义 path 与 label → 菜单项 icon 引用 | 正常渲染（不回落默认） | DS-6 / issue #1496 用户故事 9 |
+| A-4.1 | exact | 覆盖某概念键 label → 依赖该 label 的界面显示 | 严格等于新名称，旧名称出现次数 0 | DS-6 / Icon.tsx 消费一手证据 |
+| A-4.2 | state-machine | 覆盖替换某概念键 `s` 路径 → 该概念键渲染 | 渲染 path `d` 属性与新路径逐字符相等（差 0 字符） | DS-6 |
+| A-4.3 | state-machine | 覆盖新增概念键并定义 path 与 label → 菜单项 icon 引用 | 新增概念键渲染成功，回落默认次数 0 | DS-6 / issue #1496 用户故事 9 |
 | A-4.4 | exact | 图标默认集合概念键数 | 与 `src/ui/icons.ts` 的 `ICONS` 键集逐值一致（差 0 处） | D3 / icons.ts 一手证据 |
 
 ## R-5 胶囊面（DS-7）
 
 | id | kind | claim | assert | source |
 |---|---|---|---|---|
-| A-5.1 | state-machine | 覆盖把胶囊面改为三个按钮 → 选区工具条 | 只渲染这三个按钮，顺序与面数据一致 | DS-7 / floating-toolbar.ts:825-841 现 12 项基准 |
-| A-5.2 | exact | 覆盖某胶囊项 label 改名 → 该按钮 | `title` 与 `aria-label` 均为新名称 | DS-7 / capsule-toolbar.ts:66-68 一手证据 |
+| A-5.1 | state-machine | 覆盖把胶囊面改为三个按钮 → 选区工具条 | 按钮数恰为 3，顺序与面数据逐项相等（差 0 项） | DS-7 / floating-toolbar.ts:825-841 现 12 项基准 |
+| A-5.2 | exact | 覆盖某胶囊项 label 改名 → 该按钮 | `title` 与 `aria-label` 均严格等于新名称（差 0 字符） | DS-7 / capsule-toolbar.ts:66-68 一手证据 |
 | A-5.3 | exact | 胶囊默认集合项数与顺序 | 12 项 id 与顺序不变（回归红线） | D3 / floating-toolbar.ts:825-841 现值 |
 
 ## R-6 AI 工具白名单扩展（AI-5）
