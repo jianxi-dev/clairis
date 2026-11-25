@@ -696,7 +696,7 @@ export function openBlockMenu(
     colorRow.className = "cm-block-menu-item";
     colorRow.dataset.testid = "block-menu-color";
     colorRow.style.height = `${MENU_ROW_HEIGHT}px`;
-    colorRow.appendChild(renderIcon("FontcolorOutlined"));
+    colorRow.appendChild(renderIcon("FormatColorTextOutlined"));
     const colorLabel = document.createElement("span");
     colorLabel.textContent = "颜色";
     colorRow.appendChild(colorLabel);
