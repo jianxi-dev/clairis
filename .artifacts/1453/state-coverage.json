@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "带 width 图片确认前后区域一致",
+      "screenshot": ".artifacts/1453/02-width-confirmed.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-25T03:17:34Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "无 width 图片进入裁剪不撑高",
+      "screenshot": ".artifacts/1453/03-noattr-enter.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-25T03:17:34Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "无 width 图片确认滚动位置不变",
+      "screenshot": ".artifacts/1453/04-noattr-confirmed.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-25T03:17:34Z",
+      "runner": "mason@MMBP"
+    },
+    {
+      "state": "带 width 图片拖拽预览",
+      "screenshot": ".artifacts/1453/01-width-preview.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-25T03:17:34Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}

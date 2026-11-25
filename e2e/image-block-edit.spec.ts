@@ -735,8 +735,15 @@ test("恢复整图：显示回到完整图，源码无裁剪属性", async ({ pa
   await openCropFrame(page);
   await dragHandle(page, "se", 40, 40);
   await page.getByTestId("img-crop-frame").dblclick();
-  await expect.poll(() => content(page)).toBe(CROP_DOC);
-  expect((await imgBox(page)).width).toBe(32);
+  // 拖回整图：crop 移除、显示恢复整图尺寸；width/height 保留为整图显示值
+  //（缩放锚点），不再是裁剪时的可见宽。
+  await expect.poll(() => content(page)).not.toContain("crop=");
+  expect((await content(page)).startsWith(`![示例图片](${PNG_DATA_URL})`)).toBe(
+    true,
+  );
+  const restored = await imgBox(page);
+  expect(restored.width).toBe(32);
+  expect(restored.height).toBe(32);
 });
 
 test("Esc 取消裁剪：显示与源码均无变化", async ({ page }) => {

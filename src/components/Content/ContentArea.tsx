@@ -317,23 +317,16 @@ const editorDecorationOptions: EditorDecorationsOptions = {
             ? parseImageAttributes(latest.attrText)
             : { ...EMPTY_IMAGE_ATTRIBUTES };
         if (rect) {
-          // 已有 width/height 锚点：跟进为可见裁剪显示尺寸，二次裁剪与确认
-          // 使用同一缩放。纯自动尺寸的图片不写宽高，渲染走整图测量路径。
+          // width/height 一律写回可见裁剪显示尺寸：渲染走同步 width/w 路径，
+          // 确认前后与二次裁剪使用同一缩放（不写回会按容器重新夹持，内容放大）。
           next.crop = rect;
-          if (attrs.width !== null) {
-            next.width = Math.max(1, Math.round(display.width));
-          }
-          if (attrs.height !== null) {
-            next.height = Math.max(1, Math.round(display.height));
-          }
+          next.width = Math.max(1, Math.round(display.width));
+          next.height = Math.max(1, Math.round(display.height));
         } else {
+          // 拖回整图：恢复整图显示宽高（缩放不变），crop 移除。
           next.crop = null;
-          if (attrs.width !== null) {
-            next.width = Math.max(1, Math.round(display.fullWidth));
-          }
-          if (attrs.height !== null) {
-            next.height = Math.max(1, Math.round(display.fullHeight));
-          }
+          next.width = Math.max(1, Math.round(display.fullWidth));
+          next.height = Math.max(1, Math.round(display.fullHeight));
         }
         writeImageAttributes(current, from, next);
       },
