@@ -321,6 +321,16 @@ const editorDecorationOptions: EditorDecorationsOptions = {
           latest.attrText !== null
             ? parseImageAttributes(latest.attrText)
             : { ...EMPTY_IMAGE_ATTRIBUTES };
+        // WebKit 在可编辑 DOM 变更后会「reveal 选区」：此刻选区还在图片行首
+        //（行顶可能已滚出视口上方），整篇文档会跳向顶部。先把选区挪到属性块
+        // 结尾（图片行底部、必然可见），reveal 落点可见 = 不滚。
+        const anchor = Math.min(latest.end, docText.length);
+        if (current.state.selection.main.anchor !== anchor) {
+          current.dispatch({
+            selection: { anchor },
+            scrollIntoView: false,
+          });
+        }
         if (rect) {
           // width/height 一律写回可见裁剪显示尺寸：渲染走同步 width/w 路径，
           // 确认前后与二次裁剪使用同一缩放（不写回会按容器重新夹持，内容放大）。
