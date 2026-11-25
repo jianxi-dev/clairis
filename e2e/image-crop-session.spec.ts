@@ -658,3 +658,24 @@ test("裁剪图拖比例手柄：拖动中不坍缩（可见尺寸跟随、内�
   expect(Math.abs(during.imgW - during.w)).toBeLessThanOrEqual(8);
   expect(Math.abs(during.imgH - during.h)).toBeLessThanOrEqual(8);
 });
+
+test("裁剪会话内点击图片旁的行：光标不落位、视口零位移（caret 揭示滚动回归）", async ({ page }) => {
+  await openTwoImages(page);
+  await centerImage(page, "甲");
+  await page.locator('.cm-image-widget img[alt="甲"]').click();
+  await page.getByTestId("img-toolbar-crop").click();
+  await expect(page.getByTestId("img-crop-frame")).toHaveCount(1);
+  await page.waitForTimeout(150);
+
+  const before = await page.evaluate(
+    () => document.querySelector(".cm-scroller")!.scrollTop,
+  );
+  // 双击确认的第一下落在图片旁的行上（真机 -344 跳变的触发点）。
+  const widgetBox = (await page.locator(".cm-image-widget").first().boundingBox())!;
+  await page.mouse.click(widgetBox.x - 18, widgetBox.y + widgetBox.height / 2);
+  await page.waitForTimeout(120);
+  const after = await page.evaluate(
+    () => document.querySelector(".cm-scroller")!.scrollTop,
+  );
+  expect(Math.abs(after - before)).toBeLessThanOrEqual(2);
+});

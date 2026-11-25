@@ -497,7 +497,20 @@ function mount(
     ] as const) {
       document.removeEventListener(type, noteGesture, true);
     }
+    document.removeEventListener("mousedown", suppressCaret, true);
     untraceScroll();
+    // WKWebView 合成层残影（残留边柄短横线）：DOM 已移除、样式已还原仍然可见。
+    // 1px 滚动回弹强制滚动层整层重合成，残影随之消失；1px 用户不可感知。
+    if (scroller && scroller.isConnected) {
+      requestAnimationFrame(() => {
+        if (!scroller.isConnected) return;
+        const st = scroller.scrollTop;
+        scroller.scrollTop = st + 1;
+        requestAnimationFrame(() => {
+          if (scroller.isConnected) scroller.scrollTop = st;
+        });
+      });
+    }
     if (activeCleanup === cleanup) clearActive();
     notifyImageCropState(false);
   };
@@ -672,20 +685,31 @@ function mount(
   // WebKit 不回填。判定用「与上一次观测相比：高度变小 且 滚动位置同时变小」
   // 这一夹取签名，不依赖一次性「用户滚过」标志（用户中途滚动一次就再也不会
   // 触发，正是大跳漏网的原因）。
-  const untraceScroll = scroller ? traceScrollTop(scroller) : () => {};
-  // 手势时间戳：裁剪框 / widget 上的按下、点击、双击之后 700ms 内发生的滚动
-  // 位移视为手势副作用（真机日志：确认前 12ms 出现 -518），一律补回。
-  let lastGestureAt = 0;
-  const noteGesture = (event: Event): void => {
+  // 会话内按下全局拦默认：双击确认的第一下常落在图片旁的行上（目标 cm-line），
+  // 光标随即落进图片块，WebKit 原生 caret 揭示滚动把视口拽走（真机日志：
+  // mousedown:cm-line 后 -344/-518 收敛到同一位置，无任何 scrollTop 赋值）。
+  // 会话期间除输入框与工具条外一律 preventDefault，光标不再落位。
+  const suppressCaret = (event: Event): void => {
     const target = event.target as Element | null;
     if (!target) return;
     if (
       target.closest(
-        ".cm-image-widget, .cm-image-crop-frame, [data-testid='img-toolbar']",
+        "input, textarea, [contenteditable='true'], [data-testid^='img-']",
       )
     ) {
-      lastGestureAt = performance.now();
+      return;
     }
+    event.preventDefault();
+  };
+  document.addEventListener("mousedown", suppressCaret, true);
+
+  const untraceScroll = scroller ? traceScrollTop(scroller) : () => {};
+  // 手势时间戳：裁剪框 / widget 上的按下、点击、双击之后 700ms 内发生的滚动
+  // 位移视为手势副作用（真机日志：确认前 12ms 出现 -518），一律补回。
+  let lastGestureAt = 0;
+  const mountedAt = performance.now();
+  const noteGesture = (): void => {
+    lastGestureAt = performance.now();
   };
   for (const type of ["pointerdown", "mousedown", "click", "dblclick"] as const) {
     document.addEventListener(type, noteGesture, true);
@@ -716,8 +740,13 @@ function mount(
       };
       requestAnimationFrame(restore);
     }
-    // 手势窗口内的位移：直接补回（不依赖高度签名）。
-    else if (performance.now() - lastGestureAt < 700 && Math.abs(top - lastTop) > 2) {
+    // 手势窗口内的位移：直接补回（不依赖高度签名）。仅会话前 500ms 生效——
+    // 之后只观测不还手，避免与浏览器滚动互相拉锯（真机「抖动」的来源）。
+    else if (
+      performance.now() - mountedAt < 500 &&
+      performance.now() - lastGestureAt < 700 &&
+      Math.abs(top - lastTop) > 2
+    ) {
       scroller.scrollTop = lastTop;
       return;
     }
