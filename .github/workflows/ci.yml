@@ -10,9 +10,9 @@ on:
 
 jobs:
   verify:
-    # 这一步只跑 tsc / vitest / CSS manifest，没有任何 macOS 专属动作；
+    # tsc / vitest / CSS manifest，没有任何 macOS 专属动作；
     # 放在 macos-latest 上既排队又烧额度（2026-11-03 连续四次拿不到 runner，
-    # job 根本没启动就被取消）。cargo 尚未纳入 CI，所以 Rust 工具链也一并去掉。
+    # job 根本没启动就被取消）。
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -23,9 +23,6 @@ jobs:
         with:
           node-version: 24
           cache: "npm"
-
-      # cargo check 尚未纳入 CI。要加时单独开一个 job，别和 web 检查抢同一个
-      # runner 的墙钟时间。
 
       - name: Install dependencies
         run: npm ci
@@ -39,5 +36,60 @@ jobs:
       - name: CSS manifest check
         run: bash scripts/css-manifest-check.sh
 
-      # E2E requires system Chrome — skip in CI for now
-      # (requires npx playwright install chromium with system deps)
+  rust-tests:
+    # #1441：135 个 #[test] 此前不在任何交付链路执行（ci.yml 与 verify.sh 都只
+    # cargo check）。独立 job，不与 web 检查抢墙钟。tauri v2 在 linux 编译需要
+    # webkit/gtk 系统库，装依赖 + rust-cache 控制墙钟。
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Tauri Linux system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libxdo-dev \
+            libssl-dev \
+            build-essential \
+            curl \
+            wget \
+            file
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cargo cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Rust tests
+        run: cargo test --manifest-path src-tauri/Cargo.toml
+
+  e2e-smoke:
+    # #1441：冒烟子集（3 个高价值低抖动的 mock 驱动 spec）。选自近期稳定跑绿的
+    # 用例；完整 e2e 仍走本地 verify.sh（860+ 用例在 ubuntu runner 上不现实）。
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: E2E smoke subset
+        run: npx playwright test --config=playwright.smoke.config.ts
