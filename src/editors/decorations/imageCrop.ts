@@ -16,6 +16,7 @@
  * 确认（双击裁剪框 / 工具条「裁剪」按钮 / 点框外）才写回并退出，Esc /
  * pointercancel 取消。未拖动就确认视同取消，不写出默认裁剪。
  */
+import { markCropProbe } from "../../utils/cropJumpProbe";
 import { MIN_CROP_SIZE, cropDisplayCache, cropDisplayKey } from "./image";
 import { getSelectedImageFrom, notifyImageCropState } from "./imageToolbar";
 import {
@@ -489,6 +490,11 @@ function mount(
     const end = imageRectFromDisplay(rect, scale);
     drag = null;
     const scrollBefore = scroller ? scroller.scrollTop : null;
+    markCropProbe("crop-confirm", {
+      changed,
+      rect: { ...rect },
+      scrollBefore,
+    });
     cleanup();
     pinScroll(scroller, scrollBefore);
     if (!changed) return;
@@ -594,6 +600,7 @@ function mount(
   document.addEventListener("keydown", onKey, true);
   document.addEventListener("click", onOutsideClick, true);
 
+  markCropProbe("crop-enter", { from: options.from ?? null, crop: options.crop });
   activeCleanup = cleanup;
   activeConfirm = confirm;
   const hostFrom = Number(widget.dataset.imageFrom);

@@ -41,6 +41,7 @@ import {
   writeImageAttributes,
   writeImageTitle,
 } from "../../editors/decorations/image";
+import { markCropProbe } from "../../utils/cropJumpProbe";
 import {
   closeImageCrop,
   confirmImageCrop,
@@ -343,7 +344,9 @@ const editorDecorationOptions: EditorDecorationsOptions = {
           next.width = Math.max(1, Math.round(display.fullWidth));
           next.height = Math.max(1, Math.round(display.fullHeight));
         }
+        markCropProbe("crop-write", { from, rect, display });
         writeImageAttributes(current, from, next);
+        markCropProbe("crop-written", { from });
       },
     });
   },

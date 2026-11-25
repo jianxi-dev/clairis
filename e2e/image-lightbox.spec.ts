@@ -123,7 +123,7 @@ test("双击打开浮层：滚轮放大后 scale > 1", async ({ page }) => {
   await page.screenshot({ path: path.join(ART, "02-zoomed.png") });
 });
 
-test("双击预览应用裁剪：object-position 等于裁剪偏移", async ({ page }) => {
+test("双击预览应用裁剪：画布快照只含裁剪区域（与编辑态同区域）", async ({ page }) => {
   await openEditor(
     page,
     `![示例](${PNG_DATA_URL}){crop=3,3,26,26}\n`,
@@ -132,13 +132,23 @@ test("双击预览应用裁剪：object-position 等于裁剪偏移", async ({ p
   );
   await openLightbox(page);
 
-  const pos = await page.evaluate(() => {
-    const img = document.querySelector(
-      '[data-testid="img-maximize"] img',
-    ) as HTMLImageElement | null;
-    return img ? img.style.objectPosition : null;
-  });
-  expect(pos).toBe("-3px -3px");
+  // 画布快照替换 1:1 兜底渲染：src 变为 data URL，尺寸 = 裁剪矩形。
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const img = document.querySelector(
+          '[data-testid="img-maximize"] img',
+        ) as HTMLImageElement | null;
+        if (!img) return null;
+        return {
+          src: img.src.slice(0, 15),
+          objectPosition: img.style.objectPosition,
+          nw: img.naturalWidth,
+          nh: img.naturalHeight,
+        };
+      }),
+    )
+    .toEqual({ src: "data:image/png;", objectPosition: "", nw: 26, nh: 26 });
 });
 
 test("放大后拖动：平移变化且不越界", async ({ page }) => {

@@ -974,12 +974,39 @@ export function openImageMaximize(
     img.alt = alt;
     img.draggable = false;
     if (crop) {
-      // 与行内裁剪显示同一坐标系：盒子=裁剪矩形，object-fit:none 平移到 (l,t)。
+      // 兜底渲染（加载期间）：object-fit:none 平移到 (l,t)，1:1 不缩放——
+      // 区域与编辑态不一致，只作过渡。
       const [l, t, w, h] = crop;
       img.style.objectFit = "none";
       img.style.objectPosition = `${-l}px ${-t}px`;
       img.style.width = `${w}px`;
       img.style.height = `${h}px`;
+      // 随后用画布按裁剪矩形重绘（双击放大应看到「裁出来的那块」，与编辑态
+      // 同一区域），替换 src；画布被污染或来源未解码时保留兜底渲染。
+      const target = img;
+      const source = new Image();
+      source.crossOrigin = "anonymous";
+      source.onload = () => {
+        if (maximizeImg !== target) return;
+        try {
+          const cap = 2048;
+          const k = Math.min(1, cap / Math.max(w, h));
+          const canvas = document.createElement("canvas");
+          canvas.width = Math.max(1, Math.round(w * k));
+          canvas.height = Math.max(1, Math.round(h * k));
+          const ctx = canvas.getContext("2d");
+          if (!ctx) return;
+          ctx.drawImage(source, l, t, w, h, 0, 0, canvas.width, canvas.height);
+          target.src = canvas.toDataURL("image/png");
+          target.style.objectFit = "";
+          target.style.objectPosition = "";
+          target.style.width = "";
+          target.style.height = "";
+        } catch {
+          /* tainted canvas：保留 1:1 兜底渲染 */
+        }
+      };
+      source.src = src;
     }
     overlay.appendChild(img);
   } else {
