@@ -303,9 +303,21 @@ function createCalloutBar(
   element.setAttribute("aria-label", mark ? "纯高亮工具条" : "高亮块工具条");
 
   let popup: HTMLElement | null = null;
+  let openedAt = 0;
+  const onPopupOutsideDown = (e: PointerEvent): void => {
+    if (!popup) return;
+    const t = e.target;
+    if (t instanceof Node && (popup.contains(t) || colorButton.contains(t))) return;
+    closePopup();
+  };
+  const onPopupKey = (e: KeyboardEvent): void => {
+    if (e.key === "Escape") closePopup();
+  };
   const closePopup = (): void => {
     popup?.remove();
     popup = null;
+    document.removeEventListener("pointerdown", onPopupOutsideDown, true);
+    document.removeEventListener("keydown", onPopupKey, true);
   };
 
   const colorButton = document.createElement("button");
@@ -335,11 +347,9 @@ function createCalloutBar(
     );
     const onPick = (key: CalloutColorKey, className: string): void => {
       applyCalloutColorToBlock(view, block.from, block.to, key, className);
-      closePopup();
     };
     const onReset = (): void => {
       resetCalloutColors(view, block.from, block.to);
-      closePopup();
     };
     wrap.appendChild(
       mark
@@ -349,13 +359,20 @@ function createCalloutBar(
             onReset,
             onRandom: () => {
               randomHighlightColors(view, block.from, block.to);
-              closePopup();
             },
           })
         : buildCalloutColorPanel({ active, onPick, onReset }),
     );
-    element.appendChild(wrap);
+    wrap.classList.add("cm-callout-color-pop-floating");
+    document.body.appendChild(wrap);
+    const btnRect = colorButton.getBoundingClientRect();
+    const width = wrap.offsetWidth || 232;
+    wrap.style.left = `${Math.max(8, Math.min(btnRect.left, window.innerWidth - width - 8))}px`;
+    wrap.style.top = `${btnRect.bottom + 6}px`;
     popup = wrap;
+    openedAt = Date.now();
+    document.addEventListener("pointerdown", onPopupOutsideDown, true);
+    document.addEventListener("keydown", onPopupKey, true);
   };
 
   colorButton.addEventListener("mousedown", (event) => {
@@ -367,8 +384,15 @@ function createCalloutBar(
   colorButton.addEventListener("click", (event) => {
     event.preventDefault();
     event.stopPropagation();
-    if (popup) closePopup();
-    else openColorPopup();
+    if (!popup) {
+      openColorPopup();
+      return;
+    }
+    if (Date.now() - openedAt < 300) return;
+    closePopup();
+  });
+  colorButton.addEventListener("pointerenter", () => {
+    if (!popup) openColorPopup();
   });
 
   const destroy = (): void => {
