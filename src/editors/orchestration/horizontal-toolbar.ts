@@ -18,7 +18,8 @@ import {
 } from "./toolbar-shared";
 import { useAiEntryStore } from "../../hooks/useAiEntry";
 import { useEditorStore } from "../../stores/editorStore";
-import { HTML_TOOLBAR_ITEMS, resolveToolbarOrder } from "./slots";
+import { resolveToolbarOrder } from "./slots";
+import { getSurfaceItems } from "../../lib/dataSurfaces/store";
 
 const SHOW_DELAY_MS = 90;
 
@@ -205,12 +206,14 @@ export function horizontalToolbar(options?: { copyOnly?: boolean }) {
         return root;
       }
 
+      const items = getSurfaceItems("html-toolbar");
       const order = resolveToolbarOrder(
         useEditorStore.getState().config.htmlToolbarItems,
+        items,
       );
       let lastGroup: string | null = null;
       for (const id of order) {
-        const item = HTML_TOOLBAR_ITEMS.find((entry) => entry.id === id);
+        const item = items.find((entry) => entry.id === id);
         if (!item) continue;
         if (lastGroup !== null && item.group !== lastGroup) {
           root.appendChild(separator());

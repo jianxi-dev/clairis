@@ -32,6 +32,30 @@ try {
   if (__persisted) { aiState.config = JSON.parse(__persisted); }
 } catch (e) { /* 忽略 */ }
 
+// ── 数据面（html-toolbar）mock state ─────────────────────────
+// 默认集合与 src-tauri/src/resources/html-toolbar.default.json 逐项一致；
+// 测试用 window.__biaoyue_surface_items__ 覆盖默认项，用
+// window.__biaoyue_surface_error__ 模拟加载失败。
+var DEFAULT_SURFACE_ITEMS = [
+  { id: "ai-rewrite", label: "改写", icon: "edit", group: "ai" },
+  { id: "ai-translate", label: "翻译", icon: "globe", group: "ai" },
+  { id: "ai-polish", label: "润色", icon: "sparkle", group: "ai" },
+  { id: "format-bold", label: "粗体", icon: "bold", group: "format" },
+  { id: "format-italic", label: "斜体", icon: "italic", group: "format" },
+  { id: "format-underline", label: "下划线", icon: "underline", group: "format" },
+  { id: "format-strike", label: "删除线", icon: "strike", group: "format" },
+  { id: "format-code", label: "行内代码", icon: "code", group: "format" },
+  { id: "format-link", label: "链接", icon: "link", group: "format" },
+  { id: "align-left", label: "左对齐", icon: "alignLeft", group: "align" },
+  { id: "align-center", label: "居中", icon: "alignCenter", group: "align" },
+  { id: "align-right", label: "右对齐", icon: "alignRight", group: "align" },
+];
+
+function surfaceItems() {
+  var override = window.__biaoyue_surface_items__;
+  return Array.isArray(override) ? cloneJson(override) : cloneJson(DEFAULT_SURFACE_ITEMS);
+}
+
 // ── 扩展包管理（#184）mock state ─────────────────────────────
 var extensionPackages = [
   {
@@ -246,6 +270,12 @@ function mockInvoke(cmd, args) {
       defaultName: args.defaultName,
     });
     return "/Users/test/" + (args.defaultName || "导出.png");
+  }
+  if (cmd === "load_surfaces") {
+    if (window.__biaoyue_surface_error__) {
+      return Promise.reject(new Error("mock load_surfaces 失败"));
+    }
+    return [{ id: "html-toolbar", items: surfaceItems(), warnings: [] }];
   }
   if (cmd === "list_extensions") {
     // 测试通过 window.__biaoyue_extensions__ 注入用户片段；未注入时返回空快照。

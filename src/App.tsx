@@ -46,6 +46,8 @@ import { log } from "./utils/log";
 import { popOverlay, pushOverlay } from "./lib/overlayGate";
 import { loadExtensionBundle } from "./lib/extensions/bundle";
 import type { ExtensionBundle } from "./lib/extensions/bundle";
+import { loadSurfaces } from "./lib/dataSurfaces/loader";
+import { reloadSurface, setSurfaces } from "./lib/dataSurfaces/store";
 import {
   applyTemplatePlaceholders,
   todayStamp,
@@ -252,6 +254,27 @@ function App() {
       setTemplates(bundle.templates);
       applyThemeTokens(bundle.themeTokens);
     });
+  }, []);
+
+  // 数据面：启动拉有效集合；`surfaces-changed` 只重载对应面，不走全量 config-changed 重放（DS-2）。
+  useEffect(() => {
+    if (!isTauri) return;
+    void loadSurfaces(invoke).then((surfaces) => setSurfaces(surfaces));
+    let unlisten: (() => void) | undefined;
+    let cancelled = false;
+    listen("surfaces-changed", (event: { payload?: unknown }) => {
+      const id = typeof event.payload === "string" ? event.payload : "";
+      if (id) void reloadSurface(id, invoke);
+    })
+      .then((fn) => {
+        if (cancelled) fn();
+        else unlisten = fn;
+      })
+      .catch((e) => log.warn("App", "surfaces-changed listener unavailable", e));
+    return () => {
+      cancelled = true;
+      unlisten?.();
+    };
   }, []);
 
   // 原生顶栏跟随主题：system 传 null 交回系统（Tauri 语义），非 Tauri 环境跳过。

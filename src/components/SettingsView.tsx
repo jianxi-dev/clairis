@@ -37,7 +37,7 @@ import {
 } from "../lib/propTemplates";
 import { BUILTIN_ALIAS_MAP, type FrontmatterType } from "../lib/frontmatter";
 import { useEditorStore } from "../stores/editorStore";
-import { HTML_TOOLBAR_ITEMS } from "../editors/orchestration/slots";
+import { getSurfaceItems } from "../lib/dataSurfaces/store";
 import { ROULETTE_HOTKEY_DEFAULT } from "../editors/orchestration/roulette";
 import {
   READER_WIDTH_MAX,
@@ -1231,8 +1231,9 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
     void saveAppConfig();
   };
 
+  const surfaceToolbarItems = getSurfaceItems("html-toolbar");
   const activeToolbarItems: string[] =
-    htmlToolbarItems ?? HTML_TOOLBAR_ITEMS.map((item) => item.id);
+    htmlToolbarItems ?? surfaceToolbarItems.map((item) => item.id);
   const saveToolbarItems = (next: string[]) => {
     setConfig({ htmlToolbarItems: next.length > 0 ? next : null });
     void saveAppConfig();
@@ -1785,12 +1786,12 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
                 <ul className="space-y-1">
                   {[
                     ...activeToolbarItems,
-                    ...HTML_TOOLBAR_ITEMS.map((item) => item.id).filter(
+                    ...surfaceToolbarItems.map((item) => item.id).filter(
                       (id) => !activeToolbarItems.includes(id),
                     ),
                   ].map((id) => {
                     const label =
-                      HTML_TOOLBAR_ITEMS.find((item) => item.id === id)
+                      surfaceToolbarItems.find((item) => item.id === id)
                         ?.label ?? id;
                     const included = activeToolbarItems.includes(id);
                     const idx = activeToolbarItems.indexOf(id);

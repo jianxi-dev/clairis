@@ -6,6 +6,7 @@ mod extension_packages;
 mod extensions;
 mod fonts;
 mod media_protocol;
+mod surfaces;
 mod types;
 mod validation;
 
@@ -34,6 +35,11 @@ use extension_packages::{
 #[tauri::command]
 fn register_media_path(path: String) {
     media_protocol::register_media_path(path);
+}
+
+#[tauri::command]
+fn load_surfaces(app: tauri::AppHandle) -> Vec<surfaces::SurfaceLoad> {
+    surfaces::load_all(&config::config_base(&app))
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -194,6 +200,7 @@ pub fn run() {
             }
 
             config::spawn_config_watcher(app.handle().clone());
+            surfaces::spawn_surfaces_watcher(app.handle().clone());
             config::seed_skill_map(app.handle());
 
             Ok(())
@@ -205,6 +212,7 @@ pub fn run() {
             move_file,
             read_file_base64,
             register_media_path,
+            load_surfaces,
             save_file,
             save_as_file,
             save_binary_as_file,

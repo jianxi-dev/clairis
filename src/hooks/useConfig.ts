@@ -46,6 +46,7 @@ import {
   type ViewSpec,
 } from "../lib/aiViewSpec";
 import { normalizeHeadingFonts } from "../lib/headingFonts";
+import { getSurfaceItems } from "../lib/dataSurfaces/store";
 
 /** Snake-case config from Rust, mapped to camelCase in the store. */
 interface RustAppConfig {
@@ -338,28 +339,14 @@ export function normalizeRouletteSectors(
   return out.length > 0 ? out : null;
 }
 
-const HTML_TOOLBAR_IDS = [
-  "ai-rewrite",
-  "ai-translate",
-  "ai-polish",
-  "format-bold",
-  "format-italic",
-  "format-underline",
-  "format-strike",
-  "format-code",
-  "format-link",
-  "align-left",
-  "align-center",
-  "align-right",
-] as const;
-
 export function normalizeHtmlToolbarItems(
   raw: string[] | null | undefined,
 ): string[] | null {
   if (!Array.isArray(raw) || raw.length === 0) return null;
+  const known = new Set(getSurfaceItems("html-toolbar").map((item) => item.id));
   const out: string[] = [];
   for (const id of raw) {
-    if (!HTML_TOOLBAR_IDS.some((known) => known === id)) {
+    if (!known.has(id)) {
       log.warn("Config", `忽略未知工具条动作: ${id}`);
       continue;
     }
