@@ -57,7 +57,7 @@ import { PROVIDERS } from "../lib/providers";
 import { formatSnapshotTime } from "../hooks/useAiEntry";
 import { isTauriEnv } from "../utils/tauri";
 import Icon from "./Icon";
-import { ICONS, ICON_NAMES } from "../ui/icons";
+
 import {
   SHORTCUT_FAMILY_LABELS,
   SHORTCUT_FAMILY_ORDER,
@@ -1233,6 +1233,8 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
   };
 
   const surfaceToolbarItems = getSurfaceItems<ToolbarSlotItem>("html-toolbar");
+  // 图标抽屉列「面数据的概念键集合」：默认键 + 用户新增键（DS-6），label 取面数据。
+  const iconEntries = getSurfaceItems<{ key: string; label: string }>("icons");
   const activeToolbarItems: string[] =
     htmlToolbarItems ?? surfaceToolbarItems.map((item) => item.id);
   const saveToolbarItems = (next: string[]) => {
@@ -1547,14 +1549,14 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
                   data-testid="icon-drawer"
                   className="grid max-h-56 grid-cols-2 gap-1.5 overflow-auto rounded border border-[var(--app-border)] p-2"
                 >
-                  {ICON_NAMES.map((name) => (
+                  {iconEntries.map(({ key, label }) => (
                     <div
-                      key={name}
-                      data-icon-entry={name}
+                      key={key}
+                      data-icon-entry={key}
                       className="flex items-center gap-1.5 text-xs text-[var(--app-text-2)]"
                     >
-                      <Icon name={name} size={18} />
-                      <span className="truncate">{ICONS[name].label}</span>
+                      <Icon name={key} size={18} />
+                      <span className="truncate">{label}</span>
                       <span className="ml-auto shrink-0 text-[10px] text-[var(--app-text-3)]">
                         18/24
                       </span>

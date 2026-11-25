@@ -8,7 +8,8 @@
  * 前端不再保留任何兜底常量。
  *
  * 形状（DS-4）：`html-toolbar` 项为 `ToolbarSlotItem`；`menus` 项为 `MenuItem`
- * （含 group / order / action / enabled）。归一化按面 id 分派。
+ * （含 group / order / action / enabled）；`icons` 项为 `IconSpec`（概念键 /
+ * label / path 组）。归一化按面 id 分派。
  */
 
 import type { ToolbarSlotItem } from "../../editors/orchestration/slots";
@@ -32,6 +33,23 @@ export interface MenuItem {
   enabled: boolean;
 }
 
+/** 图标多段中的一段（与 `IconPart` 对齐）。 */
+export interface IconPart {
+  d?: string;
+  s?: string;
+  dash?: string;
+}
+
+/** 图标项（design D2）：`key` 是概念键，`label` 是显示名称，path 组可选。 */
+export interface IconSpec {
+  key: string;
+  label: string;
+  d?: string;
+  s?: string;
+  dash?: string;
+  parts?: IconPart[];
+}
+
 /** 归一化后的面：items 为原始项（消费端按面 id 解释）。 */
 export interface NormalizedSurface {
   id: string;
@@ -43,7 +61,7 @@ export interface NormalizedSurface {
  * 前端已知面清单。必须与 Rust `src-tauri/src/surfaces.rs` 的 `SURFACES` 表
  * 逐值一致——由 `src/__tests__/lib/dataSurfacesParity.test.ts` 对账锁定。
  */
-export const SUPPORTED_SURFACES = ["html-toolbar", "menus"] as const;
+export const SUPPORTED_SURFACES = ["html-toolbar", "menus", "icons"] as const;
 
 /** 菜单六处消费端分组（与 Rust `MENU_GROUPS` 对账）。 */
 export const MENU_GROUPS = [
@@ -103,12 +121,59 @@ export function toMenuItem(raw: unknown): MenuItem | null {
   };
 }
 
+/** 宽松解析单个图标项；缺 key / label / path 组返回 null（DS-4）。 */
+export function toIconSpec(raw: unknown): IconSpec | null {
+  if (!isRecord(raw)) return null;
+  const { key, label, d, s, dash, parts } = raw;
+  if (typeof key !== "string" || key === "") return null;
+  if (typeof label !== "string" || label === "") return null;
+  const str = (v: unknown): string | undefined =>
+    typeof v === "string" && v !== "" ? v : undefined;
+  const out: IconSpec = { key, label };
+  const dd = str(d);
+  const ss = str(s);
+  const dashValue = str(dash);
+  if (dd !== undefined) out.d = dd;
+  if (ss !== undefined) out.s = ss;
+  if (dashValue !== undefined) out.dash = dashValue;
+  if (parts !== undefined) {
+    if (!Array.isArray(parts)) return null;
+    const parsed: IconPart[] = [];
+    for (const part of parts) {
+      if (!isRecord(part)) return null;
+      const p: IconPart = {};
+      const pd = str(part.d);
+      const ps = str(part.s);
+      const pdash = str(part.dash);
+      if (pd !== undefined) p.d = pd;
+      if (ps !== undefined) p.s = ps;
+      if (pdash !== undefined) p.dash = pdash;
+      parsed.push(p);
+    }
+    out.parts = parsed;
+  }
+  const hasPath =
+    out.d !== undefined ||
+    out.s !== undefined ||
+    (out.parts ?? []).some((p) => p.d !== undefined || p.s !== undefined);
+  if (!hasPath) return null;
+  return out;
+}
+
 /** 按面 id 解析 item；形状不对的项被丢弃（不整体失败）。 */
 function parseItems(id: string, rawItems: unknown[]): unknown[] {
   if (id === "menus") {
     const out: MenuItem[] = [];
     for (const entry of rawItems) {
       const item = toMenuItem(entry);
+      if (item !== null) out.push(item);
+    }
+    return out;
+  }
+  if (id === "icons") {
+    const out: IconSpec[] = [];
+    for (const entry of rawItems) {
+      const item = toIconSpec(entry);
       if (item !== null) out.push(item);
     }
     return out;
@@ -161,9 +226,7 @@ export function normalizeSurface(
     }
     if (seen.has(id)) continue;
     seen.add(id);
-    const item = defaults.find(
-      (entry) => isRecord(entry) && entry.id === id,
-    );
+    const item = defaults.find((entry) => isRecord(entry) && entry.id === id);
     if (item !== undefined) out.push(item);
   }
   const warnings = [...surface.warnings];
