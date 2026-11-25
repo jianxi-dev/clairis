@@ -16,7 +16,7 @@
  * 确认（双击裁剪框 / 工具条「裁剪」按钮 / 点框外）才写回并退出，Esc /
  * pointercancel 取消。未拖动就确认视同取消，不写出默认裁剪。
  */
-import { markCropProbe } from "../../utils/cropJumpProbe";
+import { markCropProbe, traceScrollTop } from "../../utils/cropJumpProbe";
 import { MIN_CROP_SIZE, cropDisplayCache, cropDisplayKey } from "./image";
 import { getSelectedImageFrom, notifyImageCropState } from "./imageToolbar";
 import {
@@ -489,6 +489,15 @@ function mount(
     if (scroller) {
       scroller.removeEventListener("scroll", onScrollGuard);
     }
+    for (const type of [
+      "pointerdown",
+      "mousedown",
+      "click",
+      "dblclick",
+    ] as const) {
+      document.removeEventListener(type, noteGesture, true);
+    }
+    untraceScroll();
     if (activeCleanup === cleanup) clearActive();
     notifyImageCropState(false);
   };
@@ -663,6 +672,25 @@ function mount(
   // WebKit 不回填。判定用「与上一次观测相比：高度变小 且 滚动位置同时变小」
   // 这一夹取签名，不依赖一次性「用户滚过」标志（用户中途滚动一次就再也不会
   // 触发，正是大跳漏网的原因）。
+  const untraceScroll = scroller ? traceScrollTop(scroller) : () => {};
+  // 手势时间戳：裁剪框 / widget 上的按下、点击、双击之后 700ms 内发生的滚动
+  // 位移视为手势副作用（真机日志：确认前 12ms 出现 -518），一律补回。
+  let lastGestureAt = 0;
+  const noteGesture = (event: Event): void => {
+    const target = event.target as Element | null;
+    if (!target) return;
+    if (
+      target.closest(
+        ".cm-image-widget, .cm-image-crop-frame, [data-testid='img-toolbar']",
+      )
+    ) {
+      lastGestureAt = performance.now();
+    }
+  };
+  for (const type of ["pointerdown", "mousedown", "click", "dblclick"] as const) {
+    document.addEventListener(type, noteGesture, true);
+  }
+
   let lastTop = scroller ? scroller.scrollTop : 0;
   let lastHeight = scroller ? scroller.scrollHeight : 0;
   const onScrollGuard = (): void => {
@@ -687,6 +715,11 @@ function mount(
         requestAnimationFrame(restore);
       };
       requestAnimationFrame(restore);
+    }
+    // 手势窗口内的位移：直接补回（不依赖高度签名）。
+    else if (performance.now() - lastGestureAt < 700 && Math.abs(top - lastTop) > 2) {
+      scroller.scrollTop = lastTop;
+      return;
     }
     lastTop = top;
     lastHeight = h;
