@@ -1,0 +1,195 @@
+{
+  "change": "data-surface-contract-v1",
+  "requirements": [
+    {
+      "id": "R-1",
+      "text": "补丁写边界校验（CF-7）",
+      "anchors": [
+        {
+          "id": "A-1.1",
+          "claim": "合法补丁执行后 `state/state.json` 与执行前",
+          "kind": "state-machine",
+          "assert": "逐字节一致（差 0）",
+          "source": "设计稿 §5.8（删 state 写入 + 字节不变测试）/ config.rs:993-1018 一手证据 / D2"
+        },
+        {
+          "id": "A-1.2",
+          "claim": "未知顶层键补丁的返回",
+          "kind": "exact",
+          "assert": "校验错误含 `\"fontSizeX\"` 键路径；user/settings.json 差 0 字节",
+          "source": "D1（写边界 allowlist）/ config.rs 无 deny_unknown_fields 一手证据"
+        },
+        {
+          "id": "A-1.3",
+          "claim": "嵌套未知键（propertyBar.unknownField）补丁的返回",
+          "kind": "exact",
+          "assert": "校验错误含 `\"propertyBar.unknownField\"`；磁盘差 0 字节",
+          "source": "D1（嵌套递归校验）"
+        },
+        {
+          "id": "A-1.4",
+          "claim": "state 专属键（recentFiles）补丁的返回",
+          "kind": "exact",
+          "assert": "校验错误含 `\"recentFiles\"`；state.json 差 0 字节",
+          "source": "D1（state 键一律拒绝）/ 设计稿 §5.8"
+        },
+        {
+          "id": "A-1.5",
+          "claim": "user 层仅含 theme 时打 fontSize 补丁，写后 user 层键集",
+          "kind": "exact",
+          "assert": "键集 → 原键集 ∪ {\"fontSize\"}，多出键数 0",
+          "source": "D2（只写合并后 user diff）/ config.rs:1002-1014 全量写一手证据"
+        },
+        {
+          "id": "A-1.6",
+          "claim": "user 层含历史未知键时 load_config",
+          "kind": "state-machine",
+          "assert": "正常加载（错误数 0）",
+          "source": "D1（读取宽松，Codex #2 裁定）"
+        },
+        {
+          "id": "A-1.7",
+          "claim": "补丁返回值与 load_config_at 结果",
+          "kind": "exact",
+          "assert": "逐值一致（差 0 处，含 state 层读取结果）",
+          "source": "D2（返回真实有效配置）/ 设计稿 §5.8 返回值修正"
+        }
+      ]
+    },
+    {
+      "id": "R-2",
+      "text": "数据面默认源与有效集合（DS-1）",
+      "anchors": [
+        {
+          "id": "A-2.1",
+          "claim": "首次启动（defaults 层无面文件）→ 物化",
+          "kind": "state-machine",
+          "assert": "文件出现且与内嵌默认 diff 0 处（12 项一致）",
+          "source": "D3（物化语义同 ensure_defaults）/ slots.ts:10-31 双真相一手证据"
+        },
+        {
+          "id": "A-2.2",
+          "claim": "覆盖 `[\"format-bold\",\"nope\",\"format-italic\"]` 的有效集合",
+          "kind": "exact",
+          "assert": "`[\"format-bold\",\"format-italic\"]`，默认剩余项不补回，告警含 `nope` 恰 1 条",
+          "source": "D3（未知 id 过滤 + 聚合告警）/ horizontal-toolbar.ts:209-213 现行为基准"
+        },
+        {
+          "id": "A-2.3",
+          "claim": "覆盖为空或全非法 → 有效集合",
+          "kind": "state-machine",
+          "assert": "回到默认集合（12 项，非空）",
+          "source": "D3（空回落默认）"
+        },
+        {
+          "id": "A-2.4",
+          "claim": "物化默认文件损坏（非法 JSON）→ 有效集合",
+          "kind": "state-machine",
+          "assert": "恢复内嵌默认 12 项；物化文件可重建",
+          "source": "D3（内嵌 SURFACE_DEFAULTS 兜底）"
+        },
+        {
+          "id": "A-2.5",
+          "claim": "默认集合内容与既有内置顺序",
+          "kind": "exact",
+          "assert": "逐项一致（12 项 id 与顺序不变）",
+          "source": "D8（回归保障）/ slots.ts:10-28 现值"
+        }
+      ]
+    },
+    {
+      "id": "R-3",
+      "text": "面级加载与变更事件（DS-2）",
+      "anchors": [
+        {
+          "id": "A-3.1",
+          "claim": "`load_surfaces` 返回结构",
+          "kind": "exact",
+          "assert": "含全部已登记面（本变更 1 个：html-toolbar）的有效集合与告警",
+          "source": "D4 / design.md 数据面六栏"
+        },
+        {
+          "id": "A-3.2",
+          "claim": "外部修改面文件 → 事件",
+          "kind": "state-machine",
+          "assert": "1 秒内发出 surfaces-changed(id)",
+          "source": "D4（500ms 指纹去抖）/ CF-5 既有 1s 语义"
+        },
+        {
+          "id": "A-3.3",
+          "claim": "surfaces-changed 到达后 pane 布局与编辑器状态",
+          "kind": "state-machine",
+          "assert": "保持原值（重置 0 次，只重载对应面）",
+          "source": "D4（不复用 applyRustConfig，Codex #10）/ useConfig.ts:135 SAVE_ECHO_WINDOW 一手证据"
+        }
+      ]
+    },
+    {
+      "id": "R-4",
+      "text": "agent 工具集合（AI-1）",
+      "anchors": [
+        {
+          "id": "A-4.1",
+          "claim": "tool_schemas 工具名集合",
+          "kind": "exact",
+          "assert": "恰为 read_config / patch_config / list_snapshots / read_data_surface / patch_data_surface（3→5）",
+          "source": "D5 / ai_agent.rs:187-226 现三工具一手证据"
+        }
+      ]
+    },
+    {
+      "id": "R-5",
+      "text": "patch_config 行为收紧（AI-2）",
+      "anchors": [
+        {
+          "id": "A-5.1",
+          "claim": "state.json 含 recentFiles 后打 theme 补丁",
+          "kind": "state-machine",
+          "assert": "state.json 差 0 字节",
+          "source": "同 A-1.1（D2）"
+        },
+        {
+          "id": "A-5.2",
+          "claim": "合法补丁写入前",
+          "kind": "state-machine",
+          "assert": "快照数 +1（list_snapshots 可见）",
+          "source": "既有 CF-3 语义保持 / D2"
+        }
+      ]
+    },
+    {
+      "id": "R-6",
+      "text": "数据面读写工具（AI-5）",
+      "anchors": [
+        {
+          "id": "A-6.1",
+          "claim": "read_data_surface(\"html-toolbar\") 返回结构",
+          "kind": "exact",
+          "assert": "恰含 3 键：\"effective\" / \"defaults\" / \"warnings\"",
+          "source": "D5"
+        },
+        {
+          "id": "A-6.2",
+          "claim": "patch_data_surface 改覆盖集合 → 有效集合变化",
+          "kind": "state-machine",
+          "assert": "快照数 +1；有效集合 → 新值",
+          "source": "D5 + D2（复用校验快照链路）"
+        },
+        {
+          "id": "A-6.3",
+          "claim": "read_data_surface(\"menus\")（未登记 id）返回",
+          "kind": "exact",
+          "assert": "结构化错误（面未登记）；写入数 0",
+          "source": "D5（面白名单）"
+        },
+        {
+          "id": "A-6.4",
+          "claim": "patch_data_surface 执行后 defaults 物化文件",
+          "kind": "state-machine",
+          "assert": "差 0 字节（AI 只写用户覆盖）",
+          "source": "D5 / D3"
+        }
+      ]
+    }
+  ]
+}
