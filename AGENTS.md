@@ -53,8 +53,9 @@ Biaoyue 面向中文用户，维护者母语为中文。以下为**硬约定**�
 
 ## 命令
 
-- `npm run dev` — Vite dev server，端口固定 1420（strictPort）。
+- `npm run dev` — Vite dev server，端口固定 1420（strictPort；可用 `VITE_DEV_PORT` 覆盖）。
 - `npm run tauri dev` — 完整桌面应用（真实 Rust 后端）。UI 验收必须用它。
+- `bash scripts/session-worktree.sh` — 开新并行会话前运行：主工作区忙（dev server/近期改动）时自动创建独立 worktree（含 node_modules 软链与空闲 `VITE_DEV_PORT`），避免两会话互踩（learnings 2026-11-16）。
 - `npm test` — vitest run（jsdom）。**只收集 `src/__tests__/**/*.test.{ts,tsx}`**——测试写在源码旁不会被执行。
 - 单个测试：`npx vitest run src/__tests__/editorStore.test.ts`。
 - `npx tsc --noEmit` — 类型检查（CI 跑这条）。没有 `npm run lint`，ESLint 用 `npx eslint src/`。
