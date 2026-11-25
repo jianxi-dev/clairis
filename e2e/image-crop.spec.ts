@@ -284,9 +284,9 @@ test("8 个控制点：方向光标 + 裁剪角标", async ({ page }) => {
       };
     }),
   );
-  // 四角为裁剪图标，四边为可见短柄；8 个控制点统一用自定义裁剪指针
-  // （白描边 + 黑括号），与缩放把手的方向箭头区分（#1453 复测）。
-  expect(probe.filter((p) => p.iconKey === "CropOutlined")).toHaveLength(4);
+  // 四角为直角括号标识（CropCorner），四边为可见短柄；8 个控制点统一用
+  // 自定义裁剪指针，与缩放把手的方向箭头区分（#1453 复测）。
+  expect(probe.filter((p) => p.iconKey === "CropCorner")).toHaveLength(4);
   expect(probe.filter((p) => p.hasMark)).toHaveLength(4);
   for (const p of probe) {
     expect(p.cursor).toContain("url(");

@@ -17,7 +17,6 @@
  * pointercancel 取消。未拖动就确认视同取消，不写出默认裁剪。
  */
 import { MIN_CROP_SIZE, cropDisplayCache, cropDisplayKey } from "./image";
-import { renderIcon } from "../icons";
 import { getSelectedImageFrom, notifyImageCropState } from "./imageToolbar";
 import {
   displayRectFromImageRect,
@@ -57,19 +56,41 @@ const LOAD_TIMEOUT_MS = 2000;
 const WINDOW_CLASS = "image-crop-window";
 const TOAST_CLASS = "image-crop-toast";
 
-/** 四角括号把手统一用裁剪图标（A-4.4：与工具条裁剪按钮同一键名）。 */
-const HANDLE_ICON = "CropOutlined";
 /** 角标命中区边长（px）：四角与四边一致，明显可点。 */
 const HANDLE_HIT_SIZE = 18;
 /** 角标图标显示尺寸（px）。 */
 const HANDLE_ICON_SIZE = 20;
-/** 每个角标的旋转角：让裁剪括号的开口朝向框内。 */
-const CORNER_ROTATE: Record<string, string> = {
-  nw: "0deg",
-  ne: "90deg",
-  se: "180deg",
-  sw: "270deg",
+
+/**
+ * 四角标识：按用户示例改为粗直角括号字形（20×20、描边 2.5、方帽），逐角
+ * 朝向、开口朝框内——nw=⌜ ne=⌝ se=﹂ sw=⌞，顶点贴近所在角。颜色沿用主题
+ * （editor.css 的 `.cm-image-crop-frame .cm-image-handle svg`）。
+ */
+const CORNER_MARK_PATHS: Record<string, string> = {
+  nw: "M4 16 V4 H16",
+  ne: "M16 16 V4 H4",
+  se: "M16 4 V16 H4",
+  sw: "M4 4 V16 H16",
 };
+const CORNER_MARK_STROKE = 2.5;
+
+function cornerMarkSvg(handle: string): SVGSVGElement {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", "0 0 20 20");
+  svg.setAttribute("width", String(HANDLE_ICON_SIZE));
+  svg.setAttribute("height", String(HANDLE_ICON_SIZE));
+  svg.setAttribute("fill", "none");
+  svg.dataset.icon = "CropCorner";
+  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  path.setAttribute("d", CORNER_MARK_PATHS[handle] ?? CORNER_MARK_PATHS.se);
+  path.setAttribute("stroke", "currentColor");
+  path.setAttribute("stroke-width", String(CORNER_MARK_STROKE));
+  path.setAttribute("stroke-linecap", "square");
+  path.setAttribute("stroke-linejoin", "miter");
+  svg.appendChild(path);
+  return svg;
+}
+
 const CORNERS: readonly string[] = ["nw", "ne", "se", "sw"];
 
 /** 当前挂着的裁剪收尾函数；null 表示没有裁剪框。 */
@@ -356,15 +377,13 @@ function mount(
     span.style.height = `${HANDLE_HIT_SIZE}px`;
     span.title = "拖动调整裁剪区域";
     if (CORNERS.includes(handle)) {
-      const icon = renderIcon(HANDLE_ICON);
-      icon.style.width = `${HANDLE_ICON_SIZE}px`;
-      icon.style.height = `${HANDLE_ICON_SIZE}px`;
+      const icon = cornerMarkSvg(handle);
       icon.style.position = "absolute";
       icon.style.left = "50%";
       icon.style.top = "50%";
       // 颜色跟随主题（浅底深标 / 暗底浅标），见 editor.css 的
       // `.cm-image-crop-frame .cm-image-handle svg`；不在这里写死。
-      icon.style.transform = `translate(-50%, -50%) rotate(${CORNER_ROTATE[handle]})`;
+      icon.style.transform = "translate(-50%, -50%)";
       span.appendChild(icon);
     } else {
       const mark = document.createElement("i");
