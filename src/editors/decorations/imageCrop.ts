@@ -156,7 +156,7 @@ function pinScroll(
   scroller.addEventListener("wheel", stop, { passive: true });
   scroller.addEventListener("touchstart", stop, { passive: true });
   window.addEventListener("keydown", stop);
-  let elapsed = 0;
+  const startedAt = performance.now();
   const pin = (): void => {
     scroller.removeEventListener("wheel", stop);
     scroller.removeEventListener("touchstart", stop);
@@ -165,8 +165,8 @@ function pinScroll(
     if (Math.abs(scroller.scrollTop - scrollTop) >= 0.5) {
       scroller.scrollTop = scrollTop;
     }
-    elapsed += 1;
-    if (elapsed < 24) requestAnimationFrame(pin);
+    // 时间窗而非帧数：headless / 高刷屏的帧率差异不会缩短覆盖时长。
+    if (performance.now() - startedAt < 450) requestAnimationFrame(pin);
   };
   requestAnimationFrame(pin);
 }
@@ -430,7 +430,7 @@ function mount(
   applyDisplay();
 
   interface DragState {
-    mode: "move" | "resize";
+    mode: "move" | "resize" | "draw";
     handle: string | null;
     startX: number;
     startY: number;
@@ -534,8 +534,11 @@ function mount(
     const target = event.target as Element | null;
     const handleEl = target?.closest("[data-handle]") as HTMLElement | null;
     frame.setPointerCapture(event.pointerId);
+    // 整图状态下框体无处可移（可移动区间为 0），拖框体按「画新选区」处理，
+    // 否则用户以为裁剪不可用。
+    const atFullImage = rect.width >= fullW - 1 && rect.height >= fullH - 1;
     drag = {
-      mode: handleEl ? "resize" : "move",
+      mode: handleEl ? "resize" : atFullImage ? "draw" : "move",
       handle: handleEl?.dataset.handle ?? null,
       startX: event.clientX,
       startY: event.clientY,
@@ -547,7 +550,19 @@ function mount(
     if (!drag) return;
     const dxScreen = event.clientX - drag.startX;
     const dyScreen = event.clientY - drag.startY;
-    if (drag.mode === "move") {
+    if (drag.mode === "draw") {
+      // 画出新选区：起点到当前指针（显示坐标），夹在整图范围内。
+      const x = clamp(drag.start.left + dxScreen, 0, fullW);
+      const y = clamp(drag.start.top + dyScreen, 0, fullH);
+      const minX = MIN_CROP_SIZE * scale.x;
+      const minY = MIN_CROP_SIZE * scale.y;
+      rect.left = Math.min(x, drag.start.left);
+      rect.top = Math.min(y, drag.start.top);
+      rect.width = Math.max(minX, Math.abs(x - drag.start.left));
+      rect.height = Math.max(minY, Math.abs(y - drag.start.top));
+      rect.width = Math.min(rect.width, fullW - rect.left);
+      rect.height = Math.min(rect.height, fullH - rect.top);
+    } else if (drag.mode === "move") {
       rect.left = clamp(
         drag.start.left + dxScreen,
         0,
@@ -615,21 +630,44 @@ function mount(
   // 「跳到顶部」（WebKit 无 scroll anchoring，真机必现；Chromium 掩盖了它）。
   // 会话存活期间把归零的滚动位置补回；用户滚轮 / 触摸 / 按键立即让位。
   let guardTop = scroller ? scroller.scrollTop : 0;
+  let guardHeight = scroller ? scroller.scrollHeight : 0;
   let userScrollIntent = false;
   const noteUserScroll = (): void => {
     userScrollIntent = true;
-    if (scroller) guardTop = scroller.scrollTop;
+    if (scroller) {
+      guardTop = scroller.scrollTop;
+      guardHeight = scroller.scrollHeight;
+    }
   };
+  /**
+   * 只处理「内容变矮 → 浏览器夹取 scrollTop」这一种签名：scrollHeight 变小且
+   * scrollTop 随之变小。合法滚动（点选其它图片、跳转、键入跟光标）不改变
+   * 高度，一律放行。检测到夹取后，等内容高度恢复再把滚动位置补回进入值。
+   */
   const onScrollGuard = (): void => {
-    if (!scroller || userScrollIntent) return;
-    if (scroller.scrollTop !== 0 || guardTop <= 40) return;
-    requestAnimationFrame(() => {
-      if (!scroller.isConnected || userScrollIntent) return;
-      if (scroller.scrollTop !== 0) return;
-      // 内容还没恢复（仍在塌陷）就等下一轮，避免和布局打架。
-      if (scroller.scrollHeight <= scroller.clientHeight + 40) return;
-      scroller.scrollTop = guardTop;
-    });
+    if (!scroller || userScrollIntent || !scroller.isConnected) return;
+    const h = scroller.scrollHeight;
+    const top = scroller.scrollTop;
+    if (h + 2 < guardHeight && top + 2 < guardTop) {
+      const target = guardTop;
+      const needHeight = guardHeight;
+      let frames = 0;
+      const restore = (): void => {
+        if (!scroller || userScrollIntent || !scroller.isConnected) return;
+        frames += 1;
+        if (frames > 40) return;
+        // 高度恢复（布局落地）后再补，避免和塌陷中的布局打架。
+        if (scroller.scrollHeight >= needHeight - 2) {
+          if (Math.abs(scroller.scrollTop - target) > 2) {
+            scroller.scrollTop = target;
+          }
+          return;
+        }
+        requestAnimationFrame(restore);
+      };
+      requestAnimationFrame(restore);
+    }
+    guardHeight = h;
   };
   if (scroller) {
     scroller.addEventListener("scroll", onScrollGuard);
@@ -644,7 +682,6 @@ function mount(
   activeFrom = Number.isFinite(hostFrom) ? hostFrom : null;
   activeHost = widget;
   notifyImageCropState(true);
-  pinScroll(scroller, scrollAtMount);
 }
 
 const HANDLE_AXES: Record<
