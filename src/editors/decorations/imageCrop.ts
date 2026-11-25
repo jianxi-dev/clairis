@@ -458,7 +458,13 @@ function mount(
   };
 
   const cleanup = (): void => {
-    frame.remove();
+    // 先隐藏再移除：帧是定位 + z-index 的合成层，直接 remove 会在 WKWebView
+    // 留下旧图层的残影（真机截图确认：图片上下边中部的黑色短横线）。
+    // display:none 强制先绘制一次「没有帧」的状态，再移除节点。
+    frame.style.display = "none";
+    requestAnimationFrame(() => {
+      frame.remove();
+    });
     // 兜底清扫：widget 被编辑器重建、跨图重开等路径可能留下旧框或裁剪态类，
     // 让「保存后裁剪标识隐约存留」不再可能。
     document
@@ -472,6 +478,14 @@ function mount(
     document.removeEventListener("click", onOutsideClick, true);
     restoreWindow();
     restoreDisplay();
+    // WKWebView 的旧图层缓存只会在该子树重绘后被丢弃：visibility 切换
+    // 不改变布局（盒子尺寸保留），但强制整块重绘。
+    if (widget.isConnected) {
+      widget.style.visibility = "hidden";
+      requestAnimationFrame(() => {
+        if (widget.isConnected) widget.style.visibility = "";
+      });
+    }
     if (scroller) {
       scroller.removeEventListener("scroll", onScrollGuard);
     }
