@@ -1,0 +1,33 @@
+{
+  "task": "1456-crop-session-and-preview",
+  "states": [
+    {
+      "state": "01-cross-image-crop",
+      "screenshot": ".artifacts/1456/01-cross-image-crop.png",
+      "assertion": "甲图挂着裁剪框时点乙图裁剪，第一下即出乙图的框；甲图无裁剪态",
+      "recorded_at": "2026-11-25T05:39:56.385099Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "02-crop-cursor-handles",
+      "screenshot": ".artifacts/1456/02-crop-cursor-handles.png",
+      "assertion": "裁剪 8 个控制点统一自定义括号指针（computed cursor 含 url(…, crosshair)），与缩放箭头不同",
+      "recorded_at": "2026-11-25T05:39:56.385099Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "03-after-confirm-clean",
+      "screenshot": ".artifacts/1456/03-after-confirm-clean.png",
+      "assertion": "拖动后双击确认：残留裁剪框 0 / 裁剪态类 0，内容写入 crop",
+      "recorded_at": "2026-11-25T05:39:56.385099Z",
+      "runner": "mason@unknown"
+    },
+    {
+      "state": "04-preview-matches-edit",
+      "screenshot": ".artifacts/1456/04-preview-matches-edit.png",
+      "assertion": "切到预览：.preview-img-crop 盒宽高与编辑态裁剪窗口一致（±2px）",
+      "recorded_at": "2026-11-25T05:39:56.385099Z",
+      "runner": "mason@unknown"
+    }
+  ]
+}
