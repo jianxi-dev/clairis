@@ -1086,6 +1086,10 @@ body {
   border: 0;
   cursor: move;
   touch-action: none;
+  /* 拖裁剪框不能触发原生选区：WebKit 会因此把 caret（文档头）滚进视口，
+   * 表现为整篇跳到顶部（真机日志 1257 → 0 且 docH 不变）。 */
+  user-select: none;
+  -webkit-user-select: none;
   z-index: 30;
 }
 

@@ -525,6 +525,24 @@ function mount(
     confirm();
   };
 
+  // WebKit：pointerdown 的 preventDefault 不会取消随后的 mousedown 默认行为，
+  // 原生选区拖动会从文档起点开始，把 caret 滚进视口 —— 滚动跳到 0（真机日志
+  // 1257 → 0 且 docH 不变）。必须同时拦 mousedown 与 selectstart。
+  frame.addEventListener(
+    "mousedown",
+    (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+    },
+    true,
+  );
+  frame.addEventListener("selectstart", (event) => {
+    event.preventDefault();
+  });
+  frame.addEventListener("dragstart", (event) => {
+    event.preventDefault();
+  });
+
   frame.addEventListener("pointerdown", (event) => {
     event.preventDefault();
     event.stopPropagation();
