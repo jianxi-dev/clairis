@@ -5,7 +5,7 @@
  * 本探针把关键节点（进入 / 写回 / 清理）与每一次显著滚动跳变记录到
  * `<docPath>.crop-debug.log`，由维护者直接读文件定位机制。
  *
- * 纯观察者：不改任何布局与行为。跳变阈值 30px；真机经 save_file 整体落盘，
+ * 纯观察者：不改任何布局与行为。跳变阈值 5px（小跳也要留证）；真机经 save_file 整体落盘，
  * 浏览器 / mock 环境只入 ring buffer 不写文件。
  */
 import { invoke } from "@tauri-apps/api/core";
@@ -101,7 +101,7 @@ export function installCropJumpProbe(): void {
         : "content-scroll";
       if (lastTop !== null && lastScroller === which) {
         const delta = Math.abs(top - lastTop);
-        if (delta >= 30) {
+        if (delta >= 5) {
           const viewStats = readViewStats();
           const record: JumpRecord = {
             t: Math.round(performance.now()),
