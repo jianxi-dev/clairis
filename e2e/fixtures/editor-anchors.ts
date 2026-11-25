@@ -5,8 +5,9 @@
  * spec 只做断言，不改数字。
  *
  * 来源：
- * - `openspec/specs/editing/spec.md` E-7（手柄 42×26、菜单 176 / 行高 36，2026-11-03 放大一档）
- * - `md-bundle/docs/doubao-editor-study/ui-gap-and-target.md` §2.2（图标 20px，同上放大一档）
+ * - `openspec/specs/editing/spec.md` E-7（手柄 42×26、菜单 176 / 行高 32 / 图标 18；
+ *   行高与图标 2026-11-25 经 `menu-geometry-spec-sync` 裁定对齐实现，#1434）
+ * - `md-bundle/docs/doubao-editor-study/ui-gap-and-target.md` §2.2（图标基准，见上）
  *   §2.3（菜单宽度与行高）§4.3（转为 10 项）
  * - `openspec/changes/editor-block-parity/anchors.md`（R-1 表格结构项 3 个）
  */
@@ -14,8 +15,8 @@
 export const EDITOR_ANCHORS = {
   /** 块手柄药丸尺寸（E-7）。 */
   handle: { width: 42, height: 26 },
-  /** 块菜单（E-7；豆包 §2.3）。 */
-  menu: { width: 176, rowHeight: 36 },
+  /** 块菜单（E-7；豆包 §2.3；行高 2026-11-25 随 menu-geometry-spec-sync 收敛 32）。 */
+  menu: { width: 176, rowHeight: 32 },
   /** 菜单行内图标渲染尺寸（设计系统 §2.1 常规档；E-47 由 20px 收敛）。 */
   menuIcon: 18,
   /** 「转为」单元数（豆包 §4.3；editor-refine-batch2 D1 起末尾固定「高亮」「标注」两项）。 */

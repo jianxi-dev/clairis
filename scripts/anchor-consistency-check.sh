@@ -55,7 +55,7 @@ echo "== 规格/实现/锚点 三方一致性（#1442）=="
 
 # --- 菜单几何（E-7 / menu-metrics / editor-anchors）---
 check "menu_width"      "176"    "$SPEC_EDITING" "176px 宽"                       "$IMPL_MENU" "MENU_WIDTH = 176"          "$TEST_ANCHORS" "width: 176"
-check "menu_row_height" "36"     "$SPEC_EDITING" "行高 36px"                      "$IMPL_MENU" "MENU_ROW_HEIGHT = 36"      "$TEST_ANCHORS" "rowHeight: 36"
+check "menu_row_height" "32"     "$SPEC_EDITING" "行高 32px"                      "$IMPL_MENU" "MENU_ROW_HEIGHT = 32"      "$TEST_ANCHORS" "rowHeight: 32"
 check "menu_icon_size"  "18"     "$SPEC_DESIGN"  "14 / 18 / 24 三档"              "$IMPL_ICONS" 'ICON_SIZE_PX = "18px"'    "$TEST_ANCHORS" "menuIcon: 18"
 check "handle_pill"     "42x26"  "$SPEC_EDITING" "42×26 药丸"                     "$IMPL_CSS"  "width: 42px;"              "$TEST_ANCHORS" "handle: \{ width: 42, height: 26 \}"
 
