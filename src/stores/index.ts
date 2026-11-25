@@ -81,6 +81,22 @@ type SplitDirection = "horizontal" | "vertical";
 /** AI 停靠窗格在分栏树里的固定 leaf id（layout-portal 9.1）。 */
 export const AI_PANE_ID = "ai";
 
+/** 滚动位置表逐条目比较（bug #1494）：键集合与每个数值字段都相等才算相同。 */
+function sameScrollPositions(
+  a: Record<string, ScrollPosition>,
+  b: Record<string, ScrollPosition>,
+): boolean {
+  const ak = Object.keys(a);
+  const bk = Object.keys(b);
+  if (ak.length !== bk.length) return false;
+  return ak.every(
+    (k) =>
+      k in b &&
+      a[k].scrollPos === b[k].scrollPos &&
+      a[k].contentHeight === b[k].contentHeight,
+  );
+}
+
 /** 选择能承载文件页签的普通栏：聚焦普通栏 → 最近普通栏 → 首个普通栏。 */
 export function tabsHostLeaf(
   root: PaneLayout,
@@ -853,6 +869,9 @@ export const useStore = create<AppStore>((set, get) => ({
   },
 
   setScrollPositions: (positions: Record<string, ScrollPosition>) => {
+    // bug #1494：内容相等时保持既有引用，避免重载路径反复触发持久化 effect
+    // （引用变 → scheduleSave → 写盘 → watcher → 重载的自持环）。
+    if (sameScrollPositions(get().scrollPositions, positions)) return;
     set({ scrollPositions: positions });
   },
 
@@ -867,6 +886,8 @@ export const useStore = create<AppStore>((set, get) => ({
   },
 
   setEmbedScrollPositions: (positions: Record<string, ScrollPosition>) => {
+    // 同 setScrollPositions：内容相等时保持既有引用（bug #1494）。
+    if (sameScrollPositions(get().embedScrollPositions, positions)) return;
     set({ embedScrollPositions: positions });
   },
 

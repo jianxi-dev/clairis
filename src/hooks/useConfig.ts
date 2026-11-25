@@ -165,6 +165,19 @@ export function __resetEchoScheduler(): void {
   lastLocalSaveAt = 0;
 }
 
+/**
+ * 配置重载守卫（bug #1494）：重载后的窗口内 scheduleSave 直接返回，
+ * 确立不变量「配置重载不得触发保存」，否则写盘 → watcher → config-changed
+ * → 重载会形成 ~2s 自持环，把 AI 写入的配置全量覆盖掉。
+ */
+const RELOAD_SAVE_GUARD_MS = 1000;
+let lastRemoteApplyAt = 0;
+
+/** 测试隔离用：清空重载守卫时间戳。 */
+export function __resetRemoteApplyGuard(): void {
+  lastRemoteApplyAt = 0;
+}
+
 /** 实际执行一次全量重载（force 越过 echo 窗口）。 */
 function performReload(): void {
   invoke<RustAppConfig>("load_config")
@@ -618,6 +631,10 @@ export function applyRustConfig(raw: RustAppConfig): void {
 
   // 布局树恢复放在配置生效之后：它依赖 tabs 记录与页签打开流程
   void restorePaneLayout(raw.paneLayout);
+
+  // bug #1494：标记本次为「配置重载」，窗口内的 scheduleSave 一律早退，
+  // 断开「重载 → 保存 → watcher → 重载」的自持环。
+  lastRemoteApplyAt = Date.now();
 }
 
 /**
@@ -716,6 +733,8 @@ export function useConfig() {
   }, []);
 
   const scheduleSave = useCallback(() => {
+    // bug #1494：重载刚落地的窗口内不落盘——否则保存本身会重新点燃重载环。
+    if (Date.now() - lastRemoteApplyAt < RELOAD_SAVE_GUARD_MS) return;
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
       saveConfig();
