@@ -23,6 +23,12 @@ export interface NormalizedSurface {
   warnings: string[];
 }
 
+/**
+ * 前端已知面清单。必须与 Rust `src-tauri/src/surfaces.rs` 的 `SURFACES` 表
+ * 逐值一致——由 `src/__tests__/lib/dataSurfacesParity.test.ts` 对账锁定。
+ */
+export const SUPPORTED_SURFACES = ["html-toolbar"] as const;
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }

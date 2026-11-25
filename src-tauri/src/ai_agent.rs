@@ -7,7 +7,7 @@ use serde_json::{json, Value};
 
 use crate::config::{apply_patch_at, list_snapshots, load_config_at};
 use crate::errors::AppError;
-use crate::surfaces::{embedded_defaults, load_surface, SurfaceId};
+use crate::surfaces::{embedded_defaults, find_surface, load_surface};
 
 pub const MAX_TURNS: usize = 8;
 pub const MAX_REPEATED_TOOL_ERRORS: usize = 3;
@@ -273,11 +273,8 @@ fn tool_err(err: &AgentError) -> String {
 }
 
 /// 面 id 白名单：未登记 id 返回 None（调用方转结构化错误，零写入）。
-fn parse_surface_id(id: &str) -> Option<SurfaceId> {
-    match id {
-        "html-toolbar" => Some(SurfaceId::HtmlToolbar),
-        _ => None,
-    }
+fn parse_surface_id(id: &str) -> Option<&'static crate::surfaces::SurfaceSpec> {
+    find_surface(id)
 }
 
 /// 执行一个工具调用。任何失败都转成结构化 JSON 字符串（`{ok:false,error}`），
@@ -865,7 +862,10 @@ mod tests {
             .join("html-toolbar.json");
         let before_defaults = {
             // 先触发物化，拿到默认文件字节
-            let _ = crate::surfaces::materialize(crate::surfaces::SurfaceId::HtmlToolbar, base);
+            let _ = crate::surfaces::materialize(
+                crate::surfaces::find_surface("html-toolbar").unwrap(),
+                base,
+            );
             std::fs::read(&defaults_path).unwrap()
         };
         let before_snapshots = list_snapshots(base).unwrap();
