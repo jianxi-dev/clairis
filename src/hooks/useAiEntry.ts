@@ -3,7 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { isTauriEnv } from "../utils/tauri";
 import { useEditorStore } from "../stores/editorStore";
 import { useStore, setAiPaneClosedHandler } from "../stores/index";
-import { reloadAppConfig, saveAppConfig } from "./useConfig";
+import { reloadAppConfig, saveAppConfig, WRITE_TOOLS } from "./useConfig";
 import { humanizeAgentError } from "../lib/aiErrors";
 import {
   applySpec,
@@ -225,9 +225,15 @@ export const useAiEntryStore = create<AiEntryState>()((set, get) => {
 
         const after = await invoke<string[]>("list_config_snapshots");
         const changed = after.length > before.length;
+        // bug #1484：AI 写类工具落盘可能撞上前端保存的 echo 窗口被整包丢弃，
+        // 只要本回合调用过写工具就 force 重载（越过窗口，不打断编辑器内容）。
+        // 但 tool_calls 含失败调用（Rust 侧无条件记名），写失败时磁盘未变、
+        // changed 为 false——此时只重载，不进撤销分支（否则撤销指向同一份配置）。
+        const wrote = reply.tool_calls.some((name) => WRITE_TOOLS.has(name));
+
+        if (wrote) reloadAppConfig(true);
 
         if (changed) {
-          reloadAppConfig(true);
           set({
             undoTarget: beforeSnapshot,
             undoPreConfig: preConfig,
