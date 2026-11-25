@@ -616,7 +616,7 @@ export const cropDisplayCache = new Map<
 
 export function cropDisplayKey(
   src: string | null,
-  crop: [number, number, number, number],
+  crop: readonly [number, number, number, number],
 ): string {
   return `${src ?? ""}|${crop.join(",")}`;
 }
@@ -764,9 +764,9 @@ class ImageWidget extends WidgetType {
         img.style.transformOrigin = "0 0";
         win.appendChild(img);
 
-        const applyCropScale = (scale: number): void => {
-          if (!(scale > 0)) return;
-          img.style.transform = `scale(${scale})`;
+        const applyCropScale = (sx: number, sy: number): void => {
+          if (!(sx > 0) || !(sy > 0)) return;
+          img.style.transform = `scale(${sx}, ${sy})`;
           img.style.visibility = "visible";
         };
 
@@ -776,18 +776,20 @@ class ImageWidget extends WidgetType {
         };
 
         if (this._width !== null && this._width > 0) {
-          // width 是可见裁剪显示宽：窗口尺寸由它直接给出，缩放同步应用——
-          // 首帧度量时布局就是最终值。
+          // width/height 是可见裁剪显示尺寸（声明值可能非等比拉伸）：
+          // 窗口尺寸由它们直接给出，逐轴缩放同步应用——首帧度量时布局就是最终值。
+          const sx = this._width / w;
+          const sy = this._height !== null ? this._height / h : sx;
           win.style.width = `${this._width}px`;
-          win.style.height = `${(this._width * h) / w}px`;
-          applyCropScale(this._width / w);
+          win.style.height = `${this._height !== null ? this._height : (this._width * h) / w}px`;
+          applyCropScale(sx, sy);
         } else {
           const cached = cropDisplayCache.get(key);
           if (cached) {
             // 重建（确认 / 装饰重建）：同步套用上次显示尺寸，无过渡帧。
             win.style.width = `${cached.width}px`;
             win.style.height = `${cached.height}px`;
-            applyCropScale(cached.width / w);
+            applyCropScale(cached.width / w, cached.height / h);
           } else {
             // 首次渲染且图片未解码：先隐藏内容，等 rAF 用整图显示宽求 scale，
             // 量完即写缓存；此后同一 crop 的重建都走上面的同步分支。
@@ -823,13 +825,13 @@ class ImageWidget extends WidgetType {
               img.style.objectFit = prev.objectFit;
               img.style.objectPosition = prev.objectPosition;
               img.style.visibility = prev.visibility;
-              const scale = fullW / img.naturalWidth;
-              if (!(scale > 0)) return;
-              const winWidth = w * scale;
-              const winHeight = h * scale;
+              const uniform = fullW / img.naturalWidth;
+              if (!(uniform > 0)) return;
+              const winWidth = w * uniform;
+              const winHeight = h * uniform;
               win.style.width = `${winWidth}px`;
               win.style.height = `${winHeight}px`;
-              applyCropScale(scale);
+              applyCropScale(uniform, uniform);
               recordCropDisplay(winWidth, winHeight);
             };
             requestAnimationFrame(measureCropScale);

@@ -24,19 +24,33 @@ export interface DisplayRect {
 /** 框覆盖到整图 99% 以上即视为「拖回整图」，移除 crop。 */
 export const FULL_IMAGE_RATIO = 0.99;
 
+/** 逐轴显示缩放。声明了 width/height 的图片可被非等比拉伸（sx ≠ sy）。 */
+export interface Scale2D {
+  x: number;
+  y: number;
+}
+
+/** number 视为等比缩放。 */
+export type DisplayScale = number | Scale2D;
+
+export function axesOf(scale: DisplayScale): Scale2D {
+  return typeof scale === "number" ? { x: scale, y: scale } : scale;
+}
+
 /**
- * 原图矩形 → 显示矩形。scale 非正时返回零矩形（调用方应先等图片加载）。
+ * 原图矩形 → 显示矩形。任一轴 scale 非正时返回零矩形（调用方应先等图片加载）。
  */
 export function displayRectFromImageRect(
   rect: ImageRect,
-  scale: number,
+  scale: DisplayScale,
 ): DisplayRect {
-  if (!(scale > 0)) return { left: 0, top: 0, width: 0, height: 0 };
+  const { x, y } = axesOf(scale);
+  if (!(x > 0) || !(y > 0)) return { left: 0, top: 0, width: 0, height: 0 };
   return {
-    left: rect.left * scale,
-    top: rect.top * scale,
-    width: rect.width * scale,
-    height: rect.height * scale,
+    left: rect.left * x,
+    top: rect.top * y,
+    width: rect.width * x,
+    height: rect.height * y,
   };
 }
 
@@ -46,14 +60,15 @@ export function displayRectFromImageRect(
  */
 export function imageRectFromDisplay(
   rect: DisplayRect,
-  scale: number,
+  scale: DisplayScale,
 ): ImageRect {
-  if (!(scale > 0)) return { left: 0, top: 0, width: 0, height: 0 };
+  const { x, y } = axesOf(scale);
+  if (!(x > 0) || !(y > 0)) return { left: 0, top: 0, width: 0, height: 0 };
   return {
-    left: Math.round(rect.left / scale),
-    top: Math.round(rect.top / scale),
-    width: Math.round(rect.width / scale),
-    height: Math.round(rect.height / scale),
+    left: Math.round(rect.left / x),
+    top: Math.round(rect.top / y),
+    width: Math.round(rect.width / x),
+    height: Math.round(rect.height / y),
   };
 }
 

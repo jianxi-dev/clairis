@@ -105,3 +105,32 @@ describe("整图阈值判定", () => {
     ).toBe(false);
   });
 });
+
+describe("逐轴缩放（声明 width/height 非等比拉伸）", () => {
+  it("sx ≠ sy 时逐轴换算并可往返", () => {
+    const scale = { x: 0.3, y: 0.45 };
+    const img = { left: 100, top: 50, width: 1200, height: 800 };
+    const display = displayRectFromImageRect(img, scale);
+    expect(display).toEqual({
+      left: 30,
+      top: 22.5,
+      width: 360,
+      height: 360,
+    });
+    expect(imageRectFromDisplay(display, scale)).toEqual(img);
+  });
+
+  it("number 视为等比缩放（既有行为不变）", () => {
+    expect(
+      displayRectFromImageRect(
+        { left: 10, top: 20, width: 100, height: 100 },
+        0.5,
+      ),
+    ).toEqual({
+      left: 5,
+      top: 10,
+      width: 50,
+      height: 50,
+    });
+  });
+});
