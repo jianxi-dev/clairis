@@ -1,0 +1,17 @@
+{
+  "id": "html-toolbar",
+  "items": [
+    { "id": "ai-rewrite", "label": "改写", "icon": "edit", "group": "ai" },
+    { "id": "ai-translate", "label": "翻译", "icon": "globe", "group": "ai" },
+    { "id": "ai-polish", "label": "润色", "icon": "sparkle", "group": "ai" },
+    { "id": "format-bold", "label": "粗体", "icon": "bold", "group": "format" },
+    { "id": "format-italic", "label": "斜体", "icon": "italic", "group": "format" },
+    { "id": "format-underline", "label": "下划线", "icon": "underline", "group": "format" },
+    { "id": "format-strike", "label": "删除线", "icon": "strike", "group": "format" },
+    { "id": "format-code", "label": "行内代码", "icon": "code", "group": "format" },
+    { "id": "format-link", "label": "链接", "icon": "link", "group": "format" },
+    { "id": "align-left", "label": "左对齐", "icon": "alignLeft", "group": "align" },
+    { "id": "align-center", "label": "居中", "icon": "alignCenter", "group": "align" },
+    { "id": "align-right", "label": "右对齐", "icon": "alignRight", "group": "align" }
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "states": [
+    {
+      "state": "01-default-order",
+      "screenshot": ".artifacts/1461/01-default-order.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-25T08:16:27Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "02-override-filtered",
+      "screenshot": ".artifacts/1461/02-override-filtered.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-25T08:16:34Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "03-empty-override-fallback",
+      "screenshot": ".artifacts/1461/03-empty-override-fallback.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-25T08:16:34Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "04-surface-error-degraded",
+      "screenshot": ".artifacts/1461/04-surface-error-degraded.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-25T08:16:34Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "05-events-reload",
+      "screenshot": ".artifacts/1461/05-events-reload.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-25T08:16:34Z",
+      "runner": "unknown@MMBP"
+    }
+  ]
+}
