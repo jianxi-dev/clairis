@@ -374,9 +374,9 @@ const editorDecorationOptions: EditorDecorationsOptions = {
           `.cm-image-widget[data-image-from="${from}"]`,
         );
         if (host) {
-          host.style.transform = "translateZ(0)";
+          host.style.visibility = "hidden";
           requestAnimationFrame(() => {
-            host.style.transform = "";
+            if (host.isConnected) host.style.visibility = "";
           });
         }
         // 残留排查：确认后把 widget 的 DOM 结构与关键样式记进探针日志。
