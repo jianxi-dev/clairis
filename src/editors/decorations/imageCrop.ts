@@ -474,9 +474,6 @@ function mount(
     restoreDisplay();
     if (scroller) {
       scroller.removeEventListener("scroll", onScrollGuard);
-      scroller.removeEventListener("wheel", noteUserScroll);
-      scroller.removeEventListener("touchstart", noteUserScroll);
-      window.removeEventListener("keydown", noteUserScroll);
     }
     if (activeCleanup === cleanup) clearActive();
     notifyImageCropState(false);
@@ -629,34 +626,26 @@ function mount(
   // 内容高度会瞬时塌陷，浏览器把 scrollTop 夹成 0；内容恢复后不回填 →
   // 「跳到顶部」（WebKit 无 scroll anchoring，真机必现；Chromium 掩盖了它）。
   // 会话存活期间把归零的滚动位置补回；用户滚轮 / 触摸 / 按键立即让位。
-  let guardTop = scroller ? scroller.scrollTop : 0;
-  let guardHeight = scroller ? scroller.scrollHeight : 0;
-  let userScrollIntent = false;
-  const noteUserScroll = (): void => {
-    userScrollIntent = true;
-    if (scroller) {
-      guardTop = scroller.scrollTop;
-      guardHeight = scroller.scrollHeight;
-    }
-  };
-  /**
-   * 只处理「内容变矮 → 浏览器夹取 scrollTop」这一种签名：scrollHeight 变小且
-   * scrollTop 随之变小。合法滚动（点选其它图片、跳转、键入跟光标）不改变
-   * 高度，一律放行。检测到夹取后，等内容高度恢复再把滚动位置补回进入值。
-   */
+  // 会话级滚动夹取护栏。真机日志：crop-enter 后 cm-scroller 1419 → 0，
+  // 而 docH（scrollHeight）已恢复——内容瞬时变矮把 scrollTop 夹到底，
+  // WebKit 不回填。判定用「与上一次观测相比：高度变小 且 滚动位置同时变小」
+  // 这一夹取签名，不依赖一次性「用户滚过」标志（用户中途滚动一次就再也不会
+  // 触发，正是大跳漏网的原因）。
+  let lastTop = scroller ? scroller.scrollTop : 0;
+  let lastHeight = scroller ? scroller.scrollHeight : 0;
   const onScrollGuard = (): void => {
-    if (!scroller || userScrollIntent || !scroller.isConnected) return;
+    if (!scroller || !scroller.isConnected) return;
     const h = scroller.scrollHeight;
     const top = scroller.scrollTop;
-    if (h + 2 < guardHeight && top + 2 < guardTop) {
-      const target = guardTop;
-      const needHeight = guardHeight;
+    if (h + 2 < lastHeight && top + 2 < lastTop) {
+      const target = lastTop;
+      const needHeight = lastHeight;
       let frames = 0;
       const restore = (): void => {
-        if (!scroller || userScrollIntent || !scroller.isConnected) return;
+        if (!scroller || !scroller.isConnected) return;
         frames += 1;
-        if (frames > 40) return;
-        // 高度恢复（布局落地）后再补，避免和塌陷中的布局打架。
+        if (frames > 60) return;
+        // 等高度恢复（布局落地）后再补，避免和塌陷中的布局打架。
         if (scroller.scrollHeight >= needHeight - 2) {
           if (Math.abs(scroller.scrollTop - target) > 2) {
             scroller.scrollTop = target;
@@ -667,13 +656,11 @@ function mount(
       };
       requestAnimationFrame(restore);
     }
-    guardHeight = h;
+    lastTop = top;
+    lastHeight = h;
   };
   if (scroller) {
     scroller.addEventListener("scroll", onScrollGuard);
-    scroller.addEventListener("wheel", noteUserScroll, { passive: true });
-    scroller.addEventListener("touchstart", noteUserScroll, { passive: true });
-    window.addEventListener("keydown", noteUserScroll);
   }
 
   activeCleanup = cleanup;
