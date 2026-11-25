@@ -990,10 +990,26 @@ class ImageWidget extends WidgetType {
     const originalHeight = img.style.height;
     const originalMarginLeft = container.style.marginLeft;
     const originalMarginTop = container.style.marginTop;
+    // 裁剪显示的图片：layout 尺寸是「裁剪矩形自然像素」，可见尺寸由外盒 +
+    // transform 决定。预览必须改外盒与 transform，绝不能把可见像素写进 layout
+    // 尺寸（否则叠加缩小变换 → 只看到左上角一小块，松手才恢复）。
+    const cropWin = img.closest<HTMLElement>(".image-crop-window");
+    const cropNatW = cropWin ? parseFloat(img.style.width) || img.naturalWidth : 0;
+    const cropNatH = cropWin
+      ? parseFloat(img.style.height) || img.naturalHeight
+      : 0;
+    const originalWinW = cropWin?.style.width ?? "";
+    const originalWinH = cropWin?.style.height ?? "";
+    const originalTransform = img.style.transform;
 
     const resetPreview = (): void => {
       img.style.width = originalWidth;
       img.style.height = originalHeight;
+      img.style.transform = originalTransform;
+      if (cropWin) {
+        cropWin.style.width = originalWinW;
+        cropWin.style.height = originalWinH;
+      }
       container.style.marginLeft = originalMarginLeft;
       container.style.marginTop = originalMarginTop;
     };
@@ -1007,6 +1023,23 @@ class ImageWidget extends WidgetType {
         move.clientX - startX,
         move.clientY - startY,
       );
+      if (cropWin) {
+        // 裁剪显示：缩外盒 + 同步变换，内图保持裁剪矩形自然尺寸。
+        const nextW = spec.width ? Math.round(width) : startW;
+        const nextH = spec.height ? Math.round(height) : startH;
+        if (spec.width) cropWin.style.width = `${nextW}px`;
+        if (spec.height) cropWin.style.height = `${nextH}px`;
+        const sx = cropNatW > 0 ? nextW / cropNatW : 1;
+        const sy = cropNatH > 0 ? nextH / cropNatH : 1;
+        img.style.transform = `scale(${sx}, ${sy})`;
+        if (spec.width && spec.offsetX) {
+          container.style.marginLeft = `${startMarginLeft + startW - nextW}px`;
+        }
+        if (spec.height && spec.offsetY) {
+          container.style.marginTop = `${startMarginTop + startH - nextH}px`;
+        }
+        return;
+      }
       if (spec.width) {
         img.style.width = `${Math.round(width)}px`;
         if (spec.offsetX) {

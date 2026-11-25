@@ -603,3 +603,58 @@ test("带题注图片确认裁剪后：DOM 中不留任何裁剪/选中标识", 
   // 裁剪窗口本身不应该有可见描边类装饰。
   expect(await page.locator(".cm-image-crop-active").count()).toBe(0);
 });
+
+test("裁剪图拖比例手柄：拖动中不坍缩（可见尺寸跟随、内图保持裁剪自然尺寸）", async ({ page }) => {
+  await openTwoImages(page);
+  await centerImage(page, "乙");
+  // 先把乙裁一刀，使其进入「裁剪窗口」渲染（img 为自然尺寸 + transform）。
+  await page.locator('.cm-image-widget img[alt="乙"]').click();
+  await page.getByTestId("img-toolbar-crop").click();
+  await expect(page.getByTestId("img-crop-frame")).toHaveCount(1);
+  const cb = (await page.locator('.cm-image-crop-frame [data-handle="se"]').boundingBox())!;
+  await page.mouse.move(cb.x + cb.width / 2, cb.y + cb.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(cb.x - 80, cb.y - 40, { steps: 6 });
+  await page.mouse.up();
+  await page.getByTestId("img-crop-frame").dblclick();
+  await expect(page.getByTestId("img-crop-frame")).toHaveCount(0);
+  await page.waitForTimeout(200);
+
+  // 选中后拖 e 手柄向右 60px，拖动过程中检查尺寸。
+  await page.locator('.cm-image-widget img[alt="乙"]').click();
+  const handle = page.locator('.cm-image-widget > .cm-image-handle[data-handle="e"]');
+  await expect(handle).toHaveCount(1);
+  const before = await page.evaluate(() => {
+    const w = document.querySelector('.cm-image-widget img[alt="乙"]')!
+      .closest(".cm-image-window, .image-crop-window") as HTMLElement | null;
+    const r = (w ?? document.querySelector('.cm-image-widget img[alt="乙"]')!).getBoundingClientRect();
+    return { w: Math.round(r.width), h: Math.round(r.height) };
+  });
+  const hb = (await handle.boundingBox())!;
+  await page.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(hb.x + hb.width / 2 + 60, hb.y + hb.height / 2, { steps: 8 });
+  // 拖动中（未松手）尺寸必须与拖动前同量级，不能坍缩到左上角小块。
+  const during = await page.evaluate(() => {
+    const img = document.querySelector('.cm-image-widget img[alt="乙"]') as HTMLImageElement;
+    const win = img.closest(".image-crop-window") as HTMLElement | null;
+    const wr = (win ?? img).getBoundingClientRect();
+    const ir = img.getBoundingClientRect();
+    return {
+      w: Math.round(wr.width),
+      h: Math.round(wr.height),
+      imgW: Math.round(ir.width),
+      imgH: Math.round(ir.height),
+      transform: img.style.transform,
+    };
+  });
+  await page.mouse.up();
+  await page.waitForTimeout(150);
+
+  expect(during.w).toBeGreaterThan(before.w * 0.9);
+  expect(Math.abs(during.h - before.h)).toBeLessThanOrEqual(6);
+  expect(during.transform).toMatch(/^scale\(/);
+  // 内图必须仍铺满外盒：坍缩 bug 的表现是内图缩成左上角一小块。
+  expect(Math.abs(during.imgW - during.w)).toBeLessThanOrEqual(8);
+  expect(Math.abs(during.imgH - during.h)).toBeLessThanOrEqual(8);
+});
