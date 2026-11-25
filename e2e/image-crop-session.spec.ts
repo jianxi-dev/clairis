@@ -359,3 +359,63 @@ test("预览态裁剪显示与编辑态调整后的几何一致", async ({ page 
   const [, ex] = /scale\(([\d.]+)/.exec(edit.transform) ?? [];
   expect(Number(sx)).toBeCloseTo(Number(ex), 2);
 });
+
+test("边柄短杆指向框外（e→右 w→左 n→上 s→下）", async ({ page }) => {
+  await openTwoImages(page);
+  await centerImage(page, "乙");
+  await page.locator('.cm-image-widget img[alt="乙"]').click();
+  await page.getByTestId("img-toolbar-crop").click();
+  await expect(page.getByTestId("img-crop-frame")).toHaveCount(1);
+
+  const cursors = await page.evaluate(() => {
+    const frame = document.querySelector(".cm-image-crop-frame")!;
+    const map: Record<string, string> = {};
+    for (const el of frame.querySelectorAll("[data-handle]")) {
+      map[(el as HTMLElement).dataset.handle!] = getComputedStyle(el).cursor;
+    }
+    return map;
+  });
+
+  // 从 data URI 里抠出路径，断言短杆相对粗条向外延伸。
+  // e: 杆 M8 12 H18（向右伸）／ w: M16 12 H6（向左）／ n: M12 16 V6（向上）／ s: M12 8 V18（向下）。
+  const pathOf = (c: string) => decodeURIComponent(c.slice(c.indexOf("<svg"), c.indexOf("</svg>") + 6));
+  expect(pathOf(cursors.e)).toContain("M8 12 H18");
+  expect(pathOf(cursors.w)).toContain("M16 12 H6");
+  expect(pathOf(cursors.n)).toContain("M12 16 V6");
+  expect(pathOf(cursors.s)).toContain("M12 8 V18");
+});
+
+test("确认后迟发的滚动跳变会被钉回（模拟 WebKit reveal 选区）", async ({ page }) => {
+  await openTwoImages(page);
+  await centerImage(page, "乙");
+  await page.locator('.cm-image-widget img[alt="乙"]').click();
+  await page.getByTestId("img-toolbar-crop").click();
+  await expect(page.getByTestId("img-crop-frame")).toHaveCount(1);
+
+  const scrollNow = () =>
+    page.evaluate(() =>
+      Math.round((document.querySelector(".cm-scroller") as HTMLElement).scrollTop),
+    );
+
+  const box = (await page.locator('.cm-image-crop-frame [data-handle="se"]').boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width / 2 - 100, box.y + box.height / 2 - 50, { steps: 6 });
+  await page.mouse.up();
+  const beforeConfirm = await scrollNow();
+
+  await page.getByTestId("img-crop-frame").dblclick();
+  await expect(page.getByTestId("img-crop-frame")).toHaveCount(0);
+  // 确认后 60ms / 180ms 各注入一次迟发跳变（护窗口 ~400ms 内）。
+  await page.evaluate(() => {
+    const sc = document.querySelector(".cm-scroller") as HTMLElement;
+    setTimeout(() => {
+      sc.scrollTop = Math.max(0, sc.scrollTop - 500);
+    }, 60);
+    setTimeout(() => {
+      sc.scrollTop = 0;
+    }, 180);
+  });
+  await page.waitForTimeout(500);
+  expect(Math.abs((await scrollNow()) - beforeConfirm)).toBeLessThanOrEqual(1);
+});

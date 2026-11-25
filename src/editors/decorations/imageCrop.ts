@@ -117,23 +117,36 @@ export function closeImageCrop(): void {
 
 /**
  * 视口护栏：进入与确认都要替换 / 重建 widget DOM，浏览器或编辑器会做滚动
- * 补偿，视口因此「跳一下」。裁剪是就地编辑，视口不该动——在接下来两帧把
- * 滚动位置钉回裁剪前的值。
+ * 补偿（WebKit 还会在可编辑 DOM 变更后把选区滚进视口，跳变可能晚于首帧），
+ * 视口因此「跳一下」。裁剪是就地编辑，视口不该动——在接下来若干帧内把滚动
+ * 位置钉回裁剪前的值（窗口 ~400ms，跳变可能迟于首帧）；期间用户滚动立即让位。
  */
 function pinScroll(
   scroller: HTMLElement | null,
   scrollTop: number | null,
 ): void {
   if (!scroller || scrollTop === null) return;
-  const pin = (): void => {
-    if (!scroller.isConnected) return;
-    if (Math.abs(scroller.scrollTop - scrollTop) < 0.5) return;
-    scroller.scrollTop = scrollTop;
+  let stopped = false;
+  const stop = (): void => {
+    stopped = true;
   };
-  requestAnimationFrame(() => {
-    pin();
-    requestAnimationFrame(pin);
-  });
+  // 用户在这段窗口里的滚动意图（滚轮 / 触摸 / 按键）立即让位。
+  scroller.addEventListener("wheel", stop, { passive: true });
+  scroller.addEventListener("touchstart", stop, { passive: true });
+  window.addEventListener("keydown", stop);
+  let elapsed = 0;
+  const pin = (): void => {
+    scroller.removeEventListener("wheel", stop);
+    scroller.removeEventListener("touchstart", stop);
+    window.removeEventListener("keydown", stop);
+    if (stopped || !scroller.isConnected) return;
+    if (Math.abs(scroller.scrollTop - scrollTop) >= 0.5) {
+      scroller.scrollTop = scrollTop;
+    }
+    elapsed += 1;
+    if (elapsed < 24) requestAnimationFrame(pin);
+  };
+  requestAnimationFrame(pin);
 }
 
 /** 工具条「裁剪」按钮在裁剪态下改为确认：写回当前矩形并退出。 */
@@ -588,7 +601,7 @@ const HANDLE_AXES: Record<
 /**
  * 裁剪专用指针（按用户示例定稿）：
  * - 四角 = 直角括号，各自朝向（nw=⌜、ne=⌝、se=﹂、sw=⌞），顶点为热点；
- * - 四边 = 「⊥」形（与边平行的粗条 + 指向框内的短杆，即示例的 T 形旋转），
+ * - 四边 = 「⊥」形（与边平行的粗条 + 指向框外的短杆，即示例的 T 形旋转），
  *   热点落在粗条中点（抓的就是这条边）。
  * 24×24、白描边 + 黑主色，深浅底可见；与图片缩放的方向箭头（ew/nwse/ns-resize）
  * 形状家族不同，不会混淆。
@@ -603,10 +616,10 @@ const CROP_CURSOR_GLYPHS: Record<string, CropCursorGlyph> = {
   ne: { d: ["M15 19 V9 H5"], hotspot: "15 9" },
   se: { d: ["M15 5 V15 H5"], hotspot: "15 15" },
   sw: { d: ["M9 5 V15 H19"], hotspot: "9 15" },
-  w: { d: ["M8 5 V19", "M8 12 H18"], hotspot: "8 12" },
-  e: { d: ["M16 5 V19", "M16 12 H6"], hotspot: "16 12" },
-  n: { d: ["M5 8 H19", "M12 8 V18"], hotspot: "12 8" },
-  s: { d: ["M5 16 H19", "M12 16 V6"], hotspot: "12 16" },
+  e: { d: ["M8 5 V19", "M8 12 H18"], hotspot: "8 12" },
+  w: { d: ["M16 5 V19", "M16 12 H6"], hotspot: "16 12" },
+  s: { d: ["M5 8 H19", "M12 8 V18"], hotspot: "12 8" },
+  n: { d: ["M5 16 H19", "M12 16 V6"], hotspot: "12 16" },
 };
 
 function cropCursor(handle: string): string {
