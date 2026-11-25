@@ -49,7 +49,10 @@ import {
   isImageCropActiveFor,
   openImageCrop,
 } from "../../editors/decorations/imageCrop";
-import { editSelectedImageCaption } from "../../editors/decorations/imageToolbar";
+import {
+  deselectImage,
+  editSelectedImageCaption,
+} from "../../editors/decorations/imageToolbar";
 import {
   blockAt,
   deleteBlock,
@@ -347,6 +350,9 @@ const editorDecorationOptions: EditorDecorationsOptions = {
         markCropProbe("crop-write", { from, rect, display });
         writeImageAttributes(current, from, next);
         markCropProbe("crop-written", { from });
+        // 裁剪是一次完成型操作：收工即退出选中态，收掉缩放把手/角点/描述行，
+        // 避免被误认为「遗留的裁剪标识」。
+        deselectImage();
       },
     });
   },

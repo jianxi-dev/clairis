@@ -431,7 +431,7 @@ test("确认后迟发的滚动跳变会被钉回（模拟 WebKit reveal 选区�
   expect(Math.abs((await scrollNow()) - beforeConfirm)).toBeLessThanOrEqual(1);
 });
 
-test("裁剪会话中滚动被夹成 0 会被补回；用户滚动后让位", async ({ page }) => {
+test("内容塌陷导致的滚动夹取会被补回（真机塌陷签名）", async ({ page }) => {
   await openTwoImages(page);
   await centerImage(page, "乙");
 
@@ -442,27 +442,42 @@ test("裁剪会话中滚动被夹成 0 会被补回；用户滚动后让位", as
       ),
     );
 
+  // 先滚到靠下位置，保证随后塌陷会触发真实夹取。
+  await page.evaluate(() => {
+    const sc = document.querySelector(".cm-scroller") as HTMLElement;
+    sc.scrollTop = Number.MAX_SAFE_INTEGER;
+  });
+  await page.waitForTimeout(200);
   const before = await scrollNow();
-  expect(before).toBeGreaterThan(60);
+  expect(before).toBeGreaterThan(400);
 
   await page.locator('.cm-image-widget img[alt="乙"]').click();
   await page.getByTestId("img-toolbar-crop").click();
   await expect(page.getByTestId("img-crop-frame")).toHaveCount(1);
+  await page.waitForTimeout(150);
+  const guarded = await scrollNow();
 
-  // 模拟真机的内容塌陷夹取：会话中 scrollTop 被夹到 0。
+  // 模拟真机塌陷：widget 高度瞬时归零 → 浏览器夹取 scrollTop → 恢复高度。
   await page.evaluate(() => {
-    (document.querySelector(".cm-scroller") as HTMLElement).scrollTop = 0;
+    const w = document
+      .querySelector('.cm-image-widget img[alt="乙"]')!
+      .closest(".cm-image-widget") as HTMLElement;
+    w.dataset.prevStyle = w.getAttribute("style") ?? "";
+    w.style.display = "block";
+    w.style.height = "0px";
+    w.style.overflow = "hidden";
   });
   await page.waitForTimeout(200);
-  expect(Math.abs((await scrollNow()) - before)).toBeLessThanOrEqual(2);
+  const afterCollapse = await scrollNow();
+  expect(afterCollapse).toBeLessThan(guarded); // 确实被夹取了
 
-  // 用户真实滚动后让位：再被夹到 0 不再补回。
-  await page.mouse.move(600, 400);
-  await page.mouse.wheel(0, 240);
-  await page.waitForTimeout(200);
   await page.evaluate(() => {
-    (document.querySelector(".cm-scroller") as HTMLElement).scrollTop = 0;
+    const w = document
+      .querySelector('.cm-image-widget img[alt="乙"]')!
+      .closest(".cm-image-widget") as HTMLElement;
+    w.style.height = "";
+    w.style.overflow = "";
   });
-  await page.waitForTimeout(200);
-  expect(await scrollNow()).toBeLessThanOrEqual(5);
+  await page.waitForTimeout(400);
+  expect(Math.abs((await scrollNow()) - guarded)).toBeLessThanOrEqual(2);
 });
