@@ -171,6 +171,20 @@ test("裁剪指针与图片缩放指针不同形", async ({ page }) => {
     );
   }
   expect(cursors.resize).not.toContain(cursors.crop[0]);
+
+  // 角 / 边两族字形，逐方向自旋转（按 DOM 顺序取 8 个控制点）。
+  const ordered = await page.evaluate(() => {
+    const frame = document.querySelector(".cm-image-crop-frame")!;
+    return [...frame.querySelectorAll("[data-handle]")].map(
+      (el) => getComputedStyle(el).cursor,
+    );
+  });
+  // DOM 顺序 = HANDLE_AXES 键序：e, w, n, s, ne, nw, se, sw。
+  const [e, w, n, s, nw, ne, se, sw] = ordered;
+  expect(new Set([nw, ne, se, sw]).size).toBe(4);
+  expect(new Set([e, w, n, s]).size).toBe(4);
+  const edgeSet = new Set([e, w, n, s]);
+  for (const c of [nw, ne, se, sw]) expect(edgeSet.has(c)).toBe(false);
 });
 
 test("确认裁剪后无残留：无裁剪框 DOM、无裁剪内联样式、无裁剪态类", async ({
