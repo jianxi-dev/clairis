@@ -257,7 +257,14 @@ const editorDecorationOptions: EditorDecorationsOptions = {
     if (!view) return;
     const text = view.state.doc.toString();
     const ref = scanImageReference(text, from);
-    if (!ref) return;
+    if (!ref) {
+      markCropProbe("crop-scan-miss", {
+        from,
+        docLen: text.length,
+        head: text.slice(Math.max(0, from - 8), from + 24),
+      });
+      return;
+    }
     void navigator.clipboard?.writeText(
       text.slice(from, ref.attrEnd ?? ref.end),
     );
@@ -302,13 +309,21 @@ const editorDecorationOptions: EditorDecorationsOptions = {
     if (isImageCropActive()) closeImageCrop();
     const text = view.state.doc.toString();
     const ref = scanImageReference(text, from);
-    if (!ref) return;
+    if (!ref) {
+      markCropProbe("crop-scan-miss", {
+        from,
+        docLen: text.length,
+        head: text.slice(Math.max(0, from - 8), from + 24),
+      });
+      return;
+    }
     const attrs =
       ref.attrText !== null
         ? parseImageAttributes(ref.attrText)
         : { ...EMPTY_IMAGE_ATTRIBUTES };
     const src = resolveDocMediaHref(ref.path, activeDocPath);
     if (!src) {
+      markCropProbe("crop-src-miss", { from, path: ref.path });
       showNoticeSink?.("图片地址无法解析，暂不能裁剪");
       return;
     }

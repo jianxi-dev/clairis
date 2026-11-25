@@ -83,6 +83,9 @@ let sessionText = "";
 export function installCropJumpProbe(): void {
   if (installed || !import.meta.env.DEV) return;
   installed = true;
+  // DEV 诊断出口：模块实例可能因 HMR 带 ?t= 分成多份，缓冲挂到 window 上
+  // 才能被测试/人工稳定读到。
+  (window as unknown as Record<string, unknown>).__cropProbeLines__ = lines;
   document.addEventListener(
     "scroll",
     (event) => {
@@ -138,6 +141,11 @@ export function markCropProbe(
   };
   lines.push(`MARK ${JSON.stringify(record)}`);
   scheduleFlush();
+}
+
+/** DEV 诊断出口：测试与人工排查直接读整段日志。 */
+export function readCropProbeLog(): string[] {
+  return [...lines];
 }
 
 /** 会话结束后清空本地缓冲（不删落盘文件，由维护者读完手动清理）。 */
