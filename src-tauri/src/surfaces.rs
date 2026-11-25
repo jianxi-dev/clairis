@@ -1,12 +1,13 @@
-//! 数据面注册与加载（design D3/D4）。
+//! 数据面注册与加载（design D1/D3/D4）。
 //!
-//! 数据面 = 「宿主声明默认集合 + 用户覆盖」的可配置面。本变更登记
-//! `html-toolbar`（横向工具条按钮集合与顺序），默认集合的唯一来源是仓库内
-//! `resources/html-toolbar.default.json`（`include_str!` 内嵌 + 首次运行物化到
-//! `defaults/surfaces/`）。前端不再保留兜底常量，避免默认源双真相。
+//! 数据面 = 「宿主声明默认集合 + 用户覆盖」的可配置面。面由 `SURFACES`
+//! 登记表驱动：新增面只追加一行 `SurfaceSpec` + 一个默认文件，不改任何 match。
+//! 本变更登记 `html-toolbar`（横向工具条按钮集合与顺序），默认集合的唯一来源是
+//! 仓库内 `resources/html-toolbar.default.json`（`include_str!` 内嵌 + 首次运行
+//! 物化到 `defaults/surfaces/`）。前端不再保留兜底常量，避免默认源双真相。
 //!
 //! 语义（DS-1）：
-//! - 物化：首次运行把内嵌默认写到 `defaults/surfaces/html-toolbar.json`；
+//! - 物化：首次运行把内嵌默认写到 `defaults/surfaces/<id>.json`；
 //!   已存在不覆盖；解析失败视为缺失并重建。
 //! - 合并：有效集合 = 物化默认 ← 用户覆盖（`htmlToolbarItems`）；未知 id 过滤
 //!   并聚合为一条告警；覆盖为空 / 全非法回落默认。
@@ -25,20 +26,29 @@ use tracing::{info, warn};
 
 use crate::config::config_base;
 
-/// 已登记数据面。新增面时在此加变体，并在 `surfaces()` / `default_file_name()`
-/// / `user_override()` 三处登记（P1 再抽象为注册表）。
+/// 面项形状。T1 只有横向工具条；menu-item / icon / capsule 由后续变更追加。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum SurfaceId {
-    HtmlToolbar,
+pub enum SurfaceShape {
+    Toolbar,
 }
 
-impl SurfaceId {
-    /// 面 id 字符串（事件 payload 与前端 store 的键）。
-    pub fn as_str(self) -> &'static str {
-        match self {
-            SurfaceId::HtmlToolbar => "html-toolbar",
-        }
-    }
+/// 单个已登记面：id、默认文件名、项形状。校验器随形状而定（T1 形状即校验）。
+#[derive(Debug, PartialEq, Eq)]
+pub struct SurfaceSpec {
+    pub id: &'static str,
+    pub default_file: &'static str,
+    pub shape: SurfaceShape,
+}
+
+/// 面登记表（唯一真相源；前端 `SUPPORTED_SURFACES` 由对账测试与本表锁定）。
+pub static SURFACES: &[SurfaceSpec] = &[SurfaceSpec {
+    id: "html-toolbar",
+    default_file: "html-toolbar.json",
+    shape: SurfaceShape::Toolbar,
+}];
+
+pub fn find_surface(id: &str) -> Option<&'static SurfaceSpec> {
+    SURFACES.iter().find(|spec| spec.id == id)
 }
 
 /// 单个面项，形状与前端 `ToolbarSlotItem` 对齐（id/label/icon/group）。
@@ -53,17 +63,10 @@ pub struct SurfaceItem {
 /// 内嵌默认文件（唯一默认源）。
 const SURFACE_DEFAULTS: &str = include_str!("resources/html-toolbar.default.json");
 
-/// 物化落点：`<config_base>/defaults/surfaces/<file>`。
-fn surface_file_path(base: &Path, id: SurfaceId) -> PathBuf {
+fn surface_file_path(base: &Path, spec: &SurfaceSpec) -> PathBuf {
     base.join("defaults")
         .join("surfaces")
-        .join(default_file_name(id))
-}
-
-fn default_file_name(id: SurfaceId) -> &'static str {
-    match id {
-        SurfaceId::HtmlToolbar => "html-toolbar.json",
-    }
+        .join(spec.default_file)
 }
 
 /// 解析内嵌默认 JSON；形状不对视为无默认（调用方回落空集合并告警）。
@@ -79,17 +82,17 @@ fn parse_default_json(raw: &str) -> Option<Vec<SurfaceItem>> {
 }
 
 /// 内嵌默认集合（编译期常量）。
-pub fn embedded_defaults(id: SurfaceId) -> Vec<SurfaceItem> {
-    match id {
-        SurfaceId::HtmlToolbar => parse_default_json(SURFACE_DEFAULTS).unwrap_or_default(),
+pub fn embedded_defaults(spec: &SurfaceSpec) -> Vec<SurfaceItem> {
+    match spec.shape {
+        SurfaceShape::Toolbar => parse_default_json(SURFACE_DEFAULTS).unwrap_or_default(),
     }
 }
 
 /// 物化：首次运行写默认文件；已存在不覆盖；解析失败视为缺失并重建。
 /// 返回物化后的有效默认集合（文件内容优先，文件损坏回落内嵌）。
-pub fn materialize(id: SurfaceId, base: &Path) -> Vec<SurfaceItem> {
-    let path = surface_file_path(base, id);
-    let embedded = embedded_defaults(id);
+pub fn materialize(spec: &SurfaceSpec, base: &Path) -> Vec<SurfaceItem> {
+    let path = surface_file_path(base, spec);
+    let embedded = embedded_defaults(spec);
     if path.exists() {
         if let Ok(raw) = std::fs::read_to_string(&path) {
             if let Some(items) = parse_default_json(&raw) {
@@ -108,7 +111,7 @@ pub fn materialize(id: SurfaceId, base: &Path) -> Vec<SurfaceItem> {
         }
     }
     let data = serde_json::to_vec_pretty(&serde_json::json!({
-        "id": id.as_str(),
+        "id": spec.id,
         "items": embedded,
     }))
     .unwrap_or_default();
@@ -146,9 +149,9 @@ fn atomic_write(path: &Path, data: &[u8]) -> std::io::Result<()> {
 
 /// 用户覆盖来源：读 `user/settings.json` 的 `htmlToolbarItems` 字段。
 /// 文件缺失 / 损坏 / 字段缺失都返回 None（回落默认）。
-fn user_override(id: SurfaceId, base: &Path) -> Option<Vec<String>> {
-    match id {
-        SurfaceId::HtmlToolbar => {
+fn user_override(spec: &SurfaceSpec, base: &Path) -> Option<Vec<String>> {
+    match spec.shape {
+        SurfaceShape::Toolbar => {
             let path = base.join("user").join("settings.json");
             let raw = std::fs::read_to_string(path).ok()?;
             let value: Value = serde_json::from_str(&raw).ok()?;
@@ -173,7 +176,7 @@ pub struct SurfaceLoad {
 
 /// 合并：默认 ← 用户覆盖。未知 id 过滤并聚合为一条告警；空 / 全非法回落默认。
 pub fn merge_surface(
-    id: SurfaceId,
+    spec: &SurfaceSpec,
     defaults: &[SurfaceItem],
     override_ids: Option<&[String]>,
 ) -> SurfaceLoad {
@@ -181,14 +184,14 @@ pub fn merge_surface(
         defaults.iter().map(|item| item.id.as_str()).collect();
     let Some(list) = override_ids else {
         return SurfaceLoad {
-            id: id.as_str().to_string(),
+            id: spec.id.to_string(),
             items: defaults.to_vec(),
             warnings: Vec::new(),
         };
     };
     if list.is_empty() {
         return SurfaceLoad {
-            id: id.as_str().to_string(),
+            id: spec.id.to_string(),
             items: defaults.to_vec(),
             warnings: Vec::new(),
         };
@@ -216,28 +219,31 @@ pub fn merge_surface(
     }
     if out.is_empty() {
         return SurfaceLoad {
-            id: id.as_str().to_string(),
+            id: spec.id.to_string(),
             items: defaults.to_vec(),
             warnings,
         };
     }
     SurfaceLoad {
-        id: id.as_str().to_string(),
+        id: spec.id.to_string(),
         items: out,
         warnings,
     }
 }
 
 /// 加载单个面：物化默认 ← 用户覆盖。
-pub fn load_surface(id: SurfaceId, base: &Path) -> SurfaceLoad {
-    let defaults = materialize(id, base);
-    let override_ids = user_override(id, base);
-    merge_surface(id, &defaults, override_ids.as_deref())
+pub fn load_surface(spec: &SurfaceSpec, base: &Path) -> SurfaceLoad {
+    let defaults = materialize(spec, base);
+    let override_ids = user_override(spec, base);
+    merge_surface(spec, &defaults, override_ids.as_deref())
 }
 
 /// 加载全部已登记面。
 pub fn load_all(base: &Path) -> Vec<SurfaceLoad> {
-    vec![load_surface(SurfaceId::HtmlToolbar, base)]
+    SURFACES
+        .iter()
+        .map(|spec| load_surface(spec, base))
+        .collect()
 }
 
 /// 面文件指纹（mtime, len）；文件不存在返回 None。
@@ -250,20 +256,31 @@ fn fingerprint(path: &Path) -> Option<(SystemTime, u64)> {
 /// 按路径取状态，文件被 rename 替换也能发现；首轮只记录基线。
 pub fn spawn_surfaces_watcher(app: AppHandle) {
     let base = config_base(&app);
-    let surface_path = surface_file_path(&base, SurfaceId::HtmlToolbar);
+    let watched: Vec<(String, PathBuf)> = SURFACES
+        .iter()
+        .map(|spec| (spec.id.to_string(), surface_file_path(&base, spec)))
+        .collect();
     let user_path = base.join("user").join("settings.json");
     tauri::async_runtime::spawn(async move {
-        let mut last_surface = fingerprint(&surface_path);
+        let mut last: Vec<Option<(SystemTime, u64)>> =
+            watched.iter().map(|(_, path)| fingerprint(path)).collect();
         let mut last_user = fingerprint(&user_path);
         loop {
             tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-            let surface = fingerprint(&surface_path);
             let user = fingerprint(&user_path);
-            if surface != last_surface || user != last_user {
-                last_surface = surface;
+            for (index, (_, path)) in watched.iter().enumerate() {
+                let now = fingerprint(path);
+                if now != last[index] {
+                    last[index] = now;
+                    info!(id = %watched[index].0, "数据面文件被外部修改，通知前端热应用");
+                    let _ = app.emit("surfaces-changed", watched[index].0.clone());
+                }
+            }
+            if user != last_user {
                 last_user = user;
-                info!("数据面文件被外部修改，通知前端热应用");
-                let _ = app.emit("surfaces-changed", SurfaceId::HtmlToolbar.as_str());
+                for (id, _) in &watched {
+                    let _ = app.emit("surfaces-changed", id.clone());
+                }
             }
         }
     });
@@ -280,6 +297,10 @@ mod tests {
             .expect("create temp dir")
     }
 
+    fn toolbar_spec() -> &'static SurfaceSpec {
+        find_surface("html-toolbar").expect("html-toolbar 必登记")
+    }
+
     fn write_user(base: &Path, json: &str) {
         let path = base.join("user").join("settings.json");
         std::fs::create_dir_all(path.parent().unwrap()).unwrap();
@@ -290,25 +311,25 @@ mod tests {
     fn 物化_首次写文件且与内嵌逐值一致() {
         let dir = temp_base("materialize");
         let base = dir.path();
-        let items = materialize(SurfaceId::HtmlToolbar, base);
+        let items = materialize(toolbar_spec(), base);
         // 12 = 回归红线：默认集合的项数契约（与 config.rs 校验上限一致）
         assert_eq!(items.len(), 12);
-        let path = surface_file_path(base, SurfaceId::HtmlToolbar);
+        let path = surface_file_path(base, toolbar_spec());
         assert!(path.exists());
         let raw = std::fs::read_to_string(&path).unwrap();
         let parsed = parse_default_json(&raw).unwrap();
         assert_eq!(parsed, items);
-        assert_eq!(items, embedded_defaults(SurfaceId::HtmlToolbar));
+        assert_eq!(items, embedded_defaults(toolbar_spec()));
     }
 
     #[test]
     fn 物化_文件已存在不覆盖() {
         let dir = temp_base("no_overwrite");
         let base = dir.path();
-        let path = surface_file_path(base, SurfaceId::HtmlToolbar);
+        let path = surface_file_path(base, toolbar_spec());
         std::fs::create_dir_all(path.parent().unwrap()).unwrap();
         std::fs::write(&path, r#"{"id":"html-toolbar","items":[]}"#).unwrap();
-        let items = materialize(SurfaceId::HtmlToolbar, base);
+        let items = materialize(toolbar_spec(), base);
         // 已存在（即使形状为空）不重建，读取文件内容
         assert!(items.is_empty());
         assert_eq!(
@@ -321,33 +342,27 @@ mod tests {
     fn 合并_过滤未知id且告警恰一条() {
         let dir = temp_base("merge");
         let base = dir.path();
-        let defaults = materialize(SurfaceId::HtmlToolbar, base);
+        let defaults = materialize(toolbar_spec(), base);
         write_user(
             base,
             r#"{"htmlToolbarItems":["format-bold","nope","format-italic"]}"#,
         );
-        let loaded = load_surface(SurfaceId::HtmlToolbar, base);
+        let loaded = load_surface(toolbar_spec(), base);
         let ids: Vec<&str> = loaded.items.iter().map(|i| i.id.as_str()).collect();
         assert_eq!(ids, vec!["format-bold", "format-italic"]);
         assert_eq!(loaded.warnings.len(), 1);
         assert!(loaded.warnings[0].contains("nope"));
-        assert_eq!(
-            defaults.len(),
-            embedded_defaults(SurfaceId::HtmlToolbar).len()
-        );
+        assert_eq!(defaults.len(), embedded_defaults(toolbar_spec()).len());
     }
 
     #[test]
     fn 合并_空覆盖回落默认() {
         let dir = temp_base("empty");
         let base = dir.path();
-        let defaults = materialize(SurfaceId::HtmlToolbar, base);
+        let defaults = materialize(toolbar_spec(), base);
         write_user(base, r#"{"htmlToolbarItems":[]}"#);
-        let loaded = load_surface(SurfaceId::HtmlToolbar, base);
-        assert_eq!(
-            loaded.items.len(),
-            embedded_defaults(SurfaceId::HtmlToolbar).len()
-        );
+        let loaded = load_surface(toolbar_spec(), base);
+        assert_eq!(loaded.items.len(), embedded_defaults(toolbar_spec()).len());
         assert_eq!(loaded.items, defaults);
     }
 
@@ -355,9 +370,9 @@ mod tests {
     fn 合并_全非法覆盖回落默认() {
         let dir = temp_base("allbad");
         let base = dir.path();
-        let defaults = materialize(SurfaceId::HtmlToolbar, base);
+        let defaults = materialize(toolbar_spec(), base);
         write_user(base, r#"{"htmlToolbarItems":["a","b"]}"#);
-        let loaded = load_surface(SurfaceId::HtmlToolbar, base);
+        let loaded = load_surface(toolbar_spec(), base);
         assert_eq!(loaded.items, defaults);
         assert_eq!(loaded.warnings.len(), 1);
     }
@@ -366,12 +381,12 @@ mod tests {
     fn 默认文件损坏回落内嵌() {
         let dir = temp_base("corrupt");
         let base = dir.path();
-        let path = surface_file_path(base, SurfaceId::HtmlToolbar);
+        let path = surface_file_path(base, toolbar_spec());
         std::fs::create_dir_all(path.parent().unwrap()).unwrap();
         std::fs::write(&path, "not-json").unwrap();
-        let items = materialize(SurfaceId::HtmlToolbar, base);
-        assert_eq!(items, embedded_defaults(SurfaceId::HtmlToolbar));
-        assert_eq!(items.len(), embedded_defaults(SurfaceId::HtmlToolbar).len());
+        let items = materialize(toolbar_spec(), base);
+        assert_eq!(items, embedded_defaults(toolbar_spec()));
+        assert_eq!(items.len(), embedded_defaults(toolbar_spec()).len());
         // 损坏文件被重建为合法 JSON
         let raw = std::fs::read_to_string(&path).unwrap();
         assert!(parse_default_json(&raw).is_some());
@@ -379,7 +394,7 @@ mod tests {
 
     #[test]
     fn 内嵌默认_id集合与config校验白名单对账() {
-        let defaults = embedded_defaults(SurfaceId::HtmlToolbar);
+        let defaults = embedded_defaults(toolbar_spec());
         let ids: std::collections::HashSet<&str> =
             defaults.iter().map(|item| item.id.as_str()).collect();
         let allowed: std::collections::HashSet<&str> = crate::config::HTML_TOOLBAR_ALLOWED_IDS
@@ -393,12 +408,55 @@ mod tests {
     }
 
     #[test]
+    fn 注册表_每行都能解析出默认文件() {
+        assert!(!SURFACES.is_empty(), "面登记表不能为空");
+        for spec in SURFACES {
+            assert!(!spec.id.is_empty(), "面 id 不可为空");
+            assert!(
+                !spec.default_file.is_empty(),
+                "面 {} 缺少默认文件名",
+                spec.id
+            );
+            assert!(
+                !embedded_defaults(spec).is_empty(),
+                "面 {} 的默认文件 {} 解析不出任何项（表行与默认文件必须同源）",
+                spec.id,
+                spec.default_file
+            );
+        }
+    }
+
+    #[test]
+    fn 注册表_load_all返回全部已登记面() {
+        let dir = temp_base("load_all");
+        let loaded = load_all(dir.path());
+        let ids: Vec<&str> = loaded.iter().map(|s| s.id.as_str()).collect();
+        let table: Vec<&str> = SURFACES.iter().map(|spec| spec.id).collect();
+        assert_eq!(
+            ids, table,
+            "load_all 必须逐面返回登记表全集（新增面只追加表行即可被发现）"
+        );
+    }
+
+    #[test]
+    fn 注册表_id唯一且可查找() {
+        let mut seen = std::collections::HashSet::new();
+        for spec in SURFACES {
+            assert!(seen.insert(spec.id), "面 id 重复: {}", spec.id);
+        }
+        for spec in SURFACES {
+            assert_eq!(find_surface(spec.id), Some(spec));
+        }
+        assert_eq!(find_surface("not-registered"), None);
+    }
+
+    #[test]
     fn 指纹_变化即不同() {
         let dir = temp_base("fingerprint");
         let base = dir.path();
-        let path = surface_file_path(base, SurfaceId::HtmlToolbar);
+        let path = surface_file_path(base, toolbar_spec());
         assert_eq!(fingerprint(&path), None);
-        materialize(SurfaceId::HtmlToolbar, base);
+        materialize(toolbar_spec(), base);
         let first = fingerprint(&path);
         assert!(first.is_some());
         std::fs::write(&path, r#"{"id":"html-toolbar","items":[]}"#).unwrap();
