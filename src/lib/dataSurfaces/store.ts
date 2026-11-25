@@ -7,10 +7,15 @@
  * 全量重放（避开 SAVE_ECHO_WINDOW_MS 与 restorePaneLayout 副作用，DS-2）。
  */
 
-import type { SurfacePayload, NormalizedSurface, MenuItem } from "./loader";
-import { normalizeSurface, toMenuItem } from "./loader";
+import type {
+  SurfacePayload,
+  NormalizedSurface,
+  MenuItem,
+  IconSpec,
+} from "./loader";
+import { normalizeSurface, toIconSpec, toMenuItem } from "./loader";
 
-export type { MenuItem } from "./loader";
+export type { MenuItem, IconSpec } from "./loader";
 
 /** 面 id → 最近一次归一化结果。 */
 const surfaces = new Map<string, NormalizedSurface>();
@@ -45,6 +50,18 @@ export function getMenuItems(group: string): MenuItem[] {
   }
   out.sort((a, b) => a.order - b.order);
   return out;
+}
+
+/**
+ * 按概念键取图标面定义；未加载过 / 缺该键返回 null——消费端回落 `ICONS`。
+ */
+export function getIconSpec(key: string): IconSpec | null {
+  const items = surfaces.get("icons")?.items ?? [];
+  for (const entry of items) {
+    const spec = toIconSpec(entry);
+    if (spec !== null && spec.key === key) return spec;
+  }
+  return null;
 }
 
 /** 用新的默认 payload 重新归一化某面（事件到达只重载对应面）。 */

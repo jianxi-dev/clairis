@@ -7,7 +7,7 @@ use serde_json::{json, Value};
 
 use crate::config::{apply_patch_at, list_snapshots, load_config_at};
 use crate::errors::AppError;
-use crate::surfaces::{embedded_defaults, find_surface, load_surface};
+use crate::surfaces::{find_surface, load_surface};
 
 pub const MAX_TURNS: usize = 8;
 pub const MAX_REPEATED_TOOL_ERRORS: usize = 3;
@@ -316,6 +316,71 @@ fn write_menu_override(base: &Path, ids: &[String]) -> Result<(), AppError> {
     crate::config::atomic_write(&path, &data)
 }
 
+/// 写图标面用户覆盖：未知概念键 / 缺 path 组的定义拒绝（不落盘），
+/// 写前快照 + 原子写 `user/icons.json`（D4 map 型逐键深合并）。
+fn write_icon_override(
+    base: &Path,
+    entries: &serde_json::Map<String, Value>,
+) -> Result<(), AppError> {
+    let spec = find_surface("icons").ok_or_else(|| AppError::Validation {
+        context: "id".into(),
+        message: "数据面未登记: icons".into(),
+    })?;
+    let defaults = crate::surfaces::embedded_defaults_json(spec);
+    let known: std::collections::HashSet<&str> = defaults
+        .iter()
+        .filter_map(|item| item.get("key")?.as_str())
+        .collect();
+    let mut unknown: Vec<&str> = Vec::new();
+    let mut invalid: Vec<&str> = Vec::new();
+    for (key, value) in entries {
+        if !known.contains(key.as_str()) {
+            if !unknown.contains(&key.as_str()) {
+                unknown.push(key.as_str());
+            }
+            continue;
+        }
+        let mut merged = serde_json::Map::new();
+        merged.insert("key".into(), Value::String(key.clone()));
+        if let Some(obj) = value.as_object() {
+            for (field, v) in obj {
+                merged.insert(field.clone(), v.clone());
+            }
+        }
+        if crate::surfaces::validate_icon_item(&Value::Object(merged)).is_none() {
+            if !invalid.contains(&key.as_str()) {
+                invalid.push(key.as_str());
+            }
+        }
+    }
+    if !unknown.is_empty() {
+        return Err(AppError::Validation {
+            context: "items".into(),
+            message: format!("未知图标概念键: {}", unknown.join(", ")),
+        });
+    }
+    if !invalid.is_empty() {
+        return Err(AppError::Validation {
+            context: "items".into(),
+            message: format!("图标定义缺 path 组（d/s/parts）: {}", invalid.join(", ")),
+        });
+    }
+    crate::config::snapshot_user(base)?;
+    let path = base.join("user").join("icons.json");
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| AppError::Io {
+            context: "patch_data_surface".into(),
+            source: e,
+        })?;
+    }
+    let payload = json!({ "id": "icons", "items": entries });
+    let data = serde_json::to_vec_pretty(&payload).map_err(|e| AppError::Serialization {
+        context: "patch_data_surface".into(),
+        source: e,
+    })?;
+    crate::config::atomic_write(&path, &data)
+}
+
 /// 执行一个工具调用。任何失败都转成结构化 JSON 字符串（`{ok:false,error}`），
 /// 由循环回灌给模型；只有 `AgentError` 之外的意外才向上冒泡。
 pub fn dispatch_tool(base: &Path, name: &str, args: &Value) -> Result<String, AgentError> {
@@ -359,7 +424,7 @@ pub fn dispatch_tool(base: &Path, name: &str, args: &Value) -> Result<String, Ag
             let Some(surface_id) = parse_surface_id(id) else {
                 return Ok(tool_err(&AgentError::validation(
                     "id",
-                    format!("数据面未登记: {id}（当前已登记: html-toolbar, menus）"),
+                    format!("数据面未登记: {id}（当前已登记: html-toolbar, menus, icons）"),
                 )));
             };
             let loaded = load_surface(surface_id, base);
@@ -377,7 +442,7 @@ pub fn dispatch_tool(base: &Path, name: &str, args: &Value) -> Result<String, Ag
             let Some(surface_id) = parse_surface_id(id) else {
                 return Ok(tool_err(&AgentError::validation(
                     "id",
-                    format!("数据面未登记: {id}（当前已登记: html-toolbar, menus）"),
+                    format!("数据面未登记: {id}（当前已登记: html-toolbar, menus, icons）"),
                 )));
             };
             let Some(patch) = args.get("patch") else {
@@ -386,35 +451,56 @@ pub fn dispatch_tool(base: &Path, name: &str, args: &Value) -> Result<String, Ag
                     "缺少 patch 参数",
                 )));
             };
-            // 本变更单面契约：patch 必须是对象且恰含 items 数组键
-            let items = match patch.get("items").and_then(|v| v.as_array()) {
-                Some(items) if patch.as_object().map(|m| m.len() == 1).unwrap_or(false) => items,
+            // 本变更单面契约：patch 必须是对象且恰含 items 键；list 型面
+            // （html-toolbar / menus）items 为字符串数组，map 型面（icons）
+            // items 为「概念键 → 定义」对象（D4 逐键深合并）。
+            let is_map = surface_id.shape == crate::surfaces::SurfaceShape::Icon;
+            let items = match patch.get("items") {
+                Some(value) if patch.as_object().map(|m| m.len() == 1).unwrap_or(false) => value,
                 _ => {
                     return Ok(tool_err(&AgentError::validation(
                         "patch",
-                        "patch 必须是对象且恰含 items 数组键，例如 {\"items\":[\"format-bold\"]}",
+                        "patch 必须是对象且恰含 items 键，例如 {\"items\":[\"format-bold\"]} 或 {\"items\":{\"close\":{...}}}",
                     )));
                 }
             };
-            let ids: Vec<String> = items
-                .iter()
-                .filter_map(|v| v.as_str().map(str::to_string))
-                .collect();
-            if ids.len() != items.len() {
-                return Ok(tool_err(&AgentError::validation(
-                    "patch",
-                    "items 数组元素必须都是字符串",
-                )));
-            }
-            // 写边界按面分派：html-toolbar 走既有 settings 字段（D9 兼容），
-            // menus 写独立 user 覆盖文件（D4）。两者都走「校验 → 快照 → 原子写」。
-            let written = match surface_id.shape {
-                crate::surfaces::SurfaceShape::Toolbar => {
-                    let config_patch = json!({ "htmlToolbarItems": ids });
-                    apply_patch_at(base, &config_patch).map(|_| ())
+            let written = if is_map {
+                let map = match items.as_object() {
+                    Some(map) => map,
+                    None => {
+                        return Ok(tool_err(&AgentError::validation(
+                            "patch",
+                            "icons 面 items 必须是对象（概念键 → 定义）",
+                        )));
+                    }
+                };
+                write_icon_override(base, map)
+            } else {
+                let list = match items.as_array() {
+                    Some(list) => list,
+                    None => {
+                        return Ok(tool_err(&AgentError::validation(
+                            "patch",
+                            "items 数组元素必须都是字符串",
+                        )));
+                    }
+                };
+                let ids: Vec<String> = list
+                    .iter()
+                    .filter_map(|v| v.as_str().map(str::to_string))
+                    .collect();
+                if ids.len() != list.len() {
+                    return Ok(tool_err(&AgentError::validation(
+                        "patch",
+                        "items 数组元素必须都是字符串",
+                    )));
                 }
-                crate::surfaces::SurfaceShape::Menu => {
-                    write_menu_override(base, &ids)
+                match surface_id.shape {
+                    crate::surfaces::SurfaceShape::Toolbar => {
+                        let config_patch = json!({ "htmlToolbarItems": ids });
+                        apply_patch_at(base, &config_patch).map(|_| ())
+                    }
+                    _ => write_menu_override(base, &ids),
                 }
             };
             match written {
@@ -1009,7 +1095,12 @@ mod tests {
     fn read_data_surface_rejects_unregistered_id_without_write() {
         let dir = temp_base("read_bad_surface");
         let base = dir.path();
-        let raw = dispatch_tool(base, "read_data_surface", &json!({ "id": "icons" })).unwrap();
+        let raw = dispatch_tool(
+            base,
+            "read_data_surface",
+            &json!({ "id": "not-registered" }),
+        )
+        .unwrap();
         let parsed: Value = serde_json::from_str(&raw).unwrap();
         assert_eq!(parsed["ok"], json!(false), "got {raw}");
         assert!(
@@ -1029,7 +1120,7 @@ mod tests {
         let raw = dispatch_tool(
             base,
             "patch_data_surface",
-            &json!({ "id": "icons", "patch": { "items": ["format-bold"] } }),
+            &json!({ "id": "not-registered", "patch": { "items": ["format-bold"] } }),
         )
         .unwrap();
         let parsed: Value = serde_json::from_str(&raw).unwrap();
@@ -1043,6 +1134,97 @@ mod tests {
         );
         // 零写入：user 层不存在
         assert!(!user_path(base).exists(), "未登记 id 不应产生任何写入");
+    }
+
+    #[test]
+    fn read_data_surface_icons_returns_three_sections() {
+        let dir = temp_base("read_icons");
+        let base = dir.path();
+        let raw = dispatch_tool(base, "read_data_surface", &json!({ "id": "icons" })).unwrap();
+        let parsed: Value = serde_json::from_str(&raw).unwrap();
+        assert_eq!(parsed["ok"], json!(true), "got {raw}");
+        let result = &parsed["result"];
+        assert!(result["effective"].as_array().is_some(), "got {raw}");
+        assert!(result["defaults"].as_array().is_some(), "got {raw}");
+        assert!(result["warnings"].as_array().is_some(), "got {raw}");
+        assert_eq!(result["effective"].as_array().unwrap().len(), 135);
+    }
+
+    #[test]
+    fn patch_data_surface_icons_writes_override_file() {
+        let dir = temp_base("patch_icons");
+        let base = dir.path();
+        let raw = dispatch_tool(
+            base,
+            "patch_data_surface",
+            &json!({ "id": "icons", "patch": { "items": { "close": { "label": "关窗", "s": "M1 1 L23 23" } } } }),
+        )
+        .unwrap();
+        let parsed: Value = serde_json::from_str(&raw).unwrap();
+        assert_eq!(parsed["ok"], json!(true), "got {raw}");
+        let path = base.join("user").join("icons.json");
+        assert!(path.exists(), "icons 覆盖应落盘");
+        let written: Value =
+            serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
+        assert_eq!(written["items"]["close"]["label"], json!("关窗"));
+        // 有效集合里 close 用新定义，其余键保留默认
+        let effective = parsed["result"]["effective"].as_array().unwrap();
+        let close = effective
+            .iter()
+            .find(|i| i["key"] == json!("close"))
+            .expect("close 必在有效集合");
+        assert_eq!(close["label"], json!("关窗"));
+        assert_eq!(close["s"], json!("M1 1 L23 23"));
+    }
+
+    #[test]
+    fn patch_data_surface_icons_rejects_unknown_key_without_write() {
+        let dir = temp_base("patch_icons_unknown");
+        let base = dir.path();
+        let raw = dispatch_tool(
+            base,
+            "patch_data_surface",
+            &json!({ "id": "icons", "patch": { "items": { "brandNew": { "label": "X", "s": "M0 0" } } } }),
+        )
+        .unwrap();
+        let parsed: Value = serde_json::from_str(&raw).unwrap();
+        assert_eq!(parsed["ok"], json!(false), "got {raw}");
+        assert!(
+            parsed["error"]["message"]
+                .as_str()
+                .unwrap()
+                .contains("未知图标概念键"),
+            "got {raw}"
+        );
+        assert!(
+            !base.join("user").join("icons.json").exists(),
+            "未知概念键不应落盘"
+        );
+    }
+
+    #[test]
+    fn patch_data_surface_icons_rejects_missing_path_without_write() {
+        let dir = temp_base("patch_icons_nopath");
+        let base = dir.path();
+        let raw = dispatch_tool(
+            base,
+            "patch_data_surface",
+            &json!({ "id": "icons", "patch": { "items": { "close": { "label": "关" } } } }),
+        )
+        .unwrap();
+        let parsed: Value = serde_json::from_str(&raw).unwrap();
+        assert_eq!(parsed["ok"], json!(false), "got {raw}");
+        assert!(
+            parsed["error"]["message"]
+                .as_str()
+                .unwrap()
+                .contains("缺 path 组"),
+            "got {raw}"
+        );
+        assert!(
+            !base.join("user").join("icons.json").exists(),
+            "缺 path 组的定义不应落盘"
+        );
     }
 
     #[test]

@@ -1,5 +1,6 @@
 import { Fragment } from "react";
 import { ICONS, type IconName, type IconSize } from "../ui/icons";
+import { getIconSpec } from "../lib/dataSurfaces/store";
 
 interface IconProps {
   name: IconName;
@@ -27,8 +28,17 @@ export default function Icon({
   title,
   part,
 }: IconProps) {
+  const surface = getIconSpec(name);
   const def = ICONS[name];
-  const allParts = def.parts ?? [{ d: def.d, s: def.s, dash: def.dash }];
+  const allParts = surface
+    ? (surface.parts ?? [
+        {
+          d: surface.d ?? def.d,
+          s: surface.s ?? def.s,
+          dash: surface.dash ?? def.dash,
+        },
+      ])
+    : (def.parts ?? [{ d: def.d, s: def.s, dash: def.dash }]);
   const parts = part === undefined ? allParts : allParts.slice(part, part + 1);
   return (
     <svg
