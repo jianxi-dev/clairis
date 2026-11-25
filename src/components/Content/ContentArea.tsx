@@ -379,6 +379,36 @@ const editorDecorationOptions: EditorDecorationsOptions = {
             host.style.transform = "";
           });
         }
+        // 残留排查：确认后把 widget 的 DOM 结构与关键样式记进探针日志。
+        const cs = host ? getComputedStyle(host) : null;
+        markCropProbe("crop-post", {
+          from,
+          html: host ? host.outerHTML.slice(0, 600) : null,
+          counts: {
+            frames: document.querySelectorAll(".cm-image-crop-frame").length,
+            handles: document.querySelectorAll(
+              ".cm-image-widget .cm-image-handle",
+            ).length,
+            corners: document.querySelectorAll(
+              ".cm-image-widget .cm-image-corner",
+            ).length,
+            marks: document.querySelectorAll(
+              ".cm-image-widget .image-crop-mark",
+            ).length,
+            captions: document.querySelectorAll(
+              ".cm-image-widget .cm-image-caption",
+            ).length,
+          },
+          styles: cs
+            ? {
+                outline: cs.outline,
+                border: cs.border,
+                clipPath: cs.clipPath,
+                boxShadow: cs.boxShadow,
+                backgroundColor: cs.backgroundColor,
+              }
+            : null,
+        });
       },
     });
   },
