@@ -35,6 +35,17 @@ pub async fn restore_config_snapshot(app: AppHandle, name: String) -> Result<App
     config::restore_config_snapshot(&app, &name).await
 }
 
+/// 回滚某个数据面的用户覆盖（`user/<id>.json`）；只动用户覆盖层，不写默认文件。
+/// `name` 省略时回滚该面最新快照。
+#[tauri::command]
+pub async fn restore_surface_snapshot(
+    app: AppHandle,
+    id: String,
+    name: Option<String>,
+) -> Result<(), AppError> {
+    config::restore_surface_snapshot(&config::config_base(&app), &id, name.as_deref())
+}
+
 /// Get API key from system keyring.
 #[tauri::command]
 pub async fn get_api_key(service: String, account: String) -> Result<Option<String>, AppError> {

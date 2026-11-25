@@ -5,7 +5,7 @@ use std::pin::Pin;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
-use crate::config::{apply_patch_at, list_snapshots, load_config_at};
+use crate::config::{apply_patch_at, list_snapshots, load_config_at, restore_surface_snapshot};
 use crate::errors::AppError;
 use crate::surfaces::{find_surface, load_surface};
 
@@ -224,6 +224,28 @@ pub fn tool_schemas() -> Vec<Value> {
         json!({
             "type": "function",
             "function": {
+                "name": "restore_surface_snapshot",
+                "description": "回滚某个数据面的用户覆盖（只写 user/<id>.json，不动默认文件）。省略 name 时回滚该面最新快照；恢复前会再拍一份，因此恢复本身也可回滚。",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "id": {
+                            "type": "string",
+                            "description": "数据面 id，当前已登记: html-toolbar, menus, icons, capsules"
+                        },
+                        "name": {
+                            "type": "string",
+                            "description": "可选快照名；省略则用该面最新一份"
+                        }
+                    },
+                    "required": ["id"],
+                    "additionalProperties": false
+                }
+            }
+        }),
+        json!({
+            "type": "function",
+            "function": {
                 "name": "read_data_surface",
                 "description": "读取已登记数据面的有效集合。返回 {effective, defaults, warnings} 三段：有效集合（默认←用户覆盖合并后）、默认集合、告警列表。",
                 "parameters": {
@@ -231,7 +253,7 @@ pub fn tool_schemas() -> Vec<Value> {
                     "properties": {
                         "id": {
                             "type": "string",
-                            "description": "数据面 id，当前已登记: html-toolbar, menus"
+                            "description": "数据面 id，当前已登记: html-toolbar, menus, icons, capsules"
                         }
                     },
                     "required": ["id"],
@@ -243,17 +265,17 @@ pub fn tool_schemas() -> Vec<Value> {
             "type": "function",
             "function": {
                 "name": "patch_data_surface",
-                "description": "改写已登记数据面的用户覆盖集合（整体替换语义）。id 必须是已登记数据面（当前已登记: html-toolbar, menus）。patch 形如 {\"items\":[\"format-bold\",...]}，写入走校验+快照+原子写，只作用于 user 覆盖层，不改默认源文件。",
+                "description": "改写已登记数据面的用户覆盖集合。id 必须是已登记数据面（当前已登记: html-toolbar, menus, icons, capsules）。list 型面（html-toolbar / menus / capsules）patch 为 {\"items\":[\"id\",...]} 整体替换；map 型面（icons）patch 为 {\"items\":{\"概念键\":{...}}} 逐键深合并，接受默认集合外的新概念键。写入走校验+快照+原子写，只作用于 user 覆盖层，不改默认源文件。",
                 "parameters": {
                     "type": "object",
                     "properties": {
                         "id": {
                             "type": "string",
-                            "description": "数据面 id，当前已登记: html-toolbar, menus"
+                            "description": "数据面 id，当前已登记: html-toolbar, menus, icons, capsules"
                         },
                         "patch": {
                             "type": "object",
-                            "description": "面补丁，恰含 items 数组键，例如 {\"items\":[\"format-bold\",\"format-italic\"]}"
+                            "description": "面补丁，恰含 items 键。list 型面为 id 字符串数组，例如 {\"items\":[\"format-bold\",\"format-italic\"]}；icons 面为「概念键 → 定义」对象，例如 {\"items\":{\"close\":{\"label\":\"关窗\",\"s\":\"M1 1\"}}}"
                         }
                     },
                     "required": ["id", "patch"],
@@ -277,12 +299,40 @@ fn parse_surface_id(id: &str) -> Option<&'static crate::surfaces::SurfaceSpec> {
     find_surface(id)
 }
 
-/// 写菜单面用户覆盖：未知 id 拒绝（不落盘），写前快照 + 原子写 `user/menus.json`。
-fn write_menu_override(base: &Path, ids: &[String]) -> Result<(), AppError> {
-    let spec = find_surface("menus").ok_or_else(|| AppError::Validation {
-        context: "id".into(),
-        message: "数据面未登记: menus".into(),
-    })?;
+/// 已登记面 id 列表（逗号连接），供未登记 id 的结构化错误复用注册表，
+/// 不在工具层硬编码面清单。
+fn registered_surface_ids() -> String {
+    crate::surfaces::SURFACES
+        .iter()
+        .map(|spec| spec.id)
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
+/// 写前快照：html-toolbar 的覆盖在 `user/settings.json` 里，`apply_patch_at`
+/// 自带快照，此处不重复；其余面各写独立覆盖文件，`snapshot_user` 拍不到，
+/// 走面级快照。
+fn snapshot_surface_override(
+    base: &Path,
+    spec: &crate::surfaces::SurfaceSpec,
+) -> Result<(), AppError> {
+    if spec.shape == crate::surfaces::SurfaceShape::Toolbar {
+        return Ok(());
+    }
+    crate::surfaces::snapshot_surface(base, spec).map_err(|e| AppError::Io {
+        context: "patch_data_surface".into(),
+        source: e,
+    })
+}
+
+/// 写 list 型面用户覆盖：未知 id 拒绝（不落盘），写前快照 + 原子写
+/// `user/<id>.json`。html-toolbar 走 settings 字段（既有语义），其余面各写
+/// 自己的覆盖文件。
+fn write_list_override(
+    base: &Path,
+    spec: &crate::surfaces::SurfaceSpec,
+    ids: &[String],
+) -> Result<(), AppError> {
     let defaults = crate::surfaces::embedded_defaults_json(spec);
     let known: std::collections::HashSet<&str> = defaults
         .iter()
@@ -297,18 +347,23 @@ fn write_menu_override(base: &Path, ids: &[String]) -> Result<(), AppError> {
     if !unknown.is_empty() {
         return Err(AppError::Validation {
             context: "items".into(),
-            message: format!("未知菜单动作: {}", unknown.join(", ")),
+            message: format!("未知动作 id（{}）: {}", spec.id, unknown.join(", ")),
         });
     }
-    crate::config::snapshot_user(base)?;
-    let path = base.join("user").join("menus.json");
+    snapshot_surface_override(base, spec)?;
+    if spec.shape == crate::surfaces::SurfaceShape::Toolbar {
+        // html-toolbar 沿用既有 settings 字段（D9 兼容）。
+        let config_patch = json!({ "htmlToolbarItems": ids });
+        return apply_patch_at(base, &config_patch).map(|_| ());
+    }
+    let path = crate::surfaces::user_override_path(base, spec);
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent).map_err(|e| AppError::Io {
             context: "patch_data_surface".into(),
             source: e,
         })?;
     }
-    let payload = json!({ "id": "menus", "items": ids });
+    let payload = json!({ "id": spec.id, "items": ids });
     let data = serde_json::to_vec_pretty(&payload).map_err(|e| AppError::Serialization {
         context: "patch_data_surface".into(),
         source: e,
@@ -316,30 +371,16 @@ fn write_menu_override(base: &Path, ids: &[String]) -> Result<(), AppError> {
     crate::config::atomic_write(&path, &data)
 }
 
-/// 写图标面用户覆盖：未知概念键 / 缺 path 组的定义拒绝（不落盘），
-/// 写前快照 + 原子写 `user/icons.json`（D4 map 型逐键深合并）。
+/// 写图标面用户覆盖（D4 map 型逐键深合并）：默认集合外的**合法定义**（自带
+/// path 组且 label 非空）作为新概念键接受并追加；缺 path 组 / 缺 label 的
+/// 定义拒绝（不落盘）。写前快照 + 原子写 `user/icons.json`。
 fn write_icon_override(
     base: &Path,
+    spec: &crate::surfaces::SurfaceSpec,
     entries: &serde_json::Map<String, Value>,
 ) -> Result<(), AppError> {
-    let spec = find_surface("icons").ok_or_else(|| AppError::Validation {
-        context: "id".into(),
-        message: "数据面未登记: icons".into(),
-    })?;
-    let defaults = crate::surfaces::embedded_defaults_json(spec);
-    let known: std::collections::HashSet<&str> = defaults
-        .iter()
-        .filter_map(|item| item.get("key")?.as_str())
-        .collect();
-    let mut unknown: Vec<&str> = Vec::new();
     let mut invalid: Vec<&str> = Vec::new();
     for (key, value) in entries {
-        if !known.contains(key.as_str()) {
-            if !unknown.contains(&key.as_str()) {
-                unknown.push(key.as_str());
-            }
-            continue;
-        }
         let mut merged = serde_json::Map::new();
         merged.insert("key".into(), Value::String(key.clone()));
         if let Some(obj) = value.as_object() {
@@ -353,27 +394,24 @@ fn write_icon_override(
             }
         }
     }
-    if !unknown.is_empty() {
-        return Err(AppError::Validation {
-            context: "items".into(),
-            message: format!("未知图标概念键: {}", unknown.join(", ")),
-        });
-    }
     if !invalid.is_empty() {
         return Err(AppError::Validation {
             context: "items".into(),
-            message: format!("图标定义缺 path 组（d/s/parts）: {}", invalid.join(", ")),
+            message: format!(
+                "非法图标定义（缺 path 组 d/s/parts 或非对象）: {}",
+                invalid.join(", ")
+            ),
         });
     }
-    crate::config::snapshot_user(base)?;
-    let path = base.join("user").join("icons.json");
+    snapshot_surface_override(base, spec)?;
+    let path = crate::surfaces::user_override_path(base, spec);
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent).map_err(|e| AppError::Io {
             context: "patch_data_surface".into(),
             source: e,
         })?;
     }
-    let payload = json!({ "id": "icons", "items": entries });
+    let payload = json!({ "id": spec.id, "items": entries });
     let data = serde_json::to_vec_pretty(&payload).map_err(|e| AppError::Serialization {
         context: "patch_data_surface".into(),
         source: e,
@@ -417,6 +455,24 @@ pub fn dispatch_tool(base: &Path, name: &str, args: &Value) -> Result<String, Ag
             Ok(names) => Ok(tool_ok(json!(names))),
             Err(e) => Ok(tool_err(&AgentError::from_app(name, e))),
         },
+        "restore_surface_snapshot" => {
+            let Some(id) = args.get("id").and_then(|v| v.as_str()) else {
+                return Ok(tool_err(&AgentError::validation("id", "缺少 id 参数")));
+            };
+            let snapshot = args.get("name").and_then(|v| v.as_str());
+            match restore_surface_snapshot(base, id, snapshot) {
+                Ok(()) => {
+                    let spec = find_surface(id).expect("登记校验已过");
+                    let loaded = load_surface(spec, base);
+                    let value = json!({
+                        "effective": loaded.items,
+                        "warnings": loaded.warnings,
+                    });
+                    Ok(tool_ok(value))
+                }
+                Err(e) => Ok(tool_err(&AgentError::from_app(name, e))),
+            }
+        }
         "read_data_surface" => {
             let Some(id) = args.get("id").and_then(|v| v.as_str()) else {
                 return Ok(tool_err(&AgentError::validation("id", "缺少 id 参数")));
@@ -424,7 +480,10 @@ pub fn dispatch_tool(base: &Path, name: &str, args: &Value) -> Result<String, Ag
             let Some(surface_id) = parse_surface_id(id) else {
                 return Ok(tool_err(&AgentError::validation(
                     "id",
-                    format!("数据面未登记: {id}（当前已登记: html-toolbar, menus, icons）"),
+                    format!(
+                        "数据面未登记: {id}（当前已登记: {}）",
+                        registered_surface_ids()
+                    ),
                 )));
             };
             let loaded = load_surface(surface_id, base);
@@ -442,7 +501,10 @@ pub fn dispatch_tool(base: &Path, name: &str, args: &Value) -> Result<String, Ag
             let Some(surface_id) = parse_surface_id(id) else {
                 return Ok(tool_err(&AgentError::validation(
                     "id",
-                    format!("数据面未登记: {id}（当前已登记: html-toolbar, menus, icons）"),
+                    format!(
+                        "数据面未登记: {id}（当前已登记: {}）",
+                        registered_surface_ids()
+                    ),
                 )));
             };
             let Some(patch) = args.get("patch") else {
@@ -451,9 +513,9 @@ pub fn dispatch_tool(base: &Path, name: &str, args: &Value) -> Result<String, Ag
                     "缺少 patch 参数",
                 )));
             };
-            // 本变更单面契约：patch 必须是对象且恰含 items 键；list 型面
-            // （html-toolbar / menus）items 为字符串数组，map 型面（icons）
-            // items 为「概念键 → 定义」对象（D4 逐键深合并）。
+            // patch 必须是对象且恰含 items 键；list 型面（html-toolbar /
+            // menus / capsules）items 为 id 字符串数组（整体替换），map 型面
+            // （icons）items 为「概念键 → 定义」对象（D4 逐键深合并）。
             let is_map = surface_id.shape == crate::surfaces::SurfaceShape::Icon;
             let items = match patch.get("items") {
                 Some(value) if patch.as_object().map(|m| m.len() == 1).unwrap_or(false) => value,
@@ -474,7 +536,7 @@ pub fn dispatch_tool(base: &Path, name: &str, args: &Value) -> Result<String, Ag
                         )));
                     }
                 };
-                write_icon_override(base, map)
+                write_icon_override(base, surface_id, map)
             } else {
                 let list = match items.as_array() {
                     Some(list) => list,
@@ -495,13 +557,7 @@ pub fn dispatch_tool(base: &Path, name: &str, args: &Value) -> Result<String, Ag
                         "items 数组元素必须都是字符串",
                     )));
                 }
-                match surface_id.shape {
-                    crate::surfaces::SurfaceShape::Toolbar => {
-                        let config_patch = json!({ "htmlToolbarItems": ids });
-                        apply_patch_at(base, &config_patch).map(|_| ())
-                    }
-                    _ => write_menu_override(base, &ids),
-                }
+                write_list_override(base, surface_id, &ids)
             };
             match written {
                 Ok(()) => {
@@ -948,7 +1004,7 @@ mod tests {
     }
 
     #[test]
-    fn tool_schemas_cover_five_tools() {
+    fn tool_schemas_cover_six_tools() {
         let names: Vec<String> = tool_schemas()
             .iter()
             .map(|s| s["function"]["name"].as_str().unwrap().to_string())
@@ -959,6 +1015,7 @@ mod tests {
                 "read_config",
                 "patch_config",
                 "list_snapshots",
+                "restore_surface_snapshot",
                 "read_data_surface",
                 "patch_data_surface",
             ]
@@ -1178,27 +1235,48 @@ mod tests {
     }
 
     #[test]
-    fn patch_data_surface_icons_rejects_unknown_key_without_write() {
-        let dir = temp_base("patch_icons_unknown");
+    fn patch_data_surface_icons_accepts_valid_new_key() {
+        let dir = temp_base("patch_icons_new_key");
         let base = dir.path();
         let raw = dispatch_tool(
             base,
             "patch_data_surface",
-            &json!({ "id": "icons", "patch": { "items": { "brandNew": { "label": "X", "s": "M0 0" } } } }),
+            &json!({ "id": "icons", "patch": { "items": { "brandNew": { "label": "新图标", "s": "M2 2 L22 22" } } } }),
         )
         .unwrap();
         let parsed: Value = serde_json::from_str(&raw).unwrap();
-        assert_eq!(parsed["ok"], json!(false), "got {raw}");
-        assert!(
-            parsed["error"]["message"]
-                .as_str()
-                .unwrap()
-                .contains("未知图标概念键"),
-            "got {raw}"
+        assert_eq!(
+            parsed["ok"],
+            json!(true),
+            "合法定义的新概念键应被接受: {raw}"
         );
+        let path = base.join("user").join("icons.json");
+        let written: Value =
+            serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
+        assert_eq!(written["items"]["brandNew"]["label"], json!("新图标"));
+        let effective = parsed["result"]["effective"].as_array().unwrap();
+        let brand = effective
+            .iter()
+            .find(|i| i["key"] == json!("brandNew"))
+            .expect("新概念键应出现在有效集合");
+        assert_eq!(brand["s"], json!("M2 2 L22 22"));
+    }
+
+    #[test]
+    fn patch_data_surface_icons_rejects_new_key_missing_label_without_write() {
+        let dir = temp_base("patch_icons_new_nolabel");
+        let base = dir.path();
+        let raw = dispatch_tool(
+            base,
+            "patch_data_surface",
+            &json!({ "id": "icons", "patch": { "items": { "brandNew": { "s": "M2 2 L22 22" } } } }),
+        )
+        .unwrap();
+        let parsed: Value = serde_json::from_str(&raw).unwrap();
+        assert_eq!(parsed["ok"], json!(false), "缺 label 的新键应拒绝: {raw}");
         assert!(
             !base.join("user").join("icons.json").exists(),
-            "未知概念键不应落盘"
+            "非法新键不应落盘"
         );
     }
 
@@ -1251,6 +1329,456 @@ mod tests {
             "got {raw}"
         );
         assert_eq!(read_user(base), before, "未知动作不应落盘");
+    }
+
+    // ── T6：四面白名单 + 按形分派 ─────────────────────────────
+
+    fn defaults_path(base: &Path, id: &str) -> PathBuf {
+        base.join("defaults")
+            .join("surfaces")
+            .join(format!("{id}.json"))
+    }
+
+    fn surface_snapshot_dir(base: &Path, id: &str) -> PathBuf {
+        base.join("snapshots").join("surfaces").join(id)
+    }
+
+    fn materialize_defaults(base: &Path, id: &str) -> Vec<u8> {
+        let spec = find_surface(id).expect("面必登记");
+        crate::surfaces::materialize(spec, base);
+        std::fs::read(defaults_path(base, id)).unwrap()
+    }
+
+    /// 面级快照文件数（新面的回滚凭据）。
+    fn surface_snapshot_count(base: &Path, id: &str) -> usize {
+        let dir = surface_snapshot_dir(base, id);
+        std::fs::read_dir(&dir)
+            .map(|entries| entries.filter_map(|e| e.ok()).count())
+            .unwrap_or(0)
+    }
+
+    fn write_surface_user(base: &Path, id: &str, json: &str) {
+        let path = base.join("user").join(format!("{id}.json"));
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(&path, json).unwrap();
+    }
+
+    #[test]
+    fn read_data_surface_returns_three_sections_for_all_four() {
+        for (id, len) in [
+            ("html-toolbar", 12),
+            ("menus", 35),
+            ("icons", 135),
+            ("capsules", 12),
+        ] {
+            let dir = temp_base(&format!("read_all_{id}"));
+            let base = dir.path();
+            let raw = dispatch_tool(base, "read_data_surface", &json!({ "id": id })).unwrap();
+            let parsed: Value = serde_json::from_str(&raw).unwrap();
+            assert_eq!(parsed["ok"], json!(true), "{id}: got {raw}");
+            let result = &parsed["result"];
+            let mut keys: Vec<&str> = result
+                .as_object()
+                .unwrap()
+                .keys()
+                .map(|s| s.as_str())
+                .collect();
+            keys.sort();
+            assert_eq!(keys, vec!["defaults", "effective", "warnings"], "{id}");
+            assert_eq!(
+                result["effective"].as_array().unwrap().len(),
+                len,
+                "{id} 有效集合项数"
+            );
+            assert_eq!(
+                result["defaults"].as_array().unwrap().len(),
+                len,
+                "{id} 默认集合项数"
+            );
+            assert!(result["warnings"].as_array().unwrap().is_empty(), "{id}");
+        }
+    }
+
+    #[test]
+    fn patch_data_surface_capsules_writes_override_and_keeps_defaults() {
+        let dir = temp_base("patch_capsules");
+        let base = dir.path();
+        let before_defaults = materialize_defaults(base, "capsules");
+        // 先写一次覆盖，让「写前快照」有旧值可拍
+        write_surface_user(base, "capsules", r#"{"items":["format-bold"]}"#);
+        let before_snapshots = surface_snapshot_count(base, "capsules");
+
+        let raw = dispatch_tool(
+            base,
+            "patch_data_surface",
+            &json!({ "id": "capsules", "patch": { "items": ["format-bold", "format-italic", "capsule-bg"] } }),
+        )
+        .unwrap();
+        let parsed: Value = serde_json::from_str(&raw).unwrap();
+        assert_eq!(parsed["ok"], json!(true), "got {raw}");
+        let ids: Vec<&str> = parsed["result"]["effective"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|v| v["id"].as_str().unwrap())
+            .collect();
+        assert_eq!(ids, vec!["format-bold", "format-italic", "capsule-bg"]);
+        // 整体替换：被移除的项不残留（无残留旧 label），顺序与补丁一致
+        let labels: Vec<&str> = parsed["result"]["effective"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|v| v["label"].as_str().unwrap())
+            .collect();
+        assert_eq!(labels, vec!["加粗", "斜体", "背景色"]);
+
+        let written: Value = serde_json::from_str(
+            &std::fs::read_to_string(base.join("user").join("capsules.json")).unwrap(),
+        )
+        .unwrap();
+        let items: Vec<&str> = written["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|v| v.as_str().unwrap())
+            .collect();
+        assert_eq!(items, vec!["format-bold", "format-italic", "capsule-bg"]);
+
+        assert_eq!(
+            surface_snapshot_count(base, "capsules"),
+            before_snapshots + 1,
+            "写前应产生一份面级快照"
+        );
+        // 快照应保存写前旧值（可据此一步回滚）
+        let snapshots = surface_snapshot_dir(base, "capsules");
+        let snapshot_with_old_value = std::fs::read_dir(&snapshots)
+            .unwrap()
+            .filter_map(|e| e.ok())
+            .map(|e| e.path())
+            .find(|p| {
+                std::fs::read_to_string(p)
+                    .map(|s| s.contains("format-bold") && !s.contains("capsule-bg"))
+                    .unwrap_or(false)
+            })
+            .expect("应有保存旧值的快照");
+        let value: Value =
+            serde_json::from_str(&std::fs::read_to_string(snapshot_with_old_value).unwrap())
+                .unwrap();
+        let items: Vec<&str> = value["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|v| v.as_str().unwrap())
+            .collect();
+        assert_eq!(items, vec!["format-bold"], "快照应保存写前旧值");
+        assert_eq!(
+            before_defaults,
+            std::fs::read(defaults_path(base, "capsules")).unwrap(),
+            "AI 不得触碰 defaults 物化文件"
+        );
+    }
+
+    #[test]
+    fn patch_data_surface_menus_and_icons_keep_defaults_bytes() {
+        for id in ["menus", "icons"] {
+            let dir = temp_base(&format!("patch_defaults_{id}"));
+            let base = dir.path();
+            let before_defaults = materialize_defaults(base, id);
+            write_surface_user(base, id, "{}");
+            let before_snapshots = surface_snapshot_count(base, id);
+
+            let patch = if id == "menus" {
+                json!({ "id": id, "patch": { "items": ["pane-source", "pane-new-file"] } })
+            } else {
+                json!({ "id": id, "patch": { "items": { "close": { "label": "关窗", "s": "M1 1 L23 23" } } } })
+            };
+            let raw = dispatch_tool(base, "patch_data_surface", &patch).unwrap();
+            let parsed: Value = serde_json::from_str(&raw).unwrap();
+            assert_eq!(parsed["ok"], json!(true), "{id}: got {raw}");
+            assert_eq!(
+                surface_snapshot_count(base, id),
+                before_snapshots + 1,
+                "{id}: 写前应产生一份面级快照"
+            );
+            assert_eq!(
+                before_defaults,
+                std::fs::read(defaults_path(base, id)).unwrap(),
+                "{id}: AI 不得触碰 defaults 物化文件"
+            );
+        }
+    }
+
+    #[test]
+    fn patch_data_surface_rejects_unknown_id_with_zero_write() {
+        let dir = temp_base("patch_unregistered");
+        let base = dir.path();
+        let raw = dispatch_tool(
+            base,
+            "patch_data_surface",
+            &json!({ "id": "keybindings", "patch": { "items": ["format-bold"] } }),
+        )
+        .unwrap();
+        let parsed: Value = serde_json::from_str(&raw).unwrap();
+        assert_eq!(parsed["ok"], json!(false), "got {raw}");
+        assert_eq!(parsed["error"]["kind"], json!("validation"), "got {raw}");
+        assert!(
+            parsed["error"]["message"]
+                .as_str()
+                .unwrap()
+                .contains("未登记"),
+            "got {raw}"
+        );
+        assert!(!base.join("user").exists(), "未登记 id 不应产生任何写入");
+        assert!(!base.join("snapshots").exists(), "未登记 id 不应产生快照");
+    }
+
+    #[test]
+    fn patch_data_surface_capsules_rejects_unknown_id_without_write() {
+        let dir = temp_base("patch_capsules_bad");
+        let base = dir.path();
+        let raw = dispatch_tool(
+            base,
+            "patch_data_surface",
+            &json!({ "id": "capsules", "patch": { "items": ["nope"] } }),
+        )
+        .unwrap();
+        let parsed: Value = serde_json::from_str(&raw).unwrap();
+        assert_eq!(parsed["ok"], json!(false), "got {raw}");
+        assert!(
+            parsed["error"]["message"]
+                .as_str()
+                .unwrap()
+                .contains("nope"),
+            "got {raw}"
+        );
+        assert!(
+            !base.join("user").join("capsules.json").exists(),
+            "未知胶囊动作不应落盘"
+        );
+    }
+
+    #[test]
+    fn patch_data_surface_rejects_invalid_shapes_without_write() {
+        let dir = temp_base("patch_bad_shapes");
+        let base = dir.path();
+        // list 型面收到对象 items
+        let raw = dispatch_tool(
+            base,
+            "patch_data_surface",
+            &json!({ "id": "menus", "patch": { "items": { "pane-source": {} } } }),
+        )
+        .unwrap();
+        let parsed: Value = serde_json::from_str(&raw).unwrap();
+        assert_eq!(parsed["ok"], json!(false), "menus 收对象应拒绝: {raw}");
+        // map 型面收到数组 items
+        let raw = dispatch_tool(
+            base,
+            "patch_data_surface",
+            &json!({ "id": "icons", "patch": { "items": ["close"] } }),
+        )
+        .unwrap();
+        let parsed: Value = serde_json::from_str(&raw).unwrap();
+        assert_eq!(parsed["ok"], json!(false), "icons 收数组应拒绝: {raw}");
+        // patch 含多余键
+        let raw = dispatch_tool(
+            base,
+            "patch_data_surface",
+            &json!({ "id": "capsules", "patch": { "items": ["format-bold"], "extra": 1 } }),
+        )
+        .unwrap();
+        let parsed: Value = serde_json::from_str(&raw).unwrap();
+        assert_eq!(parsed["ok"], json!(false), "patch 含多余键应拒绝: {raw}");
+        assert!(!base.join("user").exists(), "全非法补丁不应产生任何写入");
+    }
+
+    // ── 回滚：面级覆盖写可经 restore 一步回滚 ──────────────────
+
+    fn effective_ids(base: &Path, id: &str) -> Vec<String> {
+        let spec = find_surface(id).expect("面必登记");
+        load_surface(spec, base)
+            .items
+            .iter()
+            .filter_map(|item| item.get("id")?.as_str().map(str::to_string))
+            .collect()
+    }
+
+    fn effective_keys(base: &Path, id: &str) -> Vec<String> {
+        let spec = find_surface(id).expect("面必登记");
+        load_surface(spec, base)
+            .items
+            .iter()
+            .filter_map(|item| item.get("key")?.as_str().map(str::to_string))
+            .collect()
+    }
+
+    #[test]
+    fn restore_menus_snapshot_rolls_back_effective_set_and_bytes() {
+        let dir = temp_base("restore_menus");
+        let base = dir.path();
+        // 写前状态：两项覆盖
+        write_surface_user(
+            base,
+            "menus",
+            r#"{"items":["pane-source","pane-new-file"]}"#,
+        );
+        let before_bytes = std::fs::read(base.join("user").join("menus.json")).unwrap();
+        let before_ids = effective_ids(base, "menus");
+        assert_eq!(before_ids, vec!["pane-source", "pane-new-file"]);
+
+        let raw = dispatch_tool(
+            base,
+            "patch_data_surface",
+            &json!({ "id": "menus", "patch": { "items": ["pane-locate","pane-share","pane-split-right","pane-split-down"] } }),
+        )
+        .unwrap();
+        let parsed: Value = serde_json::from_str(&raw).unwrap();
+        assert_eq!(parsed["ok"], json!(true), "got {raw}");
+        assert_eq!(effective_ids(base, "menus").len(), 4, "补丁后应为 4 项");
+
+        let raw =
+            dispatch_tool(base, "restore_surface_snapshot", &json!({ "id": "menus" })).unwrap();
+        let parsed: Value = serde_json::from_str(&raw).unwrap();
+        assert_eq!(parsed["ok"], json!(true), "回滚应成功: {raw}");
+        assert_eq!(
+            std::fs::read(base.join("user").join("menus.json")).unwrap(),
+            before_bytes,
+            "回滚后 user 覆盖应回到写前字节"
+        );
+        assert_eq!(
+            effective_ids(base, "menus"),
+            before_ids,
+            "回滚后有效集合应等于写前状态"
+        );
+        // 默认文件不受影响
+        assert!(defaults_path(base, "menus").exists());
+    }
+
+    #[test]
+    fn restore_icons_snapshot_rolls_back_map_merge() {
+        let dir = temp_base("restore_icons");
+        let base = dir.path();
+        write_surface_user(
+            base,
+            "icons",
+            r#"{"items":{"close":{"label":"关闭窗口","s":"M1 1 L23 23"}}}"#,
+        );
+        let before_bytes = std::fs::read(base.join("user").join("icons.json")).unwrap();
+        let before_keys = effective_keys(base, "icons");
+        let before_close_label = load_surface(find_surface("icons").unwrap(), base)
+            .items
+            .iter()
+            .find(|i| i["key"] == json!("close"))
+            .unwrap()["label"]
+            .clone();
+
+        let raw = dispatch_tool(
+            base,
+            "patch_data_surface",
+            &json!({ "id": "icons", "patch": { "items": { "markdown": { "label": "MD", "s": "M7 4h10" }, "brandNew": { "label": "新", "s": "M2 2" } } } }),
+        )
+        .unwrap();
+        let parsed: Value = serde_json::from_str(&raw).unwrap();
+        assert_eq!(parsed["ok"], json!(true), "got {raw}");
+        assert_eq!(effective_keys(base, "icons").len(), before_keys.len() + 1);
+
+        let raw =
+            dispatch_tool(base, "restore_surface_snapshot", &json!({ "id": "icons" })).unwrap();
+        let parsed: Value = serde_json::from_str(&raw).unwrap();
+        assert_eq!(parsed["ok"], json!(true), "回滚应成功: {raw}");
+        assert_eq!(
+            std::fs::read(base.join("user").join("icons.json")).unwrap(),
+            before_bytes,
+            "回滚后 user 覆盖应回到写前字节"
+        );
+        assert_eq!(
+            effective_keys(base, "icons"),
+            before_keys,
+            "回滚后有效集合应等于写前状态"
+        );
+        let restored_label = load_surface(find_surface("icons").unwrap(), base)
+            .items
+            .iter()
+            .find(|i| i["key"] == json!("close"))
+            .unwrap()["label"]
+            .clone();
+        assert_eq!(restored_label, before_close_label, "回滚后 label 应还原");
+    }
+
+    #[test]
+    fn restore_without_snapshot_is_structured_error_and_writes_nothing() {
+        let dir = temp_base("restore_none");
+        let base = dir.path();
+        let raw = dispatch_tool(
+            base,
+            "restore_surface_snapshot",
+            &json!({ "id": "capsules" }),
+        )
+        .unwrap();
+        let parsed: Value = serde_json::from_str(&raw).unwrap();
+        assert_eq!(parsed["ok"], json!(false), "got {raw}");
+        assert_eq!(parsed["error"]["kind"], json!("validation"), "got {raw}");
+        assert!(
+            parsed["error"]["message"]
+                .as_str()
+                .unwrap()
+                .contains("没有可用快照"),
+            "got {raw}"
+        );
+        assert!(!base.join("user").exists(), "无快照回滚不应产生任何写入");
+    }
+
+    #[test]
+    fn restore_rejects_unregistered_surface() {
+        let dir = temp_base("restore_bad_id");
+        let base = dir.path();
+        let raw = dispatch_tool(
+            base,
+            "restore_surface_snapshot",
+            &json!({ "id": "keybindings" }),
+        )
+        .unwrap();
+        let parsed: Value = serde_json::from_str(&raw).unwrap();
+        assert_eq!(parsed["ok"], json!(false), "got {raw}");
+        assert!(
+            parsed["error"]["message"]
+                .as_str()
+                .unwrap()
+                .contains("未登记"),
+            "got {raw}"
+        );
+    }
+
+    #[test]
+    fn restore_is_itself_reversible() {
+        let dir = temp_base("restore_twice");
+        let base = dir.path();
+        write_surface_user(base, "capsules", r#"{"items":["format-bold"]}"#);
+        dispatch_tool(
+            base,
+            "patch_data_surface",
+            &json!({ "id": "capsules", "patch": { "items": ["format-italic","capsule-bg"] } }),
+        )
+        .unwrap();
+        // 第一次回滚 → format-bold
+        dispatch_tool(
+            base,
+            "restore_surface_snapshot",
+            &json!({ "id": "capsules" }),
+        )
+        .unwrap();
+        assert_eq!(effective_ids(base, "capsules"), vec!["format-bold"]);
+        // 第二次回滚 → 回到补丁后的两项（恢复本身被快照）
+        dispatch_tool(
+            base,
+            "restore_surface_snapshot",
+            &json!({ "id": "capsules" }),
+        )
+        .unwrap();
+        assert_eq!(
+            effective_ids(base, "capsules"),
+            vec!["format-italic", "capsule-bg"],
+            "恢复本身也应可再回滚"
+        );
     }
 
     #[tokio::test]

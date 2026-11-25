@@ -128,7 +128,8 @@ fn surface_file_path(base: &Path, spec: &SurfaceSpec) -> PathBuf {
 }
 
 /// 用户覆盖文件：新面各自独立 `user/<id>.json`（D4），不再塞 `settings.json`。
-fn user_override_path(base: &Path, spec: &SurfaceSpec) -> PathBuf {
+/// `pub(crate)` 供 `ai_agent` 写边界复用同一路径解析（不硬编码文件名）。
+pub(crate) fn user_override_path(base: &Path, spec: &SurfaceSpec) -> PathBuf {
     match spec.shape {
         // html-toolbar 沿用既有 settings 字段（D9 兼容，既有设置页行为不变）。
         SurfaceShape::Toolbar => base.join("user").join("settings.json"),
@@ -137,6 +138,76 @@ fn user_override_path(base: &Path, spec: &SurfaceSpec) -> PathBuf {
         SurfaceShape::Capsule => base.join("user").join("capsules.json"),
     }
 }
+
+/// 面级快照目录：`snapshots/surfaces/<id>/`。
+fn surface_snapshots_dir(base: &Path, id: &str) -> PathBuf {
+    base.join("snapshots").join("surfaces").join(id)
+}
+
+/// 面级快照的完整路径（供回滚读取）。
+pub(crate) fn surface_snapshot_path(base: &Path, id: &str, name: &str) -> PathBuf {
+    surface_snapshots_dir(base, id).join(name)
+}
+
+/// 面级快照名：`<timestamp>.json`，timestamp 与 `config::snapshot_name` 同格式
+/// （`%Y-%m-%dT%H-%M-%S-%6fZ`），字典序即时间序，可枚举可回滚。
+fn surface_snapshot_name() -> String {
+    let stamp = chrono::Utc::now()
+        .format("%Y-%m-%dT%H-%M-%S-%6fZ")
+        .to_string();
+    format!("{stamp}.json")
+}
+
+/// 面级快照：把当前用户覆盖文件复制进 `snapshots/surfaces/<id>/`（保留最新 10 份）。
+/// 新面的覆盖独立于 `user/settings.json`，`config::snapshot_user` 拍不到，
+/// AI 写面前的回滚依赖本快照（AI-5「写前快照、一步回滚」）。
+/// `pub(crate)` 供 `ai_agent` 写边界调用。覆盖文件不存在时不动（首写无旧值可拍）。
+pub(crate) fn snapshot_surface(base: &Path, spec: &SurfaceSpec) -> std::io::Result<()> {
+    let source = user_override_path(base, spec);
+    if !source.exists() {
+        return Ok(());
+    }
+    let dir = surface_snapshots_dir(base, spec.id);
+    std::fs::create_dir_all(&dir)?;
+    let target = dir.join(surface_snapshot_name());
+    std::fs::copy(&source, &target)?;
+    let mut names = list_surface_snapshots(base, spec.id)?;
+    for stale in names
+        .iter()
+        .take(names.len().saturating_sub(SURFACE_SNAPSHOT_LIMIT))
+    {
+        let _ = std::fs::remove_file(dir.join(stale));
+    }
+    Ok(())
+}
+
+/// 列出某面的快照名，按时间升序（最旧在前）。目录不存在返回空列表。
+pub(crate) fn list_surface_snapshots(base: &Path, id: &str) -> std::io::Result<Vec<String>> {
+    let dir = surface_snapshots_dir(base, id);
+    let entries = match std::fs::read_dir(&dir) {
+        Ok(entries) => entries,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
+        Err(e) => return Err(e),
+    };
+    let mut names: Vec<String> = entries
+        .filter_map(|e| e.ok())
+        .map(|e| e.file_name().to_string_lossy().into_owned())
+        .filter(|n| is_surface_snapshot_name(n))
+        .collect();
+    names.sort();
+    Ok(names)
+}
+
+/// 快照名只接受 `<timestamp>.json`，拒绝路径穿越与其他前缀。
+fn is_surface_snapshot_name(name: &str) -> bool {
+    name.ends_with(".json")
+        && name
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '.' | '_' | ':'))
+}
+
+/// 每个面的覆盖快照保留最新 10 份（与 `config::SNAPSHOT_LIMIT` 同额）。
+pub(crate) const SURFACE_SNAPSHOT_LIMIT: usize = 10;
 
 // ── 形状校验（DS-4）────────────────────────────────────────────
 
@@ -327,7 +398,8 @@ const CAPSULE_ALLOWED_IDS: &[&str] = &[
 ];
 
 /// 校验单个胶囊项：缺字段 / 类型错 / 未知 id → None。
-fn validate_capsule_item(entry: &Value) -> Option<CapsuleSpec> {
+/// `pub` 供 `ai_agent` 写边界复用同一校验。
+pub fn validate_capsule_item(entry: &Value) -> Option<CapsuleSpec> {
     let obj = entry.as_object()?;
     let id = obj.get("id")?.as_str()?;
     if id.is_empty() || !CAPSULE_ALLOWED_IDS.contains(&id) {
@@ -1679,9 +1751,16 @@ mod tests {
         let clear = section("clear");
         let mut ids: Vec<String> = Vec::new();
         ids.extend(
-            ["format-bold", "format-italic", "format-underline", "format-strike", "format-code", "format-link"]
-                .iter()
-                .map(|s| s.to_string()),
+            [
+                "format-bold",
+                "format-italic",
+                "format-underline",
+                "format-strike",
+                "format-code",
+                "format-link",
+            ]
+            .iter()
+            .map(|s| s.to_string()),
         );
         ids.extend(smart);
         ids.push("capsule-font".into());
@@ -1710,10 +1789,7 @@ mod tests {
     fn capsules_内嵌默认_12项且与TS_capsuleItems逐项一致() {
         let items = embedded_defaults_json(capsules_spec());
         assert_eq!(items.len(), 12, "胶囊默认集合必须恰 12 项（回归红线）");
-        let ids: Vec<&str> = items
-            .iter()
-            .filter_map(|i| i.get("id")?.as_str())
-            .collect();
+        let ids: Vec<&str> = items.iter().filter_map(|i| i.get("id")?.as_str()).collect();
         let ts_ids = ts_capsule_ids();
         assert_eq!(
             ids,
@@ -1771,10 +1847,7 @@ mod tests {
             .iter()
             .find(|i| i.get("id").and_then(|v| v.as_str()) == Some("format-bold"))
             .expect("format-bold 必在有效集合");
-        assert_eq!(
-            bold.get("label").and_then(|v| v.as_str()),
-            Some("加粗文字")
-        );
+        assert_eq!(bold.get("label").and_then(|v| v.as_str()), Some("加粗文字"));
     }
 
     #[test]
@@ -1783,7 +1856,10 @@ mod tests {
         let base = dir.path();
         write_capsules_user(base, r#"{"items":["format-bold","nope","format-italic"]}"#);
         let loaded = load_surface(capsules_spec(), base);
-        assert_eq!(item_ids(&loaded.items), vec!["format-bold", "format-italic"]);
+        assert_eq!(
+            item_ids(&loaded.items),
+            vec!["format-bold", "format-italic"]
+        );
         assert_eq!(loaded.warnings.len(), 1);
         assert!(loaded.warnings[0].contains("nope"));
     }
@@ -1927,5 +2003,43 @@ mod tests {
         std::fs::write(&path, r#"{"id":"html-toolbar","items":[]}"#).unwrap();
         let second = fingerprint(&path);
         assert_ne!(first, second);
+    }
+
+    #[test]
+    fn 面级快照_覆盖缺失不建目录_存在则留旧值并限量() {
+        let dir = temp_base("surface_snapshot");
+        let base = dir.path();
+        let spec = find_surface("capsules").expect("capsules 必登记");
+        // 覆盖缺失：不建目录、不报错（首写无旧值可拍）
+        snapshot_surface(base, spec).unwrap();
+        assert!(!base
+            .join("snapshots")
+            .join("surfaces")
+            .join("capsules")
+            .exists());
+
+        let path = user_override_path(base, spec);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(&path, r#"{"items":["format-bold"]}"#).unwrap();
+        snapshot_surface(base, spec).unwrap();
+        std::thread::sleep(std::time::Duration::from_millis(2));
+        snapshot_surface(base, spec).unwrap();
+        let names = list_surface_snapshots(base, "capsules").unwrap();
+        assert_eq!(names.len(), 2, "每次写前各拍一份: {names:?}");
+        let dir = base.join("snapshots").join("surfaces").join("capsules");
+        let content = std::fs::read_to_string(dir.join(&names[0])).unwrap();
+        assert!(content.contains("format-bold"), "快照应保存写前旧值");
+        // 快照名确定性可枚举：字典序即时间序
+        let mut sorted = names.clone();
+        sorted.sort();
+        assert_eq!(names, sorted, "list_surface_snapshots 应返回时间升序");
+
+        // 限量：写到超过 10 份后只留最新 10 份
+        for _ in 0..12 {
+            std::thread::sleep(std::time::Duration::from_millis(1));
+            snapshot_surface(base, spec).unwrap();
+        }
+        let names = list_surface_snapshots(base, "capsules").unwrap();
+        assert_eq!(names.len(), SURFACE_SNAPSHOT_LIMIT, "快照限量 10 份");
     }
 }
