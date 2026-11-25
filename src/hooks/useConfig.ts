@@ -134,8 +134,69 @@ interface RustAppConfig {
 
 const DEBOUNCE_MS = 500;
 
-const SAVE_ECHO_WINDOW_MS = 1500;
+/** 本地保存后的 echo 窗口：窗口内的外部写入事件延迟到窗口末合并补一次。 */
+export const SAVE_ECHO_WINDOW_MS = 1500;
 let lastLocalSaveAt = 0;
+
+/**
+ * AI 写类工具（bug #1484）：回合内一旦调用这些工具，回合结束必须 force 重载，
+ * 否则写入会落进 echo 窗口被吞掉。放这里导出，避免 useAiEntry ↔ useConfig 循环依赖。
+ */
+export const WRITE_TOOLS: ReadonlySet<string> = new Set([
+  "patch_config",
+  "patch_data_surface",
+]);
+
+/** echo 窗口内待补的 reload 调度状态（模块级，与 lastLocalSaveAt 同源）。 */
+let pendingReload = false;
+let pendingReloadTimer: ReturnType<typeof setTimeout> | null = null;
+
+function clearPendingReload(): void {
+  if (pendingReloadTimer) {
+    clearTimeout(pendingReloadTimer);
+    pendingReloadTimer = null;
+  }
+  pendingReload = false;
+}
+
+/** 测试隔离用：清空 echo 调度状态与 lastLocalSaveAt。 */
+export function __resetEchoScheduler(): void {
+  clearPendingReload();
+  lastLocalSaveAt = 0;
+}
+
+/** 实际执行一次全量重载（force 越过 echo 窗口）。 */
+function performReload(): void {
+  invoke<RustAppConfig>("load_config")
+    .then(applyRustConfig)
+    .catch((e) => log.error("Config", "Failed to reload config", e));
+}
+
+/**
+ * 外部（AI / 外部编辑器）写入后的重载调度（bug #1484）。
+ *
+ * 旧语义：命中 SAVE_ECHO_WINDOW_MS 就整包丢弃 → AI 密集写 + 一次前端保存后，
+ * 后续 config-changed 全被吞，patch 提示成功但 UI 永不应用。
+ * 新语义：窗口内不立即 reload，而是合并成一次 trailing 补 reload（窗口剩余时长
+ * 到点后 force 执行）；窗口外保持立即 reload。
+ *
+ * @param now 当前时间戳（测试用 fake timers 注入；生产不传，走 Date.now()）
+ */
+export function scheduleExternalReload(now: number = Date.now()): void {
+  if (!isTauriEnv()) return;
+  const elapsed = now - lastLocalSaveAt;
+  if (elapsed >= SAVE_ECHO_WINDOW_MS) {
+    performReload();
+    return;
+  }
+  if (pendingReload) return; // 窗口内多次事件合并
+  pendingReload = true;
+  pendingReloadTimer = setTimeout(() => {
+    pendingReloadTimer = null;
+    pendingReload = false;
+    performReload();
+  }, SAVE_ECHO_WINDOW_MS - elapsed);
+}
 
 /** Apply theme to <html> element. */
 export function applyTheme(theme: string): void {
@@ -559,13 +620,18 @@ export function applyRustConfig(raw: RustAppConfig): void {
   void restorePaneLayout(raw.paneLayout);
 }
 
-/** Re-read the effective config from Rust and apply it without touching content. */
+/**
+ * Re-read the effective config from Rust and apply it without touching content.
+ * 非 force 命中 echo 窗口时不再整包丢弃，改走 scheduleExternalReload 延迟兜底。
+ */
 export function reloadAppConfig(force = false): void {
   if (!isTauriEnv()) return;
-  if (!force && Date.now() - lastLocalSaveAt < SAVE_ECHO_WINDOW_MS) return;
-  invoke<RustAppConfig>("load_config")
-    .then(applyRustConfig)
-    .catch((e) => log.error("Config", "Failed to reload config", e));
+  if (force) {
+    clearPendingReload();
+    performReload();
+    return;
+  }
+  scheduleExternalReload();
 }
 
 export function useConfig() {

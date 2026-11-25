@@ -2,6 +2,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const invokeMock = vi.fn();
+const reloadAppConfigMock = vi.fn();
 
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: (...args: unknown[]) => invokeMock(...args),
@@ -12,6 +13,12 @@ vi.mock("@tauri-apps/api/event", () => ({
 }));
 
 vi.mock("../utils/tauri", () => ({ isTauriEnv: () => true }));
+
+vi.mock("../hooks/useConfig", () => ({
+  reloadAppConfig: (...args: unknown[]) => reloadAppConfigMock(...args),
+  saveAppConfig: () => Promise.resolve(),
+  WRITE_TOOLS: new Set(["patch_config", "patch_data_surface"]),
+}));
 
 import { useAiEntryStore, __resetAiSession } from "../hooks/useAiEntry";
 import { humanizeAgentError } from "../lib/aiErrors";
@@ -74,6 +81,7 @@ function submitConfirmed(text: string): void {
 describe("useAiEntry — 撤销指向提交前最后一个快照", () => {
   beforeEach(() => {
     invokeMock.mockReset();
+    reloadAppConfigMock.mockReset();
     resetState();
   });
 
@@ -178,6 +186,79 @@ describe("useAiEntry — 撤销指向提交前最后一个快照", () => {
     expect(last?.content).toBe("字号需要在 8–96 之间");
     expect(last?.content).not.toContain("fontSize");
     expect(last?.content).not.toContain("{");
+  });
+
+  it("reply 含写工具时 force 重载（bug #1484：写落在 echo 窗口也要生效）", async () => {
+    let snapshotCalls = 0;
+    invokeMock.mockImplementation((cmd: string) => {
+      if (cmd === "list_config_snapshots") {
+        snapshotCalls += 1;
+        // 回合前后快照数一致：走不到 changed 分支，只能靠写工具触发 force
+        return Promise.resolve(["settings-2026-01-01T00-00-00-000000Z.json"]);
+      }
+      if (cmd === "load_config") return Promise.resolve(rustConfig("light"));
+      if (cmd === "run_agent_turn")
+        return Promise.resolve({
+          text: "已调整配置。",
+          turns: 2,
+          tool_calls: ["patch_config"],
+        });
+      return Promise.resolve(null);
+    });
+
+    submitConfirmed("把主题换成深色");
+
+    await vi.waitFor(() => {
+      expect(useAiEntryStore.getState().submitting).toBe(false);
+    });
+    expect(reloadAppConfigMock).toHaveBeenCalledWith(true);
+  });
+
+  it("写工具失败（快照未变）时只 force 重载，不进撤销分支", async () => {
+    invokeMock.mockImplementation((cmd: string) => {
+      if (cmd === "list_config_snapshots")
+        return Promise.resolve(["settings-2026-01-01T00-00-00-000000Z.json"]);
+      if (cmd === "load_config") return Promise.resolve(rustConfig("light"));
+      if (cmd === "run_agent_turn")
+        return Promise.resolve({
+          text: "写入失败。",
+          turns: 1,
+          tool_calls: ["patch_config"],
+        });
+      return Promise.resolve(null);
+    });
+
+    submitConfirmed("写一个非法补丁");
+
+    await vi.waitFor(() => {
+      expect(useAiEntryStore.getState().submitting).toBe(false);
+    });
+    expect(reloadAppConfigMock).toHaveBeenCalledWith(true);
+    // 磁盘未变 → 没有可撤销的东西，undoVisible 必须保持 false
+    expect(useAiEntryStore.getState().undoVisible).toBe(false);
+    expect(useAiEntryStore.getState().undoTarget).toBeNull();
+  });
+
+  it("reply 只有读工具时不 force 重载", async () => {
+    invokeMock.mockImplementation((cmd: string) => {
+      if (cmd === "list_config_snapshots")
+        return Promise.resolve(["settings-2026-01-01T00-00-00-000000Z.json"]);
+      if (cmd === "load_config") return Promise.resolve(rustConfig("light"));
+      if (cmd === "run_agent_turn")
+        return Promise.resolve({
+          text: "当前是浅色主题。",
+          turns: 1,
+          tool_calls: ["read_config"],
+        });
+      return Promise.resolve(null);
+    });
+
+    submitConfirmed("现在是什么主题");
+
+    await vi.waitFor(() => {
+      expect(useAiEntryStore.getState().submitting).toBe(false);
+    });
+    expect(reloadAppConfigMock).not.toHaveBeenCalled();
   });
 
   it("humanizeAgentError 覆盖 provider / turnLimit", () => {
