@@ -42,6 +42,7 @@ import { saveAppConfig, useConfig } from "./hooks/useConfig";
 import { flushAllContent, flushTabContent } from "./editors/contentSync";
 import { RAIL_KIND_ORDER } from "./lib/railView";
 import type { FileTypeKind } from "./lib/fileType";
+import { installCropJumpProbe } from "./utils/cropJumpProbe";
 import { log } from "./utils/log";
 import { popOverlay, pushOverlay } from "./lib/overlayGate";
 import { loadExtensionBundle } from "./lib/extensions/bundle";
