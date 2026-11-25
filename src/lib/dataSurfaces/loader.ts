@@ -9,7 +9,8 @@
  *
  * 形状（DS-4）：`html-toolbar` 项为 `ToolbarSlotItem`；`menus` 项为 `MenuItem`
  * （含 group / order / action / enabled）；`icons` 项为 `IconSpec`（概念键 /
- * label / path 组）。归一化按面 id 分派。
+ * label / path 组）；`capsules` 项为 `CapsuleItemSpec`（id / label / icon /
+ * order）。归一化按面 id 分派。
  */
 
 import type { ToolbarSlotItem } from "../../editors/orchestration/slots";
@@ -50,6 +51,14 @@ export interface IconSpec {
   parts?: IconPart[];
 }
 
+/** 胶囊项（design D2）：`id` 对应代码侧动作，`label`/`icon`/`order` 由面数据提供。 */
+export interface CapsuleItemSpec {
+  id: string;
+  label: string;
+  icon: IconName;
+  order: number;
+}
+
 /** 归一化后的面：items 为原始项（消费端按面 id 解释）。 */
 export interface NormalizedSurface {
   id: string;
@@ -61,7 +70,12 @@ export interface NormalizedSurface {
  * 前端已知面清单。必须与 Rust `src-tauri/src/surfaces.rs` 的 `SURFACES` 表
  * 逐值一致——由 `src/__tests__/lib/dataSurfacesParity.test.ts` 对账锁定。
  */
-export const SUPPORTED_SURFACES = ["html-toolbar", "menus", "icons"] as const;
+export const SUPPORTED_SURFACES = [
+  "html-toolbar",
+  "menus",
+  "icons",
+  "capsules",
+] as const;
 
 /** 菜单六处消费端分组（与 Rust `MENU_GROUPS` 对账）。 */
 export const MENU_GROUPS = [
@@ -160,8 +174,45 @@ export function toIconSpec(raw: unknown): IconSpec | null {
   return out;
 }
 
+/** 胶囊合法动作 id（与 Rust `CAPSULE_ALLOWED_IDS` 对账）。 */
+const CAPSULE_ALLOWED_IDS = [
+  "format-bold",
+  "format-italic",
+  "format-underline",
+  "format-strike",
+  "format-code",
+  "format-link",
+  "ai-rewrite",
+  "ai-translate",
+  "ai-polish",
+  "capsule-font",
+  "capsule-bg",
+  "clear-format",
+] as const;
+
+/** 宽松解析单个胶囊项；缺字段、类型错、未知 id 返回 null（DS-4）。 */
+export function toCapsuleItem(raw: unknown): CapsuleItemSpec | null {
+  if (!isRecord(raw)) return null;
+  const { id, label, icon, order } = raw;
+  if (typeof id !== "string" || !CAPSULE_ALLOWED_IDS.includes(id as never)) {
+    return null;
+  }
+  if (typeof label !== "string" || label === "") return null;
+  if (typeof icon !== "string" || icon === "") return null;
+  if (typeof order !== "number" || !Number.isFinite(order)) return null;
+  return { id, label, icon: icon as IconName, order };
+}
+
 /** 按面 id 解析 item；形状不对的项被丢弃（不整体失败）。 */
 function parseItems(id: string, rawItems: unknown[]): unknown[] {
+  if (id === "capsules") {
+    const out: CapsuleItemSpec[] = [];
+    for (const entry of rawItems) {
+      const item = toCapsuleItem(entry);
+      if (item !== null) out.push(item);
+    }
+    return out;
+  }
   if (id === "menus") {
     const out: MenuItem[] = [];
     for (const entry of rawItems) {
@@ -231,7 +282,7 @@ export function normalizeSurface(
   }
   const warnings = [...surface.warnings];
   if (unknown.length > 0) {
-    warnings.push(`未知菜单动作: ${unknown.join(", ")}`);
+    warnings.push(`未知动作 id: ${unknown.join(", ")}`);
   }
   if (out.length === 0) {
     return { id: surface.id, items: defaults, warnings };

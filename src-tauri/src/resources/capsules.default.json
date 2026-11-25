@@ -1,0 +1,77 @@
+{
+  "id": "capsules",
+  "items": [
+    {
+      "id": "format-bold",
+      "label": "加粗",
+      "icon": "bold",
+      "order": 1
+    },
+    {
+      "id": "format-italic",
+      "label": "斜体",
+      "icon": "italic",
+      "order": 2
+    },
+    {
+      "id": "format-underline",
+      "label": "下划线",
+      "icon": "underline",
+      "order": 3
+    },
+    {
+      "id": "format-strike",
+      "label": "删除线",
+      "icon": "strike",
+      "order": 4
+    },
+    {
+      "id": "format-code",
+      "label": "行内代码",
+      "icon": "code",
+      "order": 5
+    },
+    {
+      "id": "format-link",
+      "label": "链接",
+      "icon": "link",
+      "order": 6
+    },
+    {
+      "id": "ai-rewrite",
+      "label": "改写",
+      "icon": "edit",
+      "order": 7
+    },
+    {
+      "id": "ai-translate",
+      "label": "翻译",
+      "icon": "globe",
+      "order": 8
+    },
+    {
+      "id": "ai-polish",
+      "label": "润色",
+      "icon": "sparkle",
+      "order": 9
+    },
+    {
+      "id": "capsule-font",
+      "label": "字色",
+      "icon": "tune",
+      "order": 10
+    },
+    {
+      "id": "capsule-bg",
+      "label": "背景色",
+      "icon": "droplet",
+      "order": 11
+    },
+    {
+      "id": "clear-format",
+      "label": "清除格式",
+      "icon": "brush",
+      "order": 12
+    }
+  ]
+}

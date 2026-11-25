@@ -12,10 +12,16 @@ import type {
   NormalizedSurface,
   MenuItem,
   IconSpec,
+  CapsuleItemSpec,
 } from "./loader";
-import { normalizeSurface, toIconSpec, toMenuItem } from "./loader";
+import {
+  normalizeSurface,
+  toCapsuleItem,
+  toIconSpec,
+  toMenuItem,
+} from "./loader";
 
-export type { MenuItem, IconSpec } from "./loader";
+export type { MenuItem, IconSpec, CapsuleItemSpec } from "./loader";
 
 /** 面 id → 最近一次归一化结果。 */
 const surfaces = new Map<string, NormalizedSurface>();
@@ -49,6 +55,20 @@ export function getMenuItems(group: string): MenuItem[] {
     if (item !== null && item.group === group && item.enabled) out.push(item);
   }
   out.sort((a, b) => a.order - b.order);
+  return out;
+}
+
+/**
+ * 取胶囊面有效项（保持面数据的数组顺序，顺序即语义）。未加载过返回空数组——
+ * 消费端据此渲染，不留兜底常量。
+ */
+export function getCapsuleItems(): CapsuleItemSpec[] {
+  const items = surfaces.get("capsules")?.items ?? [];
+  const out: CapsuleItemSpec[] = [];
+  for (const entry of items) {
+    const item = toCapsuleItem(entry);
+    if (item !== null) out.push(item);
+  }
   return out;
 }
 

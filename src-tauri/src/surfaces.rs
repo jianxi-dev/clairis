@@ -34,12 +34,13 @@ use tracing::{info, warn};
 
 use crate::config::config_base;
 
-/// 面项形状。`menu` 由 T2 追加，`icon` 由 T3 追加；capsule 由后续变更追加。
+/// 面项形状。`menu` 由 T2 追加，`icon` 由 T3 追加，`capsule` 由 T4 追加。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SurfaceShape {
     Toolbar,
     Menu,
     Icon,
+    Capsule,
 }
 
 /// 单个已登记面：id、默认文件名、项形状。校验器随形状而定。
@@ -66,6 +67,11 @@ pub static SURFACES: &[SurfaceSpec] = &[
         id: "icons",
         default_file: "icons.json",
         shape: SurfaceShape::Icon,
+    },
+    SurfaceSpec {
+        id: "capsules",
+        default_file: "capsules.json",
+        shape: SurfaceShape::Capsule,
     },
 ];
 
@@ -95,12 +101,23 @@ pub struct MenuItem {
     pub enabled: bool,
 }
 
+/// 胶囊项（design D2）：`id` 对应代码侧动作，`label`/`icon`/`order` 由面数据
+/// 提供，`run` 由消费端按 id 分派。
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct CapsuleSpec {
+    pub id: String,
+    pub label: String,
+    pub icon: String,
+    pub order: u32,
+}
+
 /// 内嵌默认文件（唯一默认源），按面 id 取。
 fn embedded_json(spec: &SurfaceSpec) -> &'static str {
     match spec.shape {
         SurfaceShape::Toolbar => include_str!("resources/html-toolbar.default.json"),
         SurfaceShape::Menu => include_str!("resources/menus.default.json"),
         SurfaceShape::Icon => include_str!("resources/icons.default.json"),
+        SurfaceShape::Capsule => include_str!("resources/capsules.default.json"),
     }
 }
 
@@ -117,6 +134,7 @@ fn user_override_path(base: &Path, spec: &SurfaceSpec) -> PathBuf {
         SurfaceShape::Toolbar => base.join("user").join("settings.json"),
         SurfaceShape::Menu => base.join("user").join("menus.json"),
         SurfaceShape::Icon => base.join("user").join("icons.json"),
+        SurfaceShape::Capsule => base.join("user").join("capsules.json"),
     }
 }
 
@@ -291,6 +309,44 @@ fn validate_menu_item(entry: &Value) -> Option<MenuItem> {
     })
 }
 
+/// 胶囊合法动作 id（与 `resources/capsules.default.json` 唯一默认源对账，
+/// 由本文件测试锁定两处一致）。
+const CAPSULE_ALLOWED_IDS: &[&str] = &[
+    "format-bold",
+    "format-italic",
+    "format-underline",
+    "format-strike",
+    "format-code",
+    "format-link",
+    "ai-rewrite",
+    "ai-translate",
+    "ai-polish",
+    "capsule-font",
+    "capsule-bg",
+    "clear-format",
+];
+
+/// 校验单个胶囊项：缺字段 / 类型错 / 未知 id → None。
+fn validate_capsule_item(entry: &Value) -> Option<CapsuleSpec> {
+    let obj = entry.as_object()?;
+    let id = obj.get("id")?.as_str()?;
+    if id.is_empty() || !CAPSULE_ALLOWED_IDS.contains(&id) {
+        return None;
+    }
+    let label = obj.get("label")?.as_str()?;
+    let icon = obj.get("icon")?.as_str()?;
+    if label.is_empty() || icon.is_empty() {
+        return None;
+    }
+    let order = obj.get("order")?.as_u64()? as u32;
+    Some(CapsuleSpec {
+        id: id.to_string(),
+        label: label.to_string(),
+        icon: icon.to_string(),
+        order,
+    })
+}
+
 /// 解析并校验内嵌 / 物化默认 JSON，返回 `(有效项, 被过滤项的告警)`。
 /// 形状不对（非数组 / 缺 items 键）视为无默认（调用方回落空集合并告警）。
 fn parse_default_json(spec: &SurfaceSpec, raw: &str) -> (Vec<Value>, Vec<String>) {
@@ -309,6 +365,7 @@ fn parse_default_json(spec: &SurfaceSpec, raw: &str) -> (Vec<Value>, Vec<String>
             SurfaceShape::Toolbar => validate_toolbar_item(entry).is_some(),
             SurfaceShape::Menu => validate_menu_item(entry).is_some(),
             SurfaceShape::Icon => validate_icon_item(entry).is_some(),
+            SurfaceShape::Capsule => validate_capsule_item(entry).is_some(),
         };
         if ok {
             valid.push(entry.clone());
@@ -356,9 +413,9 @@ pub fn embedded_defaults(spec: &SurfaceSpec) -> Vec<SurfaceItem> {
         SurfaceShape::Toolbar => {
             deserialize_defaults(spec, embedded_json(spec)).unwrap_or_default()
         }
-        // 菜单 / 图标面以 `Value` 形式返回（保留全部字段），
+        // 菜单 / 图标 / 胶囊面以 `Value` 形式返回（保留全部字段），
         // 由 `SurfaceLoad.items` 统一承载原始 JSON。
-        SurfaceShape::Menu | SurfaceShape::Icon => Vec::new(),
+        SurfaceShape::Menu | SurfaceShape::Icon | SurfaceShape::Capsule => Vec::new(),
     }
 }
 
@@ -476,6 +533,16 @@ fn user_override(spec: &SurfaceSpec, base: &Path) -> Option<Override> {
                     .collect(),
             ))
         }
+        SurfaceShape::Capsule => {
+            let value = read_override_file(spec, base)?;
+            let items = value.get("items")?.as_array()?;
+            Some(Override::Ids(
+                items
+                    .iter()
+                    .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                    .collect(),
+            ))
+        }
         SurfaceShape::Icon => {
             let value = read_override_file(spec, base)?;
             let items = value.get("items")?.as_object()?;
@@ -512,9 +579,9 @@ fn deep_merge(base: &Value, over: &Value) -> Value {
     }
 }
 
-/// 合并：默认 ← 用户覆盖。list 型（html-toolbar / menus）按 id 整体替换，
-/// 未知 id 过滤并聚合为一条告警；map 型（icons）逐键深合并，未覆盖键保留默认，
-/// 未知键（默认不存在的概念键）过滤并聚合为一条告警。空 / 全非法回落默认。
+/// 合并：默认 ← 用户覆盖。list 型（html-toolbar / menus / capsules）按 id 整体
+/// 替换，未知 id 过滤并聚合为一条告警；map 型（icons）逐键深合并，未覆盖键保留
+/// 默认，未知键（默认不存在的概念键）过滤并聚合为一条告警。空 / 全非法回落默认。
 fn merge_list_surface(
     spec: &SurfaceSpec,
     defaults: &[Value],
@@ -557,7 +624,7 @@ fn merge_list_surface(
     }
     let mut warnings = Vec::new();
     if !unknown.is_empty() {
-        warnings.push(format!("未知菜单动作: {}", unknown.join(", ")));
+        warnings.push(format!("未知动作 id: {}", unknown.join(", ")));
     }
     if out.is_empty() {
         return SurfaceLoad {
@@ -1564,6 +1631,244 @@ mod tests {
         );
     }
 
+    // ── capsules（T4 新增）─────────────────────────────────────
+
+    fn capsules_spec() -> &'static SurfaceSpec {
+        find_surface("capsules").expect("capsules 必登记")
+    }
+
+    fn write_capsules_user(base: &Path, json: &str) {
+        let path = base.join("user").join("capsules.json");
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(&path, json).unwrap();
+    }
+
+    /// 从 `floating-toolbar.ts` 的 `actions` 解析胶囊 12 项 id/顺序（与默认
+    /// JSON 对账，防漂移）。胶囊面默认源即由这些动作声明派生。
+    fn ts_capsule_ids() -> Vec<String> {
+        let source = include_str!("../../src/editors/orchestration/floating-toolbar.ts");
+        let actions_start = source
+            .find("const actions: RouletteActions = {")
+            .expect("actions 块");
+        let actions_end = source[actions_start..]
+            .find("color: (kind, className)")
+            .map(|i| actions_start + i)
+            .expect("actions 结尾");
+        let actions_block = &source[actions_start..actions_end];
+        let section = |name: &str| -> Vec<String> {
+            let start = actions_block
+                .find(&format!("{name}: ["))
+                .expect("{name} 块");
+            let end = actions_block[start..]
+                .find("\n      ],")
+                .map(|i| start + i)
+                .expect("{name} 结尾");
+            let mut ids = Vec::new();
+            for line in actions_block[start..end].lines() {
+                let Some(rest) = line.trim().strip_prefix("id: \"") else {
+                    continue;
+                };
+                if let Some(id) = rest.split('"').next() {
+                    ids.push(id.to_string());
+                }
+            }
+            ids
+        };
+        let format = section("format");
+        let smart = section("smart");
+        let clear = section("clear");
+        let mut ids: Vec<String> = Vec::new();
+        ids.extend(
+            ["format-bold", "format-italic", "format-underline", "format-strike", "format-code", "format-link"]
+                .iter()
+                .map(|s| s.to_string()),
+        );
+        ids.extend(smart);
+        ids.push("capsule-font".into());
+        ids.push("capsule-bg".into());
+        ids.extend(clear);
+        debug_assert_eq!(
+            format
+                .iter()
+                .filter(|id| [
+                    "format-bold",
+                    "format-italic",
+                    "format-underline",
+                    "format-strike",
+                    "format-code",
+                    "format-link"
+                ]
+                .contains(&id.as_str()))
+                .count(),
+            6,
+            "format 扇区必须含胶囊用到的六个格式动作"
+        );
+        ids
+    }
+
+    #[test]
+    fn capsules_内嵌默认_12项且与TS_capsuleItems逐项一致() {
+        let items = embedded_defaults_json(capsules_spec());
+        assert_eq!(items.len(), 12, "胶囊默认集合必须恰 12 项（回归红线）");
+        let ids: Vec<&str> = items
+            .iter()
+            .filter_map(|i| i.get("id")?.as_str())
+            .collect();
+        let ts_ids = ts_capsule_ids();
+        assert_eq!(
+            ids,
+            ts_ids.iter().map(|s| s.as_str()).collect::<Vec<_>>(),
+            "capsules.default.json 与 capsuleItems() 必须逐 id 同序（唯一源对账）"
+        );
+        for item in &items {
+            assert!(item.get("label").and_then(|v| v.as_str()).is_some());
+            assert!(item.get("icon").and_then(|v| v.as_str()).is_some());
+            assert!(item.get("order").is_some());
+        }
+    }
+
+    #[test]
+    fn capsules_物化_首次写文件且与内嵌逐值一致() {
+        let dir = temp_base("capsules_materialize");
+        let base = dir.path();
+        let items = materialize(capsules_spec(), base);
+        assert_eq!(items.len(), 12);
+        let path = surface_file_path(base, capsules_spec());
+        assert!(path.exists());
+        let raw = std::fs::read_to_string(&path).unwrap();
+        let (parsed, warnings) = parse_default_json(capsules_spec(), &raw);
+        assert!(warnings.is_empty());
+        assert_eq!(parsed, items);
+    }
+
+    #[test]
+    fn capsules_用户覆盖_改名排序生效() {
+        let dir = temp_base("capsules_override");
+        let base = dir.path();
+        write_capsules_user(base, r#"{"items":["capsule-bg","format-bold"]}"#);
+        let loaded = load_surface(capsules_spec(), base);
+        assert_eq!(item_ids(&loaded.items), vec!["capsule-bg", "format-bold"]);
+        assert_eq!(loaded.warnings, Vec::<String>::new());
+    }
+
+    #[test]
+    fn capsules_用户覆盖_改名生效() {
+        let dir = temp_base("capsules_rename");
+        let base = dir.path();
+        materialize(capsules_spec(), base);
+        let path = surface_file_path(base, capsules_spec());
+        let raw = std::fs::read_to_string(&path).unwrap();
+        let mut value: Value = serde_json::from_str(&raw).unwrap();
+        for item in value["items"].as_array_mut().unwrap() {
+            if item["id"] == "format-bold" {
+                item["label"] = Value::String("加粗文字".into());
+            }
+        }
+        std::fs::write(&path, serde_json::to_string_pretty(&value).unwrap()).unwrap();
+        let loaded = load_surface(capsules_spec(), base);
+        let bold = loaded
+            .items
+            .iter()
+            .find(|i| i.get("id").and_then(|v| v.as_str()) == Some("format-bold"))
+            .expect("format-bold 必在有效集合");
+        assert_eq!(
+            bold.get("label").and_then(|v| v.as_str()),
+            Some("加粗文字")
+        );
+    }
+
+    #[test]
+    fn capsules_用户覆盖_未知id过滤并聚合告警() {
+        let dir = temp_base("capsules_unknown");
+        let base = dir.path();
+        write_capsules_user(base, r#"{"items":["format-bold","nope","format-italic"]}"#);
+        let loaded = load_surface(capsules_spec(), base);
+        assert_eq!(item_ids(&loaded.items), vec!["format-bold", "format-italic"]);
+        assert_eq!(loaded.warnings.len(), 1);
+        assert!(loaded.warnings[0].contains("nope"));
+    }
+
+    #[test]
+    fn capsules_空覆盖回落默认() {
+        let dir = temp_base("capsules_empty");
+        let base = dir.path();
+        let defaults = materialize(capsules_spec(), base);
+        write_capsules_user(base, r#"{"items":[]}"#);
+        let loaded = load_surface(capsules_spec(), base);
+        assert_eq!(loaded.items, defaults);
+        assert_eq!(loaded.items.len(), 12);
+    }
+
+    #[test]
+    fn capsules_坏项过滤_缺label被过滤并聚合告警() {
+        let dir = temp_base("capsules_bad_item");
+        let base = dir.path();
+        materialize(capsules_spec(), base);
+        let path = surface_file_path(base, capsules_spec());
+        let raw = std::fs::read_to_string(&path).unwrap();
+        let mut value: Value = serde_json::from_str(&raw).unwrap();
+        value["items"][0].as_object_mut().unwrap().remove("label");
+        value["items"][1].as_object_mut().unwrap().remove("icon");
+        std::fs::write(&path, serde_json::to_string_pretty(&value).unwrap()).unwrap();
+        let loaded = load_surface(capsules_spec(), base);
+        assert_eq!(loaded.items.len(), 10);
+        assert_eq!(loaded.warnings.len(), 1);
+        assert!(loaded.warnings[0].contains("format-bold"));
+        assert!(loaded.warnings[0].contains("format-italic"));
+    }
+
+    #[test]
+    fn capsules_默认文件损坏回落内嵌() {
+        let dir = temp_base("capsules_corrupt");
+        let base = dir.path();
+        let path = surface_file_path(base, capsules_spec());
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(&path, "not-json").unwrap();
+        let items = materialize(capsules_spec(), base);
+        assert_eq!(items, embedded_defaults_json(capsules_spec()));
+        assert_eq!(items.len(), 12);
+    }
+
+    #[test]
+    fn capsules_校验器_类型错与未知id被过滤() {
+        assert!(validate_capsule_item(&serde_json::json!({
+            "id": "format-bold", "label": "加粗", "icon": "bold", "order": 1
+        }))
+        .is_some());
+        assert!(validate_capsule_item(&serde_json::json!({
+            "id": "nope", "label": "X", "icon": "bold", "order": 1
+        }))
+        .is_none());
+        assert!(validate_capsule_item(&serde_json::json!({
+            "id": "format-bold", "icon": "bold", "order": 1
+        }))
+        .is_none());
+        assert!(validate_capsule_item(&serde_json::json!({
+            "id": "format-bold", "label": "加粗", "order": 1
+        }))
+        .is_none());
+        let mut entry = serde_json::json!({
+            "id": "format-bold", "label": "加粗", "icon": "bold", "order": 1
+        });
+        entry["order"] = serde_json::json!("1");
+        assert!(validate_capsule_item(&entry).is_none());
+    }
+
+    #[test]
+    fn capsules_内嵌默认_id集合与校验白名单对账() {
+        let defaults = embedded_defaults_json(capsules_spec());
+        let ids: std::collections::HashSet<&str> = defaults
+            .iter()
+            .filter_map(|i| i.get("id")?.as_str())
+            .collect();
+        let allowed: std::collections::HashSet<&str> =
+            CAPSULE_ALLOWED_IDS.iter().copied().collect();
+        assert_eq!(
+            ids, allowed,
+            "内嵌默认源与校验白名单必须逐 id 一致（唯一源对账）"
+        );
+    }
+
     // ── 注册表 ────────────────────────────────────────────────
 
     #[test]
@@ -1595,7 +1900,7 @@ mod tests {
             ids, table,
             "load_all 必须逐面返回登记表全集（新增面只追加表行即可被发现）"
         );
-        assert_eq!(ids.len(), 3, "T3 后应登记三面");
+        assert_eq!(ids.len(), 4, "T4 后应登记四面");
     }
 
     #[test]
