@@ -24,10 +24,13 @@ interface JumpRecord {
   viewport: [number, number];
   cropFrames: number;
   marks: string[];
+  inputs?: string[];
 }
 
 const lines: string[] = [];
 const marks: string[] = [];
+/** 最近输入事件（判定跳变前是哪种手势）。 */
+const inputs: string[] = [];
 let lastTop: number | null = null;
 let lastScroller: string | null = null;
 let installed = false;
@@ -83,6 +86,29 @@ let sessionText = "";
 export function installCropJumpProbe(): void {
   if (installed || !import.meta.env.DEV) return;
   installed = true;
+  // 输入手势环：只记类型与目标类名，不记内容。
+  for (const type of [
+    "pointerdown",
+    "mousedown",
+    "pointerup",
+    "click",
+    "dblclick",
+    "keydown",
+    "wheel",
+    "touchstart",
+  ] as const) {
+    document.addEventListener(
+      type,
+      (event) => {
+        const t = event.target as HTMLElement | null;
+        const cls =
+          typeof t?.className === "string" ? t.className.slice(0, 28) : "";
+        inputs.push(`${type}:${cls}@${Math.round(performance.now())}`);
+        if (inputs.length > 8) inputs.shift();
+      },
+      { capture: true, passive: true },
+    );
+  }
   // DEV 诊断出口：模块实例可能因 HMR 带 ?t= 分成多份，缓冲挂到 window 上
   // 才能被测试/人工稳定读到。
   (window as unknown as Record<string, unknown>).__cropProbeLines__ = lines;
@@ -113,6 +139,7 @@ export function installCropJumpProbe(): void {
             viewport: viewStats.viewport,
             cropFrames: viewStats.cropFrames,
             marks: marks.slice(-6),
+            inputs: inputs.slice(-4),
           };
           lines.push(`JUMP ${JSON.stringify(record)}`);
           scheduleFlush();
@@ -123,6 +150,39 @@ export function installCropJumpProbe(): void {
     },
     true,
   );
+}
+
+/**
+ * 拦截某个元素的 scrollTop 赋值：记录值 + 调用栈前几帧，用于判定「是谁把
+ * 滚动位置改掉的」。返回还原函数。
+ */
+export function traceScrollTop(el: HTMLElement): () => void {
+  if (!installed) return () => {};
+  const desc = Object.getOwnPropertyDescriptor(
+    Element.prototype,
+    "scrollTop",
+  );
+  if (!desc?.get || !desc?.set) return () => {};
+  const original = { get: desc.get, set: desc.set };
+  Object.defineProperty(el, "scrollTop", {
+    configurable: true,
+    get(this: Element) {
+      return original.get!.call(this);
+    },
+    set(this: Element, value: number) {
+      const stack = (new Error().stack ?? "")
+        .split("\n")
+        .slice(1, 5)
+        .map((line) => line.trim().slice(0, 90))
+        .join(" | ");
+      lines.push(`SET scrollTop=${Math.round(Number(value))} ${stack}`);
+      scheduleFlush();
+      original.set!.call(this, value);
+    },
+  });
+  return () => {
+    delete (el as unknown as Record<string, unknown>).scrollTop;
+  };
 }
 
 /** 关键节点打点：进入裁剪 / 写回 / 清理。 */
