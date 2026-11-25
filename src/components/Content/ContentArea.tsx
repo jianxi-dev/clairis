@@ -368,18 +368,22 @@ const editorDecorationOptions: EditorDecorationsOptions = {
         // 裁剪是一次完成型操作：收工即退出选中态，收掉缩放把手/角点/描述行，
         // 避免被误认为「遗留的裁剪标识」。
         deselectImage();
-        // WKWebView 会把刚移除的裁剪图层 / 旧裁剪像素留成鬼影（「隐约残留」）：
-        // 让 widget 重新合成一次，冲掉缓存图层。
-        const host = document.querySelector<HTMLElement>(
-          `.cm-image-widget[data-image-from="${from}"]`,
+        // WKWebView 会把刚移除的裁剪图层留成鬼影（真机截图：图片上下边中部
+        // 黑色短横线）。重建后的 widget 是新节点，visibility 闪一帧与滚动回弹
+        // 都不重绘内容瓦片；filter 变更才强制 GPU 重新栅格化整个子树。
+        const fresh = document.querySelector<HTMLElement>(
+          `.cm-image-widget[data-image-from="${from}"] .image-crop-window`,
         );
-        if (host) {
-          host.style.visibility = "hidden";
+        if (fresh) {
+          fresh.style.filter = "blur(0px)";
           requestAnimationFrame(() => {
-            if (host.isConnected) host.style.visibility = "";
+            if (fresh.isConnected) fresh.style.filter = "";
           });
         }
         // 残留排查：确认后把 widget 的 DOM 结构与关键样式记进探针日志。
+        const host = document.querySelector<HTMLElement>(
+          `.cm-image-widget[data-image-from="${from}"]`,
+        );
         const cs = host ? getComputedStyle(host) : null;
         markCropProbe("crop-post", {
           from,
