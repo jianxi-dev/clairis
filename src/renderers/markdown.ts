@@ -196,9 +196,11 @@ marked.use({
         const open = isTauriEnv()
           ? `<a class="preview-embed-open" href="${escapeHtml(resolved)}" target="_blank" rel="noopener">打开</a>`
           : "";
-        return `<figure class="wide"><div class="preview-embed-attachment" data-embed-kind="file" data-embed-path="${escapeHtml(href)}">` +
+        return (
+          `<figure class="wide"><div class="preview-embed-attachment" data-embed-kind="file" data-embed-path="${escapeHtml(href)}">` +
           `<span class="preview-embed-icon" data-icon="${iconOfType(type)}" style="color:${colorOfType(type)}"></span>` +
-          `<span class="preview-embed-name">${escapeHtml(name)}</span>${open}</div>${caption}</figure>`;
+          `<span class="preview-embed-name">${escapeHtml(name)}</span>${open}</div>${caption}</figure>`
+        );
       }
       return `<figure class="wide"><img src="${src}" alt="${alt}" />${caption}</figure>`;
     },
@@ -540,20 +542,44 @@ function applyImageAttributes(doc: Document): void {
       const img = node?.querySelector?.("img") ?? null;
       if (img) {
         const style: string[] = [];
+        // 裁剪显示与编辑态同一套几何：盒 = 可见显示尺寸（声明 width/height，
+        // 声明比可能与裁剪矩形自然比不同），内图取自然尺寸再逐轴缩放 + 平移，
+        // 溢出裁掉。预览曾经用 object-fit:none + object-position 直接 1:1 偏移，
+        // 不缩放，看到的区域与编辑态调整后的不同（#1453 复测）。
+        let cropWrap: HTMLElement | null = null;
         if (hasCrop) {
-          // 裁剪显示与编辑态同一套 CSS 技法：盒=裁剪矩形，object-fit:none
-          // 平移内容。必须锁宽高比：只写 width/height 时 max-width 夹住宽度、
-          // 高度不变，会得到远超容器的空白盒（#808）。
           const [l, t, w, h] = crop;
           const boxW = hasWidth ? width : w;
-          style.push(
-            `object-fit:none`,
-            `object-position:${-l}px ${-t}px`,
-            `aspect-ratio:${w} / ${h}`,
-            `width:${boxW}px`,
-            `max-width:100%`,
-            `height:auto`,
+          const boxH = hasHeight ? height : (boxW * h) / w;
+          const doc = img.ownerDocument;
+          const sx = boxW / w;
+          const sy = boxH / h;
+          cropWrap = doc.createElement("span");
+          cropWrap.className = "preview-img-crop";
+          cropWrap.setAttribute(
+            "style",
+            "display:block;position:relative;overflow:hidden;" +
+              `width:${boxW}px;max-width:100%;height:${boxH}px;` +
+              "margin-inline:auto;" +
+              "border-radius:var(--media-radius);" +
+              "box-shadow:0 1px 3px rgba(31, 26, 20, 0.08);",
           );
+          style.push(
+            "position:absolute",
+            "left:0",
+            "top:0",
+            "max-width:none",
+            "width:auto",
+            "height:auto",
+            "object-fit:none",
+            `transform:translate(${-l * sx}px,${-t * sy}px) scale(${sx},${sy})`,
+            "transform-origin:0 0",
+            "border-radius:0",
+            "box-shadow:none",
+            "margin:0",
+          );
+          img.parentElement?.insertBefore(cropWrap, img);
+          cropWrap.appendChild(img);
         } else {
           if (hasWidth) img.setAttribute("width", String(width));
           if (hasHeight) img.setAttribute("height", String(height));
@@ -572,12 +598,20 @@ function applyImageAttributes(doc: Document): void {
         }
         if (align === "left" || align === "center" || align === "right") {
           // 预览里 img 是 `display:block; margin-inline:auto`，对 figure 设
-          // text-align 不改变位置，对齐只能落在图片自己的外边距上。
-          if (align === "left")
-            style.push("margin-left:0", "margin-right:auto");
-          if (align === "right")
-            style.push("margin-left:auto", "margin-right:0");
-          if (align === "center") style.push("margin-inline:auto");
+          // text-align 不改变位置，对齐只能落在图片自己的外边距上；裁剪态
+          // 外盒才是占位元素（img 已绝对定位进盒内），对齐落在外盒上。
+          if (cropWrap) {
+            cropWrap.style.marginLeft =
+              align === "right" ? "auto" : align === "center" ? "auto" : "0";
+            cropWrap.style.marginRight =
+              align === "left" ? "auto" : align === "center" ? "auto" : "0";
+          } else {
+            if (align === "left")
+              style.push("margin-left:0", "margin-right:auto");
+            if (align === "right")
+              style.push("margin-left:auto", "margin-right:0");
+            if (align === "center") style.push("margin-inline:auto");
+          }
           const target = img.closest("figure") ?? img.parentElement;
           target?.setAttribute("style", `text-align:${align}`);
         }
@@ -595,7 +629,10 @@ function applyImageAttributes(doc: Document): void {
           )
             ? node
             : null);
-        if (card && (align === "left" || align === "center" || align === "right")) {
+        if (
+          card &&
+          (align === "left" || align === "center" || align === "right")
+        ) {
           const host = card.parentElement ?? card;
           host.setAttribute("style", `text-align:${align}`);
         }
@@ -616,17 +653,22 @@ function baseNameOfHref(href: string): string {
  * sandbox 与 fileEmbed 的 iframe 同口径：脚本 / 同源 / 弹窗。
  */
 function hydrateEmbedIframes(doc: Document): void {
-  doc.querySelectorAll<HTMLElement>(".preview-embed-iframe[data-embed-src]").forEach((el) => {
-    const src = el.dataset.embedSrc;
-    if (!src) return;
-    const iframe = doc.createElement("iframe");
-    iframe.className = "preview-embed-iframe wide";
-    iframe.setAttribute("src", src);
-    iframe.setAttribute("title", el.dataset.embedTitle || "内嵌页面");
-    iframe.setAttribute("sandbox", "allow-scripts allow-same-origin allow-popups");
-    iframe.setAttribute("loading", "lazy");
-    el.replaceWith(iframe);
-  });
+  doc
+    .querySelectorAll<HTMLElement>(".preview-embed-iframe[data-embed-src]")
+    .forEach((el) => {
+      const src = el.dataset.embedSrc;
+      if (!src) return;
+      const iframe = doc.createElement("iframe");
+      iframe.className = "preview-embed-iframe wide";
+      iframe.setAttribute("src", src);
+      iframe.setAttribute("title", el.dataset.embedTitle || "内嵌页面");
+      iframe.setAttribute(
+        "sandbox",
+        "allow-scripts allow-same-origin allow-popups",
+      );
+      iframe.setAttribute("loading", "lazy");
+      el.replaceWith(iframe);
+    });
 }
 
 /** sanitize 之后的一趟 DOM 处理：Callout → 图片属性 → 公式回填 → 链接 → 中西文间距 */

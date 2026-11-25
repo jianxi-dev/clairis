@@ -76,18 +76,64 @@ const CORNERS: readonly string[] = ["nw", "ne", "se", "sw"];
 let activeCleanup: (() => void) | null = null;
 /** 当前挂着的确认函数：工具条「裁剪」按钮在裁剪态下改为确认收尾。 */
 let activeConfirm: (() => void) | null = null;
+/** 裁剪框所属图片的文档偏移与宿主 widget。 */
+let activeFrom: number | null = null;
+let activeHost: HTMLElement | null = null;
+
+/**
+ * 会话是否仍有效。文档变化会让编辑器重建 widget，旧裁剪框的 DOM 随旧 widget
+ * 一起被丢弃，但模块级收尾函数还在——不判存活，后续每次「裁剪」都会落到
+ * 「确认一个已经不在文档里的框」，表现为点了没有任何反应（#1453 复测）。
+ */
+function activeAlive(): boolean {
+  return (
+    activeCleanup !== null && activeHost !== null && activeHost.isConnected
+  );
+}
 
 export function isImageCropActive(): boolean {
-  return activeCleanup !== null;
+  return activeAlive();
+}
+
+/** 这张图是否正挂着裁剪框：工具条据此区分「确认当前框」与「给这张重开」。 */
+export function isImageCropActiveFor(from: number): boolean {
+  return activeAlive() && activeFrom === from;
+}
+
+function clearActive(): void {
+  activeCleanup = null;
+  activeConfirm = null;
+  activeFrom = null;
+  activeHost = null;
 }
 
 /** 关闭内联裁剪并恢复显示（切换图片 / 重开裁剪前清场）。 */
 export function closeImageCrop(): void {
   if (!activeCleanup) return;
   const cleanup = activeCleanup;
-  activeCleanup = null;
-  activeConfirm = null;
+  clearActive();
   cleanup();
+}
+
+/**
+ * 视口护栏：进入与确认都要替换 / 重建 widget DOM，浏览器或编辑器会做滚动
+ * 补偿，视口因此「跳一下」。裁剪是就地编辑，视口不该动——在接下来两帧把
+ * 滚动位置钉回裁剪前的值。
+ */
+function pinScroll(
+  scroller: HTMLElement | null,
+  scrollTop: number | null,
+): void {
+  if (!scroller || scrollTop === null) return;
+  const pin = (): void => {
+    if (!scroller.isConnected) return;
+    if (Math.abs(scroller.scrollTop - scrollTop) < 0.5) return;
+    scroller.scrollTop = scrollTop;
+  };
+  requestAnimationFrame(() => {
+    pin();
+    requestAnimationFrame(pin);
+  });
 }
 
 /** 工具条「裁剪」按钮在裁剪态下改为确认：写回当前矩形并退出。 */
@@ -195,6 +241,9 @@ function mount(
   img: HTMLImageElement,
   options: ImageCropOptions,
 ): void {
+  if (!widget.isConnected) return;
+  const scroller = widget.closest(".cm-scroller") as HTMLElement | null;
+  const scrollAtMount = scroller ? scroller.scrollTop : null;
   const natW = img.naturalWidth;
   const natH = img.naturalHeight;
 
@@ -289,7 +338,7 @@ function mount(
     const span = document.createElement("span");
     span.className = "cm-image-handle";
     span.dataset.handle = handle;
-    span.style.cursor = HANDLE_CURSOR[handle];
+    span.style.cursor = cropCursor(handle);
     span.style.width = `${HANDLE_HIT_SIZE}px`;
     span.style.height = `${HANDLE_HIT_SIZE}px`;
     span.title = "拖动调整裁剪区域";
@@ -377,13 +426,20 @@ function mount(
 
   const cleanup = (): void => {
     frame.remove();
+    // 兜底清扫：widget 被编辑器重建、跨图重开等路径可能留下旧框或裁剪态类，
+    // 让「保存后裁剪标识隐约存留」不再可能。
+    document
+      .querySelectorAll(".cm-image-crop-frame")
+      .forEach((el) => el.remove());
+    document
+      .querySelectorAll(".cm-image-widget.cm-image-crop-active")
+      .forEach((el) => el.classList.remove("cm-image-crop-active"));
     widget.classList.remove("cm-image-crop-active");
     document.removeEventListener("keydown", onKey, true);
     document.removeEventListener("click", onOutsideClick, true);
     restoreWindow();
     restoreDisplay();
-    if (activeCleanup === cleanup) activeCleanup = null;
-    if (activeConfirm === confirm) activeConfirm = null;
+    if (activeCleanup === cleanup) clearActive();
     notifyImageCropState(false);
   };
 
@@ -400,7 +456,9 @@ function mount(
       rect.height !== baseDisplay.height;
     const end = imageRectFromDisplay(rect, scale);
     drag = null;
+    const scrollBefore = scroller ? scroller.scrollTop : null;
     cleanup();
+    pinScroll(scroller, scrollBefore);
     if (!changed) return;
     const display = {
       width: rect.width,
@@ -410,9 +468,10 @@ function mount(
     };
     if (isFullImageRect(end, natW, natH, FULL_IMAGE_RATIO)) {
       options.onConfirm(null, display);
-      return;
+    } else {
+      options.onConfirm([end.left, end.top, end.width, end.height], display);
     }
-    options.onConfirm([end.left, end.top, end.width, end.height], display);
+    pinScroll(scroller, scrollBefore);
   };
 
   // 点框外 = 确认收尾（未改动即不写回，与工具条「裁剪」按钮同语义）；Esc 才取消。
@@ -505,7 +564,11 @@ function mount(
 
   activeCleanup = cleanup;
   activeConfirm = confirm;
+  const hostFrom = Number(widget.dataset.imageFrom);
+  activeFrom = Number.isFinite(hostFrom) ? hostFrom : null;
+  activeHost = widget;
   notifyImageCropState(true);
+  pinScroll(scroller, scrollAtMount);
 }
 
 const HANDLE_AXES: Record<
@@ -522,16 +585,37 @@ const HANDLE_AXES: Record<
   sw: { x: "l", y: "b" },
 };
 
-const HANDLE_CURSOR: Record<string, string> = {
-  e: "ew-resize",
-  w: "ew-resize",
-  n: "ns-resize",
-  s: "ns-resize",
-  ne: "nesw-resize",
-  sw: "nesw-resize",
-  nw: "nwse-resize",
-  se: "nwse-resize",
+/** 裁剪指针的括号几何：角 = 单个 L，边 = 两端各一个 L，读起来像「裁」。 */
+const CROP_CURSOR_BRACKETS: Record<string, readonly string[]> = {
+  nw: ["M9.5 3.5 H3.5 V9.5"],
+  ne: ["M14.5 3.5 H20.5 V9.5"],
+  se: ["M20.5 14.5 V20.5 H14.5"],
+  sw: ["M3.5 14.5 V20.5 H9.5"],
+  e: ["M14.5 3.5 H20.5 V9.5", "M20.5 14.5 V20.5 H14.5"],
+  w: ["M9.5 3.5 H3.5 V9.5", "M3.5 14.5 V20.5 H9.5"],
+  n: ["M9.5 3.5 H3.5 V9.5", "M14.5 3.5 H20.5 V9.5"],
+  s: ["M3.5 14.5 V20.5 H9.5", "M20.5 14.5 V20.5 H14.5"],
 };
+
+/**
+ * 裁剪专用指针（24×24、热点居中）：白描边 + 黑括号，浅底深底都可见。
+ * 与图片缩放的双箭头指针（ew/nwse/ns-resize）明显不同，避免「调比例」与
+ * 「改裁剪」两种拖拽混淆。
+ */
+function cropCursor(handle: string): string {
+  const paths = CROP_CURSOR_BRACKETS[handle];
+  if (!paths) return "crosshair";
+  const halo = paths
+    .map((d) => `<path d='${d}' stroke='%23fff' stroke-width='4.5'/>`)
+    .join("");
+  const ink = paths
+    .map((d) => `<path d='${d}' stroke='%23000' stroke-width='1.6'/>`)
+    .join("");
+  const svg =
+    "<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' " +
+    `fill='none' stroke-linecap='round' stroke-linejoin='round'>${halo}${ink}</svg>`;
+  return `url("data:image/svg+xml;charset=utf-8,${svg}") 12 12, crosshair`;
+}
 
 const HANDLE_MARK: Record<string, string> = {
   n: "left:50%; top:2px; width:16px; height:3px; margin-left:-8px;",

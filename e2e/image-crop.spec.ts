@@ -284,11 +284,14 @@ test("8 个控制点：方向光标 + 裁剪角标", async ({ page }) => {
       };
     }),
   );
-  // 四角为裁剪图标，四边为可见短柄；方向光标覆盖全部 8 个控制点。
+  // 四角为裁剪图标，四边为可见短柄；8 个控制点统一用自定义裁剪指针
+  // （白描边 + 黑括号），与缩放把手的方向箭头区分（#1453 复测）。
   expect(probe.filter((p) => p.iconKey === "CropOutlined")).toHaveLength(4);
-  expect(
-    probe.filter((p) => directional.has(p.cursor) && p.hasMark),
-  ).toHaveLength(4);
+  expect(probe.filter((p) => p.hasMark)).toHaveLength(4);
+  for (const p of probe) {
+    expect(p.cursor).toContain("url(");
+    expect(directional.has(p.cursor)).toBe(false);
+  }
 });
 
 test("拖裁剪框本体：crop 值随矩形移动", async ({ page }) => {
