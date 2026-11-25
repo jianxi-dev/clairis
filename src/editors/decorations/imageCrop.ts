@@ -472,6 +472,12 @@ function mount(
     document.removeEventListener("click", onOutsideClick, true);
     restoreWindow();
     restoreDisplay();
+    if (scroller) {
+      scroller.removeEventListener("scroll", onScrollGuard);
+      scroller.removeEventListener("wheel", noteUserScroll);
+      scroller.removeEventListener("touchstart", noteUserScroll);
+      window.removeEventListener("keydown", noteUserScroll);
+    }
     if (activeCleanup === cleanup) clearActive();
     notifyImageCropState(false);
   };
@@ -600,7 +606,38 @@ function mount(
   document.addEventListener("keydown", onKey, true);
   document.addEventListener("click", onOutsideClick, true);
 
-  markCropProbe("crop-enter", { from: options.from ?? null, crop: options.crop });
+  markCropProbe("crop-enter", {
+    from: options.from ?? null,
+    crop: options.crop,
+  });
+  // 会话级滚动夹取护栏：第一次裁剪时 widget 结构由普通 img 换成裁剪窗口，
+  // 内容高度会瞬时塌陷，浏览器把 scrollTop 夹成 0；内容恢复后不回填 →
+  // 「跳到顶部」（WebKit 无 scroll anchoring，真机必现；Chromium 掩盖了它）。
+  // 会话存活期间把归零的滚动位置补回；用户滚轮 / 触摸 / 按键立即让位。
+  let guardTop = scroller ? scroller.scrollTop : 0;
+  let userScrollIntent = false;
+  const noteUserScroll = (): void => {
+    userScrollIntent = true;
+    if (scroller) guardTop = scroller.scrollTop;
+  };
+  const onScrollGuard = (): void => {
+    if (!scroller || userScrollIntent) return;
+    if (scroller.scrollTop !== 0 || guardTop <= 40) return;
+    requestAnimationFrame(() => {
+      if (!scroller.isConnected || userScrollIntent) return;
+      if (scroller.scrollTop !== 0) return;
+      // 内容还没恢复（仍在塌陷）就等下一轮，避免和布局打架。
+      if (scroller.scrollHeight <= scroller.clientHeight + 40) return;
+      scroller.scrollTop = guardTop;
+    });
+  };
+  if (scroller) {
+    scroller.addEventListener("scroll", onScrollGuard);
+    scroller.addEventListener("wheel", noteUserScroll, { passive: true });
+    scroller.addEventListener("touchstart", noteUserScroll, { passive: true });
+    window.addEventListener("keydown", noteUserScroll);
+  }
+
   activeCleanup = cleanup;
   activeConfirm = confirm;
   const hostFrom = Number(widget.dataset.imageFrom);

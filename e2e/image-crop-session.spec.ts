@@ -378,14 +378,17 @@ test("边柄短杆指向框外（e→右 w→左 n→上 s→下）", async ({ p
 
   // 从 data URI 里抠出路径，断言短杆相对粗条向外延伸。
   // e: 杆 M8 12 H18（向右伸）／ w: M16 12 H6（向左）／ n: M12 16 V6（向上）／ s: M12 8 V18（向下）。
-  const pathOf = (c: string) => decodeURIComponent(c.slice(c.indexOf("<svg"), c.indexOf("</svg>") + 6));
+  const pathOf = (c: string) =>
+    decodeURIComponent(c.slice(c.indexOf("<svg"), c.indexOf("</svg>") + 6));
   expect(pathOf(cursors.e)).toContain("M8 12 H18");
   expect(pathOf(cursors.w)).toContain("M16 12 H6");
   expect(pathOf(cursors.n)).toContain("M12 16 V6");
   expect(pathOf(cursors.s)).toContain("M12 8 V18");
 });
 
-test("确认后迟发的滚动跳变会被钉回（模拟 WebKit reveal 选区）", async ({ page }) => {
+test("确认后迟发的滚动跳变会被钉回（模拟 WebKit reveal 选区）", async ({
+  page,
+}) => {
   await openTwoImages(page);
   await centerImage(page, "乙");
   await page.locator('.cm-image-widget img[alt="乙"]').click();
@@ -394,13 +397,21 @@ test("确认后迟发的滚动跳变会被钉回（模拟 WebKit reveal 选区�
 
   const scrollNow = () =>
     page.evaluate(() =>
-      Math.round((document.querySelector(".cm-scroller") as HTMLElement).scrollTop),
+      Math.round(
+        (document.querySelector(".cm-scroller") as HTMLElement).scrollTop,
+      ),
     );
 
-  const box = (await page.locator('.cm-image-crop-frame [data-handle="se"]').boundingBox())!;
+  const box = (await page
+    .locator('.cm-image-crop-frame [data-handle="se"]')
+    .boundingBox())!;
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await page.mouse.down();
-  await page.mouse.move(box.x + box.width / 2 - 100, box.y + box.height / 2 - 50, { steps: 6 });
+  await page.mouse.move(
+    box.x + box.width / 2 - 100,
+    box.y + box.height / 2 - 50,
+    { steps: 6 },
+  );
   await page.mouse.up();
   const beforeConfirm = await scrollNow();
 
@@ -418,4 +429,40 @@ test("确认后迟发的滚动跳变会被钉回（模拟 WebKit reveal 选区�
   });
   await page.waitForTimeout(500);
   expect(Math.abs((await scrollNow()) - beforeConfirm)).toBeLessThanOrEqual(1);
+});
+
+test("裁剪会话中滚动被夹成 0 会被补回；用户滚动后让位", async ({ page }) => {
+  await openTwoImages(page);
+  await centerImage(page, "乙");
+
+  const scrollNow = () =>
+    page.evaluate(() =>
+      Math.round(
+        (document.querySelector(".cm-scroller") as HTMLElement).scrollTop,
+      ),
+    );
+
+  const before = await scrollNow();
+  expect(before).toBeGreaterThan(60);
+
+  await page.locator('.cm-image-widget img[alt="乙"]').click();
+  await page.getByTestId("img-toolbar-crop").click();
+  await expect(page.getByTestId("img-crop-frame")).toHaveCount(1);
+
+  // 模拟真机的内容塌陷夹取：会话中 scrollTop 被夹到 0。
+  await page.evaluate(() => {
+    (document.querySelector(".cm-scroller") as HTMLElement).scrollTop = 0;
+  });
+  await page.waitForTimeout(200);
+  expect(Math.abs((await scrollNow()) - before)).toBeLessThanOrEqual(2);
+
+  // 用户真实滚动后让位：再被夹到 0 不再补回。
+  await page.mouse.move(600, 400);
+  await page.mouse.wheel(0, 240);
+  await page.waitForTimeout(200);
+  await page.evaluate(() => {
+    (document.querySelector(".cm-scroller") as HTMLElement).scrollTop = 0;
+  });
+  await page.waitForTimeout(200);
+  expect(await scrollNow()).toBeLessThanOrEqual(5);
 });

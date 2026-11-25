@@ -18,6 +18,7 @@ interface JumpRecord {
   from: number;
   to: number;
   scroller: string;
+  /** scroller 自身内容高度（塌陷时 ≈ clientHeight）。 */
   docH: number;
   sel: number;
   viewport: [number, number];
@@ -104,10 +105,7 @@ export function installCropJumpProbe(): void {
             from: lastTop,
             to: top,
             scroller: which,
-            docH: Math.round(
-              (target.parentElement?.scrollHeight ??
-                target.scrollHeight) || 0,
-            ),
+            docH: Math.round(target.scrollHeight || 0),
             sel: viewStats.sel,
             viewport: viewStats.viewport,
             cropFrames: viewStats.cropFrames,
