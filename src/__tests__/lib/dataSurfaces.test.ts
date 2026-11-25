@@ -48,7 +48,7 @@ describe("数据面 store", () => {
       payload({ items: payload().items.slice(0, 2) }),
     ]);
     await reloadSurface("html-toolbar", invoke);
-    expect(getSurfaceItems("html-toolbar").map((i) => i.id)).toEqual([
+    expect(getSurfaceItems("html-toolbar").map((i) => (i as { id: string }).id)).toEqual([
       "ai-rewrite",
       "ai-translate",
     ]);

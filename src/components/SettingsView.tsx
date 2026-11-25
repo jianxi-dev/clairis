@@ -38,6 +38,7 @@ import {
 import { BUILTIN_ALIAS_MAP, type FrontmatterType } from "../lib/frontmatter";
 import { useEditorStore } from "../stores/editorStore";
 import { getSurfaceItems } from "../lib/dataSurfaces/store";
+import type { ToolbarSlotItem } from "../editors/orchestration/slots";
 import { ROULETTE_HOTKEY_DEFAULT } from "../editors/orchestration/roulette";
 import {
   READER_WIDTH_MAX,
@@ -1231,7 +1232,7 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
     void saveAppConfig();
   };
 
-  const surfaceToolbarItems = getSurfaceItems("html-toolbar");
+  const surfaceToolbarItems = getSurfaceItems<ToolbarSlotItem>("html-toolbar");
   const activeToolbarItems: string[] =
     htmlToolbarItems ?? surfaceToolbarItems.map((item) => item.id);
   const saveToolbarItems = (next: string[]) => {

@@ -26,7 +26,7 @@ function defaultPayload(): SurfacePayload {
 describe("数据面归一化（html-toolbar）", () => {
   it("默认态：无覆盖即返回内嵌默认全集", () => {
     const result = normalizeSurface(defaultPayload(), null);
-    expect(result.items.map((i) => i.id)).toEqual([
+    expect(result.items.map((i) => (i as ToolbarSlotItem).id)).toEqual([
       "ai-rewrite",
       "ai-translate",
       "ai-polish",
@@ -49,7 +49,7 @@ describe("数据面归一化（html-toolbar）", () => {
       "nope",
       "format-italic",
     ]);
-    expect(result.items.map((i) => i.id)).toEqual([
+    expect(result.items.map((i) => (i as ToolbarSlotItem).id)).toEqual([
       "format-bold",
       "format-italic",
     ]);
@@ -71,7 +71,7 @@ describe("数据面归一化（html-toolbar）", () => {
       "ai-polish",
       "format-bold",
     ]);
-    expect(result.items.map((i) => i.id)).toEqual(["format-bold", "ai-polish"]);
+    expect(result.items.map((i) => (i as ToolbarSlotItem).id)).toEqual(["format-bold", "ai-polish"]);
   });
 });
 

@@ -1,0 +1,45 @@
+{
+  "id": "menus",
+  "items": [
+    { "id": "pane-new-file", "group": "pane-header", "order": 1, "label": "新建文件", "icon": "file", "action": "new-file", "enabled": true },
+    { "id": "pane-share", "group": "pane-header", "order": 2, "label": "分享", "icon": "share", "action": "share", "enabled": true },
+    { "id": "pane-split-right", "group": "pane-header", "order": 3, "label": "右分", "icon": "splitRight", "action": "splitRight", "enabled": true },
+    { "id": "pane-split-down", "group": "pane-header", "order": 4, "label": "下分", "icon": "splitDown", "action": "splitDown", "enabled": true },
+    { "id": "pane-source", "group": "pane-header", "order": 5, "label": "源码模式", "icon": "code", "action": "source", "enabled": true },
+    { "id": "pane-locate", "group": "pane-header", "order": 6, "label": "定位", "icon": "locate", "action": "locate", "enabled": true },
+
+    { "id": "ai-undock", "group": "ai-pane", "order": 1, "label": "脱离为小窗", "icon": "export", "action": "undockAi", "enabled": true },
+
+    { "id": "export-docx", "group": "export-submenu", "order": 1, "label": "Word", "icon": "exportWord", "action": "exportDocx", "enabled": true },
+    { "id": "export-mdpkg", "group": "export-submenu", "order": 2, "label": ".mdpkg", "icon": "exportMdpkg", "action": "exportMdpkg", "enabled": true },
+    { "id": "export-png", "group": "export-submenu", "order": 3, "label": "图片", "icon": "image", "action": "exportPng", "enabled": true },
+    { "id": "export-pdf", "group": "export-submenu", "order": 4, "label": "PDF", "icon": "pdf", "action": "exportPdf", "enabled": true },
+    { "id": "export-html", "group": "export-submenu", "order": 5, "label": "HTML", "icon": "html", "action": "exportHtml", "enabled": true },
+    { "id": "export-zip", "group": "export-submenu", "order": 6, "label": "ZIP", "icon": "exportZip", "action": "exportZip", "enabled": true },
+
+    { "id": "tab-preview", "group": "tab-context", "order": 1, "label": "悬浮小窗", "icon": "pip", "action": "previewTab", "enabled": true },
+    { "id": "tab-split-right", "group": "tab-context", "order": 2, "label": "向右分栏", "icon": "splitRight", "action": "splitRight", "enabled": true },
+    { "id": "tab-split-down", "group": "tab-context", "order": 3, "label": "向下分栏", "icon": "splitDown", "action": "splitDown", "enabled": true },
+    { "id": "tab-add-field", "group": "tab-context", "order": 4, "label": "添加字段", "icon": "plus", "action": "addField", "enabled": true },
+    { "id": "tab-export", "group": "tab-context", "order": 5, "label": "导出", "icon": "export", "action": "export", "enabled": true },
+    { "id": "tab-print", "group": "tab-context", "order": 6, "label": "打印", "icon": "print", "action": "print", "enabled": true },
+    { "id": "tab-copy-path", "group": "tab-context", "order": 7, "label": "复制路径", "icon": "copyPath", "action": "copyPath", "enabled": true },
+    { "id": "tab-reveal", "group": "tab-context", "order": 8, "label": "打开文件位置", "icon": "locate", "action": "reveal", "enabled": true },
+    { "id": "tab-move", "group": "tab-context", "order": 9, "label": "移动到…", "icon": "moveTo", "action": "moveTo", "enabled": true },
+    { "id": "tab-reload", "group": "tab-context", "order": 10, "label": "刷新", "icon": "refresh", "action": "reload", "enabled": true },
+    { "id": "tab-close", "group": "tab-context", "order": 11, "label": "关闭", "icon": "close", "action": "closeTab", "enabled": true },
+    { "id": "tab-close-others", "group": "tab-context", "order": 12, "label": "关闭其他", "icon": "closeOthers", "action": "closeOthers", "enabled": true },
+
+    { "id": "preview-open-folder", "group": "preview-context", "order": 1, "label": "打开所在文件夹", "icon": "folder", "action": "openFolder", "enabled": true },
+    { "id": "preview-save-as", "group": "preview-context", "order": 2, "label": "另存为…", "icon": "export", "action": "saveAs", "enabled": true },
+    { "id": "preview-copy-path", "group": "preview-context", "order": 3, "label": "复制文件路径", "icon": "copyPath", "action": "copyPath", "enabled": true },
+    { "id": "preview-close", "group": "preview-context", "order": 4, "label": "关闭预览", "icon": "close", "action": "closePreview", "enabled": true },
+
+    { "id": "ai-preset-theme-groups", "group": "ai-float-presets", "order": 1, "label": "按主题分组", "icon": "grid", "action": "preset:theme-groups", "enabled": true },
+    { "id": "ai-preset-pinned-recent-only", "group": "ai-float-presets", "order": 2, "label": "只留收藏和最近", "icon": "pin", "action": "preset:pinned-recent-only", "enabled": true },
+    { "id": "ai-preset-pinned-scale", "group": "ai-float-presets", "order": 3, "label": "收藏段放大", "icon": "zoomIn", "action": "preset:pinned-scale", "enabled": true },
+    { "id": "ai-preset-grid-list", "group": "ai-float-presets", "order": 4, "label": "网格改列表", "icon": "grid", "action": "preset:grid-list", "enabled": true },
+    { "id": "ai-preset-grid-group-type", "group": "ai-float-presets", "order": 5, "label": "网格按类型分组", "icon": "grid", "action": "preset:grid-group-type", "enabled": true },
+    { "id": "ai-preset-unread-filter", "group": "ai-float-presets", "order": 6, "label": "加未读筛选", "icon": "eye", "action": "preset:unread-filter", "enabled": true }
+  ]
+}

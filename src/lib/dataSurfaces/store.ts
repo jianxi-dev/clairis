@@ -1,14 +1,16 @@
 /* 数据面 store：按面 id 缓存有效集合，事件到达只重载对应面。
  *
  * 模块级 Map（与 `src/editors/editorRef.ts` 的模块级模式一致），不进 zustand：
- * 面集合是「宿主下发的资源」，不是 React 状态，工具条在命令闭包里同步读取。
+ * 面集合是「宿主下发的资源」，不是 React 状态，菜单在渲染路径里同步读取。
  *
  * 事件消费端只调 `reloadSurface(id)`，绝不走 `reloadAppConfig`/`applyRustConfig`
  * 全量重放（避开 SAVE_ECHO_WINDOW_MS 与 restorePaneLayout 副作用，DS-2）。
  */
 
-import type { SurfacePayload, NormalizedSurface } from "./loader";
-import { normalizeSurface } from "./loader";
+import type { SurfacePayload, NormalizedSurface, MenuItem } from "./loader";
+import { normalizeSurface, toMenuItem } from "./loader";
+
+export type { MenuItem } from "./loader";
 
 /** 面 id → 最近一次归一化结果。 */
 const surfaces = new Map<string, NormalizedSurface>();
@@ -21,13 +23,28 @@ export function setSurfaces(list: SurfacePayload[]): void {
 }
 
 /** 取某面的有效集合；未加载过返回空数组。 */
-export function getSurfaceItems(id: string) {
-  return surfaces.get(id)?.items ?? [];
+export function getSurfaceItems<T = unknown>(id: string): T[] {
+  return (surfaces.get(id)?.items ?? []) as T[];
 }
 
 /** 取某面的告警；未加载过返回空数组。 */
 export function getSurfaceWarnings(id: string): string[] {
   return surfaces.get(id)?.warnings ?? [];
+}
+
+/**
+ * 取菜单面某消费端分组的有效项（按 group 过滤 + order 升序）。
+ * 未加载过 / 分组无项返回空数组——消费端据此渲染，不留兜底常量。
+ */
+export function getMenuItems(group: string): MenuItem[] {
+  const items = surfaces.get("menus")?.items ?? [];
+  const out: MenuItem[] = [];
+  for (const entry of items) {
+    const item = toMenuItem(entry);
+    if (item !== null && item.group === group && item.enabled) out.push(item);
+  }
+  out.sort((a, b) => a.order - b.order);
+  return out;
 }
 
 /** 用新的默认 payload 重新归一化某面（事件到达只重载对应面）。 */
