@@ -36,6 +36,11 @@ jobs:
       - name: CSS manifest check
         run: bash scripts/css-manifest-check.sh
 
+      # #1442：规格/实现/锚点三方一致性（默认模式：新分叉=FAIL，已豁免=WARN）。
+      # #1434 裁决清豁免后切换为 --strict。
+      - name: Anchor consistency check
+        run: bash scripts/anchor-consistency-check.sh
+
   rust-tests:
     # #1441：135 个 #[test] 此前不在任何交付链路执行（ci.yml 与 verify.sh 都只
     # cargo check）。独立 job，不与 web 检查抢墙钟。tauri v2 在 linux 编译需要
