@@ -1,0 +1,39 @@
+{
+  "change": "reader-presets-v1",
+  "requirements": [
+    {
+      "id": "R-1",
+      "text": "阅读预设面（DS-9）",
+      "anchors": [
+        {
+          "id": "A-1.1",
+          "claim": "无覆盖时有效集合的项数与取值",
+          "kind": "exact",
+          "assert": "恰 3 项：紧凑 15/960/paper、标准 17/1080/paper、宽屏 19/1280/paper（逐值相等）",
+          "source": "B9 / D4"
+        },
+        {
+          "id": "A-1.2",
+          "claim": "点选「宽屏」后三项配置",
+          "kind": "state-machine",
+          "assert": "readerFontSize=19、readerWidth=1280、readerSkin=\"paper\"，且落盘到 user/settings.json",
+          "source": "DS-9 场景 2"
+        },
+        {
+          "id": "A-1.3",
+          "claim": "覆盖把「宽屏」改名并把另一项 fontSize 写成 120 后",
+          "kind": "exact",
+          "assert": "按钮文案「超宽」；fontSize=120 项被过滤，告警恰 1 条含其 id",
+          "source": "DS-9 场景 3"
+        },
+        {
+          "id": "A-1.4",
+          "claim": "`patch_data_surface {\"items\": null}` 后",
+          "kind": "state-machine",
+          "assert": "覆盖文件被删除、有效集合 = 默认 3 项；restore 可回到重置前",
+          "source": "DS-9 场景 4"
+        }
+      ]
+    }
+  ]
+}
