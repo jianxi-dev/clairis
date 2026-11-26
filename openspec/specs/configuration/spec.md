@@ -110,6 +110,8 @@ TBD - created by archiving change text-config-layer. Update Purpose after archiv
 
 系统 SHALL 支持为每一级标题（H1–H6）配置字体，字体从本机已安装字体中选择。配置字段为 `heading_fonts`（按级别键控），SHALL 持久化并在重启后生效。**配置值来源 SHALL 区分「显式配置」与「默认栈」**：某级未被显式配置（含历史遗留的默认栈值）时，设置面板该级输入框 SHALL 显示「默认」占位（placeholder），SHALL NOT 显示整串字体栈；清空输入并提交 SHALL 取消该级显式配置并回落默认；仅当该级被显式设置过才显示字体名。未配置时 SHALL 回落到 md-bundle 预览态字体（`--type-font-sans`）。非法字体值 SHALL 被拒绝并回落到默认值。该配置 SHALL 同时作用于编辑态与预览态的标题面，SHALL NOT 改变正文与代码字体。**候选列表 SHALL 为自绘受控列表**，SHALL NOT 使用浏览器原生 `<datalist>`；候选列表 SHALL 跟随主题 token 渲染，SHALL 支持指针选择、键盘导航（↑/↓ 移动、Enter 选择、Esc 关闭）与点击外部关闭。候选名 SHALL 显示本机字体族的**本地化中文名**（经 `NSFontManager.localizedName(forFamily:face:)` 获取，跟随系统首选语言），排序 SHALL 中文优先（本地化名为 CJK 的字体族排在非 CJK 之前，组内按本地化名排序）。**显示名与存储名 SHALL 分离**：候选与输入框显示本地化名，写盘值为原始字体族名。设置面板 SHALL 在加载时通过原生命令枚举本机已安装字体族并填充候选列表；枚举失败时 SHALL 降级为可手输并给出提示。
 
+**显示值与搜索词分离**：输入框显示值 SHALL 为当前已选字体的本地化名（未配置时显示「默认」占位）；搜索词 SHALL 为独立状态，仅在用户输入时更新。点击输入框展开候选 SHALL 显示**全量**候选（此时搜索词为空，SHALL NOT 用已选字体名当过滤词）；输入字符 SHALL 按搜索词过滤；删除字符到空 SHALL 恢复全量候选。
+
 #### Scenario: 逐级配置持久化
 
 - **WHEN** 用户为 H1 选择字体 A 并保存设置
@@ -163,6 +165,16 @@ TBD - created by archiving change text-config-layer. Update Purpose after archiv
 
 - **WHEN** 用户在中文系统下打开候选列表
 - **THEN** 有本地化名的字体族 SHALL 显示中文本地化名（如「苹方-简」「宋体-简」）；本地化名为 CJK 的字体族 SHALL 排在非 CJK 字体族之前，组内按本地化名排序
+
+#### Scenario: 点击展开全量候选
+
+- **WHEN** 用户点击某级输入框（当前已选字体 A）展开候选
+- **THEN** 候选列表 SHALL 显示全量字体（非只显示匹配 A 的项）；此时输入框显示值 SHALL 仍为 A 的本地化名
+
+#### Scenario: 输入才过滤且删除恢复
+
+- **WHEN** 用户在候选展开后输入「苹」
+- **THEN** 候选 SHALL 只显示含「苹」的字体；把字符删空后候选 SHALL 恢复全量
 
 ### Requirement: CF-7 补丁写边界校验
 
