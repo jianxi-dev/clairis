@@ -74,6 +74,10 @@ src/components/SettingsView.tsx             设置面板
 3. **`回滚` 不是可选栏**。AI 可塑的三要素是「真相源唯一 + 写路径收敛 + 可逆兜底」，缺回滚等于让 AI 直改。
 4. **一个 change 一张表**；票级只声明自己负责哪几行（见下节），不复制表。
 
+### 浏览器预览（非 Tauri）限制
+
+数据面由 Rust 提供；纯浏览器 `npm run dev` 下 `load_surfaces` 不存在，四个面恒为空（菜单/工具条/图标/胶囊无项），启动时会输出一条 `log.warn` 提示。用户可见验收一律走 `npm run tauri dev`。
+
 ### `read_data_surface` 的 `defaults` 语义
 
 `defaults` 返回**仓库内默认文件**的内容（`resources/<id>.default.json`）。首个访问某面的调用会把默认物化到 `defaults/surfaces/<id>.json`，因此该工具**非纯只读**——它可能创建文件。`effective` 才是「默认 ← 用户覆盖」合并后的生效值；`warnings` 为该次加载被过滤项的聚合告警。
