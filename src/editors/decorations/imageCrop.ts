@@ -7,9 +7,11 @@
  * 逐轴显示坐标系：进入时以「进入前可见显示矩形」为基准求 (sx, sy)——声明了
  * width/height 的图片可能被非等比拉伸，必须逐轴换算才能所见即所得。框选、
  * 拖动、保存都在「显示矩形（CSS px）」这一套坐标里进行，写回只把显示矩形
- * 换算成原图矩形一次（imageRectFromDisplay）。显示用窗口（overflow:hidden）
- * + 原图矩形尺寸的 img + transform: scale(sx, sy)。窗口按整图尺寸展开，可见
- * 内容保持进入前的尺寸与位置，裁剪框与可见矩形四边重合。
+ * 换算成原图矩形一次（imageRectFromDisplay）。
+ *
+ * 裁剪态显示整图（#1511）：窗口按整图显示尺寸展开，img 铺满窗口（无 transform、
+ * 无负偏移），框外区域由 4 块压暗蒙层盖住（框内亮、框外暗）。相比旧的「框内预览
+ * 变换」，框内看到的就是最终裁剪结果，且框的位置始终对应它在整图上的真实位置。
  *
  * 加载门：等页面 img 的 complete / load，2s 超时给出可见提示，绝不静默返回。
  * 常驻与收尾：进入裁剪后裁剪框一直挂着，拖动边界只改显示、不退出；只有主动
@@ -337,13 +339,14 @@ function mount(
   const existingWindow = img.parentElement?.classList.contains(WINDOW_CLASS)
     ? (img.parentElement as HTMLSpanElement)
     : null;
+  // 窗口在裁剪态是整图显示域：圆角与压暗蒙层都挂在它上面，退出时一并还原。
+  const enterWindowClip = existingWindow ? existingWindow.style.clipPath : null;
   const enterWindowStyles = existingWindow
     ? { width: existingWindow.style.width, height: existingWindow.style.height }
     : null;
 
-  // 窗口：布局盒 = 可见内容（rect），不撑大 widget、不引发重排；overflow:hidden
-  // 把图像裁在框内，框外不溢出到正文。img 以原图矩形尺寸 + transform 缩放，并
-  // 平移到裁剪起点，使框内正是裁剪内容；拖边向外时长大窗口即露出新纳入的内容。
+  // 窗口：布局盒 = 整图显示尺寸（fullW × fullH），img 铺满（1:1 显示坐标），
+  // 裁剪框与压暗蒙层都按 rect 定位在窗口内。
   let win: HTMLSpanElement;
   let restoreWindow: () => void;
   if (existingWindow) {
@@ -398,10 +401,22 @@ function mount(
   }
   widget.appendChild(frame);
 
+  // 压暗蒙层：框外 4 块（上 / 右 / 下 / 左），随 rect 实时收放。零高度的一侧
+  // 直接 display:none，避免 0 宽层在边框处叠出细线。
+  const shades: Record<string, HTMLElement> = {};
+  for (const side of ["top", "right", "bottom", "left"]) {
+    const el = document.createElement("div");
+    el.className = "cm-image-crop-shade";
+    el.dataset.side = side;
+    el.setAttribute("aria-hidden", "true");
+    win.appendChild(el);
+    shades[side] = el;
+  }
+
   const applyDisplay = (): void => {
     img.style.position = "absolute";
-    img.style.left = `${-rect.left}px`;
-    img.style.top = `${-rect.top}px`;
+    img.style.left = "0px";
+    img.style.top = "0px";
     img.style.maxWidth = "none";
     img.style.objectFit = "none";
     img.style.objectPosition = "0px 0px";
@@ -409,8 +424,10 @@ function mount(
     img.style.height = `${natH}px`;
     img.style.transform = `scale(${scale.x}, ${scale.y})`;
     img.style.transformOrigin = "0 0";
-    win.style.width = `${rect.width}px`;
-    win.style.height = `${rect.height}px`;
+    img.style.clipPath = "none";
+    win.style.width = `${fullW}px`;
+    win.style.height = `${fullH}px`;
+    win.style.clipPath = "inset(0 round var(--media-radius))";
     const cropKey = imageRectFromDisplay(rect, scale);
     cropDisplayCache.set(
       cropDisplayKey(img.getAttribute("src"), [
@@ -421,11 +438,45 @@ function mount(
       ]),
       { width: rect.width, height: rect.height },
     );
-    // 裁剪框与可见内容重合：框就落在窗口布局盒上。
-    frame.style.left = "0px";
-    frame.style.top = "0px";
+    frame.style.left = `${rect.left}px`;
+    frame.style.top = `${rect.top}px`;
     frame.style.width = `${rect.width}px`;
     frame.style.height = `${rect.height}px`;
+    const right = rect.left + rect.width;
+    const bottom = rect.top + rect.height;
+    const place = (side: string, style: Record<string, string>): void => {
+      const el = shades[side];
+      if (!el) return;
+      Object.assign(el.style, style);
+    };
+    place("top", {
+      display: rect.top > 0.5 ? "" : "none",
+      left: "0px",
+      top: "0px",
+      width: `${fullW}px`,
+      height: `${rect.top}px`,
+    });
+    place("left", {
+      display: rect.left > 0.5 ? "" : "none",
+      left: "0px",
+      top: `${rect.top}px`,
+      width: `${rect.left}px`,
+      height: `${rect.height}px`,
+    });
+    place("right", {
+      display: fullW - right > 0.5 ? "" : "none",
+      left: `${right}px`,
+      top: `${rect.top}px`,
+      width: `${fullW - right}px`,
+      height: `${rect.height}px`,
+    });
+    place("bottom", {
+      display: fullH - bottom > 0.5 ? "" : "none",
+      left: "0px",
+      top: `${bottom}px`,
+      width: `${fullW}px`,
+      height: `${fullH - bottom}px`,
+    });
   };
   applyDisplay();
 
@@ -455,6 +506,7 @@ function mount(
       win.style.width = enterWindowStyles.width;
       win.style.height = enterWindowStyles.height;
     }
+    if (enterWindowClip !== null) win.style.clipPath = enterWindowClip;
   };
 
   const cleanup = (): void => {
@@ -465,10 +517,11 @@ function mount(
     requestAnimationFrame(() => {
       frame.remove();
     });
+    for (const el of Object.values(shades)) el.remove();
     // 兜底清扫：widget 被编辑器重建、跨图重开等路径可能留下旧框或裁剪态类，
     // 让「保存后裁剪标识隐约存留」不再可能。
     document
-      .querySelectorAll(".cm-image-crop-frame")
+      .querySelectorAll(".cm-image-crop-frame, .cm-image-crop-shade")
       .forEach((el) => el.remove());
     document
       .querySelectorAll(".cm-image-widget.cm-image-crop-active")
