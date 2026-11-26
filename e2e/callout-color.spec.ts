@@ -1,6 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
 
-const APP_URL = process.env.CALLOUT_APP_URL ?? "http://localhost:1420";
+const APP_URL = process.env.CALLOUT_APP_URL ?? "http://localhost:1424";
 const MOD = process.platform === "darwin" ? "Meta" : "Control";
 const PATH = "/tmp/callout-color.md";
 

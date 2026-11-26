@@ -12,7 +12,7 @@ import { execFileSync } from "node:child_process";
  * 证明切换前后是同一个编辑器节点（不 remount）。
  */
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1424";
 const ART = path.resolve(process.cwd(), ".artifacts/858");
 const ART_920 = path.resolve(process.cwd(), ".artifacts/920");
 const EVIDENCE = path.resolve(process.cwd(), "scripts/cw-evidence.sh");

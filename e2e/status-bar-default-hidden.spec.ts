@@ -12,7 +12,7 @@ import { execFileSync } from "node:child_process";
  * A-1.4 显式钉住 → 常显；取消钉住 → 恢复默认隐藏
  */
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1424";
 const ART = path.resolve(process.cwd(), ".artifacts/1150");
 const EVIDENCE = path.resolve(process.cwd(), "scripts/cw-evidence.sh");
 

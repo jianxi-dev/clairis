@@ -11,7 +11,7 @@ import { execFileSync } from "node:child_process";
  * 断言读真实 DOM 与计算样式（QG-4）：token 节点存在 + 前导缩进严格等于源码。
  */
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1424";
 const ART = path.resolve(process.cwd(), ".artifacts/856");
 const EVIDENCE = path.resolve(process.cwd(), "scripts/cw-evidence.sh");
 

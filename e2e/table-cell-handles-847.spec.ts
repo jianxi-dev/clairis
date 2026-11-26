@@ -15,7 +15,7 @@ import { EDITOR_ANCHORS } from "./fixtures/editor-anchors";
  * A-9.4 上缘 / 左缘行列插入热点完整（非孤立灰点）
  */
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1424";
 const ART = path.resolve(process.cwd(), ".artifacts/847");
 const EVIDENCE = path.resolve(process.cwd(), "scripts/cw-evidence.sh");
 

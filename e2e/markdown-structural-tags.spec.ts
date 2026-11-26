@@ -8,7 +8,7 @@ import path from "node:path";
  * 源码模式保留。
  */
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1424";
 const FIXTURE = path.resolve(process.cwd(), "e2e/fixtures/structural-tags.md");
 const ART = path.resolve(process.cwd(), ".artifacts/263");
 

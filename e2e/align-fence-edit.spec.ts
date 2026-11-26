@@ -5,7 +5,7 @@ import { test, expect, type Locator, type Page } from "@playwright/test";
  * 源码态保留，预览仍按对齐渲染；取消对齐后编辑态无残留标记与空行。
  */
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1424";
 const DOC = ["# 标题", "", "第一段正文", "", "第二段正文", ""].join("\n");
 const DOC_LINES = ["# 标题", "", "第一段正文", "", "第二段正文", ""];
 

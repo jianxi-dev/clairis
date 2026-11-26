@@ -12,7 +12,7 @@ import { execFileSync } from "node:child_process";
  * A-4.4 分栏间隔线可见（计算 width ≥ 1px）
  */
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1424";
 const ART = path.resolve(process.cwd(), ".artifacts/837");
 const EVIDENCE = path.resolve(process.cwd(), "scripts/cw-evidence.sh");
 

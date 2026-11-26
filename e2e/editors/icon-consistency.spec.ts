@@ -11,7 +11,7 @@ import { moveThrough, SUMMON_PROBE_RATIO } from "../helpers/ui-probe";
  * 引用在三处同为 FormatQuoteOutlined；渲染面不再出现 TableChartOutlined。
  */
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1424";
 const ART = path.resolve(process.cwd(), ".artifacts/1348");
 const EVIDENCE = path.resolve(process.cwd(), "scripts/cw-evidence.sh");
 

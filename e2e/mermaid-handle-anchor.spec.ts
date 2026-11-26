@@ -3,7 +3,7 @@ import { readFileSync, mkdirSync } from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1424";
 // 复现文档的 fixture（原文件是用户 iCloud 读书笔记，这里只取三处目标块所在的
 // 小节，逐字保留围栏与列表嵌套结构，保证测试可移植）。
 const DOC_PATH = path.resolve(

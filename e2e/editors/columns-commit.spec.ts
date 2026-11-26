@@ -10,7 +10,7 @@ import { execFileSync } from "node:child_process";
  * 4. esc-cancel：Esc 取消后无残留编辑器、源码逐字节不变
  */
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1424";
 const ART = ".artifacts/1352";
 const EVIDENCE = "scripts/cw-evidence.sh";
 

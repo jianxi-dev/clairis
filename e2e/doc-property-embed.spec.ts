@@ -2,7 +2,7 @@ import { test, expect, type Page, type Locator } from "@playwright/test";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1424";
 
 async function dpbRecord(
   page: Page,

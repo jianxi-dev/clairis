@@ -11,7 +11,7 @@ import path from "node:path";
  * 无固定 sleep：一律 expect.poll / locator 等待。
  */
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1424";
 const ART = path.resolve(process.cwd(), ".artifacts/186");
 
 mkdirSync(ART, { recursive: true });

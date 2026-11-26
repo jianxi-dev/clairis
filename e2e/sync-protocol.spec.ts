@@ -18,7 +18,7 @@ import path from "node:path";
  * `restorePaneLayout` 注入「两格都持有同一 tabId」的布局，其余链路都是真实的。
  */
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1424";
 const ART = path.resolve(process.cwd(), ".artifacts/1335");
 const MOD = process.platform === "darwin" ? "Meta" : "Control";
 

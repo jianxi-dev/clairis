@@ -10,7 +10,7 @@ import path from "node:path";
  * 截图落 `.artifacts/806/`，由 `scripts/cw-evidence.sh record-state` 汇总。
  */
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1424";
 const ART = path.resolve(process.cwd(), ".artifacts/806");
 
 test.beforeAll(() => {

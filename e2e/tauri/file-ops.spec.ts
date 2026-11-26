@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { revealStatusBar } from "../helpers/ui-probe";
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1424";
 
 async function setup(page: Parameters<Parameters<typeof test>[1]>[0]["page"]) {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });

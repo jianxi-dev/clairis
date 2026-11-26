@@ -11,7 +11,7 @@ import { test, expect } from "@playwright/test";
 // 注意：走 web 模式（无 tauri-mock）→ HtmlPreview 用 srcdoc，iframe 内有真实内容；
 // 且 FramePreview 的焦点抢回轮询与是否 Tauri 无关，web 模式同样生效。
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1424";
 
 test("HTML 预览：点击 iframe 内 select 后 2.5s 交互窗口内焦点不被打断", async ({
   page,

@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1424";
 const MOD = process.platform === "darwin" ? "Meta" : "Control";
 
 async function openOverlay(page: import("@playwright/test").Page) {

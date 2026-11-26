@@ -1,7 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import { mkdirSync } from "node:fs";
 
-const APP_URL = process.env.MENU_APP_URL ?? "http://localhost:1420";
+const APP_URL = process.env.MENU_APP_URL ?? "http://localhost:1424";
 const OUT = ".artifacts/1509";
 mkdirSync(OUT, { recursive: true });
 

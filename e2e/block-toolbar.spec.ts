@@ -6,7 +6,7 @@ import { summonAddHandle } from "./helpers/block-handle";
  * 该工具条归属 HTML 非文字区块；MD 选区继续使用轮盘。
  */
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1424";
 const MOD = process.platform === "darwin" ? "Meta" : "Control";
 const HOTKEY = `${MOD}+Shift+Space`;
 const DOC = ["# 标题", "", "第一段正文", "", "第二段正文", ""].join("\n");

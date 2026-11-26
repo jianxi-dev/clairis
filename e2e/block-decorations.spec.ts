@@ -4,7 +4,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { hostname as osHostname } from "node:os";
 import path from "node:path";
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1424";
 const ART = path.resolve(process.cwd(), ".artifacts/714");
 const ART_918 = path.resolve(process.cwd(), ".artifacts/918");
 const EVIDENCE = path.resolve(process.cwd(), "scripts/cw-evidence.sh");

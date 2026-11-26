@@ -5,7 +5,7 @@ import { execFileSync } from "node:child_process";
 import { moveThrough, SUMMON_PROBE_RATIO } from "./helpers/ui-probe";
 import { ANCHOR_TOLERANCE_PX, EDITOR_ANCHORS } from "./fixtures/editor-anchors";
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1424";
 const ART = path.resolve(process.cwd(), ".artifacts/841");
 const EVIDENCE = path.resolve(process.cwd(), "scripts/cw-evidence.sh");
 

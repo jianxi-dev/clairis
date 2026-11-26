@@ -7,7 +7,7 @@ import path from "node:path";
  * 鼠标移入 200ms 内展开，移出 400ms 内收起；选中写回 store 并关闭；键盘可达。
  */
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1424";
 const ART = path.resolve(process.cwd(), ".artifacts/262");
 
 mkdirSync(ART, { recursive: true });

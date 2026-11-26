@@ -11,7 +11,7 @@ import { execFileSync } from "node:child_process";
  * A-5.3 同一块在编辑态与预览态渲染一致（共享渲染管线）
  */
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1424";
 const ART = path.resolve(process.cwd(), ".artifacts/838");
 const EVIDENCE = path.resolve(process.cwd(), "scripts/cw-evidence.sh");
 

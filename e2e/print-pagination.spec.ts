@@ -10,7 +10,7 @@ import path from "node:path";
  * 视频占位可见；PDF 落 `.artifacts/824/`，state-coverage.json 记录状态。
  */
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1424";
 const ART = path.resolve(process.cwd(), ".artifacts/824");
 mkdirSync(ART, { recursive: true });
 

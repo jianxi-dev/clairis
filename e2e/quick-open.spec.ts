@@ -12,7 +12,7 @@ import { revealStatusBar } from "./helpers/ui-probe";
  * 走 e2e/mocks/tauri-mock.js，用 `window.__biaoyue_store__` 桥驱动状态。
  */
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1424";
 const ART = path.resolve(process.cwd(), ".artifacts/219");
 
 mkdirSync(ART, { recursive: true });

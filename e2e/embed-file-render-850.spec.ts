@@ -14,7 +14,7 @@ import { execFileSync } from "node:child_process";
  * 本地夹具页；pdf 走 mock 的 read_file_base64（返回真实 mini.pdf 字节）。
  */
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1424";
 const ART = path.resolve(process.cwd(), ".artifacts/850");
 const EVIDENCE = path.resolve(process.cwd(), "scripts/cw-evidence.sh");
 const EMBED_URL = `${APP_URL}/e2e/fixtures/embed-page.html`;

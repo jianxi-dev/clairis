@@ -9,7 +9,7 @@ import path from "node:path";
  * 收尾写 state-coverage.json（≥4 states）。无固定 sleep：等待 locator 出现/消失。
  */
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1424";
 const ART = path.resolve(process.cwd(), ".artifacts/184");
 
 mkdirSync(ART, { recursive: true });

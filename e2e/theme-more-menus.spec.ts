@@ -7,7 +7,7 @@ import path from "node:path";
  * --app-surface / --app-border / --app-sunken，不得残留纯白。
  */
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1424";
 const ART = path.resolve(process.cwd(), ".artifacts/259");
 
 mkdirSync(ART, { recursive: true });

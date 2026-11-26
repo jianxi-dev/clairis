@@ -12,7 +12,7 @@ import path from "node:path";
  *  (c) 键入后等 >2100ms：store 快照与编辑器全文差异字符数为 0，无旧内容残留。
  */
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1424";
 const ART = path.resolve(process.cwd(), ".artifacts/1336");
 const MOD = process.platform === "darwin" ? "Meta" : "Control";
 

@@ -17,7 +17,7 @@ import path from "node:path";
  * 三态往返可逆且持久化，无残留选中把手
  */
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1424";
 const ART = ".artifacts/1414";
 const EVIDENCE = path.resolve(process.cwd(), "scripts/cw-evidence.sh");
 const MD_PATH = "/tmp/e1414/assets/note.md";

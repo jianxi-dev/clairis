@@ -1,6 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1424";
 
 // 片段正文：多行，用于断言插入逐字节相等、且一次撤销回到空文档。
 const SNIPPET_BODY = "## 本周\n\n- 完成：\n";

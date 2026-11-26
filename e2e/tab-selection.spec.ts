@@ -1,7 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import { mkdirSync } from "fs";
 
-const APP_URL = process.env.BIAOYUE_E2E_URL ?? "http://localhost:1420";
+const APP_URL = process.env.BIAOYUE_E2E_URL ?? "http://localhost:1424";
 const ARTIFACT_DIR = ".artifacts/1231";
 
 /**

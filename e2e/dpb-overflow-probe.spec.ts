@@ -15,7 +15,7 @@ import path from "node:path";
  *  - 文档 scrollWidth > 视口宽（整窗横滚）
  */
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1424";
 const ART = path.resolve(process.cwd(), ".artifacts/1017");
 
 /** 矩阵通过后合并一条 state-coverage 记录（IC-2 ≥4 态）。 */

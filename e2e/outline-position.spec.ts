@@ -7,7 +7,7 @@ import path from "node:path";
  * 预览态与编辑态计算值一致。
  */
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1424";
 const ART = path.resolve(process.cwd(), ".artifacts/261");
 const ART925 = path.resolve(process.cwd(), ".artifacts/925");
 

@@ -10,7 +10,7 @@ import path from "node:path";
  * hover 当下出现，等于没测到这条路径。
  */
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1424";
 const DOC = ["# 标题", "", "第一段正文", "", "第二段正文", ""].join("\n");
 const ART = path.resolve(process.cwd(), ".artifacts/374");
 mkdirSync(ART, { recursive: true });

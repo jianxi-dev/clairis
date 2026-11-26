@@ -10,7 +10,7 @@ import path from "node:path";
  * 走 e2e/mocks/tauri-mock.js + window.__biaoyue_store__ 桥，不依赖真实文件系统。
  */
 
-const APP_URL = process.env.GRID_APP_URL ?? "http://localhost:1420";
+const APP_URL = process.env.GRID_APP_URL ?? "http://localhost:1424";
 const ART = path.resolve(process.cwd(), ".artifacts/1366");
 
 mkdirSync(ART, { recursive: true });

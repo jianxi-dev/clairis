@@ -15,7 +15,7 @@ import path from "node:path";
  *  - plugin:event|listen（捕获 tauri://resize 的 handler，供手动触发）
  */
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1424";
 const ART = path.resolve(process.cwd(), ".artifacts/1148");
 
 async function boot(page: Page): Promise<void> {

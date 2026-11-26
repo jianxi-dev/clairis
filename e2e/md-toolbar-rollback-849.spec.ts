@@ -13,7 +13,7 @@ import { execFileSync } from "node:child_process";
  * 注册行为（按钮集合与顺序的配置驱动架构保留）。
  */
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1424";
 const ART = path.resolve(process.cwd(), ".artifacts/849");
 const EVIDENCE = path.resolve(process.cwd(), "scripts/cw-evidence.sh");
 

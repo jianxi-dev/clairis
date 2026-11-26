@@ -3,7 +3,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { revealStatusBar } from "./helpers/ui-probe";
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1424";
 
 const ART_1052 = path.resolve(process.cwd(), ".artifacts/1052");
 const TAURI_CONFIG = path.resolve(process.cwd(), "src-tauri/tauri.conf.json");
