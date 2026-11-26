@@ -6,7 +6,7 @@
 #   bash scripts/surface-new.sh <id> --shape <shape> [--dry-run] [--root <dir>]
 #
 # 形状（闭集，与 src-tauri/src/surfaces.rs 的 SurfaceShape 一一对应）:
-#   menu-item | icon | capsule | toolbar
+#   menu-item | icon | capsule | toolbar | reader-preset
 #
 # 产物（三样，逐条对应 docs/agents/data-surface.md「新增面步骤」）:
 #   1. src-tauri/src/resources/<id>.default.json   默认 JSON 模板（步骤 2）
@@ -61,6 +61,7 @@ shape_variant() {
     icon) printf 'Icon' ;;
     capsule) printf 'Capsule' ;;
     toolbar) printf 'Toolbar' ;;
+    reader-preset) printf 'ReaderPreset' ;;
     *) return 1 ;;
   esac
 }
@@ -76,6 +77,8 @@ shape_sample_item() {
       printf '    { "id": "format-bold", "label": "加粗", "icon": "bold", "order": 1 }\n' ;;
     toolbar)
       printf '    { "id": "ai-rewrite", "label": "改写", "icon": "edit", "group": "ai" }\n' ;;
+    reader-preset)
+      printf '    { "id": "example-preset", "label": "示例预设", "fontSize": 17, "width": 1080, "skin": "paper" }\n' ;;
   esac
 }
 
@@ -90,6 +93,7 @@ shape_validator_name() {
     icon) printf 'icon' ;;
     capsule) printf 'capsule' ;;
     toolbar) printf 'toolbar' ;;
+    reader-preset) printf 'reader_preset' ;;
   esac
 }
 
@@ -100,6 +104,7 @@ shape_consumer_hint() {
     icon) printf 'getIconSpec(key) 按概念键查面；label/path 缺失回落 ICONS' ;;
     capsule) printf 'getCapsuleItems() 保持面数组顺序；run 由代码侧按 id 分派' ;;
     toolbar) printf 'getSurfaceItems(id) 按 id 取；消费端不留兜底常量' ;;
+    reader-preset) printf 'getReaderPresets() 保持面数组顺序；点选应用三项配置' ;;
   esac
 }
 
@@ -129,11 +134,10 @@ done
 
 [ -n "$ID" ] || die_usage "缺少面 id"
 [ -n "$SHAPE" ] || die_usage "缺少 --shape"
-case "$ID" in
-  [a-z][a-z0-9-]*) ;;
-  *) die_violation "非法面 id: ${ID}（须匹配 [a-z][a-z0-9-]*）" ;;
-esac
-shape_variant "$SHAPE" >/dev/null || die_violation "未知 shape: ${SHAPE}（闭集: menu-item | icon | capsule | toolbar）"
+if ! printf '%s' "$ID" | LC_ALL=C grep -qE '^[a-z][a-z0-9-]*$'; then
+  die_violation "非法面 id: ${ID}（须匹配 [a-z][a-z0-9-]*）"
+fi
+shape_variant "$SHAPE" >/dev/null || die_violation "未知 shape: ${SHAPE}（闭集: menu-item | icon | capsule | toolbar | reader-preset）"
 
 # ---- 路径解析 --------------------------------------------------------------
 if [ -n "$ROOT" ]; then
@@ -185,7 +189,7 @@ render_six_column() {
 write_if_absent() {
   local path="$1" content="$2" desc="$3"
   if [ -s "$path" ]; then
-    echo "  ↷ 已存在，跳过: $desc（$path）"
+    echo "  ↷ 已存在，跳过: ${desc}（${path}）"
     return 0
   fi
   if [ "$DRY_RUN" -eq 1 ]; then
