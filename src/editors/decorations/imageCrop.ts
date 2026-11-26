@@ -590,16 +590,14 @@ function mount(
     }
     document.removeEventListener("mousedown", suppressCaret, true);
     untraceScroll();
-    // WKWebView 合成层残影（残留边柄短横线）：DOM 已移除、样式已还原仍然可见。
-    // 1px 滚动回弹强制滚动层整层重合成，残影随之消失；1px 用户不可感知。
+    // WKWebView 合成层残影（残留边柄短横线）：DOM 已移除、样式已还原仍然可见，
+    // 必须让滚动层整层重合成才冲得掉。旧手段是 1px 滚动回弹——它改的是滚动位置，
+    // 确认瞬间视口会真的动一下（#1560 实测：scrollTop 321→322→321）。改用与
+    // 上面 widget 同源的 filter 重栅格化：只强制 GPU 重画，不动滚动位置，视觉零位移。
     if (scroller && scroller.isConnected) {
+      scroller.style.filter = "blur(0px)";
       requestAnimationFrame(() => {
-        if (!scroller.isConnected) return;
-        const st = scroller.scrollTop;
-        scroller.scrollTop = st + 1;
-        requestAnimationFrame(() => {
-          if (scroller.isConnected) scroller.scrollTop = st;
-        });
+        if (scroller.isConnected) scroller.style.filter = "";
       });
     }
     if (activeCleanup === cleanup) clearActive();
