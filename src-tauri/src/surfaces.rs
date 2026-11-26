@@ -658,7 +658,8 @@ pub(crate) fn merge_public(base: &Value, over: &Value) -> Value {
 }
 
 /// 深合并（对象递归，数组/标量整体替换）——与 `config::merge_json` 同语义。
-fn deep_merge(base: &Value, over: &Value) -> Value {    match (base, over) {
+fn deep_merge(base: &Value, over: &Value) -> Value {
+    match (base, over) {
         (Value::Object(base_map), Value::Object(over_map)) => {
             let mut merged = base_map.clone();
             for (key, value) in over_map {
@@ -746,7 +747,7 @@ fn merge_id_list_surface(
     }
 }
 
-/// 对象数组合并（menus / capsules，#1551）：覆盖数组是**全量清单**——定义
+/// 对象数组合并（capsules，#1551）：覆盖数组是**全量清单**——定义
 /// 有效集合与顺序（顺序即语义），未列出的默认项不补回（DS-1）。逐项按 `id`
 /// 与同 id 默认项深合并，`{id,label}` 这类部分项只改给出的字段；默认外的新项
 /// 须自带齐全字段并通过形状校验。未知 id 与非法项各聚合为一条告警；
@@ -777,7 +778,7 @@ fn merge_object_list_surface(
     let mut invalid: Vec<String> = Vec::new();
     for entry in list {
         let partial = match entry {
-            Value::Object(map) => entry.clone(),
+            Value::Object(_) => entry.clone(),
             _ => {
                 invalid.push("(非对象)".into());
                 continue;
@@ -806,7 +807,6 @@ fn merge_object_list_surface(
             None => partial,
         };
         let ok = match spec.shape {
-            SurfaceShape::Menu => validate_menu_item(&merged).is_some(),
             SurfaceShape::Capsule => validate_capsule_item(&merged).is_some(),
             _ => false,
         };
@@ -837,6 +837,119 @@ fn merge_object_list_surface(
             items: defaults.to_vec(),
             warnings,
         };
+    }
+    SurfaceLoad {
+        id: spec.id.to_string(),
+        items: out,
+        warnings,
+    }
+}
+
+/// 菜单面合并（#1555）：覆盖项自带 `group`，**按组替换**——覆盖里出现的组
+/// 整体替换该组（组内逐 id 与默认项深合并，顺序即覆盖顺序），未出现的组保留
+/// 默认。整组隐藏 = 该组全部项 `enabled:false`；组级缺席 = 保留默认。
+/// 未知 id / 非法项各聚合为一条告警；空覆盖回落完整默认。
+fn merge_menu_surface(
+    spec: &SurfaceSpec,
+    defaults: &[Value],
+    over: Option<&[Value]>,
+) -> SurfaceLoad {
+    let fallback = || SurfaceLoad {
+        id: spec.id.to_string(),
+        items: defaults.to_vec(),
+        warnings: Vec::new(),
+    };
+    let Some(list) = over else {
+        return fallback();
+    };
+    if list.is_empty() {
+        return fallback();
+    }
+    let known: std::collections::HashSet<&str> = defaults
+        .iter()
+        .filter_map(|item| item.get("id")?.as_str())
+        .collect();
+    let mut unknown: Vec<String> = Vec::new();
+    let mut invalid: Vec<String> = Vec::new();
+    // group → 该组有效项（覆盖顺序）
+    let mut replaced: std::collections::HashMap<String, Vec<Value>> =
+        std::collections::HashMap::new();
+    let mut placed: std::collections::HashSet<String> = std::collections::HashSet::new();
+    for entry in list {
+        let partial = match entry {
+            Value::Object(_) => entry.clone(),
+            _ => {
+                invalid.push("(非对象)".into());
+                continue;
+            }
+        };
+        let id = match partial.get("id").and_then(|v| v.as_str()) {
+            Some(id) => id.to_string(),
+            None => {
+                invalid.push("(缺 id)".into());
+                continue;
+            }
+        };
+        if !placed.insert(id.clone()) {
+            continue;
+        }
+        let is_known = known.contains(id.as_str());
+        let base = if is_known {
+            defaults
+                .iter()
+                .find(|item| item.get("id").and_then(|v| v.as_str()) == Some(id.as_str()))
+        } else {
+            None
+        };
+        let merged = match base {
+            Some(default_item) => deep_merge(default_item, &partial),
+            None => partial,
+        };
+        let group = merged
+            .get("group")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
+        if validate_menu_item(&merged).is_none() {
+            if is_known {
+                invalid.push(id);
+            } else if !unknown.contains(&id) {
+                unknown.push(id);
+            }
+            continue;
+        }
+        replaced.entry(group).or_default().push(merged);
+    }
+    let mut warnings = Vec::new();
+    if !unknown.is_empty() {
+        warnings.push(format!("未知动作 id: {}", unknown.join(", ")));
+    }
+    if !invalid.is_empty() {
+        warnings.push(format!(
+            "非法动作项已过滤（{}）: {}",
+            spec.id,
+            invalid.join(", ")
+        ));
+    }
+    if replaced.is_empty() {
+        return SurfaceLoad {
+            id: spec.id.to_string(),
+            items: defaults.to_vec(),
+            warnings,
+        };
+    }
+    let mut out: Vec<Value> = Vec::with_capacity(defaults.len());
+    let mut emitted: std::collections::HashSet<String> = std::collections::HashSet::new();
+    for item in defaults {
+        let group = item.get("group").and_then(|v| v.as_str()).unwrap_or("");
+        match replaced.get(group) {
+            Some(items) => {
+                if emitted.insert(group.to_string()) {
+                    out.extend(items.iter().cloned());
+                }
+            }
+            None => out.push(item.clone()),
+        }
     }
     SurfaceLoad {
         id: spec.id.to_string(),
@@ -989,7 +1102,10 @@ pub fn load_surface(spec: &SurfaceSpec, base: &Path) -> SurfaceLoad {
     let mut loaded = match over {
         None => merge_list_surface(spec, &defaults, None),
         Some(Override::Ids(ids)) => merge_list_surface(spec, &defaults, Some(&ids)),
-        Some(Override::Items(items)) => merge_object_list_surface(spec, &defaults, Some(&items)),
+        Some(Override::Items(items)) => match spec.shape {
+            SurfaceShape::Menu => merge_menu_surface(spec, &defaults, Some(&items)),
+            _ => merge_object_list_surface(spec, &defaults, Some(&items)),
+        },
         Some(Override::Map(entries)) => merge_map_surface(spec, &defaults, Some(&entries)),
     };
     // 默认文件自身被过滤的告警也透传（DS-4：有效集合不因单个非法项整体失败）。
@@ -1424,12 +1540,16 @@ mod tests {
     fn menus_用户覆盖_改名排序启停生效() {
         let dir = temp_base("menus_override");
         let base = dir.path();
-        write_menus_user(base, r#"{"items":[{"id":"pane-source"},{"id":"pane-new-file"}]}"#);
+        write_menus_user(
+            base,
+            r#"{"items":[{"id":"pane-source"},{"id":"pane-new-file"}]}"#,
+        );
         let loaded = load_surface(menus_spec(), base);
         assert_eq!(
-            item_ids(&loaded.items),
+            group_ids(&loaded.items, "pane-header"),
             vec!["pane-source", "pane-new-file"]
         );
+        assert_eq!(group_count(&loaded.items, "tab-context"), 12);
         assert_eq!(loaded.warnings, Vec::<String>::new());
     }
 
@@ -1472,12 +1592,11 @@ mod tests {
             Some("查看源码"),
             "部分项 id+label 必须改名生效"
         );
-        // 清单里未出现的默认项不补回（DS-1）
-        assert_eq!(loaded.items.len(), 3, "覆盖数组是全量清单");
         assert_eq!(
-            item_ids(&loaded.items),
+            group_ids(&loaded.items, "pane-header"),
             vec!["pane-source", "pane-new-file", "pane-share"]
         );
+        assert_eq!(group_count(&loaded.items, "tab-context"), 12);
         assert_eq!(menu_enabled(&loaded.items, "pane-source"), Some(true));
         // 深合并后仍带默认的 icon/action/group/order
         let source = loaded
@@ -1514,8 +1633,10 @@ mod tests {
             ]}"#,
         );
         let loaded = load_surface(menus_spec(), base);
-        // 覆盖数组定义集合与顺序：恰两项，按覆盖顺序
-        assert_eq!(item_ids(&loaded.items), vec!["pane-source", "pane-new-file"]);
+        assert_eq!(
+            group_ids(&loaded.items, "pane-header"),
+            vec!["pane-source", "pane-new-file"]
+        );
         assert_eq!(
             menu_enabled(&loaded.items, "pane-source"),
             Some(false),
@@ -1543,7 +1664,10 @@ mod tests {
             r#"{"items":[{"id":"pane-new-file"},{"id":"nope","label":"不存在"},{"id":"pane-share"}]}"#,
         );
         let loaded = load_surface(menus_spec(), base);
-        assert_eq!(item_ids(&loaded.items), vec!["pane-new-file", "pane-share"]);
+        assert_eq!(
+            group_ids(&loaded.items, "pane-header"),
+            vec!["pane-new-file", "pane-share"]
+        );
         assert_eq!(loaded.warnings.len(), 1, "未知 id 聚合为一条告警");
         assert!(loaded.warnings[0].contains("nope"));
     }
@@ -1561,9 +1685,9 @@ mod tests {
         );
         let loaded = load_surface(menus_spec(), base);
         assert_eq!(
-            item_ids(&loaded.items),
+            group_ids(&loaded.items, "pane-header"),
             vec!["pane-new-file", "pane-custom"],
-            "新增项按覆盖顺序追加"
+            "新增项按覆盖顺序追加在该组末尾"
         );
         assert_eq!(menu_label(&loaded.items, "pane-custom"), Some("自定义"));
         assert_eq!(loaded.warnings, Vec::<String>::new());
@@ -1581,6 +1705,206 @@ mod tests {
         let loaded = load_surface(menus_spec(), base);
         assert_eq!(loaded.items, defaults, "全非法覆盖回落完整默认");
         assert_eq!(loaded.warnings.len(), 2, "未知 id 与非法项各聚合一条");
+    }
+
+    // ── #1555：按组替换（覆盖里出现的组整体替换，未出现的组保留默认）──────
+
+    fn group_ids<'a>(items: &'a [Value], group: &str) -> Vec<&'a str> {
+        items
+            .iter()
+            .filter(|i| i.get("group").and_then(|v| v.as_str()) == Some(group))
+            .filter_map(|i| i.get("id")?.as_str())
+            .collect()
+    }
+
+    fn group_count(items: &[Value], group: &str) -> usize {
+        items
+            .iter()
+            .filter(|i| i.get("group").and_then(|v| v.as_str()) == Some(group))
+            .count()
+    }
+
+    #[test]
+    fn menus_只覆盖格头组_其余五组默认不变() {
+        let dir = temp_base("menus_group_single");
+        let base = dir.path();
+        write_menus_user(
+            base,
+            r#"{"items":[
+                {"id":"pane-new-file","label":"新建"},
+                {"id":"pane-share"},
+                {"id":"pane-source","label":"查看源码"}
+            ]}"#,
+        );
+        let loaded = load_surface(menus_spec(), base);
+        // 格头组 = 覆盖三项（顺序即覆盖顺序）
+        assert_eq!(
+            group_ids(&loaded.items, "pane-header"),
+            vec!["pane-new-file", "pane-share", "pane-source"]
+        );
+        assert_eq!(menu_label(&loaded.items, "pane-source"), Some("查看源码"));
+        // 其余五组保持默认（用户场景：页签右键不再被清空）
+        assert_eq!(group_count(&loaded.items, "tab-context"), 12);
+        assert_eq!(group_count(&loaded.items, "preview-context"), 4);
+        assert_eq!(group_count(&loaded.items, "ai-float-presets"), 6);
+        assert_eq!(group_count(&loaded.items, "ai-pane"), 1);
+        assert_eq!(group_count(&loaded.items, "export-submenu"), 6);
+        assert_eq!(loaded.items.len(), 3 + 12 + 4 + 6 + 1 + 6);
+        assert_eq!(loaded.warnings, Vec::<String>::new());
+    }
+
+    #[test]
+    fn menus_两组混合覆盖_两组替换其余四组默认() {
+        let dir = temp_base("menus_group_two");
+        let base = dir.path();
+        write_menus_user(
+            base,
+            r#"{"items":[
+                {"id":"pane-source","label":"查看源码"},
+                {"id":"preview-copy-path","label":"拷贝路径"},
+                {"id":"preview-close"}
+            ]}"#,
+        );
+        let loaded = load_surface(menus_spec(), base);
+        assert_eq!(group_ids(&loaded.items, "pane-header"), vec!["pane-source"]);
+        assert_eq!(
+            group_ids(&loaded.items, "preview-context"),
+            vec!["preview-copy-path", "preview-close"]
+        );
+        assert_eq!(
+            menu_label(&loaded.items, "preview-copy-path"),
+            Some("拷贝路径")
+        );
+        assert_eq!(group_count(&loaded.items, "tab-context"), 12);
+        assert_eq!(group_count(&loaded.items, "export-submenu"), 6);
+        assert_eq!(group_count(&loaded.items, "ai-float-presets"), 6);
+        assert_eq!(group_count(&loaded.items, "ai-pane"), 1);
+        assert_eq!(loaded.warnings, Vec::<String>::new());
+    }
+
+    #[test]
+    fn menus_组内改名启停生效() {
+        let dir = temp_base("menus_group_fields");
+        let base = dir.path();
+        write_menus_user(
+            base,
+            r#"{"items":[
+                {"id":"pane-source","label":"查看源码","enabled":false},
+                {"id":"pane-new-file","order":9}
+            ]}"#,
+        );
+        let loaded = load_surface(menus_spec(), base);
+        assert_eq!(
+            group_ids(&loaded.items, "pane-header"),
+            vec!["pane-source", "pane-new-file"]
+        );
+        assert_eq!(menu_label(&loaded.items, "pane-source"), Some("查看源码"));
+        assert_eq!(menu_enabled(&loaded.items, "pane-source"), Some(false));
+        assert_eq!(
+            loaded
+                .items
+                .iter()
+                .find(|i| i.get("id").and_then(|v| v.as_str()) == Some("pane-new-file"))
+                .and_then(|i| i.get("order"))
+                .and_then(|v| v.as_u64()),
+            Some(9)
+        );
+    }
+
+    #[test]
+    fn menus_组内未知id过滤并聚合一条告警() {
+        let dir = temp_base("menus_group_unknown");
+        let base = dir.path();
+        write_menus_user(
+            base,
+            r#"{"items":[
+                {"id":"pane-new-file"},
+                {"id":"nope","label":"不存在"},
+                {"id":"pane-share"}
+            ]}"#,
+        );
+        let loaded = load_surface(menus_spec(), base);
+        assert_eq!(
+            group_ids(&loaded.items, "pane-header"),
+            vec!["pane-new-file", "pane-share"]
+        );
+        assert_eq!(loaded.warnings.len(), 1, "未知 id 聚合为一条告警");
+        assert!(loaded.warnings[0].contains("nope"));
+        // 未覆盖组不受影响
+        assert_eq!(group_count(&loaded.items, "tab-context"), 12);
+    }
+
+    #[test]
+    fn menus_组内新增合法项追加到组尾() {
+        let dir = temp_base("menus_group_new");
+        let base = dir.path();
+        write_menus_user(
+            base,
+            r#"{"items":[
+                {"id":"pane-new-file"},
+                {"id":"pane-custom","group":"pane-header","order":7,"label":"自定义","icon":"file","action":"new-file","enabled":true}
+            ]}"#,
+        );
+        let loaded = load_surface(menus_spec(), base);
+        assert_eq!(
+            group_ids(&loaded.items, "pane-header"),
+            vec!["pane-new-file", "pane-custom"],
+            "新增项按覆盖顺序追加在该组末尾"
+        );
+        assert_eq!(menu_label(&loaded.items, "pane-custom"), Some("自定义"));
+        assert_eq!(loaded.warnings, Vec::<String>::new());
+    }
+
+    #[test]
+    fn menus_整组隐藏_该组全部项enabled_false() {
+        let dir = temp_base("menus_group_hide");
+        let base = dir.path();
+        write_menus_user(
+            base,
+            r#"{"items":[
+                {"id":"pane-new-file","enabled":false},
+                {"id":"pane-share","enabled":false},
+                {"id":"pane-split-right","enabled":false},
+                {"id":"pane-split-down","enabled":false},
+                {"id":"pane-source","enabled":false},
+                {"id":"pane-locate","enabled":false}
+            ]}"#,
+        );
+        let loaded = load_surface(menus_spec(), base);
+        // 整组隐藏 = 该组项仍在有效集合但全停用（组级缺席才表达保留默认）
+        assert_eq!(group_count(&loaded.items, "pane-header"), 6);
+        for id in [
+            "pane-new-file",
+            "pane-share",
+            "pane-split-right",
+            "pane-split-down",
+            "pane-source",
+            "pane-locate",
+        ] {
+            assert_eq!(menu_enabled(&loaded.items, id), Some(false), "{id} 应停用");
+        }
+        assert_eq!(group_count(&loaded.items, "tab-context"), 12);
+    }
+
+    #[test]
+    fn menus_覆盖组全非法_该组回落默认其余组仍被替换() {
+        let dir = temp_base("menus_group_allbad");
+        let base = dir.path();
+        write_menus_user(
+            base,
+            r#"{"items":[
+                {"id":"nope","label":"X"},
+                {"id":"pane-new-file","group":"nope"},
+                {"id":"pane-source","label":"查看源码"}
+            ]}"#,
+        );
+        let loaded = load_surface(menus_spec(), base);
+        // pane-header 组出现且含合法项 pane-source → 该组替换为 pane-source
+        assert_eq!(group_ids(&loaded.items, "pane-header"), vec!["pane-source"]);
+        // 未覆盖组保留默认
+        assert_eq!(group_count(&loaded.items, "tab-context"), 12);
+        // 未知 id 与非法项各聚合一条
+        assert_eq!(loaded.warnings.len(), 2);
     }
 
     #[test]
@@ -1613,7 +1937,10 @@ mod tests {
             r#"{"items":[{"id":"pane-new-file"},{"id":"nope","label":"不存在"},{"id":"pane-share"}]}"#,
         );
         let loaded = load_surface(menus_spec(), base);
-        assert_eq!(item_ids(&loaded.items), vec!["pane-new-file", "pane-share"]);
+        assert_eq!(
+            group_ids(&loaded.items, "pane-header"),
+            vec!["pane-new-file", "pane-share"]
+        );
         assert_eq!(loaded.warnings.len(), 1);
         assert!(loaded.warnings[0].contains("nope"));
     }
@@ -2150,7 +2477,10 @@ mod tests {
     fn capsules_用户覆盖_改名排序生效() {
         let dir = temp_base("capsules_override");
         let base = dir.path();
-        write_capsules_user(base, r#"{"items":[{"id":"capsule-bg"},{"id":"format-bold"}]}"#);
+        write_capsules_user(
+            base,
+            r#"{"items":[{"id":"capsule-bg"},{"id":"format-bold"}]}"#,
+        );
         let loaded = load_surface(capsules_spec(), base);
         assert_eq!(item_ids(&loaded.items), vec!["capsule-bg", "format-bold"]);
         assert_eq!(loaded.warnings, Vec::<String>::new());
@@ -2199,7 +2529,10 @@ mod tests {
             r#"{"items":[{"id":"format-bold"},{"id":"nope","label":"不存在"},{"id":"format-italic"}]}"#,
         );
         let loaded = load_surface(capsules_spec(), base);
-        assert_eq!(item_ids(&loaded.items), vec!["format-bold", "format-italic"]);
+        assert_eq!(
+            item_ids(&loaded.items),
+            vec!["format-bold", "format-italic"]
+        );
         assert_eq!(loaded.warnings.len(), 1, "未知 id 聚合为一条告警");
         assert!(loaded.warnings[0].contains("nope"));
     }
