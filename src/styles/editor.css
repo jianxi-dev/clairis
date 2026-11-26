@@ -1094,6 +1094,35 @@ body {
   border-radius: var(--app-radius);
 }
 
+/* 放大层自制气泡提示（#1563）：挂 body、fixed 不被浮层裁剪；
+   深灰底 + 下三角，替代 WKWebView 不渲染的原生 title。 */
+.cm-image-max-tooltip {
+  position: fixed;
+  z-index: 10000;
+  transform: translate(-50%, -100%);
+  padding: 4px 10px;
+  border-radius: var(--radius-4);
+  background: var(--app-sunken);
+  color: var(--app-text);
+  box-shadow: var(--shadow-menu);
+  font-size: 12px;
+  line-height: 18px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.cm-image-max-tooltip::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -4px;
+  width: 8px;
+  height: 8px;
+  margin-left: -4px;
+  background: var(--app-sunken);
+  transform: rotate(45deg);
+}
+
 /* 选中态描述行（#657）：占位与已提交的图注共用一行 */
 .cm-image-caption {
   display: block;
