@@ -2,7 +2,7 @@
 title: "标月设计系统规格"
 type: design
 status: accepted
-last_updated: 2026-11-20
+last_updated: 2026-11-26
 source_of_truth: canonical
 ---
 
@@ -118,6 +118,20 @@ source_of_truth: canonical
 | `--fs-14` | 14px | 3 次 | 强调 UI 文本、按钮 |
 
 **正文字号不在此表**：阅读区字号由用户阅读设置控制（见 `approved/reader-typography/`），不受 UI 档位约束。
+
+### 4.1 UI 缩放档（关爱界面）
+
+UI 缩放档只约束**界面 chrome 容器**，不约束正文。三档与倍率：
+
+| 规范值 | 倍率 | 用途 |
+|---|---|---|
+| `--pane-scale-small` | 0.9 | 关爱界面小档（屏幕空间紧张） |
+| `--pane-scale-medium` | 1.0 | 默认档，等同不缩放 |
+| `--pane-scale-large` | 1.2 | 关爱界面大档（长辈 / 低视力） |
+
+应用方式：容器级 `zoom`，只施加于**显式列举**的 chrome 容器——顶栏 `.app-chrome`、底部状态栏 `.app-status-bar`、设置场景容器。缩放档 SHALL NOT 作用于正文 / 预览 / 编辑器内容。派生像素值（缩放后的实际尺寸）SHALL NOT 被写成新的字面量数值，只写倍率。`zoom` 同比缩放文字、图标与命中区，不需要逐项改内距。
+
+浮动菜单 / popover 暂不在本档范围内（后续票处理）。
 
 ## 5. 圆角与阴影
 
@@ -263,6 +277,22 @@ token 缺失时组件按 `var(--sf-ctrl-height, 27px)` 回落，不静默失效�
 | `--dpb-cal-wheels` | 76px | 日期时间面板右侧时/分滚轮列宽；面板总宽 = 日历列 + 滚轮列 + 间距；日期面板不含本列 |
 
 交互约定：标题的「年」「月」为可点按钮，分别进入年列表与月网格；月/年网格各 12 格；底部提供「今天」。面板宽度取代旧 `min-width: 248px`，格子取代旧 24px。日期时间值区的时分选择 SHALL 使用滚轮列（滚动吸附、选中行高亮），SHALL NOT 使用文本框 + 上下箭头。
+
+### 7.7 Chrome 显隐三档与热区（熟练模式）
+
+`paneMode` 三档与可见性规则：
+
+| 规范值 | 可见性 |
+|---|---|
+| `simple` | 范围内 chrome（顶栏 `.app-chrome` + 底部 `.app-status-bar`）恒显 |
+| `standard` | 顶栏常显；状态栏默认隐藏，底部热区唤出 |
+| `hardcore` | 隐藏，无热区，仅快捷键临时显现 |
+
+热区基准高度 = `--space-16`（16px），顶部与底部同档。hardcore SHALL NOT 提供热区；SHALL 提供 `Cmd+Shift+U` 临时显现，显现后 3 秒无操作或按 Esc SHALL 收起；并 SHALL 保留一条 **1px** 顶部提示线，颜色取既有边框 token（`--app-border`）。
+
+阅读模式（`readingMode`）SHALL 优先于 `paneMode`：沉浸态下 chrome 显隐遵循沉浸规则，`paneMode` 不覆盖。切换 `paneMode` SHALL NOT 重建编辑器（EditorView 实例与编辑态保留）。
+
+侧栏与交互触发的浮层不在本条款范围。
 
 ## 8. 明确不做
 
