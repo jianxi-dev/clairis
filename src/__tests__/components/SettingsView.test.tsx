@@ -12,6 +12,9 @@ vi.mock("../../hooks/useConfig", () => ({
   applyReaderSkin: (skin: string) => {
     document.documentElement.dataset.skin = skin || "paper";
   },
+  applyPaneMode: (mode: string) => {
+    document.documentElement.dataset.paneMode = mode || "standard";
+  },
 }));
 
 const NAV_LABELS = [
@@ -41,6 +44,7 @@ afterEach(() => {
   resetCapabilities();
   document.documentElement.classList.remove("dark", "warm");
   delete document.documentElement.dataset.skin;
+  delete document.documentElement.dataset.paneMode;
 });
 
 describe("SettingsView", () => {
@@ -123,6 +127,27 @@ describe("SettingsView", () => {
     fireEvent.click(screen.getByTestId("reader-tone-indigo"));
     expect(useEditorStore.getState().config.readerSkin).toBe("indigo");
     expect(document.documentElement.dataset.skin).toBe("indigo");
+  });
+
+  it("阅读空间区：熟练模式三档就位，默认常规，点击写入 paneMode 与根属性", () => {
+    render(<SettingsView onClose={() => {}} />);
+    fireEvent.click(screen.getAllByTestId("settings-nav-item")[3]);
+
+    const modes = screen.getAllByTestId(/^pane-mode-/);
+    expect(modes).toHaveLength(3);
+    expect(modes.map((el) => el.textContent)).toEqual(["简易", "常规", "硬核"]);
+    expect(screen.getByTestId("pane-mode-standard")).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+
+    fireEvent.click(screen.getByTestId("pane-mode-hardcore"));
+    expect(useEditorStore.getState().config.paneMode).toBe("hardcore");
+    expect(document.documentElement.dataset.paneMode).toBe("hardcore");
+    expect(screen.getByTestId("pane-mode-hardcore")).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
   });
 
   it("外观区保留阅读字号入口，点击写入 readerFontSize", () => {

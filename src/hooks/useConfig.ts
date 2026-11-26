@@ -57,6 +57,7 @@ interface RustAppConfig {
   readerFontSize: number | null;
   readerWidth: number | null;
   readerSkin: string | null;
+  paneMode?: string | null;
   defaultSavePath?: string | null;
   ollamaEndpoint: string | null;
   openaiEndpoint: string | null;
@@ -229,6 +230,21 @@ export function applyReaderSkin(skin: string): void {
   document.documentElement.dataset.skin = skin || "paper";
 }
 
+/**
+ * 把 paneMode 映射到 <html> 的 data-pane-mode（G-9）。选 <html> 是因为
+ * .app-chrome（每格页头）与 .app-status-bar 都是它的后代，且 .immersive 类
+ * 也挂在同一节点上——优先级 readingMode > paneMode 可用同一节点的类/属性
+ * 选择器表达（.immersive 规则写在 [data-pane-mode] 之后即自然覆盖）。
+ */
+export function applyPaneMode(mode: string): void {
+  const root = document.documentElement;
+  const next =
+    mode === "simple" || mode === "standard" || mode === "hardcore"
+      ? mode
+      : "standard";
+  root.dataset.paneMode = next;
+}
+
 /** Persist the current editor + app config (module-level, callable outside hooks). */
 export async function saveAppConfig(): Promise<void> {
   if (!isTauriEnv()) return;
@@ -243,6 +259,7 @@ export async function saveAppConfig(): Promise<void> {
     readerFontSize: es.config.readerFontSize ?? null,
     readerWidth: es.config.readerWidth ?? null,
     readerSkin: es.config.readerSkin ?? null,
+    paneMode: es.config.paneMode ?? null,
     defaultSavePath: es.config.defaultSavePath ?? null,
     ollamaEndpoint: es.config.ollamaEndpoint ?? null,
     openaiEndpoint: es.config.openaiEndpoint ?? null,
@@ -493,6 +510,12 @@ export function applyRustConfig(raw: RustAppConfig): void {
     readerFontSize: raw.readerFontSize ?? 17,
     readerWidth: raw.readerWidth ?? 1080,
     readerSkin: raw.readerSkin ?? "paper",
+    paneMode:
+      raw.paneMode === "simple" ||
+      raw.paneMode === "standard" ||
+      raw.paneMode === "hardcore"
+        ? raw.paneMode
+        : "standard",
     defaultSavePath: raw.defaultSavePath ?? null,
     ollamaEndpoint: raw.ollamaEndpoint ?? "http://localhost:11434",
     openaiEndpoint: raw.openaiEndpoint ?? "https://api.openai.com",
@@ -597,6 +620,7 @@ export function applyRustConfig(raw: RustAppConfig): void {
 
   applyTheme(config.theme ?? "system");
   applyReaderSkin(config.readerSkin ?? "paper");
+  applyPaneMode(config.paneMode ?? "standard");
   applyCapabilityConfig(raw.capabilities);
 
   // 阅读空间栏视图规格（layout-portal 6.1）：老配置缺字段 → 默认；重启后与所设严格相等
@@ -677,6 +701,7 @@ export function useConfig() {
         readerFontSize: 17,
         readerWidth: 1080,
         readerSkin: "paper",
+        paneMode: "standard",
         ollamaEndpoint: "http://localhost:11434",
         openaiEndpoint: "https://api.openai.com",
         openaiModel: "gpt-4o-mini",
@@ -698,6 +723,7 @@ export function useConfig() {
       es.setConfigLoading(false);
       applyTheme("system");
       applyReaderSkin("paper");
+      applyPaneMode("standard");
       return;
     }
 
