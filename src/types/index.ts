@@ -156,6 +156,8 @@ export interface AppConfig {
   searchPanel?: SearchPanelConfig;
   /** 窗格预设·熟练模式（pane-presets-v1 / G-9）；缺省回落 standard */
   paneMode?: "simple" | "standard" | "hardcore";
+  /** 窗格预设·关爱界面（pane-presets-v1 / CF-8）；缺省回落 medium */
+  paneScale?: "small" | "medium" | "large";
 }
 
 export type Theme = "system" | "light" | "dark" | "warm";

@@ -16,6 +16,7 @@ import {
 import type { PreviewSettings } from "../lib/previewAnchor";
 import {
   applyPaneMode,
+  applyPaneScale,
   applyPropertyBarConfig,
   applyReaderSkin,
   applyTheme,
@@ -185,6 +186,12 @@ const PANE_MODES = [
   { id: "simple", label: "简易" },
   { id: "standard", label: "常规" },
   { id: "hardcore", label: "硬核" },
+] as const;
+
+const PANE_SCALES = [
+  { id: "small", label: "小" },
+  { id: "medium", label: "中" },
+  { id: "large", label: "大" },
 ] as const;
 
 const ROULETTE_SECTOR_META = [
@@ -752,6 +759,7 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
   );
   const readerSkin = useEditorStore((s) => s.config.readerSkin ?? "paper");
   const paneMode = useEditorStore((s) => s.config.paneMode ?? "standard");
+  const paneScale = useEditorStore((s) => s.config.paneScale ?? "medium");
   const defaultSavePath = useEditorStore(
     (s) => s.config.defaultSavePath ?? null,
   );
@@ -1289,6 +1297,12 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
   const choosePaneMode = (mode: "simple" | "standard" | "hardcore") => {
     setConfig({ paneMode: mode });
     applyPaneMode(mode);
+    void saveAppConfig();
+  };
+
+  const choosePaneScale = (scale: "small" | "medium" | "large") => {
+    setConfig({ paneScale: scale });
+    applyPaneScale(scale);
     void saveAppConfig();
   };
 
@@ -2496,6 +2510,36 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
                 <p className="mt-2 text-xs text-[var(--app-text-3)]">
                   简易：顶栏与状态栏恒显；常规：状态栏默认隐藏，指针移到底边唤出；硬核：两者隐藏，按
                   Cmd+Shift+U 临时显现，3 秒无操作或 Esc 收起
+                </p>
+              </section>
+
+              <section>
+                <h2 className="mb-2 text-sm font-medium text-[var(--app-text-strong)]">
+                  关爱界面
+                </h2>
+                <div className="flex flex-wrap gap-2">
+                  {PANE_SCALES.map((option) => {
+                    const selected = paneScale === option.id;
+                    return (
+                      <button
+                        key={option.id}
+                        type="button"
+                        data-testid={`pane-scale-${option.id}`}
+                        aria-pressed={selected}
+                        onClick={() => choosePaneScale(option.id)}
+                        className={`rounded border px-3 py-1.5 text-sm ${
+                          selected
+                            ? "border-[var(--app-accent)] bg-[var(--app-accent-soft)] text-[var(--app-accent)]"
+                            : "border-[var(--app-border)] text-[var(--app-text-2)] hover:bg-[var(--app-sunken)]"
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="mt-2 text-xs text-[var(--app-text-3)]">
+                  整体放大或缩小顶栏、状态栏与设置面板（文字、图标、命中区同比），正文排版尺寸不变
                 </p>
               </section>
 

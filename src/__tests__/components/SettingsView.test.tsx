@@ -15,6 +15,9 @@ vi.mock("../../hooks/useConfig", () => ({
   applyPaneMode: (mode: string) => {
     document.documentElement.dataset.paneMode = mode || "standard";
   },
+  applyPaneScale: (scale: string) => {
+    document.documentElement.dataset.paneScale = scale || "medium";
+  },
 }));
 
 const NAV_LABELS = [
@@ -45,6 +48,7 @@ afterEach(() => {
   document.documentElement.classList.remove("dark", "warm");
   delete document.documentElement.dataset.skin;
   delete document.documentElement.dataset.paneMode;
+  delete document.documentElement.dataset.paneScale;
 });
 
 describe("SettingsView", () => {
@@ -145,6 +149,27 @@ describe("SettingsView", () => {
     expect(useEditorStore.getState().config.paneMode).toBe("hardcore");
     expect(document.documentElement.dataset.paneMode).toBe("hardcore");
     expect(screen.getByTestId("pane-mode-hardcore")).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+  });
+
+  it("阅读空间区：关爱界面三档就位，默认中，点击写入 paneScale 与根属性", () => {
+    render(<SettingsView onClose={() => {}} />);
+    fireEvent.click(screen.getAllByTestId("settings-nav-item")[3]);
+
+    const scales = screen.getAllByTestId(/^pane-scale-/);
+    expect(scales).toHaveLength(3);
+    expect(scales.map((el) => el.textContent)).toEqual(["小", "中", "大"]);
+    expect(screen.getByTestId("pane-scale-medium")).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+
+    fireEvent.click(screen.getByTestId("pane-scale-large"));
+    expect(useEditorStore.getState().config.paneScale).toBe("large");
+    expect(document.documentElement.dataset.paneScale).toBe("large");
+    expect(screen.getByTestId("pane-scale-large")).toHaveAttribute(
       "aria-pressed",
       "true",
     );

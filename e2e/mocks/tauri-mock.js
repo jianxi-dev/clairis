@@ -394,6 +394,7 @@ function mockInvoke(cmd, args) {
       sidebarLeftWidth: 220,
       sidebarRightWidth: 320,
       paneMode: "standard",
+      paneScale: "medium",
       recentFiles: [
         {
           path: "/Users/test/测试文档.md",
@@ -523,9 +524,11 @@ function mockInvoke(cmd, args) {
   if (cmd === "load_config") {
     window.__mock_load_config_calls__ = (window.__mock_load_config_calls__ || 0) + 1;
     var cfg = JSON.parse(JSON.stringify(aiState.config));
-    // paneMode 是测试启动档：window.__biaoyue_pane_mode__ 显式覆盖；
-    // 未设则恒回落 standard，避免上一支 spec 存盘的档位串味到下一支。
+    // paneMode / paneScale 是测试启动档：window.__biaoyue_pane_mode__ /
+    // window.__biaoyue_pane_scale__ 显式覆盖；未设则恒回落默认档，避免上一支
+    // spec 存盘的档位串味到下一支。
     cfg.paneMode = window.__biaoyue_pane_mode__ || "standard";
+    cfg.paneScale = window.__biaoyue_pane_scale__ || "medium";
     return cfg;
   }
   if (cmd === "save_config" && args && args.config) {

@@ -58,6 +58,7 @@ interface RustAppConfig {
   readerWidth: number | null;
   readerSkin: string | null;
   paneMode?: string | null;
+  paneScale?: string | null;
   defaultSavePath?: string | null;
   ollamaEndpoint: string | null;
   openaiEndpoint: string | null;
@@ -245,6 +246,19 @@ export function applyPaneMode(mode: string): void {
   root.dataset.paneMode = next;
 }
 
+/**
+ * 把 paneScale 映射到 <html> 的 data-pane-scale（CF-8）。CSS 只对显式列举的
+ * chrome 容器施加 zoom，正文/预览/编辑器不受影响；非法值回落 medium。
+ */
+export function applyPaneScale(scale: string): void {
+  const root = document.documentElement;
+  const next =
+    scale === "small" || scale === "medium" || scale === "large"
+      ? scale
+      : "medium";
+  root.dataset.paneScale = next;
+}
+
 /** Persist the current editor + app config (module-level, callable outside hooks). */
 export async function saveAppConfig(): Promise<void> {
   if (!isTauriEnv()) return;
@@ -260,6 +274,7 @@ export async function saveAppConfig(): Promise<void> {
     readerWidth: es.config.readerWidth ?? null,
     readerSkin: es.config.readerSkin ?? null,
     paneMode: es.config.paneMode ?? null,
+    paneScale: es.config.paneScale ?? null,
     defaultSavePath: es.config.defaultSavePath ?? null,
     ollamaEndpoint: es.config.ollamaEndpoint ?? null,
     openaiEndpoint: es.config.openaiEndpoint ?? null,
@@ -516,6 +531,12 @@ export function applyRustConfig(raw: RustAppConfig): void {
       raw.paneMode === "hardcore"
         ? raw.paneMode
         : "standard",
+    paneScale:
+      raw.paneScale === "small" ||
+      raw.paneScale === "medium" ||
+      raw.paneScale === "large"
+        ? raw.paneScale
+        : "medium",
     defaultSavePath: raw.defaultSavePath ?? null,
     ollamaEndpoint: raw.ollamaEndpoint ?? "http://localhost:11434",
     openaiEndpoint: raw.openaiEndpoint ?? "https://api.openai.com",
@@ -621,6 +642,7 @@ export function applyRustConfig(raw: RustAppConfig): void {
   applyTheme(config.theme ?? "system");
   applyReaderSkin(config.readerSkin ?? "paper");
   applyPaneMode(config.paneMode ?? "standard");
+  applyPaneScale(config.paneScale ?? "medium");
   applyCapabilityConfig(raw.capabilities);
 
   // 阅读空间栏视图规格（layout-portal 6.1）：老配置缺字段 → 默认；重启后与所设严格相等
@@ -702,6 +724,7 @@ export function useConfig() {
         readerWidth: 1080,
         readerSkin: "paper",
         paneMode: "standard",
+        paneScale: "medium",
         ollamaEndpoint: "http://localhost:11434",
         openaiEndpoint: "https://api.openai.com",
         openaiModel: "gpt-4o-mini",
@@ -724,6 +747,7 @@ export function useConfig() {
       applyTheme("system");
       applyReaderSkin("paper");
       applyPaneMode("standard");
+      applyPaneScale("medium");
       return;
     }
 

@@ -111,6 +111,10 @@ pub struct AppConfig {
     /// 缺省 = None，消费端回落 standard（与现状等价）。
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub pane_mode: Option<String>,
+    /// 窗格预设·关爱界面（pane-presets-v1 / CF-8）：small / medium / large。
+    /// 缺省 = None，消费端回落 medium（倍率 1.0，等同不缩放）。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pane_scale: Option<String>,
 }
 
 /// 文档属性面板配置（doc-property-panel P-2）。
@@ -275,6 +279,7 @@ impl Default for AppConfig {
             prop_alias_map: None,
             doc_property_variant: None,
             pane_mode: None,
+            pane_scale: None,
             sidebar_left_visible: Some(true),
             sidebar_right_visible: Some(false),
             sidebar_left_width: Some(220.0),
@@ -655,6 +660,11 @@ pub fn validate_config(config: &AppConfig) -> Result<(), AppError> {
         "paneMode",
         config.pane_mode.as_deref(),
         &["simple", "standard", "hardcore"],
+    )?;
+    check_enum(
+        "paneScale",
+        config.pane_scale.as_deref(),
+        &["small", "medium", "large"],
     )?;
     if let Some(spec) = &config.rail_view_spec {
         check_enum(
@@ -1214,6 +1224,7 @@ const SKILL_MAP: &str = r#"# Biaoyue 配置地图
 | `aiConfirmDensity` | `always` / `session-silent` / `never` |
 | `readerSkin` | `paper` / `plain` |
 | `paneMode` | `simple` / `standard` / `hardcore` |
+| `paneScale` | `small` / `medium` / `large` |
 | `propertyBar.displayStyle` | `list` / `dual` |
 | `propertyBar.displayDefault.preview` / `.edit` | `show` / `collapse` / `hide` |
 | `propertyBar.newDocVisible` | `true` / `false` |
@@ -1605,6 +1616,34 @@ mod tests {
 
         let mut config = AppConfig::default();
         config.pane_mode = Some("ultra".into());
+        let err = save_config_at(base, &config).unwrap_err();
+
+        assert!(matches!(err, AppError::Validation { .. }), "got {err:?}");
+        assert_eq!(read_user(base), before, "拒绝后 user 层必须零写盘");
+    }
+
+    #[test]
+    fn pane_scale_missing_is_allowed_and_valid_values_accepted() {
+        let mut config = AppConfig::default();
+        // 缺省（键缺失）必须放行：老配置文件无此键。
+        config.pane_scale = None;
+        assert!(validate_config(&config).is_ok());
+
+        for value in ["small", "medium", "large"] {
+            config.pane_scale = Some(value.into());
+            assert!(validate_config(&config).is_ok(), "{value} 应被接受");
+        }
+    }
+
+    #[test]
+    fn pane_scale_unknown_value_rejected_without_writing() {
+        let dir = temp_base("pane_scale");
+        let base = dir.path();
+        write_user(base, r#"{"theme":"light"}"#);
+        let before = read_user(base);
+
+        let mut config = AppConfig::default();
+        config.pane_scale = Some("huge".into());
         let err = save_config_at(base, &config).unwrap_err();
 
         assert!(matches!(err, AppError::Validation { .. }), "got {err:?}");

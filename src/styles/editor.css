@@ -1813,6 +1813,24 @@ html[data-pane-mode="hardcore"][data-pane-revealed="true"] .app-root:not(.immers
   display: none;
 }
 
+/* ── paneScale 三档（pane-presets-v1 / CF-8 / 设计系统 §4.1）──────────
+ * 容器级 zoom，只施加于显式列举的 chrome 容器：顶栏 .app-chrome、底部状态栏
+ * .app-status-bar、设置场景容器 [data-testid="settings-scene"]。用 zoom 而非
+ * transform，让布局与命中区同比缩放；正文/预览/编辑器不在选择器内，不受影响。
+ * medium 为默认档（倍率 1.0），不写规则。
+ */
+html[data-pane-scale="small"] .app-chrome,
+html[data-pane-scale="small"] .app-status-bar,
+html[data-pane-scale="small"] [data-testid="settings-scene"] {
+  zoom: 0.9;
+}
+
+html[data-pane-scale="large"] .app-chrome,
+html[data-pane-scale="large"] .app-status-bar,
+html[data-pane-scale="large"] [data-testid="settings-scene"] {
+  zoom: 1.2;
+}
+
 /* 底部状态栏（G-3）：沉浸态只收拢 .app-chrome，状态栏常驻不透明。 */
 .app-status-bar {
   border-top: 1px solid var(--app-border);
