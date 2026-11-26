@@ -84,6 +84,26 @@ describe("大文档键入快路径", () => {
     destroy();
   });
 
+  it("14KB 量级也走快路径（#1556：阈值分级前每键全量重建 47ms）", async () => {
+    const line = "段落内容足够长以跨过阈值。".repeat(20);
+    const doc = Array.from({ length: 40 }, () => line).join("\n");
+    expect(doc.length).toBeGreaterThan(8_000);
+    expect(doc.length).toBeLessThan(50_000);
+    const { view, destroy } = mount(doc);
+    const base = getDecorationBuildCount();
+
+    let pos = view.state.doc.line(1).to;
+    for (let i = 0; i < 10; i += 1) {
+      type(view, pos);
+      pos += 1;
+    }
+    expect(getDecorationBuildCount()).toBe(base);
+
+    await new Promise((resolve) => setTimeout(resolve, 260));
+    expect(getDecorationBuildCount()).toBe(base + 1);
+    destroy();
+  }, 15_000);
+
   it("组合期文档变更映射而不重建，组合结束补建", () => {
     const { view, destroy } = mount("开头\n\n> [!NOTE]\n> 内容\n");
     const base = getDecorationBuildCount();
