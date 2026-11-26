@@ -17,7 +17,7 @@
 
 ## 2. 工具条稳定与放大层（对账 #4a #6）
 
-- [ ] 2.1 B4 工具条滚动期隐藏（方案A）
+- [x] 2.1 B4 工具条滚动期隐藏（方案A）
   - `imageToolbar.ts`：scroll 监听改编辑器滚动容器 + passive；40ms 防抖；滚动期加 `is-scrolling` class 隐藏且不重算；停滚一次定位；滚出视口改 IntersectionObserver；`src/styles/` 补 `is-scrolling` CSS（manifest 同步）
   - 验收（浏览器可观测）：选中图片连续滚动 2 秒，滚动期间工具条保持隐藏不闪跳；停滚约 50ms 后在图片当前位置重现；滚出视口后工具条消失
 

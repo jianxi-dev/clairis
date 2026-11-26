@@ -217,6 +217,17 @@ let toolbarEl: HTMLElement | null = null;
 let maximizeEl: HTMLElement | null = null;
 let maximizeKeyHandler: ((event: KeyboardEvent) => void) | null = null;
 let repositionFrame: number | null = null;
+/** 滚动容器（选中图片的祖先 `.cm-scroller`）：滚动判定只挂它，不挂 document。 */
+let scrollTarget: HTMLElement | null = null;
+let onScrollTarget: (() => void) | null = null;
+/** 滚动期隐藏态：进入即隐藏工具条且不重算位置，停滚防抖到期后一次定位复位。 */
+let scrolling = false;
+let scrollDebounce: number | null = null;
+/** 视口判定：IntersectionObserver 观察选中图片，替代逐帧读布局的视口夹取。 */
+let viewportObserver: IntersectionObserver | null = null;
+
+/** 停滚防抖窗口：滚动事件间隔实测 8-19ms，80ms 有余量且不拖慢停滚复位。 */
+const SCROLL_DEBOUNCE_MS = 80;
 
 const MAXIMIZE_MIN_SCALE = 0.5;
 const MAXIMIZE_MAX_SCALE = 8;
@@ -284,6 +295,8 @@ export function selectImage(from: number, path: string, alt: string): void {
   setCaptionActive(false);
   updateAlignStates();
   positionToolbar();
+  bindScrollWatcher();
+  bindViewportObserver();
   scheduleReposition();
 }
 
@@ -291,6 +304,11 @@ export function deselectImage(): void {
   if (!selection) return;
   selection = null;
   captionVisible = false;
+  clearScrollWatcher();
+  if (viewportObserver) {
+    viewportObserver.disconnect();
+    viewportObserver = null;
+  }
   applySelection();
   setEditActive(false);
   removeToolbar();
@@ -322,7 +340,11 @@ export function moveImageSelection(
   if (nextFrom === selection.from) return;
   selection = { ...selection, from: nextFrom };
   applySelection();
+  // 滚动期偏移漂移：清隐藏态再定位，避免防抖定时器把新偏移的定位覆盖掉。
+  setScrolling(false);
   positionToolbar();
+  bindScrollWatcher();
+  bindViewportObserver();
   scheduleReposition();
 }
 
@@ -741,6 +763,8 @@ function selectedImageStillInDoc(): boolean {
 
 function positionToolbar(): void {
   if (!toolbarEl || !selection) return;
+  // 滚动期一律不读布局：读到的滚动位置滞后于当前帧，写回就是逐帧追图。
+  if (scrolling) return;
   const el = document.querySelector<HTMLElement>(
     `.cm-image-widget[data-image-from="${selection.from}"]`,
   );
@@ -763,17 +787,6 @@ function positionToolbar(): void {
   const viewportW = window.innerWidth;
   const viewportH = window.innerHeight;
   const margin = TOOLBAR_VIEWPORT_MARGIN;
-
-  // 锚点（图片）完全离开视口：隐藏工具条，滚回后重新显示。
-  if (
-    rect.bottom < 0 ||
-    rect.top > viewportH ||
-    rect.right < 0 ||
-    rect.left > viewportW
-  ) {
-    toolbarEl.style.display = "none";
-    return;
-  }
 
   // 目标：工具条底边中点贴在图片上方 margin 处；transform 为
   // translate(-50%, -100%)，所以 left/top 是渲染左上角偏移后的锚点。
@@ -804,6 +817,85 @@ function scheduleReposition(): void {
     positionToolbar();
     updateAlignStates();
   });
+}
+
+/** 工具条进入 / 退出滚动隐藏态。class 是唯一判据，CSS 负责 display。 */
+function setScrolling(next: boolean): void {
+  if (!toolbarEl || scrolling === next) return;
+  scrolling = next;
+  toolbarEl.classList.toggle("is-scrolling", next);
+}
+
+/**
+ * 滚动期隐藏（方案A）：滚动事件只置标志 + 起防抖，不做任何位置重算；
+ * 停滚防抖到期后清标志并一次定位，工具条在图片当前位置重现。
+ */
+function onToolbarScroll(): void {
+  setScrolling(true);
+  if (scrollDebounce !== null) window.clearTimeout(scrollDebounce);
+  scrollDebounce = window.setTimeout(() => {
+    scrollDebounce = null;
+    setScrolling(false);
+    positionToolbar();
+    updateAlignStates();
+  }, SCROLL_DEBOUNCE_MS);
+}
+
+function clearScrollWatcher(): void {
+  if (scrollDebounce !== null) {
+    window.clearTimeout(scrollDebounce);
+    scrollDebounce = null;
+  }
+  setScrolling(false);
+  if (scrollTarget && onScrollTarget) {
+    scrollTarget.removeEventListener("scroll", onScrollTarget);
+  }
+  scrollTarget = null;
+  onScrollTarget = null;
+}
+
+/**
+ * 滚动判定挂当前选中图片所在的编辑器滚动容器（`.cm-scroller`），passive。
+ * 多 panel / 多编辑器实例各挂自己的 scroller，切图时先解绑旧的。
+ */
+function bindScrollWatcher(): void {
+  clearScrollWatcher();
+  if (!selection) return;
+  const el = document.querySelector<HTMLElement>(
+    `.cm-image-widget[data-image-from="${selection.from}"]`,
+  );
+  const scroller = el?.closest(".cm-scroller") as HTMLElement | null;
+  if (!scroller) return;
+  scrollTarget = scroller;
+  onScrollTarget = onToolbarScroll;
+  scroller.addEventListener("scroll", onToolbarScroll, { passive: true });
+}
+
+/**
+ * 视口判定改 IntersectionObserver：图片完全离开视口时隐藏工具条并清选中态，
+ * 不再由 positionToolbar 逐帧读 rect 判断。观察对象随选中图片切换。
+ */
+function bindViewportObserver(): void {
+  if (viewportObserver) {
+    viewportObserver.disconnect();
+    viewportObserver = null;
+  }
+  if (!selection) return;
+  const el = document.querySelector<HTMLElement>(
+    `.cm-image-widget[data-image-from="${selection.from}"]`,
+  );
+  if (!el || typeof IntersectionObserver !== "function") return;
+  viewportObserver = new IntersectionObserver(
+    (entries) => {
+      const entry = entries[entries.length - 1];
+      if (!entry) return;
+      if (entry.intersectionRatio === 0) {
+        deselectImage();
+      }
+    },
+    { threshold: [0, 1] },
+  );
+  viewportObserver.observe(el);
 }
 
 function maximizeApplyTransform(): void {
@@ -1158,6 +1250,8 @@ if (typeof document !== "undefined") {
     }
     deselectImage();
   });
-  document.addEventListener("scroll", scheduleReposition, true);
-  window.addEventListener("resize", scheduleReposition);
+  window.addEventListener("resize", () => {
+    bindScrollWatcher();
+    scheduleReposition();
+  });
 }
