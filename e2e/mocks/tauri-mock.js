@@ -7,6 +7,29 @@ window.__TAURI_INTERNALS__ = {
   convertFileSrc: function (path) {
     return "asset://localhost/" + encodeURIComponent(path);
   },
+  // 事件桥（#1474 第 7 项）：listen 依赖 transformCallback 注册回调 id；
+  // 测试用 window.__mock_emit__(event, payload) 主动派发。
+  transformCallback: function (callback, once) {
+    var id = Math.floor(Math.random() * 1e9);
+    window["_" + id] = function (payload) {
+      try {
+        callback(payload);
+      } finally {
+        if (once) delete window["_" + id];
+      }
+    };
+    return id;
+  },
+};
+
+// 事件插件内部登记表（#1474 第 7 项）：@tauri-apps/api/event 的 unlisten 路径
+// 会调用 __TAURI_EVENT_PLUGIN_INTERNALS__.unregisterListener，缺了会抛 TypeError。
+window.__TAURI_EVENT_PLUGIN_INTERNALS__ = {
+  unregisterListener: function (event, eventId) {
+    var handlers = window.__mock_event_handlers__ || {};
+    if (handlers[event] === eventId) delete handlers[event];
+    delete window["_" + eventId];
+  },
 };
 
 // Expose store access for E2E tests
@@ -15,6 +38,16 @@ window.__biaoyue_saved_files__ = [];
 window.__biaoyue_saved_binaries__ = [];
 // 窗口拖动观测：mock 环境无真实窗口位移，记录 startDragging 调用次数供 e2e 断言。
 window.__dragCalls__ = 0;
+window.__mock_emit__ = function (event, payload) {
+  var handlers = window.__mock_event_handlers__ || {};
+  var id = handlers[event];
+  var fn = id ? window["_" + id] : null;
+  if (typeof fn === "function") {
+    fn({ event: event, id: id, payload: payload });
+    return true;
+  }
+  return false;
+};
 window.__biaoyue_openFile__ = function (path, content, title) {
   if (!window.__biaoyue_store__) return false;
   var store = window.__biaoyue_store__.getState();
@@ -320,6 +353,18 @@ var DEFAULT_SYSTEM_FONTS = [
 ];
 
 function mockInvoke(cmd, args) {
+  if (cmd === "plugin:event|listen" && args) {
+    window.__mock_event_handlers__ = window.__mock_event_handlers__ || {};
+    window.__mock_event_handlers__[args.event] = args.handler;
+    return args.handler;
+  }
+  if (cmd === "plugin:event|unlisten" && args) {
+    // 只注销与 eventId 匹配的登记：StrictMode 下 mount→unmount→mount 的
+    // 异步 cleanup 不得删掉后注册的新 handler。
+    var reg = window.__mock_event_handlers__ || {};
+    if (reg[args.event] === args.eventId) delete reg[args.event];
+    return null;
+  }
   var responses = {
     load_config: {
       fontSize: 16,
@@ -461,7 +506,10 @@ function mockInvoke(cmd, args) {
     aiState.config = JSON.parse(JSON.stringify(responses.load_config));
     aiSnapshot();
   }
-  if (cmd === "load_config") return JSON.parse(JSON.stringify(aiState.config));
+  if (cmd === "load_config") {
+    window.__mock_load_config_calls__ = (window.__mock_load_config_calls__ || 0) + 1;
+    return JSON.parse(JSON.stringify(aiState.config));
+  }
   if (cmd === "save_config" && args && args.config) {
     aiSnapshot();
     aiState.config = JSON.parse(JSON.stringify(args.config));

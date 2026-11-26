@@ -9,6 +9,7 @@ import {
   setSurfaces,
 } from "../../lib/dataSurfaces/store";
 import type { SurfacePayload } from "../../lib/dataSurfaces/loader";
+import { normalizeHtmlToolbarItems } from "../../hooks/useConfig";
 
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: vi.fn(async () => null),
@@ -60,5 +61,14 @@ describe("数据面 store", () => {
       payload({ warnings: ["未知动作: nope"] }),
     );
     expect(getSurfaceWarnings("html-toolbar")).toEqual(["未知动作: nope"]);
+  });
+
+  // #1474 第 3 项：面未加载时 normalizeHtmlToolbarItems 全判未知 → null
+  // （消费端据此回落默认 12 项），不得返回半个集合。
+  it("store 未加载时 normalizeHtmlToolbarItems 回落 null", () => {
+    resetSurfaces();
+    expect(normalizeHtmlToolbarItems(["format-bold", "format-italic"])).toBeNull();
+    expect(normalizeHtmlToolbarItems([])).toBeNull();
+    expect(normalizeHtmlToolbarItems(null)).toBeNull();
   });
 });

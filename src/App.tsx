@@ -261,7 +261,11 @@ function App() {
   // 数据面：启动拉有效集合；`surfaces-changed` 只重载对应面，不走全量 config-changed 重放（DS-2）。
   useEffect(() => {
     if (!isTauri) return;
-    void loadSurfaces(invoke).then((surfaces) => setSurfaces(surfaces));
+    void loadSurfaces(invoke)
+      .then((surfaces) => setSurfaces(surfaces))
+      .catch((e) =>
+        log.warn("App", "数据面加载失败，界面回落空集合（不崩）", e),
+      );
     let unlisten: (() => void) | undefined;
     let cancelled = false;
     listen("surfaces-changed", (event: { payload?: unknown }) => {
