@@ -294,6 +294,7 @@ export function selectImage(from: number, path: string, alt: string): void {
   setEditActive(false);
   setCaptionActive(false);
   updateAlignStates();
+  updateResetVisibility();
   positionToolbar();
   bindScrollWatcher();
   bindViewportObserver();
@@ -342,6 +343,7 @@ export function moveImageSelection(
   applySelection();
   // 滚动期偏移漂移：清隐藏态再定位，避免防抖定时器把新偏移的定位覆盖掉。
   setScrolling(false);
+  updateResetVisibility();
   positionToolbar();
   bindScrollWatcher();
   bindViewportObserver();
@@ -636,6 +638,24 @@ function updateCropState(): void {
   btn.setAttribute("aria-pressed", cropActive ? "true" : "false");
 }
 
+/**
+ * 「重置图片」按钮可见性（E-39）：仅当当前选中图片已有 crop 属性时出现。
+ * 判据用 widget DOM 上的 `.image-crop-window`（有 crop 时 toDOM 才渲染它），
+ * 不重新解析文档。DOM 常驻，只切 display，不重建工具条。
+ */
+function updateResetVisibility(): void {
+  if (!toolbarEl || !selection) return;
+  const btn = toolbarEl.querySelector<HTMLButtonElement>(
+    '[data-testid="img-toolbar-reset"]',
+  );
+  if (!btn) return;
+  const el = document.querySelector<HTMLElement>(
+    `.cm-image-widget[data-image-from="${selection.from}"]`,
+  );
+  const hasCrop = !!el?.querySelector(".image-crop-window");
+  btn.style.display = hasCrop ? "" : "none";
+}
+
 /** 「添加描述」按钮选中态：与描述输入区显隐同步（默认未选中）。 */
 function setCaptionActive(active: boolean): void {
   const btn = toolbarEl?.querySelector<HTMLButtonElement>(
@@ -669,6 +689,7 @@ function applyCaptionVisibility(caption: HTMLElement): void {
 export function notifyImageCropState(active: boolean): void {
   cropActive = active;
   updateCropState();
+  updateResetVisibility();
   const el = selection
     ? document.querySelector<HTMLElement>(
         `.cm-image-widget[data-image-from="${selection.from}"]`,
@@ -765,6 +786,7 @@ function positionToolbar(): void {
   if (!toolbarEl || !selection) return;
   // 滚动期一律不读布局：读到的滚动位置滞后于当前帧，写回就是逐帧追图。
   if (scrolling) return;
+  updateResetVisibility();
   const el = document.querySelector<HTMLElement>(
     `.cm-image-widget[data-image-from="${selection.from}"]`,
   );
@@ -1170,12 +1192,19 @@ export function openImageMaximize(
       },
     ),
   );
-  controls.appendChild(
-    maximizeControlButton("img-max-clear-crop", "重置图片", "RotateOutlined", () => {
-      if (typeof from === "number") actions.onImageReset?.(from);
-      closeImageMaximize();
-    }),
-  );
+  if (crop) {
+    controls.appendChild(
+      maximizeControlButton(
+        "img-max-clear-crop",
+        "重置图片",
+        "RotateOutlined",
+        () => {
+          if (typeof from === "number") actions.onImageReset?.(from);
+          closeImageMaximize();
+        },
+      ),
+    );
+  }
   controls.appendChild(
     maximizeControlButton("img-max-close", "关闭预览", "CloseOutlined", () => {
       closeImageMaximize();

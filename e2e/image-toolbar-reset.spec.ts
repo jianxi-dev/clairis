@@ -67,16 +67,19 @@ test("已裁剪图片：重置按钮清除 crop 并还原整图尺寸", async ({
   expect(width).toBeGreaterThan(600);
 
   await page.locator(".cm-image-widget").first().click();
-  await expect(page.getByTestId("img-toolbar-reset")).toBeVisible();
+  await expect(page.getByTestId("img-toolbar-reset")).toBeHidden();
   await page.screenshot({ path: `${OUT}/04-after-reset-selected.png` });
 });
 
-test("未裁剪图片：重置不改变文档", async ({ page }) => {
+test("未裁剪图片：工具条无「重置图片」按钮", async ({ page }) => {
   await setup(page, "![图](@SRC@)\n");
   await page.locator(".cm-image-widget").first().click();
-  const before = await content(page);
-  await page.getByTestId("img-toolbar-reset").click();
-  await page.waitForTimeout(300);
-  expect(await content(page)).toBe(before);
+  const reset = page.getByTestId("img-toolbar-reset");
+  await expect(reset).toHaveCount(1);
+  await expect(reset).toBeHidden();
+  const display = await reset.evaluate(
+    (el) => getComputedStyle(el as HTMLElement).display,
+  );
+  expect(display).toBe("none");
   await page.screenshot({ path: `${OUT}/03-no-crop-noop.png` });
 });
