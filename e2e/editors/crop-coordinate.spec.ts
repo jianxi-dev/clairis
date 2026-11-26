@@ -130,12 +130,14 @@ async function dragHandle(
 
 async function imgBox(page: Page): Promise<{ width: number; height: number }> {
   return page.evaluate(() => {
-    // 可见内容盒：裁剪态是窗口（布局盒 = 可见内容），非裁剪态是 img。
+    // 可见内容盒：裁剪态是裁剪框（#1511 起窗口 = 整图显示尺寸，框才是可见
+    // 裁剪区），非裁剪态是 img。
+    const frame = document.querySelector('[data-testid="img-crop-frame"]');
     const win = document.querySelector(".image-crop-window");
     const img = document.querySelector(
       ".cm-image-widget img",
     ) as HTMLImageElement | null;
-    const el = win ?? img;
+    const el = frame ?? win ?? img;
     if (!el) return { width: 0, height: 0 };
     const rect = el.getBoundingClientRect();
     return { width: rect.width, height: rect.height };

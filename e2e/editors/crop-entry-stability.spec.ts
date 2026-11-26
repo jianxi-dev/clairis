@@ -236,13 +236,20 @@ test("已裁剪图片进入裁剪：可见内容不移动、不缩小（width + 
   const after = await geom(page);
   await shot(page, "06-cropped-frame", "cropped-enter-stable");
 
-  // 可见内容不缩小：框宽 = 进入前可见宽 = width 锚点 600。
+  // #1511：裁剪态显示整图，框 = 上次裁剪矩形（相对整图显示框）。
+  // 进入前可见宽 = width 锚点 600 = 裁剪矩形显示宽，进入后仍由框给出同一宽度。
   expect(Math.abs(after.frame!.width - 600)).toBeLessThanOrEqual(1);
-  expect(Math.abs(after.frame!.height - before.img.height)).toBeLessThanOrEqual(1);
-  // 框与进入前可见矩形四边重合（页面位置不移动）。
-  expect(Math.abs(after.frame!.left - before.img.left)).toBeLessThanOrEqual(1);
-  expect(Math.abs(after.frame!.top - before.img.top)).toBeLessThanOrEqual(1);
-  expect(Math.abs(after.frame!.width - before.img.width)).toBeLessThanOrEqual(1);
+  expect(
+    Math.abs(after.frame!.height - before.img.height),
+  ).toBeLessThanOrEqual(1);
+  // 框位置 = 裁剪矩形在整图上的位置：左 / 上偏移 = crop 起点 × scale。
+  const scale = before.img.width / 1200;
+  expect(
+    Math.abs(after.frame!.left - (after.widget!.left + 100 * scale)),
+  ).toBeLessThanOrEqual(2);
+  expect(
+    Math.abs(after.frame!.top - (after.widget!.top + 80 * scale)),
+  ).toBeLessThanOrEqual(2);
   // 溢出防护：裁剪框四边都落在 widget 盒内，框内图像不溢出到正文。
   expect(after.frame!.left).toBeGreaterThanOrEqual(after.widget!.left - 1);
   expect(after.frame!.top).toBeGreaterThanOrEqual(after.widget!.top - 1);

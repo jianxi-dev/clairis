@@ -1148,6 +1148,15 @@ body {
   background: var(--app-text);
 }
 
+/* 框外压暗蒙层（#1511）：4 块绝对定位，覆盖窗口内裁剪框之外的区域。
+ * 位置与尺寸由 imageCrop.ts 的 applyDisplay() 按 rect 逐帧写入。 */
+.image-crop-window > .cm-image-crop-shade {
+  position: absolute;
+  z-index: 25;
+  pointer-events: none;
+  background: rgba(0, 0, 0, 0.3);
+}
+
 /* 视频播放器 / 文件卡片 */
 .cm-media-widget {
   margin-inline: 0.15em;
