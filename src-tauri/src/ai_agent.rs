@@ -415,11 +415,7 @@ fn write_list_override(
     if !invalid.is_empty() {
         return Err(AppError::Validation {
             context: "items".into(),
-            message: format!(
-                "非法动作项（{}）: {}",
-                spec.id,
-                invalid.join(", ")
-            ),
+            message: format!("非法动作项（{}）: {}", spec.id, invalid.join(", ")),
         });
     }
     snapshot_surface_override(base, spec)?;
@@ -439,12 +435,58 @@ fn write_list_override(
             source: e,
         })?;
     }
-    let payload = json!({ "id": spec.id, "items": normalized });
+    // menus 按组并入（#1555）：补丁只定义被改的组，与已存储覆盖合并后落盘，
+    // 覆盖文件保持「只存用户改过的组」，未改组继续继承新默认。
+    let merged: Vec<Value> = if spec.shape == crate::surfaces::SurfaceShape::Menu {
+        merge_menu_groups(base, spec, &normalized)?
+    } else {
+        normalized
+    };
+    let payload = json!({ "id": spec.id, "items": merged });
     let data = serde_json::to_vec_pretty(&payload).map_err(|e| AppError::Serialization {
         context: "patch_data_surface".into(),
         source: e,
     })?;
     crate::config::atomic_write(&path, &data)
+}
+
+/// menus 覆盖按组并入（#1555）：读已存储覆盖，丢弃补丁涉及的组，
+/// 追加上本次补丁的组（补丁顺序即组内顺序）。文件缺失 / 损坏按空处理。
+/// 补丁项可能只写 `{id}`（组从默认项推导），故组集合按补丁项的 group 字段
+/// 判定：缺省时回落该项 id 在默认集合里的组。
+fn merge_menu_groups(
+    base: &Path,
+    spec: &crate::surfaces::SurfaceSpec,
+    patch: &[Value],
+) -> Result<Vec<Value>, AppError> {
+    let defaults = crate::surfaces::embedded_defaults_json(spec);
+    let group_of = |item: &Value| -> Option<String> {
+        if let Some(group) = item.get("group").and_then(|v| v.as_str()) {
+            return Some(group.to_string());
+        }
+        let id = item.get("id").and_then(|v| v.as_str())?;
+        defaults
+            .iter()
+            .find(|d| d.get("id").and_then(|v| v.as_str()) == Some(id))
+            .and_then(|d| d.get("group"))
+            .and_then(|v| v.as_str())
+            .map(str::to_string)
+    };
+    let path = crate::surfaces::user_override_path(base, spec);
+    let mut out: Vec<Value> = std::fs::read_to_string(&path)
+        .ok()
+        .and_then(|raw| serde_json::from_str::<Value>(&raw).ok())
+        .and_then(|value| value.get("items")?.as_array().cloned())
+        .unwrap_or_default();
+    let patched_groups: std::collections::HashSet<String> =
+        patch.iter().filter_map(group_of).collect();
+    out.retain(|item| {
+        group_of(item)
+            .map(|group| !patched_groups.contains(&group))
+            .unwrap_or(true)
+    });
+    out.extend(patch.iter().cloned());
+    Ok(out)
 }
 
 /// 写图标面用户覆盖（D4 map 型逐键深合并）：默认集合外的**合法定义**（自带
@@ -1179,13 +1221,14 @@ mod tests {
         .unwrap();
         let parsed: Value = serde_json::from_str(&raw).unwrap();
         assert_eq!(parsed["ok"], json!(true), "got {raw}");
-        let ids: Vec<&str> = parsed["result"]["effective"]
+        let pane_ids: Vec<&str> = parsed["result"]["effective"]
             .as_array()
             .unwrap()
             .iter()
+            .filter(|v| v["group"] == json!("pane-header"))
             .map(|v| v["id"].as_str().unwrap())
             .collect();
-        assert_eq!(ids, vec!["pane-source", "pane-new-file"]);
+        assert_eq!(pane_ids, vec!["pane-source", "pane-new-file"]);
         let override_path = base.join("user").join("menus.json");
         let written = std::fs::read_to_string(&override_path).unwrap();
         let value: Value = serde_json::from_str(&written).unwrap();
@@ -1196,6 +1239,115 @@ mod tests {
             .map(|v| v["id"].as_str().unwrap())
             .collect();
         assert_eq!(items, vec!["pane-source", "pane-new-file"]);
+    }
+
+    // ── #1555：menus 补丁按组并入已存储覆盖（补丁只定义被改的组）──────
+
+    fn menus_override_groups(base: &Path) -> Vec<String> {
+        let raw = std::fs::read_to_string(base.join("user").join("menus.json")).unwrap();
+        let value: Value = serde_json::from_str(&raw).unwrap();
+        let mut groups: Vec<String> = value["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter_map(|item| item["group"].as_str().map(str::to_string))
+            .collect();
+        groups.sort();
+        groups.dedup();
+        groups
+    }
+
+    #[test]
+    fn patch_data_surface_menus_单组补丁只写该组() {
+        let dir = temp_base("patch_menus_group_one");
+        let base = dir.path();
+        let raw = dispatch_tool(
+            base,
+            "patch_data_surface",
+            &json!({ "id": "menus", "patch": { "items": [ {"id":"pane-source","label":"查看源码"}, {"id":"pane-new-file"} ] } }),
+        )
+        .unwrap();
+        let parsed: Value = serde_json::from_str(&raw).unwrap();
+        assert_eq!(parsed["ok"], json!(true), "got {raw}");
+        // 有效集合：格头组两项 + 其余五组默认（12+4+6+1+6=29）
+        assert_eq!(parsed["result"]["effective"].as_array().unwrap().len(), 31);
+        // 覆盖文件只含被补丁的组
+        assert_eq!(menus_override_groups(base), vec!["pane-header".to_string()]);
+        let written: Value = serde_json::from_str(
+            &std::fs::read_to_string(base.join("user").join("menus.json")).unwrap(),
+        )
+        .unwrap();
+        let ids: Vec<&str> = written["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|v| v["id"].as_str().unwrap())
+            .collect();
+        assert_eq!(ids, vec!["pane-source", "pane-new-file"]);
+    }
+
+    #[test]
+    fn patch_data_surface_menus_第二组补丁并入且不覆盖前组() {
+        let dir = temp_base("patch_menus_group_two");
+        let base = dir.path();
+        let first = dispatch_tool(
+            base,
+            "patch_data_surface",
+            &json!({ "id": "menus", "patch": { "items": [ {"id":"pane-source","label":"查看源码"} ] } }),
+        )
+        .unwrap();
+        assert_eq!(
+            serde_json::from_str::<Value>(&first).unwrap()["ok"],
+            json!(true)
+        );
+        let second = dispatch_tool(
+            base,
+            "patch_data_surface",
+            &json!({ "id": "menus", "patch": { "items": [ {"id":"preview-copy-path","label":"拷贝路径"} ] } }),
+        )
+        .unwrap();
+        let parsed: Value = serde_json::from_str(&second).unwrap();
+        assert_eq!(parsed["ok"], json!(true), "got {second}");
+        // 覆盖文件含两组，前组未被后补丁清空
+        assert_eq!(
+            menus_override_groups(base),
+            vec!["pane-header".to_string(), "preview-context".to_string()]
+        );
+        let written: Value = serde_json::from_str(
+            &std::fs::read_to_string(base.join("user").join("menus.json")).unwrap(),
+        )
+        .unwrap();
+        let ids: Vec<&str> = written["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|v| v["id"].as_str().unwrap())
+            .collect();
+        assert_eq!(ids, vec!["pane-source", "preview-copy-path"]);
+        // 前组改名仍在有效集合
+        let labels: Vec<&str> = parsed["result"]["effective"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|i| i["id"] == json!("pane-source"))
+            .map(|i| i["label"].as_str().unwrap())
+            .collect();
+        assert_eq!(labels, vec!["查看源码"]);
+    }
+
+    #[test]
+    fn patch_data_surface_menus_同组重复补丁幂等() {
+        let dir = temp_base("patch_menus_group_idem");
+        let base = dir.path();
+        let patch = json!({ "id": "menus", "patch": { "items": [ {"id":"pane-source","label":"查看源码"} ] } });
+        dispatch_tool(base, "patch_data_surface", &patch).unwrap();
+        let after_first = std::fs::read_to_string(base.join("user").join("menus.json")).unwrap();
+        dispatch_tool(base, "patch_data_surface", &patch).unwrap();
+        let after_second = std::fs::read_to_string(base.join("user").join("menus.json")).unwrap();
+        assert_eq!(
+            after_first, after_second,
+            "同组同内容重复补丁应幂等（字节一致）"
+        );
     }
 
     #[test]
@@ -1677,6 +1829,16 @@ mod tests {
             .collect()
     }
 
+    fn effective_group_ids(base: &Path, id: &str, group: &str) -> Vec<String> {
+        let spec = find_surface(id).expect("面必登记");
+        load_surface(spec, base)
+            .items
+            .iter()
+            .filter(|item| item.get("group").and_then(|v| v.as_str()) == Some(group))
+            .filter_map(|item| item.get("id")?.as_str().map(str::to_string))
+            .collect()
+    }
+
     fn effective_keys(base: &Path, id: &str) -> Vec<String> {
         let spec = find_surface(id).expect("面必登记");
         load_surface(spec, base)
@@ -1697,7 +1859,7 @@ mod tests {
             r#"{"items":[{"id":"pane-source"},{"id":"pane-new-file"}]}"#,
         );
         let before_bytes = std::fs::read(base.join("user").join("menus.json")).unwrap();
-        let before_ids = effective_ids(base, "menus");
+        let before_ids = effective_group_ids(base, "menus", "pane-header");
         assert_eq!(before_ids, vec!["pane-source", "pane-new-file"]);
 
         let raw = dispatch_tool(
@@ -1708,7 +1870,12 @@ mod tests {
         .unwrap();
         let parsed: Value = serde_json::from_str(&raw).unwrap();
         assert_eq!(parsed["ok"], json!(true), "got {raw}");
-        assert_eq!(effective_ids(base, "menus").len(), 4, "补丁后应为 4 项");
+        // 补丁定义 4 项，但 pane-header 组原覆盖（2 项）被整组替换 → 恰 4 项
+        assert_eq!(
+            effective_group_ids(base, "menus", "pane-header").len(),
+            4,
+            "补丁后格头组应为 4 项"
+        );
 
         let raw =
             dispatch_tool(base, "restore_surface_snapshot", &json!({ "id": "menus" })).unwrap();
@@ -1720,9 +1887,9 @@ mod tests {
             "回滚后 user 覆盖应回到写前字节"
         );
         assert_eq!(
-            effective_ids(base, "menus"),
+            effective_group_ids(base, "menus", "pane-header"),
             before_ids,
-            "回滚后有效集合应等于写前状态"
+            "回滚后格头组有效集合应等于写前状态"
         );
         // 默认文件不受影响
         assert!(defaults_path(base, "menus").exists());
