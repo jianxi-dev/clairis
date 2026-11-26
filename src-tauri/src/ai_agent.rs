@@ -416,6 +416,9 @@ fn write_list_override(
             crate::surfaces::SurfaceShape::Capsule => {
                 crate::surfaces::validate_capsule_item(&merged).is_some()
             }
+            crate::surfaces::SurfaceShape::ReaderPreset => {
+                crate::surfaces::validate_reader_preset(&merged).is_some()
+            }
             crate::surfaces::SurfaceShape::Toolbar => {
                 crate::surfaces::validate_toolbar_item(&merged).is_some()
             }

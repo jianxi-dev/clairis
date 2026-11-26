@@ -75,6 +75,7 @@ export const SUPPORTED_SURFACES = [
   "menus",
   "icons",
   "capsules",
+  "reader-presets",
 ] as const;
 
 /** 菜单六处消费端分组（与 Rust `MENU_GROUPS` 对账）。 */
@@ -174,6 +175,46 @@ export function toIconSpec(raw: unknown): IconSpec | null {
   return out;
 }
 
+/** 阅读预设项（与 Rust `ReaderPresetSpec` 对账；边界同 `readerWidth.ts`）。 */
+export interface ReaderPresetSpec {
+  id: string;
+  label: string;
+  fontSize: number;
+  width: number;
+  skin: string;
+}
+
+const READER_PRESET_SKINS = ["paper", "indigo", "moss", "clay"] as const;
+const READER_WIDTH_MIN = 480;
+const READER_WIDTH_MAX = 1400;
+const READER_WIDTH_STEP = 20;
+
+/** 宽松解析单个阅读预设；缺字段 / 越界 / 未知皮肤返回 null（DS-9）。 */
+export function toReaderPreset(raw: unknown): ReaderPresetSpec | null {
+  if (!isRecord(raw)) return null;
+  const { id, label, fontSize, width, skin } = raw;
+  if (typeof id !== "string" || id === "") return null;
+  if (typeof label !== "string" || label === "") return null;
+  if (
+    typeof fontSize !== "number" ||
+    !Number.isInteger(fontSize) ||
+    fontSize < 8 ||
+    fontSize > 96
+  ) {
+    return null;
+  }
+  if (typeof width !== "number" || !Number.isFinite(width)) return null;
+  const stepped = Math.round(width / READER_WIDTH_STEP) * READER_WIDTH_STEP;
+  if (stepped < READER_WIDTH_MIN || stepped > READER_WIDTH_MAX) return null;
+  if (
+    typeof skin !== "string" ||
+    !(READER_PRESET_SKINS as readonly string[]).includes(skin)
+  ) {
+    return null;
+  }
+  return { id, label, fontSize, width: stepped, skin };
+}
+
 /** 胶囊合法动作 id（与 Rust `CAPSULE_ALLOWED_IDS` 对账）。 */
 const CAPSULE_ALLOWED_IDS = [
   "format-bold",
@@ -205,6 +246,14 @@ export function toCapsuleItem(raw: unknown): CapsuleItemSpec | null {
 
 /** 按面 id 解析 item；形状不对的项被丢弃（不整体失败）。 */
 function parseItems(id: string, rawItems: unknown[]): unknown[] {
+  if (id === "reader-presets") {
+    const out: ReaderPresetSpec[] = [];
+    for (const entry of rawItems) {
+      const item = toReaderPreset(entry);
+      if (item !== null) out.push(item);
+    }
+    return out;
+  }
   if (id === "capsules") {
     const out: CapsuleItemSpec[] = [];
     for (const entry of rawItems) {

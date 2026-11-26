@@ -1,0 +1,24 @@
+{
+  "states": [
+    {
+      "state": "default",
+      "screenshot": ".artifacts/1578/01-default.png",
+      "assertion": "passed"
+    },
+    {
+      "state": "applied-wide",
+      "screenshot": ".artifacts/1578/02-applied-wide.png",
+      "assertion": "passed"
+    },
+    {
+      "state": "renamed",
+      "screenshot": ".artifacts/1578/03-renamed.png",
+      "assertion": "passed"
+    },
+    {
+      "state": "fallback",
+      "screenshot": ".artifacts/1578/04-fallback.png",
+      "assertion": "passed"
+    }
+  ]
+}
