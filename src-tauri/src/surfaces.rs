@@ -612,8 +612,24 @@ enum Override {
     Map(Vec<(String, Value)>),
 }
 
+/// 用户覆盖文件大小上限：与 `validate_config` 的量级约束对齐，避免恶意/事故
+/// 大文件在合并时放大开销（#1474 第 5 项）。超限视为无覆盖并告警。
+const SURFACE_OVERRIDE_MAX_BYTES: u64 = 256 * 1024;
+
 fn read_override_file(spec: &SurfaceSpec, base: &Path) -> Option<Value> {
-    let raw = std::fs::read_to_string(user_override_path(base, spec)).ok()?;
+    let path = user_override_path(base, spec);
+    if let Ok(meta) = std::fs::metadata(&path) {
+        if meta.len() > SURFACE_OVERRIDE_MAX_BYTES {
+            warn!(
+                path = %path.display(),
+                size = meta.len(),
+                "数据面用户覆盖超过 {} 字节，已忽略并回落默认",
+                SURFACE_OVERRIDE_MAX_BYTES
+            );
+            return None;
+        }
+    }
+    let raw = std::fs::read_to_string(path).ok()?;
     serde_json::from_str(&raw).ok()
 }
 
@@ -1915,6 +1931,20 @@ mod tests {
         write_menus_user(base, r#"{"items":[]}"#);
         let loaded = load_surface(menus_spec(), base);
         assert_eq!(loaded.items, defaults);
+    }
+
+    #[test]
+    fn 超大覆盖文件被忽略并回落默认() {
+        let dir = temp_base("override_too_large");
+        let base = dir.path();
+        // 构造 > 256KB 的合法 JSON（items 里塞大量无关键）
+        let filler = "x".repeat(SURFACE_OVERRIDE_MAX_BYTES as usize + 1024);
+        write_menus_user(
+            base,
+            &format!(r#"{{"items":[],"filler":"{filler}"}}"#),
+        );
+        let loaded = load_surface(menus_spec(), base);
+        assert_eq!(loaded.items.len(), 35, "超限覆盖应被忽略，回落默认 35 项");
     }
 
     #[test]

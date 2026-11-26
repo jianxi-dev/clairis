@@ -247,7 +247,7 @@ pub fn tool_schemas() -> Vec<Value> {
             "type": "function",
             "function": {
                 "name": "read_data_surface",
-                "description": "读取已登记数据面的有效集合。返回 {effective, defaults, warnings} 三段：有效集合（默认←用户覆盖合并后）、默认集合、告警列表。",
+                "description": "读取已登记数据面的有效集合。返回 {effective, defaults, warnings} 三段：有效集合（默认←用户覆盖合并后）、默认集合（= 仓库内默认文件内容，首次调用可能把默认物化到 defaults 层，故非纯只读）、告警列表。",
                 "parameters": {
                     "type": "object",
                     "properties": {
