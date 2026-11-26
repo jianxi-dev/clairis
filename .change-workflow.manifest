@@ -1,6 +1,6 @@
 9be2a8f4012d67698a0c8a4cc55e4b49a6a169b94d3a76570a19e03ee8fb4d53  .opencode/skills/change-workflow/SKILL.md
 7e82729fd9603478b418a731a0761fb6be2deaf4b5947821e7c4181542eafb17  .opencode/skills/change-workflow/agents-quick-reference.md
-71159cd0f18d8f1d1e5daee5f95c7d34877864518817646179031e46ebc0fed7  scripts/pr-automation.sh
+LOCAL  scripts/pr-automation.sh
 86fa9d89189e1c8d2a7dc8939950ef66ba954a2a477e5038ba402f119aca9e23  scripts/cw-update.sh
 038d909cd51ad27a040bdc12688a9b52f1ef63dd866be00dbf2f2f9f1c8d3df4  .github/workflows/change-closure-signal.yml
 0eb85258ca732ee1e374179c705849d2d8317f15ed36cb9add01cf3b8ebe44ad  .github/workflows/evidence-check.yml
@@ -17,7 +17,7 @@ a9e3431096f07ef175d4d1bf7056ea0def59e4074aa3fa93fab0eaf19a2374e6  scripts/cw-nex
 cf05367899a610aa474250632f068814a2e05708882523fb6a72a9d8c8f2252d  scripts/cw-vision.sh
 1fef9dda19a7e25eec5cd0fb33aff4174e55f34a4a1ab41a839f0b7a1998dfe7  Makefile
 9c5947b226e0498712fba00fb0904864b7ba6f1ad883df916f02afa500cb6a77  docs/agents/code-structure.md
-d47fb1559f701df5d6ea9c07520774c649d77f9dfb0f2defe2765e5c0b27d7b6  docs/agents/defect-workflow.md
+LOCAL  docs/agents/defect-workflow.md
 LOCAL  docs/agents/domain.md
 886515f25d1d1bde358784c3e425852c7d31be5435ea9f7dab9e3ab2e3233aea  docs/agents/evidence-capture.md
 44c697c30e8e850ec5eaec72c1923ac807f273d6954bb98b48401f1799d6d57c  docs/agents/feedback-alignment.md
@@ -26,6 +26,6 @@ c325f059df376dedaa1f369738a88ae3783ddde51def6c6c96ccd15036d27f74  docs/agents/in
 LOCAL  docs/agents/issue-tracker.md
 ee7eda9fcece794507017a56d9b368f54a1f0fbfd095e37a9a6cbb2cffc6e25c  docs/agents/pr-writing.md
 45247b2f1b39f9917a9e4842c85f091a69521ba9552dbb1fa0ccb349e2a59fa7  docs/agents/project-board.md
-1615ae60ec065ce5908d21af8f1db191dddf3cf345215f36aa992469f7c7e1b1  docs/agents/quality-gates.md
+LOCAL  docs/agents/quality-gates.md
 597a19c046e9f947a2e156941867821b4e53670907173fb9a9a5f432932d7880  docs/agents/task-tracking.md
 LOCAL  docs/agents/triage-labels.md
