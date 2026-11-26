@@ -3497,7 +3497,7 @@ html[data-tab-drag="true"] body * {
 /* 豆包面板观感：44px 宽扁矩形色块，一格一色，行内不换行。 */
 .cm-highlight-color-panel .cm-color-swatch {
   width: 44px;
-  height: 26px;
+  height: 40px;
   border-radius: 4px;
 }
 
