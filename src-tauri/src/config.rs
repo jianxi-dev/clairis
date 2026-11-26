@@ -2587,4 +2587,19 @@ mod tests {
             assert_eq!(user[key], value, "{key} 应写入 user 层");
         }
     }
+
+    #[test]
+    fn keyring_uses_platform_store_not_mock() {
+        // keyring v3 不默认开启任何平台凭据库 feature；缺失时静默退回内存 mock，
+        // set_api_key 看似成功、get_api_key 永远 NoEntry，表现为「已配置密钥但发送报未配置」。
+        let entry = keyring::Entry::new("biaoyue-keyring-backend-probe", "probe")
+            .expect("创建 keyring entry 失败");
+        assert!(
+            entry
+                .get_credential()
+                .downcast_ref::<keyring::mock::MockCredential>()
+                .is_none(),
+            "keyring 退回了 mock 内存存储：请在 src-tauri/Cargo.toml 为目标平台启用凭据库 feature"
+        );
+    }
 }

@@ -22,6 +22,7 @@ pub enum AgentError {
     Tool { name: String, message: String },
     Validation { field: String, message: String },
     Io { context: String, message: String },
+    Keyring { message: String },
 }
 
 impl AgentError {
@@ -53,6 +54,13 @@ impl AgentError {
                 context,
                 message: source.to_string(),
             },
+            AppError::Keyring { context, source } => AgentError::Keyring {
+                message: if context.is_empty() {
+                    source
+                } else {
+                    format!("{context}: {source}")
+                },
+            },
             other => AgentError::Tool {
                 name: name.into(),
                 message: other.to_string(),
@@ -73,6 +81,7 @@ impl std::fmt::Display for AgentError {
                 write!(f, "校验失败 ({field}): {message}")
             }
             AgentError::Io { context, message } => write!(f, "IO 错误 ({context}): {message}"),
+            AgentError::Keyring { message } => write!(f, "钥匙串错误: {message}"),
         }
     }
 }
@@ -93,6 +102,13 @@ impl From<AppError> for AgentError {
             AppError::Serialization { context, source } => AgentError::Io {
                 context,
                 message: source.to_string(),
+            },
+            AppError::Keyring { context, source } => AgentError::Keyring {
+                message: if context.is_empty() {
+                    source
+                } else {
+                    format!("{context}: {source}")
+                },
             },
             other => AgentError::Tool {
                 name: "config".into(),
@@ -157,11 +173,39 @@ impl Message {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct ToolCall {
     pub id: String,
     pub name: String,
     pub arguments: Value,
+}
+
+#[derive(Serialize)]
+struct ToolCallFunction<'a> {
+    name: &'a str,
+    arguments: String,
+}
+
+impl Serialize for ToolCall {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        use serde::ser::SerializeStruct;
+        let arguments = serde_json::to_string(&self.arguments)
+            .map_err(<S::Error as serde::ser::Error>::custom)?;
+        let mut state = serializer.serialize_struct("ToolCall", 3)?;
+        state.serialize_field("id", &self.id)?;
+        state.serialize_field("type", "function")?;
+        state.serialize_field(
+            "function",
+            &ToolCallFunction {
+                name: &self.name,
+                arguments,
+            },
+        )?;
+        state.end()
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -637,6 +681,8 @@ pub async fn run_loop_with_limit(
                     _ => 1,
                 };
                 if count >= MAX_REPEATED_TOOL_ERRORS {
+                    #[cfg(debug_assertions)]
+                    eprintln!("[ai] 工具 {} 连续失败: {result}", call.name);
                     return Err(AgentError::tool(
                         call.name.clone(),
                         format!("连续 {count} 次相同错误，终止: {result}"),
@@ -733,9 +779,13 @@ impl Completer for OpenAiCompleter {
                 .json(&body)
                 .send()
                 .await
-                .map_err(|e| AgentError::Provider {
-                    status: 0,
-                    body: e.to_string(),
+                .map_err(|e| {
+                    #[cfg(debug_assertions)]
+                    eprintln!("[ai] 请求失败: {e}");
+                    AgentError::Provider {
+                        status: 0,
+                        body: e.to_string(),
+                    }
                 })?;
 
             let status = response.status().as_u16();
@@ -744,6 +794,8 @@ impl Completer for OpenAiCompleter {
                 body: e.to_string(),
             })?;
             if !(200..300).contains(&status) {
+                #[cfg(debug_assertions)]
+                eprintln!("[ai] 服务返回 {status}: {text}");
                 return Err(AgentError::Provider { status, body: text });
             }
 
@@ -1841,5 +1893,33 @@ mod tests {
             completions_url("https://dashscope.aliyuncs.com/compatible-mode/v1"),
             "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions"
         );
+    }
+
+    #[test]
+    fn tool_calls_serialize_in_openai_wire_shape() {
+        let message = Message::assistant(
+            None,
+            vec![ToolCall {
+                id: "call_1".into(),
+                name: "read_config".into(),
+                arguments: json!({ "a": 1 }),
+            }],
+        );
+        let value = serde_json::to_value(&message).unwrap();
+        let call = &value["tool_calls"][0];
+        assert_eq!(call["id"], "call_1");
+        assert_eq!(call["type"], "function");
+        assert_eq!(call["function"]["name"], "read_config");
+        assert_eq!(call["function"]["arguments"], "{\"a\":1}");
+    }
+
+    #[test]
+    fn keyring_failures_map_to_keyring_agent_error() {
+        let err: AgentError = AppError::Keyring {
+            context: "get password".into(),
+            source: "denied".into(),
+        }
+        .into();
+        assert!(matches!(err, AgentError::Keyring { .. }), "{err:?}");
     }
 }

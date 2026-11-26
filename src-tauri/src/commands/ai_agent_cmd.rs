@@ -30,9 +30,14 @@ pub async fn run_agent_turn(
             "请先配置 endpoint 与 model",
         ));
     }
-    let api_key = get_api_key(KEYRING_SERVICE, KEYRING_ACCOUNT)
-        .await?
-        .unwrap_or_default();
+    let api_key = match get_api_key(KEYRING_SERVICE, KEYRING_ACCOUNT).await {
+        Ok(key) => key.unwrap_or_default(),
+        Err(e) => {
+            #[cfg(debug_assertions)]
+            eprintln!("[ai] 读取钥匙串失败: {e}");
+            return Err(e.into());
+        }
+    };
     if api_key.is_empty() {
         return Err(AgentError::validation("apiKey", "keyring 中没有 API key"));
     }
@@ -53,5 +58,10 @@ pub async fn run_agent_turn(
     }
 
     let completer = OpenAiCompleter::new(endpoint, model, api_key);
-    run_loop(&completer, &base, messages).await
+    let result = run_loop(&completer, &base, messages).await;
+    #[cfg(debug_assertions)]
+    if let Err(e) = &result {
+        eprintln!("[ai] 会话失败: {e:?}");
+    }
+    result
 }
