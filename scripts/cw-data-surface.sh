@@ -405,6 +405,15 @@ run_selftest() {
   make_fixture "$tmp/nosignal" nosignal
   make_fixture "$tmp/bad_path" bad_path "$tmp"
 
+  # 自包含 git 夹具：diff 子命令按 ROOT 检查「位置」文件与「载体/符号」，
+  # 不能依赖安装仓里恰有这几个文件（否则换一个仓 selftest 就假红）。
+  local fakerepo="$tmp/fakerepo"
+  mkdir -p "$fakerepo/src-tauri/src" "$fakerepo/src/hooks" "$fakerepo/src/editors/orchestration"
+  printf 'pub struct AppConfig;\npub fn validate_config() {}\n' > "$fakerepo/src-tauri/src/config.rs"
+  printf 'export function applyRustConfig() {}\n' > "$fakerepo/src/hooks/useConfig.ts"
+  printf 'export function createRoulette() {}\n' > "$fakerepo/src/editors/orchestration/floating-toolbar.ts"
+  git -C "$fakerepo" init -q
+
   expect() {
     local name="$1" want="$2"; shift 2
     set +e
@@ -455,8 +464,8 @@ run_selftest() {
   expect "票面覆盖六栏 → 通过" 0 "$SELF" tickets x --dir "$tmp/complete" --drafts "$tmp/drafts"
   printf '# 票\n\n**数据面**: 规格，存储，校验，桥接，消费，回滚\n' > "$tmp/drafts/1.md"
   expect "全角逗号覆盖 → 通过" 0 "$SELF" tickets x --dir "$tmp/complete" --drafts "$tmp/drafts"
-  expect "落地符号缺失 → 违规" 1 "$SELF" diff x --dir "$tmp/bad_path"
-  expect "落地校验 → 通过" 0 "$SELF" diff x --dir "$tmp/complete"
+  expect_in "落地符号缺失 → 违规" 1 "$fakerepo" "$SELF" diff x --dir "$tmp/bad_path"
+  expect_in "落地校验 → 通过" 0 "$fakerepo" "$SELF" diff x --dir "$tmp/complete"
 
   local grepo grepo2 prbase prbase2
   grepo="$tmp/gitrepo"

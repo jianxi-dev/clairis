@@ -1,14 +1,8 @@
----
-title: "UI 反馈四要素"
-type: guide
-status: accepted
-last_updated: 2026-11-08
-source_of_truth: supporting
----
-
 # UI 反馈四要素
 
-> 用于把「太丑」「太大」这类感受性反馈，转成可执行、可核验的视觉变更。配套：[设计系统规格](../design/system/spec.md)、[决案台账](../design/system/decisions.md)、[缺陷流程](./defect-workflow.md)「非功能视觉缺陷」。
+> 最后更新：2026-11-26
+>
+> 用于把「太丑」「太大」这类感受性反馈，转成可执行、可核验的视觉变更。配套：本仓设计系统规格与决案台账（若有，路径如 `docs/design/system/spec.md` / `decisions.md`）、[缺陷流程](./defect-workflow.md)「非功能视觉缺陷」。
 
 ## 一、为什么需要模板
 

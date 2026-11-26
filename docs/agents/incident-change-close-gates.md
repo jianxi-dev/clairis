@@ -1,12 +1,6 @@
----
-title: "事故复盘：change 收口两道门禁陷阱（锚点可断言性口径 / .artifacts 证据污染）"
-type: incident
-status: accepted
-last_updated: 2026-11-23
-source_of_truth: supporting
----
-
 # 事故复盘：change 收口两道门禁陷阱（锚点可断言性口径 / .artifacts 证据污染）
+
+> 最后更新：2026-11-26
 
 > 适用：本仓库所有走 change-workflow 的 change，尤其在 G0-POST 拆票与 G2 收口提交两个节点。
 > 案例来源：`editor-refine-batch1`（#1397–#1404，2026-11-23 归档）。
@@ -129,5 +123,5 @@ git checkout -- .artifacts/
 - `scripts/cw-conformance.sh`（四规则生成器，头注第 3 条声明与 checker 同词）
 - `scripts/cw-tickets-check.sh`（`check_conformance` / `has_token`，G0-POST 门禁）
 - `scripts/pr-automation.sh`（`validate_whitelist` / `in_files`，G2 收口提交）
-- `docs/agents/quality-gates.md`（QG-1..QG-9 质量门禁）
+- `docs/agents/quality-gates.md`（QG-1..QG-10 质量门禁）
 - 同类事故：`docs/agents/incident-merge-local-workspace.md`、`docs/agents/incident-uncommitted-work-loss.md`

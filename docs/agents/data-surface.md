@@ -1,13 +1,6 @@
----
-title: 数据面落点规范（配置 / 主题 / 图标 / 菜单 / 开关）
-type: guide
-status: active
-last_updated: 2026-11-11
----
-
 # 数据面落点规范
 
-> 本文是**本仓自有规范**，不在 change-workflow 工具包的受管清单内（`.change-workflow.manifest`），升级不会覆盖。上游演进路径见文末。
+> 最后更新：2026-11-26
 >
 > 机检脚本：`scripts/cw-data-surface.sh`（`new` / `tickets` / `diff` / `pr` / `signals` / `selftest`；`pr` 用于缺陷修复线，见 §五）。
 
@@ -25,7 +18,7 @@ last_updated: 2026-11-11
 
 ## 二、触发信号（命中任一即适用）
 
-**信号 A — 路径**：change 的 `design.md` / `tasks.md` / `proposal.md` 出现下列任一（完整清单见 `.change-workflow.conf` 的 `DATA_SURFACE_PATHS`）：
+**信号 A — 路径**：change 的 `design.md` / `tasks.md` / `proposal.md` 出现下列任一（完整清单见 `.change-workflow.conf` 的 `DATA_SURFACE_PATHS` 覆盖；下表为参考实现的示例，按本仓实际填写）：
 
 ```
 src-tauri/src/config.rs                     配置 schema 与校验
@@ -53,6 +46,8 @@ src/components/SettingsView.tsx             设置面板
 ```markdown
 ## 数据面
 
+<!-- 下行为示例（取自参考实现），路径与符号按本仓实际替换 -->
+
 | 落点 | 位置 | 载体/符号 | 判据 |
 |---|---|---|---|
 | 规格 | design-system:§6 | — | 新增/删除色必须先有 spec 条款 |
@@ -74,7 +69,7 @@ src/components/SettingsView.tsx             设置面板
 
 四条设计约束：
 
-1. **不写像素值**。位置只表达落点，坐标属于 `docs/design/system/spec.md`，用条款号引用。
+1. **不写像素值**。位置只表达落点，坐标属于设计系统条款（如 `docs/design/system/spec.md`，本仓有则引用条款号，无则写 `design-system:§N` 记号）。
 2. **`消费` 行不许指向会退化为常量数组的组件**——落地时该组件应读注册表，而不是新增 `const X = [`。
 3. **`回滚` 不是可选栏**。AI 可塑的三要素是「真相源唯一 + 写路径收敛 + 可逆兜底」，缺回滚等于让 AI 直改。
 4. **一个 change 一张表**；票级只声明自己负责哪几行（见下节），不复制表。
@@ -98,7 +93,9 @@ src/components/SettingsView.tsx             设置面板
 - 纯 UI 引用（例如只是把已有配置接到界面）声明 `消费` 即可；
 - 无数据面的票写 `**数据面**: 无`，与 `no-ui-impact` 同构，须显式写，缺字段不等于「无」。
 
-## 四点五、新增面步骤（`scripts/surface-new.sh`）
+## 四点五、新增面步骤（参考实现脚手架）
+
+> 本节描述的面脚手架（`scripts/surface-new.sh`）是参考实现，**不随工具包发布**（它硬编码了 Rust/Tauri 的目录布局）。本仓有等价脚手架时按下述六步办；没有时手写同样六步。
 
 新增一个数据面（面 = `{id, 默认文件名, 项形状, 校验器}`）时，用脚手架生成三样骨架，再手写校验与接线：
 
@@ -153,27 +150,25 @@ bash scripts/surface-new.sh <id> --shape <menu-item|icon|capsule|toolbar> \
 
 ## 七、明确不该文件化的
 
-沿用 `docs/research/technical/data-fileization-omarchy-inventory.md` §3.3 的边界，仍有效：
+沿用此类数据文件化盘点已有的边界，仍有效：
 
 | 数据 | 去处 | 理由 |
 |---|---|---|
-| API key | OS 钥匙串 | ADR 0005 |
-| EditorView 实例 | 内存 Map | ADR 0004 |
+| API key | OS 钥匙串 | 密钥不进配置文件 |
+| 编辑器/视图实例 | 内存 Map | 实例不是可序列化状态 |
 | 运行时缓存 / 索引 | 应用支持目录 | 可重建的生成态 |
 | 派生状态（最近文件/滚动位置） | `state/state.json` | 用户行为产物，AI 不直写 |
 | 会执行代码的扩展 | 不进数据文件 | 保持无执行面；代码级插件另设信任门 |
 
-另外两条本仓判据：
+另外两条通用判据：
 
-- **没有消费者的目录不建**（不要提前造 `views/` 空目录——这正是 D11 的历史坑）；
-- **两套图标表必须同时覆盖**（`src/ui/icons.ts` 与 `src/editors/icons.ts`），否则轮盘与块菜单会漂移。
+- **没有消费者的目录不建**（不要提前造空目录）；
+- **同一概念的多张注册表必须同时覆盖**（例如两套图标表），否则不同入口会漂移。
 
-## 八、上游演进（2026-11-10 裁定）
+## 八、归属与升级
 
-本规范与 `scripts/cw-data-surface.sh` **先落本仓**，理由与条件：
+本规范与 `scripts/cw-data-surface.sh` **已随工具包发布**（属 `cw_list_files` 的 `docs/agents/*.md` 与显式脚本条目），消费仓在 `.change-workflow.conf` 里只保留 `DATA_SURFACE_PATHS` / `DATA_SURFACE_KEYWORDS` 两个具体值。
 
-- 数据面 schema 仍在演进（轮盘/图标注册表尚未数据化，`消费` 栏随时会改），上游一旦固化即给所有消费仓加负担；
-- 判据需要真实拦截样本，目前只有理论值。**跑满两个 change、且脚本判据无实质改动**后，整包提上游 PR（`jianxi-dev/change-workflow`）：新增脚本 + 本规范作为 `docs/agents/data-surface.md` 模板 + `config.example.conf` 两个键 + 测试用例；
-- 上游合入后，本文件改为受管版本（进 manifest），本仓只保留 `DATA_SURFACE_*` 的具体值。
+历史：本规范起初先在单个消费仓落地（判据需要真实拦截样本），跑满两个 change、判据无实质改动后才整包上游化。**新出现的门禁/规范建议走同一条路**：先在消费仓验证，稳定后再进模板，避免给所有消费仓加未经检验的负担。
 
-在此之前**不要**把本文或脚本登记为 LOCAL：新增文件不在 manifest 内，升级天然不触碰；一旦登记 LOCAL，反而会遮蔽上游同名文件的到货告警。
+修改本规范时注意：脚本的 `REQUIRED_LABELS`（六栏落点名）与本文 §三 必须逐字一致，否则 `new` / `tickets` 子命令与文档对不上。

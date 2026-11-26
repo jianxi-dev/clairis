@@ -1,11 +1,3 @@
----
-title: "缺陷管理流程"
-type: guide
-status: accepted
-last_updated: 2026-11-08
-source_of_truth: supporting
----
-
 # 缺陷管理流程
 
 > 本仓库所有缺陷统一使用 **GitHub Issues** 管理，仓库：`jianxi-dev/clairis`
@@ -106,7 +98,7 @@ gh issue close <编号> --comment "已修复，提交 commit: xxx"
 
 「太大」「太丑」「斜杠有点长」这类反馈不是功能 bug，但必须可提票、可度量、可关闭，否则只能挤进 P3 或不了了之。
 
-**定义**：界面元素在**位置、尺寸、比例、形状、层级、留白**上与 `docs/design/system/spec.md` 条款或 `decisions.md` 台账行不一致；功能行为本身正常。
+**定义**：界面元素在**位置、尺寸、比例、形状、层级、留白**上与设计系统条款（`docs/design/system/spec.md`）或部件台账行（`decisions.md`）不一致；功能行为本身正常。
 
 **建票规则**
 
@@ -243,9 +235,9 @@ gh issue view <N> --json labels,comments \
 
 ### 修复触及数据面须走既有数据链路（C10 的缺陷线应用）
 
-数据面门禁（`docs/agents/data-surface.md` / C10）最初只挂在 change-workflow 的 G0/G0-POST/G1；**缺陷路径当时完全旁路**——修「工具条缺动作」类票时可直接往 `slots.ts` 常量数组塞一项，硬编码回潮无检查拦截。
+数据面门禁（`docs/agents/data-surface.md` / C10）最初只挂在 change-workflow 的 G0/G0-POST/G1；**缺陷路径当时完全旁路**——修「工具条缺动作」类票时可直接往常量数组里塞一项，硬编码回潮无检查拦截。
 
-规则：修复 diff 命中数据面路径（`DATA_SURFACE_PATHS`）时，**禁止新增硬编码常量**（新动作 id / 新扇区 / 新图标名直接写死常量数组）。两种合法出口：
+规则：修复 diff 命中数据面路径（`.change-workflow.conf` 的 `DATA_SURFACE_PATHS`）时，**禁止新增硬编码常量**（新动作 id / 新扇区 / 新图标名直接写死常量数组）。两种合法出口：
 
 1. 缺陷本身是**既有数据链路的 bug**（字段被忽略 / 校验漏判 / 回滚失效）→ 正常修复 + 回归测试；
 2. 缺陷根因是**该面根本没有数据化** → 按 DQ-7 同款语义**升级为 change**，不在缺陷票内打补丁。
@@ -256,7 +248,7 @@ gh issue view <N> --json labels,comments \
 ./scripts/cw-data-surface.sh pr <基线ref>   # diff(基线..HEAD+未提交) 命中数据面路径 → exit 1
 ```
 
-**同构教训**：`.change-workflow.conf` 的 `UI_PATH_GLOB` 注释记过——当年为躲误报收窄识别，17 个 UI 修复 PR 全部旁路。缺陷线是新旁路口，故用同一「路径信号优先」机制堵住，不做意图判断。
+**同构教训**：`UI_PATH_GLOB` 当初为躲误报收窄识别，结果 17 个 UI 修复 PR 全部旁路。缺陷线是新旁路口，故用同一「路径信号优先」机制堵住，不做意图判断。
 
 ### 复现必须走真实路径（QG-4）
 
@@ -336,7 +328,7 @@ gh issue list --label ready-for-agent --state all --json number,state \
 
 ### 真机偏差类验收分级（DQ-9）
 
-**规则**：修复命中真机偏差类触发信号（字体/布局测量、持久化/生命周期、协议/原生行为、用户语义裁定、同一面被 tauri-mock 桥覆盖）时，验收须含**双路径证明或用户执行的真机检查清单**，**headless e2e 绿单独不构成关闭条件**。完整定义、触发信号、实证案例与反模式见 `docs/agents/quality-gates.md` DQ-9（含配套的「测试基础设施卫生」小节：验证前须清理 1420 端口陈旧监听，服务复用导致的假红/假绿是第一类失败模式）。
+**规则**：修复命中真机偏差类触发信号（字体/布局测量、持久化/生命周期、协议/原生行为、用户语义裁定、同一面被 IPC mock 桥覆盖）时，验收须含**双路径证明或用户执行的真机检查清单**，**headless e2e 绿单独不构成关闭条件**。完整定义、触发信号、实证案例与反模式见 `docs/agents/quality-gates.md` DQ-9（含配套的「测试基础设施卫生」小节：验证前须清理 dev server 端口陈旧监听，服务复用导致的假红/假绿是第一类失败模式）。
 
 ### 修复必须同时防回归
 
@@ -357,4 +349,4 @@ gh issue list --label ready-for-agent --state all --json number,state \
 
 ---
 
-_最后更新：2026-11-18_
+_最后更新：2026-11-26_

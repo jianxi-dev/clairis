@@ -316,8 +316,8 @@ if [[ ${#FILES[@]} -gt 0 ]]; then
     # 语义同四件套：失败即中止。未配置的仓跳过（md-bundle/mdpkg/clairis 目前都没这键）。
     run_gate visual-baseline "$CMD_VISUAL_BASELINE"
 
-    # T2 感知层显式化（#1441，oracle-gap 策略 P0-0）：未配置不再静默。
-    # off = 显著警告后继续；on = 直接失败。开关见 .change-workflow.conf。
+    # T2 感知层显式化：未配置不再静默。
+    # off（或缺键）= 显著警告后继续；on = 直接失败。开关见 .change-workflow.conf。
     if [[ -z "$CMD_FIDELITY" || -z "$CMD_VISUAL_BASELINE" ]]; then
       if [[ "$VISUAL_GATES_REQUIRED" == "on" ]]; then
         echo "❌ VISUAL_GATES_REQUIRED=on 但 CMD_FIDELITY / CMD_VISUAL_BASELINE 未配置：T2 感知层未执行，禁止收口" >&2
