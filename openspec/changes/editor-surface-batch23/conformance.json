@@ -21,10 +21,10 @@
         },
         {
           "id": "A-1.3",
-          "claim": "裁剪确认前后图片位置零位移",
-          "kind": "exact",
-          "assert": "探针滚动位移测量 ≤ 1px（before/after 成对）",
-          "source": "cropJumpProbe 实测 + 用户反馈 #1"
+          "claim": "确认瞬间位移仅发生一次且其后恒定：有下方余量时 ≤1px；已滚到底时允许一次必要 clamp（图片变矮→文档变短→max scrollTop 减小，物理必然）",
+          "kind": "state-machine",
+          "assert": "逐帧采样 ≥20 帧：余量场景相邻帧 top 差 ≤1；贴底场景位移帧对 ≤1 且其后 top 恒定",
+          "source": "实测（贴底 max 75→55 逐帧验证，一次性无抖动）+ 用户反馈 #1"
         }
       ]
     },
