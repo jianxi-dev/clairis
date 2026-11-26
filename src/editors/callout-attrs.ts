@@ -262,11 +262,11 @@ function resolveHighlightText(name: string): string | undefined {
   return HIGHLIGHT_TEXT_SWATCH.get(TEXT_LEGACY_ALIAS[name] ?? name);
 }
 
-/** 纯高亮渲染：填充用更强叠底（38%），无属性时由 CSS 回落 tone。 */
+/** 纯高亮渲染：填充用更强叠底（80%），无属性时由 CSS 回落 tone。 */
 export function highlightCssVars(attrs: CalloutAttrs): CalloutCssVars {
   const vars: { bg?: string; border?: string; text?: string } = {};
   const bg = attrs.bg ? resolveHighlightFill(attrs.bg) : undefined;
-  if (bg) vars.bg = `color-mix(in srgb, ${bg} 38%, transparent)`;
+  if (bg) vars.bg = `color-mix(in srgb, ${bg} 80%, transparent)`;
   const border = attrs.border ? resolveHighlightBorder(attrs.border) : undefined;
   if (border) vars.border = border;
   const text = attrs.text ? resolveHighlightText(attrs.text) : undefined;

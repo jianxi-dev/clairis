@@ -594,6 +594,7 @@ body {
 
 /* 有序列表序号是语义内容，两态都可见；活跃块低透明度 */
 .cm-list-marker {
+  margin-inline-start: -0.95em;
   color: var(--app-text-2);
   font-family:
     "SF Mono", "Fira Code", "Fira Mono", "Menlo", Consolas, monospace;
@@ -645,7 +646,7 @@ body {
  * 连续 `>` 行是一张卡片：纵向内边距只给首/末行，中间行只留左右内边距。 */
 .cm-line.cm-quote {
   /* 卡片外沿与正文行盒同宽（E-8 / A6），三者边框彼此一致。 */
-  max-width: var(--type-measure, 1080px);
+  max-width: calc(var(--type-measure, 1080px) + 2em + 2px);
   border-inline-start: 2px solid var(--reader-accent);
   padding-inline: 1em;
   padding-block: 0;
@@ -2231,6 +2232,8 @@ html[data-tab-drag="true"] body * {
  * 颜色全部走 tokens.css 的语义变量，不写死 hex。 */
 .cm-table-wrap {
   position: relative;
+  max-width: var(--type-measure, 1080px);
+  overflow-x: auto;
   margin: 0.35em 0;
   padding-top: 10px;
   border: 1px solid var(--app-border);
@@ -2665,7 +2668,7 @@ html[data-tab-drag="true"] body * {
  * 圆角取卡片 token --radius-8、底色走荧光笔半透明叠底（--callout-bg 由六色板
  * 写入，缺省回落 yellow tone 的软色）。覆盖上面 .cm-callout 的通用 3px 左边框。 */
 .cm-content .cm-callout.cm-callout-mark {
-  border: 1px solid var(--callout-border, transparent);
+  border: 1px solid var(--callout-border, var(--callout-color));
   border-inline-start-width: 0;
   border-radius: 4px;
   padding: 0.2em 0.45em;
@@ -2676,6 +2679,16 @@ html[data-tab-drag="true"] body * {
     --callout-bg,
     color-mix(in srgb, var(--callout-color) 30%, transparent)
   );
+}
+
+.cm-content .cm-callout.cm-callout-mark .cm-callout-header-mark {
+  margin-block-end: 0.15em;
+}
+
+.cm-content .cm-callout.cm-callout-mark .cm-callout-icon {
+  font-size: 1em;
+  line-height: 1.2;
+  cursor: pointer;
 }
 
 .cm-content .cm-callout-header {
@@ -3418,8 +3431,12 @@ html[data-tab-drag="true"] body * {
   top: auto;
   left: auto;
   width: auto;
-  min-width: 232px;
+  min-width: 448px;
   z-index: 3200;
+}
+
+.cm-callout-color-pop.cm-callout-color-pop-mark {
+  width: 448px;
 }
 
 
@@ -3473,8 +3490,25 @@ html[data-tab-drag="true"] body * {
 }
 
 .cm-highlight-color-panel .cm-color-row {
-  max-width: 216px;
   flex-wrap: nowrap;
+  gap: 8px;
+}
+
+/* 豆包面板观感：44px 宽扁矩形色块，一格一色，行内不换行。 */
+.cm-highlight-color-panel .cm-color-swatch {
+  width: 44px;
+  height: 26px;
+  border-radius: 4px;
+}
+
+.cm-highlight-color-panel .cm-color-row[data-kind="font"] .cm-color-swatch {
+  background: var(--app-surface);
+}
+
+/* 当前值对应选中：蓝色描边（对齐豆包截图的选中框）。 */
+.cm-highlight-color-panel .cm-color-swatch[data-active="true"] {
+  outline: 2px solid var(--app-accent, #4c88ff);
+  outline-offset: 1px;
 }
 
 .cm-callout-color-pop .cm-color-reset {
