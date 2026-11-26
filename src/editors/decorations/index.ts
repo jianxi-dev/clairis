@@ -98,6 +98,8 @@ export interface EditorDecorationsOptions {
   onImageAi?: (path: string, alt: string) => void;
   /** 工具条「裁剪」；缺省时按钮禁用。 */
   onImageCrop?: (from: number) => void;
+  /** 工具条「重置图片」：清除 crop 并还原整图显示尺寸。 */
+  onImageReset?: (from: number) => void;
   /** 工具条「描述」：让选中图片的描述行进入编辑态。 */
   onImageComment?: (from: number) => void;
   /** 描述行提交：把标题写回图片 markdown 的引号段。 */
@@ -240,6 +242,7 @@ function buildDecorationSet(
       {
         onImageAi: options?.onImageAi,
         onImageCrop: options?.onImageCrop,
+        onImageReset: options?.onImageReset,
         onImageComment: options?.onImageComment,
         onImageSetTitle: options?.onImageSetTitle,
         onImageAlign: options?.onImageAlign,
@@ -449,6 +452,7 @@ export function editorDecorations(
   setImageToolbarActions({
     onImageAi: options?.onImageAi,
     onImageCrop: options?.onImageCrop,
+    onImageReset: options?.onImageReset,
     onImageComment: options?.onImageComment,
     onImageSetTitle: options?.onImageSetTitle,
     onImageAlign: options?.onImageAlign,

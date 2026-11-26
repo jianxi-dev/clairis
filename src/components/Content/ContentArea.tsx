@@ -296,6 +296,34 @@ const editorDecorationOptions: EditorDecorationsOptions = {
     if (!view) return;
     writeImageTitle(view, from, title);
   },
+  onImageReset: (from) => {
+    const view = getActiveEditorView();
+    if (!view) return;
+    const text = view.state.doc.toString();
+    const ref = scanImageReference(text, from);
+    if (!ref) return;
+    const attrs =
+      ref.attrText !== null
+        ? parseImageAttributes(ref.attrText)
+        : { ...EMPTY_IMAGE_ATTRIBUTES };
+    if (!attrs.crop) return;
+    const img = document.querySelector<HTMLImageElement>(
+      `.cm-image-widget[data-image-from="${from}"] img`,
+    );
+    const natW = img?.naturalWidth ?? 0;
+    const natH = img?.naturalHeight ?? 0;
+    if (!natW || !natH) return;
+    const [, , cw, ch] = attrs.crop;
+    const scaleX = (attrs.width ?? cw) / cw;
+    const scaleY = (attrs.height ?? ch) / ch;
+    const next = {
+      ...attrs,
+      crop: null,
+      width: Math.max(1, Math.round(natW * scaleX)),
+      height: Math.max(1, Math.round(natH * scaleY)),
+    };
+    writeImageAttributes(view, from, next);
+  },
   onImageCrop: (from) => {
     const view = getActiveEditorView();
     if (!view) return;
