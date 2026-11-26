@@ -104,7 +104,7 @@ src/components/SettingsView.tsx             设置面板
 新增一个数据面（面 = `{id, 默认文件名, 项形状, 校验器}`）时，用脚手架生成三样骨架，再手写校验与接线：
 
 ```bash
-bash scripts/surface-new.sh <id> --shape <menu-item|icon|capsule|toolbar> \
+bash scripts/surface-new.sh <id> --shape <menu-item|icon|capsule|toolbar|reader-preset> \
   --change <change名> [--dry-run]
 ```
 
@@ -115,13 +115,13 @@ bash scripts/surface-new.sh <id> --shape <menu-item|icon|capsule|toolbar> \
 | 1 登记 | 在 `src-tauri/src/surfaces.rs` 的 `SURFACES` 表追加一行 `SurfaceSpec { id, default_file, shape }` | 脚本追加（已含同 id 行则跳过） |
 | 2 默认文件 | 新增 `src-tauri/src/resources/<id>.default.json`，作为默认集合唯一来源 | 脚本生成模板（合法 JSON，字段与形状校验器对齐） |
 | 3 形状校验 | 在 `surfaces.rs` 加 `validate_<shape>_item` 分支（缺字段/类型错/未知 id 过滤并聚合告警） | **手写**（脚本不生成 match 分支） |
-| 4 消费端接线 | 消费端改读面（`src/lib/dataSurfaces/store.ts` 的 `getMenuItems`/`getIconSpec`/`getCapsuleItems`/`getSurfaceItems`），不留兜底常量 | **手写** |
+| 4 消费端接线 | 消费端改读面（`src/lib/dataSurfaces/store.ts` 的 `getMenuItems`/`getIconSpec`/`getCapsuleItems`/`getSurfaceItems`/`getReaderPresets`），不留兜底常量 | **手写** |
 | 5 六栏表 | 在 change 的 `design.md` 写 `## 数据面` 六栏表 | 脚本追加模板（落点值严格等于 规格/存储/校验/桥接/消费/回滚） |
 | 6 回滚快照 | 沿用 `snapshots/` + `restore_config_snapshot`（写前快照 10 份） | 既有机制，无需新增 |
 
 要点：
 
-- **形状是闭集**：`menu-item` / `icon` / `capsule` / `toolbar`，与 `surfaces.rs` 的 `SurfaceShape` 枚举一一对应；脚本拒绝未知 shape 与非法 id（`[a-z][a-z0-9-]*`）。
+- **形状是闭集**：`menu-item` / `icon` / `capsule` / `toolbar` / `reader-preset`，与 `surfaces.rs` 的 `SurfaceShape` 枚举一一对应；脚本拒绝未知 shape 与非法 id（`[a-z][a-z0-9-]*`）。
 - **幂等**：同一 id 重复运行不覆盖既有非空默认文件或既有登记行，命中即打印「已存在，跳过」并退 0；写盘走临时文件 + `mv`，无半成品。
 - **保真**：六栏落点值由脚本硬编码，与 `cw-data-surface.sh` 的 `REQUIRED_LABELS` 逐字一致；模板不含占位字段名。
 - **自检**：`bash scripts/surface-new.test.sh`（转调 `--self-test`）验证形状解析、六值精确、幂等、非法入参拒绝；CI 可直接跑。

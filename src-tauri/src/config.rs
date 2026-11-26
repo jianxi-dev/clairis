@@ -1189,7 +1189,7 @@ const SKILL_MAP: &str = r#"# Biaoyue 配置地图
 - `restore_surface_snapshot`：`{"id": "menus"}`（可带 `name`），回滚该面最新快照的覆盖；只写 `user/<id>.json`，不动默认文件。
 - 恢复默认：`patch_data_surface` 传 `{"id": "menus", "patch": {"items": null}}` → 删除该面用户覆盖（写前快照，可再用 restore 回滚）；四个面均支持。
 - `read_data_surface`：`{"id": "menus"}`，返回数据面的 `{effective, defaults, warnings}` 三段。
-- `patch_data_surface`：`{"id": "menus", "patch": {"items": [...]}}`，改写用户覆盖集合，写入前校验并生成快照。`html-toolbar` 的 `items` 是 id 字符串数组（整体替换）；`menus` / `capsules` 的 `items` 是**对象数组**（每项按 `id` 与默认项深合并，允许只写 `{id,label}` 这类部分项）；其中 `menus` **按组替换**——覆盖里出现的 `group` 替换该组，未出现的组保留默认；`icons` 的 `items` 是「概念键 → 定义」对象，逐键深合并（接受默认集合外的新概念键）。
+- `patch_data_surface`：`{"id": "menus", "patch": {"items": [...]}}`，改写用户覆盖集合，写入前校验并生成快照。`html-toolbar` 的 `items` 是 id 字符串数组（整体替换）；`menus` / `capsules` / `reader-presets` 的 `items` 是**对象数组**（每项按 `id` 与默认项深合并，允许只写 `{id,label}` 这类部分项）；其中 `menus` **按组替换**——覆盖里出现的 `group` 替换该组，未出现的组保留默认；`reader-presets` **按 id 并入**现有有效集合（只改一套不清空其余两套；`width` 按 20px 步长归整，1273→1280；允许新增自定义 id，须自带完整字段）；`icons` 的 `items` 是「概念键 → 定义」对象，逐键深合并（接受默认集合外的新概念键）。
 
 ## 可改键与取值范围（camelCase）
 
@@ -1223,12 +1223,14 @@ const SKILL_MAP: &str = r#"# Biaoyue 配置地图
 | `menus` | 菜单项（id/group/order/label/icon/action/enabled） | `user/menus.json` 的 `items` 数组 | `{"items":[{"id":"pane-source","label":"查看源码"}]}` 按组替换（组内按 id 深合并） |
 | `icons` | 图标（概念键/label/d?/s?/dash?/parts?） | `user/icons.json` 的 `items` 对象 | `{"items":{"close":{"label":"关窗","s":"M1 1"}}}` 逐键深合并，接受新概念键 |
 | `capsules` | 胶囊按钮（id/label/icon/order） | `user/capsules.json` 的 `items` 数组 | `{"items":[{"id":"format-bold"},{"id":"ai-rewrite"}]}` 整体替换（对象项） |
+| `reader-presets` | 阅读预设（id/label/fontSize/width/skin） | `user/reader-presets.json` 的 `items` 数组 | `{"items":[{"id":"wide","fontSize":21}]}` 按 id 并入（对象项） |
 
 用 `patch_data_surface` 改写覆盖集合（只写 user 层，不动默认文件；写前自动快照）：
 
 - `menus` 回滚：`restore_surface_snapshot({"id": "menus"})` → `user/menus.json` 回到写前状态。
 - `icons` 回滚：`restore_surface_snapshot({"id": "icons"})` → `user/icons.json` 回到写前状态。
 - `capsules` 回滚：`restore_surface_snapshot({"id": "capsules"})` → `user/capsules.json` 回到写前状态。
+- `reader-presets` 回滚：`restore_surface_snapshot({"id": "reader-presets"})` → `user/reader-presets.json` 回到写前状态。
 
 ```json
 { "id": "menus", "patch": { "items": [ {"id": "pane-new-file", "label": "新建"}, {"id": "pane-source", "label": "查看源码"} ] } }
@@ -1240,6 +1242,10 @@ const SKILL_MAP: &str = r#"# Biaoyue 配置地图
 
 ```json
 { "id": "capsules", "patch": { "items": [ {"id": "format-bold"}, {"id": "format-italic"}, {"id": "capsule-bg"} ] } }
+```
+
+```json
+{ "id": "reader-presets", "patch": { "items": [ {"id": "wide", "fontSize": 21} ] } }
 ```
 
 ## 禁止项

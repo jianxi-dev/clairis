@@ -368,6 +368,13 @@ fn write_list_override(
     let mut invalid: Vec<String> = Vec::new();
     let mut normalized: Vec<Value> = Vec::with_capacity(items.len());
     let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
+    // #1579：阅读预设按 id 并入现有有效集合——AI 改一条不清空其余两套。
+    let preset_baseline: Vec<Value> =
+        if spec.shape == crate::surfaces::SurfaceShape::ReaderPreset {
+            crate::surfaces::load_surface(spec, base).items
+        } else {
+            Vec::new()
+        };
     for entry in items {
         // html-toolbar 沿用 id 字符串数组；menus / capsules 要求对象项。
         let partial = if spec.shape == crate::surfaces::SurfaceShape::Toolbar {
@@ -425,7 +432,8 @@ fn write_list_override(
             _ => false,
         };
         if !ok {
-            if is_known {
+            if is_known || spec.shape == crate::surfaces::SurfaceShape::ReaderPreset {
+                // 阅读预设允许新 id（自定义预设），但必须自带完整字段，否则 invalid。
                 invalid.push(id);
             } else if !unknown.contains(&id) {
                 unknown.push(id);
@@ -434,6 +442,26 @@ fn write_list_override(
         }
         normalized.push(merged);
     }
+    let normalized = if spec.shape == crate::surfaces::SurfaceShape::ReaderPreset {
+        let mut merged_list = preset_baseline;
+        for item in normalized {
+            let id = item
+                .get("id")
+                .and_then(|v| v.as_str())
+                .unwrap_or_default()
+                .to_string();
+            match merged_list
+                .iter_mut()
+                .find(|slot| slot.get("id").and_then(|v| v.as_str()) == Some(id.as_str()))
+            {
+                Some(slot) => *slot = item,
+                None => merged_list.push(item),
+            }
+        }
+        merged_list
+    } else {
+        normalized
+    };
     if !unknown.is_empty() {
         return Err(AppError::Validation {
             context: "items".into(),
@@ -1436,6 +1464,130 @@ mod tests {
             "got {raw}"
         );
         assert!(!user_path(base).exists(), "未登记 id 不应产生任何写入");
+    }
+
+    // ── #1579：reader-presets 的 AI 通路（注册表驱动，无需新工具）──────
+
+    #[test]
+    fn patch_data_surface_reader_presets_改字号落盘且默认文件不变() {
+        let dir = temp_base("patch_presets");
+        let base = dir.path();
+        let raw = dispatch_tool(
+            base,
+            "patch_data_surface",
+            &json!({ "id": "reader-presets", "patch": { "items": [ {"id":"wide","fontSize":21} ] } }),
+        )
+        .unwrap();
+        let parsed: Value = serde_json::from_str(&raw).unwrap();
+        assert_eq!(parsed["ok"], json!(true), "got {raw}");
+        let effective = parsed["result"]["effective"].as_array().unwrap();
+        let wide = effective
+            .iter()
+            .find(|i| i["id"] == json!("wide"))
+            .expect("wide 必在有效集合");
+        assert_eq!(wide["fontSize"], json!(21));
+        // 仅写局部项时其余字段与其余两套保留默认
+        assert_eq!(wide["width"], json!(1280));
+        assert_eq!(wide["skin"], json!("paper"));
+        assert_eq!(effective.len(), 3);
+        let written: Value = serde_json::from_str(
+            &std::fs::read_to_string(base.join("user").join("reader-presets.json")).unwrap(),
+        )
+        .unwrap();
+        let written_wide = written["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|i| i["id"] == json!("wide"))
+            .unwrap();
+        assert_eq!(written_wide["fontSize"], json!(21));
+        assert_eq!(written["items"].as_array().unwrap().len(), 3, "其余两套不应被清空");
+        // 默认层不被改写
+        let read_back: Value = serde_json::from_str(
+            &dispatch_tool(base, "read_data_surface", &json!({ "id": "reader-presets" })).unwrap(),
+        )
+        .unwrap();
+        let defaults = read_back["result"]["defaults"].as_array().unwrap();
+        let default_wide = defaults
+            .iter()
+            .find(|i| i["id"] == json!("wide"))
+            .unwrap();
+        assert_eq!(default_wide["fontSize"], json!(19), "默认文件字节不应被改写");
+    }
+
+    #[test]
+    fn patch_data_surface_reader_presets_items_null_恢复默认并可回滚() {
+        let dir = temp_base("patch_presets_reset");
+        let base = dir.path();
+        dispatch_tool(
+            base,
+            "patch_data_surface",
+            &json!({ "id": "reader-presets", "patch": { "items": [ {"id":"wide","fontSize":21} ] } }),
+        )
+        .unwrap();
+        let override_path = base.join("user").join("reader-presets.json");
+        assert!(override_path.exists());
+
+        let raw = dispatch_tool(
+            base,
+            "patch_data_surface",
+            &json!({ "id": "reader-presets", "patch": { "items": null } }),
+        )
+        .unwrap();
+        let parsed: Value = serde_json::from_str(&raw).unwrap();
+        assert_eq!(parsed["ok"], json!(true), "got {raw}");
+        assert!(!override_path.exists(), "重置后覆盖文件应删除");
+        let effective = parsed["result"]["effective"].as_array().unwrap();
+        assert_eq!(effective.len(), 3);
+        let wide = effective.iter().find(|i| i["id"] == json!("wide")).unwrap();
+        assert_eq!(wide["fontSize"], json!(19), "重置后不应残留旧值");
+
+        // 回滚到重置前（fontSize 21）
+        let back = dispatch_tool(
+            base,
+            "restore_surface_snapshot",
+            &json!({ "id": "reader-presets" }),
+        )
+        .unwrap();
+        let back_parsed: Value = serde_json::from_str(&back).unwrap();
+        assert_eq!(back_parsed["ok"], json!(true), "got {back}");
+        let read_back: Value = serde_json::from_str(
+            &dispatch_tool(base, "read_data_surface", &json!({ "id": "reader-presets" })).unwrap(),
+        )
+        .unwrap();
+        let wide = read_back["result"]["effective"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|i| i["id"] == json!("wide"))
+            .unwrap();
+        assert_eq!(wide["fontSize"], json!(21), "回滚应恢复写入前的覆盖值");
+    }
+
+    #[test]
+    fn patch_data_surface_reader_presets_越界字号拒绝且零写入() {
+        let dir = temp_base("patch_presets_bounds");
+        let base = dir.path();
+        let raw = dispatch_tool(
+            base,
+            "patch_data_surface",
+            &json!({ "id": "reader-presets", "patch": { "items": [ {"id":"wide","fontSize":120} ] } }),
+        )
+        .unwrap();
+        let parsed: Value = serde_json::from_str(&raw).unwrap();
+        assert_eq!(parsed["ok"], json!(false), "越界应拒绝: {raw}");
+        assert!(
+            !base.join("user").join("reader-presets.json").exists(),
+            "拒绝时不得产生任何写入"
+        );
+        // 未登记 id 的报错须列出已登记面（含 reader-presets）
+        let bad = dispatch_tool(
+            base,
+            "patch_data_surface",
+            &json!({ "id": "nope", "patch": {} }),
+        )
+        .unwrap();
+        assert!(bad.contains("reader-presets"), "got {bad}");
     }
 
     #[test]
