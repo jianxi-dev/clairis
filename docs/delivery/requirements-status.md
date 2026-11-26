@@ -92,6 +92,7 @@ openspec status --change <name>   # 单个变更工件完成度
   - 主题弹层生命周期 + 单击循环切主题、图片右键应用内菜单、chrome 前景色统一、关闭其他图标、视频容器自适应与画面变换、沉浸态隐藏状态栏/未钉住左栏与每栏独立页签条、悬浮窗图片按宽可滚 + HTML 本地直载、一键自动布局
 - 外壳/页面/编辑/阅读/文件域（`ui-polish-batch6`）：25/25 票合并（PR #394–#408），净 +5 requirement（+8 新增、-3 被取代），已归档 `openspec/changes/archive/2026-11-08-ui-polish-batch6`
 - 外壳/页面/编辑/阅读/文件域（`ui-polish-batch8`）：11/11 票合并（PR #461–#471），+1 requirement（E-23 选中块尺寸拖拽），14 条 requirement 修订（状态栏/分栏/页签/悬浮预览/AI/PDF/编辑/视频），已归档 `openspec/changes/archive/2026-11-08-ui-polish-batch8`
+- 配置/AI/数据面域（`reader-presets-v1`，#1576）：2/2 票合并（PR #1580 阅读预设面 + 设置页点选应用 / #1581 AI 通路与文档），+1 requirement（data-surfaces **DS-9 阅读预设面**：三套默认 紧凑/标准/宽屏、宽度按 20px 步长归整、对象项按 id 并入、允许自定义 id），ai-agent AI-5 沿用注册表驱动并补按 id 并入语义；顺修脚手架 `surface-new.sh` 两个存量缺陷（多字节变量名 unbound、zh_CN 排序下非法 id 退 0）；已归档 `openspec/changes/archive/2026-11-26-reader-presets-v1`
 - 外壳/页面/编辑/阅读/文件域（`ui-polish-batch9`）：9/9 票合并（PR #489），7 条 requirement 修订（状态栏/栏目头/悬浮预览/大纲/视频/标题折叠），已归档 `openspec/changes/archive/2026-11-09-ui-polish-batch9`
 - 外壳/页面/编辑/阅读/文件域（`ui-polish-batch10`）：9/9 票合并（PR #500），9 条 requirement 修订（工具条归属/全角标点/块手柄/折叠/打开文件/视频多栏/页签/栏目），已归档 `openspec/changes/archive/2026-11-09-ui-polish-batch10`
 - 外壳/页面/编辑/阅读/文件域（`ui-polish-batch13`）：11/11 票合并（PR #576–#586），+13 requirement（editing 6 / reading 4 / application-shell 2 / file-management 1），已归档 `openspec/changes/archive/2026-11-10-ui-polish-batch13`
