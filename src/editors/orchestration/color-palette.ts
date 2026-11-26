@@ -47,11 +47,11 @@ export const BACKGROUND_COLORS: readonly ColorSwatch[] = [
   { label: "紫色", className: "mdb-bg-purple", swatch: "#8a5cf6" },
   { label: "浅灰", className: "mdb-bg-gray", swatch: "#ebebeb" },
   { label: "暗红", className: "mdb-bg-darkred", swatch: "#b34444" },
-  { label: "棕色", className: "mdb-bg-brown", swatch: "#845117" },
-  { label: "橄榄绿", className: "mdb-bg-olive", swatch: "#877b10" },
-  { label: "深绿", className: "mdb-bg-darkgreen", swatch: "#296b22" },
+  { label: "棕色", className: "mdb-bg-brown", swatch: "var(--hl-fill-orange)" },
+  { label: "橄榄绿", className: "mdb-bg-olive", swatch: "var(--hl-fill-yellow)" },
+  { label: "深绿", className: "mdb-bg-darkgreen", swatch: "var(--hl-fill-green)" },
   { label: "藏蓝", className: "mdb-bg-navy", swatch: "#203e78" },
-  { label: "靛紫", className: "mdb-bg-indigo", swatch: "#4d2691" },
+  { label: "靛紫", className: "mdb-bg-indigo", swatch: "var(--hl-fill-purple)" },
   { label: "深灰", className: "mdb-bg-slate", swatch: "#5f5f5f" },
 ];
 
@@ -244,50 +244,50 @@ export function mapHueToType(currentColor: string, targetTone: string): string {
 
 /** 字体色：默认 + 灰/红/橙/黄/绿/蓝/紫（8 格，顺序与豆包一致）。 */
 export const HIGHLIGHT_FONT_COLORS: readonly ColorSwatch[] = [
-  { label: "默认", className: "", swatch: "#ebebeb", isDefault: true },
-  { label: "灰色", className: "hl-color-gray", swatch: "#757575" },
-  { label: "红色", className: "hl-color-red", swatch: "#fa7873" },
-  { label: "橙色", className: "hl-color-orange", swatch: "#f5a54a" },
-  { label: "黄色", className: "hl-color-yellow", swatch: "#fcd456" },
-  { label: "绿色", className: "hl-color-green", swatch: "#6dd162" },
-  { label: "蓝色", className: "hl-color-blue", swatch: "#71a0ff" },
-  { label: "紫色", className: "hl-color-purple", swatch: "#a472fc" },
+  { label: "默认", className: "", swatch: "var(--app-text)", isDefault: true },
+  { label: "灰色", className: "hl-color-gray", swatch: "var(--hl-font-gray)" },
+  { label: "红色", className: "hl-color-red", swatch: "var(--hl-font-red)" },
+  { label: "橙色", className: "hl-color-orange", swatch: "var(--hl-font-orange)" },
+  { label: "黄色", className: "hl-color-yellow", swatch: "var(--hl-font-yellow)" },
+  { label: "绿色", className: "hl-color-green", swatch: "var(--hl-font-green)" },
+  { label: "蓝色", className: "hl-color-blue", swatch: "var(--hl-font-blue)" },
+  { label: "紫色", className: "hl-color-purple", swatch: "var(--hl-font-purple)" },
 ];
 
 /** 边框色：无（斜线）+ 灰/红/橙/黄/绿/蓝/紫（8 格）。 */
 export const HIGHLIGHT_BORDER_COLORS: readonly ColorSwatch[] = [
   { label: "无", className: "", swatch: "", isDefault: true },
-  { label: "灰色", className: "hl-border-gray", swatch: "#434343" },
-  { label: "红色", className: "hl-border-red", swatch: "#9e3836" },
-  { label: "橙色", className: "hl-border-orange", swatch: "#bd7017" },
-  { label: "黄色", className: "hl-border-yellow", swatch: "#c7b302" },
-  { label: "绿色", className: "hl-border-green", swatch: "#339428" },
-  { label: "蓝色", className: "hl-border-blue", swatch: "#2951a3" },
-  { label: "紫色", className: "hl-border-purple", swatch: "#6532bd" },
+  { label: "灰色", className: "hl-border-gray", swatch: "var(--hl-border-gray)" },
+  { label: "红色", className: "hl-border-red", swatch: "var(--hl-border-red)" },
+  { label: "橙色", className: "hl-border-orange", swatch: "var(--hl-border-orange)" },
+  { label: "黄色", className: "hl-border-yellow", swatch: "var(--hl-border-yellow)" },
+  { label: "绿色", className: "hl-border-green", swatch: "var(--hl-border-green)" },
+  { label: "蓝色", className: "hl-border-blue", swatch: "var(--hl-border-blue)" },
+  { label: "紫色", className: "hl-border-purple", swatch: "var(--hl-border-purple)" },
 ];
 
 /** 填充深档：无（斜线）+ 深灰/暗红/暗橙/暗黄/暗绿/暗蓝/暗紫（8 格）。 */
 export const HIGHLIGHT_FILL_DEEP: readonly ColorSwatch[] = [
   { label: "无", className: "", swatch: "", isDefault: true },
-  { label: "深灰", className: "hl-fill-darkgray", swatch: "#2b2b2b" },
-  { label: "暗红", className: "hl-fill-darkred", swatch: "#4a1d1b" },
-  { label: "暗橙", className: "hl-fill-darkorange", swatch: "#57330a" },
-  { label: "暗黄", className: "hl-fill-darkyellow", swatch: "#5c5514" },
-  { label: "暗绿", className: "hl-fill-darkgreen", swatch: "#1f471b" },
-  { label: "暗蓝", className: "hl-fill-darkblue", swatch: "#192a4c" },
-  { label: "暗紫", className: "hl-fill-darkpurple", swatch: "#361d61" },
+  { label: "深灰", className: "hl-fill-darkgray", swatch: "var(--hl-fill-darkgray)" },
+  { label: "暗红", className: "hl-fill-darkred", swatch: "var(--hl-fill-darkred)" },
+  { label: "暗橙", className: "hl-fill-darkorange", swatch: "var(--hl-fill-darkorange)" },
+  { label: "暗黄", className: "hl-fill-darkyellow", swatch: "var(--hl-fill-darkyellow)" },
+  { label: "暗绿", className: "hl-fill-darkgreen", swatch: "var(--hl-fill-darkgreen)" },
+  { label: "暗蓝", className: "hl-fill-darkblue", swatch: "var(--hl-fill-darkblue)" },
+  { label: "暗紫", className: "hl-fill-darkpurple", swatch: "var(--hl-fill-darkpurple)" },
 ];
 
 /** 填充中档：灰/灰/红/橙/黄/绿/蓝/紫（8 格，无默认项）。 */
 export const HIGHLIGHT_FILL_MID: readonly ColorSwatch[] = [
-  { label: "灰色", className: "hl-fill-gray", swatch: "#363636" },
-  { label: "浅灰", className: "hl-fill-lightgray", swatch: "#3c3c3c" },
-  { label: "红色", className: "hl-fill-red", swatch: "#6b2827" },
-  { label: "橙色", className: "hl-fill-orange", swatch: "#845117" },
-  { label: "黄色", className: "hl-fill-yellow", swatch: "#877b10" },
-  { label: "绿色", className: "hl-fill-green", swatch: "#296b22" },
-  { label: "蓝色", className: "hl-fill-blue", swatch: "#213e78" },
-  { label: "紫色", className: "hl-fill-purple", swatch: "#4d2691" },
+  { label: "灰色", className: "hl-fill-gray", swatch: "var(--hl-fill-gray)" },
+  { label: "浅灰", className: "hl-fill-lightgray", swatch: "var(--hl-fill-lightgray)" },
+  { label: "红色", className: "hl-fill-red", swatch: "var(--hl-fill-red)" },
+  { label: "橙色", className: "hl-fill-orange", swatch: "var(--hl-fill-orange)" },
+  { label: "黄色", className: "hl-fill-yellow", swatch: "var(--hl-fill-yellow)" },
+  { label: "绿色", className: "hl-fill-green", swatch: "var(--hl-fill-green)" },
+  { label: "蓝色", className: "hl-fill-blue", swatch: "var(--hl-fill-blue)" },
+  { label: "紫色", className: "hl-fill-purple", swatch: "var(--hl-fill-purple)" },
 ];
 
 export interface HighlightColorFamily {

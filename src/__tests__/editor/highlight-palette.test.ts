@@ -28,14 +28,14 @@ describe("高亮 24 格色板常量", () => {
       isDefault: true,
     });
     expect(HIGHLIGHT_FONT_COLORS.map((c) => c.swatch)).toEqual([
-      "#ebebeb",
-      "#757575",
-      "#fa7873",
-      "#f5a54a",
-      "#fcd456",
-      "#6dd162",
-      "#71a0ff",
-      "#a472fc",
+      "var(--app-text)",
+      "var(--hl-font-gray)",
+      "var(--hl-font-red)",
+      "var(--hl-font-orange)",
+      "var(--hl-font-yellow)",
+      "var(--hl-font-green)",
+      "var(--hl-font-blue)",
+      "var(--hl-font-purple)",
     ]);
   });
 
@@ -47,13 +47,13 @@ describe("高亮 24 格色板常量", () => {
     });
     expect(HIGHLIGHT_BORDER_COLORS.map((c) => c.swatch)).toEqual([
       "",
-      "#434343",
-      "#9e3836",
-      "#bd7017",
-      "#c7b302",
-      "#339428",
-      "#2951a3",
-      "#6532bd",
+      "var(--hl-border-gray)",
+      "var(--hl-border-red)",
+      "var(--hl-border-orange)",
+      "var(--hl-border-yellow)",
+      "var(--hl-border-green)",
+      "var(--hl-border-blue)",
+      "var(--hl-border-purple)",
     ]);
   });
 
@@ -65,27 +65,27 @@ describe("高亮 24 格色板常量", () => {
     });
     expect(HIGHLIGHT_FILL_DEEP.map((c) => c.swatch)).toEqual([
       "",
-      "#2b2b2b",
-      "#4a1d1b",
-      "#57330a",
-      "#5c5514",
-      "#1f471b",
-      "#192a4c",
-      "#361d61",
+      "var(--hl-fill-darkgray)",
+      "var(--hl-fill-darkred)",
+      "var(--hl-fill-darkorange)",
+      "var(--hl-fill-darkyellow)",
+      "var(--hl-fill-darkgreen)",
+      "var(--hl-fill-darkblue)",
+      "var(--hl-fill-darkpurple)",
     ]);
   });
 
   it("填充中档：灰/灰/红/橙/黄/绿/蓝/紫（无默认项）", () => {
     expect(HIGHLIGHT_FILL_MID.some((c) => c.isDefault)).toBe(false);
     expect(HIGHLIGHT_FILL_MID.map((c) => c.swatch)).toEqual([
-      "#363636",
-      "#3c3c3c",
-      "#6b2827",
-      "#845117",
-      "#877b10",
-      "#296b22",
-      "#213e78",
-      "#4d2691",
+      "var(--hl-fill-gray)",
+      "var(--hl-fill-lightgray)",
+      "var(--hl-fill-red)",
+      "var(--hl-fill-orange)",
+      "var(--hl-fill-yellow)",
+      "var(--hl-fill-green)",
+      "var(--hl-fill-blue)",
+      "var(--hl-fill-purple)",
     ]);
   });
 
@@ -138,14 +138,13 @@ describe("高亮面板字体行读新常量", () => {
 describe("高亮填充解析只查填充表", () => {
   it("bg=gray 解析为填充色而非边框色", () => {
     const vars = highlightCssVars({ bg: "gray" });
-    // 填充中档 gray = #363636（叠 80%）；边框 gray = #434343 不应出现。
-    expect(vars.bg).toBe("color-mix(in srgb, #363636 80%, transparent)");
-    expect(vars.bg).not.toContain("#434343");
+    expect(vars.bg).toBe("var(--hl-fill-gray)");
+    expect(vars.bg).not.toContain("var(--hl-border-gray)");
   });
 
   it("border=gray 解析为边框色而非填充色", () => {
     const vars = highlightCssVars({ border: "gray" });
-    expect(vars.border).toBe("#434343");
+    expect(vars.border).toBe("var(--hl-border-gray)");
   });
 });
 
@@ -186,9 +185,9 @@ describe("高亮新色名与旧色名兼容", () => {
     const attrs = parseCalloutAttrs("{bg=darkred border=green text=yellow}");
     expect(attrs).toEqual({ bg: "darkred", border: "green", text: "yellow" });
     const vars = highlightCssVars(attrs);
-    expect(vars.bg).toContain("80%");
-    expect(vars.border).not.toBe("");
-    expect(vars.text).not.toBe("");
+    expect(vars.bg).toBe("var(--hl-fill-darkred)");
+    expect(vars.border).toBe("var(--hl-border-green)");
+    expect(vars.text).toBe("var(--hl-font-yellow)");
   });
 
   it("旧色名映射到非空色值", () => {
@@ -204,7 +203,7 @@ describe("高亮新色名与旧色名兼容", () => {
     ];
     for (const name of legacy) {
       const vars = highlightCssVars({ bg: name, border: name, text: name });
-      expect(vars.bg, `bg=${name}`).toContain("80%");
+      expect(vars.bg, `bg=${name}`).toContain("var(--hl-fill-");
       expect(vars.border, `border=${name}`).not.toBe("");
     }
   });

@@ -266,7 +266,7 @@ function resolveHighlightText(name: string): string | undefined {
 export function highlightCssVars(attrs: CalloutAttrs): CalloutCssVars {
   const vars: { bg?: string; border?: string; text?: string } = {};
   const bg = attrs.bg ? resolveHighlightFill(attrs.bg) : undefined;
-  if (bg) vars.bg = `color-mix(in srgb, ${bg} 80%, transparent)`;
+  if (bg) vars.bg = bg;
   const border = attrs.border ? resolveHighlightBorder(attrs.border) : undefined;
   if (border) vars.border = border;
   const text = attrs.text ? resolveHighlightText(attrs.text) : undefined;
