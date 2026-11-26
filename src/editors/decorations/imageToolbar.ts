@@ -889,6 +889,9 @@ function bindViewportObserver(): void {
     (entries) => {
       const entry = entries[entries.length - 1];
       if (!entry) return;
+      // 已脱离文档的旧 widget（属性编辑触发重建后旧元素被替换）ratio 同样是 0，
+      // 但那是「观察目标失效」而非「图片离开视口」——据此 deselect 会误清活选中态。
+      if (!entry.target.isConnected) return;
       if (entry.intersectionRatio === 0) {
         deselectImage();
       }
