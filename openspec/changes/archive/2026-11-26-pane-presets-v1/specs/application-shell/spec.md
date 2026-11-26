@@ -1,6 +1,6 @@
 ## ADDED Requirements
 
-### Requirement: G-9 Chrome 显隐三档（熟练模式）
+### Requirement: G-13 Chrome 显隐三档（熟练模式）
 
 应用外壳 SHALL 提供 `paneMode` 三档（`simple | standard | hardcore`，默认 `standard`），只驱动应用根节点的 `data-pane-mode` 属性，SHALL NOT 写回 `statusBarHidden`、侧栏基态或 `immersiveChromeVisible`。simple SHALL 使范围内 chrome（顶栏 `.app-chrome` 与底部 `.app-status-bar`）恒显；standard SHALL 保持现状：顶栏恒显，状态栏默认隐藏并由底部 16px 热区唤出；hardcore SHALL NOT 提供热区，SHALL 以 `Cmd+Shift+U` 临时显现，显现后 3 秒无操作或按 Esc SHALL 收起，并 SHALL 保留一条 1px 顶部提示线。`readingMode`（沉浸）SHALL 优先于 `paneMode`。切换 SHALL NOT 重建 EditorView。
 

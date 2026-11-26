@@ -18,7 +18,7 @@
 
 ### Modified Capabilities
 
-- `application-shell`：新增 G-9 Chrome 显隐三档（熟练模式）——simple/standard/hardcore 的可见性状态机、热区口径、`Cmd+Shift+U` 临时显现与 1px 提示线、`readingMode` 优先且不重建 EditorView。
+- `application-shell`：新增 G-13 Chrome 显隐三档（熟练模式）——simple/standard/hardcore 的可见性状态机、热区口径、`Cmd+Shift+U` 临时显现与 1px 提示线、`readingMode` 优先且不重建 EditorView。
 - `configuration`：新增 CF-8 窗格预设配置（`paneMode` / `paneScale`）——枚举白名单校验、缺省填充、热应用不重启、缩放不触及正文。
 
 ## Impact
