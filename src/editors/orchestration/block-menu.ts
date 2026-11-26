@@ -726,7 +726,7 @@ export function openBlockMenu(
       panelEl.dataset.testid = "block-menu-color-panel";
       panelEl.dataset.blockFlyout = "1";
       panelEl.style.width = `${
-        blockCalloutKey === "highlight" ? 216 : MENU_WIDTH
+        blockCalloutKey === "highlight" ? 448 : MENU_WIDTH
       }px`;
       const own = view.dom.getBoundingClientRect();
       const rowRect = colorRow.getBoundingClientRect();

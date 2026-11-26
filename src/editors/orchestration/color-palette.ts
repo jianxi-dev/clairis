@@ -106,7 +106,10 @@ export function createColorRow(
     swatch.dataset.testid = `color-swatch-${kind}`;
     swatch.title = color.label;
     swatch.setAttribute("aria-label", color.label);
-    if (color.isDefault) swatch.classList.add(COLOR_SWATCH_DEFAULT_CLASS);
+    // 字体行的「默认」格是纯 A（当前默认文字色），豆包同款；其余行的默认格
+    // 是斜线空格。
+    if (color.isDefault && kind !== "font")
+      swatch.classList.add(COLOR_SWATCH_DEFAULT_CLASS);
 
     if (kind === "font") {
       swatch.style.display = "flex";
@@ -116,7 +119,9 @@ export function createColorRow(
       icon.className = COLOR_SWATCH_ICON_CLASS;
       icon.setAttribute("aria-hidden", "true");
       icon.appendChild(renderIcon("FormatColorTextOutlined"));
-      if (!color.isDefault) icon.style.color = color.swatch;
+      icon.style.color = color.isDefault
+        ? "var(--app-text)"
+        : color.swatch;
       swatch.appendChild(icon);
     } else if (!color.isDefault) {
       // 背景 / 边框色：实色块。

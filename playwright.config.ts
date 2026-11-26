@@ -7,13 +7,13 @@ export default defineConfig({
   // 抖动（hover/拖拽/时钟类）。0 失败门禁下给到 2 次重试，配合逐条契约修复。
   retries: 2,
   use: {
-    baseURL: "http://localhost:1420",
+    baseURL: "http://localhost:1424",
     headless: true,
     viewport: { width: 1200, height: 800 },
   },
   webServer: {
-    command: "npm run dev",
-    url: "http://localhost:1420",
+    command: "VITE_DEV_PORT=1424 npm run dev",
+    url: "http://localhost:1424",
     reuseExistingServer: true,
     timeout: 15000,
   },

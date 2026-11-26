@@ -715,7 +715,36 @@ class CalloutWidget extends WidgetType {
       });
     }
 
-    // 纯高亮没有标题栏：emoji / 标题 / 折叠按钮都不建，内容直接进 content。
+    // 纯高亮没有标题栏（类型名/折叠都不建），但保留 emoji 按钮（豆包同款：
+    // 块内左上角一个可点 emoji，可开取色器换图）；无标题槽。
+    if (this.isMark) {
+      const markHeader = document.createElement("div");
+      markHeader.className = "cm-callout-header cm-callout-header-mark";
+
+      const markIcon = document.createElement("span");
+      markIcon.className = "cm-callout-icon";
+      markIcon.setAttribute("data-testid", "cm-callout-emoji-btn");
+      markIcon.setAttribute("data-callout-emoji", emoji);
+      markIcon.setAttribute("role", "button");
+      markIcon.setAttribute("tabindex", "0");
+      markIcon.setAttribute("aria-label", "更改 emoji");
+      markIcon.title = "更改 emoji";
+      markIcon.textContent = emoji;
+      if (view) {
+        const idx = this.index;
+        const defaultEmoji = this.icon;
+        markIcon.addEventListener("keydown", (event) => {
+          if (event.key !== "Enter" && event.key !== " ") return;
+          event.preventDefault();
+          event.stopPropagation();
+          flushCalloutEdits(view);
+          openCalloutEmojiPicker(view, idx, defaultEmoji, this.type);
+        });
+      }
+      markHeader.appendChild(markIcon);
+      container.appendChild(markHeader);
+    }
+
     if (!this.isMark) {
       const header = document.createElement("div");
       header.className = "cm-callout-header";

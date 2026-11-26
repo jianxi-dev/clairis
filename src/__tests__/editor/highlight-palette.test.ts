@@ -138,8 +138,8 @@ describe("高亮面板字体行读新常量", () => {
 describe("高亮填充解析只查填充表", () => {
   it("bg=gray 解析为填充色而非边框色", () => {
     const vars = highlightCssVars({ bg: "gray" });
-    // 填充中档 gray = #363636（叠 38%）；边框 gray = #434343 不应出现。
-    expect(vars.bg).toBe("color-mix(in srgb, #363636 38%, transparent)");
+    // 填充中档 gray = #363636（叠 80%）；边框 gray = #434343 不应出现。
+    expect(vars.bg).toBe("color-mix(in srgb, #363636 80%, transparent)");
     expect(vars.bg).not.toContain("#434343");
   });
 
@@ -186,7 +186,7 @@ describe("高亮新色名与旧色名兼容", () => {
     const attrs = parseCalloutAttrs("{bg=darkred border=green text=yellow}");
     expect(attrs).toEqual({ bg: "darkred", border: "green", text: "yellow" });
     const vars = highlightCssVars(attrs);
-    expect(vars.bg).toContain("38%");
+    expect(vars.bg).toContain("80%");
     expect(vars.border).not.toBe("");
     expect(vars.text).not.toBe("");
   });
@@ -204,7 +204,7 @@ describe("高亮新色名与旧色名兼容", () => {
     ];
     for (const name of legacy) {
       const vars = highlightCssVars({ bg: name, border: name, text: name });
-      expect(vars.bg, `bg=${name}`).toContain("38%");
+      expect(vars.bg, `bg=${name}`).toContain("80%");
       expect(vars.border, `border=${name}`).not.toBe("");
     }
   });
