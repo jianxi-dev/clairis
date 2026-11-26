@@ -11,12 +11,14 @@ echo "=== CSS Manifest Check ==="
 
 # 1. Extract class names from decoration modules (both "CLASS =" constants and hardcoded)
 DECLARED=$(mktemp)
+# `className = "a b"` 是多类名赋值：按空白切成单个类名再比对，否则
+# 复合串（cm-callout-header cm-callout-header-mark）会被误报为缺失。
 # From CLASS = "..." constants
 grep -rhn 'CLASS\s*=\s*"' "$ROOT/src/editors/" 2>/dev/null | \
-  grep -o '"[^"]*"' | tr -d '"' | grep '^cm-' > "$DECLARED"
+  grep -o '"[^"]*"' | tr -d '"' | tr ' ' '\n' | grep '^cm-' > "$DECLARED"
 # From hardcoded className = "..."
 grep -rhn 'className\s*=\s*"' "$ROOT/src/editors/" 2>/dev/null | \
-  grep -o '"[^"]*"' | tr -d '"' | grep '^cm-' >> "$DECLARED"
+  grep -o '"[^"]*"' | tr -d '"' | tr ' ' '\n' | grep '^cm-' >> "$DECLARED"
 sort -u -o "$DECLARED" "$DECLARED"
 
 # 2. Extract class names from CSS style files (strip leading .)
