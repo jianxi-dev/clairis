@@ -9,6 +9,7 @@ import {
   setSurfaces,
 } from "../../lib/dataSurfaces/store";
 import type { SurfacePayload } from "../../lib/dataSurfaces/loader";
+import { log } from "../../utils/log";
 import { normalizeHtmlToolbarItems } from "../../hooks/useConfig";
 
 vi.mock("@tauri-apps/api/core", () => ({
@@ -61,6 +62,16 @@ describe("数据面 store", () => {
       payload({ warnings: ["未知动作: nope"] }),
     );
     expect(getSurfaceWarnings("html-toolbar")).toEqual(["未知动作: nope"]);
+  });
+
+  // #1474 第 6 项：面告警经 log.warn 输出（不新增 UI）。
+  it("面加载告警经 log.warn 输出", () => {
+    const spy = vi.spyOn(log, "warn").mockImplementation(() => {});
+    setSurfaces([
+      payload({ id: "html-toolbar", warnings: ["未知动作: nope"] }),
+    ]);
+    expect(spy).toHaveBeenCalledWith("Surfaces", expect.stringContaining("nope"));
+    spy.mockRestore();
   });
 
   // #1474 第 3 项：面未加载时 normalizeHtmlToolbarItems 全判未知 → null

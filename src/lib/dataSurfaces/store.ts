@@ -14,6 +14,7 @@ import type {
   IconSpec,
   CapsuleItemSpec,
 } from "./loader";
+import { log } from "../../utils/log";
 import {
   normalizeSurface,
   toCapsuleItem,
@@ -26,10 +27,23 @@ export type { MenuItem, IconSpec, CapsuleItemSpec } from "./loader";
 /** 面 id → 最近一次归一化结果。 */
 const surfaces = new Map<string, NormalizedSurface>();
 
+/// 写入并输出该面告警（台账第 6 项）：告警是「项被过滤」的诊断信号，
+/// 受众是开发者与 AI（`read_data_surface` 已返回），故只落日志不新增 UI。
+function recordSurface(surface: SurfacePayload): void {
+  const normalized = normalizeSurface(surface, null);
+  surfaces.set(surface.id, normalized);
+  if (normalized.warnings.length > 0) {
+    log.warn(
+      "Surfaces",
+      `${surface.id}: ${normalized.warnings.join("; ")}`,
+    );
+  }
+}
+
 /** 批量写入面（启动加载用）。 */
 export function setSurfaces(list: SurfacePayload[]): void {
   for (const surface of list) {
-    surfaces.set(surface.id, normalizeSurface(surface, null));
+    recordSurface(surface);
   }
 }
 
@@ -86,7 +100,7 @@ export function getIconSpec(key: string): IconSpec | null {
 
 /** 用新的默认 payload 重新归一化某面（事件到达只重载对应面）。 */
 export function applySurfacePayload(id: string, surface: SurfacePayload): void {
-  surfaces.set(id, normalizeSurface(surface, null));
+  recordSurface({ ...surface, id });
 }
 
 /** 清空缓存（测试隔离用）。 */

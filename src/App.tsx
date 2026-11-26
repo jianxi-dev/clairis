@@ -260,7 +260,13 @@ function App() {
 
   // 数据面：启动拉有效集合；`surfaces-changed` 只重载对应面，不走全量 config-changed 重放（DS-2）。
   useEffect(() => {
-    if (!isTauri) return;
+    if (!isTauri) {
+      log.warn(
+        "App",
+        "非 Tauri 环境：数据面未加载，菜单/工具条/图标/胶囊将为空；请用 npm run tauri dev 预览",
+      );
+      return;
+    }
     void loadSurfaces(invoke)
       .then((surfaces) => setSurfaces(surfaces))
       .catch((e) =>
