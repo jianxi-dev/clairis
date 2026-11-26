@@ -288,7 +288,7 @@ describe("block decorations", () => {
       expect(view.dom.querySelector(".cm-image-widget")).toBeNull();
     });
 
-    it("点击选中图片：data-selected + 4 个角点，工具条 9 按钮", () => {
+    it("点击选中图片：data-selected + 4 个角点，工具条 10 按钮", () => {
       view = createEditor("![alt text](photo.png)", {
         resolveImage: stubResolver,
       });
@@ -303,7 +303,7 @@ describe("block decorations", () => {
         '[data-testid="img-toolbar"]',
       );
       expect(toolbar).not.toBeNull();
-      expect(toolbar!.querySelectorAll("button")).toHaveLength(9);
+      expect(toolbar!.querySelectorAll("button")).toHaveLength(10);
     });
 
     it("工具条动作按 from / path / alt 调用注入回调", () => {

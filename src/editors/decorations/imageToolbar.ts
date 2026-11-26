@@ -13,6 +13,7 @@ export type ImageAlignChoice = "left" | "center" | "right";
 export interface ImageToolbarActions {
   onImageAi?: (path: string, alt: string) => void;
   onImageCrop?: (from: number) => void;
+  onImageReset?: (from: number) => void;
   onImageComment?: (from: number) => void;
   onImageSetTitle?: (from: number, title: string) => void;
   onImageAlign?: (from: number, align: ImageAlignChoice) => void;
@@ -41,6 +42,12 @@ const BUTTON_SPECS: readonly ButtonSpec[] = [
     icon: "CropOutlined",
     label: "裁剪",
     action: "crop",
+  },
+  {
+    testid: "img-toolbar-reset",
+    icon: "RotateOutlined",
+    label: "重置图片",
+    action: "reset",
   },
   {
     testid: "img-toolbar-comment",
@@ -668,6 +675,8 @@ function isActionAvailable(action: string): boolean {
       return typeof actions.onImageAi === "function";
     case "crop":
       return typeof actions.onImageCrop === "function";
+    case "reset":
+      return typeof actions.onImageReset === "function";
     case "comment":
       return typeof actions.onImageComment === "function";
     case "align-left":
@@ -694,6 +703,9 @@ function runAction(action: string): void {
       break;
     case "crop":
       actions.onImageCrop?.(from);
+      break;
+    case "reset":
+      actions.onImageReset?.(from);
       break;
     case "comment":
       actions.onImageComment?.(from);
