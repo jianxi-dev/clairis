@@ -11,7 +11,7 @@ import path from "node:path";
  * ⌘ 会被宿主 chrome 抢走，用 Control 作 meta 修饰键（App 判定 metaKey || ctrlKey）。
  */
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1424";
 const SPLIT_RIGHT = "Control+Alt+ArrowRight";
 const ART = path.resolve(process.cwd(), ".artifacts/174");
 

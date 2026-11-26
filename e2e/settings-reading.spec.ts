@@ -17,7 +17,7 @@ mkdirSync(ART913, { recursive: true });
  * 首次 load_config 合并 localStorage.__config__，save_config 写回，模拟重启往返。
  */
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1424";
 
 async function boot(page: Page): Promise<void> {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });

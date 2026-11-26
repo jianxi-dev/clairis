@@ -12,7 +12,7 @@ import { ICONS } from "../src/ui/icons";
  * 由 `scripts/cw-evidence.sh record-state` 汇总状态覆盖。
  */
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1424";
 const ART = path.resolve(process.cwd(), ".artifacts/844");
 
 test.beforeAll(() => {

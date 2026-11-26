@@ -10,7 +10,7 @@ import { revealStatusBar } from "./helpers/ui-probe";
  * 驱动状态。⌘ 用 Control 代替（App 判定 metaKey || ctrlKey）。
  */
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1424";
 const ART = path.resolve(process.cwd(), ".artifacts/179");
 
 mkdirSync(ART, { recursive: true });

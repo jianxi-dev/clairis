@@ -3,7 +3,7 @@ import { readFileSync, mkdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 
-const APP_URL = process.env.CAPSULES_APP_URL ?? "http://localhost:1420";
+const APP_URL = process.env.CAPSULES_APP_URL ?? "http://localhost:1424";
 const ART = resolve(process.cwd(), ".artifacts/1501");
 
 const HERE = dirname(fileURLToPath(import.meta.url));

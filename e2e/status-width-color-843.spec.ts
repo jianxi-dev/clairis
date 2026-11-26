@@ -13,7 +13,7 @@ import { EDITOR_ANCHORS } from "./fixtures/editor-anchors";
  * 色值取设计系统 §6 语义色 --app-accent，不新增色板。
  */
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1424";
 const ART = path.resolve(process.cwd(), ".artifacts/843");
 const EVIDENCE = path.resolve(process.cwd(), "scripts/cw-evidence.sh");
 const PRESETS = [720, 960, 1080, 1200] as const;

@@ -12,7 +12,7 @@ import { PREVIEW_RAIL_NARROW_W } from "../src/lib/previewAnchor";
  * 指针不得让窗口左右跳。⌘ 用 Control 代替（App 判定 metaKey || ctrlKey）。
  */
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1424";
 const ART = path.resolve(process.cwd(), ".artifacts/260");
 const ART275 = path.resolve(process.cwd(), ".artifacts/275");
 

@@ -10,7 +10,7 @@ import { revealStatusBar } from "./helpers/ui-probe";
  *       A-26.3 纯图标按钮「下划线」提示文本 `下划线 (⌘ + U)` + markdown 用法。
  */
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1424";
 const ART = ".artifacts/871";
 const MOD = process.platform === "darwin" ? "Meta" : "Control";
 const HOTKEY = `${MOD}+Shift+Space`;

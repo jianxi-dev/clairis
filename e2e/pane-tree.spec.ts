@@ -9,7 +9,7 @@ import { test, expect, type Page } from "@playwright/test";
  * load_config——这样「重启恢复」在 mock 环境下也能真实往返。
  */
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1424";
 
 // 用 Control 作 meta 修饰键：真机 ⌘⇧↵ / ⌘⌥→ 会被浏览器 chrome 抢走，
 // 而 App 的 meta 判定是 `metaKey || ctrlKey`，Control 语义等价且不触发宿主快捷键。

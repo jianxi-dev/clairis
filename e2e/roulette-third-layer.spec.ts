@@ -1,6 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1424";
 const DOC = ["# 标题", "", "第一段正文", "", "第二段正文", ""].join("\n");
 const WHEEL = '[data-testid="selection-roulette"]';
 const MOD = process.platform === "darwin" ? "Meta" : "Control";

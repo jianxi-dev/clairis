@@ -3,7 +3,7 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1424";
 const DOC = ["# 标题", "", "第一段正文", "", "第二段正文", ""].join("\n");
 const MOD = process.platform === "darwin" ? "Meta" : "Control";
 const HOTKEY = `${MOD}+Shift+Space`;

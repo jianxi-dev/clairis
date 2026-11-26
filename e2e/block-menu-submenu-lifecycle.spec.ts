@@ -1,7 +1,7 @@
 import { test, expect, type Locator, type Page } from "@playwright/test";
 import { mkdirSync } from "node:fs";
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1424";
 const DOC = Array.from({ length: 14 }, (_, i) => `第${i}段正文`).join("\n\n");
 
 async function shot(page: Page, name: string) {

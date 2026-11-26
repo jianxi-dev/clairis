@@ -4,7 +4,7 @@ import { summonAddHandle } from "./helpers/block-handle";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1424";
 const ART = path.resolve(process.cwd(), ".artifacts/372");
 mkdirSync(ART, { recursive: true });
 const ART698 = path.resolve(process.cwd(), ".artifacts/698");

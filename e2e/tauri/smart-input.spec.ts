@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1424";
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });

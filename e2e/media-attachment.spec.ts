@@ -1,6 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
 
-const APP_URL = process.env.MEDIA_APP_URL ?? "http://localhost:1420";
+const APP_URL = process.env.MEDIA_APP_URL ?? "http://localhost:1424";
 
 interface BridgeWindow extends Window {
   __biaoyue_openFile__: (

@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import { test, expect, type Page } from "@playwright/test";
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1424";
 const SHOTS = ".artifacts/825";
 const SHOTS915 = ".artifacts/915";
 const MOD = process.platform === "darwin" ? "Meta" : "Control";

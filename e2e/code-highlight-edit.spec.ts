@@ -9,7 +9,7 @@ import path from "node:path";
  * class。每个 state 截图落 `.artifacts/703/`，收尾写 state-coverage.json。
  */
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1424";
 const ART = path.resolve(process.cwd(), ".artifacts/703");
 
 mkdirSync(ART, { recursive: true });

@@ -12,7 +12,7 @@ import path from "node:path";
  * 断言落在 store 的 `tab.content`（源码全文），四态截图落在 `.artifacts/1338/`。
  */
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1424";
 const ART = path.resolve(process.cwd(), ".artifacts/1338");
 const MOD = process.platform === "darwin" ? "Meta" : "Control";
 const ORIGINAL = "# 标题\n\n正文。";

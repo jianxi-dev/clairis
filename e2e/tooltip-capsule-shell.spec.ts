@@ -17,7 +17,7 @@ async function shot(page: Page, name: string) {
  * 页签名提示、表格行列热点气泡。所有提示的计算圆角必须相等（同一外壳常量）。
  */
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1424";
 const WHEEL = '[data-testid="selection-roulette"]';
 const DOC = ["# 标题", "", "第一段正文", "", "第二段正文", ""].join("\n");
 const MOD = process.platform === "darwin" ? "Meta" : "Control";

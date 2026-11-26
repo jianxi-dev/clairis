@@ -11,7 +11,7 @@ import { tagColor } from "../src/lib/frontmatter";
  * 不停留在「元素存在」。
  */
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1424";
 
 /** 单用例证据采集：截图落 .artifacts/<dir>/ 并合并 state-coverage.json（IC-2 ≥4 态）。 */
 async function dpbRecord(

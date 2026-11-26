@@ -1,6 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1424";
 
 const DOC = `# 标题一
 

@@ -9,7 +9,7 @@ import path from "node:path";
  * 模板菜单读 editorStore.config.propTemplates。真实设置页交互，不直写 store。
  */
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1424";
 
 async function dpbRecord(
   page: Page,

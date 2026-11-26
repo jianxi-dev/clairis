@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { revealStatusBar } from "./helpers/ui-probe";
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1424";
 const MOD = process.platform === "darwin" ? "Meta" : "Control";
 
 test.describe("Biaoyue E2E", () => {

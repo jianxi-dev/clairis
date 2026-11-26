@@ -89,7 +89,7 @@ async function boot(page: Page): Promise<void> {
       return orig(cmd, args);
     };
   });
-  await page.goto("http://localhost:1420", { waitUntil: "networkidle" });
+  await page.goto("http://localhost:1424", { waitUntil: "networkidle" });
   await page.waitForSelector('[data-testid="pane-header"]', { timeout: 15000 });
 }
 

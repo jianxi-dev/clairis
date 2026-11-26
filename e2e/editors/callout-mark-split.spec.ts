@@ -15,7 +15,7 @@ const DOC = ["# 标题", "", "第一段正文", "", "第二段正文", ""].join(
 test.beforeEach(async ({ page }) => {
   mkdirSync(ART, { recursive: true });
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
-  await page.goto("http://localhost:1420", { waitUntil: "networkidle" });
+  await page.goto("http://localhost:1424", { waitUntil: "networkidle" });
   await page.waitForSelector('[data-testid="pane-header"]', { timeout: 15000 });
 });
 

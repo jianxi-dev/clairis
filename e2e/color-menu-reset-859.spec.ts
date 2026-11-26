@@ -10,7 +10,7 @@ import path from "node:path";
  * `mdb-color-*` 与 `mdb-bg-*` 节点数归零。
  */
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1424";
 const DOC = ["# 标题", "", "第一段正文", "", "第二段正文", ""].join("\n");
 const ART = path.resolve(process.cwd(), ".artifacts/859");
 mkdirSync(ART, { recursive: true });

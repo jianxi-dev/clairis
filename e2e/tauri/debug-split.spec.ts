@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1424";
 
 test("DEBUG: split panels — capture pageerror + console", async ({ page }) => {
   const pageErrors: string[] = [];

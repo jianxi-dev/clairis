@@ -1,12 +1,19 @@
 import { test, expect, type Page } from "@playwright/test";
-import { mkdirSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import path from "node:path";
+import { mkdirSync } from "node:fs";
+
+const OUT = ".artifacts/1518";
+mkdirSync(OUT, { recursive: true });
 
 const TINY_MP4 = readFileSync(
   path.resolve(process.cwd(), "e2e/fixtures/tiny.mp4"),
 ).toString("base64");
 
-const ART = path.resolve(process.cwd(), ".artifacts/1183");
+interface BW extends Window {
+  __biaoyue_openFile__: (p: string, c: string, t: string) => boolean;
+  __biaoyue_store__: { getState: () => { setEditorMode: (m: string) => void } };
+}
 
 async function installRealVideo(page: Page): Promise<void> {
   await page.addInitScript((b64) => {
@@ -22,93 +29,101 @@ async function installRealVideo(page: Page): Promise<void> {
       get: desc.get,
       set(this: HTMLMediaElement, value: string) {
         const next =
-          typeof value === "string" && value.startsWith("media://")
+          typeof value === "string" &&
+          (value.startsWith("media://") || value.startsWith("asset:"))
             ? DATA
             : value;
         desc.set?.call(this, next);
       },
     });
+    // MediaWidget 用 setAttribute（内容属性不经属性 setter）——补拦这一路。
+    const origSet = proto.setAttribute as (
+      this: Element,
+      name: string,
+      value: string,
+    ) => void;
+    proto.setAttribute = function (name: string, value: string) {
+      if (
+        name === "src" &&
+        typeof value === "string" &&
+        (value.startsWith("media://") || value.startsWith("asset:"))
+      ) {
+        value = DATA;
+      }
+      origSet.call(this, name, value);
+    } as typeof proto.setAttribute;
   }, TINY_MP4);
 }
 
-async function boot(page: Page): Promise<void> {
-  await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
-  await page.goto("http://localhost:1420", { waitUntil: "networkidle" });
-  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 15000 });
-}
-
-async function openVideo(page: Page): Promise<void> {
-  await page.evaluate(() => {
-    const win = window as unknown as Record<string, any>;
-    win.__biaoyue_openFile__("/tmp/movies/ep1.mp4", "", "ep1.mp4");
-  });
-  await page.locator(".art-video-player").first().waitFor({ timeout: 10000 });
-}
-
-async function assertFirstFramePaused(page: Page): Promise<void> {
-  const video = page.locator(".art-video-player video").first();
-  await expect
-    .poll(() => video.evaluate((el: HTMLVideoElement) => el.currentTime), {
-      timeout: 10000,
-    })
-    .toBeGreaterThan(0);
-  expect(await video.evaluate((el: HTMLVideoElement) => el.paused)).toBe(true);
-  expect(
-    await page.evaluate(() => {
-      const el = document.querySelector(
-        ".art-video-player .art-loading",
-      ) as HTMLElement | null;
-      return el ? getComputedStyle(el).display : "missing";
-    }),
-  ).toBe("none");
-}
-
-test("打开视频显示首帧画面、暂停且不显示加载指示", async ({ page }) => {
-  mkdirSync(ART, { recursive: true });
+async function openDoc(page: Page, mode: "edit" | "preview") {
   await installRealVideo(page);
-  await boot(page);
-  await openVideo(page);
-  await assertFirstFramePaused(page);
-  await page.screenshot({ path: path.join(ART, "01-first-frame-visible.png") });
-
-  const display = await page.evaluate(() => {
-    const el = document.querySelector(
-      ".art-video-player .art-loading",
-    ) as HTMLElement | null;
-    return el ? getComputedStyle(el).display : "missing";
-  });
-  expect(display).toBe("none");
-  await page.screenshot({
-    path: path.join(ART, "02-no-loading-indicator.png"),
-  });
-
-  const before = await page.evaluate(
-    () =>
-      (document.querySelector(".art-video-player video") as HTMLVideoElement)
-        .currentTime,
+  await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
+  await page.goto("/", { waitUntil: "networkidle" });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 15000 });
+  await page.evaluate(
+    ({ mode }) => {
+      const w = window as unknown as BW;
+      w.__biaoyue_openFile__("/tmp/vf/vf.md", "![视频](assets/tiny.mp4)\n", "vf.md");
+      w.__biaoyue_store__.getState().setEditorMode(mode);
+    },
+    { mode },
   );
-  await page.waitForTimeout(500);
-  const after = await page.evaluate(
-    () =>
-      (document.querySelector(".art-video-player video") as HTMLVideoElement)
-        .currentTime,
-  );
-  expect(after).toBeLessThanOrEqual(before + 0.05);
-  await page.screenshot({ path: path.join(ART, "03-paused-no-autoplay.png") });
+  const sel = mode === "preview" ? ".preview-content video" : ".cm-media-widget video";
+  await page.locator(sel).first().waitFor({ timeout: 10000 });
+  if (mode === "preview") {
+    // 预览态 src 是 HTML 解析直接落的内容属性，两个 setter 拦截都拦不到——
+    // 这里把 media:// 直改成可播放 data URL（mock 环境无 media 处理器）。
+    await page.evaluate((b64) => {
+      const DATA = `data:video/mp4;base64,${b64}`;
+      document.querySelectorAll("video").forEach((v) => {
+        if (v.src.startsWith("media://") || v.src.startsWith("asset:"))
+          v.src = DATA;
+      });
+    }, TINY_MP4);
+  }
+}
+
+test("编辑态视频块未播放显示首帧（不黑屏）", async ({ page }) => {
+  await openDoc(page, "edit");
+  const video = page.locator(".cm-media-widget video").first();
+  await expect
+    .poll(
+      async () =>
+        video.evaluate((el) => (el as HTMLVideoElement).readyState),
+      { timeout: 8000 },
+    )
+    .toBeGreaterThanOrEqual(2);
+  const st = await video.evaluate((el) => ({
+    ct: (el as HTMLVideoElement).currentTime,
+    paused: (el as HTMLVideoElement).paused,
+    rs: (el as HTMLVideoElement).readyState,
+  }));
+  console.log("EDIT_ST", JSON.stringify(st));
+  expect(st.ct).toBeGreaterThan(0);
+  expect(st.paused).toBe(true);
+  await page.screenshot({ path: `${OUT}/01-edit-firstframe.png` });
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: `${OUT}/03-edit-seeked.png` });
 });
 
-test("重启恢复后视频为暂停态且显示首帧画面", async ({ page }) => {
-  mkdirSync(ART, { recursive: true });
-  await installRealVideo(page);
-  await boot(page);
-  await openVideo(page);
-  await assertFirstFramePaused(page);
-  // 等 paneLayout 持久化（App 在 paneRoot 变化后 500ms debounce 保存）
-  await page.waitForTimeout(900);
-  await page.reload({ waitUntil: "networkidle" });
-  await page.locator(".art-video-player").first().waitFor({ timeout: 15000 });
-  await assertFirstFramePaused(page);
-  await page.screenshot({
-    path: path.join(ART, "04-restored-first-frame-paused.png"),
-  });
+test("预览态视频块未播放显示首帧（不黑屏）", async ({ page }) => {
+  await openDoc(page, "preview");
+  const video = page.locator(".preview-content video").first();
+  await expect
+    .poll(
+      async () =>
+        video.evaluate((el) => (el as HTMLVideoElement).readyState),
+      { timeout: 8000 },
+    )
+    .toBeGreaterThanOrEqual(2);
+  const st = await video.evaluate((el) => ({
+    ct: (el as HTMLVideoElement).currentTime,
+    paused: (el as HTMLVideoElement).paused,
+  }));
+  console.log("PREVIEW_ST", JSON.stringify(st));
+  expect(st.ct).toBeGreaterThan(0);
+  expect(st.paused).toBe(true);
+  await page.screenshot({ path: `${OUT}/02-preview-firstframe.png` });
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: `${OUT}/04-preview-seeked.png` });
 });

@@ -9,7 +9,7 @@ import path from "node:path";
  * 面板读 editorStore.config.propAliasMap。真实设置页交互 + 真实文件打开路径。
  */
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1424";
 
 async function dpbRecord(
   page: Page,

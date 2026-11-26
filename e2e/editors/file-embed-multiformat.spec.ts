@@ -3,7 +3,7 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1424";
 const ART = ".artifacts/1395";
 const EVIDENCE = path.resolve(process.cwd(), "scripts/cw-evidence.sh");
 const MD_PATH = "/tmp/e1395/assets/note.md";

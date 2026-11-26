@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 import { mkdirSync } from "node:fs";
 
-const APP_URL = process.env.MENUS_APP_URL ?? "http://localhost:1420";
+const APP_URL = process.env.MENUS_APP_URL ?? "http://localhost:1424";
 const ART = resolve(process.cwd(), ".artifacts/1499");
 
 const HERE = dirname(fileURLToPath(import.meta.url));

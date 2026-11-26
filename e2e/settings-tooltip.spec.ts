@@ -11,7 +11,7 @@ import { test, expect, type Page } from "@playwright/test";
  * 确定性的入口，不依赖 sleep。
  */
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1424";
 
 interface BridgeWindow extends Window {
   __biaoyue_openFile__: (p: string, c: string, t: string) => void;

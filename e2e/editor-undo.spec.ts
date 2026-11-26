@@ -15,7 +15,7 @@ import { revealStatusBar } from "./helpers/ui-probe";
  * 键盘/鼠标事件，断言落在 `.cm-content` 文本或 store 的 `tab.content`。
  */
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1424";
 const ART = path.resolve(process.cwd(), ".artifacts/321");
 const MOD = process.platform === "darwin" ? "Meta" : "Control";
 

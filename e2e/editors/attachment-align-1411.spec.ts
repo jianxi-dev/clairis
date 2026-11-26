@@ -13,7 +13,7 @@ import path from "node:path";
  * - 预览态：同一引用在预览里按居中渲染，切回编辑态对齐保持、无残留。
  */
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1424";
 const ART = ".artifacts/1411";
 const EVIDENCE = path.resolve(process.cwd(), "scripts/cw-evidence.sh");
 const SIZES: Record<string, number> = {

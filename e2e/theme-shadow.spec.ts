@@ -1,6 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1424";
 
 // Chromium 解不了 asset://，换成可解码的小图：否则 <img> 高度为 0，右键无落点。
 const PNG =

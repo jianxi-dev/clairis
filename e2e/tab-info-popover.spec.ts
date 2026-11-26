@@ -11,7 +11,7 @@ import { test, expect, type Locator, type Page } from "@playwright/test";
  * `--tab-info-width`（#1138 起 256px），完整文件名换行显示（A-2.1…A-2.4）。
  */
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1424";
 const ART = ".artifacts/1104";
 const ART_1181 = ".artifacts/1181";
 const INFO = '[data-testid="tab-info-popover"]';

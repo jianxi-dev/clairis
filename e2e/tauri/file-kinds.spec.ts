@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1424";
 const ART = path.resolve(process.cwd(), ".artifacts/247");
 
 mkdirSync(ART, { recursive: true });

@@ -14,7 +14,7 @@ import { execFileSync } from "node:child_process";
  * scrollTop，定格不生效，见票面口径）。
  */
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1424";
 const ART = path.resolve(process.cwd(), ".artifacts/851");
 const EVIDENCE = path.resolve(process.cwd(), "scripts/cw-evidence.sh");
 const EMBED_URL = `${APP_URL}/e2e/fixtures/embed-page.html`;

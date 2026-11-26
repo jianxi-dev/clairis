@@ -10,7 +10,7 @@ import path from "node:path";
  * 不停留在「元素存在」。
  */
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1424";
 
 const DOC = `# 属性面板
 

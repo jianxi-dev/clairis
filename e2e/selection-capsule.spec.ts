@@ -1,6 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1424";
 const MOD = process.platform === "darwin" ? "Meta" : "Control";
 const HOTKEY = `${MOD}+Shift+Space`;
 const DOC = ["# 标题", "", "第一段正文", "", "第二段正文", ""].join("\n");

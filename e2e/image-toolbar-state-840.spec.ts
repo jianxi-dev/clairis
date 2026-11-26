@@ -12,7 +12,7 @@ import { execFileSync } from "node:child_process";
  * A-7.4 「添加描述」图标 path 与旧值（TextEditOutlined）不同
  */
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1424";
 const ART = path.resolve(process.cwd(), ".artifacts/840");
 const EVIDENCE = path.resolve(process.cwd(), "scripts/cw-evidence.sh");
 

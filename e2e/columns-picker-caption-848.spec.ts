@@ -5,7 +5,7 @@ import { execFileSync } from "node:child_process";
 import { moveThrough } from "./helpers/ui-probe";
 import { summonAddHandle } from "./helpers/block-handle";
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1424";
 const ART = path.resolve(process.cwd(), ".artifacts/848");
 const EVIDENCE = path.resolve(process.cwd(), "scripts/cw-evidence.sh");
 

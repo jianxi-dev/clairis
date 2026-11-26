@@ -175,7 +175,8 @@ marked.use({
       if (kind === "video" || kind === "audio") {
         // `![](clip.mp4)` 在预览里是播放器，不是一张裂图。
         const tag = kind === "video" ? "video" : "audio";
-        return `<figure class="wide"><${tag} controls preload="metadata" src="${src}"></${tag}>${caption}</figure>`;
+        const preload = kind === "video" ? "auto" : "metadata";
+        return `<figure class="wide"><${tag} controls preload="${preload}" src="${src}"></${tag}>${caption}</figure>`;
       }
       // 非图片引用不再退化成裂图：md / pdf / html / 网页 / 附件卡各有形态。
       const embed = classifyFileEmbed(href);
@@ -209,6 +210,26 @@ marked.use({
     },
   },
 });
+
+/** 视频块取首帧：hydrate 后挂 loadedmetadata seek，未播放先显示画面不黑屏（#1518）。 */
+export function wireVideoFirstFrames(root: ParentNode): void {
+  root.querySelectorAll("video").forEach((node) => {
+    const video = node as HTMLVideoElement;
+    if (video.dataset.firstFrameWired === "1") return;
+    video.dataset.firstFrameWired = "1";
+    video.setAttribute("preload", "auto");
+    const seek = () => {
+      try {
+        if (video.currentTime === 0)
+          video.currentTime = Math.min(0.1, video.duration || 0.1);
+      } catch {
+        /* 元数据未就绪时忽略 */
+      }
+    };
+    video.addEventListener("loadedmetadata", seek);
+    if (video.readyState >= 1) seek();
+  });
+}
 
 let checkboxGuardRegistered = false;
 

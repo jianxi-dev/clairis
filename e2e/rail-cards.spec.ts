@@ -10,7 +10,7 @@ import { ICONS } from "../src/ui/icons";
  * 落到 localStorage，reload 后回灌 load_config，让「设为默认 → 重启」真实往返。
  */
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1424";
 const ART = path.resolve(process.cwd(), ".artifacts/177");
 
 const ART275 = path.resolve(process.cwd(), ".artifacts/275");

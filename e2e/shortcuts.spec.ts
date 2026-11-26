@@ -11,7 +11,7 @@ import { revealStatusBar } from "./helpers/ui-probe";
  * 每个 state 截图落 `.artifacts/185/`，收尾写 state-coverage.json。
  */
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1424";
 const ART = path.resolve(process.cwd(), ".artifacts/185");
 
 mkdirSync(ART, { recursive: true });

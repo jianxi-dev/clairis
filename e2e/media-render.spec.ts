@@ -5,7 +5,7 @@ import path from "node:path";
 const TINY_MP4 = readFileSync(
   path.resolve(process.cwd(), "e2e/fixtures/tiny.mp4"),
 ).toString("base64");
-const TINY_MP4_URL = "http://localhost:1420/e2e/fixtures/tiny.mp4";
+const TINY_MP4_URL = "http://localhost:1424/e2e/fixtures/tiny.mp4";
 
 /** media:// / asset: 在 mock 浏览器无处理器，重写为内置 tiny.mp4 的 data URL 才能真播放。 */
 async function installRealVideo(page: Page): Promise<void> {

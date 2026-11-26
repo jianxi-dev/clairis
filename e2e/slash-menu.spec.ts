@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import { test, expect, type Locator, type Page } from "@playwright/test";
 
-const APP_URL = process.env.MENU_APP_URL ?? "http://localhost:1420";
+const APP_URL = process.env.MENU_APP_URL ?? "http://localhost:1424";
 
 test.beforeEach(async ({ page }) => {
   // 浏览器层测试不接 Tauri：注入 IPC mock + store 桥，再用 __biaoyue_openFile__
