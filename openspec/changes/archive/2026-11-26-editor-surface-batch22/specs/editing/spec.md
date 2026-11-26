@@ -71,7 +71,7 @@
 - **WHEN** 块首行含 `{bg=red border=red}` 时用户打开纯高亮颜色面板
 - **THEN** 填充中档「红」与边框「红」两个色块 SHALL 带 `data-active` 选中态，其余色块 SHALL NOT
 
-#### Scenario: 随机同时换边框与填充且不关闭
+#### Scenario: 随机同时换边框与填充
 
 - **WHEN** 在纯高亮颜色面板点击「随机」
 - **THEN** 首行 `bg` 与 `border` SHALL 同时改变且色相相同，`text` SHALL 保持不变；面板 SHALL 保持打开；一次 ⌘Z SHALL 同时还原两项
@@ -228,6 +228,16 @@ MD 编辑态的图片 SHALL 在被点击后进入选中态：显示选中框与�
 #### Scenario: 放大层工具条含重置图片
 - **WHEN** 用户双击一张已裁剪图片进入放大查看层
 - **THEN** 工具条 SHALL 含旋转 / 下载 / 恢复原始尺寸 / 重置图片 / 关闭；点击「重置图片」后 `crop` SHALL 被移除且显示尺寸回整图
+
+#### Scenario: 插入图片可见
+- **WHEN** 用户插入一张图片
+- **THEN** 编辑态 `img` 的 `naturalWidth` SHALL 大于 0
+#### Scenario: 剪切与裁剪图标不同
+- **WHEN** 用户打开图片工具条
+- **THEN** 剪切按钮图标 path SHALL 与裁剪按钮图标 path 不同
+#### Scenario: 双击最大化
+- **WHEN** 用户双击图片后按 Esc
+- **THEN** 出现遮罩并在 Esc 后消失，文档内容不变（A-3.6）
 
 ### Requirement: E-8 编辑态与预览态同貌
 
