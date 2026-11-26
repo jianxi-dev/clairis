@@ -5,7 +5,8 @@ import {
   highlightCodeBlock,
   MAX_PREVIEW_HIGHLIGHT_CHARS,
 } from "../../renderers/highlight";
-import { resolveDocMediaHref } from "../../lib/mediaUrl";
+import { resolveDocMediaHref, resolveRelativeToDoc } from "../../lib/mediaUrl";
+import { anchorFromGrid, clampPreviewSize } from "../../lib/previewAnchor";
 import {
   isCapabilityEnabled,
   subscribeCapability,
@@ -527,8 +528,69 @@ function ZoomablePreview({
     void hydratePreviewEmbeds(el, filePath ?? null);
   }, [html, filePath]);
 
+  // 本地文档链接：点击在本产品打开（open_file_direct → openFile）。
+  const openLocalDoc = useCallback(
+    async (href: string) => {
+      const abs = resolveRelativeToDoc(href, filePath ?? "");
+      if (!abs) return;
+      try {
+        const res = await invoke<{
+          content: string;
+          path: string;
+          file_size: number;
+        }>("open_file_direct", { path: abs });
+        useStore.getState().openFile(res.path, res.content);
+      } catch {
+        // 打不开的（二进制/不存在）保留系统默认行为。
+        window.open(href, "_blank");
+      }
+    },
+    [filePath],
+  );
+
+  // ⌘/Ctrl + 悬停本地文档链接 → 文件卡片式悬浮窗（复用 FloatingPreview）。
+  const onMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!(e.metaKey || e.ctrlKey)) return;
+    const el = (e.target as HTMLElement).closest?.(
+      "[data-local-doc]",
+    ) as HTMLElement | null;
+    if (!el) return;
+    const st = useStore.getState();
+    if (!st.previewSettings.enabled) return;
+    const href = el.dataset.localDoc ?? "";
+    const abs = resolveRelativeToDoc(href, filePath ?? "");
+    if (!abs) return;
+    const rect = el.getBoundingClientRect();
+    const size = clampPreviewSize({ w: 420, h: 320 });
+    const anchor = anchorFromGrid({
+      cardRightX: rect.right,
+      cardTopY: rect.top,
+      size,
+      viewport: { width: window.innerWidth, height: window.innerHeight },
+    });
+    st.openPreview({
+      path: abs,
+      title: el.textContent || href,
+      x: anchor.x,
+      y: anchor.y,
+      w: size.w,
+      h: size.h,
+      flippedX: anchor.flipped.x,
+      flippedY: anchor.flipped.y,
+      source: "tab",
+    });
+  }, [filePath]);
+
   // 代码块复制按钮：事件委托，避免给每个代码块单独挂监听
   const onClick = useCallback((e: React.MouseEvent) => {
+    const localDoc = (e.target as HTMLElement).closest?.(
+      "[data-local-doc]",
+    ) as HTMLElement | null;
+    if (localDoc) {
+      e.preventDefault();
+      void openLocalDoc(localDoc.dataset.localDoc ?? "");
+      return;
+    }
     const btn = (e.target as HTMLElement).closest?.(".code-copy");
     if (!(btn instanceof HTMLElement)) return;
     const code = btn.parentElement?.querySelector("pre")?.textContent ?? "";
@@ -548,6 +610,7 @@ function ZoomablePreview({
       onWheel={onWheel}
       onDoubleClick={onDoubleClick}
       onClick={onClick}
+      onMouseMove={onMouseMove}
     >
       {darkVarsCss && <style>{darkVarsCss}</style>}
       <div className="preview-content" style={{ ...typeVars, ...headingVars }}>
