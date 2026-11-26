@@ -929,7 +929,7 @@ class ImageWidget extends WidgetType {
     });
     container.addEventListener("dblclick", (event) => {
       event.stopPropagation();
-      openImageMaximize(this._src, this._alt, this._crop);
+      openImageMaximize(this._src, this._alt, this._crop, this._from);
     });
 
     // 8 个缩放把手由 markImageWidgetSelected 按选中态增删；容器级委托让

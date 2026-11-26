@@ -971,6 +971,7 @@ export function openImageMaximize(
   src: string | null,
   alt: string,
   crop?: [number, number, number, number] | null,
+  from?: number,
 ): void {
   closeImageMaximize();
   const overlay = document.createElement("div");
@@ -1073,6 +1074,12 @@ export function openImageMaximize(
         maximizeApplyTransform();
       },
     ),
+  );
+  controls.appendChild(
+    maximizeControlButton("img-max-clear-crop", "重置图片", "RotateOutlined", () => {
+      if (typeof from === "number") actions.onImageReset?.(from);
+      closeImageMaximize();
+    }),
   );
   controls.appendChild(
     maximizeControlButton("img-max-close", "关闭预览", "CloseOutlined", () => {
