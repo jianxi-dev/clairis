@@ -27,6 +27,7 @@ import { renderPreviewLineNumbers } from "../../lib/previewLineNumbers";
 import { isTauriEnv } from "../../utils/tauri";
 import { revealInFinder } from "../../lib/finder";
 import { log } from "../../utils/log";
+import { openImageMaximize } from "../../editors/decorations/imageToolbar";
 import ContextMenu, { type ContextMenuItem } from "../ContextMenu";
 import { getMenuItems, type MenuItem } from "../../lib/dataSurfaces/store";
 import type { FileKind } from "../../types";
@@ -98,7 +99,7 @@ function usePreviewZoom() {
     };
   }, []);
 
-  return { zoom, onWheel, onDoubleClick: resetZoom, bindGesture };
+  return { zoom, onWheel, resetZoom, bindGesture };
 }
 
 /** 视频/音频预览：注册到常驻播放器，由 MediaPlayerHost 限制在所属格内；卸载时保持播放移出视口（无迷你条） */
@@ -510,7 +511,7 @@ function ZoomablePreview({
   leading?: React.ReactNode;
   filePath?: string | null;
 }) {
-  const { zoom, onWheel, onDoubleClick, bindGesture } = usePreviewZoom();
+  const { zoom, onWheel, resetZoom, bindGesture } = usePreviewZoom();
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   // 内嵌 HTML 内联颜色的深色替代值：--dc-N 定义在 .dark 下，原色作兜底
@@ -523,6 +524,45 @@ function ZoomablePreview({
   }, [html]);
 
   useEffect(() => bindGesture(containerRef.current), [bindGesture]);
+
+  // 预览态图片双击 → 复用编辑态放大层（#1565）。预览 DOM 由 dangerouslySetInnerHTML
+  // 注入，无法用 React 逐个绑定，故挂载后事件委托：命中 `figure img` 时按文档顺序
+  // 收集全部图片（含裁剪属性）传入放大层。不传 `from`——预览为只读渲染，放大层
+  // 的「重置图片」按钮因此不出现（无文档写回通道）。
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const onDblClick = (event: MouseEvent) => {
+      const target = event.target instanceof Element ? event.target : null;
+      const img = target?.closest("figure img") as HTMLImageElement | null;
+      if (!img) return;
+      const imgs = Array.from(
+        el.querySelectorAll<HTMLImageElement>("figure img"),
+      );
+      const index = imgs.indexOf(img);
+      if (index < 0) return;
+      const images = imgs.map((node) => {
+        const cropRaw = node.closest("figure")?.getAttribute("data-img-crop");
+        const crop = cropRaw
+          ? (cropRaw.split(",").map(Number) as [number, number, number, number])
+          : null;
+        return {
+          src: node.getAttribute("src"),
+          alt: node.getAttribute("alt") ?? "",
+          crop,
+        };
+      });
+      openImageMaximize(
+        img.getAttribute("src"),
+        img.getAttribute("alt") ?? "",
+        null,
+        undefined,
+        { images, index },
+      );
+    };
+    el.addEventListener("dblclick", onDblClick);
+    return () => el.removeEventListener("dblclick", onDblClick);
+  }, [html]);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -607,6 +647,15 @@ function ZoomablePreview({
     }, 1500);
     void navigator.clipboard?.writeText(code).catch(() => {});
   }, []);
+
+  const onDoubleClick = useCallback(
+    (e: React.MouseEvent) => {
+      const target = e.target instanceof Element ? e.target : null;
+      if (target?.closest("figure")) return;
+      resetZoom();
+    },
+    [resetZoom],
+  );
 
   return (
     <div
