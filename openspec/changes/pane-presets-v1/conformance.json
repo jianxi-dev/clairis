@@ -1,0 +1,73 @@
+{
+  "change": "pane-presets-v1",
+  "requirements": [
+    {
+      "id": "R-1",
+      "text": "熟练模式三档",
+      "anchors": [
+        {
+          "id": "A-1.1",
+          "claim": "设置页 `paneMode` 三档与默认值",
+          "kind": "exact",
+          "assert": "恰 3 个选项（simple/standard/hardcore），默认选中 standard",
+          "source": "§7.7 / D2"
+        },
+        {
+          "id": "A-1.2",
+          "claim": "simple 档 chrome 可见性",
+          "kind": "state-machine",
+          "assert": "顶栏 `.app-chrome` 与底部 `.app-status-bar` 恒显，热区与快捷键均不改变其可见性",
+          "source": "G-9 场景 1"
+        },
+        {
+          "id": "A-1.3",
+          "claim": "standard 档与现状一致",
+          "kind": "state-machine",
+          "assert": "顶栏恒显；状态栏隐藏态下指针进入底部 16px 热区即唤出，移出即隐藏",
+          "source": "G-9 场景 2"
+        },
+        {
+          "id": "A-1.4",
+          "claim": "hardcore 档快捷键与提示线",
+          "kind": "state-machine",
+          "assert": "热区不唤出；`Cmd+Shift+U` 临时显现且顶部存在 1px 提示线；3 秒无操作或 Esc 收起",
+          "source": "G-9 场景 3 / §7.7"
+        },
+        {
+          "id": "A-1.5",
+          "claim": "`readingMode` 优先且不重建编辑器",
+          "kind": "state-machine",
+          "assert": "沉浸态下 `paneMode` 不覆盖沉浸规则；切换三档后 EditorView 实例数不变、编辑态保留",
+          "source": "G-9 场景 4 / D6"
+        }
+      ]
+    },
+    {
+      "id": "R-2",
+      "text": "关爱界面三档",
+      "anchors": [
+        {
+          "id": "A-2.1",
+          "claim": "设置页 `paneScale` 三档与倍率",
+          "kind": "exact",
+          "assert": "恰 3 个选项（small/medium/large），倍率依次 0.9 / 1.0 / 1.2，默认 medium",
+          "source": "§4.1 / D2"
+        },
+        {
+          "id": "A-2.2",
+          "claim": "large 档缩放落点",
+          "kind": "state-machine",
+          "assert": "顶栏 `.app-chrome`、状态栏 `.app-status-bar`、设置场景容器的计算 `zoom` 均为 1.2",
+          "source": "CF-8 场景 3 / §4.1"
+        },
+        {
+          "id": "A-2.3",
+          "claim": "正文不受缩放影响",
+          "kind": "exact",
+          "assert": "正文/预览/编辑器容器的计算 `zoom` 为 1，尺寸与缩放前逐像素一致",
+          "source": "CF-8 场景 3 / §4.1"
+        }
+      ]
+    }
+  ]
+}
