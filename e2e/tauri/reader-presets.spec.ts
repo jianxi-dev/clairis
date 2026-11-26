@@ -81,3 +81,39 @@ test("改预设文件后 1 秒内热应用：按钮改名且不含旧名", async
   expect(config.readerWidth).toBe(1320);
   expect(config.readerSkin).toBe("indigo");
 });
+
+// IC-2 证据采集：四态截图（default / applied-wide / renamed / fallback）。
+test("证据采集：预设行四态截图", async ({ page }) => {
+  const fs = await import("node:fs");
+  const path = await import("node:path");
+  const artDir = path.resolve(process.cwd(), ".artifacts/1578");
+  fs.mkdirSync(artDir, { recursive: true });
+
+  await boot(page);
+  await openPresetRow(page);
+  await page.screenshot({ path: path.join(artDir, "01-default.png") });
+
+  await page.locator('[data-testid="reader-preset-wide"]').click();
+  await expect(page.getByTestId("reader-width-value")).toHaveText("1280px");
+  await page.screenshot({ path: path.join(artDir, "02-applied-wide.png") });
+
+  await page.evaluate(() => {
+    const win = window as unknown as Record<string, any>;
+    win.__biaoyue_reader_presets__ = [
+      { id: "compact", label: "紧凑", fontSize: 15, width: 960, skin: "paper" },
+      { id: "standard", label: "标准", fontSize: 17, width: 1080, skin: "paper" },
+      { id: "wide", label: "超宽", fontSize: 21, width: 1320, skin: "indigo" },
+    ];
+    win.__mock_emit__("surfaces-changed", "reader-presets");
+  });
+  await expect(page.locator('[data-testid="reader-preset-wide"]')).toHaveText("超宽");
+  await page.screenshot({ path: path.join(artDir, "03-renamed.png") });
+
+  await page.evaluate(() => {
+    const win = window as unknown as Record<string, any>;
+    delete win.__biaoyue_reader_presets__;
+    win.__mock_emit__("surfaces-changed", "reader-presets");
+  });
+  await expect(page.locator('[data-testid="reader-preset-wide"]')).toHaveText("宽屏");
+  await page.screenshot({ path: path.join(artDir, "04-fallback.png") });
+});
