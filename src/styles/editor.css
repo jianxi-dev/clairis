@@ -1,3 +1,66 @@
+:root {
+  --hl-font-gray: #8f959e;
+  --hl-font-red: #d83930;
+  --hl-font-orange: #de7704;
+  --hl-font-yellow: #dd9b02;
+  --hl-font-green: #2ea122;
+  --hl-font-blue: #245bdb;
+  --hl-font-purple: #6425d0;
+  --hl-border-gray: #dfe0e3;
+  --hl-border-red: #f98d8b;
+  --hl-border-orange: #ffba6b;
+  --hl-border-yellow: #fff77a;
+  --hl-border-green: #8ee085;
+  --hl-border-blue: #82a7fc;
+  --hl-border-purple: #ad82f7;
+  --hl-fill-darkgray: #f2f3f5;
+  --hl-fill-darkred: #fde2e2;
+  --hl-fill-darkorange: #feead2;
+  --hl-fill-darkyellow: #ffffcc;
+  --hl-fill-darkgreen: #daf5d6;
+  --hl-fill-darkblue: #e1eaff;
+  --hl-fill-darkpurple: #ebe2fe;
+  --hl-fill-gray: #e7e9eb;
+  --hl-fill-lightgray: #e7e9eb;
+  --hl-fill-red: #fbbfbc;
+  --hl-fill-orange: #fed4a4;
+  --hl-fill-yellow: #fffca3;
+  --hl-fill-green: #b7edb2;
+  --hl-fill-blue: #bacefd;
+  --hl-fill-purple: #cdb2fa;
+}
+
+.dark {
+  --hl-font-gray: #757575;
+  --hl-font-red: #fa7873;
+  --hl-font-orange: #f5a54a;
+  --hl-font-yellow: #fcd456;
+  --hl-font-green: #6dd162;
+  --hl-font-blue: #71a0ff;
+  --hl-font-purple: #a472fc;
+  --hl-border-gray: #434343;
+  --hl-border-red: #9e3836;
+  --hl-border-orange: #bd7017;
+  --hl-border-yellow: #c7b302;
+  --hl-border-green: #339428;
+  --hl-border-blue: #2951a3;
+  --hl-border-purple: #6532bd;
+  --hl-fill-darkgray: #2b2b2b;
+  --hl-fill-darkred: #4a1d1b;
+  --hl-fill-darkorange: #57330a;
+  --hl-fill-darkyellow: #5c5514;
+  --hl-fill-darkgreen: #1f471b;
+  --hl-fill-darkblue: #192a4c;
+  --hl-fill-darkpurple: #361d61;
+  --hl-fill-gray: #363636;
+  --hl-fill-lightgray: #3c3c3c;
+  --hl-fill-red: #6b2827;
+  --hl-fill-orange: #845117;
+  --hl-fill-yellow: #877b10;
+  --hl-fill-green: #296b22;
+  --hl-fill-blue: #213e78;
+  --hl-fill-purple: #4d2691;
+}
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
