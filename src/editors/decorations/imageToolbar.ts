@@ -923,10 +923,14 @@ function bindViewportObserver(): void {
   viewportObserver.observe(el);
 }
 
+/** 缩放 UI 同步钩子：由 openImageMaximize 注入，滚轮/捏合/按钮/复位共用。 */
+let maximizeRefreshUi: (() => void) | null = null;
+
 function maximizeApplyTransform(): void {
   if (!maximizeImg) return;
   const { scale, tx, ty, rotation } = maximizeTransform;
   maximizeImg.style.transform = `translate(${tx}px, ${ty}px) scale(${scale}) rotate(${rotation}deg)`;
+  maximizeRefreshUi?.();
 }
 
 /**
@@ -1060,6 +1064,7 @@ function maximizeControlButton(
   label: string,
   icon: string,
   onClick: () => void,
+  tooltip?: MaximizeTooltip,
 ): HTMLButtonElement {
   const btn = document.createElement("button");
   btn.type = "button";
@@ -1070,7 +1075,73 @@ function maximizeControlButton(
     "width:36px;height:36px;display:flex;align-items:center;justify-content:center;border:1px solid var(--app-border);border-radius:var(--app-radius);background:var(--app-surface);color:inherit;cursor:pointer;";
   btn.appendChild(renderIcon(icon));
   btn.addEventListener("click", onClick);
+  tooltip?.bind(btn, label);
   return btn;
+}
+
+/** 悬停延迟：与全局胶囊提示同档（200-300ms 内），不新引入配置项。 */
+const MAXIMIZE_TOOLTIP_DELAY_MS = 250;
+
+interface MaximizeTooltip {
+  bind(button: HTMLButtonElement, label: string): void;
+  destroy(): void;
+}
+
+/**
+ * 放大层自制气泡提示（#1563）。
+ *
+ * macOS WKWebView 基本不渲染原生 `title`，按钮写了也看不见；这里挂 body
+ * （`position:fixed`，不被浮层裁剪）自绘深灰气泡，悬停满 250ms 出现、移开
+ * 即消失。全局 TooltipLayer 只接管带 `title` 的元素，气泡类名独立
+ * （`cm-image-max-tooltip`），两者互不干扰。
+ */
+function createMaximizeTooltip(): MaximizeTooltip {
+  let bubble: HTMLDivElement | null = null;
+  let timer: number | null = null;
+  let anchor: HTMLButtonElement | null = null;
+
+  const clearTimer = (): void => {
+    if (timer !== null) {
+      window.clearTimeout(timer);
+      timer = null;
+    }
+  };
+
+  const hide = (): void => {
+    clearTimer();
+    anchor = null;
+    bubble?.remove();
+    bubble = null;
+  };
+
+  const show = (btn: HTMLButtonElement, label: string): void => {
+    clearTimer();
+    anchor = btn;
+    timer = window.setTimeout(() => {
+      timer = null;
+      if (anchor !== btn) return;
+      const rect = btn.getBoundingClientRect();
+      const el = document.createElement("div");
+      el.className = "cm-image-max-tooltip";
+      el.dataset.testid = "img-max-tooltip";
+      el.setAttribute("role", "tooltip");
+      el.textContent = label;
+      el.style.left = `${rect.left + rect.width / 2}px`;
+      el.style.top = `${rect.top - 8}px`;
+      document.body.appendChild(el);
+      bubble = el;
+    }, MAXIMIZE_TOOLTIP_DELAY_MS);
+  };
+
+  return {
+    bind(btn: HTMLButtonElement, label: string): void {
+      btn.addEventListener("pointerenter", () => show(btn, label));
+      btn.addEventListener("pointerleave", hide);
+      btn.addEventListener("pointerdown", hide);
+      btn.addEventListener("blur", hide);
+    },
+    destroy: hide,
+  };
 }
 
 function maximizeDownloadName(src: string, alt: string): string {
@@ -1084,29 +1155,53 @@ function maximizeDownloadName(src: string, alt: string): string {
   return `${base}.${ext}`;
 }
 
+export interface MaximizeImageItem {
+  readonly src: string | null;
+  readonly alt: string;
+  readonly crop?: [number, number, number, number] | null;
+}
+
+export interface OpenImageMaximizeOptions {
+  /** 多图列表（#1564 消费）；缺省 = 单图模式，向后兼容既有调用。 */
+  readonly images?: readonly MaximizeImageItem[];
+  /** `images` 中的初始索引；缺省 0。 */
+  readonly index?: number;
+}
+
 export function openImageMaximize(
   src: string | null,
   alt: string,
   crop?: [number, number, number, number] | null,
   from?: number,
+  options?: OpenImageMaximizeOptions,
 ): void {
   closeImageMaximize();
+  const items = options?.images?.length
+    ? options.images
+    : [{ src, alt, crop }];
+  const startIndex = Math.min(
+    Math.max(options?.index ?? 0, 0),
+    items.length - 1,
+  );
+  const current = items[startIndex];
   const overlay = document.createElement("div");
   overlay.className = "cm-image-maximize";
   overlay.dataset.testid = "img-maximize";
   overlay.style.touchAction = "none";
   overlay.style.userSelect = "none";
 
+  const tooltip = createMaximizeTooltip();
+
   let img: HTMLImageElement | null = null;
-  if (src) {
+  if (current.src) {
     img = document.createElement("img");
-    img.src = src;
-    img.alt = alt;
+    img.src = current.src;
+    img.alt = current.alt;
     img.draggable = false;
-    if (crop) {
+    if (current.crop) {
       // 兜底渲染（加载期间）：object-fit:none 平移到 (l,t)，1:1 不缩放——
       // 区域与编辑态不一致，只作过渡。
-      const [l, t, w, h] = crop;
+      const [l, t, w, h] = current.crop;
       img.style.objectFit = "none";
       img.style.objectPosition = `${-l}px ${-t}px`;
       img.style.width = `${w}px`;
@@ -1136,12 +1231,12 @@ export function openImageMaximize(
           /* tainted canvas：保留 1:1 兜底渲染 */
         }
       };
-      source.src = src;
+      source.src = current.src;
     }
     overlay.appendChild(img);
   } else {
     const fallback = document.createElement("span");
-    fallback.textContent = `[图片: ${alt}]`;
+    fallback.textContent = `[图片: ${current.alt}]`;
     overlay.appendChild(fallback);
   }
   maximizeImg = img;
@@ -1152,6 +1247,48 @@ export function openImageMaximize(
   controls.dataset.testid = "img-max-controls";
   controls.style.cssText =
     "position:absolute;bottom:24px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:2;padding:6px;border:1px solid var(--app-border);border-radius:var(--app-radius);background:var(--app-surface);box-shadow:var(--app-shadow);";
+
+  const zoomOutBtn = maximizeControlButton(
+    "img-max-zoom-out",
+    "缩小",
+    "ZoomOutOutlined",
+    () => {
+      maximizeZoom(
+        maximizeTransform.scale / MAXIMIZE_WHEEL_STEP,
+        window.innerWidth / 2,
+        window.innerHeight / 2,
+      );
+    },
+    tooltip,
+  );
+  const zoomInBtn = maximizeControlButton(
+    "img-max-zoom-in",
+    "放大",
+    "ZoomInOutlined",
+    () => {
+      maximizeZoom(
+        maximizeTransform.scale * MAXIMIZE_WHEEL_STEP,
+        window.innerWidth / 2,
+        window.innerHeight / 2,
+      );
+    },
+    tooltip,
+  );
+  const scaleLabel = document.createElement("span");
+  scaleLabel.dataset.testid = "img-max-scale";
+  scaleLabel.style.cssText =
+    "align-self:center;min-width:44px;text-align:center;font-size:12px;font-variant-numeric:tabular-nums;color:var(--app-text-2);";
+
+  /** 缩放变化后同步百分比与 ± 按钮的边界禁用态。 */
+  function refreshZoomUi(): void {
+    scaleLabel.textContent = `${Math.round(maximizeTransform.scale * 100)}%`;
+    zoomOutBtn.disabled = maximizeTransform.scale <= MAXIMIZE_MIN_SCALE;
+    zoomInBtn.disabled = maximizeTransform.scale >= MAXIMIZE_MAX_SCALE;
+  }
+
+  controls.appendChild(zoomOutBtn);
+  controls.appendChild(zoomInBtn);
+  controls.appendChild(scaleLabel);
   controls.appendChild(
     maximizeControlButton(
       "img-max-rotate",
@@ -1162,6 +1299,7 @@ export function openImageMaximize(
         maximizeClampTranslation();
         maximizeApplyTransform();
       },
+      tooltip,
     ),
   );
   controls.appendChild(
@@ -1170,15 +1308,16 @@ export function openImageMaximize(
       "下载原图",
       "DownloadOutlined",
       () => {
-        if (!src) return;
+        if (!current.src) return;
         const a = document.createElement("a");
-        a.href = src;
-        a.download = maximizeDownloadName(src, alt);
+        a.href = current.src;
+        a.download = maximizeDownloadName(current.src, current.alt);
         a.style.display = "none";
         document.body.appendChild(a);
         a.click();
         a.remove();
       },
+      tooltip,
     ),
   );
   controls.appendChild(
@@ -1189,10 +1328,12 @@ export function openImageMaximize(
       () => {
         maximizeTransform = { scale: 1, tx: 0, ty: 0, rotation: 0 };
         maximizeApplyTransform();
+        refreshZoomUi();
       },
+      tooltip,
     ),
   );
-  if (crop) {
+  if (current.crop) {
     controls.appendChild(
       maximizeControlButton(
         "img-max-clear-crop",
@@ -1202,15 +1343,24 @@ export function openImageMaximize(
           if (typeof from === "number") actions.onImageReset?.(from);
           closeImageMaximize();
         },
+        tooltip,
       ),
     );
   }
   controls.appendChild(
-    maximizeControlButton("img-max-close", "关闭预览", "CloseOutlined", () => {
-      closeImageMaximize();
-    }),
+    maximizeControlButton(
+      "img-max-close",
+      "关闭预览",
+      "CloseOutlined",
+      () => {
+        closeImageMaximize();
+      },
+      tooltip,
+    ),
   );
   overlay.appendChild(controls);
+  maximizeRefreshUi = refreshZoomUi;
+  refreshZoomUi();
 
   overlay.addEventListener("click", (event) => {
     const down = maximizeDownPos;
@@ -1229,6 +1379,7 @@ export function openImageMaximize(
   overlay.addEventListener("dblclick", () => {
     maximizeTransform = { scale: 1, tx: 0, ty: 0, rotation: 0 };
     maximizeApplyTransform();
+    refreshZoomUi();
   });
   overlay.addEventListener("wheel", maximizeOnWheel, { passive: false });
   overlay.addEventListener("pointerdown", maximizeOnPointerDown);
@@ -1241,6 +1392,7 @@ export function openImageMaximize(
     document.removeEventListener("pointermove", maximizeOnPointerMove);
     document.removeEventListener("pointerup", maximizeOnPointerEnd);
     document.removeEventListener("pointercancel", maximizeOnPointerEnd);
+    tooltip.destroy();
   };
 
   maximizeKeyHandler = (event) => {
@@ -1270,6 +1422,7 @@ export function closeImageMaximize(): void {
   maximizePanStart = null;
   maximizePinchStart = null;
   maximizeDownPos = null;
+  maximizeRefreshUi = null;
 }
 
 if (typeof document !== "undefined") {

@@ -21,7 +21,7 @@
   - `imageToolbar.ts`：scroll 监听改编辑器滚动容器 + passive；40ms 防抖；滚动期加 `is-scrolling` class 隐藏且不重算；停滚一次定位；滚出视口改 IntersectionObserver；`src/styles/` 补 `is-scrolling` CSS（manifest 同步）
   - 验收（浏览器可观测）：选中图片连续滚动 2 秒，滚动期间工具条保持隐藏不闪跳；停滚约 50ms 后在图片当前位置重现；滚出视口后工具条消失
 
-- [ ] 2.2 B5 放大层 tooltip + ± 缩放 + 百分比
+- [x] 2.2 B5 放大层 tooltip + ± 缩放 + 百分比
   - `openImageMaximize` 扩展签名（可选图片列表 + 索引，缺省单图向后兼容）；自制 tooltip 气泡组件（body 挂载、200-300ms 延迟）；± 按钮（边界禁用）+ 缩放百分比显示；新增 `cm-*` 类名同步 CSS
   - 验收（浏览器可观测）：悬停按钮出现深灰气泡提示；点「放大」「缩小」图片缩放且百分比同步；到达边界按钮禁用
 

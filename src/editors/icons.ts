@@ -613,6 +613,24 @@ const ICON_REGISTRY: Record<string, IconDef> = {
     stroke: true,
     paths: ["M4 9V4h5 M15 4h5v5 M4 15v5h5 M15 20h5v-5"],
   },
+  // 放大层 ± 缩放（#1563）：形状与 `ui/icons` 的 zoomIn / zoomOut 同源，
+  // 保证与预览 / PDF / 视频各处「放大镜 ±」同一图形。
+  ZoomInOutlined: {
+    kind: "paths",
+    stroke: true,
+    paths: [
+      "M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14z",
+      "M16 16l5 5M11 8v6M8 11h6",
+    ],
+  },
+  ZoomOutOutlined: {
+    kind: "paths",
+    stroke: true,
+    paths: [
+      "M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14z",
+      "M16 16l5 5M8 11h6",
+    ],
+  },
   RestoreOutlined: {
     kind: "paths",
     paths: [
