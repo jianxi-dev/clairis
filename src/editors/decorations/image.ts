@@ -1279,7 +1279,21 @@ class MediaWidget extends WidgetType {
           ? document.createElement("video")
           : document.createElement("audio");
       media.controls = true;
-      media.preload = "metadata";
+      // 视频：preload=auto + seek 首帧（GridTile 同款）——未播放时显示第一帧
+      // 画面而不是黑屏；seek 不触发播放，不发声。
+      if (this._kind === "video") {
+        media.preload = "auto";
+        media.setAttribute("playsinline", "");
+        media.addEventListener("loadedmetadata", () => {
+          try {
+            media.currentTime = Math.min(0.1, media.duration || 0.1);
+          } catch {
+            /* 元数据未就绪时忽略 */
+          }
+        });
+      } else {
+        media.preload = "metadata";
+      }
       // 用 setAttribute（不是 .src）：属性 getter 会按文档 base URL 解析，
       // 让渲染出的属性与源码路径不一致。
       media.setAttribute("src", this._src);

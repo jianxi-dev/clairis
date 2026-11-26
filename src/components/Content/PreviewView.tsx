@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { convertFileSrc, invoke } from "@tauri-apps/api/core";
-import { renderMarkdown, renderMermaid, takeDarkVars } from "../../renderers";
+import {
+  renderMarkdown,
+  renderMermaid,
+  takeDarkVars,
+  wireVideoFirstFrames,
+} from "../../renderers";
 import {
   highlightCodeBlock,
   MAX_PREVIEW_HIGHLIGHT_CHARS,
@@ -525,6 +530,7 @@ function ZoomablePreview({
     // 深浅色切换由 CSS 变量跟随（design D5），不重渲；源码仍留在 DOM 里可重复渲染
     void renderMermaid(el);
     decoratePreviewHeadings(el);
+    wireVideoFirstFrames(el);
     void hydratePreviewEmbeds(el, filePath ?? null);
   }, [html, filePath]);
 

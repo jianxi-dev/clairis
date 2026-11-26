@@ -409,7 +409,7 @@ describe("block decorations", () => {
       expect(dom.classList.contains("cm-media-video")).toBe(true);
       const video = dom.querySelector("video");
       expect(video?.hasAttribute("controls")).toBe(true);
-      expect(video?.getAttribute("preload")).toBe("metadata");
+      expect(video?.getAttribute("preload")).toBe("auto");
       expect(video?.getAttribute("src")).toBe("media://localhost/tmp/clip.mp4");
       expect(dom.querySelector(".cm-media-placeholder")).toBeNull();
     });
