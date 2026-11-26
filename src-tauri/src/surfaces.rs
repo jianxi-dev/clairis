@@ -41,6 +41,7 @@ pub enum SurfaceShape {
     Menu,
     Icon,
     Capsule,
+    ReaderPreset,
 }
 
 /// 单个已登记面：id、默认文件名、项形状。校验器随形状而定。
@@ -72,6 +73,11 @@ pub static SURFACES: &[SurfaceSpec] = &[
         id: "capsules",
         default_file: "capsules.json",
         shape: SurfaceShape::Capsule,
+    },
+    SurfaceSpec {
+        id: "reader-presets",
+        default_file: "reader-presets.json",
+        shape: SurfaceShape::ReaderPreset,
     },
 ];
 
@@ -111,6 +117,24 @@ pub struct CapsuleSpec {
     pub order: u32,
 }
 
+/// 阅读预设项（design D1）：三项阅读配置成组；`skin` 取四皮肤之一。
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ReaderPresetSpec {
+    pub id: String,
+    pub label: String,
+    pub font_size: u32,
+    pub width: u32,
+    pub skin: String,
+}
+
+/// 阅读预设的取值边界（与 `src/lib/readerWidth.ts` 一致：480/1400/20）。
+pub const READER_PRESET_FONT_MIN: u32 = 8;
+pub const READER_PRESET_FONT_MAX: u32 = 96;
+pub const READER_PRESET_WIDTH_MIN: u32 = 480;
+pub const READER_PRESET_WIDTH_MAX: u32 = 1400;
+pub const READER_PRESET_WIDTH_STEP: u32 = 20;
+pub const READER_PRESET_SKINS: &[&str] = &["paper", "indigo", "moss", "clay"];
+
 /// 内嵌默认文件（唯一默认源），按面 id 取。
 fn embedded_json(spec: &SurfaceSpec) -> &'static str {
     match spec.shape {
@@ -118,6 +142,9 @@ fn embedded_json(spec: &SurfaceSpec) -> &'static str {
         SurfaceShape::Menu => include_str!("resources/menus.default.json"),
         SurfaceShape::Icon => include_str!("resources/icons.default.json"),
         SurfaceShape::Capsule => include_str!("resources/capsules.default.json"),
+        SurfaceShape::ReaderPreset => {
+            include_str!("resources/reader-presets.default.json")
+        }
     }
 }
 
@@ -136,6 +163,7 @@ pub(crate) fn user_override_path(base: &Path, spec: &SurfaceSpec) -> PathBuf {
         SurfaceShape::Menu => base.join("user").join("menus.json"),
         SurfaceShape::Icon => base.join("user").join("icons.json"),
         SurfaceShape::Capsule => base.join("user").join("capsules.json"),
+        SurfaceShape::ReaderPreset => base.join("user").join("reader-presets.json"),
     }
 }
 
@@ -449,6 +477,38 @@ pub fn validate_capsule_item(entry: &Value) -> Option<CapsuleSpec> {
     })
 }
 
+/// 校验单个阅读预设：缺字段 / 越界 / 未知皮肤 → None。
+/// 宽度按最近步长归整后校验（1273 → 1280），展示与存储都用归整值。
+pub fn validate_reader_preset(entry: &Value) -> Option<ReaderPresetSpec> {
+    let obj = entry.as_object()?;
+    let id = obj.get("id")?.as_str()?;
+    let label = obj.get("label")?.as_str()?;
+    if id.is_empty() || label.is_empty() {
+        return None;
+    }
+    let font_size = obj.get("fontSize")?.as_u64()? as u32;
+    if !(READER_PRESET_FONT_MIN..=READER_PRESET_FONT_MAX).contains(&font_size) {
+        return None;
+    }
+    let raw_width = obj.get("width")?.as_u64()? as u32;
+    let step = READER_PRESET_WIDTH_STEP;
+    let width = ((raw_width + step / 2) / step) * step;
+    if !(READER_PRESET_WIDTH_MIN..=READER_PRESET_WIDTH_MAX).contains(&width) {
+        return None;
+    }
+    let skin = obj.get("skin")?.as_str()?;
+    if !READER_PRESET_SKINS.contains(&skin) {
+        return None;
+    }
+    Some(ReaderPresetSpec {
+        id: id.to_string(),
+        label: label.to_string(),
+        font_size,
+        width,
+        skin: skin.to_string(),
+    })
+}
+
 /// 解析并校验内嵌 / 物化默认 JSON，返回 `(有效项, 被过滤项的告警)`。
 /// 形状不对（非数组 / 缺 items 键）视为无默认（调用方回落空集合并告警）。
 fn parse_default_json(spec: &SurfaceSpec, raw: &str) -> (Vec<Value>, Vec<String>) {
@@ -468,6 +528,7 @@ fn parse_default_json(spec: &SurfaceSpec, raw: &str) -> (Vec<Value>, Vec<String>
             SurfaceShape::Menu => validate_menu_item(entry).is_some(),
             SurfaceShape::Icon => validate_icon_item(entry).is_some(),
             SurfaceShape::Capsule => validate_capsule_item(entry).is_some(),
+            SurfaceShape::ReaderPreset => validate_reader_preset(entry).is_some(),
         };
         if ok {
             valid.push(entry.clone());
@@ -517,7 +578,10 @@ pub fn embedded_defaults(spec: &SurfaceSpec) -> Vec<SurfaceItem> {
         }
         // 菜单 / 图标 / 胶囊面以 `Value` 形式返回（保留全部字段），
         // 由 `SurfaceLoad.items` 统一承载原始 JSON。
-        SurfaceShape::Menu | SurfaceShape::Icon | SurfaceShape::Capsule => Vec::new(),
+        SurfaceShape::Menu
+        | SurfaceShape::Icon
+        | SurfaceShape::Capsule
+        | SurfaceShape::ReaderPreset => Vec::new(),
     }
 }
 
@@ -645,7 +709,7 @@ fn user_override(spec: &SurfaceSpec, base: &Path) -> Option<Override> {
                     .collect(),
             ))
         }
-        SurfaceShape::Menu | SurfaceShape::Capsule => {
+        SurfaceShape::Menu | SurfaceShape::Capsule | SurfaceShape::ReaderPreset => {
             let value = read_override_file(spec, base)?;
             let items = value.get("items")?.as_array()?;
             Some(Override::Items(items.clone()))
@@ -818,12 +882,20 @@ fn merge_object_list_surface(
         } else {
             None
         };
-        let merged = match base {
+        let mut merged = match base {
             Some(default_item) => deep_merge(default_item, &partial),
             None => partial,
         };
         let ok = match spec.shape {
             SurfaceShape::Capsule => validate_capsule_item(&merged).is_some(),
+            SurfaceShape::ReaderPreset => match validate_reader_preset(&merged) {
+                // 宽度按步长归整后写回有效集合（1273 → 1280），展示与存储同源。
+                Some(preset) => {
+                    merged["width"] = serde_json::json!(preset.width);
+                    true
+                }
+                None => false,
+            },
             _ => false,
         };
         if !ok {
@@ -1188,6 +1260,7 @@ pub fn spawn_surfaces_watcher(app: AppHandle) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde_json::json;
 
     fn temp_base(tag: &str) -> tempfile::TempDir {
         tempfile::Builder::new()
@@ -1945,6 +2018,84 @@ mod tests {
         );
         let loaded = load_surface(menus_spec(), base);
         assert_eq!(loaded.items.len(), 35, "超限覆盖应被忽略，回落默认 35 项");
+    }
+
+    fn rp_spec() -> &'static SurfaceSpec {
+        find_surface("reader-presets").expect("reader-presets 已登记")
+    }
+
+    fn write_rp_user(base: &Path, json: &str) {
+        let path = base.join("user").join("reader-presets.json");
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(&path, json).unwrap();
+    }
+
+    #[test]
+    fn reader_presets_默认三套逐值() {
+        let dir = temp_base("rp_default");
+        let loaded = load_surface(rp_spec(), dir.path());
+        assert_eq!(loaded.items.len(), 3, "默认恰三套");
+        let pick = |id: &str, field: &str| -> Value {
+            loaded
+                .items
+                .iter()
+                .find(|i| i["id"] == json!(id))
+                .map(|i| i[field].clone())
+                .unwrap()
+        };
+        assert_eq!(pick("compact", "fontSize"), json!(15));
+        assert_eq!(pick("compact", "width"), json!(960));
+        assert_eq!(pick("standard", "fontSize"), json!(17));
+        assert_eq!(pick("standard", "width"), json!(1080));
+        assert_eq!(pick("wide", "fontSize"), json!(19));
+        assert_eq!(pick("wide", "width"), json!(1280));
+        assert_eq!(pick("wide", "skin"), json!("paper"));
+        assert!(loaded.warnings.is_empty());
+    }
+
+    #[test]
+    fn reader_presets_改名生效_越界项被过滤并告警() {
+        let dir = temp_base("rp_override");
+        write_rp_user(
+            dir.path(),
+            r#"{"items":[
+                {"id":"wide","label":"超宽","fontSize":19,"width":1280,"skin":"paper"},
+                {"id":"bad","label":"坏项","fontSize":120,"width":1000,"skin":"paper"}
+            ]}"#,
+        );
+        let loaded = load_surface(rp_spec(), dir.path());
+        let labels: Vec<&str> = loaded
+            .items
+            .iter()
+            .filter_map(|i| i["label"].as_str())
+            .collect();
+        assert_eq!(labels, vec!["超宽"], "整体替换 + 越界项过滤");
+        assert_eq!(loaded.warnings.len(), 1, "聚合一条告警");
+        assert!(
+            loaded.warnings[0].contains("bad"),
+            "告警须含被过滤项 id: {:?}",
+            loaded.warnings
+        );
+    }
+
+    #[test]
+    fn reader_presets_宽度按步长归整() {
+        let dir = temp_base("rp_step");
+        write_rp_user(
+            dir.path(),
+            r#"{"items":[{"id":"compact","label":"紧凑","fontSize":15,"width":1273,"skin":"paper"}]}"#,
+        );
+        let loaded = load_surface(rp_spec(), dir.path());
+        assert_eq!(loaded.items.len(), 1);
+        assert_eq!(loaded.items[0]["width"], json!(1280), "1273 → 最近步长 1280");
+    }
+
+    #[test]
+    fn reader_presets_空覆盖回落默认() {
+        let dir = temp_base("rp_empty");
+        write_rp_user(dir.path(), r#"{"items":[]}"#);
+        let loaded = load_surface(rp_spec(), dir.path());
+        assert_eq!(loaded.items.len(), 3, "空覆盖回落三套默认");
     }
 
     #[test]
@@ -2733,7 +2884,7 @@ mod tests {
             ids, table,
             "load_all 必须逐面返回登记表全集（新增面只追加表行即可被发现）"
         );
-        assert_eq!(ids.len(), 4, "T4 后应登记四面");
+        assert_eq!(ids.len(), 5, "T4 + 阅读预设后应登记五面");
     }
 
     #[test]

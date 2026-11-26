@@ -1,0 +1,8 @@
+{
+  "id": "reader-presets",
+  "items": [
+    { "id": "compact", "label": "紧凑", "fontSize": 15, "width": 960, "skin": "paper" },
+    { "id": "standard", "label": "标准", "fontSize": 17, "width": 1080, "skin": "paper" },
+    { "id": "wide", "label": "宽屏", "fontSize": 19, "width": 1280, "skin": "paper" }
+  ]
+}

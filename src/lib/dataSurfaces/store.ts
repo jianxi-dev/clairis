@@ -13,6 +13,7 @@ import type {
   MenuItem,
   IconSpec,
   CapsuleItemSpec,
+  ReaderPresetSpec,
 } from "./loader";
 import { log } from "../../utils/log";
 import {
@@ -27,6 +28,27 @@ export type { MenuItem, IconSpec, CapsuleItemSpec } from "./loader";
 /** 面 id → 最近一次归一化结果。 */
 const surfaces = new Map<string, NormalizedSurface>();
 
+/// 面集合版本号与订阅者：模块 Map 不是 React store，设置面板等消费端靠
+/// useSyncExternalStore 在本版本号变化时重读（面级热应用即时反映）。
+let surfacesVersion = 0;
+const surfaceListeners = new Set<() => void>();
+
+export function subscribeSurfaces(listener: () => void): () => void {
+  surfaceListeners.add(listener);
+  return () => {
+    surfaceListeners.delete(listener);
+  };
+}
+
+export function getSurfacesVersion(): number {
+  return surfacesVersion;
+}
+
+function notifySurfaces(): void {
+  surfacesVersion += 1;
+  for (const listener of surfaceListeners) listener();
+}
+
 /// 写入并输出该面告警（台账第 6 项）：告警是「项被过滤」的诊断信号，
 /// 受众是开发者与 AI（`read_data_surface` 已返回），故只落日志不新增 UI。
 function recordSurface(surface: SurfacePayload): void {
@@ -38,6 +60,7 @@ function recordSurface(surface: SurfacePayload): void {
       `${surface.id}: ${normalized.warnings.join("; ")}`,
     );
   }
+  notifySurfaces();
 }
 
 /** 批量写入面（启动加载用）。 */
@@ -69,6 +92,17 @@ export function getMenuItems(group: string): MenuItem[] {
     if (item !== null && item.group === group && item.enabled) out.push(item);
   }
   out.sort((a, b) => a.order - b.order);
+  return out;
+}
+
+/** 取阅读预设面有效项（保持面数据的数组顺序）。 */
+export function getReaderPresets(): ReaderPresetSpec[] {
+  const items = surfaces.get("reader-presets")?.items ?? [];
+  const out: ReaderPresetSpec[] = [];
+  for (const entry of items) {
+    const preset = entry as ReaderPresetSpec;
+    if (preset && typeof preset.id === "string") out.push(preset);
+  }
   return out;
 }
 
@@ -106,6 +140,7 @@ export function applySurfacePayload(id: string, surface: SurfacePayload): void {
 /** 清空缓存（测试隔离用）。 */
 export function resetSurfaces(): void {
   surfaces.clear();
+  notifySurfaces();
 }
 
 /** 重新加载某面：走一次 `load_surfaces` 后只更新对应面。 */

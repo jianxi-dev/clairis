@@ -2,6 +2,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useSyncExternalStore,
   useRef,
   useState,
   type ChangeEvent,
@@ -37,7 +38,13 @@ import {
 } from "../lib/propTemplates";
 import { BUILTIN_ALIAS_MAP, type FrontmatterType } from "../lib/frontmatter";
 import { useEditorStore } from "../stores/editorStore";
-import { getSurfaceItems } from "../lib/dataSurfaces/store";
+import {
+  getReaderPresets,
+  getSurfaceItems,
+  getSurfacesVersion,
+  subscribeSurfaces,
+} from "../lib/dataSurfaces/store";
+import type { ReaderPresetSpec } from "../lib/dataSurfaces/loader";
 import type { ToolbarSlotItem } from "../editors/orchestration/slots";
 import { ROULETTE_HOTKEY_DEFAULT } from "../editors/orchestration/roulette";
 import {
@@ -1271,6 +1278,27 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
     void saveAppConfig();
   };
 
+  // 阅读预设（DS-9）：成套应用三项并落盘；不做选中态（当前值可能被单调整过）。
+  const surfacesVersion = useSyncExternalStore(
+    subscribeSurfaces,
+    getSurfacesVersion,
+    getSurfacesVersion,
+  );
+  const readerPresets = useMemo(
+    () => getReaderPresets(),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [surfacesVersion],
+  );
+  const applyReaderPreset = (preset: ReaderPresetSpec) => {
+    setConfig({
+      readerFontSize: preset.fontSize,
+      readerWidth: preset.width,
+      readerSkin: preset.skin,
+    });
+    applyReaderSkin(preset.skin);
+    void saveAppConfig();
+  };
+
   const chooseRailLayout = (layout: "stacked" | "tabs") => {
     setRailLayout(layout);
     saveRailViewSpec();
@@ -2353,6 +2381,25 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
                     </span>
                   </span>
                 </label>
+              </section>
+
+              <section>
+                <h2 className="mb-2 text-sm font-medium text-[var(--app-text-strong)]">
+                  阅读预设
+                </h2>
+                <div className="flex flex-wrap gap-2">
+                  {readerPresets.map((preset) => (
+                    <button
+                      key={preset.id}
+                      type="button"
+                      data-testid={`reader-preset-${preset.id}`}
+                      onClick={() => applyReaderPreset(preset)}
+                      className="rounded border border-[var(--app-border)] px-3 py-1.5 text-sm text-[var(--app-text-2)] hover:bg-[var(--app-sunken)]"
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
               </section>
 
               <section>
