@@ -1163,7 +1163,7 @@ const SKILL_MAP: &str = r#"# Biaoyue 配置地图
 - `list_snapshots`：返回快照文件名，最旧在前。
 - `restore_surface_snapshot`：`{"id": "menus"}`（可带 `name`），回滚该面最新快照的覆盖；只写 `user/<id>.json`，不动默认文件。
 - `read_data_surface`：`{"id": "menus"}`，返回数据面的 `{effective, defaults, warnings}` 三段。
-- `patch_data_surface`：`{"id": "menus", "patch": {"items": [...]}}`，改写用户覆盖集合，写入前校验并生成快照。list 型面（`html-toolbar` / `menus` / `capsules`）`items` 是 id 字符串数组，整体替换；`icons` 面 `items` 是「概念键 → 定义」对象，逐键深合并（接受默认集合外的新概念键）。
+- `patch_data_surface`：`{"id": "menus", "patch": {"items": [...]}}`，改写用户覆盖集合，写入前校验并生成快照。`html-toolbar` 的 `items` 是 id 字符串数组（整体替换）；`menus` / `capsules` 的 `items` 是**对象数组**（每项按 `id` 与默认项深合并，允许只写 `{id,label}` 这类部分项）；其中 `menus` **按组替换**——覆盖里出现的 `group` 替换该组，未出现的组保留默认；`icons` 的 `items` 是「概念键 → 定义」对象，逐键深合并（接受默认集合外的新概念键）。
 
 ## 可改键与取值范围（camelCase）
 
@@ -1194,9 +1194,9 @@ const SKILL_MAP: &str = r#"# Biaoyue 配置地图
 | 面 id | 项形状 | 用户覆盖文件 | 补丁形状 |
 | --- | --- | --- | --- |
 | `html-toolbar` | 工具条按钮（id/label/icon/group） | `user/settings.json` 的 `htmlToolbarItems` 字段 | `{"items":["format-bold",...]}` 整体替换 |
-| `menus` | 菜单项（id/group/order/label/icon/action/enabled） | `user/menus.json` 的 `items` 数组 | `{"items":["pane-new-file",...]}` 整体替换 |
+| `menus` | 菜单项（id/group/order/label/icon/action/enabled） | `user/menus.json` 的 `items` 数组 | `{"items":[{"id":"pane-source","label":"查看源码"}]}` 按组替换（组内按 id 深合并） |
 | `icons` | 图标（概念键/label/d?/s?/dash?/parts?） | `user/icons.json` 的 `items` 对象 | `{"items":{"close":{"label":"关窗","s":"M1 1"}}}` 逐键深合并，接受新概念键 |
-| `capsules` | 胶囊按钮（id/label/icon/order） | `user/capsules.json` 的 `items` 数组 | `{"items":["format-bold",...]}` 整体替换 |
+| `capsules` | 胶囊按钮（id/label/icon/order） | `user/capsules.json` 的 `items` 数组 | `{"items":[{"id":"format-bold"},{"id":"ai-rewrite"}]}` 整体替换（对象项） |
 
 用 `patch_data_surface` 改写覆盖集合（只写 user 层，不动默认文件；写前自动快照）：
 
@@ -1205,7 +1205,7 @@ const SKILL_MAP: &str = r#"# Biaoyue 配置地图
 - `capsules` 回滚：`restore_surface_snapshot({"id": "capsules"})` → `user/capsules.json` 回到写前状态。
 
 ```json
-{ "id": "menus", "patch": { "items": ["pane-new-file", "pane-share", "pane-source"] } }
+{ "id": "menus", "patch": { "items": [ {"id": "pane-new-file", "label": "新建"}, {"id": "pane-source", "label": "查看源码"} ] } }
 ```
 
 ```json
@@ -1213,7 +1213,7 @@ const SKILL_MAP: &str = r#"# Biaoyue 配置地图
 ```
 
 ```json
-{ "id": "capsules", "patch": { "items": ["format-bold", "format-italic", "capsule-bg"] } }
+{ "id": "capsules", "patch": { "items": [ {"id": "format-bold"}, {"id": "format-italic"}, {"id": "capsule-bg"} ] } }
 ```
 
 ## 禁止项
