@@ -1035,6 +1035,11 @@ body {
   transform: translate(-50%, -100%);
 }
 
+/* 滚动期隐藏（方案A）：class 由 imageToolbar 在进入/退出滚动态时切换 */
+.cm-image-toolbar.is-scrolling {
+  display: none;
+}
+
 .cm-image-toolbar button {
   display: inline-flex;
   align-items: center;
