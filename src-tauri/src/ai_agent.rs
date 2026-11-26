@@ -325,24 +325,86 @@ fn snapshot_surface_override(
     })
 }
 
-/// 写 list 型面用户覆盖：未知 id 拒绝（不落盘），写前快照 + 原子写
-/// `user/<id>.json`。html-toolbar 走 settings 字段（既有语义），其余面各写
-/// 自己的覆盖文件。
+/// 写 list 型面用户覆盖：html-toolbar 是 id 字符串数组（既有语义，设置页按 id
+/// 排序）；menus / capsules 是**对象数组**（#1551，全量清单 + 逐项按 id 深合并，
+/// 允许 `{id,label}` 部分项）。两者都在写边界拒绝未知 id / 非法项（不落盘），
+/// 写前快照 + 原子写 `user/<id>.json`。
 fn write_list_override(
     base: &Path,
     spec: &crate::surfaces::SurfaceSpec,
-    ids: &[String],
+    items: &[Value],
 ) -> Result<(), AppError> {
     let defaults = crate::surfaces::embedded_defaults_json(spec);
     let known: std::collections::HashSet<&str> = defaults
         .iter()
         .filter_map(|item| item.get("id")?.as_str())
         .collect();
-    let mut unknown: Vec<&str> = Vec::new();
-    for id in ids {
-        if !known.contains(id.as_str()) && !unknown.contains(&id.as_str()) {
-            unknown.push(id.as_str());
+    let mut unknown: Vec<String> = Vec::new();
+    let mut invalid: Vec<String> = Vec::new();
+    let mut normalized: Vec<Value> = Vec::with_capacity(items.len());
+    let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
+    for entry in items {
+        // html-toolbar 沿用 id 字符串数组；menus / capsules 要求对象项。
+        let partial = if spec.shape == crate::surfaces::SurfaceShape::Toolbar {
+            match entry.as_str() {
+                Some(id) => json!({ "id": id }),
+                None => {
+                    invalid.push("(非字符串)".into());
+                    continue;
+                }
+            }
+        } else {
+            match entry.as_object() {
+                Some(_) => entry.clone(),
+                None => {
+                    invalid.push("(非对象)".into());
+                    continue;
+                }
+            }
+        };
+        let id = match partial.get("id").and_then(|v| v.as_str()) {
+            Some(id) => id.to_string(),
+            None => {
+                invalid.push("(缺 id)".into());
+                continue;
+            }
+        };
+        if !seen.insert(id.clone()) {
+            continue;
         }
+        let is_known = known.contains(id.as_str());
+        let base = if is_known {
+            defaults
+                .iter()
+                .find(|item| item.get("id").and_then(|v| v.as_str()) == Some(id.as_str()))
+        } else {
+            None
+        };
+        let merged = match base {
+            Some(default_item) => crate::surfaces::merge_public(default_item, &partial),
+            None => partial,
+        };
+        let ok = match spec.shape {
+            crate::surfaces::SurfaceShape::Menu => {
+                crate::surfaces::validate_menu_item(&merged).is_some()
+            }
+            crate::surfaces::SurfaceShape::Capsule => {
+                crate::surfaces::validate_capsule_item(&merged).is_some()
+            }
+            crate::surfaces::SurfaceShape::Toolbar => {
+                crate::surfaces::validate_toolbar_item(&merged).is_some()
+            }
+            _ => false,
+        };
+        if !ok {
+            if is_known {
+                invalid.push(id);
+            } else if !unknown.contains(&id) {
+                unknown.push(id);
+            }
+            continue;
+        }
+        normalized.push(merged);
     }
     if !unknown.is_empty() {
         return Err(AppError::Validation {
@@ -350,9 +412,23 @@ fn write_list_override(
             message: format!("未知动作 id（{}）: {}", spec.id, unknown.join(", ")),
         });
     }
+    if !invalid.is_empty() {
+        return Err(AppError::Validation {
+            context: "items".into(),
+            message: format!(
+                "非法动作项（{}）: {}",
+                spec.id,
+                invalid.join(", ")
+            ),
+        });
+    }
     snapshot_surface_override(base, spec)?;
     if spec.shape == crate::surfaces::SurfaceShape::Toolbar {
-        // html-toolbar 沿用既有 settings 字段（D9 兼容）。
+        // html-toolbar 沿用既有 settings 字段（D9 兼容）：只写 id 顺序。
+        let ids: Vec<String> = normalized
+            .iter()
+            .filter_map(|item| item.get("id")?.as_str().map(str::to_string))
+            .collect();
         let config_patch = json!({ "htmlToolbarItems": ids });
         return apply_patch_at(base, &config_patch).map(|_| ());
     }
@@ -363,7 +439,7 @@ fn write_list_override(
             source: e,
         })?;
     }
-    let payload = json!({ "id": spec.id, "items": ids });
+    let payload = json!({ "id": spec.id, "items": normalized });
     let data = serde_json::to_vec_pretty(&payload).map_err(|e| AppError::Serialization {
         context: "patch_data_surface".into(),
         source: e,
@@ -547,16 +623,15 @@ pub fn dispatch_tool(base: &Path, name: &str, args: &Value) -> Result<String, Ag
                         )));
                     }
                 };
-                let ids: Vec<String> = list
-                    .iter()
-                    .filter_map(|v| v.as_str().map(str::to_string))
-                    .collect();
-                if ids.len() != list.len() {
+                if surface_id.shape == crate::surfaces::SurfaceShape::Toolbar
+                    && !list.iter().all(|v| v.is_string())
+                {
                     return Ok(tool_err(&AgentError::validation(
                         "patch",
-                        "items 数组元素必须都是字符串",
+                        "html-toolbar 的 items 必须是 id 字符串数组",
                     )));
                 }
+                let ids: Vec<Value> = list.to_vec();
                 write_list_override(base, surface_id, &ids)
             };
             match written {
@@ -1099,7 +1174,7 @@ mod tests {
         let raw = dispatch_tool(
             base,
             "patch_data_surface",
-            &json!({ "id": "menus", "patch": { "items": ["pane-source", "pane-new-file"] } }),
+            &json!({ "id": "menus", "patch": { "items": [ {"id":"pane-source","label":"查看源码"}, {"id":"pane-new-file"} ] } }),
         )
         .unwrap();
         let parsed: Value = serde_json::from_str(&raw).unwrap();
@@ -1118,7 +1193,7 @@ mod tests {
             .as_array()
             .unwrap()
             .iter()
-            .map(|v| v.as_str().unwrap())
+            .map(|v| v["id"].as_str().unwrap())
             .collect();
         assert_eq!(items, vec!["pane-source", "pane-new-file"]);
     }
@@ -1130,7 +1205,7 @@ mod tests {
         let raw = dispatch_tool(
             base,
             "patch_data_surface",
-            &json!({ "id": "menus", "patch": { "items": ["nope"] } }),
+            &json!({ "id": "menus", "patch": { "items": [ {"id":"nope","label":"无此项","icon":"file","group":"pane-header","action":"no-such-action","order":1,"enabled":true} ] } }),
         )
         .unwrap();
         let parsed: Value = serde_json::from_str(&raw).unwrap();
@@ -1405,13 +1480,13 @@ mod tests {
         let base = dir.path();
         let before_defaults = materialize_defaults(base, "capsules");
         // 先写一次覆盖，让「写前快照」有旧值可拍
-        write_surface_user(base, "capsules", r#"{"items":["format-bold"]}"#);
+        write_surface_user(base, "capsules", r#"{"items":[{"id":"format-bold"}]}"#);
         let before_snapshots = surface_snapshot_count(base, "capsules");
 
         let raw = dispatch_tool(
             base,
             "patch_data_surface",
-            &json!({ "id": "capsules", "patch": { "items": ["format-bold", "format-italic", "capsule-bg"] } }),
+            &json!({ "id": "capsules", "patch": { "items": [ {"id":"format-bold"}, {"id":"format-italic"}, {"id":"capsule-bg"} ] } }),
         )
         .unwrap();
         let parsed: Value = serde_json::from_str(&raw).unwrap();
@@ -1440,7 +1515,7 @@ mod tests {
             .as_array()
             .unwrap()
             .iter()
-            .map(|v| v.as_str().unwrap())
+            .map(|v| v["id"].as_str().unwrap())
             .collect();
         assert_eq!(items, vec!["format-bold", "format-italic", "capsule-bg"]);
 
@@ -1468,7 +1543,7 @@ mod tests {
             .as_array()
             .unwrap()
             .iter()
-            .map(|v| v.as_str().unwrap())
+            .map(|v| v["id"].as_str().unwrap())
             .collect();
         assert_eq!(items, vec!["format-bold"], "快照应保存写前旧值");
         assert_eq!(
@@ -1488,7 +1563,7 @@ mod tests {
             let before_snapshots = surface_snapshot_count(base, id);
 
             let patch = if id == "menus" {
-                json!({ "id": id, "patch": { "items": ["pane-source", "pane-new-file"] } })
+                json!({ "id": id, "patch": { "items": [ {"id":"pane-source"}, {"id":"pane-new-file"} ] } })
             } else {
                 json!({ "id": id, "patch": { "items": { "close": { "label": "关窗", "s": "M1 1 L23 23" } } } })
             };
@@ -1539,7 +1614,7 @@ mod tests {
         let raw = dispatch_tool(
             base,
             "patch_data_surface",
-            &json!({ "id": "capsules", "patch": { "items": ["nope"] } }),
+            &json!({ "id": "capsules", "patch": { "items": [ {"id":"nope","label":"无此项","icon":"bold","order":1} ] } }),
         )
         .unwrap();
         let parsed: Value = serde_json::from_str(&raw).unwrap();
@@ -1619,7 +1694,7 @@ mod tests {
         write_surface_user(
             base,
             "menus",
-            r#"{"items":["pane-source","pane-new-file"]}"#,
+            r#"{"items":[{"id":"pane-source"},{"id":"pane-new-file"}]}"#,
         );
         let before_bytes = std::fs::read(base.join("user").join("menus.json")).unwrap();
         let before_ids = effective_ids(base, "menus");
@@ -1628,7 +1703,7 @@ mod tests {
         let raw = dispatch_tool(
             base,
             "patch_data_surface",
-            &json!({ "id": "menus", "patch": { "items": ["pane-locate","pane-share","pane-split-right","pane-split-down"] } }),
+            &json!({ "id": "menus", "patch": { "items": [ {"id":"pane-locate"},{"id":"pane-share"},{"id":"pane-split-right"},{"id":"pane-split-down"} ] } }),
         )
         .unwrap();
         let parsed: Value = serde_json::from_str(&raw).unwrap();
@@ -1752,11 +1827,11 @@ mod tests {
     fn restore_is_itself_reversible() {
         let dir = temp_base("restore_twice");
         let base = dir.path();
-        write_surface_user(base, "capsules", r#"{"items":["format-bold"]}"#);
+        write_surface_user(base, "capsules", r#"{"items":[{"id":"format-bold"}]}"#);
         dispatch_tool(
             base,
             "patch_data_surface",
-            &json!({ "id": "capsules", "patch": { "items": ["format-italic","capsule-bg"] } }),
+            &json!({ "id": "capsules", "patch": { "items": [ {"id":"format-italic"},{"id":"capsule-bg"} ] } }),
         )
         .unwrap();
         // 第一次回滚 → format-bold
