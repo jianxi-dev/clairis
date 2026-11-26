@@ -44,6 +44,7 @@ import {
   selectEmbed,
   type FileEmbedResolver,
 } from "./fileEmbed";
+import { isImageCropActiveHost } from "./imageCrop";
 
 // --- 类型 --------------------------------------------------------------------
 
@@ -728,6 +729,16 @@ class ImageWidget extends WidgetType {
     }
     dom.dataset.imageFrom = String(this._from);
     dom.dataset.imageTitle = this._title ?? "";
+    // 复用路径不清场：裁剪会话的框 / 蒙层 / 裁剪态类挂在这个 DOM 上，偏移漂移
+    // 命中复用时旧裁剪标识会留在节点上，成了「裁剪后仍隐约存留」的残留。
+    // 但活着的裁剪会话就挂在这个 DOM 上——清场会把正在裁剪的框抹掉，会话却
+    // 还在（工具条裁剪按钮仍按下），再点裁剪会确认一个不可见框。
+    if (!isImageCropActiveHost(dom)) {
+      dom
+        .querySelectorAll(".cm-image-crop-frame, .cm-image-crop-shade")
+        .forEach((el) => el.remove());
+      dom.classList.remove("cm-image-crop-active");
+    }
     // 选中态按新偏移重套：把手 / 角点 / 描述行都要跟上新位置。
     markImageWidgetSelected(dom, getSelectedImageFrom() === this._from);
     return true;
@@ -994,7 +1005,9 @@ class ImageWidget extends WidgetType {
     // transform 决定。预览必须改外盒与 transform，绝不能把可见像素写进 layout
     // 尺寸（否则叠加缩小变换 → 只看到左上角一小块，松手才恢复）。
     const cropWin = img.closest<HTMLElement>(".image-crop-window");
-    const cropNatW = cropWin ? parseFloat(img.style.width) || img.naturalWidth : 0;
+    const cropNatW = cropWin
+      ? parseFloat(img.style.width) || img.naturalWidth
+      : 0;
     const cropNatH = cropWin
       ? parseFloat(img.style.height) || img.naturalHeight
       : 0;
