@@ -1,0 +1,24 @@
+{
+  "states": [
+    {
+      "state": "small-settings",
+      "screenshot": "ev-small-settings.png",
+      "assertion": "passed"
+    },
+    {
+      "state": "medium-settings",
+      "screenshot": "ev-medium-settings.png",
+      "assertion": "passed"
+    },
+    {
+      "state": "large-settings",
+      "screenshot": "ev-large-settings.png",
+      "assertion": "passed"
+    },
+    {
+      "state": "large-workspace",
+      "screenshot": "ev-large-workspace.png",
+      "assertion": "passed"
+    }
+  ]
+}
