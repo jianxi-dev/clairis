@@ -680,6 +680,16 @@ function postProcess(html: string): string {
   fillMath(doc);
   hydrateEmbedIframes(doc);
   doc.querySelectorAll("a").forEach((a) => {
+    const href = a.getAttribute("href") ?? "";
+    if (
+      href !== "" &&
+      !href.startsWith("http") &&
+      !href.startsWith("#") &&
+      !href.startsWith("mailto:")
+    ) {
+      // 本地文档链接：交给预览态做「点击打开 / ⌘+悬停浮窗」（B3.2）。
+      a.setAttribute("data-local-doc", href);
+    }
     if (!a.getAttribute("target")) a.setAttribute("target", "_blank");
   });
   // ponytail: 超长文档跳过间距处理——遍历全部文本节点的成本不值得
