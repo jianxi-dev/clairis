@@ -12,7 +12,7 @@ import { execFileSync } from "node:child_process";
  * - 点击名称态里的链接文件在本产品新标签页打开（open_file_direct → openFile）。
  */
 
-const APP_URL = "http://localhost:1420";
+const APP_URL = "http://localhost:1424";
 const ART = path.resolve(process.cwd(), ".artifacts/852");
 const EVIDENCE = path.resolve(process.cwd(), "scripts/cw-evidence.sh");
 const EMBED_URL = `${APP_URL}/e2e/fixtures/embed-page.html`;

@@ -328,10 +328,11 @@ function ensureEmbedPanel(): HTMLElement {
   const modes: ReadonlyArray<{
     key: EmbedCardState;
     label: string;
+    icon: string;
   }> = [
-    { key: "card", label: "卡片" },
-    { key: "preview", label: "预览" },
-    { key: "embed", label: "嵌入" },
+    { key: "card", label: "文本视图", icon: "ListOutlined" },
+    { key: "preview", label: "卡片视图", icon: "CheckBoxOutlineBlankOutlined" },
+    { key: "embed", label: "预览视图", icon: "ImageOutlined" },
   ];
   for (const item of modes) {
     const btn = document.createElement("button");
@@ -339,7 +340,7 @@ function ensureEmbedPanel(): HTMLElement {
     btn.dataset.testid = `embed-panel-state-${item.key}`;
     btn.title = item.label;
     btn.setAttribute("aria-label", item.label);
-    btn.textContent = item.label;
+    btn.appendChild(renderIcon(item.icon));
     btn.addEventListener("click", () => setEmbedCardState(item.key));
     panel.appendChild(btn);
   }
@@ -895,6 +896,13 @@ export class FileEmbedWidget extends WidgetType {
     });
     name.addEventListener("click", (event) => {
       event.stopPropagation();
+      if (container.dataset.embedState !== "card") {
+        // 预览态：第一次点击只选中（出工具条），选中后再点文件名才打开。
+        if (selectedEmbedFrom !== this._from) {
+          selectEmbed(this._from);
+          return;
+        }
+      }
       this.openInNewTab();
     });
 
