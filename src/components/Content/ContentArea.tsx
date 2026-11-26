@@ -1,4 +1,11 @@
-import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  useCallback,
+} from "react";
 import {
   EditorState,
   Compartment,
@@ -664,6 +671,69 @@ export default function ContentArea({
     el.scrollTop = target;
     restoredTabRef.current = tab.id;
   }, [tab?.id, tab?.path, editorMode]);
+
+  // 模式切换保位（#1515 / D2）：编辑/源码态滚在 CM6 的 `.cm-scroller`，预览态
+  // 滚在共享容器 `.content-scroll`——两态滚动元素不同，锚点按比例跨元素传递。
+  // scroll 不冒泡但可在捕获阶段收到；塌陷引发的 clamp 滚动事件发生在
+  // useLayoutEffect 抓走锚点之后，不会污染本次恢复。
+  const modeScrollAnchorRef = useRef<number | null>(null);
+  const prevModeRef = useRef<typeof editorMode | null>(null);
+
+  useEffect(() => {
+    const capture = (event: Event) => {
+      const el = event.target;
+      if (!(el instanceof HTMLElement)) return;
+      if (
+        !el.classList.contains("cm-scroller") &&
+        !el.classList.contains("content-scroll")
+      )
+        return;
+      const denom = Math.max(1, el.scrollHeight - el.clientHeight);
+      modeScrollAnchorRef.current = Math.min(
+        1,
+        Math.max(0, el.scrollTop / denom),
+      );
+    };
+    document.addEventListener("scroll", capture, {
+      capture: true,
+      passive: true,
+    });
+    return () =>
+      document.removeEventListener("scroll", capture, { capture: true });
+  }, []);
+
+  // 切换发生：用切换前抓到的比例锚点，在新模式内容挂载并测高完成后恢复到
+  // 该模式的滚动元素（预览→容器；编辑/源码→CM6 scrollDOM）。
+  useLayoutEffect(() => {
+    const prev = prevModeRef.current;
+    prevModeRef.current = editorMode;
+    if (prev === null || prev === editorMode) return;
+    const ratio = modeScrollAnchorRef.current;
+    if (ratio == null || ratio <= 0) return;
+    let raf1 = 0;
+    let raf2 = 0;
+    raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => {
+        if (editorMode === "preview") {
+          const el = scrollContainerRef.current;
+          if (!el) return;
+          const denom = Math.max(1, el.scrollHeight - el.clientHeight);
+          el.scrollTop = ratio * denom;
+          return;
+        }
+        const view = viewRef.current;
+        const sc = view?.scrollDOM;
+        if (!sc) return;
+        view?.requestMeasure();
+        const denom = Math.max(1, sc.scrollHeight - sc.clientHeight);
+        sc.scrollTop = ratio * denom;
+      });
+    });
+    return () => {
+      cancelAnimationFrame(raf1);
+      cancelAnimationFrame(raf2);
+    };
+  }, [editorMode]);
 
   // 首次打开文件时先写一条 0% 记录：阅读空间卡片据此显示「已读 0%」
   // 并在滚动后增长；没有记录时卡片不会渲染进度条（#252）。
