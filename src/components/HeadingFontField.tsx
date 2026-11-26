@@ -76,6 +76,7 @@ export default function HeadingFontField({
   const number = LEVEL_NUMBER[level];
   const display = useMemo(() => displayFor(value, options), [value, options]);
   const [text, setText] = useState(display);
+  const [query, setQuery] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [highlight, setHighlight] = useState(-1);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -92,24 +93,26 @@ export default function HeadingFontField({
 
   const filtered = useMemo(() => {
     if (!families) return [];
-    const needle = text.trim().toLowerCase();
+    const needle = (query ?? "").trim().toLowerCase();
     if (!needle) return families;
     return families.filter(
       (font) =>
         font.localized.toLowerCase().includes(needle) ||
         font.family.toLowerCase().includes(needle),
     );
-  }, [families, text]);
+  }, [families, query]);
 
   const close = () => {
     setOpen(false);
     setHighlight(-1);
+    setQuery(null);
   };
 
   const select = (font: SystemFont) => {
     setText(font.localized);
     setHighlight(-1);
     setOpen(false);
+    setQuery(null);
     onCommit(font.family);
   };
 
@@ -117,6 +120,7 @@ export default function HeadingFontField({
     const trimmed = text.trim();
     if (!trimmed) {
       setOpen(false);
+      setQuery(null);
       onCommit(undefined);
       return;
     }
@@ -129,6 +133,7 @@ export default function HeadingFontField({
       return;
     }
     setOpen(false);
+    setQuery(null);
     onCommit(parsed.kind === "valid" ? parsed.value : undefined);
   };
 
@@ -170,12 +175,14 @@ export default function HeadingFontField({
           aria-expanded={open}
           onChange={(event) => {
             setText(event.target.value);
+            setQuery(event.target.value);
             setHighlight(-1);
             onTextChange?.(event.target.value);
           }}
           onFocus={() => {
             setOpen(true);
             setHighlight(-1);
+            setQuery("");
           }}
           onBlur={commitText}
           onKeyDown={(event) => {

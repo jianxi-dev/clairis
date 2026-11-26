@@ -259,3 +259,43 @@ test("选择候选后重启仍保持（持久化往返）", async ({ page }) => 
   await expect(h4).toHaveValue("JetBrains Mono");
   await shot(page, "reload-persisted", "reload-persisted");
 });
+
+test("已选字体后再聚焦仍显示全量候选（显示值与搜索词分离）", async ({
+  page,
+}) => {
+  await boot(page);
+  await openSettings(page);
+  await openAppearance(page);
+
+  const h1 = page.locator('[data-testid="heading-font-h1"]');
+  await h1.focus();
+  const optionLocator = page.locator(
+    '[data-testid="heading-font-options"] [role="option"]',
+  );
+  const total = await optionLocator.count();
+  expect(total).toBeGreaterThan(1);
+  mkdirSync(".artifacts/1517", { recursive: true });
+  await page.screenshot({ path: ".artifacts/1517/01-focus-all.png" });
+
+  await h1.fill("Inter");
+  await h1.press("Enter");
+  await expect(h1).toHaveValue("Inter");
+
+  await h1.blur();
+  await h1.focus();
+  await expect(optionLocator).toHaveCount(total);
+
+  await page.screenshot({ path: ".artifacts/1517/02-selected.png" });
+  await h1.fill("苹");
+  const filteredCount = await optionLocator.count();
+  await page.screenshot({ path: ".artifacts/1517/03-filtered.png" });
+  expect(filteredCount).toBeLessThan(total);
+  const texts = await optionLocator.evaluateAll((els) =>
+    els.map((e) => (e as HTMLElement).textContent ?? ""),
+  );
+  expect(texts.some((t) => t.includes("苹"))).toBe(true);
+
+  await h1.fill("");
+  await expect(optionLocator).toHaveCount(total);
+  await page.screenshot({ path: ".artifacts/1517/04-cleared.png" });
+});
