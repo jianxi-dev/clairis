@@ -49,7 +49,18 @@
 
 ## 数据面
 
-`cw-data-surface.sh new` 判定 SKIP（未命中信号）：本批按钮均为固定 UI 常量，不进配置 schema、无用户可配置项、无主题/图标/轮盘/开关改动。
+本 change 触及 `src/editors/icons.ts`（命中 DATA_SURFACE_PATHS 信号）：放大层新增 `ZoomInOutlined` / `ZoomOutOutlined` 两个内置图标，形状与 `ui/icons` 同源。图标为内置常量，**不新增用户可配置面**。
+
+| 落点 | 位置 | 载体/符号 | 判据 |
+|---|---|---|---|
+| 规格 | docs/design/system/spec.md | — | §2.3 语义分组：「放大/缩小」沿用既有「缩放」概念，不新增图标概念 |
+| 存储 | src/editors/icons.ts | ICON_REGISTRY | 内置常量表；不写 config schema、无用户覆盖层 |
+| 校验 | src/editors/icons.ts | FALLBACK_ICON_NAME | 无用户输入面；未注册 key 由缺省图标回落，不抛错 |
+| 桥接 | src/editors/icons.ts | COMMAND_ICON_NAME | 无 Rust↔TS 桥接（图标不读 config，纯前端常量） |
+| 消费 | src/editors/decorations/imageToolbar.ts | maximizeControlButton | 按图标 key 从注册表取组件渲染，无前端常量兜底 |
+| 回滚 | — | git revert | 无数据迁移、无配置写回；删除即缺省回落 FALLBACK_ICON_NAME |
+
+票面第 8 字段（数据面）：#1563=`规格,存储,校验,桥接,消费`；#1564=`消费`（仅复用已注册图标）。
 
 ## 测试缝隙
 
