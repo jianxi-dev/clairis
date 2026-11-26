@@ -748,7 +748,7 @@ export default function FloatingPreview({
             }}
             className="shrink-0 rounded p-0.5 text-[var(--app-text-3)] hover:bg-[var(--app-sunken)] hover:text-[var(--app-text-2)]"
           >
-            <Icon name={editing ? "eye" : "pencil"} size={18} />
+            <Icon name={editing ? "pencil" : "eye"} size={18} />
           </button>
         )}
         {saveState !== "idle" && (
