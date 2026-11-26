@@ -124,6 +124,18 @@ export function isImageCropActiveFor(from: number): boolean {
   return activeAlive() && activeFrom === from;
 }
 
+/**
+ * 该 DOM 是否正是当前活跃裁剪会话的宿主（会话存活且挂在这个节点上）。
+ *
+ * 与 `isImageCropActiveFor` 的区别：后者按文档偏移匹配，而偏移会随上方编辑
+ * 漂移——活会话的 `activeFrom` 是 mount 时捕获的旧偏移，`updateDOM` 拿到的
+ * `this._from` 是漂移后的新偏移，两者必然不等，清场照旧执行、活框被杀。
+ * 宿主身份比较不受偏移漂移影响。
+ */
+export function isImageCropActiveHost(el: HTMLElement): boolean {
+  return activeAlive() && activeHost === el;
+}
+
 function clearActive(): void {
   activeCleanup = null;
   activeConfirm = null;
@@ -137,6 +149,22 @@ export function closeImageCrop(): void {
   const cleanup = activeCleanup;
   clearActive();
   cleanup();
+}
+
+/**
+ * 兜底清扫：移除页面所有裁剪框 / 蒙层节点与裁剪态类。
+ *
+ * 历史上的 rAF 推迟已移除；widget 重建、跨图重开等路径仍可能留下旧框或
+ * 裁剪态类；新会话挂载前调用一次，保证「上一会话的标识」不会叠进这一会话
+ * （多轮裁剪零残留）。
+ */
+function sweepCropResidue(): void {
+  document
+    .querySelectorAll(".cm-image-crop-frame, .cm-image-crop-shade")
+    .forEach((el) => el.remove());
+  document
+    .querySelectorAll(".cm-image-widget.cm-image-crop-active")
+    .forEach((el) => el.classList.remove("cm-image-crop-active"));
 }
 
 /**
@@ -249,9 +277,13 @@ export function openImageCrop(options: ImageCropOptions): void {
     }
     return;
   }
+  // 未加载完成：先给「正在加载」的可见反馈，等 load 自动挂框；超时或失败再
+  // 改提示。旧实现无声等待，用户只看到「点了没反应」。
+  showCropToast("图片正在加载，请稍候…");
   let settled = false;
   const cleanupWait = (): void => {
     img.removeEventListener("load", onLoad);
+    img.removeEventListener("error", onError);
     window.clearTimeout(timer);
   };
   const onLoad = (): void => {
@@ -264,6 +296,12 @@ export function openImageCrop(options: ImageCropOptions): void {
       showCropToast("图片加载失败，暂不能裁剪");
     }
   };
+  const onError = (): void => {
+    if (settled) return;
+    settled = true;
+    cleanupWait();
+    showCropToast("图片加载失败，暂不能裁剪");
+  };
   const timer = window.setTimeout(() => {
     if (settled) return;
     settled = true;
@@ -271,6 +309,7 @@ export function openImageCrop(options: ImageCropOptions): void {
     showCropToast("图片加载超时，暂不能裁剪");
   }, LOAD_TIMEOUT_MS);
   img.addEventListener("load", onLoad);
+  img.addEventListener("error", onError);
 }
 
 function mount(
@@ -279,6 +318,10 @@ function mount(
   options: ImageCropOptions,
 ): void {
   if (!widget.isConnected) return;
+  // 新会话挂载前强制同步清扫：上一会话的框 / 蒙层 / 裁剪态类可能因 widget
+  // 重建或跨图重开而残留，叠进这一会话就成了「多轮裁剪后的残留」。
+  closeImageCrop();
+  sweepCropResidue();
   const scroller = widget.closest(".cm-scroller") as HTMLElement | null;
   const scrollAtMount = scroller ? scroller.scrollTop : null;
   const natW = img.naturalWidth;
@@ -510,37 +553,30 @@ function mount(
   };
 
   const cleanup = (): void => {
-    // 先隐藏再移除：帧是定位 + z-index 的合成层，直接 remove 会在 WKWebView
-    // 留下旧图层的残影（真机截图确认：图片上下边中部的黑色短横线）。
-    // display:none 强制先绘制一次「没有帧」的状态，再移除节点。
-    frame.style.display = "none";
-    requestAnimationFrame(() => {
-      frame.remove();
-    });
+    // WKWebView 的旧图层缓存只在该子树重新栅格化后才丢弃：visibility 切换与
+    // 1px 滚动回弹都不重绘内容瓦片（滚动只改合成位置），filter 变更强制 GPU
+    // 重栅格化整个子树——真机上唯一有效的重绘锤子。
+    //
+    // filter 必须在帧移除前施加，且清回要跨一次渲染机会：同 tick 内 set→clear
+    // 会被样式系统合并成「从未设置」，渲染器看不到带 filter 的状态，重栅格化
+    // 从不发生。所以这里只施加，下一帧再清回（见下方 rAF），让下一次渲染真正
+    // 以 blur(0px) 栅格化子树，冲掉旧图层缓存。
+    const cropWin = widget.querySelector<HTMLElement>(".image-crop-window");
+    widget.style.filter = "blur(0px)";
+    if (cropWin) cropWin.style.filter = "blur(0px)";
+    frame.remove();
     for (const el of Object.values(shades)) el.remove();
-    // 兜底清扫：widget 被编辑器重建、跨图重开等路径可能留下旧框或裁剪态类，
-    // 让「保存后裁剪标识隐约存留」不再可能。
-    document
-      .querySelectorAll(".cm-image-crop-frame, .cm-image-crop-shade")
-      .forEach((el) => el.remove());
-    document
-      .querySelectorAll(".cm-image-widget.cm-image-crop-active")
-      .forEach((el) => el.classList.remove("cm-image-crop-active"));
+    sweepCropResidue();
     widget.classList.remove("cm-image-crop-active");
     document.removeEventListener("keydown", onKey, true);
     document.removeEventListener("click", onOutsideClick, true);
     restoreWindow();
     restoreDisplay();
-    // WKWebView 的旧图层缓存只会在该子树重新栅格化后被丢弃：visibility 切换
-    // 与 1px 滚动回弹都不重绘内容瓦片（滚动只改合成位置）。filter 变更强制
-    // GPU 重新栅格化整个子树，这是唯一在真机上有效的重绘锤子。
-    const win = widget.querySelector<HTMLElement>(".image-crop-window");
-    if (win && win.isConnected) {
-      win.style.filter = "blur(0px)";
-      requestAnimationFrame(() => {
-        if (win.isConnected) win.style.filter = "";
-      });
-    }
+    // 跨一次渲染机会清回 filter：这一帧以 blur(0px) 栅格化，下一帧恢复无 filter。
+    requestAnimationFrame(() => {
+      widget.style.filter = "";
+      if (cropWin && cropWin.isConnected) cropWin.style.filter = "";
+    });
     if (scroller) {
       scroller.removeEventListener("scroll", onScrollGuard);
     }
@@ -769,7 +805,12 @@ function mount(
   const noteGesture = (): void => {
     lastGestureAt = performance.now();
   };
-  for (const type of ["pointerdown", "mousedown", "click", "dblclick"] as const) {
+  for (const type of [
+    "pointerdown",
+    "mousedown",
+    "click",
+    "dblclick",
+  ] as const) {
     document.addEventListener(type, noteGesture, true);
   }
 
