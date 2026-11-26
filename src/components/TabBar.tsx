@@ -254,7 +254,7 @@ export default function TabBar({
   const [menu, setMenu] = useState<CtxMenu | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
   const exportCloseTimer = useRef<number | null>(null);
-  const [submenuSide, setSubmenuSide] = useState<"left" | "right">("left");
+  const [submenuSide, setSubmenuSide] = useState<"left" | "right">("right");
   const [submenuAlignTop, setSubmenuAlignTop] = useState(true);
   const exportSubmenuRef = useRef<HTMLDivElement>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -349,14 +349,14 @@ export default function TabBar({
     }, 120);
   }, [cancelExportClose]);
 
-  // 就地子菜单靠右时默认向左展开；左缘放不下则翻到右侧，下缘放不下则底对齐。
+  // 就地子菜单默认向右展开；右缘放不下则翻到左侧，下缘放不下则底对齐。
   useLayoutEffect(() => {
     if (!exportOpen) return;
     const sub = exportSubmenuRef.current;
     if (!sub) return;
     const rect = sub.getBoundingClientRect();
     const margin = 8;
-    setSubmenuSide(rect.left < margin ? "right" : "left");
+    setSubmenuSide(rect.right > window.innerWidth - margin ? "left" : "right");
     setSubmenuAlignTop(rect.bottom <= window.innerHeight - margin);
   }, [exportOpen]);
 
