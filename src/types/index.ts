@@ -154,6 +154,8 @@ export interface AppConfig {
   propAliasMap?: Record<string, FrontmatterType>;
   /** 搜索浮窗（#981 / S-1） */
   searchPanel?: SearchPanelConfig;
+  /** 窗格预设·熟练模式（pane-presets-v1 / G-9）；缺省回落 standard */
+  paneMode?: "simple" | "standard" | "hardcore";
 }
 
 export type Theme = "system" | "light" | "dark" | "warm";

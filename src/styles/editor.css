@@ -1739,6 +1739,75 @@ body {
   border-radius: 0 0 var(--radius-8, 8px) var(--radius-8, 8px);
 }
 
+/* ── paneMode 三档（pane-presets-v1 / G-9 / 设计系统 §7.7）──────────
+ * 只呈现，不写穿：paneMode 不写回 statusBarHidden / 侧栏基态 /
+ * immersiveChromeVisible，只驱动 <html> 的 data-pane-mode 属性。
+ * 优先级 readingMode > paneMode：.immersive 挂在 .app-root 上，本块所有
+ * hardcore 选择器都要求 .app-root:not(.immersive)，沉浸态下不参与。
+ *
+ * simple：范围内 chrome 恒显。状态栏的显隐由 App.tsx 的渲染闸门负责
+ * （simple 时不渲染热区、直接挂 StatusBar），此处只需保证不被隐藏。
+ *
+ * standard：保持现状——顶栏常显，状态栏默认隐藏并由底部 16px 热区唤出，
+ * 本块不追加任何规则。
+ *
+ * hardcore：两者隐藏，无热区；Cmd+Shift+U 临时显现（data-pane-revealed），
+ * 3 秒空闲或 Esc 收起；隐藏态保留 1px 顶部提示线。
+ */
+
+/* hardcore：顶栏浮层化收拢，与沉浸态同技法（max-height 归零 + 绝对定位），
+   显现时按属性还原。 */
+html[data-pane-mode="hardcore"] .app-root:not(.immersive) .app-chrome {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 30;
+  min-height: 0;
+  max-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  opacity: 0;
+  overflow: hidden;
+  pointer-events: none;
+  border-bottom-width: 0;
+  background: var(--app-surface);
+  box-shadow: var(--app-shadow);
+  border-radius: 0 0 var(--radius-8, 8px) var(--radius-8, 8px);
+}
+
+html[data-pane-mode="hardcore"][data-pane-revealed="true"] .app-root:not(.immersive) .app-chrome {
+  max-height: 200px;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* hardcore：状态栏隐藏（App.tsx 已不渲染，这里兜住任何残留挂载）。 */
+html[data-pane-mode="hardcore"] .app-root:not(.immersive) .app-status-bar {
+  display: none;
+}
+
+html[data-pane-mode="hardcore"][data-pane-revealed="true"] .app-root:not(.immersive) .app-status-bar {
+  display: flex;
+}
+
+/* hardcore 隐藏态的 1px 顶部提示线：只提示，不拦截点击、不做热区。 */
+html[data-pane-mode="hardcore"] .app-root:not(.immersive) .pane-leaf::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--app-border);
+  pointer-events: none;
+  z-index: 20;
+}
+
+html[data-pane-mode="hardcore"][data-pane-revealed="true"] .app-root:not(.immersive) .pane-leaf::before {
+  display: none;
+}
+
 /* 底部状态栏（G-3）：沉浸态只收拢 .app-chrome，状态栏常驻不透明。 */
 .app-status-bar {
   border-top: 1px solid var(--app-border);

@@ -15,6 +15,7 @@ import {
 } from "../lib/capabilities";
 import type { PreviewSettings } from "../lib/previewAnchor";
 import {
+  applyPaneMode,
   applyPropertyBarConfig,
   applyReaderSkin,
   applyTheme,
@@ -178,6 +179,12 @@ const READER_TONES = [
   { id: "indigo", label: "靛青", swatch: "#2b4a7d" },
   { id: "moss", label: "松绿", swatch: "#2f5d3f" },
   { id: "clay", label: "赭石", swatch: "#8a4b2a" },
+] as const;
+
+const PANE_MODES = [
+  { id: "simple", label: "简易" },
+  { id: "standard", label: "常规" },
+  { id: "hardcore", label: "硬核" },
 ] as const;
 
 const ROULETTE_SECTOR_META = [
@@ -744,6 +751,7 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
     (s) => s.config.htmlToolbarItems ?? null,
   );
   const readerSkin = useEditorStore((s) => s.config.readerSkin ?? "paper");
+  const paneMode = useEditorStore((s) => s.config.paneMode ?? "standard");
   const defaultSavePath = useEditorStore(
     (s) => s.config.defaultSavePath ?? null,
   );
@@ -1275,6 +1283,12 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
   const chooseReaderSkin = (skin: string) => {
     setConfig({ readerSkin: skin });
     applyReaderSkin(skin);
+    void saveAppConfig();
+  };
+
+  const choosePaneMode = (mode: "simple" | "standard" | "hardcore") => {
+    setConfig({ paneMode: mode });
+    applyPaneMode(mode);
     void saveAppConfig();
   };
 
@@ -2452,6 +2466,37 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
                     {readerWidth}px
                   </span>
                 </div>
+              </section>
+
+              <section>
+                <h2 className="mb-2 text-sm font-medium text-[var(--app-text-strong)]">
+                  熟练模式
+                </h2>
+                <div className="flex flex-wrap gap-2">
+                  {PANE_MODES.map((option) => {
+                    const selected = paneMode === option.id;
+                    return (
+                      <button
+                        key={option.id}
+                        type="button"
+                        data-testid={`pane-mode-${option.id}`}
+                        aria-pressed={selected}
+                        onClick={() => choosePaneMode(option.id)}
+                        className={`rounded border px-3 py-1.5 text-sm ${
+                          selected
+                            ? "border-[var(--app-accent)] bg-[var(--app-accent-soft)] text-[var(--app-accent)]"
+                            : "border-[var(--app-border)] text-[var(--app-text-2)] hover:bg-[var(--app-sunken)]"
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="mt-2 text-xs text-[var(--app-text-3)]">
+                  简易：顶栏与状态栏恒显；常规：状态栏默认隐藏，指针移到底边唤出；硬核：两者隐藏，按
+                  Cmd+Shift+U 临时显现，3 秒无操作或 Esc 收起
+                </p>
               </section>
 
               <section>

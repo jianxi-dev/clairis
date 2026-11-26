@@ -102,6 +102,7 @@ function App() {
   // Init config loading + theme on mount
   const { setTheme, scheduleSave } = useConfig();
   const theme = useEditorStore((s) => s.config.theme ?? "system");
+  const paneMode = useEditorStore((s) => s.config.paneMode ?? "standard");
   const scene = useStore((s) => s.scene);
   const [statusBarHidden, setStatusBarHidden] = useState(true);
   const [statusBarPeek, setStatusBarPeek] = useState(false);
@@ -109,6 +110,10 @@ function App() {
   const statusBarHoverRef = useRef(false);
   const statusPeekTimer = useRef<number | null>(null);
   const lastPointerYRef = useRef(0);
+  // hardcore 临时显现：只切根节点属性，不重建 EditorView（G-9）。
+  const [hardcoreRevealed, setHardcoreRevealed] = useState(false);
+  const hardcoreRevealedRef = useRef(false);
+  const hardcoreTimer = useRef<number | null>(null);
 
   useEffect(() => {
     const onMove = (e: PointerEvent) => {
@@ -154,6 +159,61 @@ function App() {
   useEffect(() => {
     if (!readingMode) setStatusBarPeek(false);
   }, [readingMode]);
+
+  // 档位/沉浸变化时清空临时显现（派生，不写回用户偏好）。
+  useEffect(() => {
+    if (paneMode !== "hardcore" || readingMode) {
+      hardcoreRevealedRef.current = false;
+      setHardcoreRevealed(false);
+    }
+  }, [paneMode, readingMode]);
+
+  // hardcore 显现态的 3 秒空闲计时：只在显现期间监听交互，重启计时。
+  useEffect(() => {
+    if (!hardcoreRevealed) return;
+    const arm = () => {
+      if (hardcoreTimer.current !== null) window.clearTimeout(hardcoreTimer.current);
+      hardcoreTimer.current = window.setTimeout(() => {
+        hardcoreTimer.current = null;
+        hardcoreRevealedRef.current = false;
+        setHardcoreRevealed(false);
+      }, 3000);
+    };
+    const onActivity = () => arm();
+    window.addEventListener("pointerdown", onActivity);
+    window.addEventListener("keydown", onActivity);
+    arm();
+    return () => {
+      window.removeEventListener("pointerdown", onActivity);
+      window.removeEventListener("keydown", onActivity);
+      if (hardcoreTimer.current !== null) {
+        window.clearTimeout(hardcoreTimer.current);
+        hardcoreTimer.current = null;
+      }
+    };
+  }, [hardcoreRevealed]);
+
+  const revealHardcore = useCallback(() => {
+    hardcoreRevealedRef.current = true;
+    setHardcoreRevealed(true);
+  }, []);
+
+  const hideHardcore = useCallback(() => {
+    hardcoreRevealedRef.current = false;
+    setHardcoreRevealed(false);
+    if (hardcoreTimer.current !== null) {
+      window.clearTimeout(hardcoreTimer.current);
+      hardcoreTimer.current = null;
+    }
+  }, []);
+
+  // hardcore 显现态写根节点属性，CSS 按属性显隐 chrome。
+  useEffect(() => {
+    document.documentElement.dataset.paneRevealed =
+      hardcoreRevealed && paneMode === "hardcore" && !readingMode
+        ? "true"
+        : "false";
+  }, [hardcoreRevealed, paneMode, readingMode]);
 
   const openSettings = useCallback(() => {
     const st = useStore.getState();
@@ -644,6 +704,21 @@ function App() {
         ai.openOverlay();
       }
 
+      // Cmd+Shift+U: hardcore 档临时显现 chrome（G-9）。readingMode 优先：
+      // 沉浸态不接管，仍走 ⌘⇧T 的沉浸显隐语义。
+      if (
+        meta &&
+        e.shiftKey &&
+        e.key.toLowerCase() === "u" &&
+        paneMode === "hardcore" &&
+        !store.readingMode
+      ) {
+        e.preventDefault();
+        if (hardcoreRevealedRef.current) hideHardcore();
+        else revealHardcore();
+        return;
+      }
+
       // Cmd+Shift+E: 生成学习页（layout-portal 15.1）
       if (meta && e.shiftKey && e.key.toLowerCase() === "e") {
         e.preventDefault();
@@ -809,6 +884,8 @@ function App() {
           ai.closeBubble();
         } else if (ai.bubbleOpen) {
           ai.closeBubble();
+        } else if (hardcoreRevealedRef.current) {
+          hideHardcore();
         } else if (store.fullscreenPaneId) {
           store.toggleFullscreenPane();
         } else if (readingMode) {
@@ -863,6 +940,9 @@ function App() {
     openSettings,
     shortcutsOpen,
     quickOpenOpen,
+    paneMode,
+    revealHardcore,
+    hideHardcore,
   ]);
 
   // ── Drag-and-drop (Tauri v2 native event) ────────────────────
@@ -1059,7 +1139,10 @@ function App() {
 
       {(statusBarHidden || readingMode) &&
       !statusBarPeek &&
-      !statusBarPopupOpen ? (
+      !statusBarPopupOpen &&
+      paneMode !== "simple" &&
+      paneMode !== "hardcore" &&
+      !hardcoreRevealed ? (
         <div
           data-testid="status-hotzone"
           className="status-hotzone"
@@ -1094,7 +1177,7 @@ function App() {
             }
           }}
         />
-      ) : (
+      ) : paneMode === "hardcore" && !hardcoreRevealed && !readingMode ? null : (
         <StatusBar
           theme={theme}
           readingMode={readingMode}
@@ -1110,7 +1193,10 @@ function App() {
               setStatusBarPeek(false);
             }
           }}
-          floating={(statusBarHidden || readingMode) && statusBarPeek}
+          floating={
+            ((statusBarHidden || readingMode) && statusBarPeek) ||
+            (paneMode === "hardcore" && hardcoreRevealed)
+          }
           onPopupOpenChange={handleStatusBarPopupOpen}
           onSetReaderWidth={(w) => {
             useEditorStore.getState().setConfig({ readerWidth: w });
