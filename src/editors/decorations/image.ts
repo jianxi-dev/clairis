@@ -35,6 +35,7 @@ import {
   setImageView,
   type ImageHandleSpec,
   type ImageToolbarActions,
+  type MaximizeImageItem,
 } from "./imageToolbar";
 import {
   FileEmbedWidget,
@@ -52,6 +53,12 @@ import { isImageCropActiveHost } from "./imageCrop";
  * 把图片路径解析成 URL / dataUrl 的函数；返回 null 表示解析不出（走文字回退）。
  */
 export type ImageResolver = (path: string) => string | null;
+
+/**
+ * 当前装饰器的图片路径解析器，由 `createImageDecorations` 注入。
+ * 放大层多图列表（#1564）需要把相对路径换成可加载 URL，与编辑态渲染同源。
+ */
+let imageResolveFn: ImageResolver = () => null;
 
 /**
  * 图片 widget 的操作回调，全部可选——缺省时对应工具条按钮禁用。
@@ -940,7 +947,18 @@ class ImageWidget extends WidgetType {
     });
     container.addEventListener("dblclick", (event) => {
       event.stopPropagation();
-      openImageMaximize(this._src, this._alt, this._crop, this._from);
+      // 多图列表（#1564）：按文档偏移收集全部图片引用，让放大层能前后翻看。
+      // 偏移从 DOM 现读，避免复用 DOM 时 this._from 漂移指错行。
+      const liveFrom = Number(container.dataset.imageFrom);
+      const anchorFrom = Number.isFinite(liveFrom) ? liveFrom : this._from;
+      const view = EditorView.findFromDOM(container);
+      const docText = view?.state.doc.toString() ?? "";
+      const items = collectMaximizeImages(docText, imageResolveFn, anchorFrom);
+      const index = items.findIndex((item) => item.from === anchorFrom);
+      openImageMaximize(this._src, this._alt, this._crop, this._from, {
+        images: items,
+        index: index >= 0 ? index : 0,
+      });
     });
 
     // 8 个缩放把手由 markImageWidgetSelected 按选中态增删；容器级委托让
@@ -1098,6 +1116,52 @@ class ImageWidget extends WidgetType {
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
   }
+}
+
+/**
+ * 从当前编辑器文档收集全部图片引用，供放大层多图切换（#1564）。
+ *
+ * 复用装饰层同一套解析器（scanImageReference / parseImageAttributes /
+ * findFencedRanges），保证「放大层列表」与「编辑态渲染出的图片」完全一致：
+ * 围栏代码块内的引用不进列表，视频/音频/附件（`.cm-media-widget`）也不进。
+ * `resolve` 由宿主注入（与 createImageDecorations 同一个），把相对路径换成
+ * 可加载的 URL；解析不出即 src=null，放大层出文字回退。
+ */
+export function collectMaximizeImages(
+  docText: string,
+  resolve: (path: string) => string | null,
+  anchorFrom: number,
+): MaximizeImageItem[] {
+  const items: MaximizeImageItem[] = [];
+  const fencedRanges = findFencedRanges(docText, true);
+  let pos = 0;
+  while (pos < docText.length) {
+    const idx = docText.indexOf("![", pos);
+    if (idx < 0) break;
+    const ref = scanImageReference(docText, idx);
+    if (!ref) {
+      pos = idx + 2;
+      continue;
+    }
+    pos = ref.attrEnd ?? ref.end;
+    if (isInsideRange(idx, fencedRanges)) continue;
+    if (classifyFileEmbed(ref.path)) continue;
+    if (classifyMedia(ref.path) !== "image") continue;
+    const attrs =
+      ref.attrText !== null
+        ? parseImageAttributes(ref.attrText)
+        : { ...EMPTY_IMAGE_ATTRIBUTES };
+    items.push({
+      from: ref.start,
+      src: resolve(ref.path),
+      alt: ref.alt,
+      crop: attrs.crop,
+    });
+  }
+  if (items.length === 0) {
+    return [{ from: anchorFrom, src: null, alt: "", crop: null }];
+  }
+  return items;
 }
 
 // --- 媒体 widget（视频 / 文件） -----------------------------------------------
@@ -1554,6 +1618,7 @@ export function createImageDecorations(
 ): Range<Decoration>[] {
   const decorations: Range<Decoration>[] = [];
   const resolveFn = resolve ?? (() => null);
+  imageResolveFn = resolveFn;
   const callbacksFn = callbacks ?? {};
 
   const fencedRanges = findFencedRanges(docText, true);

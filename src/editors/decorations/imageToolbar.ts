@@ -1159,6 +1159,8 @@ export interface MaximizeImageItem {
   readonly src: string | null;
   readonly alt: string;
   readonly crop?: [number, number, number, number] | null;
+  /** 文档偏移；多图切换时「重置图片」只对当前图生效。 */
+  readonly from?: number;
 }
 
 export interface OpenImageMaximizeOptions {
@@ -1178,12 +1180,12 @@ export function openImageMaximize(
   closeImageMaximize();
   const items = options?.images?.length
     ? options.images
-    : [{ src, alt, crop }];
+    : [{ src, alt, crop, from }];
   const startIndex = Math.min(
     Math.max(options?.index ?? 0, 0),
     items.length - 1,
   );
-  const current = items[startIndex];
+  let currentIndex = startIndex;
   const overlay = document.createElement("div");
   overlay.className = "cm-image-maximize";
   overlay.dataset.testid = "img-maximize";
@@ -1192,62 +1194,12 @@ export function openImageMaximize(
 
   const tooltip = createMaximizeTooltip();
 
-  let img: HTMLImageElement | null = null;
-  if (current.src) {
-    img = document.createElement("img");
-    img.src = current.src;
-    img.alt = current.alt;
-    img.draggable = false;
-    if (current.crop) {
-      // 兜底渲染（加载期间）：object-fit:none 平移到 (l,t)，1:1 不缩放——
-      // 区域与编辑态不一致，只作过渡。
-      const [l, t, w, h] = current.crop;
-      img.style.objectFit = "none";
-      img.style.objectPosition = `${-l}px ${-t}px`;
-      img.style.width = `${w}px`;
-      img.style.height = `${h}px`;
-      // 随后用画布按裁剪矩形重绘（双击放大应看到「裁出来的那块」，与编辑态
-      // 同一区域），替换 src；画布被污染或来源未解码时保留兜底渲染。
-      const target = img;
-      const source = new Image();
-      source.crossOrigin = "anonymous";
-      source.onload = () => {
-        if (maximizeImg !== target) return;
-        try {
-          const cap = 2048;
-          const k = Math.min(1, cap / Math.max(w, h));
-          const canvas = document.createElement("canvas");
-          canvas.width = Math.max(1, Math.round(w * k));
-          canvas.height = Math.max(1, Math.round(h * k));
-          const ctx = canvas.getContext("2d");
-          if (!ctx) return;
-          ctx.drawImage(source, l, t, w, h, 0, 0, canvas.width, canvas.height);
-          target.src = canvas.toDataURL("image/png");
-          target.style.objectFit = "";
-          target.style.objectPosition = "";
-          target.style.width = "";
-          target.style.height = "";
-        } catch {
-          /* tainted canvas：保留 1:1 兜底渲染 */
-        }
-      };
-      source.src = current.src;
-    }
-    overlay.appendChild(img);
-  } else {
-    const fallback = document.createElement("span");
-    fallback.textContent = `[图片: ${current.alt}]`;
-    overlay.appendChild(fallback);
-  }
-  maximizeImg = img;
-  maximizeTransform = { scale: 1, tx: 0, ty: 0, rotation: 0 };
-  maximizeApplyTransform();
+  const stage = document.createElement("div");
+  stage.style.cssText =
+    "display:flex;align-items:center;justify-content:center;max-width:90vw;max-height:90vh;";
+  overlay.appendChild(stage);
 
-  const controls = document.createElement("div");
-  controls.dataset.testid = "img-max-controls";
-  controls.style.cssText =
-    "position:absolute;bottom:24px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:2;padding:6px;border:1px solid var(--app-border);border-radius:var(--app-radius);background:var(--app-surface);box-shadow:var(--app-shadow);";
-
+  const multi = items.length > 1;
   const zoomOutBtn = maximizeControlButton(
     "img-max-zoom-out",
     "缩小",
@@ -1285,10 +1237,144 @@ export function openImageMaximize(
     zoomOutBtn.disabled = maximizeTransform.scale <= MAXIMIZE_MIN_SCALE;
     zoomInBtn.disabled = maximizeTransform.scale >= MAXIMIZE_MAX_SCALE;
   }
+  const prevBtn = maximizeControlButton(
+    "img-max-prev",
+    "上一张",
+    "ChevronLeftOutlined",
+    () => {
+      if (currentIndex > 0) {
+        currentIndex -= 1;
+        renderCurrent();
+      }
+    },
+    tooltip,
+  );
+  const indexLabel = document.createElement("span");
+  indexLabel.dataset.testid = "img-max-index";
+  indexLabel.style.cssText =
+    "align-self:center;min-width:36px;text-align:center;font-size:12px;font-variant-numeric:tabular-nums;color:var(--app-text-2);";
+  const nextBtn = maximizeControlButton(
+    "img-max-next",
+    "下一张",
+    "ChevronRightOutlined",
+    () => {
+      if (currentIndex < items.length - 1) {
+        currentIndex += 1;
+        renderCurrent();
+      }
+    },
+    tooltip,
+  );
+  const clearCropBtn = maximizeControlButton(
+    "img-max-clear-crop",
+    "重置图片",
+    "RotateOutlined",
+    () => {
+      const item = items[currentIndex];
+      if (typeof item.from === "number") actions.onImageReset?.(item.from);
+      closeImageMaximize();
+    },
+    tooltip,
+  );
+
+  /** 切换后同步索引文本、两侧按钮禁用态、裁剪按钮挂载（无 crop 不挂载）。 */
+  function refreshNavUi(): void {
+    if (multi) {
+      indexLabel.textContent = `${currentIndex + 1}/${items.length}`;
+      prevBtn.disabled = currentIndex <= 0;
+      nextBtn.disabled = currentIndex >= items.length - 1;
+    }
+    const hasCrop = Boolean(items[currentIndex].crop);
+    const mounted = clearCropBtn.isConnected;
+    if (hasCrop && !mounted) {
+      controls.appendChild(clearCropBtn);
+    } else if (!hasCrop && mounted) {
+      clearCropBtn.remove();
+    }
+  }
+
+  /**
+   * 渲染当前项。裁剪走画布重绘（与编辑态同一区域）；无 src 出文字回退。
+   * 切换时整体替换 stage 内容，缩放/平移/旋转重置为该图默认。
+   */
+  const renderCurrent = (): void => {
+    const current = items[currentIndex];
+    stage.replaceChildren();
+    let nextImg: HTMLImageElement | null = null;
+    if (current.src) {
+      const img = document.createElement("img");
+      img.src = current.src;
+      img.alt = current.alt;
+      img.draggable = false;
+      if (current.crop) {
+        // 兜底渲染（加载期间）：object-fit:none 平移到 (l,t)，1:1 不缩放——
+        // 区域与编辑态不一致，只作过渡。
+        const [l, t, w, h] = current.crop;
+        img.style.objectFit = "none";
+        img.style.objectPosition = `${-l}px ${-t}px`;
+        img.style.width = `${w}px`;
+        img.style.height = `${h}px`;
+        // 随后用画布按裁剪矩形重绘（双击放大应看到「裁出来的那块」，与编辑态
+        // 同一区域），替换 src；画布被污染或来源未解码时保留兜底渲染。
+        const target = img;
+        const source = new Image();
+        source.crossOrigin = "anonymous";
+        source.onload = () => {
+          if (maximizeImg !== target) return;
+          try {
+            const cap = 2048;
+            const k = Math.min(1, cap / Math.max(w, h));
+            const canvas = document.createElement("canvas");
+            canvas.width = Math.max(1, Math.round(w * k));
+            canvas.height = Math.max(1, Math.round(h * k));
+            const ctx = canvas.getContext("2d");
+            if (!ctx) return;
+            ctx.drawImage(source, l, t, w, h, 0, 0, canvas.width, canvas.height);
+            target.src = canvas.toDataURL("image/png");
+            target.style.objectFit = "";
+            target.style.objectPosition = "";
+            target.style.width = "";
+            target.style.height = "";
+          } catch {
+            /* tainted canvas：保留 1:1 兜底渲染 */
+          }
+        };
+        source.src = current.src;
+      }
+      stage.appendChild(img);
+      nextImg = img;
+    } else {
+      const fallback = document.createElement("span");
+      fallback.textContent = `[图片: ${current.alt}]`;
+      stage.appendChild(fallback);
+    }
+    maximizeImg = nextImg;
+    maximizeTransform = { scale: 1, tx: 0, ty: 0, rotation: 0 };
+    maximizeApplyTransform();
+    refreshZoomUi();
+    refreshNavUi();
+  };
+
+  const controls = document.createElement("div");
+  controls.dataset.testid = "img-max-controls";
+  controls.style.cssText =
+    "position:absolute;bottom:24px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:2;padding:6px;border:1px solid var(--app-border);border-radius:var(--app-radius);background:var(--app-surface);box-shadow:var(--app-shadow);";
+
+  // 多图切换（#1564）：仅当列表多于 1 张时出现。索引居中，两侧箭头。
+  const nav = document.createElement("div");
+  nav.dataset.testid = "img-max-nav";
+  nav.style.cssText =
+    "display:flex;align-items:center;gap:4px;padding:0 4px;border-right:1px solid var(--app-border);margin-right:4px;";
 
   controls.appendChild(zoomOutBtn);
   controls.appendChild(zoomInBtn);
   controls.appendChild(scaleLabel);
+  if (multi) {
+    nav.appendChild(prevBtn);
+    nav.appendChild(indexLabel);
+    nav.appendChild(nextBtn);
+    controls.appendChild(nav);
+  }
   controls.appendChild(
     maximizeControlButton(
       "img-max-rotate",
@@ -1308,10 +1394,11 @@ export function openImageMaximize(
       "下载原图",
       "DownloadOutlined",
       () => {
-        if (!current.src) return;
+        const item = items[currentIndex];
+        if (!item.src) return;
         const a = document.createElement("a");
-        a.href = current.src;
-        a.download = maximizeDownloadName(current.src, current.alt);
+        a.href = item.src;
+        a.download = maximizeDownloadName(item.src, item.alt);
         a.style.display = "none";
         document.body.appendChild(a);
         a.click();
@@ -1333,20 +1420,6 @@ export function openImageMaximize(
       tooltip,
     ),
   );
-  if (current.crop) {
-    controls.appendChild(
-      maximizeControlButton(
-        "img-max-clear-crop",
-        "重置图片",
-        "RotateOutlined",
-        () => {
-          if (typeof from === "number") actions.onImageReset?.(from);
-          closeImageMaximize();
-        },
-        tooltip,
-      ),
-    );
-  }
   controls.appendChild(
     maximizeControlButton(
       "img-max-close",
@@ -1360,7 +1433,7 @@ export function openImageMaximize(
   );
   overlay.appendChild(controls);
   maximizeRefreshUi = refreshZoomUi;
-  refreshZoomUi();
+  renderCurrent();
 
   overlay.addEventListener("click", (event) => {
     const down = maximizeDownPos;
@@ -1396,9 +1469,21 @@ export function openImageMaximize(
   };
 
   maximizeKeyHandler = (event) => {
-    if (event.key !== "Escape") return;
-    event.stopPropagation();
-    closeImageMaximize();
+    if (event.key === "Escape") {
+      event.stopPropagation();
+      closeImageMaximize();
+      return;
+    }
+    if (!multi) return;
+    if (event.key === "ArrowLeft" && currentIndex > 0) {
+      event.stopPropagation();
+      currentIndex -= 1;
+      renderCurrent();
+    } else if (event.key === "ArrowRight" && currentIndex < items.length - 1) {
+      event.stopPropagation();
+      currentIndex += 1;
+      renderCurrent();
+    }
   };
   document.addEventListener("keydown", maximizeKeyHandler, true);
   document.body.appendChild(overlay);

@@ -465,7 +465,18 @@ const ICON_REGISTRY: Record<string, IconDef> = {
   },
   ArrowDownwardOutlined: {
     kind: "paths",
-    paths: ["M12 20l7-7-1.4-1.4L13 15.2V4h-2v11.2L6.4 11.6 5 13z"],
+    paths: ["M12 20l7-7-1.4-1.4L13 15.2V4h2v11.2L6.4 11.6 5 13z"],
+  },
+  // 左右翻页（放大层多图切换 #1564）：与 ui/icons 的 chevronLeft/Right 同源。
+  ChevronLeftOutlined: {
+    kind: "paths",
+    stroke: true,
+    paths: [UI_ICONS.chevronLeft.s ?? ""],
+  },
+  ChevronRightOutlined: {
+    kind: "paths",
+    stroke: true,
+    paths: [UI_ICONS.chevronRight.s ?? ""],
   },
 
   // Copy.
