@@ -325,6 +325,31 @@ fn snapshot_surface_override(
     })
 }
 
+/// 恢复某面默认（#1570）：删除用户覆盖，先拍快照保证可回滚。
+/// html-toolbar 的覆盖在 `user/settings.json` 的 `htmlToolbarItems`，走
+/// `apply_patch_at`（自带快照）；其余面删各自 `user/<id>.json`。
+/// 覆盖本就不存在时幂等成功（无旧值可拍）。
+fn reset_surface_override(
+    base: &Path,
+    spec: &crate::surfaces::SurfaceSpec,
+) -> Result<(), AppError> {
+    if spec.shape == crate::surfaces::SurfaceShape::Toolbar {
+        return crate::config::clear_user_keys_at(base, &["htmlToolbarItems"]);
+    }
+    let path = crate::surfaces::user_override_path(base, spec);
+    if !path.exists() {
+        return Ok(());
+    }
+    crate::surfaces::snapshot_surface(base, spec).map_err(|e| AppError::Io {
+        context: "patch_data_surface".into(),
+        source: e,
+    })?;
+    std::fs::remove_file(&path).map_err(|e| AppError::Io {
+        context: "patch_data_surface".into(),
+        source: e,
+    })
+}
+
 /// 写 list 型面用户覆盖：html-toolbar 是 id 字符串数组（既有语义，设置页按 id
 /// 排序）；menus / capsules 是**对象数组**（#1551，全量清单 + 逐项按 id 深合并，
 /// 允许 `{id,label}` 部分项）。两者都在写边界拒绝未知 id / 非法项（不落盘），
@@ -644,6 +669,19 @@ pub fn dispatch_tool(base: &Path, name: &str, args: &Value) -> Result<String, Ag
                     )));
                 }
             };
+            // #1570：`{"items": null}` = 恢复该面默认（先快照，可回滚）。
+            if items.is_null() {
+                return match reset_surface_override(base, surface_id) {
+                    Ok(()) => {
+                        let loaded = load_surface(surface_id, base);
+                        Ok(tool_ok(json!({
+                            "effective": loaded.items,
+                            "warnings": loaded.warnings,
+                        })))
+                    }
+                    Err(e) => Ok(tool_err(&AgentError::from_app(name, e))),
+                };
+            }
             let written = if is_map {
                 let map = match items.as_object() {
                     Some(map) => map,
@@ -1846,6 +1884,118 @@ mod tests {
             .iter()
             .filter_map(|item| item.get("key")?.as_str().map(str::to_string))
             .collect()
+    }
+
+    #[test]
+    fn patch_data_surface_reset_menus_restores_defaults() {
+        let dir = temp_base("reset_menus");
+        let base = dir.path();
+        dispatch_tool(
+            base,
+            "patch_data_surface",
+            &json!({ "id": "menus", "patch": { "items": [ {"id":"pane-source","label":"查看源码"} ] } }),
+        )
+        .unwrap();
+        assert!(base.join("user").join("menus.json").exists());
+
+        let raw = dispatch_tool(
+            base,
+            "patch_data_surface",
+            &json!({ "id": "menus", "patch": { "items": null } }),
+        )
+        .unwrap();
+        let parsed: Value = serde_json::from_str(&raw).unwrap();
+        assert_eq!(parsed["ok"], json!(true), "got {raw}");
+        assert!(!base.join("user").join("menus.json").exists(), "覆盖文件应被删除");
+        assert_eq!(
+            parsed["result"]["effective"].as_array().unwrap().len(),
+            35,
+            "有效集合应回落默认 35 项"
+        );
+    }
+
+    #[test]
+    fn patch_data_surface_reset_icons_and_capsules_restore_defaults() {
+        for (id, default_len) in [("icons", 135usize), ("capsules", 12usize)] {
+            let dir = temp_base(&format!("reset_{id}"));
+            let base = dir.path();
+            let before = surface_snapshot_count(base, id);
+            let raw = dispatch_tool(
+                base,
+                "patch_data_surface",
+                &json!({ "id": id, "patch": { "items": null } }),
+            )
+            .unwrap();
+            let parsed: Value = serde_json::from_str(&raw).unwrap();
+            assert_eq!(parsed["ok"], json!(true), "{id}: got {raw}");
+            assert!(
+                !base.join("user").join(format!("{id}.json")).exists(),
+                "{id}: 覆盖文件应被删除"
+            );
+            assert_eq!(
+                parsed["result"]["effective"].as_array().unwrap().len(),
+                default_len,
+                "{id}: 有效集合应回落默认"
+            );
+            assert_eq!(
+                surface_snapshot_count(base, id),
+                before,
+                "{id}: 本无覆盖时幂等且不产生空快照"
+            );
+        }
+    }
+
+    #[test]
+    fn patch_data_surface_reset_is_reversible_by_restore() {
+        let dir = temp_base("reset_restore");
+        let base = dir.path();
+        dispatch_tool(
+            base,
+            "patch_data_surface",
+            &json!({ "id": "capsules", "patch": { "items": [ {"id":"format-bold"} ] } }),
+        )
+        .unwrap();
+        dispatch_tool(
+            base,
+            "patch_data_surface",
+            &json!({ "id": "capsules", "patch": { "items": null } }),
+        )
+        .unwrap();
+        assert!(!base.join("user").join("capsules.json").exists());
+
+        dispatch_tool(
+            base,
+            "restore_surface_snapshot",
+            &json!({ "id": "capsules" }),
+        )
+        .unwrap();
+        assert!(base.join("user").join("capsules.json").exists());
+        assert_eq!(effective_ids(base, "capsules"), vec!["format-bold"]);
+    }
+
+    #[test]
+    fn patch_data_surface_reset_html_toolbar_clears_field() {
+        let dir = temp_base("reset_toolbar");
+        let base = dir.path();
+        dispatch_tool(
+            base,
+            "patch_data_surface",
+            &json!({ "id": "html-toolbar", "patch": { "items": ["format-bold","format-italic"] } }),
+        )
+        .unwrap();
+        let raw = dispatch_tool(
+            base,
+            "patch_data_surface",
+            &json!({ "id": "html-toolbar", "patch": { "items": null } }),
+        )
+        .unwrap();
+        let parsed: Value = serde_json::from_str(&raw).unwrap();
+        assert_eq!(parsed["ok"], json!(true), "got {raw}");
+        assert_eq!(
+            parsed["result"]["effective"].as_array().unwrap().len(),
+            12,
+            "工具条应回落默认 12 项"
+        );
     }
 
     #[test]

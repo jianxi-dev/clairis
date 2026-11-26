@@ -1107,6 +1107,31 @@ fn validate_patch_keys(patch: &Value) -> Result<(), AppError> {
 /// 校验（仅校验，不写盘）→ 快照当前 user → 原子写**合并后的 user 层**。
 /// 不写 state 层（派生状态由应用维护），也不把代码默认值固化进 user 层；
 /// 返回 `load_config_at` 的真实有效配置（含 state 读取结果）。
+/// 从用户层删除指定键（恢复默认，#1570）。写前快照；键不存在时幂等。
+/// `merge_json` 把 null 视为「保持原值」，故恢复默认必须真删键而非写 null。
+pub(crate) fn clear_user_keys_at(base: &Path, keys: &[&str]) -> Result<(), AppError> {
+    let current = read_json_or_quarantine(&user_path(base)).unwrap_or(Value::Null);
+    let mut obj = match current {
+        Value::Object(map) => map,
+        _ => serde_json::Map::new(),
+    };
+    let mut changed = false;
+    for key in keys {
+        if obj.remove(*key).is_some() {
+            changed = true;
+        }
+    }
+    if !changed {
+        return Ok(());
+    }
+    snapshot_user(base)?;
+    let data = serde_json::to_vec_pretty(&Value::Object(obj))
+        .map_err(|e| json_err("user config", e))?;
+    atomic_write(&user_path(base), &data)?;
+    prune_snapshots(base)?;
+    Ok(())
+}
+
 pub fn apply_patch_at(base: &Path, patch: &Value) -> Result<AppConfig, AppError> {
     if !patch.is_object() {
         return Err(AppError::Validation {
@@ -1162,6 +1187,7 @@ const SKILL_MAP: &str = r#"# Biaoyue 配置地图
 - `patch_config`：`{"patch": {...}}`，深合并进 user 层，写入前校验并生成快照；非法值不落盘。
 - `list_snapshots`：返回快照文件名，最旧在前。
 - `restore_surface_snapshot`：`{"id": "menus"}`（可带 `name`），回滚该面最新快照的覆盖；只写 `user/<id>.json`，不动默认文件。
+- 恢复默认：`patch_data_surface` 传 `{"id": "menus", "patch": {"items": null}}` → 删除该面用户覆盖（写前快照，可再用 restore 回滚）；四个面均支持。
 - `read_data_surface`：`{"id": "menus"}`，返回数据面的 `{effective, defaults, warnings}` 三段。
 - `patch_data_surface`：`{"id": "menus", "patch": {"items": [...]}}`，改写用户覆盖集合，写入前校验并生成快照。`html-toolbar` 的 `items` 是 id 字符串数组（整体替换）；`menus` / `capsules` 的 `items` 是**对象数组**（每项按 `id` 与默认项深合并，允许只写 `{id,label}` 这类部分项）；其中 `menus` **按组替换**——覆盖里出现的 `group` 替换该组，未出现的组保留默认；`icons` 的 `items` 是「概念键 → 定义」对象，逐键深合并（接受默认集合外的新概念键）。
 
