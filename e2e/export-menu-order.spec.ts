@@ -97,3 +97,34 @@ test("导出菜单关闭后无残留", async ({ page }) => {
     await page.screenshot({ path: `${dir}/export-reopened.png` });
   }
 });
+
+test("导出子菜单默认右开；窄窗口贴右边界翻左", async ({ page }) => {
+  const { mkdirSync } = await import("node:fs");
+  const OUT = ".artifacts/1519";
+  mkdirSync(OUT, { recursive: true });
+  await boot(page);
+
+  await openExportSubmenu(page);
+  const submenu = page.locator('[data-testid="pane-export-submenu"]');
+  await expect(submenu).toBeVisible({ timeout: 3000 });
+  await page.screenshot({ path: `${OUT}/01-default-right.png` });
+
+  const menu = page.locator("[data-tab-menu]").first();
+  const menuBox = (await menu.boundingBox())!;
+  const subBox = (await submenu.boundingBox())!;
+  expect(subBox.x).toBeGreaterThanOrEqual(menuBox.x + menuBox.width - 2);
+
+  await page.keyboard.press("Escape");
+  await page.setViewportSize({ width: 520, height: 640 });
+  await page.waitForTimeout(200);
+  await openExportSubmenu(page);
+  await expect(submenu).toBeVisible({ timeout: 3000 });
+  await page.screenshot({ path: `${OUT}/02-narrow-flip.png` });
+
+  const subBox2 = (await submenu.boundingBox())!;
+  expect(subBox2.x).toBeGreaterThanOrEqual(0);
+  expect(subBox2.x + subBox2.width).toBeLessThanOrEqual(521);
+  await page.screenshot({ path: `${OUT}/03-flipped-left.png` });
+  await page.keyboard.press("Escape");
+  await page.screenshot({ path: `${OUT}/04-closed.png` });
+});
