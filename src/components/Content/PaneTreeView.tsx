@@ -481,7 +481,7 @@ function PaneHeader({
           store.splitPane("col");
           return;
         case "source":
-          setMode("source");
+          setMode(editorMode === "source" ? "edit" : "source");
           return;
         case "locate": {
           if (!tab?.path) {
@@ -495,7 +495,7 @@ function PaneHeader({
         }
       }
     },
-    [activeTabId, leafId, setMode, showNotice],
+    [activeTabId, leafId, setMode, showNotice, editorMode],
   );
 
   return (
@@ -618,19 +618,34 @@ function PaneHeader({
                   color: "var(--app-text-2)",
                 }}
               >
-                {getMenuItems("pane-header").map((item: MenuItem) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    role="menuitem"
-                    data-menu-item={item.action}
-                    onClick={() => runMenu(item.action as PaneMenuAction)}
-                    className="flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-[var(--app-sunken)]"
-                  >
-                    <Icon name={item.icon} size={18} />
-                    <span>{item.label}</span>
-                  </button>
-                ))}
+                {getMenuItems("pane-header").map((item: MenuItem) => {
+                  const sourcePressed =
+                    item.action === "source" && editorMode === "source";
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      role="menuitem"
+                      data-menu-item={item.action}
+                      aria-pressed={
+                        item.action === "source" ? sourcePressed : undefined
+                      }
+                      onClick={() => runMenu(item.action as PaneMenuAction)}
+                      className="flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-[var(--app-sunken)]"
+                    >
+                      <Icon name={item.icon} size={18} />
+                      <span>{item.label}</span>
+                      {sourcePressed && (
+                        <span
+                          className="ml-auto"
+                          data-testid="pane-menu-source-check"
+                        >
+                          <Icon name="check" size={14} />
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
