@@ -75,6 +75,11 @@ import {
   setFrontmatterField,
 } from "../lib/frontmatter";
 import { splitStemExt } from "../lib/pathName";
+import {
+  getDecorationBuildCount,
+  getDecorationBuildMs,
+  resetDecorationGuards,
+} from "../editors/decorations";
 
 type SplitDirection = "horizontal" | "vertical";
 
@@ -1666,6 +1671,11 @@ if (typeof window !== "undefined") {
   (window as unknown as Record<string, unknown>).__biaoyue_store__ = useStore;
   (window as unknown as Record<string, unknown>).__biaoyue_editor_store__ =
     useEditorStore;
+  (window as unknown as Record<string, unknown>).__biaoyue_decor_perf__ = {
+    getDecorationBuildCount,
+    getDecorationBuildMs,
+    resetDecorationGuards,
+  };
 }
 
 // Re-export capture overlay store

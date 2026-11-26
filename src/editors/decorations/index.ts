@@ -154,14 +154,33 @@ export function getDecorationBuildCount(): number {
 }
 
 /**
+ * 全量构建的累计主线程耗时（ms）——性能门禁的机读指标（仅测试消费）。
+ *
+ * 与 `decorationBuildCount` 配套：次数说明「重建了几次」，耗时说明
+ * 「每次多贵」。#1556 的根因诊断靠这两个数区分「阈值断层」与「每键全量重建」。
+ */
+let decorationBuildMs = 0;
+
+export function getDecorationBuildMs(): number {
+  return decorationBuildMs;
+}
+
+/**
  * 冻结解除时派发的 effect，强制补建。
  */
 const unfreezeRebuild = StateEffect.define<void>();
 
 // --- 大文档键入快路径 ---------------------------------------------------------
 
-/** 超过该字符数的文档，逐字键入走「映射 + 延迟重建」而非每键全量重算。 */
-const LARGE_DOC_CHARS = 50_000;
+/**
+ * 超过该字符数的文档，逐字键入走「映射 + 延迟重建」而非每键全量重算。
+ *
+ * 分级而非单一阈值：实测 14KB 文档每键全量重建 47ms（p50 56.9ms），已远超
+ * 16ms 一帧预算，而 50K 阈值让它享受不到快路径（#1556）。阈值取 8K——
+ * 该量级下全量重建仍在 16ms 内，快路径收益不抵复杂度；8K 以上重建成本
+ * 开始吃掉帧预算，交给快路径。
+ */
+const LARGE_DOC_CHARS = 8_000;
 
 /** 最后一次键入后补一次全量重建的延迟（ms）。 */
 const LAZY_REBUILD_MS = 180;
@@ -219,6 +238,7 @@ function buildDecorationSet(
   options?: EditorDecorationsOptions,
   columnsRanges?: Range<Decoration>[],
 ): DecorationSet {
+  const startedAt = performance.now();
   const docText = state.doc.toString();
   const cursorPos = state.selection.main.head;
   const selFrom = state.selection.main.from;
@@ -285,6 +305,7 @@ function buildDecorationSet(
   all.sort((a, b) => a.from - b.from || a.value.startSide - b.value.startSide);
 
   decorationBuildCount += 1;
+  decorationBuildMs += performance.now() - startedAt;
   return Decoration.set(all, true);
 }
 
@@ -476,4 +497,5 @@ export function resetDecorationGuards(): void {
   composing = false;
   frozen = false;
   decorationBuildCount = 0;
+  decorationBuildMs = 0;
 }
