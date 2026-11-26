@@ -1,0 +1,112 @@
+{
+  "change": "editor-surface-batch23",
+  "requirements": [
+    {
+      "id": "R-1",
+      "text": "裁剪清理可靠性（E-44 新增 scenario：多轮裁剪零残留 / 已加载图片标识线必现）",
+      "anchors": [
+        {
+          "id": "A-1.1",
+          "claim": "连续 5 次裁剪确认后页面无残留",
+          "kind": "exact",
+          "assert": "`.cm-image-crop-frame, .cm-image-crop-shade, .image-crop-mark` 节点计数 = 0",
+          "source": "e2e 断言 + 用户反馈 #3（截图 4 条深灰短横线）"
+        },
+        {
+          "id": "A-1.2",
+          "claim": "已加载图片点裁剪 → 标识线立现；未加载 → 加载提示",
+          "kind": "state-machine",
+          "assert": "已加载→立现裁剪框节点；未加载→出现「加载中」提示节点",
+          "source": "用户反馈 #5 + 一手观察（代码两处 return 路径）"
+        },
+        {
+          "id": "A-1.3",
+          "claim": "裁剪确认前后图片位置零位移",
+          "kind": "exact",
+          "assert": "探针滚动位移测量 ≤ 1px（before/after 成对）",
+          "source": "cropJumpProbe 实测 + 用户反馈 #1"
+        }
+      ]
+    },
+    {
+      "id": "R-2",
+      "text": "重置按钮条件显示（E-24 / E-39 既有条款的实现清偿）",
+      "anchors": [
+        {
+          "id": "A-2.1",
+          "claim": "无 crop 图选中 → 重置按钮不可见；裁剪确认后 → 可见；拖回整图重置后 → 不可见",
+          "kind": "state-machine",
+          "assert": "display 三态翻转：'none'→''→'none'（计算样式）",
+          "source": "E-39 规格原文（openspec/specs/editing/spec.md L174）+ 用户反馈 #2"
+        }
+      ]
+    },
+    {
+      "id": "R-3",
+      "text": "工具条滚动期行为（ADDED：图片选中工具条滚动期行为方案A）",
+      "anchors": [
+        {
+          "id": "A-3.1",
+          "claim": "滚动进行中工具条隐藏；停滚 ≤50ms 重现且与图片相对位置一致",
+          "kind": "state-machine",
+          "assert": "is-scrolling 计算样式 display:none → 停滚后移除",
+          "source": "用户确认方案A + 用户反馈 #4a"
+        },
+        {
+          "id": "A-3.2",
+          "claim": "滚动 2 秒期间工具条状态翻转次数 = 1（进入隐藏一次，不出现中间显示态）",
+          "kind": "exact",
+          "assert": "is-scrolling 状态翻转计数 ≤ 1",
+          "source": "用户反馈 #4a（「不要再抖再跳」）"
+        }
+      ]
+    },
+    {
+      "id": "R-4",
+      "text": "放大层增强（E-24 新增 scenario：tooltip / ± / 百分比 / 多图切换）",
+      "anchors": [
+        {
+          "id": "A-4.1",
+          "claim": "悬停按钮 ≤300ms 出现气泡提示，移开消失",
+          "kind": "state-machine",
+          "assert": "tooltip 节点出现→消失状态翻转",
+          "source": "quiet 参考截图（图片查看工具条.png「下一张」气泡）+ 用户反馈 #6"
+        },
+        {
+          "id": "A-4.2",
+          "claim": "点击 ± 缩放且百分比同步、边界禁用",
+          "kind": "exact",
+          "assert": "每次点击百分比变化 ≥1 步；边界按钮 disabled='true'",
+          "source": "quiet 截图（79% 显示）+ 用户反馈 #6"
+        },
+        {
+          "id": "A-4.3",
+          "claim": "多图切换：下一张索引「2/3」、左方向键回第 1 张、边界禁用",
+          "kind": "exact",
+          "assert": "3 图文档索引文本严格等于 '2/3'；边界按钮 disabled='true'",
+          "source": "quiet 截图（「1/2」索引）+ 用户反馈 #6"
+        }
+      ]
+    },
+    {
+      "id": "R-5",
+      "text": "预览态图片双击查看（reading ADDED）",
+      "anchors": [
+        {
+          "id": "A-5.1",
+          "claim": "预览双击 → 放大层打开（含裁剪呈现）；双击/Esc 退出无遮罩残留",
+          "kind": "state-machine",
+          "assert": "放大层节点出现→消失",
+          "source": "用户反馈 #7"
+        },
+        {
+          "id": "A-5.2",
+          "claim": "预览容器自身缩放不被双击复位",
+          "kind": "state-machine",
+          "assert": "容器缩放值双击前后差值严格等于 0",
+          "source": "既有行为（PreviewView dblclick 缩放复位）与 #7 并存"
+        }
+      ]
+    }
+  ]
+}
