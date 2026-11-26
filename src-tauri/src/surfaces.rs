@@ -242,7 +242,7 @@ pub const MENU_GROUPS: &[&str] = &[
 ];
 
 /// 校验单个工具条项：缺字段 / 类型错 / 未知 action（id）/ 未知 group → None。
-fn validate_toolbar_item(entry: &Value) -> Option<SurfaceItem> {
+pub(crate) fn validate_toolbar_item(entry: &Value) -> Option<SurfaceItem> {
     let obj = entry.as_object()?;
     let id = obj.get("id")?.as_str()?;
     if id.is_empty() || !TOOLBAR_ALLOWED_IDS.contains(&id) {
@@ -351,8 +351,37 @@ pub fn validate_icon_item(entry: &Value) -> Option<IconSpec> {
     Some(spec)
 }
 
+/// 菜单合法动作：唯一来源是内置默认文件里的动作集合；`preset:` 前缀
+/// （AI 浮窗预设）承载动态 id，按前缀放行（DS-4 未知 action 过滤）。
+fn menu_action_allowed(action: &str) -> bool {
+    if action.starts_with("preset:") {
+        return true;
+    }
+    static ALLOWED: std::sync::OnceLock<std::collections::HashSet<String>> =
+        std::sync::OnceLock::new();
+    let allowed = ALLOWED.get_or_init(|| {
+        let raw = embedded_json(&SurfaceSpec {
+            id: "menus",
+            default_file: "menus.json",
+            shape: SurfaceShape::Menu,
+        });
+        let value: Value = serde_json::from_str(raw).unwrap_or(Value::Null);
+        value
+            .get("items")
+            .and_then(|v| v.as_array())
+            .map(|items| {
+                items
+                    .iter()
+                    .filter_map(|item| item.get("action")?.as_str().map(str::to_string))
+                    .collect()
+            })
+            .unwrap_or_default()
+    });
+    allowed.contains(action)
+}
+
 /// 校验单个菜单项：缺字段 / 类型错 / 未知 action / 未知 group → None。
-fn validate_menu_item(entry: &Value) -> Option<MenuItem> {
+pub(crate) fn validate_menu_item(entry: &Value) -> Option<MenuItem> {
     let obj = entry.as_object()?;
     let id = obj.get("id")?.as_str()?;
     let group = obj.get("group")?.as_str()?;
@@ -364,6 +393,7 @@ fn validate_menu_item(entry: &Value) -> Option<MenuItem> {
         || icon.is_empty()
         || action.is_empty()
         || !MENU_GROUPS.contains(&group)
+        || !menu_action_allowed(action)
     {
         return None;
     }
@@ -568,13 +598,17 @@ fn atomic_write(path: &Path, data: &[u8]) -> std::io::Result<()> {
 }
 
 /// 用户覆盖来源：`html-toolbar` 读 `user/settings.json` 的 `htmlToolbarItems`
-/// 字段（既有语义不变）；`menus` 读 `user/menus.json` 的 `items` 数组（D4，
-/// list 型整体替换）；`icons` 读 `user/icons.json` 的 `items` 对象（D4，map 型
-/// 逐键深合并）。文件缺失 / 损坏 / 字段缺失都返回 None（回落默认）。
+/// 字段（既有语义不变，id 字符串数组）；`menus` / `capsules` 读各自
+/// `user/<id>.json` 的 `items` **对象数组**（#1551：覆盖数组定义集合与顺序，
+/// 每项按 id 与默认项深合并，允许只写 `{id,label}` 这类部分项）；`icons` 读
+/// `user/icons.json` 的 `items` 对象（map 型逐键深合并）。
+/// 文件缺失 / 损坏 / 字段缺失都返回 None（回落默认）。
 enum Override {
-    /// list 型：项 id 列表（html-toolbar / menus）。
+    /// html-toolbar：项 id 字符串数组（既有语义，设置页按 id 排序）。
     Ids(Vec<String>),
-    /// map 型：概念键 → 覆盖定义（icons）。
+    /// menus / capsules：项对象数组（顺序即语义，逐项按 id 深合并）。
+    Items(Vec<Value>),
+    /// icons：概念键 → 覆盖定义。
     Map(Vec<(String, Value)>),
 }
 
@@ -595,25 +629,10 @@ fn user_override(spec: &SurfaceSpec, base: &Path) -> Option<Override> {
                     .collect(),
             ))
         }
-        SurfaceShape::Menu => {
+        SurfaceShape::Menu | SurfaceShape::Capsule => {
             let value = read_override_file(spec, base)?;
             let items = value.get("items")?.as_array()?;
-            Some(Override::Ids(
-                items
-                    .iter()
-                    .filter_map(|v| v.as_str().map(|s| s.to_string()))
-                    .collect(),
-            ))
-        }
-        SurfaceShape::Capsule => {
-            let value = read_override_file(spec, base)?;
-            let items = value.get("items")?.as_array()?;
-            Some(Override::Ids(
-                items
-                    .iter()
-                    .filter_map(|v| v.as_str().map(|s| s.to_string()))
-                    .collect(),
-            ))
+            Some(Override::Items(items.clone()))
         }
         SurfaceShape::Icon => {
             let value = read_override_file(spec, base)?;
@@ -633,9 +652,13 @@ pub struct SurfaceLoad {
     pub warnings: Vec<String>,
 }
 
+/// 供写边界复用（#1551）：读路径与 patch 写路径共用同一套深合并语义。
+pub(crate) fn merge_public(base: &Value, over: &Value) -> Value {
+    deep_merge(base, over)
+}
+
 /// 深合并（对象递归，数组/标量整体替换）——与 `config::merge_json` 同语义。
-fn deep_merge(base: &Value, over: &Value) -> Value {
-    match (base, over) {
+fn deep_merge(base: &Value, over: &Value) -> Value {    match (base, over) {
         (Value::Object(base_map), Value::Object(over_map)) => {
             let mut merged = base_map.clone();
             for (key, value) in over_map {
@@ -651,10 +674,21 @@ fn deep_merge(base: &Value, over: &Value) -> Value {
     }
 }
 
-/// 合并：默认 ← 用户覆盖。list 型（html-toolbar / menus / capsules）按 id 整体
-/// 替换，未知 id 过滤并聚合为一条告警；map 型（icons）逐键深合并，未覆盖键保留
-/// 默认，未知键（默认不存在的概念键）过滤并聚合为一条告警。空 / 全非法回落默认。
+/// 合并：默认 ← 用户覆盖。list 型分两路：html-toolbar 是 id 字符串数组（既有
+/// 语义，设置页按 id 排序）；menus / capsules 是**对象数组**——覆盖数组定义集合
+/// 与顺序，每项按 `id` 与同 id 默认项深合并（`{id,label}` 这类部分项必须生效，
+/// #1551），默认外的新项在字段齐全时接受。未知 id / 非法项各过滤并聚合为一条
+/// 告警；空 / 全非法回落默认。map 型（icons）逐键深合并，未覆盖键保留默认，
+/// 未知键（默认不存在的概念键）过滤并聚合为一条告警。
 fn merge_list_surface(
+    spec: &SurfaceSpec,
+    defaults: &[Value],
+    override_ids: Option<&[String]>,
+) -> SurfaceLoad {
+    merge_id_list_surface(spec, defaults, override_ids)
+}
+
+fn merge_id_list_surface(
     spec: &SurfaceSpec,
     defaults: &[Value],
     override_ids: Option<&[String]>,
@@ -712,6 +746,105 @@ fn merge_list_surface(
     }
 }
 
+/// 对象数组合并（menus / capsules，#1551）：覆盖数组是**全量清单**——定义
+/// 有效集合与顺序（顺序即语义），未列出的默认项不补回（DS-1）。逐项按 `id`
+/// 与同 id 默认项深合并，`{id,label}` 这类部分项只改给出的字段；默认外的新项
+/// 须自带齐全字段并通过形状校验。未知 id 与非法项各聚合为一条告警；
+/// 空 / 全非法回落完整默认。
+fn merge_object_list_surface(
+    spec: &SurfaceSpec,
+    defaults: &[Value],
+    over: Option<&[Value]>,
+) -> SurfaceLoad {
+    let fallback = || SurfaceLoad {
+        id: spec.id.to_string(),
+        items: defaults.to_vec(),
+        warnings: Vec::new(),
+    };
+    let Some(list) = over else {
+        return fallback();
+    };
+    if list.is_empty() {
+        return fallback();
+    }
+    let known: std::collections::HashSet<&str> = defaults
+        .iter()
+        .filter_map(|item| item.get("id")?.as_str())
+        .collect();
+    let mut out: Vec<Value> = Vec::new();
+    let mut placed: std::collections::HashSet<String> = std::collections::HashSet::new();
+    let mut unknown: Vec<String> = Vec::new();
+    let mut invalid: Vec<String> = Vec::new();
+    for entry in list {
+        let partial = match entry {
+            Value::Object(map) => entry.clone(),
+            _ => {
+                invalid.push("(非对象)".into());
+                continue;
+            }
+        };
+        let id = match partial.get("id").and_then(|v| v.as_str()) {
+            Some(id) => id.to_string(),
+            None => {
+                invalid.push("(缺 id)".into());
+                continue;
+            }
+        };
+        if !placed.insert(id.clone()) {
+            continue;
+        }
+        let is_known = known.contains(id.as_str());
+        let base = if is_known {
+            defaults
+                .iter()
+                .find(|item| item.get("id").and_then(|v| v.as_str()) == Some(id.as_str()))
+        } else {
+            None
+        };
+        let merged = match base {
+            Some(default_item) => deep_merge(default_item, &partial),
+            None => partial,
+        };
+        let ok = match spec.shape {
+            SurfaceShape::Menu => validate_menu_item(&merged).is_some(),
+            SurfaceShape::Capsule => validate_capsule_item(&merged).is_some(),
+            _ => false,
+        };
+        if !ok {
+            if is_known {
+                invalid.push(id);
+            } else if !unknown.contains(&id) {
+                unknown.push(id);
+            }
+            continue;
+        }
+        out.push(merged);
+    }
+    let mut warnings = Vec::new();
+    if !unknown.is_empty() {
+        warnings.push(format!("未知动作 id: {}", unknown.join(", ")));
+    }
+    if !invalid.is_empty() {
+        warnings.push(format!(
+            "非法动作项已过滤（{}）: {}",
+            spec.id,
+            invalid.join(", ")
+        ));
+    }
+    if out.is_empty() {
+        return SurfaceLoad {
+            id: spec.id.to_string(),
+            items: defaults.to_vec(),
+            warnings,
+        };
+    }
+    SurfaceLoad {
+        id: spec.id.to_string(),
+        items: out,
+        warnings,
+    }
+}
+
 /// map 型合并（icons）：默认 ← 覆盖逐键深合并；覆盖里非法 / 未知的概念键过滤
 /// 并聚合为一条告警；空覆盖回落默认。
 fn merge_map_surface(
@@ -739,8 +872,6 @@ fn merge_map_surface(
     // 默认集合外的新概念键：整条定义追加到有效集合尾部（DS-6 用户故事 9）。
     let mut appended: Vec<Value> = Vec::new();
     for (key, value) in entries {
-        // 定义必须自带 path 组（d/s 非空，或 parts 至少一段非空）——否则拒绝并
-        // 聚合告警（DS-4）。已有键的覆盖也走同一校验：缺 path 的覆盖无意义。
         let over_has_path = value
             .get("d")
             .and_then(|v| v.as_str())
@@ -768,18 +899,19 @@ fn merge_map_surface(
                     })
                 })
                 .unwrap_or(false);
-        if !over_has_path {
-            if !rejected.contains(key) {
-                rejected.push(key.clone());
-            }
-            continue;
-        }
+        // 已有概念键：允许只改 label（不重复 path 组），深合并会保留默认 path；
+        // 新概念键必须自带 path 组，否则拒绝并聚合告警（DS-4 / DS-6）。
         if known.contains(key.as_str()) {
             if !merged.contains_key(key) {
                 merged.insert(key.clone(), value.clone());
             }
         } else if !merged.contains_key(key) {
-            // 新概念键：label 缺失/为空也拒绝（面项契约要求非空 label）。
+            if !over_has_path {
+                if !rejected.contains(key) {
+                    rejected.push(key.clone());
+                }
+                continue;
+            }
             let label_ok = value
                 .get("label")
                 .and_then(|v| v.as_str())
@@ -857,6 +989,7 @@ pub fn load_surface(spec: &SurfaceSpec, base: &Path) -> SurfaceLoad {
     let mut loaded = match over {
         None => merge_list_surface(spec, &defaults, None),
         Some(Override::Ids(ids)) => merge_list_surface(spec, &defaults, Some(&ids)),
+        Some(Override::Items(items)) => merge_object_list_surface(spec, &defaults, Some(&items)),
         Some(Override::Map(entries)) => merge_map_surface(spec, &defaults, Some(&entries)),
     };
     // 默认文件自身被过滤的告警也透传（DS-4：有效集合不因单个非法项整体失败）。
@@ -1291,7 +1424,7 @@ mod tests {
     fn menus_用户覆盖_改名排序启停生效() {
         let dir = temp_base("menus_override");
         let base = dir.path();
-        write_menus_user(base, r#"{"items":["pane-source","pane-new-file"]}"#);
+        write_menus_user(base, r#"{"items":[{"id":"pane-source"},{"id":"pane-new-file"}]}"#);
         let loaded = load_surface(menus_spec(), base);
         assert_eq!(
             item_ids(&loaded.items),
@@ -1300,11 +1433,185 @@ mod tests {
         assert_eq!(loaded.warnings, Vec::<String>::new());
     }
 
+    // ── #1551：对象数组覆盖（部分项深合并）──────────────────────
+    // 用户按验收卡写入对象数组（含 label / enabled / order），Rust 必须按 id
+    // 与默认项深合并，而不是把对象当 id 字符串丢弃。
+
+    fn menu_label<'a>(items: &'a [Value], id: &str) -> Option<&'a str> {
+        items
+            .iter()
+            .find(|i| i.get("id").and_then(|v| v.as_str()) == Some(id))
+            .and_then(|i| i.get("label"))
+            .and_then(|v| v.as_str())
+    }
+
+    fn menu_enabled(items: &[Value], id: &str) -> Option<bool> {
+        items
+            .iter()
+            .find(|i| i.get("id").and_then(|v| v.as_str()) == Some(id))
+            .and_then(|i| i.get("enabled"))
+            .and_then(|v| v.as_bool())
+    }
+
+    #[test]
+    fn menus_对象覆盖_部分项改名生效且其余不变() {
+        let dir = temp_base("menus_obj_rename");
+        let base = dir.path();
+        // 全量清单：pane-source 只写 id+label（部分项），其余两项写全字段。
+        write_menus_user(
+            base,
+            r#"{"items":[
+                {"id":"pane-source","label":"查看源码"},
+                {"id":"pane-new-file","group":"pane-header","order":1,"label":"新建文件","icon":"file","action":"new-file","enabled":true},
+                {"id":"pane-share","group":"pane-header","order":2,"label":"分享","icon":"share","action":"share","enabled":true}
+            ]}"#,
+        );
+        let loaded = load_surface(menus_spec(), base);
+        assert_eq!(
+            menu_label(&loaded.items, "pane-source"),
+            Some("查看源码"),
+            "部分项 id+label 必须改名生效"
+        );
+        // 清单里未出现的默认项不补回（DS-1）
+        assert_eq!(loaded.items.len(), 3, "覆盖数组是全量清单");
+        assert_eq!(
+            item_ids(&loaded.items),
+            vec!["pane-source", "pane-new-file", "pane-share"]
+        );
+        assert_eq!(menu_enabled(&loaded.items, "pane-source"), Some(true));
+        // 深合并后仍带默认的 icon/action/group/order
+        let source = loaded
+            .items
+            .iter()
+            .find(|i| i.get("id").and_then(|v| v.as_str()) == Some("pane-source"))
+            .expect("pane-source 必在有效集合");
+        assert_eq!(source.get("icon").and_then(|v| v.as_str()), Some("code"));
+        assert_eq!(
+            source.get("action").and_then(|v| v.as_str()),
+            Some("source")
+        );
+        assert_eq!(
+            source.get("group").and_then(|v| v.as_str()),
+            Some("pane-header")
+        );
+        assert_eq!(
+            source.get("order").and_then(|v| v.as_u64()),
+            Some(5),
+            "未覆盖字段保持默认 order"
+        );
+        assert_eq!(loaded.warnings, Vec::<String>::new());
+    }
+
+    #[test]
+    fn menus_对象覆盖_排序与启停生效() {
+        let dir = temp_base("menus_obj_reorder");
+        let base = dir.path();
+        write_menus_user(
+            base,
+            r#"{"items":[
+                {"id":"pane-source","enabled":false},
+                {"id":"pane-new-file","order":9}
+            ]}"#,
+        );
+        let loaded = load_surface(menus_spec(), base);
+        // 覆盖数组定义集合与顺序：恰两项，按覆盖顺序
+        assert_eq!(item_ids(&loaded.items), vec!["pane-source", "pane-new-file"]);
+        assert_eq!(
+            menu_enabled(&loaded.items, "pane-source"),
+            Some(false),
+            "enabled:false 必须生效"
+        );
+        assert_eq!(
+            loaded
+                .items
+                .iter()
+                .find(|i| i.get("id").and_then(|v| v.as_str()) == Some("pane-new-file"))
+                .and_then(|i| i.get("order"))
+                .and_then(|v| v.as_u64()),
+            Some(9),
+            "order 覆盖必须生效"
+        );
+        assert_eq!(loaded.warnings, Vec::<String>::new());
+    }
+
+    #[test]
+    fn menus_对象覆盖_未知id过滤并聚合告警() {
+        let dir = temp_base("menus_obj_unknown");
+        let base = dir.path();
+        write_menus_user(
+            base,
+            r#"{"items":[{"id":"pane-new-file"},{"id":"nope","label":"不存在"},{"id":"pane-share"}]}"#,
+        );
+        let loaded = load_surface(menus_spec(), base);
+        assert_eq!(item_ids(&loaded.items), vec!["pane-new-file", "pane-share"]);
+        assert_eq!(loaded.warnings.len(), 1, "未知 id 聚合为一条告警");
+        assert!(loaded.warnings[0].contains("nope"));
+    }
+
+    #[test]
+    fn menus_对象覆盖_新增合法项追加到请求顺序() {
+        let dir = temp_base("menus_obj_new");
+        let base = dir.path();
+        write_menus_user(
+            base,
+            r#"{"items":[
+                {"id":"pane-new-file"},
+                {"id":"pane-custom","group":"pane-header","order":7,"label":"自定义","icon":"file","action":"new-file","enabled":true}
+            ]}"#,
+        );
+        let loaded = load_surface(menus_spec(), base);
+        assert_eq!(
+            item_ids(&loaded.items),
+            vec!["pane-new-file", "pane-custom"],
+            "新增项按覆盖顺序追加"
+        );
+        assert_eq!(menu_label(&loaded.items, "pane-custom"), Some("自定义"));
+        assert_eq!(loaded.warnings, Vec::<String>::new());
+    }
+
+    #[test]
+    fn menus_对象覆盖_全非法回落默认() {
+        let dir = temp_base("menus_obj_allbad");
+        let base = dir.path();
+        let defaults = materialize(menus_spec(), base);
+        write_menus_user(
+            base,
+            r#"{"items":[{"id":"nope","label":"X"},{"label":"缺 id"},{"id":"pane-new-file","group":"nope"}]}"#,
+        );
+        let loaded = load_surface(menus_spec(), base);
+        assert_eq!(loaded.items, defaults, "全非法覆盖回落完整默认");
+        assert_eq!(loaded.warnings.len(), 2, "未知 id 与非法项各聚合一条");
+    }
+
+    #[test]
+    fn menus_空对象数组覆盖回落默认() {
+        let dir = temp_base("menus_obj_empty");
+        let base = dir.path();
+        let defaults = materialize(menus_spec(), base);
+        write_menus_user(base, r#"{"items":[]}"#);
+        let loaded = load_surface(menus_spec(), base);
+        assert_eq!(loaded.items, defaults);
+    }
+
+    #[test]
+    fn menus_坏JSON覆盖回落默认不崩溃() {
+        let dir = temp_base("menus_obj_badjson");
+        let base = dir.path();
+        let defaults = materialize(menus_spec(), base);
+        write_menus_user(base, "not-json");
+        let loaded = load_surface(menus_spec(), base);
+        assert_eq!(loaded.items, defaults);
+        assert_eq!(loaded.warnings, Vec::<String>::new());
+    }
+
     #[test]
     fn menus_用户覆盖_未知id过滤并聚合告警() {
         let dir = temp_base("menus_unknown");
         let base = dir.path();
-        write_menus_user(base, r#"{"items":["pane-new-file","nope","pane-share"]}"#);
+        write_menus_user(
+            base,
+            r#"{"items":[{"id":"pane-new-file"},{"id":"nope","label":"不存在"},{"id":"pane-share"}]}"#,
+        );
         let loaded = load_surface(menus_spec(), base);
         assert_eq!(item_ids(&loaded.items), vec!["pane-new-file", "pane-share"]);
         assert_eq!(loaded.warnings.len(), 1);
@@ -1355,14 +1662,23 @@ mod tests {
     }
 
     #[test]
-    fn menus_未登记action在默认文件中不存在() {
-        // 校验器只接受 MENU_GROUPS 内的 group；action 非空即合法（代码侧动作
-        // 是否存在由消费端分派，面层只保证形状）。
-        let entry = serde_json::json!({
+    fn menus_未登记action被过滤_已登记action与预设前缀通过() {
+        // DS-4：action 必须在默认文件登记的动作集合内；`preset:` 前缀承载动态预设 id。
+        let unknown = serde_json::json!({
             "id": "x", "group": "pane-header", "order": 1,
             "label": "X", "icon": "file", "action": "any-action", "enabled": true
         });
-        assert!(validate_menu_item(&entry).is_some());
+        assert!(validate_menu_item(&unknown).is_none());
+        let known = serde_json::json!({
+            "id": "x", "group": "pane-header", "order": 1,
+            "label": "X", "icon": "file", "action": "source", "enabled": true
+        });
+        assert!(validate_menu_item(&known).is_some());
+        let preset = serde_json::json!({
+            "id": "x", "group": "ai-float-presets", "order": 1,
+            "label": "X", "icon": "file", "action": "preset:any-new", "enabled": true
+        });
+        assert!(validate_menu_item(&preset).is_some());
     }
 
     #[test]
@@ -1514,6 +1830,29 @@ mod tests {
     }
 
     #[test]
+    fn icons_覆盖_只改label无需重复path组() {
+        let dir = temp_base("icons_label_only");
+        let base = dir.path();
+        write_icons_user(base, r#"{"items":{"close":{"label":"关窗"}}}"#);
+        let loaded = load_surface(icons_spec(), base);
+        assert_eq!(
+            loaded.warnings,
+            Vec::<String>::new(),
+            "只改 label 的已有键覆盖不应被告警拒绝"
+        );
+        let close = loaded
+            .items
+            .iter()
+            .find(|i| i.get("key").and_then(|v| v.as_str()) == Some("close"))
+            .expect("close 必在有效集合");
+        assert_eq!(close.get("label").and_then(|v| v.as_str()), Some("关窗"));
+        assert!(
+            close.get("s").is_some(),
+            "label-only 覆盖必须保留默认 path 组"
+        );
+    }
+
+    #[test]
     fn icons_覆盖_非法定义过滤并聚合告警() {
         let dir = temp_base("icons_unknown");
         let base = dir.path();
@@ -1542,25 +1881,15 @@ mod tests {
     }
 
     #[test]
-    fn icons_坏定义_缺path组被拒绝并回落默认path且聚合告警() {
+    fn icons_新键缺path组被拒绝并回落默认path且聚合告警() {
         let dir = temp_base("icons_bad");
         let base = dir.path();
-        write_icons_user(base, r#"{"items":{"close":{"label":"关"}}}"#);
+        write_icons_user(base, r#"{"items":{"brandNew":{"label":"新图标"}}}"#);
         let loaded = load_surface(icons_spec(), base);
-        // 非法定义被拒绝：close 保留默认 path（不是空 path），并产生一条聚合告警
+        // 新概念键缺 path 组：整条拒绝并聚合告警，不追加到有效集合（DS-4）
         assert_eq!(loaded.warnings.len(), 1);
-        assert!(loaded.warnings[0].contains("close"));
-        let close = loaded
-            .items
-            .iter()
-            .find(|i| i.get("key").and_then(|v| v.as_str()) == Some("close"))
-            .expect("close 必在有效集合");
-        assert!(close.get("s").is_some(), "被拒绝的定义应回落默认 path");
-        assert_ne!(
-            close.get("label").and_then(|v| v.as_str()),
-            Some("关"),
-            "被拒绝的定义不应改写 label"
-        );
+        assert!(loaded.warnings[0].contains("brandNew"));
+        assert!(!icon_keys(&loaded.items).contains(&"brandNew"));
     }
 
     #[test]
@@ -1821,10 +2150,72 @@ mod tests {
     fn capsules_用户覆盖_改名排序生效() {
         let dir = temp_base("capsules_override");
         let base = dir.path();
-        write_capsules_user(base, r#"{"items":["capsule-bg","format-bold"]}"#);
+        write_capsules_user(base, r#"{"items":[{"id":"capsule-bg"},{"id":"format-bold"}]}"#);
         let loaded = load_surface(capsules_spec(), base);
         assert_eq!(item_ids(&loaded.items), vec!["capsule-bg", "format-bold"]);
         assert_eq!(loaded.warnings, Vec::<String>::new());
+    }
+
+    // ── #1551：胶囊对象数组覆盖（部分项深合并）──────────────────
+
+    #[test]
+    fn capsules_对象覆盖_只留三项且改名生效() {
+        let dir = temp_base("capsules_obj_three");
+        let base = dir.path();
+        write_capsules_user(
+            base,
+            r#"{"items":[
+                {"id":"capsule-bg","label":"底色"},
+                {"id":"format-bold"},
+                {"id":"ai-polish","label":"润色文字"}
+            ]}"#,
+        );
+        let loaded = load_surface(capsules_spec(), base);
+        assert_eq!(
+            item_ids(&loaded.items),
+            vec!["capsule-bg", "format-bold", "ai-polish"],
+            "覆盖数组定义集合与顺序"
+        );
+        let label = |id: &str| {
+            loaded
+                .items
+                .iter()
+                .find(|i| i.get("id").and_then(|v| v.as_str()) == Some(id))
+                .and_then(|i| i.get("label"))
+                .and_then(|v| v.as_str())
+        };
+        assert_eq!(label("capsule-bg"), Some("底色"));
+        assert_eq!(label("format-bold"), Some("加粗"), "未覆盖项保持默认 label");
+        assert_eq!(label("ai-polish"), Some("润色文字"));
+        assert_eq!(loaded.warnings, Vec::<String>::new());
+    }
+
+    #[test]
+    fn capsules_对象覆盖_未知id过滤并聚合告警() {
+        let dir = temp_base("capsules_obj_unknown");
+        let base = dir.path();
+        write_capsules_user(
+            base,
+            r#"{"items":[{"id":"format-bold"},{"id":"nope","label":"不存在"},{"id":"format-italic"}]}"#,
+        );
+        let loaded = load_surface(capsules_spec(), base);
+        assert_eq!(item_ids(&loaded.items), vec!["format-bold", "format-italic"]);
+        assert_eq!(loaded.warnings.len(), 1, "未知 id 聚合为一条告警");
+        assert!(loaded.warnings[0].contains("nope"));
+    }
+
+    #[test]
+    fn capsules_对象覆盖_全非法回落默认() {
+        let dir = temp_base("capsules_obj_allbad");
+        let base = dir.path();
+        let defaults = materialize(capsules_spec(), base);
+        write_capsules_user(
+            base,
+            r#"{"items":[{"id":"nope","label":"X"},{"id":"format-bold","label":""}]}"#,
+        );
+        let loaded = load_surface(capsules_spec(), base);
+        assert_eq!(loaded.items, defaults, "全非法覆盖回落完整默认");
+        assert_eq!(loaded.warnings.len(), 2, "未知 id 与非法项各聚合一条");
     }
 
     #[test]
@@ -1854,7 +2245,10 @@ mod tests {
     fn capsules_用户覆盖_未知id过滤并聚合告警() {
         let dir = temp_base("capsules_unknown");
         let base = dir.path();
-        write_capsules_user(base, r#"{"items":["format-bold","nope","format-italic"]}"#);
+        write_capsules_user(
+            base,
+            r#"{"items":[{"id":"format-bold"},{"id":"nope","label":"不存在"},{"id":"format-italic"}]}"#,
+        );
         let loaded = load_surface(capsules_spec(), base);
         assert_eq!(
             item_ids(&loaded.items),
