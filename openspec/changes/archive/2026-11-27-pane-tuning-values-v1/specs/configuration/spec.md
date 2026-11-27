@@ -14,7 +14,7 @@
 - **WHEN** 提交 `paneMode = "ultra"` 或 `paneScale = "huge"`
 - **THEN** 保存 SHALL 返回校验错误，`user/settings.json` SHALL 保持原内容
 
-#### Scenario: 缩放白名单取值来自面
+#### Scenario: 缩放不触及正文
 
 - **WHEN** `paneScale` 选中的档 `scale` 为 1.3
 - **THEN** 顶栏、状态栏、设置场景、阅读轨、大纲菜单、文档属性面板的计算 `zoom` SHALL 为 1.3，正文 / 预览 / 编辑器的计算 `zoom` 与尺寸 SHALL 不变
