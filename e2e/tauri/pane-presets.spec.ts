@@ -1,5 +1,7 @@
 // pane-presets-v1 / 1.1（#1584）熟练模式三档：simple / standard / hardcore。
 // 覆盖 G-9 四条场景 + readingMode 优先 + 不重建 EditorView。
+// pane-presets-coverage-v1 / 1.1（#1605）扩到阅读轨与栏目头按钮：
+// 会话内呈现态覆盖、hardcore 隐藏 + 临时显现、悬停预览不门控。
 import { test, expect, type Page } from "@playwright/test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -7,10 +9,12 @@ import { execFileSync } from "node:child_process";
 
 const APP_URL = process.env.PANE_PRESETS_APP_URL ?? "http://localhost:1420";
 const ART = path.resolve(process.cwd(), ".artifacts/1584");
+const ART2 = path.resolve(process.cwd(), ".artifacts/1605");
 const EVIDENCE = path.resolve(process.cwd(), "scripts/cw-evidence.sh");
 
 test.beforeEach(() => {
   mkdirSync(ART, { recursive: true });
+  mkdirSync(ART2, { recursive: true });
 });
 
 async function shot(target: Page, name: string): Promise<string> {
@@ -336,6 +340,238 @@ test("证据采集：四态截图 + 状态覆盖", async ({ page }) => {
   ];
   writeFileSync(
     path.join(ART, "state-coverage.json"),
+    JSON.stringify({ states }, null, 2),
+  );
+});
+
+// ── #1605：阅读轨 + 栏目头按钮纳入三档 ─────────────────────────────
+
+async function shot2(target: Page, name: string): Promise<string> {
+  const file = path.join(ART2, `${name}.png`);
+  await target.screenshot({ path: file });
+  execFileSync(
+    EVIDENCE,
+    [
+      "record-state",
+      ART2,
+      "--state",
+      name,
+      "--screenshot",
+      file,
+      "--assertion",
+      "passed",
+    ],
+    { stdio: "ignore" },
+  );
+  return file;
+}
+
+/** 读栏目头动作按钮的计算 opacity。 */
+async function paneActionsOpacity(page: Page): Promise<number> {
+  return page
+    .locator(".pane-actions")
+    .first()
+    .evaluate((el) => Number(getComputedStyle(el).opacity));
+}
+
+test("simple：阅读轨恒显 + 栏目头按钮 opacity=1", async ({ page }) => {
+  await boot(page, "simple");
+
+  // 阅读轨强制展开（浮层形态，不写 railState）。
+  await expect(page.getByTestId("rail-panel")).toBeVisible();
+  const railState = await page
+    .getByTestId("rail-panel")
+    .getAttribute("data-rail-state");
+  expect(railState).toBe("hover");
+  // 用户 railState 未被写穿。
+  expect(
+    await page.evaluate(
+      () =>
+        (window as unknown as Record<string, any>).__biaoyue_store__
+          .getState().railState,
+    ),
+  ).toBe("collapsed");
+
+  // 栏目头按钮恒显。
+  expect(await paneActionsOpacity(page)).toBe(1);
+
+  await shot2(page, "01-simple");
+});
+
+test("standard：阅读轨按自身状态、栏目头按钮仅 hover 显现", async ({
+  page,
+}) => {
+  await boot(page, "standard");
+
+  // 折叠态只渲染边缘条，面板不可见。
+  await expect(page.getByTestId("rail-edge")).toBeVisible();
+  await expect(page.getByTestId("rail-panel")).toHaveCount(0);
+
+  // 栏目头按钮默认 opacity 0。
+  expect(await paneActionsOpacity(page)).toBe(0);
+
+  await page.locator(".pane-actions").first().hover();
+  await expect
+    .poll(async () => paneActionsOpacity(page), { timeout: 2000 })
+    .toBe(1);
+
+  await shot2(page, "02-standard");
+});
+
+test("hardcore：阅读轨隐藏、左缘 hover 不唤出、栏目头按钮不显现、临时显现一并出现", async ({
+  page,
+}) => {
+  await boot(page, "hardcore");
+
+  // 阅读轨整体隐藏（面板与边缘条都不渲染）。
+  await expect(page.getByTestId("rail-panel")).toHaveCount(0);
+  await expect(page.getByTestId("rail-edge")).toHaveCount(0);
+  expect(
+    await page.evaluate(
+      () =>
+        (window as unknown as Record<string, any>).__biaoyue_store__
+          .getState().railState,
+    ),
+  ).toBe("collapsed");
+
+  // 左缘 hover 不唤出阅读轨。
+  const viewport = page.viewportSize()!;
+  await page.mouse.move(2, viewport.height / 2, { steps: 4 });
+  await page.waitForTimeout(500);
+  await expect(page.getByTestId("rail-panel")).toHaveCount(0);
+  await expect(page.getByTestId("rail-edge")).toHaveCount(0);
+
+  // 栏目头按钮 hover 不显现（hardcore 下顶栏收拢，用 force 绕过裁剪命中）。
+  await page.locator(".pane-actions").first().hover({ force: true });
+  await page.waitForTimeout(300);
+  expect(await paneActionsOpacity(page)).toBe(0);
+
+  await shot2(page, "03-hardcore-hidden");
+
+  // Cmd+Shift+U 一并显现。
+  await page.keyboard.press("Meta+Shift+U");
+  await expect(page.getByTestId("rail-panel")).toBeVisible({ timeout: 2000 });
+  await expect
+    .poll(async () => paneActionsOpacity(page), { timeout: 2000 })
+    .toBe(1);
+
+  await shot2(page, "04-hardcore-revealed");
+
+  // Esc 一并收起。
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("rail-panel")).toHaveCount(0, { timeout: 2000 });
+  await page.mouse.move(400, 300);
+  await expect
+    .poll(async () => paneActionsOpacity(page), { timeout: 2000 })
+    .toBe(0);
+});
+
+test("hardcore→standard：阅读轨恢复进入前状态（不写穿）", async ({
+  page,
+}) => {
+  await boot(page, "standard");
+
+  // 用户先钉住阅读轨，再切到 hardcore。
+  await page.evaluate(() => {
+    (window as unknown as Record<string, any>).__biaoyue_store__
+      .getState()
+      .setRailState("pinned");
+  });
+  await expect(page.getByTestId("rail-panel")).toBeVisible();
+
+  await page.evaluate((m) => {
+    (window as unknown as Record<string, any>).__biaoyue_editor_store__
+      .getState()
+      .setConfig({ paneMode: m });
+    document.documentElement.dataset.paneMode = m;
+  }, "hardcore");
+  await expect(page.getByTestId("rail-panel")).toHaveCount(0);
+
+  // 切回 standard：恢复为钉住。
+  await page.evaluate((m) => {
+    (window as unknown as Record<string, any>).__biaoyue_editor_store__
+      .getState()
+      .setConfig({ paneMode: m });
+    document.documentElement.dataset.paneMode = m;
+  }, "standard");
+  await expect(page.getByTestId("rail-panel")).toBeVisible();
+  expect(
+    await page.evaluate(
+      () =>
+        (window as unknown as Record<string, any>).__biaoyue_store__
+          .getState().railState,
+    ),
+  ).toBe("pinned");
+
+  await shot2(page, "05-restored");
+});
+
+test("readingMode 优先：硬核 + 钉住轨在沉浸态不因档位隐藏", async ({ page }) => {
+  // 先在标准档钉住轨（进入硬核时记住的就是它）。
+  await boot(page, "standard");
+  await page.evaluate(() => {
+    (window as unknown as Record<string, any>).__biaoyue_store__
+      .getState()
+      .setRailState("pinned");
+  });
+  await expect(page.getByTestId("rail-panel")).toBeVisible();
+
+  // 切硬核：档位覆盖生效，轨隐藏。
+  await page.evaluate(() => {
+    const w = window as unknown as Record<string, any>;
+    w.__biaoyue_editor_store__.getState().setConfig({ paneMode: "hardcore" });
+    document.documentElement.dataset.paneMode = "hardcore";
+  });
+  await expect(page.getByTestId("rail-panel")).toHaveCount(0);
+
+  // 进沉浸：档位覆盖不生效，钉住轨按沉浸规则保持可见。
+  await page.evaluate(() => {
+    (window as unknown as Record<string, any>).__biaoyue_store__
+      .getState()
+      .setReadingMode(true);
+  });
+  await page.waitForTimeout(300);
+  await expect(page.getByTestId("rail-panel")).toBeVisible();
+
+  // 退沉浸回到硬核：档位覆盖恢复，轨隐藏。
+  await page.evaluate(() => {
+    (window as unknown as Record<string, any>).__biaoyue_store__
+      .getState()
+      .setReadingMode(false);
+  });
+  await page.waitForTimeout(300);
+  await expect(page.getByTestId("rail-panel")).toHaveCount(0);
+});
+
+test("证据采集 #1605：四态截图 + 状态覆盖", async ({ page }) => {
+  await boot(page, "simple");
+  await shot2(page, "ev-simple");
+
+  await boot(page, "standard");
+  await shot2(page, "ev-standard");
+
+  await boot(page, "hardcore");
+  await shot2(page, "ev-hardcore-hidden");
+  await page.keyboard.press("Meta+Shift+U");
+  await expect(page.getByTestId("rail-panel")).toBeVisible({ timeout: 2000 });
+  await shot2(page, "ev-hardcore-revealed");
+
+  const states = [
+    { state: "simple", screenshot: "ev-simple.png", assertion: "passed" },
+    { state: "standard", screenshot: "ev-standard.png", assertion: "passed" },
+    {
+      state: "hardcore-hidden",
+      screenshot: "ev-hardcore-hidden.png",
+      assertion: "passed",
+    },
+    {
+      state: "hardcore-revealed",
+      screenshot: "ev-hardcore-revealed.png",
+      assertion: "passed",
+    },
+  ];
+  writeFileSync(
+    path.join(ART2, "state-coverage.json"),
     JSON.stringify({ states }, null, 2),
   );
 });
