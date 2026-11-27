@@ -38,3 +38,20 @@ expect(residue).toEqual({ frames: 0, handles: 0, shades: 0, active: 0 });
 ```
 
 Scenario 对照：editing spec E-44「清理可靠性」（多轮裁剪零残留 / 已加载图片标识线必现）与「裁剪缩放不跳变」；真机专属项（WKWebView 合成层 / caret 揭示）以探针输出承载（headless 不可复现，见各条说明）。
+
+## 三轮（连击/显隐/蒙层淡出）机读断言摘录
+```
+// maximize-zoom-persist.spec.ts（连击±不再回 100%：dblclick target 判定）
+expect(await readScale(page)).toBe(1.21);          // 连击后不回落
+await page.mouse.dblclick(box.x + 20, box.y + 20);
+expect(await readScale(page)).toBe(1);             // 双击图片/背景仍复位（D16）
+
+// maximize-button-order.spec.ts（hover 显隐）
+expect(await controlsOpacity(page)).toBe("0");     // 默认淡出
+// pointerenter 后
+expect(await controlsOpacity(page)).toBe("1");     // 进入浮层显示
+
+// crop-cleanup-sync.spec.ts（shade 淡出后零残留）
+expect(residue).toEqual({ frames: 0, handles: 0, shades: 0, active: 0 });
+```
+Scenario 对照：放大层交互（D16 双击复位 / hover 显隐为用户方案新增）；真机蒙层残影以截图 + 淡出方案承载。

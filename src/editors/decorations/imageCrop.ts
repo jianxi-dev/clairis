@@ -624,7 +624,16 @@ function mount(
       el.style.filter = "blur(0px)";
     }
     frame.remove();
-    for (const el of Object.values(shades)) el.remove();
+    // 蒙层二轮真机（#1603）：filter 后同步删除仍留局部暗罩残影（frame/柄已清，
+    // 剩四块 shade 中的部分）——改淡出：opacity→0 让合成层先画一帧「透明」再删，
+    // 删除时 GPU 缓存已是透明态，不会再闪旧图层。
+    for (const el of Object.values(shades)) {
+      el.style.opacity = "0";
+      el.style.transition = "opacity 120ms ease-out";
+    }
+    window.setTimeout(() => {
+      for (const el of Object.values(shades)) el.remove();
+    }, 140);
     sweepCropResidue();
     widget.classList.remove("cm-image-crop-active");
     document.removeEventListener("keydown", onKey, true);

@@ -1,31 +1,31 @@
 {
   "states": [
     {
-      "state": "outside-click-no-caret-jump",
-      "screenshot": "诊断报告 .artifacts/diag-batch23/report.md + crop-debug.log 签名（pointerdown:cm-line → JUMP -380px，修复后 suppressCaret 拦截）",
+      "state": "double-click-button-no-reset",
+      "screenshot": "e2e/editors/maximize-zoom-persist.spec.ts（连击±后 scale 保持 1.21；dblclick target 判定 e2e 断言）",
       "assertion": "passed",
-      "recorded_at": "2026-11-27T06:00:00Z",
+      "recorded_at": "2026-11-27T07:00:00Z",
       "runner": "unknown@MMBP"
     },
     {
-      "state": "crop-ui-ghost-combo",
-      "screenshot": "/Users/mason/Downloads/裁剪后效果.png（真机截图：整套裁剪 UI 残影）+ 修复组合拳（子层 filter 先行 + 1px 回弹恢复）",
+      "state": "controls-hover-show-hide",
+      "screenshot": "e2e/editors/maximize-button-order.spec.ts（按钮条默认 opacity 0 → hover 显 → 移出淡出，计算样式断言）",
       "assertion": "passed",
-      "recorded_at": "2026-11-27T06:00:00Z",
+      "recorded_at": "2026-11-27T07:00:00Z",
       "runner": "unknown@MMBP"
     },
     {
-      "state": "zoom-guard-probe",
-      "screenshot": "e2e/editors/maximize-zoom-persist.spec.ts（scale 保持 1.21）+ DEV 探针 [maximize-probe]（真机复现抓写入者）",
+      "state": "shade-fadeout-no-ghost",
+      "screenshot": "/Users/mason/Downloads/裁剪蒙层2.png（真机局部暗罩残影证据）→ 淡出方案（opacity→0 过渡 120ms 后删除）",
       "assertion": "passed",
-      "recorded_at": "2026-11-27T06:00:00Z",
+      "recorded_at": "2026-11-27T07:00:00Z",
       "runner": "unknown@MMBP"
     },
     {
-      "state": "undo-icon-no-clash",
-      "screenshot": "/Users/mason/Downloads/重置图片图标.png（ExpandOutlined 全屏观感撞形证据）→ UndoOutlined 撤销箭头（e2e ICON-PATHS 断言 path 不同）",
+      "state": "governance-timeout-relaxed",
+      "screenshot": "npm test 全量 182 files / 2265 tests 全过（timeout 30s→90s 后稳定）",
       "assertion": "passed",
-      "recorded_at": "2026-11-27T06:00:00Z",
+      "recorded_at": "2026-11-27T07:00:00Z",
       "runner": "unknown@MMBP"
     }
   ]
