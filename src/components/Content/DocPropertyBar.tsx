@@ -988,11 +988,32 @@ function DatetimeEditor({ field, editable, onCommit }: DatetimeEditorProps) {
     if (!editing) return;
     const onDown = (e: MouseEvent) => {
       const t = e.target as Node | null;
+      // 面板已 portal 到 body（#1652）：wrapRef 不再是面板祖先，需单独判定。
       if (t && wrapRef.current?.contains(t)) return;
+      if (t && panelRef.current?.contains(t)) return;
       finishRef.current(latest.current.touched ? "commit" : "cancel");
     };
     document.addEventListener("mousedown", onDown);
     return () => document.removeEventListener("mousedown", onDown);
+  }, [editing]);
+
+  // 面板已 portal 到 body（#1652）：锚点取自 .dpb-panel 内（zoom 容器），
+  // 倍率变化会让槽位移动而面板留在原地，故跟随 --pane-scale-factor 重测。
+  useEffect(() => {
+    if (!editing) return;
+    const remeasure = () => {
+      const r = slotRef.current?.getBoundingClientRect();
+      if (!r) return;
+      setAnchor({ x: Math.max(8, r.left), y: r.bottom + 4 });
+    };
+    remeasure();
+    const root = document.documentElement;
+    const observer = new MutationObserver(remeasure);
+    observer.observe(root, {
+      attributes: true,
+      attributeFilter: ["data-pane-scale-active", "style"],
+    });
+    return () => observer.disconnect();
   }, [editing]);
 
   const start = () => {
@@ -1016,14 +1037,8 @@ function DatetimeEditor({ field, editable, onCommit }: DatetimeEditorProps) {
     doneRef.current = false;
     skipInputFocusRef.current = false;
     const r = slotRef.current?.getBoundingClientRect();
-    setAnchor(
-      r
-        ? {
-            x: Math.max(8, r.left),
-            y: Math.min(window.innerHeight - 360, r.bottom + 4),
-          }
-        : null,
-    );
+    // 锚点只给初值，夹取交给 useMenuPos 按面板实测尺寸算（#1652）。
+    setAnchor(r ? { x: Math.max(8, r.left), y: r.bottom + 4 } : null);
     setEditing(true);
   };
 
@@ -1200,6 +1215,7 @@ function DatetimeEditor({ field, editable, onCommit }: DatetimeEditorProps) {
           if (!wrap) return;
           const next = e.relatedTarget as Node | null;
           if (next && wrap.contains(next)) return;
+          if (next && panelRef.current?.contains(next)) return;
           if (pointerInsideRef.current) {
             pointerInsideRef.current = false;
             return;
@@ -1236,17 +1252,21 @@ function DatetimeEditor({ field, editable, onCommit }: DatetimeEditorProps) {
             setTouched(true);
           }}
         />
-        <span
-          ref={panelRef}
-          className="dpb-menu dpb-dt-panel"
-          data-testid="dpb-datetime-panel"
-          role="dialog"
-          aria-label={dateOnly ? "日期选择" : "日期时间选择"}
-          style={{
-            left: (pos ?? anchor ?? { x: 0, y: 0 }).x,
-            top: (pos ?? anchor ?? { x: 0, y: 0 }).y,
-          }}
-        >
+        {createPortal(
+          <span
+            ref={panelRef}
+            className="dpb-menu dpb-dt-panel"
+            data-testid="dpb-datetime-panel"
+            role="dialog"
+            aria-label={dateOnly ? "日期选择" : "日期时间选择"}
+            onPointerDown={() => {
+              pointerInsideRef.current = true;
+            }}
+            style={{
+              left: (pos ?? anchor ?? { x: 0, y: 0 }).x,
+              top: (pos ?? anchor ?? { x: 0, y: 0 }).y,
+            }}
+          >
           <span className="dpb-dt-main">
             <span className="dpb-dt-cal-col">
               <span className="dpb-dt-head">
@@ -1445,7 +1465,9 @@ function DatetimeEditor({ field, editable, onCommit }: DatetimeEditorProps) {
               Esc 取消 · Enter 保存 · 点击外部保存
             </span>
           </span>
-        </span>
+          </span>,
+          document.body,
+        )}
       </span>
       {error && (
         <span className="dpb-error" data-testid="dpb-error" role="status">

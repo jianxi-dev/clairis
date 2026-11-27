@@ -1951,14 +1951,10 @@ html[data-pane-scale-active="true"]
   transform-origin: top left;
 }
 
-/* 状态栏浮窗：bottom 锚定（向上展开），origin 必须在下边，否则向下盖住状态栏。 */
+/* 状态栏浮窗：bottom 锚定（向上展开），origin 必须在下边，否则向下盖住状态栏。
+   取 bottom center：两浮窗都按触发按钮水平居中，左下角为原点会让面板随倍率
+   向右漂（#1652 实测 1.2 倍偏右 20px）。 */
 html[data-pane-scale-active="true"] :is(.width-panel, .theme-menu-wrap) {
-  scale: var(--pane-scale-factor, 1);
-  transform-origin: bottom left;
-}
-
-/* 按钮提示：既有 transform 已把它移到触发点上方，origin 取底部居中让箭头固定。 */
-html[data-pane-scale-active="true"] .app-tip {
   scale: var(--pane-scale-factor, 1);
   transform-origin: bottom center;
 }
@@ -4935,9 +4931,12 @@ html[data-tab-drag="true"] body * {
   background: var(--app-surface);
 }
 
+/* 缩放倍率并入各方向 transform 链（#1652）：translate 必须留在最前，scale 追加
+   在后；origin 取锚定边中点，中心与 8px 间距都不随倍率漂移。 */
 /* 上弹（箭头朝下） */
 .app-tip--above {
-  transform: translate(-50%, calc(-100% - 8px));
+  transform: translate(-50%, calc(-100% - 8px)) scale(var(--pane-scale-factor, 1));
+  transform-origin: 50% 100%;
 }
 .app-tip--above .app-tip__arrow {
   left: 50%;
@@ -4950,7 +4949,8 @@ html[data-tab-drag="true"] body * {
 
 /* 下弹（箭头朝上） */
 .app-tip--below {
-  transform: translate(-50%, 8px);
+  transform: translate(-50%, 8px) scale(var(--pane-scale-factor, 1));
+  transform-origin: 50% 0;
 }
 .app-tip--below .app-tip__arrow {
   left: 50%;
@@ -4963,7 +4963,8 @@ html[data-tab-drag="true"] body * {
 
 /* 右弹（箭头朝左） */
 .app-tip--right {
-  transform: translate(8px, -50%);
+  transform: translate(8px, -50%) scale(var(--pane-scale-factor, 1));
+  transform-origin: 0 50%;
 }
 .app-tip--right .app-tip__arrow {
   top: 50%;
@@ -4976,7 +4977,8 @@ html[data-tab-drag="true"] body * {
 
 /* 左弹（箭头朝右） */
 .app-tip--left {
-  transform: translate(calc(-100% - 8px), -50%);
+  transform: translate(calc(-100% - 8px), -50%) scale(var(--pane-scale-factor, 1));
+  transform-origin: 100% 50%;
 }
 .app-tip--left .app-tip__arrow {
   top: 50%;

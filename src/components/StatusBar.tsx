@@ -116,23 +116,39 @@ export default function StatusBar({
     : undefined;
 
   const [themeOpen, setThemeOpen] = useState(false);
-  const [themeRect, setThemeRect] = useState<DOMRect | null>(null);
   const themeBtnRef = useRef<HTMLButtonElement | null>(null);
   const themeMenuRef = useRef<HTMLDivElement | null>(null);
   const themeCloseTimer = useRef<number | null>(null);
-
-  useEffect(() => {
-    if (!themeOpen) return;
-    const el = themeBtnRef.current;
-    if (el) setThemeRect(el.getBoundingClientRect());
-  }, [themeOpen]);
+  // 状态栏自身带 zoom：按钮 rect 是缩放后坐标，而浮窗 portal 到 body 后用未缩放
+  // 的视口坐标定位，故锚点与夹取都要除以有效 zoom（#1652）。
+  const barZoom = () => {
+    let z = 1;
+    let node: HTMLElement | null = themeBtnRef.current;
+    while (node) {
+      const v = getComputedStyle(node).zoom;
+      if (v && v !== "normal") z *= parseFloat(v);
+      node = node.parentElement;
+    }
+    return z;
+  };
+  // 每次渲染现量按钮：状态栏 zoom 后按钮会移动，打开时快照的 rect 会过期（#1652）。
+  const themeRect = themeOpen
+    ? themeBtnRef.current?.getBoundingClientRect() ?? null
+    : null;
+  const themeZoom = themeRect ? barZoom() : 1;
 
   const [widthOpen, setWidthOpen] = useState(false);
-  const [widthAnchor, setWidthAnchor] = useState(0);
-  const [widthRect, setWidthRect] = useState<DOMRect | null>(null);
   const widthBtnRef = useRef<HTMLButtonElement | null>(null);
   const widthPanelRef = useRef<HTMLDivElement | null>(null);
   const widthCloseTimer = useRef<number | null>(null);
+  // 与主题菜单同因：现量按钮，避免 zoom 变化后锚点过期（#1652）。
+  const widthRect = widthOpen
+    ? widthBtnRef.current?.getBoundingClientRect() ?? null
+    : null;
+  const widthZoom = widthRect ? barZoom() : 1;
+  const widthAnchor = widthRect
+    ? widthRect.left + widthRect.width / 2
+    : 0;
 
   const cancelWidthClose = useCallback(() => {
     if (widthCloseTimer.current !== null) {
@@ -143,8 +159,6 @@ export default function StatusBar({
 
   const openWidthPanel = useCallback(() => {
     cancelWidthClose();
-    const rect = widthBtnRef.current?.getBoundingClientRect();
-    if (rect) setWidthAnchor(rect.left + rect.width / 2);
     setWidthOpen(true);
   }, [cancelWidthClose]);
 
@@ -157,12 +171,6 @@ export default function StatusBar({
   }, [cancelWidthClose]);
 
   useEffect(() => () => cancelWidthClose(), [cancelWidthClose]);
-
-  useEffect(() => {
-    if (!widthOpen) return;
-    const el = widthBtnRef.current;
-    if (el) setWidthRect(el.getBoundingClientRect());
-  }, [widthOpen]);
 
   const cancelThemeClose = useCallback(() => {
     if (themeCloseTimer.current !== null) {
@@ -297,9 +305,8 @@ export default function StatusBar({
             aria-expanded={widthOpen}
             aria-label={`页面宽度 ${readerWidth}px`}
             title="页面宽度"
-            onClick={(e) => {
+            onClick={() => {
               cancelWidthClose();
-              setWidthAnchor(e.clientX);
               setWidthOpen((v) => !v);
             }}
             className="rounded px-1 hover:bg-[var(--app-accent-soft)] hover:text-[var(--app-accent)]"
@@ -316,11 +323,16 @@ export default function StatusBar({
                 onPointerEnter={cancelWidthClose}
                 onPointerLeave={scheduleWidthClose}
                 style={{
+                  // widthAnchor / widthRect 取自带 zoom 的状态栏，需换算回未缩放
+                  // 视口坐标（浮窗 portal 到 body，#1652）。
                   left: Math.min(
-                    Math.max(widthAnchor - WIDTH_PANEL_W / 2, 8),
+                    Math.max(widthAnchor / widthZoom - WIDTH_PANEL_W / 2, 8),
                     Math.max(window.innerWidth - WIDTH_PANEL_W - 8, 8),
                   ),
-                  bottom: window.innerHeight - widthRect.top + 16,
+                  // 浮窗 portal 到 body：bottom 用未缩放视口坐标，而按钮 rect 已缩放，
+                  // 故先除回未缩放空间再加 8px 视觉间距（#1652）。
+                  bottom:
+                    window.innerHeight - widthRect.top / widthZoom + 8,
                 }}
               >
                 <div className="width-bars" data-testid="width-bars">
@@ -445,11 +457,22 @@ export default function StatusBar({
                   data-testid="theme-menu"
                   className="theme-menu-wrap"
                   style={{
+                    // 水平居中于主题按钮，再按视口夹取（#1652：原按左缘对齐，
+                    // 常态中心偏右 66px，贴右缘又被夹取）。
                     left: Math.min(
-                      themeRect.left,
-                      Math.max(window.innerWidth - THEME_MENU_W - 8, 8),
+                      Math.max(
+                        (themeRect.left + themeRect.width / 2) / themeZoom -
+                          THEME_MENU_W / 2,
+                        8,
+                      ),
+                      // 右缘夹取按面板的显示宽度（未缩放坐标 × 倍率）。
+                      Math.max(
+                        window.innerWidth - THEME_MENU_W * themeZoom - 8,
+                        8,
+                      ),
                     ),
-                    bottom: window.innerHeight - themeRect.top + 10,
+                    bottom:
+                      window.innerHeight - themeRect.top / themeZoom + 8,
                   }}
                   onPointerEnter={cancelThemeClose}
                   onPointerLeave={scheduleThemeClose}
