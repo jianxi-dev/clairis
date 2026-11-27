@@ -20,7 +20,7 @@
 | A-2.1 | exact | interaction.md 条款条数 | 4 | 方案 §Q1 |
 | A-2.2 | exact | window.alert/confirm/prompt 新增命中数 | 0 | 方案 §Q1 守护 |
 | A-2.3 | exact | 存量 window.prompt 进基线处数 | 3 | 实测 slash.ts 等 3 处 |
-| A-2.4 | exact | 存量 border-top/bottom 1px 进基线处数 | 18 | 实测 src/**/*.css |
+| A-2.4 | exact | 存量 border-top/bottom 1px 进基线处数 | 19 | 实测 src/**/*.css |
 | A-2.5 | exact | 「禁用而非隐藏」e2e 守护用例数下限 | 3 | 方案 §Q1 |
 | A-2.6 | state-machine | Esc 逐层关闭后文档未保存内容 | 保留（0 处变更） | 方案 §Q1 |
 

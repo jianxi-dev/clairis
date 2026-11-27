@@ -33,7 +33,7 @@ UI 交互 SHALL 遵守四条条款：零横线（分隔用间距/背景；例外
 #### Scenario: 新增 1px 横线被拒
 
 - **WHEN** 新增 `border-top: 1px` 或 `border-bottom: 1px`
-- **THEN** 该命中 SHALL 不在 18 条基线内，守护退 1
+- **THEN** 该命中 SHALL 不在 19 条基线内，守护退 1
 
 #### Scenario: 原生对话框零新增
 

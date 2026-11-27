@@ -1,0 +1,79 @@
+{
+  "version": 1,
+  "generatedBy": "scripts/check-interaction.mjs --update-baseline",
+  "groups": {
+    "hairlines": [
+      {
+        "file": "src/styles/doc-property.css",
+        "context": "border-top: 1px dashed var(--app-border);",
+        "count": 3,
+        "reason": "存量冻结；迁移随 Q2 基件与后续专项"
+      },
+      {
+        "file": "src/styles/doc-property.css",
+        "context": "border-bottom: 1px solid var(--app-border);",
+        "count": 2,
+        "reason": "存量冻结；迁移随 Q2 基件与后续专项"
+      },
+      {
+        "file": "src/styles/doc-property.css",
+        "context": "border-top: 1px solid var(--app-border);",
+        "count": 1,
+        "reason": "存量冻结；迁移随 Q2 基件与后续专项"
+      },
+      {
+        "file": "src/styles/editor.css",
+        "context": "border-top: 1px solid var(--app-border);",
+        "count": 4,
+        "reason": "存量冻结；迁移随 Q2 基件与后续专项"
+      },
+      {
+        "file": "src/styles/editor.css",
+        "context": "border-bottom: 1px solid var(--app-border);",
+        "count": 3,
+        "reason": "存量冻结；迁移随 Q2 基件与后续专项"
+      },
+      {
+        "file": "src/styles/reader.css",
+        "context": "border-bottom: 1px solid var(--reader-line);",
+        "count": 1,
+        "reason": "存量冻结；迁移随 Q2 基件与后续专项"
+      },
+      {
+        "file": "src/styles/search-float.css",
+        "context": "border-bottom: 1px solid var(--app-border);",
+        "count": 4,
+        "reason": "存量冻结；迁移随 Q2 基件与后续专项"
+      },
+      {
+        "file": "src/styles/search-float.css",
+        "context": "border-top: 1px solid var(--app-border);",
+        "count": 1,
+        "reason": "存量冻结；迁移随 Q2 基件与后续专项"
+      }
+    ],
+    "dialogs": [
+      {
+        "file": "src/components/Content/HtmlEditToolbar.tsx",
+        "callee": "prompt",
+        "context": "const url = window.prompt(\"链接地址\", href);",
+        "count": 1,
+        "reason": "迁移留 Q2 dialog 之后"
+      },
+      {
+        "file": "src/components/Content/HtmlRangeToolbar.tsx",
+        "callee": "prompt",
+        "context": "const url = window.prompt(\"链接地址\");",
+        "count": 1,
+        "reason": "迁移留 Q2 dialog 之后"
+      },
+      {
+        "file": "src/editors/slash.ts",
+        "callee": "prompt",
+        "context": "? window.prompt(\"内嵌网页地址\", \"https://\")",
+        "count": 1,
+        "reason": "迁移留 Q2 dialog 之后"
+      }
+    ]
+  }
+}

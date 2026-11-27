@@ -12,7 +12,7 @@
   - e2e：暗色主题开关/日期选中格的计算色 `严格等于 var(--app-on-accent)`、实底 `严格等于 var(--app-accent-fill)`，对比度 ≥4.5
 - [ ] 1.2 Q1 四条交互条款与守护
   - 新增 `docs/design/system/interaction.md` 四条（零横线 / 反馈三档 / 禁用而非隐藏 / Esc 只退场），每条含定义、正反例、守护指针
-  - 守护：1px 横线基线（18 条只减不增）、`window.alert|confirm|prompt` 零新增（3 处 prompt 进基线）、三条「禁用而非隐藏」e2e、Esc 逐层退出 e2e
+  - 守护：1px 横线基线（19 条只减不增）、`window.alert|confirm|prompt` 零新增（3 处 prompt 进基线）、三条「禁用而非隐藏」e2e、Esc 逐层退出 e2e
   - `spec.md` §8 supersede 为「交互条款见 interaction.md」
 - [ ] 1.3 Q4 交付验收模板与 PR 模板接线
   - 新增 `docs/delivery/ui-verification-template.md`（明暗 × 1280/400 截图对、可复现步骤、计算样式断言）

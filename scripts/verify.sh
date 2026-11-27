@@ -69,6 +69,16 @@ else
   FAIL=1
 fi
 
+# 3d. Interaction Gate
+echo ""
+echo "── 3d. Interaction Gate ──"
+if node scripts/check-interaction.mjs; then
+  echo "  ✅ Interaction gate"
+else
+  echo "  ❌ Interaction gate failures"
+  FAIL=1
+fi
+
 # 4. Rust
 echo ""
 echo "── 4. Rust ──"

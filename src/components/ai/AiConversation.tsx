@@ -122,6 +122,13 @@ export default function AiConversation({ form }: { form: AiForm }) {
           type="submit"
           data-ai-send
           disabled={submitting || input.trim() === ""}
+          title={
+            submitting
+              ? "正在处理，请稍候"
+              : input.trim() === ""
+                ? "先输入要 AI 做什么"
+                : "发送"
+          }
           className="shrink-0 rounded-md px-2 py-1 text-xs text-[#0071e3] disabled:opacity-40"
         >
           {submitting ? "处理中" : "发送"}
