@@ -232,3 +232,14 @@ await expect(captionRow(page)).toHaveText("点图片保存");
 await expect(visibleInput(page)).toHaveCount(0);             // 输入框已收尾
 ```
 Scenario 对照：点图片保存描述（十三轮真机：此前点图片会清空录入文字）。
+
+## 十四轮（r14）机读断言摘录
+```
+// caption-save-no-jump.spec.ts（保存描述后视口不跳；headless 无法复现真机抖动，守卫用）
+const before = scrollTop();
+await page.mouse.click(...正文空白...);
+const after = scrollTop();
+expect(Math.abs(after - before)).toBeLessThanOrEqual(2);
+await expect.poll(...content...).toContain('"首跳验证描述"');
+```
+Scenario 对照：录入描述保存后不首跳（十四轮真机反馈；与 #1635 同源，真机验收）。
