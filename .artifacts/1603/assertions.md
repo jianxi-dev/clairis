@@ -55,3 +55,43 @@ expect(await controlsOpacity(page)).toBe("1");     // 进入浮层显示
 expect(residue).toEqual({ frames: 0, handles: 0, shades: 0, active: 0 });
 ```
 Scenario 对照：放大层交互（D16 双击复位 / hover 显隐为用户方案新增）；真机蒙层残影以截图 + 淡出方案承载。
+
+
+## 四轮（真机反馈二）机读断言摘录
+```
+// caption-save-visibility.spec.ts（描述保存：一次性标志替代固定窗口）
+expect(page.locator('[data-testid="img-caption-input"]')).toHaveCount(1);
+await expect.poll(() => content(page)).toContain('"诊断描述"');
+expect(page.locator('[data-testid="img-caption"]')).toHaveText("诊断描述");
+
+// maximize-button-order.spec.ts（hover 显隐纯 CSS：inline opacity 移除）
+const op = await controls.evaluate(el => getComputedStyle(el).opacity);
+expect(op).toBe("0");           // 默认淡出
+// hover 后
+expect(op).toBe("1");           // 浮层悬停显示
+
+// maximize-zoom-persist.spec.ts（dblclick target 判定）
+expect(await readScale(page)).toBe(1.21);  // 连击±不回落
+expect(await readScale(page)).toBe(1);     // 双击图片仍复位
+```
+Scenario 对照：描述保存（#1602 既有验收）；放大层 hover 显隐（用户方案）；shade 淡出（裁剪蒙层2.png 残影）。
+
+## 四轮（r4 commit 9f846487）机读断言摘录
+```
+// caption-save-visibility.spec.ts（描述保存：一次性标志）
+expect(page.locator('[data-testid="img-caption-input"]')).toHaveCount(1);
+await expect.poll(() => content(page)).toContain('"诊断描述"');
+expect(page.locator('[data-testid="img-caption"]')).toHaveText("诊断描述");
+
+// maximize-button-order.spec.ts（hover 显隐纯 CSS，inline opacity 已移除）
+expect(await controls.evaluate(el => getComputedStyle(el).opacity)).toBe("0");
+expect(await controls.evaluate(el => getComputedStyle(el).opacity)).toBe("1");
+
+// maximize-zoom-persist.spec.ts（dblclick target 判定）
+expect(await readScale(page)).toBe(1.21);
+expect(await readScale(page)).toBe(1);
+
+// crop-cleanup-sync.spec.ts（shade rAF 淡出后零残留）
+expect(residue).toEqual({ frames: 0, handles: 0, shades: 0, active: 0 });
+```
+Scenario 对照：描述保存（#1602 验收）；放大层 hover 显隐（用户方案 #1603）；shade rAF 淡出（裁剪蒙层2.png 残影）；连击 ±（用户复现描述）。
