@@ -203,3 +203,20 @@ expect(["hidden", "visible"]).toContain(hiddenAtSwap);   // 绘制前不展示�
 await expect.poll(...视觉可见性...).toBe("visible");     // 绘制完成才显示
 ```
 Scenario 对照：描述选中在点外面时不丢（十一轮真机）；裁剪图切换无中间帧闪切（十一轮）。
+
+## 十二轮（r12）机读断言摘录
+```
+// caption-toggle-semantics.spec.ts（描述开关 = 图片自己的、跨选中态持久）
+await expect(commentBtn(page)).toHaveAttribute("aria-pressed", "false");  // 默认未选中
+await commentBtn(page).click();                                            // 打开
+await expect(visibleInput(page)).toHaveCount(1);
+await visibleInput(page).fill("十二轮描述");
+await clickOutside();                                                      // 点外面：保存
+await expect(page.locator(".cm-image-widget")).toHaveAttribute("data-selected", "false");
+await expect(page.getByTestId("img-toolbar")).toHaveCount(0);              // 工具条消失
+await expect(captionRow(page)).toBeVisible();                              // 文字仍在
+await expect(captionRow(page)).toHaveText("十二轮描述");
+await page.locator(".cm-image-widget").click();                            // 再选中
+await expect(commentBtn(page)).toHaveAttribute("aria-pressed", "true");    // 开关记住
+```
+Scenario 对照：描述文字显示/隐藏由「添加描述」按钮控制，与图片是否选中无关（十二轮用户裁定）。

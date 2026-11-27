@@ -260,6 +260,14 @@ let maximizeDownPos: { x: number; y: number } | null = null;
 /** 描述行是否折叠：点击描述行切换，重新选中图片时复位。 */
 let captionCollapsed = false;
 /** 描述区是否由工具条按钮显式打开；裁剪态强制隐藏，退出后恢复。 */
+/**
+ * 描述文字显隐开关（#1603 十二轮用户裁定）：**按图片**持久记录，跨选中态。
+ * 按钮控制的是「这张图的描述文字在文档里显不显示」——图片取消选中、工具条
+ * 消失后描述仍显示；再选中时按钮反映该图当前开关。
+ *
+ * key 用文档偏移；偏移漂移由 moveImageSelection 迁移。
+ */
+const captionOpenBy = new Set<number>();
 let captionVisible = false;
 /** 裁剪框是否挂着：由 imageCrop 通知，工具条据此标注裁剪按钮按下态。 */
 let cropActive = false;
@@ -305,11 +313,13 @@ export function setImageToolbarActions(next: ImageToolbarActions): void {
 export function selectImage(from: number, path: string, alt: string): void {
   selection = { from, path, alt };
   captionCollapsed = false;
-  captionVisible = false;
+  // 按钮反映这张图自己的开关状态（不是每次选中都重置）
+  captionVisible = captionOpenBy.has(from);
   applySelection();
   ensureToolbar();
   setEditActive(false);
-  setCaptionActive(false);
+  // 按钮反映这张图自己的描述开关（十二轮：开关跨选中态持久）
+  setCaptionActive(captionVisible);
   updateAlignStates();
   updateResetVisibility();
   positionToolbar();
@@ -321,6 +331,7 @@ export function selectImage(from: number, path: string, alt: string): void {
 export function deselectImage(): void {
   if (!selection) return;
   selection = null;
+  // 不改 captionOpenBy：描述文字的显隐是图片自己的开关，取消选中后仍生效。
   captionVisible = false;
   clearScrollWatcher();
   if (viewportObserver) {
@@ -356,6 +367,11 @@ export function moveImageSelection(
     return;
   }
   if (nextFrom === selection.from) return;
+  // 描述开关跟着图片走：偏移漂移时迁移 key，否则开关会「丢」。
+  if (captionOpenBy.has(selection.from)) {
+    captionOpenBy.delete(selection.from);
+    captionOpenBy.add(nextFrom);
+  }
   selection = { ...selection, from: nextFrom };
   applySelection();
   // 滚动期偏移漂移：清隐藏态再定位，避免防抖定时器把新偏移的定位覆盖掉。
@@ -378,9 +394,14 @@ export function markImageWidgetSelected(
   el.dataset.selected = isSelected ? "true" : "false";
   el.querySelectorAll(".cm-image-corner").forEach((dot) => dot.remove());
   el.querySelectorAll(".cm-image-handle").forEach((handle) => handle.remove());
+  const from = fromOf(el);
+  const keepCaption = isSelected || (from !== null && captionOpenBy.has(from));
+  // 描述行：选中时必有；未选中时只要该图开关开着也保留（#1603 十二轮：
+  // 描述显隐是图片自己的开关，点外面取消选中不影响文字显示）。
   el.querySelectorAll(".cm-image-caption").forEach((caption) =>
     caption.remove(),
   );
+  if (keepCaption) applyCaptionVisibility(appendCaptionLine(el), from);
   if (!isSelected) return;
   for (const { corner } of CORNER_POSITIONS) {
     const dot = document.createElement("span");
@@ -388,8 +409,6 @@ export function markImageWidgetSelected(
     dot.dataset.corner = corner;
     el.appendChild(dot);
   }
-  const caption = appendCaptionLine(el);
-  applyCaptionVisibility(caption);
   // 文字回退（解析不出 URL）没有 <img>，不出缩放把手。
   if (!el.querySelector("img")) return;
   for (const { handle, cursor } of IMAGE_RESIZE_HANDLES) {
@@ -488,9 +507,11 @@ function createCaptionInput(
     // 展开态下的保存不收起（规格澄清 2026-11-27：按钮是显隐切换，不反改状态）。
     if (saved) {
       captionVisible = true;
+      const fromKey = fromOf(widgetEl);
+      if (fromKey !== null) captionOpenBy.add(fromKey);
     }
     setCaptionActive(captionVisible);
-    applyCaptionVisibility(caption);
+    applyCaptionVisibility(caption, fromOf(widgetEl));
   };
 
   input.addEventListener("keydown", (event) => {
@@ -509,7 +530,7 @@ function createCaptionInput(
       input.remove();
       showCaptionText(caption);
       setCaptionActive(captionVisible);
-      applyCaptionVisibility(caption);
+      applyCaptionVisibility(caption, fromOf(widgetEl));
     }
   });
   // 不监听 blur（#1603 八轮定案）：真机/headless 上 input.focus() 后立即失焦
@@ -537,7 +558,7 @@ function showCaptionInput(caption: HTMLElement, widgetEl: HTMLElement): void {
   input.focus();
   input.select();
   setCaptionActive(true);
-  applyCaptionVisibility(caption);
+  applyCaptionVisibility(caption, fromOf(widgetEl));
 }
 
 function hideCaptionInput(caption: HTMLElement, widgetEl: HTMLElement): void {
@@ -549,7 +570,7 @@ function hideCaptionInput(caption: HTMLElement, widgetEl: HTMLElement): void {
     input.dataset.closing = "1";
     showCaptionText(caption);
     setCaptionActive(false);
-    applyCaptionVisibility(caption);
+    applyCaptionVisibility(caption, fromOf(widgetEl));
     return;
   }
   const value = input.value.trim();
@@ -559,7 +580,7 @@ function hideCaptionInput(caption: HTMLElement, widgetEl: HTMLElement): void {
   input.style.display = "none";
   showCaptionText(caption);
   setCaptionActive(false);
-  applyCaptionVisibility(caption);
+  applyCaptionVisibility(caption, fromOf(widgetEl));
   if (value !== current) {
     captionJustSaved = true;
     actions.onImageSetTitle?.(Number(widgetEl.dataset.imageFrom), value);
@@ -578,10 +599,20 @@ export function editSelectedImageCaption(): void {
   );
   const caption = el?.querySelector<HTMLElement>(".cm-image-caption");
   if (!el || !caption) return;
-  captionVisible = !captionVisible;
+  const from = fromOf(el);
+  const next = !captionVisible;
+  // 开关按图片持久（#1603 十二轮）：关闭即从集合移除，打开即加入。
+  if (from !== null) {
+    if (next) captionOpenBy.add(from);
+    else captionOpenBy.delete(from);
+  }
+  captionVisible = next;
   setCaptionActive(captionVisible);
   if (!captionVisible) {
+    // 只隐藏、不移除：移除后再次打开时找不到 caption 容器，输入框永远不会
+    // 出现（十二轮真机回归）。取消选中时由 markImageWidgetSelected 按开关清理。
     hideCaptionInput(caption, el);
+    applyCaptionVisibility(caption, from);
     return;
   }
   captionCollapsed = false;
@@ -727,13 +758,24 @@ function setEditActive(active: boolean): void {
   btn.setAttribute("aria-pressed", active ? "true" : "false");
 }
 
-/** 描述区实际显隐：按钮打开且不在裁剪态。 */
-function captionDisplayed(): boolean {
-  return captionVisible && !cropActive;
+/** 描述区实际显隐：该图片开关打开且不在裁剪态。 */
+function captionDisplayed(from: number | null): boolean {
+  if (cropActive) return false;
+  if (from !== null && Number.isFinite(from)) return captionOpenBy.has(from);
+  return captionVisible;
 }
 
-function applyCaptionVisibility(caption: HTMLElement): void {
-  caption.style.display = captionDisplayed() ? "" : "none";
+function applyCaptionVisibility(
+  caption: HTMLElement,
+  from: number | null,
+): void {
+  caption.style.display = captionDisplayed(from) ? "" : "none";
+}
+
+/** 从 widget DOM 取当前文档偏移。 */
+function fromOf(el: HTMLElement): number | null {
+  const n = Number(el.dataset.imageFrom);
+  return Number.isFinite(n) ? n : null;
 }
 
 /** 裁剪框开关：imageCrop 在挂载 / 收尾时调用，工具条同步按下态并强制隐藏描述区。 */
@@ -747,7 +789,12 @@ export function notifyImageCropState(active: boolean): void {
       )
     : null;
   const caption = el?.querySelector<HTMLElement>(".cm-image-caption");
-  if (caption) applyCaptionVisibility(caption);
+  if (caption && el) applyCaptionVisibility(caption, fromOf(el));
+  // 裁剪态切换要同步所有非选中但开着描述的图片
+  document.querySelectorAll<HTMLElement>(".cm-image-widget").forEach((w) => {
+    const c = w.querySelector<HTMLElement>(".cm-image-caption");
+    if (c) applyCaptionVisibility(c, fromOf(w));
+  });
 }
 
 function updateDisabledStates(): void {
@@ -1690,12 +1737,9 @@ if (typeof document !== "undefined") {
     ) {
       // 走 finish 的**完整收尾**（写回 + 移除输入框 + 刷新文本/显隐）——
       // 只写回不收尾会留下残留输入框，后续「添加描述」预填被旧状态污染。
+      // 十二轮语义：提交后继续正常走「点外面 = 取消图片选中」——描述文字
+      // 由该图的开关（captionOpenBy）决定是否继续显示，不靠保留选中态。
       captionCommitActive();
-      // 本次 click 吸收：描述框开着时点外面只保存，**保持图片选中与描述显示**
-      //（十轮真机：未修改内容时 saved=false 不置 captionJustSaved，随后就
-      // deselect 了，用户看到「选中的描述一点外面就没了」）。再点一次外面
-      //（输入框已收尾）才取消选中。
-      return;
     }
     const target = event.target as Node | null;
     if (target instanceof Element) {
@@ -1703,15 +1747,11 @@ if (typeof document !== "undefined") {
       if (target.closest('[data-testid="img-toolbar"]')) return;
       if (target.closest('[data-testid="img-maximize"]')) return;
     }
-    // 保存瞬间（上面刚写回）不 deselect：描述保持展开、按钮保持选中。
-    if (captionJustSaved) {
-      captionJustSaved = false;
-      return;
-    }
-    // 描述区开着（按钮选中）时，点外面一律只保存/保持，不取消选中——
-    // 用户十一轮明确：按钮选中期间点外面不能把选中态丢掉。关闭描述只能
-    // 通过再点一次按钮；关闭后点外面才退出选中。
-    if (captionVisible) return;
+    // 十二轮：不再用「刚保存」吸收点击——保存后照常取消选中，描述文字
+    // 由图片自身的开关状态决定是否显示。
+    captionJustSaved = false;
+    // 十二轮语义：点外面**正常取消图片选中**，描述文字由 captionOpenBy
+    // 决定是否继续显示（不随选中态消失）。
     deselectImage();
   });
   window.addEventListener("resize", () => {
