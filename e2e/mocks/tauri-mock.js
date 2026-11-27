@@ -168,6 +168,19 @@ function careScaleItems() {
     : cloneJson(DEFAULT_CARE_SCALE);
 }
 
+var DEFAULT_PANE_MODES = [
+  { id: "simple", label: "简易", hotzonePx: 16, revealMs: 0, hintLinePx: 0 },
+  { id: "standard", label: "常规", hotzonePx: 16, revealMs: 0, hintLinePx: 0 },
+  { id: "hardcore", label: "硬核", hotzonePx: 0, revealMs: 3000, hintLinePx: 1 },
+];
+
+function paneModes() {
+  var override = window.__biaoyue_pane_modes__;
+  return Array.isArray(override)
+    ? cloneJson(override)
+    : cloneJson(DEFAULT_PANE_MODES);
+}
+
 function menuItems() {
   var override = window.__biaoyue_menu_items__;
   return Array.isArray(override)
@@ -607,6 +620,7 @@ function mockInvoke(cmd, args) {
       { id: "capsules", items: capsuleItems(), warnings: [] },
       { id: "reader-presets", items: readerPresets(), warnings: [] },
       { id: "care-scale", items: careScaleItems(), warnings: [] },
+      { id: "pane-modes", items: paneModes(), warnings: [] },
     ];
   }
   if (cmd === "list_extensions") {

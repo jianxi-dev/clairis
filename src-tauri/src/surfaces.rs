@@ -35,7 +35,7 @@ use tracing::{info, warn};
 use crate::config::config_base;
 
 /// 面项形状。`menu` 由 T2 追加，`icon` 由 T3 追加，`capsule` 由 T4 追加，
-/// `care-scale` 由 pane-tuning-values-v1 / 1.1 追加。
+/// `care-scale` 由 pane-tuning-values-v1 / 1.1 追加，`pane-modes` 由 1.2 追加。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SurfaceShape {
     Toolbar,
@@ -44,6 +44,7 @@ pub enum SurfaceShape {
     Capsule,
     ReaderPreset,
     CareScale,
+    PaneMode,
 }
 
 /// 单个已登记面：id、默认文件名、项形状。校验器随形状而定。
@@ -85,6 +86,11 @@ pub static SURFACES: &[SurfaceSpec] = &[
         id: "care-scale",
         default_file: "care-scale.json",
         shape: SurfaceShape::CareScale,
+    },
+    SurfaceSpec {
+        id: "pane-modes",
+        default_file: "pane-modes.json",
+        shape: SurfaceShape::PaneMode,
     },
 ];
 
@@ -142,10 +148,33 @@ pub struct CareScaleSpec {
     pub scale: f64,
 }
 
+/// 窗格模式项（pane-tuning-values-v1 / DS-11）：热区高度 / 临时显现时长 /
+/// 提示线厚度，边界见设计系统 §7.7。
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct PaneModeSpec {
+    pub id: String,
+    pub label: String,
+    pub hotzone_px: u32,
+    pub reveal_ms: u32,
+    pub hint_line_px: u32,
+}
+
 /// 关爱缩放的取值边界（design-system §4.1：0.8–1.5，步长 0.05）。
 pub const CARE_SCALE_MIN: f64 = 0.8;
 pub const CARE_SCALE_MAX: f64 = 1.5;
 pub const CARE_SCALE_STEP: f64 = 0.05;
+
+/// 窗格模式的取值边界（design-system §7.7）。
+pub const PANE_MODE_HOTZONE_MIN: u32 = 12;
+pub const PANE_MODE_HOTZONE_MAX: u32 = 24;
+pub const PANE_MODE_REVEAL_MIN: u32 = 1000;
+pub const PANE_MODE_REVEAL_MAX: u32 = 10000;
+pub const PANE_MODE_HINT_MIN: u32 = 0;
+pub const PANE_MODE_HINT_MAX: u32 = 2;
+/// `revealMs = 0`（不自动显现）仅非 hardcore 行允许。
+pub const PANE_MODE_REVEAL_DISABLED_ID: &str = "hardcore";
+/// 硬核心区高度为 0（无热区），不受热区下界约束。
+pub const PANE_MODE_HARDCORE_HOTZONE: u32 = 0;
 
 /// 阅读预设的取值边界（与 `src/lib/readerWidth.ts` 一致：480/1400/20）。
 pub const READER_PRESET_FONT_MIN: u32 = 8;
@@ -166,6 +195,7 @@ fn embedded_json(spec: &SurfaceSpec) -> &'static str {
             include_str!("resources/reader-presets.default.json")
         }
         SurfaceShape::CareScale => include_str!("resources/care-scale.default.json"),
+        SurfaceShape::PaneMode => include_str!("resources/pane-modes.default.json"),
     }
 }
 
@@ -186,6 +216,7 @@ pub(crate) fn user_override_path(base: &Path, spec: &SurfaceSpec) -> PathBuf {
         SurfaceShape::Capsule => base.join("user").join("capsules.json"),
         SurfaceShape::ReaderPreset => base.join("user").join("reader-presets.json"),
         SurfaceShape::CareScale => base.join("user").join("care-scale.json"),
+        SurfaceShape::PaneMode => base.join("user").join("pane-modes.json"),
     }
 }
 
@@ -557,6 +588,40 @@ pub fn validate_care_scale(entry: &Value) -> Option<CareScaleSpec> {
     })
 }
 
+/// 校验单个窗格模式项：缺字段 / 越界 → None（DS-11 / §7.7）。
+/// `revealMs = 0` 仅非 hardcore 行允许——hardcore 必须有真实超时。
+pub fn validate_pane_mode(entry: &Value) -> Option<PaneModeSpec> {
+    let obj = entry.as_object()?;
+    let id = obj.get("id")?.as_str()?;
+    let label = obj.get("label")?.as_str()?;
+    if id.is_empty() || label.is_empty() {
+        return None;
+    }
+    let hotzone_px = obj.get("hotzonePx")?.as_u64()? as u32;
+    let hotzone_ok = hotzone_px == PANE_MODE_HARDCORE_HOTZONE
+        || (PANE_MODE_HOTZONE_MIN..=PANE_MODE_HOTZONE_MAX).contains(&hotzone_px);
+    if !hotzone_ok {
+        return None;
+    }
+    let reveal_ms = obj.get("revealMs")?.as_u64()? as u32;
+    let reveal_ok = reveal_ms == 0
+        || (PANE_MODE_REVEAL_MIN..=PANE_MODE_REVEAL_MAX).contains(&reveal_ms);
+    if !reveal_ok || (id == PANE_MODE_REVEAL_DISABLED_ID && reveal_ms == 0) {
+        return None;
+    }
+    let hint_line_px = obj.get("hintLinePx")?.as_u64()? as u32;
+    if !(PANE_MODE_HINT_MIN..=PANE_MODE_HINT_MAX).contains(&hint_line_px) {
+        return None;
+    }
+    Some(PaneModeSpec {
+        id: id.to_string(),
+        label: label.to_string(),
+        hotzone_px,
+        reveal_ms,
+        hint_line_px,
+    })
+}
+
 /// 解析并校验内嵌 / 物化默认 JSON，返回 `(有效项, 被过滤项的告警)`。
 /// 形状不对（非数组 / 缺 items 键）视为无默认（调用方回落空集合并告警）。
 fn parse_default_json(spec: &SurfaceSpec, raw: &str) -> (Vec<Value>, Vec<String>) {
@@ -578,6 +643,7 @@ fn parse_default_json(spec: &SurfaceSpec, raw: &str) -> (Vec<Value>, Vec<String>
             SurfaceShape::Capsule => validate_capsule_item(entry).is_some(),
             SurfaceShape::ReaderPreset => validate_reader_preset(entry).is_some(),
             SurfaceShape::CareScale => validate_care_scale(entry).is_some(),
+            SurfaceShape::PaneMode => validate_pane_mode(entry).is_some(),
         };
         if ok {
             valid.push(entry.clone());
@@ -631,7 +697,8 @@ pub fn embedded_defaults(spec: &SurfaceSpec) -> Vec<SurfaceItem> {
         | SurfaceShape::Icon
         | SurfaceShape::Capsule
         | SurfaceShape::ReaderPreset
-        | SurfaceShape::CareScale => Vec::new(),
+        | SurfaceShape::CareScale
+        | SurfaceShape::PaneMode => Vec::new(),
     }
 }
 
@@ -762,7 +829,8 @@ fn user_override(spec: &SurfaceSpec, base: &Path) -> Option<Override> {
         SurfaceShape::Menu
         | SurfaceShape::Capsule
         | SurfaceShape::ReaderPreset
-        | SurfaceShape::CareScale => {
+        | SurfaceShape::CareScale
+        | SurfaceShape::PaneMode => {
             let value = read_override_file(spec, base)?;
             let items = value.get("items")?.as_array()?;
             Some(Override::Items(items.clone()))
@@ -937,8 +1005,23 @@ fn merge_object_list_surface(
         };
         let mut merged = match base {
             Some(default_item) => deep_merge(default_item, &partial),
-            None => partial,
+            None => partial.clone(),
         };
+        // hardcore 的 revealMs=0 只可能来自覆盖显式写入（默认 3000 不会被深合并
+        // 成 0）；在深合并前对部分项判定，避免默认值掩盖越界写入。
+        if spec.shape == SurfaceShape::PaneMode
+            && partial.get("id").and_then(|v| v.as_str()) == Some(PANE_MODE_REVEAL_DISABLED_ID)
+            && partial.get("revealMs").and_then(|v| v.as_u64()) == Some(0)
+        {
+            invalid.push(
+                partial
+                    .get("id")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("(缺 id)")
+                    .to_string(),
+            );
+            continue;
+        }
         let ok = match spec.shape {
             SurfaceShape::Capsule => validate_capsule_item(&merged).is_some(),
             SurfaceShape::ReaderPreset => match validate_reader_preset(&merged) {
@@ -957,6 +1040,7 @@ fn merge_object_list_surface(
                 }
                 None => false,
             },
+            SurfaceShape::PaneMode => validate_pane_mode(&merged).is_some(),
             _ => false,
         };
         if !ok {
@@ -2233,6 +2317,102 @@ mod tests {
         assert_eq!(loaded.items.len(), 3, "空覆盖回落三档默认");
     }
 
+    fn pm_spec() -> &'static SurfaceSpec {
+        find_surface("pane-modes").expect("pane-modes 已登记")
+    }
+
+    fn write_pm_user(base: &Path, json: &str) {
+        let path = base.join("user").join("pane-modes.json");
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(&path, json).unwrap();
+    }
+
+    #[test]
+    fn pane_modes_默认三档逐值() {
+        let dir = temp_base("pm_default");
+        let loaded = load_surface(pm_spec(), dir.path());
+        assert_eq!(loaded.items.len(), 3, "默认恰三档");
+        let pick = |id: &str| -> Value {
+            loaded
+                .items
+                .iter()
+                .find(|i| i["id"] == json!(id))
+                .unwrap_or_else(|| panic!("缺档 {id}"))
+                .clone()
+        };
+        assert_eq!(pick("simple")["hotzonePx"], json!(16));
+        assert_eq!(pick("simple")["revealMs"], json!(0));
+        assert_eq!(pick("simple")["hintLinePx"], json!(0));
+        assert_eq!(pick("standard")["hotzonePx"], json!(16));
+        assert_eq!(pick("standard")["revealMs"], json!(0));
+        assert_eq!(pick("standard")["hintLinePx"], json!(0));
+        assert_eq!(pick("hardcore")["hotzonePx"], json!(0));
+        assert_eq!(pick("hardcore")["revealMs"], json!(3000));
+        assert_eq!(pick("hardcore")["hintLinePx"], json!(1));
+        assert!(loaded.warnings.is_empty());
+    }
+
+    #[test]
+    fn pane_modes_越界项被过滤并聚合告警() {
+        let dir = temp_base("pm_bounds");
+        write_pm_user(
+            dir.path(),
+            r#"{"items":[
+                {"id":"simple","label":"简易","hotzonePx":30,"revealMs":0,"hintLinePx":0},
+                {"id":"standard","label":"常规","hotzonePx":16,"revealMs":500,"hintLinePx":0},
+                {"id":"hardcore","label":"硬核","hotzonePx":0,"revealMs":3000,"hintLinePx":3},
+                {"id":"large","label":"大","hotzonePx":20,"revealMs":4000,"hintLinePx":1}
+            ]}"#,
+        );
+        let loaded = load_surface(pm_spec(), dir.path());
+        let ids: Vec<&str> = loaded
+            .items
+            .iter()
+            .filter_map(|i| i["id"].as_str())
+            .collect();
+        assert_eq!(ids, vec!["large"], "三条越界项过滤，合法新档保留");
+        assert_eq!(loaded.warnings.len(), 1, "聚合一条告警");
+        for id in ["simple", "standard", "hardcore"] {
+            assert!(
+                loaded.warnings[0].contains(id),
+                "告警须含被过滤项 id {id}: {:?}",
+                loaded.warnings
+            );
+        }
+    }
+
+    #[test]
+    fn pane_modes_hardcore_reveal_0_被拒() {
+        let dir = temp_base("pm_hardcore_zero");
+        write_pm_user(
+            dir.path(),
+            r#"{"items":[{"id":"hardcore","label":"硬核","hotzonePx":0,"revealMs":0,"hintLinePx":1}]}"#,
+        );
+        let loaded = load_surface(pm_spec(), dir.path());
+        let ids: Vec<&str> = loaded
+            .items
+            .iter()
+            .filter_map(|i| i["id"].as_str())
+            .collect();
+        assert_eq!(ids, vec!["simple", "standard", "hardcore"]);
+        let hardcore = loaded
+            .items
+            .iter()
+            .find(|i| i["id"] == json!("hardcore"))
+            .unwrap();
+        assert_eq!(hardcore["revealMs"], json!(3000), "回落默认值");
+        assert_eq!(loaded.warnings.len(), 1);
+        assert!(loaded.warnings[0].contains("hardcore"));
+    }
+
+    #[test]
+    fn pane_modes_空覆盖回落默认() {
+        let dir = temp_base("pm_empty");
+        write_pm_user(dir.path(), r#"{"items":[]}"#);
+        let loaded = load_surface(pm_spec(), dir.path());
+        assert_eq!(loaded.items.len(), 3, "空覆盖回落三档默认");
+    }
+
     #[test]
     fn menus_坏JSON覆盖回落默认不崩溃() {
         let dir = temp_base("menus_obj_badjson");
@@ -3019,7 +3199,7 @@ mod tests {
             ids, table,
             "load_all 必须逐面返回登记表全集（新增面只追加表行即可被发现）"
         );
-        assert_eq!(ids.len(), 6, "T4 + 阅读预设 + 关爱缩放后应登记六面");
+        assert_eq!(ids.len(), 7, "T4 + 阅读预设 + 关爱缩放 + 窗格模式后应登记七面");
     }
 
     #[test]
@@ -3086,3 +3266,5 @@ mod tests {
         assert_eq!(names.len(), SURFACE_SNAPSHOT_LIMIT, "快照限量 10 份");
     }
 }
+
+

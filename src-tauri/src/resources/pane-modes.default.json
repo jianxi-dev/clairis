@@ -1,0 +1,8 @@
+{
+  "id": "pane-modes",
+  "items": [
+    { "id": "simple", "label": "简易", "hotzonePx": 16, "revealMs": 0, "hintLinePx": 0 },
+    { "id": "standard", "label": "常规", "hotzonePx": 16, "revealMs": 0, "hintLinePx": 0 },
+    { "id": "hardcore", "label": "硬核", "hotzonePx": 0, "revealMs": 3000, "hintLinePx": 1 }
+  ]
+}

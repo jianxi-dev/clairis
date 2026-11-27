@@ -15,6 +15,7 @@ import type {
   CapsuleItemSpec,
   ReaderPresetSpec,
   CareScaleSpec,
+  PaneModeSpec,
 } from "./loader";
 import { log } from "../../utils/log";
 import {
@@ -24,7 +25,7 @@ import {
   toMenuItem,
 } from "./loader";
 
-export type { MenuItem, IconSpec, CapsuleItemSpec, CareScaleSpec } from "./loader";
+export type { MenuItem, IconSpec, CapsuleItemSpec, CareScaleSpec, PaneModeSpec } from "./loader";
 
 /** 面 id → 最近一次归一化结果。 */
 const surfaces = new Map<string, NormalizedSurface>();
@@ -114,6 +115,25 @@ export function getCareScaleItems(): CareScaleSpec[] {
   for (const entry of items) {
     const item = entry as CareScaleSpec;
     if (item && typeof item.id === "string" && typeof item.scale === "number") {
+      out.push(item);
+    }
+  }
+  return out;
+}
+
+/** 取窗格模式面有效项（保持面数据的数组顺序）。未加载过返回空数组。 */
+export function getPaneModeItems(): PaneModeSpec[] {
+  const items = surfaces.get("pane-modes")?.items ?? [];
+  const out: PaneModeSpec[] = [];
+  for (const entry of items) {
+    const item = entry as PaneModeSpec;
+    if (
+      item &&
+      typeof item.id === "string" &&
+      typeof item.hotzonePx === "number" &&
+      typeof item.revealMs === "number" &&
+      typeof item.hintLinePx === "number"
+    ) {
       out.push(item);
     }
   }

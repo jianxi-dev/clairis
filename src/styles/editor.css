@@ -1843,14 +1843,15 @@ html[data-pane-mode="hardcore"][data-pane-revealed="true"] .app-root:not(.immers
   display: flex;
 }
 
-/* hardcore 隐藏态的 1px 顶部提示线：只提示，不拦截点击、不做热区。 */
+/* hardcore 隐藏态的顶部提示线：只提示，不拦截点击、不做热区。
+   厚度来自 pane-modes 面选中档（DS-11 / §7.7），缺省回落 1px。 */
 html[data-pane-mode="hardcore"] .app-root:not(.immersive) .pane-leaf::before {
   content: "";
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
-  height: 1px;
+  height: var(--pane-hint-px, 1px);
   background: var(--app-border);
   pointer-events: none;
   z-index: 20;
@@ -1954,13 +1955,14 @@ html[data-pane-scale-active="true"] .cm-floating-toolbar {
   height: 18px;
 }
 
-/* 状态栏隐藏后的底部热区：主窗口滑入即显现，不占布局高度（沉浸态仍计时，见 App.tsx）。 */
+/* 状态栏隐藏后的底部热区：主窗口滑入即显现，不占布局高度（沉浸态仍计时，见 App.tsx）。
+   高度来自 pane-modes 面选中档（DS-11 / §7.7），缺省回落 16px。 */
 .status-hotzone {
   position: fixed;
   left: 0;
   right: 0;
   bottom: 0;
-  height: var(--space-16, 16px);
+  height: var(--pane-hotzone-px, 16px);
   z-index: 40;
 }
 

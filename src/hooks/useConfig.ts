@@ -49,6 +49,7 @@ import {
 import { normalizeHeadingFonts } from "../lib/headingFonts";
 import {
   getCareScaleItems,
+  getPaneModeItems,
   getSurfaceItems,
   subscribeSurfaces,
 } from "../lib/dataSurfaces/store";
@@ -236,10 +237,12 @@ export function applyReaderSkin(skin: string): void {
 }
 
 /**
- * 把 paneMode 映射到 <html> 的 data-pane-mode（G-9）。选 <html> 是因为
+ * 把 paneMode 映射到 <html> 的 data-pane-mode（G-9），并从 pane-modes 面解析
+ * 选中档的热区高度 / 提示线厚度写 CSS 变量（DS-11 / §7.7）。选 <html> 是因为
  * .app-chrome（每格页头）与 .app-status-bar 都是它的后代，且 .immersive 类
  * 也挂在同一节点上——优先级 readingMode > paneMode 可用同一节点的类/属性
  * 选择器表达（.immersive 规则写在 [data-pane-mode] 之后即自然覆盖）。
+ * 缺省 / 未知 id / 面未加载 → 两变量不设（CSS 回落 16px / 1px，保持今天行为）。
  */
 export function applyPaneMode(mode: string): void {
   const root = document.documentElement;
@@ -248,6 +251,15 @@ export function applyPaneMode(mode: string): void {
       ? mode
       : "standard";
   root.dataset.paneMode = next;
+  const items = getPaneModeItems();
+  const hit = items.find((item) => item.id === next);
+  if (hit) {
+    root.style.setProperty("--pane-hotzone-px", `${hit.hotzonePx}px`);
+    root.style.setProperty("--pane-hint-px", `${hit.hintLinePx}px`);
+  } else {
+    root.style.removeProperty("--pane-hotzone-px");
+    root.style.removeProperty("--pane-hint-px");
+  }
 }
 
 /**
@@ -791,12 +803,14 @@ export function useConfig() {
     };
   }, []);
 
-  // 面集合异步到达 / 外部改动后重放缩放：首次 applyPaneScale 可能早于 care-scale
-  // 面加载（竞态），surfaces-changed 到达时按当前选中 id 重解析一次（DS-2）。
+  // 面集合异步到达 / 外部改动后重放：首次 applyPaneScale / applyPaneMode 可能早于
+  // care-scale / pane-modes 面加载（竞态），surfaces-changed 到达时按当前选中 id
+  // 各重解析一次（DS-2 / DS-11）。
   useEffect(() => {
     return subscribeSurfaces(() => {
-      const id = useEditorStore.getState().config.paneScale ?? "medium";
-      applyPaneScale(id);
+      const config = useEditorStore.getState().config;
+      applyPaneScale(config.paneScale ?? "medium");
+      applyPaneMode(config.paneMode ?? "standard");
     });
   }, []);
 
