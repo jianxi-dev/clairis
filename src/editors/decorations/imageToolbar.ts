@@ -45,7 +45,7 @@ const BUTTON_SPECS: readonly ButtonSpec[] = [
   },
   {
     testid: "img-toolbar-reset",
-    icon: "ExpandOutlined",
+    icon: "UndoOutlined",
     label: "重置图片",
     action: "reset",
   },
@@ -954,16 +954,28 @@ const USER_ZOOM_GUARD_MS = 3000;
 function maximizeApplyTransform(): void {
   if (!maximizeImg) return;
   const { scale, tx, ty, rotation } = maximizeTransform;
-  // 守卫：用户刚调整过（3 秒内）且本次写入是把 scale 拉回 1，而调用方并非
-  // 显式复位 —— 判定为 WKWebView 的延迟/误判覆盖，跳过这一次重绘。
+  // 守卫：用户刚调整过（3 秒内）且本次写入是把 scale 拉回 1（±0.001 容差，
+  // 兜住浮点累乘），而调用方并非显式复位 —— 判定为延迟/误判覆盖，跳过。
   if (
     !maximizeResetIntent &&
-    scale === 1 &&
-    maximizeTransform.tx === 0 &&
-    maximizeTransform.ty === 0 &&
+    Math.abs(scale - 1) < 1e-3 &&
+    Math.abs(maximizeTransform.tx) < 1e-3 &&
+    Math.abs(maximizeTransform.ty) < 1e-3 &&
     performance.now() - lastUserZoomAt < USER_ZOOM_GUARD_MS
   ) {
     return;
+  }
+  // DEV 探针（#1603）：真机「调整大小后自动回 100%」的写入者 headless 不可
+  // 复现，静态分析只剩 reset 按钮 / renderCurrent / 背景点击三条路径。此处
+  // 记录每次 scale 回 1 的调用栈，真机 dev 版复现一次即可定位写入者。
+  if (import.meta.env.DEV && Math.abs(scale - 1) < 1e-3) {
+    console.log(
+      "[maximize-probe] scale->1 resetIntent=",
+      maximizeResetIntent,
+      "sinceUserZoom=",
+      Math.round(performance.now() - lastUserZoomAt),
+      new Error().stack?.split("\n").slice(2, 6).join(" <- "),
+    );
   }
   maximizeImg.style.transform = `translate(${tx}px, ${ty}px) scale(${scale}) rotate(${rotation}deg)`;
   maximizeRefreshUi?.();
@@ -1305,7 +1317,7 @@ export function openImageMaximize(
   const clearCropBtn = maximizeControlButton(
     "img-max-clear-crop",
     "重置图片",
-    "ExpandOutlined",
+    "UndoOutlined",
     () => {
       const item = items[currentIndex];
       if (typeof item.from === "number") actions.onImageReset?.(item.from);

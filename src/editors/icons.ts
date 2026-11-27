@@ -642,6 +642,14 @@ const ICON_REGISTRY: Record<string, IconDef> = {
       "M16 16l5 5M8 11h6",
     ],
   },
+  // 「重置图片」专用（#1615 二轮：ExpandOutlined 与嵌入展开/全屏观感撞形，
+  // RotateOutlined 与旋转撞形）——撤销箭头语义「撤销裁剪恢复整图」，造型与
+  // ui/icons 的 undo 同源。
+  UndoOutlined: {
+    kind: "paths",
+    stroke: true,
+    paths: ["M4.5 9.5h9a4.5 4.5 0 0 1 0 9H9", "M8 5.5 4.5 9.5 8 13.5"],
+  },
   RestoreOutlined: {
     kind: "paths",
     paths: [
