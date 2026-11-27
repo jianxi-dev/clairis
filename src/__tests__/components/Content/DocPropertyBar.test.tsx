@@ -42,6 +42,14 @@ function resetPanel(): void {
   s.setCollapsed(false);
 }
 
+
+/** 日期时间面板已 portal 到 document.body（#1652），按 testid 全局定位。 */
+function dtPanel(): HTMLElement {
+  return document.querySelector<HTMLElement>(
+    '[data-testid="dpb-datetime-panel"]',
+  )!;
+}
+
 describe("DocPropertyBar 托管日期键只读（P-6）", () => {
   afterEach(() => {
     cleanup();
@@ -342,7 +350,7 @@ describe("DocPropertyBar 日期时间单面板（#1044）", () => {
     const editor = row.querySelector('[data-testid="dpb-datetime-editor"]')!;
     expect(editor).not.toBeNull();
     expect(
-      editor.querySelector('[data-testid="dpb-datetime-panel"]'),
+      dtPanel(),
     ).not.toBeNull();
     expect(
       editor.querySelectorAll('input[type="date"], input[type="time"]'),
@@ -354,13 +362,13 @@ describe("DocPropertyBar 日期时间单面板（#1044）", () => {
     expect(text!.type).toBe("text");
     expect(text!.value).toBe("2026-11-15T14:30");
     expect(
-      editor.querySelectorAll('[data-testid="dpb-cal-day"]').length,
+      dtPanel().querySelectorAll('[data-testid="dpb-cal-day"]').length,
     ).toBeGreaterThan(0);
     expect(
-      editor.querySelector('[data-testid="dpb-time-hour"]'),
+      dtPanel().querySelector('[data-testid="dpb-time-hour"]'),
     ).not.toBeNull();
     expect(
-      editor.querySelector('[data-testid="dpb-time-minute"]'),
+      dtPanel().querySelector('[data-testid="dpb-time-minute"]'),
     ).not.toBeNull();
   });
 
@@ -376,7 +384,7 @@ describe("DocPropertyBar 日期时间单面板（#1044）", () => {
     fireEvent.pointerDown(text, { clientX: 100, clientY: 50 });
 
     expect(document.activeElement).toBe(
-      editor.querySelector('[data-testid="dpb-time-hour"]'),
+      dtPanel().querySelector('[data-testid="dpb-time-hour"]'),
     );
     expect(dispatchRef.current).toHaveLength(0);
     expect(
@@ -389,9 +397,7 @@ describe("DocPropertyBar 日期时间单面板（#1044）", () => {
     const row = container.querySelector('[data-key="评审时间"]')!;
     fireEvent.click(row.querySelector('[data-testid="dpb-value"]')!);
     const editor = row.querySelector('[data-testid="dpb-datetime-editor"]')!;
-    const panel = editor.querySelector<HTMLElement>(
-      '[data-testid="dpb-datetime-panel"]',
-    )!;
+    const panel = dtPanel()!;
     const text = editor.querySelector<HTMLInputElement>(
       '[data-testid="dpb-datetime-input"]',
     )!;
@@ -474,17 +480,17 @@ describe("DocPropertyBar 日期时间单面板（#1044）", () => {
     const editor = row.querySelector('[data-testid="dpb-datetime-editor"]')!;
 
     fireEvent.click(
-      editor.querySelector(
+      dtPanel().querySelector(
         '[data-testid="dpb-cal-day"][data-date="2026-11-18"]',
       )!,
     );
     fireEvent.click(
-      editor.querySelector(
+      dtPanel().querySelector(
         '[data-testid="dpb-time-hour-item"][data-value="14"]',
       )!,
     );
     fireEvent.click(
-      editor.querySelector(
+      dtPanel().querySelector(
         '[data-testid="dpb-time-minute-item"][data-value="30"]',
       )!,
     );
@@ -503,7 +509,7 @@ describe("DocPropertyBar 日期时间单面板（#1044）", () => {
     const editor = row.querySelector('[data-testid="dpb-datetime-editor"]')!;
 
     fireEvent.click(
-      editor.querySelector(
+      dtPanel().querySelector(
         '[data-testid="dpb-cal-day"][data-date="2026-11-18"]',
       )!,
     );
@@ -525,12 +531,12 @@ describe("DocPropertyBar 日期时间单面板（#1044）", () => {
     const editor = row.querySelector('[data-testid="dpb-datetime-editor"]')!;
 
     fireEvent.click(
-      editor.querySelector(
+      dtPanel().querySelector(
         '[data-testid="dpb-cal-day"][data-date="2026-11-18"]',
       )!,
     );
     fireEvent.click(
-      editor.querySelector(
+      dtPanel().querySelector(
         '[data-testid="dpb-time-hour-item"][data-value="18"]',
       )!,
     );
@@ -560,10 +566,8 @@ describe("DocPropertyBar 日期时间单面板（#1044）", () => {
     const row = container.querySelector('[data-key="评审时间"]')!;
     fireEvent.click(row.querySelector('[data-testid="dpb-value"]')!);
     const editor = row.querySelector('[data-testid="dpb-datetime-editor"]')!;
-    const panel = editor.querySelector('[data-testid="dpb-datetime-panel"]')!;
-    const minute = editor.querySelector<HTMLElement>(
-      '[data-testid="dpb-time-minute"]',
-    )!;
+    const panel = dtPanel()!;
+    const minute = dtPanel().querySelector('[data-testid="dpb-time-minute"]')!;
 
     minute.focus();
     expect(document.activeElement).toBe(minute);
@@ -586,10 +590,8 @@ describe("DocPropertyBar 日期时间单面板（#1044）", () => {
     const row = container.querySelector('[data-key="评审时间"]')!;
     fireEvent.click(row.querySelector('[data-testid="dpb-value"]')!);
     const editor = row.querySelector('[data-testid="dpb-datetime-editor"]')!;
-    const panel = editor.querySelector('[data-testid="dpb-datetime-panel"]')!;
-    const minute = editor.querySelector<HTMLElement>(
-      '[data-testid="dpb-time-minute"]',
-    )!;
+    const panel = dtPanel()!;
+    const minute = dtPanel().querySelector('[data-testid="dpb-time-minute"]')!;
 
     minute.focus();
     const ev = new KeyboardEvent("keydown", {
@@ -611,7 +613,7 @@ describe("DocPropertyBar 日期时间单面板（#1044）", () => {
     const row = container.querySelector('[data-key="评审时间"]')!;
     fireEvent.click(row.querySelector('[data-testid="dpb-value"]')!);
     const editor = row.querySelector('[data-testid="dpb-datetime-editor"]')!;
-    const panel = editor.querySelector('[data-testid="dpb-datetime-panel"]')!;
+    const panel = dtPanel()!;
     const cells = Array.from(
       panel.querySelectorAll<HTMLElement>("[data-date]"),
     );
@@ -670,30 +672,30 @@ createdate: 2026-11-14
     expect(
       row.querySelectorAll('input[type="date"],input[type="time"]'),
     ).toHaveLength(0);
-    expect(editor.querySelector('[data-testid="dpb-time-hour"]')).toBeNull();
+    expect(dtPanel().querySelector('[data-testid="dpb-time-hour"]')).toBeNull();
     expect(
-      editor.querySelector('[data-testid="dpb-cal-month"]'),
+      dtPanel().querySelector('[data-testid="dpb-cal-month"]'),
     ).not.toBeNull();
 
-    fireEvent.click(editor.querySelector('[data-testid="dpb-cal-month"]')!);
+    fireEvent.click(dtPanel().querySelector('[data-testid="dpb-cal-month"]')!);
     expect(
-      editor.querySelectorAll('[data-testid="dpb-cal-month-cell"]'),
+      dtPanel().querySelectorAll('[data-testid="dpb-cal-month-cell"]'),
     ).toHaveLength(12);
 
     fireEvent.click(
-      editor.querySelectorAll('[data-testid="dpb-cal-month-cell"]')[0]!,
+      dtPanel().querySelectorAll('[data-testid="dpb-cal-month-cell"]')[0]!,
     );
-    expect(editor.querySelector('[data-testid="dpb-cal-grid"]')).not.toBeNull();
+    expect(dtPanel().querySelector('[data-testid="dpb-cal-grid"]')).not.toBeNull();
 
-    fireEvent.click(editor.querySelector('[data-testid="dpb-cal-year"]')!);
+    fireEvent.click(dtPanel().querySelector('[data-testid="dpb-cal-year"]')!);
     expect(
-      editor.querySelectorAll('[data-testid="dpb-cal-year-cell"]'),
+      dtPanel().querySelectorAll('[data-testid="dpb-cal-year-cell"]'),
     ).toHaveLength(12);
     fireEvent.click(
-      editor.querySelectorAll('[data-testid="dpb-cal-year-cell"]')[5]!,
+      dtPanel().querySelectorAll('[data-testid="dpb-cal-year-cell"]')[5]!,
     );
     expect(
-      editor.querySelectorAll('[data-testid="dpb-cal-month-cell"]'),
+      dtPanel().querySelectorAll('[data-testid="dpb-cal-month-cell"]'),
     ).toHaveLength(12);
   });
 
@@ -702,7 +704,7 @@ createdate: 2026-11-14
     const row = container.querySelector('[data-key="createdate"]')!;
     fireEvent.click(row.querySelector('[data-testid="dpb-value"]')!);
     const editor = row.querySelector('[data-testid="dpb-datetime-editor"]')!;
-    const day = editor.querySelector<HTMLElement>(
+    const day = dtPanel().querySelector<HTMLElement>(
       '[data-testid="dpb-cal-day"][data-date="2026-11-15"]',
     )!;
     fireEvent.click(day);
@@ -723,7 +725,7 @@ createdate: 2026-11-14
     const row = container.querySelector('[data-key="createdate"]')!;
     fireEvent.click(row.querySelector('[data-testid="dpb-value"]')!);
     const editor = row.querySelector('[data-testid="dpb-datetime-editor"]')!;
-    fireEvent.click(editor.querySelector('[data-testid="dpb-cal-today"]')!);
+    fireEvent.click(dtPanel().querySelector('[data-testid="dpb-cal-today"]')!);
 
     expect(dispatchRef.current).toHaveLength(1);
     expect(dispatchRef.current[0].changes.insert).toMatch(
@@ -746,7 +748,7 @@ createdate: 2026-11-14
     fireEvent.pointerDown(text, { clientX: 120, clientY: 40 });
 
     expect(document.activeElement).toBe(
-      editor.querySelector(
+      dtPanel().querySelector(
         '[data-testid="dpb-cal-day"][data-date="2026-11-14"]',
       ),
     );
