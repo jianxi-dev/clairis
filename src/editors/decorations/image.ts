@@ -491,7 +491,14 @@ export function writeImageAttributes(
       changes.push({ from: ref.end, to, insert: serialized });
     }
   }
-  if (changes.length > 0) view.dispatch({ changes });
+  if (changes.length > 0) {
+    const scroller = view.scrollDOM;
+    const scrollBefore = scroller?.scrollTop ?? null;
+    view.dispatch({ changes });
+    if (scroller && scrollBefore !== null) {
+      pinScrollDuringWrite(scroller, scrollBefore);
+    }
+  }
   return true;
 }
 
@@ -540,6 +547,38 @@ function escapeImageTitle(value: string): string {
  * 空串移除标题；已有标题原样替换引号段；无标题时插在 `)` 前。
  * 宽高等属性块不动。
  */
+/**
+ * 写回期间的滚动钉住（#1603 十四轮）：描述写回会让 widget 重建、段落重排，
+ * CM6 的滚动锚定/光标揭示会把视口带偏——用户看到「保存描述后画面跳一下」。
+ * 与 imageCrop 的 pinScroll 同一策略：短窗口内把 scrollTop 拉回原位，
+ * 用户滚轮/触摸立即让位。
+ */
+function pinScrollDuringWrite(scroller: HTMLElement, before: number): void {
+  let stopped = false;
+  const stop = (): void => {
+    stopped = true;
+  };
+  scroller.addEventListener("wheel", stop, { passive: true });
+  scroller.addEventListener("touchstart", stop, { passive: true });
+  const startedAt = performance.now();
+  const pin = (): void => {
+    if (stopped || !scroller.isConnected) {
+      scroller.removeEventListener("wheel", stop);
+      scroller.removeEventListener("touchstart", stop);
+      return;
+    }
+    if (Math.abs(scroller.scrollTop - before) >= 0.5) {
+      scroller.scrollTop = before;
+    }
+    if (performance.now() - startedAt < 1200) requestAnimationFrame(pin);
+    else {
+      scroller.removeEventListener("wheel", stop);
+      scroller.removeEventListener("touchstart", stop);
+    }
+  };
+  requestAnimationFrame(pin);
+}
+
 export function writeImageTitle(
   view: EditorView,
   from: number,
