@@ -28,6 +28,8 @@
 - [ ] `npm test`
 - [ ] (涉 e2e) `npx playwright test <spec>`
 - [ ] (涉 ui-surface) `.artifacts/<票号>/state-coverage.json` ≥4 态 + 截图前后对比
+- [ ] 三件证据齐全：明/暗 × 1280/400 截图对 + 可复现步骤 + 计算样式断言（模板：docs/delivery/ui-verification-template.md）
+- [ ] (涉 ui-surface) `.artifacts/<票号>/` 截图与 `state-coverage.json` 已随 PR 提交
 - [ ] 自测结果/复现步骤验证:
 
 ## 风险评估
