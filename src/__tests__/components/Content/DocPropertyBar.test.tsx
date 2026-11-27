@@ -567,7 +567,9 @@ describe("DocPropertyBar 日期时间单面板（#1044）", () => {
     fireEvent.click(row.querySelector('[data-testid="dpb-value"]')!);
     const editor = row.querySelector('[data-testid="dpb-datetime-editor"]')!;
     const panel = dtPanel()!;
-    const minute = dtPanel().querySelector('[data-testid="dpb-time-minute"]')!;
+    const minute = dtPanel().querySelector<HTMLElement>(
+      '[data-testid="dpb-time-minute"]',
+    )!;
 
     minute.focus();
     expect(document.activeElement).toBe(minute);
@@ -591,7 +593,9 @@ describe("DocPropertyBar 日期时间单面板（#1044）", () => {
     fireEvent.click(row.querySelector('[data-testid="dpb-value"]')!);
     const editor = row.querySelector('[data-testid="dpb-datetime-editor"]')!;
     const panel = dtPanel()!;
-    const minute = dtPanel().querySelector('[data-testid="dpb-time-minute"]')!;
+    const minute = dtPanel().querySelector<HTMLElement>(
+      '[data-testid="dpb-time-minute"]',
+    )!;
 
     minute.focus();
     const ev = new KeyboardEvent("keydown", {
