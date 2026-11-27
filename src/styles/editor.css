@@ -1828,7 +1828,9 @@ html[data-pane-mode="hardcore"] .app-root:not(.immersive) .app-chrome {
   border-radius: 0 0 var(--radius-8, 8px) var(--radius-8, 8px);
 }
 
-html[data-pane-mode="hardcore"][data-pane-revealed="true"] .app-root:not(.immersive) .app-chrome {
+html[data-pane-mode="hardcore"][data-pane-revealed="true"]
+  .app-root:not(.immersive)
+  .app-chrome {
   max-height: 200px;
   opacity: 1;
   pointer-events: auto;
@@ -1839,7 +1841,9 @@ html[data-pane-mode="hardcore"] .app-root:not(.immersive) .app-status-bar {
   display: none;
 }
 
-html[data-pane-mode="hardcore"][data-pane-revealed="true"] .app-root:not(.immersive) .app-status-bar {
+html[data-pane-mode="hardcore"][data-pane-revealed="true"]
+  .app-root:not(.immersive)
+  .app-status-bar {
   display: flex;
 }
 
@@ -1857,7 +1861,9 @@ html[data-pane-mode="hardcore"] .app-root:not(.immersive) .pane-leaf::before {
   z-index: 20;
 }
 
-html[data-pane-mode="hardcore"][data-pane-revealed="true"] .app-root:not(.immersive) .pane-leaf::before {
+html[data-pane-mode="hardcore"][data-pane-revealed="true"]
+  .app-root:not(.immersive)
+  .pane-leaf::before {
   display: none;
 }
 
@@ -1868,7 +1874,9 @@ html[data-pane-mode="hardcore"] .app-root:not(.immersive) .rail-root {
   display: none;
 }
 
-html[data-pane-mode="hardcore"][data-pane-revealed="true"] .app-root:not(.immersive) .rail-root {
+html[data-pane-mode="hardcore"][data-pane-revealed="true"]
+  .app-root:not(.immersive)
+  .rail-root {
   display: block;
 }
 
@@ -1927,7 +1935,8 @@ html[data-pane-scale-active="true"] [data-ai-docked] {
  * 叠加而不是替换，锚点不漂，只做视觉缩放；命中区随 scale 同步。
  * 分组按锚定边取 origin：左上 / 左下（状态栏浮窗 bottom 锚定）/ 底部居中 / 居中。
  */
-html[data-pane-scale-active="true"] :is(
+html[data-pane-scale-active="true"]
+  :is(
     .biaoyue-outline,
     .dpb-menu,
     .tab-context-menu,
@@ -1961,10 +1970,8 @@ html[data-pane-scale-active="true"] [data-ai-overlay] {
   transform-origin: bottom center;
 }
 
-html[data-pane-scale-active="true"] :is(
-    [data-testid="quick-open"],
-    [data-testid="shortcut-overlay"]
-  ) {
+html[data-pane-scale-active="true"]
+  :is([data-testid="quick-open"], [data-testid="shortcut-overlay"]) {
   scale: var(--pane-scale-factor, 1);
   transform-origin: center;
 }
@@ -3733,7 +3740,6 @@ html[data-tab-drag="true"] body * {
   width: 448px;
 }
 
-
 .cm-callout-color-pop .cm-color-row {
   max-width: none;
   gap: 6px;
@@ -4874,13 +4880,14 @@ html[data-tab-drag="true"] body * {
 /* 放大层按钮条显隐（#1603 用户方案终版）：常驻透明热区贴在按钮条位置，
    JS pointerenter/leave 驱动显隐（纯 CSS hover 域两轮皆不合语义：全屏
    浮层恒真、图片舞台够不到按钮条）。按钮条自身 :hover 保持显示。 */
+/* 只做视觉淡出，**不**关 pointer-events：八轮真机「点所有按钮没反应」
+   的最后一环是 pointer-events:none 让点击穿透到 dock。按钮在淡出态仍可点
+   （dock 只在悬停/需要时出现，误触面积极小）。 */
 .cm-image-maximize .img-max-controls {
   opacity: 0;
-  pointer-events: none;
   transition: opacity 200ms ease;
 }
 
 .cm-image-maximize .img-max-controls:hover {
   opacity: 1;
-  pointer-events: auto;
 }

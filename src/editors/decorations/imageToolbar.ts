@@ -280,6 +280,8 @@ let toolbarInteraction = false;
 let captionJustSaved = false;
 /** 当前打开的描述输入框：全局 click 在此同步提交（不依赖 blur 时序）。 */
 let captionActiveInput: HTMLInputElement | null = null;
+/** 当前输入的提交收尾（finish 完整路径：写回 + 移除输入框 + 刷新显隐）。 */
+let captionCommitActive: (() => void) | null = null;
 
 const CAPTION_PLACEHOLDER = "输入图片描述";
 
@@ -456,6 +458,7 @@ function createCaptionInput(
   input.setAttribute("aria-label", "图片描述");
   input.addEventListener("mousedown", (event) => event.stopPropagation());
   captionActiveInput = input;
+  captionCommitActive = () => finish(input.value.trim());
 
   const finish = (value: string): void => {
     input.dataset.finishing = "1";
@@ -467,6 +470,7 @@ function createCaptionInput(
       actions.onImageSetTitle?.(from, value);
     }
     captionActiveInput = null;
+    captionCommitActive = null;
     input.remove();
     showCaptionText(caption);
     // 保存（blur/Enter）后描述行保持展开、按钮选中——用户「输入文字保存后
@@ -494,14 +498,12 @@ function createCaptionInput(
       applyCaptionVisibility(caption);
     }
   });
-  // blur 也提交（非丢弃）。主动收尾 / 切换显隐时用标记跳过，避免二次写回。
-  input.addEventListener("blur", () => {
-    if (toolbarInteraction) return;
-    if (input.dataset.finishing === "1" || input.dataset.closing === "1") {
-      return;
-    }
-    finish(input.value.trim());
-  });
+  // 不监听 blur（#1603 八轮定案）：真机/headless 上 input.focus() 后立即失焦
+  // （点工具条按钮、CM6 抢焦点）会当场触发提交把输入框收掉——「输入框一闪
+  // 就没了 / 内容清空」的全部来源。提交只走两条确定路径：
+  //   1. Enter（keydown）
+  //   2. 点输入框外的任意处（document 级 click 同步提交，见底部 handler）
+  // 两者都不依赖焦点时序，WKWebView/Chromium 行为一致。
   caption.appendChild(input);
   return input;
 }
@@ -1435,13 +1437,14 @@ export function openImageMaximize(
     refreshNavUi();
   };
 
-  // 按钮条热区（#1603 用户方案终版）：常驻透明触发域贴在按钮条位置，
-  // 鼠标滑入显示按钮条、滑出淡出——热区自身 pointer-events:auto 常驻，
-  // 不受按钮条显隐影响（避免「淡出后碰不到」死锁）。
-  const hotzone = document.createElement("div");
-  hotzone.className = "img-max-hotzone";
-  hotzone.style.cssText =
-    "position:absolute;bottom:10px;left:50%;transform:translateX(-50%);width:520px;height:72px;z-index:2;";
+  // 按钮条 dock（#1603 用户方案终版 v2）：dock 是**按钮条的父容器**，鼠标
+  // 滑入 dock 显示按钮条、滑出淡出。父子结构从根上避免「热区挡住按钮」——
+  // 兄弟 + z-index 方案在真实点击测试里仍被热区拦截（八轮真机「所有按钮
+  // 没反应」）。dock 常驻使「淡出后碰不到」的死锁也不存在。
+  const dock = document.createElement("div");
+  dock.className = "img-max-dock";
+  dock.style.cssText =
+    "position:absolute;bottom:10px;left:50%;transform:translateX(-50%);width:min(560px,92vw);height:80px;display:flex;align-items:center;justify-content:center;z-index:2;";
   const controls = document.createElement("div");
   controls.className = "img-max-controls";
   controls.dataset.testid = "img-max-controls";
@@ -1529,21 +1532,13 @@ export function openImageMaximize(
       tooltip,
     ),
   );
-  overlay.appendChild(controls);
-  overlay.appendChild(hotzone);
-  hotzone.addEventListener("pointerenter", () => {
+  overlay.appendChild(dock);
+  dock.appendChild(controls);
+  dock.addEventListener("pointerenter", () => {
     controls.style.opacity = "1";
-    controls.style.pointerEvents = "auto";
   });
-  hotzone.addEventListener("pointerleave", () => {
-    // 移入按钮条本体（紧邻热区上缘）时保持显示——按钮条自身 :hover 由
-    // editor.css 接管；只有离开热区且不在按钮条上才淡出。
-    window.setTimeout(() => {
-      if (!controls.matches(":hover")) {
-        controls.style.opacity = "0";
-        controls.style.pointerEvents = "none";
-      }
-    }, 120);
+  dock.addEventListener("pointerleave", () => {
+    controls.style.opacity = "0";
   });
   maximizeRefreshUi = refreshZoomUi;
   renderCurrent();
@@ -1642,17 +1637,29 @@ if (typeof document !== "undefined") {
     // 上 blur 可能晚于 click 甚至丢失，#1603 五轮真机证实一切「blur 时保存
     // + 挡 click」的时序方案都失效）。写回后本次 click 吸收（不 deselect）：
     // 用户看到的是「保存成功、描述保持展开」，再点一次才取消选中。
+    // 判定顺序至关重要（#1603 八轮根因）：点「添加描述」按钮本身也是 click，
+    // 旧实现先执行 pending 提交、后查白名单，于是「打开描述」会被自己当场
+    // 提交收掉（输入框一闪即没）。现在先分类点击落点：
+    //  - 描述行内（正在编辑）：不提交
+    //  - 工具条内（切换按钮等）：不提交，交给按钮自己的逻辑
+    const earlyTarget = event.target as Element | null;
+    const inCaption = earlyTarget?.closest?.('[data-testid="img-caption"]');
+    const inToolbar = earlyTarget?.closest?.('[data-testid="img-toolbar"]');
     const pending = captionActiveInput;
-    if (pending && pending.isConnected) {
-      const widgetEl = pending.closest(".cm-image-widget") as HTMLElement;
-      const current = widgetEl?.dataset.imageTitle ?? "";
-      const value = pending.value.trim();
-      if (value !== current) {
-        actions.onImageSetTitle?.(Number(widgetEl.dataset.imageFrom), value);
-        // 只有真写回才吸收本次 click（保持选中看到结果）；未修改时点外部
-        // 照常取消选中（decorations-blocks 既有语义）。
-        captionJustSaved = true;
-      }
+    if (
+      !inCaption &&
+      !inToolbar &&
+      pending &&
+      pending.isConnected &&
+      // 只提交**正在显示**的输入框：每个重建的 widget 都带一个 display:none
+      // 的空框（常驻但不显示），把空框当活跃输入提交会写回空标题，清掉刚
+      // 保存的描述（#1603 八轮根因）。
+      pending.style.display !== "none" &&
+      captionCommitActive
+    ) {
+      // 走 finish 的**完整收尾**（写回 + 移除输入框 + 刷新文本/显隐）——
+      // 只写回不收尾会留下残留输入框，后续「添加描述」预填被旧状态污染。
+      captionCommitActive();
     }
     const target = event.target as Node | null;
     if (target instanceof Element) {
