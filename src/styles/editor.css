@@ -4836,24 +4836,13 @@ html[data-tab-drag="true"] body * {
   transform: rotate(45deg);
 }
 
-/* 放大层按钮条 hover 显隐（#1603 用户方案）：默认淡出不遮挡大图。
-   hover 域是图片舞台（img-max-stage）而非全屏浮层——浮层 inset:0 铺满
-   屏幕，以浮层为 hover 域则鼠标永远在内、按钮条永远显示（五轮真机
-   「显隐不生效」真因）。鼠标滑入图片区显示、滑出到黑色背景淡出。 */
+/* 放大层按钮条显隐（#1603 用户方案终版）：常驻透明热区贴在按钮条位置，
+   JS pointerenter/leave 驱动显隐（纯 CSS hover 域两轮皆不合语义：全屏
+   浮层恒真、图片舞台够不到按钮条）。按钮条自身 :hover 保持显示。 */
 .cm-image-maximize .img-max-controls {
   opacity: 0;
   pointer-events: none;
-}
-
-.cm-image-maximize .img-max-stage:hover ~ .img-max-controls,
-.cm-image-maximize .img-max-stage:hover ~ .img-max-controls * {
-  opacity: 1;
-  pointer-events: auto;
-}
-
-.cm-image-maximize:hover .img-max-stage:hover ~ .img-max-controls {
-  opacity: 1;
-  pointer-events: auto;
+  transition: opacity 200ms ease;
 }
 
 .cm-image-maximize .img-max-controls:hover {
