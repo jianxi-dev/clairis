@@ -1253,6 +1253,7 @@ export function openImageMaximize(
   const tooltip = createMaximizeTooltip();
 
   const stage = document.createElement("div");
+  stage.className = "img-max-stage";
   stage.style.cssText =
     "display:flex;align-items:center;justify-content:center;max-width:90vw;max-height:90vh;";
   overlay.appendChild(stage);
