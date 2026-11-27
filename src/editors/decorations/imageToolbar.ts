@@ -278,6 +278,8 @@ let toolbarInteraction = false;
  * 依赖，无论 blur→click 间隔多久都成立。
  */
 let captionJustSaved = false;
+/** 当前打开的描述输入框：全局 click 在此同步提交（不依赖 blur 时序）。 */
+let captionActiveInput: HTMLInputElement | null = null;
 
 const CAPTION_PLACEHOLDER = "输入图片描述";
 
@@ -453,6 +455,7 @@ function createCaptionInput(
   input.placeholder = CAPTION_PLACEHOLDER;
   input.setAttribute("aria-label", "图片描述");
   input.addEventListener("mousedown", (event) => event.stopPropagation());
+  captionActiveInput = input;
 
   const finish = (value: string): void => {
     input.dataset.finishing = "1";
@@ -463,6 +466,7 @@ function createCaptionInput(
       captionJustSaved = true;
       actions.onImageSetTitle?.(from, value);
     }
+    captionActiveInput = null;
     input.remove();
     showCaptionText(caption);
     // 保存（blur/Enter）后描述行保持展开、按钮选中——用户「输入文字保存后
@@ -523,6 +527,7 @@ function hideCaptionInput(caption: HTMLElement, widgetEl: HTMLElement): void {
   const value = input.value.trim();
   const current = widgetEl.dataset.imageTitle ?? "";
   input.dataset.closing = "1";
+  if (captionActiveInput === captionInputOf(caption)) captionActiveInput = null;
   input.style.display = "none";
   showCaptionText(caption);
   setCaptionActive(false);
@@ -1430,7 +1435,15 @@ export function openImageMaximize(
     refreshNavUi();
   };
 
+  // 按钮条热区（#1603 用户方案终版）：常驻透明触发域贴在按钮条位置，
+  // 鼠标滑入显示按钮条、滑出淡出——热区自身 pointer-events:auto 常驻，
+  // 不受按钮条显隐影响（避免「淡出后碰不到」死锁）。
+  const hotzone = document.createElement("div");
+  hotzone.className = "img-max-hotzone";
+  hotzone.style.cssText =
+    "position:absolute;bottom:10px;left:50%;transform:translateX(-50%);width:520px;height:72px;z-index:2;";
   const controls = document.createElement("div");
+  controls.className = "img-max-controls";
   controls.dataset.testid = "img-max-controls";
   // 按钮条默认淡出（#1603 用户方案）：鼠标进入浮层即显、移出淡出——平时不
   // 遮挡大图，也避免误触背景复位。显隐走纯 CSS :hover（二轮的 JS
@@ -1517,6 +1530,21 @@ export function openImageMaximize(
     ),
   );
   overlay.appendChild(controls);
+  overlay.appendChild(hotzone);
+  hotzone.addEventListener("pointerenter", () => {
+    controls.style.opacity = "1";
+    controls.style.pointerEvents = "auto";
+  });
+  hotzone.addEventListener("pointerleave", () => {
+    // 移入按钮条本体（紧邻热区上缘）时保持显示——按钮条自身 :hover 由
+    // editor.css 接管；只有离开热区且不在按钮条上才淡出。
+    window.setTimeout(() => {
+      if (!controls.matches(":hover")) {
+        controls.style.opacity = "0";
+        controls.style.pointerEvents = "none";
+      }
+    }, 120);
+  });
   maximizeRefreshUi = refreshZoomUi;
   renderCurrent();
 
@@ -1610,17 +1638,32 @@ export function closeImageMaximize(): void {
 
 if (typeof document !== "undefined") {
   document.addEventListener("click", (event) => {
-    // 保存后的第一次 click 被吸收：用户「输入文字后点外部保存」的预期是
-    // 保存并看到描述，而不是保存的同时选中态被同一次点击清掉。
-    if (captionJustSaved) {
-      captionJustSaved = false;
-      return;
+    // 描述输入开着时：**本 handler 内同步读值写回**（不依赖 blur——WKWebView
+    // 上 blur 可能晚于 click 甚至丢失，#1603 五轮真机证实一切「blur 时保存
+    // + 挡 click」的时序方案都失效）。写回后本次 click 吸收（不 deselect）：
+    // 用户看到的是「保存成功、描述保持展开」，再点一次才取消选中。
+    const pending = captionActiveInput;
+    if (pending && pending.isConnected) {
+      const widgetEl = pending.closest(".cm-image-widget") as HTMLElement;
+      const current = widgetEl?.dataset.imageTitle ?? "";
+      const value = pending.value.trim();
+      if (value !== current) {
+        actions.onImageSetTitle?.(Number(widgetEl.dataset.imageFrom), value);
+        // 只有真写回才吸收本次 click（保持选中看到结果）；未修改时点外部
+        // 照常取消选中（decorations-blocks 既有语义）。
+        captionJustSaved = true;
+      }
     }
     const target = event.target as Node | null;
     if (target instanceof Element) {
       if (target.closest(".cm-image-widget")) return;
       if (target.closest('[data-testid="img-toolbar"]')) return;
       if (target.closest('[data-testid="img-maximize"]')) return;
+    }
+    // 保存瞬间（上面刚写回）不 deselect：描述保持展开、按钮保持选中。
+    if (captionJustSaved) {
+      captionJustSaved = false;
+      return;
     }
     deselectImage();
   });
