@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "reset-first-position",
+      "screenshot": "e2e/editors/maximize-button-order.spec.ts (MAX-ORDER img-max-reset at index 0, runtime assertion)",
+      "assertion": "passed",
+      "recorded_at": "2026-11-27T05:20:00Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "clear-crop-before-close",
+      "screenshot": "e2e/editors/maximize-button-order.spec.ts (clear-crop index < close index, runtime assertion)",
+      "assertion": "passed",
+      "recorded_at": "2026-11-27T05:20:00Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "rotate-reset-icons-differ",
+      "screenshot": "e2e/editors/maximize-button-order.spec.ts (ICON-PATHS rotate≠reset, runtime assertion)",
+      "assertion": "passed",
+      "recorded_at": "2026-11-27T05:20:00Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "existing-maximize-regression",
+      "screenshot": "e2e/editors/maximize-tooltip-zoom.spec.ts + maximize-multinav.spec.ts + crop-cleanup-sync.spec.ts (15 passed)",
+      "assertion": "passed",
+      "recorded_at": "2026-11-27T05:20:00Z",
+      "runner": "unknown@MMBP"
+    }
+  ]
+}
