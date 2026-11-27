@@ -1,0 +1,155 @@
+{
+  "change": "ui-quality-gate-v1",
+  "requirements": [
+    {
+      "id": "R-1",
+      "text": "token 门禁（UQ-1 / 任务 1.1）",
+      "anchors": [
+        {
+          "id": "A-1.1",
+          "claim": "组件/编辑器层新增裸色值时 check-tokens 退出码",
+          "kind": "exact",
+          "assert": "1",
+          "source": "方案 §Q0 A"
+        },
+        {
+          "id": "A-1.2",
+          "claim": "tokens.ts 键集与 tokens.css 唯一变量名集合的差集大小",
+          "kind": "exact",
+          "assert": "0",
+          "source": "实测 55 唯一名"
+        },
+        {
+          "id": "A-1.3",
+          "claim": "ink-1（--app-text-strong）对 --app-bg 对比度下限",
+          "kind": "exact",
+          "assert": "7",
+          "source": "spec §7.8"
+        },
+        {
+          "id": "A-1.4",
+          "claim": "正文级（--app-text-2）对比度下限",
+          "kind": "exact",
+          "assert": "4.5",
+          "source": "spec §7.8"
+        },
+        {
+          "id": "A-1.5",
+          "claim": "次要/大字（--app-text-3）对比度下限",
+          "kind": "exact",
+          "assert": "3",
+          "source": "spec §7.8"
+        },
+        {
+          "id": "A-1.6",
+          "claim": "暗色主题 --app-on-accent 对 --app-accent 对比度下限",
+          "kind": "exact",
+          "assert": "4.5",
+          "source": "实测白字 2.98 不合格"
+        }
+      ]
+    },
+    {
+      "id": "R-2",
+      "text": "四条交互条款（UQ-2 / 任务 1.2）",
+      "anchors": [
+        {
+          "id": "A-2.1",
+          "claim": "interaction.md 条款条数",
+          "kind": "exact",
+          "assert": "4",
+          "source": "方案 §Q1"
+        },
+        {
+          "id": "A-2.2",
+          "claim": "window.alert/confirm/prompt 新增命中数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "方案 §Q1 守护"
+        },
+        {
+          "id": "A-2.3",
+          "claim": "存量 window.prompt 进基线处数",
+          "kind": "exact",
+          "assert": "3",
+          "source": "实测 slash.ts 等 3 处"
+        },
+        {
+          "id": "A-2.4",
+          "claim": "存量 border-top/bottom 1px 进基线处数",
+          "kind": "exact",
+          "assert": "18",
+          "source": "实测 src/**/*.css"
+        },
+        {
+          "id": "A-2.5",
+          "claim": "「禁用而非隐藏」e2e 守护用例数下限",
+          "kind": "exact",
+          "assert": "3",
+          "source": "方案 §Q1"
+        },
+        {
+          "id": "A-2.6",
+          "claim": "Esc 逐层关闭后文档未保存内容",
+          "kind": "state-machine",
+          "assert": "保留（0 处变更）",
+          "source": "方案 §Q1"
+        }
+      ]
+    },
+    {
+      "id": "R-3",
+      "text": "交付三件证据（UQ-3 / 任务 1.3）",
+      "anchors": [
+        {
+          "id": "A-3.1",
+          "claim": "UI 交付证据件数",
+          "kind": "exact",
+          "assert": "3",
+          "source": "方案 §Q4"
+        },
+        {
+          "id": "A-3.2",
+          "claim": "截图窗宽档位（宽/窄，px）",
+          "kind": "exact",
+          "assert": "1280 与 400",
+          "source": "方案 §Q4"
+        },
+        {
+          "id": "A-3.3",
+          "claim": "PR 缺三件证据",
+          "kind": "state-machine",
+          "assert": "退回（0 件通过）",
+          "source": "方案 §Q4"
+        }
+      ]
+    },
+    {
+      "id": "R-4",
+      "text": "门禁接线（UQ-4 / 任务 1.1+1.2）",
+      "anchors": [
+        {
+          "id": "A-4.1",
+          "claim": "verify.sh Token Gate 段编号",
+          "kind": "exact",
+          "assert": "3c",
+          "source": "方案 §Q0"
+        },
+        {
+          "id": "A-4.2",
+          "claim": "pre-commit 色值检查耗时上限（毫秒）",
+          "kind": "exact",
+          "assert": "1000",
+          "source": "方案 §Q0"
+        },
+        {
+          "id": "A-4.3",
+          "claim": "spec.md §8 supersede 后交互条款指向",
+          "kind": "exact",
+          "assert": "\"interaction.md\"",
+          "source": "方案 §Q1"
+        }
+      ]
+    }
+  ]
+}
