@@ -21,7 +21,16 @@ import {
   isInsideRange,
   type ImageAttributes,
 } from "../editors/decorations/image";
-import { calloutCssVars, parseCalloutAttrs } from "../editors/callout-attrs";
+import {
+  calloutCssVars,
+  highlightCssVars,
+  parseCalloutAttrs,
+} from "../editors/callout-attrs";
+import { resolveCalloutType } from "../editors/callout-types";
+import {
+  getCalloutEmojiSnapshot,
+  type CalloutEmojiSnapshot,
+} from "../editors/callout-emoji-overrides";
 import { classifyFileEmbed } from "../editors/decorations/fileEmbed";
 import { fileTypeOf, iconOfType, colorOfType } from "../lib/fileType";
 import { isTauriEnv } from "../utils/tauri";
@@ -427,6 +436,14 @@ function stripStructuralTagLines(content: string): string {
  */
 let activeResolveMedia: ((href: string) => string | null) | null = null;
 
+/**
+ * 当前这次渲染使用的 callout emoji 覆盖快照（会话内，来自编辑态发布）。
+ *
+ * 与 `activeResolveMedia` 同策略：模块作用域、渲染前设、渲染后清。预览与
+ * 编辑在同一文档上共享一份快照，换文档时签名不匹配自动回落类型默认。
+ */
+let activeCalloutEmoji: CalloutEmojiSnapshot = [];
+
 export interface RenderMarkdownOptions {
   /** 把文档内相对引用解析成可加载 URL；返回 null 走原始 href。 */
   resolveMedia?: (href: string) => string | null;
@@ -507,29 +524,34 @@ export function renderMarkdown(
   if (!content) return "";
 
   activeResolveMedia = options.resolveMedia ?? null;
+  activeCalloutEmoji = getCalloutEmojiSnapshot(content);
 
-  registerCheckboxGuard();
-  resetMathStore();
+  try {
+    registerCheckboxGuard();
+    resetMathStore();
 
-  // `![x](a.png){width=635}` 与旧 `![x](a.png)<!--w=635-->`：属性块/注释是给
-  // 编辑态持久化用的，直接在正文里渲染出来会变成一行可见文本。这里先换成带
-  // data 属性的 span，等 DOM 建好再取到图片上。
-  const stripped = content.replace(FRONTMATTER_RE, "");
-  const withWidths = preprocessImageAttributes(stripped);
-  columnDivPlaceholders.clear();
-  columnPlaceholderSeq = 0;
-  const body = preprocessColumnDivs(
-    preprocessAlignmentDivs(stripStructuralTagLines(withWidths)),
-  );
-  let raw = marked.parse(body, { async: false }) as string;
-  // 从最外层占位符开始替换：外层 HTML 里嵌着内层占位符，顺序不能颠倒。
-  for (const [placeholder, html] of [...columnDivPlaceholders].reverse()) {
-    raw = raw.split(placeholder).join(html);
+    // `![x](a.png){width=635}` 与旧 `![x](a.png)<!--w=635-->`：属性块/注释是给
+    // 编辑态持久化用的，直接在正文里渲染出来会变成一行可见文本。这里先换成带
+    // data 属性的 span，等 DOM 建好再取到图片上。
+    const stripped = content.replace(FRONTMATTER_RE, "");
+    const withWidths = preprocessImageAttributes(stripped);
+    columnDivPlaceholders.clear();
+    columnPlaceholderSeq = 0;
+    const body = preprocessColumnDivs(
+      preprocessAlignmentDivs(stripStructuralTagLines(withWidths)),
+    );
+    let raw = marked.parse(body, { async: false }) as string;
+    // 从最外层占位符开始替换：外层 HTML 里嵌着内层占位符，顺序不能颠倒。
+    for (const [placeholder, html] of [...columnDivPlaceholders].reverse()) {
+      raw = raw.split(placeholder).join(html);
+    }
+    const clean = DOMPurify.sanitize(raw, SANITIZE_CONFIG);
+    return postProcess(clean);
+  } finally {
+    // 抛错也要收口模块状态，否则下一次渲染会读到上一次的媒体解析器/emoji 快照。
+    activeResolveMedia = null;
+    activeCalloutEmoji = [];
   }
-  const clean = DOMPurify.sanitize(raw, SANITIZE_CONFIG);
-  const result = postProcess(clean);
-  activeResolveMedia = null;
-  return result;
 }
 
 /**
@@ -725,33 +747,11 @@ function postProcess(html: string): string {
 // ] 前可带空白（如 [!TL;DR]、[! TL]、[!NOTE ]），大小写不敏感。
 const CALLOUT_HEAD = /^\[!\s*([^\]\r\n]+?)\s*\]([+-]?)(\{[^}]*\})?/;
 
-const CALLOUT_LABELS: Record<string, string> = {
-  note: "注释",
-  info: "信息",
-  abstract: "摘要",
-  summary: "总结",
-  tip: "提示",
-  hint: "提示",
-  important: "重要",
-  success: "成功",
-  check: "完成",
-  warning: "警告",
-  caution: "注意",
-  attention: "注意",
-  danger: "危险",
-  error: "错误",
-  failure: "失败",
-  bug: "问题",
-  question: "疑问",
-  help: "帮助",
-  faq: "问答",
-  example: "示例",
-  quote: "引用",
-  cite: "引述",
-  highlight: "纯高亮",
-};
-
 function convertCallouts(doc: Document): void {
+  // 每个「合法类型」的引用块式 callout 占一个序号（与编辑态 `findCalloutBlocks`
+  // 的顺序一致），这样 emoji 覆盖快照才能对上位次。非法类型既不渲染成卡片、
+  // 也不占序号——编辑态 `findCalloutBlocks` 同样跳过它，两边同源。
+  let calloutIndex = 0;
   doc.querySelectorAll("blockquote").forEach((bq) => {
     const first = bq.firstElementChild;
     if (!first) return;
@@ -764,6 +764,10 @@ function convertCallouts(doc: Document): void {
     if (!m) return;
 
     const type = m[1].toLowerCase();
+    const resolved = resolveCalloutType(type);
+    // 非法类型（[!FOO]）：既不渲染成卡片、也不占序号，原 blockquote 保持不动
+    // （未 replaceWith）——与编辑态 findCalloutBlocks 的跳过同源。
+    if (!resolved) return;
     const fold = m[2];
     const attrs = parseCalloutAttrs(m[3] ?? "");
     const rest = first.innerHTML.slice(m[0].length);
@@ -779,21 +783,48 @@ function convertCallouts(doc: Document): void {
       bodyHtml += (n as Element).outerHTML ?? n.textContent ?? "";
     });
 
-    const label = CALLOUT_LABELS[type] ?? type;
-    const title = titleHtml || label;
+    const index = calloutIndex;
+    calloutIndex += 1;
 
-    const el = doc.createElement(fold ? "details" : "div");
-    el.className = "callout";
+    const isMark = type === "highlight";
+    // 纯高亮无标题栏，折叠标记不生效（与编辑态一致）：即便写了 [!highlight]-/
+    // + 也渲染成普通 div，不出 details/summary。
+    const el = doc.createElement(fold && !isMark ? "details" : "div");
+    el.className = isMark ? "callout callout-mark" : "callout";
     el.setAttribute("data-callout", type);
     if (fold === "+") el.setAttribute("open", "");
-    const vars = calloutCssVars(attrs);
+    const vars = isMark ? highlightCssVars(attrs) : calloutCssVars(attrs);
     if (vars.bg) el.style.setProperty("--callout-bg", vars.bg);
     if (vars.border) el.style.setProperty("--callout-border", vars.border);
     if (vars.text) el.style.setProperty("--callout-text", vars.text);
 
+    if (isMark) {
+      // 纯高亮：无标题行、无左边框，emoji 内联在正文首行前（豆包同款）。
+      // 覆盖快照按位次取，缺省回落类型默认 emoji（highlight 恒有 icon）。
+      const emoji = activeCalloutEmoji[index] ?? resolved.icon;
+      el.setAttribute("data-callout-emoji", emoji);
+      const iconEl = doc.createElement("span");
+      iconEl.className = "callout-mark-icon";
+      iconEl.textContent = emoji;
+      el.appendChild(iconEl);
+
+      const body = doc.createElement("div");
+      body.className = "callout-mark-body";
+      if (bodyHtml) {
+        const wrap = doc.createElement("div");
+        wrap.innerHTML = bodyHtml;
+        while (wrap.firstChild) body.appendChild(wrap.firstChild);
+      }
+      el.appendChild(body);
+      bq.replaceWith(el);
+      return;
+    }
+
     const titleEl = doc.createElement(fold ? "summary" : "div");
     if (!fold) titleEl.className = "callout-title";
-    titleEl.innerHTML = title;
+    // 空标题不补默认名：标注块的图标由 .callout-title::before 的 per-type
+    // glyph 提供，标题槽留空即可（纯高亮不建标题槽）。
+    titleEl.innerHTML = titleHtml;
     el.appendChild(titleEl);
 
     if (bodyHtml) {

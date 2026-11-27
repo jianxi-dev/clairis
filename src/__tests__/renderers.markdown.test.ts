@@ -48,10 +48,21 @@ describe("renderMarkdown — callout 三色属性", () => {
     expect(html).toContain("--callout-text: #8b8f96");
   });
 
-  it("纯高亮类型带标签", () => {
-    const html = renderMarkdown("> [!HIGHLIGHT]");
+  it("纯高亮块无标题栏、带 emoji 覆盖位、不印「纯高亮」", () => {
+    const html = renderMarkdown("> [!HIGHLIGHT]\n> 正文");
     expect(html).toContain('data-callout="highlight"');
-    expect(html).toContain("纯高亮");
+    expect(html).toContain("callout-mark");
+    expect(html).toContain('data-callout-emoji="🖍️"');
+    expect(html).not.toContain("纯高亮");
+    // 纯高亮不建标题槽（图标由 emoji 内联承担）。
+    expect(html).not.toContain("callout-title");
+  });
+
+  it("空标题的标注块不补默认名，只留空标题槽", () => {
+    const html = renderMarkdown("> [!NOTE]\n> 正文");
+    expect(html).toContain('data-callout="note"');
+    expect(html).toContain("callout-title");
+    expect(html).not.toContain("注释");
   });
 
   it("旧语法不产生属性变量", () => {
