@@ -263,8 +263,23 @@ describe("useAiEntry — 撤销指向提交前最后一个快照", () => {
 
   it("humanizeAgentError 覆盖 provider / turnLimit", () => {
     expect(
+      humanizeAgentError({ kind: "provider", status: 0, body: "boom" }),
+    ).toBe("连接不上 AI 服务，检查网络和服务地址");
+    expect(humanizeAgentError({ kind: "provider", status: 401 })).toBe(
+      "AI 服务拒绝了这个密钥，请到设置里重新填写",
+    );
+    expect(humanizeAgentError({ kind: "provider", status: 402 })).toBe(
+      "AI 服务账户余额不足，先充值再试",
+    );
+    expect(humanizeAgentError({ kind: "provider", status: 429 })).toBe(
+      "请求太频繁了，稍后再试",
+    );
+    expect(
       humanizeAgentError({ kind: "provider", status: 500, body: "boom" }),
-    ).toBe("连接不上 AI 服务，检查服务设置");
+    ).toBe("AI 服务暂时不可用，稍后再试");
+    expect(humanizeAgentError({ kind: "keyring", message: "denied" })).toBe(
+      "读取系统钥匙串失败，请到设置里重新保存密钥",
+    );
     expect(humanizeAgentError({ kind: "turnLimit", turns: 8 })).toBe(
       "这次改动太绕，已停下，请拆小一点",
     );

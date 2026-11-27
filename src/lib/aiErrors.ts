@@ -30,6 +30,17 @@ const FIELD_HINTS: Record<string, string> = {
   apiKey: "还没有配置 AI 密钥，先到设置里填好再试",
 };
 
+function providerHint(status: number): string {
+  if (!status) return "连接不上 AI 服务，检查网络和服务地址";
+  if (status === 401 || status === 403)
+    return "AI 服务拒绝了这个密钥，请到设置里重新填写";
+  if (status === 402) return "AI 服务账户余额不足，先充值再试";
+  if (status === 404) return "服务地址或模型不对，检查设置里的接口地址和模型";
+  if (status === 429) return "请求太频繁了，稍后再试";
+  if (status >= 500) return "AI 服务暂时不可用，稍后再试";
+  return "AI 服务没有接受这次请求，检查服务地址和模型";
+}
+
 export function humanizeAgentError(err: unknown): string {
   const e = (err ?? {}) as AgentErrorLike;
   switch (e.kind) {
@@ -38,11 +49,13 @@ export function humanizeAgentError(err: unknown): string {
       return hint ?? "这项设置不合法，换个说法再试一次";
     }
     case "provider":
-      return "连接不上 AI 服务，检查服务设置";
+      return providerHint(typeof e.status === "number" ? e.status : 0);
     case "turnLimit":
       return "这次改动太绕，已停下，请拆小一点";
     case "tool":
       return "执行时出了点问题，请重试";
+    case "keyring":
+      return "读取系统钥匙串失败，请到设置里重新保存密钥";
     case "io":
       return "读写设置失败，请重试";
     default:
