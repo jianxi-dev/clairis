@@ -6,6 +6,27 @@
       "assertion": "passed",
       "recorded_at": "2026-11-27T02:27:33Z",
       "runner": "unknown@MMBP"
+    },
+    {
+      "state": "saved-title-written",
+      "screenshot": "e2e/editors/caption-save-visibility.spec.ts (case A runtime assertion)",
+      "assertion": "passed",
+      "recorded_at": "2026-11-27T02:28:30Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "cleared-title-removed",
+      "screenshot": "e2e/editors/caption-save-visibility.spec.ts (case B runtime assertion)",
+      "assertion": "passed",
+      "recorded_at": "2026-11-27T02:28:30Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "esc-no-write",
+      "screenshot": "e2e/editors/caption-save-visibility.spec.ts (case Esc runtime assertion)",
+      "assertion": "passed",
+      "recorded_at": "2026-11-27T02:28:30Z",
+      "runner": "unknown@MMBP"
     }
   ]
 }
