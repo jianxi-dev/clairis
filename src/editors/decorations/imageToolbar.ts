@@ -458,14 +458,18 @@ function createCaptionInput(
     input.dataset.finishing = "1";
     const from = Number(widgetEl.dataset.imageFrom);
     const current = widgetEl.dataset.imageTitle ?? "";
-    if (value === current) {
-      setCaptionText(caption, current);
-    } else {
+    const saved = value !== current;
+    if (saved) {
       captionJustSaved = true;
       actions.onImageSetTitle?.(from, value);
     }
     input.remove();
     showCaptionText(caption);
+    // 保存后直接展开显示并点亮按钮（用户预期「添加文字保存后看到描述」）；
+    // 「描述区默认隐藏」指选中初态（#1603 四轮真机反馈）。
+    if (saved && (value !== "" || current !== "")) {
+      captionVisible = true;
+    }
     setCaptionActive(captionVisible);
     applyCaptionVisibility(caption);
   };
@@ -518,14 +522,21 @@ function hideCaptionInput(caption: HTMLElement, widgetEl: HTMLElement): void {
   const value = input.value.trim();
   const current = widgetEl.dataset.imageTitle ?? "";
   input.dataset.closing = "1";
-  input.style.display = "none";
-  showCaptionText(caption);
-  setCaptionActive(false);
-  applyCaptionVisibility(caption);
-  if (value !== current) {
+  const saved = value !== current;
+  if (saved) {
     captionJustSaved = true;
     actions.onImageSetTitle?.(Number(widgetEl.dataset.imageFrom), value);
   }
+  input.style.display = "none";
+  showCaptionText(caption);
+  // 保存成功后展开显示（#1603 四轮用户预期）；无保存则按原 toggle 收起。
+  if (saved && value !== "") {
+    captionVisible = true;
+    setCaptionActive(true);
+  } else {
+    setCaptionActive(false);
+  }
+  applyCaptionVisibility(caption);
 }
 
 /**
@@ -1070,6 +1081,13 @@ function maximizeOnPointerDown(event: PointerEvent): void {
 }
 
 function maximizeOnPointerMove(event: PointerEvent): void {
+  // 兜底：pointerup 因层叠/移除丢失时按键状态已经为 0——视为松手，
+  // 防止「未按住鼠标图片跟着走」的拖动会话泄漏（#1603 四轮真机）。
+  if (event.pointerType === "mouse" && event.buttons === 0) {
+    maximizePointers.delete(event.pointerId);
+    if (maximizePointers.size === 0) maximizePanStart = null;
+    return;
+  }
   if (!maximizePointers.has(event.pointerId)) return;
   maximizePointers.set(event.pointerId, {
     x: event.clientX,
@@ -1425,6 +1443,7 @@ export function openImageMaximize(
   };
 
   const controls = document.createElement("div");
+  controls.className = "img-max-controls";
   controls.dataset.testid = "img-max-controls";
   // 按钮条默认淡出（#1603 用户方案）：鼠标进入浮层即显、移出淡出——平时不
   // 遮挡大图，也避免误触背景复位。显隐走纯 CSS :hover（二轮的 JS
@@ -1583,6 +1602,13 @@ export function openImageMaximize(
 }
 
 export function closeImageMaximize(): void {
+  // 清拖动状态：真机（#1603 四轮）证实残留的 pointers/panStart 会让下一次
+  // 打开放大层后「未按住鼠标图片也跟着鼠标移动」——Map 按指针记录拖动会话，
+  // 关闭时不清，残留项让 pointermove 的平移分支（size===1 && panStart）
+  // 在无按键状态下持续生效。
+  maximizePointers.clear();
+  maximizePanStart = null;
+  maximizePinchStart = null;
   maximizeEl?.remove();
   maximizeEl = null;
   if (maximizeKeyHandler) {
