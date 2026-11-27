@@ -45,7 +45,7 @@ const BUTTON_SPECS: readonly ButtonSpec[] = [
   },
   {
     testid: "img-toolbar-reset",
-    icon: "RotateOutlined",
+    icon: "ExpandOutlined",
     label: "重置图片",
     action: "reset",
   },
@@ -1305,7 +1305,7 @@ export function openImageMaximize(
   const clearCropBtn = maximizeControlButton(
     "img-max-clear-crop",
     "重置图片",
-    "RotateOutlined",
+    "ExpandOutlined",
     () => {
       const item = items[currentIndex];
       if (typeof item.from === "number") actions.onImageReset?.(item.from);
@@ -1323,8 +1323,11 @@ export function openImageMaximize(
     }
     const hasCrop = Boolean(items[currentIndex].crop);
     const mounted = clearCropBtn.isConnected;
+    const closeBtn = controls.querySelector('[data-testid="img-max-close"]');
     if (hasCrop && !mounted) {
-      controls.appendChild(clearCropBtn);
+      // 重置图片固定在关闭按钮之前（#1615），不能 append 到末尾。
+      if (closeBtn) controls.insertBefore(clearCropBtn, closeBtn);
+      else controls.appendChild(clearCropBtn);
     } else if (!hasCrop && mounted) {
       clearCropBtn.remove();
     }
@@ -1410,12 +1413,30 @@ export function openImageMaximize(
   controls.style.cssText =
     "position:absolute;bottom:24px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:2;padding:6px;border:1px solid var(--app-border);border-radius:var(--app-radius);background:var(--app-surface);box-shadow:var(--app-shadow);";
 
+  // 「恢复原始尺寸」固定为工具条第一位（#1615）。
+  controls.appendChild(
+    maximizeControlButton(
+      "img-max-reset",
+      "恢复原始尺寸",
+      "RestoreOutlined",
+      () => {
+        maximizeTransform = { scale: 1, tx: 0, ty: 0, rotation: 0 };
+        maximizeResetIntent = true;
+        maximizeApplyTransform();
+        maximizeResetIntent = false;
+        refreshZoomUi();
+      },
+      tooltip,
+    ),
+  );
+
   // 多图切换（#1564）：仅当列表多于 1 张时出现。索引居中，两侧箭头。
   const nav = document.createElement("div");
   nav.dataset.testid = "img-max-nav";
   nav.style.cssText =
     "display:flex;align-items:center;gap:4px;padding:0 4px;border-right:1px solid var(--app-border);margin-right:4px;";
 
+  // 「恢复原始尺寸」按用户要求固定为工具条第一位（#1615）。
   controls.appendChild(zoomOutBtn);
   controls.appendChild(zoomInBtn);
   controls.appendChild(scaleLabel);
@@ -1453,21 +1474,6 @@ export function openImageMaximize(
         document.body.appendChild(a);
         a.click();
         a.remove();
-      },
-      tooltip,
-    ),
-  );
-  controls.appendChild(
-    maximizeControlButton(
-      "img-max-reset",
-      "恢复原始尺寸",
-      "RestoreOutlined",
-      () => {
-        maximizeTransform = { scale: 1, tx: 0, ty: 0, rotation: 0 };
-        maximizeResetIntent = true;
-        maximizeApplyTransform();
-        maximizeResetIntent = false;
-        refreshZoomUi();
       },
       tooltip,
     ),
