@@ -58,7 +58,7 @@
 - **WHEN** 打开同时含 `> [!highlight]` 与 `> [!NOTE]` 的文档
 - **THEN** 高亮块计算 `border-inline-start-width` SHALL 为 `0px`、`border-top-width` SHALL 为 `1px`、`border-radius` SHALL 为 `4px`、背景色不透明度 SHALL 高于标注；标注块 `border-inline-start-width` SHALL 为 `3px`
 
-#### Scenario: 两条工具条居中且共用调色板图标
+#### Scenario: 高亮工具条居中且为荧光笔
 
 - **WHEN** 分别点击纯高亮块与标注块
 - **THEN** 两条工具条水平中心与各自块盒水平中心偏差 SHALL ≤ 2px，两条工具条的颜色入口 `svg` 的 `data-icon` SHALL 均为 `PaletteOutlined`
@@ -145,7 +145,7 @@
 
 ## ADDED Requirements
 
-### Requirement: E-49 纯高亮预览与编辑同形
+### Requirement: E-52 纯高亮预览与编辑同形
 
 预览态渲染 `[!highlight]` SHALL 与编辑态同形：无左边框（计算 `border-inline-start-width: 0px`）、无标题栏（`.callout-title` 节点数为 0）、1px 全边框（`border-top-width: 1px`）、4px 圆角（`border-radius: 4px`）、强叠底（背景走 `--callout-bg`，缺省为荧光笔黄）。预览态 SHALL 输出类型 emoji（默认 `🖍️`；同一会话内改过 emoji 的块 SHALL 显示改后的 emoji）。纯高亮预览 SHALL NOT 渲染「纯高亮」字样。
 
@@ -171,7 +171,7 @@
 - **WHEN** 在编辑态把某高亮块的 emoji 改为 🚀，随后切到预览态
 - **THEN** 预览对应块 SHALL 显示 🚀；未改过的块 SHALL 显示类型默认 emoji
 
-### Requirement: E-50 纯高亮 emoji 悬挂缩进
+### Requirement: E-53 纯高亮 emoji 悬挂缩进
 
 纯高亮块的 emoji SHALL 与正文首行同行：emoji 位于首行行首，正文首行紧接其后；正文换行后左缘 SHALL 与正文列对齐（emoji 下方 SHALL NOT 出现空行）。编辑态与预览态 SHALL 一致。
 
@@ -185,11 +185,11 @@
 - **WHEN** 把同一文档切到预览态
 - **THEN** emoji 与正文首行同行，正文第二行左缘与首行左缘对齐（差 ≤ 1px）
 
-### Requirement: E-51 emoji 取色器
+### Requirement: E-54 emoji 取色器
 
 emoji 取色器 SHALL 使用仓库内置全量 emoji 库（1578 条、7 分类），SHALL NOT 新增 npm 依赖。取色器 SHALL 有 8 个页签，顺序 SHALL 为 `最近 / 表情符号 / 动物 / 食物 / 活动 / 地点 / 物件 / 符号`。
 
-「最近」页签 SHALL 分两段：上段「常用」SHALL 为既有的 20 个精选 emoji（顺序不变）；下段「最近」SHALL 为最近使用列表（localStorage 持久化、去重、最新在前、上限 20）；未使用时「最近」段 SHALL 为空（不占位）。
+「最近」页签 SHALL 分两段：上段「常用」SHALL 为既有的 24 个精选 emoji（顺序不变）；下段「最近」SHALL 为最近使用列表（localStorage 持久化、去重、最新在前、上限 20）；未使用时「最近」段 SHALL 为空（不占位）。
 
 取色器顶部搜索框右侧 SHALL 有「随机」按钮；点击 SHALL 直接应用一个随机 emoji（沿用 quiet 的 `RANDOM_BLOCKLIST` 排除项语义），取色器 SHALL 保持打开。搜索 SHALL 支持中文与英文关键词。
 
@@ -201,7 +201,7 @@ emoji 取色器 SHALL 使用仓库内置全量 emoji 库（1578 条、7 分类�
 #### Scenario: 最近分两段
 
 - **WHEN** 用户首次打开取色器（从未选过 emoji）
-- **THEN** 「常用」段 SHALL 含 20 项且顺序与既有精选一致；「最近」段 SHALL 含 0 项
+- **THEN** 「常用」段 SHALL 含 24 项且顺序与既有精选一致；「最近」段 SHALL 含 0 项
 - **AND WHEN** 用户选过一个 emoji 后重新打开
 - **THEN** 「最近」段 SHALL 含 1 项且该 emoji 最新在前
 
