@@ -96,12 +96,16 @@ test("切换后缩放重置为该图默认", async ({ page }) => {
   await expect(page.getByTestId("img-max-scale")).toHaveText("100%");
 });
 
-test("已裁剪图片呈现裁剪后画面；切到无 crop 图时「重置图片」隐藏", async ({
+test("已裁剪图片呈现裁剪后画面；查看工具条无「重置图片」（切换不跑位）", async ({
   page,
 }) => {
   const cropped = `![裁](${IMG}){crop=200,140,800,560 width=400 height=280}`;
   const plain = `![素](${IMG}){width=600}`;
-  await openMarkdownInEdit(page, `${cropped}\n\n${plain}\n`, "max-multinav-crop");
+  await openMarkdownInEdit(
+    page,
+    `${cropped}\n\n${plain}\n`,
+    "max-multinav-crop",
+  );
   await page.waitForFunction(() => {
     const imgs = [
       ...document.querySelectorAll(".cm-image-widget img"),
@@ -113,12 +117,13 @@ test("已裁剪图片呈现裁剪后画面；切到无 crop 图时「重置图�
 
   await openMaximize(page, 0);
   await expect(page.getByTestId("img-max-index")).toHaveText("1/2");
-  await expect(page.getByTestId("img-max-clear-crop")).toBeVisible();
+  // 查看工具条永不含重置图片（#1603 九轮）：裁剪图也一样
+  await expect(page.getByTestId("img-max-clear-crop")).toHaveCount(0);
 
   await page.getByTestId("img-max-next").click();
   await expect(page.getByTestId("img-max-index")).toHaveText("2/2");
   await expect(page.getByTestId("img-max-next")).toBeDisabled();
-  await expect(page.getByTestId("img-max-clear-crop")).toBeHidden();
+  await expect(page.getByTestId("img-max-clear-crop")).toHaveCount(0);
 });
 
 test("单图文档：放大层不含切换控件（向后兼容）", async ({ page }) => {

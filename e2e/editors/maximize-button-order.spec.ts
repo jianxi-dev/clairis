@@ -4,8 +4,8 @@ import { makePngDataUrl } from "../helpers/png";
 /**
  * #1612（用户 2026-11-27 反馈）：放大层工具条排序与图标区分。
  * 1. 「恢复原始尺寸」是工具条第一个按钮
- * 2. 「重置图片」在「关闭」之前（有裁剪时）
- * 3. 「旋转 90°」与「重置图片」图标 path 不同（此前两处同为 RotateOutlined）
+ * 2. 查看工具条不含「重置图片」（#1603 九轮用户裁定：多图切换时它会让
+ *    切换按钮左右跑位；重置能力留在编辑态工具条）
  */
 
 const IMG = makePngDataUrl(600, 400, [90, 140, 200]);
@@ -50,51 +50,21 @@ async function cropOnce(page: Page): Promise<void> {
   await expect(page.getByTestId("img-crop-frame")).toHaveCount(0);
 }
 
-test("放大层按钮顺序：恢复原始尺寸第一，重置图片在关闭之前", async ({
-  page,
-}) => {
+test("放大层按钮顺序：恢复原始尺寸第一，且无重置图片按钮", async ({ page }) => {
   await openCropDoc(page);
   await cropOnce(page);
   await page.locator(".cm-image-widget").first().dblclick();
   await expect(page.getByTestId("img-maximize")).toBeVisible({
     timeout: 5000,
   });
-
-  const order = await page.evaluate(() => {
-    const controls = document.querySelector(
-      '[data-testid="img-max-controls"]',
-    )!;
-    const ids = [
-      ...controls.querySelectorAll<HTMLElement>("[data-testid]"),
-    ].map((el) => el.dataset.testid);
-    return ids;
-  });
-  console.log("MAX-ORDER", order.join(" → "));
-
-  expect(order[0]).toBe("img-max-reset");
-  expect(order.indexOf("img-max-clear-crop")).toBeGreaterThan(-1);
-  expect(order.indexOf("img-max-clear-crop")).toBeLessThan(
-    order.indexOf("img-max-close"),
+  const order = await page.evaluate(() =>
+    [
+      ...document.querySelectorAll('[data-testid="img-max-controls"] button'),
+    ].map((b) => (b as HTMLElement).dataset.testid ?? ""),
   );
-  expect(order).toContain("img-max-rotate");
-});
-
-test("旋转与重置图片图标不同（SVG path 不一致）", async ({ page }) => {
-  await openCropDoc(page);
-  await page.locator(".cm-image-widget").first().dblclick();
-  await expect(page.getByTestId("img-maximize")).toBeVisible({
-    timeout: 5000,
-  });
-
-  const paths = await page.evaluate(() => {
-    const grab = (testid: string) =>
-      document
-        .querySelector(`[data-testid="${testid}"] svg path`)
-        ?.getAttribute("d");
-    return { rotate: grab("img-max-rotate"), reset: grab("img-max-reset") };
-  });
-  console.log("ICON-PATHS", JSON.stringify(paths));
-  expect(paths.rotate).toBeTruthy();
-  expect(paths.reset).toBeTruthy();
-  expect(paths.rotate).not.toBe(paths.reset);
+  expect(order[0]).toBe("img-max-reset");
+  // 查看工具条不含重置图片（裁剪过的图也一样）
+  expect(order).not.toContain("img-max-clear-crop");
+  expect(await page.getByTestId("img-max-clear-crop").count()).toBe(0);
+  expect(order).toContain("img-max-close");
 });

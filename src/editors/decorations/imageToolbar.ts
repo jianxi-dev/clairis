@@ -472,6 +472,10 @@ function createCaptionInput(
     captionActiveInput = null;
     captionCommitActive = null;
     input.remove();
+    // 文本态同步为新值：不刷新会保留打开输入框前的旧文本/占位符，
+    // 用户看到「保存了但描述行没变」（#1603 九轮反馈）。
+    setCaptionText(caption, value);
+    captionCollapsed = false;
     showCaptionText(caption);
     // 保存（blur/Enter）后描述行保持展开、按钮选中——用户「输入文字保存后
     // 看到描述」的预期（#1603 四轮真机）。「描述区默认隐藏」指选中初态；
@@ -526,6 +530,15 @@ function showCaptionInput(caption: HTMLElement, widgetEl: HTMLElement): void {
 function hideCaptionInput(caption: HTMLElement, widgetEl: HTMLElement): void {
   const input = captionInputOf(caption);
   if (!input) return;
+  // 只处理**正在显示**的输入框（#1603 九轮）：重建后的 widget 都带一个
+  // display:none 的空框，拿它的空值写回会把刚保存的描述清掉。
+  if (input.style.display === "none") {
+    input.dataset.closing = "1";
+    showCaptionText(caption);
+    setCaptionActive(false);
+    applyCaptionVisibility(caption);
+    return;
+  }
   const value = input.value.trim();
   const current = widgetEl.dataset.imageTitle ?? "";
   input.dataset.closing = "1";
@@ -538,6 +551,7 @@ function hideCaptionInput(caption: HTMLElement, widgetEl: HTMLElement): void {
     captionJustSaved = true;
     actions.onImageSetTitle?.(Number(widgetEl.dataset.imageFrom), value);
   }
+  setCaptionText(caption, value);
 }
 
 /**
@@ -557,7 +571,6 @@ export function editSelectedImageCaption(): void {
     hideCaptionInput(caption, el);
     return;
   }
-  if (typeof actions.onImageSetTitle !== "function") return;
   captionCollapsed = false;
   showCaptionInput(caption, el);
 }
@@ -1331,35 +1344,18 @@ export function openImageMaximize(
     },
     tooltip,
   );
-  const clearCropBtn = maximizeControlButton(
-    "img-max-clear-crop",
-    "重置图片",
-    "UndoOutlined",
-    () => {
-      const item = items[currentIndex];
-      if (typeof item.from === "number") actions.onImageReset?.(item.from);
-      closeImageMaximize();
-    },
-    tooltip,
-  );
-
-  /** 切换后同步索引文本、两侧按钮禁用态、裁剪按钮挂载（无 crop 不挂载）。 */
+  /**
+   * 切换后同步索引文本与两侧按钮禁用态。
+   *
+   * 不放「重置图片」（#1603 九轮用户裁定）：它按当前图是否裁剪决定挂载/卸载，
+   * 多图切换时按钮数量变化会让切换箭头左右跑位；查看场景也不需要重置裁剪，
+   * 重置能力保留在编辑态工具条。
+   */
   function refreshNavUi(): void {
-    if (multi) {
-      indexLabel.textContent = `${currentIndex + 1}/${items.length}`;
-      prevBtn.disabled = currentIndex <= 0;
-      nextBtn.disabled = currentIndex >= items.length - 1;
-    }
-    const hasCrop = Boolean(items[currentIndex].crop);
-    const mounted = clearCropBtn.isConnected;
-    const closeBtn = controls.querySelector('[data-testid="img-max-close"]');
-    if (hasCrop && !mounted) {
-      // 重置图片固定在关闭按钮之前（#1615），不能 append 到末尾。
-      if (closeBtn) controls.insertBefore(clearCropBtn, closeBtn);
-      else controls.appendChild(clearCropBtn);
-    } else if (!hasCrop && mounted) {
-      clearCropBtn.remove();
-    }
+    if (!multi) return;
+    indexLabel.textContent = `${currentIndex + 1}/${items.length}`;
+    prevBtn.disabled = currentIndex <= 0;
+    nextBtn.disabled = currentIndex >= items.length - 1;
   }
 
   /**

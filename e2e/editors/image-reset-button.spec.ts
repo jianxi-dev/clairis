@@ -6,7 +6,8 @@ import { makePngDataUrl } from "../helpers/png";
  *
  * 三态：未裁剪图选中 → 工具条无「重置图片」（计算样式 display:none）；
  * 裁剪确认后选中该图 → 按钮出现；拖回整图重置后再次选中 → 按钮消失。
- * 放大层同口径：无 crop 图的放大层无「重置图片」按钮，有 crop 图的有。
+ * 放大层（查看）**永不含**「重置图片」（#1603 九轮用户裁定：多图切换时
+ * 它会顶掉切换按钮位置造成左右跑位；重置能力只在编辑态工具条提供）。
  */
 
 interface BridgeState {
@@ -35,9 +36,9 @@ function content(page: Page): Promise<string> {
 }
 
 async function resetDisplay(page: Page): Promise<string> {
-  return page.getByTestId("img-toolbar-reset").evaluate(
-    (el) => getComputedStyle(el as HTMLElement).display,
-  );
+  return page
+    .getByTestId("img-toolbar-reset")
+    .evaluate((el) => getComputedStyle(el as HTMLElement).display);
 }
 
 async function openThreeImages(page: Page): Promise<void> {
@@ -131,7 +132,7 @@ test("裁剪确认后选中该图：按钮出现；拖回整图重置后再次�
   expect(await resetDisplay(page)).toBe("none");
 });
 
-test("放大层同口径：无 crop 图无「重置图片」，有 crop 图有", async ({
+test("放大层永无「重置图片」（裁剪图也一样，避免切换按钮跑位）", async ({
   page,
 }) => {
   await openThreeImages(page);
@@ -147,5 +148,15 @@ test("放大层同口径：无 crop 图无「重置图片」，有 crop 图有",
 
   await page.locator(".cm-image-widget").nth(1).dblclick();
   await expect(page.locator('[data-testid="img-maximize"]')).toBeVisible();
-  await expect(page.getByTestId("img-max-clear-crop")).toHaveCount(1);
+  // 裁剪过的图也不出现重置图片：切换 1↔2 时按钮组宽度恒定
+  await expect(page.getByTestId("img-max-clear-crop")).toHaveCount(0);
+  const w1 = await page
+    .locator('[data-testid="img-max-controls"]')
+    .boundingBox();
+  await page.getByTestId("img-max-prev").click();
+  await page.waitForTimeout(120);
+  const w2 = await page
+    .locator('[data-testid="img-max-controls"]')
+    .boundingBox();
+  expect(Math.round(w1!.width)).toBe(Math.round(w2!.width));
 });
