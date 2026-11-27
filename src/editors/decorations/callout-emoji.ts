@@ -11,6 +11,16 @@
 import type { EditorView } from "@codemirror/view";
 import { CALLOUT_EMOJI_CHOICES } from "../callout-types";
 import { setCalloutEmojiSnapshot } from "../callout-emoji-overrides";
+import { renderIcon } from "../icons";
+import {
+  EMOJI_CATEGORY_LABELS,
+  EMOJI_TAB_LABELS,
+  emojisOfCategory,
+  randomEmoji,
+  searchEmojis,
+  type EmojiEntry,
+} from "../emoji-data";
+import { pushRecentEmoji, readRecentEmoji } from "../emoji-data/recent";
 
 /** 头部 emoji 覆盖，按 view 再按高亮块序号存；记录类型，转换后自动失效。 */
 const calloutEmojiOverrides = new WeakMap<
@@ -21,7 +31,7 @@ const calloutEmojiOverrides = new WeakMap<
 /** 文档级「按外部关闭」处理器，避免被移除的取色器泄漏监听。 */
 const pickerDismissers = new WeakMap<
   HTMLElement,
-  (event: MouseEvent) => void
+  { down: (event: MouseEvent) => void; key: (event: KeyboardEvent) => void }
 >();
 
 /**
@@ -66,9 +76,10 @@ function liveCard(view: EditorView, index: number): HTMLElement | null {
 }
 
 function closeEmojiPicker(picker: HTMLElement): void {
-  const onDocDown = pickerDismissers.get(picker);
-  if (onDocDown) {
-    document.removeEventListener("mousedown", onDocDown, true);
+  const dismissers = pickerDismissers.get(picker);
+  if (dismissers) {
+    document.removeEventListener("mousedown", dismissers.down, true);
+    document.removeEventListener("keydown", dismissers.key, true);
     pickerDismissers.delete(picker);
   }
   picker.remove();
@@ -108,6 +119,33 @@ function applyEmoji(
   }
 }
 
+/** 建一个 emoji 选项按钮（网格单元），点击应用并关闭取色器。 */
+function buildEmojiOption(
+  view: EditorView,
+  index: number,
+  defaultEmoji: string,
+  type: string,
+  picker: HTMLElement,
+  entry: { char: string; name: string; id: string },
+): HTMLButtonElement {
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "cm-callout-emoji-option";
+  btn.setAttribute("data-testid", "cm-callout-emoji-option");
+  btn.setAttribute("data-emoji", entry.char);
+  btn.setAttribute("data-name", entry.name);
+  btn.setAttribute("data-emoji-id", entry.id);
+  btn.title = entry.name;
+  btn.textContent = entry.char;
+  btn.addEventListener("click", (event) => {
+    event.stopPropagation();
+    applyEmoji(view, index, entry.char, defaultEmoji, type);
+    pushRecentEmoji(entry.char);
+    closeEmojiPicker(picker);
+  });
+  return btn;
+}
+
 function buildEmojiPicker(
   view: EditorView,
   index: number,
@@ -120,43 +158,70 @@ function buildEmojiPicker(
   // 卡片会在 mousedown 打开行内编辑器；取色器自己接管按下事件。
   picker.addEventListener("mousedown", (event) => event.stopPropagation());
 
+  // 顶部：搜索框 + 随机按钮。
+  const searchRow = document.createElement("div");
+  searchRow.className = "cm-callout-emoji-search-row";
   const search = document.createElement("input");
   search.type = "text";
   search.className = "cm-callout-emoji-search";
   search.setAttribute("data-testid", "cm-callout-emoji-search");
   search.placeholder = "搜索 emoji";
   search.setAttribute("aria-label", "搜索 emoji");
-  picker.appendChild(search);
+  searchRow.appendChild(search);
 
-  const grid = document.createElement("div");
-  grid.className = "cm-callout-emoji-grid";
-  const options: HTMLButtonElement[] = [];
-  for (const choice of CALLOUT_EMOJI_CHOICES) {
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "cm-callout-emoji-option";
-    btn.setAttribute("data-testid", "cm-callout-emoji-option");
-    btn.setAttribute("data-emoji", choice.emoji);
-    btn.setAttribute("data-name", choice.name);
-    btn.title = choice.name;
-    btn.textContent = choice.emoji;
-    btn.addEventListener("click", (event) => {
-      event.stopPropagation();
-      applyEmoji(view, index, choice.emoji, defaultEmoji, type);
-      closeEmojiPicker(picker);
-    });
-    options.push(btn);
-    grid.appendChild(btn);
-  }
-  picker.appendChild(grid);
-
-  search.addEventListener("input", () => {
-    const query = search.value.trim().toLowerCase();
-    for (const btn of options) {
-      const name = (btn.getAttribute("data-name") ?? "").toLowerCase();
-      btn.style.display = query === "" || name.includes(query) ? "" : "none";
-    }
+  const randomBtn = document.createElement("button");
+  randomBtn.type = "button";
+  randomBtn.className = "cm-callout-emoji-random";
+  randomBtn.setAttribute("data-testid", "cm-callout-emoji-random");
+  randomBtn.title = "随机";
+  randomBtn.appendChild(renderIcon("RotateOutlined"));
+  const randomLabel = document.createElement("span");
+  randomLabel.textContent = "随机";
+  randomBtn.appendChild(randomLabel);
+  randomBtn.addEventListener("click", (event) => {
+    event.stopPropagation();
+    const picked = randomEmoji();
+    if (!picked) return;
+    applyEmoji(view, index, picked.char, defaultEmoji, type);
+    pushRecentEmoji(picked.char);
+    // 随机不关闭取色器：连抽是常见用法。
+    // 「最近」页签且搜索为空时刷新，让刚抽到的 emoji 立即出现在「最近」段。
+    if (activeTab === 0 && search.value.trim() === "") renderBody();
   });
+  searchRow.appendChild(randomBtn);
+  picker.appendChild(searchRow);
+
+  // 中部滚动区：按当前页签 / 搜索词渲染。
+  const body = document.createElement("div");
+  body.className = "cm-callout-emoji-body";
+  picker.appendChild(body);
+
+  // 底部页签栏：最近 + 7 个分类。
+  const tabs = document.createElement("div");
+  tabs.className = "cm-callout-emoji-tabs";
+  const tabButtons: HTMLButtonElement[] = [];
+  let activeTab = 0;
+  EMOJI_TAB_LABELS.forEach((label, i) => {
+    const tab = document.createElement("button");
+    tab.type = "button";
+    tab.className = "cm-callout-emoji-tab";
+    tab.setAttribute("data-testid", "cm-callout-emoji-tab");
+    tab.setAttribute("data-cat", i === 0 ? "recent" : String(i - 1));
+    tab.textContent = label;
+    tab.addEventListener("click", (event) => {
+      event.stopPropagation();
+      activeTab = i;
+      for (const [j, btn] of tabButtons.entries()) {
+        btn.classList.toggle("cm-callout-emoji-tab-active", j === i);
+      }
+      renderBody();
+    });
+    tabButtons.push(tab);
+    tabs.appendChild(tab);
+  });
+  // 初始选中「最近」。
+  tabButtons[0]?.classList.add("cm-callout-emoji-tab-active");
+  picker.appendChild(tabs);
 
   const reset = document.createElement("button");
   reset.type = "button";
@@ -169,6 +234,112 @@ function buildEmojiPicker(
     closeEmojiPicker(picker);
   });
   picker.appendChild(reset);
+
+  /** 渲染一个 emoji 选项（真实闭包，供 body 复用）。 */
+  const optionFor = (entry: EmojiEntry): HTMLButtonElement =>
+    buildEmojiOption(view, index, defaultEmoji, type, picker, entry);
+
+  /** 渲染单个网格（不分段）。 */
+  const renderGrid = (entries: readonly EmojiEntry[]): void => {
+    body.replaceChildren();
+    const grid = document.createElement("div");
+    grid.className = "cm-callout-emoji-grid";
+    for (const entry of entries) grid.appendChild(optionFor(entry));
+    body.appendChild(grid);
+  };
+
+  /** 渲染空态。 */
+  const renderEmpty = (): void => {
+    body.replaceChildren();
+    const empty = document.createElement("div");
+    empty.className = "cm-callout-emoji-empty";
+    empty.textContent = "没有匹配的 emoji";
+    body.appendChild(empty);
+  };
+
+  /** 按当前页签渲染 body（「最近」= 常用 + 最近两段）。 */
+  const renderTabBody = (): void => {
+    if (activeTab === 0) {
+      body.replaceChildren();
+      const frequent = document.createElement("div");
+      frequent.className = "cm-callout-emoji-section";
+      const freqTitle = document.createElement("div");
+      freqTitle.className = "cm-callout-emoji-section-title";
+      freqTitle.textContent = "常用";
+      frequent.appendChild(freqTitle);
+      const freqGrid = document.createElement("div");
+      freqGrid.className = "cm-callout-emoji-grid";
+      for (const choice of CALLOUT_EMOJI_CHOICES) {
+        freqGrid.appendChild(
+          optionFor({
+            id: choice.name,
+            char: choice.emoji,
+            name: choice.name,
+            cat: 0,
+            search: choice.name,
+          }),
+        );
+      }
+      frequent.appendChild(freqGrid);
+      body.appendChild(frequent);
+
+      const recent = readRecentEmoji();
+      if (recent.length > 0) {
+        const recentSection = document.createElement("div");
+        recentSection.className = "cm-callout-emoji-section";
+        const recentTitle = document.createElement("div");
+        recentTitle.className = "cm-callout-emoji-section-title";
+        recentTitle.textContent = "最近";
+        recentSection.appendChild(recentTitle);
+        const recentGrid = document.createElement("div");
+        recentGrid.className = "cm-callout-emoji-grid";
+        for (const char of recent) {
+          recentGrid.appendChild(
+            optionFor({
+              id: char,
+              char,
+              name: char,
+              cat: 0,
+              search: char,
+            }),
+          );
+        }
+        recentSection.appendChild(recentGrid);
+        body.appendChild(recentSection);
+      }
+      return;
+    }
+    const cat = activeTab - 1;
+    const label = EMOJI_CATEGORY_LABELS[cat] ?? "";
+    const entries = emojisOfCategory(cat);
+    body.replaceChildren();
+    const section = document.createElement("div");
+    section.className = "cm-callout-emoji-section";
+    const title = document.createElement("div");
+    title.className = "cm-callout-emoji-section-title";
+    title.textContent = label;
+    section.appendChild(title);
+    const grid = document.createElement("div");
+    grid.className = "cm-callout-emoji-grid";
+    for (const entry of entries) grid.appendChild(optionFor(entry));
+    section.appendChild(grid);
+    body.appendChild(section);
+  };
+
+  /** 搜索词非空 → 单结果网格；空 → 恢复当前页签。 */
+  const renderBody = (): void => {
+    const query = search.value.trim();
+    if (query !== "") {
+      const hits = searchEmojis(query);
+      if (hits.length === 0) renderEmpty();
+      else renderGrid(hits);
+      return;
+    }
+    renderTabBody();
+  };
+
+  search.addEventListener("input", renderBody);
+  renderBody();
 
   return picker;
 }
@@ -195,8 +366,13 @@ export function openCalloutEmojiPicker(
     if (target instanceof Node && (picker.contains(target) || onIcon)) return;
     closeEmojiPicker(picker);
   };
-  pickerDismissers.set(picker, onDocDown);
+  const onDocKey = (event: KeyboardEvent): void => {
+    if (event.key !== "Escape") return;
+    closeEmojiPicker(picker);
+  };
+  pickerDismissers.set(picker, { down: onDocDown, key: onDocKey });
   document.addEventListener("mousedown", onDocDown, true);
+  document.addEventListener("keydown", onDocKey, true);
   // #468：锚在头部，让面板正好开在 emoji 下方。挂到卡片会让
   // `top: calc(100% + 4px)` 变成「卡片下方」。
   const anchor = card.querySelector(".cm-callout-header") ?? card;
