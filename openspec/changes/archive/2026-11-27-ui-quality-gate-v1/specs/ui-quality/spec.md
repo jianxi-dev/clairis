@@ -4,7 +4,7 @@
 
 ### Requirement: UQ-1 设计 token 门禁
 
-`src/styles/tokens.ts` 与 `src/styles/tokens.css` SHALL 双向对账：`tokens.ts` 键集等于 `tokens.css` 的 55 个唯一变量名加 `--app-on-accent`（共 56 键）；`.dark` / `.warm` 主题块的声明键 SHALL 存在于该键集（部分覆盖不要求补全）；`src` 内每个 `var(--x)` SHALL 有定义。组件层与编辑器层 SHALL NOT 新增裸色值（hex/rgb/rgba），存量基线只减不增。语义色对 SHALL 满足对比度：ink-1（`--app-text-strong`）≥ 7、正文级（`--app-text-2`）≥ 4.5、次要/大字（`--app-text-3`）≥ 3、accent 实底文字 ≥ 4.5、危险色 ≥ 4.5。status 四组首期不启用。
+`src/styles/tokens.ts` 与 `src/styles/tokens.css` SHALL 双向对账：`tokens.ts` 键集等于 `tokens.css` 的 55 个唯一变量名加 `--app-accent-fill` 与 `--app-on-accent`（共 57 键）；`.dark` / `.warm` 主题块的声明键 SHALL 存在于该键集（部分覆盖不要求补全）；`src` 内每个 `var(--x)` SHALL 有定义。组件层与编辑器层 SHALL NOT 新增裸色值（hex/rgb/rgba），存量基线只减不增。语义色对 SHALL 满足对比度：ink-1（`--app-text-strong`）≥ 7、正文级（`--app-text-2`）≥ 4.5、次要/大字（`--app-text-3`）≥ 3、accent 实底文字（`--app-on-accent` on `--app-accent-fill`）≥ 4.5、危险色 ≥ 4.5。status 四组首期不启用。
 
 #### Scenario: 组件裸色值被拒
 
