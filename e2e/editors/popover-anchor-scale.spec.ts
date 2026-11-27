@@ -63,22 +63,6 @@ async function openDoc(page: Page, content: string): Promise<void> {
   await page.locator(".cm-content").waitFor({ timeout: 10000 });
 }
 
-/** 状态栏（zoom 容器）的有效倍率：自身与祖先 zoom 的乘积。 */
-async function barZoom(page: Page): Promise<number> {
-  return page.evaluate(() => {
-    const el = document.querySelector('[data-testid="status-bar"]');
-    if (!el) return 1;
-    let z = 1;
-    let node: HTMLElement | null = el;
-    while (node) {
-      const v = getComputedStyle(node).zoom;
-      if (v && v !== "normal") z *= parseFloat(v);
-      node = node.parentElement;
-    }
-    return z;
-  });
-}
-
 /** 运行中切档：写 CSS 变量与 data 属性，模拟 applyPaneScale（大档）。 */
 async function applyScale(page: Page, factor: number): Promise<void> {
   await page.evaluate((f) => {
@@ -149,21 +133,19 @@ test("页面宽度浮窗居中且间距 8px（1.0 与 1.2）", async ({ page }) 
     await page.getByTestId("width-control").hover();
     const panel = page.getByTestId("width-panel");
     await expect(panel).toBeVisible();
-    // scale 属性以 bottom center 为原点，故面板 rect 中心 = 未缩放中心；按钮 rect
-    // 在 zoom 空间，需除回未缩放空间再比（#1652）。
-    const zoom = await barZoom(page);
-    const m = await page.evaluate((z) => {
+    // 面板 portal 到 body，一律用视觉坐标比较（#1652）。
+    const m = await page.evaluate(() => {
       const b = document.querySelector('[data-testid="status-width"]')!;
       const p = document.querySelector('[data-testid="width-panel"]')!;
       const rb = b.getBoundingClientRect();
       const rp = p.getBoundingClientRect();
       return {
-        btnCenter: (rb.left + rb.width / 2) / z,
+        btnCenter: rb.left + rb.width / 2,
         panelCenter: rp.left + rp.width / 2,
-        btnTop: rb.top / z,
+        btnTop: rb.top,
         panelBottom: rp.bottom,
       };
-    }, zoom);
+    });
     expect(Math.abs(m.panelCenter - m.btnCenter)).toBeLessThanOrEqual(2);
     const gap = Math.abs(m.btnTop - m.panelBottom);
     expect(gap).toBeGreaterThanOrEqual(7);
@@ -184,22 +166,20 @@ test("主题菜单居中于主题按钮（1.0 与 1.2）", async ({ page }) => {
     await page.getByTestId("theme-entry").hover();
     const menu = page.getByTestId("theme-menu");
     await expect(menu).toBeVisible({ timeout: 3000 });
-    // 同上：按钮在 zoom 空间，菜单 rect 中心是未缩放中心。
-    const zoom = await barZoom(page);
-    const m = await page.evaluate((z) => {
+    const m = await page.evaluate(() => {
       const b = document.querySelector('[data-testid="theme-entry"]')!;
       const p = document.querySelector('[data-testid="theme-menu"]')!;
       const rb = b.getBoundingClientRect();
       const rp = p.getBoundingClientRect();
       return {
-        btnCenter: (rb.left + rb.width / 2) / z,
+        btnCenter: rb.left + rb.width / 2,
         menuCenter: rp.left + rp.width / 2,
-        btnTop: rb.top / z,
+        btnTop: rb.top,
         menuBottom: rp.bottom,
         vw: window.innerWidth,
         menuRight: rp.right,
       };
-    }, zoom);
+    });
     // 主题按钮贴在状态栏右端，132 宽的菜单居中必然被右缘夹取；此时应贴右缘
     // 8px，否则与按钮中心对齐（误差 = 夹取量）。
     const centered = Math.abs(m.menuCenter - m.btnCenter);

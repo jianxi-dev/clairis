@@ -119,23 +119,22 @@ export default function StatusBar({
   const themeBtnRef = useRef<HTMLButtonElement | null>(null);
   const themeMenuRef = useRef<HTMLDivElement | null>(null);
   const themeCloseTimer = useRef<number | null>(null);
-  // 状态栏自身带 zoom：按钮 rect 是缩放后坐标，而浮窗 portal 到 body 后用未缩放
-  // 的视口坐标定位，故锚点与夹取都要除以有效 zoom（#1652）。
-  const barZoom = () => {
-    let z = 1;
-    let node: HTMLElement | null = themeBtnRef.current;
-    while (node) {
-      const v = getComputedStyle(node).zoom;
-      if (v && v !== "normal") z *= parseFloat(v);
-      node = node.parentElement;
-    }
-    return z;
+  // 浮窗 portal 到 body：定位一律用视觉视口坐标（按钮 rect 已含状态栏 zoom）。
+  // 面板自身在缩放态带 `scale`、origin 为 bottom center：中心恒为 left + W/2，
+  // 右缘随倍率外扩，故夹取按 W×(1+倍率)/2 换算（#1652）。
+  const panelScale = () => {
+    const root = document.documentElement;
+    if (root.dataset.paneScaleActive !== "true") return 1;
+    const raw = getComputedStyle(root).getPropertyValue("--pane-scale-factor");
+    const v = parseFloat(raw);
+    return Number.isFinite(v) && v > 0 ? v : 1;
   };
   // 每次渲染现量按钮：状态栏 zoom 后按钮会移动，打开时快照的 rect 会过期（#1652）。
   const themeRect = themeOpen
     ? themeBtnRef.current?.getBoundingClientRect() ?? null
     : null;
-  const themeZoom = themeRect ? barZoom() : 1;
+  const themeAnchor = themeRect ? themeRect.left + themeRect.width / 2 : 0;
+  const themeScale = themeRect ? panelScale() : 1;
 
   const [widthOpen, setWidthOpen] = useState(false);
   const widthBtnRef = useRef<HTMLButtonElement | null>(null);
@@ -145,10 +144,10 @@ export default function StatusBar({
   const widthRect = widthOpen
     ? widthBtnRef.current?.getBoundingClientRect() ?? null
     : null;
-  const widthZoom = widthRect ? barZoom() : 1;
   const widthAnchor = widthRect
     ? widthRect.left + widthRect.width / 2
     : 0;
+  const widthScale = widthRect ? panelScale() : 1;
 
   const cancelWidthClose = useCallback(() => {
     if (widthCloseTimer.current !== null) {
@@ -323,16 +322,18 @@ export default function StatusBar({
                 onPointerEnter={cancelWidthClose}
                 onPointerLeave={scheduleWidthClose}
                 style={{
-                  // widthAnchor / widthRect 取自带 zoom 的状态栏，需换算回未缩放
-                  // 视口坐标（浮窗 portal 到 body，#1652）。
+                  // 直接使用视觉坐标（portal 到 body，不在状态栏 zoom 内）：
+                  // 中心对齐按钮中心；右缘按缩放后的显示宽度夹取（#1652）。
                   left: Math.min(
-                    Math.max(widthAnchor / widthZoom - WIDTH_PANEL_W / 2, 8),
-                    Math.max(window.innerWidth - WIDTH_PANEL_W - 8, 8),
+                    Math.max(widthAnchor - WIDTH_PANEL_W / 2, 8),
+                    Math.max(
+                      window.innerWidth -
+                        8 -
+                        (WIDTH_PANEL_W * (1 + widthScale)) / 2,
+                      8,
+                    ),
                   ),
-                  // 浮窗 portal 到 body：bottom 用未缩放视口坐标，而按钮 rect 已缩放，
-                  // 故先除回未缩放空间再加 8px 视觉间距（#1652）。
-                  bottom:
-                    window.innerHeight - widthRect.top / widthZoom + 8,
+                  bottom: window.innerHeight - widthRect.top + 8,
                 }}
               >
                 <div className="width-bars" data-testid="width-bars">
@@ -460,19 +461,15 @@ export default function StatusBar({
                     // 水平居中于主题按钮，再按视口夹取（#1652：原按左缘对齐，
                     // 常态中心偏右 66px，贴右缘又被夹取）。
                     left: Math.min(
+                      Math.max(themeAnchor - THEME_MENU_W / 2, 8),
                       Math.max(
-                        (themeRect.left + themeRect.width / 2) / themeZoom -
-                          THEME_MENU_W / 2,
-                        8,
-                      ),
-                      // 右缘夹取按面板的显示宽度（未缩放坐标 × 倍率）。
-                      Math.max(
-                        window.innerWidth - THEME_MENU_W * themeZoom - 8,
+                        window.innerWidth -
+                          8 -
+                          (THEME_MENU_W * (1 + themeScale)) / 2,
                         8,
                       ),
                     ),
-                    bottom:
-                      window.innerHeight - themeRect.top / themeZoom + 8,
+                    bottom: window.innerHeight - themeRect.top + 8,
                   }}
                   onPointerEnter={cancelThemeClose}
                   onPointerLeave={scheduleThemeClose}
