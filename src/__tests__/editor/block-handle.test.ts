@@ -110,6 +110,20 @@ describe("blockHandleIcon", () => {
     }
   });
 
+  it("纯高亮块手柄用圆角框图标，标注块仍是 callout 图标", () => {
+    expect(blockHandleIcon("callout", "> [!highlight]")).toBe(
+      "HighlightBlockOutlined",
+    );
+    expect(blockHandleIcon("callout", "> [!HIGHLIGHT] 高亮")).toBe(
+      "HighlightBlockOutlined",
+    );
+    expect(blockHandleIcon("callout", "> [!NOTE] 标题")).toBe(
+      "CalloutOutlined",
+    );
+    expect(blockHandleIcon("callout", "> [!tip] 提示")).toBe("CalloutOutlined");
+    expect(hasIcon(blockHandleIcon("callout", "> [!highlight]"))).toBe(true);
+  });
+
   it("仍无对应图标的块型退化为拖拽把手", () => {
     for (const type of ["", "unknown"]) {
       expect(blockHandleIcon(type)).toBe("DragHandleOutlined");

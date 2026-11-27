@@ -125,6 +125,11 @@ export function blockHandleIcon(type: string, firstLine = ""): string {
   }
   if (type === "image") return imageMediaIcon(firstLine);
   if (type === "file") return fileMediaIcon(firstLine);
+  // 纯高亮块（`> [!highlight]`）与标注块同属 callout，但块型语义不同：
+  // 手柄改用「圆角框 + 两行」图标，与标注的 info 圆区分（#1658）。
+  if (type === "callout" && /^>\s*\[!highlight\]/i.test(firstLine)) {
+    return "HighlightBlockOutlined";
+  }
   return BLOCK_ICON_NAME[type] ?? "DragHandleOutlined";
 }
 
