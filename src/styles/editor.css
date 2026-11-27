@@ -1871,21 +1871,86 @@ html[data-pane-mode="hardcore"][data-pane-revealed="true"] .app-root:not(.immers
   display: block;
 }
 
-/* ── paneScale 三档（pane-presets-v1 / CF-8 / 设计系统 §4.1）──────────
- * 容器级 zoom，只施加于显式列举的 chrome 容器：顶栏 .app-chrome、底部状态栏
- * .app-status-bar、设置场景容器 [data-testid="settings-scene"]。用 zoom 而非
- * transform，让布局与命中区同比缩放；正文/预览/编辑器不在选择器内，不受影响。
- * medium 为默认档（倍率 1.0），不写规则。
+/* ── 关爱界面 zoom 白名单（#1606 / D7）；tuning change 将把本清单数据化 ─────
+ * 容器级 zoom，只施加于显式列举的 chrome 容器。用 zoom 而非 transform，让布局
+ * 与命中区同比缩放；正文 / 预览 / 编辑器 / PDF / HTML 文档视口 / 媒体播放器不在
+ * 选择器内，不受影响。medium 为默认档（倍率 1.0），不写规则。
+ *
+ * 清单（选择器 → 部件）：
+ *   .app-chrome                    顶栏 / 页签条（含分屏格头）
+ *   .app-status-bar                底部状态栏
+ *   [data-testid="settings-scene"] 设置场景容器
+ *   .rail-root                     阅读轨（含 .rail-overlay 浮层形态）
+ *   .width-panel                   状态栏浮窗：页面宽度面板
+ *   .theme-menu-wrap               状态栏浮窗：主题菜单
+ *   .biaoyue-outline               大纲菜单（按钮 + 面板同一容器）
+ *   .dpb-panel                     文档属性面板（固定宿主 / 预览流内嵌 / 编辑态嵌入）
+ *   .dpb-menu                      文档属性各浮层菜单（类型 / 模板 / 选项 / 调色板）
+ *   .app-tip                       全局胶囊提示层（TooltipLayer）
+ *   .tab-context-menu              页签右键菜单（data-tab-menu）
+ *   .tab-info                      页签名下拉信息窗（悬停态）
+ *   .context-menu                  正文右键菜单（含 .context-menu-item 行）
+ *   [data-ai-bubble]               AI 气泡（瞬态反馈，只缩放不隐藏）
+ *   [data-undo-bar]                撤销条（瞬态反馈，只缩放不隐藏）
+ *   [data-ai-overlay]              命令面板（CommandOverlay）
+ *   [data-ai-docked]               AI 停靠窗格正文
+ *   [data-testid="quick-open"]     快速打开（QuickOpen）
+ *   [data-testid="shortcut-overlay"] 快捷键帮助（ShortcutOverlay）
+ *   .search-float                  搜索替换浮窗
+ *   .search-float-statusbar        搜索替换浮窗的状态栏
+ *   .cm-floating-toolbar           选区 / 块浮动工具条
+ *
+ * 瞬态反馈（AI 气泡 / 撤销条）只缩放、不隐藏：本块只改 zoom，不碰显隐。
+ * 浮层多经 createPortal 渲到 document.body，html[data-pane-scale] 后代选择器
+ * 依然命中；上面每个 portal 根都已核到稳定 class / data 属性。
  */
 html[data-pane-scale="small"] .app-chrome,
 html[data-pane-scale="small"] .app-status-bar,
-html[data-pane-scale="small"] [data-testid="settings-scene"] {
+html[data-pane-scale="small"] [data-testid="settings-scene"],
+html[data-pane-scale="small"] .rail-root,
+html[data-pane-scale="small"] .width-panel,
+html[data-pane-scale="small"] .theme-menu-wrap,
+html[data-pane-scale="small"] .biaoyue-outline,
+html[data-pane-scale="small"] .dpb-panel,
+html[data-pane-scale="small"] .dpb-menu,
+html[data-pane-scale="small"] .app-tip,
+html[data-pane-scale="small"] .tab-context-menu,
+html[data-pane-scale="small"] .tab-info,
+html[data-pane-scale="small"] .context-menu,
+html[data-pane-scale="small"] [data-ai-bubble],
+html[data-pane-scale="small"] [data-undo-bar],
+html[data-pane-scale="small"] [data-ai-overlay],
+html[data-pane-scale="small"] [data-ai-docked],
+html[data-pane-scale="small"] [data-testid="quick-open"],
+html[data-pane-scale="small"] [data-testid="shortcut-overlay"],
+html[data-pane-scale="small"] .search-float,
+html[data-pane-scale="small"] .search-float-statusbar,
+html[data-pane-scale="small"] .cm-floating-toolbar {
   zoom: 0.9;
 }
 
 html[data-pane-scale="large"] .app-chrome,
 html[data-pane-scale="large"] .app-status-bar,
-html[data-pane-scale="large"] [data-testid="settings-scene"] {
+html[data-pane-scale="large"] [data-testid="settings-scene"],
+html[data-pane-scale="large"] .rail-root,
+html[data-pane-scale="large"] .width-panel,
+html[data-pane-scale="large"] .theme-menu-wrap,
+html[data-pane-scale="large"] .biaoyue-outline,
+html[data-pane-scale="large"] .dpb-panel,
+html[data-pane-scale="large"] .dpb-menu,
+html[data-pane-scale="large"] .app-tip,
+html[data-pane-scale="large"] .tab-context-menu,
+html[data-pane-scale="large"] .tab-info,
+html[data-pane-scale="large"] .context-menu,
+html[data-pane-scale="large"] [data-ai-bubble],
+html[data-pane-scale="large"] [data-undo-bar],
+html[data-pane-scale="large"] [data-ai-overlay],
+html[data-pane-scale="large"] [data-ai-docked],
+html[data-pane-scale="large"] [data-testid="quick-open"],
+html[data-pane-scale="large"] [data-testid="shortcut-overlay"],
+html[data-pane-scale="large"] .search-float,
+html[data-pane-scale="large"] .search-float-statusbar,
+html[data-pane-scale="large"] .cm-floating-toolbar {
   zoom: 1.2;
 }
 

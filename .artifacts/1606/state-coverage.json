@@ -1,0 +1,24 @@
+{
+  "states": [
+    {
+      "state": "large-rail",
+      "screenshot": "large-rail.png",
+      "assertion": "passed"
+    },
+    {
+      "state": "large-outline-dpb",
+      "screenshot": "large-outline-dpb.png",
+      "assertion": "passed"
+    },
+    {
+      "state": "large-status-popup",
+      "screenshot": "large-status-popup.png",
+      "assertion": "passed"
+    },
+    {
+      "state": "large-tab-menu",
+      "screenshot": "large-tab-menu.png",
+      "assertion": "passed"
+    }
+  ]
+}
