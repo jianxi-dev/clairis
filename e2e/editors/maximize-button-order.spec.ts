@@ -98,3 +98,33 @@ test("旋转与重置图片图标不同（SVG path 不一致）", async ({ page 
   expect(paths.reset).toBeTruthy();
   expect(paths.rotate).not.toBe(paths.reset);
 });
+
+test("hover 显隐：默认淡出、悬停浮层显示（class 选择器匹配）", async ({
+  page,
+}) => {
+  await openCropDoc(page);
+  await page.locator(".cm-image-widget").first().dblclick();
+  await expect(page.getByTestId("img-maximize")).toBeVisible({
+    timeout: 5000,
+  });
+  const op = () =>
+    page.evaluate(() => {
+      const c = document.querySelector(
+        ".img-max-controls",
+      ) as HTMLElement | null;
+      return c ? getComputedStyle(c).opacity : "absent";
+    });
+  // 结构前置：class 选择器必须能命中（四连败根因是只有 testid 没有 class）
+  expect(
+    await page.evaluate(() =>
+      document.querySelector(".img-max-controls") ? 1 : 0,
+    ),
+  ).toBe(1);
+  // 未悬停时淡出
+  await page.mouse.move(10, 10);
+  await expect.poll(op, { timeout: 3000 }).toBe("0");
+  // 悬停浮层显示
+  const box = (await page.getByTestId("img-maximize").boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await expect.poll(op, { timeout: 3000 }).toBe("1");
+});
