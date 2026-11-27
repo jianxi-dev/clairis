@@ -18,3 +18,23 @@
 2. 裁剪后蒙层/框残影是否消失（组合拳）
 3. 「+ 调整后回 100%」复现时看 dev console `[maximize-probe]` 调用栈 → 定位写入者后精准修
 4. UndoOutlined 观感
+
+## 机读断言摘录（e2e 原始 expect）
+
+```
+// crop-jump-measure.spec.ts（A 跳动·进入态）
+expect(Math.abs(p3.scrollTop - p2.scrollTop)).toBeLessThanOrEqual(1);
+expect(Math.abs(afterFresh)).toBeLessThanOrEqual(1);
+
+// maximize-zoom-persist.spec.ts（D 缩放保持）
+expect(Math.max(...postZoomSamples)).toBeGreaterThan(1.1);
+expect.poll(() => readScale(page), { timeout: 4000 }).toBeGreaterThan(1.1);
+
+// maximize-button-order.spec.ts（C 图标区分）
+expect(paths.rotate).not.toBe(paths.reset);
+
+// crop-cleanup-sync.spec.ts（B 残留 DOM 计数）
+expect(residue).toEqual({ frames: 0, handles: 0, shades: 0, active: 0 });
+```
+
+Scenario 对照：editing spec E-44「清理可靠性」（多轮裁剪零残留 / 已加载图片标识线必现）与「裁剪缩放不跳变」；真机专属项（WKWebView 合成层 / caret 揭示）以探针输出承载（headless 不可复现，见各条说明）。
