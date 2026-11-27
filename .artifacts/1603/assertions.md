@@ -112,3 +112,19 @@ expect(await controls.evaluate(el => getComputedStyle(el).opacity)).toBe("0");
 expect(await controls.evaluate(el => getComputedStyle(el).opacity)).toBe("1");
 ```
 Scenario 对照：描述区显隐切换（产品规格：默认隐藏，按钮为切换）；放大层 hover 显隐（用户方案）。
+
+## 七轮（r7 c304845a→1634）机读断言摘录
+```
+// caption-save-visibility.spec.ts（描述写回挂 click 同步路径）
+expect(page.locator('[data-testid="img-caption-input"]')).toHaveCount(1);
+await expect.poll(() => content(page)).toContain('"诊断描述"');
+expect(page.locator('[data-testid="img-caption"]')).toHaveText("诊断描述");
+
+// decorations-blocks.test.ts（未修改时点外部照常取消选中——吸收条件收紧）
+expect(widget.dataset.selected).toBe("false");
+
+// maximize-button-order.spec.ts（热区显隐）
+expect(await controls.evaluate(el => getComputedStyle(el).opacity)).toBe("1");  // 热区 enter
+expect(await controls.evaluate(el => getComputedStyle(el).opacity)).toBe("0");  // 热区 leave
+```
+Scenario 对照：描述保存（#1602/#1603 全轮验收）；放大层按钮条显隐（用户「滑入按钮区域」语义）。
