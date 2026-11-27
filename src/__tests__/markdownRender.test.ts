@@ -48,18 +48,18 @@ describe("renderMarkdown Callout", () => {
     expect(html).not.toContain("<blockquote");
   });
 
-  it("自定义类型名（含符号）识别为 callout", () => {
+  it("未知类型名（含符号）保持 blockquote，不渲染成卡片", () => {
     const html = renderMarkdown("> [!TL;DR] 太长不看\n> 内容");
-    expect(html).toContain('data-callout="tl;dr"');
+    expect(html).toContain("<blockquote");
+    expect(html).not.toContain("data-callout");
     expect(html).toContain("太长不看");
-    expect(html).not.toContain("<blockquote");
   });
 
-  it("[! 后带空格的类型名识别为 callout", () => {
+  it("[! 后带空格的未知类型名同样保持 blockquote", () => {
     const html = renderMarkdown("> [! TL] 要点\n> 内容");
-    expect(html).toContain('data-callout="tl"');
+    expect(html).toContain("<blockquote");
+    expect(html).not.toContain("data-callout");
     expect(html).toContain("要点");
-    expect(html).not.toContain("<blockquote");
   });
 
   it("] 前带尾部空格的类型名识别为 callout", () => {
@@ -69,10 +69,11 @@ describe("renderMarkdown Callout", () => {
     expect(html).not.toContain("<blockquote");
   });
 
-  it("未写标题时用类型默认名", () => {
+  it("未写标题时不补类型默认名", () => {
     const html = renderMarkdown("> [!TIP]\n> 正文内容");
     expect(html).toContain('data-callout="tip"');
-    expect(html).toContain("提示");
+    expect(html).not.toContain("提示");
+    expect(html).toMatch(/<div class="callout-title"><\/div>/);
   });
 
   it("带减号后缀时渲染为可折叠的 details", () => {

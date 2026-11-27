@@ -10,6 +10,7 @@
  */
 import type { EditorView } from "@codemirror/view";
 import { CALLOUT_EMOJI_CHOICES } from "../callout-types";
+import { setCalloutEmojiSnapshot } from "../callout-emoji-overrides";
 
 /** 头部 emoji 覆盖，按 view 再按高亮块序号存；记录类型，转换后自动失效。 */
 const calloutEmojiOverrides = new WeakMap<
@@ -36,12 +37,14 @@ export function getCalloutEmojiOverrides(
   return Array.from({ length: highest + 1 }, (_, i) => map.get(i)?.emoji);
 }
 
-/** 通知宿主覆盖快照变了（`mdb:callout-emoji`）。 */
+/** 通知宿主覆盖快照变了（`mdb:callout-emoji`），并写入会话快照供预览读取。 */
 function publishOverrides(view: EditorView): void {
+  const snapshot = getCalloutEmojiOverrides(view);
+  setCalloutEmojiSnapshot(view.state.doc.toString(), snapshot);
   view.dom.dispatchEvent(
     new CustomEvent("mdb:callout-emoji", {
       bubbles: true,
-      detail: getCalloutEmojiOverrides(view),
+      detail: snapshot,
     }),
   );
 }
