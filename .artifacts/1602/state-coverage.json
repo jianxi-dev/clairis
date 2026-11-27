@@ -1,0 +1,11 @@
+{
+  "states": [
+    {
+      "state": "input-open",
+      "screenshot": "/Users/mason/ToHighs/clairis-auto-3/.artifacts/1602/state-1-input.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-27T02:27:33Z",
+      "runner": "unknown@MMBP"
+    }
+  ]
+}

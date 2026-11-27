@@ -267,6 +267,16 @@ let cropActive = false;
 let imageView: EditorView | null = null;
 /** 工具条按下期间不把描述框的 blur 当成提交（否则点击「添加描述」会先关再开）。 */
 let toolbarInteraction = false;
+/**
+ * 描述刚提交（blur/Enter）后的短窗口：同一次点击的 document 捕获监听与 IO
+ * deselect 在此期间豁免，避免「点外部保存」把刚写回的标题连同选中态一起清掉。
+ */
+let captionCommitUntil = 0;
+const CAPTION_COMMIT_WINDOW_MS = 300;
+
+function captionJustCommitted(): boolean {
+  return Date.now() < captionCommitUntil;
+}
 
 const CAPTION_PLACEHOLDER = "输入图片描述";
 
@@ -447,9 +457,10 @@ function createCaptionInput(
     input.dataset.finishing = "1";
     const from = Number(widgetEl.dataset.imageFrom);
     const current = widgetEl.dataset.imageTitle ?? "";
-    if (value === "" || value === current) {
+    if (value === current) {
       setCaptionText(caption, current);
     } else {
+      captionCommitUntil = Date.now() + CAPTION_COMMIT_WINDOW_MS;
       actions.onImageSetTitle?.(from, value);
     }
     input.remove();
@@ -510,7 +521,8 @@ function hideCaptionInput(caption: HTMLElement, widgetEl: HTMLElement): void {
   showCaptionText(caption);
   setCaptionActive(false);
   applyCaptionVisibility(caption);
-  if (value !== "" && value !== current) {
+  if (value !== current) {
+    captionCommitUntil = Date.now() + CAPTION_COMMIT_WINDOW_MS;
     actions.onImageSetTitle?.(Number(widgetEl.dataset.imageFrom), value);
   }
 }
@@ -914,6 +926,7 @@ function bindViewportObserver(): void {
       // 已脱离文档的旧 widget（属性编辑触发重建后旧元素被替换）ratio 同样是 0，
       // 但那是「观察目标失效」而非「图片离开视口」——据此 deselect 会误清活选中态。
       if (!entry.target.isConnected) return;
+      if (captionJustCommitted()) return;
       if (entry.intersectionRatio === 0) {
         deselectImage();
       }
@@ -1329,7 +1342,17 @@ export function openImageMaximize(
             canvas.height = Math.max(1, Math.round(h * k));
             const ctx = canvas.getContext("2d");
             if (!ctx) return;
-            ctx.drawImage(source, l, t, w, h, 0, 0, canvas.width, canvas.height);
+            ctx.drawImage(
+              source,
+              l,
+              t,
+              w,
+              h,
+              0,
+              0,
+              canvas.width,
+              canvas.height,
+            );
             target.src = canvas.toDataURL("image/png");
             target.style.objectFit = "";
             target.style.objectPosition = "";
@@ -1512,6 +1535,7 @@ export function closeImageMaximize(): void {
 
 if (typeof document !== "undefined") {
   document.addEventListener("click", (event) => {
+    if (captionJustCommitted()) return;
     const target = event.target as Node | null;
     if (target instanceof Element) {
       if (target.closest(".cm-image-widget")) return;
