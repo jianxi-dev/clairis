@@ -76,6 +76,7 @@ export const SUPPORTED_SURFACES = [
   "icons",
   "capsules",
   "reader-presets",
+  "care-scale",
 ] as const;
 
 /** 菜单六处消费端分组（与 Rust `MENU_GROUPS` 对账）。 */
@@ -215,6 +216,30 @@ export function toReaderPreset(raw: unknown): ReaderPresetSpec | null {
   return { id, label, fontSize, width: stepped, skin };
 }
 
+/** 关爱缩放项（pane-tuning-values-v1 / DS-10）：`scale` 是 chrome 容器 zoom 倍率。 */
+export interface CareScaleSpec {
+  id: string;
+  label: string;
+  scale: number;
+}
+
+const CARE_SCALE_MIN = 0.8;
+const CARE_SCALE_MAX = 1.5;
+const CARE_SCALE_STEP = 0.05;
+
+/** 宽松解析单个关爱缩放项；缺字段 / 越界返回 null（DS-10，边界同 §4.1）。 */
+export function toCareScaleItem(raw: unknown): CareScaleSpec | null {
+  if (!isRecord(raw)) return null;
+  const { id, label, scale } = raw;
+  if (typeof id !== "string" || id === "") return null;
+  if (typeof label !== "string" || label === "") return null;
+  if (typeof scale !== "number" || !Number.isFinite(scale)) return null;
+  const steps = Math.round(scale / CARE_SCALE_STEP);
+  const stepped = Math.round(steps * CARE_SCALE_STEP * 100) / 100;
+  if (stepped < CARE_SCALE_MIN || stepped > CARE_SCALE_MAX) return null;
+  return { id, label, scale: stepped };
+}
+
 /** 胶囊合法动作 id（与 Rust `CAPSULE_ALLOWED_IDS` 对账）。 */
 const CAPSULE_ALLOWED_IDS = [
   "format-bold",
@@ -258,6 +283,14 @@ function parseItems(id: string, rawItems: unknown[]): unknown[] {
     const out: CapsuleItemSpec[] = [];
     for (const entry of rawItems) {
       const item = toCapsuleItem(entry);
+      if (item !== null) out.push(item);
+    }
+    return out;
+  }
+  if (id === "care-scale") {
+    const out: CareScaleSpec[] = [];
+    for (const entry of rawItems) {
+      const item = toCareScaleItem(entry);
       if (item !== null) out.push(item);
     }
     return out;

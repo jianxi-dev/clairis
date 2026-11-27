@@ -1,0 +1,24 @@
+{
+  "states": [
+    {
+      "state": "large-default",
+      "screenshot": "large-default.png",
+      "assertion": "passed"
+    },
+    {
+      "state": "large-ai-135",
+      "screenshot": "large-ai-135.png",
+      "assertion": "passed"
+    },
+    {
+      "state": "small-default",
+      "screenshot": "small-default.png",
+      "assertion": "passed"
+    },
+    {
+      "state": "medium-default",
+      "screenshot": "medium-default.png",
+      "assertion": "passed"
+    }
+  ]
+}

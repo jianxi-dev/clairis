@@ -18,6 +18,20 @@ vi.mock("../../utils/tauri", () => ({ isTauriEnv: () => true }));
 
 import { applyRustConfig, applyPaneScale } from "../../hooks/useConfig";
 import { useEditorStore } from "../../stores/editorStore";
+import { resetSurfaces, setSurfaces } from "../../lib/dataSurfaces/store";
+import type { SurfacePayload } from "../../lib/dataSurfaces/loader";
+
+function careScalePayload(): SurfacePayload {
+  return {
+    id: "care-scale",
+    items: [
+      { id: "small", label: "小", scale: 0.9 },
+      { id: "medium", label: "中", scale: 1.0 },
+      { id: "large", label: "大", scale: 1.2 },
+    ],
+    warnings: [],
+  };
+}
 
 function rustConfig(paneScale: string | null) {
   return {
@@ -86,19 +100,43 @@ describe("applyRustConfig — paneScale 桥接（CF-8）", () => {
   });
 });
 
-describe("applyPaneScale — 单档应用", () => {
+describe("applyPaneScale — 单档应用（DS-10：倍率来自 care-scale 面）", () => {
   beforeEach(() => {
     delete document.documentElement.dataset.paneScale;
+    delete document.documentElement.dataset.paneScaleActive;
+    document.documentElement.style.removeProperty("--pane-scale-factor");
+    resetSurfaces();
   });
 
   afterEach(() => {
     delete document.documentElement.dataset.paneScale;
+    delete document.documentElement.dataset.paneScaleActive;
+    document.documentElement.style.removeProperty("--pane-scale-factor");
+    resetSurfaces();
   });
 
-  it("合法档写入属性；非法值回落 medium", () => {
+  it("面未加载时写入 id、因子回落 1、不设 active", () => {
     applyPaneScale("large");
     expect(document.documentElement.dataset.paneScale).toBe("large");
+    expect(document.documentElement.style.getPropertyValue("--pane-scale-factor")).toBe("1");
+    expect(document.documentElement.dataset.paneScaleActive).toBeUndefined();
+  });
+
+  it("未知 id 写入 id、因子 1、不设 active", () => {
+    setSurfaces([careScalePayload()]);
     applyPaneScale("nonsense");
-    expect(document.documentElement.dataset.paneScale).toBe("medium");
+    expect(document.documentElement.dataset.paneScale).toBe("nonsense");
+    expect(document.documentElement.style.getPropertyValue("--pane-scale-factor")).toBe("1");
+    expect(document.documentElement.dataset.paneScaleActive).toBeUndefined();
+  });
+
+  it("选中档按面倍率写变量；factor ≠ 1 设 active，= 1 不设", () => {
+    setSurfaces([careScalePayload()]);
+    applyPaneScale("large");
+    expect(document.documentElement.style.getPropertyValue("--pane-scale-factor")).toBe("1.2");
+    expect(document.documentElement.dataset.paneScaleActive).toBe("true");
+    applyPaneScale("medium");
+    expect(document.documentElement.style.getPropertyValue("--pane-scale-factor")).toBe("1");
+    expect(document.documentElement.dataset.paneScaleActive).toBeUndefined();
   });
 });

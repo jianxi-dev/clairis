@@ -41,6 +41,7 @@ import {
 import { BUILTIN_ALIAS_MAP, type FrontmatterType } from "../lib/frontmatter";
 import { useEditorStore } from "../stores/editorStore";
 import {
+  getCareScaleItems,
   getReaderPresets,
   getSurfaceItems,
   getSurfacesVersion,
@@ -186,12 +187,6 @@ const PANE_MODES = [
   { id: "simple", label: "简易" },
   { id: "standard", label: "常规" },
   { id: "hardcore", label: "硬核" },
-] as const;
-
-const PANE_SCALES = [
-  { id: "small", label: "小" },
-  { id: "medium", label: "中" },
-  { id: "large", label: "大" },
 ] as const;
 
 const ROULETTE_SECTOR_META = [
@@ -1300,13 +1295,7 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
     void saveAppConfig();
   };
 
-  const choosePaneScale = (scale: "small" | "medium" | "large") => {
-    setConfig({ paneScale: scale });
-    applyPaneScale(scale);
-    void saveAppConfig();
-  };
-
-  // 阅读预设（DS-9）：成套应用三项并落盘；不做选中态（当前值可能被单调整过）。
+  // 阅读预设（DS-9）/ 关爱缩放（DS-10）：面集合版本号驱动重读。
   const surfacesVersion = useSyncExternalStore(
     subscribeSurfaces,
     getSurfacesVersion,
@@ -1317,6 +1306,17 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [surfacesVersion],
   );
+  const careScaleItems = useMemo(
+    () => getCareScaleItems(),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [surfacesVersion],
+  );
+
+  const choosePaneScale = (scale: string) => {
+    setConfig({ paneScale: scale as "small" | "medium" | "large" });
+    applyPaneScale(scale);
+    void saveAppConfig();
+  };
   const applyReaderPreset = (preset: ReaderPresetSpec) => {
     setConfig({
       readerFontSize: preset.fontSize,
@@ -2519,8 +2519,13 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
                   关爱界面
                 </h2>
                 <div className="flex flex-wrap gap-2">
-                  {PANE_SCALES.map((option) => {
-                    const selected = paneScale === option.id;
+                  {careScaleItems.map((option) => {
+                    const selected =
+                      paneScale === option.id ||
+                      (paneScale !== "small" &&
+                        paneScale !== "medium" &&
+                        paneScale !== "large" &&
+                        option.id === "medium");
                     return (
                       <button
                         key={option.id}

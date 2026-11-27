@@ -227,12 +227,16 @@ test("作用域与持久：正文 zoom 恒为 1、尺寸逐像素不变、切档
   expect(probe).not.toBeNull();
   expect(probe!.zoom).toBe("1");
 
-  // 切大档：正文 zoom 仍为 1，包围盒逐像素一致。
+  // 切大档：正文 zoom 仍为 1，包围盒逐像素一致。手动复现桥接产物
+  // （data-pane-scale + active 属性 + --pane-scale-factor），本用例只验 CSS 作用域。
   await page.evaluate(() => {
     (window as unknown as Record<string, any>).__biaoyue_editor_store__
       .getState()
       .setConfig({ paneScale: "large" });
-    document.documentElement.dataset.paneScale = "large";
+    const root = document.documentElement;
+    root.dataset.paneScale = "large";
+    root.dataset.paneScaleActive = "true";
+    root.style.setProperty("--pane-scale-factor", "1.2");
   });
   await expect
     .poll(
@@ -281,7 +285,10 @@ test("作用域与持久：正文 zoom 恒为 1、尺寸逐像素不变、切档
     (window as unknown as Record<string, any>).__biaoyue_editor_store__
       .getState()
       .setConfig({ paneScale: "medium" });
-    document.documentElement.dataset.paneScale = "medium";
+    const root = document.documentElement;
+    root.dataset.paneScale = "medium";
+    delete root.dataset.paneScaleActive;
+    root.style.setProperty("--pane-scale-factor", "1");
   });
   await expect
     .poll(
@@ -611,6 +618,247 @@ test("#1606 证据采集：四态截图 + state-coverage.json", async ({ page })
   ];
   writeFileSync(
     path.join(ART_1606, "state-coverage.json"),
+    JSON.stringify({ states }, null, 2),
+  );
+});
+
+// ── #1624 / DS-10：care-scale 面驱动缩放（AI 改倍率即时生效、越界过滤、重置）──
+// 面异步加载：首次 applyPaneScale 可能早于 care-scale 到达，surfaces-changed
+// 到达时重解析。以下用例锁定 var 机制下默认像素不变、AI 改档生效、越界过滤、
+// 重置回落。
+
+const ART_1624 = path.resolve(process.cwd(), ".artifacts/1624");
+
+test.beforeEach(() => {
+  mkdirSync(ART_1624, { recursive: true });
+});
+
+async function shot1624(target: Page, name: string): Promise<string> {
+  const file = path.join(ART_1624, `${name}.png`);
+  await target.screenshot({ path: file });
+  execFileSync(
+    EVIDENCE,
+    [
+      "record-state",
+      ART_1624,
+      "--state",
+      name,
+      "--screenshot",
+      file,
+      "--assertion",
+      "passed",
+    ],
+    { stdio: "ignore" },
+  );
+  return file;
+}
+
+async function boot1624(
+  page: Page,
+  paneScale: string,
+  careScale?: unknown[],
+): Promise<void> {
+  await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
+  await page.addInitScript({
+    content: `window.__biaoyue_pane_scale__ = ${JSON.stringify(paneScale)};`,
+  });
+  if (careScale) {
+    await page.addInitScript({
+      content: `window.__biaoyue_care_scale__ = ${JSON.stringify(careScale)};`,
+    });
+  }
+  await page.goto(APP_URL, { waitUntil: "networkidle" });
+  await page.waitForSelector('[data-testid="pane-header"]', {
+    state: "attached",
+    timeout: 15000,
+  });
+  await expect
+    .poll(
+      () =>
+        page.evaluate(
+          () => document.documentElement.dataset.paneScale ?? null,
+        ),
+      { timeout: 15000 },
+    )
+    .toBe(paneScale);
+  await page.evaluate(() => {
+    const w = window as unknown as Record<string, any>;
+    w.__biaoyue_openFile__("/tmp/pane-scale/doc.md", "# 标题\n\n正文。", "doc.md");
+    w.__biaoyue_store__?.getState?.().setScene("workspace");
+  });
+  await expect
+    .poll(() => page.locator('[role="tab"]').count(), { timeout: 10000 })
+    .toBeGreaterThan(0);
+}
+
+test("#1624 默认三档像素一致：大 1.2 / 小 0.9 / 中 1，正文恒 1", async ({
+  page,
+}) => {
+  await boot1624(page, "large");
+  // 面加载后立即断言（覆盖异步竞态：首次 apply 可能早于面到达）。
+  await expect
+    .poll(() => chromeZoom(page, '[data-testid="pane-header"]'), {
+      timeout: 5000,
+    })
+    .toBeCloseTo(1.2, 5);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.dataset.paneScaleActive,
+    ),
+  ).toBe("true");
+  expect(
+    await page.evaluate(() =>
+      document.documentElement.style.getPropertyValue("--pane-scale-factor"),
+    ),
+  ).toBe("1.2");
+
+  await boot1624(page, "small");
+  await expect
+    .poll(() => chromeZoom(page, '[data-testid="pane-header"]'), {
+      timeout: 5000,
+    })
+    .toBeCloseTo(0.9, 5);
+
+  await boot1624(page, "medium");
+  await expect
+    .poll(() => chromeZoom(page, '[data-testid="pane-header"]'), {
+      timeout: 5000,
+    })
+    .toBeCloseTo(1, 5);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.dataset.paneScaleActive,
+    ),
+  ).toBeUndefined();
+  await shot1624(page, "01-default-large");
+});
+
+test("#1624 AI 改大档倍率 1.35：surfaces-changed 后选大 computed zoom 1.35", async ({
+  page,
+}) => {
+  await boot1624(page, "medium", [
+    { id: "small", label: "小", scale: 0.9 },
+    { id: "medium", label: "中", scale: 1.0 },
+    { id: "large", label: "大", scale: 1.35 },
+  ]);
+  // 面加载时已是 1.35，但选中 medium → zoom 1。
+  expect(
+    await chromeZoom(page, '[data-testid="pane-header"]'),
+  ).toBeCloseTo(1, 5);
+
+  // 选中「大」写入 store（不触发 applyPaneScale，模拟 AI 改面后选档前的状态）。
+  await page.evaluate(() => {
+    (window as unknown as Record<string, any>).__biaoyue_editor_store__
+      .getState()
+      .setConfig({ paneScale: "large" });
+  });
+  // 模拟 AI patch_data_surface 落盘后发 surfaces-changed：更新 mock 面数据并派发。
+  // 订阅按当前选中 id（large）重解析面 → 写 1.35。
+  await page.evaluate(() => {
+    const w = window as unknown as Record<string, any>;
+    w.__biaoyue_care_scale__ = [
+      { id: "small", label: "小", scale: 0.9 },
+      { id: "medium", label: "中", scale: 1.0 },
+      { id: "large", label: "大", scale: 1.35 },
+    ];
+    w.__mock_emit__("surfaces-changed", "care-scale");
+  });
+  await expect
+    .poll(() => chromeZoom(page, '[data-testid="pane-header"]'), {
+      timeout: 5000,
+    })
+    .toBeCloseTo(1.35, 5);
+
+  // 正文 zoom 恒 1。
+  await page.evaluate(() => {
+    (window as unknown as Record<string, any>).__biaoyue_store__
+      .getState()
+      .setEditorMode("edit");
+  });
+  await page.waitForSelector(".cm-content", { timeout: 10000 });
+  const body = await page.evaluate(() => {
+    const el = document.querySelector(".cm-content") as HTMLElement | null;
+    return el ? getComputedStyle(el).zoom : null;
+  });
+  expect(body).toBe("1");
+  await shot1624(page, "02-ai-135");
+});
+
+test("#1624 越界倍率被过滤：按钮不变、zoom 保持默认 1.2", async ({ page }) => {
+  await boot1624(page, "large", [
+    { id: "small", label: "小", scale: 0.9 },
+    { id: "medium", label: "中", scale: 1.0 },
+    { id: "large", label: "大", scale: 1.6 },
+  ]);
+  // 越界项被前端 parse 丢弃 → 面只剩两项，large 按钮不存在。
+  await page.evaluate(() => {
+    (window as unknown as Record<string, any>).__biaoyue_store__
+      .getState()
+      .setScene("settings");
+  });
+  await page.locator('[data-settings-nav="reading"]').click();
+  const ids = await page
+    .locator('[data-testid^="pane-scale-"]')
+    .evaluateAll((els) => els.map((el) => el.getAttribute("data-testid")));
+  expect(ids).toEqual(["pane-scale-small", "pane-scale-medium"]);
+  // 选中 id 为 large（面里已无）→ 因子回落 1，zoom 保持 1。
+  expect(
+    await chromeZoom(page, '[data-testid="pane-header"]'),
+  ).toBeCloseTo(1, 5);
+  await shot1624(page, "03-out-of-range");
+});
+
+test("#1624 重置（items:null 模拟）：回落默认 1.2 / 0.9", async ({ page }) => {
+  await boot1624(page, "large", [
+    { id: "small", label: "小", scale: 0.9 },
+    { id: "medium", label: "中", scale: 1.0 },
+    { id: "large", label: "大", scale: 1.35 },
+  ]);
+  await expect
+    .poll(() => chromeZoom(page, '[data-testid="pane-header"]'), {
+      timeout: 5000,
+    })
+    .toBeCloseTo(1.35, 5);
+
+  // 模拟重置：面返回空集合 → 消费端回落默认三档。
+  await page.evaluate(() => {
+    const w = window as unknown as Record<string, any>;
+    w.__biaoyue_care_scale_items_null__ = true;
+    w.__mock_emit__("surfaces-changed", "care-scale");
+  });
+  await expect
+    .poll(() => chromeZoom(page, '[data-testid="pane-header"]'), {
+      timeout: 5000,
+    })
+    .toBeCloseTo(1.2, 5);
+  await shot1624(page, "04-reset");
+});
+
+test("#1624 证据采集：四态截图 + state-coverage.json", async ({ page }) => {
+  await boot1624(page, "large");
+  await shot1624(page, "large-default");
+
+  await boot1624(page, "large", [
+    { id: "small", label: "小", scale: 0.9 },
+    { id: "medium", label: "中", scale: 1.0 },
+    { id: "large", label: "大", scale: 1.35 },
+  ]);
+  await shot1624(page, "large-ai-135");
+
+  await boot1624(page, "small");
+  await shot1624(page, "small-default");
+
+  await boot1624(page, "medium");
+  await shot1624(page, "medium-default");
+
+  const states = [
+    { state: "large-default", screenshot: "large-default.png", assertion: "passed" },
+    { state: "large-ai-135", screenshot: "large-ai-135.png", assertion: "passed" },
+    { state: "small-default", screenshot: "small-default.png", assertion: "passed" },
+    { state: "medium-default", screenshot: "medium-default.png", assertion: "passed" },
+  ];
+  writeFileSync(
+    path.join(ART_1624, "state-coverage.json"),
     JSON.stringify({ states }, null, 2),
   );
 });

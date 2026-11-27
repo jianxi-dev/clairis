@@ -14,6 +14,7 @@ import type {
   IconSpec,
   CapsuleItemSpec,
   ReaderPresetSpec,
+  CareScaleSpec,
 } from "./loader";
 import { log } from "../../utils/log";
 import {
@@ -23,7 +24,7 @@ import {
   toMenuItem,
 } from "./loader";
 
-export type { MenuItem, IconSpec, CapsuleItemSpec } from "./loader";
+export type { MenuItem, IconSpec, CapsuleItemSpec, CareScaleSpec } from "./loader";
 
 /** 面 id → 最近一次归一化结果。 */
 const surfaces = new Map<string, NormalizedSurface>();
@@ -102,6 +103,19 @@ export function getReaderPresets(): ReaderPresetSpec[] {
   for (const entry of items) {
     const preset = entry as ReaderPresetSpec;
     if (preset && typeof preset.id === "string") out.push(preset);
+  }
+  return out;
+}
+
+/** 取关爱缩放面有效项（保持面数据的数组顺序）。未加载过返回空数组。 */
+export function getCareScaleItems(): CareScaleSpec[] {
+  const items = surfaces.get("care-scale")?.items ?? [];
+  const out: CareScaleSpec[] = [];
+  for (const entry of items) {
+    const item = entry as CareScaleSpec;
+    if (item && typeof item.id === "string" && typeof item.scale === "number") {
+      out.push(item);
+    }
   }
   return out;
 }
