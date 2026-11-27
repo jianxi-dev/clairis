@@ -47,7 +47,11 @@ import {
   type ViewSpec,
 } from "../lib/aiViewSpec";
 import { normalizeHeadingFonts } from "../lib/headingFonts";
-import { getSurfaceItems } from "../lib/dataSurfaces/store";
+import {
+  getCareScaleItems,
+  getSurfaceItems,
+  subscribeSurfaces,
+} from "../lib/dataSurfaces/store";
 
 /** Snake-case config from Rust, mapped to camelCase in the store. */
 interface RustAppConfig {
@@ -247,16 +251,23 @@ export function applyPaneMode(mode: string): void {
 }
 
 /**
- * 把 paneScale 映射到 <html> 的 data-pane-scale（CF-8）。CSS 只对显式列举的
- * chrome 容器施加 zoom，正文/预览/编辑器不受影响；非法值回落 medium。
+ * 把 paneScale（选中 id）映射到 <html> 的 data-pane-scale 与缩放 CSS 变量
+ * （CF-8 / DS-10）。倍率来自 care-scale 面：选中项 scale → `--pane-scale-factor`，
+ * 仅因子 ≠ 1 时设 `data-pane-scale-active="true"`（CSS 据此施加 zoom）。
+ * 缺省 / 未知 id / 面未加载 → 因子 1、不设 active；data-pane-scale 仍写选中 id。
  */
 export function applyPaneScale(scale: string): void {
   const root = document.documentElement;
-  const next =
-    scale === "small" || scale === "medium" || scale === "large"
-      ? scale
-      : "medium";
-  root.dataset.paneScale = next;
+  const items = getCareScaleItems();
+  const hit = items.find((item) => item.id === scale);
+  const factor = hit ? hit.scale : 1;
+  root.dataset.paneScale = scale;
+  root.style.setProperty("--pane-scale-factor", String(factor));
+  if (factor !== 1) {
+    root.dataset.paneScaleActive = "true";
+  } else {
+    delete root.dataset.paneScaleActive;
+  }
 }
 
 /** Persist the current editor + app config (module-level, callable outside hooks). */
@@ -778,6 +789,15 @@ export function useConfig() {
       cancelled = true;
       unlisten?.();
     };
+  }, []);
+
+  // 面集合异步到达 / 外部改动后重放缩放：首次 applyPaneScale 可能早于 care-scale
+  // 面加载（竞态），surfaces-changed 到达时按当前选中 id 重解析一次（DS-2）。
+  useEffect(() => {
+    return subscribeSurfaces(() => {
+      const id = useEditorStore.getState().config.paneScale ?? "medium";
+      applyPaneScale(id);
+    });
   }, []);
 
   const saveConfig = useCallback(() => {

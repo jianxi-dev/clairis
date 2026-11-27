@@ -34,7 +34,8 @@ use tracing::{info, warn};
 
 use crate::config::config_base;
 
-/// 面项形状。`menu` 由 T2 追加，`icon` 由 T3 追加，`capsule` 由 T4 追加。
+/// 面项形状。`menu` 由 T2 追加，`icon` 由 T3 追加，`capsule` 由 T4 追加，
+/// `care-scale` 由 pane-tuning-values-v1 / 1.1 追加。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SurfaceShape {
     Toolbar,
@@ -42,6 +43,7 @@ pub enum SurfaceShape {
     Icon,
     Capsule,
     ReaderPreset,
+    CareScale,
 }
 
 /// 单个已登记面：id、默认文件名、项形状。校验器随形状而定。
@@ -78,6 +80,11 @@ pub static SURFACES: &[SurfaceSpec] = &[
         id: "reader-presets",
         default_file: "reader-presets.json",
         shape: SurfaceShape::ReaderPreset,
+    },
+    SurfaceSpec {
+        id: "care-scale",
+        default_file: "care-scale.json",
+        shape: SurfaceShape::CareScale,
     },
 ];
 
@@ -127,6 +134,19 @@ pub struct ReaderPresetSpec {
     pub skin: String,
 }
 
+/// 关爱缩放项（pane-tuning-values-v1 / DS-10）：`scale` 是 chrome 容器 zoom 倍率。
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct CareScaleSpec {
+    pub id: String,
+    pub label: String,
+    pub scale: f64,
+}
+
+/// 关爱缩放的取值边界（design-system §4.1：0.8–1.5，步长 0.05）。
+pub const CARE_SCALE_MIN: f64 = 0.8;
+pub const CARE_SCALE_MAX: f64 = 1.5;
+pub const CARE_SCALE_STEP: f64 = 0.05;
+
 /// 阅读预设的取值边界（与 `src/lib/readerWidth.ts` 一致：480/1400/20）。
 pub const READER_PRESET_FONT_MIN: u32 = 8;
 pub const READER_PRESET_FONT_MAX: u32 = 96;
@@ -145,6 +165,7 @@ fn embedded_json(spec: &SurfaceSpec) -> &'static str {
         SurfaceShape::ReaderPreset => {
             include_str!("resources/reader-presets.default.json")
         }
+        SurfaceShape::CareScale => include_str!("resources/care-scale.default.json"),
     }
 }
 
@@ -164,6 +185,7 @@ pub(crate) fn user_override_path(base: &Path, spec: &SurfaceSpec) -> PathBuf {
         SurfaceShape::Icon => base.join("user").join("icons.json"),
         SurfaceShape::Capsule => base.join("user").join("capsules.json"),
         SurfaceShape::ReaderPreset => base.join("user").join("reader-presets.json"),
+        SurfaceShape::CareScale => base.join("user").join("care-scale.json"),
     }
 }
 
@@ -509,6 +531,32 @@ pub fn validate_reader_preset(entry: &Value) -> Option<ReaderPresetSpec> {
     })
 }
 
+/// 校验单个关爱缩放项：缺字段 / 越界 → None。
+/// `scale` 按最近步长归整后校验（1.32 → 1.30），展示与存储都用归整值。
+pub fn validate_care_scale(entry: &Value) -> Option<CareScaleSpec> {
+    let obj = entry.as_object()?;
+    let id = obj.get("id")?.as_str()?;
+    let label = obj.get("label")?.as_str()?;
+    if id.is_empty() || label.is_empty() {
+        return None;
+    }
+    let raw_scale = obj.get("scale")?.as_f64()?;
+    if !raw_scale.is_finite() {
+        return None;
+    }
+    // 步长 0.05 → 归整到最近步长后四舍五入到 2 位小数，消除 24*0.05 的浮点尾差。
+    let steps = (raw_scale / CARE_SCALE_STEP).round();
+    let scale = (steps * CARE_SCALE_STEP * 100.0).round() / 100.0;
+    if !(CARE_SCALE_MIN..=CARE_SCALE_MAX).contains(&scale) {
+        return None;
+    }
+    Some(CareScaleSpec {
+        id: id.to_string(),
+        label: label.to_string(),
+        scale,
+    })
+}
+
 /// 解析并校验内嵌 / 物化默认 JSON，返回 `(有效项, 被过滤项的告警)`。
 /// 形状不对（非数组 / 缺 items 键）视为无默认（调用方回落空集合并告警）。
 fn parse_default_json(spec: &SurfaceSpec, raw: &str) -> (Vec<Value>, Vec<String>) {
@@ -529,6 +577,7 @@ fn parse_default_json(spec: &SurfaceSpec, raw: &str) -> (Vec<Value>, Vec<String>
             SurfaceShape::Icon => validate_icon_item(entry).is_some(),
             SurfaceShape::Capsule => validate_capsule_item(entry).is_some(),
             SurfaceShape::ReaderPreset => validate_reader_preset(entry).is_some(),
+            SurfaceShape::CareScale => validate_care_scale(entry).is_some(),
         };
         if ok {
             valid.push(entry.clone());
@@ -581,7 +630,8 @@ pub fn embedded_defaults(spec: &SurfaceSpec) -> Vec<SurfaceItem> {
         SurfaceShape::Menu
         | SurfaceShape::Icon
         | SurfaceShape::Capsule
-        | SurfaceShape::ReaderPreset => Vec::new(),
+        | SurfaceShape::ReaderPreset
+        | SurfaceShape::CareScale => Vec::new(),
     }
 }
 
@@ -709,7 +759,10 @@ fn user_override(spec: &SurfaceSpec, base: &Path) -> Option<Override> {
                     .collect(),
             ))
         }
-        SurfaceShape::Menu | SurfaceShape::Capsule | SurfaceShape::ReaderPreset => {
+        SurfaceShape::Menu
+        | SurfaceShape::Capsule
+        | SurfaceShape::ReaderPreset
+        | SurfaceShape::CareScale => {
             let value = read_override_file(spec, base)?;
             let items = value.get("items")?.as_array()?;
             Some(Override::Items(items.clone()))
@@ -892,6 +945,14 @@ fn merge_object_list_surface(
                 // 宽度按步长归整后写回有效集合（1273 → 1280），展示与存储同源。
                 Some(preset) => {
                     merged["width"] = serde_json::json!(preset.width);
+                    true
+                }
+                None => false,
+            },
+            SurfaceShape::CareScale => match validate_care_scale(&merged) {
+                // 倍率按步长归整后写回有效集合（1.32 → 1.30），展示与存储同源。
+                Some(item) => {
+                    merged["scale"] = serde_json::json!(item.scale);
                     true
                 }
                 None => false,
@@ -2098,6 +2159,80 @@ mod tests {
         assert_eq!(loaded.items.len(), 3, "空覆盖回落三套默认");
     }
 
+    fn cs_spec() -> &'static SurfaceSpec {
+        find_surface("care-scale").expect("care-scale 已登记")
+    }
+
+    fn write_cs_user(base: &Path, json: &str) {
+        let path = base.join("user").join("care-scale.json");
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(&path, json).unwrap();
+    }
+
+    #[test]
+    fn care_scale_默认三档逐值() {
+        let dir = temp_base("cs_default");
+        let loaded = load_surface(cs_spec(), dir.path());
+        assert_eq!(loaded.items.len(), 3, "默认恰三档");
+        let pick = |id: &str| -> Value {
+            loaded
+                .items
+                .iter()
+                .find(|i| i["id"] == json!(id))
+                .map(|i| i["scale"].clone())
+                .unwrap()
+        };
+        assert_eq!(pick("small"), json!(0.9));
+        assert_eq!(pick("medium"), json!(1.0));
+        assert_eq!(pick("large"), json!(1.2));
+        assert!(loaded.warnings.is_empty());
+    }
+
+    #[test]
+    fn care_scale_倍率按步长归整() {
+        let dir = temp_base("cs_step");
+        write_cs_user(
+            dir.path(),
+            r#"{"items":[{"id":"large","label":"大","scale":1.32}]}"#,
+        );
+        let loaded = load_surface(cs_spec(), dir.path());
+        assert_eq!(loaded.items.len(), 1);
+        assert_eq!(loaded.items[0]["scale"], json!(1.3), "1.32 → 最近步长 1.30");
+    }
+
+    #[test]
+    fn care_scale_越界项被过滤并告警() {
+        let dir = temp_base("cs_bounds");
+        write_cs_user(
+            dir.path(),
+            r#"{"items":[
+                {"id":"large","label":"大","scale":1.6},
+                {"id":"small","label":"小","scale":0.9}
+            ]}"#,
+        );
+        let loaded = load_surface(cs_spec(), dir.path());
+        let ids: Vec<&str> = loaded
+            .items
+            .iter()
+            .filter_map(|i| i["id"].as_str())
+            .collect();
+        assert_eq!(ids, vec!["small"], "越界项过滤，合法项保留");
+        assert_eq!(loaded.warnings.len(), 1, "聚合一条告警");
+        assert!(
+            loaded.warnings[0].contains("large"),
+            "告警须含被过滤项 id: {:?}",
+            loaded.warnings
+        );
+    }
+
+    #[test]
+    fn care_scale_空覆盖回落默认() {
+        let dir = temp_base("cs_empty");
+        write_cs_user(dir.path(), r#"{"items":[]}"#);
+        let loaded = load_surface(cs_spec(), dir.path());
+        assert_eq!(loaded.items.len(), 3, "空覆盖回落三档默认");
+    }
+
     #[test]
     fn menus_坏JSON覆盖回落默认不崩溃() {
         let dir = temp_base("menus_obj_badjson");
@@ -2884,7 +3019,7 @@ mod tests {
             ids, table,
             "load_all 必须逐面返回登记表全集（新增面只追加表行即可被发现）"
         );
-        assert_eq!(ids.len(), 5, "T4 + 阅读预设后应登记五面");
+        assert_eq!(ids.len(), 6, "T4 + 阅读预设 + 关爱缩放后应登记六面");
     }
 
     #[test]

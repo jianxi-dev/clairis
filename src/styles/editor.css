@@ -1901,57 +1901,36 @@ html[data-pane-mode="hardcore"][data-pane-revealed="true"] .app-root:not(.immers
  *   .cm-floating-toolbar           选区 / 块浮动工具条
  *
  * 瞬态反馈（AI 气泡 / 撤销条）只缩放、不隐藏：本块只改 zoom，不碰显隐。
- * 浮层多经 createPortal 渲到 document.body，html[data-pane-scale] 后代选择器
- * 依然命中；上面每个 portal 根都已核到稳定 class / data 属性。
+ * 浮层多经 createPortal 渲到 document.body，html[data-pane-scale-active] 后代
+ * 选择器依然命中；上面每个 portal 根都已核到稳定 class / data 属性。
+ *
+ * 倍率来源（pane-tuning-values-v1 / DS-10）：桥接按选中档从 care-scale 面取
+ * scale 写 `--pane-scale-factor`，并在因子 ≠ 1 时设 data-pane-scale-active。
+ * 属性驱动、与 id 无关；medium（1.0）不设 active，规则不施加。
  */
-html[data-pane-scale="small"] .app-chrome,
-html[data-pane-scale="small"] .app-status-bar,
-html[data-pane-scale="small"] [data-testid="settings-scene"],
-html[data-pane-scale="small"] .rail-root,
-html[data-pane-scale="small"] .width-panel,
-html[data-pane-scale="small"] .theme-menu-wrap,
-html[data-pane-scale="small"] .biaoyue-outline,
-html[data-pane-scale="small"] .dpb-panel,
-html[data-pane-scale="small"] .dpb-menu,
-html[data-pane-scale="small"] .app-tip,
-html[data-pane-scale="small"] .tab-context-menu,
-html[data-pane-scale="small"] .tab-info,
-html[data-pane-scale="small"] .context-menu,
-html[data-pane-scale="small"] [data-ai-bubble],
-html[data-pane-scale="small"] [data-undo-bar],
-html[data-pane-scale="small"] [data-ai-overlay],
-html[data-pane-scale="small"] [data-ai-docked],
-html[data-pane-scale="small"] [data-testid="quick-open"],
-html[data-pane-scale="small"] [data-testid="shortcut-overlay"],
-html[data-pane-scale="small"] .search-float,
-html[data-pane-scale="small"] .search-float-statusbar,
-html[data-pane-scale="small"] .cm-floating-toolbar {
-  zoom: 0.9;
-}
-
-html[data-pane-scale="large"] .app-chrome,
-html[data-pane-scale="large"] .app-status-bar,
-html[data-pane-scale="large"] [data-testid="settings-scene"],
-html[data-pane-scale="large"] .rail-root,
-html[data-pane-scale="large"] .width-panel,
-html[data-pane-scale="large"] .theme-menu-wrap,
-html[data-pane-scale="large"] .biaoyue-outline,
-html[data-pane-scale="large"] .dpb-panel,
-html[data-pane-scale="large"] .dpb-menu,
-html[data-pane-scale="large"] .app-tip,
-html[data-pane-scale="large"] .tab-context-menu,
-html[data-pane-scale="large"] .tab-info,
-html[data-pane-scale="large"] .context-menu,
-html[data-pane-scale="large"] [data-ai-bubble],
-html[data-pane-scale="large"] [data-undo-bar],
-html[data-pane-scale="large"] [data-ai-overlay],
-html[data-pane-scale="large"] [data-ai-docked],
-html[data-pane-scale="large"] [data-testid="quick-open"],
-html[data-pane-scale="large"] [data-testid="shortcut-overlay"],
-html[data-pane-scale="large"] .search-float,
-html[data-pane-scale="large"] .search-float-statusbar,
-html[data-pane-scale="large"] .cm-floating-toolbar {
-  zoom: 1.2;
+html[data-pane-scale-active="true"] .app-chrome,
+html[data-pane-scale-active="true"] .app-status-bar,
+html[data-pane-scale-active="true"] [data-testid="settings-scene"],
+html[data-pane-scale-active="true"] .rail-root,
+html[data-pane-scale-active="true"] .width-panel,
+html[data-pane-scale-active="true"] .theme-menu-wrap,
+html[data-pane-scale-active="true"] .biaoyue-outline,
+html[data-pane-scale-active="true"] .dpb-panel,
+html[data-pane-scale-active="true"] .dpb-menu,
+html[data-pane-scale-active="true"] .app-tip,
+html[data-pane-scale-active="true"] .tab-context-menu,
+html[data-pane-scale-active="true"] .tab-info,
+html[data-pane-scale-active="true"] .context-menu,
+html[data-pane-scale-active="true"] [data-ai-bubble],
+html[data-pane-scale-active="true"] [data-undo-bar],
+html[data-pane-scale-active="true"] [data-ai-overlay],
+html[data-pane-scale-active="true"] [data-ai-docked],
+html[data-pane-scale-active="true"] [data-testid="quick-open"],
+html[data-pane-scale-active="true"] [data-testid="shortcut-overlay"],
+html[data-pane-scale-active="true"] .search-float,
+html[data-pane-scale-active="true"] .search-float-statusbar,
+html[data-pane-scale-active="true"] .cm-floating-toolbar {
+  zoom: var(--pane-scale-factor, 1);
 }
 
 /* 底部状态栏（G-3）：沉浸态只收拢 .app-chrome，状态栏常驻不透明。 */

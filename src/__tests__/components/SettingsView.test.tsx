@@ -4,6 +4,18 @@ import SettingsView from "../../components/SettingsView";
 import { useEditorStore } from "../../stores/editorStore";
 import { useStore } from "../../stores/index";
 import { resetCapabilities } from "../../lib/capabilities";
+import { resetSurfaces, setSurfaces } from "../../lib/dataSurfaces/store";
+import type { SurfacePayload } from "../../lib/dataSurfaces/loader";
+
+const CARE_SCALE: SurfacePayload = {
+  id: "care-scale",
+  items: [
+    { id: "small", label: "小", scale: 0.9 },
+    { id: "medium", label: "中", scale: 1.0 },
+    { id: "large", label: "大", scale: 1.2 },
+  ],
+  warnings: [],
+};
 
 vi.mock("../../hooks/useConfig", () => ({
   saveAppConfig: () => Promise.resolve(),
@@ -38,6 +50,8 @@ beforeEach(() => {
   useStore.getState().reset();
   useEditorStore.getState().reset();
   resetCapabilities();
+  resetSurfaces();
+  setSurfaces([CARE_SCALE]);
   document.documentElement.classList.remove("dark", "warm");
 });
 
@@ -45,6 +59,7 @@ afterEach(() => {
   useStore.getState().reset();
   useEditorStore.getState().reset();
   resetCapabilities();
+  resetSurfaces();
   document.documentElement.classList.remove("dark", "warm");
   delete document.documentElement.dataset.skin;
   delete document.documentElement.dataset.paneMode;
