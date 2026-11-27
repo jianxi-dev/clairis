@@ -1,4 +1,4 @@
-# #1615（与 #1612 同需求，证据共用） QG-5 证据纪要
+# #1612 QG-5 证据纪要
 
 验证基于分支 `feat/maximize-button-order`（源基线 origin/main 09a48ff6）
 
