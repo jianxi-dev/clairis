@@ -327,9 +327,7 @@ function createCalloutBar(
   colorButton.dataset.testid = "callout-color-entry";
   colorButton.title = "颜色";
   colorButton.setAttribute("aria-label", "颜色");
-  colorButton.appendChild(
-    renderIcon(mark ? "HighlighterOutlined" : "FontcolorOutlined"),
-  );
+  colorButton.appendChild(renderIcon("PaletteOutlined"));
   const colorKbd = document.createElement("span");
   colorKbd.className = "cm-menu-kbd";
   colorKbd.textContent = menuShortcut("callout-color");
@@ -987,9 +985,7 @@ export function floatingToolbar(allowCapsule = false) {
       document.body.appendChild(bar.element);
       const barRect = bar.element.getBoundingClientRect();
       const gap = 6;
-      const preferredLeft = mark
-        ? rect.left + (rect.width - barRect.width) / 2
-        : rect.left;
+      const preferredLeft = rect.left + (rect.width - barRect.width) / 2;
       const left = Math.max(
         8,
         Math.min(preferredLeft, window.innerWidth - barRect.width - 8),

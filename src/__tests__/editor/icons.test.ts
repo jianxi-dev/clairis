@@ -98,6 +98,23 @@ describe("renderIcon", () => {
     );
   });
 
+  it("调色板与纯高亮块手柄图标已注册且渲染契约正确", () => {
+    for (const name of ["PaletteOutlined", "HighlightBlockOutlined"]) {
+      expect(hasIcon(name), name).toBe(true);
+      expect(renderIcon(name).getAttribute("data-icon"), name).toBe(name);
+    }
+    expect(
+      renderIcon("PaletteOutlined").querySelectorAll("path").length,
+    ).toBeGreaterThan(0);
+    const highlightPaths = renderIcon("HighlightBlockOutlined").querySelectorAll(
+      "path",
+    );
+    for (const path of highlightPaths) {
+      expect(path.getAttribute("fill")).toBe("none");
+      expect(path.getAttribute("stroke")).toBe("currentColor");
+    }
+  });
+
   it("图标不含 emoji（纯 SVG 词汇）", () => {
     const emojiRe = /\p{Extended_Pictographic}/u;
     for (const name of Object.keys(COMMAND_ICON_NAME)) {
