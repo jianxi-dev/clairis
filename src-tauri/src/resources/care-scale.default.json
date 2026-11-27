@@ -1,0 +1,8 @@
+{
+  "id": "care-scale",
+  "items": [
+    { "id": "small", "label": "小", "scale": 0.9 },
+    { "id": "medium", "label": "中", "scale": 1.0 },
+    { "id": "large", "label": "大", "scale": 1.2 }
+  ]
+}
