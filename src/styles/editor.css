@@ -3043,7 +3043,8 @@ html[data-tab-drag="true"] body * {
   top: calc(100% + 4px);
   left: 0;
   z-index: 30;
-  width: 224px;
+  width: 320px;
+  max-width: calc(100vw - 24px);
   padding: 6px;
   background-color: var(--app-surface);
   border: 1px solid var(--app-border);
@@ -3051,11 +3052,19 @@ html[data-tab-drag="true"] body * {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
 }
 
+/* 顶部：搜索框 + 随机按钮。 */
+.cm-content .cm-callout-emoji-search-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
 .cm-content .cm-callout-emoji-search {
   box-sizing: border-box;
-  width: 100%;
+  flex: 1 1 auto;
+  min-width: 0;
   height: 26px;
-  margin-bottom: 6px;
   padding: 0 6px;
   border: 1px solid var(--app-border);
   border-radius: 4px;
@@ -3066,20 +3075,56 @@ html[data-tab-drag="true"] body * {
   outline: none;
 }
 
+/* 随机按钮：图标 + 文字，取色器不关闭。 */
+.cm-content .cm-callout-emoji-random {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex-shrink: 0;
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid var(--app-border);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--app-text-2);
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.cm-content .cm-callout-emoji-random:hover {
+  background-color: rgba(127, 127, 127, 0.12);
+}
+
+/* 中部滚动区。 */
+.cm-content .cm-callout-emoji-body {
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+/* 段（标题 + 网格）。 */
+.cm-content .cm-callout-emoji-section {
+  margin-bottom: 6px;
+}
+
+.cm-content .cm-callout-emoji-section-title {
+  margin: 2px 0;
+  color: var(--app-text-2);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
 .cm-content .cm-callout-emoji-grid {
   display: grid;
-  grid-template-columns: repeat(8, 1fr);
+  grid-template-columns: repeat(10, 26px);
   gap: 2px;
-  max-height: 140px;
-  overflow-y: auto;
 }
 
 .cm-content .cm-callout-emoji-option {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  width: 26px;
+  height: 26px;
   padding: 0;
   border: none;
   border-radius: 4px;
@@ -3091,6 +3136,45 @@ html[data-tab-drag="true"] body * {
 
 .cm-content .cm-callout-emoji-option:hover {
   background-color: rgba(127, 127, 127, 0.18);
+}
+
+/* 空态。 */
+.cm-content .cm-callout-emoji-empty {
+  padding: 12px 4px;
+  color: var(--app-text-2);
+  font-size: 12px;
+  text-align: center;
+}
+
+/* 底部页签栏：8 等分、可横向滚动。 */
+.cm-content .cm-callout-emoji-tabs {
+  display: flex;
+  margin-top: 6px;
+  border-top: 1px solid var(--app-border);
+  overflow-x: auto;
+}
+
+.cm-content .cm-callout-emoji-tab {
+  flex: 1 0 auto;
+  min-width: 34px;
+  padding: 5px 2px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--app-text-2);
+  cursor: pointer;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.cm-content .cm-callout-emoji-tab:hover {
+  color: var(--app-text);
+}
+
+.cm-content .cm-callout-emoji-tab-active {
+  border-bottom-color: var(--app-accent, currentColor);
+  color: var(--app-text);
+  font-weight: 600;
 }
 
 .cm-content .cm-callout-emoji-reset {

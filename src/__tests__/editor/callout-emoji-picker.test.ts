@@ -15,6 +15,7 @@ import {
   editorDecorations,
   resetDecorationGuards,
 } from "../../editors/decorations";
+import { CALLOUT_EMOJI_CHOICES } from "../../editors/callout-types";
 
 function installPolyfills(): void {
   if (typeof globalThis.requestAnimationFrame !== "function") {
@@ -61,6 +62,7 @@ describe("#361 高亮块 emoji 取色器", () => {
   afterEach(() => {
     view?.destroy();
     parent?.remove();
+    localStorage.clear();
     resetDecorationGuards();
   });
 
@@ -172,14 +174,167 @@ describe("#361 高亮块 emoji 取色器", () => {
     search.value = "rocket";
     search.dispatchEvent(new Event("input", { bubbles: true }));
 
+    // 契约变化（#1657）：新库是全局搜索，结果可含其它带 rocket 关键词的
+    // emoji（如 🚀 之外的火箭/发射类），所以断言「包含 🚀」而非「仅 🚀」。
     const visible = Array.from(
       view.dom.querySelectorAll<HTMLButtonElement>(
         '[data-testid="cm-callout-emoji-option"]',
       ),
-    ).filter((btn) => btn.style.display !== "none");
-    expect(visible.map((btn) => btn.getAttribute("data-emoji"))).toEqual([
+    );
+    expect(visible.map((btn) => btn.getAttribute("data-emoji"))).toContain(
       "🚀",
+    );
+  });
+
+  it("页签恰 8 个且顺序正确", async () => {
+    icon().dispatchEvent(
+      new MouseEvent("mousedown", { bubbles: true, cancelable: true }),
+    );
+    await nextFrame();
+
+    const tabs = Array.from(
+      view.dom.querySelectorAll<HTMLButtonElement>(
+        '[data-testid="cm-callout-emoji-tab"]',
+      ),
+    );
+    expect(tabs.map((tab) => tab.textContent)).toEqual([
+      "最近",
+      "表情符号",
+      "动物",
+      "食物",
+      "活动",
+      "地点",
+      "物件",
+      "符号",
     ]);
+  });
+
+  it("「最近」页签的「常用」段项数与 CALLOUT_EMOJI_CHOICES 一致", async () => {
+    icon().dispatchEvent(
+      new MouseEvent("mousedown", { bubbles: true, cancelable: true }),
+    );
+    await nextFrame();
+
+    const sections = Array.from(
+      view.dom.querySelectorAll<HTMLElement>(
+        ".cm-callout-emoji-section",
+      ),
+    );
+    const frequent = sections.find((section) =>
+      section.querySelector(".cm-callout-emoji-section-title")?.textContent ===
+      "常用",
+    );
+    expect(frequent).toBeDefined();
+    const freqGrid = frequent?.querySelector(".cm-callout-emoji-grid");
+    expect(freqGrid).toBeDefined();
+    expect(
+      freqGrid?.querySelectorAll('[data-testid="cm-callout-emoji-option"]')
+        .length,
+    ).toBe(CALLOUT_EMOJI_CHOICES.length);
+  });
+
+  it("点击 emoji 后写入最近，重开「最近」段出现且最新在前", async () => {
+    localStorage.clear();
+    icon().dispatchEvent(
+      new MouseEvent("mousedown", { bubbles: true, cancelable: true }),
+    );
+    await nextFrame();
+
+    const rocket = optionByEmoji("🚀");
+    expect(rocket).not.toBeNull();
+    rocket?.dispatchEvent(
+      new MouseEvent("click", { bubbles: true, cancelable: true }),
+    );
+    expect(localStorage.getItem("biaoyue.callout-emoji.recent.v1")).toContain(
+      "🚀",
+    );
+
+    // 重开取色器：最近段应出现 🚀。
+    icon().dispatchEvent(
+      new MouseEvent("mousedown", { bubbles: true, cancelable: true }),
+    );
+    await nextFrame();
+    const sections = Array.from(
+      view.dom.querySelectorAll<HTMLElement>(
+        ".cm-callout-emoji-section",
+      ),
+    );
+    const recent = sections.find((section) =>
+      section.querySelector(".cm-callout-emoji-section-title")?.textContent ===
+      "最近",
+    );
+    expect(recent).toBeDefined();
+    const recentChars = Array.from(
+      recent?.querySelectorAll<HTMLButtonElement>(
+        '[data-testid="cm-callout-emoji-option"]',
+      ) ?? [],
+    ).map((btn) => btn.getAttribute("data-emoji"));
+    expect(recentChars[0]).toBe("🚀");
+  });
+
+  it("重复选择不重复写入最近", async () => {
+    localStorage.clear();
+    icon().dispatchEvent(
+      new MouseEvent("mousedown", { bubbles: true, cancelable: true }),
+    );
+    await nextFrame();
+    for (let i = 0; i < 2; i += 1) {
+      optionByEmoji("🎉")
+        ?.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+      if (i === 0) {
+        icon().dispatchEvent(
+          new MouseEvent("mousedown", { bubbles: true, cancelable: true }),
+        );
+        await nextFrame();
+      }
+    }
+    const stored = JSON.parse(
+      localStorage.getItem("biaoyue.callout-emoji.recent.v1") ?? "[]",
+    ) as string[];
+    expect(stored.filter((char) => char === "🎉").length).toBe(1);
+  });
+
+  it("清空 localStorage 后最近段不渲染", async () => {
+    localStorage.clear();
+    icon().dispatchEvent(
+      new MouseEvent("mousedown", { bubbles: true, cancelable: true }),
+    );
+    await nextFrame();
+    const sections = Array.from(
+      view.dom.querySelectorAll<HTMLElement>(
+        ".cm-callout-emoji-section",
+      ),
+    );
+    expect(
+      sections.some(
+        (section) =>
+          section.querySelector(".cm-callout-emoji-section-title")
+            ?.textContent === "最近",
+      ),
+    ).toBe(false);
+  });
+
+  it("点「随机」后卡片 emoji 变化且取色器仍在", async () => {
+    localStorage.clear();
+    icon().dispatchEvent(
+      new MouseEvent("mousedown", { bubbles: true, cancelable: true }),
+    );
+    await nextFrame();
+    const before = card().getAttribute("data-callout-emoji");
+
+    view.dom
+      .querySelector<HTMLButtonElement>(
+        '[data-testid="cm-callout-emoji-random"]',
+      )
+      ?.dispatchEvent(
+        new MouseEvent("click", { bubbles: true, cancelable: true }),
+      );
+
+    const after = card().getAttribute("data-callout-emoji");
+    expect(after).not.toBe(before);
+    expect(
+      view.dom.querySelector('[data-testid="cm-callout-emoji-picker"]'),
+    ).not.toBeNull();
   });
 
   it("类型切换后显示新类型默认图标", async () => {
@@ -202,6 +357,59 @@ describe("#361 高亮块 emoji 取色器", () => {
     view.requestMeasure();
     expect(card().getAttribute("data-callout-type")).toBe("tip");
     expect(card().getAttribute("data-callout-emoji")).toBe("💡");
+  });
+
+  it("document 级 Esc 关闭取色器（焦点不在取色器内部）", async () => {
+    icon().dispatchEvent(
+      new MouseEvent("mousedown", { bubbles: true, cancelable: true }),
+    );
+    await nextFrame();
+    expect(
+      view.dom.querySelector('[data-testid="cm-callout-emoji-picker"]'),
+    ).not.toBeNull();
+
+    document.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+    );
+    expect(
+      view.dom.querySelector('[data-testid="cm-callout-emoji-picker"]'),
+    ).toBeNull();
+  });
+
+  it("「最近」页签连抽两次后最近段出现且最新在前", async () => {
+    localStorage.clear();
+    icon().dispatchEvent(
+      new MouseEvent("mousedown", { bubbles: true, cancelable: true }),
+    );
+    await nextFrame();
+
+    const randomBtn = view.dom.querySelector<HTMLButtonElement>(
+      '[data-testid="cm-callout-emoji-random"]',
+    );
+    expect(randomBtn).not.toBeNull();
+    for (let i = 0; i < 2; i += 1) {
+      randomBtn?.dispatchEvent(
+        new MouseEvent("click", { bubbles: true, cancelable: true }),
+      );
+    }
+
+    const currentEmoji = card().getAttribute("data-callout-emoji");
+    const sections = Array.from(
+      view.dom.querySelectorAll<HTMLElement>(".cm-callout-emoji-section"),
+    );
+    const recent = sections.find(
+      (section) =>
+        section.querySelector(".cm-callout-emoji-section-title")?.textContent ===
+        "最近",
+    );
+    expect(recent).toBeDefined();
+    const recentChars = Array.from(
+      recent?.querySelectorAll<HTMLButtonElement>(
+        '[data-testid="cm-callout-emoji-option"]',
+      ) ?? [],
+    ).map((btn) => btn.getAttribute("data-emoji"));
+    expect(recentChars.length).toBeGreaterThanOrEqual(2);
+    expect(recentChars[0]).toBe(currentEmoji);
   });
 
   it("文档编辑后 widget 重建仍保留所选 emoji", async () => {
