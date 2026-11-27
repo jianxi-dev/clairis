@@ -271,12 +271,13 @@ let toolbarInteraction = false;
  * 描述刚提交（blur/Enter）后的短窗口：同一次点击的 document 捕获监听与 IO
  * deselect 在此期间豁免，避免「点外部保存」把刚写回的标题连同选中态一起清掉。
  */
-let captionCommitUntil = 0;
-const CAPTION_COMMIT_WINDOW_MS = 300;
-
-function captionJustCommitted(): boolean {
-  return Date.now() < captionCommitUntil;
-}
+/**
+ * 描述刚保存的标志（blur/Enter 提交时置位）。固定时长窗口在 WKWebView 的
+ * blur→click 间隔下不可靠（#1603 三轮真机），改为**一次性 click 消费**：
+ * 保存后的第一次 click 被它吸收（不触发 deselect），消费即清除——无时序
+ * 依赖，无论 blur→click 间隔多久都成立。
+ */
+let captionJustSaved = false;
 
 const CAPTION_PLACEHOLDER = "输入图片描述";
 
@@ -460,7 +461,7 @@ function createCaptionInput(
     if (value === current) {
       setCaptionText(caption, current);
     } else {
-      captionCommitUntil = Date.now() + CAPTION_COMMIT_WINDOW_MS;
+      captionJustSaved = true;
       actions.onImageSetTitle?.(from, value);
     }
     input.remove();
@@ -522,7 +523,7 @@ function hideCaptionInput(caption: HTMLElement, widgetEl: HTMLElement): void {
   setCaptionActive(false);
   applyCaptionVisibility(caption);
   if (value !== current) {
-    captionCommitUntil = Date.now() + CAPTION_COMMIT_WINDOW_MS;
+    captionJustSaved = true;
     actions.onImageSetTitle?.(Number(widgetEl.dataset.imageFrom), value);
   }
 }
@@ -926,7 +927,10 @@ function bindViewportObserver(): void {
       // 已脱离文档的旧 widget（属性编辑触发重建后旧元素被替换）ratio 同样是 0，
       // 但那是「观察目标失效」而非「图片离开视口」——据此 deselect 会误清活选中态。
       if (!entry.target.isConnected) return;
-      if (captionJustCommitted()) return;
+      if (captionJustSaved) {
+        captionJustSaved = false;
+        return;
+      }
       if (entry.intersectionRatio === 0) {
         deselectImage();
       }
@@ -1422,19 +1426,13 @@ export function openImageMaximize(
 
   const controls = document.createElement("div");
   controls.dataset.testid = "img-max-controls";
-  // 按钮条默认淡出（#1603 用户方案）：鼠标进入浮层即显、移出 1.2s 后淡出——
-  // 平时不遮挡大图，也避免误触背景复位。显隐走 CSS class（img-max-controls
-  // 的过渡在 editor.css），由 overlay 的 pointerenter/leave 翻转。
+  // 按钮条默认淡出（#1603 用户方案）：鼠标进入浮层即显、移出淡出——平时不
+  // 遮挡大图，也避免误触背景复位。显隐走纯 CSS :hover（二轮的 JS
+  // pointerenter/leave 在 WKWebView 上时序不可靠，真机「不生效」）。
+  // opacity / pointer-events / transition 交由 editor.css 的 :hover 规则管理
+  // （inline style 会压过 :hover，二轮「显隐不生效」的第二重原因）。
   controls.style.cssText =
-    "position:absolute;bottom:24px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:2;padding:6px;border:1px solid var(--app-border);border-radius:var(--app-radius);background:var(--app-surface);box-shadow:var(--app-shadow);opacity:0;transition:opacity 200ms ease;pointer-events:none;";
-  const showControls = (): void => {
-    controls.style.opacity = "1";
-    controls.style.pointerEvents = "auto";
-  };
-  const hideControls = (): void => {
-    controls.style.opacity = "0";
-    controls.style.pointerEvents = "none";
-  };
+    "position:absolute;bottom:24px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:2;padding:6px;border:1px solid var(--app-border);border-radius:var(--app-radius);background:var(--app-surface);box-shadow:var(--app-shadow);";
 
   // 「恢复原始尺寸」固定为工具条第一位（#1615）。
   controls.appendChild(
@@ -1513,14 +1511,6 @@ export function openImageMaximize(
     ),
   );
   overlay.appendChild(controls);
-  overlay.addEventListener("pointerenter", showControls);
-  overlay.addEventListener("pointerleave", () => {
-    // 移出浮层才淡出；在按钮条内移动（leave 到子元素再回来）靠 pointerenter 复显。
-    window.setTimeout(() => {
-      if (!controls.matches(":hover")) hideControls();
-    }, 1200);
-  });
-  controls.addEventListener("pointerenter", showControls);
   maximizeRefreshUi = refreshZoomUi;
   renderCurrent();
 
@@ -1614,7 +1604,12 @@ export function closeImageMaximize(): void {
 
 if (typeof document !== "undefined") {
   document.addEventListener("click", (event) => {
-    if (captionJustCommitted()) return;
+    // 保存后的第一次 click 被吸收：用户「输入文字后点外部保存」的预期是
+    // 保存并看到描述，而不是保存的同时选中态被同一次点击清掉。
+    if (captionJustSaved) {
+      captionJustSaved = false;
+      return;
+    }
     const target = event.target as Node | null;
     if (target instanceof Element) {
       if (target.closest(".cm-image-widget")) return;
