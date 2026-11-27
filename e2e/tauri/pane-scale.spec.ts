@@ -92,12 +92,19 @@ async function chromeZoom(page: Page, selector: string): Promise<number> {
  * 实际缩放来自祖先；断言倍率必须用有效值，否则会把「已缩放」误判为未缩放。
  */
 async function effectiveZoom(page: Page, selector: string): Promise<number> {
+  // 有效缩放 = 自身及祖先的 zoom 乘积 × 自身及祖先的 transform scale 乘积。
+  // in-flow chrome 用 zoom；锚定浮层用 transform（不改变布局坐标，#1638）。
   return page.locator(selector).evaluate((el) => {
     let scale = 1;
     let node: HTMLElement | null = el;
     while (node) {
-      const value = getComputedStyle(node).zoom;
-      if (value !== "normal") scale *= parseFloat(value);
+      const cs = getComputedStyle(node);
+      if (cs.zoom !== "normal") scale *= parseFloat(cs.zoom);
+      if (cs.transform && cs.transform !== "none") {
+        const m = new DOMMatrixReadOnly(cs.transform);
+        const t = Math.hypot(m.a, m.b);
+        if (Number.isFinite(t) && t > 0) scale *= t;
+      }
       node = node.parentElement;
     }
     return scale;
@@ -451,7 +458,7 @@ test("#1606 大档：阅读轨 / 大纲菜单 / 文档属性面板 / 状态栏�
   await page.getByTestId("theme-entry").hover();
   const themeMenu = page.getByTestId("theme-menu");
   await expect(themeMenu).toBeVisible({ timeout: 3000 });
-  expect(await chromeZoom(page, ".theme-menu-wrap")).toBeCloseTo(1.2, 5);
+  expect(await effectiveZoom(page, ".theme-menu-wrap")).toBeCloseTo(1.2, 5);
   await shot1606(page, "03-large-status-popup");
 
   // 缩放不得产生横向溢出。
@@ -475,7 +482,7 @@ test("#1606 大档：页签右键菜单 zoom 1.2 且仍锚定指针、落在视�
   await tab.click({ button: "right" });
   const menu = page.locator("[data-tab-menu]");
   await expect(menu).toHaveCount(1);
-  expect(await chromeZoom(page, "[data-tab-menu]")).toBeCloseTo(1.2, 5);
+  expect(await effectiveZoom(page, "[data-tab-menu]")).toBeCloseTo(1.2, 5);
 
   const mb = await menu.boundingBox();
   if (!mb) throw new Error("菜单不可见");
@@ -525,7 +532,7 @@ test("#1606 小档：代表性面 zoom 0.9（阅读轨 / 大纲 / 文档属性 /
   await expect(page.getByTestId("status-bar")).toBeVisible({ timeout: 3000 });
   await page.getByTestId("theme-entry").hover();
   await expect(page.getByTestId("theme-menu")).toBeVisible({ timeout: 3000 });
-  expect(await chromeZoom(page, ".theme-menu-wrap")).toBeCloseTo(0.9, 5);
+  expect(await effectiveZoom(page, ".theme-menu-wrap")).toBeCloseTo(0.9, 5);
 });
 
 test("#1606 作用域：正文 / 编辑器 zoom 恒 1，白名单外元素不受影响", async ({
@@ -861,4 +868,43 @@ test("#1624 证据采集：四态截图 + state-coverage.json", async ({ page })
     path.join(ART_1624, "state-coverage.json"),
     JSON.stringify({ states }, null, 2),
   );
+});
+
+test("#1638 锚定浮层不随缩放漂移：菜单/信息窗左缘偏差 ≤2px（large）", async ({
+  page,
+}) => {
+  await boot(page, "large");
+
+  const tab = page.locator('[role="tab"]').first();
+  const box = (await tab.boundingBox())!;
+  const clickX = Math.round(box.x + 60);
+  const clickY = Math.round(box.y + box.height / 2);
+  await page.mouse.click(clickX, clickY, { button: "right" });
+  const menu = page.locator("[data-tab-menu]");
+  await expect(menu).toBeVisible({ timeout: 3000 });
+  const menuLeft = await menu.evaluate(
+    (el) => el.getBoundingClientRect().left,
+  );
+  expect(
+    Math.abs(menuLeft - clickX),
+    `菜单左缘 ${menuLeft} 应贴点击点 ${clickX}`,
+  ).toBeLessThanOrEqual(2);
+
+  await page.keyboard.press("Escape");
+  await expect(menu).toHaveCount(0, { timeout: 2000 });
+
+  // 页签信息窗：左缘应贴页签左缘（同样不得被缩放放大坐标）。
+  // 先把指针移开再 hover：右键后指针仍在页签上，hover 不会重新触发 mouseenter。
+  await page.mouse.move(600, 400);
+  await tab.hover();
+  const info = page.locator('[data-testid="tab-info-popover"]').first();
+  await expect(info).toBeVisible({ timeout: 3000 });
+  const [infoLeft, tabLeft] = await Promise.all([
+    info.evaluate((el) => el.getBoundingClientRect().left),
+    tab.evaluate((el) => el.getBoundingClientRect().left),
+  ]);
+  expect(
+    Math.abs(infoLeft - tabLeft),
+    `信息窗左缘 ${infoLeft} 应贴页签左缘 ${tabLeft}`,
+  ).toBeLessThanOrEqual(2);
 });

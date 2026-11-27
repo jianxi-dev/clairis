@@ -1,0 +1,24 @@
+{
+  "states": [
+    {
+      "state": "01-large-menu-anchored",
+      "screenshot": "01-large-menu-anchored.png",
+      "assertion": "passed"
+    },
+    {
+      "state": "02-large-info-window",
+      "screenshot": "02-large-info-window.png",
+      "assertion": "passed"
+    },
+    {
+      "state": "03-large-theme-menu",
+      "screenshot": "03-large-theme-menu.png",
+      "assertion": "passed"
+    },
+    {
+      "state": "04-small-menu-anchored",
+      "screenshot": "04-small-menu-anchored.png",
+      "assertion": "passed"
+    }
+  ]
+}
