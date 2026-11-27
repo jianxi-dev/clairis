@@ -2508,8 +2508,9 @@ export default function SettingsView({ onClose }: SettingsViewProps) {
                   })}
                 </div>
                 <p className="mt-2 text-xs text-[var(--app-text-3)]">
-                  简易：顶栏与状态栏恒显；常规：状态栏默认隐藏，指针移到底边唤出；硬核：两者隐藏，按
-                  Cmd+Shift+U 临时显现，3 秒无操作或 Esc 收起
+                  简易：顶栏、状态栏、阅读轨与栏目头按钮恒显；常规：状态栏默认隐藏，指针移到底边唤出，阅读轨按自身状态、栏目头按钮仅悬停显现；硬核：顶栏、状态栏、阅读轨与栏目头按钮全部隐藏，按
+                  Cmd+Shift+U 临时一并显现，3 秒无操作或 Esc
+                  收起。悬停预览不受档位影响，仍由预览开关控制；选区胶囊、命令面板等瞬态浮层不受影响
                 </p>
               </section>
 

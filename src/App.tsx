@@ -41,6 +41,7 @@ import {
 import { saveAppConfig, useConfig } from "./hooks/useConfig";
 import { flushAllContent, flushTabContent } from "./editors/contentSync";
 import { RAIL_KIND_ORDER } from "./lib/railView";
+import type { RailState } from "./lib/railView";
 import type { FileTypeKind } from "./lib/fileType";
 import { installCropJumpProbe } from "./utils/cropJumpProbe";
 import { log } from "./utils/log";
@@ -115,6 +116,14 @@ function App() {
   const hardcoreRevealedRef = useRef(false);
   const hardcoreTimer = useRef<number | null>(null);
 
+  // 阅读轨会话内呈现态覆盖（pane-presets-coverage-v1 / G-13）：
+  // 进入 simple / hardcore 时记住用户 railState，切回 standard 恢复；
+  // 只呈现，不写 railState / railPinHidden / 配置。
+  const [railOverride, setRailOverride] = useState<
+    "simple" | "standard" | "hardcore"
+  >("standard");
+  const railStateBeforeOverride = useRef<RailState>("collapsed");
+
   useEffect(() => {
     const onMove = (e: PointerEvent) => {
       lastPointerYRef.current = e.clientY;
@@ -167,6 +176,26 @@ function App() {
       setHardcoreRevealed(false);
     }
   }, [paneMode, readingMode]);
+
+  // 阅读轨会话内呈现态：进入 simple / hardcore 记住进入前 railState，
+  // 切回 standard 恢复；档内手动改 railState 以用户最后一次为准。
+  const prevPaneModeRef = useRef(paneMode);
+  useEffect(() => {
+    const prev = prevPaneModeRef.current;
+    prevPaneModeRef.current = paneMode;
+    if (paneMode === prev) return;
+    if (paneMode === "standard") {
+      // 切回 standard：恢复进入覆盖档前的状态。
+      useStore.getState().setRailState(railStateBeforeOverride.current);
+      setRailOverride("standard");
+      return;
+    }
+    // 进入 simple / hardcore：仅在从 standard 切入时记住原状态。
+    if (prev === "standard") {
+      railStateBeforeOverride.current = useStore.getState().railState;
+    }
+    setRailOverride(paneMode);
+  }, [paneMode]);
 
   // hardcore 显现态的 3 秒空闲计时：只在显现期间监听交互，重启计时。
   useEffect(() => {
@@ -1125,7 +1154,11 @@ function App() {
     <div className={`${rootClass} app-root`}>
       <TooltipLayer />
       <div className="relative flex-1 flex min-w-0 overflow-hidden app-shell">
-        <ReadingRail onOpenPath={handleOpenPath} />
+        <ReadingRail
+          onOpenPath={handleOpenPath}
+          railOverride={railOverride}
+          railRevealed={hardcoreRevealed}
+        />
         <div
           className={`flex-1 min-w-0 flex overflow-hidden${
             magicLayout ? " magic-layout" : ""

@@ -42,6 +42,7 @@ import {
   type RailLayout,
   type RailSearchTime,
   type RailSection,
+  type RailState,
 } from "../../lib/railView";
 import {
   RAIL_PINNED_WIDTH_MAX,
@@ -787,11 +788,24 @@ function RailSectionHead({
  * 三态：折叠（12px 绝对边缘条，正文满宽）/ 悬停（240px 绝对浮层，不挤压正文）/
  * 钉住（240px flex 常驻，正文 min-width:0 变窄）。hover 是瞬态，由指针进入/离开
  * 驱动（250ms 展开、300ms 收回），钉住态不受其影响。
+ *
+ * 熟练模式（pane-presets-coverage-v1 / G-13）会话内呈现态覆盖：
+ * - simple：强制展开（按 hover 态浮层呈现），不写 railState；
+ * - hardcore：强制隐藏（不渲染面板与边缘条），并抑制左缘 hover 唤出；
+ * - standard：不覆盖，按用户 railState 原样。
+ * override 由 App.tsx 持有（进入档位时记住 railState、切回 standard 恢复），
+ * 本组件只消费，不写 store、不写配置。
  */
 export default function ReadingRail({
   onOpenPath,
+  railOverride,
+  railRevealed,
 }: {
   onOpenPath: (path: string) => void | Promise<void>;
+  /** 会话内呈现态覆盖：simple 强制展开 / hardcore 强制隐藏 / standard 不覆盖。 */
+  railOverride?: "simple" | "standard" | "hardcore";
+  /** hardcore 临时显现期（Cmd+Shift+U）：与 railOverride 同一次渲染生效。 */
+  railRevealed?: boolean;
 }) {
   const railState = useStore((s) => s.railState);
   const readingMode = useStore((s) => s.readingMode);
@@ -1079,8 +1093,15 @@ export default function ReadingRail({
     [clearTimer],
   );
 
+  // 档位覆盖期间抑制左缘 hover 唤出（hardcore 抑制；simple 已强制展开）。
+  // readingMode 优先：沉浸态下档位覆盖不生效（G-13），轨按沉浸规则走。
+  const overrideActive = railOverride !== "standard" && !readingMode;
+  const suppressed = overrideActive;
+
   const onEnter = useCallback(() => {
     clearTimer(closeTimer);
+    // 档位覆盖期间不响应左缘 hover（hardcore 抑制唤出；simple 已强制展开）。
+    if (suppressed) return;
     if (useStore.getState().railState !== "collapsed") return;
     clearTimer(openTimer);
     openTimer.current = setTimeout(() => {
@@ -1089,12 +1110,13 @@ export default function ReadingRail({
         setRailState(nextRailState("collapsed", { type: "hover-enter" }));
       }
     }, HOVER_OPEN_MS);
-  }, [clearTimer, setRailState]);
+  }, [clearTimer, setRailState, suppressed]);
 
   const onLeave = useCallback(() => {
     clearTimer(openTimer);
     // 拖动调宽时不收起：指针可能短暂离开浮层边界。
     if (resizingRef.current) return;
+    if (suppressed) return;
     if (useStore.getState().railState !== "hover") return;
     clearTimer(closeTimer);
     closeTimer.current = setTimeout(() => {
@@ -1103,7 +1125,7 @@ export default function ReadingRail({
         setRailState(nextRailState("hover", { type: "hover-leave" }));
       }
     }, HOVER_CLOSE_MS);
-  }, [clearTimer, setRailState]);
+  }, [clearTimer, setRailState, suppressed]);
 
   // 布局 / 密度 / 筛选变化后列表回顶
   useEffect(() => {
@@ -1679,6 +1701,43 @@ export default function ReadingRail({
   if (railPinHidden) return null;
   if (readingMode && railState !== "pinned") return null;
 
+  // 会话内呈现态覆盖（pane-presets-coverage-v1 / G-13）：
+  // hardcore 强制隐藏（连边缘条一起，左缘 hover 由 onEnter 早退抑制）；
+  // simple 强制按 hover 态浮层展开。均不写 railState / railPinHidden。
+  const effectiveState: RailState = !overrideActive
+    ? railState
+    : railOverride === "hardcore"
+      ? "collapsed"
+      : "hover";
+
+  // hardcore：面板与边缘条都不渲染（CSS 兜住残留挂载）。
+  // 临时显现期（Cmd+Shift+U）按 hover 态浮层一并显现；用 prop 而非读 DOM
+  // 属性，保证与 App 的 hardcoreRevealed 同一次渲染生效。
+  if (overrideActive && railOverride === "hardcore" && !railRevealed) return null;
+  if (overrideActive && railOverride === "hardcore" && railRevealed) {
+    return (
+      <div
+        data-testid="rail-panel"
+        data-rail-state="hover"
+        data-rail-overlay="true"
+        data-rail-pinned-width={panelWidth}
+        data-rail-scale={viewSpec.pinnedSegmentScale}
+        data-rail-block-colors={viewSpec.blockColors ? "true" : "false"}
+        style={{
+          position: "absolute",
+          left: 0,
+          top: 0,
+          bottom: 0,
+          width: panelWidth,
+          zIndex: 60,
+        }}
+        className="rail-root rail-overlay overflow-hidden shadow-lg"
+      >
+        {panel}
+      </div>
+    );
+  }
+
   const collapsed = (
     <button
       type="button"
@@ -1693,7 +1752,7 @@ export default function ReadingRail({
     </button>
   );
 
-  if (railState === "pinned") {
+  if (effectiveState === "pinned") {
     return (
       <div
         data-testid="rail-panel"
@@ -1722,12 +1781,12 @@ export default function ReadingRail({
     );
   }
 
-  const overlayWidth = railState === "hover" ? panelWidth : RAIL_EDGE_PX;
+  const overlayWidth = effectiveState === "hover" ? panelWidth : RAIL_EDGE_PX;
   return (
     <>
       <div
-        data-testid={railState === "collapsed" ? undefined : "rail-panel"}
-        data-rail-state={railState}
+        data-testid={effectiveState === "collapsed" ? undefined : "rail-panel"}
+        data-rail-state={effectiveState}
         data-rail-overlay="true"
         data-rail-pinned-width={panelWidth}
         data-rail-scale={viewSpec.pinnedSegmentScale}
@@ -1744,8 +1803,8 @@ export default function ReadingRail({
         onMouseEnter={onEnter}
         onMouseLeave={onLeave}
       >
-        {railState === "hover" ? panel : collapsed}
-        {railState === "hover" && (
+        {effectiveState === "hover" ? panel : collapsed}
+        {effectiveState === "hover" && (
           <div
             data-testid="rail-resize-handle"
             role="separator"

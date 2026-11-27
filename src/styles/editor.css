@@ -1649,6 +1649,24 @@ body {
   opacity: 1;
 }
 
+/* 熟练模式（pane-presets-coverage-v1 / G-13）：simple 档栏目头按钮恒显；
+   standard 保持上面的 hover / focus / 菜单打开显现；hardcore 默认隐藏，
+   仅临时显现期（data-pane-revealed）显现。全部 scoped .app-root:not(.immersive)，
+   沉浸态优先。 */
+html[data-pane-mode="simple"] .app-root:not(.immersive) .pane-actions {
+  opacity: 1;
+}
+
+html[data-pane-mode="hardcore"] .app-root:not(.immersive) .pane-actions {
+  opacity: 0;
+}
+
+html[data-pane-mode="hardcore"][data-pane-revealed="true"]
+  .app-root:not(.immersive)
+  .pane-actions {
+  opacity: 1;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .pane-actions {
     transition: none;
@@ -1840,6 +1858,17 @@ html[data-pane-mode="hardcore"] .app-root:not(.immersive) .pane-leaf::before {
 
 html[data-pane-mode="hardcore"][data-pane-revealed="true"] .app-root:not(.immersive) .pane-leaf::before {
   display: none;
+}
+
+/* hardcore：阅读轨隐藏（面板与边缘条都不渲染，这里兜住任何残留挂载）；
+   临时显现期按属性显现。阅读轨的会话内覆盖由 ReadingRail 消费 railOverride，
+   不写 railState / railPinHidden。 */
+html[data-pane-mode="hardcore"] .app-root:not(.immersive) .rail-root {
+  display: none;
+}
+
+html[data-pane-mode="hardcore"][data-pane-revealed="true"] .app-root:not(.immersive) .rail-root {
+  display: block;
 }
 
 /* ── paneScale 三档（pane-presets-v1 / CF-8 / 设计系统 §4.1）──────────

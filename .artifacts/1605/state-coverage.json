@@ -1,0 +1,24 @@
+{
+  "states": [
+    {
+      "state": "simple",
+      "screenshot": "ev-simple.png",
+      "assertion": "passed"
+    },
+    {
+      "state": "standard",
+      "screenshot": "ev-standard.png",
+      "assertion": "passed"
+    },
+    {
+      "state": "hardcore-hidden",
+      "screenshot": "ev-hardcore-hidden.png",
+      "assertion": "passed"
+    },
+    {
+      "state": "hardcore-revealed",
+      "screenshot": "ev-hardcore-revealed.png",
+      "assertion": "passed"
+    }
+  ]
+}
