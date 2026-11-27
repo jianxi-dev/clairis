@@ -78,7 +78,7 @@
           "id": "A-2.4",
           "claim": "存量 border-top/bottom 1px 进基线处数",
           "kind": "exact",
-          "assert": "18",
+          "assert": "19",
           "source": "实测 src/**/*.css"
         },
         {

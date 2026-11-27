@@ -1,0 +1,54 @@
+{
+  "task": "1648",
+  "states": [
+    {
+      "state": "01-tab-export-disabled-no-path",
+      "screenshot": ".artifacts/1648/01-tab-export-disabled-no-path.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-27T18:42:49.987Z",
+      "runner": "unknown@unknown"
+    },
+    {
+      "state": "02-tab-export-enabled-with-path",
+      "screenshot": ".artifacts/1648/02-tab-export-enabled-with-path.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-27T18:42:50.934Z",
+      "runner": "unknown@unknown"
+    },
+    {
+      "state": "03-pane-locate-disabled-no-path",
+      "screenshot": ".artifacts/1648/03-pane-locate-disabled-no-path.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-27T18:42:51.827Z",
+      "runner": "unknown@unknown"
+    },
+    {
+      "state": "04-pane-locate-enabled-with-path",
+      "screenshot": ".artifacts/1648/04-pane-locate-enabled-with-path.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-27T18:42:52.758Z",
+      "runner": "unknown@unknown"
+    },
+    {
+      "state": "05-ai-send-disabled-empty",
+      "screenshot": ".artifacts/1648/05-ai-send-disabled-empty.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-27T18:42:53.710Z",
+      "runner": "unknown@unknown"
+    },
+    {
+      "state": "06-ai-send-enabled-with-input",
+      "screenshot": ".artifacts/1648/06-ai-send-enabled-with-input.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-27T18:42:53.727Z",
+      "runner": "unknown@unknown"
+    },
+    {
+      "state": "07-esc-layered-content-unchanged",
+      "screenshot": ".artifacts/1648/07-esc-layered-content-unchanged.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-27T18:42:54.742Z",
+      "runner": "unknown@unknown"
+    }
+  ]
+}

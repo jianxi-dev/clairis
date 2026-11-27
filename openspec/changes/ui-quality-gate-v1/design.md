@@ -22,7 +22,7 @@
 
 **Non-Goals**（与 requirements.md 的 Scope 一致）
 
-- 不迁移存量 127 处裸色值、18 处 1px 横线、3 处 `window.prompt`（进基线只减不增；迁移随 Q2 基件与后续专项）。
+- 不迁移存量 127 处裸色值、19 处 1px 横线、3 处 `window.prompt`（进基线只减不增；迁移随 Q2 基件与后续专项）。
 - 不做 Q2 四基件 / `/showcase`、Q3 图标纪检、Q5 px 专项。
 - 不引入运行时校验、不动 Rust、不新增依赖。
 - 不改 `spec.md` §7.3 的人工审美七问（它仍是人工判据）。
@@ -63,7 +63,7 @@
 
 ### D5 交互条款与守护
 
-**做法**：`interaction.md` 四条——零横线（分隔用间距/背景；例外仅菜单分组线与表格边框，且用 `--app-border`）；反馈三档（静默 / 轻提示 toast / 需确认 dialog；SHALL NOT 使用 `window.alert|confirm|prompt`）；禁用而非隐藏（条件不满足时控件保留并 `disabled` + 原因提示）；Esc 只退场（只关闭最上层，SHALL NOT 触发保存/删除）。每条含定义、正反例、守护指针。守护：新增 1px `border-top/bottom` 进基线（**18** 条存量，只减不增）；grep 覆盖 `window.alert|confirm|prompt`（**3** 处 prompt 进基线，迁移留 Q2 dialog 之后）；三条「禁用而非隐藏」e2e（无选区导出 / AI 未配置 / 只读文档），首跑红则本票内最小修复、绿则锁行为；Esc 逐层退出 e2e，按 App 级现有顺序逐层断言（快捷键帮助 → AI 待确认 → AI 窗口 → 临时显现 → 全屏 → 阅读态），文档内容不变。
+**做法**：`interaction.md` 四条——零横线（分隔用间距/背景；例外仅菜单分组线与表格边框，且用 `--app-border`）；反馈三档（静默 / 轻提示 toast / 需确认 dialog；SHALL NOT 使用 `window.alert|confirm|prompt`）；禁用而非隐藏（条件不满足时控件保留并 `disabled` + 原因提示）；Esc 只退场（只关闭最上层，SHALL NOT 触发保存/删除）。每条含定义、正反例、守护指针。守护：新增 1px `border-top/bottom` 进基线（**19** 条存量，只减不增）；grep 覆盖 `window.alert|confirm|prompt`（**3** 处 prompt 进基线，迁移留 Q2 dialog 之后）；三条「禁用而非隐藏」e2e（无路径导出 / 无路径定位 / AI 空输入；现产品无「只读文档」模式，未编造该用例），首跑红则本票内最小修复、绿则锁行为；Esc 逐层退出 e2e，按 App 级现有顺序逐层断言（快捷键帮助 → AI 待确认 → AI 窗口 → 临时显现 → 全屏 → 阅读态），文档内容不变。
 
 **为什么**：条款不写守护就是口号。横线与原生对话框用基线冻结存量、禁止增量；禁用而非隐藏与 Esc 用 e2e 锁行为，因为它们涉及运行时状态机，扫描测不出。
 

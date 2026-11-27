@@ -621,6 +621,8 @@ function PaneHeader({
                 {getMenuItems("pane-header").map((item: MenuItem) => {
                   const sourcePressed =
                     item.action === "source" && editorMode === "source";
+                  const needsPath = item.action === "locate";
+                  const pathMissing = needsPath && !activeTab?.path;
                   return (
                     <button
                       key={item.id}
@@ -630,8 +632,14 @@ function PaneHeader({
                       aria-pressed={
                         item.action === "source" ? sourcePressed : undefined
                       }
+                      disabled={pathMissing}
+                      title={
+                        pathMissing
+                          ? "此页签尚未保存，无路径可定位"
+                          : item.label
+                      }
                       onClick={() => runMenu(item.action as PaneMenuAction)}
-                      className="flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-[var(--app-sunken)]"
+                      className="flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-[var(--app-sunken)] disabled:cursor-not-allowed disabled:opacity-45"
                     >
                       <Icon name={item.icon} size={18} />
                       <span>{item.label}</span>
