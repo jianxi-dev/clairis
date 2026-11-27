@@ -938,10 +938,33 @@ function bindViewportObserver(): void {
 
 /** 缩放 UI 同步钩子：由 openImageMaximize 注入，滚轮/捏合/按钮/复位共用。 */
 let maximizeRefreshUi: (() => void) | null = null;
+/**
+ * 最近一次「用户主动缩放」的时间戳（滚轮 / 捏合 / ± 按钮）。
+ *
+ * 真机（#1603）：调整大小之后缩放自动还原 100%——WKWebView 上调整结束的
+ * pointerup 可能被 overlay 的 dblclick 判定吞掉并复位。headless 复现不出，
+ * 故做防御：用户调整后 3 秒内，任何「把 scale 写回 1」的重绘若并非显式
+ * 复位意图（reset 按钮 / 双击背景 / 多图切换），一律跳过。
+ */
+let lastUserZoomAt = 0;
+/** 显式复位意图：reset 按钮 / 双击背景——它们必须立刻生效，不受守卫拦截。 */
+let maximizeResetIntent = false;
+const USER_ZOOM_GUARD_MS = 3000;
 
 function maximizeApplyTransform(): void {
   if (!maximizeImg) return;
   const { scale, tx, ty, rotation } = maximizeTransform;
+  // 守卫：用户刚调整过（3 秒内）且本次写入是把 scale 拉回 1，而调用方并非
+  // 显式复位 —— 判定为 WKWebView 的延迟/误判覆盖，跳过这一次重绘。
+  if (
+    !maximizeResetIntent &&
+    scale === 1 &&
+    maximizeTransform.tx === 0 &&
+    maximizeTransform.ty === 0 &&
+    performance.now() - lastUserZoomAt < USER_ZOOM_GUARD_MS
+  ) {
+    return;
+  }
   maximizeImg.style.transform = `translate(${tx}px, ${ty}px) scale(${scale}) rotate(${rotation}deg)`;
   maximizeRefreshUi?.();
 }
@@ -993,6 +1016,7 @@ function maximizeZoom(nextScale: number, cx: number, cy: number): void {
     maximizeTransform.ty = 0;
   }
   maximizeClampTranslation();
+  lastUserZoomAt = performance.now();
   maximizeApplyTransform();
 }
 
@@ -1373,7 +1397,10 @@ export function openImageMaximize(
     }
     maximizeImg = nextImg;
     maximizeTransform = { scale: 1, tx: 0, ty: 0, rotation: 0 };
+    // 多图切换是显式意图：不受用户缩放守卫拦截。
+    maximizeResetIntent = true;
     maximizeApplyTransform();
+    maximizeResetIntent = false;
     refreshZoomUi();
     refreshNavUi();
   };
@@ -1437,7 +1464,9 @@ export function openImageMaximize(
       "RestoreOutlined",
       () => {
         maximizeTransform = { scale: 1, tx: 0, ty: 0, rotation: 0 };
+        maximizeResetIntent = true;
         maximizeApplyTransform();
+        maximizeResetIntent = false;
         refreshZoomUi();
       },
       tooltip,
@@ -1474,7 +1503,9 @@ export function openImageMaximize(
   // 双击恢复原始尺寸（design D16），不当关闭用。
   overlay.addEventListener("dblclick", () => {
     maximizeTransform = { scale: 1, tx: 0, ty: 0, rotation: 0 };
+    maximizeResetIntent = true;
     maximizeApplyTransform();
+    maximizeResetIntent = false;
     refreshZoomUi();
   });
   overlay.addEventListener("wheel", maximizeOnWheel, { passive: false });

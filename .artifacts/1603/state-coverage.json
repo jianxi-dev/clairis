@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "crop-enter-zero-collapse",
+      "screenshot": "e2e/editors/crop-jump-measure.spec.ts (CROP-ENTER-NOCACHE per-frame heights [400x12], runtime assertion)",
+      "assertion": "passed",
+      "recorded_at": "2026-11-27T04:30:00Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "crop-confirm-zero-shift",
+      "screenshot": "e2e/editors/crop-jump-measure.spec.ts (CROP-JUMP max|Δ|=0 both scenes, runtime assertion)",
+      "assertion": "passed",
+      "recorded_at": "2026-11-27T04:30:00Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "zoom-persist-after-user-scale",
+      "screenshot": "e2e/editors/maximize-zoom-persist.spec.ts (MAX-ZOOM-PERSIST scale 1.21 held, runtime assertion)",
+      "assertion": "passed",
+      "recorded_at": "2026-11-27T04:30:00Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "explicit-reset-still-works",
+      "screenshot": "e2e/editors/maximize-zoom-persist.spec.ts (reset intent bypasses guard, runtime assertion)",
+      "assertion": "passed",
+      "recorded_at": "2026-11-27T04:30:00Z",
+      "runner": "unknown@MMBP"
+    }
+  ]
+}

@@ -46,6 +46,10 @@ interface Sample {
   /** 旧节点是否还在文档里：false = 确认后组件被重建。 */
   widgetConnected: boolean;
   scrollHeight: number;
+  /** 裁剪窗口高度（进入裁剪态才有）；用于识别首帧塌陷。 */
+  winH?: number;
+  /** 内图高度（塌陷时 ≠ 窗口高度）。 */
+  imgH?: number;
 }
 
 function installSampler(page: Page): void {
@@ -306,6 +310,207 @@ test("贴底裁剪确认：位移仅一次且其后恒定（允许必要 clamp�
   const lastBeforeScroll = before[before.length - 1].scrollTop;
   const lastAfterScroll = after[after.length - 1].scrollTop;
   expect(lastAfterScroll).toBeLessThanOrEqual(lastBeforeScroll);
+});
+
+/**
+ * #1603 首裁跳动：**进入**裁剪态（首次 mount）瞬间的位移探针。
+ *
+ * 与上面两条（确认瞬间）不同，这里采样的是「点裁剪按钮 → 裁剪窗口挂上」
+ * 前后：首次进入时 cropDisplayCache 未命中，widget 由普通 img 换成裁剪窗口，
+ * 首帧按原图自然尺寸渲染 → 内容高度瞬时塌陷 → 滚动锚定把 scrollTop 往回补
+ * （真机表现为「往上跳一些，不到顶」）。第二次进入命中缓存 → 不塌 → 不跳。
+ *
+ * 判定：进入前后 scrollTop / widget top / scrollHeight 的最大位移 ≤1px。
+ */
+test("首次进入裁剪态零位移：进入前后滚动位置与图片位置探针 ≤1px", async ({
+  page,
+}) => {
+  installSampler(page);
+  await openDoc(page);
+
+  const widget = page.locator(".cm-image-widget").first();
+  await widget.evaluate((el) => el.scrollIntoView({ block: "center" }));
+  await widget.click();
+  const cropButton = page.getByTestId("img-toolbar-crop");
+  await cropButton.waitFor({ state: "visible", timeout: 10000 });
+  await page.evaluate(() => {
+    const btn = document.querySelector<HTMLElement>(
+      '[data-testid="img-toolbar-crop"]',
+    );
+    if (!btn) throw new Error("裁剪按钮不在，无法挂进入钩子");
+    (window as unknown as { __cropJumpEnter__: () => void }).__cropJumpEnter__ =
+      () => btn.click();
+  });
+
+  const samples = await page.evaluate(async (frames) => {
+    const scroller = document.querySelector<HTMLElement>(".cm-scroller");
+    const host = document.querySelector<HTMLElement>(".cm-image-widget");
+    if (!scroller || !host) throw new Error("采样前缺 scroller 或 widget");
+    const from = host.dataset.imageFrom ?? "";
+    const read = (): Sample => {
+      const fresh = scroller.querySelector<HTMLElement>(
+        `.cm-image-widget[data-image-from="${from}"]`,
+      );
+      const img = fresh?.querySelector("img") ?? null;
+      const win = fresh
+        ? (fresh.querySelector(".image-crop-window") as HTMLElement | null)
+        : null;
+      return {
+        t: Math.round(performance.now()),
+        scrollTop: scroller.scrollTop,
+        widgetTop: host.getBoundingClientRect().top,
+        freshTop: fresh ? fresh.getBoundingClientRect().top : 0,
+        widgetConnected: host.isConnected,
+        scrollHeight: scroller.scrollHeight,
+        winH: win ? win.getBoundingClientRect().height : 0,
+        imgH: img ? img.getBoundingClientRect().height : 0,
+      };
+    };
+    const before: Sample[] = [];
+    await new Promise<void>((resolve) => {
+      const step = (): void => {
+        before.push(read());
+        if (before.length >= frames) {
+          resolve();
+          return;
+        }
+        requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    });
+    const after: Sample[] = [];
+    await new Promise<void>((resolve) => {
+      (
+        window as unknown as { __cropJumpEnter__: () => void }
+      ).__cropJumpEnter__();
+      const step = (): void => {
+        after.push(read());
+        if (after.length >= frames) {
+          resolve();
+          return;
+        }
+        requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    });
+    return { before, after };
+  }, FRAMES);
+
+  await expect(page.getByTestId("img-crop-frame")).toHaveCount(1);
+
+  const { before, after } = samples;
+  console.log(report("CROP-ENTER before", before));
+  console.log(report("CROP-ENTER after", after));
+
+  const beforeScroll = maxDelta(before, "scrollTop");
+  const afterScroll = maxDelta(after, "scrollTop");
+  const beforeWidget = maxDelta(before, "widgetTop");
+  const afterWidget = maxDelta(after, "widgetTop");
+  const beforeHeight = maxDelta(before, "scrollHeight");
+  const afterHeight = maxDelta(after, "scrollHeight");
+  const afterFresh = maxDelta(after, "freshTop");
+  console.log(
+    `CROP-ENTER max|Δ| scrollTop before=${beforeScroll} after=${afterScroll} widgetTop before=${beforeWidget} after=${afterWidget} freshTop after=${afterFresh} scrollHeight before=${beforeHeight} after=${afterHeight}`,
+  );
+  console.log(
+    `CROP-ENTER scrollTop[0]=${before[0].scrollTop} widgetTop[0]=${before[0].widgetTop} freshTop[0]=${after[0].freshTop} winH[0]=${after[0].winH} imgH[0]=${after[0].imgH}`,
+  );
+  expect(before.length).toBeGreaterThanOrEqual(20);
+  expect(after.length).toBeGreaterThanOrEqual(20);
+  expect(beforeScroll).toBeLessThanOrEqual(1);
+  expect(afterScroll).toBeLessThanOrEqual(1);
+  expect(beforeWidget).toBeLessThanOrEqual(1);
+  expect(afterWidget).toBeLessThanOrEqual(1);
+  expect(afterFresh).toBeLessThanOrEqual(1);
+  expect(afterHeight).toBeLessThanOrEqual(1);
+});
+
+/**
+ * #1603 修复 A 的缓存命中验证：无 width 锚点的图片进入裁剪态时，首帧裁剪
+ * 窗口高度必须已是最终显示高度（走 cropDisplayCache 同步分支），而不是先
+ * 渲染成原图自然高度再塌陷重算——后者正是真机首裁跳动的来源。
+ *
+ * 用「进入裁剪态后第一帧」的窗口高度与稳定后高度比较：相等 = 命中缓存。
+ */
+test("无 width 锚点图片进入裁剪态：首帧窗口高度即最终值（缓存命中）", async ({
+  page,
+}) => {
+  await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
+  await page.goto("/", { waitUntil: "networkidle" });
+  await page.waitForSelector('[data-testid="pane-header"]', { timeout: 10000 });
+  const lead = Array.from({ length: 12 }, (_, i) => `第 ${i + 1} 行文本`).join(
+    "\n\n",
+  );
+  await page.evaluate((body) => {
+    const win = window as unknown as BridgeWindow;
+    win.__biaoyue_openFile__("/tmp/crop-jump/nocache.md", body, "nocache.md");
+    win.__biaoyue_store__.getState().setEditorMode("edit");
+  }, `${lead}\n\n![甲](${IMG})\n`);
+  await page.locator(".cm-content").waitFor({ timeout: 10000 });
+  await page.waitForFunction(
+    () => {
+      const img = document.querySelector(
+        ".cm-image-widget img",
+      ) as HTMLImageElement | null;
+      return !!img && img.complete && img.naturalWidth > 0;
+    },
+    { timeout: 20000 },
+  );
+
+  const widget = page.locator(".cm-image-widget").first();
+  await widget.evaluate((el) => el.scrollIntoView({ block: "center" }));
+  await widget.click();
+  const cropButton = page.getByTestId("img-toolbar-crop");
+  await cropButton.waitFor({ state: "visible", timeout: 10000 });
+
+  // 进入前：无裁剪窗口、无缓存写入（该 src 从未裁过）。
+  const before = await page.evaluate(() => {
+    const w = document.querySelector<HTMLElement>(".cm-image-widget");
+    return {
+      win: !!w?.querySelector(".image-crop-window"),
+      imgH: w?.querySelector("img")?.getBoundingClientRect().height ?? 0,
+    };
+  });
+  expect(before.win).toBe(false);
+
+  await cropButton.click();
+  await expect(page.getByTestId("img-crop-frame")).toHaveCount(1);
+
+  // 逐帧读窗口高度：第一帧起就应等于稳定值（无「先自然高度后塌陷」的过渡）。
+  const heights = await page.evaluate(async () => {
+    const host = document.querySelector<HTMLElement>(".cm-image-widget");
+    if (!host) throw new Error("缺 widget");
+    const out: number[] = [];
+    await new Promise<void>((resolve) => {
+      const step = (): void => {
+        const win = host.querySelector<HTMLElement>(".image-crop-window");
+        out.push(win ? Math.round(win.getBoundingClientRect().height) : 0);
+        if (out.length >= 12) {
+          resolve();
+          return;
+        }
+        requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    });
+    return out;
+  });
+  console.log(`CROP-ENTER-NOCACHE window heights per frame: ${JSON.stringify(heights)}`);
+
+  const stable = heights[heights.length - 1];
+  expect(stable).toBeGreaterThan(0);
+  // 首帧即最终值：全程无塌陷过渡。
+  for (const h of heights) {
+    expect(Math.abs(h - stable)).toBeLessThanOrEqual(1);
+  }
+  // 缓存已写入该 src|crop。
+  const cached = await page.evaluate(() => {
+    const img = document.querySelector<HTMLImageElement>(
+      ".cm-image-widget img",
+    );
+    return img?.style.transform ?? "";
+  });
+  expect(cached).toMatch(/^scale\(/);
 });
 
 /** 贴底版文档：12 行文本 + 单张图，无下方内容 → scrollIntoView 后即到底。 */
