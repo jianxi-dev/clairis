@@ -236,6 +236,24 @@ describe("renderMarkdown Callout 正文不重复", () => {
   });
 });
 
+describe("renderMarkdown Callout 多行软换行", () => {
+  it("标注正文多行之间插入 <br>，不再合并成一段", () => {
+    const html = renderMarkdown("> [!NOTE] 标题\n> 第一行\n> 第二行");
+    expect(html).toContain("第一行<br>第二行");
+  });
+
+  it("纯高亮多行之间插入 <br>", () => {
+    const html = renderMarkdown("> [!highlight]\n> A\n> B");
+    expect(html).toContain("A<br>B");
+  });
+
+  it("列表项之间不插入多余 <br>", () => {
+    const html = renderMarkdown("> [!NOTE] 标题\n> - 甲\n> - 乙");
+    expect(html).toContain("<li");
+    expect(html).not.toContain("</li><br>");
+  });
+});
+
 describe("renderMarkdown Mermaid", () => {
   it("mermaid 代码块输出渲染容器，源码保留在 pre 里", () => {
     const html = renderMarkdown("```mermaid\ngraph TD\nA-->B\n```");

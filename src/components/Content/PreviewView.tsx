@@ -162,6 +162,17 @@ export default function PreviewView({
     [],
   );
 
+  // 编辑态改 emoji 后立刻重算 HTML：会话快照已更新，预览要跟上，不等下次内容变化。
+  const [emojiEpoch, setEmojiEpoch] = useState(0);
+
+  useEffect(() => {
+    const onChanged = () => setEmojiEpoch((v) => v + 1);
+    document.addEventListener("biaoyue:callout-emoji-changed", onChanged);
+    return () => {
+      document.removeEventListener("biaoyue:callout-emoji-changed", onChanged);
+    };
+  }, []);
+
   const headingVars = useMemo(() => {
     const vars: Record<string, string> = {};
     if (headingColors) {
@@ -208,7 +219,7 @@ export default function PreviewView({
           resolveMedia: (href) => resolveDocMediaHref(href, filePath),
         });
     }
-  }, [content, fileKind, capabilityEpoch, filePath]);
+  }, [content, fileKind, capabilityEpoch, emojiEpoch, filePath]);
 
   // HTML 预览：磁盘文件且未 dirty 才 asset 直载（脚本/外链可跑）；dirty 回退 srcdoc。
   const htmlLive = useStore((s) => {

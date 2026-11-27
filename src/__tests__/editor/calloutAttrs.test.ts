@@ -128,3 +128,19 @@ describe("纯高亮渲染变量", () => {
     expect(vars.text).toBe("var(--hl-font-gray)");
   });
 });
+
+describe("属性块与标题之间的空白（#1676 回归）", () => {
+  it("读取：`] {attrs}` 的写法也能解析出属性", () => {
+    expect(getCalloutAttrs("> [!NOTE] {bg=red} 标题")).toEqual({ bg: "red" });
+    expect(getCalloutAttrs("> [!NOTE]{bg=red} 标题")).toEqual({ bg: "red" });
+  });
+
+  it("写回：不叠加第二个属性块", () => {
+    expect(
+      setCalloutAttrs("> [!NOTE] {bg=red} 标题", { bg: "green" }),
+    ).toBe("> [!NOTE]{bg=green} 标题");
+    expect(
+      setCalloutAttrs("> [!NOTE]{bg=red} 标题", { bg: "green" }),
+    ).toBe("> [!NOTE]{bg=green} 标题");
+  });
+});

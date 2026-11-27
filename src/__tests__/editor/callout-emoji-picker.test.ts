@@ -7,7 +7,7 @@
  * 注：本仓库 jsdom 的 `querySelector` 不支持非 ASCII 属性选择器
  * （`[data-emoji="🎉"]` 恒为 null），按属性值过滤而非属性选择器。
  */
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { EditorState } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { markdown } from "@codemirror/lang-markdown";
@@ -410,6 +410,23 @@ describe("#361 高亮块 emoji 取色器", () => {
     ).map((btn) => btn.getAttribute("data-emoji"));
     expect(recentChars.length).toBeGreaterThanOrEqual(2);
     expect(recentChars[0]).toBe(currentEmoji);
+  });
+
+  it("选择 emoji 后广播 biaoyue:callout-emoji-changed 一次", async () => {
+    const onChanged = vi.fn();
+    document.addEventListener("biaoyue:callout-emoji-changed", onChanged);
+    try {
+      icon().dispatchEvent(
+        new MouseEvent("mousedown", { bubbles: true, cancelable: true }),
+      );
+      await nextFrame();
+      optionByEmoji("🎉")?.dispatchEvent(
+        new MouseEvent("click", { bubbles: true, cancelable: true }),
+      );
+      expect(onChanged).toHaveBeenCalledTimes(1);
+    } finally {
+      document.removeEventListener("biaoyue:callout-emoji-changed", onChanged);
+    }
   });
 
   it("文档编辑后 widget 重建仍保留所选 emoji", async () => {

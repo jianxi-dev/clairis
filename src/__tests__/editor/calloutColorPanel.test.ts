@@ -1,8 +1,13 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
+import { EditorState } from "@codemirror/state";
+import { EditorView } from "@codemirror/view";
+import { markdown } from "@codemirror/lang-markdown";
 import {
+  buildCalloutColorPanel,
   buildHighlightColorPanel,
   nextCalloutAttrs,
   pickHighlightFamily,
+  randomCalloutColors,
 } from "../../editors/orchestration/callout-color-panel";
 
 describe("nextCalloutAttrs", () => {
@@ -52,7 +57,7 @@ describe("纯高亮随机与面板", () => {
       active: {},
       onPick: () => {},
       onReset: () => {},
-      onRandom: () => {},
+      onRandom: () => null,
     });
     expect(root.querySelector('[data-testid="color-random"]')).not.toBeNull();
     expect(root.querySelector('[data-testid="color-reset"]')).not.toBeNull();
@@ -73,7 +78,7 @@ describe("纯高亮随机与面板", () => {
       active: {},
       onPick: () => {},
       onReset: () => {},
-      onRandom: () => {},
+      onRandom: () => null,
     });
     const count = (sel: string): number =>
       root.querySelectorAll(`${sel} .cm-color-swatch`).length;
@@ -141,6 +146,7 @@ describe("选中态即时刷新（D5）", () => {
       onReset: () => {},
       onRandom: () => {
         current = { bg: "darkgreen", border: "green" };
+        return null;
       },
     });
     const activeBefore = () =>
@@ -171,7 +177,7 @@ describe("选中态即时刷新（D5）", () => {
     expect(activeBefore()).not.toEqual(before);
   });
 
-  it("未提供 getActive 时保持构建时的一次性计算（向后兼容）", () => {
+  it("未提供 getActive 时也按点击项刷新选中态（向后兼容）", () => {
     const root = buildHighlightColorPanel({
       active: { bg: "darkred" },
       onPick: () => {},
@@ -188,7 +194,136 @@ describe("选中态即时刷新（D5）", () => {
 
     mousedown(newSwatch);
 
+    expect(oldSwatch.dataset.active).toBe("false");
+    expect(newSwatch.dataset.active).toBe("true");
+  });
+});
+
+describe("标注颜色面板（#1677）", () => {
+  const mousedown = (el: Element): void => {
+    el.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+  };
+
+  it("含随机按钮（data-testid=color-random-callout）与头行「字体颜色」", () => {
+    const root = buildCalloutColorPanel({
+      active: {},
+      onPick: () => {},
+      onReset: () => {},
+      onRandom: () => null,
+    });
+    expect(
+      root.querySelector('[data-testid="color-random-callout"]'),
+    ).not.toBeNull();
+    const head = root.querySelector(".cm-color-panel-head")!;
+    expect(head.querySelector(".cm-color-row-label")!.textContent).toBe(
+      "字体颜色",
+    );
+    expect(
+      head.querySelector('[data-testid="color-random-callout"]'),
+    ).not.toBeNull();
+    // 三行色板：字体 9 / 边框 16 / 填充 16。
+    expect(
+      root.querySelectorAll('.cm-color-row[data-kind="font"] .cm-color-swatch'),
+    ).toHaveLength(9);
+    expect(
+      root.querySelectorAll(
+        '.cm-color-row[data-kind="border"] .cm-color-swatch',
+      ),
+    ).toHaveLength(16);
+    expect(
+      root.querySelectorAll(
+        '.cm-color-row[data-kind="background"] .cm-color-swatch',
+      ),
+    ).toHaveLength(16);
+  });
+
+  it("点随机后 bg 与 border 同时写入且同名、text 不变", () => {
+    const root = buildCalloutColorPanel({
+      active: { text: "gray" },
+      onPick: () => {},
+      onReset: () => {},
+      onRandom: () => ({ bg: "green", border: "green", text: "gray" }),
+    });
+    mousedown(root.querySelector('[data-testid="color-random-callout"]')!);
+
+    // 填充行与边框行各恰 1 个选中，且色名同名。
+    const bgActive = root.querySelectorAll(
+      '.cm-color-row[data-kind="background"] .cm-color-swatch[data-active="true"]',
+    );
+    const borderActive = root.querySelectorAll(
+      '.cm-color-row[data-kind="border"] .cm-color-swatch[data-active="true"]',
+    );
+    expect(bgActive).toHaveLength(1);
+    expect(borderActive).toHaveLength(1);
+    expect(bgActive[0].getAttribute("data-class-name")).toBe("mdb-bg-green");
+    expect(borderActive[0].getAttribute("data-class-name")).toBe(
+      "mdb-border-green",
+    );
+    // text 未变：字体行仍选中 gray。
+    const textActive = root.querySelectorAll(
+      '.cm-color-row[data-kind="font"] .cm-color-swatch[data-active="true"]',
+    );
+    expect(textActive).toHaveLength(1);
+    expect(textActive[0].getAttribute("data-class-name")).toBe("mdb-color-gray");
+  });
+
+  it("点选色后 data-active 原地刷新（节点未重建）", () => {
+    const root = buildCalloutColorPanel({
+      active: { bg: "red" },
+      onPick: () => {},
+      onReset: () => {},
+      onRandom: () => null,
+    });
+    const bgRow = root.querySelector('.cm-color-row[data-kind="background"]')!;
+    const oldSwatch = Array.from(
+      bgRow.querySelectorAll<HTMLButtonElement>(".cm-color-swatch"),
+    ).find((s) => s.dataset.className === "mdb-bg-red")!;
+    const newSwatch = Array.from(
+      bgRow.querySelectorAll<HTMLButtonElement>(".cm-color-swatch"),
+    ).find((s) => s.dataset.className === "mdb-bg-green")!;
     expect(oldSwatch.dataset.active).toBe("true");
-    expect(newSwatch.dataset.active).toBe("false");
+
+    mousedown(newSwatch);
+
+    expect(oldSwatch.dataset.active).toBe("false");
+    expect(newSwatch.dataset.active).toBe("true");
+    expect(
+      root.querySelector('.cm-color-row[data-kind="background"]'),
+    ).toBe(bgRow);
+  });
+});
+
+describe("randomCalloutColors（#1677）", () => {
+  const DOC = "> [!NOTE]{text=gray} 标题\n> 正文";
+
+  let parent: HTMLElement;
+  let view: EditorView | undefined;
+
+  afterEach(() => {
+    view?.destroy();
+    parent.remove();
+  });
+
+  function createEditor(doc: string): EditorView {
+    parent = document.createElement("div");
+    document.body.appendChild(parent);
+    view = new EditorView({
+      parent,
+      state: EditorState.create({ doc, extensions: [markdown()] }),
+    });
+    return view;
+  }
+
+  it("随机写回同名 bg 与 border，text 不变，一次事务", async () => {
+    const editor = createEditor(DOC);
+    const from = 0;
+    const to = editor.state.doc.length;
+    const changed = randomCalloutColors(editor, from, to);
+    expect(changed).not.toBeNull();
+    const text = editor.state.doc.toString();
+    const m = /\{bg=([a-z]+) border=([a-z]+) text=([a-z]+)\}/.exec(text);
+    expect(m).not.toBeNull();
+    expect(m![1]).toBe(m![2]);
+    expect(m![3]).toBe("gray");
   });
 });

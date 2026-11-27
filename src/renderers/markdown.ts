@@ -747,6 +747,46 @@ function postProcess(html: string): string {
 // ] 前可带空白（如 [!TL;DR]、[! TL]、[!NOTE ]），大小写不敏感。
 const CALLOUT_HEAD = /^\[!\s*([^\]\r\n]+?)\s*\]([+-]?)(\{[^}]*\})?/;
 
+/**
+ * 把文本节点里的 `\n` 换成 `<br>`（纯高亮 / 标注正文多行不再合并成一段）。
+ *
+ * marked 默认不开 breaks，软换行输出的是换行符；预览若折叠成空格，连续 `>`
+ * 行会排成一段话。规则：对第 i>0 段，若 `i < parts.length-1 || parts[i] !== ""`
+ * 先插 `<br>`，再在 part 非空时插入文本节点——即只在段间插 `<br>`，段首/段尾
+ * 的多余换行不产生空行。纯空白文本节点不动；PRE/CODE/SCRIPT/STYLE/TEXTAREA
+ * 子树整体跳过。
+ */
+function insertSoftBreaks(root: Node): void {
+  const doc = root.ownerDocument ?? (root as Document);
+  if (!doc) return;
+  const walker = doc.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const targets: Text[] = [];
+  let node: Node | null;
+  while ((node = walker.nextNode())) {
+    const text = node as Text;
+    const parent = text.parentElement;
+    if (!parent || parent.closest("pre, code, script, style, textarea")) {
+      continue;
+    }
+    const value = text.nodeValue ?? "";
+    if (!value.includes("\n")) continue;
+    if (text.textContent?.trim() === "") continue;
+    targets.push(text);
+  }
+
+  for (const text of targets) {
+    const parts = (text.nodeValue ?? "").split("\n");
+    const frag = doc.createDocumentFragment();
+    parts.forEach((part, i) => {
+      if (i > 0 && (i < parts.length - 1 || part !== "")) {
+        frag.appendChild(doc.createElement("br"));
+      }
+      if (part !== "") frag.appendChild(doc.createTextNode(part));
+    });
+    text.replaceWith(frag);
+  }
+}
+
 function convertCallouts(doc: Document): void {
   // 每个「合法类型」的引用块式 callout 占一个序号（与编辑态 `findCalloutBlocks`
   // 的顺序一致），这样 emoji 覆盖快照才能对上位次。非法类型既不渲染成卡片、
@@ -799,7 +839,7 @@ function convertCallouts(doc: Document): void {
     if (vars.text) el.style.setProperty("--callout-text", vars.text);
 
     if (isMark) {
-      // 纯高亮：无标题行、无左边框，emoji 内联在正文首行前（豆包同款）。
+      // 纯高亮：无标题行、四边 1px 细边，emoji 内联在正文首行前（豆包同款）。
       // 覆盖快照按位次取，缺省回落类型默认 emoji（highlight 恒有 icon）。
       const emoji = activeCalloutEmoji[index] ?? resolved.icon;
       el.setAttribute("data-callout-emoji", emoji);
@@ -815,6 +855,7 @@ function convertCallouts(doc: Document): void {
         wrap.innerHTML = bodyHtml;
         while (wrap.firstChild) body.appendChild(wrap.firstChild);
       }
+      insertSoftBreaks(body);
       el.appendChild(body);
       bq.replaceWith(el);
       return;
@@ -830,6 +871,7 @@ function convertCallouts(doc: Document): void {
     if (bodyHtml) {
       const wrap = doc.createElement("div");
       wrap.innerHTML = bodyHtml;
+      insertSoftBreaks(wrap);
       while (wrap.firstChild) el.appendChild(wrap.firstChild);
     }
 
