@@ -1422,8 +1422,19 @@ export function openImageMaximize(
 
   const controls = document.createElement("div");
   controls.dataset.testid = "img-max-controls";
+  // 按钮条默认淡出（#1603 用户方案）：鼠标进入浮层即显、移出 1.2s 后淡出——
+  // 平时不遮挡大图，也避免误触背景复位。显隐走 CSS class（img-max-controls
+  // 的过渡在 editor.css），由 overlay 的 pointerenter/leave 翻转。
   controls.style.cssText =
-    "position:absolute;bottom:24px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:2;padding:6px;border:1px solid var(--app-border);border-radius:var(--app-radius);background:var(--app-surface);box-shadow:var(--app-shadow);";
+    "position:absolute;bottom:24px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:2;padding:6px;border:1px solid var(--app-border);border-radius:var(--app-radius);background:var(--app-surface);box-shadow:var(--app-shadow);opacity:0;transition:opacity 200ms ease;pointer-events:none;";
+  const showControls = (): void => {
+    controls.style.opacity = "1";
+    controls.style.pointerEvents = "auto";
+  };
+  const hideControls = (): void => {
+    controls.style.opacity = "0";
+    controls.style.pointerEvents = "none";
+  };
 
   // 「恢复原始尺寸」固定为工具条第一位（#1615）。
   controls.appendChild(
@@ -1502,6 +1513,14 @@ export function openImageMaximize(
     ),
   );
   overlay.appendChild(controls);
+  overlay.addEventListener("pointerenter", showControls);
+  overlay.addEventListener("pointerleave", () => {
+    // 移出浮层才淡出；在按钮条内移动（leave 到子元素再回来）靠 pointerenter 复显。
+    window.setTimeout(() => {
+      if (!controls.matches(":hover")) hideControls();
+    }, 1200);
+  });
+  controls.addEventListener("pointerenter", showControls);
   maximizeRefreshUi = refreshZoomUi;
   renderCurrent();
 
@@ -1518,8 +1537,19 @@ export function openImageMaximize(
     }
     closeImageMaximize();
   });
-  // 双击恢复原始尺寸（design D16），不当关闭用。
-  overlay.addEventListener("dblclick", () => {
+  // 双击恢复原始尺寸（design D16），不当关闭用。排除按钮条/导航上的双击：
+  // 连击 ± 的 dblclick 冒泡到这里会把刚放大的缩放打回 100%（#1603 真机
+  // 「连击 2 次按钮回到 100%」）。双击图片/背景仍复位——图片铺满浮层，
+  // 按 target===overlay 判会把图片上的双击一并排除（既有验收依赖它）。
+  overlay.addEventListener("dblclick", (event) => {
+    if (
+      event.target instanceof Element &&
+      event.target.closest(
+        '[data-testid="img-max-controls"], [data-testid="img-max-nav"]',
+      )
+    ) {
+      return;
+    }
     maximizeTransform = { scale: 1, tx: 0, ty: 0, rotation: 0 };
     maximizeResetIntent = true;
     maximizeApplyTransform();

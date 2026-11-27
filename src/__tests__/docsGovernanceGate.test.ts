@@ -202,10 +202,12 @@ describe("applyAllowlistToLegacy", () => {
 
 describe("needsReviewReport", () => {
   // 该用例扫描整个仓库的文档与 MIGRATION-MAP，CI（2 核 + coverage 插桩）
-  // 实测 9s+，超过 5s 默认超时。放宽到 30s：断言不变，只承载真实 I/O 耗时。
+  // 实测 9s+，超过 5s 默认超时。放宽到 30s 后随仓库文档增长（batch23 收口
+  // 入库证据 md 等）全量并发 I/O 争用下再次触顶——放宽到 90s：断言不变，
+  // 只承载真实 I/O 耗时。
   it(
     "MIGRATION-MAP needs-review 条目 > 0 且与交叉核对一致（全被跟踪）",
-    { timeout: 30_000 },
+    { timeout: 90_000 },
     () => {
       const rep = needsReviewReport(projectRoot);
       expect(rep.affectsExitCode).toBe(false);
