@@ -97,31 +97,25 @@ test("保存后切预览再切编辑，点添加描述预填原内容且不丢",
   });
   await page.waitForTimeout(120);
 
-  // 重新选中并点「添加描述」：输入框出现且预填原内容
+  // 重新选中：描述开关跨选中/模式切换持久（十二轮语义），按钮已是选中态
   await page.locator(".cm-image-widget").click();
-  await page.getByTestId("img-toolbar-comment").click();
-  const reopened = page.locator('[data-testid="img-caption-input"]:visible');
-  await expect(reopened).toHaveCount(1);
-  const diag = await page.evaluate(() => {
-    const w = document.querySelector<HTMLElement>(".cm-image-widget");
-    const i = document.querySelector<HTMLInputElement>(
-      ".cm-image-caption-input",
-    );
-    return {
-      widgetTitle: w?.dataset.imageTitle,
-      inputValue: i?.value,
-      content: (window as any).__biaoyue_store__.getState().tabs[
-        (window as any).__biaoyue_store__.getState().activeTabId
-      ]?.content,
-    };
-  });
-  console.log("DIAG:", JSON.stringify(diag));
-  await expect(reopened).toHaveValue("诊断描述");
+  await expect(page.getByTestId("img-toolbar-comment")).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect(page.locator('[data-testid="img-caption"]')).toBeVisible();
 
-  // 再点一次收起（切换语义），内容仍在文档里
+  // 关一下再开：输入框出现且预填原内容
   await page.getByTestId("img-toolbar-comment").click();
   await expect(
     page.locator('[data-testid="img-caption-input"]:visible'),
   ).toHaveCount(0);
+  await page.getByTestId("img-toolbar-comment").click();
+  const reopened = page.locator('[data-testid="img-caption-input"]:visible');
+  await expect(reopened).toHaveCount(1);
+  await expect(reopened).toHaveValue("诊断描述");
+
+  // 收尾：内容仍在文档里
+  await page.getByTestId("img-toolbar-comment").click();
   await expect.poll(() => content(page)).toContain('"诊断描述"');
 });
