@@ -184,3 +184,22 @@ await page.mouse.up();
 await expect(img).toHaveCSS("cursor", "grab");
 ```
 Scenario 对照：描述点外面保持选中（十轮真机）；放大层按住拖动指针（十轮）。
+
+## 十一轮（r11）机读断言摘录
+```
+// caption-toggle-semantics.spec.ts（描述开着点外面：多次也不丢选中；关掉才退出）
+for (let i = 0; i < 2; i += 1) {
+  await clickOutside();
+  await expect(page.locator(".cm-image-widget")).toHaveAttribute("data-selected", "true");
+  await expect(commentBtn(page)).toHaveAttribute("aria-pressed", "true");
+}
+await commentBtn(page).click();          // 关闭描述
+await clickOutside();
+await expect(page.locator(".cm-image-widget")).toHaveAttribute("data-selected", "false");
+
+// maximize-multinav.spec.ts（切裁剪图不闪未裁剪帧）
+await page.getByTestId("img-max-prev").click();
+expect(["hidden", "visible"]).toContain(hiddenAtSwap);   // 绘制前不展示兜底画面
+await expect.poll(...视觉可见性...).toBe("visible");     // 绘制完成才显示
+```
+Scenario 对照：描述选中在点外面时不丢（十一轮真机）；裁剪图切换无中间帧闪切（十一轮）。

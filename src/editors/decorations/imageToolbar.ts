@@ -282,6 +282,8 @@ let captionJustSaved = false;
 let captionActiveInput: HTMLInputElement | null = null;
 /** 当前输入的提交收尾（finish 完整路径：写回 + 移除输入框 + 刷新显隐）。 */
 let captionCommitActive: (() => void) | null = null;
+/** 输入框自带提交收尾（createCaptionInput 的 finish 闭包）。 */
+type CaptionInputEl = HTMLInputElement & { __commit?: () => void };
 
 const CAPTION_PLACEHOLDER = "输入图片描述";
 
@@ -457,8 +459,10 @@ function createCaptionInput(
   input.placeholder = CAPTION_PLACEHOLDER;
   input.setAttribute("aria-label", "图片描述");
   input.addEventListener("mousedown", (event) => event.stopPropagation());
-  captionActiveInput = input;
-  captionCommitActive = () => finish(input.value.trim());
+  // 提交回调挂在输入框自身上；**登记为活跃**只在真正显示时做（showCaptionInput），
+  // 否则 widget 重建产生的 display:none 空框会顶替正在编辑的框，点外面时
+  // 判定不到可见框 → 不吸收点击 → 图片被 deselect（#1603 十一轮真机）。
+  (input as CaptionInputEl).__commit = () => finish(input.value.trim());
 
   const finish = (value: string): void => {
     input.dataset.finishing = "1";
@@ -469,8 +473,10 @@ function createCaptionInput(
       captionJustSaved = true;
       actions.onImageSetTitle?.(from, value);
     }
-    captionActiveInput = null;
-    captionCommitActive = null;
+    if (captionActiveInput === input) captionActiveInput = null;
+    if (captionCommitActive === (input as CaptionInputEl).__commit) {
+      captionCommitActive = null;
+    }
     input.remove();
     // 文本态同步为新值：不刷新会保留打开输入框前的旧文本/占位符，
     // 用户看到「保存了但描述行没变」（#1603 九轮反馈）。
@@ -495,6 +501,10 @@ function createCaptionInput(
     } else if (event.key === "Escape") {
       event.preventDefault();
       input.dataset.finishing = "1";
+      if (captionActiveInput === input) captionActiveInput = null;
+      if (captionCommitActive === (input as CaptionInputEl).__commit) {
+        captionCommitActive = null;
+      }
       setCaptionText(caption, widgetEl.dataset.imageTitle ?? "");
       input.remove();
       showCaptionText(caption);
@@ -520,6 +530,9 @@ function showCaptionInput(caption: HTMLElement, widgetEl: HTMLElement): void {
   delete input.dataset.closing;
   delete input.dataset.finishing;
   input.style.display = "";
+  // 显示即登记（与上面对称）：这是唯一能被「点外面」提交的输入框。
+  captionActiveInput = input;
+  captionCommitActive = (input as CaptionInputEl).__commit ?? null;
   input.value = widgetEl.dataset.imageTitle ?? "";
   input.focus();
   input.select();
@@ -1387,6 +1400,9 @@ export function openImageMaximize(
         img.style.objectPosition = `${-l}px ${-t}px`;
         img.style.width = `${w}px`;
         img.style.height = `${h}px`;
+        // 画布重绘完成前隐藏兜底画面（十一轮真机「切到裁剪图先闪一张不同
+        // 尺寸的原图」）：保留布局尺寸避免跳版，但不展示错误内容。
+        img.style.visibility = "hidden";
         // 随后用画布按裁剪矩形重绘（双击放大应看到「裁出来的那块」，与编辑态
         // 同一区域），替换 src；画布被污染或来源未解码时保留兜底渲染。
         const target = img;
@@ -1418,9 +1434,20 @@ export function openImageMaximize(
             target.style.objectPosition = "";
             target.style.width = "";
             target.style.height = "";
+            // 解码完成再显示：src 替换后仍需一帧解码，提前显示会闪一下空白。
+            void target
+              .decode()
+              .catch(() => undefined)
+              .then(() => {
+                if (maximizeImg === target) target.style.visibility = "";
+              });
           } catch {
             /* tainted canvas：保留 1:1 兜底渲染 */
+            target.style.visibility = "";
           }
+        };
+        source.onerror = () => {
+          if (maximizeImg === target) target.style.visibility = "";
         };
         source.src = current.src;
       }
@@ -1681,6 +1708,10 @@ if (typeof document !== "undefined") {
       captionJustSaved = false;
       return;
     }
+    // 描述区开着（按钮选中）时，点外面一律只保存/保持，不取消选中——
+    // 用户十一轮明确：按钮选中期间点外面不能把选中态丢掉。关闭描述只能
+    // 通过再点一次按钮；关闭后点外面才退出选中。
+    if (captionVisible) return;
     deselectImage();
   });
   window.addEventListener("resize", () => {
