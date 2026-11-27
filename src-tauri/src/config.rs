@@ -654,7 +654,8 @@ pub fn validate_config(config: &AppConfig) -> Result<(), AppError> {
     check_enum(
         "readerSkin",
         config.reader_skin.as_deref(),
-        &["paper", "plain"],
+        // plain 为历史值：继续接受，保证老配置可读；新 UI 不提供该选项。
+        &["paper", "indigo", "moss", "clay", "plain"],
     )?;
     check_enum(
         "paneMode",
@@ -1222,7 +1223,7 @@ const SKILL_MAP: &str = r#"# Biaoyue 配置地图
 | `horizontalSplitRatio` / `verticalSplitRatio` | 0–1 |
 | `theme` | `light` / `dark` / `warm` / `system` |
 | `aiConfirmDensity` | `always` / `session-silent` / `never` |
-| `readerSkin` | `paper` / `plain` |
+| `readerSkin` | `paper` / `indigo` / `moss` / `clay`（兼容 `plain`） |
 | `paneMode` | `simple` / `standard` / `hardcore` |
 | `paneScale` | `small` / `medium` / `large` |
 | `propertyBar.displayStyle` | `list` / `dual` |
@@ -1575,9 +1576,13 @@ mod tests {
         config.ai_confirm_density = Some("always".into());
         assert!(validate_config(&config).is_ok());
 
-        config.reader_skin = Some("indigo".into());
+        for skin in ["paper", "indigo", "moss", "clay", "plain"] {
+            config.reader_skin = Some(skin.into());
+            assert!(validate_config(&config).is_ok(), "{skin} 应被接受");
+        }
+        config.reader_skin = Some("neon".into());
         assert!(validate_config(&config).is_err());
-        config.reader_skin = Some("plain".into());
+        config.reader_skin = Some("paper".into());
         assert!(validate_config(&config).is_ok());
 
         config.horizontal_split_ratio = Some(1.5);
@@ -1619,6 +1624,24 @@ mod tests {
         let err = save_config_at(base, &config).unwrap_err();
 
         assert!(matches!(err, AppError::Validation { .. }), "got {err:?}");
+        assert_eq!(read_user(base), before, "拒绝后 user 层必须零写盘");
+    }
+
+    #[test]
+    fn reader_skin_unknown_rejected_without_writing() {
+        let dir = temp_base("reader_skin");
+        let base = dir.path();
+        write_user(base, r#"{"theme":"light"}"#);
+        let before = read_user(base);
+
+        let mut config = AppConfig::default();
+        config.reader_skin = Some("neon".into());
+        let err = save_config_at(base, &config).unwrap_err();
+        assert!(matches!(err, AppError::Validation { .. }), "got {err:?}");
+        assert!(
+            format!("{err:?}").contains("readerSkin"),
+            "错误应指明 readerSkin: {err:?}"
+        );
         assert_eq!(read_user(base), before, "拒绝后 user 层必须零写盘");
     }
 
