@@ -3761,8 +3761,12 @@ html[data-tab-drag="true"] body * {
   z-index: 3200;
 }
 
+/* 纯高亮面板宽 216px（D4）：双类名（0,2,0）压过 `.cm-callout-color-pop-floating`
+   的 min-width:448（0,1,0）；border-box 下 padding 4 使内容 206px ≥ 8×22+7×4=204。 */
 .cm-callout-color-pop.cm-callout-color-pop-mark {
-  width: 448px;
+  width: 216px;
+  min-width: 216px;
+  padding: 4px;
 }
 
 .cm-callout-color-pop .cm-color-row {
@@ -3778,10 +3782,6 @@ html[data-tab-drag="true"] body * {
 .cm-callout-color-pop .cm-color-row-label {
   font-size: 11px;
   color: var(--app-text-2);
-}
-
-.cm-callout-color-pop-mark {
-  width: 216px;
 }
 
 .cm-color-panel-head {
@@ -3816,13 +3816,14 @@ html[data-tab-drag="true"] body * {
 
 .cm-highlight-color-panel .cm-color-row {
   flex-wrap: nowrap;
-  gap: 8px;
+  gap: 4px;
 }
 
-/* 豆包面板观感：44px 宽扁矩形色块，一格一色，行内不换行。 */
+/* 豆包面板观感：22×20 小色块（原 44×40 的 1/4 面积），一格一色，行内不换行。 */
 .cm-highlight-color-panel .cm-color-swatch {
-  width: 44px;
-  height: 40px;
+  flex: 0 0 22px;
+  width: 22px;
+  height: 20px;
   border-radius: 4px;
 }
 

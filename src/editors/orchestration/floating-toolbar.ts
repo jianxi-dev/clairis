@@ -358,6 +358,8 @@ function createCalloutBar(
             active,
             onPick,
             onReset,
+            getActive: () =>
+              getCalloutAttrs(view.state.doc.sliceString(block.from, block.to)),
             onRandom: () => {
               randomHighlightColors(view, block.from, block.to);
             },

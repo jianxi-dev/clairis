@@ -5,7 +5,10 @@ import {
   HIGHLIGHT_FILL_MID,
   HIGHLIGHT_FONT_COLORS,
 } from "../../editors/orchestration/color-palette";
-import { buildHighlightColorPanel } from "../../editors/orchestration/callout-color-panel";
+import {
+  buildHighlightColorPanel,
+  pickHighlightFamily,
+} from "../../editors/orchestration/callout-color-panel";
 import {
   attrNameFromClassName,
   getCalloutAttrs,
@@ -145,6 +148,92 @@ describe("高亮填充解析只查填充表", () => {
   it("border=gray 解析为边框色而非填充色", () => {
     const vars = highlightCssVars({ border: "gray" });
     expect(vars.border).toBe("var(--hl-border-gray)");
+  });
+});
+
+describe("选中态即时刷新（D5）", () => {
+  const mousedown = (el: Element): void => {
+    el.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+  };
+
+  it("点击色块后旧格 false、新格 true，面板节点仍在文档中", () => {
+    let current: { bg?: string } = { bg: "darkred" };
+    const host = document.createElement("div");
+    const root = buildHighlightColorPanel({
+      active: { bg: "darkred" },
+      getActive: () => current,
+      onPick: (_key, className) => {
+        current = { bg: className === "" ? undefined : "darkgreen" };
+      },
+      onReset: () => {},
+      onRandom: () => {},
+    });
+    host.appendChild(root);
+    document.body.appendChild(host);
+
+    const deepRow = root.querySelector('.cm-color-row[data-kind="background"]')!;
+    const swatches =
+      deepRow.querySelectorAll<HTMLButtonElement>(".cm-color-swatch");
+    const oldSwatch = Array.from(swatches).find(
+      (s) => s.dataset.className === "hl-fill-darkred",
+    )!;
+    const newSwatch = Array.from(swatches).find(
+      (s) => s.dataset.className === "hl-fill-darkgreen",
+    )!;
+    expect(oldSwatch.dataset.active).toBe("true");
+
+    mousedown(newSwatch);
+
+    expect(oldSwatch.dataset.active).toBe("false");
+    expect(newSwatch.dataset.active).toBe("true");
+    expect(host.contains(root)).toBe(true);
+    expect(root.isConnected).toBe(true);
+    host.remove();
+  });
+
+  it("「随机」后 bg 与 border 两个选中态同时刷新", () => {
+    let current: { bg?: string; border?: string } = {
+      bg: "darkred",
+      border: "red",
+    };
+    const root = buildHighlightColorPanel({
+      active: { bg: "darkred", border: "red" },
+      getActive: () => current,
+      onPick: () => {},
+      onReset: () => {},
+      onRandom: () => {
+        current = { bg: "darkgreen", border: "green" };
+      },
+    });
+
+    mousedown(root.querySelector('[data-testid="color-random"]')!);
+
+    const borderActive = root.querySelectorAll(
+      '.cm-color-row[data-kind="border"] .cm-color-swatch[data-active="true"]',
+    );
+    expect(borderActive).toHaveLength(1);
+    expect(borderActive[0].getAttribute("data-class-name")).toBe(
+      "hl-border-green",
+    );
+    const bgActive = root.querySelectorAll(
+      '.cm-color-row[data-kind="background"] .cm-color-swatch[data-active="true"]',
+    );
+    expect(bgActive).toHaveLength(1);
+    expect(bgActive[0].getAttribute("data-class-name")).toBe(
+      "hl-fill-darkgreen",
+    );
+  });
+});
+
+describe("随机高亮家族识别", () => {
+  it("{bg=darkred border=red} 识别为 red，随机不返回 red", () => {
+    const family = pickHighlightFamily({ bg: "darkred", border: "red" }, () => 0);
+    expect(family.key).not.toBe("red");
+  });
+
+  it("{bg=red border=red} 识别为 red，随机不返回 red", () => {
+    const family = pickHighlightFamily({ bg: "red", border: "red" }, () => 0);
+    expect(family.key).not.toBe("red");
   });
 });
 

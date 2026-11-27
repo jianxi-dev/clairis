@@ -86,3 +86,109 @@ describe("纯高亮随机与面板", () => {
     }
   });
 });
+
+describe("选中态即时刷新（D5）", () => {
+  const mousedown = (el: Element): void => {
+    el.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+  };
+
+  it("点击色块后旧格 false、新格 true，节点未重建", () => {
+    let current: { bg?: string } = { bg: "darkred" };
+    const root = buildHighlightColorPanel({
+      active: { bg: "darkred" },
+      getActive: () => current,
+      onPick: (_key, className) => {
+        current = { bg: className === "" ? undefined : "darkgreen" };
+      },
+      onReset: () => {},
+      onRandom: () => {},
+    });
+    const deepRow = root.querySelector('.cm-color-row[data-kind="background"]')!;
+    const swatches = deepRow.querySelectorAll<HTMLButtonElement>(
+      ".cm-color-swatch",
+    );
+    const oldSwatch = Array.from(swatches).find(
+      (s) => s.dataset.className === "hl-fill-darkred",
+    )!;
+    const newSwatch = Array.from(swatches).find(
+      (s) => s.dataset.className === "hl-fill-darkgreen",
+    )!;
+    expect(oldSwatch.dataset.active).toBe("true");
+    expect(newSwatch.dataset.active).toBe("false");
+
+    mousedown(newSwatch);
+
+    expect(oldSwatch.dataset.active).toBe("false");
+    expect(newSwatch.dataset.active).toBe("true");
+    // 节点身份不变 = 未重建面板。
+    expect(
+      root.querySelector('.cm-color-row[data-kind="background"]'),
+    ).toBe(deepRow);
+    expect(
+      deepRow.querySelectorAll(".cm-color-swatch")[0],
+    ).toBe(swatches[0]);
+  });
+
+  it("「随机」后边框行与两行填充的选中态同时刷新", () => {
+    let current: { bg?: string; border?: string } = {
+      bg: "darkred",
+      border: "red",
+    };
+    const root = buildHighlightColorPanel({
+      active: { bg: "darkred", border: "red" },
+      getActive: () => current,
+      onPick: () => {},
+      onReset: () => {},
+      onRandom: () => {
+        current = { bg: "darkgreen", border: "green" };
+      },
+    });
+    const activeBefore = () =>
+      Array.from(
+        root.querySelectorAll('.cm-color-swatch[data-active="true"]'),
+      ).map((el) => el.getAttribute("data-class-name"));
+    const before = activeBefore();
+    expect(before).toContain("hl-border-red");
+    expect(before).toContain("hl-fill-darkred");
+
+    mousedown(root.querySelector('[data-testid="color-random"]')!);
+
+    const borderActive = root.querySelectorAll(
+      '.cm-color-row[data-kind="border"] .cm-color-swatch[data-active="true"]',
+    );
+    expect(borderActive).toHaveLength(1);
+    expect(borderActive[0].getAttribute("data-class-name")).toBe(
+      "hl-border-green",
+    );
+    const bgActive = root.querySelectorAll(
+      '.cm-color-row[data-kind="background"] .cm-color-swatch[data-active="true"]',
+    );
+    expect(bgActive).toHaveLength(1);
+    expect(bgActive[0].getAttribute("data-class-name")).toBe(
+      "hl-fill-darkgreen",
+    );
+    // 与点击前不同。
+    expect(activeBefore()).not.toEqual(before);
+  });
+
+  it("未提供 getActive 时保持构建时的一次性计算（向后兼容）", () => {
+    const root = buildHighlightColorPanel({
+      active: { bg: "darkred" },
+      onPick: () => {},
+      onReset: () => {},
+      onRandom: () => {},
+    });
+    const deepRow = root.querySelector('.cm-color-row[data-kind="background"]')!;
+    const oldSwatch = Array.from(
+      deepRow.querySelectorAll<HTMLButtonElement>(".cm-color-swatch"),
+    ).find((s) => s.dataset.className === "hl-fill-darkred")!;
+    const newSwatch = Array.from(
+      deepRow.querySelectorAll<HTMLButtonElement>(".cm-color-swatch"),
+    ).find((s) => s.dataset.className === "hl-fill-darkgreen")!;
+
+    mousedown(newSwatch);
+
+    expect(oldSwatch.dataset.active).toBe("true");
+    expect(newSwatch.dataset.active).toBe("false");
+  });
+});
