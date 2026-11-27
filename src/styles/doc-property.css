@@ -72,9 +72,9 @@
 }
 
 .dpb-bool-on {
-  background: var(--app-accent);
-  border-color: var(--app-accent);
-  color: #fff;
+  background: var(--app-accent-fill);
+  border-color: var(--app-accent-fill);
+  color: var(--app-on-accent);
 }
 
 /* ── 标签胶囊 ───────────────────────────────────────────── */
@@ -867,9 +867,9 @@
 }
 
 .dpb-dt-cell-sel {
-  background: var(--app-accent);
-  border-color: var(--app-accent);
-  color: #fff;
+  background: var(--app-accent-fill);
+  border-color: var(--app-accent-fill);
+  color: var(--app-on-accent);
 }
 
 .dpb-dt-blank {
@@ -1001,9 +1001,9 @@
 }
 
 .dpb-switch.dpb-switch-on {
-  background: var(--app-accent);
-  border-color: var(--app-accent);
-  color: #fff;
+  background: var(--app-accent-fill);
+  border-color: var(--app-accent-fill);
+  color: var(--app-on-accent);
 }
 
 /* 错误色（design-system §6）：红只用于错误，两主题各一值。 */

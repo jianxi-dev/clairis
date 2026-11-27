@@ -20,6 +20,11 @@
   --type-audio: #ec4899;
   --app-accent: #6366f1;
   --app-accent-soft: rgba(99, 102, 241, 0.1);
+  /* --app-accent 保持品牌交互信号（focus ring / 选中指示），不因对比度改动；
+     --app-accent-fill 专用于 accent 作实底时的填充；--app-on-accent 是填充上的文字色。
+     三主题组合均 ≥4.5，见 spec §7.8。 */
+  --app-accent-fill: #5c5fee;
+  --app-on-accent: #ffffff;
 
   --app-bg: #f7f7f6;
   --app-surface: #fbfaf8;
@@ -102,6 +107,8 @@
 .dark {
   --app-accent: #818cf8;
   --app-accent-soft: rgba(129, 140, 248, 0.14);
+  --app-accent-fill: #818cf8;
+  --app-on-accent: #16181c;
 
   --app-bg: #131316;
   --app-surface: #1a1b1e;
@@ -134,6 +141,8 @@
 .warm {
   --app-accent: #0071e3;
   --app-accent-soft: rgba(0, 113, 227, 0.08);
+  --app-accent-fill: #0071e3;
+  --app-on-accent: #ffffff;
 
   --app-bg: #f2e9da;
   --app-surface: #fbf4e8;

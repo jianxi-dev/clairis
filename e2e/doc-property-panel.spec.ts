@@ -2,6 +2,7 @@ import { test, expect, type Locator, type Page } from "@playwright/test";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { tagColor } from "../src/lib/frontmatter";
+import { revealStatusBar } from "./helpers/ui-probe";
 
 /**
  * 文档属性面板首通（#973 / P-1、P-10）真实浏览器用例。
@@ -6021,4 +6022,159 @@ test("#1316 下拉选项不新增持久化键与设置项", async ({ page }) => 
   expect(after.filter((k) => /option/i.test(k))).toEqual([]);
   expect(await settingsText()).toBe(settingsBefore);
   await dpbRecord(page, "1316", "06-no-persist");
+});
+
+/** 真实主题切换：悬停状态栏主题入口 → 选目标项（与 app.spec.ts 同路径）。 */
+async function switchTheme(page: Page, target: "light" | "dark" | "warm") {
+  await revealStatusBar(page);
+  await page.getByTestId("theme-entry").hover();
+  await page.getByTestId(`theme-option-${target}`).click();
+}
+
+/**
+ * 读布尔开关选中态的计算色，以及 html 上解析后的 --app-on-accent / --app-accent-fill。
+ * probe 挂 documentElement（与元素同作用域），保证自定义属性可见；必须先给一个
+ * 确定的 color，否则 var() 落在继承来的 color 上会解析成初始值（rgb(0,0,0)）而非 token 值。
+ */
+async function readBoolOn(page: Page): Promise<{
+  color: string;
+  onAccent: string;
+  accentFill: string;
+}> {
+  return page.evaluate(() => {
+    const el = document.querySelector(
+      '[data-key="published"] .dpb-bool-on',
+    ) as HTMLElement;
+    const probe = document.createElement("span");
+    probe.style.color = "rgb(1, 2, 3)";
+    document.documentElement.appendChild(probe);
+    probe.style.color = "var(--app-on-accent)";
+    const onAccent = getComputedStyle(probe).color;
+    probe.style.color = "var(--app-accent-fill)";
+    const accentFill = getComputedStyle(probe).color;
+    probe.remove();
+    return { color: getComputedStyle(el).color, onAccent, accentFill };
+  });
+}
+
+/** 计算两个 rgb/rgba 色值的 WCAG 对比度。 */
+function contrastRgb(a: string, b: string): number {
+  const parse = (v: string) => {
+    const m = v.match(/rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)/);
+    if (!m) throw new Error(`无法解析颜色 ${v}`);
+    return [Number(m[1]), Number(m[2]), Number(m[3])];
+  };
+  const lum = (c: number[]) => {
+    const ch = (x: number) => {
+      const s = x / 255;
+      return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+    };
+    return 0.2126 * ch(c[0]) + 0.7152 * ch(c[1]) + 0.0722 * ch(c[2]);
+  };
+  const l1 = lum(parse(a));
+  const l2 = lum(parse(b));
+  const hi = Math.max(l1, l2);
+  const lo = Math.min(l1, l2);
+  return (hi + 0.05) / (lo + 0.05);
+}
+
+test("#1647 暗色主题：开关选中态文字等于 --app-on-accent 且对比度 ≥ 4.5", async ({
+  page,
+}) => {
+  await openDoc(page);
+  const a = panel(page, "A");
+  const boolOn = a.locator('[data-key="published"] .dpb-bool-on');
+  await expect(boolOn).toHaveText("◉");
+
+  // 亮色基线：实底文字 = --app-on-accent
+  await dpbRecord(page, "1647", "light-bool-on");
+  const light = await page.evaluate(() => {
+    const el = document.querySelector(
+      '[data-key="published"] .dpb-bool-on',
+    ) as HTMLElement;
+    const root = getComputedStyle(document.documentElement);
+    return {
+      color: getComputedStyle(el).color,
+      onAccent: root.getPropertyValue("--app-on-accent").trim(),
+      accentFill: root.getPropertyValue("--app-accent-fill").trim(),
+    };
+  });
+  expect(light.color).toBeTruthy();
+
+  // 暗色：经真实 UI 切换
+  await switchTheme(page, "dark");
+  await expect(page.locator("html")).toHaveClass(/dark/);
+  await dpbRecord(page, "1647", "dark-bool-on");
+
+  const dark = await readBoolOn(page);
+  expect(dark.color).toBe(dark.onAccent);
+  const ratio = contrastRgb(dark.color, dark.accentFill);
+  console.log(
+    `#1647 暗色开关文字 ${dark.color} on accent-fill ${dark.accentFill} 对比度 ${ratio.toFixed(2)}（阈值 4.5）`,
+  );
+  expect(ratio).toBeGreaterThanOrEqual(4.5);
+
+  // 暖色：同一 token 组合仍达标
+  await switchTheme(page, "warm");
+  await expect(page.locator("html")).toHaveClass(/warm/);
+  await dpbRecord(page, "1647", "warm-bool-on");
+  const warm = await readBoolOn(page);
+  expect(warm.color).toBe(warm.onAccent);
+  const warmRatio = contrastRgb(warm.color, warm.accentFill);
+  console.log(
+    `#1647 暖色开关文字 ${warm.color} on accent-fill ${warm.accentFill} 对比度 ${warmRatio.toFixed(2)}（阈值 4.5）`,
+  );
+  expect(warmRatio).toBeGreaterThanOrEqual(4.5);
+
+  // 第 4 态：暗色日期选中格（同一 --app-on-accent 消费点）
+  await switchTheme(page, "dark");
+  await expect(page.locator("html")).toHaveClass(/dark/);
+  await expect(page.getByTestId("theme-menu")).toHaveCount(0);
+  await openDoc(page, EXTERNAL_DOC, "/Users/test/1647-date.md");
+  await setMode(page, "edit");
+  await expect(
+    panel(page, "A").locator('[data-key="createdate"]'),
+  ).toBeVisible();
+  const row = panel(page, "A").locator('[data-key="createdate"]');
+  await row.locator('[data-testid="dpb-value"]').click();
+  const editor = row.locator('[data-testid="dpb-datetime-editor"]');
+  await expect(editor).toHaveCount(1);
+  const selCell = editor.locator(".dpb-dt-cell-sel").first();
+  await expect(selCell).toHaveCount(1);
+  await dpbRecord(page, "1647", "dark-date-cell");
+  const dateColor = await page.evaluate(() => {
+    const el = document.querySelector(".dpb-dt-cell-sel") as HTMLElement;
+    const probe = document.createElement("span");
+    probe.style.color = "rgb(1, 2, 3)";
+    document.body.appendChild(probe);
+    probe.style.color = "var(--app-on-accent)";
+    const onAccent = getComputedStyle(probe).color;
+    probe.remove();
+    return { color: getComputedStyle(el).color, onAccent };
+  });
+  expect(dateColor.color).toBe(dateColor.onAccent);
+});
+
+test("#1647 布尔开关关闭后实底与文字回到默认（无残留）", async ({ page }) => {
+  await openDoc(page);
+  const a = panel(page, "A");
+  await setMode(page, "edit");
+  const value = a.locator('[data-key="published"] [data-testid="dpb-value"]');
+  await value.click();
+  await expect(value).toHaveAttribute("aria-checked", "false");
+
+  const off = await value.evaluate((el) => {
+    const target = (el.querySelector(".dpb-bool") ?? el) as HTMLElement;
+    const cs = getComputedStyle(target);
+    const probe = document.createElement("span");
+    document.documentElement.appendChild(probe);
+    probe.style.color = "var(--app-accent-fill)";
+    const fill = getComputedStyle(probe).color;
+    probe.style.color = "var(--app-on-accent)";
+    const onAccent = getComputedStyle(probe).color;
+    probe.remove();
+    return { color: cs.color, background: cs.backgroundColor, fill, onAccent };
+  });
+  expect(off.background).not.toBe(off.fill);
+  expect(off.color).not.toBe(off.onAccent);
 });

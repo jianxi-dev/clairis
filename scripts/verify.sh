@@ -59,6 +59,16 @@ else
   FAIL=1
 fi
 
+# 3c. Token Gate
+echo ""
+echo "── 3c. Token Gate ──"
+if node scripts/check-tokens.mjs; then
+  echo "  ✅ Token gate"
+else
+  echo "  ❌ Token gate failures"
+  FAIL=1
+fi
+
 # 4. Rust
 echo ""
 echo "── 4. Rust ──"
