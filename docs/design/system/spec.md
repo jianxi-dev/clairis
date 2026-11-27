@@ -2,7 +2,7 @@
 title: "标月设计系统规格"
 type: design
 status: accepted
-last_updated: 2026-11-26
+last_updated: 2026-11-27
 source_of_truth: canonical
 ---
 
@@ -280,19 +280,19 @@ token 缺失时组件按 `var(--sf-ctrl-height, 27px)` 回落，不静默失效�
 
 ### 7.7 Chrome 显隐三档与热区（熟练模式）
 
-`paneMode` 三档与可见性规则：
+`paneMode` 三档与可见性规则。范围内常驻 chrome = 顶栏 `.app-chrome`、底部 `.app-status-bar`、阅读轨 `.rail-root`、栏目头动作按钮 `.pane-actions`、悬停预览（`FloatingPreviewList` / `previewSettings`）：
 
 | 规范值 | 可见性 |
 |---|---|
-| `simple` | 范围内 chrome（顶栏 `.app-chrome` + 底部 `.app-status-bar`）恒显 |
-| `standard` | 顶栏常显；状态栏默认隐藏，底部热区唤出 |
-| `hardcore` | 隐藏，无热区，仅快捷键临时显现 |
+| `simple` | 范围内 chrome 恒显：顶栏、状态栏、阅读轨恒显，栏目头按钮恒显；悬停预览仍受用户预览开关约束 |
+| `standard` | 顶栏常显；状态栏默认隐藏，底部热区唤出；阅读轨按自身状态（折叠 + 左缘悬停唤出）；栏目头按钮仅 hover 显现；悬停预览按用户开关 |
+| `hardcore` | 顶栏、状态栏、阅读轨全部隐藏，无热区（左缘不唤出阅读轨、hover 不唤出栏目头按钮）；仅 `Cmd+Shift+U` 临时一并显现，栏目头按钮仅在临时显现期显现；悬停预览不受档位门控 |
 
-热区基准高度 = `--space-16`（16px），顶部与底部同档。hardcore SHALL NOT 提供热区；SHALL 提供 `Cmd+Shift+U` 临时显现，显现后 3 秒无操作或按 Esc SHALL 收起；并 SHALL 保留一条 **1px** 顶部提示线，颜色取既有边框 token（`--app-border`）。
+热区基准高度 = `--space-16`（16px），顶部与底部同档。hardcore SHALL NOT 提供热区；SHALL 提供 `Cmd+Shift+U` 临时一并显现全部范围内 chrome，显现后 3 秒无操作或按 Esc SHALL 一并收起；并 SHALL 保留一条 **1px** 顶部提示线，颜色取既有边框 token（--app-border）。
+
+交互触发的浮层（选区胶囊、AI 气泡、撤销条、捕获浮层、命令面板、快捷键帮助、右键菜单）SHALL NOT 被 `paneMode` 隐藏，仍按既有动作 / 快捷键出现。悬停预览 SHALL NOT 因档位被门控，三档均受用户预览开关约束。
 
 阅读模式（`readingMode`）SHALL 优先于 `paneMode`：沉浸态下 chrome 显隐遵循沉浸规则，`paneMode` 不覆盖。切换 `paneMode` SHALL NOT 重建编辑器（EditorView 实例与编辑态保留）。
-
-侧栏与交互触发的浮层不在本条款范围。
 
 ## 8. 明确不做
 
