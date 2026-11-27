@@ -310,7 +310,23 @@ export function setImageToolbarActions(next: ImageToolbarActions): void {
   updateDisabledStates();
 }
 
+/**
+ * 提交当前正在显示的描述输入框（如果有）。
+ *
+ * 点图片会触发 selectImage → applySelection 重建描述行，重建会移除输入框；
+ * 若不先提交，用户刚录入的文字会随节点移除丢失（#1603 十三轮真机：
+ * 「录入后点图片文字被清空」）。与「点外面提交」共用同一收尾路径。
+ */
+function commitActiveCaption(): void {
+  const pending = captionActiveInput;
+  if (!pending || !pending.isConnected) return;
+  if (pending.style.display === "none") return;
+  captionCommitActive?.();
+}
+
 export function selectImage(from: number, path: string, alt: string): void {
+  // 先提交未收尾的描述，再重建选中态（点图片应保存而不是清空输入）。
+  commitActiveCaption();
   selection = { from, path, alt };
   captionCollapsed = false;
   // 按钮反映这张图自己的开关状态（不是每次选中都重置）
@@ -329,6 +345,7 @@ export function selectImage(from: number, path: string, alt: string): void {
 }
 
 export function deselectImage(): void {
+  commitActiveCaption();
   if (!selection) return;
   selection = null;
   // 不改 captionOpenBy：描述文字的显隐是图片自己的开关，取消选中后仍生效。
