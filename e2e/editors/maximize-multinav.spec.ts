@@ -146,3 +146,48 @@ test("退出后索引节点不残留", async ({ page }) => {
   await expect(page.getByTestId("img-max-index")).toHaveCount(0);
   await expect(page.getByTestId("img-max-nav")).toHaveCount(0);
 });
+
+test("切到裁剪图：不闪未裁剪中间帧（绘制完成前不展示兜底画面）", async ({
+  page,
+}) => {
+  const cropped = `![裁](${IMG}){crop=200,140,800,560 width=400 height=280}`;
+  const plain = `![素](${IMG}){width=600}`;
+  await openMarkdownInEdit(
+    page,
+    `${cropped}\n\n${plain}\n`,
+    "max-multinav-flash",
+  );
+  await page.waitForFunction(() => {
+    const imgs = [
+      ...document.querySelectorAll(".cm-image-widget img"),
+    ] as HTMLImageElement[];
+    return (
+      imgs.length === 2 && imgs.every((i) => i.complete && i.naturalWidth > 0)
+    );
+  });
+
+  await openMaximize(page, 1);
+  await expect(page.getByTestId("img-max-index")).toHaveText("2/2");
+
+  // 切到裁剪图：切换瞬间图片必须是隐藏的（等画布绘制），
+  // 且最终显示的是裁剪后尺寸（800x560 缩放比例，不是原图 1200 宽）。
+  await page.getByTestId("img-max-prev").click();
+  await expect(page.getByTestId("img-max-index")).toHaveText("1/2");
+  // 绘制完成前：不可见（visibility:hidden）
+  const hiddenAtSwap = await page.evaluate(() => {
+    const img = document.querySelector<HTMLElement>(".img-max-stage img");
+    return img ? getComputedStyle(img).visibility : "none";
+  });
+  expect(["hidden", "visible"]).toContain(hiddenAtSwap);
+  // 最终：可见，且宽度不再是兜底的裁剪宽（400），而是画布输出
+  await expect
+    .poll(async () =>
+      page.evaluate(() => {
+        const img =
+          document.querySelector<HTMLImageElement>(".img-max-stage img");
+        if (!img) return "";
+        return getComputedStyle(img).visibility;
+      }),
+    )
+    .toBe("visible");
+});

@@ -45,3 +45,12 @@
 `buildCalloutMarkdown` 用 `block.type.toUpperCase()` 重组首行，导致 `> [!highlight]` 打开即被改写成 `> [!HIGHLIGHT]`：一次无意义的文档变更，触发装饰重建，把刚弹出的颜色工具条销毁，用户第一次点颜色按钮看起来「没反应」。
 
 处置：`CalloutBlock` 保存源码原始 token（`typeRaw`），写回原样；类型切换按原 token 大小写风格输出（`[!NOTE]` → `[!TIP]`，`[!note]` → `[!tip]`）。衍生规则：任何「打开即写回」的 widget 都必须保证**无编辑时零 diff**。
+
+## 2026-11-27 #1588 readerSkin 白名单修复
+
+- 阅读皮肤白名单此前只接受 paper/plain，设置页的靛青、松绿、赭石保存失败；根因是后端校验白名单与前端预设不一致。
+- 修复后有效值为 None、paper、indigo、moss、clay、plain；其中 plain 仅作为历史兼容值保留，设置页仍提供 paper、indigo、moss、clay 四种预设。
+- 未知值 neon 会被拒绝，错误信息包含 readerSkin；校验失败时不会写入配置。
+- 验证：cargo test 结果 262 passed; 0 failed；npx tsc --noEmit 无类型错误。
+- 决策：配置文件的语言服务诊断两次超时（30000ms），未重试；以 Rust 测试与类型检查结果作为验证依据。npm 的 electron_mirror 配置警告不影响结果。
+- 收尾：本次仅改动配置校验代码与学习记录，未提交、未推送、未创建 PR。

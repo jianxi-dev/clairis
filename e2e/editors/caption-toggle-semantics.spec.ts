@@ -114,8 +114,58 @@ test("描述框开着时点外面：保存并保持选中（未修改也一样�
   await expect(commentBtn(page)).toHaveAttribute("aria-pressed", "true");
   await expect(captionRow(page)).toBeVisible();
 
-  // 再点外面（描述框已收尾）：这次才取消选中
+  // 描述开着期间点外面一律保持选中；关掉描述（按钮取消选中）后才退出
   await page.mouse.click(box.x + box.width / 2, box.y + box.height - 8);
+  await expect(page.locator(".cm-image-widget")).toHaveAttribute(
+    "data-selected",
+    "true",
+  );
+  await commentBtn(page).click();
+  await expect(commentBtn(page)).toHaveAttribute("aria-pressed", "false");
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height - 8);
+  await expect(page.locator(".cm-image-widget")).toHaveAttribute(
+    "data-selected",
+    "false",
+  );
+});
+
+test("保存后（widget 已重建）反复点外面：选中不丢，关掉描述后才退出", async ({
+  page,
+}) => {
+  await openDoc(page);
+  await page.locator(".cm-image-widget").click();
+  await commentBtn(page).click();
+  await visibleInput(page).fill("重建后描述");
+  const box = (await page.locator(".cm-content").boundingBox())!;
+  const clickOutside = () =>
+    page.mouse.click(box.x + box.width / 2, box.y + box.height - 8);
+
+  await clickOutside();
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const win = window as unknown as Record<string, any>;
+        const s = win.__biaoyue_store__.getState();
+        return s.tabs[s.activeTabId]?.content ?? "";
+      }),
+    )
+    .toContain('"重建后描述"');
+
+  // 描述仍选中，连续点外面：选中态不丢（十一轮真机 bug 路径）
+  for (let i = 0; i < 2; i += 1) {
+    await clickOutside();
+    await expect(page.locator(".cm-image-widget")).toHaveAttribute(
+      "data-selected",
+      "true",
+    );
+    await expect(commentBtn(page)).toHaveAttribute("aria-pressed", "true");
+    await expect(captionRow(page)).toBeVisible();
+  }
+
+  // 关掉描述（按钮取消选中）后点外面：才退出选中
+  await commentBtn(page).click();
+  await expect(commentBtn(page)).toHaveAttribute("aria-pressed", "false");
+  await clickOutside();
   await expect(page.locator(".cm-image-widget")).toHaveAttribute(
     "data-selected",
     "false",
