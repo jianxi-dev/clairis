@@ -108,11 +108,13 @@ pub struct AppConfig {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub doc_property_variant: Option<String>,
     /// 窗格预设·熟练模式（pane-presets-v1 / G-9）：simple / standard / hardcore。
-    /// 缺省 = None，消费端回落 standard（与现状等价）。
+    /// Default 给 Some（而非 None）：known_config_keys 从 default 序列化派生，
+    /// skip_serializing_if + None 会把键藏出 patch 白名单（#1611 实测）。
+    /// 反序列化仍走字段级 default（None）→ 老配置缺键不受影响。
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub pane_mode: Option<String>,
     /// 窗格预设·关爱界面（pane-presets-v1 / CF-8）：small / medium / large。
-    /// 缺省 = None，消费端回落 medium（倍率 1.0，等同不缩放）。
+    /// Default 给 Some（理由同 pane_mode）；反序列化缺键仍回落 medium。
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub pane_scale: Option<String>,
 }
@@ -278,8 +280,10 @@ impl Default for AppConfig {
             prop_templates: None,
             prop_alias_map: None,
             doc_property_variant: None,
-            pane_mode: None,
-            pane_scale: None,
+            // #1611：patch_config 可写键集派生自 default 序列化，None 会被
+            // skip_serializing_if 跳出白名单，故预设键的 default 给 Some。
+            pane_mode: Some("standard".into()),
+            pane_scale: Some("medium".into()),
             sidebar_left_visible: Some(true),
             sidebar_right_visible: Some(false),
             sidebar_left_width: Some(220.0),
@@ -1209,6 +1213,7 @@ const SKILL_MAP: &str = r#"# Biaoyue 配置地图
 - `list_snapshots`：返回快照文件名，最旧在前。
 - `restore_surface_snapshot`：`{"id": "menus"}`（可带 `name`），回滚该面最新快照的覆盖；只写 `user/<id>.json`，不动默认文件。
 - 恢复默认：`patch_data_surface` 传 `{"id": "menus", "patch": {"items": null}}` → 删除该面用户覆盖（写前快照，可再用 restore 回滚）；四个面均支持。
+- `read_config` / `patch_config` 示例：`{"patch": {"paneMode": "hardcore", "paneScale": "large"}}`——两枚预设键可直接 patch，越界值会被拒绝。
 - `read_data_surface`：`{"id": "menus"}`，返回数据面的 `{effective, defaults, warnings}` 三段。
 - `patch_data_surface`：`{"id": "menus", "patch": {"items": [...]}}`，改写用户覆盖集合，写入前校验并生成快照。`html-toolbar` 的 `items` 是 id 字符串数组（整体替换）；`menus` / `capsules` / `reader-presets` 的 `items` 是**对象数组**（每项按 `id` 与默认项深合并，允许只写 `{id,label}` 这类部分项）；其中 `menus` **按组替换**——覆盖里出现的 `group` 替换该组，未出现的组保留默认；`reader-presets` **按 id 并入**现有有效集合（只改一套不清空其余两套；`width` 按 20px 步长归整，1273→1280；允许新增自定义 id，须自带完整字段）；`icons` 的 `items` 是「概念键 → 定义」对象，逐键深合并（接受默认集合外的新概念键）。
 
