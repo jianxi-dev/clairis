@@ -20,6 +20,7 @@ import {
   toggleMediaMuted,
 } from "./Content/mediaMute";
 import { popOverlay, pushOverlay } from "../lib/overlayGate";
+import { useMenuPos } from "./Content/useMenuPos";
 import { noticeDurationMs } from "../hooks/useConfig";
 import { useEditorStore } from "../stores/editorStore";
 import { useDocPropertyPanelStore } from "../stores/docPropertyPanel";
@@ -315,13 +316,15 @@ export default function TabBar({
   useEffect(() => () => clearInfoTimer(), [clearInfoTimer]);
 
   const handleContextMenu = useCallback(
-    (e: React.MouseEvent, tabId: string) => {
+    (e: ReactMouseEvent, tabId: string) => {
       e.preventDefault();
       e.stopPropagation();
       setExportOpen(false);
+      // 不清悬停计时的话，右键前那 260ms 到点会让信息窗与菜单同屏（#1607）。
+      closeInfo();
       setMenu({ x: e.clientX, y: e.clientY, tabId });
     },
-    [],
+    [closeInfo],
   );
 
   const closeMenu = useCallback(() => {
@@ -376,15 +379,15 @@ export default function TabBar({
 
     const onPointerDown = (e: PointerEvent) => {
       if (insideMenu(e.target)) return;
-      setMenu(null);
+      closeMenu();
     };
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
       e.stopPropagation();
-      setMenu(null);
+      closeMenu();
     };
-    const onBlur = () => setMenu(null);
-    const onScrollOrResize = () => setMenu(null);
+    const onBlur = () => closeMenu();
+    const onScrollOrResize = () => closeMenu();
 
     // 右键 contextmenu 打开菜单时，那次的 pointerdown 已先于本 effect 触发，
     // 因此同步注册即可，不需要 setTimeout 跳过首个事件。
@@ -401,7 +404,7 @@ export default function TabBar({
       window.removeEventListener("scroll", onScrollOrResize, true);
       window.removeEventListener("resize", onScrollOrResize);
     };
-  }, [menu]);
+  }, [menu, closeMenu]);
 
   const placeholder =
     dragGap === null ? null : (
@@ -428,6 +431,10 @@ export default function TabBar({
 
   const tabMenuItems = getMenuItems("tab-context");
   const exportMenuItems = getMenuItems("export-submenu");
+
+  const { pos: menuPos, ref: menuPosRef } = useMenuPos<HTMLDivElement>(
+    menu ? { x: menu.x, y: menu.y } : null,
+  );
 
   const runTabAction = useCallback(
     (action: string) => {
@@ -804,7 +811,7 @@ export default function TabBar({
           document.body,
         )}
 
-      {infoAnchor && tabs[infoAnchor.tabId] && (
+      {infoAnchor && !menu && tabs[infoAnchor.tabId] && (
         <TabInfoPopover
           tab={tabs[infoAnchor.tabId]}
           anchor={infoAnchor.rect}
@@ -818,10 +825,11 @@ export default function TabBar({
       {menu && (
         <div
           data-tab-menu
+          ref={menuPosRef}
           className="tab-context-menu fixed z-50 w-[132px] border py-1 text-xs shadow-lg"
           style={{
-            left: menu.x,
-            top: menu.y,
+            left: menuPos?.x ?? menu.x,
+            top: menuPos?.y ?? menu.y,
             background: "var(--app-surface)",
             borderColor: "var(--app-border)",
             color: "var(--app-text-2)",
