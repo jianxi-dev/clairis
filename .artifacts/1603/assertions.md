@@ -128,3 +128,22 @@ expect(await controls.evaluate(el => getComputedStyle(el).opacity)).toBe("1");  
 expect(await controls.evaluate(el => getComputedStyle(el).opacity)).toBe("0");  // 热区 leave
 ```
 Scenario 对照：描述保存（#1602/#1603 全轮验收）；放大层按钮条显隐（用户「滑入按钮区域」语义）。
+
+## 八轮（r8 fe71dae7）机读断言摘录
+```
+// caption-reopen-prefill.spec.ts（描述：切预览→切编辑→重开预填，八轮真机清空）
+expect(page.locator('[data-testid="img-caption-input"]:visible')).toHaveCount(0);
+await expect(page.locator('[data-testid="img-caption"]')).toHaveText("诊断描述");
+const reopened = page.locator('[data-testid="img-caption-input"]:visible');
+await expect(reopened).toHaveValue("诊断描述");
+
+// caption-save-visibility.spec.ts（点外部保存 / 清空 / Esc）
+expect(page.locator('[data-testid="img-caption"]')).toHaveText("诊断描述");
+expect(await content(page)).not.toContain('"诊断描述"');
+
+// maximize-controls-clickable.spec.ts（按钮条点击不被 dock 拦截）
+await expect(page.locator(".img-max-dock")).toHaveCount(1);
+await expect.poll(() => scaleOf(page), { timeout: 3000 }).toBeGreaterThan(before);
+await expect(page.locator('[data-testid="img-maximize"]')).toHaveCount(0); // 关闭真实生效
+```
+Scenario 对照：描述保存后重开预填（#1602/#1603 八轮）；放大层按钮条可点击（八轮「所有按钮没反应」）。
