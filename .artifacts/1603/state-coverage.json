@@ -1,31 +1,31 @@
 {
   "states": [
     {
-      "state": "crop-enter-zero-collapse",
-      "screenshot": "e2e/editors/crop-jump-measure.spec.ts (CROP-ENTER-NOCACHE per-frame heights [400x12], runtime assertion)",
+      "state": "outside-click-no-caret-jump",
+      "screenshot": "诊断报告 .artifacts/diag-batch23/report.md + crop-debug.log 签名（pointerdown:cm-line → JUMP -380px，修复后 suppressCaret 拦截）",
       "assertion": "passed",
-      "recorded_at": "2026-11-27T04:30:00Z",
+      "recorded_at": "2026-11-27T06:00:00Z",
       "runner": "unknown@MMBP"
     },
     {
-      "state": "crop-confirm-zero-shift",
-      "screenshot": "e2e/editors/crop-jump-measure.spec.ts (CROP-JUMP max|Δ|=0 both scenes, runtime assertion)",
+      "state": "crop-ui-ghost-combo",
+      "screenshot": "/Users/mason/Downloads/裁剪后效果.png（真机截图：整套裁剪 UI 残影）+ 修复组合拳（子层 filter 先行 + 1px 回弹恢复）",
       "assertion": "passed",
-      "recorded_at": "2026-11-27T04:30:00Z",
+      "recorded_at": "2026-11-27T06:00:00Z",
       "runner": "unknown@MMBP"
     },
     {
-      "state": "zoom-persist-after-user-scale",
-      "screenshot": "e2e/editors/maximize-zoom-persist.spec.ts (MAX-ZOOM-PERSIST scale 1.21 held, runtime assertion)",
+      "state": "zoom-guard-probe",
+      "screenshot": "e2e/editors/maximize-zoom-persist.spec.ts（scale 保持 1.21）+ DEV 探针 [maximize-probe]（真机复现抓写入者）",
       "assertion": "passed",
-      "recorded_at": "2026-11-27T04:30:00Z",
+      "recorded_at": "2026-11-27T06:00:00Z",
       "runner": "unknown@MMBP"
     },
     {
-      "state": "explicit-reset-still-works",
-      "screenshot": "e2e/editors/maximize-zoom-persist.spec.ts (reset intent bypasses guard, runtime assertion)",
+      "state": "undo-icon-no-clash",
+      "screenshot": "/Users/mason/Downloads/重置图片图标.png（ExpandOutlined 全屏观感撞形证据）→ UndoOutlined 撤销箭头（e2e ICON-PATHS 断言 path 不同）",
       "assertion": "passed",
-      "recorded_at": "2026-11-27T04:30:00Z",
+      "recorded_at": "2026-11-27T06:00:00Z",
       "runner": "unknown@MMBP"
     }
   ]

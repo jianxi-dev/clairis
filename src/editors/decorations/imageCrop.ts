@@ -618,6 +618,11 @@ function mount(
     const cropWin = widget.querySelector<HTMLElement>(".image-crop-window");
     widget.style.filter = "blur(0px)";
     if (cropWin) cropWin.style.filter = "blur(0px)";
+    // frame / 蒙层各自是独立合成层：父级 filter 刷不掉它们的旧缓存（真机截图
+    // #1603 整套裁剪 UI 残影留在图上）——移除前先各自打一次重栅格化锤子。
+    for (const el of [frame, ...Object.values(shades)]) {
+      el.style.filter = "blur(0px)";
+    }
     frame.remove();
     for (const el of Object.values(shades)) el.remove();
     sweepCropResidue();
@@ -652,6 +657,17 @@ function mount(
       scroller.style.filter = "blur(0px)";
       requestAnimationFrame(() => {
         if (scroller.isConnected) scroller.style.filter = "";
+      });
+      // 1px 滚动回弹恢复：强制滚动层整层重合成（#1603 真机证实 scroller 的
+      // filter 在 WKWebView 上不足以清掉整套裁剪 UI 的残影）。1px 不可感知，
+      // 用户投诉的跳动是 caret 揭示的 380px 级位移，两者无关。
+      requestAnimationFrame(() => {
+        if (!scroller.isConnected) return;
+        const st = scroller.scrollTop;
+        scroller.scrollTop = st + 1;
+        requestAnimationFrame(() => {
+          if (scroller.isConnected) scroller.scrollTop = st;
+        });
       });
     }
     if (activeCleanup === cleanup) clearActive();
@@ -839,7 +855,10 @@ function mount(
     if (!target) return;
     if (
       target.closest(
-        "input, textarea, [contenteditable='true'], [data-testid^='img-'], .cm-image-widget, .cm-scroller",
+        // 不放行 .cm-scroller：真机日志（#1603）证实裁剪态点框外正文时
+        // pointerdown:cm-line 落位光标，caret 揭示滚动把视口上拉 380px。
+        // 裁剪会话是模态的——点框外由 onOutsideClick 走确认路径，光标不应落位。
+        "input, textarea, [contenteditable='true'], [data-testid^='img-'], .cm-image-widget",
       )
     ) {
       return;

@@ -1,23 +1,40 @@
-# #1603 QG-5 证据纪要
+# #1603 二轮（真机取证后）证据纪要
 
-验证基于分支 `fix/1603-first-crop-jump`（源基线 origin/main 05926438）
+真机证据：中汽系统搭建情况对称1110.md.crop-debug.log（2026-11-27 13:12）+ 两张截图
 
-## 自动化验证
-| 命令 | 结果 |
-|---|---|
-| `npx tsc --noEmit` | 0 |
-| `npm test` | 182 files / 2265 tests 全过 |
-| `npx playwright test crop-jump-measure + maximize-zoom-persist + crop-cleanup-sync + toolbar-scroll-hide` | 14 passed |
+## 签名 → 根因 → 修复
+| 签名 | 根因 | 修复 |
+|---|---|---|
+| JUMP 1293→909 / 1796→1423（向上 ~380px，紧跟 pointerdown:cm-line） | 裁剪态 suppressCaret 白名单放行 .cm-scroller → 光标落位 caret 揭示滚动 | 白名单移除 .cm-scroller（模态会话点框外=确认路径） |
+| 截图整套裁剪 UI 残影（DOM 计数 0） | WKWebView GPU 合成层未刷新；scroller filter 不足以清子层缓存 | 子层 filter 先行 + 恢复 1px 回弹 + scroller filter（三重） |
+| 「重置图片」ExpandOutlined 与全屏撞形 | 四角外扩=全屏观感 + 与 fileEmbed 展开同图标 | 新增 UndoOutlined（撤销箭头） |
+| 「+ 调整后回 100%」守卫未挡 | 写入者静态不可见 | DEV 探针 [maximize-probe] 记录调用栈 + 守卫容差 ±0.001 |
 
-## 运行时探针原始输出
+## 验证
+- tsc 0；vitest 2265 全过；e2e 15 passed（1 flaky=CDP wheel 抖动，3 次重跑全绿，DQ-4 机制解释：非确定性损坏）
+
+## 真机待验
+1. 裁剪态点框外不再上跳（log 签名应消失）
+2. 裁剪后蒙层/框残影是否消失（组合拳）
+3. 「+ 调整后回 100%」复现时看 dev console `[maximize-probe]` 调用栈 → 定位写入者后精准修
+4. UndoOutlined 观感
+
+## 机读断言摘录（e2e 原始 expect）
+
 ```
-CROP-ENTER-NOCACHE window heights per frame: [400,400,400,400,400,400,400,400,400,400,400,400]
-→ 进入裁剪态（无缓存场景）首帧即最终尺寸，零塌陷（修复 A 有效）
+// crop-jump-measure.spec.ts（A 跳动·进入态）
+expect(Math.abs(p3.scrollTop - p2.scrollTop)).toBeLessThanOrEqual(1);
+expect(Math.abs(afterFresh)).toBeLessThanOrEqual(1);
 
-MAX-ZOOM-PERSIST button samples: [{"t":7,"scale":1.21}]
-MAX-ZOOM-PERSIST pan samples: [{"t":5,"scale":1.21}]
-→ 用户缩放后 scale 保持，不被非主动重置覆盖（修复 B 有效）
+// maximize-zoom-persist.spec.ts（D 缩放保持）
+expect(Math.max(...postZoomSamples)).toBeGreaterThan(1.1);
+expect.poll(() => readScale(page), { timeout: 4000 }).toBeGreaterThan(1.1);
+
+// maximize-button-order.spec.ts（C 图标区分）
+expect(paths.rotate).not.toBe(paths.reset);
+
+// crop-cleanup-sync.spec.ts（B 残留 DOM 计数）
+expect(residue).toEqual({ frames: 0, handles: 0, shades: 0, active: 0 });
 ```
 
-## 截图覆盖说明（诚实声明）
-4 态均为「运行时逐帧/逐值断言」承载（探针采样是本票的恰当证据形态——位移/缩放值无法用单帧截图表达）；screenshot 字段指向对应 e2e 用例，e2e 通过即为证据。
+Scenario 对照：editing spec E-44「清理可靠性」（多轮裁剪零残留 / 已加载图片标识线必现）与「裁剪缩放不跳变」；真机专属项（WKWebView 合成层 / caret 揭示）以探针输出承载（headless 不可复现，见各条说明）。
