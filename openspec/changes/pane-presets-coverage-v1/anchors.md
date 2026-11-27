@@ -19,3 +19,4 @@
 | A-2.1 | state-machine | large 档新增容器缩放 | 阅读轨 `.rail-root`、大纲菜单、文档属性面板的计算 `zoom` 均为 1.2 | CF-8 场景 3 / §4.1 / D7 |
 | A-2.2 | exact | 正文不受新增白名单影响 | 正文 / 预览 / 编辑器容器的计算 `zoom` 为 1，尺寸与缩放前逐像素一致 | CF-8 场景 3 / §4.1 |
 | A-2.3 | state-machine | 浮窗菜单随档缩放 | 状态栏浮窗菜单与右键菜单在 large 下计算 `zoom` 为 1.2，且定位仍落在触发点附近（先修定位缺陷） | CF-8 场景 3 / D7 |
+| A-2.4 | state-machine | AI 调整两键 | `patch_config` 改 `paneMode`/`paneScale` 生效并落盘、快照可回滚；未知值拒绝且零写盘 | CF-8 场景 4 / tasks 1.3 |
