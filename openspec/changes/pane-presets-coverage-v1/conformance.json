@@ -66,6 +66,13 @@
           "kind": "state-machine",
           "assert": "状态栏浮窗菜单与右键菜单在 large 下计算 `zoom` 为 1.2，且定位仍落在触发点附近（先修定位缺陷）",
           "source": "CF-8 场景 3 / D7"
+        },
+        {
+          "id": "A-2.4",
+          "claim": "AI 调整两键",
+          "kind": "state-machine",
+          "assert": "`patch_config` 改 `paneMode`/`paneScale` 生效并落盘、快照可回滚；未知值拒绝且零写盘",
+          "source": "CF-8 场景 4 / tasks 1.3"
         }
       ]
     }
