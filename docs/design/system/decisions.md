@@ -116,3 +116,4 @@ ledger: append-only
 | 裁剪四角标识定稿 | 四角标识弃 `CropOutlined`，改用用户示例的粗直角括号字形（20×20、描边 2.5、方帽，逐角朝向开口朝框内：nw=⌜ ne=⌝ se=﹂ sw=⌞），data-icon=CropCorner | #1456 复测 / PR | 2026-11-25 |
 | 关爱界面缩放档 | UI 缩放三档 0.9 / 1.0 / 1.2（spec §4.1），走容器级 `zoom`，只作用于显式列举的 chrome 容器（顶栏 / 状态栏 / 设置场景），不触及正文；浮动菜单与 popover 暂不在范围内 | pane-presets-v1 / #1583 | 2026-11-26 |
 | 熟练模式 chrome 显隐 | hardcore 无热区，`Cmd+Shift+U` 临时显现、3 秒空闲或 Esc 收起，顶部保留 1px 提示线（`--app-border`）；`readingMode` 优先，切换不重建 EditorView（spec §7.7） | pane-presets-v1 / #1583 | 2026-11-26 |
+| 熟练模式覆盖扩展 | `paneMode` 三档扩到全部常驻 chrome（顶栏 / 状态栏 / 阅读轨 / 栏目头按钮 / 悬停预览）；hardcore 下 `Cmd+Shift+U` 一并临时显现、无悬停热区，瞬态浮层（选区胶囊 / AI 气泡 / 撤销条 / 捕获浮层 / 命令面板 / 快捷键帮助 / 右键菜单）显式排除；阅读轨档内覆盖走会话内呈现态、不写穿（spec §7.7） | pane-modes-coverage-v1 / 用户 2026-11-27 反馈 | 2026-11-27 |

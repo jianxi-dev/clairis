@@ -1,0 +1,73 @@
+{
+  "change": "pane-presets-coverage-v1",
+  "requirements": [
+    {
+      "id": "R-1",
+      "text": "常驻 chrome 三档覆盖",
+      "anchors": [
+        {
+          "id": "A-1.1",
+          "claim": "simple 档常驻 chrome 全显",
+          "kind": "state-machine",
+          "assert": "顶栏 `.app-chrome`、底部 `.app-status-bar`、阅读轨 `.rail-root` 恒显，栏目头 `.pane-actions` 计算 `opacity` 为 1",
+          "source": "G-13 场景 1 / §7.7"
+        },
+        {
+          "id": "A-1.2",
+          "claim": "standard 档与现状一致",
+          "kind": "state-machine",
+          "assert": "顶栏恒显；状态栏隐藏态下指针进入底部 16px 热区即唤出；阅读轨仍按 `railState` 折叠 + 左缘悬停唤出；栏目头按钮仍仅 hover 显现",
+          "source": "G-13 场景 2 / §7.7"
+        },
+        {
+          "id": "A-1.3",
+          "claim": "hardcore 档隐藏且无悬停",
+          "kind": "state-machine",
+          "assert": "顶栏、状态栏、阅读轨均隐藏；指针进入左缘不唤出阅读轨（`.rail-root` 不可见）；指针 hover 栏目头不显现 `.pane-actions`；悬停预览仍按用户预览开关照常触发",
+          "source": "G-13 场景 3 / §7.7"
+        },
+        {
+          "id": "A-1.4",
+          "claim": "`Cmd+Shift+U` 一并临时显现",
+          "kind": "state-machine",
+          "assert": "按 `Cmd+Shift+U` 后顶栏、状态栏、阅读轨一并显现，`.pane-actions` 计算 `opacity` 为 1；3 秒无操作或按 Esc 一并收起",
+          "source": "G-13 场景 3 / §7.7"
+        },
+        {
+          "id": "A-1.5",
+          "claim": "瞬态浮层不被隐藏且 `readingMode` 优先",
+          "kind": "state-machine",
+          "assert": "硬核档下选区胶囊、AI 气泡、撤销条、捕获浮层、命令面板、快捷键帮助、右键菜单仍按既有动作 / 快捷键出现；`readingMode` 为真时 `paneMode` 不覆盖沉浸规则，切换三档后 EditorView 实例数不变",
+          "source": "G-13 场景 4 / §7.7"
+        }
+      ]
+    },
+    {
+      "id": "R-2",
+      "text": "关爱界面覆盖扩展",
+      "anchors": [
+        {
+          "id": "A-2.1",
+          "claim": "large 档新增容器缩放",
+          "kind": "state-machine",
+          "assert": "阅读轨 `.rail-root`、大纲菜单、文档属性面板的计算 `zoom` 均为 1.2",
+          "source": "CF-8 场景 3 / §4.1 / D7"
+        },
+        {
+          "id": "A-2.2",
+          "claim": "正文不受新增白名单影响",
+          "kind": "exact",
+          "assert": "正文 / 预览 / 编辑器容器的计算 `zoom` 为 1，尺寸与缩放前逐像素一致",
+          "source": "CF-8 场景 3 / §4.1"
+        },
+        {
+          "id": "A-2.3",
+          "claim": "浮窗菜单随档缩放",
+          "kind": "state-machine",
+          "assert": "状态栏浮窗菜单与右键菜单在 large 下计算 `zoom` 为 1.2，且定位仍落在触发点附近（先修定位缺陷）",
+          "source": "CF-8 场景 3 / D7"
+        }
+      ]
+    }
+  ]
+}
