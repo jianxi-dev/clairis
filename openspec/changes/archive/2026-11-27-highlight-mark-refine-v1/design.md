@@ -1,6 +1,6 @@
 ## Context
 
-E-48 与 editor-refine-batch2 把编辑态纯高亮落成了「无左边框、无标题栏、1px 全边框、4px 圆角、强叠底」，但预览态仍走通用 `.callout`（3px 左边框 + 标题栏），且 `convertCallouts` 的 `titleHtml || label` 让空标题也印出默认名。编辑态纯高亮的 emoji 独占一行（`.cm-callout-header-mark` 是独立块行），正文从下一行开始。高亮颜色面板色块 44×40、`data-active` 只在构建时算一次。emoji 取色器只有 20 个硬编码选项 + 搜索。两条工具条颜色入口图标不一致、标注条左对齐。纯高亮手柄是荧光笔图标。
+E-48 与 editor-refine-batch2 把编辑态纯高亮落成了「无左边框、无标题栏、1px 全边框、4px 圆角、强叠底」，但预览态仍走通用 `.callout`（3px 左边框 + 标题栏），且 `convertCallouts` 的 `titleHtml || label` 让空标题也印出默认名。编辑态纯高亮的 emoji 独占一行（`.cm-callout-header-mark` 是独立块行），正文从下一行开始。高亮颜色面板色块 44×40、`data-active` 只在构建时算一次。emoji 取色器只有 24 个硬编码选项 + 搜索。两条工具条颜色入口图标不一致、标注条左对齐。纯高亮手柄是荧光笔图标。
 
 用户 2026-11-27 给出 6 条反馈 + 6 张截图（截图#1 当前色板、截图#2 quiet 取色器、截图#3 当前 emoji 位置、截图#4 豆包目标位置、截图#5 手柄图标、截图#6 调色板图标），并确认「全按默认」。
 
@@ -44,14 +44,14 @@ E-48 与 editor-refine-batch2 把编辑态纯高亮落成了「无左边框、�
 ### D6 emoji 库换 quiet 全量
 
 **决定**：以 Vite `?raw` 引入 `emoji.tsv`（1578 条、7 分类），运行时解析为 `{cat, id, char, name, keywords}`；不新增 npm 依赖。
-**理由**：现 20 项硬编码无法覆盖中文搜索与分类；quiet 库已含 zh 名 / 关键词。
+**理由**：现 24 项硬编码无法覆盖中文搜索与分类；quiet 库已含 zh 名 / 关键词。
 **落点**：新增 `src/editors/emoji-data/emoji.tsv` + `src/editors/emoji-data/parse.ts`。
 
 ### D7 取色器 8 页签 + 最近两段
 
-**决定**：页签顺序 `最近 / 表情符号 / 动物 / 食物 / 活动 / 地点 / 物件 / 符号`（对应 quiet `CATEGORIES` 7 类 + 最近）。`最近` 页签分两段：上「常用」= 现 `CALLOUT_EMOJI_CHOICES` 20 个（原样保留）；下「最近」= 最近使用（localStorage 持久化，去重、最新在前、上限 20）；未使用时最近段为空（不占位）。
+**决定**：页签顺序 `最近 / 表情符号 / 动物 / 食物 / 活动 / 地点 / 物件 / 符号`（对应 quiet `CATEGORIES` 7 类 + 最近）。`最近` 页签分两段：上「常用」= 现 `CALLOUT_EMOJI_CHOICES` 24 个（原样保留）；下「最近」= 最近使用（localStorage 持久化，去重、最新在前、上限 20）；未使用时最近段为空（不占位）。
 **理由**：截图#2 为目标布局；现取色器无分类 / 最近。
-**落点**：`src/editors/decorations/callout-emoji.ts`、`src/editors/callout-types.ts`（保留 20 项）、新增 `src/editors/emoji-data/`。
+**落点**：`src/editors/decorations/callout-emoji.ts`、`src/editors/callout-types.ts`（保留 24 项）、新增 `src/editors/emoji-data/`。
 
 ### D8 随机按钮
 
@@ -73,9 +73,9 @@ E-48 与 editor-refine-batch2 把编辑态纯高亮落成了「无左边框、�
 
 ### D11 会话内 emoji 覆盖对预览可见
 
-**决定**：以当前文档标识（active tab path）为键，把会话内 callout emoji 覆盖存进轻量状态（localStorage 或 store 附属）；预览渲染时读取并应用到对应块。不为 callout emoji 增加 markdown 持久化位（#361 限制维持）。
+**决定**：以文档内容签名（长度 + FNV-1a 前 4000 字）为键，把会话内 callout emoji 覆盖存进轻量模块 Map（`callout-emoji-overrides.ts`，上限 8 条）；预览渲染时用同一份内容取快照。不为 callout emoji 增加 markdown 持久化位（#361 限制维持）。
 **理由**：现覆盖按 EditorView 存、仅经 `mdb:callout-emoji` 发布且无消费者，预览读不到。
-**落点**：`src/editors/decorations/callout-emoji.ts`（发布改为写轻量状态）、`src/renderers/markdown.ts`（预览读取）、`src/components/Content/PreviewView.tsx`（传入当前文档标识）。
+**落点**：`src/editors/callout-emoji-overrides.ts`、`src/editors/decorations/callout-emoji.ts`、`src/renderers/markdown.ts`。
 
 ### D12 规格冲突 supersede
 
@@ -106,7 +106,7 @@ E-48 与 editor-refine-batch2 把编辑态纯高亮落成了「无左边框、�
   - `e2e/highlight-panel.spec.ts:29`「四行各 8 格且不换行」——格数与不换行不变，需补色块尺寸 22×20 / gap 4px 断言。
   - `e2e/highlight-palette.spec.ts`「旧属性文档打开面板至少一格选中」——需补选色后 `data-active` 迁移断言。
   - `e2e/editors/callout-mark-split.spec.ts:92`「高亮插入后无左边框、无标题栏、圆角 4px」——编辑态不变；需补预览态同形。
-  - `e2e/callout-columns.spec.ts:135`「相邻同类型改图标互不影响」——取色器选项从 20 项变为全量库，测试按 `data-emoji` 过滤而非索引，预期仍成立；需确认选择器不依赖 20 项计数。
+  - `e2e/callout-columns.spec.ts:135`「相邻同类型改图标互不影响」——取色器选项从 24 项变为全量库，测试按 `data-emoji` 过滤而非索引，预期仍成立；需确认选择器不依赖 24 项计数。
   - `e2e/block-menu.spec.ts:845`「改过的 emoji 不跟随错误类型」——取色器重构后 `[data-emoji="🚀"]` 仍可选（🚀 在 quiet 库内），预期成立。
   - `e2e/tauri/reader-typography.spec.ts:154`——NOTE 预览断言不变（标题已填）；需补空标题不印默认名用例。
 - **既有单测受影响**：`src/__tests__/renderers/markdown.test.ts:51`「纯高亮类型带标签」断言预览含「纯高亮」——D2 后纯高亮不再印标签，需改断言；`src/__tests__/editor/calloutColorPanel.test.ts` 需补 refresh 用例；`src/__tests__/editor/callout-emoji-picker.test.ts` 需补页签 / 最近 / 随机用例。

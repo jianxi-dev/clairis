@@ -41,8 +41,8 @@ last_updated: 2026-11-27
 - `src/styles/editor.css:3091-3101`：`.cm-callout-content` 有 `margin-top: 0.35em`，正文与 emoji 行分离。
 - `src/styles/editor.css:3779-3799`：`.cm-highlight-color-panel .cm-color-row { gap: 8px }`、`.cm-color-swatch { width: 44px; height: 40px }`、`[data-active="true"]` 描边（D4 现状）。
 - `src/editors/orchestration/callout-color-panel.ts:216-291`：`buildHighlightColorPanel` 的 `data-active` 在 `addRow` 内计算一次；`onPick` / `onRandom` 回调不刷新面板（D5 缺陷根因）。
-- `src/editors/decorations/callout-emoji.ts:108-171`：取色器只有搜索 + 20 个 `CALLOUT_EMOJI_CHOICES`，无页签 / 最近 / 随机。
-- `src/editors/callout-types.ts:146-171`：`CALLOUT_EMOJI_CHOICES` 20 项。
+- `src/editors/decorations/callout-emoji.ts:108-171`：取色器只有搜索 + 24 个 `CALLOUT_EMOJI_CHOICES`，无页签 / 最近 / 随机。
+- `src/editors/callout-types.ts:146-171`：`CALLOUT_EMOJI_CHOICES` 24 项。
 - `src/editors/orchestration/floating-toolbar.ts:330-332`：颜色入口图标 `mark ? HighlighterOutlined : FontcolorOutlined`（D9 缺陷根因）。
 - `src/editors/orchestration/floating-toolbar.ts:988-990`：`preferredLeft` 仅 mark 居中、标注左对齐（D10 缺陷根因）。
 - `src/editors/orchestration/block-handle.ts:54-67`：`BLOCK_ICON_NAME` 无 highlight 专用项，纯高亮走 `CalloutOutlined`（D10 缺陷根因）。
@@ -57,7 +57,7 @@ last_updated: 2026-11-27
 | E-48 同段「每行 SHALL 严格 8 格且 `flex-wrap: nowrap`」与 D4「色块缩到 1/4」 | 不冲突：8 格与不换行保留，仅改色块尺寸与 gap（22×20 / 4px） |
 | E-48「字体色色块 SHALL 使用字母 A 字形（`FormatColorTextOutlined`）」 | 保留，不改 |
 | E-48「`text` 只作用于标题与正文」 | 保留，不改 |
-| quiet `emoji.rs` 的 `DEFAULT_FREQUENT` 15 项 vs 现 `CALLOUT_EMOJI_CHOICES` 20 项 | 裁决：D7「常用」段原样保留现 20 项，不换 quiet 的 15 项 |
+| quiet `emoji.rs` 的 `DEFAULT_FREQUENT` 15 项 vs 现 `CALLOUT_EMOJI_CHOICES` 24 项 | 裁决：D7「常用」段原样保留现 24 项，不换 quiet 的 15 项 |
 | quiet `PER_LINE = 11` vs 现面板 8 格 | 裁决：每行格数沿用现面板（高亮 8 格），emoji 取色器格数不设死（按容器宽度自适应），不引入 11 格硬约束 |
 
 ## 5. 验收锚点

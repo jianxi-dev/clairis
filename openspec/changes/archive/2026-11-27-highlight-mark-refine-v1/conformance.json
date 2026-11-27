@@ -1,9 +1,9 @@
 {
-  "change": "highlight-mark-refine-v1",
+  "change": "2026-11-27-highlight-mark-refine-v1",
   "requirements": [
     {
       "id": "R-1",
-      "text": "预览态同形与空标题（E-49）",
+      "text": "预览态同形与空标题（E-52）",
       "anchors": [
         {
           "id": "A-1.1",
@@ -37,7 +37,7 @@
     },
     {
       "id": "R-2",
-      "text": "纯高亮 emoji 悬挂缩进（E-50）",
+      "text": "纯高亮 emoji 悬挂缩进（E-53）",
       "anchors": [
         {
           "id": "A-2.1",
@@ -77,13 +77,13 @@
     },
     {
       "id": "R-4",
-      "text": "emoji 取色器（E-51）",
+      "text": "emoji 取色器（E-54）",
       "anchors": [
         {
           "id": "A-4.1",
           "claim": "8 页签与常用段",
           "kind": "exact",
-          "assert": "页签数 = 8，顺序 `最近 / 表情符号 / 动物 / 食物 / 活动 / 地点 / 物件 / 符号`；「常用」段 = 20 项",
+          "assert": "页签数 = 8，顺序 `最近 / 表情符号 / 动物 / 食物 / 活动 / 地点 / 物件 / 符号`；「常用」段 = 24 项",
           "source": "截图#2 / D7"
         },
         {

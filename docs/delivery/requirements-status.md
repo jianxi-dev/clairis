@@ -2,7 +2,7 @@
 title: 需求实现状态总览
 type: delivery
 status: accepted
-last_updated: 2026-11-26
+last_updated: 2026-11-27
 source_of_truth: supporting
 ---
 
@@ -95,6 +95,7 @@ openspec status --change <name>   # 单个变更工件完成度
 - 配置/AI/数据面域（`reader-presets-v1`，#1576）：2/2 票合并（PR #1580 阅读预设面 + 设置页点选应用 / #1581 AI 通路与文档），+1 requirement（data-surfaces **DS-9 阅读预设面**：三套默认 紧凑/标准/宽屏、宽度按 20px 步长归整、对象项按 id 并入、允许自定义 id），ai-agent AI-5 沿用注册表驱动并补按 id 并入语义；顺修脚手架 `surface-new.sh` 两个存量缺陷（多字节变量名 unbound、zh_CN 排序下非法 id 退 0）；已归档 `openspec/changes/archive/2026-11-26-reader-presets-v1`
 - 配置/外壳域（`pane-tuning-values-v1`，#1623）：3/3 票合并（PR #1631 care-scale 面 / #1633 pane-modes 面 / #1635 AI 通路锁定），+2 requirement（data-surfaces **DS-10 care-scale 面**：乘数 [0.8,1.5] 步长 0.05；**DS-11 pane-modes 面**：热区 [12,24]、时长 [1000,10000]、提示线 [0,2]、hardcore 无超时拒绝）+2 修订（CF-8 两键存 id、G-13 参数源来自面）；设计系统 §4.1/§7.7 supersede（固定三档 → 默认三档 + 可调边界，默认值逐字保留）；消费端 CSS 变量化（--pane-scale-factor / --pane-hotzone-px / --pane-hint-px），#1606 白名单清单不变；已归档 `openspec/changes/archive/2026-11-27-pane-tuning-values-v1`
 - 配置/外壳域（`pane-presets-coverage-v1`，#1604）：3/3 票合并（PR #1610 熟练模式覆盖扩展 / #1617 页签右键菜单缺陷 / #1619 关爱 zoom 白名单扩展），+2 requirement 修订（application-shell **G-13 MODIFIED**：常驻 chrome 扩到阅读轨与栏目头按钮、悬停预览不门控；configuration **CF-8 MODIFIED**：zoom 白名单 21 面、AI 经 patch_config 可调两键）；缺陷 #1607 根因修复（右键菜单复用共享定位链）；AI 锁定票 #1611 抓真缺陷（skip_serializing_if+None 把两键藏出 patch 白名单，default 改 Some）；已归档 `openspec/changes/archive/2026-11-27-pane-presets-coverage-v1`
+- 编辑/阅读域（`highlight-mark-refine-v1`，#1651）：5/5 票合并（PR #1661 预览同形 / #1662 emoji 悬挂 / #1666 色板 / #1667 emoji 库 / #1669 图标与工具条），+3 requirement（editing E-52 预览态纯高亮同形与空标题不印默认名 / E-53 纯高亮 emoji 悬挂缩进 / E-54 emoji 取色器），E-48 两处 supersede（纯高亮工具条荧光笔图标与标注工具条位置不变 → 两条工具条居中 + 共用 PaletteOutlined；色块 22×20 / 间距 4px / 选中态原地刷新）；已归档 `openspec/changes/archive/2026-11-27-highlight-mark-refine-v1`
 - 配置/外壳域（`pane-presets-v1`，#1583）：2/2 票合并（PR #1590 熟练模式三档 / #1592 关爱界面三档），+2 requirement（application-shell **G-13 Chrome 显隐三档**：simple/standard/hardcore、热区口径、`Cmd+Shift+U` 临时显现与 1px 提示线、沉浸优先；configuration **CF-8 paneMode / paneScale**：枚举白名单、缺省回落、缩放不触及正文），设计系统新增 §4.1 / §7.7；Codex 评审后由「两个新数据面」缩为「两个配置枚举」；评审期记录既有缺陷 #1588（readerSkin 白名单与设置页四色不一致）；已归档 `openspec/changes/archive/2026-11-26-pane-presets-v1`
 - 外壳/页面/编辑/阅读/文件域（`ui-polish-batch9`）：9/9 票合并（PR #489），7 条 requirement 修订（状态栏/栏目头/悬浮预览/大纲/视频/标题折叠），已归档 `openspec/changes/archive/2026-11-09-ui-polish-batch9`
 - 外壳/页面/编辑/阅读/文件域（`ui-polish-batch10`）：9/9 票合并（PR #500），9 条 requirement 修订（工具条归属/全角标点/块手柄/折叠/打开文件/视频多栏/页签/栏目），已归档 `openspec/changes/archive/2026-11-09-ui-polish-batch10`

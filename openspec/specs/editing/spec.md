@@ -1921,7 +1921,9 @@ store 内容快照 SHALL 采用 300ms 防抖 + 2000ms 截止；`dirty` SHALL 在
 
 块族名 SHALL 二分为「高亮」与「标注」两项：**高亮** SHALL 为无左边框、无标题栏、1px 全边框、4px 圆角、强叠底的纯高亮块；**标注** SHALL 为带 3px 左边框与标题栏的 13 语义类型 callout。斜杠菜单、块菜单「转为」、转换手柄菜单与选区轮盘四处入口 SHALL 只呈现这两项。四个入口选「高亮」SHALL 直落 `> [!highlight]`；选「标注」SHALL 展开 13 个语义类型。`> [!highlight]` 的 markdown 序列化格式 SHALL 与既有 callout 一致。
 
-纯高亮块的工具条 SHALL 水平居中于块盒（中心偏差 ≤ 2px）并使用荧光笔图标；标注块工具条位置与图标 SHALL 保持不变。纯高亮颜色面板 SHALL 使用独立 24 格色板，自上而下 SHALL 为：字体颜色（8 格，字母 A 色块，行尾「随机」）、边框颜色（8 格）、填充颜色深档（8 格）、填充颜色中档（8 格）、恢复默认。**每行 SHALL 严格 8 格且 `flex-wrap: nowrap`，SHALL NOT 换行**。当前值对应的色块 SHALL 带 `data-active` 选中态。「随机」SHALL 在一次事务内同时更换边框与填充、二者 SHALL 属同一色相族、文字色 SHALL 保持不变；「恢复默认」SHALL 清空三色属性。字体色色块 SHALL 使用字母「A」字形（`FormatColorTextOutlined`），SHALL NOT 使用荧光笔字形；块菜单「颜色」行图标 SHALL 同为 `FormatColorTextOutlined`（A 字形），SHALL NOT 使用 `FontcolorOutlined`。`text` 只作用于标题与正文，SHALL NOT 作用于链接、行内代码与 emoji；标注填充 SHALL 为软色。
+**高亮颜色面板** SHALL 使用独立 24 格色板，自上而下 SHALL 为：字体颜色（8 格，字母 A 色块，行尾「随机」）、边框颜色（8 格）、填充颜色深档（8 格）、填充颜色中档（8 格）、恢复默认。**每行 SHALL 严格 8 格且 `flex-wrap: nowrap`，SHALL NOT 换行**；色块计算尺寸 SHALL 为 `width: 22px` / `height: 20px`，行内 `gap` SHALL 为 `4px`，面板宽度 SHALL 保持 `216px`。当前值对应的色块 SHALL 带 `data-active` 选中态；选色或「随机」执行后，`data-active` SHALL 在原地面板内即时刷新到新值（SHALL NOT 重建面板、SHALL NOT 关闭面板）。**随机** SHALL 在一次事务内同时更换边框与填充、二者 SHALL 属同一色相族、文字色 SHALL 保持不变；**恢复默认** SHALL 清空三色属性。字体色色块 SHALL 使用字母「A」字形（`FormatColorTextOutlined`），SHALL NOT 使用荧光笔字形；块菜单「颜色」行图标 SHALL 同为 `FormatColorTextOutlined`（A 字形），SHALL NOT 使用 `FontcolorOutlined`。`text` 只作用于标题与正文，SHALL NOT 作用于链接、行内代码与 emoji；标注填充 SHALL 为软色。
+
+**工具条（supersede 旧条款）**：纯高亮块与标注块的工具条 SHALL 均水平居中于块盒（中心偏差 ≤ 2px），两条工具条的颜色入口图标 SHALL 共用 `PaletteOutlined`（调色板图形）。旧条款「纯高亮块的工具条 SHALL 使用荧光笔图标；标注块工具条位置与图标 SHALL 保持不变」SHALL NOT 生效。块菜单「颜色」行 SHALL 保持 `FormatColorTextOutlined`（A 字形）。
 
 **面板触发与关闭**：块上方居中调色板图标 SHALL 在**鼠标滑入（pointerenter）时即展开**面板，SHALL NOT 要求先点击一次。面板 SHALL 只由 ① 点击面板外部 ② 按 Esc 关闭；「随机」「选色」「恢复默认」执行后 SHALL NOT 关闭面板。
 
@@ -1966,23 +1968,33 @@ store 内容快照 SHALL 采用 300ms 防抖 + 2000ms 截止；`dirty` SHALL 在
 
 #### Scenario: 高亮工具条居中且为荧光笔
 
-- **WHEN** 点击纯高亮块
-- **THEN** 工具条水平中心与块盒水平中心偏差 SHALL ≤ 2px，按钮图标 SHALL 为荧光笔
+- **WHEN** 分别点击纯高亮块与标注块
+- **THEN** 两条工具条水平中心与各自块盒水平中心偏差 SHALL ≤ 2px，两条工具条的颜色入口 `svg` 的 `data-icon` SHALL 均为 `PaletteOutlined`
 
 #### Scenario: 24 格色板数量与排布
 
 - **WHEN** 用户打开纯高亮颜色面板
 - **THEN** 面板 SHALL 含 4 行色板，各行色块数 SHALL 依次为 8 / 8 / 8 / 8；每行计算 `flex-wrap` SHALL 为 `nowrap`，行内色块右缘 SHALL NOT 换行到第二行；色块色值 SHALL 等于本要求色板表
 
+#### Scenario: 色块尺寸与间距
+
+- **WHEN** 用户打开纯高亮颜色面板
+- **THEN** 色块计算 `width` SHALL 为 `22px`、`height` SHALL 为 `20px`，行计算 `gap` SHALL 为 `4px`，面板计算 `width` SHALL 为 `216px`
+
 #### Scenario: 当前值选中态
 
 - **WHEN** 块首行含 `{bg=red border=red}` 时用户打开纯高亮颜色面板
 - **THEN** 填充中档「红」与边框「红」两个色块 SHALL 带 `data-active` 选中态，其余色块 SHALL NOT
 
+#### Scenario: 选色后选中态即时刷新
+
+- **WHEN** 用户在纯高亮颜色面板点击另一个填充色块
+- **THEN** 新值色块 `data-active` SHALL 变为 `true`、旧值色块 SHALL 变为 `false`，面板 SHALL 保持可见（SHALL NOT 重建、SHALL NOT 关闭）
+
 #### Scenario: 随机同时换边框与填充
 
 - **WHEN** 在纯高亮颜色面板点击「随机」
-- **THEN** 首行 `bg` 与 `border` SHALL 同时改变且色相相同，`text` SHALL 保持不变；面板 SHALL 保持打开；一次 ⌘Z SHALL 同时还原两项
+- **THEN** 首行 `bg` 与 `border` SHALL 同时改变且色相相同，`text` SHALL 保持不变；面板 SHALL 保持打开；一次 ⌘Z SHALL 同时还原两项；刷新后 `bg` 与 `border` 对应色块 `data-active` SHALL 同时更新
 
 #### Scenario: 选色与恢复默认不关闭
 
@@ -2037,7 +2049,7 @@ store 内容快照 SHALL 采用 300ms 防抖 + 2000ms 截止；`dirty` SHALL 在
 #### Scenario: 旧色名兼容
 
 - **WHEN** 打开含 `> [!highlight]{bg=darkred border=brown}` 的旧文档
-- **THEN** 块 SHALL 正常渲染（色值经兼容映射回落），SHALL NOT 因未知色名而丢失颜色或报错
+- **THEN** 块 SHALL 渲染出颜色（darkred → 暗红填充、brown → 暗橙填充），SHALL NOT 丢色
 
 ### Requirement: E-49 公式编辑体验
 
@@ -2315,4 +2327,74 @@ edit / preview / source 三种模式之间切换时，内容区 SHALL 保留当�
 
 - **WHEN** 用户在选中图片状态下连续滚动 2 秒并观察工具条
 - **THEN** 滚动期间工具条 SHALL NOT 反复出现/消失/跳动（隐藏为单一状态）
+
+### Requirement: E-52 纯高亮预览与编辑同形
+
+预览态渲染 `[!highlight]` SHALL 与编辑态同形：无左边框（计算 `border-inline-start-width: 0px`）、无标题栏（`.callout-title` 节点数为 0）、1px 全边框（`border-top-width: 1px`）、4px 圆角（`border-radius: 4px`）、强叠底（背景走 `--callout-bg`，缺省为荧光笔黄）。预览态 SHALL 输出类型 emoji（默认 `🖍️`；同一会话内改过 emoji 的块 SHALL 显示改后的 emoji）。纯高亮预览 SHALL NOT 渲染「纯高亮」字样。
+
+标注（13 类）预览态标题未填写时 SHALL 只渲染 emoji、SHALL NOT 渲染默认名称（「注释 / 信息 / …」）；标题已填写时 SHALL 渲染所填标题。纯高亮预览 SHALL NOT 渲染任何标题行。
+
+#### Scenario: 预览态纯高亮与编辑态同形
+
+- **WHEN** 打开含 `> [!highlight]\n> 正文` 的文档并切到预览态
+- **THEN** 预览 `.callout-mark` 计算 `border-inline-start-width` SHALL 为 `0px`、`border-top-width` SHALL 为 `1px`、`border-radius` SHALL 为 `4px`，`.callout-title` 节点数 SHALL 为 0，文本 SHALL NOT 含「纯高亮」
+
+#### Scenario: 标注空标题不印默认名
+
+- **WHEN** 打开含 `> [!NOTE]\n> 正文` 的文档并切到预览态
+- **THEN** 预览 HTML SHALL NOT 含「注释」，`.callout-title` 节点数 SHALL 为 0，emoji SHALL 可见
+
+#### Scenario: 标注有标题仍渲染
+
+- **WHEN** 打开含 `> [!NOTE] 我的标题\n> 正文` 的文档并切到预览态
+- **THEN** 预览 `.callout-title` 文本 SHALL 严格等于「我的标题」
+
+#### Scenario: 会话内改 emoji 对预览可见
+
+- **WHEN** 在编辑态把某高亮块的 emoji 改为 🚀，随后切到预览态
+- **THEN** 预览对应块 SHALL 显示 🚀；未改过的块 SHALL 显示类型默认 emoji
+
+### Requirement: E-53 纯高亮 emoji 悬挂缩进
+
+纯高亮块的 emoji SHALL 与正文首行同行：emoji 位于首行行首，正文首行紧接其后；正文换行后左缘 SHALL 与正文列对齐（emoji 下方 SHALL NOT 出现空行）。编辑态与预览态 SHALL 一致。
+
+#### Scenario: 编辑态 emoji 与首行同行
+
+- **WHEN** 打开含 `> [!highlight]\n> 第一行正文\n> 第二行正文` 的文档
+- **THEN** emoji 右缘与正文首行左缘间距 SHALL ≤ 2px；正文第二行左缘与首行左缘 x 坐标差 SHALL ≤ 1px；正文首行 top 与 emoji top 差 SHALL ≤ 2px
+
+#### Scenario: 预览态同构
+
+- **WHEN** 把同一文档切到预览态
+- **THEN** emoji 与正文首行同行，正文第二行左缘与首行左缘对齐（差 ≤ 1px）
+
+### Requirement: E-54 emoji 取色器
+
+emoji 取色器 SHALL 使用仓库内置全量 emoji 库（1578 条、7 分类），SHALL NOT 新增 npm 依赖。取色器 SHALL 有 8 个页签，顺序 SHALL 为 `最近 / 表情符号 / 动物 / 食物 / 活动 / 地点 / 物件 / 符号`。
+
+「最近」页签 SHALL 分两段：上段「常用」SHALL 为既有的 24 个精选 emoji（顺序不变）；下段「最近」SHALL 为最近使用列表（localStorage 持久化、去重、最新在前、上限 20）；未使用时「最近」段 SHALL 为空（不占位）。
+
+取色器顶部搜索框右侧 SHALL 有「随机」按钮；点击 SHALL 直接应用一个随机 emoji（沿用 quiet 的 `RANDOM_BLOCKLIST` 排除项语义），取色器 SHALL 保持打开。搜索 SHALL 支持中文与英文关键词。
+
+#### Scenario: 8 页签与顺序
+
+- **WHEN** 用户打开 emoji 取色器
+- **THEN** 页签数 SHALL 为 8，顺序 SHALL 为 `最近 / 表情符号 / 动物 / 食物 / 活动 / 地点 / 物件 / 符号`
+
+#### Scenario: 最近分两段
+
+- **WHEN** 用户首次打开取色器（从未选过 emoji）
+- **THEN** 「常用」段 SHALL 含 24 项且顺序与既有精选一致；「最近」段 SHALL 含 0 项
+- **AND WHEN** 用户选过一个 emoji 后重新打开
+- **THEN** 「最近」段 SHALL 含 1 项且该 emoji 最新在前
+
+#### Scenario: 随机按钮
+
+- **WHEN** 用户点击取色器顶部「随机」按钮
+- **THEN** 卡片 `data-callout-emoji` SHALL 变化，取色器 SHALL 保持可见
+
+#### Scenario: 搜索
+
+- **WHEN** 用户在搜索框输入「猫」
+- **THEN** 结果列表 SHALL 非空且每项名称或关键词 SHALL 含「猫」
 
