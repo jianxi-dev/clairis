@@ -1,0 +1,133 @@
+{
+  "change": "highlight-mark-refine-v1",
+  "requirements": [
+    {
+      "id": "R-1",
+      "text": "预览态同形与空标题（E-49）",
+      "anchors": [
+        {
+          "id": "A-1.1",
+          "claim": "预览态纯高亮边框与圆角",
+          "kind": "exact",
+          "assert": "`.callout-mark` 计算 `border-inline-start-width: 0px`、`border-top-width: 1px`、`border-radius: 4px`",
+          "source": "截图#3 / D1"
+        },
+        {
+          "id": "A-1.2",
+          "claim": "预览态纯高亮无标题栏",
+          "kind": "exact",
+          "assert": "`.callout-title` 节点数 = 0，文本不含「纯高亮」",
+          "source": "截图#3 / D1"
+        },
+        {
+          "id": "A-1.3",
+          "claim": "标注空标题不印默认名",
+          "kind": "exact",
+          "assert": "`> [!NOTE]` 预览 HTML 不含「注释」（命中数 0），`.callout-title` 元素 textContent 为空字符串、其 emoji 伪元素可见",
+          "source": "D2 / 一手 `markdown.ts:783`"
+        },
+        {
+          "id": "A-1.4",
+          "claim": "会话内改 emoji 对预览可见",
+          "kind": "state-machine",
+          "assert": "编辑态改 \"🚀\" 后预览对应块 `data-callout-emoji` = \"🚀\"；未改块 = 类型默认 \"🖍️\"",
+          "source": "D11 / 一手 `callout-emoji.ts:30-57`"
+        }
+      ]
+    },
+    {
+      "id": "R-2",
+      "text": "纯高亮 emoji 悬挂缩进（E-50）",
+      "anchors": [
+        {
+          "id": "A-2.1",
+          "claim": "编辑态 emoji 与首行同行",
+          "kind": "exact",
+          "assert": "emoji 右缘与正文首行左缘间距 ≤ 2px；正文首行 top 与 emoji top 差 ≤ 2px",
+          "source": "截图#4 / D3"
+        },
+        {
+          "id": "A-2.2",
+          "claim": "正文换行对齐正文列",
+          "kind": "exact",
+          "assert": "正文第二行左缘与首行左缘 x 坐标差 ≤ 1px（编辑态与预览态同）",
+          "source": "截图#4 / D3"
+        }
+      ]
+    },
+    {
+      "id": "R-3",
+      "text": "高亮颜色面板（E-48）",
+      "anchors": [
+        {
+          "id": "A-3.1",
+          "claim": "色块尺寸 1/4 与面板几何",
+          "kind": "exact",
+          "assert": "色块计算 `width: 22px`、`height: 20px`；行 `gap: 4px`；面板 `width: 216px`；每行 8 格不换行",
+          "source": "截图#1 / D4"
+        },
+        {
+          "id": "A-3.2",
+          "claim": "选色与随机后选中态即时刷新",
+          "kind": "state-machine",
+          "assert": "新值色块 `data-active=\"true\"`、旧值 `data-active=\"false\"`，面板仍可见；随机后 `bg` 与 `border` 色块同时刷新",
+          "source": "D5 / 一手 `callout-color-panel.ts:264-269`"
+        }
+      ]
+    },
+    {
+      "id": "R-4",
+      "text": "emoji 取色器（E-51）",
+      "anchors": [
+        {
+          "id": "A-4.1",
+          "claim": "8 页签与常用段",
+          "kind": "exact",
+          "assert": "页签数 = 8，顺序 `最近 / 表情符号 / 动物 / 食物 / 活动 / 地点 / 物件 / 符号`；「常用」段 = 20 项",
+          "source": "截图#2 / D7"
+        },
+        {
+          "id": "A-4.2",
+          "claim": "最近段持久化与随机",
+          "kind": "state-machine",
+          "assert": "首次打开「最近」段 = 0 项；选后 = 1 项最新在前；点「随机」后 `data-callout-emoji` 变化且取色器仍可见",
+          "source": "截图#2 / D7 / D8"
+        },
+        {
+          "id": "A-4.3",
+          "claim": "全量库",
+          "kind": "exact",
+          "assert": "解析后 emoji 条数 = 1578，分类数 = 7",
+          "source": "D6 / quiet `emoji.tsv`"
+        }
+      ]
+    },
+    {
+      "id": "R-5",
+      "text": "图标与工具条（E-48 supersede / D9 / D10 / D12）",
+      "anchors": [
+        {
+          "id": "A-5.1",
+          "claim": "两条工具条居中",
+          "kind": "exact",
+          "assert": "两条工具条中心与块盒中心偏差 ≤ 2px",
+          "source": "截图#6 / D10 / 一手 `floating-toolbar.ts:988-990`"
+        },
+        {
+          "id": "A-5.2",
+          "claim": "颜色入口统一调色板",
+          "kind": "exact",
+          "assert": "两条工具条颜色入口 `svg` 的 `data-icon` = `PaletteOutlined`（各恰 1 个）",
+          "source": "截图#6 / D9 / 一手 `floating-toolbar.ts:330-332`"
+        },
+        {
+          "id": "A-5.3",
+          "claim": "纯高亮手柄图标",
+          "kind": "exact",
+          "assert": "纯高亮手柄 `data-icon` = `HighlightBlockOutlined`（恰 1 个）；标注手柄 ≠ 该值（0 个）",
+          "source": "截图#5 / D10 / 一手 `block-handle.ts:54-67`"
+        }
+      ]
+    }
+  ]
+}
