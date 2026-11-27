@@ -8,10 +8,12 @@ import { execFileSync } from "node:child_process";
 
 const APP_URL = process.env.PANE_SCALE_APP_URL ?? "http://localhost:1420";
 const ART = path.resolve(process.cwd(), ".artifacts/1585");
+const ART_1606 = path.resolve(process.cwd(), ".artifacts/1606");
 const EVIDENCE = path.resolve(process.cwd(), "scripts/cw-evidence.sh");
 
 test.beforeEach(() => {
   mkdirSync(ART, { recursive: true });
+  mkdirSync(ART_1606, { recursive: true });
 });
 
 async function shot(target: Page, name: string): Promise<string> {
@@ -81,6 +83,24 @@ async function chromeZoom(page: Page, selector: string): Promise<number> {
   return page.locator(selector).evaluate((el) => {
     const value = getComputedStyle(el).zoom;
     return value === "normal" ? 1 : parseFloat(value);
+  });
+}
+
+/**
+ * 有效缩放：元素自身 zoom 与所有祖先 zoom 的乘积。
+ * 嵌套浮层（如大纲面板嵌在 .biaoyue-outline 内）自身 computed zoom 为 1，
+ * 实际缩放来自祖先；断言倍率必须用有效值，否则会把「已缩放」误判为未缩放。
+ */
+async function effectiveZoom(page: Page, selector: string): Promise<number> {
+  return page.locator(selector).evaluate((el) => {
+    let scale = 1;
+    let node: HTMLElement | null = el;
+    while (node) {
+      const value = getComputedStyle(node).zoom;
+      if (value !== "normal") scale *= parseFloat(value);
+      node = node.parentElement;
+    }
+    return scale;
   });
 }
 
@@ -301,6 +321,296 @@ test("证据采集：三档设置截图 + 大档工作区 chrome", async ({ page
   ];
   writeFileSync(
     path.join(ART, "state-coverage.json"),
+    JSON.stringify({ states }, null, 2),
+  );
+});
+
+// ── #1606 / D7：关爱界面 zoom 白名单扩到全部 chrome 浮层 ─────────────────
+// 断言代表性面（阅读轨 / 大纲菜单 / 文档属性面板 / 状态栏浮窗 / 页签右键菜单）
+// 在 large 下 computed zoom = 1.2，且缩放不产生横向溢出；正文 zoom 恒 1。
+
+const DOC_1606 = [
+  "---",
+  "title: 关爱界面覆盖",
+  "tags:",
+  "  - 甲",
+  "  - 乙",
+  "---",
+  "",
+  "# 第一章",
+  "",
+  "开场。",
+  "",
+  "## 第一节",
+  "",
+  "正文。",
+  "",
+].join("\n");
+
+async function shot1606(target: Page, name: string): Promise<string> {
+  const file = path.join(ART_1606, `${name}.png`);
+  await target.screenshot({ path: file });
+  execFileSync(
+    EVIDENCE,
+    [
+      "record-state",
+      ART_1606,
+      "--state",
+      name,
+      "--screenshot",
+      file,
+      "--assertion",
+      "passed",
+    ],
+    { stdio: "ignore" },
+  );
+  return file;
+}
+
+async function boot1606(page: Page, paneScale: string): Promise<void> {
+  await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
+  await page.addInitScript({
+    content: `window.__biaoyue_pane_scale__ = ${JSON.stringify(paneScale)};`,
+  });
+  await page.addInitScript({ content: `window.__doc__ = ${JSON.stringify(DOC_1606)};` });
+  await page.goto(APP_URL, { waitUntil: "networkidle" });
+  await page.waitForSelector('[data-testid="pane-header"]', {
+    state: "attached",
+    timeout: 15000,
+  });
+  await expect
+    .poll(
+      () =>
+        page.evaluate(
+          () => document.documentElement.dataset.paneScale ?? null,
+        ),
+      { timeout: 15000 },
+    )
+    .toBe(paneScale);
+  await page.evaluate(() => {
+    const w = window as unknown as Record<string, any>;
+    w.__biaoyue_openFile__("/tmp/pane-scale/doc.md", w.__doc__, "doc.md");
+    w.__biaoyue_store__?.getState?.().setScene("workspace");
+  });
+  await expect
+    .poll(() => page.locator('[role="tab"]').count(), { timeout: 10000 })
+    .toBeGreaterThan(0);
+}
+
+test("#1606 大档：阅读轨 / 大纲菜单 / 文档属性面板 / 状态栏浮窗 zoom 1.2 且不横向溢出", async ({
+  page,
+}) => {
+  await boot1606(page, "large");
+
+  // 阅读轨：钉住态（.pane-leaf 内 .rail-root）。
+  await page.evaluate(() => {
+    (window as unknown as Record<string, any>).__biaoyue_store__
+      .getState()
+      .setRailState("pinned");
+  });
+  const rail = page.locator(".rail-root").first();
+  await expect(rail).toBeVisible({ timeout: 5000 });
+  expect(await chromeZoom(page, ".rail-root")).toBeCloseTo(1.2, 5);
+
+  // 大纲菜单：预览态从 DOM 提取标题，点击按钮展开后断言面板 zoom。
+  await page.evaluate(() => {
+    (window as unknown as Record<string, any>).__biaoyue_store__
+      .getState()
+      .setEditorMode("preview");
+  });
+  const outlineBtn = page.getByTestId("outline-btn");
+  await expect(outlineBtn).toBeVisible({ timeout: 5000 });
+  await outlineBtn.click();
+  const outlinePanel = page.getByTestId("outline-menu");
+  await expect(outlinePanel).toBeVisible({ timeout: 5000 });
+  expect(
+    await effectiveZoom(page, '[data-testid="outline-menu"]'),
+  ).toBeCloseTo(1.2, 5);
+  await shot1606(page, "01-large-outline");
+
+  // 文档属性面板：固定宿主（预览态 + frontmatter）。
+  const dpb = page.locator(".dpb-panel").first();
+  await expect(dpb).toBeVisible({ timeout: 5000 });
+  expect(await chromeZoom(page, ".dpb-panel")).toBeCloseTo(1.2, 5);
+  await shot1606(page, "02-large-dpb");
+
+  // 状态栏浮窗：悬停底部热区唤出状态栏，再悬停主题入口展开菜单。
+  await page.getByTestId("status-hotzone").hover();
+  await expect(page.getByTestId("status-bar")).toBeVisible({ timeout: 3000 });
+  expect(await chromeZoom(page, '[data-testid="status-bar"]')).toBeCloseTo(
+    1.2,
+    5,
+  );
+  await page.getByTestId("theme-entry").hover();
+  const themeMenu = page.getByTestId("theme-menu");
+  await expect(themeMenu).toBeVisible({ timeout: 3000 });
+  expect(await chromeZoom(page, ".theme-menu-wrap")).toBeCloseTo(1.2, 5);
+  await shot1606(page, "03-large-status-popup");
+
+  // 缩放不得产生横向溢出。
+  const widths = await page.evaluate(() => ({
+    scroll: document.documentElement.scrollWidth,
+    client: document.documentElement.clientWidth,
+  }));
+  expect(widths.scroll).toBeLessThanOrEqual(widths.client + 1);
+});
+
+test("#1606 大档：页签右键菜单 zoom 1.2 且仍锚定指针、落在视口内", async ({
+  page,
+}) => {
+  await boot1606(page, "large");
+  const tab = page.locator('[role="tab"]').first();
+  const tb = await tab.boundingBox();
+  if (!tb) throw new Error("页签不可见");
+  const cx = tb.x + tb.width / 2;
+  const cy = tb.y + tb.height / 2;
+
+  await tab.click({ button: "right" });
+  const menu = page.locator("[data-tab-menu]");
+  await expect(menu).toHaveCount(1);
+  expect(await chromeZoom(page, "[data-tab-menu]")).toBeCloseTo(1.2, 5);
+
+  const mb = await menu.boundingBox();
+  if (!mb) throw new Error("菜单不可见");
+  const distance = Math.hypot(mb.x - cx, mb.y - cy);
+  expect(distance).toBeLessThanOrEqual(300);
+  expect(mb.x).toBeGreaterThanOrEqual(0);
+  expect(mb.y).toBeGreaterThanOrEqual(0);
+  expect(mb.x + mb.width).toBeLessThanOrEqual(1200);
+  expect(mb.y + mb.height).toBeLessThanOrEqual(800);
+  await shot1606(page, "04-large-tab-menu");
+});
+
+test("#1606 小档：代表性面 zoom 0.9（阅读轨 / 大纲 / 文档属性 / 状态栏浮窗）", async ({
+  page,
+}) => {
+  await boot1606(page, "small");
+
+  await page.evaluate(() => {
+    (window as unknown as Record<string, any>).__biaoyue_store__
+      .getState()
+      .setRailState("pinned");
+  });
+  await expect(page.locator(".rail-root").first()).toBeVisible({
+    timeout: 5000,
+  });
+  expect(await chromeZoom(page, ".rail-root")).toBeCloseTo(0.9, 5);
+
+  await page.evaluate(() => {
+    (window as unknown as Record<string, any>).__biaoyue_store__
+      .getState()
+      .setEditorMode("preview");
+  });
+  await page.getByTestId("outline-btn").click();
+  await expect(page.getByTestId("outline-menu")).toBeVisible({
+    timeout: 5000,
+  });
+  expect(
+    await effectiveZoom(page, '[data-testid="outline-menu"]'),
+  ).toBeCloseTo(0.9, 5);
+
+  await expect(page.locator(".dpb-panel").first()).toBeVisible({
+    timeout: 5000,
+  });
+  expect(await chromeZoom(page, ".dpb-panel")).toBeCloseTo(0.9, 5);
+
+  await page.getByTestId("status-hotzone").hover();
+  await expect(page.getByTestId("status-bar")).toBeVisible({ timeout: 3000 });
+  await page.getByTestId("theme-entry").hover();
+  await expect(page.getByTestId("theme-menu")).toBeVisible({ timeout: 3000 });
+  expect(await chromeZoom(page, ".theme-menu-wrap")).toBeCloseTo(0.9, 5);
+});
+
+test("#1606 作用域：正文 / 编辑器 zoom 恒 1，白名单外元素不受影响", async ({
+  page,
+}) => {
+  await boot1606(page, "large");
+
+  // 切到编辑态挂载 .cm-content，正文 zoom 必须恒 1。
+  await page.evaluate(() => {
+    (window as unknown as Record<string, any>).__biaoyue_store__
+      .getState()
+      .setEditorMode("edit");
+  });
+  await page.waitForSelector(".cm-content", { timeout: 10000 });
+  const body = await page.evaluate(() => {
+    const el = document.querySelector(".cm-content") as HTMLElement | null;
+    if (!el) return null;
+    const cs = getComputedStyle(el);
+    const rect = el.getBoundingClientRect();
+    return { zoom: cs.zoom, width: rect.width, x: rect.x };
+  });
+  expect(body).not.toBeNull();
+  expect(body!.zoom).toBe("1");
+
+  // 预览内容 zoom 恒 1。
+  await page.evaluate(() => {
+    (window as unknown as Record<string, any>).__biaoyue_store__
+      .getState()
+      .setEditorMode("preview");
+  });
+  await expect
+    .poll(
+      () =>
+        page.evaluate(
+          () =>
+            document.querySelector(".preview-content") instanceof HTMLElement,
+        ),
+      { timeout: 5000 },
+    )
+    .toBe(true);
+  const preview = await page.evaluate(() => {
+    const el = document.querySelector(".preview-content") as HTMLElement | null;
+    if (!el) return null;
+    return { zoom: getComputedStyle(el).zoom };
+  });
+  expect(preview).not.toBeNull();
+  expect(preview!.zoom).toBe("1");
+});
+
+test("#1606 证据采集：四态截图 + state-coverage.json", async ({ page }) => {
+  await boot1606(page, "large");
+  await page.evaluate(() => {
+    (window as unknown as Record<string, any>).__biaoyue_store__
+      .getState()
+      .setRailState("pinned");
+  });
+  await expect(page.locator(".rail-root").first()).toBeVisible({
+    timeout: 5000,
+  });
+  await shot1606(page, "large-rail");
+
+  await page.evaluate(() => {
+    (window as unknown as Record<string, any>).__biaoyue_store__
+      .getState()
+      .setEditorMode("preview");
+  });
+  await page.getByTestId("outline-btn").click();
+  await expect(page.getByTestId("outline-menu")).toBeVisible({
+    timeout: 5000,
+  });
+  await shot1606(page, "large-outline-dpb");
+
+  await page.getByTestId("status-hotzone").hover();
+  await expect(page.getByTestId("status-bar")).toBeVisible({ timeout: 3000 });
+  await page.getByTestId("theme-entry").hover();
+  await expect(page.getByTestId("theme-menu")).toBeVisible({ timeout: 3000 });
+  await shot1606(page, "large-status-popup");
+
+  await page.keyboard.press("Escape");
+  const tab = page.locator('[role="tab"]').first();
+  await tab.click({ button: "right" });
+  await expect(page.locator("[data-tab-menu]")).toHaveCount(1);
+  await shot1606(page, "large-tab-menu");
+
+  const states = [
+    { state: "large-rail", screenshot: "large-rail.png", assertion: "passed" },
+    { state: "large-outline-dpb", screenshot: "large-outline-dpb.png", assertion: "passed" },
+    { state: "large-status-popup", screenshot: "large-status-popup.png", assertion: "passed" },
+    { state: "large-tab-menu", screenshot: "large-tab-menu.png", assertion: "passed" },
+  ];
+  writeFileSync(
+    path.join(ART_1606, "state-coverage.json"),
     JSON.stringify({ states }, null, 2),
   );
 });

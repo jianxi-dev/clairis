@@ -2,31 +2,31 @@
   "states": [
     {
       "state": "menu-open-anchored",
-      "screenshot": "/Users/mason/ToHighs/clairis-tb/.artifacts/1607/menu-open-anchored.png",
+      "screenshot": "/Users/mason/ToHighs/clairis-ps2/.artifacts/1607/menu-open-anchored.png",
       "assertion": "passed",
-      "recorded_at": "2026-11-27T05:29:35Z",
-      "runner": "mason@MMBP"
+      "recorded_at": "2026-11-27T06:38:17Z",
+      "runner": "unknown@MMBP"
     },
     {
       "state": "menu-open-clamped",
-      "screenshot": "/Users/mason/ToHighs/clairis-tb/.artifacts/1607/menu-open-clamped.png",
+      "screenshot": "/Users/mason/ToHighs/clairis-ps2/.artifacts/1607/menu-open-clamped.png",
       "assertion": "passed",
-      "recorded_at": "2026-11-27T05:29:36Z",
-      "runner": "mason@MMBP"
+      "recorded_at": "2026-11-27T06:38:19Z",
+      "runner": "unknown@MMBP"
     },
     {
       "state": "info-window-hover-normal",
-      "screenshot": "/Users/mason/ToHighs/clairis-tb/.artifacts/1607/info-window-hover-normal.png",
+      "screenshot": "/Users/mason/ToHighs/clairis-ps2/.artifacts/1607/info-window-hover-normal.png",
       "assertion": "passed",
-      "recorded_at": "2026-11-27T05:29:38Z",
-      "runner": "mason@MMBP"
+      "recorded_at": "2026-11-27T06:38:23Z",
+      "runner": "unknown@MMBP"
     },
     {
       "state": "menu-open-info-hidden",
-      "screenshot": "/Users/mason/ToHighs/clairis-tb/.artifacts/1607/menu-open-info-hidden.png",
+      "screenshot": "/Users/mason/ToHighs/clairis-ps2/.artifacts/1607/menu-open-info-hidden.png",
       "assertion": "passed",
-      "recorded_at": "2026-11-27T05:29:39Z",
-      "runner": "mason@MMBP"
+      "recorded_at": "2026-11-27T06:38:25Z",
+      "runner": "unknown@MMBP"
     }
   ]
 }
