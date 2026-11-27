@@ -171,7 +171,11 @@ function sweepCropResidue(): void {
  * 视口护栏：进入与确认都要替换 / 重建 widget DOM，浏览器或编辑器会做滚动
  * 补偿（WebKit 还会在可编辑 DOM 变更后把选区滚进视口，跳变可能晚于首帧），
  * 视口因此「跳一下」。裁剪是就地编辑，视口不该动——在接下来若干帧内把滚动
- * 位置钉回裁剪前的值（窗口 ~400ms，跳变可能迟于首帧）；期间用户滚动立即让位。
+ * 位置钉回裁剪前的值；期间用户滚动立即让位。
+ *
+ * 窗口 1200ms：WKWebView 的延迟补偿（首帧塌陷 / caret reveal）可能晚于
+ * 450ms，#1603 真机首裁仍跳；放宽到覆盖该延迟。用户滚轮 / 触摸 / 按键立即
+ * 让位，不会与用户滚动意图打架。
  */
 function pinScroll(
   scroller: HTMLElement | null,
@@ -196,7 +200,7 @@ function pinScroll(
       scroller.scrollTop = scrollTop;
     }
     // 时间窗而非帧数：headless / 高刷屏的帧率差异不会缩短覆盖时长。
-    if (performance.now() - startedAt < 450) requestAnimationFrame(pin);
+    if (performance.now() - startedAt < 1200) requestAnimationFrame(pin);
   };
   requestAnimationFrame(pin);
 }
@@ -312,6 +316,51 @@ export function openImageCrop(options: ImageCropOptions): void {
   img.addEventListener("error", onError);
 }
 
+/**
+ * 进入裁剪态前预写 cropDisplayCache：把「本次会话的初始显示矩形」按
+ * `applyDisplay` 的同一键写入，使 widget 重建（普通 img → 裁剪窗口）时
+ * 命中同步分支，首帧即最终尺寸。
+ *
+ * 无 width 锚点的图片在 toDOM 里拿不到 naturalWidth，未命中缓存就只能先
+ * 渲染无尺寸窗口等 rAF 测量——那一帧的过渡就是真机首裁跳动的来源。
+ */
+function primeCropDisplayCache(
+  img: HTMLImageElement,
+  options: ImageCropOptions,
+): void {
+  const natW = img.naturalWidth;
+  const natH = img.naturalHeight;
+  if (!(natW > 0) || !(natH > 0)) return;
+  const enterRect = img.getBoundingClientRect();
+  if (!(enterRect.width > 0) || !(enterRect.height > 0)) return;
+  const base: Rect = options.crop
+    ? {
+        left: options.crop[0],
+        top: options.crop[1],
+        width: options.crop[2],
+        height: options.crop[3],
+      }
+    : { left: 0, top: 0, width: natW, height: natH };
+  clampRect(base, natW, natH);
+  const scale: Scale2D = {
+    x: enterRect.width / base.width,
+    y: enterRect.height / base.height,
+  };
+  if (!(scale.x > 0) || !(scale.y > 0)) return;
+  const rect = displayRectFromImageRect(base, scale);
+  clampDisplayRect(rect, natW * scale.x, natH * scale.y, scale);
+  const cropKey = imageRectFromDisplay(rect, scale);
+  cropDisplayCache.set(
+    cropDisplayKey(img.getAttribute("src"), [
+      cropKey.left,
+      cropKey.top,
+      cropKey.width,
+      cropKey.height,
+    ]),
+    { width: rect.width, height: rect.height },
+  );
+}
+
 function mount(
   widget: HTMLElement,
   img: HTMLImageElement,
@@ -323,9 +372,14 @@ function mount(
   closeImageCrop();
   sweepCropResidue();
   const scroller = widget.closest(".cm-scroller") as HTMLElement | null;
-  const scrollAtMount = scroller ? scroller.scrollTop : null;
   const natW = img.naturalWidth;
   const natH = img.naturalHeight;
+  // 首裁跳动的根：进入裁剪态时 widget 由普通 img 换成裁剪窗口，若此时
+  // cropDisplayCache 未命中，首帧按原图自然尺寸渲染 → 内容高度瞬时塌陷 →
+  // WKWebView 滚动锚定把 scrollTop 往回补（#1603 真机「往上跳一些」）。
+  // 预写本次会话的初始显示矩形，让 widget 重建时直接命中缓存（同步分支），
+  // 首帧即最终尺寸，无塌陷。键与 applyDisplay 的写入端完全一致。
+  primeCropDisplayCache(img, options);
 
   // 进入前的可见显示矩形（CSS px）：图片实际按 {width=…} 或既有 crop 显示，
   // 清空样式量到的「整图容器宽」并不是它。以进入前的可见尺寸为基准，进入裁剪
