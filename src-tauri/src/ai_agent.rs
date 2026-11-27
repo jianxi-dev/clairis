@@ -1988,6 +1988,50 @@ mod tests {
     }
 
     #[test]
+    fn patch_data_surface_pane_modes_步长外无需归整_边界值接受() {
+        let dir = temp_base("patch_pane_modes_edges");
+        let base = dir.path();
+        for ok_value in [12, 24] {
+            let raw = dispatch_tool(
+                base,
+                "patch_data_surface",
+                &json!({ "id": "pane-modes", "patch": { "items": [ {"id":"standard","hotzonePx":ok_value} ] } }),
+            )
+            .unwrap();
+            let parsed: Value = serde_json::from_str(&raw).unwrap();
+            assert_eq!(parsed["ok"], json!(true), "{ok_value} 应接受: {raw}");
+            let standard = parsed["result"]["effective"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|i| i["id"] == json!("standard"))
+                .unwrap();
+            assert_eq!(standard["hotzonePx"], json!(ok_value), "无需归整");
+        }
+        let override_path = base.join("user").join("pane-modes.json");
+        let before = std::fs::read(&override_path).ok();
+        for bad_value in [11, 25] {
+            let raw = dispatch_tool(
+                base,
+                "patch_data_surface",
+                &json!({ "id": "pane-modes", "patch": { "items": [ {"id":"standard","hotzonePx":bad_value} ] } }),
+            )
+            .unwrap();
+            let parsed: Value = serde_json::from_str(&raw).unwrap();
+            assert_eq!(parsed["ok"], json!(false), "{bad_value} 应拒绝: {raw}");
+            assert!(
+                parsed["error"]["message"].as_str().unwrap().contains("pane-modes"),
+                "错误应指明面 id: {raw}"
+            );
+            assert_eq!(
+                std::fs::read(&override_path).ok(),
+                before,
+                "拒绝时不得改动覆盖文件"
+            );
+        }
+    }
+
+    #[test]
     fn patch_data_surface_rejects_unregistered_id_without_write() {
         let dir = temp_base("bad_surface_id");
         let base = dir.path();
