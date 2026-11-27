@@ -83,6 +83,14 @@ function visibleLabel(el: Element): string {
 function tipSideFor(el: Element, size: TipSize): TipSide {
   const rect = el.getBoundingClientRect();
   const verticalNeed = size.height + TIP_GAP;
+  // 浮层菜单内的行：提示固定在行上方/下方，不要跑到左右两侧去盖住同一行
+  // （#1640 用户反馈：块菜单「无序」提示跑到图标左侧并压住图标）。
+  const inMenu = el.closest(
+    ".cm-block-menu-flyout, .tab-context-menu, .context-menu, .dpb-menu, .biaoyue-outline",
+  );
+  if (inMenu) {
+    return rect.top - verticalNeed >= 0 ? "above" : "below";
+  }
   if (rect.top - verticalNeed >= TIP_VIEWPORT_MARGIN) return "above";
   if (rect.bottom + verticalNeed <= window.innerHeight - TIP_VIEWPORT_MARGIN)
     return "below";

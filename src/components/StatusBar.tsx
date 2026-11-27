@@ -320,7 +320,7 @@ export default function StatusBar({
                     Math.max(widthAnchor - WIDTH_PANEL_W / 2, 8),
                     Math.max(window.innerWidth - WIDTH_PANEL_W - 8, 8),
                   ),
-                  bottom: window.innerHeight - widthRect.top + 6,
+                  bottom: window.innerHeight - widthRect.top + 16,
                 }}
               >
                 <div className="width-bars" data-testid="width-bars">
@@ -449,7 +449,7 @@ export default function StatusBar({
                       themeRect.left,
                       Math.max(window.innerWidth - THEME_MENU_W - 8, 8),
                     ),
-                    bottom: window.innerHeight - themeRect.top,
+                    bottom: window.innerHeight - themeRect.top + 10,
                   }}
                   onPointerEnter={cancelThemeClose}
                   onPointerLeave={scheduleThemeClose}

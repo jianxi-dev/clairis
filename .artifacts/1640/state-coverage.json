@@ -1,0 +1,24 @@
+{
+  "states": [
+    {
+      "state": "01-large-tooltip-above",
+      "screenshot": "01-large-tooltip-above.png",
+      "assertion": "passed"
+    },
+    {
+      "state": "02-large-status-popup-gap",
+      "screenshot": "02-large-status-popup-gap.png",
+      "assertion": "passed"
+    },
+    {
+      "state": "03-large-menu-anchored",
+      "screenshot": "03-large-menu-anchored.png",
+      "assertion": "passed"
+    },
+    {
+      "state": "04-small-tooltip-above",
+      "screenshot": "04-small-tooltip-above.png",
+      "assertion": "passed"
+    }
+  ]
+}

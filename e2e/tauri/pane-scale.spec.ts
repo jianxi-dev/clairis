@@ -100,6 +100,9 @@ async function effectiveZoom(page: Page, selector: string): Promise<number> {
     while (node) {
       const cs = getComputedStyle(node);
       if (cs.zoom !== "normal") scale *= parseFloat(cs.zoom);
+      // 独立 scale 属性（与 transform 叠加；#1638/#1640 锚定浮层用）
+      const sProp = cs.getPropertyValue("scale");
+      if (sProp && sProp !== "none") scale *= parseFloat(sProp) || 1;
       if (cs.transform && cs.transform !== "none") {
         const m = new DOMMatrixReadOnly(cs.transform);
         const t = Math.hypot(m.a, m.b);
@@ -907,4 +910,45 @@ test("#1638 锚定浮层不随缩放漂移：菜单/信息窗左缘偏差 ≤2px
     Math.abs(infoLeft - tabLeft),
     `信息窗左缘 ${infoLeft} 应贴页签左缘 ${tabLeft}`,
   ).toBeLessThanOrEqual(2);
+});
+
+test("#1640 提示在触发点上方、状态栏浮窗不压状态栏（large）", async ({
+  page,
+}) => {
+  await boot(page, "large");
+  await page.getByTestId("status-hotzone").hover();
+  await expect(page.getByTestId("status-bar")).toBeVisible({ timeout: 3000 });
+
+  // 按钮提示：悬停带 title 的状态栏按钮，提示必须整体位于按钮上方。
+  const homeBtn = page.locator('[title="主页"]').first();
+  const hb = (await homeBtn.boundingBox())!;
+  await page.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2, { steps: 4 });
+  const tip = page.locator(".app-tip").first();
+  await expect(tip).toBeVisible({ timeout: 3000 });
+  // 提示有自动消失计时：两次 locator 往返之间可能已卸载，改为单次快照。
+  const tipBottom = await page.evaluate(() => {
+    const tipEl = document.querySelector(".app-tip");
+    return tipEl ? tipEl.getBoundingClientRect().bottom : null;
+  });
+  // 按钮坐标在 hover 之前已取（TooltipLayer 首次悬停后会移除 title 属性）。
+  expect(tipBottom).not.toBeNull();
+  expect(
+    tipBottom!,
+    `提示下缘 ${tipBottom} 应在按钮顶 ${hb.y} 上方`,
+  ).toBeLessThanOrEqual(hb.y + 1);
+
+  // 状态栏浮窗（bottom 锚定）：视觉下缘不得压到状态栏顶边。
+  const themeEntry = page.getByTestId("theme-entry");
+  const tb = (await themeEntry.boundingBox())!;
+  await page.mouse.move(tb.x + tb.width / 2, tb.y + tb.height / 2, { steps: 4 });
+  const panel = page.getByTestId("theme-menu");
+  await expect(panel).toBeVisible({ timeout: 3000 });
+  const [panelBottom, barTop] = await Promise.all([
+    page.locator(".theme-menu-wrap").evaluate((el) => el.getBoundingClientRect().bottom),
+    page.getByTestId("status-bar").evaluate((el) => el.getBoundingClientRect().top),
+  ]);
+  expect(
+    panelBottom,
+    `浮窗下缘 ${panelBottom} 不得压到状态栏顶 ${barTop}`,
+  ).toBeLessThanOrEqual(barTop + 1);
 });

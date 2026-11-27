@@ -1921,13 +1921,13 @@ html[data-pane-scale-active="true"] [data-ai-docked] {
 
 /*
  * 锚定浮层：绝不能用 zoom——zoom 会把它自己的 left/top（视口坐标）一起放大，
- * 表现为整体右移（#1638 实测 178px × 1.2² = 256px）。改用 transform：不改变布局
- * 坐标，锚点不漂，只做视觉缩放；命中区随 transform 同步。
- * 分组按锚定方向取 origin：左上锚定 / 底部居中 / 居中。
+ * 表现为整体右移（#1638 实测 178px × 1.2² = 256px）。
+ * 也不能用 transform：会覆盖元素原有的 translate 定位（提示上方的 -100%-8px 被
+ * 抹掉，掉回触发点上，#1640）。改用独立的 `scale` 属性——它与既有 transform
+ * 叠加而不是替换，锚点不漂，只做视觉缩放；命中区随 scale 同步。
+ * 分组按锚定边取 origin：左上 / 左下（状态栏浮窗 bottom 锚定）/ 底部居中 / 居中。
  */
 html[data-pane-scale-active="true"] :is(
-    .width-panel,
-    .theme-menu-wrap,
     .biaoyue-outline,
     .dpb-menu,
     .tab-context-menu,
@@ -1938,19 +1938,26 @@ html[data-pane-scale-active="true"] :is(
     .cm-floating-toolbar,
     [data-ai-bubble]
   ) {
-  transform: scale(var(--pane-scale-factor, 1));
+  scale: var(--pane-scale-factor, 1);
   transform-origin: top left;
 }
 
+/* 状态栏浮窗：bottom 锚定（向上展开），origin 必须在下边，否则向下盖住状态栏。 */
+html[data-pane-scale-active="true"] :is(.width-panel, .theme-menu-wrap) {
+  scale: var(--pane-scale-factor, 1);
+  transform-origin: bottom left;
+}
+
+/* 按钮提示：既有 transform 已把它移到触发点上方，origin 取底部居中让箭头固定。 */
 html[data-pane-scale-active="true"] .app-tip {
-  transform: scale(var(--pane-scale-factor, 1));
+  scale: var(--pane-scale-factor, 1);
   transform-origin: bottom center;
 }
 
-/* 居中/底部浮层：保留既有 translate 居中，再叠 scale。 */
+/* 居中/底部浮层：既有 translate 由 transform 保留，这里只叠 scale。 */
 html[data-pane-scale-active="true"] [data-undo-bar],
 html[data-pane-scale-active="true"] [data-ai-overlay] {
-  transform: translateX(-50%) scale(var(--pane-scale-factor, 1));
+  scale: var(--pane-scale-factor, 1);
   transform-origin: bottom center;
 }
 
@@ -1958,7 +1965,7 @@ html[data-pane-scale-active="true"] :is(
     [data-testid="quick-open"],
     [data-testid="shortcut-overlay"]
   ) {
-  transform: scale(var(--pane-scale-factor, 1));
+  scale: var(--pane-scale-factor, 1);
   transform-origin: center;
 }
 
