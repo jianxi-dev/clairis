@@ -98,7 +98,7 @@ test("角标加大且使用裁剪样式图标（A-4.1 / A-4.4）", async ({ page
 
   const icon = corner.locator("svg[data-icon]");
   await expect(icon).toHaveCount(1);
-  await expect(icon).toHaveAttribute("data-icon", "CropOutlined");
+  await expect(icon).toHaveAttribute("data-icon", "CropCorner");
 
   // 四个角都是同一裁剪图标；四边短柄同步加大（宽 16px）。
   for (const handle of ["ne", "se", "sw"]) {
@@ -108,19 +108,21 @@ test("角标加大且使用裁剪样式图标（A-4.1 / A-4.4）", async ({ page
           `.cm-image-crop-frame [data-handle="${handle}"] svg[data-icon]`,
         )
         .first(),
-    ).toHaveAttribute("data-icon", "CropOutlined");
+    ).toHaveAttribute("data-icon", "CropCorner");
   }
   const edgeMark = page.locator(
     '.cm-image-crop-frame [data-handle="n"] .image-crop-mark',
   );
   expect((await edgeMark.boundingBox())!.width).toBeGreaterThanOrEqual(16);
 
-  // 键名关系：裁剪把手图标与工具条「裁剪」按钮同源（差 0）。
+  // 键名关系（#1618 起有意区分）：角标用 CropCorner（四角形态），工具条
+  // 「裁剪」按钮用 CropOutlined——两者不同，避免裁剪态角标与按钮图标混淆。
   const toolbarKey = await page
     .getByTestId("img-toolbar-crop")
     .locator("svg[data-icon]")
     .getAttribute("data-icon");
-  expect(await icon.getAttribute("data-icon")).toBe(toolbarKey);
+  expect(toolbarKey).toBe("CropOutlined");
+  expect(await icon.getAttribute("data-icon")).toBe("CropCorner");
   await shot(page, "01-corner-icon-enlarged", "corner-icon-enlarged");
 });
 

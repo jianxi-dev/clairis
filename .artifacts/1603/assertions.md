@@ -147,3 +147,21 @@ await expect.poll(() => scaleOf(page), { timeout: 3000 }).toBeGreaterThan(before
 await expect(page.locator('[data-testid="img-maximize"]')).toHaveCount(0); // 关闭真实生效
 ```
 Scenario 对照：描述保存后重开预填（#1602/#1603 八轮）；放大层按钮条可点击（八轮「所有按钮没反应」）。
+
+## 九轮（r9）机读断言摘录
+```
+// caption-toggle-semantics.spec.ts（用户裁定：按钮选中 ⇔ 描述区显示，与内容无关）
+await expect(commentBtn(page)).toHaveAttribute("aria-pressed", "false");
+await expect(captionRow(page)).toBeHidden();
+await commentBtn(page).click();
+await expect(commentBtn(page)).toHaveAttribute("aria-pressed", "true");
+await expect(visibleInput(page)).toHaveCount(1);
+await expect(captionRow(page)).toHaveText("九轮描述");   // 保存后描述行显示新文字
+await expect(visibleInput(page)).toHaveValue("九轮描述"); // 再点开预填不丢
+
+// maximize-button-order / maximize-multinav / image-reset-button（查看工具条去掉重置图片）
+expect(order).not.toContain("img-max-clear-crop");
+await expect(page.getByTestId("img-max-clear-crop")).toHaveCount(0);
+expect(Math.round(w1!.width)).toBe(Math.round(w2!.width)); // 多图切换按钮组宽度恒定
+```
+Scenario 对照：描述纯显隐开关（九轮用户规格）；查看工具条无重置图片（九轮用户裁定）。
