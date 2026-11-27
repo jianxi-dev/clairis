@@ -91,7 +91,10 @@ export function pickHighlightFamily(
   rand: () => number = Math.random,
 ): (typeof HIGHLIGHT_COLORS)[number] {
   const currentKey = HIGHLIGHT_COLORS.find(
-    (family) => family.light === attrs.bg || family.dark === attrs.border,
+    (family) =>
+      family.light === attrs.bg ||
+      family.dark === attrs.border ||
+      family.border === attrs.border,
   )?.key;
   const pool = HIGHLIGHT_COLORS.filter((family) => family.key !== currentKey);
   return pool[Math.floor(rand() * pool.length)] ?? HIGHLIGHT_COLORS[0];
@@ -218,10 +221,43 @@ export function buildHighlightColorPanel(args: {
   onPick: (key: CalloutColorKey, className: string) => void;
   onReset: () => void;
   onRandom: () => void;
+  /**
+   * 选色 / 随机后重读当前属性，用于原地刷新 `data-active`。
+   * 不提供时保持构建时的一次性计算（向后兼容既有调用方）。
+   */
+  getActive?: () => CalloutAttrs;
 }): HTMLElement {
-  const { active, onPick, onReset, onRandom } = args;
+  const { active, onPick, onReset, onRandom, getActive } = args;
   const root = document.createElement("div");
   root.className = `${CALLOUT_COLOR_PANEL_CLASS} cm-highlight-color-panel`;
+
+  /** 行 kind + 色板 + 属性键，与 addRow 的构建顺序一一对应。 */
+  const rowSpecs: ReadonlyArray<{
+    label: string | null;
+    kind: ColorKind;
+    colors: readonly ColorSwatch[];
+    key: CalloutColorKey;
+  }> = [
+    {
+      label: null,
+      kind: "font",
+      colors: HIGHLIGHT_FONT_COLORS,
+      key: "text",
+    },
+    {
+      label: "边框颜色",
+      kind: "border",
+      colors: HIGHLIGHT_BORDER_COLORS,
+      key: "border",
+    },
+    {
+      label: "填充颜色",
+      kind: "background",
+      colors: HIGHLIGHT_FILL_DEEP,
+      key: "bg",
+    },
+    { label: null, kind: "background", colors: HIGHLIGHT_FILL_MID, key: "bg" },
+  ];
 
   const head = document.createElement("div");
   head.className = "cm-color-panel-head";
@@ -242,6 +278,7 @@ export function buildHighlightColorPanel(args: {
     event.preventDefault();
     event.stopPropagation();
     onRandom();
+    refreshActive();
   });
   head.appendChild(randomButton);
   root.appendChild(head);
@@ -251,16 +288,17 @@ export function buildHighlightColorPanel(args: {
     kind: ColorKind,
     colors: readonly ColorSwatch[],
     activeName: string,
-  ): void => {
+  ): HTMLElement => {
     if (label !== null) {
       const labelEl = document.createElement("div");
       labelEl.className = "cm-color-row-label";
       labelEl.textContent = label;
       root.appendChild(labelEl);
     }
-    const rowEl = createColorRow(kind, colors, (pickedKind, className) =>
-      onPick(KEY_OF_KIND[pickedKind], className),
-    );
+    const rowEl = createColorRow(kind, colors, (pickedKind, className) => {
+      onPick(KEY_OF_KIND[pickedKind], className);
+      refreshActive();
+    });
     const activeClass = activeClassNameOf(kind, activeName, colors);
     rowEl
       .querySelectorAll<HTMLButtonElement>(".cm-color-swatch")
@@ -268,12 +306,40 @@ export function buildHighlightColorPanel(args: {
         swatch.dataset.active = String(swatch.dataset.className === activeClass);
       });
     root.appendChild(rowEl);
+    return rowEl;
   };
 
-  addRow(null, "font", HIGHLIGHT_FONT_COLORS, active.text ?? "");
-  addRow("边框颜色", "border", HIGHLIGHT_BORDER_COLORS, active.border ?? "");
-  addRow("填充颜色", "background", HIGHLIGHT_FILL_DEEP, active.bg ?? "");
-  addRow(null, "background", HIGHLIGHT_FILL_MID, active.bg ?? "");
+  const rows = rowSpecs.map((spec) => ({
+    spec,
+    rowEl: addRow(
+      spec.label,
+      spec.kind,
+      spec.colors,
+      active[spec.key] ?? "",
+    ),
+  }));
+
+  /** 按当前属性重算每格 `data-active`；不重建节点、不改动面板结构。 */
+  const applyActive = (next: CalloutAttrs): void => {
+    for (const { spec, rowEl } of rows) {
+      const activeClass = activeClassNameOf(
+        spec.kind,
+        next[spec.key] ?? "",
+        spec.colors,
+      );
+      rowEl
+        .querySelectorAll<HTMLButtonElement>(".cm-color-swatch")
+        .forEach((swatch) => {
+          swatch.dataset.active = String(swatch.dataset.className === activeClass);
+        });
+    }
+  };
+
+  /** 选色 / 随机后：先写回，再按最新属性原地刷新选中态。 */
+  const refreshActive = (): void => {
+    if (!getActive) return;
+    applyActive(getActive());
+  };
 
   const resetButton = document.createElement("button");
   resetButton.type = "button";
@@ -284,6 +350,7 @@ export function buildHighlightColorPanel(args: {
     event.preventDefault();
     event.stopPropagation();
     onReset();
+    refreshActive();
   });
   root.appendChild(resetButton);
 
