@@ -117,3 +117,5 @@ ledger: append-only
 | 关爱界面缩放档 | UI 缩放三档 0.9 / 1.0 / 1.2（spec §4.1），走容器级 `zoom`，只作用于显式列举的 chrome 容器（顶栏 / 状态栏 / 设置场景），不触及正文；浮动菜单与 popover 暂不在范围内 | pane-presets-v1 / #1583 | 2026-11-26 |
 | 熟练模式 chrome 显隐 | hardcore 无热区，`Cmd+Shift+U` 临时显现、3 秒空闲或 Esc 收起，顶部保留 1px 提示线（`--app-border`）；`readingMode` 优先，切换不重建 EditorView（spec §7.7） | pane-presets-v1 / #1583 | 2026-11-26 |
 | 熟练模式覆盖扩展 | `paneMode` 三档扩到全部常驻 chrome（顶栏 / 状态栏 / 阅读轨 / 栏目头按钮 / 悬停预览）；hardcore 下 `Cmd+Shift+U` 一并临时显现、无悬停热区，瞬态浮层（选区胶囊 / AI 气泡 / 撤销条 / 捕获浮层 / 命令面板 / 快捷键帮助 / 右键菜单）显式排除；阅读轨档内覆盖走会话内呈现态、不写穿（spec §7.7） | pane-modes-coverage-v1 / 用户 2026-11-27 反馈 | 2026-11-27 |
+| 关爱缩放档数值可调 | `paneScale` 档内倍率作为数据面 `care-scale`（DS-10）暴露：默认 0.9/1.0/1.2 保留，`scale` ∈ [0.8,1.5] 步长 0.05 归整后校验；消费端改 `--pane-scale-factor`，#1606 白名单容器清单不变（spec §4.1） | pane-tuning-values-v1 / 用户 2026-11-27 确认 | 2026-11-27 |
+| 窗格模式数值可调 | `paneMode` 档内参数作为数据面 `pane-modes`（DS-11）暴露：热区默认 16px ∈ [12,24]、临时显现默认 3000ms ∈ [1000,10000]（0 仅非 hardcore）、提示线默认 1px ∈ [0,2]；机制不变，仅参数可调（spec §7.7） | pane-tuning-values-v1 / 用户 2026-11-27 确认 | 2026-11-27 |

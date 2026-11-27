@@ -1,0 +1,87 @@
+{
+  "change": "pane-tuning-values-v1",
+  "requirements": [
+    {
+      "id": "R-1",
+      "text": "关爱缩放面（care-scale）",
+      "anchors": [
+        {
+          "id": "A-1.1",
+          "claim": "默认三档与倍率",
+          "kind": "exact",
+          "assert": "有效集合恰 3 项（small 0.9 / medium 1.0 / large 1.2，标签 小/中/大），默认选中 medium",
+          "source": "§4.1 / D6"
+        },
+        {
+          "id": "A-1.2",
+          "claim": "scale 边界与步长归整",
+          "kind": "exact",
+          "assert": "`scale` ∈ [0.8, 1.5]；非步长值归整到最近 0.05（1.27 → 1.25，1.28 → 1.30）后校验；越界项被过滤并聚合恰 1 条告警",
+          "source": "DS-10 / D2"
+        },
+        {
+          "id": "A-1.3",
+          "claim": "消费端 CSS 变量",
+          "kind": "state-machine",
+          "assert": "选中项 scale 写到 `<html>` 的 `--pane-scale-factor`；缺省/非法 → 1；`data-pane-scale-active` 仅在 factor ≠ 1 时为 `true`",
+          "source": "DS-10 / D3"
+        },
+        {
+          "id": "A-1.4",
+          "claim": "zoom 白名单取值来源",
+          "kind": "state-machine",
+          "assert": "白名单容器的计算 `zoom` 为 `var(--pane-scale-factor, 1)`；容器清单与 #1606 逐项一致（不增不减）；正文/预览/编辑器计算 `zoom` 为 1",
+          "source": "CF-8 / D3"
+        },
+        {
+          "id": "A-1.5",
+          "claim": "AI 可调与零迁移",
+          "kind": "state-machine",
+          "assert": "`patch_data_surface` 改 `care-scale` 档内参数生效并落盘、`items:null` 恢复默认、`restore_surface_snapshot` 可回滚；既有 `paneScale` 存储值仍是 id，无需迁移",
+          "source": "DS-10 / D4 / D5"
+        }
+      ]
+    },
+    {
+      "id": "R-2",
+      "text": "窗格模式面（pane-modes）",
+      "anchors": [
+        {
+          "id": "A-2.1",
+          "claim": "默认三档与参数",
+          "kind": "exact",
+          "assert": "有效集合恰 3 项：simple {hotzonePx 16, revealMs 0, hintLinePx 0} / standard {16, 0, 0} / hardcore {0, 3000, 1}",
+          "source": "§7.7 / D6"
+        },
+        {
+          "id": "A-2.2",
+          "claim": "三项参数边界",
+          "kind": "exact",
+          "assert": "`hotzonePx` ∈ [12,24]；`revealMs` ∈ [1000,10000] 或 0（仅非 hardcore 行）；`hintLinePx` ∈ [0,2]；越界项被过滤并聚合恰 1 条告警",
+          "source": "DS-11 / D2"
+        },
+        {
+          "id": "A-2.3",
+          "claim": "热区/提示线消费端变量",
+          "kind": "state-machine",
+          "assert": "`.status-hotzone` 与顶部 peek 的高度取 `--pane-hotzone-px`；`.pane-leaf::before` 提示线厚度取 `--pane-hint-px`",
+          "source": "DS-11 / D3"
+        },
+        {
+          "id": "A-2.4",
+          "claim": "hardcore 临时显现时长",
+          "kind": "state-machine",
+          "assert": "临时显现计时器读选中项 `revealMs`（默认 3000）；`Cmd+Shift+U` 语义、Esc 收起、`readingMode` 优先、瞬态浮层排除均不变",
+          "source": "G-13 / D3"
+        },
+        {
+          "id": "A-2.5",
+          "claim": "AI 可调与行为不变",
+          "kind": "state-machine",
+          "assert": "`patch_data_surface` 改 `pane-modes` 档内参数生效并落盘、可回滚；切换后 chrome 显隐行为与今天一致（仅参数值可变）",
+          "source": "DS-11 / D5"
+        }
+      ]
+    }
+  ]
+}
