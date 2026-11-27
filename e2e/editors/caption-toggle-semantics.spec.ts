@@ -114,3 +114,31 @@ test("描述开关全流程：默认隐藏→点开→录入→点外面取消�
   await commentBtn(page).click();
   await expect(visibleInput(page)).toHaveValue("十二轮描述");
 });
+
+test("录入后点图片也能保存（不被选中重建清空）", async ({ page }) => {
+  await openDoc(page);
+  await page.locator(".cm-image-widget").click();
+  await commentBtn(page).click();
+  await visibleInput(page).fill("点图片保存");
+
+  // 直接点图片本身（不是外面）：应提交并保持选中
+  await page.locator(".cm-image-widget").click();
+
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const win = window as unknown as Record<string, any>;
+        const s = win.__biaoyue_store__.getState();
+        return s.tabs[s.activeTabId]?.content ?? "";
+      }),
+    )
+    .toContain('"点图片保存"');
+  await expect(page.locator(".cm-image-widget")).toHaveAttribute(
+    "data-selected",
+    "true",
+  );
+  await expect(captionRow(page)).toHaveText("点图片保存");
+  // 输入框已收尾，按钮仍选中
+  await expect(visibleInput(page)).toHaveCount(0);
+  await expect(commentBtn(page)).toHaveAttribute("aria-pressed", "true");
+});

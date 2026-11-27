@@ -220,3 +220,15 @@ await page.locator(".cm-image-widget").click();                            // �
 await expect(commentBtn(page)).toHaveAttribute("aria-pressed", "true");    // 开关记住
 ```
 Scenario 对照：描述文字显示/隐藏由「添加描述」按钮控制，与图片是否选中无关（十二轮用户裁定）。
+
+## 十三轮（r13）机读断言摘录
+```
+// caption-toggle-semantics.spec.ts（录入后点图片也能保存）
+await visibleInput(page).fill("点图片保存");
+await page.locator(".cm-image-widget").click();              // 点图片本身
+await expect.poll(...content...).toContain('"点图片保存"');  // 已写回
+await expect(page.locator(".cm-image-widget")).toHaveAttribute("data-selected", "true");
+await expect(captionRow(page)).toHaveText("点图片保存");
+await expect(visibleInput(page)).toHaveCount(0);             // 输入框已收尾
+```
+Scenario 对照：点图片保存描述（十三轮真机：此前点图片会清空录入文字）。
