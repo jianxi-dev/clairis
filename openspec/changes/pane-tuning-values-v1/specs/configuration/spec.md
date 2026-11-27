@@ -9,7 +9,7 @@
 - **WHEN** 配置中 `paneMode` 与 `paneScale` 均缺失
 - **THEN** 有效值 SHALL 分别为 `standard` 与 `medium`，界面 SHALL 与改动前一致
 
-#### Scenario: 未知 id 拒绝
+#### Scenario: 未知值拒绝
 
 - **WHEN** 提交 `paneMode = "ultra"` 或 `paneScale = "huge"`
 - **THEN** 保存 SHALL 返回校验错误，`user/settings.json` SHALL 保持原内容
@@ -19,7 +19,7 @@
 - **WHEN** `paneScale` 选中的档 `scale` 为 1.3
 - **THEN** 顶栏、状态栏、设置场景、阅读轨、大纲菜单、文档属性面板的计算 `zoom` SHALL 为 1.3，正文 / 预览 / 编辑器的计算 `zoom` 与尺寸 SHALL 不变
 
-#### Scenario: AI 调整档内参数
+#### Scenario: AI 调整生效
 
 - **WHEN** AI 经 `patch_data_surface` 把 `care-scale` 某档 `scale` 改为 1.3，或把 `pane-modes` hardcore 行 `revealMs` 改为 5000
 - **THEN** 有效值 SHALL 在本回合内生效并落盘到 user 层，面级快照 SHALL 记录写前状态且可回滚
