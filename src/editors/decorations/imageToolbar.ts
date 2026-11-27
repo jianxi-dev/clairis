@@ -458,14 +458,19 @@ function createCaptionInput(
     input.dataset.finishing = "1";
     const from = Number(widgetEl.dataset.imageFrom);
     const current = widgetEl.dataset.imageTitle ?? "";
-    if (value === current) {
-      setCaptionText(caption, current);
-    } else {
+    const saved = value !== current;
+    if (saved) {
       captionJustSaved = true;
       actions.onImageSetTitle?.(from, value);
     }
     input.remove();
     showCaptionText(caption);
+    // 保存（blur/Enter）后描述行保持展开、按钮选中——用户「输入文字保存后
+    // 看到描述」的预期（#1603 四轮真机）。「描述区默认隐藏」指选中初态；
+    // 展开态下的保存不收起（规格澄清 2026-11-27：按钮是显隐切换，不反改状态）。
+    if (saved) {
+      captionVisible = true;
+    }
     setCaptionActive(captionVisible);
     applyCaptionVisibility(caption);
   };

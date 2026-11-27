@@ -95,3 +95,20 @@ expect(await readScale(page)).toBe(1);
 expect(residue).toEqual({ frames: 0, handles: 0, shades: 0, active: 0 });
 ```
 Scenario 对照：描述保存（#1602 验收）；放大层 hover 显隐（用户方案 #1603）；shade rAF 淡出（裁剪蒙层2.png 残影）；连击 ±（用户复现描述）。
+
+## 五轮（toggle 语义澄清 + class 根治）机读断言摘录
+```
+// caption-save-visibility.spec.ts（保存后保持展开：captionVisible=true）
+expect(page.locator('[data-testid="img-caption"]')).toBeVisible();
+expect(page.locator('[data-testid="img-caption"]')).toHaveText("诊断描述");
+// 按钮选中态
+expect(page.locator('[data-testid="img-toolbar-comment"]')).toHaveClass(/is-active/);
+// toggle 收起（点按钮二次）
+expect(page.locator('[data-testid="img-caption"]')).toBeHidden();
+
+// maximize-button-order.spec.ts（hover 显隐：class 命中前置断言）
+expect(document.querySelector(".img-max-controls") ? 1 : 0).toBe(1);
+expect(await controls.evaluate(el => getComputedStyle(el).opacity)).toBe("0");
+expect(await controls.evaluate(el => getComputedStyle(el).opacity)).toBe("1");
+```
+Scenario 对照：描述区显隐切换（产品规格：默认隐藏，按钮为切换）；放大层 hover 显隐（用户方案）。
