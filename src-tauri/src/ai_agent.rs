@@ -275,7 +275,7 @@ pub fn tool_schemas() -> Vec<Value> {
                     "properties": {
                         "id": {
                             "type": "string",
-                            "description": "数据面 id，当前已登记: html-toolbar, menus, icons, capsules, reader-presets, care-scale"
+                            "description": "数据面 id，当前已登记: html-toolbar, menus, icons, capsules, reader-presets, care-scale, pane-modes"
                         },
                         "name": {
                             "type": "string",
@@ -297,7 +297,7 @@ pub fn tool_schemas() -> Vec<Value> {
                     "properties": {
                         "id": {
                             "type": "string",
-                            "description": "数据面 id，当前已登记: html-toolbar, menus, icons, capsules, reader-presets, care-scale"
+                            "description": "数据面 id，当前已登记: html-toolbar, menus, icons, capsules, reader-presets, care-scale, pane-modes"
                         }
                     },
                     "required": ["id"],
@@ -309,13 +309,13 @@ pub fn tool_schemas() -> Vec<Value> {
             "type": "function",
             "function": {
                 "name": "patch_data_surface",
-                "description": "改写已登记数据面的用户覆盖集合。id 必须是已登记数据面（当前已登记: html-toolbar, menus, icons, capsules, reader-presets, care-scale）。list 型面（html-toolbar / menus / capsules）patch 为 {\"items\":[\"id\",...]} 整体替换；对象数组型面（menus / capsules / reader-presets / care-scale）patch 为 {\"items\":[{...}]}，每项按 id 与默认项深合并（允许只写 {id,label} 这类部分项）；map 型面（icons）patch 为 {\"items\":{\"概念键\":{...}}} 逐键深合并，接受默认集合外的新概念键。reader-presets / care-scale 按 id 并入现有有效集合（只改一条不清空其余）。写入走校验+快照+原子写，只作用于 user 覆盖层，不改默认源文件。",
+                "description": "改写已登记数据面的用户覆盖集合。id 必须是已登记数据面（当前已登记: html-toolbar, menus, icons, capsules, reader-presets, care-scale, pane-modes）。list 型面（html-toolbar / menus / capsules）patch 为 {\"items\":[\"id\",...]} 整体替换；对象数组型面（menus / capsules / reader-presets / care-scale / pane-modes）patch 为 {\"items\":[{...}]}，每项按 id 与默认项深合并（允许只写 {id,label} 这类部分项）；map 型面（icons）patch 为 {\"items\":{\"概念键\":{...}}} 逐键深合并，接受默认集合外的新概念键。reader-presets / care-scale / pane-modes 按 id 并入现有有效集合（只改一条不清空其余）。写入走校验+快照+原子写，只作用于 user 覆盖层，不改默认源文件。",
                 "parameters": {
                     "type": "object",
                     "properties": {
                         "id": {
                             "type": "string",
-                            "description": "数据面 id，当前已登记: html-toolbar, menus, icons, capsules, reader-presets, care-scale"
+                            "description": "数据面 id，当前已登记: html-toolbar, menus, icons, capsules, reader-presets, care-scale, pane-modes"
                         },
                         "patch": {
                             "type": "object",
@@ -415,6 +415,7 @@ fn write_list_override(
     // #1579：阅读预设 / 关爱缩放按 id 并入现有有效集合——AI 改一条不清空其余档。
     let preset_baseline: Vec<Value> = if spec.shape == crate::surfaces::SurfaceShape::ReaderPreset
         || spec.shape == crate::surfaces::SurfaceShape::CareScale
+        || spec.shape == crate::surfaces::SurfaceShape::PaneMode
     {
         crate::surfaces::load_surface(spec, base).items
     } else {
@@ -474,6 +475,9 @@ fn write_list_override(
             crate::surfaces::SurfaceShape::CareScale => {
                 crate::surfaces::validate_care_scale(&merged).is_some()
             }
+            crate::surfaces::SurfaceShape::PaneMode => {
+                crate::surfaces::validate_pane_mode(&merged).is_some()
+            }
             crate::surfaces::SurfaceShape::Toolbar => {
                 crate::surfaces::validate_toolbar_item(&merged).is_some()
             }
@@ -483,8 +487,9 @@ fn write_list_override(
             if is_known
                 || spec.shape == crate::surfaces::SurfaceShape::ReaderPreset
                 || spec.shape == crate::surfaces::SurfaceShape::CareScale
+                || spec.shape == crate::surfaces::SurfaceShape::PaneMode
             {
-                // 阅读预设 / 关爱缩放允许新 id（自定义档），但必须自带完整字段，否则 invalid。
+                // 阅读预设 / 关爱缩放 / 窗格模式允许新 id（自定义档），但必须自带完整字段，否则 invalid。
                 invalid.push(id);
             } else if !unknown.contains(&id) {
                 unknown.push(id);
@@ -495,6 +500,7 @@ fn write_list_override(
     }
     let normalized = if spec.shape == crate::surfaces::SurfaceShape::ReaderPreset
         || spec.shape == crate::surfaces::SurfaceShape::CareScale
+        || spec.shape == crate::surfaces::SurfaceShape::PaneMode
     {
         let mut merged_list = preset_baseline;
         for item in normalized {
@@ -1855,6 +1861,130 @@ mod tests {
         )
         .unwrap();
         assert!(bad.contains("care-scale"), "got {bad}");
+    }
+
+    // ── #1625：pane-modes 的 AI 通路（注册表驱动）────────────────────
+
+    #[test]
+    fn patch_data_surface_pane_modes_改参数落盘且默认文件不变() {
+        let dir = temp_base("patch_pane_modes");
+        let base = dir.path();
+        let raw = dispatch_tool(
+            base,
+            "patch_data_surface",
+            &json!({ "id": "pane-modes", "patch": { "items": [ {"id":"hardcore","revealMs":5000} ] } }),
+        )
+        .unwrap();
+        let parsed: Value = serde_json::from_str(&raw).unwrap();
+        assert_eq!(parsed["ok"], json!(true), "got {raw}");
+        let effective = parsed["result"]["effective"].as_array().unwrap();
+        let hardcore = effective
+            .iter()
+            .find(|i| i["id"] == json!("hardcore"))
+            .expect("hardcore 必在有效集合");
+        assert_eq!(hardcore["revealMs"], json!(5000));
+        assert_eq!(hardcore["hintLinePx"], json!(1), "未写字段保留默认");
+        assert_eq!(effective.len(), 3, "只改一档不清空其余两档");
+        let written: Value = serde_json::from_str(
+            &std::fs::read_to_string(base.join("user").join("pane-modes.json")).unwrap(),
+        )
+        .unwrap();
+        let written_hardcore = written["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|i| i["id"] == json!("hardcore"))
+            .unwrap();
+        assert_eq!(written_hardcore["revealMs"], json!(5000));
+        assert_eq!(written["items"].as_array().unwrap().len(), 3);
+        let read_back: Value = serde_json::from_str(
+            &dispatch_tool(base, "read_data_surface", &json!({ "id": "pane-modes" })).unwrap(),
+        )
+        .unwrap();
+        let defaults = read_back["result"]["defaults"].as_array().unwrap();
+        let default_hardcore = defaults
+            .iter()
+            .find(|i| i["id"] == json!("hardcore"))
+            .unwrap();
+        assert_eq!(default_hardcore["revealMs"], json!(3000), "默认文件字节不应被改写");
+    }
+
+    #[test]
+    fn patch_data_surface_pane_modes_items_null_恢复默认并可回滚() {
+        let dir = temp_base("patch_pane_modes_reset");
+        let base = dir.path();
+        dispatch_tool(
+            base,
+            "patch_data_surface",
+            &json!({ "id": "pane-modes", "patch": { "items": [ {"id":"hardcore","revealMs":5000} ] } }),
+        )
+        .unwrap();
+        let override_path = base.join("user").join("pane-modes.json");
+        assert!(override_path.exists());
+
+        let raw = dispatch_tool(
+            base,
+            "patch_data_surface",
+            &json!({ "id": "pane-modes", "patch": { "items": null } }),
+        )
+        .unwrap();
+        let parsed: Value = serde_json::from_str(&raw).unwrap();
+        assert_eq!(parsed["ok"], json!(true), "got {raw}");
+        assert!(!override_path.exists(), "重置后覆盖文件应删除");
+        let effective = parsed["result"]["effective"].as_array().unwrap();
+        assert_eq!(effective.len(), 3);
+        let hardcore = effective.iter().find(|i| i["id"] == json!("hardcore")).unwrap();
+        assert_eq!(hardcore["revealMs"], json!(3000), "重置后不应残留旧值");
+
+        let back = dispatch_tool(
+            base,
+            "restore_surface_snapshot",
+            &json!({ "id": "pane-modes" }),
+        )
+        .unwrap();
+        let back_parsed: Value = serde_json::from_str(&back).unwrap();
+        assert_eq!(back_parsed["ok"], json!(true), "got {back}");
+        let read_back: Value = serde_json::from_str(
+            &dispatch_tool(base, "read_data_surface", &json!({ "id": "pane-modes" })).unwrap(),
+        )
+        .unwrap();
+        let hardcore = read_back["result"]["effective"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|i| i["id"] == json!("hardcore"))
+            .unwrap();
+        assert_eq!(hardcore["revealMs"], json!(5000), "回滚应恢复写入前的覆盖值");
+    }
+
+    #[test]
+    fn patch_data_surface_pane_modes_越界与hardcore_0_拒绝且零写入() {
+        let dir = temp_base("patch_pane_modes_bounds");
+        let base = dir.path();
+        let raw = dispatch_tool(
+            base,
+            "patch_data_surface",
+            &json!({ "id": "pane-modes", "patch": { "items": [ {"id":"standard","hotzonePx":30} ] } }),
+        )
+        .unwrap();
+        let parsed: Value = serde_json::from_str(&raw).unwrap();
+        assert_eq!(parsed["ok"], json!(false), "越界应拒绝: {raw}");
+        assert!(
+            !base.join("user").join("pane-modes.json").exists(),
+            "拒绝时不得产生任何写入"
+        );
+        let raw = dispatch_tool(
+            base,
+            "patch_data_surface",
+            &json!({ "id": "pane-modes", "patch": { "items": [ {"id":"hardcore","revealMs":0} ] } }),
+        )
+        .unwrap();
+        let parsed: Value = serde_json::from_str(&raw).unwrap();
+        assert_eq!(parsed["ok"], json!(false), "hardcore revealMs=0 应拒绝: {raw}");
+        assert!(
+            !base.join("user").join("pane-modes.json").exists(),
+            "拒绝时不得产生任何写入"
+        );
     }
 
     #[test]

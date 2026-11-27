@@ -39,6 +39,7 @@ import {
   undoOnce,
 } from "./editors/keybindings";
 import { saveAppConfig, useConfig } from "./hooks/useConfig";
+import { getPaneModeItems } from "./lib/dataSurfaces/store";
 import { flushAllContent, flushTabContent } from "./editors/contentSync";
 import { RAIL_KIND_ORDER } from "./lib/railView";
 import type { RailState } from "./lib/railView";
@@ -197,16 +198,20 @@ function App() {
     setRailOverride(paneMode);
   }, [paneMode]);
 
-  // hardcore 显现态的 3 秒空闲计时：只在显现期间监听交互，重启计时。
+  // hardcore 显现态的空闲计时：时长读 pane-modes 面选中档的 revealMs（默认 3000）。
+  // 只在显现期间监听交互，重启计时。
   useEffect(() => {
     if (!hardcoreRevealed) return;
     const arm = () => {
       if (hardcoreTimer.current !== null) window.clearTimeout(hardcoreTimer.current);
+      const items = getPaneModeItems();
+      const hit = items.find((item) => item.id === paneMode);
+      const revealMs = hit?.revealMs === 0 ? 3000 : (hit?.revealMs ?? 3000);
       hardcoreTimer.current = window.setTimeout(() => {
         hardcoreTimer.current = null;
         hardcoreRevealedRef.current = false;
         setHardcoreRevealed(false);
-      }, 3000);
+      }, revealMs);
     };
     const onActivity = () => arm();
     window.addEventListener("pointerdown", onActivity);
@@ -220,7 +225,7 @@ function App() {
         hardcoreTimer.current = null;
       }
     };
-  }, [hardcoreRevealed]);
+  }, [hardcoreRevealed, paneMode]);
 
   const revealHardcore = useCallback(() => {
     hardcoreRevealedRef.current = true;

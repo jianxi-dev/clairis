@@ -1,0 +1,24 @@
+{
+  "states": [
+    {
+      "state": "standard-default",
+      "screenshot": "ev-standard-default.png",
+      "assertion": "passed"
+    },
+    {
+      "state": "hardcore-revealed",
+      "screenshot": "ev-hardcore-revealed.png",
+      "assertion": "passed"
+    },
+    {
+      "state": "standard-hotzone-20",
+      "screenshot": "ev-standard-hotzone-20.png",
+      "assertion": "passed"
+    },
+    {
+      "state": "hardcore-5000",
+      "screenshot": "ev-hardcore-5000.png",
+      "assertion": "passed"
+    }
+  ]
+}

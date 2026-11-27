@@ -77,6 +77,7 @@ export const SUPPORTED_SURFACES = [
   "capsules",
   "reader-presets",
   "care-scale",
+  "pane-modes",
 ] as const;
 
 /** 菜单六处消费端分组（与 Rust `MENU_GROUPS` 对账）。 */
@@ -240,6 +241,58 @@ export function toCareScaleItem(raw: unknown): CareScaleSpec | null {
   return { id, label, scale: stepped };
 }
 
+/** 窗格模式项（pane-tuning-values-v1 / DS-11）：热区高度 / 临时显现时长 / 提示线厚度。 */
+export interface PaneModeSpec {
+  id: string;
+  label: string;
+  hotzonePx: number;
+  revealMs: number;
+  hintLinePx: number;
+}
+
+const PANE_MODE_HOTZONE_MIN = 12;
+const PANE_MODE_HOTZONE_MAX = 24;
+const PANE_MODE_HARDCORE_HOTZONE = 0;
+const PANE_MODE_REVEAL_MIN = 1000;
+const PANE_MODE_REVEAL_MAX = 10000;
+const PANE_MODE_HINT_MIN = 0;
+const PANE_MODE_HINT_MAX = 2;
+const PANE_MODE_REVEAL_DISABLED_ID = "hardcore";
+
+/** 宽松解析单个窗格模式项；缺字段 / 越界返回 null（DS-11，边界同 §7.7）。 */
+export function toPaneModeItem(raw: unknown): PaneModeSpec | null {
+  if (!isRecord(raw)) return null;
+  const { id, label, hotzonePx, revealMs, hintLinePx } = raw;
+  if (typeof id !== "string" || id === "") return null;
+  if (typeof label !== "string" || label === "") return null;
+  if (
+    typeof hotzonePx !== "number" ||
+    !Number.isInteger(hotzonePx) ||
+    (hotzonePx !== PANE_MODE_HARDCORE_HOTZONE &&
+      (hotzonePx < PANE_MODE_HOTZONE_MIN || hotzonePx > PANE_MODE_HOTZONE_MAX))
+  ) {
+    return null;
+  }
+  if (
+    typeof revealMs !== "number" ||
+    !Number.isInteger(revealMs) ||
+    (revealMs !== 0 &&
+      (revealMs < PANE_MODE_REVEAL_MIN || revealMs > PANE_MODE_REVEAL_MAX)) ||
+    (id === PANE_MODE_REVEAL_DISABLED_ID && revealMs === 0)
+  ) {
+    return null;
+  }
+  if (
+    typeof hintLinePx !== "number" ||
+    !Number.isInteger(hintLinePx) ||
+    hintLinePx < PANE_MODE_HINT_MIN ||
+    hintLinePx > PANE_MODE_HINT_MAX
+  ) {
+    return null;
+  }
+  return { id, label, hotzonePx, revealMs, hintLinePx };
+}
+
 /** 胶囊合法动作 id（与 Rust `CAPSULE_ALLOWED_IDS` 对账）。 */
 const CAPSULE_ALLOWED_IDS = [
   "format-bold",
@@ -291,6 +344,14 @@ function parseItems(id: string, rawItems: unknown[]): unknown[] {
     const out: CareScaleSpec[] = [];
     for (const entry of rawItems) {
       const item = toCareScaleItem(entry);
+      if (item !== null) out.push(item);
+    }
+    return out;
+  }
+  if (id === "pane-modes") {
+    const out: PaneModeSpec[] = [];
+    for (const entry of rawItems) {
+      const item = toPaneModeItem(entry);
       if (item !== null) out.push(item);
     }
     return out;
