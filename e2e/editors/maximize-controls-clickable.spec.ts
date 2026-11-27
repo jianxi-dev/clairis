@@ -57,3 +57,16 @@ test("热区存在时点缩放按钮仍生效（按钮不被热区盖住）", as
   await page.locator('[data-testid="img-max-close"]').click();
   await expect(page.locator('[data-testid="img-maximize"]')).toHaveCount(0);
 });
+
+test("放大层图片可拖动：常态 grab，按住变 grabbing，松开复原", async ({
+  page,
+}) => {
+  await openMaximize(page);
+  const img = page.locator(".img-max-stage img").first();
+  await expect(img).toHaveCSS("cursor", "grab");
+  await img.hover();
+  await page.mouse.down();
+  await expect(img).toHaveCSS("cursor", "grabbing");
+  await page.mouse.up();
+  await expect(img).toHaveCSS("cursor", "grab");
+});

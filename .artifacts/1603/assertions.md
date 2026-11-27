@@ -165,3 +165,22 @@ await expect(page.getByTestId("img-max-clear-crop")).toHaveCount(0);
 expect(Math.round(w1!.width)).toBe(Math.round(w2!.width)); // 多图切换按钮组宽度恒定
 ```
 Scenario 对照：描述纯显隐开关（九轮用户规格）；查看工具条无重置图片（九轮用户裁定）。
+
+## 十轮（r10）机读断言摘录
+```
+// caption-toggle-semantics.spec.ts（描述框开着点外面：保存且保持选中）
+await page.mouse.click(...外部...);
+await expect(page.locator(".cm-image-widget")).toHaveAttribute("data-selected", "true");
+await expect(commentBtn(page)).toHaveAttribute("aria-pressed", "true");
+await expect(captionRow(page)).toBeVisible();
+await page.mouse.click(...外部...);
+await expect(page.locator(".cm-image-widget")).toHaveAttribute("data-selected", "false");
+
+// maximize-controls-clickable.spec.ts（放大层拖动指针）
+await expect(img).toHaveCSS("cursor", "grab");
+await page.mouse.down();
+await expect(img).toHaveCSS("cursor", "grabbing");
+await page.mouse.up();
+await expect(img).toHaveCSS("cursor", "grab");
+```
+Scenario 对照：描述点外面保持选中（十轮真机）；放大层按住拖动指针（十轮）。

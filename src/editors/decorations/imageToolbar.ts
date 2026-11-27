@@ -1071,6 +1071,8 @@ function maximizeOnWheel(event: WheelEvent): void {
 function maximizeOnPointerDown(event: PointerEvent): void {
   maximizeDownPos = { x: event.clientX, y: event.clientY };
   if (!maximizeImg || event.target !== maximizeImg) return;
+  // 按住图片即进入拖动：指针变 grabbing（用户十轮：按住时要有拖动指示）。
+  maximizeImg.style.cursor = "grabbing";
   maximizePointers.set(event.pointerId, {
     x: event.clientX,
     y: event.clientY,
@@ -1123,6 +1125,10 @@ function maximizeOnPointerMove(event: PointerEvent): void {
 function maximizeOnPointerEnd(event: PointerEvent): void {
   if (!maximizePointers.has(event.pointerId)) return;
   maximizePointers.delete(event.pointerId);
+  // 松开恢复可抓取指针；最后一个指针抬起才复位，捏合中不闪回。
+  if (maximizeImg && maximizePointers.size === 0) {
+    maximizeImg.style.cursor = "grab";
+  }
   if (maximizePointers.size === 1) {
     const [p] = [...maximizePointers.values()];
     maximizePanStart = {
@@ -1371,6 +1377,8 @@ export function openImageMaximize(
       img.src = current.src;
       img.alt = current.alt;
       img.draggable = false;
+      // 放大层图片可拖动平移：常态 grab，按住时 grabbing（见 pointerdown）。
+      img.style.cursor = "grab";
       if (current.crop) {
         // 兜底渲染（加载期间）：object-fit:none 平移到 (l,t)，1:1 不缩放——
         // 区域与编辑态不一致，只作过渡。
@@ -1656,6 +1664,11 @@ if (typeof document !== "undefined") {
       // 走 finish 的**完整收尾**（写回 + 移除输入框 + 刷新文本/显隐）——
       // 只写回不收尾会留下残留输入框，后续「添加描述」预填被旧状态污染。
       captionCommitActive();
+      // 本次 click 吸收：描述框开着时点外面只保存，**保持图片选中与描述显示**
+      //（十轮真机：未修改内容时 saved=false 不置 captionJustSaved，随后就
+      // deselect 了，用户看到「选中的描述一点外面就没了」）。再点一次外面
+      //（输入框已收尾）才取消选中。
+      return;
     }
     const target = event.target as Node | null;
     if (target instanceof Element) {

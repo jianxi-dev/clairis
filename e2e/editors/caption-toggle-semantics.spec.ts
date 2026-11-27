@@ -97,3 +97,27 @@ test("录入后点外部：保存 + 描述行显示新文字 + 按钮保持选�
   await commentBtn(page).click();
   await expect(visibleInput(page)).toHaveValue("九轮描述");
 });
+
+test("描述框开着时点外面：保存并保持选中（未修改也一样）", async ({ page }) => {
+  await openDoc(page);
+  await page.locator(".cm-image-widget").click();
+  await commentBtn(page).click();
+  await expect(commentBtn(page)).toHaveAttribute("aria-pressed", "true");
+
+  // 不输入，直接点外面：不应 deselect（十轮真机反馈）
+  const box = (await page.locator(".cm-content").boundingBox())!;
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height - 8);
+  await expect(page.locator(".cm-image-widget")).toHaveAttribute(
+    "data-selected",
+    "true",
+  );
+  await expect(commentBtn(page)).toHaveAttribute("aria-pressed", "true");
+  await expect(captionRow(page)).toBeVisible();
+
+  // 再点外面（描述框已收尾）：这次才取消选中
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height - 8);
+  await expect(page.locator(".cm-image-widget")).toHaveAttribute(
+    "data-selected",
+    "false",
+  );
+});
