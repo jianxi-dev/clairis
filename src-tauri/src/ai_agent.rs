@@ -1616,6 +1616,76 @@ mod tests {
         assert_eq!(wide["fontSize"], json!(21), "回滚应恢复写入前的覆盖值");
     }
 
+    // ── #1611：paneMode / paneScale 的 AI 通路锁定（patch_config）──────
+
+    #[test]
+    fn patch_config_pane_preset_keys_persist_and_snapshot_fidelity() {
+        let dir = temp_base("patch_preset_keys");
+        let base = dir.path();
+        let user_file = base.join("user").join("settings.json");
+        std::fs::create_dir_all(user_file.parent().unwrap()).unwrap();
+        std::fs::write(&user_file, r#"{"theme":"light"}"#).unwrap();
+        let before = std::fs::read(&user_file).unwrap();
+
+        // 第一次 patch：paneMode 生效，且写前 user 字节进最新快照（可回滚）。
+        let raw = dispatch_tool(
+            base,
+            "patch_config",
+            &json!({ "patch": { "paneMode": "hardcore" } }),
+        )
+        .unwrap();
+        let parsed: Value = serde_json::from_str(&raw).unwrap();
+        assert_eq!(parsed["ok"], json!(true), "got {raw}");
+        let names = list_snapshots(base).unwrap();
+        let newest = names.last().expect("patch 后应产生快照");
+        let snap_bytes = std::fs::read(base.join("snapshots").join(newest)).unwrap();
+        assert_eq!(snap_bytes, before, "最新快照必须是写前 user 字节");
+
+        // 第二次 patch：paneScale 生效，两次均落盘。
+        let raw = dispatch_tool(
+            base,
+            "patch_config",
+            &json!({ "patch": { "paneScale": "large" } }),
+        )
+        .unwrap();
+        let parsed: Value = serde_json::from_str(&raw).unwrap();
+        assert_eq!(parsed["ok"], json!(true), "got {raw}");
+        let written: Value = serde_json::from_str(&std::fs::read_to_string(&user_file).unwrap()).unwrap();
+        assert_eq!(written["paneMode"], json!("hardcore"));
+        assert_eq!(written["paneScale"], json!("large"));
+
+        // 有效配置读回一致。
+        let raw = dispatch_tool(base, "read_config", &json!({})).unwrap();
+        let parsed: Value = serde_json::from_str(&raw).unwrap();
+        assert_eq!(parsed["result"]["paneMode"], json!("hardcore"));
+        assert_eq!(parsed["result"]["paneScale"], json!("large"));
+
+    }
+
+    #[test]
+    fn patch_config_unknown_pane_scale_rejected_without_write() {
+        let dir = temp_base("patch_preset_keys_bad");
+        let base = dir.path();
+        let user_file = base.join("user").join("settings.json");
+        std::fs::create_dir_all(user_file.parent().unwrap()).unwrap();
+        std::fs::write(&user_file, r#"{"theme":"light"}"#).unwrap();
+        let before = std::fs::read(&user_file).unwrap();
+
+        let raw = dispatch_tool(
+            base,
+            "patch_config",
+            &json!({ "patch": { "paneScale": "huge" } }),
+        )
+        .unwrap();
+        assert!(raw.contains("\"ok\":false"), "got {raw}");
+        assert!(raw.contains("paneScale"), "错误应指明键名: {raw}");
+        assert_eq!(
+            std::fs::read(&user_file).unwrap(),
+            before,
+            "拒绝后 user 层必须零写盘"
+        );
+    }
+
     #[test]
     fn patch_data_surface_reader_presets_越界字号拒绝且零写入() {
         let dir = temp_base("patch_presets_bounds");
