@@ -1,0 +1,720 @@
+{
+  "version": 1,
+  "generatedBy": "scripts/check-tokens.mjs --update-baseline",
+  "entries": [
+    {
+      "file": "src/components/ai/AiBubble.tsx",
+      "value": "#1c1c1e",
+      "context": "className=\"fixed z-[2147482700] flex flex-col overflow-hidden rounded-[14px] border border-black/10 bg-white shadow-[0_8px_32px_rgba(0,0,0,0.16)] dark:border-white/10 dark:bg-[#1c1c1e]\"",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/components/ai/AiBubble.tsx",
+      "value": "rgba(",
+      "context": "className=\"fixed z-[2147482700] flex flex-col overflow-hidden rounded-[14px] border border-black/10 bg-white shadow-[0_8px_32px_rgba(0,0,0,0.16)] dark:border-white/10 dark:bg-[#1c1c1e]\"",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/components/ai/AiConversation.tsx",
+      "value": "#0071e3",
+      "context": "className=\"rounded-md bg-[#0071e3] px-2.5 py-1 text-xs font-medium text-white\"",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/components/ai/AiConversation.tsx",
+      "value": "#0071e3",
+      "context": "className=\"shrink-0 rounded-md px-2 py-1 text-xs text-[#0071e3] disabled:opacity-40\"",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/components/ai/AiConversation.tsx",
+      "value": "#0071e3",
+      "context": "className=\"ml-auto rounded px-1.5 py-0.5 text-[#0071e3] hover:bg-blue-50 dark:hover:bg-blue-900/30\"",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/components/ai/CommandOverlay.tsx",
+      "value": "#1c1c1e",
+      "context": "className=\"fixed left-1/2 z-[2147483000] w-[640px] max-w-[calc(100vw-32px)] -translate-x-1/2 rounded-[14px] bg-white/88 dark:bg-[#1c1c1e]/90 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.14),0_2px_8px_rgba(0,0,0,0.06)] border border-black/6 dark:border-white/10 overflow-hidden transition-all duration-200\"",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/components/ai/CommandOverlay.tsx",
+      "value": "rgba(",
+      "context": "className=\"fixed left-1/2 z-[2147483000] w-[640px] max-w-[calc(100vw-32px)] -translate-x-1/2 rounded-[14px] bg-white/88 dark:bg-[#1c1c1e]/90 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.14),0_2px_8px_rgba(0,0,0,0.06)] border border-black/6 dark:border-white/10 overflow-hidden transition-all duration-200\"",
+      "count": 2,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/components/ai/CommandOverlay.tsx",
+      "value": "#0071e3",
+      "context": "className=\"text-[#0071e3] hover:underline\"",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/components/ai/CommandOverlay.tsx",
+      "value": "#0071e3",
+      "context": "className=\"px-2.5 py-1 rounded-md bg-[#0071e3] text-white text-xs font-medium\"",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/components/ai/SelectionPill.tsx",
+      "value": "#1c1c1e",
+      "context": "className=\"fixed z-[2147482960] flex w-max items-center gap-0.5 -translate-x-1/2 rounded-full border border-black/6 dark:border-white/10 bg-white/95 dark:bg-[#1c1c1e]/95 backdrop-blur-sm shadow-lg px-1.5 py-1\"",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/components/ai/SelectionPill.tsx",
+      "value": "#1c1c1e",
+      "context": "className=\"fixed bottom-16 left-1/2 z-[2147482970] w-[640px] max-w-[calc(100vw-32px)] -translate-x-1/2 rounded-[14px] bg-white/95 dark:bg-[#1c1c1e]/95 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.14),0_2px_8px_rgba(0,0,0,0.06)] border border-black/6 dark:border-white/10 p-3\"",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/components/ai/SelectionPill.tsx",
+      "value": "rgba(",
+      "context": "className=\"fixed bottom-16 left-1/2 z-[2147482970] w-[640px] max-w-[calc(100vw-32px)] -translate-x-1/2 rounded-[14px] bg-white/95 dark:bg-[#1c1c1e]/95 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.14),0_2px_8px_rgba(0,0,0,0.06)] border border-black/6 dark:border-white/10 p-3\"",
+      "count": 2,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/components/ai/SelectionPill.tsx",
+      "value": "#0071e3",
+      "context": "className=\"px-2.5 py-1 rounded-md bg-[#0071e3] text-white text-xs font-medium\"",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/components/ai/SelectionPill.tsx",
+      "value": "#0071e3",
+      "context": "className=\"ml-2 text-[#0071e3] hover:underline\"",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/components/ai/SnapshotPanel.tsx",
+      "value": "#1c1c1e",
+      "context": "className=\"fixed bottom-20 left-1/2 z-[2147483000] w-[640px] max-w-[calc(100vw-32px)] -translate-x-1/2 rounded-[14px] bg-white/95 dark:bg-[#1c1c1e]/95 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.14),0_2px_8px_rgba(0,0,0,0.06)] border border-black/6 dark:border-white/10 overflow-hidden\"",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/components/ai/SnapshotPanel.tsx",
+      "value": "rgba(",
+      "context": "className=\"fixed bottom-20 left-1/2 z-[2147483000] w-[640px] max-w-[calc(100vw-32px)] -translate-x-1/2 rounded-[14px] bg-white/95 dark:bg-[#1c1c1e]/95 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.14),0_2px_8px_rgba(0,0,0,0.06)] border border-black/6 dark:border-white/10 overflow-hidden\"",
+      "count": 2,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/components/ai/SnapshotPanel.tsx",
+      "value": "#0071e3",
+      "context": "className=\"text-xs px-2 py-1 rounded-md bg-[#0071e3]/10 text-[#0071e3] hover:bg-[#0071e3]/20 font-medium\"",
+      "count": 3,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/components/ai/UndoBar.tsx",
+      "value": "#5eb0ff",
+      "context": "className=\"text-[#5eb0ff] hover:underline font-medium\"",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/components/CaptureOverlay.tsx",
+      "value": "#0071e3",
+      "context": "\"?\": \"text-[#0071e3]\",",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/components/CaptureOverlay.tsx",
+      "value": "#0071e3",
+      "context": "className=\"mt-3 text-xs text-[#0071e3] font-medium\"",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/components/CaptureOverlay.tsx",
+      "value": "#1c1c1e",
+      "context": "<div className=\"h-full flex flex-col rounded-[14px] bg-white/88 dark:bg-[#1c1c1e]/90 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.14),0_2px_8px_rgba(0,0,0,0.06)] border border-black/6 dark:border-white/10 overflow-hidden\">",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/components/CaptureOverlay.tsx",
+      "value": "rgba(",
+      "context": "<div className=\"h-full flex flex-col rounded-[14px] bg-white/88 dark:bg-[#1c1c1e]/90 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.14),0_2px_8px_rgba(0,0,0,0.06)] border border-black/6 dark:border-white/10 overflow-hidden\">",
+      "count": 2,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/components/CaptureOverlay.tsx",
+      "value": "#0071e3",
+      "context": "className=\"text-[#0071e3] hover:underline mr-2\"",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/components/CaptureOverlay.tsx",
+      "value": "#0071e3",
+      "context": "className={`group flex items-start gap-2 px-3 py-1.5 rounded-lg mb-0.5 cursor-pointer transition-colors ${globalIdx === store.selectedIndex && !isEditing ? \"bg-[#0071e3]/10 dark:bg-blue-900/20\" : \"hover:bg-gray-50 dark:hover:bg-gray-800/60\"} ${isUndo ? \"bg-amber-50/60 dark:bg-amber-900/10\" : \"\"}`}",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/components/CaptureOverlay.tsx",
+      "value": "#0071e3",
+      "context": "className=\"text-xs px-2 py-1 rounded-md bg-[#0071e3]/10 hover:bg-[#0071e3]/20 text-[#0071e3] font-medium\"",
+      "count": 3,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/components/CaptureOverlay.tsx",
+      "value": "#0071e3",
+      "context": "className=\"text-xs px-3 py-1.5 rounded-md bg-[#0071e3] text-white font-medium\"",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/components/Content/HtmlEditToolbar.tsx",
+      "value": "#000000",
+      "context": "if (!value) return \"#000000\";",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/components/Content/HtmlEditToolbar.tsx",
+      "value": "#000000",
+      "context": "if (!rgb) return \"#000000\";",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/components/Content/HtmlEditToolbar.tsx",
+      "value": "#ffffff",
+      "context": "if (!value || value === \"transparent\") return \"#ffffff\";",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/components/Content/HtmlRangeToolbar.tsx",
+      "value": "#ffffff",
+      "context": "defaultValue=\"#ffffff\"",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/components/Content/HtmlRangeToolbar.tsx",
+      "value": "#000000",
+      "context": "defaultValue=\"#000000\"",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/components/Content/MediaPlayerHost.tsx",
+      "value": "#fff",
+      "context": "background: \"var(--app-bg, #fff)\",",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/components/Content/VideoPlayer.tsx",
+      "value": "#18181f",
+      "context": "<rect width=\"100%\" height=\"100%\" fill=\"#18181f\"/>",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/components/Content/VideoPlayer.tsx",
+      "value": "#6366f1",
+      "context": "theme: \"#6366f1\",",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/components/Content/VideoPlayer.tsx",
+      "value": "rgba(",
+      "context": "ctx2d.fillStyle = `rgba(129, 140, 248, ${0.35 + v * 0.65})`;",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/components/Content/VideoPlayer.tsx",
+      "value": "rgba(",
+      "context": "background: \"rgba(0,0,0,0.88)\",",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/components/Content/VideoPlayer.tsx",
+      "value": "#fff",
+      "context": "color: \"#fff\",",
+      "count": 9,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/components/Content/VideoPlayer.tsx",
+      "value": "rgba(",
+      "context": "boxShadow: \"0 4px 16px rgba(0,0,0,0.4)\",",
+      "count": 2,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/components/Content/VideoPlayer.tsx",
+      "value": "rgba(",
+      "context": "background: rate === r.value ? \"rgba(99,102,241,0.35)\" : \"none\",",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/components/Content/VideoPlayer.tsx",
+      "value": "#fff",
+      "context": "color: rate === r.value ? \"#fff\" : \"rgba(255,255,255,0.78)\",",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/components/Content/VideoPlayer.tsx",
+      "value": "rgba(",
+      "context": "color: rate === r.value ? \"#fff\" : \"rgba(255,255,255,0.78)\",",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/components/Content/VideoPlayer.tsx",
+      "value": "rgba(",
+      "context": "widthMode === item.mode ? \"rgba(99,102,241,0.35)\" : \"none\",",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/components/Content/VideoPlayer.tsx",
+      "value": "#fff",
+      "context": "widthMode === item.mode ? \"#fff\" : \"rgba(255,255,255,0.78)\",",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/components/Content/VideoPlayer.tsx",
+      "value": "rgba(",
+      "context": "widthMode === item.mode ? \"#fff\" : \"rgba(255,255,255,0.78)\",",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/components/Content/VideoPlayer.tsx",
+      "value": "rgba(",
+      "context": "borderBottom: \"1px solid rgba(255,255,255,0.12)\",",
+      "count": 5,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/components/Content/VideoPlayer.tsx",
+      "value": "rgba(",
+      "context": "<div style={{ padding: 12, color: \"rgba(255,255,255,0.5)\" }}>",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/components/Content/VideoPlayer.tsx",
+      "value": "rgba(",
+      "context": "i === currentIndex ? \"rgba(99,102,241,0.35)\" : \"transparent\",",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/components/Content/VideoPlayer.tsx",
+      "value": "#fff",
+      "context": "color: i === currentIndex ? \"#fff\" : \"rgba(255,255,255,0.8)\",",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/components/Content/VideoPlayer.tsx",
+      "value": "rgba(",
+      "context": "color: i === currentIndex ? \"#fff\" : \"rgba(255,255,255,0.8)\",",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/components/Content/VideoPlayer.tsx",
+      "value": "rgba(",
+      "context": "<div style={{ padding: 10, color: \"rgba(255,255,255,0.5)\" }}>",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/components/Content/VideoPlayer.tsx",
+      "value": "#fff",
+      "context": "color: !activeSubtitle ? \"#fff\" : \"rgba(255,255,255,0.7)\",",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/components/Content/VideoPlayer.tsx",
+      "value": "rgba(",
+      "context": "color: !activeSubtitle ? \"#fff\" : \"rgba(255,255,255,0.7)\",",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/components/Content/VideoPlayer.tsx",
+      "value": "#fff",
+      "context": "? \"#fff\"",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/components/Content/VideoPlayer.tsx",
+      "value": "rgba(",
+      "context": ": \"rgba(255,255,255,0.7)\",",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/components/Content/VideoPlayer.tsx",
+      "value": "rgba(",
+      "context": "borderTop: \"1px solid rgba(255,255,255,0.12)\",",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/components/Content/VideoPlayer.tsx",
+      "value": "rgba(",
+      "context": "border: \"1px solid rgba(255,255,255,0.3)\",",
+      "count": 2,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/components/Content/VideoPlayer.tsx",
+      "value": "rgba(",
+      "context": "<span style={{ color: \"rgba(255,255,255,0.6)\" }}>{k}</span>",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/components/Content/VideoPlayer.tsx",
+      "value": "rgba(",
+      "context": "background: \"rgba(0,0,0,0.82)\",",
+      "count": 2,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/components/Content/VideoPlayer.tsx",
+      "value": "rgba(",
+      "context": "background: \"rgba(255,255,255,0.9)\",",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/components/Content/VideoPlayer.tsx",
+      "value": "rgba(",
+      "context": "background: \"rgba(20,20,28,0.95)\",",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/components/Content/VideoPlayer.tsx",
+      "value": "rgba(",
+      "context": "boxShadow: \"0 8px 32px rgba(0,0,0,0.5)\",",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/components/Content/VideoPlayer.tsx",
+      "value": "rgba(",
+      "context": "background: \"rgba(255,255,255,0.08)\",",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/components/Content/VideoPlayer.tsx",
+      "value": "rgba(",
+      "context": "<span style={{ color: \"rgba(255,255,255,0.45)\", fontSize: 10 }}>",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/components/Content/VideoPlayer.tsx",
+      "value": "#6366f1",
+      "context": "background: \"#6366f1\",",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/components/ErrorBoundary.tsx",
+      "value": "#f5f5f5",
+      "context": "<pre style={{ whiteSpace: \"pre-wrap\", background: \"#f5f5f5\", padding: 12, borderRadius: 4 }}>",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/components/Grid/GridTile.tsx",
+      "value": "#fff",
+      "context": "<Icon name=\"play\" size={24} color=\"#fff\" />",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/components/SettingsView.tsx",
+      "value": "#1f1d1a",
+      "context": "{ id: \"paper\", label: \"纸墨\", swatch: \"#1f1d1a\" },",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/components/SettingsView.tsx",
+      "value": "#2b4a7d",
+      "context": "{ id: \"indigo\", label: \"靛青\", swatch: \"#2b4a7d\" },",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/components/SettingsView.tsx",
+      "value": "#2f5d3f",
+      "context": "{ id: \"moss\", label: \"松绿\", swatch: \"#2f5d3f\" },",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/components/SettingsView.tsx",
+      "value": "#8a4b2a",
+      "context": "{ id: \"clay\", label: \"赭石\", swatch: \"#8a4b2a\" },",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/components/SettingsView.tsx",
+      "value": "#a8402f",
+      "context": "className=\"text-[var(--app-text-3)] hover:text-[#a8402f]\"",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/components/SettingsView.tsx",
+      "value": "#a8402f",
+      "context": "className=\"shrink-0 text-xs text-[var(--app-text-3)] hover:text-[#a8402f]\"",
+      "count": 2,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/components/SettingsView.tsx",
+      "value": "#a8402f",
+      "context": "className=\"text-xs text-[#a8402f]\"",
+      "count": 2,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/editors/decorations/imageCrop.ts",
+      "value": "rgba(",
+      "context": "\"box-shadow:0 4px 16px rgba(0,0,0,0.18);font-size:13px;\";",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/editors/html/runtime.ts",
+      "value": "rgba(",
+      "context": "border: \"2px solid rgba(59,130,246,0.9)\",",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/editors/html/runtime.ts",
+      "value": "rgba(",
+      "context": "background: \"rgba(59,130,246,0.08)\",",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/editors/html/runtime.ts",
+      "value": "rgba(",
+      "context": "background: \"rgba(59,130,246,0.9)\",",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/editors/html/runtime.ts",
+      "value": "rgba(",
+      "context": "boxShadow: \"0 8px 24px rgba(0,0,0,.18)\",",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/editors/html/runtime.ts",
+      "value": "rgba(",
+      "context": "background: \"rgba(255,255,255,.7)\",",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/editors/html/runtime.ts",
+      "value": "rgba(",
+      "context": "border: \"1px dashed rgba(59,130,246,0.9)\",",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/editors/html/runtime.ts",
+      "value": "rgba(",
+      "context": "background: \"rgba(59,130,246,0.12)\",",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/editors/html/runtime.ts",
+      "value": "rgba(",
+      "context": "wrapSaved(\"font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:rgba(127,127,127,0.16);border-radius:3px;padding:0 2px\");",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/editors/html/runtime.ts",
+      "value": "#e8e8ea",
+      "context": "return \"body { color: #e8e8ea; }\";",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/editors/orchestration/color-palette.ts",
+      "value": "#f0000e",
+      "context": "{ label: \"红色\", className: \"mdb-color-red\", swatch: \"#f0000e\" },",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/editors/orchestration/color-palette.ts",
+      "value": "#f2962c",
+      "context": "{ label: \"橙色\", className: \"mdb-color-orange\", swatch: \"#f2962c\" },",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/editors/orchestration/color-palette.ts",
+      "value": "#f0b622",
+      "context": "{ label: \"黄色\", className: \"mdb-color-yellow\", swatch: \"#f0b622\" },",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/editors/orchestration/color-palette.ts",
+      "value": "#419e34",
+      "context": "{ label: \"绿色\", className: \"mdb-color-green\", swatch: \"#419e34\" },",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/editors/orchestration/color-palette.ts",
+      "value": "#20b2aa",
+      "context": "{ label: \"青色\", className: \"mdb-color-cyan\", swatch: \"#20b2aa\" },",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/editors/orchestration/color-palette.ts",
+      "value": "#4c88ff",
+      "context": "{ label: \"蓝色\", className: \"mdb-color-blue\", swatch: \"#4c88ff\" },",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/editors/orchestration/color-palette.ts",
+      "value": "#8a5cf6",
+      "context": "{ label: \"紫色\", className: \"mdb-color-purple\", swatch: \"#8a5cf6\" },",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/editors/orchestration/color-palette.ts",
+      "value": "#8b8f96",
+      "context": "{ label: \"灰色\", className: \"mdb-color-gray\", swatch: \"#8b8f96\" },",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/editors/orchestration/color-palette.ts",
+      "value": "#f0000e",
+      "context": "{ label: \"红色\", className: \"mdb-bg-red\", swatch: \"#f0000e\" },",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/editors/orchestration/color-palette.ts",
+      "value": "#f2962c",
+      "context": "{ label: \"橙色\", className: \"mdb-bg-orange\", swatch: \"#f2962c\" },",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/editors/orchestration/color-palette.ts",
+      "value": "#f0b622",
+      "context": "{ label: \"黄色\", className: \"mdb-bg-yellow\", swatch: \"#f0b622\" },",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/editors/orchestration/color-palette.ts",
+      "value": "#419e34",
+      "context": "{ label: \"绿色\", className: \"mdb-bg-green\", swatch: \"#419e34\" },",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/editors/orchestration/color-palette.ts",
+      "value": "#20b2aa",
+      "context": "{ label: \"青色\", className: \"mdb-bg-cyan\", swatch: \"#20b2aa\" },",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/editors/orchestration/color-palette.ts",
+      "value": "#4c88ff",
+      "context": "{ label: \"蓝色\", className: \"mdb-bg-blue\", swatch: \"#4c88ff\" },",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/editors/orchestration/color-palette.ts",
+      "value": "#8a5cf6",
+      "context": "{ label: \"紫色\", className: \"mdb-bg-purple\", swatch: \"#8a5cf6\" },",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/editors/orchestration/color-palette.ts",
+      "value": "#ebebeb",
+      "context": "{ label: \"浅灰\", className: \"mdb-bg-gray\", swatch: \"#ebebeb\" },",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/editors/orchestration/color-palette.ts",
+      "value": "#b34444",
+      "context": "{ label: \"暗红\", className: \"mdb-bg-darkred\", swatch: \"#b34444\" },",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/editors/orchestration/color-palette.ts",
+      "value": "#203e78",
+      "context": "{ label: \"藏蓝\", className: \"mdb-bg-navy\", swatch: \"#203e78\" },",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    },
+    {
+      "file": "src/editors/orchestration/color-palette.ts",
+      "value": "#5f5f5f",
+      "context": "{ label: \"深灰\", className: \"mdb-bg-slate\", swatch: \"#5f5f5f\" },",
+      "count": 1,
+      "reason": "存量（Q0 冻结）；迁移随 Q2 基件与后续专项"
+    }
+  ]
+}

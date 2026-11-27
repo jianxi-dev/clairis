@@ -1,0 +1,33 @@
+{
+  "task": "1647",
+  "states": [
+    {
+      "state": "light-bool-on",
+      "screenshot": ".artifacts/1647/light-bool-on.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-27T17:55:14.406Z",
+      "runner": "unknown@unknown"
+    },
+    {
+      "state": "dark-bool-on",
+      "screenshot": ".artifacts/1647/dark-bool-on.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-27T17:55:14.564Z",
+      "runner": "unknown@unknown"
+    },
+    {
+      "state": "warm-bool-on",
+      "screenshot": ".artifacts/1647/warm-bool-on.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-27T17:55:14.679Z",
+      "runner": "unknown@unknown"
+    },
+    {
+      "state": "dark-date-cell",
+      "screenshot": ".artifacts/1647/dark-date-cell.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-27T17:55:14.895Z",
+      "runner": "unknown@unknown"
+    }
+  ]
+}

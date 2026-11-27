@@ -1,6 +1,6 @@
 # 验收锚点 — ui-quality-gate-v1
 
-锚点来源：spec issue #1646；交付方案 §1 Q0/Q1/Q4；一手实测（426 / 99 / 55 / 3 / 18 / 2.98）。R-1…R-4 对应 tasks.md 1.1–1.3 与 spec delta UQ-1…UQ-4。
+锚点来源：spec issue #1646；交付方案 §1 Q0/Q1/Q4；一手实测（127 / 99 / 55 / 3 / 18 / 2.98）。R-1…R-4 对应 tasks.md 1.1–1.3 与 spec delta UQ-1…UQ-4。
 
 ## R-1 token 门禁（UQ-1 / 任务 1.1）
 
@@ -11,7 +11,7 @@
 | A-1.3 | exact | ink-1（--app-text-strong）对 --app-bg 对比度下限 | 7 | spec §7.8 |
 | A-1.4 | exact | 正文级（--app-text-2）对比度下限 | 4.5 | spec §7.8 |
 | A-1.5 | exact | 次要/大字（--app-text-3）对比度下限 | 3 | spec §7.8 |
-| A-1.6 | exact | 暗色主题 --app-on-accent 对 --app-accent 对比度下限 | 4.5 | 实测白字 2.98 不合格 |
+| A-1.6 | exact | 暗色主题 --app-on-accent 对 --app-accent-fill 对比度下限 | 4.5 | 实测白字 2.98 不合格 |
 
 ## R-2 四条交互条款（UQ-2 / 任务 1.2）
 

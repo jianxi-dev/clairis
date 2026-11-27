@@ -167,6 +167,8 @@ UI 缩放档只约束**界面 chrome 容器**，不约束正文。默认三档�
 | 变量 | 亮（:root） | 暗（.dark） | 暖（.warm） |
 |---|---|---|---|
 | `--app-accent` | `#6366f1` | `#818cf8` | `#0071e3` |
+| `--app-accent-fill` | `#5c5fee` | `#818cf8` | `#0071e3` |
+| `--app-on-accent` | `#ffffff` | `#16181c` | `#ffffff` |
 | `--app-bg` | `#f7f7f6` | `#131316` | `#f2e9da` |
 | `--app-surface` | `#fbfaf8` | `#1a1b1e` | `#fbf4e8` |
 | `--app-sunken` | `#f4f2ec` | `#22242a` | `#efe3d0` |
@@ -296,9 +298,23 @@ token 缺失时组件按 `var(--sf-ctrl-height, 27px)` 回落，不静默失效�
 
 阅读模式（`readingMode`）SHALL 优先于 `paneMode`：沉浸态下 chrome 显隐遵循沉浸规则，`paneMode` 不覆盖。切换 `paneMode` SHALL NOT 重建编辑器（EditorView 实例与编辑态保留）。
 
+### 7.8 语义色对比度阈值（机检）
+
+语义色对的 WCAG 对比度下限，按主题（`:root` / `.dark` / `.warm`）逐一断言，由 `scripts/check-tokens.mjs` 的 C 项机检：
+
+| 语义对 | 下限 |
+|---|---|
+| ink-1（`--app-text-strong`）on `--app-bg` | 7 |
+| 正文（`--app-text-2`）on `--app-bg` | 4.5 |
+| 次要 / 大字（`--app-text-3`）on `--app-bg` | 3 |
+| accent 实底文字（`--app-on-accent`）on `--app-accent-fill` | 4.5 |
+| 危险色（danger）on `--app-bg` | 4.5 |
+
+阈值取 WCAG AA 正文 4.5 / 大字 3 / 增强 7 三档。危险色现值按主题硬编码于 C 项（亮 `#a8402f` / 暗 `#e08b7a`，见 §6），因为错误色尚无独立 token（§6 已知缺口）。status 四组（success / warning / error / info）首期不启用，等错误色 token 化后再开。本表是这些数值的唯一来源，组件与票面引用条款号，不复制数值。
+
 ## 8. 明确不做
 
-不为每个像素立法；不做组件模式库；不做动效规范；不做品牌指南；不机检 §7 判据；不因本文件重画已定案图标。
+不为每个像素立法；不做组件模式库；不做动效规范；不做品牌指南；不机检 §7.3 审美判据；§7.8 语义色对比度由 `scripts/check-tokens.mjs` C 项机检；不因本文件重画已定案图标。
 
 ## 9. 变更方式
 

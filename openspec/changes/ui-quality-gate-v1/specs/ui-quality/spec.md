@@ -71,7 +71,7 @@ UI 交付 PR SHALL 附三件证据：① 明/暗 × 1280/400 截图对，标关�
 
 ### Requirement: UQ-4 门禁接线
 
-`scripts/verify.sh` SHALL 含「3c. Token Gate」段并跑 A/B/C 全量；`.husky/pre-commit` SHALL 只跑 A 且耗时 < 1s；`docs/design/system/spec.md` SHALL 含 §7.8 并 supersede §8 的「不机检 §7 判据」；`docs/design/system/interaction.md` SHALL 存在且四条各带守护指针。
+`scripts/verify.sh` SHALL 含「3c. Token Gate」段并跑 A/B/C 全量；`.husky/pre-commit` SHALL 只跑 A 且耗时 < 1s；`.github/workflows/ci.yml` 的 `verify` job SHALL 含 `Token gate` 步骤跑全量 A/B/C；`docs/design/system/spec.md` SHALL 含 §7.8 并 supersede §8 的「不机检 §7 判据」；`docs/design/system/interaction.md` SHALL 存在且四条各带守护指针。
 
 #### Scenario: verify 输出含 3c
 
@@ -82,6 +82,11 @@ UI 交付 PR SHALL 附三件证据：① 明/暗 × 1280/400 截图对，标关�
 
 - **WHEN** 运行 pre-commit
 - **THEN** 色值检查 SHALL 只跑 A 且耗时 < 1000ms
+
+#### Scenario: CI verify job 跑全量
+
+- **WHEN** 查看 `.github/workflows/ci.yml` 的 `verify` job
+- **THEN** 该 job SHALL 含 `Token gate` 步骤并执行 `node scripts/check-tokens.mjs`（A/B/C 全量）
 
 #### Scenario: §8 已 supersede
 

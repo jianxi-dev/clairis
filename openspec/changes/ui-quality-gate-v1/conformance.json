@@ -42,7 +42,7 @@
         },
         {
           "id": "A-1.6",
-          "claim": "暗色主题 --app-on-accent 对 --app-accent 对比度下限",
+          "claim": "暗色主题 --app-on-accent 对 --app-accent-fill 对比度下限",
           "kind": "exact",
           "assert": "4.5",
           "source": "实测白字 2.98 不合格"

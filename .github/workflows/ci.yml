@@ -36,6 +36,10 @@ jobs:
       - name: CSS manifest check
         run: bash scripts/css-manifest-check.sh
 
+      # #1647：token 门禁全量（A 裸色值 / B 双向对账 / C 对比度）。
+      - name: Token gate
+        run: node scripts/check-tokens.mjs
+
       # #1442：规格/实现/锚点三方一致性。#1434 已裁决（32 为有意收紧）且
       # menu-geometry-spec-sync 已归档同步主规格，无豁免项，跑 --strict。
       - name: Anchor consistency check
