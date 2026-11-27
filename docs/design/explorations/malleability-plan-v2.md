@@ -9,6 +9,7 @@ source_of_truth: historical
 # 数据文件化与插件化：方案 v2（经 Codex 对抗评审）
 
 > 来源：2026-11-25 会话（开头依据 `docs/research/competitors/tau-界面品质与架构学习.md` 与 `docs/research/technical/data-fileization-omarchy-inventory.md` 做出的分析 + 规划），经 `/codex` 对抗评审（20 项发现，采纳 17 / 澄清 2 / 反驳 1）后形成的 v2 方案。
+> 实施与对账细节（含品质线 Q0–Q5、已完成项具体化、重排顺序、质量指标）见 [`docs/delivery/plans/malleability-delivery-plan.md`](../../delivery/plans/malleability-delivery-plan.md)。
 > 状态：方案草稿（historical）。当时的下一步（P0-0/P0-1 开 change）已落地为 `data-surface-contract-v1`；本文补录为可检索文档，不改变既有裁定。
 
 CODEX SAYS（consult）：

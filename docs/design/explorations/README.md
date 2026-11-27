@@ -46,7 +46,7 @@
 
 | 文档 | 内容 | 状态 / 去向 |
 | --- | --- | --- |
-| [malleability-plan-v2.md](./malleability-plan-v2.md) | 数据文件化与插件化：方案 v2（含 Codex 对抗评审 20 项处置、P0–P2 渐进路径、三类 DoD） | 方案草稿；P0 已落地为 `openspec/changes/archive/2026-11-25-data-surface-contract-v1`，P1 落为 `data-surface-expansion-v1` 及后续 presets；品质线未开工 |
+| [malleability-plan-v2.md](./malleability-plan-v2.md) | 数据文件化与插件化：方案 v2（含 Codex 对抗评审 20 项处置、P0–P2 渐进路径、三类 DoD） | 方案草稿；P0 已落地为 `openspec/changes/archive/2026-11-25-data-surface-contract-v1`，P1 落为 `data-surface-expansion-v1` 及后续 presets；品质线未开工；**实施与对账见 [delivery/plans/malleability-delivery-plan.md](../../delivery/plans/malleability-delivery-plan.md)** |
 | [space-templates-and-pane-presets.md](./space-templates-and-pane-presets.md) | 窗格预设与主题空间模板（含 Codex 评审修正、P0 缩表、空间程序暂缓） | 探索稿；P0 已落为 `pane-presets-v1` / `pane-tuning-values-v1`，空间程序 deferred |
 
 ## 权威级别（重要）
