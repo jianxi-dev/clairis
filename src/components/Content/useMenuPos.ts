@@ -13,12 +13,12 @@ export interface MenuPos {
  * 比视口窄（正文列内缩），只夹视口会让菜单探出面板（#1017 回归）。
  * 沿用了 TabInfoPopover 的解法；anchor 为 null 时 pos 也为 null。
  */
-export function useMenuPos(
+export function useMenuPos<T extends HTMLElement = HTMLSpanElement>(
   anchor: MenuPos | null,
   boundsOf?: () => HTMLElement | null,
 ) {
   const [pos, setPos] = useState<MenuPos | null>(anchor);
-  const ref = useRef<HTMLSpanElement | null>(null);
+  const ref = useRef<T | null>(null);
 
   useLayoutEffect(() => {
     if (!anchor) {
