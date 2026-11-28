@@ -1,5 +1,6 @@
 :root {
   --hl-font-gray: #8f959e;
+  --hl-font-contrast: #111111;
   --hl-font-red: #d83930;
   --hl-font-orange: #de7704;
   --hl-font-yellow: #dd9b02;
@@ -32,6 +33,7 @@
 
 .dark {
   --hl-font-gray: #757575;
+  --hl-font-contrast: #ffffff;
   --hl-font-red: #fa7873;
   --hl-font-orange: #f5a54a;
   --hl-font-yellow: #fcd456;

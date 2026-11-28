@@ -121,11 +121,11 @@ describe("纯高亮渲染变量", () => {
     const vars = highlightCssVars({
       bg: "red",
       border: "darkred",
-      text: "gray",
+      text: "contrast",
     });
     expect(vars.bg).toBe("var(--hl-fill-red)");
     expect(vars.border).toBe("var(--hl-border-red)");
-    expect(vars.text).toBe("var(--hl-font-gray)");
+    expect(vars.text).toBe("var(--hl-font-contrast)");
   });
 });
 

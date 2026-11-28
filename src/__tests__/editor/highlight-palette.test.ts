@@ -24,7 +24,7 @@ describe("高亮 24 格色板常量", () => {
     expect(HIGHLIGHT_FILL_MID).toHaveLength(8);
   });
 
-  it("字体行：默认 + 灰/红/橙/黄/绿/蓝/紫", () => {
+  it("字体行：默认 + 高对比/红/橙/黄/绿/蓝/紫", () => {
     expect(HIGHLIGHT_FONT_COLORS[0]).toMatchObject({
       label: "默认",
       className: "",
@@ -32,7 +32,7 @@ describe("高亮 24 格色板常量", () => {
     });
     expect(HIGHLIGHT_FONT_COLORS.map((c) => c.swatch)).toEqual([
       "var(--app-text)",
-      "var(--hl-font-gray)",
+      "var(--hl-font-contrast)",
       "var(--hl-font-red)",
       "var(--hl-font-orange)",
       "var(--hl-font-yellow)",

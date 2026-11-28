@@ -245,7 +245,7 @@ export function mapHueToType(currentColor: string, targetTone: string): string {
 /** 字体色：默认 + 灰/红/橙/黄/绿/蓝/紫（8 格，顺序与豆包一致）。 */
 export const HIGHLIGHT_FONT_COLORS: readonly ColorSwatch[] = [
   { label: "默认", className: "", swatch: "var(--app-text)", isDefault: true },
-  { label: "灰色", className: "hl-color-gray", swatch: "var(--hl-font-gray)" },
+  { label: "高对比", className: "hl-color-contrast", swatch: "var(--hl-font-contrast)" },
   { label: "红色", className: "hl-color-red", swatch: "var(--hl-font-red)" },
   { label: "橙色", className: "hl-color-orange", swatch: "var(--hl-font-orange)" },
   { label: "黄色", className: "hl-color-yellow", swatch: "var(--hl-font-yellow)" },
