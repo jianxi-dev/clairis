@@ -91,3 +91,26 @@ test("预览↔编辑切换后落在同一段内容", async ({ page }) => {
   const backInEdit = await topText(page, "edit");
   expect(backInEdit).toContain(head.slice(0, 4));
 });
+
+test("反复切换 3 轮：每次都落在同一段（不跳顶部）", async ({ page }) => {
+  await openDoc(page);
+  await page.evaluate(() => {
+    const sc = document.querySelector(".cm-scroller") as HTMLElement;
+    sc.scrollTop = Math.round((sc.scrollHeight - sc.clientHeight) * 0.7);
+  });
+  await page.waitForTimeout(250);
+  const anchor = (await topText(page, "edit")).slice(0, 4);
+  expect(anchor.length).toBeGreaterThan(1);
+
+  for (let round = 0; round < 3; round += 1) {
+    await setMode(page, "preview");
+    expect(await topText(page, "preview")).toContain(anchor);
+    await setMode(page, "edit");
+    // 关键：不能跳到文档顶部
+    const sc = await page.evaluate(
+      () => (document.querySelector(".cm-scroller") as HTMLElement).scrollTop,
+    );
+    expect(sc).toBeGreaterThan(100);
+    expect(await topText(page, "edit")).toContain(anchor);
+  }
+});
