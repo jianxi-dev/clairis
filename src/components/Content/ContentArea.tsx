@@ -728,6 +728,10 @@ export default function ContentArea({
   // useLayoutEffect 抓走锚点之后，不会污染本次恢复。
   const modeScrollAnchorRef = useRef<number | null>(null);
   const modeScrollTextAnchorRef = useRef<string | null>(null);
+  /** 模式切换恢复期间：不让恢复引起的 scroll 事件覆盖锚点（否则逐轮漂移）。 */
+  const modeRestoringRef = useRef(false);
+  /** 编辑态的最后一次像素 scrollTop：同一渲染高度往返时最精确。 */
+  const modeEditScrollTopRef = useRef<number | null>(null);
   const prevModeRef = useRef<typeof editorMode | null>(null);
 
   useEffect(() => {
@@ -739,6 +743,12 @@ export default function ContentArea({
         !el.classList.contains("content-scroll")
       )
         return;
+      // 恢复期内的 scroll 是程序造成的，不能当作新锚点（否则反复切换逐轮
+      // 漂移：后 2 → 后 1 → …）。
+      if (modeRestoringRef.current) return;
+      if (el.classList.contains("cm-scroller")) {
+        modeEditScrollTopRef.current = el.scrollTop;
+      }
       const denom = Math.max(1, el.scrollHeight - el.clientHeight);
       modeScrollAnchorRef.current = Math.min(
         1,
@@ -768,6 +778,10 @@ export default function ContentArea({
     const ratio = modeScrollAnchorRef.current;
     const textAnchor = modeScrollTextAnchorRef.current;
     if ((ratio == null || ratio <= 0) && !textAnchor) return;
+    modeRestoringRef.current = true;
+    window.setTimeout(() => {
+      modeRestoringRef.current = false;
+    }, 400);
     let raf1 = 0;
     let raf2 = 0;
     raf1 = requestAnimationFrame(() => {
@@ -791,12 +805,55 @@ export default function ContentArea({
             }
           } else {
             const view = viewRef.current;
+            const savedTop = modeEditScrollTopRef.current;
+            if (view && savedTop !== null) {
+              // 编辑↔预览往返：编辑态行高不变，直接恢复像素位置最精确
+              // （文本锚会因两态段落间距差异错开一段，真机表现「后 2 → 后 1」）。
+              view.requestMeasure({
+                read: () => savedTop,
+                write: (top) => {
+                  if (typeof top !== "number") return;
+                  const sc = view.scrollDOM;
+                  sc.scrollTop = Math.max(0, top);
+                  requestAnimationFrame(() => {
+                    if (Math.abs(sc.scrollTop - Math.max(0, top)) > 2) {
+                      sc.scrollTop = Math.max(0, top);
+                    }
+                  });
+                },
+              });
+              return;
+            }
             if (view) {
-              view.requestMeasure();
               const pos = view.state.doc.toString().indexOf(textAnchor);
               if (pos >= 0) {
-                view.dispatch({
-                  effects: EditorView.scrollIntoView(pos, { y: "start" }),
+                // 预览→编辑时 CM6 刚从 display:none 恢复，行高/视口还是旧测量
+                // 值，直接 dispatch scrollIntoView 会被下一次 measure 重置
+                // （真机表现为「切回编辑跳到文档顶部」）。放到 write 阶段执行，
+                // 此时布局已按可见状态重新测量完成。
+                view.requestMeasure({
+                  read: () => pos,
+                  write: (target) => {
+                    if (typeof target !== "number" || target < 0) return;
+                    // 直接按行块的像素位置落位（比 scrollIntoView effect 更
+                    // 抗 measure 竞争：effect 会被下一次测量重置，真机表现为
+                    // 「预览切回编辑跳到文档顶部」）。
+                    const sc = view.scrollDOM;
+                    const place = (): void => {
+                      const block = view.lineBlockAt(target);
+                      sc.scrollTop = Math.max(0, block.top);
+                    };
+                    place();
+                    // 下一帧复核：CM6 可能在本次 measure 收尾时重设滚动。
+                    requestAnimationFrame(() => {
+                      if (
+                        Math.abs(view.lineBlockAt(target).top - sc.scrollTop) >
+                        2
+                      ) {
+                        place();
+                      }
+                    });
+                  },
                 });
                 return;
               }
