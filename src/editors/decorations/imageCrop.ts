@@ -664,8 +664,8 @@ function mount(
     ] as const) {
       document.removeEventListener(type, noteGesture, true);
     }
-    document.removeEventListener("pointerdown", suppressCaret, true);
-    document.removeEventListener("mousedown", suppressCaret, true);
+    window.removeEventListener("pointerdown", suppressCaret, true);
+    window.removeEventListener("mousedown", suppressCaret, true);
     untraceScroll();
     // WKWebView 合成层残影（残留边柄短横线）：DOM 已移除、样式已还原仍然可见，
     // 必须让滚动层整层重合成才冲得掉。旧手段是 1px 滚动回弹——它改的是滚动位置，
@@ -887,8 +887,12 @@ function mount(
   // **pointerdown 才是 CM6 的入口**（日志 #1678：pointerdown:cm-line 先于
   // mousedown:cm-line 到达，CM6 在 pointerdown 阶段就设了光标并做 caret
   // 揭示滚动——只拦 mousedown 已经晚了，视口在确认前就被带走）。两者都拦。
-  document.addEventListener("pointerdown", suppressCaret, true);
-  document.addEventListener("mousedown", suppressCaret, true);
+  // **window 的 capture 阶段**：CM6 的指针处理也注册在 document 上（且早于本
+  // 会话），同节点上 stopPropagation 拦不住它（真机日志三轮：pointerdown:cm-line
+  // 依旧落位光标、视口 2092→2735）。window 是 document 的父级，capture 最先
+  // 执行，才能保证事件根本到不了 CM6。
+  window.addEventListener("pointerdown", suppressCaret, true);
+  window.addEventListener("mousedown", suppressCaret, true);
 
   const untraceScroll = scroller ? traceScrollTop(scroller) : () => {};
   // 手势时间戳：裁剪框 / widget 上的按下、点击、双击之后 700ms 内发生的滚动
