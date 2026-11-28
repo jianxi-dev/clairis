@@ -16,7 +16,7 @@ import {
   readCssColor,
 } from "../../editors/orchestration/color-contrast";
 import { getCalloutAttrs } from "../../editors/callout-attrs";
-import { FONT_COLORS } from "../../editors/orchestration/color-palette";
+import { BACKGROUND_COLORS, FONT_COLORS } from "../../editors/orchestration/color-palette";
 
 /** 测试用 CSS 变量：覆盖随机选色涉及的填充 / 字体 / 表面色。 */
 const TEST_VARS: Readonly<Record<string, string>> = {
@@ -416,7 +416,12 @@ describe("randomCalloutColors（#1677）", () => {
     expect(m![1]).toBe(m![2]);
     const surfaceHex = readCssColor("--app-surface");
     const surface = parseHexColor(surfaceHex)!;
-    const bg = parseHexColor("#f0000e")!;
+    // 用实际随机到的填充算叠底，不能写死某一种颜色（否则随机换色后断言失真）。
+    const bgEntry = BACKGROUND_COLORS.find(
+      (color) => color.className === `mdb-bg-${m![1]}`,
+    );
+    const bg = parseHexColor(readCssColor(bgEntry?.swatch ?? ""))!;
+    expect(bg).not.toBeNull();
     const tint = {
       r: Math.round(bg.r * 0.1 + surface.r * 0.9),
       g: Math.round(bg.g * 0.1 + surface.g * 0.9),

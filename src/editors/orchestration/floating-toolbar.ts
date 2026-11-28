@@ -15,6 +15,7 @@ import {
   toggleRangeSpan,
   toggleWrap,
 } from "./toolbar-shared";
+import { findCalloutBlocks } from "../decorations/callout";
 import { dispatchLineConvert, type BlockConvertTarget } from "./block-convert";
 import { calloutKeyOf } from "./block-actions";
 import { useAiEntryStore } from "../../hooks/useAiEntry";
@@ -973,8 +974,17 @@ export function floatingToolbar(allowCapsule = false) {
     };
 
     const showCalloutBar = (card: HTMLElement): void => {
-      const pos = view.posAtDOM(card, 0);
-      const block = blockAt(view, pos);
+      // 卡片自带源码起点（#1719：posAtDOM 在多 widget 布局下可能落到首块）。
+      // 直接按起点在 callout 列表里精确匹配，避免 blockAt 对 callout 归类不一致。
+      const fromAttr = Number(card.dataset.calloutFrom);
+      const pos =
+        Number.isFinite(fromAttr) && fromAttr >= 0
+          ? fromAttr
+          : view.posAtDOM(card, 0);
+      const block =
+        findCalloutBlocks(view.state.doc.toString()).find(
+          (entry) => entry.from === pos,
+        ) ?? blockAt(view, pos);
       if (!block) return;
       const key = calloutKeyOf(
         view.state.doc.sliceString(block.from, block.to),

@@ -267,6 +267,9 @@ function liveCard(view: EditorView, index: number): HTMLElement | null {
   if (!block) return null;
   const cards = view.dom.querySelectorAll<HTMLElement>(".cm-callout");
   for (const card of cards) {
+    if (card.dataset.calloutFrom === String(block.from)) return card;
+  }
+  for (const card of cards) {
     try {
       if (view.posAtDOM(card, 0) === block.from) return card;
     } catch {
@@ -685,6 +688,12 @@ class CalloutWidget extends WidgetType {
     container.setAttribute("data-callout-emoji", emoji);
     // #468：徽标已移除，卡片改为用 data 携带类型。
     container.setAttribute("data-callout-type", this.type);
+    // 源码块起点：widget 可能只渲染视口附近，`posAtDOM` 在部分布局下不可靠，
+    // 交互时用它把 DOM 卡片映射回文档位置（#1719 随机改错块）。
+    if (view) {
+      const source = findCalloutBlocks(view.state.doc.toString())[this.index];
+      if (source) container.dataset.calloutFrom = String(source.from);
+    }
     container.setAttribute("aria-label", this.label);
 
     if (view) {
