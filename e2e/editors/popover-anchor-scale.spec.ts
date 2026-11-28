@@ -168,7 +168,8 @@ test("主题菜单居中于主题按钮（1.0 与 1.2）", async ({ page }) => {
     await expect(menu).toBeVisible({ timeout: 3000 });
     const m = await page.evaluate(() => {
       const b = document.querySelector('[data-testid="theme-entry"]')!;
-      const p = document.querySelector('[data-testid="theme-menu"]')!;
+      // 量可见卡片（.theme-menu），不是外层悬停桥容器（#1684）。
+      const p = document.querySelector(".theme-menu")!;
       const rb = b.getBoundingClientRect();
       const rp = p.getBoundingClientRect();
       return {
@@ -189,6 +190,45 @@ test("主题菜单居中于主题按钮（1.0 与 1.2）", async ({ page }) => {
     expect(gap).toBeGreaterThanOrEqual(7);
     expect(gap).toBeLessThanOrEqual(9);
     if (factor === 1.2) await shot(page, "03-theme-scale-1.2");
+    await page.mouse.move(5, 5);
+    await expect(menu).toHaveCount(0);
+  }
+});
+
+test("两个状态栏浮窗的可见底边到按钮间距一致（1.0 与 1.2）", async ({
+  page,
+}) => {
+  await boot(page);
+  await openDoc(page, "# 对照\n\n正文。");
+
+  for (const factor of [1, 1.2]) {
+    await applyScale(page, factor);
+    await revealStatusBar(page);
+    await page.getByTestId("width-control").hover();
+    await expect(page.getByTestId("width-panel")).toBeVisible();
+    const widthGap = await page.evaluate(() => {
+      const b = document.querySelector('[data-testid="status-width"]')!;
+      const p = document.querySelector('[data-testid="width-panel"]')!;
+      return b.getBoundingClientRect().top - p.getBoundingClientRect().bottom;
+    });
+    await page.mouse.move(5, 5);
+    await expect(page.getByTestId("width-panel")).toHaveCount(0);
+
+    await revealStatusBar(page);
+    await page.getByTestId("theme-entry").hover();
+    const menu = page.getByTestId("theme-menu");
+    await expect(menu).toBeVisible({ timeout: 3000 });
+    const themeGap = await page.evaluate(() => {
+      const b = document.querySelector('[data-testid="theme-entry"]')!;
+      const p = document.querySelector(".theme-menu")!;
+      return b.getBoundingClientRect().top - p.getBoundingClientRect().bottom;
+    });
+    // 用户口径：两个浮窗的可见下边框到图标的距离必须一致（#1684）。
+    expect(Math.abs(widthGap - themeGap)).toBeLessThanOrEqual(1);
+    for (const gap of [widthGap, themeGap]) {
+      expect(gap).toBeGreaterThanOrEqual(7);
+      expect(gap).toBeLessThanOrEqual(9);
+    }
     await page.mouse.move(5, 5);
     await expect(menu).toHaveCount(0);
   }
