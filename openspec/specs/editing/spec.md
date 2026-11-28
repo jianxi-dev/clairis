@@ -1921,7 +1921,7 @@ store 内容快照 SHALL 采用 300ms 防抖 + 2000ms 截止；`dirty` SHALL 在
 
 块族名 SHALL 二分为「高亮」与「标注」两项：**高亮** SHALL 为无左边框、无标题栏、1px 全边框、4px 圆角、强叠底的纯高亮块；**标注** SHALL 为带 3px 左边框与标题栏的 13 语义类型 callout。斜杠菜单、块菜单「转为」、转换手柄菜单与选区轮盘四处入口 SHALL 只呈现这两项。四个入口选「高亮」SHALL 直落 `> [!highlight]`；选「标注」SHALL 展开 13 个语义类型。`> [!highlight]` 的 markdown 序列化格式 SHALL 与既有 callout 一致。
 
-**高亮颜色面板** SHALL 使用独立 24 格色板，自上而下 SHALL 为：字体颜色（8 格，字母 A 色块，行尾「随机」）、边框颜色（8 格）、填充颜色深档（8 格）、填充颜色中档（8 格）、恢复默认。**每行 SHALL 严格 8 格且 `flex-wrap: nowrap`，SHALL NOT 换行**；色块计算尺寸 SHALL 为 `width: 22px` / `height: 20px`，行内 `gap` SHALL 为 `4px`，面板宽度 SHALL 保持 `216px`。当前值对应的色块 SHALL 带 `data-active` 选中态；选色或「随机」执行后，`data-active` SHALL 在原地面板内即时刷新到新值（SHALL NOT 重建面板、SHALL NOT 关闭面板）。**随机** SHALL 在一次事务内同时更换边框、填充与文字色；边框与填充 SHALL 属同一色相族；文字色 SHALL 只从彩色字体色板中选择**与当前不同**的颜色：优先对比度 ≥4.5 且色相不同于填充，其次 ≥4.5，再次 ≥3（同色相最后考虑），均不可行时 SHALL 保持当前文字色；一次 ⌘Z SHALL 同时还原三项。**恢复默认** SHALL 清空三色属性。字体色色块 SHALL 使用字母「A」字形（`FormatColorTextOutlined`），SHALL NOT 使用荧光笔字形；块菜单「颜色」行图标 SHALL 同为 `FormatColorTextOutlined`（A 字形），SHALL NOT 使用 `FontcolorOutlined`。`text` 只作用于标题与正文，SHALL NOT 作用于链接、行内代码与 emoji；标注填充 SHALL 为软色。
+**高亮颜色面板** SHALL 使用独立 24 格色板，自上而下 SHALL 为：字体颜色（8 格，字母 A 色块，行尾「随机」）、边框颜色（8 格）、填充颜色深档（8 格）、填充颜色中档（8 格）、恢复默认。**每行 SHALL 严格 8 格且 `flex-wrap: nowrap`，SHALL NOT 换行**；色块计算尺寸 SHALL 为 `width: 22px` / `height: 20px`，行内 `gap` SHALL 为 `4px`，面板宽度 SHALL 保持 `216px`。当前值对应的色块 SHALL 带 `data-active` 选中态；选色或「随机」执行后，`data-active` SHALL 在原地面板内即时刷新到新值（SHALL NOT 重建面板、SHALL NOT 关闭面板）。**随机** SHALL 在一次事务内同时更换边框、填充与文字色；边框与填充 SHALL 属同一色相族；文字色 SHALL 从彩色字体色板中排除当前值后选取：候选为「色相不同于填充且与填充对比度 ≥3」的颜色并按对比度加权随机（≥4.5 权重 3、否则 1），同色相候选 SHALL 仅在无更好候选时参与；均不可行时 SHALL 保持当前文字色；一次 ⌘Z SHALL 同时还原三项。**恢复默认** SHALL 清空三色属性。字体色色块 SHALL 使用字母「A」字形（`FormatColorTextOutlined`），SHALL NOT 使用荧光笔字形；块菜单「颜色」行图标 SHALL 同为 `FormatColorTextOutlined`（A 字形），SHALL NOT 使用 `FontcolorOutlined`。`text` 只作用于标题与正文，SHALL NOT 作用于链接、行内代码与 emoji；标注填充 SHALL 为软色。
 
 **工具条（supersede 旧条款）**：纯高亮块与标注块的工具条 SHALL 均水平居中于块盒（中心偏差 ≤ 2px），两条工具条的颜色入口图标 SHALL 共用 `PaletteOutlined`（调色板图形）。旧条款「纯高亮块的工具条 SHALL 使用荧光笔图标；标注块工具条位置与图标 SHALL 保持不变」SHALL NOT 生效。块菜单「颜色」行 SHALL 保持 `FormatColorTextOutlined`（A 字形）。
 
@@ -2439,4 +2439,13 @@ emoji 取色器 SHALL 使用仓库内置全量 emoji 库（1578 条、7 分类�
 
 - **WHEN** 打开颜色面板并连续点击「随机」三次
 - **THEN** 首行 SHALL 只有 1 个 `{` 与 1 个 `}`，正文行不变
+
+### Requirement: E-58 颜色面板作用于被点击的块
+
+点击任一标注/高亮块唤出的颜色面板，随机与选色 SHALL 只写入该块首行；SHALL NOT 落到同文档的其他块。块定位 SHALL 以卡片携带的源码起点为准，SHALL NOT 依赖可能被虚拟化影响的 DOM 序号。
+
+#### Scenario: 逐块随机
+
+- **WHEN** 文档含三个不同的标注/高亮块，依次点击每个块并点「随机」
+- **THEN** 每次只改变被点击块的首行，其余块首行不变
 
