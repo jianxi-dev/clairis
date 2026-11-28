@@ -998,13 +998,20 @@ function mount(
     });
     const guard = (): void => {
       if (guardStop) return;
-      if (cropView && pinnedSel) {
-        const cur = cropView.state.selection.main;
-        if (cur.from !== pinnedSel.from || cur.to !== pinnedSel.to) {
-          cropView.dispatch({
-            selection: { anchor: pinnedSel.from, head: pinnedSel.to },
-          });
+      // 光标复位**必须与滚动拉回分开**：在 CM6 更新周期中 dispatch selection
+      // 会抛异常（"update in progress"），异常会终止下面的 rAF 调度，导致
+      // 守护永久停止——真机日志 r16：首裁 -1042 无回拉，第 2 张起才正常。
+      try {
+        if (cropView && pinnedSel) {
+          const cur = cropView.state.selection.main;
+          if (cur.from !== pinnedSel.from || cur.to !== pinnedSel.to) {
+            cropView.dispatch({
+              selection: { anchor: pinnedSel.from, head: pinnedSel.to },
+            });
+          }
         }
+      } catch {
+        /* 更新周期中不可 dispatch：下一帧再试 */
       }
       // **不要**因 scroller 暂时脱离文档就退出（真机日志 r11：首裁时 widget
       // 重建会让 scroller 短暂 detached，旧实现 `return` 后守护永久停止，
