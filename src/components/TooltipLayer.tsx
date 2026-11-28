@@ -4,50 +4,18 @@ import { isOverlayOpen, subscribeOverlay } from "../lib/overlayGate";
 import { ACTION_TIPS } from "../lib/action-tips";
 import { useEditorStore } from "../stores/editorStore";
 import { noticeDurationMs } from "../hooks/useConfig";
-
-/** 箭头与触发元素之间的间距（px），与 CSS transform 的 8px 一致。 */
-const TIP_GAP = 8;
-/** 提示与视口边缘的最小留白（px）。 */
-const TIP_VIEWPORT_MARGIN = 4;
+import {
+  chooseTipSide,
+  tipAnchorFor,
+  type TipSide,
+  type TipSize,
+} from "../ui/primitives/tipPlacement";
+import { useTipMeasure } from "../ui/primitives/useTipMeasure";
 
 /** 嵌入式文档的 `title` 是它的无障碍名（如 HTML 可视化编辑 iframe）：
  *  摘掉会让控件失去可访问名，提示本身也只是噪音，保持原样不接管。 */
 const KEEP_TITLE_SELECTOR = "iframe, object, embed";
 
-interface TipSize {
-  width: number;
-  height: number;
-}
-
-/** 用与自绘胶囊同一外壳的隐藏探针量出真实尺寸，供方位判断与锚点夹取。 */
-function measureTip(main: string, hint: string | null): TipSize {
-  const probe = document.createElement("div");
-  probe.className = "app-tip";
-  probe.style.visibility = "hidden";
-  probe.style.left = "-9999px";
-  probe.style.top = "0";
-  const text = document.createElement("span");
-  text.className = "app-tip__text";
-  text.textContent = main;
-  probe.append(text);
-  if (hint !== null) {
-    const hintEl = document.createElement("span");
-    hintEl.className = "app-tip__hint";
-    hintEl.textContent = hint;
-    probe.append(hintEl);
-  }
-  const arrow = document.createElement("span");
-  arrow.className = "app-tip__arrow";
-  probe.append(arrow);
-  document.body.append(probe);
-  const rect = probe.getBoundingClientRect();
-  const size = { width: rect.width, height: rect.height };
-  probe.remove();
-  return size;
-}
-
-/** 弹出方位：above=提示在触发元素上方（箭头朝下），其余同理。 */
-type TipSide = "above" | "below" | "left" | "right";
 
 interface TipState {
   main: string;
@@ -76,37 +44,6 @@ function visibleLabel(el: Element): string {
   return out.trim();
 }
 
-/**
- * 按触发元素在视口中的位置选弹出方位：优先上 / 下，都放不下才侧弹。
- * 底部状态栏按钮因此落在图标正上方。
- */
-function tipSideFor(el: Element, size: TipSize): TipSide {
-  const rect = el.getBoundingClientRect();
-  const verticalNeed = size.height + TIP_GAP;
-  // 浮层菜单内的行：提示固定在行上方/下方，不要跑到左右两侧去盖住同一行
-  // （#1640 用户反馈：块菜单「无序」提示跑到图标左侧并压住图标）。
-  const inMenu = el.closest(
-    ".cm-block-menu-flyout, .tab-context-menu, .context-menu, .dpb-menu, .biaoyue-outline",
-  );
-  if (inMenu) {
-    return rect.top - verticalNeed >= 0 ? "above" : "below";
-  }
-  if (rect.top - verticalNeed >= TIP_VIEWPORT_MARGIN) return "above";
-  if (rect.bottom + verticalNeed <= window.innerHeight - TIP_VIEWPORT_MARGIN)
-    return "below";
-  const horizontalNeed = size.width + TIP_GAP;
-  const fitsRight =
-    rect.right + horizontalNeed <= window.innerWidth - TIP_VIEWPORT_MARGIN;
-  const fitsLeft = rect.left - horizontalNeed >= TIP_VIEWPORT_MARGIN;
-  if (fitsRight && fitsLeft)
-    return rect.left + rect.width / 2 < window.innerWidth / 2
-      ? "right"
-      : "left";
-  if (fitsRight) return "right";
-  if (fitsLeft) return "left";
-  return rect.left > window.innerWidth - rect.right ? "left" : "right";
-}
-
 /** 由触发元素推导提示内容：图标+文字只给快捷键；纯图标给名称 + 快捷键 + 用法。 */
 function tipContentFor(
   el: Element,
@@ -121,34 +58,6 @@ function tipContentFor(
   };
 }
 
-/** 把 value 夹进 [min, max]。 */
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(Math.max(value, min), max);
-}
-
-/** 弹出锚点：above/below 取元素上下沿水平居中，left/right 取元素左右沿垂直居中。 */
-function tipAnchorFor(
-  el: Element,
-  side: TipSide,
-  size: TipSize,
-): { x: number; y: number } {
-  const rect = el.getBoundingClientRect();
-  const cx = rect.left + rect.width / 2;
-  const cy = rect.top + rect.height / 2;
-  const halfW = Math.min(size.width / 2, window.innerWidth / 2);
-  const halfH = Math.min(size.height / 2, window.innerHeight / 2);
-  if (side === "right" || side === "left") {
-    return {
-      x: side === "right" ? rect.right : rect.left,
-      y: clamp(cy, halfH, window.innerHeight - halfH),
-    };
-  }
-  return {
-    x: clamp(cx, halfW, window.innerWidth - halfW),
-    y: side === "above" ? rect.top : rect.bottom,
-  };
-}
-
 /**
  * 全局胶囊提示（ui-polish-batch12 9.1；batch20 C1 收敛）。
  *
@@ -159,6 +68,7 @@ function tipAnchorFor(
  */
 export default function TooltipLayer() {
   const [tip, setTip] = useState<TipState | null>(null);
+  const measure = useTipMeasure();
   const timerRef = useRef<number | null>(null);
   const currentRef = useRef<Element | null>(null);
 
@@ -216,8 +126,8 @@ export default function TooltipLayer() {
         const el = currentRef.current;
         if (!el) return;
         const content = tipContentFor(el, el.getAttribute("data-tip") ?? "");
-        const size = measureTip(content.main, content.hint);
-        const side = tipSideFor(el, size);
+        const size = measure(content.main, content.hint);
+        const side = chooseTipSide(el, size);
         const { x, y } = tipAnchorFor(el, side, size);
         setTip({ ...content, side, x, y });
       }, noticeDurationMs(useEditorStore.getState().config.noticeDuration));

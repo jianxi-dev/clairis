@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import Icon from "./Icon";
+import TooltipLayer from "./TooltipLayer";
 import {
   Button,
   type ButtonSize,
@@ -393,6 +394,8 @@ export default function Showcase() {
           <Icon name="settings" size={18} />
         </div>
       </section>
+
+      <TooltipLayer />
     </div>
   );
 }
