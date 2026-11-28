@@ -22,6 +22,8 @@ import {
 } from "../emoji-data";
 import { pushRecentEmoji, readRecentEmoji } from "../emoji-data/recent";
 import { findCalloutBlocks } from "./callout";
+import { getCalloutAttrs, setCalloutAttrs } from "../callout-attrs";
+import { structureTransaction } from "../structure-history";
 
 /** 头部 emoji 覆盖，按 view 再按高亮块序号存；记录类型，转换后自动失效。 */
 const calloutEmojiOverrides = new WeakMap<
@@ -120,6 +122,23 @@ function applyEmoji(
       calloutEmojiOverrides.set(view, overrides);
     }
     overrides.set(index, { type, emoji });
+  }
+  // 持久化到首行属性块：重启 / 重开文档仍生效（会话表只作缓存）。
+  const block = findCalloutBlocks(view.state.doc.toString())[index];
+  if (block) {
+    const current = view.state.doc.sliceString(block.from, block.to);
+    const attrs = getCalloutAttrs(current);
+    const next = setCalloutAttrs(current, {
+      ...attrs,
+      emoji: emoji ?? undefined,
+    });
+    if (next !== current) {
+      view.dispatch(
+        structureTransaction({
+          changes: { from: block.from, to: block.to, insert: next },
+        }),
+      );
+    }
   }
   publishOverrides(view);
   const next = emoji ?? defaultEmoji;

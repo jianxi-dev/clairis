@@ -279,13 +279,15 @@ test("F：随机三元组按对比度选色且文字每次变化（高亮 + 标�
     await panel.locator('[data-testid="color-random"]').click();
     const got = await readMark();
     expect((got.line.match(/\{/g) ?? [])).toHaveLength(1);
-    expect(got.text).not.toBe("");
+    // text 为空表示「默认文字」（继承主题前景），也是合法随机结果。
+    const label = got.text === "" ? "default" : got.text;
+    if (seenText.length > 0) expect(label).not.toBe(seenText[seenText.length - 1]);
     const fill = parseHexColor(got.fill);
     const font = parseHexColor(got.font);
     expect(fill).not.toBeNull();
     expect(font).not.toBeNull();
     expect(contrastRatio(font!, fill!)).toBeGreaterThanOrEqual(3);
-    seenText.push(got.text);
+    seenText.push(label);
   }
   expect(new Set(seenText).size).toBeGreaterThanOrEqual(2);
 
@@ -315,8 +317,9 @@ test("F：随机三元组按对比度选色且文字每次变化（高亮 + 标�
     await calloutPanel.locator('[data-testid="color-random-callout"]').click();
     const got = await readNoteText();
     expect((got.line.match(/\{/g) ?? [])).toHaveLength(1);
-    expect(got.text).not.toBe("");
-    noteSeen.push(got.text);
+    const label = got.text === "" ? "default" : got.text;
+    if (noteSeen.length > 0) expect(label).not.toBe(noteSeen[noteSeen.length - 1]);
+    noteSeen.push(label);
   }
   expect(new Set(noteSeen).size).toBeGreaterThanOrEqual(2);
   await expect(calloutPanel).toBeVisible();

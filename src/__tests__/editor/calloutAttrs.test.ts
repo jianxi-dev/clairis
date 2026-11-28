@@ -144,3 +144,49 @@ describe("属性块与标题之间的空白（#1676 回归）", () => {
     ).toBe("> [!NOTE]{bg=green} 标题");
   });
 });
+
+describe("属性块健壮性与 emoji 持久化", () => {
+  it("解析同一行的多个属性块并以后者覆盖", () => {
+    expect(
+      parseCalloutAttrs(
+        "{bg=red border=red text=purple} {bg=gray border=gray} {bg=blue}",
+      ),
+    ).toEqual({ bg: "blue", border: "gray", text: "purple" });
+  });
+
+  it("写回时把多个属性块收敛成一个", () => {
+    const dirty =
+      "> [!highlight]{bg=darkred border=red} {bg=gray border=gray}\n> 正文";
+    const out = setCalloutAttrs(dirty, { bg: "yellow", border: "yellow" });
+    const first = out.split("\n")[0];
+    expect((first.match(/\{/g) ?? [])).toHaveLength(1);
+    expect(first).toBe("> [!highlight]{bg=yellow border=yellow}");
+    expect(out).toContain("> 正文");
+  });
+
+  it("emoji 可解析、序列化并往返保留", () => {
+    expect(parseCalloutAttrs("{emoji=🖍 bg=red}")).toEqual({
+      bg: "red",
+      emoji: "🖍",
+    });
+    const written = setCalloutAttrs("> [!highlight]\n> 正文", {
+      emoji: "🖍",
+    });
+    expect(written.split("\n")[0]).toBe("> [!highlight]{emoji=🖍}");
+    expect(getCalloutAttrs(written).emoji).toBe("🖍");
+  });
+
+  it("改色写回不丢 emoji", () => {
+    const withEmoji = "> [!highlight]{emoji=🖍 bg=red}\n> 正文";
+    const out = setCalloutAttrs(withEmoji, {
+      ...getCalloutAttrs(withEmoji),
+      bg: "blue",
+      border: "blue",
+    });
+    expect(getCalloutAttrs(out)).toEqual({
+      bg: "blue",
+      border: "blue",
+      emoji: "🖍",
+    });
+  });
+});

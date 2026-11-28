@@ -683,10 +683,11 @@ class CalloutWidget extends WidgetType {
     if (vars.border)
       container.style.setProperty("--callout-border", vars.border);
     if (vars.text) container.style.setProperty("--callout-text", vars.text);
+    // emoji 优先取首行属性（重启后仍在）；会话覆盖表只用于兼容旧路径。
     const emoji =
-      (view
-        ? getCalloutEmojiOverride(view, this.index, this.type)
-        : undefined) ?? this.icon;
+      this.attrs.emoji ??
+      (view ? getCalloutEmojiOverride(view, this.index, this.type) : undefined) ??
+      this.icon;
     container.setAttribute("data-callout-emoji", emoji);
     // #468：徽标已移除，卡片改为用 data 携带类型。
     container.setAttribute("data-callout-type", this.type);
