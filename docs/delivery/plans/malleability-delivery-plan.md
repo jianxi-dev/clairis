@@ -17,8 +17,8 @@ source_of_truth: supporting
 
 | 批次 | 项 | 状态 | 成本 | 依赖 |
 |---|---|---|---|---|
-| **B1 品质地基** | Q0 token 门禁 · Q1 四条交互条款 · Q4 交付验收模板 | ⬜ | 3 天 | 无（可与任何功能并行） |
-| **B2 基件** | Q2 四基件 + `/showcase` · Q3 图标纪检 | ⬜ | 5 天 | Q0/Q1 |
+| **B1 品质地基** | Q0 token 门禁 · Q1 四条交互条款 · Q4 交付验收模板 | ✅ | 3 天 | 无（可与任何功能并行） |
+| **B2 基件** | Q2 四基件 + `/showcase` · Q3 图标纪检 | 🚧 | 5 天 | Q0/Q1 |
 | **B3 可发现可调用** | M1 命令目录 · M2 AI 发现与地图注入 | ⬜ | 4–7 天 | B1（Q0 的 token 约束） |
 | **B4 迁移补口** | M3 反向棘轮 · M4 键位面 · M5 导出/新建默认 | ⬜ | 7–10 天 | M1 |
 | **B5 插件** | M6 manifest v2 + 贡献注册 + 权限 | ⬜ | 6–9 天 | M1、M3 |
@@ -29,7 +29,7 @@ source_of_truth: supporting
 
 ## 1. 品质线（Q0–Q5）
 
-### Q0 token 门禁 ⬜（1.5 天）
+### Q0 token 门禁 ✅（1.5 天）
 
 **目标效果**：新写的 UI 代码不允许出现裸色值；改主题只改 token；语义色对比度可机检。
 
@@ -47,7 +47,7 @@ source_of_truth: supporting
 
 **现状**：⬜ 无 `tokens.ts`、无 `check-tokens.mjs`；`verify.sh` 现有 8 个检查段（tsc / eslint / vitest / css-manifest / docs-gate / cargo check / 两套 e2e），无色值门禁。
 
-### Q1 四条交互条款 ⬜（1 天）
+### Q1 四条交互条款 ✅（1 天）
 
 **目标效果**：把「零横线 / 反馈三档 / 禁用而非隐藏 / Esc 只退场」从口号变成可判定条款，并各有守护。
 
@@ -60,7 +60,7 @@ source_of_truth: supporting
 **完成判据**：`interaction.md` 四条各带守护指针；`window.alert`/`confirm` 零命中；e2e 新增 ≥4 条且绿；§8 已 supersede。
 **现状**：⬜ 无 `interaction.md`；`spec.md` §7.3 只有人工「审美七问」，§8 明确「不做交互规范」。
 
-### Q2 四基件 + 样板间 ⬜（4 天）
+### Q2 四基件 + 样板间 🚧（4 天）
 
 **目标效果**：按钮、图标按钮、菜单、提示四类不再各域自造；浮层定位与关闭仲裁共享一套；规范有可点的对照场。
 
@@ -88,7 +88,7 @@ source_of_truth: supporting
 **完成判据**：脚本绿；12px 仅豁免清单内；裁决表 11 行。
 **现状**：⬜ 无脚本；两表有对账测试雏形但未覆盖尺寸与动作映射。
 
-### Q4 交付验收模板 ⬜（0.5 天，随 Q0 一起）
+### Q4 交付验收模板 ✅（0.5 天，随 Q0 一起）
 
 **目标效果**：每次 UI 交付都有可核对的视觉与可靠性证据，而不是「编译通过」。
 
@@ -252,11 +252,11 @@ source_of_truth: supporting
 | D4 | ✅ | `bash scripts/surface-new.test.sh` 13 项 |
 | D5 | ✅ | 归档 change + 各面 e2e + requirements-status |
 | D6 | ✅ | tool_schemas 6 项 + 面级 AI 用例 |
-| Q0 | ⬜ | `node scripts/check-tokens.mjs`（A/B/C 三项） |
-| Q1 | ⬜ | `interaction.md` 四条守护 + e2e ≥4 + alert 零命中 |
-| Q2 | ⬜ | `/showcase` 截图 + 迁移清单 + review 判据 |
+| Q0 | ✅ | `node scripts/check-tokens.mjs`（A/B/C 三项） |
+| Q1 | ✅ | `interaction.md` 四条守护 + e2e ≥4 + alert 零命中 |
+| Q2 | 🚧 | `/showcase` 截图 + 迁移清单 + review 判据 |
 | Q3 | ⬜ | `node scripts/check-icons.mjs` + 11 行裁决 |
-| Q4 | ⬜ | 模板存在 + ≥2 PR 使用 |
+| Q4 | ✅ | 模板存在 + ≥2 PR 使用 |
 | Q5 | ⬜ | 基线下降数字 + 复盘 |
 | M1 | ⬜ | 声明式命令 e2e + 未登记 action 拒绝用例 |
 | M2 | ⬜ | `list_data_surfaces` 返回 7 面 + 注入断言 |
