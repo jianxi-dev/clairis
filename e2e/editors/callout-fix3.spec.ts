@@ -275,7 +275,7 @@ test("F：随机三元组按对比度选色且文字每次变化（高亮 + 标�
     });
 
   const seenText: string[] = [];
-  for (let i = 0; i < 3; i += 1) {
+  for (let i = 0; i < 4; i += 1) {
     await panel.locator('[data-testid="color-random"]').click();
     const got = await readMark();
     expect((got.line.match(/\{/g) ?? [])).toHaveLength(1);
@@ -311,7 +311,7 @@ test("F：随机三元组按对比度选色且文字每次变化（高亮 + 标�
       return { line, text: /text=([a-z]+)/.exec(line)?.[1] ?? "" };
     });
   const noteSeen: string[] = [];
-  for (let i = 0; i < 3; i += 1) {
+  for (let i = 0; i < 4; i += 1) {
     await calloutPanel.locator('[data-testid="color-random-callout"]').click();
     const got = await readNoteText();
     expect((got.line.match(/\{/g) ?? [])).toHaveLength(1);
@@ -321,7 +321,7 @@ test("F：随机三元组按对比度选色且文字每次变化（高亮 + 标�
   expect(new Set(noteSeen).size).toBeGreaterThanOrEqual(2);
   await expect(calloutPanel).toBeVisible();
   // 三次随机各是一步撤销：撤三次回到随机前。
-  for (let i = 0; i < 3; i += 1) {
+  for (let i = 0; i < 4; i += 1) {
     await page.keyboard.press("Meta+z");
     await page.waitForTimeout(100);
   }
@@ -333,7 +333,19 @@ test("F：随机三元组按对比度选色且文字每次变化（高亮 + 标�
 test("G：随机只改被点击的块，不串到第一个块", async ({ page }) => {
   await openMarkdownInEdit(
     page,
-    "> [!NOTE] 一\n> A\n\n> [!highlight]\n> B\n\n> [!TIP] 三\n> C\n",
+    [
+      "> [!NOTE] 一",
+      "> 第一段内容，用来让块高度超过一行。",
+      "",
+      "> [!highlight]",
+      "> 第二段内容，同样拉高一点。",
+      "",
+      "> [!TIP] 三",
+      "> 第三段内容。",
+      "",
+      "> [!important] 四",
+      "> 第四段内容，验证连续改色后的位置漂移。",
+    ].join("\n"),
     "callout-fix3-g",
   );
   const calloutLines = async (): Promise<string[]> =>
@@ -341,7 +353,7 @@ test("G：随机只改被点击的块，不串到第一个块", async ({ page })
       .split("\n")
       .filter((line) => /^>\s*\[!/.test(line));
 
-  for (let i = 0; i < 3; i += 1) {
+  for (let i = 0; i < 4; i += 1) {
     const before = await calloutLines();
     const card = page.locator(".cm-callout").nth(i);
     const type = await card.getAttribute("data-callout-type");
@@ -362,6 +374,19 @@ test("G：随机只改被点击的块，不串到第一个块", async ({ page })
       .map((line, index) => (line === before[index] ? -1 : index))
       .filter((index) => index >= 0);
     expect(changed).toEqual([i]);
+    // 位置漂移后卡片仍须携带当前源码起点，否则下一次点击会串块。
+    const expectedStarts: number[] = [];
+    let offset = 0;
+    for (const line of (await storeContent(page)).split("\n")) {
+      if (/^>\s*\[!/.test(line)) expectedStarts.push(offset);
+      offset += line.length + 1;
+    }
+    const datasetFroms = await page
+      .locator(".cm-callout")
+      .evaluateAll((cards) =>
+        cards.map((card) => Number((card as HTMLElement).dataset.calloutFrom)),
+      );
+    expect(datasetFroms.slice(0, 4)).toEqual(expectedStarts.slice(0, 4));
     await page.keyboard.press("Meta+z");
     await expect.poll(() => calloutLines()).toEqual(before);
     await page.keyboard.press("Escape");
