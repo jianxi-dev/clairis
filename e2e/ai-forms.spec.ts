@@ -227,8 +227,34 @@ test("Esc 关闭确认卡且视图规格不变（无半写状态）", async ({ p
 
   await page.keyboard.press("Escape");
   await expect(page.locator("[data-ai-confirm-card]")).toHaveCount(0);
+  // 卡片取消后小窗仍在（Esc 只关最上层，interaction.md §4）
+  await expect(page.locator("[data-ai-bubble]")).toHaveCount(1);
   expect(await specOf(page)).toEqual(before);
   await shot(page, "06-esc-cancelled");
+});
+
+test("⌘K 浮层内 Esc 只取消确认卡，再按一次才关浮层（#1686）", async ({
+  page,
+}) => {
+  await boot(page);
+  await openFile(page, "/tmp/ai/h.md");
+
+  await page.keyboard.press("Control+k");
+  await expect(page.locator("[data-ai-overlay]")).toBeVisible();
+
+  // 自由文本经真实输入提交：mock 对「深色」返回 patch_config，弹确认卡
+  const before = await specOf(page);
+  await page.locator("[data-ai-input]").fill("换成深色主题");
+  await page.keyboard.press("Enter");
+  await expect(page.locator("[data-ai-confirm-card]")).toHaveCount(1);
+
+  await page.keyboard.press("Escape");
+  await expect(page.locator("[data-ai-confirm-card]")).toHaveCount(0);
+  await expect(page.locator("[data-ai-overlay]")).toHaveCount(1);
+  expect(await specOf(page)).toEqual(before);
+
+  await page.keyboard.press("Escape");
+  await expect(page.locator("[data-ai-overlay]")).toHaveCount(0);
 });
 
 test("⌘⇧A 切换小窗 ⇄ 停靠窗格", async ({ page }) => {
