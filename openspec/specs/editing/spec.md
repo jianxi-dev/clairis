@@ -1921,7 +1921,7 @@ store 内容快照 SHALL 采用 300ms 防抖 + 2000ms 截止；`dirty` SHALL 在
 
 块族名 SHALL 二分为「高亮」与「标注」两项：**高亮** SHALL 为无左边框、无标题栏、1px 全边框、4px 圆角、强叠底的纯高亮块；**标注** SHALL 为带 3px 左边框与标题栏的 13 语义类型 callout。斜杠菜单、块菜单「转为」、转换手柄菜单与选区轮盘四处入口 SHALL 只呈现这两项。四个入口选「高亮」SHALL 直落 `> [!highlight]`；选「标注」SHALL 展开 13 个语义类型。`> [!highlight]` 的 markdown 序列化格式 SHALL 与既有 callout 一致。
 
-**高亮颜色面板** SHALL 使用独立 24 格色板，自上而下 SHALL 为：字体颜色（8 格，字母 A 色块，行尾「随机」）、边框颜色（8 格）、填充颜色深档（8 格）、填充颜色中档（8 格）、恢复默认。**每行 SHALL 严格 8 格且 `flex-wrap: nowrap`，SHALL NOT 换行**；色块计算尺寸 SHALL 为 `width: 22px` / `height: 20px`，行内 `gap` SHALL 为 `4px`，面板宽度 SHALL 保持 `216px`。当前值对应的色块 SHALL 带 `data-active` 选中态；选色或「随机」执行后，`data-active` SHALL 在原地面板内即时刷新到新值（SHALL NOT 重建面板、SHALL NOT 关闭面板）。**随机** SHALL 在一次事务内同时更换边框、填充与文字色；边框与填充 SHALL 属同一色相族；文字色 SHALL 从彩色字体色板中排除当前值后选取：候选为「色相不同于填充且与填充对比度 ≥3」的颜色并按对比度加权随机（≥4.5 权重 3、否则 1），同色相候选 SHALL 仅在无更好候选时参与；均不可行时 SHALL 保持当前文字色；一次 ⌘Z SHALL 同时还原三项。**恢复默认** SHALL 清空三色属性。字体色色块 SHALL 使用字母「A」字形（`FormatColorTextOutlined`），SHALL NOT 使用荧光笔字形；块菜单「颜色」行图标 SHALL 同为 `FormatColorTextOutlined`（A 字形），SHALL NOT 使用 `FontcolorOutlined`。`text` 只作用于标题与正文，SHALL NOT 作用于链接、行内代码与 emoji；标注填充 SHALL 为软色。
+**高亮颜色面板** SHALL 使用独立 24 格色板，自上而下 SHALL 为：字体颜色（8 格，字母 A 色块，行尾「随机」）、边框颜色（8 格）、填充颜色深档（8 格）、填充颜色中档（8 格）、恢复默认。**每行 SHALL 严格 8 格且 `flex-wrap: nowrap`，SHALL NOT 换行**；色块计算尺寸 SHALL 为 `width: 22px` / `height: 20px`，行内 `gap` SHALL 为 `4px`，面板宽度 SHALL 保持 `216px`。当前值对应的色块 SHALL 带 `data-active` 选中态；选色或「随机」执行后，`data-active` SHALL 在原地面板内即时刷新到新值（SHALL NOT 重建面板、SHALL NOT 关闭面板）。**随机** SHALL 在一次事务内同时更换边框、填充与文字色；边框与填充 SHALL 属同一色相族；填充 SHALL 在所选色相的深档与中档之间各半随机。文字色 SHALL 从「默认文字 + 彩色字体色板」中排除当前值后选取：默认文字为继承主题前景的候选（`name` 为空，选中即删除 `text` 属性）；候选为「色相不同于填充且与填充对比度 ≥3」的颜色并按对比度加权随机（≥4.5 权重 3、否则 1），同色相候选 SHALL 仅在无更好候选时参与；均不可行时 SHALL 保持当前文字色；一次 ⌘Z SHALL 同时还原三项。**恢复默认** SHALL 清空三色属性。字体色色块 SHALL 使用字母「A」字形（`FormatColorTextOutlined`），SHALL NOT 使用荧光笔字形；块菜单「颜色」行图标 SHALL 同为 `FormatColorTextOutlined`（A 字形），SHALL NOT 使用 `FontcolorOutlined`。`text` 只作用于标题与正文，SHALL NOT 作用于链接、行内代码与 emoji；标注填充 SHALL 为软色。
 
 **工具条（supersede 旧条款）**：纯高亮块与标注块的工具条 SHALL 均水平居中于块盒（中心偏差 ≤ 2px），两条工具条的颜色入口图标 SHALL 共用 `PaletteOutlined`（调色板图形）。旧条款「纯高亮块的工具条 SHALL 使用荧光笔图标；标注块工具条位置与图标 SHALL 保持不变」SHALL NOT 生效。块菜单「颜色」行 SHALL 保持 `FormatColorTextOutlined`（A 字形）。
 
@@ -2419,7 +2419,7 @@ emoji 取色器 SHALL 使用仓库内置全量 emoji 库（1578 条、7 分类�
 
 ### Requirement: E-56 标注颜色面板几何与随机
 
-标注块（13 类）颜色面板 SHALL 按字体色行定宽（计算宽 `246px`），字体行 SHALL 为 1 行 9 格；边框与填充各 16 格 SHALL 在面板内自动换行（各 2 行），SHALL NOT 溢出。面板头行 SHALL 提供「随机」按钮；点击 SHALL 在一次事务内同时写同名 `bg`/`border`，并按 10% 叠底后的实际底色、以与 E-48 相同的分级规则更换文字色（排除当前文字色，≥3 为下限）；均不可行时保持当前文字色；面板 SHALL 保持打开；一次撤销 SHALL 同时还原三项。选色与随机后当前值色块 SHALL 原地刷新 `data-active`（SHALL NOT 重建面板）。
+标注块（13 类）颜色面板 SHALL 按字体色行定宽（计算宽 `246px`），字体行 SHALL 为 1 行 9 格；边框与填充各 16 格 SHALL 在面板内自动换行（各 2 行），SHALL NOT 溢出。面板头行 SHALL 提供「随机」按钮；点击 SHALL 在一次事务内同时写同名 `bg`/`border`，并按 10% 叠底后的实际底色、以与 E-48 相同的分级规则更换文字色（候选含「默认文字」，排除当前文字色，≥3 为下限）；均不可行时保持当前文字色；面板 SHALL 保持打开；一次撤销 SHALL 同时还原三项。选色与随机后当前值色块 SHALL 原地刷新 `data-active`（SHALL NOT 重建面板）。
 
 #### Scenario: 面板宽度与换行
 
@@ -2429,7 +2429,7 @@ emoji 取色器 SHALL 使用仓库内置全量 emoji 库（1578 条、7 分类�
 #### Scenario: 随机同色名
 
 - **WHEN** 点击标注面板「随机」
-- **THEN** 首行 SHALL 同时出现同名 `bg=` 与 `border=`，`text` SHALL 按 10% 叠底后的实际底色、以与 E-48 相同的分级规则更换（排除当前文字色，≥3 为下限），均不可行时保持当前文字色，面板仍可见，一次撤销同时还原三项
+- **THEN** 首行 SHALL 同时出现同名 `bg=` 与 `border=`，`text` SHALL 按 10% 叠底后的实际底色、以与 E-48 相同的分级规则更换（候选含「默认文字」，排除当前文字色，≥3 为下限），均不可行时保持当前文字色，面板仍可见，一次撤销同时还原三项
 
 ### Requirement: E-57 连续改色不叠加属性块
 
@@ -2453,4 +2453,32 @@ emoji 取色器 SHALL 使用仓库内置全量 emoji 库（1578 条、7 分类�
 
 - **WHEN** 先对第一个块随机改色，再点击第三个块并点「随机」
 - **THEN** 只改变第三个块的首行，第一个块不再变化
+
+### Requirement: E-59 相邻 callout 预览逐块渲染
+
+源码中相邻的 `> [!TYPE]` 行（块与块之间没有空行）SHALL 在预览按块边界渲染为多张独立卡片；SHALL NOT 把后续 `[!TYPE]` 标记当正文并入上一张卡片。代码围栏（``` / ~~~）内的 `[!` 文本 SHALL NOT 触发拆分。非法类型行 SHALL 保持普通引用块，且不占卡片序号。
+
+#### Scenario: 相邻三块
+
+- **WHEN** 文档含三个相邻 callout 头且块间无空行
+- **THEN** 预览渲染三张卡片，第二、三张的标记文本 SHALL NOT 出现在前一张正文中
+
+#### Scenario: 围栏内不拆分
+
+- **WHEN** 代码围栏内出现 `> [!TIP]` 文本
+- **THEN** 该行 SHALL 保持代码内容，不新增卡片
+
+### Requirement: E-60 callout emoji 持久化
+
+编辑态选择的头部 emoji SHALL 写入首行属性块 `emoji=<字符>`；重开文档、预览与导出 SHALL 读取该属性并显示所选 emoji。改色与「恢复默认」SHALL 保留 `emoji` 键；恢复类型默认 emoji SHALL 删除该键。属性解析 SHALL 接受同一行的多个属性组并以后者覆盖（兼容历史脏数据），写回 SHALL 收敛为一个属性块。
+
+#### Scenario: 重开仍生效
+
+- **WHEN** 高亮块选择 emoji 后保存并重新打开同一内容
+- **THEN** 编辑态头部与预览头部 SHALL 仍显示所选 emoji
+
+#### Scenario: 改色不丢 emoji
+
+- **WHEN** 带 `emoji=` 的块执行随机改色
+- **THEN** 首行 SHALL 保留原 `emoji` 值
 

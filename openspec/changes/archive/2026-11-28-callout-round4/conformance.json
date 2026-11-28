@@ -1,0 +1,44 @@
+{
+  "change": "callout-round4",
+  "requirements": [
+    {
+      "id": "R-1",
+      "text": "E-48/E-56 随机默认与深档",
+      "anchors": [
+        {
+          "id": "A-1.1",
+          "claim": "随机可回默认文字、高亮可出深档填充",
+          "kind": "state-machine",
+          "assert": "rand=0 时标注随机删除 text 属性、高亮随机写 dark* 填充；rand=0.9 时高亮写非 dark* 填充",
+          "source": "单测 / PR #1739"
+        }
+      ]
+    },
+    {
+      "id": "R-2",
+      "text": "E-59 相邻预览拆分",
+      "anchors": [
+        {
+          "id": "A-2.1",
+          "claim": "相邻 callout 预览逐块渲染",
+          "kind": "state-machine",
+          "assert": "三个相邻头渲染三张卡片，标记文本不进入正文",
+          "source": "e2e H / 截图"
+        }
+      ]
+    },
+    {
+      "id": "R-3",
+      "text": "E-60 emoji 持久化",
+      "anchors": [
+        {
+          "id": "A-3.1",
+          "claim": "emoji 写首行属性并重开生效",
+          "kind": "state-machine",
+          "assert": "选择后源码含 emoji=；重开与预览显示所选 emoji；改色保留 emoji",
+          "source": "e2e I / 截图"
+        }
+      ]
+    }
+  ]
+}
