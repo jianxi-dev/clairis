@@ -78,6 +78,9 @@ function liveCard(view: EditorView, index: number): HTMLElement | null {
   if (!block) return null;
   const cards = view.dom.querySelectorAll<HTMLElement>(".cm-callout");
   for (const card of cards) {
+    if (card.dataset.calloutFrom === String(block.from)) return card;
+  }
+  for (const card of cards) {
     try {
       if (view.posAtDOM(card, 0) === block.from) return card;
     } catch {

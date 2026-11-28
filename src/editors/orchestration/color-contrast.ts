@@ -182,15 +182,27 @@ export function pickVariedText(
     const entry = pool[Math.floor(rand() * pool.length)] ?? pool[0];
     return { name: entry.name, hex: entry.hex, ratio: entry.ratio };
   };
-  const bestOf = (pool: typeof scored): VariedPick | null => {
+  // 合并候选池：异色相且 ≥3 都可参与，但 ≥4.5 的权重更高（3:1），
+  // 这样既保持可读性优先，又不会只在两个高对比色之间来回跳。
+  const weightedPick = (pool: typeof scored): VariedPick | null => {
     if (pool.length === 0) return null;
-    const entry = pool.reduce((a, b) => (b.ratio > a.ratio ? b : a));
-    return { name: entry.name, hex: entry.hex, ratio: entry.ratio };
+    const weights = pool.map((entry) => (entry.ratio >= 4.5 ? 3 : 1));
+    const total = weights.reduce((sum, weight) => sum + weight, 0);
+    let cursor = rand() * total;
+    for (let i = 0; i < pool.length; i += 1) {
+      cursor -= weights[i];
+      if (cursor <= 0) {
+        const entry = pool[i];
+        return { name: entry.name, hex: entry.hex, ratio: entry.ratio };
+      }
+    }
+    const last = pool[pool.length - 1];
+    return { name: last.name, hex: last.hex, ratio: last.ratio };
   };
   return (
+    weightedPick(scored.filter((entry) => entry.ratio >= 3 && offHue(entry))) ??
+    weightedPick(scored.filter((entry) => entry.ratio >= 3)) ??
     randomOf(scored.filter((entry) => entry.ratio >= 4.5 && offHue(entry))) ??
-    randomOf(scored.filter((entry) => entry.ratio >= 4.5)) ??
-    bestOf(scored.filter((entry) => entry.ratio >= 3 && offHue(entry))) ??
-    bestOf(scored.filter((entry) => entry.ratio >= 3))
+    randomOf(scored.filter((entry) => entry.ratio >= 4.5))
   );
 }

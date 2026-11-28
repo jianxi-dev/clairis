@@ -139,3 +139,20 @@ describe("pickVariedText（随机换字色）", () => {
     ).toBeNull();
   });
 });
+
+describe("pickVariedText 加权池（≥3 也参与）", () => {
+  it("高 rand 时低对比但异色相的候选也能被选中", () => {
+    const pick = pickVariedText(
+      "#fde2e2",
+      [
+        { name: "purple", hex: "#6425d0" },
+        { name: "blue", hex: "#245bdb" },
+      ],
+      "",
+      "red",
+      () => 0.99,
+    );
+    expect(pick?.name).toBe("blue");
+    expect(pick!.ratio).toBeGreaterThanOrEqual(3);
+  });
+});
