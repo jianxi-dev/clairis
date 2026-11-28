@@ -10,8 +10,6 @@ import path from "node:path";
  * 不停留在「元素存在」。
  */
 
-const APP_URL = "http://localhost:1424";
-
 const DOC = `# 属性面板
 
 这是属性面板的正文。
@@ -82,7 +80,7 @@ async function paneProbe(page: Page, paneId: string) {
 
 async function boot(page: Page): Promise<void> {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
-  await page.goto(APP_URL, { waitUntil: "networkidle" });
+  await page.goto("/", { waitUntil: "networkidle" });
   await page.waitForSelector('[data-testid="pane-header"]', { timeout: 15000 });
 }
 
@@ -3164,7 +3162,56 @@ test("#1146 Enter 与点击同走序数：落点随选中 / 点击变化", async
     .poll(async () => scroller.evaluate((el) => el.scrollTop))
     .toBeGreaterThan(top3);
   await nextFrames(page);
-  expect((await keyBindingReport(float)).selected).toBe(5);
   expectCenteredAtViewport(await previewHitProbe(page, 5, "命中"));
-  await recordState1146(page, "04-click-sixth-hit");
+  expect((await keyBindingReport(float)).selected).toBe(5);
+});
+
+test("标题栏左端拖动是移动不是缩放；边框与角仍可缩放（#1745）", async ({
+  page,
+}) => {
+  await page.keyboard.press("Meta+f");
+  const float = page.locator('[data-testid="search-float"]');
+  await expect(float).toBeVisible();
+
+  const dragFromFloat = async (
+    offX: number,
+    offY: number,
+    dx: number,
+    dy: number,
+  ) => {
+    const box = await float.boundingBox();
+    if (!box) throw new Error("浮窗未布局");
+    const x = box.x + offX;
+    const y = box.y + offY;
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    await page.mouse.move(x + dx, y + dy, { steps: 6 });
+    await page.mouse.up();
+    const after = await float.boundingBox();
+    if (!after) throw new Error("浮窗未布局");
+    return { before: box, after };
+  };
+
+  // 标题栏中线 y=13：左端 10px / 30px 起手都必须整体左移、宽度不变。
+  // 旧实现里 16px 的左上角手柄会盖住这两个落点，左拖变成西边缩放。
+  for (const offX of [10, 30]) {
+    const { before, after } = await dragFromFloat(offX, 13, -100, 0);
+    expect(near(after.x, before.x - 100)).toBe(true);
+    expect(near(after.width, before.width)).toBe(true);
+  }
+
+  // 左边框 2px：缩放能力保留——宽度 +100，右缘锚死。
+  {
+    const { before, after } = await dragFromFloat(2, 100, -100, 0);
+    expect(near(after.x, before.x - 100)).toBe(true);
+    expect(near(after.width, before.width + 100)).toBe(true);
+    expect(near(after.x + after.width, before.x + before.width)).toBe(true);
+  }
+
+  // 左上角 3px：角缩放保留——宽高同时变大。
+  {
+    const { before, after } = await dragFromFloat(3, 3, -60, -60);
+    expect(after.width).toBeGreaterThan(before.width);
+    expect(after.height).toBeGreaterThan(before.height);
+  }
 });

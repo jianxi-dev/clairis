@@ -70,15 +70,23 @@ const RESIZE_HANDLE_CURSOR: Record<ResizeEdge, string> = {
   se: "nwse-resize",
 };
 
+/**
+ * 缩放手柄只占真正的边框条：边 4px、角 10px（#1745）。
+ *
+ * 旧值（边 8px、角 16px）把标题栏两端与顶边盖住——从标题栏左端按下会命中
+ * 左上角手柄，左拖走「西边缩放」：x 变小、宽度变大、东边锚死，表现为
+ * 「拖窗越拖越宽」。收窄后标题栏主体（含抓手图标与标题文字）稳定走移动，
+ * 只有贴边 4px / 贴角 10px 才缩放；桌面鼠标仍可稳定命中边框。
+ */
 const RESIZE_HANDLE_STYLE: Record<ResizeEdge, CSSProperties> = {
-  n: { top: 0, left: 12, right: 12, height: 8 },
-  s: { bottom: 0, left: 12, right: 12, height: 8 },
-  e: { right: 0, top: 12, bottom: 12, width: 8 },
-  w: { left: 0, top: 12, bottom: 12, width: 8 },
-  ne: { top: 0, right: 0, width: 16, height: 16 },
-  nw: { top: 0, left: 0, width: 16, height: 16 },
-  se: { bottom: 0, right: 0, width: 16, height: 16 },
-  sw: { bottom: 0, left: 0, width: 16, height: 16 },
+  n: { top: 0, left: 12, right: 12, height: 4 },
+  s: { bottom: 0, left: 12, right: 12, height: 4 },
+  e: { right: 0, top: 12, bottom: 12, width: 4 },
+  w: { left: 0, top: 12, bottom: 12, width: 4 },
+  ne: { top: 0, right: 0, width: 10, height: 10 },
+  nw: { top: 0, left: 0, width: 10, height: 10 },
+  se: { bottom: 0, right: 0, width: 10, height: 10 },
+  sw: { bottom: 0, left: 0, width: 10, height: 10 },
 };
 
 function clamp(value: number, min: number, max: number): number {
