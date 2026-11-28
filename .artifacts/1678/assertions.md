@@ -120,3 +120,24 @@ preview→edit  savedTop=2965 → top=2965   ← 反复切每次一致
 
 - 首抖：之前的 scrollTop 补偿是**事后**补救（用户仍能看到抖一下）。改为**进入裁剪时同步锁定 widget 高度**（`min-height`），会话结束还原——下方内容从一开始就不动。
 - 「无蒙层」：蒙层是框外压暗（4 块 shade）。裁剪框 = 整图时四块尺寸为 0、`display:none` 是既定行为；只有把框拖小才出现。待用户确认第二张是否拖小过框。
+
+## 八轮（r8）：会话级滚动守护
+
+第七轮日志定论（`crop-height-compensated` 全部 **delta 0**，高度从未变化）：
+
+```
+crop-enter@26581  sel 0
+JUMP 29396        sel 1262   from 2155 → 1128   输入: pointerup:frame, click:frame
+JUMP 29465        sel 1262   from 1128 → 835
+crop-confirm@29527            scrollBefore 2155（已被带偏到 835 后拉回）
+```
+
+**光标 sel 0→1262 发生在 `click:cm-image-crop-frame` 之后**（早于 pointerdown）：
+CM6 对 click 的默认处理把光标设到图片位置并做 caret 揭示滚动。事件拦截
+（pointerdown）无法覆盖 click 路径。
+
+修：**裁剪会话全程滚动守护**——rAF 每帧检查 scrollTop，与进入时不一致就立即
+拉回；用户拖框 / 滚轮 / 触摸 / 按键 = 意图，rebase 让位。
+
+「无蒙层」：confirm rect `{left:0, top:0, width:749, height:550}` 与整图一致，
+框外无区域 → 4 块 shade 尺寸为 0（`display:none`）是既定行为；拖小框才出现。

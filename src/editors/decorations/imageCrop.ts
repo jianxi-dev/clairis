@@ -639,6 +639,8 @@ function mount(
       el.style.opacity = "0";
       el.style.transition = "opacity 120ms ease-out";
     }
+    guardStop = true;
+    if (guardRaf) cancelAnimationFrame(guardRaf);
     window.setTimeout(() => {
       for (const el of Object.values(shades)) el.remove();
       unlockHeight();
@@ -935,6 +937,33 @@ function mount(
   // 执行，才能保证事件根本到不了 CM6。
   window.addEventListener("pointerdown", suppressCaret, true);
   window.addEventListener("mousedown", suppressCaret, true);
+
+  // ── 会话级滚动守护（#1678 真机定论）────────────────────────────────
+  // 日志：`click:cm-image-crop-frame` 之后 CM6 把光标设到图片位置（sel 0→1262）
+  // 并做 caret 揭示滚动（2155→1128→835），随后才被拉回——用户看到「首抖，
+  // 回到原位」。这是 CM6 对 click 的默认处理，事件拦截拦不住（pointerdown 已
+  // 拦，click 仍会走）。改为**会话全程锁定滚动位置**：任何非用户操作的
+  // scrollTop 变化立即拉回；用户拖框 / 滚轮 / 触摸 / 按键则让位。
+  let guardRaf = 0;
+  let guardStop = false;
+  let guardTop = scroller ? scroller.scrollTop : 0;
+  if (scroller) {
+    const rebase = (): void => {
+      guardTop = scroller.scrollTop;
+    };
+    frame.addEventListener("pointerdown", rebase, { passive: true });
+    scroller.addEventListener("wheel", rebase, { passive: true });
+    scroller.addEventListener("touchstart", rebase, { passive: true });
+    window.addEventListener("keydown", rebase);
+    const guard = (): void => {
+      if (guardStop || !scroller.isConnected) return;
+      if (Math.abs(scroller.scrollTop - guardTop) >= 1) {
+        scroller.scrollTop = guardTop;
+      }
+      guardRaf = requestAnimationFrame(guard);
+    };
+    guardRaf = requestAnimationFrame(guard);
+  }
 
   const untraceScroll = scroller ? traceScrollTop(scroller) : () => {};
   // 手势时间戳：裁剪框 / widget 上的按下、点击、双击之后 700ms 内发生的滚动
