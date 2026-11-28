@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { EditorState } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { markdown } from "@codemirror/lang-markdown";
@@ -8,7 +8,56 @@ import {
   nextCalloutAttrs,
   pickHighlightFamily,
   randomCalloutColors,
+  randomHighlightColors,
 } from "../../editors/orchestration/callout-color-panel";
+import {
+  contrastRatio,
+  parseHexColor,
+  readCssColor,
+} from "../../editors/orchestration/color-contrast";
+import { getCalloutAttrs } from "../../editors/callout-attrs";
+
+/** 测试用 CSS 变量：覆盖随机选色涉及的填充 / 字体 / 表面色。 */
+const TEST_VARS: Readonly<Record<string, string>> = {
+  "--app-text": "#24262b",
+  "--app-surface": "#fbfaf8",
+  "--hl-font-contrast": "#111111",
+  "--hl-font-red": "#d83930",
+  "--hl-font-orange": "#de7704",
+  "--hl-font-yellow": "#dd9b02",
+  "--hl-font-green": "#2ea122",
+  "--hl-font-blue": "#245bdb",
+  "--hl-font-purple": "#6425d0",
+  "--hl-fill-darkgray": "#f2f3f5",
+  "--hl-fill-darkred": "#fde2e2",
+  "--hl-fill-darkorange": "#feead2",
+  "--hl-fill-darkyellow": "#ffffcc",
+  "--hl-fill-darkgreen": "#daf5d6",
+  "--hl-fill-darkblue": "#e1eaff",
+  "--hl-fill-darkpurple": "#ebe2fe",
+  "--hl-fill-gray": "#e7e9eb",
+  "--hl-fill-lightgray": "#e7e9eb",
+  "--hl-fill-red": "#fbbfbc",
+  "--hl-fill-orange": "#fed4a4",
+  "--hl-fill-yellow": "#fffca3",
+  "--hl-fill-green": "#b7edb2",
+  "--hl-fill-blue": "#bacefd",
+  "--hl-fill-purple": "#cdb2fa",
+};
+
+beforeEach(() => {
+  const style = document.documentElement.style;
+  for (const [name, value] of Object.entries(TEST_VARS)) {
+    style.setProperty(name, value);
+  }
+});
+
+afterEach(() => {
+  const style = document.documentElement.style;
+  for (const name of Object.keys(TEST_VARS)) {
+    style.removeProperty(name);
+  }
+});
 
 describe("nextCalloutAttrs", () => {
   it("写入新色名", () => {
@@ -354,16 +403,98 @@ describe("randomCalloutColors（#1677）", () => {
     return view;
   }
 
-  it("随机写回同名 bg 与 border，text 不变，一次事务", async () => {
+  it("随机写回同名 bg 与 border，文字按对比度选色，一次事务", async () => {
     const editor = createEditor(DOC);
     const from = 0;
     const to = editor.state.doc.length;
     const changed = randomCalloutColors(editor, from, to);
     expect(changed).not.toBeNull();
     const text = editor.state.doc.toString();
-    const m = /\{bg=([a-z]+) border=([a-z]+) text=([a-z]+)\}/.exec(text);
+    const m = /\{bg=([a-z]+) border=([a-z]+)[^}]*\}/.exec(text);
     expect(m).not.toBeNull();
     expect(m![1]).toBe(m![2]);
-    expect(m![3]).toBe("gray");
+    const surfaceHex = readCssColor("--app-surface");
+    const surface = parseHexColor(surfaceHex)!;
+    const bg = parseHexColor("#f0000e")!;
+    const tint = {
+      r: Math.round(bg.r * 0.1 + surface.r * 0.9),
+      g: Math.round(bg.g * 0.1 + surface.g * 0.9),
+      b: Math.round(bg.b * 0.1 + surface.b * 0.9),
+    };
+    const textName = changed!.text ?? "";
+    const textHex =
+      textName === ""
+        ? parseHexColor(readCssColor("--app-text"))!
+        : parseHexColor(readCssColor(`--hl-font-${textName}`))!;
+    expect(contrastRatio(textHex, tint)).toBeGreaterThanOrEqual(4);
+  });
+
+  it("连续随机 3 次首行只有一个属性块，正文仍在", () => {
+    const editor = createEditor(DOC);
+    const from = 0;
+    const to = editor.state.doc.length;
+    for (let i = 0; i < 3; i += 1) {
+      randomCalloutColors(editor, from, to);
+      const text = editor.state.doc.toString();
+      const firstLine = text.split("\n")[0] ?? "";
+      expect((firstLine.match(/\{/g) ?? [])).toHaveLength(1);
+      expect((firstLine.match(/\}/g) ?? [])).toHaveLength(1);
+      expect(text).toContain("> 正文");
+    }
+  });
+});
+
+describe("randomHighlightColors（fix/random-contrast）", () => {
+  const DOC = "> [!highlight]{bg=blue border=blue text=yellow}\n> 正文";
+
+  let parent: HTMLElement;
+  let view: EditorView | undefined;
+
+  afterEach(() => {
+    view?.destroy();
+    parent.remove();
+  });
+
+  function createEditor(doc: string): EditorView {
+    parent = document.createElement("div");
+    document.body.appendChild(parent);
+    view = new EditorView({
+      parent,
+      state: EditorState.create({ doc, extensions: [markdown()] }),
+    });
+    return view;
+  }
+
+  it("随机后写回三元组，文字与所选填充对比度 ≥4", () => {
+    const editor = createEditor(DOC);
+    const from = 0;
+    const to = editor.state.doc.length;
+    const changed = randomHighlightColors(editor, from, to);
+    expect(changed).toBe(true);
+    const text = editor.state.doc.toString();
+    const m = /\{bg=([a-z]+) border=([a-z]+)[^}]*\}/.exec(text);
+    expect(m).not.toBeNull();
+    const fillHex = readCssColor(`--hl-fill-${m![1]}`);
+    const fill = parseHexColor(fillHex)!;
+    const textName = getCalloutAttrs(text).text ?? "";
+    const textHex =
+      textName === ""
+        ? readCssColor("--app-text")
+        : readCssColor(`--hl-font-${textName}`);
+    expect(contrastRatio(parseHexColor(textHex)!, fill)).toBeGreaterThanOrEqual(4);
+  });
+
+  it("连续随机 3 次首行只有一个属性块，正文仍在", () => {
+    const editor = createEditor(DOC);
+    const from = 0;
+    const to = editor.state.doc.length;
+    for (let i = 0; i < 3; i += 1) {
+      randomHighlightColors(editor, from, to);
+      const text = editor.state.doc.toString();
+      const firstLine = text.split("\n")[0] ?? "";
+      expect((firstLine.match(/\{/g) ?? [])).toHaveLength(1);
+      expect((firstLine.match(/\}/g) ?? [])).toHaveLength(1);
+      expect(text).toContain("> 正文");
+    }
   });
 });

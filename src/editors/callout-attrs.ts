@@ -219,6 +219,9 @@ const HIGHLIGHT_TEXT_SWATCH = new Map(
     color.swatch,
   ]),
 );
+// 旧文档可能存 `text=gray`：灰色已从字体板移出（换成「高对比」），但 CSS 变量
+// 仍在，保留兼容映射，避免旧文档失去文字色。
+HIGHLIGHT_TEXT_SWATCH.set("gray", "var(--hl-font-gray)");
 
 /**
  * 旧色名 → 高亮新色名（editor-surface-batch22 兼容映射）。
