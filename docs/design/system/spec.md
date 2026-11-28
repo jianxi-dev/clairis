@@ -169,6 +169,8 @@ UI 缩放档只约束**界面 chrome 容器**，不约束正文。默认三档�
 | `--app-accent` | `#6366f1` | `#818cf8` | `#0071e3` |
 | `--app-accent-fill` | `#5c5fee` | `#818cf8` | `#0071e3` |
 | `--app-on-accent` | `#ffffff` | `#16181c` | `#ffffff` |
+| `--app-danger` | `#a8402f` | `#e08b7a` | `#a8402f` |
+| `--app-on-danger` | `#ffffff` | `#1a1b1e` | `#ffffff` |
 | `--app-bg` | `#f7f7f6` | `#131316` | `#f2e9da` |
 | `--app-surface` | `#fbfaf8` | `#1a1b1e` | `#fbf4e8` |
 | `--app-sunken` | `#f4f2ec` | `#22242a` | `#efe3d0` |
@@ -181,7 +183,7 @@ UI 缩放档只约束**界面 chrome 容器**，不约束正文。默认三档�
 
 **类型色**（三主题不换色，类型色是识别标志）：markdown `#6366f1`、html `#f59e0b`、text `#64748b`、pdf `#ef4444`、video `#a855f7`、image `#10b981`、code `#06b6d4`、audio `#ec4899`。
 
-**错误 / 危险语义色**：亮色 `#a8402f`、暗色 `#e08b7a`（callout danger/error 与错误文本在用）。**红色只用于错误**，绝不用于脏状态、未保存、警告提示。注意 `--type-pdf` 的 `#ef4444` 是**文件类型色**，不是错误色，两者不可混用。
+**错误 / 危险语义色**：亮色 `#a8402f`、暗色 `#e08b7a`（callout danger/error 与错误文本在用）。该二值现由 `--app-danger` 承载，实底文字色为 `--app-on-danger`（三主题见 `tokens.css`），数值不变。**红色只用于错误**，绝不用于脏状态、未保存、警告提示。注意 `--type-pdf` 的 `#ef4444` 是**文件类型色**，不是错误色，两者不可混用。
 
 **标签色板（tag palette，10 色，doc-property-panel）**：来源 = 定稿原型 v13（`docs/design/explorations/frontmatter-search/prototype.html` 的 `PALETTE`），本表为唯一数值来源。分配规则：`FNV-1a(tag 名) % 10`；**同名同色、按名不按序、不可手工改色**；暖主题沿用亮色三值。
 
@@ -198,7 +200,7 @@ UI 缩放档只约束**界面 chrome 容器**，不约束正文。默认三档�
 | 8 | 石板 | `#eef1f5` | `#334155` | `#ccd4de` | `#232a35` | `#b3bfcf` | `#38434f` |
 | 9 | 藤黄 | `#fbf5df` | `#854d0e` | `#ecdfa8` | `#383114` | `#e0c96a` | `#564b20` |
 
-**已知缺口**：错误色尚无独立 token（现值散落在 `editor.css` / `reader.css`）；`--app-accent-soft` 各主题 alpha 不同（亮 .10 / 暗 .14 / 暖 .08）。两处均在第二个 change 的 token 扩容时处理，本文件先登记，不假装已完成。
+**已知缺口**：错误色已由 `--app-danger` / `--app-on-danger` 承载（本 change 2.1 补齐）；`--app-accent-soft` 各主题 alpha 不同（亮 .10 / 暗 .14 / 暖 .08），留待后续 token 扩容处理。
 
 ## 7. 控件密度与审美判据
 
@@ -310,7 +312,7 @@ token 缺失时组件按 `var(--sf-ctrl-height, 27px)` 回落，不静默失效�
 | accent 实底文字（`--app-on-accent`）on `--app-accent-fill` | 4.5 |
 | 危险色（danger）on `--app-bg` | 4.5 |
 
-阈值取 WCAG AA 正文 4.5 / 大字 3 / 增强 7 三档。危险色现值按主题硬编码于 C 项（亮 `#a8402f` / 暗 `#e08b7a`，见 §6），因为错误色尚无独立 token（§6 已知缺口）。status 四组（success / warning / error / info）首期不启用，等错误色 token 化后再开。本表是这些数值的唯一来源，组件与票面引用条款号，不复制数值。
+阈值取 WCAG AA 正文 4.5 / 大字 3 / 增强 7 三档。危险色由 `--app-danger` 承载，C 项读该 token、缺失时回落 §6 现值（亮 `#a8402f` / 暗 `#e08b7a`）。status 四组（success / warning / error / info）首期不启用，后续按同一 token 化路径补齐后再开。本表是这些数值的唯一来源，组件与票面引用条款号，不复制数值。
 
 ## 8. 明确不做
 

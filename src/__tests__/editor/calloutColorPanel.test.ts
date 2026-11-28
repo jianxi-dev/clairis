@@ -16,6 +16,7 @@ import {
   readCssColor,
 } from "../../editors/orchestration/color-contrast";
 import { getCalloutAttrs } from "../../editors/callout-attrs";
+import { FONT_COLORS } from "../../editors/orchestration/color-palette";
 
 /** 测试用 CSS 变量：覆盖随机选色涉及的填充 / 字体 / 表面色。 */
 const TEST_VARS: Readonly<Record<string, string>> = {
@@ -422,11 +423,14 @@ describe("randomCalloutColors（#1677）", () => {
       b: Math.round(bg.b * 0.1 + surface.b * 0.9),
     };
     const textName = changed!.text ?? "";
-    const textHex =
-      textName === ""
-        ? parseHexColor(readCssColor("--app-text"))!
-        : parseHexColor(readCssColor(`--hl-font-${textName}`))!;
-    expect(contrastRatio(textHex, tint)).toBeGreaterThanOrEqual(4.5);
+    expect(textName).not.toBe("");
+    expect(textName).not.toBe("gray");
+    const fontEntry = FONT_COLORS.find(
+      (color) => color.className === `mdb-color-${textName}`,
+    );
+    expect(fontEntry).toBeTruthy();
+    const textHex = parseHexColor(fontEntry!.swatch)!;
+    expect(contrastRatio(textHex, tint)).toBeGreaterThanOrEqual(3);
   });
 
   it("连续随机 3 次首行只有一个属性块，正文仍在", () => {
@@ -477,12 +481,12 @@ describe("randomHighlightColors（fix/random-contrast）", () => {
     const fillHex = readCssColor(`--hl-fill-${m![1]}`);
     const fill = parseHexColor(fillHex)!;
     const textName = getCalloutAttrs(text).text ?? "";
-    const textHex =
-      textName === ""
-        ? readCssColor("--app-text")
-        : readCssColor(`--hl-font-${textName}`);
+    expect(textName).not.toBe("");
+    expect(textName).not.toBe("yellow");
+    const textHex = readCssColor(`--hl-font-${textName}`);
+    expect(textHex).not.toBe("");
     expect(contrastRatio(parseHexColor(textHex)!, fill)).toBeGreaterThanOrEqual(
-      4.5,
+      3,
     );
   });
 

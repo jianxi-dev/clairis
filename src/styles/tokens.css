@@ -26,6 +26,10 @@
   --app-accent-fill: #5c5fee;
   --app-on-accent: #ffffff;
 
+  /* 错误 / 危险语义色（spec §6）：此前只有硬编码现值、无独立 token，2.1 首个消费者出现时补齐 */
+  --app-danger: #a8402f;
+  --app-on-danger: #ffffff;
+
   --app-bg: #f7f7f6;
   --app-surface: #fbfaf8;
   --app-sunken: #f4f2ec;
@@ -109,6 +113,8 @@
   --app-accent-soft: rgba(129, 140, 248, 0.14);
   --app-accent-fill: #818cf8;
   --app-on-accent: #16181c;
+  --app-danger: #e08b7a;
+  --app-on-danger: #1a1b1e;
 
   --app-bg: #131316;
   --app-surface: #1a1b1e;
@@ -143,6 +149,9 @@
   --app-accent-soft: rgba(0, 113, 227, 0.08);
   --app-accent-fill: #0071e3;
   --app-on-accent: #ffffff;
+  /* 错误 / 危险语义色（spec §6）：此前只有硬编码现值、无独立 token，2.1 首个消费者出现时补齐 */
+  --app-danger: #a8402f;
+  --app-on-danger: #ffffff;
 
   --app-bg: #f2e9da;
   --app-surface: #fbf4e8;

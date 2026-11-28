@@ -127,3 +127,70 @@ export function pickReadableText(
   }
   return { ...best, ratio: bestRatio };
 }
+
+/** 带色相族的候选（`hue` 缺省按 `name`；gray/contrast 视为中性）。 */
+export interface VariedCandidate {
+  readonly name: string;
+  readonly hex: string;
+  readonly hue?: string;
+}
+
+export interface VariedPick {
+  readonly name: string;
+  readonly hex: string;
+  readonly ratio: number;
+}
+
+const NEUTRAL_HUES: ReadonlySet<string> = new Set(["gray", "contrast", "lightgray"]);
+
+/**
+ * 从彩色字体候选中挑一个**与当前不同**的文字色，按可读性分级：
+ * 1) ≥4.5 且色相不同于填充：随机取一个（保证视觉有变化）
+ * 2) ≥4.5：随机取一个
+ * 3) ≥3 且色相不同：取对比度最高
+ * 4) ≥3：取对比度最高
+ * 都不满足返回 null（调用方保持当前文字色，避免把文字刷成不可读）。
+ */
+export function pickVariedText(
+  fillHex: string,
+  candidates: readonly VariedCandidate[],
+  currentName: string,
+  fillHue: string,
+  rand: () => number = Math.random,
+): VariedPick | null {
+  const fill = parseHexColor(fillHex);
+  if (!fill) return null;
+  const scored = candidates
+    .filter((candidate) => candidate.name !== "" && candidate.name !== currentName)
+    .map((candidate) => {
+      const rgb = parseHexColor(candidate.hex);
+      return rgb
+        ? {
+            name: candidate.name,
+            hex: candidate.hex,
+            hue: candidate.hue ?? candidate.name,
+            ratio: contrastRatio(rgb, fill),
+          }
+        : null;
+    })
+    .filter((entry): entry is { name: string; hex: string; hue: string; ratio: number } => entry !== null);
+  if (scored.length === 0) return null;
+  const offHue = (entry: { hue: string }): boolean =>
+    NEUTRAL_HUES.has(entry.hue) || entry.hue !== fillHue;
+  const randomOf = (pool: typeof scored): VariedPick | null => {
+    if (pool.length === 0) return null;
+    const entry = pool[Math.floor(rand() * pool.length)] ?? pool[0];
+    return { name: entry.name, hex: entry.hex, ratio: entry.ratio };
+  };
+  const bestOf = (pool: typeof scored): VariedPick | null => {
+    if (pool.length === 0) return null;
+    const entry = pool.reduce((a, b) => (b.ratio > a.ratio ? b : a));
+    return { name: entry.name, hex: entry.hex, ratio: entry.ratio };
+  };
+  return (
+    randomOf(scored.filter((entry) => entry.ratio >= 4.5 && offHue(entry))) ??
+    randomOf(scored.filter((entry) => entry.ratio >= 4.5)) ??
+    bestOf(scored.filter((entry) => entry.ratio >= 3 && offHue(entry))) ??
+    bestOf(scored.filter((entry) => entry.ratio >= 3))
+  );
+}
