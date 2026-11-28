@@ -97,3 +97,19 @@ document 且更早——同节点上 `stopPropagation` 拦不住它。改挂 **w
 
 另加模式切换探针（`mode-switch` / `mode-settled` 写入同一日志），
 真机复测可直接看到切换的目标位置与实际落位。
+
+## 六轮（r6）：真机数值定论
+
+第五轮日志（含 `mode-*` 探针）结论：
+
+**模式切换已稳定**（9 次切换，像素落位精确）：
+```
+preview→edit  savedTop=2965 → top=2965
+edit→preview               → top=2498
+preview→edit  savedTop=2965 → top=2965   ← 反复切每次一致
+```
+两态像素差是内容高度不同（编辑 6154 / 预览 7540）的必然，内容位置正确（e2e 验证顶部文本一致）。
+
+**裁剪第一张仍在跳**：`docH 9040 → 8748`（-292px，进入裁剪时 widget 高度变化），随后 `pointerdown:cm-line` 2 次。第 2/3/5 张会话零跳（已有显示尺寸缓存）。
+
+修：进入裁剪时按 widget 高度差补偿 `scrollTop`（`crop-height-compensated` 打点留证）。
