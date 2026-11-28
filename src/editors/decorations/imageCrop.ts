@@ -953,9 +953,16 @@ function mount(
     // 之前给 wheel/touch/keydown 做 rebase 让位，反而把「已被带偏的位置」
     // 当成新基准，导致单向位移残留（真机日志 r9/r10：JUMP 后无回拉）。
     const guard = (): void => {
-      if (guardStop || !scroller.isConnected) return;
-      if (Math.abs(scroller.scrollTop - guardTop) >= 1) {
-        scroller.scrollTop = guardTop;
+      if (guardStop) return;
+      // **不要**因 scroller 暂时脱离文档就退出（真机日志 r11：首裁时 widget
+      // 重建会让 scroller 短暂 detached，旧实现 `return` 后守护永久停止，
+      // 于是首裁那一下 -1110 无人拉回；第 2 张起才有回拉）。脱离期间继续
+      // 轮询，回来后再拉回。
+      const sc = scroller.isConnected
+        ? scroller
+        : (widget.closest(".cm-scroller") as HTMLElement | null);
+      if (sc && Math.abs(sc.scrollTop - guardTop) >= 1) {
+        sc.scrollTop = guardTop;
       }
       guardRaf = requestAnimationFrame(guard);
     };
