@@ -1,5 +1,6 @@
 :root {
   --hl-font-gray: #8f959e;
+  --hl-font-contrast: #111111;
   --hl-font-red: #d83930;
   --hl-font-orange: #de7704;
   --hl-font-yellow: #dd9b02;
@@ -32,6 +33,7 @@
 
 .dark {
   --hl-font-gray: #757575;
+  --hl-font-contrast: #ffffff;
   --hl-font-red: #fa7873;
   --hl-font-orange: #f5a54a;
   --hl-font-yellow: #fcd456;
@@ -1651,6 +1653,12 @@ body {
 .pane-actions:has(:focus-visible),
 .pane-actions[data-open="true"] {
   opacity: 1;
+}
+
+/* 菜单打开时瞬时完全不透明：过渡期间 opacity < 1 会创建层叠上下文，
+   z-50 的菜单会被正文属性卡压住且近乎透明（见 #1701）。 */
+.pane-actions[data-open="true"] {
+  transition: none;
 }
 
 /* 熟练模式（pane-presets-coverage-v1 / G-13）：simple 档栏目头按钮恒显；

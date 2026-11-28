@@ -54,11 +54,13 @@ const HIGHLIGHT_BORDER_NAMES: ReadonlySet<string> = new Set(
 );
 
 /** 高亮字体色板的后缀集合。 */
-const HIGHLIGHT_TEXT_NAMES: ReadonlySet<string> = new Set(
-  HIGHLIGHT_FONT_COLORS.filter((color) => !color.isDefault).map((color) =>
+const HIGHLIGHT_TEXT_NAMES: ReadonlySet<string> = new Set([
+  ...HIGHLIGHT_FONT_COLORS.filter((color) => !color.isDefault).map((color) =>
     color.className.replace(/^hl-color-/, ""),
   ),
-);
+  // 旧文档 `text=gray`：灰色已从高亮字体板移出，但 CSS 变量仍在，保留解析兼容。
+  "gray",
+]);
 
 const BG_NAME_SET: ReadonlySet<string> = new Set([
   ...BG_NAMES,
@@ -219,6 +221,9 @@ const HIGHLIGHT_TEXT_SWATCH = new Map(
     color.swatch,
   ]),
 );
+// 旧文档可能存 `text=gray`：灰色已从字体板移出（换成「高对比」），但 CSS 变量
+// 仍在，保留兼容映射，避免旧文档失去文字色。
+HIGHLIGHT_TEXT_SWATCH.set("gray", "var(--hl-font-gray)");
 
 /**
  * 旧色名 → 高亮新色名（editor-surface-batch22 兼容映射）。

@@ -1,5 +1,11 @@
 import { test, expect, type Locator, type Page } from "@playwright/test";
 import { openMarkdownInEdit } from "../helpers/ui-probe";
+import {
+  contrastRatio,
+  parseHexColor,
+  mixOver,
+  rgbToHex,
+} from "../../src/editors/orchestration/color-contrast";
 
 /**
  * #1676 后续三处修正（fix/callout-mark-fix3）：
@@ -229,4 +235,103 @@ test("E：标注面板选中态可见（描边 2px），随机后选中态移动
     .first()
     .evaluate((el) => getComputedStyle(el).outlineStyle);
   expect(afterOutline).toBe("solid");
+});
+
+test("F：随机三元组按对比度选色（高亮 + 标注）", async ({ page }) => {
+  await openMarkdownInEdit(
+    page,
+    "> [!highlight]{bg=blue border=blue text=yellow}\n> 高亮正文\n",
+    "callout-fix3-f1",
+  );
+  const panel = await openPanel(page, true);
+  for (let i = 0; i < 3; i += 1) {
+    await panel.locator('[data-testid="color-random"]').click();
+    const firstLine = (await storeContent(page)).split("\n")[0] ?? "";
+    expect((firstLine.match(/\{/g) ?? [])).toHaveLength(1);
+  }
+  await expect.poll(() => storeContent(page)).toMatch(/\{bg=[a-z]+ border=[a-z]+/);
+
+  const hl = await page.evaluate(() => {
+    const root = document.documentElement;
+    const read = (name: string, fallback: string): string => {
+      const v = getComputedStyle(root).getPropertyValue(name).trim();
+      return v === "" ? fallback : v;
+    };
+    const content = (
+      window as unknown as {
+        __biaoyue_store__: {
+          getState: () => { tabs: Record<string, { content: string }>; activeTabId: string };
+        };
+      }
+    ).__biaoyue_store__.getState().tabs;
+    const active = (
+      window as unknown as {
+        __biaoyue_store__: {
+          getState: () => { activeTabId: string };
+        };
+      }
+    ).__biaoyue_store__.getState().activeTabId;
+    const text = content[active]?.content ?? "";
+    const m = /\{bg=([a-z]+) border=([a-z]+)[^}]*\}/.exec(text);
+    const textM = /text=([a-z]+)/.exec(text);
+    const fill = read(`--hl-fill-${m?.[1] ?? ""}`, "#ffffff");
+    const font = textM ? read(`--hl-font-${textM[1]}`, "#000000") : read("--app-text", "#24262b");
+    return { fill, font };
+  });
+  const hlFill = parseHexColor(hl.fill);
+  const hlFont = parseHexColor(hl.font);
+  expect(hlFill).not.toBeNull();
+  expect(hlFont).not.toBeNull();
+  expect(contrastRatio(hlFont!, hlFill!)).toBeGreaterThanOrEqual(4.5);
+
+  await openMarkdownInEdit(
+    page,
+    "> [!NOTE]{bg=red border=red text=yellow} 标题\n> 正文\n",
+    "callout-fix3-f2",
+  );
+  const calloutPanel = await openPanel(page, false);
+  await calloutPanel.locator('[data-testid="color-random-callout"]').click();
+  await expect
+    .poll(() => storeContent(page))
+    .toMatch(/\{bg=[a-z]+ border=[a-z]+[^}]*\}/);
+
+  const note = await page.evaluate(() => {
+    const root = document.documentElement;
+    const read = (name: string, fallback: string): string => {
+      const v = getComputedStyle(root).getPropertyValue(name).trim();
+      return v === "" ? fallback : v;
+    };
+    const state = (
+      window as unknown as {
+        __biaoyue_store__: {
+          getState: () => {
+            tabs: Record<string, { content: string }>;
+            activeTabId: string;
+          };
+        };
+      }
+    ).__biaoyue_store__.getState();
+    const text = state.tabs[state.activeTabId]?.content ?? "";
+    const m = /\{bg=([a-z]+) border=([a-z]+)[^}]*\}/.exec(text);
+    const textM = /text=([a-z]+)/.exec(text);
+    const bgHex = read(`--hl-fill-${m?.[1] ?? ""}`, "#f0000e");
+    const surface = read("--app-surface", "#fbfaf8");
+    const font = textM ? read(`--hl-font-${textM[1]}`, "#000000") : read("--app-text", "#24262b");
+    return { bgHex, surface, font, text: textM?.[1] ?? "" };
+  });
+  const noteBg = parseHexColor(note.bgHex);
+  const noteSurface = parseHexColor(note.surface);
+  const noteFont = parseHexColor(note.font);
+  expect(noteBg).not.toBeNull();
+  expect(noteSurface).not.toBeNull();
+  expect(noteFont).not.toBeNull();
+  const tint = rgbToHex(mixOver(noteBg!, noteSurface!, 0.1));
+  expect(contrastRatio(noteFont!, parseHexColor(tint)!)).toBeGreaterThanOrEqual(4.5);
+
+  // 标注部分：随机后原面板仍可见；⌘Z 撤销后首行属性块回到随机前。
+  await expect(calloutPanel).toBeVisible();
+  await page.keyboard.press("Meta+z");
+  await expect
+    .poll(() => storeContent(page))
+    .toMatch(/\{bg=red border=red text=yellow\}/);
 });
