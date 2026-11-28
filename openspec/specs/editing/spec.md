@@ -1921,7 +1921,7 @@ store 内容快照 SHALL 采用 300ms 防抖 + 2000ms 截止；`dirty` SHALL 在
 
 块族名 SHALL 二分为「高亮」与「标注」两项：**高亮** SHALL 为无左边框、无标题栏、1px 全边框、4px 圆角、强叠底的纯高亮块；**标注** SHALL 为带 3px 左边框与标题栏的 13 语义类型 callout。斜杠菜单、块菜单「转为」、转换手柄菜单与选区轮盘四处入口 SHALL 只呈现这两项。四个入口选「高亮」SHALL 直落 `> [!highlight]`；选「标注」SHALL 展开 13 个语义类型。`> [!highlight]` 的 markdown 序列化格式 SHALL 与既有 callout 一致。
 
-**高亮颜色面板** SHALL 使用独立 24 格色板，自上而下 SHALL 为：字体颜色（8 格，字母 A 色块，行尾「随机」）、边框颜色（8 格）、填充颜色深档（8 格）、填充颜色中档（8 格）、恢复默认。**每行 SHALL 严格 8 格且 `flex-wrap: nowrap`，SHALL NOT 换行**；色块计算尺寸 SHALL 为 `width: 22px` / `height: 20px`，行内 `gap` SHALL 为 `4px`，面板宽度 SHALL 保持 `216px`。当前值对应的色块 SHALL 带 `data-active` 选中态；选色或「随机」执行后，`data-active` SHALL 在原地面板内即时刷新到新值（SHALL NOT 重建面板、SHALL NOT 关闭面板）。**随机** SHALL 在一次事务内同时更换边框、填充与文字色；边框与填充 SHALL 属同一色相族；文字色 SHALL 从「默认文字 + 字体色板」中按 WCAG 对比度选择（默认文字达标 ≥4.5 时优先默认，否则取对比度最高者）；一次 ⌘Z SHALL 同时还原三项。**恢复默认** SHALL 清空三色属性。字体色色块 SHALL 使用字母「A」字形（`FormatColorTextOutlined`），SHALL NOT 使用荧光笔字形；块菜单「颜色」行图标 SHALL 同为 `FormatColorTextOutlined`（A 字形），SHALL NOT 使用 `FontcolorOutlined`。`text` 只作用于标题与正文，SHALL NOT 作用于链接、行内代码与 emoji；标注填充 SHALL 为软色。
+**高亮颜色面板** SHALL 使用独立 24 格色板，自上而下 SHALL 为：字体颜色（8 格，字母 A 色块，行尾「随机」）、边框颜色（8 格）、填充颜色深档（8 格）、填充颜色中档（8 格）、恢复默认。**每行 SHALL 严格 8 格且 `flex-wrap: nowrap`，SHALL NOT 换行**；色块计算尺寸 SHALL 为 `width: 22px` / `height: 20px`，行内 `gap` SHALL 为 `4px`，面板宽度 SHALL 保持 `216px`。当前值对应的色块 SHALL 带 `data-active` 选中态；选色或「随机」执行后，`data-active` SHALL 在原地面板内即时刷新到新值（SHALL NOT 重建面板、SHALL NOT 关闭面板）。**随机** SHALL 在一次事务内同时更换边框、填充与文字色；边框与填充 SHALL 属同一色相族；文字色 SHALL 只从彩色字体色板中选择**与当前不同**的颜色：优先对比度 ≥4.5 且色相不同于填充，其次 ≥4.5，再次 ≥3（同色相最后考虑），均不可行时 SHALL 保持当前文字色；一次 ⌘Z SHALL 同时还原三项。**恢复默认** SHALL 清空三色属性。字体色色块 SHALL 使用字母「A」字形（`FormatColorTextOutlined`），SHALL NOT 使用荧光笔字形；块菜单「颜色」行图标 SHALL 同为 `FormatColorTextOutlined`（A 字形），SHALL NOT 使用 `FontcolorOutlined`。`text` 只作用于标题与正文，SHALL NOT 作用于链接、行内代码与 emoji；标注填充 SHALL 为软色。
 
 **工具条（supersede 旧条款）**：纯高亮块与标注块的工具条 SHALL 均水平居中于块盒（中心偏差 ≤ 2px），两条工具条的颜色入口图标 SHALL 共用 `PaletteOutlined`（调色板图形）。旧条款「纯高亮块的工具条 SHALL 使用荧光笔图标；标注块工具条位置与图标 SHALL 保持不变」SHALL NOT 生效。块菜单「颜色」行 SHALL 保持 `FormatColorTextOutlined`（A 字形）。
 
@@ -1994,7 +1994,7 @@ store 内容快照 SHALL 采用 300ms 防抖 + 2000ms 截止；`dirty` SHALL 在
 #### Scenario: 随机同时换边框与填充
 
 - **WHEN** 在纯高亮颜色面板点击「随机」
-- **THEN** 首行 `bg`、`border` 与 `text` SHALL 同时改变，`bg` 与 `border` 色相相同，`text` SHALL 按 WCAG 对比度从「默认文字 + 字体色板」选出（默认文字达标 ≥4.5 时优先默认，否则取对比度最高者）；面板 SHALL 保持打开；一次 ⌘Z SHALL 同时还原三项；刷新后 `bg` 与 `border` 对应色块 `data-active` SHALL 同时更新
+- **THEN** 首行 `bg`、`border` 与 `text` 三项同时变化，`text` 的文字名与原值不同且与填充对比度 ≥3，一次撤销三项还原；面板 SHALL 保持打开；刷新后 `bg` 与 `border` 对应色块 `data-active` SHALL 同时更新
 
 #### Scenario: 选色与恢复默认不关闭
 
@@ -2419,7 +2419,7 @@ emoji 取色器 SHALL 使用仓库内置全量 emoji 库（1578 条、7 分类�
 
 ### Requirement: E-56 标注颜色面板几何与随机
 
-标注块（13 类）颜色面板 SHALL 按字体色行定宽（计算宽 `246px`），字体行 SHALL 为 1 行 9 格；边框与填充各 16 格 SHALL 在面板内自动换行（各 2 行），SHALL NOT 溢出。面板头行 SHALL 提供「随机」按钮；点击 SHALL 在一次事务内同时把 `bg` 与 `border` 写成同一色名（软色），文字色 SHALL 按 10% 叠底后的实际底色与「默认文字 + 字体色板」的 WCAG 对比度选择（默认达标 ≥4.5 优先，否则取最高）；面板 SHALL 保持打开；一次撤销 SHALL 同时还原三项。选色与随机后当前值色块 SHALL 原地刷新 `data-active`（SHALL NOT 重建面板）。
+标注块（13 类）颜色面板 SHALL 按字体色行定宽（计算宽 `246px`），字体行 SHALL 为 1 行 9 格；边框与填充各 16 格 SHALL 在面板内自动换行（各 2 行），SHALL NOT 溢出。面板头行 SHALL 提供「随机」按钮；点击 SHALL 在一次事务内同时写同名 `bg`/`border`，并按 10% 叠底后的实际底色、以与 E-48 相同的分级规则更换文字色（排除当前文字色，≥3 为下限）；均不可行时保持当前文字色；面板 SHALL 保持打开；一次撤销 SHALL 同时还原三项。选色与随机后当前值色块 SHALL 原地刷新 `data-active`（SHALL NOT 重建面板）。
 
 #### Scenario: 面板宽度与换行
 
@@ -2429,7 +2429,7 @@ emoji 取色器 SHALL 使用仓库内置全量 emoji 库（1578 条、7 分类�
 #### Scenario: 随机同色名
 
 - **WHEN** 点击标注面板「随机」
-- **THEN** 首行 SHALL 同时出现同名 `bg=` 与 `border=`，`text` SHALL 按 10% 叠底后的实际底色与字体板 WCAG 对比度选出（默认达标 ≥4.5 优先，否则取最高），面板仍可见，一次撤销同时还原三项
+- **THEN** 首行 SHALL 同时出现同名 `bg=` 与 `border=`，`text` SHALL 按 10% 叠底后的实际底色、以与 E-48 相同的分级规则更换（排除当前文字色，≥3 为下限），均不可行时保持当前文字色，面板仍可见，一次撤销同时还原三项
 
 ### Requirement: E-57 连续改色不叠加属性块
 
