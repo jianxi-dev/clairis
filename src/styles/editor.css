@@ -3937,6 +3937,13 @@ html[data-tab-drag="true"] body * {
   outline-offset: 1px;
 }
 
+/* 标注面板（非高亮）也要可见的选中态：data-active 之前只有高亮面板有描边，
+ * 标注面板虽然写入了 data-active，但 outline-style 仍是 none，用户看不到选中。 */
+.cm-callout-color-panel .cm-color-swatch[data-active="true"] {
+  outline: 2px solid var(--app-accent, #4c88ff);
+  outline-offset: 1px;
+}
+
 .cm-callout-color-pop .cm-color-reset {
   width: 100%;
   height: 28px;
