@@ -6,23 +6,23 @@
 
 ## 2. 基件与图标纪律
 
-- [ ] 2.1 基件 A：Button + IconButton + primitives.css
+- [x] 2.1 基件 A：Button + IconButton + primitives.css
   - 新增 `src/ui/primitives/Button.tsx`（六 variant × 两 size）、`IconButton.tsx`（命中区 ≥24×24、`label` 必填）、`src/styles/primitives.css`（`bp-*` 类，只用 token）
   - `src/main.tsx` 引入 `primitives.css` 一次；`node scripts/check-tokens.mjs` 绿（基件 CSS 无裸色值 / 裸 px 字号）
   - 守护：`/showcase` 未建前先用 e2e 断言 Button 六 variant × 两 size 与 IconButton 命中区 ≥24×24
-- [ ] 2.2 基件 B：Menu + useAnchoredPosition + useLayerDismiss + PortalScope
+- [x] 2.2 基件 B：Menu + useAnchoredPosition + useLayerDismiss + PortalScope
   - 新增 `Menu.tsx`（`items: {id,label,icon?,shortcut?,disabled?,run}[]`）、`useAnchoredPosition.ts`（12 向 flip/shift，保留 `boundsOf`）、`useLayerDismiss.ts`（Esc/点外/滚动三源、按栈只关最上层）、`PortalScope.tsx`
   - `src/components/Content/useMenuPos.ts` 由 `useAnchoredPosition` 取代后删除，全仓无残留引用；#1017 嵌入态面板溢出回归用例随迁移跑
   - 守护：`useAnchoredPosition` 12 向单测 + `useLayerDismiss` 栈顶单测
-- [ ] 2.3 基件 C：Tooltip 测量 hook + 自动翻转（收敛 TooltipLayer 探针）
+- [x] 2.3 基件 C：Tooltip 测量 hook + 自动翻转（收敛 TooltipLayer 探针）
   - 新增 `useTipMeasure.ts`（保留隐藏探针 + 真实尺寸），`TooltipLayer.tsx` 改为消费该 hook，方位扩到 above/below 自动翻转 + left/right 兜底
   - `src/__tests__/components/TooltipLayer.test.tsx` 全绿（行为等价）；`TooltipLayer.tsx` 内不再有 `document.createElement("div")` 探针
   - 守护：贴视口顶缘 → `side="below"`、贴底缘 → `side="above"` 的 e2e / 单测断言
-- [ ] 2.4 /showcase 基件对照场（dev-only，4 基件 × 6 态 × 明暗）
+- [x] 2.4 /showcase 基件对照场（dev-only，4 基件 × 6 态 × 明暗）
   - 新增 `src/components/Showcase.tsx`，在 `src/main.tsx` 用 `?showcase` + `import.meta.env.DEV` 分流（与 `?window=overlay` 同构）
   - 4 基件 × 6 态（default/hover/active/disabled/loading/focus）× 明暗双主题，每态挂 `data-showcase` 锚点
   - 守护：`npm run dev` 打开 `/?showcase` 渲染对照场；`npm run build` 产物 grep `showcase` 零命中
-- [ ] 2.5 Q3 图标纪检：check-icons.mjs + 尺寸白名单 + 两表键集 + 11 行裁决
+- [x] 2.5 Q3 图标纪检：check-icons.mjs + 尺寸白名单 + 两表键集 + 11 行裁决
   - 新增 `scripts/check-icons.mjs` 四项检查（两表概念键集合相等 / 尺寸白名单 12px 仅 `DocPropertyBar` lock ×3 / 动作→图标映射唯一 / 无孤儿键）
   - 11 个高频 18px 图标按 spec §2.1/§2.2/§2.4 逐条裁决，落 `docs/design/system/decisions.md` 一行汇总 + 11 行明细；改字形同步 `resources/icons.default.json`
   - 守护：`node scripts/check-icons.mjs` 绿；注入一个不存在的图标名 → 退 1
