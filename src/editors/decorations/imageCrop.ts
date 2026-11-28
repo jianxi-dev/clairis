@@ -664,6 +664,7 @@ function mount(
     ] as const) {
       document.removeEventListener(type, noteGesture, true);
     }
+    document.removeEventListener("pointerdown", suppressCaret, true);
     document.removeEventListener("mousedown", suppressCaret, true);
     untraceScroll();
     // WKWebView 合成层残影（残留边柄短横线）：DOM 已移除、样式已还原仍然可见，
@@ -883,6 +884,10 @@ function mount(
     event.preventDefault();
     event.stopPropagation();
   };
+  // **pointerdown 才是 CM6 的入口**（日志 #1678：pointerdown:cm-line 先于
+  // mousedown:cm-line 到达，CM6 在 pointerdown 阶段就设了光标并做 caret
+  // 揭示滚动——只拦 mousedown 已经晚了，视口在确认前就被带走）。两者都拦。
+  document.addEventListener("pointerdown", suppressCaret, true);
   document.addEventListener("mousedown", suppressCaret, true);
 
   const untraceScroll = scroller ? traceScrollTop(scroller) : () => {};
