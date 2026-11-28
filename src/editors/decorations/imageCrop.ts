@@ -895,6 +895,23 @@ function mount(
       requestAnimationFrame(compensate);
       // 图片解码/布局可能更晚：再补一次
       window.setTimeout(compensate, 80);
+      // 高度构成探针（DEV）：真机首裁 docH 会少 ~292px，headless 不复现。
+      // 记录各部件高度，供下次真机日志直接指出是谁变矮了。
+      const dumpHeights = (label: string): void => {
+        markCropProbe(`crop-heights-${label}`, {
+          scrollerSH: scroller.scrollHeight,
+          widgetH: Math.round(widget.getBoundingClientRect().height),
+          imgH: Math.round(img.getBoundingClientRect().height),
+          winH: win ? Math.round(win.getBoundingClientRect().height) : null,
+          captionH: (() => {
+            const c = widget.querySelector<HTMLElement>(".cm-image-caption");
+            return c ? Math.round(c.getBoundingClientRect().height) : null;
+          })(),
+          frameH: Math.round(frame.getBoundingClientRect().height),
+        });
+      };
+      dumpHeights("enter");
+      window.setTimeout(() => dumpHeights("settled"), 120);
     }
   }
   // 会话级滚动夹取护栏：第一次裁剪时 widget 结构由普通 img 换成裁剪窗口，
@@ -952,6 +969,21 @@ function mount(
     // （CM6 光标揭示、内容重排、滚轮在裁剪框上冒泡……）都立即拉回。
     // 之前给 wheel/touch/keydown 做 rebase 让位，反而把「已被带偏的位置」
     // 当成新基准，导致单向位移残留（真机日志 r9/r10：JUMP 后无回拉）。
+    // scroll 事件在本轮滚动后立即派发：比 rAF 链少一帧（真机日志回拉用了
+    // 36ms ≈ 2 帧，用户仍能看到「往上跳一点」）。在 scroll 回调里同步拉回。
+    let restoring = false;
+    const onScroll = (): void => {
+      if (guardStop || restoring) return;
+      const sc = scroller.isConnected
+        ? scroller
+        : (widget.closest(".cm-scroller") as HTMLElement | null);
+      if (sc && Math.abs(sc.scrollTop - guardTop) >= 1) {
+        restoring = true;
+        sc.scrollTop = guardTop;
+        restoring = false;
+      }
+    };
+    scroller.addEventListener("scroll", onScroll, { passive: true });
     const guard = (): void => {
       if (guardStop) return;
       // **不要**因 scroller 暂时脱离文档就退出（真机日志 r11：首裁时 widget
