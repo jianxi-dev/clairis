@@ -641,6 +641,7 @@ function mount(
     }
     window.setTimeout(() => {
       for (const el of Object.values(shades)) el.remove();
+      unlockHeight();
     }, 140);
     sweepCropResidue();
     widget.classList.remove("cm-image-crop-active");
@@ -853,6 +854,19 @@ function mount(
     from: options.from ?? null,
     crop: options.crop,
   });
+
+  // 进入裁剪时 widget 高度会变（真机日志：docH 9040 → 8748，-292px），
+  // 下方正文随之上/下移动——首张最明显（后面几张已有显示尺寸缓存）。
+  // **事前锁死高度**（不是事后补偿 scrollTop，那样仍能看到抖一下）：
+  // 会话期间 widget 保持进入前的高度，退出时还原。
+  const lockedHeight = widget.getBoundingClientRect().height;
+  const prevMinHeight = widget.style.minHeight;
+  if (lockedHeight > 0) {
+    widget.style.minHeight = `${lockedHeight}px`;
+  }
+  const unlockHeight = (): void => {
+    widget.style.minHeight = prevMinHeight;
+  };
 
   // 进入裁剪时 widget 高度会变（真机日志：docH 9040 → 8748，-292px）——
   // 图片下方的正文整体上下移，第一张尤其明显（后面几张已有显示尺寸缓存）。
