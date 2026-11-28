@@ -1,0 +1,72 @@
+{
+  "change": "callout-mark-fix2",
+  "requirements": [
+    {
+      "id": "R-1",
+      "text": "四边 1px",
+      "anchors": [
+        {
+          "id": "A-1.1",
+          "claim": "预览态纯高亮四边 1px 细边",
+          "kind": "exact",
+          "assert": "预览 `.callout-mark` 计算 `border-inline-start-width: 1px`、`border-top-width: 1px`",
+          "source": "PR #1679 / 截图"
+        },
+        {
+          "id": "A-1.2",
+          "claim": "预览态纯高亮无标题栏",
+          "kind": "exact",
+          "assert": "`.callout-title` 节点数 = 0，文本不含「纯高亮」",
+          "source": "PR #1679 / 截图"
+        }
+      ]
+    },
+    {
+      "id": "R-2",
+      "text": "预览换行",
+      "anchors": [
+        {
+          "id": "A-2.1",
+          "claim": "标注多行保留",
+          "kind": "exact",
+          "assert": "`> [!NOTE] 标题\\n> 第一行\\n> 第二行` 预览第一行与第二行分属两行（含 `<br>`）",
+          "source": "PR #1679 / 截图"
+        },
+        {
+          "id": "A-2.2",
+          "claim": "纯高亮多行保留",
+          "kind": "exact",
+          "assert": "`> [!highlight]\\n> A\\n> B` 预览 A 与 B 分属两行",
+          "source": "PR #1679 / 截图"
+        },
+        {
+          "id": "A-2.3",
+          "claim": "列表不被污染",
+          "kind": "exact",
+          "assert": "`> - 甲\\n> - 乙` 列表项之间无 `<br>`（`</li><br>` 不存在）",
+          "source": "PR #1679 / 截图"
+        }
+      ]
+    },
+    {
+      "id": "R-3",
+      "text": "标注面板",
+      "anchors": [
+        {
+          "id": "A-3.1",
+          "claim": "面板宽度与换行",
+          "kind": "exact",
+          "assert": "面板计算宽 `246px`，字体行 1 行 9 格，边框/填充各 2 行 16 格",
+          "source": "PR #1679 / 截图"
+        },
+        {
+          "id": "A-3.2",
+          "claim": "随机同色名",
+          "kind": "state-machine",
+          "assert": "点击「随机」后首行同时出现同名 `bg=` 与 `border=`，`text` 不变，面板仍可见，一次撤销同时还原",
+          "source": "PR #1679 / 截图"
+        }
+      ]
+    }
+  ]
+}
