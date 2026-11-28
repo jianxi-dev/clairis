@@ -732,6 +732,32 @@ export default function SearchReplacePanel({
     dragRef.current = null;
   };
 
+  // 窗口 / 窗格变窄不会重挂组件：已拖出的位置与宽度必须夹回宿主，
+  // 否则关闭重开时仍按旧坐标打开、左边或右边落在窗外（#1750）。
+  useLayoutEffect(() => {
+    if (!open) return;
+    const host = rootRef.current?.offsetParent as HTMLElement | null;
+    if (!host) return;
+    const clampToHost = () => {
+      const hostRect = host.getBoundingClientRect();
+      const rootRect = rootRef.current?.getBoundingClientRect();
+      if (!rootRect || hostRect.width <= 0 || hostRect.height <= 0) return;
+      setPlacement((prev) => {
+        if (!prev) return prev;
+        const width = Math.min(prev.width, hostRect.width);
+        const x = clamp(prev.x, 0, hostRect.width - width);
+        const height = Math.min(rootRect.height, hostRect.height);
+        const y = clamp(prev.y, 0, hostRect.height - height);
+        if (x === prev.x && y === prev.y && width === prev.width) return prev;
+        return { x, y, width };
+      });
+    };
+    clampToHost();
+    const observer = new ResizeObserver(clampToHost);
+    observer.observe(host);
+    return () => observer.disconnect();
+  }, [open]);
+
   const style: CSSProperties = {
     position: "absolute",
     display: open ? "flex" : "none",

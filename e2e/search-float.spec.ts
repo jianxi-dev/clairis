@@ -3215,3 +3215,49 @@ test("标题栏左端拖动是移动不是缩放；边框与角仍可缩放（#1
     expect(after.height).toBeGreaterThan(before.height);
   }
 });
+
+test("窗口收窄后浮窗夹回窗格，重开不越界（#1750）", async ({ page }) => {
+  await page.keyboard.press("Meta+f");
+  const float = page.locator('[data-testid="search-float"]');
+  await expect(float).toBeVisible();
+
+  const wide = await float.boundingBox();
+  if (!wide) throw new Error("浮窗未布局");
+  // 西边手柄左拖 350：把浮窗拉宽到接近原窗口宽度
+  await page.mouse.move(wide.x + 2, wide.y + 100);
+  await page.mouse.down();
+  await page.mouse.move(wide.x + 2 - 350, wide.y + 100, { steps: 8 });
+  await page.mouse.up();
+  const stretched = await float.boundingBox();
+  if (!stretched) throw new Error("浮窗未布局");
+  expect(stretched.width).toBeGreaterThan(500);
+
+  const expectContained = async () => {
+    const probe = await float.evaluate((el) => {
+      const r = el.getBoundingClientRect();
+      const host = (el.parentElement as HTMLElement).getBoundingClientRect();
+      return {
+        x: r.left,
+        right: r.right,
+        width: r.width,
+        hostRight: host.right,
+        hostWidth: host.width,
+      };
+    });
+    expect(probe.x).toBeGreaterThanOrEqual(-0.5);
+    expect(probe.right).toBeLessThanOrEqual(probe.hostRight + 0.5);
+    expect(probe.width).toBeLessThanOrEqual(probe.hostWidth + 0.5);
+  };
+
+  await page.setViewportSize({ width: 372, height: 552 });
+  await expect
+    .poll(async () => (await float.boundingBox())?.width ?? Number.POSITIVE_INFINITY)
+    .toBeLessThanOrEqual(372.5);
+  await expectContained();
+
+  await page.keyboard.press("Escape");
+  await expect(float).toBeHidden();
+  await page.keyboard.press("Meta+f");
+  await expect(float).toBeVisible();
+  await expectContained();
+});
