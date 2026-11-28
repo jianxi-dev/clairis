@@ -63,7 +63,7 @@ import { useStore } from "../../stores/index";
 import Icon from "../Icon";
 import type { IconName } from "../../ui/icons";
 import SuggestMenu from "./SuggestMenu";
-import { useMenuPos } from "./useMenuPos";
+import { useAnchoredPosition } from "../../ui/primitives/useAnchoredPosition";
 
 /**
  * 文档属性面板（doc-property-panel 功能一 · 首通只读）。
@@ -381,7 +381,7 @@ function TypeSelector({ field, editable, onPick }: TypeSelectorProps) {
   const [anchor, setAnchor] = useState<{ x: number; y: number } | null>(null);
   const wrapRef = useRef<HTMLSpanElement>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
-  const { pos: menuPos, ref: menuRef } = useMenuPos(open ? anchor : null);
+  const { pos: menuPos, ref: menuRef } = useAnchoredPosition(open ? anchor : null);
 
   useEffect(() => {
     if (!open) return;
@@ -927,7 +927,7 @@ function DatetimeEditor({ field, editable, onCommit }: DatetimeEditorProps) {
   const parsedDraft = splitDatetime(draft);
   const datePart = parsedDraft.date;
   const timePart = parsedDraft.time ? parsedDraft.time.slice(0, 5) : "00:00";
-  const { pos, ref: panelRef } = useMenuPos(editing && anchor ? anchor : null);
+  const { pos, ref: panelRef } = useAnchoredPosition(editing && anchor ? anchor : null);
 
   useEffect(
     () => () => {
@@ -1037,7 +1037,7 @@ function DatetimeEditor({ field, editable, onCommit }: DatetimeEditorProps) {
     doneRef.current = false;
     skipInputFocusRef.current = false;
     const r = slotRef.current?.getBoundingClientRect();
-    // 锚点只给初值，夹取交给 useMenuPos 按面板实测尺寸算（#1652）。
+    // 锚点只给初值，夹取交给 useAnchoredPosition 按面板实测尺寸算（#1652）。
     setAnchor(r ? { x: Math.max(8, r.left), y: r.bottom + 4 } : null);
     setEditing(true);
   };
@@ -1989,7 +1989,7 @@ function OptionMenu({
       ) as HTMLElement | null) ?? null,
     [hostRef],
   );
-  const { pos, ref: menuRef } = useMenuPos(anchor, boundsOf);
+  const { pos, ref: menuRef } = useAnchoredPosition(anchor, { boundsOf });
   const [draft, setDraft] = useState("");
   const [sel, setSel] = useState(0);
   const prevAnchorRef = useRef<typeof anchor>(null);
@@ -2653,7 +2653,7 @@ function TemplateMenuButton({ templates, onApply }: TemplateMenuButtonProps) {
   const [open, setOpen] = useState(false);
   const [anchor, setAnchor] = useState<{ x: number; y: number } | null>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
-  const { pos: menuPos, ref: menuRef } = useMenuPos(open ? anchor : null);
+  const { pos: menuPos, ref: menuRef } = useAnchoredPosition(open ? anchor : null);
 
   useEffect(() => {
     if (!open) return;
@@ -2881,7 +2881,7 @@ export default function DocPropertyBar({
     y: number;
   } | null>(null);
   const suppressItemClick = useRef(false);
-  const { pos: palettePos, ref: paletteRef } = useMenuPos(
+  const { pos: palettePos, ref: paletteRef } = useAnchoredPosition(
     paletteOpen ? paletteAnchor : null,
   );
   const panelRef = useRef<HTMLDivElement>(null);

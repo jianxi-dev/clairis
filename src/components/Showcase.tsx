@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Icon from "./Icon";
 import {
   Button,
@@ -6,6 +6,7 @@ import {
   type ButtonVariant,
 } from "../ui/primitives/Button";
 import { IconButton } from "../ui/primitives/IconButton";
+import { Menu, type MenuItem } from "../ui/primitives/Menu";
 
 /**
  * 基件对照场（ui-quality-primitives-v1 / 2.1 子集；2.4 扩为四基件 × 6 态 × 明暗）。
@@ -27,6 +28,12 @@ const BUTTON_SIZES: readonly ButtonSize[] = ["sm", "md"];
 
 const ICONBUTTON_SIZES = [14, 18] as const;
 
+const MENU_ITEMS: MenuItem[] = [
+  { id: "new", label: "新建文档", icon: "markdown", shortcut: "⌘N", run: () => {} },
+  { id: "duplicate", label: "复制", shortcut: "⌘D", run: () => {} },
+  { id: "delete", label: "删除（不可用）", disabled: true, run: () => {} },
+];
+
 const sectionTitle: React.CSSProperties = {
   margin: "0 0 8px",
   fontSize: "14px",
@@ -37,6 +44,38 @@ export default function Showcase() {
   // 真实 React 状态切换（非 classList 硬改）：供 e2e 验证 loading 进 / 出时
   // 文案不替换、宽度不抖、aria-busy 正确挂落（AC4「不残留上一轮文案」）。
   const [loadingDemo, setLoadingDemo] = useState(false);
+  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
+  const [menuB, setMenuB] = useState<{ x: number; y: number } | null>(null);
+  const [narrowMenu, setNarrowMenu] = useState<{ x: number; y: number } | null>(null);
+  const [cornerStage, setCornerStage] = useState(false);
+  const menuBtnRef = useRef<HTMLButtonElement>(null);
+  const menuBtnBRef = useRef<HTMLButtonElement>(null);
+  const menuBtnGroupRef = useRef<HTMLDivElement>(null);
+  const narrowRef = useRef<HTMLDivElement>(null);
+  const cornerRefs = {
+    "menu-corner-tl": useRef<HTMLButtonElement>(null),
+    "menu-corner-tr": useRef<HTMLButtonElement>(null),
+    "menu-corner-bl": useRef<HTMLButtonElement>(null),
+    "menu-corner-br": useRef<HTMLButtonElement>(null),
+    "menu-narrow-anchor": useRef<HTMLButtonElement>(null),
+  };
+
+  const anchorOf = (el: HTMLElement) => {
+    const r = el.getBoundingClientRect();
+    return { x: r.left, y: r.bottom + 4 };
+  };
+
+  const openMenu = (el: HTMLElement | null) => {
+    if (el) setMenu(anchorOf(el));
+  };
+
+  const openMenuB = (el: HTMLElement | null) => {
+    if (el) setMenuB(anchorOf(el));
+  };
+
+  const openNarrowMenu = (el: HTMLElement | null) => {
+    if (el) setNarrowMenu(anchorOf(el));
+  };
 
   return (
     <div
@@ -185,6 +224,165 @@ export default function Showcase() {
             </div>
           ))}
         </div>
+      </section>
+
+      <section data-section="menu" style={{ marginBottom: "24px" }}>
+        <h2 style={sectionTitle}>Menu · 12 向翻转 / 层栈关闭</h2>
+        <div ref={menuBtnGroupRef} style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+          <button
+            ref={menuBtnRef}
+            data-showcase="menu-open"
+            className="bp-btn bp-btn--secondary bp-btn--md"
+            onClick={() => openMenu(menuBtnRef.current)}
+          >
+            <span className="bp-btn__label">打开菜单</span>
+          </button>
+          <button
+            ref={menuBtnBRef}
+            data-showcase="menu-open-b"
+            className="bp-btn bp-btn--secondary bp-btn--md"
+            onClick={() => openMenuB(menuBtnBRef.current)}
+          >
+            <span className="bp-btn__label">打开第二层</span>
+          </button>
+        </div>
+        {menu && (
+          <Menu
+            anchor={menu}
+            items={MENU_ITEMS}
+            onClose={() => setMenu(null)}
+            testId="showcase-menu"
+            triggerRef={menuBtnGroupRef}
+          />
+        )}
+        {menuB && (
+          <Menu
+            anchor={menuB}
+            items={MENU_ITEMS}
+            onClose={() => setMenuB(null)}
+            testId="showcase-menu-b"
+            triggerRef={menuBtnBRef}
+          />
+        )}
+
+        <h2 style={{ ...sectionTitle, marginTop: "16px" }}>
+          四角锚点（e2e 验证 12 向翻转）
+        </h2>
+        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+          <button
+            data-showcase="menu-corner-toggle"
+            className="bp-btn bp-btn--secondary bp-btn--sm"
+            aria-pressed={cornerStage}
+            onClick={() => setCornerStage((v) => !v)}
+          >
+            <span className="bp-btn__label">
+              {cornerStage ? "收起四角舞台" : "展开四角舞台"}
+            </span>
+          </button>
+        </div>
+        {cornerStage && (
+          <div
+            data-showcase-corner-stage=""
+            style={{
+              position: "fixed",
+              inset: 0,
+              pointerEvents: "none",
+              zIndex: 80,
+            }}
+          >
+            <button
+              ref={cornerRefs["menu-corner-tl"]}
+              data-showcase="menu-corner-tl"
+              className="bp-btn bp-btn--secondary bp-btn--sm"
+              style={{
+                position: "fixed",
+                left: "8px",
+                top: "8px",
+                pointerEvents: "auto",
+              }}
+              onClick={() => openMenu(cornerRefs["menu-corner-tl"].current)}
+            >
+              <span className="bp-btn__label">左上</span>
+            </button>
+            <button
+              ref={cornerRefs["menu-corner-tr"]}
+              data-showcase="menu-corner-tr"
+              className="bp-btn bp-btn--secondary bp-btn--sm"
+              style={{
+                position: "fixed",
+                right: "8px",
+                top: "8px",
+                pointerEvents: "auto",
+              }}
+              onClick={() => openMenu(cornerRefs["menu-corner-tr"].current)}
+            >
+              <span className="bp-btn__label">右上</span>
+            </button>
+            <button
+              ref={cornerRefs["menu-corner-bl"]}
+              data-showcase="menu-corner-bl"
+              className="bp-btn bp-btn--secondary bp-btn--sm"
+              style={{
+                position: "fixed",
+                left: "8px",
+                bottom: "8px",
+                pointerEvents: "auto",
+              }}
+              onClick={() => openMenu(cornerRefs["menu-corner-bl"].current)}
+            >
+              <span className="bp-btn__label">左下</span>
+            </button>
+            <button
+              ref={cornerRefs["menu-corner-br"]}
+              data-showcase="menu-corner-br"
+              className="bp-btn bp-btn--secondary bp-btn--sm"
+              style={{
+                position: "fixed",
+                right: "8px",
+                bottom: "8px",
+                pointerEvents: "auto",
+              }}
+              onClick={() => openMenu(cornerRefs["menu-corner-br"].current)}
+            >
+              <span className="bp-btn__label">右下</span>
+            </button>
+          </div>
+        )}
+
+        <h2 style={{ ...sectionTitle, marginTop: "16px" }}>
+          窄容器（#1017 回归：右缘不溢出）
+        </h2>
+        <div
+          ref={narrowRef}
+          data-showcase-narrow-container=""
+          style={{
+            position: "relative",
+            width: "200px",
+            height: "80px",
+            border: "1px solid var(--app-border)",
+            borderRadius: "var(--radius-4)",
+          }}
+        >
+          <button
+            ref={cornerRefs["menu-narrow-anchor"]}
+            data-showcase="menu-narrow-anchor"
+            className="bp-btn bp-btn--secondary bp-btn--sm"
+            style={{ position: "absolute", right: "8px", top: "8px" }}
+            onClick={() => openNarrowMenu(cornerRefs["menu-narrow-anchor"].current)}
+          >
+            <span className="bp-btn__label">靠右锚点</span>
+          </button>
+        </div>
+        {narrowMenu && (
+          <Menu
+            anchor={narrowMenu}
+            items={MENU_ITEMS}
+            onClose={() => setNarrowMenu(null)}
+            testId="showcase-menu-narrow"
+            boundsOf={() => narrowRef.current}
+            triggerRef={cornerRefs["menu-narrow-anchor"]}
+          />
+        )}
       </section>
 
       <section data-section="icon-reference">

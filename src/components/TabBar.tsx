@@ -20,7 +20,7 @@ import {
   toggleMediaMuted,
 } from "./Content/mediaMute";
 import { popOverlay, pushOverlay } from "../lib/overlayGate";
-import { useMenuPos } from "./Content/useMenuPos";
+import { useAnchoredPosition } from "../ui/primitives/useAnchoredPosition";
 import { noticeDurationMs } from "../hooks/useConfig";
 import { useEditorStore } from "../stores/editorStore";
 import { useDocPropertyPanelStore } from "../stores/docPropertyPanel";
@@ -432,7 +432,7 @@ export default function TabBar({
   const tabMenuItems = getMenuItems("tab-context");
   const exportMenuItems = getMenuItems("export-submenu");
 
-  const { pos: menuPos, ref: menuPosRef } = useMenuPos<HTMLDivElement>(
+  const { pos: menuPos, ref: menuPosRef } = useAnchoredPosition<HTMLDivElement>(
     menu ? { x: menu.x, y: menu.y } : null,
   );
 
