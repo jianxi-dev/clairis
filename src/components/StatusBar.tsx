@@ -4,6 +4,10 @@ import type { Theme } from "../types";
 import Icon from "./Icon";
 import { useAiEntryStore } from "../hooks/useAiEntry";
 import { useEditorStore } from "../stores/editorStore";
+import {
+  beginConfigInteraction,
+  endConfigInteraction,
+} from "../hooks/useConfig";
 import { useStore } from "../stores/index";
 import { readPercentOf } from "../lib/railCards";
 
@@ -375,6 +379,10 @@ export default function StatusBar({
                   step={READER_WIDTH_STEP}
                   value={Math.min(READER_WIDTH_MAX, readerWidth)}
                   onChange={(e) => onSetReaderWidth(Number(e.target.value))}
+                  onPointerDown={beginConfigInteraction}
+                  onPointerUp={endConfigInteraction}
+                  onPointerCancel={endConfigInteraction}
+                  onBlur={endConfigInteraction}
                   className="width-slider"
                 />
               </div>,

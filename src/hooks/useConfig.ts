@@ -179,10 +179,31 @@ export function __resetEchoScheduler(): void {
  */
 const RELOAD_SAVE_GUARD_MS = 1000;
 let lastRemoteApplyAt = 0;
+/** 上一次外部重载落地的配置指纹：用于区分「纯 echo」与「用户真实改动」 */
+let lastAppliedFingerprint: string | null = null;
+
+/** 配置内容的稳定指纹（键递归排序），避免键序差异造成误判。 */
+function configFingerprint(config: unknown): string {
+  const sortDeep = (value: unknown): unknown => {
+    if (Array.isArray(value)) return value.map(sortDeep);
+    if (value && typeof value === "object") {
+      const record = value as Record<string, unknown>;
+      return Object.keys(record)
+        .sort()
+        .reduce<Record<string, unknown>>((acc, key) => {
+          acc[key] = sortDeep(record[key]);
+          return acc;
+        }, {});
+    }
+    return value;
+  };
+  return JSON.stringify(sortDeep(config));
+}
 
 /** 测试隔离用：清空重载守卫时间戳。 */
 export function __resetRemoteApplyGuard(): void {
   lastRemoteApplyAt = 0;
+  lastAppliedFingerprint = null;
 }
 
 /** 实际执行一次全量重载（force 越过 echo 窗口）。 */
@@ -202,8 +223,27 @@ function performReload(): void {
  *
  * @param now 当前时间戳（测试用 fake timers 注入；生产不传，走 Date.now()）
  */
+/**
+ * 配置控件交互锁（bug #1748）。
+ *
+ * 用户正在拖动宽度滑块这类连续控件时，中途落地的 reload 一定是**过期**的
+ * （它来自上一次保存的 echo），直接应用会把正在调整的值打回旧值。
+ * 交互期间到达的重载一律丢弃：本地值会在交互结束后经 debounce 保存，
+ * 由那次保存的 echo 再触发一次读到新值的重载。
+ */
+let configInteractionDepth = 0;
+
+export function beginConfigInteraction(): void {
+  configInteractionDepth += 1;
+}
+
+export function endConfigInteraction(): void {
+  configInteractionDepth = Math.max(0, configInteractionDepth - 1);
+}
+
 export function scheduleExternalReload(now: number = Date.now()): void {
   if (!isTauriEnv()) return;
+  if (configInteractionDepth > 0) return;
   const elapsed = now - lastLocalSaveAt;
   if (elapsed >= SAVE_ECHO_WINDOW_MS) {
     performReload();
@@ -705,6 +745,7 @@ export function applyRustConfig(raw: RustAppConfig): void {
 
   // bug #1494：标记本次为「配置重载」，窗口内的 scheduleSave 一律早退，
   // 断开「重载 → 保存 → watcher → 重载」的自持环。
+  lastAppliedFingerprint = configFingerprint(useEditorStore.getState().config);
   lastRemoteApplyAt = Date.now();
 }
 
@@ -819,8 +860,17 @@ export function useConfig() {
   }, []);
 
   const scheduleSave = useCallback(() => {
-    // bug #1494：重载刚落地的窗口内不落盘——否则保存本身会重新点燃重载环。
-    if (Date.now() - lastRemoteApplyAt < RELOAD_SAVE_GUARD_MS) return;
+    // bug #1494：重载刚落地的窗口内，若内存配置与刚应用的外部配置**完全一致**，
+    // 这次保存只是 echo，跳过即可，否则会重新点燃「保存 → watcher → 重载」环。
+    // bug #1748：用户在这 1s 内的真实改动（如状态栏页面宽度）必须落盘——
+    // 无条件早退会让改动只存在于内存，下一次重载就把文件里的旧值读回来（表现为「被还原」）。
+    if (Date.now() - lastRemoteApplyAt < RELOAD_SAVE_GUARD_MS) {
+      const unchanged =
+        lastAppliedFingerprint !== null &&
+        configFingerprint(useEditorStore.getState().config) ===
+          lastAppliedFingerprint;
+      if (unchanged) return;
+    }
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
       saveConfig();
