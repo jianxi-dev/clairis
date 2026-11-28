@@ -217,6 +217,7 @@ headless 复现（probe35）：点正文后 `.cm-image-crop-active` 立即消失
 修：`suppressCaret` 在 window capture 收到**框外 pointerdown/mousedown** 时，
 直接调用 `onOutsideClick`（确认）并 preventDefault + stopPropagation——CM6
 根本收不到这次按下，不会落光标、不会滚动。
+<<<<<<< HEAD
 
 ## 十八轮（r18）：拦截从未执行
 
@@ -228,3 +229,5 @@ headless 复现（probe35）：点正文后 `.cm-image-crop-active` 立即消失
 
 修：从放行列表移除 `[contenteditable='true']`（裁剪是模态，正文此时不可编辑）；
 保留 `input / textarea / [data-testid^='img-'] / .cm-image-widget` 放行。
+=======
+>>>>>>> origin/main
