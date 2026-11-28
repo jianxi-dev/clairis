@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import {
   contrastRatio,
+  pickVariedText,
   mixOver,
   parseHexColor,
   pickReadableText,
@@ -94,5 +95,47 @@ describe("readCssColor", () => {
 
   it("非 hex 值返回空串", () => {
     expect(readCssColor("red")).toBe("");
+  });
+});
+
+describe("pickVariedText（随机换字色）", () => {
+  const cands = [
+    { name: "red", hex: "#d83930" },
+    { name: "blue", hex: "#245bdb" },
+    { name: "purple", hex: "#6425d0" },
+  ];
+
+  it("排除当前色，优先 ≥4.5 且不同色相", () => {
+    const pick = pickVariedText("#fde2e2", cands, "red", "red", () => 0);
+    expect(pick).not.toBeNull();
+    expect(pick!.name).not.toBe("red");
+    expect(pick!.ratio).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("同色相不可用时退到异色相的 ≥3 候选", () => {
+    const pick = pickVariedText(
+      "#cdb2fa",
+      [
+        { name: "purple", hex: "#6425d0", hue: "purple" },
+        { name: "blue", hex: "#245bdb", hue: "blue" },
+      ],
+      "",
+      "purple",
+      () => 0,
+    );
+    expect(pick).not.toBeNull();
+    expect(pick!.name).toBe("blue");
+  });
+
+  it("全部低于 3 时返回 null（保持当前文字色）", () => {
+    expect(
+      pickVariedText("#ffffff", [{ name: "yellow", hex: "#ffff00" }], "", "yellow"),
+    ).toBeNull();
+  });
+
+  it("唯一候选等于当前色时返回 null", () => {
+    expect(
+      pickVariedText("#fde2e2", [{ name: "purple", hex: "#6425d0" }], "purple", "red"),
+    ).toBeNull();
   });
 });

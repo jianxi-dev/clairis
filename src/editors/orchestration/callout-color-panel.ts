@@ -30,10 +30,10 @@ import { structureTransaction } from "../structure-history";
 import {
   mixOver,
   parseHexColor,
-  pickReadableText,
+  pickVariedText,
   readCssColor,
   rgbToHex,
-  type ReadableCandidate,
+  type VariedCandidate,
 } from "./color-contrast";
 
 /** 面板类名（供 CSS 收窄宽度 / 行标签样式）。 */
@@ -128,15 +128,13 @@ export function pickHighlightFamily(
 }
 
 /** 高亮字体候选：默认文字 + 字体色板非默认项（name 去 `hl-color-` 前缀）。 */
-function highlightTextCandidates(): ReadableCandidate[] {
-  const candidates: ReadableCandidate[] = [
-    { name: "", hex: readCssColor("--app-text") },
-  ];
+function highlightTextCandidates(): VariedCandidate[] {
+  const candidates: VariedCandidate[] = [];
   for (const color of HIGHLIGHT_FONT_COLORS) {
     if (color.className === "") continue;
     const name = color.className.replace(/^hl-color-/, "");
     const hex = readCssColor(color.swatch);
-    if (hex !== "") candidates.push({ name, hex });
+    if (hex !== "") candidates.push({ name, hex, hue: name });
   }
   return candidates;
 }
@@ -147,13 +145,12 @@ function writeRandomTriple(
   range: { from: number; to: number },
   current: string,
   attrs: CalloutAttrs,
-  textName: string,
+  textName: string | null,
 ): boolean {
   const nextAttrs: { bg?: string; border?: string; text?: string } = {
     ...attrs,
   };
-  if (textName === "") delete nextAttrs.text;
-  else nextAttrs.text = textName;
+  if (textName !== null) nextAttrs.text = textName;
   const next = setCalloutAttrs(current, nextAttrs);
   if (next === current) return false;
   view.dispatch(
@@ -179,14 +176,14 @@ export function randomHighlightColors(
   // 填充或候选缺失时只写 bg/border（文字保持现状），不崩溃。
   const text =
     fillHex === "" || candidates.length === 0
-      ? { name: "", hex: fillHex }
-      : pickReadableText(fillHex, candidates);
+      ? null
+      : pickVariedText(fillHex, candidates, attrs.text ?? "", family.key);
   return writeRandomTriple(
     view,
     range,
     current,
     { ...attrs, bg: family.light, border: family.border },
-    text.name,
+    text ? text.name : null,
   );
 }
 
@@ -240,25 +237,26 @@ export function randomCalloutColors(
   const surfaceRgb = parseHexColor(surfaceHex);
   const tintHex =
     bgRgb && surfaceRgb ? rgbToHex(mixOver(bgRgb, surfaceRgb, 0.1)) : "";
-  const candidates: ReadableCandidate[] = [
-    { name: "", hex: readCssColor("--app-text") },
-    ...FONT_COLORS.filter((color) => color.className !== "").map((color) => ({
-      name: color.className.replace(/^mdb-color-/, ""),
-      hex: readCssColor(color.swatch),
-    })),
-  ].filter((candidate) => candidate.hex !== "");
+  const candidates: VariedCandidate[] = FONT_COLORS.filter(
+    (color) => color.className !== "",
+  )
+    .map((color) => {
+      const colorName = color.className.replace(/^mdb-color-/, "");
+      return { name: colorName, hex: readCssColor(color.swatch), hue: colorName };
+    })
+    .filter((candidate) => candidate.hex !== "");
   // tint 或候选缺失时只写 bg/border（文字保持现状），不崩溃。
   const text =
     tintHex === "" || candidates.length === 0
-      ? { name: "", hex: tintHex }
-      : pickReadableText(tintHex, candidates);
+      ? null
+      : pickVariedText(tintHex, candidates, attrs.text ?? "", name);
   const nextAttrs: { bg?: string; border?: string; text?: string } = {
     ...attrs,
     bg: name,
     border: name,
   };
-  if (text.name === "") delete nextAttrs.text;
-  else nextAttrs.text = text.name;
+  // 有可读候选才换字；没有则保留当前文字色。
+  if (text) nextAttrs.text = text.name;
   const next = setCalloutAttrs(current, nextAttrs);
   if (next === current) return null;
   view.dispatch(
