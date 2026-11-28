@@ -1,0 +1,29 @@
+{
+  "states": [
+    {
+      "state": "edit-scroll-anchored",
+      "screenshot": "mode-scroll-anchor.spec.ts:edit",
+      "assertion": "passed"
+    },
+    {
+      "state": "preview-scroll-anchored",
+      "screenshot": "mode-scroll-anchor.spec.ts:preview",
+      "assertion": "passed"
+    },
+    {
+      "state": "back-to-edit-anchored",
+      "screenshot": "mode-scroll-anchor.spec.ts:back-edit",
+      "assertion": "passed"
+    },
+    {
+      "state": "crop-write-pinned",
+      "screenshot": "image-crop-quiet.spec.ts:crop-write",
+      "assertion": "passed"
+    },
+    {
+      "state": "pointerdown-releases-pin",
+      "screenshot": "manual:pointerdown-during-pin",
+      "assertion": "manual"
+    }
+  ]
+}

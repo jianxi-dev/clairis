@@ -560,11 +560,17 @@ function pinScrollDuringWrite(scroller: HTMLElement, before: number): void {
   };
   scroller.addEventListener("wheel", stop, { passive: true });
   scroller.addEventListener("touchstart", stop, { passive: true });
+  // 指针按下即让位（#1678）：见 imageCrop.pinScroll 的同款说明。
+  document.addEventListener("pointerdown", stop, {
+    passive: true,
+    capture: true,
+  });
   const startedAt = performance.now();
   const pin = (): void => {
     if (stopped || !scroller.isConnected) {
       scroller.removeEventListener("wheel", stop);
       scroller.removeEventListener("touchstart", stop);
+      document.removeEventListener("pointerdown", stop, true);
       return;
     }
     if (Math.abs(scroller.scrollTop - before) >= 0.5) {
@@ -574,6 +580,7 @@ function pinScrollDuringWrite(scroller: HTMLElement, before: number): void {
     else {
       scroller.removeEventListener("wheel", stop);
       scroller.removeEventListener("touchstart", stop);
+      document.removeEventListener("pointerdown", stop, true);
     }
   };
   requestAnimationFrame(pin);
@@ -615,7 +622,16 @@ export function writeImageTitle(
       insert: ` "${escapeImageTitle(value)}"`,
     });
   }
-  if (changes.length > 0) view.dispatch({ changes });
+  if (changes.length > 0) {
+    // 裁剪/尺寸写回同样触发 widget 重建与重排，WKWebView 下视口会被带偏
+    // （#1678 首裁微跳、多图确认下跳）。与描述写回共用同一钉住策略。
+    const scroller = view.scrollDOM;
+    const scrollBefore = scroller?.scrollTop ?? null;
+    view.dispatch({ changes });
+    if (scroller && scrollBefore !== null) {
+      pinScrollDuringWrite(scroller, scrollBefore);
+    }
+  }
   return true;
 }
 

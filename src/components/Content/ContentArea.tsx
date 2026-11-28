@@ -529,6 +529,50 @@ function createLanguageExtension(kind: FileKind) {
   }
 }
 
+/** 模式切换的内容锚：取滚动容器顶部可见块的文本前 40 字。 */
+const SCROLL_ANCHOR_BLOCK_SELECTOR =
+  "h1,h2,h3,h4,h5,h6,p,li,blockquote,pre,table,ul,ol";
+
+/** 从 markdown 行里取纯文本片段；纯图片/空行返回空串。 */
+function plainTextOfMarkdownLine(raw: string): string {
+  const cleaned = raw
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, "") // 图片整段去掉
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1") // 链接保留文字
+    .replace(/[#>*_`~|-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return cleaned.length >= 4 ? cleaned : "";
+}
+
+function readScrollTextAnchor(
+  el: HTMLElement,
+  view: EditorView | null,
+): string | null {
+  if (el.classList.contains("cm-scroller")) {
+    if (!view) return null;
+    const doc = view.state.doc;
+    // 顶部常是空段落/空行：向下最多 6 行找第一段非空文本作为锚。
+    let lineNo = doc.lineAt(
+      view.lineBlockAtHeight(el.scrollTop + 2).from,
+    ).number;
+    for (let i = 0; i < 8 && lineNo <= doc.lines; i += 1, lineNo += 1) {
+      // 纯图片/分隔线行在预览里没有对应文本，跳过继续找可匹配的段落。
+      const text = plainTextOfMarkdownLine(doc.line(lineNo).text);
+      if (text) return text.slice(0, 40);
+    }
+    return null;
+  }
+  const top = el.getBoundingClientRect().top;
+  const blocks = el.querySelectorAll<HTMLElement>(SCROLL_ANCHOR_BLOCK_SELECTOR);
+  for (const b of blocks) {
+    const r = b.getBoundingClientRect();
+    if (r.bottom <= top + 1) continue;
+    const text = (b.textContent ?? "").trim();
+    if (text) return text.slice(0, 40);
+  }
+  return null;
+}
+
 interface ContentAreaProps {
   panelId?: string;
   /** Override which tab to show (for split panels) */
@@ -659,6 +703,12 @@ export default function ContentArea({
   useEffect(() => {
     if (editorMode !== "preview" || !tab?.path) return;
     if (restoredTabRef.current === tab.id) return;
+    // 模式切换有自己的内容锚点恢复（#1678）；这条只服务「首次进入预览」，
+    // 有锚点时让位，否则会用 store 里的旧位置把我们刚恢复的视口覆盖掉。
+    if (modeScrollTextAnchorRef.current) {
+      restoredTabRef.current = tab.id;
+      return;
+    }
     const el = scrollContainerRef.current;
     if (!el) return;
     const record = useStore.getState().scrollPositions[tab.path];
@@ -677,6 +727,7 @@ export default function ContentArea({
   // scroll 不冒泡但可在捕获阶段收到；塌陷引发的 clamp 滚动事件发生在
   // useLayoutEffect 抓走锚点之后，不会污染本次恢复。
   const modeScrollAnchorRef = useRef<number | null>(null);
+  const modeScrollTextAnchorRef = useRef<string | null>(null);
   const prevModeRef = useRef<typeof editorMode | null>(null);
 
   useEffect(() => {
@@ -692,6 +743,12 @@ export default function ContentArea({
       modeScrollAnchorRef.current = Math.min(
         1,
         Math.max(0, el.scrollTop / denom),
+      );
+      // 内容锚：两态高度差异大时比例换算必然错位（#1678 真机：切换后不是
+      // 同一段内容），优先用「顶部可见文本」定位。
+      modeScrollTextAnchorRef.current = readScrollTextAnchor(
+        el,
+        viewRef.current,
       );
     };
     document.addEventListener("scroll", capture, {
@@ -709,11 +766,45 @@ export default function ContentArea({
     prevModeRef.current = editorMode;
     if (prev === null || prev === editorMode) return;
     const ratio = modeScrollAnchorRef.current;
-    if (ratio == null || ratio <= 0) return;
+    const textAnchor = modeScrollTextAnchorRef.current;
+    if ((ratio == null || ratio <= 0) && !textAnchor) return;
     let raf1 = 0;
     let raf2 = 0;
     raf1 = requestAnimationFrame(() => {
       raf2 = requestAnimationFrame(() => {
+        // 优先按文本锚恢复到同一段内容
+        if (textAnchor) {
+          if (editorMode === "preview") {
+            const el = scrollContainerRef.current;
+            if (el) {
+              const blocks = el.querySelectorAll<HTMLElement>(
+                SCROLL_ANCHOR_BLOCK_SELECTOR,
+              );
+              for (const b of blocks) {
+                if (!(b.textContent ?? "").includes(textAnchor)) continue;
+                const delta =
+                  b.getBoundingClientRect().top -
+                  el.getBoundingClientRect().top;
+                el.scrollTop = Math.max(0, el.scrollTop + delta - 8);
+                return;
+              }
+            }
+          } else {
+            const view = viewRef.current;
+            if (view) {
+              view.requestMeasure();
+              const pos = view.state.doc.toString().indexOf(textAnchor);
+              if (pos >= 0) {
+                view.dispatch({
+                  effects: EditorView.scrollIntoView(pos, { y: "start" }),
+                });
+                return;
+              }
+            }
+          }
+        }
+        // 回退：比例锚
+        if (ratio == null || ratio <= 0) return;
         if (editorMode === "preview") {
           const el = scrollContainerRef.current;
           if (!el) return;

@@ -189,11 +189,19 @@ function pinScroll(
   // 用户在这段窗口里的滚动意图（滚轮 / 触摸 / 按键）立即让位。
   scroller.addEventListener("wheel", stop, { passive: true });
   scroller.addEventListener("touchstart", stop, { passive: true });
+  // 指针按下即让位（#1678）：窗口内若在 mousedown 之后仍改 scrollTop，CM6 会把
+  // 「按下点」与「抬起点」之间当成拖选范围——真机表现就是点一下文本就跳到
+  // 别处并选中一大片。用户一旦按下，就不能再动视口。
+  document.addEventListener("pointerdown", stop, {
+    passive: true,
+    capture: true,
+  });
   window.addEventListener("keydown", stop);
   const startedAt = performance.now();
   const pin = (): void => {
     scroller.removeEventListener("wheel", stop);
     scroller.removeEventListener("touchstart", stop);
+    document.removeEventListener("pointerdown", stop, true);
     window.removeEventListener("keydown", stop);
     if (stopped || !scroller.isConnected) return;
     if (Math.abs(scroller.scrollTop - scrollTop) >= 0.5) {
