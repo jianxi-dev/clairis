@@ -79,6 +79,9 @@ Biaoyue 面向中文用户，维护者母语为中文。以下为**硬约定**�
 - **三个 Zustand store**：`stores/index.ts`（`useStore`，tabs/文件）、`stores/editorStore.ts`（config/editorMode，注释标记 @deprecated 待合并）与 `stores/captureOverlay.ts`（快速捕获浮层状态，由 `stores/index.ts` 再导出）。EditorView 实例存在 `src/editors/editorRef.ts` 的模块级 Map（按 panelId），不进 store；store 只存纯文本。
 - 大文件守卫（large file guard）：500KB 强制 source 的守卫仅存在于旧 `useFile` 流程，当前页签打开流程未接入，实际不生效。
 - API key 只存 OS keyring（`get/set/delete_api_key` 命令），不要写进 config 文件。
+- **事件拦截/门禁必须先证明被执行**：新增拦截、白名单、守卫时，落地前用 DEV 打点或一次性日志确认「代码真的会跑到」，再谈效果。放行列表中出现宽泛选择器（`[contenteditable]`、`body *`、过宽 `.cm-*`）视为高危——`[contenteditable='true']` 曾让裁剪态的点击拦截至死（CM6 正文本身就是 contenteditable），导致同一抖动修了约 40 轮。复盘见 `docs/agents/incident-crop-jump-1678.md`。
+- **平台差异以真机日志为准**：WKWebView 特有的滚动锚定、光标揭示、字体度量差异在 headless 完全不复现。此类问题的 e2e 只能作防退化守卫，交付说明必须写明「需真机确认」，禁止用本地绿灯当验收证据。真机探针：`crop-debug.log`（`JUMP`/`MARK` 行，含 `sel`/`docH`/`inputs`）。
+- **并行 worktree 测试纪律**：跑 Playwright 前确认 dev server 属于当前 worktree（`lsof -p $(lsof -ti:1424|head -1) | grep cwd`）；本仓支持 `PW_DEV_PORT=<port> npx playwright test` 覆盖端口（默认 1424）。出现「改了代码测试结果不变」「日志里没有新探针」时，第一怀疑是跑错了代码。
 
 ## UI 测试
 
