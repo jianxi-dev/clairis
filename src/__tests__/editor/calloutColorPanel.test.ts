@@ -428,14 +428,18 @@ describe("randomCalloutColors（#1677）", () => {
       b: Math.round(bg.b * 0.1 + surface.b * 0.9),
     };
     const textName = changed!.text ?? "";
-    expect(textName).not.toBe("");
-    expect(textName).not.toBe("gray");
-    const fontEntry = FONT_COLORS.find(
-      (color) => color.className === `mdb-color-${textName}`,
-    );
-    expect(fontEntry).toBeTruthy();
-    const textHex = parseHexColor(fontEntry!.swatch)!;
-    expect(contrastRatio(textHex, tint)).toBeGreaterThanOrEqual(3);
+    // 默认文字（空名）是合法随机结果：写在文档里即 `text` 缺省，继承主题前景。
+    if (textName === "") {
+      expect(text).not.toContain("text=");
+    } else {
+      expect(textName).not.toBe("gray");
+      const fontEntry = FONT_COLORS.find(
+        (color) => color.className === `mdb-color-${textName}`,
+      );
+      expect(fontEntry).toBeTruthy();
+      const textHex = parseHexColor(fontEntry!.swatch)!;
+      expect(contrastRatio(textHex, tint)).toBeGreaterThanOrEqual(3);
+    }
   });
 
   it("连续随机 3 次首行只有一个属性块，正文仍在", () => {
@@ -486,13 +490,15 @@ describe("randomHighlightColors（fix/random-contrast）", () => {
     const fillHex = readCssColor(`--hl-fill-${m![1]}`);
     const fill = parseHexColor(fillHex)!;
     const textName = getCalloutAttrs(text).text ?? "";
-    expect(textName).not.toBe("");
     expect(textName).not.toBe("yellow");
-    const textHex = readCssColor(`--hl-font-${textName}`);
-    expect(textHex).not.toBe("");
-    expect(contrastRatio(parseHexColor(textHex)!, fill)).toBeGreaterThanOrEqual(
-      3,
-    );
+    if (textName !== "") {
+      const textHex = readCssColor(`--hl-font-${textName}`);
+      expect(textHex).not.toBe("");
+      expect(contrastRatio(parseHexColor(textHex)!, fill)).toBeGreaterThanOrEqual(3);
+    } else {
+      // 默认文字：不写 text 属性，渲染继承主题前景色。
+      expect(text).not.toContain("text=");
+    }
   });
 
   it("连续随机 3 次首行只有一个属性块，正文仍在", () => {
@@ -507,5 +513,50 @@ describe("randomHighlightColors（fix/random-contrast）", () => {
       expect((firstLine.match(/\}/g) ?? [])).toHaveLength(1);
       expect(text).toContain("> 正文");
     }
+  });
+});
+
+describe("随机会在默认文字与深/中档填充之间选择", () => {
+  let parent: HTMLElement;
+  let view: EditorView | undefined;
+  afterEach(() => {
+    view?.destroy();
+    parent.remove();
+  });
+  function createEditor(doc: string): EditorView {
+    parent = document.createElement("div");
+    document.body.appendChild(parent);
+    view = new EditorView({
+      parent,
+      state: EditorState.create({ doc, extensions: [markdown()] }),
+    });
+    return view;
+  }
+
+  it("标注随机在 rand=0 时选默认文字（删除 text 属性）", () => {
+    const editor = createEditor("> [!note]{text=purple bg=blue border=blue}\n> 正文");
+    const changed = randomCalloutColors(
+      editor,
+      0,
+      editor.state.doc.length,
+      () => 0,
+    );
+    expect(changed).not.toBeNull();
+    expect(changed!.text ?? "").toBe("");
+    expect(editor.state.doc.toString()).not.toContain("text=");
+  });
+
+  it("高亮随机在 rand=0 时选深档填充", () => {
+    const editor = createEditor("> [!highlight]\n> 正文");
+    randomHighlightColors(editor, 0, editor.state.doc.length, () => 0);
+    const attrs = getCalloutAttrs(editor.state.doc.toString());
+    expect(attrs.bg ?? "").toMatch(/^dark/);
+  });
+
+  it("高亮随机在 rand=0.9 时选中档填充", () => {
+    const editor = createEditor("> [!highlight]\n> 正文");
+    randomHighlightColors(editor, 0, editor.state.doc.length, () => 0.9);
+    const attrs = getCalloutAttrs(editor.state.doc.toString());
+    expect(attrs.bg ?? "").not.toMatch(/^dark/);
   });
 });

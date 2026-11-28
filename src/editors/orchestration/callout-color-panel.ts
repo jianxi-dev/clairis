@@ -129,7 +129,11 @@ export function pickHighlightFamily(
 
 /** 高亮字体候选：默认文字 + 字体色板非默认项（name 去 `hl-color-` 前缀）。 */
 function highlightTextCandidates(): VariedCandidate[] {
-  const candidates: VariedCandidate[] = [];
+  // 默认文字继承主题前景色，在浅填充上通常对比度最高；作为 `name` 为空串的
+  // 候选参与加权，选中即删除 `text` 属性。
+  const candidates: VariedCandidate[] = [
+    { name: "", hex: readCssColor("--app-text"), hue: "default" },
+  ].filter((candidate) => candidate.hex !== "");
   for (const color of HIGHLIGHT_FONT_COLORS) {
     if (color.className === "") continue;
     const name = color.className.replace(/^hl-color-/, "");
@@ -165,24 +169,27 @@ export function randomHighlightColors(
   view: EditorView,
   from: number,
   to: number,
+  rand: () => number = Math.random,
 ): boolean {
   const range = resolveCalloutRange(view, from);
   if (!range) return false;
   const current = view.state.doc.sliceString(range.from, range.to);
   const attrs = getCalloutAttrs(current);
-  const family = pickHighlightFamily(attrs);
-  const fillHex = readCssColor(`--hl-fill-${family.light}`);
+  const family = pickHighlightFamily(attrs, rand);
+  // 填充深档（第 1 行）与中档（第 2 行）各半参与随机，修掉「只在中档之间跳」。
+  const fillName = rand() < 0.5 ? family.dark : family.light;
+  const fillHex = readCssColor(`--hl-fill-${fillName}`);
   const candidates = highlightTextCandidates();
   // 填充或候选缺失时只写 bg/border（文字保持现状），不崩溃。
   const text =
     fillHex === "" || candidates.length === 0
       ? null
-      : pickVariedText(fillHex, candidates, attrs.text ?? "", family.key);
+      : pickVariedText(fillHex, candidates, attrs.text ?? "", family.key, rand);
   return writeRandomTriple(
     view,
     range,
     current,
-    { ...attrs, bg: family.light, border: family.border },
+    { ...attrs, bg: fillName, border: family.border },
     text ? text.name : null,
   );
 }
@@ -196,7 +203,8 @@ export function resetCalloutColors(
   const range = resolveCalloutRange(view, from);
   if (!range) return false;
   const current = view.state.doc.sliceString(range.from, range.to);
-  const next = setCalloutAttrs(current, {});
+  // 恢复默认只清三色，保留 emoji 覆盖。
+  const next = setCalloutAttrs(current, { emoji: getCalloutAttrs(current).emoji });
   if (next === current) return false;
   view.dispatch(
     structureTransaction({
@@ -217,6 +225,7 @@ export function randomCalloutColors(
   view: EditorView,
   from: number,
   to: number,
+  rand: () => number = Math.random,
 ): CalloutAttrs | null {
   const range = resolveCalloutRange(view, from);
   if (!range) return null;
@@ -225,7 +234,7 @@ export function randomCalloutColors(
   const pool = BACKGROUND_COLORS.filter(
     (color) => color.className !== "" && !color.isDefault,
   );
-  const picked = pool[Math.floor(Math.random() * pool.length)];
+  const picked = pool[Math.floor(rand() * pool.length)];
   if (!picked) return null;
   const name = attrNameFromClassName("bg", picked.className);
   if (name === "") return null;
@@ -237,19 +246,19 @@ export function randomCalloutColors(
   const surfaceRgb = parseHexColor(surfaceHex);
   const tintHex =
     bgRgb && surfaceRgb ? rgbToHex(mixOver(bgRgb, surfaceRgb, 0.1)) : "";
-  const candidates: VariedCandidate[] = FONT_COLORS.filter(
-    (color) => color.className !== "",
-  )
-    .map((color) => {
+  const candidates: VariedCandidate[] = [
+    // 默认文字：继承主题前景，浅底上适配率最高；名字为空串 → 写回时删除 text。
+    { name: "", hex: readCssColor("--app-text"), hue: "default" },
+    ...FONT_COLORS.filter((color) => color.className !== "").map((color) => {
       const colorName = color.className.replace(/^mdb-color-/, "");
       return { name: colorName, hex: readCssColor(color.swatch), hue: colorName };
-    })
-    .filter((candidate) => candidate.hex !== "");
+    }),
+  ].filter((candidate) => candidate.hex !== "");
   // tint 或候选缺失时只写 bg/border（文字保持现状），不崩溃。
   const text =
     tintHex === "" || candidates.length === 0
       ? null
-      : pickVariedText(tintHex, candidates, attrs.text ?? "", name);
+      : pickVariedText(tintHex, candidates, attrs.text ?? "", name, rand);
   const nextAttrs: { bg?: string; border?: string; text?: string } = {
     ...attrs,
     bg: name,

@@ -161,7 +161,9 @@ export function pickVariedText(
   const fill = parseHexColor(fillHex);
   if (!fill) return null;
   const scored = candidates
-    .filter((candidate) => candidate.name !== "" && candidate.name !== currentName)
+    // 空名 = 默认文字候选：仅当当前不是默认（currentName 非空）时才参与，
+    // 保证「随机一定会换」且允许回到适配率最高的默认色。
+    .filter((candidate) => candidate.name !== currentName)
     .map((candidate) => {
       const rgb = parseHexColor(candidate.hex);
       return rgb

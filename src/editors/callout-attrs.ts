@@ -23,6 +23,8 @@ export interface CalloutAttrs {
   readonly border?: string;
   /** 文字色名（`FONT_COLORS` 后缀）。 */
   readonly text?: string;
+  /** 头部 emoji 覆盖（单个字符，重启后仍生效；缺省回落类型图标）。 */
+  readonly emoji?: string;
 }
 
 /** 填充 / 边框共用背景色板的后缀集合。 */
@@ -103,15 +105,25 @@ const ATTR_PREFIX = {
  * 未提供的颜色缺省（渲染回落类型 tone）。
  */
 export function parseCalloutAttrs(raw: string): CalloutAttrs {
-  const body =
-    raw.startsWith("{") && raw.endsWith("}") ? raw.slice(1, -1) : raw;
-  const attrs: { bg?: string; border?: string; text?: string } = {};
+  // 兼容历史脏数据：同一行可能叠着多个属性块（旧随机写回缺陷），全部合并解析，
+  // 后出现的键覆盖先出现的，避免再写时把旧块当标题。
+  const groups = raw.match(/\{[^}]*\}/g) ?? [];
+  const body = groups.length > 0
+    ? groups.map((group) => group.slice(1, -1)).join(" ")
+    : raw;
+  const attrs: { bg?: string; border?: string; text?: string; emoji?: string } = {};
   for (const token of body.split(/\s+/)) {
     if (token === "") continue;
     const eq = token.indexOf("=");
     if (eq < 0) continue;
     const key = token.slice(0, eq);
-    const value = token.slice(eq + 1).toLowerCase();
+    const rawValue = token.slice(eq + 1);
+    if (key === "emoji") {
+      // emoji 保留原始大小写/码点，只拒绝空白与花括号。
+      if (/^[^\s{}]{1,16}$/.test(rawValue)) attrs.emoji = rawValue;
+      continue;
+    }
+    const value = rawValue.toLowerCase();
     if (value === "" || value === "none") continue;
     if (key === "bg" && BG_NAME_SET.has(value)) attrs.bg = value;
     else if (key === "border" && BORDER_NAME_SET.has(value))
@@ -127,6 +139,7 @@ export function serializeCalloutAttrs(attrs: CalloutAttrs): string {
   if (attrs.bg) parts.push(`bg=${attrs.bg}`);
   if (attrs.border) parts.push(`border=${attrs.border}`);
   if (attrs.text) parts.push(`text=${attrs.text}`);
+  if (attrs.emoji) parts.push(`emoji=${attrs.emoji}`);
   return parts.length > 0 ? `{${parts.join(" ")}}` : "";
 }
 
@@ -137,7 +150,7 @@ export function serializeCalloutAttrs(attrs: CalloutAttrs): string {
  * 的写法；不容忍空白会把旧属性当标题，导致再次改色时叠加出第二个属性块。
  */
 const FIRST_LINE_RE =
-  /^(\s{0,3}>\s*\[![A-Za-z]+\])([+-]?)\s*(\{[^}]*\})?(\s*)(.*)$/;
+  /^(\s{0,3}>\s*\[![A-Za-z]+\])([+-]?)\s*((?:\{[^}]*\}\s*)*)(\s*)(.*)$/;
 
 /** 读取块首行已有的三色属性（无属性块返回空对象）。 */
 export function getCalloutAttrs(blockText: string): CalloutAttrs {
