@@ -1164,7 +1164,7 @@ details.callout[open] > summary {
     --callout-bg,
     color-mix(in srgb, var(--callout-color) 30%, transparent)
   );
-  padding: 0.35em 0.6em;
+  padding: 0.55em 0.85em;
 }
 
 .preview-content .callout-mark-icon {
