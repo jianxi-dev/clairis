@@ -329,3 +329,42 @@ test("F：随机三元组按对比度选色且文字每次变化（高亮 + 标�
     .poll(() => storeContent(page))
     .toMatch(/\{bg=red border=red text=yellow\}/);
 });
+
+test("G：随机只改被点击的块，不串到第一个块", async ({ page }) => {
+  await openMarkdownInEdit(
+    page,
+    "> [!NOTE] 一\n> A\n\n> [!highlight]\n> B\n\n> [!TIP] 三\n> C\n",
+    "callout-fix3-g",
+  );
+  const calloutLines = async (): Promise<string[]> =>
+    (await storeContent(page))
+      .split("\n")
+      .filter((line) => /^>\s*\[!/.test(line));
+
+  for (let i = 0; i < 3; i += 1) {
+    const before = await calloutLines();
+    const card = page.locator(".cm-callout").nth(i);
+    const type = await card.getAttribute("data-callout-type");
+    await card.locator(".cm-callout-content").click();
+    const entry = page.locator('[data-testid="callout-color-entry"]');
+    await expect(entry).toBeVisible({ timeout: 3000 });
+    await entry.hover();
+    const panel = page.locator('[data-testid="callout-color-panel"]');
+    await expect(panel).toBeVisible({ timeout: 3000 });
+    if (type === "highlight") {
+      await panel.locator('[data-testid="color-random"]').click();
+    } else {
+      await panel.locator('[data-testid="color-random-callout"]').click();
+    }
+    await expect.poll(() => storeContent(page)).not.toBe(before.join("\n"));
+    const after = await calloutLines();
+    const changed = after
+      .map((line, index) => (line === before[index] ? -1 : index))
+      .filter((index) => index >= 0);
+    expect(changed).toEqual([i]);
+    await page.keyboard.press("Meta+z");
+    await expect.poll(() => calloutLines()).toEqual(before);
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(80);
+  }
+});
