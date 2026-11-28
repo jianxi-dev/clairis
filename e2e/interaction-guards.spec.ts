@@ -26,8 +26,22 @@ interface StateRow {
   runner: string;
 }
 
+// `.pane-actions` 的 opacity 过渡（150ms）期间菜单近乎透明且层叠上下文压住 z-50 菜单，截图须等过渡结束。
+async function settle(page: Page): Promise<void> {
+  await page.evaluate(async () => {
+    const running = document
+      .getAnimations()
+      .filter((a) => a.playState === "running");
+    await Promise.all(running.map((a) => a.finished.catch(() => undefined)));
+    await new Promise<void>((r) =>
+      requestAnimationFrame(() => requestAnimationFrame(() => r())),
+    );
+  });
+}
+
 async function record(page: Page, state: string): Promise<void> {
   const file = path.join(ART, `${state}.png`);
+  await settle(page);
   await page.screenshot({ path: file });
   const manifest = path.join(ART, "state-coverage.json");
   let states: StateRow[] = [];
@@ -124,6 +138,7 @@ test.describe("禁用而非隐藏：格头「定位」无路径时保留可见�
     await expect(item).toBeVisible();
     await expect(item).toBeDisabled();
     await expect(item).toHaveAttribute("title", /无路径/);
+    await expect(page.locator(".pane-actions").first()).toHaveCSS("opacity", "1");
     await record(page, "03-pane-locate-disabled-no-path");
   });
 
@@ -135,6 +150,7 @@ test.describe("禁用而非隐藏：格头「定位」无路径时保留可见�
     const item = page.locator('[data-menu-item="locate"]');
     await expect(item).toHaveCount(1);
     await expect(item).toBeEnabled();
+    await expect(page.locator(".pane-actions").first()).toHaveCSS("opacity", "1");
     await record(page, "04-pane-locate-enabled-with-path");
   });
 });
