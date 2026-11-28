@@ -3100,8 +3100,8 @@ html[data-tab-drag="true"] body * {
  * max-height 会让面板随页签跳动；固定 height 后「最近」与分类页签等高，
  * 内容超出仍滚动。 */
 .cm-content .cm-callout-emoji-body {
-  height: 240px;
-  max-height: 240px;
+  height: 200px;
+  max-height: 200px;
   overflow-y: auto;
 }
 
