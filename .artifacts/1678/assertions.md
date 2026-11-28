@@ -205,3 +205,15 @@ r16 日志：会话1（首裁）-1042 **无回拉**；会话2 -379→+379、会�
 根因：光标复位的 `dispatch` 写在守护的 rAF 循环里，在 CM6 更新周期中会抛
 "update in progress" —— 异常终止了 rAF 调度，守护永久停止。加 try/catch 后
 守护不再被打断，首裁也能回拉。
+
+## 十七轮（r17）：确认提前到 pointerdown
+
+r16 后状态：首裁 `-991 → +991`（37ms 内拉回），用户称"上下抖一下"。
+
+headless 复现（probe35）：点正文后 `.cm-image-crop-active` 立即消失（确认生效）。
+真机上 CM6 在同一 pointerdown 里先落光标（sel 0→1348）并揭示滚动，`confirm`
+在 38ms 后才跑。
+
+修：`suppressCaret` 在 window capture 收到**框外 pointerdown/mousedown** 时，
+直接调用 `onOutsideClick`（确认）并 preventDefault + stopPropagation——CM6
+根本收不到这次按下，不会落光标、不会滚动。

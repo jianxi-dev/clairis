@@ -943,6 +943,17 @@ function mount(
     ) {
       return;
     }
+    // 点框外：**先走确认并阻断事件**，别让 CM6 收到 pointerdown 落光标 + 做
+    // caret 揭示滚动（真机首裁上下抖的唯一来源）。确认动作由这里直接触发，
+    // 后续 click 不会再命中 onOutsideClick（会话已结束）。
+    const pointerLike =
+      event.type === "pointerdown" || event.type === "mousedown";
+    if (pointerLike) {
+      event.preventDefault();
+      event.stopPropagation();
+      onOutsideClick(event as unknown as MouseEvent);
+      return;
+    }
     event.preventDefault();
     event.stopPropagation();
   };
