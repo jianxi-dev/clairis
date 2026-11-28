@@ -169,6 +169,10 @@ function clearPendingReload(): void {
 /** 测试隔离用：清空 echo 调度状态与 lastLocalSaveAt。 */
 export function __resetEchoScheduler(): void {
   clearPendingReload();
+  if (deferredReloadTimer) {
+    clearTimeout(deferredReloadTimer);
+    deferredReloadTimer = null;
+  }
   lastLocalSaveAt = 0;
 }
 
@@ -233,6 +237,22 @@ function performReload(): void {
  */
 let configInteractionDepth = 0;
 
+/** 本地有未落盘改动时，重载推迟执行的定时器 */
+let deferredReloadTimer: ReturnType<typeof setTimeout> | null = null;
+
+/**
+ * 内存配置是否与「已知磁盘值」不同（即存在尚未落盘的本地改动）。
+ * bug #1748：重载一旦在 debounce 窗口内落地，会把用户刚改的值覆盖回文件里的旧值，
+ * 用户看到的就是「被还原上一次」。因此这类重载必须先推迟。
+ */
+function hasUnsavedLocalChanges(): boolean {
+  if (lastAppliedFingerprint === null) return false;
+  return (
+    configFingerprint(useEditorStore.getState().config) !==
+    lastAppliedFingerprint
+  );
+}
+
 export function beginConfigInteraction(): void {
   configInteractionDepth += 1;
 }
@@ -244,6 +264,19 @@ export function endConfigInteraction(): void {
 export function scheduleExternalReload(now: number = Date.now()): void {
   if (!isTauriEnv()) return;
   if (configInteractionDepth > 0) return;
+  // 有未落盘的本地改动：此刻读盘一定是旧值，先推迟，等保存落地后再读（#1748）。
+  if (hasUnsavedLocalChanges()) {
+    if (deferredReloadTimer) return;
+    deferredReloadTimer = setTimeout(() => {
+      deferredReloadTimer = null;
+      if (hasUnsavedLocalChanges()) {
+        scheduleExternalReload();
+        return;
+      }
+      performReload();
+    }, 300);
+    return;
+  }
   const elapsed = now - lastLocalSaveAt;
   if (elapsed >= SAVE_ECHO_WINDOW_MS) {
     performReload();
@@ -383,6 +416,8 @@ export async function saveAppConfig(): Promise<void> {
   };
   try {
     await invoke("save_config", { config });
+    // 写成功后刷新「已知磁盘值」，后续 echo 重载才不会被误判为「有未保存改动」。
+    lastAppliedFingerprint = configFingerprint(useEditorStore.getState().config);
   } catch (e) {
     log.error("Config", "Failed to save config", e);
   }

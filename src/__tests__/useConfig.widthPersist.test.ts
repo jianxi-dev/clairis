@@ -131,4 +131,29 @@ describe("配置保存：重载守卫不得吞掉用户的宽度调整（#1748�
     });
     await waitFor(() => expect(lastSavedWidth()).toBe(1400), { timeout: 2000 });
   });
+
+  it("本地改动尚未落盘时，重载不得把宽度覆盖回文件旧值", async () => {
+    invokeMock.mockImplementation((cmd: string) => {
+      if (cmd === "load_config") return Promise.resolve(rustConfig(1080));
+      return Promise.resolve(null);
+    });
+
+    const { result } = renderHook(() => useConfig());
+    await waitFor(() => expect(listenHandler).not.toBeNull());
+    await waitFor(() =>
+      expect(useEditorStore.getState().config.readerWidth).toBe(1080),
+    );
+
+    // 用户点档位把宽度改成 1400：状态已更新，但 debounce（500ms）内还没落盘
+    act(() => {
+      useEditorStore.getState().setConfig({ readerWidth: 1400 });
+      result.current.scheduleSave();
+    });
+
+    // 这 500ms 内，上一次保存的 echo 触发一次重载（文件里仍是 1080）
+    act(() => listenHandler?.());
+    await new Promise((r) => setTimeout(r, 80));
+
+    expect(useEditorStore.getState().config.readerWidth).toBe(1400);
+  });
 });
