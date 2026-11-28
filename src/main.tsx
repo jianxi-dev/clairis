@@ -5,6 +5,7 @@ import "katex/dist/katex.min.css";
 import "./styles/doc-property.css";
 import "./styles/search-float.css";
 import "./styles/tokens.css";
+import "./styles/primitives.css";
 import "./styles/reader.css";
 import "./styles/player.css";
 import "./styles/print.css";
@@ -17,8 +18,20 @@ if (!rootEl) {
 // Detect which window we're in via URL param
 const urlParams = new URLSearchParams(window.location.search);
 const isOverlay = urlParams.get("window") === "overlay";
+// 对照场只在 dev 出现；生产构建不含本分支与 Showcase（2.4 扩为四基件 × 6 态 × 明暗）
+const isShowcase = import.meta.env.DEV && urlParams.has("showcase");
 
-if (isOverlay) {
+if (isShowcase) {
+  console.info("[Biaoyue] Showcase mode, mounting primitives showcase...");
+  import("./components/Showcase").then((mod) => {
+    const Showcase = mod.default;
+    ReactDOM.createRoot(rootEl as HTMLElement).render(
+      <React.StrictMode>
+        <Showcase />
+      </React.StrictMode>,
+    );
+  });
+} else if (isOverlay) {
   // Overlay window: render only the capture overlay
   console.info(
     "[Biaoyue] Overlay window detected, mounting capture overlay...",

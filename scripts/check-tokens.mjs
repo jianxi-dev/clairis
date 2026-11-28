@@ -29,7 +29,7 @@ const BASELINE_VERSION = 1;
 const DEFAULT_REASON = "存量（Q0 冻结）；迁移随 Q2 基件与后续专项";
 const CHECKS = ["A", "B", "C"];
 
-// 危险色尚无独立 token（spec §6 已知缺口），此处按主题硬编码现值。
+// 危险色由 --app-danger 承载（spec §6）；读不到时回落现值，保证 token 缺失也能诊断。
 const DANGER_BY_THEME = { ":root": "#a8402f", ".warm": "#a8402f", ".dark": "#e08b7a" };
 
 // 语义色对与阈值（design-system §7.8，唯一来源）。
@@ -454,7 +454,9 @@ function checkC() {
     }
     for (const pair of CONTRAST_PAIRS) {
       const fgRaw =
-        pair.fg === null ? DANGER_BY_THEME[theme] : resolveValue(`var(${pair.fg})`, blocks, theme);
+        pair.fg === null
+          ? (resolveValue("var(--app-danger)", blocks, theme) ?? DANGER_BY_THEME[theme])
+          : resolveValue(`var(${pair.fg})`, blocks, theme);
       const fg = parseColor(fgRaw);
       const label = pair.fg === null ? "危险色（danger）" : pair.label;
       if (!fg) {

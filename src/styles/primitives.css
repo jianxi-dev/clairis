@@ -1,0 +1,221 @@
+/* 基件样式（ui-quality-primitives-v1 / 2.1）
+ *
+ * 类名统一 `bp-` 前缀。颜色 / 圆角 / 阴影只用已定义 token（`--app-*` / `--radius-*` / `--shadow-*`）；
+ * 间距与字号取 design-system §3 / §4 刻度字面值（2/4/6/8/10/12/16/24px 与 11/12/13/14px）。
+ * `--space-*` / `--fs-*` 尚未在 tokens.css 声明，px 刻度 token 化属 B7/Q5，本文件不新增 token。
+ *
+ * 危险语义色走 token：danger 用 `--app-danger` 实底 + `--app-on-danger` 文字，
+ * danger-soft 用 `--app-danger` 的透明混色底 + 危险色文字（spec §6）。
+ */
+
+/* ── Button 尺寸档（高度 = 字号行高 + 上下内距，取 spec §3 刻度） ─────── */
+.bp-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  border: 1px solid transparent;
+  border-radius: var(--radius-4);
+  box-shadow: var(--shadow-button);
+  font-family: inherit;
+  font-weight: 500;
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  transition:
+    background-color 0.12s ease-out,
+    border-color 0.12s ease-out,
+    color 0.12s ease-out;
+}
+
+/* 图标与文案同排；两者同存时图标在左、间距 6px */
+.bp-btn__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.bp-btn--sm {
+  min-height: 24px;
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
+/* md 高度由 6px 内距 + 13px 行高决定（不写 32px 这类刻度外硬高度） */
+.bp-btn--md {
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
+/* ── 六 variant ───────────────────────────────────────────────────────── */
+.bp-btn--primary {
+  background-color: var(--app-accent-fill);
+  border-color: var(--app-accent-fill);
+  color: var(--app-on-accent);
+}
+
+/* hover 向 ink 方向混：亮主题变深、暗主题变亮，两个方向都抬高 on-accent 文字对比度 */
+.bp-btn--primary:not(:disabled):hover {
+  background-color: color-mix(
+    in srgb,
+    var(--app-accent-fill) 88%,
+    var(--app-text-strong)
+  );
+  border-color: color-mix(
+    in srgb,
+    var(--app-accent-fill) 88%,
+    var(--app-text-strong)
+  );
+}
+
+.bp-btn--secondary {
+  background-color: var(--app-surface);
+  border-color: var(--app-border);
+  color: var(--app-text);
+}
+
+.bp-btn--secondary:not(:disabled):hover {
+  background-color: var(--app-sunken);
+  border-color: var(--app-border-strong);
+}
+
+/* accent 作文字压在 accent-soft 上不足 4.5（亮 / 暖主题），向 ink 混一档拉回达标 */
+.bp-btn--soft {
+  background-color: var(--app-accent-soft);
+  border-color: transparent;
+  color: color-mix(in srgb, var(--app-accent) 72%, var(--app-text-strong));
+}
+
+.bp-btn--soft:not(:disabled):hover {
+  background-color: var(--app-border);
+}
+
+.bp-btn--ghost {
+  background-color: transparent;
+  border-color: transparent;
+  color: var(--app-text-2);
+}
+
+.bp-btn--ghost:not(:disabled):hover {
+  background-color: var(--app-chrome-hover);
+  color: var(--app-surface);
+}
+
+.bp-btn--danger {
+  background-color: var(--app-danger);
+  border-color: var(--app-danger);
+  color: var(--app-on-danger);
+}
+
+.bp-btn--danger:not(:disabled):hover {
+  background-color: color-mix(
+    in srgb,
+    var(--app-danger) 88%,
+    var(--app-text-strong)
+  );
+  border-color: color-mix(
+    in srgb,
+    var(--app-danger) 88%,
+    var(--app-text-strong)
+  );
+}
+
+.bp-btn--danger-soft {
+  background-color: color-mix(in srgb, var(--app-danger) 12%, transparent);
+  border-color: color-mix(in srgb, var(--app-danger) 32%, transparent);
+  color: var(--app-danger);
+}
+
+.bp-btn--danger-soft:not(:disabled):hover {
+  background-color: color-mix(in srgb, var(--app-danger) 18%, transparent);
+}
+
+/* ── 状态 ─────────────────────────────────────────────────────────────── */
+.bp-btn:focus-visible {
+  outline: 2px solid var(--app-accent);
+  outline-offset: 1px;
+}
+
+.bp-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* loading：文案占位但视觉隐藏（保留无障碍名与宽度），转圈绝对定位叠加，不改尺寸 */
+.bp-btn--loading .bp-btn__label {
+  color: transparent;
+}
+
+.bp-btn-spinner {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 12px;
+  height: 12px;
+  box-sizing: border-box;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  pointer-events: none;
+  animation: bp-btn-spin 0.8s linear infinite;
+}
+
+@keyframes bp-btn-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bp-btn-spinner {
+    animation-duration: 1.6s;
+  }
+}
+
+/* ── IconButton ───────────────────────────────────────────────────────── */
+.bp-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  /* 命中区下限 24×24（WCAG 2.5.8）；图标本体仍为 14 / 18，由内距撑开 */
+  min-width: 24px;
+  min-height: 24px;
+  padding: 4px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-4);
+  background-color: transparent;
+  color: var(--app-text-2);
+  cursor: pointer;
+  user-select: none;
+  transition:
+    background-color 0.12s ease-out,
+    color 0.12s ease-out;
+}
+
+.bp-icon-btn--14 {
+  min-width: 24px;
+  min-height: 24px;
+}
+
+.bp-icon-btn--18 {
+  min-width: 24px;
+  min-height: 24px;
+}
+
+.bp-icon-btn:not(:disabled):hover {
+  background-color: var(--app-chrome-hover);
+  color: var(--app-surface);
+}
+
+.bp-icon-btn:focus-visible {
+  outline: 2px solid var(--app-accent);
+  outline-offset: 1px;
+}
+
+.bp-icon-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
