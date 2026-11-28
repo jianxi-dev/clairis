@@ -3,7 +3,7 @@ import { test, expect, type Page } from "@playwright/test";
 /**
  * #1653 ticket 1.1：阅读态纯高亮与编辑态同貌。
  *
- * - `> [!highlight]`：无左边框、1px 全边框、4px 圆角、强荧光底；emoji 内联在
+ * - `> [!highlight]`：四边 1px 细边、4px 圆角、强荧光底；emoji 内联在
  *   正文首行前，换行缩进对齐到文字（悬挂缩进）；不印「纯高亮」。
  * - `> [!NOTE]`（空标题）：不补默认名「注释」，只留空标题槽（图标由 per-type
  *   ::before glyph 提供）。
@@ -52,7 +52,7 @@ async function switchToPreview(page: Page): Promise<void> {
   await page.locator(".preview-content").waitFor({ timeout: 10000 });
 }
 
-test("阅读态纯高亮：无左边框 / 1px 全边框 / 4px 圆角 / emoji 内联", async ({
+test("阅读态纯高亮：四边 1px / 4px 圆角 / emoji 内联", async ({
   page,
 }) => {
   await openDoc(page);
@@ -71,13 +71,13 @@ test("阅读态纯高亮：无左边框 / 1px 全边框 / 4px 圆角 / emoji 内
       radius: cs.borderRadius,
     };
   });
-  expect(styles.left).toBe("0px");
+  expect(styles.left).toBe("1px");
   expect(styles.top).toBe("1px");
   expect(styles.right).toBe("1px");
   expect(styles.bottom).toBe("1px");
   expect(styles.radius).toBe("4px");
 
-  // 纯高亮不建标题槽，也不印「纯高亮」。
+  // 纯高亮四边都有 1px 边、不建标题槽、不印「纯高亮」。
   await expect(mark.locator(".callout-title")).toHaveCount(0);
   await expect(mark).not.toContainText("纯高亮");
 

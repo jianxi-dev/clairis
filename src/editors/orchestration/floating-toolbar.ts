@@ -28,6 +28,7 @@ import {
   applyCalloutColorToBlock,
   buildCalloutColorPanel,
   buildHighlightColorPanel,
+  randomCalloutColors,
   randomHighlightColors,
   resetCalloutColors,
   type CalloutColorKey,
@@ -362,7 +363,13 @@ function createCalloutBar(
               randomHighlightColors(view, block.from, block.to);
             },
           })
-        : buildCalloutColorPanel({ active, onPick, onReset }),
+        : buildCalloutColorPanel({
+            active,
+            onPick,
+            onReset,
+            onRandom: () =>
+              randomCalloutColors(view, block.from, block.to),
+          }),
     );
     wrap.classList.add("cm-callout-color-pop-floating");
     document.body.appendChild(wrap);

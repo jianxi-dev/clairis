@@ -61,6 +61,7 @@ import {
   applyCalloutColorToBlock,
   buildCalloutColorPanel,
   buildHighlightColorPanel,
+  randomCalloutColors,
   randomHighlightColors,
   resetCalloutColors,
 } from "./callout-color-panel";
@@ -726,7 +727,7 @@ export function openBlockMenu(
       panelEl.dataset.testid = "block-menu-color-panel";
       panelEl.dataset.blockFlyout = "1";
       panelEl.style.width = `${
-        blockCalloutKey === "highlight" ? 216 : MENU_WIDTH
+        blockCalloutKey === "highlight" ? 216 : 246
       }px`;
       const own = view.dom.getBoundingClientRect();
       const rowRect = colorRow.getBoundingClientRect();
@@ -777,6 +778,10 @@ export function openBlockMenu(
                   key,
                   className,
                 );
+              },
+              onRandom: () => {
+                closeBlockMenu(view);
+                return randomCalloutColors(view, block.from, block.to);
               },
               onReset: () => {
                 closeBlockMenu(view);

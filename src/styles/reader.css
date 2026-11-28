@@ -1150,15 +1150,15 @@ details.callout[open] > summary {
   --callout-soft: rgba(240, 182, 34, 0.1);
 }
 
-/* 纯高亮（阅读态）：与编辑态 cm-callout-mark 同貌——无左边框、1px 全边框、
- * 4px 圆角、强荧光底；emoji 内联在正文首行前，换行缩进对齐到文字（悬挂缩进）。 */
+/* 纯高亮（阅读态）：与编辑态 cm-callout-mark 同貌——四边 1px 细边（不要标注的
+ * 3px 强调条）、4px 圆角、强荧光底；emoji 内联在正文首行前，换行缩进对齐到文字
+ * （悬挂缩进）。 */
 .preview-content .callout.callout-mark {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   column-gap: 0.5em;
   align-items: start;
   border: 1px solid var(--callout-border, var(--callout-color));
-  border-inline-start-width: 0;
   border-radius: 4px;
   background: var(
     --callout-bg,
@@ -1169,6 +1169,11 @@ details.callout[open] > summary {
 
 .preview-content .callout-mark-icon {
   grid-column: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.6em;
+  padding-inline: 2px;
   line-height: 1.7;
   user-select: none;
 }

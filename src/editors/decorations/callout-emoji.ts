@@ -57,6 +57,8 @@ function publishOverrides(view: EditorView): void {
       detail: snapshot,
     }),
   );
+  // 已挂载的预览需要立刻重渲（同一文档共享会话快照），否则要等下次内容变化。
+  document.dispatchEvent(new CustomEvent("biaoyue:callout-emoji-changed"));
 }
 
 /** 某个高亮块的展示覆盖；返回 undefined 时回落到类型默认。 */

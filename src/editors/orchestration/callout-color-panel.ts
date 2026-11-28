@@ -132,6 +132,34 @@ export function resetCalloutColors(
 }
 
 /**
+ * 标注随机：从背景色板（15 色，排除默认项）随机取一色名，同时写 `bg` 与
+ * `border`（同名），`text` 不变。一次事务 = 一步撤销。
+ *
+ * 与高亮的 `randomHighlightColors` 分开：标注只有填充 / 边框两行，且两行
+ * 取同一色名（不是同色相的深浅档）。
+ */
+export function randomCalloutColors(
+  view: EditorView,
+  from: number,
+  to: number,
+): CalloutAttrs | null {
+  const current = view.state.doc.sliceString(from, to);
+  const attrs = getCalloutAttrs(current);
+  const pool = BACKGROUND_COLORS.filter(
+    (color) => color.className !== "" && !color.isDefault,
+  );
+  const picked = pool[Math.floor(Math.random() * pool.length)];
+  if (!picked) return null;
+  const name = attrNameFromClassName("bg", picked.className);
+  if (name === "") return null;
+  const nextAttrs = { ...attrs, bg: name, border: name };
+  const next = setCalloutAttrs(current, nextAttrs);
+  if (next === current) return null;
+  view.dispatch(structureTransaction({ changes: { from, to, insert: next } }));
+  return nextAttrs;
+}
+
+/**
  * 把面板的裸色名（存储值，如 `yellow` / `darkred`）换算成该行的 className，
  * 供 `data-active` 比对。
  *
@@ -157,7 +185,8 @@ function activeClassNameOf(
 }
 
 /**
- * 构建三色面板内容：字体颜色 / 边框颜色 / 填充颜色三行 + 「恢复默认」。
+ * 构建三色面板内容：头行（字体颜色 + 随机）/ 字体颜色行 / 边框颜色行 /
+ * 填充颜色行 + 「恢复默认」。
  *
  * 调用方负责外层容器（类名、定位、生命周期）；本函数只产出内容与选择回调，
  * 当前选中项以 `data-active` 标注。
@@ -166,24 +195,90 @@ export function buildCalloutColorPanel(args: {
   active: CalloutAttrs;
   onPick: (key: CalloutColorKey, className: string) => void;
   onReset: () => void;
+  /**
+   * 头行「随机」：同时写 `bg` / `border`（同名），`text` 不变。
+   * 返回写入后的属性，供面板原地刷新 `data-active`。
+   */
+  onRandom?: () => CalloutAttrs | null;
 }): HTMLElement {
-  const { active, onPick, onReset } = args;
+  const { active, onPick, onReset, onRandom } = args;
   const root = document.createElement("div");
   root.className = CALLOUT_COLOR_PANEL_CLASS;
 
+  /** 行 kind + 色板 + 属性键，与 addRow 的构建顺序一一对应。 */
+  const rowSpecs: ReadonlyArray<{
+    label: string | null;
+    kind: ColorKind;
+    colors: readonly ColorSwatch[];
+    key: CalloutColorKey;
+  }> = [
+    // 头行已渲染「字体颜色」，字体行不再重复标签。
+    { label: null, kind: "font", colors: FONT_COLORS, key: "text" },
+    { label: "边框颜色", kind: "border", colors: BORDER_COLORS, key: "border" },
+    {
+      label: "填充颜色",
+      kind: "background",
+      colors: BACKGROUND_COLORS,
+      key: "bg",
+    },
+  ];
+
+  // 头行与高亮面板一致：左「字体颜色」标签 + 右侧「随机」。
+  const head = document.createElement("div");
+  head.className = "cm-color-panel-head";
+  const headLabel = document.createElement("span");
+  headLabel.className = "cm-color-row-label";
+  headLabel.textContent = "字体颜色";
+  head.appendChild(headLabel);
+  if (onRandom) {
+    const randomButton = document.createElement("button");
+    randomButton.type = "button";
+    randomButton.className = "cm-color-random";
+    randomButton.dataset.testid = "color-random-callout";
+    randomButton.title = "随机切换边框与填充（同色）";
+    randomButton.appendChild(renderIcon("RotateOutlined"));
+    const randomText = document.createElement("span");
+    randomText.textContent = "随机";
+    randomButton.appendChild(randomText);
+    randomButton.addEventListener("mousedown", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const next = onRandom();
+      if (next) applyActive(next);
+    });
+    head.appendChild(randomButton);
+  }
+  root.appendChild(head);
+
   const addRow = (
-    label: string,
+    label: string | null,
     kind: ColorKind,
     colors: readonly ColorSwatch[],
     activeName: string,
-  ): void => {
-    const labelEl = document.createElement("div");
-    labelEl.className = "cm-color-row-label";
-    labelEl.textContent = label;
-    root.appendChild(labelEl);
-    const rowEl = createColorRow(kind, colors, (pickedKind, className) =>
-      onPick(KEY_OF_KIND[pickedKind], className),
-    );
+  ): HTMLElement => {
+    if (label !== null) {
+      const labelEl = document.createElement("div");
+      labelEl.className = "cm-color-row-label";
+      labelEl.textContent = label;
+      root.appendChild(labelEl);
+    }
+    const rowEl = createColorRow(kind, colors, (pickedKind, className) => {
+      const wasActive = Array.from(
+        rowEl.querySelectorAll<HTMLButtonElement>(".cm-color-swatch"),
+      ).some(
+        (swatch) =>
+          swatch.dataset.className === className &&
+          swatch.dataset.active === "true",
+      );
+      onPick(KEY_OF_KIND[pickedKind], className);
+      // 选中语义与写回一致：点已选中的色块 = 清除；否则写入选中的色块。
+      const target = wasActive ? "" : className;
+      rowEl
+        .querySelectorAll<HTMLButtonElement>(".cm-color-swatch")
+        .forEach((swatch) => {
+          swatch.dataset.active = String(swatch.dataset.className === target);
+        });
+    });
     const activeClass = activeClassNameOf(kind, activeName, colors);
     rowEl
       .querySelectorAll<HTMLButtonElement>(".cm-color-swatch")
@@ -191,11 +286,29 @@ export function buildCalloutColorPanel(args: {
         swatch.dataset.active = String(swatch.dataset.className === activeClass);
       });
     root.appendChild(rowEl);
+    return rowEl;
   };
 
-  addRow("字体颜色", "font", FONT_COLORS, active.text ?? "");
-  addRow("边框颜色", "border", BORDER_COLORS, active.border ?? "");
-  addRow("填充颜色", "background", BACKGROUND_COLORS, active.bg ?? "");
+  const rows = rowSpecs.map((spec) => ({
+    spec,
+    rowEl: addRow(spec.label, spec.kind, spec.colors, active[spec.key] ?? ""),
+  }));
+
+  /** 按当前属性重算每格 `data-active`；不重建节点、不改动面板结构。 */
+  const applyActive = (next: CalloutAttrs): void => {
+    for (const { spec, rowEl } of rows) {
+      const activeClass = activeClassNameOf(
+        spec.kind,
+        next[spec.key] ?? "",
+        spec.colors,
+      );
+      rowEl
+        .querySelectorAll<HTMLButtonElement>(".cm-color-swatch")
+        .forEach((swatch) => {
+          swatch.dataset.active = String(swatch.dataset.className === activeClass);
+        });
+    }
+  };
 
   const resetButton = document.createElement("button");
   resetButton.type = "button";
@@ -206,6 +319,7 @@ export function buildCalloutColorPanel(args: {
     event.preventDefault();
     event.stopPropagation();
     onReset();
+    applyActive({});
   });
   root.appendChild(resetButton);
 
@@ -296,8 +410,21 @@ export function buildHighlightColorPanel(args: {
       root.appendChild(labelEl);
     }
     const rowEl = createColorRow(kind, colors, (pickedKind, className) => {
+      const wasActive = Array.from(
+        rowEl.querySelectorAll<HTMLButtonElement>(".cm-color-swatch"),
+      ).some(
+        (swatch) =>
+          swatch.dataset.className === className &&
+          swatch.dataset.active === "true",
+      );
       onPick(KEY_OF_KIND[pickedKind], className);
-      refreshActive();
+      // 选中语义与写回一致：点已选中的色块 = 清除；否则写入选中的色块。
+      const target = wasActive ? "" : className;
+      rowEl
+        .querySelectorAll<HTMLButtonElement>(".cm-color-swatch")
+        .forEach((swatch) => {
+          swatch.dataset.active = String(swatch.dataset.className === target);
+        });
     });
     const activeClass = activeClassNameOf(kind, activeName, colors);
     rowEl
@@ -335,7 +462,7 @@ export function buildHighlightColorPanel(args: {
     }
   };
 
-  /** 选色 / 随机后：先写回，再按最新属性原地刷新选中态。 */
+  /** 高亮面板：选色 / 随机后按 getActive 重读属性刷新选中态。 */
   const refreshActive = (): void => {
     if (!getActive) return;
     applyActive(getActive());
@@ -350,7 +477,7 @@ export function buildHighlightColorPanel(args: {
     event.preventDefault();
     event.stopPropagation();
     onReset();
-    refreshActive();
+    applyActive({});
   });
   root.appendChild(resetButton);
 

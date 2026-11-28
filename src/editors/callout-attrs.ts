@@ -128,9 +128,14 @@ export function serializeCalloutAttrs(attrs: CalloutAttrs): string {
   return parts.length > 0 ? `{${parts.join(" ")}}` : "";
 }
 
-/** 首行结构：`> [!TYPE][+-]?{attrs}? 标题`（与装饰的 `CALLOUT_OPEN_RE` 同形）。 */
+/**
+ * 首行结构：`> [!TYPE][+-]?{attrs}? 标题`。
+ *
+ * `]` 与属性块之间允许空白：编辑态回写历史版本时出现过 `> [!NOTE] {bg=red}`
+ * 的写法；不容忍空白会把旧属性当标题，导致再次改色时叠加出第二个属性块。
+ */
 const FIRST_LINE_RE =
-  /^(\s{0,3}>\s*\[![A-Za-z]+\])([+-]?)(\{[^}]*\})?(\s*)(.*)$/;
+  /^(\s{0,3}>\s*\[![A-Za-z]+\])([+-]?)\s*(\{[^}]*\})?(\s*)(.*)$/;
 
 /** 读取块首行已有的三色属性（无属性块返回空对象）。 */
 export function getCalloutAttrs(blockText: string): CalloutAttrs {
