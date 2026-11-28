@@ -1,0 +1,46 @@
+{
+  "states": [
+    {
+      "state": "button-六变体-两尺寸",
+      "screenshot": ".artifacts/1708/01-showcase-light.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-28T09:01:24Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "hover-primary-secondary-ghost",
+      "screenshot": ".artifacts/1708/02-showcase-hover.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-28T09:01:24Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "iconbutton-两尺寸-命中区与禁用",
+      "screenshot": ".artifacts/1708/03-showcase-disabled.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-28T09:01:24Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "暗色主题-六变体（danger 珊瑚红）",
+      "screenshot": ".artifacts/1708/04-showcase-dark.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-28T09:01:24Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "button-loading-宽度稳定",
+      "screenshot": ".artifacts/1708/05-showcase-loading.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-28T09:01:24Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "暗色主题-六变体",
+      "screenshot": ".artifacts/1708/04-showcase-dark.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-28T09:05:05Z",
+      "runner": "mason@MMBP"
+    }
+  ]
+}
