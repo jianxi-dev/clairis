@@ -20,6 +20,7 @@
  */
 import { markCropProbe, traceScrollTop } from "../../utils/cropJumpProbe";
 import { MIN_CROP_SIZE, cropDisplayCache, cropDisplayKey } from "./image";
+import { EditorView } from "@codemirror/view";
 import { getSelectedImageFrom, notifyImageCropState } from "./imageToolbar";
 import {
   displayRectFromImageRect,
@@ -964,6 +965,12 @@ function mount(
   let guardRaf = 0;
   let guardStop = false;
   const guardTop = scroller ? scroller.scrollTop : 0;
+  // 裁剪态锁定 CM6 光标（#1678 真机定论）：click 落到正文会让 CM6 落光标
+  // （日志 sel 0→1340）并做 caret 揭示滚动；事件拦截在 window/document 都
+  // 拦不住（CM6 注册更早）。改为把 selection 钉在进入时的位置——光标不动，
+  // 就没有揭示滚动。
+  const cropView = widget ? EditorView.findFromDOM(widget) : null;
+  const pinnedSel = cropView ? cropView.state.selection.main : null;
   if (scroller) {
     // **硬锁**：裁剪是模态交互，会话期间正文不该滚动。任何 scrollTop 变化
     // （CM6 光标揭示、内容重排、滚轮在裁剪框上冒泡……）都立即拉回。
@@ -991,6 +998,14 @@ function mount(
     });
     const guard = (): void => {
       if (guardStop) return;
+      if (cropView && pinnedSel) {
+        const cur = cropView.state.selection.main;
+        if (cur.from !== pinnedSel.from || cur.to !== pinnedSel.to) {
+          cropView.dispatch({
+            selection: { anchor: pinnedSel.from, head: pinnedSel.to },
+          });
+        }
+      }
       // **不要**因 scroller 暂时脱离文档就退出（真机日志 r11：首裁时 widget
       // 重建会让 scroller 短暂 detached，旧实现 `return` 后守护永久停止，
       // 于是首裁那一下 -1110 无人拉回；第 2 张起才有回拉）。脱离期间继续

@@ -186,3 +186,14 @@ settled scrollerSH 9048  widgetH 550  imgH 550  winH 550  captionH 0  frameH 550
 
 根因：守护的 scroll 监听绑在具体 scroller 实例上，会话交替后不总命中。
 改为 **document capture**（`event.target` 是 .cm-scroller 才处理），不依赖实例。
+
+## 十四轮（r14）：钉住光标
+
+r13 日志：首裁 `sel 0→1340`（CM6 落光标），JUMP -973 后 **79ms 才回拉**（5 帧）；
+其他会话也有成对 JUMP。事件拦截在 window/document 均无效（CM6 注册更早）。
+
+修：裁剪会话期间把 CM6 **selection 钉在进入时的位置**（guard 每帧检查并
+dispatch 回去）。光标不动 → 不存在 caret 揭示滚动 → 位移根本不发生，
+而不是"跳出后拉回"。
+
+（尝试过的 `pointer-events: none` 模态方案会禁掉裁剪把手，已回退。）
