@@ -946,19 +946,12 @@ function mount(
   // scrollTop 变化立即拉回；用户拖框 / 滚轮 / 触摸 / 按键则让位。
   let guardRaf = 0;
   let guardStop = false;
-  let guardTop = scroller ? scroller.scrollTop : 0;
+  const guardTop = scroller ? scroller.scrollTop : 0;
   if (scroller) {
-    const rebase = (): void => {
-      guardTop = scroller.scrollTop;
-    };
-    // **不要**在裁剪框的 pointerdown 上 rebase：双击确认的第一下就落在框上，
-    // 一旦 rebase，守护会把「已经被光标揭示带偏的位置」当成新基准，后续不再
-    // 拉回（真机日志：第 2 张每次裁都有一次 -400~-540 不回收）。拖框本身不改
-    // scrollTop，这里根本不需要让位。只有用户主动滚动正文（滚轮/触摸/按键）
-    // 才 rebase。
-    scroller.addEventListener("wheel", rebase, { passive: true });
-    scroller.addEventListener("touchstart", rebase, { passive: true });
-    window.addEventListener("keydown", rebase);
+    // **硬锁**：裁剪是模态交互，会话期间正文不该滚动。任何 scrollTop 变化
+    // （CM6 光标揭示、内容重排、滚轮在裁剪框上冒泡……）都立即拉回。
+    // 之前给 wheel/touch/keydown 做 rebase 让位，反而把「已被带偏的位置」
+    // 当成新基准，导致单向位移残留（真机日志 r9/r10：JUMP 后无回拉）。
     const guard = (): void => {
       if (guardStop || !scroller.isConnected) return;
       if (Math.abs(scroller.scrollTop - guardTop) >= 1) {
