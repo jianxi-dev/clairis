@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "generatedBy": "scripts/check-icons.mjs",
+  "reason": "存量孤儿键（Q3 冻结，只减不增）。图标是数据面（resources/icons.default.json 可按同名键覆盖），删键会让用户/主题覆盖指向不存在的键，故本票只登记不清删；后续图标清理票逐条确认后再从本清单移除。",
+  "orphans": [
+    "sun",
+    "enterKey",
+    "tune",
+    "HOutlined",
+    "TaskAltOutlined",
+    "ColumnsOutlined",
+    "MediaFileOutlined",
+    "CodeOffOutlined",
+    "CutOutlined",
+    "ContentCopyOutlined",
+    "DeleteOutlined",
+    "HeaderColumnOutlined",
+    "DistributeColumnsOutlined",
+    "LinkRecordOutlined",
+    "NewJoinMeetingOutlined",
+    "FeishuclipOutlined",
+    "TranslateOutlined",
+    "SharewordsOutlined",
+    "BlocklinkOutlined",
+    "AddCommentOutlined",
+    "TextEditOutlined",
+    "LockOutlined"
+  ]
+}

@@ -79,6 +79,16 @@ else
   FAIL=1
 fi
 
+# 3e. Icon Gate
+echo ""
+echo "── 3e. Icon Gate ──"
+if node scripts/check-icons.mjs; then
+  echo "  ✅ Icon gate"
+else
+  echo "  ❌ Icon gate failures"
+  FAIL=1
+fi
+
 # 4. Rust
 echo ""
 echo "── 4. Rust ──"
