@@ -5,7 +5,6 @@ const EXAMPLES = ["换成深色主题", "字号调到 18"];
 
 export default function CommandOverlay() {
   const store = useAiEntryStore();
-  const closeOverlay = useAiEntryStore((s) => s.closeOverlay);
   const inputRef = useRef<HTMLInputElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -18,17 +17,21 @@ export default function CommandOverlay() {
   useEffect(() => {
     if (!store.overlayOpen) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        e.stopPropagation();
-        closeOverlay();
+      if (e.key !== "Escape") return;
+      e.preventDefault();
+      e.stopPropagation();
+      const s = useAiEntryStore.getState();
+      if (s.pendingConfirm) {
+        s.cancelPendingSubmit();
+        return;
       }
+      s.closeOverlay();
     };
     const onDown = (e: MouseEvent) => {
       const target = e.target as HTMLElement | null;
       if (target?.closest("[data-ai-chrome]")) return;
       if (rootRef.current && !rootRef.current.contains(target)) {
-        closeOverlay();
+        useAiEntryStore.getState().closeOverlay();
       }
     };
     document.addEventListener("keydown", onKey, { capture: true });
@@ -37,7 +40,7 @@ export default function CommandOverlay() {
       document.removeEventListener("keydown", onKey, { capture: true });
       document.removeEventListener("mousedown", onDown);
     };
-  }, [store.overlayOpen, closeOverlay]);
+  }, [store.overlayOpen]);
 
   if (!store.overlayOpen) return null;
 
