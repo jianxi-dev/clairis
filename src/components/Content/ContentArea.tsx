@@ -825,8 +825,26 @@ export default function ContentArea({
     const textAnchor = modeScrollTextAnchorRef.current;
     if ((ratio == null || ratio <= 0) && !textAnchor) return;
     modeRestoringRef.current = true;
+    // DEV 诊断：把模式切换的目标位置与实际落位写入 crop-debug.log，
+    // 真机复测时可直接看到「跳了多少 / 落在哪」。
+    markCropProbe("mode-switch", {
+      from: prev,
+      to: editorMode,
+      savedTop: modeEditScrollTopRef.current,
+      ratio,
+    });
     window.setTimeout(() => {
       modeRestoringRef.current = false;
+      const sc =
+        editorMode === "preview"
+          ? scrollContainerRef.current
+          : (viewRef.current?.scrollDOM ?? null);
+      markCropProbe("mode-settled", {
+        mode: editorMode,
+        top: sc ? Math.round(sc.scrollTop) : null,
+        scrollHeight: sc ? sc.scrollHeight : null,
+        clientHeight: sc ? sc.clientHeight : null,
+      });
     }, 400);
 
     let raf1 = 0;

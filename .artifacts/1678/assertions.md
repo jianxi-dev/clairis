@@ -84,3 +84,16 @@ JUMP 159228: 3123 → 0     docH 7440 → 767
 （尝试过的 min-height 顶住方案会干扰预览尺寸计算，已回退。）
 
 裁剪侧：本轮日志确认会话内已无 `pointerdown:cm-line` 跳（上一轮修复生效）；剩余抖动来自内容高度小幅变化（docH 8971 ↔ 8917），待下一轮定位。
+
+## 五轮（r5）：拦截层级修正
+
+第三轮日志：`content-scroll` 塌陷 **0 次**（容量感知生效 ✓），但裁剪会话内
+`pointerdown:cm-line` 仍 4 次（例：`JUMP 81336: 2092 → 2735`，输入
+`pointerup/click:cm-image-crop-frame` → `pointerdown:cm-line` → `mousedown:cm-line`）。
+
+原因：`suppressCaret` 挂在 `document` capture，而 CM6 的指针处理也注册在
+document 且更早——同节点上 `stopPropagation` 拦不住它。改挂 **window capture**
+（document 的父级，必然最先执行）。
+
+另加模式切换探针（`mode-switch` / `mode-settled` 写入同一日志），
+真机复测可直接看到切换的目标位置与实际落位。
