@@ -972,18 +972,23 @@ function mount(
     // scroll 事件在本轮滚动后立即派发：比 rAF 链少一帧（真机日志回拉用了
     // 36ms ≈ 2 帧，用户仍能看到「往上跳一点」）。在 scroll 回调里同步拉回。
     let restoring = false;
-    const onScroll = (): void => {
+    const onScroll = (event: Event): void => {
       if (guardStop || restoring) return;
-      const sc = scroller.isConnected
-        ? scroller
-        : (widget.closest(".cm-scroller") as HTMLElement | null);
-      if (sc && Math.abs(sc.scrollTop - guardTop) >= 1) {
+      const t = event.target;
+      if (!(t instanceof HTMLElement)) return;
+      if (!t.classList.contains("cm-scroller")) return;
+      if (Math.abs(t.scrollTop - guardTop) >= 1) {
         restoring = true;
-        sc.scrollTop = guardTop;
+        t.scrollTop = guardTop;
         restoring = false;
       }
     };
-    scroller.addEventListener("scroll", onScroll, { passive: true });
+    // **document 级 capture**：不依赖具体 scroller 实例（widget 重建/会话
+    // 交替后实例可能不同，真机日志 r13：第 2 张的 -457 无回拉，首图有）。
+    document.addEventListener("scroll", onScroll, {
+      capture: true,
+      passive: true,
+    });
     const guard = (): void => {
       if (guardStop) return;
       // **不要**因 scroller 暂时脱离文档就退出（真机日志 r11：首裁时 widget

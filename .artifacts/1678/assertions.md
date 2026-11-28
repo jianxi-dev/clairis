@@ -168,3 +168,21 @@ r11 日志：会话1（首裁）-1110 **无回拉**；会话2 -220→+220、会�
 根因：守护里 `if (!scroller.isConnected) return;` —— 首裁时 widget 重建让
 scroller 短暂 detached，守护队因此**永久退出**，之后无人拉回。改为脱离期间
 继续轮询（每帧重新查找 scroller），恢复后立即拉回。
+
+## 十三轮（r13）：高度探针定论 + document 级守护
+
+`crop-heights-*` 探针（r12 新增）结论：
+
+```
+enter   scrollerSH 9048  widgetH 550  imgH 550  winH 550  captionH 0  frameH 550
+settled scrollerSH 9048  widgetH 550  imgH 550  winH 550  captionH 0  frameH 550
+（各部件前后完全一致 → 进入裁剪**不改变任何部件高度**）
+```
+
+`9048 → 8756`（-292px）是**会话 1 确认裁剪后**的正常结果（图从 550 缩到 419），
+不是首跳原因。
+
+真位移：首图 `2104→1083→2103`（有回拉）；2 图 `2430→1973`（-457，**无回拉**）。
+
+根因：守护的 scroll 监听绑在具体 scroller 实例上，会话交替后不总命中。
+改为 **document capture**（`event.target` 是 .cm-scroller 才处理），不依赖实例。
