@@ -1,5 +1,11 @@
 import { test, expect, type Locator, type Page } from "@playwright/test";
 import { openMarkdownInEdit } from "../helpers/ui-probe";
+import {
+  contrastRatio,
+  parseHexColor,
+  mixOver,
+  rgbToHex,
+} from "../../src/editors/orchestration/color-contrast";
 
 /**
  * #1676 后续三处修正（fix/callout-mark-fix3）：
@@ -270,25 +276,13 @@ test("F：随机三元组按对比度选色（高亮 + 标注）", async ({ page
     const textM = /text=([a-z]+)/.exec(text);
     const fill = read(`--hl-fill-${m?.[1] ?? ""}`, "#ffffff");
     const font = textM ? read(`--hl-font-${textM[1]}`, "#000000") : read("--app-text", "#24262b");
-    const parse = (hex: string): [number, number, number] => {
-      const n = Number.parseInt(hex.slice(1), 16);
-      return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
-    };
-    const lum = ([r, g, b]: [number, number, number]): number => {
-      const f = (c: number): number => {
-        const s = c / 255;
-        return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
-      };
-      return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
-    };
-    const ratio = (a: [number, number, number], b: [number, number, number]): number => {
-      const la = lum(a);
-      const lb = lum(b);
-      return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
-    };
-    return { ratio: ratio(parse(font), parse(fill)) };
+    return { fill, font };
   });
-  expect(hl.ratio).toBeGreaterThanOrEqual(4);
+  const hlFill = parseHexColor(hl.fill);
+  const hlFont = parseHexColor(hl.font);
+  expect(hlFill).not.toBeNull();
+  expect(hlFont).not.toBeNull();
+  expect(contrastRatio(hlFont!, hlFill!)).toBeGreaterThanOrEqual(4.5);
 
   await openMarkdownInEdit(
     page,
@@ -323,27 +317,21 @@ test("F：随机三元组按对比度选色（高亮 + 标注）", async ({ page
     const bgHex = read(`--hl-fill-${m?.[1] ?? ""}`, "#f0000e");
     const surface = read("--app-surface", "#fbfaf8");
     const font = textM ? read(`--hl-font-${textM[1]}`, "#000000") : read("--app-text", "#24262b");
-    const parse = (hex: string): [number, number, number] => {
-      const n = Number.parseInt(hex.slice(1), 16);
-      return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
-    };
-    const bg = parse(bgHex);
-    const s = parse(surface);
-    const tint: [number, number, number] = [
-      Math.round(bg[0] * 0.1 + s[0] * 0.9),
-      Math.round(bg[1] * 0.1 + s[1] * 0.9),
-      Math.round(bg[2] * 0.1 + s[2] * 0.9),
-    ];
-    const lum = ([r, g, b]: [number, number, number]): number => {
-      const f = (c: number): number => {
-        const x = c / 255;
-        return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4);
-      };
-      return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
-    };
-    const la = lum(parse(font));
-    const lb = lum(tint);
-    return { ratio: (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05), text: textM?.[1] ?? "" };
+    return { bgHex, surface, font, text: textM?.[1] ?? "" };
   });
-  expect(note.ratio).toBeGreaterThanOrEqual(4);
+  const noteBg = parseHexColor(note.bgHex);
+  const noteSurface = parseHexColor(note.surface);
+  const noteFont = parseHexColor(note.font);
+  expect(noteBg).not.toBeNull();
+  expect(noteSurface).not.toBeNull();
+  expect(noteFont).not.toBeNull();
+  const tint = rgbToHex(mixOver(noteBg!, noteSurface!, 0.1));
+  expect(contrastRatio(noteFont!, parseHexColor(tint)!)).toBeGreaterThanOrEqual(4.5);
+
+  // 标注部分：随机后原面板仍可见；⌘Z 撤销后首行属性块回到随机前。
+  await expect(calloutPanel).toBeVisible();
+  await page.keyboard.press("Meta+z");
+  await expect
+    .poll(() => storeContent(page))
+    .toMatch(/\{bg=red border=red text=yellow\}/);
 });

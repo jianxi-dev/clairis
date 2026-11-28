@@ -67,22 +67,16 @@ export function rgbToHex(rgb: Rgb): string {
   return `#${to(rgb.r)}${to(rgb.g)}${to(rgb.b)}`;
 }
 
-/** 当前主题（`warm` 为独立暖色主题，对比度兜底按浅色处理）。 */
-export function currentTheme(): "light" | "dark" | "warm" {
-  const root = document.documentElement;
-  if (root.classList.contains("dark")) return "dark";
-  if (root.classList.contains("warm")) return "warm";
-  return "light";
-}
-
 /**
- * 读 CSS 色值：入参是 CSS 变量名（如 `--hl-fill-red`）时取 `:root` 计算值，
- * 否则按 hex 原样处理；无法解析为 hex 时返回空串（调用方据此跳过文字改色）。
+ * 读 CSS 色值：入参是 CSS 变量名（`--hl-fill-red` 或 `var(--hl-fill-red)`）时
+ * 取 `:root` 计算值，否则按 hex 原样处理；无法解析为 hex 时返回空串（调用方
+ * 据此跳过文字改色）。
  */
 export function readCssColor(nameOrHex: string): string {
-  const value = nameOrHex.startsWith("--")
-    ? getComputedStyle(document.documentElement).getPropertyValue(nameOrHex).trim()
-    : nameOrHex.trim();
+  const name = nameOrHex.trim().replace(/^var\((--[^)]+)\)$/, "$1");
+  const value = name.startsWith("--")
+    ? getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+    : name;
   return parseHexColor(value) ? value : "";
 }
 

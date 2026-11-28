@@ -54,11 +54,13 @@ const HIGHLIGHT_BORDER_NAMES: ReadonlySet<string> = new Set(
 );
 
 /** 高亮字体色板的后缀集合。 */
-const HIGHLIGHT_TEXT_NAMES: ReadonlySet<string> = new Set(
-  HIGHLIGHT_FONT_COLORS.filter((color) => !color.isDefault).map((color) =>
+const HIGHLIGHT_TEXT_NAMES: ReadonlySet<string> = new Set([
+  ...HIGHLIGHT_FONT_COLORS.filter((color) => !color.isDefault).map((color) =>
     color.className.replace(/^hl-color-/, ""),
   ),
-);
+  // 旧文档 `text=gray`：灰色已从高亮字体板移出，但 CSS 变量仍在，保留解析兼容。
+  "gray",
+]);
 
 const BG_NAME_SET: ReadonlySet<string> = new Set([
   ...BG_NAMES,

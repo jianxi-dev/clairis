@@ -426,7 +426,7 @@ describe("randomCalloutColors（#1677）", () => {
       textName === ""
         ? parseHexColor(readCssColor("--app-text"))!
         : parseHexColor(readCssColor(`--hl-font-${textName}`))!;
-    expect(contrastRatio(textHex, tint)).toBeGreaterThanOrEqual(4);
+    expect(contrastRatio(textHex, tint)).toBeGreaterThanOrEqual(4.5);
   });
 
   it("连续随机 3 次首行只有一个属性块，正文仍在", () => {
@@ -465,7 +465,7 @@ describe("randomHighlightColors（fix/random-contrast）", () => {
     return view;
   }
 
-  it("随机后写回三元组，文字与所选填充对比度 ≥4", () => {
+  it("随机后写回三元组，文字与所选填充对比度 ≥4.5", () => {
     const editor = createEditor(DOC);
     const from = 0;
     const to = editor.state.doc.length;
@@ -481,7 +481,9 @@ describe("randomHighlightColors（fix/random-contrast）", () => {
       textName === ""
         ? readCssColor("--app-text")
         : readCssColor(`--hl-font-${textName}`);
-    expect(contrastRatio(parseHexColor(textHex)!, fill)).toBeGreaterThanOrEqual(4);
+    expect(contrastRatio(parseHexColor(textHex)!, fill)).toBeGreaterThanOrEqual(
+      4.5,
+    );
   });
 
   it("连续随机 3 次首行只有一个属性块，正文仍在", () => {
