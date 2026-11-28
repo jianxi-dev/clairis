@@ -12,7 +12,6 @@ import { revealStatusBar } from "./helpers/ui-probe";
  * 与 __biaoyue_openFile__ 驱动真实 UI；断言落到计算属性与 DOM 状态。
  */
 
-const APP_URL = "http://localhost:1424";
 const ART = path.resolve(process.cwd(), ".artifacts/1648");
 
 mkdirSync(ART, { recursive: true });
@@ -63,7 +62,7 @@ async function record(page: Page, state: string): Promise<void> {
 
 async function boot(page: Page): Promise<void> {
   await page.addInitScript({ path: "./e2e/mocks/tauri-mock.js" });
-  await page.goto(APP_URL, { waitUntil: "networkidle" });
+  await page.goto("/", { waitUntil: "networkidle" });
   await page.waitForSelector('[data-testid="pane-header"]', { timeout: 15000 });
 }
 
@@ -175,6 +174,26 @@ test.describe("禁用而非隐藏：AI 空输入时发送按钮保留可见且�
     await page.locator("[data-ai-input]").fill("换成深色主题");
     await expect(send).toBeEnabled();
     await record(page, "06-ai-send-enabled-with-input");
+  });
+});
+
+test.describe("层叠：格头菜单打开即可命中", () => {
+  test("菜单不被文档属性卡遮挡（打开瞬间即可点）", async ({ page }) => {
+    await boot(page);
+    await newUnsavedTab(page);
+    await page.locator('[data-testid="pane-menu-button"]').first().click();
+    await expect(page.locator('[data-testid="pane-menu"]')).toHaveCount(1);
+    const hitsMenu = await page.evaluate(() => {
+      const menu = document.querySelector('[data-testid="pane-menu"]');
+      if (!menu) return false;
+      const b = menu.getBoundingClientRect();
+      const el = document.elementFromPoint(
+        b.x + b.width / 2,
+        b.y + b.height / 2,
+      );
+      return Boolean(el && el.closest('[data-testid="pane-menu"]'));
+    });
+    expect(hitsMenu).toBe(true);
   });
 });
 

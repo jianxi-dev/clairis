@@ -1655,6 +1655,12 @@ body {
   opacity: 1;
 }
 
+/* 菜单打开时瞬时完全不透明：过渡期间 opacity < 1 会创建层叠上下文，
+   z-50 的菜单会被正文属性卡压住且近乎透明（见 #1701）。 */
+.pane-actions[data-open="true"] {
+  transition: none;
+}
+
 /* 熟练模式（pane-presets-coverage-v1 / G-13）：simple 档栏目头按钮恒显；
    standard 保持上面的 hover / focus / 菜单打开显现；hardcore 默认隐藏，
    仅临时显现期（data-pane-revealed）显现。全部 scoped .app-root:not(.immersive)，
