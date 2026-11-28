@@ -853,6 +853,34 @@ function mount(
     from: options.from ?? null,
     crop: options.crop,
   });
+
+  // 进入裁剪时 widget 高度会变（真机日志：docH 9040 → 8748，-292px）——
+  // 图片下方的正文整体上下移，第一张尤其明显（后面几张已有显示尺寸缓存）。
+  // 按高度差补偿 scrollTop，让下方内容视觉不动。
+  {
+    const hostWidget = scroller?.querySelector<HTMLElement>(".cm-image-widget");
+    const beforeH = hostWidget?.getBoundingClientRect().height ?? 0;
+    if (hostWidget && scroller && beforeH > 0) {
+      let done = false;
+      const compensate = (): void => {
+        if (done || !scroller.isConnected) return;
+        done = true;
+        const afterH = hostWidget.getBoundingClientRect().height;
+        const delta = afterH - beforeH;
+        if (Math.abs(delta) >= 2) {
+          scroller.scrollTop = Math.max(0, scroller.scrollTop + delta);
+        }
+        markCropProbe("crop-height-compensated", {
+          beforeH: Math.round(beforeH),
+          afterH: Math.round(afterH),
+          delta: Math.round(delta),
+        });
+      };
+      requestAnimationFrame(compensate);
+      // 图片解码/布局可能更晚：再补一次
+      window.setTimeout(compensate, 80);
+    }
+  }
   // 会话级滚动夹取护栏：第一次裁剪时 widget 结构由普通 img 换成裁剪窗口，
   // 内容高度会瞬时塌陷，浏览器把 scrollTop 夹成 0；内容恢复后不回填 →
   // 「跳到顶部」（WebKit 无 scroll anchoring，真机必现；Chromium 掩盖了它）。
