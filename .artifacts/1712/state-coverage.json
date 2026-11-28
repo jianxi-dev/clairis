@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "矩阵亮色-24锚点",
+      "screenshot": ".artifacts/1712/01-matrix-light.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-28T12:06:51Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "矩阵暗色-仍24锚点",
+      "screenshot": ".artifacts/1712/02-matrix-dark.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-28T12:06:51Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "提示四向样张",
+      "screenshot": ".artifacts/1712/03-tooltip-four-sides.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-28T12:06:51Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "空态单元格不留白",
+      "screenshot": ".artifacts/1712/04-empty-state.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-28T12:07:09Z",
+      "runner": "unknown@MMBP"
+    }
+  ]
+}
