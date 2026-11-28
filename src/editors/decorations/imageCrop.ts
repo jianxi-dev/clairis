@@ -951,7 +951,11 @@ function mount(
     const rebase = (): void => {
       guardTop = scroller.scrollTop;
     };
-    frame.addEventListener("pointerdown", rebase, { passive: true });
+    // **不要**在裁剪框的 pointerdown 上 rebase：双击确认的第一下就落在框上，
+    // 一旦 rebase，守护会把「已经被光标揭示带偏的位置」当成新基准，后续不再
+    // 拉回（真机日志：第 2 张每次裁都有一次 -400~-540 不回收）。拖框本身不改
+    // scrollTop，这里根本不需要让位。只有用户主动滚动正文（滚轮/触摸/按键）
+    // 才 rebase。
     scroller.addEventListener("wheel", rebase, { passive: true });
     scroller.addEventListener("touchstart", rebase, { passive: true });
     window.addEventListener("keydown", rebase);
