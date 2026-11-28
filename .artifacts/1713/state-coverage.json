@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "设置页-三按钮走基件",
+      "screenshot": ".artifacts/1713/01-settings-light.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-28T12:28:47Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "设置页-暗色",
+      "screenshot": ".artifacts/1713/02-settings-dark.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-28T12:28:47Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "阅读轨动作-亮色",
+      "screenshot": ".artifacts/1713/03-rail-actions-light.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-28T12:28:47Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "阅读轨动作-暗色",
+      "screenshot": ".artifacts/1713/04-rail-actions-dark.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-28T12:28:47Z",
+      "runner": "unknown@MMBP"
+    }
+  ]
+}
