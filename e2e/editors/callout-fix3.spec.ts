@@ -16,7 +16,7 @@ import { openMarkdownInEdit } from "../helpers/ui-probe";
 interface BridgeWindow extends Window {
   __biaoyue_store__: {
     getState: () => {
-      tabs: Record<string, string>;
+      tabs: Record<string, { content: string }>;
       activeTabId: string;
       setEditorMode: (mode: string) => void;
     };
@@ -27,7 +27,7 @@ function storeContent(page: Page): Promise<string> {
   return page.evaluate(() => {
     const win = window as unknown as BridgeWindow;
     const state = win.__biaoyue_store__.getState();
-    return state.tabs[state.activeTabId] ?? "";
+    return state.tabs[state.activeTabId]?.content ?? "";
   });
 }
 
@@ -187,4 +187,46 @@ test("D：取色器「最近」与「动物」页签 body 等高（差 ≤1px）
   );
 
   expect(Math.abs(animalHeight - recentHeight)).toBeLessThanOrEqual(1);
+});
+
+test("E：标注面板选中态可见（描边 2px），随机后选中态移动", async ({ page }) => {
+  await openMarkdownInEdit(
+    page,
+    "> [!NOTE]{bg=green border=red text=blue} 标题\n> 正文\n",
+    "callout-fix3-e",
+  );
+  const panel = await openPanel(page, false);
+  const actives = panel.locator('.cm-color-swatch[data-active="true"]');
+  await expect(actives).toHaveCount(3);
+
+  const outlines = await actives.evaluateAll((els) =>
+    els.map((el) => {
+      const cs = getComputedStyle(el);
+      return { style: cs.outlineStyle, width: cs.outlineWidth };
+    }),
+  );
+  for (const outline of outlines) {
+    expect(outline.style).toBe("solid");
+    expect(outline.width).toBe("2px");
+  }
+
+  const readActive = () =>
+    panel
+      .locator('.cm-color-swatch[data-active="true"]')
+      .evaluateAll((els) =>
+        els.map((el) => (el as HTMLElement).dataset.className ?? ""),
+      );
+  const before = await readActive();
+  await panel.locator('[data-testid="color-random-callout"]').click();
+  await expect
+    .poll(() => storeContent(page))
+    .toMatch(/\{bg=[a-z]+ border=[a-z]+[^}]*\}/);
+  const after = await readActive();
+  expect(after).not.toEqual(before);
+  expect(await panel.locator(".cm-highlight-color-panel").count()).toBe(0);
+  const afterOutline = await panel
+    .locator('.cm-color-swatch[data-active="true"]')
+    .first()
+    .evaluate((el) => getComputedStyle(el).outlineStyle);
+  expect(afterOutline).toBe("solid");
 });
