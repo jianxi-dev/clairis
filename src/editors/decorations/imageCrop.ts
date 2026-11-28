@@ -938,7 +938,11 @@ function mount(
         // 不放行 .cm-scroller：真机日志（#1603）证实裁剪态点框外正文时
         // pointerdown:cm-line 落位光标，caret 揭示滚动把视口上拉 380px。
         // 裁剪会话是模态的——点框外由 onOutsideClick 走确认路径，光标不应落位。
-        "input, textarea, [contenteditable='true'], [data-testid^='img-'], .cm-image-widget",
+        // **不要**包含 `[contenteditable='true']`：CM6 正文本身就是
+        // contenteditable，放进放行列表会让「点正文」全部提前放行，拦截代码
+        // 永远不执行（真机 r17/r18：pointerdown:cm-line 照样到 CM6，sel
+        // 0→1348，首裁上下抖）。裁剪是模态的，正文此时不可编辑。
+        "input, textarea, [data-testid^='img-'], .cm-image-widget",
       )
     ) {
       return;
