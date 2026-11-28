@@ -647,6 +647,8 @@ class CalloutWidget extends WidgetType {
 
   constructor(
     readonly index: number,
+    /** 源码块起点；参与 eq，位置移动时强制重建 DOM 以刷新 data-callout-from。 */
+    readonly sourceFrom: number,
     readonly type: string,
     readonly label: string,
     readonly tone: string,
@@ -688,12 +690,10 @@ class CalloutWidget extends WidgetType {
     container.setAttribute("data-callout-emoji", emoji);
     // #468：徽标已移除，卡片改为用 data 携带类型。
     container.setAttribute("data-callout-type", this.type);
-    // 源码块起点：widget 可能只渲染视口附近，`posAtDOM` 在部分布局下不可靠，
-    // 交互时用它把 DOM 卡片映射回文档位置（#1719 随机改错块）。
-    if (view) {
-      const source = findCalloutBlocks(view.state.doc.toString())[this.index];
-      if (source) container.dataset.calloutFrom = String(source.from);
-    }
+    // 源码块起点：`posAtDOM` 在部分布局下不可靠，交互时用它把 DOM 卡片映射回
+    // 文档位置（#1719 随机改错块）。必须来自构造参数而非运行时再查——eq 不比较
+    // 位置时 CM 会复用旧 DOM，位置随前文编辑漂移后属性就成了过期值。
+    container.dataset.calloutFrom = String(this.sourceFrom);
     container.setAttribute("aria-label", this.label);
 
     if (view) {
@@ -841,6 +841,7 @@ class CalloutWidget extends WidgetType {
   eq(other: CalloutWidget): boolean {
     return (
       this.index === other.index &&
+      this.sourceFrom === other.sourceFrom &&
       this.type === other.type &&
       this.label === other.label &&
       this.tone === other.tone &&
@@ -1031,6 +1032,7 @@ export function createCalloutDecorations(
       Decoration.replace({
         widget: new CalloutWidget(
           index,
+          block.from,
           block.type,
           typeInfo.label,
           typeInfo.tone,

@@ -981,10 +981,12 @@ export function floatingToolbar(allowCapsule = false) {
         Number.isFinite(fromAttr) && fromAttr >= 0
           ? fromAttr
           : view.posAtDOM(card, 0);
+      const calloutBlocks = findCalloutBlocks(view.state.doc.toString());
       const block =
-        findCalloutBlocks(view.state.doc.toString()).find(
-          (entry) => entry.from === pos,
-        ) ?? blockAt(view, pos);
+        calloutBlocks.find((entry) => entry.from === pos) ??
+        calloutBlocks.find((entry) => pos >= entry.from && pos <= entry.to) ??
+        calloutBlocks.find((entry) => entry.from >= pos) ??
+        blockAt(view, pos);
       if (!block) return;
       const key = calloutKeyOf(
         view.state.doc.sliceString(block.from, block.to),
