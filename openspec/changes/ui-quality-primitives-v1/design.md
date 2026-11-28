@@ -108,7 +108,7 @@ B1 已交付归档（`ui-quality-gate-v1`）：`scripts/check-tokens.mjs` 存在
 | 落点 | 位置 | 载体/符号 | 判据 |
 |---|---|---|---|
 | 规格 | design-system:§2.1/§2.2/§2.4 | — | 图标尺寸档 14/18/24（12 仅角标）；面/线不混用；可逆动作成对 |
-| 存储 | `src/ui/icons.ts` · `src/editors/icons.ts` | `IconName` / `IconSize` / `COMMAND_ICON_NAME` | 两表概念键集合相等；尺寸档 ∈ {12,14,18,24} |
+| 存储 | `src/styles/tokens.css` | 危险色 `--app-danger` / `--app-on-danger`；图标两表 `src/ui/icons.ts` · `src/editors/icons.ts`（`IconName` / `IconSize` / `COMMAND_ICON_NAME`） | 危险色三主题齐备；两表概念键集合相等；尺寸档 ∈ {12,14,18,24} |
 | 校验 | `scripts/check-icons.mjs` | 四项检查 | 键集差集=0；12px 仅白名单 3 处（`DocPropertyBar` lock ×3）；动作→图标映射唯一；无孤儿键 |
 | 桥接 | `src/styles/primitives.css` | `var(--app-*)` / `var(--space-*)` / `var(--radius-*)` / `var(--shadow-*)` | 只用已定义 token，`check-tokens` B 项「var() 有定义」继续绿 |
 | 消费 | `src/ui/primitives/{Button,IconButton,Menu,Tooltip}.tsx` | 基件导出 | 迁移面逐项勾销；新代码不自造 button 类字符串（PR 模板判据） |
