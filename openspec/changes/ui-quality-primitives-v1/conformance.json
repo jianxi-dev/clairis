@@ -1,0 +1,168 @@
+{
+  "change": "ui-quality-primitives-v1",
+  "requirements": [
+    {
+      "id": "R-1",
+      "text": "四基件单一来源与 token-only 样式（UP-1 / 任务 2.1）",
+      "anchors": [
+        {
+          "id": "A-1.1",
+          "claim": "基件 CSS 裸色值 / 裸 px 字号命中数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "方案 §Q2 样式只用 token"
+        },
+        {
+          "id": "A-1.2",
+          "claim": "IconButton 命中区下限（px）",
+          "kind": "exact",
+          "assert": "24",
+          "source": "方案 §Q2"
+        },
+        {
+          "id": "A-1.3",
+          "claim": "Button variant 档数",
+          "kind": "exact",
+          "assert": "6",
+          "source": "方案 §Q2"
+        },
+        {
+          "id": "A-1.4",
+          "claim": "primitives.css 在 main.tsx 的引入次数",
+          "kind": "exact",
+          "assert": "1",
+          "source": "方案 §Q2"
+        }
+      ]
+    },
+    {
+      "id": "R-2",
+      "text": "浮层定位与关闭仲裁共享（UP-2 / 任务 2.2）",
+      "anchors": [
+        {
+          "id": "A-2.1",
+          "claim": "useAnchoredPosition 支持的翻转方向数",
+          "kind": "exact",
+          "assert": "12",
+          "source": "方案 §Q2 12 向"
+        },
+        {
+          "id": "A-2.2",
+          "claim": "Esc 只关栈顶层后下层浮层",
+          "kind": "state-machine",
+          "assert": "保留（0 处关闭）",
+          "source": "interaction.md §4"
+        },
+        {
+          "id": "A-2.3",
+          "claim": "useMenuPos 全仓残留引用数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "实测 47 行单文件"
+        },
+        {
+          "id": "A-2.4",
+          "claim": "容器夹取回归用例覆盖的嵌入态面板溢出",
+          "kind": "exact",
+          "assert": "1",
+          "source": "#1017"
+        }
+      ]
+    },
+    {
+      "id": "R-3",
+      "text": "/showcase 对照场（UP-3 / 任务 2.4）",
+      "anchors": [
+        {
+          "id": "A-3.1",
+          "claim": "showcase 态数（4 基件 × 6 态）",
+          "kind": "exact",
+          "assert": "24",
+          "source": "方案 §Q2"
+        },
+        {
+          "id": "A-3.2",
+          "claim": "showcase 主题数",
+          "kind": "exact",
+          "assert": "2",
+          "source": "方案 §Q2 明暗双主题"
+        },
+        {
+          "id": "A-3.3",
+          "claim": "生产构建 grep showcase 命中数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "方案 §Q2 dev-only"
+        }
+      ]
+    },
+    {
+      "id": "R-4",
+      "text": "图标纪检（UP-4 / 任务 2.5）",
+      "anchors": [
+        {
+          "id": "A-4.1",
+          "claim": "两表概念键集合差集大小",
+          "kind": "exact",
+          "assert": "0",
+          "source": "方案 §Q3 ①"
+        },
+        {
+          "id": "A-4.2",
+          "claim": "12px 白名单外越档处数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "实测生产 3 处"
+        },
+        {
+          "id": "A-4.3",
+          "claim": "动作→图标映射唯一性违规数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "方案 §Q3 ③"
+        },
+        {
+          "id": "A-4.4",
+          "claim": "孤儿键数",
+          "kind": "exact",
+          "assert": "0",
+          "source": "方案 §Q3 ④"
+        },
+        {
+          "id": "A-4.5",
+          "claim": "11 行裁决明细条数",
+          "kind": "exact",
+          "assert": "11",
+          "source": "方案 §Q3"
+        }
+      ]
+    },
+    {
+      "id": "R-5",
+      "text": "基件迁移与不自造 button（UP-5 / 任务 2.6）",
+      "anchors": [
+        {
+          "id": "A-5.1",
+          "claim": "迁移处数（Button 3 + IconButton 3 + Menu 1）",
+          "kind": "exact",
+          "assert": "7",
+          "source": "方案 §Q2 迁移 Top3"
+        },
+        {
+          "id": "A-5.2",
+          "claim": "迁移后全仓裸 button 总数上限",
+          "kind": "exact",
+          "assert": "229",
+          "source": "实测 236"
+        },
+        {
+          "id": "A-5.3",
+          "claim": "每屏 primary 按钮数上限",
+          "kind": "state-machine",
+          "assert": "1",
+          "source": "方案 §Q2 review 判据"
+        }
+      ]
+    }
+  ]
+}
