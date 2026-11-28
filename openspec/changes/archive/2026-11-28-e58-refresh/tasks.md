@@ -1,0 +1,1 @@
+- [x] 1.1 `CalloutWidget.sourceFrom` 参与 eq，位置漂移重建 DOM（PR #1730）

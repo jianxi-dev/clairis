@@ -1,0 +1,18 @@
+{
+  "change": "e58-refresh",
+  "requirements": [
+    {
+      "id": "R-1",
+      "text": "源码起点随位置漂移刷新",
+      "anchors": [
+        {
+          "id": "A-1.1",
+          "claim": "卡片源码起点随前文编辑同步更新",
+          "kind": "state-machine",
+          "assert": "连续改色后所有卡片 `data-callout-from` 与当前文档块起点相等；点第三个块随机只改第三个块首行",
+          "source": "PR #1730 / 探针输出"
+        }
+      ]
+    }
+  ]
+}
