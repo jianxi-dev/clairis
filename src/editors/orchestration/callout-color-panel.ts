@@ -167,12 +167,16 @@ export function randomCalloutColors(
  * `hl-color-yellow`；直接比会全不命中（旧文档打开面板无选中态）。这里按色板的
  * className 反查：先直接拼 `hl-*` 前缀，再对旧名走 `attrNameFromClassName`
  * 兼容（旧名可能不在新板内，此时回落到旧 `mdb-*` 前缀）。
+ *
+ * @returns `""` = 默认格（无 / 透明）选中；命中 = 该色 className；
+ *          `null` = 这一行没有任何选中格（色名非空但本行色板没有它，例如
+ *          深档行遇到中档色 `red`——此时不能把默认格误标成选中）。
  */
 function activeClassNameOf(
   kind: ColorKind,
   name: string,
   colors: readonly ColorSwatch[],
-): string {
+): string | null {
   if (name === "") return "";
   const attrKey = kind === "font" ? "text" : kind === "background" ? "bg" : "border";
   const hit = colors.find(
@@ -180,8 +184,21 @@ function activeClassNameOf(
       color.className !== "" &&
       attrNameFromClassName(attrKey, color.className) === name,
   );
-  if (hit) return hit.className;
-  return "";
+  return hit ? hit.className : null;
+}
+
+/** 一行色块的 `data-active`：`null` 表示本行无选中格。 */
+function applyRowActive(
+  rowEl: HTMLElement,
+  activeClass: string | null,
+): void {
+  rowEl
+    .querySelectorAll<HTMLButtonElement>(".cm-color-swatch")
+    .forEach((swatch) => {
+      swatch.dataset.active = String(
+        activeClass !== null && swatch.dataset.className === activeClass,
+      );
+    });
 }
 
 /**
@@ -280,11 +297,7 @@ export function buildCalloutColorPanel(args: {
         });
     });
     const activeClass = activeClassNameOf(kind, activeName, colors);
-    rowEl
-      .querySelectorAll<HTMLButtonElement>(".cm-color-swatch")
-      .forEach((swatch) => {
-        swatch.dataset.active = String(swatch.dataset.className === activeClass);
-      });
+    applyRowActive(rowEl, activeClass);
     root.appendChild(rowEl);
     return rowEl;
   };
@@ -297,16 +310,10 @@ export function buildCalloutColorPanel(args: {
   /** 按当前属性重算每格 `data-active`；不重建节点、不改动面板结构。 */
   const applyActive = (next: CalloutAttrs): void => {
     for (const { spec, rowEl } of rows) {
-      const activeClass = activeClassNameOf(
-        spec.kind,
-        next[spec.key] ?? "",
-        spec.colors,
+      applyRowActive(
+        rowEl,
+        activeClassNameOf(spec.kind, next[spec.key] ?? "", spec.colors),
       );
-      rowEl
-        .querySelectorAll<HTMLButtonElement>(".cm-color-swatch")
-        .forEach((swatch) => {
-          swatch.dataset.active = String(swatch.dataset.className === activeClass);
-        });
     }
   };
 
@@ -427,11 +434,7 @@ export function buildHighlightColorPanel(args: {
         });
     });
     const activeClass = activeClassNameOf(kind, activeName, colors);
-    rowEl
-      .querySelectorAll<HTMLButtonElement>(".cm-color-swatch")
-      .forEach((swatch) => {
-        swatch.dataset.active = String(swatch.dataset.className === activeClass);
-      });
+    applyRowActive(rowEl, activeClass);
     root.appendChild(rowEl);
     return rowEl;
   };
@@ -449,16 +452,10 @@ export function buildHighlightColorPanel(args: {
   /** 按当前属性重算每格 `data-active`；不重建节点、不改动面板结构。 */
   const applyActive = (next: CalloutAttrs): void => {
     for (const { spec, rowEl } of rows) {
-      const activeClass = activeClassNameOf(
-        spec.kind,
-        next[spec.key] ?? "",
-        spec.colors,
+      applyRowActive(
+        rowEl,
+        activeClassNameOf(spec.kind, next[spec.key] ?? "", spec.colors),
       );
-      rowEl
-        .querySelectorAll<HTMLButtonElement>(".cm-color-swatch")
-        .forEach((swatch) => {
-          swatch.dataset.active = String(swatch.dataset.className === activeClass);
-        });
     }
   };
 

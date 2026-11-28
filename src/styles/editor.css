@@ -2971,7 +2971,7 @@ html[data-tab-drag="true"] body * {
   align-items: start;
   border: 1px solid var(--callout-border, var(--callout-color));
   border-radius: 4px;
-  padding: 0.2em 0.45em;
+  padding: 0.55em 0.85em;
   margin-block: 0.15em 0;
   min-height: 3.2em;
   box-sizing: border-box;
@@ -3096,8 +3096,11 @@ html[data-tab-drag="true"] body * {
   background-color: rgba(127, 127, 127, 0.12);
 }
 
-/* 中部滚动区。 */
+/* 中部滚动区。height 与 max-height 同值：页签切换时内容高度不同，只给
+ * max-height 会让面板随页签跳动；固定 height 后「最近」与分类页签等高，
+ * 内容超出仍滚动。 */
 .cm-content .cm-callout-emoji-body {
+  height: 240px;
   max-height: 240px;
   overflow-y: auto;
 }

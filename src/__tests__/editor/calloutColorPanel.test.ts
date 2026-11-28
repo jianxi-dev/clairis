@@ -92,6 +92,46 @@ describe("纯高亮随机与面板", () => {
   });
 });
 
+describe("未命中色名不误标默认格（#1676 后续修正 1）", () => {
+  const bgRows = (root: HTMLElement): NodeListOf<HTMLElement> =>
+    root.querySelectorAll('.cm-color-row[data-kind="background"]');
+
+  it("bg=red：深档行 0 个选中，中档行恰 1 个 hl-fill-red", () => {
+    const root = buildHighlightColorPanel({
+      active: { bg: "red" },
+      onPick: () => {},
+      onReset: () => {},
+      onRandom: () => null,
+    });
+    const rows = bgRows(root);
+    expect(rows).toHaveLength(2);
+    const deepActive = rows[0].querySelectorAll(
+      '.cm-color-swatch[data-active="true"]',
+    );
+    expect(deepActive).toHaveLength(0);
+    const midActive = rows[1].querySelectorAll(
+      '.cm-color-swatch[data-active="true"]',
+    );
+    expect(midActive).toHaveLength(1);
+    expect(midActive[0].getAttribute("data-class-name")).toBe("hl-fill-red");
+  });
+
+  it("active:{}：深档行默认格恰 1 个选中", () => {
+    const root = buildHighlightColorPanel({
+      active: {},
+      onPick: () => {},
+      onReset: () => {},
+      onRandom: () => null,
+    });
+    const rows = bgRows(root);
+    const deepActive = rows[0].querySelectorAll(
+      '.cm-color-swatch[data-active="true"]',
+    );
+    expect(deepActive).toHaveLength(1);
+    expect(deepActive[0].getAttribute("data-class-name")).toBe("");
+  });
+});
+
 describe("选中态即时刷新（D5）", () => {
   const mousedown = (el: Element): void => {
     el.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
