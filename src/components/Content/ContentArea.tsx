@@ -601,10 +601,14 @@ function restoreScrollWhenReady(
   });
   const tick = (): void => {
     if (cancelled || !scroller.isConnected) return;
-    const want = opts?.untilPos ? opts.untilPos() : target;
-    if (scroller.scrollHeight > scroller.clientHeight) {
-      scroller.scrollTop = Math.max(0, want);
-      if (Math.abs(scroller.scrollTop - Math.max(0, want)) <= 2) return;
+    const want = Math.max(0, opts?.untilPos ? opts.untilPos() : target);
+    // 容器必须「容得下」目标位置才落位：切换瞬间内容会短暂塌陷（真机日志
+    // content-scroll 7487 → 767），此时设 scrollTop 会被夹成 0，造成「先跳到
+    // 顶部再回位」。等高度恢复后立刻落位，成功即停。
+    const capacity = scroller.scrollHeight - scroller.clientHeight;
+    if (capacity >= want) {
+      scroller.scrollTop = want;
+      if (Math.abs(scroller.scrollTop - want) <= 2) return;
     }
     if (performance.now() - startedAt < 1200) requestAnimationFrame(tick);
     else scroller.scrollTop = Math.max(0, want);
@@ -771,6 +775,8 @@ export default function ContentArea({
   const modeRestoringRef = useRef(false);
   /** 编辑态的最后一次像素 scrollTop：同一渲染高度往返时最精确。 */
   const modeEditScrollTopRef = useRef<number | null>(null);
+  /** 切换前容器 scrollHeight：切换瞬间内容会短暂塌陷，用它顶住高度防止滚动被夹 0。 */
+  const modeScrollHeightRef = useRef<number | null>(null);
   const prevModeRef = useRef<typeof editorMode | null>(null);
 
   useEffect(() => {
@@ -788,6 +794,7 @@ export default function ContentArea({
       if (el.classList.contains("cm-scroller")) {
         modeEditScrollTopRef.current = el.scrollTop;
       }
+      modeScrollHeightRef.current = el.scrollHeight;
       const denom = Math.max(1, el.scrollHeight - el.clientHeight);
       modeScrollAnchorRef.current = Math.min(
         1,
@@ -821,6 +828,7 @@ export default function ContentArea({
     window.setTimeout(() => {
       modeRestoringRef.current = false;
     }, 400);
+
     let raf1 = 0;
     let raf2 = 0;
     raf1 = requestAnimationFrame(() => {

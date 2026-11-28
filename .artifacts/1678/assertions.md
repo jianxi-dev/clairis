@@ -67,3 +67,20 @@ crop-confirm @132098  scrollBefore:1974   ← 确认时位置已被污染
 修：
 - `suppressCaret` 同时挂 `pointerdown`（capture，裁剪框/图片控件放行）
 - 模式恢复增加「布局就绪轮询」（scrollHeight 可用后落位，成功即停，≤1200ms，用户操作即让位）
+
+## 四轮（r4）：预览容器塌陷
+
+真机日志（第二轮）：
+
+```
+JUMP 155385: 3780 → 0     scroller content-scroll, docH 7487 → 767
+JUMP 157758:    0 → 3123  docH 767 → 7440
+JUMP 159228: 3123 → 0     docH 7440 → 767
+```
+
+切换瞬间预览容器内容高度塌陷，浏览器把 scrollTop 夹成 0，渲染完成后才回位 → 用户看到「先跳到顶部再回来」。
+
+修：`restoreScrollWhenReady` 改为**容量感知**——容器容得下目标位置才落位（塌陷期等待，高度恢复立即落位，成功即停，用户操作让位）。
+（尝试过的 min-height 顶住方案会干扰预览尺寸计算，已回退。）
+
+裁剪侧：本轮日志确认会话内已无 `pointerdown:cm-line` 跳（上一轮修复生效）；剩余抖动来自内容高度小幅变化（docH 8971 ↔ 8917），待下一轮定位。
