@@ -48,3 +48,22 @@ for (let round = 0; round < 3; round += 1) {
 - `.cm-scroller { overflow-anchor: none }`：关闭浏览器原生滚动锚定（首抖根因——内容高度变化时 WKWebView 自动拉回 scrollTop）
 - 编辑态往返改用**像素位置记忆**（同一渲染高度最精确），文本锚仅作无记忆时的回退
 - 恢复期标记：程序性 scroll 不覆盖锚点（消除逐轮漂移）
+
+## 三轮（r3）：真机日志定位
+
+真机日志（`中汽系统搭建情况对称1110.md.crop-debug.log`）关键片段：
+
+```
+crop-enter @129460  (scrollTop 2400, cropFrames 1)
+JUMP 132014: 2400 → 1974        inputs: pointerup:cm-image-crop-frame,
+                                        click:cm-image-crop-frame,
+                                        pointerdown:cm-line, mousedown:cm-line
+crop-confirm @132098  scrollBefore:1974   ← 确认时位置已被污染
+```
+
+结论：抖动发生在 **crop-confirm 之前**，由 `pointerdown:cm-line` 触发 CM6 落光标 + caret 揭示滚动。
+根因：`suppressCaret` 只监听 `mousedown`，而 CM6 在 **`pointerdown`** 阶段就处理了。
+
+修：
+- `suppressCaret` 同时挂 `pointerdown`（capture，裁剪框/图片控件放行）
+- 模式恢复增加「布局就绪轮询」（scrollHeight 可用后落位，成功即停，≤1200ms，用户操作即让位）

@@ -573,6 +573,45 @@ function readScrollTextAnchor(
   return null;
 }
 
+/**
+ * 在布局就绪后恢复滚动位置（#1678）：WKWebView 从 display:none 切回时，
+ * scrollHeight 在若干帧内仍是 0/旧值，此时设 scrollTop 会被夹成 0（真机
+ * 「预览切编辑跳到文档顶部」）。每帧检查内容已测量后再落位，成功即停，
+ * 最多等 1200ms；期间用户操作立即放弃。
+ */
+function restoreScrollWhenReady(
+  scroller: HTMLElement,
+  target: number,
+  opts?: { untilPos?: () => number },
+): void {
+  const startedAt = performance.now();
+  let cancelled = false;
+  const cancel = (): void => {
+    cancelled = true;
+  };
+  scroller.addEventListener("wheel", cancel, { passive: true, once: true });
+  scroller.addEventListener("touchstart", cancel, {
+    passive: true,
+    once: true,
+  });
+  document.addEventListener("pointerdown", cancel, {
+    passive: true,
+    capture: true,
+    once: true,
+  });
+  const tick = (): void => {
+    if (cancelled || !scroller.isConnected) return;
+    const want = opts?.untilPos ? opts.untilPos() : target;
+    if (scroller.scrollHeight > scroller.clientHeight) {
+      scroller.scrollTop = Math.max(0, want);
+      if (Math.abs(scroller.scrollTop - Math.max(0, want)) <= 2) return;
+    }
+    if (performance.now() - startedAt < 1200) requestAnimationFrame(tick);
+    else scroller.scrollTop = Math.max(0, want);
+  };
+  requestAnimationFrame(tick);
+}
+
 interface ContentAreaProps {
   panelId?: string;
   /** Override which tab to show (for split panels) */
@@ -815,11 +854,7 @@ export default function ContentArea({
                   if (typeof top !== "number") return;
                   const sc = view.scrollDOM;
                   sc.scrollTop = Math.max(0, top);
-                  requestAnimationFrame(() => {
-                    if (Math.abs(sc.scrollTop - Math.max(0, top)) > 2) {
-                      sc.scrollTop = Math.max(0, top);
-                    }
-                  });
+                  restoreScrollWhenReady(sc, top);
                 },
               });
               return;
@@ -844,15 +879,16 @@ export default function ContentArea({
                       sc.scrollTop = Math.max(0, block.top);
                     };
                     place();
-                    // 下一帧复核：CM6 可能在本次 measure 收尾时重设滚动。
-                    requestAnimationFrame(() => {
-                      if (
-                        Math.abs(view.lineBlockAt(target).top - sc.scrollTop) >
-                        2
-                      ) {
-                        place();
-                      }
-                    });
+                    // 布局就绪后再复核（真机从隐藏恢复时行高/视口会晚若干帧才
+                    // 正确，单帧复核不够）。
+                    restoreScrollWhenReady(
+                      sc,
+                      Math.max(0, view.lineBlockAt(target).top),
+                      {
+                        untilPos: () =>
+                          Math.max(0, view.lineBlockAt(target).top),
+                      },
+                    );
                   },
                 });
                 return;
