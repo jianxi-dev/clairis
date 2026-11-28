@@ -7,12 +7,17 @@ interface IconButtonProps {
   label: string;
   /** 图标本体尺寸（14 密集 / 18 常规）；命中区由 CSS 撑到 ≥24×24，不随此变 */
   size?: 14 | 18;
+  /** 色调：default = 内容区（--app-text-2）；chrome = 顶栏/阅读轨等常驻 chrome（--app-chrome-rest） */
+  tone?: "default" | "chrome";
   disabled?: boolean;
   onClick?: () => void;
   className?: string;
   /** 供对照场 / e2e 定位，透传到根 button */
   "data-showcase"?: string;
   "data-primitive"?: string;
+  /** 保留迁移前的测试/行为钩子（data-testid、data-action 等），透传到根 button */
+  [dataAttr: `data-${string}`]: string | undefined;
+  "aria-pressed"?: boolean;
 }
 
 /**
@@ -28,6 +33,7 @@ export function IconButton({
   icon,
   label,
   size = 18,
+  tone = "default",
   disabled = false,
   onClick,
   className = "",
@@ -36,7 +42,9 @@ export function IconButton({
   return (
     <button
       type="button"
-      className={`bp-icon-btn bp-icon-btn--${size} ${className}`.trim()}
+      className={`bp-icon-btn bp-icon-btn--${size}${
+        tone === "chrome" ? " bp-icon-btn--chrome" : ""
+      } ${className}`.trim()}
       disabled={disabled}
       aria-label={label}
       title={label}

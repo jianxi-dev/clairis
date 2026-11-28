@@ -289,3 +289,14 @@
   opacity: 0.45;
   cursor: not-allowed;
 }
+
+/* chrome 色调：顶栏 / 阅读轨等常驻 chrome 共用静息色（spec §6 chrome 一致性），
+   悬停只转文字色、不铺底色——这些按钮浮在卡片/文本之上，铺底会盖住内容。 */
+.bp-icon-btn--chrome {
+  color: var(--app-chrome-rest);
+}
+
+.bp-icon-btn--chrome:not(:disabled):hover {
+  background-color: transparent;
+  color: var(--app-chrome-hover);
+}

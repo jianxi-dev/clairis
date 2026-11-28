@@ -31,6 +31,9 @@ interface ButtonProps {
   /** 供对照场 / e2e 定位，透传到根 button */
   "data-showcase"?: string;
   "data-primitive"?: string;
+  /** 保留迁移前的测试/行为钩子（data-testid、data-action 等），透传到根 button */
+  [dataAttr: `data-${string}`]: string | undefined;
+  "aria-pressed"?: boolean;
 }
 
 /**

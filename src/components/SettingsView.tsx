@@ -7,6 +7,7 @@ import {
   useState,
   type ChangeEvent,
 } from "react";
+import { Button } from "../ui/primitives/Button";
 import { invoke } from "@tauri-apps/api/core";
 import {
   listCapabilities,
@@ -596,34 +597,34 @@ function ExtensionsSection({
                         {pkg.enabled ? "启用" : "停用"}
                       </span>
                     </label>
-                    <button
-                      type="button"
+                    <Button
+                      variant="secondary"
+                      size="sm"
                       data-testid="extension-open"
                       disabled={isBuiltin || !pkg.dir}
                       onClick={() => void openDir(pkg.dir)}
-                      className="shrink-0 rounded border border-[var(--app-border)] px-2 py-1 text-xs text-[var(--app-text-2)] hover:bg-[var(--app-sunken)] disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       打开文件夹
-                    </button>
-                    <button
-                      type="button"
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      size="sm"
                       data-testid="extension-export"
                       disabled={isBuiltin}
                       onClick={() => void exportPackage(pkg.id)}
-                      className="shrink-0 rounded border border-[var(--app-border)] px-2 py-1 text-xs text-[var(--app-text-2)] hover:bg-[var(--app-sunken)] disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       导出
-                    </button>
-                    <button
-                      type="button"
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      size="sm"
                       data-testid="extension-preview"
                       onClick={() =>
                         setPreviewId((cur) => (cur === pkg.id ? null : pkg.id))
                       }
-                      className="shrink-0 rounded border border-[var(--app-border)] px-2 py-1 text-xs text-[var(--app-text-2)] hover:bg-[var(--app-sunken)]"
                     >
                       {previewId === pkg.id ? "收起" : "预览"}
-                    </button>
+                    </Button>
                     <button
                       type="button"
                       data-testid="extension-remove"

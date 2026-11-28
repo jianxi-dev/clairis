@@ -16,6 +16,7 @@ import { useStore } from "../../stores";
 import { useEditorStore } from "../../stores/editorStore";
 import { reloadAppConfig, saveAppConfig } from "../../hooks/useConfig";
 import Icon from "../Icon";
+import { IconButton } from "../../ui/primitives/IconButton";
 import {
   colorOfType,
   fileTypeOf,
@@ -598,39 +599,33 @@ function RailRow({
       data-testid="rail-card-actions"
       className="absolute bottom-0.5 left-1 z-10 flex items-center gap-0.5 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100"
     >
-      <button
-        type="button"
+      <IconButton
+        icon="eye"
+        label="打开"
+        size={14}
+        tone="chrome"
         data-testid="rail-card-action"
         data-action="open"
-        title="打开"
-        aria-label="打开"
         onClick={() => onOpen(item.path)}
-        className="rounded p-0.5 text-[var(--app-chrome-rest)] hover:text-[var(--app-chrome-hover)]"
-      >
-        <Icon name="eye" size={14} />
-      </button>
-      <button
-        type="button"
+      />
+      <IconButton
+        icon="splitRight"
+        label="向右分屏"
+        size={14}
+        tone="chrome"
         data-testid="rail-card-action"
         data-action="split-right"
-        title="向右分屏"
-        aria-label="向右分屏"
         onClick={() => onSplit(item.path, "row")}
-        className="rounded p-0.5 text-[var(--app-chrome-rest)] hover:text-[var(--app-chrome-hover)]"
-      >
-        <Icon name="splitRight" size={14} />
-      </button>
-      <button
-        type="button"
+      />
+      <IconButton
+        icon="splitDown"
+        label="向下分屏"
+        size={14}
+        tone="chrome"
         data-testid="rail-card-action"
         data-action="split-down"
-        title="向下分屏"
-        aria-label="向下分屏"
         onClick={() => onSplit(item.path, "col")}
-        className="rounded p-0.5 text-[var(--app-chrome-rest)] hover:text-[var(--app-chrome-hover)]"
-      >
-        <Icon name="splitDown" size={14} />
-      </button>
+      />
       <button
         type="button"
         data-testid="rail-card-action"
