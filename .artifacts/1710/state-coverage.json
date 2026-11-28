@@ -1,0 +1,32 @@
+{
+  "states": [
+    {
+      "state": "悬停弹出提示-文案来自title",
+      "screenshot": ".artifacts/1710/01-tooltip-visible.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-28T11:48:05Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "移开后无残留",
+      "screenshot": ".artifacts/1710/02-tooltip-gone.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-28T11:48:05Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "暗色主题不越界",
+      "screenshot": ".artifacts/1710/03-tooltip-dark.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-28T11:48:05Z",
+      "runner": "unknown@MMBP"
+    },
+    {
+      "state": "无title不触发",
+      "screenshot": ".artifacts/1710/04-no-tooltip-without-title.png",
+      "assertion": "passed",
+      "recorded_at": "2026-11-28T11:48:05Z",
+      "runner": "unknown@MMBP"
+    }
+  ]
+}
