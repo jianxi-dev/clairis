@@ -21,6 +21,7 @@ import {
   type EmojiEntry,
 } from "../emoji-data";
 import { pushRecentEmoji, readRecentEmoji } from "../emoji-data/recent";
+import { findCalloutBlocks } from "./callout";
 
 /** 头部 emoji 覆盖，按 view 再按高亮块序号存；记录类型，转换后自动失效。 */
 const calloutEmojiOverrides = new WeakMap<
@@ -73,8 +74,17 @@ export function getCalloutEmojiOverride(
 
 /** 解析某个序号对应的实时卡片（widget 重建会摘掉旧的）。 */
 function liveCard(view: EditorView, index: number): HTMLElement | null {
-  const card = view.dom.querySelectorAll(".cm-callout")[index];
-  return card instanceof HTMLElement ? card : null;
+  const block = findCalloutBlocks(view.state.doc.toString())[index];
+  if (!block) return null;
+  const cards = view.dom.querySelectorAll<HTMLElement>(".cm-callout");
+  for (const card of cards) {
+    try {
+      if (view.posAtDOM(card, 0) === block.from) return card;
+    } catch {
+      // 卡片不在当前视图内时 posAtDOM 可能抛错，跳过
+    }
+  }
+  return null;
 }
 
 function closeEmojiPicker(picker: HTMLElement): void {

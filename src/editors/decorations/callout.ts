@@ -258,6 +258,25 @@ function calloutContentArea(container: HTMLElement): {
 }
 
 /**
+ * 解析某个序号对应的实时卡片。`index` 是源码序号，而 `view.dom` 里只有当前
+ * 视口渲染出的卡片——长文档滚到文末时直接 `[index]` 会越界拿到 undefined，
+ * 于是编辑静默失效（#1691）。改为按文档位置匹配。
+ */
+function liveCard(view: EditorView, index: number): HTMLElement | null {
+  const block = findCalloutBlocks(view.state.doc.toString())[index];
+  if (!block) return null;
+  const cards = view.dom.querySelectorAll<HTMLElement>(".cm-callout");
+  for (const card of cards) {
+    try {
+      if (view.posAtDOM(card, 0) === block.from) return card;
+    } catch {
+      // 卡片不在当前视图内时 posAtDOM 可能抛错，跳过
+    }
+  }
+  return null;
+}
+
+/**
  * 打开高亮块卡片的正文行内编辑器。CM6 可能在上次点击后重建了 widget，所以按
  * 序号从实时 DOM 解析。
  */
@@ -271,8 +290,8 @@ function openCalloutEditor(
   // 那样会摘掉更早解析出的卡片。
   flushCalloutEdits(view);
 
-  const card = view.dom.querySelectorAll(".cm-callout")[index];
-  if (!(card instanceof HTMLElement)) return;
+  const card = liveCard(view, index);
+  if (!card) return;
   const existing = card.querySelector(
     ".cm-callout-editor",
   ) as HTMLTextAreaElement | null;
@@ -533,8 +552,8 @@ function openCalloutTitleEditor(view: EditorView, index: number): void {
   // 那样会摘掉更早解析出的卡片。
   flushCalloutEdits(view);
 
-  const card = view.dom.querySelectorAll(".cm-callout")[index];
-  if (!(card instanceof HTMLElement)) return;
+  const card = liveCard(view, index);
+  if (!card) return;
   const existing = card.querySelector(
     ".cm-callout-title-editor",
   ) as HTMLInputElement | null;
@@ -909,7 +928,7 @@ interface CalloutBlock {
   attrsRaw: string;
 }
 
-function findCalloutBlocks(docText: string): CalloutBlock[] {
+export function findCalloutBlocks(docText: string): CalloutBlock[] {
   const blocks: CalloutBlock[] = [];
   const lines = docText.split("\n");
   const lineStarts = new Array<number>(lines.length);
