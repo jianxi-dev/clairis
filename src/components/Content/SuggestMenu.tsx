@@ -8,7 +8,7 @@ import {
 import { createPortal } from "react-dom";
 import { digitFromCode } from "../../lib/gridKeyboard";
 import { activateLocalContext } from "../../lib/shortcuts";
-import { useMenuPos } from "./useMenuPos";
+import { useAnchoredPosition } from "../../ui/primitives/useAnchoredPosition";
 
 export interface SuggestRow {
   id: string;
@@ -59,7 +59,7 @@ export default function SuggestMenu({
       ) as HTMLElement | null) ?? null,
     [hostRef],
   );
-  const { pos, ref: menuRef } = useMenuPos(anchor, boundsOf);
+  const { pos, ref: menuRef } = useAnchoredPosition(anchor, { boundsOf });
 
   useEffect(() => {
     const off = activateLocalContext(context);
