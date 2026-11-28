@@ -4343,7 +4343,16 @@ html[data-tab-drag="true"] body * {
 .theme-menu-wrap {
   position: fixed;
   z-index: 80;
-  padding-bottom: 8px;
+}
+/* 按钮 → 菜单的隐形悬停桥：绝对定位、不占布局高度，避免像旧的 padding-bottom
+   那样把可见卡片整体顶高，导致与宽度浮窗底边不一致（#1684）。 */
+.theme-menu-wrap::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -8px;
+  height: 8px;
 }
 
 .theme-menu {

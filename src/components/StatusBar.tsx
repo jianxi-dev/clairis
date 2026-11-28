@@ -89,6 +89,35 @@ function formatNumber(n: number): string {
  * 右侧是原顶栏的四个产品级入口：网格概览 / AI / 主题 / 沉浸，顺序与点击行为不变。
  * 沉浸模式下顶栏收拢，但状态栏常驻（spec：状态栏不被沉浸 chrome 折叠）。
  */
+/** 状态栏浮窗统一间距：可见卡片底边到触发按钮的 8px（#1684）。 */
+const STATUS_POPOVER_GAP = 8;
+
+/**
+ * 状态栏浮窗的统一定位（#1684）：按**可见卡片**水平居中、底边距触发按钮
+ * 8px，并按缩放后的显示宽度夹进视口。两个浮窗共用，避免容器结构差异
+ * （如主题菜单外层的悬停桥内边距）再次造成底边高度分叉。
+ */
+function statusPopoverBox(
+  trigger: DOMRect | null,
+  width: number,
+  scale: number,
+): { left: number; bottom: number } | null {
+  if (!trigger) return null;
+  const center = trigger.left + trigger.width / 2;
+  return {
+    left: Math.min(
+      Math.max(center - width / 2, STATUS_POPOVER_GAP),
+      Math.max(
+        window.innerWidth -
+          STATUS_POPOVER_GAP -
+          (width * (1 + scale)) / 2,
+        STATUS_POPOVER_GAP,
+      ),
+    ),
+    bottom: window.innerHeight - trigger.top + STATUS_POPOVER_GAP,
+  };
+}
+
 export default function StatusBar({
   theme,
   readingMode,
@@ -133,8 +162,8 @@ export default function StatusBar({
   const themeRect = themeOpen
     ? themeBtnRef.current?.getBoundingClientRect() ?? null
     : null;
-  const themeAnchor = themeRect ? themeRect.left + themeRect.width / 2 : 0;
   const themeScale = themeRect ? panelScale() : 1;
+  const themeBox = statusPopoverBox(themeRect, THEME_MENU_W, themeScale);
 
   const [widthOpen, setWidthOpen] = useState(false);
   const widthBtnRef = useRef<HTMLButtonElement | null>(null);
@@ -144,10 +173,8 @@ export default function StatusBar({
   const widthRect = widthOpen
     ? widthBtnRef.current?.getBoundingClientRect() ?? null
     : null;
-  const widthAnchor = widthRect
-    ? widthRect.left + widthRect.width / 2
-    : 0;
   const widthScale = widthRect ? panelScale() : 1;
+  const widthBox = statusPopoverBox(widthRect, WIDTH_PANEL_W, widthScale);
 
   const cancelWidthClose = useCallback(() => {
     if (widthCloseTimer.current !== null) {
@@ -321,20 +348,7 @@ export default function StatusBar({
                 className="width-panel"
                 onPointerEnter={cancelWidthClose}
                 onPointerLeave={scheduleWidthClose}
-                style={{
-                  // 直接使用视觉坐标（portal 到 body，不在状态栏 zoom 内）：
-                  // 中心对齐按钮中心；右缘按缩放后的显示宽度夹取（#1652）。
-                  left: Math.min(
-                    Math.max(widthAnchor - WIDTH_PANEL_W / 2, 8),
-                    Math.max(
-                      window.innerWidth -
-                        8 -
-                        (WIDTH_PANEL_W * (1 + widthScale)) / 2,
-                      8,
-                    ),
-                  ),
-                  bottom: window.innerHeight - widthRect.top + 8,
-                }}
+                style={widthBox!}
               >
                 <div className="width-bars" data-testid="width-bars">
                   {READER_WIDTH_PRESETS.map((opt) => (
@@ -457,20 +471,7 @@ export default function StatusBar({
                   ref={themeMenuRef}
                   data-testid="theme-menu"
                   className="theme-menu-wrap"
-                  style={{
-                    // 水平居中于主题按钮，再按视口夹取（#1652：原按左缘对齐，
-                    // 常态中心偏右 66px，贴右缘又被夹取）。
-                    left: Math.min(
-                      Math.max(themeAnchor - THEME_MENU_W / 2, 8),
-                      Math.max(
-                        window.innerWidth -
-                          8 -
-                          (THEME_MENU_W * (1 + themeScale)) / 2,
-                        8,
-                      ),
-                    ),
-                    bottom: window.innerHeight - themeRect.top + 8,
-                  }}
+                  style={themeBox!}
                   onPointerEnter={cancelThemeClose}
                   onPointerLeave={scheduleThemeClose}
                 >
