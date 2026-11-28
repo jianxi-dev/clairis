@@ -28,15 +28,10 @@ import {
 import { findCalloutBlocks } from "../decorations/callout";
 import { structureTransaction } from "../structure-history";
 import {
-  APP_SURFACE,
-  APP_TEXT,
-  HL_FILL,
-  HL_FONT,
-  currentTheme,
   mixOver,
   parseHexColor,
   pickReadableText,
-  readColor,
+  readCssColor,
   rgbToHex,
   type ReadableCandidate,
 } from "./color-contrast";
@@ -132,18 +127,16 @@ export function pickHighlightFamily(
   return pool[Math.floor(rand() * pool.length)] ?? HIGHLIGHT_COLORS[0];
 }
 
-/** 高亮字体候选：默认文字 + 字体色板非空项（name 去 `hl-color-` 前缀）。 */
-function highlightTextCandidates(theme: "light" | "dark"): ReadableCandidate[] {
+/** 高亮字体候选：默认文字 + 字体色板非默认项（name 去 `hl-color-` 前缀）。 */
+function highlightTextCandidates(): ReadableCandidate[] {
   const candidates: ReadableCandidate[] = [
-    { name: "", hex: APP_TEXT[theme] },
+    { name: "", hex: readCssColor("--app-text") },
   ];
   for (const color of HIGHLIGHT_FONT_COLORS) {
     if (color.className === "") continue;
     const name = color.className.replace(/^hl-color-/, "");
-    candidates.push({
-      name,
-      hex: readColor(color.swatch, HL_FONT[theme][name] ?? APP_TEXT[theme]),
-    });
+    const hex = readCssColor(color.swatch);
+    if (hex !== "") candidates.push({ name, hex });
   }
   return candidates;
 }
@@ -180,16 +173,14 @@ export function randomHighlightColors(
   if (!range) return false;
   const current = view.state.doc.sliceString(range.from, range.to);
   const attrs = getCalloutAttrs(current);
-  const theme = currentTheme();
   const family = pickHighlightFamily(attrs);
-  const fillHex = readColor(
-    `var(--hl-fill-${family.light})`,
-    HL_FILL[theme === "dark" ? "dark" : "light"][family.light] ?? APP_TEXT[theme],
-  );
-  const text = pickReadableText(
-    fillHex,
-    highlightTextCandidates(theme === "dark" ? "dark" : "light"),
-  );
+  const fillHex = readCssColor(`--hl-fill-${family.light}`);
+  const candidates = highlightTextCandidates();
+  // 填充或候选缺失时只写 bg/border（文字保持现状），不崩溃。
+  const text =
+    fillHex === "" || candidates.length === 0
+      ? { name: "", hex: fillHex }
+      : pickReadableText(fillHex, candidates);
   return writeRandomTriple(
     view,
     range,
@@ -234,7 +225,6 @@ export function randomCalloutColors(
   if (!range) return null;
   const current = view.state.doc.sliceString(range.from, range.to);
   const attrs = getCalloutAttrs(current);
-  const theme = currentTheme();
   const pool = BACKGROUND_COLORS.filter(
     (color) => color.className !== "" && !color.isDefault,
   );
@@ -242,21 +232,26 @@ export function randomCalloutColors(
   if (!picked) return null;
   const name = attrNameFromClassName("bg", picked.className);
   if (name === "") return null;
-  const bgRgb = parseHexColor(readColor(picked.swatch, picked.swatch));
-  const surfaceHex = APP_SURFACE[theme];
+  // swatch 可能是 CSS 变量名或带包裹函数的变量引用，统一剥离后读计算值。
+  const swatchRef = picked.swatch.replace(/^var\((--[a-zA-Z0-9-]+)\)$/, "$1");
+  const bgHex = readCssColor(swatchRef);
+  const surfaceHex = readCssColor("--app-surface");
+  const bgRgb = parseHexColor(bgHex);
   const surfaceRgb = parseHexColor(surfaceHex);
   const tintHex =
-    bgRgb && surfaceRgb
-      ? rgbToHex(mixOver(bgRgb, surfaceRgb, 0.1))
-      : surfaceHex;
+    bgRgb && surfaceRgb ? rgbToHex(mixOver(bgRgb, surfaceRgb, 0.1)) : "";
   const candidates: ReadableCandidate[] = [
-    { name: "", hex: APP_TEXT[theme] },
+    { name: "", hex: readCssColor("--app-text") },
     ...FONT_COLORS.filter((color) => color.className !== "").map((color) => ({
       name: color.className.replace(/^mdb-color-/, ""),
-      hex: color.swatch,
+      hex: readCssColor(color.swatch),
     })),
-  ];
-  const text = pickReadableText(tintHex, candidates);
+  ].filter((candidate) => candidate.hex !== "");
+  // tint 或候选缺失时只写 bg/border（文字保持现状），不崩溃。
+  const text =
+    tintHex === "" || candidates.length === 0
+      ? { name: "", hex: tintHex }
+      : pickReadableText(tintHex, candidates);
   const nextAttrs: { bg?: string; border?: string; text?: string } = {
     ...attrs,
     bg: name,

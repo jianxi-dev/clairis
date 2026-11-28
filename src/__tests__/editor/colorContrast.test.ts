@@ -1,9 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import {
   contrastRatio,
   mixOver,
   parseHexColor,
   pickReadableText,
+  readCssColor,
   relativeLuminance,
 } from "../../editors/orchestration/color-contrast";
 
@@ -70,5 +71,28 @@ describe("mixOver", () => {
     expect(Math.abs(mixed.r - 0xfe)).toBeLessThanOrEqual(2);
     expect(Math.abs(mixed.g - 0xe6)).toBeLessThanOrEqual(2);
     expect(Math.abs(mixed.b - 0xe7)).toBeLessThanOrEqual(2);
+  });
+});
+
+describe("readCssColor", () => {
+  afterEach(() => {
+    document.documentElement.style.removeProperty("--t-a");
+  });
+
+  it("变量名读回计算值", () => {
+    document.documentElement.style.setProperty("--t-a", "#123456");
+    expect(readCssColor("--t-a")).toBe("#123456");
+  });
+
+  it("hex 原样返回", () => {
+    expect(readCssColor("#abcdef")).toBe("#abcdef");
+  });
+
+  it("未定义变量返回空串", () => {
+    expect(readCssColor("--t-missing")).toBe("");
+  });
+
+  it("非 hex 值返回空串", () => {
+    expect(readCssColor("red")).toBe("");
   });
 });

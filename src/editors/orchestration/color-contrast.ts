@@ -1,8 +1,8 @@
 /* 高亮 / 标注随机选色的对比度工具（fix/random-contrast）。
  *
- * 随机不再只换 bg/border：按当前主题读出填充实色，再从「默认文字 + 字体色板」
- * 中挑一个对比度达标的文字色，一次事务写回三元组。色值兜底常量与
- * `src/styles/editor.css` / `src/styles/tokens.css` 同步（改动须同步三处）。
+ * 随机不再只换 bg/border：按当前主题从 CSS 变量读出填充实色，再从「默认文字 +
+ * 字体色板」中挑一个对比度达标的文字色，一次事务写回三元组。色值唯一来源是
+ * `src/styles/editor.css` / `src/styles/tokens.css`，本文件不持有任何兜底色值。
  */
 
 export interface Rgb {
@@ -11,7 +11,7 @@ export interface Rgb {
   readonly b: number;
 }
 
-/** 解析 `#rgb` / `#rrggbb`；其它格式（含 `var(...)`）返回 null。 */
+/** 解析 `#rgb` / `#rrggbb`；其它格式返回 null。 */
 export function parseHexColor(value: string): Rgb | null {
   const m = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.exec(value.trim());
   if (!m) return null;
@@ -76,99 +76,15 @@ export function currentTheme(): "light" | "dark" | "warm" {
 }
 
 /**
- * 读 CSS 色值：`var(--x)` 时取 `:root` 计算值，为空用 fallback；
- * 其它值（hex）原样返回。
+ * 读 CSS 色值：入参是 CSS 变量名（如 `--hl-fill-red`）时取 `:root` 计算值，
+ * 否则按 hex 原样处理；无法解析为 hex 时返回空串（调用方据此跳过文字改色）。
  */
-export function readColor(cssValue: string, fallbackHex: string): string {
-  const trimmed = cssValue.trim();
-  const m = /^var\((--[a-zA-Z0-9-]+)\)$/.exec(trimmed);
-  if (!m) return trimmed;
-  const value = getComputedStyle(document.documentElement)
-    .getPropertyValue(m[1])
-    .trim();
-  return value === "" ? fallbackHex : value;
+export function readCssColor(nameOrHex: string): string {
+  const value = nameOrHex.startsWith("--")
+    ? getComputedStyle(document.documentElement).getPropertyValue(nameOrHex).trim()
+    : nameOrHex.trim();
+  return parseHexColor(value) ? value : "";
 }
-
-/** 主题兜底常量（与 editor.css / tokens.css 同值，改动须同步）。 */
-export const APP_TEXT: Readonly<Record<"light" | "dark" | "warm", string>> = {
-  light: "#24262b",
-  dark: "#d8dade",
-  warm: "#3b3024",
-};
-
-export const APP_SURFACE: Readonly<
-  Record<"light" | "dark" | "warm", string>
-> = {
-  light: "#fbfaf8",
-  dark: "#1a1b1e",
-  warm: "#fbf4e8",
-};
-
-/** 高亮填充实色（深档 + 中档，与 editor.css 1-62 行同步）。 */
-export const HL_FILL: Readonly<
-  Record<"light" | "dark", Readonly<Record<string, string>>>
-> = {
-  light: {
-    darkgray: "#f2f3f5",
-    darkred: "#fde2e2",
-    darkorange: "#feead2",
-    darkyellow: "#ffffcc",
-    darkgreen: "#daf5d6",
-    darkblue: "#e1eaff",
-    darkpurple: "#ebe2fe",
-    gray: "#e7e9eb",
-    lightgray: "#e7e9eb",
-    red: "#fbbfbc",
-    orange: "#fed4a4",
-    yellow: "#fffca3",
-    green: "#b7edb2",
-    blue: "#bacefd",
-    purple: "#cdb2fa",
-  },
-  dark: {
-    darkgray: "#2b2b2b",
-    darkred: "#4a1d1b",
-    darkorange: "#57330a",
-    darkyellow: "#5c5514",
-    darkgreen: "#1f471b",
-    darkblue: "#192a4c",
-    darkpurple: "#361d61",
-    gray: "#363636",
-    lightgray: "#3c3c3c",
-    red: "#6b2827",
-    orange: "#845117",
-    yellow: "#877b10",
-    green: "#296b22",
-    blue: "#213e78",
-    purple: "#4d2691",
-  },
-};
-
-/** 高亮字体色实色（灰/红/橙/黄/绿/蓝/紫 + 高对比，与 editor.css 同步）。 */
-export const HL_FONT: Readonly<
-  Record<"light" | "dark", Readonly<Record<string, string>>>
-> = {
-  light: {
-    gray: "#8f959e",
-    contrast: "#111111",
-    red: "#d83930",
-    orange: "#de7704",
-    yellow: "#dd9b02",
-    green: "#2ea122",
-    blue: "#245bdb",
-    purple: "#6425d0",
-  },
-  dark: {
-    gray: "#757575",
-    contrast: "#ffffff",
-    red: "#fa7873",
-    orange: "#f5a54a",
-    yellow: "#fcd456",
-    green: "#6dd162",
-    blue: "#71a0ff",
-    purple: "#a472fc",
-  },
-};
 
 export interface ReadableCandidate {
   readonly name: string;

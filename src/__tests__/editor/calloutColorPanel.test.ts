@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { EditorState } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { markdown } from "@codemirror/lang-markdown";
@@ -11,14 +11,53 @@ import {
   randomHighlightColors,
 } from "../../editors/orchestration/callout-color-panel";
 import {
-  APP_TEXT,
-  HL_FILL,
-  HL_FONT,
   contrastRatio,
-  currentTheme,
   parseHexColor,
+  readCssColor,
 } from "../../editors/orchestration/color-contrast";
 import { getCalloutAttrs } from "../../editors/callout-attrs";
+
+/** 测试用 CSS 变量：覆盖随机选色涉及的填充 / 字体 / 表面色。 */
+const TEST_VARS: Readonly<Record<string, string>> = {
+  "--app-text": "#24262b",
+  "--app-surface": "#fbfaf8",
+  "--hl-font-contrast": "#111111",
+  "--hl-font-red": "#d83930",
+  "--hl-font-orange": "#de7704",
+  "--hl-font-yellow": "#dd9b02",
+  "--hl-font-green": "#2ea122",
+  "--hl-font-blue": "#245bdb",
+  "--hl-font-purple": "#6425d0",
+  "--hl-fill-darkgray": "#f2f3f5",
+  "--hl-fill-darkred": "#fde2e2",
+  "--hl-fill-darkorange": "#feead2",
+  "--hl-fill-darkyellow": "#ffffcc",
+  "--hl-fill-darkgreen": "#daf5d6",
+  "--hl-fill-darkblue": "#e1eaff",
+  "--hl-fill-darkpurple": "#ebe2fe",
+  "--hl-fill-gray": "#e7e9eb",
+  "--hl-fill-lightgray": "#e7e9eb",
+  "--hl-fill-red": "#fbbfbc",
+  "--hl-fill-orange": "#fed4a4",
+  "--hl-fill-yellow": "#fffca3",
+  "--hl-fill-green": "#b7edb2",
+  "--hl-fill-blue": "#bacefd",
+  "--hl-fill-purple": "#cdb2fa",
+};
+
+beforeEach(() => {
+  const style = document.documentElement.style;
+  for (const [name, value] of Object.entries(TEST_VARS)) {
+    style.setProperty(name, value);
+  }
+});
+
+afterEach(() => {
+  const style = document.documentElement.style;
+  for (const name of Object.keys(TEST_VARS)) {
+    style.removeProperty(name);
+  }
+});
 
 describe("nextCalloutAttrs", () => {
   it("写入新色名", () => {
@@ -374,11 +413,7 @@ describe("randomCalloutColors（#1677）", () => {
     const m = /\{bg=([a-z]+) border=([a-z]+)[^}]*\}/.exec(text);
     expect(m).not.toBeNull();
     expect(m![1]).toBe(m![2]);
-    const theme = currentTheme();
-    const surfaceHex =
-      getComputedStyle(document.documentElement).getPropertyValue(
-        "--app-surface",
-      ) || "#fbfaf8";
+    const surfaceHex = readCssColor("--app-surface");
     const surface = parseHexColor(surfaceHex)!;
     const bg = parseHexColor("#f0000e")!;
     const tint = {
@@ -389,12 +424,8 @@ describe("randomCalloutColors（#1677）", () => {
     const textName = changed!.text ?? "";
     const textHex =
       textName === ""
-        ? parseHexColor(APP_TEXT[theme])!
-        : parseHexColor(
-            getComputedStyle(document.documentElement).getPropertyValue(
-              `--hl-font-${textName}`,
-            ) || "#000000",
-          )!;
+        ? parseHexColor(readCssColor("--app-text"))!
+        : parseHexColor(readCssColor(`--hl-font-${textName}`))!;
     expect(contrastRatio(textHex, tint)).toBeGreaterThanOrEqual(4);
   });
 
@@ -443,15 +474,13 @@ describe("randomHighlightColors（fix/random-contrast）", () => {
     const text = editor.state.doc.toString();
     const m = /\{bg=([a-z]+) border=([a-z]+)[^}]*\}/.exec(text);
     expect(m).not.toBeNull();
-    const theme = currentTheme();
-    const fillHex =
-      HL_FILL[theme === "dark" ? "dark" : "light"][m![1]] ?? "#ffffff";
+    const fillHex = readCssColor(`--hl-fill-${m![1]}`);
     const fill = parseHexColor(fillHex)!;
     const textName = getCalloutAttrs(text).text ?? "";
     const textHex =
       textName === ""
-        ? APP_TEXT[theme]
-        : HL_FONT[theme === "dark" ? "dark" : "light"][textName] ?? "#000000";
+        ? readCssColor("--app-text")
+        : readCssColor(`--hl-font-${textName}`);
     expect(contrastRatio(parseHexColor(textHex)!, fill)).toBeGreaterThanOrEqual(4);
   });
 
