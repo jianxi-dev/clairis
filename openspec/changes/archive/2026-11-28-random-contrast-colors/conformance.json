@@ -1,0 +1,51 @@
+{
+  "change": "random-contrast-colors",
+  "requirements": [
+    {
+      "id": "R-1",
+      "text": "高对比档与随机对比度",
+      "anchors": [
+        {
+          "id": "A-1.1",
+          "claim": "字体板第 2 格改「高对比」",
+          "kind": "exact",
+          "assert": "字体行第 2 格色值为 `#111111`（浅色主题）/ `#ffffff`（深色主题），由 `--hl-font-contrast` 承载",
+          "source": "PR #1700 / 截图"
+        },
+        {
+          "id": "A-1.2",
+          "claim": "随机三元组按 WCAG 选文字",
+          "kind": "state-machine",
+          "assert": "点击「随机」后 `bg` / `border` / `text` 同时改变，`bg` 与 `border` 同色相族，`text` 对比度 ≥4.5（默认文字达标时取默认），一次 ⌘Z 同时还原三项",
+          "source": "PR #1700 / 截图"
+        }
+      ]
+    },
+    {
+      "id": "R-2",
+      "text": "标注随机对比度",
+      "anchors": [
+        {
+          "id": "A-2.1",
+          "claim": "标注随机按叠底实际底色选文字",
+          "kind": "state-machine",
+          "assert": "点击标注面板「随机」后 `bg` 与 `border` 同名，`text` 按 10% 叠底后实际底色与字体板 WCAG 对比度选出（默认达标 ≥4.5 优先，否则取最高），一次撤销还原三项",
+          "source": "PR #1700 / 截图"
+        }
+      ]
+    },
+    {
+      "id": "R-3",
+      "text": "连续改色不叠加属性块",
+      "anchors": [
+        {
+          "id": "A-3.1",
+          "claim": "连续随机三次只留一个属性块",
+          "kind": "exact",
+          "assert": "连续点击「随机」三次后首行 `{` 数为 1、`}` 数为 1，正文行不变",
+          "source": "PR #1700 / 截图"
+        }
+      ]
+    }
+  ]
+}
